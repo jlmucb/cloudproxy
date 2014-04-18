@@ -64,7 +64,6 @@ static UINT8 int15_handler_code[] =
 #define E820_NAMES_COUNT (sizeof(g_int15_e820_type_name)/sizeof(const char*))
 
 #ifdef ENABLE_INT15_VIRTUALIZATION
-/*------------------------------------------------------------*/
 
 /*
  * This function is supposed to setup int15 handling
@@ -232,10 +231,9 @@ void e820_abstraction_destroy_map(IN E820_HANDLE handle) {
 }
 
 BOOLEAN e820_abstraction_add_new_range(IN E820_HANDLE handle,
-                                       IN UINT64 base_address,
-                                       IN UINT64 length,
-                                       IN INT15_E820_RANGE_TYPE  address_range_type,
-                                       IN INT15_E820_MEMORY_MAP_EXT_ATTRIBUTES extended_attributes) {
+                  IN UINT64 base_address, IN UINT64 length,
+                  IN INT15_E820_RANGE_TYPE  address_range_type,
+                  IN INT15_E820_MEMORY_MAP_EXT_ATTRIBUTES extended_attributes) {
     INT15_E820_MEMORY_MAP* e820_map = (INT15_E820_MEMORY_MAP*)handle;
     INT15_E820_MEMORY_MAP_ENTRY_EXT* new_entry;
     UINT32 new_entry_index;
@@ -418,15 +416,12 @@ e820_int15_handler(E820MAP_STATE *emap)
         emap->emu_e820_continuation_value = 0;
         VMM_LOG(mask_anonymous, level_trace,"INT15 vmcall for E820 map initialized!\n" );
     }
-   //
+   
    // Make sure all the arguments are valid
-   //
    if ((p_arch->em_rcx < sizeof(INT15_E820_MEMORY_MAP_ENTRY)) ||
        (p_arch->em_rbx >= emap->emu_e820_memory_map_size)    ||
        (p_arch->em_rbx != 0 && p_arch->em_rbx != emap->emu_e820_continuation_value)) {
-       //
        // Set the carry flag
-       //
        BITMAP_SET(p_arch->em_rflags, RFLAGS_CARRY);
        VMM_LOG(mask_anonymous, level_error, "ERROR>>>>> E820 INT15 rbx=0x%x rcx:0x%x\n",p_arch->em_rbx,p_arch->em_rcx);
 

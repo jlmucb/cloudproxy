@@ -148,15 +148,14 @@ BOOLEAN hash64_insert_internal(HASH64_TABLE* hash,
     return TRUE;
 }
 
-static
-HASH64_HANDLE hash64_create_hash_internal(HASH64_FUNC hash_func,
-                                          HASH64_INTERNAL_MEM_ALLOCATION_FUNC mem_alloc_func,
-                                          HASH64_INTERNAL_MEM_DEALLOCATION_FUNC mem_dealloc_func,
-                                          HASH64_NODE_ALLOCATION_FUNC node_alloc_func,
-                                          HASH64_NODE_DEALLOCATION_FUNC node_dealloc_func,
-                                          void* node_allocation_deallocation_context,
-                                          UINT32 hash_size,
-                                          BOOLEAN is_multiple_values_hash) {
+static HASH64_HANDLE hash64_create_hash_internal(
+            HASH64_FUNC hash_func,
+            HASH64_INTERNAL_MEM_ALLOCATION_FUNC mem_alloc_func,
+            HASH64_INTERNAL_MEM_DEALLOCATION_FUNC mem_dealloc_func,
+            HASH64_NODE_ALLOCATION_FUNC node_alloc_func,
+            HASH64_NODE_DEALLOCATION_FUNC node_dealloc_func,
+            void* node_allocation_deallocation_context,
+            UINT32 hash_size, BOOLEAN is_multiple_values_hash) {
     HASH64_TABLE* hash;
     HASH64_NODE** array;
     UINT32 index;
@@ -273,22 +272,22 @@ void hash64_destroy_hash_internal(HASH64_TABLE* hash) {
     }
 }
 
-/*-----------------------------------------------------*/
 
 UINT32 hash64_get_node_size(void) {
     return sizeof(HASH64_NODE);
 }
 
-HASH64_HANDLE hash64_create_hash(HASH64_FUNC hash_func,
-                                 HASH64_INTERNAL_MEM_ALLOCATION_FUNC mem_alloc_func,
-                                 HASH64_INTERNAL_MEM_DEALLOCATION_FUNC mem_dealloc_func,
-                                 HASH64_NODE_ALLOCATION_FUNC node_alloc_func,
-                                 HASH64_NODE_DEALLOCATION_FUNC node_dealloc_func,
-                                 void* node_allocation_deallocation_context,
-                                 UINT32 hash_size) {
-    return hash64_create_hash_internal(hash_func, mem_alloc_func, mem_dealloc_func,
-                                       node_alloc_func, node_dealloc_func,
-                                       node_allocation_deallocation_context, hash_size, FALSE);
+HASH64_HANDLE hash64_create_hash(
+                    HASH64_FUNC hash_func,
+                    HASH64_INTERNAL_MEM_ALLOCATION_FUNC mem_alloc_func,
+                    HASH64_INTERNAL_MEM_DEALLOCATION_FUNC mem_dealloc_func,
+                    HASH64_NODE_ALLOCATION_FUNC node_alloc_func,
+                    HASH64_NODE_DEALLOCATION_FUNC node_dealloc_func,
+                    void* node_allocation_deallocation_context,
+                    UINT32 hash_size) {
+    return hash64_create_hash_internal(hash_func, mem_alloc_func, 
+                        mem_dealloc_func, node_alloc_func, node_dealloc_func,
+                        node_allocation_deallocation_context, hash_size, FALSE);
 }
 
 void hash64_destroy_hash(HASH64_HANDLE hash_handle) {
@@ -485,16 +484,18 @@ UINT32 hash64_get_current_size(HASH64_HANDLE hash_handle) {
     return hash64_get_hash_size(hash);
 }
 
-HASH64_HANDLE hash64_create_multiple_values_hash(HASH64_FUNC hash_func,
-                                                 HASH64_INTERNAL_MEM_ALLOCATION_FUNC mem_alloc_func,
-                                                 HASH64_INTERNAL_MEM_DEALLOCATION_FUNC mem_dealloc_func,
-                                                 HASH64_NODE_ALLOCATION_FUNC node_alloc_func,
-                                                 HASH64_NODE_DEALLOCATION_FUNC node_dealloc_func,
-                                                 void* node_allocation_deallocation_context,
-                                                 UINT32 hash_size) {
-    return hash64_create_hash_internal(hash_func, mem_alloc_func, mem_dealloc_func, node_alloc_func,
-                                       node_dealloc_func, node_allocation_deallocation_context,
-                                       hash_size, TRUE);
+HASH64_HANDLE hash64_create_multiple_values_hash(
+                    HASH64_FUNC hash_func,
+                    HASH64_INTERNAL_MEM_ALLOCATION_FUNC mem_alloc_func,
+                    HASH64_INTERNAL_MEM_DEALLOCATION_FUNC mem_dealloc_func,
+                    HASH64_NODE_ALLOCATION_FUNC node_alloc_func,
+                    HASH64_NODE_DEALLOCATION_FUNC node_dealloc_func,
+                    void* node_allocation_deallocation_context,
+                    UINT32 hash_size) {
+    return hash64_create_hash_internal(hash_func, mem_alloc_func, 
+                    mem_dealloc_func, node_alloc_func,
+                    node_dealloc_func, node_allocation_deallocation_context,
+                    hash_size, TRUE);
 }
 #endif
 
@@ -508,8 +509,7 @@ void hash64_destroy_multiple_values_hash(HASH64_HANDLE hash_handle) {
 
 #ifdef ENABLE_VTLB
 BOOLEAN hash64_lookup_in_multiple_values_hash(HASH64_HANDLE hash_handle,
-                                             UINT64 key,
-                                             HASH64_MULTIPLE_VALUES_HASH_ITERATOR* iter) {
+                      UINT64 key, HASH64_MULTIPLE_VALUES_HASH_ITERATOR* iter) {
     HASH64_TABLE* hash = (HASH64_TABLE*)hash_handle;
     HASH64_NODE* top_node;
     UINT64 top_node_value;
@@ -538,14 +538,14 @@ hash64_multiple_values_hash_iterator_get_next(HASH64_MULTIPLE_VALUES_HASH_ITERAT
     return (HASH64_MULTIPLE_VALUES_HASH_ITERATOR)hash64_node_get_next(node);
 }
 
-UINT64 hash64_multiple_values_hash_iterator_get_value(HASH64_MULTIPLE_VALUES_HASH_ITERATOR iter) {
+UINT64 hash64_multiple_values_hash_iterator_get_value(
+            HASH64_MULTIPLE_VALUES_HASH_ITERATOR iter) {
     HASH64_NODE* node = (HASH64_NODE*)iter;
     return hash64_node_get_value(node);
 }
 
 BOOLEAN hash64_insert_into_multiple_values_hash(HASH64_HANDLE hash_handle,
-                                               UINT64 key,
-                                               UINT64 value) {
+                      UINT64 key, UINT64 value) {
     HASH64_TABLE* hash = (HASH64_TABLE*)hash_handle;
     HASH64_NODE* top_node;
     UINT64 top_node_value;
@@ -608,8 +608,7 @@ BOOLEAN hash64_insert_into_multiple_values_hash(HASH64_HANDLE hash_handle,
 }
 
 BOOLEAN hash64_remove_from_multiple_values_hash(HASH64_HANDLE hash_handle,
-                                               UINT64 key,
-                                               UINT64 value) {
+                      UINT64 key, UINT64 value) {
     HASH64_TABLE* hash = (HASH64_TABLE*)hash_handle;
     HASH64_NODE* top_node;
     UINT64 top_node_value;
@@ -663,8 +662,7 @@ BOOLEAN hash64_remove_from_multiple_values_hash(HASH64_HANDLE hash_handle,
 }
 
 BOOLEAN hash64_is_value_in_multiple_values_hash(HASH64_HANDLE hash_handle,
-                                               UINT64 key,
-                                               UINT64 value) {
+                        UINT64 key, UINT64 value) {
     HASH64_TABLE* hash = (HASH64_TABLE*)hash_handle;
     HASH64_MULTIPLE_VALUES_HASH_ITERATOR iter;
 
@@ -689,9 +687,7 @@ BOOLEAN hash64_is_value_in_multiple_values_hash(HASH64_HANDLE hash_handle,
 }
 
 BOOLEAN hash64_remove_range_from_multiple_values_hash(HASH64_HANDLE hash_handle,
-                                                     UINT64 key,
-                                                     UINT64 value_from,
-                                                     UINT64 value_to) {
+                           UINT64 key, UINT64 value_from, UINT64 value_to) {
     HASH64_TABLE* hash = (HASH64_TABLE*)hash_handle;
     HASH64_NODE* top_node;
     HASH64_NODE* node;

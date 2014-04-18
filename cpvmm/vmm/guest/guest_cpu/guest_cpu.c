@@ -36,16 +36,13 @@
 
 #pragma warning( disable: 4100 )
 
-//
 // Guest CPU
-//
 // Guest CPU may be in 2 different modes:
 //    16 mode - run under emulator
 //    any other mode - run native
-//
 
 
-static GUEST_CPU_HANDLE     g_gcpus       = NULL;// list of all guest cpus
+static GUEST_CPU_HANDLE g_gcpus       = NULL;// list of all guest cpus
 
 // this is a shortcut pointer for assembler code
 GUEST_CPU_SAVE_AREA** g_guest_regs_save_area = NULL;

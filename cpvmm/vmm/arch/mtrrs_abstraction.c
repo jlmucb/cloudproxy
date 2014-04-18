@@ -98,7 +98,6 @@ typedef struct MTRRS_ABS_FIXED_RANGE_DESC_S {
 } MTRRS_ABS_FIXED_RANGE_DESC;
 
 
-/*---------------------------------------------------*/
 typedef struct MTRRS_ABSTRACTION_CACHED_INFO_S {
     IA32_MTRRCAP_REG ia32_mtrrcap_reg;
     IA32_MTRR_DEF_TYPE_REG ia32_mtrr_def_type;
@@ -124,7 +123,6 @@ typedef struct MTRRS_ABSTRACTION_CACHED_INFO_S {
 static MTRRS_ABSTRACTION_CACHED_INFO mtrrs_cached_info;
 UINT64 remsize = 0;
 UINT64 MTRR_MSBs=0;
-/*---------------------------------------------------*/
 
 UINT32 mtrrs_abstraction_get_num_of_variable_range_regs(void) {
     UINT64 num = mtrrs_cached_info.ia32_mtrrcap_reg.bits.vcnt;
@@ -157,8 +155,7 @@ BOOLEAN mtrrs_abstraction_is_var_reg_valid(UINT32 index) {
     return (mtrrs_cached_info.ia32_mtrr_var_phys_mask[index].bits.valid != 0);
 }
 
-INLINE
-UINT64 mtrrs_abstraction_get_address_from_reg(UINT32 reg_index) {
+INLINE UINT64 mtrrs_abstraction_get_address_from_reg(UINT32 reg_index) {
     UINT32 addr_base_low = mtrrs_cached_info.ia32_mtrr_var_phys_base[reg_index].bits.phys_base_low << MTRRS_ABS_ADDR_BASE_SHIFT;
     UINT32 addr_base_high = mtrrs_cached_info.ia32_mtrr_var_phys_base[reg_index].bits.phys_base_high;
     UINT64 addr = ((UINT64)addr_base_high << MTRRS_ABS_HIGH_ADDR_SHIFT) | addr_base_low;
@@ -166,8 +163,7 @@ UINT64 mtrrs_abstraction_get_address_from_reg(UINT32 reg_index) {
     return addr;
 }
 
-INLINE
-UINT64 mtrrs_abstraction_get_mask_from_reg(UINT32 reg_index) {
+INLINE UINT64 mtrrs_abstraction_get_mask_from_reg(UINT32 reg_index) {
     UINT32 addr_mask_low = mtrrs_cached_info.ia32_mtrr_var_phys_mask[reg_index].bits.phys_mask_low << MTRRS_ABS_ADDR_BASE_SHIFT;
     UINT32 addr_mask_high = mtrrs_cached_info.ia32_mtrr_var_phys_mask[reg_index].bits.phys_mask_high;
     UINT64 addr_mask = ((UINT64)addr_mask_high << MTRRS_ABS_HIGH_ADDR_SHIFT) | addr_mask_low;
@@ -175,22 +171,20 @@ UINT64 mtrrs_abstraction_get_mask_from_reg(UINT32 reg_index) {
     return addr_mask;
 }
 
-INLINE
-BOOLEAN mtrrs_abstraction_is_addr_covered_by_var_reg(HPA address, UINT32 reg_index) {
+INLINE BOOLEAN mtrrs_abstraction_is_addr_covered_by_var_reg(
+            HPA address, UINT32 reg_index) {
     UINT64 phys_base = mtrrs_abstraction_get_address_from_reg(reg_index);
     UINT64 phys_mask = mtrrs_abstraction_get_mask_from_reg(reg_index);
     UINT64 mask_base = phys_base & phys_mask;
     UINT64 mask_target = phys_mask & address;
-        if (mask_base == mask_target)
-        {
-                remsize = (phys_base & phys_mask) + (~(phys_mask | MTRR_MSBs)) + 1 - address;
+    if (mask_base == mask_target) {
+        remsize = (phys_base & phys_mask) + (~(phys_mask | MTRR_MSBs)) + 1 - address;
 
-        }
+    }
     return (mask_base == mask_target);
 }
 
-INLINE
-BOOLEAN mttrs_abstraction_is_type_valid(UINT64 type) {
+INLINE BOOLEAN mttrs_abstraction_is_type_valid(UINT64 type) {
     switch (type) {
     case VMM_PHYS_MEM_UNCACHABLE:
     case VMM_PHYS_MEM_WRITE_COMBINING:
@@ -202,8 +196,7 @@ BOOLEAN mttrs_abstraction_is_type_valid(UINT64 type) {
     return FALSE;
 }
 
-INLINE
-BOOLEAN mtrrs_abstraction_is_IA32_MTRR_DEF_TYPE_valid(UINT64 value) {
+INLINE BOOLEAN mtrrs_abstraction_is_IA32_MTRR_DEF_TYPE_valid(UINT64 value) {
     IA32_MTRR_DEF_TYPE_REG reg;
     reg.value = value;
     return ((reg.bits.res0 == 0) && (reg.bits.res1 == 0) && mttrs_abstraction_is_type_valid(reg.bits.type));
@@ -263,7 +256,7 @@ BOOLEAN mtrrs_is_variable_mtrrr_supported(UINT32 msr_id) {
                 return TRUE;
 }
 
-/*---------------------------------------------------*/
+
 BOOLEAN mtrrs_abstraction_bsp_initialize(void) {
     UINT32 msr_addr;
     UINT32 index;
@@ -329,20 +322,6 @@ BOOLEAN mtrrs_abstraction_bsp_initialize(void) {
         mtrrs_cached_info.ia32_mtrr_var_phys_mask[index].value = hw_read_msr(msr_addr + 1);
     }
 
-
-//      {
-//              UINT64 i=1;
-//              MTRR_MSBs = 0;
-//              i = i << 63;
-//              while (( mtrrs_cached_info.ia32_mtrr_var_phys_mask[0].value & i) == 0)
-//              {
-//                      MTRR_MSBs = MTRR_MSBs + i;
-//                      i = i >> 1;
-//                      if (i == 0)
-//                              break;
-//              }
-//      }
-   
     MTRR_MSBs = ~((UINT64)(((UINT64)1 << addr_get_physical_address_size()) - 1));
 
     mtrrs_cached_info.is_initialized = TRUE;

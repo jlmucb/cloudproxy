@@ -50,9 +50,7 @@ void hw_reset_platform(void)
 {
   UINT8  reset_control_register;
 
-  //
   // Write the ICH register required to perform a platform reset (Cold Reset)
-  //
   reset_control_register = hw_read_port_8(RESET_CONTROL_REGISTER_IO_PORT);
 
   SET_CPU_RESET( reset_control_register );
@@ -60,9 +58,7 @@ void hw_reset_platform(void)
 
   hw_write_port_8 (RESET_CONTROL_REGISTER_IO_PORT, reset_control_register);
 
-  //
   // Never returns
-  //
   VMM_DEADLOOP ();
 }
 

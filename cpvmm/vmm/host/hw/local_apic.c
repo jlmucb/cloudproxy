@@ -109,9 +109,7 @@ local_apic_ipi_verify_params(LOCAL_APIC_IPI_DESTINATION_SHORTHAND dst_shorthand,
 
 #ifdef INCLUDE_UNUSED_CODE
 
-/*
- *                       Local Variables
- */
+
 static const LOCAL_APIC_REGISTER lapic_registers[] =
 {
     { 0x00, NO_ACCESS, MODE_NO,   0, NULL },

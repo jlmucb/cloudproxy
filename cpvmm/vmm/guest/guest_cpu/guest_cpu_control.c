@@ -46,13 +46,11 @@ extern BOOLEAN is_cr4_osxsave_supported(void);
 static BOOLEAN g_init_done = FALSE;
 static BOOLEAN g_processor_ctrls2_supported = FALSE;
 
-// -------------------------- types -----------------------------------------
+
 typedef enum _EXCEPTIONS_POLICY_TYPE {
     EXCEPTIONS_POLICY_CATCH_NOTHING = 0,
     EXCEPTIONS_POLICY_CATCH_ALL,
 } EXCEPTIONS_POLICY_TYPE;
-
-// ---------------------------- globals -------------------------------------
 
 
 // set bit for each fixed bit - either 0 or 1

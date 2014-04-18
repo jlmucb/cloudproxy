@@ -31,8 +31,6 @@ static UINT64 hw_tsc_ticks_per_second = 0;
 #define IA32_DEBUG_IO_PORT   0x80
 
 
-//================================== hw_stall() =============================== 
-//
 // Stall (busy loop) for a given time, using the platform's speaker port
 // h/w.  Should only be called at initialization, since a guest OS may
 // change the platform setting.
@@ -46,8 +44,6 @@ void hw_stall(UINT32 stall_usec)
 }
 
 
-//======================= hw_calibrate_tsc_ticks_per_second() ================= 
-//
 // Calibrate the internal variable holding the number of TSC ticks pers second.
 // Should only be called at initialization, as it relies on hw_stall()
 
@@ -62,9 +58,6 @@ void hw_calibrate_tsc_ticks_per_second(void)
     hw_tsc_ticks_per_second = (hw_rdtsc() - start_tsc) * 1000;
 }
 
-
-//======================= hw_calibrate_tsc_ticks_per_second() ================= 
-//
 // Retrieve the internal variable holding the number of TSC ticks pers second.
 // Note that, depending on the CPU and ASCI modes, this may only be used as a
 // rough estimate.
@@ -76,8 +69,6 @@ UINT64 hw_get_tsc_ticks_per_second(void)
 }
 
 
-//========================== hw_stall_using_tsc() =============================
-//
 // Stall (busy loop) for a given time, using the CPU TSC register.
 // Note that, depending on the CPU and ASCI modes, the stall accuracy may be
 // rough.

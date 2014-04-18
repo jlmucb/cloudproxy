@@ -208,9 +208,8 @@ BOOLEAN gcpu_decide_on_resume_actions( const GUEST_CPU_HANDLE  gcpu, UINT64 cr0_
     return do_something;
 }
 
-//
+
 // Working with flat page tables
-//
 
 // called each time before resume if flat page tables are active
 static
@@ -232,8 +231,7 @@ void gcpu_enforce_flat_memory_setup( GUEST_CPU* gcpu )
     // set required bits
     // note: CR4.PAE ... are listed in the GCPU_CR4_VMM_CONTROLLED_BITS
     //       so their real values will not be visible by guest
-    if (! (cr4.Bits.PAE && cr4.Bits.PSE))
-    {
+    if (! (cr4.Bits.PAE && cr4.Bits.PSE)) {
         cr4.Bits.PAE = 1;
         cr4.Bits.PSE = 1;
         gcpu_set_control_reg( gcpu, IA32_CTRL_CR4, cr4.Uint64 );
@@ -266,23 +264,18 @@ void gcpu_install_flat_memory( GUEST_CPU* gcpu, GCPU_RESUME_FLAT_PT_ACTION pt_ty
     if (GCPU_RESUME_FLAT_PT_ACTION_INSTALL_32_BIT_PT == pt_type) {
         UINT32     cr3_hpa;
 
-        //VMM_LOG(mask_anonymous, level_trace,"gcpu_install_32bit_flat_memory()\n");
-
         gpm_flat_page_tables_ok =
              fpt_create_32_bit_flat_page_tables(gcpu,
-                                                &(gcpu->active_flat_pt_handle),
-                                                &cr3_hpa );
+                       &(gcpu->active_flat_pt_handle), &cr3_hpa );
         gcpu->active_flat_pt_hpa = cr3_hpa;
 
         CLR_FLAT_PAGES_TABLES_64_FLAG(gcpu);
         SET_FLAT_PAGES_TABLES_32_FLAG(gcpu);
     }
     else if (GCPU_RESUME_FLAT_PT_ACTION_INSTALL_64_BIT_PT == pt_type) {
-        //VMM_LOG(mask_anonymous, level_trace,"gcpu_install_64bit_flat_memory()\n");
-
         gpm_flat_page_tables_ok =
              fpt_create_64_bit_flat_page_tables(gcpu, &(gcpu->active_flat_pt_handle),
-                                                &(gcpu->active_flat_pt_hpa) );
+                              &(gcpu->active_flat_pt_hpa) );
         CLR_FLAT_PAGES_TABLES_32_FLAG(gcpu);
         SET_FLAT_PAGES_TABLES_64_FLAG(gcpu);
     }
@@ -738,24 +731,13 @@ void gcpu_resume( GUEST_CPU_HANDLE gcpu )
     if (vmcs_launch_required( vmcs )) {
         vmcs_set_launched( vmcs );
         // call assembler launch
-//VMM_LOG(mask_anonymous, level_trace,"VmLaunch GCPU %d GUEST %d in %s mode\n",
-//                gcpu->vcpu.guest_cpu_id,
-//                gcpu->vcpu.guest_id,
-//                IS_MODE_NATIVE(gcpu) ? "NATIVE" : "EMULATED" );
         vmentry_func( TRUE );
         VMM_LOG(mask_anonymous, level_trace,"VmLaunch failed for GCPU %d GUEST %d in %s mode\n",
-                        gcpu->vcpu.guest_cpu_id,
-                        gcpu->vcpu.guest_id,
-                        IS_MODE_NATIVE(gcpu) ? "NATIVE" : "EMULATED" );
+                gcpu->vcpu.guest_cpu_id, gcpu->vcpu.guest_id,
+                IS_MODE_NATIVE(gcpu) ? "NATIVE" : "EMULATED" );
     }
     else {
         // call assembler resume
-//VMM_LOG(mask_anonymous, level_trace,"VmResume GCPU %d GUEST %d in %s mode\n",
-//                gcpu->vcpu.guest_cpu_id,
-//                gcpu->vcpu.guest_id,
-//                IS_MODE_NATIVE(gcpu) ? "NATIVE" : "EMULATED" );
-//DEADLOOP();
-
         vmentry_func( FALSE );
         VMM_LOG(mask_anonymous, level_trace,"VmResume failed for GCPU %d GUEST %d in %s mode\n",
                 gcpu->vcpu.guest_cpu_id, gcpu->vcpu.guest_id,
@@ -785,9 +767,8 @@ void gcpu_run_emulator( const GUEST_CPU_HANDLE gcpu )
 
 // Change execution mode - switch to native execution mode
 VMM_STATUS gcpu_return_to_native_execution( GUEST_CPU_HANDLE gcpu,
-                                            ADDRESS* arg1 UNUSED,
-                                            ADDRESS* arg2 UNUSED,
-                                            ADDRESS* arg3 UNUSED)
+                     ADDRESS* arg1 UNUSED, ADDRESS* arg2 UNUSED,
+                     ADDRESS* arg3 UNUSED)
 {
     // check if emulator finished already
     if (IS_MODE_EMULATOR(gcpu) && (gcpu->emulator_handle != NULL) &&

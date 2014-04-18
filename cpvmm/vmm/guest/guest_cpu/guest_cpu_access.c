@@ -36,7 +36,6 @@
 #pragma warning( push )
 #pragma warning (disable : 4100)
 
-// -------------------------- types -----------------------------------------
 typedef struct _SEGMENT_2_VMCS {
     VMCS_FIELD sel, base, limit, ar;
 } SEGMENT_2_VMCS;
@@ -104,8 +103,6 @@ const UINT32 g_msr_2_index[] = {
     /*IA32_MSR_GS_BASE*/                    IA32_MSR_GS_BASE
 };
 
-// ---------------------------- internal funcs  -----------------------------
-// ---------------------------- APIs ----------------------------------------
 
 // Getters/setters
 
@@ -134,10 +131,9 @@ UINT64 gcpu_get_native_gp_reg_layered( const GUEST_CPU_HANDLE gcpu,
     }
 }
 
-void   gcpu_set_native_gp_reg_layered( GUEST_CPU_HANDLE       gcpu,
-                               VMM_IA32_GP_REGISTERS          reg,
-                               UINT64                         value,
-                               VMCS_LEVEL                     level )
+void   gcpu_set_native_gp_reg_layered( GUEST_CPU_HANDLE gcpu,
+                  VMM_IA32_GP_REGISTERS reg, UINT64  value,
+                  VMCS_LEVEL level )
 {
     VMM_ASSERT(reg < IA32_REG_GP_COUNT);
 
@@ -187,8 +183,7 @@ void gcpu_get_all_gp_regs_internal( const GUEST_CPU_HANDLE gcpu,
 #endif
 
 UINT64 gcpu_get_gp_reg_layered( const GUEST_CPU_HANDLE gcpu,
-                                VMM_IA32_GP_REGISTERS reg,
-                                VMCS_LEVEL level )
+                  VMM_IA32_GP_REGISTERS reg, VMCS_LEVEL level )
 {
     VMM_ASSERT(gcpu);
 
@@ -330,8 +325,9 @@ UINT64 gcpu_get_control_reg_layered(const GUEST_CPU_HANDLE gcpu,
     return 0;
 }
 
-void  gcpu_set_control_reg_layered(GUEST_CPU_HANDLE  gcpu, VMM_IA32_CONTROL_REGISTERS reg,
-                              UINT64 value, VMCS_LEVEL level )
+void  gcpu_set_control_reg_layered(GUEST_CPU_HANDLE  gcpu, 
+                VMM_IA32_CONTROL_REGISTERS reg,
+                UINT64 value, VMCS_LEVEL level )
 {
     VMCS_OBJECT *vmcs;
 
@@ -383,10 +379,8 @@ void  gcpu_set_control_reg_layered(GUEST_CPU_HANDLE  gcpu, VMM_IA32_CONTROL_REGI
 // VMM, so that guest will see not real values
 // all other registers return the same value as gcpu_get_control_reg()
 // Valid for CR0, CR3, CR4
-UINT64 gcpu_get_guest_visible_control_reg_layered(
-                              const GUEST_CPU_HANDLE        gcpu,
-                              VMM_IA32_CONTROL_REGISTERS    reg,
-                              VMCS_LEVEL                    level)
+UINT64 gcpu_get_guest_visible_control_reg_layered( const GUEST_CPU_HANDLE gcpu,
+                    VMM_IA32_CONTROL_REGISTERS reg, VMCS_LEVEL level)
 {
     UINT64  mask;
     UINT64  shadow;
@@ -645,14 +639,14 @@ void gcpu_set_vmenter_control_layered(const GUEST_CPU_HANDLE gcpu,
     entry_ctrl_mask.Uint32 = 0;
     entry_ctrl_mask.Bits.Ia32eModeGuest = 1;
     vmcs_update(vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ),
-                                        VMCS_ENTER_CONTROL_VECTOR,
-                                        (value & EFER_LMA) ? UINT64_ALL_ONES : 0,
-                                        (UINT64) entry_ctrl_mask.Uint32);
+                       VMCS_ENTER_CONTROL_VECTOR,
+                       (value & EFER_LMA) ? UINT64_ALL_ONES : 0,
+                       (UINT64) entry_ctrl_mask.Uint32);
 }
 
-static
-BOOLEAN gcpu_get_msr_value_from_list(IN UINT32 msr_index, IN IA32_VMX_MSR_ENTRY* list,
-                                     IN UINT32 count, OUT UINT64* value) {
+static BOOLEAN gcpu_get_msr_value_from_list(IN UINT32 msr_index, 
+                IN IA32_VMX_MSR_ENTRY* list,
+                IN UINT32 count, OUT UINT64* value) {
     if (msr_index == IA32_INVALID_MSR_INDEX) {
         return FALSE;
     }
@@ -670,9 +664,8 @@ BOOLEAN gcpu_get_msr_value_from_list(IN UINT32 msr_index, IN IA32_VMX_MSR_ENTRY*
     return FALSE;
 }
 
-static
-BOOLEAN gcpu_set_msr_value_in_list(IN UINT32 msr_index, IN UINT64 value,
-                                   IN IA32_VMX_MSR_ENTRY* list, IN UINT32 count) {
+static BOOLEAN gcpu_set_msr_value_in_list(IN UINT32 msr_index, IN UINT64 value,
+                       IN IA32_VMX_MSR_ENTRY* list, IN UINT32 count) {
 
     if (msr_index == IA32_INVALID_MSR_INDEX) {
         return FALSE;
@@ -696,7 +689,7 @@ BOOLEAN gcpu_set_msr_value_in_list(IN UINT32 msr_index, IN UINT64 value,
  * in g_msr_2_vmcs and g_msr_2_index. 
  */
 UINT64 gcpu_get_msr_reg_internal_layered(const GUEST_CPU_HANDLE gcpu,
-                              VMM_IA32_MODEL_SPECIFIC_REGISTERS reg, VMCS_LEVEL level ) {
+                VMM_IA32_MODEL_SPECIFIC_REGISTERS reg, VMCS_LEVEL level ) {
     VMCS_OBJECT* vmcs = vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level );
     UINT64 vmexit_store_msr_list_addr;
     UINT32 vmexit_store_msr_list_count;
@@ -745,33 +738,10 @@ UINT64 gcpu_get_msr_reg_internal_layered(const GUEST_CPU_HANDLE gcpu,
 
 }
 
-/*
-UINT64 gcpu_get_msr_reg_internal_layered(
-                              const GUEST_CPU_HANDLE            gcpu,
-                              VMM_IA32_MODEL_SPECIFIC_REGISTERS reg,
-                              VMCS_LEVEL                        level )
-{
-    VMM_ASSERT(gcpu);
 
-        VMM_DEBUG_CODE(VMM_ASSERT(reg < NELEMENTS(g_msr_2_vmcs)));
-    if (reg == IA32_VMM_MSR_EFER)
-    {
-        VMM_ASSERT(level == VMCS_MERGED);
-        return gcpu->save_area.auto_swap_msrs.efer.MsrData;
-    }
-    else if (reg == IA32_VMM_MSR_PAT) {
-        VMM_ASSERT(level == VMCS_MERGED);
-        return gcpu->save_area.other_msrs.pat;
-    }
-    else
-    {
-        return vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), g_msr_2_vmcs[reg] );
-    }
-}
-*/
 UINT64 gcpu_get_msr_reg_layered(const GUEST_CPU_HANDLE gcpu,
-                              VMM_IA32_MODEL_SPECIFIC_REGISTERS reg,
-                              VMCS_LEVEL level )
+                VMM_IA32_MODEL_SPECIFIC_REGISTERS reg,
+                VMCS_LEVEL level )
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
@@ -924,8 +894,9 @@ void gcpu_set_msr_reg_by_index_layered(GUEST_CPU_HANDLE gcpu, UINT32  msr_index,
  * The input reg of index value of MSR must be less than the number of element
  * in g_msr_2_vmcs and g_msr_2_index. 
  */
-void gcpu_set_msr_reg_layered(GUEST_CPU_HANDLE  gcpu, VMM_IA32_MODEL_SPECIFIC_REGISTERS reg,
-                              UINT64 value, VMCS_LEVEL level ) {
+void gcpu_set_msr_reg_layered(GUEST_CPU_HANDLE  gcpu, 
+                VMM_IA32_MODEL_SPECIFIC_REGISTERS reg,
+                UINT64 value, VMCS_LEVEL level ) {
 
     VMCS_OBJECT* vmcs = vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level );
     UINT64 vmexit_store_msr_list_addr;
@@ -1028,30 +999,6 @@ void gcpu_set_msr_reg_layered(GUEST_CPU_HANDLE  gcpu, VMM_IA32_MODEL_SPECIFIC_RE
     }
 }
 
-/*void   gcpu_set_msr_reg_layered(
-                              GUEST_CPU_HANDLE                  gcpu,
-                              VMM_IA32_MODEL_SPECIFIC_REGISTERS reg,
-                              UINT64                            value,
-                              VMCS_LEVEL                        level )
-{
-    VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
-
-        VMM_DEBUG_CODE(VMM_ASSERT(reg < NELEMENTS(g_msr_2_vmcs)));
-    if (reg == IA32_VMM_MSR_EFER)
-    {
-        VMM_ASSERT(level == VMCS_MERGED);
-        SET_IMPORTANT_EVENT_OCCURED_FLAG(gcpu);
-        gcpu->save_area.auto_swap_msrs.efer.MsrData = value;
-    }
-    else if (reg == IA32_VMM_MSR_PAT) {
-        VMM_ASSERT(level == VMCS_MERGED);
-        gcpu->save_area.other_msrs.pat = value;
-    }
-    else
-    {
-        vmcs_write( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), g_msr_2_vmcs[reg], value );
-    }
-}*/
 void gcpu_skip_guest_instruction( GUEST_CPU_HANDLE gcpu )
 {
     VMCS_OBJECT *vmcs = vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, VMCS_MERGED );

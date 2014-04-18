@@ -56,12 +56,6 @@ UINT8 API_FUNCTION addr_get_virtual_address_size(void)
 ADDRESS API_FUNCTION addr_canonize_address(
         ADDRESS address)
 {
-//      should we check that address not exceeds max ?
-//      if (address > max_virtual_address)
-//      {
-//              DEADLOOP();
-//      }
-
     if (address & virtual_address_copmplement) {
         address |= virtual_address_copmplement;
     }

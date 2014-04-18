@@ -36,11 +36,9 @@
 
 #pragma warning (disable : 4100) // enable non-referenced formal parameters
 
-//-------------------------------------------------------------------------------
 #define PAT_MNGR_INVALID_PAT_MSR_VALUE (~((UINT64)0))
 #define PAT_MNGR_NUM_OF_ATTRUBUTE_FIELDS 8
 
-//-------------------------------------------------------------------------------
 static
 VMM_PHYS_MEM_TYPE pat_mngr_get_memory_type(UINT64 pat_value, UINT32 index) {
     UINT64 memory_type = ((pat_value >> (index*8)) & 0xff);
@@ -82,7 +80,6 @@ UINT32 pat_mngr_get_earliest_pat_index_for_mem_type(VMM_PHYS_MEM_TYPE mem_type, 
 UINT32 pat_mngr_retrieve_current_earliest_pat_index_for_mem_type(VMM_PHYS_MEM_TYPE mem_type) {
     UINT64 pat_msr_value = hw_read_msr(IA32_MSR_PAT);
     UINT32 result = 0;
- 
 
     // assume that PAT MSR not used if its value is ZERO
     // then use compatibility setttings.
@@ -125,8 +122,7 @@ VMM_PHYS_MEM_TYPE pat_mngr_retrieve_current_pat_mem_type(UINT32 pat_index) {
 
 #ifdef ENABLE_VTLB
 BOOLEAN pat_mngr_get_pat_information(GUEST_CPU_HANDLE gcpu,
-                                     UINT64* guest_pat,
-                                     UINT64* actual_pat) {
+                     UINT64* guest_pat, UINT64* actual_pat) {
     VMCS_OBJECT* vmcs = gcpu_get_vmcs(gcpu);
     *guest_pat = gcpu_get_msr_reg(gcpu,IA32_VMM_MSR_PAT);
     *actual_pat = vmcs_read(vmcs, VMCS_HOST_PAT);

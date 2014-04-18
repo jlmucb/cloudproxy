@@ -138,7 +138,6 @@ typedef struct _GUEST_CPU {
 
 } GUEST_CPU;
 
-// ----------------------- state -------------------------------------------
 
 typedef enum _GCPU_STATE_ENUM {
     GCPU_EMULATOR_FLAG = 0,                 // 1 - emulator is active, 0 - native
@@ -195,7 +194,6 @@ typedef enum _GCPU_STATE_ENUM {
 
 #define IS_FLAT_PT_INSTALLED( gcpu ) (GET_FLAT_PAGES_TABLES_32_FLAG(gcpu) || GET_FLAT_PAGES_TABLES_64_FLAG(gcpu))
 
-// ----------------------- caching -------------------------------------------
 
 typedef enum _GCPU_CACHINE_FLAGS_ENUM {
     GCPU_FX_STATE_CACHED_FLAG = 0,
@@ -224,12 +222,10 @@ typedef enum _GCPU_CACHINE_FLAGS_ENUM {
 #define SET_ALL_MODIFIED( gcpu )            {(gcpu)->caching_flags = (UINT8)-1;}
 #define CLR_ALL_CACHED( gcpu )              {(gcpu)->caching_flags = 0;}
 
-// ---------------------------- globals -------------------------------------
 
 // this is a shortcut pointer for assembler code
 extern GUEST_CPU_SAVE_AREA** g_guest_regs_save_area;
 
-// ---------------------------- internal API ----------------------------------
 void cache_debug_registers( const GUEST_CPU* gcpu );
 void cache_fx_state( const GUEST_CPU* gcpu );
 #ifdef INCLUDE_UNUSED_CODE
@@ -237,9 +233,7 @@ void restore_hw_debug_registers( GUEST_CPU* gcpu );
 void restore_fx_state( GUEST_CPU* gcpu );
 #endif
 
-INLINE
-UINT64
-gcpu_get_msr_reg_internal( const GUEST_CPU_HANDLE            gcpu,
+INLINE UINT64 gcpu_get_msr_reg_internal( const GUEST_CPU_HANDLE gcpu,
                            VMM_IA32_MODEL_SPECIFIC_REGISTERS reg )
 {
     return gcpu_get_msr_reg_internal_layered(gcpu, reg, VMCS_MERGED);

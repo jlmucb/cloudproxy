@@ -14,17 +14,6 @@
  * limitations under the License.
  */
 
-/*++
-Module Name:
-
-  event_mgr
-
-Abstract:
-
-  Event delivery mechanism
-  Based on the 'Observer' pattern
-
---*/
 
 #include "file_codes.h"
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(EVENT_MGR_C)
@@ -185,10 +174,7 @@ BOOLEAN event_gcpu_raise(
     );
 
 
-/*---------------------------------- Code ------------------------------------*/
-
-static
-EVENT_ENTRY * get_gcpu_observers(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu)
+static EVENT_ENTRY * get_gcpu_observers(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu)
 {
     const VIRTUAL_CPU_ID*   p_vcpu;
     PCPU_EVENTS             p_cpu_events = NULL;
@@ -207,8 +193,7 @@ EVENT_ENTRY * get_gcpu_observers(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu)
     return p_event;
 }
 
-static
-EVENT_ENTRY * get_guest_observers(UVMM_EVENT_INTERNAL e, GUEST_HANDLE guest)
+static EVENT_ENTRY * get_guest_observers(UVMM_EVENT_INTERNAL e, GUEST_HANDLE guest)
 {
     EVENT_ENTRY     *p_event = NULL;
     GUEST_ID        guest_id = guest_get_id(guest);
@@ -239,8 +224,8 @@ UINT32  event_observers_limit (UVMM_EVENT_INTERNAL e)
     VMM_ASSERT(e <= ARRAY_SIZE(events_characteristics));
 
     /*
-     *  See if event has specific observers limits. (If none, we'll use the array
-     *  boundry limits).
+     *  See if event has specific observers limits. (If none, we'll use the 
+     *  array boundry limits).
      */
     if (events_characteristics[e].specific_observers_limits == NO_EVENT_SPECIFIC_LIMIT) {
         observers_limits = OBSERVERS_LIMIT;

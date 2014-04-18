@@ -19,6 +19,9 @@
 #include "common_libc.h"
 #include "lock.h"
 #include "file_codes.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(MEMORY_ALLOCATOR_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(MEMORY_ALLOCATOR_C, __condition)
@@ -54,7 +57,7 @@ static UINT32 buffer_size_to_pool_index(UINT32 size)
 #pragma warning (disable : 4100)
 
 static void* vmm_mem_allocate_internal( char *file_name,
-            INT32   line_number, IN UINT32 size, IN UINT32 alignment)
+            INT32 line_number, IN UINT32 size, IN UINT32 alignment)
 {
     POOL_HANDLE pool = NULL;
     UINT32 pool_index = 0;
@@ -63,6 +66,11 @@ static void* vmm_mem_allocate_internal( char *file_name,
     UINT64 allocated_addr;
     MEM_ALLOCATION_INFO *alloc_info;
     UINT32 size_to_request;
+
+#ifdef JLMDEBUG
+    bprint("In vmm_mem_allocate_internal size: %d, align: %08x\n",
+            size, alignment);
+#endif
 
     if(size > ((2 KILOBYTE) - sizeof(MEM_ALLOCATION_INFO))) { // starting from 2KB+1 need a full page
         VMM_LOG(mask_anonymous, level_trace,"%s: WARNING: Memory allocator supports allocations of sizes up to 2040 bytes (requested size = 0x%x from %s:%d)\n", __FUNCTION__, size, file_name, line_number);
@@ -91,6 +99,11 @@ static void* vmm_mem_allocate_internal( char *file_name,
     pool_element_size = 1 << pool_index;
 
     lock_acquire(&lock);
+#ifdef JLMDEBUG
+    bprint("pool_index: %d, pools: 0x%016x,\nval = %p, expected = %p\n",
+            pool_index, pools, pools[pool_index], pools[0]);
+    LOOP_FOREVER
+#endif
     pool = pools[pool_index];
     if(NULL == pool) {
         pool = pools[pool_index] = assync_pool_create((UINT32)pool_element_size);
@@ -130,10 +143,7 @@ void* vmm_mem_allocate( char *file_name, INT32 line_number, IN UINT32 size)
             size, sizeof(MEM_ALLOCATION_INFO));
 }
 
-void vmm_mem_free(
-    char    *file_name,
-    INT32   line_number,
-    IN void *buff)
+void vmm_mem_free( char *file_name, INT32 line_number, IN void *buff)
 {
     MEM_ALLOCATION_INFO *alloc_info;
     void* allocated_buffer;

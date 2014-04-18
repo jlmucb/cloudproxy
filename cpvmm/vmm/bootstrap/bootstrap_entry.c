@@ -1768,7 +1768,7 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
                (const void*) evmm_start_load_segment,
                evmm_image_size);
     // zero everything after image
-    vmm_memset((void *)(evmm_start_load_segment+evmm_image_size),
+    vmm_memset((void *)(evmm_start_address+evmm_image_size),
                0, evmm_total_size-evmm_image_size);
 
     // Get entry point

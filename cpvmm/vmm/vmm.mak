@@ -39,7 +39,8 @@ BINDIR=	        $(B)/vmm
 INCLUDES=	-I$(S)/vmm -I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw \
 		-I$(S)/common/include/platform \
-    		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept 
+    		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept \
+		-I$(S)/vmm -I$(S)/vmm/bootstrap
 
 JLMDEBUG= -I$(S)/vmm -I$(S)/common/include -I$(S)/vmm/include -I$(mainsrc)/bootstrap -D INVMM -D JLMDEBUG
 

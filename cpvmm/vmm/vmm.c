@@ -311,7 +311,12 @@ void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u,
     }
 
 #ifdef JLMDEBUG
+   UINT8* pbss= (UINT8*) (startup_struct->vmm_memory_layout[0].base_address+
+          +startup_struct->vmm_memory_layout[0].image_size -0x4a00);
     bprint("evmm position 1\n");
+    bprint("hex of bss %p\n", pbss);
+    HexDump(pbss, pbss+16);
+    LOOP_FOREVER
 #endif
 
     host_cpu_enable_usage_of_xmm_regs();
@@ -531,7 +536,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 
 #ifdef JLMDEBUG
     bprint("evmm position 10\n");
-    LOOP_FOREVER
 #endif
     
     //  Initialize CLI monitor
@@ -540,7 +544,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 #ifdef JLMDEBUG
     bprint("evmm position 11\n");
 #endif
-    
 
     vmdb_initialize();
     vmm_serial_cli_init();
@@ -811,7 +814,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 
 #ifdef JLMDEBUG
     bprint("evmm position 30\n");
-    LOOP_FOREVER
 #endif
 
     // TODO: remove the compile time policy

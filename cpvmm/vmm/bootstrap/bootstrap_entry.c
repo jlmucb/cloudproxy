@@ -68,7 +68,7 @@ extern uint32_t _start_bootstrap, _end_bootstrap;
 #define LINUX_DEFAULT_LOAD_ADDRESS 0x100000
 #define EVMM_HEAP_SIZE 0x100000
 #define EVMM_HEAP_BASE (EVMM_DEFAULT_START_ADDR- EVMM_HEAP_SIZE)
-#define UVMM_DEFAULT_HEAP 75000000
+#define UVMM_DEFAULT_HEAP 0x5000000
 
 
 //      Memory layout on start32_evmm entry
@@ -87,6 +87,7 @@ uint32_t initram_end= 0;        // location of initram image end
 // Post relocation addresses
 uint32_t evmm_start_address= 0;         // address of evmm after relocation
 uint32_t evmm_image_size= 0;            // image size
+uint32_t evmm_orig_mem_size= 0;         // original memsize
 uint32_t evmm_mem_size= 0;              // memory size (rounded up)
 uint32_t evmm_total_size= 0;            // total size (includes heap)
 uint32_t vmm_main_entry_point= 0;       // address of vmm_main after relocation
@@ -1688,7 +1689,8 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     uint32_t evmm_start_load_segment= 0;
     evmm_start_load_segment= evmm_start+((uint32_t)prog_header->p_offset);
     evmm_image_size= (uint32_t) prog_header->p_filesz;
-    evmm_mem_size= (uint32_t) prog_header->p_memsz;
+    evmm_orig_mem_size= (uint32_t) prog_header->p_memsz;
+    evmm_mem_size= PAGE_UP(evmm_orig_mem_size);  // full page
     evmm_total_size= evmm_mem_size+UVMM_DEFAULT_HEAP;         
 
     if(((uint32_t)(prog_header->p_vaddr))!=evmm_start_address) {
@@ -1700,10 +1702,9 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     vmm_memcpy((void *)evmm_start_address, 
                (const void*) evmm_start_load_segment,
                evmm_image_size);
+    // zero everything after image
     vmm_memset((void *)(evmm_start_load_segment+evmm_image_size),
-               0, evmm_mem_size-evmm_image_size);
-    vmm_memset((void *)(evmm_start_load_segment+evmm_mem_size),
-               0, evmm_total_size-evmm_mem_size);
+               0, evmm_total_size-evmm_image_size);
 
     // Get entry point
     vmm_main_entry_point =  (uint32_t)OriginalEntryAddress(evmm_start);
@@ -1867,6 +1868,13 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     //               uint64_t reserved UNUSED)
 
 #ifdef JLMDEBUG
+    bprint("evmm_image_size: 0x%016lx, evmm_mem_size: 0x%016lx\n",
+            (long unsigned int)evmm_image_size, (long unsigned int)evmm_mem_size);
+    bprint("Orig extra mem: 0x%016lx, diff: 0x%016lx\n",
+            (long unsigned int)evmm_orig_mem_size, 
+            (long unsigned int)(evmm_orig_mem_size-evmm_image_size));
+    bprint("evmm_total_size: 0x%016lx\n",
+            (long unsigned int)evmm_total_size);
     bprint("cs selector: 0x%08x, cr3: 0x%08x\n", 
            (uint32_t) evmm64_cs_selector, (uint32_t) evmm64_cr3);
     HexDump((uint8_t*)evmm_descriptor_table, 

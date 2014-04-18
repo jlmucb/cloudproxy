@@ -33,6 +33,9 @@
 #include "host_cpu.h"
 #include <pat_manager.h>
 #include "ept.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define MIN_ANONYMOUS_GUEST_ID  30000
 
@@ -112,6 +115,10 @@ GUEST_HANDLE guest_register( UINT32            magic_number,
 {
     GUEST_DESCRIPTOR* guest;
 
+#ifdef JLMDEBUG
+    bprint("Before vmm_malloc with descriptor size %d, magic_number %u, physical memory size %u, and affinity %u and count %d\n", sizeof(GUEST_DESCRIPTOR), magic_number, physical_memory_size, cpu_affinity, guests_count);
+    LOOP_FOREVER
+#endif
     guest = (GUEST_DESCRIPTOR *) vmm_malloc(sizeof(GUEST_DESCRIPTOR));
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(guest);
@@ -119,6 +126,10 @@ GUEST_HANDLE guest_register( UINT32            magic_number,
     guest->id = (GUEST_ID)guests_count;
     ++guests_count;
 
+#ifdef JLMDEBUG
+    bprint("In guest_register with magic_number %u and guest id %u\n", magic_number, guest->id);
+    LOOP_FOREVER
+#endif
     if(magic_number == ANONYMOUS_MAGIC_NUMBER) {
         guest->magic_number = MIN_ANONYMOUS_GUEST_ID + guest->id;
     }

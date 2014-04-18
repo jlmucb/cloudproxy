@@ -103,12 +103,16 @@ GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
     }
 #ifdef JLMDEBUG
     bprint("about to init_single_guest\n");
-    LOOP_FOREVER
 #endif
 
     // create guest
     guest = guest_register( gstartup->guest_magic_number, gstartup->physical_memory_size,
                             gstartup->cpu_affinity, guest_policy );
+
+#ifdef JLMDEBUG
+    bprint("Done with guest register\n");
+    LOOP_FOREVER
+#endif
 
     if (! guest) {
         VMM_LOG(mask_anonymous, level_trace,"Cannot create guest with the following params: \n"

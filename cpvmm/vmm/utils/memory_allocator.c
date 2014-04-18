@@ -102,6 +102,8 @@ static void* vmm_mem_allocate_internal( char *file_name,
 #ifdef JLMDEBUG
     bprint("pool_index: %d, pools: 0x%016x,\nval = %p, expected = %p\n",
             pool_index, pools, pools[pool_index], pools[0]);
+    if (size == 128)
+	LOOP_FOREVER
 #endif
     pool = pools[pool_index];
     if(NULL == pool) {

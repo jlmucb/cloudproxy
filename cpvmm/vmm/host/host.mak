@@ -41,10 +41,10 @@ BINDIR=	$(B)/host
 SUBDIRS= hw
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     -I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
-    -I$(mainsrc)/hw -I$(S)/vmm/memory/ept
+    -I$(mainsrc)/hw -I$(S)/vmm/memory/ept -I$(S)/vmm -I$(S)/vmm/bootstrap
 ASM_SRC = 	
-DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs 
-RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs 
+DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs -D INVMM -D JLMDEBUG
+RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs -D INVMM -D JLMDEBUG
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 

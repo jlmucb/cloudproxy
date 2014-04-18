@@ -874,9 +874,9 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 #endif
     // init current host CPU
     host_cpu_init();
-    LOOP_FOREVER
 #ifdef JLMDEBUG
     bprint("evmm position 39\n");
+    LOOP_FOREVER
 #endif
     local_apic_cpu_init();
 #ifdef JLMDEBUG

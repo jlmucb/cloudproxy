@@ -28,6 +28,9 @@
 #include "hw_utils.h"
 #include "em64t_defs.h"
 #include "file_codes.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(HOST_CPU_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(HOST_CPU_C, __condition)
@@ -277,20 +280,44 @@ void host_cpu_init_vmexit_store_and_vmenter_load_msr_lists_according_to_vmexit_l
 //
 void host_cpu_init( void )
 {
+#ifdef JLMDEBUG
+    bprint("In host_cpu_init\n");
+#endif
 #ifdef USE_SYSENTER_STACK
+#ifdef JLMDEBUG
+    bprint("using SYSENTER_STACK\n");
+#endif
     CPU_ID              cpu_id = hw_cpu_id();
     HOST_CPU_SAVE_AREA* hcpu = &(g_host_cpus[cpu_id]);
 #endif
 
 #ifdef USE_SYSENTER_STACK
+#ifdef JLMDEBUG
+    bprint("Using SYSENTER_STACK\n");
+#endif
+
     hw_write_msr(IA32_MSR_SYSENTER_CS, hw_read_cs());
+#ifdef JLMDEBUG
+    bprint("First msr write\n");
+    LOOP_FOREVER
+#endif
     hw_write_msr(IA32_MSR_SYSENTER_EIP, (ADDRESS)sysenter_func);
     hw_write_msr(IA32_MSR_SYSENTER_ESP, (ADDRESS)(hcpu->sysenter_stack + SYSENTER_STACK_SIZE - 5));
 #else
+#ifdef JLMDEBUG
+    bprint("Not using SYSENTER_STACK. CS = %d\n", IA32_MSR_SYSENTER_CS);
+#endif
+
+#if 0
     hw_write_msr(IA32_MSR_SYSENTER_CS, 0);
+#ifdef JLMDEBUG
+    bprint("First msr write\n");
+#endif
     hw_write_msr(IA32_MSR_SYSENTER_EIP, 0 );
     hw_write_msr(IA32_MSR_SYSENTER_ESP, 0);
-#endif
+#endif // ends if 0
+
+#endif // ends USE_SYSENTER_STACK
 
     {
         CPU_ID              cpu = hw_cpu_id();

@@ -25,21 +25,17 @@
 #include "scheduler.h"
 
 //
-//
 // Main implementatuion idea:
 //    at boot stage just iterate through all gcpus and immediately apply
 //    at run stage use IPC to apply
 //
 
-// -------------------------- types -----------------------------------------
 typedef struct _IPC_COMM_GUEST_STRUCT {
     GUEST_HANDLE    guest;
     volatile UINT32 executed;
     UINT8           pad1[4];
 } IPC_COMM_GUEST_STRUCT;
 
-// ---------------------------- globals -------------------------------------
-// ---------------------------- internal funcs  -----------------------------
 
 #pragma warning (push)
 #pragma warning (disable : 4100)
@@ -70,7 +66,6 @@ void apply_vmexit_config(CPU_ID from UNUSED, void* arg)
 
 #pragma warning (pop)
 
-// ---------------------------- APIs  ---------------------------------------
 void guest_control_setup( GUEST_HANDLE guest, const VMEXIT_CONTROL* request )
 {
     GUEST_GCPU_ECONTEXT ctx;
@@ -81,7 +76,8 @@ void guest_control_setup( GUEST_HANDLE guest, const VMEXIT_CONTROL* request )
     VMM_ASSERT( guest );
 
     // setup vmexit requests without applying
-    for( gcpu = guest_gcpu_first( guest, &ctx ); gcpu; gcpu = guest_gcpu_next( &ctx )) {
+    for( gcpu = guest_gcpu_first( guest, &ctx ); 
+            gcpu; gcpu = guest_gcpu_next( &ctx )) {
         gcpu_control_setup_only( gcpu, request );
     }
 
@@ -93,7 +89,8 @@ void guest_control_setup( GUEST_HANDLE guest, const VMEXIT_CONTROL* request )
         VMM_ASSERT( 0 == this_hcpu_id );
 
         // single thread mode with all APs yet not init
-        for( gcpu = guest_gcpu_first( guest, &ctx ); gcpu; gcpu = guest_gcpu_next( &ctx )) {
+        for( gcpu = guest_gcpu_first( guest, &ctx ); gcpu; 
+                gcpu = guest_gcpu_next( &ctx )) {
             gcpu_control_apply_only( gcpu );
         }
     }

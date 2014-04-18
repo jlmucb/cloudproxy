@@ -50,44 +50,27 @@ static GUEST_PCI_DEVICES* find_guest_devices(GUEST_ID guest_id);
 #ifdef INCLUDE_UNUSED_CODE
 static GUEST_PCI_DEVICE* find_device(GUEST_ID guest_id, UINT8 bus, UINT8 device, UINT8 function);
 #endif
-static
-void pci_read_hide (GUEST_CPU_HANDLE  gcpu,
-                    GUEST_PCI_DEVICE *pci_device,
-                    UINT32 port_id,
-                    UINT32 port_size,
-                    void   *value);
-static
-void pci_write_hide (GUEST_CPU_HANDLE  gcpu,
-                     GUEST_PCI_DEVICE *pci_device,
-                     UINT32 port_id,
-                     UINT32 port_size,
-                     void   *value);
+static void pci_read_hide (GUEST_CPU_HANDLE  gcpu, GUEST_PCI_DEVICE *pci_device,
+                    UINT32 port_id, UINT32 port_size, void   *value);
+static void pci_write_hide (GUEST_CPU_HANDLE  gcpu, GUEST_PCI_DEVICE *pci_device,
+                    UINT32 port_id, UINT32 port_size, void   *value);
 
-static
-void pci_read_passthrough(GUEST_CPU_HANDLE  gcpu,
-                          GUEST_PCI_DEVICE * pci_device,
-                          UINT32 port_id,
-                          UINT32 port_size,
-                          void   *value);
+static void pci_read_passthrough(GUEST_CPU_HANDLE  gcpu,
+                    GUEST_PCI_DEVICE * pci_device,
+                    UINT32 port_id, UINT32 port_size, void   *value);
 
 static
 void pci_write_passthrough(GUEST_CPU_HANDLE  gcpu,
-                           GUEST_PCI_DEVICE * pci_device,
-                           UINT32 port_id,
-                           UINT32 port_size,
-                           void   *value);
+                    GUEST_PCI_DEVICE * pci_device, UINT32 port_id,
+                    UINT32 port_size, void   *value);
 #ifdef INCLUDE_UNUSED_CODE
 static void io_pci_data_handler(GUEST_CPU_HANDLE  gcpu,
-                                UINT16            port_id,
-                                unsigned          port_size, // 1, 2, 4
-                                RW_ACCESS         access,
-                                void              *p_value);
+                    UINT16 port_id, unsigned  port_size, // 1, 2, 4
+                    RW_ACCESS access, void *p_value);
 
 static void io_pci_address_handler(GUEST_CPU_HANDLE  gcpu,
-                                   UINT16            port_id,
-                                   unsigned          port_size, // 1, 2, 4
-                                   RW_ACCESS         access,
-                                   void              *p_value);
+                    UINT16  port_id, unsigned  port_size, // 1, 2, 4
+                    RW_ACCESS access, void *p_value);
 #endif
 
 static LIST_ELEMENT guest_pci_devices[1];
@@ -133,13 +116,6 @@ BOOLEAN gpci_guest_initialize(GUEST_ID guest_id)
     VMM_ASSERT(gpci->gcpu_pci_access_address);
 
     apply_default_device_assignment(guest_id);
-/*
-    io_vmexit_handler_register( guest_id, 0xCF8, io_pci_address_handler);
-
-    for (port = 0xCFC; port <= 0xCFF; port++) {
-        io_vmexit_handler_register( guest_id, (IO_PORT_ID) port, io_pci_data_handler);
-    }*/
-
     return TRUE;
 }
 
@@ -373,10 +349,8 @@ static void io_write_pci_address(GUEST_CPU_HANDLE  gcpu,
 }
 
 static void io_pci_address_handler(GUEST_CPU_HANDLE  gcpu,
-                                   UINT16            port_id,
-                                   unsigned          port_size, // 1, 2, 4
-                                   RW_ACCESS         access,
-                                   void              *p_value)
+                      UINT16 port_id, unsigned  port_size, // 1, 2, 4
+                      RW_ACCESS access, void *p_value)
 {
     VMM_LOG(mask_anonymous, level_trace,"io_pci_address_handler cpu#%d: port %p size %p rw %p\n", hw_cpu_id(), port_id, port_size, access);
     switch (access) {
@@ -394,9 +368,8 @@ static void io_pci_address_handler(GUEST_CPU_HANDLE  gcpu,
 }
 
 static void io_read_pci_data(GUEST_CPU_HANDLE  gcpu,
-                             UINT16            port_id,
-                             unsigned          port_size, // 1, 2, 4
-                             void              *p_value)
+                      UINT16 port_id, unsigned port_size, // 1, 2, 4
+                      void   *p_value)
 {
     GUEST_PCI_DEVICES *gpci = NULL;
     const VIRTUAL_CPU_ID *vcpu = NULL;
@@ -422,9 +395,8 @@ static void io_read_pci_data(GUEST_CPU_HANDLE  gcpu,
 
 
 static void io_write_pci_data(GUEST_CPU_HANDLE  gcpu,
-                              UINT16            port_id,
-                              unsigned          port_size, // 1, 2, 4
-                              void              *p_value)
+                      UINT16  port_id, unsigned  port_size, // 1, 2, 4
+                      void *p_value)
 {
     GUEST_PCI_DEVICES *gpci = NULL;
     const VIRTUAL_CPU_ID *vcpu = NULL;
@@ -446,10 +418,8 @@ static void io_write_pci_data(GUEST_CPU_HANDLE  gcpu,
 }
 
 static void io_pci_data_handler(GUEST_CPU_HANDLE  gcpu,
-                                UINT16            port_id,
-                                unsigned          port_size, // 1, 2, 4
-                                RW_ACCESS         access,
-                                void              *p_value)
+                      UINT16 port_id, unsigned  port_size, // 1, 2, 4
+                      RW_ACCESS access, void  *p_value)
 {
     VMM_LOG(mask_anonymous, level_trace,"io_pci_data_handler cpu#%d: port %p size %p rw %p\n", hw_cpu_id(), port_id, port_size, access);
 

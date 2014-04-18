@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -41,18 +39,12 @@
 extern void vmm_acpi_pm_initialize(GUEST_ID guest_id);
 
 //
-//
 // Guest Manager
-//
 //
 
 #ifdef ENABLE_MULTI_GUEST_SUPPORT
-static
-void raise_gcpu_add_event(CPU_ID from, void* arg);
+static void raise_gcpu_add_event(CPU_ID from, void* arg);
 #endif
-
-// -------------------------- types -----------------------------------------
-// ---------------------------- globals -------------------------------------
 
 static UINT32                guests_count = 0;
 static UINT32                max_gcpus_count_per_guest = 0;
@@ -60,9 +52,7 @@ static UINT32                num_host_cpus = 0;
 
 static GUEST_DESCRIPTOR *    guests = NULL;
 
-// ---------------------------- internal funcs  -----------------------------
 
-// ---------------------------- APIs  ---------------------------------------
 void guest_manager_init( UINT16 max_cpus_per_guest, UINT16 host_cpu_count )
 {
     // BEFORE_VMLAUNCH. PARANOID check.
@@ -80,11 +70,9 @@ void guest_manager_init( UINT16 max_cpus_per_guest, UINT16 host_cpu_count )
     //vmexit_initialize();
 }
 
-//------------------------------------------------------------------------------
 // Get Guest by guest ID
 //
 // Return NULL if no such guest
-//------------------------------------------------------------------------------
 GUEST_HANDLE guest_handle( GUEST_ID guest_id )
 {
     GUEST_DESCRIPTOR    *guest;
@@ -100,9 +88,7 @@ GUEST_HANDLE guest_handle( GUEST_ID guest_id )
     return NULL;
 }
 
-//------------------------------------------------------------------------------
 // Get Guest ID by guest handle
-//------------------------------------------------------------------------------
 GUEST_ID guest_get_id( GUEST_HANDLE guest )
 {
     VMM_ASSERT( guest );
@@ -110,7 +96,6 @@ GUEST_ID guest_get_id( GUEST_HANDLE guest )
     return guest->id;
 }
 
-//------------------------------------------------------------------------------
 // Register new guest
 //
 // For primary guest physical_memory_size must be 0
@@ -119,9 +104,7 @@ GUEST_ID guest_get_id( GUEST_HANDLE guest )
 //                on behalf of this guest. Number of bits should correspond
 //                to the number of registered guest CPUs for this guest
 //                -1 means run on all available CPUs
-//
 // Return NULL on error
-//------------------------------------------------------------------------------
 GUEST_HANDLE guest_register( UINT32            magic_number,
                              UINT32            physical_memory_size,
                              UINT32            cpu_affinity,
@@ -173,17 +156,14 @@ GUEST_HANDLE guest_register( UINT32            magic_number,
     return guest;
 }
 
-//------------------------------------------------------------------------------
+
 // Get total number of guests
-//------------------------------------------------------------------------------
 UINT16 guest_count( void )
 {
     return (UINT16)guests_count;
 }
 
-//------------------------------------------------------------------------------
 // Get guest magic number
-//------------------------------------------------------------------------------
 UINT32 guest_magic_number( const GUEST_HANDLE guest )
 {
     VMM_ASSERT( guest );
@@ -191,11 +171,8 @@ UINT32 guest_magic_number( const GUEST_HANDLE guest )
     return guest->magic_number;
 }
 
-//------------------------------------------------------------------------------
 // Get Guest by guest magic number
-//
 // Return NULL if no such guest
-//------------------------------------------------------------------------------
 GUEST_HANDLE guest_handle_by_magic_number( UINT32 magic_number )
 {
     GUEST_DESCRIPTOR    *guest;
@@ -209,23 +186,17 @@ GUEST_HANDLE guest_handle_by_magic_number( UINT32 magic_number )
 }
 
 #ifdef INCLUDE_UNUSED_CODE
-//------------------------------------------------------------------------------
 // Get guest physical memory size. For primary guest returns 0.
-//------------------------------------------------------------------------------
 UINT32 guest_physical_memory_size( const GUEST_HANDLE guest )
 {
     VMM_ASSERT( guest );
-
     return guest->physical_memory_size;
 }
 
-//------------------------------------------------------------------------------
 // Get guest physical memory base. For primary guest returns 0.
-//------------------------------------------------------------------------------
 UINT64 guest_physical_memory_base( const GUEST_HANDLE guest )
 {
     VMM_ASSERT( guest );
-
     return guest->physical_memory_base;
 }
 
@@ -233,27 +204,21 @@ void set_guest_physical_memory_base( const GUEST_HANDLE guest, UINT64 base )
 {
     VMM_ASSERT( guest );
     VMM_ASSERT( GET_GUEST_IS_PRIMARY_FLAG(guest) == 0 );
-
     guest->physical_memory_base = base;
 }
 #endif
 
 #ifdef ENABLE_MULTI_GUEST_SUPPORT
-//------------------------------------------------------------------------------
 // Get guest cpu affinity.
-//------------------------------------------------------------------------------
 UINT32 guest_cpu_affinity( const GUEST_HANDLE guest )
 {
     VMM_ASSERT( guest );
-
     return guest->cpu_affinity;
 }
 #endif
 
 #ifdef INCLUDE_UNUSED_CODE
-//------------------------------------------------------------------------------
 // Set guest cpu affinity.
-//------------------------------------------------------------------------------
 void guest_set_cpu_affinity( const GUEST_HANDLE guest, UINT32 cpu_affinity )
 {
     VMM_ASSERT( guest );
@@ -262,50 +227,38 @@ void guest_set_cpu_affinity( const GUEST_HANDLE guest, UINT32 cpu_affinity )
 }
 #endif
 
-
-//------------------------------------------------------------------------------
 // Get guest POLICY
-//------------------------------------------------------------------------------
 const VMM_POLICY *guest_policy( const GUEST_HANDLE guest )
 {
     VMM_ASSERT(guest);
-
     return &guest->guest_policy;
 }
 
 #ifdef INCLUDE_UNUSED_CODE
-//------------------------------------------------------------------------------
 // Set guest POLICY
-//------------------------------------------------------------------------------
 void guest_set_policy( const GUEST_HANDLE guest, const VMM_POLICY *new_policy)
 {
     VMM_ASSERT(guest);
     VMM_ASSERT(new_policy);
-
     copy_policy(&guest->guest_policy, new_policy);
 }
 #endif
 
-
-//------------------------------------------------------------------------------
 // Guest properties.
 // Default for all properties - FALSE
-//------------------------------------------------------------------------------
-void    guest_set_primary(                  GUEST_HANDLE        guest )
+void    guest_set_primary( GUEST_HANDLE guest )
 {
     VMM_ASSERT( guest );
     VMM_ASSERT( guest->physical_memory_size == 0 );
     VMM_ASSERT( guest->physical_memory_base == 0 );
     VMM_ASSERT( guest->saved_image == NULL );
     VMM_ASSERT( guest->saved_image_size == 0 );
-
     SET_GUEST_IS_PRIMARY_FLAG(guest);
 }
 
 BOOLEAN guest_is_primary(const GUEST_HANDLE  guest )
 {
     VMM_ASSERT( guest );
-
     return (GET_GUEST_IS_PRIMARY_FLAG(guest) != 0);
 }
 
@@ -406,18 +359,14 @@ GUEST_ID guest_get_default_device_owner_guest_id(void)
     return INVALID_GUEST_ID;
 }
 
-//------------------------------------------------------------------------------
 // Get startup guest physical memory descriptor
-//------------------------------------------------------------------------------
 GPM_HANDLE guest_get_startup_gpm(GUEST_HANDLE guest)
 {
     VMM_ASSERT(guest);
     return guest->startup_gpm;
 }
 
-//------------------------------------------------------------------------------
 // Get guest physical memory descriptor
-//------------------------------------------------------------------------------
 GPM_HANDLE gcpu_get_current_gpm(GUEST_HANDLE guest)
 {
     GUEST_CPU_HANDLE gcpu;
@@ -436,16 +385,11 @@ void gcpu_set_current_gpm(GUEST_CPU_HANDLE gcpu, GPM_HANDLE gpm)
     gcpu->active_gpm = gpm;
 }
 
-//------------------------------------------------------------------------------
 // Guest executable image
-//
 // Should not be called for primary guest
-//------------------------------------------------------------------------------
-void guest_set_executable_image( GUEST_HANDLE       guest,
-                                 const UINT8*       image_address,
-                                 UINT32             image_size,
-                                 UINT32             image_load_GPA,
-                                 BOOLEAN            image_is_compressed )
+void guest_set_executable_image( GUEST_HANDLE guest,
+                  const UINT8* image_address, UINT32  image_size,
+                  UINT32   image_load_GPA, BOOLEAN  image_is_compressed )
 {
     VMM_ASSERT( guest );
     VMM_ASSERT( GET_GUEST_IS_PRIMARY_FLAG(guest) == 0 );
@@ -460,11 +404,8 @@ void guest_set_executable_image( GUEST_HANDLE       guest,
 }
 
 #ifdef INCLUDE_UNUSED_CODE
-//------------------------------------------------------------------------------
 // Load guest executable image into the guest memory
-//
 // Should not be called for primary guest
-//------------------------------------------------------------------------------
 void guest_load_executable_image( GUEST_HANDLE       guest )
 {
     VMM_ASSERT( guest );
@@ -477,11 +418,8 @@ void guest_load_executable_image( GUEST_HANDLE       guest )
 }
 #endif
 
-//------------------------------------------------------------------------------
 // Add new CPU to the guest
-//
 // Return the newly created CPU
-//------------------------------------------------------------------------------
 GUEST_CPU_HANDLE guest_add_cpu( GUEST_HANDLE guest )
 {
     VIRTUAL_CPU_ID    vcpu;
@@ -501,9 +439,7 @@ GUEST_CPU_HANDLE guest_add_cpu( GUEST_HANDLE guest )
     return gcpu;
 }
 
-//------------------------------------------------------------------------------
 // Get guest CPU count
-//------------------------------------------------------------------------------
 UINT16 guest_gcpu_count( const GUEST_HANDLE guest )
 {
     VMM_ASSERT( guest );
@@ -511,11 +447,8 @@ UINT16 guest_gcpu_count( const GUEST_HANDLE guest )
     return guest->cpu_count;
 }
 
-//------------------------------------------------------------------------------
 // enumerate guest cpus
-//
 // Return NULL on enumeration end
-//------------------------------------------------------------------------------
 GUEST_CPU_HANDLE guest_gcpu_first( const GUEST_HANDLE guest,
                                    GUEST_GCPU_ECONTEXT* context )
 {
@@ -537,11 +470,8 @@ GUEST_CPU_HANDLE guest_gcpu_next( GUEST_GCPU_ECONTEXT* context )
     return p_gcpu ? *p_gcpu : NULL;
 }
 
-//------------------------------------------------------------------------------
 // enumerate guests
-//
 // Return NULL on enumeration end
-//------------------------------------------------------------------------------
 GUEST_HANDLE guest_first( GUEST_ECONTEXT* context )
 {
     GUEST_DESCRIPTOR *guest = NULL;
@@ -920,10 +850,8 @@ void guest_after_dynamic_add_cpu( GUEST_CPU_HANDLE gcpu )
 // utils
 #ifdef INCLUDE_UNUSED_CODE
 BOOLEAN vmm_get_struct_host_ptr(GUEST_CPU_HANDLE gcpu,
-                                void* guest_ptr,
-                                VMCALL_ID expected_vmcall_id,
-                                UINT32 size_of_struct,
-                                void** host_ptr) {
+            void* guest_ptr, VMCALL_ID expected_vmcall_id,
+            UINT32 size_of_struct, void** host_ptr) {
     UINT64 gva = (UINT64)guest_ptr;
     UINT64 hva;
     void* host_ptr_tmp;
@@ -974,8 +902,7 @@ VMM_STATUS is_uvmm_running(GUEST_CPU_HANDLE gcpu, ADDRESS *arg1,
     return VMM_OK;
 }
 
-static
-VMM_STATUS print_debug_message_service(GUEST_CPU_HANDLE gcpu, ADDRESS *arg1,
+static VMM_STATUS print_debug_message_service(GUEST_CPU_HANDLE gcpu, ADDRESS *arg1,
                             ADDRESS *arg2 UNUSED, ADDRESS *arg3 UNUSED)
 {
     void** print_debug_message_params_guest_ptr = (void**)arg1;

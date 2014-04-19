@@ -111,7 +111,6 @@ GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
 
 #ifdef JLMDEBUG
     bprint("Done with guest register\n");
-    LOOP_FOREVER
 #endif
 
     if (! guest) {
@@ -131,7 +130,6 @@ GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
 #endif
 #ifdef JLMDEBUG
     bprint("initialize_single_guest, %d CPUs\n", guest_get_id(guest));
-    LOOP_FOREVER
 #endif
     vmexit_guest_initialize(guest_get_id(guest));
     if (gstartup->devices_count != 0) {

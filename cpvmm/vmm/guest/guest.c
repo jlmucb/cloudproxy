@@ -73,8 +73,8 @@ void guest_manager_init( UINT16 max_cpus_per_guest, UINT16 host_cpu_count )
     //vmexit_initialize();
 }
 
+
 // Get Guest by guest ID
-//
 // Return NULL if no such guest
 GUEST_HANDLE guest_handle( GUEST_ID guest_id )
 {
@@ -108,10 +108,8 @@ GUEST_ID guest_get_id( GUEST_HANDLE guest )
 //                to the number of registered guest CPUs for this guest
 //                -1 means run on all available CPUs
 // Return NULL on error
-GUEST_HANDLE guest_register( UINT32            magic_number,
-                             UINT32            physical_memory_size,
-                             UINT32            cpu_affinity,
-                             const VMM_POLICY  *guest_policy )
+GUEST_HANDLE guest_register( UINT32 magic_number, UINT32 physical_memory_size,
+                             UINT32  cpu_affinity, const VMM_POLICY  *guest_policy )
 {
     GUEST_DESCRIPTOR* guest;
 
@@ -136,18 +134,17 @@ GUEST_HANDLE guest_register( UINT32            magic_number,
     else {
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_ASSERT(magic_number < MIN_ANONYMOUS_GUEST_ID);
-        guest->magic_number         = magic_number;
+        guest->magic_number = magic_number;
     }
     guest->physical_memory_size = physical_memory_size;
-    guest->cpu_affinity         = cpu_affinity;
+    guest->cpu_affinity = cpu_affinity;
 
-    guest->cpus_array = (GUEST_CPU_HANDLE *) vmm_malloc(sizeof(GUEST_CPU_HANDLE) * max_gcpus_count_per_guest);
+    guest->cpus_array = (GUEST_CPU_HANDLE *) 
+            vmm_malloc(sizeof(GUEST_CPU_HANDLE) * max_gcpus_count_per_guest);
     guest->cpu_count = 0;
-
     guest->flags = 0;
     guest->saved_image = NULL;
     guest->saved_image_size     = 0;
-
     guest->startup_gpm = gpm_create_mapping();
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( guest->startup_gpm != GPM_INVALID_HANDLE );

@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -52,12 +50,16 @@ extern void fvs_initialize(GUEST_HANDLE guest, UINT32 number_of_host_processors)
 static void raise_guest_create_event(GUEST_ID guest_id);  // moved to guest.c
 
 // Add CPU to guest
-void add_cpu_to_guest( const VMM_GUEST_STARTUP* gstartup,
-                       GUEST_HANDLE guest, CPU_ID host_cpu_to_allocate, BOOLEAN ready_to_run )
+void add_cpu_to_guest( const VMM_GUEST_STARTUP* gstartup, GUEST_HANDLE guest, 
+                            CPU_ID host_cpu_to_allocate, BOOLEAN ready_to_run )
 {
     GUEST_CPU_HANDLE gcpu;
     const VIRTUAL_CPU_ID* vcpu = NULL;
     const VMM_GUEST_CPU_STARTUP_STATE* cpus_arr = NULL;
+#ifdef JLMDEBUG
+    bprint("add_cpu_to_guest\n");
+    LOOP_FOREVER
+#endif
 
     gcpu = guest_add_cpu(guest);
 
@@ -86,8 +88,7 @@ void add_cpu_to_guest( const VMM_GUEST_STARTUP* gstartup,
 
 // Init guest except for guest memory
 // Return NULL on error
-static
-GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
+static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
                                 const VMM_GUEST_STARTUP* gstartup, const VMM_POLICY  *guest_policy)
 {
     GUEST_HANDLE  guest;
@@ -111,7 +112,6 @@ GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
 
 #ifdef JLMDEBUG
     bprint("done with guest register\n");
-    // LOOP_FOREVER
 #endif
 
     if (! guest) {
@@ -150,25 +150,26 @@ GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
             gstartup->image_size, gstartup->image_offset_in_guest_physical_memory,
             BITMAP_GET(gstartup->flags, VMM_GUEST_FLAG_IMAGE_COMPRESSED) != 0);
     }
+#ifdef JLMDEBUG
+    bprint("finished guest_set_executable_image\n");
+    LOOP_FOREVER
+#endif
 
     if (BITMAP_GET(gstartup->flags, VMM_GUEST_FLAG_REAL_BIOS_ACCESS_ENABLE) != 0) {
         guest_set_real_BIOS_access_enabled( guest );
     }
 
     msr_vmexit_guest_setup(guest);  // setup MSR-related control structure
+#ifdef JLMDEBUG
+    bprint("finished msr_vmexit_guest_setup\n");
+    LOOP_FOREVER
+#endif
 
     // init cpus.
     // first init CPUs that has initial state
     cpu_affinity = gstartup->cpu_affinity;
     if (cpu_affinity == 0) {
-        VMM_LOG(mask_anonymous, level_trace,"ASSERT: guest without CPUs:\n"
-                 "\t\tguest_magic_number    = %#x\n"
-                 "\t\tcpu_affinity          = %#x\n",
-                  gstartup->guest_magic_number,
-                  gstartup->cpu_affinity );
-
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
-        VMM_DEADLOOP();
         return NULL;
     }
 
@@ -186,6 +187,10 @@ GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
     //register_vmcall_services(guest);
     guest_register_vmcall_services(guest);
 #endif
+#ifdef JLMDEBUG
+    bprint("init_single_guest finished, ready_to_run: %d\n", ready_to_run );
+    LOOP_FOREVER
+#endif
     return guest;
 }
 
@@ -195,13 +200,13 @@ GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
 // Return TRUE for success
 BOOLEAN initialize_all_guests( UINT32 number_of_host_processors,
 #if 0
-                    int num_excluded,
+        int num_excluded,
 #endif
-                    const VMM_MEMORY_LAYOUT* vmm_memory_layout,
-                    const VMM_GUEST_STARTUP* primary_guest_startup_state,
-                    UINT32 number_of_secondary_guests,
-                    const VMM_GUEST_STARTUP* secondary_guests_startup_state_array,
-                    const VMM_APPLICATION_PARAMS_STRUCT* application_params)
+        const VMM_MEMORY_LAYOUT* vmm_memory_layout,
+        const VMM_GUEST_STARTUP* primary_guest_startup_state,
+        UINT32 number_of_secondary_guests,
+        const VMM_GUEST_STARTUP* secondary_guests_startup_state_array,
+        const VMM_APPLICATION_PARAMS_STRUCT* application_params)
 {
     GUEST_HANDLE primary_guest;
     GPM_HANDLE   primary_guest_startup_gpm;
@@ -269,7 +274,6 @@ BOOLEAN initialize_all_guests( UINT32 number_of_host_processors,
         gcpu_set_current_gpm(gcpu, primary_guest_startup_gpm);
     }
     VMM_LOG(mask_anonymous, level_trace,"Primary guest initialized successfully\n");
-    // JLM: used to be TRUE
     return ok;
 }
 

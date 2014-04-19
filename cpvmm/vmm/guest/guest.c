@@ -396,17 +396,14 @@ void gcpu_set_current_gpm(GUEST_CPU_HANDLE gcpu, GPM_HANDLE gpm)
 
 // Guest executable image
 // Should not be called for primary guest
-void guest_set_executable_image( GUEST_HANDLE guest,
-                  const UINT8* image_address, UINT32  image_size,
-                  UINT32   image_load_GPA, BOOLEAN  image_is_compressed )
+void guest_set_executable_image( GUEST_HANDLE guest, const UINT8* image_address, 
+            UINT32 image_size, UINT32 image_load_GPA, BOOLEAN  image_is_compressed )
 {
     VMM_ASSERT( guest );
     VMM_ASSERT( GET_GUEST_IS_PRIMARY_FLAG(guest) == 0 );
-
-    guest->saved_image      = image_address;
+    guest->saved_image = image_address;
     guest->saved_image_size = image_size;
-    guest->image_load_GPA   = image_load_GPA;
-
+    guest->image_load_GPA = image_load_GPA;
     if (image_is_compressed) {
         SET_GUEST_SAVED_IMAGE_IS_COMPRESSED_FLAG(guest);
     }

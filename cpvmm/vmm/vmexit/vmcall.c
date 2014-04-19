@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -148,11 +146,9 @@ void vmcall_register(
 }
 
 #ifdef VMCALL_NOT_ALLOWED_FROM_RING_1_TO_3
-/*****************************************************************************
-* Return TRUE is the DPL of the guest issuing the VMCALL is in ring 0,
-* otherwise inject the #UD execption and return FALSE.
-******************************************************************************/
 
+// Return TRUE is the DPL of the guest issuing the VMCALL is in ring 0,
+// otherwise inject the #UD execption and return FALSE.
 BOOLEAN vmcall_check_guest_dpl_is_ring0(GUEST_CPU_HANDLE gcpu){
 	VMCS_OBJECT* vmcs = gcpu_get_vmcs(gcpu);
 	UINT64 guest_cs_selector= vmcs_read(vmcs, VMCS_GUEST_CS_SELECTOR);
@@ -249,11 +245,8 @@ VMEXIT_HANDLING_STATUS vmcall_common_handler(GUEST_CPU_HANDLE gcpu)
 
 #pragma warning( push )
 #pragma warning (disable : 4100)  // Supress warnings about unreferenced formal parameter
-VMM_STATUS vmcall_unimplemented(
-    GUEST_CPU_HANDLE    gcpu USED_IN_DEBUG_ONLY,
-    ADDRESS            *arg1 UNUSED,
-    ADDRESS            *arg2 UNUSED,
-    ADDRESS            *arg3 UNUSED)
+VMM_STATUS vmcall_unimplemented( GUEST_CPU_HANDLE gcpu USED_IN_DEBUG_ONLY,
+    ADDRESS *arg1 UNUSED, ADDRESS *arg2 UNUSED, ADDRESS *arg3 UNUSED)
 {
     VMM_LOG(mask_uvmm, level_error,
     		"CPU%d: %s: Error: Unimplemented VMCALL invoked on Guest ",
@@ -266,11 +259,8 @@ VMM_STATUS vmcall_unimplemented(
     return VMM_ERROR;
 }
 #ifdef INCLUDE_UNUSED_CODE
-VMM_STATUS vmcall_print_string(
-    GUEST_CPU_HANDLE    gcpu,
-    ADDRESS            *string_gva,
-    ADDRESS            *is_real_guest,
-    ADDRESS            *arg3 UNUSED)
+VMM_STATUS vmcall_print_string( GUEST_CPU_HANDLE gcpu,
+    ADDRESS *string_gva, ADDRESS *is_real_guest, ADDRESS *arg3 UNUSED)
 {
     if (TRUE == *is_real_guest) {
         GUEST_HANDLE    guest_handle;
@@ -306,8 +296,7 @@ VMM_STATUS vmcall_print_string(
 #pragma warning( pop )
 
 static
-GUEST_VMCALL_ENTRIES* vmcall_find_guest_vmcalls(GUEST_ID guest_id)
-{
+GUEST_VMCALL_ENTRIES* vmcall_find_guest_vmcalls(GUEST_ID guest_id) {
     LIST_ELEMENT *iter = NULL;
     GUEST_VMCALL_ENTRIES *guest_vmcalls = NULL;
 
@@ -320,8 +309,7 @@ GUEST_VMCALL_ENTRIES* vmcall_find_guest_vmcalls(GUEST_ID guest_id)
     return NULL;
 }
 
-static
-VMCALL_ENTRY* find_guest_vmcall_entry( GUEST_VMCALL_ENTRIES* guest_vmcalls,
+static VMCALL_ENTRY* find_guest_vmcall_entry( GUEST_VMCALL_ENTRIES* guest_vmcalls,
                                        VMCALL_ID call_id )
 {
     UINT32 idx;
@@ -334,9 +322,7 @@ VMCALL_ENTRY* find_guest_vmcall_entry( GUEST_VMCALL_ENTRIES* guest_vmcalls,
     return NULL;
 }
 
-static
-VMCALL_ENTRY* vmcall_get_vmcall_entry(GUEST_ID     guest_id,
-                                      VMCALL_ID    vmcall_id)
+static VMCALL_ENTRY* vmcall_get_vmcall_entry(GUEST_ID guest_id, VMCALL_ID vmcall_id)
 {
     GUEST_VMCALL_ENTRIES *guest_vmcalls;
     VMCALL_ENTRY *vmcall_entry;

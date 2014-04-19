@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -119,52 +117,41 @@ BOOLEAN vmexit_cr_access_is_gpf0(GUEST_CPU_HANDLE gcpu) {
     if ((cr0.Bits.PG && (!cr0.Bits.PE)) || (cr0.Bits.NW && (!cr0.Bits.CD))) {
         return TRUE;
     }
-
     cr4.Uint64 = gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR4);
     if (cr4.Bits.Reserved_0 || cr4.Bits.Reserved_1 ||
         cr4.Bits.Reserved_2 || cr4.Bits.Reserved_3 ||
         cr4.Bits.VMXE || cr4.Bits.SMXE) {
         return TRUE;
     }
-
     if ( cr4.Bits.OSXSAVE && !is_cr4_osxsave_supported() ) {
         return TRUE;
     }
-
     if ( cr4.Bits.SMEP && !is_cr4_smep_supported() ) {
         return TRUE;
     }
-
     if (cr4.Bits.FSGSBASE && !is_fsgsbase_supported() ){
         return TRUE;
     }
-
     efer.Uint64 = gcpu_get_msr_reg(gcpu, IA32_VMM_MSR_EFER);
     if (efer.Bits.LME && (!cr4.Bits.PAE)) {
         return TRUE;
     }
 
-
     // #GP conditions due to PCIDE feature. 
     if (cr4.Bits.PCIDE){
-
         //If this bit is not supported by h/w .
         if(!is_pcid_supported()){
             return TRUE;
         }
-        
         //PCIDE bit Can be set only in IA-32e mode (if IA32_EFER.LMA = 1).
         if(!efer.Bits.LMA ){
             return TRUE;
         }
-
         cr3 = gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR3);
-
         //software can change CR4.PCIDE from 0 to 1 only if CR3[11:0] = 000H
         if(cr3 & 0x0FFF){
             return TRUE;
         }
-
         //MOVtoCR0 causes a #GP if it would clear CR0.PG to 0 while CR4.PCIDE=1.
         if(!cr0.Bits.PG){
             return TRUE;
@@ -179,20 +166,16 @@ BOOLEAN vmexit_cr_access_is_gpf0(GUEST_CPU_HANDLE gcpu) {
             return TRUE;
         }
     }
-    
     return FALSE;
 }
 
-static BOOLEAN cr_guest_update(GUEST_CPU_HANDLE gcpu,
-                               VMM_IA32_CONTROL_REGISTERS reg_id,
-                               ADDRESS bits_to_update,
-                               IA32_VMX_EXIT_QUALIFICATION qualification);
+static BOOLEAN cr_guest_update(GUEST_CPU_HANDLE gcpu, VMM_IA32_CONTROL_REGISTERS reg_id,
+                               ADDRESS bits_to_update, IA32_VMX_EXIT_QUALIFICATION qualification);
 
 static BOOLEAN cr_mov(GUEST_CPU_HANDLE gcpu, IA32_VMX_EXIT_QUALIFICATION qualification);
 
-RAISE_EVENT_RETVAL cr_raise_write_events( GUEST_CPU_HANDLE            gcpu,
-                                         VMM_IA32_CONTROL_REGISTERS  reg_id,
-                                         ADDRESS                     new_value )
+RAISE_EVENT_RETVAL cr_raise_write_events( GUEST_CPU_HANDLE gcpu,
+                            VMM_IA32_CONTROL_REGISTERS reg_id, ADDRESS new_value )
 {
     EVENT_GCPU_GUEST_CR_WRITE_DATA event_data = {0};
     UVMM_EVENT event;
@@ -213,10 +196,8 @@ RAISE_EVENT_RETVAL cr_raise_write_events( GUEST_CPU_HANDLE            gcpu,
     return result;
 }
 
-BOOLEAN cr_guest_update( GUEST_CPU_HANDLE gcpu,
-    VMM_IA32_CONTROL_REGISTERS  reg_id,
-    ADDRESS                     bits_to_update,
-    IA32_VMX_EXIT_QUALIFICATION qualification)
+BOOLEAN cr_guest_update( GUEST_CPU_HANDLE gcpu, VMM_IA32_CONTROL_REGISTERS  reg_id,
+                    ADDRESS bits_to_update, IA32_VMX_EXIT_QUALIFICATION qualification)
 {
     UINT64 guest_cr;
     UINT64 old_visible_reg_value;
@@ -229,7 +210,6 @@ BOOLEAN cr_guest_update( GUEST_CPU_HANDLE gcpu,
         value = qualification.CrAccess.LmswData;
     else
         value = 0;
-
     cr_access_data.qualification = qualification.Uint64;
     if (report_uvmm_event(UVMM_EVENT_CR_ACCESS, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), (void *)&cr_access_data)) {
         return FALSE;
@@ -240,11 +220,11 @@ BOOLEAN cr_guest_update( GUEST_CPU_HANDLE gcpu,
     BITMAP_ASSIGN64(visible_guest_cr, bits_to_update, value);
 
     // update guest visible CR-X
-//    gcpu_set_guest_visible_control_reg_layered(gcpu, reg_id, visible_guest_cr, VMCS_MERGED);
+    //    gcpu_set_guest_visible_control_reg_layered(gcpu, reg_id, visible_guest_cr, VMCS_MERGED);
     GCPU_SET_GUEST_VISIBLE_CONTROL_TO_L0_M(gcpu, reg_id, visible_guest_cr);
 
     if (vmexit_cr_access_is_gpf0(gcpu)) {
-//        gcpu_set_guest_visible_control_reg_layered(gcpu, reg_id, old_visible_reg_value, VMCS_MERGED);
+    // gcpu_set_guest_visible_control_reg_layered(gcpu, reg_id, old_visible_reg_value, VMCS_MERGED);
         GCPU_SET_GUEST_VISIBLE_CONTROL_TO_L0_M(gcpu, reg_id, old_visible_reg_value);
 
         // CR* access vmexit is changed to GPF0 exception.
@@ -277,11 +257,11 @@ BOOLEAN cr_guest_write( GUEST_CPU_HANDLE gcpu, VMM_IA32_CONTROL_REGISTERS  reg_i
     EPT_GUEST_CPU_STATE *ept_guest_cpu = NULL;
 
     old_visible_reg_value = gcpu_get_guest_visible_control_reg_layered(gcpu, reg_id, VMCS_MERGED);
-//    gcpu_set_guest_visible_control_reg_layered(gcpu, reg_id, value, VMCS_MERGED);
+    // gcpu_set_guest_visible_control_reg_layered(gcpu, reg_id, value, VMCS_MERGED);
     GCPU_SET_GUEST_VISIBLE_CONTROL_TO_L0_M(gcpu, reg_id, value);
 
     if (vmexit_cr_access_is_gpf0(gcpu)) {
-//        gcpu_set_guest_visible_control_reg_layered(gcpu, reg_id, old_visible_reg_value, VMCS_MERGED);
+        //  gcpu_set_guest_visible_control_reg_layered(gcpu, reg_id, old_visible_reg_value, VMCS_MERGED);
         GCPU_SET_GUEST_VISIBLE_CONTROL_TO_L0_M(gcpu, reg_id, old_visible_reg_value);
 
         // CR* access vmexit is changed to GPF0 exception.

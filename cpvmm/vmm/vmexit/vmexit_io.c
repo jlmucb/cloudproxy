@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -145,7 +143,6 @@ void io_vmexit_guest_initialize(GUEST_ID guest_id)
     VMM_LOG(mask_anonymous, level_trace,"io_vmexit_guest_initialize end\r\n");
 
     ///// TTTTT    vmm_memset(io_ctrl->io_bitmap, 0xFF, 2 * PAGE_4KB_SIZE);
-
     vmexit_install_handler(guest_id, io_vmexit_handler, Ia32VmxExitBasicReasonIoInstruction);
 }
 
@@ -288,14 +285,12 @@ void io_blocking_write_handler(
 //          : unsigned         port_size,
 //          : RW_ACCESS        access,
 //          : void             *p_value
-// RETURNS  : void
 BOOLEAN io_blocking_handler( GUEST_CPU_HANDLE gcpu, IO_PORT_ID  port_id,
-    unsigned  port_size, RW_ACCESS access, BOOLEAN string_intr, 
-    BOOLEAN  rep_prefix, UINT32 rep_count, void *p_value,
+            unsigned  port_size, RW_ACCESS access, BOOLEAN string_intr, 
+            BOOLEAN  rep_prefix, UINT32 rep_count, void *p_value,
     void *context UNUSED)
 {
-    switch (access)
-    {
+    switch (access) {
     case WRITE_ACCESS:
         io_blocking_write_handler(gcpu, port_id, port_size, p_value);
         break;
@@ -318,12 +313,10 @@ void io_transparent_read_handler(
     unsigned            port_size, // 1, 2, 4
     void               *p_value)
 {
-    switch (port_size)
-    {
+    switch (port_size) {
     case 1:
         *(UINT8 *) p_value = hw_read_port_8(port_id);
         break;
-
     case 2:
         *(UINT16 *) p_value = hw_read_port_16(port_id);
         break;
@@ -343,12 +336,10 @@ void io_transparent_write_handler(
     unsigned            port_size, // 1, 2, 4
     void               *p_value)
 {
-    switch (port_size)
-    {
+    switch (port_size) {
     case 1:
         hw_write_port_8(port_id, *(UINT8 *) p_value);
         break;
-
     case 2:
         hw_write_port_16(port_id, *(UINT16 *) p_value);
         break;
@@ -362,16 +353,11 @@ void io_transparent_write_handler(
     }
 }
 
-void io_vmexit_transparent_handler(
-    GUEST_CPU_HANDLE  gcpu,
-    UINT16            port_id,
-    unsigned          port_size, // 1, 2, 4
-    RW_ACCESS         access,
-    void              *p_value,
-    void              *context UNUSED)
+void io_vmexit_transparent_handler( GUEST_CPU_HANDLE  gcpu,
+            UINT16 port_id, unsigned port_size, // 1, 2, 4
+    RW_ACCESS access, void *p_value, void  *context UNUSED)
 {
-    switch (access)
-    {
+    switch (access) {
     case WRITE_ACCESS:
         io_transparent_write_handler(gcpu, port_id, port_size, p_value);
         break;
@@ -386,9 +372,7 @@ void io_vmexit_transparent_handler(
 }
 
 
-
 #pragma warning( pop )
-
 
 // FUNCTION : io_vmexit_handler_register()
 // PURPOSE  : Register/update IO handler for spec port/guest pair.
@@ -396,11 +380,8 @@ void io_vmexit_transparent_handler(
 //          : IO_PORT_ID          port_id
 //          : IO_ACCESS_HANDLER   handler
 // RETURNS  : status
-VMM_STATUS io_vmexit_handler_register(
-    GUEST_ID            guest_id,
-    IO_PORT_ID          port_id,
-    IO_ACCESS_HANDLER   handler,
-    void*               context)
+VMM_STATUS io_vmexit_handler_register( GUEST_ID guest_id, IO_PORT_ID port_id,
+                IO_ACCESS_HANDLER   handler, void* context)
 {
     IO_VMEXIT_DESCRIPTOR *p_desc = io_port_lookup(guest_id, port_id);
     VMM_STATUS           status;
@@ -479,8 +460,7 @@ VMM_STATUS io_vmexit_handler_unregister(
 // --3. An #AC exception (unaligned memory referenced when CR0.AM=1, 
 //    EFLAGS.AC=1, and CPL=3).
 // Hence, if those fault/exception above happens,inject back to guest.
-static
-BOOLEAN io_access_native_fault( GUEST_CPU_HANDLE            gcpu,
+static BOOLEAN io_access_native_fault( GUEST_CPU_HANDLE gcpu,
                                 IA32_VMX_EXIT_QUALIFICATION *qualification)
 {
     VMCS_OBJECT     *vmcs     = gcpu_get_vmcs(gcpu);
@@ -506,9 +486,7 @@ BOOLEAN io_access_native_fault( GUEST_CPU_HANDLE            gcpu,
         is_64bit = TRUE;
     }
 
-    //
     // 1) check the 1st/2nd condidtion.-- #GP
-    // 
     if(qualification->IoInstruction.Direction){
         
         UINT64 Rdi = gcpu_get_native_gp_reg(gcpu, IA32_REG_RDI);
@@ -524,17 +502,12 @@ BOOLEAN io_access_native_fault( GUEST_CPU_HANDLE            gcpu,
             return TRUE;
         }
 
-
         if(is_64bit){
             // must 64bit address size.
-            //VMM_ASSERT(ios_instr_info.InsOutsInstruction.AddrSize == 2);
-            
             if(FALSE == addr_is_canonical(Rdi)){
                 // address is not canonical , inject #GP 
                 VMM_LOG(mask_anonymous, level_trace,
-                        "INS - address %P is not canonical, inject #GP\n",
-                        Rdi);
-            
+                        "INS - address %P is not canonical, inject #GP\n", Rdi);
                 gcpu_inject_gp0(gcpu);
                 return TRUE;
             }
@@ -545,8 +518,6 @@ BOOLEAN io_access_native_fault( GUEST_CPU_HANDLE            gcpu,
             //Assume this case doesn't happen for 32bit Win7 OS, do nothing.
             //Need to develop case to test it
         }
-
-        
     }
     else{
         UINT64 Rsi = gcpu_get_native_gp_reg(gcpu, IA32_REG_RSI);
@@ -556,33 +527,26 @@ BOOLEAN io_access_native_fault( GUEST_CPU_HANDLE            gcpu,
             case 0: // ES
                 seg_ar.attr32 = (UINT32)vmcs_read(vmcs, VMCS_GUEST_ES_AR);
                 break;
-                
             case 1: // CS
                 seg_ar.attr32 = (UINT32)vmcs_read(vmcs, VMCS_GUEST_CS_AR);
                 break;
-                
             case 2: // SS
                 seg_ar.attr32 = (UINT32)vmcs_read(vmcs, VMCS_GUEST_SS_AR);
                 break;
-                
             case 3: // DS
                 seg_ar.attr32 = (UINT32)vmcs_read(vmcs, VMCS_GUEST_DS_AR);
                 break;
-                
             case 4: // FS
                 seg_ar.attr32 = (UINT32)vmcs_read(vmcs, VMCS_GUEST_FS_AR);
                 break;
-                
             case 5: // GS
                 seg_ar.attr32 = (UINT32)vmcs_read(vmcs, VMCS_GUEST_GS_AR);
                 break;
-                
             default:
                 // impossible
                 VMM_ASSERT(0);
                 break;
         }
-
         if(seg_ar.bits.null_bit == 1){
             // xS segment unusable, inject #GP   
 
@@ -592,7 +556,6 @@ BOOLEAN io_access_native_fault( GUEST_CPU_HANDLE            gcpu,
             gcpu_inject_gp0(gcpu);
             return TRUE;
         }
-
         if(is_64bit){
             // must 64bit address size.
             //VMM_ASSERT(ios_instr_info.InsOutsInstruction.AddrSize == 2);
@@ -608,16 +571,13 @@ BOOLEAN io_access_native_fault( GUEST_CPU_HANDLE            gcpu,
             }
         }
         else{
-            //
             //TODO: OFFSET/rsi check against segment limit.
             //Assume this case doesn't happen for 32bit OS, do nothing.
             //Need to develop case to test it
         }
     }
 
-    //
     // 2) check the 3rd condidtion.-- #AC
-    // 
     cs_selector = vmcs_read(vmcs, VMCS_GUEST_CS_SELECTOR);
     if(BITMAP_GET(cs_selector, CS_SELECTOR_CPL_BIT) == 3){
         // ring3 level.
@@ -642,8 +602,6 @@ BOOLEAN io_access_native_fault( GUEST_CPU_HANDLE            gcpu,
         }
         
     }
-    
-
     return status;
         
 }
@@ -674,7 +632,6 @@ VMEXIT_HANDLING_STATUS io_vmexit_handler(GUEST_CPU_HANDLE gcpu)
 
 
     if (FALSE == string_io){
-        
         // ordinary IN/OUT instruction
         // data is stored in guest RAX register, not need to 
         // pass it to Handler here.
@@ -682,7 +639,6 @@ VMEXIT_HANDLING_STATUS io_vmexit_handler(GUEST_CPU_HANDLE gcpu)
     }
     else{        
         // for string INS/OUTS instruction
-
         // The linear address gva is the base address of 
         // relevant segment plus (E)DI (for INS) or (E)SI 
         // (for OUTS). It is valid only when the relevant 
@@ -690,20 +646,14 @@ VMEXIT_HANDLING_STATUS io_vmexit_handler(GUEST_CPU_HANDLE gcpu)
         UINT64  gva      = vmcs_read(vmcs, VMCS_EXIT_INFO_GUEST_LINEAR_ADDRESS);
         HVA     dumy_hva = 0;
 
-
         // if a native fault/exception happens, then let OS handle them.
         // and don't report invalid io-access event to Handler in order
         // to avoid unexpected behaviors.
         if(io_access_native_fault(gcpu, p_qualification) == TRUE){
-            
             return VMEXIT_HANDLED;
         }
-        
-
         if( FALSE == gcpu_gva_to_hva(gcpu, gva, &dumy_hva)){
-            
             VMM_LOG(mask_anonymous, level_trace,"Guest(%d) Virtual Address %P Is Not Mapped\n", guest_id, gva);
-
             // catch this failure to avoid further errors:
             // for INS/OUTS instruction, if gva is invalid, which one will happen first?
             // 1) native OS #PF; or 2) An IO VM exit
@@ -712,46 +662,28 @@ VMEXIT_HANDLING_STATUS io_vmexit_handler(GUEST_CPU_HANDLE gcpu)
         } 
 
         ios_instr_info.Uint32  = (UINT32)vmcs_read(vmcs, VMCS_EXIT_INFO_INSTRUCTION_INFO);
-
         switch(ios_instr_info.InsOutsInstruction.AddrSize){
-
             case 0: // 16-bit
                 gva &= (UINT64)0x0FFFF;
                 break;
-
             case 1: // 32-bit
                 gva &= (UINT64)0x0FFFFFFFF;
                 break;
-
             case 2: // 64-bit                
                 break;
-
             default:
                 // not h/w supported
                 VMM_DEADLOOP();
-            
         }
-        
         // GVA address
         io_value = (GVA)gva;
-
     }
-
 
     // call to the handler
-    if( TRUE == handler( gcpu, 
-                         port_id, 
-                         port_size, 
-                         access, 
-                         string_io, 
-                         rep_prefix, 
-                         rep_count, 
-                         (void *)io_value, 
-                         context)){
-        
+    if( TRUE == handler( gcpu, port_id, port_size, access, string_io, 
+                         rep_prefix, rep_count, (void *)io_value, context)){
         gcpu_skip_guest_instruction(gcpu);
     }
-
     return VMEXIT_HANDLED;
 }
 
@@ -772,9 +704,7 @@ void io_vmexit_block_port(
     GUEST_IO_VMEXIT_CONTROL *io_ctrl = NULL;
 
     io_ctrl = io_vmexit_find_guest_io_control(guest_id);
-
     VMM_ASSERT(io_ctrl);
-
     // unregister handler in case it was installed before
     for (i = port_from; i <= port_to; ++i) {
         io_vmexit_handler_unregister(guest_id, (IO_PORT_ID)i);
@@ -782,8 +712,7 @@ void io_vmexit_block_port(
     }
 }
 
-static
-GUEST_IO_VMEXIT_CONTROL* io_vmexit_find_guest_io_control(GUEST_ID guest_id)
+static GUEST_IO_VMEXIT_CONTROL* io_vmexit_find_guest_io_control(GUEST_ID guest_id)
 {
     LIST_ELEMENT *iter = NULL;
     GUEST_IO_VMEXIT_CONTROL *io_ctrl = NULL;
@@ -794,7 +723,6 @@ GUEST_IO_VMEXIT_CONTROL* io_vmexit_find_guest_io_control(GUEST_ID guest_id)
             return io_ctrl;
         }
     }
-
     return NULL;
 }
 

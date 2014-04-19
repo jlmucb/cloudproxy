@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,10 +28,10 @@
 #pragma warning (disable : 4100) // disable non-referenced formal parameters
 VMEXIT_HANDLING_STATUS vmexit_mtf(GUEST_CPU_HANDLE gcpu)
 {
-    if (!report_uvmm_event(UVMM_EVENT_MTF_VMEXIT, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), NULL)) {
+    if (!report_uvmm_event(UVMM_EVENT_MTF_VMEXIT, (VMM_IDENTIFICATION_DATA)gcpu, 
+                           (const GUEST_VCPU*)guest_vcpu(gcpu), NULL)) {
         VMM_LOG(mask_uvmm, level_trace, "Report MTF VMExit failed.\n");
     }
-
     return VMEXIT_HANDLED;
 }
 #pragma warning (pop)

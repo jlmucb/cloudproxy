@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -39,11 +37,8 @@ typedef struct _CPUID_FILTER_DESCRIPTOR {
     CPUID_FILTER_HANDLER    handler;
 } CPUID_FILTER_DESCRIPTOR;
 
-static
-void vmexit_cpuid_filter_install(
-    GUEST_HANDLE         guest,
-    ADDRESS              cpuid,
-    CPUID_FILTER_HANDLER handler)
+static void vmexit_cpuid_filter_install( GUEST_HANDLE guest,
+                    ADDRESS  cpuid, CPUID_FILTER_HANDLER handler)
 {
     LIST_ELEMENT            *filter_desc_list = guest_get_cpuid_list(guest);
     CPUID_FILTER_DESCRIPTOR *p_filter_desc = vmm_malloc(sizeof(*p_filter_desc));
@@ -56,8 +51,7 @@ void vmexit_cpuid_filter_install(
     }
 }
 
-static
-VMEXIT_HANDLING_STATUS vmexit_cpuid_instruction(GUEST_CPU_HANDLE gcpu)
+static VMEXIT_HANDLING_STATUS vmexit_cpuid_instruction(GUEST_CPU_HANDLE gcpu)
 {
     CPUID_PARAMS    cpuid_params;
     UINT32          req_id;
@@ -98,10 +92,7 @@ VMEXIT_HANDLING_STATUS vmexit_cpuid_instruction(GUEST_CPU_HANDLE gcpu)
 #pragma warning( push )
 #pragma warning (disable : 4100) // disable unreferenced formal parameters
 
-static 
-void cpuid_leaf_1h_filter(
-            GUEST_CPU_HANDLE gcpu, 
-            CPUID_PARAMS *p_cpuid )
+static void cpuid_leaf_1h_filter( GUEST_CPU_HANDLE gcpu, CPUID_PARAMS *p_cpuid )
 {
     VMM_ASSERT(p_cpuid);
 
@@ -112,10 +103,7 @@ void cpuid_leaf_1h_filter(
     BIT_CLR64(p_cpuid->m_rcx, CPUID_LEAF_1H_ECX_VMX_SUPPORT);
 }
 
-static 
-void cpuid_leaf_3h_filter(
-            GUEST_CPU_HANDLE gcpu, 
-            CPUID_PARAMS *p_cpuid )
+static void cpuid_leaf_3h_filter( GUEST_CPU_HANDLE gcpu, CPUID_PARAMS *p_cpuid )
 {
     VMM_ASSERT(p_cpuid);
 

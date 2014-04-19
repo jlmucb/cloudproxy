@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -44,22 +42,22 @@
 #define VMAM_PAGE_BOUNDARY_MASK 0xFFFFFFFFFFFFF000
 
 typedef union VMAM_PAE_LME_ENTRY_U {
-        struct {
-                UINT32
-                        present        :1,  /* 0=not present, 1=present */
-                        writable       :1,  /* 0=read-only, 1=read-writable */
-                        user           :1,  /* 0=supervisor-only, 1=user+supervisor */
-                        pwt            :1,
-                        pcd            :1,
-                        accessed       :1,
-                        dirty          :1,
-                        page_size      :1,  /* page size, in last level entry */
-                        global         :1,
-                        available      :3,
-                        addr_base_low  :20; /* bit 31:12 of the physical address of next level enty */ 
-                UINT32
-                        addr_base_high :20, /* bit 51:32 of the physical address of next level enty */
-                    avl_or_res     :11,
+    struct {
+        UINT32
+            present        :1,  /* 0=not present, 1=present */
+            writable       :1,  /* 0=read-only, 1=read-writable */
+            user           :1,  /* 0=supervisor-only, 1=user+supervisor */
+            pwt            :1,
+            pcd            :1,
+            accessed       :1,
+            dirty          :1,
+            page_size      :1,  /* page size, in last level entry */
+            global         :1,
+            available      :3,
+            addr_base_low  :20; /* bit 31:12 of the physical address of next level enty */ 
+        UINT32
+            addr_base_high :20, /* bit 51:32 of the physical address of next level enty */
+            avl_or_res     :11,
             exb_or_res     :1;  /* execution disable */
         } bits;
         UINT64 raw;                             /* whole entry */
@@ -75,48 +73,24 @@ void read_vmcs_to_get_guest_states(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_GUEST_STA
 static BOOLEAN is_params_ok(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *p, UINT64 *state_hva);
 static BOOLEAN map_thunk_pages(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *teardown);
 
-static 
-UINT64 vmam_get_pml4_base_from_cr3(UINT64 cr3);
- 
-static
-BOOLEAN vmam_hpa_to_hva(IN UINT64 hpa, OUT UINT64* hva);
-
-
-static
-BOOLEAN vmam_hva_to_hpa(IN UINT64 hva, OUT UINT64* hpa);
-
+static UINT64 vmam_get_pml4_base_from_cr3(UINT64 cr3);
+static BOOLEAN vmam_hpa_to_hva(IN UINT64 hpa, OUT UINT64* hva);
+static BOOLEAN vmam_hva_to_hpa(IN UINT64 hva, OUT UINT64* hpa);
 static
 void vmam_get_indices(IN UINT64 virtual_address, OUT UINT32* pml4te_index,
                       OUT UINT32* pdpte_index, OUT UINT32* pde_index,
                       OUT UINT32* pte_index);
-static
-VMAM_PAE_LME_ENTRY* vmam_get_table_entry_ptr(UINT64 table_hpa, UINT32 entry_index);
- 
-static
-void vmam_get_entry_val(VMAM_PAE_LME_ENTRY* pentry_val, VMAM_PAE_LME_ENTRY* pentry);
-
-static
-UINT64 vmam_get_phys_addr(IN VMAM_PAE_LME_ENTRY* pentry);
-
-static
-void vmam_set_table_entry(IN VMAM_PAE_LME_ENTRY* pentry, IN UINT64 entry_hpa);
-
-static
-UINT64 vmam_create_pdpt_to_pt(IN UINT32 pdpte_index, IN UINT32 pde_index, 
+static VMAM_PAE_LME_ENTRY* vmam_get_table_entry_ptr(UINT64 table_hpa, UINT32 entry_index);
+static void vmam_get_entry_val(VMAM_PAE_LME_ENTRY* pentry_val, VMAM_PAE_LME_ENTRY* pentry);
+static UINT64 vmam_get_phys_addr(IN VMAM_PAE_LME_ENTRY* pentry);
+static void vmam_set_table_entry(IN VMAM_PAE_LME_ENTRY* pentry, IN UINT64 entry_hpa);
+static UINT64 vmam_create_pdpt_to_pt(IN UINT32 pdpte_index, IN UINT32 pde_index, 
                               IN UINT32 pte_index, IN UINT64 start_hpa);
-
-static
-UINT64 vmam_create_pdt_to_pt(IN UINT32 pde_index, IN UINT32 pte_index,
+static UINT64 vmam_create_pdt_to_pt(IN UINT32 pde_index, IN UINT32 pte_index,
                              IN UINT64 start_hpa);
-                                             
-static
-UINT64 vmam_create_pt(IN UINT32 pte_index, IN UINT64 start_hpa);
-
-static 
-BOOLEAN vmam_check_add_one_page_mem_map(IN UINT64 host_cr3, IN UINT64 host_cr4,
-                                        IN UINT64 efer_value, IN UINT64 start_hva,
-                                        IN UINT64 start_hpa);
-
+static UINT64 vmam_create_pt(IN UINT32 pte_index, IN UINT64 start_hpa);
+static BOOLEAN vmam_check_add_one_page_mem_map(IN UINT64 host_cr3, IN UINT64 host_cr4,
+                             IN UINT64 efer_value, IN UINT64 start_hva, IN UINT64 start_hpa);
 extern void ITP_JMP_DEADLOOP(void);
 
 BOOLEAN vmexit_vmm_teardown(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *vmm_teardown_params)
@@ -403,13 +377,8 @@ BOOLEAN vmam_hva_to_hpa(IN UINT64 hva, OUT UINT64* hpa) {
     return (hmm_hva_to_hpa(hva, hpa));
 }
 
-static
-void vmam_get_indices(IN UINT64 virtual_address,
-                      OUT UINT32* pml4te_index,
-                      OUT UINT32* pdpte_index,
-                      OUT UINT32* pde_index,
-                      OUT UINT32* pte_index) {
-
+static void vmam_get_indices(IN UINT64 virtual_address, OUT UINT32* pml4te_index,
+                      OUT UINT32* pdpte_index, OUT UINT32* pde_index, OUT UINT32* pte_index) {
     UINT32 virtual_address_low_32_bit = (UINT32)virtual_address;
 
         UINT64 pml4te_index_tmp = ((virtual_address & VMAM_PML4TE_INDEX_MASK) >> VMAM_PML4TE_INDEX_SHIFT);
@@ -423,24 +392,18 @@ void vmam_get_indices(IN UINT64 virtual_address,
     VMM_ASSERT(*pte_index < VMAM_PAE_NUM_OF_TABLE_ENTRIES);
 }
 
-static
-VMAM_PAE_LME_ENTRY* vmam_get_table_entry_ptr(UINT64 table_hpa,
-                                                                                     UINT32 entry_index) {
+static VMAM_PAE_LME_ENTRY* vmam_get_table_entry_ptr(UINT64 table_hpa, UINT32 entry_index) {
     UINT64 entry_hpa;
     UINT64 entry_hva;
 
     entry_hpa = table_hpa + entry_index * VMAM_PAE_ENTRY_INCREMENT;
-    
      if (!vmam_hpa_to_hva(entry_hpa, &entry_hva)) {
         return NULL;
     }
     return (VMAM_PAE_LME_ENTRY*)entry_hva;
 }
  
-static
-void vmam_get_entry_val(VMAM_PAE_LME_ENTRY* pentry_val,
-                                                VMAM_PAE_LME_ENTRY* pentry) {
-
+static void vmam_get_entry_val(VMAM_PAE_LME_ENTRY* pentry_val, VMAM_PAE_LME_ENTRY* pentry) {
     volatile UINT64* origl_val_ptr = (volatile UINT64*)pentry;
     UINT64 value1 = *origl_val_ptr;
     UINT64 value2 = *origl_val_ptr;
@@ -449,20 +412,16 @@ void vmam_get_entry_val(VMAM_PAE_LME_ENTRY* pentry_val,
         value1 = value2;
         value2 = *origl_val_ptr;
     }
-
     *pentry_val = *((VMAM_PAE_LME_ENTRY*)(&value1));
 }
 
-static
-UINT64 vmam_get_phys_addr(IN VMAM_PAE_LME_ENTRY* pentry) {
+static UINT64 vmam_get_phys_addr(IN VMAM_PAE_LME_ENTRY* pentry) {
         UINT32 addr_low = pentry->bits.addr_base_low << VMAM_LOW_ADDR_SHIFT;
     UINT32 addr_high = pentry->bits.addr_base_high;
     return ((UINT64)addr_high << VMAM_HIGH_ADDR_SHIFT) | addr_low;
 }
 
-static
-void vmam_set_table_entry(IN VMAM_PAE_LME_ENTRY* pentry,
-                                                  IN UINT64 entry_hpa) {
+static void vmam_set_table_entry(IN VMAM_PAE_LME_ENTRY* pentry, IN UINT64 entry_hpa) {
     VMAM_PAE_LME_ENTRY entry_val;
     
     entry_val.raw =0;   
@@ -474,8 +433,7 @@ void vmam_set_table_entry(IN VMAM_PAE_LME_ENTRY* pentry,
         VMM_LOG(mask_anonymous, level_trace, "%s: table entry at 0x%llx set to 0x%llx\n", __FUNCTION__, (UINT64)pentry, entry_val.raw);
 }
 
-static
-UINT64 vmam_create_pdpt_to_pt(IN UINT32 pdpte_index, IN UINT32 pde_index, 
+static UINT64 vmam_create_pdpt_to_pt(IN UINT32 pdpte_index, IN UINT32 pde_index, 
                               IN UINT32 pte_index, IN UINT64 start_hpa) {                              
     UINT64 pdpt_base_hva = (UINT64)(vmm_memory_alloc(2 * PAGE_4KB_SIZE - 1)); 
     UINT64 pdpt_base_hpa;                             
@@ -502,8 +460,7 @@ UINT64 vmam_create_pdpt_to_pt(IN UINT32 pdpte_index, IN UINT32 pde_index,
     return pdpt_base_hpa;
 }         
 
-static
-UINT64 vmam_create_pdt_to_pt(IN UINT32 pde_index, IN UINT32 pte_index,
+static UINT64 vmam_create_pdt_to_pt(IN UINT32 pde_index, IN UINT32 pte_index,
                                              IN UINT64 start_hpa) {    
     UINT64 pdt_base_hva = (UINT64)(vmm_memory_alloc(2 * PAGE_4KB_SIZE - 1));
     UINT64 pdt_base_hpa;                              
@@ -529,8 +486,7 @@ UINT64 vmam_create_pdt_to_pt(IN UINT32 pde_index, IN UINT32 pte_index,
     return pdt_base_hpa;
 }         
 
-static
-UINT64 vmam_create_pt(IN UINT32 pte_index, IN UINT64 start_hpa) {                              
+static UINT64 vmam_create_pt(IN UINT32 pte_index, IN UINT64 start_hpa) {  
     UINT64 pt_base_hva = (UINT64)(vmm_memory_alloc(2 * PAGE_4KB_SIZE - 1));
     UINT64 pt_base_hpa;
     VMAM_PAE_LME_ENTRY* pte_ptr = NULL;
@@ -549,9 +505,8 @@ UINT64 vmam_create_pt(IN UINT32 pte_index, IN UINT64 start_hpa) {
     return pt_base_hpa;
 }         
 
-static 
-BOOLEAN vmam_check_add_one_page_mem_map(IN UINT64 host_cr3, IN UINT64 host_cr4,
-                                        IN UINT64 efer_value, IN UINT64 start_hva, IN UINT64 start_hpa) {
+static BOOLEAN vmam_check_add_one_page_mem_map(IN UINT64 host_cr3, IN UINT64 host_cr4, 
+            IN UINT64 efer_value, IN UINT64 start_hva, IN UINT64 start_hpa) {
     BOOLEAN is_lme = ((efer_value & EFER_LME) != 0);
     BOOLEAN is_pae = ((host_cr4 & CR4_PAE) != 0);
     UINT32 pml4te_index;
@@ -659,8 +614,7 @@ BOOLEAN vmam_check_add_one_page_mem_map(IN UINT64 host_cr3, IN UINT64 host_cr4,
 }
 
 BOOLEAN vmam_add_to_host_page_table(IN GUEST_CPU_HANDLE gcpu, IN UINT64 start_gva,
-    IN UINT64 num_pages) {
-
+            IN UINT64 num_pages) {
     UINT64 host_cr3 = hw_read_cr3();
     UINT64 host_cr4 = hw_read_cr4();
     UINT64 efer_value =  hw_read_msr(IA32_MSR_EFER);

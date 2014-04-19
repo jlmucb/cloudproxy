@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -111,17 +109,14 @@ VMEXIT_HANDLING_STATUS vmexit_software_interrupt_exception_nmi(GUEST_CPU_HANDLE 
     switch (vmexit_exception_info.Bits.InterruptType)
     {
     case VmExitInterruptTypeException:
-        switch (vmexit_exception_info.Bits.Vector)
-        {
+        switch (vmexit_exception_info.Bits.Vector) {
         case IA32_EXCEPTION_VECTOR_MACHINE_CHECK:
             // VmmHandleMachineCheckException(gcpu);    // TBD
             unsupported_exception = TRUE;
             break;
-
         case IA32_EXCEPTION_VECTOR_DEBUG_BREAKPOINT:
             handled_exception = vmdb_exception_handler(gcpu);
             break;
-
         case IA32_EXCEPTION_VECTOR_PAGE_FAULT:
             // flat page tables support
             {
@@ -149,12 +144,10 @@ VMEXIT_HANDLING_STATUS vmexit_software_interrupt_exception_nmi(GUEST_CPU_HANDLE 
             break;
         }
         break;
-
     case VmExitInterruptTypeNmi:
         // call NMI handler
         handled_exception = nmi_vmexit_handler(gcpu);
         break;
-
     default:
         unsupported_exception = TRUE;
         break;
@@ -169,8 +162,7 @@ VMEXIT_HANDLING_STATUS vmexit_software_interrupt_exception_nmi(GUEST_CPU_HANDLE 
     return handled_exception ? VMEXIT_HANDLED : VMEXIT_NOT_HANDLED;
 }
 
-static
-void vmexit_change_exit_reason_from_nmi_window_to_nmi(GUEST_CPU_HANDLE gcpu) {
+static void vmexit_change_exit_reason_from_nmi_window_to_nmi(GUEST_CPU_HANDLE gcpu) {
     VMCS_HIERARCHY* hierarchy = gcpu_get_vmcs_hierarchy(gcpu);
     VMCS_OBJECT* merged_vmcs = vmcs_hierarchy_get_vmcs(hierarchy, VMCS_MERGED);
     IA32_VMX_EXIT_REASON reason;
@@ -198,10 +190,7 @@ VMEXIT_HANDLING_STATUS vmexit_nmi_window(GUEST_CPU_HANDLE gcpu)
     if (handled) {
         return VMEXIT_HANDLED;
     }
-
     VMM_DEADLOOP();
-
-
     // Check the case when level-1 vmm requested NMI-Window exiting
     if (gcpu_get_guest_level(gcpu) == GUEST_LEVEL_2) {
         VMCS_HIERARCHY* hierarchy = gcpu_get_vmcs_hierarchy(gcpu);
@@ -214,10 +203,8 @@ VMEXIT_HANDLING_STATUS vmexit_nmi_window(GUEST_CPU_HANDLE gcpu)
             return VMEXIT_NOT_HANDLED;
         }
     }
-
     // In all other cases, change event to NMI
     vmexit_change_exit_reason_from_nmi_window_to_nmi(gcpu);
-
     return VMEXIT_NOT_HANDLED;
 }
 

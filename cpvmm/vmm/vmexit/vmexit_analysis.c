@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -37,98 +35,97 @@
 
 typedef BOOLEAN (*VMEXIT_IS_CONTROL_REQUESTED_FUNC)(GUEST_CPU_HANDLE, VMCS_OBJECT*, VMCS_OBJECT*);
 
-static
-BOOLEAN vmexit_analysis_true_func(GUEST_CPU_HANDLE gcpu UNUSED, VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs UNUSED) {
+static BOOLEAN vmexit_analysis_true_func(GUEST_CPU_HANDLE gcpu UNUSED, 
+                VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs UNUSED) {
     return TRUE;
 }
 
-static
-BOOLEAN vmexit_analysis_false_func(GUEST_CPU_HANDLE gcpu UNUSED, VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs UNUSED) {
+static BOOLEAN vmexit_analysis_false_func(GUEST_CPU_HANDLE gcpu UNUSED, VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs UNUSED) {
     return FALSE;
 }
 
-static
-BOOLEAN vmexit_analysis_interrupt_window_exiting(GUEST_CPU_HANDLE gcpu UNUSED, VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
+static BOOLEAN vmexit_analysis_interrupt_window_exiting(GUEST_CPU_HANDLE gcpu UNUSED, 
+                        VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
     PROCESSOR_BASED_VM_EXECUTION_CONTROLS level1_ctrls;
 
     level1_ctrls.Uint32 = (UINT32)vmcs_read(control_vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS);
     return (level1_ctrls.Bits.VirtualInterrupt == 1);
 }
 
-static
-BOOLEAN vmexit_analysis_nmi_window_exiting(GUEST_CPU_HANDLE gcpu UNUSED, VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
+static BOOLEAN vmexit_analysis_nmi_window_exiting(GUEST_CPU_HANDLE gcpu UNUSED, 
+                        VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
     PROCESSOR_BASED_VM_EXECUTION_CONTROLS level1_ctrls;
 
     level1_ctrls.Uint32 = (UINT32)vmcs_read(control_vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS);
     return (level1_ctrls.Bits.NmiWindow == 1);
 }
 
-static
-BOOLEAN vmexit_analysis_hlt_inst_exiting(GUEST_CPU_HANDLE gcpu UNUSED, VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
+static BOOLEAN vmexit_analysis_hlt_inst_exiting(GUEST_CPU_HANDLE gcpu UNUSED, 
+                        VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
     PROCESSOR_BASED_VM_EXECUTION_CONTROLS level1_ctrls;
 
     level1_ctrls.Uint32 = (UINT32)vmcs_read(control_vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS);
     return (level1_ctrls.Bits.Hlt == 1);
 }
 
-static
-BOOLEAN vmexit_analysis_invlpg_inst_exiting(GUEST_CPU_HANDLE gcpu UNUSED, VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
+static BOOLEAN vmexit_analysis_invlpg_inst_exiting(GUEST_CPU_HANDLE gcpu UNUSED, 
+                        VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
     PROCESSOR_BASED_VM_EXECUTION_CONTROLS level1_ctrls;
 
     level1_ctrls.Uint32 = (UINT32)vmcs_read(control_vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS);
     return (level1_ctrls.Bits.Invlpg == 1);
 }
 
-static
-BOOLEAN vmexit_analysis_rdpmc_inst_exiting(GUEST_CPU_HANDLE gcpu UNUSED, VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
+static BOOLEAN vmexit_analysis_rdpmc_inst_exiting(GUEST_CPU_HANDLE gcpu UNUSED, 
+                        VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
     PROCESSOR_BASED_VM_EXECUTION_CONTROLS level1_ctrls;
 
     level1_ctrls.Uint32 = (UINT32)vmcs_read(control_vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS);
     return (level1_ctrls.Bits.Rdpmc == 1);
 }
 
-static
-BOOLEAN vmexit_analysis_rdtsc_inst_exiting(GUEST_CPU_HANDLE gcpu UNUSED, VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
+static BOOLEAN vmexit_analysis_rdtsc_inst_exiting(GUEST_CPU_HANDLE gcpu UNUSED, 
+                    VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
     PROCESSOR_BASED_VM_EXECUTION_CONTROLS level1_ctrls;
 
     level1_ctrls.Uint32 = (UINT32)vmcs_read(control_vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS);
     return (level1_ctrls.Bits.Rdtsc == 1);
 }
 
-static
-BOOLEAN vmexit_analysis_dr_access_exiting(GUEST_CPU_HANDLE gcpu UNUSED, VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
+static BOOLEAN vmexit_analysis_dr_access_exiting(GUEST_CPU_HANDLE gcpu UNUSED, 
+                    VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
     PROCESSOR_BASED_VM_EXECUTION_CONTROLS level1_ctrls;
 
     level1_ctrls.Uint32 = (UINT32)vmcs_read(control_vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS);
     return (level1_ctrls.Bits.MovDr == 1);
 }
 
-static
-BOOLEAN vmexit_analysis_mwait_inst_exiting(GUEST_CPU_HANDLE gcpu UNUSED, VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
+static BOOLEAN vmexit_analysis_mwait_inst_exiting(GUEST_CPU_HANDLE gcpu UNUSED, 
+                    VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
     PROCESSOR_BASED_VM_EXECUTION_CONTROLS level1_ctrls;
 
     level1_ctrls.Uint32 = (UINT32)vmcs_read(control_vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS);
     return (level1_ctrls.Bits.Mwait == 1);
 }
 
-static
-BOOLEAN vmexit_analysis_monitor_inst_exiting(GUEST_CPU_HANDLE gcpu UNUSED, VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
+static BOOLEAN vmexit_analysis_monitor_inst_exiting(GUEST_CPU_HANDLE gcpu UNUSED, 
+                    VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
     PROCESSOR_BASED_VM_EXECUTION_CONTROLS level1_ctrls;
 
     level1_ctrls.Uint32 = (UINT32)vmcs_read(control_vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS);
     return (level1_ctrls.Bits.Monitor == 1);
 }
 
-static
-BOOLEAN vmexit_analysis_pause_inst_exiting(GUEST_CPU_HANDLE gcpu UNUSED, VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
+static BOOLEAN vmexit_analysis_pause_inst_exiting(GUEST_CPU_HANDLE gcpu UNUSED, 
+                    VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
     PROCESSOR_BASED_VM_EXECUTION_CONTROLS level1_ctrls;
 
     level1_ctrls.Uint32 = (UINT32)vmcs_read(control_vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS);
     return (level1_ctrls.Bits.Pause == 1);
 }
 
-static
-BOOLEAN vmexit_analysis_softinterrupt_exception_nmi_exiting(GUEST_CPU_HANDLE gcpu UNUSED, VMCS_OBJECT* vmexit_vmcs, VMCS_OBJECT* control_vmcs) {
+static BOOLEAN vmexit_analysis_softinterrupt_exception_nmi_exiting(GUEST_CPU_HANDLE gcpu UNUSED, 
+                    VMCS_OBJECT* vmexit_vmcs, VMCS_OBJECT* control_vmcs) {
     IA32_VMX_VMCS_VM_EXIT_INFO_INTERRUPT_INFO interrupt_info;
     UINT32 vector;
 
@@ -167,16 +164,15 @@ BOOLEAN vmexit_analysis_softinterrupt_exception_nmi_exiting(GUEST_CPU_HANDLE gcp
 
 }
 
-static
-BOOLEAN vmexit_analysis_hardware_interrupt_exiting(GUEST_CPU_HANDLE gcpu UNUSED, VMCS_OBJECT* vmexit_vmcs, VMCS_OBJECT* control_vmcs UNUSED) {
+static BOOLEAN vmexit_analysis_hardware_interrupt_exiting(GUEST_CPU_HANDLE gcpu UNUSED, 
+                    VMCS_OBJECT* vmexit_vmcs, VMCS_OBJECT* control_vmcs UNUSED) {
     PIN_BASED_VM_EXECUTION_CONTROLS level1_pin_ctrls;
 
     level1_pin_ctrls.Uint32 = (UINT32)vmcs_read(vmexit_vmcs, VMCS_CONTROL_VECTOR_PIN_EVENTS);
     return (level1_pin_ctrls.Bits.ExternalInterrupt == 1);
 }
 
-static
-BOOLEAN vmexit_analysis_is_cr3_in_target_list(VMCS_OBJECT* vmcs, UINT64 cr3_value) {
+static BOOLEAN vmexit_analysis_is_cr3_in_target_list(VMCS_OBJECT* vmcs, UINT64 cr3_value) {
     UINT32 cr3_target_count = (UINT32)vmcs_read(vmcs, VMCS_CR3_TARGET_COUNT);
     UINT32 i;
 
@@ -188,12 +184,11 @@ BOOLEAN vmexit_analysis_is_cr3_in_target_list(VMCS_OBJECT* vmcs, UINT64 cr3_valu
             return TRUE;
         }
     }
-
     return FALSE;
 }
 
-static
-BOOLEAN vmexit_analysis_is_exit_on_cr_update(VMCS_OBJECT* vmcs, UINT64 new_value, VMCS_FIELD shadow_field, VMCS_FIELD mask_field) {
+static BOOLEAN vmexit_analysis_is_exit_on_cr_update(VMCS_OBJECT* vmcs, UINT64 new_value, 
+                        VMCS_FIELD shadow_field, VMCS_FIELD mask_field) {
     UINT64 shadow = vmcs_read(vmcs, shadow_field);
     UINT64 mask = vmcs_read(vmcs, mask_field);
     BOOLEAN result;
@@ -203,20 +198,18 @@ BOOLEAN vmexit_analysis_is_exit_on_cr_update(VMCS_OBJECT* vmcs, UINT64 new_value
     return result;
 }
 
-static
-BOOLEAN vmexit_analysis_cr_access_exiting(GUEST_CPU_HANDLE gcpu, VMCS_OBJECT* vmexit_vmcs, VMCS_OBJECT* control_vmcs) {
+static BOOLEAN vmexit_analysis_cr_access_exiting(GUEST_CPU_HANDLE gcpu, 
+                        VMCS_OBJECT* vmexit_vmcs, VMCS_OBJECT* control_vmcs) {
     IA32_VMX_EXIT_QUALIFICATION qualification;
 
     qualification.Uint64 = vmcs_read(vmexit_vmcs, VMCS_EXIT_INFO_QUALIFICATION);
 
-    switch (qualification.CrAccess.AccessType)
-    {
+    switch (qualification.CrAccess.AccessType) {
     case 0: // move to CR
         {
             VMM_IA32_CONTROL_REGISTERS cr_id = vmexit_cr_access_get_cr_from_qualification(qualification.Uint64);
             VMM_IA32_GP_REGISTERS operand = vmexit_cr_access_get_operand_from_qualification(qualification.Uint64);
             UINT64 new_value = gcpu_get_gp_reg(gcpu, operand);
-
             if (cr_id == IA32_CTRL_CR3) {
                 // return TRUE in case the value is not in target list
                 return (vmexit_analysis_is_cr3_in_target_list(control_vmcs, new_value) == FALSE);
@@ -242,7 +235,6 @@ BOOLEAN vmexit_analysis_cr_access_exiting(GUEST_CPU_HANDLE gcpu, VMCS_OBJECT* vm
                     VMM_LOG(mask_anonymous, level_trace,"%s: Currently TPR shadow is not supported\n", __FUNCTION__);
                     VMM_DEADLOOP();
                 }
-
                 return FALSE;
             }
             break;
@@ -258,21 +250,17 @@ BOOLEAN vmexit_analysis_cr_access_exiting(GUEST_CPU_HANDLE gcpu, VMCS_OBJECT* vm
                 PROCESSOR_BASED_VM_EXECUTION_CONTROLS ctrls;
 
                 VMM_ASSERT(cr_id == IA32_CTRL_CR8);
-
                 ctrls.Uint32 = (UINT32)vmcs_read(control_vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS);
                 if (ctrls.Bits.Cr8Store) {
                     return TRUE;
                 }
-
                 if (ctrls.Bits.TprShadow) {
                     // TODO: currently TPR shadow is not supported
                     VMM_LOG(mask_anonymous, level_trace,"%s: Currently TPR shadow is not supported\n");
                     VMM_DEADLOOP();
                 }
-
                 return FALSE;
             }
-
             break;
         }
 
@@ -282,10 +270,8 @@ BOOLEAN vmexit_analysis_cr_access_exiting(GUEST_CPU_HANDLE gcpu, VMCS_OBJECT* vm
             EM64T_CR0 cr0_mask;
 
             VMM_ASSERT(0 == qualification.CrAccess.Number);
-
             cr0_shadow.Uint64 = vmcs_read(control_vmcs, VMCS_CR0_READ_SHADOW);
             cr0_mask.Uint64 = vmcs_read(control_vmcs, VMCS_CR0_MASK);
-
             return ((cr0_mask.Bits.TS == 1) && (cr0_shadow.Bits.TS != 0));
             break;
         }
@@ -297,7 +283,6 @@ BOOLEAN vmexit_analysis_cr_access_exiting(GUEST_CPU_HANDLE gcpu, VMCS_OBJECT* vm
             UINT32 mask_tmp;
 
             VMM_ASSERT(0 == qualification.CrAccess.Number);
-
             cr0_shadow.Uint64 = vmcs_read(control_vmcs, VMCS_CR0_READ_SHADOW);
             cr0_mask.Uint64 = vmcs_read(control_vmcs, VMCS_CR0_MASK);
             mask_tmp = (UINT32)(cr0_mask.Uint64 & 0xffff);
@@ -312,14 +297,12 @@ BOOLEAN vmexit_analysis_cr_access_exiting(GUEST_CPU_HANDLE gcpu, VMCS_OBJECT* vm
     return FALSE;
 }
 
-static
-void* vmexit_analysis_retrieve_ptr_to_additional_memory(IN VMCS_OBJECT* vmcs,
-                                                                IN VMCS_FIELD field,
-                                                                IN BOOLEAN convert_gpa_to_hpa) {
+static void* vmexit_analysis_retrieve_ptr_to_additional_memory(IN VMCS_OBJECT* vmcs,
+                                      IN VMCS_FIELD field, IN BOOLEAN convert_gpa_to_hpa) {
     UINT64 bitmap_pa = vmcs_read(vmcs, field);
     UINT64 bitmap_hpa;
     UINT64 bitmap_hva;
-	MAM_ATTRIBUTES attrs;
+        MAM_ATTRIBUTES attrs;
 
     if (convert_gpa_to_hpa) {
         GUEST_CPU_HANDLE gcpu = vmcs_get_owner(vmcs);
@@ -332,16 +315,13 @@ void* vmexit_analysis_retrieve_ptr_to_additional_memory(IN VMCS_OBJECT* vmcs,
     else {
         bitmap_hpa = bitmap_pa;
     }
-
     if (!hmm_hpa_to_hva(bitmap_hpa, &bitmap_hva)) {
         VMM_DEADLOOP();
     }
-
     return (void*)bitmap_hva;
 }
 
-static
-BOOLEAN vmexit_analysis_is_bit_set_in_bitmap(void* bitmap, UINT32 bit_pos) {
+static BOOLEAN vmexit_analysis_is_bit_set_in_bitmap(void* bitmap, UINT32 bit_pos) {
     UINT32 byte = bit_pos >> 3;
     UINT32 pos_in_byte = bit_pos & 0x7;
     UINT8* bitmap_tmp = (UINT8*)bitmap;
@@ -349,8 +329,7 @@ BOOLEAN vmexit_analysis_is_bit_set_in_bitmap(void* bitmap, UINT32 bit_pos) {
     return ((bitmap_tmp[byte] & (1 << pos_in_byte)) != 0);
 }
 
-static
-BOOLEAN vmexit_analysis_io_exiting(GUEST_CPU_HANDLE gcpu UNUSED, VMCS_OBJECT* vmexit_vmcs, VMCS_OBJECT* control_vmcs) {
+static BOOLEAN vmexit_analysis_io_exiting(GUEST_CPU_HANDLE gcpu UNUSED, VMCS_OBJECT* vmexit_vmcs, VMCS_OBJECT* control_vmcs) {
     PROCESSOR_BASED_VM_EXECUTION_CONTROLS ctrls;
     IA32_VMX_EXIT_QUALIFICATION qualification;
     UINT32 port;
@@ -396,10 +375,8 @@ BOOLEAN vmexit_analysis_io_exiting(GUEST_CPU_HANDLE gcpu UNUSED, VMCS_OBJECT* vm
     }
 }
 
-static
-BOOLEAN vmexit_analysis_msr_access_exiting(GUEST_CPU_HANDLE gcpu,
-                                           VMCS_OBJECT* control_vmcs,
-                                           BOOLEAN is_rdmsr) {
+static BOOLEAN vmexit_analysis_msr_access_exiting(GUEST_CPU_HANDLE gcpu,
+                               VMCS_OBJECT* control_vmcs, BOOLEAN is_rdmsr) {
     MSR_ID msr_id;
     HVA bitmap_hva;
     UINT32 bitmap_pos;
@@ -408,26 +385,21 @@ BOOLEAN vmexit_analysis_msr_access_exiting(GUEST_CPU_HANDLE gcpu,
     PROCESSOR_BASED_VM_EXECUTION_CONTROLS ctrls;
 
     ctrls.Uint32 = (UINT32)vmcs_read(control_vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS);
-
     if (ctrls.Bits.UseMsrBitmaps == 0) {
         return TRUE;
     }
-
     msr_id = (MSR_ID) gcpu_get_native_gp_reg(gcpu, IA32_REG_RCX);
 
     if ((msr_id > 0x1fff) &&
         (msr_id < 0xc0000000)) {
         return TRUE;
     }
-
     if (msr_id > 0xc0001fff) {
         return TRUE;
     }
-
     control_vmcs_level = vmcs_get_level(control_vmcs);
     bitmap_hva = (HVA)vmexit_analysis_retrieve_ptr_to_additional_memory(control_vmcs, VMCS_MSR_BITMAP_ADDRESS, (control_vmcs_level == VMCS_LEVEL_1));
     bitmap_pos = msr_id & 0x1fff;
-
     if (is_rdmsr) {
         if (msr_id <= 0x1fff) {
             bitmap = (void*)bitmap_hva;
@@ -448,34 +420,26 @@ BOOLEAN vmexit_analysis_msr_access_exiting(GUEST_CPU_HANDLE gcpu,
             bitmap = (void*)(bitmap_hva + (3 KILOBYTES));
         }
     }
-
     return vmexit_analysis_is_bit_set_in_bitmap(bitmap, bitmap_pos);
 }
 
-static
-BOOLEAN vmexit_analysis_rdmsr_exiting(GUEST_CPU_HANDLE gcpu, VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
-
+static BOOLEAN vmexit_analysis_rdmsr_exiting(GUEST_CPU_HANDLE gcpu, 
+                VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
     return vmexit_analysis_msr_access_exiting(gcpu, control_vmcs, TRUE);
 }
 
-static
-BOOLEAN vmexit_analysis_wrmsr_exiting(GUEST_CPU_HANDLE gcpu, VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
-
+static BOOLEAN vmexit_analysis_wrmsr_exiting(GUEST_CPU_HANDLE gcpu, 
+                VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs) {
     return vmexit_analysis_msr_access_exiting(gcpu, control_vmcs, FALSE);
 }
 
-static
-BOOLEAN vmexit_analysis_timer_exiting(
-                GUEST_CPU_HANDLE gcpu,
-                VMCS_OBJECT* vmexit_vmcs UNUSED,
-                VMCS_OBJECT* control_vmcs)
+static BOOLEAN vmexit_analysis_timer_exiting( GUEST_CPU_HANDLE gcpu,
+                VMCS_OBJECT* vmexit_vmcs UNUSED, VMCS_OBJECT* control_vmcs)
 {
-//    VMEXIT-request Analysis Algorithm:
-//    ---------------------------------
-//    if Save-Value == 0                VMEXIT-requested = TRUE;
-//    else if (counter <= other-counter)VMEXIT-requested = TRUE;
-//    else                              VMEXIT-requested = FALSE;
-
+    //    VMEXIT-request Analysis Algorithm:
+    //    if Save-Value == 0                VMEXIT-requested = TRUE;
+    //    else if (counter <= other-counter)VMEXIT-requested = TRUE;
+    //    else                              VMEXIT-requested = FALSE;
     PIN_BASED_VM_EXECUTION_CONTROLS pin_exec;
     PIN_BASED_VM_EXECUTION_CONTROLS peer_pin_exec;
     BOOLEAN                         vmexit_requested = FALSE;
@@ -485,48 +449,40 @@ BOOLEAN vmexit_analysis_timer_exiting(
     UINT32                          peer_counter_value;
 
     pin_exec.Uint32 = (UINT32) vmcs_read(control_vmcs, VMCS_CONTROL_VECTOR_PIN_EVENTS);
-    if (1 == pin_exec.Bits.VmxTimer)
-    {
+    if (1 == pin_exec.Bits.VmxTimer) {
         // find other VMCS
         if (VMCS_LEVEL_0 == vmcs_get_level(control_vmcs))
             peer_control_vmcs = gcpu_get_vmcs_layered(gcpu, VMCS_LEVEL_1);
         else if (VMCS_LEVEL_1 == vmcs_get_level(control_vmcs))
             peer_control_vmcs = gcpu_get_vmcs_layered(gcpu, VMCS_LEVEL_0);
-        else
-        {
+        else {
             VMM_ASSERT(0);
             return TRUE;
         }
 
         peer_pin_exec.Uint32 = (UINT32) vmcs_read(peer_control_vmcs, VMCS_CONTROL_VECTOR_PIN_EVENTS);
-        if (0 == peer_pin_exec.Bits.VmxTimer)
-        {
+        if (0 == peer_pin_exec.Bits.VmxTimer) {
             // if other vmcs did not requested it
             // apparently it did the current level vmcs. don't check further
             vmexit_requested = TRUE;
         }
-        else
-        {
+        else {
             // here both layers requested VMEXIT
             vmexit_ctrls.Uint32 = (UINT32) vmcs_read(control_vmcs, VMCS_EXIT_CONTROL_VECTOR);
-            if (vmexit_ctrls.Bits.SaveVmxTimer)
-            {
+            if (vmexit_ctrls.Bits.SaveVmxTimer) {
                 counter_value = (UINT32) vmcs_read(control_vmcs, VMCS_PREEMPTION_TIMER);
                 peer_counter_value = (UINT32) vmcs_read(peer_control_vmcs, VMCS_PREEMPTION_TIMER);
-                if (counter_value <= peer_counter_value)
-                {
+                if (counter_value <= peer_counter_value) {
                     vmexit_requested = TRUE;
                 }
             }
-            else
-            {
+            else {
                 //:BUGBUG: Dima insists to handle this case in a more precise way
                 VMM_ASSERT(0);
                 vmexit_requested = TRUE;
             }
         }
     }
-
     return vmexit_requested;
 }
 
@@ -591,15 +547,12 @@ VMEXIT_IS_CONTROL_REQUESTED_FUNC vmexit_is_control_requested_func[Ia32VmxExitBas
 };
 
 BOOLEAN vmexit_analysis_was_control_requested(GUEST_CPU_HANDLE gcpu,
-                                              VMCS_OBJECT* vmexit_vmcs,
-                                              VMCS_OBJECT* control_vmcs,
-                                              IA32_VMX_EXIT_BASIC_REASON exit_reason) {
+                   VMCS_OBJECT* vmexit_vmcs, VMCS_OBJECT* control_vmcs, 
+                   IA32_VMX_EXIT_BASIC_REASON exit_reason) {
     if (exit_reason >= Ia32VmxExitBasicReasonCount) {
         return FALSE;
     }
-
     VMM_ASSERT(vmexit_vmcs != NULL);
     VMM_ASSERT(control_vmcs != NULL);
-
     return vmexit_is_control_requested_func[exit_reason](gcpu, vmexit_vmcs, control_vmcs);
 }

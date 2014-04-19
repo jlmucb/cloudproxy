@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -51,9 +49,6 @@
 BOOLEAN legacy_scheduling_enabled = TRUE;
 
 extern BOOLEAN vmcs_sw_shadow_disable[];
-
-
-
 extern VMEXIT_HANDLING_STATUS vmexit_cr_access(GUEST_CPU_HANDLE gcpu);
 extern VMEXIT_HANDLING_STATUS vmexit_triple_fault(GUEST_CPU_HANDLE gcpu);
 extern VMEXIT_HANDLING_STATUS vmexit_undefined_opcode(GUEST_CPU_HANDLE gcpu);
@@ -67,7 +62,6 @@ extern VMEXIT_HANDLING_STATUS vmexit_ept_violation(GUEST_CPU_HANDLE gcpu);
 extern VMEXIT_HANDLING_STATUS vmexit_ept_misconfiguration(GUEST_CPU_HANDLE gcpu);
 extern VMEXIT_HANDLING_STATUS msr_failed_vmenter_loading_handler(GUEST_CPU_HANDLE gcpu);
 extern VMEXIT_HANDLING_STATUS vmexit_mtf(GUEST_CPU_HANDLE gcpu);
-
 extern VMEXIT_HANDLING_STATUS vmexit_vmxon_instruction(GUEST_CPU_HANDLE gcpu);
 extern VMEXIT_HANDLING_STATUS vmexit_vmxoff_instruction(GUEST_CPU_HANDLE gcpu);
 extern VMEXIT_HANDLING_STATUS vmexit_vmlaunch_instruction(GUEST_CPU_HANDLE gcpu);
@@ -77,7 +71,6 @@ extern VMEXIT_HANDLING_STATUS vmexit_vmptrld_instruction(GUEST_CPU_HANDLE gcpu);
 extern VMEXIT_HANDLING_STATUS vmexit_vmptrst_instruction(GUEST_CPU_HANDLE gcpu);
 extern VMEXIT_HANDLING_STATUS vmexit_vmread_instruction(GUEST_CPU_HANDLE gcpu);
 extern VMEXIT_HANDLING_STATUS vmexit_vmwrite_instruction(GUEST_CPU_HANDLE gcpu);
-
 VMEXIT_HANDLING_STATUS vmexit_halt_instruction(GUEST_CPU_HANDLE gcpu);
 VMEXIT_HANDLING_STATUS vmexit_xsetbv(GUEST_CPU_HANDLE gcpu);
 VMEXIT_HANDLING_STATUS vmexit_vmentry_failure_due2_machine_check(GUEST_CPU_HANDLE gcpu);
@@ -89,17 +82,9 @@ UINT32 /* ASM_FUNCTION */ vmexit_check_ept_violation(void);
 
 extern int CLI_active(void);
 
-static
-void vmexit_bottom_up_common_handler(GUEST_CPU_HANDLE gcpu,
-                                     UINT32 reason);
-
-static
-void vmexit_bottom_up_all_vmms_skip_instruction(GUEST_CPU_HANDLE gcpu,
-                                                UINT32 reason);
-
-static
-void vmexit_top_down_common_handler(GUEST_CPU_HANDLE gcpu,
-                                    UINT32 reason);
+static void vmexit_bottom_up_common_handler(GUEST_CPU_HANDLE gcpu, UINT32 reason);
+static void vmexit_bottom_up_all_vmms_skip_instruction(GUEST_CPU_HANDLE gcpu, UINT32 reason);
+static void vmexit_top_down_common_handler(GUEST_CPU_HANDLE gcpu, UINT32 reason);
 
 typedef struct _GUEST_VMEXIT_CONTROL {
     GUEST_ID            guest_id;
@@ -191,22 +176,13 @@ static VMEXIT_CLASSIFICATION_FUNC vmexit_classification_func[Ia32VmxExitBasicRea
 #define NMI_DO_PROCESSING()
 
 extern void vmexit_nmi_exception_handlers_install(GUEST_ID guest_id);
-
-
 static void vmexit_handler_invoke(GUEST_CPU_HANDLE gcpu, UINT32 reason);
-
 static GUEST_VMEXIT_CONTROL* vmexit_find_guest_vmexit_control(GUEST_ID guest_id);
 
-/*----------------------------------Code--------------------------------------*/
-
-
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : vmexit_setup()
-*  PURPOSE  : Populate guest table, containing specific VMEXIT handlers with
-*           : default handlers
-*  ARGUMENTS: GUEST_ID num_of_guests
-*  RETURNS  : void
-*-----------------------------------------------------------------------------*/
+// FUNCTION : vmexit_setup()
+// PURPOSE  : Populate guest table, containing specific VMEXIT handlers with
+//          : default handlers
+// ARGUMENTS: GUEST_ID num_of_guests
 void vmexit_initialize(void)
 {
     GUEST_HANDLE   guest;
@@ -221,20 +197,17 @@ void vmexit_initialize(void)
     }
 }
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : vmexit_guest_initialize()
-*  PURPOSE  : Populate guest table, containing specific VMEXIT handlers with
-*           : default handlers
-*  ARGUMENTS: GUEST_ID guest_id
-*  RETURNS  : void
-*-----------------------------------------------------------------------------*/
+// FUNCTION : vmexit_guest_initialize()
+// PURPOSE  : Populate guest table, containing specific VMEXIT handlers with
+//          : default handlers
+// ARGUMENTS: GUEST_ID guest_id
+// RETURNS  : void
 void vmexit_guest_initialize(GUEST_ID guest_id)
 {
     GUEST_VMEXIT_CONTROL *guest_vmexit_control = NULL;
     UINT32 i;
 
     VMM_LOG(mask_uvmm, level_trace,"vmexit_guest_initialize start guest_id=#%d\r\n", guest_id);
-
     guest_vmexit_control = (GUEST_VMEXIT_CONTROL *) vmm_malloc(sizeof(GUEST_VMEXIT_CONTROL));
     // BEFORE_VMLAUNCH
     VMM_ASSERT(guest_vmexit_control);
@@ -248,41 +221,41 @@ void vmexit_guest_initialize(GUEST_ID guest_id)
     }
 
     //  commented out handlers installed by means of vmexit_install_handler
-    //  guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonMsrRead]                      = vmexit_msr_read;
-    //  guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonMsrWrite]                     = vmexit_msr_write;
-    //  guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmcallInstruction]            = vmexit_vmcall;
+    //  guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonMsrRead] = vmexit_msr_read;
+    //  guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonMsrWrite] = vmexit_msr_write;
+    //  guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmcallInstruction] = vmexit_vmcall;
     //  guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonSoftwareInterruptExceptionNmi]= vmexit_software_interrupt_exception_nmi;
-    //  guest_vmexit_control->vmexit_handlers[Ia32VmxExitNmiWindow]                               = vmexit_nmi_window;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonCrAccess]                     = vmexit_cr_access;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonSipiEvent]                    = vmexit_sipi_event;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonInitEvent]                    = vmexit_init_event;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonTripleFault]                  = vmexit_triple_fault;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonHltInstruction]               = vmexit_halt_instruction;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonTaskSwitch]                   = vmexit_task_switch;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmclearInstruction]           = vmexit_vmclear_instruction; 
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmlaunchInstruction]          = vmexit_vmlaunch_instruction;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmptrldInstruction]           = vmexit_vmptrld_instruction;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmptrstInstruction]           = vmexit_vmptrst_instruction;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmreadInstruction]            = vmexit_vmread_instruction; 
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmresumeInstruction]          = vmexit_vmresume_instruction;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmwriteInstruction]           = vmexit_vmwrite_instruction; 
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmxoffInstruction]            = vmexit_vmxoff_instruction;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmxonInstruction]             = vmexit_vmxon_instruction; 
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonInvdInstruction]              = vmexit_invd;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonInvlpgInstruction]            = vmexit_invlpg;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonEptViolation]                 = vmexit_ept_violation;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonEptMisconfiguration]          = vmexit_ept_misconfiguration;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonInveptInstruction]            = vmexit_undefined_opcode;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonFailedVmEnterMsrLoading]      = msr_failed_vmenter_loading_handler;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonInvvpidInstruction]           = vmexit_undefined_opcode;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonGdtrIdtrAccess]               = vmexit_gdtr_idtr_access;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonLdtrTrAccess]                 = vmexit_ldtr_tr_access;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonDrAccess]                     = vmexit_dr_access;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonMonitorTrapFlag]              = vmexit_mtf;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonFailureDueMachineCheck]       = vmexit_vmentry_failure_due2_machine_check;
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonXsetbvInstruction]            = vmexit_xsetbv;
+    //  guest_vmexit_control->vmexit_handlers[Ia32VmxExitNmiWindow]  = vmexit_nmi_window;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonCrAccess] = vmexit_cr_access;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonSipiEvent] = vmexit_sipi_event;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonInitEvent] = vmexit_init_event;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonTripleFault] = vmexit_triple_fault;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonHltInstruction] = vmexit_halt_instruction;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonTaskSwitch] = vmexit_task_switch;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmclearInstruction] = vmexit_vmclear_instruction; 
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmlaunchInstruction] = vmexit_vmlaunch_instruction;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmptrldInstruction] = vmexit_vmptrld_instruction;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmptrstInstruction] = vmexit_vmptrst_instruction;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmreadInstruction] = vmexit_vmread_instruction; 
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmresumeInstruction] = vmexit_vmresume_instruction;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmwriteInstruction] = vmexit_vmwrite_instruction; 
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmxoffInstruction] = vmexit_vmxoff_instruction;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonVmxonInstruction] = vmexit_vmxon_instruction; 
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonInvdInstruction] = vmexit_invd;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonInvlpgInstruction] = vmexit_invlpg;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonEptViolation] = vmexit_ept_violation;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonEptMisconfiguration] = vmexit_ept_misconfiguration;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonInveptInstruction] = vmexit_undefined_opcode;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonFailedVmEnterMsrLoading] = msr_failed_vmenter_loading_handler;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonInvvpidInstruction] = vmexit_undefined_opcode;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonGdtrIdtrAccess] = vmexit_gdtr_idtr_access;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonLdtrTrAccess] = vmexit_ldtr_tr_access;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonDrAccess] = vmexit_dr_access;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonMonitorTrapFlag] = vmexit_mtf;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonFailureDueMachineCheck] = vmexit_vmentry_failure_due2_machine_check;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonXsetbvInstruction] = vmexit_xsetbv;
 #ifdef FAST_VIEW_SWITCH
-    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonInvalidVmfunc]                = vmexit_invalid_vmfunc;
+    guest_vmexit_control->vmexit_handlers[Ia32VmxExitBasicReasonInvalidVmfunc] = vmexit_invalid_vmfunc;
 #endif
 
     // install IO VMEXITs
@@ -313,8 +286,7 @@ void vmexit_guest_initialize(GUEST_ID guest_id)
     VMM_LOG(mask_uvmm, level_trace,"vmexit_guest_initialize end guest_id=#%d\r\n", guest_id);
 }
 
-static
-void vmexit_bottom_up_all_vmms_skip_instruction(GUEST_CPU_HANDLE gcpu,
+static void vmexit_bottom_up_all_vmms_skip_instruction(GUEST_CPU_HANDLE gcpu,
                                                 UINT32 reason) {
     GUEST_HANDLE    guest = gcpu_guest_handle(gcpu);
     GUEST_ID        guest_id = guest_get_id(guest);
@@ -365,8 +337,7 @@ void vmexit_bottom_up_all_vmms_skip_instruction(GUEST_CPU_HANDLE gcpu,
 
 }
 
-void vmexit_bottom_up_common_handler(GUEST_CPU_HANDLE gcpu,
-                                     UINT32 reason) {
+void vmexit_bottom_up_common_handler(GUEST_CPU_HANDLE gcpu, UINT32 reason) {
     GUEST_HANDLE    guest = gcpu_guest_handle(gcpu);
     GUEST_ID        guest_id = guest_get_id(guest);
     GUEST_VMEXIT_CONTROL *guest_vmexit_control = NULL;
@@ -436,8 +407,7 @@ void vmexit_bottom_up_common_handler(GUEST_CPU_HANDLE gcpu,
     }
 }
 
-void vmexit_top_down_common_handler(GUEST_CPU_HANDLE gcpu,
-                                    UINT32 reason) {
+void vmexit_top_down_common_handler(GUEST_CPU_HANDLE gcpu, UINT32 reason) {
     GUEST_HANDLE    guest = gcpu_guest_handle(gcpu);
     GUEST_ID        guest_id = guest_get_id(guest);
     GUEST_VMEXIT_CONTROL *guest_vmexit_control = NULL;
@@ -450,8 +420,6 @@ void vmexit_top_down_common_handler(GUEST_CPU_HANDLE gcpu,
     VMM_ASSERT(guest_vmexit_control);
 
     VMM_ASSERT(reason < Ia32VmxExitBasicReasonCount);
-
-
     hw_interlocked_increment((INT32*)&(guest_vmexit_control->vmexit_counter[reason]));
 
     if (guest_level == GUEST_LEVEL_2 && gcpu_is_native_execution(gcpu)) {
@@ -464,12 +432,10 @@ void vmexit_top_down_common_handler(GUEST_CPU_HANDLE gcpu,
             vmexit_handling_status = VMEXIT_HANDLED;
         }
     }
-
     if (vmexit_handling_status != VMEXIT_HANDLED) {
         // Handle in Level-0
         vmexit_handling_status = guest_vmexit_control->vmexit_handlers[reason](gcpu);
     }
-
     if (vmexit_handling_status != VMEXIT_HANDLED) {
         if (vmexit_handling_status == VMEXIT_HANDLED_RESUME_LEVEL2) {
             gcpu_set_next_guest_level(gcpu, GUEST_LEVEL_2);
@@ -481,9 +447,7 @@ void vmexit_top_down_common_handler(GUEST_CPU_HANDLE gcpu,
     }
 }
 
-void vmexit_handler_invoke(
-    GUEST_CPU_HANDLE    gcpu,
-    UINT32              reason)
+void vmexit_handler_invoke( GUEST_CPU_HANDLE gcpu, UINT32 reason)
 {
     GUEST_HANDLE    guest = gcpu_guest_handle(gcpu);
     GUEST_ID        guest_id = guest_get_id(guest);
@@ -505,13 +469,10 @@ void vmexit_handler_invoke(
 }
 
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : vmentry_failure_function
-*  PURPOSE  : Called upon VMENTER failure
-*  ARGUMENTS: ADDRESS flag - value of processor flags register
-*  RETURNS  : void
-*  NOTES    : is not VMEXIT
-*-----------------------------------------------------------------------------*/
+// FUNCTION : vmentry_failure_function
+// PURPOSE  : Called upon VMENTER failure
+// ARGUMENTS: ADDRESS flag - value of processor flags register
+// RETURNS  : void
 void vmentry_failure_function(ADDRESS flags)
 {
     GUEST_CPU_HANDLE gcpu = scheduler_current_gcpu();
@@ -556,12 +517,9 @@ void vmentry_failure_function(ADDRESS flags)
 
 extern void /* __attribute((_stdcall)) */ vmm_write_xcr(UINT64,UINT64,UINT64);
 extern void /* __attribute((_stdcall)) */ vmm_read_xcr(UINT32*,UINT32*,UINT32);
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : vmexit_xsetbv()
-*  PURPOSE  : Handler for xsetbv instruction
-*  ARGUMENTS: gcpu
-*  RETURNS  : void
-*-----------------------------------------------------------------------------*/
+// FUNCTION : vmexit_xsetbv()
+// PURPOSE  : Handler for xsetbv instruction
+// ARGUMENTS: gcpu
 VMEXIT_HANDLING_STATUS vmexit_xsetbv(GUEST_CPU_HANDLE gcpu)
 {
     UINT32 XCR0_Mask_low,XCR0_Mask_high;
@@ -601,28 +559,23 @@ VMEXIT_HANDLING_STATUS vmexit_xsetbv(GUEST_CPU_HANDLE gcpu)
 
 }
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : vmexit_halt_instruction()
-*  PURPOSE  : Handler for halt instruction
-*  ARGUMENTS: gcpu
-*  RETURNS  : vmexit handling status
-*-----------------------------------------------------------------------------*/
+// FUNCTION : vmexit_halt_instruction()
+// PURPOSE  : Handler for halt instruction
+// ARGUMENTS: gcpu
+// RETURNS  : vmexit handling status
 VMEXIT_HANDLING_STATUS vmexit_halt_instruction(GUEST_CPU_HANDLE gcpu)
 {
     if (!report_uvmm_event(UVMM_EVENT_HALT_INSTRUCTION, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), NULL)) {
         VMM_LOG(mask_uvmm, level_trace, "Report HALT Instruction VMExit failed.\n");
         VMM_DEADLOOP();
     }
-
     return VMEXIT_HANDLED;
 }
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : vmexit_vmentry_failure_due2_machine_check()
-*  PURPOSE  : Handler for vmexit that happens in vmentry due to machine check
-*  ARGUMENTS: gcpu
-*  RETURNS  : VMEXIT_HANDLING_STATUS
-*-----------------------------------------------------------------------------*/
+// FUNCTION : vmexit_vmentry_failure_due2_machine_check()
+// PURPOSE  : Handler for vmexit that happens in vmentry due to machine check
+// ARGUMENTS: gcpu
+// RETURNS  : VMEXIT_HANDLING_STATUS
 #pragma warning(push)
 #pragma warning(disable : 4100)  // Supress warnings about unreferenced formal parameter
 VMEXIT_HANDLING_STATUS vmexit_vmentry_failure_due2_machine_check(GUEST_CPU_HANDLE gcpu)
@@ -641,12 +594,10 @@ VMEXIT_HANDLING_STATUS vmexit_vmentry_failure_due2_machine_check(GUEST_CPU_HANDL
 
 
 #ifdef FAST_VIEW_SWITCH
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : vmexit_invalid_vmfunc()
-*  PURPOSE  : Handler for invalid vmfunc instruction
-*  ARGUMENTS: gcpu
-*  RETURNS  : VMEXIT_HANDLING_STATUS
-*-----------------------------------------------------------------------------*/
+// FUNCTION : vmexit_invalid_vmfunc()
+// PURPOSE  : Handler for invalid vmfunc instruction
+// ARGUMENTS: gcpu
+// RETURNS  : VMEXIT_HANDLING_STATUS
 VMEXIT_HANDLING_STATUS vmexit_invalid_vmfunc(GUEST_CPU_HANDLE gcpu)
 {
     REPORT_FAST_VIEW_SWITCH_DATA fast_view_switch_data;
@@ -654,24 +605,18 @@ VMEXIT_HANDLING_STATUS vmexit_invalid_vmfunc(GUEST_CPU_HANDLE gcpu)
 
     r_ecx = gcpu_get_native_gp_reg(gcpu, IA32_REG_RCX);
     /* Invalid vmfunc report to handler */
-
     VMM_LOG(mask_anonymous, level_trace,
         "%s: view id=%d.Invalid vmfunc vmexit.\n",
             __FUNCTION__,r_ecx);
-
     fast_view_switch_data.reg = r_ecx;
     report_uvmm_event(UVMM_EVENT_INVALID_FAST_VIEW_SWITCH, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), (void *)&fast_view_switch_data);
     return VMEXIT_HANDLED;
-
 }
 #endif
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : vmexit_handler_default()
-*  PURPOSE  : Handler for unimplemented/not supported VMEXITs
-*  ARGUMENTS: IN VMEXIT_EXECUTION_CONTEXT *vmexit - contains guest handles
-*  RETURNS  : void
-*-----------------------------------------------------------------------------*/
+// FUNCTION : vmexit_handler_default()
+// PURPOSE  : Handler for unimplemented/not supported VMEXITs
+// ARGUMENTS: IN VMEXIT_EXECUTION_CONTEXT *vmexit - contains guest handles
 VMEXIT_HANDLING_STATUS vmexit_handler_default(GUEST_CPU_HANDLE gcpu)
 {
     VMCS_OBJECT          *vmcs = gcpu_get_vmcs(gcpu);
@@ -687,10 +632,7 @@ VMEXIT_HANDLING_STATUS vmexit_handler_default(GUEST_CPU_HANDLE gcpu)
 #if defined DEBUG || defined ENABLE_RELEASE_VMM_LOG
     VMM_ASSERT(vcpuid);
     VMM_LOG(mask_uvmm, level_error,"NOT supported VMEXIT(%d) occurred on CPU(%d) Guest(%d) GuestCPU(%d)\n",
-                reason.Bits.BasicReason,
-                hw_cpu_id(),
-                vcpuid->guest_id,
-                vcpuid->guest_cpu_id );
+                reason.Bits.BasicReason, hw_cpu_id(), vcpuid->guest_id, vcpuid->guest_cpu_id );
 #endif
 
     VMM_DEBUG_CODE(
@@ -726,14 +668,12 @@ VMEXIT_HANDLING_STATUS vmexit_handler_default(GUEST_CPU_HANDLE gcpu)
     return VMEXIT_NOT_HANDLED;
 }
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : vmexit_install_handler
-*  PURPOSE  : Install specific VMEXIT handler
-*  ARGUMENTS: GUEST_ID        guest_id
-*           : VMEXIT_HANDLER  handler
-*           : UINT32          reason
-*  RETURNS  : VMM_STATUS
-*-----------------------------------------------------------------------------*/
+// FUNCTION : vmexit_install_handler
+// PURPOSE  : Install specific VMEXIT handler
+// ARGUMENTS: GUEST_ID        guest_id
+//          : VMEXIT_HANDLER  handler
+//          : UINT32          reason
+// RETURNS  : VMM_STATUS
 VMM_STATUS vmexit_install_handler(
     GUEST_ID        guest_id,
     VMEXIT_HANDLER  handler,
@@ -764,12 +704,9 @@ VMM_STATUS vmexit_install_handler(
 extern UINT32 /* __attribute((stdcall)) */ vmexit_reason(void);
 UINT64 /* __attribute((stdcall)) */ gcpu_read_guestrip(void);
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : vmexit_common_handler()
-*  PURPOSE  : Called by vmexit_func() upon each VMEXIT
-*  ARGUMENTS: void
-*  RETURNS  : void
-*-----------------------------------------------------------------------------*/
+
+// FUNCTION : vmexit_common_handler()
+// PURPOSE  : Called by vmexit_func() upon each VMEXIT
 void vmexit_common_handler(void)
 {
     GUEST_CPU_HANDLE        gcpu;
@@ -823,9 +760,7 @@ void vmexit_common_handler(void)
     // clear guest cpu cache data. in fact it clears all VMCS caches too.
     gcpu_vmexit_start(gcpu);
     //host_cpu_restore_dr7(hw_cpu_id());
-
     host_cpu_store_vmexit_gcpu(hw_cpu_id(), gcpu);
-
     if (CLI_active()) {
         // Check keystroke
         vmexit_check_keystroke(gcpu);
@@ -837,21 +772,13 @@ void vmexit_common_handler(void)
                 report_uvmm_event(UVMM_EVENT_UPDATE_ACTIVE_VIEW, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), NULL);
     }
 #endif
-
     // read VMEXIT reason
     vmcs = gcpu_get_vmcs(gcpu);
     reason.Uint32 = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_REASON);
 
-//    VMM_LOG(mask_uvmm, level_trace,"VMEXIT(%d) occurred on CPU(%d) Guest(%d) GuestCPU(%d)\n",
-//                reason.Bits.BasicReason,
-//                hw_cpu_id(),
-//                guest_vcpu(gcpu)->guest_id,
-//                guest_vcpu(gcpu)->guest_cpu_id );
-
     // call add-on VMEXIT if installed
     // if add-on is not interesting in this VMEXIT, it retursn NULL
     // if legacy_scheduling_enabled == FALSE, scheduling must be done in gcpu_resume()
-
     next_gcpu = gcpu_call_vmexit_function(gcpu, reason.Bits.BasicReason);
 
     if (NULL == next_gcpu) {
@@ -873,8 +800,7 @@ void vmexit_common_handler(void)
     gcpu_resume(next_gcpu);
 }
 
-static
-GUEST_VMEXIT_CONTROL* vmexit_find_guest_vmexit_control(GUEST_ID guest_id)
+static GUEST_VMEXIT_CONTROL* vmexit_find_guest_vmexit_control(GUEST_ID guest_id)
 {
     LIST_ELEMENT *iter = NULL;
     GUEST_VMEXIT_CONTROL *guest_vmexit_control = NULL;
@@ -888,10 +814,11 @@ GUEST_VMEXIT_CONTROL* vmexit_find_guest_vmexit_control(GUEST_ID guest_id)
 
     return NULL;
 }
+
+
 #ifdef INCLUDE_UNUSED_CODE
-//
+
 // This function is tuned for XuPro only!!!!!
-//
 void vmexit_direct_call_handler(GUEST_CPU_HANDLE gcpu)
 {
     VMCS_OBJECT             *vmcs  = gcpu_get_vmcs(gcpu);

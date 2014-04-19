@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -79,7 +77,8 @@ VMEXIT_HANDLING_STATUS vmexit_sipi_event(GUEST_CPU_HANDLE gcpu)
 
         /* emulator configures guest with host state, and setup emulator context to real mode,
          * thus we have to configure the guest with the values of Real Mode, i.e.
-         * those values, CPU sets to registers after RESET, though we never launch guest in that way
+         * those values, CPU sets to registers after RESET, 
+         * though we never launch guest in that way
          */
 
         gcpu_set_guest_visible_control_reg(gcpu, IA32_CTRL_CR0, 0x60000010);

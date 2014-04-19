@@ -111,6 +111,7 @@ GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
 
 #ifdef JLMDEBUG
     bprint("Done with guest register\n");
+    LOOP_FOREVER
 #endif
 
     if (! guest) {

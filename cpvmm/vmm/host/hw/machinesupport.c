@@ -20,6 +20,9 @@
 #include "memory_allocator.h"
 #include "file_codes.h"
 #include "hw_vmx_utils.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 
 UINT64 hw_rdtsc(void)
@@ -46,8 +49,7 @@ UINT8 hw_read_port_8( UINT16 port )
         "\tinb      %[port], %[out]\n"
     :[out] "=a" (out)
     :[port] "Nd" (port)
-    :
-    );
+    :);
     return out;
 }
 
@@ -116,9 +118,8 @@ UINT64 hw_read_msr(UINT32 msr_id)
 {
     UINT64 out;
 
-    // RDMSR reads the processor Model-Specific Register (MSR) whose index is stored in ECX, 
-    //   and stores the result in EDX:EAX. 
-
+    // RDMSR reads the processor (MSR) whose index is stored in ECX, 
+    // and stores the result in EDX:EAX. 
     asm volatile (
         "\trdmsr\n"
     :[out] "=A" (out)
@@ -406,14 +407,17 @@ void hw_sidt(void *destination)
     asm volatile(
         "\tsidt (%[destination])\n"
     ::[destination] "p" (destination) 
-    :
-    );
+    :);
     return;
 }
 
 
 INT32  hw_interlocked_increment(INT32 *addend)
 {
+#ifdef JLMDEBUG
+    bprint("hw_interlocked_increment\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
       "\tlock; incl (%[addend])\n"
     :"=m"(addend)
@@ -426,23 +430,30 @@ INT32  hw_interlocked_increment(INT32 *addend)
 UINT64 hw_interlocked_increment64(INT64* p_counter)
 {
     UINT64 ret = 1ULL;
+
+#ifdef JLMDEBUG
+    bprint("hw_interlocked_increment64\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tlock; addq (%[p_counter]), %[ret]\n"
     :"=m" (ret)
     :[ret] "r" (ret), [p_counter] "p" (p_counter)
-    :"memory"
-    );
-        return ret;
+    :"memory");
+    return ret;
 }
 
 INT32 hw_interlocked_decrement(INT32 * minuend)
 {
+#ifdef JLMDEBUG
+    bprint("hw_interlocked_decrement\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
       "\tlock; decl (%[minuend])\n"
     :"=m"(minuend)
     :[minuend] "p" (minuend)
-    :"memory"
-    );
+    :"memory");
     return *minuend;
 }
 
@@ -450,6 +461,10 @@ INT32 hw_interlocked_add(INT32 volatile * addend, INT32 value)
 {
     UINT64 ret = 1ULL;
 
+#ifdef JLMDEBUG
+    bprint("hw_interlocked_add\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tlock; movl %[value], %%eax\n"
         "\tadd (%[addend]), %%rax\n"
@@ -457,13 +472,17 @@ INT32 hw_interlocked_add(INT32 volatile * addend, INT32 value)
     :"=m" (ret)
     :[ret] "r" (ret), [addend] "p" (addend), [value] "r" (value)
     :"memory", "cc");
-
     return ret;
 }
 
 INT32 hw_interlocked_or(INT32 volatile * value, INT32 mask)
 {
     INT32 ret = 0ULL;
+
+#ifdef JLMDEBUG
+    bprint("hw_interlocked_or\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tlock; or %[mask], (%[value])\n"
         "\tmov (%[value]), %[ret]\n"
@@ -476,13 +495,16 @@ INT32 hw_interlocked_or(INT32 volatile * value, INT32 mask)
 INT32 hw_interlocked_xor(INT32 volatile * value, INT32 mask)
 {
     INT32 ret = 0ULL;
+#ifdef JLMDEBUG
+    bprint("hw_interlocked_xor\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tlock; xor %[mask], (%[value])\n"
         "\tmovl (%[value]), %[ret]\n"
     :"=m" (ret)
     :[ret] "r" (ret), [value] "p" (value), [mask] "r" (mask)
     :"memory");
-
     return ret;
 }
 
@@ -500,10 +522,13 @@ INT32 gcc_interlocked_compare_exchange( INT32 volatile * destination,
             INT32 exchange, INT32 comperand)
 {
     INT32 ret = 0ULL;
+#ifdef JLMDEBUG
+    bprint("gcc_interlocked_compare_exchange\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tlock; cmpxchgl %[exchange], %[comperand]\n"
     :"=a" (ret), "+m" (*destination)
-//    :"r" (exchange), "0"(comperand)
     :[ret] "r" (ret), [exchange] "r" (exchange), [comperand] "r" (comperand), [destination] "p" (destination)
     :"memory");
 
@@ -515,20 +540,28 @@ INT32 gcc_interlocked_compare_exchange( INT32 volatile * destination,
 INT64 gcc_interlocked_compare_exchange_8(INT64 volatile * destination,
             INT64 exchange, INT64 comperand)
 {
-        INT64 ret = 0ULL;
+    INT64 ret = 0ULL;
+#ifdef JLMDEBUG
+    bprint("gcc_interlocked_compare_exchange_8\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "lock; cmpxchgq %[exchange], %[comperand] \n\t"
     :"=a" (ret), "+m" (*destination)
-//    :"r" (exchange), "0"(comperand)
-    :[ret] "r" (ret), [exchange] "r" (exchange), [comperand] "r" (comperand), [destination] "p" (destination)
-    :"memory"
-    );
+    :[ret] "r" (ret), [exchange] "r" (exchange), 
+     [comperand] "r" (comperand), [destination] "p" (destination)
+    :"memory");
     return ret;
 }
+
 
 INT32 hw_interlocked_assign(INT32 volatile * target, INT32 new_value)
 {
     INT64 ret = 0ULL;
+#ifdef JLMDEBUG
+    bprint("hw_interlocked_assign\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tlock; xchgl (%[target]), %[new_value]\n"
     :"=a" (ret), "+m" (new_value)
@@ -540,46 +573,54 @@ INT32 hw_interlocked_assign(INT32 volatile * target, INT32 new_value)
 
 
 // find first bit set
-//
 //  forward: LSB->MSB
 //  backward: MSB->LSB
-//
 // Return 0 if no bits set
 // Fills "bit_number" with the set bit position zero based
-//
 // BOOLEAN hw_scan_bit_forward( UINT32& bit_number, UINT32 bitset )
 // BOOLEAN hw_scan_bit_backward( UINT32& bit_number, UINT32 bitset )
-//
 // BOOLEAN hw_scan_bit_forward64( UINT32& bit_number, UINT64 bitset )
 // BOOLEAN hw_scan_bit_backward64( UINT32& bit_number, UINT64 bitset )
-//------------------------------------------------------------------------------
+
+
 BOOLEAN hw_scan_bit_forward( UINT32 *bit_number_ptr, UINT32 bitset )
 {
     BOOLEAN ret = FALSE;
+#ifdef JLMDEBUG
+    bprint("w_scan_bit_forward\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tbsfl (%[bit_number_ptr]), %[bitset]\n"
     :"=a" (ret), "+m" (bit_number_ptr)
     :[ret] "r" (ret), [bit_number_ptr] "p" (bit_number_ptr), [bitset] "r" (bitset)
-    :"memory", "cc"
-    );
-        return bitset ? TRUE : FALSE;
+    :"memory", "cc");
+    return bitset ? TRUE : FALSE;
 }
 
 BOOLEAN hw_scan_bit_forward64( UINT32 *bit_number_ptr, UINT64 bitset )
 {
-        BOOLEAN ret = FALSE;
+    BOOLEAN ret = FALSE;
+#ifdef JLMDEBUG
+    bprint("hw_scan_bit_forward64\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tbsfq (%[bit_number_ptr]), %[bitset]\n"
     :"=a" (ret), "+m" (bit_number_ptr)
-    :[ret] "r" (ret), [bit_number_ptr] "p" (bit_number_ptr), [bitset] "r" (bitset)
+    :[ret] "r" (ret), [bit_number_ptr] "p" (bit_number_ptr), 
+     [bitset] "r" (bitset)
     :"memory", "cc");
-
     return bitset ? TRUE : FALSE;
 }
 
 BOOLEAN hw_scan_bit_backward( UINT32 *bit_number_ptr, UINT32 bitset )
 {
     BOOLEAN ret = FALSE;
+#ifdef JLMDEBUG
+    bprint("hw_scan_bit_backward\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tbsrl (%[bit_number_ptr]), %[bitset]\n"
     :"=a" (ret), "+m" (bit_number_ptr)
@@ -591,12 +632,15 @@ BOOLEAN hw_scan_bit_backward( UINT32 *bit_number_ptr, UINT32 bitset )
 
 BOOLEAN hw_scan_bit_backward64( UINT32 *bit_number_ptr, UINT64 bitset )
 {
+#ifdef JLMDEBUG
+    bprint("hw_scan_bit_backward64\n");
+    LOOP_FOREVER
+#endif
     BOOLEAN ret = FALSE;
     asm volatile(
         "\tbsrq (%[bit_number_ptr]), %[bitset]\n"
     :"=a" (ret), "+m" (bit_number_ptr)
     :[ret] "r" (ret), [bit_number_ptr] "p" (bit_number_ptr), [bitset] "r" (bitset)
-    :"memory", "cc"
-    );
+    :"memory", "cc");
     return bitset ? TRUE : FALSE;
 }

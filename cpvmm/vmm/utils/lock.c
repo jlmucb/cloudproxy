@@ -23,8 +23,7 @@
 #define VMM_ASSERT(__condition)        VMM_ASSERT_LOG(LOCK_C, __condition)
 #define VMM_ASSERT_NOLOCK(__condition) VMM_ASSERT_NOLOCK_LOG(LOCK_C, __condition)
 
-// lock_try_acquire - returns TRUE if lock was aquired and FALSE if lock is taken
-// by another cpu
+// lock_try_acquire - returns TRUE if lock was acquired and FALSE if not
 BOOLEAN lock_try_acquire( VMM_LOCK* lock );
 
 

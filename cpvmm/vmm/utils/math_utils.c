@@ -22,7 +22,6 @@ UINT32 align_forward_to_power_of_2(UINT64 number)
     if(0 == number) {
         return 1;
     }
-
     hw_scan_bit_backward64((UINT32 *)&msb_index, number);
     if(! IS_POW_OF_2(number)) {
         msb_index++;

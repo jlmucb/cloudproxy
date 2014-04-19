@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,34 +23,29 @@
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(HASH64_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(HASH64_C, __condition)
 
-INLINE
-void* hash64_uint64_to_ptr(UINT64 value) {
+INLINE void* hash64_uint64_to_ptr(UINT64 value) {
     return (void*)(value);
 }
 
-INLINE
-UINT64 hash64_ptr_to_uint64(void* ptr) {
+INLINE UINT64 hash64_ptr_to_uint64(void* ptr) {
     return (UINT64)ptr;
 }
 
-INLINE
-void* hash64_allocate_node(HASH64_TABLE* hash) {
+INLINE void* hash64_allocate_node(HASH64_TABLE* hash) {
     HASH64_NODE_ALLOCATION_FUNC node_alloc_func = hash64_get_node_alloc_func(hash);
     void* context = hash64_get_allocation_deallocation_context(hash);
 
     return node_alloc_func(context);
 }
 
-INLINE
-void hash64_free_node(HASH64_TABLE* hash, void* data) {
+INLINE void hash64_free_node(HASH64_TABLE* hash, void* data) {
     HASH64_NODE_DEALLOCATION_FUNC node_dealloc_func = hash64_get_node_dealloc_func(hash);
     void* context = hash64_get_allocation_deallocation_context(hash);
 
     node_dealloc_func(context, data);
 }
 
-INLINE
-void* hash64_mem_alloc(HASH64_TABLE* hash, UINT32 size) {
+INLINE void* hash64_mem_alloc(HASH64_TABLE* hash, UINT32 size) {
     HASH64_INTERNAL_MEM_ALLOCATION_FUNC mem_alloc_func = hash64_get_mem_alloc_func(hash);
     if (mem_alloc_func == NULL) {
         return vmm_memory_alloc(size);
@@ -62,8 +55,7 @@ void* hash64_mem_alloc(HASH64_TABLE* hash, UINT32 size) {
     }
 }
 
-INLINE
-void hash64_mem_free(HASH64_TABLE* hash, void* data) {
+INLINE void hash64_mem_free(HASH64_TABLE* hash, void* data) {
     HASH64_INTERNAL_MEM_DEALLOCATION_FUNC mem_dealloc_func = hash64_get_mem_dealloc_func(hash);
     if (mem_dealloc_func == NULL) {
         vmm_memory_free(data);
@@ -73,9 +65,8 @@ void hash64_mem_free(HASH64_TABLE* hash, void* data) {
     }
 }
 
-static
-HASH64_NODE** hash64_retrieve_appropriate_array_cell(HASH64_TABLE* hash,
-                                                     UINT64 key) {
+static HASH64_NODE** hash64_retrieve_appropriate_array_cell(
+                            HASH64_TABLE* hash, UINT64 key) {
     HASH64_FUNC hash_func;
     UINT32 cell_index;
     HASH64_NODE** array;
@@ -86,8 +77,7 @@ HASH64_NODE** hash64_retrieve_appropriate_array_cell(HASH64_TABLE* hash,
     return &(array[cell_index]);
 }
 
-static
-HASH64_NODE* hash64_find(HASH64_TABLE* hash,
+static HASH64_NODE* hash64_find(HASH64_TABLE* hash,
                          UINT64 key) {
     HASH64_NODE** cell;
     HASH64_NODE* node;
@@ -104,11 +94,8 @@ HASH64_NODE* hash64_find(HASH64_TABLE* hash,
     return node;
 }
 
-static
-BOOLEAN hash64_insert_internal(HASH64_TABLE* hash,
-                              UINT64 key,
-                              UINT64 value,
-                              BOOLEAN update_when_found) {
+static BOOLEAN hash64_insert_internal(HASH64_TABLE* hash,
+                    UINT64 key, UINT64 value, BOOLEAN update_when_found) {
     HASH64_NODE* node = NULL;
 
     if (update_when_found) {
@@ -140,11 +127,8 @@ BOOLEAN hash64_insert_internal(HASH64_TABLE* hash,
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_ASSERT(hash64_node_get_key(node) == key);
     }
-
     hash64_node_set_value(node, value);
-
     VMM_ASSERT(hash64_find(hash, key) != NULL);
-
     return TRUE;
 }
 
@@ -222,12 +206,11 @@ hash_allocation_failed:
     return HASH64_INVALID_HANDLE;
 }
 
-static
-void hash64_destroy_hash_internal(HASH64_TABLE* hash) {
-    HASH64_INTERNAL_MEM_DEALLOCATION_FUNC mem_dealloc_func;
-    HASH64_NODE_DEALLOCATION_FUNC node_dealloc_func;
-    HASH64_NODE** array;
-    UINT32 i;
+static void hash64_destroy_hash_internal(HASH64_TABLE* hash) {
+        HASH64_INTERNAL_MEM_DEALLOCATION_FUNC mem_dealloc_func;
+        HASH64_NODE_DEALLOCATION_FUNC node_dealloc_func;
+        HASH64_NODE** array;
+        UINT32 i;
 
     array = hash64_get_array(hash);
     mem_dealloc_func = hash64_get_mem_dealloc_func(hash);
@@ -277,8 +260,7 @@ UINT32 hash64_get_node_size(void) {
     return sizeof(HASH64_NODE);
 }
 
-HASH64_HANDLE hash64_create_hash(
-                    HASH64_FUNC hash_func,
+HASH64_HANDLE hash64_create_hash( HASH64_FUNC hash_func,
                     HASH64_INTERNAL_MEM_ALLOCATION_FUNC mem_alloc_func,
                     HASH64_INTERNAL_MEM_DEALLOCATION_FUNC mem_dealloc_func,
                     HASH64_NODE_ALLOCATION_FUNC node_alloc_func,
@@ -286,8 +268,8 @@ HASH64_HANDLE hash64_create_hash(
                     void* node_allocation_deallocation_context,
                     UINT32 hash_size) {
     return hash64_create_hash_internal(hash_func, mem_alloc_func, 
-                        mem_dealloc_func, node_alloc_func, node_dealloc_func,
-                        node_allocation_deallocation_context, hash_size, FALSE);
+                    mem_dealloc_func, node_alloc_func, node_dealloc_func,
+                    node_allocation_deallocation_context, hash_size, FALSE);
 }
 
 void hash64_destroy_hash(HASH64_HANDLE hash_handle) {
@@ -332,7 +314,6 @@ BOOLEAN hash64_lookup(HASH64_HANDLE hash_handle, UINT64 key, UINT64* value) {
     if (hash == NULL) {
         return FALSE;
     }
-
     node = hash64_find(hash, key);
     if (node != NULL) {
         VMM_ASSERT(hash64_node_get_key(node) == key);
@@ -343,26 +324,22 @@ BOOLEAN hash64_lookup(HASH64_HANDLE hash_handle, UINT64 key, UINT64* value) {
 }
 
 BOOLEAN hash64_insert(HASH64_HANDLE hash_handle,
-                     UINT64 key,
-                     UINT64 value) {
+                     UINT64 key, UINT64 value) {
     HASH64_TABLE* hash = (HASH64_TABLE*)hash_handle;
 
     if (hash == NULL) {
         return FALSE;
     }
-
     return hash64_insert_internal(hash, key, value, FALSE);
 }
 
 BOOLEAN hash64_update(HASH64_HANDLE hash_handle,
-                     UINT64 key,
-                     UINT64 value) {
+                     UINT64 key, UINT64 value) {
     HASH64_TABLE* hash = (HASH64_TABLE*)hash_handle;
 
     if (hash == NULL) {
         return FALSE;
     }
-
     return hash64_insert_internal(hash, key, value, TRUE);
 }
 
@@ -375,15 +352,12 @@ BOOLEAN hash64_remove(HASH64_HANDLE hash_handle,
     if (hash == NULL) {
         return FALSE;
     }
-
     VMM_ASSERT(hash64_find(hash, key) != NULL);
-
     cell = hash64_retrieve_appropriate_array_cell(hash, key);
     node = *cell;
     if (node == NULL) {
         return FALSE;
     }
-
     if (hash64_node_get_key(node) == key) {
         *cell = hash64_node_get_next(node);
         VMM_ASSERT(hash64_find(hash, key) == NULL);
@@ -392,7 +366,6 @@ BOOLEAN hash64_remove(HASH64_HANDLE hash_handle,
         hash64_dec_element_count(hash);
         return TRUE;
     }
-
 
     while(node != NULL) {
         HASH64_NODE* prev_node = node;
@@ -407,9 +380,7 @@ BOOLEAN hash64_remove(HASH64_HANDLE hash_handle,
             hash64_dec_element_count(hash);
             return TRUE;
         }
-
     }
-
     return FALSE;
 }
 
@@ -484,8 +455,7 @@ UINT32 hash64_get_current_size(HASH64_HANDLE hash_handle) {
     return hash64_get_hash_size(hash);
 }
 
-HASH64_HANDLE hash64_create_multiple_values_hash(
-                    HASH64_FUNC hash_func,
+HASH64_HANDLE hash64_create_multiple_values_hash( HASH64_FUNC hash_func,
                     HASH64_INTERNAL_MEM_ALLOCATION_FUNC mem_alloc_func,
                     HASH64_INTERNAL_MEM_DEALLOCATION_FUNC mem_dealloc_func,
                     HASH64_NODE_ALLOCATION_FUNC node_alloc_func,
@@ -517,20 +487,16 @@ BOOLEAN hash64_lookup_in_multiple_values_hash(HASH64_HANDLE hash_handle,
     if (hash == NULL) {
         return FALSE;
     }
-
     VMM_ASSERT(hash64_is_multiple_values_hash(hash));
-
     top_node = hash64_find(hash, key);
-
     if (top_node == NULL) {
         return FALSE;
     }
-
     top_node_value = hash64_node_get_value(top_node);
     *iter = (HASH64_MULTIPLE_VALUES_HASH_ITERATOR)hash64_uint64_to_ptr(top_node_value);
-
     return TRUE;
 }
+
 
 HASH64_MULTIPLE_VALUES_HASH_ITERATOR
 hash64_multiple_values_hash_iterator_get_next(HASH64_MULTIPLE_VALUES_HASH_ITERATOR iter) {

@@ -99,10 +99,8 @@ BOOLEAN hmm_allocate_continuous_free_virtual_pages(UINT32 num_of_pages,
             loop_counter++;
             continue;
         }
-
         counter++;
         new_allocations_curr_ptr_tmp += PAGE_4KB_SIZE;
-
         if ((new_allocations_curr_ptr_tmp >= HMM_LAST_VIRTUAL_ADDRESS_FOR_NEW_ALLOCATIONS) &&
             (counter < num_of_pages)) {
             new_allocations_curr_ptr = HMM_FIRST_VIRTUAL_ADDRESS_FOR_NEW_ALLOCATIONS;
@@ -111,7 +109,6 @@ BOOLEAN hmm_allocate_continuous_free_virtual_pages(UINT32 num_of_pages,
             loop_counter++;
             continue;
         }
-
         loop_counter++;
     } while (counter != num_of_pages);
 
@@ -123,7 +120,6 @@ BOOLEAN hmm_allocate_continuous_free_virtual_pages(UINT32 num_of_pages,
     }
 
     hmm_set_new_allocations_curr_ptr(g_hmm, new_allocations_curr_ptr);
-
     return TRUE;
 }
 
@@ -193,10 +189,9 @@ static BOOLEAN hmm_map_remaining_memory(IN MAM_ATTRIBUTES mapping_attrs) {
             virt_range_size = 0;
         }
     }
-#if JLMDEBUG
+#if JLMDEBUG1
     bprint("First range: start = %p, end = %p\n", virt_range_start, virt_range_start + virt_range_size);
 #endif
-
     if (!hmm_get_next_non_existent_range(hpa_to_hva, &phys_ranges_iter, &last_covered_phys_addr, &phys_range_start, &phys_range_size)) {
         phys_range_start = last_covered_phys_addr;
         if (phys_range_start < size_4G) {
@@ -206,11 +201,9 @@ static BOOLEAN hmm_map_remaining_memory(IN MAM_ATTRIBUTES mapping_attrs) {
             phys_range_size = 0;
         }
     }
-
-#if JLMDEBUG
+#if JLMDEBUG1
     bprint("second range: start = %p, end = %p\n", virt_range_start, virt_range_start + virt_range_size);
 #endif
-
     do {
         UINT64 actual_size;
         if (virt_range_size <= phys_range_size) {
@@ -219,7 +212,6 @@ static BOOLEAN hmm_map_remaining_memory(IN MAM_ATTRIBUTES mapping_attrs) {
         else {
             actual_size = phys_range_size;
         }
-
         if (actual_size > 0) {
             if (!mam_insert_range(hva_to_hpa, virt_range_start, phys_range_start,  actual_size, mapping_attrs)) {
                 return FALSE;
@@ -231,10 +223,8 @@ static BOOLEAN hmm_map_remaining_memory(IN MAM_ATTRIBUTES mapping_attrs) {
 
             virt_range_start += actual_size;
             phys_range_start += actual_size;
-
             virt_range_size -= actual_size;
             phys_range_size -= actual_size;
-
             last_covered_virt_addr = virt_range_start;
             last_covered_phys_addr = phys_range_start;
 
@@ -249,10 +239,9 @@ static BOOLEAN hmm_map_remaining_memory(IN MAM_ATTRIBUTES mapping_attrs) {
                     }
                 }
             }
-#if JLMDEBUG
+#if JLMDEBUG1
     bprint("inner first range: start = %p, end = %p\n", virt_range_start, virt_range_start + virt_range_size);
 #endif
-
             if (phys_range_size == 0) {
                 if (!hmm_get_next_non_existent_range(hpa_to_hva, &phys_ranges_iter, &last_covered_phys_addr, &phys_range_start, &phys_range_size)) {
                     phys_range_start = last_covered_phys_addr;
@@ -311,7 +300,6 @@ static BOOLEAN hmm_map_remaining_memory(IN MAM_ATTRIBUTES mapping_attrs) {
 
         e820_iter = e820_abstraction_iterator_get_next(E820_ORIGINAL_MAP, e820_iter);
     }
-
     return TRUE;
 }
 
@@ -391,9 +379,7 @@ BOOLEAN hmm_map_phys_page_full_attrs(IN HPA page_hpa, IN MAM_ATTRIBUTES attrs,
     BOOLEAN result = TRUE;
 
     VMM_ASSERT((page_hpa & 0xfff) == 0); // must be aligned on page
-
     lock_acquire(hmm_get_update_lock(g_hmm));
-
     if (mam_get_mapping(hpa_to_hva, page_hpa, &hva_tmp, &attrs_tmp) == MAM_MAPPING_SUCCESSFUL) {
         mapping_result = mam_get_mapping(hva_to_hpa, hva_tmp, &hpa_tmp, &attrs_tmp);
         // BEFORE_VMLAUNCH. Critical check, keep it.
@@ -422,21 +408,17 @@ BOOLEAN hmm_map_phys_page_full_attrs(IN HPA page_hpa, IN MAM_ATTRIBUTES attrs,
     mapping_result = mam_get_mapping(hva_to_hpa, page_hpa, &hpa_tmp, &attrs_tmp);
     if (hmm_is_page_available_for_allocation(mapping_result)) {
         //the 1-1 mapping is possible;
-
         if (!mam_insert_range(hva_to_hpa, page_hpa, page_hpa, PAGE_4KB_SIZE, attrs)) {
             result = FALSE; // insufficient memory
             goto out;
         }
-
         if (!mam_insert_range(hpa_to_hva, page_hpa, page_hpa, PAGE_4KB_SIZE, MAM_NO_ATTRIBUTES)) {
             // try to restore previous hva_to_hpa mapping
             mam_insert_not_existing_range(hva_to_hpa, page_hpa, page_hpa, mapping_result);
             result = FALSE;
             goto out;
         }
-
         *page_hva = page_hpa;
-
         result = TRUE;
         goto out;
     }
@@ -457,12 +439,10 @@ BOOLEAN hmm_map_phys_page_full_attrs(IN HPA page_hpa, IN MAM_ATTRIBUTES attrs,
         result = FALSE;
         goto out;
     }
-
     if (!mam_insert_range(hpa_to_hva, page_hpa, hva_tmp, PAGE_4KB_SIZE, MAM_NO_ATTRIBUTES)) {
         result = FALSE;
         goto out;
     }
-
     *page_hva = hva_tmp;
     result = TRUE;
 
@@ -491,7 +471,6 @@ BOOLEAN hmm_remap_virtual_memory_internal(HVA from_hva, HVA to_hva,
         VMM_LOG(mask_anonymous, level_trace,"%s: from_hva = %P ; to_hva = %P, not aligned\n", __FUNCTION__, from_hva, to_hva);
         return FALSE;
     }
-
     lock_acquire(hmm_get_update_lock(g_hmm));
 
     // Check the validity of ranges
@@ -501,7 +480,6 @@ BOOLEAN hmm_remap_virtual_memory_internal(HVA from_hva, HVA to_hva,
             result = FALSE;
             break;
         }
-
         if (mam_get_mapping(hva_to_hpa, curr_from_hva, &curr_hpa, &curr_attr) != MAM_MAPPING_SUCCESSFUL) {
             VMM_LOG(mask_anonymous, level_trace,"%s: HVA %P in given 'from' range is NOT mapped, returning FALSE\n", __FUNCTION__, curr_from_hva);
             result = FALSE;
@@ -519,22 +497,17 @@ BOOLEAN hmm_remap_virtual_memory_internal(HVA from_hva, HVA to_hva,
     // Remap
     curr_from_hva = from_hva;
     curr_to_hva = to_hva;
-
     while (curr_from_hva < (from_hva + size)) {
         MAM_MAPPING_RESULT mapping_result;
 
         mapping_result = mam_get_mapping(hva_to_hpa, curr_from_hva, &curr_hpa, &curr_attr);
-        VMM_ASSERT(mapping_result == MAM_MAPPING_SUCCESSFUL);
-
         if (change_attributes) {
             curr_attr.uint32 = new_attrs.uint32;
         }
-
         if (!mam_insert_range(hva_to_hpa, curr_to_hva, curr_hpa, PAGE_4KB_SIZE, curr_attr)) {
             VMM_LOG(mask_anonymous, level_trace,"%s: FAILED to insert page (hva=%P) to new range, probably memory allocation error\n", __FUNCTION__, curr_to_hva);
             VMM_DEADLOOP();
         }
-
         if (!mam_insert_not_existing_range(hva_to_hpa, curr_from_hva, PAGE_4KB_SIZE, HMM_INVALID_MEMORY_TYPE)) {
             VMM_LOG(mask_anonymous, level_trace,"%s: FAILED to remove page (hva=%P) from old range, probably memory allocation error\n", __FUNCTION__, curr_from_hva);
             VMM_DEADLOOP();
@@ -544,7 +517,6 @@ BOOLEAN hmm_remap_virtual_memory_internal(HVA from_hva, HVA to_hva,
             VMM_LOG(mask_anonymous, level_trace,"%s: FAILED to remap  HPA (%P) --> HVA (%P) , probably memory allocation error\n", __FUNCTION__, curr_hpa, curr_to_hva);
             VMM_DEADLOOP();
         }
-
         curr_from_hva += PAGE_4KB_SIZE;
         curr_to_hva += PAGE_4KB_SIZE;
     }
@@ -557,8 +529,6 @@ BOOLEAN hmm_remap_virtual_memory_internal(HVA from_hva, HVA to_hva,
         ipc_execute_handler(dest, hmm_flash_tlb_callback, NULL);
         hw_flash_tlb();
     }
-
-    // result remains TRUE;
 
 out:
     lock_release(hmm_get_update_lock(g_hmm));
@@ -582,7 +552,6 @@ static BOOLEAN hmm_alloc_additional_continuous_virtual_buffer_internal(
         VMM_LOG(mask_anonymous, level_trace,"%s: current_hva = %P ; additional_hva = %P, not aligned\n", __FUNCTION__, current_hva, additional_hva);
         return FALSE;
     }
-
     lock_acquire(hmm_get_update_lock(g_hmm));
 
     // Check the validity of ranges
@@ -592,17 +561,14 @@ static BOOLEAN hmm_alloc_additional_continuous_virtual_buffer_internal(
             result = FALSE;
             break;
         }
-
         if (mam_get_mapping(hva_to_hpa, curr_from_hva, &curr_hpa, &curr_attr) != MAM_MAPPING_SUCCESSFUL) {
             VMM_LOG(mask_anonymous, level_trace,"%s: HVA %P in current range is NOT mapped, returning FALSE\n", __FUNCTION__, curr_from_hva);
             result = FALSE;
             break;
         }
-
         curr_from_hva += PAGE_4KB_SIZE;
         curr_to_hva += PAGE_4KB_SIZE;
     }
-
     if (!result) {
         goto out;
     }
@@ -610,27 +576,20 @@ static BOOLEAN hmm_alloc_additional_continuous_virtual_buffer_internal(
     // Additional mapping
     curr_from_hva = current_hva;
     curr_to_hva = additional_hva;
-
     while (curr_from_hva < (current_hva + size)) {
         MAM_MAPPING_RESULT mapping_result;
 
         mapping_result = mam_get_mapping(hva_to_hpa, curr_from_hva, &curr_hpa, &curr_attr);
-        VMM_ASSERT(mapping_result == MAM_MAPPING_SUCCESSFUL);
-
         if (change_attributes) {
             curr_attr.uint32 = new_attrs.uint32;
         }
-
         if (!mam_insert_range(hva_to_hpa, curr_to_hva, curr_hpa, PAGE_4KB_SIZE, curr_attr)) {
             VMM_LOG(mask_anonymous, level_trace,"%s: FAILED to insert page (hva=%P) to new range, probably memory allocation error\n", __FUNCTION__, curr_to_hva);
             VMM_DEADLOOP();
         }
-
         curr_from_hva += PAGE_4KB_SIZE;
         curr_to_hva += PAGE_4KB_SIZE;
     }
-
-// result remains TRUE;
 
 out:
     lock_release(hmm_get_update_lock(g_hmm));
@@ -657,25 +616,21 @@ BOOLEAN remove_initial_hva_to_hpa_mapping_for_extended_heap(void)
         MAM_ATTRIBUTES attrs_tmp;
 
         page_hva = g_additional_heap_base + (i * PAGE_4KB_SIZE);
-                
         mapping_result = mam_get_mapping(hva_to_hpa, page_hva, &page_hpa, &attrs_tmp);
         VMM_ASSERT(mapping_result == MAM_MAPPING_SUCCESSFUL);
-
         mapping_result = mam_get_mapping(hpa_to_hva, page_hpa, &page_hva, &attrs_tmp);
         VMM_ASSERT(mapping_result == MAM_MAPPING_SUCCESSFUL);
 
-
         // Remove old HVA-->HPA mapping
-        if (!mam_insert_not_existing_range(hva_to_hpa, page_hva, PAGE_4KB_SIZE, HMM_INVALID_MEMORY_TYPE)) 
-                {
+        if (!mam_insert_not_existing_range(hva_to_hpa, page_hva, PAGE_4KB_SIZE, HMM_INVALID_MEMORY_TYPE)) {
             result = FALSE;
             break;
         }
     }
-
     lock_release(hmm_get_update_lock(g_hmm));
     return result;
 }
+
 
 BOOLEAN build_extend_heap_hpa_to_hva(void)
 {
@@ -693,7 +648,6 @@ BOOLEAN build_extend_heap_hpa_to_hva(void)
         MAM_ATTRIBUTES attrs_tmp;
 
         page_hva = g_additional_heap_base + (i * PAGE_4KB_SIZE);
-                
         mapping_result = mam_get_mapping(hva_to_hpa, page_hva, &page_hpa, &attrs_tmp);
         VMM_ASSERT(mapping_result == MAM_MAPPING_SUCCESSFUL);
 
@@ -703,7 +657,6 @@ BOOLEAN build_extend_heap_hpa_to_hva(void)
             break;
         }
     }
-
     lock_release(hmm_get_update_lock(g_hmm));
     return result;
 }
@@ -721,7 +674,6 @@ static BOOLEAN hmm_map_continuous_virtual_buffer_for_pages_internal(
     IPC_DESTINATION dest;
 
     lock_acquire(hmm_get_update_lock(g_hmm));
-
     if (!hmm_allocate_continuous_free_virtual_pages(num_of_pages, &buffer_hva)) {
         result = FALSE;
         goto out;
@@ -733,9 +685,7 @@ static BOOLEAN hmm_map_continuous_virtual_buffer_for_pages_internal(
             UINT64 page_hpa = hpas_array[i];
             UINT64 page_hva;
             MAM_ATTRIBUTES attrs_tmp;
-
             UINT64 page_hpa_tmp;
-
 
             if (mam_get_mapping(hpa_to_hva, page_hpa, &page_hva, &attrs_tmp) != MAM_MAPPING_SUCCESSFUL) {
                 VMM_LOG(mask_anonymous, level_trace,"%s: ERROR: There is HPA (%P) is not mapped and transferring attributes is requested, please map\n", __FUNCTION__, page_hpa);
@@ -759,7 +709,6 @@ static BOOLEAN hmm_map_continuous_virtual_buffer_for_pages_internal(
             result = FALSE;
             goto out;
         }
-
         if (change_attributes) {
             attrs.uint32 = new_attrs.uint32;
         }
@@ -811,7 +760,6 @@ static BOOLEAN hmm_map_continuous_virtual_buffer_for_pages_internal(
             if (!mam_insert_range(hpa_to_hva, page_hpa, page_hva, PAGE_4KB_SIZE, MAM_NO_ATTRIBUTES)) {
                 VMM_LOG(mask_anonymous, level_trace,"%s: Insufficient memory\n", __FUNCTION__);
                 // BEFORE_VMLAUNCH
-                VMM_ASSERT(0);
                 result = FALSE;
                 goto out;
             }
@@ -930,10 +878,6 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
     
 #if 0
     image_section_info = exec_image_section_first((const void*)startup_struct->vmm_memory_layout[uvmm_image].base_address, startup_struct->vmm_memory_layout[uvmm_image].image_size, &image_iter);
-#else
-    image_section_info = NULL;
-#endif
-
     while (image_section_info != NULL) {
         UINT64 section_start = (UINT64)image_section_info->start;
         UINT64 section_end = ALIGN_FORWARD(section_start + image_section_info->size, PAGE_4KB_SIZE);
@@ -972,6 +916,7 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
 
         image_section_info = exec_image_section_next(&image_iter);
     }
+#endif
 
 #if 0
     // update permissions for the thunk image
@@ -1014,7 +959,6 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
         VMM_LOG(mask_anonymous, level_trace,"Failed to remove mapping of first page\n");
         goto destroy_hpa_to_hva_mapping_exit;
     }
-
     VMM_LOG(mask_anonymous, level_trace,"HMM: Successfully unmapped first virtual page HVA(%P) (which was mapped to HPA(%P))\n", 0, first_page_hpa);
 
     if (!hmm_allocate_free_virtual_page(&first_page_new_hva)) {
@@ -1051,40 +995,34 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
         HPA page_hpa_tmp;
         // JLM (FIX) fix addresses so we can have stack guard
 #if 0
-        for (exception_stack_index = 0; exception_stack_index < idt_get_extra_stacks_required(); 
-                 exception_stack_index++) {
+        for (exception_stack_index = 0; 
+             exception_stack_index < idt_get_extra_stacks_required(); 
+             exception_stack_index++) {
             UINT64 current_extra_stack_hva;
 
             if (!vmm_stacks_get_exception_stack_for_cpu(i, exception_stack_index, &page)) {
                 VMM_LOG(mask_anonymous, level_trace,"HMM ERROR: Failed to retrieve page to guard from the stack\n");
                 // BEFORE_VMLAUNCH
-                VMM_ASSERT(0);
                 goto destroy_hpa_to_hva_mapping_exit;
             }
 
             if (!hmm_hva_to_hpa(page, &page_hpa)) {
                 VMM_LOG(mask_anonymous, level_trace,"HMM ERROR: Failed to map HVA (%P) -> HPA\n", page);
                 // BEFORE_VMLAUNCH
-                VMM_ASSERT(0);
                 goto destroy_hpa_to_hva_mapping_exit;
             }
-
 
             if (!mam_insert_not_existing_range(hva_to_hpa, page, PAGE_4KB_SIZE, HMM_INVALID_MEMORY_TYPE)) {
                 VMM_LOG(mask_anonymous, level_trace,"HMM ERROR: Failed to remove HVA -> HPA mapping\n");
                 // BEFORE_VMLAUNCH
-                VMM_ASSERT(0);
                 goto destroy_hpa_to_hva_mapping_exit;
             }
 
             if (!mam_insert_not_existing_range(hpa_to_hva, page_hpa, PAGE_4KB_SIZE, HMM_INVALID_MEMORY_TYPE)) {
                 VMM_LOG(mask_anonymous, level_trace,"HMM ERROR: Failed to remove HPA -> HVA mapping\n");
                 // BEFORE_VMLAUNCH
-                VMM_ASSERT(0);
                 goto destroy_hpa_to_hva_mapping_exit;
             }
-
-
             VMM_LOG(mask_anonymous, level_trace,"\tRemoved the map for HVA (%P) <--> HPA (%P).\n", page, page_hpa);
 
             // Make sure the mapping for page doesn't exist
@@ -1096,7 +1034,6 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
             if (!hmm_allocate_continuous_free_virtual_pages(3, &current_extra_stack_hva)) {
                 VMM_LOG(mask_anonymous, level_trace,"HMM ERROR: Failed to allocate pages for extra stacks\n");
                 // BEFORE_VMLAUNCH
-                VMM_ASSERT(0);
                 goto destroy_hpa_to_hva_mapping_exit;
             }
 
@@ -1157,14 +1094,15 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
     bprint("hmm_initialize position 10\n");
 #endif
     // For late launch support additional heap 
-    // Patch the MAM to build non-contiguous pa memory to a contiguous va for the heap
+    // Patch the MAM to build non-contiguous pa memory to a contiguous 
+    // va for the heap
     if (g_is_post_launch) {
         if (g_additional_heap_pa) {
             BOOLEAN ret;
             
-            //hmm_remap_physical_pages_to_continuous_wb_virtal_addr(
-            ret = hmm_alloc_continuous_wb_virtual_buffer_for_pages( (UINT64 *)g_additional_heap_pa,
-                    g_heap_pa_num, TRUE, FALSE, &g_additional_heap_base);
+            ret = hmm_alloc_continuous_wb_virtual_buffer_for_pages(
+                        (UINT64 *)g_additional_heap_pa, g_heap_pa_num, TRUE, 
+                        FALSE, &g_additional_heap_base);
             VMM_LOG(mask_anonymous, level_trace,"HMM: Additional heap is mapped to VA = %p\n", 
                        (void *)g_additional_heap_base);
             if ((!ret) || (g_additional_heap_base == 0))
@@ -1216,12 +1154,10 @@ BOOLEAN hmm_hva_to_hpa(IN HVA hva, OUT HPA* hpa) {
         *hpa = (HPA) hva;
         return TRUE;
         }
-
     if (mam_get_mapping(hva_to_hpa, hva_tmp, &hpa_tmp, &attrs_tmp) == MAM_MAPPING_SUCCESSFUL) {
         *hpa = *((HPA*)(&hpa_tmp));
         return TRUE;
     }
-
     return FALSE;
 }
 
@@ -1231,17 +1167,15 @@ BOOLEAN hmm_hpa_to_hva(IN HPA hpa, OUT HVA* hva) {
     MAM_ATTRIBUTES attrs_tmp;
     UINT64 hpa_tmp = (UINT64)hpa;
 
-        //Before hpa/hva mapping is setup, assume 1:1 mapping
-        if (hpa_to_hva == MAM_INVALID_HANDLE) {
+    //Before hpa/hva mapping is setup, assume 1:1 mapping
+    if (hpa_to_hva == MAM_INVALID_HANDLE) {
         *hva = (HVA) hpa;
         return TRUE;
         }
-
     if (mam_get_mapping(hpa_to_hva, hpa_tmp, &hva_tmp, &attrs_tmp) == MAM_MAPPING_SUCCESSFUL) {
         *hva = *((HVA*)(&hva_tmp));
         return TRUE;
     }
-
     return FALSE;
 }
 
@@ -1253,7 +1187,6 @@ BOOLEAN hmm_is_new_pat_value_consistent(UINT64 pat_value) {
         (new_uc_index != hmm_get_uc_pat_index(g_hmm))) {
         return FALSE;
     }
-
     return TRUE;
 }
 
@@ -1266,7 +1199,6 @@ BOOLEAN hmm_unmap_hpa(IN HPA hpa, UINT64 size, BOOLEAN flush_tlbs_on_all_cpus) {
     HPA hpa_tmp;
 
     lock_acquire(hmm_get_update_lock(g_hmm));
-
     if ((ALIGN_BACKWARD(hpa, PAGE_4KB_SIZE) != hpa) ||
         (ALIGN_FORWARD(size, PAGE_4KB_SIZE) != size)) {
         result = FALSE;
@@ -1274,33 +1206,27 @@ BOOLEAN hmm_unmap_hpa(IN HPA hpa, UINT64 size, BOOLEAN flush_tlbs_on_all_cpus) {
     }
 
     while (size != 0) {
-
         if (hmm_hpa_to_hva(hpa, &hva)) {
-
             // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
             VMM_ASSERT(hmm_hva_to_hpa(hva, &hpa_tmp) && (hpa_tmp == hpa));
             // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
             VMM_ASSERT(ALIGN_BACKWARD(hva, PAGE_4KB_SIZE) == hva);
-
             if (!mam_insert_not_existing_range(hpa_to_hva, hpa, PAGE_4KB_SIZE, HMM_INVALID_MEMORY_TYPE)) {
                 VMM_LOG(mask_anonymous, level_trace,"HMM ERROR: Failed to unmap HPA (%P) mapping\n", hpa);
                 result = FALSE;
                 goto out;
             }
-
             if (!mam_insert_not_existing_range(hva_to_hpa, hva, PAGE_4KB_SIZE, HMM_INVALID_MEMORY_TYPE)) {
                 VMM_LOG(mask_anonymous, level_trace,"HMM ERROR: Failed to unmap HPA (%P) mapping\n", hpa);
                 result = FALSE;
                 goto out;
             }
         }
-
         size -= PAGE_4KB_SIZE;
         hpa += PAGE_4KB_SIZE;
     }
 
     hw_flash_tlb();
-
     if (flush_tlbs_on_all_cpus) {
         IPC_DESTINATION dest;
 
@@ -1349,19 +1275,14 @@ VMM_PHYS_MEM_TYPE hmm_get_final_memory_type_after_hva_access(IN HVA hva) {
     if (mam_get_mapping(hva_to_hpa, hva, &hpa, &attrs) != MAM_MAPPING_SUCCESSFUL) {
         return VMM_PHYS_MEM_UNDEFINED;
     }
-
     mtrr_mem_type = mtrrs_abstraction_get_memory_type(hpa);
     if (mtrr_mem_type == VMM_PHYS_MEM_UNDEFINED) {
         return VMM_PHYS_MEM_UNDEFINED;
     }
-
     VMM_ASSERT(mtrr_mem_type <= VMM_PHYS_MEM_LAST_TYPE);
-
     pat_index = attrs.paging_attr.pat_index;
-
     pat_memory_type = pat_mngr_retrieve_current_pat_mem_type(pat_index);
     VMM_ASSERT(pat_memory_type <= VMM_PHYS_MEM_LAST_TYPE);
-
     return (g_hmm->mem_types_table[mtrr_mem_type][pat_index]);
 }
 #endif
@@ -1451,7 +1372,6 @@ BOOLEAN hmm_enable_update_of_page(HVA page) {
     MAM_ATTRIBUTES attrs_to_add;
 
     lock_acquire(hmm_get_update_lock(g_hmm));
-
 #ifdef DEBUG
     {
         HPA page_hpa;

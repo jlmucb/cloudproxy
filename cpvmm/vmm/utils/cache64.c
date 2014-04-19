@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -102,10 +100,8 @@ void cache64_write(CACHE64_OBJECT cache, UINT64 value, UINT32 entry_no)
 {
     if (vmcs_sw_shadow_disable[hw_cpu_id()])
         return;
-        
     VMM_ASSERT(cache);
     VMM_ASSERT(entry_no < cache->num_of_entries);
-
     if (entry_no < cache->num_of_entries) {
         if ( ! (cache->table[entry_no] == value && CACHE_FIELD_IS_VALID(cache, entry_no))) {
             cache->table[entry_no] = value;
@@ -123,11 +119,9 @@ BOOLEAN cache64_read(CACHE64_OBJECT cache, UINT64 *p_value, UINT32 entry_no)
 
     if (vmcs_sw_shadow_disable[hw_cpu_id()])
                 return FALSE;
-
     VMM_ASSERT(cache);
     VMM_ASSERT(entry_no < cache->num_of_entries);
     VMM_ASSERT(p_value);
-
     if (entry_no < cache->num_of_entries) {
         if (CACHE_FIELD_IS_VALID(cache, entry_no)) {
             *p_value = cache->table[entry_no];
@@ -209,7 +203,8 @@ void cache64_flush_dirty(
 }
 
 #ifdef INCLUDE_LAYERING
-void cache64_flush_to_memory(CACHE64_OBJECT cache, void *p_dest, UINT32 max_bytes)
+void cache64_flush_to_memory(CACHE64_OBJECT cache, void *p_dest, 
+                             UINT32 max_bytes)
 {
     UINT32 cache_size = sizeof(*cache->table) * cache->num_of_entries;
     VMM_ASSERT(cache);
@@ -229,10 +224,11 @@ BOOLEAN cache64_is_dirty(CACHE64_OBJECT cache)
 
     return (0 != BITMAP_GET(cache->flags, CACHE_DIRTY_FLAG));
 }
+
+
 void cache64_destroy(CACHE64_OBJECT cache)
 {
     VMM_ASSERT(cache);
-
     vmm_mfree(cache->table);
     vmm_mfree(cache->dirty_bits);
     vmm_mfree(cache->valid_bits);

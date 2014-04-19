@@ -1,18 +1,16 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef MEMORY_ADDRESS_MAPPER_H
 #define MEMORY_ADDRESS_MAPPER_H
@@ -22,7 +20,6 @@
 
 typedef UINT64 MAM_HVA;
 typedef UINT64 MAM_HPA;
-
 
 typedef union MAM_ENTRY_U {
     struct {
@@ -85,7 +82,7 @@ typedef union MAM_ENTRY_U {
         UINT32
             readable   :1,
             writable   :1,
-					   :5,
+                                           :5,
             sp         :1,
             avl_1      :1, /* set for leaf entry */
             avl_2      :2, /* MAM_INNER_VTDPT_ENTRY */
@@ -128,20 +125,20 @@ typedef enum {
     MAM_VTDPT_ENTRY = 0x3       // 011
 } MAM_BASIC_ENTRY_TYPE;
 
-#define MAM_INNER_ENTRY_TYPE_MASK 0x3	//011
+#define MAM_INNER_ENTRY_TYPE_MASK 0x3   //011
 
 #define MAM_LEAF_ENTRY_TYPE_MASK 0x4 // 100
 
 // Note that this entry type will reside in three avl bits in entry. In oder to check whether it is leaf just check the MSB (third bit)
 typedef enum {
-    MAM_INNER_PAGE_TABLE_ENTRY = MAM_PAGE_TABLE_ENTRY,                              // 000
-    MAM_INNER_EPT_ENTRY = MAM_EPT_ENTRY,                                            // 001
-    MAM_INNER_INTERNAL_ENTRY = MAM_INTERNAL_ENTRY,                                  // 010
-    MAM_INNER_VTDPT_ENTRY = MAM_VTDPT_ENTRY,										// 011
+    MAM_INNER_PAGE_TABLE_ENTRY = MAM_PAGE_TABLE_ENTRY,  // 000
+    MAM_INNER_EPT_ENTRY = MAM_EPT_ENTRY,                // 001
+    MAM_INNER_INTERNAL_ENTRY = MAM_INTERNAL_ENTRY,      // 010
+    MAM_INNER_VTDPT_ENTRY = MAM_VTDPT_ENTRY,            // 011
     MAM_LEAF_PAGE_TABLE_ENTRY = (MAM_PAGE_TABLE_ENTRY | MAM_LEAF_ENTRY_TYPE_MASK),  // 100
-    MAM_LEAF_EPT_ENTRY = (MAM_EPT_ENTRY | MAM_LEAF_ENTRY_TYPE_MASK),                // 101
-    MAM_LEAF_INTERNAL_ENTRY = (MAM_INTERNAL_ENTRY | MAM_LEAF_ENTRY_TYPE_MASK),      // 110
-	MAM_LEAF_VTDPT_ENTRY = (MAM_VTDPT_ENTRY | MAM_LEAF_ENTRY_TYPE_MASK)				// 111
+    MAM_LEAF_EPT_ENTRY = (MAM_EPT_ENTRY | MAM_LEAF_ENTRY_TYPE_MASK), // 101
+    MAM_LEAF_INTERNAL_ENTRY = (MAM_INTERNAL_ENTRY | MAM_LEAF_ENTRY_TYPE_MASK),  // 110
+        MAM_LEAF_VTDPT_ENTRY = (MAM_VTDPT_ENTRY | MAM_LEAF_ENTRY_TYPE_MASK)     // 111
 } MAM_ENTRY_TYPE;
 
 typedef enum {
@@ -149,18 +146,18 @@ typedef enum {
     MAM_SET_ATTRS,
     MAM_CLEAR_ATTRS,
 //RTDBEUG
-	MAM_OVERWRITE_ATTRS,
+        MAM_OVERWRITE_ATTRS,
 } MAM_UPDATE_OP;
 
-/*******************************************************************
-*  The adjusted guest address widths corresponding to various bit indices of 
-*  SAGAW field are:
-* 0: 30-bit AGAW (2-level page-table)
-* 1: 39-bit AGAW (3-level page-table)
-* 2: 48-bit AGAW (4-level page-table)
-* 3: 57-bit AGAW (5-level page-table)
-* 4: 64-bit AGAW (6-level page-table)
-*******************************************************************/
+/*
+ *  The adjusted guest address widths corresponding to various bit indices of 
+ *  SAGAW field are:
+ * 0: 30-bit AGAW (2-level page-table)
+ * 1: 39-bit AGAW (3-level page-table)
+ * 2: 48-bit AGAW (4-level page-table)
+ * 3: 57-bit AGAW (5-level page-table)
+ * 4: 64-bit AGAW (6-level page-table)
+ */
 typedef enum{
     MAM_VTDPT_LEVEL_2 = 0x0,
     MAM_VTDPT_LEVEL_3 = 0x1,
@@ -169,7 +166,6 @@ typedef enum{
     MAM_VTDPT_LEVEL_6 = 0x4,
 } MAM_VTDPT_LEVEL;
 
-//-----------------------------------------------------------------------------
 
 struct MAM_S;
 typedef struct MAM_S MAM;
@@ -180,7 +176,6 @@ typedef struct MAM_LEVEL_OPS_S MAM_LEVEL_OPS;
 struct MAM_ENTRY_OPS_S;
 typedef struct MAM_ENTRY_OPS_S MAM_ENTRY_OPS;
 
-//-----------------------------------------------------------------------------
 
 typedef UINT64 (*MAM_GET_SIZE_COVERED_BY_ENTRY_FN)(void);
 typedef UINT32 (*MAM_GET_ENTRY_INDEX_FN)(UINT64);
@@ -194,7 +189,6 @@ struct MAM_LEVEL_OPS_S {
     MAM_GET_UPPER_LEVEL_OPS_FN mam_get_upper_level_ops_fn;
 };
 
-//-----------------------------------------------------------------------------
 
 typedef UINT64 (*MAM_GET_ADDRESS_FROM_LEAF_ENTRY)(MAM_ENTRY*, const MAM_LEVEL_OPS*);
 typedef MAM_ATTRIBUTES (*MAM_GET_ATTRIBUTES_FROM_ENTRY)(MAM_ENTRY*, const MAM_LEVEL_OPS*);
@@ -218,7 +212,6 @@ struct MAM_ENTRY_OPS_S {
     MAM_GET_LEAF_ENTRY_TYPE_FN mam_get_leaf_entry_type_fn;
 };
 
-//-----------------------------------------------------------------------------
 
 struct MAM_S {
     MAM_HVA first_table;
@@ -231,7 +224,7 @@ struct MAM_S {
     BOOLEAN is_32bit_page_tables;
     MAM_VTDPT_SUPER_PAGE_SUPPORT vtdpt_supper_page_support;
     MAM_VTDPT_SNOOP_BEHAVIOR vtdpt_snoop_behavior;
-	MAM_VTDPT_TRANS_MAPPING vtdpt_trans_mapping;
+        MAM_VTDPT_TRANS_MAPPING vtdpt_trans_mapping;
     UINT8 ept_hw_ve_support;
     MAM_MEMORY_RANGES_ITERATOR last_iterator;
     UINT64 last_range_size;

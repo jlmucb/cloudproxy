@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -157,10 +155,8 @@ void vmm_stacks_get_details(OUT HVA* lowest_addr_used, OUT UINT32* size) {
     *size = num_of_cpus * single_size;
 }
 
-/*
- * Function Name: vmm_stacks_get_exception_stack_for_cpu
- * Parameters: Validation for cpu_id is performed by caller function. Function assumes valid input.
- */
+
+// Validation for cpu_id is performed by caller function. 
 BOOLEAN vmm_stacks_get_exception_stack_for_cpu(IN CPU_ID cpu_id,
                                    IN UINT32 stack_num, OUT HVA* page_addr) {
     UINT64 base;

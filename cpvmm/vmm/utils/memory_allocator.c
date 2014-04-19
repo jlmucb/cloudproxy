@@ -66,21 +66,21 @@ static void* vmm_mem_allocate_internal( char *file_name,
     UINT64 allocated_addr;
     MEM_ALLOCATION_INFO *alloc_info;
     UINT32 size_to_request;
-
 #ifdef JLMDEBUG
     bprint("In vmm_mem_allocate_internal size: %d, align: %08x\n",
             size, alignment);
 #endif
 
-    if(size > ((2 KILOBYTE) - sizeof(MEM_ALLOCATION_INFO))) { // starting from 2KB+1 need a full page
+    // starting from 2KB+1 need a full page
+    if(size > ((2 KILOBYTE) - sizeof(MEM_ALLOCATION_INFO))) { 
         VMM_LOG(mask_anonymous, level_trace,"%s: WARNING: Memory allocator supports allocations of sizes up to 2040 bytes (requested size = 0x%x from %s:%d)\n", __FUNCTION__, size, file_name, line_number);
-        VMM_ASSERT(0); // remove when encountered, make sure to treat this case in the caller
+        VMM_ASSERT(0); 
         return NULL;
     }
 
     if (alignment >= PAGE_4KB_SIZE) {
         VMM_LOG(mask_anonymous, level_trace,"%s: WARNING: Requested alignment is 4K or more, use full page allocation (requested alignment = 0x%x)\n", __FUNCTION__, alignment);
-        VMM_ASSERT(0); // remove when encountered, make sure to treat this case in the caller
+        VMM_ASSERT(0); 
         return NULL;
     }
 
@@ -103,7 +103,7 @@ static void* vmm_mem_allocate_internal( char *file_name,
     bprint("pool_index: %d, pools: 0x%016x,\nval = %p, expected = %p\n",
             pool_index, pools, pools[pool_index], pools[0]);
     if (size == 128)
-	LOOP_FOREVER
+        LOOP_FOREVER
 #endif
     pool = pools[pool_index];
     if(NULL == pool) {
@@ -118,26 +118,22 @@ static void* vmm_mem_allocate_internal( char *file_name,
     }
 
     vmm_zeromem(ptr, pool_element_size);
-
     allocated_addr = (UINT64)ptr;
 
     // Check alignment
     VMM_ASSERT(ALIGN_BACKWARD(allocated_addr, (UINT64)alignment) == allocated_addr);
-
-    alloc_info = (MEM_ALLOCATION_INFO*)(allocated_addr + alignment - sizeof(MEM_ALLOCATION_INFO));
-
+    alloc_info = (MEM_ALLOCATION_INFO*)
+                    (allocated_addr + alignment - sizeof(MEM_ALLOCATION_INFO));
     alloc_info->size = pool_element_size;
     alloc_info->offset = alignment;
-
     return (void *)(allocated_addr + alignment);
 }
 
-/* Following functions- vmm_mem_allocate() and vmm_mem_free() have an allocation limit of
-*  2040 bytes and need to be extended in future. vmm_page_alloc() and vmm_page_free() are
-*  used as a temporary solution for allocation of more than 2040 bytes using page alignment of 
-*  buffer for differentiating between vmm_malloc allocation() and vmm_page_alloc(). 
-*/
 
+// vmm_mem_allocate() and vmm_mem_free() have allocation limit of 2048 bytes
+// and need to be extended. vmm_page_alloc() and vmm_page_free() are
+// a temporary solution for more than 2040 bytes using page alignment of 
+// buffer differentiating between vmm_malloc allocation() and vmm_page_alloc(). 
 void* vmm_mem_allocate( char *file_name, INT32 line_number, IN UINT32 size)
 {
     return vmm_mem_allocate_internal( file_name, line_number,

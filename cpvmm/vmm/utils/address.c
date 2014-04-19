@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,34 +24,31 @@ static UINT8 virtual_address_size;
 
 extern UINT32 pw_reserved_bits_high_mask;
 
-void API_FUNCTION
-addr_setup_address_space(void)
+void addr_setup_address_space(void)
 {
     UINT32 value = hw_read_address_size();
 
     physical_address_size = (UINT8) (value & 0xFF);
     virtual_address_size = (UINT8) ((value >> 8) & 0xFF);
-
     max_virtual_address = ((ADDRESS) 1 << virtual_address_size) - 1;;
     virtual_address_copmplement = ~(max_virtual_address >> 1);;
-
     // bit mask to identify the reserved bits in paging structure high order address field
     pw_reserved_bits_high_mask = ~((1 << (physical_address_size - 32)) - 1);
 }
 
-UINT8 API_FUNCTION addr_get_physical_address_size(void)
+UINT8 addr_get_physical_address_size(void)
 {
     return physical_address_size;
 }
 
 #ifdef INCLUDE_UNUSED_CODE
-UINT8 API_FUNCTION addr_get_virtual_address_size(void)
+UINT8 addr_get_virtual_address_size(void)
 {
     return virtual_address_size;
 }
 #endif
 
-ADDRESS API_FUNCTION addr_canonize_address(
+ADDRESS addr_canonize_address(
         ADDRESS address)
 {
     if (address & virtual_address_copmplement) {

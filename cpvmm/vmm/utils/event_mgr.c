@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -32,7 +30,6 @@
 
 #define OBSERVERS_LIMIT         5
 #define NO_EVENT_SPECIFIC_LIMIT (UINT32)-1
-
 
 
 typedef struct _EVENT_ENTRY
@@ -66,8 +63,7 @@ EVENT_MANAGER event_mgr;
 
 /*
  *  EVENT_CHARACTERISTICS:
- *
- *  Specify event specific characteristics, currently: name and observers limits.
+ *  Specify event specific characteristics: name and observers limits.
  *  This list should be IDENTICAL(!) to UVMM_EVENT_INTERNAL enumration.
  */
 EVENT_CHARACTERISTICS   events_characteristics[] =
@@ -130,48 +126,25 @@ EVENT_CHARACTERISTICS   events_characteristics[] =
 };
 
 
-static
-BOOLEAN event_manager_add_gcpu(
-    GUEST_CPU_HANDLE    gcpu,
-    void                *pv
+static BOOLEAN event_manager_add_gcpu( GUEST_CPU_HANDLE gcpu,
+    void *pv);
+static BOOLEAN event_register_internal( PEVENT_ENTRY p_event,
+        UVMM_EVENT_INTERNAL      e,      //  in: event
+        event_callback  call    //  in: callback to register on event e
     );
-static
-BOOLEAN event_register_internal(
-    PEVENT_ENTRY    p_event,
-    UVMM_EVENT_INTERNAL      e,      //  in: event
-    event_callback  call    //  in: callback to register on event e
-    );
-static
-BOOLEAN event_unregister_internal(
-    PEVENT_ENTRY    p_event,
-    UVMM_EVENT_INTERNAL      e,      //  in: event
-    event_callback  call    //  in: callback to register on event e
-    );
-static
-BOOLEAN event_raise_internal(
-    PEVENT_ENTRY        p_event,
-    UVMM_EVENT_INTERNAL          e,      // in:  event
+static BOOLEAN event_unregister_internal( PEVENT_ENTRY    p_event,
+        UVMM_EVENT_INTERNAL e, event_callback  call);
+static BOOLEAN event_raise_internal( PEVENT_ENTRY  p_event,
+    UVMM_EVENT_INTERNAL e, 
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     void *              p       // in:  pointer to event specific structure
     );
-static
-BOOLEAN event_global_raise(
-    UVMM_EVENT_INTERNAL          e,      // in:  event
-    GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
-    void *              p       // in:  pointer to event specific structure
-    );
-static
-BOOLEAN event_guest_raise(
-    UVMM_EVENT_INTERNAL          e,      // in:  event
-    GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
-    void               *p       // in:  pointer to event specific structure
-    );
-static
-BOOLEAN event_gcpu_raise(
-    UVMM_EVENT_INTERNAL          e,      // in:  event
-    GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
-    void               *p       // in:  pointer to event specific structure
-    );
+static BOOLEAN event_global_raise(
+    UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void * p );
+static BOOLEAN event_guest_raise( UVMM_EVENT_INTERNAL e,
+    GUEST_CPU_HANDLE gcpu, void  *p );
+static BOOLEAN event_gcpu_raise(
+    UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void *p );
 
 
 static EVENT_ENTRY * get_gcpu_observers(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu)
@@ -210,14 +183,12 @@ static EVENT_ENTRY * get_guest_observers(UVMM_EVENT_INTERNAL e, GUEST_HANDLE gue
     return p_event;
 }
 
-static
-EVENT_ENTRY * get_global_observers(UVMM_EVENT_INTERNAL e)
+static EVENT_ENTRY * get_global_observers(UVMM_EVENT_INTERNAL e)
 {
     return &(event_mgr.general_event[e]);
 }
 
-static
-UINT32  event_observers_limit (UVMM_EVENT_INTERNAL e)
+static UINT32  event_observers_limit (UVMM_EVENT_INTERNAL e)
 {
     UINT32  observers_limits = 0;
 
@@ -340,7 +311,6 @@ UINT32 event_manager_gcpu_initialize(GUEST_CPU_HANDLE gcpu)
         event = &(gcpu_events->event[i]);
         lock_initialize_read_write_lock(&(event->lock));
     }
-
     return 0;
 }
 #ifdef INCLUDE_UNUSED_CODE
@@ -351,11 +321,8 @@ void event_cleanup_event_manger(void)
 }
 #endif
 
-BOOLEAN event_register_internal(
-    PEVENT_ENTRY    p_event,
-    UVMM_EVENT_INTERNAL      e,      //  in: event
-    event_callback  call    //  in: callback to register on event e
-    )
+BOOLEAN event_register_internal( PEVENT_ENTRY p_event,
+    UVMM_EVENT_INTERNAL  e, event_callback  call)
 {
     UINT32  i = 0;
     UINT32  observers_limits;
@@ -364,9 +331,7 @@ BOOLEAN event_register_internal(
     observers_limits = event_observers_limit(e);
     lock_acquire_writelock(&p_event->lock);
 
-    /*
-     *  Find free observer slot
-     */
+    //  Find free observer slot
     while (i < observers_limits && p_event->call[i])
         ++i;
 
@@ -375,22 +340,16 @@ BOOLEAN event_register_internal(
         registered = TRUE;
     }
     else {
-        /*
-         *  Exceeding allowed observers count
-         */
+         // Exceeding allowed observers count
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_DEADLOOP();
     }
-
     lock_release_writelock(&p_event->lock);
     return registered;
 }
 
 
-BOOLEAN event_global_register(
-    UVMM_EVENT_INTERNAL          e,      //  in: event
-    event_callback      call    //  in: callback to register on event e
-    )
+BOOLEAN event_global_register( UVMM_EVENT_INTERNAL e, event_callback call)
 {
     PEVENT_ENTRY    list;
 
@@ -399,14 +358,12 @@ BOOLEAN event_global_register(
     if (0 == (events_characteristics[e].scope & EVENT_GLOBAL_SCOPE)) return FALSE;
     list = get_global_observers(e);
     return event_register_internal(list, e, call);
-
 }
+
+
 #ifdef ENABLE_VTLB
-BOOLEAN event_guest_register(
-    UVMM_EVENT_INTERNAL          e,      //  in: event
-    GUEST_HANDLE        guest,  // in:  guest handle
-    event_callback      call    //  in: callback to register on event e
-    )
+BOOLEAN event_guest_register( UVMM_EVENT_INTERNAL e,
+    GUEST_HANDLE guest, event_callback call)
 {
     PEVENT_ENTRY    list;
     BOOLEAN         registered = FALSE;
@@ -419,16 +376,13 @@ BOOLEAN event_guest_register(
     if (NULL != list) {
         registered = event_register_internal(list, e, call);
     }
-
     return registered;
 }
 #endif
 
-BOOLEAN event_gcpu_register(
-    UVMM_EVENT_INTERNAL          e,      //  in: event
-    GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
-    event_callback      call    //  in: callback to register on event e
-    )
+
+BOOLEAN event_gcpu_register( UVMM_EVENT_INTERNAL e,
+    GUEST_CPU_HANDLE gcpu, event_callback call)
 {
     PEVENT_ENTRY    list;
     BOOLEAN         registered = FALSE;
@@ -446,11 +400,8 @@ BOOLEAN event_gcpu_register(
 }
 
 #ifdef INCLUDE_UNUSED_CODE
-BOOLEAN event_unregister_internal(
-    PEVENT_ENTRY    p_event,
-    UVMM_EVENT_INTERNAL      e,      //  in: event
-    event_callback  call    //  in: callback to register on event e
-    )
+BOOLEAN event_unregister_internal( PEVENT_ENTRY p_event,
+    UVMM_EVENT_INTERNAL e, event_callback call)
 {
     UINT32          i= 0;
     UINT32          observers_limits;
@@ -482,10 +433,7 @@ BOOLEAN event_unregister_internal(
     return unregistered;
 }
 
-BOOLEAN event_global_unregister(
-    UVMM_EVENT_INTERNAL          e,      //  in: event
-    event_callback      call    //  in: callback to unregister from event e
-    )
+BOOLEAN event_global_unregister( UVMM_EVENT_INTERNAL e, event_callback call )
 {
     PEVENT_ENTRY    list;
     BOOLEAN         unregistered = FALSE;
@@ -500,20 +448,18 @@ BOOLEAN event_global_unregister(
     return unregistered;
 }
 
-BOOLEAN event_guest_unregister( UVMM_EVENT_INTERNAL  e,      //  in: event
-    GUEST_HANDLE        guest,  // in:  guest handle
-    event_callback      call    //  in: callback to unregister from event e
-    )
+BOOLEAN event_guest_unregister( UVMM_EVENT_INTERNAL  e,
+    GUEST_HANDLE guest, event_callback call)
 {
     PEVENT_ENTRY    list;
     BOOLEAN         unregistered = FALSE;
 
-    if (call == 0) return FALSE;
-    if (e >= EVENTS_COUNT) return FALSE;
-
+    if (call == 0) 
+        return FALSE;
+    if (e >= EVENTS_COUNT) 
+        return FALSE;
     list = get_guest_observers(e, guest);
-    if (NULL != list)
-    {
+    if (NULL != list) {
         unregistered = event_unregister_internal(list, e, call);
     }
     return unregistered;
@@ -521,11 +467,8 @@ BOOLEAN event_guest_unregister( UVMM_EVENT_INTERNAL  e,      //  in: event
 #endif
 
 #ifdef ENABLE_VTLB
-BOOLEAN event_gcpu_unregister(
-    UVMM_EVENT_INTERNAL          e,      //  in: event
-    GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
-    event_callback      call    //  in: callback to unregister from event e
-    )
+BOOLEAN event_gcpu_unregister( UVMM_EVENT_INTERNAL e,
+    GUEST_CPU_HANDLE gcpu, event_callback call)
 {
     PEVENT_ENTRY    list;
     BOOLEAN         unregistered = FALSE;
@@ -541,12 +484,8 @@ BOOLEAN event_gcpu_unregister(
 }
 #endif
 
-BOOLEAN event_raise_internal(
-    PEVENT_ENTRY        p_event,
-    UVMM_EVENT_INTERNAL          e,      // in:  event
-    GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
-    void *              p       // in:  pointer to event specific structure
-    )
+BOOLEAN event_raise_internal( PEVENT_ENTRY p_event, UVMM_EVENT_INTERNAL e,
+    GUEST_CPU_HANDLE gcpu, void *  p )
 {
     UINT32          i= 0;
     UINT32          observers_limits;
@@ -565,15 +504,12 @@ BOOLEAN event_raise_internal(
         event_is_handled = TRUE;
         ++i;
     }
-
     return event_is_handled;
 }
 
 
-BOOLEAN event_global_raise( UVMM_EVENT_INTERNAL e,      // in:  event
-    GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
-    void *              p       // in:  pointer to event specific structure
-    )
+BOOLEAN event_global_raise( UVMM_EVENT_INTERNAL e,
+    GUEST_CPU_HANDLE    gcpu, void * p )
 {
     PEVENT_ENTRY    list;
     list = get_global_observers(e);
@@ -603,11 +539,8 @@ BOOLEAN event_guest_raise(
 }
 
 
-BOOLEAN event_gcpu_raise(
-    UVMM_EVENT_INTERNAL          e,      // in:  event
-    GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
-    void               *p       // in:  pointer to event specific structure
-    )
+BOOLEAN event_gcpu_raise( UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu,
+                        void *p )
 {
     PEVENT_ENTRY    list;
     BOOLEAN         event_handled = FALSE;
@@ -616,21 +549,16 @@ BOOLEAN event_gcpu_raise(
     if (NULL != list) {
         event_handled = event_raise_internal(list, e, gcpu, p);
     }
-
     return event_handled;
 }
 
 
-BOOLEAN event_raise(
-    UVMM_EVENT_INTERNAL          e,      // in:  event
-    GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
-    void                *p      // in:  pointer to event specific structure
-    )
+BOOLEAN event_raise( UVMM_EVENT_INTERNAL e,
+    GUEST_CPU_HANDLE gcpu, void *p)
 {
     BOOLEAN raised = FALSE;
 
     VMM_ASSERT(e < EVENTS_COUNT);
-
     if (e < EVENTS_COUNT) {
         if (NULL != gcpu)                                   // try to raise GCPU-scope event
             raised = event_gcpu_raise(e, gcpu, p);
@@ -644,11 +572,8 @@ BOOLEAN event_raise(
 }
 
 #ifdef ENABLE_VTLB
-BOOLEAN event_is_registered(
-        UVMM_EVENT_INTERNAL          e,      // in:  event
-        GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
-        event_callback      call    // in:  callback to check
-        )
+BOOLEAN event_is_registered( UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu,
+        event_callback call)
 {
     PEVENT_ENTRY    list;
     UINT32          i = 0;
@@ -666,9 +591,7 @@ BOOLEAN event_is_registered(
     observers_limits = event_observers_limit(e);
     lock_acquire_readlock(&list->lock);
 
-    /*
-     *  Find free observer slot
-     */
+     // Find free observer slot
     while (i < observers_limits && list->call[i]) {
         if (list->call[i] == call) {
             res = TRUE;
@@ -676,7 +599,6 @@ BOOLEAN event_is_registered(
         }
         ++i;
     }
-
     lock_release_readlock(&list->lock);
     return res;
 }

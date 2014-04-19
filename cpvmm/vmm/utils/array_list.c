@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -106,7 +104,6 @@ BOOLEAN array_list_add(ARRAY_LIST_HANDLE alist, void* data)
     if(list_is_empty(&alist->free_list) || alist == NULL || data == NULL) {
         return FALSE;
     }
-
     free_element = alist->free_list.next;
     list_remove(free_element);
     list_add(alist->used_list.prev, free_element);
@@ -114,7 +111,6 @@ BOOLEAN array_list_add(ARRAY_LIST_HANDLE alist, void* data)
 
     free_list_entry = LIST_ENTRY(free_element, ARRAY_LIST_ELEMENT, list);
     vmm_memcpy(free_list_entry->data, data, alist->element_size);
-
     return TRUE;
 }
 
@@ -143,7 +139,6 @@ char *array_list_first(ARRAY_LIST_HANDLE alist, ARRAY_LIST_ITERATOR *iter)
     if(list_is_empty(&alist->used_list)) {
         return NULL;
     }
-
     element = LIST_ENTRY(alist->used_list.next, ARRAY_LIST_ELEMENT, list);
     data = element->data;
 
@@ -151,9 +146,10 @@ char *array_list_first(ARRAY_LIST_HANDLE alist, ARRAY_LIST_ITERATOR *iter)
         iter->alist = alist;
         iter->element = element;
     }
-
     return data;
 }
+
+
 #ifdef INCLUDE_UNUSED_CODE
 char *array_list_next(ARRAY_LIST_ITERATOR *iter)
 {

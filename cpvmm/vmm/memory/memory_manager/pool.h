@@ -1,18 +1,16 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
+/*
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 
 #ifndef POOL_H
@@ -40,7 +38,7 @@ typedef struct POOL_LIST_ELEMENT_S {
 /* void pool_list_element_set_next(POOL_LIST_ELEMENT* element, POOL_LIST_ELEMENT* next) */
 #define pool_list_element_set_next(element_, next_) {element_->next = next_;}
 
-/*----------------------------------------------------------*/
+
 typedef struct POOL_LIST_HEAD_S {
     POOL_LIST_ELEMENT* first_element;
     POOL_LIST_ELEMENT* last_element;
@@ -66,7 +64,7 @@ typedef struct POOL_LIST_HEAD_S {
 /* void pool_list_head_set_num_of_elements (POOL_LIST_HEAD* list_head, UINT32 num_of_elements) */
 #define pool_list_head_set_num_of_elements(list_head_, num_of_elements_) {list_head_->num_of_elements = num_of_elements_;}
 
-/*----------------------------------------------------------*/
+
 typedef struct POOL_S {
     POOL_LIST_HEAD free_hash_elements;
     POOL_LIST_HEAD free_pool_elements;
@@ -208,8 +206,6 @@ typedef struct POOL_S {
 /* void pool_dec_num_of_pages_used_for_pool_elements(POOL* pool) */
 #define pool_dec_num_of_pages_used_for_pool_elements(pool_) {pool_->num_of_pages_used_for_pool_elements -= 1;}
 
-
-/*----------------------------------------------------------*/
 
 #define POOL_HASH_NUM_OF_CELLS 512
 #define POOL_PAGES_TO_FREE_THRESHOLD 4

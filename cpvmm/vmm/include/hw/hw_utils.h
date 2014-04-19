@@ -283,6 +283,8 @@ UINT16   hw_read_tr(void);
 void     hw_write_tr(UINT16);
 UINT16   hw_read_ldtr(void);
 void     hw_write_ldtr(UINT16);
+
+typedef void (*main_continue_fn)(void* params);
 void hw_set_stack_pointer(HVA new_stack_pointer,
                           main_continue_fn func, void* params);
 UINT64 hw_read_rsp(void);

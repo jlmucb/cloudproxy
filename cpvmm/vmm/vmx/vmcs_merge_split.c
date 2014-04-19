@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -51,10 +49,7 @@ typedef enum {
 static void ms_merge_timer_to_level2(VMCS_OBJECT *vmcs_0, VMCS_OBJECT *vmcs_1, VMCS_OBJECT *vmcs_m);
 static void ms_split_timer_from_level2(VMCS_OBJECT *vmcs_0, VMCS_OBJECT *vmcs_1, VMCS_OBJECT *vmcs_m);
 
-
-
-static
-void ms_copy_guest_state_to_level1_vmcs(IN GUEST_CPU_HANDLE gcpu, IN BOOLEAN copy_crs) {
+static void ms_copy_guest_state_to_level1_vmcs(IN GUEST_CPU_HANDLE gcpu, IN BOOLEAN copy_crs) {
     IN VMCS_OBJECT* level1_vmcs = vmcs_hierarchy_get_vmcs(gcpu_get_vmcs_hierarchy(gcpu), VMCS_LEVEL_1);
     IN VMCS_OBJECT* merged_vmcs = vmcs_hierarchy_get_vmcs(gcpu_get_vmcs_hierarchy(gcpu), VMCS_MERGED);
     UINT64 value;
@@ -158,8 +153,7 @@ void ms_copy_guest_state_to_level1_vmcs(IN GUEST_CPU_HANDLE gcpu, IN BOOLEAN cop
     // TODO VMCS v2 fields
 }
 
-static
-void ms_copy_guest_state_flom_level1(IN GUEST_CPU_HANDLE gcpu, IN BOOLEAN copy_crs) {
+static void ms_copy_guest_state_flom_level1(IN GUEST_CPU_HANDLE gcpu, IN BOOLEAN copy_crs) {
     IN VMCS_OBJECT* level1_vmcs = vmcs_hierarchy_get_vmcs(gcpu_get_vmcs_hierarchy(gcpu), VMCS_LEVEL_1);
     IN VMCS_OBJECT* merged_vmcs = vmcs_hierarchy_get_vmcs(gcpu_get_vmcs_hierarchy(gcpu), VMCS_MERGED);
     UINT64 value;
@@ -255,8 +249,7 @@ void ms_copy_guest_state_flom_level1(IN GUEST_CPU_HANDLE gcpu, IN BOOLEAN copy_c
     // TODO VMCS v2 fields
 }
 
-static
-void ms_copy_data_fields(IN OUT VMCS_OBJECT* vmcs_to, IN VMCS_OBJECT* vmcs_from) {
+static void ms_copy_data_fields(IN OUT VMCS_OBJECT* vmcs_to, IN VMCS_OBJECT* vmcs_from) {
     UINT64 value;
 
     value = vmcs_read(vmcs_from, VMCS_EXIT_INFO_INSTRUCTION_ERROR_CODE);
@@ -300,12 +293,10 @@ void ms_copy_data_fields(IN OUT VMCS_OBJECT* vmcs_to, IN VMCS_OBJECT* vmcs_from)
 
     value = vmcs_read(vmcs_from, VMCS_EXIT_INFO_GUEST_LINEAR_ADDRESS);
     vmcs_write_nocheck(vmcs_to, VMCS_EXIT_INFO_GUEST_LINEAR_ADDRESS, value);
-
     // TODO: Copy VMCS v2 fields
 }
 
-static
-void ms_copy_host_state(IN OUT VMCS_OBJECT* vmcs_to, IN VMCS_OBJECT* vmcs_from) {
+static void ms_copy_host_state(IN OUT VMCS_OBJECT* vmcs_to, IN VMCS_OBJECT* vmcs_from) {
     UINT64 value;
 
     value = vmcs_read(vmcs_from, VMCS_HOST_CR0);
@@ -371,8 +362,7 @@ void ms_copy_host_state(IN OUT VMCS_OBJECT* vmcs_to, IN VMCS_OBJECT* vmcs_from) 
     // TODO VMCS v2 fields
 }
 
-static
-BOOLEAN may_cause_vmexit_on_page_fault(IN GUEST_CPU_HANDLE gcpu, IN VMCS_LEVEL level) {
+static BOOLEAN may_cause_vmexit_on_page_fault(IN GUEST_CPU_HANDLE gcpu, IN VMCS_LEVEL level) {
     UINT32 possible_pfec_mask = (1 << VMM_PFEC_NUM_OF_USED_BITS) - 1;
     UINT32 vmcs_pfec_mask;
     UINT32 vmcs_pfec_match;
@@ -410,9 +400,7 @@ BOOLEAN may_cause_vmexit_on_page_fault(IN GUEST_CPU_HANDLE gcpu, IN VMCS_LEVEL l
     }
 }
 
-static
-UINT64 ms_merge_cr_shadow(IN GUEST_CPU_HANDLE gcpu,
-                          IN VMM_IA32_CONTROL_REGISTERS reg) {
+static UINT64 ms_merge_cr_shadow(IN GUEST_CPU_HANDLE gcpu, IN VMM_IA32_CONTROL_REGISTERS reg) {
     UINT64 level1_shadow = gcpu_get_guest_visible_control_reg_layered(gcpu, reg, VMCS_LEVEL_1);
     UINT64 level0_mask;
     UINT64 level1_mask;
@@ -444,9 +432,7 @@ UINT64 ms_merge_cr_shadow(IN GUEST_CPU_HANDLE gcpu,
     return merged_shadow;
 }
 
-static
-void* ms_retrieve_ptr_to_additional_memory(IN VMCS_OBJECT* vmcs,
-                                           IN VMCS_FIELD field,
+static void* ms_retrieve_ptr_to_additional_memory(IN VMCS_OBJECT* vmcs, IN VMCS_FIELD field,
                                            IN MS_MEM_ADDRESS_TYPE mem_type) {
     UINT64 addr_value = vmcs_read(vmcs, field);
     UINT64 addr_hpa;
@@ -477,9 +463,7 @@ void* ms_retrieve_ptr_to_additional_memory(IN VMCS_OBJECT* vmcs,
     return (void*)addr_hva;
 }
 
-static
-void ms_merge_bitmaps(IN void* bitmap0,
-                      IN void* bitmap1,
+static void ms_merge_bitmaps(IN void* bitmap0, IN void* bitmap1,
                       IN OUT void* merged_bitmap) {
     UINT64 bitmap0_hva = (UINT64)bitmap0;
     UINT64 bitmap1_hva = (UINT64)bitmap1;
@@ -502,8 +486,7 @@ void ms_merge_bitmaps(IN void* bitmap0,
     }
 }
 
-static
-BOOLEAN ms_is_msr_in_list(IN IA32_VMX_MSR_ENTRY* list, IN UINT32 msr_index,
+static BOOLEAN ms_is_msr_in_list(IN IA32_VMX_MSR_ENTRY* list, IN UINT32 msr_index,
                           IN UINT32 count, OUT UINT64* value) {
     UINT32 i;
 
@@ -518,8 +501,7 @@ BOOLEAN ms_is_msr_in_list(IN IA32_VMX_MSR_ENTRY* list, IN UINT32 msr_index,
     return FALSE;
 }
 
-static
-void ms_merge_msr_list(IN GUEST_CPU_HANDLE gcpu, IN VMCS_OBJECT* merged_vmcs,
+static void ms_merge_msr_list(IN GUEST_CPU_HANDLE gcpu, IN VMCS_OBJECT* merged_vmcs,
                        IN IA32_VMX_MSR_ENTRY* first_list, IN IA32_VMX_MSR_ENTRY* second_list,
                        IN UINT32 first_list_count, IN UINT32 second_list_count,
                        IN MSR_LIST_COPY_MODE copy_mode, IN VMCS_ADD_MSR_FUNC add_msr_func,
@@ -572,9 +554,7 @@ void ms_split_msr_lists(IN GUEST_CPU_HANDLE gcpu, IN IA32_VMX_MSR_ENTRY* merged_
     }
 }
 
-static
-void ms_perform_cr_split(IN GUEST_CPU_HANDLE gcpu,
-                         IN VMM_IA32_CONTROL_REGISTERS    reg) {
+static void ms_perform_cr_split(IN GUEST_CPU_HANDLE gcpu, IN VMM_IA32_CONTROL_REGISTERS reg) {
     UINT64 level1_mask;
     UINT64 merged_mask;
     UINT64 merged_shadow = gcpu_get_guest_visible_control_reg_layered(gcpu, reg, VMCS_MERGED);
@@ -627,11 +607,9 @@ void ms_merge_to_level2(IN GUEST_CPU_HANDLE gcpu, IN BOOLEAN merge_only_dirty) {
         return;
     }
 
-    // -----------------GUEST_STATE-------------------
     // Copy guest state from level-1 vmcs
     ms_copy_guest_state_flom_level1(gcpu, TRUE /* copy CRs */);
 
-    // -------------------CONTROLS--------------------
     // Merging controls
 
     controls0.Uint32 = (UINT32)gcpu_get_processor_ctrls_layered(gcpu, VMCS_LEVEL_0);
@@ -892,7 +870,6 @@ void ms_merge_to_level2(IN GUEST_CPU_HANDLE gcpu, IN BOOLEAN merge_only_dirty) {
         ms_merge_timer_to_level2(level0_vmcs, level1_vmcs, merged_vmcs);
     }
 
-
     // TPR threshold
     {
         if (merged_controls.Bits.TprShadow == 1) {
@@ -947,7 +924,6 @@ void ms_merge_to_level2(IN GUEST_CPU_HANDLE gcpu, IN BOOLEAN merge_only_dirty) {
             void* merged_bitmap_A;
             void* merged_bitmap_B;
 
-
             if (controls0.Bits.ActivateIoBitmaps == 1) {
                 level0_bitmap_A = ms_retrieve_ptr_to_additional_memory(level0_vmcs, VMCS_IO_BITMAP_ADDRESS_A, MS_HVA);
                 level0_bitmap_B = ms_retrieve_ptr_to_additional_memory(level0_vmcs, VMCS_IO_BITMAP_ADDRESS_B, MS_HVA);
@@ -965,7 +941,6 @@ void ms_merge_to_level2(IN GUEST_CPU_HANDLE gcpu, IN BOOLEAN merge_only_dirty) {
                 level1_bitmap_A = NULL;
                 level1_bitmap_B = NULL;
             }
-
 
             merged_bitmap_A = ms_retrieve_ptr_to_additional_memory(merged_vmcs, VMCS_IO_BITMAP_ADDRESS_A, MS_HPA);
             merged_bitmap_B = ms_retrieve_ptr_to_additional_memory(merged_vmcs, VMCS_IO_BITMAP_ADDRESS_B, MS_HPA);
@@ -1062,8 +1037,6 @@ void ms_merge_to_level2(IN GUEST_CPU_HANDLE gcpu, IN BOOLEAN merge_only_dirty) {
                           VMCS_ENTER_MSR_LOAD_COUNT);
     }
 
-    // ------------------HOST_STATE------------------
-
     // Copy host state from level-0 vmcs
     ms_copy_host_state(merged_vmcs, level0_vmcs);
 }
@@ -1081,7 +1054,6 @@ void ms_split_from_level2(IN GUEST_CPU_HANDLE gcpu) {
         ms_split_msr_lists(gcpu, merged_list, merged_list_count);
     }
 
-    // -----------GUEST_STATE OF LEVEL1 VMCS-----------
     // Copy guest state from level-1 vmcs
     ms_copy_guest_state_to_level1_vmcs(gcpu, FALSE /* do not copy CRs */);
 
@@ -1095,7 +1067,6 @@ void ms_split_from_level2(IN GUEST_CPU_HANDLE gcpu) {
     ms_perform_cr_split(gcpu, IA32_CTRL_CR0);
     ms_perform_cr_split(gcpu, IA32_CTRL_CR4);
 
-    // -----------DATA FIELDS OF LEVEL1 VMCS-----------
     ms_copy_data_fields(level1_vmcs, merged_vmcs);
 
     if (vmcs_field_is_supported(VMCS_PREEMPTION_TIMER)) {
@@ -1113,8 +1084,6 @@ void ms_merge_to_level1(IN GUEST_CPU_HANDLE gcpu,
     VMCS_OBJECT* level0_vmcs = vmcs_hierarchy_get_vmcs(hierarchy, VMCS_LEVEL_0);
     VMCS_OBJECT* level1_vmcs = vmcs_hierarchy_get_vmcs(hierarchy, VMCS_LEVEL_1);
     VMCS_OBJECT* merged_vmcs = vmcs_hierarchy_get_vmcs(hierarchy, VMCS_MERGED);
-
-    // -----------------GUEST_STATE-------------------
 
     if (!was_vmexit_from_level1) {
         // (level-2) --> (level-1) vmexit, copy host area of level-1 vmcs to guest area of merged vmcs
@@ -1389,9 +1358,7 @@ void ms_merge_to_level1(IN GUEST_CPU_HANDLE gcpu,
 
     }
 
-    // -------------------CONTROLS-------------------
-
-    // Most part is copied from level-0
+    // Most is copied from level-0
     {
         UINT64 value;
         UINT32 pf_mask;
@@ -1595,8 +1562,6 @@ void ms_merge_to_level1(IN GUEST_CPU_HANDLE gcpu,
                           vmcs_clear_vmenter_load_list, vmcs_is_msr_in_vmenter_load_list,
                           VMCS_ENTER_MSR_LOAD_ADDRESS, VMCS_ENTER_MSR_LOAD_COUNT);
     }
-
-    // ------------------HOST_STATE------------------
 
     // Copy host state from level-0 vmcs
     ms_copy_host_state(merged_vmcs, level0_vmcs);

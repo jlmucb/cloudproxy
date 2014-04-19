@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -109,42 +107,32 @@ static const char* g_instr_error_message[] = {
 };
 
 
-/*-------------------------- Forward Declarations ----------------------------*/
-/*--- callbacks ---*/
-static UINT64       vmcs_act_read(const struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id);
-static void         vmcs_act_write(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id, UINT64 value);
-static void         vmcs_act_flush_to_cpu(const struct _VMCS_OBJECT *vmcs);
-static void         vmcs_act_flush_to_memory(struct _VMCS_OBJECT *vmcs);
-static BOOLEAN      vmcs_act_is_dirty(const struct _VMCS_OBJECT *vmcs);
+static UINT64 vmcs_act_read(const struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id);
+static void vmcs_act_write(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id, UINT64 value);
+static void vmcs_act_flush_to_cpu(const struct _VMCS_OBJECT *vmcs);
+static void vmcs_act_flush_to_memory(struct _VMCS_OBJECT *vmcs);
+static BOOLEAN vmcs_act_is_dirty(const struct _VMCS_OBJECT *vmcs);
 static GUEST_CPU_HANDLE vmcs_act_get_owner(const struct _VMCS_OBJECT *vmcs);
-static void         vmcs_act_destroy(struct _VMCS_OBJECT *vmcs);
-static void         vmcs_act_add_msr_to_vmexit_store_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value);
-static void         vmcs_act_add_msr_to_vmexit_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value);
-static void         vmcs_act_add_msr_to_vmenter_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value);
-static void         vmcs_act_add_msr_to_vmexit_store_and_vmenter_load_lists(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value);
-static void         vmcs_act_delete_msr_from_vmexit_store_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index);
-static void         vmcs_act_delete_msr_from_vmexit_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index);
-static void         vmcs_act_delete_msr_from_vmenter_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index);
-static void         vmcs_act_delete_msr_from_vmexit_store_and_vmenter_load_lists(struct _VMCS_OBJECT *vmcs, UINT32 msr_index);
+static void vmcs_act_destroy(struct _VMCS_OBJECT *vmcs);
+static void vmcs_act_add_msr_to_vmexit_store_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value);
+static void vmcs_act_add_msr_to_vmexit_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value);
+static void vmcs_act_add_msr_to_vmenter_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value);
+static void vmcs_act_add_msr_to_vmexit_store_and_vmenter_load_lists(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value);
+static void vmcs_act_delete_msr_from_vmexit_store_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index);
+static void vmcs_act_delete_msr_from_vmexit_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index);
+static void vmcs_act_delete_msr_from_vmenter_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index);
+static void vmcs_act_delete_msr_from_vmexit_store_and_vmenter_load_lists(struct _VMCS_OBJECT *vmcs, UINT32 msr_index);
 
-/*--- low level ---*/
 static void         vmcs_act_flush_field_to_cpu(UINT32 entry_no, VMCS_ACTUAL_OBJECT *p_vmcs);
 static void         vmcs_act_flush_nmi_depended_field_to_cpu(VMCS_ACTUAL_OBJECT *p_vmcs, UINT64 value);
 static UINT64       vmcs_act_read_from_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_id);
 static void         vmcs_act_write_to_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_id, UINT64 value);
 
-
-/*--- helper ---*/
 static UINT64       temp_replace_vmcs_ptr(UINT64 new_ptr);
 static void         restore_previous_vmcs_ptr(UINT64 ptr_to_restore);
-static void         error_processing(UINT64 vmcs,
-                              HW_VMX_RET_VALUE ret_val,
-                              const char* operation,
-                              VMCS_FIELD  field);
-
-
+static void         error_processing(UINT64 vmcs, HW_VMX_RET_VALUE ret_val,
+                              const char* operation, VMCS_FIELD  field);
 static BOOLEAN nmi_window[VMM_MAX_CPU_SUPPORTED]; // stores NMI Windows which should be injected per CPU
-
 
 
 /*----------------------------------------------------------------------------*
@@ -430,7 +418,6 @@ void vmcs_act_flush_to_cpu(const struct _VMCS_OBJECT *vmcs)
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) vmcs;
 
-//    VMM_ASSERT(vmcs); //checked by caller
     VMM_ASSERT(GET_ACTIVATED_FLAG(p_vmcs));
     VMM_ASSERT(p_vmcs->owning_host_cpu == hw_cpu_id());
 
@@ -550,10 +537,7 @@ void vmcs_act_destroy(struct _VMCS_OBJECT *vmcs)
 }
 
 
-//
 // Handle temporary VMCS PTR replacements
-//
-
 UINT64 temp_replace_vmcs_ptr( UINT64 new_ptr ) // return previous ptr
 {
     HW_VMX_RET_VALUE ret_val;
@@ -600,11 +584,7 @@ void restore_previous_vmcs_ptr( UINT64 ptr_to_restore )
 }
 
 
-//------------------------------------------------------------------------------
-//
 // Reset all read caching. MUST NOT be called with modifications not flushed to hw
-//
-//------------------------------------------------------------------------------
 void vmcs_clear_cache( VMCS_OBJECT *obj)
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
@@ -614,9 +594,7 @@ void vmcs_clear_cache( VMCS_OBJECT *obj)
 }
 
 
-//
 // Activate
-//
 void vmcs_activate( VMCS_OBJECT* obj )
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
@@ -658,9 +636,7 @@ void vmcs_activate( VMCS_OBJECT* obj )
 }
 
 
-//
 // Deactivate
-//
 void vmcs_deactivate( VMCS_OBJECT* obj )
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
@@ -700,10 +676,7 @@ void vmcs_set_launch_required( VMCS_OBJECT* obj )
 }
 
 
-
-//
 // Error message
-//
 VMCS_INSTRUCTION_ERROR vmcs_last_instruction_error_code(
                                 const VMCS_OBJECT* obj,
                                 const char** error_message )
@@ -720,10 +693,8 @@ VMCS_INSTRUCTION_ERROR vmcs_last_instruction_error_code(
 
 #pragma warning( push )
 #pragma warning( disable : 4100 )
-void error_processing(UINT64 vmcs,
-                      HW_VMX_RET_VALUE ret_val,
-                      const char* operation,
-                      VMCS_FIELD  field)
+void error_processing(UINT64 vmcs, HW_VMX_RET_VALUE ret_val,
+                      const char* operation, VMCS_FIELD  field)
 {
     const char* error_message = 0;
     UINT64      err           = 0;

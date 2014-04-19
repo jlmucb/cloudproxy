@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -38,7 +36,6 @@ typedef struct _VMCS_SOFTWARE_OBJECT {
     ADDRESS             gpa;    // if !=0 then it's original GPA
 } VMCS_SOFTWARE_OBJECT;
 
-/*-------------------------- Forward Declarations ----------------------------*/
 static UINT64   vmcs_sw_read(const struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id);
 static void     vmcs_sw_write(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id, UINT64 value);
 static void     vmcs_sw_flush_to_cpu(const struct _VMCS_OBJECT *vmcs);
@@ -59,20 +56,12 @@ static void     vmcs_0_flush_to_memory(struct _VMCS_OBJECT *vmcs);
 static void     vmcs_1_flush_to_memory(struct _VMCS_OBJECT *vmcs);
 static void     vmcs_0_destroy(struct _VMCS_OBJECT *vmcs);
 static void     vmcs_1_destroy(struct _VMCS_OBJECT *vmcs);
-static void     vmcs_copy_extra_buffer(
-                    void                      *dst,
-                    const struct _VMCS_OBJECT *vmcs_src,
-                    VMCS_FIELD                field,
-                    UINT32                    bytes_to_copy);
+static void     vmcs_copy_extra_buffer( void *dst, const struct _VMCS_OBJECT *vmcs_src,
+                    VMCS_FIELD field, UINT32 bytes_to_copy);
 
-
-/*------------------------------ Code ----------------------------------------*/
-static
-void vmcs_0_copy_msr_list_to_merged(struct _VMCS_OBJECT *merged_vmcs,
-                                    struct _VMCS_SOFTWARE_OBJECT* sw_vmcs,
-                                    VMCS_FIELD address_field,
-                                    VMCS_FIELD count_field,
-                                    VMCS_ADD_MSR_FUNC add_msr_func)
+static void vmcs_0_copy_msr_list_to_merged(struct _VMCS_OBJECT *merged_vmcs,
+                        struct _VMCS_SOFTWARE_OBJECT* sw_vmcs, VMCS_FIELD address_field,
+                        VMCS_FIELD count_field, VMCS_ADD_MSR_FUNC add_msr_func)
 {
     IA32_VMX_MSR_ENTRY* msr_list_ptr = (IA32_VMX_MSR_ENTRY*)vmcs_read(sw_vmcs->vmcs_base, address_field);
     UINT32 msr_list_count = (UINT32)vmcs_read(sw_vmcs->vmcs_base, count_field);
@@ -83,11 +72,9 @@ void vmcs_0_copy_msr_list_to_merged(struct _VMCS_OBJECT *merged_vmcs,
     }
 }
 
-static
-void vmcs_0_take_msr_list_from_merged(VMCS_SOFTWARE_OBJECT *vmcs_0,
-                                      struct _VMCS_OBJECT *merged_vmcs,
-                                      VMCS_FIELD address_field,
-                                      VMCS_FIELD count_field)
+static void vmcs_0_take_msr_list_from_merged(VMCS_SOFTWARE_OBJECT *vmcs_0,
+                  struct _VMCS_OBJECT *merged_vmcs, VMCS_FIELD address_field,
+                  VMCS_FIELD count_field)
 {
     UINT64 addr_hpa = vmcs_read(merged_vmcs, address_field);
     UINT64 addr_hva;
@@ -208,7 +195,6 @@ struct _VMCS_OBJECT * vmcs_0_create(struct _VMCS_OBJECT *vmcs_origin)
 
     vmcs_init_all_msr_lists(vmcs_origin);
 
-
     VMM_ASSERT(vmcs_get_owner(vmcs_origin) != NULL);
 
     // Fill anew MSR lists for merged vmcs
@@ -229,11 +215,8 @@ struct _VMCS_OBJECT * vmcs_0_create(struct _VMCS_OBJECT *vmcs_origin)
 }
 
 
-void vmcs_copy_extra_buffer(
-    void                      *dst,
-    const struct _VMCS_OBJECT *vmcs_src,
-    VMCS_FIELD                field,
-    UINT32                    bytes_to_copy)
+void vmcs_copy_extra_buffer( void *dst, const struct _VMCS_OBJECT *vmcs_src,
+                             VMCS_FIELD field, UINT32 bytes_to_copy)
 {
     ADDRESS hpa, hva;
 
@@ -312,14 +295,14 @@ struct _VMCS_OBJECT * vmcs_1_create(GUEST_CPU_HANDLE gcpu, ADDRESS gpa)
         return NULL;
     }
 
-    p_vmcs->gcpu                        = gcpu;
-    p_vmcs->gpa                         = gpa;
+    p_vmcs->gcpu = gcpu;
+    p_vmcs->gpa  = gpa;
 
-    p_vmcs->vmcs_base->vmcs_read              = vmcs_sw_read;
-    p_vmcs->vmcs_base->vmcs_write             = vmcs_sw_write;
-    p_vmcs->vmcs_base->vmcs_flush_to_cpu      = vmcs_sw_flush_to_cpu;
-    p_vmcs->vmcs_base->vmcs_is_dirty          = vmcs_sw_is_dirty;
-    p_vmcs->vmcs_base->vmcs_get_owner         = vmcs_sw_get_owner;
+    p_vmcs->vmcs_base->vmcs_read = vmcs_sw_read;
+    p_vmcs->vmcs_base->vmcs_write = vmcs_sw_write;
+    p_vmcs->vmcs_base->vmcs_flush_to_cpu = vmcs_sw_flush_to_cpu;
+    p_vmcs->vmcs_base->vmcs_is_dirty = vmcs_sw_is_dirty;
+    p_vmcs->vmcs_base->vmcs_get_owner = vmcs_sw_get_owner;
     p_vmcs->vmcs_base->vmcs_flush_to_memory   = vmcs_1_flush_to_memory;
     p_vmcs->vmcs_base->vmcs_destroy           = vmcs_1_destroy;
     p_vmcs->vmcs_base->vmcs_add_msr_to_vmexit_store_list = NULL; // should not be used for level1
@@ -433,22 +416,26 @@ GUEST_CPU_HANDLE vmcs_sw_get_owner(const struct _VMCS_OBJECT *vmcs)
     return p_vmcs->gcpu;
 }
 
-static void vmcs_sw_add_msr_to_vmexit_store_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value)
+static void vmcs_sw_add_msr_to_vmexit_store_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, 
+                                                UINT64 value)
 {
     vmcs_add_msr_to_vmexit_store_list_internal(vmcs, msr_index, value, FALSE);
 }
 
-static void vmcs_sw_add_msr_to_vmexit_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value)
+static void vmcs_sw_add_msr_to_vmexit_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, 
+                                                UINT64 value)
 {
     vmcs_add_msr_to_vmexit_load_list_internal(vmcs, msr_index, value, FALSE);
 }
 
-static void vmcs_sw_add_msr_to_vmenter_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value)
+static void vmcs_sw_add_msr_to_vmenter_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, 
+                                                UINT64 value)
 {
     vmcs_add_msr_to_vmenter_load_list_internal(vmcs, msr_index, value, FALSE);
 }
 
-static void vmcs_sw_add_msr_to_vmexit_store_and_vmenter_load_lists(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value)
+static void vmcs_sw_add_msr_to_vmexit_store_and_vmenter_load_lists(struct _VMCS_OBJECT *vmcs, 
+                                                UINT32 msr_index, UINT64 value)
 {
     vmcs_add_msr_to_vmexit_store_and_vmenter_load_lists_internal(vmcs, msr_index, value, FALSE);
 }

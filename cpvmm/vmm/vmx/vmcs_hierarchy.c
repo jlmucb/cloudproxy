@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,15 +29,10 @@ typedef struct {
     VMCS_OBJECT    *vmcs;
     LIST_ELEMENT    list[1];
 } VMCS_1_DESCRIPTOR;
-
-
-
 VMCS_1_DESCRIPTOR *vmcs_hierarchy_vmcs1_lkup(VMCS_HIERARCHY *obj, VMCS_OBJECT *vmcs);
 
 
-VMM_STATUS vmcs_hierarchy_create(
-    VMCS_HIERARCHY *obj,
-    GUEST_CPU_HANDLE gcpu)
+VMM_STATUS vmcs_hierarchy_create( VMCS_HIERARCHY *obj, GUEST_CPU_HANDLE gcpu)
 {
     VMM_STATUS status;
 
@@ -59,10 +52,7 @@ VMM_STATUS vmcs_hierarchy_create(
 }
 
 #ifdef INCLUDE_UNUSED_CODE
-VMM_STATUS vmcs_hierarchy_add_vmcs(
-    VMCS_HIERARCHY * obj,
-    GUEST_CPU_HANDLE gcpu,
-    ADDRESS gpa)
+VMM_STATUS vmcs_hierarchy_add_vmcs( VMCS_HIERARCHY * obj, GUEST_CPU_HANDLE gcpu, ADDRESS gpa)
 {
     VMM_STATUS status = VMM_ERROR;
     VMCS_1_DESCRIPTOR *desc;
@@ -112,7 +102,6 @@ VMM_STATUS vmcs_hierarchy_add_vmcs(
 VMM_STATUS vmcs_hierarchy_remove_vmcs(VMCS_HIERARCHY *obj, VMCS_OBJECT *vmcs_1)
 {
     VMM_STATUS status = VMM_ERROR;
-
 
     VMM_ASSERT(obj);
 

@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *           
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,8 +17,6 @@
 #include "hw_vmx_utils.h"
 //#include "vmx.h"
 
-//RNB: we should have a ifdef VT supported and accordingly use 
-//.byte version or the instructions for portability
 
 int vmx_on(UINT64 *address) {
     asm volatile(
@@ -28,8 +24,7 @@ int vmx_on(UINT64 *address) {
     ::"m" (address)
     :"cc", "memory");
 
-    //RNB: Need to figure out where the return value/state after vmxon
-    //is saved
+    //FIX: Need to figure out where the return value/state after vmxon is saved
     return 0;
 }
 

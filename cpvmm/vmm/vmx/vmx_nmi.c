@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -84,12 +82,8 @@
 #endif
 
 
-
-/*--------------------------------Local Variables-----------------------------*/
 static BOOLEAN *nmi_array;
 
-
-/*-------------------------Local functions declarations-----------------------*/
 VMEXIT_HANDLING_STATUS nmi_process_translated_reason(GUEST_CPU_HANDLE gcpu,
                                             IA32_VMX_EXIT_BASIC_REASON xlat_reason);
 static VMEXIT_HANDLING_STATUS nmi_propagate_nmi(GUEST_CPU_HANDLE gcpu);
@@ -99,10 +93,6 @@ static void nmi_emulate_nmi_window_vmexit(GUEST_CPU_HANDLE gcpu);
 static CPU_ID nmi_num_of_cores;
 
 
-
-/*-----------------------------------------------------------------------------*
-**                           Initialization
-*-----------------------------------------------------------------------------*/
 BOOLEAN nmi_manager_initialize(CPU_ID num_of_cores)
 {
     BOOLEAN success = FALSE;
@@ -121,9 +111,6 @@ BOOLEAN nmi_manager_initialize(CPU_ID num_of_cores)
 }
 
 
-/*-----------------------------------------------------------------------------*
-**                           Accessors
-*-----------------------------------------------------------------------------*/
 //static void nmi_raise(CPU_ID cpu_id)
 void nmi_raise(CPU_ID cpu_id)
 {
@@ -175,14 +162,10 @@ BOOLEAN nmi_is_pending_this(void)
 }
 
 
-
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : nmi_resume_handler()
-*  PURPOSE  : If current CPU is platform NMI owner and unhandled platform NMI
-*           : exists on current CPU, sets NMI-Window to get VMEXIT asap.
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu
-*  RETURNS  : void
-*-----------------------------------------------------------------------------*/
+// FUNCTION : nmi_resume_handler()
+// PURPOSE  : If current CPU is platform NMI owner and unhandled platform NMI
+//          : exists on current CPU, sets NMI-Window to get VMEXIT asap.
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu
 void nmi_resume_handler(GUEST_CPU_HANDLE gcpu)
 {
     if (NMI_EXISTS_ON_GCPU(gcpu)) {
@@ -190,28 +173,25 @@ void nmi_resume_handler(GUEST_CPU_HANDLE gcpu)
     }
 }
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : nmi_vmexit_handler()
-*  PURPOSE  : Process NMI VMEXIT
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu
-*  RETURNS  : Status which says if VMEXIT was finally handled or
-*           : it should be processed by upper layer
-*  CALLED   : called as bottom-up local handler
-*-----------------------------------------------------------------------------*/
+
+// FUNCTION : nmi_vmexit_handler()
+// PURPOSE  : Process NMI VMEXIT
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu
+// RETURNS  : Status which says if VMEXIT was finally handled or
+//          : it should be processed by upper layer
+// CALLED   : called as bottom-up local handler
 VMEXIT_HANDLING_STATUS nmi_vmexit_handler(GUEST_CPU_HANDLE gcpu)
 {
     ipc_nmi_vmexit_handler(gcpu);
     return nmi_process_translated_reason(gcpu, XLAT_NMI_VMEXIT_REASON(NMI_EXISTS_ON_GCPU(gcpu)));
 }
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : nmi_window_vmexit_handler()
-*  PURPOSE  : Process NMI Window VMEXIT
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu
-*  RETURNS  : Status which says if VMEXIT was finally handled or
-*           : it should be processed by upper layer
-*  CALLED   : called as bottom-up local handler
-*-----------------------------------------------------------------------------*/
+// FUNCTION : nmi_window_vmexit_handler()
+// PURPOSE  : Process NMI Window VMEXIT
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu
+// RETURNS  : Status which says if VMEXIT was finally handled or
+//          : it should be processed by upper layer
+// CALLED   : called as bottom-up local handler
 VMEXIT_HANDLING_STATUS nmi_window_vmexit_handler(GUEST_CPU_HANDLE gcpu)
 {
     ipc_nmi_window_vmexit_handler(gcpu);
@@ -240,14 +220,12 @@ VMEXIT_HANDLING_STATUS nmi_process_translated_reason(
 }
 
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : nmi_propagate_nmi()
-*  PURPOSE  : If layered and upper VMM requested NMI VMEXIT, emulate it,
-*           : else inject it directly to VM
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu
-*  RETURNS  : Status which says if VMEXIT was finally handled or
-*           : it should be processed by upper layer
-*-----------------------------------------------------------------------------*/
+// FUNCTION : nmi_propagate_nmi()
+// PURPOSE  : If layered and upper VMM requested NMI VMEXIT, emulate it,
+//          : else inject it directly to VM
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu
+// RETURNS  : Status which says if VMEXIT was finally handled or
+//          : it should be processed by upper layer
 VMEXIT_HANDLING_STATUS nmi_propagate_nmi(GUEST_CPU_HANDLE gcpu)
 {
     VMEXIT_HANDLING_STATUS status;
@@ -276,14 +254,12 @@ VMEXIT_HANDLING_STATUS nmi_propagate_nmi(GUEST_CPU_HANDLE gcpu)
 }
 
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : nmi_propagate_nmi_window()
-*  PURPOSE  : If layered and upper VMM requested NMI-Window VMEXIT, emulate it,
-*           : else dismiss it.
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu
-*  RETURNS  : Status which says if VMEXIT was finally handled or
-*           : it should be processed by upper layer
-*-----------------------------------------------------------------------------*/
+// FUNCTION : nmi_propagate_nmi_window()
+// PURPOSE  : If layered and upper VMM requested NMI-Window VMEXIT, emulate it,
+//          : else dismiss it.
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu
+// RETURNS  : Status which says if VMEXIT was finally handled or
+//          : it should be processed by upper layer
 VMEXIT_HANDLING_STATUS nmi_propagate_nmi_window(GUEST_CPU_HANDLE gcpu)
 {
     VMEXIT_HANDLING_STATUS status;
@@ -311,13 +287,9 @@ VMEXIT_HANDLING_STATUS nmi_propagate_nmi_window(GUEST_CPU_HANDLE gcpu)
 }
 
 
-
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : nmi_emulate_nmi_vmexit()
-*  PURPOSE  : Emulates NMI VMEXIT into upper VMM
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu
-*  RETURNS  : void
-*-----------------------------------------------------------------------------*/
+// FUNCTION : nmi_emulate_nmi_vmexit()
+// PURPOSE  : Emulates NMI VMEXIT into upper VMM
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu
 void nmi_emulate_nmi_vmexit(GUEST_CPU_HANDLE gcpu)
 {
     VMCS_OBJECT *vmcs = gcpu_get_vmcs_layered(gcpu, VMCS_MERGED);
@@ -342,12 +314,9 @@ void nmi_emulate_nmi_vmexit(GUEST_CPU_HANDLE gcpu)
 }
 
 
-/*-----------------------------------------------------------------------------*
-*  FUNCTION : nmi_emulate_nmi_window_vmexit()
-*  PURPOSE  : Emulates NMI-Window VMEXIT into upper VMM
-*  ARGUMENTS: GUEST_CPU_HANDLE gcpu
-*  RETURNS  : void
-*-----------------------------------------------------------------------------*/
+// FUNCTION : nmi_emulate_nmi_window_vmexit()
+// PURPOSE  : Emulates NMI-Window VMEXIT into upper VMM
+// ARGUMENTS: GUEST_CPU_HANDLE gcpu
 #pragma warning(disable : 4100)
 void nmi_emulate_nmi_window_vmexit(GUEST_CPU_HANDLE gcpu UNUSED)
 {

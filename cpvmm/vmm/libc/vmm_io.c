@@ -60,7 +60,6 @@ static void raw_lock(volatile UINT32 *p_lock_var)
     for (;;) {
         // Loop until the successfully incremented the lock variable
         // from 0 to 1 (i.e., we are the only lockers
-
         old_value = hw_interlocked_compare_exchange((INT32 *)p_lock_var,
                                                     0,   // Expected
                                                     1);  // New
@@ -87,8 +86,7 @@ static void raw_force_lock(volatile UINT32 *p_lock_var)
     }
 }
 
-static
-void raw_unlock(volatile UINT32 *p_lock_var)
+static void raw_unlock(volatile UINT32 *p_lock_var)
 {
     INT32 old_value;
 
@@ -124,13 +122,11 @@ BOOLEAN vmm_debug_port_init_params(const VMM_DEBUG_PORT_PARAMS *p_params)
 
     if (p_params) {
         // Valid parameters structure, use it
-
         // Only a serial debug port is currently supported.  Furtheremore,
         // only I/O-based serial port is supported.
 
         if (p_params->type == VMM_DEBUG_PORT_SERIAL) {
             debug_port_type = (VMM_DEBUG_PORT_TYPE)p_params->type;
-
             switch (p_params->ident_type) {
                 case VMM_DEBUG_PORT_IDENT_IO:
                     debug_port_io_base = p_params->ident.io_base;
@@ -144,35 +140,26 @@ BOOLEAN vmm_debug_port_init_params(const VMM_DEBUG_PORT_PARAMS *p_params)
                     debug_port_io_base = VMM_DEBUG_PORT_SERIAL_IO_BASE_DEFAULT;
                     err = TRUE;
             }
-
             debug_port_virt_mode = (VMM_DEBUG_PORT_VIRT_MODE)p_params->virt_mode;
         }
-
         else {
             // No debug port
-
             debug_port_type = VMM_DEBUG_PORT_NONE;
             debug_port_virt_mode = VMM_DEBUG_PORT_VIRT_NONE;
         }
     }
-
     if (debug_port_type == VMM_DEBUG_PORT_SERIAL)
         debug_port_handle = vmm_serial_new(debug_port_io_base,
-                                           UART_PROG_IF_DEFAULT,
-                                           UART_HANDSHAKE_DEFAULT);
-
+                                           UART_PROG_IF_DEFAULT, UART_HANDSHAKE_DEFAULT);
     return err;
 }
 
 
-static
-void vmm_debug_port_init(void)
+static void vmm_debug_port_init(void)
 {
     if (debug_port_type == VMM_DEBUG_PORT_SERIAL)
         vmm_serial_init(debug_port_handle);
 }
-
-//=============================================================================
 
 
 void vmm_debug_port_clear(void)
@@ -208,24 +195,22 @@ UINT16 vmm_debug_port_get_io_base(void)
     return io_base;
 }
 
-UINT16   // If the debug port uses an I/O range, returns its end address.
-         // Otherwise, returns 0
-vmm_debug_port_get_io_end(void)
+
+// If the debug port uses an I/O range, returns its end address.
+// Otherwise, returns 0
+UINT16 vmm_debug_port_get_io_end(void)
 
 {
     UINT16 io_base = 0;
     UINT16 io_end = 0;
 
-
     if (debug_port_type == VMM_DEBUG_PORT_SERIAL)
         vmm_serial_get_io_range(debug_port_handle, &io_base, &io_end);
-
     return io_end;
 }
 
 
 // Multiplexers to debug port, according to its type (none, serial etc.).
-
 static UINT8 vmm_debug_port_getc(void)
 {
     if (vmm_debug_port_get_type() == VMM_DEBUG_PORT_SERIAL)
@@ -247,7 +232,6 @@ static UINT8 vmm_debug_port_putc( UINT8 Char )
 {
     if (vmm_debug_port_get_type() == VMM_DEBUG_PORT_SERIAL)
         return vmm_serial_putc(debug_port_handle, Char);
-
     else
         return Char;
 }
@@ -265,15 +249,12 @@ static int vmm_debug_port_puts_direct(BOOLEAN is_locked, const char *string)
             // Force lock, so that regular (locked) prints will not interfere
             // until we're done.  Note that here we may interfere with ongoing
             // regular prints - but this is the nature of "nolock".
-
             raw_force_lock(&printf_lock);
 
             // Print using the "nolock" function
-
             ret = vmm_serial_puts_nolock(debug_port_handle, string);
 
             // Unlock
-
             raw_unlock(&printf_lock);
         }
     }
@@ -301,12 +282,8 @@ static int vmm_debug_port_puts(BOOLEAN is_locked, const char *string)
 #ifdef DEBUG
 #pragma warning(push)
 #pragma warning(disable : 4100)  // Supress warnings about unreferenced formal parameter
-static
-VMM_STATUS vmm_io_vmcall_puts_handler(
-    GUEST_CPU_HANDLE    gcpu UNUSED,
-    ADDRESS            *arg1,
-    ADDRESS            *arg2 UNUSED,
-    ADDRESS            *arg3 UNUSED)
+static VMM_STATUS vmm_io_vmcall_puts_handler( GUEST_CPU_HANDLE gcpu UNUSED,
+    ADDRESS *arg1, ADDRESS *arg2 UNUSED, ADDRESS *arg3 UNUSED)
 {
     const char *string = (const char *)*arg1;
 
@@ -484,11 +461,9 @@ void vmm_io_emulator_register( GUEST_ID guest_id )
 void vmm_printf_screen( const char *format, ... )
 {
     static char buffer[PRINTF_BUFFER_SIZE];
-
     va_list args;
 
     va_start (args, format);
-
     vmm_printf_screen_int(buffer, PRINTF_BUFFER_SIZE, format, args);
 }
 
@@ -515,37 +490,29 @@ void vmm_print_test(UINT32 id UNUSED)
 #ifdef VMM_PUT_TEST
     UINT32 i;
 
-
     for (i = 0; i < 200; i++) {
         switch (((hw_rdtsc() / 31) + id) & 0x7) {
             case 0:
                 vmm_printf(       "[%02d] %06d 0 l\n", id, i);   // Short, should fit in Tx FIFO
                 break;
-
             case 1:
                 vmm_printf(       "[%02d] %06d 1 l  : The Quick Brown Fox Jumps Over The Lazy Dog\n", id, i);
                 break;
-
             case 2:
                 vmm_printf(       "[%02d] %06d 2 l  : 0123456789 abcdefghijklmnopqrstuvwxyz\n", id, i);
                 break;
-
             case 3:
                 vmm_printf(       "[%02d] %06d 3 l  : the quick brown fox jumps over the lazy dog\n", id, i);
                 break;
-
             case 4:
                 vmm_printf(       "[%02d] %06d 4 l  : 0123456789 abcdefghijklmnopqrstuvwxyz\n", id, i);
                 break;
-
             case 5:
                 vmm_printf_nolock("{%02d}_%06d_5_NL\n", id, i);   // Short, should fit in Tx FIFO
                 break;
-
             case 6:
                 vmm_printf_nolock("{%02d}_%06d_6_NL_:_THE_QUICK_BROWN_FOX_JUMPS_OVER_THE_LAZY_DOG\n", id, i);
                 break;
-
             default:
                 vmm_printf_nolock("{%02d}_%06d_7_NL_:_0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ\n", id, i);
         }

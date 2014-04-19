@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,11 +23,8 @@
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMM_SERIAL_LIBC, __condition)
 
 
-//==============================================================================
-//
 // Private Definitions
-//
-//==============================================================================
+
 
 #define VMM_SERIAL_DEVICES_MAX 8
 
@@ -112,11 +107,8 @@ typedef struct
 } VMM_SERIAL_DEVICE;
 
 
-//==============================================================================
-//
 // Static Variables
-//
-//==============================================================================
+
 
 static VMM_SERIAL_DEVICE serial_devices[VMM_SERIAL_DEVICES_MAX];
 static UINT32            initialized_serial_devices = 0;
@@ -134,14 +126,8 @@ static const UINT32      avg_factor = 16;
                                  // units of 1 / 2^16
 
 
-//=============================================================================
-//
 // Static Functions
-//
-//=============================================================================
 
-//=============================== update_max() ================================
-//
 // Updates the maximum of a counter
 
 static
@@ -155,14 +141,9 @@ update_max(UINT32 *p_max,   // Maximum
 }
 
 
-//=============================== update_avg() ================================
-//
 // Updates the running average of a counter, using a simple 1-stage IIR
 // algorithm
-
-static
-void
-update_avg(UINT32 *p_avg,   // Running average, as UINT16.UINT16
+static void update_avg(UINT32 *p_avg,   // Running average, as UINT16.UINT16
            UINT32  count)   // New input
 
 {
@@ -186,12 +167,8 @@ update_avg(UINT32 *p_avg,   // Running average, as UINT16.UINT16
 }
 
 
-//========================= update_max_and_avg() ==============================
-//
 // Updates the running average and maximum of a counter
-static
-void
-update_max_and_avg(UINT32 *p_max,   // Maximum
+static void update_max_and_avg(UINT32 *p_max,   // Maximum
                    UINT32 *p_avg,   // Running average, as UINT16.UINT16
                    UINT32  count)   // New input
 
@@ -201,15 +178,10 @@ update_max_and_avg(UINT32 *p_max,   // Maximum
 }
 
 
-//========================= is_hw_tx_handshake_go() ===========================
-//
 // Checks h/w handshake lines for "go" status.  Count the number of times it
 // was "stop".  In UART_HANDSHAKE_AUTO mode, after a limit is reached force
 // the status to "go".
-
-static
-BOOLEAN
-is_hw_tx_handshake_go(VMM_SERIAL_DEVICE *p_device)
+static BOOLEAN is_hw_tx_handshake_go(VMM_SERIAL_DEVICE *p_device)
 
 {
     UART_MSR msr;               // Modem Status Register image
@@ -249,7 +221,6 @@ is_hw_tx_handshake_go(VMM_SERIAL_DEVICE *p_device)
                 }
             }
         }
-
         else {
             // Increment the stop count and update the statistics
 
@@ -275,8 +246,6 @@ is_hw_tx_handshake_go(VMM_SERIAL_DEVICE *p_device)
 }
 
 
-//====================== cli_display_serial_info() ============================
-//
 // Display serial ports' information on the CLI
 #ifdef DEBUG
 #pragma warning(push )
@@ -403,26 +372,14 @@ cli_display_serial_info(unsigned argc UNUSED, char *args[] UNUSED)
 #pragma warning(pop)
 #endif //DEBUG
 
-//=============================================================================
-//
-// Public Functions
-//
-//=============================================================================
-
-//=========================== vmm_serial_new() ================================
-//
 // Initialize a new serial device's parameters
-
-void *                                  // Ret: Handle to the device
-vmm_serial_new(
-    UINT16              io_base,        // In:  I/O Base Address
+void *  vmm_serial_new( UINT16 io_base,        // In:  I/O Base Address
     UART_PROG_IF_TYPE   prog_if,        // In:  Programming interface
     UART_HANDSHAKE_MODE handshake_mode  // In:  Handshake mode
 )
 
 {
     VMM_SERIAL_DEVICE *p_device;
-
 
     if (initialized_serial_devices >= VMM_SERIAL_DEVICES_MAX)
         return NULL;
@@ -482,13 +439,9 @@ vmm_serial_new(
 }
 
 
-//=========================== vmm_serial_init() ===============================
-//
 // Initialize a serial device
 
-void
-vmm_serial_init(void   *h_device)   // In:  Handle of the device
-
+void vmm_serial_init(void   *h_device)   // In:  Handle of the device
 {
     VMM_SERIAL_DEVICE *p_device;
     UART_IER           ier;
@@ -496,13 +449,11 @@ vmm_serial_init(void   *h_device)   // In:  Handle of the device
     UART_LCR           lcr;
     UART_MCR           mcr;
 
-
     p_device = h_device;
     VMM_ASSERT(p_device);
     VMM_ASSERT(! p_device->is_initialized);
 
     // MCR: Reset DTR, RTS, Out1, Out2 & Loop
-
     mcr.bits.DTRC     = 0;
     mcr.bits.RTS      = 0;
     mcr.bits.OUT1     = 0;
@@ -512,7 +463,6 @@ vmm_serial_init(void   *h_device)   // In:  Handle of the device
     hw_write_port_8(p_device->io_base + UART_REGISTER_MCR, mcr.data);
 
     // LCR: Reset DLAB
-
     lcr.bits.SERIALDB   = 0x03;   // 8 data bits
     lcr.bits.STOPB      = 0;      // 1 stop bit
     lcr.bits.PAREN      = 0;      // No parity
@@ -523,7 +473,6 @@ vmm_serial_init(void   *h_device)   // In:  Handle of the device
     hw_write_port_8(p_device->io_base + UART_REGISTER_LCR, lcr.data);
 
     // IER: Disable interrupts
-
     ier.bits.RAVIE    = 0;
     ier.bits.THEIE    = 0;
     ier.bits.RIE      = 0;
@@ -532,7 +481,6 @@ vmm_serial_init(void   *h_device)   // In:  Handle of the device
     hw_write_port_8(p_device->io_base + UART_REGISTER_IER, ier.data);
 
     // FCR: Disable FIFOs
-
     fcr.bits.TRFIFOE  = 0;
     fcr.bits.RESETRF  = 0;
     fcr.bits.RESETTF  = 0;
@@ -542,33 +490,27 @@ vmm_serial_init(void   *h_device)   // In:  Handle of the device
     hw_write_port_8(p_device->io_base + UART_REGISTER_FCR, fcr.data);
 
     // SCR: Scratch register
-
     hw_write_port_8(p_device->io_base + UART_REGISTER_SCR, 0x00);
 
     // LCR: Set DLAB
-
     lcr.bits.DLAB = 1;
     hw_write_port_8(p_device->io_base + UART_REGISTER_LCR, lcr.data);
 
     // DLL & DLM: Divisor value 1 for 115200 baud
-
     hw_write_port_8(p_device->io_base + UART_REGISTER_DLL, 0x01);
     hw_write_port_8(p_device->io_base + UART_REGISTER_DLM, 0x00);
 
     // LCR: Reset DLAB
-
     lcr.bits.DLAB = 0;
     hw_write_port_8(p_device->io_base + UART_REGISTER_LCR, lcr.data);
 
     // FCR: Enable and reset Rx & Tx FIFOs
-
     fcr.bits.TRFIFOE  = 1;
     fcr.bits.RESETRF  = 1;
     fcr.bits.RESETTF  = 1;
     hw_write_port_8(p_device->io_base + UART_REGISTER_FCR, fcr.data);
 
     // MCR: Set DTR, RTS
-
     mcr.bits.DTRC     = 1;
     mcr.bits.RTS      = 1;
     hw_write_port_8(p_device->io_base + UART_REGISTER_MCR, mcr.data);
@@ -584,33 +526,25 @@ void vmm_serial_reset(void *h_device)
     p_device->is_initialized = FALSE;
 }
 
-//======================= vmm_serial_get_io_range() ===========================
-//
 // Returns the I/O range occupied by the device
-void
-vmm_serial_get_io_range(void   *h_device,   // In:  Handle of the device
+void vmm_serial_get_io_range(void   *h_device,   // In:  Handle of the device
                         UINT16 *p_io_base,  // Out: Base of I/O range
                         UINT16 *p_io_end)   // Out: End of I/O range
 
 {
     VMM_SERIAL_DEVICE *p_device;
 
-
     p_device = h_device;
-
     *p_io_base = p_device->io_base;
     *p_io_end = p_device->io_base + 7;
 }
 
-//======================= vmm_serial_putc_nolock() ============================
-//
 // Write a single character to a serial device in a non-locked mode.
 // This function is reentrant, and can be safely called even while the normal
 // vmm_serial_putc() runs.  However, it is not optimized for performance and
 // should only be used when necessary, e.g., from an exception handler.
 
-char                                     // Ret: Character that was sent
-vmm_serial_putc_nolock(void *h_device,   // In:  Handle of the device
+char vmm_serial_putc_nolock(void *h_device,   // In:  Handle of the device
                        char  c)          // In:  Character to send
 {
     VMM_SERIAL_DEVICE *p_device;
@@ -618,7 +552,6 @@ vmm_serial_putc_nolock(void *h_device,   // In:  Handle of the device
     BOOLEAN            is_ready;
                               // The Tx FIFO is empty and hw handshake is "go"
     UINT32             num_wait_for_tx_ready;
-
 
     p_device = h_device;
 
@@ -634,14 +567,10 @@ vmm_serial_putc_nolock(void *h_device,   // In:  Handle of the device
     // (if applicable)
 
     num_wait_for_tx_ready = 0;
-    do
-    {
+    do {
         lsr.data = hw_read_port_8(p_device->io_base + UART_REGISTER_LSR);
-
         is_ready = (lsr.bits.THRE == 1) && is_hw_tx_handshake_go(p_device);
-
-        if (! is_ready)
-        {
+        if (! is_ready) {
             hw_stall_using_tsc(serial_tx_stall_usec);
             num_wait_for_tx_ready++;
         }
@@ -675,8 +604,7 @@ vmm_serial_putc_nolock(void *h_device,   // In:  Handle of the device
     } while (! is_ready);
 
     update_max_and_avg(&p_device->wait_for_tx_fifo_empty_max,
-                       &p_device->wait_for_tx_fifo_empty_avg,
-                       num_wait_for_tx_ready);
+                       &p_device->wait_for_tx_fifo_empty_avg, num_wait_for_tx_ready);
     update_max_and_avg(&p_device->wait_for_tx_ready_max,
                        &p_device->wait_for_tx_ready_avg,
                        num_wait_for_tx_ready);
@@ -688,16 +616,12 @@ vmm_serial_putc_nolock(void *h_device,   // In:  Handle of the device
 }
 
 
-//=========================== vmm_serial_putc() ===============================
-//
 // Write a single character to a serial device.
 // This function is not reentrant, and is for use in the normal case, where the
 // serial device has been previously locked.  It may be interrupted by
 // vmm_serial_putc_nolock().  The function attempts to use the full depth of
 // the UART's transmit FIFO to avoid busy loops.
-
-char                              // Ret: Character that was sent
-vmm_serial_putc(void *h_device,   // In:  Handle of the device
+char vmm_serial_putc(void *h_device,   // In:  Handle of the device
                 char  c)          // In:  Character to send
 {
     VMM_SERIAL_DEVICE *p_device;
@@ -711,12 +635,10 @@ vmm_serial_putc(void *h_device,   // In:  Handle of the device
     UINT32             num_wait_for_tx_fifo_empty;
 
     p_device = h_device;
-
     VMM_ASSERT(p_device->is_initialized);
 
     // Loop until there's room in the Tx FIFO, h/w handshake is OK
     // (if applicable), and there is no lock by vmm_serial_puts_nolock().
-
     num_wait_for_tx_ready = 0;
     num_wait_for_tx_fifo_empty = 0;
 
@@ -724,23 +646,18 @@ vmm_serial_putc(void *h_device,   // In:  Handle of the device
         lsr.data = hw_read_port_8(p_device->io_base + UART_REGISTER_LSR);
         if (lsr.bits.THRE == 1)        // The Tx FIFO is empty
             p_device->chars_in_tx_fifo = 0;
-
         is_ready = is_hw_tx_handshake_go(p_device);
-
         if (is_ready) {
             if (p_device->chars_in_tx_fifo >= p_device->hw_fifo_size) {
                 is_ready = FALSE;
                 num_wait_for_tx_fifo_empty++;
             }
         }
-
         if (is_ready && p_device->puts_lock) {
             // There's an on going string print by vmm_serial_puts_nolock()
-
             is_ready = FALSE;
             locked_out = TRUE;
         }
-
         if (! is_ready) {
             hw_stall_using_tsc(serial_tx_stall_usec);
             num_wait_for_tx_ready++;
@@ -748,11 +665,9 @@ vmm_serial_putc(void *h_device,   // In:  Handle of the device
     } while (! is_ready);
 
     update_max_and_avg(&p_device->wait_for_tx_ready_max,
-                       &p_device->wait_for_tx_ready_avg,
-                       num_wait_for_tx_ready);
+                       &p_device->wait_for_tx_ready_avg, num_wait_for_tx_ready);
     update_max_and_avg(&p_device->wait_for_tx_fifo_empty_max,
-                       &p_device->wait_for_tx_fifo_empty_avg,
-                       num_wait_for_tx_fifo_empty);
+                       &p_device->wait_for_tx_fifo_empty_avg, num_wait_for_tx_fifo_empty);
 
     // Now write the output character
     hw_write_port_8(p_device->io_base + UART_REGISTER_THR, c);
@@ -762,60 +677,45 @@ vmm_serial_putc(void *h_device,   // In:  Handle of the device
     p_device->num_tx_chars_lock++;
     if (locked_out)
         p_device->num_putc_blocked_by_puts_nolock++;
-
     return c;
 }
 
 
-//======================= vmm_serial_puts_nolock() ============================
-//
 // Write a string to a serial device in a non-locked mode.
 // This function is reentrant, and can be safely called even while the normal
 // vmm_serial_putc() runs.  However, it should be used only when necessary,
 // e.g. from an exception handler.
-int                                            // Ret: 0 if failed
-vmm_serial_puts_nolock(void       *h_device,   // In:  Handle of the device
-                       const char  string[])   // In:  String to send
-
+int vmm_serial_puts_nolock(void       *h_device,   // In:  Handle of the device
+                           const char  string[])   // In:  String to send
 {
     VMM_SERIAL_DEVICE *p_device;
     UINT32             i;
 
     p_device = h_device;
-
     p_device->puts_lock = TRUE;   // Block the normal putc()
                                   // Not reliable in case this function is
                                   // called by two h/w threads in parallel, but
                                   // the impact is not fatal
-
     if (p_device->in_puts)
         p_device->num_puts_interrupted_by_puts_nolock++;
-
     for (i = 0; string[i] != 0; i++)
         vmm_serial_putc_nolock(h_device, string[i]);
-
     p_device->puts_lock = FALSE;   // Unblock the normal putc()
-
     return 1;   // return any nonnegative value
 }
 
-//=========================== vmm_serial_puts() ===============================
-//
+
 // Write a string to a serial device
 // This function is not reentrant, and is for use in the normal case, where the
 // serial device has been previously locked.  It may be interrupted by
 // vmm_serial_put*_nolock().
-
-int                                     // Ret: 0 if failed
-vmm_serial_puts(void       *h_device,   // In:  Handle of the device
+int vmm_serial_puts(void       *h_device,   // In:  Handle of the device
                 const char  string[])   // In:  String to send
-
 {
     VMM_SERIAL_DEVICE *p_device;
     UINT32 i;
 
     p_device = h_device;
-
     for (i = 0; string[i] != 0; i++) {
         vmm_serial_putc(h_device, string[i]);
         p_device->in_puts = TRUE;
@@ -824,15 +724,12 @@ vmm_serial_puts(void       *h_device,   // In:  Handle of the device
     return 1;   // return any nonnegative value
 }
 
-//=========================== vmm_serial_getc() ===============================
-//
+
 // Poll the serial device and read a single character if ready.
 // This function is not reentrant.  Calling it while it runs in another thread
 // may result in a junk character returned, but the s/w will not crash.
 
-char                              // Ret: Character read from the device, 0 if
-                                  //      none.
-vmm_serial_getc(void *h_device)   // In:  Handle of the device
+char vmm_serial_getc(void *h_device)   // In:  Handle of the device
 
 {
     VMM_SERIAL_DEVICE *p_device;
@@ -840,36 +737,24 @@ vmm_serial_getc(void *h_device)   // In:  Handle of the device
     char               c;
 
     p_device = h_device;
-
     VMM_ASSERT(p_device->is_initialized);
-
     lsr.data = hw_read_port_8(p_device->io_base + UART_REGISTER_LSR);
-    if (lsr.bits.DR)  // Rx not empty
-    {
+    if (lsr.bits.DR)  {
         c = hw_read_port_8(p_device->io_base + UART_REGISTER_RBR);
         p_device->num_rx_chars++;
     }
-
     else
         c = 0;
-
     return c;
 }
 
-//======================== vmm_serial_cli_init() ==============================
-//
+
 // Initialize CLI command(s) for serial ports
-
-void
-vmm_serial_cli_init(void)
-
+void vmm_serial_cli_init(void)
 {
 #ifdef DEBUG
-    CLI_AddCommand(cli_display_serial_info,
-                   "debug serial info",
-                   "Print serial ports information",
-                   "",
-                   CLI_ACCESS_LEVEL_SYSTEM);
+    CLI_AddCommand(cli_display_serial_info, "debug serial info",
+                   "Print serial ports information", "", CLI_ACCESS_LEVEL_SYSTEM);
 #endif
 }
 

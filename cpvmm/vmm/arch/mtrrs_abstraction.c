@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -129,29 +127,24 @@ UINT32 mtrrs_abstraction_get_num_of_variable_range_regs(void) {
     return (UINT32)num;
 }
 
-INLINE
-BOOLEAN mtrrs_abstraction_are_fixed_regs_supported(void) {
+INLINE BOOLEAN mtrrs_abstraction_are_fixed_regs_supported(void) {
     return (mtrrs_cached_info.ia32_mtrrcap_reg.bits.fix != 0);
 }
 
-INLINE
-BOOLEAN mtrrs_abstraction_are_mtrrs_enabled(void) {
+INLINE BOOLEAN mtrrs_abstraction_are_mtrrs_enabled(void) {
     return (mtrrs_cached_info.ia32_mtrr_def_type.bits.enable != 0);
 }
 
-INLINE
-BOOLEAN mtrrs_abstraction_are_fixed_ranged_mtrrs_enabled(void) {
+INLINE BOOLEAN mtrrs_abstraction_are_fixed_ranged_mtrrs_enabled(void) {
     return (mtrrs_cached_info.ia32_mtrr_def_type.bits.fixed_range_enable != 0);
 }
 
-INLINE
-VMM_PHYS_MEM_TYPE mtrrs_abstraction_get_default_memory_type(void) {
+INLINE VMM_PHYS_MEM_TYPE mtrrs_abstraction_get_default_memory_type(void) {
     UINT64 type = mtrrs_cached_info.ia32_mtrr_def_type.bits.type;
     return (VMM_PHYS_MEM_TYPE)type;
 }
 
-INLINE
-BOOLEAN mtrrs_abstraction_is_var_reg_valid(UINT32 index) {
+INLINE BOOLEAN mtrrs_abstraction_is_var_reg_valid(UINT32 index) {
     return (mtrrs_cached_info.ia32_mtrr_var_phys_mask[index].bits.valid != 0);
 }
 
@@ -202,22 +195,19 @@ INLINE BOOLEAN mtrrs_abstraction_is_IA32_MTRR_DEF_TYPE_valid(UINT64 value) {
     return ((reg.bits.res0 == 0) && (reg.bits.res1 == 0) && mttrs_abstraction_is_type_valid(reg.bits.type));
 }
 
-INLINE
-BOOLEAN mtrrs_abstraction_is_IA32_MTRR_PHYSBASE_REG_valid(UINT64 value) {
+INLINE BOOLEAN mtrrs_abstraction_is_IA32_MTRR_PHYSBASE_REG_valid(UINT64 value) {
     IA32_MTRR_PHYSBASE_REG reg;
     reg.value = value;
     return ((reg.bits.res0 == 0) && (reg.bits.res1 == 0) && mttrs_abstraction_is_type_valid(reg.bits.type));
 }
 
-INLINE
-BOOLEAN mtrrs_abstraction_is_IA32_MTRR_PHYSMASK_REG_valid(UINT64 value) {
+INLINE BOOLEAN mtrrs_abstraction_is_IA32_MTRR_PHYSMASK_REG_valid(UINT64 value) {
     IA32_MTRR_PHYSMASK_REG reg;
     reg.value = value;
     return ((reg.bits.res0 == 0) && (reg.bits.res1 == 0));
 }
 
-INLINE
-BOOLEAN mtrrs_abstraction_is_IA32_FIXED_RANGE_REG_valid(UINT64 value) {
+INLINE BOOLEAN mtrrs_abstraction_is_IA32_FIXED_RANGE_REG_valid(UINT64 value) {
     IA32_FIXED_RANGE_MTRR reg;
     UINT32 i;
     reg.value = value;
@@ -230,30 +220,27 @@ BOOLEAN mtrrs_abstraction_is_IA32_FIXED_RANGE_REG_valid(UINT64 value) {
 }
 
 BOOLEAN mtrrs_is_variable_mtrrr_supported(UINT32 msr_id) {
+    /*
+     * IA32_MTRR_PHYSBASE8 - supported only if IA32_MTRR_CAP[7:0] > 8
+     * IA32_MTRR_PHYSMASK8 - supported only if IA32_MTRR_CAP[7:0] > 8
+     * IA32_MTRR_PHYSBASE9 - supported only if IA32_MTRR_CAP[7:0] > 9
+     * IA32_MTRR_PHYSMASK9 - supported only if IA32_MTRR_CAP[7:0] > 9
+     */
+    UINT32 index, i;
 
-        /*
-         * IA32_MTRR_PHYSBASE8 - supported only if IA32_MTRR_CAP[7:0] > 8
-         * IA32_MTRR_PHYSMASK8 - supported only if IA32_MTRR_CAP[7:0] > 8
-         * IA32_MTRR_PHYSBASE9 - supported only if IA32_MTRR_CAP[7:0] > 9
-         * IA32_MTRR_PHYSMASK9 - supported only if IA32_MTRR_CAP[7:0] > 9
-         */
-
-        UINT32 index, i;
-
-        /* Check if MSR is within unsupported variable MTRR range */
-        if(msr_id >= IA32_MTRR_PHYSBASE8_ADDR
-                && msr_id <= IA32_MTRR_MAX_PHYSMASK_ADDR) {
-
-                for(index = IA32_MTRR_MAX_PHYSMASK_ADDR, i = 1; index > IA32_MTRR_PHYSBASE8_ADDR; index -= 2, i++) {
-                        if( ((index == msr_id) || (index - 1 == msr_id)) )
-                                if (mtrrs_abstraction_get_num_of_variable_range_regs() > (MTRRS_ABS_NUM_OF_VAR_RANGE_MTRRS - i) )
-                                        return TRUE;
-                                else
-                                        return FALSE;
-                }
-                return TRUE; // dummy added to suppress warning, should never get here
-        } else // MSR is not within unsupported variable MTRR range.
-                return TRUE;
+    /* Check if MSR is within unsupported variable MTRR range */
+    if(msr_id >= IA32_MTRR_PHYSBASE8_ADDR && msr_id <= IA32_MTRR_MAX_PHYSMASK_ADDR) {
+        for(index = IA32_MTRR_MAX_PHYSMASK_ADDR, i = 1; index > IA32_MTRR_PHYSBASE8_ADDR; 
+                                                      index -= 2, i++) {
+            if( ((index == msr_id) || (index - 1 == msr_id)) )
+                if (mtrrs_abstraction_get_num_of_variable_range_regs() > (MTRRS_ABS_NUM_OF_VAR_RANGE_MTRRS - i) )
+                    return TRUE;
+                else
+                    return FALSE;
+        }
+        return TRUE; // dummy added to suppress warning, should never get here
+    } else // MSR is not within unsupported variable MTRR range.
+        return TRUE;
 }
 
 
@@ -317,13 +304,10 @@ BOOLEAN mtrrs_abstraction_bsp_initialize(void) {
                 VMM_LOG(mask_uvmm,level_error, "BSP: ERROR: MTRRs Abstraction: Variable MTRRs count > %d", MTRRS_ABS_NUM_OF_VAR_RANGE_MTRRS);
             VMM_DEADLOOP();
         }
-
         mtrrs_cached_info.ia32_mtrr_var_phys_base[index].value = hw_read_msr(msr_addr);
         mtrrs_cached_info.ia32_mtrr_var_phys_mask[index].value = hw_read_msr(msr_addr + 1);
     }
-
     MTRR_MSBs = ~((UINT64)(((UINT64)1 << addr_get_physical_address_size()) - 1));
-
     mtrrs_cached_info.is_initialized = TRUE;
     return TRUE;
 }
@@ -336,17 +320,14 @@ BOOLEAN mtrrs_abstraction_ap_initialize(void) {
         VMM_LOG(mask_anonymous, level_error,"ERROR: MTRRs Abstraction: Initializing AP before BSP\n");
         goto failed;
     }
-
     if (mtrrs_cached_info.ia32_mtrrcap_reg.value != hw_read_msr(IA32_MTRRCAP_ADDR)) {
         VMM_LOG(mask_anonymous, level_error,"ERROR: MTRRs Abstraction: IA32_MTRRCAP doesn't match\n");
         goto failed;
     }
-
     if (mtrrs_cached_info.ia32_mtrr_def_type.value != hw_read_msr(IA32_MTRR_DEF_TYPE_ADDR)) {
         VMM_LOG(mask_anonymous, level_error,"ERROR: MTRRs Abstraction: IA32_MTRR_DEF_TYPE doesn't match\n");
         goto failed;
     }
-
     if (mtrrs_abstraction_are_fixed_regs_supported()) {
         if ((mtrrs_cached_info.ia32_mtrr_fix[0].value != hw_read_msr(IA32_MTRR_FIX64K_00000_ADDR)) ||
             (mtrrs_cached_info.ia32_mtrr_fix[1].value != hw_read_msr(IA32_MTRR_FIX16K_80000_ADDR)) ||
@@ -361,7 +342,6 @@ BOOLEAN mtrrs_abstraction_ap_initialize(void) {
             (mtrrs_cached_info.ia32_mtrr_fix[10].value != hw_read_msr(IA32_MTRR_FIX4K_F8000_ADDR))) {
 
             VMM_LOG(mask_anonymous, level_error,"ERROR: MTRRs Abstraction: One (or more) of the fixed range MTRRs doesn't match\n");
-
             goto failed;
         }
     }
@@ -371,16 +351,14 @@ BOOLEAN mtrrs_abstraction_ap_initialize(void) {
                 VMM_LOG(mask_uvmm,level_error, "AP: ERROR: MTRRs Abstraction: Variable MTRRs count > %d", MTRRS_ABS_NUM_OF_VAR_RANGE_MTRRS);
             VMM_DEADLOOP();
         }
-
         if ((mtrrs_cached_info.ia32_mtrr_var_phys_base[index].value != hw_read_msr(msr_addr)) ||
-            (mtrrs_cached_info.ia32_mtrr_var_phys_mask[index].value != hw_read_msr(msr_addr + 1))) {
-
+           (mtrrs_cached_info.ia32_mtrr_var_phys_mask[index].value != hw_read_msr(msr_addr + 1))) {
             VMM_LOG(mask_anonymous, level_error,"ERROR: MTRRs Abstraction: One (or more) of the variable range MTRRs doesn't match\n");
             goto failed;
         }
     }
-
     return TRUE;
+
 failed:
     VMM_ASSERT(0);
     return FALSE;
@@ -394,13 +372,11 @@ VMM_PHYS_MEM_TYPE mtrrs_abstraction_get_memory_type(HPA address) {
         UINT64 remsize_back = 0, range_base = 0;
     VMM_PHYS_MEM_TYPE type_back = VMM_PHYS_MEM_UNDEFINED;
 
-        remsize = 0;
+    remsize = 0;
     VMM_ASSERT(mtrrs_cached_info.is_initialized);
-
     if (!mtrrs_abstraction_are_mtrrs_enabled()) {
         return VMM_PHYS_MEM_UNCACHABLE;
     }
-
     if (mtrrs_abstraction_are_fixed_regs_supported() &&
         mtrrs_abstraction_are_fixed_ranged_mtrrs_enabled() &&
         (address <= mtrrs_cached_info.ia32_mtrr_fix_range[MTRRS_ABS_NUM_OF_FIXED_RANGE_MTRRS - 1].end_addr)) {
@@ -423,20 +399,16 @@ VMM_PHYS_MEM_TYPE mtrrs_abstraction_get_memory_type(HPA address) {
     }
 
     var_mtrr_match_bitmap = 0;
-
     for (index = 0; index < mtrrs_abstraction_get_num_of_variable_range_regs(); index++) {
         if (index >= MTRRS_ABS_NUM_OF_VAR_RANGE_MTRRS) {
             break;
         }
-
         if (!mtrrs_abstraction_is_var_reg_valid(index)) {
             continue;
         }
-        
         if (mtrrs_abstraction_is_addr_covered_by_var_reg(address, index)) {
             type = (VMM_PHYS_MEM_TYPE)mtrrs_cached_info.ia32_mtrr_var_phys_base[index].bits.type;
             BIT_SET(var_mtrr_match_bitmap, type);
-                        
             if (remsize_back > 0) {
                 if (type == VMM_PHYS_MEM_UNCACHABLE || type_back == VMM_PHYS_MEM_UNCACHABLE) {
                     if (type_back != VMM_PHYS_MEM_UNCACHABLE) {
@@ -447,7 +419,6 @@ VMM_PHYS_MEM_TYPE mtrrs_abstraction_get_memory_type(HPA address) {
                     }
                     if (type == VMM_PHYS_MEM_UNCACHABLE && type_back == VMM_PHYS_MEM_UNCACHABLE)
                         remsize_back = (remsize_back > remsize) ? remsize_back : remsize;
-
                     type_back = VMM_PHYS_MEM_UNCACHABLE;
                     remsize =0;
                 }
@@ -505,7 +476,6 @@ VMM_PHYS_MEM_TYPE mtrrs_abstraction_get_range_memory_type(HPA address, OUT UINT6
         remsize=0;
 
     first_page_mem_type = mtrrs_abstraction_get_memory_type(address);
-
     for(mem_type = first_page_mem_type;
         (mem_type == first_page_mem_type) && (range_size<totalsize);
         mem_type = mtrrs_abstraction_get_memory_type(address + range_size)) {
@@ -521,7 +491,6 @@ VMM_PHYS_MEM_TYPE mtrrs_abstraction_get_range_memory_type(HPA address, OUT UINT6
 }
 
 BOOLEAN mtrrs_abstraction_track_mtrr_update(UINT32 mtrr_index, UINT64 value) {
-
     if (mtrr_index == IA32_MTRR_DEF_TYPE_ADDR) {
         if (!mtrrs_abstraction_is_IA32_MTRR_DEF_TYPE_valid(value)) {
             return FALSE;
@@ -529,7 +498,7 @@ BOOLEAN mtrrs_abstraction_track_mtrr_update(UINT32 mtrr_index, UINT64 value) {
         mtrrs_cached_info.ia32_mtrr_def_type.value = value;
         return TRUE;
     }
-    if ((mtrr_index >= IA32_MTRR_FIX64K_00000_ADDR) && (mtrr_index <= IA32_MTRR_FIX4K_F8000_ADDR)) {
+    if ((mtrr_index>=IA32_MTRR_FIX64K_00000_ADDR) && (mtrr_index <= IA32_MTRR_FIX4K_F8000_ADDR)) {
         UINT32 fixed_index = (~((UINT32)0));
         switch(mtrr_index) {
 
@@ -570,14 +539,12 @@ BOOLEAN mtrrs_abstraction_track_mtrr_update(UINT32 mtrr_index, UINT64 value) {
             VMM_ASSERT(0);
             return FALSE;
         }
-
         if (!mtrrs_abstraction_is_IA32_FIXED_RANGE_REG_valid(value)) {
             return FALSE;
         }
         mtrrs_cached_info.ia32_mtrr_fix[fixed_index].value = value;
         return TRUE;
     }
-
 
     if ((mtrr_index >= IA32_MTRR_PHYSBASE0_ADDR) && (mtrr_index <= IA32_MTRR_MAX_PHYSMASK_ADDR)){
         BOOLEAN is_phys_base = ((mtrr_index % 2) == 0);

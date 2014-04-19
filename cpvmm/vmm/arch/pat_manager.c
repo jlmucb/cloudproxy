@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -61,19 +59,18 @@ BOOLEAN pat_mngr_is_memory_type_valid(VMM_PHYS_MEM_TYPE mem_type) {
 }
 #endif
 
-UINT32 pat_mngr_get_earliest_pat_index_for_mem_type(VMM_PHYS_MEM_TYPE mem_type, UINT64 pat_msr_value) {
+UINT32 pat_mngr_get_earliest_pat_index_for_mem_type(VMM_PHYS_MEM_TYPE mem_type, 
+                                                    UINT64 pat_msr_value) {
     UINT32 i;
 
     if (pat_msr_value == PAT_MNGR_INVALID_PAT_MSR_VALUE) {
         return PAT_MNGR_INVALID_PAT_INDEX;
     }
-
     for (i = 0; i < PAT_MNGR_NUM_OF_ATTRUBUTE_FIELDS; i++) {
         if (pat_mngr_get_memory_type(pat_msr_value, i) == mem_type) {
             return i;
         }
     }
-
     return PAT_MNGR_INVALID_PAT_INDEX;
 }
 
@@ -105,13 +102,13 @@ UINT32 pat_mngr_retrieve_current_earliest_pat_index_for_mem_type(VMM_PHYS_MEM_TY
     else{
         result = pat_mngr_get_earliest_pat_index_for_mem_type(mem_type, pat_msr_value);
     }
-    
     return result;
 }
+
+
 #ifdef INCLUDE_UNUSED_CODE
 VMM_PHYS_MEM_TYPE pat_mngr_retrieve_current_pat_mem_type(UINT32 pat_index) {
     UINT64 pat_msr_value = hw_read_msr(IA32_MSR_PAT);
-
     if (pat_index >= PAT_MNGR_NUM_OF_ATTRUBUTE_FIELDS) {
         VMM_ASSERT(0);
         return VMM_PHYS_MEM_UNDEFINED;

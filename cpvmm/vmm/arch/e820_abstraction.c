@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -35,7 +33,7 @@ UINT32 g_int15_trapped_page = 0;
 UINT32 g_int15_orignal_vector = 0;
 E820MAP_STATE                   *g_emap;
 #endif // ENABLE_INT15_VIRTUALIZATION
-/*------------------------------------------------------------*/
+
 
 static INT15_E820_MEMORY_MAP* g_e820_map = NULL;
 
@@ -51,15 +49,15 @@ const char* g_int15_e820_type_name[] = {
 #ifdef ENABLE_INT15_VIRTUALIZATION
 static UINT8 int15_handler_code[] =
 {
-        0x3d,0x20,0xe8,                 //                      cmp ax, 0xe820
-        0x74,0x05,                      //                      jz Handler
-        0xea,0x00,0x00,0x00,0x00,       //                      jmp orig_handler
+        0x3d,0x20,0xe8,                 // cmp ax, 0xe820
+        0x74,0x05,                      // jz Handler
+        0xea,0x00,0x00,0x00,0x00,       // jmp orig_handler
         0x0f,0x01,0xc1,                 // Handler: vmcall
-        0xcf                            //                              iret
+        0xcf                            // iret
 };
-                                                                // conditional jump can be only
-                                                                // near jump, hence too jumps in
-                                                                // this assembly code
+                                        // conditional jump can be only
+                                        // near jump, hence too jumps in
+                                        // this assembly code
 #endif // ENABLE_INT15_VIRTUALIZATION
 #define E820_NAMES_COUNT (sizeof(g_int15_e820_type_name)/sizeof(const char*))
 
@@ -88,7 +86,7 @@ void update_int15_handling(void)
     //patch the original vector
     *(UINT32*)&int15_handler_code[ORIG_HANDLER_OFFSET] = g_int15_orignal_vector;
 
-    //put out warning if the vector area is being used
+    // put out warning if the vector area is being used
     // vectors we are using are user defined, it is possible
     // some user might decide to use. Nothing we could do about
     // but would like to through some indication that those vectors
@@ -107,8 +105,7 @@ void update_int15_handling(void)
 }
 #endif //ENABLE_INT15_VIRTUALIZATION
 #ifdef DEBUG
-INLINE
-const char* e820_get_type_name( INT15_E820_RANGE_TYPE type )
+INLINE const char* e820_get_type_name( INT15_E820_RANGE_TYPE type )
 {
     return (type < E820_NAMES_COUNT) ? g_int15_e820_type_name[type] : "UNKNOWN";
 }
@@ -142,7 +139,6 @@ const INT15_E820_MEMORY_MAP* e820_abstraction_get_map(E820_HANDLE e820_handle) {
     if (e820_handle == E820_ORIGINAL_MAP) {
         return g_e820_map;
     }
-
     return (const INT15_E820_MEMORY_MAP*)e820_handle;
 }
 
@@ -177,25 +173,20 @@ e820_abstraction_iterator_get_next(E820_HANDLE e820_handle, E820_ABSTRACTION_RAN
     if (iter == (E820_ABSTRACTION_RANGE_ITERATOR)NULL) {
         return E820_ABSTRACTION_NULL_ITERATOR;
     }
-
     if (e820_handle == E820_ORIGINAL_MAP) {
         e820_map = g_e820_map;
     }
     else {
         e820_map = (INT15_E820_MEMORY_MAP*)e820_handle;
     }
-
     if(e820_map == NULL){
         return E820_ABSTRACTION_NULL_ITERATOR;
     }
-
     e820_entries_hva = (UINT64)(&(e820_map->memory_map_entry[0]));
-
     iter_hva += sizeof(INT15_E820_MEMORY_MAP_ENTRY_EXT);
     if (iter_hva >= (e820_entries_hva + e820_map->memory_map_size)) {
         return E820_ABSTRACTION_NULL_ITERATOR;
     }
-
     return (E820_ABSTRACTION_RANGE_ITERATOR*)iter_hva;
 }
 
@@ -204,7 +195,6 @@ e820_abstraction_iterator_get_range_details(IN E820_ABSTRACTION_RANGE_ITERATOR i
     if (iter == (E820_ABSTRACTION_RANGE_ITERATOR)NULL) {
         return NULL;
     }
-
     return (INT15_E820_MEMORY_MAP_ENTRY_EXT*)iter;
 }
 
@@ -214,9 +204,7 @@ BOOLEAN e820_abstraction_create_new_map(OUT E820_HANDLE* handle) {
     if (e820_map == NULL) {
         return FALSE;
     }
-
     e820_map->memory_map_size = 0;
-
     *handle = (E820_HANDLE)e820_map;
     return TRUE;
 }
@@ -242,17 +230,13 @@ BOOLEAN e820_abstraction_add_new_range(IN E820_HANDLE handle,
         VMM_ASSERT(0);
         return FALSE;
     }
-
     if ((e820_map->memory_map_size + sizeof(INT15_E820_MEMORY_MAP_ENTRY_EXT)) >= PAGE_4KB_SIZE) {
         return FALSE;
     }
-
     if (length == 0) {
         return FALSE;
     }
-
     new_entry_index = e820_map->memory_map_size / sizeof(INT15_E820_MEMORY_MAP_ENTRY_EXT);
-
     if (new_entry_index > 0) {
         INT15_E820_MEMORY_MAP_ENTRY_EXT* last_entry = &(e820_map->memory_map_entry[new_entry_index - 1]);
         if ((last_entry->basic_entry.base_address >= base_address) ||
@@ -260,7 +244,6 @@ BOOLEAN e820_abstraction_add_new_range(IN E820_HANDLE handle,
             return FALSE;
         }
     }
-
     new_entry = &(e820_map->memory_map_entry[new_entry_index]);
     new_entry->basic_entry.base_address = base_address;
     new_entry->basic_entry.length = length;
@@ -269,6 +252,7 @@ BOOLEAN e820_abstraction_add_new_range(IN E820_HANDLE handle,
     e820_map->memory_map_size += sizeof(INT15_E820_MEMORY_MAP_ENTRY_EXT);
     return TRUE;
 }
+
 
 #ifdef ENABLE_INT15_VIRTUALIZATION
 // handle int15 from real mode code
@@ -285,8 +269,8 @@ BOOLEAN handle_int15_vmcall(GUEST_CPU_HANDLE gcpu)
     UINT32 vmcall_lnr_addr;
     volatile UINT64 r_rax=0, r_rdx=0, r_rip=0;
 
-    if(!(0x1 & gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR0))) //PE = 0? then real mode
-    {
+    // PE = 0? then real mode
+    if(!(0x1 & gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR0))) {
         //need to get CS:IP to make sure that this VMCALL from INT15 handler
         gcpu_get_segment_reg(gcpu,IA32_SEG_CS, &selector,&base,&limit,&attr);
         r_rip = gcpu_get_gp_reg(gcpu, IA32_REG_RIP);
@@ -294,7 +278,6 @@ BOOLEAN handle_int15_vmcall(GUEST_CPU_HANDLE gcpu)
         expected_lnr_addr = SEGMENT_OFFSET_TO_LINEAR(g_int15_trapped_page >> 16,
                                                      g_int15_trapped_page + VMCALL_OFFSET);
         vmcall_lnr_addr = SEGMENT_OFFSET_TO_LINEAR((UINT32)selector, (UINT32)r_rip);
-
         //check to see if the CS:IP is same as expected for VMCALL in INT15 handler
         if (expected_lnr_addr == vmcall_lnr_addr) {
             r_rax = gcpu_get_gp_reg(gcpu, IA32_REG_RAX);
@@ -340,7 +323,6 @@ e820_save_guest_state(GUEST_CPU_HANDLE gcpu, E820MAP_STATE *emap)
     p_arch->em_rdi = gcpu_get_gp_reg(gcpu, IA32_REG_RDI);
     p_arch->em_rsp = gcpu_get_gp_reg(gcpu, IA32_REG_RSP);
     p_arch->em_rflags = gcpu_get_gp_reg(gcpu, IA32_REG_RFLAGS);
-
     gcpu_get_segment_reg(gcpu,IA32_SEG_ES, &selector,&base,&limit,&attr);
     p_arch->em_es = selector; p_arch->es_base = base; p_arch->es_lim = limit;
     p_arch->es_attr = attr;
@@ -378,20 +360,16 @@ e820_restore_guest_state( GUEST_CPU_HANDLE gcpu, E820MAP_STATE *emap)
      VMM_DEADLOOP();
      return;
    }
-
     sp_gpa_val = *(UINT16*)(UINT64)sp_hva_addr;
-
     if (p_arch->em_rflags & RFLAGS_CARRY)
           BITMAP_SET(sp_gpa_val, RFLAGS_CARRY);
     else
           BITMAP_CLR(sp_gpa_val, RFLAGS_CARRY);
-
     *(UINT16*)(UINT64)sp_hva_addr =   sp_gpa_val;
 }
 
 //handle INT15 E820 map
-BOOLEAN
-e820_int15_handler(E820MAP_STATE *emap)
+BOOLEAN e820_int15_handler(E820MAP_STATE *emap)
 {
     UINT64 dest_gpa;
     E820_GUEST_STATE *p_arch = &emap->e820_guest_state;
@@ -399,13 +377,10 @@ e820_int15_handler(E820MAP_STATE *emap)
 
     if (emap->guest_phy_memory == NULL)
         emap->guest_phy_memory = gcpu_get_current_gpm(emap->guest_handle);
-
     VMM_ASSERT(emap->guest_phy_memory != NULL);
-
     if (NULL == emap->emu_e820_handle) {
         if (FALSE == (gpm_create_e820_map(emap->guest_phy_memory, (E820_HANDLE)&emap->emu_e820_handle))) {
              VMM_LOG(mask_anonymous, level_error,"FATAL ERROR: No E820 Memory Map was found\n");
-             VMM_DEADLOOP();
          return FALSE;
         }
         p_mmap = e820_abstraction_get_map(emap->emu_e820_handle);
@@ -416,7 +391,6 @@ e820_int15_handler(E820MAP_STATE *emap)
         emap->emu_e820_continuation_value = 0;
         VMM_LOG(mask_anonymous, level_trace,"INT15 vmcall for E820 map initialized!\n" );
     }
-   
    // Make sure all the arguments are valid
    if ((p_arch->em_rcx < sizeof(INT15_E820_MEMORY_MAP_ENTRY)) ||
        (p_arch->em_rbx >= emap->emu_e820_memory_map_size)    ||
@@ -424,7 +398,6 @@ e820_int15_handler(E820MAP_STATE *emap)
        // Set the carry flag
        BITMAP_SET(p_arch->em_rflags, RFLAGS_CARRY);
        VMM_LOG(mask_anonymous, level_error, "ERROR>>>>> E820 INT15 rbx=0x%x rcx:0x%x\n",p_arch->em_rbx,p_arch->em_rcx);
-
    }
    else {
        HVA dest_hva=0;
@@ -436,7 +409,6 @@ e820_int15_handler(E820MAP_STATE *emap)
 
        // where to put the result
        dest_gpa = SEGMENT_OFFSET_TO_LINEAR((UINT32) p_arch->em_es, p_arch->em_rdi);
-
        if (FALSE == gpm_gpa_to_hva(emap->guest_phy_memory, dest_gpa, &dest_hva)) {
              VMM_LOG(mask_anonymous, level_trace,"Translation failed for physical address %P \n", dest_gpa);
              BITMAP_SET(p_arch->em_rflags, RFLAGS_CARRY);
@@ -458,16 +430,12 @@ e820_int15_handler(E820MAP_STATE *emap)
           // Clear EBX to indicate that this is the last entry in the memory map
            p_arch->em_rbx = 0;
            emap->emu_e820_continuation_value = 0;
-
-
        }
        else {
            // Update the EBX continuation value to indicate there are more entries
            p_arch->em_rbx = emap->emu_e820_continuation_value;
-
        }
    }
-
    return TRUE;
 }
 #endif //ENABLE_INT15_VIRTUALIZATION
@@ -481,16 +449,12 @@ void e820_abstraction_print_memory_map(IN E820_HANDLE handle) {
     if (e820_map == E820_ORIGINAL_MAP) {
         e820_map = g_e820_map;
     }
-
     VMM_LOG(mask_anonymous, level_trace,"\nE820 Memory Map\n");
     VMM_LOG(mask_anonymous, level_trace,"-------------------\n");
-
     if (e820_map == NULL) {
         VMM_LOG(mask_anonymous, level_trace,"DOESN'T EXIST!!!\n");
     }
-
     num_of_entries = e820_map->memory_map_size / sizeof(e820_map->memory_map_entry[0]);
-
     for (i = 0; i < num_of_entries; i++) {
         INT15_E820_MEMORY_MAP_ENTRY_EXT* entry = &(e820_map->memory_map_entry[i]);
         VMM_LOG(mask_anonymous, level_trace,"%2d: [%P : %P] ; type = 0x%x(%8s) ; ext_attr = 0x%x\n",

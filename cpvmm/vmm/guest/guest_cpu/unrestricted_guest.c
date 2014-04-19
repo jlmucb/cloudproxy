@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,9 +28,7 @@ extern BOOLEAN ept_enable(GUEST_CPU_HANDLE gcpu);
 
 void gcpu_clr_unrestricted_guest(GUEST_CPU_HANDLE gcpu)
 {
-
     VMM_ASSERT( gcpu );
-        
     CLR_UNRESTRICTED_GUEST_FLAG(gcpu);
     unrestricted_guest_disable(gcpu);
 
@@ -75,7 +71,7 @@ void unrestricted_guest_hw_disable(GUEST_CPU_HANDLE gcpu)
 
 void unrestricted_guest_disable(GUEST_CPU_HANDLE gcpu)
 {
-        unrestricted_guest_hw_disable(gcpu);
+    unrestricted_guest_hw_disable(gcpu);
 }
 
 

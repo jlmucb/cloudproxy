@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -355,11 +353,9 @@ void gcpu_physical_memory_modified( GUEST_CPU_HANDLE gcpu )
     VMM_ASSERT( gpm_flat_page_tables_ok );
 }
 
-//
+
 // Perform pre-resume actions
-//
-static
-void gcpu_perform_resume_actions( GUEST_CPU* gcpu,
+static void gcpu_perform_resume_actions( GUEST_CPU* gcpu,
                                   const GCPU_RESUME_ACTION* action )
 {
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
@@ -678,8 +674,6 @@ void gcpu_resume( GUEST_CPU_HANDLE gcpu )
     }
 
     //host_cpu_save_dr7(hw_cpu_id());
-
-
     if (0 != gcpu->hw_enforcements) {
         gcpu_apply_hw_enforcements(gcpu);
     }

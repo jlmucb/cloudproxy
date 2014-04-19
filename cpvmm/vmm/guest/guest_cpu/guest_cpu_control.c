@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -211,7 +209,6 @@ static void set_minimal_processor_ctrls( GCPU_VMEXIT_CONTROL_FIELD_COUNTERS* fie
        //VMM_LOG(mask_anonymous, level_trace,"%s:VMEXIT BITS= %X\n", __FUNCTION__, proc_ctrl.Uint32);
 	}
 
-
     // if processor_ctrls2 may be enabled, enable them immediately
     // to simplify processing
     VMM_ASSERT( g_processor_ctrls2_supported ==
@@ -255,7 +252,6 @@ static void set_minimal_processor_ctrls2( GCPU_VMEXIT_CONTROL_FIELD_COUNTERS* fi
         }
     }
 
-    //
     //INVPCID. Behavior of the INVPCID instruction is determined first
     //by the setting of the “enable INVPCID” VM-execution control:
     //— If the “enable INVPCID” VM-execution control is 0, 
@@ -458,8 +454,7 @@ static void init_minimal_controls( GUEST_CPU_HANDLE gcpu )
 // Get 64bit mask + flags set. For each 1-bit in mask consult flags bit.
 // If flags bit is 1 - increase count, esle - decrease count
 // Return bit set with 1bit for each non-zero counter
-static
-UINT64 gcpu_update_control_counters( UINT64 flags, UINT64 mask,
+static UINT64 gcpu_update_control_counters( UINT64 flags, UINT64 mask,
                                      GCPU_VMEXIT_CONTROL_FIELD_COUNTERS* counters )
 {
     UINT32 idx;
@@ -498,16 +493,11 @@ UINT64 gcpu_update_control_counters( UINT64 flags, UINT64 mask,
     return counters->bit_field;
 }
 
-INLINE
-UINT64 calculate_cr0_reg_mask( GUEST_CPU_HANDLE gcpu, UINT64 request, UINT64 bitmask )
+INLINE UINT64 calculate_cr0_reg_mask( GUEST_CPU_HANDLE gcpu, UINT64 request, UINT64 bitmask )
 {
     UINT64 final_mask;
 
-    final_mask = gcpu_update_control_counters(
-                        request,
-                        bitmask,
-                        &(gcpu->vmexit_setup.cr0));
-//VMM_LOG(mask_anonymous, level_trace,"calculate_cr0_reg_mask: final_mask=%P\n", final_mask);
+    final_mask = gcpu_update_control_counters( request, bitmask, &(gcpu->vmexit_setup.cr0));
     return GET_FINAL_SETTINGS( gcpu, cr0, final_mask );
 }
 
@@ -517,7 +507,6 @@ void gcpu_set_cr0_reg_mask_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level, UIN
     VMM_ASSERT(vmcs);
 
     if (vmcs_read( vmcs, VMCS_CR0_MASK ) != value) {
-//VMM_LOG(mask_anonymous, level_trace,"set_cr0_reg_mask: value=%P\n", value);
         vmcs_write( vmcs, VMCS_CR0_MASK, value );
     }
 }
@@ -536,10 +525,7 @@ UINT64 calculate_cr4_reg_mask( GUEST_CPU_HANDLE gcpu, UINT64 request, UINT64 bit
 {
     UINT64 final_mask;
 
-    final_mask = gcpu_update_control_counters( request, bitmask,
-                        &(gcpu->vmexit_setup.cr4));
-
-//VMM_LOG(mask_anonymous, level_trace,"calculate_cr4_reg_mask: final_mask=%P\n", final_mask);
+    final_mask = gcpu_update_control_counters( request, bitmask, &(gcpu->vmexit_setup.cr4));
     return GET_FINAL_SETTINGS( gcpu, cr4, final_mask );
 }
 
@@ -549,7 +535,6 @@ void gcpu_set_cr4_reg_mask_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level, UIN
     VMM_ASSERT(vmcs);
 
     if (vmcs_read( vmcs, VMCS_CR4_MASK ) != value ) {
-//VMM_LOG(mask_anonymous, level_trace,"set_cr4_reg_mask: value=%P\n", value);
         vmcs_write( vmcs, VMCS_CR4_MASK, value );
     }
 }
@@ -558,22 +543,16 @@ UINT64 gcpu_get_cr4_reg_mask_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level )
 {
     VMCS_OBJECT* vmcs = gcpu_get_vmcs_layered(gcpu, level);
     VMM_ASSERT(vmcs);
-
     return vmcs_read( vmcs, VMCS_CR4_MASK );
 }
 
 
-INLINE
-UINT32 calculate_pin_ctrls( GUEST_CPU_HANDLE gcpu, UINT32 request, UINT32 bitmask )
+INLINE UINT32 calculate_pin_ctrls( GUEST_CPU_HANDLE gcpu, UINT32 request, UINT32 bitmask )
 {
     UINT32 final_mask;
 
-    final_mask = (UINT32)gcpu_update_control_counters(
-                            request,
-                            bitmask,
+    final_mask = (UINT32)gcpu_update_control_counters( request, bitmask,
                             &(gcpu->vmexit_setup.pin_ctrls));
-
-//VMM_LOG(mask_anonymous, level_trace,"calculate_pin_ctrls: final_mask=%P\n", final_mask);
     return (UINT32)GET_FINAL_SETTINGS( gcpu, pin_ctrls, final_mask );
 }
 
@@ -583,7 +562,6 @@ void gcpu_set_pin_ctrls_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level, UINT64
     VMM_ASSERT(vmcs);
 
     if (vmcs_read( vmcs, VMCS_CONTROL_VECTOR_PIN_EVENTS ) != value) {
-//VMM_LOG(mask_anonymous, level_trace,"set_pin_ctrls: value=%P\n", value);
         vmcs_write( vmcs, VMCS_CONTROL_VECTOR_PIN_EVENTS, value );
     }
 }
@@ -596,15 +574,12 @@ UINT64 gcpu_get_pin_ctrls_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level )
     return vmcs_read( vmcs, VMCS_CONTROL_VECTOR_PIN_EVENTS );
 }
 
-static
-UINT32 calculate_processor_ctrls( GUEST_CPU_HANDLE gcpu, UINT32 request, UINT32 bitmask )
+static UINT32 calculate_processor_ctrls( GUEST_CPU_HANDLE gcpu, UINT32 request, UINT32 bitmask )
 {
     UINT32 final_mask;
 
     final_mask = (UINT32)gcpu_update_control_counters( request,
                             bitmask, &(gcpu->vmexit_setup.processor_ctrls));
-
-    //VMM_LOG(mask_anonymous, level_trace,"calculate_processor_ctrls: final_mask=%P\n", final_mask);
     return (UINT32)GET_FINAL_SETTINGS( gcpu, processor_ctrls, final_mask );
 }
 
@@ -639,8 +614,6 @@ UINT32 calculate_processor_ctrls2( GUEST_CPU_HANDLE gcpu, UINT32 request, UINT32
 
     final_mask = (UINT32)gcpu_update_control_counters( request,
                             bitmask, &(gcpu->vmexit_setup.processor_ctrls2));
-
-//VMM_LOG(mask_anonymous, level_trace,"calculate_processor_ctrls2: final_mask=%P\n", final_mask);
     return (UINT32)GET_FINAL_SETTINGS( gcpu, processor_ctrls2, final_mask );
 }
 
@@ -654,7 +627,6 @@ void gcpu_set_processor_ctrls2_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level,
     VMM_ASSERT( g_processor_ctrls2_supported == TRUE );
 
     if (vmcs_read( vmcs, VMCS_CONTROL2_VECTOR_PROCESSOR_EVENTS ) != value ) {
-//VMM_LOG(mask_anonymous, level_trace,"set_processor_ctrls2: value=%P\n", value);
         vmcs_write( vmcs, VMCS_CONTROL2_VECTOR_PROCESSOR_EVENTS, value );
     }
 }
@@ -667,8 +639,7 @@ UINT64 gcpu_get_processor_ctrls2_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL leve
     return vmcs_read( vmcs, VMCS_CONTROL2_VECTOR_PROCESSOR_EVENTS );
 }
 
-INLINE
-UINT32 calculate_exceptions_map( GUEST_CPU_HANDLE gcpu, UINT32 request, UINT32 bitmask,
+INLINE UINT32 calculate_exceptions_map( GUEST_CPU_HANDLE gcpu, UINT32 request, UINT32 bitmask,
                                  EXCEPTIONS_POLICY_TYPE* pf_policy)
 {
     IA32_VMCS_EXCEPTION_BITMAP exceptions;
@@ -678,8 +649,6 @@ UINT32 calculate_exceptions_map( GUEST_CPU_HANDLE gcpu, UINT32 request, UINT32 b
                                 bitmask, &(gcpu->vmexit_setup.exceptions_ctrls));
     *pf_policy = (exceptions.Bits.PF) ?
             EXCEPTIONS_POLICY_CATCH_ALL : EXCEPTIONS_POLICY_CATCH_NOTHING;
-
-//VMM_LOG(mask_anonymous, level_trace,"calculate_exceptions_map: exceptions.Uint32=%P\n", exceptions.Uint32);
     return (UINT32)GET_FINAL_SETTINGS( gcpu, exceptions_ctrls, exceptions.Uint32 );
 }
 
@@ -689,13 +658,13 @@ void gcpu_set_exceptions_map_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level, U
     VMM_ASSERT(vmcs);
 
     if (vmcs_read( vmcs, VMCS_EXCEPTION_BITMAP ) != value ) {
-//        VMM_LOG(mask_anonymous, level_trace,"set_exceptions_map CPU#%d: value=%P\n", hw_cpu_id(), value);
         vmcs_write( vmcs, VMCS_EXCEPTION_BITMAP, value );
     }
 
 }
 
-void gcpu_get_pf_error_code_mask_and_match_layered(GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level, UINT32* pf_mask, UINT32* pf_match)
+void gcpu_get_pf_error_code_mask_and_match_layered(GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level, 
+                        UINT32* pf_mask, UINT32* pf_match)
 {
     VMCS_OBJECT* vmcs = gcpu_get_vmcs_layered(gcpu, level);
     VMM_ASSERT(vmcs);
@@ -704,7 +673,8 @@ void gcpu_get_pf_error_code_mask_and_match_layered(GUEST_CPU_HANDLE gcpu, VMCS_L
     *pf_match = (UINT32)vmcs_read(vmcs, VMCS_PAGE_FAULT_ERROR_CODE_MATCH);
 }
 
-void gcpu_set_pf_error_code_mask_and_match_layered(GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level, UINT32 pf_mask, UINT32 pf_match)
+void gcpu_set_pf_error_code_mask_and_match_layered(GUEST_CPU_HANDLE gcpu, 
+                        VMCS_LEVEL level, UINT32 pf_mask, UINT32 pf_match)
 {
     VMCS_OBJECT* vmcs = gcpu_get_vmcs_layered(gcpu, level);
     VMM_ASSERT(vmcs);
@@ -720,7 +690,6 @@ UINT64 gcpu_get_exceptions_map_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level 
 
     return vmcs_read( vmcs, VMCS_EXCEPTION_BITMAP );
 }
-
 INLINE
 UINT32 calculate_exit_ctrls( GUEST_CPU_HANDLE gcpu, UINT32 request, UINT32 bitmask )
 {
@@ -751,15 +720,12 @@ UINT32 gcpu_get_exit_ctrls_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level )
     return (UINT32) vmcs_read( vmcs, VMCS_EXIT_CONTROL_VECTOR );
 }
 
-INLINE
-UINT32 calculate_enter_ctrls( GUEST_CPU_HANDLE gcpu, UINT32 request, UINT32 bitmask )
+INLINE UINT32 calculate_enter_ctrls( GUEST_CPU_HANDLE gcpu, UINT32 request, UINT32 bitmask )
 {
     UINT32 final_mask;
 
     final_mask = (UINT32)gcpu_update_control_counters( request,
                             bitmask, &(gcpu->vmexit_setup.vm_entry_ctrls));
-
-//VMM_LOG(mask_anonymous, level_trace,"calculate_enter_ctrls: final_mask=%P\n", final_mask);
     return (UINT32)GET_FINAL_SETTINGS( gcpu, vm_entry_ctrls, final_mask );
 }
 
@@ -774,8 +740,7 @@ void gcpu_set_enter_ctrls_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level, UINT
     }
 }
 
-static
-void gcpu_set_enter_ctrls_for_addons( GUEST_CPU_HANDLE gcpu, UINT32 value, UINT32 bits_untouched )
+static void gcpu_set_enter_ctrls_for_addons( GUEST_CPU_HANDLE gcpu, UINT32 value, UINT32 bits_untouched )
 {
     VMCS_OBJECT* vmcs = gcpu_get_vmcs_layered(gcpu, VMCS_LEVEL_0);
     VMM_ASSERT(vmcs);
@@ -788,12 +753,10 @@ UINT32 gcpu_get_enter_ctrls_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level )
 {
     VMCS_OBJECT* vmcs = gcpu_get_vmcs_layered(gcpu, level);
     VMM_ASSERT(vmcs);
-
     return  (UINT32)vmcs_read( vmcs, VMCS_ENTER_CONTROL_VECTOR );
 }
 
-static
-void request_vmexit_on_cr0(GUEST_CPU_HANDLE gcpu, UINT64  bit_request,
+static void request_vmexit_on_cr0(GUEST_CPU_HANDLE gcpu, UINT64  bit_request,
                            UINT64 bit_mask )
 
 {
@@ -821,8 +784,7 @@ void request_vmexit_on_cr0(GUEST_CPU_HANDLE gcpu, UINT64  bit_request,
                     |(cr0_value & cr0_mask));
 }
 
-static
-void request_vmexit_on_cr4(GUEST_CPU_HANDLE gcpu, UINT64 bit_request, UINT64 bit_mask )
+static void request_vmexit_on_cr4(GUEST_CPU_HANDLE gcpu, UINT64 bit_request, UINT64 bit_mask )
 {
     UINT64              cr4_mask;
 
@@ -849,8 +811,7 @@ void request_vmexit_on_cr4(GUEST_CPU_HANDLE gcpu, UINT64 bit_request, UINT64 bit
 
 }
 
-static
-void update_pfs_setup( GUEST_CPU_HANDLE gcpu, EXCEPTIONS_POLICY_TYPE policy )
+static void update_pfs_setup( GUEST_CPU_HANDLE gcpu, EXCEPTIONS_POLICY_TYPE policy )
 {
 	IA32_VMCS_EXCEPTION_BITMAP exceptions;
     // setup page faults
@@ -873,8 +834,7 @@ void update_pfs_setup( GUEST_CPU_HANDLE gcpu, EXCEPTIONS_POLICY_TYPE policy )
     }
 }
 
-static
-void request_vmexit_on_exceptions(GUEST_CPU_HANDLE gcpu, UINT32 bit_request, UINT32 bit_mask )
+static void request_vmexit_on_exceptions(GUEST_CPU_HANDLE gcpu, UINT32 bit_request, UINT32 bit_mask )
 {
     UINT32                  except_map;
     EXCEPTIONS_POLICY_TYPE  pf_policy;
@@ -884,8 +844,7 @@ void request_vmexit_on_exceptions(GUEST_CPU_HANDLE gcpu, UINT32 bit_request, UIN
     update_pfs_setup(gcpu, pf_policy);
 }
 
-static
-void request_vmexit_on_pin_ctrls( GUEST_CPU_HANDLE gcpu,
+static void request_vmexit_on_pin_ctrls( GUEST_CPU_HANDLE gcpu,
                                   UINT32 bit_request, UINT32 bit_mask )
 {
     UINT32              pin_ctrls;
@@ -894,8 +853,7 @@ void request_vmexit_on_pin_ctrls( GUEST_CPU_HANDLE gcpu,
     gcpu_set_pin_ctrls_layered( gcpu, VMCS_LEVEL_0, pin_ctrls );
 }
 
-static
-void request_vmexit_on_proc_ctrls(GUEST_CPU_HANDLE gcpu, UINT32 bit_request, UINT32 bit_mask )
+static void request_vmexit_on_proc_ctrls(GUEST_CPU_HANDLE gcpu, UINT32 bit_request, UINT32 bit_mask )
 {
     UINT32              proc_ctrls;
 
@@ -903,8 +861,7 @@ void request_vmexit_on_proc_ctrls(GUEST_CPU_HANDLE gcpu, UINT32 bit_request, UIN
     gcpu_set_processor_ctrls_layered( gcpu, VMCS_LEVEL_0, proc_ctrls );
 }
 
-static
-void request_vmexit_on_proc_ctrls2(GUEST_CPU_HANDLE gcpu,
+static void request_vmexit_on_proc_ctrls2(GUEST_CPU_HANDLE gcpu,
                                   UINT32 bit_request, UINT32 bit_mask )
 {
     UINT32              proc_ctrls2;
@@ -915,8 +872,7 @@ void request_vmexit_on_proc_ctrls2(GUEST_CPU_HANDLE gcpu,
     }
 }
 
-static
-void request_vmexit_on_vm_enter_ctrls(GUEST_CPU_HANDLE gcpu,
+static void request_vmexit_on_vm_enter_ctrls(GUEST_CPU_HANDLE gcpu,
                                   UINT32 bit_request, UINT32 bit_mask )
 {
     UINT32            vm_enter_ctrls;
@@ -930,8 +886,7 @@ void request_vmexit_on_vm_enter_ctrls(GUEST_CPU_HANDLE gcpu,
     gcpu_set_enter_ctrls_for_addons( gcpu, vm_enter_ctrls, dont_touch.Uint32);
 }
 
-static
-void request_vmexit_on_vm_exit_ctrls(GUEST_CPU_HANDLE gcpu,
+static void request_vmexit_on_vm_exit_ctrls(GUEST_CPU_HANDLE gcpu,
                                   UINT32 bit_request, UINT32 bit_mask )
 {
     UINT32              vm_exit_ctrls;
@@ -940,16 +895,13 @@ void request_vmexit_on_vm_exit_ctrls(GUEST_CPU_HANDLE gcpu,
     gcpu_set_exit_ctrls_layered( gcpu, VMCS_LEVEL_0, vm_exit_ctrls );
 }
 
-static
-void gcpu_apply_ctrols2( GUEST_CPU_HANDLE gcpu )
+static void gcpu_apply_ctrols2( GUEST_CPU_HANDLE gcpu )
 {
     request_vmexit_on_proc_ctrls2( gcpu, 0, 0 );
 }
 
-static
-void gcpu_apply_all( GUEST_CPU_HANDLE gcpu )
+static void gcpu_apply_all( GUEST_CPU_HANDLE gcpu )
 {
-//    VMM_LOG(mask_anonymous, level_trace,"gcpu_apply_all CPU#%d\n", hw_cpu_id());
     request_vmexit_on_pin_ctrls( gcpu, 0, 0 );
     request_vmexit_on_proc_ctrls( gcpu, 0, 0 );
     request_vmexit_on_proc_ctrls2( gcpu, 0, 0 );
@@ -961,8 +913,7 @@ void gcpu_apply_all( GUEST_CPU_HANDLE gcpu )
 }
 
 // Setup minimal controls for Guest CPU
-static
-void gcpu_minimal_controls( GUEST_CPU_HANDLE gcpu )
+static void gcpu_minimal_controls( GUEST_CPU_HANDLE gcpu )
 {
     VMCS_OBJECT* vmcs = gcpu_get_vmcs(gcpu);
     UINT32       idx;
@@ -992,13 +943,9 @@ void gcpu_minimal_controls( GUEST_CPU_HANDLE gcpu )
 // Apply default policy to gcpu
 void guest_cpu_control_setup( GUEST_CPU_HANDLE gcpu )
 {
-    //VMM_ASSERT( 0 == hw_cpu_id() );
     VMM_ASSERT( gcpu );
-
     lock_initialize( &(gcpu->vmexit_setup.lock) );
-
     gcpu_minimal_controls( gcpu );
-
     msr_vmexit_activate(gcpu);
     io_vmexit_activate(gcpu);
 }
@@ -1135,8 +1082,7 @@ BOOLEAN gcpu_cr3_virtualized( GUEST_CPU_HANDLE gcpu )
  *   Enforce settings on hardware VMCS only
  *   these changes are not reflected in vmcs#0
  */
-void gcpu_enforce_settings_on_hardware(GUEST_CPU_HANDLE  gcpu,
-        GCPU_TEMP_EXCEPTIONS_SETUP  action)
+void gcpu_enforce_settings_on_hardware(GUEST_CPU_HANDLE  gcpu, GCPU_TEMP_EXCEPTIONS_SETUP  action)
 {
     switch (action) {
     case GCPU_TEMP_EXCEPTIONS_EXIT_ON_ALL:
@@ -1207,8 +1153,7 @@ void gcpu_exceptions_settings_enforce_on_hw( GUEST_CPU_HANDLE gcpu, UINT32 zeroe
     update_pfs_setup(gcpu, exceptions.Bits.PF ? EXCEPTIONS_POLICY_CATCH_ALL : EXCEPTIONS_POLICY_CATCH_NOTHING);
 }
 
-static
-void gcpu_exceptions_settings_restore_on_hw(GUEST_CPU_HANDLE  gcpu)
+static void gcpu_exceptions_settings_restore_on_hw(GUEST_CPU_HANDLE  gcpu)
 {
     if ( ! gcpu_is_vmcs_layered(gcpu)) {
         IA32_VMCS_EXCEPTION_BITMAP exceptions;
@@ -1219,8 +1164,7 @@ void gcpu_exceptions_settings_restore_on_hw(GUEST_CPU_HANDLE  gcpu)
     }
 }
 
-static
-void gcpu_proc_ctrls_enforce_on_hw(GUEST_CPU_HANDLE gcpu, UINT32 zeroes, UINT32 ones)
+static void gcpu_proc_ctrls_enforce_on_hw(GUEST_CPU_HANDLE gcpu, UINT32 zeroes, UINT32 ones)
 {
     UINT32 proc_ctrls = (UINT32)gcpu_get_processor_ctrls_layered(gcpu, VMCS_MERGED);
     proc_ctrls = APPLY_ZEROES_AND_ONES(proc_ctrls, zeroes, ones);
@@ -1228,8 +1172,7 @@ void gcpu_proc_ctrls_enforce_on_hw(GUEST_CPU_HANDLE gcpu, UINT32 zeroes, UINT32 
     gcpu_set_processor_ctrls_layered(gcpu, VMCS_MERGED, proc_ctrls);
 }
 
-static
-void gcpu_proc_ctrls_restore_on_hw(GUEST_CPU_HANDLE   gcpu)
+static void gcpu_proc_ctrls_restore_on_hw(GUEST_CPU_HANDLE   gcpu)
 {
     if ( ! gcpu_is_vmcs_layered(gcpu)) {
         UINT32 proc_ctrls = (UINT32)gcpu->vmexit_setup.processor_ctrls.bit_field;
@@ -1238,8 +1181,7 @@ void gcpu_proc_ctrls_restore_on_hw(GUEST_CPU_HANDLE   gcpu)
     }
 }
 
-static
-void gcpu_cr0_mask_enforce_on_hw(GUEST_CPU_HANDLE gcpu, UINT64 zeroes, UINT64 ones)
+static void gcpu_cr0_mask_enforce_on_hw(GUEST_CPU_HANDLE gcpu, UINT64 zeroes, UINT64 ones)
 {
     UINT64 cr0_mask = gcpu_get_cr0_reg_mask_layered(gcpu, VMCS_MERGED);
     cr0_mask = APPLY_ZEROES_AND_ONES(cr0_mask, zeroes, ones);
@@ -1251,7 +1193,8 @@ extern UINT64 ept_get_eptp(GUEST_CPU_HANDLE gcpu);
 extern BOOLEAN ept_set_eptp(GUEST_CPU_HANDLE gcpu, UINT64 ept_root_table_hpa, UINT32 gaw);
 extern GUEST_CPU_HANDLE scheduler_get_current_gcpu_for_guest( GUEST_ID guest_id );
 
-BOOLEAN vmm_get_vmcs_control_state(GUEST_CPU_HANDLE gcpu, VMM_CONTROL_STATE ControlStateId, VMM_CONTROLS* value)
+BOOLEAN vmm_get_vmcs_control_state(GUEST_CPU_HANDLE gcpu, VMM_CONTROL_STATE ControlStateId, 
+                    VMM_CONTROLS* value)
 {
 	VMCS_OBJECT* vmcs;
 	VMCS_FIELD vmcs_field_id;

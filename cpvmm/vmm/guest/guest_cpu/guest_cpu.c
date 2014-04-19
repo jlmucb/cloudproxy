@@ -40,8 +40,6 @@
 // Guest CPU may be in 2 different modes:
 //    16 mode - run under emulator
 //    any other mode - run native
-
-
 static GUEST_CPU_HANDLE g_gcpus       = NULL;// list of all guest cpus
 
 // this is a shortcut pointer for assembler code
@@ -50,20 +48,16 @@ static UINT32        g_host_cpu_count       = 0;
 
 CLI_CODE( static void gcpu_install_show_service(void);)
 
-//
 // Global gcpu iterator
-//
 typedef GUEST_CPU_HANDLE GLOBAL_GUEST_CPU_ITERATOR;
 
-INLINE
-GUEST_CPU_HANDLE global_gcpu_first( GLOBAL_GUEST_CPU_ITERATOR* ctx )
+INLINE GUEST_CPU_HANDLE global_gcpu_first( GLOBAL_GUEST_CPU_ITERATOR* ctx )
 {
     *ctx = g_gcpus;
     return g_gcpus;
 }
 
-INLINE
-GUEST_CPU_HANDLE global_gcpu_next( GLOBAL_GUEST_CPU_ITERATOR* ctx )
+INLINE GUEST_CPU_HANDLE global_gcpu_next( GLOBAL_GUEST_CPU_ITERATOR* ctx )
 {
     GUEST_CPU_HANDLE gcpu;
     if(ctx == NULL || *ctx == NULL) {
@@ -457,7 +451,6 @@ void gcpu_initialize( GUEST_CPU_HANDLE gcpu,
                                    initial_state->seg.segment[idx].base,
                                    initial_state->seg.segment[idx].limit,
                                    initial_state->seg.segment[idx].attributes );
-
     }
 
     // init control registers
@@ -520,7 +513,6 @@ BOOLEAN gcpu_gva_to_gpa(GUEST_CPU_HANDLE gcpu, GVA gva, GPA* gpa)
             return TRUE;
         }
     }
-
     return FALSE;
 }
 
@@ -535,16 +527,12 @@ BOOLEAN gcpu_gva_to_hva(GUEST_CPU_HANDLE gcpu, GVA gva, HVA* hva)
         VMM_LOG(mask_uvmm, level_error,"%s: Failed to convert gva=%P to gpa\n", __FUNCTION__, gva);
         return FALSE;
     }
-
     guest_handle = gcpu_guest_handle(gcpu);
     gpm_handle = gcpu_get_current_gpm(guest_handle);
-
-    if (!gpm_gpa_to_hva(gpm_handle, gpa, &hva_tmp))
-    {
+    if (!gpm_gpa_to_hva(gpm_handle, gpa, &hva_tmp)) {
         VMM_LOG(mask_uvmm, level_error,"%s: Failed to convert gpa=%P to hva\n", __FUNCTION__, gpa);
         return FALSE;
     }
-
     *hva = hva_tmp;
     return TRUE;
 }

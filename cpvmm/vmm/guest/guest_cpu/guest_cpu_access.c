@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -132,8 +130,7 @@ UINT64 gcpu_get_native_gp_reg_layered( const GUEST_CPU_HANDLE gcpu,
 }
 
 void   gcpu_set_native_gp_reg_layered( GUEST_CPU_HANDLE gcpu,
-                  VMM_IA32_GP_REGISTERS reg, UINT64  value,
-                  VMCS_LEVEL level )
+                  VMM_IA32_GP_REGISTERS reg, UINT64  value, VMCS_LEVEL level )
 {
     VMM_ASSERT(reg < IA32_REG_GP_COUNT);
 
@@ -157,26 +154,25 @@ void   gcpu_set_native_gp_reg_layered( GUEST_CPU_HANDLE gcpu,
 }
 
 #ifdef INCLUDE_UNUSED_CODE
-void gcpu_get_all_gp_regs_internal( const GUEST_CPU_HANDLE gcpu,
-                                    UINT64 *GPreg )
+void gcpu_get_all_gp_regs_internal( const GUEST_CPU_HANDLE gcpu, UINT64 *GPreg )
 {
     VMM_ASSERT(gcpu);
 
-        *GPreg = gcpu->save_area.gp.reg[IA32_REG_RAX];
-        *(GPreg + 1) = gcpu->save_area.gp.reg[IA32_REG_RBX];
-        *(GPreg + 2) = gcpu->save_area.gp.reg[IA32_REG_RCX];
-        *(GPreg + 3) = gcpu->save_area.gp.reg[IA32_REG_RDX];
-        *(GPreg + 5) = gcpu->save_area.gp.reg[IA32_REG_RBP];
-        *(GPreg + 6) = gcpu->save_area.gp.reg[IA32_REG_RSI];
-        *(GPreg + 7) = gcpu->save_area.gp.reg[IA32_REG_RDI];
-        *(GPreg + 8) = gcpu->save_area.gp.reg[IA32_REG_R8];
-        *(GPreg + 9) = gcpu->save_area.gp.reg[IA32_REG_R9];
-        *(GPreg + 10) = gcpu->save_area.gp.reg[IA32_REG_R10];
-        *(GPreg + 11) = gcpu->save_area.gp.reg[IA32_REG_R11];
-        *(GPreg + 12) = gcpu->save_area.gp.reg[IA32_REG_R12];
-        *(GPreg + 13) = gcpu->save_area.gp.reg[IA32_REG_R13];
-        *(GPreg + 14) = gcpu->save_area.gp.reg[IA32_REG_R14];
-        *(GPreg + 15) = gcpu->save_area.gp.reg[IA32_REG_R15];
+    *GPreg = gcpu->save_area.gp.reg[IA32_REG_RAX];
+    *(GPreg + 1) = gcpu->save_area.gp.reg[IA32_REG_RBX];
+    *(GPreg + 2) = gcpu->save_area.gp.reg[IA32_REG_RCX];
+    *(GPreg + 3) = gcpu->save_area.gp.reg[IA32_REG_RDX];
+    *(GPreg + 5) = gcpu->save_area.gp.reg[IA32_REG_RBP];
+    *(GPreg + 6) = gcpu->save_area.gp.reg[IA32_REG_RSI];
+    *(GPreg + 7) = gcpu->save_area.gp.reg[IA32_REG_RDI];
+    *(GPreg + 8) = gcpu->save_area.gp.reg[IA32_REG_R8];
+    *(GPreg + 9) = gcpu->save_area.gp.reg[IA32_REG_R9];
+    *(GPreg + 10) = gcpu->save_area.gp.reg[IA32_REG_R10];
+    *(GPreg + 11) = gcpu->save_area.gp.reg[IA32_REG_R11];
+    *(GPreg + 12) = gcpu->save_area.gp.reg[IA32_REG_R12];
+    *(GPreg + 13) = gcpu->save_area.gp.reg[IA32_REG_R13];
+    *(GPreg + 14) = gcpu->save_area.gp.reg[IA32_REG_R14];
+    *(GPreg + 15) = gcpu->save_area.gp.reg[IA32_REG_R15];
     // Copy PAT
     *(GPreg + 17) = gcpu->save_area.temporary_cached_msrs.pat;
 }
@@ -186,28 +182,26 @@ UINT64 gcpu_get_gp_reg_layered( const GUEST_CPU_HANDLE gcpu,
                   VMM_IA32_GP_REGISTERS reg, VMCS_LEVEL level )
 {
     VMM_ASSERT(gcpu);
-
     return gcpu_get_native_gp_reg_layered( gcpu, reg, level );
 }
 
-void gcpu_set_all_gp_regs_internal( const GUEST_CPU_HANDLE gcpu,
-                                    UINT64 *GPReg )
+void gcpu_set_all_gp_regs_internal( const GUEST_CPU_HANDLE gcpu, UINT64 *GPReg )
 {
-        gcpu->save_area.gp.reg[IA32_REG_RAX] = *GPReg;
-        gcpu->save_area.gp.reg[IA32_REG_RBX] = *(GPReg + 1);
-        gcpu->save_area.gp.reg[IA32_REG_RCX] = *(GPReg + 2);
-        gcpu->save_area.gp.reg[IA32_REG_RDX] = *(GPReg + 3);
-        gcpu->save_area.gp.reg[IA32_REG_RBP] = *(GPReg + 5);
-        gcpu->save_area.gp.reg[IA32_REG_RSI] = *(GPReg + 6);
-        gcpu->save_area.gp.reg[IA32_REG_RDI] = *(GPReg + 7);
-        gcpu->save_area.gp.reg[IA32_REG_R8]  = *(GPReg + 8);
-        gcpu->save_area.gp.reg[IA32_REG_R9]  = *(GPReg + 9);
-        gcpu->save_area.gp.reg[IA32_REG_R10] = *(GPReg + 10);
-        gcpu->save_area.gp.reg[IA32_REG_R11] = *(GPReg + 11);
-        gcpu->save_area.gp.reg[IA32_REG_R12] = *(GPReg + 12);
-        gcpu->save_area.gp.reg[IA32_REG_R13] = *(GPReg + 13);
-        gcpu->save_area.gp.reg[IA32_REG_R14] = *(GPReg + 14);
-        gcpu->save_area.gp.reg[IA32_REG_R15] = *(GPReg + 15);
+    gcpu->save_area.gp.reg[IA32_REG_RAX] = *GPReg;
+    gcpu->save_area.gp.reg[IA32_REG_RBX] = *(GPReg + 1);
+    gcpu->save_area.gp.reg[IA32_REG_RCX] = *(GPReg + 2);
+    gcpu->save_area.gp.reg[IA32_REG_RDX] = *(GPReg + 3);
+    gcpu->save_area.gp.reg[IA32_REG_RBP] = *(GPReg + 5);
+    gcpu->save_area.gp.reg[IA32_REG_RSI] = *(GPReg + 6);
+    gcpu->save_area.gp.reg[IA32_REG_RDI] = *(GPReg + 7);
+    gcpu->save_area.gp.reg[IA32_REG_R8]  = *(GPReg + 8);
+    gcpu->save_area.gp.reg[IA32_REG_R9]  = *(GPReg + 9);
+    gcpu->save_area.gp.reg[IA32_REG_R10] = *(GPReg + 10);
+    gcpu->save_area.gp.reg[IA32_REG_R11] = *(GPReg + 11);
+    gcpu->save_area.gp.reg[IA32_REG_R12] = *(GPReg + 12);
+    gcpu->save_area.gp.reg[IA32_REG_R13] = *(GPReg + 13);
+    gcpu->save_area.gp.reg[IA32_REG_R14] = *(GPReg + 14);
+    gcpu->save_area.gp.reg[IA32_REG_R15] = *(GPReg + 15);
 }
 
 void gcpu_set_gp_reg_layered( GUEST_CPU_HANDLE gcpu, VMM_IA32_GP_REGISTERS reg,
@@ -228,16 +222,14 @@ UINT128 gcpu_get_xmm_reg( const GUEST_CPU_HANDLE gcpu,
 }
 #endif
 
-void   gcpu_set_xmm_reg( GUEST_CPU_HANDLE gcpu, VMM_IA32_XMM_REGISTERS reg,
-                              UINT128 value )
+void   gcpu_set_xmm_reg( GUEST_CPU_HANDLE gcpu, VMM_IA32_XMM_REGISTERS reg, UINT128 value )
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
     VMM_ASSERT(reg < IA32_REG_XMM_COUNT);
     gcpu->save_area.xmm.reg[reg] = value;
 }
 
-void   gcpu_get_segment_reg_layered( const GUEST_CPU_HANDLE gcpu,
-                              VMM_IA32_SEGMENT_REGISTERS reg,
+void   gcpu_get_segment_reg_layered( const GUEST_CPU_HANDLE gcpu, VMM_IA32_SEGMENT_REGISTERS reg,
                               UINT16* selector, UINT64* base, UINT32* limit,
                               UINT32* attributes, VMCS_LEVEL level )
 {
@@ -265,8 +257,7 @@ void   gcpu_get_segment_reg_layered( const GUEST_CPU_HANDLE gcpu,
     }
 }
 
-void   gcpu_set_segment_reg_layered( GUEST_CPU_HANDLE gcpu,
-                              VMM_IA32_SEGMENT_REGISTERS reg,
+void   gcpu_set_segment_reg_layered( GUEST_CPU_HANDLE gcpu, VMM_IA32_SEGMENT_REGISTERS reg,
                               UINT16  selector, UINT64  base,
                               UINT32  limit, UINT32  attributes, VMCS_LEVEL level )
 {
@@ -325,8 +316,7 @@ UINT64 gcpu_get_control_reg_layered(const GUEST_CPU_HANDLE gcpu,
     return 0;
 }
 
-void  gcpu_set_control_reg_layered(GUEST_CPU_HANDLE  gcpu, 
-                VMM_IA32_CONTROL_REGISTERS reg,
+void  gcpu_set_control_reg_layered(GUEST_CPU_HANDLE  gcpu, VMM_IA32_CONTROL_REGISTERS reg,
                 UINT64 value, VMCS_LEVEL level )
 {
     VMCS_OBJECT *vmcs;
@@ -347,7 +337,6 @@ void  gcpu_set_control_reg_layered(GUEST_CPU_HANDLE  gcpu,
             break;
 
         case IA32_CTRL_CR2:
-//            VMM_ASSERT(level == VMCS_MERGED);
             gcpu->save_area.gp.reg[ CR2_SAVE_AREA ] = value;
             break;
 
@@ -363,7 +352,6 @@ void  gcpu_set_control_reg_layered(GUEST_CPU_HANDLE  gcpu,
             break;
 
         case IA32_CTRL_CR8:
-//            VMM_ASSERT(level == VMCS_MERGED);
             value = vmcs_hw_make_compliant_cr8( value );
             gcpu->save_area.gp.reg[CR8_SAVE_AREA] = value;
             break;
@@ -591,9 +579,8 @@ IA32_VMX_VMCS_GUEST_SLEEP_STATE
     return vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_SLEEP_STATE );
 }
 
-void gcpu_set_activity_state_layered( GUEST_CPU_HANDLE gcpu,
-                                IA32_VMX_VMCS_GUEST_SLEEP_STATE  value,
-                                VMCS_LEVEL level)
+void gcpu_set_activity_state_layered( GUEST_CPU_HANDLE gcpu, 
+                            IA32_VMX_VMCS_GUEST_SLEEP_STATE  value, VMCS_LEVEL level)
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
@@ -623,8 +610,7 @@ void gcpu_set_pending_debug_exceptions_layered(const GUEST_CPU_HANDLE gcpu,
     vmcs_write( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_PEND_DBE, value );
 }
 
-void gcpu_set_vmenter_control_layered(const GUEST_CPU_HANDLE gcpu,
-                                      VMCS_LEVEL level)
+void gcpu_set_vmenter_control_layered(const GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level)
 {
     VM_ENTRY_CONTROLS  entry_ctrl_mask;
     UINT64 value;
@@ -644,8 +630,7 @@ void gcpu_set_vmenter_control_layered(const GUEST_CPU_HANDLE gcpu,
                        (UINT64) entry_ctrl_mask.Uint32);
 }
 
-static BOOLEAN gcpu_get_msr_value_from_list(IN UINT32 msr_index, 
-                IN IA32_VMX_MSR_ENTRY* list,
+static BOOLEAN gcpu_get_msr_value_from_list(IN UINT32 msr_index, IN IA32_VMX_MSR_ENTRY* list,
                 IN UINT32 count, OUT UINT64* value) {
     if (msr_index == IA32_INVALID_MSR_INDEX) {
         return FALSE;
@@ -740,8 +725,7 @@ UINT64 gcpu_get_msr_reg_internal_layered(const GUEST_CPU_HANDLE gcpu,
 
 
 UINT64 gcpu_get_msr_reg_layered(const GUEST_CPU_HANDLE gcpu,
-                VMM_IA32_MODEL_SPECIFIC_REGISTERS reg,
-                VMCS_LEVEL level )
+                VMM_IA32_MODEL_SPECIFIC_REGISTERS reg, VMCS_LEVEL level )
 {
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
 
@@ -890,14 +874,10 @@ void gcpu_set_msr_reg_by_index_layered(GUEST_CPU_HANDLE gcpu, UINT32  msr_index,
     }
 }
 
-/*
- * The input reg of index value of MSR must be less than the number of element
- * in g_msr_2_vmcs and g_msr_2_index. 
- */
-void gcpu_set_msr_reg_layered(GUEST_CPU_HANDLE  gcpu, 
-                VMM_IA32_MODEL_SPECIFIC_REGISTERS reg,
+ //The input reg of index value of MSR must be less than the number of element
+ //in g_msr_2_vmcs and g_msr_2_index. 
+ void gcpu_set_msr_reg_layered(GUEST_CPU_HANDLE  gcpu, VMM_IA32_MODEL_SPECIFIC_REGISTERS reg,
                 UINT64 value, VMCS_LEVEL level ) {
-
     VMCS_OBJECT* vmcs = vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level );
     UINT64 vmexit_store_msr_list_addr;
     UINT64 vmenter_load_msr_list_addr;
@@ -1033,8 +1013,7 @@ void gcpu_set_next_guest_level(GUEST_CPU_HANDLE gcpu, GUEST_LEVEL_ENUM guest_lev
     gcpu->next_guest_level = (UINT8) guest_level;
 }
 
-static
-UINT64 gcpu_read_pdpt_entry_from_memory(void* pdpte_ptr) {
+static UINT64 gcpu_read_pdpt_entry_from_memory(void* pdpte_ptr) {
     volatile UINT64* pdpte = (volatile UINT64*)pdpte_ptr;
     UINT64 value1 = *pdpte;
     UINT64 value2 = *pdpte;
@@ -1106,11 +1085,8 @@ BOOLEAN gcpu_get_32_bit_pdpt(GUEST_CPU_HANDLE gcpu, void* pdpt_ptr) {
     return TRUE;
 }
 
-void gcpu_load_segment_reg_from_gdt(
-    GUEST_CPU_HANDLE    guest_cpu,
-    UINT64              gdt_base,
-    UINT16              selector,
-    VMM_IA32_SEGMENT_REGISTERS  reg_id)
+void gcpu_load_segment_reg_from_gdt( GUEST_CPU_HANDLE guest_cpu, UINT64 gdt_base,
+                    UINT16 selector, VMM_IA32_SEGMENT_REGISTERS  reg_id)
 {
     ADDRESS base;
     UINT32  limit;
@@ -1146,7 +1122,7 @@ void gcpu_assign_timer(GUEST_CPU_HANDLE gcpu, void *timer)
 #pragma pack(1)
 /// ARBTYE format
 typedef union arch_arbyte_s {
-        UINT32 as_uint32;
+    UINT32 as_uint32;
     struct {
         UINT32 type:4;                 /* bits 3:0   */
         UINT32 s_bit:1;                /* bit  4     */
@@ -1171,9 +1147,8 @@ typedef struct seg_reg64_s {
 
 #pragma pack()
 
-static void arch_make_segreg_real_mode_compliant(
-    seg_reg64_t              *p_segreg,
-    VMM_IA32_SEGMENT_REGISTERS  reg_id)
+static void arch_make_segreg_real_mode_compliant( seg_reg64_t *p_segreg,
+                    VMM_IA32_SEGMENT_REGISTERS  reg_id)
 {
     BOOLEAN g_must_be_zero = FALSE;
     BOOLEAN g_must_be_one = FALSE;
@@ -1251,9 +1226,8 @@ static void arch_make_segreg_real_mode_compliant(
     }
 }
 
-void make_segreg_hw_real_mode_compliant( GUEST_CPU_HANDLE gcpu ,
-    UINT16 selector, UINT64 base, UINT32 limit, UINT32 attr,
-    VMM_IA32_SEGMENT_REGISTERS  reg_id)
+void make_segreg_hw_real_mode_compliant( GUEST_CPU_HANDLE gcpu , UINT16 selector, 
+            UINT64 base, UINT32 limit, UINT32 attr, VMM_IA32_SEGMENT_REGISTERS  reg_id)
 {
     seg_reg64_t      segreg;
 

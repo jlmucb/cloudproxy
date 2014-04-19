@@ -161,7 +161,6 @@ GUEST_HANDLE guest_register( UINT32 magic_number, UINT32 physical_memory_size,
 
 #ifdef JLMDEBUG
     bprint("returning from guest register\n");
-    LOOP_FOREVER
 #endif
     return guest;
 }

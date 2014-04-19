@@ -110,38 +110,38 @@ GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
                             gstartup->cpu_affinity, guest_policy );
 
 #ifdef JLMDEBUG
-    bprint("Done with guest register\n");
-    LOOP_FOREVER
+    bprint("done with guest register\n");
+    // LOOP_FOREVER
 #endif
 
     if (! guest) {
-        VMM_LOG(mask_anonymous, level_trace,"Cannot create guest with the following params: \n"
-                 "\t\tguest_magic_number    = %#x\n"
-                 "\t\tphysical_memory_size  = %#x\n"
-                 "\t\tcpu_affinity          = %#x\n",
-                 gstartup->guest_magic_number,
-                 gstartup->physical_memory_size,
-                 gstartup->cpu_affinity );
-
+#ifdef JLMDEBUG
+        bprint("guest register failed\n");
+        LOOP_FOREVER
+#endif
         return NULL;
     }
 
 #ifdef FAST_VIEW_SWITCH
     fvs_initialize(guest, number_of_host_processors);
 #endif
-#ifdef JLMDEBUG
-    bprint("initialize_single_guest, %d CPUs\n", guest_get_id(guest));
-#endif
-    vmexit_guest_initialize(guest_get_id(guest));
-    if (gstartup->devices_count != 0) {
-        VMM_LOG(mask_anonymous, level_trace,"ASSERT: devices virtualization is not supported yet\n"
-                 "\t\tguest_magic_number    = %#x\n"
-                 "\t\tdevices_count         = %d\n",
-                  gstartup->guest_magic_number,
-                  gstartup->devices_count );
 
-        // BEFORE_VMLAUNCH. NOT_IMPLEMENTED case.
-        VMM_DEADLOOP();
+#ifdef JLMDEBUG
+    bprint("done with fvs_initialize\n");
+#endif
+
+    vmexit_guest_initialize(guest_get_id(guest));
+
+#ifdef JLMDEBUG
+    bprint("done with vmexit_guest_initialize\n");
+    LOOP_FOREVER
+#endif
+
+    if (gstartup->devices_count != 0) {
+#ifdef JLMDEBUG
+        bprint("vmexit_guest_initialize failed\n");
+        LOOP_FOREVER
+#endif
         return NULL;
     }
 

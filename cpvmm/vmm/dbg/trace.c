@@ -4,7 +4,6 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -74,13 +73,8 @@ static BOOLEAN trace_recyclable = TRUE;
     + cpu_index * MAX_TRACE_BUFFERS \
     + buffer_index)
 
-static void
-initialize_trace_buffer(
-                        UINT32 vm_index,
-                        UINT32 cpu_index,
-                        UINT32 buffer_index,
-                        void*    param  UNUSED
-                        )
+static void initialize_trace_buffer( UINT32 vm_index, UINT32 cpu_index,
+                        UINT32 buffer_index, void*    param  UNUSED)
 {
     TRACE_BUFFER *buffer;
     UINT32 record_index;
@@ -99,10 +93,7 @@ initialize_trace_buffer(
     buffer->next_record_index = 0;
 }
 
-BOOLEAN
-trace_init(
-           UINT32 max_num_guests,
-           UINT32 max_num_guest_cpus)
+BOOLEAN trace_init( UINT32 max_num_guests, UINT32 max_num_guest_cpus)
 {
     if (trace_initialized) {
         return FALSE;
@@ -143,8 +134,7 @@ add_record( TRACE_BUFFER *buffer, TRACE_RECORD_DATA *data)
         NON_CYCLIC_INCREMENT(buffer->next_record_index);
 }
 
-BOOLEAN
-trace_add_record( IN  UINT32  vm_index, IN  UINT32  cpu_index,
+BOOLEAN trace_add_record( IN  UINT32  vm_index, IN  UINT32  cpu_index,
                  IN  UINT32  buffer_index, IN  TRACE_RECORD_DATA *data)
 {
     if (!trace_initialized || trace_state->locked || data == NULL
@@ -152,21 +142,17 @@ trace_add_record( IN  UINT32  vm_index, IN  UINT32  cpu_index,
         || buffer_index >= MAX_TRACE_BUFFERS) {
             return FALSE;
     }
-
     add_record(GET_BUFFER(vm_index, cpu_index, buffer_index), data);
-
     return TRUE;
 }
 
-static void
-remove_record( TRACE_RECORD *record)
+static void remove_record( TRACE_RECORD *record)
 {
     record->valid = FALSE;
     CYCLIC_INCREMENT(record->buffer->next_record_index);
 }
 
-static void
-set_buffer_pointer_to_oldest_record( UINT32  vm_index, UINT32  cpu_index,
+static void set_buffer_pointer_to_oldest_record( UINT32  vm_index, UINT32  cpu_index,
                                     UINT32  buffer_index, void* param UNUSED)
 {
     TRACE_BUFFER *buffer = GET_BUFFER(vm_index, cpu_index, buffer_index);
@@ -183,8 +169,7 @@ set_buffer_pointer_to_oldest_record( UINT32  vm_index, UINT32  cpu_index,
     }
 }
 
-static void
-find_buffer_with_oldest_record( UINT32  vm_index, UINT32  cpu_index,
+static void find_buffer_with_oldest_record( UINT32  vm_index, UINT32  cpu_index,
                                UINT32  buffer_index, void   *param)
 {
     TRACE_RECORD **oldest_record_ptr = (TRACE_RECORD **)param;

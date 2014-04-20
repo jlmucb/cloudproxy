@@ -48,28 +48,23 @@ static LKUP_STATUS strncmp_local(char *string1, char *string2, int len2);
 static LKUP_STATUS lkup_escape_cmd(char *esc_cmd, unsigned esc_cmd_len, char *key);
 
 
-char vt100_getch_raw(void)
-    {
+char vt100_getch_raw(void) {
     char key;
 
-    while (0 == (key = (unsigned char) vmm_getc()))
-        ;
+    while (0 == (key = (unsigned char) vmm_getc())) ;
     return key;
-    }
+}
 
-void vt100_putch(char ch)
-    {
+void vt100_putch(char ch) {
     vmm_putc((UINT8) ch);
-    }
+}
 
-void vt100_puts(char *string)
-    {
-        vmm_puts(string);
-    }
+void vt100_puts(char *string) {
+    vmm_puts(string);
+}
 
 
-void vt100_gotoxy(unsigned line, unsigned col)
-    {
+void vt100_gotoxy(unsigned line, unsigned col) {
     char cup_cmd[] = { ASCII_ESCAPE, '[', 0, 0, ';', 0, 0, 'H', 0 };
 
     cup_cmd[2] = (char) (line / 10 + '0');
@@ -80,8 +75,7 @@ void vt100_gotoxy(unsigned line, unsigned col)
     vt100_puts(cup_cmd);
     }
 
-char read_dec_number(unsigned *number)
-{
+char read_dec_number(unsigned *number) {
     unsigned num = 0;
     char key;
 
@@ -92,8 +86,7 @@ char read_dec_number(unsigned *number)
     return key;
 }
 
-int vt100_getpos(unsigned *line, unsigned *col)
-    {
+int vt100_getpos(unsigned *line, unsigned *col) {
     char dsr_cmd[] = { ASCII_ESCAPE, '[', '6', 'n', 0 };
     char key;
     int error = 1;
@@ -123,23 +116,20 @@ int vt100_getpos(unsigned *line, unsigned *col)
     return error;
 }
 
-void vt100_clrline(void)
-    {
+void vt100_clrline(void) {
     vt100_putch(ASCII_ESCAPE);
     vt100_putch('[');
     vt100_putch('0');
     vt100_putch('K');
     }
 
-void vt100_delsym(void)
-    {
+void vt100_delsym(void) {
         vt100_putch(' ');
         vt100_putch(8);
     }
 
 
-LKUP_STATUS strncmp_local(char *string1, char *string2, int len2)
-    {
+LKUP_STATUS strncmp_local(char *string1, char *string2, int len2) {
     int i;
 
     for (i = 0; i < len2; ++i) {
@@ -150,8 +140,7 @@ LKUP_STATUS strncmp_local(char *string1, char *string2, int len2)
     return 0 == string1[len2] ? LKUP_FOUND : LKUP_BELONG;
     }
 
-LKUP_STATUS lkup_escape_cmd(char *esc_cmd, unsigned esc_cmd_len, char *key)
-    {
+LKUP_STATUS lkup_escape_cmd(char *esc_cmd, unsigned esc_cmd_len, char *key) {
     int i;
     LKUP_STATUS cmp = LKUP_NOT_FOUND;
 
@@ -170,8 +159,7 @@ LKUP_STATUS lkup_escape_cmd(char *esc_cmd, unsigned esc_cmd_len, char *key)
     return cmp;
     }
 
-char vt100_getch(void)
-    {
+char vt100_getch(void) {
     char key = 0;
     BOOLEAN quit = FALSE;
     unsigned i;
@@ -180,7 +168,6 @@ char vt100_getch(void)
         input_buffer_length--;
         return input_buffer[input_buffer_length];
     }
-
 
     while ( ! quit) {
         key = vt100_getch_raw();

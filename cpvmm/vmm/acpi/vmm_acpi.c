@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -133,31 +131,25 @@ void vmm_acpi_print_facs(ACPI_TABLE_FACS *facs)
 }
 #pragma warning (pop)
 
-INLINE
-VOID *acpi_map_memory(UINT64 where)
+INLINE VOID *acpi_map_memory(UINT64 where)
 {
     HVA hva;
-        
     hmm_hpa_to_hva((HPA) where, &hva);
     return (void*) hva;
 }
 
 /* Calculate acpi table checksum */
-INLINE
-UINT8 checksum(UINT8 * buffer, UINT32 length)
+INLINE UINT8 checksum(UINT8 * buffer, UINT32 length)
 {
     int sum = 0;
     UINT8 *i = buffer;
-
     buffer += length;
-    for (; i < buffer; sum += *(i++))
-        ;
+    for (; i < buffer; sum += *(i++)) ;
     return (char) sum;
 }
 
 /* Scan for RSDP table and return mapped address of rsdp, if found */
-INLINE
-ACPI_TABLE_RSDP *scan_for_rsdp(void *addr, UINT32 length)
+INLINE ACPI_TABLE_RSDP *scan_for_rsdp(void *addr, UINT32 length)
 {
     ACPI_TABLE_RSDP *rsdp, *result = NULL;
     unsigned char *begin;
@@ -186,14 +178,12 @@ ACPI_TABLE_RSDP *scan_for_rsdp(void *addr, UINT32 length)
             break;
         }
     }
-
     return(result);
 }
 
 
 /* Find an acpi table with specified signature and return mapped address */
-INLINE
-ACPI_TABLE_HEADER * get_acpi_table_from_rsdp(ACPI_TABLE_RSDP *rsdp, char *sig)
+INLINE ACPI_TABLE_HEADER * get_acpi_table_from_rsdp(ACPI_TABLE_RSDP *rsdp, char *sig)
 {
     ACPI_TABLE_HEADER *sdt = NULL;
     ACPI_TABLE_HEADER *tbl = NULL;
@@ -267,9 +257,7 @@ ACPI_TABLE_HEADER * get_acpi_table_from_rsdp(ACPI_TABLE_RSDP *rsdp, char *sig)
             return tbl;
         }
     }
-
     VMM_LOG(mask_anonymous, level_error,"Could not find %s table in XSDT/RSDT\n", sig);
-
     return NULL;
 }
 
@@ -295,11 +283,10 @@ ACPI_TABLE_HEADER * vmm_acpi_locate_table(char *sig)
 
     /* Get the specified table from rsdp */
     table = get_acpi_table_from_rsdp(rsdp, sig);
-
     return table;
 }
 
-//
+
 // SLP_TYP values are programmed in PM1A and PM1B control block registers
 // to initiate power transition.  Each Sx state has a corresponding SLP_TYP value.
 // SLP_TYP values are stored in DSDT area of ACPI tables as AML packages
@@ -307,11 +294,8 @@ ACPI_TABLE_HEADER * vmm_acpi_locate_table(char *sig)
 //
 // Search for '_SX_' to get to start of package.  'X' stands for sleep state e.g. '_S3_'
 // If '_SX_' is not found then it means the system does not support that sleep state.
-//
 // _SX_packages are in the following format 
-//
 // 1 byte                   :   Package Op (0x12)
-//
 // 1 byte                   
 // + 'Package Length' size  :   'Package Length' field.  Refer ACPI spec for 
 //                              'Package Length Encoding' High 2 bits of first byte 
@@ -406,12 +390,10 @@ int vmm_acpi_init(HVA fadt_hva)
         fadt = *(ACPI_TABLE_FADT *) pTable;
         vmm_acpi_print_fadt((ACPI_TABLE_FADT *) pTable);
     }
-
 #ifdef ENABLE_PM_S3
     // Get Sleep Data
     vmm_acpi_retrieve_sleep_states();
 #endif
-  
     return 1;
 }
 
@@ -444,16 +426,13 @@ unsigned vmm_acpi_sleep_type_to_state(unsigned pm_reg_id, unsigned sleep_type)
             pm_reg_id, sleep_type);
         return 0;
     }
-
     for (sstate = ACPI_STATE_S0; sstate < ACPI_S_STATE_COUNT; ++sstate) {
         if (sleep_conversion_table[pm_reg_id][sstate] == (char) sleep_type) {
             return sstate;  // found
         }
     }
-
     VMM_LOG(mask_anonymous, level_error,"[ACPI] got bad input. pm_reg_id(%d) sleep_type(%d)\n",
             pm_reg_id, sleep_type);
-        
     return 0;   // sleep_type not recognized
 }
 
@@ -465,19 +444,14 @@ int vmm_acpi_waking_vector(UINT32 *p_waking_vector, UINT64 *p_extended_waking_ve
     if (NULL == p_facs) {
         p_facs = (ACPI_TABLE_FACS *) fadt.XFacs;
     }
-
     if (NULL == p_facs) {
         VMM_LOG(mask_anonymous, level_error,"[acpi] FACS is not detected. S3 is not supported by the platform\n");
         return -1;  // error
     }
-
     VMM_LOG(mask_anonymous, level_trace,"[acpi] FirmwareWakingVector=%P  XFirmwareWakingVector=%P\n",
-        p_facs->FirmwareWakingVector,
-        p_facs->XFirmwareWakingVector);
-
+        p_facs->FirmwareWakingVector, p_facs->XFirmwareWakingVector);
     *p_waking_vector          = p_facs->FirmwareWakingVector;
     *p_extended_waking_vector = p_facs->XFirmwareWakingVector;
-
     return 0;   // OK
 }
 #else
@@ -490,7 +464,6 @@ UINT16 vmm_acpi_smi_cmd_port(void)
     // deadloop. The whole function is just to make
     //compiler happy.
     VMM_DEADLOOP();
-        
     return 0;
 }
 

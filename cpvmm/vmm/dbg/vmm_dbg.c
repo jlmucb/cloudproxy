@@ -31,8 +31,7 @@ UINT64  g_initial_vmcs[VMM_MAX_CPU_SUPPORTED] = {0};
 ISR_PARAMETERS_ON_STACK *g_exception_stack = NULL;
 VMM_GP_REGISTERS g_exception_gpr = {0};
 
-extern BOOLEAN vmm_copy_to_guest_phy_addr(GUEST_CPU_HANDLE gcpu, void* gpa,
-                                          UINT32 size, void* hva);
+extern BOOLEAN vmm_copy_to_guest_phy_addr(GUEST_CPU_HANDLE gcpu, void* gpa, UINT32 size, void* hva);
 
 int CLI_active(void)
 {
@@ -223,6 +222,5 @@ BOOLEAN DeadloopHelper( const char* assert_condition,
     return TRUE;
 }
 #pragma warning( pop )
-
 
 

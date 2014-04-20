@@ -12,9 +12,6 @@
  * limitations under the License.
  */
 
-/*
-  sprintf implementation
-*/
 
 #include "common_libc.h"
 
@@ -83,9 +80,6 @@ static UINT32 safe_guid_to_string ( VMM_GUID* guid, char* buffer, size_t buffer_
     return STRING_CHARS(GUID_PLACEHOLDER);
 }
 
-static
-UINT32 safe_value_to_string ( char* buffer, UINT32  buffer_limits, /*total space in out buff*/
-                    INT64  value, UINT32 flags, UINT32 width, UINT32 base, const char* chars)
 /*++
 Routine Description:
   worker function that prints a Value as a based number in Buffer
@@ -97,6 +91,8 @@ Arguments:
 Returns:
   Number of characters printed.
 --*/
+static UINT32 safe_value_to_string ( char* buffer, UINT32  buffer_limits, INT64  value, 
+                              UINT32 flags, UINT32 width, UINT32 base, const char* chars)
 {
     char    temp_buffer[MAX_NUMBER_CHARS];
     char*   temp_str;
@@ -182,12 +178,10 @@ Returns:
     return (UINT32)(buffer_ptr - buffer);
 }
 
-static
-UINT32 safe_value_to_decimal_str ( char*   buffer, UINT32  buffer_limits, /*total space in out buff*/
-                                   INT64   value, UINT32  flags, UINT32  width)
+static UINT32 safe_value_to_decimal_str ( char*   buffer, UINT32  buffer_limits, INT64 value, 
+                            UINT32  flags, UINT32  width)
 {
-    return safe_value_to_string( buffer, buffer_limits, value, flags, width,
-                                 10, decimal );
+    return safe_value_to_string( buffer, buffer_limits, value, flags, width, 10, decimal );
 }
 
 static
@@ -217,8 +211,6 @@ UINT32 safe_value_to_hex_str ( char* buffer, UINT32  buffer_limits, UINT64  valu
                                          width, 16, (flags & UPHEX) ? up_hex : low_hex );
 }
 
-static
-UINT32 safe_time_to_string ( VMM_TIME* time, char* buffer, UINT32 buffer_size)
 /*++
 Routine Description:
   worker function that prints VMM_TIME.
@@ -229,6 +221,7 @@ Arguments:
 Returns:
   Number of characters printed.
 --*/
+static UINT32 safe_time_to_string ( VMM_TIME* time, char* buffer, UINT32 buffer_size)
 {
     UINT32 size;
 
@@ -236,30 +229,18 @@ Returns:
         // Not enough room for terminating null
         return 0;
     }
-
     size = vmm_sprintf_s ( buffer, buffer_size, "%02d/%02d/%04d  %02d:%02d", time->day,
             time->month, time->year, time->hour, time->minute);
-
   // Sprint will null terminate the string. The -1 skips the null
   return STRING_CHARS(TIME_PLACEHOLDER);
 }
 
 
-static
-const char* get_flags_and_width_and_precision ( const char* format, UINT32* flags,
-                UINT32* width, UINT32* precision,
-#ifdef __GNUC__
-  va_list   marker
-#else
-  va_list*  marker
-#endif
-  )
 /*++
 Routine Description:
   worker function that parses flag and width information from the
   Format string and returns the next index into the Format string that needs
   to be parsed. See file headed for details of Flag and Width.
-
 Arguments:
   Format    - Current location in the VSPrint format string.
   Flags     - Returns flags
@@ -269,8 +250,15 @@ Arguments:
 Returns:
   Pointer indexed into the Format string for all the information parsed
   by this routine.
-
 --*/
+static const char* get_flags_and_width_and_precision ( const char* format, UINT32* flags,
+                UINT32* width, UINT32* precision,
+#ifdef __GNUC__
+  va_list   marker
+#else
+  va_list*  marker
+#endif
+  )
 {
     UINT32  count;
     BOOLEAN done;
@@ -358,9 +346,6 @@ Returns:
 }
 
 
-
-int vmm_vsprintf_s( char*  start_of_buffer, size_t size_of_buffer,
-                            const char* format_string, va_list  argptr )
 /*++
 Routine Description:
   vsprintf_s function to process format and place the results in Buffer. Since a
@@ -375,6 +360,8 @@ Arguments:
 Returns:
   Number of characters printed.
 --*/
+int vmm_vsprintf_s( char*  start_of_buffer, size_t size_of_buffer,
+                            const char* format_string, va_list  argptr )
 {
     char*       buffer;
     const char* format;

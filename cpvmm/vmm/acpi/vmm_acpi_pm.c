@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -62,7 +60,6 @@ extern void memory_dump(const void *mem_location, UINT32 count, UINT32 size);
 extern void vmm_acpi_resume_after_s3_c_main_gnu(void);
 UINT32 g_s3_resume_flag=0;
 
-/*------------------------------Types and Macros------------------------------*/
 
 //#define BREAK_AT_FIRST_COMMAND
 
@@ -71,9 +68,7 @@ UINT32 g_s3_resume_flag=0;
 #define PTR_TO_U32(__p) (UINT32) (size_t) (__p)
 
 #define WAIT_FOR_MP_CONDITION(__cond) { while ( ! (__cond)) hw_pause(); }
-
 #define REALMODE_SEGMENT_SELECTOR_TO_BASE(__selector) (((UINT32) (__selector)) << 4)
-
 #define MAX_ACPI_CALLBACKS      10
 
 // See "4.7.3.2.1 PM1 Control Registers" in ACPIspec30b
@@ -485,7 +480,6 @@ BOOLEAN vmm_acpi_pm1x_handler( GUEST_CPU_HANDLE  gcpu,
     BOOLEAN sleep_enable;
 
     // validate arguments
-
     if (WRITE_ACCESS != access  || vmm_acpi_pm_port_size() != port_size) {
         goto pass_transparently;
     }
@@ -544,7 +538,6 @@ pass_transparently:
 }
 
 
-
 #pragma warning( push )
 #pragma warning( disable : 4100 )
 
@@ -555,7 +548,6 @@ void vmm_acpi_prepare_cpu_for_s3(CPU_ID from UNUSED, void *unused UNUSED)
     CPU_ID                  cpu_id = hw_cpu_id();
 
     VMM_LOG(mask_anonymous, level_trace,"[ACPI] CPU(%d) going to go to S3\n", cpu_id);
-
     vmm_startup_data.cpu_local_apic_ids[hw_cpu_id()] = local_apic_get_current_id();
 
     // deactivate active gcpu
@@ -593,8 +585,6 @@ void vmm_acpi_prepare_cpu_for_s3(CPU_ID from UNUSED, void *unused UNUSED)
     }
 }
 #pragma warning( pop )
-
-
 #pragma warning( push )
 #pragma warning( disable : 4100 )
 
@@ -629,7 +619,6 @@ VMM_STATUS vmm_acpi_prepare_for_s3(GUEST_CPU_HANDLE gcpu UNUSED)
 
     // 4. Prepare INIT64_STRUCT data
     vmm_acpi_prepare_init64_data();
-
 
     //    5. Store original waking vector content aside
     //    Notice that we reuse the same low memory page 3 times
@@ -668,9 +657,7 @@ VMM_STATUS vmm_acpi_prepare_for_s3(GUEST_CPU_HANDLE gcpu UNUSED)
 
     // 6. Invalidate caches
     hw_wbinvd();
-
     vmm_acpi_notify_on_platform_suspend();
-
     return VMM_OK;
 }
 #pragma warning( pop )
@@ -713,7 +700,6 @@ void setup_data_for_s3(void)
 
 void vmm_acpi_prepare_init32_data(UINT32 low_memory_page_address)
 {
-
     // if there are Application Processors
     if (vmm_startup_data.number_of_processors_at_boot_time > 1) {
         UINT16 i;
@@ -791,8 +777,7 @@ void CDECL vmm_acpi_resume_after_s3_c_main(
 
     VMM_ASSERT( initial_gcpu != NULL );
     VMM_LOG(mask_anonymous, level_trace,"CPU%d: initial guest selected: GUEST_ID: %d GUEST_CPU_ID: %d\n",
-              cpu_id,
-              guest_vcpu( initial_gcpu )->guest_id,
+              cpu_id, guest_vcpu( initial_gcpu )->guest_id,
               guest_vcpu( initial_gcpu )->guest_cpu_id );
 
     vcpu_id = guest_vcpu( initial_gcpu );
@@ -800,35 +785,27 @@ void CDECL vmm_acpi_resume_after_s3_c_main(
     VMM_ASSERT(ept_guest);
     ept_guest_cpu = ept_guest->gcpu_state[vcpu_id->guest_cpu_id];
 
-    if (0 == cpu_id)    //--------- BSP
-    {
+    if (0 == cpu_id) {   // BSP
         vmm_acpi_restore_original_waking_code();
 
         // fill s3_resume_bsp_gcpu_initial_state
         vmm_acpi_fill_bsp_gcpu_initial_state(initial_gcpu);
-
         gcpu_initialize(initial_gcpu, &s3_resume_bsp_gcpu_initial_state);
-
         // Set ept_guest_cpu->cr0 for BSP to synchronize with guest visible CR0
         ept_guest_cpu->cr0 = gcpu_get_guest_visible_control_reg(initial_gcpu, IA32_CTRL_CR0);
         ept_guest_cpu->cr4 = gcpu_get_guest_visible_control_reg(initial_gcpu, IA32_CTRL_CR4);
-
         hw_interlocked_increment(&number_of_started_cpus); // indicate that CPU is up
-
         // wait while all APs are up too
         WAIT_FOR_MP_CONDITION(number_of_started_cpus == vmm_startup_data.number_of_processors_at_boot_time);
     }
-    else                //--------- AP
+    else {  // AP
     {
         gcpu_set_activity_state(initial_gcpu, Ia32VmxVmcsGuestSleepStateWaitForSipi);
         // indicate that CPU is up
         hw_interlocked_increment(&number_of_started_cpus);
     }
-
     event_raise(EVENT_GCPU_RETURNED_FROM_S3, initial_gcpu, NULL);
-
     gcpu_resume( initial_gcpu );
-
     VMM_DEADLOOP();
 
 }
@@ -880,14 +857,13 @@ static void vmm_acpi_notify_on_platform_resume(void)
     }
 }
 
-//
+
 // This function assumes that waking vector was called in Real Mode
-//
 void vmm_acpi_fill_bsp_gcpu_initial_state(GUEST_CPU_HANDLE gcpu)
 {
     UINT64 offset = (UINT64) vmm_waking_vector - (UINT64) REALMODE_SEGMENT_SELECTOR_TO_BASE(cpu_saved_state.cs);
 
-    s3_resume_bsp_gcpu_initial_state.size_of_this_struct                 = sizeof(s3_resume_bsp_gcpu_initial_state);
+    s3_resume_bsp_gcpu_initial_state.size_of_this_struct= sizeof(s3_resume_bsp_gcpu_initial_state);
     s3_resume_bsp_gcpu_initial_state.version_of_this_struct              = 0x01;
     s3_resume_bsp_gcpu_initial_state.gp.reg[IA32_REG_RAX]                = cpu_saved_state.eax;
     s3_resume_bsp_gcpu_initial_state.gp.reg[IA32_REG_RBX]                = cpu_saved_state.ebx;
@@ -953,15 +929,14 @@ void vmm_acpi_fill_bsp_gcpu_initial_state(GUEST_CPU_HANDLE gcpu)
     s3_resume_bsp_gcpu_initial_state.control.cr[IA32_CTRL_CR3]           = 0;
     s3_resume_bsp_gcpu_initial_state.control.cr[IA32_CTRL_CR4]           = 0x00000050;
 
-    s3_resume_bsp_gcpu_initial_state.control.gdtr.base                   = cpu_saved_state.gdtr.base;
-    s3_resume_bsp_gcpu_initial_state.control.gdtr.limit                  = cpu_saved_state.gdtr.limit;
-
-    s3_resume_bsp_gcpu_initial_state.control.idtr.base                   = cpu_saved_state.idtr.base;
-    s3_resume_bsp_gcpu_initial_state.control.idtr.limit                  = cpu_saved_state.idtr.limit;
+    s3_resume_bsp_gcpu_initial_state.control.gdtr.base = cpu_saved_state.gdtr.base;
+    s3_resume_bsp_gcpu_initial_state.control.gdtr.limit = cpu_saved_state.gdtr.limit;
+    s3_resume_bsp_gcpu_initial_state.control.idtr.base  = cpu_saved_state.idtr.base;
+    s3_resume_bsp_gcpu_initial_state.control.idtr.limit = cpu_saved_state.idtr.limit;
 
     s3_resume_bsp_gcpu_initial_state.msr.msr_debugctl                    = 0x00000001;
     s3_resume_bsp_gcpu_initial_state.msr.msr_efer                        = 0;
-    s3_resume_bsp_gcpu_initial_state.msr.msr_pat                         = gcpu_get_msr_reg(gcpu,IA32_VMM_MSR_PAT);
+    s3_resume_bsp_gcpu_initial_state.msr.msr_pat = gcpu_get_msr_reg(gcpu,IA32_VMM_MSR_PAT);
     s3_resume_bsp_gcpu_initial_state.msr.msr_sysenter_esp                = 0;
     s3_resume_bsp_gcpu_initial_state.msr.msr_sysenter_eip                = 0;
     s3_resume_bsp_gcpu_initial_state.msr.pending_exceptions              = 0;

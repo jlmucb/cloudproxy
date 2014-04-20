@@ -66,9 +66,8 @@ static void* vmm_mem_allocate_internal( char *file_name,
     UINT64 allocated_addr;
     MEM_ALLOCATION_INFO *alloc_info;
     UINT32 size_to_request;
-#ifdef JLMDEBUG
-    bprint("In vmm_mem_allocate_internal size: %d, align: %08x\n",
-            size, alignment);
+#ifdef JLMDEBUG1
+    bprint("In vmm_mem_allocate_internal size: %d, align: %08x\n", size, alignment);
 #endif
 
     // starting from 2KB+1 need a full page
@@ -99,7 +98,7 @@ static void* vmm_mem_allocate_internal( char *file_name,
     pool_element_size = 1 << pool_index;
 
     lock_acquire(&lock);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("pool_index: %d, pools: 0x%016x,\nval = %p, expected = %p\n",
             pool_index, pools, pools[pool_index], pools[0]);
 #endif

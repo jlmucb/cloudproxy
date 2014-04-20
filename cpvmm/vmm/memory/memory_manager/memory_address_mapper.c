@@ -2241,7 +2241,7 @@ MAM_HANDLE mam_create_mapping(MAM_ATTRIBUTES inner_level_attributes) {
     if (first_table == mam_ptr_to_hva(NULL)) {
         goto deallocate_mam;
     }
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
    bprint("after mam_create_table\n");
 #endif
 
@@ -2403,7 +2403,7 @@ BOOLEAN mam_insert_not_existing_range(IN MAM_HANDLE mam_handle, IN UINT64 src_ad
 
     lock_acquire(&(mam->update_lock));
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     if (src_addr <= 0x700418c0 && 0x700418c0 <= src_addr + size) {
       bprint("Unmapping %p to %p\n", src_addr, src_addr + size);
     }

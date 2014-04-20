@@ -254,13 +254,13 @@ static BOOLEAN hmm_map_remaining_memory(IN MAM_ATTRIBUTES mapping_attrs) {
                 }
             }
 
-#if JLMDEBUG
+#if JLMDEBUG1
     bprint("inner second range: start = %p, end = %p\n", virt_range_start, virt_range_start + virt_range_size);
 #endif
         }
     } while (last_covered_phys_addr < size_4G);
 
-#if JLMDEBUG
+#if JLMDEBUG1
     bprint("After the while loop\n");
 #endif
     // BEFORE_VMLAUNCH

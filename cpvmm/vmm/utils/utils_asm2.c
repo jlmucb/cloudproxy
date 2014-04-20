@@ -12,10 +12,17 @@
  * limitations under the License.
  */
 #include "vmm_defs.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 
 void vmm_lock_write (UINT64 *mem_loc, UINT64 new_data)
 {
+#ifdef JLMDEBUG
+    bprint("vmm_lock_write\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tmovq       %[mem_loc], %%rcx\n"
         "\tmovq       %[new_data], %%rdx\n"
@@ -29,6 +36,11 @@ void vmm_lock_write (UINT64 *mem_loc, UINT64 new_data)
 UINT32 vmm_rdtsc (UINT32   *upper)
 {
     UINT32 ret;
+
+#ifdef JLMDEBUG
+    bprint("vmm_rdtsc\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tmovl  %[upper], %%ecx\n"
         "\trdtsc\n"
@@ -43,6 +55,10 @@ UINT32 vmm_rdtsc (UINT32   *upper)
 
 void vmm_write_xcr(UINT64 xcr)
 {
+#ifdef JLMDEBUG
+    bprint("vmm_write_xcr\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tmovq       %[xcr], %%rax\n"
         "\txsetbv\n"
@@ -54,6 +70,10 @@ void vmm_write_xcr(UINT64 xcr)
 
 UINT64 vmm_read_xcr()
 {
+#ifdef JLMDEBUG
+    bprint("vmm_read_xcr\n");
+    LOOP_FOREVER
+#endif
     UINT64  result;
 
     asm volatile(
@@ -70,6 +90,11 @@ UINT64 gcpu_read_guestrip (void)
 {
     UINT64  result;
 
+#ifdef JLMDEBUG
+    bprint("vmm_read_guest_rip\n");
+    LOOP_FOREVER
+#endif
+    // JLM(FIX): is this right?
     asm volatile(
         "\tvmread    %%rax,%%rax\n"
         "\tmovq     %%rax, %[result]\n"
@@ -82,6 +107,10 @@ UINT64 gcpu_read_guestrip (void)
 
 UINT64 vmexit_reason()
 {
+#ifdef JLMDEBUG
+    bprint("vmexit_reason\n");
+    LOOP_FOREVER
+#endif
     UINT64  result;
     asm volatile(
         "\tmovq   $0x4402, %%rax\n"
@@ -98,6 +127,10 @@ UINT32 vmexit_check_ept_violation(void)
 //if it is ept_violation_vmexit, return exit qualification
 //  in EAX, otherwise, return 0 in EAX
 {
+#ifdef JLMDEBUG
+    bprint("vmm_check_ept_violation\n");
+    LOOP_FOREVER
+#endif
     UINT32  result;
     asm volatile(
         "\tmovq   $0x4402, %%rax\n"
@@ -121,6 +154,10 @@ UINT32 vmexit_check_ept_violation(void)
 // CHECK(JLM)
 void vmm_vmcs_guest_state_read(void)
 {
+#ifdef JLMDEBUG
+    bprint("vmm_vmcs_guest_state_read\n");
+    LOOP_FOREVER
+#endif
     UINT64  result;
 
     // JLM: note assumes arg is in %rcx

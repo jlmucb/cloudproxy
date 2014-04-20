@@ -15,10 +15,16 @@
 #include "vmm_defs.h"
 #include "hw_utils.h"
 #include "hw_vmx_utils.h"
-//#include "vmx.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 
 int vmx_on(UINT64 *address) {
+#ifdef JLMDEBUG
+    bprint("vmx_on\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tvmxon %0\n"
     ::"m" (address)
@@ -29,6 +35,10 @@ int vmx_on(UINT64 *address) {
 }
 
 void vmx_off() {
+#ifdef JLMDEBUG
+    bprint("vmx_off\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tvmxoff\n"
     ::
@@ -37,6 +47,10 @@ void vmx_off() {
 }
 
 int vmx_vmclear(UINT64 *address) {
+#ifdef JLMDEBUG
+    bprint("vmclear\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tvmclear %0\n"
     ::"m"(*address)
@@ -49,6 +63,10 @@ int hw_vmx_flush_current_vmcs(UINT64 *address) {
 }
 
 int vmx_vmlaunch() {
+#ifdef JLMDEBUG
+    bprint("vmxlaunch\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tvmlaunch\n"
     ::
@@ -58,6 +76,10 @@ int vmx_vmlaunch() {
 
 
 int vmx_vmresume() {
+#ifdef JLMDEBUG
+    bprint("vmresume\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tvmresume\n"
     ::
@@ -67,6 +89,10 @@ int vmx_vmresume() {
 
 
 int vmx_vmptrld(UINT64 *address) {
+#ifdef JLMDEBUG
+    bprint("vmptrld\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tvmptrld %0\n"
     ::"m" (address)
@@ -75,6 +101,10 @@ int vmx_vmptrld(UINT64 *address) {
 }
 
 void vmx_vmptrst(UINT64 *address) {
+#ifdef JLMDEBUG
+    bprint("vmptrst\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tvmptrst %0\n"
     ::"m" (address)
@@ -83,6 +113,10 @@ void vmx_vmptrst(UINT64 *address) {
 }
 
 int vmx_vmread(UINT64 index, UINT64 *value) {
+#ifdef JLMDEBUG
+    bprint("vmread\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tvmread %1, %0\n"
     :"=rm"(value)
@@ -93,6 +127,10 @@ int vmx_vmread(UINT64 index, UINT64 *value) {
 
 
 int vmx_vmwrite(UINT64 index, UINT64 *value) {
+#ifdef JLMDEBUG
+    bprint("vmwrite\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tvmwrite %1, %0\n"
     :

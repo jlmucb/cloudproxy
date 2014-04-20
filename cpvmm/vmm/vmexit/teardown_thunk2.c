@@ -26,6 +26,7 @@ int call_teardown_thunk32 (UINT64 current_guest_states_phy_addr,
                 UINT16 compatibility_cs, UINT64 teardown_thunk_entry_phy_addr,
                 UINT64 cr3_td_sm_32, BOOLEAN cr4_pae_is_on)
 {
+#if 0
     UINT64 result = 0;
 
     asm volatile(
@@ -131,6 +132,9 @@ int call_teardown_thunk32 (UINT64 current_guest_states_phy_addr,
       [cr4_pae_is_on] "g" (cr4_pae_is_on)
     :"%rax", "%r8", "cc");
     return result;
+#else
+    return 0;
+#endif
 }
 
 
@@ -144,8 +148,8 @@ int call_teardown_thunk32 (UINT64 current_guest_states_phy_addr,
 int call_teardown_thunk64(UINT32 current_cpu_idx,
                           UINT64 current_guest_states_hva, UINT64 teardown_thunk_entry_hva)
 {
+#if 0
         int result = 0;
-        /*
   asm volatile(
         "\tmovl    %[current_cpu_idx], %%rcx\n"
         "\tmovq    %[current_guest_states_hvu], %%rdx\n"
@@ -159,7 +163,9 @@ int call_teardown_thunk64(UINT32 current_cpu_idx,
       [teardown_thunk_entry_hva] "g" (teardown_thunk_entry_hva)
     :"%rax", "%r8"
         );
-*/
   return result;
+#else 
+  return 0;
+#endif
 }
 

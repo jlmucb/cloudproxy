@@ -42,7 +42,7 @@
 // Guest CPU may be in 2 different modes:
 //    16 mode - run under emulator
 //    any other mode - run native
-static GUEST_CPU_HANDLE g_gcpus       = NULL;// list of all guest cpus
+static GUEST_CPU_HANDLE g_gcpus = NULL; // list of all guest cpus
 
 // this is a shortcut pointer for assembler code
 GUEST_CPU_SAVE_AREA** g_guest_regs_save_area = NULL;
@@ -100,7 +100,6 @@ void restore_hw_debug_registers( GUEST_CPU* gcpu )
     if (! GET_DEBUG_REGS_CACHED_FLAG( gcpu )) {
         return;
     }
-
     hw_write_dr(0, gcpu->save_area.debug.reg[IA32_REG_DR0]);
     hw_write_dr(1, gcpu->save_area.debug.reg[IA32_REG_DR1]);
     hw_write_dr(2, gcpu->save_area.debug.reg[IA32_REG_DR2]);
@@ -220,7 +219,7 @@ GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
     VMM_STATUS  status;
 
 #ifdef JLMDEBUG
-    bprint("gcpu_allocate\n");
+    bprint("gcpu_allocate, g_cpu: 0x%016x\n", g_gcpus);
     LOOP_FOREVER
 #endif
     /* ensure that this vcpu yet not allocated */
@@ -238,7 +237,6 @@ GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
     gcpu = (GUEST_CPU_HANDLE) vmm_memory_alloc(sizeof(GUEST_CPU));
     VMM_ASSERT(gcpu);
     vmm_zeromem(gcpu, sizeof(GUEST_CPU));
-
     gcpu->next_gcpu = g_gcpus;
     g_gcpus = gcpu;
 

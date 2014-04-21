@@ -41,10 +41,11 @@ B=		$(E)/vmmobjects/guest/guest_cpu
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw \
 		-I$(S)/vmm/memory/ept \
-		-I$(S)/common/include/platform $(mainsrc) -I$(S)/vmm/guest
+		-I$(S)/common/include/platform $(mainsrc) -I$(S)/vmm/guest \
+                -I$(S)/vmm/memory/ept -I$(S)/vmm -I$(S)/vmm/bootstrap
 
-DEBUG_CFLAGS:=  -Wall -Wunused-but-set-variable -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs
-RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs -Wunused-but-set-variable
+DEBUG_CFLAGS:=  -Wall -Wunused-but-set-variable -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs  -D INVMM -D JLMDEBUG
+RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs -Wunused-but-set-variable  -D INVMM -D JLMDEBUG
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 

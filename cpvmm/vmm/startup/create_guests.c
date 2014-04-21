@@ -65,12 +65,12 @@ void add_cpu_to_guest( const VMM_GUEST_STARTUP* gstartup, GUEST_HANDLE guest,
     VMM_ASSERT( gcpu );
 #ifdef JLMDEBUG
     bprint("about to call guest_vcpu 0x%016x\n", gcpu);
+    LOOP_FOREVER
 #endif
     // find init data
     vcpu = guest_vcpu( gcpu );
 #ifdef JLMDEBUG
     bprint("about to call scheduler_register_gcpu 0x%016x\n", vcpu);
-    LOOP_FOREVER
 #endif
     VMM_ASSERT(vcpu);
     // register with scheduler
@@ -164,7 +164,6 @@ static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
 #endif
         guest_set_real_BIOS_access_enabled( guest );
     }
-
     msr_vmexit_guest_setup(guest);  // setup MSR-related control structure
 #ifdef JLMDEBUG
     bprint("finished msr_vmexit_guest_setup\n");
@@ -177,7 +176,6 @@ static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         return NULL;
     }
-
     ready_to_run = (BITMAP_GET( gstartup->flags, VMM_GUEST_FLAG_LAUNCH_IMMEDIATELY ) != 0);
     if (cpu_affinity == (UINT32)-1) {
         // special case - run on all existing CPUs
@@ -187,7 +185,6 @@ static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
                     "CPU #%d added successfully to the current guest\n", bit_number);
         }
     }
-
 #ifdef DEBUG
     //register_vmcall_services(guest);
     guest_register_vmcall_services(guest);

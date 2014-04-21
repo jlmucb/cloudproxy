@@ -46,7 +46,7 @@ static GUEST_CPU_HANDLE g_gcpus = NULL; // list of all guest cpus
 
 // this is a shortcut pointer for assembler code
 GUEST_CPU_SAVE_AREA** g_guest_regs_save_area = NULL;
-static UINT32        g_host_cpu_count       = 0;
+static UINT32         g_host_cpu_count = 0;
 
 CLI_CODE( static void gcpu_install_show_service(void);)
 
@@ -80,9 +80,7 @@ void cache_debug_registers( const GUEST_CPU* gcpu )
     if (GET_DEBUG_REGS_CACHED_FLAG( vgcpu )) {
         return;
     }
-
     SET_DEBUG_REGS_CACHED_FLAG(vgcpu);
-
     vgcpu->save_area.debug.reg[IA32_REG_DR0] = hw_read_dr(0);
     vgcpu->save_area.debug.reg[IA32_REG_DR1] = hw_read_dr(1);
     vgcpu->save_area.debug.reg[IA32_REG_DR2] = hw_read_dr(2);
@@ -96,7 +94,6 @@ void restore_hw_debug_registers( GUEST_CPU* gcpu )
 {
     // modified without cached is possible for initial start
     CLR_DEBUG_REGS_MODIFIED_FLAG(gcpu);
-
     if (! GET_DEBUG_REGS_CACHED_FLAG( gcpu )) {
         return;
     }
@@ -105,7 +102,7 @@ void restore_hw_debug_registers( GUEST_CPU* gcpu )
     hw_write_dr(2, gcpu->save_area.debug.reg[IA32_REG_DR2]);
     hw_write_dr(3, gcpu->save_area.debug.reg[IA32_REG_DR3]);
     // dr4 and dr5 are reserved
-/*    hw_write_dr(6, gcpu->save_area.debug.reg[IA32_REG_DR6]);  Read Only $VT$ */
+    // hw_write_dr(6, gcpu->save_area.debug.reg[IA32_REG_DR6]);  Read Only $VT$ 
 }
 #endif
 
@@ -129,7 +126,6 @@ void restore_fx_state( GUEST_CPU* gcpu )
 {
     // modified without cached is possible for initial start
     CLR_FX_STATE_MODIFIED_FLAG(gcpu);
-
     if (! GET_FX_STATE_CACHED_FLAG( gcpu )) {
         return;
     }
@@ -137,48 +133,48 @@ void restore_fx_state( GUEST_CPU* gcpu )
 }
 #endif
 
-//
+
 // perform minimal init of vmcs
-//
 // assumes that all uninit fields are 0 by default, except those that
 // are required to be 1 according to
 // Intel(R) 64 and IA-32 Architectures volume 3B,
 // paragraph 22.3.1 "Checks on the Guest State Area"
 static void setup_default_state( GUEST_CPU_HANDLE gcpu )
 {
+#ifdef JLMDEBUG
+    bprint("setup_default_state starting\n");
+    LOOP_FOREVER
+#endif
     VMCS_OBJECT* vmcs = gcpu_get_vmcs(gcpu);
     VMM_ASSERT(vmcs);
-
     // init control fields
     guest_cpu_control_setup( gcpu );
-
+#ifdef JLMDEBUG
+    bprint("guest_cpu_control_setup done\n");
+    LOOP_FOREVER
+#endif
     // set control registers to any supported value
     gcpu_set_control_reg( gcpu, IA32_CTRL_CR0, 0);
     gcpu_set_control_reg( gcpu, IA32_CTRL_CR4, 0);
     gcpu_set_control_reg( gcpu, IA32_CTRL_CR8, 0);
 
     // set all segment selectors except TR and CS to unusable state
-
     // CS: Accessed Code NotSystem NonConforming Present 32bit bit-granularity
     gcpu_set_segment_reg(gcpu, IA32_SEG_CS, 0, 0, 0, 0x99 );
-    gcpu_set_segment_reg(gcpu, IA32_SEG_DS, 0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE );
-    gcpu_set_segment_reg(gcpu, IA32_SEG_SS, 0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE );
-    gcpu_set_segment_reg(gcpu, IA32_SEG_ES, 0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE );
-    gcpu_set_segment_reg(gcpu, IA32_SEG_FS, 0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE );
-    gcpu_set_segment_reg(gcpu, IA32_SEG_GS, 0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE );
+    gcpu_set_segment_reg(gcpu, IA32_SEG_DS, 0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE);
+    gcpu_set_segment_reg(gcpu, IA32_SEG_SS, 0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE);
+    gcpu_set_segment_reg(gcpu, IA32_SEG_ES, 0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE);
+    gcpu_set_segment_reg(gcpu, IA32_SEG_FS, 0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE);
+    gcpu_set_segment_reg(gcpu, IA32_SEG_GS, 0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE);
     gcpu_set_segment_reg(gcpu, IA32_SEG_LDTR, 0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE );
     // TR: 32bit busy TSS System Present bit-granularity
-    gcpu_set_segment_reg( gcpu, IA32_SEG_TR,   0, 0, 0, 0x8B );
-
+    gcpu_set_segment_reg(gcpu, IA32_SEG_TR,   0, 0, 0, 0x8B);
     // FLAGS: reserved bit 1 must be 1, all other - 0
     gcpu_set_gp_reg( gcpu, IA32_REG_RFLAGS, 0x2);
-
     vmcs_init_all_msr_lists(vmcs);
     host_cpu_init_vmexit_store_and_vmenter_load_msr_lists_according_to_vmexit_load_list(gcpu);
-
     gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_EFER, 0);
     gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_PAT, hw_read_msr(IA32_MSR_PAT));
-
     VMM_ASSERT(vmcs_read(vmcs, VMCS_EXIT_MSR_STORE_ADDRESS) == vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_ADDRESS));
 
     // by default put guest CPU into the Wait-for-SIPI state
@@ -197,16 +193,13 @@ void gcpu_manager_init( UINT16 host_cpu_count )
 {
     // BEFORE_VMLAUNCH
     VMM_ASSERT( host_cpu_count );
-
     g_host_cpu_count = host_cpu_count;
     g_guest_regs_save_area = vmm_memory_alloc( sizeof(GUEST_CPU_SAVE_AREA*) * host_cpu_count );
     // BEFORE_VMLAUNCH
     VMM_ASSERT( g_guest_regs_save_area );
-
     // init subcomponents
     vmcs_hw_init();
     vmcs_manager_init();
-
     CLI_CODE( gcpu_install_show_service();)
 }
 
@@ -219,17 +212,17 @@ GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
 #ifdef JLMDEBUG
     bprint("gcpu_allocate, g_cpu: 0x%016x\n", g_gcpus);
 #endif
-    /* ensure that this vcpu yet not allocated */
+    // ensure that this vcpu yet not allocated
     for (gcpu = global_gcpu_first(&ctx); gcpu; gcpu = global_gcpu_next(&ctx)) {
         if ((gcpu->vcpu.guest_id == vcpu.guest_id) &&
             (gcpu->vcpu.guest_cpu_id == vcpu.guest_cpu_id)) {
-            VMM_LOG(mask_anonymous,level_trace,"The CPU %d for the Guest %d was already allocated.\n",
+            VMM_LOG(mask_anonymous,level_trace,
+                     "The CPU %d for the Guest %d was already allocated.\n",
                      vcpu.guest_cpu_id, vcpu.guest_id);
             VMM_ASSERT(FALSE);
             return gcpu;
         }
     }
-
     // allocate next gcpu
     gcpu = (GUEST_CPU_HANDLE) vmm_memory_alloc(sizeof(GUEST_CPU));
     VMM_ASSERT(gcpu);
@@ -239,29 +232,29 @@ GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
 #ifdef JLMDEBUG
     bprint("gcpu_allocate, got memory\n");
 #endif
-
-    gcpu->vcpu  = vcpu;
+    gcpu->vcpu = vcpu;
     gcpu->last_guest_level = GUEST_LEVEL_1_SIMPLE;
     gcpu->next_guest_level = GUEST_LEVEL_1_SIMPLE;
     gcpu->state_flags = 0;
     gcpu->caching_flags = 0;
-    //    gcpu->vmcs  = vmcs_allocate();
+    // gcpu->vmcs  = vmcs_allocate();
     status = vmcs_hierarchy_create(&gcpu->vmcs_hierarchy, gcpu);
     VMM_ASSERT(VMM_OK == status);
 #ifdef JLMDEBUG
     bprint("gcpu_allocate, created hierarchy\n");
-    LOOP_FOREVER
 #endif
-
     gcpu->emulator_handle = 0;
     gcpu->guest_handle = guest;
     gcpu->active_gpm = NULL;
     SET_MODE_NATIVE(gcpu);
     SET_IMPORTANT_EVENT_OCCURED_FLAG(gcpu);
     SET_CACHED_ACTIVITY_STATE(gcpu, Ia32VmxVmcsGuestSleepStateActive);
+#ifdef JLMDEBUG
+    bprint("about to call setup_default_state\n");
+    LOOP_FOREVER
+#endif
     setup_default_state( gcpu );
     gcpu->resume_func = gcpu_perform_split_merge; // default "resume" function
-
 #ifdef FAST_VIEW_SWITCH
      gcpu->fvs_cpu_desc.vmentry_eptp = 0;
      gcpu->fvs_cpu_desc.enabled = FALSE;
@@ -277,12 +270,11 @@ GUEST_CPU_HANDLE gcpu_state( const VIRTUAL_CPU_ID* vcpu )
     GLOBAL_GUEST_CPU_ITERATOR ctx;
 
     for (gcpu = global_gcpu_first(&ctx); gcpu; gcpu = global_gcpu_next(&ctx)) {
-        if ((gcpu->vcpu.guest_id     == vcpu->guest_id) &&
-            (gcpu->vcpu.guest_cpu_id == vcpu->guest_cpu_id)) {  // found guest cpu
+        if ((gcpu->vcpu.guest_id == vcpu->guest_id) &&
+                (gcpu->vcpu.guest_cpu_id == vcpu->guest_cpu_id)) {  // found guest cpu
             return gcpu;
         }
     }
-
     return NULL;
 }
 
@@ -293,7 +285,6 @@ VMCS_OBJECT* gcpu_get_vmcs( GUEST_CPU_HANDLE  gcpu )
         return NULL;
     }
     return vmcs_hierarchy_get_vmcs(&gcpu->vmcs_hierarchy, VMCS_MERGED);
-//    return gcpu->vmcs;
 }
 
 VMCS_HIERARCHY * gcpu_get_vmcs_hierarchy( GUEST_CPU_HANDLE  gcpu )
@@ -387,7 +378,6 @@ BOOLEAN gcpu_process_interrupt(VECTOR_ID vector_id)
         GUEST_CPU_HANDLE gcpu = scheduler_current_gcpu();
         VMM_ASSERT(gcpu && IS_MODE_EMULATOR(gcpu));
         VMM_ASSERT(gcpu->emulator_handle);
-
         emulator_interrupt_handler(gcpu->emulator_handle, vector_id);
     }
     return recognized;
@@ -406,60 +396,51 @@ void gcpu_initialize( GUEST_CPU_HANDLE gcpu,
                       const VMM_GUEST_CPU_STARTUP_STATE* initial_state )
 {
     UINT32 idx;
-
     VMM_ASSERT( gcpu );
-
     if (! initial_state) {
         return;
     }
-
     if (initial_state->size_of_this_struct != sizeof( VMM_GUEST_CPU_STARTUP_STATE )) {
         // wrong state
         VMM_LOG(mask_anonymous, level_trace,"gcpu_initialize() called with unknown structure\n");
         VMM_DEADLOOP();
         return;
     }
-
     if (initial_state->version_of_this_struct != VMM_GUEST_CPU_STARTUP_STATE_VERSION) {
         // wrong version
         VMM_LOG(mask_anonymous, level_trace,
             "gcpu_initialize() called with non-compatible VMM_GUEST_CPU_STARTUP_STATE "
             "structure: given version: %d expected version: %d\n",
-            initial_state->version_of_this_struct,
-            VMM_GUEST_CPU_STARTUP_STATE_VERSION );
-
+            initial_state->version_of_this_struct, VMM_GUEST_CPU_STARTUP_STATE_VERSION );
         VMM_DEADLOOP();
         return;
     }
-
     //    vmcs_set_launch_required( gcpu->vmcs );
     vmcs_set_launch_required( gcpu_get_vmcs(gcpu) );
-
     // init gp registers
     for (idx = IA32_REG_RAX; idx < IA32_REG_GP_COUNT; ++idx) {
         gcpu_set_gp_reg( gcpu, (VMM_IA32_GP_REGISTERS)idx, initial_state->gp.reg[idx] );
     }
-
     // init xmm registers
     for (idx = IA32_REG_XMM0; idx < IA32_REG_XMM_COUNT; ++idx) {
         gcpu_set_xmm_reg( gcpu, (VMM_IA32_XMM_REGISTERS)idx, initial_state->xmm.reg[idx] );
     }
-
     // init segment registers
     for (idx = IA32_SEG_CS; idx < IA32_SEG_COUNT; ++idx) {
-        gcpu_set_segment_reg( gcpu, (VMM_IA32_SEGMENT_REGISTERS)idx, initial_state->seg.segment[idx].selector,
+        gcpu_set_segment_reg(gcpu, (VMM_IA32_SEGMENT_REGISTERS)idx, 
+                initial_state->seg.segment[idx].selector,
                 initial_state->seg.segment[idx].base, initial_state->seg.segment[idx].limit,
-                initial_state->seg.segment[idx].attributes );
+                initial_state->seg.segment[idx].attributes);
     }
-
     // init control registers
     for (idx = IA32_CTRL_CR0; idx < IA32_CTRL_COUNT; ++idx) {
-        gcpu_set_control_reg( gcpu, (VMM_IA32_CONTROL_REGISTERS)idx, initial_state->control.cr[idx] );
-        gcpu_set_guest_visible_control_reg( gcpu, (VMM_IA32_CONTROL_REGISTERS)idx, initial_state->control.cr[idx] );
+        gcpu_set_control_reg(gcpu, (VMM_IA32_CONTROL_REGISTERS)idx, 
+                                   initial_state->control.cr[idx]);
+        gcpu_set_guest_visible_control_reg( gcpu, (VMM_IA32_CONTROL_REGISTERS)idx, 
+                                   initial_state->control.cr[idx] );
     }
     gcpu_set_gdt_reg( gcpu, initial_state->control.gdtr.base, initial_state->control.gdtr.limit );
     gcpu_set_idt_reg( gcpu, initial_state->control.idtr.base, initial_state->control.idtr.limit );
-
     // init selected model-specific registers
     gcpu_set_msr_reg( gcpu, IA32_VMM_MSR_DEBUGCTL,     initial_state->msr.msr_debugctl );
     gcpu_set_msr_reg( gcpu, IA32_VMM_MSR_EFER,         initial_state->msr.msr_efer );
@@ -475,10 +456,8 @@ void gcpu_initialize( GUEST_CPU_HANDLE gcpu,
     gcpu_set_activity_state( gcpu,  (IA32_VMX_VMCS_GUEST_SLEEP_STATE)initial_state->msr.activity_state );
     // set state in vmenter control fields
     gcpu_set_vmenter_control( gcpu );
-
     cache_fx_state(gcpu);
     cache_debug_registers(gcpu);
-
     SET_MODE_NATIVE(gcpu);
     SET_ALL_MODIFIED(gcpu);
 }
@@ -563,14 +542,10 @@ int gcpu_show_gp_registers(unsigned argc, char *args[])
 
     if (argc < 2)
         return -1;
-
     guest_id = (GUEST_ID) CLI_ATOL(args[1]);
-
     gcpu = scheduler_get_current_gcpu_for_guest(guest_id);
-
     if (NULL == gcpu)
         return -1;
-
     CLI_PRINT("=============================================\n");
     PRINT_GP_REG(gcpu, IA32_REG_RAX);
     PRINT_GP_REG(gcpu, IA32_REG_RBX);
@@ -609,17 +584,12 @@ int gcpu_show_emulator_state(unsigned argc, char *args[])
 
     if (argc < 2)
         return -1;
-
     guest_id = (GUEST_ID) CLI_ATOL(args[1]);
-
     gcpu = scheduler_get_current_gcpu_for_guest(guest_id);
-
     if (NULL == gcpu)
         return -1;
-
     if (FALSE == emul_state_show(gcpu->emulator_handle))
         return -1;
-
     return 0;
 }
 
@@ -649,13 +619,13 @@ void gcpu_install_show_service(void)
 ) // End Of CLI_CODE
 #endif
 
-void gcpu_change_level0_vmexit_msr_load_list(GUEST_CPU_HANDLE gcpu, IA32_VMX_MSR_ENTRY* msr_list, UINT32 msr_list_count) {
+void gcpu_change_level0_vmexit_msr_load_list(GUEST_CPU_HANDLE gcpu, 
+        IA32_VMX_MSR_ENTRY* msr_list, UINT32 msr_list_count) {
     UINT64 addr = 0;
     VMCS_OBJECT* level0_vmcs = vmcs_hierarchy_get_vmcs(gcpu_get_vmcs_hierarchy(gcpu), VMCS_LEVEL_0);
 
     if (gcpu_get_guest_level(gcpu) == GUEST_LEVEL_1_SIMPLE) {
         VMM_ASSERT(vmcs_hierarchy_get_vmcs(gcpu_get_vmcs_hierarchy(gcpu), VMCS_MERGED) == level0_vmcs);
-
         if ((msr_list_count != 0) && (!hmm_hva_to_hpa((HVA)msr_list, &addr))) {
             VMM_LOG(mask_anonymous, level_trace,"%s: Failed to convert HVA to HPA\n", __FUNCTION__);
             // BEFORE_VMLAUNCH
@@ -666,7 +636,6 @@ void gcpu_change_level0_vmexit_msr_load_list(GUEST_CPU_HANDLE gcpu, IA32_VMX_MSR
         // When layering HVA is stored
         addr = (UINT64)msr_list;
     }
-
     vmcs_write(level0_vmcs, VMCS_EXIT_MSR_LOAD_ADDRESS, addr);
     vmcs_write(level0_vmcs, VMCS_EXIT_MSR_LOAD_COUNT, msr_list_count);
 }

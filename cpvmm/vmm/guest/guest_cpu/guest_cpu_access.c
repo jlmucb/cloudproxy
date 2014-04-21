@@ -102,8 +102,6 @@ const UINT32 g_msr_2_index[] = {
 };
 
 
-// Getters/setters
-
 BOOLEAN gcpu_is_native_execution( GUEST_CPU_HANDLE gcpu )
 {
     return IS_MODE_NATIVE(gcpu);
@@ -138,15 +136,12 @@ void   gcpu_set_native_gp_reg_layered( GUEST_CPU_HANDLE gcpu,
         case IA32_REG_RSP:
             vmcs_write( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_RSP, value );
             return;
-
         case IA32_REG_RIP:
             vmcs_write( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_RIP, value );
             return;
-
         case IA32_REG_RFLAGS:
             vmcs_write( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_RFLAGS, value );
             return;
-
         default:
             gcpu->save_area.gp.reg[reg] = value;
             return;
@@ -281,7 +276,6 @@ void   gcpu_set_segment_reg_layered( GUEST_CPU_HANDLE gcpu, VMM_IA32_SEGMENT_REG
 UINT64 gcpu_get_control_reg_layered(const GUEST_CPU_HANDLE gcpu,
                               VMM_IA32_CONTROL_REGISTERS reg, VMCS_LEVEL level )
 {
-
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(gcpu);
 
@@ -635,11 +629,9 @@ static BOOLEAN gcpu_get_msr_value_from_list(IN UINT32 msr_index, IN IA32_VMX_MSR
     if (msr_index == IA32_INVALID_MSR_INDEX) {
         return FALSE;
     }
-
     if(NULL == list){
         return FALSE;
     }
-
     for (; count > 0; count--) {
         if (list[count - 1].MsrIndex == msr_index) {
             *value = list[count - 1].MsrData;
@@ -655,11 +647,9 @@ static BOOLEAN gcpu_set_msr_value_in_list(IN UINT32 msr_index, IN UINT64 value,
     if (msr_index == IA32_INVALID_MSR_INDEX) {
         return FALSE;
     }
-
     if (list == NULL){
         return FALSE;
     }
-
     for (; count > 0; count--) {
         if (list[count - 1].MsrIndex == msr_index) {
             list[count - 1].MsrData = value;
@@ -716,9 +706,7 @@ UINT64 gcpu_get_msr_reg_internal_layered(const GUEST_CPU_HANDLE gcpu,
     if (gcpu_get_msr_value_from_list(g_msr_2_index[reg], vmexit_store_msr_list_ptr, vmexit_store_msr_list_count, &value)) {
         return value;
     }
-
     // Will never reach here
-    VMM_ASSERT(0);
     return 0;
 
 }
@@ -865,7 +853,6 @@ void gcpu_set_msr_reg_by_index_layered(GUEST_CPU_HANDLE gcpu, UINT32  msr_index,
             else {
                 vmexit_store_load_msr_list_ptr = (IA32_VMX_MSR_ENTRY*)vmexit_store_msr_list_addr;
             }
-
             gcpu_set_msr_value_in_list(msr_index, value, vmexit_store_load_msr_list_ptr, vmexit_store_msr_list_count);
         }
     }
@@ -886,9 +873,7 @@ void gcpu_set_msr_reg_by_index_layered(GUEST_CPU_HANDLE gcpu, UINT32  msr_index,
     VM_EXIT_CONTROLS may1_vm_exit_ctrl = vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl;
 
     VMM_ASSERT(gcpu);
-    VMM_DEBUG_CODE(VMM_ASSERT(reg < NELEMENTS(g_msr_2_vmcs) &&
-                   reg < NELEMENTS(g_msr_2_index)));
-
+    VMM_DEBUG_CODE(VMM_ASSERT(reg<NELEMENTS(g_msr_2_vmcs) && reg<NELEMENTS(g_msr_2_index)));
 
     if (reg == IA32_VMM_MSR_EFER) {
         SET_IMPORTANT_EVENT_OCCURED_FLAG(gcpu);
@@ -917,7 +902,6 @@ void gcpu_set_msr_reg_by_index_layered(GUEST_CPU_HANDLE gcpu, UINT32  msr_index,
                     value |= EFER_LMA;
                 else
                     value &= ~EFER_LMA;
-
             }
         }
     }
@@ -1157,25 +1141,19 @@ static void arch_make_segreg_real_mode_compliant( seg_reg64_t *p_segreg,
     if (p_segreg->selector < 8 && IA32_SEG_LDTR == reg_id) {
         p_segreg->arbyte.bits.null_bit = 1;
     }
-
     // TR and CS must be usable !!!
     if (IA32_SEG_TR == reg_id || IA32_SEG_CS == reg_id) {
         p_segreg->arbyte.bits.null_bit = 0;
     }
-
     if (1 == p_segreg->arbyte.bits.null_bit) {
         return;
     }
-
     // Assume we run in Ring-0
     BITMAP_CLR(p_segreg->selector, 7); // Clear TI-flag and RPL
-
     p_segreg->arbyte.as_uint32 &= 0xF0FF;   // clear all reserved
     p_segreg->arbyte.bits.dpl   = 0;        // Assume we run in Ring-0
     p_segreg->arbyte.bits.p_bit = 1;
-
     // p_segreg->arbyte.bits.db_bit = 1;
-
 
     /*
     Set Granularity bit
@@ -1235,9 +1213,7 @@ void make_segreg_hw_real_mode_compliant( GUEST_CPU_HANDLE gcpu , UINT16 selector
     segreg.base = base;
     segreg.limit = limit;
     segreg.arbyte.as_uint32 = attr;
-
     arch_make_segreg_real_mode_compliant(&segreg, reg_id);
-
     gcpu_set_segment_reg(gcpu, reg_id, segreg.selector,
                          segreg.base, segreg.limit, segreg.arbyte.as_uint32);
 }

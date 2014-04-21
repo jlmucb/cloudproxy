@@ -41,10 +41,8 @@
 
 extern void vmm_acpi_pm_initialize(GUEST_ID guest_id);
 
-//
-// Guest Manager
-//
 
+// Guest Manager
 #ifdef ENABLE_MULTI_GUEST_SUPPORT
 static void raise_gcpu_add_event(CPU_ID from, void* arg);
 #endif
@@ -52,7 +50,6 @@ static void raise_gcpu_add_event(CPU_ID from, void* arg);
 static UINT32                guests_count = 0;
 static UINT32                max_gcpus_count_per_guest = 0;
 static UINT32                num_host_cpus = 0;
-
 static GUEST_DESCRIPTOR *    guests = NULL;
 
 
@@ -60,17 +57,13 @@ void guest_manager_init( UINT16 max_cpus_per_guest, UINT16 host_cpu_count )
 {
     // BEFORE_VMLAUNCH. PARANOID check.
     VMM_ASSERT( max_cpus_per_guest );
-
     max_gcpus_count_per_guest = max_cpus_per_guest;
     num_host_cpus = host_cpu_count;
-
     guests = NULL;
-
     // init subcomponents
     gcpu_manager_init( host_cpu_count );
-
     // create VMEXIT-related data
-    //vmexit_initialize();
+    // vmexit_initialize();
 }
 
 
@@ -95,18 +88,15 @@ GUEST_HANDLE guest_handle( GUEST_ID guest_id )
 GUEST_ID guest_get_id( GUEST_HANDLE guest )
 {
     VMM_ASSERT( guest );
-
     return guest->id;
 }
 
 // Register new guest
-//
 // For primary guest physical_memory_size must be 0
-//
 // cpu_affinity - each 1 bit corresponds to host CPU_ID that should run GUEST_CPU
-//                on behalf of this guest. Number of bits should correspond
-//                to the number of registered guest CPUs for this guest
-//                -1 means run on all available CPUs
+//          on behalf of this guest. Number of bits should correspond
+//          to the number of registered guest CPUs for this guest
+//          -1 means run on all available CPUs
 // Return NULL on error
 GUEST_HANDLE guest_register( UINT32 magic_number, UINT32 physical_memory_size,
                              UINT32  cpu_affinity, const VMM_POLICY  *guest_policy )
@@ -114,7 +104,9 @@ GUEST_HANDLE guest_register( UINT32 magic_number, UINT32 physical_memory_size,
     GUEST_DESCRIPTOR* guest;
 
 #ifdef JLMDEBUG1
-    bprint("Before vmm_malloc with descriptor size %d, magic_number %u, physical memory size %u, and affinity %u and count %d\n", sizeof(GUEST_DESCRIPTOR), magic_number, physical_memory_size, cpu_affinity, guests_count);
+    bprint("Before vmm_malloc with descriptor size %d, magic_number %u, physical memory size %u, and affinity %u and count %d\n",
+           sizeof(GUEST_DESCRIPTOR), magic_number, physical_memory_size, 
+           cpu_affinity, guests_count);
 #endif
     guest = (GUEST_DESCRIPTOR *) vmm_malloc(sizeof(GUEST_DESCRIPTOR));
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
@@ -122,10 +114,6 @@ GUEST_HANDLE guest_register( UINT32 magic_number, UINT32 physical_memory_size,
 
     guest->id = (GUEST_ID)guests_count;
     ++guests_count;
-
-#ifdef JLMDEBUG
-    bprint("In guest_register with magic_number %u and guest id %u\n", magic_number, guest->id);
-#endif
     if(magic_number == ANONYMOUS_MAGIC_NUMBER) {
         guest->magic_number = MIN_ANONYMOUS_GUEST_ID + guest->id;
     }
@@ -136,7 +124,6 @@ GUEST_HANDLE guest_register( UINT32 magic_number, UINT32 physical_memory_size,
     }
     guest->physical_memory_size = physical_memory_size;
     guest->cpu_affinity = cpu_affinity;
-
     guest->cpus_array = (GUEST_CPU_HANDLE *) 
             vmm_malloc(sizeof(GUEST_CPU_HANDLE) * max_gcpus_count_per_guest);
     guest->cpu_count = 0;
@@ -146,15 +133,12 @@ GUEST_HANDLE guest_register( UINT32 magic_number, UINT32 physical_memory_size,
     guest->startup_gpm = gpm_create_mapping();
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( guest->startup_gpm != GPM_INVALID_HANDLE );
-
     if (guest_policy == NULL)
         get_global_policy(&guest->guest_policy);
     else
         copy_policy(&guest->guest_policy, guest_policy);
-
     list_init(guest->cpuid_filter_list);    // prepare list for CPUID filters
     list_init(guest->msr_control->msr_list); // prepare list for MSR handlers
-
     // vmexit_guest_initialize(guest->id);
     guest->next_guest = guests;
     guests = guest;
@@ -176,7 +160,6 @@ UINT16 guest_count( void )
 UINT32 guest_magic_number( const GUEST_HANDLE guest )
 {
     VMM_ASSERT( guest );
-
     return guest->magic_number;
 }
 
@@ -231,7 +214,6 @@ UINT32 guest_cpu_affinity( const GUEST_HANDLE guest )
 void guest_set_cpu_affinity( const GUEST_HANDLE guest, UINT32 cpu_affinity )
 {
     VMM_ASSERT( guest );
-
     guest->cpu_affinity = cpu_affinity;
 }
 #endif
@@ -297,7 +279,6 @@ void guest_set_real_BIOS_access_enabled( GUEST_HANDLE guest )
 BOOLEAN guest_is_real_BIOS_access_enabled(  const GUEST_HANDLE  guest )
 {
     VMM_ASSERT( guest );
-
     return (GET_GUEST_BIOS_ACCESS_ENABLED_FLAG(guest) != 0);
 }
 #endif
@@ -306,7 +287,6 @@ void    guest_set_nmi_owner(GUEST_HANDLE guest )
 {
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( guest );
-
     SET_GUEST_IS_NMI_OWNER_FLAG(guest);
 }
 
@@ -314,7 +294,6 @@ BOOLEAN guest_is_nmi_owner(const GUEST_HANDLE  guest )
 {
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( guest );
-
     return (GET_GUEST_IS_NMI_OWNER_FLAG(guest) != 0);
 }
 
@@ -323,7 +302,6 @@ void    guest_set_acpi_owner(GUEST_HANDLE guest )
     VMM_ASSERT( guest );
 #ifdef ENABLE_PM_S3
     SET_GUEST_IS_ACPI_OWNER_FLAG(guest);
-
     vmm_acpi_pm_initialize(guest->id);  // for ACPI owner only
 #endif
 }
@@ -332,7 +310,6 @@ void    guest_set_acpi_owner(GUEST_HANDLE guest )
 BOOLEAN guest_is_acpi_owner(const GUEST_HANDLE  guest )
 {
     VMM_ASSERT( guest );
-
     return (GET_GUEST_IS_ACPI_OWNER_FLAG(guest) != 0);
 }
 #endif
@@ -341,7 +318,6 @@ void    guest_set_default_device_owner(GUEST_HANDLE guest )
 {
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( guest );
-
     SET_GUEST_IS_DEFAULT_DEVICE_OWNER_FLAG(guest);
 }
 
@@ -349,7 +325,6 @@ void    guest_set_default_device_owner(GUEST_HANDLE guest )
 BOOLEAN guest_is_default_device_owner(const GUEST_HANDLE  guest )
 {
     VMM_ASSERT( guest );
-
     return (GET_GUEST_IS_DEFAULT_DEVICE_OWNER_FLAG(guest) != 0);
 }
 #endif
@@ -379,10 +354,8 @@ GPM_HANDLE gcpu_get_current_gpm(GUEST_HANDLE guest)
     GUEST_CPU_HANDLE gcpu;
 
     VMM_ASSERT(guest);
-
     gcpu = scheduler_get_current_gcpu_for_guest(guest_get_id(guest));
     VMM_ASSERT(gcpu);
-
     return gcpu->active_gpm;
 }
 
@@ -414,9 +387,9 @@ void guest_load_executable_image( GUEST_HANDLE       guest )
 {
     VMM_ASSERT( guest );
     VMM_ASSERT( GET_GUEST_IS_PRIMARY_FLAG(guest) == 0 );
-
     guest = 0;
-    VMM_LOG(mask_anonymous, level_trace,"guest::guest_load_executable_image() is not implemented yet\n");
+    VMM_LOG(mask_anonymous, level_trace,
+            "guest::guest_load_executable_image() is not implemented yet\n");
     VMM_DEADLOOP();
     VMM_BREAKPOINT();
 }
@@ -441,6 +414,10 @@ GUEST_CPU_HANDLE guest_add_cpu( GUEST_HANDLE guest )
     bprint("about to call gcpu_allocate\n");
 #endif
     gcpu = gcpu_allocate( vcpu, guest );
+#ifdef JLMDEBUG
+    bprint("back from gcpu_allocate\n");
+    LOOP_FOREVER
+#endif
     guest->cpus_array[ vcpu.guest_cpu_id ] = gcpu;
     return gcpu;
 }
@@ -460,7 +437,6 @@ GUEST_CPU_HANDLE guest_gcpu_first( const GUEST_HANDLE guest, GUEST_GCPU_ECONTEXT
 
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( guest );
-
     p_gcpu = ARRAY_ITERATOR_FIRST( GUEST_CPU_HANDLE, guest->cpus_array,
                                    guest->cpu_count, context );
     return p_gcpu ? *p_gcpu : NULL;
@@ -585,22 +561,17 @@ void guest_end_physical_memory_modifications( GUEST_HANDLE guest )
     GUEST_CPU_HANDLE    gcpu;
 
     VMM_ASSERT( guest );
-
     // notify gcpu of the guest running on the current host cpu
     guest_notify_gcpu_about_gpm_change( guest->id, (void*)(size_t)guest->id );
-
     // notify all other gcpu of the guest
     ipc_dest.addr_shorthand = IPI_DST_ALL_EXCLUDING_SELF;
     ipc_dest.addr = 0;
     ipc_execute_handler(ipc_dest, guest_notify_gcpu_about_gpm_change, (void*)(size_t)guest->id);
-
     // prepare to raise events
     gpm_modification_data.guest_id = guest->id;
     gpm_modification_data.operation = VMM_MEM_OP_RECREATE;
-
     gcpu = scheduler_get_current_gcpu_for_guest(guest_get_id(guest));
     VMM_ASSERT(gcpu);
-
     event_raise(EVENT_END_GPM_MODIFICATION_BEFORE_CPUS_RESUMED, gcpu, &gpm_modification_data);
     start_all_cpus(NULL, NULL);
     event_raise(EVENT_END_GPM_MODIFICATION_AFTER_CPUS_RESUMED, gcpu, &gpm_modification_data);
@@ -627,7 +598,6 @@ void guest_end_physical_memory_perm_switch( GUEST_HANDLE guest )
     GUEST_CPU_HANDLE gcpu;
 
     VMM_ASSERT( guest );
-
     // prepare to raise events
     gpm_modification_data.guest_id = guest->id;
     gpm_modification_data.operation = VMM_MEM_OP_SWITCH;
@@ -648,11 +618,9 @@ GUEST_HANDLE guest_dynamic_create(BOOLEAN stop_and_notify, const VMM_POLICY  *gu
     if (TRUE == stop_and_notify) {
         stop_all_cpus();
     }
-
     // create guest
     guest = guest_register( ANONYMOUS_MAGIC_NUMBER, 0,
                             (UINT32) -1 /* cpu affinity */, guest_policy);
-
     if (! guest) {
         VMM_LOG(mask_anonymous, level_trace,"Cannot create guest with the following params: \n"
                  "\t\tguest_magic_number    = %#x\n"
@@ -661,16 +629,13 @@ GUEST_HANDLE guest_dynamic_create(BOOLEAN stop_and_notify, const VMM_POLICY  *gu
                  guest_magic_number(guest), 0, guest_cpu_affinity(guest) );
         return NULL;
     }
-
     guest_id = guest_get_id(guest);
     vmexit_guest_initialize(guest_id);
     gpci_guest_initialize(guest_id);
     ipc_guest_initialize(guest_id);
     event_manager_guest_initialize(guest_id);
     guest_register_vmcall_services(guest);
-
     VMM_LOG(mask_anonymous, level_trace,"Created new guest #%d\r\n", guest_id);
-
     if (TRUE == stop_and_notify) {
         vmm_zeromem(&guest_create_event_data, sizeof(guest_create_event_data));
         guest_create_event_data.guest_id = guest_id;
@@ -680,7 +645,8 @@ GUEST_HANDLE guest_dynamic_create(BOOLEAN stop_and_notify, const VMM_POLICY  *gu
     return guest;
 }
 
-BOOLEAN guest_dynamic_assign_memory(GUEST_HANDLE src_guest, GUEST_HANDLE dst_guest, GPM_HANDLE memory_map)
+BOOLEAN guest_dynamic_assign_memory(GUEST_HANDLE src_guest, GUEST_HANDLE dst_guest, 
+                                    GPM_HANDLE memory_map)
 {
     GPM_HANDLE src_gpm = NULL, dst_gpm = NULL;
     GPM_RANGES_ITERATOR gpm_iter = GPM_INVALID_RANGES_ITERATOR;
@@ -693,16 +659,13 @@ BOOLEAN guest_dynamic_assign_memory(GUEST_HANDLE src_guest, GUEST_HANDLE dst_gue
 
     VMM_ASSERT(dst_guest);
     VMM_ASSERT(memory_map);
-
     dst_gpm = gcpu_get_current_gpm(dst_guest);
     gpm_iter = gpm_get_ranges_iterator(dst_gpm);
-
     // check that target gpm is empty
     VMM_ASSERT(GPM_INVALID_RANGES_ITERATOR == gpm_iter);
     if(GPM_INVALID_RANGES_ITERATOR != gpm_iter) {
         return FALSE;
     }
-
     if(src_guest != NULL) {
         guest_begin_physical_memory_modifications( src_guest );
         gpm_iter = gpm_get_ranges_iterator(memory_map);
@@ -710,30 +673,25 @@ BOOLEAN guest_dynamic_assign_memory(GUEST_HANDLE src_guest, GUEST_HANDLE dst_gue
         while(GPM_INVALID_RANGES_ITERATOR != gpm_iter) {
             gpm_iter = gpm_get_range_details_from_iterator(memory_map,
                                             gpm_iter, &gpa, &size);
-
             status = gpm_gpa_to_hpa(memory_map, gpa, &hpa, &attrs);
             VMM_ASSERT(status);
             src_gpm = gcpu_get_current_gpm(src_guest);
             for(i = hpa; i < hpa + size; i += PAGE_4KB_SIZE) {
                 status = gpm_hpa_to_gpa(src_gpm, hpa, &src_gpa);
                 VMM_ASSERT(status);
-
                 gpm_remove_mapping(src_gpm, src_gpa, PAGE_4KB_SIZE);
             }
         }
-
         guest_end_physical_memory_modifications( src_guest );
     }
-
     status = gpm_copy(src_gpm, dst_gpm, FALSE, mam_no_attributes);
     VMM_ASSERT(status);
-
     return TRUE;
 }
 
 GUEST_CPU_HANDLE guest_dynamic_add_cpu(GUEST_HANDLE guest,
-                                const VMM_GUEST_CPU_STARTUP_STATE* gcpu_startup,
-                                CPU_ID host_cpu, BOOLEAN ready_to_run, BOOLEAN stop_and_notify)
+                          const VMM_GUEST_CPU_STARTUP_STATE* gcpu_startup,
+                          CPU_ID host_cpu, BOOLEAN ready_to_run, BOOLEAN stop_and_notify)
 {
     GUEST_CPU_HANDLE gcpu;
     const VIRTUAL_CPU_ID* vcpu = NULL;
@@ -745,29 +703,25 @@ GUEST_CPU_HANDLE guest_dynamic_add_cpu(GUEST_HANDLE guest,
     // DK: Do not need this if IPC will work with WaitForSIPI
     // check that host_cpu is active
     //    gcpu = scheduler_get_current_gcpu_on_host_cpu(host_cpu);
-    //    if(gcpu != NULL && gcpu_is_wait_for_sipi(gcpu))
-    //    {
+    //    if(gcpu != NULL && gcpu_is_wait_for_sipi(gcpu)) {
     //        start_all_cpus(NULL, NULL);
     //        return NULL;
     //    }
     gcpu = guest_add_cpu(guest);
     VMM_ASSERT( gcpu );
-
     // find init data
     vcpu = guest_vcpu( gcpu );
-
     // register with scheduler
     scheduler_register_gcpu( gcpu, host_cpu, ready_to_run );
-
     if (gcpu_startup != NULL) {
-        VMM_LOG(mask_anonymous, level_trace,"Setting up initial state for the newly created Guest CPU\n");
+        VMM_LOG(mask_anonymous, level_trace,
+                "Setting up initial state for the newly created Guest CPU\n");
         gcpu_initialize( gcpu, gcpu_startup );
     }
     else {
         VMM_LOG(mask_anonymous, level_trace,"Newly created Guest CPU was initialized with the Wait-For-SIPI state\n");
     }
     host_cpu_vmcs_init( gcpu );
-
     if (TRUE == stop_and_notify) {
         guest_after_dynamic_add_cpu( gcpu );
     }
@@ -792,7 +746,8 @@ void raise_gcpu_add_event(CPU_ID from UNUSED, void* arg)
     CPU_ID this_cpu_id = hw_cpu_id();
     GUEST_CPU_HANDLE gcpu = (GUEST_CPU_HANDLE) arg;
 
-    VMM_LOG(mask_anonymous, level_trace,"cpu#%d raise gcpu add event gcpu %p\r\n", this_cpu_id, gcpu);
+    VMM_LOG(mask_anonymous, level_trace,"cpu#%d raise gcpu add event gcpu %p\n", 
+            this_cpu_id, gcpu);
     if(this_cpu_id == scheduler_get_host_cpu_id(gcpu)) {
         event_raise(EVENT_GCPU_ADD, gcpu, NULL);
     }
@@ -837,19 +792,15 @@ BOOLEAN vmm_get_struct_host_ptr(GUEST_CPU_HANDLE gcpu,
         VMM_LOG(mask_anonymous, level_trace,"%s: Invalid Parameter Struct Address %P\n", __FUNCTION__, gva);
         return FALSE;
     }
-
     host_ptr_tmp = (void*)hva;
     if (*((VMCALL_ID*)host_ptr_tmp) != expected_vmcall_id) {
         VMM_LOG(mask_anonymous, level_trace,"%s: Invalid first field (vmcall_id) of the struct: %d instead of %d\n", __FUNCTION__, *((VMCALL_ID*)host_ptr_tmp), expected_vmcall_id);
         return FALSE;
     }
-
-    //if ((ALIGN_FORWARD(gva, PAGE_4KB_SIZE) - gva) < size_of_struct) {
-        if (ALIGN_BACKWARD(gva, PAGE_4KB_SIZE) != ALIGN_BACKWARD(gva+size_of_struct, PAGE_4KB_SIZE)) {
+    if (ALIGN_BACKWARD(gva, PAGE_4KB_SIZE) != ALIGN_BACKWARD(gva+size_of_struct, PAGE_4KB_SIZE)) {
         VMM_LOG(mask_anonymous, level_trace,"%s: Parameters Struct crosses the page boundary. gva = %P, size_of_struct = 0x%x\n", __FUNCTION__, gva, size_of_struct);
         return FALSE;
     }
-
     *host_ptr = host_ptr_tmp;
     return TRUE;
 }
@@ -857,8 +808,7 @@ BOOLEAN vmm_get_struct_host_ptr(GUEST_CPU_HANDLE gcpu,
 #pragma warning( push )
 #pragma warning (disable : 4100) // disable non-referenced formal parameters
 
-static
-VMM_STATUS is_uvmm_running(GUEST_CPU_HANDLE gcpu, ADDRESS *arg1,
+static VMM_STATUS is_uvmm_running(GUEST_CPU_HANDLE gcpu, ADDRESS *arg1,
                             ADDRESS *arg2 UNUSED, ADDRESS *arg3 UNUSED) {
     void** is_vmm_running_params_guest_ptr = (void**)arg1;
     VMM_IS_UVMM_RUNNING_PARAMS* is_vmm_running_params;
@@ -871,11 +821,8 @@ VMM_STATUS is_uvmm_running(GUEST_CPU_HANDLE gcpu, ADDRESS *arg1,
         VMM_DEADLOOP();
         return VMM_ERROR;
     }
-
     VMM_LOG(mask_anonymous, level_trace,"%s: Notifying driver that uVMM is running\n", __FUNCTION__);
-
     is_vmm_running_params->version = 0;
-
     return VMM_OK;
 }
 
@@ -889,10 +836,10 @@ static VMM_STATUS print_debug_message_service(GUEST_CPU_HANDLE gcpu, ADDRESS *ar
                                  VMCALL_PRINT_DEBUG_MESSAGE,
                                  sizeof(VMM_PRINT_DEBUG_MESSAGE_PARAMS),
                                  (void**)&print_debug_message_params)) {
-        VMM_LOG(mask_anonymous, level_trace,"%s: Error - could not retrieve pointer to parameters\n", __FUNCTION__);
+        VMM_LOG(mask_anonymous, level_trace,
+                "%s: Error - could not retrieve pointer to parameters\n", __FUNCTION__);
         return VMM_ERROR;
     }
-
     VMM_LOG(mask_anonymous, level_trace,"%s\n", print_debug_message_params->message);
     return VMM_OK;
 }

@@ -261,17 +261,14 @@ BOOLEAN gcpu_inject_native_pf(GUEST_CPU_HANDLE gcpu, UINT64 pf_address, UINT64 p
     VMCS_OBJECT *vmcs       = gcpu_get_vmcs(gcpu);
 
     VMM_ASSERT(gcpu);
-
     vmm_memset( &pf_exception, 0, sizeof(pf_exception) );
     gcpu_set_control_reg(gcpu, IA32_CTRL_CR2, pf_address);
-
     pf_exception.interrupt_info.Bits.Valid = 1;
     pf_exception.interrupt_info.Bits.Vector = IA32_EXCEPTION_VECTOR_PAGE_FAULT;
     pf_exception.interrupt_info.Bits.InterruptType = VmEnterInterruptTypeHardwareException;
     pf_exception.interrupt_info.Bits.DeliverCode   = 1;
     pf_exception.instruction_length = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_INSTRUCTION_LENGTH);
     pf_exception.error_code = pfec;
-
     return gcpu_inject_event(gcpu, &pf_exception);
 }
 #endif
@@ -288,14 +285,12 @@ BOOLEAN gcpu_inject_gp0( GUEST_CPU_HANDLE    gcpu)
     VMM_ASSERT(gcpu);
     vmm_memset( &gp_exception, 0, sizeof(gp_exception) );
     vmcs = gcpu_get_vmcs(gcpu);
-
     gp_exception.interrupt_info.Bits.Valid = 1;
     gp_exception.interrupt_info.Bits.Vector = IA32_EXCEPTION_VECTOR_GENERAL_PROTECTION_FAULT;
     gp_exception.interrupt_info.Bits.InterruptType = VmEnterInterruptTypeHardwareException;
     gp_exception.interrupt_info.Bits.DeliverCode   = 1;
     gp_exception.instruction_length = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_INSTRUCTION_LENGTH);
     gp_exception.error_code = 0;
-
     return gcpu_inject_event(gcpu, &gp_exception);
 }
 
@@ -313,9 +308,7 @@ BOOLEAN gcpu_inject_fault( GUEST_CPU_HANDLE gcpu, int vec, UINT32 code)
 
     VMM_ASSERT(gcpu);
     vmcs = gcpu_get_vmcs(gcpu);
-
     vmm_memset(&e, 0, sizeof(e));
-
     e.interrupt_info.Bits.Valid = 1;
     e.interrupt_info.Bits.Vector = vec;
     e.interrupt_info.Bits.InterruptType = VmEnterInterruptTypeHardwareException;
@@ -326,12 +319,10 @@ BOOLEAN gcpu_inject_fault( GUEST_CPU_HANDLE gcpu, int vec, UINT32 code)
         e.interrupt_info.Bits.DeliverCode = 1;
         e.error_code = code;
     }
-
     if (vec == IA32_EXCEPTION_VECTOR_VIRTUAL_EXCEPTION) {
         e.interrupt_info.Bits.DeliverCode = 0;	// no error code
         e.interrupt_info.Bits.Reserved = 0;
     }
-
     return gcpu_inject_event(gcpu, &e);
 }
 
@@ -345,7 +336,6 @@ BOOLEAN gcpu_inject_nmi( GUEST_CPU_HANDLE    gcpu)
 
     VMM_ASSERT(gcpu);
     vmm_memset( &nmi_event, 0, sizeof(nmi_event) );
-
     nmi_event.interrupt_info.Bits.Valid = 1;
     nmi_event.interrupt_info.Bits.Vector = IA32_EXCEPTION_VECTOR_NMI;
     nmi_event.interrupt_info.Bits.InterruptType = VmEnterInterruptTypeNmi;
@@ -365,13 +355,11 @@ BOOLEAN gcpu_inject_external_interrupt( GUEST_CPU_HANDLE gcpu, VECTOR_ID vector_
     VMENTER_EVENT interrupt_event;
 
     VMM_ASSERT(gcpu);
-
     vmm_memset( &interrupt_event, 0, sizeof(interrupt_event) );
-
-    interrupt_event.interrupt_info.Bits.Valid          = 1;
-    interrupt_event.interrupt_info.Bits.Vector         = vector_id;
+    interrupt_event.interrupt_info.Bits.Valid = 1;
+    interrupt_event.interrupt_info.Bits.Vector = vector_id;
     interrupt_event.interrupt_info.Bits.InterruptType  = VmEnterInterruptTypeExternalInterrupt;
-    interrupt_event.interrupt_info.Bits.DeliverCode    = 0;    // no error code delivered
+    interrupt_event.interrupt_info.Bits.DeliverCode = 0;    // no error code delivered
     return gcpu_inject_event(gcpu, &interrupt_event);
 }
 #endif
@@ -386,15 +374,12 @@ BOOLEAN gcpu_inject_double_fault( GUEST_CPU_HANDLE    gcpu)
     VMENTER_EVENT double_fault_event;
 
     VMM_ASSERT(gcpu);
-
     vmm_memset( &double_fault_event, 0, sizeof( double_fault_event ) );
-
-    double_fault_event.interrupt_info.Bits.Valid            = 1;
-    double_fault_event.interrupt_info.Bits.Vector           = IA32_EXCEPTION_VECTOR_DOUBLE_FAULT;
-    double_fault_event.interrupt_info.Bits.InterruptType    = VmEnterInterruptTypeHardwareException;
-    double_fault_event.interrupt_info.Bits.DeliverCode      = 1;
-    double_fault_event.error_code                           = 0;
-
+    double_fault_event.interrupt_info.Bits.Valid = 1;
+    double_fault_event.interrupt_info.Bits.Vector = IA32_EXCEPTION_VECTOR_DOUBLE_FAULT;
+    double_fault_event.interrupt_info.Bits.InterruptType = VmEnterInterruptTypeHardwareException;
+    double_fault_event.interrupt_info.Bits.DeliverCode = 1;
+    double_fault_event.error_code = 0;
     return gcpu_inject_event(gcpu, &double_fault_event);
 }
 
@@ -411,7 +396,6 @@ void gcpu_set_pending_nmi( GUEST_CPU_HANDLE gcpu, BOOLEAN value)
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     // same for native and under emulator
     VMM_ASSERT(gcpu);
-
     vmcs = gcpu_get_vmcs(gcpu);
     vmcs_write_nmi_window_bit(vmcs, value);
 }
@@ -445,7 +429,6 @@ EXCEPTION_CLASS vector_to_exception_class(
     case IA32_EXCEPTION_VECTOR_PAGE_FAULT:
         ex_class = EXCEPTION_CLASS_PAGE_FAULT;
         break;
-
     case IA32_EXCEPTION_VECTOR_DIVIDE_ERROR:
     case IA32_EXCEPTION_VECTOR_INVALID_TASK_SEGMENT_SELECTOR:
     case IA32_EXCEPTION_VECTOR_SEGMENT_NOT_PRESENT:
@@ -453,13 +436,11 @@ EXCEPTION_CLASS vector_to_exception_class(
     case IA32_EXCEPTION_VECTOR_GENERAL_PROTECTION_FAULT:
         ex_class = EXCEPTION_CLASS_CONTRIBUTORY;
         break;
-
     case IA32_EXCEPTION_VECTOR_DOUBLE_FAULT:
         VMM_LOG(mask_anonymous, level_trace,"FATAL ERROR: Tripple Fault Occured\n");
         ex_class = EXCEPTION_CLASS_TRIPLE_FAULT; // have to tear down the guest
         VMM_DEADLOOP();
         break;
-
     default:
         ex_class = EXCEPTION_CLASS_BENIGN;
         break;
@@ -481,12 +462,10 @@ void gcpu_reinject_vmexit_exception( GUEST_CPU_HANDLE gcpu,
     VMCS_OBJECT   *vmcs = gcpu_get_vmcs(gcpu);
 
     copy_exception_to_vmenter_exception(&event.interrupt_info, vmexit_exception_info.Uint32);
-
     // some exceptions require error code
     if (vmexit_exception_info.Bits.ErrorCodeValid) {
         event.error_code = vmcs_read(vmcs, VMCS_EXIT_INFO_EXCEPTION_ERROR_CODE);
     }
-
     if (VmExitInterruptTypeSoftwareException == vmexit_exception_info.Bits.InterruptType) {
         event.instruction_length = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_INSTRUCTION_LENGTH);
     }
@@ -507,12 +486,10 @@ void gcpu_reinject_idt_exception( GUEST_CPU_HANDLE gcpu,
 
     // re-inject the event, by copying IDT vectoring info into VMENTER
     copy_exception_to_vmenter_exception(&event.interrupt_info, idt_vectoring_info.Uint32);
-
     // some exceptions require error code
     if (idt_vectoring_info.Bits.ErrorCodeValid) {
         event.error_code = vmcs_read(vmcs, VMCS_EXIT_INFO_IDT_VECTORING_ERROR_CODE);
     }
-
     // SW exceptions and interrupts require instruction length to be injected
     switch (idt_vectoring_info.Bits.InterruptType) {
     case IdtVectoringInterruptTypeSoftwareInterrupt:
@@ -523,10 +500,8 @@ void gcpu_reinject_idt_exception( GUEST_CPU_HANDLE gcpu,
     default:
         break;
     }
-
     // clear IDT valid, so we can re-inject the event
     vmcs_write(vmcs, VMCS_EXIT_INFO_IDT_VECTORING, 0);
-
     // finally inject the event
     gcpu_inject_event(gcpu, &event);
 }
@@ -560,8 +535,7 @@ void gcpu_vmexit_exception_resolve( GUEST_CPU_HANDLE gcpu)
             guest_interruptibility.Uint32 = 0;
             guest_interruptibility.Bits.BlockNmi = 1;
             vmcs_update( vmcs, VMCS_GUEST_INTERRUPTIBILITY,
-                (UINT64) guest_interruptibility.Uint32,
-                (UINT64) guest_interruptibility.Uint32);
+                (UINT64) guest_interruptibility.Uint32, (UINT64) guest_interruptibility.Uint32);
         }
     }
 }
@@ -593,12 +567,9 @@ void gcpu_vmexit_exception_reflect(
     if (1 == idt_vectoring_info.Bits.Valid) {
         exception1_class = vector_to_exception_class((VECTOR_ID) idt_vectoring_info.Bits.Vector);
         exception2_class = vector_to_exception_class((VECTOR_ID) vmexit_exception_info.Bits.Vector);
-
         action = idt_resolution_table[exception1_class][exception2_class];
-
         // clear IDT valid, for we can re-inject the event
         vmcs_write(vmcs, VMCS_EXIT_INFO_IDT_VECTORING, 0);
-
         switch (action) {
         case INJECT_2ND_EXCEPTION:
             // inject 2nd exception, by copying VMEXIT exception info into VMENTER
@@ -618,7 +589,6 @@ void gcpu_vmexit_exception_reflect(
     else {
         inject_exception = TRUE;
     }
-
     if (inject_exception) {
         if (vmexit_exception_info.Bits.Vector == IA32_EXCEPTION_VECTOR_PAGE_FAULT) {
             // CR2 information resides in qualification
@@ -626,7 +596,6 @@ void gcpu_vmexit_exception_reflect(
             qualification.Uint64 = vmcs_read(vmcs, VMCS_EXIT_INFO_QUALIFICATION);
             gcpu_set_control_reg(gcpu, IA32_CTRL_CR2, qualification.PageFault.Address);
         }
-
         // re-inject the event, by copying VMEXIT exception info into VMENTER
         gcpu_reinject_vmexit_exception(gcpu, vmexit_exception_info);
     }

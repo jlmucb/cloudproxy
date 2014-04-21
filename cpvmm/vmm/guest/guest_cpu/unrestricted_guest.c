@@ -31,7 +31,6 @@ void gcpu_clr_unrestricted_guest(GUEST_CPU_HANDLE gcpu)
     VMM_ASSERT( gcpu );
     CLR_UNRESTRICTED_GUEST_FLAG(gcpu);
     unrestricted_guest_disable(gcpu);
-
 }
 
 //Check whether Unrestricted guest is enabled 
@@ -60,12 +59,10 @@ void unrestricted_guest_hw_disable(GUEST_CPU_HANDLE gcpu)
     CHECK_EXECUTION_ON_LOCAL_HOST_CPU(gcpu);
     proc_ctrls2.Uint32 = 0;
     vmm_zeromem(&vmexit_request, sizeof(vmexit_request));
-
     proc_ctrls2.Bits.UnrestrictedGuest = 1;
     vmexit_request.proc_ctrls2.bit_mask    = proc_ctrls2.Uint32;
     vmexit_request.proc_ctrls2.bit_request = 0;
     gcpu_control2_setup( gcpu, &vmexit_request );
-
 }
 
 
@@ -84,26 +81,21 @@ void unrestricted_guest_enable(GUEST_CPU_HANDLE gcpu)
     VMEXIT_CONTROL vmexit_request;
 
     SET_UNRESTRICTED_GUEST_FLAG(gcpu);
-
     ept_acquire_lock();
     proc_ctrls2.Uint32 = 0;
     vmm_zeromem(&vmexit_request, sizeof(vmexit_request));
-
     proc_ctrls2.Bits.UnrestrictedGuest = 1;
     vmexit_request.proc_ctrls2.bit_mask    = proc_ctrls2.Uint32;
     vmexit_request.proc_ctrls2.bit_request = UINT64_ALL_ONES;
     gcpu_control2_setup( gcpu, &vmexit_request );
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(is_unrestricted_guest_enabled(gcpu));
-
     if(!ept_is_ept_enabled(gcpu)) {
         ept_enable(gcpu);
         cr4 = gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR4);
         ept_set_pdtprs(gcpu, cr4);
     }
-
     // BEFORE_VMLAUNCH. PARANOID check as it is already checked before.
     VMM_ASSERT(ept_is_ept_enabled(gcpu));
-
     ept_release_lock();
 }

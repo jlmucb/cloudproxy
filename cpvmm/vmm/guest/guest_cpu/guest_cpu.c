@@ -220,13 +220,12 @@ GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
 
 #ifdef JLMDEBUG
     bprint("gcpu_allocate, g_cpu: 0x%016x\n", g_gcpus);
-    LOOP_FOREVER
 #endif
     /* ensure that this vcpu yet not allocated */
     for (gcpu = global_gcpu_first(&ctx); gcpu; gcpu = global_gcpu_next(&ctx)) {
-        if ((gcpu->vcpu.guest_id     == vcpu.guest_id) &&
+        if ((gcpu->vcpu.guest_id == vcpu.guest_id) &&
             (gcpu->vcpu.guest_cpu_id == vcpu.guest_cpu_id)) {
-            VMM_LOG(mask_anonymous, level_trace,"The CPU %d for the Guest %d was already allocated.\n",
+            VMM_LOG(mask_anonymous,level_trace,"The CPU %d for the Guest %d was already allocated.\n",
                      vcpu.guest_cpu_id, vcpu.guest_id);
             VMM_ASSERT(FALSE);
             return gcpu;
@@ -239,6 +238,10 @@ GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
     vmm_zeromem(gcpu, sizeof(GUEST_CPU));
     gcpu->next_gcpu = g_gcpus;
     g_gcpus = gcpu;
+#ifdef JLMDEBUG
+    bprint("gcpu_allocate, got memory\n");
+    LOOP_FOREVER
+#endif
 
     gcpu->vcpu  = vcpu;
     gcpu->last_guest_level = GUEST_LEVEL_1_SIMPLE;

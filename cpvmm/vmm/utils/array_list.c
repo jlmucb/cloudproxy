@@ -13,13 +13,15 @@
  */
 
 #include "list.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 // %VT% typedef struct _ARRAY_LIST_ELEMENT ARRAY_LIST_ELEMENT;
-
 #define ARRAY_LIST_HEADER_SIZE(alignment)   \
        (UINT32) (ALIGN_FORWARD(sizeof(ARRAY_LIST) - sizeof(((ARRAY_LIST *) 0)->array), (ADDRESS) alignment))
 
-#define ARRAY_LIST_ELEMENT_HEADER_SIZE          ((UINT32) sizeof(ARRAY_LIST_ELEMENT) - (UINT32) sizeof(((ARRAY_LIST_ELEMENT *) 0)->data))
+#define ARRAY_LIST_ELEMENT_HEADER_SIZE ((UINT32) sizeof(ARRAY_LIST_ELEMENT) - (UINT32) sizeof(((ARRAY_LIST_ELEMENT *) 0)->data))
 
 #define ARRAY_LIST_ELEMENT_SIZE(element_size, alignment)   (UINT32) (ALIGN_FORWARD(ARRAY_LIST_ELEMENT_HEADER_SIZE + element_size, (ADDRESS) alignment))
 
@@ -52,7 +54,9 @@ typedef struct _ARRAY_LIST
 
 UINT32 array_list_memory_size(char *buffer, UINT32 element_size, UINT32 num_of_elements, UINT32 alignment)
 {
-    return (UINT32) (ARRAY_LIST_PADDING_SIZE(buffer, alignment) + ARRAY_LIST_HEADER_SIZE(alignment) + ARRAY_LIST_ELEMENT_SIZE(element_size, alignment) * num_of_elements);
+    return (UINT32) (ARRAY_LIST_PADDING_SIZE(buffer, alignment) + 
+                ARRAY_LIST_HEADER_SIZE(alignment) + 
+                ARRAY_LIST_ELEMENT_SIZE(element_size, alignment) * num_of_elements);
 }
 
 UINT32 array_list_size(ARRAY_LIST *alist)

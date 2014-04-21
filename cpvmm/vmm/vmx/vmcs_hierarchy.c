@@ -21,6 +21,9 @@
 #include "vmcs_actual.h"
 #include "vmcs_hierarchy.h"
 #include "file_codes.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMCS_HIERARCHY_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMCS_HIERARCHY_C, __condition)
@@ -36,6 +39,10 @@ VMM_STATUS vmcs_hierarchy_create( VMCS_HIERARCHY *obj, GUEST_CPU_HANDLE gcpu)
 {
     VMM_STATUS status;
 
+#ifdef JLMDEBUG
+    bprint("vmcs_hierarchy_create\n");
+    LOOP_FOREVER
+#endif
     VMM_ASSERT(obj);
     obj->vmcs[VMCS_LEVEL_0] = obj->vmcs[VMCS_MERGED] = vmcs_act_create(gcpu);
 

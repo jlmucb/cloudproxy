@@ -38,8 +38,9 @@ mainsrc=    $(S)/vmm/guest
 
 B=		$(E)/vmmobjects/guest
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
-    		-I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
-    		-I$(mainsrc)/guest_cpu  -I$(S)/vmm/memory/ept -I$(S)/vmm -I$(S)/vmm/bootstrap
+    		-I$(S)/common/include/arch -I$(S)/vmm/include/hw \
+		-I$(S)/common/include/platform -I$(mainsrc)/guest_cpu \
+		-I$(S)/vmm/memory/ept -I$(S)/vmm -I$(S)/vmm/bootstrap
 DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs -D INVMM -D JLMDEBUG
 RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs -D INVMM -D JLMDEBUG
 CFLAGS=     	$(RELEASE_CFLAGS) 

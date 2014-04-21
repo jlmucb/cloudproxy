@@ -68,7 +68,6 @@ typedef struct _SCHEDULER_CPU_STATE {
 } SCHEDULER_CPU_STATE;
 
 
-//static
 SCHEDULER_VCPU_OBJECT* scheduler_get_current_vcpu_for_guest( GUEST_ID guest_id );
 
 static UINT16 g_host_cpus_count         = 0;
@@ -134,7 +133,6 @@ void scheduler_init( UINT16 number_of_host_cpus )
         bprint("Cant allocate scheduler state\n");
         LOOP_FOREVER
     }
-
     // BEFORE_VMLAUNCH. MALLOC should not fail.
     VMM_ASSERT( g_scheduler_state != 0 );
 }
@@ -145,26 +143,27 @@ void scheduler_register_gcpu(GUEST_CPU_HANDLE gcpu_handle, CPU_ID   host_cpu_id,
 {
     SCHEDULER_VCPU_OBJECT* vcpu_obj = NULL;
 
+#ifdef JLMDEBUG
+    bprint("scheduler_register_gcpu, about to alloc %d\n", 
+           sizeof(SCHEDULER_VCPU_OBJECT));
+    LOOP_FOREVER
+#endif
     vcpu_obj = (SCHEDULER_VCPU_OBJECT*) vmm_malloc(sizeof(SCHEDULER_VCPU_OBJECT));
+#ifdef JLMDEBUG
+    bprint("done with vmm_alloc\n");
+#endif
     VMM_ASSERT(vcpu_obj);
-
     interruptible_lock_acquire_writelock(g_registration_lock);
-
     vcpu_obj->next_all_cpus = g_registered_vcpus;
     g_registered_vcpus = vcpu_obj;
-
     hw_interlocked_increment((INT32*)&g_registered_vcpus_count);
-
-    vcpu_obj->gcpu              = gcpu_handle;
-    vcpu_obj->flags             = 0;
-    vcpu_obj->host_cpu          = host_cpu_id;
-
+    vcpu_obj->gcpu  = gcpu_handle;
+    vcpu_obj->flags = 0;
+    vcpu_obj->host_cpu = host_cpu_id;
     SET_ALLOCATED_FLAG( vcpu_obj );
-
     if (schedule_immediately) {
         SET_READY_FLAG( vcpu_obj );
     }
-
     // add to the per-host-cpu list
     add_to_per_cpu_list( vcpu_obj );
     lock_release_writelock(g_registration_lock);

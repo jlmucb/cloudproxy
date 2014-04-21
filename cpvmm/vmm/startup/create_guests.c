@@ -58,16 +58,20 @@ void add_cpu_to_guest( const VMM_GUEST_STARTUP* gstartup, GUEST_HANDLE guest,
     const VMM_GUEST_CPU_STARTUP_STATE* cpus_arr = NULL;
 #ifdef JLMDEBUG
     bprint("add_cpu_to_guest\n");
-    LOOP_FOREVER
 #endif
 
     gcpu = guest_add_cpu(guest);
-
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( gcpu );
-
+#ifdef JLMDEBUG
+    bprint("about to call guest_vcpu 0x%016x\n", gcpu);
+#endif
     // find init data
     vcpu = guest_vcpu( gcpu );
+#ifdef JLMDEBUG
+    bprint("about to call scheduler_register_gcpu 0x%016x\n", vcpu);
+    LOOP_FOREVER
+#endif
     VMM_ASSERT(vcpu);
     // register with scheduler
     scheduler_register_gcpu( gcpu, host_cpu_to_allocate, ready_to_run );
@@ -134,7 +138,7 @@ static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
 
 #ifdef JLMDEBUG
     bprint("done with vmexit_guest_initialize\n");
-    LOOP_FOREVER
+    // LOOP_FOREVER
 #endif
 
     if (gstartup->devices_count != 0) {
@@ -152,17 +156,18 @@ static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
     }
 #ifdef JLMDEBUG
     bprint("finished guest_set_executable_image\n");
-    LOOP_FOREVER
 #endif
 
     if (BITMAP_GET(gstartup->flags, VMM_GUEST_FLAG_REAL_BIOS_ACCESS_ENABLE) != 0) {
+#ifdef JLMDEBUG
+        bprint("calling guest_set_real_BIOS_access_enabled\n");
+#endif
         guest_set_real_BIOS_access_enabled( guest );
     }
 
     msr_vmexit_guest_setup(guest);  // setup MSR-related control structure
 #ifdef JLMDEBUG
     bprint("finished msr_vmexit_guest_setup\n");
-    LOOP_FOREVER
 #endif
 
     // init cpus.

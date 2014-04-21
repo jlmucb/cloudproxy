@@ -4,7 +4,6 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,6 +32,9 @@
 #include "host_cpu.h"
 #include "vmx_timer.h"
 #include "unrestricted_guest.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #pragma warning( disable: 4100 )
 
@@ -217,6 +219,10 @@ GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
     GLOBAL_GUEST_CPU_ITERATOR ctx;
     VMM_STATUS  status;
 
+#ifdef JLMDEBUG
+    bprint("gcpu_allocate\n");
+    LOOP_FOREVER
+#endif
     /* ensure that this vcpu yet not allocated */
     for (gcpu = global_gcpu_first(&ctx); gcpu; gcpu = global_gcpu_next(&ctx)) {
         if ((gcpu->vcpu.guest_id     == vcpu.guest_id) &&
@@ -241,34 +247,27 @@ GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
     gcpu->next_guest_level = GUEST_LEVEL_1_SIMPLE;
     gcpu->state_flags = 0;
     gcpu->caching_flags = 0;
-//    gcpu->vmcs  = vmcs_allocate();
+    //    gcpu->vmcs  = vmcs_allocate();
     status = vmcs_hierarchy_create(&gcpu->vmcs_hierarchy, gcpu);
     VMM_ASSERT(VMM_OK == status);
 
     gcpu->emulator_handle = 0;
     gcpu->guest_handle = guest;
-
     gcpu->active_gpm = NULL;
-
     SET_MODE_NATIVE(gcpu);
     SET_IMPORTANT_EVENT_OCCURED_FLAG(gcpu);
     SET_CACHED_ACTIVITY_STATE(gcpu, Ia32VmxVmcsGuestSleepStateActive);
-
     setup_default_state( gcpu );
-
     gcpu->resume_func = gcpu_perform_split_merge; // default "resume" function
 
-
- #ifdef FAST_VIEW_SWITCH
+#ifdef FAST_VIEW_SWITCH
      gcpu->fvs_cpu_desc.vmentry_eptp = 0;
      gcpu->fvs_cpu_desc.enabled = FALSE;
  #endif
-
     return gcpu;
 }
 
 // Get Guest CPU state by VIRTUAL_CPU_ID
-//
 // Return NULL if no such guest cpu
 GUEST_CPU_HANDLE gcpu_state( const VIRTUAL_CPU_ID* vcpu )
 {
@@ -446,11 +445,9 @@ void gcpu_initialize( GUEST_CPU_HANDLE gcpu,
 
     // init segment registers
     for (idx = IA32_SEG_CS; idx < IA32_SEG_COUNT; ++idx) {
-        gcpu_set_segment_reg( gcpu, (VMM_IA32_SEGMENT_REGISTERS)idx,
-                                   initial_state->seg.segment[idx].selector,
-                                   initial_state->seg.segment[idx].base,
-                                   initial_state->seg.segment[idx].limit,
-                                   initial_state->seg.segment[idx].attributes );
+        gcpu_set_segment_reg( gcpu, (VMM_IA32_SEGMENT_REGISTERS)idx, initial_state->seg.segment[idx].selector,
+                initial_state->seg.segment[idx].base, initial_state->seg.segment[idx].limit,
+                initial_state->seg.segment[idx].attributes );
     }
 
     // init control registers
@@ -458,11 +455,8 @@ void gcpu_initialize( GUEST_CPU_HANDLE gcpu,
         gcpu_set_control_reg( gcpu, (VMM_IA32_CONTROL_REGISTERS)idx, initial_state->control.cr[idx] );
         gcpu_set_guest_visible_control_reg( gcpu, (VMM_IA32_CONTROL_REGISTERS)idx, initial_state->control.cr[idx] );
     }
-
-    gcpu_set_gdt_reg( gcpu, initial_state->control.gdtr.base,
-                      initial_state->control.gdtr.limit );
-    gcpu_set_idt_reg( gcpu, initial_state->control.idtr.base,
-                      initial_state->control.idtr.limit );
+    gcpu_set_gdt_reg( gcpu, initial_state->control.gdtr.base, initial_state->control.gdtr.limit );
+    gcpu_set_idt_reg( gcpu, initial_state->control.idtr.base, initial_state->control.idtr.limit );
 
     // init selected model-specific registers
     gcpu_set_msr_reg( gcpu, IA32_VMM_MSR_DEBUGCTL,     initial_state->msr.msr_debugctl );
@@ -472,7 +466,6 @@ void gcpu_initialize( GUEST_CPU_HANDLE gcpu,
     gcpu_set_msr_reg( gcpu, IA32_VMM_MSR_SYSENTER_EIP, initial_state->msr.msr_sysenter_eip );
     gcpu_set_msr_reg( gcpu, IA32_VMM_MSR_SYSENTER_CS,  initial_state->msr.msr_sysenter_cs );
     gcpu_set_msr_reg( gcpu, IA32_VMM_MSR_SMBASE,       initial_state->msr.smbase );
-
     gcpu_set_pending_debug_exceptions( gcpu, initial_state->msr.pending_exceptions );
     gcpu_set_interruptibility_state( gcpu,   initial_state->msr.interruptibility_state );
 
@@ -488,6 +481,7 @@ void gcpu_initialize( GUEST_CPU_HANDLE gcpu,
     SET_ALL_MODIFIED(gcpu);
 }
 
+
 BOOLEAN gcpu_gva_to_gpa(GUEST_CPU_HANDLE gcpu, GVA gva, GPA* gpa)
 {
     UINT64 gpa_tmp;
@@ -501,7 +495,6 @@ BOOLEAN gcpu_gva_to_gpa(GUEST_CPU_HANDLE gcpu, GVA gva, GPA* gpa)
         *gpa = gva;
         return TRUE;
     }
-
     if (IS_FLAT_PT_INSTALLED(gcpu)) {
         *gpa = gva;
         return TRUE;

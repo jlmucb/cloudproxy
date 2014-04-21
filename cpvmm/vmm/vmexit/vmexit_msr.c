@@ -36,6 +36,9 @@
 #include "unrestricted_guest.h"
 #include "vmm_callback.h"
 #include "memory_dump.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define MSR_LOW_RANGE_IN_BITS   ((MSR_LOW_LAST - MSR_LOW_FIRST + 1) / 8)
 #define MSR_HIGH_RANGE_IN_BITS  ((MSR_HIGH_LAST - MSR_HIGH_FIRST + 1) / 8)
@@ -154,7 +157,6 @@ VMM_STATUS msr_vmexit_bits_config( UINT8 *p_bitmap, MSR_ID msr_id,
                 VMM_ASSERT(0);  // wrong MSR ID
                 return VMM_ERROR;
             }
-
             if (set) {
                 BITARRAY_SET(p_bitarray, bitno);
             }
@@ -218,13 +220,10 @@ static void msr_vmexit_register_mtrr_accesses_handler(GUEST_HANDLE guest) {
                 i < mtrrs_abstraction_get_num_of_variable_range_regs(); msr_addr += 2, i++) {
         if(msr_addr > IA32_MTRR_MAX_PHYSMASK_ADDR ) {
                 VMM_LOG(mask_uvmm, level_error, "Error: No. of Variable MTRRs is incorrect\n");
-                VMM_DEADLOOP();
         }
-
         /* Register all MTRR PHYSBASE */
         msr_vmexit_handler_register( guest, msr_addr, msr_mtrr_write_handler,
             WRITE_ACCESS, NULL);
-
         /* Register all MTRR PHYSMASK*/
         msr_vmexit_handler_register( guest, msr_addr + 1, msr_mtrr_write_handler,
             WRITE_ACCESS, NULL);
@@ -242,32 +241,32 @@ void msr_vmexit_guest_setup(GUEST_HANDLE guest)
 {
     MSR_VMEXIT_CONTROL *p_msr_ctrl;
     MSR_ID msr_id;
+#ifdef JLMDEBUG
+    bprint(" msr_vmexit_guest_setup\n");
+    // LOOP_FOREVER
+#endif
 
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(guest);
     VMM_LOG(mask_uvmm, level_trace,"[msr] Setup for Guest\n");
-
     p_msr_ctrl = guest_get_msr_control(guest);
 
     // allocate zero-filled 4K-page to store MSR VMEXIT bitmap
     p_msr_ctrl->msr_bitmap = vmm_memory_alloc(PAGE_4KB_SIZE);
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(p_msr_ctrl->msr_bitmap);
-
     vmexit_install_handler(guest_get_id(guest), vmexit_msr_read,  Ia32VmxExitBasicReasonMsrRead);
     vmexit_install_handler(guest_get_id(guest), vmexit_msr_write, Ia32VmxExitBasicReasonMsrWrite);
 
     for (msr_id = IA32_MSR_VMX_FIRST; msr_id <= IA32_MSR_VMX_LAST; ++msr_id) {
         msr_guest_access_inhibit(guest, msr_id);
     }
-
     if( !is_unrestricted_guest_supported() ) {      
-            msr_vmexit_handler_register( guest, IA32_MSR_EFER,
+        msr_vmexit_handler_register( guest, IA32_MSR_EFER,
                     msr_efer_write_handler, WRITE_ACCESS, NULL);
-            msr_vmexit_handler_register( guest, IA32_MSR_EFER,
+        msr_vmexit_handler_register( guest, IA32_MSR_EFER,
                     msr_efer_read_handler, READ_ACCESS, NULL);
     }
-
     msr_vmexit_handler_register( guest, IA32_MSR_APIC_BASE,
         msr_lapic_base_write_handler, WRITE_ACCESS, NULL);
 
@@ -279,7 +278,6 @@ void msr_vmexit_guest_setup(GUEST_HANDLE guest)
 
     msr_vmexit_handler_register( guest, IA32_MSR_MISC_ENABLE,
         msr_misc_enable_write_handler, WRITE_ACCESS, NULL);
-    
     msr_vmexit_register_mtrr_accesses_handler(guest);
 }
 

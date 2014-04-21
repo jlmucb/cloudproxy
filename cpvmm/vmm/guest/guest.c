@@ -283,12 +283,10 @@ GUEST_ID guest_get_primary_guest_id(void)
     return INVALID_GUEST_ID;
 }
 
-void    guest_set_real_BIOS_access_enabled( GUEST_HANDLE guest )
+void guest_set_real_BIOS_access_enabled( GUEST_HANDLE guest )
 {
     VMM_ASSERT( guest );
-
     SET_GUEST_BIOS_ACCESS_ENABLED_FLAG(guest);
-
 #ifdef ENABLE_EMULATOR
     vmcall_register( guest_get_id(guest), VMCALL_EMULATOR_TERMINATE,
                  gcpu_return_to_native_execution, TRUE); // special case
@@ -431,17 +429,20 @@ GUEST_CPU_HANDLE guest_add_cpu( GUEST_HANDLE guest )
     VIRTUAL_CPU_ID    vcpu;
     GUEST_CPU_HANDLE  gcpu;
 
+#ifdef JLMDEBUG
+    bprint("guest_add_cpu\n");
+#endif
     VMM_ASSERT( guest );
-
     VMM_ASSERT( guest->cpu_count < max_gcpus_count_per_guest );
-
-    vcpu.guest_id       = guest->id;
+    vcpu.guest_id = guest->id;
     vcpu.guest_cpu_id   = guest->cpu_count ;
     ++(guest->cpu_count);
-
+#ifdef JLMDEBUG
+    bprint("about to call gcpu_allocate\n");
+    LOOP_FOREVER
+#endif
     gcpu = gcpu_allocate( vcpu, guest );
     guest->cpus_array[ vcpu.guest_cpu_id ] = gcpu;
-
     return gcpu;
 }
 
@@ -449,14 +450,12 @@ GUEST_CPU_HANDLE guest_add_cpu( GUEST_HANDLE guest )
 UINT16 guest_gcpu_count( const GUEST_HANDLE guest )
 {
     VMM_ASSERT( guest );
-
     return guest->cpu_count;
 }
 
 // enumerate guest cpus
 // Return NULL on enumeration end
-GUEST_CPU_HANDLE guest_gcpu_first( const GUEST_HANDLE guest,
-                                   GUEST_GCPU_ECONTEXT* context )
+GUEST_CPU_HANDLE guest_gcpu_first( const GUEST_HANDLE guest, GUEST_GCPU_ECONTEXT* context )
 {
     const GUEST_CPU_HANDLE* p_gcpu;
 
@@ -483,7 +482,6 @@ GUEST_HANDLE guest_first( GUEST_ECONTEXT* context )
     GUEST_DESCRIPTOR *guest = NULL;
 
     VMM_ASSERT(context);
-
     guest = guests;
     *context = guest;
     return guest;
@@ -500,7 +498,6 @@ GUEST_HANDLE guest_next( GUEST_ECONTEXT* context )
         guest = guest->next_guest;
         *context = guest;
     }
-
     return guest;
 }
 
@@ -518,7 +515,7 @@ MSR_VMEXIT_CONTROL * guest_get_msr_control(GUEST_HANDLE guest)
 void    guest_begin_physical_memory_modifications( GUEST_HANDLE guest )
 {
     EVENT_GPM_MODIFICATION_DATA gpm_modification_data;
-        GUEST_CPU_HANDLE    gcpu;
+    GUEST_CPU_HANDLE    gcpu;
 
     VMM_ASSERT( guest );
     gpm_modification_data.guest_id = guest->id;
@@ -526,7 +523,6 @@ void    guest_begin_physical_memory_modifications( GUEST_HANDLE guest )
     VMM_ASSERT(gcpu);
     event_raise(EVENT_BEGIN_GPM_MODIFICATION_BEFORE_CPUS_STOPPED, gcpu, &gpm_modification_data);
     stop_all_cpus();
-
     //event_raise(EVENT_BEGIN_GPM_MODIFICATION_AFTER_CPUS_STOPPED, gcpu, &gpm_modification_data);
 }
 
@@ -540,12 +536,10 @@ void guest_notify_gcpu_about_gpm_change( CPU_ID from UNUSED, void* arg )
     GUEST_CPU_HANDLE gcpu;
 
     gcpu = scheduler_get_current_gcpu_for_guest(guest_id);
-
     if (!gcpu) {
         // no gcpu for the current guest on the current host cpu
         return;
     }
-
     gcpu_physical_memory_modified( gcpu );
 }
 
@@ -621,17 +615,14 @@ void guest_begin_physical_memory_perm_switch( GUEST_HANDLE guest )
     GUEST_CPU_HANDLE    gcpu;
 
     VMM_ASSERT( guest );
-
     gpm_modification_data.guest_id = guest->id;
-
     gcpu = scheduler_get_current_gcpu_for_guest(guest_get_id(guest));
     VMM_ASSERT(gcpu);
-
     event_raise(EVENT_BEGIN_GPM_MODIFICATION_BEFORE_CPUS_STOPPED, gcpu, &gpm_modification_data);
 }
 
 // assumption - all CPUs stopped
-void    guest_end_physical_memory_perm_switch( GUEST_HANDLE guest )
+void guest_end_physical_memory_perm_switch( GUEST_HANDLE guest )
 {
     EVENT_GPM_MODIFICATION_DATA gpm_modification_data;
     GUEST_CPU_HANDLE gcpu;
@@ -641,10 +632,8 @@ void    guest_end_physical_memory_perm_switch( GUEST_HANDLE guest )
     // prepare to raise events
     gpm_modification_data.guest_id = guest->id;
     gpm_modification_data.operation = VMM_MEM_OP_SWITCH;
-
     gcpu = scheduler_get_current_gcpu_for_guest(guest_get_id(guest));
     VMM_ASSERT(gcpu);
-
     event_raise(EVENT_END_GPM_MODIFICATION_BEFORE_CPUS_RESUMED, gcpu, &gpm_modification_data);
     event_raise(EVENT_END_GPM_MODIFICATION_AFTER_CPUS_RESUMED, gcpu, &gpm_modification_data);
 }
@@ -670,20 +659,15 @@ GUEST_HANDLE guest_dynamic_create(BOOLEAN stop_and_notify, const VMM_POLICY  *gu
                  "\t\tguest_magic_number    = %#x\n"
                  "\t\tphysical_memory_size  = %#x\n"
                  "\t\tcpu_affinity          = %#x\n",
-                 guest_magic_number(guest),
-                 0,
-                 guest_cpu_affinity(guest) );
-
+                 guest_magic_number(guest), 0, guest_cpu_affinity(guest) );
         return NULL;
     }
 
     guest_id = guest_get_id(guest);
-
     vmexit_guest_initialize(guest_id);
     gpci_guest_initialize(guest_id);
     ipc_guest_initialize(guest_id);
     event_manager_guest_initialize(guest_id);
-
     guest_register_vmcall_services(guest);
 
     VMM_LOG(mask_anonymous, level_trace,"Created new guest #%d\r\n", guest_id);
@@ -691,7 +675,6 @@ GUEST_HANDLE guest_dynamic_create(BOOLEAN stop_and_notify, const VMM_POLICY  *gu
     if (TRUE == stop_and_notify) {
         vmm_zeromem(&guest_create_event_data, sizeof(guest_create_event_data));
         guest_create_event_data.guest_id = guest_id;
-
         event_raise(EVENT_GUEST_CREATE, NULL, &guest_create_event_data);
         start_all_cpus(NULL, NULL);
     }
@@ -727,13 +710,10 @@ BOOLEAN guest_dynamic_assign_memory(GUEST_HANDLE src_guest, GUEST_HANDLE dst_gue
 
         while(GPM_INVALID_RANGES_ITERATOR != gpm_iter) {
             gpm_iter = gpm_get_range_details_from_iterator(memory_map,
-                                                           gpm_iter,
-                                                           &gpa,
-                                                           &size);
+                                            gpm_iter, &gpa, &size);
 
             status = gpm_gpa_to_hpa(memory_map, gpa, &hpa, &attrs);
             VMM_ASSERT(status);
-
             src_gpm = gcpu_get_current_gpm(src_guest);
             for(i = hpa; i < hpa + size; i += PAGE_4KB_SIZE) {
                 status = gpm_hpa_to_gpa(src_gpm, hpa, &src_gpa);
@@ -754,9 +734,7 @@ BOOLEAN guest_dynamic_assign_memory(GUEST_HANDLE src_guest, GUEST_HANDLE dst_gue
 
 GUEST_CPU_HANDLE guest_dynamic_add_cpu(GUEST_HANDLE guest,
                                 const VMM_GUEST_CPU_STARTUP_STATE* gcpu_startup,
-                                CPU_ID host_cpu,
-                                BOOLEAN ready_to_run,
-                                BOOLEAN stop_and_notify)
+                                CPU_ID host_cpu, BOOLEAN ready_to_run, BOOLEAN stop_and_notify)
 {
     GUEST_CPU_HANDLE gcpu;
     const VIRTUAL_CPU_ID* vcpu = NULL;
@@ -773,9 +751,7 @@ GUEST_CPU_HANDLE guest_dynamic_add_cpu(GUEST_HANDLE guest,
     //        start_all_cpus(NULL, NULL);
     //        return NULL;
     //    }
-
     gcpu = guest_add_cpu(guest);
-
     VMM_ASSERT( gcpu );
 
     // find init data
@@ -803,11 +779,7 @@ GUEST_CPU_HANDLE guest_dynamic_add_cpu(GUEST_HANDLE guest,
 #ifdef INCLUDE_UNUSED_CODE
 GUEST_CPU_HANDLE guest_dynamic_add_cpu_default(GUEST_HANDLE guest)
 {
-    return guest_dynamic_add_cpu(guest,
-                          NULL,
-                          hw_cpu_id(),
-                          TRUE,
-                          TRUE);
+    return guest_dynamic_add_cpu(guest, NULL, hw_cpu_id(), TRUE, TRUE);
 }
 #endif
 

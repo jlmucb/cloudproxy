@@ -32,6 +32,9 @@
 #include "vmcs_actual.h"
 #include "vmcs_internal.h"
 #include "vmx_nmi.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define UPDATE_SUCCEEDED    0
 #define UPDATE_FINISHED     1
@@ -242,7 +245,6 @@ struct _VMCS_OBJECT * vmcs_act_create(GUEST_CPU_HANDLE gcpu)
         VMM_LOG(mask_anonymous, level_trace,"[vmcs] %s: Allocation failed\n", __FUNCTION__);
         return NULL;
     }
-
     p_vmcs->cache = cache64_create(VMCS_FIELD_COUNT);
     if (NULL == p_vmcs->cache) {
         vmm_mfree(p_vmcs);
@@ -255,13 +257,13 @@ struct _VMCS_OBJECT * vmcs_act_create(GUEST_CPU_HANDLE gcpu)
     p_vmcs->owning_host_cpu = CPU_NEVER_USED;
     p_vmcs->gcpu_owner = gcpu;
 
-    p_vmcs->vmcs_base->vmcs_read              = vmcs_act_read;
-    p_vmcs->vmcs_base->vmcs_write             = vmcs_act_write;
-    p_vmcs->vmcs_base->vmcs_flush_to_cpu      = vmcs_act_flush_to_cpu;
-    p_vmcs->vmcs_base->vmcs_flush_to_memory   = vmcs_act_flush_to_memory;
-    p_vmcs->vmcs_base->vmcs_is_dirty          = vmcs_act_is_dirty;
-    p_vmcs->vmcs_base->vmcs_get_owner         = vmcs_act_get_owner;
-    p_vmcs->vmcs_base->vmcs_destroy           = vmcs_act_destroy;
+    p_vmcs->vmcs_base->vmcs_read = vmcs_act_read;
+    p_vmcs->vmcs_base->vmcs_write = vmcs_act_write;
+    p_vmcs->vmcs_base->vmcs_flush_to_cpu = vmcs_act_flush_to_cpu;
+    p_vmcs->vmcs_base->vmcs_flush_to_memory = vmcs_act_flush_to_memory;
+    p_vmcs->vmcs_base->vmcs_is_dirty = vmcs_act_is_dirty;
+    p_vmcs->vmcs_base->vmcs_get_owner = vmcs_act_get_owner;
+    p_vmcs->vmcs_base->vmcs_destroy = vmcs_act_destroy;
     p_vmcs->vmcs_base->vmcs_add_msr_to_vmexit_store_list = vmcs_act_add_msr_to_vmexit_store_list;
     p_vmcs->vmcs_base->vmcs_add_msr_to_vmexit_load_list = vmcs_act_add_msr_to_vmexit_load_list;
     p_vmcs->vmcs_base->vmcs_add_msr_to_vmenter_load_list = vmcs_act_add_msr_to_vmenter_load_list;
@@ -271,12 +273,10 @@ struct _VMCS_OBJECT * vmcs_act_create(GUEST_CPU_HANDLE gcpu)
     p_vmcs->vmcs_base->vmcs_delete_msr_from_vmenter_load_list = vmcs_act_delete_msr_from_vmenter_load_list;
     p_vmcs->vmcs_base->vmcs_delete_msr_from_vmexit_store_and_vmenter_load_list  = vmcs_act_delete_msr_from_vmexit_store_and_vmenter_load_lists;
 
-    p_vmcs->vmcs_base->level                  = VMCS_MERGED;
+    p_vmcs->vmcs_base->level = VMCS_MERGED;
     p_vmcs->vmcs_base->skip_access_checking   = FALSE;
-    p_vmcs->vmcs_base->signature              = VMCS_SIGNATURE;
-
+    p_vmcs->vmcs_base->signature = VMCS_SIGNATURE;
     vmcs_init_all_msr_lists(p_vmcs->vmcs_base);
-
     return p_vmcs->vmcs_base;
 }
 

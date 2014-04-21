@@ -160,13 +160,13 @@ static void setup_default_state( GUEST_CPU_HANDLE gcpu )
     // set all segment selectors except TR and CS to unusable state
 
     // CS: Accessed Code NotSystem NonConforming Present 32bit bit-granularity
-    gcpu_set_segment_reg( gcpu, IA32_SEG_CS,   0, 0, 0, 0x99 );
-    gcpu_set_segment_reg( gcpu, IA32_SEG_DS,   0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE );
-    gcpu_set_segment_reg( gcpu, IA32_SEG_SS,   0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE );
-    gcpu_set_segment_reg( gcpu, IA32_SEG_ES,   0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE );
-    gcpu_set_segment_reg( gcpu, IA32_SEG_FS,   0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE );
-    gcpu_set_segment_reg( gcpu, IA32_SEG_GS,   0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE );
-    gcpu_set_segment_reg( gcpu, IA32_SEG_LDTR, 0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE );
+    gcpu_set_segment_reg(gcpu, IA32_SEG_CS, 0, 0, 0, 0x99 );
+    gcpu_set_segment_reg(gcpu, IA32_SEG_DS, 0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE );
+    gcpu_set_segment_reg(gcpu, IA32_SEG_SS, 0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE );
+    gcpu_set_segment_reg(gcpu, IA32_SEG_ES, 0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE );
+    gcpu_set_segment_reg(gcpu, IA32_SEG_FS, 0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE );
+    gcpu_set_segment_reg(gcpu, IA32_SEG_GS, 0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE );
+    gcpu_set_segment_reg(gcpu, IA32_SEG_LDTR, 0, 0, 0, EM64T_SEGMENT_IS_UNUSABLE_ATTRUBUTE_VALUE );
     // TR: 32bit busy TSS System Present bit-granularity
     gcpu_set_segment_reg( gcpu, IA32_SEG_TR,   0, 0, 0, 0x8B );
 
@@ -183,9 +183,7 @@ static void setup_default_state( GUEST_CPU_HANDLE gcpu )
 
     // by default put guest CPU into the Wait-for-SIPI state
     VMM_ASSERT( vmcs_hw_get_vmx_constraints()->vm_entry_in_wait_for_sipi_state_supported );
-
     gcpu_set_activity_state( gcpu, Ia32VmxVmcsGuestSleepStateWaitForSipi );
-
     vmcs_write( vmcs, VMCS_ENTER_INTERRUPT_INFO, 0 );
     vmcs_write( vmcs, VMCS_ENTER_EXCEPTION_ERROR_CODE, 0 );
 #ifdef ENABLE_PREEMPTION_TIMER
@@ -240,7 +238,6 @@ GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
     g_gcpus = gcpu;
 #ifdef JLMDEBUG
     bprint("gcpu_allocate, got memory\n");
-    LOOP_FOREVER
 #endif
 
     gcpu->vcpu  = vcpu;
@@ -251,6 +248,10 @@ GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
     //    gcpu->vmcs  = vmcs_allocate();
     status = vmcs_hierarchy_create(&gcpu->vmcs_hierarchy, gcpu);
     VMM_ASSERT(VMM_OK == status);
+#ifdef JLMDEBUG
+    bprint("gcpu_allocate, created hierarchy\n");
+    LOOP_FOREVER
+#endif
 
     gcpu->emulator_handle = 0;
     gcpu->guest_handle = guest;

@@ -1185,7 +1185,6 @@ BOOLEAN hmm_is_new_pat_value_consistent(UINT64 pat_value) {
 BOOLEAN hmm_unmap_hpa(IN HPA hpa, UINT64 size, BOOLEAN flush_tlbs_on_all_cpus) {
 #ifdef JLMDEBUG
     bprint("hmm_unmap_hpa\n");
-    LOOP_FOREVER
 #endif
     MAM_HANDLE hpa_to_hva = hmm_get_hpa_to_hva_mapping(g_hmm);
     MAM_HANDLE hva_to_hpa = hmm_get_hva_to_hpa_mapping(g_hmm);

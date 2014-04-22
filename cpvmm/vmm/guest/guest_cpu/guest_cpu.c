@@ -150,7 +150,6 @@ static void setup_default_state( GUEST_CPU_HANDLE gcpu )
     guest_cpu_control_setup( gcpu );
 #ifdef JLMDEBUG
     bprint("guest_cpu_control_setup done\n");
-    LOOP_FOREVER
 #endif
     // set control registers to any supported value
     gcpu_set_control_reg( gcpu, IA32_CTRL_CR0, 0);
@@ -169,16 +168,34 @@ static void setup_default_state( GUEST_CPU_HANDLE gcpu )
     // TR: 32bit busy TSS System Present bit-granularity
     gcpu_set_segment_reg(gcpu, IA32_SEG_TR,   0, 0, 0, 0x8B);
     // FLAGS: reserved bit 1 must be 1, all other - 0
+#ifdef JLMDEBUG
+    bprint("about to call gcpu_set_gp_reg\n");
+#endif
     gcpu_set_gp_reg( gcpu, IA32_REG_RFLAGS, 0x2);
+#ifdef JLMDEBUG
+    bprint("about to call vmcs_init_all_msr_lists\n");
+#endif
     vmcs_init_all_msr_lists(vmcs);
+#ifdef JLMDEBUG
+    bprint("about to call  host_cpu_init_vmexit_store_and_vmenter_load_msr_lists_according_to_vmexit_load_list\n");
+#endif
     host_cpu_init_vmexit_store_and_vmenter_load_msr_lists_according_to_vmexit_load_list(gcpu);
+#ifdef JLMDEBUG
+    bprint("about to call gcpu_set_msr_reg\n");
+#endif
     gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_EFER, 0);
     gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_PAT, hw_read_msr(IA32_MSR_PAT));
     VMM_ASSERT(vmcs_read(vmcs, VMCS_EXIT_MSR_STORE_ADDRESS) == vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_ADDRESS));
 
     // by default put guest CPU into the Wait-for-SIPI state
     VMM_ASSERT( vmcs_hw_get_vmx_constraints()->vm_entry_in_wait_for_sipi_state_supported );
+#ifdef JLMDEBUG
+    bprint("about to call gcpu_set_activity_state\n");
+#endif
     gcpu_set_activity_state( gcpu, Ia32VmxVmcsGuestSleepStateWaitForSipi );
+#ifdef JLMDEBUG
+    bprint("about to call vmcs_write\n");
+#endif
     vmcs_write( vmcs, VMCS_ENTER_INTERRUPT_INFO, 0 );
     vmcs_write( vmcs, VMCS_ENTER_EXCEPTION_ERROR_CODE, 0 );
 #ifdef ENABLE_PREEMPTION_TIMER

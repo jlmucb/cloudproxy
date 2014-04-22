@@ -542,7 +542,6 @@ HVA vmcs_hw_allocate_region( HPA* hpa )
     }
 #ifdef JLMDEBUG
     bprint("vmcs_hw_allocate_region after hmm_unmap_hpa\n");
-    LOOP_FOREVER
 #endif
     return hva;
 }
@@ -588,7 +587,6 @@ BOOLEAN vmcs_hw_is_cpu_vmx_capable( void )
     BOOLEAN           ok = FALSE;
 #ifdef JLMDEBUG
     bprint("vmcs_hw_is_cpu_vmx_capable\n");
-    LOOP_FOREVER
 #endif
 
     // 1. CPUID[EAX=1] should have VMX feature == 1

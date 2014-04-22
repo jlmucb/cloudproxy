@@ -458,13 +458,7 @@ void vmcs_hw_init( void )
 #endif
         return;
     }
-#ifdef JLMDEBUG
-    bprint("vmcs_hw_init NOT returning\n");
-#endif
     vmm_memset(&g_vmx_capabilities, 0, sizeof(g_vmx_capabilities));
-#ifdef JLMDEBUG
-    bprint("vmcs_hw_init after vmm_memset\n");
-#endif
     vmm_memset(&g_vmx_constraints, 0, sizeof(g_vmx_constraints));
     vmm_memset(&g_vmx_fixed, 0, sizeof(g_vmx_fixed));
     g_init_done = TRUE;
@@ -480,7 +474,6 @@ HVA vmcs_hw_allocate_region( HPA* hpa )
 
 #ifdef JLMDEBUG
     bprint("vmcs_hw_allocate_region\n");
-    LOOP_FOREVER
 #endif
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( hpa );
@@ -488,12 +481,19 @@ HVA vmcs_hw_allocate_region( HPA* hpa )
     // the area must be 4K page aligned and zeroed
     hva = (HVA)vmm_memory_alloc( VMCS_REGION_SIZE );
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
-    VMM_ASSERT( hva );
+    VMM_ASSERT(hva);
+#ifdef JLMDEBUG
+    bprint("vmcs_hw_allocate_region before hmm_hva_to_hpa\n");
+#endif
     if (!hmm_hva_to_hpa(hva, hpa)) {
         VMM_LOG(mask_anonymous, level_trace,"%s:(%d):ASSERT: HVA to HPA conversion failed\n", __FUNCTION__, __LINE__);
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_DEADLOOP();
     }
+#ifdef JLMDEBUG
+    bprint("vmcs_hw_allocate_region after hmm_hva_to_hpa\n");
+    LOOP_FOREVER
+#endif
 
     VMM_DEBUG_CODE(
         if (! VMCS_ABOVE_4G_SUPPORTED) {
@@ -508,8 +508,12 @@ HVA vmcs_hw_allocate_region( HPA* hpa )
     VMM_ASSERT( hmm_does_memory_range_have_specified_memory_type(*hpa, VMCS_REGION_SIZE, VMCS_MEMORY_TYPE ) == TRUE);
     vmcs = (IA32_VMX_VMCS*)hva;
     vmcs->RevisionIdentifier = VMCS_REVISION;
+#ifdef JLMDEBUG
+    bprint("vmcs_hw_allocate_region before hmm_unmap_hpa\n");
+    LOOP_FOREVER
+#endif
     // unmap VMCS region from the host memory
-    if (!hmm_unmap_hpa(*hpa, ALIGN_FORWARD(VMCS_REGION_SIZE, PAGE_4KB_SIZE), FALSE)) {
+    if(!hmm_unmap_hpa(*hpa, ALIGN_FORWARD(VMCS_REGION_SIZE, PAGE_4KB_SIZE), FALSE)) {
         VMM_LOG(mask_anonymous, level_trace,"ERROR: failed to unmap VMCS\n");
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_DEADLOOP();

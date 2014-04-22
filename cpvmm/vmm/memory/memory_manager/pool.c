@@ -610,7 +610,7 @@ static void* pool_allocate_internal(POOL* pool) {
     BOOLEAN         res;
     UINT64          num_of_elements_tmp;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("pool_allocate_internal\n");
 #endif
     VMM_ASSERT(pool_is_allocation_counters_ok(pool));
@@ -707,7 +707,7 @@ POOL_HANDLE pool_create_internal(UINT32 size_of_single_element, BOOLEAN  mutex_f
     UINT32          final_size_of_hash_element;
     HASH64_HANDLE   hash;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("pool_create_internal\n");
 #endif
     if (pool == NULL) {

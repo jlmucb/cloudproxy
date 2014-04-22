@@ -849,6 +849,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     scheduler_init( (UINT16)num_of_cpus );
 #ifdef JLMDEBUG
     bprint("evmm position 34\n");
+    LOOP_FOREVER
 #endif
     host_cpu_manager_init( num_of_cpus );
 #ifdef JLMDEBUG

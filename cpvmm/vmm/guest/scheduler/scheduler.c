@@ -116,10 +116,8 @@ void scheduler_init( UINT16 number_of_host_cpus )
 #endif
     vmm_memset(g_registration_lock, 0, sizeof(g_registration_lock));
     g_host_cpus_count = number_of_host_cpus;
-
     // BEFORE_VMLAUNCH. PARANOID check.
     VMM_ASSERT( number_of_host_cpus != 0 );
-
     // count needed memory amount
     memory_for_state = sizeof(SCHEDULER_CPU_STATE) * g_host_cpus_count;
 #ifdef JLMDEBUG
@@ -146,7 +144,6 @@ void scheduler_register_gcpu(GUEST_CPU_HANDLE gcpu_handle, CPU_ID   host_cpu_id,
 #ifdef JLMDEBUG
     bprint("scheduler_register_gcpu, about to alloc %d\n", 
            sizeof(SCHEDULER_VCPU_OBJECT));
-    LOOP_FOREVER
 #endif
     vcpu_obj = (SCHEDULER_VCPU_OBJECT*) vmm_malloc(sizeof(SCHEDULER_VCPU_OBJECT));
 #ifdef JLMDEBUG

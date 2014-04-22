@@ -857,12 +857,11 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     guest_manager_init( (UINT16)num_of_cpus, (UINT16)num_of_cpus );
 #ifdef JLMDEBUG
     bprint("evmm position 36\n");
-    // LOOP_FOREVER   // reached
 #endif
     local_apic_init( (UINT16)num_of_cpus );
 #ifdef JLMDEBUG
     bprint("evmm position 37\n");
-    LOOP_FOREVER
+    // LOOP_FOREVER   // reached
 #endif
 
     // tmsl profiling
@@ -873,6 +872,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 
 #ifdef JLMDEBUG
     bprint("evmm position 38\n");
+    LOOP_FOREVER
 #endif
     // init current host CPU
     host_cpu_init();
@@ -897,7 +897,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 #ifdef JLMDEBUG
     bprint("evmm position 41\n");
 #endif
-
     primary_guest_startup =
         (const VMM_GUEST_STARTUP*)startup_struct->primary_guest_startup_state;
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.

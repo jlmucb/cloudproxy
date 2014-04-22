@@ -74,7 +74,7 @@ INLINE char fx_bit_2_char( UINT32 mb0, UINT32 mb1 )
 
 static void fill_vmx_capabilities( void )
 {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("At fill_vmx_capabilities 0x%016x\n", 
             g_vmx_capabilities.VmcsRevisionIdentifier.Uint64);
 #endif
@@ -223,7 +223,7 @@ static void fill_vmx_capabilities( void )
                                               g_vmx_constraints.may1_cr4.Uint64;
     g_vmx_fixed.fixed_0_cr4.Uint64 = g_vmx_constraints.may0_cr4.Uint64 |
                                      g_vmx_constraints.may1_cr4.Uint64;
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
    bprint(" fixed_0_cr0 fixed_1_cr0 fixed_0_cr4 fixed_1_cr4: 0x%016lx 0x%016lx 0x%016lx 0x%016lx\n",
          g_vmx_fixed.fixed_0_cr0.Uint64, g_vmx_fixed.fixed_1_cr0.Uint64,
          g_vmx_fixed.fixed_0_cr4.Uint64, g_vmx_fixed.fixed_1_cr4.Uint64);
@@ -475,10 +475,6 @@ static void print_vmx_capabilities( void )
 
 void vmcs_hw_init( void )
 {
-// JLM (FIX)
-#if 1
-    g_init_done= FALSE;
-#endif
     if (g_init_done) {
 #ifdef JLMDEBUG
         bprint("vmcs_hw_init returning\n");

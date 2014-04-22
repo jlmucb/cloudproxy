@@ -111,7 +111,7 @@ void scheduler_init( UINT16 number_of_host_cpus )
 {
     UINT32 memory_for_state     = 0;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("g_registration_lock = %p\n", g_registration_lock);
 #endif
     vmm_memset(g_registration_lock, 0, sizeof(g_registration_lock));
@@ -120,9 +120,6 @@ void scheduler_init( UINT16 number_of_host_cpus )
     VMM_ASSERT( number_of_host_cpus != 0 );
     // count needed memory amount
     memory_for_state = sizeof(SCHEDULER_CPU_STATE) * g_host_cpus_count;
-#ifdef JLMDEBUG
-    bprint("Did vmm_memset, memory for state: %d\n", memory_for_state);
-#endif
 #if 0
     lock_initialize_read_write_lock(g_registration_lock);
 #endif
@@ -141,13 +138,9 @@ void scheduler_register_gcpu(GUEST_CPU_HANDLE gcpu_handle, CPU_ID   host_cpu_id,
 {
     SCHEDULER_VCPU_OBJECT* vcpu_obj = NULL;
 
-#ifdef JLMDEBUG
-    bprint("scheduler_register_gcpu, about to alloc %d\n", 
-           sizeof(SCHEDULER_VCPU_OBJECT));
-#endif
     vcpu_obj = (SCHEDULER_VCPU_OBJECT*) vmm_malloc(sizeof(SCHEDULER_VCPU_OBJECT));
 #ifdef JLMDEBUG
-    bprint("done with vmm_alloc\n");
+    bprint("scheduler_register_gcpu\n");
 #endif
     VMM_ASSERT(vcpu_obj);
     interruptible_lock_acquire_writelock(g_registration_lock);

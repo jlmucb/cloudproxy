@@ -728,7 +728,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
     if (! initialize_all_guests(num_of_cpus, 
 #if 0
-         // mm_memory map will be changed to exclude multiple regions
+         // vmm_memory map will be changed to exclude multiple regions
                        (int) startup_struct->num_excluded_regions, startup_struct->vmm_memory_layout,
 #else
                        &(startup_struct->vmm_memory_layout[0]),

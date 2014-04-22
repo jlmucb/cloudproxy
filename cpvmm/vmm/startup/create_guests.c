@@ -165,6 +165,7 @@ static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
     msr_vmexit_guest_setup(guest);  // setup MSR-related control structure
 #ifdef JLMDEBUG
     bprint("finished msr_vmexit_guest_setup\n");
+    LOOP_FOREVER
 #endif
 
     // init cpus.
@@ -189,7 +190,6 @@ static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
 #endif
 #ifdef JLMDEBUG
     bprint("init_single_guest finished, ready_to_run: %d\n", ready_to_run );
-    LOOP_FOREVER
 #endif
     return guest;
 }

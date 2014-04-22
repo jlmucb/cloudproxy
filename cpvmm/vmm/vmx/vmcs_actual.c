@@ -267,7 +267,7 @@ struct _VMCS_OBJECT * vmcs_act_create(GUEST_CPU_HANDLE gcpu)
 #endif
     p_vmcs->hva = vmcs_hw_allocate_region(&p_vmcs->hpa);    // validate it's ok TBD
 #ifdef JLMDEBUG
-    bprint("vmcs_act_create aftervmcs_hw_allocate_region\n");
+    bprint("vmcs_act_create after vmcs_hw_allocate_region\n");
     LOOP_FOREVER
 #endif
     SET_NEVER_ACTIVATED_FLAG(p_vmcs);

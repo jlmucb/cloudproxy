@@ -386,7 +386,8 @@ BOOLEAN hmm_map_phys_page_full_attrs(IN HPA page_hpa, IN MAM_ATTRIBUTES attrs,
         VMM_ASSERT(mapping_result == MAM_MAPPING_SUCCESSFUL);
 
         if (attrs_tmp.uint32 != attrs.uint32) {
-            if (!mam_insert_range(hva_to_hpa, hva_tmp, page_hpa, PAGE_4KB_SIZE, attrs)) {
+            if (!mam_insert_range(hva_to_hpa, hva_tmp, page_hpa, 
+                                        PAGE_4KB_SIZE, attrs)) {
                 result = FALSE;
                 goto out;
             }
@@ -616,9 +617,9 @@ BOOLEAN remove_initial_hva_to_hpa_mapping_for_extended_heap(void)
         MAM_ATTRIBUTES attrs_tmp;
 
         page_hva = g_additional_heap_base + (i * PAGE_4KB_SIZE);
-        mapping_result = mam_get_mapping(hva_to_hpa, page_hva, &page_hpa, &attrs_tmp);
+        mapping_result= mam_get_mapping(hva_to_hpa, page_hva, &page_hpa, &attrs_tmp);
         VMM_ASSERT(mapping_result == MAM_MAPPING_SUCCESSFUL);
-        mapping_result = mam_get_mapping(hpa_to_hva, page_hpa, &page_hva, &attrs_tmp);
+        mapping_result= mam_get_mapping(hpa_to_hva, page_hpa, &page_hva, &attrs_tmp);
         VMM_ASSERT(mapping_result == MAM_MAPPING_SUCCESSFUL);
 
         // Remove old HVA-->HPA mapping
@@ -981,10 +982,6 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
     // Unmap the last page of each stack.
     VMM_ASSERT(vmm_stack_is_initialized());
     VMM_LOG(mask_anonymous, level_trace,"HMM: Remapping the exception stacks:\n");
-
-#ifdef JLMDEBUG
-    bprint("hmm_initialize position 9\n");
-#endif
     for (i = 0; i < startup_struct->number_of_processors_at_boot_time; i++) {
         HVA page;
         HPA page_hpa;
@@ -1111,18 +1108,12 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
                 VMM_DEADLOOP();
         }
     }
-
     // Make the HVA -> HPA mapping hardware compliant, i.e. create vmm page tables
     if (!mam_convert_to_64bit_page_tables(hva_to_hpa, &vmm_page_tables_hpa)) {
         VMM_LOG(mask_anonymous, level_trace,"HMM ERROR: Failed to VMM page tables\n");
         goto destroy_hpa_to_hva_mapping_exit;
     }
-
-#ifdef JLMDEBUG
-    bprint("hmm_initialize position 11\n");
-#endif
     hmm_set_current_vmm_page_tables(g_hmm, vmm_page_tables_hpa);
-
     return TRUE;
 
 destroy_hpa_to_hva_mapping_exit:
@@ -1172,7 +1163,8 @@ BOOLEAN hmm_hpa_to_hva(IN HPA hpa, OUT HVA* hva) {
         *hva = (HVA) hpa;
         return TRUE;
         }
-    if (mam_get_mapping(hpa_to_hva, hpa_tmp, &hva_tmp, &attrs_tmp) == MAM_MAPPING_SUCCESSFUL) {
+    if (mam_get_mapping(hpa_to_hva, hpa_tmp, &hva_tmp, &attrs_tmp) 
+                    == MAM_MAPPING_SUCCESSFUL) {
         *hva = *((HVA*)(&hva_tmp));
         return TRUE;
     }
@@ -1191,11 +1183,14 @@ BOOLEAN hmm_is_new_pat_value_consistent(UINT64 pat_value) {
 }
 
 BOOLEAN hmm_unmap_hpa(IN HPA hpa, UINT64 size, BOOLEAN flush_tlbs_on_all_cpus) {
+#ifdef JLMDEBUG
+    bprint("hmm_unmap_hpa\n");
+    LOOP_FOREVER
+#endif
     MAM_HANDLE hpa_to_hva = hmm_get_hpa_to_hva_mapping(g_hmm);
     MAM_HANDLE hva_to_hpa = hmm_get_hva_to_hpa_mapping(g_hmm);
     HVA hva;
     BOOLEAN result = TRUE;
-
     HPA hpa_tmp;
 
     lock_acquire(hmm_get_update_lock(g_hmm));
@@ -1204,7 +1199,6 @@ BOOLEAN hmm_unmap_hpa(IN HPA hpa, UINT64 size, BOOLEAN flush_tlbs_on_all_cpus) {
         result = FALSE;
         goto out;
     }
-
     while (size != 0) {
         if (hmm_hpa_to_hva(hpa, &hva)) {
             // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
@@ -1212,12 +1206,14 @@ BOOLEAN hmm_unmap_hpa(IN HPA hpa, UINT64 size, BOOLEAN flush_tlbs_on_all_cpus) {
             // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
             VMM_ASSERT(ALIGN_BACKWARD(hva, PAGE_4KB_SIZE) == hva);
             if (!mam_insert_not_existing_range(hpa_to_hva, hpa, PAGE_4KB_SIZE, HMM_INVALID_MEMORY_TYPE)) {
-                VMM_LOG(mask_anonymous, level_trace,"HMM ERROR: Failed to unmap HPA (%P) mapping\n", hpa);
+                VMM_LOG(mask_anonymous, level_trace,
+                        "HMM ERROR: Failed to unmap HPA (%P) mapping\n", hpa);
                 result = FALSE;
                 goto out;
             }
             if (!mam_insert_not_existing_range(hva_to_hpa, hva, PAGE_4KB_SIZE, HMM_INVALID_MEMORY_TYPE)) {
-                VMM_LOG(mask_anonymous, level_trace,"HMM ERROR: Failed to unmap HPA (%P) mapping\n", hpa);
+                VMM_LOG(mask_anonymous, level_trace,
+                        "HMM ERROR: Failed to unmap HPA (%P) mapping\n", hpa);
                 result = FALSE;
                 goto out;
             }
@@ -1225,6 +1221,9 @@ BOOLEAN hmm_unmap_hpa(IN HPA hpa, UINT64 size, BOOLEAN flush_tlbs_on_all_cpus) {
         size -= PAGE_4KB_SIZE;
         hpa += PAGE_4KB_SIZE;
     }
+#ifdef JLMDEBUG
+    bprint("hmm_unmap_hpa after loop\n");
+#endif
 
     hw_flash_tlb();
     if (flush_tlbs_on_all_cpus) {

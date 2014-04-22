@@ -1,37 +1,28 @@
-/****************************************************************************
-* Copyright (c) 2013 Intel Corporation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-****************************************************************************/
-
 /*
-  IA32 VMX Read Only MSR Definitions
-*/
+ * Copyright (c) 2013 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
+//  IA32 VMX Read Only MSR Definitions
 #ifndef _VMX_CTRL_MSRS_H_
 #define _VMX_CTRL_MSRS_H_
 
 #include "vmm_defs.h"
 #include "em64t_defs.h"
 
-//
 // VMX Capabilities are declared in bit 5 of ECX retured from CPUID
-//
 #define IA32_CPUID_ECX_VMX                                    0x20
 
-//
 // VMX MSR Indexes
-//
 #define IA32_MSR_OPT_IN_INDEX                                 0x3A
 #define IA32_MSR_MSEG_INDEX                                   0x9B
 #define IA32_MSR_VMX_BASIC_INDEX                              0x480
@@ -68,9 +59,7 @@
 
 #pragma PACK_ON
 
-//
 // VMX MSR Structure - IA32_MSR_OPT_IN_INDEX - Index 0x3A
-//
 typedef union {
   struct {
     UINT32  Lock:1;                    // 0=Unlocked, 1=Locked
@@ -88,9 +77,7 @@ typedef union {
   UINT64  Uint64;
 } IA32_MSR_OPT_IN;
 
-//
 // VMX MSR Structure - IA32_MSR_MSEG_INDEX - Index 0x9B
-//
 typedef union {
   struct {
     UINT32  Valid:1;                   // 0=Invalid, 1=Valid
@@ -101,9 +88,7 @@ typedef union {
   UINT64  Uint64;
 } IA32_MSR_MSEG;
 
-//
 // VMX MSR Structure - IA32_MSR_VMCS_REVISION_IDENTIFIER_INDEX - Index 0x480
-//
 typedef union {
   struct {
     UINT32  RevisionIdentifier:32;                      // bits 0-31
@@ -118,9 +103,7 @@ typedef union {
   UINT64  Uint64;
 } IA32_MSR_VMCS_REVISION_IDENTIFIER;
 
-//
 // VMX MSR Structure - IA32_MSR_PIN_BASED_VM_EXECUTION_CONTROLS_INDEX - Index 0x481
-//
 typedef union {
   struct {
     UINT32  ExternalInterrupt:1;  // 0=No VmExit from ext int
@@ -143,9 +126,7 @@ typedef union {
   UINT64  Uint64;
 } IA32_MSR_PIN_BASED_VM_EXECUTION_CONTROLS;
 
-//
 // VMX MSR Structure - IA32_MSR_PROCESSOR_BASED_VM_EXECUTION_CONTROLS_INDEX - Index 0x482
-//
 typedef union {
   struct {
     UINT32  SoftwareInterrupt:1;
@@ -192,9 +173,7 @@ typedef union {
   UINT64  Uint64;
 } IA32_MSR_PROCESSOR_BASED_VM_EXECUTION_CONTROLS;
 
-//
 // VMX MSR Structure - IA32_MSR_PROCESSOR_BASED_VM_EXECUTION_CONTROLS2_INDEX - Index 0x48B
-//
 typedef union {
   struct {
     UINT32  VirtualizeAPIC:1;
@@ -223,9 +202,7 @@ typedef union {
   UINT64  Uint64;
 } IA32_MSR_PROCESSOR_BASED_VM_EXECUTION_CONTROLS2;
 
-//
 // VMX MSR Structure - IA32_MSR_VM_EXIT_CONTROLS_INDEX - Index 0x483
-//
 typedef union {
   struct {
     UINT32  SaveCr0AndCr4:1;
@@ -264,9 +241,7 @@ typedef union {
   UINT64  Uint64;
 } IA32_MSR_VM_EXIT_CONTROLS;
 
-//
 // VMX MSR Structure - IA32_MSR_VM_ENTRY_CONTROLS_INDEX - Index 0x484
-//
 typedef union {
   struct {
     UINT32  LoadCr0AndCr4:1;
@@ -298,9 +273,8 @@ typedef union {
   UINT64  Uint64;
 } IA32_MSR_VM_ENTRY_CONTROLS;
 
-//
+
 // VMX MSR Structure - IA32_MSR_MISCELLANEOUS_DATA_INDEX - Index 0x485
-//
 typedef union {
   struct {
     UINT32  PreemptionTimerLength:5; // in TSC ticks
@@ -365,20 +339,15 @@ typedef union {
     UINT64 Uint64;
 } IA32_VMX_EPT_VPID_CAP;
 
-//
 // VMX MSR Structure - IA32_MSR_CR0_ALLOWED_ZERO_INDEX, IA32_MSR_CR0_ALLOWED_ONE_INDEX - Index 0x486, 0x487
-//
 typedef EM64T_CR0 IA32_MSR_CR0;
 
-//
+
 // VMX MSR Structure - IA32_MSR_CR4_ALLOWED_ZERO_INDEX, IA32_MSR_CR4_ALLOWED_ONE_INDEX - Index 0x488, 0x489
-//
 typedef EM64T_CR4 IA32_MSR_CR4;
 
 #ifdef FAST_VIEW_SWITCH
-//
 // VMX MSR Structure - IA32_MSR_VMFUNC_CTRL - Index 0x491
-//
 typedef union {
   struct {
     UINT32  EptpSwitching:1;
@@ -394,9 +363,7 @@ typedef enum _VMFUNC_BITS {
 #endif
 #pragma PACK_OFF
 
-//
 // Structure containing the complete set of VMX MSR Values
-//
 typedef struct {
   IA32_MSR_VMCS_REVISION_IDENTIFIER               VmcsRevisionIdentifier;
   IA32_MSR_PIN_BASED_VM_EXECUTION_CONTROLS        PinBasedVmExecutionControls;

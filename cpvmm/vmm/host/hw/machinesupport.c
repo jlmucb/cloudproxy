@@ -116,7 +116,7 @@ void hw_write_msr(UINT32 msr_id, UINT64 val)
 
 UINT64 hw_read_msr(UINT32 msr_id)
 {
-    UINT64 out;
+    UINT64  out;
 
     // RDMSR reads the processor (MSR) whose index is stored in ECX, 
     // and stores the result in EDX:EAX. 

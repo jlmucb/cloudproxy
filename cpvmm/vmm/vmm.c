@@ -861,7 +861,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
     local_apic_init( (UINT16)num_of_cpus );
 #ifdef JLMDEBUG
     bprint("evmm position 37\n");
-    // LOOP_FOREVER   // reached
 #endif
 
     // tmsl profiling
@@ -872,16 +871,17 @@ void vmm_bsp_proc_main(UINT32 local_apic_id,
 
 #ifdef JLMDEBUG
     bprint("evmm position 38\n");
-    LOOP_FOREVER
 #endif
     // init current host CPU
     host_cpu_init();
 #ifdef JLMDEBUG
     bprint("evmm position 39\n");
+    // LOOP_FOREVER   // reached
 #endif
     local_apic_cpu_init();
 #ifdef JLMDEBUG
     bprint("evmm position 40\n");
+    LOOP_FOREVER
 #endif
 
 #ifdef ENABLE_PREEMPTION_TIMER

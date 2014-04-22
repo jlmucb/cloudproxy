@@ -240,23 +240,39 @@ struct _VMCS_OBJECT * vmcs_act_create(GUEST_CPU_HANDLE gcpu)
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs;
 
+#ifdef JLMDEBUG
+    bprint("vmcs_act_create\n");
+#endif
     p_vmcs = vmm_malloc(sizeof(*p_vmcs));
     if (NULL == p_vmcs) {
         VMM_LOG(mask_anonymous, level_trace,"[vmcs] %s: Allocation failed\n", __FUNCTION__);
         return NULL;
     }
+#ifdef JLMDEBUG
+    bprint("vmcs_act_create after malloc\n");
+#endif
     p_vmcs->cache = cache64_create(VMCS_FIELD_COUNT);
+#ifdef JLMDEBUG
+    bprint("vmcs_act_create after cache64_create\n");
+#endif
     if (NULL == p_vmcs->cache) {
         vmm_mfree(p_vmcs);
         VMM_LOG(mask_anonymous, level_trace,"[vmcs] %s: Allocation failed\n", __FUNCTION__);
         return NULL;
     }
 
+#ifdef JLMDEBUG
+    bprint("vmcs_act_create before vmcs_hw_allocate_region\n");
+    //LOOP_FOREVER
+#endif
     p_vmcs->hva = vmcs_hw_allocate_region(&p_vmcs->hpa);    // validate it's ok TBD
+#ifdef JLMDEBUG
+    bprint("vmcs_act_create aftervmcs_hw_allocate_region\n");
+    LOOP_FOREVER
+#endif
     SET_NEVER_ACTIVATED_FLAG(p_vmcs);
     p_vmcs->owning_host_cpu = CPU_NEVER_USED;
     p_vmcs->gcpu_owner = gcpu;
-
     p_vmcs->vmcs_base->vmcs_read = vmcs_act_read;
     p_vmcs->vmcs_base->vmcs_write = vmcs_act_write;
     p_vmcs->vmcs_base->vmcs_flush_to_cpu = vmcs_act_flush_to_cpu;

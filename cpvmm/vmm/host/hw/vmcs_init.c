@@ -107,28 +107,20 @@ static void fill_vmx_capabilities( void )
     g_vmx_capabilities.Cr4MayBeSetToOne.Uint64  = hw_read_msr(IA32_MSR_CR4_ALLOWED_ONE_INDEX);
 
     VMM_ASSERT( VMCS_REGION_SIZE != 0 );
-
     g_vmx_constraints.may1_pin_based_exec_ctrl.Uint32 = g_vmx_capabilities.PinBasedVmExecutionControls.Bits.MayBeSetToOne.Uint32;
     g_vmx_constraints.may0_pin_based_exec_ctrl.Uint32 = g_vmx_capabilities.PinBasedVmExecutionControls.Bits.MayBeSetToZero.Uint32;
-
     g_vmx_constraints.may1_processor_based_exec_ctrl.Uint32 = g_vmx_capabilities.ProcessorBasedVmExecutionControls.Bits.MayBeSetToOne.Uint32;
     g_vmx_constraints.may0_processor_based_exec_ctrl.Uint32 = g_vmx_capabilities.ProcessorBasedVmExecutionControls.Bits.MayBeSetToZero.Uint32;
-
     g_vmx_constraints.may1_processor_based_exec_ctrl2.Uint32 = g_vmx_capabilities.ProcessorBasedVmExecutionControls2.Bits.MayBeSetToOne.Uint32;
     g_vmx_constraints.may0_processor_based_exec_ctrl2.Uint32 = g_vmx_capabilities.ProcessorBasedVmExecutionControls2.Bits.MayBeSetToZero.Uint32;
-
     g_vmx_constraints.may1_vm_exit_ctrl.Uint32 = g_vmx_capabilities.VmExitControls.Bits.MayBeSetToOne.Uint32;
     g_vmx_constraints.may0_vm_exit_ctrl.Uint32 = g_vmx_capabilities.VmExitControls.Bits.MayBeSetToZero.Uint32;
-
     g_vmx_constraints.may1_vm_entry_ctrl.Uint32 = g_vmx_capabilities.VmEntryControls.Bits.MayBeSetToOne.Uint32;
     g_vmx_constraints.may0_vm_entry_ctrl.Uint32 = g_vmx_capabilities.VmEntryControls.Bits.MayBeSetToZero.Uint32;
-
     g_vmx_constraints.may1_cr0.Uint64 = g_vmx_capabilities.Cr0MayBeSetToOne.Uint64;
     g_vmx_constraints.may0_cr0.Uint64 = g_vmx_capabilities.Cr0MayBeSetToZero.Uint64;
-
     g_vmx_constraints.may1_cr4.Uint64 = g_vmx_capabilities.Cr4MayBeSetToOne.Uint64;
     g_vmx_constraints.may0_cr4.Uint64 = g_vmx_capabilities.Cr4MayBeSetToZero.Uint64;
-
     g_vmx_constraints.number_of_cr3_target_values = g_vmx_capabilities.MiscellaneousData.Bits.NumberOfCr3TargetValues;
     g_vmx_constraints.max_msr_lists_size_in_bytes= VMCS_MAX_SIZE_OF_MSR_LISTS;
     g_vmx_constraints.vmx_timer_length  = g_vmx_capabilities.MiscellaneousData.Bits.PreemptionTimerLength;
@@ -147,8 +139,7 @@ static void fill_vmx_capabilities( void )
 #ifdef FAST_VIEW_SWITCH
     g_vmx_constraints.vmfunc_supported  = g_vmx_constraints.processor_based_exec_ctrl2_supported &&
                                           g_vmx_capabilities.ProcessorBasedVmExecutionControls2.Bits.MayBeSetToOne.Bits.Vmfunc;
-    if ( g_vmx_constraints.vmfunc_supported )
-    {
+    if ( g_vmx_constraints.vmfunc_supported ) {
         g_vmx_capabilities.VmFuncControls.Uint64 = hw_read_msr(IA32_MSR_VMX_VMFUNC_CTRL);
         VMM_LOG(mask_anonymous, level_trace,"VmFuncCtrl                                   = %18P\n",g_vmx_capabilities.VmFuncControls.Uint64);
         if( g_vmx_capabilities.VmFuncControls.Bits.EptpSwitching ) {
@@ -163,41 +154,33 @@ static void fill_vmx_capabilities( void )
     if (g_vmx_constraints.ve_supported) {
     	VMM_LOG(mask_anonymous, level_trace,"VE supported...\n");
     }
-
     g_vmx_constraints.ept_vpid_capabilities = g_vmx_capabilities.EptVpidCapabilities;
 
     // determine fixed values
-    g_vmx_fixed.fixed_1_pin_based_exec_ctrl.Uint32 =
-                                              g_vmx_constraints.may0_pin_based_exec_ctrl.Uint32 &
-                                              g_vmx_constraints.may1_pin_based_exec_ctrl.Uint32;
-    g_vmx_fixed.fixed_0_pin_based_exec_ctrl.Uint32 =
-                                              g_vmx_constraints.may0_pin_based_exec_ctrl.Uint32 |
-                                              g_vmx_constraints.may1_pin_based_exec_ctrl.Uint32;
-
+    g_vmx_fixed.fixed_1_pin_based_exec_ctrl.Uint32= g_vmx_constraints.may0_pin_based_exec_ctrl.Uint32&
+                                           g_vmx_constraints.may1_pin_based_exec_ctrl.Uint32;
+    g_vmx_fixed.fixed_0_pin_based_exec_ctrl.Uint32= g_vmx_constraints.may0_pin_based_exec_ctrl.Uint32|
+                                           g_vmx_constraints.may1_pin_based_exec_ctrl.Uint32;
     g_vmx_fixed.fixed_1_processor_based_exec_ctrl.Uint32 =
-                                              g_vmx_constraints.may0_processor_based_exec_ctrl.Uint32 &
-                                              g_vmx_constraints.may1_processor_based_exec_ctrl.Uint32;
+                                           g_vmx_constraints.may0_processor_based_exec_ctrl.Uint32 &
+                                           g_vmx_constraints.may1_processor_based_exec_ctrl.Uint32;
     g_vmx_fixed.fixed_0_processor_based_exec_ctrl.Uint32 =
-                                              g_vmx_constraints.may0_processor_based_exec_ctrl.Uint32 |
-                                              g_vmx_constraints.may1_processor_based_exec_ctrl.Uint32;
-
+                                           g_vmx_constraints.may0_processor_based_exec_ctrl.Uint32 |
+                                           g_vmx_constraints.may1_processor_based_exec_ctrl.Uint32;
     g_vmx_fixed.fixed_1_processor_based_exec_ctrl2.Uint32 =
-                                              g_vmx_constraints.may0_processor_based_exec_ctrl2.Uint32 &
-                                              g_vmx_constraints.may1_processor_based_exec_ctrl2.Uint32;
+                                           g_vmx_constraints.may0_processor_based_exec_ctrl2.Uint32 &
+                                           g_vmx_constraints.may1_processor_based_exec_ctrl2.Uint32;
     g_vmx_fixed.fixed_0_processor_based_exec_ctrl2.Uint32 =
-                                              g_vmx_constraints.may0_processor_based_exec_ctrl2.Uint32 |
-                                              g_vmx_constraints.may1_processor_based_exec_ctrl2.Uint32;
-
+                                           g_vmx_constraints.may0_processor_based_exec_ctrl2.Uint32 |
+                                           g_vmx_constraints.may1_processor_based_exec_ctrl2.Uint32;
     g_vmx_fixed.fixed_1_vm_exit_ctrl.Uint32 = g_vmx_constraints.may0_vm_exit_ctrl.Uint32 &
                                               g_vmx_constraints.may1_vm_exit_ctrl.Uint32;
     g_vmx_fixed.fixed_0_vm_exit_ctrl.Uint32 = g_vmx_constraints.may0_vm_exit_ctrl.Uint32 |
                                               g_vmx_constraints.may1_vm_exit_ctrl.Uint32;
-
     g_vmx_fixed.fixed_1_vm_entry_ctrl.Uint32= g_vmx_constraints.may0_vm_entry_ctrl.Uint32 &
                                               g_vmx_constraints.may1_vm_entry_ctrl.Uint32;
     g_vmx_fixed.fixed_0_vm_entry_ctrl.Uint32= g_vmx_constraints.may0_vm_entry_ctrl.Uint32 |
                                               g_vmx_constraints.may1_vm_entry_ctrl.Uint32;
-
     g_vmx_fixed.fixed_1_cr0.Uint64          = g_vmx_constraints.may0_cr0.Uint64 &
                                               g_vmx_constraints.may1_cr0.Uint64;
     /* Is unrestricted guest is supported than FIXED1 value should not have PG and PE */
@@ -206,7 +189,6 @@ static void fill_vmx_capabilities( void )
     }
     g_vmx_fixed.fixed_0_cr0.Uint64  = g_vmx_constraints.may0_cr0.Uint64 |
                                       g_vmx_constraints.may1_cr0.Uint64;
-
     g_vmx_fixed.fixed_1_cr4.Uint64 = g_vmx_constraints.may0_cr4.Uint64 &
                                               g_vmx_constraints.may1_cr4.Uint64;
     g_vmx_fixed.fixed_0_cr4.Uint64 = g_vmx_constraints.may0_cr4.Uint64 |
@@ -496,16 +478,17 @@ HVA vmcs_hw_allocate_region( HPA* hpa )
     HVA             hva = 0;
     IA32_VMX_VMCS*  vmcs = 0;
 
+#ifdef JLMDEBUG
+    bprint("vmcs_hw_allocate_region\n");
+    LOOP_FOREVER
+#endif
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( hpa );
-
     // allocate the VMCS area
     // the area must be 4K page aligned and zeroed
     hva = (HVA)vmm_memory_alloc( VMCS_REGION_SIZE );
-    
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( hva );
-
     if (!hmm_hva_to_hpa(hva, hpa)) {
         VMM_LOG(mask_anonymous, level_trace,"%s:(%d):ASSERT: HVA to HPA conversion failed\n", __FUNCTION__, __LINE__);
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
@@ -523,25 +506,20 @@ HVA vmcs_hw_allocate_region( HPA* hpa )
 
     // check VMCS memory type
     VMM_ASSERT( hmm_does_memory_range_have_specified_memory_type(*hpa, VMCS_REGION_SIZE, VMCS_MEMORY_TYPE ) == TRUE);
-
     vmcs = (IA32_VMX_VMCS*)hva;
-
     vmcs->RevisionIdentifier = VMCS_REVISION;
-
     // unmap VMCS region from the host memory
     if (!hmm_unmap_hpa(*hpa, ALIGN_FORWARD(VMCS_REGION_SIZE, PAGE_4KB_SIZE), FALSE)) {
         VMM_LOG(mask_anonymous, level_trace,"ERROR: failed to unmap VMCS\n");
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_DEADLOOP();
     }
-
     return hva;
 }
 
-//
+
 // allocate vmxon regions for all processors at once
 // must be called once only on BSP before vmx_on on any APs.
-//
 BOOLEAN vmcs_hw_allocate_vmxon_regions( UINT16 max_host_cpus )
 {
     HVA     vmxon_region_hva = 0;

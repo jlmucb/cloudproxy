@@ -41,7 +41,6 @@ VMM_STATUS vmcs_hierarchy_create( VMCS_HIERARCHY *obj, GUEST_CPU_HANDLE gcpu)
 
 #ifdef JLMDEBUG
     bprint("vmcs_hierarchy_create\n");
-    LOOP_FOREVER
 #endif
     VMM_ASSERT(obj);
     obj->vmcs[VMCS_LEVEL_0] = obj->vmcs[VMCS_MERGED] = vmcs_act_create(gcpu);

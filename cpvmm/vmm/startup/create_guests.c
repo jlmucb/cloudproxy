@@ -65,7 +65,6 @@ void add_cpu_to_guest( const VMM_GUEST_STARTUP* gstartup, GUEST_HANDLE guest,
     VMM_ASSERT( gcpu );
 #ifdef JLMDEBUG
     bprint("about to call guest_vcpu 0x%016x\n", gcpu);
-    LOOP_FOREVER
 #endif
     // find init data
     vcpu = guest_vcpu( gcpu );
@@ -138,7 +137,6 @@ static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
 
 #ifdef JLMDEBUG
     bprint("done with vmexit_guest_initialize\n");
-    // LOOP_FOREVER
 #endif
 
     if (gstartup->devices_count != 0) {

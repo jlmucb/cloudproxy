@@ -143,7 +143,6 @@ static void setup_default_state( GUEST_CPU_HANDLE gcpu )
 {
 #ifdef JLMDEBUG
     bprint("setup_default_state starting\n");
-    LOOP_FOREVER
 #endif
     VMCS_OBJECT* vmcs = gcpu_get_vmcs(gcpu);
     VMM_ASSERT(vmcs);
@@ -251,7 +250,6 @@ GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
     SET_CACHED_ACTIVITY_STATE(gcpu, Ia32VmxVmcsGuestSleepStateActive);
 #ifdef JLMDEBUG
     bprint("about to call setup_default_state\n");
-    LOOP_FOREVER
 #endif
     setup_default_state( gcpu );
     gcpu->resume_func = gcpu_perform_split_merge; // default "resume" function

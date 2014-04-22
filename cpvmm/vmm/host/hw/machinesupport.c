@@ -414,10 +414,6 @@ void hw_sidt(void *destination)
 
 INT32  hw_interlocked_increment(INT32 *addend)
 {
-#ifdef JLMDEBUG
-    bprint("hw_interlocked_increment\n");
-    LOOP_FOREVER
-#endif
     asm volatile(
       "\tlock; incl (%[addend])\n"
     :"=m"(addend)
@@ -436,11 +432,11 @@ UINT64 hw_interlocked_increment64(INT64* p_counter)
     LOOP_FOREVER
 #endif
     asm volatile(
-        "\tlock; addq (%[p_counter]), %[ret]\n"
+        "\tlock; incq (%[p_counter])\n"
     :"=m" (ret)
     :[ret] "r" (ret), [p_counter] "p" (p_counter)
     :"memory");
-    return ret;
+    return *p_counter;
 }
 
 INT32 hw_interlocked_decrement(INT32 * minuend)

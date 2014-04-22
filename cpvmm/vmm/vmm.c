@@ -625,8 +625,8 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         bprint("evmm is post launch (should never happen)\n");
         LOOP_FOREVER
 #endif
-        // To create [0~4G] identity mapping
-        // on NO UG machines (NHM), FPT will be used to handle guest non-paged protected mode.
+        // To create [0~4G] identity mapping on NO UG machines (NHM), 
+        // FPT will be used to handle guest non-paged protected mode.
         // aka. CR0.PE = 1, CR0.PG = 0 
         // make sure the 32bit FPT pagetables located below 4G physical memory.
         // assume that GPA-HPA mapping won't be changed. 
@@ -703,6 +703,9 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     vmexit_initialize();
     host_cpu_init();
     local_apic_cpu_init();
+#ifdef JLMDEBUG
+    bprint("evmm: host, vmexit, local apic initialized\n");
+#endif
 
 #ifdef ENABLE_PREEMPTION_TIMER
     vmx_timer_hw_setup();   // called on every CPU

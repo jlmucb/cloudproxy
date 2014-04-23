@@ -62,9 +62,6 @@ DBGOBJ=		$(B)/dbg/cli_libc.o $(B)/dbg/vmdb.o  $(B)/dbg/vmm_dbg.o  \
 		$(B)/dbg/trace.o $(B)/dbg/vmx_trace.o $(B)/dbg/vt100.o
 
 EMTOBJ= 	$(B)/host/hw/em64t/em64t_idt.o $(B)/host/hw/em64t/em64t_setjmp.o \
-		$(B)/host/hw/em64t/em64t_interlocked2.o  $(B)/host/hw/em64t/em64t_utils2.o \
-		$(B)/host/hw/em64t/em64t_fpu2.o \
-		$(B)/host/hw/em64t/em64t_gcpu_regs_save_restore.o  \
 		$(B)/host/hw/em64t/em64t_vmx2.o $(B)/host/hw/em64t/em64t_gdt.o \
 		$(B)/host/hw/em64t/em64t_isr.o
 

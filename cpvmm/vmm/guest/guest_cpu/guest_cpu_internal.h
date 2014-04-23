@@ -23,6 +23,7 @@
 #include "vmcs_actual.h"
 #include "emulator_if.h"
 #include "flat_page_tables.h"
+#include "guest_save_area.h"
 
 
 // Guest CPU
@@ -46,30 +47,6 @@
 #define CR3_SAVE_AREA IA32_REG_RFLAGS
 #define CR8_SAVE_AREA IA32_REG_RIP
 
-typedef struct _VMM_OTHER_MSRS {
-    UINT64 pat;
-    UINT64 padding; // not in use;
-} VMM_OTHER_MSRS;
-
-typedef struct _GUEST_CPU_SAVE_AREA {
-    // the next 2 fields must be the first in this structure because they are
-    // referenced in assembler
-    VMM_GP_REGISTERS    gp;     // note: RSP, RIP and RFLAGS are not used - use VMCS
-                                // RSP      entry is used for CR2
-                                // RFLAGS   entry is used for CR3
-                                // RIP      entry is used for CR8
-    ALIGN16(VMM_XMM_REGISTERS,   xmm);    // restored AFTER FXRSTOR
-
-    // not referenced in assembler
-    VMM_DEBUG_REGISTERS debug;  // DR7 is not used - use VMCS
-
-
-    // must be aligned on 16-byte boundary
-    ALIGN16 (UINT8,       fxsave_area[512]);
-
-    VMM_OTHER_MSRS temporary_cached_msrs;
-} PACKED GUEST_CPU_SAVE_AREA;
-
 #pragma PACK_OFF
 
 typedef struct _VE_DESCRIPTOR {
@@ -82,19 +59,16 @@ typedef struct _VE_DESCRIPTOR {
 // per-cpu data/state
 typedef struct _FVS_CPU_DESCRIPTOR {
     UINT64  vmentry_eptp;
-
     BOOLEAN enabled;
     UINT32  padding;
-
 } FVS_CPU_DESCRIPTOR;
-
 
 
 // invalid CR3 value used to specify that CR3_SAVE_AREA is not up-to-date
 #define INVALID_CR3_SAVED_VALUE     UINT64_ALL_ONES
 
 typedef struct _GUEST_CPU {
-	// save_area and vmcs must come first due to alignment. Do not move !
+    // save_area and vmcs must come first due to alignment. Do not move !
     GUEST_CPU_SAVE_AREA         save_area;
     VMCS_HIERARCHY              vmcs_hierarchy;
     GUEST_HANDLE                guest_handle;
@@ -126,11 +100,11 @@ typedef struct _GUEST_CPU {
 #ifdef FAST_VIEW_SWITCH
     FVS_CPU_DESCRIPTOR          fvs_cpu_desc;
 #else
-	UINT8                       pad1[16];
+        UINT8                       pad1[16];
 #endif
-	UINT32                      trigger_log_event;
-	UINT8                       pad2[4];
-	VE_DESCRIPTOR               ve_desc;
+        UINT32                      trigger_log_event;
+        UINT8                       pad2[4];
+        VE_DESCRIPTOR               ve_desc;
 
 } GUEST_CPU;
 

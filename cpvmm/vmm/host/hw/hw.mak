@@ -37,7 +37,8 @@ endif
 mainsrc=    $(S)/vmm/host/hw
 
 B=		$(E)/vmmobjects/host/hw
-INCLUDES=	-I$(S)/vmm -I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
+INCLUDES=	-I$(S)/vmm -I$(S)/common/include -I$(S)/vmm/include \
+		-I$(S)/common/hw -I$(S)/vmm/guest -I$(S)/vmm/guest/guest_cpu \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
     		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept -I$(S)/vmm/vmx -I$(S)/vmm/bootstrap \
 		-I$(S)/vmm -I$(src)/vmm/bootstrap

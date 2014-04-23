@@ -120,9 +120,7 @@ void scheduler_init( UINT16 number_of_host_cpus )
     VMM_ASSERT( number_of_host_cpus != 0 );
     // count needed memory amount
     memory_for_state = sizeof(SCHEDULER_CPU_STATE) * g_host_cpus_count;
-#if 0
     lock_initialize_read_write_lock(g_registration_lock);
-#endif
 #ifdef JLMDEBUG
     bprint("g_host_cpus_count: %d, memory_for_state: %d\n", 
            g_host_cpus_count, memory_for_state);

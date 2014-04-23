@@ -335,9 +335,11 @@ void hw_disable_interrupts () {
 //  void hw_fxsave (void* buffer);
 void hw_fxsave (void *buffer) {
     asm volatile(
-        "\tfxsave %[buffer]\n"
-    :[buffer] "=m" (buffer)
-    : :);
+        "\tmovq   %[buffer], %%rbx\n"
+        "\tfxsave (%%rbx)\n"
+    :
+    :[buffer] "g" (buffer)
+    :"%rbx");
     return;
 }
 
@@ -345,10 +347,11 @@ void hw_fxsave (void *buffer) {
 //  void hw_fxrestore (void* buffer);
 void hw_fxrestore (void *buffer) {
     asm volatile(
-        "\tfxrstor %[buffer]\n"
+        "\tmovq   %[buffer], %%rbx\n"
+        "\tfxrstor (%%rbx)\n"
     :
     :[buffer] "m" (buffer)
-    :);
+    : "%rbx");
     return;
 }
 

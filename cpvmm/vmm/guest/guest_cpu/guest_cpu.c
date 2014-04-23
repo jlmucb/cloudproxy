@@ -118,9 +118,9 @@ void cache_fx_state( const GUEST_CPU* gcpu )
         return;
     }
     SET_FX_STATE_CACHED_FLAG(vgcpu);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("cache_fx_state returning early (FIX)\n");
-    return;
+    // return;
 #endif
     hw_fxsave(vgcpu->save_area.fxsave_area);
 }

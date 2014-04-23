@@ -533,13 +533,11 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     // Store information about e820
     if (!e820_abstraction_initialize((const INT15_E820_MEMORY_MAP*)startup_struct->physical_memory_layout_E820)) {
         VMM_LOG(mask_uvmm, level_error, "BSP FAILURE: there is no proper e820 map\n");
-        // BEFORE_VMLAUNCH. Should not fail.
         VMM_DEADLOOP();
     }
 
     if (!mtrrs_abstraction_bsp_initialize()) {
         VMM_LOG(mask_uvmm, level_error, "BSP FAILURE: failed to cache mtrrs\n");
-        // BEFORE_VMLAUNCH. Should not fail.
         VMM_DEADLOOP();
     }
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: MTRRs were successfully cached.\n");
@@ -553,7 +551,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     // Initialize Host Memory Manager
     if (!hmm_initialize(startup_struct)) {
         VMM_LOG(mask_uvmm, level_error,"\nBSP FAILURE: Initialization of Host Memory Manager has failed\n");
-        // BEFORE_VMLAUNCH. Should not fail.
         VMM_DEADLOOP();
     }
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: Host Memory Manager was successfully initialized. \n");
@@ -768,6 +765,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
                         guest_get_id(device_default_owner_guest),
                         guest_magic_number(device_default_owner_guest));
 
+#ifdef JLMDEBUG
+    bprint("evmm: about to initialize guest manager\n");
+    LOOP_FOREVER
+#endif
     // Initialize Event Manager
     // must be called after heap and CLI initialization
     event_manager_initialize(num_of_cpus);
@@ -786,6 +787,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     }
     for(i=0; i < VMM_MAX_CPU_SUPPORTED; i++)
         vmcs_sw_shadow_disable[i] = FALSE;
+#ifdef JLMDEBUG
+    bprint("evmm: done with event manager, ipc, nmi intialize\n");
+    LOOP_FOREVER
+#endif
 
     if(g_is_post_launch) {
 #ifdef USE_ACPI  
@@ -812,6 +817,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
     // init all addon packages
     start_addons(num_of_cpus, startup_struct_heap, application_params_heap);
+#ifdef JLMDEBUG
+    bprint("evmm: done with add-ons\n");
+    LOOP_FOREVER
+#endif
 
     // Destroy startup structures, which reside in heap
     vmm_destroy_startup_struct(startup_struct_heap);
@@ -823,6 +832,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
     // TODO: global var - init finished
     vmcs_hw_allocate_vmxon_regions(num_of_cpus);
+#ifdef JLMDEBUG
+    bprint("evmm: vmx allocate on\n");
+    LOOP_FOREVER
+#endif
 
     // Initialize guest data
     initialization_data.num_of_cpus = (UINT16) num_of_cpus;
@@ -831,9 +844,12 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         initialization_data.guest_data[i].primary_guest = FALSE;
     }
     if (num_of_guests > VMM_MAX_GUESTS_SUPPORTED) {
-        VMM_LOG(mask_uvmm, level_error, "%s: %d guests not supported by VMM.\n", __FUNCTION__, num_of_guests);
+        VMM_LOG(mask_uvmm, level_error, 
+                "%s: %d guests not supported by VMM.\n", 
+                __FUNCTION__, num_of_guests);
     } else {
-        for (guest = guest_first(&guest_ctx), i = 0; guest; guest = guest_next(&guest_ctx), i++) {
+        for (guest = guest_first(&guest_ctx), i = 0; guest; 
+                        guest = guest_next(&guest_ctx), i++) {
             initialization_data.guest_data[i].guest_id = guest_get_id(guest);
             if (guest_is_primary(guest)) {
                 initialization_data.guest_data[i].primary_guest = TRUE;
@@ -846,20 +862,47 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     }
     VMM_LOG(mask_uvmm, level_trace,"BSP: Successfully finished single-core initializations\n");
 
+#ifdef JLMDEBUG
+    bprint("evmm: about to set state\n");
+    LOOP_FOREVER
+#endif
     vmm_set_state(VMM_STATE_WAIT_FOR_APs);
     LAUNCH_APPLICATION_PROCS();
+#ifdef JLMDEBUG
+    bprint("evmm: about to initialize_host_vmcs_region\n");
+    LOOP_FOREVER
+#endif
     initialize_host_vmcs_regions(cpu_id);
     VMM_LOG(mask_uvmm, level_trace,"BSP: Successfully finished initializations\n");
+
+#ifdef JLMDEBUG
+    bprint("evmm: about to turn on vmx\n");
+    LOOP_FOREVER
+#endif
     vmcs_hw_vmx_on();
     VMM_LOG(mask_uvmm, level_trace,"BSP: VMXON\n");
+#ifdef JLMDEBUG
+    bprint("evmm: vmx on\n");
+    LOOP_FOREVER
+#endif
 
     // schedule first gcpu
     initial_gcpu = scheduler_select_initial_gcpu();
     VMM_ASSERT(initial_gcpu != NULL);
-    VMM_LOG(mask_uvmm, level_trace,"BSP: initial guest selected: GUEST_ID: %d GUEST_CPU_ID: %d\n",
-            guest_vcpu( initial_gcpu )->guest_id, guest_vcpu( initial_gcpu )->guest_cpu_id );
+    VMM_LOG(mask_uvmm, level_trace,
+            "BSP: initial guest selected: GUEST_ID: %d GUEST_CPU_ID: %d\n",
+            guest_vcpu(initial_gcpu )->guest_id, 
+            guest_vcpu(initial_gcpu )->guest_cpu_id);
 
+#ifdef JLMDEBUG
+    bprint("evmm: scheduler_select_initial_gcpu complete\n");
+    LOOP_FOREVER
+#endif
     ipc_change_state_to_active(initial_gcpu);
+#ifdef JLMDEBUG
+    bprint("evmm: gcpu active\n");
+    LOOP_FOREVER
+#endif
     vmm_print_test(local_apic_id);
     VMM_LOG(mask_uvmm, level_trace,"BSP: Wait for APs to launch the first Guest CPU\n");
     WAIT_FOR_APPLICATION_PROCS_LAUNCHED_THE_GUEST( num_of_cpus - 1 );
@@ -875,6 +918,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     vmm_set_state(VMM_STATE_RUN);
     VMM_LOG(mask_uvmm, level_trace,"BSP: Resuming the first Guest CPU\n");
     event_raise(EVENT_GUEST_LAUNCH, initial_gcpu, &local_apic_id);
+#ifdef JLMDEBUG
+    bprint("evmm: raised initial event\n");
+    LOOP_FOREVER
+#endif
 
     // enable unrestricted guest support in early boot
     // make guest state compliant for code execution
@@ -905,12 +952,12 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 #endif
 
     vmcs_store_initial(initial_gcpu, cpu_id);
-
 #ifdef JLMDEBUG
+    bprint("evmm: vmcs_store_initial complete\n");
     bprint("evmm: about to guest resume\n");
     LOOP_FOREVER
 #endif
-    gcpu_resume( initial_gcpu );
+    gcpu_resume(initial_gcpu);
     VMM_LOG(mask_uvmm, level_error,"BSP: Resume initial guest cpu failed\n", cpu_id);
     VMM_DEADLOOP();
 }

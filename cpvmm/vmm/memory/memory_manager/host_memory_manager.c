@@ -27,7 +27,6 @@
 #include <hw_utils.h>
 #include <idt.h>
 #include <gdt.h>
-#include <parse_pe_image.h>
 #include <pat_manager.h>
 #include <vmm_dbg.h>
 #include <lock.h>
@@ -807,11 +806,8 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
     UINT64 first_page_hpa;
     UINT64 first_page_new_hva;
     MAM_ATTRIBUTES attrs_tmp;
-    EXEC_IMAGE_SECTION_ITERATOR image_iter;
-    const EXEC_IMAGE_SECTION_INFO* image_section_info;
 
     VMM_LOG(mask_anonymous, level_trace,"\nHMM: Initializing...\n");
-
     lock_initialize(hmm_get_update_lock(g_hmm));
 
     // Initialize table of MTRR X PAT types
@@ -829,7 +825,6 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
         VMM_LOG(mask_anonymous, level_trace,"HMM ERROR: UNCACHABLE index doesn't exist in current PAT register\n");
         goto no_destroy_exit;
     }
-
     inner_mapping_attrs.uint32 = 0;
     inner_mapping_attrs.paging_attr.writable = 1;
     inner_mapping_attrs.paging_attr.executable = 1;
@@ -856,7 +851,6 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
     hmm_set_final_mapped_virt_address(g_hmm, 0);
     hmm_set_wb_pat_index(g_hmm, curr_wb_index);
     hmm_set_uc_pat_index(g_hmm, curr_uc_index);
-
     VMM_LOG(mask_anonymous, level_trace,"HMM: Successfully created HVA <--> HPA mappings\n");
 
     // Fill HPA <-> HVA mappings with initial data
@@ -966,18 +960,16 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
         VMM_ASSERT(0);
         goto destroy_hpa_to_hva_mapping_exit;
     }
-
     if (!mam_insert_range(hva_to_hpa, first_page_new_hva, first_page_hpa, PAGE_4KB_SIZE, final_mapping_attrs)) {
         VMM_LOG(mask_anonymous, level_trace,"Failed to remap first page\n");
         goto destroy_hpa_to_hva_mapping_exit;
     }
-
     if (!mam_insert_range(hpa_to_hva, first_page_hpa, first_page_new_hva, PAGE_4KB_SIZE, MAM_NO_ATTRIBUTES)) {
         VMM_LOG(mask_anonymous, level_trace,"Failed to remap first page\n");
         goto destroy_hpa_to_hva_mapping_exit;
     }
-
-    VMM_LOG(mask_anonymous, level_trace,"HMM: Successfully remapped HPA(%P) to HVA(%P)\n", first_page_hpa, first_page_new_hva);
+    VMM_LOG(mask_anonymous, level_trace,"HMM: Successfully remapped HPA(%P) to HVA(%P)\n", 
+            first_page_hpa, first_page_new_hva);
 
     // Unmap the last page of each stack.
     VMM_ASSERT(vmm_stack_is_initialized());

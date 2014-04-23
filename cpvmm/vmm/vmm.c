@@ -42,7 +42,6 @@
 #include "vmm_bootstrap_utils.h"
 #include "ipc.h"
 #include "vmexit.h"
-#include "parse_pe_image.h"
 #include "vmm_dbg.h"
 #include "vmx_trace.h"
 #include "event_mgr.h"

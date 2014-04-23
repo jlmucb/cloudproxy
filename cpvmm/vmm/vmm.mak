@@ -104,7 +104,7 @@ MEMMGROBJ=	$(B)/memory/memory_manager/flat_page_tables.o  \
 		$(B)/memory/memory_manager/pool.o
 
 STARTOBJ=	$(B)/startup/addons.o $(B)/startup/create_guests.o \
-		$(B)/startup/parse_pe_image.o $(B)/startup/copy_input_structs.o  \
+		$(B)/startup/copy_input_structs.o  \
 		$(B)/startup/layout_host_memory_for_mbr_loader.o \
 		$(B)/startup/vmm_extension.o
 

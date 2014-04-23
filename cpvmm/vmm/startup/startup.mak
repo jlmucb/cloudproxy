@@ -58,7 +58,7 @@ LINK=       gcc
 LIBMAKER=   ar
 
 dobjs=	$(B)/copy_input_structs.o $(B)/create_guests.o \
-	$(B)/layout_host_memory_for_mbr_loader.o $(B)/parse_pe_image.o \
+	$(B)/layout_host_memory_for_mbr_loader.o \
 	$(B)/addons.o $(B)/vmm_extension.o
 
 #ifeq ($(call find_opt,ENABLE_VMM_EXTENSION),1)

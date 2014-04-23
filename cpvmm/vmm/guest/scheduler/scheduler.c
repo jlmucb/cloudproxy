@@ -106,8 +106,8 @@ void add_to_per_cpu_list(SCHEDULER_VCPU_OBJECT* vcpu_obj)
     bprint("state: 0x%016lx\n", state);
 #endif
     vcpu_obj->next_same_host_cpu = state->vcpu_obj_list;
-return;  // JLM(FIX)
     state->vcpu_obj_list = vcpu_obj;
+    return;
 }
 
 // init

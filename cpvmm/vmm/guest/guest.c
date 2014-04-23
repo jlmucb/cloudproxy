@@ -406,14 +406,11 @@ GUEST_CPU_HANDLE guest_add_cpu( GUEST_HANDLE guest )
     vcpu.guest_id = guest->id;
     vcpu.guest_cpu_id   = guest->cpu_count ;
     ++(guest->cpu_count);
-#ifdef JLMDEBUG
-    bprint("about to call gcpu_allocate\n");
-#endif
     gcpu = gcpu_allocate( vcpu, guest );
 #ifdef JLMDEBUG
     bprint("back from gcpu_allocate\n");
 #endif
-    guest->cpus_array[ vcpu.guest_cpu_id ] = gcpu;
+    guest->cpus_array[vcpu.guest_cpu_id] = gcpu;
     return gcpu;
 }
 

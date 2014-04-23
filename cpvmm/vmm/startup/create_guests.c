@@ -71,16 +71,20 @@ void add_cpu_to_guest(const VMM_GUEST_STARTUP* gstartup, GUEST_HANDLE guest,
     bprint("done with scheduler_register_gcpu 0x%016lx\n", vcpu);
     bprint("guest_cpu_id: %d\n", vcpu->guest_cpu_id);
     bprint("states count: %d\n", gstartup->cpu_states_count);
-    LOOP_FOREVER
 #endif
     if(vcpu->guest_cpu_id<gstartup->cpu_states_count) {
         cpus_arr = (const VMM_GUEST_CPU_STARTUP_STATE*)gstartup->cpu_states_array;
+#ifdef JLMDEBUG
+        if(cpus_arr==NULL) {
+            bprint("cpus_arr is NULL\n");
+            LOOP_FOREVER
+        }
+#endif
         VMM_ASSERT(cpus_arr);
         VMM_LOG(mask_anonymous, level_trace,
                 "Setting up initial state for the newly created Guest CPU\n");
 #ifdef JLMDEBUG
-        bprint("about to call gcpu_initialize(0x%016lx)\n", vcpu);
-        LOOP_FOREVER
+        bprint("about to call gcpu_initialize(0x%016lx, 0x%016lx)\n", vcpu, gcpu);
 #endif
         gcpu_initialize(gcpu, &(cpus_arr[vcpu->guest_cpu_id]));
     }
@@ -91,7 +95,6 @@ void add_cpu_to_guest(const VMM_GUEST_STARTUP* gstartup, GUEST_HANDLE guest,
     // host part will be initialized later
 #ifdef JLMDEBUG
     bprint("done with add_cpu_to_guest\n");
-    LOOP_FOREVER
 #endif
 }
 
@@ -199,23 +202,16 @@ BOOLEAN initialize_all_guests( UINT32 number_of_host_processors,
     GUEST_HANDLE primary_guest;
     GPM_HANDLE   primary_guest_startup_gpm;
     BOOLEAN      ok = FALSE;
-    //GUEST_HANDLE cur_guest;
     GUEST_CPU_HANDLE gcpu;
     GUEST_GCPU_ECONTEXT gcpu_context;
 
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( hw_cpu_id() == 0 );
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( number_of_host_processors > 0 );
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( vmm_memory_layout );
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( primary_guest_startup_state );
 
     if (number_of_secondary_guests > 0) {
         VMM_LOG(mask_anonymous, level_trace,"initialize_all_guests ASSERT: Secondary guests are yet not implemented\n");
-
-        // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_ASSERT( secondary_guests_startup_state_array );
         // init guests and allocate memory for them
         // shutdown temporary layout object
@@ -229,8 +225,7 @@ BOOLEAN initialize_all_guests( UINT32 number_of_host_processors,
 
     // BUGBUG: This is a workaround until loader will not do this!!!
     BITMAP_SET(((VMM_GUEST_STARTUP*)primary_guest_startup_state)->flags, 
-            VMM_GUEST_FLAG_REAL_BIOS_ACCESS_ENABLE|VMM_GUEST_FLAG_LAUNCH_IMMEDIATELY);
-
+          VMM_GUEST_FLAG_REAL_BIOS_ACCESS_ENABLE|VMM_GUEST_FLAG_LAUNCH_IMMEDIATELY);
 #ifdef JLMDEBUG
     bprint("initialize_all_guests, %d CPUs\n", number_of_host_processors);
 #endif
@@ -243,7 +238,6 @@ BOOLEAN initialize_all_guests( UINT32 number_of_host_processors,
         VMM_DEADLOOP();
         return FALSE;
     }
-
     guest_set_primary(primary_guest);
     primary_guest_startup_gpm = guest_get_startup_gpm(primary_guest);
 

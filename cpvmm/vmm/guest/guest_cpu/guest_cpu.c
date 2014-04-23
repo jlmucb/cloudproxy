@@ -407,26 +407,30 @@ BOOLEAN gcpu_process_interrupt(VECTOR_ID vector_id)
 
 // Initialize guest CPU
 // Should be called only if initial GCPU state is not Wait-For-Sipi
-void gcpu_initialize( GUEST_CPU_HANDLE gcpu,
-                      const VMM_GUEST_CPU_STARTUP_STATE* initial_state )
+void gcpu_initialize(GUEST_CPU_HANDLE gcpu,
+                      const VMM_GUEST_CPU_STARTUP_STATE* initial_state)
 {
     UINT32 idx;
+
+#ifdef JLMDEBUG
+    bprint("gcpu_initialize\n");
+#endif
     VMM_ASSERT( gcpu );
     if (! initial_state) {
         return;
     }
-    if (initial_state->size_of_this_struct != sizeof( VMM_GUEST_CPU_STARTUP_STATE )) {
+    if(initial_state->size_of_this_struct!=sizeof(VMM_GUEST_CPU_STARTUP_STATE)) {
         // wrong state
         VMM_LOG(mask_anonymous, level_trace,"gcpu_initialize() called with unknown structure\n");
         VMM_DEADLOOP();
         return;
     }
-    if (initial_state->version_of_this_struct != VMM_GUEST_CPU_STARTUP_STATE_VERSION) {
+    if(initial_state->version_of_this_struct!=VMM_GUEST_CPU_STARTUP_STATE_VERSION) {
         // wrong version
         VMM_LOG(mask_anonymous, level_trace,
-            "gcpu_initialize() called with non-compatible VMM_GUEST_CPU_STARTUP_STATE "
-            "structure: given version: %d expected version: %d\n",
-            initial_state->version_of_this_struct, VMM_GUEST_CPU_STARTUP_STATE_VERSION );
+          "gcpu_initialize() called with non-compatible VMM_GUEST_CPU_STARTUP_STATE "
+          "structure: given version: %d expected version: %d\n",
+          initial_state->version_of_this_struct, VMM_GUEST_CPU_STARTUP_STATE_VERSION );
         VMM_DEADLOOP();
         return;
     }
@@ -434,17 +438,20 @@ void gcpu_initialize( GUEST_CPU_HANDLE gcpu,
     vmcs_set_launch_required( gcpu_get_vmcs(gcpu) );
     // init gp registers
     for (idx = IA32_REG_RAX; idx < IA32_REG_GP_COUNT; ++idx) {
-        gcpu_set_gp_reg( gcpu, (VMM_IA32_GP_REGISTERS)idx, initial_state->gp.reg[idx] );
+        gcpu_set_gp_reg(gcpu, (VMM_IA32_GP_REGISTERS)idx, 
+                        initial_state->gp.reg[idx]);
     }
     // init xmm registers
     for (idx = IA32_REG_XMM0; idx < IA32_REG_XMM_COUNT; ++idx) {
-        gcpu_set_xmm_reg( gcpu, (VMM_IA32_XMM_REGISTERS)idx, initial_state->xmm.reg[idx] );
+        gcpu_set_xmm_reg(gcpu, (VMM_IA32_XMM_REGISTERS)idx, 
+                         initial_state->xmm.reg[idx]);
     }
     // init segment registers
     for (idx = IA32_SEG_CS; idx < IA32_SEG_COUNT; ++idx) {
         gcpu_set_segment_reg(gcpu, (VMM_IA32_SEGMENT_REGISTERS)idx, 
                 initial_state->seg.segment[idx].selector,
-                initial_state->seg.segment[idx].base, initial_state->seg.segment[idx].limit,
+                initial_state->seg.segment[idx].base, 
+                initial_state->seg.segment[idx].limit,
                 initial_state->seg.segment[idx].attributes);
     }
     // init control registers
@@ -452,27 +459,35 @@ void gcpu_initialize( GUEST_CPU_HANDLE gcpu,
         gcpu_set_control_reg(gcpu, (VMM_IA32_CONTROL_REGISTERS)idx, 
                                    initial_state->control.cr[idx]);
         gcpu_set_guest_visible_control_reg( gcpu, (VMM_IA32_CONTROL_REGISTERS)idx, 
-                                   initial_state->control.cr[idx] );
+                                   initial_state->control.cr[idx]);
     }
-    gcpu_set_gdt_reg( gcpu, initial_state->control.gdtr.base, initial_state->control.gdtr.limit );
-    gcpu_set_idt_reg( gcpu, initial_state->control.idtr.base, initial_state->control.idtr.limit );
+    gcpu_set_gdt_reg(gcpu, initial_state->control.gdtr.base, 
+                     initial_state->control.gdtr.limit);
+    gcpu_set_idt_reg(gcpu, initial_state->control.idtr.base, 
+                     initial_state->control.idtr.limit);
     // init selected model-specific registers
-    gcpu_set_msr_reg( gcpu, IA32_VMM_MSR_DEBUGCTL,     initial_state->msr.msr_debugctl );
-    gcpu_set_msr_reg( gcpu, IA32_VMM_MSR_EFER,         initial_state->msr.msr_efer );
-    gcpu_set_msr_reg( gcpu, IA32_VMM_MSR_PAT,          initial_state->msr.msr_pat );
-    gcpu_set_msr_reg( gcpu, IA32_VMM_MSR_SYSENTER_ESP, initial_state->msr.msr_sysenter_esp );
-    gcpu_set_msr_reg( gcpu, IA32_VMM_MSR_SYSENTER_EIP, initial_state->msr.msr_sysenter_eip );
-    gcpu_set_msr_reg( gcpu, IA32_VMM_MSR_SYSENTER_CS,  initial_state->msr.msr_sysenter_cs );
-    gcpu_set_msr_reg( gcpu, IA32_VMM_MSR_SMBASE,       initial_state->msr.smbase );
-    gcpu_set_pending_debug_exceptions( gcpu, initial_state->msr.pending_exceptions );
-    gcpu_set_interruptibility_state( gcpu,   initial_state->msr.interruptibility_state );
+    gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_DEBUGCTL, initial_state->msr.msr_debugctl);
+    gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_EFER, initial_state->msr.msr_efer);
+    gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_PAT,  initial_state->msr.msr_pat );
+    gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_SYSENTER_ESP, 
+                     initial_state->msr.msr_sysenter_esp );
+    gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_SYSENTER_EIP, initial_state->msr.msr_sysenter_eip );
+    gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_SYSENTER_CS, 
+                     initial_state->msr.msr_sysenter_cs );
+    gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_SMBASE, initial_state->msr.smbase);
+    gcpu_set_pending_debug_exceptions(gcpu, initial_state->msr.pending_exceptions);
+    gcpu_set_interruptibility_state(gcpu, initial_state->msr.interruptibility_state);
 
     // set cached value to the same in order not to trigger events
-    gcpu_set_activity_state( gcpu,  (IA32_VMX_VMCS_GUEST_SLEEP_STATE)initial_state->msr.activity_state );
+    gcpu_set_activity_state(gcpu,  
+            (IA32_VMX_VMCS_GUEST_SLEEP_STATE)initial_state->msr.activity_state );
+// JLM(FIX)
+#if 0
+    gcpu_set_vmenter_control(gcpu);
     // set state in vmenter control fields
-    gcpu_set_vmenter_control( gcpu );
     cache_fx_state(gcpu);
     cache_debug_registers(gcpu);
+#endif
     SET_MODE_NATIVE(gcpu);
     SET_ALL_MODIFIED(gcpu);
 }

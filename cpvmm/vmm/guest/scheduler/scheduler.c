@@ -161,7 +161,7 @@ void scheduler_register_gcpu(GUEST_CPU_HANDLE gcpu_handle, CPU_ID   host_cpu_id,
     // add to the per-host-cpu list
     add_to_per_cpu_list(vcpu_obj);
     lock_release_writelock(g_registration_lock);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("scheduler_register_gcpu done\n");
 #endif
 }

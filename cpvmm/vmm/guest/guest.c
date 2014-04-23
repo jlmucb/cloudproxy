@@ -139,7 +139,7 @@ GUEST_HANDLE guest_register( UINT32 magic_number, UINT32 physical_memory_size,
     // vmexit_guest_initialize(guest->id);
     guest->next_guest = guests;
     guests = guest;
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("returning from guest register\n");
 #endif
     return guest;
@@ -398,7 +398,7 @@ GUEST_CPU_HANDLE guest_add_cpu( GUEST_HANDLE guest )
     VIRTUAL_CPU_ID    vcpu;
     GUEST_CPU_HANDLE  gcpu;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("guest_add_cpu\n");
 #endif
     VMM_ASSERT( guest );
@@ -406,10 +406,7 @@ GUEST_CPU_HANDLE guest_add_cpu( GUEST_HANDLE guest )
     vcpu.guest_id = guest->id;
     vcpu.guest_cpu_id   = guest->cpu_count ;
     ++(guest->cpu_count);
-    gcpu = gcpu_allocate( vcpu, guest );
-#ifdef JLMDEBUG1
-    bprint("back from gcpu_allocate\n");
-#endif
+    gcpu = gcpu_allocate(vcpu, guest);
     guest->cpus_array[vcpu.guest_cpu_id] = gcpu;
     return gcpu;
 }

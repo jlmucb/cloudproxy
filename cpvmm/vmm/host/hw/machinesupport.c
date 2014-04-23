@@ -579,7 +579,7 @@ INT32 hw_interlocked_assign(INT32 volatile * target, INT32 new_value)
 // BOOLEAN hw_scan_bit_backward64( UINT32& bit_number, UINT64 bitset )
 
 
-BOOLEAN hw_scan_bit_forward( UINT32 *bit_number_ptr, UINT32 bitset )
+BOOLEAN hw_scan_bit_forward(UINT32 *bit_number_ptr, UINT32 bitset)
 {
     BOOLEAN ret = FALSE;
 #ifdef JLMDEBUG
@@ -596,9 +596,6 @@ BOOLEAN hw_scan_bit_forward( UINT32 *bit_number_ptr, UINT32 bitset )
 
 BOOLEAN hw_scan_bit_forward64( UINT32 *bit_number_ptr, UINT64 bitset )
 {
-#ifdef JLMDEBUG
-    bprint("hw_scan_bit_forward64\n");
-#endif
     asm volatile(
         "\tbsfq %[bitset], %%rax\n"
         "\tmovq %[bit_number_ptr], %%rbx\n"

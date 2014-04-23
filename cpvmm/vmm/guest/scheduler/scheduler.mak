@@ -42,8 +42,9 @@ INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
 		-I$(S)/vmm/guest -I$(S)/vmm/guest/guest_cpu \
 		-I$(S)/common/include/platform -I$(mainsrc) \
 		-I$(S)/vmm/bootstrap -I$(S)/vmm
+#FIX: got rid of -O3 in release
 DEBUG_CFLAGS:=  -Wall -Werror -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs -DJLMDEBUG -DINVMM
-RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -O3 -nostartfiles -nostdlib -nodefaultlibs -DJLMDEBUG -DINVMM
+RELEASE_CFLAGS:= -Wall -Werror -Wno-unknown-pragmas -Wno-format -nostartfiles -nostdlib -nodefaultlibs -DJLMDEBUG -DINVMM
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 

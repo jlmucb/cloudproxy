@@ -95,18 +95,18 @@ static SCHEDULER_VCPU_OBJECT* gcpu_2_vcpu_obj( GUEST_CPU_HANDLE gcpu )
 // list funcs
 void add_to_per_cpu_list(SCHEDULER_VCPU_OBJECT* vcpu_obj)
 {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("add_to_per_cpu_list, host_cpup: %p\n", vcpu_obj);
     bprint("add_to_per_cpu_list, host_cpu: %d\n", vcpu_obj->host_cpu);
 #endif
     CPU_ID host_cpu = vcpu_obj->host_cpu;
     SCHEDULER_CPU_STATE* state = &(g_scheduler_state[host_cpu]);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("add_to_per_cpu_list, state: %p\n", state);
 #endif
     vcpu_obj->next_same_host_cpu = state->vcpu_obj_list;
     state->vcpu_obj_list = vcpu_obj;
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("add_to_per_cpu_list, done\n");
 #endif
     return;

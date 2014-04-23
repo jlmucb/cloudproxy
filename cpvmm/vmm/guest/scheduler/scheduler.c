@@ -29,20 +29,17 @@
 
 
 // Guest Scheduler
-
 // Principles:
 // 1. Scheduler works independently on each host CPU
 // 2. Scheduler on different host CPUs may communicate to make common decision
 
 
-
 // scheduler vCPU object
+struct SCHEDULER_VCPU_OBJECT;
 typedef struct _SCHEDULER_VCPU_OBJECT {
     GUEST_CPU_HANDLE               gcpu;
-
     CPU_ID                         host_cpu;
     UINT16                         flags;
-
     UINT32                         reserved;
     struct _SCHEDULER_VCPU_OBJECT* next_same_host_cpu;
     struct _SCHEDULER_VCPU_OBJECT* next_all_cpus;
@@ -69,9 +66,8 @@ typedef struct _SCHEDULER_CPU_STATE {
 
 
 SCHEDULER_VCPU_OBJECT* scheduler_get_current_vcpu_for_guest( GUEST_ID guest_id );
-
-static UINT16 g_host_cpus_count         = 0;
-static UINT16 g_registered_vcpus_count  = 0;
+static UINT32 g_host_cpus_count  = 0;
+static UINT32 g_registered_vcpus_count = 0;
 
 // allocated space for internal objects
 static SCHEDULER_VCPU_OBJECT* g_registered_vcpus = NULL;
@@ -87,7 +83,8 @@ static SCHEDULER_VCPU_OBJECT* gcpu_2_vcpu_obj( GUEST_CPU_HANDLE gcpu )
 {
     SCHEDULER_VCPU_OBJECT *vcpu_obj = NULL;
 
-    for(vcpu_obj = g_registered_vcpus; vcpu_obj != NULL; vcpu_obj = vcpu_obj->next_all_cpus) {
+    for(vcpu_obj = g_registered_vcpus; vcpu_obj != NULL; 
+                    vcpu_obj = vcpu_obj->next_all_cpus) {
         if(vcpu_obj->gcpu == gcpu) {
             return vcpu_obj;
         }
@@ -96,39 +93,46 @@ static SCHEDULER_VCPU_OBJECT* gcpu_2_vcpu_obj( GUEST_CPU_HANDLE gcpu )
 }
 
 // list funcs
-void add_to_per_cpu_list( SCHEDULER_VCPU_OBJECT* vcpu_obj )
+void add_to_per_cpu_list(SCHEDULER_VCPU_OBJECT* vcpu_obj)
 {
+#ifdef JLMDEBUG
+    bprint("add_to_per_cpu_list, host_cpup: %p\n", vcpu_obj);
+    bprint("add_to_per_cpu_list, host_cpu: %d\n", vcpu_obj->host_cpu);
+    bprint("size of SCHEDULER_VCPU_OBJECT: %d\n", sizeof(SCHEDULER_VCPU_OBJECT));
+#endif
     CPU_ID host_cpu = vcpu_obj->host_cpu;
     SCHEDULER_CPU_STATE* state = &(g_scheduler_state[host_cpu]);
-
+#ifdef JLMDEBUG
+    bprint("state: 0x%016lx\n", state);
+#endif
     vcpu_obj->next_same_host_cpu = state->vcpu_obj_list;
+return;  // JLM(FIX)
     state->vcpu_obj_list = vcpu_obj;
 }
-
 
 // init
 void scheduler_init( UINT16 number_of_host_cpus )
 {
-    UINT32 memory_for_state     = 0;
+    UINT32 memory_for_state  = 0;
 
-#ifdef JLMDEBUG1
-    bprint("g_registration_lock = %p\n", g_registration_lock);
-#endif
     vmm_memset(g_registration_lock, 0, sizeof(g_registration_lock));
     g_host_cpus_count = number_of_host_cpus;
-    // BEFORE_VMLAUNCH. PARANOID check.
     VMM_ASSERT( number_of_host_cpus != 0 );
     // count needed memory amount
     memory_for_state = sizeof(SCHEDULER_CPU_STATE) * g_host_cpus_count;
 #if 0
     lock_initialize_read_write_lock(g_registration_lock);
 #endif
+#ifdef JLMDEBUG
+    bprint("g_host_cpus_count: %d, memory_for_state: %d\n", 
+           g_host_cpus_count, memory_for_state);
+#endif
     g_scheduler_state = (SCHEDULER_CPU_STATE*) vmm_malloc(memory_for_state);
+    vmm_memset((void*)g_scheduler_state, 0, sizeof(SCHEDULER_CPU_STATE));
     if(g_scheduler_state ==0) {
         bprint("Cant allocate scheduler state\n");
         LOOP_FOREVER
     }
-    // BEFORE_VMLAUNCH. MALLOC should not fail.
     VMM_ASSERT( g_scheduler_state != 0 );
 }
 
@@ -150,12 +154,12 @@ void scheduler_register_gcpu(GUEST_CPU_HANDLE gcpu_handle, CPU_ID   host_cpu_id,
     vcpu_obj->gcpu  = gcpu_handle;
     vcpu_obj->flags = 0;
     vcpu_obj->host_cpu = host_cpu_id;
-    SET_ALLOCATED_FLAG( vcpu_obj );
+    SET_ALLOCATED_FLAG(vcpu_obj);
     if (schedule_immediately) {
-        SET_READY_FLAG( vcpu_obj );
+        vcpu_obj->flags|= (UINT16)VCPU_READY_FLAG;
     }
     // add to the per-host-cpu list
-    add_to_per_cpu_list( vcpu_obj );
+    add_to_per_cpu_list(vcpu_obj);
     lock_release_writelock(g_registration_lock);
 }
 
@@ -176,10 +180,8 @@ UINT16 scheduler_get_host_cpu_id( GUEST_CPU_HANDLE gcpu )
 
     interruptible_lock_acquire_readlock(g_registration_lock);
     vcpu_obj = gcpu_2_vcpu_obj(gcpu);
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(vcpu_obj);
     lock_release_readlock(g_registration_lock);
-
     return vcpu_obj->host_cpu;
 }
 
@@ -189,10 +191,8 @@ scheduler_same_host_cpu_gcpu_next( SCHEDULER_GCPU_ITERATOR* ctx )
 {
     SCHEDULER_VCPU_OBJECT* vcpu_obj;
 
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( ctx );
     vcpu_obj = *ctx;
-
     if (vcpu_obj) {
         vcpu_obj = vcpu_obj->next_same_host_cpu;
         *ctx = vcpu_obj;
@@ -205,17 +205,13 @@ GUEST_CPU_HANDLE scheduler_same_host_cpu_gcpu_first( SCHEDULER_GCPU_ITERATOR* ct
 {
     SCHEDULER_VCPU_OBJECT* vcpu_obj;
 
-    // BEFORE_VMLAUNCH. Returning NULL instead of ASSERT.
     if(!(host_cpu_id < g_host_cpus_count))
         return NULL;
-    // BEFORE_VMLAUNCH. Returning NULL instead of ASSERT.
     if(!ctx)
         return NULL;
-
     VMM_ASSERT(g_scheduler_state);
     vcpu_obj = g_scheduler_state[ host_cpu_id ].vcpu_obj_list;
     *ctx = vcpu_obj;
-
     return (vcpu_obj ? vcpu_obj->gcpu : NULL);
 }
 
@@ -249,13 +245,11 @@ GUEST_CPU_HANDLE scheduler_select_next_gcpu( void )
     if(next_vcpu == NULL) {
         next_vcpu = state->vcpu_obj_list;
     }
-
     // very simple implementation
     // assume only one guest per host CPU
     if (! (next_vcpu && GET_READY_FLAG(next_vcpu))) {
         return NULL;
     }
-
     if (state->current_vcpu_obj != next_vcpu) {
         if (state->current_vcpu_obj != NULL) {
             gcpu_swap_out(state->current_vcpu_obj->gcpu);   // save full state of prev. guest in memory
@@ -263,7 +257,6 @@ GUEST_CPU_HANDLE scheduler_select_next_gcpu( void )
         state->current_vcpu_obj = next_vcpu;
         gcpu_swap_in(state->current_vcpu_obj->gcpu);        // load full state of new guest from memory
     }
-
     return next_vcpu->gcpu;
 }
 
@@ -277,15 +270,15 @@ GUEST_CPU_HANDLE scheduler_schedule_gcpu( GUEST_CPU_HANDLE gcpu )
     if (! (next_vcpu && GET_READY_FLAG(next_vcpu))) {
         return NULL;
     }
-
     state = &(g_scheduler_state[host_cpu]);
-
     if (state->current_vcpu_obj != next_vcpu) {
         if (state->current_vcpu_obj != NULL) {
-            gcpu_swap_out(state->current_vcpu_obj->gcpu);   // save full state of prev. guest in memory
+            // save full state of prev. guest in memory
+            gcpu_swap_out(state->current_vcpu_obj->gcpu);   
         }
         state->current_vcpu_obj = next_vcpu;
-        gcpu_swap_in(state->current_vcpu_obj->gcpu);        // load full state of new guest from memory
+        // load full state of new guest from memory
+        gcpu_swap_in(state->current_vcpu_obj->gcpu);        
     }
     return state->current_vcpu_obj->gcpu;
 }

@@ -70,9 +70,8 @@ void add_cpu_to_guest(const VMM_GUEST_STARTUP* gstartup, GUEST_HANDLE guest,
 #ifdef JLMDEBUG
     bprint("done with scheduler_register_gcpu 0x%016lx\n", vcpu);
     bprint("guest_cpu_id: %d\n", vcpu->guest_cpu_id);
+    bprint("states count: %d\n", gstartup->cpu_states_count);
     LOOP_FOREVER
-    //bprint("gstartup: %p\n", gstartup);
-    // bprint("states count: %d\n", gstartup->cpu_states_count);
 #endif
     if(vcpu->guest_cpu_id<gstartup->cpu_states_count) {
         cpus_arr = (const VMM_GUEST_CPU_STARTUP_STATE*)gstartup->cpu_states_array;

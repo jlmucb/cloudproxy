@@ -15,8 +15,7 @@
 #ifndef _VMM_OBJECTS_H_
 #define _VMM_OBJECTS_H_
 
-// Typedefs of the mostly used objects
-
+// Typedefs of the most used objects
 typedef void*                       GPM_HANDLE;
 typedef struct _GUEST_CPU *         GUEST_CPU_HANDLE;
 typedef struct _GUEST_DESCRIPTOR *  GUEST_HANDLE;

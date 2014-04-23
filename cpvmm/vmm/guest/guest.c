@@ -109,7 +109,6 @@ GUEST_HANDLE guest_register( UINT32 magic_number, UINT32 physical_memory_size,
            cpu_affinity, guests_count);
 #endif
     guest = (GUEST_DESCRIPTOR *) vmm_malloc(sizeof(GUEST_DESCRIPTOR));
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(guest);
 
     guest->id = (GUEST_ID)guests_count;
@@ -118,7 +117,6 @@ GUEST_HANDLE guest_register( UINT32 magic_number, UINT32 physical_memory_size,
         guest->magic_number = MIN_ANONYMOUS_GUEST_ID + guest->id;
     }
     else {
-        // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_ASSERT(magic_number < MIN_ANONYMOUS_GUEST_ID);
         guest->magic_number = magic_number;
     }
@@ -131,7 +129,6 @@ GUEST_HANDLE guest_register( UINT32 magic_number, UINT32 physical_memory_size,
     guest->saved_image = NULL;
     guest->saved_image_size     = 0;
     guest->startup_gpm = gpm_create_mapping();
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( guest->startup_gpm != GPM_INVALID_HANDLE );
     if (guest_policy == NULL)
         get_global_policy(&guest->guest_policy);
@@ -142,7 +139,6 @@ GUEST_HANDLE guest_register( UINT32 magic_number, UINT32 physical_memory_size,
     // vmexit_guest_initialize(guest->id);
     guest->next_guest = guests;
     guests = guest;
-
 #ifdef JLMDEBUG
     bprint("returning from guest register\n");
 #endif

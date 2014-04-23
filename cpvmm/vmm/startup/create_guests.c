@@ -46,35 +46,35 @@
 #ifdef FAST_VIEW_SWITCH
 extern void fvs_initialize(GUEST_HANDLE guest, UINT32 number_of_host_processors);
 #endif
-
 static void raise_guest_create_event(GUEST_ID guest_id);  // moved to guest.c
 
 // Add CPU to guest
-void add_cpu_to_guest( const VMM_GUEST_STARTUP* gstartup, GUEST_HANDLE guest, 
+void add_cpu_to_guest(const VMM_GUEST_STARTUP* gstartup, GUEST_HANDLE guest, 
                             CPU_ID host_cpu_to_allocate, BOOLEAN ready_to_run )
 {
     GUEST_CPU_HANDLE gcpu;
     const VIRTUAL_CPU_ID* vcpu = NULL;
     const VMM_GUEST_CPU_STARTUP_STATE* cpus_arr = NULL;
-#ifdef JLMDEBUG
-    bprint("add_cpu_to_guest\n");
-    LOOP_FOREVER
-#endif
 
+#ifdef JLMDEBUG
+    bprint("add_cpu_to_guest guest SU: %p,  guest: %d, host: %d\n",
+            gstartup, guest, host_cpu_to_allocate);
+#endif
     gcpu = guest_add_cpu(guest);
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
-    VMM_ASSERT( gcpu );
+    VMM_ASSERT(gcpu);
     // find init data
     vcpu= guest_vcpu(gcpu);
     VMM_ASSERT(vcpu);
     // register with scheduler
     scheduler_register_gcpu(gcpu, host_cpu_to_allocate, ready_to_run);
 #ifdef JLMDEBUG
-    bprint("done with scheduler_register_gcpu\n");
+    bprint("done with scheduler_register_gcpu 0x%016lx\n", vcpu);
+    bprint("guest_cpu_id: %d\n", vcpu->guest_cpu_id);
     LOOP_FOREVER
-    bprint("done with scheduler_register_gcpu 0x%016x\n", vcpu);
+    //bprint("gstartup: %p\n", gstartup);
+    // bprint("states count: %d\n", gstartup->cpu_states_count);
 #endif
-    if (vcpu->guest_cpu_id<gstartup->cpu_states_count) {
+    if(vcpu->guest_cpu_id<gstartup->cpu_states_count) {
         cpus_arr = (const VMM_GUEST_CPU_STARTUP_STATE*)gstartup->cpu_states_array;
         VMM_ASSERT(cpus_arr);
         VMM_LOG(mask_anonymous, level_trace,
@@ -86,9 +86,14 @@ void add_cpu_to_guest( const VMM_GUEST_STARTUP* gstartup, GUEST_HANDLE guest,
         gcpu_initialize(gcpu, &(cpus_arr[vcpu->guest_cpu_id]));
     }
     else {
-        VMM_LOG(mask_anonymous, level_trace,"Newly created Guest CPU was initialized with the Wait-For-SIPI state\n");
+        VMM_LOG(mask_anonymous, level_trace,
+                "Newly created Guest CPU was initialized with the Wait-For-SIPI state\n");
     }
     // host part will be initialized later
+#ifdef JLMDEBUG
+    bprint("done with add_cpu_to_guest\n");
+    LOOP_FOREVER
+#endif
 }
 
 // Init guest except for guest memory
@@ -101,7 +106,7 @@ static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
     UINT32        bit_number;
     BOOLEAN       ready_to_run = FALSE;
 
-    if ((gstartup->size_of_this_struct != sizeof( VMM_GUEST_STARTUP )) ||
+    if ((gstartup->size_of_this_struct != sizeof(VMM_GUEST_STARTUP)) ||
         (gstartup->version_of_this_struct != VMM_GUEST_STARTUP_VERSION )) {
         VMM_LOG(mask_anonymous, level_trace,"ASSERT: unknown guest struct: size: %#x version %d\n",
                 gstartup->size_of_this_struct, gstartup->version_of_this_struct );
@@ -112,27 +117,21 @@ static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
 #endif
 
     // create guest
-    guest = guest_register( gstartup->guest_magic_number, gstartup->physical_memory_size,
-                            gstartup->cpu_affinity, guest_policy );
-
-#ifdef JLMDEBUG
-    bprint("done with guest register\n");
-#endif
-
-    if (! guest) {
+    guest= guest_register(gstartup->guest_magic_number, 
+                          gstartup->physical_memory_size,
+                          gstartup->cpu_affinity, guest_policy );
+    if (!guest) {
 #ifdef JLMDEBUG
         bprint("guest register failed\n");
         LOOP_FOREVER
 #endif
         return NULL;
     }
-
 #ifdef FAST_VIEW_SWITCH
     fvs_initialize(guest, number_of_host_processors);
 #endif
-
     vmexit_guest_initialize(guest_get_id(guest));
-    if (gstartup->devices_count != 0) {
+    if (gstartup->devices_count!=0) {
 #ifdef JLMDEBUG
         bprint("vmexit_guest_initialize failed\n");
         LOOP_FOREVER
@@ -144,33 +143,32 @@ static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
             gstartup->image_size, gstartup->image_offset_in_guest_physical_memory,
             BITMAP_GET(gstartup->flags, VMM_GUEST_FLAG_IMAGE_COMPRESSED) != 0);
     }
-#ifdef JLMDEBUG
-    bprint("finished guest_set_executable_image\n");
-#endif
-
     if (BITMAP_GET(gstartup->flags, VMM_GUEST_FLAG_REAL_BIOS_ACCESS_ENABLE) != 0) {
 #ifdef JLMDEBUG
         bprint("calling guest_set_real_BIOS_access_enabled\n");
 #endif
-        guest_set_real_BIOS_access_enabled( guest );
+        guest_set_real_BIOS_access_enabled(guest);
     }
     msr_vmexit_guest_setup(guest);  // setup MSR-related control structure
 #ifdef JLMDEBUG
-    bprint("finished msr_vmexit_guest_setup\n");
+    bprint("finished msr_vmexit_guest_setup 0x%016lx\n", guest);
 #endif
 
     // init cpus.
     // first init CPUs that has initial state
     cpu_affinity = gstartup->cpu_affinity;
     if (cpu_affinity == 0) {
-        // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         return NULL;
     }
-    ready_to_run = (BITMAP_GET( gstartup->flags, VMM_GUEST_FLAG_LAUNCH_IMMEDIATELY ) != 0);
+    ready_to_run= (BITMAP_GET(gstartup->flags, VMM_GUEST_FLAG_LAUNCH_IMMEDIATELY)!=0);
     if (cpu_affinity == (UINT32)-1) {
         // special case - run on all existing CPUs
-        for(bit_number = 0; bit_number < number_of_host_processors; bit_number++) {
-            add_cpu_to_guest( gstartup, guest, (CPU_ID)bit_number, ready_to_run );
+        for(bit_number = 0; bit_number<number_of_host_processors; bit_number++) {
+#ifdef JLMDEBUG
+            bprint("bit_number: %d\n", bit_number);
+            bprint("gstartup: %p\n", gstartup);
+#endif
+            add_cpu_to_guest(gstartup, guest, (CPU_ID)bit_number, ready_to_run);
             VMM_LOG(mask_anonymous, level_trace,
                     "CPU #%d added successfully to the current guest\n", bit_number);
         }

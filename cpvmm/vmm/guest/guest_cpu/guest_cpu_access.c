@@ -30,6 +30,9 @@
 #include "host_memory_manager_api.h"
 #include "unrestricted_guest.h"
 #include "vmm_callback.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #pragma warning( push )
 #pragma warning (disable : 4100)
@@ -111,36 +114,38 @@ UINT64 gcpu_get_native_gp_reg_layered( const GUEST_CPU_HANDLE gcpu,
                                VMM_IA32_GP_REGISTERS reg, VMCS_LEVEL level )
 {
     VMM_ASSERT(reg < IA32_REG_GP_COUNT);
-
     switch (reg) {
         case IA32_REG_RSP:
-            return vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_RSP );
-
+            return vmcs_read(vmcs_hierarchy_get_vmcs(&gcpu->vmcs_hierarchy, level), 
+                              VMCS_GUEST_RSP);
         case IA32_REG_RIP:
-            return vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_RIP );
-
+            return vmcs_read(vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level), 
+                              VMCS_GUEST_RIP );
         case IA32_REG_RFLAGS:
-            return vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_RFLAGS );
-
+            return vmcs_read(vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level), 
+                              VMCS_GUEST_RFLAGS );
         default:
             return gcpu->save_area.gp.reg[reg];
     }
 }
 
-void   gcpu_set_native_gp_reg_layered( GUEST_CPU_HANDLE gcpu,
-                  VMM_IA32_GP_REGISTERS reg, UINT64  value, VMCS_LEVEL level )
+void   gcpu_set_native_gp_reg_layered(GUEST_CPU_HANDLE gcpu,
+                  VMM_IA32_GP_REGISTERS reg, UINT64  value, VMCS_LEVEL level)
 {
     VMM_ASSERT(reg < IA32_REG_GP_COUNT);
 
     switch (reg) {
         case IA32_REG_RSP:
-            vmcs_write( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_RSP, value );
+            vmcs_write( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), 
+                              VMCS_GUEST_RSP, value );
             return;
         case IA32_REG_RIP:
-            vmcs_write( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_RIP, value );
+            vmcs_write( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), 
+                              VMCS_GUEST_RIP, value );
             return;
         case IA32_REG_RFLAGS:
-            vmcs_write( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_RFLAGS, value );
+            vmcs_write( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), 
+                              VMCS_GUEST_RFLAGS, value );
             return;
         default:
             gcpu->save_area.gp.reg[reg] = value;
@@ -224,9 +229,10 @@ void   gcpu_set_xmm_reg( GUEST_CPU_HANDLE gcpu, VMM_IA32_XMM_REGISTERS reg, UINT
     gcpu->save_area.xmm.reg[reg] = value;
 }
 
-void   gcpu_get_segment_reg_layered( const GUEST_CPU_HANDLE gcpu, VMM_IA32_SEGMENT_REGISTERS reg,
-                              UINT16* selector, UINT64* base, UINT32* limit,
-                              UINT32* attributes, VMCS_LEVEL level )
+void gcpu_get_segment_reg_layered(const GUEST_CPU_HANDLE gcpu, 
+                VMM_IA32_SEGMENT_REGISTERS reg, UINT16* selector, 
+                UINT64* base, UINT32* limit, UINT32* attributes, 
+                VMCS_LEVEL level )
 {
     const SEGMENT_2_VMCS* seg2vmcs;
     VMCS_OBJECT *vmcs;
@@ -259,13 +265,9 @@ void   gcpu_set_segment_reg_layered( GUEST_CPU_HANDLE gcpu, VMM_IA32_SEGMENT_REG
     const SEGMENT_2_VMCS* seg2vmcs;
     VMCS_OBJECT *vmcs;
 
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( reg < IA32_SEG_COUNT );
-
     vmcs = vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level );
-
     seg2vmcs = &g_segment_2_vmcs[reg];
     vmcs_write( vmcs, seg2vmcs->sel, selector );
     vmcs_write( vmcs, seg2vmcs->base, base );
@@ -276,37 +278,25 @@ void   gcpu_set_segment_reg_layered( GUEST_CPU_HANDLE gcpu, VMM_IA32_SEGMENT_REG
 UINT64 gcpu_get_control_reg_layered(const GUEST_CPU_HANDLE gcpu,
                               VMM_IA32_CONTROL_REGISTERS reg, VMCS_LEVEL level )
 {
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(gcpu);
-
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( reg < IA32_CTRL_COUNT );
 
     switch (reg) {
         case IA32_CTRL_CR0:
             return vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_CR0 );
-
         case IA32_CTRL_CR2:
-//            VMM_ASSERT(level == VMCS_MERGED);
             return gcpu->save_area.gp.reg[ CR2_SAVE_AREA ];
-
         case IA32_CTRL_CR3:
             return vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_CR3 );
-
         case IA32_CTRL_CR4:
             return vmcs_read( vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ), VMCS_GUEST_CR4 );
-
         case IA32_CTRL_CR8:
-//            VMM_ASSERT(level == VMCS_MERGED);
             return gcpu->save_area.gp.reg[CR8_SAVE_AREA];
-
         default:
             VMM_LOG(mask_anonymous, level_trace,"unknown control register\n");
-            // BEFORE_VMLAUNCH. This case should not happen.
             VMM_DEADLOOP();
     }
-
-    // if we here - something is wrong
+    // if we get here - something is wrong
     return 0;
 }
 
@@ -608,17 +598,20 @@ void gcpu_set_vmenter_control_layered(const GUEST_CPU_HANDLE gcpu, VMCS_LEVEL le
 {
     VM_ENTRY_CONTROLS  entry_ctrl_mask;
     UINT64 value;
+#ifdef JLMDEBUG
+    bprint("gcpu_set_vmenter_control_layered returning early (FIX)0x%016lx %d\n", 
+           gcpu, level);
+    return;
+#endif
 
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
-
-    /*IA Manual 3B Appendix G.6 - On processors that support UG
-      VM exits store the value of IA32_EFER.LMA into the “IA-32e
-      mode guest” VM-entry control  
-    */
-    value = gcpu_get_msr_reg( gcpu, IA32_VMM_MSR_EFER);
+    //IA Manual 3B Appendix G.6 - On processors that support UG
+    //VM exits store the value of IA32_EFER.LMA into the “IA-32e
+    //mode guest” VM-entry control  
+    value = gcpu_get_msr_reg(gcpu, IA32_VMM_MSR_EFER);
     entry_ctrl_mask.Uint32 = 0;
     entry_ctrl_mask.Bits.Ia32eModeGuest = 1;
-    vmcs_update(vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level ),
+    vmcs_update(vmcs_hierarchy_get_vmcs(&gcpu->vmcs_hierarchy, level),
                        VMCS_ENTER_CONTROL_VECTOR,
                        (value & EFER_LMA) ? UINT64_ALL_ONES : 0,
                        (UINT64) entry_ctrl_mask.Uint32);

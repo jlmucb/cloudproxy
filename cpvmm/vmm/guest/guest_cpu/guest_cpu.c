@@ -74,6 +74,10 @@ INLINE GUEST_CPU_HANDLE global_gcpu_next( GLOBAL_GUEST_CPU_ITERATOR* ctx )
 // only dr0-dr6 should be cached here, dr7 is in VMCS
 void cache_debug_registers( const GUEST_CPU* gcpu )
 {
+#ifdef JLMDEBUG
+    bprint("cache_debug_registers returning early (FIX)\n");
+    return;
+#endif
     // make volatile
     GUEST_CPU* vgcpu = (GUEST_CPU*)gcpu;
 
@@ -111,6 +115,10 @@ void restore_hw_debug_registers( GUEST_CPU* gcpu )
 // because contain VMM and not guest values
 void cache_fx_state( const GUEST_CPU* gcpu )
 {
+#ifdef JLMDEBUG
+    bprint("cache_fx_state returning early (FIX)\n");
+    return;
+#endif
     // make volatile
     GUEST_CPU* vgcpu = (GUEST_CPU*)gcpu;
 
@@ -168,34 +176,16 @@ static void setup_default_state( GUEST_CPU_HANDLE gcpu )
     // TR: 32bit busy TSS System Present bit-granularity
     gcpu_set_segment_reg(gcpu, IA32_SEG_TR,   0, 0, 0, 0x8B);
     // FLAGS: reserved bit 1 must be 1, all other - 0
-#ifdef JLMDEBUG
-    bprint("about to call gcpu_set_gp_reg\n");
-#endif
     gcpu_set_gp_reg( gcpu, IA32_REG_RFLAGS, 0x2);
-#ifdef JLMDEBUG
-    bprint("about to call vmcs_init_all_msr_lists\n");
-#endif
     vmcs_init_all_msr_lists(vmcs);
-#ifdef JLMDEBUG
-    bprint("about to call  host_cpu_init_vmexit_store_and_vmenter_load_msr_lists_according_to_vmexit_load_list\n");
-#endif
     host_cpu_init_vmexit_store_and_vmenter_load_msr_lists_according_to_vmexit_load_list(gcpu);
-#ifdef JLMDEBUG
-    bprint("about to call gcpu_set_msr_reg\n");
-#endif
     gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_EFER, 0);
     gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_PAT, hw_read_msr(IA32_MSR_PAT));
     VMM_ASSERT(vmcs_read(vmcs, VMCS_EXIT_MSR_STORE_ADDRESS) == vmcs_read(vmcs, VMCS_ENTER_MSR_LOAD_ADDRESS));
 
     // by default put guest CPU into the Wait-for-SIPI state
     VMM_ASSERT( vmcs_hw_get_vmx_constraints()->vm_entry_in_wait_for_sipi_state_supported );
-#ifdef JLMDEBUG
-    bprint("about to call gcpu_set_activity_state\n");
-#endif
     gcpu_set_activity_state( gcpu, Ia32VmxVmcsGuestSleepStateWaitForSipi );
-#ifdef JLMDEBUG
-    bprint("about to call vmcs_write\n");
-#endif
     vmcs_write( vmcs, VMCS_ENTER_INTERRUPT_INFO, 0 );
     vmcs_write( vmcs, VMCS_ENTER_EXCEPTION_ERROR_CODE, 0 );
 #ifdef ENABLE_PREEMPTION_TIMER
@@ -416,7 +406,7 @@ void gcpu_initialize(GUEST_CPU_HANDLE gcpu,
     bprint("gcpu_initialize\n");
 #endif
     VMM_ASSERT( gcpu );
-    if (! initial_state) {
+    if (!initial_state) {
         return;
     }
     if(initial_state->size_of_this_struct!=sizeof(VMM_GUEST_CPU_STARTUP_STATE)) {
@@ -435,7 +425,7 @@ void gcpu_initialize(GUEST_CPU_HANDLE gcpu,
         return;
     }
     //    vmcs_set_launch_required( gcpu->vmcs );
-    vmcs_set_launch_required( gcpu_get_vmcs(gcpu) );
+    vmcs_set_launch_required(gcpu_get_vmcs(gcpu));
     // init gp registers
     for (idx = IA32_REG_RAX; idx < IA32_REG_GP_COUNT; ++idx) {
         gcpu_set_gp_reg(gcpu, (VMM_IA32_GP_REGISTERS)idx, 
@@ -481,15 +471,18 @@ void gcpu_initialize(GUEST_CPU_HANDLE gcpu,
     // set cached value to the same in order not to trigger events
     gcpu_set_activity_state(gcpu,  
             (IA32_VMX_VMCS_GUEST_SLEEP_STATE)initial_state->msr.activity_state );
-// JLM(FIX)
-#if 0
     gcpu_set_vmenter_control(gcpu);
+#ifdef JLMDEBUG
+    bprint("back at gcpu_initialize\n");
+#endif
     // set state in vmenter control fields
     cache_fx_state(gcpu);
     cache_debug_registers(gcpu);
-#endif
     SET_MODE_NATIVE(gcpu);
     SET_ALL_MODIFIED(gcpu);
+#ifdef JLMDEBUG
+    bprint("done with gcpu_initialize\n");
+#endif
 }
 
 

@@ -98,15 +98,17 @@ void add_to_per_cpu_list(SCHEDULER_VCPU_OBJECT* vcpu_obj)
 #ifdef JLMDEBUG
     bprint("add_to_per_cpu_list, host_cpup: %p\n", vcpu_obj);
     bprint("add_to_per_cpu_list, host_cpu: %d\n", vcpu_obj->host_cpu);
-    bprint("size of SCHEDULER_VCPU_OBJECT: %d\n", sizeof(SCHEDULER_VCPU_OBJECT));
 #endif
     CPU_ID host_cpu = vcpu_obj->host_cpu;
     SCHEDULER_CPU_STATE* state = &(g_scheduler_state[host_cpu]);
 #ifdef JLMDEBUG
-    bprint("state: 0x%016lx\n", state);
+    bprint("add_to_per_cpu_list, state: %p\n", state);
 #endif
     vcpu_obj->next_same_host_cpu = state->vcpu_obj_list;
     state->vcpu_obj_list = vcpu_obj;
+#ifdef JLMDEBUG
+    bprint("add_to_per_cpu_list, done\n");
+#endif
     return;
 }
 
@@ -159,6 +161,9 @@ void scheduler_register_gcpu(GUEST_CPU_HANDLE gcpu_handle, CPU_ID   host_cpu_id,
     // add to the per-host-cpu list
     add_to_per_cpu_list(vcpu_obj);
     lock_release_writelock(g_registration_lock);
+#ifdef JLMDEBUG
+    bprint("scheduler_register_gcpu done\n");
+#endif
 }
 
 // Get current GUEST_CPU_HANDLE

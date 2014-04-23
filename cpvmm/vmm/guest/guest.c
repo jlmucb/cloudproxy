@@ -427,7 +427,6 @@ GUEST_CPU_HANDLE guest_gcpu_first( const GUEST_HANDLE guest, GUEST_GCPU_ECONTEXT
 {
     const GUEST_CPU_HANDLE* p_gcpu;
 
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( guest );
     p_gcpu = ARRAY_ITERATOR_FIRST( GUEST_CPU_HANDLE, guest->cpus_array,
                                    guest->cpu_count, context );

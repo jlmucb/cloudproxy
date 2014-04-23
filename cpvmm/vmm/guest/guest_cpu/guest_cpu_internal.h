@@ -29,13 +29,11 @@
 // Guest CPU may be in 2 different modes:
 //    16 mode - run under emulator
 //    any other mode - run native
-
 // Defines save area for guest registers, not saved in VMCS
-//
-// Data structure to access IA-32 General Purpose Registers referenced by VM Exit Handlers
-// This is also the structure used to save/restore general purpose registers in assembly code
-// for the VMEXIT and VMENTER handlers
-//
+// Data structure to access IA-32 General Purpose Registers referenced by 
+// VM Exit Handlers.  This is also the structure used to save/restore general 
+// purpose registers in assembly code for the VMEXIT and VMENTER handlers
+
 #pragma PACK_ON
 
 // Do not show to the guest the real values of the following bits +

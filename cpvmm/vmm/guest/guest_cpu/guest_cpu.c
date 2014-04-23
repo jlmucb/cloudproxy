@@ -76,7 +76,6 @@ void cache_debug_registers( const GUEST_CPU* gcpu )
 {
 #ifdef JLMDEBUG
     bprint("cache_debug_registers returning early (FIX)\n");
-    return;
 #endif
     // make volatile
     GUEST_CPU* vgcpu = (GUEST_CPU*)gcpu;
@@ -156,7 +155,7 @@ static void setup_default_state( GUEST_CPU_HANDLE gcpu )
     VMM_ASSERT(vmcs);
     // init control fields
     guest_cpu_control_setup( gcpu );
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("guest_cpu_control_setup done\n");
 #endif
     // set control registers to any supported value
@@ -215,7 +214,7 @@ GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
     GLOBAL_GUEST_CPU_ITERATOR ctx;
     VMM_STATUS  status;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("gcpu_allocate, g_cpu: 0x%016x\n", g_gcpus);
 #endif
     // ensure that this vcpu yet not allocated
@@ -235,7 +234,7 @@ GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
     vmm_zeromem(gcpu, sizeof(GUEST_CPU));
     gcpu->next_gcpu = g_gcpus;
     g_gcpus = gcpu;
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("gcpu_allocate, got memory\n");
 #endif
     gcpu->vcpu = vcpu;
@@ -246,7 +245,7 @@ GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
     // gcpu->vmcs  = vmcs_allocate();
     status = vmcs_hierarchy_create(&gcpu->vmcs_hierarchy, gcpu);
     VMM_ASSERT(VMM_OK == status);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("gcpu_allocate, created hierarchy\n");
 #endif
     gcpu->emulator_handle = 0;
@@ -255,7 +254,7 @@ GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
     SET_MODE_NATIVE(gcpu);
     SET_IMPORTANT_EVENT_OCCURED_FLAG(gcpu);
     SET_CACHED_ACTIVITY_STATE(gcpu, Ia32VmxVmcsGuestSleepStateActive);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("about to call setup_default_state\n");
 #endif
     setup_default_state( gcpu );
@@ -402,7 +401,7 @@ void gcpu_initialize(GUEST_CPU_HANDLE gcpu,
 {
     UINT32 idx;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("gcpu_initialize\n");
 #endif
     VMM_ASSERT( gcpu );
@@ -472,7 +471,7 @@ void gcpu_initialize(GUEST_CPU_HANDLE gcpu,
     gcpu_set_activity_state(gcpu,  
             (IA32_VMX_VMCS_GUEST_SLEEP_STATE)initial_state->msr.activity_state );
     gcpu_set_vmenter_control(gcpu);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("back at gcpu_initialize\n");
 #endif
     // set state in vmenter control fields

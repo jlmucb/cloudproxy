@@ -67,7 +67,7 @@ void add_cpu_to_guest(const VMM_GUEST_STARTUP* gstartup, GUEST_HANDLE guest,
     VMM_ASSERT(vcpu);
     // register with scheduler
     scheduler_register_gcpu(gcpu, host_cpu_to_allocate, ready_to_run);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("done with scheduler_register_gcpu 0x%016lx\n", vcpu);
     bprint("guest_cpu_id: %d\n", vcpu->guest_cpu_id);
     bprint("states count: %d\n", gstartup->cpu_states_count);
@@ -83,7 +83,7 @@ void add_cpu_to_guest(const VMM_GUEST_STARTUP* gstartup, GUEST_HANDLE guest,
         VMM_ASSERT(cpus_arr);
         VMM_LOG(mask_anonymous, level_trace,
                 "Setting up initial state for the newly created Guest CPU\n");
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
         bprint("about to call gcpu_initialize(0x%016lx, 0x%016lx)\n", vcpu, gcpu);
 #endif
         gcpu_initialize(gcpu, &(cpus_arr[vcpu->guest_cpu_id]));
@@ -93,7 +93,7 @@ void add_cpu_to_guest(const VMM_GUEST_STARTUP* gstartup, GUEST_HANDLE guest,
                 "Newly created Guest CPU was initialized with the Wait-For-SIPI state\n");
     }
     // host part will be initialized later
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("done with add_cpu_to_guest\n");
 #endif
 }
@@ -152,7 +152,7 @@ static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
         guest_set_real_BIOS_access_enabled(guest);
     }
     msr_vmexit_guest_setup(guest);  // setup MSR-related control structure
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("finished msr_vmexit_guest_setup 0x%016lx\n", guest);
 #endif
 
@@ -166,7 +166,7 @@ static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
     if (cpu_affinity == (UINT32)-1) {
         // special case - run on all existing CPUs
         for(bit_number = 0; bit_number<number_of_host_processors; bit_number++) {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
             bprint("bit_number: %d\n", bit_number);
             bprint("gstartup: %p\n", gstartup);
 #endif

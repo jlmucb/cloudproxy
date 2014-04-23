@@ -74,9 +74,6 @@ INLINE GUEST_CPU_HANDLE global_gcpu_next( GLOBAL_GUEST_CPU_ITERATOR* ctx )
 // only dr0-dr6 should be cached here, dr7 is in VMCS
 void cache_debug_registers( const GUEST_CPU* gcpu )
 {
-#ifdef JLMDEBUG
-    bprint("cache_debug_registers returning early (FIX)\n");
-#endif
     // make volatile
     GUEST_CPU* vgcpu = (GUEST_CPU*)gcpu;
 
@@ -114,10 +111,6 @@ void restore_hw_debug_registers( GUEST_CPU* gcpu )
 // because contain VMM and not guest values
 void cache_fx_state( const GUEST_CPU* gcpu )
 {
-#ifdef JLMDEBUG
-    bprint("cache_fx_state returning early (FIX)\n");
-    return;
-#endif
     // make volatile
     GUEST_CPU* vgcpu = (GUEST_CPU*)gcpu;
 
@@ -125,7 +118,11 @@ void cache_fx_state( const GUEST_CPU* gcpu )
         return;
     }
     SET_FX_STATE_CACHED_FLAG(vgcpu);
-    hw_fxsave( vgcpu->save_area.fxsave_area );
+#ifdef JLMDEBUG
+    bprint("cache_fx_state returning early (FIX)\n");
+    return;
+#endif
+    hw_fxsave(vgcpu->save_area.fxsave_area);
 }
 
 #ifdef INCLUDE_UNUSED_CODE

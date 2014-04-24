@@ -772,7 +772,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
             guest_magic_number(device_default_owner_guest));
 #ifdef JLMDEBUG
     bprint("evmm: about to initialize guest manager\n");
-    LOOP_FOREVER
 #endif
     // Initialize Event Manager
     // must be called after heap and CLI initialization

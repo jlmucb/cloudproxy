@@ -75,7 +75,7 @@ GUEST_HANDLE guest_handle(GUEST_ID guest_id)
 {
     GUEST_DESCRIPTOR  *guest;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("guest_handle(%d).  guests: 0x%016lx\n", guest_id, guests);
 #endif
     if(guest_id >= guests_count) {
@@ -83,7 +83,7 @@ GUEST_HANDLE guest_handle(GUEST_ID guest_id)
     }
     for(guest = guests; guest != NULL; guest= guest->next_guest) {
         if(guest->id == guest_id) {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
             bprint("guest_id: %d\n", guest->id);
 #endif
             return guest;
@@ -111,7 +111,7 @@ GUEST_HANDLE guest_register(UINT32 magic_number, UINT32 physical_memory_size,
 {
     GUEST_DESCRIPTOR* guest;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("guest_register: magic_number %u, \n", magic_number);
 #endif
     guest = (GUEST_DESCRIPTOR *) vmm_malloc(sizeof(GUEST_DESCRIPTOR));
@@ -176,17 +176,17 @@ GUEST_HANDLE guest_handle_by_magic_number(UINT32 magic_number)
            magic_number, guests);
 #endif
     for(guest = guests; guest != NULL; guest = guest->next_guest) {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
             bprint("list gets magic %d\n", guest->magic_number);
 #endif
         if(guest->magic_number == magic_number) {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
             bprint("got guest by magic %d\n", guest->magic_number);
 #endif
             return guest;
         }
     }
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("couldn't find guest_by_magic_number\n");
 #endif
     return NULL;

@@ -48,6 +48,9 @@ extern void fvs_initialize(GUEST_HANDLE guest, UINT32 number_of_host_processors)
 #endif
 static void raise_guest_create_event(GUEST_ID guest_id);  // moved to guest.c
 
+#define PRIMARY_MAGIC 0
+
+
 // Add CPU to guest
 void add_cpu_to_guest(const VMM_GUEST_STARTUP* gstartup, GUEST_HANDLE guest, 
                             CPU_ID host_cpu_to_allocate, BOOLEAN ready_to_run )
@@ -115,7 +118,8 @@ static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
         return NULL;
     }
 #ifdef JLMDEBUG
-    bprint("about to init_single_guest\n");
+    bprint("about to init_single_guest, guest magic: %d\n", 
+           gstartup->guest_magic_number);
 #endif
 
     // create guest
@@ -229,7 +233,8 @@ BOOLEAN initialize_all_guests( UINT32 number_of_host_processors,
 #ifdef JLMDEBUG
     bprint("initialize_all_guests, %d CPUs\n", number_of_host_processors);
 #endif
-    // TODO: Uses global policym but should be part of VMM_GUEST_STARTUP structure.
+    // TODO: Uses global policy but should be part of VMM_GUEST_STARTUP structure.
+    ((VMM_GUEST_STARTUP*)primary_guest_startup_state)->guest_magic_number= PRIMARY_MAGIC;
     primary_guest = init_single_guest(number_of_host_processors, 
                                       primary_guest_startup_state, NULL);  
     if (!primary_guest) {

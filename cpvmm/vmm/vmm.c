@@ -748,10 +748,13 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
     // get important guest ids
     nmi_owner_guest = guest_handle_by_magic_number(startup_struct->nmi_owner);
-LOOP_FOREVER
     acpi_owner_guest = guest_handle_by_magic_number(startup_struct->acpi_owner);
     device_default_owner_guest = guest_handle_by_magic_number(
                                     startup_struct->default_device_owner);
+#ifdef JLMDEBUG
+    bprint("evmm: nmi_owner, acpi owner, defaut device owner: 0x%016lx 0x%0lx 0x%0lx\n", nmi_owner_guest, acpi_owner_guest, device_default_owner_guest);
+    LOOP_FOREVER
+#endif
     VMM_ASSERT(nmi_owner_guest);
     VMM_ASSERT(acpi_owner_guest);
     VMM_ASSERT(device_default_owner_guest);

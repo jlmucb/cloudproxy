@@ -148,9 +148,6 @@ static void setup_default_state( GUEST_CPU_HANDLE gcpu )
     VMM_ASSERT(vmcs);
     // init control fields
     guest_cpu_control_setup( gcpu );
-#ifdef JLMDEBUG1
-    bprint("guest_cpu_control_setup done\n");
-#endif
     // set control registers to any supported value
     gcpu_set_control_reg( gcpu, IA32_CTRL_CR0, 0);
     gcpu_set_control_reg( gcpu, IA32_CTRL_CR4, 0);

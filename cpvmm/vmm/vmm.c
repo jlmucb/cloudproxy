@@ -202,6 +202,10 @@ INLINE void enable_ept_during_launch(GUEST_CPU_HANDLE initial_gcpu)
 {
     UINT64 guest_cr4;
   
+#ifdef JLMDEBUG
+    bprint("enable_ept_during_launch\n");
+    LOOP_FOREVER
+#endif
     ept_acquire_lock();
     // Enable EPT, if it is currently not enabled
     if( !ept_is_ept_enabled(initial_gcpu) ) {
@@ -941,22 +945,24 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         guest_cr0.Uint64 = gcpu_get_guest_visible_control_reg(initial_gcpu,IA32_CTRL_CR0);
         if (guest_cr0.Bits.PG) {
 #ifdef JLMDEBUG
-            bprint("evmm: abouit to call enable_ept_during_launch\n");
-            LOOP_FOREVER
+            bprint("evmm: about to call enable_ept_during_launch\n");
 #endif
             enable_ept_during_launch(initial_gcpu);
         }
 #ifdef JLMDEBUG
         bprint("evmm: enable_ept_during_launch not called\n");
-        LOOP_FOREVER
 #endif
     }
 #ifdef FAST_VIEW_SWITCH
     if(fvs_is_eptp_switching_supported()) {
+#ifdef JLMDEBUG
+        bprint("evmm: about to call fvs_guest_vmfunc_enable\n");
+        LOOP_FOREVER
+#endif
         fvs_guest_vmfunc_enable(initial_gcpu);
         fvs_vmfunc_vmcs_init(initial_gcpu);     
     }
-#endif
+#endif  // FAST_VIEW_SWITCH
 
 #ifdef JLMDEBUG
     bprint("evmm: about to call vmcs_store_initial\n");

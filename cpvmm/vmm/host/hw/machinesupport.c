@@ -595,7 +595,7 @@ BOOLEAN hw_scan_bit_forward(UINT32 *bit_number_ptr, UINT32 bitset)
     return bitset ? TRUE : FALSE;
 }
 
-BOOLEAN hw_scan_bit_forward64( UINT32 *bit_number_ptr, UINT64 bitset )
+BOOLEAN hw_scan_bit_forward64(UINT32 *bit_number_ptr, UINT64 bitset)
 {
     asm volatile(
         "\tbsfq %[bitset], %%rax\n"
@@ -607,7 +607,7 @@ BOOLEAN hw_scan_bit_forward64( UINT32 *bit_number_ptr, UINT64 bitset )
     return bitset ? TRUE : FALSE;
 }
 
-BOOLEAN hw_scan_bit_backward( UINT32 *bit_number_ptr, UINT32 bitset )
+BOOLEAN hw_scan_bit_backward(UINT32 *bit_number_ptr, UINT32 bitset)
 {
     asm volatile(
         "\tbsrl %[bitset], %%eax\n"
@@ -622,9 +622,6 @@ BOOLEAN hw_scan_bit_backward( UINT32 *bit_number_ptr, UINT32 bitset )
 
 BOOLEAN hw_scan_bit_backward64(UINT32 *bit_number_ptr, UINT64 bitset)
 {
-#ifdef JLMDEBUG
-    bprint("hw_scan_bit_backward64\n");
-#endif
     asm volatile(
         "\tbsrq %[bitset], %%rax\n"
         "\tmovq %[bit_number_ptr], %%rbx\n"

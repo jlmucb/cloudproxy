@@ -171,24 +171,15 @@ GUEST_HANDLE guest_handle_by_magic_number(UINT32 magic_number)
 {
     GUEST_DESCRIPTOR *guest;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("guest_handle_by_magic_number(%d).  guests: 0x%016lx\n", 
            magic_number, guests);
 #endif
     for(guest = guests; guest != NULL; guest = guest->next_guest) {
-#ifdef JLMDEBUG1
-            bprint("list gets magic %d\n", guest->magic_number);
-#endif
         if(guest->magic_number == magic_number) {
-#ifdef JLMDEBUG1
-            bprint("got guest by magic %d\n", guest->magic_number);
-#endif
             return guest;
         }
     }
-#ifdef JLMDEBUG1
-    bprint("couldn't find guest_by_magic_number\n");
-#endif
     return NULL;
 }
 

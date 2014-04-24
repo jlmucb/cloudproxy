@@ -822,7 +822,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     start_addons(num_of_cpus, startup_struct_heap, application_params_heap);
 #ifdef JLMDEBUG
     bprint("evmm: done with add-ons\n");
-    LOOP_FOREVER
 #endif
 
     // Destroy startup structures, which reside in heap
@@ -837,7 +836,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     vmcs_hw_allocate_vmxon_regions(num_of_cpus);
 #ifdef JLMDEBUG
     bprint("evmm: vmx allocate on\n");
-    LOOP_FOREVER
+    // LOOP_FOREVER
 #endif
 
     // Initialize guest data
@@ -859,6 +858,9 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
             }
         }
     }
+#ifdef JLMDEBUG
+    bprint("evmm: initialized guest data\n");
+#endif
     if (!report_uvmm_event(UVMM_EVENT_INITIALIZATION_BEFORE_APS_STARTED, NULL, NULL, 
                             (void *)&initialization_data)) {
         VMM_LOG(mask_uvmm, level_trace, "report_initialization failed before the APs have started\n");
@@ -867,7 +869,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm: about to set state\n");
-    LOOP_FOREVER
 #endif
     vmm_set_state(VMM_STATE_WAIT_FOR_APs);
     LAUNCH_APPLICATION_PROCS();

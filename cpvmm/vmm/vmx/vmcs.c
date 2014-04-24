@@ -28,6 +28,9 @@
 #include "isr.h"
 #include "memory_dump.h"
 #include "file_codes.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMCS_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMCS_C, __condition)
@@ -445,21 +448,28 @@ void vmcs_write(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id, UINT64 value)
 UINT64 vmcs_read(const struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id)
 {
     UINT64 value;
+#ifdef JLMDEBUG1
+    bprint("vmcs_read entry\n");
+#endif
 
     VMM_ASSERT(vmcs);
-    VMM_ASSERT(field_id < VMCS_FIELD_COUNT);
+    VMM_ASSERT(field_id<VMCS_FIELD_COUNT);
     VMM_ASSERT(FIELD_IS_READABLE(field_id));
-    if (field_id < VMCS_FIELD_COUNT && (vmcs->skip_access_checking || FIELD_IS_READABLE(field_id))) {
+    if (field_id<VMCS_FIELD_COUNT && (vmcs->skip_access_checking || FIELD_IS_READABLE(field_id))) {
         value = vmcs->vmcs_read(vmcs, field_id);
     }
     else {
         value = UINT64_ALL_ONES;
     }
+#ifdef JLMDEBUG1
+    bprint("vmcs_read returning 0x%016lx\n", value);
+#endif
     return value;
 }
 
 
-void vmcs_update(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id, UINT64 value, UINT64 bits_to_update)
+void vmcs_update(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id, 
+                 UINT64 value, UINT64 bits_to_update)
 {
     UINT64 result_value;
 
@@ -468,7 +478,7 @@ void vmcs_update(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id, UINT64 value, U
 
     result_value = vmcs_read(vmcs, field_id);
 
-    value        &= bits_to_update;     // clear all bits except bits_to_update
+    value &= bits_to_update;     // clear all bits except bits_to_update
     result_value &= ~bits_to_update;    // clear bits_to_update
     result_value |= value;
     vmcs_write(vmcs, field_id, result_value);

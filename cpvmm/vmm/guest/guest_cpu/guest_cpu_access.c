@@ -279,14 +279,20 @@ UINT64 gcpu_get_control_reg_layered(const GUEST_CPU_HANDLE gcpu,
                               VMM_IA32_CONTROL_REGISTERS reg, VMCS_LEVEL level )
 {
 #ifdef JLMDEBUG
-    bprint("gcpu_get_control_reg_layered\n");
-    LOOP_FOREVER
+    bprint("gcpu_get_control_reg_layered 0x%016lx %d 0x%016lx\n",
+          gcpu, reg, level);
 #endif
     VMM_ASSERT(gcpu);
     VMM_ASSERT( reg < IA32_CTRL_COUNT );
 
     switch (reg) {
         case IA32_CTRL_CR0:
+#ifdef JLMDEBUG
+            bprint("gcpu_get_control_reg_layered CR0 case %p\n", &gcpu->vmcs_hierarchy);
+            VMCS_OBJECT *vmcs= vmcs_hierarchy_get_vmcs(&gcpu->vmcs_hierarchy, level);
+            bprint("got vmcs vmcs_hierarchy_get_vmcs obj\n");
+            LOOP_FOREVER
+#endif
             return vmcs_read(vmcs_hierarchy_get_vmcs(&gcpu->vmcs_hierarchy, level), 
                              VMCS_GUEST_CR0);
         case IA32_CTRL_CR2:
@@ -353,7 +359,7 @@ void  gcpu_set_control_reg_layered(GUEST_CPU_HANDLE gcpu,
 // VMM, so that guest will see not real values
 // all other registers return the same value as gcpu_get_control_reg()
 // Valid for CR0, CR3, CR4
-UINT64 gcpu_get_guest_visible_control_reg_layered( const GUEST_CPU_HANDLE gcpu,
+UINT64 gcpu_get_guest_visible_control_reg_layered(const GUEST_CPU_HANDLE gcpu,
                     VMM_IA32_CONTROL_REGISTERS reg, VMCS_LEVEL level)
 {
 #ifdef JLMDEBUG

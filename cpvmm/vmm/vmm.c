@@ -938,7 +938,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     } else {
 #ifdef JLMDEBUG
         bprint("evmm: unrestricted guest NOT supported\n");
-        LOOP_FOREVER  // got here
 #endif
         // For non-UG systems enable EPT, if guest is in paging mode
         EM64T_CR0 guest_cr0;
@@ -946,11 +945,13 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         if (guest_cr0.Bits.PG) {
 #ifdef JLMDEBUG
             bprint("evmm: about to call enable_ept_during_launch\n");
+            LOOP_FOREVER
 #endif
             enable_ept_during_launch(initial_gcpu);
         }
 #ifdef JLMDEBUG
         bprint("evmm: enable_ept_during_launch not called\n");
+        LOOP_FOREVER
 #endif
     }
 #ifdef FAST_VIEW_SWITCH

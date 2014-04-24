@@ -65,14 +65,12 @@ VMM_STATUS vmcs_hierarchy_add_vmcs( VMCS_HIERARCHY * obj, GUEST_CPU_HANDLE gcpu,
 
     VMM_ASSERT(obj);
     VMM_ASSERT(obj->vmcs[VMCS_MERGED]);
-
     do { 
         desc = vmm_malloc(sizeof(*desc));
         if (NULL == desc) {
             VMM_LOG(mask_anonymous, level_trace,"Failed to create VMCS-1\n");
             break;
         }
-
         desc->vmcs = vmcs_1_create(gcpu, gpa);
         if (NULL == desc->vmcs) {
             VMM_LOG(mask_anonymous, level_trace,"Failed to create VMCS-1\n");
@@ -90,25 +88,19 @@ VMM_STATUS vmcs_hierarchy_add_vmcs( VMCS_HIERARCHY * obj, GUEST_CPU_HANDLE gcpu,
                 break;
             }
         }
-
         // here all objects were successfully created
         // we can add new VMCS-1 to the list
         list_add(obj->vmcs_1_list, desc->list);
-
         // newly created VMCS-1 becomes the current
         obj->vmcs[VMCS_LEVEL_1] = desc->vmcs;
-
         status = VMM_OK;
-
     } while (0);
-
     return status;
 }
 
 VMM_STATUS vmcs_hierarchy_remove_vmcs(VMCS_HIERARCHY *obj, VMCS_OBJECT *vmcs_1)
 {
     VMM_STATUS status = VMM_ERROR;
-
     VMM_ASSERT(obj);
 
     do {
@@ -119,15 +111,11 @@ VMM_STATUS vmcs_hierarchy_remove_vmcs(VMCS_HIERARCHY *obj, VMCS_OBJECT *vmcs_1)
             VMM_LOG(mask_anonymous, level_trace,"Cannot remove VMCS-1 %P. Not found\n");
             break;
         }
-
         // we found proper VMCS-1. Remove it.
-
         status = VMM_OK;
-
         list_remove(desc->list);
         vmcs_destroy(desc->vmcs);
         vmm_mfree(desc);
-
         // if there is no level-1 vmcs, then remove vmcs-0 also
         if (list_is_empty(obj->vmcs_1_list)) {
             vmcs_destroy(obj->vmcs[VMCS_LEVEL_0]);
@@ -138,9 +126,7 @@ VMM_STATUS vmcs_hierarchy_remove_vmcs(VMCS_HIERARCHY *obj, VMCS_OBJECT *vmcs_1)
             desc = LIST_NEXT(obj->vmcs_1_list,VMCS_1_DESCRIPTOR, list);
             obj->vmcs[VMCS_LEVEL_1] = desc->vmcs;
         }
-
     } while (0);
-
     return status;
 }
 #endif
@@ -150,15 +136,15 @@ VMCS_OBJECT * vmcs_hierarchy_get_vmcs(VMCS_HIERARCHY *obj, VMCS_LEVEL level)
 {
     VMCS_OBJECT *vmcs;
 
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
+#ifdef JLMDEBUG
+    bprint("vmcs_hierarchy_get_vmcs %p %d\n", obj, level);
+#endif
     VMM_ASSERT(obj);
-
-    if (level >= VMCS_LEVEL_0 && level < VMCS_LEVELS) {
+    if (level>=VMCS_LEVEL_0 && level<VMCS_LEVELS) {
         vmcs = obj->vmcs[level];
     }
     else {
         VMM_LOG(mask_anonymous, level_trace,"Invalid VMCS level\n");
-        // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_ASSERT(0);
         vmcs = NULL;
     }
@@ -204,7 +190,6 @@ VMCS_1_DESCRIPTOR *vmcs_hierarchy_vmcs1_lkup(VMCS_HIERARCHY *obj, VMCS_OBJECT *v
     VMCS_1_DESCRIPTOR *desc;    // output
 
     VMM_ASSERT(obj);
-
     LIST_FOR_EACH(obj->vmcs_1_list, iter) {
         desc = LIST_ENTRY(iter, VMCS_1_DESCRIPTOR, list);
         if (vmcs == desc->vmcs) {

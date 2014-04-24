@@ -918,7 +918,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     event_raise(EVENT_GUEST_LAUNCH, initial_gcpu, &local_apic_id);
 #ifdef JLMDEBUG
     bprint("evmm: raised initial event\n");
-    LOOP_FOREVER
 #endif
 
     // enable unrestricted guest support in early boot
@@ -927,6 +926,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     if(is_unrestricted_guest_supported()) {
 #ifdef JLMDEBUG
         bprint("evmm: unrestricted guest supported\n");
+        LOOP_FOREVER
 #endif
         make_guest_state_compliant(initial_gcpu);
         unrestricted_guest_enable(initial_gcpu);
@@ -934,13 +934,22 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     } else {
 #ifdef JLMDEBUG
         bprint("evmm: unrestricted guest NOT supported\n");
+        LOOP_FOREVER  // got here
 #endif
         // For non-UG systems enable EPT, if guest is in paging mode
         EM64T_CR0 guest_cr0;
         guest_cr0.Uint64 = gcpu_get_guest_visible_control_reg(initial_gcpu,IA32_CTRL_CR0);
         if (guest_cr0.Bits.PG) {
+#ifdef JLMDEBUG
+            bprint("evmm: abouit to call enable_ept_during_launch\n");
+            LOOP_FOREVER
+#endif
             enable_ept_during_launch(initial_gcpu);
         }
+#ifdef JLMDEBUG
+        bprint("evmm: enable_ept_during_launch not called\n");
+        LOOP_FOREVER
+#endif
     }
 #ifdef FAST_VIEW_SWITCH
     if(fvs_is_eptp_switching_supported()) {
@@ -949,6 +958,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     }
 #endif
 
+#ifdef JLMDEBUG
+    bprint("evmm: about to call vmcs_store_initial\n");
+    LOOP_FOREVER
+#endif
     vmcs_store_initial(initial_gcpu, cpu_id);
 #ifdef JLMDEBUG
     bprint("evmm: vmcs_store_initial complete\n");

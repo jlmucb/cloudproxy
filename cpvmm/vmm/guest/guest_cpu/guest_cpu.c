@@ -118,10 +118,6 @@ void cache_fx_state( const GUEST_CPU* gcpu )
         return;
     }
     SET_FX_STATE_CACHED_FLAG(vgcpu);
-#ifdef JLMDEBUG1
-    bprint("cache_fx_state returning early (FIX)\n");
-    // return;
-#endif
     hw_fxsave(vgcpu->save_area.fxsave_area);
 }
 
@@ -191,14 +187,15 @@ static void setup_default_state( GUEST_CPU_HANDLE gcpu )
 }
 
 
-void gcpu_manager_init( UINT16 host_cpu_count )
+void gcpu_manager_init(UINT16 host_cpu_count)
 {
-    // BEFORE_VMLAUNCH
+#ifdef JLMDEBUG
+    bprint("gcpu_manager_init %d\n", host_cpu_count);
+#endif
     VMM_ASSERT( host_cpu_count );
     g_host_cpu_count = host_cpu_count;
     g_guest_regs_save_area = vmm_memory_alloc( sizeof(GUEST_CPU_SAVE_AREA*) * host_cpu_count );
-    // BEFORE_VMLAUNCH
-    VMM_ASSERT( g_guest_regs_save_area );
+    VMM_ASSERT(g_guest_regs_save_area);
     // init subcomponents
     vmcs_hw_init();
     vmcs_manager_init();

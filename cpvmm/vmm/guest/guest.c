@@ -53,15 +53,17 @@ static UINT32                num_host_cpus = 0;
 static GUEST_DESCRIPTOR *    guests = NULL;
 
 
-void guest_manager_init( UINT16 max_cpus_per_guest, UINT16 host_cpu_count )
+void guest_manager_init(UINT16 max_cpus_per_guest, UINT16 host_cpu_count)
 {
-    // BEFORE_VMLAUNCH. PARANOID check.
-    VMM_ASSERT( max_cpus_per_guest );
+#ifdef DEBUG
+    bprint("guest_manager_init %d\n", host_cpu_count);
+#endif
+    VMM_ASSERT(max_cpus_per_guest);
     max_gcpus_count_per_guest = max_cpus_per_guest;
     num_host_cpus = host_cpu_count;
     guests = NULL;
     // init subcomponents
-    gcpu_manager_init( host_cpu_count );
+    gcpu_manager_init(host_cpu_count);
     // create VMEXIT-related data
     // vmexit_initialize();
 }
@@ -69,18 +71,27 @@ void guest_manager_init( UINT16 max_cpus_per_guest, UINT16 host_cpu_count )
 
 // Get Guest by guest ID
 // Return NULL if no such guest
-GUEST_HANDLE guest_handle( GUEST_ID guest_id )
+GUEST_HANDLE guest_handle(GUEST_ID guest_id)
 {
-    GUEST_DESCRIPTOR    *guest;
+    GUEST_DESCRIPTOR  *guest;
 
+#ifdef JLMDEBUG
+    bprint("guest_handle(%d).  guests: 0x%016lx\n", guest_id, guests);
+#endif
     if(guest_id >= guests_count) {
         return NULL;
     }
     for(guest = guests; guest != NULL; guest = guest->next_guest) {
+#ifdef JLMDEBUG
+        bprint("guest_id: %d\n", guest->id);
+#endif
         if(guest->id == guest_id) {
             return guest;
         }
     }
+#ifdef JLMDEBUG
+    LOOP_FOREVER
+#endif
     return NULL;
 }
 
@@ -103,10 +114,8 @@ GUEST_HANDLE guest_register( UINT32 magic_number, UINT32 physical_memory_size,
 {
     GUEST_DESCRIPTOR* guest;
 
-#ifdef JLMDEBUG1
-    bprint("Before vmm_malloc with descriptor size %d, magic_number %u, physical memory size %u, and affinity %u and count %d\n",
-           sizeof(GUEST_DESCRIPTOR), magic_number, physical_memory_size, 
-           cpu_affinity, guests_count);
+#ifdef JLMDEBUG
+    bprint("guest_register: magic_number %u, \n", magic_number);
 #endif
     guest = (GUEST_DESCRIPTOR *) vmm_malloc(sizeof(GUEST_DESCRIPTOR));
     VMM_ASSERT(guest);
@@ -123,11 +132,11 @@ GUEST_HANDLE guest_register( UINT32 magic_number, UINT32 physical_memory_size,
     guest->physical_memory_size = physical_memory_size;
     guest->cpu_affinity = cpu_affinity;
     guest->cpus_array = (GUEST_CPU_HANDLE *) 
-            vmm_malloc(sizeof(GUEST_CPU_HANDLE) * max_gcpus_count_per_guest);
+            vmm_malloc(sizeof(GUEST_CPU_HANDLE)*max_gcpus_count_per_guest);
     guest->cpu_count = 0;
     guest->flags = 0;
     guest->saved_image = NULL;
-    guest->saved_image_size     = 0;
+    guest->saved_image_size = 0;
     guest->startup_gpm = gpm_create_mapping();
     VMM_ASSERT( guest->startup_gpm != GPM_INVALID_HANDLE );
     if (guest_policy == NULL)
@@ -139,7 +148,7 @@ GUEST_HANDLE guest_register( UINT32 magic_number, UINT32 physical_memory_size,
     // vmexit_guest_initialize(guest->id);
     guest->next_guest = guests;
     guests = guest;
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     bprint("returning from guest register\n");
 #endif
     return guest;
@@ -161,15 +170,25 @@ UINT32 guest_magic_number( const GUEST_HANDLE guest )
 
 // Get Guest by guest magic number
 // Return NULL if no such guest
-GUEST_HANDLE guest_handle_by_magic_number( UINT32 magic_number )
+GUEST_HANDLE guest_handle_by_magic_number(UINT32 magic_number)
 {
-    GUEST_DESCRIPTOR    *guest;
+    GUEST_DESCRIPTOR *guest;
 
+#ifdef JLMDEBUG
+    bprint("guest_handle_by_magic_number(%d).  guests: 0x%016lx\n", 
+           magic_number, guests);
+#endif
     for(guest = guests; guest != NULL; guest = guest->next_guest) {
         if(guest->magic_number == magic_number) {
+#ifdef JLMDEBUG
+            bprint("search guest id %d\n", guest->magic_number);
+#endif
             return guest;
         }
     }
+#ifdef JLMDEBUG
+    LOOP_FOREVER
+#endif
     return NULL;
 }
 
@@ -233,14 +252,14 @@ void guest_set_policy( const GUEST_HANDLE guest, const VMM_POLICY *new_policy)
 
 // Guest properties.
 // Default for all properties - FALSE
-void    guest_set_primary( GUEST_HANDLE guest )
+void guest_set_primary( GUEST_HANDLE guest )
 {
     VMM_ASSERT( guest );
     VMM_ASSERT( guest->physical_memory_size == 0 );
     VMM_ASSERT( guest->physical_memory_base == 0 );
     VMM_ASSERT( guest->saved_image == NULL );
     VMM_ASSERT( guest->saved_image_size == 0 );
-    SET_GUEST_IS_PRIMARY_FLAG(guest);
+    guest->flags|= GUEST_IS_PRIMARY_FLAG;
 }
 
 BOOLEAN guest_is_primary(const GUEST_HANDLE  guest )
@@ -261,10 +280,10 @@ GUEST_ID guest_get_primary_guest_id(void)
     return INVALID_GUEST_ID;
 }
 
-void guest_set_real_BIOS_access_enabled( GUEST_HANDLE guest )
+void guest_set_real_BIOS_access_enabled(GUEST_HANDLE guest)
 {
     VMM_ASSERT( guest );
-    SET_GUEST_BIOS_ACCESS_ENABLED_FLAG(guest);
+    guest->flags|= GUEST_BIOS_ACCESS_ENABLED_FLAG;
 #ifdef ENABLE_EMULATOR
     vmcall_register( guest_get_id(guest), VMCALL_EMULATOR_TERMINATE,
                  gcpu_return_to_native_execution, TRUE); // special case
@@ -279,11 +298,14 @@ BOOLEAN guest_is_real_BIOS_access_enabled(  const GUEST_HANDLE  guest )
 }
 #endif
 
-void    guest_set_nmi_owner(GUEST_HANDLE guest )
+void guest_set_nmi_owner(GUEST_HANDLE guest)
 {
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
-    VMM_ASSERT( guest );
-    SET_GUEST_IS_NMI_OWNER_FLAG(guest);
+#ifdef JLMDEBUG
+    bprint("guest_set_nmi_owner 0x%016lx\n", guest);
+    LOOP_FOREVER
+#endif
+    VMM_ASSERT(guest);
+    guest->flags|= GUEST_IS_NMI_OWNER_FLAG;
 }
 
 BOOLEAN guest_is_nmi_owner(const GUEST_HANDLE  guest )
@@ -297,7 +319,7 @@ void    guest_set_acpi_owner(GUEST_HANDLE guest )
 {
     VMM_ASSERT( guest );
 #ifdef ENABLE_PM_S3
-    SET_GUEST_IS_ACPI_OWNER_FLAG(guest);
+    guest->flags|= GUEST_IS_ACPI_OWNER_FLAG;
     vmm_acpi_pm_initialize(guest->id);  // for ACPI owner only
 #endif
 }
@@ -312,9 +334,8 @@ BOOLEAN guest_is_acpi_owner(const GUEST_HANDLE  guest )
 
 void    guest_set_default_device_owner(GUEST_HANDLE guest )
 {
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( guest );
-    SET_GUEST_IS_DEFAULT_DEVICE_OWNER_FLAG(guest);
+    guest->flags|= GUEST_IS_DEFAULT_DEVICE_OWNER_FLAG;
 }
 
 #ifdef INCLUDE_UNUSED_CODE
@@ -372,7 +393,7 @@ void guest_set_executable_image( GUEST_HANDLE guest, const UINT8* image_address,
     guest->saved_image_size = image_size;
     guest->image_load_GPA = image_load_GPA;
     if (image_is_compressed) {
-        SET_GUEST_SAVED_IMAGE_IS_COMPRESSED_FLAG(guest);
+        guest->flags|= GUEST_SAVED_IMAGE_IS_COMPRESSED_FLAG;
     }
 }
 

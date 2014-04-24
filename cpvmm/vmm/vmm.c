@@ -753,7 +753,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
                                     startup_struct->default_device_owner);
 #ifdef JLMDEBUG
     bprint("evmm: nmi_owner, acpi owner, defaut device owner: 0x%016lx 0x%0lx 0x%0lx\n", nmi_owner_guest, acpi_owner_guest, device_default_owner_guest);
-    LOOP_FOREVER
 #endif
     VMM_ASSERT(nmi_owner_guest);
     VMM_ASSERT(acpi_owner_guest);

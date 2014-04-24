@@ -302,7 +302,6 @@ void guest_set_nmi_owner(GUEST_HANDLE guest)
 {
 #ifdef JLMDEBUG
     bprint("guest_set_nmi_owner 0x%016lx\n", guest);
-    LOOP_FOREVER
 #endif
     VMM_ASSERT(guest);
     guest->flags|= GUEST_IS_NMI_OWNER_FLAG;
@@ -310,7 +309,6 @@ void guest_set_nmi_owner(GUEST_HANDLE guest)
 
 BOOLEAN guest_is_nmi_owner(const GUEST_HANDLE  guest )
 {
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( guest );
     return (GET_GUEST_IS_NMI_OWNER_FLAG(guest) != 0);
 }

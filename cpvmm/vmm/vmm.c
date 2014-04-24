@@ -863,9 +863,11 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 #endif
     if (!report_uvmm_event(UVMM_EVENT_INITIALIZATION_BEFORE_APS_STARTED, NULL, NULL, 
                             (void *)&initialization_data)) {
-        VMM_LOG(mask_uvmm, level_trace, "report_initialization failed before the APs have started\n");
+        VMM_LOG(mask_uvmm, level_trace, 
+                "report_initialization failed before the APs have started\n");
     }
-    VMM_LOG(mask_uvmm, level_trace,"BSP: Successfully finished single-core initializations\n");
+    VMM_LOG(mask_uvmm, level_trace,
+            "BSP: Successfully finished single-core initializations\n");
 
 #ifdef JLMDEBUG
     bprint("evmm: about to set state\n");
@@ -894,14 +896,9 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
             "BSP: initial guest selected: GUEST_ID: %d GUEST_CPU_ID: %d\n",
             guest_vcpu(initial_gcpu )->guest_id, 
             guest_vcpu(initial_gcpu )->guest_cpu_id);
-
-#ifdef JLMDEBUG
-    bprint("evmm: scheduler_select_initial_gcpu complete\n");
-#endif
     ipc_change_state_to_active(initial_gcpu);
 #ifdef JLMDEBUG
     bprint("evmm: gcpu active\n");
-    LOOP_FOREVER
 #endif
     vmm_print_test(local_apic_id);
     VMM_LOG(mask_uvmm, level_trace,"BSP: Wait for APs to launch the first Guest CPU\n");
@@ -909,10 +906,11 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
     // Assumption: initialization_data was not changed
     if (!report_uvmm_event(UVMM_EVENT_INITIALIZATION_AFTER_APS_STARTED, 
-                (VMM_IDENTIFICATION_DATA)initial_gcpu, (const GUEST_VCPU*)guest_vcpu(initial_gcpu), 
+                (VMM_IDENTIFICATION_DATA)initial_gcpu, 
+                (const GUEST_VCPU*)guest_vcpu(initial_gcpu), 
                 (void *)&initialization_data)) {
         VMM_LOG(mask_uvmm, level_trace, 
-                "report_initialization failed after the APs have launched the guest\n");
+            "report_initialization failed after the APs have launched the guest\n");
     }
 
     vmm_set_state(VMM_STATE_RUN);

@@ -1112,7 +1112,6 @@ void hw_write_ldtr (UINT16 i) {
 //  void hw_cpuid (CPUID_PARAMS *)
 //  Execute cpuid instruction
 void hw_cpuid (CPUID_PARAMS *cp) {
-
     asm volatile(
         "\tmovq %[cp], %%r8\n" 
         //# fill regs for cpuid
@@ -1128,12 +1127,12 @@ void hw_cpuid (CPUID_PARAMS *cp) {
         :
         :[cp] "g" (cp)
         :"%r8", "%rax", "%rbx", "%rcx", "%rdx", "memory");
-
         return;
 }
 
 
-/*
+#if 0
+// never ported
 void hw_leave_64bit_mode (unsigned int compatibility_segment,
     unsigned short int port_id,
     unsigned short int value,
@@ -1141,7 +1140,6 @@ void hw_leave_64bit_mode (unsigned int compatibility_segment,
 {
 
         jmp $
-
         shl rcx, 32             ;; prepare segment:offset pair for retf by shifting
                                 ;; compatibility segment in high address
         lea rax, compat_code    ;; and
@@ -1176,7 +1174,7 @@ compat_code:                    ;; compatibility mode starts right here
         out dx, ax              ;; write to PM register
         ret                     ;; should never get here
 } //hw_leave_64bit_mode
-*/
+#endif
 
 
 /*

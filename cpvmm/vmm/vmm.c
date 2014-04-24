@@ -736,12 +736,15 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     }
 #ifdef JLMDEBUG
     bprint("evmm: guests initialized \n");
-    LOOP_FOREVER
 #endif
     VMM_LOG(mask_uvmm, level_trace,"BSP: Guests created succefully. Number of guests: %d\n", guest_count());
 
     // should be set only after guests initialized
     vmm_set_state(VMM_STATE_BOOT);
+#ifdef JLMDEBUG
+    bprint("evmm: vmm_set_state done\n");
+    LOOP_FOREVER
+#endif
 
     // get important guest ids
     nmi_owner_guest = guest_handle_by_magic_number(startup_struct->nmi_owner);
@@ -756,14 +759,16 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     guest_set_acpi_owner(acpi_owner_guest);
     guest_set_default_device_owner(device_default_owner_guest);
 
-    VMM_LOG(mask_uvmm, level_trace,"BSP: NMI owning guest ID=%d \tMagic Number = %#x\n",
-                        guest_get_id(nmi_owner_guest), guest_magic_number(nmi_owner_guest));
-    VMM_LOG(mask_uvmm, level_trace,"BSP: ACPI owning guest ID=%d \tMagic Number = %#x\n",
-                        guest_get_id(acpi_owner_guest), guest_magic_number(acpi_owner_guest));
-    VMM_LOG(mask_uvmm, level_trace,"BSP: Default device owning guest ID=%d \tMagic Number = %#x\n",
-                        guest_get_id(device_default_owner_guest),
-                        guest_magic_number(device_default_owner_guest));
-
+    VMM_LOG(mask_uvmm, level_trace,
+            "BSP: NMI owning guest ID=%d\tMagic Number= %#x\n",
+            guest_get_id(nmi_owner_guest), guest_magic_number(nmi_owner_guest));
+    VMM_LOG(mask_uvmm, level_trace,
+            "BSP: ACPI owning guest ID=%d \tMagic Number = %#x\n",
+            guest_get_id(acpi_owner_guest), guest_magic_number(acpi_owner_guest));
+    VMM_LOG(mask_uvmm, level_trace,
+            "BSP: Default device owning guest ID=%d \tMagic Number = %#x\n",
+            guest_get_id(device_default_owner_guest),
+            guest_magic_number(device_default_owner_guest));
 #ifdef JLMDEBUG
     bprint("evmm: about to initialize guest manager\n");
     LOOP_FOREVER

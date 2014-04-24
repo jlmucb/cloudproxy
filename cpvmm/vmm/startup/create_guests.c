@@ -56,7 +56,7 @@ void add_cpu_to_guest(const VMM_GUEST_STARTUP* gstartup, GUEST_HANDLE guest,
     const VIRTUAL_CPU_ID* vcpu = NULL;
     const VMM_GUEST_CPU_STARTUP_STATE* cpus_arr = NULL;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("add_cpu_to_guest guest SU: %p,  guest: %d, host: %d\n",
             gstartup, guest, host_cpu_to_allocate);
 #endif

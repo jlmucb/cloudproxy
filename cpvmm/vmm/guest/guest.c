@@ -106,8 +106,8 @@ GUEST_ID guest_get_id( GUEST_HANDLE guest )
 //          to the number of registered guest CPUs for this guest
 //          -1 means run on all available CPUs
 // Return NULL on error
-GUEST_HANDLE guest_register( UINT32 magic_number, UINT32 physical_memory_size,
-                             UINT32  cpu_affinity, const VMM_POLICY  *guest_policy )
+GUEST_HANDLE guest_register(UINT32 magic_number, UINT32 physical_memory_size,
+                            UINT32  cpu_affinity, const VMM_POLICY  *guest_policy)
 {
     GUEST_DESCRIPTOR* guest;
 

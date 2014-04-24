@@ -476,7 +476,7 @@ static void print_vmx_capabilities( void )
 void vmcs_hw_init( void )
 {
     if (g_init_done) {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
         bprint("vmcs_hw_init returning\n");
 #endif
         return;
@@ -495,7 +495,7 @@ HVA vmcs_hw_allocate_region( HPA* hpa )
     HVA             hva = 0;
     IA32_VMX_VMCS*  vmcs = 0;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmcs_hw_allocate_region\n");
 #endif
     // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
@@ -518,7 +518,7 @@ HVA vmcs_hw_allocate_region( HPA* hpa )
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_DEADLOOP();
     }
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmcs_hw_allocate_region after hmm_hva_to_hpa 0x%016lx\n", hva);
 #endif
     // check VMCS memory type
@@ -526,7 +526,7 @@ HVA vmcs_hw_allocate_region( HPA* hpa )
                  *hpa, VMCS_REGION_SIZE, VMCS_MEMORY_TYPE ) == TRUE);
     vmcs = (IA32_VMX_VMCS*)hva;
     vmcs->RevisionIdentifier = VMCS_REVISION;
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmcs_hw_allocate_region before hmm_unmap_hpa 0x%016lx\n",
            hpa);
 #endif
@@ -536,7 +536,7 @@ HVA vmcs_hw_allocate_region( HPA* hpa )
         // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_DEADLOOP();
     }
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmcs_hw_allocate_region after hmm_unmap_hpa\n");
 #endif
     return hva;
@@ -557,7 +557,6 @@ BOOLEAN vmcs_hw_allocate_vmxon_regions( UINT16 max_host_cpus )
         vmxon_region_hva = vmcs_hw_allocate_region( &vmxon_region_hpa );
         host_cpu_set_vmxon_region( vmxon_region_hva, vmxon_region_hpa, cpu_idx );
     }
-
     return TRUE;
 }
 
@@ -570,7 +569,6 @@ const VMCS_HW_CONSTRAINTS* vmcs_hw_get_vmx_constraints( void )
     if (! g_init_done) {
         vmcs_hw_init();
     }
-
     return &g_vmx_constraints;
 }
 
@@ -581,7 +579,7 @@ BOOLEAN vmcs_hw_is_cpu_vmx_capable( void )
     CPUID_INFO_STRUCT cpuid_info;
     IA32_MSR_OPT_IN   opt_in;
     BOOLEAN           ok = FALSE;
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmcs_hw_is_cpu_vmx_capable\n");
 #endif
 

@@ -793,7 +793,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         vmcs_sw_shadow_disable[i] = FALSE;
 #ifdef JLMDEBUG
     bprint("evmm: done with event manager, ipc, nmi intialize\n");
-    LOOP_FOREVER
 #endif
 
     if(g_is_post_launch) {

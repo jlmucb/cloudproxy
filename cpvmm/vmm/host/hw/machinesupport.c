@@ -620,24 +620,22 @@ BOOLEAN hw_scan_bit_backward( UINT32 *bit_number_ptr, UINT32 bitset )
 }
 
 
-BOOLEAN hw_scan_bit_backward64( UINT32 *bit_number_ptr, UINT64 bitset )
+BOOLEAN hw_scan_bit_backward64(UINT32 *bit_number_ptr, UINT64 bitset)
 {
 #ifdef JLMDEBUG
     bprint("hw_scan_bit_backward64\n");
-    LOOP_FOREVER
 #endif
-    BOOLEAN ret = FALSE;
     asm volatile(
-        "\tbsrq (%[bit_number_ptr]), %[bitset]\n"
-    :"=a" (ret), "+m" (bit_number_ptr)
-    :[ret] "r" (ret), [bit_number_ptr] "p" (bit_number_ptr), [bitset] "r" (bitset)
-    :"memory", "cc");
+        "\tbsrq %[bitset], %%rax\n"
+        "\tmovq %[bit_number_ptr], %%rbx\n"
+        "\tmovl %%eax, (%%rbx)\n"
+    : :[bit_number_ptr] "p" (bit_number_ptr), [bitset] "m" (bitset)
+    :"%rax", "%eax", "%rbx");
     return bitset ? TRUE : FALSE;
 }
 
 
 // from fpu2
-
 
 void hw_fnstsw (UINT16* loc) {
 #ifdef JLMDEBUG

@@ -874,7 +874,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     LAUNCH_APPLICATION_PROCS();
 #ifdef JLMDEBUG
     bprint("evmm: about to initialize_host_vmcs_region\n");
-    LOOP_FOREVER
 #endif
     initialize_host_vmcs_regions(cpu_id);
     VMM_LOG(mask_uvmm, level_trace,"BSP: Successfully finished initializations\n");

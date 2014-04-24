@@ -880,13 +880,11 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm: about to turn on vmx\n");
-    LOOP_FOREVER
 #endif
     vmcs_hw_vmx_on();
     VMM_LOG(mask_uvmm, level_trace,"BSP: VMXON\n");
 #ifdef JLMDEBUG
     bprint("evmm: vmx on\n");
-    LOOP_FOREVER
 #endif
 
     // schedule first gcpu
@@ -899,7 +897,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm: scheduler_select_initial_gcpu complete\n");
-    LOOP_FOREVER
 #endif
     ipc_change_state_to_active(initial_gcpu);
 #ifdef JLMDEBUG

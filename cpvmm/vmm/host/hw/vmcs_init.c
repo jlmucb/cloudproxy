@@ -618,44 +618,32 @@ void vmcs_hw_vmx_on( void )
     cr4.Uint64 = hw_read_cr4();
     cr4.Bits.VMXE = 1;
     hw_write_cr4( cr4.Uint64 );
-
     // Enable VMX outside SMM in OPT_IN (FEATURE_CONTROL) MSR and lock it
-    opt_in.Uint64 = hw_read_msr( IA32_MSR_OPT_IN_INDEX );
-
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
+    opt_in.Uint64 = hw_read_msr(IA32_MSR_OPT_IN_INDEX);
     VMM_ASSERT( (opt_in.Bits.Lock == 0) || (opt_in.Bits.EnableVmxonOutsideSmx == 1) );
-
     if (opt_in.Bits.Lock == 0) {
         opt_in.Bits.EnableVmxonOutsideSmx = 1;
         opt_in.Bits.Lock = 1;
-
         hw_write_msr( IA32_MSR_OPT_IN_INDEX, opt_in.Uint64 );
     }
-
     vmxon_region_hva = host_cpu_get_vmxon_region(&vmxon_region_hpa);
     if(!vmxon_region_hva || !vmxon_region_hpa) {
-        VMM_LOG(mask_anonymous, level_trace,"ASSERT: VMXON failed with getting vmxon_region address\n");
-        // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
+        VMM_LOG(mask_anonymous, level_trace,
+                "ASSERT: VMXON failed with getting vmxon_region address\n");
         VMM_DEADLOOP();
     }
-
     vmx_ret = hw_vmx_on( &vmxon_region_hpa );
-
     switch (vmx_ret) {
         case HW_VMX_SUCCESS:
             host_cpu_set_vmx_state( TRUE );
             break;
-
         case HW_VMX_FAILED_WITH_STATUS:
             VMM_LOG(mask_anonymous, level_trace,"ASSERT: VMXON failed with HW_VMX_FAILED_WITH_STATUS error\n");
-            // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
             VMM_DEADLOOP();
             VMM_BREAKPOINT();
-
         case HW_VMX_FAILED:
         default:
             VMM_LOG(mask_anonymous, level_trace,"ASSERT: VMXON failed with HW_VMX_FAILED error\n");
-            // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
             VMM_DEADLOOP();
             VMM_BREAKPOINT();
     }

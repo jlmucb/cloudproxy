@@ -81,17 +81,14 @@ GUEST_HANDLE guest_handle(GUEST_ID guest_id)
     if(guest_id >= guests_count) {
         return NULL;
     }
-    for(guest = guests; guest != NULL; guest = guest->next_guest) {
-#ifdef JLMDEBUG
-        bprint("guest_id: %d\n", guest->id);
-#endif
+    for(guest = guests; guest != NULL; guest= guest->next_guest) {
         if(guest->id == guest_id) {
+#ifdef JLMDEBUG
+            bprint("guest_id: %d\n", guest->id);
+#endif
             return guest;
         }
     }
-#ifdef JLMDEBUG
-    LOOP_FOREVER
-#endif
     return NULL;
 }
 
@@ -179,15 +176,18 @@ GUEST_HANDLE guest_handle_by_magic_number(UINT32 magic_number)
            magic_number, guests);
 #endif
     for(guest = guests; guest != NULL; guest = guest->next_guest) {
+#ifdef JLMDEBUG
+            bprint("list gets magic %d\n", guest->magic_number);
+#endif
         if(guest->magic_number == magic_number) {
 #ifdef JLMDEBUG
-            bprint("search guest id %d\n", guest->magic_number);
+            bprint("got guest by magic %d\n", guest->magic_number);
 #endif
             return guest;
         }
     }
 #ifdef JLMDEBUG
-    LOOP_FOREVER
+    bprint("couldn't find guest_by_magic_number\n");
 #endif
     return NULL;
 }

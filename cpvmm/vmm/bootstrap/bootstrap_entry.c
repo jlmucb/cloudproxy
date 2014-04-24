@@ -765,7 +765,7 @@ VMM_GUEST_CPU_STARTUP_STATE      guest_processor_state[MAXPROCESSORS];
 VMM_STARTUP_STRUCT               startup_struct;
 VMM_STARTUP_STRUCT *             p_startup_struct = &startup_struct;
 
-#define UUID 0x0
+#define PRIMARY_MAGIC 0x0
 
 // expanded e820 table used by evmm
 static unsigned int     evmm_num_e820_entries = 0;
@@ -1518,9 +1518,9 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     p_startup_struct->unsupported_device_id = 0; 
     p_startup_struct->flags = 0; 
     
-    p_startup_struct->default_device_owner= UUID;
-    p_startup_struct->acpi_owner= UUID; 
-    p_startup_struct->nmi_owner= UUID; 
+    p_startup_struct->default_device_owner= PRIMARY_MAGIC;
+    p_startup_struct->acpi_owner= PRIMARY_MAGIC; 
+    p_startup_struct->nmi_owner= PRIMARY_MAGIC; 
     p_startup_struct->primary_guest_startup_state = 
                                 (uint64_t)(uint32_t)&evmm_g0;
 

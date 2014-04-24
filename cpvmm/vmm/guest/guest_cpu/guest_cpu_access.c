@@ -598,11 +598,6 @@ void gcpu_set_vmenter_control_layered(const GUEST_CPU_HANDLE gcpu, VMCS_LEVEL le
 {
     VM_ENTRY_CONTROLS  entry_ctrl_mask;
     UINT64 value;
-#ifdef JLMDEBUG
-    bprint("gcpu_set_vmenter_control_layered returning early (FIX)0x%016lx %d\n", 
-           gcpu, level);
-    return;
-#endif
 
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
     //IA Manual 3B Appendix G.6 - On processors that support UG

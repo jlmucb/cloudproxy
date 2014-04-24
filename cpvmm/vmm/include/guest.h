@@ -98,28 +98,28 @@ void guest_set_policy( const GUEST_HANDLE guest, const VMM_POLICY *new_policy);
 
 // Guest properties.
 // Default for all properties - FALSE
-void    guest_set_primary(                  GUEST_HANDLE        guest );
-BOOLEAN guest_is_primary(                   const GUEST_HANDLE  guest );
-GUEST_ID guest_get_primary_guest_id(                void              );
+void    guest_set_primary(GUEST_HANDLE        guest );
+BOOLEAN guest_is_primary(const GUEST_HANDLE  guest );
+GUEST_ID guest_get_primary_guest_id(void);
 
-void    guest_set_real_BIOS_access_enabled( GUEST_HANDLE        guest );
+void    guest_set_real_BIOS_access_enabled( GUEST_HANDLE guest );
 #ifdef INCLUDE_UNUSED_CODE
-BOOLEAN guest_is_real_BIOS_access_enabled(  const GUEST_HANDLE  guest );
+BOOLEAN guest_is_real_BIOS_access_enabled(const GUEST_HANDLE  guest );
 #endif
 
-void    guest_set_nmi_owner(                GUEST_HANDLE        guest );
-BOOLEAN guest_is_nmi_owner(                 const GUEST_HANDLE  guest );
+void    guest_set_nmi_owner(GUEST_HANDLE  guest );
+BOOLEAN guest_is_nmi_owner(const GUEST_HANDLE  guest );
 
-void    guest_set_acpi_owner(               GUEST_HANDLE        guest );
+void    guest_set_acpi_owner(GUEST_HANDLE guest);
 #ifdef INCLUDE_UNUSED_CODE
-BOOLEAN guest_is_acpi_owner(                const GUEST_HANDLE  guest );
+BOOLEAN guest_is_acpi_owner(const GUEST_HANDLE  guest);
 #endif
 
-void    guest_set_default_device_owner(     GUEST_HANDLE        guest );
+void    guest_set_default_device_owner(GUEST_HANDLE guest );
 #ifdef INCLUDE_UNUSED_CODE
-BOOLEAN guest_is_default_device_owner(      const GUEST_HANDLE  guest );
+BOOLEAN guest_is_default_device_owner(const GUEST_HANDLE  guest);
 #endif
-GUEST_ID guest_get_default_device_owner_guest_id(      void           );
+GUEST_ID guest_get_default_device_owner_guest_id(void);
 
 // Get guest physical memory descriptor
 GPM_HANDLE guest_get_startup_gpm(GUEST_HANDLE guest);
@@ -134,7 +134,7 @@ void guest_set_executable_image( GUEST_HANDLE guest, const UINT8* image_address,
 #ifdef INCLUDE_UNUSED_CODE
 // Load guest executable image into the guest memory
 // Should not be called for primary guest
-void guest_load_executable_image( GUEST_HANDLE       guest );
+void guest_load_executable_image(GUEST_HANDLE guest );
 #endif
 
 

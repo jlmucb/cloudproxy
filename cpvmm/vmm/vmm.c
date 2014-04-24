@@ -736,6 +736,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     }
 #ifdef JLMDEBUG
     bprint("evmm: guests initialized \n");
+    bprint("nmi owner: %d\n", startup_struct->nmi_owner);
 #endif
     VMM_LOG(mask_uvmm, level_trace,"BSP: Guests created succefully. Number of guests: %d\n", guest_count());
 
@@ -747,6 +748,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
     // get important guest ids
     nmi_owner_guest = guest_handle_by_magic_number(startup_struct->nmi_owner);
+LOOP_FOREVER
     acpi_owner_guest = guest_handle_by_magic_number(startup_struct->acpi_owner);
     device_default_owner_guest = guest_handle_by_magic_number(
                                     startup_struct->default_device_owner);

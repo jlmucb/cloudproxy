@@ -220,15 +220,18 @@ GUEST_CPU_HANDLE scheduler_same_host_cpu_gcpu_first( SCHEDULER_GCPU_ITERATOR* ct
 
 
 // scheduler
-GUEST_CPU_HANDLE scheduler_select_initial_gcpu( void )
+GUEST_CPU_HANDLE scheduler_select_initial_gcpu(void)
 {
     CPU_ID                 host_cpu = hw_cpu_id();
     SCHEDULER_CPU_STATE*   state = &(g_scheduler_state[host_cpu]);
     SCHEDULER_VCPU_OBJECT* next_vcpu = state->vcpu_obj_list;
-
+   
+#ifdef JLMDEBUG
+    bprint("scheduler_select_initial_gcpu\n");
+#endif
     // very simple implementation
     // assume only one guest per host CPU
-    if (! (next_vcpu && GET_READY_FLAG(next_vcpu))) {
+    if (!(next_vcpu && GET_READY_FLAG(next_vcpu))) {
         return NULL;
     }
     state->current_vcpu_obj = next_vcpu;

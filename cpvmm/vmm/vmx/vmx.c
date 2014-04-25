@@ -45,7 +45,7 @@ int vmx_vmclear(UINT64* address) {
 #ifdef JLMDEBUG
     bprint("vmclear %p 0x%016lx\n", address, *address);
     HexDump((UINT8*)address, (UINT8*)address+16);
-    HexDump((UINT8*)*address, (UINT8*)*address+16);
+    // HexDump((UINT8*)*address, (UINT8*)*address+16);
     LOOP_FOREVER
 #endif
     asm volatile(

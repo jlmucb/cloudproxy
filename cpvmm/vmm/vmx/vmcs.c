@@ -444,7 +444,7 @@ void vmcs_write(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id, UINT64 value)
 UINT64 vmcs_read(const struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id)
 {
     UINT64 value;
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmcs_read entry\n");
 #endif
 

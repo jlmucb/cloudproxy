@@ -146,10 +146,10 @@ VMCS_OBJECT* vmcs_hierarchy_get_vmcs(VMCS_HIERARCHY *obj, VMCS_LEVEL level)
 {
     VMCS_OBJECT *vmcs= NULL;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmcs_hierarchy_get_vmcs %p %d, ", obj, level);
-   if(level>4)
-     return NULL;
+    if(level>4)
+        return NULL;
 #endif
     VMM_ASSERT(obj);
     if (level>=VMCS_LEVEL_0 && level<VMCS_LEVELS) {
@@ -158,13 +158,13 @@ VMCS_OBJECT* vmcs_hierarchy_get_vmcs(VMCS_HIERARCHY *obj, VMCS_LEVEL level)
     else {
         VMM_LOG(mask_anonymous, level_trace,"Invalid VMCS level\n");
         VMM_ASSERT(0);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
         bprint("vmcs_hierarchy_get_vmcs returning NULL\n");
         LOOP_FOREVER
 #endif
         vmcs = NULL;
     }
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint(" returning %p\n", vmcs);
 #endif
     return vmcs;

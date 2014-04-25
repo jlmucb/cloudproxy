@@ -417,7 +417,7 @@ INT32  hw_interlocked_increment(INT32 *addend)
 {
     asm volatile(
       "\tlock; incl (%[addend])\n"
-    :"=m"(addend)
+    :
     :[addend] "p" (addend)
     :"memory");
     return *addend;
@@ -426,16 +426,13 @@ INT32  hw_interlocked_increment(INT32 *addend)
 
 UINT64 hw_interlocked_increment64(INT64* p_counter)
 {
-    UINT64 ret = 1ULL;
-
 #ifdef JLMDEBUG
     bprint("hw_interlocked_increment64\n");
     LOOP_FOREVER
 #endif
     asm volatile(
         "\tlock; incq (%[p_counter])\n"
-    :"=m" (ret)
-    :[ret] "r" (ret), [p_counter] "p" (p_counter)
+    : :[p_counter] "p" (p_counter)
     :"memory");
     return *p_counter;
 }
@@ -448,8 +445,7 @@ INT32 hw_interlocked_decrement(INT32 * minuend)
 #endif
     asm volatile(
       "\tlock; decl (%[minuend])\n"
-    :"=m"(minuend)
-    :[minuend] "p" (minuend)
+    : :[minuend] "p" (minuend)
     :"memory");
     return *minuend;
 }
@@ -499,8 +495,8 @@ INT32 hw_interlocked_xor(INT32 volatile * value, INT32 mask)
     asm volatile(
         "\tlock; xor %[mask], (%[value])\n"
         "\tmovl (%[value]), %[ret]\n"
-    :"=m" (ret)
-    :[ret] "r" (ret), [value] "p" (value), [mask] "r" (mask)
+    :[ret] "=m" (ret)
+    :[value] "p" (value), [mask] "r" (mask)
     :"memory");
     return ret;
 }

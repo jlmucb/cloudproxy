@@ -49,9 +49,13 @@ int vmx_vmclear(UINT64 *address) {
     LOOP_FOREVER
 #endif
     asm volatile(
-        "\tvmclear %0\n"
-    ::"m"(*address)
+        "\tvmclear %[address]\n"
+    ::[address]"m"(*address)
     :"cc", "memory");
+#ifdef JLMDEBUG
+    bprint("vmclear done\n");
+    LOOP_FOREVER
+#endif
     return 0;
 }
 

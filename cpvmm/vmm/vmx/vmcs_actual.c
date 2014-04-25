@@ -46,15 +46,16 @@ typedef enum _FLAGS {
     NEVER_ACTIVATED_FLAG    // is in the init stage
 } FLAGS;
 
+#if 0
 #define SET_LAUNCHED_FLAG( obj )    BIT_SET( (obj)->flags, LAUNCHED_FLAG)
 #define CLR_LAUNCHED_FLAG( obj )    BIT_CLR( (obj)->flags, LAUNCHED_FLAG)
 #define GET_LAUNCHED_FLAG( obj )    BIT_GET( (obj)->flags, LAUNCHED_FLAG)
 #define SET_ACTIVATED_FLAG( obj )   BIT_SET( (obj)->flags, ACTIVATED_FLAG)
 #define CLR_ACTIVATED_FLAG( obj )   BIT_CLR( (obj)->flags, ACTIVATED_FLAG)
-#define GET_ACTIVATED_FLAG( obj )   BIT_GET( (obj)->flags, ACTIVATED_FLAG)
 #define SET_NEVER_ACTIVATED_FLAG( obj ) BIT_SET( (obj)->flags, NEVER_ACTIVATED_FLAG)
 #define CLR_NEVER_ACTIVATED_FLAG( obj ) BIT_CLR( (obj)->flags, NEVER_ACTIVATED_FLAG)
 #define GET_NEVER_ACTIVATED_FLAG( obj ) BIT_GET( (obj)->flags, NEVER_ACTIVATED_FLAG)
+#endif
 #define FIELD_IS_HW_WRITABLE(__access) (VMCS_WRITABLE & (__access))
 #define NMI_WINDOW_BIT  22
 
@@ -262,7 +263,7 @@ struct _VMCS_OBJECT * vmcs_act_create(GUEST_CPU_HANDLE gcpu)
         return NULL;
     }
     p_vmcs->hva = vmcs_hw_allocate_region(&p_vmcs->hpa);    // validate it's ok TBD
-    SET_NEVER_ACTIVATED_FLAG(p_vmcs);
+    p_vmcs->flags|= NEVER_ACTIVATED_FLAG;
     p_vmcs->owning_host_cpu = CPU_NEVER_USED;
     p_vmcs->gcpu_owner = gcpu;
     p_vmcs->vmcs_base->vmcs_read = vmcs_act_read;
@@ -332,7 +333,7 @@ UINT64 vmcs_act_read(const struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id)
     if (TRUE != cache64_read(p_vmcs->cache, &value, (UINT32) field_id)) {
         // special case - if hw VMCS was never filled, there is nothing to read
         // from HW
-        if (GET_NEVER_ACTIVATED_FLAG(p_vmcs)) {
+        if (p_vmcs->flags&NEVER_ACTIVATED_FLAG) {
             // assume the init was with all 0
             cache64_write(p_vmcs->cache, 0, (UINT32) field_id);
             return 0;
@@ -361,7 +362,7 @@ UINT64 vmcs_act_read_from_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_
     encoding = vmcs_get_field_encoding(field_id, NULL);
     VMM_ASSERT(encoding != VMCS_NO_COMPONENT);
     // if VMCS is not "current" now, make it current temporary
-    if (0 == GET_ACTIVATED_FLAG(p_vmcs)) {
+    if (0 == (p_vmcs->flags&ACTIVATED_FLAG)) {
         previous_vmcs = temp_replace_vmcs_ptr(p_vmcs->hpa);
     }
     ret_val = hw_vmx_read_current_vmcs(encoding, &value);
@@ -416,7 +417,7 @@ void vmcs_act_flush_to_cpu(const struct _VMCS_OBJECT *vmcs)
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) vmcs;
 
-    VMM_ASSERT(GET_ACTIVATED_FLAG(p_vmcs));
+    VMM_ASSERT((p_vmcs->flags&ACTIVATED_FLAG)!=0);
     VMM_ASSERT(p_vmcs->owning_host_cpu == hw_cpu_id());
 
     /* in case the guest was re-scheduled, NMI Window is set in other VMCS
@@ -486,7 +487,7 @@ void vmcs_act_flush_to_memory(struct _VMCS_OBJECT *vmcs)
     UINT64           previous_vmcs;
 
     VMM_ASSERT(p_vmcs);
-    VMM_ASSERT(GET_ACTIVATED_FLAG(p_vmcs) == 0);
+    VMM_ASSERT((p_vmcs->flags&ACTIVATED_FLAG) == 0);
 
     if (p_vmcs->owning_host_cpu == CPU_NEVER_USED) {
         return;
@@ -509,7 +510,7 @@ void vmcs_act_flush_to_memory(struct _VMCS_OBJECT *vmcs)
     vmcs_deactivate(vmcs);
 
     // reset launching field
-    CLR_LAUNCHED_FLAG(p_vmcs);
+    p_vmcs->flags&= (UINT16)(~LAUNCHED_FLAG);
     p_vmcs->owning_host_cpu = CPU_NEVER_USED;
 
     // restore previous
@@ -588,17 +589,22 @@ void vmcs_clear_cache( VMCS_OBJECT *obj)
 
 
 // Activate
-void vmcs_activate( VMCS_OBJECT* obj )
+void vmcs_activate(VMCS_OBJECT* obj)
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
     CPU_ID                      this_cpu = hw_cpu_id();
     HW_VMX_RET_VALUE            ret_val;
 
+#ifdef JLMDEBUG
+    bprint("vmcs_activate\n");
+    LOOP_FOREVER
+#endif
     VMM_ASSERT(obj);
     VMM_ASSERT( p_vmcs->hpa );
-    VMM_ASSERT( GET_ACTIVATED_FLAG(p_vmcs) == 0 );
+    VMM_ASSERT((p_vmcs->flags&ACTIVATED_FLAG) == 0);
     VMM_DEBUG_CODE(
-        if ((p_vmcs->owning_host_cpu != CPU_NEVER_USED) && (p_vmcs->owning_host_cpu != this_cpu)) {
+        if ((p_vmcs->owning_host_cpu != CPU_NEVER_USED) && 
+            (p_vmcs->owning_host_cpu != this_cpu)) {
             VMM_LOG(mask_anonymous, level_trace,"Trying to activate VMCS, used on another CPU\n");
             VMM_DEADLOOP();
         }
@@ -606,7 +612,7 @@ void vmcs_activate( VMCS_OBJECT* obj )
 
     // special case - if VMCS is still in the initialization state (first load)
     // init the hw before activating it
-    if (GET_NEVER_ACTIVATED_FLAG(p_vmcs)) {
+    if (p_vmcs->flags&NEVER_ACTIVATED_FLAG) {
         ret_val = hw_vmx_flush_current_vmcs(&p_vmcs->hpa);
         if (ret_val != HW_VMX_SUCCESS) {
             error_processing(p_vmcs->hpa, ret_val, "hw_vmx_flush_current_vmcs", VMCS_FIELD_COUNT);
@@ -617,9 +623,9 @@ void vmcs_activate( VMCS_OBJECT* obj )
         error_processing(p_vmcs->hpa, ret_val, "vmx_vmptrld", VMCS_FIELD_COUNT);
     }
     p_vmcs->owning_host_cpu = this_cpu;
-    SET_ACTIVATED_FLAG(p_vmcs);
-    VMM_ASSERT(GET_ACTIVATED_FLAG(p_vmcs) == 1);
-    CLR_NEVER_ACTIVATED_FLAG(p_vmcs);
+    p_vmcs->flags|= ACTIVATED_FLAG;
+    VMM_ASSERT((p_vmcs->flags&ACTIVATED_FLAG) == 1);
+    p_vmcs->flags&= (UINT16)(~NEVER_ACTIVATED_FLAG);
 }
 
 
@@ -629,16 +635,16 @@ void vmcs_deactivate( VMCS_OBJECT* obj )
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
 
     VMM_ASSERT(obj);
-    VMM_ASSERT(GET_ACTIVATED_FLAG(p_vmcs) == 1);
+    VMM_ASSERT((p_vmcs->ACTIVATED_FLAG) == 1);
     VMM_ASSERT(hw_cpu_id() == p_vmcs->owning_host_cpu);
-    CLR_ACTIVATED_FLAG(p_vmcs);
+    p_vmcs->flags&= (UINT16)(~ACTIVATED_FLAG);
 }
 
 BOOLEAN vmcs_launch_required( const VMCS_OBJECT* obj )
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
     VMM_ASSERT(p_vmcs);
-    return (GET_LAUNCHED_FLAG(p_vmcs) == 0);
+    return ((p_vmcs->flags&LAUNCHED_FLAG) == 0);
 }
 
 void vmcs_set_launched( VMCS_OBJECT* obj )
@@ -647,7 +653,7 @@ void vmcs_set_launched( VMCS_OBJECT* obj )
 
     VMM_ASSERT(p_vmcs);
     VMM_ASSERT( GET_LAUNCHED_FLAG(p_vmcs) == 0 );
-    SET_LAUNCHED_FLAG(p_vmcs);
+    p_vmcs->flags|= LAUNCHED_FLAG;
 }
 
 void vmcs_set_launch_required( VMCS_OBJECT* obj )
@@ -655,7 +661,7 @@ void vmcs_set_launch_required( VMCS_OBJECT* obj )
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
 
     VMM_ASSERT(p_vmcs);
-    CLR_LAUNCHED_FLAG(p_vmcs);
+    p_vmcs->flags&= (UINT16)(~LAUNCHED_FLAG);
 }
 
 

@@ -898,15 +898,16 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         LOOP_FOREVER
 #endif
     }
+#ifdef JLMDEBUG
+    bprint("evmm: gcpu active, 0x%016lx\n", initial_gcpu);
+    LOOP_FOREVER
+#endif
     VMM_ASSERT(initial_gcpu != NULL);
     VMM_LOG(mask_uvmm, level_trace,
             "BSP: initial guest selected: GUEST_ID: %d GUEST_CPU_ID: %d\n",
             guest_vcpu(initial_gcpu)->guest_id, 
             guest_vcpu(initial_gcpu)->guest_cpu_id);
     ipc_change_state_to_active(initial_gcpu);
-#ifdef JLMDEBUG
-    bprint("evmm: gcpu active, 0x%016lx\n", initial_gcpu);
-#endif
     vmm_print_test(local_apic_id);
     VMM_LOG(mask_uvmm, level_trace,"BSP: Wait for APs to launch the first Guest CPU\n");
     WAIT_FOR_APPLICATION_PROCS_LAUNCHED_THE_GUEST( num_of_cpus - 1 );

@@ -33,6 +33,9 @@
 #include "vmcs_init.h"
 #include "unrestricted_guest.h"
 #include "fvs.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 extern BOOLEAN is_ib_registered(void);
 
@@ -392,8 +395,8 @@ void gcpu_swap_in( const GUEST_CPU_HANDLE gcpu )
     VMCS_OBJECT* vmcs = gcpu_get_vmcs(gcpu);
 
     // make global assembler save area for this host CPU point to new guest
-    g_guest_regs_save_area[ hw_cpu_id() ] = &(gcpu->save_area);
-    vmcs_activate( vmcs );
+    g_guest_regs_save_area[hw_cpu_id()] = &(gcpu->save_area);
+    vmcs_activate(vmcs);
     SET_ALL_MODIFIED(gcpu);
 }
 

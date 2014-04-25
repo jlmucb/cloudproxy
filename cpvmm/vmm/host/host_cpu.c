@@ -291,6 +291,7 @@ void host_cpu_init( void )
     hw_write_msr(IA32_MSR_SYSENTER_EIP, (ADDRESS)sysenter_func);
     hw_write_msr(IA32_MSR_SYSENTER_ESP, (ADDRESS)(hcpu->sysenter_stack + SYSENTER_STACK_SIZE - 5));
 #else
+// JLM(FIX)
 #ifdef JLMDEBUG
     bprint("Not using SYSENTER_STACK. CS = %d\n", IA32_MSR_SYSENTER_CS);
 #endif

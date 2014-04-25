@@ -35,9 +35,8 @@
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(HOST_CPU_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(HOST_CPU_C, __condition)
 
-//
+
 // Host CPU model for VMCS
-//
 
 //          types
 
@@ -102,13 +101,9 @@ extern BOOLEAN is_cr4_osxsave_supported(void);
 
 void host_cpu_manager_init( UINT16 max_host_cpus )
 {
-    // BEFORE_VMLAUNCH. PARANOID check.
     VMM_ASSERT( max_host_cpus );
-
     g_max_host_cpus = max_host_cpus;
     g_host_cpus = vmm_memory_alloc( sizeof( HOST_CPU_SAVE_AREA ) * max_host_cpus );
-
-    // BEFORE_VMLAUNCH. MALLOC should not fail.
     VMM_ASSERT( g_host_cpus );
 }
 
@@ -133,13 +128,14 @@ static void host_cpu_add_msr_to_vmexit_load_list(CPU_ID cpu, UINT32 msr_index, U
         if  (hcpu->vmexit_msr_load_list == NULL || hcpu->vmexit_msr_load_count >= hcpu->max_vmexit_msr_load_count)
         {
             // The list is full or not allocated, expand it
-            UINT32               new_max_count = MAX(hcpu->max_vmexit_msr_load_count * 2, MIN_SIZE_OF_MSR_LIST);
-            UINT32               new_size = sizeof(IA32_VMX_MSR_ENTRY) * new_max_count;
+            UINT32 new_max_count = MAX(hcpu->max_vmexit_msr_load_count * 2, MIN_SIZE_OF_MSR_LIST);
+            UINT32 new_size = sizeof(IA32_VMX_MSR_ENTRY) * new_max_count;
             IA32_VMX_MSR_ENTRY*  new_list = vmm_malloc_aligned(new_size, sizeof(IA32_VMX_MSR_ENTRY));
-            UINT32               i;
+            UINT32 i;
 
             if (new_list == NULL) {
-                VMM_LOG(mask_anonymous, level_trace,"%s: Memory allocation failed\n", __FUNCTION__);
+                VMM_LOG(mask_anonymous, level_trace,
+                        "%s: Memory allocation failed\n", __FUNCTION__);
                 // BEFORE_VMLAUNCH. MALLOC should not fail.
                 VMM_DEADLOOP();
             }
@@ -159,7 +155,6 @@ static void host_cpu_add_msr_to_vmexit_load_list(CPU_ID cpu, UINT32 msr_index, U
 
             update_gcpus = TRUE;
         }
-
         new_msr_ptr = &hcpu->vmexit_msr_load_list[hcpu->vmexit_msr_load_count++];
     }
 
@@ -173,10 +168,8 @@ static void host_cpu_add_msr_to_vmexit_load_list(CPU_ID cpu, UINT32 msr_index, U
         GUEST_CPU_HANDLE gcpu;
 
         gcpu = scheduler_same_host_cpu_gcpu_first(&iter, cpu);
-        while (gcpu != NULL)
-        {
+        while (gcpu != NULL) {
             gcpu_change_level0_vmexit_msr_load_list(gcpu, hcpu->vmexit_msr_load_list, hcpu->vmexit_msr_load_count);
-
             gcpu = scheduler_same_host_cpu_gcpu_next(&iter);
         }
     }
@@ -191,12 +184,9 @@ void host_cpu_add_msr_to_level0_autoswap(CPU_ID cpu, UINT32 msr_index) {
     gcpu = scheduler_same_host_cpu_gcpu_first(&iter, cpu);
     while (gcpu != NULL) {
         VMCS_OBJECT* vmcs = vmcs_hierarchy_get_vmcs(gcpu_get_vmcs_hierarchy( gcpu ), VMCS_LEVEL_0);
-
         vmcs_add_msr_to_vmexit_store_and_vmenter_load_lists(vmcs, msr_index, msr_value);
-
         gcpu = scheduler_same_host_cpu_gcpu_next(&iter);
     }
-
     host_cpu_add_msr_to_vmexit_load_list(cpu, msr_index, msr_value);
 }
 
@@ -226,7 +216,6 @@ void host_cpu_delete_msr_from_vmexit_load_list(CPU_ID cpu, UINT32 msr_index)
             }
         }
     }
-
     if (update_gcpus) {
         SCHEDULER_GCPU_ITERATOR  iter;
         GUEST_CPU_HANDLE         gcpu;
@@ -234,7 +223,7 @@ void host_cpu_delete_msr_from_vmexit_load_list(CPU_ID cpu, UINT32 msr_index)
         gcpu = scheduler_same_host_cpu_gcpu_first(&iter, cpu);
 
         while (gcpu != NULL) {
-            gcpu_change_level0_vmexit_msr_load_list(gcpu, hcpu->vmexit_msr_load_list, 
+            gcpu_change_level0_vmexit_msr_load_list(gcpu, hcpu->vmexit_msr_load_list,
                                                     hcpu->vmexit_msr_load_count);
             gcpu = scheduler_same_host_cpu_gcpu_next(&iter);
         }
@@ -270,14 +259,14 @@ void host_cpu_init_vmexit_store_and_vmenter_load_msr_lists_according_to_vmexit_l
     //    VMM_ASSERT(g_host_cpus[cpu].vmexit_msr_load_count > 0);
     VMM_ASSERT(g_host_cpus);
     for (i = 0; i < g_host_cpus[cpu].vmexit_msr_load_count; i++) {
-        vmcs_add_msr_to_vmexit_store_and_vmenter_load_lists(vmcs, g_host_cpus[cpu].vmexit_msr_load_list[i].MsrIndex,
-                                                            g_host_cpus[cpu].vmexit_msr_load_list[i].MsrData);
+        vmcs_add_msr_to_vmexit_store_and_vmenter_load_lists(vmcs, 
+                        g_host_cpus[cpu].vmexit_msr_load_list[i].MsrIndex,
+                        g_host_cpus[cpu].vmexit_msr_load_list[i].MsrData);
     }
 }
 
-//
+
 // Initialize current host cpu
-//
 void host_cpu_init( void )
 {
 #ifdef JLMDEBUG
@@ -295,11 +284,9 @@ void host_cpu_init( void )
 #ifdef JLMDEBUG
     bprint("Using SYSENTER_STACK\n");
 #endif
-
     hw_write_msr(IA32_MSR_SYSENTER_CS, hw_read_cs());
 #ifdef JLMDEBUG
     bprint("First msr write\n");
-    LOOP_FOREVER
 #endif
     hw_write_msr(IA32_MSR_SYSENTER_EIP, (ADDRESS)sysenter_func);
     hw_write_msr(IA32_MSR_SYSENTER_ESP, (ADDRESS)(hcpu->sysenter_stack + SYSENTER_STACK_SIZE - 5));
@@ -307,7 +294,6 @@ void host_cpu_init( void )
 #ifdef JLMDEBUG
     bprint("Not using SYSENTER_STACK. CS = %d\n", IA32_MSR_SYSENTER_CS);
 #endif
-
 #if 0
     hw_write_msr(IA32_MSR_SYSENTER_CS, 0);
 #ifdef JLMDEBUG
@@ -316,7 +302,6 @@ void host_cpu_init( void )
     hw_write_msr(IA32_MSR_SYSENTER_EIP, 0 );
     hw_write_msr(IA32_MSR_SYSENTER_ESP, 0);
 #endif // ends if 0
-
 #endif // ends USE_SYSENTER_STACK
 
     {
@@ -352,7 +337,6 @@ void host_cpu_vmcs_init( GUEST_CPU_HANDLE gcpu)
 {
     HPA                     host_msr_load_addr = 0;
     VMCS_OBJECT*            vmcs;
-
     EM64T_GDTR              gdtr;
     EM64T_IDT_DESCRIPTOR    idtr;
     HVA                     gcpu_stack;
@@ -365,89 +349,67 @@ void host_cpu_vmcs_init( GUEST_CPU_HANDLE gcpu)
     BOOLEAN                 success;
     VMM_STATUS              status;
 
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( gcpu );
-
     exit_controls.Uint32 = 0;
     vmm_memset(&vmexit_control, 0, sizeof(vmexit_control));
-
     cpu = hw_cpu_id();
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( cpu < g_max_host_cpus );
-
     vmcs = vmcs_hierarchy_get_vmcs(gcpu_get_vmcs_hierarchy( gcpu ), VMCS_LEVEL_0);
-    //vmcs = gcpu_get_vmcs(gcpu);
-
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( vmcs );
 
     //  Control Registers
     vmcs_write(vmcs, VMCS_HOST_CR0, vmcs_hw_make_compliant_cr0(hw_read_cr0()));
     vmcs_write(vmcs, VMCS_HOST_CR3, hw_read_cr3());
-
     if(is_cr4_osxsave_supported()){
         EM64T_CR4 cr4_mask;
         cr4_mask.Uint64 = 0;
         cr4_mask.Bits.OSXSAVE = 1;
         vmcs_write(vmcs, VMCS_HOST_CR4, vmcs_hw_make_compliant_cr4(hw_read_cr4()|
             (vmcs_read(vmcs,VMCS_GUEST_CR4) & cr4_mask.Uint64)));
-    } else {
+    } 
+    else {
         vmcs_write(vmcs, VMCS_HOST_CR4, vmcs_hw_make_compliant_cr4(hw_read_cr4()));
     }
 
-
-    /*
-     *  EIP, ESP
-     */
+    // EIP, ESP
     vmcs_write(vmcs, VMCS_HOST_RIP, (UINT64)vmexit_func);
     success = vmm_stack_get_stack_pointer_for_cpu(cpu, &gcpu_stack);
     VMM_ASSERT(success == TRUE);
     vmcs_write(vmcs, VMCS_HOST_RSP, gcpu_stack);
 
-    /*
-     *  Base-address fields for FS, GS, TR, GDTR, and IDTR (64 bits each).
-     */
+    //  Base-address fields for FS, GS, TR, GDTR, and IDTR (64 bits each).
     hw_sgdt(&gdtr);
     vmcs_write( vmcs, VMCS_HOST_GDTR_BASE, gdtr.base );
 
     hw_sidt(&idtr);
     vmcs_write( vmcs, VMCS_HOST_IDTR_BASE, idtr.base );
 
-    /*
-     *  FS (Selector + Base)
-     */
+    //  FS (Selector + Base)
     status = hw_gdt_parse_entry((UINT8 *) gdtr.base, hw_read_fs(), &base, &limit, &attributes);
     VMM_ASSERT(status == VMM_OK);
     vmcs_write(vmcs, VMCS_HOST_FS_SELECTOR, hw_read_fs());
     vmcs_write(vmcs, VMCS_HOST_FS_BASE, base);
 
-    /*
-     *  GS (Selector + Base)
-     */
+     // GS (Selector + Base)
     status = hw_gdt_parse_entry((UINT8 *) gdtr.base, hw_read_gs(), &base, &limit, &attributes);
     VMM_ASSERT(status == VMM_OK);
     vmcs_write(vmcs, VMCS_HOST_GS_SELECTOR, hw_read_gs());
     vmcs_write(vmcs, VMCS_HOST_GS_BASE, base);
 
-    /*
-     *  TR (Selector + Base)
-     */
-    status = hw_gdt_parse_entry((UINT8 *) gdtr.base, hw_read_tr(), &base, &limit, &attributes);
+     // TR (Selector + Base)
+    status = hw_gdt_parse_entry((UINT8 *) gdtr.base, hw_read_tr(), &base, 
+                                &limit, &attributes);
     VMM_ASSERT(status == VMM_OK);
     vmcs_write(vmcs, VMCS_HOST_TR_SELECTOR, hw_read_tr());
     vmcs_write(vmcs, VMCS_HOST_TR_BASE, base);
 
-    /*
-     *  Selector fields (16 bits each) for the segment registers CS, SS, DS, ES, FS, GS, and TR
-     */
+     // Selector fields (16 bits each) for CS, SS, DS, ES, FS, GS, and TR
     vmcs_write(vmcs, VMCS_HOST_CS_SELECTOR, hw_read_cs());
     vmcs_write(vmcs, VMCS_HOST_SS_SELECTOR, hw_read_ss());
     vmcs_write(vmcs, VMCS_HOST_DS_SELECTOR, hw_read_ds());
     vmcs_write(vmcs, VMCS_HOST_ES_SELECTOR, hw_read_es());
 
-    /*
-     *  MSRS
-     */
+     // MSRS
     if(vmcs_hw_get_vmx_constraints()->may1_vm_exit_ctrl.Bits.LoadSysEnterMsrs == 1) {
         vmcs_write(vmcs, VMCS_HOST_SYSENTER_CS, hw_read_msr(IA32_MSR_SYSENTER_CS));
         vmcs_write(vmcs, VMCS_HOST_SYSENTER_ESP, hw_read_msr(IA32_MSR_SYSENTER_ESP));
@@ -469,7 +431,6 @@ void host_cpu_vmcs_init( GUEST_CPU_HANDLE gcpu)
 
     VMM_ASSERT(g_host_cpus);
     if (gcpu_get_guest_level(gcpu) == GUEST_LEVEL_1_SIMPLE) {
-        // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_ASSERT(vmcs_hierarchy_get_vmcs(gcpu_get_vmcs_hierarchy( gcpu ), VMCS_MERGED) == vmcs)
         if ((g_host_cpus[cpu].vmexit_msr_load_count != 0) && (!hmm_hva_to_hpa((HVA)g_host_cpus[cpu].vmexit_msr_load_list, &host_msr_load_addr))) {
             VMM_LOG(mask_anonymous, level_trace,"%s:(%d):ASSERT: HVA to HPA conversion failed\n", __FUNCTION__, __LINE__);

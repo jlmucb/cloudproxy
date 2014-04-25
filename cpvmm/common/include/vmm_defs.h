@@ -147,10 +147,8 @@ typedef ADDRESS GPA;
 typedef UINT32  MSR_ID;
 typedef UINT16  IO_PORT_ID;
 
-/*
- *  compile time alignment
- */
 
+//  compile time alignment
 #ifdef __GNUC__
 #define ALIGN_N(__type, __var, __alignment) __type __attribute__((aligned(__alignment))) __var
 #else
@@ -159,9 +157,6 @@ typedef UINT16  IO_PORT_ID;
 
 #define ALIGN16(__type, __var) ALIGN_N(__type, __var, 16)
 #define ALIGN8(__type, __var)  ALIGN_N(__type, __var, 8)
-
-
-
 
 #define UINT64_ALL_ONES ((UINT64)-1)
 #define UINT32_ALL_ONES ((UINT32)-1)

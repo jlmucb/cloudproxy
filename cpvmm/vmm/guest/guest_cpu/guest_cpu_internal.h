@@ -148,7 +148,6 @@ typedef enum _GCPU_STATE_ENUM {
 #define CLR_IMPORTANT_EVENT_OCCURED_FLAG( gcpu ) BIT_CLR( (gcpu)->state_flags, GCPU_IMPORTANT_EVENT_OCCURED_FLAG)
 #define GET_IMPORTANT_EVENT_OCCURED_FLAG( gcpu ) BIT_GET( (gcpu)->state_flags, GCPU_IMPORTANT_EVENT_OCCURED_FLAG)
 
-
 #define IS_MODE_EMULATOR( gcpu )    (GET_EMULATOR_FLAG( gcpu ) == 1)
 #define SET_MODE_EMULATOR( gcpu )   SET_EMULATOR_FLAG( gcpu )
 
@@ -176,7 +175,6 @@ typedef enum _GCPU_CACHINE_FLAGS_ENUM {
 #define SET_FX_STATE_CACHED_FLAG( gcpu )   BIT_SET( (gcpu)->caching_flags, GCPU_FX_STATE_CACHED_FLAG)
 #define CLR_FX_STATE_CACHED_FLAG( gcpu )   BIT_CLR( (gcpu)->caching_flags, GCPU_FX_STATE_CACHED_FLAG)
 #define GET_FX_STATE_CACHED_FLAG( gcpu )   BIT_GET( (gcpu)->caching_flags, GCPU_FX_STATE_CACHED_FLAG)
-
 #define SET_DEBUG_REGS_CACHED_FLAG( gcpu ) BIT_SET( (gcpu)->caching_flags, GCPU_DEBUG_REGS_CACHED_FLAG)
 #define CLR_DEBUG_REGS_CACHED_FLAG( gcpu ) BIT_CLR( (gcpu)->caching_flags, GCPU_DEBUG_REGS_CACHED_FLAG)
 #define GET_DEBUG_REGS_CACHED_FLAG( gcpu ) BIT_GET( (gcpu)->caching_flags, GCPU_DEBUG_REGS_CACHED_FLAG)

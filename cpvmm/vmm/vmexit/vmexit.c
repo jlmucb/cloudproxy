@@ -78,7 +78,7 @@ VMEXIT_HANDLING_STATUS vmexit_vmentry_failure_due2_machine_check(GUEST_CPU_HANDL
 VMEXIT_HANDLING_STATUS vmexit_invalid_vmfunc(GUEST_CPU_HANDLE gcpu);
 #endif
 
-UINT32 /* ASM_FUNCTION */ vmexit_check_ept_violation(void);
+UINT32 vmexit_check_ept_violation(void);
 
 extern int CLI_active(void);
 
@@ -299,12 +299,9 @@ static void vmexit_bottom_up_all_vmms_skip_instruction(GUEST_CPU_HANDLE gcpu,
 
     guest_vmexit_control = vmexit_find_guest_vmexit_control(guest_id);
     VMM_ASSERT(guest_vmexit_control);
-
     VMM_ASSERT(reason < Ia32VmxExitBasicReasonCount);
-
     VMM_ASSERT(level0_vmcs != NULL);
     hw_interlocked_increment((INT32*)&(guest_vmexit_control->vmexit_counter[reason]));
-
     if ((guest_level == GUEST_LEVEL_1_SIMPLE) || (guest_level == GUEST_LEVEL_1_VMM) ||
         (vmexit_analysis_was_control_requested(gcpu, merged_vmcs, level0_vmcs, (IA32_VMX_EXIT_BASIC_REASON)reason))) {
 #ifdef DEBUG
@@ -317,24 +314,19 @@ static void vmexit_bottom_up_all_vmms_skip_instruction(GUEST_CPU_HANDLE gcpu,
         // return value is not important
         guest_vmexit_control->vmexit_handlers[reason](gcpu);
     }
-
     if (guest_level == GUEST_LEVEL_2) {
         VMCS_OBJECT* level1_vmcs = vmcs_hierarchy_get_vmcs(vmcs_hierarchy, VMCS_LEVEL_1);
-
         VMM_ASSERT(level1_vmcs != NULL);
         // Check if layer2 can accept the event, if not inject event to (level-2) guest
         if (vmexit_analysis_was_control_requested(gcpu, merged_vmcs, level1_vmcs, (IA32_VMX_EXIT_BASIC_REASON)reason)) {
             gcpu_set_next_guest_level(gcpu, GUEST_LEVEL_1_VMM);
-
             // instruction will be skipped by level-1
             skip_instruction = FALSE;
         }
     }
-
     if (skip_instruction) {
         gcpu_skip_guest_instruction(gcpu);
     }
-
 }
 
 void vmexit_bottom_up_common_handler(GUEST_CPU_HANDLE gcpu, UINT32 reason) {
@@ -527,9 +519,7 @@ VMEXIT_HANDLING_STATUS vmexit_xsetbv(GUEST_CPU_HANDLE gcpu)
 
     cpuid_params.m_rax = 0xd;
     cpuid_params.m_rcx = 0;
-
     hw_cpuid(&cpuid_params);
-
     vmm_read_xcr(&XCR0_Mask_low,&XCR0_Mask_high,0);
     /*
     let's check three things first before executing the instruction to make 
@@ -551,9 +541,9 @@ VMEXIT_HANDLING_STATUS vmexit_xsetbv(GUEST_CPU_HANDLE gcpu)
         gcpu_inject_gp0(gcpu);
         return VMEXIT_HANDLED;
     }
-
-    vmm_write_xcr(gcpu->save_area.gp.reg[IA32_REG_RCX],gcpu->save_area.gp.reg[IA32_REG_RDX],
-        gcpu->save_area.gp.reg[IA32_REG_RAX]);
+    vmm_write_xcr(gcpu->save_area.gp.reg[IA32_REG_RCX],
+                  gcpu->save_area.gp.reg[IA32_REG_RDX],
+                  gcpu->save_area.gp.reg[IA32_REG_RAX]);
     gcpu_skip_guest_instruction(gcpu);
     return VMEXIT_HANDLED;
 
@@ -565,7 +555,9 @@ VMEXIT_HANDLING_STATUS vmexit_xsetbv(GUEST_CPU_HANDLE gcpu)
 // RETURNS  : vmexit handling status
 VMEXIT_HANDLING_STATUS vmexit_halt_instruction(GUEST_CPU_HANDLE gcpu)
 {
-    if (!report_uvmm_event(UVMM_EVENT_HALT_INSTRUCTION, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), NULL)) {
+    if (!report_uvmm_event(UVMM_EVENT_HALT_INSTRUCTION, 
+                           (VMM_IDENTIFICATION_DATA)gcpu, 
+                           (const GUEST_VCPU*)guest_vcpu(gcpu), NULL)) {
         VMM_LOG(mask_uvmm, level_trace, "Report HALT Instruction VMExit failed.\n");
         VMM_DEADLOOP();
     }
@@ -598,6 +590,7 @@ VMEXIT_HANDLING_STATUS vmexit_vmentry_failure_due2_machine_check(GUEST_CPU_HANDL
 // PURPOSE  : Handler for invalid vmfunc instruction
 // ARGUMENTS: gcpu
 // RETURNS  : VMEXIT_HANDLING_STATUS
+//CHECK(JLM):  I think the ecx is from the MSFT calling convention
 VMEXIT_HANDLING_STATUS vmexit_invalid_vmfunc(GUEST_CPU_HANDLE gcpu)
 {
     REPORT_FAST_VIEW_SWITCH_DATA fast_view_switch_data;
@@ -697,12 +690,11 @@ VMM_STATUS vmexit_install_handler(
         // BEFORE_VMLAUNCH. It could happen due to coding error.
         VMM_ASSERT(reason < Ia32VmxExitBasicReasonCount);
     }
-
     return status;
 }
 
-extern UINT32 /* __attribute((stdcall)) */ vmexit_reason(void);
-UINT64 /* __attribute((stdcall)) */ gcpu_read_guestrip(void);
+extern UINT32 vmexit_reason(void);
+UINT64 gcpu_read_guestrip(void);
 
 
 // FUNCTION : vmexit_common_handler()
@@ -719,7 +711,8 @@ void vmexit_common_handler(void)
     VMM_ASSERT(gcpu);
 
     // Disable the VMCS Software Shadow/Cache
-    // This is required since GCPU and VMCS cache has not yet been flushed and might have stale values from previous VMExit
+    // This is required since GCPU and VMCS cache has not yet been 
+    // flushed and might have stale values from previous VMExit
     vmcs_sw_shadow_disable[hw_cpu_id()] = TRUE;
 
     if( gcpu->trigger_log_event && (vmexit_reason() == Ia32VmxExitBasicReasonMonitorTrapFlag) ) {
@@ -728,13 +721,15 @@ void vmexit_common_handler(void)
         vmm_log_event_data.vector = gcpu->trigger_log_event - 1;
         gcpu->trigger_log_event = 0;
         report_uvmm_event(UVMM_EVENT_LOG, (VMM_IDENTIFICATION_DATA)gcpu, 
-                    (const GUEST_VCPU*)guest_vcpu(gcpu), (void *)&vmm_log_event_data);
+                  (const GUEST_VCPU*)guest_vcpu(gcpu), (void *)&vmm_log_event_data);
     }
 
-    // OPTIMIZATION: Check if current VMExit is MTF VMExit after MTF was turned on for EPT violation
+    // OPTIMIZATION: Check if current VMExit is MTF VMExit after MTF was 
+    // turned on for EPT violation
     initial_vmexit_check_data.current_cpu_rip = gcpu_read_guestrip();
     initial_vmexit_check_data.vmexit_reason = vmexit_reason();
-    if (report_uvmm_event(UVMM_EVENT_INITIAL_VMEXIT_CHECK, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), (void *)&initial_vmexit_check_data)) {
+    if (report_uvmm_event(UVMM_EVENT_INITIAL_VMEXIT_CHECK, 
+            (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu),                  (void *)&initial_vmexit_check_data)) {
 #ifdef FAST_VIEW_SWITCH
         if (fvs_is_eptp_switching_supported()) {
             fvs_save_resumed_eptp(gcpu);
@@ -752,7 +747,6 @@ void vmexit_common_handler(void)
 #endif
 
     VMM_ASSERT(hw_cpu_id() < VMM_MAX_CPU_SUPPORTED);
-
     // OPTIMIZATION: For EPT violation, do not enable the software VMCS cache
     if ((vmexit_check_ept_violation() & 7) == 0)
         vmcs_sw_shadow_disable[hw_cpu_id()] = FALSE;
@@ -765,7 +759,6 @@ void vmexit_common_handler(void)
         // Check keystroke
         vmexit_check_keystroke(gcpu);
     }
-
 #ifdef FAST_VIEW_SWITCH
     if (fvs_is_fvs_enabled(gcpu)) {
         if (fvs_is_eptp_switching_supported())
@@ -778,9 +771,8 @@ void vmexit_common_handler(void)
 
     // call add-on VMEXIT if installed
     // if add-on is not interesting in this VMEXIT, it retursn NULL
-    // if legacy_scheduling_enabled == FALSE, scheduling must be done in gcpu_resume()
+    // if legacy_scheduling_enabled == FALSE, scheduling must be done in gcpu_resume
     next_gcpu = gcpu_call_vmexit_function(gcpu, reason.Bits.BasicReason);
-
     if (NULL == next_gcpu) {
         // call reason-specific VMEXIT handler
         vmexit_handler_invoke(gcpu, reason.Bits.BasicReason);
@@ -792,9 +784,7 @@ void vmexit_common_handler(void)
     else {
         scheduler_schedule_gcpu(next_gcpu);
     }
-
     VMM_ASSERT(next_gcpu);
-
     // finally process NMI injection
     NMI_DO_PROCESSING();
     gcpu_resume(next_gcpu);
@@ -811,7 +801,6 @@ static GUEST_VMEXIT_CONTROL* vmexit_find_guest_vmexit_control(GUEST_ID guest_id)
             return guest_vmexit_control;
         }
     }
-
     return NULL;
 }
 
@@ -864,13 +853,14 @@ void vmexit_direct_call_handler(GUEST_CPU_HANDLE gcpu)
 #define vmexit_machine_check                vmexit_handler_default
 #define vmexit_tpr_below_threshold          vmexit_handler_default
 #define vmexit_apic_access                  vmexit_handler_default
-
 #define CPUID_XSAVE_SUPPORTED_BIT 26
 
+// CHECK(JLM): see if this is holdover from MSFT calling convention
 BOOLEAN is_cr4_osxsave_supported(void)
 {
     CPUID_PARAMS cpuid_params;
     cpuid_params.m_rax = 1;
     hw_cpuid(&cpuid_params);
-    return (BOOLEAN) BIT_GET64( cpuid_params.m_rcx, CPUID_XSAVE_SUPPORTED_BIT );
+    return (BOOLEAN) BIT_GET64(cpuid_params.m_rcx, CPUID_XSAVE_SUPPORTED_BIT);
 }
+

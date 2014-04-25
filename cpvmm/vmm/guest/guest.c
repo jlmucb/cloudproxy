@@ -792,7 +792,9 @@ BOOLEAN vmm_get_struct_host_ptr(GUEST_CPU_HANDLE gcpu,
     }
     host_ptr_tmp = (void*)hva;
     if (*((VMCALL_ID*)host_ptr_tmp) != expected_vmcall_id) {
-        VMM_LOG(mask_anonymous, level_trace,"%s: Invalid first field (vmcall_id) of the struct: %d instead of %d\n", __FUNCTION__, *((VMCALL_ID*)host_ptr_tmp), expected_vmcall_id);
+        VMM_LOG(mask_anonymous, level_trace,
+            "%s: Invalid first field (vmcall_id) of the struct: %d instead of %d\n", 
+            __FUNCTION__, *((VMCALL_ID*)host_ptr_tmp), expected_vmcall_id);
         return FALSE;
     }
     if (ALIGN_BACKWARD(gva, PAGE_4KB_SIZE) != ALIGN_BACKWARD(gva+size_of_struct, PAGE_4KB_SIZE)) {

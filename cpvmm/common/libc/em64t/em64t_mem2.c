@@ -14,6 +14,9 @@
 
 #include "vmm_defs.h"
 #include "common_libc.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 
 //  force compiler intrinsics to use our code
@@ -41,13 +44,17 @@ void *memmove(void *dest, const void *src, int n) {
 
 void vmm_lock_xchg_qword (UINT64 *dst, UINT64 *src) 
 {
+#ifdef JLMDEBUG
+    bprint("vmm_lock_xchg_qword\n");
+    LOOP_FOREVER
+#endif
     // CHECK(JLM)
     asm volatile(
         "\tmovq %[src], %%r8\n"
         "\tmovq %[src], %%rdx\n"
         "\tmovq %[dst], %%rcx\n"
         "\tmovq %%r8, (%%rdx)\n"
-        "\tlock xchg %%r8, (%%rcx)\n"
+        "\tlock; xchg %%r8, (%%rcx)\n"
     :
     : [dst] "m" (dst), [src] "m" (src)
     :"rcx", "rdx", "r8");
@@ -56,6 +63,10 @@ void vmm_lock_xchg_qword (UINT64 *dst, UINT64 *src)
 
 void vmm_lock_xchg_byte (UINT8 *dst, UINT8 *src) 
 {
+#ifdef JLMDEBUG
+    bprint("vmm_lock_xchg_byte\n");
+    LOOP_FOREVER
+#endif
     asm volatile(
         "\tmovq %[src], %%rdx\n"
         "\tmovq %[dst], %%rcx\n"

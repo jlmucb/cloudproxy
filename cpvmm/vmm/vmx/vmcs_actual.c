@@ -49,17 +49,13 @@ typedef enum _FLAGS {
 #define SET_LAUNCHED_FLAG( obj )    BIT_SET( (obj)->flags, LAUNCHED_FLAG)
 #define CLR_LAUNCHED_FLAG( obj )    BIT_CLR( (obj)->flags, LAUNCHED_FLAG)
 #define GET_LAUNCHED_FLAG( obj )    BIT_GET( (obj)->flags, LAUNCHED_FLAG)
-
 #define SET_ACTIVATED_FLAG( obj )   BIT_SET( (obj)->flags, ACTIVATED_FLAG)
 #define CLR_ACTIVATED_FLAG( obj )   BIT_CLR( (obj)->flags, ACTIVATED_FLAG)
 #define GET_ACTIVATED_FLAG( obj )   BIT_GET( (obj)->flags, ACTIVATED_FLAG)
-
 #define SET_NEVER_ACTIVATED_FLAG( obj ) BIT_SET( (obj)->flags, NEVER_ACTIVATED_FLAG)
 #define CLR_NEVER_ACTIVATED_FLAG( obj ) BIT_CLR( (obj)->flags, NEVER_ACTIVATED_FLAG)
 #define GET_NEVER_ACTIVATED_FLAG( obj ) BIT_GET( (obj)->flags, NEVER_ACTIVATED_FLAG)
-
 #define FIELD_IS_HW_WRITABLE(__access) (VMCS_WRITABLE & (__access))
-
 #define NMI_WINDOW_BIT  22
 
 typedef struct _VMCS_ACTUAL_OBJECT {
@@ -111,32 +107,47 @@ static const char* g_instr_error_message[] = {
 
 
 static UINT64 vmcs_act_read(const struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id);
-static void vmcs_act_write(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id, UINT64 value);
+static void vmcs_act_write(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id, 
+                            UINT64 value);
 static void vmcs_act_flush_to_cpu(const struct _VMCS_OBJECT *vmcs);
 static void vmcs_act_flush_to_memory(struct _VMCS_OBJECT *vmcs);
 static BOOLEAN vmcs_act_is_dirty(const struct _VMCS_OBJECT *vmcs);
 static GUEST_CPU_HANDLE vmcs_act_get_owner(const struct _VMCS_OBJECT *vmcs);
 static void vmcs_act_destroy(struct _VMCS_OBJECT *vmcs);
-static void vmcs_act_add_msr_to_vmexit_store_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value);
-static void vmcs_act_add_msr_to_vmexit_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value);
-static void vmcs_act_add_msr_to_vmenter_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value);
-static void vmcs_act_add_msr_to_vmexit_store_and_vmenter_load_lists(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value);
-static void vmcs_act_delete_msr_from_vmexit_store_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index);
-static void vmcs_act_delete_msr_from_vmexit_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index);
-static void vmcs_act_delete_msr_from_vmenter_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index);
-static void vmcs_act_delete_msr_from_vmexit_store_and_vmenter_load_lists(struct _VMCS_OBJECT *vmcs, UINT32 msr_index);
+static void vmcs_act_add_msr_to_vmexit_store_list(struct _VMCS_OBJECT *vmcs, 
+                            UINT32 msr_index, UINT64 value);
+static void vmcs_act_add_msr_to_vmexit_load_list(struct _VMCS_OBJECT *vmcs, 
+                            UINT32 msr_index, UINT64 value);
+static void vmcs_act_add_msr_to_vmenter_load_list(struct _VMCS_OBJECT *vmcs, 
+                            UINT32 msr_index, UINT64 value);
+static void vmcs_act_add_msr_to_vmexit_store_and_vmenter_load_lists(
+                        struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value);
+static void vmcs_act_delete_msr_from_vmexit_store_list(struct _VMCS_OBJECT *vmcs, 
+                        UINT32 msr_index);
+static void vmcs_act_delete_msr_from_vmexit_load_list(struct _VMCS_OBJECT *vmcs, 
+                        UINT32 msr_index);
+static void vmcs_act_delete_msr_from_vmenter_load_list(struct _VMCS_OBJECT *vmcs, 
+                        UINT32 msr_index);
+static void vmcs_act_delete_msr_from_vmexit_store_and_vmenter_load_lists(
+                        struct _VMCS_OBJECT *vmcs, UINT32 msr_index);
 
-static void         vmcs_act_flush_field_to_cpu(UINT32 entry_no, VMCS_ACTUAL_OBJECT *p_vmcs);
-static void         vmcs_act_flush_nmi_depended_field_to_cpu(VMCS_ACTUAL_OBJECT *p_vmcs, UINT64 value);
-static UINT64       vmcs_act_read_from_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_id);
-static void         vmcs_act_write_to_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_id, UINT64 value);
+static void vmcs_act_flush_field_to_cpu(UINT32 entry_no, VMCS_ACTUAL_OBJECT *p_vmcs);
+static void vmcs_act_flush_nmi_depended_field_to_cpu(VMCS_ACTUAL_OBJECT *p_vmcs, 
+                        UINT64 value);
+static UINT64 vmcs_act_read_from_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, 
+                        VMCS_FIELD field_id);
+static void vmcs_act_write_to_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, 
+                        VMCS_FIELD field_id, UINT64 value);
 
-static UINT64       temp_replace_vmcs_ptr(UINT64 new_ptr);
-static void         restore_previous_vmcs_ptr(UINT64 ptr_to_restore);
-static void         error_processing(UINT64 vmcs, HW_VMX_RET_VALUE ret_val,
+static UINT64  temp_replace_vmcs_ptr(UINT64 new_ptr);
+static void    restore_previous_vmcs_ptr(UINT64 ptr_to_restore);
+static void    error_processing(UINT64 vmcs, HW_VMX_RET_VALUE ret_val,
                               const char* operation, VMCS_FIELD  field);
 static BOOLEAN nmi_window[VMM_MAX_CPU_SUPPORTED]; // stores NMI Windows which should be injected per CPU
 
+
+// JLM:added
+extern HW_VMX_RET_VALUE hw_vmx_read_current_vmcs(UINT64 field_id, UINT64 *value );
 
 /*----------------------------------------------------------------------------*
 **                              NMI Handling
@@ -188,8 +199,6 @@ void vmcs_nmi_handler(struct _VMCS_OBJECT *vmcs)
     UINT64  value;
     VMM_ASSERT(p_vmcs);
 
-//    VMM_LOG_NOLOCK("NMI Handler Called\n");
-
     // mark that NMI Window must be set, in case that SW still did not flush VMCSS to hardware
     nmi_remember_occured_nmi();
 
@@ -219,9 +228,7 @@ void nmi_window_update_before_vmresume(struct _VMCS_OBJECT *vmcs)
 void vmcs_write_nmi_window_bit(struct _VMCS_OBJECT *vmcs, BOOLEAN value)
 {
     vmcs_update(vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS,
-                FALSE == value ? 0 : (UINT64) -1,
-                BIT_VALUE(NMI_WINDOW_BIT));
-
+                FALSE == value ? 0 : (UINT64) -1, BIT_VALUE(NMI_WINDOW_BIT));
     if (value)
         nmi_window_set();
     else
@@ -240,7 +247,7 @@ struct _VMCS_OBJECT * vmcs_act_create(GUEST_CPU_HANDLE gcpu)
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs;
 
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     bprint("vmcs_act_create\n");
 #endif
     p_vmcs = vmm_malloc(sizeof(*p_vmcs));
@@ -265,17 +272,24 @@ struct _VMCS_OBJECT * vmcs_act_create(GUEST_CPU_HANDLE gcpu)
     p_vmcs->vmcs_base->vmcs_is_dirty = vmcs_act_is_dirty;
     p_vmcs->vmcs_base->vmcs_get_owner = vmcs_act_get_owner;
     p_vmcs->vmcs_base->vmcs_destroy = vmcs_act_destroy;
-    p_vmcs->vmcs_base->vmcs_add_msr_to_vmexit_store_list = vmcs_act_add_msr_to_vmexit_store_list;
-    p_vmcs->vmcs_base->vmcs_add_msr_to_vmexit_load_list = vmcs_act_add_msr_to_vmexit_load_list;
-    p_vmcs->vmcs_base->vmcs_add_msr_to_vmenter_load_list = vmcs_act_add_msr_to_vmenter_load_list;
-    p_vmcs->vmcs_base->vmcs_add_msr_to_vmexit_store_and_vmenter_load_list  = vmcs_act_add_msr_to_vmexit_store_and_vmenter_load_lists;
-    p_vmcs->vmcs_base->vmcs_delete_msr_from_vmexit_store_list = vmcs_act_delete_msr_from_vmexit_store_list;
-    p_vmcs->vmcs_base->vmcs_delete_msr_from_vmexit_load_list = vmcs_act_delete_msr_from_vmexit_load_list;
-    p_vmcs->vmcs_base->vmcs_delete_msr_from_vmenter_load_list = vmcs_act_delete_msr_from_vmenter_load_list;
-    p_vmcs->vmcs_base->vmcs_delete_msr_from_vmexit_store_and_vmenter_load_list  = vmcs_act_delete_msr_from_vmexit_store_and_vmenter_load_lists;
-
+    p_vmcs->vmcs_base->vmcs_add_msr_to_vmexit_store_list = 
+        vmcs_act_add_msr_to_vmexit_store_list;
+    p_vmcs->vmcs_base->vmcs_add_msr_to_vmexit_load_list = 
+        vmcs_act_add_msr_to_vmexit_load_list;
+    p_vmcs->vmcs_base->vmcs_add_msr_to_vmenter_load_list = 
+        vmcs_act_add_msr_to_vmenter_load_list;
+    p_vmcs->vmcs_base->vmcs_add_msr_to_vmexit_store_and_vmenter_load_list  = 
+        vmcs_act_add_msr_to_vmexit_store_and_vmenter_load_lists;
+    p_vmcs->vmcs_base->vmcs_delete_msr_from_vmexit_store_list = 
+        vmcs_act_delete_msr_from_vmexit_store_list;
+    p_vmcs->vmcs_base->vmcs_delete_msr_from_vmexit_load_list = 
+        vmcs_act_delete_msr_from_vmexit_load_list;
+    p_vmcs->vmcs_base->vmcs_delete_msr_from_vmenter_load_list = 
+        vmcs_act_delete_msr_from_vmenter_load_list;
+    p_vmcs->vmcs_base->vmcs_delete_msr_from_vmexit_store_and_vmenter_load_list  = 
+        vmcs_act_delete_msr_from_vmexit_store_and_vmenter_load_lists;
     p_vmcs->vmcs_base->level = VMCS_MERGED;
-    p_vmcs->vmcs_base->skip_access_checking   = FALSE;
+    p_vmcs->vmcs_base->skip_access_checking = FALSE;
     p_vmcs->vmcs_base->signature = VMCS_SIGNATURE;
     vmcs_init_all_msr_lists(p_vmcs->vmcs_base);
     return p_vmcs->vmcs_base;
@@ -315,7 +329,6 @@ UINT64 vmcs_act_read(const struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id)
 
     VMM_ASSERT(p_vmcs);
     VMM_ASSERT(field_id < VMCS_FIELD_COUNT);
-
     if (TRUE != cache64_read(p_vmcs->cache, &value, (UINT32) field_id)) {
         // special case - if hw VMCS was never filled, there is nothing to read
         // from HW
@@ -324,16 +337,11 @@ UINT64 vmcs_act_read(const struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id)
             cache64_write(p_vmcs->cache, 0, (UINT32) field_id);
             return 0;
         }
-
         value = vmcs_act_read_from_hardware(p_vmcs, field_id);
         cache64_write(p_vmcs->cache, value, (UINT32) field_id); // update cache
     }
     return value;
 }
-
-
-// JLM:added
-extern HW_VMX_RET_VALUE hw_vmx_read_current_vmcs(UINT64 field_id, UINT64 *value );
 
 
 UINT64 vmcs_act_read_from_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_id)
@@ -352,18 +360,14 @@ UINT64 vmcs_act_read_from_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_
 
     encoding = vmcs_get_field_encoding(field_id, NULL);
     VMM_ASSERT(encoding != VMCS_NO_COMPONENT);
-
     // if VMCS is not "current" now, make it current temporary
     if (0 == GET_ACTIVATED_FLAG(p_vmcs)) {
         previous_vmcs = temp_replace_vmcs_ptr(p_vmcs->hpa);
     }
-
     ret_val = hw_vmx_read_current_vmcs(encoding, &value);
-
     if (ret_val != HW_VMX_SUCCESS) {
         error_processing(p_vmcs->hpa, ret_val, "hw_vmx_read_current_vmcs", field_id);
     }
-
     // flush current VMCS if it was never used on this CPU
     if (p_vmcs->owning_host_cpu == CPU_NEVER_USED) {
         ret_val = hw_vmx_flush_current_vmcs(&p_vmcs->hpa);
@@ -372,12 +376,10 @@ UINT64 vmcs_act_read_from_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_
             error_processing(p_vmcs->hpa, ret_val, "hw_vmx_flush_current_vmcs", VMCS_FIELD_COUNT);
         }
     }
-
     // restore the previous "current" VMCS
     if (0 != previous_vmcs) {
         restore_previous_vmcs_ptr( previous_vmcs );
     }
-
     return value;
 }
 
@@ -396,20 +398,15 @@ void vmcs_act_write_to_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_id,
             VMM_DEADLOOP();
         }
     )
-
     encoding = vmcs_get_field_encoding( field_id, &access_type);
     VMM_ASSERT(encoding != VMCS_NO_COMPONENT);
 
     if (0 == FIELD_IS_HW_WRITABLE(access_type)) {
         return;
     }
-
     ret_val = hw_vmx_write_current_vmcs(encoding, value);
-
     if (ret_val != HW_VMX_SUCCESS) {
-        error_processing(p_vmcs->hpa,
-                         ret_val,
-                         "hw_vmx_write_current_vmcs",
+        error_processing(p_vmcs->hpa, ret_val, "hw_vmx_write_current_vmcs",
                          field_id);
     }
 }
@@ -449,7 +446,6 @@ void vmcs_act_flush_field_to_cpu(UINT32 field_id, VMCS_ACTUAL_OBJECT *p_vmcs)
         VMM_LOG(mask_anonymous, level_trace,"Read field %d from cache failed.\n", field_id);
         return;
     }
-
     if (VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS != field_id) {
         vmcs_act_write_to_hardware(p_vmcs, (VMCS_FIELD)field_id, value);
     }
@@ -473,14 +469,11 @@ void vmcs_act_flush_nmi_depended_field_to_cpu(VMCS_ACTUAL_OBJECT *p_vmcs, UINT64
         vmcs_act_write_to_hardware(p_vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS, value);
 
         if (UPDATE_SUCCEEDED == hw_interlocked_compare_exchange(
-                                    &p_vmcs->update_status,
-                                    UPDATE_SUCCEEDED,  // expected value
-                                    UPDATE_FINISHED))  // new value
-        {
+                                    &p_vmcs->update_status, UPDATE_SUCCEEDED,
+                                    UPDATE_FINISHED)) {
             success = TRUE;
         }
-        else
-        {
+        else {
             VMM_DEBUG_CODE( VMM_LOG(mask_anonymous, level_trace,"NMI Occured during update\n"); );
         }
     }
@@ -499,7 +492,7 @@ void vmcs_act_flush_to_memory(struct _VMCS_OBJECT *vmcs)
         return;
     }
     VMM_ASSERT(hw_cpu_id() == p_vmcs->owning_host_cpu);
-    hw_vmx_get_current_vmcs(&previous_vmcs);
+    vmx_vmptrst(&previous_vmcs);
 
     // make my active temporary
     vmcs_activate(vmcs);
@@ -513,7 +506,6 @@ void vmcs_act_flush_to_memory(struct _VMCS_OBJECT *vmcs)
     if (ret_val != HW_VMX_SUCCESS) {
         error_processing(p_vmcs->hpa, ret_val, "hw_vmx_flush_current_vmcs", VMCS_FIELD_COUNT);
     }
-
     vmcs_deactivate(vmcs);
 
     // reset launching field
@@ -544,10 +536,10 @@ UINT64 temp_replace_vmcs_ptr( UINT64 new_ptr ) // return previous ptr
     HW_VMX_RET_VALUE ret_val;
     UINT64           previous_vmcs;
 
-    hw_vmx_get_current_vmcs(&previous_vmcs);
-    ret_val = hw_vmx_set_current_vmcs( &new_ptr );
+    vmx_vmptrst(&previous_vmcs);
+    ret_val = vmx_vmptrld( &new_ptr );
     if (ret_val != HW_VMX_SUCCESS) {
-        error_processing(new_ptr, ret_val, "hw_vmx_set_current_vmcs", VMCS_FIELD_COUNT);
+        error_processing(new_ptr, ret_val, "vmx_vmptrld", VMCS_FIELD_COUNT);
     }
     return previous_vmcs;
 }
@@ -560,18 +552,18 @@ void restore_previous_vmcs_ptr( UINT64 ptr_to_restore )
 
     // restore previous VMCS pointer
     if (ptr_to_restore != HW_VMCS_IS_EMPTY) {
-        ret_val = hw_vmx_set_current_vmcs( &ptr_to_restore );
+        ret_val = vmx_vmptrld( &ptr_to_restore );
 
         if (ret_val != HW_VMX_SUCCESS) {
             error_processing(ptr_to_restore,
                              ret_val,
-                             "hw_vmx_set_current_vmcs",
+                             "vmx_vmptrld",
                              VMCS_FIELD_COUNT);
         }
     }
     else {
         // reset hw VMCS pointer
-        hw_vmx_get_current_vmcs( &temp_vmcs_ptr );
+        vmx_vmptrst( &temp_vmcs_ptr );
 
         if (temp_vmcs_ptr != HW_VMCS_IS_EMPTY) {
             ret_val = hw_vmx_flush_current_vmcs( &temp_vmcs_ptr );
@@ -599,13 +591,12 @@ void vmcs_clear_cache( VMCS_OBJECT *obj)
 void vmcs_activate( VMCS_OBJECT* obj )
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
-    CPU_ID           this_cpu = hw_cpu_id();
-    HW_VMX_RET_VALUE ret_val;
+    CPU_ID                      this_cpu = hw_cpu_id();
+    HW_VMX_RET_VALUE            ret_val;
 
     VMM_ASSERT(obj);
     VMM_ASSERT( p_vmcs->hpa );
     VMM_ASSERT( GET_ACTIVATED_FLAG(p_vmcs) == 0 );
-
     VMM_DEBUG_CODE(
         if ((p_vmcs->owning_host_cpu != CPU_NEVER_USED) && (p_vmcs->owning_host_cpu != this_cpu)) {
             VMM_LOG(mask_anonymous, level_trace,"Trying to activate VMCS, used on another CPU\n");
@@ -617,22 +608,17 @@ void vmcs_activate( VMCS_OBJECT* obj )
     // init the hw before activating it
     if (GET_NEVER_ACTIVATED_FLAG(p_vmcs)) {
         ret_val = hw_vmx_flush_current_vmcs(&p_vmcs->hpa);
-
         if (ret_val != HW_VMX_SUCCESS) {
             error_processing(p_vmcs->hpa, ret_val, "hw_vmx_flush_current_vmcs", VMCS_FIELD_COUNT);
         }
     }
-
-    ret_val = hw_vmx_set_current_vmcs(&p_vmcs->hpa);
-
+    ret_val = vmx_vmptrld(&p_vmcs->hpa);
     if (ret_val != HW_VMX_SUCCESS) {
-        error_processing(p_vmcs->hpa, ret_val, "hw_vmx_set_current_vmcs", VMCS_FIELD_COUNT);
+        error_processing(p_vmcs->hpa, ret_val, "vmx_vmptrld", VMCS_FIELD_COUNT);
     }
-
     p_vmcs->owning_host_cpu = this_cpu;
     SET_ACTIVATED_FLAG(p_vmcs);
     VMM_ASSERT(GET_ACTIVATED_FLAG(p_vmcs) == 1);
-
     CLR_NEVER_ACTIVATED_FLAG(p_vmcs);
 }
 
@@ -651,8 +637,6 @@ void vmcs_deactivate( VMCS_OBJECT* obj )
 BOOLEAN vmcs_launch_required( const VMCS_OBJECT* obj )
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
-
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(p_vmcs);
     return (GET_LAUNCHED_FLAG(p_vmcs) == 0);
 }
@@ -661,9 +645,7 @@ void vmcs_set_launched( VMCS_OBJECT* obj )
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
 
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(p_vmcs);
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( GET_LAUNCHED_FLAG(p_vmcs) == 0 );
     SET_LAUNCHED_FLAG(p_vmcs);
 }
@@ -678,9 +660,8 @@ void vmcs_set_launch_required( VMCS_OBJECT* obj )
 
 
 // Error message
-VMCS_INSTRUCTION_ERROR vmcs_last_instruction_error_code(
-                                const VMCS_OBJECT* obj,
-                                const char** error_message )
+VMCS_INSTRUCTION_ERROR vmcs_last_instruction_error_code(const VMCS_OBJECT* obj,
+                                const char** error_message)
 {
     UINT32 err = (UINT32)vmcs_read( obj, VMCS_EXIT_INFO_INSTRUCTION_ERROR_CODE );
 
@@ -698,13 +679,12 @@ void error_processing(UINT64 vmcs, HW_VMX_RET_VALUE ret_val,
                       const char* operation, VMCS_FIELD  field)
 {
     const char* error_message = 0;
-    UINT64      err           = 0;
+    UINT64      err = 0;
     HW_VMX_RET_VALUE my_err;
 
     switch (ret_val) {
         case HW_VMX_SUCCESS:
             return;
-
         case HW_VMX_FAILED_WITH_STATUS:
             my_err = hw_vmx_read_current_vmcs(
                 VM_EXIT_INFO_INSTRUCTION_ERROR_CODE,   // use hard-coded encoding
@@ -714,14 +694,11 @@ void error_processing(UINT64 vmcs, HW_VMX_RET_VALUE ret_val,
                 error_message = g_instr_error_message[(UINT32)err];
                 break;
             }
-
             // fall through
-
         case HW_VMX_FAILED:
         default:
             error_message = "operation FAILED";
     }
-
     if (field == VMCS_FIELD_COUNT) {
         VMM_LOG(mask_anonymous, level_trace,"%s( %P ) failed with the error: %s\n",
                  operation, vmcs, error_message ? error_message : "unknown error");
@@ -731,7 +708,6 @@ void error_processing(UINT64 vmcs, HW_VMX_RET_VALUE ret_val,
                  operation, vmcs, vmcs_get_field_name(field),
                  error_message ? error_message : "unknown error");
     }
-
     VMM_DEADLOOP();
     return;
 }
@@ -755,28 +731,35 @@ static void vmcs_act_add_msr_to_vmenter_load_list(struct _VMCS_OBJECT *vmcs,
     vmcs_add_msr_to_vmenter_load_list_internal(vmcs, msr_index, value, TRUE);
 }
 
-static void vmcs_act_add_msr_to_vmexit_store_and_vmenter_load_lists(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value)
+static void vmcs_act_add_msr_to_vmexit_store_and_vmenter_load_lists(
+            struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value)
 {
-    vmcs_add_msr_to_vmexit_store_and_vmenter_load_lists_internal(vmcs, msr_index, value, TRUE);
+    vmcs_add_msr_to_vmexit_store_and_vmenter_load_lists_internal(vmcs, msr_index, 
+                                            value, TRUE);
 }
 
-static void vmcs_act_delete_msr_from_vmexit_store_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index)
+static void vmcs_act_delete_msr_from_vmexit_store_list(struct _VMCS_OBJECT *vmcs, 
+            UINT32 msr_index)
 {
     vmcs_delete_msr_from_vmexit_store_list_internal(vmcs, msr_index, TRUE);
 }
 
-static void vmcs_act_delete_msr_from_vmexit_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index)
+static void vmcs_act_delete_msr_from_vmexit_load_list(struct _VMCS_OBJECT *vmcs, 
+            UINT32 msr_index)
 {
     vmcs_delete_msr_from_vmexit_load_list_internal(vmcs, msr_index, TRUE);
 }
 
-static void vmcs_act_delete_msr_from_vmenter_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index)
+static void vmcs_act_delete_msr_from_vmenter_load_list(struct _VMCS_OBJECT *vmcs, 
+            UINT32 msr_index)
 {
     vmcs_delete_msr_from_vmenter_load_list_internal(vmcs, msr_index, TRUE);
 }
 
-static void vmcs_act_delete_msr_from_vmexit_store_and_vmenter_load_lists(struct _VMCS_OBJECT *vmcs, UINT32 msr_index)
+static void vmcs_act_delete_msr_from_vmexit_store_and_vmenter_load_lists(
+            struct _VMCS_OBJECT *vmcs, UINT32 msr_index)
 {
-    vmcs_delete_msr_from_vmexit_store_and_vmenter_load_lists_internal(vmcs, msr_index, TRUE);
+    vmcs_delete_msr_from_vmexit_store_and_vmenter_load_lists_internal(vmcs, 
+            msr_index, TRUE);
 }
 

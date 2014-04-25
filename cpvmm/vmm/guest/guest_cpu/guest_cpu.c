@@ -199,11 +199,11 @@ void gcpu_manager_init(UINT16 host_cpu_count)
     CLI_CODE( gcpu_install_show_service();)
 }
 
-GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
+GUEST_CPU_HANDLE gcpu_allocate(VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest)
 {
     GUEST_CPU_HANDLE          gcpu = NULL;
     GLOBAL_GUEST_CPU_ITERATOR ctx;
-    VMM_STATUS  status;
+    VMM_STATUS                status;
 
 #ifdef JLMDEBUG1
     bprint("gcpu_allocate, g_cpu: 0x%016x\n", g_gcpus);
@@ -225,18 +225,14 @@ GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
     vmm_zeromem(gcpu, sizeof(GUEST_CPU));
     gcpu->next_gcpu = g_gcpus;
     g_gcpus = gcpu;
-#ifdef JLMDEBUG1
-    bprint("gcpu_allocate, got memory\n");
-#endif
     gcpu->vcpu = vcpu;
     gcpu->last_guest_level = GUEST_LEVEL_1_SIMPLE;
     gcpu->next_guest_level = GUEST_LEVEL_1_SIMPLE;
     gcpu->state_flags = 0;
     gcpu->caching_flags = 0;
-    // gcpu->vmcs  = vmcs_allocate();
     status = vmcs_hierarchy_create(&gcpu->vmcs_hierarchy, gcpu);
     VMM_ASSERT(VMM_OK == status);
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     bprint("gcpu_allocate, created hierarchy\n");
 #endif
     gcpu->emulator_handle = 0;
@@ -248,11 +244,11 @@ GUEST_CPU_HANDLE gcpu_allocate( VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest )
 #ifdef JLMDEBUG1
     bprint("about to call setup_default_state\n");
 #endif
-    setup_default_state( gcpu );
+    setup_default_state(gcpu);
     gcpu->resume_func = gcpu_perform_split_merge; // default "resume" function
 #ifdef FAST_VIEW_SWITCH
-     gcpu->fvs_cpu_desc.vmentry_eptp = 0;
-     gcpu->fvs_cpu_desc.enabled = FALSE;
+    gcpu->fvs_cpu_desc.vmentry_eptp = 0;
+    gcpu->fvs_cpu_desc.enabled = FALSE;
  #endif
     return gcpu;
 }

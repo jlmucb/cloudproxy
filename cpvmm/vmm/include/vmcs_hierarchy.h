@@ -30,12 +30,12 @@ INLINE BOOLEAN vmcs_hierarchy_is_layered(VMCS_HIERARCHY *obj)
 }
 
 
-VMM_STATUS  vmcs_hierarchy_create(VMCS_HIERARCHY *obj, GUEST_CPU_HANDLE gcpu);
-VMM_STATUS  vmcs_hierarchy_add_vmcs(VMCS_HIERARCHY * obj, GUEST_CPU_HANDLE gcpu, ADDRESS gpa);
-VMM_STATUS  vmcs_hierarchy_remove_vmcs(VMCS_HIERARCHY *obj, VMCS_OBJECT *vmcs_1);
-VMCS_OBJECT * vmcs_hierarchy_get_vmcs(VMCS_HIERARCHY *obj, VMCS_LEVEL level);
-VMCS_OBJECT * vmcs_hierarchy_get_next_vmcs_1(VMCS_HIERARCHY *obj);
-VMCS_OBJECT * vmcs_hierarchy_select_vmcs_1(VMCS_HIERARCHY *obj, VMCS_OBJECT *vmcs);
-
+VMM_STATUS vmcs_hierarchy_create(VMCS_HIERARCHY *obj, GUEST_CPU_HANDLE gcpu);
+VMM_STATUS vmcs_hierarchy_add_vmcs(VMCS_HIERARCHY * obj, GUEST_CPU_HANDLE gcpu, 
+            ADDRESS gpa);
+VMM_STATUS vmcs_hierarchy_remove_vmcs(VMCS_HIERARCHY *obj, VMCS_OBJECT *vmcs_1);
+VMCS_OBJECT* vmcs_hierarchy_get_vmcs(VMCS_HIERARCHY *obj, VMCS_LEVEL level);
+VMCS_OBJECT* vmcs_hierarchy_get_next_vmcs_1(VMCS_HIERARCHY *obj);
+VMCS_OBJECT* vmcs_hierarchy_select_vmcs_1(VMCS_HIERARCHY *obj, VMCS_OBJECT *vmcs);
 #endif // _VMCS_HIERARCHY_H_
 

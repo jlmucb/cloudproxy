@@ -432,11 +432,7 @@ void vmcs_write_nocheck(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id, UINT64 v
 
 void vmcs_write(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id, UINT64 value)
 {
-    // BEFORE_VMLAUNCH
-    //VMM_ASSERT(vmcs); // checked by caller
-    // BEFORE_VMLAUNCH
     VMM_ASSERT(field_id < VMCS_FIELD_COUNT);
-    // BEFORE_VMLAUNCH
     VMM_ASSERT(FIELD_IS_WRITEABLE(field_id));
     if (field_id < VMCS_FIELD_COUNT &&
         (vmcs->skip_access_checking || FIELD_IS_WRITEABLE(field_id))) {
@@ -448,7 +444,7 @@ void vmcs_write(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id, UINT64 value)
 UINT64 vmcs_read(const struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id)
 {
     UINT64 value;
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     bprint("vmcs_read entry\n");
 #endif
 
@@ -473,11 +469,8 @@ void vmcs_update(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id,
 {
     UINT64 result_value;
 
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(field_id < VMCS_FIELD_COUNT);
-
     result_value = vmcs_read(vmcs, field_id);
-
     value &= bits_to_update;     // clear all bits except bits_to_update
     result_value &= ~bits_to_update;    // clear bits_to_update
     result_value |= value;

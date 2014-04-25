@@ -264,21 +264,18 @@ BOOLEAN initialize_all_guests( UINT32 number_of_host_processors,
     return ok;
 }
 
-// Perform initialization of host cpu parts of all guest CPUs that run on specified
-// host CPU.
-// Should be called on the target host CPU
+// Perform initialization of host cpu portion of all guest CPUs that run 
+// on specified host CPU.  Should be called on the target host CPU
 void initialize_host_vmcs_regions( CPU_ID current_cpu_id )
 {
     GUEST_CPU_HANDLE        gcpu;
     SCHEDULER_GCPU_ITERATOR it;
 
-    // BEFORE_VMLAUNCH. PARANOID check.
-    VMM_ASSERT( current_cpu_id == hw_cpu_id() );
-
+    VMM_ASSERT(current_cpu_id == hw_cpu_id());
     for (gcpu = scheduler_same_host_cpu_gcpu_first( &it, current_cpu_id );
          gcpu != NULL; gcpu = scheduler_same_host_cpu_gcpu_next( &it )) {
         // now init the host CPU part for vm-exits
-        host_cpu_vmcs_init( gcpu );
+        host_cpu_vmcs_init(gcpu);
     }
 }
 

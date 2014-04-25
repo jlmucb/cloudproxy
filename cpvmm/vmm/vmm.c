@@ -566,7 +566,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     new_cr3 = hmm_get_vmm_page_tables(); // PCD and PWT bits will be 0;
     UINT64 old_cr3= hw_read_cr3();
     UINT64 old_cr4= hw_read_cr4();
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("evmm position about to change memory mapping new cr3: 0x%016x, old cr3: 0x%016x\n",
             new_cr3, old_cr3);
     bprint("old cr4: 0x%016lx\n", old_cr4);
@@ -598,7 +598,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     bprint("(bprint)virt: 0x%016lx, phys: 0x%016lx\n", tvirt, tphys);
 #endif
 
-    // BEFORE_VMLAUNCH. PARANOID check. Should not fail.
     VMM_ASSERT(new_cr3 != HMM_INVALID_VMM_PAGE_TABLES);
     VMM_LOG(mask_uvmm, level_trace,"BSP: New cr3=%P. \n", new_cr3);
 
@@ -608,7 +607,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     bprint("evmm: new memory map installed\n");
 #endif
     VMM_LOG(mask_uvmm, level_trace,"BSP: Successfully updated CR3 to new value\n");
-    // BEFORE_VMLAUNCH. PARANOID check. Should not fail.
     VMM_ASSERT(hw_read_cr3() == new_cr3);
 
 #if 0
@@ -640,7 +638,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         init_teardown_lock();
         VMM_LOG(mask_uvmm, level_trace,"VMM: Image and stack used %dKB memory.\n",
             ((UINT64)heap_address - startup_struct->vmm_memory_layout[uvmm_image].base_address)/(1024));
-        // BEFORE_VMLAUNCH. Should not fail.
         VMM_ASSERT(g_additional_heap_base != 0);
         heap_last_occupied_address = vmm_heap_extend( g_additional_heap_base, 
                                         g_heap_pa_num * PAGE_4KB_SIZE);
@@ -895,14 +892,20 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
     // schedule first gcpu
     initial_gcpu = scheduler_select_initial_gcpu();
+    if(initial_gcpu ==NULL) {
+#ifdef JLMDEBUG
+        bprint("initial_gpu is NULL\n");
+        LOOP_FOREVER
+#endif
+    }
     VMM_ASSERT(initial_gcpu != NULL);
     VMM_LOG(mask_uvmm, level_trace,
             "BSP: initial guest selected: GUEST_ID: %d GUEST_CPU_ID: %d\n",
-            guest_vcpu(initial_gcpu )->guest_id, 
-            guest_vcpu(initial_gcpu )->guest_cpu_id);
+            guest_vcpu(initial_gcpu)->guest_id, 
+            guest_vcpu(initial_gcpu)->guest_cpu_id);
     ipc_change_state_to_active(initial_gcpu);
 #ifdef JLMDEBUG
-    bprint("evmm: gcpu active\n");
+    bprint("evmm: gcpu active, 0x%016lx\n", initial_gcpu);
 #endif
     vmm_print_test(local_apic_id);
     VMM_LOG(mask_uvmm, level_trace,"BSP: Wait for APs to launch the first Guest CPU\n");
@@ -935,13 +938,22 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         make_guest_state_compliant(initial_gcpu);
         unrestricted_guest_enable(initial_gcpu);
         //make_guest_state_compliant(initial_gcpu);
-    } else {
+    } 
+    else {
 #ifdef JLMDEBUG
         bprint("evmm: unrestricted guest NOT supported\n");
 #endif
         // For non-UG systems enable EPT, if guest is in paging mode
+#ifdef JLMDEBUG1
+        bprint("evmm: about to call gcpu_get_guest_visible_control_reg\n");
+        UINT64 my_cr0= gcpu_get_guest_visible_control_reg(initial_gcpu,
+                                           IA32_CTRL_CR0);
+        bprint("my_cr0: 0x%016lx, level: %d\n", my_cr0, VMCS_MERGED);
+        LOOP_FOREVER
+#endif
         EM64T_CR0 guest_cr0;
-        guest_cr0.Uint64 = gcpu_get_guest_visible_control_reg(initial_gcpu,IA32_CTRL_CR0);
+        guest_cr0.Uint64 = gcpu_get_guest_visible_control_reg(initial_gcpu,
+                                           IA32_CTRL_CR0);
         if (guest_cr0.Bits.PG) {
 #ifdef JLMDEBUG
             bprint("evmm: about to call enable_ept_during_launch\n");
@@ -949,6 +961,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 #endif
             enable_ept_during_launch(initial_gcpu);
         }
+
 #ifdef JLMDEBUG
         bprint("evmm: enable_ept_during_launch not called\n");
         LOOP_FOREVER

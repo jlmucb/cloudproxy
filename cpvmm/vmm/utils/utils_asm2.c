@@ -33,7 +33,7 @@ void vmm_lock_write (UINT64 *mem_loc, UINT64 new_data)
 }
 
 
-UINT32 vmm_rdtsc (UINT32   *upper)
+UINT32 vmm_rdtsc (UINT32 *upper)
 {
     UINT32 ret;
 
@@ -62,8 +62,7 @@ void vmm_write_xcr(UINT64 xcr)
     asm volatile(
         "\tmovq       %[xcr], %%rax\n"
         "\txsetbv\n"
-    :
-    : [xcr] "g"(xcr)
+    : : [xcr] "g"(xcr)
     :"%rax");
 }
 
@@ -80,13 +79,13 @@ UINT64 vmm_read_xcr()
         "\txgetbv\n"
         "movq   %%rcx, %[result]\n"
     : [result]"=g"(result)
-    : 
-    :"%rcx", "%rdx");
+    : :"%rcx", "%rdx");
     return result;
 }
 
 
-UINT64 gcpu_read_guestrip (void)
+//CHECK(JLM)
+UINT64 gcpu_read_guestrip(void)
 {
     UINT64  result;
 
@@ -99,12 +98,12 @@ UINT64 gcpu_read_guestrip (void)
         "\tvmread    %%rax,%%rax\n"
         "\tmovq     %%rax, %[result]\n"
     : [result]"=g"(result)
-    : 
-    :"%rax");
+    : :"%rax");
     return result;
 }
 
 
+//CHECK(JLM)
 UINT64 vmexit_reason()
 {
 #ifdef JLMDEBUG
@@ -117,8 +116,7 @@ UINT64 vmexit_reason()
         "\tvmread %%rax, %%rax\n"
         "\tmovq   %%rax, %[result]\n"
     : [result]"=g"(result)
-    : 
-    :"%rax");
+    : :"%rax");
     return result;
 }
 
@@ -151,6 +149,7 @@ UINT32 vmexit_check_ept_violation(void)
 }
 
 
+#if 0
 // CHECK(JLM)
 void vmm_vmcs_guest_state_read(void)
 {
@@ -498,3 +497,4 @@ void vmm_vmcs_guest_state_read(void)
     : 
     :"%rax", "%rcx");
 }
+#endif

@@ -30,7 +30,8 @@ typedef struct _LIST_ELEMENT
 
 INLINE void list_init(LIST_ELEMENT *entry)
 {
-    entry->next = entry->prev = entry;
+    entry->next = entry;
+    entry->prev = entry;
 }
 
 INLINE void _list_add(LIST_ELEMENT *prev, LIST_ELEMENT *next, LIST_ELEMENT *new_entry)

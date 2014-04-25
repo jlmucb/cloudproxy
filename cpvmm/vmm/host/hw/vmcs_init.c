@@ -545,7 +545,7 @@ HVA vmcs_hw_allocate_region( HPA* hpa )
 
 // allocate vmxon regions for all processors at once
 // must be called once only on BSP before vmx_on on any APs.
-BOOLEAN vmcs_hw_allocate_vmxon_regions( UINT16 max_host_cpus )
+BOOLEAN vmcs_hw_allocate_vmxon_regions(UINT16 max_host_cpus)
 {
     HVA     vmxon_region_hva = 0;
     HPA     vmxon_region_hpa = 0;
@@ -632,7 +632,7 @@ void vmcs_hw_vmx_on( void )
                 "ASSERT: VMXON failed with getting vmxon_region address\n");
         VMM_DEADLOOP();
     }
-    vmx_ret = hw_vmx_on( &vmxon_region_hpa );
+    vmx_ret = vmx_on( &vmxon_region_hpa );
     switch (vmx_ret) {
         case HW_VMX_SUCCESS:
             host_cpu_set_vmx_state( TRUE );
@@ -656,8 +656,7 @@ void vmcs_hw_vmx_off( void )
     if (host_cpu_get_vmx_state() == FALSE) {
         return;
     }
-
-    hw_vmx_off();
+    vmx_off();
     host_cpu_set_vmx_state( FALSE );
 }
 

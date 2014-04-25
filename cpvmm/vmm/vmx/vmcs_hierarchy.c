@@ -35,7 +35,7 @@ typedef struct {
 VMCS_1_DESCRIPTOR *vmcs_hierarchy_vmcs1_lkup(VMCS_HIERARCHY *obj, VMCS_OBJECT *vmcs);
 
 
-VMM_STATUS vmcs_hierarchy_create( VMCS_HIERARCHY *obj, GUEST_CPU_HANDLE gcpu)
+VMM_STATUS vmcs_hierarchy_create(VMCS_HIERARCHY *obj, GUEST_CPU_HANDLE gcpu)
 {
     VMM_STATUS status;
 
@@ -43,10 +43,21 @@ VMM_STATUS vmcs_hierarchy_create( VMCS_HIERARCHY *obj, GUEST_CPU_HANDLE gcpu)
     bprint("vmcs_hierarchy_create\n");
 #endif
     VMM_ASSERT(obj);
-    obj->vmcs[VMCS_LEVEL_0] = obj->vmcs[VMCS_MERGED] = vmcs_act_create(gcpu);
-
+    VMCS_OBJECT * v= vmcs_act_create(gcpu);
+    if(NULL==v) {
+#ifdef JLMDEBUG
+        bprint("vmcs_act_creat retuns NULL\n");
+        LOOP_FOREVER
+#endif
+    }
+    obj->vmcs[VMCS_MERGED] = v;
+    obj->vmcs[VMCS_LEVEL_0] = v;
     if (NULL == obj->vmcs[VMCS_LEVEL_0]) {
         VMM_LOG(mask_anonymous, level_trace,"Failed to create merged VMCS\n");
+#ifdef JLMDEBUG
+        bprint("failed to create merged VMCS\n");
+        LOOP_FOREVER
+#endif
         status = VMM_ERROR;
     }
     else {
@@ -77,7 +88,6 @@ VMM_STATUS vmcs_hierarchy_add_vmcs( VMCS_HIERARCHY * obj, GUEST_CPU_HANDLE gcpu,
             vmm_mfree(desc);
             break;
         }
-
         // create VMCS-0 if required
         if (list_is_empty(obj->vmcs_1_list)) {
             obj->vmcs[VMCS_LEVEL_0] = vmcs_0_create(obj->vmcs[VMCS_MERGED]);
@@ -132,12 +142,14 @@ VMM_STATUS vmcs_hierarchy_remove_vmcs(VMCS_HIERARCHY *obj, VMCS_OBJECT *vmcs_1)
 #endif
 
 
-VMCS_OBJECT * vmcs_hierarchy_get_vmcs(VMCS_HIERARCHY *obj, VMCS_LEVEL level)
+VMCS_OBJECT* vmcs_hierarchy_get_vmcs(VMCS_HIERARCHY *obj, VMCS_LEVEL level)
 {
-    VMCS_OBJECT *vmcs;
+    VMCS_OBJECT *vmcs= NULL;
 
 #ifdef JLMDEBUG
-    bprint("vmcs_hierarchy_get_vmcs %p %d\n", obj, level);
+    bprint("vmcs_hierarchy_get_vmcs %p %d, ", obj, level);
+   if(level>4)
+     return NULL;
 #endif
     VMM_ASSERT(obj);
     if (level>=VMCS_LEVEL_0 && level<VMCS_LEVELS) {
@@ -146,8 +158,15 @@ VMCS_OBJECT * vmcs_hierarchy_get_vmcs(VMCS_HIERARCHY *obj, VMCS_LEVEL level)
     else {
         VMM_LOG(mask_anonymous, level_trace,"Invalid VMCS level\n");
         VMM_ASSERT(0);
+#ifdef JLMDEBUG
+        bprint("vmcs_hierarchy_get_vmcs returning NULL\n");
+        LOOP_FOREVER
+#endif
         vmcs = NULL;
     }
+#ifdef JLMDEBUG
+    bprint(" returning %p\n", vmcs);
+#endif
     return vmcs;
 }
 
@@ -171,7 +190,6 @@ VMCS_OBJECT * vmcs_hierarchy_select_vmcs_1(VMCS_HIERARCHY *obj, VMCS_OBJECT *vmc
     VMCS_1_DESCRIPTOR   *desc;
 
     VMM_ASSERT(obj);
-
     desc = vmcs_hierarchy_vmcs1_lkup(obj, vmcs);
     if (NULL != desc) {
         // found

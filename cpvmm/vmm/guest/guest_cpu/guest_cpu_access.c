@@ -208,7 +208,6 @@ void gcpu_set_gp_reg_layered( GUEST_CPU_HANDLE gcpu, VMM_IA32_GP_REGISTERS reg,
                              UINT64 value, VMCS_LEVEL level )
 {
     VMM_ASSERT(gcpu);
-
     gcpu_set_native_gp_reg_layered( gcpu, reg, value, level );
 }
 
@@ -237,12 +236,9 @@ void gcpu_get_segment_reg_layered(const GUEST_CPU_HANDLE gcpu,
     const SEGMENT_2_VMCS* seg2vmcs;
     VMCS_OBJECT *vmcs;
 
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( reg < IA32_SEG_COUNT );
     vmcs = vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, level );
-
     seg2vmcs = &g_segment_2_vmcs[reg];
     if (selector) {
         *selector = (UINT16)vmcs_read( vmcs, seg2vmcs->sel );
@@ -258,9 +254,10 @@ void gcpu_get_segment_reg_layered(const GUEST_CPU_HANDLE gcpu,
     }
 }
 
-void   gcpu_set_segment_reg_layered( GUEST_CPU_HANDLE gcpu, VMM_IA32_SEGMENT_REGISTERS reg,
-                              UINT16  selector, UINT64  base,
-                              UINT32  limit, UINT32  attributes, VMCS_LEVEL level )
+void  gcpu_set_segment_reg_layered(GUEST_CPU_HANDLE gcpu, 
+                              VMM_IA32_SEGMENT_REGISTERS reg,
+                              UINT16  selector, UINT64  base, UINT32  limit, 
+                              UINT32  attributes, VMCS_LEVEL level )
 {
     const SEGMENT_2_VMCS* seg2vmcs;
     VMCS_OBJECT *vmcs;
@@ -276,7 +273,7 @@ void   gcpu_set_segment_reg_layered( GUEST_CPU_HANDLE gcpu, VMM_IA32_SEGMENT_REG
 }
 
 UINT64 gcpu_get_control_reg_layered(const GUEST_CPU_HANDLE gcpu,
-                              VMM_IA32_CONTROL_REGISTERS reg, VMCS_LEVEL level )
+                              VMM_IA32_CONTROL_REGISTERS reg, VMCS_LEVEL level)
 {
 #ifdef JLMDEBUG
     bprint("gcpu_get_control_reg_layered 0x%016lx %d 0x%016lx\n",
@@ -284,15 +281,8 @@ UINT64 gcpu_get_control_reg_layered(const GUEST_CPU_HANDLE gcpu,
 #endif
     VMM_ASSERT(gcpu);
     VMM_ASSERT( reg < IA32_CTRL_COUNT );
-
     switch (reg) {
         case IA32_CTRL_CR0:
-#ifdef JLMDEBUG
-            bprint("gcpu_get_control_reg_layered CR0 case %p\n", &gcpu->vmcs_hierarchy);
-            VMCS_OBJECT *vmcs= vmcs_hierarchy_get_vmcs(&gcpu->vmcs_hierarchy, level);
-            bprint("got vmcs vmcs_hierarchy_get_vmcs obj\n");
-            LOOP_FOREVER
-#endif
             return vmcs_read(vmcs_hierarchy_get_vmcs(&gcpu->vmcs_hierarchy, level), 
                              VMCS_GUEST_CR0);
         case IA32_CTRL_CR2:
@@ -382,18 +372,25 @@ UINT64 gcpu_get_guest_visible_control_reg_layered(const GUEST_CPU_HANDLE gcpu,
         return real_value;
     }
     real_value = gcpu_get_control_reg_layered(gcpu, reg, level);
+#ifdef JLMDEBUG
+    bprint("real value: 0x%016lx\n", real_value);
+#endif
     if (reg == IA32_CTRL_CR0) {
-        mask = vmcs_read( vmcs, VMCS_CR0_MASK );
-        shadow = vmcs_read( vmcs, VMCS_CR0_READ_SHADOW );
+        mask = vmcs_read(vmcs, VMCS_CR0_MASK);
+        shadow = vmcs_read(vmcs, VMCS_CR0_READ_SHADOW);
     }
     else if (reg == IA32_CTRL_CR4) {
-        mask = vmcs_read( vmcs, VMCS_CR4_MASK );
-        shadow = vmcs_read( vmcs, VMCS_CR4_READ_SHADOW );
+        mask = vmcs_read(vmcs, VMCS_CR4_MASK);
+        shadow = vmcs_read(vmcs, VMCS_CR4_READ_SHADOW);
     }
     else {
         return real_value;
     }
-    return (real_value & ~mask) | (shadow & mask);
+#ifdef JLMDEBUG
+    bprint("gcpu_get_guest_visible_control_reg_layered about to return 0x%016lx\n",
+           (real_value&~mask) | (shadow&mask));
+#endif
+    return (real_value&~mask) | (shadow&mask);
 }
 
 // valid only for CR0, CR3 and CR4

@@ -55,7 +55,7 @@ int vmx_vmclear(UINT64 *address) {
     return 0;
 }
 
-int hw_vmx_flush_current_vmcs(UINT64 *address) {
+HW_VMX_RET_VALUE hw_vmx_flush_current_vmcs(UINT64 *address) {
     return vmx_vmclear(address);
 }
 

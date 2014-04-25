@@ -643,7 +643,8 @@ void vmcs_hw_vmx_on( void )
             host_cpu_set_vmx_state( TRUE );
             break;
         case HW_VMX_FAILED_WITH_STATUS:
-            VMM_LOG(mask_anonymous, level_trace,"ASSERT: VMXON failed with HW_VMX_FAILED_WITH_STATUS error\n");
+            VMM_LOG(mask_anonymous, level_trace,
+                "ASSERT: VMXON failed with HW_VMX_FAILED_WITH_STATUS error\n");
             VMM_DEADLOOP();
             VMM_BREAKPOINT();
         case HW_VMX_FAILED:

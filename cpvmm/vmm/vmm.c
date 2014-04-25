@@ -142,7 +142,7 @@ void vmontest()
     }
     bprint("aligned region: 0x%016lx\n", region);
     vmm_memset((void*) region, 0, 0x1000);
-    int k= vmx_on((UINT64*)region);
+    int k= vmx_on(&region);
     bprint("k: %d\n", k);
     LOOP_FOREVER
 }

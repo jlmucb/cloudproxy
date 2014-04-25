@@ -28,9 +28,13 @@ int vmx_on(UINT64* address) {
     asm volatile(
         "\tclc\n"
         "\tvmxon %[address]\n"
+        "\tjnc    1f\n"
+        "\tmovl  $2, %[ret]\n"
+        "\tjmp    2f\n"
+    "1:\n"
         "\tjz    2f\n"
         "\tmovl  $1, %[ret]\n"
-    "2:"
+    "2:\n"
     : [ret]"=g" (ret)
     :[address]"m" (address)
     :"memory");

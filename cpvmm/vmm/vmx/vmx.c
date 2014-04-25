@@ -22,20 +22,18 @@
 
 int vmx_on(UINT64 *address) {
 #ifdef JLMDEBUG
-    bprint("vmx_on\n");
+    bprint("vmx_on %p\n", address);
 #endif
     asm volatile(
-        "\tvmxon %0\n"
-    ::"m" (address)
-    :"cc", "memory");
-    //FIX: Need to figure out where the return value/state after vmxon is saved
+        "\tvmxon %[address]\n"
+    ::[address]"m" (address)
+    :"memory");
     return 0;
 }
 
 void vmx_off() {
 #ifdef JLMDEBUG
     bprint("vmx_off\n");
-    LOOP_FOREVER
 #endif
     asm volatile(
         "\tvmxoff\n"
@@ -43,15 +41,17 @@ void vmx_off() {
     return;
 }
 
-int vmx_vmclear(UINT64 *address) {
+int vmx_vmclear(UINT64* address) {
 #ifdef JLMDEBUG
-    bprint("vmclear\n");
+    bprint("vmclear %p 0x%016lx\n", address, *address);
+    HexDump((UINT8*)address, (UINT8*)address+16);
+    HexDump((UINT8*)*address, (UINT8*)*address+16);
     LOOP_FOREVER
 #endif
     asm volatile(
         "\tvmclear %[address]\n"
-    ::[address]"m"(*address)
-    :"cc", "memory");
+    ::[address]"m"(address)
+    :"memory");
 #ifdef JLMDEBUG
     bprint("vmclear done\n");
     LOOP_FOREVER
@@ -70,7 +70,7 @@ int vmx_vmlaunch() {
 #endif
     asm volatile(
         "\tvmlaunch\n"
-    :::"cc", "memory");
+    ::: "memory");
     return 0;
 }
 
@@ -92,9 +92,9 @@ int vmx_vmptrld(UINT64 *address) {
     LOOP_FOREVER
 #endif
     asm volatile(
-        "\tvmptrld %0\n"
-    ::"m" (address)
-    :"cc", "memory");
+        "\tvmptrld %[address]\n"
+    ::[address] "p" (address)
+    :"memory");
     return 0;
 }
 
@@ -104,9 +104,9 @@ void vmx_vmptrst(UINT64 *address) {
     LOOP_FOREVER
 #endif
     asm volatile(
-        "\tvmptrst %0\n"
-    ::"m" (address)
-    :"cc", "memory");
+        "\tvmptrst %[address]\n"
+    ::[address] "p" (address)
+    :"memory");
     return;
 }
 

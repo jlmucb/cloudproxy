@@ -46,16 +46,6 @@ typedef enum _FLAGS {
     NEVER_ACTIVATED_FLAG    // is in the init stage
 } FLAGS;
 
-#if 0
-#define SET_LAUNCHED_FLAG( obj )    BIT_SET( (obj)->flags, LAUNCHED_FLAG)
-#define CLR_LAUNCHED_FLAG( obj )    BIT_CLR( (obj)->flags, LAUNCHED_FLAG)
-#define GET_LAUNCHED_FLAG( obj )    BIT_GET( (obj)->flags, LAUNCHED_FLAG)
-#define SET_ACTIVATED_FLAG( obj )   BIT_SET( (obj)->flags, ACTIVATED_FLAG)
-#define CLR_ACTIVATED_FLAG( obj )   BIT_CLR( (obj)->flags, ACTIVATED_FLAG)
-#define SET_NEVER_ACTIVATED_FLAG( obj ) BIT_SET( (obj)->flags, NEVER_ACTIVATED_FLAG)
-#define CLR_NEVER_ACTIVATED_FLAG( obj ) BIT_CLR( (obj)->flags, NEVER_ACTIVATED_FLAG)
-#define GET_NEVER_ACTIVATED_FLAG( obj ) BIT_GET( (obj)->flags, NEVER_ACTIVATED_FLAG)
-#endif
 #define FIELD_IS_HW_WRITABLE(__access) (VMCS_WRITABLE & (__access))
 #define NMI_WINDOW_BIT  22
 
@@ -149,6 +139,7 @@ static BOOLEAN nmi_window[VMM_MAX_CPU_SUPPORTED]; // stores NMI Windows which sh
 
 // JLM:added
 extern HW_VMX_RET_VALUE hw_vmx_read_current_vmcs(UINT64 field_id, UINT64 *value );
+extern HW_VMX_RET_VALUE hw_vmx_flush_current_vmcs(UINT64 *address);
 
 /*----------------------------------------------------------------------------*
 **                              NMI Handling
@@ -597,10 +588,9 @@ void vmcs_activate(VMCS_OBJECT* obj)
 
 #ifdef JLMDEBUG
     bprint("vmcs_activate\n");
-    LOOP_FOREVER
 #endif
     VMM_ASSERT(obj);
-    VMM_ASSERT( p_vmcs->hpa );
+    VMM_ASSERT(p_vmcs->hpa);
     VMM_ASSERT((p_vmcs->flags&ACTIVATED_FLAG) == 0);
     VMM_DEBUG_CODE(
         if ((p_vmcs->owning_host_cpu != CPU_NEVER_USED) && 
@@ -615,7 +605,8 @@ void vmcs_activate(VMCS_OBJECT* obj)
     if (p_vmcs->flags&NEVER_ACTIVATED_FLAG) {
         ret_val = hw_vmx_flush_current_vmcs(&p_vmcs->hpa);
         if (ret_val != HW_VMX_SUCCESS) {
-            error_processing(p_vmcs->hpa, ret_val, "hw_vmx_flush_current_vmcs", VMCS_FIELD_COUNT);
+            error_processing(p_vmcs->hpa, ret_val, 
+                             "hw_vmx_flush_current_vmcs", VMCS_FIELD_COUNT);
         }
     }
     ret_val = vmx_vmptrld(&p_vmcs->hpa);

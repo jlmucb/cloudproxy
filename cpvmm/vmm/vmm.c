@@ -126,6 +126,26 @@ UINT64 getphysical(UINT64 cr3, UINT64 virt)
     phys= c4|i5;
     return phys;
 }
+
+void vmontest()
+{
+    bprint("vmon test\n");
+    UINT64 region= (UINT64) vmm_memory_alloc(0x2000);
+    bprint("region: 0x%016lx\n", region);
+    if(region==0) {
+        bprint("bad region\n");
+        LOOP_FOREVER
+    }
+    if(region&0xfff) {
+        region+= 0x1000-1;
+        region&= 0xfffffffffffff000;
+    }
+    bprint("aligned region: 0x%016lx\n", region);
+    vmm_memset((void*) region, 0, 0x1000);
+    int k= vmx_on((UINT64*)region);
+    bprint("k: %d\n", k);
+    LOOP_FOREVER
+}
 #endif
 
 
@@ -836,7 +856,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     // TODO: global var - init finished
     vmcs_hw_allocate_vmxon_regions(num_of_cpus);
 #ifdef JLMDEBUG
-    bprint("evmm: vmx allocate on\n");
+    bprint("evmm: vmx allocate regions done\n");
     // LOOP_FOREVER
 #endif
 
@@ -882,8 +902,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     VMM_LOG(mask_uvmm, level_trace,"BSP: Successfully finished initializations\n");
 
 #ifdef JLMDEBUG
+    vmontest();
     bprint("evmm: about to turn on vmx\n");
 #endif
+
     vmcs_hw_vmx_on();
     VMM_LOG(mask_uvmm, level_trace,"BSP: VMXON\n");
 #ifdef JLMDEBUG

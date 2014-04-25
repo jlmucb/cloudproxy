@@ -20,15 +20,21 @@
 #endif
 
 
-int vmx_on(UINT64 *address) {
+int vmx_on(UINT64* address) {
+    int  ret= 0;
 #ifdef JLMDEBUG
-    bprint("vmx_on %p\n", address);
+    bprint("vmx_on %p 0x%016lx\n", address, *address);
 #endif
     asm volatile(
+        "\tclc\n"
         "\tvmxon %[address]\n"
-    ::[address]"m" (address)
+        "\tjz    2f\n"
+        "\tmovl  $1, %[ret]\n"
+    "2:"
+    : [ret]"=g" (ret)
+    :[address]"m" (address)
     :"memory");
-    return 0;
+    return ret;
 }
 
 void vmx_off() {

@@ -498,7 +498,6 @@ HVA vmcs_hw_allocate_region( HPA* hpa )
 #ifdef JLMDEBUG1
     bprint("vmcs_hw_allocate_region\n");
 #endif
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( hpa );
     // allocate the VMCS area
     // the area must be 4K page aligned and zeroed
@@ -511,11 +510,9 @@ HVA vmcs_hw_allocate_region( HPA* hpa )
         LOOP_FOREVER
 #endif
     }
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(hva);
     if (!hmm_hva_to_hpa(hva, hpa)) {
         VMM_LOG(mask_anonymous, level_trace,"%s:(%d):ASSERT: HVA to HPA conversion failed\n", __FUNCTION__, __LINE__);
-        // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_DEADLOOP();
     }
 #ifdef JLMDEBUG1
@@ -555,7 +552,7 @@ BOOLEAN vmcs_hw_allocate_vmxon_regions(UINT16 max_host_cpus)
     
     for(cpu_idx = 0; cpu_idx < max_host_cpus; cpu_idx ++ ) {
         vmxon_region_hva = vmcs_hw_allocate_region( &vmxon_region_hpa );
-        host_cpu_set_vmxon_region( vmxon_region_hva, vmxon_region_hpa, cpu_idx );
+        host_cpu_set_vmxon_region(vmxon_region_hva, vmxon_region_hpa, cpu_idx);
     }
     return TRUE;
 }
@@ -632,7 +629,15 @@ void vmcs_hw_vmx_on( void )
                 "ASSERT: VMXON failed with getting vmxon_region address\n");
         VMM_DEADLOOP();
     }
-    vmx_ret = vmx_on( &vmxon_region_hpa );
+    vmx_ret = vmx_on(&vmxon_region_hpa);
+#ifdef JLMDEBUG
+    if(vmx_ret==0) {
+        bprint("vmxon succeeded\n");
+    }
+    else {
+        bprint("vmxon failed\n");
+    }
+#endif
     switch (vmx_ret) {
         case HW_VMX_SUCCESS:
             host_cpu_set_vmx_state( TRUE );

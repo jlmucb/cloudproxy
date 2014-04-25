@@ -449,33 +449,26 @@ void host_cpu_vmcs_init( GUEST_CPU_HANDLE gcpu)
 
 
 // Set/Get VMXON Region pointer for the current CPU
-void host_cpu_set_vmxon_region( HVA hva, HPA hpa, CPU_ID my_cpu_id)
+void host_cpu_set_vmxon_region(HVA hva, HPA hpa, CPU_ID my_cpu_id)
 {
     HOST_CPU_SAVE_AREA* hcpu = NULL;
 
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
-    VMM_ASSERT( g_host_cpus );
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
-    VMM_ASSERT( my_cpu_id < g_max_host_cpus );
+    VMM_ASSERT(g_host_cpus);
+    VMM_ASSERT(my_cpu_id < g_max_host_cpus);
     hcpu = &(g_host_cpus[my_cpu_id]);
     hcpu->vmxon_region_hva = hva;
     hcpu->vmxon_region_hpa = hpa;
 }
 
-HVA  host_cpu_get_vmxon_region( HPA* hpa )
+HVA  host_cpu_get_vmxon_region(HPA* hpa)
 {
     CPU_ID              my_cpu_id = hw_cpu_id();
     HOST_CPU_SAVE_AREA* hcpu = NULL;
 
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( g_host_cpus );
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( my_cpu_id < g_max_host_cpus );
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( hpa );
-
     hcpu = &(g_host_cpus[my_cpu_id]);
-
     *hpa = hcpu->vmxon_region_hpa;
     return hcpu->vmxon_region_hva;
 }

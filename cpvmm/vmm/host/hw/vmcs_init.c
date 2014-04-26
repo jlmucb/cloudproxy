@@ -605,7 +605,7 @@ void vmcs_hw_vmx_on( void )
     EM64T_CR4         cr4;
     HVA               vmxon_region_hva = 0;
     HPA               vmxon_region_hpa = 0;
-    HW_VMX_RET_VALUE  vmx_ret;
+    int               vmx_ret= 0;
 
 #ifdef JLMDEBUG
    bprint("vmcs_hw_vmx_on\n");
@@ -645,7 +645,7 @@ void vmcs_hw_vmx_on( void )
         LOOP_FOREVER
     }
 #endif
-    switch (vmx_ret) {
+    switch(vmx_ret) {
         case HW_VMX_SUCCESS:
             host_cpu_set_vmx_state( TRUE );
             break;

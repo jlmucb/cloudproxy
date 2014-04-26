@@ -24,23 +24,21 @@ int vmx_on(UINT64* ptr_to_vmcs_region) {
     int  ret= 0;
     UINT64   address= *ptr_to_vmcs_region;
 #ifdef JLMDEBUG
-    bprint("vmx_on %p\n", ptr_to_vmcs_region);
-    HexDump((UINT8*) (*ptr_to_vmcs_region), (UINT8*) (*ptr_to_vmcs_region)+20);
+    bprint("vmx_on %p %d %d\n", ptr_to_vmcs_region, sizeof(int), ret);
 #endif
     asm volatile(
-        "\tclc\n"
+        "\tmovl	$0, %[ret]\n"
         "\tvmxon %[address]\n"
         "\tjnc    1f\n"
         "\tmovl  $2, %[ret]\n"
         "\tjmp    2f\n"
     "1:\n"
-        "\tjz    2f\n"
+        "\tjnz   2f\n"
         "\tmovl  $1, %[ret]\n"
     "2:\n"
     : [ret]"=g" (ret)
     :[address]"m" (address)
-    // :[ptr_to_vmcs_region]"m" (ptr_to_vmcs_region)
-    :"memory");
+    :);
     return ret;
 }
 

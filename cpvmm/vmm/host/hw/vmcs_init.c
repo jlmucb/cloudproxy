@@ -525,17 +525,12 @@ HVA vmcs_hw_allocate_region(HPA* hpa)
                  *hpa, VMCS_REGION_SIZE, VMCS_MEMORY_TYPE ) == TRUE);
     vmcs = (IA32_VMX_VMCS*)hva;
     vmcs->RevisionIdentifier = VMCS_REVISION;
-#ifdef JLMDEBUG1
-    bprint("vmcs_hw_allocate_region before hmm_unmap_hpa 0x%016lx\n",
-           hpa);
-#endif
     // unmap VMCS region from the host memory
+#if 0
     if(!hmm_unmap_hpa(*hpa, ALIGN_FORWARD(VMCS_REGION_SIZE, PAGE_4KB_SIZE), FALSE)) {
         VMM_LOG(mask_anonymous, level_trace,"ERROR: failed to unmap VMCS\n");
         VMM_DEADLOOP();
     }
-#ifdef JLMDEBUG1
-    bprint("vmcs_hw_allocate_region after hmm_unmap_hpa\n");
 #endif
     return hva;
 }

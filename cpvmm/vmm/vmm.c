@@ -907,7 +907,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     }
 #ifdef JLMDEBUG
     bprint("evmm: gcpu active, 0x%016lx\n", initial_gcpu);
-    LOOP_FOREVER
 #endif
     VMM_ASSERT(initial_gcpu != NULL);
     VMM_LOG(mask_uvmm, level_trace,
@@ -965,14 +964,12 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         if (guest_cr0.Bits.PG) {
 #ifdef JLMDEBUG
             bprint("evmm: about to call enable_ept_during_launch\n");
-            LOOP_FOREVER
 #endif
             enable_ept_during_launch(initial_gcpu);
         }
 
 #ifdef JLMDEBUG
         bprint("evmm: enable_ept_during_launch not called\n");
-        LOOP_FOREVER
 #endif
     }
 #ifdef FAST_VIEW_SWITCH
@@ -988,7 +985,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #ifdef JLMDEBUG
     bprint("evmm: about to call vmcs_store_initial\n");
-    LOOP_FOREVER
 #endif
     vmcs_store_initial(initial_gcpu, cpu_id);
 #ifdef JLMDEBUG

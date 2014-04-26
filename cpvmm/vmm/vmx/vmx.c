@@ -126,7 +126,7 @@ int vmx_vmptrld(UINT64 *ptr_to_vmcs_region) {
     int ret;
     UINT64   address= *ptr_to_vmcs_region;
 #ifdef JLMDEBUG
-    bprint("vmptrld, waiting %d\n", address);
+    bprint("vmptrld, waiting 0x%016lx\n", address);
 #endif
     asm volatile(
         "\tmovl $0, %[ret]\n"
@@ -141,10 +141,6 @@ int vmx_vmptrld(UINT64 *ptr_to_vmcs_region) {
     : [ret]"=g" (ret)
     :[address] "m" (address)
     :"memory");
-#ifdef JLMDEBUG
-    bprint("vmptrld returns %d\n", ret);
-    LOOP_FOREVER
-#endif
     return ret;
 }
 

@@ -161,7 +161,7 @@ void vmx_vmptrst(UINT64 *ptr_to_vmcs_region) {
 
 int vmx_vmread(UINT64 index, UINT64 *value) {
     int ret= 0;
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmread, waiting %d, 0x%016lx\n", index, *value);
 #endif
     asm volatile(
@@ -182,7 +182,7 @@ int vmx_vmread(UINT64 index, UINT64 *value) {
     : [ret]"=g" (ret)
     : [value] "p"(value), [index] "g"(index)
     :"%rax", "%rbx");
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmread, done 0x%016lx\n", *value);
 #endif
     return ret;

@@ -490,7 +490,7 @@ void vmcs_hw_init( void )
 
 
 // Allocate VMCS region
-HVA vmcs_hw_allocate_region( HPA* hpa )
+HVA vmcs_hw_allocate_region(HPA* hpa)
 {
     HVA             hva = 0;
     IA32_VMX_VMCS*  vmcs = 0;
@@ -501,7 +501,7 @@ HVA vmcs_hw_allocate_region( HPA* hpa )
     VMM_ASSERT( hpa );
     // allocate the VMCS area
     // the area must be 4K page aligned and zeroed
-    hva = (HVA)vmm_memory_alloc( VMCS_REGION_SIZE );
+    hva = (HVA)vmm_memory_alloc(VMCS_REGION_SIZE);
     if(hva == 0) {
 #ifdef JLMDEBUG
         bprint("vmm_memory_alloc(%d) failed\n", VMCS_REGION_SIZE);
@@ -512,10 +512,12 @@ HVA vmcs_hw_allocate_region( HPA* hpa )
     }
     VMM_ASSERT(hva);
     if (!hmm_hva_to_hpa(hva, hpa)) {
-        VMM_LOG(mask_anonymous, level_trace,"%s:(%d):ASSERT: HVA to HPA conversion failed\n", __FUNCTION__, __LINE__);
+        VMM_LOG(mask_anonymous, level_trace,
+                "%s:(%d):ASSERT: HVA to HPA conversion failed\n", 
+                __FUNCTION__, __LINE__);
         VMM_DEADLOOP();
     }
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     bprint("vmcs_hw_allocate_region after hmm_hva_to_hpa 0x%016lx\n", hva);
 #endif
     // check VMCS memory type
@@ -530,7 +532,6 @@ HVA vmcs_hw_allocate_region( HPA* hpa )
     // unmap VMCS region from the host memory
     if(!hmm_unmap_hpa(*hpa, ALIGN_FORWARD(VMCS_REGION_SIZE, PAGE_4KB_SIZE), FALSE)) {
         VMM_LOG(mask_anonymous, level_trace,"ERROR: failed to unmap VMCS\n");
-        // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_DEADLOOP();
     }
 #ifdef JLMDEBUG1
@@ -551,7 +552,7 @@ BOOLEAN vmcs_hw_allocate_vmxon_regions(UINT16 max_host_cpus)
     VMM_ASSERT( max_host_cpus );
     
     for(cpu_idx = 0; cpu_idx < max_host_cpus; cpu_idx ++ ) {
-        vmxon_region_hva = vmcs_hw_allocate_region( &vmxon_region_hpa );
+        vmxon_region_hva = vmcs_hw_allocate_region(&vmxon_region_hpa);
         host_cpu_set_vmxon_region(vmxon_region_hva, vmxon_region_hpa, cpu_idx);
     }
     return TRUE;
@@ -611,19 +612,29 @@ void vmcs_hw_vmx_on( void )
     HPA               vmxon_region_hpa = 0;
     HW_VMX_RET_VALUE  vmx_ret;
 
+#ifdef JLMDEBUG
+   bprint("vmcs_hw_vmx_on\n");
+#endif
+
     // Enable VMX in CR4
     cr4.Uint64 = hw_read_cr4();
     cr4.Bits.VMXE = 1;
-    hw_write_cr4( cr4.Uint64 );
+    hw_write_cr4(cr4.Uint64);
     // Enable VMX outside SMM in OPT_IN (FEATURE_CONTROL) MSR and lock it
     opt_in.Uint64 = hw_read_msr(IA32_MSR_OPT_IN_INDEX);
     VMM_ASSERT( (opt_in.Bits.Lock == 0) || (opt_in.Bits.EnableVmxonOutsideSmx == 1) );
     if (opt_in.Bits.Lock == 0) {
         opt_in.Bits.EnableVmxonOutsideSmx = 1;
         opt_in.Bits.Lock = 1;
-        hw_write_msr( IA32_MSR_OPT_IN_INDEX, opt_in.Uint64 );
+        hw_write_msr(IA32_MSR_OPT_IN_INDEX, opt_in.Uint64);
     }
     vmxon_region_hva = host_cpu_get_vmxon_region(&vmxon_region_hpa);
+#ifdef JLMDEBUG
+    bprint("vmxon_hpa: 0x%016lx, vmxon_region_hva: 0x%016lx\n",
+            vmxon_region_hpa,  vmxon_region_hva);
+    // not that the region with address vmxon_region_hva
+    // has been unmapped, so we cant print it.
+#endif
     if(!vmxon_region_hva || !vmxon_region_hpa) {
         VMM_LOG(mask_anonymous, level_trace,
                 "ASSERT: VMXON failed with getting vmxon_region address\n");
@@ -635,7 +646,8 @@ void vmcs_hw_vmx_on( void )
         bprint("vmxon succeeded\n");
     }
     else {
-        bprint("vmxon failed\n");
+        bprint("vmxon failed %d\n", vmx_ret);
+        LOOP_FOREVER
     }
 #endif
     switch (vmx_ret) {

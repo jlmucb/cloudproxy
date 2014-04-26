@@ -465,15 +465,15 @@ HVA  host_cpu_get_vmxon_region(HPA* hpa)
     CPU_ID              my_cpu_id = hw_cpu_id();
     HOST_CPU_SAVE_AREA* hcpu = NULL;
 
-    VMM_ASSERT( g_host_cpus );
-    VMM_ASSERT( my_cpu_id < g_max_host_cpus );
-    VMM_ASSERT( hpa );
+    VMM_ASSERT(g_host_cpus);
+    VMM_ASSERT(my_cpu_id<g_max_host_cpus);
+    VMM_ASSERT(hpa);
     hcpu = &(g_host_cpus[my_cpu_id]);
     *hpa = hcpu->vmxon_region_hpa;
     return hcpu->vmxon_region_hva;
 }
 
-void host_cpu_set_vmx_state( BOOLEAN value )
+void host_cpu_set_vmx_state(BOOLEAN value)
 {
     CPU_ID              my_cpu_id = hw_cpu_id();
     HOST_CPU_SAVE_AREA* hcpu = NULL;
@@ -534,9 +534,9 @@ GUEST_CPU_HANDLE host_cpu_get_vmexit_gcpu(CPU_ID cpu_id)
 
 /*
  *  Purpose: At VMEXIT DR7 is always overwrittern with 400h. This prevents to set
- *           hardware breakponits in host-running code across VMEXIT/VMENTER transitions.
- *           Two functions below allow to keep DR7, set by external debugger in cpu context,
- *           and apply it to hardware upon VMEXIT.
+ *    hardware breakponits in host-running code across VMEXIT/VMENTER transitions.
+ *    Two functions below allow to keep DR7, set by external debugger in cpu context,
+ *    and apply it to hardware upon VMEXIT.
  */
 
 void host_cpu_save_dr7(CPU_ID cpu_id)

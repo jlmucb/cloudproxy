@@ -184,7 +184,6 @@ int vmx_vmread(UINT64 index, UINT64 *value) {
     :"%rax", "%rbx");
 #ifdef JLMDEBUG
     bprint("vmread, done 0x%016lx\n", *value);
-    LOOP_FOREVER
 #endif
     return ret;
 }

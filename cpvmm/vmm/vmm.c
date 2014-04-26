@@ -291,12 +291,18 @@ void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u,
         VMM_DEBUG_CODE(release_mode = FALSE);
         if (release_mode) {
 #ifdef ENABLE_RELEASE_VMM_LOG
-            vmm_startup_data.debug_params.verbosity = vmm_startup_data.debug_params.verbosity && 0x1;
-            // Limits the verbosity level to 1 (level_print_always and level_error) when 
+            vmm_startup_data.debug_params.verbosity = 
+                    vmm_startup_data.debug_params.verbosity && 0x1;
+            // Limits the verbosity level to 1 when 
             // VMM_LOG is enabled in release build
-            vmm_startup_data.debug_params.mask = vmm_startup_data.debug_params.mask & ~((1<< mask_cli)+(1<<mask_anonymous)+(1<<mask_emulator)+(1<<mask_gdb)+(1<<mask_ept)+(1<<mask_handler));
+            vmm_startup_data.debug_params.mask = vmm_startup_data.debug_params.mask &
+                ~((1<< mask_cli)+(1<<mask_anonymous)+(1<<mask_emulator)+
+                            (1<<mask_gdb)+(1<<mask_ept)+(1<<mask_handler));
 #else
-            vmm_startup_data.debug_params.mask = vmm_startup_data.debug_params.mask & ~((1<< mask_cli)+(1<<mask_anonymous)+(1<<mask_emulator)+(1<<mask_gdb)+(1<<mask_ept)+(1<<mask_uvmm)+(1<<mask_tmm)+(1<<mask_tmsl)+(1<<mask_handler));
+            vmm_startup_data.debug_params.mask = vmm_startup_data.debug_params.mask &
+                ~((1<< mask_cli)+(1<<mask_anonymous)+(1<<mask_emulator)+
+                  (1<<mask_gdb)+(1<<mask_ept)+(1<<mask_uvmm)+
+                  (1<<mask_tmm)+(1<<mask_tmsl)+(1<<mask_handler));
 #endif
         }
     }
@@ -310,7 +316,8 @@ void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u,
     input_params.local_apic_id = local_apic_id;
     input_params.startup_struct = startup_struct_u;
     input_params.application_params_struct = application_params_struct_u;
-    hw_set_stack_pointer(new_stack_pointer, (main_continue_fn)vmm_main_continue, &input_params);
+    hw_set_stack_pointer(new_stack_pointer, (main_continue_fn)vmm_main_continue, 
+                         &input_params);
 }
 
 
@@ -381,7 +388,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     if (debug_port_params_error) {
         VMM_LOG(mask_uvmm, level_error,
                 "\nFAILURE: Loader-VMM version mismatch (no debug port parameters)\n");
-        // BEFORE_VMLAUNCH. It will not happen in final Release mode
         VMM_DEADLOOP();
     };
 
@@ -391,7 +397,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
                             sizeof(VMM_APPLICATION_PARAMS_STRUCT)) {
                 VMM_LOG(mask_uvmm, level_error,
                         "\nFAILURE: application params structure size mismatch)\n");
-                // BEFORE_VMLAUNCH. Failure check can be included in POSTLAUNCH.
                 VMM_DEADLOOP();
             };
             g_session_id = application_params_struct->session_id;
@@ -421,7 +426,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     if (startup_struct->size_of_this_struct != sizeof(VMM_STARTUP_STRUCT)) {
         VMM_LOG(mask_uvmm, level_error,
                 "\nFAILURE: Loader-VMM version mismatch (init structure size mismatch)\n");
-        // BEFORE_VMLAUNCH. This condition can't happen with the current
         VMM_DEADLOOP();
 #ifdef JLMDEBUG
         bprint("startup struct wrong size %d %d\n",  sizeof(VMM_STARTUP_STRUCT),
@@ -447,8 +451,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     VMM_ASSERT(vmm_stack_is_initialized());
     vmm_stacks_get_details(&lowest_stacks_addr, &stacks_size);
     VMM_LOG(mask_uvmm, level_trace,"\nBSP:Stacks are successfully initialized:\n");
-    VMM_LOG(mask_uvmm, level_trace,"\tlowest address of all stacks area = %P\n", lowest_stacks_addr);
-    VMM_LOG(mask_uvmm, level_trace,"\tsize of whole stacks area = %P\n", stacks_size);
+    VMM_LOG(mask_uvmm, level_trace,"\tlowest address of all stacks area = %P\n", 
+            lowest_stacks_addr);
+    VMM_LOG(mask_uvmm, level_trace,"\tsize of whole stacks area = %P\n", 
+            stacks_size);
     VMM_DEBUG_CODE(vmm_stacks_print());
 
     // Initialize Heap
@@ -467,8 +473,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
                 heap_last_occupied_address);
     VMM_LOG(mask_uvmm, level_trace,"\tactual size is %P, when requested size was %P\n", 
             heap_last_occupied_address - heap_address, heap_size);
-    // BEFORE_VMLAUNCH. Can't hit this condition in POSTLAUNCH. Keep the
-    // ASSERT for now. 
     VMM_ASSERT(heap_last_occupied_address <= (startup_struct->vmm_memory_layout[0].base_address + startup_struct->vmm_memory_layout[0].total_size));
 
     //  Initialize CLI monitor
@@ -494,7 +498,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     startup_struct_heap = vmm_create_startup_struct_copy(startup_struct);
     startup_struct = startup_struct_heap; // overwrite the parameter;
     if (startup_struct_heap == NULL) {
-        // BEFORE_VMLAUNCH. We must ASSERT if condition is false.
         VMM_DEADLOOP();
     }
     VMM_LOG(mask_uvmm, level_trace,"BSP: Copied VMM_STARTUP_STRUCT dump\n");
@@ -502,7 +505,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
     application_params_heap = vmm_create_application_params_struct_copy(application_params_struct);
     if ((application_params_struct != NULL) && (application_params_heap == NULL)) {
-        // BEFORE_VMLAUNCH. Should not fail.
         VMM_DEADLOOP();
     }
     application_params_struct = application_params_heap; // overwrite the parameter
@@ -547,16 +549,18 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
 #if 0
     // no longer needed, executable info will be in vmm_memory_map
-    // init uVMM image parser
+    // init uVMM image parser.  TODO: mark executable areas
     exec_image_initialize();
 #endif
 
     // Initialize Host Memory Manager
     if (!hmm_initialize(startup_struct)) {
-        VMM_LOG(mask_uvmm, level_error,"\nBSP FAILURE: Initialization of Host Memory Manager has failed\n");
+        VMM_LOG(mask_uvmm, level_error,
+           "\nBSP FAILURE: Initialization of Host Memory Manager has failed\n");
         VMM_DEADLOOP();
     }
-    VMM_LOG(mask_uvmm, level_trace,"\nBSP: Host Memory Manager was successfully initialized. \n");
+    VMM_LOG(mask_uvmm, level_trace,
+            "\nBSP: Host Memory Manager was successfully initialized.\n");
 
 #ifdef JLMDEBUG
     bprint("evmm: host emmory manager intialized \n");
@@ -720,10 +724,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     VMM_ASSERT(primary_guest_startup);
 
     secondary_guests_array =
-        (const VMM_GUEST_STARTUP*)startup_struct->secondary_guests_startup_state_array;
+      (const VMM_GUEST_STARTUP*)startup_struct->secondary_guests_startup_state_array;
     VMM_ASSERT((num_of_guests == 1) || (secondary_guests_array != 0));
 
-    if (! initialize_all_guests(num_of_cpus, 
+    if (!initialize_all_guests(num_of_cpus, 
 #if 0
          // vmm_memory map will be changed to exclude multiple regions
                        (int) startup_struct->num_excluded_regions, startup_struct->vmm_memory_layout,
@@ -739,7 +743,9 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     bprint("evmm: guests initialized \n");
     bprint("nmi owner: %d\n", startup_struct->nmi_owner);
 #endif
-    VMM_LOG(mask_uvmm, level_trace,"BSP: Guests created succefully. Number of guests: %d\n", guest_count());
+    VMM_LOG(mask_uvmm, level_trace,
+            "BSP: Guests created succefully. Number of guests: %d\n", 
+            guest_count());
 
     // should be set only after guests initialized
     vmm_set_state(VMM_STATE_BOOT);

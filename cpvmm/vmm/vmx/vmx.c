@@ -72,10 +72,6 @@ int vmx_vmclear(UINT64* ptr_to_vmcs_region) {
     : [ret]"=g" (ret)
     : [address]"m"(address)
     :"memory");
-#ifdef JLMDEBUG
-    bprint("vmclear done %d\n", ret);
-    LOOP_FOREVER
-#endif
     return ret;
 }
 
@@ -130,8 +126,7 @@ int vmx_vmptrld(UINT64 *ptr_to_vmcs_region) {
     int ret;
     UINT64   address= *ptr_to_vmcs_region;
 #ifdef JLMDEBUG
-    bprint("vmptrld, waiting\n");
-    LOOP_FOREVER
+    bprint("vmptrld, waiting %d\n", address);
 #endif
     asm volatile(
         "\tmovl $0, %[ret]\n"
@@ -144,8 +139,12 @@ int vmx_vmptrld(UINT64 *ptr_to_vmcs_region) {
         "\tmovl  $1, %[ret]\n"
     "2:\n"
     : [ret]"=g" (ret)
-    :[address] "p" (address)
+    :[address] "m" (address)
     :"memory");
+#ifdef JLMDEBUG
+    bprint("vmptrld returns %d\n", ret);
+    LOOP_FOREVER
+#endif
     return ret;
 }
 

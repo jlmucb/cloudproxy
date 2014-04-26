@@ -21,7 +21,7 @@
 
 
 int vmx_on(UINT64* ptr_to_vmcs_region) {
-    int  ret;
+    int  ret= 0;
     UINT64   address= *ptr_to_vmcs_region;
 #ifdef JLMDEBUG
     bprint("vmx_on %p %d %d\n", ptr_to_vmcs_region, sizeof(int), ret);
@@ -54,7 +54,7 @@ void vmx_off() {
 
 
 int vmx_vmclear(UINT64* ptr_to_vmcs_region) {
-    int ret;
+    int ret= 0;
     UINT64   address= *ptr_to_vmcs_region;
 #ifdef JLMDEBUG
     bprint("vmclear %p\n", ptr_to_vmcs_region);
@@ -80,7 +80,7 @@ int hw_vmx_flush_current_vmcs(UINT64 *address) {
 }
 
 int vmx_vmlaunch() {
-    int ret;
+    int ret= 0;
 #ifdef JLMDEBUG
     bprint("vmxlaunch, waiting\n");
     LOOP_FOREVER
@@ -101,7 +101,7 @@ int vmx_vmlaunch() {
 }
 
 int vmx_vmresume() {
-    int ret;
+    int ret= 0;
 #ifdef JLMDEBUG
     bprint("vmresume\n");
     LOOP_FOREVER
@@ -123,7 +123,7 @@ int vmx_vmresume() {
 
 
 int vmx_vmptrld(UINT64 *ptr_to_vmcs_region) {
-    int ret;
+    int ret= 0;
     UINT64   address= *ptr_to_vmcs_region;
 #ifdef JLMDEBUG
     bprint("vmptrld, waiting 0x%016lx\n", address);
@@ -145,7 +145,7 @@ int vmx_vmptrld(UINT64 *ptr_to_vmcs_region) {
 }
 
 void vmx_vmptrst(UINT64 *ptr_to_vmcs_region) {
-    int ret;
+    int ret= 0;
     UINT64   address= *ptr_to_vmcs_region;
 #ifdef JLMDEBUG
     bprint("vmptrst, waiting\n");
@@ -158,41 +158,50 @@ void vmx_vmptrst(UINT64 *ptr_to_vmcs_region) {
     return;
 }
 
-// CHECK(JLM)
+
 int vmx_vmread(UINT64 index, UINT64 *value) {
-    int ret;
+    int ret= 0;
 #ifdef JLMDEBUG
-    bprint("vmread, waiting\n");
-    LOOP_FOREVER
+    bprint("vmread, waiting %d, 0x%016lx\n", index, *value);
 #endif
     asm volatile(
-        "\tmovq %[index], %%rbx\n"
+        "\tmovq %[index], %%rax\n"
         "\tmovl $0, %[ret]\n"
-        "\tvmread %%rbx, %[value]\n"
-        "\tjnc    1f\n"
+        "\tvmread %%rax, %%rax\n"
+        "\tjnc   1f\n"
         "\tmovl  $2, %[ret]\n"
-        "\tjmp    2f\n"
+        "\tjmp   3f\n"
     "1:\n"
         "\tjnz   2f\n"
         "\tmovl  $1, %[ret]\n"
+        "\tjmp   3f\n"
     "2:\n"
+        "\tmovq %[value], %%rbx\n"
+        "\tmovq %%rax, (%%rbx)\n"
+    "3:\n"
     : [ret]"=g" (ret)
-    : [value] "g"(value), [index] "g"(index)
-    :"%rbx");
+    : [value] "p"(value), [index] "g"(index)
+    :"%rax", "%rbx");
+#ifdef JLMDEBUG
+    bprint("vmread, done 0x%016lx\n", *value);
+    LOOP_FOREVER
+#endif
     return ret;
 }
 
 // CHECK(JLM)
 int vmx_vmwrite(UINT64 index, UINT64 *value) {
-    int ret;
+    int ret= 0;
 #ifdef JLMDEBUG
     bprint("vmwrite, waiting\n");
     LOOP_FOREVER
 #endif
     asm volatile(
-        "\tmovq %[index], %%rbx\n"
+        "\tmovq %[index], %%rax\n"
+        "\tmovq %[value], %%rbx\n"
+        "\tmovq (%%rbx), %%rbx\n"
         "\tmovl $0, %[ret]\n"
-        "\tvmwrite %[value], %%rbx\n"
+        "\tvmwrite %%rax, %%rbx\n"
         "\tjnc    1f\n"
         "\tmovl  $2, %[ret]\n"
         "\tjmp    2f\n"
@@ -202,7 +211,7 @@ int vmx_vmwrite(UINT64 index, UINT64 *value) {
     "2:\n"
     : [ret] "=g" (ret) 
     : [index] "g"(index), [value] "g"(value)
-    :"%rbx", "memory");
+    :"%rbx", "%rax");
     return ret;
 }
 

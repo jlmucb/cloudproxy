@@ -21,13 +21,13 @@
 
 
 int vmx_on(UINT64* ptr_to_vmcs_region) {
-    int  ret= 0;
+    int  ret;
     UINT64   address= *ptr_to_vmcs_region;
 #ifdef JLMDEBUG
     bprint("vmx_on %p %d %d\n", ptr_to_vmcs_region, sizeof(int), ret);
 #endif
     asm volatile(
-        "\tmovl	$0, %[ret]\n"
+        "\tmovl $0, %[ret]\n"
         "\tvmxon %[address]\n"
         "\tjnc    1f\n"
         "\tmovl  $2, %[ret]\n"
@@ -52,64 +52,106 @@ void vmx_off() {
     return;
 }
 
-int vmx_vmclear(UINT64* address) {
+
+int vmx_vmclear(UINT64* ptr_to_vmcs_region) {
+    int ret;
+    UINT64   address= *ptr_to_vmcs_region;
 #ifdef JLMDEBUG
-    bprint("vmclear %p 0x%016lx\n", address, *address);
-    HexDump((UINT8*)address, (UINT8*)address+16);
-    // HexDump((UINT8*)*address, (UINT8*)*address+16);
-    LOOP_FOREVER
+    bprint("vmclear %p\n", ptr_to_vmcs_region);
 #endif
     asm volatile(
+        "\tmovl $0, %[ret]\n"
         "\tvmclear %[address]\n"
-    ::[address]"m"(address)
+        "\tjnc    1f\n"
+        "\tmovl  $2, %[ret]\n"
+        "\tjmp    2f\n"
+    "1:\n"
+        "\tjnz   2f\n"
+        "\tmovl  $1, %[ret]\n"
+    "2:\n"
+    : [ret]"=g" (ret)
+    : [address]"m"(address)
     :"memory");
 #ifdef JLMDEBUG
-    bprint("vmclear done\n");
+    bprint("vmclear done %d\n", ret);
     LOOP_FOREVER
 #endif
-    return 0;
+    return ret;
 }
 
-HW_VMX_RET_VALUE hw_vmx_flush_current_vmcs(UINT64 *address) {
+int hw_vmx_flush_current_vmcs(UINT64 *address) {
     return vmx_vmclear(address);
 }
 
 int vmx_vmlaunch() {
+    int ret;
 #ifdef JLMDEBUG
     bprint("vmxlaunch, waiting\n");
     LOOP_FOREVER
 #endif
     asm volatile(
+        "\tmovl $0, %[ret]\n"
         "\tvmlaunch\n"
-    ::: "memory");
-    return 0;
+        "\tjnc    1f\n"
+        "\tmovl  $2, %[ret]\n"
+        "\tjmp    2f\n"
+    "1:\n"
+        "\tjnz   2f\n"
+        "\tmovl  $1, %[ret]\n"
+    "2:\n"
+    :  [ret]"=g" (ret)
+    :: "memory");
+    return ret;
 }
 
 int vmx_vmresume() {
+    int ret;
 #ifdef JLMDEBUG
     bprint("vmresume\n");
     LOOP_FOREVER
 #endif
     asm volatile(
+        "\tmovl $0, %[ret]\n"
         "\tvmresume\n"
-    :::"cc", "memory");
-    return 0;
+        "\tjnc    1f\n"
+        "\tmovl  $2, %[ret]\n"
+        "\tjmp    2f\n"
+    "1:\n"
+        "\tjnz   2f\n"
+        "\tmovl  $1, %[ret]\n"
+    "2:\n"
+    : [ret]"=g" (ret)
+    ::"cc", "memory");
+    return ret;
 }
 
 
-int vmx_vmptrld(UINT64 *address) {
+int vmx_vmptrld(UINT64 *ptr_to_vmcs_region) {
+    int ret;
+    UINT64   address= *ptr_to_vmcs_region;
 #ifdef JLMDEBUG
     bprint("vmptrld, waiting\n");
     LOOP_FOREVER
 #endif
     asm volatile(
+        "\tmovl $0, %[ret]\n"
         "\tvmptrld %[address]\n"
-    ::[address] "p" (address)
+        "\tjnc    1f\n"
+        "\tmovl  $2, %[ret]\n"
+        "\tjmp    2f\n"
+    "1:\n"
+        "\tjnz   2f\n"
+        "\tmovl  $1, %[ret]\n"
+    "2:\n"
+    : [ret]"=g" (ret)
+    :[address] "p" (address)
     :"memory");
-    return 0;
+    return ret;
 }
 
-void vmx_vmptrst(UINT64 *address) {
+void vmx_vmptrst(UINT64 *ptr_to_vmcs_region) {
+    int ret;
+    UINT64   address= *ptr_to_vmcs_region;
 #ifdef JLMDEBUG
     bprint("vmptrst, waiting\n");
     LOOP_FOREVER
@@ -121,36 +163,61 @@ void vmx_vmptrst(UINT64 *address) {
     return;
 }
 
+// CHECK(JLM)
 int vmx_vmread(UINT64 index, UINT64 *value) {
+    int ret;
 #ifdef JLMDEBUG
     bprint("vmread, waiting\n");
     LOOP_FOREVER
 #endif
     asm volatile(
-        "\tvmread %1, %0\n"
-    :"=rm"(value)
-    :"r"(index)
-    :"cc");
-    return 0;
+        "\tmovq %[index], %%rbx\n"
+        "\tmovl $0, %[ret]\n"
+        "\tvmread %%rbx, %[value]\n"
+        "\tjnc    1f\n"
+        "\tmovl  $2, %[ret]\n"
+        "\tjmp    2f\n"
+    "1:\n"
+        "\tjnz   2f\n"
+        "\tmovl  $1, %[ret]\n"
+    "2:\n"
+    : [ret]"=g" (ret)
+    : [value] "g"(value), [index] "g"(index)
+    :"%rbx");
+    return ret;
 }
 
+// CHECK(JLM)
 int vmx_vmwrite(UINT64 index, UINT64 *value) {
+    int ret;
 #ifdef JLMDEBUG
     bprint("vmwrite, waiting\n");
     LOOP_FOREVER
 #endif
     asm volatile(
-        "\tvmwrite %1, %0\n"
-    : :"r"(index), "rm"(value)
-    :"cc", "memory");
-    return 0;
+        "\tmovq %[index], %%rbx\n"
+        "\tmovl $0, %[ret]\n"
+        "\tvmwrite %[value], %%rbx\n"
+        "\tjnc    1f\n"
+        "\tmovl  $2, %[ret]\n"
+        "\tjmp    2f\n"
+    "1:\n"
+        "\tjnz   2f\n"
+        "\tmovl  $1, %[ret]\n"
+    "2:\n"
+    : [ret] "=g" (ret) 
+    : [index] "g"(index), [value] "g"(value)
+    :"%rbx", "memory");
+    return ret;
 }
 
-HW_VMX_RET_VALUE hw_vmx_write_current_vmcs(UINT64 field_id, UINT64 *value ) {
+
+int hw_vmx_write_current_vmcs(UINT64 field_id, UINT64 *value ) {
         return vmx_vmwrite(field_id, value);
 }
 
-HW_VMX_RET_VALUE hw_vmx_read_current_vmcs(UINT64 field_id, UINT64 *value ) {
+
+int hw_vmx_read_current_vmcs(UINT64 field_id, UINT64 *value ) {
         return vmx_vmread(field_id, value);
 }
 

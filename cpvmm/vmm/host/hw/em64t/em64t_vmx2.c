@@ -61,9 +61,8 @@ void vmentry_func(UINT32 firsttime)
 // Function:    Called upon VMENTRY.
 // Arguments:   firsttime = 1 if called first time
 {
-    //RNB: Assumption: rflags_arg is still addressable (by %rsp).
-    //RNB: rdx is clobbered after being restore.  Should we restore it again?
-    //RNB: The asm file sets rcx to 1 after the call to vmentry_failure_function?
+    // first arg to error function contains # of args for failure function in original asm
+    // passed expliitly here
     ADDRESS rflags_arg = 0;
 
     if(firsttime==0ULL) { //do_launch

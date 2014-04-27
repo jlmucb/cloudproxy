@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *           
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -47,7 +45,6 @@ void zero_exit_time(struct VMEXIT_TIME *p)
 void vmexit_func()
 // Function:    Called upon VMEXIT. Saves GP registers, allocates stack
 //              for C-function and calls it.
-// Arguments:   none
 {
     gcpu_save_registers();
     asm volatile(
@@ -57,8 +54,7 @@ void vmexit_func()
         "\tcall     vmexit_common_handler\n"
         "2:\n"
         "\tjmp     2b\n"
-    : : 
-    :"%rcx");
+    : : :"%rcx");
 }
 
 void vmentry_func(UINT32 firsttime)
@@ -66,7 +62,7 @@ void vmentry_func(UINT32 firsttime)
 // Arguments:   firsttime = 1 if called first time
 {
     //RNB: Assumption: rflags_arg is still addressable (by %rsp).
-    //RNB: rdx is clobbered after being restore.  Should we restore it even?
+    //RNB: rdx is clobbered after being restore.  Should we restore it again?
     //RNB: The asm file sets rcx to 1 after the call to vmentry_failure_function?
     ADDRESS rflags_arg = 0;
 

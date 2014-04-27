@@ -367,6 +367,7 @@ void hw_write_dr7(UINT64 value)
 }
 
 
+// CHECK(JLM)
 void hw_invlpg(void *address)
 {
     asm volatile (
@@ -424,25 +425,17 @@ INT32  hw_interlocked_increment(INT32 *addend)
 }
 
 
-UINT64 hw_interlocked_increment64(INT64* p_counter)
+UINT64 hw_interlocked_increment64(INT64* addend)
 {
-#ifdef JLMDEBUG
-    bprint("hw_interlocked_increment64\n");
-    LOOP_FOREVER
-#endif
     asm volatile(
-        "\tlock; incq (%[p_counter])\n"
-    : :[p_counter] "p" (p_counter)
+        "\tlock; incq (%[addend])\n"
+    : :[addend] "p" (addend)
     :"memory");
-    return *p_counter;
+    return *addend;
 }
 
 INT32 hw_interlocked_decrement(INT32 * minuend)
 {
-#ifdef JLMDEBUG
-    bprint("hw_interlocked_decrement\n");
-    LOOP_FOREVER
-#endif
     asm volatile(
       "\tlock; decl (%[minuend])\n"
     : :[minuend] "p" (minuend)
@@ -1122,52 +1115,6 @@ void hw_cpuid (CPUID_PARAMS *cp) {
 }
 
 
-#if 0
-// never ported
-void hw_leave_64bit_mode (unsigned int compatibility_segment,
-    unsigned short int port_id,
-    unsigned short int value,
-    unsigned int cr3_value) 
-{
-
-        jmp $
-        shl rcx, 32             ;; prepare segment:offset pair for retf by shifting
-                                ;; compatibility segment in high address
-        lea rax, compat_code    ;; and
-        add rcx, rax            ;; placing offset into low address
-        push rcx                ;; push ret address onto stack
-        mov  rsi, rdx           ;; rdx will be used during EFER access
-        mov  rdi, r8            ;; r8 will be unaccessible, so use rsi instead
-        mov  rbx, r9            ;; save CR3 in RBX. this function is the last called, so we have not to save rbx
-        retf                    ;; jump to compatibility mode
-compat_code:                    ;; compatibility mode starts right here
-
-        mov rax, cr0            ;; only 32-bit are relevant
-        btc eax, 31             ;; disable IA32e paging (64-bits)
-        mov cr0, rax            ;;
-
-        ;; now in protected mode
-        mov ecx, 0C0000080h     ;; EFER MSR register
-        rdmsr                   ;; read EFER into EAX
-        btc eax, 8              ;; clear EFER.LME
-        wrmsr                   ;; write EFER back
-
-;        mov cr3, rbx            ;; load CR3 for 32-bit mode
-;
-;        mov rax, cr0            ;; use Rxx notation for compiler, only 32-bit are valuable
-;        bts eax, 31             ;; enable IA32 paging (32-bits)
-;        mov cr0, rax            ;;
-;        jmp @f
-
-;; now in 32-bit paging mode
-        mov rdx, rsi
-        mov rax, rdi
-        out dx, ax              ;; write to PM register
-        ret                     ;; should never get here
-} //hw_leave_64bit_mode
-#endif
-
-
 /*
  *  void
  *  hw_perform_asm_iret(void);
@@ -1382,4 +1329,51 @@ asm(
         "\tmovq   8(%rbx), %rbx\n"
         "\tret\n"
 );
+
+
+
+#if 0
+// never ported
+void hw_leave_64bit_mode (unsigned int compatibility_segment,
+    unsigned short int port_id,
+    unsigned short int value,
+    unsigned int cr3_value) 
+{
+
+        jmp $
+        shl rcx, 32             ;; prepare segment:offset pair for retf by shifting
+                                ;; compatibility segment in high address
+        lea rax, compat_code    ;; and
+        add rcx, rax            ;; placing offset into low address
+        push rcx                ;; push ret address onto stack
+        mov  rsi, rdx           ;; rdx will be used during EFER access
+        mov  rdi, r8            ;; r8 will be unaccessible, so use rsi instead
+        mov  rbx, r9            ;; save CR3 in RBX. this function is the last called, so we have not to save rbx
+        retf                    ;; jump to compatibility mode
+compat_code:                    ;; compatibility mode starts right here
+
+        mov rax, cr0            ;; only 32-bit are relevant
+        btc eax, 31             ;; disable IA32e paging (64-bits)
+        mov cr0, rax            ;;
+
+        ;; now in protected mode
+        mov ecx, 0C0000080h     ;; EFER MSR register
+        rdmsr                   ;; read EFER into EAX
+        btc eax, 8              ;; clear EFER.LME
+        wrmsr                   ;; write EFER back
+
+;        mov cr3, rbx            ;; load CR3 for 32-bit mode
+;
+;        mov rax, cr0            ;; use Rxx notation for compiler, only 32-bit are valuable
+;        bts eax, 31             ;; enable IA32 paging (32-bits)
+;        mov cr0, rax            ;;
+;        jmp @f
+
+;; now in 32-bit paging mode
+        mov rdx, rsi
+        mov rax, rdi
+        out dx, ax              ;; write to PM register
+        ret                     ;; should never get here
+} //hw_leave_64bit_mode
+#endif
 

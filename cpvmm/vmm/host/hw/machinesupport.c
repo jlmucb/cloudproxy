@@ -489,38 +489,55 @@ void hw_store_fence(void)
     return;
 }
 
-INT32 gcc_interlocked_compare_exchange( INT32 volatile * destination,
-            INT32 exchange, INT32 comperand)
+// CHECK(JLM)
+INT32 hw_interlocked_compare_exchange(INT32 volatile * destination,
+                                       INT32 exchange, INT32 comperand)
 {
-    INT32 ret = 0ULL;
-#ifdef JLMDEBUG
-    bprint("gcc_interlocked_compare_exchange\n"); LOOP_FOREVER
-#endif
     asm volatile(
-        "\tlock; cmpxchgl %[exchange], %[comperand]\n"
-    :"=a" (ret), "+m" (*destination)
-    :[ret] "r" (ret), [exchange] "r" (exchange), [comperand] "r" (comperand), [destination] "p" (destination)
-    :"memory");
-
-    return ret;
+        "\tmovq     %[destination], %%rbx\n"
+        "\tmovl     %[exchange], %%eax\n"
+        "\tmovl     %[comperand], %%ecx\n"
+        "\tcmpxchgl %%ecx, %%eax\n"
+        "\tmovl     %%eax, (%%rbx)\n"
+    :
+    : [exchange] "m" (exchange), [comperand] "m" (comperand),
+      [destination] "m" (destination)
+    :"%eax", "%ecx", "%rbx");
+    return *destination;
 }
 
 
-//RNB: this should probably be interlocked_compare_exchange_64 instead of _8?
-INT64 gcc_interlocked_compare_exchange_8(INT64 volatile * destination,
+INT8 hw_interlocked_compare_exchange_8(INT8 volatile * destination,
+            INT8 exchange, INT8 comperand)
+{
+    asm volatile(
+        "\tmovq     %[destination], %%rbx\n"
+        "\tmovb     %[exchange], %%al\n"
+        "\tmovb     %[comperand], %%cl\n"
+        "\tcmpxchgb %%cl, %%al\n"
+        "\tmovb     %%al, (%%rbx)\n"
+    :
+    : [exchange] "m" (exchange), [comperand] "m" (comperand),
+      [destination] "m" (destination)
+    :"%rax", "%rcx", "%rbx");
+    return *destination;
+}
+
+
+INT64 hw_interlocked_compare_exchange_64(INT64 volatile * destination,
             INT64 exchange, INT64 comperand)
 {
-    INT64 ret = 0ULL;
-#ifdef JLMDEBUG
-    bprint("gcc_interlocked_compare_exchange_8\n"); LOOP_FOREVER
-#endif
     asm volatile(
-        "lock; cmpxchgq %[exchange], %[comperand] \n\t"
-    :"=a" (ret), "+m" (*destination)
-    :[ret] "r" (ret), [exchange] "r" (exchange), 
-     [comperand] "r" (comperand), [destination] "p" (destination)
-    :"memory");
-    return ret;
+        "\tmovq     %[destination], %%rbx\n"
+        "\tmovq     %[exchange], %%rax\n"
+        "\tmovq     %[comperand], %%rcx\n"
+        "\tcmpxchgq %%rcx, %%rax\n"
+        "\tmovq     %%rax, (%%rbx)\n"
+    :
+    : [exchange] "m" (exchange), [comperand] "m" (comperand),
+      [destination] "m" (destination)
+    :"%rax", "%rcx", "%rbx");
+    return *destination;
 }
 
 

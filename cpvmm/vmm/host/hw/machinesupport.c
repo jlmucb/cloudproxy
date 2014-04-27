@@ -445,53 +445,38 @@ INT32 hw_interlocked_decrement(INT32 * minuend)
 
 INT32 hw_interlocked_add(INT32 volatile * addend, INT32 value)
 {
-    UINT64 ret = 1ULL;
-
-#ifdef JLMDEBUG
-    bprint("hw_interlocked_add\n");
-    LOOP_FOREVER
-#endif
     asm volatile(
-        "\tlock; movl %[value], %%eax\n"
-        "\tadd (%[addend]), %%rax\n"
-        "\tmovq %%rax, %[ret]\n"
-    :"=m" (ret)
-    :[ret] "r" (ret), [addend] "p" (addend), [value] "r" (value)
-    :"memory", "cc");
-    return ret;
+        "\tmovq     %[addend], %%rbx\n"
+        "\tmovl     %[value], %%eax\n"
+        "\tlock;    addl %%eax, (%%rbx)\n"
+    : 
+    : [addend] "p" (addend), [value] "r" (value)
+    : "%eax", "%rbx");
+    return *addend;
 }
 
 INT32 hw_interlocked_or(INT32 volatile * value, INT32 mask)
 {
-    INT32 ret = 0ULL;
-
-#ifdef JLMDEBUG
-    bprint("hw_interlocked_or\n");
-    LOOP_FOREVER
-#endif
     asm volatile(
-        "\tlock; or %[mask], (%[value])\n"
-        "\tmov (%[value]), %[ret]\n"
-    :"=m" (ret)
-    :[ret] "r" (ret), [value] "p" (value), [mask] "r" (mask)
-    :"memory");
-    return ret;
+        "\tmovq     %[value], %%rbx\n"
+        "\tmovl     %[mask], %%eax\n"
+        "\tlock;    orl %%eax, (%%rbx)\n"
+    : 
+    : [mask] "m" (mask), [value] "r" (value)
+    : "%eax", "%rbx");
+    return *value;
 }
 
 INT32 hw_interlocked_xor(INT32 volatile * value, INT32 mask)
 {
-    INT32 ret = 0ULL;
-#ifdef JLMDEBUG
-    bprint("hw_interlocked_xor\n");
-    LOOP_FOREVER
-#endif
     asm volatile(
-        "\tlock; xor %[mask], (%[value])\n"
-        "\tmovl (%[value]), %[ret]\n"
-    :[ret] "=m" (ret)
-    :[value] "p" (value), [mask] "r" (mask)
-    :"memory");
-    return ret;
+        "\tmovq     %[value], %%rbx\n"
+        "\tmovl     %[mask], %%eax\n"
+        "\tlock;    xorl %%eax, (%%rbx)\n"
+    : 
+    : [mask] "m" (mask), [value] "r" (value)
+    : "%eax", "%rbx");
+    return *value;
 }
 
 void hw_store_fence(void)

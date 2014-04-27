@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -49,7 +47,6 @@ typedef enum {
     TRAP_CLASS,
     RESERVED_CLASS
 } EXCEPTION_CLASS_ENUM;
-
 
 
 static VMM_ISR_HANDLER isr_table[INTERRUPT_COUNT_VECTORS];
@@ -111,7 +108,6 @@ const UINT8 exception_class[] = {
  *  ARGUMENTS    : IN ISR_PARAMETERS_ON_STACK *p_stack - points
  *               : to the stack, where FLAGS register stored
  *               : as a part of return from interrupt cycle
- *  RETURNS      : void
  */
 void isr_c_handler(IN ISR_PARAMETERS_ON_STACK *p_stack) 
 {
@@ -120,7 +116,6 @@ void isr_c_handler(IN ISR_PARAMETERS_ON_STACK *p_stack)
 
     if (FALSE == (interrut_during_emulation = gcpu_process_interrupt(vector_id))) {
         BOOLEAN     handled = FALSE;
-
         // if it is a fault exception,
         // skip faulty instruction in case there is instruction length supplied
         if (vector_id < NELEMENTS(exception_class) && FAULT_CLASS == exception_class[vector_id]) {
@@ -130,11 +125,10 @@ void isr_c_handler(IN ISR_PARAMETERS_ON_STACK *p_stack)
                 p_stack->u.errcode_exception.ip = (ADDRESS)hw_exception_post_handler;
                 p_stack->u.errcode_exception.sp = (ADDRESS)p_trial_data->saved_env;
                 p_trial_data->fault_vector = vector_id;
-                p_trial_data->error_code   = (UINT32) p_stack->u.errcode_exception.errcode;
+                p_trial_data->error_code= (UINT32) p_stack->u.errcode_exception.errcode;
                 handled = TRUE;
             }
         }
-
         if (FALSE == handled) {
             if (NULL == isr_table[vector_id]) {
                 VMM_LOG(mask_anonymous, level_trace,"Interrupt vector(%d) handler is not registered\n", vector_id);
@@ -144,7 +138,6 @@ void isr_c_handler(IN ISR_PARAMETERS_ON_STACK *p_stack)
             }
         }
     }
-
     if (vector_id >= EXCEPTION_COUNT_VECTORS || interrut_during_emulation) {
         // apparently interrupts were enabled
         // but we don't process more than one interrupt per VMEXIT,
@@ -153,7 +146,6 @@ void isr_c_handler(IN ISR_PARAMETERS_ON_STACK *p_stack)
         // clear flags.IF to prevent interrupt re-enabling
         BIT_CLR(p_stack->u.exception.flags, RFLAGS_IF);
     }
-
     // Before returning to the assmbler code, need to set pointer to the
     // EXCEPTION_STACK ip member.
     if (FALSE == interrut_during_emulation && isr_error_code_required(vector_id)) {
@@ -174,7 +166,6 @@ void isr_c_handler(IN ISR_PARAMETERS_ON_STACK *p_stack)
  *  ARGUMENTS    : VMM_ISR_HANDLER handler - is called
  *               : when vector interrupt/exception occurs
  *               : VECTOR_ID vector_id
- *  RETURNS      : void
  */
 void isr_register_handler(IN VMM_ISR_HANDLER  handler, IN VECTOR_ID vector_id)
 {
@@ -205,14 +196,12 @@ static void print_exception_header(
 static void print_errcode_generic(ADDRESS errcode)
 {
     VMM_LOG_NOLOCK("Error code: 0X%X", errcode);
-
     if ((errcode & ERROR_CODE_EXT_BIT) != 0) {
         VMM_LOG_NOLOCK("External event\n");
     }
     else {
         VMM_LOG_NOLOCK("Internal event\n");
     }
-
     if ((errcode & ERROR_CODE_IN_IDT) != 0) {
         VMM_LOG_NOLOCK("Index is in IDT\n");
     }
@@ -267,19 +256,15 @@ static void exception_handler_page_fault(ISR_PARAMETERS_ON_STACK *p_stack)
     VMM_DEBUG_CODE(print_exception_header(p_stack->u.errcode_exception.cs,
                    p_stack->u.errcode_exception.ip, (VECTOR_ID) p_stack->a.vector_id,
                    p_stack->u.errcode_exception.errcode));
-
     if (p_stack->a.vector_id < NELEMENTS(exception_message)) {
         VMM_LOG_NOLOCK(" Error type: %s\n", exception_message[p_stack->a.vector_id]);
     }
-
     VMM_LOG_NOLOCK("Faulting address of page fault is %P   RSP=%P\n",
         hw_read_cr2(),
         p_stack->u.errcode_exception.sp);
-
     gcpu = scheduler_current_gcpu();
     vmcs = gcpu_get_vmcs(gcpu);
     VMM_LOG_NOLOCK("Last VMEXIT reason = %d\n", (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_REASON));
-
     g_exception_stack = p_stack;
     VMM_DEADLOOP();
 }
@@ -292,16 +277,13 @@ static void exception_handler_undefined_opcode(ISR_PARAMETERS_ON_STACK *p_stack)
 #endif
 
     VMM_DEBUG_CODE(print_exception_header(p_stack->u.exception.cs,
-                           p_stack->u.exception.ip, (VECTOR_ID) p_stack->a.vector_id, 0));
-
+                        p_stack->u.exception.ip, (VECTOR_ID) p_stack->a.vector_id, 0));
     if (p_stack->a.vector_id < NELEMENTS(exception_message)) {
         VMM_LOG_NOLOCK(" Exception type: %s\n", exception_message[p_stack->a.vector_id]);
     }
-
     VMM_LOG_NOLOCK("IP = %P\n", ip_ptr);
-
-    VMM_LOG_NOLOCK("Encoding: %2x %2x %2x %2x\n", *ip_ptr, *(ip_ptr + 1), *(ip_ptr + 2), *(ip_ptr + 3));
-
+    VMM_LOG_NOLOCK("Encoding: %2x %2x %2x %2x\n", *ip_ptr, *(ip_ptr + 1), 
+                    *(ip_ptr + 2), *(ip_ptr + 3));
     g_exception_stack = p_stack;
     VMM_DEADLOOP();
 }
@@ -337,8 +319,6 @@ static void isr_install_default_handlers(void)
  *  FUNCTION     : isr_setup()
  *  PURPOSE      : Builds ISR wrappers, IDT tables and
  *               : default high level ISR handlers for all CPUs.
- *  ARGUMENTS    : void
- *  RETURNS      : void
  */
 void isr_setup(void)
 {

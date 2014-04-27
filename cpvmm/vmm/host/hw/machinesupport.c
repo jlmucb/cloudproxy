@@ -494,8 +494,7 @@ INT32 gcc_interlocked_compare_exchange( INT32 volatile * destination,
 {
     INT32 ret = 0ULL;
 #ifdef JLMDEBUG
-    bprint("gcc_interlocked_compare_exchange\n");
-    LOOP_FOREVER
+    bprint("gcc_interlocked_compare_exchange\n"); LOOP_FOREVER
 #endif
     asm volatile(
         "\tlock; cmpxchgl %[exchange], %[comperand]\n"
@@ -513,8 +512,7 @@ INT64 gcc_interlocked_compare_exchange_8(INT64 volatile * destination,
 {
     INT64 ret = 0ULL;
 #ifdef JLMDEBUG
-    bprint("gcc_interlocked_compare_exchange_8\n");
-    LOOP_FOREVER
+    bprint("gcc_interlocked_compare_exchange_8\n"); LOOP_FOREVER
 #endif
     asm volatile(
         "lock; cmpxchgq %[exchange], %[comperand] \n\t"
@@ -528,18 +526,14 @@ INT64 gcc_interlocked_compare_exchange_8(INT64 volatile * destination,
 
 INT32 hw_interlocked_assign(INT32 volatile * target, INT32 new_value)
 {
-    INT64 ret = 0ULL;
-#ifdef JLMDEBUG
-    bprint("hw_interlocked_assign\n");
-    LOOP_FOREVER
-#endif
     asm volatile(
-        "\tlock; xchgl (%[target]), %[new_value]\n"
-    :"=a" (ret), "+m" (new_value)
-    :[ret] "r" (ret), [target] "p" (target), [new_value] "r" (new_value)
-    :"memory", "cc"
-    );
-    return ret;
+        "\tmovq     %[target], %%rbx\n"
+        "\tmovl     %[new_value], %%eax\n"
+        "\tlock;    xchgl %%eax, (%%rbx)\n"
+    : 
+    : [new_value] "m" (new_value), [target] "r" (target)
+    : "%eax", "%rbx");
+    return *target;
 }
 
 

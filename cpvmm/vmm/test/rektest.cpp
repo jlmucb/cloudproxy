@@ -46,6 +46,53 @@ bool hw_scan_bit_backward( unsigned *bit_number_ptr, unsigned bitset )
     return bitset ? true: false;
 }
 
+INT32 hw_interlocked_assign(INT32 volatile * target, INT32 new_value)
+{
+    asm volatile(
+        "\tmovq     %[target], %%rbx\n"
+        "\tmovl     %[new_value], %%eax\n"
+        "\tlock;    xchgl %%eax, (%%rbx)\n"
+    :
+    : [new_value] "m" (new_value), [target] "r" (target)
+    : "%eax", "%rbx");
+    return *target;
+}
+
+
+
+INT32 gcc_interlocked_compare_exchange( INT32 volatile * destination,
+            INT32 exchange, INT32 comperand)
+{
+    INT32 ret = 0ULL;
+#ifdef JLMDEBUG
+    bprint("gcc_interlocked_compare_exchange\n"); LOOP_FOREVER
+#endif
+    asm volatile(
+        "\tlock; cmpxchgl %[exchange], %[comperand]\n"
+    :"=a" (ret), "+m" (*destination)
+    :[ret] "r" (ret), [exchange] "r" (exchange), [comperand] "r" (comperand), [destination] "p" (destination)
+    :"memory");
+
+    return ret;
+}
+
+
+//RNB: this should probably be interlocked_compare_exchange_64 instead of _8?
+INT64 gcc_interlocked_compare_exchange_8(INT64 volatile * destination,
+            INT64 exchange, INT64 comperand)
+{
+    INT64 ret = 0ULL;
+#ifdef JLMDEBUG
+    bprint("gcc_interlocked_compare_exchange_8\n"); LOOP_FOREVER
+#endif
+    asm volatile(
+        "lock; cmpxchgq %[exchange], %[comperand] \n\t"
+    :"=a" (ret), "+m" (*destination)
+    :[ret] "r" (ret), [exchange] "r" (exchange),
+     [comperand] "r" (comperand), [destination] "p" (destination)
+    :"memory");
+    return ret;
+}
 
 int main(int an, char** av)
 {
@@ -64,6 +111,12 @@ int main(int an, char** av)
 
     k= hw_interlocked_add(&i, j);
     printf("%d %d, %d %d\n", n,j,i,k);
+
+    i= 10;
+    n= 10;
+    k= hw_interlocked_assign(&i, 12);
+    printf("orig %d, %d %d\n", n,i,k);
+
 
     return 0;
 }

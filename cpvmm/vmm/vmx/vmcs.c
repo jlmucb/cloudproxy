@@ -469,6 +469,9 @@ void vmcs_update(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id,
 {
     UINT64 result_value;
 
+#ifdef JLMDEBUG
+    bprint("vmcs_update\n");
+#endif
     VMM_ASSERT(field_id < VMCS_FIELD_COUNT);
     result_value = vmcs_read(vmcs, field_id);
     value &= bits_to_update;     // clear all bits except bits_to_update
@@ -800,9 +803,7 @@ void vmcs_init_all_msr_lists(struct _VMCS_OBJECT* vmcs) {
     vmcs->max_num_of_vmenter_load_msrs = 0;
 }
 
-static
-void vmcs_free_msr_list(UINT64 msr_list_addr,
-                        BOOLEAN address_is_in_hpa) {
+static void vmcs_free_msr_list(UINT64 msr_list_addr, BOOLEAN address_is_in_hpa) {
     if (msr_list_addr != VMCS_INVALID_ADDRESS) {
         HVA msr_list_addr_hva;
 

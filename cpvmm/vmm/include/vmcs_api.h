@@ -311,7 +311,8 @@ INLINE void vmcs_clear_vmenter_load_list(struct _VMCS_OBJECT* vmcs) {
 void   vmcs_store(struct _VMCS_OBJECT *vmcs, UINT64 *buffer);
 void   vmcs_load(struct _VMCS_OBJECT *vmcs, UINT64 *buffer);
 UINT32 vmcs_get_field_encoding(VMCS_FIELD field_id, RW_ACCESS *p_access);
-void   vmcs_update(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id, UINT64 value, UINT64 bits_to_update);
+void   vmcs_update(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id, 
+                   UINT64 value, UINT64 bits_to_update);
 void   vmcs_manager_init(void);
 
 // is_HIGH_part is TRUE if encodign is for high part only of the VMCS field

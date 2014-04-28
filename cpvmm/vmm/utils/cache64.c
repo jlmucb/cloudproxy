@@ -103,7 +103,7 @@ void cache64_write(CACHE64_OBJECT cache, UINT64 value, UINT32 entry_no)
     VMM_ASSERT(cache);
     VMM_ASSERT(entry_no < cache->num_of_entries);
     if (entry_no < cache->num_of_entries) {
-        if ( ! (cache->table[entry_no] == value && CACHE_FIELD_IS_VALID(cache, entry_no))) {
+        if (!(cache->table[entry_no]==value && CACHE_FIELD_IS_VALID(cache, entry_no))) {
             cache->table[entry_no] = value;
             CACHE_FIELD_SET_DIRTY(cache, entry_no);
             CACHE_FIELD_SET_VALID(cache, entry_no);

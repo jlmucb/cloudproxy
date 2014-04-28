@@ -542,7 +542,6 @@ void gcpu_resume(GUEST_CPU_HANDLE gcpu)
     VMCS_OBJECT* vmcs;
 #ifdef JLMDEBUG
     bprint("gcpu_resume\n");
-    LOOP_FOREVER
 #endif
 
     if (IS_MODE_NATIVE( gcpu )) {
@@ -582,9 +581,6 @@ void gcpu_resume(GUEST_CPU_HANDLE gcpu)
                 if (INVALID_CR3_SAVED_VALUE != visible_cr3) {
                     // CR3 user-visible value was changed inside vmm or CR3 
                     // virtualization was switched off
-#ifdef JLMDEBUG
-                    bprint("gcpu_resume, visible_cr3\n");
-#endif
                     gcpu_set_control_reg(gcpu, IA32_CTRL_CR3, visible_cr3);
                 }
             }
@@ -603,16 +599,22 @@ void gcpu_resume(GUEST_CPU_HANDLE gcpu)
     if (IS_MODE_NATIVE(gcpu)) {
         vmdb_settings_apply_to_hw(gcpu); // apply GDB settings
     }
+#ifdef JLMDEBUG
+    bprint("gcpu_resume point 2\n");
+#endif
     //host_cpu_save_dr7(hw_cpu_id());
     if (0 != gcpu->hw_enforcements) {
         gcpu_apply_hw_enforcements(gcpu);
     }
-    {
+#ifdef JLMDEBUG
+    bprint("gcpu_resume point 3\n");
+#endif
+    { 
         IA32_VMX_VMCS_VM_EXIT_INFO_IDT_VECTORING    idt_vectoring_info;
         idt_vectoring_info.Uint32 = (UINT32)vmcs_read(vmcs,VMCS_EXIT_INFO_IDT_VECTORING);
         if(idt_vectoring_info.Bits.Valid && ((idt_vectoring_info.Bits.InterruptType == 
                 IdtVectoringInterruptTypeExternalInterrupt )
-                ||(idt_vectoring_info.Bits.InterruptType==IdtVectoringInterruptTypeNmi))) {       
+                ||(idt_vectoring_info.Bits.InterruptType==IdtVectoringInterruptTypeNmi))) {
             IA32_VMX_VMCS_VM_ENTER_INTERRUPT_INFO   interrupt_info;
             PROCESSOR_BASED_VM_EXECUTION_CONTROLS ctrls;
 
@@ -621,7 +623,10 @@ void gcpu_resume(GUEST_CPU_HANDLE gcpu)
             interrupt_info.Uint32 = 0;
             interrupt_info.Bits.Valid = 1;
             interrupt_info.Bits.Vector = idt_vectoring_info.Bits.Vector;
-            interrupt_info.Bits.InterruptType = idt_vectoring_info.Bits.InterruptType;
+            interrupt_info.Bits.InterruptType= idt_vectoring_info.Bits.InterruptType;
+#ifdef JLMDEBUG
+    bprint("gcpu_resume point 4\n");
+#endif
             vmcs_write(vmcs,VMCS_ENTER_INTERRUPT_INFO, interrupt_info.Uint32);
             if(idt_vectoring_info.Bits.InterruptType == IdtVectoringInterruptTypeNmi )
                 vmcs_write(vmcs,VMCS_GUEST_INTERRUPTIBILITY,0);
@@ -634,14 +639,26 @@ void gcpu_resume(GUEST_CPU_HANDLE gcpu)
                 gcpu->trigger_log_event = 1 + interrupt_info.Bits.Vector; 
         }
     }
+#ifdef JLMDEBUG
+    bprint("gcpu_resume point 5\n");
+#endif
     // flash VMCS
     if (!vmcs_sw_shadow_disable[hw_cpu_id()])
        vmcs_flush_to_cpu(vmcs);
     vmcs_sw_shadow_disable[hw_cpu_id()] = FALSE;
+#ifdef JLMDEBUG
+    bprint("gcpu_resume point 6\n");
+#endif
     if (!vmcs_launch_required(vmcs))
         nmi_window_update_before_vmresume(vmcs);
     // check for Launch and resume
+#ifdef JLMDEBUG
+    bprint("gcpu_resume point 7\n");
+#endif
     if (vmcs_launch_required(vmcs)) {
+#ifdef JLMDEBUG
+    bprint("gcpu_resume point 8.1\n");
+#endif
         vmcs_set_launched(vmcs);
         // call assembler launch
         vmentry_func(TRUE);
@@ -651,6 +668,9 @@ void gcpu_resume(GUEST_CPU_HANDLE gcpu)
                 IS_MODE_NATIVE(gcpu) ? "NATIVE" : "EMULATED");
     }
     else {
+#ifdef JLMDEBUG
+    bprint("gcpu_resume point 8.2\n");
+#endif
         // call assembler resume
         vmentry_func(FALSE);
         VMM_LOG(mask_anonymous, level_trace,

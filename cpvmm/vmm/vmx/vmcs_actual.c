@@ -253,6 +253,9 @@ struct _VMCS_OBJECT * vmcs_act_create(GUEST_CPU_HANDLE gcpu)
         VMM_LOG(mask_anonymous, level_trace,"[vmcs] %s: Allocation failed\n", __FUNCTION__);
         return NULL;
     }
+#ifdef JLMDEBUG
+    bprint("about to set vmcs entries in vmcs create\n");
+#endif
     p_vmcs->hva = vmcs_hw_allocate_region(&p_vmcs->hpa);    // validate it's ok TBD
     p_vmcs->flags|= NEVER_ACTIVATED_FLAG;
     p_vmcs->owning_host_cpu = CPU_NEVER_USED;
@@ -408,6 +411,9 @@ void vmcs_act_flush_to_cpu(const struct _VMCS_OBJECT *vmcs)
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) vmcs;
 
+#ifdef JLMDEBUG
+    bprint("vmcs_act_flush_to_cpu\n");
+#endif
     VMM_ASSERT((p_vmcs->flags&ACTIVATED_FLAG)!=0);
     VMM_ASSERT(p_vmcs->owning_host_cpu == hw_cpu_id());
 

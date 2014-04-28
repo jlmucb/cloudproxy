@@ -26,6 +26,9 @@
 #include "host_memory_manager_api.h"
 #include "vmcs_api.h"
 #include "vmcs_internal.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #pragma warning( disable: 4100 )
 
@@ -141,13 +144,16 @@ struct _VMCS_OBJECT * vmcs_0_create(struct _VMCS_OBJECT *vmcs_origin)
     vmcs_clone->gcpu = vmcs_get_owner(vmcs_origin);
     vmcs_clone->gpa  = 0;
 
-    vmcs_clone->vmcs_base->vmcs_read              = vmcs_sw_read;
-    vmcs_clone->vmcs_base->vmcs_write             = vmcs_sw_write;
-    vmcs_clone->vmcs_base->vmcs_flush_to_cpu      = vmcs_sw_flush_to_cpu;
-    vmcs_clone->vmcs_base->vmcs_is_dirty          = vmcs_sw_is_dirty;
-    vmcs_clone->vmcs_base->vmcs_get_owner         = vmcs_sw_get_owner;
-    vmcs_clone->vmcs_base->vmcs_flush_to_memory   = vmcs_0_flush_to_memory;
-    vmcs_clone->vmcs_base->vmcs_destroy           = vmcs_0_destroy;
+#ifdef JLMDEBUG
+    bprint("about to set vmcs entries in object\n");
+#endif
+    vmcs_clone->vmcs_base->vmcs_read = vmcs_sw_read;
+    vmcs_clone->vmcs_base->vmcs_write = vmcs_sw_write;
+    vmcs_clone->vmcs_base->vmcs_flush_to_cpu = vmcs_sw_flush_to_cpu;
+    vmcs_clone->vmcs_base->vmcs_is_dirty = vmcs_sw_is_dirty;
+    vmcs_clone->vmcs_base->vmcs_get_owner = vmcs_sw_get_owner;
+    vmcs_clone->vmcs_base->vmcs_flush_to_memory = vmcs_0_flush_to_memory;
+    vmcs_clone->vmcs_base->vmcs_destroy = vmcs_0_destroy;
 
     vmcs_clone->vmcs_base->vmcs_add_msr_to_vmexit_store_list = vmcs_sw_add_msr_to_vmexit_store_list;
     vmcs_clone->vmcs_base->vmcs_add_msr_to_vmexit_load_list = vmcs_sw_add_msr_to_vmexit_load_list;

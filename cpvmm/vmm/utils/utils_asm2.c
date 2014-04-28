@@ -489,7 +489,6 @@ void vmm_vmcs_guest_state_read(UINT64* area)
         "\tmovq %%rax, (%%rcx)\n"
 
         "2:\n"
-        "\tmovq %%rax, %[result]\n"
     : : [area] "m" (area)
     :"%rax", "%rcx");
 }

@@ -12,6 +12,10 @@
  * limitations under the License. 
  */
 #include "vmm_defs.h"
+#ifdef JLMDEBUG
+#include "bootstrap_print.h"
+#include "jlmdebug.h"
+#endif
 #define VMM_NATIVE_VMCALL_SIGNATURE 0x024694D40
 
 extern void gcpu_save_registers();
@@ -64,6 +68,7 @@ void vmentry_func(UINT32 firsttime)
 {
 #ifdef JLMDEBUG
     bprint("vmentry_func: %d, vmcs area:\n", firsttime);
+    LOOP_FOREVER
     // first time print out vmcs
     if(firsttime) {
         // vmm_vmcs_guest_state_read(UINT64* area);

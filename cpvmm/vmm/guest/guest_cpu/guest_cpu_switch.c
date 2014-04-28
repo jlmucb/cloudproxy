@@ -537,9 +537,13 @@ gcpu_process_activity_state_change( GUEST_CPU_HANDLE gcpu )
 
 
 // Resume execution.  Never returns.
-void gcpu_resume( GUEST_CPU_HANDLE gcpu )
+void gcpu_resume(GUEST_CPU_HANDLE gcpu)
 {
     VMCS_OBJECT* vmcs;
+#ifdef JLMDEBUG
+    bprint("gcpu_resume\n");
+    LOOP_FOREVER
+#endif
 
     if (IS_MODE_NATIVE( gcpu )) {
         gcpu = gcpu->resume_func(gcpu);    // layered specific resume
@@ -576,9 +580,12 @@ void gcpu_resume( GUEST_CPU_HANDLE gcpu )
             if (!gcpu_cr3_virtualized( gcpu )) {
                 UINT64 visible_cr3 = gcpu->save_area.gp.reg[CR3_SAVE_AREA];
                 if (INVALID_CR3_SAVED_VALUE != visible_cr3) {
-                    // CR3 user-visible value was changed inside vmm or CR3 virtualization
-                    // was switched off
-                    gcpu_set_control_reg( gcpu, IA32_CTRL_CR3, visible_cr3 );
+                    // CR3 user-visible value was changed inside vmm or CR3 
+                    // virtualization was switched off
+#ifdef JLMDEBUG
+                    bprint("gcpu_resume, visible_cr3\n");
+#endif
+                    gcpu_set_control_reg(gcpu, IA32_CTRL_CR3, visible_cr3);
                 }
             }
         }

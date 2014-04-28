@@ -149,18 +149,15 @@ UINT32 vmexit_check_ept_violation(void)
 }
 
 
-#if 0
-// CHECK(JLM)
-void vmm_vmcs_guest_state_read(void)
+
+void vmm_vmcs_guest_state_read(UINT64* area)
 {
 #ifdef JLMDEBUG
     bprint("vmm_vmcs_guest_state_read\n");
     LOOP_FOREVER
 #endif
-    UINT64  result;
-
-    // JLM: note assumes arg is in %rcx
     asm volatile(
+        "\tmovq     %[area], %%rcx\n"
         "\tmovq     $0x681e, %%rax\n"
         "\tvmread   %%rax, %%rax\n"
         "\tmovq     %%rax, (%%rcx)\n"
@@ -493,8 +490,8 @@ void vmm_vmcs_guest_state_read(void)
 
         "2:\n"
         "\tmovq %%rax, %[result]\n"
-    : [result]"=g"(result)
-    : 
+    : : [area] "m" (area)
     :"%rax", "%rcx");
 }
-#endif
+
+

@@ -17,6 +17,7 @@
 extern void gcpu_save_registers();
 extern void gcpu_restore_registers();
 extern void vmentry_failure_function(ADDRESS);
+extern void vmm_vmcs_guest_state_read(UINT64* area);
 
 struct VMEXIT_TIME {
     UINT64  last_vmexit;
@@ -61,9 +62,15 @@ void vmentry_func(UINT32 firsttime)
 // Function:    Called upon VMENTRY.
 // Arguments:   firsttime = 1 if called first time
 {
-    //RNB: Assumption: rflags_arg is still addressable (by %rsp).
-    //RNB: rdx is clobbered after being restore.  Should we restore it again?
-    //RNB: The asm file sets rcx to 1 after the call to vmentry_failure_function?
+#ifdef JLMDEBUG
+    bprint("vmentry_func: %d, vmcs area:\n", firsttime);
+    // first time print out vmcs
+    if(firsttime) {
+        // vmm_vmcs_guest_state_read(UINT64* area);
+    }
+#endif
+    // Assumption: rflags_arg is still addressable (by %rsp).
+    //: The asm file sets rcx to the number of args (1)
     ADDRESS rflags_arg = 0;
 
     if(firsttime==0ULL) { //do_launch

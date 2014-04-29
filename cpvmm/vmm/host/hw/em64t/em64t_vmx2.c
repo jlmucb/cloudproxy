@@ -76,6 +76,7 @@ void vmentry_func(UINT32 firsttime)
 #ifdef JLMDEBUG
     bprint("vmentry_func: %d, vmcs area:\n", firsttime);
     vmm_vmcs_guest_state_read((UINT64*) t_vmcs_save_area);
+    bprint("finished guest read\n");
     vmm_print_vmcs_region((UINT64*) t_vmcs_save_area);
     LOOP_FOREVER
     // first time print out vmcs

@@ -228,6 +228,7 @@ void vmm_print_vmcs_region(UINT64* pu)
         p->g_es, p->g_es_base, p->g_es_limit, p->g_es_access);
     bprint("g_cs: 0x%016llx g_cs_base: 0x%016llx g_cs_limit: 0x%016llx g_cs_access: 0x%016llx\n",
         p->g_cs, p->g_cs_base, p->g_cs_limit, p->g_cs_access);
+    LOOP_FOREVER
     bprint("g_ss: 0x%016llx g_ss_base: 0x%016llx g_ss_limit: 0x%016llx g_ss_access: 0x%016llx\n",
         p->g_ss, p->g_ss_base, p->g_ss_limit, p->g_ss_access);
     bprint("g_ds: 0x%016llx g_ds_base: 0x%016llx g_ds_limit: 0x%016llx g_ds_access: 0x%016llx\n",
@@ -264,7 +265,6 @@ void vmm_vmcs_guest_state_read(UINT64* area)
 {
 #ifdef JLMDEBUG
     bprint("vmm_vmcs_guest_state_read\n");
-    LOOP_FOREVER
 #endif
     asm volatile(
         "\tmovq     %[area], %%rcx\n"

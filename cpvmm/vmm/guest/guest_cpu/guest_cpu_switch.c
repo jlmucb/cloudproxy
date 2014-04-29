@@ -630,26 +630,14 @@ void gcpu_resume(GUEST_CPU_HANDLE gcpu)
                 gcpu->trigger_log_event = 1 + interrupt_info.Bits.Vector; 
         }
     }
-#ifdef JLMDEBUG
-    bprint("gcpu_resume point 5\n");
-#endif
     // flash VMCS
     if (!vmcs_sw_shadow_disable[hw_cpu_id()])
        vmcs_flush_to_cpu(vmcs);
     vmcs_sw_shadow_disable[hw_cpu_id()] = FALSE;
-#ifdef JLMDEBUG
-    bprint("gcpu_resume point 6\n");
-#endif
     if (!vmcs_launch_required(vmcs))
         nmi_window_update_before_vmresume(vmcs);
     // check for Launch and resume
-#ifdef JLMDEBUG
-    bprint("gcpu_resume point 7\n");
-#endif
     if (vmcs_launch_required(vmcs)) {
-#ifdef JLMDEBUG
-    bprint("gcpu_resume point 8.1\n");
-#endif
         vmcs_set_launched(vmcs);
         // call assembler launch
         vmentry_func(TRUE);
@@ -659,9 +647,6 @@ void gcpu_resume(GUEST_CPU_HANDLE gcpu)
                 IS_MODE_NATIVE(gcpu) ? "NATIVE" : "EMULATED");
     }
     else {
-#ifdef JLMDEBUG
-    bprint("gcpu_resume point 8.2\n");
-#endif
         // call assembler resume
         vmentry_func(FALSE);
         VMM_LOG(mask_anonymous, level_trace,

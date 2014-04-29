@@ -190,7 +190,7 @@ int vmx_vmread(UINT64 index, UINT64 *value) {
 
 int vmx_vmwrite(UINT64 index, UINT64 value) {
     int ret= 0;
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmwrite, waiting %p\n", value);
 #endif
     asm volatile(
@@ -208,6 +208,10 @@ int vmx_vmwrite(UINT64 index, UINT64 value) {
     : [ret] "=g" (ret) 
     : [index] "g"(index), [value] "g"(value)
     :"%rbx", "%rax");
+#ifdef JLMDEBUG
+    if(ret!=0)
+    bprint("vmwrite failed\n");
+#endif
     return ret;
 }
 

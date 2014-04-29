@@ -112,7 +112,7 @@ UINT64 hw_vmcall(UINT64 vmcall_id, UINT64 arg1, UINT64 arg2, UINT64 arg3)
 {
     UINT64  result;
 
-    //RNB: Original asm file mov r8 -> rsi and r9 ->rdi, not sure why?
+    //Original asm file mov r8 -> rsi and r9 ->rdi, not sure why?
     asm volatile(
         "\tmovq %[vmcall_id], %%rcx\n"
         "\tmovq %[arg1], %%rdx\n"

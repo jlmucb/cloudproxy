@@ -775,6 +775,8 @@ uint64_t                evmm_start_of_e820_table= 0ULL; // 64 bits version
 // for linux primary guest
 #define LINUX_BOOT_CS 0x10
 #define LINUX_BOOT_DS 0x18
+#define LINUX_BOOT_CS_BASE  0x6808
+#define LINUX_BOOT_DS_BASE  0x680c
 
 // initial GDT table for linux guest
 static const uint64_t gdt_table[] __attribute__ ((aligned(16))) = {
@@ -899,27 +901,25 @@ int linux_setup(void)
         guest_processor_state[0].seg.segment[i].base = 0;
         guest_processor_state[0].seg.segment[i].limit = 0;
     }
-    
-    guest_processor_state[0].seg.segment[IA32_SEG_CS].base = (uint64_t) LINUX_BOOT_CS;
-    guest_processor_state[0].seg.segment[IA32_SEG_DS].base = (uint64_t) LINUX_BOOT_DS;
+   
+    // JLM(FIX): read these 
+    guest_processor_state[0].seg.segment[IA32_SEG_CS].selector = 
+                    (uint64_t) LINUX_BOOT_CS;
+    guest_processor_state[0].seg.segment[IA32_SEG_DS].selector = 
+                    (uint64_t) LINUX_BOOT_DS;
+    guest_processor_state[0].seg.segment[IA32_SEG_ES].selector = (uint64_t) 0;
+    guest_processor_state[0].seg.segment[IA32_SEG_FS].selector = (uint64_t) 0;
+    guest_processor_state[0].seg.segment[IA32_SEG_GS].selector = (uint64_t) 0;
+    guest_processor_state[0].seg.segment[IA32_SEG_SS].selector = (uint64_t) 0;
+
+    guest_processor_state[0].seg.segment[IA32_SEG_CS].base =  LINUX_BOOT_CS_BASE;
+    guest_processor_state[0].seg.segment[IA32_SEG_DS].base = LINUX_BOOT_DS_BASE;
     guest_processor_state[0].seg.segment[IA32_SEG_ES].base = 0;
     guest_processor_state[0].seg.segment[IA32_SEG_FS].base = 0;
     guest_processor_state[0].seg.segment[IA32_SEG_GS].base = 0;
-    guest_processor_state[0].seg.segment[IA32_SEG_LDTR].attributes=
-                                0x00010000;
-    guest_processor_state[0].seg.segment[IA32_SEG_TR].attributes=
-                                0x0000808b;
-    guest_processor_state[0].seg.segment[IA32_SEG_TR].limit=
-                                0xffffffff;
-
-    /*
-     *  save_segment_data(readcs(), &guest_processor_state[0].seg.segment[IA32_SEG_CS]);
-     *  save_segment_data(readds(), &guest_processor_state[0].seg.segment[IA32_SEG_DS]);
-     *  save_segment_data(reades(), &guest_processor_state[0].seg.segment[IA32_SEG_ES]);
-     *  save_segment_data(readfs(), &guest_processor_state[0].seg.segment[IA32_SEG_FS]);
-     *  save_segment_data(readgs(), &guest_processor_state[0].seg.segment[IA32_SEG_GS]);
-     *  save_segment_data(readss(), &guest_processor_state[0].seg.segment[IA32_SEG_SS])
-     */
+    guest_processor_state[0].seg.segment[IA32_SEG_LDTR].attributes= 0x00010000;
+    guest_processor_state[0].seg.segment[IA32_SEG_TR].attributes= 0x0000808b;
+    guest_processor_state[0].seg.segment[IA32_SEG_TR].limit= 0xffffffff;
 
     // AP's are in real mode waiting for sipi (halt state)
     // Set the VMCS GUEST ACTIVITY STATE in the VMCS Guest State Area

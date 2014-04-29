@@ -80,6 +80,10 @@ void vmentry_func(UINT32 firsttime)
         vmm_vmcs_guest_state_read((UINT64*) t_vmcs_save_area);
         bprint("finished guest read\n");
         vmm_print_vmcs_region((UINT64*) t_vmcs_save_area);
+
+        bprint("I think linux starts at 0x%016llx\n", t_vmcs_save_area[0]);
+        HexDump((UINT8*)t_vmcs_save_area[0], (UINT8*)t_vmcs_save_area[0]+20);
+        LOOP_FOREVER
     }
 #endif
     // Assumption: rflags_arg is still addressable (by %rsp).

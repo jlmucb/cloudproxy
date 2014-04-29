@@ -121,7 +121,7 @@ _END_GOOGLE_NAMESPACE_
 //
 // The default is ERROR instead of FATAL so that users can see problems
 // when they run a program without having to look in another file.
-DEFINE_int32(stderrthreshold,
+GLOG_DEFINE_int32(stderrthreshold,
              GOOGLE_NAMESPACE::GLOG_ERROR,
              "log messages at or above this level are copied to stderr in "
              "addition to logfiles.  This flag obsoletes --alsologtostderr.");

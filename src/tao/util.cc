@@ -228,9 +228,6 @@ bool InitializeOpenSSL() {
 
 bool InitializeApp(int *argc, char ***argv, bool remove_args) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
-  // glog bug workaround: stderrthreshold default should come from env
-  char *s = getenv("GLOG_stderrthreshold");
-  if (s && '0' <= s[0] && s[0] <= '9') FLAGS_stderrthreshold = atoi(s);
   // FLAGS_alsologtostderr = true;
   google::ParseCommandLineFlags(argc, argv, remove_args);
   google::InitGoogleLogging((*argv)[0]);

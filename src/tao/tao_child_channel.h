@@ -27,7 +27,6 @@
 
 #include "tao/tao_channel_rpc.pb.h"
 
-using std::list;
 using std::string;
 
 namespace tao {
@@ -49,21 +48,6 @@ class TaoChildChannel {
 
   /// Disconnect ports and release resources acquired during Init().
   virtual bool Destroy() { return true; }
-
-  /// Methods that invoke the administrative interfaces of the host Tao.
-  /// @{
-
-  /// Request that the host Tao be shut down.
-  virtual bool Shutdown() const;
-
-  /// Request that the host Tao start a new program. See Tao for semantics.
-  virtual bool StartHostedProgram(const string &path, const list<string> &args,
-                                  string *identifier) const;
-
-  /// Request that the host Tao remove a program. See Tao for semantics.
-  virtual bool RemoveHostedProgram(const string &child_hash) const;
-
-  /// @}
 
   /// Methods that invoke the hosted-program interfaces of the host Tao.
   /// These methods omit the child_hash parameter since it is implicit.

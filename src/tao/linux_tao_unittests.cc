@@ -96,13 +96,13 @@ class LinuxTaoTest : public ::testing::Test {
 TEST_F(LinuxTaoTest, RandomBytesTest) {
   string bytes;
 
-  EXPECT_TRUE(tao_->GetRandomBytes(10, &bytes));
-  EXPECT_TRUE(tao_->GetRandomBytes(0, &bytes));
+  EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 10, &bytes));
+  EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 0, &bytes));
 }
 
 TEST_F(LinuxTaoTest, FailSealTest) {
   string bytes;
-  EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
+  EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 128, &bytes));
   string sealed;
   string fake_hash("[This is also not a hash]");
   EXPECT_FALSE(tao_->Seal(fake_hash, bytes, &sealed));
@@ -110,7 +110,7 @@ TEST_F(LinuxTaoTest, FailSealTest) {
 
 TEST_F(LinuxTaoTest, FailUnsealTest) {
   string bytes;
-  EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
+  EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 128, &bytes));
 
   string unsealed;
   string fake_hash("[This is also not a hash]");
@@ -119,7 +119,7 @@ TEST_F(LinuxTaoTest, FailUnsealTest) {
 
 TEST_F(LinuxTaoTest, FailAttestTest) {
   string bytes;
-  EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
+  EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 128, &bytes));
 
   string attestation;
   string fake_hash("[This is also not a hash]");
@@ -128,7 +128,7 @@ TEST_F(LinuxTaoTest, FailAttestTest) {
 
 TEST_F(LinuxTaoTest, SealTest) {
   string bytes;
-  EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
+  EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 128, &bytes));
 
   list<string> args;
   string identifier;
@@ -142,7 +142,7 @@ TEST_F(LinuxTaoTest, SealTest) {
 
 TEST_F(LinuxTaoTest, UnsealTest) {
   string bytes;
-  EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
+  EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 128, &bytes));
 
   list<string> args;
   string identifier;
@@ -160,7 +160,7 @@ TEST_F(LinuxTaoTest, UnsealTest) {
 
 TEST_F(LinuxTaoTest, AttestTest) {
   string bytes;
-  EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
+  EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 128, &bytes));
 
   list<string> args;
   string identifier;

@@ -23,11 +23,11 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
-#include "tao/unix_domain_socket_tao_child_channel.h"
+#include "tao/unix_domain_socket_tao_admin_channel.h"
 #include "tao/util.h"
 
 using tao::InitializeApp;
-using tao::UnixDomainSocketTaoChildChannel;
+using tao::UnixDomainSocketTaoAdminChannel;
 
 DEFINE_string(domain_socket, "_linux_tao_socket",
               "The unix domain socket to use to contact the LinuxTaoService");
@@ -59,8 +59,8 @@ int main(int argc, char **argv) {
     }
   }
 
-  scoped_ptr<UnixDomainSocketTaoChildChannel> chan(
-      new UnixDomainSocketTaoChildChannel(FLAGS_domain_socket));
+  scoped_ptr<UnixDomainSocketTaoAdminChannel> chan(
+      new UnixDomainSocketTaoAdminChannel(FLAGS_domain_socket));
   CHECK(chan->Init()) << "Could not open a socket for communication";
   string identifier;
   CHECK(chan->StartHostedProgram(FLAGS_program, args, &identifier))

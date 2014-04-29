@@ -31,7 +31,7 @@
 #include "tao/tao.h"
 #include "tao/tao_channel_rpc.pb.h"
 #include "tao/tao_child_channel_params.pb.h"
-#include "tao/unix_domain_socket_tao_child_channel.h"
+#include "tao/unix_domain_socket_tao_admin_channel.h"
 #include "tao/unix_fd_tao_child_channel.h"
 #include "tao/util.h"
 
@@ -44,7 +44,7 @@ using tao::PipeTaoChannelParams;
 using tao::ScopedFd;
 using tao::ScopedTempDir;
 using tao::TaoChildChannelParams;
-using tao::UnixDomainSocketTaoChildChannel;
+using tao::UnixDomainSocketTaoAdminChannel;
 using tao::UnixFdTaoChildChannel;
 
 class PipeTaoChannelTest : public ::testing::Test {
@@ -84,8 +84,8 @@ class PipeTaoChannelTest : public ::testing::Test {
   }
 
   virtual void TearDown() {
-    scoped_ptr<UnixDomainSocketTaoChildChannel> chan(
-        new UnixDomainSocketTaoChildChannel(domain_socket_));
+    scoped_ptr<UnixDomainSocketTaoAdminChannel> chan(
+        new UnixDomainSocketTaoAdminChannel(domain_socket_));
     ASSERT_TRUE(chan->Init());
     ASSERT_TRUE(chan->Shutdown());
     if (listener_->joinable()) {
@@ -104,8 +104,8 @@ class PipeTaoChannelTest : public ::testing::Test {
 };
 
 TEST_F(PipeTaoChannelTest, CreationTest) {
-  scoped_ptr<UnixDomainSocketTaoChildChannel> chan(
-      new UnixDomainSocketTaoChildChannel(domain_socket_));
+  scoped_ptr<UnixDomainSocketTaoAdminChannel> chan(
+      new UnixDomainSocketTaoAdminChannel(domain_socket_));
   ASSERT_TRUE(chan->Init());
   string path = "/fake/program";
   list<string> args;

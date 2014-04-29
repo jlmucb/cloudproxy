@@ -149,8 +149,9 @@ bool LinuxTao::RemoveHostedProgram(const string &child_hash) {
   return true;
 }
 
-bool LinuxTao::GetRandomBytes(size_t size, string *bytes) const {
-  // just ask keyczar for random bytes, which will ask OpenSSL in turn
+bool LinuxTao::GetRandomBytes(const string &child_hash, size_t size,
+                              string *bytes) const {
+  // ask host Tao for random bytes
   if (!host_channel_->GetRandomBytes(size, bytes)) {
     LOG(ERROR) << "Could not generate random bytes";
     return false;

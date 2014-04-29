@@ -107,7 +107,8 @@ bool FakeTao::StartHostedProgram(const string &path, const list<string> &args,
   return true;
 }
 
-bool FakeTao::GetRandomBytes(size_t size, string *bytes) const {
+bool FakeTao::GetRandomBytes(const string &child_hash, size_t size,
+                             string *bytes) const {
   // just ask the CryptoFactory::Rand in keyczar for some randomness
   RandImpl *r = CryptoFactory::Rand();
   if (!r->Init()) {

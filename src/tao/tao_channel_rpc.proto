@@ -22,11 +22,11 @@ package tao;
 
 enum RPC {
   TAO_CHANNEL_RPC_UNKNOWN = 0;  // unused
-  // Administrative RPCs
+  // Administrative RPCs, used by TaoAdminChannel
   TAO_CHANNEL_RPC_SHUTDOWN = 1;
   TAO_CHANNEL_RPC_START_HOSTED_PROGRAM = 2;
   TAO_CHANNEL_RPC_REMOVE_HOSTED_PROGRAM = 3;
-  // Hosted-program RPCs
+  // Hosted-program RPCs, used by TaoChildChannel
   TAO_CHANNEL_RPC_GET_RANDOM_BYTES = 4;
   TAO_CHANNEL_RPC_SEAL = 5;
   TAO_CHANNEL_RPC_UNSEAL = 6;

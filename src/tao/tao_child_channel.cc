@@ -23,59 +23,6 @@
 #include <glog/logging.h>
 
 namespace tao {
-bool TaoChildChannel::Shutdown() const {
-  TaoChannelRPC rpc;
-  rpc.set_rpc(TAO_CHANNEL_RPC_SHUTDOWN);
-  SendRPC(rpc);
-  TaoChannelResponse resp;
-  GetResponse(&resp);
-  return resp.success();
-}
-
-bool TaoChildChannel::StartHostedProgram(const string &path,
-                                         const list<string> &args,
-                                         string *identifier) const {
-  TaoChannelRPC rpc;
-  rpc.set_rpc(TAO_CHANNEL_RPC_START_HOSTED_PROGRAM);
-
-  StartHostedProgramArgs *shpa = rpc.mutable_start();
-  shpa->set_path(path);
-  for (const string &arg : args) {
-    string *cur = shpa->add_args();
-    cur->assign(arg);
-  }
-
-  SendRPC(rpc);
-
-  // wait for a response to the message
-  TaoChannelResponse resp;
-  GetResponse(&resp);
-
-  if (resp.success()) {
-    if (!resp.has_data()) {
-      LOG(ERROR) << "A successful StartHostedProgram did not return data";
-      return false;
-    }
-
-    identifier->assign(resp.data().data(), resp.data().size());
-  }
-
-  return resp.success();
-}
-
-bool TaoChildChannel::RemoveHostedProgram(const string &child_hash) const {
-  TaoChannelRPC rpc;
-  rpc.set_rpc(TAO_CHANNEL_RPC_REMOVE_HOSTED_PROGRAM);
-  rpc.set_data(child_hash);
-
-  SendRPC(rpc);
-
-  TaoChannelResponse resp;
-  GetResponse(&resp);
-
-  return resp.success();
-}
-
 bool TaoChildChannel::GetRandomBytes(size_t size, string *bytes) const {
   TaoChannelRPC rpc;
   rpc.set_rpc(TAO_CHANNEL_RPC_GET_RANDOM_BYTES);

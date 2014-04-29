@@ -57,14 +57,14 @@ class FakeTaoTest : public ::testing::Test {
 TEST_F(FakeTaoTest, RandomBytesTest) {
   string bytes;
 
-  EXPECT_TRUE(tao_->GetRandomBytes(10, &bytes));
-  EXPECT_TRUE(tao_->GetRandomBytes(0, &bytes));
-  EXPECT_TRUE(attested_tao_->GetRandomBytes(128, &bytes));
+  EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 10, &bytes));
+  EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 0, &bytes));
+  EXPECT_TRUE(attested_tao_->GetRandomBytes("fake hash", 128, &bytes));
 }
 
 TEST_F(FakeTaoTest, SealTest) {
   string bytes;
-  EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
+  EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 128, &bytes));
 
   string encoded_hash;
   EXPECT_TRUE(Base64WEncode(bytes, &encoded_hash));
@@ -72,14 +72,14 @@ TEST_F(FakeTaoTest, SealTest) {
   EXPECT_TRUE(tao_->Seal(encoded_hash, bytes, &sealed));
 
   // Try the same thing with the attested tao.
-  EXPECT_TRUE(attested_tao_->GetRandomBytes(128, &bytes));
+  EXPECT_TRUE(attested_tao_->GetRandomBytes("fake hash", 128, &bytes));
   EXPECT_TRUE(Base64WEncode(bytes, &encoded_hash));
   EXPECT_TRUE(attested_tao_->Seal(encoded_hash, bytes, &sealed));
 }
 
 TEST_F(FakeTaoTest, UnsealTest) {
   string bytes;
-  EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
+  EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 128, &bytes));
 
   string encoded_hash;
   EXPECT_TRUE(Base64WEncode(bytes, &encoded_hash));
@@ -92,7 +92,7 @@ TEST_F(FakeTaoTest, UnsealTest) {
   EXPECT_EQ(bytes, unsealed);
 
   // Try the same thing with the attested tao
-  EXPECT_TRUE(attested_tao_->GetRandomBytes(128, &bytes));
+  EXPECT_TRUE(attested_tao_->GetRandomBytes("fake hash", 128, &bytes));
 
   EXPECT_TRUE(Base64WEncode(bytes, &encoded_hash));
   EXPECT_TRUE(attested_tao_->Seal(encoded_hash, bytes, &sealed));
@@ -104,7 +104,7 @@ TEST_F(FakeTaoTest, UnsealTest) {
 
 TEST_F(FakeTaoTest, AttestTest) {
   string bytes;
-  EXPECT_TRUE(tao_->GetRandomBytes(128, &bytes));
+  EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 128, &bytes));
 
   string encoded_hash;
   EXPECT_TRUE(Base64WEncode(bytes, &encoded_hash));
@@ -112,7 +112,7 @@ TEST_F(FakeTaoTest, AttestTest) {
   EXPECT_TRUE(tao_->Attest(encoded_hash, bytes, &attestation));
 
   // Try the same thing with the attested tao
-  EXPECT_TRUE(attested_tao_->GetRandomBytes(128, &bytes));
+  EXPECT_TRUE(attested_tao_->GetRandomBytes("fake hash", 128, &bytes));
 
   EXPECT_TRUE(Base64WEncode(bytes, &encoded_hash));
   EXPECT_TRUE(attested_tao_->Attest(encoded_hash, bytes, &attestation));

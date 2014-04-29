@@ -47,7 +47,7 @@ bool TaoChannel::HandleRPC(Tao &tao, const string &hash,  // NOLINT
         LOG(ERROR) << "Invalid RPC: must supply arguments for GetRandomBytes";
         break;
       }
-      result = tao.GetRandomBytes(rpc.random().size(), &result_data);
+      result = tao.GetRandomBytes(hash, rpc.random().size(), &result_data);
       resp.set_data(result_data);
       break;
     case TAO_CHANNEL_RPC_SEAL:

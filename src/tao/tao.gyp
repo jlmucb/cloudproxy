@@ -10,8 +10,8 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License.
 
+# limitations under the License.
 {
 	'target_defaults' : {
 		'includes' : [
@@ -101,6 +101,8 @@
 				'sealed_data.proto',
 				'signature.proto',
 				'tao.h',
+				'tao_admin_channel.cc',
+				'tao_admin_channel.h',
 				'tao_auth.h',
 				'tao_ca.cc',
 				'tao_ca.h',
@@ -120,8 +122,8 @@
 				'tao_domain.h',
 				'tpm_tao_child_channel.cc',
 				'tpm_tao_child_channel.h',
-				'unix_domain_socket_tao_child_channel.cc',
-				'unix_domain_socket_tao_child_channel.h',
+				'unix_domain_socket_tao_admin_channel.cc',
+				'unix_domain_socket_tao_admin_channel.h',
 				'unix_fd_tao_channel.cc',
 				'unix_fd_tao_channel.h',
 				'unix_fd_tao_child_channel.cc',

@@ -24,7 +24,6 @@
 
 #include "tao/tao.h"
 
-using std::list;
 using std::string;
 
 namespace tao {
@@ -33,14 +32,8 @@ DirectTaoChildChannel::DirectTaoChildChannel(Tao *tao, const string &child_hash)
   // no other initialization needed
 }
 
-bool DirectTaoChildChannel::StartHostedProgram(const string &path,
-                                               const list<string> &args,
-                                               string *identifier) {
-  return tao_->StartHostedProgram(path, args, identifier);
-}
-
 bool DirectTaoChildChannel::GetRandomBytes(size_t size, string *bytes) const {
-  return tao_->GetRandomBytes(size, bytes);
+  return tao_->GetRandomBytes(child_hash_, size, bytes);
 }
 
 bool DirectTaoChildChannel::Seal(const string &data, string *sealed) const {

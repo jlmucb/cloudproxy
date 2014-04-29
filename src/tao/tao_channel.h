@@ -1,10 +1,10 @@
 //  File: tao_channel.h
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: A class for communication between hosted programs and
-//  the Tao. It implements the high-level details of communication (like
-//  protobuf serialization) and depends on subclasses for the details of
-//  byte transport
+//  Description: A class for communication between hosted programs and the Tao
+//  and between administrative programs and the Tao. It implements the
+//  high-level details of communication (like protobuf serialization) and
+//  depends on subclasses for the details of byte transport
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -35,7 +35,7 @@ using std::string;
 namespace tao {
 
 /// An RPC server class that handles communication with a set of remote
-/// TaoChildChannel clients.
+/// TaoChildChannel and TaoAdminChannel clients.
 class TaoChannel {
  public:
   TaoChannel() {}
@@ -44,8 +44,8 @@ class TaoChannel {
   /// Initialize the server, opening ports and allocating resources as needed.
   virtual bool Init() = 0;
 
-  /// Listen for and process messages from child channels until a shutdown is
-  /// initiated.
+  /// Listen for and process messages from child and admin channels until a
+  /// shutdown is initiated.
   /// @param tao The Tao implementation that will handle received messages.
   virtual bool Listen(Tao *tao) = 0;
 

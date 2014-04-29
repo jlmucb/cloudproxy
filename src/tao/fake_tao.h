@@ -76,7 +76,8 @@ class FakeTao : public Tao {
   /// FakeTao follows the normal semantics of the Tao for these methods.
   /// @{
   virtual bool Destroy() { return true; }
-  virtual bool GetRandomBytes(size_t size, string *bytes) const;
+  virtual bool GetRandomBytes(const string &child_hash, size_t size,
+                              string *bytes) const;
   virtual bool Seal(const string &child_hash, const string &data,
                     string *sealed) const;
   virtual bool Unseal(const string &child_hash, const string &sealed,

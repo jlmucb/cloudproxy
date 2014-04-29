@@ -599,16 +599,10 @@ void gcpu_resume(GUEST_CPU_HANDLE gcpu)
     if (IS_MODE_NATIVE(gcpu)) {
         vmdb_settings_apply_to_hw(gcpu); // apply GDB settings
     }
-#ifdef JLMDEBUG
-    bprint("gcpu_resume point 2\n");
-#endif
     //host_cpu_save_dr7(hw_cpu_id());
     if (0 != gcpu->hw_enforcements) {
         gcpu_apply_hw_enforcements(gcpu);
     }
-#ifdef JLMDEBUG
-    bprint("gcpu_resume point 3\n");
-#endif
     { 
         IA32_VMX_VMCS_VM_EXIT_INFO_IDT_VECTORING    idt_vectoring_info;
         idt_vectoring_info.Uint32 = (UINT32)vmcs_read(vmcs,VMCS_EXIT_INFO_IDT_VECTORING);
@@ -624,9 +618,6 @@ void gcpu_resume(GUEST_CPU_HANDLE gcpu)
             interrupt_info.Bits.Valid = 1;
             interrupt_info.Bits.Vector = idt_vectoring_info.Bits.Vector;
             interrupt_info.Bits.InterruptType= idt_vectoring_info.Bits.InterruptType;
-#ifdef JLMDEBUG
-    bprint("gcpu_resume point 4\n");
-#endif
             vmcs_write(vmcs,VMCS_ENTER_INTERRUPT_INFO, interrupt_info.Uint32);
             if(idt_vectoring_info.Bits.InterruptType == IdtVectoringInterruptTypeNmi )
                 vmcs_write(vmcs,VMCS_GUEST_INTERRUPTIBILITY,0);

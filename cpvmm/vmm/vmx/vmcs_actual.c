@@ -458,10 +458,7 @@ void vmcs_act_flush_field_to_cpu(UINT32 field_id, VMCS_ACTUAL_OBJECT *p_vmcs)
 
 void vmcs_act_flush_nmi_depended_field_to_cpu(VMCS_ACTUAL_OBJECT *p_vmcs, UINT64 value)
 {
-#if 0
     BOOLEAN success = FALSE;
-#endif
-    BOOLEAN success = TRUE;
 
     while (FALSE == success) {
         p_vmcs->update_status = UPDATE_SUCCEEDED;
@@ -479,9 +476,6 @@ void vmcs_act_flush_nmi_depended_field_to_cpu(VMCS_ACTUAL_OBJECT *p_vmcs, UINT64
             VMM_DEBUG_CODE( VMM_LOG(mask_anonymous, level_trace,"NMI Occured during update\n"); );
         }
     }
-#ifdef JLMDEBUG
-    bprint("after the loop\n");
-#endif
 }
 
 void vmcs_act_flush_to_memory(struct _VMCS_OBJECT *vmcs)

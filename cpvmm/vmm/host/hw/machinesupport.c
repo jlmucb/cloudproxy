@@ -491,52 +491,62 @@ void hw_store_fence(void)
 
 // CHECK(JLM)
 INT32 hw_interlocked_compare_exchange(INT32 volatile * destination,
-                                       INT32 exchange, INT32 comperand)
+                                       INT32 expected, INT32 comperand)
 {
+#ifdef JLMDEBUG
+    bprint("expected: %d, new: %d --- ", expected, comperand);
+#endif
+    INT32 old = *destination;
     asm volatile(
-        "\tmovq     %[destination], %%rbx\n"
-        "\tmovl     %[exchange], %%eax\n"
+        "\tmovq     %[destination], %%r15\n"
+        "\tmovl     (%%r15), %%edx\n"
+        "\tmovl     %[expected], %%eax\n"
         "\tmovl     %[comperand], %%ecx\n"
-        "\tcmpxchgl %%ecx, %%eax\n"
-        "\tmovl     %%eax, (%%rbx)\n"
+        "\tcmpxchgl %%ecx, %%edx\n"
+        "\tmovl     %%edx, (%%r15)\n"
     :
-    : [exchange] "m" (exchange), [comperand] "m" (comperand),
+    : [expected] "m" (expected), [comperand] "m" (comperand),
       [destination] "m" (destination)
-    :"%eax", "%ecx", "%rbx");
-    return *destination;
+    :"%eax", "%ecx", "%edx", "%rbx", "%r15");
+#ifdef JLMDEBUG
+    bprint("destination: %d\n", *destination);
+#endif
+    return old;
 }
 
 
 INT8 hw_interlocked_compare_exchange_8(INT8 volatile * destination,
-            INT8 exchange, INT8 comperand)
+            INT8 expected, INT8 comperand)
 {
     asm volatile(
-        "\tmovq     %[destination], %%rbx\n"
-        "\tmovb     %[exchange], %%al\n"
+        "\tmovq     %[destination], %%r15\n"
+        "\tmovb     (%%r15), %%dl\n"
+        "\tmovb     %[expected], %%al\n"
         "\tmovb     %[comperand], %%cl\n"
-        "\tcmpxchgb %%cl, %%al\n"
-        "\tmovb     %%al, (%%rbx)\n"
+        "\tcmpxchgb %%cl, %%dl\n"
+        "\tmovb     %%dl, (%%r15)\n"
     :
-    : [exchange] "m" (exchange), [comperand] "m" (comperand),
+    : [expected] "m" (expected), [comperand] "m" (comperand),
       [destination] "m" (destination)
-    :"%rax", "%rcx", "%rbx");
+    :"%rax", "%rcx", "%rbx", "%r15");
     return *destination;
 }
 
 
 INT64 hw_interlocked_compare_exchange_64(INT64 volatile * destination,
-            INT64 exchange, INT64 comperand)
+            INT64 expected, INT64 comperand)
 {
     asm volatile(
-        "\tmovq     %[destination], %%rbx\n"
-        "\tmovq     %[exchange], %%rax\n"
+        "\tmovq     %[destination], %%r15\n"
+        "\tmovq     (%%r15), %%rdx\n"
+        "\tmovq     %[expected], %%rax\n"
         "\tmovq     %[comperand], %%rcx\n"
-        "\tcmpxchgq %%rcx, %%rax\n"
-        "\tmovq     %%rax, (%%rbx)\n"
+        "\tcmpxchgq %%rcx, %%rdx\n"
+        "\tmovq     %%rdx, (%%r15)\n"
     :
-    : [exchange] "m" (exchange), [comperand] "m" (comperand),
+    : [expected] "m" (expected), [comperand] "m" (comperand),
       [destination] "m" (destination)
-    :"%rax", "%rcx", "%rbx");
+    :"%rax", "%rcx", "%rbx", "%r15");
     return *destination;
 }
 

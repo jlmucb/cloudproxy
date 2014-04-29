@@ -59,6 +59,23 @@ INT32 hw_interlocked_assign(INT32 volatile * target, INT32 new_value)
     return *target;
 }
 
+INT32 hw_interlocked_compare_exchange(INT32 volatile * destination,
+                                       INT32 exchange, INT32 comperand)
+{
+    asm volatile(
+        "\tmovl     %[exchange], %%eax\n"
+        "\tmovl     %[comperand], %%ebx\n"
+        "\tcmpxchgl %%ebx, %%edx\n"
+        "\tmovq     %[destination], %%rbx\n"
+        "\tmovl     %%edx, (%%rbx)\n"
+    :
+    : [exchange] "m" (exchange), [comperand] "m" (comperand),
+      [destination] "m" (destination)
+    :"%eax", "%ecx", "%edx", "%rbx");
+    return *destination;
+}
+
+
 
 // CHECK(JLM)
 INT32 gcc_interlocked_compare_exchange(INT32 volatile * destination,
@@ -116,14 +133,16 @@ int main(int an, char** av)
     k= hw_interlocked_assign(&i, 12);
     printf("orig %d, %d %d\n", n,i,k);
 
+    n= 12;
     i= 11;
     j= 12;
-    k= gcc_interlocked_compare_exchange(&n, i, j);
+    k= hw_interlocked_compare_exchange(&n, i, j);
     printf("%d %d <-- %d %d\n", k, n, i, j);
 
+    n= 11;
     i= 11;
     j= 11;
-    k= gcc_interlocked_compare_exchange(&n, i, j);
+    k= hw_interlocked_compare_exchange(&n, i, j);
     printf("%d %d <-- %d %d\n", k, n, i, j);
 
     return 0;

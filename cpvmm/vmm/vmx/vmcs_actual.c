@@ -465,13 +465,11 @@ void vmcs_act_flush_nmi_depended_field_to_cpu(VMCS_ACTUAL_OBJECT *p_vmcs, UINT64
 
     while (FALSE == success) {
         p_vmcs->update_status = UPDATE_SUCCEEDED;
-
         if (nmi_window_is_requested()) {
             BIT_SET64(value, NMI_WINDOW_BIT);
         }
-
-        vmcs_act_write_to_hardware(p_vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS, value);
-
+        vmcs_act_write_to_hardware(p_vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS,
+                                    value);
         if (UPDATE_SUCCEEDED == hw_interlocked_compare_exchange(
                                     &p_vmcs->update_status, UPDATE_SUCCEEDED,
                                     UPDATE_FINISHED)) {
@@ -481,7 +479,6 @@ void vmcs_act_flush_nmi_depended_field_to_cpu(VMCS_ACTUAL_OBJECT *p_vmcs, UINT64
             VMM_DEBUG_CODE( VMM_LOG(mask_anonymous, level_trace,"NMI Occured during update\n"); );
         }
     }
-
 #ifdef JLMDEBUG
     bprint("after the loop\n");
 #endif

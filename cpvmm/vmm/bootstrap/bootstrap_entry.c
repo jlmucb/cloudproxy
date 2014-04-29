@@ -191,6 +191,90 @@ static uint32_t                         local_apic_id = 0;
 // machine setup and paging
 
 
+uint16_t ia32_read_cs()
+{
+    uint16_t  cs= 0;
+
+    asm volatile(
+        "\txorw %%ax,%%ax\n"
+        "\tmovw %%cs, %%ax\n"
+        "\tmovw %%ax, %[cs]\n"
+    :[cs] "=g" (cs)
+    : : "%ax");
+    return cs;
+}
+
+
+uint16_t ia32_read_ds()
+{
+    uint16_t  ds= 0;
+
+    asm volatile(
+        "\txorw %%ax,%%ax\n"
+        "\tmovw %%ds,%%ax\n"
+        "\tmovw %%ax, %[ds]\n"
+    :[ds] "=g" (ds)
+    : : "%ax");
+    return ds;
+}
+
+
+uint16_t ia32_read_es()
+{
+    uint16_t  es= 0;
+
+    asm volatile(
+        "\txorw %%ax,%%ax\n"
+        "\tmovw %%es,%%ax\n"
+        "\tmovw %%ax, %[es]\n"
+    :[es] "=g" (es)
+    : : "%ax");
+    return es;
+}
+
+
+uint16_t ia32_read_fs()
+{
+    uint16_t  fs= 0;
+
+    asm volatile(
+        "\txorw %%ax,%%ax\n"
+        "\tmovw %%fs,%%ax\n"
+        "\tmovw %%ax, %[fs]\n"
+    :[fs] "=g" (fs)
+    : : "%ax");
+    return fs;
+}
+
+
+uint16_t ia32_read_gs()
+{
+    uint16_t  gs= 0;
+
+    asm volatile(
+        "\txorw %%ax,%%ax\n"
+        "\tmovw %%gs,%%ax\n"
+        "\tmovw %%ax, %[gs]\n"
+    :[gs] "=g" (gs)
+    : : "%ax");
+    return gs;
+}
+
+
+uint16_t ia32_read_ss()
+{
+    uint16_t  ss= 0;
+
+    asm volatile(
+        "\txorw %%ax,%%ax\n"
+        "\tmovw %%ss,%%ax\n"
+        "\tmovw %%ax, %[ss]\n"
+    :[ss] "=g" (ss)
+    : : "%ax");
+    return ss;
+}
+
+
 void  ia32_read_gdtr(IA32_GDTR *p_descriptor)
 {
     asm volatile(
@@ -904,13 +988,17 @@ int linux_setup(void)
    
     // JLM(FIX): read these 
     guest_processor_state[0].seg.segment[IA32_SEG_CS].selector = 
-                    (uint64_t) LINUX_BOOT_CS;
+                    (uint64_t) ia32_read_cs();
     guest_processor_state[0].seg.segment[IA32_SEG_DS].selector = 
-                    (uint64_t) LINUX_BOOT_DS;
-    guest_processor_state[0].seg.segment[IA32_SEG_ES].selector = (uint64_t) 0;
-    guest_processor_state[0].seg.segment[IA32_SEG_FS].selector = (uint64_t) 0;
-    guest_processor_state[0].seg.segment[IA32_SEG_GS].selector = (uint64_t) 0;
-    guest_processor_state[0].seg.segment[IA32_SEG_SS].selector = (uint64_t) 0;
+                    (uint64_t) ia32_read_ds();
+    guest_processor_state[0].seg.segment[IA32_SEG_ES].selector = 
+                    (uint64_t) ia32_read_es();
+    guest_processor_state[0].seg.segment[IA32_SEG_FS].selector = 
+                    (uint64_t) ia32_read_fs();
+    guest_processor_state[0].seg.segment[IA32_SEG_GS].selector = 
+                    (uint64_t) ia32_read_gs();
+    guest_processor_state[0].seg.segment[IA32_SEG_SS].selector = 
+                    (uint64_t) ia32_read_ss();
 
     guest_processor_state[0].seg.segment[IA32_SEG_CS].base =  LINUX_BOOT_CS_BASE;
     guest_processor_state[0].seg.segment[IA32_SEG_DS].base = LINUX_BOOT_DS_BASE;
@@ -986,28 +1074,19 @@ int linux_setup(void)
             guest_processor_state[k].seg.segment[i].base = 0;
             guest_processor_state[k].seg.segment[i].limit = 0;
         }
-        guest_processor_state[k].seg.segment[IA32_SEG_CS].base = 
-                (uint64_t) LINUX_BOOT_CS;
-        guest_processor_state[k].seg.segment[IA32_SEG_DS].base = 
-                (uint64_t) LINUX_BOOT_DS;
-        guest_processor_state[k].seg.segment[IA32_SEG_ES].base = 0;
-        guest_processor_state[k].seg.segment[IA32_SEG_FS].base = 0;
-        guest_processor_state[k].seg.segment[IA32_SEG_GS].base = 0;
-
-        guest_processor_state[k].seg.segment[IA32_SEG_LDTR].attributes= 
-                                0x00010000;
-        guest_processor_state[k].seg.segment[IA32_SEG_TR].attributes= 
-                                0x0000808b;
-        guest_processor_state[k].seg.segment[IA32_SEG_TR].limit= 
-                                0xffffffff;
-        /*
-         *  save_segment_data(readcs(), &guest_processor_state[k].seg.segment[IA32_SEG_CS]);
-         *  save_segment_data(readds(), &guest_processor_state[k].seg.segment[IA32_SEG_DS]);
-         *  save_segment_data(reades(), &guest_processor_state[k].seg.segment[IA32_SEG_ES]);
-         *  save_segment_data(readfs(), &guest_processor_state[k].seg.segment[IA32_SEG_FS]);
-         *  save_segment_data(readgs(), &guest_processor_state[k].seg.segment[IA32_SEG_GS]);
-         *  save_segment_data(readss(), &guest_processor_state[k].seg.segment[IA32_SEG_SS])
-         */
+        guest_processor_state[k].seg.segment[IA32_SEG_CS].selector = 
+                    (uint64_t) LINUX_BOOT_CS;
+        guest_processor_state[k].seg.segment[IA32_SEG_DS].selector = 
+                    (uint64_t) LINUX_BOOT_DS;
+        guest_processor_state[k].seg.segment[IA32_SEG_ES].selector = (uint64_t) 0;
+        guest_processor_state[k].seg.segment[IA32_SEG_FS].selector = (uint64_t) 0;
+        guest_processor_state[k].seg.segment[IA32_SEG_GS].selector = (uint64_t) 0;
+        guest_processor_state[k].seg.segment[IA32_SEG_SS].selector = (uint64_t) 0;
+        guest_processor_state[k].seg.segment[IA32_SEG_CS].base =  LINUX_BOOT_CS_BASE;
+        guest_processor_state[k].seg.segment[IA32_SEG_DS].base = LINUX_BOOT_DS_BASE;
+        guest_processor_state[k].seg.segment[IA32_SEG_LDTR].attributes= 0x00010000;
+        guest_processor_state[k].seg.segment[IA32_SEG_TR].attributes= 0x0000808b;
+        guest_processor_state[k].seg.segment[IA32_SEG_TR].limit= 0xffffffff;
     }
 
     return 0;

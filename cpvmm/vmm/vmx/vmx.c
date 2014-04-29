@@ -83,7 +83,6 @@ int vmx_vmlaunch() {
     int ret= 0;
 #ifdef JLMDEBUG
     bprint("vmxlaunch, waiting\n");
-    LOOP_FOREVER
 #endif
     asm volatile(
         "\tmovl $0, %[ret]\n"
@@ -104,7 +103,6 @@ int vmx_vmresume() {
     int ret= 0;
 #ifdef JLMDEBUG
     bprint("vmresume\n");
-    LOOP_FOREVER
 #endif
     asm volatile(
         "\tmovl $0, %[ret]\n"
@@ -148,11 +146,10 @@ void vmx_vmptrst(UINT64 *ptr_to_vmcs_region) {
     UINT64   address= *ptr_to_vmcs_region;
 #ifdef JLMDEBUG
     bprint("vmptrst, waiting\n");
-    LOOP_FOREVER
 #endif
     asm volatile(
         "\tvmptrst %[address]\n"
-    ::[address] "p" (address)
+    ::[address] "m" (address)
     :"memory");
     return;
 }

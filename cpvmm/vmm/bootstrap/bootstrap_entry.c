@@ -1949,6 +1949,8 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
        (int) local_apic_id, (int) p_startup_struct);
     bprint("\tapplication struct 0x%08x, reserved, 0x%08x\n",
            (int)evmm_p_a0, (int)evmm_reserved);
+    bprint("vmm_main_entry_point: %u\n", vmm_main_entry_point);
+    HexDump((uint8_t*)vmm_main_entry_point, (uint8_t*)vmm_main_entry_point + 0x60);
 #endif
     if (evmm_num_of_aps > 0) {
         startap_main(&init32, &init64, p_startup_struct, vmm_main_entry_point);
@@ -1996,6 +1998,7 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
         "\tmovl %%cr0, %%eax\n"
         "\tbts  $31, %%eax\n"
         "\tmovl %%eax, %%cr0\n"
+
 
         // at this point we are in 32-bit compatibility mode
         // LMA=1, CS.L=0, CS.D=1

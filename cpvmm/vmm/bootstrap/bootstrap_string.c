@@ -20,7 +20,6 @@
 #include "bootstrap_types.h"
 #include "bootstrap_string.h"
 
-
 char* vmm_strncpy(char *dest, const char *src, int n)
 {
     char* out= dest;

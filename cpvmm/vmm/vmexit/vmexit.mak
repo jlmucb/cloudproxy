@@ -50,8 +50,8 @@ INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
 		-I$(S)/vmm -I$(S)/vmm/bootstrap
 
 
-DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib -nodefaultlibs -D INVMM -D JLMDEBUG
-RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib -nodefaultlibs -D INVMM -D JLMDEBUG
+DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs -D INVMM -D JLMDEBUG
+RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs -D INVMM -D JLMDEBUG
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 

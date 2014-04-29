@@ -35,8 +35,8 @@ mainsrc=    $(S)/vmm
 B=		$(E)/vmmobjects/test
 INCLUDES=	-I$(S)/vmm -I$(S)/common/include -I$(S)/vmm/include -I../bootstrap
 
-DEBUG_CFLAGS:=  -Wno-format -g -DDEBUG -D INCLUDE_LAYERING -nostartfiles -nostdlib -nodefaultlibs -fPIE
-RELEASE_CFLAGS:= -Wno-unknown-pragmas -Wno-format -O3  -Wunused-function -D INCLUDE_LAYERING -nostartfiles -nostdlib -nodefaultlibs -fPIE
+DEBUG_CFLAGS:=  -Wno-format -g -DDEBUG -D INVMM_BLOCKER -D INCLUDE_LAYERING -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs  -fno-tree-loop-distribute-patterns  -fPIE
+RELEASE_CFLAGS:= -Wno-unknown-pragmas -Wno-format -O3  -Wunused-function -D INVMM_BLOCKER -D INCLUDE_LAYERING -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs  -fno-tree-loop-distribute-patterns  -fPIE
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 
@@ -50,7 +50,7 @@ all: $(E)/evmm.bin
  
 $(E)/evmm.bin: $(dobjs)
 	@echo "evmm.bin"
-	$(LINK) -o $(E)/evmm.bin -static -nostdlib -T ../evmm.script -fPIE -e vmm_main $(dobjs) 
+	$(LINK) -o $(E)/evmm.bin -static -nostdlib  -fno-tree-loop-distribute-patterns -T ../evmm.script -fPIE -e vmm_main $(dobjs) 
 
 $(B)/vmmstub.o: $(mainsrc)/test/vmmstub.c
 	echo "vmmstub.o" 

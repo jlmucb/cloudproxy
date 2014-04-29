@@ -158,7 +158,7 @@ void scheduler_register_gcpu(GUEST_CPU_HANDLE gcpu_handle, CPU_ID host_cpu_id,
     add_to_per_cpu_list(vcpu_obj);
     lock_release_writelock(g_registration_lock);
 #ifdef JLMDEBUG
-    bprint("scheduler_register_gcpu done, gpus: %d\n");
+    bprint("scheduler_register_gcpu done, gpus: %d\n", g_registered_vcpus_count);
 #endif
 }
 

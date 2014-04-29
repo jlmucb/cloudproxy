@@ -292,7 +292,7 @@ BOOLEAN guest_is_real_BIOS_access_enabled(  const GUEST_HANDLE  guest )
 void guest_set_nmi_owner(GUEST_HANDLE guest)
 {
 #ifdef JLMDEBUG
-    bprint("guest_set_nmi_owner 0x%016lx\n", guest);
+    bprint("guest_set_nmi_owner %p\n", guest);
 #endif
     VMM_ASSERT(guest);
     guest->flags|= GUEST_IS_NMI_OWNER_FLAG;

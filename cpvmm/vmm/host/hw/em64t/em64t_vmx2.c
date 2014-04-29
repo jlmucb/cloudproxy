@@ -74,18 +74,16 @@ void vmentry_func(UINT32 firsttime)
 // Arguments:   firsttime = 1 if called first time
 {
 #ifdef JLMDEBUG
-    bprint("vmentry_func: %d, vmcs area:\n", firsttime);
-    vmm_vmcs_guest_state_read((UINT64*) t_vmcs_save_area);
-    bprint("finished guest read\n");
-    vmm_print_vmcs_region((UINT64*) t_vmcs_save_area);
-    LOOP_FOREVER
     // first time print out vmcs
     if(firsttime) {
-        // vmm_vmcs_guest_state_read(UINT64* area);
+        bprint("vmentry_func: %d, vmcs area:\n", firsttime);
+        vmm_vmcs_guest_state_read((UINT64*) t_vmcs_save_area);
+        bprint("finished guest read\n");
+        vmm_print_vmcs_region((UINT64*) t_vmcs_save_area);
     }
 #endif
     // Assumption: rflags_arg is still addressable (by %rsp).
-    //: The asm file sets rcx to the number of args (1)
+    // The asm file sets rcx to the number of args (1)
     ADDRESS rflags_arg = 0;
 
     if(firsttime==0ULL) { //do_launch

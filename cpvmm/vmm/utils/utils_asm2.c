@@ -19,7 +19,7 @@
 
 void vmm_lock_write (UINT64 *mem_loc, UINT64 new_data)
 {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmm_lock_write\n");
     LOOP_FOREVER
 #endif
@@ -37,7 +37,7 @@ UINT32 vmm_rdtsc (UINT32 *upper)
 {
     UINT32 ret;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmm_rdtsc\n");
     LOOP_FOREVER
 #endif
@@ -55,7 +55,7 @@ UINT32 vmm_rdtsc (UINT32 *upper)
 
 void vmm_write_xcr(UINT64 xcr)
 {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmm_write_xcr\n");
     LOOP_FOREVER
 #endif
@@ -69,7 +69,7 @@ void vmm_write_xcr(UINT64 xcr)
 
 UINT64 vmm_read_xcr()
 {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmm_read_xcr\n");
     LOOP_FOREVER
 #endif
@@ -89,7 +89,7 @@ UINT64 gcpu_read_guestrip(void)
 {
     UINT64  result;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmm_read_guest_rip\n");
     LOOP_FOREVER
 #endif
@@ -106,7 +106,7 @@ UINT64 gcpu_read_guestrip(void)
 //CHECK(JLM)
 UINT64 vmexit_reason()
 {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmexit_reason\n");
     LOOP_FOREVER
 #endif
@@ -125,7 +125,7 @@ UINT32 vmexit_check_ept_violation(void)
 //if it is ept_violation_vmexit, return exit qualification
 //  in EAX, otherwise, return 0 in EAX
 {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmm_check_ept_violation\n");
     LOOP_FOREVER
 #endif
@@ -228,7 +228,7 @@ void vmm_print_vmcs_region(UINT64* pu)
         p->g_es, p->g_es_base, p->g_es_limit, p->g_es_access);
     bprint("g_cs: 0x%016llx g_cs_base: 0x%016llx g_cs_limit: 0x%016llx g_cs_access: 0x%016llx\n",
         p->g_cs, p->g_cs_base, p->g_cs_limit, p->g_cs_access);
-    LOOP_FOREVER
+#if 0
     bprint("g_ss: 0x%016llx g_ss_base: 0x%016llx g_ss_limit: 0x%016llx g_ss_access: 0x%016llx\n",
         p->g_ss, p->g_ss_base, p->g_ss_limit, p->g_ss_access);
     bprint("g_ds: 0x%016llx g_ds_base: 0x%016llx g_ds_limit: 0x%016llx g_ds_access: 0x%016llx\n",
@@ -247,6 +247,7 @@ void vmm_print_vmcs_region(UINT64* pu)
         p->g_rsp, p->g_rflg2);
     bprint("g_dbg_pend: 0x%016llx g_link: 0x%016llx g_IA32_debug: 0x%016llx\n",
         p->g_dbg_pend, p->g_link, p->g_IA32_debug);
+#endif
     bprint("g_interruptability: 0x%016llx g_activity: 0x%016llx g_smbase: 0x%016llx\n",
         p->g_interruptability, p->g_activity, p->g_smbase);
     bprint("g_sysenter: 0x%016llx g_sysenter_esp: 0x%016llx g_sysenter_eip: 0x%016llx\n",

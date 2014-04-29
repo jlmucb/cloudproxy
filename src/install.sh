@@ -29,25 +29,38 @@ set -e # quit script on first error
 test_dir=""
 test_ver="Debug"
 test_tpm="no"
+verbose="yes"
 for arg in "$@"; do
 	case "$arg" in
 		-Debug|-debug)
 			test_ver="Debug"
+			shift
 			;;
 		-Release|-release)
 			test_ver="Release"
+			shift
 			;;
 		-notpm)
 			test_tpm="no"
+			shift
 			;;
 		-tpm)
 			test_tpm="yes"
+			shift
 			;;
-		*)
-			test_dir="$arg"
+		-q)
+			verbose="no"
+			shift
+			;;
+		-*)
+			echo "Huh? $arg"
+			exit 1
 			;;
 	esac
 done
+if [ $# -eq 1 ]; then
+	test_dir="$1"
+fi
 if [ ! "$test_dir" ]; then
 	echo "Usage: $0 [options] <dir>"
 	echo "  Installs tao testing scripts into <dir>, which will be created"
@@ -68,7 +81,9 @@ root_dir="$(dirname $0)"
 # canonicalize
 root_dir=$(readlink -e "$(dirname $0)/..")
 test_dir=$(readlink -e "$test_dir")
-echo "Installing tao test scripts into: $test_dir"
+if [ "$verbose" == "yes" ]; then
+	echo "Installing tao test scripts into: $test_dir"
+fi
 # sanity checks
 if [ ! -f "$root_dir/src/install.sh" -o ! -d "$test_dir" ]; then
 	echo "install failed: could not canonicalize paths"
@@ -96,7 +111,8 @@ cd "$test_dir"
 rm -f bin
 ln -s $root_dir/src/out/$test_ver/bin bin
 mkdir -p logs
-cat <<END
+if [ "$verbose" == "yes" ]; then
+	cat <<END
 Done installing. 
   $test_dir/bin               # Link to out/$test_ver/bin.
   $test_dir/logs              # Log files.
@@ -110,6 +126,7 @@ Typical next steps:
   ./scripts/refresh.sh        # Refresh hashes and whitelists.
 Run $test_dir/scripts/help.sh for more info."
 END
+fi
 exit 0
 #INSTALL END
 

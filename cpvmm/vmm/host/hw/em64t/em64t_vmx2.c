@@ -17,6 +17,13 @@
 #include "jlmdebug.h"
 #endif
 #define VMM_NATIVE_VMCALL_SIGNATURE 0x024694D40
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+
+UINT64   t_vmcs_save_area[128];
+extern void vmm_print_vmcs_region(UINT64* pu);
+extern void vmm_vmcs_guest_state_read(UINT64* area);
+#endif
 
 extern void gcpu_save_registers();
 extern void gcpu_restore_registers();
@@ -68,6 +75,8 @@ void vmentry_func(UINT32 firsttime)
 {
 #ifdef JLMDEBUG
     bprint("vmentry_func: %d, vmcs area:\n", firsttime);
+    vmm_vmcs_guest_state_read((UINT64*) t_vmcs_save_area);
+    vmm_print_vmcs_region((UINT64*) t_vmcs_save_area);
     LOOP_FOREVER
     // first time print out vmcs
     if(firsttime) {

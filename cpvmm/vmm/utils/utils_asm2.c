@@ -149,7 +149,7 @@ UINT32 vmexit_check_ept_violation(void)
 }
 
 
-typedef VMCS_SAVED_REGION {
+typedef struct VMCS_SAVED_REGION {
     UINT64  g_rip;
     UINT64  g_rflags;
     UINT64  g_il;
@@ -211,15 +211,16 @@ typedef VMCS_SAVED_REGION {
     UINT64  g_pdpte2;
     UINT64  g_pdpte3;
     UINT64  g_preempt;
-    UINT64  empty[16];
+    UINT64  empty[3];
 } PACKED VMCS_SAVED_REGION;
 
 
-void vmm_print_vmcs_region(VMCS_SAVED_REGION* p)
+void vmm_print_vmcs_region(UINT64* pu)
 {
+    VMCS_SAVED_REGION* p= (VMCS_SAVED_REGION*) pu;
 #ifdef JLMDEBUG
     bprint("g_rip: 0x%016llx, g_rflags: 0x%016llx g_il: 0x%016llx \n",
-        g_rip, g_rflags, g_il );
+        p->g_rip, p->g_rflags, p->g_il );
     bprint("g_cr0: 0x%016llx g_cr3: 0x%016llx g_cr4: 0x%016llx\n",
         p->g_cr0, p->g_cr3, p->g_cr4);
     bprint("g_dr7: 0x%016llx\n", p->g_dr7);
@@ -244,7 +245,7 @@ void vmm_print_vmcs_region(VMCS_SAVED_REGION* p)
     bprint("g_rsp: 0x%016llx g_rflg2: 0x%016llx\n",
         p->g_rsp, p->g_rflg2);
     bprint("g_dbg_pend: 0x%016llx g_link: 0x%016llx g_IA32_debug: 0x%016llx\n",
-        p->g_dbp->g_pend, p->g_link, p->g_IA32_debug);
+        p->g_dbg_pend, p->g_link, p->g_IA32_debug);
     bprint("g_interruptability: 0x%016llx g_activity: 0x%016llx g_smbase: 0x%016llx\n",
         p->g_interruptability, p->g_activity, p->g_smbase);
     bprint("g_sysenter: 0x%016llx g_sysenter_esp: 0x%016llx g_sysenter_eip: 0x%016llx\n",

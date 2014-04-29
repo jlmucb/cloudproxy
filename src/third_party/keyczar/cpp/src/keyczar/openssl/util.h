@@ -49,6 +49,7 @@ typedef scoped_ptr_malloc<
     BIO, OSSLDestroyer<BIO, BIO_vfree> > ScopedBIO;
 
 void PrintOSSLErrors();
+void ClearOSSLErrors();
 
 // Reads a private key |filename| with the associated |passphrase|. |passphrase|
 // is optional, if its value is NULL but that a passprhase is required an

@@ -22,16 +22,28 @@ namespace keyczar {
 
 namespace openssl {
 
-void PrintOSSLErrors() {
+static void LogOSSLErrors(LogLevel level) {
   char error_buffer[1000];
   uint32 error_code = 0;
 
   ERR_load_crypto_strings();
   while ((error_code = ERR_get_error()) != 0) {
     ERR_error_string_n(error_code, error_buffer, 1000);
-    LOG(ERROR) << error_buffer;
+    if (level == LOGLEVEL_INFO) {
+      LOG(INFO) << error_buffer;
+    } else {
+      LOG(ERROR) << error_buffer;
+    }
   }
   ERR_free_strings();
+}
+
+void PrintOSSLErrors() {
+  LogOSSLErrors(LOGLEVEL_ERROR);
+}
+
+void ClearOSSLErrors() {
+  LogOSSLErrors(LOGLEVEL_INFO);
 }
 
 EVP_PKEY* ReadPEMPrivateKeyFromFile(const std::string& filename,

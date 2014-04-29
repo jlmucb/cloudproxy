@@ -71,6 +71,48 @@ using keyczar::base::PathExists;
 using keyczar::base::ReadFileToString;
 using keyczar::base::WriteStringToFile;
 
+// Workaround for keyczar logging.
+// There is no obvious API to disable keyczar message logging to console. This
+// is particularly annoying for expected-case "errors", e.g. when the user types
+// the wrong password for PBE decryption. Keyczar uses an old google logging
+// implementation borrowed from an old version of google protobuf, and we
+// can hook that to divert all log messages to our own handler.
+
+// Log levels defined in keyczar/base/logging.h
+enum LogLevel {
+  LOGLEVEL_KEYCZAR_INFO = 0,
+  LOGLEVEL_KEYCZAR_WARNING,
+  LOGLEVEL_KEYCZAR_ERROR,
+  LOGLEVEL_KEYCZAR_FATAL
+};
+
+// Handler type defined in keyczar/base/logging.h
+typedef void KeyczarLogHandler(LogLevel level, const char *filename, int line,
+                               const std::string &message);
+
+// Hook defined in keyczar/base/logging.h
+KeyczarLogHandler *SetLogHandler(KeyczarLogHandler *new_func);
+
+// Our log sink
+static void QuietKeyczarLogHandler(LogLevel level, const char *filename,
+                                   int line, const std::string &message) {
+  // ignore filename and line, they are always keyczar/openssl/util.h:33
+  switch (level) {
+    case LOGLEVEL_KEYCZAR_INFO:
+      LOG(INFO) << "Keyczar info: " << message;
+      break;
+    case LOGLEVEL_KEYCZAR_WARNING:
+      LOG(WARNING) << "Keyczar warning: " << message;
+      break;
+    case LOGLEVEL_KEYCZAR_FATAL:
+      LOG(FATAL) << "Keyczar fatal: " << message;
+      break;
+    default:
+      LOG(ERROR) << "Keyczar error: " << message;
+      break;
+  }
+}
+
 namespace tao {
 
 /// 20 MB is the maximum allowed message on our channel implementations.
@@ -232,6 +274,7 @@ bool InitializeApp(int *argc, char ***argv, bool remove_args) {
   google::ParseCommandLineFlags(argc, argv, remove_args);
   google::InitGoogleLogging((*argv)[0]);
   google::InstallFailureSignalHandler();
+  SetLogHandler(QuietKeyczarLogHandler);
   return InitializeOpenSSL();
 }
 

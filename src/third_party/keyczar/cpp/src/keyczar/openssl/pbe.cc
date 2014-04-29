@@ -326,7 +326,7 @@ bool PBEOpenSSL::Decrypt(const std::string& salt, const std::string& iv,
                        &p_pt_buffer,
                        &plaintext_len,
                        0) == NULL) {
-    PrintOSSLErrors();
+    ClearOSSLErrors(); // failure here is not an error, just wrong password
     return false;
   }
 

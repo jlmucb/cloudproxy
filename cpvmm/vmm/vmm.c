@@ -990,6 +990,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 #ifdef JLMDEBUG
     bprint("evmm: vmcs_store_initial complete\n");
     bprint("evmm: about to guest resume\n");
+    LOOP_FOREVER
 #endif
     gcpu_resume(initial_gcpu);
     VMM_LOG(mask_uvmm, level_error,"BSP: Resume initial guest cpu failed\n", cpu_id);

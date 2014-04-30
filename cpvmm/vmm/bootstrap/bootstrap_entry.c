@@ -1047,7 +1047,7 @@ int linux_setup(void)
                     tboot_gdtr_32.base;
     guest_processor_state[0].control.gdtr.limit = (uint64_t)(uint32_t)
                     tboot_gdtr_32.limit;
-    // ia32_read_idtr(&idtr);
+    ia32_read_idtr(&idtr);
     guest_processor_state[0].control.idtr.base = (UINT64)idtr.base;
     guest_processor_state[0].control.idtr.limit = (UINT32)idtr.limit;
     guest_processor_state[0].seg.segment[IA32_SEG_CS].selector = 

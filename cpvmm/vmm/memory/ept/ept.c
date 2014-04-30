@@ -1004,8 +1004,7 @@ BOOLEAN ept_add_gcpu(GUEST_CPU_HANDLE gcpu, void *pv UNUSED)
     return TRUE;
 }
 
-static
-void ept_add_static_guest(GUEST_HANDLE guest)
+static void ept_add_static_guest(GUEST_HANDLE guest)
 {
     GUEST_CPU_HANDLE gcpu;
     GUEST_GCPU_ECONTEXT gcpu_context;
@@ -1014,19 +1013,14 @@ void ept_add_static_guest(GUEST_HANDLE guest)
     UINT32 ept_gaw = 0;
 
     EPT_LOG("ept CPU#%d: activate ept\r\n", hw_cpu_id());
-
     ept_fill_vmexit_request(&vmexit_request);
-
     // request needed vmexits
     guest_control_setup(guest, &vmexit_request);
-
     ept_guest_initialize(guest);
-
     // Initialize default EPT
     ept_create_default_ept(guest, guest_get_startup_gpm(guest));
     // Get default EPT
     ept_get_default_ept(guest, &ept_root_table_hpa, &ept_gaw);
-
     for(gcpu = guest_gcpu_first(guest, &gcpu_context); gcpu; gcpu = guest_gcpu_next(&gcpu_context)) {
         ept_add_gcpu(gcpu, NULL);
         // Set EPT pointer (of each GCPU) to default EPT
@@ -1034,8 +1028,7 @@ void ept_add_static_guest(GUEST_HANDLE guest)
     }
 }
 
-static
-BOOLEAN ept_add_dynamic_guest(GUEST_CPU_HANDLE gcpu UNUSED, void *pv)
+static BOOLEAN ept_add_dynamic_guest(GUEST_CPU_HANDLE gcpu UNUSED, void *pv)
 {
     EVENT_GUEST_CREATE_DATA *guest_create_event_data = (EVENT_GUEST_CREATE_DATA *) pv;
     GUEST_HANDLE            guest = guest_handle(guest_create_event_data->guest_id);

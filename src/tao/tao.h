@@ -70,6 +70,9 @@ class Tao {
 
   /// Clean up an resources that were allocated in Init().
   virtual bool Destroy() = 0;
+ 
+  /// Administrative interfaces for managing the Tao.
+  /// @{
 
   /// Start a hosted program with a given set of arguments. These arguments
   /// might not always be the arguments passed directly to a process. For
@@ -86,6 +89,13 @@ class Tao {
   /// not necessarily stop the hosted program itself.
   /// @param child_hash The hash of the program to remove.
   virtual bool RemoveHostedProgram(const string &child_hash) = 0;
+
+  // @}
+
+  /// Hosted-program interfaces for using the Tao.
+  /// These methods have a child_hash parameter that identifies
+  /// the requesting hosted program.
+  /// @{
 
   /// Get a random string of a given size.
   /// @param child_hash The identity of the hosted program making the request.
@@ -122,6 +132,8 @@ class Tao {
   /// TaoAuth and its implementations.
   virtual bool Attest(const string &child_hash, const string &data,
                       string *attestation) const = 0;
+
+  // @}
 
   constexpr static auto AttestationSigningContext =
       "tao::Attestation Version 1";

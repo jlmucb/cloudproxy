@@ -1022,7 +1022,8 @@ int linux_setup(void)
         guest_processor_state[0].seg.segment[i].base = 0;
         guest_processor_state[0].seg.segment[i].limit = 0;
     }
-    
+   
+#if 0 
     guest_processor_state[0].seg.segment[IA32_SEG_CS].base = (uint64_t) LINUX_BOOT_CS;
     guest_processor_state[0].seg.segment[IA32_SEG_DS].base = (uint64_t) LINUX_BOOT_DS;
     guest_processor_state[0].seg.segment[IA32_SEG_ES].base = 0;
@@ -1031,8 +1032,7 @@ int linux_setup(void)
     guest_processor_state[0].seg.segment[IA32_SEG_LDTR].attributes= 0x00010000;
     guest_processor_state[0].seg.segment[IA32_SEG_TR].attributes= 0x0000808b;
     guest_processor_state[0].seg.segment[IA32_SEG_TR].limit= 0xffffffff;
-
-#if 0
+#else
     guest_processor_state[0].seg.segment[IA32_SEG_CS].selector = 
                     (uint64_t) tboot_cs_selector;
     guest_processor_state[0].seg.segment[IA32_SEG_DS].selector = 

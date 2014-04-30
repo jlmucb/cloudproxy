@@ -1032,6 +1032,7 @@ void hw_write_cr2 (UINT64 value) {
 #define TSS_ENTRY_SIZE_SHIFT 4
 
 asm(
+".text\n"
 ".globl hw_cpu_id\n"
 ".type hw_cpu_id,@function\n"
 "hw_cpu_id:\n"
@@ -1228,20 +1229,21 @@ void hw_mwait( UINT32 extension, UINT32 hint ) {
 // from em64t_gcpu_regs_save_restore.c
 #include "guest_save_area.h"
 
-// pointer to the array of pointers to the GUEST_CPU_SAVE_AREA_PREFIt_regs_save_area
+// pointer to the array of pointers to the GUEST_CPU_SAVE_AREA
 extern GUEST_CPU_SAVE_AREA** g_guest_regs_save_area;
 
-// Utility function for getting the save area into rbx, using the host cpu id
+// Utility function for getting the save area pointer into rbx, using the host cpu id
 // from a call to hw_cpu_id
 asm(
+".text\n"
 ".globl load_save_area_into_rbx\n"
 ".type load_save_area_into_rbx,@function\n"
 "load_save_area_into_rbx:\n"
         "\tpush %rax\n" // save rax, since it's used by hw_cpu_id
         "\tcall hw_cpu_id\n" // no arguments, and this only uses rax
-        "\tmov g_guest_regs_save_area, %rbx\n"
-        "\tmov (%rbx), %rbx\n" // double indirection, since it's a ** ptr
+        "\tmov g_guest_regs_save_area, %rbx\n" // get g_guest_regs_save_area
         "\tmov (%rbx, %rax, 8), %rbx\n" // SIZEOF QWORD == 8 for multiplier
+        "\tpop %rax\n"
         "\tret\n"
 );
 
@@ -1264,6 +1266,7 @@ asm(
  *   All are saved on return.
  */
 asm(
+".text\n"
 ".globl gcpu_save_registers\n"
 ".type gcpu_save_registers,@function\n"
 "gcpu_save_registers:\n"
@@ -1286,12 +1289,13 @@ asm(
         "\tmovq   %r14, 112(%rbx)\n"
         "\tmovq   %r15, 120(%rbx)\n"
         // skip RIP and RFLAGS here (16 missing bytes)
+        // Note that the XMM registers require 16-byte alignment
         "\tmovaps %xmm0, 144(%rbx)\n"
-        "\tmovaps %xmm1, 152(%rbx)\n"
-        "\tmovaps %xmm2, 160(%rbx)\n"
-        "\tmovaps %xmm3, 168(%rbx)\n"
-        "\tmovaps %xmm4, 176(%rbx)\n"
-        "\tmovaps %xmm5, 182(%rbx)\n"
+        "\tmovaps %xmm1, 160(%rbx)\n"
+        "\tmovaps %xmm2, 176(%rbx)\n"
+        "\tmovaps %xmm3, 192(%rbx)\n"
+        "\tmovaps %xmm4, 208(%rbx)\n"
+        "\tmovaps %xmm5, 224(%rbx)\n"
         "\tret\n"
 );
 
@@ -1302,12 +1306,13 @@ asm(
 "gcpu_restore_registers:\n"
         "\tcall load_save_area_into_rbx\n"
         // restore XMM registers first
+        // These are aligned on 16-byte boundaries
         "\tmovaps 144(%rbx), %xmm0\n"
-        "\tmovaps 152(%rbx), %xmm1\n"
-        "\tmovaps 160(%rbx), %xmm2\n"
-        "\tmovaps 168(%rbx), %xmm3\n"
-        "\tmovaps 176(%rbx), %xmm4\n"
-        "\tmovaps 182(%rbx), %xmm5\n"
+        "\tmovaps 160(%rbx), %xmm1\n"
+        "\tmovaps 176(%rbx), %xmm2\n"
+        "\tmovaps 192(%rbx), %xmm3\n"
+        "\tmovaps 208(%rbx), %xmm4\n"
+        "\tmovaps 224(%rbx), %xmm5\n"
 
         "\tmovq   (%rbx), %rax\n"
         // rbx is restored at the end

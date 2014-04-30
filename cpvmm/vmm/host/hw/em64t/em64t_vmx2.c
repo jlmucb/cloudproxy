@@ -90,8 +90,10 @@ void vmentry_func(UINT32 firsttime)
     // The asm file sets rcx to the number of args (1)
     ADDRESS rflags_arg = 0;
 
-    if(firsttime==0ULL) { //do_launch
+    if(firsttime) { //do_launch
         gcpu_restore_registers();
+        bprint("In launch\n");
+        LOOP_FOREVER
         asm volatile (
             "\tvmlaunch\n"
             "\tpushfq\n" 
@@ -103,6 +105,8 @@ void vmentry_func(UINT32 firsttime)
     } 
     else {  //do_resume
         gcpu_restore_registers();
+        bprint("In resume\n");
+        LOOP_FOREVER
         asm volatile(
             // Resume execution of Guest Virtual Machine
             "\tvmresume\n" 

@@ -32,9 +32,8 @@
 #include <sys/unistd.h>
 
 #include <list>
-#include <mutex>
 #include <string>
-#include <thread>
+#include <utility>
 
 #include <glog/logging.h>
 #include <keyczar/base/scoped_ptr.h>
@@ -45,63 +44,15 @@
 #include "tao/util.h"
 
 using std::list;
-using std::lock_guard;
-using std::mutex;
 using std::pair;
 
 namespace tao {
 UnixFdTaoChannel::UnixFdTaoChannel(const string &socket_path)
-    : domain_socket_path_(socket_path), domain_socket_(new int(-1)) {}
+    : admin_socket_path_(socket_path), admin_socket_(new int(-1)) {}
 UnixFdTaoChannel::~UnixFdTaoChannel() {}
 
-bool UnixFdTaoChannel::ReceiveMessage(google::protobuf::Message *m,
-                                      const string &child_hash) const {
-  // try to receive an integer
-  CHECK(m) << "m was null";
-
-  int readfd = 0;
-  {
-    lock_guard<mutex> l(data_m_);
-    // Look up the hash to see if we have descriptors associated with it.
-    auto child_it = descriptors_.find(child_hash);
-    if (child_it == descriptors_.end()) {
-      LOG(ERROR) << "Could not find any file descriptors for " << child_hash;
-      return false;
-    }
-
-    readfd = child_it->second.first;
-  }
-
-  return tao::ReceiveMessage(readfd, m);
-}
-
-bool UnixFdTaoChannel::SendMessage(const google::protobuf::Message &m,
-                                   const string &child_hash) const {
-  // send the length then the serialized message
-  string serialized;
-  if (!m.SerializeToString(&serialized)) {
-    LOG(ERROR) << "Could not serialize the Message to a string";
-    return false;
-  }
-
-  int writefd = 0;
-  {
-    lock_guard<mutex> l(data_m_);
-    // Look up the hash to see if we have descriptors associated with it.
-    auto child_it = descriptors_.find(child_hash);
-    if (child_it == descriptors_.end()) {
-      LOG(ERROR) << "Could not find any file descriptors for " << child_hash;
-      return false;
-    }
-
-    writefd = child_it->second.second;
-  }
-
-  return tao::SendMessage(writefd, m);
-}
-
 bool UnixFdTaoChannel::Listen(Tao *tao) {
-  if (*domain_socket_ == -1) {
+  if (*admin_socket_ == -1) {
     LOG(ERROR) << "The UnixFdTaoChannel must be initialized with Init";
     return false;
   }
@@ -126,7 +77,6 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
 
   bool graceful_shutdown = false;
   while (!graceful_shutdown) {
-    // set up the select operation with the current fds and the unix sockets
     fd_set read_fds;
     FD_ZERO(&read_fds);
     int max = 0;
@@ -134,18 +84,15 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
     FD_SET(*stop_fd, &read_fds);
     if (*stop_fd > max) max = *stop_fd;
 
-    {
-      lock_guard<mutex> l(socket_m_);
-      FD_SET(*domain_socket_, &read_fds);
-      if (*domain_socket_ > max) max = *domain_socket_;
-      for (int fd : domain_descriptors_) {
-        FD_SET(fd, &read_fds);
-        if (fd > max) max = fd;
-      }
+    FD_SET(*admin_socket_, &read_fds);
+    if (*admin_socket_ > max) max = *admin_socket_;
+    for (int fd : admin_descriptors_) {
+      FD_SET(fd, &read_fds);
+      if (fd > max) max = fd;
     }
 
-    for (pair<const string, pair<int, int>> &descriptor : descriptors_) {
-      int read_fd = descriptor.second.first;
+    for (auto &it : descriptors_) {
+      int read_fd = it.second.first;
       FD_SET(read_fd, &read_fds);
       if (read_fd > max) max = read_fd;
     }
@@ -172,61 +119,71 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
       continue;
     }
 
-    list<int> sockets_to_close;
-    for (int fd : domain_descriptors_) {
-      if (FD_ISSET(fd, &read_fds)) {
-        TaoChannelRPC rpc;
-        if (!tao::ReceiveMessage(fd, &rpc)) {
-          LOG(ERROR) << "Could not receive RPC on an admin channel";
-          sockets_to_close.push_back(fd);
-          continue;
-        }
-        if (!HandleRPC(*tao, "" /* no hash */, fd, rpc, &graceful_shutdown)) {
-          LOG(WARNING) << "RPC failed";
-          sockets_to_close.push_back(fd);
-          continue;
+    // Handle a request from each ready child channel.
+    std::list<pair<const string, pair<int, int>>> failed_child;
+    for (auto &it : descriptors_) {
+      const string &child_hash = it.first;
+      int read_fd = it.second.first;
+      int write_fd = it.second.second;
+      if (FD_ISSET(read_fd, &read_fds)) {
+        TaoChildRequest rpc;
+        TaoChildResponse resp;
+        if (!tao::ReceiveMessage(read_fd, &rpc) ||
+            !HandleChildRPC(tao, child_hash, rpc, &resp) ||
+            !tao::SendMessage(write_fd, resp)) {
+          tao->RemoveHostedProgram(child_hash);
+          LOG(ERROR) << "Error handling RPC for child " << child_hash;
+          failed_child.push_back(it);
         }
       }
     }
-    for (int fd : sockets_to_close) {
-      LOG(INFO) << "Closing administrative connection " << fd;
-      close(fd);
-      domain_descriptors_.remove(fd);
+
+    // Clean up failed child channels.
+    for (auto it = failed_child.begin(); it != failed_child.end(); ++it) {
+      const string &child_hash = it->first;
+      int read_fd = it->second.first;
+      int write_fd = it->second.second;
+      LOG(ERROR) << "Closing channel to child " << child_hash;
+      // TODO(kwalsh) close fds here?
+      close(read_fd);
+      close(write_fd);
+      descriptors_.erase(child_hash);
     }
 
-    // TODO(kwalsh) domain_socket_ is not protected by socket_m_ here.
-    // The purpose of socket_m_ is unclear.
-    if (FD_ISSET(*domain_socket_, &read_fds)) {
-      int fd = accept(*domain_socket_, nullptr, nullptr);
+    // Handle a request from each ready admin channel.
+    list<int> failed_socket;
+    for (int fd : admin_descriptors_) {
+      if (FD_ISSET(fd, &read_fds)) {
+        TaoAdminRequest rpc;
+        TaoAdminResponse resp;
+        if (!tao::ReceiveMessage(fd, &rpc) ||
+            !HandleAdminRPC(tao, rpc, &resp, &graceful_shutdown) ||
+            !tao::SendMessage(fd, resp)) {
+          LOG(ERROR) << "Error handling admin RPC on channel " << fd;
+          failed_socket.push_back(fd);
+        }
+      }
+    }
+
+    // Clean up failed admin channels.
+    for (int fd : failed_socket) {
+      LOG(INFO) << "Closing administrative channel " << fd;
+      close(fd);
+      admin_descriptors_.remove(fd);
+    }
+
+    // Check for new admin channels.
+    if (FD_ISSET(*admin_socket_, &read_fds)) {
+      int fd = accept(*admin_socket_, nullptr, nullptr);
       if (fd == -1) {
         if (errno != EINTR) {
           PLOG(ERROR) << "Could not accept a connection on domain socket";
         }
       } else {
         LOG(INFO) << "Accepted administrative connection " << fd;
-        domain_descriptors_.push_back(fd);
+        admin_descriptors_.push_back(fd);
       }
     }
-
-    for (pair<const string, pair<int, int>> &descriptor : descriptors_) {
-      int read_fd = descriptor.second.first;
-      const string &child_hash = descriptor.first;
-
-      if (FD_ISSET(read_fd, &read_fds)) {
-        TaoChannelRPC rpc;
-        if (!GetRPC(&rpc, child_hash)) {
-          LOG(ERROR) << "Could not get RPC. Removing child " << child_hash;
-          programs_to_erase_.push_back(child_hash);
-          continue;
-        }
-        if (!HandleRPC(*tao, child_hash, 0 /* fd */, rpc, &graceful_shutdown)) {
-          LOG(ERROR) << "Could not handle RPC from child." << child_hash;
-          continue;
-        }
-      }
-    }
-
-    CleanErasedPrograms();
   }
 
   // Restore the old SIGPIPE signal handler.
@@ -238,98 +195,18 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
   return graceful_shutdown;
 }
 
-bool UnixFdTaoChannel::CleanErasedPrograms() {
-  auto pit = programs_to_erase_.begin();
-  for (; pit != programs_to_erase_.end(); ++pit) {
-    // TODO(kwalsh) close fds here?
-    descriptors_.erase(*pit);
-  }
-  return true;
-}
-
-bool UnixFdTaoChannel::HandleRPC(Tao &tao, const string &hash,  // NOLINT
-                                 int fd, const TaoChannelRPC &rpc,
-                                 bool *shutdown_request) {
-  TaoChannelResponse resp;
-  resp.set_rpc(rpc.rpc());
-  bool success = true;
-  if (rpc.rpc() == TAO_CHANNEL_RPC_SHUTDOWN) {
-    *shutdown_request = true;
-    success = true;
-  } else if (rpc.rpc() == TAO_CHANNEL_RPC_START_HOSTED_PROGRAM) {
-    string identifier;
-    success = HandleProgramCreation(rpc, &tao, &identifier);
-    if (success) resp.set_data(identifier);
-  } else if (rpc.rpc() == TAO_CHANNEL_RPC_REMOVE_HOSTED_PROGRAM) {
-    // string child_hash = rpc.to_be_determined();
-    // success = tao.RemoveHostedProgram(child_hash);
-    // if (success)
-    //   programs_to_erase_.push_back(child_hash);
-    // TODO(kwalsh) maybe this RPC should not exists?
-    LOG(ERROR) << "Not yet implemented";
-    success = false;
-  } else if (!hash.empty()) {
-    if (!TaoChannel::HandleRPC(tao, hash, rpc)) {
-      LOG(ERROR) << "Could not handle RPC. Removing child " << hash;
-      tao.RemoveHostedProgram(hash);
-      programs_to_erase_.push_back(hash);
-      return false;  // TaoChannel::HandleRPC() already send the reply, if
-                     // possible.
-    }
-    return true;  // TaoChannel::HandleRPC() already send the reply.
-  }
-  // send response if not handled by TaoChannel::HandleRPC()
-  resp.set_success(success);
-  if (!hash.empty()) {
-    if (!SendResponse(resp, hash)) {
-      LOG(ERROR) << "Could not handle RPC. Removing child " << hash;
-      tao.RemoveHostedProgram(hash);
-      programs_to_erase_.push_back(hash);
-      return false;
-    }
-  } else {
-    if (!tao::SendMessage(fd, resp)) {
-      LOG(ERROR) << "Could not reply to administrative channel";
-      return false;
-    }
-  }
-  return true;
-}
-
-bool UnixFdTaoChannel::HandleProgramCreation(const TaoChannelRPC &rpc, Tao *tao,
-                                             string *identifier) {
-  const StartHostedProgramArgs &shpa = rpc.start();
-  list<string> args;
-  for (int i = 0; i < shpa.args_size(); i++) {
-    args.push_back(shpa.args(i));
-  }
-  if (!tao->StartHostedProgram(shpa.path(), args, identifier)) {
-    LOG(ERROR) << "Could not start hosted program " << shpa.path();
+bool UnixFdTaoChannel::Init() {
+  if (!OpenUnixDomainSocket(admin_socket_path_, admin_socket_.get())) {
+    LOG(ERROR) << "Could not open a socket to accept administrative requests";
     return false;
   }
   return true;
 }
 
-bool UnixFdTaoChannel::Init() {
-  {
-    lock_guard<mutex> l(socket_m_);
-    if (!OpenUnixDomainSocket(domain_socket_path_, domain_socket_.get())) {
-      LOG(ERROR) << "Could not open a socket to accept administrative requests";
-      return false;
-    }
-  }
-
-  return true;
-}
-
 bool UnixFdTaoChannel::Destroy() {
-  {
-    lock_guard<mutex> l(socket_m_);
-    domain_socket_.reset(new int(-1));
-    for (int fd : domain_descriptors_) close(fd);
-    domain_descriptors_.clear();
-  }
-
+  admin_socket_.reset(new int(-1));
+  for (int fd : admin_descriptors_) close(fd);
+  admin_descriptors_.clear();
   return true;
 }
 }  // namespace tao

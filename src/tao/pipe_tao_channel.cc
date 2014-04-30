@@ -119,7 +119,7 @@ bool PipeTaoChannel::ChildCleanup(const string &child_hash) {
     lock_guard<mutex> l(data_m_);
     // The child shouldn't have any of the open pipe descriptors from the
     // parent, including the socket
-    close(*domain_socket_);
+    close(*admin_socket_);
     for (pair<const string, pair<int, int>> desc : descriptors_) {
       close(desc.second.first);
       close(desc.second.second);

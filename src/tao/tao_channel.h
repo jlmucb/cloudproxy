@@ -28,7 +28,8 @@
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 
 #include "tao/tao.h"
-#include "tao/tao_channel_rpc.pb.h"
+#include "tao/tao_admin_channel.pb.h"
+#include "tao/tao_child_channel.pb.h"
 
 using std::string;
 
@@ -74,37 +75,31 @@ class TaoChannel {
                                  const string &params) = 0;
 
  protected:
-  /// Receive a protobuf on the channel. Subclasses implement this method for
-  /// their particular channel type.
-  /// @param[out] m The received message.
-  /// @param child_hash The hosted program to receive a message from.
-  virtual bool ReceiveMessage(google::protobuf::Message *m,
-                              const string &child_hash) const = 0;
-
-  /// Send a protobuf on a channel to a hosted program. Subclasses implement
-  /// this method for their particular channel type.
-  /// @param m The message to send.
-  /// @param child_hash The hash of the hosted program to receive the message.
-  virtual bool SendMessage(const google::protobuf::Message &m,
-                           const string &child_hash) const = 0;
-
-  /// Handle incoming messages on the channel.
+  /// Handle incoming messages from a hosted program.
   /// @param tao The Tao implementation that handles the message.
   /// @param hash The hash of the hosted program that sent the message.
   /// @param rpc The RPC containing the received message.
-  virtual bool HandleRPC(Tao &tao, const string &hash,  // NOLINT
-                         const TaoChannelRPC &rpc) const;
+  /// @param[out] resp The response to send if return value is true.
+  virtual bool HandleChildRPC(Tao *tao, const string &hash,
+                              const TaoChildRequest &rpc,
+                              TaoChildResponse *resp) const;
 
-  /// Receive an RPC for a given hosted program.
-  /// @param[out] rpc The received message.
-  /// @param child_hash The hosted program to receive the message from.
-  virtual bool GetRPC(TaoChannelRPC *rpc, const string &child_hash) const;
+  /// Handle incoming messages from an administrative program.
+  /// @param tao The Tao implementation that handles the message.
+  /// @param rpc The RPC containing the received message.
+  /// @param[out] resp The response to send if return value is true.
+  /// @param[out] shutdown_request Set to true if shutdown is requested.
+  virtual bool HandleAdminRPC(Tao *tao, const TaoAdminRequest &rpc,
+                              TaoAdminResponse *resp,
+                              bool *shutdown_request) const;
 
-  /// Send a response to a hosted program.
-  /// @param resp The response to send.
-  /// @param child_hash The child to send the response to.
-  virtual bool SendResponse(const TaoChannelResponse &resp,
-                            const string &child_hash) const;
+ private:
+  /// Handle the StartHostedProgram RPC.
+  /// @param tao The Tao implementation that handles the message.
+  /// @param rpc The RPC containing the StartHostedProgram request.
+  /// @param[out] identifier The identifier for the new hosted program.
+  bool HandleProgramCreation(Tao *tao, const TaoAdminRequest &rpc,
+                             string *identifier) const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TaoChannel);

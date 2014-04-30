@@ -23,41 +23,20 @@
 #include <glog/logging.h>
 
 namespace tao {
-bool TaoChildChannel::GetRandomBytes(size_t size, string *bytes) const {
-  TaoChannelRPC rpc;
-  rpc.set_rpc(TAO_CHANNEL_RPC_GET_RANDOM_BYTES);
-  GetRandomBytesArgs *grba = rpc.mutable_random();
-  grba->set_size(size);
 
-  SendRPC(rpc);
-
-  // wait for a response
-  TaoChannelResponse resp;
-  GetResponse(&resp);
-
-  if (resp.success()) {
-    if (!resp.has_data()) {
-      LOG(ERROR) << "The successful GetRandomBytes did not contain data";
-      return false;
-    }
-
-    bytes->assign(resp.data().data(), resp.data().size());
-  }
-
-  return resp.success();
-}
-
-bool TaoChildChannel::SendAndReceiveData(const string &in, string *out,
-                                         RPC rpc_type) const {
+bool TaoChildChannel::SendAndReceiveData(const string &instr, int inval,
+                                         string *out,
+                                         TaoChildRequestType rpc_type) const {
   CHECK_NOTNULL(out);
 
-  TaoChannelRPC rpc;
+  TaoChildRequest rpc;
   rpc.set_rpc(rpc_type);
-  rpc.set_data(in);
+  rpc.set_data(instr);
+  rpc.set_size(inval);
 
   SendRPC(rpc);
 
-  TaoChannelResponse resp;
+  TaoChildResponse resp;
   GetResponse(&resp);
 
   if (resp.success()) {
@@ -72,40 +51,27 @@ bool TaoChildChannel::SendAndReceiveData(const string &in, string *out,
   return resp.success();
 }
 
+bool TaoChildChannel::GetRandomBytes(size_t size, string *bytes) const {
+  return SendAndReceiveData("", size, bytes, TAO_CHILD_RPC_GET_RANDOM_BYTES);
+}
+
 bool TaoChildChannel::Seal(const string &data, string *sealed) const {
-  return SendAndReceiveData(data, sealed, TAO_CHANNEL_RPC_SEAL);
+  return SendAndReceiveData(data, 0, sealed, TAO_CHILD_RPC_SEAL);
 }
 
 bool TaoChildChannel::Unseal(const string &sealed, string *data) const {
-  return SendAndReceiveData(sealed, data, TAO_CHANNEL_RPC_UNSEAL);
+  return SendAndReceiveData(sealed, 0, data, TAO_CHILD_RPC_UNSEAL);
 }
 
 bool TaoChildChannel::Attest(const string &data, string *attestation) const {
-  TaoChannelRPC rpc;
-  rpc.set_rpc(TAO_CHANNEL_RPC_ATTEST);
-  rpc.set_data(data);
-  SendRPC(rpc);
-
-  TaoChannelResponse resp;
-  GetResponse(&resp);
-
-  if (resp.success()) {
-    if (!resp.has_data()) {
-      LOG(ERROR) << "A successful Attest did not return data";
-      return false;
-    }
-
-    attestation->assign(resp.data().data(), resp.data().size());
-  }
-
-  return resp.success();
+  return SendAndReceiveData(data, 0, attestation, TAO_CHILD_RPC_ATTEST);
 }
 
-bool TaoChildChannel::SendRPC(const TaoChannelRPC &rpc) const {
+bool TaoChildChannel::SendRPC(const TaoChildRequest &rpc) const {
   return SendMessage(rpc);
 }
 
-bool TaoChildChannel::GetResponse(TaoChannelResponse *resp) const {
+bool TaoChildChannel::GetResponse(TaoChildResponse *resp) const {
   CHECK_NOTNULL(resp);
   return ReceiveMessage(resp);
 }

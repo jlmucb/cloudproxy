@@ -21,73 +21,105 @@
 
 #include "tao/tao_channel.h"
 
+#include <list>
+#include <string>
+
 #include <glog/logging.h>
 
 namespace tao {
 
-// This version of HandleRPC() only handles hosted-program methods,
-// not administrative methods.
-bool TaoChannel::HandleRPC(Tao &tao, const string &hash,  // NOLINT
-                           const TaoChannelRPC &rpc) const {
-  // switch on the type of RPC and pass it to the tao function
-  TaoChannelResponse resp;
-  resp.set_rpc(rpc.rpc());
+bool TaoChannel::HandleChildRPC(Tao *tao, const string &hash,
+                                const TaoChildRequest &rpc,
+                                TaoChildResponse *resp) const {
+  resp->set_rpc(rpc.rpc());
 
   string result_data;
-  bool result = false;
+  bool success = false;
   switch (rpc.rpc()) {
-    case TAO_CHANNEL_RPC_SHUTDOWN:
-    case TAO_CHANNEL_RPC_START_HOSTED_PROGRAM:
-    case TAO_CHANNEL_RPC_REMOVE_HOSTED_PROGRAM:
-      // These administrative RPCs are handled by subclasses.
-      return false;
-      break;
-    case TAO_CHANNEL_RPC_GET_RANDOM_BYTES:
-      if (!rpc.has_random()) {
+    case TAO_CHILD_RPC_GET_RANDOM_BYTES:
+      if (!rpc.has_size()) {
         LOG(ERROR) << "Invalid RPC: must supply arguments for GetRandomBytes";
         break;
       }
-      result = tao.GetRandomBytes(hash, rpc.random().size(), &result_data);
-      resp.set_data(result_data);
+      success = tao->GetRandomBytes(hash, rpc.size(), &result_data);
       break;
-    case TAO_CHANNEL_RPC_SEAL:
+    case TAO_CHILD_RPC_SEAL:
       if (!rpc.has_data()) {
         LOG(ERROR) << "Invalid RPC: must supply data for Seal";
         break;
       }
-      result = tao.Seal(hash, rpc.data(), &result_data);
-      resp.set_data(result_data);
+      success = tao->Seal(hash, rpc.data(), &result_data);
       break;
-    case TAO_CHANNEL_RPC_UNSEAL:
+    case TAO_CHILD_RPC_UNSEAL:
       if (!rpc.has_data()) {
         LOG(ERROR) << "Invalid RPC: must supply sealed data for Unseal";
         break;
       }
-      result = tao.Unseal(hash, rpc.data(), &result_data);
-      resp.set_data(result_data);
+      success = tao->Unseal(hash, rpc.data(), &result_data);
       break;
-    case TAO_CHANNEL_RPC_ATTEST:
-      result = tao.Attest(hash, rpc.data(), &result_data);
-      resp.set_data(result_data);
+    case TAO_CHILD_RPC_ATTEST:
+      success = tao->Attest(hash, rpc.data(), &result_data);
       break;
     default:
       LOG(ERROR) << "Unknown RPC " << rpc.rpc();
       break;
   }
 
-  resp.set_success(result);
-  SendResponse(resp, hash);
+  resp->set_success(success);
+  if (success) resp->set_data(result_data);
 
   return true;
 }
 
-bool TaoChannel::GetRPC(TaoChannelRPC *rpc, const string &child_hash) const {
-  CHECK_NOTNULL(rpc);
-  return ReceiveMessage(rpc, child_hash);
+bool TaoChannel::HandleAdminRPC(Tao *tao, const TaoAdminRequest &rpc,
+                                TaoAdminResponse *resp,
+                                bool *shutdown_request) const {
+  resp->set_rpc(rpc.rpc());
+  bool success = true;
+  string identifier;
+  switch (rpc.rpc()) {
+    case TAO_ADMIN_RPC_SHUTDOWN:
+      *shutdown_request = true;
+      success = true;
+      break;
+    case TAO_ADMIN_RPC_START_HOSTED_PROGRAM:
+      success = HandleProgramCreation(tao, rpc, &identifier);
+      if (success) resp->set_data(identifier);
+      break;
+    case TAO_ADMIN_RPC_REMOVE_HOSTED_PROGRAM:
+      // string child_hash = rpc.to_be_determined();
+      // success = tao.RemoveHostedProgram(child_hash);
+      // if (success)
+      //   programs_to_erase_.push_back(child_hash);
+      LOG(ERROR) << "Not yet implemented";
+      success = false;
+      break;
+    default:
+      LOG(ERROR) << "Unknown RPC " << rpc.rpc();
+      break;
+      return true;  // TaoChannel::HandleRPC() already send the reply.
+  }
+
+  resp->set_success(success);
+
+  return true;
 }
 
-bool TaoChannel::SendResponse(const TaoChannelResponse &resp,
-                              const string &child_hash) const {
-  return SendMessage(resp, child_hash);
+bool TaoChannel::HandleProgramCreation(Tao *tao, const TaoAdminRequest &rpc,
+                                       string *identifier) const {
+  if (!rpc.has_path()) {
+    LOG(ERROR) << "Program creation request is missing path";
+    return false;
+  }
+  list<string> args;
+  for (int i = 0; i < rpc.args_size(); i++) {
+    args.push_back(rpc.args(i));
+  }
+  if (!tao->StartHostedProgram(rpc.path(), args, identifier)) {
+    LOG(ERROR) << "Could not start hosted program " << rpc.path();
+    return false;
+  }
+  return true;
 }
+
 }  // namespace tao

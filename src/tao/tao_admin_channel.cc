@@ -24,10 +24,10 @@
 
 namespace tao {
 bool TaoAdminChannel::Shutdown() const {
-  TaoChannelRPC rpc;
-  rpc.set_rpc(TAO_CHANNEL_RPC_SHUTDOWN);
+  TaoAdminRequest rpc;
+  rpc.set_rpc(TAO_ADMIN_RPC_SHUTDOWN);
   SendRPC(rpc);
-  TaoChannelResponse resp;
+  TaoAdminResponse resp;
   GetResponse(&resp);
   return resp.success();
 }
@@ -35,20 +35,18 @@ bool TaoAdminChannel::Shutdown() const {
 bool TaoAdminChannel::StartHostedProgram(const string &path,
                                          const list<string> &args,
                                          string *identifier) const {
-  TaoChannelRPC rpc;
-  rpc.set_rpc(TAO_CHANNEL_RPC_START_HOSTED_PROGRAM);
+  TaoAdminRequest rpc;
+  rpc.set_rpc(TAO_ADMIN_RPC_START_HOSTED_PROGRAM);
 
-  StartHostedProgramArgs *shpa = rpc.mutable_start();
-  shpa->set_path(path);
+  rpc.set_path(path);
   for (const string &arg : args) {
-    string *cur = shpa->add_args();
-    cur->assign(arg);
+    rpc.add_args(arg);
   }
 
   SendRPC(rpc);
 
   // wait for a response to the message
-  TaoChannelResponse resp;
+  TaoAdminResponse resp;
   GetResponse(&resp);
 
   if (resp.success()) {
@@ -64,23 +62,23 @@ bool TaoAdminChannel::StartHostedProgram(const string &path,
 }
 
 bool TaoAdminChannel::RemoveHostedProgram(const string &child_hash) const {
-  TaoChannelRPC rpc;
-  rpc.set_rpc(TAO_CHANNEL_RPC_REMOVE_HOSTED_PROGRAM);
+  TaoAdminRequest rpc;
+  rpc.set_rpc(TAO_ADMIN_RPC_REMOVE_HOSTED_PROGRAM);
   rpc.set_data(child_hash);
 
   SendRPC(rpc);
 
-  TaoChannelResponse resp;
+  TaoAdminResponse resp;
   GetResponse(&resp);
 
   return resp.success();
 }
 
-bool TaoAdminChannel::SendRPC(const TaoChannelRPC &rpc) const {
+bool TaoAdminChannel::SendRPC(const TaoAdminRequest &rpc) const {
   return SendMessage(rpc);
 }
 
-bool TaoAdminChannel::GetResponse(TaoChannelResponse *resp) const {
+bool TaoAdminChannel::GetResponse(TaoAdminResponse *resp) const {
   CHECK_NOTNULL(resp);
   return ReceiveMessage(resp);
 }

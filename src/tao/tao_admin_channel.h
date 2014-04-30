@@ -25,7 +25,7 @@
 
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 
-#include "tao/tao_channel_rpc.pb.h"
+#include "tao/tao_admin_channel.pb.h"
 
 using std::list;
 using std::string;
@@ -73,11 +73,11 @@ class TaoAdminChannel {
  private:
   /// Send an RPC to the Tao.
   /// @param rpc The RPC containing the message.
-  virtual bool SendRPC(const TaoChannelRPC &rpc) const;
+  virtual bool SendRPC(const TaoAdminRequest &rpc) const;
 
   /// Receive an RPC response from the Tao.
   /// @param[out] The response to an RPC.
-  virtual bool GetResponse(TaoChannelResponse *resp) const;
+  virtual bool GetResponse(TaoAdminResponse *resp) const;
 
   DISALLOW_COPY_AND_ASSIGN(TaoAdminChannel);
 };

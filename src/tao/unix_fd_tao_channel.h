@@ -61,69 +61,29 @@ class UnixFdTaoChannel : public TaoChannel {
 
  protected:
   /// A mutex for protecting access to descriptors.
+  /// TODO(kwalsh) - This is used inconsistently and should be removed.
   mutable std::mutex data_m_;
 
   /// A mutex for setting up and removing the sockets.
+  /// TODO(kwalsh) - This is used inconsistently and should be removed.
   std::mutex socket_m_;
 
   /// The path to the Unix domain socket for administrative requests.
-  string domain_socket_path_;
+  string admin_socket_path_;
 
   /// The open file descriptor for the Unix domain socket that accepts
   /// connections over which administrative requests will be received.
-  ScopedFd domain_socket_;
+  ScopedFd admin_socket_;
 
-  /// A list of file descriptors accepted from domain_socket_.
-  std::list<int> domain_descriptors_;
+  /// A list of file descriptors accepted from admin_socket_.
+  std::list<int> admin_descriptors_;
 
   /// A map from a child hash to a pair of file descriptors. The first file
   /// descriptor is the read descriptor, and the second descriptor is the write
   /// descriptor. These can be the same descriptor.
   std::map<string, std::pair<int, int>> descriptors_;
 
-  /// Handle incoming messages on the channel.
-  /// @param tao The Tao implementation that handles the message.
-  /// @param hash The hash of the hosted program that sent the message,
-  /// or emptystring for the administrative channel.
-  /// @param fd The file descriptor to send the reply to if hash is emptystring,
-  /// ignored otherwise.
-  /// @param rpc The RPC containing the received message.
-  /// @param[out] request_shutdown Set to true on shutdown request.
-  /// @param[out] remove_child_hash Hash of a child to be removed by caller.
-  virtual bool HandleRPC(Tao &tao, const string &hash,  // NOLINT
-                         int fd, const TaoChannelRPC &rpc,
-                         bool *requests_shutdown);
-
-  /// Receive a message by performing a read() on a file descriptor.
-  /// @param[out] m The received message
-  /// @param child_hash The hash of the child to receive the message from. This
-  /// is used to decide which descriptor to use.
-  virtual bool ReceiveMessage(google::protobuf::Message *m,
-                              const string &child_hash) const;
-
-  /// Send a message to a hosted program by performing a write() on a file
-  /// descriptor.
-  /// @param m The message to send.
-  /// @param child_hash The hash of the child to send the message to. This is
-  /// used to decide which descriptor to use.
-  virtual bool SendMessage(const google::protobuf::Message &m,
-                           const string &child_hash) const;
-
  private:
-  /// Receive a datagram message on a unix socket and uses this information to
-  /// create a hosted program through the Tao.
-  /// @param rpc The message containing program start parameters.
-  /// @param tao The host tao.
-  /// @param[out] identifier The identifier of the new host program.
-  bool HandleProgramCreation(const TaoChannelRPC &rpc, Tao *tao,
-                             string *identifier);
-
-  /// Remove from descriptors_ any programs that have encountered errors.
-  bool CleanErasedPrograms();
-
-  /// Programs that have encountered errors and need to be cleaned up.
-  std::list<string> programs_to_erase_;
-
   DISALLOW_COPY_AND_ASSIGN(UnixFdTaoChannel);
 };
 }  // namespace tao

@@ -25,7 +25,7 @@
 
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 
-#include "tao/tao_channel_rpc.pb.h"
+#include "tao/tao_child_channel.pb.h"
 
 using std::string;
 
@@ -81,18 +81,20 @@ class TaoChildChannel {
  private:
   /// Send an RPC to the host Tao.
   /// @param rpc The RPC containing the message.
-  virtual bool SendRPC(const TaoChannelRPC &rpc) const;
+  virtual bool SendRPC(const TaoChildRequest &rpc) const;
 
   /// Receive an RPC response from the host Tao.
   /// @param[out] The response to an RPC.
-  virtual bool GetResponse(TaoChannelResponse *resp) const;
+  virtual bool GetResponse(TaoChildResponse *resp) const;
 
-  /// Sends a simple RPC containing a string and getting a string back. This is
-  /// used for Seal, Unseal, and Attest.
-  /// @param in The string to send.
+  /// Sends a simple RPC containing a string and an integer and getting a string
+  /// back.
+  /// @param instr The string to send.
+  /// @param inval The integer to send.
   /// @param[out] out The string returned by the host Tao.
   /// @param rpc_type The type of RPC to send, like SEAL.
-  bool SendAndReceiveData(const string &in, string *out, RPC rpc_type) const;
+  bool SendAndReceiveData(const string &instr, int inval, string *out,
+                          TaoChildRequestType rpc_type) const;
 
   DISALLOW_COPY_AND_ASSIGN(TaoChildChannel);
 };

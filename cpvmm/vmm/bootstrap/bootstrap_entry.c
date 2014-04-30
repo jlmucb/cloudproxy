@@ -316,31 +316,52 @@ uint16_t ia32_read_ss()
 
 void  ia32_read_idtr(IA32_IDTR* p_descriptor)
 {
+#if 0
     asm volatile(
         "\tmovl %[p_descriptor], %%edx\n"
         "\tsidt (%%edx)\n"
     :[p_descriptor] "=g" (p_descriptor)
     :: "%edx");
+#else
+    asm volatile(
+        "\tsidt (%[p_descriptor])\n"
+    :[p_descriptor] "=p" (p_descriptor)
+    ::);
+#endif
 }
 
 
 void  ia32_read_gdtr(IA32_GDTR *p_descriptor)
 {
+#if 0
     asm volatile(
         "\tmovl %[p_descriptor], %%edx\n"
         "\tsgdt (%%edx)\n"
     :[p_descriptor] "=g" (p_descriptor)
     : : "%edx");
+#else
+    asm volatile(
+        "\tsgdt (%[p_descriptor])\n"
+    :[p_descriptor] "=p" (p_descriptor)
+    :: );
+#endif
 }
 
 
 void  ia32_write_gdtr(IA32_GDTR *p_descriptor)
 {
+#if 0
     asm volatile(
         "\tmovl   %[p_descriptor], %%edx\n"
         "\t lgdt  (%%edx)\n"
     ::[p_descriptor] "g" (p_descriptor) 
     :"%edx");
+#else
+    asm volatile(
+        "\t lgdt  (%[p_descriptor])\n"
+    ::[p_descriptor] "p" (p_descriptor) 
+    :);
+#endif
 }
 
 
@@ -1156,14 +1177,6 @@ int linux_setup(void)
                                 0x0000808b;
         guest_processor_state[k].seg.segment[IA32_SEG_TR].limit= 
                                 0xffffffff;
-        /*
-         *  save_segment_data(readcs(), &guest_processor_state[k].seg.segment[IA32_SEG_CS]);
-         *  save_segment_data(readds(), &guest_processor_state[k].seg.segment[IA32_SEG_DS]);
-         *  save_segment_data(reades(), &guest_processor_state[k].seg.segment[IA32_SEG_ES]);
-         *  save_segment_data(readfs(), &guest_processor_state[k].seg.segment[IA32_SEG_FS]);
-         *  save_segment_data(readgs(), &guest_processor_state[k].seg.segment[IA32_SEG_GS]);
-         *  save_segment_data(readss(), &guest_processor_state[k].seg.segment[IA32_SEG_SS])
-         */
     }
 
     return 0;
@@ -1874,15 +1887,18 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     if(evmm_num_of_aps < 0)
         evmm_num_of_aps = 0; 
 
-#ifdef JLMDEBUG
-    uint32_t   tcr0, tcr3, tcr4;
+    // this is a weird hack
     IA32_GDTR tdesc;
     ia32_read_gdtr(&tdesc);
+
+#ifdef JLMDEBUG
+    uint32_t   tcr0, tcr3, tcr4;
     read_cr0(&tcr0);
     read_cr3(&tcr3);
     read_cr4(&tcr4);
     bprint("cr0: 0x%08x, cr3: 0x%0x, cr4: 0x%08x\n", tcr0, tcr3, tcr4);
-    bprint("GTDT base/limit: 0x%08x, %04x\n", tdesc.base, tdesc.limit);
+    bprint("GDTR base/limit: 0x%08x, %04x (stack)\n", tdesc.base, tdesc.limit);
+    HexDump((uint8_t*) &tdesc, (uint8_t*) &tdesc+32);
 #endif
 
     if(evmm_num_of_aps>=MAXPROCESSORS) {
@@ -1894,15 +1910,14 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
 #endif
 
     // get original gdtr and old selectors and descriptors
-    ia32_read_gdtr(&tboot_gdtr_32);
+    tboot_gdtr_32.base= tdesc.base;
+    tboot_gdtr_32.limit= tdesc.limit;
     uint32_t*  p;
     tboot_cs_selector= ia32_read_cs();
     tboot_ds_selector= ia32_read_ds();
     tboot_ss_selector= ia32_read_ss();
 #ifdef JLMDEBUG
-    bprint("gdt base: %08x, limit: %d\n", tboot_gdtr_32.base, tboot_gdtr_32.limit);
-    HexDump((uint8_t*) tboot_gdtr_32.base, 
-            (uint8_t*) tboot_gdtr_32.base+tboot_gdtr_32.limit);
+    bprint("gdt base: %08x, limit: %04x\n", tboot_gdtr_32.base, tboot_gdtr_32.limit);
 #endif
     p= (uint32_t*)(tboot_gdtr_32.base+tboot_cs_selector); 
     ia32_get_selector(p, &tboot_cs_base, &tboot_cs_limit, &tboot_cs_attr);
@@ -1911,11 +1926,11 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     p= (uint32_t*)(tboot_gdtr_32.base+tboot_ss_selector); 
     ia32_get_selector(p, &tboot_ss_base, &tboot_ss_limit, &tboot_ss_attr);
 #ifdef JLMDEBUG
-    bprint("tboot cs selector: %08x, base: %08x, limit: %08x, attr: %04x\n",
+    bprint("tboot cs selector: %04x, base: %08x, limit: %04x, attr: %04x\n",
            tboot_cs_selector, tboot_cs_base, tboot_cs_limit, tboot_cs_attr);
-    bprint("tboot ds selector: %08x, base: %08x, limit: %08x, attr: %04x\n",
+    bprint("tboot ds selector: %04x, base: %08x, limit: %04x, attr: %04x\n",
            tboot_ds_selector, tboot_ds_base, tboot_ds_limit, tboot_ds_attr);
-    bprint("tboot ss selector: %08x, base: %08x, limit: %08x, attr: %04x\n",
+    bprint("tboot ss selector: %04x, base: %08x, limit: %04x, attr: %04x\n",
            tboot_ss_selector, tboot_ss_base, tboot_ss_limit, tboot_ss_attr);
 #endif
 

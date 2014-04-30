@@ -191,6 +191,31 @@ static uint32_t                         local_apic_id = 0;
 // machine setup and paging
 
 
+int ia32_get_selector(uint32_t* p, uint64_t* base, uint32_t* limit, uint32_t* access)
+{
+    IA32_SEGMENT_DESCRIPTOR* desc= (IA32_SEGMENT_DESCRIPTOR*)p;
+    IA32_SEGMENT_DESCRIPTOR_ATTR attr;
+
+
+    *base= (UINT64)((desc->gen.lo.base_address_15_00) |
+        (desc->gen.hi.base_address_23_16 << 16) |
+        (desc->gen.hi.base_address_31_24 << 24));
+
+    *limit= (UINT32)( (desc->gen.lo.limit_15_00) |
+        (desc->gen.hi.limit_19_16 << 16));
+
+    if(desc->gen.hi.granularity)
+        *limit = (*limit << 12) | 0x00000fff;
+
+    attr.attr16 = desc->gen_attr.attributes;
+    attr.bits.limit_19_16 = 0;
+
+    *access= (uint32_t) attr.attr16;
+
+    return 0;
+}
+
+
 uint16_t ia32_read_cs()
 {
     uint16_t  cs= 0;
@@ -999,6 +1024,8 @@ int linux_setup(void)
                     (uint64_t) ia32_read_gs();
     guest_processor_state[0].seg.segment[IA32_SEG_SS].selector = 
                     (uint64_t) ia32_read_ss();
+
+    // int ia32_get_selector(uint32_t* p, uint64_t* base, uint32_t* limit, uint32_t* access)
 
     guest_processor_state[0].seg.segment[IA32_SEG_CS].base =  LINUX_BOOT_CS_BASE;
     guest_processor_state[0].seg.segment[IA32_SEG_DS].base = LINUX_BOOT_DS_BASE;

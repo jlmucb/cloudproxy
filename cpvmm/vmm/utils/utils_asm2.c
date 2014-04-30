@@ -229,11 +229,11 @@ void vmm_print_vmcs_region(UINT64* pu)
         p->g_es, p->g_es_base, p->g_es_limit, p->g_es_access);
     bprint("g_cs: 0x%016llx, g_cs_base: 0x%016llx, g_cs_limit: 0x%llx g_cs_access: 0x%llx\n",
         p->g_cs, p->g_cs_base, p->g_cs_limit, p->g_cs_access);
-#if 0
     bprint("g_ss: 0x%016llx g_ss_base: 0x%016llx g_ss_limit: 0x%016llx g_ss_access: 0x%016llx\n",
         p->g_ss, p->g_ss_base, p->g_ss_limit, p->g_ss_access);
     bprint("g_ds: 0x%016llx g_ds_base: 0x%016llx g_ds_limit: 0x%016llx g_ds_access: 0x%016llx\n",
         p->g_ds, p->g_ds_base, p->g_ds_limit, p->g_ds_access);
+#if 0
     bprint("g_fs: 0x%016llx g_fs_base: 0x%016llx g_fs_limit: 0x%016llx g_fs_access: 0x%016llx\n",
         p->g_fs, p->g_fs_base, p->g_fs_limit, p->g_fs_access);
     bprint("g_gs: 0x%016llx g_gs_base: 0x%016llx g_gs_limit: 0x%016llx g_gs_access: 0x%016llx\n",

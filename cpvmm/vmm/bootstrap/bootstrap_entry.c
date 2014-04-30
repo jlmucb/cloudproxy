@@ -71,7 +71,7 @@ extern uint32_t _start_bootstrap, _end_bootstrap;
 #define UVMM_DEFAULT_HEAP 0x5000000
 
 
-//      Memory layout on start32_evmm entry
+// Memory layout on start32_evmm entry
 uint32_t tboot_start= 0;        // tboot image start address
 uint32_t tboot_end= 0;          // tboot image end address
 uint32_t bootstrap_start= 0;    // bootstrap image start address
@@ -161,6 +161,23 @@ void *evmm_page_alloc(uint32_t pages)
 
 #define TOTAL_MEM 0x100000000ULL
 
+static IA32_GDTR                        tboot_gdtr_32;
+uint64_t                                tboot_gdt[16];         // tboot gdt
+static uint32_t                         tboot_gdtr_base= 0;
+static uint32_t                         tboot_gdtr_limit= 0;
+static uint16_t                         tboot_cs_selector= 0;
+static uint32_t                         tboot_cs_base= 0;
+static uint32_t                         tboot_cs_limit= 0;
+static uint16_t                         tboot_cs_attr= 0;
+static uint16_t                         tboot_ds_selector= 0;
+static uint32_t                         tboot_ds_base= 0;
+static uint32_t                         tboot_ds_limit= 0;
+static uint16_t                         tboot_ds_attr= 0;
+static uint16_t                         tboot_ss_selector= 0;
+static uint32_t                         tboot_ss_base= 0;
+static uint32_t                         tboot_ss_limit= 0;
+static uint16_t                         tboot_ss_attr= 0;
+
 static uint32_t                         evmm64_cs_selector= 0;
 static uint32_t                         evmm64_ds_selector= 0;
 
@@ -191,7 +208,7 @@ static uint32_t                         local_apic_id = 0;
 // machine setup and paging
 
 
-int ia32_get_selector(uint32_t* p, uint64_t* base, uint32_t* limit, uint32_t* access)
+int ia32_get_selector(uint32_t* p, uint32_t* base, uint32_t* limit, uint16_t* access)
 {
     IA32_SEGMENT_DESCRIPTOR* desc= (IA32_SEGMENT_DESCRIPTOR*)p;
     IA32_SEGMENT_DESCRIPTOR_ATTR attr;
@@ -305,8 +322,8 @@ void  ia32_read_gdtr(IA32_GDTR *p_descriptor)
     asm volatile(
         "\tmovl %[p_descriptor], %%edx\n"
         "\tsgdt (%%edx)\n"
-    :[p_descriptor] "=g" (p_descriptor)
-    :: "%edx");
+    ::[p_descriptor] "g" (p_descriptor)
+    : "%edx");
 }
 
 
@@ -967,6 +984,7 @@ int linux_setup(void)
         guest_processor_state[0].gp.reg[i] = (uint64_t) 0;
     }
 
+    // JLM(FIX)
     guest_processor_state[0].control.gdtr.base = (uint64_t)(uint32_t)&gdt_table;
     guest_processor_state[0].control.gdtr.limit = (uint64_t)(uint32_t)gdt_table + 
                                      sizeof(gdt_table) -1;
@@ -1024,8 +1042,6 @@ int linux_setup(void)
                     (uint64_t) ia32_read_gs();
     guest_processor_state[0].seg.segment[IA32_SEG_SS].selector = 
                     (uint64_t) ia32_read_ss();
-
-    // int ia32_get_selector(uint32_t* p, uint64_t* base, uint32_t* limit, uint32_t* access)
 
     guest_processor_state[0].seg.segment[IA32_SEG_CS].base =  LINUX_BOOT_CS_BASE;
     guest_processor_state[0].seg.segment[IA32_SEG_DS].base = LINUX_BOOT_DS_BASE;
@@ -1824,17 +1840,6 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     if(evmm_num_of_aps < 0)
         evmm_num_of_aps = 0; 
 
-#ifdef JLMDEBUG
-    uint32_t   tcr0, tcr3, tcr4;
-    IA32_GDTR tdesc;
-    ia32_read_gdtr(&tdesc);
-    read_cr0(&tcr0);
-    read_cr3(&tcr3);
-    read_cr4(&tcr4);
-    bprint("cr0: 0x%08x, cr3: 0x%0x, cr4: 0x%08x\n", tcr0, tcr3, tcr4);
-    bprint("GTDT base/limit: 0x%08x, %04x\n", tdesc.base, tdesc.limit);
-#endif
-
     if(evmm_num_of_aps>=MAXPROCESSORS) {
         bprint("Too many aps (%d), resetting to %d\n", evmm_num_of_aps, MAXPROCESSORS);
         evmm_num_of_aps = MAXPROCESSORS-1; 
@@ -1845,6 +1850,35 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
 
     init32.i32_low_memory_page = low_mem;
     init32.i32_num_of_aps = evmm_num_of_aps;
+
+    // get original gdtr and old selectors and descriptors
+    ia32_read_gdtr(&tboot_gdtr_32);
+    uint32_t*  p;
+    tboot_gdtr_base= tboot_gdtr_32.base;
+    tboot_gdtr_limit= tboot_gdtr_32.limit;
+    vmm_memcpy((void*)tboot_gdt, (void*)tboot_gdtr_base, tboot_gdtr_limit);
+    tboot_cs_selector= ia32_read_cs();
+    tboot_ds_selector= ia32_read_ds();
+    tboot_ss_selector= ia32_read_ss();
+#ifdef JLMDEBUG
+    bprint("gdtr base: %08x, limit: %d\n", tboot_gdtr_base, tboot_gdtr_limit);
+    HexDump((uint8_t*) &tboot_gdt, (uint8_t*) &tboot_gdt+32);
+#endif
+    p= (uint32_t*)(tboot_gdtr_base+tboot_cs_selector); 
+    ia32_get_selector(p, &tboot_cs_base, &tboot_cs_limit, &tboot_cs_attr);
+    p= (uint32_t*)(tboot_gdtr_base+tboot_ds_selector); 
+    ia32_get_selector(p, &tboot_ds_base, &tboot_ds_limit, &tboot_ds_attr);
+    p= (uint32_t*)(tboot_gdtr_base+tboot_ss_selector); 
+    ia32_get_selector(p, &tboot_ss_base, &tboot_ss_limit, &tboot_ss_attr);
+#ifdef JLMDEBUG
+    bprint("tboot cs selector: %08x, base: %08x, limit: %08x, attr: %04x\n",
+           tboot_cs_selector, tboot_cs_base, tboot_cs_limit, tboot_cs_attr);
+    bprint("tboot ds selector: %08x, base: %08x, limit: %08x, attr: %04x\n",
+           tboot_ds_selector, tboot_ds_base, tboot_ds_limit, tboot_ds_attr);
+    bprint("tboot ss selector: %08x, base: %08x, limit: %08x, attr: %04x\n",
+           tboot_ss_selector, tboot_ss_base, tboot_ss_limit, tboot_ss_attr);
+    LOOP_FOREVER
+#endif
 
     // set up evmm heap addresses and range
     setup_evmm_heap(EVMM_HEAP_BASE, EVMM_HEAP_SIZE);

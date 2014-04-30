@@ -3,10 +3,8 @@
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
- *
+ * You may obtain a copy of the License at
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -56,11 +54,8 @@ HPA redirect_physical_addr = 0;
 #define PRESENT_BIT                                  (UINT64) 0x1
 
 // static functions
-static
-BOOLEAN ept_guest_cpu_initialize(GUEST_CPU_HANDLE gcpu);
-
+static BOOLEAN ept_guest_cpu_initialize(GUEST_CPU_HANDLE gcpu);
 BOOLEAN ept_page_walk(UINT64 first_table, UINT64 addr, UINT32 gaw);
-
 void ept_set_remote_eptp(CPU_ID from, void* arg);
 
 
@@ -68,8 +63,7 @@ void ept_set_remote_eptp(CPU_ID from, void* arg);
 static
 BOOLEAN ept_check_pdpt_reserved_bits(UINT64 pdptr, UINT64 efer)
 {
-    if((efer & EFER_NXE) == 0)
-    {
+    if((efer & EFER_NXE) == 0) {
         return (pdptr & PDPTR_NXE_DISABLED_RESERVED_BITS_MASK) == 0;
     }
     return (pdptr & PDPTR_NXE_ENABLED_RESERVED_BITS_MASK) == 0;
@@ -1065,18 +1059,13 @@ void init_ept_addon(UINT32 num_of_cpus)
     if (!global_policy_uses_ept()) {
         return;
     }
-
     vmm_zeromem(&ept, sizeof(ept));
     ept.num_of_cpus = num_of_cpus;
-
     EPT_LOG("init_ept_addon: Initialize EPT num_cpus %d\n", num_of_cpus);
-
     list_init(ept.guest_state);
     lock_initialize(&ept.lock);
-
     event_global_register(EVENT_GUEST_CREATE, ept_add_dynamic_guest);
     event_global_register(EVENT_GCPU_ADD, (event_callback) ept_add_gcpu);
-
     for(guest = guest_first(&guest_ctx); guest; guest = guest_next(&guest_ctx)) {
         ept_add_static_guest(guest);
     }
@@ -1185,11 +1174,8 @@ void ept_reset_local(CPU_ID from UNUSED, void* arg)
 #endif
 
 #ifdef INCLUDE_UNUSED_CODE
-static
-void ept_exec_invept(CPU_ID dest,
-                     INVEPT_CMD_TYPE cmd,
-                     UINT64 eptp,
-                     UINT64 gpa)
+static void ept_exec_invept(CPU_ID dest, INVEPT_CMD_TYPE cmd,
+                     UINT64 eptp, UINT64 gpa)
 {
     IPC_DESTINATION ipc_dest;
     EPT_INVEPT_CMD invept_cmd;
@@ -1345,11 +1331,9 @@ MAM_MAPPING_RESULT ept_get_mapping(IN GUEST_HANDLE guest, IN GPA src,
 
     ept_guest = ept_find_guest_state(guest_id);
     VMM_ASSERT(ept_guest);
-
     ept_acquire_lock();
     res = mam_get_mapping(ept_guest, src, dest, attrs);
     ept_release_lock();
-
     return res;
 }
 
@@ -1365,18 +1349,14 @@ BOOLEAN ept_allow_uvmm_heap_access(GUEST_CPU_HANDLE gcpu)
     UINT64 same_memory_type_range_size = 0, covered_heap_range_size = 0;
     MAM_ATTRIBUTES attributes = {0};
     EPT_GUEST_STATE *ept_guest = NULL;
-
     guest = gcpu_guest_handle(gcpu);
     ept_guest = ept_find_guest_state(guest_get_id(guest));
     VMM_ASSERT(ept_guest);
-
     vmm_heap_get_details(&heap_base_hva, &heap_size);
     status = hmm_hva_to_hpa(heap_base_hva, &heap_base_hpa);
     VMM_ASSERT(status);
-
     attributes.ept_attr.readable = 1;
     attributes.ept_attr.writable = 1;
-
     while(covered_heap_range_size < heap_size) {
         mem_type = mtrrs_abstraction_get_range_memory_type(heap_base_hpa + covered_heap_range_size,
                                                            &same_memory_type_range_size);
@@ -1389,8 +1369,7 @@ BOOLEAN ept_allow_uvmm_heap_access(GUEST_CPU_HANDLE gcpu)
         }
 
         ept_add_mapping(guest, heap_base_hpa + covered_heap_range_size,
-            heap_base_hpa + covered_heap_range_size,
-            same_memory_type_range_size,
+            heap_base_hpa + covered_heap_range_size, same_memory_type_range_size,
             TRUE, // readable
             TRUE, // writable
             FALSE // executable
@@ -1404,8 +1383,7 @@ BOOLEAN ept_allow_uvmm_heap_access(GUEST_CPU_HANDLE gcpu)
     return TRUE;
 }
 
-static
-BOOLEAN ept_deny_uvmm_heap_access(GUEST_CPU_HANDLE gcpu)
+static BOOLEAN ept_deny_uvmm_heap_access(GUEST_CPU_HANDLE gcpu)
 {
     GUEST_HANDLE guest = NULL;
     HVA heap_base_hva = 0;
@@ -1418,7 +1396,6 @@ BOOLEAN ept_deny_uvmm_heap_access(GUEST_CPU_HANDLE gcpu)
     const VIRTUAL_CPU_ID* vcpu_id = NULL;
 
     VMM_ASSERT( gcpu );
-
     vcpu_id = guest_vcpu( gcpu );
     ept_guest = ept_find_guest_state(vcpu_id->guest_id);
     VMM_ASSERT(ept_guest);
@@ -1430,18 +1407,13 @@ BOOLEAN ept_deny_uvmm_heap_access(GUEST_CPU_HANDLE gcpu)
             return FALSE;
         }
     }
-
     guest = gcpu_guest_handle(gcpu);
-
     vmm_heap_get_details(&heap_base_hva, &heap_size);
     status = hmm_hva_to_hpa(heap_base_hva, &heap_base_hpa);
     VMM_ASSERT(status);
-
     EPT_LOG("  EPT remove uvmm heap range: gpa %p -> hpa %p; size %p;\r\n",
         heap_base_hpa, heap_base_hpa, heap_size);
-
     ept_remove_mapping(guest, heap_base_hpa, heap_size, 0);
-
     return TRUE;
 }
 #endif

@@ -314,6 +314,15 @@ uint16_t ia32_read_ss()
 }
 
 
+void  ia32_read_idtr(IA32_IDTR* p_descriptor)
+{
+    asm volatile(
+        "\tsidt %[p_descriptor]\n"
+    ::[p_descriptor] "m" (p_descriptor)
+    : "%edx");
+}
+
+
 void  ia32_read_gdtr(IA32_GDTR *p_descriptor)
 {
     asm volatile(
@@ -979,11 +988,6 @@ int linux_setup(void)
         guest_processor_state[0].gp.reg[i] = (uint64_t) 0;
     }
 
-    guest_processor_state[0].control.gdtr.base = (uint64_t)(uint32_t)&gdt_table;
-    guest_processor_state[0].control.gdtr.limit = (uint64_t)(uint32_t)gdt_table + 
-                                     sizeof(gdt_table) -1;
-    guest_processor_state[0].control.idtr.base = (UINT64)idtr.base;
-    guest_processor_state[0].control.idtr.limit = (UINT32)idtr.limit;
     guest_processor_state[0].gp.reg[IA32_REG_RIP] = (uint64_t) linux_entry_address;
     guest_processor_state[0].gp.reg[IA32_REG_RSI] = (uint64_t) linux_esi_register;
     guest_processor_state[0].gp.reg[IA32_REG_RSP] = (uint64_t) linux_esp_register;
@@ -1024,6 +1028,11 @@ int linux_setup(void)
     }
    
 #if 0 
+    guest_processor_state[0].control.gdtr.base = (uint64_t)(uint32_t)&gdt_table;
+    guest_processor_state[0].control.gdtr.limit = (uint64_t)(uint32_t)gdt_table + 
+                                     sizeof(gdt_table) -1;
+    guest_processor_state[0].control.idtr.base = (UINT64)idtr.base;
+    guest_processor_state[0].control.idtr.limit = (UINT32)idtr.limit;
     guest_processor_state[0].seg.segment[IA32_SEG_CS].base = (uint64_t) LINUX_BOOT_CS;
     guest_processor_state[0].seg.segment[IA32_SEG_DS].base = (uint64_t) LINUX_BOOT_DS;
     guest_processor_state[0].seg.segment[IA32_SEG_ES].base = 0;
@@ -1033,6 +1042,13 @@ int linux_setup(void)
     guest_processor_state[0].seg.segment[IA32_SEG_TR].attributes= 0x0000808b;
     guest_processor_state[0].seg.segment[IA32_SEG_TR].limit= 0xffffffff;
 #else
+    guest_processor_state[0].control.gdtr.base = (uint64_t)(uint32_t)
+                    tboot_gdtr_32.base;
+    guest_processor_state[0].control.gdtr.limit = (uint64_t)(uint32_t)
+                    tboot_gdtr_32.limit;
+    // ia32_read_idtr(&idtr);
+    guest_processor_state[0].control.idtr.base = (UINT64)idtr.base;
+    guest_processor_state[0].control.idtr.limit = (UINT32)idtr.limit;
     guest_processor_state[0].seg.segment[IA32_SEG_CS].selector = 
                     (uint64_t) tboot_cs_selector;
     guest_processor_state[0].seg.segment[IA32_SEG_DS].selector = 

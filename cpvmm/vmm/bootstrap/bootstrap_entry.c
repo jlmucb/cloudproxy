@@ -317,9 +317,10 @@ uint16_t ia32_read_ss()
 void  ia32_read_idtr(IA32_IDTR* p_descriptor)
 {
     asm volatile(
-        "\tsidt %[p_descriptor]\n"
-    ::[p_descriptor] "m" (p_descriptor)
-    : "%edx");
+        "\tmovl %[p_descriptor], %%edx\n"
+        "\tsidt (%%edx)\n"
+    :[p_descriptor] "=g" (p_descriptor)
+    :: "%edx");
 }
 
 

@@ -1242,6 +1242,8 @@ asm(
         "\tpush %rax\n" // save rax, since it's used by hw_cpu_id
         "\tcall hw_cpu_id\n" // no arguments, and this only uses rax
         "\tmov g_guest_regs_save_area, %rbx\n" // get g_guest_regs_save_area
+         // the original code has this, but it's one indirection too many
+        // "\tmov (%rbx), %rbx\n"
         "\tmov (%rbx, %rax, 8), %rbx\n" // SIZEOF QWORD == 8 for multiplier
         "\tpop %rax\n"
         "\tret\n"

@@ -1876,7 +1876,6 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     evmm_num_of_aps = 0;
 #endif
 
-#if 0
     // get original gdtr and old selectors and descriptors
     ia32_read_gdtr(&tboot_gdtr_32);
     uint32_t*  p;
@@ -1901,7 +1900,6 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
            tboot_ds_selector, tboot_ds_base, tboot_ds_limit, tboot_ds_attr);
     bprint("tboot ss selector: %08x, base: %08x, limit: %08x, attr: %04x\n",
            tboot_ss_selector, tboot_ss_base, tboot_ss_limit, tboot_ss_attr);
-#endif
 #endif
 
     init32.i32_low_memory_page = low_mem;

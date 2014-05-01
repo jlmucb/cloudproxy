@@ -692,7 +692,8 @@ BOOLEAN guest_dynamic_assign_memory(GUEST_HANDLE src_guest, GUEST_HANDLE dst_gue
 
 GUEST_CPU_HANDLE guest_dynamic_add_cpu(GUEST_HANDLE guest,
                           const VMM_GUEST_CPU_STARTUP_STATE* gcpu_startup,
-                          CPU_ID host_cpu, BOOLEAN ready_to_run, BOOLEAN stop_and_notify)
+                          CPU_ID host_cpu, BOOLEAN ready_to_run, 
+                          BOOLEAN stop_and_notify)
 {
     GUEST_CPU_HANDLE gcpu;
     const VIRTUAL_CPU_ID* vcpu = NULL;
@@ -713,16 +714,16 @@ GUEST_CPU_HANDLE guest_dynamic_add_cpu(GUEST_HANDLE guest,
     // find init data
     vcpu = guest_vcpu( gcpu );
     // register with scheduler
-    scheduler_register_gcpu( gcpu, host_cpu, ready_to_run );
+    scheduler_register_gcpu(gcpu, host_cpu, ready_to_run);
     if (gcpu_startup != NULL) {
         VMM_LOG(mask_anonymous, level_trace,
                 "Setting up initial state for the newly created Guest CPU\n");
-        gcpu_initialize( gcpu, gcpu_startup );
+        gcpu_initialize(gcpu, gcpu_startup);
     }
     else {
         VMM_LOG(mask_anonymous, level_trace,"Newly created Guest CPU was initialized with the Wait-For-SIPI state\n");
     }
-    host_cpu_vmcs_init( gcpu );
+    host_cpu_vmcs_init(gcpu);
     if (TRUE == stop_and_notify) {
         guest_after_dynamic_add_cpu( gcpu );
     }
@@ -790,7 +791,8 @@ BOOLEAN vmm_get_struct_host_ptr(GUEST_CPU_HANDLE gcpu,
     void* host_ptr_tmp;
 
     if (!gcpu_gva_to_hva(gcpu, gva, &hva)) {
-        VMM_LOG(mask_anonymous, level_trace,"%s: Invalid Parameter Struct Address %P\n", __FUNCTION__, gva);
+        VMM_LOG(mask_anonymous, level_trace,
+                "%s: Invalid Parameter Struct Address %P\n", __FUNCTION__, gva);
         return FALSE;
     }
     host_ptr_tmp = (void*)hva;

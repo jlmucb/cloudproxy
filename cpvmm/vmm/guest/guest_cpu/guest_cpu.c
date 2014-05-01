@@ -191,7 +191,8 @@ void gcpu_manager_init(UINT16 host_cpu_count)
 #endif
     VMM_ASSERT( host_cpu_count );
     g_host_cpu_count = host_cpu_count;
-    g_guest_regs_save_area = vmm_memory_alloc( sizeof(GUEST_CPU_SAVE_AREA*) * host_cpu_count );
+    g_guest_regs_save_area = 
+            vmm_memory_alloc(sizeof(GUEST_CPU_SAVE_AREA*)*host_cpu_count);
     VMM_ASSERT(g_guest_regs_save_area);
     // init subcomponents
     vmcs_hw_init();
@@ -456,7 +457,7 @@ void gcpu_initialize(GUEST_CPU_HANDLE gcpu,
 
     // set cached value to the same in order not to trigger events
     gcpu_set_activity_state(gcpu,  
-            (IA32_VMX_VMCS_GUEST_SLEEP_STATE)initial_state->msr.activity_state );
+            (IA32_VMX_VMCS_GUEST_SLEEP_STATE)initial_state->msr.activity_state);
     gcpu_set_vmenter_control(gcpu);
 #ifdef JLMDEBUG1
     bprint("back at gcpu_initialize\n");

@@ -26,8 +26,11 @@
 #include "vmm_api.h"
 #include "unrestricted_guest.h"
 #include "file_codes.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
-#define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(GUEST_CPU_CONTROL_C)
+#define VMM_DEADLOOP()     VMM_DEADLOOP_LOG(GUEST_CPU_CONTROL_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(GUEST_CPU_CONTROL_C, __condition)
 
 extern VMM_PAGING_POLICY g_pg_policy;
@@ -90,9 +93,6 @@ static void gcpu_proc_ctrls_enforce_on_hw(GUEST_CPU_HANDLE gcpu, UINT32 zeroes, 
 static void gcpu_proc_ctrls_restore_on_hw(GUEST_CPU_HANDLE gcpu);
 static void gcpu_cr0_mask_enforce_on_hw(GUEST_CPU_HANDLE gcpu, UINT64 zeroes, UINT64 ones);
 static void gcpu_set_enter_ctrls_for_addons( GUEST_CPU_HANDLE gcpu, UINT32 value, UINT32 bits_untouched );
-
-//static void gcpu_guest_cpu_mode_enforce_on_hw(GUEST_CPU_HANDLE gcpu);
-//static void gcpu_guest_cpu_mode_restore_on_hw(GUEST_CPU_HANDLE gcpu);
 
 
 static void set_minimal_cr0_reg_mask( GCPU_VMEXIT_CONTROL_FIELD_COUNTERS* field )
@@ -394,15 +394,12 @@ static UINT64 gcpu_update_control_counters( UINT64 flags, UINT64 mask,
             if (0 == counters->counters[idx]) {
                 BIT_SET64( counters->bit_field, idx );
             }
-            // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
             VMM_ASSERT( counters->counters[idx] < 255 );
             ++(counters->counters[idx]);
         }
         else {
-            // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
             VMM_ASSERT( counters->counters[idx] > 0 );
             --(counters->counters[idx]);
-
             if (0 == counters->counters[idx]) {
                 BIT_CLR64( counters->bit_field, idx );
             }
@@ -411,7 +408,8 @@ static UINT64 gcpu_update_control_counters( UINT64 flags, UINT64 mask,
     return counters->bit_field;
 }
 
-INLINE UINT64 calculate_cr0_reg_mask( GUEST_CPU_HANDLE gcpu, UINT64 request, UINT64 bitmask )
+INLINE UINT64 calculate_cr0_reg_mask(GUEST_CPU_HANDLE gcpu, UINT64 request, 
+                                     UINT64 bitmask )
 {
     UINT64 final_mask;
 
@@ -419,7 +417,8 @@ INLINE UINT64 calculate_cr0_reg_mask( GUEST_CPU_HANDLE gcpu, UINT64 request, UIN
     return GET_FINAL_SETTINGS( gcpu, cr0, final_mask );
 }
 
-void gcpu_set_cr0_reg_mask_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level, UINT64 value )
+void gcpu_set_cr0_reg_mask_layered(GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level, 
+                                   UINT64 value )
 {
     VMCS_OBJECT* vmcs = gcpu_get_vmcs_layered(gcpu, level);
     VMM_ASSERT(vmcs);
@@ -437,15 +436,18 @@ UINT64 gcpu_get_cr0_reg_mask_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level)
     return vmcs_read( vmcs, VMCS_CR0_MASK );
 }
 
-INLINE UINT64 calculate_cr4_reg_mask( GUEST_CPU_HANDLE gcpu, UINT64 request, UINT64 bitmask )
+INLINE UINT64 calculate_cr4_reg_mask(GUEST_CPU_HANDLE gcpu, UINT64 request, 
+                                     UINT64 bitmask )
 {
     UINT64 final_mask;
 
-    final_mask = gcpu_update_control_counters( request, bitmask, &(gcpu->vmexit_setup.cr4));
+    final_mask = gcpu_update_control_counters( request, bitmask, 
+                                                &(gcpu->vmexit_setup.cr4));
     return GET_FINAL_SETTINGS( gcpu, cr4, final_mask );
 }
 
-void gcpu_set_cr4_reg_mask_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level, UINT64 value )
+void gcpu_set_cr4_reg_mask_layered(GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level, 
+                                   UINT64 value )
 {
     VMCS_OBJECT* vmcs = gcpu_get_vmcs_layered(gcpu, level);
     VMM_ASSERT(vmcs);
@@ -524,7 +526,6 @@ UINT32 calculate_processor_ctrls2( GUEST_CPU_HANDLE gcpu, UINT32 request, UINT32
 {
     UINT32 final_mask;
 
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( g_processor_ctrls2_supported == TRUE );
 
     final_mask = (UINT32)gcpu_update_control_counters( request,
@@ -858,8 +859,6 @@ void gcpu_temp_exceptions_setup( GUEST_CPU_HANDLE gcpu, GCPU_TEMP_EXCEPTIONS_SET
 
             proc_ctrl.Uint32 = 0;
             proc_ctrl.Bits.VirtualInterrupt = 1;
-//            gcpu->vmexit_setup.processor_ctrls.enforce_1_settings |= proc_ctrl.Uint32;
-//            gcpu->vmexit_setup.processor_ctrls.enforce_0_settings |= proc_ctrl.Uint32;
             request_vmexit_on_proc_ctrls( gcpu, 0, 0);
         }
         break;
@@ -884,9 +883,7 @@ void gcpu_temp_exceptions_setup( GUEST_CPU_HANDLE gcpu, GCPU_TEMP_EXCEPTIONS_SET
 
 void gcpu_control_setup_only( GUEST_CPU_HANDLE gcpu, const VMEXIT_CONTROL* request )
 {
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( gcpu );
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( request );
 
     lock_acquire( &(gcpu->vmexit_setup.lock) );
@@ -914,7 +911,6 @@ void gcpu_control_setup_only( GUEST_CPU_HANDLE gcpu, const VMEXIT_CONTROL* reque
                                       &(gcpu->vmexit_setup.processor_ctrls) );
     }
     if (request->proc_ctrls2.bit_mask != 0) {
-        // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_ASSERT( g_processor_ctrls2_supported == TRUE );
 
         gcpu_update_control_counters( request->proc_ctrls2.bit_request,
@@ -1020,10 +1016,11 @@ void gcpu_enforce_settings_on_hardware(GUEST_CPU_HANDLE  gcpu, GCPU_TEMP_EXCEPTI
     }
 }
 
-static void gcpu_exceptions_settings_enforce_on_hw( GUEST_CPU_HANDLE gcpu, UINT32 zeroes, 
-                                    UINT32 ones)
+static void gcpu_exceptions_settings_enforce_on_hw(GUEST_CPU_HANDLE gcpu, 
+                    UINT32 zeroes, UINT32 ones)
 {
     IA32_VMCS_EXCEPTION_BITMAP exceptions;
+
     exceptions.Uint32 = (UINT32)gcpu_get_exceptions_map_layered( gcpu, VMCS_MERGED);
     exceptions.Uint32 = APPLY_ZEROES_AND_ONES(exceptions.Uint32, zeroes, ones);
     exceptions.Uint32 = (UINT32)GET_FINAL_SETTINGS(gcpu, exceptions_ctrls, exceptions.Uint32);
@@ -1071,12 +1068,16 @@ extern UINT64 ept_get_eptp(GUEST_CPU_HANDLE gcpu);
 extern BOOLEAN ept_set_eptp(GUEST_CPU_HANDLE gcpu, UINT64 ept_root_table_hpa, UINT32 gaw);
 extern GUEST_CPU_HANDLE scheduler_get_current_gcpu_for_guest( GUEST_ID guest_id );
 
-BOOLEAN vmm_get_vmcs_control_state(GUEST_CPU_HANDLE gcpu, VMM_CONTROL_STATE ControlStateId, 
-                    VMM_CONTROLS* value)
+BOOLEAN vmm_get_vmcs_control_state(GUEST_CPU_HANDLE gcpu, 
+                     VMM_CONTROL_STATE ControlStateId, VMM_CONTROLS* value)
 {
     VMCS_OBJECT* vmcs;
     VMCS_FIELD vmcs_field_id;
 
+#ifdef JLMDEBUG
+    bprint("vmm_get_vmcs_control_state\n");
+    LOOP_FOREVER
+#endif
     VMM_ASSERT(gcpu);
     vmcs = gcpu_get_vmcs(gcpu);
     VMM_ASSERT(vmcs);
@@ -1127,7 +1128,8 @@ BOOLEAN vmm_get_vmcs_control_state(GUEST_CPU_HANDLE gcpu, VMM_CONTROL_STATE Cont
     return TRUE;
 }
 
-BOOLEAN vmm_set_vmcs_control_state(GUEST_CPU_HANDLE gcpu, VMM_CONTROL_STATE ControlStateId, 
+BOOLEAN vmm_set_vmcs_control_state(GUEST_CPU_HANDLE gcpu, 
+                                   VMM_CONTROL_STATE ControlStateId, 
                                    VMM_CONTROLS* value)
 {
     VMCS_OBJECT* vmcs;
@@ -1136,18 +1138,20 @@ BOOLEAN vmm_set_vmcs_control_state(GUEST_CPU_HANDLE gcpu, VMM_CONTROL_STATE Cont
     UINT64 cr3_count = 0;
 #endif
 
+#ifdef JLMDEBUG
+    bprint("vmm_set_vmcs_control_state\n");
+    LOOP_FOREVER
+#endif
     VMM_ASSERT(gcpu);
-
     vmcs = gcpu_get_vmcs(gcpu);
     VMM_ASSERT(vmcs);
-
     if(!value || (UINT32)ControlStateId > (UINT32)NUM_OF_VMM_CONTROL_STATE - 1)
         return FALSE;
     // VMCS_FIELD and VMM_CONTROL_STATE are not identically mapped.
     if(ControlStateId < VMM_CR3_TARGET_VALUE_0){
             vmcs_field_id = (VMCS_FIELD)ControlStateId;
     }
-    else{
+    else {
         vmcs_field_id = (VMCS_FIELD)(VMCS_CR3_TARGET_VALUE_0 + (ControlStateId - VMM_CR3_TARGET_VALUE_0));
     }
 
@@ -1157,25 +1161,33 @@ BOOLEAN vmm_set_vmcs_control_state(GUEST_CPU_HANDLE gcpu, VMM_CONTROL_STATE Cont
             break;
         case VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS:
             if(value->mask_value.mask)
-                request_vmexit_on_proc_ctrls(gcpu, (UINT32)(value->mask_value.value), (UINT32)(value->mask_value.mask));
+                request_vmexit_on_proc_ctrls(gcpu, (UINT32)(value->mask_value.value),
+                                             (UINT32)(value->mask_value.mask));
             else
-                vmcs_write(vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS, value->mask_value.value);
+                vmcs_write(vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS, 
+                           value->mask_value.value);
             break;
         case VMCS_CONTROL2_VECTOR_PROCESSOR_EVENTS:
-            request_vmexit_on_proc_ctrls2(gcpu, (UINT32)(value->mask_value.value), (UINT32)(value->mask_value.mask));
+            request_vmexit_on_proc_ctrls2(gcpu, (UINT32)(value->mask_value.value), 
+                                          (UINT32)(value->mask_value.mask));
             break;
         case VMCS_EXCEPTION_BITMAP:
-            request_vmexit_on_exceptions(gcpu, (UINT32)(value->mask_value.value), (UINT32)(value->mask_value.mask));
+            request_vmexit_on_exceptions(gcpu, (UINT32)(value->mask_value.value), 
+                                         (UINT32)(value->mask_value.mask));
             break;
         case VMCS_CR0_MASK:
-            if(value->mask_value.mask  || ( (!value->mask_value.mask) && (!value->mask_value.value)))
-                request_vmexit_on_cr0(gcpu, (UINT32)(value->mask_value.value), (UINT32)(value->mask_value.mask));
+            if(value->mask_value.mask  || 
+                        ((!value->mask_value.mask) && (!value->mask_value.value)))
+                request_vmexit_on_cr0(gcpu, (UINT32)(value->mask_value.value), 
+                                      (UINT32)(value->mask_value.mask));
             else
                 vmcs_write(vmcs, VMCS_CR0_MASK, value->mask_value.value);
             break;
         case VMCS_CR4_MASK:
-            if(value->mask_value.mask  || ( (!value->mask_value.mask) && (!value->mask_value.value)))
-                request_vmexit_on_cr4(gcpu, (UINT32)(value->mask_value.value), (UINT32)(value->mask_value.mask));
+            if(value->mask_value.mask  || 
+                    ((!value->mask_value.mask) && (!value->mask_value.value)))
+                request_vmexit_on_cr4(gcpu, (UINT32)(value->mask_value.value), 
+                                      (UINT32)(value->mask_value.mask));
             else
                 vmcs_write(vmcs, VMCS_CR4_MASK, value->mask_value.value);
             break;
@@ -1189,7 +1201,8 @@ BOOLEAN vmm_set_vmcs_control_state(GUEST_CPU_HANDLE gcpu, VMM_CONTROL_STATE Cont
             vmcs_write(vmcs, VMCS_EPTP_INDEX, value->value);
             break;
         case VMCS_EPTP_ADDRESS:
-            return ept_set_eptp(gcpu, value->ept_value.ept_root_table_hpa, (UINT32)(value->ept_value.gaw));
+            return ept_set_eptp(gcpu, value->ept_value.ept_root_table_hpa, 
+                                (UINT32)(value->ept_value.gaw));
 #ifdef INCLUDE_UNUSED_CODE
         case VMCS_CR3_TARGET_COUNT:
             vmcs_write(vmcs, VMCS_CR3_TARGET_COUNT, value->cr3.cr3_count);

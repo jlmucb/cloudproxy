@@ -108,24 +108,28 @@ void hw_write_port_32( UINT16 port, UINT32 val)
 
 void hw_write_msr(UINT32 msr_id, UINT64 val)
 {
+    UINT32 low = (val & (UINT32)-1);
+    UINT32 high = (UINT32)(val >> 32);
     asm volatile (
         "\twrmsr\n"
-    ::[val] "A" (val), [msr_id] "c" (msr_id):);
+    :: "a" (low), "d" (high), "c" (msr_id):);
     return;
 }
 
 
 UINT64 hw_read_msr(UINT32 msr_id)
 {
-    UINT64  out;
+    UINT32 high;
+    UINT32 low;
 
     // RDMSR reads the processor (MSR) whose index is stored in ECX, 
     // and stores the result in EDX:EAX. 
     asm volatile (
         "\trdmsr\n"
-    :[out] "=A" (out)
-    :[msr_id] "c" (msr_id):);
-    return out;
+    : "=a" (low), "=d" (high)
+    : "c" (msr_id):);
+
+    return ((UINT64)high << 32) | low;
 }
 
 

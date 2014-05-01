@@ -87,28 +87,19 @@ void vmcall_guest_intialize(
     VMCALL_ENTRY *vmcall_entry;
 
     VMM_LOG(mask_uvmm, level_trace,"vmcall_guest_intialize start\r\n");
-
-    guest_vmcalls = (GUEST_VMCALL_ENTRIES *) vmm_malloc(sizeof(GUEST_VMCALL_ENTRIES));
-    // BEFORE_VMLAUNCH. MALLOC should not fail.
+    guest_vmcalls= (GUEST_VMCALL_ENTRIES *)vmm_malloc(sizeof(GUEST_VMCALL_ENTRIES));
     VMM_ASSERT(guest_vmcalls);
-
     guest_vmcalls->guest_id = guest_id;
     guest_vmcalls->filled_entries_count = 0;
-
     list_add(vmcall_global_state.guest_vmcall_entries, guest_vmcalls->list);
-
-    vmexit_install_handler(
-        guest_id,
-        vmcall_common_handler,
+    vmexit_install_handler( guest_id, vmcall_common_handler,
         Ia32VmxExitBasicReasonVmcallInstruction);
-
     for (id = 0; id < MAX_ACTIVE_VMCALLS_PER_GUEST; ++id) {
         vmcall_entry = &guest_vmcalls->vmcall_table[id];
         vmcall_entry->vmcall_handler = vmcall_unimplemented;
         vmcall_entry->vmcall_id = UNALLOCATED_VMCALL;
     }
     VMM_LOG(mask_uvmm, level_trace,"vmcall_guest_intialize end\r\n");
-
 }
 
 void vmcall_register(
@@ -120,7 +111,6 @@ void vmcall_register(
     VMCALL_ENTRY *vmcall_entry;
 
     VMM_ASSERT(NULL != handler);
-
     // if already exists, check that all params are the same
     vmcall_entry = vmcall_get_vmcall_entry(guest_id, vmcall_id);
     if (NULL != vmcall_entry) {
@@ -129,8 +119,8 @@ void vmcall_register(
             (vmcall_entry->vmcall_special == special_call)) {
             return;
         }
-
-        VMM_LOG(mask_uvmm, level_trace,"VMCALL %d is already registered for the Guest %d with different params\n",
+        VMM_LOG(mask_uvmm, level_trace, 
+                "VMCALL %d is already registered for the Guest %d with different params\n",
                   vmcall_id, guest_id);
         VMM_ASSERT(FALSE);
     }
@@ -150,17 +140,16 @@ void vmcall_register(
 // Return TRUE is the DPL of the guest issuing the VMCALL is in ring 0,
 // otherwise inject the #UD execption and return FALSE.
 BOOLEAN vmcall_check_guest_dpl_is_ring0(GUEST_CPU_HANDLE gcpu){
-	VMCS_OBJECT* vmcs = gcpu_get_vmcs(gcpu);
-	UINT64 guest_cs_selector= vmcs_read(vmcs, VMCS_GUEST_CS_SELECTOR);
+        VMCS_OBJECT* vmcs = gcpu_get_vmcs(gcpu);
+        UINT64 guest_cs_selector= vmcs_read(vmcs, VMCS_GUEST_CS_SELECTOR);
 
     if (BITMAP_GET(guest_cs_selector, DESCRIPTOR_CPL_BIT) == 0) {
         return TRUE;
     }
     VMM_DEBUG_CODE(VMM_LOG(mask_uvmm, level_error,
-			"CPU%d: %s: Error: VMCALL is initialized from ring >0. CPL=%d.\n",
-		   	hw_cpu_id(), __FUNCTION__,
-			BITMAP_GET(guest_cs_selector, DESCRIPTOR_CPL_BIT)));
-
+                        "CPU%d: %s: Error: VMCALL is initialized from ring >0. CPL=%d.\n",
+                        hw_cpu_id(), __FUNCTION__,
+                        BITMAP_GET(guest_cs_selector, DESCRIPTOR_CPL_BIT)));
     gcpu_inject_invalid_opcode_exception(gcpu);
     return FALSE;
 }
@@ -179,7 +168,7 @@ VMEXIT_HANDLING_STATUS vmcall_common_handler(GUEST_CPU_HANDLE gcpu)
     VMEXIT_HANDLING_STATUS handle_status;
 #ifdef ENABLE_INT15_VIRTUALIZATION
     if(is_unrestricted_guest_supported())
-    	if ( handle_int15_vmcall(gcpu) )
+        if ( handle_int15_vmcall(gcpu) )
             return VMEXIT_HANDLED;
 #endif
 #ifdef VMCALL_NOT_ALLOWED_FROM_RING_1_TO_3
@@ -191,7 +180,6 @@ VMEXIT_HANDLING_STATUS vmcall_common_handler(GUEST_CPU_HANDLE gcpu)
     if (VMM_NATIVE_VMCALL_SIGNATURE == gcpu_get_native_gp_reg(gcpu, IA32_REG_RAX)) {
         vmcall_entry = vmcall_get_vmcall_entry(guest_id, vmcall_id);
     }
-
     if (NULL != vmcall_entry) {
         VMM_ASSERT( vmcall_entry->vmcall_id == vmcall_id );
 
@@ -209,7 +197,6 @@ VMEXIT_HANDLING_STATUS vmcall_common_handler(GUEST_CPU_HANDLE gcpu)
             is_vmcall_special = FALSE;
         }
     }
-
     if (NULL != vmcall_function) {
         if (TRUE == is_vmcall_special) {
             vmcall_function(gcpu, NULL, NULL, NULL);
@@ -235,11 +222,11 @@ VMEXIT_HANDLING_STATUS vmcall_common_handler(GUEST_CPU_HANDLE gcpu)
         handle_status = VMEXIT_HANDLED;
     }
     else {
-		VMM_LOG(mask_uvmm, level_error, "CPU%d: %s: Error: VMEXIT_NOT_HANDLED\n",
-				hw_cpu_id(), __FUNCTION__);
+                VMM_LOG(mask_uvmm, level_error, 
+                        "CPU%d: %s: Error: VMEXIT_NOT_HANDLED\n",
+                        hw_cpu_id(), __FUNCTION__);
         handle_status = VMEXIT_NOT_HANDLED;
     }
-
     return handle_status;
 }
 
@@ -249,8 +236,8 @@ VMM_STATUS vmcall_unimplemented( GUEST_CPU_HANDLE gcpu USED_IN_DEBUG_ONLY,
     ADDRESS *arg1 UNUSED, ADDRESS *arg2 UNUSED, ADDRESS *arg3 UNUSED)
 {
     VMM_LOG(mask_uvmm, level_error,
-    		"CPU%d: %s: Error: Unimplemented VMCALL invoked on Guest ",
-    		hw_cpu_id(), __FUNCTION__);
+                "CPU%d: %s: Error: Unimplemented VMCALL invoked on Guest ",
+                hw_cpu_id(), __FUNCTION__);
     PRINT_GCPU_IDENTITY(gcpu);
     VMM_LOG(mask_uvmm, level_error,"\n");
 #ifdef ENABLE_TMSL_API_PROTECTION
@@ -268,15 +255,13 @@ VMM_STATUS vmcall_print_string( GUEST_CPU_HANDLE gcpu,
         HPA             string_gpa;
         HVA             string_hva;
 
-        string_gpa = *string_gva;   // TODO:: translate GVA to GPA (do guest page walk)
+        string_gpa = *string_gva; // TODO:: translate GVA to GPA (do guest page walk)
 
         // translate GPA to HVA
         guest_handle = gcpu_guest_handle(gcpu);
         VMM_ASSERT(guest_handle);
-
         guest_phy_memory = gcpu_get_current_gpm(guest_handle);
         VMM_ASSERT(guest_phy_memory);
-
         if (FALSE == gpm_gpa_to_hva(guest_phy_memory, string_gpa, &string_hva)) {
             VMM_LOG(mask_uvmm, level_trace,"Bad VM Print\n");
         }

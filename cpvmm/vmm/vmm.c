@@ -631,7 +631,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     if (g_is_post_launch) {
 #ifdef JLMDEBUG
         bprint("evmm is post launch (should never happen)\n");
-        LOOP_FOREVER
 #endif
         // To create [0~4G] identity mapping on NO UG machines (NHM), 
         // FPT will be used to handle guest non-paged protected mode.
@@ -946,7 +945,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     if(is_unrestricted_guest_supported()) {
 #ifdef JLMDEBUG
         bprint("evmm: unrestricted guest supported\n");
-        LOOP_FOREVER
 #endif
         make_guest_state_compliant(initial_gcpu);
         unrestricted_guest_enable(initial_gcpu);
@@ -973,7 +971,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 #endif
             enable_ept_during_launch(initial_gcpu);
         }
-
 #ifdef JLMDEBUG
         bprint("evmm: enable_ept_during_launch not called\n");
 #endif

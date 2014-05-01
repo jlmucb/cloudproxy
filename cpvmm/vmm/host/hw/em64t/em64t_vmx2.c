@@ -82,7 +82,6 @@ void vmentry_func(UINT32 firsttime)
         vmm_print_vmcs_region((UINT64*) t_vmcs_save_area);
 
         bprint("I think linux starts at 0x%016llx\n", t_vmcs_save_area[0]);
-        LOOP_FOREVER
     }
 #endif
     // Assumption: rflags_arg is still addressable (by %rsp).
@@ -91,15 +90,13 @@ void vmentry_func(UINT32 firsttime)
 
     if(firsttime) { //do_launch
         gcpu_restore_registers();
-        //bprint("In launch\n");
         asm volatile (
             "\tvmlaunch\n"
             "\tpushfq\n" 
             "\tpop      %%rdx\n" 
             "\tmovq     %%rdx, %[rflags_arg]\n" 
-            // JLM FIX:  save arguments for vm_failure function
         :[rflags_arg] "=m" (rflags_arg) 
-        : :);
+        ::);
     } 
     else {  //do_resume
         gcpu_restore_registers();

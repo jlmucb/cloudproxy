@@ -45,6 +45,9 @@
 #include "memory_dump.h"
 #include "vmexit_dtr_tr.h"
 #include "profiling.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 BOOLEAN legacy_scheduling_enabled = TRUE;
 
@@ -484,6 +487,10 @@ void vmentry_failure_function(ADDRESS flags)
     PRINT_GCPU_IDENTITY(gcpu);
     VMM_LOG(mask_uvmm, level_error," FLAGS=0x%X (ZF=%d CF=%d) ErrorCode=0x%X Desc=%s\n",
             flags, rflags.Bits.ZF, rflags.Bits.CF, code, err);
+#ifdef JLMDEBUG
+    bprint("vmentry_failure_function error code: %d\n", code);
+    LOOP_FOREVER
+#endif
 #ifdef CLI_INCLUDE
     vmcs_print_all(vmcs);
 #endif

@@ -82,8 +82,6 @@ void vmentry_func(UINT32 firsttime)
         vmm_print_vmcs_region((UINT64*) t_vmcs_save_area);
 
         bprint("I think linux starts at 0x%016llx\n", t_vmcs_save_area[0]);
-        // vmcs_read(vmexit_vmcs, VMCS_CONTROL_VECTOR_PIN_EVENTS);
-        // level1_pin_ctrls.Bits.ExternalInterrupt == 1
     }
 #endif
     // Assumption: rflags_arg is still addressable (by %rsp).

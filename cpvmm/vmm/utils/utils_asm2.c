@@ -212,6 +212,8 @@ typedef struct VMCS_SAVED_REGION {
     UINT64  g_pdpte3;
     UINT64  g_preempt;
     UINT64  g_etpt;
+    UINT64  g_controls;
+    UINT64  g_exit_controls;
     UINT64  empty[3];
 } PACKED VMCS_SAVED_REGION;
 
@@ -245,6 +247,8 @@ void vmm_print_vmcs_region(UINT64* pu)
     bprint("g_gdtr1: 0x%016llx g_gdtr2: 0x%016llx g_idtr1: 0x%016llx g_idtr2: 0x%016llx\n",
         p->g_gdtr1, p->g_gdtr2, p->g_idtr1, p->g_idtr2);
     bprint("g_etpt: 0x%016llx\n", p->g_etpt);
+    bprint("g_controls: 0x%016llx, g_exit_controls: 0x%016llx\n", p->g_controls,
+           p->g_exit_controls);
 #if 0
     bprint("g_rsp: 0x%016llx g_rflg2: 0x%016llx\n",
         p->g_rsp, p->g_rflg2);
@@ -588,6 +592,17 @@ void vmm_vmcs_guest_state_read(UINT64* area)
         "\tmovq     $0x201a, %%rax\n"   // etpt
         "\tvmread   %%rax, %%rax\n"
         "\tmovq     %%rax, (%%rcx)\n"
+
+        "\taddq     $8, %%rcx\n"
+        "\tmovq     $0x4000, %%rax\n"   // pin controls
+        "\tvmread   %%rax, %%rax\n"
+        "\tmovq     %%rax, (%%rcx)\n"
+	
+        "\taddq     $8, %%rcx\n"
+        "\tmovq     $0x400C, %%rax\n"   // pin controls
+        "\tvmread   %%rax, %%rax\n"
+        "\tmovq     %%rax, (%%rcx)\n"
+
         "\tjmp      2f\n"
         
         "1:\n"

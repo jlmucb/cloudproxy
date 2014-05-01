@@ -82,6 +82,7 @@ VMEXIT_HANDLING_STATUS vmexit_invalid_vmfunc(GUEST_CPU_HANDLE gcpu);
 #endif
 
 UINT32 vmexit_check_ept_violation(void);
+extern UINT32 vmexit_reason(void);
 
 extern int CLI_active(void);
 
@@ -701,7 +702,6 @@ VMM_STATUS vmexit_install_handler(
     return status;
 }
 
-extern UINT32 vmexit_reason(void);
 UINT64 gcpu_read_guestrip(void);
 
 

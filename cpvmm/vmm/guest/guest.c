@@ -248,15 +248,15 @@ void guest_set_policy( const GUEST_HANDLE guest, const VMM_POLICY *new_policy)
 // Default for all properties - FALSE
 void guest_set_primary( GUEST_HANDLE guest )
 {
-    VMM_ASSERT( guest );
-    VMM_ASSERT( guest->physical_memory_size == 0 );
-    VMM_ASSERT( guest->physical_memory_base == 0 );
-    VMM_ASSERT( guest->saved_image == NULL );
-    VMM_ASSERT( guest->saved_image_size == 0 );
+    VMM_ASSERT(guest);
+    VMM_ASSERT(guest->physical_memory_size == 0);
+    VMM_ASSERT(guest->physical_memory_base == 0);
+    VMM_ASSERT(guest->saved_image == NULL);
+    VMM_ASSERT(guest->saved_image_size == 0);
     guest->flags|= GUEST_IS_PRIMARY_FLAG;
 }
 
-BOOLEAN guest_is_primary(const GUEST_HANDLE  guest )
+BOOLEAN guest_is_primary(const GUEST_HANDLE  guest)
 {
     VMM_ASSERT( guest );
     return (GET_GUEST_IS_PRIMARY_FLAG(guest) != 0);

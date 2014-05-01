@@ -1665,7 +1665,7 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     evmm_g0.cpu_affinity = -1;
     evmm_g0.cpu_states_count = 1+evmm_num_of_aps;
     evmm_g0.devices_count = 0;
-    evmm_g0.image_size = linux_end - linux_start;
+    evmm_g0.image_size = 0; // linux_end - linux_start;
     evmm_g0.image_address= linux_start_address;
     evmm_g0.image_offset_in_guest_physical_memory = linux_start_address;
     evmm_g0.physical_memory_size = 0; 

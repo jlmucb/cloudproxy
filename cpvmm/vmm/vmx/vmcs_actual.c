@@ -633,7 +633,6 @@ void vmcs_deactivate( VMCS_OBJECT* obj )
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
 
     VMM_ASSERT(obj);
-    VMM_ASSERT((p_vmcs->ACTIVATED_FLAG) == 1);
     VMM_ASSERT(hw_cpu_id() == p_vmcs->owning_host_cpu);
     p_vmcs->flags&= (UINT16)(~ACTIVATED_FLAG);
 }
@@ -650,7 +649,6 @@ void vmcs_set_launched( VMCS_OBJECT* obj )
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
 
     VMM_ASSERT(p_vmcs);
-    VMM_ASSERT( GET_LAUNCHED_FLAG(p_vmcs) == 0 );
     p_vmcs->flags|= LAUNCHED_FLAG;
 }
 

@@ -25,12 +25,12 @@
 #include "hw_vmx_utils.h"
 #include "vmm_dbg.h"
 #include "file_codes.h"
-#ifdef JLMDEBUG
-#include "jlmdebug.h"
-#endif
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMCS_INIT_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMCS_INIT_C, __condition)
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define MAX_32BIT_NUMBER 0x0FFFFFFFF
 #define MASK_PE_PG_OFF_UNRESTRICTED_GUEST 0xFFFFFFFF7FFFFFFE

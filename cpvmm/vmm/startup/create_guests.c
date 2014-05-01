@@ -104,7 +104,8 @@ void add_cpu_to_guest(const VMM_GUEST_STARTUP* gstartup, GUEST_HANDLE guest,
 // Init guest except for guest memory
 // Return NULL on error
 static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
-                                const VMM_GUEST_STARTUP* gstartup, const VMM_POLICY  *guest_policy)
+                                const VMM_GUEST_STARTUP* gstartup, 
+                                const VMM_POLICY  *guest_policy)
 {
     GUEST_HANDLE  guest;
     UINT32        cpu_affinity = 0;

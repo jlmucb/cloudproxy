@@ -201,7 +201,6 @@ void vmexit_initialize(void)
 // PURPOSE  : Populate guest table, containing specific VMEXIT handlers with
 //          : default handlers
 // ARGUMENTS: GUEST_ID guest_id
-// RETURNS  : void
 void vmexit_guest_initialize(GUEST_ID guest_id)
 {
     GUEST_VMEXIT_CONTROL *guest_vmexit_control = NULL;
@@ -261,7 +260,8 @@ void vmexit_guest_initialize(GUEST_ID guest_id)
     // install IO VMEXITs
     io_vmexit_guest_initialize(guest_id);
 
-#if 0 /* this is commented out for now to work with serial card from Startech
+#if 0 
+    /* this is commented out for now to work with serial card from Startech
          or the guest OS boot up would be stuck */
     // Handle debug port virtualization
     if ((vmm_debug_port_get_virt_mode() == VMM_DEBUG_PORT_VIRT_HIDE) &&
@@ -283,7 +283,8 @@ void vmexit_guest_initialize(GUEST_ID guest_id)
 
     // install VMCALL services
     vmcall_guest_intialize(guest_id);
-    VMM_LOG(mask_uvmm, level_trace,"vmexit_guest_initialize end guest_id=#%d\r\n", guest_id);
+    VMM_LOG(mask_uvmm, level_trace,"vmexit_guest_initialize end guest_id=#%d\n", 
+            guest_id);
 }
 
 static void vmexit_bottom_up_all_vmms_skip_instruction(GUEST_CPU_HANDLE gcpu,

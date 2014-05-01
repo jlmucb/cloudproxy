@@ -137,7 +137,6 @@ GUEST_HANDLE guest_register(UINT32 magic_number, UINT32 physical_memory_size,
     guest->startup_gpm = gpm_create_mapping();
 #ifdef JLMDEBUG
     bprint("gpm_create_mapping() returned %d\n", guest->startup_gpm);
-    LOOP_FOREVER
 #endif
     VMM_ASSERT(guest->startup_gpm != GPM_INVALID_HANDLE);
     if (guest_policy == NULL)
@@ -621,7 +620,7 @@ GUEST_HANDLE guest_dynamic_create(BOOLEAN stop_and_notify, const VMM_POLICY  *gu
         stop_all_cpus();
     }
     // create guest
-    guest = guest_register( ANONYMOUS_MAGIC_NUMBER, 0,
+    guest = guest_register(ANONYMOUS_MAGIC_NUMBER, 0,
                             (UINT32) -1 /* cpu affinity */, guest_policy);
     if (! guest) {
         VMM_LOG(mask_anonymous, level_trace,"Cannot create guest with the following params: \n"

@@ -669,7 +669,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         // clear TS bit, since we need to operate on XMM registers.
         enable_fx_ops();
     }
-    hw_write_cr4(  vmcs_hw_make_compliant_cr4( hw_read_cr4() ) );
+    hw_write_cr4(vmcs_hw_make_compliant_cr4(hw_read_cr4()));
     num_of_guests = startup_struct->number_of_secondary_guests + 1;
 #ifdef JLMDEBUG
     bprint("evmm: control registers are vmx compatible\n");

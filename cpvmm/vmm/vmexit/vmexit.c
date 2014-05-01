@@ -486,6 +486,9 @@ void vmentry_failure_function(ADDRESS flags)
 
     VMM_LOG(mask_uvmm, level_error,"CPU%d: VMENTRY Failed on ", hw_cpu_id());
     PRINT_GCPU_IDENTITY(gcpu);
+    bprint("FLAGS=0x%x (ZF=%d CF=%d) ErrorCode=0x%x Desc=%s\n",
+            flags, rflags.Bits.ZF, rflags.Bits.CF, code, err);
+    LOOP_FOREVER
     VMM_LOG(mask_uvmm, level_error," FLAGS=0x%X (ZF=%d CF=%d) ErrorCode=0x%X Desc=%s\n",
             flags, rflags.Bits.ZF, rflags.Bits.CF, code, err);
 #ifdef JLMDEBUG

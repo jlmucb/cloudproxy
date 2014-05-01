@@ -362,7 +362,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     g_num_of_cpus = num_of_cpus;
 
     // get post launch status
-#if 0
+#if 1
     g_is_post_launch = (BITMAP_GET(startup_struct->flags, VMM_STARTUP_POST_OS_LAUNCH_MODE) != 0);
 #else
     g_is_post_launch = 0;

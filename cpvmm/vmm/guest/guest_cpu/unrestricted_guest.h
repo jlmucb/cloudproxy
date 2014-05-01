@@ -37,13 +37,10 @@ void unrestricted_guest_disable(GUEST_CPU_HANDLE gcpu);
 void unrestricted_guest_enable(GUEST_CPU_HANDLE gcpu);
 
 //Check whether Unrestricted guest is supported 
-#if 0
-    const VMCS_HW_CONSTRAINTS *hw_constraints = vmcs_hw_get_vmx_constraints();
-    return (hw_constraints->unrestricted_guest_supported);
-#endif
 INLINE BOOLEAN is_unrestricted_guest_supported(void)
 {
-    return 0;
+    const VMCS_HW_CONSTRAINTS *hw_constraints = vmcs_hw_get_vmx_constraints();
+    return (hw_constraints->unrestricted_guest_supported);
 }
 
 

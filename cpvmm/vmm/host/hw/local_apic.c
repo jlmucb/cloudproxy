@@ -551,10 +551,7 @@ BOOLEAN local_apic_init( UINT16 num_of_cpus )
     UINT32 chunk_size = num_of_cpus * sizeof( LOCAL_APIC_PER_CPU_DATA );
     if (lapic_cpu_data == 0) {
         lapic_cpu_data = vmm_page_alloc( PAGE_ROUNDUP( chunk_size ));
-
-        // BEFORE_VMLAUNCH
         VMM_ASSERT( lapic_cpu_data != NULL );
-
         vmm_memset( lapic_cpu_data, 0, chunk_size );
     }
 

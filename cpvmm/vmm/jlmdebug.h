@@ -8,5 +8,5 @@
 #define UNUSEDVAR(x) ((void)x)
 #undef VMM_ASSERT
 #define VMM_ASSERT(x) \
-    if(x) { bprint("VMM_ASSERT\n"); LOOP_FOREVER }
+    if(!(x)) { bprint("VMM_ASSERT\n"); LOOP_FOREVER }
 #endif

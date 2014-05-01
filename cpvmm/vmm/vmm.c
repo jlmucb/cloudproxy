@@ -310,7 +310,6 @@ void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u,
 
     // setup stack
     if (!startup_struct || !vmm_stack_caclulate_stack_pointer(startup_struct, cpu_id, &new_stack_pointer)) {
-        // BEFORE_VMLAUNCH. Failure check can be included in POSTLAUNCH.
         VMM_BREAKPOINT();
     }
     input_params.local_apic_id = local_apic_id;
@@ -446,7 +445,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 #endif
     }
 
-    VMM_ASSERT(!vmm_stack_is_initialized());
+    VMM_ASSERT(vmm_stack_is_initialized());
     vmm_stacks_get_details(&lowest_stacks_addr, &stacks_size);
     VMM_LOG(mask_uvmm, level_trace,"\nBSP:Stacks are successfully initialized:\n");
     VMM_LOG(mask_uvmm, level_trace,"\tlowest address of all stacks area = %P\n", 
@@ -469,9 +468,11 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     VMM_LOG(mask_uvmm, level_trace,"\theap base address = %P \n", heap_address);
     VMM_LOG(mask_uvmm, level_trace,"\theap last occupied address = %P \n", 
                 heap_last_occupied_address);
+#if 0
     VMM_LOG(mask_uvmm, level_trace,"\tactual size is %P, when requested size was %P\n", 
-            heap_last_occupied_address - heap_address, heap_size);
-    VMM_ASSERT(heap_last_occupied_address <= (startup_struct->vmm_memory_layout[0].base_address + startup_struct->vmm_memory_layout[0].total_size));
+            heap_last_occupied_address-heap_address, heap_size);
+    VMM_ASSERT(heap_last_occupied_address<=(startup_struct->vmm_memory_layout[0].base_address + startup_struct->vmm_memory_layout[0].total_size));
+#endif
 
     //  Initialize CLI monitor
     CliMonitorInit();   // must be called after heap initialization.
@@ -551,7 +552,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     exec_image_initialize();
 #endif
 
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     bprint("evmm: about to call hmm_initialize()\n");
 #endif
     // Initialize Host Memory Manager
@@ -568,7 +569,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
             "\nBSP: Host Memory Manager was successfully initialized.\n");
 
 #ifdef JLMDEBUG
-    bprint("evmm: host emmory manager intialized \n");
+    bprint("evmm: host memory manager intialized \n");
 #endif
     hmm_set_required_values_to_control_registers();
 

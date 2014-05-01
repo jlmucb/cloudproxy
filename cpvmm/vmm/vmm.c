@@ -439,8 +439,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     if (!vmm_stack_initialize(startup_struct)) {
         VMM_LOG(mask_uvmm, level_error,
                 "\nFAILURE: Stack initialization failed\n");
-        // BEFORE_VMLAUNCH. Keep the Deadloop as this condition will not
-        // occur with POSTLAUNCH.
         VMM_DEADLOOP();
 #ifdef JLMDEBUG
         bprint("Cant initialize stack\n");
@@ -448,7 +446,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 #endif
     }
 
-    VMM_ASSERT(vmm_stack_is_initialized());
+    VMM_ASSERT(!vmm_stack_is_initialized());
     vmm_stacks_get_details(&lowest_stacks_addr, &stacks_size);
     VMM_LOG(mask_uvmm, level_trace,"\nBSP:Stacks are successfully initialized:\n");
     VMM_LOG(mask_uvmm, level_trace,"\tlowest address of all stacks area = %P\n", 
@@ -553,11 +551,18 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     exec_image_initialize();
 #endif
 
+#ifdef JLMDEBUG1
+    bprint("evmm: about to call hmm_initialize()\n");
+#endif
     // Initialize Host Memory Manager
     if (!hmm_initialize(startup_struct)) {
         VMM_LOG(mask_uvmm, level_error,
            "\nBSP FAILURE: Initialization of Host Memory Manager has failed\n");
         VMM_DEADLOOP();
+#ifdef JLMDEBUG
+        bprint("hmm_initialize failed\n");
+        LOOP_FOREVER
+#endif
     }
     VMM_LOG(mask_uvmm, level_trace,
             "\nBSP: Host Memory Manager was successfully initialized.\n");

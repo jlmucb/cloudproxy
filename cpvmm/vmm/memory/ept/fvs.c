@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -35,36 +33,27 @@
 #include "common_types.h"
 #include "profiling.h"
 
-static
-void fvs_init_eptp_switching(GUEST_DESCRIPTOR *guest);
-static
-HPA fvs_get_eptp_list_paddress(GUEST_CPU_HANDLE gcpu);
-static
-void fvs_enable_eptp_switching(CPU_ID from UNUSED,void* arg);
-static
-void fvs_disable_eptp_switching(CPU_ID from UNUSED,void* arg);
-
+static void fvs_init_eptp_switching(GUEST_DESCRIPTOR *guest);
+static HPA fvs_get_eptp_list_paddress(GUEST_CPU_HANDLE gcpu);
+static void fvs_enable_eptp_switching(CPU_ID from UNUSED,void* arg);
+static void fvs_disable_eptp_switching(CPU_ID from UNUSED,void* arg);
 extern UINT32 vmexit_reason(void);
 extern BOOLEAN vmcs_sw_shadow_disable[];
 
 void fvs_initialize(GUEST_HANDLE guest, UINT32 number_of_host_processors)
 {
-
     guest->fvs_desc = (FVS_DESCRIPTOR *) vmm_malloc(sizeof(FVS_DESCRIPTOR));
-
     VMM_ASSERT(guest->fvs_desc);
     guest->fvs_desc->num_of_cpus = number_of_host_processors;
     guest->fvs_desc->dummy_eptp_address = 0;
     guest->fvs_desc->eptp_list_paddress = vmm_malloc(sizeof(HPA) * number_of_host_processors);
     guest->fvs_desc->eptp_list_vaddress = vmm_malloc(sizeof(HVA) * number_of_host_processors);
-
     VMM_LOG(mask_anonymous, level_trace,
          "fvs desc allocated...=0x%016lX\n", guest->fvs_desc);
     fvs_init_eptp_switching(guest);
 }
 
-static
-void fvs_init_eptp_switching(GUEST_DESCRIPTOR *guest)
+static void fvs_init_eptp_switching(GUEST_DESCRIPTOR *guest)
 {
     UINT32 i;
 
@@ -100,15 +89,13 @@ void fvs_guest_vmfunc_enable(GUEST_CPU_HANDLE gcpu)
 
     ctrls2.Uint32 = 0;
     vmm_zeromem(&request, sizeof(request));
-
     ctrls2.Bits.Vmfunc = 1;
     request.proc_ctrls2.bit_mask    = ctrls2.Uint32;
     request.proc_ctrls2.bit_request = UINT64_ALL_ONES;
     gcpu_control2_setup( gcpu, &request );
 }
 
-static
-HPA fvs_get_eptp_list_paddress(GUEST_CPU_HANDLE gcpu)
+static HPA fvs_get_eptp_list_paddress(GUEST_CPU_HANDLE gcpu)
 {
     GUEST_HANDLE    guest = gcpu_guest_handle(gcpu);
     const VIRTUAL_CPU_ID *vcpuid = guest_vcpu(gcpu);
@@ -128,7 +115,6 @@ BOOLEAN fvs_add_entry_to_eptp_list(GUEST_HANDLE guest,
     UINT32 ept_gaw = 0, i;
 
     VMM_ASSERT(guest->fvs_desc);
-    
     if ( index < MAX_EPTP_ENTRIES ) {
         ept_gaw =  ept_hw_get_guest_address_width(gaw);
         if(ept_gaw == (UINT32) -1) {
@@ -144,7 +130,6 @@ BOOLEAN fvs_add_entry_to_eptp_list(GUEST_HANDLE guest,
     else {
     	return FALSE;
     }
-
     for(i = 0; i < guest->fvs_desc->num_of_cpus; i++) {
         hva = (UINT64 *)guest->fvs_desc->eptp_list_vaddress[i];
         *(hva + index) = eptp.Uint64;
@@ -166,12 +151,10 @@ BOOLEAN fvs_delete_entry_from_eptp_list(GUEST_HANDLE guest, UINT64 index)
     else {
     	return FALSE;
     }
-
     for(i = 0; i < guest->fvs_desc->num_of_cpus; i++) {
         hva = (UINT64 *)guest->fvs_desc->eptp_list_vaddress[i];
         *(hva + index) = 0;
     }
-
     return TRUE;
 }
 
@@ -192,8 +175,7 @@ void fvs_vmfunc_vmcs_init(GUEST_CPU_HANDLE gcpu)
 }
 #pragma warning( push )
 #pragma warning (disable : 4100) // disable non-referenced formal parameters
-static
-void fvs_enable_eptp_switching(CPU_ID from UNUSED,void* arg)
+static void fvs_enable_eptp_switching(CPU_ID from UNUSED,void* arg)
 {
     UINT64 value = 0;
     GUEST_HANDLE guest = (GUEST_HANDLE) arg;
@@ -208,15 +190,12 @@ void fvs_enable_eptp_switching(CPU_ID from UNUSED,void* arg)
         vmcs_write(vmcs, VMCS_VMFUNC_EPTP_LIST_ADDRESS, 
                               fvs_get_eptp_list_paddress(gcpu));
     }
-    
     gcpu->fvs_cpu_desc.enabled = TRUE;
-    
     VMM_LOG(mask_anonymous, level_trace,
                     "EPTP switching enabled by IB-agent...0x%016lX\n", value);
 }
 
-static
-void fvs_disable_eptp_switching(CPU_ID from UNUSED,void* arg)
+static void fvs_disable_eptp_switching(CPU_ID from UNUSED,void* arg)
 {
     UINT64 value = 0;
     GUEST_HANDLE guest = (GUEST_HANDLE) arg;
@@ -246,18 +225,16 @@ void fvs_enable_fvs(GUEST_CPU_HANDLE gcpu)
     VMM_ASSERT(vcpuid);
     VMM_ASSERT(guest->fvs_desc);
     gcpu_id = vcpuid->guest_cpu_id;
-    
     fvs_enable_eptp_switching(gcpu_id, guest);
     vmm_zeromem(&ipc_dest, sizeof(ipc_dest));
     ipc_dest.addr_shorthand = IPI_DST_ALL_EXCLUDING_SELF;
     ipc_execute_handler_sync(ipc_dest, fvs_enable_eptp_switching, guest);
-
     VMM_LOG(mask_anonymous, level_trace,"Fast view switch enabled...\n");
 }
 
 void fvs_disable_fvs(GUEST_CPU_HANDLE gcpu)
 {
-	GUEST_HANDLE guest = gcpu_guest_handle(gcpu);
+    GUEST_HANDLE guest = gcpu_guest_handle(gcpu);
     const VIRTUAL_CPU_ID *vcpuid = guest_vcpu(gcpu);
     UINT16 gcpu_id = 0;
     IPC_DESTINATION ipc_dest;
@@ -267,14 +244,11 @@ void fvs_disable_fvs(GUEST_CPU_HANDLE gcpu)
     VMM_ASSERT(vcpuid);
     VMM_ASSERT(guest->fvs_desc);
     gcpu_id = vcpuid->guest_cpu_id;
-
     fvs_disable_eptp_switching(gcpu_id, guest);
     vmm_zeromem(&ipc_dest, sizeof(ipc_dest));
     ipc_dest.addr_shorthand = IPI_DST_ALL_EXCLUDING_SELF;
     ipc_execute_handler_sync(ipc_dest, fvs_disable_eptp_switching, guest);
-
-    VMM_LOG(mask_anonymous, level_trace,
-                           "Fast view switch disabled...\n");
+    VMM_LOG(mask_anonymous, level_trace, "Fast view switch disabled...\n");
 }
 
 BOOLEAN fvs_is_fvs_enabled(GUEST_CPU_HANDLE gcpu)
@@ -306,7 +280,6 @@ HPA *fvs_get_all_eptp_list_paddress(GUEST_CPU_HANDLE gcpu)
 
     VMM_ASSERT(guest);
     VMM_ASSERT(guest->fvs_desc);
-
     return guest->fvs_desc->eptp_list_paddress;
 }
 
@@ -328,17 +301,12 @@ void fvs_vmexit_handler(GUEST_CPU_HANDLE gcpu)
 
     if (vmexit_reason() != Ia32VmxExitBasicReasonVmcallInstruction)
         return;
-
     VMM_ASSERT(gcpu);
-
     r_eax = gcpu_get_native_gp_reg(gcpu, IA32_REG_RAX);
-
     /* Check whether we drop because of fast view switch */
     if (r_eax != FAST_VIEW_SWITCH_LEAF)
         return;
-
     TMSL_PROFILING_API_ENTRY(TMSL_X_VMCALL_FVS, PROF_API_CALLER_IB);
-
     r_ecx = gcpu_get_native_gp_reg(gcpu, IA32_REG_RCX);
     vcpu_id = guest_vcpu( gcpu );
     /* Check whether view is valid */
@@ -383,7 +351,6 @@ void fvs_print_eptp_list(GUEST_CPU_HANDLE gcpu)
 
     VMM_ASSERT(vcpuid);
     hva = (UINT64 *)guest->fvs_desc->eptp_list_vaddress[vcpuid->guest_cpu_id];
-
     VMM_LOG(mask_anonymous, level_print_always,"\n");
     for(index=0;index<TOTAL_NUM_VIEWS;index++) {
         VMM_LOG(mask_anonymous, 

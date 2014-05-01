@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -58,19 +56,16 @@ BOOLEAN ve_update_hpa(GUEST_ID guest_id, CPU_ID guest_cpu_id, HPA hpa, UINT32 en
                 return FALSE;
         }
     }
-
     vcpu_id.guest_id = guest_id;
     vcpu_id.guest_cpu_id = guest_cpu_id;
     gcpu = gcpu_state(&vcpu_id);
     //paranoid check. If assertion fails, possible memory corruption.
     VMM_ASSERT(gcpu);
-
     gcpu->ve_desc.ve_info_hpa = hpa;
     return TRUE;
 }
 
-static
-void ve_activate_hw_ve(GUEST_CPU_HANDLE gcpu, BOOLEAN enable)
+static void ve_activate_hw_ve(GUEST_CPU_HANDLE gcpu, BOOLEAN enable)
 {
     PROCESSOR_BASED_VM_EXECUTION_CONTROLS2  proc_ctrls2;
     VMEXIT_CONTROL                          vmexit_request;
@@ -99,7 +94,6 @@ void ve_enable_ve(GUEST_CPU_HANDLE gcpu)
             return;
         gcpu->ve_desc.ve_info_hva = hva;
     }
-
     gcpu->ve_desc.ve_enabled = TRUE;
 }
 
@@ -116,7 +110,7 @@ void ve_disable_ve(GUEST_CPU_HANDLE gcpu)
     gcpu->ve_desc.ve_enabled = FALSE;
 }
 
-//
+
 // returns TRUE - SW #VE injected
 BOOLEAN ve_handle_sw_ve(GUEST_CPU_HANDLE gcpu, UINT64 qualification, UINT64 gla, UINT64 gpa, UINT64 view)
 {
@@ -131,34 +125,27 @@ BOOLEAN ve_handle_sw_ve(GUEST_CPU_HANDLE gcpu, UINT64 qualification, UINT64 gla,
 
     if (ve_is_hw_supported())
         return FALSE;
-
     if (!ve_is_ve_enabled(gcpu))
         return FALSE;
-
     hva = (VE_EPT_INFO *)gcpu->ve_desc.ve_info_hva;
     VMM_ASSERT(hva);
-
     // check flag
     if (hva->flag != 0)
         return FALSE;
-
     // check PE
     cr0.Uint64 = vmcs_read(vmcs, VMCS_GUEST_CR0);
     if (0 == cr0.Bits.PE)
         return FALSE;
-
     // check the logical processor is not in the process of delivering an
     // event through the IDT
     idt_vectoring_info.Uint32 =
             (UINT32)vmcs_read(vmcs, VMCS_EXIT_INFO_IDT_VECTORING);
     if (idt_vectoring_info.Bits.Valid)
         return FALSE;
-
     // check exception bitmap bit 20
     exceptions.Uint32 = (UINT32)vmcs_read(vmcs, VMCS_EXCEPTION_BITMAP);
     if (exceptions.Bits.VE)
         return FALSE;
-
     // check eptp pte bit 63
     guest = gcpu_guest_handle(gcpu);
     if (!gpm_gpa_to_hpa(gcpu_get_current_gpm(guest), gpa, &hpa, &attrs))
@@ -166,14 +153,12 @@ BOOLEAN ve_handle_sw_ve(GUEST_CPU_HANDLE gcpu, UINT64 qualification, UINT64 gla,
     if (attrs.ept_attr.suppress_ve) {
         return FALSE;
     }
-
     hva->exit_reason = Ia32VmxExitBasicReasonEptViolation;
     hva->flag = 0xFFFFFFFF;	// must clear flag in ISR
     hva->exit_qualification = qualification;
     hva->gla = gla;
     hva->gpa = gpa;
     hva->eptp_index = (UINT16)view;
-
     // inject soft #VE
     return gcpu_inject_fault(gcpu, IA32_EXCEPTION_VECTOR_VIRTUAL_EXCEPTION, 0);
 }

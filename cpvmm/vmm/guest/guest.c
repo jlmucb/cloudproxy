@@ -136,7 +136,7 @@ GUEST_HANDLE guest_register(UINT32 magic_number, UINT32 physical_memory_size,
     guest->saved_image_size = 0;
     guest->startup_gpm = gpm_create_mapping();
 #ifdef JLMDEBUG
-    bprint("gpm_create_mapping() returned %d\n", guest->startup_gpm);
+    bprint("gpm_create_mapping() returned %p\n", guest->startup_gpm);
 #endif
     VMM_ASSERT(guest->startup_gpm != GPM_INVALID_HANDLE);
     if (guest_policy == NULL)

@@ -157,6 +157,13 @@ ADMIN_ARGS="-config_path tao.config -policy_pass $PASS -alsologtostderr=1"
 admin="bin/tao_admin $ADMIN_ARGS"
 start_hosted="bin/start_hosted_program -program"
 
+function extract_pid()
+{
+	childname="$1"
+	pid=`echo "$childname" | sed 's/^Success: Program([0-9]\+, ".*", ".*", ".*")::PID(\([0-9]\+\))$/\1/'`
+	echo "$pid"
+}
+
 cd $TEST
 
 # return at most the first 15 chars of argument
@@ -296,12 +303,15 @@ function testpgm()
 	case "$1" in
 		client|server)
 			echo "Starting cloudproxy server..."
-			server_pid=`$start_hosted bin/server -- --v=2`
+			server_id=`$start_hosted bin/server -- --v=2`
+			echo "$server_id";
+			server_pid=`extract_pid $server_id`
 			sleep 2
 			tail -f $GLOG_log_dir/server.INFO &
 			server_tail_pid=$!
 			echo "Starting cloudproxy client..."
-			client_pid=`$start_hosted  bin/client -- --v=2`
+			client_id=`$start_hosted  bin/client -- --v=2`
+			client_pid=`extract_pid $client_id`
 			sleep 2
 			tail -f $GLOG_log_dir/client.INFO &
 			client_tail_pid=$!
@@ -317,12 +327,14 @@ function testpgm()
 			# make some test data too
 			echo "test data $RANDOM" >> file_client_files/test
 			echo "Starting cloudproxy file server..."
-			server_pid=`$start_hosted  bin/fserver -- --v=2`
+			server_id=`$start_hosted  bin/fserver -- --v=2`
+			server_pid=`extract_pid $server_id`
 			sleep 2
 			tail -f $GLOG_log_dir/fserver.INFO &
 			server_tail_pid=$!
 			echo "Starting cloudproxy file client..."
-			client_pid=`$start_hosted  bin/fclient -- --v=2`
+			client_id=`$start_hosted  bin/fclient -- --v=2`
+			client_pid=`extract_pid $client_id`
 			sleep 2
 			tail -f $GLOG_log_dir/fclient.INFO &
 			client_tail_pid=$!
@@ -334,7 +346,8 @@ function testpgm()
 			;;
 		http)
 			echo "Starting cloudproxy http echo server..."
-			server_pid=`$start_hosted  bin/http_echo_server -- --v=2`
+			server_id=`$start_hosted  bin/http_echo_server -- --v=2`
+			server_pid=`extract_pid $server_id`
 			sleep 2
 			tail -f $GLOG_log_dir/http_echo_server.INFO &
 			tail_pid=$!
@@ -347,7 +360,8 @@ function testpgm()
 			;;
 		https)
 			echo "Starting cloudproxy https echo server..."
-			server_pid=`$start_hosted  bin/https_echo_server -- --v=2`
+			server_id=`$start_hosted  bin/https_echo_server -- --v=2`
+			server_pid=`extract_pid $server_id`
 			sleep 2
 			tail -f $GLOG_log_dir/https_echo_server.INFO &
 			tail_pid=$!

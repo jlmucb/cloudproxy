@@ -40,6 +40,7 @@ class RootAuth : public TaoDomain {
   virtual ~RootAuth() {}
 
   /// Only root attestations are allowed, so IsAuthorized() is always false.
+  virtual bool IsAuthorized(const string &full_name) const { return false; }
   virtual bool IsAuthorized(const string &hash, const string &alg,
                             const string &name) const {
     return false;

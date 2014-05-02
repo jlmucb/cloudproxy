@@ -39,10 +39,10 @@ class FakeProgramFactory : public ProcessFactory {
 
   /// Instead of creating a program, return true and ignore the arguments.
   virtual bool CreateHostedProgram(const string &name, const list<string> &args,
-                                   const string &child_hash,
+                                   const string &child_name,
                                    TaoChannel &parent_channel,  // NOLINT
                                    string *identifier) const {
-    identifier->assign(name);
+    identifier->assign("0");
     return true;
   }
 

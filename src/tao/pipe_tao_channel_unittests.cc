@@ -43,6 +43,7 @@ using tao::PipeTaoChannel;
 using tao::PipeTaoChannelParams;
 using tao::ScopedFd;
 using tao::ScopedTempDir;
+using tao::Tao;
 using tao::TaoChildChannelParams;
 using tao::UnixDomainSocketTaoAdminChannel;
 using tao::UnixFdTaoChildChannel;
@@ -61,9 +62,9 @@ class PipeTaoChannelTest : public ::testing::Test {
     tao_.reset(new FakeTao());
     ASSERT_TRUE(tao_->InitTemporaryTPM()) << "Could not initialize the Tao";
 
-    string child_hash("Fake hash");
+    string child_name("Fake hash");
     string params;
-    ASSERT_TRUE(tao_channel_->AddChildChannel(child_hash, &params))
+    ASSERT_TRUE(tao_channel_->AddChildChannel(child_name, &params))
         << "Could not add a child to the channel";
 
     // Take apart the params to get the pipes for the child.
@@ -109,8 +110,8 @@ TEST_F(PipeTaoChannelTest, CreationTest) {
   ASSERT_TRUE(chan->Init());
   string path = "/fake/program";
   list<string> args;
-  string identifier;
-  ASSERT_TRUE(chan->StartHostedProgram(path, args, &identifier));
+  string child_name;
+  ASSERT_TRUE(chan->StartHostedProgram(path, args, &child_name));
 }
 
 TEST_F(PipeTaoChannelTest, RandomTest) {
@@ -123,19 +124,21 @@ TEST_F(PipeTaoChannelTest, SealTest) {
   string bytes;
   EXPECT_TRUE(child_channel_->GetRandomBytes(128, &bytes));
   string sealed;
-  EXPECT_TRUE(child_channel_->Seal(bytes, &sealed));
+  EXPECT_TRUE(child_channel_->Seal(bytes, Tao::PolicySameProgHash, &sealed));
 }
 
 TEST_F(PipeTaoChannelTest, UnsealTest) {
   string bytes;
   EXPECT_TRUE(child_channel_->GetRandomBytes(128, &bytes));
   string sealed;
-  EXPECT_TRUE(child_channel_->Seal(bytes, &sealed));
+  EXPECT_TRUE(child_channel_->Seal(bytes, Tao::PolicySameProgHash, &sealed));
 
   string unsealed;
-  EXPECT_TRUE(child_channel_->Unseal(sealed, &unsealed));
+  int policy;
+  EXPECT_TRUE(child_channel_->Unseal(sealed, &unsealed, &policy));
 
   EXPECT_EQ(bytes, unsealed);
+  EXPECT_TRUE(policy == Tao::PolicySameProgHash);
 }
 
 TEST_F(PipeTaoChannelTest, AttestTest) {

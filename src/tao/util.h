@@ -50,9 +50,13 @@ class TaoDomain;
 typedef scoped_ptr_malloc<RSA, keyczar::openssl::OSSLDestroyer<RSA, RSA_free>>
     ScopedRsa;
 
-/// A pointer to an OpenSSL EC_KEY object
+/// A pointer to an OpenSSL EC_KEY object.
 typedef scoped_ptr_malloc<
     EC_KEY, keyczar::openssl::OSSLDestroyer<EC_KEY, EC_KEY_free>> ScopedECKey;
+
+/// A pointer to an OpenSSL BIO object.
+typedef scoped_ptr_malloc<
+    BIO, keyczar::openssl::OSSLDestroyer<BIO, BIO_free_all>> ScopedBio;
 
 /// Close a file descriptor and ignore the return value. This is used by the
 /// definition of ScopedFd.
@@ -113,20 +117,15 @@ bool ReleaseSelfPipeSignalFd(int fd);
 /// Set the disposition of SIGCHLD to prevent child zombification.
 bool LetChildProcsDie();
 
+/// Hash a string using SHA256.
+/// @param s The string to hash.
+/// @param[out] hash The resulting hash.
+bool Sha256(const string &s, string *hash);
+
 /// Hash a file using SHA256.
 /// @param path The path of the file to hash.
 /// @param[out] hash The resulting hash.
 bool Sha256FileHash(const string &path, string *hash);
-
-/// Hash a set of virtual machine parameters in a composite structure: hash each
-/// one, then concatenate them and hash them together.
-/// @param vm_template_path A file containing template to use to create the VM.
-/// @param name The name of the virtual machine.
-/// @param kernel_path The kernel to use (the filename; not the bytes).
-/// @param initrd_path The initrd to use (the filename; not the bytes).
-/// @param[out] hash The resulting hash.
-bool HashVM(const string &vm_template, const string &name,
-            const string &kernel_path, const string &initrd_path, string *hash);
 
 /// Register some well-known TaoChannels with the registry. The list of
 /// registered TaoChannels is:
@@ -285,6 +284,20 @@ bool CreateTempRootDomain(ScopedTempDir *temp_dir,
 /// @param port The port to connect to.
 /// @param[out] sock The connected client socket.
 bool ConnectToTCPServer(const string &host, const string &port, int *sock);
+
+/// Add double-quotes to a string, but escape any existing backslashes or
+/// double-quotes.
+/// @param s The string to escape and add quotes around.
+string quotedString(const string &s);
+
+/// Read a double-quoted string from a stream, and remove the outer
+/// double-quotes and escapes for inner double-quotes and backslashes.
+/// This also ignores leading whitespace, as typical of istream operations.
+/// @param in The input stream.
+/// @param s The resulting quoted string.
+std::stringstream &getQuotedString(std::stringstream &in, string *s);  // NOLINT
+
+std::stringstream &skip(std::stringstream &in, const string &s);  // NOLINT
 
 }  // namespace tao
 

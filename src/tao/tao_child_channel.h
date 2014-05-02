@@ -31,11 +31,11 @@ using std::string;
 
 namespace tao {
 /// An interface that hosted programs use to communicate with a host Tao. It
-/// implements an interface similar to the Tao but without the child_hash
+/// implements an interface similar to the Tao but without the child_name
 /// parameter in cases where it is implicit. Other parameters are bundled
 /// up and sent in a message along the channel. The details of this message
 /// passing depend on the specific implementation). The host TaoChannel RPC
-/// server will, upon receiving a message, add the appropriate child_hash
+/// server will, upon receiving a message, add the appropriate child_name
 /// parameter. In this way, a hosted program is not free to use an arbitrary
 /// hash.
 class TaoChildChannel {
@@ -50,52 +50,39 @@ class TaoChildChannel {
   virtual bool Destroy() { return true; }
 
   /// Methods that invoke the hosted-program interfaces of the host Tao.
-  /// These methods omit the child_hash parameter since it is implicit.
+  /// These methods omit the child_name parameter since it is implicit.
   /// @{
 
   /// Get random bytes. See Tao for semantics.
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
 
   /// Seal data. See Tao for semantics.
-  virtual bool Seal(const string &data, string *sealed) const;
+  virtual bool Seal(const string &data, int policy, string *sealed) const;
 
   /// Unseal data. See Tao for semantics.
-  virtual bool Unseal(const string &sealed, string *data) const;
+  virtual bool Unseal(const string &sealed, string *data, int *policy) const;
 
   /// Generate attestation. See Tao for semantics.
   virtual bool Attest(const string &data, string *attestation) const;
 
+  /// Get our full name. See Tao for semantics.
+  virtual bool GetHostedProgramFullName(string *full_name) const;
+
+  /// Extend our name. See Tao for semantics.
+  virtual bool ExtendName(const string &subprin) const;
+
   /// @}
 
  protected:
-  /// Receive a protobuf on the channel from a host. Subclasses implement this
-  /// method for their particular channel type.
-  /// @param[out] m The received message.
-  virtual bool ReceiveMessage(google::protobuf::Message *m) const = 0;
-
-  /// Send a protobuf on a channel to a host. Subclasses implement
-  /// this method for their particular channel type.
-  /// @param m The message to send.
-  virtual bool SendMessage(const google::protobuf::Message &m) const = 0;
-
- private:
-  /// Send an RPC to the host Tao.
-  /// @param rpc The RPC containing the message.
-  virtual bool SendRPC(const TaoChildRequest &rpc) const;
+  /// Send an RPC request to the host Tao.
+  /// @param rpc The rpc to send.
+  virtual bool SendRPC(const TaoChildRequest &rpc) const = 0;
 
   /// Receive an RPC response from the host Tao.
-  /// @param[out] The response to an RPC.
-  virtual bool GetResponse(TaoChildResponse *resp) const;
+  /// @param resp The response received.
+  virtual bool ReceiveRPC(TaoChildResponse *resp) const = 0;
 
-  /// Sends a simple RPC containing a string and an integer and getting a string
-  /// back.
-  /// @param instr The string to send.
-  /// @param inval The integer to send.
-  /// @param[out] out The string returned by the host Tao.
-  /// @param rpc_type The type of RPC to send, like SEAL.
-  bool SendAndReceiveData(const string &instr, int inval, string *out,
-                          TaoChildRequestType rpc_type) const;
-
+ private:
   DISALLOW_COPY_AND_ASSIGN(TaoChildChannel);
 };
 }  // namespace tao

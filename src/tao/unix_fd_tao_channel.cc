@@ -121,33 +121,43 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
 
     // Handle a request from each ready child channel.
     std::list<pair<const string, pair<int, int>>> failed_child;
+    std::list<pair<const string, const string>> child_extends;
     for (auto &it : descriptors_) {
-      const string &child_hash = it.first;
+      const string &original_child_name = it.first;
       int read_fd = it.second.first;
       int write_fd = it.second.second;
       if (FD_ISSET(read_fd, &read_fds)) {
         TaoChildRequest rpc;
         TaoChildResponse resp;
+        string child_name = original_child_name;
         if (!tao::ReceiveMessage(read_fd, &rpc) ||
-            !HandleChildRPC(tao, child_hash, rpc, &resp) ||
+            !HandleChildRPC(tao, &child_name, rpc, &resp) ||
             !tao::SendMessage(write_fd, resp)) {
-          tao->RemoveHostedProgram(child_hash);
-          LOG(ERROR) << "Error handling RPC for child " << child_hash;
+          tao->RemoveHostedProgram(child_name);
+          LOG(ERROR) << "Error handling RPC for child " << original_child_name;
           failed_child.push_back(it);
+        } else if (child_name != original_child_name) {
+          child_extends.push_back(make_pair(original_child_name, child_name));
         }
       }
     }
 
+    // Extend child names.
+    for (auto &it : child_extends) {
+      descriptors_[it.second] = descriptors_[it.first];
+      descriptors_.erase(it.first);
+    }
+
     // Clean up failed child channels.
-    for (auto it = failed_child.begin(); it != failed_child.end(); ++it) {
-      const string &child_hash = it->first;
-      int read_fd = it->second.first;
-      int write_fd = it->second.second;
-      LOG(ERROR) << "Closing channel to child " << child_hash;
+    for (auto &it : failed_child) {
+      const string &child_name = it.first;
+      int read_fd = it.second.first;
+      int write_fd = it.second.second;
+      LOG(ERROR) << "Closing channel to child " << child_name;
       // TODO(kwalsh) close fds here?
       close(read_fd);
       close(write_fd);
-      descriptors_.erase(child_hash);
+      descriptors_.erase(child_name);
     }
 
     // Handle a request from each ready admin channel.

@@ -20,6 +20,7 @@
 #include "tao/fake_tao.h"
 
 #include <list>
+#include <sstream>
 #include <string>
 
 #include <glog/logging.h>
@@ -29,11 +30,13 @@
 
 #include "tao/attestation.pb.h"
 #include "tao/keys.h"
+#include "tao/sealed_data.pb.h"
 #include "tao/tao_domain.h"
 #include "tao/util.h"
 
 using std::list;
 using std::string;
+using std::stringstream;
 
 using keyczar::Crypter;
 using keyczar::CryptoFactory;
@@ -101,13 +104,27 @@ FakeTao *FakeTao::DeepCopy() const {
 }
 
 bool FakeTao::StartHostedProgram(const string &path, const list<string> &args,
-                                 string *identifier) {
+                                 string *child_name) {
   // Just pretend to start the hosted program.
-  identifier->assign(path);
+  stringstream out;
+  out << "FakeProgram(" << last_child_id_ << ", " << quotedString(path) << ")";
+  child_name->assign(out.str());
   return true;
 }
 
-bool FakeTao::GetRandomBytes(const string &child_hash, size_t size,
+bool FakeTao::GetTaoFullName(string *tao_name) {
+  string key_id;
+  if (!keys_->SignerUniqueID(&key_id)) {
+    LOG(ERROR) << "Could not create Tao full name";
+    return false;
+  }
+  stringstream out;
+  out << "FakeTao(" << quotedString(key_id) << ")";
+  tao_name->assign(out.str());
+  return true;
+}
+
+bool FakeTao::GetRandomBytes(const string &child_name, size_t size,
                              string *bytes) const {
   // just ask the CryptoFactory::Rand in keyczar for some randomness
   RandImpl *r = CryptoFactory::Rand();
@@ -119,24 +136,67 @@ bool FakeTao::GetRandomBytes(const string &child_hash, size_t size,
   return r->RandBytes(size, bytes);
 }
 
-bool FakeTao::Seal(const string &child_hash, const string &data,
+bool FakeTao::Seal(const string &child_name, const string &data, int policy,
                    string *sealed) const {
-  // just encrypt it with our crypter
-  return keys_->Crypter()->Encrypt(data, sealed);
+  // concatenate policy info and data, then encrypt with our crypter
+  // FakeTao supports only one policy: unseal can only be done by
+  // the principal that called seal.
+  stringstream out;
+  out << child_name.length() << "|" << child_name << "|" << data;
+  string bundle = out.str();
+
+  FakeTaoSealedData sd;
+  sd.set_policy_name(child_name);
+  sd.set_data(data);
+
+  string serialized_sd;
+  if (!sd.SerializeToString(&serialized_sd)) {
+    LOG(ERROR) << "Could not serialize the data";
+    return false;
+  }
+
+  if (!keys_->Crypter()->Encrypt(serialized_sd, sealed)) {
+    LOG(ERROR) << "Could not seal the data";
+    return false;
+  }
+
+  return true;
 }
 
-bool FakeTao::Unseal(const string &child_hash, const string &sealed,
-                     string *data) const {
-  // decrypt it with our crypter
-  return keys_->Crypter()->Decrypt(sealed, data);
+bool FakeTao::Unseal(const string &child_name, const string &sealed,
+                     string *data, int *policy) const {
+  // Decrypt it.
+  string temp_decrypted;
+  if (!keys_->Crypter()->Decrypt(sealed, &temp_decrypted)) {
+    LOG(ERROR) << "Could not decrypt the sealed data";
+    return false;
+  }
+
+  // Parse it.
+  FakeTaoSealedData sd;
+  if (!sd.ParseFromString(temp_decrypted)) {
+    // note that this is safe, since we always use authenticated encryption
+    LOG(ERROR) << "Could not parse the decrypted data";
+    return false;
+  }
+
+  // Check the policy.
+  if (child_name != sd.policy_name()) {
+    LOG(ERROR) << "Access denied";
+    return false;
+  }
+
+  data->assign(sd.data());
+  *policy = 0;  // unused
+  return true;
 }
 
-bool FakeTao::Attest(const string &child_hash, const string &data,
+bool FakeTao::Attest(const string &child_name, const string &data,
                      string *attestation) const {
   Statement s;
   s.set_data(data);
   s.set_hash_alg(TaoDomain::Sha256);
-  s.set_hash(child_hash);
+  s.set_hash(child_name);
 
   return GenerateAttestation(*keys_, attestation_, &s, attestation);
 }
@@ -157,6 +217,13 @@ bool FakeTao::MakePolicyAttestation(const TaoDomain &admin) {
     LOG(ERROR) << "Could not obtain root attestation";
     return false;
   }
+  return true;
+}
+
+bool FakeTao::ExtendName(string *child_name, const string &subprin) {
+  // TODO(kwalsh) Check subprin name for format/reasonableness.
+  string extended_name = *child_name + "::" + subprin;
+  child_name->assign(extended_name);
   return true;
 }
 }  // namespace tao

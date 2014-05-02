@@ -38,15 +38,15 @@
 
 using std::lock_guard;
 using std::mutex;
-using std::pair;
 using std::string;
 
 namespace tao {
 KvmUnixTaoChannel::KvmUnixTaoChannel(const string &socket_path)
     : UnixFdTaoChannel(socket_path) {}
+
 KvmUnixTaoChannel::~KvmUnixTaoChannel() {}
 
-bool KvmUnixTaoChannel::AddChildChannel(const string &child_hash,
+bool KvmUnixTaoChannel::AddChildChannel(const string &tentative_child_name,
                                         string *params) {
   if (params == nullptr) {
     LOG(ERROR) << "Could not write the params to a null string";
@@ -56,7 +56,7 @@ bool KvmUnixTaoChannel::AddChildChannel(const string &child_hash,
   // Check to make sure this hash isn't already instantiated.
   {
     lock_guard<mutex> l(data_m_);
-    auto hash_it = descriptors_.find(child_hash);
+    auto hash_it = descriptors_.find(tentative_child_name);
     if (hash_it != descriptors_.end()) {
       LOG(ERROR) << "This child has already been instantiated with a channel";
       return false;
@@ -67,10 +67,7 @@ bool KvmUnixTaoChannel::AddChildChannel(const string &child_hash,
   {
     string empty;
     lock_guard<mutex> l(data_m_);
-    pair<int, int> socket_pair;
-    socket_pair.first = -1;
-    socket_pair.second = -1;
-    descriptors_[child_hash] = socket_pair;
+    descriptors_[tentative_child_name] = std::make_pair(-1, -1);
   }
 
   // The name of the channel will always be /dev/vport0p1 on the guest. And the
@@ -80,8 +77,7 @@ bool KvmUnixTaoChannel::AddChildChannel(const string &child_hash,
   KvmUnixTaoChannelParams kutcp;
   kutcp.set_guest_device(file);
 
-  VLOG(2) << "Adding program with digest " << child_hash << " and guest path "
-          << "/dev/virtio-ports/" << file;
+  VLOG(2) << tentative_child_name << " will have guest path /dev/virtio-ports/";
 
   TaoChildChannelParams tccp;
   tccp.set_channel_type(KvmUnixTaoChildChannel::ChannelType());
@@ -99,7 +95,7 @@ bool KvmUnixTaoChannel::AddChildChannel(const string &child_hash,
   return true;
 }
 
-bool KvmUnixTaoChannel::UpdateChildParams(const string &child_hash,
+bool KvmUnixTaoChannel::UpdateChildParams(const string &tentative_child_name,
                                           const string &params) {
   // In this case, the params are just the device name rather than a serialized
   // protobuf, since this is only made as a call from KvmVmFactory directly.
@@ -107,9 +103,10 @@ bool KvmUnixTaoChannel::UpdateChildParams(const string &child_hash,
   {
     lock_guard<mutex> l(data_m_);
     // Look up the hash to see if we have descriptors associated with it.
-    auto child_it = descriptors_.find(child_hash);
+    auto child_it = descriptors_.find(tentative_child_name);
     if ((child_it != descriptors_.end()) && (child_it->second.first >= 0)) {
-      LOG(ERROR) << "Could not replace an existing channel for " << child_hash;
+      LOG(ERROR) << "Could not replace an existing channel for "
+                 << tentative_child_name;
       return false;
     }
 

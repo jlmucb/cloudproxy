@@ -80,22 +80,25 @@ class LinuxTao : public Tao {
   virtual bool Init();
   virtual bool Destroy() { return true; }
   virtual bool StartHostedProgram(const string &program,
-                                  const list<string> &args, string *identifier);
-  virtual bool RemoveHostedProgram(const string &child_hash);
-  virtual bool GetRandomBytes(const string &child_hash, size_t size,
+                                  const list<string> &args, string *child_name);
+  virtual bool RemoveHostedProgram(const string &child_name);
+  virtual bool GetTaoFullName(string *tao_name);
+
+  virtual bool GetRandomBytes(const string &child_name, size_t size,
                               string *bytes) const;
-  virtual bool Seal(const string &child_hash, const string &data,
+  virtual bool Seal(const string &child_name, const string &data, int policy,
                     string *sealed) const;
-  virtual bool Unseal(const string &child_hash, const string &sealed,
-                      string *data) const;
-  virtual bool Attest(const string &child_hash, const string &data,
+  virtual bool Unseal(const string &child_name, const string &sealed,
+                      string *data, int *policy) const;
+  virtual bool Attest(const string &child_name, const string &data,
                       string *attestation) const;
+  virtual bool ExtendName(string *child_name, const string &subprin);
   /// @}
 
-  /// For purposes of test/debug, disable hash checking on unseal operations.
-  /// @disable Whether or not to ignore hashes for unseal operations.
-  virtual void SetIgnoreSealHashesForTesting(bool disable) {
-    ignore_seal_hashes_for_testing_ = disable;
+  /// For purposes of test/debug, disable policy checking on unseal operations.
+  /// @disable Whether or not to ignore policy for unseal operations.
+  virtual void SetIgnoreUnsealPolicyForTesting(bool disable) {
+    ignore_unseal_policy_for_testing_ = disable;
   }
 
  private:
@@ -120,18 +123,23 @@ class LinuxTao : public Tao {
   /// The set of hosted programs that the LinuxTao has started.
   set<string> running_children_;
 
+  /// A count of how many children have been started so far.
+  int last_child_id_;
+
+  /// Our own full name, as obtained from host channel.
+  string full_name_;
+
   /// A mutex for accessing the auth manager.
   mutable mutex auth_m_;
 
   /// A mutex for accessing and modifying running_children_.
   mutable mutex data_m_;
 
-  /// Whether or not to ignore hash check errors on unseal operations.
-  bool ignore_seal_hashes_for_testing_;
+  /// Whether or not to ignore policy failures on unseal operations.
+  bool ignore_unseal_policy_for_testing_;
 
   /// Send existing attestation to the Tao CA specified in the TaoDomain
   /// supplied at initialization and use the returned attestation in its place.
-  /// @param attest[in,out] Existing attestation to be replaced by new one.
   bool GetTaoCAAttestation();
 
   DISALLOW_COPY_AND_ASSIGN(LinuxTao);

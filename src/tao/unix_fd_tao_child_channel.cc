@@ -17,41 +17,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "tao/unix_fd_tao_child_channel.h"
-
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
-#include <glog/logging.h>
-#include <keyczar/keyczar.h>
-
-#include "tao/util.h"
-
-namespace tao {
-UnixFdTaoChildChannel::UnixFdTaoChildChannel() : readfd_(-1), writefd_(-1) {}
-
-UnixFdTaoChildChannel::UnixFdTaoChildChannel(int readfd, int writefd)
-    : readfd_(readfd), writefd_(writefd) {}
-
-bool UnixFdTaoChildChannel::ReceiveMessage(google::protobuf::Message *m) const {
-  // try to receive an integer
-  CHECK(m) << "m was null";
-  if (readfd_ < 0) {
-    LOG(ERROR) << "Can't send with an empty fd";
-    return false;
-  }
-
-  return tao::ReceiveMessage(readfd_, m);
-}
-
-bool UnixFdTaoChildChannel::SendMessage(
-    const google::protobuf::Message &m) const {
-  if (writefd_ < 0) {
-    LOG(ERROR) << "Can't send with an empty fd";
-    return false;
-  }
-
-  return tao::SendMessage(writefd_, m);
-}
-}  // namespace tao
+// empty file

@@ -24,55 +24,103 @@
 
 namespace tao {
 
-bool TaoChildChannel::SendAndReceiveData(const string &instr, int inval,
-                                         string *out,
-                                         TaoChildRequestType rpc_type) const {
-  CHECK_NOTNULL(out);
-
-  TaoChildRequest rpc;
-  rpc.set_rpc(rpc_type);
-  rpc.set_data(instr);
-  rpc.set_size(inval);
-
-  SendRPC(rpc);
-
-  TaoChildResponse resp;
-  GetResponse(&resp);
-
-  if (resp.success()) {
-    if (!resp.has_data()) {
-      LOG(ERROR) << "A successful call did not return data";
-      return false;
-    }
-
-    out->assign(resp.data().data(), resp.data().size());
-  }
-
-  return resp.success();
-}
-
 bool TaoChildChannel::GetRandomBytes(size_t size, string *bytes) const {
-  return SendAndReceiveData("", size, bytes, TAO_CHILD_RPC_GET_RANDOM_BYTES);
+  TaoChildRequest rpc;
+  rpc.set_rpc(TAO_CHILD_RPC_GET_RANDOM_BYTES);
+  rpc.set_size(size);
+  TaoChildResponse resp;
+  if (!SendRPC(rpc) || !ReceiveRPC(&resp)) {
+    LOG(ERROR) << "RPC on host channel failed";
+    return false;
+  }
+  if (!resp.has_data()) {
+    LOG(ERROR) << "A successful call did not return enough data";
+    return false;
+  }
+  bytes->assign(resp.data());
+  return true;
 }
 
-bool TaoChildChannel::Seal(const string &data, string *sealed) const {
-  return SendAndReceiveData(data, 0, sealed, TAO_CHILD_RPC_SEAL);
+bool TaoChildChannel::Seal(const string &data, int policy,
+                           string *sealed) const {
+  TaoChildRequest rpc;
+  rpc.set_rpc(TAO_CHILD_RPC_SEAL);
+  rpc.set_data(data);
+  rpc.set_policy(policy);
+  TaoChildResponse resp;
+  if (!SendRPC(rpc) || !ReceiveRPC(&resp)) {
+    LOG(ERROR) << "RPC on host channel failed";
+    return false;
+  }
+  if (!resp.has_data()) {
+    LOG(ERROR) << "A successful call did not return enough data";
+    return false;
+  }
+  sealed->assign(resp.data());
+  return true;
 }
 
-bool TaoChildChannel::Unseal(const string &sealed, string *data) const {
-  return SendAndReceiveData(sealed, 0, data, TAO_CHILD_RPC_UNSEAL);
+bool TaoChildChannel::Unseal(const string &sealed, string *data,
+                             int *policy) const {
+  TaoChildRequest rpc;
+  rpc.set_rpc(TAO_CHILD_RPC_UNSEAL);
+  rpc.set_data(sealed);
+  TaoChildResponse resp;
+  if (!SendRPC(rpc) || !ReceiveRPC(&resp)) {
+    LOG(ERROR) << "RPC on host channel failed";
+    return false;
+  }
+  if (!resp.has_data() || !resp.has_policy()) {
+    LOG(ERROR) << "A successful call did not return enough data";
+    return false;
+  }
+  data->assign(resp.data());
+  *policy = resp.policy();
+  return true;
 }
 
 bool TaoChildChannel::Attest(const string &data, string *attestation) const {
-  return SendAndReceiveData(data, 0, attestation, TAO_CHILD_RPC_ATTEST);
+  TaoChildRequest rpc;
+  rpc.set_rpc(TAO_CHILD_RPC_ATTEST);
+  rpc.set_data(data);
+  TaoChildResponse resp;
+  if (!SendRPC(rpc) || !ReceiveRPC(&resp)) {
+    LOG(ERROR) << "RPC on host channel failed";
+    return false;
+  }
+  if (!resp.has_data()) {
+    LOG(ERROR) << "A successful call did not return enough data";
+    return false;
+  }
+  attestation->assign(resp.data());
+  return true;
+}
+bool TaoChildChannel::GetHostedProgramFullName(string *full_name) const {
+  TaoChildRequest rpc;
+  rpc.set_rpc(TAO_CHILD_RPC_GET_HOSTED_PROGRAM_FULL_NAME);
+  TaoChildResponse resp;
+  if (!SendRPC(rpc) || !ReceiveRPC(&resp)) {
+    LOG(ERROR) << "RPC on host channel failed";
+    return false;
+  }
+  if (!resp.has_data()) {
+    LOG(ERROR) << "A successful call did not return enough data";
+    return false;
+  }
+  full_name->assign(resp.data());
+  return true;
 }
 
-bool TaoChildChannel::SendRPC(const TaoChildRequest &rpc) const {
-  return SendMessage(rpc);
+bool TaoChildChannel::ExtendName(const string &subprin) const {
+  TaoChildRequest rpc;
+  rpc.set_rpc(TAO_CHILD_RPC_EXTEND_NAME);
+  rpc.set_data(subprin);
+  TaoChildResponse resp;
+  if (!SendRPC(rpc) || !ReceiveRPC(&resp)) {
+    LOG(ERROR) << "RPC on host channel failed";
+    return false;
+  }
+  return true;
 }
 
-bool TaoChildChannel::GetResponse(TaoChildResponse *resp) const {
-  CHECK_NOTNULL(resp);
-  return ReceiveMessage(resp);
-}
 }  // namespace tao

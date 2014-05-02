@@ -43,22 +43,18 @@ class KvmUnixTaoChannel : public UnixFdTaoChannel {
   explicit KvmUnixTaoChannel(const string &socket_path);
   virtual ~KvmUnixTaoChannel();
 
-  /// Add a new child and gets back the parameters
-  /// @param child_hash The hash of a child program that is not currently
-  /// running.
-  /// @param[out] params A serialization of a TaoChildChannelParams that
-  /// specifies the connection information for the child.
-  virtual bool AddChildChannel(const string &child_hash, string *params);
+  virtual bool AddChildChannel(const string &tentative_child_name,
+                               string *params);
 
   // No cleanup needed for either the client or the parent.
-  virtual bool ChildCleanup(const string &child_hash) { return true; }
-  virtual bool ParentCleanup(const string &child_hash) { return true; }
+  virtual bool ChildCleanup(const string &params, const string &subprin) {
+    return true;
+  }
+  virtual bool ParentCleanup(const string &tentative_child_name) {
+    return true;
+  }
 
-  /// Provide new parameters for the connection to the hosted program.
-  /// @param child_hash The identity of an existing hosted program.
-  /// @param params The new params. In this case, it must be the path to a file
-  /// that can be used
-  virtual bool UpdateChildParams(const string &child_hash,
+  virtual bool UpdateChildParams(const string &tentative_child_name,
                                  const string &params);
 
  private:

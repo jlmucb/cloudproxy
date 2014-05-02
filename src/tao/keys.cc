@@ -52,6 +52,7 @@ using keyczar::KeysetMetadata;
 using keyczar::Signer;
 using keyczar::Verifier;
 using keyczar::base::Base64WDecode;
+using keyczar::base::Base64WEncode;
 using keyczar::base::CreateDirectory;
 using keyczar::base::DirectoryExists;
 using keyczar::base::JSONReader;
@@ -795,15 +796,14 @@ bool SerializeX509(X509 *x509, string *pem) {
     LOG(ERROR) << "null params";
     return false;
   }
-  BIO *mem = BIO_new(BIO_s_mem());
-  if (!PEM_write_bio_X509(mem, x509) || !OpenSSLSuccess()) {
+  ScopedBio mem(BIO_new(BIO_s_mem()));
+  if (!PEM_write_bio_X509(mem.get(), x509) || !OpenSSLSuccess()) {
     LOG(ERROR) << "Could not serialize x509 to PEM";
     return false;
   }
   BUF_MEM *buf;
-  BIO_get_mem_ptr(mem, &buf);
+  BIO_get_mem_ptr(mem.get(), &buf);
   pem->assign(buf->data, buf->length);
-  BIO_free(mem);
   return true;
 }
 
@@ -1028,6 +1028,46 @@ bool Keys::InitHosted(const TaoChildChannel &channel) {
     }
   }
   return true;
+}
+
+// typedef scoped_ptr_malloc<DSA, keyczar::openssl::OSSLDestroyer<
+//                                        DSA, EVP_PKEY_free>> ScopedDsa;
+
+bool Keys::SignerUniqueID(string *identifier) const {
+  // Any unique ID will do. We use base64w encoded hash of pubic signing key.
+  tao::ScopedEvpPkey pem_key;
+  if (!ExportSignerToOpenSSL(&pem_key)) {
+    LOG(ERROR) << "Could not export signing key to openssl";
+    return false;
+  }
+  /* ScopedDsa dsa(EVP_PKEY_get1_DSA(pem_key.get()));
+  if (!dsa_key.get()) {
+    LOG(ERROR) << "Key was not of expected type."
+    return false;
+  }
+  */
+  ScopedBio mem(BIO_new(BIO_s_mem()));
+  if (!PEM_write_bio_PUBKEY(mem.get(), pem_key.get())) {
+    LOG(ERROR) << "Could not serialize public signing key";
+    return false;
+  }
+
+  // The key should take up less than 8k in size.
+  size_t len = BIO_ctrl_pending(mem.get());
+  scoped_array<char> key_bytes(new char[len]);
+  int result = BIO_read(mem.get(), key_bytes.get(), len);
+  if (result <= 0 || size_t(result) != len) {
+    LOG(ERROR) << "Could not read serialize public signing key";
+    return false;
+  }
+  string key_data(key_bytes.get(), len);
+  string hash;
+  if (!Sha256(key_data, &hash)) {
+    LOG(ERROR) << "Can't compute hash of public signing key";
+    return false;
+  }
+
+  return Base64WEncode(hash, identifier);
 }
 
 string Keys::GetPath(const string &suffix) const {

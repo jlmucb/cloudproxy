@@ -41,6 +41,7 @@ using tao::FakeTaoChannel;
 using tao::HostedProgramFactory;
 using tao::LinuxTao;
 using tao::ScopedTempDir;
+using tao::Tao;
 using tao::TaoAuth;
 using tao::TaoChannel;
 using tao::TaoDomain;
@@ -64,6 +65,8 @@ class LinuxTaoTest : public ::testing::Test {
 
     scoped_ptr<FakeTao> ft(new FakeTao());
     ASSERT_TRUE(ft->InitTemporaryTPM()) << "Could not init the FakeTao";
+
+    ft->GetTaoFullName(&fake_tao_name_);
 
     string fake_linux_tao_hash("This is not a real hash");
     scoped_ptr<DirectTaoChildChannel> channel(
@@ -89,9 +92,17 @@ class LinuxTaoTest : public ::testing::Test {
   ScopedTempDir temp_dir_;
   string test_binary_path_;
   string test_binary_digest_;
-  string child_hash_;
   scoped_ptr<LinuxTao> tao_;
+  string fake_tao_name_;
 };
+
+TEST_F(LinuxTaoTest, FullNameTest) {
+  string tao_name;
+  EXPECT_TRUE(tao_->GetTaoFullName(&tao_name));
+  EXPECT_TRUE(tao_name.length() > fake_tao_name_.length() + 2);
+  EXPECT_EQ(fake_tao_name_, tao_name.substr(0, fake_tao_name_.length()));
+  EXPECT_EQ("::", tao_name.substr(fake_tao_name_.length(), 2));
+}
 
 TEST_F(LinuxTaoTest, RandomBytesTest) {
   string bytes;
@@ -105,7 +116,7 @@ TEST_F(LinuxTaoTest, FailSealTest) {
   EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 128, &bytes));
   string sealed;
   string fake_hash("[This is also not a hash]");
-  EXPECT_FALSE(tao_->Seal(fake_hash, bytes, &sealed));
+  EXPECT_FALSE(tao_->Seal(fake_hash, bytes, Tao::PolicySameProgHash, &sealed));
 }
 
 TEST_F(LinuxTaoTest, FailUnsealTest) {
@@ -114,7 +125,8 @@ TEST_F(LinuxTaoTest, FailUnsealTest) {
 
   string unsealed;
   string fake_hash("[This is also not a hash]");
-  EXPECT_FALSE(tao_->Unseal(fake_hash, bytes, &unsealed));
+  int policy;
+  EXPECT_FALSE(tao_->Unseal(fake_hash, bytes, &unsealed, &policy));
 }
 
 TEST_F(LinuxTaoTest, FailAttestTest) {
@@ -131,13 +143,14 @@ TEST_F(LinuxTaoTest, SealTest) {
   EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 128, &bytes));
 
   list<string> args;
-  string identifier;
-  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args, &identifier));
+  string child_name;
+  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args, &child_name));
 
-  EXPECT_TRUE(!identifier.empty());
+  EXPECT_TRUE(!child_name.empty());
 
   string sealed;
-  EXPECT_TRUE(tao_->Seal(test_binary_digest_, bytes, &sealed));
+  EXPECT_TRUE(
+      tao_->Seal(test_binary_digest_, bytes, Tao::PolicySameProgHash, &sealed));
 }
 
 TEST_F(LinuxTaoTest, UnsealTest) {
@@ -145,17 +158,20 @@ TEST_F(LinuxTaoTest, UnsealTest) {
   EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 128, &bytes));
 
   list<string> args;
-  string identifier;
-  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args, &identifier));
+  string child_name;
+  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args, &child_name));
 
-  EXPECT_TRUE(!identifier.empty());
+  EXPECT_TRUE(!child_name.empty());
 
   string sealed;
-  EXPECT_TRUE(tao_->Seal(test_binary_digest_, bytes, &sealed));
+  EXPECT_TRUE(
+      tao_->Seal(test_binary_digest_, bytes, Tao::PolicySameProgHash, &sealed));
 
   string unsealed;
-  EXPECT_TRUE(tao_->Unseal(test_binary_digest_, sealed, &unsealed));
+  int policy;
+  EXPECT_TRUE(tao_->Unseal(test_binary_digest_, sealed, &unsealed, &policy));
   EXPECT_EQ(unsealed, bytes);
+  EXPECT_TRUE(policy == Tao::PolicySameProgHash);
 }
 
 TEST_F(LinuxTaoTest, AttestTest) {
@@ -163,9 +179,9 @@ TEST_F(LinuxTaoTest, AttestTest) {
   EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 128, &bytes));
 
   list<string> args;
-  string identifier;
-  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args, &identifier));
-  EXPECT_TRUE(!identifier.empty());
+  string child_name;
+  EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args, &child_name));
+  EXPECT_TRUE(!child_name.empty());
 
   string attestation;
   EXPECT_TRUE(tao_->Attest(test_binary_digest_, bytes, &attestation));

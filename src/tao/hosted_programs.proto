@@ -19,6 +19,10 @@
 
 package tao;
 
+message HostedProgramArgs {
+	repeated string args = 1;
+}
+
 message HostedProgram {
   // the name of the binary
   required string name = 1;

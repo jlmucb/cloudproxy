@@ -216,6 +216,10 @@ class Keys {
   /// Get the name of this group of keys.
   string Name() const { return name_; }
 
+  /// Get a unique ID for the signing key.
+  /// @param[out] identifier The unique ID.
+  bool SignerUniqueID(string *identifier) const;
+
   /// Get the managed verifier key. If no verifier is available, the signer will
   /// be returned instead if it is available. Otherwise, nullptr will be
   /// returned.

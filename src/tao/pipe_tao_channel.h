@@ -41,21 +41,15 @@ class PipeTaoChannel : public UnixFdTaoChannel {
   explicit PipeTaoChannel(const string &socket_path);
   virtual ~PipeTaoChannel();
 
-  /// Serialize the child_fds into a PipeTaoChannelParams protobuf.
-  virtual bool AddChildChannel(const string &child_hash, string *params);
+  virtual bool AddChildChannel(const string &tentative_child_name,
+                               string *params);
 
-  /// Close all the file descriptors that don't belong to the child. This is
-  /// used, e.g., after a fork() in ProcessFactory.
-  virtual bool ChildCleanup(const string &child_hash);
+  virtual bool ChildCleanup(const string &encoded_params,
+                            const string &subprin);
 
-  /// Close all the file descriptors that don't belong to the parent. This is
-  /// used, e.g., after a fork() in ProcessFactory.
-  virtual bool ParentCleanup(const string &child_hash);
+  virtual bool ParentCleanup(const string &tentative_child_name);
 
-  /// This method isn't used by PipeTaoChannel, since the params for the channel
-  /// are already known when the pipes are created.
-  /// @return true
-  virtual bool UpdateChildParams(const string &child_hash,
+  virtual bool UpdateChildParams(const string &tentative_child_name,
                                  const string &params);
 
  private:

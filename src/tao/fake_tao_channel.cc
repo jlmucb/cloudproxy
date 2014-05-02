@@ -28,7 +28,7 @@
 using std::string;
 
 namespace tao {
-bool FakeTaoChannel::AddChildChannel(const string &child_hash, string *params) {
+bool FakeTaoChannel::AddChildChannel(const string &child_name, string *params) {
   TaoChildChannelParams tccp;
   tccp.set_channel_type("FakeTaoChannel");
   tccp.set_params("");

@@ -49,4 +49,5 @@ bool PipeTaoChildChannel::Init() {
 
   return true;
 }
+
 }  // namespace tao

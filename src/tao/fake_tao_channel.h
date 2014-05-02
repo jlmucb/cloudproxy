@@ -40,28 +40,23 @@ class FakeTaoChannel : public TaoChannel {
   // their parameters.
   virtual bool Listen(Tao *t) { return true; }
 
-  virtual bool AddChildChannel(const string &child_hash, string *params);
-  virtual bool ChildCleanup(const string &child_hash) { return true; }
-  virtual bool ParentCleanup(const string &child_hash) { return true; }
+  virtual bool AddChildChannel(const string &tentative_child_name,
+                               string *params);
+  virtual bool ChildCleanup(const string &encoded_params,
+                            const string &subprin) {
+    return true;
+  }
+  virtual bool ParentCleanup(const string &tentative_child_name) {
+    return true;
+  }
 
-  virtual bool UpdateChildParams(const string &child_hash,
+  virtual bool UpdateChildParams(const string &tentative_child_name,
                                  const string &params) {
     return true;
   }
 
   virtual bool Init() { return true; }
   virtual bool Destroy() { return true; }
-
- protected:
-  // Since this is a fake, the message sending operations fail.
-  virtual bool ReceiveMessage(google::protobuf::Message *m,
-                              const string &child_hash) const {
-    return false;
-  }
-  virtual bool SendMessage(const google::protobuf::Message &m,
-                           const string &child_hash) const {
-    return false;
-  }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FakeTaoChannel);

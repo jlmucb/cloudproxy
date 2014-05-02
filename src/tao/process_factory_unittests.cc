@@ -46,8 +46,8 @@ class ProcessFactoryTest : public ::testing::Test {
 
     channel_.reset(new PipeTaoChannel(domain_socket));
 
-    child_hash_ = "Fake hash";
-    ASSERT_TRUE(channel_->AddChildChannel(child_hash_, &params_))
+    child_name_ = "Fake hash";
+    ASSERT_TRUE(channel_->AddChildChannel(child_name_, &params_))
         << "Could not create the channel for the child";
 
     ASSERT_TRUE(Base64WEncode(params_, &encoded_params_))
@@ -61,22 +61,19 @@ class ProcessFactoryTest : public ::testing::Test {
   ScopedTempDir temp_dir_;
   string params_;
   string encoded_params_;
-  string child_hash_;
+  string child_name_;
 };
 
 TEST_F(ProcessFactoryTest, HashTest) {
   list<string> args;
-  string new_hash;
-  EXPECT_TRUE(factory_->HashHostedProgram(FLAGS_program, args, &new_hash))
+  string tentative_child_name;
+  EXPECT_TRUE(factory_->GetHostedProgramTentativeName(1234, FLAGS_program, args,
+                                                      &tentative_child_name))
       << "Could not hash the program";
-}
-
-TEST_F(ProcessFactoryTest, CreationTest) {
-  list<string> args;
-  string identifier;
-  EXPECT_TRUE(factory_->CreateHostedProgram(FLAGS_program, args, child_hash_,
-                                            *channel_, &identifier))
-      << "Could not create a vm";
-  EXPECT_TRUE(!identifier.empty())
+  string child_name;
+  EXPECT_TRUE(factory_->CreateHostedProgram(
+      1234, FLAGS_program, args, tentative_child_name, channel_.get(),
+      &child_name)) << "Could not create a vm";
+  EXPECT_TRUE(!child_name.empty())
       << "Did not get an identifier from the factory";
 }

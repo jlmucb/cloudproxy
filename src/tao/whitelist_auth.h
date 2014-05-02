@@ -46,6 +46,7 @@ class WhitelistAuth : public TaoDomain {
   virtual ~WhitelistAuth() {}
 
   // The following methods have the same semantics as in TaoAuth.
+  virtual bool IsAuthorized(const string &full_name) const;
   virtual bool IsAuthorized(const string &hash, const string &alg,
                             const string &name) const;
   virtual bool IsAuthorized(const string &hash, const string &alg,

@@ -1,7 +1,7 @@
-//  File: unix_fd_tao_child_channel.h
+//  File: unix_fd_tao_admin_channel.h
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: The parent class for child channel classes that communicate
+//  Description: The parent class for admin channel classes that communicate
 //  over Unix file descriptors.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
@@ -21,7 +21,8 @@
 #ifndef TAO_UNIX_FD_TAO_ADMIN_CHANNEL_H_
 #define TAO_UNIX_FD_TAO_ADMIN_CHANNEL_H_
 
-#include "tao/tao_child_channel.h"
+#include "tao/tao_admin_channel.h"
+#include "tao/util.h"
 
 namespace tao {
 /// A channel that communicates with a host Tao using a pair of file
@@ -30,27 +31,32 @@ namespace tao {
 /// The caller is responsible for ensuring that the descriptors are closed
 /// correctly: this class doesn't know if it should close both file descriptors
 /// or only one.
-class UnixFdTaoChildChannel : public TaoChildChannel {
+class UnixFdTaoAdminChannel : public TaoAdminChannel {
  public:
   /// The empty constructor: used by derived classes that set readfd_ and
   /// writefd_ later.
-  UnixFdTaoChildChannel();
+  UnixFdTaoAdminChannel() : readfd_(-1), writefd_(-1) {}
 
   /// The constructor used to set readfd and writefd directly.
   /// @param readfd The file descriptor to use for reading messages to the Tao.
   /// @param writefd The file descriptor to use for writing messages to the Tao.
-  UnixFdTaoChildChannel(int readfd, int writefd);
-  virtual ~UnixFdTaoChildChannel() {}
+  UnixFdTaoAdminChannel(int readfd, int writefd)
+      : readfd_(readfd), writefd_(writefd) {}
+  virtual ~UnixFdTaoAdminChannel() {}
 
  protected:
+  virtual bool SendRPC(const TaoAdminRequest &rpc) const {
+    return SendMessage(writefd_, rpc);
+  }
+  virtual bool ReceiveRPC(TaoAdminResponse *resp) const {
+    return ReceiveMessage(readfd_, resp);
+  }
+
   int readfd_;
   int writefd_;
 
-  virtual bool ReceiveMessage(google::protobuf::Message *m) const;
-  virtual bool SendMessage(const google::protobuf::Message &m) const;
-
  private:
-  DISALLOW_COPY_AND_ASSIGN(UnixFdTaoChildChannel);
+  DISALLOW_COPY_AND_ASSIGN(UnixFdTaoAdminChannel);
 };
 }  // namespace tao
 

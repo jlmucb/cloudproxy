@@ -23,6 +23,8 @@
 
 #include "tao/tao_child_channel.h"
 
+#include "tao/util.h"
+
 namespace tao {
 /// A channel that communicates with a host Tao using a pair of file
 /// descriptors: one that is used to write to the host, and one that is used to
@@ -34,20 +36,29 @@ class UnixFdTaoChildChannel : public TaoChildChannel {
  public:
   /// The empty constructor: used by derived classes that set readfd_ and
   /// writefd_ later.
-  UnixFdTaoChildChannel();
+  UnixFdTaoChildChannel() : readfd_(-1), writefd_(-1) {}
 
   /// The constructor used to set readfd and writefd directly.
   /// @param readfd The file descriptor to use for reading messages to the Tao.
   /// @param writefd The file descriptor to use for writing messages to the Tao.
-  UnixFdTaoChildChannel(int readfd, int writefd);
+  UnixFdTaoChildChannel(int readfd, int writefd)
+      : readfd_(readfd), writefd_(writefd) {}
   virtual ~UnixFdTaoChildChannel() {}
 
  protected:
-  int readfd_;
-  int writefd_;
+  bool SendRPC(const TaoChildRequest &rpc) const {
+    return SendMessage(writefd_, rpc);
+  }
 
-  virtual bool ReceiveMessage(google::protobuf::Message *m) const;
-  virtual bool SendMessage(const google::protobuf::Message &m) const;
+  bool ReceiveRPC(TaoChildResponse *resp) const {
+    return ReceiveMessage(readfd_, resp);
+  }
+
+  /// File descriptor for writing to host Tao.
+  int readfd_;
+
+  /// File descriptor for reading from host Tao.
+  int writefd_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UnixFdTaoChildChannel);

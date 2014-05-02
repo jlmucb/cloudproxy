@@ -43,6 +43,11 @@ using keyczar::base::WriteStringToFile;
 
 namespace tao {
 
+bool WhitelistAuth::IsAuthorized(const string &full_name) const {
+  LOG(ERROR) << "Not yet implemented: auth for " << full_name;
+  return false;
+}
+
 bool WhitelistAuth::IsAuthorized(const string &hash, const string &alg,
                                  const string &name) const {
   for (int i = 0; i < whitelist_.programs_size(); i++) {

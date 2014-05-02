@@ -30,6 +30,7 @@
 #include <utility>
 
 #include <glog/logging.h>
+#include <keyczar/base/base64w.h>
 #include <keyczar/base/scoped_ptr.h>
 
 #include "tao/pipe_tao_channel_params.pb.h"
@@ -39,24 +40,26 @@
 
 using std::lock_guard;
 using std::mutex;
-using std::pair;
+
+using keyczar::base::Base64WDecode;
 
 namespace tao {
 PipeTaoChannel::PipeTaoChannel(const string &socket_path)
     : UnixFdTaoChannel(socket_path) {}
 PipeTaoChannel::~PipeTaoChannel() {}
 
-bool PipeTaoChannel::AddChildChannel(const string &child_hash, string *params) {
+bool PipeTaoChannel::AddChildChannel(const string &tentative_child_name,
+                                     string *params) {
   if (params == nullptr) {
     LOG(ERROR) << "Could not write the params to a null string";
     return false;
   }
 
-  // check to make sure this hash isn't already instantiated with pipes
+  // check to make sure this name isn't already instantiated with pipes
   {
     lock_guard<mutex> l(data_m_);
-    auto hash_it = descriptors_.find(child_hash);
-    if (hash_it != descriptors_.end()) {
+    auto name_it = descriptors_.find(tentative_child_name);
+    if (name_it != descriptors_.end()) {
       LOG(ERROR) << "This child has already been instantiated with a channel";
       return false;
     }
@@ -77,11 +80,11 @@ bool PipeTaoChannel::AddChildChannel(const string &child_hash, string *params) {
   // the parent connect reads on the up pipe and writes on the down pipe.
   {
     lock_guard<mutex> l(data_m_);
-    descriptors_[child_hash].first = up_pipe[0];
-    descriptors_[child_hash].second = down_pipe[1];
+    descriptors_[tentative_child_name] =
+        std::make_pair(up_pipe[0], down_pipe[1]);
   }
 
-  VLOG(2) << "Adding program with digest " << child_hash;
+  VLOG(2) << "Adding pipes for " << tentative_child_name;
   VLOG(2) << "Pipes for child: " << down_pipe[0] << ", " << up_pipe[1];
   VLOG(2) << "Pipes for parent: " << up_pipe[0] << ", " << down_pipe[1];
 
@@ -106,36 +109,52 @@ bool PipeTaoChannel::AddChildChannel(const string &child_hash, string *params) {
   // Put the child fds in a data structure for later cleanup.
   {
     lock_guard<mutex> l(data_m_);
-    child_descriptors_[child_hash].first = down_pipe[0];
-    child_descriptors_[child_hash].second = up_pipe[1];
+    child_descriptors_[tentative_child_name] =
+        std::make_pair(down_pipe[0], up_pipe[1]);
   }
 
   return true;
 }
 
-bool PipeTaoChannel::ChildCleanup(const string &child_hash) {
+bool PipeTaoChannel::ChildCleanup(const string &encoded_params,
+                                  const string &subprin) {
+  // Close open pipe descriptors from the parent, including the admin socket
   {
-    // Look up this hash to see if the parent has fds to clean up
     lock_guard<mutex> l(data_m_);
-    // The child shouldn't have any of the open pipe descriptors from the
-    // parent, including the socket
     close(*admin_socket_);
-    for (pair<const string, pair<int, int>> desc : descriptors_) {
-      close(desc.second.first);
-      close(desc.second.second);
+    for (int fd : admin_descriptors_) {
+      close(fd);
+    }
+    for (auto &it : descriptors_) {
+      close(it.second.first);
+      close(it.second.second);
     }
   }
 
+  // make a call to our parent
+  string params;
+  if (!Base64WDecode(encoded_params, &params)) {
+    LOG(ERROR) << "Could not decode the encoded params " << encoded_params;
+    return false;
+  }
+
+  PipeTaoChildChannel channel(params);
+  if (!channel.Init() || !channel.ExtendName(subprin)) {
+    LOG(ERROR) << "Could not extend name";
+    return false;
+  }
+
   return true;
 }
 
-bool PipeTaoChannel::ParentCleanup(const string &child_hash) {
+bool PipeTaoChannel::ParentCleanup(const string &tentative_child_name) {
   {
     lock_guard<mutex> l(data_m_);
-    // Look up this hash to see if this child has any params to clean up.
-    auto child_it = child_descriptors_.find(child_hash);
+    // See if this child has any params to clean up.
+    auto child_it = child_descriptors_.find(tentative_child_name);
     if (child_it == child_descriptors_.end()) {
-      LOG(ERROR) << "No child " << child_hash << " for parent clean up";
+      LOG(ERROR) << "No child " << tentative_child_name
+                 << " for parent clean up";
       return false;
     }
 
@@ -151,7 +170,7 @@ bool PipeTaoChannel::ParentCleanup(const string &child_hash) {
 }
 
 // Pipe channels don't support this kind of update.
-bool PipeTaoChannel::UpdateChildParams(const string &child_hash,
+bool PipeTaoChannel::UpdateChildParams(const string &tentative_child_name,
                                        const string &params) {
   return false;
 }

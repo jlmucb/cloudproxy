@@ -58,25 +58,17 @@ class TPMTaoChildChannel : public TaoChildChannel {
 
   virtual bool Init();
   virtual bool Destroy();
-  virtual bool StartHostedProgram(const string &path, const list<string> &args,
-                                  string *identifier) {
-    // In the case of the TPM, this would mean to start an OS, and that is
-    // accomplished by other means.
-    return false;
-  }
+
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
   virtual bool Seal(const string &data, string *sealed) const;
   virtual bool Unseal(const string &sealed, string *data) const;
   virtual bool Attest(const string &data, string *attestation) const;
+  virtual bool GetHostedProgramFullName(string *full_name) const;
+  virtual bool ExtendName(const string &subprin) const;
 
  protected:
-  virtual bool ReceiveMessage(google::protobuf::Message *m) const {
-    return false;
-  }
-
-  virtual bool SendMessage(const google::protobuf::Message &m) const {
-    return false;
-  }
+  virtual bool SendRPC(const TaoChildRequest &rpc) const { return false; }
+  virtual bool ReceiveRPC(TaoChildResponse *resp) const { return false; }
 
  private:
   static const int PcrLen = 20;
@@ -120,6 +112,8 @@ class TPMTaoChildChannel : public TaoChildChannel {
   // The total number of bytes needed to store the PCR bit mask.
   UINT32 pcr_mask_len_;
 
+  // The full name of the TPM, including PCRs and hash of public AIK.
+  string full_name_;
   DISALLOW_COPY_AND_ASSIGN(TPMTaoChildChannel);
 };
 }  // namespace tao

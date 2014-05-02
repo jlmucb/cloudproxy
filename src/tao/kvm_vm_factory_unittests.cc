@@ -50,8 +50,8 @@ class KvmVmFactoryTest : public ::testing::Test {
 
     channel_.reset(new KvmUnixTaoChannel(domain_socket));
 
-    child_hash_ = "Fake hash";
-    ASSERT_TRUE(channel_->AddChildChannel(child_hash_, &params_))
+    child_name_ = "Fake hash";
+    ASSERT_TRUE(channel_->AddChildChannel(child_name_, &params_))
         << "Could not create the channel for the child";
 
     ASSERT_TRUE(Base64WEncode(params_, &encoded_params_))
@@ -66,7 +66,7 @@ class KvmVmFactoryTest : public ::testing::Test {
   ScopedTempDir temp_dir_;
   string params_;
   string encoded_params_;
-  string child_hash_;
+  string child_name_;
 };
 
 TEST_F(KvmVmFactoryTest, HashTest) {
@@ -75,9 +75,9 @@ TEST_F(KvmVmFactoryTest, HashTest) {
   args.push_back(FLAGS_kernel_file);
   args.push_back(FLAGS_initrd_file);
   args.push_back(FLAGS_disk_file);
-  string new_hash;
-  EXPECT_TRUE(factory_->HashHostedProgram("test", args, &new_hash))
-      << "Could not hash the program";
+  string child_name;
+  EXPECT_TRUE(factory_->GetHostedProgramTentativeName(
+      1234, "test", args, &child_name)) << "Could not hash the program";
 }
 
 TEST_F(KvmVmFactoryTest, CreationTest) {
@@ -88,8 +88,8 @@ TEST_F(KvmVmFactoryTest, CreationTest) {
   args.push_back(FLAGS_disk_file);
   args.push_back(encoded_params_);
   string identifier;
-  EXPECT_TRUE(factory_->CreateHostedProgram("test", args, child_hash_,
-                                            *channel_, &identifier))
+  EXPECT_TRUE(factory_->CreateHostedProgram(1234, "test", args, child_name_,
+                                            channel_.get(), &identifier))
       << "Could not create a vm";
 
   EXPECT_TRUE(!identifier.empty()) << "Didn't get a valid identifier back";

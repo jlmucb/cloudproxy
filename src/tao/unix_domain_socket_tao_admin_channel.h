@@ -23,12 +23,12 @@
 
 #include <string>
 
-#include "tao/tao_admin_channel.h"
+#include "tao/unix_fd_tao_admin_channel.h"
 #include "tao/util.h"
 
 namespace tao {
 /// An admin channel that communicates with a Tao over unix domain sockets.
-class UnixDomainSocketTaoAdminChannel : public TaoAdminChannel {
+class UnixDomainSocketTaoAdminChannel : public UnixFdTaoAdminChannel {
  public:
   /// Construct a new tao admin channel.
   /// @param tao_socket_path The location of the tao server socket.
@@ -42,12 +42,6 @@ class UnixDomainSocketTaoAdminChannel : public TaoAdminChannel {
  protected:
   /// The location of the tao server socket.
   const string tao_socket_path_;
-
-  /// The socket for read and write.
-  ScopedFd sock_;
-
-  virtual bool ReceiveMessage(google::protobuf::Message *m) const;
-  virtual bool SendMessage(const google::protobuf::Message &m) const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UnixDomainSocketTaoAdminChannel);

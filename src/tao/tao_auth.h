@@ -38,6 +38,10 @@ class TaoAuth {
 
   virtual ~TaoAuth() {}
 
+  /// Check that a given principal is authorized to execute.
+  /// @param full_name The name to check.
+  virtual bool IsAuthorized(const string &full_name) const = 0;
+
   /// Check that a given hash is authorized to execute under and speak for
   /// the given name.
   /// @param hash The hash to check

@@ -23,11 +23,19 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <sstream>
+
 #include <glog/logging.h>
+#include <keyczar/base/base64w.h>
+#include <openssl/pem.h>
 #include <openssl/sha.h>
 
 #include "tao/attestation.pb.h"
 #include "tao/tao_auth.h"
+
+using std::stringstream;
+
+using keyczar::base::Base64WEncode;
 
 namespace tao {
 TPMTaoChildChannel::TPMTaoChildChannel(const string &aik_blob,
@@ -76,6 +84,13 @@ bool TPMTaoChildChannel::Init() {
 
   // This seal operation is meant to be used with DRTM, so the only PCRs that it
   // reads are 17 and 18. This is where you can set other PCRs to use.
+  // kwalsh: Why not others? e.g.
+  //   17 - drtm and LCP
+  //   18 - trusted os startup code (MLE)
+  //   19 - tboot initrd hash?),
+  //   20 - ? trusted os kernel and other code ?
+  //   21 - defined by trusted os
+  //   22 - defined by trusted os
   list<UINT32> pcrs_to_seal{17, 18};
   BYTE *pcr_value = nullptr;
   UINT32 pcr_value_len = 0;
@@ -323,6 +338,11 @@ bool TPMTaoChildChannel::Attest(const string &data, string *attestation) const {
     // why. This code removes one of the bytes in the pcr mask and shifts
     // everything over to account for the difference, then hashes and tries
     // again.
+    // kwalsh: Speculation, here... but not all TPMs are required to support or
+    // use all possible mask lengths for every operation. If there are 32 PCRs
+    // we will initially try with 4 bytes for the mask. But if only a subset of
+    // the first 24 PCRs are active in the mask, the TPM might use a 3 byte mask
+    // instead, since the last byte will be zero anyway.
     *(UINT16 *)pcr_buf = htons(pcr_mask_len_ - 1);
     memmove(pcr_buf + sizeof(UINT16) + pcr_mask_len_ - 1,
             pcr_buf + sizeof(UINT16) + pcr_mask_len_,
@@ -356,4 +376,68 @@ bool TPMTaoChildChannel::Attest(const string &data, string *attestation) const {
 
   return true;
 }
+
+bool TPMTaoChildChannel::GetHostedProgramFullName(string *full_name) const {
+  // encode the host key and PCRs into a name
+
+  ScopedBio mem(BIO_new(BIO_s_mem()));
+  if (!PEM_write_bio_RSA_PUBKEY(mem.get(), aik_rsa_.get())) {
+    LOG(ERROR) << "Could not serialize public signing key";
+    return false;
+  }
+
+  // The key should take up less than 8k in size.
+  size_t len = BIO_ctrl_pending(mem.get());
+  scoped_array<char> key_bytes(new char[len]);
+  int result = BIO_read(mem.get(), key_bytes.get(), len);
+  if (result <= 0 || size_t(result) != len) {
+    LOG(ERROR) << "Could not read serialize public signing key";
+    return false;
+  }
+  string key_info;
+  string key_data(key_bytes.get(), len);
+
+  // string hash;
+  // if (!CryptoFactory::SHA256()->Digest(key_data, *hash)) {
+  //   LOG(ERROR) << "Can't compute hash of public signing key";
+  //   return false;
+  // }
+  // Base64WEncode(hash, &key_info);
+
+  Base64WEncode(key_data, &key_info);
+
+  stringstream out;
+  out << "TPM(" << quotedString(key_info) << ")";
+
+  // now get the pcrs
+  out << "::PCRs(\"17 18\",\"";
+  list<UINT32> pcrs_to_seal{17, 18};
+  bool first = true;
+  for (UINT32 pcr_val : pcrs_to_seal) {
+    BYTE *temp_pcr;
+    UINT32 temp_pcr_len;
+    result = Tspi_PcrComposite_GetPcrValue(seal_pcrs_, pcr_val, &temp_pcr_len,
+                                           &temp_pcr);
+    CHECK_EQ(result, TSS_SUCCESS) << "Could not get PCR " << (int)pcr_val;
+
+    string pcr((char *)temp_pcr, temp_pcr_len);
+    string pcr_info;
+    Base64WEncode(pcr, &pcr_info);
+    if (!first) out << " ";
+    out << pcr_info;
+
+    Tspi_Context_FreeMemory(tss_ctx_, temp_pcr);
+  }
+  out << "\")";
+
+  full_name->assign(out.str());
+  return true;
+}
+
+bool TPMTaoChildChannel::ExtendName(const string &subprin) const {
+  LOG(ERROR) << "Not yet implemented -- extend the pcrs";
+  // extend pcr 20 (or 21 or 22)?
+  return false;
+}
+
 }  // namespace tao

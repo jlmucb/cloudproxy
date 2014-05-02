@@ -38,27 +38,26 @@ class ProcessFactory : public HostedProgramFactory {
   ProcessFactory() {}
   virtual ~ProcessFactory() {}
 
-  /// Compute the hash of a hosted program. The arguments are the same as the
-  /// first three arguments of CreateHostedProgram.
-  virtual bool HashHostedProgram(const string &name, const list<string> &args,
-                                 string *child_hash) const;
+  virtual bool GetHostedProgramTentativeName(
+      int id, const string &path, const list<string> &args,
+      string *tentative_child_name) const;
 
-  /// Start a process, using fork/exec, and pass it the params it needs to
-  /// communicate with the host Tao.
-  /// @param name The name of the file to execute.
-  /// @param args The arguments for the process. CreateHostedProgram will add a
-  /// final argument: the Base64W-encoding of a TaoChildChannelParams that
-  /// specifies the file descriptors to use for Tao communication.
-  /// @param child_hash The hash of the hosted program.
-  /// @param parent_channel The channel to use for establishing communication
-  /// with the hosted program.
-  /// @param[out] identifier An identifier for the hosted program: e.g., a PID
-  /// for a process
-  virtual bool CreateHostedProgram(const string &name, const list<string> &args,
-                                   const string &child_hash,
-                                   TaoChannel &parent_channel,  // NOLINT
-                                   string *identifier) const;
+  virtual bool CreateHostedProgram(int id, const string &name,
+                                   const list<string> &args,
+                                   const string &tentative_child_name,
+                                   TaoChannel *parent_channel,
+                                   string *child_name) const;
+
   virtual string GetFactoryName() const;
+
+  virtual bool ParseChildName(string child_name, int *id, string *path,
+                              string *prog_hash, string *arg_hash, string *pid,
+                              string *subprin) const;
+
+ protected:
+  virtual string CreateChildName(int id, const string &path,
+                                 const string &prog_hash,
+                                 const string &arg_hash, string pid) const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ProcessFactory);

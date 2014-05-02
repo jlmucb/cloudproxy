@@ -63,27 +63,30 @@ class FakeTao : public Tao {
   /// is not taken.
   virtual bool InitPseudoTPM(const string &keys_path, const TaoDomain &admin);
 
+  virtual bool Destroy() { return true; }
+
   /// Make a (deep) copy of this object.
   virtual FakeTao *DeepCopy() const;
 
   /// The FakeTao pretends to start hosted programs but does nothing.
-  virtual bool StartHostedProgram(const string &path, const list<string> &args,
-                                  string *identifier);
+  virtual bool StartHostedProgram(const string &program,
+                                  const list<string> &args, string *child_name);
 
   /// The FakeTao doesn't remove hosted programs, but it accepts the call.
-  virtual bool RemoveHostedProgram(const string &child_hash) { return true; }
+  virtual bool RemoveHostedProgram(const string &child_name) { return true; }
 
   /// FakeTao follows the normal semantics of the Tao for these methods.
   /// @{
-  virtual bool Destroy() { return true; }
-  virtual bool GetRandomBytes(const string &child_hash, size_t size,
+  virtual bool GetTaoFullName(string *tao_name);
+  virtual bool GetRandomBytes(const string &child_name, size_t size,
                               string *bytes) const;
-  virtual bool Seal(const string &child_hash, const string &data,
+  virtual bool Seal(const string &child_name, const string &data, int policy,
                     string *sealed) const;
-  virtual bool Unseal(const string &child_hash, const string &sealed,
-                      string *data) const;
-  virtual bool Attest(const string &child_hash, const string &data,
+  virtual bool Unseal(const string &child_name, const string &sealed,
+                      string *data, int *policy) const;
+  virtual bool Attest(const string &child_name, const string &data,
                       string *attestation) const;
+  virtual bool ExtendName(string *child_name, const string &subprin);
   /// @}
 
  private:
@@ -92,6 +95,9 @@ class FakeTao : public Tao {
 
   /// Crypting and signing keys for sealing and signing.
   scoped_ptr<tao::Keys> keys_;
+
+  /// A count of how many children have been started so far.
+  int last_child_id_;
 
   /// Generate a new attestation for our signing key.
   /// @param admin The configuration for this administrative domain.

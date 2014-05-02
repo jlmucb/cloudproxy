@@ -27,25 +27,27 @@
 using std::string;
 
 namespace tao {
-DirectTaoChildChannel::DirectTaoChildChannel(Tao *tao, const string &child_hash)
-    : tao_(tao), child_hash_(child_hash) {
-  // no other initialization needed
-}
 
 bool DirectTaoChildChannel::GetRandomBytes(size_t size, string *bytes) const {
-  return tao_->GetRandomBytes(child_hash_, size, bytes);
+  return tao_->GetRandomBytes(child_name_, size, bytes);
 }
 
-bool DirectTaoChildChannel::Seal(const string &data, string *sealed) const {
-  return tao_->Seal(child_hash_, data, sealed);
+bool DirectTaoChildChannel::Seal(const string &data, int policy,
+                                 string *sealed) const {
+  return tao_->Seal(child_name_, data, policy, sealed);
 }
 
-bool DirectTaoChildChannel::Unseal(const string &sealed, string *data) const {
-  return tao_->Unseal(child_hash_, sealed, data);
+bool DirectTaoChildChannel::Unseal(const string &sealed, string *data,
+                                   int *policy) const {
+  return tao_->Unseal(child_name_, sealed, data, policy);
 }
 
 bool DirectTaoChildChannel::Attest(const string &data,
                                    string *attestation) const {
-  return tao_->Attest(child_hash_, data, attestation);
+  return tao_->Attest(child_name_, data, attestation);
+}
+
+bool DirectTaoChildChannel::GetHostedProgramFullName(string *full_name) const {
+  return tao_->GetHostedProgramFullName(child_name_, full_name);
 }
 }  // namespace tao

@@ -163,6 +163,15 @@ bool LetChildProcsDie() {
   return true;
 }
 
+bool Sha256(const string &s, string *hash) {
+  if (!CryptoFactory::SHA256()->Digest(s, hash)) {
+    // This should be fatal. If it happens, then openssl has died.
+    LOG(ERROR) << "Can't compute hash";
+    return false;
+  }
+  return true;
+}
+
 bool Sha256FileHash(const string &path, string *hash) {
   string contents;
   if (!ReadFileToString(path, &contents)) {
@@ -170,49 +179,7 @@ bool Sha256FileHash(const string &path, string *hash) {
     return false;
   }
 
-  if (!CryptoFactory::SHA256()->Digest(contents, hash)) {
-    LOG(ERROR) << "Can't compute hash of " << path;
-    return false;
-  }
-
-  return true;
-}
-
-bool HashVM(const string &vm_template_path, const string &name,
-            const string &kernel_file_path, const string &initrd_file_path,
-            string *hash) {
-  // TODO(tmroeder): take in the right hash type and use it here. For
-  // now, we just assume that it's SHA256
-
-  string template_hash;
-  if (!Sha256FileHash(vm_template_path, &template_hash)) return false;
-
-  string name_hash;
-  if (!CryptoFactory::SHA256()->Digest(name, &name_hash)) {
-    LOG(ERROR) << "Could not compute the hash of the name";
-    return false;
-  }
-
-  string kernel_hash;
-  if (!Sha256FileHash(kernel_file_path, &kernel_hash)) return false;
-
-  string initrd_hash;
-  if (!Sha256FileHash(initrd_file_path, &initrd_hash)) return false;
-
-  // Concatenate the hashes
-  string hash_input;
-  hash_input.append(template_hash);
-  hash_input.append(name_hash);
-  hash_input.append(kernel_hash);
-  hash_input.append(initrd_hash);
-
-  string composite_hash;
-  if (!CryptoFactory::SHA256()->Digest(hash_input, &composite_hash)) {
-    LOG(ERROR) << "Could not compute the composite hash\n";
-    return false;
-  }
-
-  return Base64WEncode(composite_hash, hash);
+  return Sha256(contents, hash);
 }
 
 bool RegisterKnownChannels(TaoChildChannelRegistry *registry) {
@@ -424,7 +391,8 @@ bool MakeSealedSecret(const TaoChildChannel &t, const string &path,
     return false;
   }
   string sealed_secret;
-  if (!t.Seal(*secret, &sealed_secret)) {
+  if (!t.Seal(*secret, Tao::PolicySameProgHash | Tao::PolicySameArgHash,
+              &sealed_secret)) {
     LOG(ERROR) << "Can't seal the secret";
     return false;
   }
@@ -451,8 +419,13 @@ bool GetSealedSecret(const TaoChildChannel &t, const string &path,
     LOG(ERROR) << "Can't read the sealed secret from " << path;
     return false;
   }
-  if (!t.Unseal(sealed_secret, secret)) {
+  int policy;
+  if (!t.Unseal(sealed_secret, secret, &policy)) {
     LOG(ERROR) << "Can't unseal the secret";
+    return false;
+  }
+  if (policy != (Tao::PolicySameProgHash | Tao::PolicySameArgHash)) {
+    LOG(ERROR) << "Unsealed data, but providence is uncertain";
     return false;
   }
   VLOG(2) << "Unsealed a secret of size " << secret->size();
@@ -967,4 +940,59 @@ bool AuthorizeProgram(const string &path, TaoDomain *admin) {
 
   return admin->Authorize(program_hash, TaoAuth::Sha256, program_name);
 }
+
+string quotedString(const string &s) {
+  stringstream out;
+  out << '\"';
+  for (const char &c : s) {
+    if (c == '\\' || c == '\"') out << '\\';
+    out << c;
+  }
+  out << '\"';
+  return out.str();
+}
+
+stringstream &getQuotedString(stringstream &in, string *s) {  // NOLINT
+  stringstream out;
+  char c;
+  while ((in >> c) && (c == ' ' || c == '\t')) {
+  }
+  if (!in || c != '\"') {
+    in.setstate(std::ios::failbit);
+    return in;
+  }
+  bool escape = false;
+  while (!(in >> c)) {
+    if (!escape) {
+      if (c == '\"') {
+        s->assign(out.str());
+        return in;
+      } else if (c == '\\') {
+        escape = true;
+      } else {
+        out << c;
+      }
+    } else {
+      if ((c == '\"') || (c == '\\')) {
+        out << c;
+        escape = false;
+      } else {
+        in.setstate(std::ios::failbit);
+        return in;
+      }
+    }
+  }
+  in.setstate(std::ios::failbit);
+  return in;
+}
+
+stringstream &skip(stringstream &in, const string &s) {  // NOLINT
+  for (unsigned int i = 0; in && i < s.size(); i++) {
+    char c;
+    in >> c;
+    if (c != s[i]) in.setstate(std::ios::failbit);
+  }
+  return in;
+}
+
 }  // namespace tao

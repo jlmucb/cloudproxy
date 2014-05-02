@@ -63,6 +63,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  // TODO(kwalsh) - this should all go in InitializeApp()
   string encoded_params(argv[argc - 1]);
   string params;
   if (!Base64WDecode(encoded_params, &params)) {

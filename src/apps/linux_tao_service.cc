@@ -111,8 +111,11 @@ int main(int argc, char **argv) {
   CHECK(tao->Init()) << "Could not initialize the LinuxTao";
 
   if (!FLAGS_use_tpm && FLAGS_ignore_seal_hashes)
-    tao->SetIgnoreSealHashesForTesting(true);
+    tao->SetIgnoreUnsealPolicyForTesting(true);
 
+  string tao_name;
+  tao->GetTaoFullName(&tao_name);
+  LOG(INFO) << "Tao Service: " << tao_name;
   LOG(INFO) << "Linux Tao Service started and waiting for requests";
 
   // Listen for program creation requests and for messages from hosted programs

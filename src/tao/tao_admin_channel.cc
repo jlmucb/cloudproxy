@@ -22,19 +22,23 @@
 
 #include <glog/logging.h>
 
+#include "tao/util.h"
+
 namespace tao {
 bool TaoAdminChannel::Shutdown() const {
   TaoAdminRequest rpc;
   rpc.set_rpc(TAO_ADMIN_RPC_SHUTDOWN);
-  SendRPC(rpc);
   TaoAdminResponse resp;
-  GetResponse(&resp);
+  if (!SendRPC(rpc) || !ReceiveRPC(&resp)) {
+    LOG(ERROR) << "RPC on admin channel failed";
+    return false;
+  }
   return resp.success();
 }
 
 bool TaoAdminChannel::StartHostedProgram(const string &path,
                                          const list<string> &args,
-                                         string *identifier) const {
+                                         string *child_name) const {
   TaoAdminRequest rpc;
   rpc.set_rpc(TAO_ADMIN_RPC_START_HOSTED_PROGRAM);
 
@@ -43,11 +47,11 @@ bool TaoAdminChannel::StartHostedProgram(const string &path,
     rpc.add_args(arg);
   }
 
-  SendRPC(rpc);
-
-  // wait for a response to the message
   TaoAdminResponse resp;
-  GetResponse(&resp);
+  if (!SendRPC(rpc) || !ReceiveRPC(&resp)) {
+    LOG(ERROR) << "RPC on admin channel failed";
+    return false;
+  }
 
   if (resp.success()) {
     if (!resp.has_data()) {
@@ -55,31 +59,46 @@ bool TaoAdminChannel::StartHostedProgram(const string &path,
       return false;
     }
 
-    identifier->assign(resp.data().data(), resp.data().size());
+    child_name->assign(resp.data().data(), resp.data().size());
   }
 
   return resp.success();
 }
 
-bool TaoAdminChannel::RemoveHostedProgram(const string &child_hash) const {
+bool TaoAdminChannel::RemoveHostedProgram(const string &child_name) const {
   TaoAdminRequest rpc;
   rpc.set_rpc(TAO_ADMIN_RPC_REMOVE_HOSTED_PROGRAM);
-  rpc.set_data(child_hash);
-
-  SendRPC(rpc);
+  rpc.set_data(child_name);
 
   TaoAdminResponse resp;
-  GetResponse(&resp);
+  if (!SendRPC(rpc) || !ReceiveRPC(&resp)) {
+    LOG(ERROR) << "RPC on admin channel failed";
+    return false;
+  }
 
   return resp.success();
 }
 
-bool TaoAdminChannel::SendRPC(const TaoAdminRequest &rpc) const {
-  return SendMessage(rpc);
+bool TaoAdminChannel::GetTaoFullName(string *tao_name) const {
+  TaoAdminRequest rpc;
+  rpc.set_rpc(TAO_ADMIN_RPC_GET_TAO_FULL_NAME);
+
+  TaoAdminResponse resp;
+  if (!SendRPC(rpc) || !ReceiveRPC(&resp)) {
+    LOG(ERROR) << "RPC on admin channel failed";
+    return false;
+  }
+
+  if (resp.success()) {
+    if (!resp.has_data()) {
+      LOG(ERROR) << "A successful call did not return data";
+      return false;
+    }
+
+    tao_name->assign(resp.data().data(), resp.data().size());
+  }
+
+  return resp.success();
 }
 
-bool TaoAdminChannel::GetResponse(TaoAdminResponse *resp) const {
-  CHECK_NOTNULL(resp);
-  return ReceiveMessage(resp);
-}
 }  // namespace tao

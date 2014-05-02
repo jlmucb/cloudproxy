@@ -47,38 +47,31 @@ class TaoAdminChannel {
   /// Methods that invoke the administrative interfaces of the Tao.
   /// @{
 
-  /// Request that the host Tao be shut down.
+  /// Request that the Tao be shut down.
   virtual bool Shutdown() const;
 
-  /// Request that the host Tao start a new program. See Tao for semantics.
+  /// Request that the Tao start a new program. See Tao for semantics.
   virtual bool StartHostedProgram(const string &path, const list<string> &args,
-                                  string *identifier) const;
+                                  string *child_name) const;
 
-  /// Request that the host Tao remove a program. See Tao for semantics.
-  virtual bool RemoveHostedProgram(const string &child_hash) const;
+  /// Request that the Tao remove a program. See Tao for semantics.
+  virtual bool RemoveHostedProgram(const string &child_name) const;
+
+  /// Request the full name of the Tao. See Tao for semantics.
+  virtual bool GetTaoFullName(string *tao_name) const;
 
   /// @}
 
  protected:
-  /// Receive a protobuf on the channel from a Tao. Subclasses implement this
-  /// method for their particular channel type.
-  /// @param[out] m The received message.
-  virtual bool ReceiveMessage(google::protobuf::Message *m) const = 0;
-
-  /// Send a protobuf on a channel to a Tao. Subclasses implement
-  /// this method for their particular channel type.
-  /// @param m The message to send.
-  virtual bool SendMessage(const google::protobuf::Message &m) const = 0;
-
- private:
-  /// Send an RPC to the Tao.
-  /// @param rpc The RPC containing the message.
-  virtual bool SendRPC(const TaoAdminRequest &rpc) const;
+  /// Send an RPC request to the Tao.
+  /// @param rpc The rpc to send.
+  virtual bool SendRPC(const TaoAdminRequest &rpc) const = 0;
 
   /// Receive an RPC response from the Tao.
-  /// @param[out] The response to an RPC.
-  virtual bool GetResponse(TaoAdminResponse *resp) const;
+  /// @param resp The response received.
+  virtual bool ReceiveRPC(TaoAdminResponse *resp) const = 0;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(TaoAdminChannel);
 };
 }  // namespace tao

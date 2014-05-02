@@ -55,32 +55,37 @@ class TaoChannel {
 
   /// Add a child to this channel and return the string that will let the child
   /// connect using the same type.
-  /// @param child_hash The hash of the child to add.
+  /// @param tentative_child_name The tentative name of the child to add.
   /// @param[out] params The Base64W-encoded TaoChildChannelParams that the
   /// child will use to connect to this TaoChannel.
-  virtual bool AddChildChannel(const string &child_hash, string *params) = 0;
+  virtual bool AddChildChannel(const string &tentative_child_name,
+                               string *params) = 0;
 
-  /// Clean up host state for hosted program creation.
-  /// @param child_hash The hash of the hosted program being created.
-  virtual bool ChildCleanup(const string &child_hash) = 0;
+  /// Clean up host state in child during hosted program creation.
+  /// @param encoded_params The Base64W-encoded TaoChildChannelParams that the
+  /// child will use to connect to this TaoChannel.
+  /// @param subprin A subprincipal name used to finalize our name.
+  virtual bool ChildCleanup(const string &encoded_params,
+                            const string &subprin) = 0;
 
-  /// Clean up hosted program state during hosted program creation.
-  /// @param child_hash The hash of the hosted program being created.
-  virtual bool ParentCleanup(const string &child_hash) = 0;
+  /// Clean up hosted program state in host during hosted program creation.
+  /// @param tentative-child_name Name of the hosted program being created.
+  virtual bool ParentCleanup(const string &tentative_child_name) = 0;
 
   /// Provide new params for a hosted program.
-  /// @param child_hash The hosted program associated with the new parameters.
+  /// @param tentative_child_name The name associated with the new parameters.
   /// @param params The new parameters to use.
-  virtual bool UpdateChildParams(const string &child_hash,
+  virtual bool UpdateChildParams(const string &tentative_child_name,
                                  const string &params) = 0;
 
  protected:
   /// Handle incoming messages from a hosted program.
   /// @param tao The Tao implementation that handles the message.
-  /// @param hash The hash of the hosted program that sent the message.
+  /// @param[in,out] child_name The name of the hosted program that sent the
+  /// message. If the child requests a name extension, this will be modified.
   /// @param rpc The RPC containing the received message.
   /// @param[out] resp The response to send if return value is true.
-  virtual bool HandleChildRPC(Tao *tao, const string &hash,
+  virtual bool HandleChildRPC(Tao *tao, string *child_name,
                               const TaoChildRequest &rpc,
                               TaoChildResponse *resp) const;
 
@@ -97,9 +102,9 @@ class TaoChannel {
   /// Handle the StartHostedProgram RPC.
   /// @param tao The Tao implementation that handles the message.
   /// @param rpc The RPC containing the StartHostedProgram request.
-  /// @param[out] identifier The identifier for the new hosted program.
+  /// @param[out] child_name The name for the new hosted program.
   bool HandleProgramCreation(Tao *tao, const TaoAdminRequest &rpc,
-                             string *identifier) const;
+                             string *child_name) const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TaoChannel);

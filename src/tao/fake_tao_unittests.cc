@@ -31,6 +31,7 @@ using keyczar::base::Base64WEncode;
 
 using tao::FakeTao;
 using tao::ScopedTempDir;
+using tao::Tao;
 using tao::TaoDomain;
 
 class FakeTaoTest : public ::testing::Test {
@@ -54,6 +55,12 @@ class FakeTaoTest : public ::testing::Test {
   scoped_ptr<TaoDomain> admin_;
 };
 
+TEST_F(FakeTaoTest, FullNameTest) {
+  string tao_name;
+  EXPECT_TRUE(tao_->GetTaoFullName(&tao_name));
+  EXPECT_TRUE(!tao_name.empty());
+}
+
 TEST_F(FakeTaoTest, RandomBytesTest) {
   string bytes;
 
@@ -69,12 +76,14 @@ TEST_F(FakeTaoTest, SealTest) {
   string encoded_hash;
   EXPECT_TRUE(Base64WEncode(bytes, &encoded_hash));
   string sealed;
-  EXPECT_TRUE(tao_->Seal(encoded_hash, bytes, &sealed));
+  EXPECT_TRUE(
+      tao_->Seal(encoded_hash, bytes, Tao::PolicySameProgHash, &sealed));
 
   // Try the same thing with the attested tao.
   EXPECT_TRUE(attested_tao_->GetRandomBytes("fake hash", 128, &bytes));
   EXPECT_TRUE(Base64WEncode(bytes, &encoded_hash));
-  EXPECT_TRUE(attested_tao_->Seal(encoded_hash, bytes, &sealed));
+  EXPECT_TRUE(attested_tao_->Seal(encoded_hash, bytes, Tao::PolicySameProgHash,
+                                  &sealed));
 }
 
 TEST_F(FakeTaoTest, UnsealTest) {
@@ -84,10 +93,11 @@ TEST_F(FakeTaoTest, UnsealTest) {
   string encoded_hash;
   EXPECT_TRUE(Base64WEncode(bytes, &encoded_hash));
   string sealed;
-  EXPECT_TRUE(tao_->Seal(encoded_hash, bytes, &sealed));
+  EXPECT_TRUE(tao_->Seal(encoded_hash, bytes, 0 /* policy */, &sealed));
 
   string unsealed;
-  EXPECT_TRUE(tao_->Unseal(encoded_hash, sealed, &unsealed));
+  int policy;
+  EXPECT_TRUE(tao_->Unseal(encoded_hash, sealed, &unsealed, &policy));
 
   EXPECT_EQ(bytes, unsealed);
 
@@ -95,9 +105,10 @@ TEST_F(FakeTaoTest, UnsealTest) {
   EXPECT_TRUE(attested_tao_->GetRandomBytes("fake hash", 128, &bytes));
 
   EXPECT_TRUE(Base64WEncode(bytes, &encoded_hash));
-  EXPECT_TRUE(attested_tao_->Seal(encoded_hash, bytes, &sealed));
+  EXPECT_TRUE(
+      attested_tao_->Seal(encoded_hash, bytes, 0 /* policy */, &sealed));
 
-  EXPECT_TRUE(attested_tao_->Unseal(encoded_hash, sealed, &unsealed));
+  EXPECT_TRUE(attested_tao_->Unseal(encoded_hash, sealed, &unsealed, &policy));
 
   EXPECT_EQ(bytes, unsealed);
 }

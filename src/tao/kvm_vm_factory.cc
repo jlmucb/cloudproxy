@@ -22,6 +22,8 @@
 
 #include <unistd.h>
 
+#include <sstream>
+
 #include <glog/logging.h>
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/file_util.h>
@@ -32,6 +34,8 @@
 #include "tao/tao_channel.h"
 #include "tao/tao_child_channel_params.pb.h"
 #include "tao/util.h"
+
+using std::stringstream;
 
 using keyczar::base::Base64WDecode;
 using keyczar::base::ReadFileToString;
@@ -59,39 +63,50 @@ bool KvmVmFactory::Init() {
   return true;
 }
 
-// The hash of the VM is Base64(H(H(template) || H(name) || H(kernel) ||
+// The child_name for a VM is Base64(H(H(template) || H(name) || H(kernel) ||
 //                                H(initrd)))
-bool KvmVmFactory::HashHostedProgram(const string &name,
-                                     const list<string> &args,
-                                     string *child_hash) const {
-  // As in CreateHostedProgram, we have to make sure that we have the right
-  // number of arguments for our operations to make sense.
-  // The extra argument in this case is the child channel creation parameters
-  // passed from the Tao.
+bool KvmVmFactory::GetHostedProgramTentativeName(
+    int id, const string &path, const list<string> &args,
+    string *tentative_child_name) const {
+
   if (args.size() != 4) {
-    LOG(ERROR) << "Wrong number of arguments. Expected 4 arguments, but got "
-               << (int)args.size();
+    LOG(ERROR) << "Wrong number of arguments for creating VM";
     return false;
   }
 
   auto it = args.begin();
-  string vm_template(*(it++));
-  string kernel(*(it++));
-  string initrd(*(it++));
-  // The next argument is the disk, but it is ignored, since it's untrusted.
+  string vm_template_path(*(it++));
+  string kernel_path(*(it++));
+  string initrd_path(*(it++));
+  // string disk_path(*(it++)); // unused because it is untrusted
 
-  return HashVM(vm_template, name, kernel, initrd, child_hash);
+  // arg_hash = H(template_file)
+  string arg_hash;
+  if (!Sha256FileHash(vm_template_path, &arg_hash)) return false;
+
+  // prog hash = H(H(kernel_file) || H(initrd_file))
+  string kernel_hash, initrd_hash, prog_hash;
+  if (!Sha256FileHash(kernel_path, &kernel_hash)) return false;
+  if (!Sha256FileHash(initrd_path, &initrd_hash)) return false;
+  if (!Sha256(kernel_hash + initrd_hash, &prog_hash)) return false;
+
+  tentative_child_name->assign(
+      CreateChildName(id, path, prog_hash, arg_hash, "" /* no pid yet */));
+
+  return true;
 }
 
-bool KvmVmFactory::CreateHostedProgram(const string &name,
+bool KvmVmFactory::CreateHostedProgram(int id, const string &name,
                                        const list<string> &args,
-                                       const string &child_hash,
-                                       TaoChannel &parent_channel,  // NOLINT
-                                       string *identifier) const {
+                                       const string &tentative_child_name,
+                                       TaoChannel *parent_channel,
+                                       string *child_name) const {
   if (args.size() != 5) {
     LOG(ERROR) << "Invalid parameters to KvmVmFactory::CreateHostedProgram";
     return false;
   }
+
+  // TODO(kwalsh) Wow, toc-tou error.
 
   auto it = args.begin();
   string vm_template(*(it++));
@@ -213,14 +228,69 @@ bool KvmVmFactory::CreateHostedProgram(const string &name,
   LOG(INFO) << "Created a VM with name " << name;
 
   // The parent channel will connect to the local device now.
-  if (!parent_channel.UpdateChildParams(child_hash, local_device)) {
+  if (!parent_channel->UpdateChildParams(tentative_child_name, local_device)) {
     LOG(ERROR) << "Could not update the child parameters";
     return false;
   }
 
-  identifier->assign(name);
+  // string subprin = "LocalDevice(" + quotedString(local_device) + ");
+  // child_name->assign(tentative_child_name + "::" + subprin);
+  child_name->assign(tentative_child_name);
   return true;
 }
 
 string KvmVmFactory::GetFactoryName() const { return "KvmVmFactory"; }
+
+// TODO(kwalsh) This will be replaced with more generic formula / logic routines
+string KvmVmFactory::CreateChildName(int id, const string &path,
+                                     const string &prog_hash,
+                                     const string &arg_hash, string pid) const {
+  std::stringstream out;
+  out << "QemuKVM(" << id << ", ";
+  out << quotedString(path) << ", ";  // vm name
+  out << quotedString(prog_hash)
+      << ", ";                           // H(H(kernel file) || H(initrd file))
+  out << quotedString(arg_hash) << ")";  // H(template file)
+  if (!pid.empty()) out << "::LocalDevice(" << quotedString(pid) << ")";
+  return out.str();
+}
+
+bool KvmVmFactory::ParseChildName(string child_name, int *id, string *path,
+                                  string *prog_hash, string *arg_hash,
+                                  string *pid, string *subprin) const {
+  stringstream in(child_name);
+
+  skip(in, "QemuKVM(");
+  in >> *id;
+  skip(in, ", ");
+  getQuotedString(in, path);
+  skip(in, ", ");
+  getQuotedString(in, prog_hash);
+  skip(in, ", ");
+  getQuotedString(in, arg_hash);
+  skip(in, ")");
+
+  if (in && in.str() != "") {
+    skip(in, "::");
+    skip(in, "LocalDevice(");
+    getQuotedString(in, pid);
+  } else {
+    pid->assign("");
+  }
+
+  if (in && in.str() != "") {
+    skip(in, "::");
+    subprin->assign(in.str());
+  } else {
+    subprin->assign("");
+  }
+
+  if (!in) {
+    LOG(ERROR) << "Bad child name: " << child_name;
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace tao

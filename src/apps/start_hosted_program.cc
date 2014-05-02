@@ -62,11 +62,11 @@ int main(int argc, char **argv) {
   scoped_ptr<UnixDomainSocketTaoAdminChannel> chan(
       new UnixDomainSocketTaoAdminChannel(FLAGS_domain_socket));
   CHECK(chan->Init()) << "Could not open a socket for communication";
-  string identifier;
-  CHECK(chan->StartHostedProgram(FLAGS_program, args, &identifier))
+  string child_name;
+  CHECK(chan->StartHostedProgram(FLAGS_program, args, &child_name))
       << "Failed to start the program";
   // Print identifier so callers of can later send signals to the program.
-  printf("%s\n", identifier.c_str());
+  printf("Started: %s\n", child_name.c_str());
   CHECK(chan->Destroy()) << "Could not destroy socket";
 
   return 0;

@@ -29,15 +29,12 @@
 #include "tao/tao_child_channel_registry.h"
 #include "tao/tao_domain.h"
 
-using keyczar::base::WriteStringToFile;
-
 using tao::ConnectToUnixDomainSocket;
 using tao::CreateTempDir;
 using tao::CreateTempRootDomain;
 using tao::CreateTempWhitelistDomain;
 using tao::DirectTaoChildChannel;
 using tao::FakeTao;
-using tao::HashVM;
 using tao::OpenTCPSocket;
 using tao::OpenUnixDomainSocket;
 using tao::PipeTaoChildChannel;
@@ -48,24 +45,6 @@ using tao::TaoChildChannel;
 using tao::TaoChildChannelParams;
 using tao::TaoChildChannelRegistry;
 using tao::TaoDomain;
-
-TEST(TaoUtilTest, HashVMTest) {
-  ScopedTempDir temp_dir;
-  ASSERT_TRUE(CreateTempDir("hashvm_test", &temp_dir));
-  ASSERT_TRUE(WriteStringToFile(*temp_dir + "/vm_template", "vm template"));
-  string name("test vm");
-  ASSERT_TRUE(WriteStringToFile(*temp_dir + "/kernel", "dummy kernel"));
-  ASSERT_TRUE(WriteStringToFile(*temp_dir + "/initrd", "dummy initrd"));
-  string hash;
-  ASSERT_TRUE(HashVM(*temp_dir + "/vm_template", name, *temp_dir + "/kernel",
-                     *temp_dir + "/initrd", &hash))
-      << "Could not hash the parameters";
-
-  string correct_hash = "a-SuzE8aBiekrpc-LnTISYH4WpeSLikaBkCtYMUe5dA";
-
-  EXPECT_EQ(correct_hash, hash)
-      << "The hash value computed by HashVM did not match expectations";
-}
 
 TEST(TaoUtilTest, RegistryTest) {
   TaoChildChannelRegistry registry;

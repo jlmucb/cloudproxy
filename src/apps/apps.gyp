@@ -38,22 +38,6 @@
 			],
 		},
 		{
-			'target_name' : 'get_guest_hash',
-			'type' : 'executable',
-			'sources' : [
-				'get_guest_hash.cc',
-			],
-			'include_dirs' : [
-				'.',
-			],
-			'dependencies' : [
-				'../tao/tao.gyp:tao',
-				'../third_party/gflags/gflags.gyp:gflags',
-				'../third_party/google-glog/glog.gyp:glog',
-				'../third_party/keyczar/keyczar.gyp:keyczar'
-			],
-		},
-		{
 			'target_name' : 'get_pcrs',
 			'type' : 'executable',
 			'sources' : [

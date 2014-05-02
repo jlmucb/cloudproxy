@@ -21,6 +21,7 @@
 
 #include <list>
 #include <mutex>
+#include <sstream>
 
 #include <glog/logging.h>
 #include <keyczar/base/base64w.h>
@@ -67,48 +68,42 @@ bool LinuxTao::Init() {
     LOG(ERROR) << "Could not load attestation for signing key";
     return false;
   }
+
+  if (host_channel_->GetHostedProgramFullName(&full_name_)) {
+    LOG(ERROR) << "Could not obtain our own name from host channel";
+    return false;
+  }
+
+  last_child_id_ = 0;  // TODO(kwalsh) This should be persistent
+
   VLOG(1) << "LinuxTao: Initialization finished successfully";
   return true;
 }
 
 bool LinuxTao::StartHostedProgram(const string &path, const list<string> &args,
-                                  string *identifier) {
-  string child_hash;
-  string child_name = FilePath(path).BaseName().value();
-  if (!program_factory_->HashHostedProgram(path, args, &child_hash)) {
-    LOG(ERROR) << "Could not hash the hosted program";
+                                  string *child_name) {
+  int id = last_child_id_ + 1;
+  string tentative_name;
+  if (!program_factory_->GetHostedProgramTentativeName(id, path, args,
+                                                       &tentative_name)) {
+    LOG(ERROR) << "Could not hash the hosted program and its arguments";
     return false;
   }
 
   {
     lock_guard<mutex> l(auth_m_);
     // TODO(kwalsh) hash alg should come from ProgramFactory::HashHostedProgram
-    if (!admin_->IsAuthorized(child_hash, TaoAuth::Sha256, child_name)) {
-      LOG(ERROR) << "Program " << path << " with digest " << child_hash
-                 << " is not authorized";
+    if (!admin_->IsAuthorized(full_name_ + "::" + tentative_name)) {
+      LOG(ERROR) << tentative_name << " is not authorized to run on this Tao";
       return false;
     }
   }
 
-  VLOG(2) << "The program " << path << " with digest " << child_hash
-          << " is authorized";
-
-  {
-    lock_guard<mutex> l(data_m_);
-    auto child_it = running_children_.find(child_hash);
-    if (running_children_.end() != child_it) {
-      LOG(ERROR) << "An instance of the program " << path << " with digest "
-                 << child_hash << " is already running";
-      return false;
-    }
-
-    running_children_.insert(child_hash);
-  }
+  VLOG(2) << tentative_name << " is authorized to run on this Tao";
 
   string child_params;
-  if (!child_channel_->AddChildChannel(child_hash, &child_params)) {
-    LOG(ERROR) << "Could not add a channel to connect to a child with hash "
-               << child_hash;
+  if (!child_channel_->AddChildChannel(tentative_name, &child_params)) {
+    LOG(ERROR) << "Could not add a channel to connect to " << tentative_name;
     return false;
   }
 
@@ -124,22 +119,32 @@ bool LinuxTao::StartHostedProgram(const string &path, const list<string> &args,
 
   program_args.push_back(encoded_params);
 
-  if (!program_factory_->CreateHostedProgram(path, program_args, child_hash,
-                                             *child_channel_, identifier)) {
+  {
+    lock_guard<mutex> l(data_m_);
+    running_children_.insert(tentative_name);
+  }
+
+  if (!program_factory_->CreateHostedProgram(
+          id, path, program_args, tentative_name, child_channel_.get(),
+          child_name)) {
     LOG(ERROR) << "Could not start the hosted program";
+    {
+      lock_guard<mutex> l(data_m_);
+      running_children_.erase(tentative_name);
+    }
     return false;
   }
 
+  last_child_id_++;
   return true;
 }
 
-bool LinuxTao::RemoveHostedProgram(const string &child_hash) {
+bool LinuxTao::RemoveHostedProgram(const string &child_name) {
   {
     lock_guard<mutex> l(data_m_);
-    auto child_it = running_children_.find(child_hash);
+    auto child_it = running_children_.find(child_name);
     if (running_children_.end() == child_it) {
-      LOG(ERROR) << "An instance of the program  with digest " << child_hash
-                 << " is not running";
+      LOG(ERROR) << child_name << " is not running";
       return false;
     }
 
@@ -149,7 +154,12 @@ bool LinuxTao::RemoveHostedProgram(const string &child_hash) {
   return true;
 }
 
-bool LinuxTao::GetRandomBytes(const string &child_hash, size_t size,
+bool LinuxTao::GetTaoFullName(string *tao_name) {
+  tao_name->assign(full_name_);
+  return true;
+}
+
+bool LinuxTao::GetRandomBytes(const string &child_name, size_t size,
                               string *bytes) const {
   // ask host Tao for random bytes
   if (!host_channel_->GetRandomBytes(size, bytes)) {
@@ -160,32 +170,44 @@ bool LinuxTao::GetRandomBytes(const string &child_hash, size_t size,
   return true;
 }
 
-bool LinuxTao::Seal(const string &child_hash, const string &data,
+bool LinuxTao::Seal(const string &child_name, const string &data, int policy,
                     string *sealed) const {
   {
     lock_guard<mutex> l(data_m_);
-    auto child_it = running_children_.find(child_hash);
+    auto child_it = running_children_.find(child_name);
     if (running_children_.end() == child_it) {
-      LOG(ERROR) << "The program with digest " << child_hash << " was not a "
-                 << "program that was executing";
+      LOG(ERROR) << child_name << "is not executing";
       return false;
     }
   }
 
-  SealedData sd;
-  sd.set_hash(child_hash);
+  LinuxTaoSealedData sd;
 
-  // TODO(tmroeder): generalize to other hash algorithms
-  sd.set_hash_alg(TaoAuth::Sha256);
+  // TODO(kwalsh) fix policy hack
+
+  int child_id;
+  string path, prog_hash, arg_hash, child_pid, subprin;
+  if (!program_factory_->ParseChildName(child_name, &child_id, &path,
+                                        &prog_hash, &arg_hash, &child_pid,
+                                        &subprin)) {
+    LOG(ERROR) << "Can't seal due to bad name.";
+    return false;
+  }
+
+  if (policy & 1) sd.set_policy_id(child_id);
+  if (policy & 2) sd.set_policy_prog_hash(prog_hash);
+  if (policy & 4) sd.set_policy_arg_hash(arg_hash);
+  if (policy & 8) sd.set_policy_pid(child_pid);
+  if (policy & 16) sd.set_policy_subprin(subprin);
+
   sd.set_data(data);
 
   string serialized_sd;
   if (!sd.SerializeToString(&serialized_sd)) {
-    LOG(ERROR) << "Could not serialize the SealedData";
+    LOG(ERROR) << "Could not serialize the data";
     return false;
   }
 
-  // encrypt it using our symmetric key
   if (!keys_->Crypter()->Encrypt(serialized_sd, sealed)) {
     LOG(ERROR) << "Could not seal the data";
     return false;
@@ -194,64 +216,105 @@ bool LinuxTao::Seal(const string &child_hash, const string &data,
   return true;
 }
 
-bool LinuxTao::Unseal(const string &child_hash, const string &sealed,
-                      string *data) const {
+bool LinuxTao::Unseal(const string &child_name, const string &sealed,
+                      string *data, int *policy) const {
   {
     lock_guard<mutex> l(data_m_);
-    auto child_it = running_children_.find(child_hash);
+    auto child_it = running_children_.find(child_name);
     if (running_children_.end() == child_it) {
-      LOG(ERROR) << "The program with digest " << child_hash << " was not a "
-                 << "program that was executing";
+      LOG(ERROR) << child_name << " is not executing";
       return false;
     }
   }
 
-  // decrypt it using our symmetric key
+  int child_id;
+  string path, prog_hash, arg_hash, child_pid, subprin;
+  if (!program_factory_->ParseChildName(child_name, &child_id, &path,
+                                        &prog_hash, &arg_hash, &child_pid,
+                                        &subprin)) {
+    LOG(ERROR) << "Can't unseal due to bad name.";
+    return false;
+  }
+
+  // Decrypt it.
   string temp_decrypted;
   if (!keys_->Crypter()->Decrypt(sealed, &temp_decrypted)) {
     LOG(ERROR) << "Could not decrypt the sealed data";
     return false;
   }
 
-  // try to parse it as SealedData, and check the hash to make sure it matches
-  SealedData sd;
+  // Parse it.
+  LinuxTaoSealedData sd;
   if (!sd.ParseFromString(temp_decrypted)) {
     // note that this is safe, since we always use authenticated encryption
-    LOG(ERROR) << "Could not parse the decrypted data as SealedData";
+    LOG(ERROR) << "Could not parse the decrypted data";
     return false;
   }
 
-  if (child_hash.compare(sd.hash()) != 0) {
-    LOG(ERROR) << "This data was not sealed to this program";
-    if (!ignore_seal_hashes_for_testing_)
-      return false;
+  // TODO(kwalsh) fix policy hack
+
+  // Check the policy.
+  int pol = 0;
+  if (sd.has_policy_id()) pol |= 1;
+  if (sd.has_policy_prog_hash()) pol |= 2;
+  if (sd.has_policy_arg_hash()) pol |= 4;
+  if (sd.has_policy_pid()) pol |= 8;
+  if (sd.has_policy_subprin()) pol |= 16;
+
+  bool denied = false;
+  denied |= ((pol & 1) && sd.policy_id() != child_id);
+  denied |= ((pol & 2) && sd.policy_prog_hash() != prog_hash);
+  denied |= ((pol & 4) && sd.policy_arg_hash() != arg_hash);
+  denied |= ((pol & 8) && sd.policy_pid() != child_pid);
+  denied |= ((pol & 16) && sd.policy_subprin() != subprin);
+
+  if (denied) {
+    LOG(ERROR) << "Access denied";
+    if (ignore_unseal_policy_for_testing_)
+      LOG(ERROR) << "For test/debug purposes, unseal policy will be ignored";
     else
-      LOG(ERROR) << "For test/debug purposes, seal hash error will be ignored";
+      return false;
   }
 
-  data->assign(sd.data().data(), sd.data().size());
-
+  data->assign(sd.data());
+  *policy = pol;
   return true;
 }
 
-bool LinuxTao::Attest(const string &child_hash, const string &data,
+bool LinuxTao::Attest(const string &child_name, const string &data,
                       string *attestation) const {
   {
     lock_guard<mutex> l(data_m_);
-    auto child_it = running_children_.find(child_hash);
+    auto child_it = running_children_.find(child_name);
     if (running_children_.end() == child_it) {
-      LOG(ERROR) << "The program with digest " << child_hash << " was not a "
-                 << "program that was executing";
+      LOG(ERROR) << child_name << " was not executing";
       return false;
     }
   }
 
   Statement s;
   s.set_data(data);
-  s.set_hash_alg(TaoAuth::Sha256);
-  s.set_hash(child_hash);
+  s.set_hash(full_name_ + "::" + child_name);  // TODO(kwalsh) should be name
 
   return GenerateAttestation(*keys_, attestation_, &s, attestation);
+}
+
+bool LinuxTao::ExtendName(string *child_name, const string &subprin) {
+  // TODO(kwalsh) Check subprin name for format/reasonableness.
+  string extended_name = *child_name + "::" + subprin;
+  {
+    lock_guard<mutex> l(data_m_);
+    auto child_it = running_children_.find(*child_name);
+    if (running_children_.end() == child_it) {
+      LOG(ERROR) << *child_name << " was not executing";
+      return false;
+    }
+    running_children_.erase(*child_name);
+    running_children_.insert(extended_name);
+  }
+
+  child_name->assign(extended_name);
+  return true;
 }
 
 bool LinuxTao::Listen() {
@@ -279,4 +342,5 @@ bool LinuxTao::GetTaoCAAttestation() {
   }
   return true;
 }
+
 }  // namespace tao

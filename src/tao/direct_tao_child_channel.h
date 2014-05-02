@@ -36,43 +36,34 @@ class Tao;
 class DirectTaoChildChannel : public TaoChildChannel {
  public:
   /// The parent constructor with its descriptors and the child descriptors.
-  // @param tao The tao to use as the underlying object
-  // @param child_hash The hash to pass to the tao in each call that needs it
-  DirectTaoChildChannel(Tao *tao, const string &child_hash);
+  /// @param tao The tao to use as the underlying object. Ownership is taken.
+  /// @param child_name The name to pass to the tao in each call.
+  DirectTaoChildChannel(Tao *tao, const string &child_name)
+      : tao_(tao), child_name_(child_name) {}
   virtual ~DirectTaoChildChannel() {}
 
-  // Tao interface methods
-
-  /// Init does nothing in this class.
   virtual bool Init() { return true; }
-
-  /// Destroy does nothing in the class.
   virtual bool Destroy() { return true; }
 
-  // The remainder of the operations pass their arguments down to the tao object
-  // and return its reply
+  /// These operations directly invoke the corresponding Tao method.
+  /// @{
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
-  virtual bool Seal(const string &data, string *sealed) const;
-  virtual bool Unseal(const string &sealed, string *data) const;
+  virtual bool Seal(const string &data, int policy, string *sealed) const;
+  virtual bool Unseal(const string &sealed, string *data, int *policy) const;
   virtual bool Attest(const string &data, string *attestation) const;
+  virtual bool GetHostedProgramFullName(string *full_name) const;
+  /// @}
 
  protected:
-  // Since DirectTaoChildChannel doesn't communicate with a remote Tao object,
-  // it doesn't implement ReceiveMessage or SendMessage, and it returns false if
-  // they are called.
-  virtual bool ReceiveMessage(google::protobuf::Message *m) const {
-    return false;
-  }
-  virtual bool SendMessage(const google::protobuf::Message &m) const {
-    return false;
-  }
+  virtual bool SendRPC(const TaoChildRequest &rpc) const { return false; }
+  virtual bool ReceiveRPC(TaoChildResponse *resp) const { return false; }
 
  private:
-  // The underlying Tao object to call
+  // The underlying Tao object to call.
   scoped_ptr<Tao> tao_;
 
-  // The hash to pass to each call that needs it
-  string child_hash_;
+  // The child name to pass to each call.
+  string child_name_;
 
   DISALLOW_COPY_AND_ASSIGN(DirectTaoChildChannel);
 };

@@ -25,16 +25,20 @@ enum TaoChildRequestType {
   TAO_CHILD_RPC_SEAL = 2;
   TAO_CHILD_RPC_UNSEAL = 3;
   TAO_CHILD_RPC_ATTEST = 4;
+  TAO_CHILD_RPC_GET_HOSTED_PROGRAM_FULL_NAME = 5;
+  TAO_CHILD_RPC_EXTEND_NAME = 6;
 }
 
 message TaoChildRequest {
   required TaoChildRequestType rpc = 1;
   optional bytes data = 2;
   optional int32 size = 3;
+  optional int32 policy = 4;  // TODO(kwalsh) fix policy hack
 }
 
 message TaoChildResponse {
   required TaoChildRequestType rpc = 1;
   required bool success = 2;
   optional bytes data = 3;
+  optional int32 policy = 4;  // TODO(kwalsh) fix policy hack
 }

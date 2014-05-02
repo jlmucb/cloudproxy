@@ -493,12 +493,25 @@ void vmentry_failure_function(ADDRESS flags)
     bprint("vmentry_failure_function FLAGS=0x%x (ZF=%d CF=%d) ErrorCode=0x%x\nDesc=%s\n",
             flags, rflags.Bits.ZF, rflags.Bits.CF, code, err);
     UINT64 out= -1;
+    extern int vmx_vmread(UINT64, UINT64*);
     if(vmx_vmread(0x4012, &out)==0) {
         bprint("vmentry_failure_function read succeeded 0x%016lx\n", out);
     }
     else {
         bprint("vmentry_failure_function read failed\n");
     }
+    out= -1;
+    vmx_vmread(0x4402, &out);
+    bprint("vmentry_failure_function exit reason: 0x%016lx\n", out);
+    out= -1;
+    vmx_vmread(0x4406, &out);
+    bprint("vmentry_failure_function error code: 0x%016lx\n", out);
+    out= -1;
+    vmx_vmread(0x4018, &out);
+    bprint("vmentry_failure_function entry error code: 0x%016lx\n", out);
+    out= -1;
+    vmx_vmread(0x4400, &out);
+    bprint("vmentry_failure_function vmcs instruction error: 0x%016lx\n", out);
     LOOP_FOREVER
 #endif
 #ifdef CLI_INCLUDE

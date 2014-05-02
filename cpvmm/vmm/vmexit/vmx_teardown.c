@@ -98,24 +98,20 @@ BOOLEAN vmexit_vmm_teardown(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *vmm_tear
     VMM_TEARDOWN_GUEST_STATES* vm_guest_states = NULL;
     UINT64 state_hva = 0;
     REPORT_VMM_TEARDOWN_DATA vmm_teardown_data;
-
     UINT32 cpu_idx = hw_cpu_id();
 
     vmm_teardown_data.nonce = vmm_teardown_params->nonce;
-
     if (!is_params_ok(gcpu, vmm_teardown_params, &state_hva) ||
         !report_uvmm_event(UVMM_EVENT_VMM_TEARDOWN, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), (void *)&vmm_teardown_data)) {
         return FALSE;
     }
-
     vm_guest_states = (VMM_TEARDOWN_GUEST_STATES *)state_hva;
-
     // disable vtd
 #ifdef ENABLE_VTD
-        vtd_deinitialize();
+    vtd_deinitialize();
 #endif
-        // get the guest states from vmcs and save them 
-        read_vmcs_to_get_guest_states(gcpu, vm_guest_states);
+    // get the guest states from vmcs and save them 
+    read_vmcs_to_get_guest_states(gcpu, vm_guest_states);
 
     if(vmm_teardown_params->is_guest_x64_mode == 1){
         EM64T_GDTR *gdtr = NULL;
@@ -136,9 +132,8 @@ BOOLEAN vmexit_vmm_teardown(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *vmm_tear
         if (!map_thunk_pages(gcpu, vmm_teardown_params)) {
             return FALSE;
         }
-
-                // restore the guest states and jump to teardown thunk. 
-            // never returns
+        // restore the guest states and jump to teardown thunk. 
+        // never returns
         call_teardown_thunk64( cpu_idx, vmm_teardown_params->guest_states_storage_virt_addr,
             vm_guest_states->ADDR_OF_TEARDOWN_THUNK);
     }
@@ -152,7 +147,6 @@ BOOLEAN vmexit_vmm_teardown(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *vmm_tear
          * call_teardown_thunk32() method below. */
         cr4_pae_is_on = BIT_GET64(
                    gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR4), 5);
-
         gdtr = (IA32_GDTR *) (&(vm_guest_states->GUEST_GDTR_LO));
 
         // update gdtr contents

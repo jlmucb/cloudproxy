@@ -554,10 +554,8 @@ void restore_previous_vmcs_ptr( UINT64 ptr_to_restore )
         ret_val = vmx_vmptrld( &ptr_to_restore );
 
         if (ret_val != HW_VMX_SUCCESS) {
-            error_processing(ptr_to_restore,
-                             ret_val,
-                             "vmx_vmptrld",
-                             VMCS_FIELD_COUNT);
+            error_processing(ptr_to_restore, ret_val,
+                             "vmx_vmptrld", VMCS_FIELD_COUNT);
         }
     }
     else {

@@ -219,7 +219,6 @@ typedef struct VMCS_SAVED_REGION {
 } PACKED VMCS_SAVED_REGION;
 
 
-
 void vmm_print_vmcs_region(UINT64* pu)
 {
     VMCS_SAVED_REGION* p= (VMCS_SAVED_REGION*) pu;
@@ -271,368 +270,81 @@ void vmm_print_vmcs_region(UINT64* pu)
 }
 
 
-
 void vmm_vmcs_guest_state_read(UINT64* area)
 {
-#ifdef JLMDEBUG
-    bprint("vmm_vmcs_guest_state_read\n");
-#endif
-    asm volatile(
-        "\tmovq     %[area], %%rcx\n"
-        "\tmovq     $0x681e, %%rax\n" // guest rip
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-        "\tmovq     $0x6820, %%rax\n" // guest rflags
-        "\tvmread   %%rax, %%rax\n"
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x440c, %%rax\n" // instruction length
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x6800, %%rax\n"// guest cr0
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x6802, %%rax\n" // guest cr3
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x6804, %%rax\n" // guest cr4
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x681a, %%rax\n" // guest dr7
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x0800, %%rax\n" // guest es
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x6806, %%rax\n" // guest_es_base
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x4800, %%rax\n" // guest es limit
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x4814, %%rax\n" // guest access rights
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x0802, %%rax\n" // guest cs selector
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x6808, %%rax\n" // guest cs base
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x4802, %%rax\n" // guest cs limit
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x4816, %%rax\n" // guest cs access rights
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x0804, %%rax\n"  // guest ss selector
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x680a, %%rax\n"  // guest ss base
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x4804, %%rax\n"  // guest ss limit
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x4818, %%rax\n"  // guest ss access rights
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x0806, %%rax\n"  // guest ds
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x680c, %%rax\n"  // guest ds
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x4806, %%rax\n"  // guest ds
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x481a, %%rax\n"  // guest ds
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x0808, %%rax\n"  // guest fs
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x680e, %%rax\n"  // guest fs
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x4808, %%rax\n"  // guest fs
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x481c, %%rax\n"  // guest fs
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x080a, %%rax\n"  // guest gs
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x6810, %%rax\n"  // guest gs
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x480a, %%rax\n"  // guest gs
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x481e, %%rax\n"  // guest gs
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x080c, %%rax\n"   // guest ldtr
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x6812, %%rax\n"   // guest ldtr
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x480c, %%rax\n"   // guest ldtr
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x4820, %%rax\n"   // guest ldtr
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x080e, %%rax\n"   // guest tr
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x6814, %%rax\n"   // guest tr
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x480e, %%rax\n"   // guest tr
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x4822, %%rax\n"   // guest tr
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x6816, %%rax\n"   // guest gdtr
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x4810, %%rax\n"   // guest gdtr
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x6818, %%rax\n"  // idtr
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x4812, %%rax\n"  // idtr
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x681c, %%rax\n"  // rsp
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x681e, %%rax\n"  // guest rip
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x6820, %%rax\n"  // rflags
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x6822, %%rax\n" // pending dbg
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x2800, %%rax\n" // link pointer
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x2802, %%rax\n" // IA32 debuf
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x4824, %%rax\n"  // guest interruptability
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x4826, %%rax\n"  // guest activity
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x4828, %%rax\n"   // smbase
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x482a, %%rax\n"   // sysenter
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x6824, %%rax\n"   // sysenter esp
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x6826, %%rax\n"   // sysenter eip
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\tmovl     %%edx, %%eax\n"
-        "\tcmp      $0, %%eax\n"
-        "jnz        1f\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x2804, %%rax\n"   // pat
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x2806, %%rax\n"   // efer
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x280a, %%rax\n"   // pdpte0
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x280c, %%rax\n"   // pdpte1
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x280e, %%rax\n"   // pdpte2
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x2810, %%rax\n"   // pdpte3
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x482e, %%rax\n"   // preempt timer
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x201a, %%rax\n"   // etpt
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x4000, %%rax\n"   // pin controls
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-	
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x400C, %%rax\n"   // pin controls
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-	
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     $0x4012, %%rax\n"   // entry controls
-        "\tvmread   %%rax, %%rax\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "\tjmp      2f\n"
-        
-        "1:\n"
-        "\tmovq     $0x00, %%rax\n"
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-        "\taddq     $8, %%rcx\n"
-        "\tmovq     %%rax, (%%rcx)\n"
-
-        "2:\n"
-    : : [area] "m" (area)
-    :"%rax", "%rcx");
+    VMCS_SAVED_REGION* p= (VMCS_SAVED_REGION*) area;
+    extern int vmx_vmread(UINT64, UINT64*);
+
+    vmx_vmread(0x681e, &p->g_rip);
+    vmx_vmread(0x6820, &p->g_rflags);
+    vmx_vmread(0x440c, &p->g_il);
+
+    vmx_vmread(0x6800, &p->g_cr0);
+    vmx_vmread(0x6802, &p->g_cr3);
+    vmx_vmread(0x6804, &p->g_cr4);
+    vmx_vmread(0x681a, &p->g_dr7);
+    vmx_vmread(0x0800, &p->g_es);
+    vmx_vmread(0x6806, &p->g_es_base);
+    vmx_vmread(0x4800, &p->g_es_limit);
+    vmx_vmread(0x4814, &p->g_es_access);
+    vmx_vmread(0x0802, &p->g_cs);
+    vmx_vmread(0x6808, &p->g_cs_base);
+    vmx_vmread(0x4802, &p->g_cs_limit);
+    vmx_vmread(0x4816, &p->g_cs_access);
+    vmx_vmread(0x0804, &p->g_ss);
+    vmx_vmread(0x680a, &p->g_ss_base);
+
+    vmx_vmread(0x4804, &p->g_ss_limit);
+    vmx_vmread(0x4818, &p->g_ss_access);
+    vmx_vmread(0x0806, &p->g_ds);
+    vmx_vmread(0x680c, &p->g_ds_base);
+    vmx_vmread(0x4806, &p->g_ds_limit);
+    vmx_vmread(0x481a, &p->g_ds_access);
+    vmx_vmread(0x0808, &p->g_fs);
+    vmx_vmread(0x680e, &p->g_fs_base);
+
+    vmx_vmread(0x4808, &p->g_fs_limit);
+    vmx_vmread(0x481c, &p->g_fs_access);
+    vmx_vmread(0x080a, &p->g_gs);
+    vmx_vmread(0x6810, &p->g_gs_base);
+    vmx_vmread(0x480a, &p->g_gs_limit);
+    vmx_vmread(0x481e, &p->g_gs_access);
+    vmx_vmread(0x080c, &p->g_ldtr);
+    vmx_vmread(0x6812, &p->g_ldtr_base);
+
+    vmx_vmread(0x480c, &p->g_ldtr_limit);
+    vmx_vmread(0x4820, &p->g_ldtr_access);
+    vmx_vmread(0x080e, &p->g_tr);
+    vmx_vmread(0x6814, &p->g_tr_base);
+    vmx_vmread(0x480e, &p->g_tr_limit);
+    vmx_vmread(0x4822, &p->g_tr_access);
+    vmx_vmread(0x6816, &p->g_gdtr1);
+    vmx_vmread(0x4810, &p->g_gdtr2);
+
+    vmx_vmread(0x6818, &p->g_idtr1);
+    vmx_vmread(0x4812, &p->g_idtr2);
+    vmx_vmread(0x6822, &p->g_dbg_pend);
+    vmx_vmread(0x2800, &p->g_link);
+    vmx_vmread(0x2802, &p->g_IA32_debug);
+    vmx_vmread(0x4824, &p->g_interruptability);
+    vmx_vmread(0x4826, &p->g_activity);
+    vmx_vmread(0x4828, &p->g_smbase);
+    vmx_vmread(0x482a, &p->g_sysenter);
+    vmx_vmread(0x6824, &p->g_sysenter_esp);
+    vmx_vmread(0x6826, &p->g_sysenter_eip);
+    vmx_vmread(0x2804, &p->g_pat);
+    vmx_vmread(0x2806, &p->g_efer);
+    vmx_vmread(0x280a, &p->g_pdpte0);
+    vmx_vmread(0x280c, &p->g_pdpte1);
+    vmx_vmread(0x280e, &p->g_pdpte2);
+    vmx_vmread(0x2810, &p->g_pdpte3);
+    vmx_vmread(0x482e, &p->g_preempt);
+    vmx_vmread(0x201a, &p->g_etpt);
+    vmx_vmread(0x4000, &p->g_controls);
+    vmx_vmread(0x400C, &p->g_exit_controls);
+    vmx_vmread(0x4012, &p->g_entry_controls);
 }
+
+
 
 

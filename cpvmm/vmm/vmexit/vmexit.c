@@ -478,7 +478,7 @@ void vmentry_failure_function(ADDRESS flags)
     VMCS_INSTRUCTION_ERROR code;
     EM64T_RFLAGS     rflags;
 #ifndef DEBUG
-    IA32_VMX_VMCS_GUEST_INTERRUPTIBILITY    interruptibility;
+    IA32_VMX_VMCS_GUEST_INTERRUPTIBILITY interruptibility;
 #endif
 
     rflags.Uint64 = flags;
@@ -486,13 +486,19 @@ void vmentry_failure_function(ADDRESS flags)
 
     VMM_LOG(mask_uvmm, level_error,"CPU%d: VMENTRY Failed on ", hw_cpu_id());
     PRINT_GCPU_IDENTITY(gcpu);
-    bprint("FLAGS=0x%x (ZF=%d CF=%d) ErrorCode=0x%x Desc=%s\n",
-            flags, rflags.Bits.ZF, rflags.Bits.CF, code, err);
-    LOOP_FOREVER
-    VMM_LOG(mask_uvmm, level_error," FLAGS=0x%X (ZF=%d CF=%d) ErrorCode=0x%X Desc=%s\n",
+    VMM_LOG(mask_uvmm, level_error,
+            " FLAGS=0x%X (ZF=%d CF=%d) ErrorCode=0x%X Desc=%s\n",
             flags, rflags.Bits.ZF, rflags.Bits.CF, code, err);
 #ifdef JLMDEBUG
-    bprint("vmentry_failure_function error code: %d\n", code);
+    bprint("vmentry_failure_function FLAGS=0x%x (ZF=%d CF=%d) ErrorCode=0x%x\nDesc=%s\n",
+            flags, rflags.Bits.ZF, rflags.Bits.CF, code, err);
+    UINT64 out= -1;
+    if(vmx_vmread(0x4012, &out)==0) {
+        bprint("vmentry_failure_function read succeeded 0x%016lx\n", out);
+    }
+    else {
+        bprint("vmentry_failure_function read failed\n");
+    }
     LOOP_FOREVER
 #endif
 #ifdef CLI_INCLUDE

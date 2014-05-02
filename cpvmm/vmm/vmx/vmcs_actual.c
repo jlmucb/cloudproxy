@@ -700,14 +700,32 @@ void error_processing(UINT64 vmcs, HW_VMX_RET_VALUE ret_val,
             error_message = "operation FAILED";
     }
     if (field == VMCS_FIELD_COUNT) {
+#ifdef JLMDEBUG
+        bprint("%s ( %p ) failed with the error: %s\n", operation, vmcs,
+                error_message ? error_message : "unknown error");
+#endif
+#if 0
         VMM_LOG(mask_anonymous, level_trace,"%s( %P ) failed with the error: %s\n",
                  operation, vmcs, error_message ? error_message : "unknown error");
+#endif
     }
     else {
+#ifdef JLMDEBUG
+        bprint("%s( %p, %s ) failed with the error: %s\n", operation, vmcs,
+                vmcs_get_field_name(field),
+                error_message ? error_message : "unknown error");
+#endif
+#if 0
         VMM_LOG(mask_anonymous, level_trace,"%s( %P, %s ) failed with the error: %s\n",
                  operation, vmcs, vmcs_get_field_name(field),
                  error_message ? error_message : "unknown error");
+#endif
     }
+
+
+#ifdef JLMDEBUG
+    LOOP_FOREVER
+#endif
     VMM_DEADLOOP();
     return;
 }

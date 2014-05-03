@@ -17,6 +17,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <keyczar/base/file_util.h>
@@ -41,10 +42,13 @@ using tao::FakeTaoChannel;
 using tao::HostedProgramFactory;
 using tao::LinuxTao;
 using tao::ScopedTempDir;
+using tao::Sha256FileHash;
 using tao::Tao;
 using tao::TaoAuth;
 using tao::TaoChannel;
 using tao::TaoDomain;
+
+DECLARE_string(program);  // defined in process_factory_unittests.cc
 
 class LinuxTaoTest : public ::testing::Test {
  protected:
@@ -58,17 +62,22 @@ class LinuxTaoTest : public ::testing::Test {
     // Set up the files for the test.
     string keys_path = *temp_dir_ + "/linux_tao_keys";
 
-    test_binary_path_ = *temp_dir_ + "/test_binary";
-    string test_binary_contents = "This is a fake test binary to be hashed\n";
-    test_binary_digest_ = "IMCalSHSXc41HN-roIPa9wIl5vXA1wVxLHRXceb-Scc";
-    ASSERT_TRUE(WriteStringToFile(test_binary_path_, test_binary_contents));
+    test_binary_path_ = FLAGS_program;
+
+    string test_binary_progdigest;
+    ASSERT_TRUE(Sha256FileHash(test_binary_path_, &test_binary_progdigest));
+    string test_binary_argdigest =
+        "47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU";
+    string test_binary_name_ =
+        "Program(1, \"" + test_binary_path_ + "\", \"" +
+        test_binary_progdigest + "\", \"" + test_binary_argdigest + "\")";
 
     scoped_ptr<FakeTao> ft(new FakeTao());
     ASSERT_TRUE(ft->InitTemporaryTPM()) << "Could not init the FakeTao";
 
     ft->GetTaoFullName(&fake_tao_name_);
 
-    string fake_linux_tao_hash("This is not a real hash");
+    string fake_linux_tao_hash("PCRs(\"fake\")");
     scoped_ptr<DirectTaoChildChannel> channel(
         new DirectTaoChildChannel(ft.release(), fake_linux_tao_hash));
     ASSERT_TRUE(channel->Init()) << "Could not init the channel";
@@ -91,7 +100,7 @@ class LinuxTaoTest : public ::testing::Test {
 
   ScopedTempDir temp_dir_;
   string test_binary_path_;
-  string test_binary_digest_;
+  string test_binary_name_;
   scoped_ptr<LinuxTao> tao_;
   string fake_tao_name_;
 };
@@ -150,7 +159,7 @@ TEST_F(LinuxTaoTest, SealTest) {
 
   string sealed;
   EXPECT_TRUE(
-      tao_->Seal(test_binary_digest_, bytes, Tao::PolicySameProgHash, &sealed));
+      tao_->Seal(test_binary_name_, bytes, Tao::PolicySameProgHash, &sealed));
 }
 
 TEST_F(LinuxTaoTest, UnsealTest) {
@@ -165,11 +174,11 @@ TEST_F(LinuxTaoTest, UnsealTest) {
 
   string sealed;
   EXPECT_TRUE(
-      tao_->Seal(test_binary_digest_, bytes, Tao::PolicySameProgHash, &sealed));
+      tao_->Seal(test_binary_name_, bytes, Tao::PolicySameProgHash, &sealed));
 
   string unsealed;
   int policy;
-  EXPECT_TRUE(tao_->Unseal(test_binary_digest_, sealed, &unsealed, &policy));
+  EXPECT_TRUE(tao_->Unseal(test_binary_name_, sealed, &unsealed, &policy));
   EXPECT_EQ(unsealed, bytes);
   EXPECT_TRUE(policy == Tao::PolicySameProgHash);
 }
@@ -184,5 +193,5 @@ TEST_F(LinuxTaoTest, AttestTest) {
   EXPECT_TRUE(!child_name.empty());
 
   string attestation;
-  EXPECT_TRUE(tao_->Attest(test_binary_digest_, bytes, &attestation));
+  EXPECT_TRUE(tao_->Attest(test_binary_name_, bytes, &attestation));
 }

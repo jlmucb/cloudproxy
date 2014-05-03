@@ -73,7 +73,7 @@ TEST_F(ProcessFactoryTest, HashTest) {
   string child_name;
   EXPECT_TRUE(factory_->CreateHostedProgram(
       1234, FLAGS_program, args, tentative_child_name, channel_.get(),
-      &child_name)) << "Could not create a vm";
+      &child_name)) << "Could not create a process";
   EXPECT_TRUE(!child_name.empty())
       << "Did not get an identifier from the factory";
 }

@@ -45,7 +45,7 @@ namespace tao {
 
 bool WhitelistAuth::IsAuthorized(const string &full_name) const {
   LOG(ERROR) << "Not yet implemented: auth for " << full_name;
-  return false;
+  return true;  // TODO(kwalsh)
 }
 
 bool WhitelistAuth::IsAuthorized(const string &hash, const string &alg,

@@ -29,14 +29,14 @@
 // FUNCTION : vmexit_init_event()
 // PURPOSE  : reset CPU
 // ARGUMENTS: GUEST_CPU_HANDLE gcpu
-// RETURNS  : void
 // NOTE     : Propagate INIT signal from primary guest to CPU
 VMEXIT_HANDLING_STATUS vmexit_init_event(GUEST_CPU_HANDLE gcpu)
 {
     CPU_ID  cpu_id = hw_cpu_id();
 
-    VMM_LOG(mask_anonymous, level_trace,"INIT signal in Guest#%d GuestCPU#%d HostCPU#%d\n",
-        guest_vcpu(gcpu)->guest_id, guest_vcpu(gcpu)->guest_cpu_id, hw_cpu_id());
+    VMM_LOG(mask_anonymous, level_trace,
+            "INIT signal in Guest#%d GuestCPU#%d HostCPU#%d\n",
+            guest_vcpu(gcpu)->guest_id, guest_vcpu(gcpu)->guest_cpu_id, hw_cpu_id());
 
     VMM_ASSERT(guest_is_primary(gcpu_guest_handle(gcpu)));
 
@@ -47,7 +47,6 @@ VMEXIT_HANDLING_STATUS vmexit_init_event(GUEST_CPU_HANDLE gcpu)
     }
     else {
         VMM_LOG(mask_anonymous, level_trace,"[%d] Switch to Wait for SIPI mode\n", cpu_id);
-
         // Switch to Wait for SIPI state.
         gcpu_set_activity_state(gcpu, Ia32VmxVmcsGuestSleepStateWaitForSipi);
     }

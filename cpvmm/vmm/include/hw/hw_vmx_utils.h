@@ -19,15 +19,15 @@
 
 // wrappers for VMX instructions
 
-void vmx_vmptrst( UINT64 *address );
-int vmx_vmptrld( UINT64 *address);
-int vmx_vmclear( UINT64 *address);
-int vmx_vmlaunch( void );
-int vmx_vmresume( void );
-int vmx_vmwrite( size_t index, size_t *buf);
-int vmx_vmread( size_t index, size_t *buf);
-int vmx_on( UINT64 *address);
-void vmx_off( void );
+void vmx_vmptrst(UINT64 *address);
+int vmx_vmptrld(UINT64 *address);
+int vmx_vmclear(UINT64 *address);
+int vmx_vmlaunch(void);
+int vmx_vmresume(void);
+int vmx_vmwrite(size_t index, size_t buf);
+int vmx_vmread(size_t index, size_t *buf);
+int vmx_on(UINT64 *address);
+void vmx_off(void);
 
 // General note: all functions that return value return the same values
 // 0 - The operation succeeded.

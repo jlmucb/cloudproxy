@@ -25,12 +25,12 @@
 #include "hw_vmx_utils.h"
 #include "vmm_dbg.h"
 #include "file_codes.h"
-#ifdef JLMDEBUG
-#include "jlmdebug.h"
-#endif
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMCS_INIT_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMCS_INIT_C, __condition)
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define MAX_32BIT_NUMBER 0x0FFFFFFFF
 #define MASK_PE_PG_OFF_UNRESTRICTED_GUEST 0xFFFFFFFF7FFFFFFE
@@ -504,9 +504,9 @@ HVA vmcs_hw_allocate_region(HPA* hpa)
     hva = (HVA)vmm_memory_alloc(VMCS_REGION_SIZE);
     if(hva == 0) {
 #ifdef JLMDEBUG
-        bprint("vmm_memory_alloc(%d) failed\n", VMCS_REGION_SIZE);
+        bprint("vmm_memory_alloc(%llu) failed\n", VMCS_REGION_SIZE);
         UINT64 check= hw_read_msr(IA32_MSR_VMCS_REVISION_IDENTIFIER_INDEX);
-        bprint("read MSR_VMCS_REVISION_IDENTIFIER: 0x%016lx\n", check);
+        bprint("read MSR_VMCS_REVISION_IDENTIFIER: %llx\n", check);
         LOOP_FOREVER
 #endif
     }
@@ -518,7 +518,7 @@ HVA vmcs_hw_allocate_region(HPA* hpa)
         VMM_DEADLOOP();
     }
 #ifdef JLMDEBUG
-    bprint("vmcs_hw_allocate_region after hmm_hva_to_hpa 0x%016lx\n", hva);
+    bprint("vmcs_hw_allocate_region after hmm_hva_to_hpa %llx\n", hva);
 #endif
     // check VMCS memory type
     VMM_ASSERT(hmm_does_memory_range_have_specified_memory_type(
@@ -625,7 +625,7 @@ void vmcs_hw_vmx_on( void )
     }
     vmxon_region_hva = host_cpu_get_vmxon_region(&vmxon_region_hpa);
 #ifdef JLMDEBUG
-    bprint("vmxon_hpa: 0x%016lx, vmxon_region_hva: 0x%016lx\n",
+    bprint("vmxon_hpa: %llx, vmxon_region_hva: %llx\n",
             vmxon_region_hpa,  vmxon_region_hva);
     // not that the region with address vmxon_region_hva
     // has been unmapped, so we cant print it.

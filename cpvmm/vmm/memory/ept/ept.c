@@ -3,10 +3,8 @@
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
- *
+ * You may obtain a copy of the License at
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -56,11 +54,8 @@ HPA redirect_physical_addr = 0;
 #define PRESENT_BIT                                  (UINT64) 0x1
 
 // static functions
-static
-BOOLEAN ept_guest_cpu_initialize(GUEST_CPU_HANDLE gcpu);
-
+static BOOLEAN ept_guest_cpu_initialize(GUEST_CPU_HANDLE gcpu);
 BOOLEAN ept_page_walk(UINT64 first_table, UINT64 addr, UINT32 gaw);
-
 void ept_set_remote_eptp(CPU_ID from, void* arg);
 
 
@@ -68,8 +63,7 @@ void ept_set_remote_eptp(CPU_ID from, void* arg);
 static
 BOOLEAN ept_check_pdpt_reserved_bits(UINT64 pdptr, UINT64 efer)
 {
-    if((efer & EFER_NXE) == 0)
-    {
+    if((efer & EFER_NXE) == 0) {
         return (pdptr & PDPTR_NXE_DISABLED_RESERVED_BITS_MASK) == 0;
     }
     return (pdptr & PDPTR_NXE_ENABLED_RESERVED_BITS_MASK) == 0;
@@ -84,7 +78,6 @@ void ept_set_pdtprs(GUEST_CPU_HANDLE gcpu, UINT64 cr4_value)
 
     if (cr4_value & CR4_PAE) { // PAE mode
         UINT64 efer = gcpu_get_msr_reg(gcpu, IA32_VMM_MSR_EFER);
-
         if (0 == (efer & EFER_LME)) { // 32-bit mode
             status = gcpu_get_32_bit_pdpt(gcpu, pdpt)
                   && pw_is_pdpt_in_32_bit_pae_mode_valid(gcpu, pdpt);
@@ -94,7 +87,6 @@ void ept_set_pdtprs(GUEST_CPU_HANDLE gcpu, UINT64 cr4_value)
             }
         }
     }
-
     if (FALSE == pdptr_required) {
         vmm_zeromem(pdpt, sizeof(pdpt));
         ept_hw_set_pdtprs(gcpu, pdpt);
@@ -125,13 +117,12 @@ BOOLEAN ept_is_cpu_in_non_paged_mode(GUEST_ID guest_id)
     EPT_GUEST_CPU_STATE *ept_guest_cpu = NULL;
     UINT32 i = 0;
     GUEST_CPU_HANDLE gcpu = scheduler_get_current_gcpu_for_guest(guest_id);
+
     //for UG system, flat page table will never be used, so, this function should always return FALSE.
     if(is_unrestricted_guest_enabled(gcpu))
-		return FALSE;
-
+        return FALSE;
     ept_guest = ept_find_guest_state(guest_id);
     VMM_ASSERT(ept_guest);
-
     for (i = 0; i < ept.num_of_cpus; i++) {
         ept_guest_cpu = ept_guest->gcpu_state[i];
         VMM_ASSERT(ept_guest_cpu);
@@ -140,7 +131,6 @@ BOOLEAN ept_is_cpu_in_non_paged_mode(GUEST_ID guest_id)
             return TRUE;
         }
     }
-
     return FALSE;
 }
 
@@ -223,9 +213,7 @@ BOOLEAN ept_misconfiguration_vmexit(GUEST_CPU_HANDLE gcpu UNUSED, void *pv)
     VMM_LOG(mask_anonymous, level_trace,"EPTP.ETMT: 0x%X EPTP.GAW: 0x%X EPTP.ASR: 0x%X\n", eptp.Bits.ETMT, eptp.Bits.GAW, eptp.Uint64 & ~PAGE_4KB_MASK);
     VMM_LOG(mask_anonymous, level_trace,"Is native %p\r\n", gcpu_is_native_execution(gcpu));
     ept_page_walk((UINT64) eptp.Uint64 & ~PAGE_4KB_MASK, data->guest_physical_address, ept_hw_get_guest_address_width_from_encoding((UINT32)eptp.Bits.GAW));
-    
     VMM_DEADLOOP();
-
     data->processed = TRUE;
     return TRUE;
 }
@@ -257,9 +245,7 @@ void ept_get_current_ept(GUEST_CPU_HANDLE gcpu, UINT64 *ept_root_table_hpa, UINT
     const VIRTUAL_CPU_ID* vcpu_id = NULL;
     EPT_GUEST_STATE *ept_guest = NULL;
     EPT_GUEST_CPU_STATE *ept_guest_cpu = NULL;
-
     VMM_ASSERT(gcpu);
-
     vcpu_id = guest_vcpu(gcpu);
     //paranoid check. If assertion fails, possible memory corruption.
     VMM_ASSERT(vcpu_id);
@@ -267,7 +253,6 @@ void ept_get_current_ept(GUEST_CPU_HANDLE gcpu, UINT64 *ept_root_table_hpa, UINT
     VMM_ASSERT(ept_guest);
     ept_guest_cpu = ept_guest->gcpu_state[vcpu_id->guest_cpu_id];
     VMM_ASSERT(ept_guest_cpu);
-
     *ept_root_table_hpa = ept_guest_cpu->active_ept_root_table_hpa;
     *ept_gaw = ept_guest_cpu->active_ept_gaw;
 }
@@ -279,7 +264,6 @@ void ept_set_current_ept(GUEST_CPU_HANDLE gcpu, UINT64 ept_root_table_hpa, UINT3
     EPT_GUEST_CPU_STATE *ept_guest_cpu = NULL;
 
     VMM_ASSERT(gcpu);
-
     vcpu_id = guest_vcpu(gcpu);
     //paranoid check. If assertion fails, possible memory corruption.
     VMM_ASSERT(vcpu_id);
@@ -287,7 +271,6 @@ void ept_set_current_ept(GUEST_CPU_HANDLE gcpu, UINT64 ept_root_table_hpa, UINT3
     VMM_ASSERT(ept_guest);
     ept_guest_cpu = ept_guest->gcpu_state[vcpu_id->guest_cpu_id];
     VMM_ASSERT(ept_guest_cpu);
-
     ept_guest_cpu->active_ept_root_table_hpa = ept_root_table_hpa;
     ept_guest_cpu->active_ept_gaw = ept_gaw;
 }
@@ -311,7 +294,6 @@ void ept_create_default_ept(GUEST_HANDLE guest, GPM_HANDLE gpm)
 
     VMM_ASSERT(guest);
     VMM_ASSERT(gpm);
-
     ept_guest = ept_find_guest_state(guest_get_id(guest));
     VMM_ASSERT(ept_guest);
 
@@ -319,10 +301,8 @@ void ept_create_default_ept(GUEST_HANDLE guest, GPM_HANDLE gpm)
         mam_destroy_mapping(ept_guest->address_space);
         ept_guest->address_space = MAM_INVALID_HANDLE;
     }
-
     ept_guest->gaw = ept_hw_get_guest_address_width(ept_get_guest_address_width(gpm));
     VMM_ASSERT(ept_guest->gaw != (UINT32) -1);
-
     ept_guest->address_space = ept_create_guest_address_space(gpm, TRUE);
     VMM_ASSERT(mam_convert_to_ept(ept_guest->address_space, ept_get_mam_super_page_support(),
                                   ept_get_mam_supported_gaw(ept_guest->gaw), ve_is_hw_supported(),
@@ -470,28 +450,22 @@ BOOLEAN ept_cr0_update(GUEST_CPU_HANDLE gcpu, void* pv)
     // Disable EPT on systems without UG, when PG is turned off
     if(!pg && !is_unrestricted_guest_supported() && ept_is_ept_enabled(gcpu))
         ept_disable(gcpu);
-
-//    EPT_LOG("EPT CPU#%d: ept_cr0_update %p\r\n", hw_cpu_id(), ept_guest_cpu->cr0);
-
     ept_release_lock();
     return TRUE;
 }
 
-static
-BOOLEAN ept_cr3_update( GUEST_CPU_HANDLE gcpu, void* pv UNUSED )
+static BOOLEAN ept_cr3_update( GUEST_CPU_HANDLE gcpu, void* pv UNUSED )
 {
     const VIRTUAL_CPU_ID* vcpu_id = NULL;
     EPT_GUEST_STATE *ept_guest = NULL;
     EPT_GUEST_CPU_STATE *ept_guest_cpu = NULL;
 
     ept_acquire_lock();
-
     vcpu_id = guest_vcpu( gcpu );
     VMM_ASSERT(vcpu_id);
     ept_guest = ept_find_guest_state(vcpu_id->guest_id);
     VMM_ASSERT(ept_guest);
     ept_guest_cpu = ept_guest->gcpu_state[vcpu_id->guest_cpu_id];
-
     if ((ept_guest_cpu->cr0 & CR0_PG) &&    // if paging is enabled
         (ept_guest_cpu->cr4 & CR4_PAE)) {    // and PAE mode is active
         ept_set_pdtprs(gcpu, ept_guest_cpu->cr4);
@@ -499,16 +473,13 @@ BOOLEAN ept_cr3_update( GUEST_CPU_HANDLE gcpu, void* pv UNUSED )
 
     // Flush TLB
     ept_hw_invvpid_single_context(1 + gcpu->vcpu.guest_id);
-
     ept_release_lock();
-
 //    EPT_LOG("EPT CPU#%d: %s\n", hw_cpu_id(), __FUNCTION__);
     return TRUE;
 }
 
 
-static
-BOOLEAN ept_cr4_update(GUEST_CPU_HANDLE gcpu, void* pv)
+static BOOLEAN ept_cr4_update(GUEST_CPU_HANDLE gcpu, void* pv)
 {
     UINT64 new_cr4 = ((EVENT_GCPU_GUEST_CR_WRITE_DATA*) pv)->new_guest_visible_value;
     BOOLEAN pg;
@@ -520,43 +491,30 @@ BOOLEAN ept_cr4_update(GUEST_CPU_HANDLE gcpu, void* pv)
     UINT64 cr4;
 
     ept_acquire_lock();
-
     vcpu_id = guest_vcpu(gcpu);
     VMM_ASSERT(vcpu_id);
     ept_guest = ept_find_guest_state(vcpu_id->guest_id);
     VMM_ASSERT(ept_guest);
     ept_guest_cpu = ept_guest->gcpu_state[vcpu_id->guest_cpu_id];
-
     prev_pae = (ept_guest_cpu->cr4 & CR4_PAE) != 0;
-
     ept_guest_cpu->cr4 = new_cr4;
-
     pg = (ept_guest_cpu->cr0 & CR0_PG) != 0;
     pae = (ept_guest_cpu->cr4 & CR4_PAE) != 0;
-
     if(ept_is_ept_enabled(gcpu) && pae != prev_pae) {
         cr4 = ept_guest_cpu->cr4;
         ept_set_pdtprs(gcpu, cr4);
     }
-
     // Flush TLB
     ept_hw_invvpid_single_context(1 + gcpu->vcpu.guest_id);
-
     ept_release_lock();
-
-    // EPT_LOG("EPT CPU#%d: ept_cr4_update %p\r\n", hw_cpu_id(), ept_guest_cpu->cr4);
     return TRUE;
 }
 
-static
-BOOLEAN ept_emulator_enter(GUEST_CPU_HANDLE gcpu, void* pv UNUSED)
+static BOOLEAN ept_emulator_enter(GUEST_CPU_HANDLE gcpu, void* pv UNUSED)
 {
     const VIRTUAL_CPU_ID* vcpu_id = NULL;
     EPT_GUEST_CPU_STATE *ept_guest_cpu = NULL;
     EPT_GUEST_STATE *ept_guest_state = NULL;
-
-    //    EPT_LOG("EPT CPU#%d: emulator enter\r\n", hw_cpu_id());
-    //    ept_acquire_lock();
 
     vcpu_id = guest_vcpu( gcpu );
     VMM_ASSERT(vcpu_id);
@@ -571,13 +529,10 @@ BOOLEAN ept_emulator_enter(GUEST_CPU_HANDLE gcpu, void* pv UNUSED)
         ept_guest_cpu->ept_enabled_save = TRUE;
         ept_disable(gcpu);
     }
-
-    //    ept_release_lock();
     return TRUE;
 }
 
-static
-BOOLEAN ept_emulator_exit(GUEST_CPU_HANDLE gcpu, void* pv UNUSED)
+static BOOLEAN ept_emulator_exit(GUEST_CPU_HANDLE gcpu, void* pv UNUSED)
 {
     const VIRTUAL_CPU_ID* vcpu_id = NULL;
     EPT_GUEST_STATE *ept_guest = NULL;
@@ -586,29 +541,22 @@ BOOLEAN ept_emulator_exit(GUEST_CPU_HANDLE gcpu, void* pv UNUSED)
     UINT64 cr0, cr4;
 
     ept_acquire_lock();
-
     vcpu_id = guest_vcpu( gcpu );
     VMM_ASSERT(vcpu_id);
     ept_guest = ept_find_guest_state(vcpu_id->guest_id);
     VMM_ASSERT(ept_guest);
     ept_guest_cpu = ept_guest->gcpu_state[vcpu_id->guest_cpu_id];
-
-    //    EPT_LOG("EPT CPU#%d: emulator exit\r\n", hw_cpu_id());
-
     if(ept_guest_cpu->ept_enabled_save) {
         ept_enable(gcpu);
     }
-
     cr0 = gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR0);
     cr4 = gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR4);
-
     // Do not assume that the CR0 must be changed when emulator exits.
     // comment out this line to fix the issue "ETP disabled after S3 in ThinkCentre desktop". 
     if(cr0 != ept_guest_cpu->cr0) {
         write_data.new_guest_visible_value = cr0;
         ept_cr0_update(gcpu, &write_data);
     }
-
     if(cr4 != ept_guest_cpu->cr4) {
         write_data.new_guest_visible_value = cr4;
         ept_cr4_update(gcpu, &write_data);
@@ -617,8 +565,7 @@ BOOLEAN ept_emulator_exit(GUEST_CPU_HANDLE gcpu, void* pv UNUSED)
     return TRUE;
 }
 
-static
-void ept_register_events(GUEST_CPU_HANDLE gcpu)
+static void ept_register_events(GUEST_CPU_HANDLE gcpu)
 {
     event_gcpu_register( EVENT_GCPU_AFTER_GUEST_CR0_WRITE, gcpu, ept_cr0_update);
     event_gcpu_register( EVENT_GCPU_AFTER_GUEST_CR3_WRITE, gcpu, ept_cr3_update);
@@ -629,8 +576,7 @@ void ept_register_events(GUEST_CPU_HANDLE gcpu)
     event_gcpu_register( EVENT_GCPU_EPT_VIOLATION, gcpu, ept_violation_vmexit);
 }
 
-INLINE
-BOOLEAN ept_is_gcpu_active(IA32_VMX_VMCS_GUEST_SLEEP_STATE activity_state)
+INLINE BOOLEAN ept_is_gcpu_active(IA32_VMX_VMCS_GUEST_SLEEP_STATE activity_state)
 {
     return ((Ia32VmxVmcsGuestSleepStateWaitForSipi != activity_state) &&
             ((Ia32VmxVmcsGuestSleepStateTripleFaultShutdown != activity_state)));
@@ -642,9 +588,7 @@ void ept_gcpu_activity_state_change(GUEST_CPU_HANDLE gcpu, EVENT_GCPU_ACTIVITY_S
     const VIRTUAL_CPU_ID* vcpu_id = NULL;
     EPT_GUEST_STATE *ept_guest = NULL;
 
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( gcpu );
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT( pv );
 
     EPT_LOG("ept CPU#%d: activity state change: new state %d\r\n", hw_cpu_id(), pv->new_state);
@@ -652,9 +596,7 @@ void ept_gcpu_activity_state_change(GUEST_CPU_HANDLE gcpu, EVENT_GCPU_ACTIVITY_S
     vcpu_id = guest_vcpu( gcpu );
     VMM_ASSERT(vcpu_id);
     ept_guest = ept_find_guest_state(vcpu_id->guest_id);
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(ept_guest);
-
     if (ept_is_gcpu_active(pv->new_state)) {
         ept_guest_cpu_initialize(gcpu);
     }
@@ -671,7 +613,6 @@ UINT32 ept_get_guest_address_width(GPM_HANDLE gpm)
     UINT32 guest_address_limit_msb_index = 0;
 
     VMM_ASSERT(gpm);
-
     gpm_iter = gpm_get_ranges_iterator(gpm);
 
     while(GPM_INVALID_RANGES_ITERATOR != gpm_iter) { // for each range in GPM
@@ -713,53 +654,34 @@ MAM_HANDLE ept_create_guest_address_space(GPM_HANDLE gpm, BOOLEAN original_perms
         gpm_iter = gpm_get_range_details_from_iterator(gpm, gpm_iter, &guest_range_addr,
                                                        &guest_range_size);
         status = gpm_gpa_to_hpa(gpm, guest_range_addr, &host_range_addr, &hpa_attrs);
-
-        /*
-        EPT_LOG("ept_create_guest_address_space: EPT GPM range: "
-            "gpa %p -> hpa %p; size %p attrs 0x%x\r\n",
-            guest_range_addr, host_range_addr, guest_range_size, hpa_attrs.uint32);
-        */
-
         if (original_perms) {
             attributes.ept_attr.readable = hpa_attrs.ept_attr.readable;
             attributes.ept_attr.writable = hpa_attrs.ept_attr.writable;
             attributes.ept_attr.executable = hpa_attrs.ept_attr.executable;
         }
-
         if(status) {
             covered_guest_range_size = 0;
             do { // add separate mapping per memory type
-                mem_type = mtrrs_abstraction_get_range_memory_type(host_range_addr + covered_guest_range_size, &same_memory_type_range_size,guest_range_size - covered_guest_range_size);
-
+                mem_type = mtrrs_abstraction_get_range_memory_type(
+                                host_range_addr + covered_guest_range_size, 
+                                &same_memory_type_range_size,
+                                guest_range_size - covered_guest_range_size);
                 if (VMM_PHYS_MEM_UNDEFINED == mem_type) {
                     EPT_LOG("  EPT %s:  Undefined mem-type for region %P. Use Uncached\n",
                     guest_range_addr + covered_guest_range_size);
                     mem_type = VMM_PHYS_MEM_UNCACHED;
                 }
-
                 attributes.ept_attr.emt = mem_type;
-
-                if(covered_guest_range_size + same_memory_type_range_size > guest_range_size) { // normalize
+                if(covered_guest_range_size + same_memory_type_range_size > guest_range_size) {
                     same_memory_type_range_size = guest_range_size - covered_guest_range_size;
                 }
-                /*
-                //debug
-                EPT_LOG("EPT add range: gpa %p -> hpa %p; size %p; mem_type %d\r\n",
-                    guest_range_addr + covered_guest_range_size,
-                    host_range_addr + covered_guest_range_size,
-                    same_memory_type_range_size,
-                    mem_type);
-                */
-
                 mam_insert_range(address_space, guest_range_addr + covered_guest_range_size,
                                  host_range_addr + covered_guest_range_size, same_memory_type_range_size,
                                  attributes);
-
                 covered_guest_range_size += same_memory_type_range_size;
             } while(covered_guest_range_size < guest_range_size);
         }
     }
-
     return address_space;
 }
 
@@ -772,22 +694,16 @@ void ept_invalidate_ept(CPU_ID from UNUSED, void* arg)
         // not for this CPU -- ignore command
         return;
     }
-
-    //VMM_LOG(mask_anonymous, level_trace, "Invalidate ept on CPU#%d\r\n", hw_cpu_id());
-
     switch(invept_cmd->cmd) {
     case INVEPT_ALL_CONTEXTS: // Not being used currently
         ept_hw_invept_all_contexts();
         break;
-
     case INVEPT_CONTEXT_WIDE:
         ept_hw_invept_context(invept_cmd->eptp);
         break;
-
     case INVEPT_INDIVIDUAL_ADDRESS: // Not being used currently
         ept_hw_invept_individual_address(invept_cmd->eptp, invept_cmd->gpa);
         break;
-
     default:
         VMM_ASSERT(0);
     }
@@ -825,28 +741,19 @@ BOOLEAN ept_enable(GUEST_CPU_HANDLE gcpu)
     UINT64 ept_root_table_hpa = 0;
     UINT32 gaw = 0;
 
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(gcpu);
-
-    //ept_acquire_lock();
-
     ept_get_current_ept(gcpu, &ept_root_table_hpa, &gaw);
     if (!ept_set_eptp(gcpu, ept_root_table_hpa, gaw)) {
         EPT_PRINTERROR("EPT: failed to set eptp\r\n");
         goto failure;
     }
-
     if (!ept_hw_enable_ept(gcpu)) {
         EPT_PRINTERROR("EPT: failed to enable ept\r\n");
         goto failure;
     }
-
-    //ept_release_lock();
-
     return TRUE;
 
 failure:
-    //ept_release_lock();
     return FALSE;
 }
 
@@ -860,14 +767,12 @@ void ept_disable(GUEST_CPU_HANDLE gcpu)
 
 UINT64 ept_get_eptp(GUEST_CPU_HANDLE gcpu)
 {
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(gcpu);
     return ept_hw_get_eptp(gcpu);
 }
 
 BOOLEAN ept_set_eptp(GUEST_CPU_HANDLE gcpu, UINT64 ept_root_table_hpa, UINT32 gaw)
 {
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(gcpu);
     return ept_hw_set_eptp(gcpu, ept_root_table_hpa, gaw);
 }
@@ -878,13 +783,10 @@ void ept_set_remote_eptp(CPU_ID from, void* arg)
     GUEST_CPU_HANDLE gcpu;
 
     gcpu = scheduler_get_current_gcpu_for_guest(set_eptp_cmd->guest_id);
-
     if(gcpu == NULL || !ept_is_ept_enabled(gcpu)) {
         return;
     }
-
     ept_set_eptp(gcpu, set_eptp_cmd->ept_root_table_hpa, set_eptp_cmd->gaw);
-
     ept_invalidate_ept(ANY_CPU_ID, set_eptp_cmd->invept_cmd);
 }
 
@@ -894,8 +796,7 @@ EPT_GUEST_STATE *ept_find_guest_state(GUEST_ID guest_id)
     LIST_ELEMENT *iter = NULL;
     BOOLEAN found = FALSE;
 
-    LIST_FOR_EACH(ept.guest_state, iter)
-    {
+    LIST_FOR_EACH(ept.guest_state, iter) {
         ept_guest_state = LIST_ENTRY(iter, EPT_GUEST_STATE, list);
         if(ept_guest_state->guest_id == guest_id) {
             found = TRUE;
@@ -908,8 +809,7 @@ EPT_GUEST_STATE *ept_find_guest_state(GUEST_ID guest_id)
     return NULL;
 }
 
-static
-BOOLEAN ept_guest_initialize(GUEST_HANDLE guest)
+static BOOLEAN ept_guest_initialize(GUEST_HANDLE guest)
 {
     UINT32 i;
     EPT_GUEST_STATE *ept_guest = NULL;
@@ -917,18 +817,15 @@ BOOLEAN ept_guest_initialize(GUEST_HANDLE guest)
     ept_guest = (EPT_GUEST_STATE *) vmm_malloc(sizeof(EPT_GUEST_STATE));
     // BEFORE_VMLAUNCH. MALLOC should not fail.
     VMM_ASSERT(ept_guest);
-
     ept_guest->guest_id = guest_get_id(guest);
     list_add(ept.guest_state, ept_guest->list);
 
     ept_guest->gcpu_state = (EPT_GUEST_CPU_STATE **) vmm_malloc(ept.num_of_cpus * sizeof(EPT_GUEST_CPU_STATE*));
     VMM_ASSERT(ept_guest->gcpu_state);
-
     for (i = 0; i < ept.num_of_cpus; i++) {
         ept_guest->gcpu_state[i] = (EPT_GUEST_CPU_STATE *) vmm_malloc(sizeof(EPT_GUEST_CPU_STATE));
         VMM_ASSERT(ept_guest->gcpu_state[i]);
     }
-
     event_global_register( EVENT_BEGIN_GPM_MODIFICATION_BEFORE_CPUS_STOPPED,
                             ept_begin_gpm_modification_before_cpus_stop);
     event_global_register( EVENT_END_GPM_MODIFICATION_BEFORE_CPUS_RESUMED,
@@ -939,40 +836,29 @@ BOOLEAN ept_guest_initialize(GUEST_HANDLE guest)
     return TRUE;
 }
 
-static
-BOOLEAN ept_guest_cpu_initialize(GUEST_CPU_HANDLE gcpu)
+static BOOLEAN ept_guest_cpu_initialize(GUEST_CPU_HANDLE gcpu)
 {
     const VIRTUAL_CPU_ID* vcpu_id = NULL;
     EPT_GUEST_CPU_STATE *ept_guest_cpu = NULL;
     EPT_GUEST_STATE *ept_guest_state = NULL;
 
     EPT_LOG("EPT: CPU#%d ept_guest_cpu_initialize\r\n", hw_cpu_id());
-
     vcpu_id = guest_vcpu( gcpu );
     VMM_ASSERT(vcpu_id);
-
     ept_guest_state = ept_find_guest_state(vcpu_id->guest_id);
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(ept_guest_state);
     ept_guest_cpu = ept_guest_state->gcpu_state[vcpu_id->guest_cpu_id];
-
-    /*
-     * During S3 resume, these values need to be updated
-     */
+     //During S3 resume, these values need to be updated
     ept_guest_cpu->cr0 = gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR0);
     ept_guest_cpu->cr4 = gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR4);
-
-    // VMM_ASSERT(! ept_guest_cpu->is_initialized);
     if (!ept_guest_cpu->is_initialized) {
         ept_register_events(gcpu);
         ept_guest_cpu->is_initialized = TRUE;
     }
-
     return TRUE;
 }
 
-static
-void ept_fill_vmexit_request(VMEXIT_CONTROL *vmexit_request)
+static void ept_fill_vmexit_request(VMEXIT_CONTROL *vmexit_request)
 {
     vmm_zeromem(vmexit_request, sizeof(VMEXIT_CONTROL));
     if(!is_unrestricted_guest_supported()) {
@@ -984,23 +870,20 @@ void ept_fill_vmexit_request(VMEXIT_CONTROL *vmexit_request)
     }
 }
 
-static
-BOOLEAN ept_add_gcpu(GUEST_CPU_HANDLE gcpu, void *pv UNUSED)
+static BOOLEAN ept_add_gcpu(GUEST_CPU_HANDLE gcpu, void *pv UNUSED)
 {
     EVENT_GCPU_ACTIVITY_STATE_CHANGE_DATA activity_state;
     VMEXIT_CONTROL vmexit_request;
 
     vmm_zeromem(&activity_state, sizeof(activity_state));
     vmm_zeromem(&vmexit_request, sizeof(vmexit_request));
-
-    event_gcpu_register(EVENT_GCPU_ACTIVITY_STATE_CHANGE, gcpu, (event_callback) ept_gcpu_activity_state_change);
-
+    event_gcpu_register(EVENT_GCPU_ACTIVITY_STATE_CHANGE, gcpu, 
+                        (event_callback) ept_gcpu_activity_state_change);
     activity_state.new_state = gcpu_get_activity_state(gcpu);
     if(ept_is_gcpu_active(activity_state.new_state))
     {// if gcpu already active, fire manually
         ept_gcpu_activity_state_change(gcpu, &activity_state);
     }
-
     // setup control only if gcpu is added on this host CPU
     if(hw_cpu_id() == scheduler_get_host_cpu_id(gcpu))
     {
@@ -1010,8 +893,7 @@ BOOLEAN ept_add_gcpu(GUEST_CPU_HANDLE gcpu, void *pv UNUSED)
     return TRUE;
 }
 
-static
-void ept_add_static_guest(GUEST_HANDLE guest)
+static void ept_add_static_guest(GUEST_HANDLE guest)
 {
     GUEST_CPU_HANDLE gcpu;
     GUEST_GCPU_ECONTEXT gcpu_context;
@@ -1020,19 +902,14 @@ void ept_add_static_guest(GUEST_HANDLE guest)
     UINT32 ept_gaw = 0;
 
     EPT_LOG("ept CPU#%d: activate ept\r\n", hw_cpu_id());
-
     ept_fill_vmexit_request(&vmexit_request);
-
     // request needed vmexits
     guest_control_setup(guest, &vmexit_request);
-
     ept_guest_initialize(guest);
-
     // Initialize default EPT
     ept_create_default_ept(guest, guest_get_startup_gpm(guest));
     // Get default EPT
     ept_get_default_ept(guest, &ept_root_table_hpa, &ept_gaw);
-
     for(gcpu = guest_gcpu_first(guest, &gcpu_context); gcpu; gcpu = guest_gcpu_next(&gcpu_context)) {
         ept_add_gcpu(gcpu, NULL);
         // Set EPT pointer (of each GCPU) to default EPT
@@ -1040,8 +917,7 @@ void ept_add_static_guest(GUEST_HANDLE guest)
     }
 }
 
-static
-BOOLEAN ept_add_dynamic_guest(GUEST_CPU_HANDLE gcpu UNUSED, void *pv)
+static BOOLEAN ept_add_dynamic_guest(GUEST_CPU_HANDLE gcpu UNUSED, void *pv)
 {
     EVENT_GUEST_CREATE_DATA *guest_create_event_data = (EVENT_GUEST_CREATE_DATA *) pv;
     GUEST_HANDLE            guest = guest_handle(guest_create_event_data->guest_id);
@@ -1050,7 +926,6 @@ BOOLEAN ept_add_dynamic_guest(GUEST_CPU_HANDLE gcpu UNUSED, void *pv)
 
     policy_status = get_paging_policy(guest_policy(guest), &pg_policy);
     VMM_ASSERT(POL_RETVAL_SUCCESS == policy_status);
-
     if (POL_PG_EPT == pg_policy) {
         ept_guest_initialize(guest_handle(guest_create_event_data->guest_id));
     }
@@ -1065,18 +940,13 @@ void init_ept_addon(UINT32 num_of_cpus)
     if (!global_policy_uses_ept()) {
         return;
     }
-
     vmm_zeromem(&ept, sizeof(ept));
     ept.num_of_cpus = num_of_cpus;
-
     EPT_LOG("init_ept_addon: Initialize EPT num_cpus %d\n", num_of_cpus);
-
     list_init(ept.guest_state);
     lock_initialize(&ept.lock);
-
     event_global_register(EVENT_GUEST_CREATE, ept_add_dynamic_guest);
     event_global_register(EVENT_GCPU_ADD, (event_callback) ept_add_gcpu);
-
     for(guest = guest_first(&guest_ctx); guest; guest = guest_next(&guest_ctx)) {
         ept_add_static_guest(guest);
     }
@@ -1167,8 +1037,7 @@ void ept_single_cpu_update(GUEST_HANDLE guest, TMSL_MEM_VIEW_HANDLE handle)
     ept_invalidate_ept(ANY_CPU_ID, &invept_cmd);
 }
 
-static
-void ept_reset_local(CPU_ID from UNUSED, void* arg)
+static void ept_reset_local(CPU_ID from UNUSED, void* arg)
 {
     GUEST_HANDLE guest = (GUEST_HANDLE) arg;
     GUEST_CPU_HANDLE gcpu;
@@ -1185,11 +1054,8 @@ void ept_reset_local(CPU_ID from UNUSED, void* arg)
 #endif
 
 #ifdef INCLUDE_UNUSED_CODE
-static
-void ept_exec_invept(CPU_ID dest,
-                     INVEPT_CMD_TYPE cmd,
-                     UINT64 eptp,
-                     UINT64 gpa)
+static void ept_exec_invept(CPU_ID dest, INVEPT_CMD_TYPE cmd,
+                     UINT64 eptp, UINT64 gpa)
 {
     IPC_DESTINATION ipc_dest;
     EPT_INVEPT_CMD invept_cmd;
@@ -1275,32 +1141,23 @@ BOOLEAN ept_add_mapping(IN GUEST_HANDLE guest, IN GPA src, IN HPA dest, IN UINT6
     EPT_INVEPT_CMD invept_cmd;
 
     VMM_ASSERT( guest );
-
     vmm_zeromem(&invept_cmd, sizeof(invept_cmd));
-
     ept_guest = ept_find_guest_state(guest_id);
     VMM_ASSERT(ept_guest);
-
     ept_acquire_lock();
-
     stop_all_cpus();
-
     attrs.uint32 = 0;
     attrs.ept_attr.readable = readable;
     attrs.ept_attr.writable = writable;
     attrs.ept_attr.executable = executable;
-
     status = mam_insert_range(ept_guest->address_space, src, dest, size, attrs);
     eptp = ept_compute_eptp(guest);
-
     invept_cmd.host_cpu_id = ANY_CPU_ID;
     invept_cmd.cmd = INVEPT_CONTEXT_WIDE;
     invept_cmd.eptp = eptp;
     start_all_cpus(ept_invalidate_ept, (void *) &invept_cmd);
     ept_hw_invept_context(eptp);
-
     ept_release_lock();
-
     return status;
 }
 
@@ -1314,25 +1171,19 @@ BOOLEAN ept_remove_mapping(IN GUEST_HANDLE guest, IN GPA src,
     EPT_INVEPT_CMD invept_cmd;
 
     VMM_ASSERT( guest );
-
     ept_guest = ept_find_guest_state(guest_id);
     VMM_ASSERT(ept_guest);
-
     ept_acquire_lock();
-
     stop_all_cpus();
     status = mam_insert_not_existing_range(ept_guest->address_space, src, size, reason);
     eptp = ept_compute_eptp(guest);
-
     vmm_zeromem(&invept_cmd, sizeof(invept_cmd));
     invept_cmd.host_cpu_id = ANY_CPU_ID;
     invept_cmd.cmd = INVEPT_CONTEXT_WIDE;
     invept_cmd.eptp = eptp;
     start_all_cpus(ept_invalidate_ept, (void *) &invept_cmd);
     ept_hw_invept_context(eptp);
-
     ept_release_lock();
-
     return status;
 }
 
@@ -1345,16 +1196,13 @@ MAM_MAPPING_RESULT ept_get_mapping(IN GUEST_HANDLE guest, IN GPA src,
 
     ept_guest = ept_find_guest_state(guest_id);
     VMM_ASSERT(ept_guest);
-
     ept_acquire_lock();
     res = mam_get_mapping(ept_guest, src, dest, attrs);
     ept_release_lock();
-
     return res;
 }
 
-static
-BOOLEAN ept_allow_uvmm_heap_access(GUEST_CPU_HANDLE gcpu)
+static BOOLEAN ept_allow_uvmm_heap_access(GUEST_CPU_HANDLE gcpu)
 {
     GUEST_HANDLE guest = NULL;
     HVA heap_base_hva = 0;
@@ -1369,14 +1217,11 @@ BOOLEAN ept_allow_uvmm_heap_access(GUEST_CPU_HANDLE gcpu)
     guest = gcpu_guest_handle(gcpu);
     ept_guest = ept_find_guest_state(guest_get_id(guest));
     VMM_ASSERT(ept_guest);
-
     vmm_heap_get_details(&heap_base_hva, &heap_size);
     status = hmm_hva_to_hpa(heap_base_hva, &heap_base_hpa);
     VMM_ASSERT(status);
-
     attributes.ept_attr.readable = 1;
     attributes.ept_attr.writable = 1;
-
     while(covered_heap_range_size < heap_size) {
         mem_type = mtrrs_abstraction_get_range_memory_type(heap_base_hpa + covered_heap_range_size,
                                                            &same_memory_type_range_size);
@@ -1387,15 +1232,12 @@ BOOLEAN ept_allow_uvmm_heap_access(GUEST_CPU_HANDLE gcpu)
         if(covered_heap_range_size + same_memory_type_range_size > heap_size) { // normalize
             same_memory_type_range_size = heap_size - covered_heap_range_size;
         }
-
         ept_add_mapping(guest, heap_base_hpa + covered_heap_range_size,
-            heap_base_hpa + covered_heap_range_size,
-            same_memory_type_range_size,
+            heap_base_hpa + covered_heap_range_size, same_memory_type_range_size,
             TRUE, // readable
             TRUE, // writable
             FALSE // executable
             );
-
         covered_heap_range_size += same_memory_type_range_size;
         if(covered_heap_range_size > heap_size) { // normalize
             covered_heap_range_size = heap_size;
@@ -1404,8 +1246,7 @@ BOOLEAN ept_allow_uvmm_heap_access(GUEST_CPU_HANDLE gcpu)
     return TRUE;
 }
 
-static
-BOOLEAN ept_deny_uvmm_heap_access(GUEST_CPU_HANDLE gcpu)
+static BOOLEAN ept_deny_uvmm_heap_access(GUEST_CPU_HANDLE gcpu)
 {
     GUEST_HANDLE guest = NULL;
     HVA heap_base_hva = 0;
@@ -1418,7 +1259,6 @@ BOOLEAN ept_deny_uvmm_heap_access(GUEST_CPU_HANDLE gcpu)
     const VIRTUAL_CPU_ID* vcpu_id = NULL;
 
     VMM_ASSERT( gcpu );
-
     vcpu_id = guest_vcpu( gcpu );
     ept_guest = ept_find_guest_state(vcpu_id->guest_id);
     VMM_ASSERT(ept_guest);
@@ -1430,18 +1270,13 @@ BOOLEAN ept_deny_uvmm_heap_access(GUEST_CPU_HANDLE gcpu)
             return FALSE;
         }
     }
-
     guest = gcpu_guest_handle(gcpu);
-
     vmm_heap_get_details(&heap_base_hva, &heap_size);
     status = hmm_hva_to_hpa(heap_base_hva, &heap_base_hpa);
     VMM_ASSERT(status);
-
     EPT_LOG("  EPT remove uvmm heap range: gpa %p -> hpa %p; size %p;\r\n",
         heap_base_hpa, heap_base_hpa, heap_size);
-
     ept_remove_mapping(guest, heap_base_hpa, heap_size, 0);
-
     return TRUE;
 }
 #endif

@@ -310,7 +310,6 @@ void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u,
 
     // setup stack
     if (!startup_struct || !vmm_stack_caclulate_stack_pointer(startup_struct, cpu_id, &new_stack_pointer)) {
-        // BEFORE_VMLAUNCH. Failure check can be included in POSTLAUNCH.
         VMM_BREAKPOINT();
     }
     input_params.local_apic_id = local_apic_id;
@@ -363,7 +362,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     g_num_of_cpus = num_of_cpus;
 
     // get post launch status
-#if 0
+#if 1
     g_is_post_launch = (BITMAP_GET(startup_struct->flags, VMM_STARTUP_POST_OS_LAUNCH_MODE) != 0);
 #else
     g_is_post_launch = 0;
@@ -439,8 +438,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     if (!vmm_stack_initialize(startup_struct)) {
         VMM_LOG(mask_uvmm, level_error,
                 "\nFAILURE: Stack initialization failed\n");
-        // BEFORE_VMLAUNCH. Keep the Deadloop as this condition will not
-        // occur with POSTLAUNCH.
         VMM_DEADLOOP();
 #ifdef JLMDEBUG
         bprint("Cant initialize stack\n");
@@ -471,9 +468,11 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     VMM_LOG(mask_uvmm, level_trace,"\theap base address = %P \n", heap_address);
     VMM_LOG(mask_uvmm, level_trace,"\theap last occupied address = %P \n", 
                 heap_last_occupied_address);
+#if 0
     VMM_LOG(mask_uvmm, level_trace,"\tactual size is %P, when requested size was %P\n", 
-            heap_last_occupied_address - heap_address, heap_size);
-    VMM_ASSERT(heap_last_occupied_address <= (startup_struct->vmm_memory_layout[0].base_address + startup_struct->vmm_memory_layout[0].total_size));
+            heap_last_occupied_address-heap_address, heap_size);
+    VMM_ASSERT(heap_last_occupied_address<=(startup_struct->vmm_memory_layout[0].base_address + startup_struct->vmm_memory_layout[0].total_size));
+#endif
 
     //  Initialize CLI monitor
     CliMonitorInit();   // must be called after heap initialization.
@@ -553,17 +552,24 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     exec_image_initialize();
 #endif
 
+#ifdef JLMDEBUG
+    bprint("evmm: about to call hmm_initialize()\n");
+#endif
     // Initialize Host Memory Manager
     if (!hmm_initialize(startup_struct)) {
         VMM_LOG(mask_uvmm, level_error,
            "\nBSP FAILURE: Initialization of Host Memory Manager has failed\n");
         VMM_DEADLOOP();
+#ifdef JLMDEBUG
+        bprint("hmm_initialize failed\n");
+        LOOP_FOREVER
+#endif
     }
     VMM_LOG(mask_uvmm, level_trace,
             "\nBSP: Host Memory Manager was successfully initialized.\n");
 
 #ifdef JLMDEBUG
-    bprint("evmm: host emmory manager intialized \n");
+    bprint("evmm: host memory manager intialized \n");
 #endif
     hmm_set_required_values_to_control_registers();
 
@@ -625,7 +631,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     if (g_is_post_launch) {
 #ifdef JLMDEBUG
         bprint("evmm is post launch (should never happen)\n");
-        LOOP_FOREVER
 #endif
         // To create [0~4G] identity mapping on NO UG machines (NHM), 
         // FPT will be used to handle guest non-paged protected mode.
@@ -669,7 +674,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         // clear TS bit, since we need to operate on XMM registers.
         enable_fx_ops();
     }
-    hw_write_cr4(  vmcs_hw_make_compliant_cr4( hw_read_cr4() ) );
+    hw_write_cr4(vmcs_hw_make_compliant_cr4(hw_read_cr4()));
     num_of_guests = startup_struct->number_of_secondary_guests + 1;
 #ifdef JLMDEBUG
     bprint("evmm: control registers are vmx compatible\n");
@@ -940,7 +945,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     if(is_unrestricted_guest_supported()) {
 #ifdef JLMDEBUG
         bprint("evmm: unrestricted guest supported\n");
-        LOOP_FOREVER
 #endif
         make_guest_state_compliant(initial_gcpu);
         unrestricted_guest_enable(initial_gcpu);
@@ -967,7 +971,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 #endif
             enable_ept_during_launch(initial_gcpu);
         }
-
 #ifdef JLMDEBUG
         bprint("evmm: enable_ept_during_launch not called\n");
 #endif
@@ -990,7 +993,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 #ifdef JLMDEBUG
     bprint("evmm: vmcs_store_initial complete\n");
     bprint("evmm: about to guest resume\n");
-    LOOP_FOREVER
 #endif
     gcpu_resume(initial_gcpu);
     VMM_LOG(mask_uvmm, level_error,"BSP: Resume initial guest cpu failed\n", cpu_id);

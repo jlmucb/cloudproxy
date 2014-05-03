@@ -1,0 +1,643 @@
+April 20, 2014 - Kevin Walsh
+
+== Status quo (in Tom's implementation) ==
+
+Each Tao layer has its own public key pair and its own symmetric key.
+- The public key pair is used to make signed attestations.
+- The symmetric key is used to seal things on behalf of its "hosted" children.
+
+Ignoring C++isms, the Tao layer provides this interface to its hosted children:
+- Init() and Destroy()
+  These are just C++-isms, and I'll ignore them.
+- (success, identifier) = StartHostedProgram(name, arglist)
+  Starts a hosted program, returns status and a unique identifier.
+  For the LinuxTao, "name" is a path to an executable in the local filesystem,
+  and args are passed to main's argv.
+  For KvmTao, name is a unique ID of some sort, and args contains a path to a
+  "vm spec" template, a path to a kernel file, a path to an initrd file, a path
+  to a disk image file, and some encoded channel parameters.
+  The TPM doesn't implement this at all.
+- RemoveHostedProgram(child_hash)
+  Unregisters (but probably doesn't kill) a hosted program. Maybe "disown" would
+  be a better name.
+  The TPM doesn't implement this at all.
+- bytes = GetRandomBytes(size)
+  Get strong random bytes. The root Tao has a way to generate strong random
+  numbers (i.e. the presumed special hardware in the TPM). And a hosted Tao can
+  either us use its own special technique or just pass the call down to its
+  parent Tao.
+- blob = Seal(data)
+  Seal the data into a blob that can be unsealed later.
+- data = Unseal(blob)
+  Unseal a blob that was previously sealed. The blob must have been created via
+  a Seal request to this same Tao by the same hosted program. Here, "same hosted
+  program" means a program with the same child hash. And "same Tao" means "has
+  the same symmetric key", which in practice means the Tao and all its parent
+  Tao parents down to the root all have the same has as they did when the seal
+  operation happened, and they are all running on the same physical TPM. 
+- attestation = Attest(data)
+  Produce a signed attestation that essentially conveys "Tao says (child says
+  data)", where "Tao" is really the Tao's public key, and "child" is the hash of
+  the hosted program making the request. Ideally, a hosted program would make a
+  call where data conveys "(time<T) implies MyKeyIs(K)" for some values of T and
+  K, so the resulting attestation would convey "Tao says (child says ((time<T)
+  implies MyKeyIs(K)))". Actually, the it is the host Tao that puts in the
+  expiration, so the meaning is "Tao says ((time < T) implies (child says
+  MyKeyIs(K)))". The TPM implements this, sort of (see below).
+
+Observation: GetRandomBytes seems out of place. Presumably, the TPM is a "good"
+source of strong randomness (maybe?), so we want to provide a way for hosted
+programs, regardless of how deep in the Tao stack, to access this randomness.
+
+Observation: There is no uniform semantics or mechanism for "starting' a hosted
+child. And why is there a remove operation but no kill? Every Tao is embedded in
+some other entity (Linux, KVM, hypervisor) which has some mechanism for starting
+and stopping children. In the C++ Tao implementation, we will of course have
+some "register/unregister child" hooks that are hopefully generic enough to make
+the Tao embedding trivial. But let's not pretend the Tao is providing much here
+beyond whatever Linux (or KVM or hypervisor) already provides.
+
+== Is the TPM a Tao? ==
+
+There are 5 essential Tao operations.
+- The TPM implements 2 (Seal and Unseal) operations with normal semantics.
+- The TPM does not implement 2 (StartHostedProgram, RemoveHostedProgram) at all.
+- The TPM implements 1 (Attest) with basically the right semantics, but in a way
+  such that causes anyone that uses the result to have special TPM-specific
+  code.
+  
+This is because the format of the resulting attestation is completely different
+than the format of attestations produced by all other Taos. For the TPM, "child"
+is a weird TPM-specific PCR datastructure, and the signature is over a messy
+struct involving the data (and the expiration) and those PCRs. For all other
+Taos, "child" is a simple hash, the attestation is a straight signature over a
+simple data structure (defined in attestation.proto) that includes an expiration
+time, the data, a hash algorithm ID, and the child hash.
+
+== Trust among Taos ==
+
+It may not be obvious, but every hosted program (or hosted Tao) necessarily
+trusts its host (or parent) Tao completely. Normally, a hosted program gives all
+of its private keys, which are among its most important secrets, to the host Tao
+for safe keeping via the Seal operation. So the Tao, if corrupt, could directly
+impersonate any hosted program below it, or leak the keys and allow other
+principals to do the same.
+
+Even if the hosted program did not use Seal (perhaps it instead uses ephemeral
+keys generated on each execution), the way the hosted program authenticates to
+other principals is by way of an attestation from the host Tao. If the host tao
+were corrupt, the host Tao could lie about the hash for some second (real or
+imaginary) hosted program, and this second hosted program could then impersonate
+the first hosted program for all remote authentication.
+
+Suppose a hosted program does not use keys at all, has no long-term secrets, and
+does not do remote authentication, Does this hosted program, which does not use
+Seal or Attest, still trust the Tao completely?  One might be tempted to say no,
+because (in some situations and in the current implementation) the Tao service
+doesn't have full kernel privileges, but instead runs as a separate user-level
+linux process. However, we rely on the host Tao to start hosted programs. So a
+corrupt host tao could covertly inject vulnerabilities into the hosted program
+before the hosted program starts. Moreover, as the parent process, the host Tao
+process has a lot of direct control over a hosted process. 
+
+To summarize: in practice, a hosted process necessarily and fully trusts its
+host Tao, and this trust extends all the way down the stack of Tao hosts.
+
+== Trust for the TaoCA ==
+
+It has been said that every hosted program has one (and only one?) embed ed
+policy key, and the hosted program trusts that policy key completely. Or at
+least, for all authorization and authentication decisions.
+
+This clearly doesn't include the root Taos, i.e. the TPMs, since they don't have
+a policy key. And it may or may not include the FakeTaos (actually, at one point
+I had code that could configure FakeTao to run as a pseudo-TPM, i.e. without an
+attestation, or as a pseudo-hosted-Tao with an attestation but no parent).
+
+Do hosted programs actually fully trust the policy key? It is not clear that
+this is necessary or even desirable.
+
+If a hosted program gets an attestation chain from the policy key, and it uses
+that attestation chain as its only means for authentication, then yes, the
+hosted program necessarily fully trusts the policy key. This is the same
+situation as described above for the parent Tao. Essentially, once the hosted
+program takes on the new identity, it "becomes" the principal named by that
+identity.
+
+But I see no reason that a hosted program could not use multiple identities
+(i.e. multiple attestation chains) for different purposes. In this case, the
+hosted program merely "speaks for" the principals named by those identities. And
+if anything, this is the opposite of trusting the policy server -- the policy
+server is trusting the hosted program to not abuse the privileges associated
+with that identity.
+
+Here is a concrete example: Suppose we build a secure write-only logging
+service, and the policy server (TaoCA) wants to use this service. The TaoCA can
+provide the logging program with an attestation, and the logging program can use
+that attestation to gain access to certain resources (say, confidential old
+logs). But the logging service might have other secrets, e.g. keys that it uses
+to ensure the write-only property of the logs, and there is no reason that the
+logging program should trust the policy server on these matters. In fact, the
+point is that we explicitly do not trust the policy server to do its own
+logging, but we do trust the logging server to do it.
+
+Are there compelling examples of hosted programs that should necessarily and
+fully trust the policy server?
+
+== Key Rotation ==
+
+NIST suggests (a) all keys should be rotated about every year, and (b) all data
+should be re-keyed every every one to three years.
+
+In the current implementation, there are a lot of keys to keep secret: every Tao
+layer has two (a private key and a symmetric key), and most of the "leaf" hosted
+processes at least two as well.
+
+The public key pairs used for authentication can be easily rotated. With two
+exceptions (below), a principal can unilaterally discard its authentication key
+pair at any time, generate a new key pair, then obtain a new attestation for the
+new key from its host Tao. The process can discard the old key pair immediately.
+For each processes with attestation chains involving the old public key, the
+process can either (a) simply retain the old pubic key and attestation chain
+until it expires, or (b) request a new attestation chain using the new public
+key. Processes can make this choice independently.
+
+The policy CA (aka TaoCA aka "key nego server?") can't unilaterally discard its
+authentication key, since lots of other principals rely on it for authentication
+and have copies of the policy CA's public key. The key must must be known by all
+Tao layers and hosted programs so that they can validate attestation chains
+rooted in the policy key or create authenticated network channels to the policy
+CA and other principals. Currently, the policy key is given to each participant
+through a (presumably) secure, offline channel at "setup time", and there is no
+rollover mechanism. Since authenticated network connections rely on attestation
+chains rooted in the policy key for that domain, an online key rollover would be
+required: the new policy public key would be sent to all participants over a
+channel authenticated using the old policy key. Any recipients could begin using
+the new key immediately, but all would need to to keep the old policy public key
+alongside the new one until all existing chains that might use the old key have
+expired. 
+
+A root Tao (i.e. the TPM) similarly can't unilaterally discard its
+authentication key (the TPM EK). In practice, of course, the TPM EK is permanent
+and can not be changed. But even if it could, rotation would be difficult for
+the same reasons as for the policy CA.
+
+The symmetric keys are difficult to rotate. A "leaf" hosted process can normally
+unilaterally select a new symmetric key at any time. Before it discards the old
+key, it must re-encrypt all of its data using the new key. So long as the hosted
+process manages and stores all of this encrypted data locally, this might be
+plausible.
+
+A host Tao (and some leaf hosted processes) can not easily rotate its symmetric
+key because the encrypted data is held and manged by child hosted processes. We
+might include an expiration and a "rollover" period in the seal operation. When
+the rollover period starts, the host Tao can pick a new key. During the rollover
+period, all hosted processes would be required to exchange all of their sealed
+secrets for newly encrypted copies, or simply re-seal the original data. At
+expiration (the end of the rollover period), the host Tao can discard the old
+symmetric key. The TPM probably does not support this.
+
+If symmetric keys are not ever rotated, and private keys are sealed using the
+symmetric keys, is there a reason to rotate the asymmetric keys? Presumably yes:
+the symmetric keys are used only (or mostly?) locally, but the asymmetric keys
+are used on the network.
+
+== Alternative designs ==
+
+I see no reason for Tao to closely follow the abstractions presented by the TPM
+interface, since nearly everything that talks to the TPM or deals with output
+from the TPM has to use special-purpose TPM-specific code. So long as the Tao
+API can be implemented on top of the TPM API, then nothing is lost in
+implementation "elegance". There is some extra conceptual overhead for those
+trying to understand the internals of how Tao is implemented, but users of Tao
+need only understand the Tao API, not the TPM API.
+
+With that in mind, here are some API suggestions.
+
+== Tao generates keys for hosted program (idea #0) ==
+
+On balance, this is probably not worth implementing.
+
+Currently, every hosted program needs a symmetric key pair, attested to by its
+parent Tao. This is done in three steps: call GetRandomBytes() from the parent
+Tao, then generate the key locally in the hosted program, followed by calling
+Attest() from the parent Tao. We could condense this into a single Tao call:
+- (keypair, cert) = GenerateAuthenticationKey(suggested_expiration, other key details)
+The host Tao (or one of its parent Taos) would generate a fresh key pair and a
+matching signed attestation that the child can use for remote authentication. 
+
+Currently, GetRandomBytes() is used only for generating keys, but there are
+plenty of other possible uses for GetRandomBytes(). So this proposal does not
+eliminate getRandomBytes.
+
+Currently, Attest() is used only for attesting to keys. If that remains the
+case, then GetAuthenticationKey would obviate the need for Attest(). On the
+other hand, we can't eliminate Attest() if it evolves into a general-purpose
+"says" operation that allows, for example, a hosted program without its own key
+to get a signed credential to the effect of "Tao says child says stmt" for some
+arbitrary statement. 
+
+Pros: 
+- Slightly more efficient.
+- Maybe eliminate the Attest operation, whose semantics are currently hazy.
+
+Cons:
+- If we don't eliminate Attest(), then it makes the Tao API larger.
+- Functionality easily implemented in the hosted program using the existing API.
+
+== A minimalist API (idea #1) ==
+
+I don't think we should do this, but I think it is a useful point of comparison.
+
+Tao layers and other hosted programs form a tree. But currently, except for
+GetRandomBytes(), there is no interaction between layers except during startup.
+Upon startup, a hosted Tao does either a single Seal() and a single Attest(), if
+this is the first execution and keys need to be generated, or it does a single
+Unseal() to recover its previously-generated keys. From then on it has its own
+set of keys, which it uses to implement Seal(), Unseal(), and Attest() for
+hosted child processes. 
+
+If this is the case, why not simplify the API and eliminate the channels between
+layers entirely? When a hosted program is about to be started, the host Tao
+checks if sealed keys and an attestation exist for that program. If so, Tao
+unseals the keys, and passes the keys and attestation as parameters to the
+hosted program. If not, Tao generates a set of keys, seals them, makes an
+attestation for them, then passes the keys and attestations as parameters to the
+hosted program. There is no API for hosted programs to communicate with the host
+Tao (except maybe GetRandomBytes). If a hosted program wants to keep secrets, it
+can encrypt them itself using its own key. If it wants to do remote
+authentication, it has a suitable key and matching attestation.
+
+All of this applies to "leaf" hosted programs and to hosted Taos alike. The TPM
+would be a special case (as it is now). In order to launch the first real Tao
+layer, sitting directly above the TPM, someone (either that Tao or some helper
+program) would need to open a connection to the TPM and make the necessary
+seal/unseal/attest requests. This special-case code is really implementing the
+TPM's missing StartHostedProgram() call.
+
+Pros:
+- Simpler (trivial) API and implementation.
+- Efficiency: no need to keep secure channels (pipes) open.
+- Hosted programs don't need generate or rotate their own keys.
+
+Cons:
+- Hosted programs don't control their own key generation or rotation.
+- Hosted program keys are in memory during the entire program execution, with no
+  flexibility to do seal-then-reseal for shorter intervals.
+- Hosted programs can't easily have multiple keys (say, with different
+  expirations or strengths), multiple attestations (say, from different policy
+  servers), etc.
+
+== Sealing with expirations (idea #2) ==
+
+I think we should at least do option (b) below. It is simple but it adds some
+nice functionality that is currently missing.
+
+To facilitate rotating the symmetric keys, seal/unseal should really have an
+expiration. When a hosted program seals data, the hosted program and the host
+Tao agree on some expiration date. The host Tao promises to keep the sealing key
+available until that expiration, but no longer. The sealed bundle is only
+guaranteed to be unsealable until the expiration, and it is up to the hosted
+program to ask for the sealed bundle to be rekeyed with a new expiration date
+before the original expires.
+
+There are choices: 
+
+(a) The Tao keeps a set of one or two sealing keys, one active, one old, both
+with expirations. When the old key expires, it is discarded. When the active key
+nears expiration, it becomes the old key and a new active key is generated. Tao
+uses the active key for sealing, and refuses to seal data with an expiration
+past the active key's expiration. For unsealing, Tao uses whichever key is
+needed.
+
+Pros:
+- Easy to implement host Tao (small delta from current implementation).
+
+Cons:
+- Painful for hosted programs, which must re-seal according to host Tao's
+  schedule.
+- Hard to chose expiration for host Tao key -- too short forces repeated
+  re-sealing, too long adds unnecessary risk.
+
+(b) Same as (a), but Tao could instead keep multiple key sets with different
+expiration schedules. So there might be five key sets that rotate every hour,
+week, day, year, and decade. When a hosted program requests to seal data with
+some expiration time, Tao just uses the active key for the shortest appropriate
+set. 
+
+Pros:
+- Simpler semantics for hosted programs: they can chose any reasonable
+  expiration.
+
+Cons:
+- More state for Tao, but not significant and could be made constant.
+- Expirations of sealing key will not exactly match expiration for data. So a
+  2-year sealed bundle might have been signed with a key that is kept for a
+  decade.
+
+(c) Tao could use a unique symmetric key for every seal operation, with the key
+expiration chosen to match the requested expiration of the data. During seal,
+Tao generates the key, sets its expiration, and returns the encrypted data to
+the hosted program. Tao manages the sealing key just like it manages its other
+secret data, i.e. by asking its parent Tao to seal it or by encrypting it and
+having its parent Tao seal the encryption key. 
+
+Pros:
+- Simple semantics for hosted programs: they can chose any expiration.
+- Expiration of sealing key exactly matches expiration of data.
+- Amortization of costs and extra state management adds complexity to host Tao.
+
+Cons:
+- Expensive: potentially multiple key generations and encryptions (as
+  many as one for each Tao layer, including one for the TPM) for every Seal()
+  operation. Similar for Unseal.
+- Cost for recursive calls might be amortized across Seal/Unseal operations:
+  host Tao could wait some time or until it has generated N sealing keys, then ask
+  its parent Tao to seal them all together or use its own symmetric key to encrypt
+  them.
+- More state for each Tao layer, grows with number of Seal() operations.
+- Because of state growth, may want way to reclaim keys that are not expired but
+  no longer needed.
+
+(d) Same as (c), but the host Tao doesn't manage the sealing key. Instead, it
+generates a per-bundle sealing key, then asks its own parent Tao (or the TPM) to
+seal that sealing key. Then encrypted data and encrypted key make up the sealed
+bundle. During unseal, Tao asks its parent to unseal the key, then uses the key
+to decrypt the data. This is recursive, with each layer generating a key then
+asking its parent to seal that key. Alternatively, the same effect can be
+achieved by just having Tao append the child name to the data, then pass this to
+its parent Tao for sealing. The parent will in turn append a name and pass it to
+its own parent. During unseal, each layer asks the parent to unseal, then checks
+the name at the end (as it currently does), then passes the result back to the
+requester.
+
+Pros:
+- Simple semantics for hosted programs: they can chose any expiration.
+- Expiration of sealing key exactly matches expiration of data.
+- Simple implementation: no extra state stored by host Tao.
+
+Cons:
+- Expensive: always multiple key generations and multiple encryptions (one for
+  each Tao layer, including one for the TPM) for every Seal() operation.
+  Unseal() is similarly expensive.
+
+== TaoCA is a Tao (idea #3) ==
+
+Though I haven't digested this idea completely yet, I don't like it.
+
+I argued above that hosted programs should not normally fully trust the TaoCA
+server (aka policy server). But if we are going to go with the idea that each
+hosted program has an embed ed policy key that it fully trusts for all important
+decisions... then why not consider TaoCA to be a Tao?
+
+The requirement for being a parent (i.e. a Tao) are:
+- There is a secure authenticated channel from parent to each child (or one can
+  be created when needed).
+- The parent can recognize and identify its children.
+- The parent can provide the Tao API operations for its children.
+
+TaoCA can easily generate keys sufficient to implement the Tao operations
+(except getRandomBytes and start/remove hosted program). It basically implements
+Attest() already. And even though it doesn't implement start/remove hosted
+program, it has enough information that it can recognize its own children, e.g.
+its list of approved TPM EKs. It can create authenticated TLS channels to its
+children because it happens that every one of its children either (a) possesses a
+TPM EK the TaoCA knows about or (b) possesses an attestation chain from a TPM EK
+that the TaoCA knows about.
+
+Here, a hosted Tao can have more than one parent Tao. LinuxTao might have the
+TPM as one parent and a TaoCA as a second parent. Other layers hosted on that
+Tao might have additional (or the same) TaoCAs as parents. Even a "leaf" hosted
+program may have multiple Tao ancestors, because its host Tao and/or other
+ancestor Taos have multiple parent Taos. So some Tao operations may require
+extra parameters to specify which line of ancestry to follow for that call. For
+example, Attest() would need to specify a complete path from some root Tao,
+among all the possible root ancestor Taos, all the way down to itself.
+
+Pros:
+- Formalizes the role of the TaoCA and its (trust) relationship with hosted
+programs, hosted Taos, etc.
+
+Cons:
+- I think hosted programs do not really (and should not) full trust any policy
+server under normal circumstances.
+
+== Use symmetric keys within a machine (idea #4) ==
+
+I think we should do this.
+
+We should add functionality to the Tao API to support the creation of
+authenticated channels between Tao-relatives, i.e. between two hosted programs
+that share a common Tao ancestor. The processes are necessarily on the same
+machine since they are all under the same TPM, and fully trust their common
+ancestors, so there isn't much reason to be doing expensive public key
+encryption.
+
+Every hosted program is already assumed to have a authenticated private channel
+to its host Tao and, indirectly, to every ancestor Tao as well. A call to
+GetRandomBytes, for example, might be passed down to some distant ancestor. 
+
+For any given pair of Tao hosted programs (or hosted Taos) running on the same
+machine, there is one or more common ancestor Taos that is necessarily trusted
+by both. We can use a common ancestor Tao to distribute a shared symmetric key
+to the pair of hosted programs. The two programs can then use TLS-PSK to
+communicate.
+
+Elsewhere [Cryptography.txt, AuthenticationImplementation.txt] I explore some
+possibilities. To summarize the options:
+* (a) Currently we use TLS and policy-attested (or Tao-attested) public keys for
+  all authentication between local programs, even if they share a common
+  ancestor.
+* (b) We could instead rely instead on channels implemented by the OS or vm,
+  with no TLS at all. Basically, pipes. 
+* (c) This proposal.
+
+Option (a) is slow/expensive, and you have to worry about exposure of long-lived
+keys (the policy key, the public keys of each hosted program and each Tao).
+
+Option (b) is fast/cheap, but it would make the Tao implementation and API much
+more complex. And there is no common mechanism that could be written just once:
+every Tao (for linux, kvm, evmm, etc.) would need separate mechanisms for
+managing the channels. Implementing this would be like implementing
+StartHostedProgram, but worse.
+
+Option (c), this proposal, has moderate speed and expense, and the
+implementation and API is fairly simple. Once a pair of hosted programs has a
+shared symmetric key, they can use TLS-PSK to communicate, which relies only on
+symmetric cryptography and avoids the use of asymmetric keys. 
+
+As with sealing, the symmetric keys should have an expiration negotiated between
+the requesting hosted program and the common ancestor Tao. Basically, each of
+the two hosted programs can independently ask their parents for a suitable
+symmetric key to talk to the other, using an API like this:
+- shared_key = GenerateSharedKey(my_name, peer_name, requested_expiration)
+Just like GetRandomBytes, the call can traverse down the chain of parent Taos,
+stopping when it reaches a common ancestor. If the common ancestor can use a
+key-generation key (KGK) to deterministically generate the shared key as a
+function of the two peer names and its actual expiration. As long as that Tao
+keeps and uses the same KGK until after the expiration, and the generation
+function is deterministic, then both hosted programs will get the same key.
+
+The my_name parameter is only needed if hosted programs can be identified by
+more than a single name. Currently, every hosted program is identified by a hash
+of the program binary and the command-line arguments. But we could have other
+identifiers that mix in the process id, time of process creation, etc., yielding
+identifiers with various levels of detail. The my_name parameter would let the
+caller chose which granularity to use.
+
+Note: the hosted programs do not need to store (or seal) the shared keys,
+because the key generation is deterministic. At any time, if they simply
+re-request the a key with the same expiration, they should receive the same
+shared_key result from the ancestor Tao. Just like for sealing, the ancestor Tao
+needs to keep the key-generation keys available, and might have multiple
+key-generation keys to use with different expirations.
+
+Note: The TPM doesn't support this directly. The first real Tao, sitting
+directly above the TPM, would need to implement this feature using a combination
+of TPM Seal/Unseal/Random operations.
+
+== Use symmetric keys with a cloud, after bootstrapping (idea #5) ==
+
+I don't think we should implement this yet: the benefit isn't obvious enough.
+
+The idea above for using symmetric keys and TLS-PSK for communication between
+two hosted programs works when we have an already-established secure
+authenticated channel from each of the two hosted programs to some trusted third
+party. There, two hosted programs within the same machine used an ancestor Tao
+as the trusted third party, and the channels to it went through the stack of
+parent Taos. 
+
+For two hosted programs executing on different machines but in the same cloud
+(aka "Cloud-relative", i.e. programs executing in the same Tao domain, i.e.
+governed by the same policy key), the policy server can serve as a trusted third
+party to distributed shared keys. We just to "bootstrap" this by creating an
+authenticated, secure channel from the hosted programs to the policy server. 
+
+When a hosted program wants to communicate with some Cloud-relative program, the
+hosted program establishes a TLS channel to the policy server as usual,
+authenticated using its parent-Tao attested asymmetric key. The hosted program
+then does a GenerateSharedKey() RPC to obtain a shared key that it can use to
+communicate with the specified Cloud-relative. As before, both peers make this
+call independently, so the policy server will need to generate they shared keys
+deterministically.
+
+Note: It might be the case that the hosted program's parent Tao will be governed
+by the same policy server as the hosted program itself, but I don't think this
+is always the case. If it were the case, then the hosted program could ask its
+parent Tao (or, indirectly, its ancestor Tao) to contact the policy server on
+its behalf, saving the cost of the TLS setup for each hosted program.
+
+The cost for avoiding asymmetric operations with the peer is the asymmetric-key
+TLS setup for the channel to the policy server. But this cost is amortized over
+all connections to the peer during the same execution. And once we have a shared
+symmetric key, we can seal it on the peer to avoid the need to talk to the
+policy server during subsequent executions (assuming the hosted program identity
+doesn't change between executions). The cost can also be amortized over multiple
+operations with the policy server: once the channel is open to the policy
+server, the hosted program can obtain shared symmetric keys for many peers. 
+
+To summarize:
+* (a) Currently we use TLS and policy-attested (or Tao-attested) public keys for
+  all authentication between remote programs, even if they share a common
+  trusted policy server.
+* (b) We could simply use the TLS session-resume feature.
+  This just uses asymmetric-key TLS on the first TLS connection to a peer, then
+  uses that session to establish a shared symmetric key to be used for
+  subsequent TLS connections. 
+* (c) This proposal.
+
+Option (a) requires expensive asymmetric-key operations once per connection, and
+you have to worry about exposure of long-lived public keys (the policy key, the
+public keys of each hosted program and each Tao).
+
+Option (b) amortizes expensive asymmetric-key operations to once per pair of
+communicating hosted programs, at best. But it simple to implement, and requires
+no Tao infrastructure. You still have to worry about exposure of long-lived keys
+because of the initial TLS session to the peer.
+
+Option (c) amortizes expensive asymmetric-key operations to once per hosted
+program, at best. It seems a bit complex to implement (managing the amortization
+across executions), and it requires Tao infrastructure (generating shared keys
+at the policy server). It's also not clear that the extra amortization beyond
+option (b) is significant. And you still have to worry about exposure of
+long-lived public keys because of the initial TLS session to the policy server.
+
+On the other hand, with option (c), there is no longer any need for
+policy-attested public keys, since all communication between hosted programs
+would use parent-Tao attested keys to create the connection to the policy
+server, then shared keys to communicate with each other.
+
+== Eliminate seal and unseal, use hosted program keys instead (idea #6) ==
+
+I like this idea, and I think we should implement it. 
+
+If we can outfit each hosted program with a symmetric key that is available only
+to that hosted program (and, of course, its necessarily-trusted parent and
+ancestor Taos), then a hosted program can implement Seal and Unseal operations
+without further help from its parent Tao. Seal and Unseal instead become
+convenience library functions, executed entirely locally within each hosted
+program or hosted Tao: The hosted program uses its symmetric key to used to
+encrypt program data, creating a sealed bundle, then later during the same or
+subsequent executions, it uses the same key to decrypt the sealed bundle and
+recover the data. 
+
+Idea #4 above provides a way for any hosted program to obtain a program-specific
+symmetric key by making a request to its parent Tao. Essentially, a program
+would ask to obtain a key that is shared with future versions of itself, by
+calling:
+- shared_key = GenerateSharedKey(my_name, my_future_name, requested_expiration)
+
+== Summary of revised Tao API ==
+
+I will outline a revised Tao API using these decisions:
+. Reject idea #0 - Tao generates keys for hosted program
+. Reject idea #1 - A minimalist API
+~ Accept idea #2 - Sealing with expirations, option (b), sort of
+. Reject idea #3 - TaoCA is a Tao 
+* Accept idea #4 - Use symmetric keys within a machine
+. Reject idea #5 - Use symmetric keys with a cloud, after bootstrapping
+* Accept idea #6 - Eliminate seal and unseal, use hosted program keys instead
+
+Ignoring C++-isms, the revised tao API would look like this:
+- Unspecified: implementation/context-specific hooks for managing the lifecycle
+  of hosted programs and the Tao service itself.
+- bytes = GetRandomBytes(size)
+  Same as current API. 
+- attestation = Attest(statement)
+  Same as current API, but with a statement in some logic not a blob of opaque
+  data. The returned attestation conveys "Tao says (child says statement)",
+  where "Tao" is really the Tao's public key, and "child" is the hash of the
+  hosted program making the request. 
+- shared_key = GenerateSharedKey(my_name, peer_name, requested_expiration)
+  Generate a shared symmetric key that is available only to hosted programs with
+  name my_name or peer_name. The call is only successful if my_name is one of
+  the caller's identities. Otherwise, exchanging my_name and peer_name doesn't
+  affect the result. The call is only successful if the expiration has not past.
+
+Convenience/library methods implemented locally in hosted programs:
+- (keypair, cert) = GenerateAuthenticationKey(suggested_expiration, other key details)
+  Calls GetRandomBytes(), then generates a key pair, then calls Attest() with an
+  appropriate statement describing the public key, its expiration, and possibly
+  other key details (e.g. key usage?). This just packages up what all of the
+  current hosted programs already do.
+- sealing_key = GenerateSealingKey(my_name, requested_expiration)
+  Calls GenerateSharedKey(my_name, my_name, requested_expiration).
+- blob = Seal(my_name, data, requested_expiration)
+  Calls GenerateSealingKey(my_name, requested_expiration), then uses the
+  resulting key to encrypt the data. Maybe attach requested_expiration to the
+  blob. Maybe also attach my_name.
+- data = Unseal(my_name, requested_expiration, blob)
+  Calls GenerateSealingKey(my_name, requested_expiration), then uses the
+  resulting key to decrypt blob and recover the data. If we attach my_name and
+  requested_expiration to the blob during Seal(), then we don't need to pass
+  them as parameters here. As with the current Seal() implementation, the blob
+  must have been created via a Seal request to by the same hosted program
+  running on the same parent Tao. 
+
+Observation: There is nothing here about authentication between hosted programs
+and the outside world. That already requires different mechanisms, e.g. using
+x509 certificates and https (and there is no simple way to convey all the
+information in a Tao attestation chain, since those chains are rooted in the TPM
+which does not generate x509-compatible certificates. Currently,
+https-compatible x509 chains are produced by the policy server.  Aside from
+this, there isn't much of a role for the policy server.

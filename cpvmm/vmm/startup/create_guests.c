@@ -104,7 +104,8 @@ void add_cpu_to_guest(const VMM_GUEST_STARTUP* gstartup, GUEST_HANDLE guest,
 // Init guest except for guest memory
 // Return NULL on error
 static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
-                                const VMM_GUEST_STARTUP* gstartup, const VMM_POLICY  *guest_policy)
+                                const VMM_GUEST_STARTUP* gstartup, 
+                                const VMM_POLICY  *guest_policy)
 {
     GUEST_HANDLE  guest;
     UINT32        cpu_affinity = 0;
@@ -209,17 +210,16 @@ BOOLEAN initialize_all_guests( UINT32 number_of_host_processors,
     GUEST_CPU_HANDLE gcpu;
     GUEST_GCPU_ECONTEXT gcpu_context;
 
-    VMM_ASSERT( hw_cpu_id() == 0 );
-    VMM_ASSERT( number_of_host_processors > 0 );
-    VMM_ASSERT( vmm_memory_layout );
-    VMM_ASSERT( primary_guest_startup_state );
+    VMM_ASSERT(hw_cpu_id() == 0);
+    VMM_ASSERT(number_of_host_processors > 0);
+    VMM_ASSERT(vmm_memory_layout);
+    VMM_ASSERT(primary_guest_startup_state);
 
     if (number_of_secondary_guests > 0) {
         VMM_LOG(mask_anonymous, level_trace,"initialize_all_guests ASSERT: Secondary guests are yet not implemented\n");
         VMM_ASSERT( secondary_guests_startup_state_array );
         // init guests and allocate memory for them
         // shutdown temporary layout object
-        // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_DEADLOOP();
         return FALSE;
     }
@@ -238,8 +238,8 @@ BOOLEAN initialize_all_guests( UINT32 number_of_host_processors,
     primary_guest = init_single_guest(number_of_host_processors, 
                                       primary_guest_startup_state, NULL);  
     if (!primary_guest) {
-        VMM_LOG(mask_anonymous, level_trace,"initialize_all_guests: Cannot init primary guest\n");
-        // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
+        VMM_LOG(mask_anonymous, level_trace,
+                 "initialize_all_guests: Cannot init primary guest\n");
         VMM_DEADLOOP();
         return FALSE;
     }

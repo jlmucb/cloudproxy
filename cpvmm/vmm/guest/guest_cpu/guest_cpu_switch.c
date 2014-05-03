@@ -537,9 +537,12 @@ gcpu_process_activity_state_change( GUEST_CPU_HANDLE gcpu )
 
 
 // Resume execution.  Never returns.
-void gcpu_resume( GUEST_CPU_HANDLE gcpu )
+void gcpu_resume(GUEST_CPU_HANDLE gcpu)
 {
     VMCS_OBJECT* vmcs;
+#ifdef JLMDEBUG
+    bprint("gcpu_resume\n");
+#endif
 
     if (IS_MODE_NATIVE( gcpu )) {
         gcpu = gcpu->resume_func(gcpu);    // layered specific resume
@@ -576,9 +579,9 @@ void gcpu_resume( GUEST_CPU_HANDLE gcpu )
             if (!gcpu_cr3_virtualized( gcpu )) {
                 UINT64 visible_cr3 = gcpu->save_area.gp.reg[CR3_SAVE_AREA];
                 if (INVALID_CR3_SAVED_VALUE != visible_cr3) {
-                    // CR3 user-visible value was changed inside vmm or CR3 virtualization
-                    // was switched off
-                    gcpu_set_control_reg( gcpu, IA32_CTRL_CR3, visible_cr3 );
+                    // CR3 user-visible value was changed inside vmm or CR3 
+                    // virtualization was switched off
+                    gcpu_set_control_reg(gcpu, IA32_CTRL_CR3, visible_cr3);
                 }
             }
         }
@@ -600,12 +603,12 @@ void gcpu_resume( GUEST_CPU_HANDLE gcpu )
     if (0 != gcpu->hw_enforcements) {
         gcpu_apply_hw_enforcements(gcpu);
     }
-    {
+    { 
         IA32_VMX_VMCS_VM_EXIT_INFO_IDT_VECTORING    idt_vectoring_info;
         idt_vectoring_info.Uint32 = (UINT32)vmcs_read(vmcs,VMCS_EXIT_INFO_IDT_VECTORING);
         if(idt_vectoring_info.Bits.Valid && ((idt_vectoring_info.Bits.InterruptType == 
                 IdtVectoringInterruptTypeExternalInterrupt )
-                ||(idt_vectoring_info.Bits.InterruptType==IdtVectoringInterruptTypeNmi))) {       
+                ||(idt_vectoring_info.Bits.InterruptType==IdtVectoringInterruptTypeNmi))) {
             IA32_VMX_VMCS_VM_ENTER_INTERRUPT_INFO   interrupt_info;
             PROCESSOR_BASED_VM_EXECUTION_CONTROLS ctrls;
 
@@ -614,7 +617,7 @@ void gcpu_resume( GUEST_CPU_HANDLE gcpu )
             interrupt_info.Uint32 = 0;
             interrupt_info.Bits.Valid = 1;
             interrupt_info.Bits.Vector = idt_vectoring_info.Bits.Vector;
-            interrupt_info.Bits.InterruptType = idt_vectoring_info.Bits.InterruptType;
+            interrupt_info.Bits.InterruptType= idt_vectoring_info.Bits.InterruptType;
             vmcs_write(vmcs,VMCS_ENTER_INTERRUPT_INFO, interrupt_info.Uint32);
             if(idt_vectoring_info.Bits.InterruptType == IdtVectoringInterruptTypeNmi )
                 vmcs_write(vmcs,VMCS_GUEST_INTERRUPTIBILITY,0);

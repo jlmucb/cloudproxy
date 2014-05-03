@@ -254,7 +254,8 @@ static BOOLEAN hmm_map_remaining_memory(IN MAM_ATTRIBUTES mapping_attrs) {
             }
 
 #if JLMDEBUG1
-    bprint("inner second range: start = %p, end = %p\n", virt_range_start, virt_range_start + virt_range_size);
+    bprint("inner second range: start = %p, end = %p\n", virt_range_start, 
+           virt_range_start + virt_range_size);
 #endif
         }
     } while (last_covered_phys_addr < size_4G);
@@ -262,8 +263,7 @@ static BOOLEAN hmm_map_remaining_memory(IN MAM_ATTRIBUTES mapping_attrs) {
 #if JLMDEBUG1
     bprint("After the while loop\n");
 #endif
-    // BEFORE_VMLAUNCH
-    VMM_ASSERT(last_covered_virt_addr <= last_covered_phys_addr);
+    VMM_ASSERT(last_covered_virt_addr<=last_covered_phys_addr);
     hmm_set_final_mapped_virt_address(g_hmm, last_covered_virt_addr);
 
     e820_iter = e820_abstraction_iterator_get_first(E820_ORIGINAL_MAP);

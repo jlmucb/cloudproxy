@@ -83,7 +83,6 @@ int vmx_vmlaunch() {
     int ret= 0;
 #ifdef JLMDEBUG
     bprint("vmxlaunch, waiting\n");
-    LOOP_FOREVER
 #endif
     asm volatile(
         "\tmovl $0, %[ret]\n"
@@ -104,7 +103,6 @@ int vmx_vmresume() {
     int ret= 0;
 #ifdef JLMDEBUG
     bprint("vmresume\n");
-    LOOP_FOREVER
 #endif
     asm volatile(
         "\tmovl $0, %[ret]\n"
@@ -145,15 +143,13 @@ int vmx_vmptrld(UINT64 *ptr_to_vmcs_region) {
 }
 
 void vmx_vmptrst(UINT64 *ptr_to_vmcs_region) {
-    int ret= 0;
     UINT64   address= *ptr_to_vmcs_region;
 #ifdef JLMDEBUG
     bprint("vmptrst, waiting\n");
-    LOOP_FOREVER
 #endif
     asm volatile(
         "\tvmptrst %[address]\n"
-    ::[address] "p" (address)
+    ::[address] "m" (address)
     :"memory");
     return;
 }
@@ -188,19 +184,18 @@ int vmx_vmread(UINT64 index, UINT64 *value) {
     return ret;
 }
 
-// CHECK(JLM)
-int vmx_vmwrite(UINT64 index, UINT64 *value) {
+
+int vmx_vmwrite(UINT64 index, UINT64 value) {
     int ret= 0;
-#ifdef JLMDEBUG
-    bprint("vmwrite, waiting\n");
-    LOOP_FOREVER
+#ifdef JLMDEBUG1
+    bprint("vmwrite, waiting %p\n", value);
 #endif
     asm volatile(
         "\tmovq %[index], %%rax\n"
         "\tmovq %[value], %%rbx\n"
-        "\tmovq (%%rbx), %%rbx\n"
         "\tmovl $0, %[ret]\n"
-        "\tvmwrite %%rax, %%rbx\n"
+        // "\tvmwrite %%rax, %%rbx\n"
+        "\tvmwrite %%rbx, %%rax\n"
         "\tjnc    1f\n"
         "\tmovl  $2, %[ret]\n"
         "\tjmp    2f\n"
@@ -211,16 +206,20 @@ int vmx_vmwrite(UINT64 index, UINT64 *value) {
     : [ret] "=g" (ret) 
     : [index] "g"(index), [value] "g"(value)
     :"%rbx", "%rax");
+#ifdef JLMDEBUG
+    if(ret!=0)
+    bprint("vmwrite failed\n");
+#endif
     return ret;
 }
 
 
-int hw_vmx_write_current_vmcs(UINT64 field_id, UINT64 *value ) {
+int hw_vmx_write_current_vmcs(UINT64 field_id, UINT64 value) {
         return vmx_vmwrite(field_id, value);
 }
 
 
-int hw_vmx_read_current_vmcs(UINT64 field_id, UINT64 *value ) {
+int hw_vmx_read_current_vmcs(UINT64 field_id, UINT64 *value) {
         return vmx_vmread(field_id, value);
 }
 

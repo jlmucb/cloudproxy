@@ -253,6 +253,9 @@ struct _VMCS_OBJECT * vmcs_act_create(GUEST_CPU_HANDLE gcpu)
         VMM_LOG(mask_anonymous, level_trace,"[vmcs] %s: Allocation failed\n", __FUNCTION__);
         return NULL;
     }
+#ifdef JLMDEBUG
+    bprint("about to set vmcs entries in vmcs create\n");
+#endif
     p_vmcs->hva = vmcs_hw_allocate_region(&p_vmcs->hpa);    // validate it's ok TBD
     p_vmcs->flags|= NEVER_ACTIVATED_FLAG;
     p_vmcs->owning_host_cpu = CPU_NEVER_USED;
@@ -408,6 +411,9 @@ void vmcs_act_flush_to_cpu(const struct _VMCS_OBJECT *vmcs)
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) vmcs;
 
+#ifdef JLMDEBUG
+    bprint("vmcs_act_flush_to_cpu\n");
+#endif
     VMM_ASSERT((p_vmcs->flags&ACTIVATED_FLAG)!=0);
     VMM_ASSERT(p_vmcs->owning_host_cpu == hw_cpu_id());
 
@@ -420,13 +426,16 @@ void vmcs_act_flush_to_cpu(const struct _VMCS_OBJECT *vmcs)
             UINT64_ALL_ONES, BIT_VALUE64(NMI_WINDOW_BIT));
     }
 
+#ifdef JLMDEBUG
+    bprint("Halfway through vmcs_act_flush_to_cpu\n");
+#endif
     if (cache64_is_dirty(p_vmcs->cache)) {
-        cache64_flush_dirty(
-            p_vmcs->cache,
-            CACHE_ALL_ENTRIES,
-            (CACHE64_FIELD_PROCESS_FUNCTION) vmcs_act_flush_field_to_cpu,
-            p_vmcs);
+        cache64_flush_dirty(p_vmcs->cache, CACHE_ALL_ENTRIES,
+            (CACHE64_FIELD_PROCESS_FUNCTION) vmcs_act_flush_field_to_cpu, p_vmcs);
     }
+#ifdef JLMDEBUG
+    bprint("vmcs_act_flush_to_cpu, done\n");
+#endif
 }
 
 
@@ -453,13 +462,11 @@ void vmcs_act_flush_nmi_depended_field_to_cpu(VMCS_ACTUAL_OBJECT *p_vmcs, UINT64
 
     while (FALSE == success) {
         p_vmcs->update_status = UPDATE_SUCCEEDED;
-
         if (nmi_window_is_requested()) {
             BIT_SET64(value, NMI_WINDOW_BIT);
         }
-
-        vmcs_act_write_to_hardware(p_vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS, value);
-
+        vmcs_act_write_to_hardware(p_vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS,
+                                    value);
         if (UPDATE_SUCCEEDED == hw_interlocked_compare_exchange(
                                     &p_vmcs->update_status, UPDATE_SUCCEEDED,
                                     UPDATE_FINISHED)) {
@@ -547,10 +554,8 @@ void restore_previous_vmcs_ptr( UINT64 ptr_to_restore )
         ret_val = vmx_vmptrld( &ptr_to_restore );
 
         if (ret_val != HW_VMX_SUCCESS) {
-            error_processing(ptr_to_restore,
-                             ret_val,
-                             "vmx_vmptrld",
-                             VMCS_FIELD_COUNT);
+            error_processing(ptr_to_restore, ret_val,
+                             "vmx_vmptrld", VMCS_FIELD_COUNT);
         }
     }
     else {
@@ -626,7 +631,6 @@ void vmcs_deactivate( VMCS_OBJECT* obj )
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
 
     VMM_ASSERT(obj);
-    VMM_ASSERT((p_vmcs->ACTIVATED_FLAG) == 1);
     VMM_ASSERT(hw_cpu_id() == p_vmcs->owning_host_cpu);
     p_vmcs->flags&= (UINT16)(~ACTIVATED_FLAG);
 }
@@ -643,7 +647,6 @@ void vmcs_set_launched( VMCS_OBJECT* obj )
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
 
     VMM_ASSERT(p_vmcs);
-    VMM_ASSERT( GET_LAUNCHED_FLAG(p_vmcs) == 0 );
     p_vmcs->flags|= LAUNCHED_FLAG;
 }
 
@@ -697,14 +700,32 @@ void error_processing(UINT64 vmcs, HW_VMX_RET_VALUE ret_val,
             error_message = "operation FAILED";
     }
     if (field == VMCS_FIELD_COUNT) {
+#ifdef JLMDEBUG
+        bprint("%s ( %p ) failed with the error: %s\n", operation, vmcs,
+                error_message ? error_message : "unknown error");
+#endif
+#if 0
         VMM_LOG(mask_anonymous, level_trace,"%s( %P ) failed with the error: %s\n",
                  operation, vmcs, error_message ? error_message : "unknown error");
+#endif
     }
     else {
+#ifdef JLMDEBUG
+        bprint("%s( %p, %s ) failed with the error: %s\n", operation, vmcs,
+                vmcs_get_field_name(field),
+                error_message ? error_message : "unknown error");
+#endif
+#if 0
         VMM_LOG(mask_anonymous, level_trace,"%s( %P, %s ) failed with the error: %s\n",
                  operation, vmcs, vmcs_get_field_name(field),
                  error_message ? error_message : "unknown error");
+#endif
     }
+
+
+#ifdef JLMDEBUG
+    LOOP_FOREVER
+#endif
     VMM_DEADLOOP();
     return;
 }

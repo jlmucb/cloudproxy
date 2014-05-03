@@ -273,21 +273,12 @@ void host_cpu_init( void )
     bprint("In host_cpu_init\n");
 #endif
 #ifdef USE_SYSENTER_STACK
-#ifdef JLMDEBUG
-    bprint("using SYSENTER_STACK\n");
-#endif
     CPU_ID              cpu_id = hw_cpu_id();
     HOST_CPU_SAVE_AREA* hcpu = &(g_host_cpus[cpu_id]);
 #endif
 
 #ifdef USE_SYSENTER_STACK
-#ifdef JLMDEBUG
-    bprint("Using SYSENTER_STACK\n");
-#endif
     hw_write_msr(IA32_MSR_SYSENTER_CS, hw_read_cs());
-#ifdef JLMDEBUG
-    bprint("First msr write\n");
-#endif
     hw_write_msr(IA32_MSR_SYSENTER_EIP, (ADDRESS)sysenter_func);
     hw_write_msr(IA32_MSR_SYSENTER_ESP, (ADDRESS)(hcpu->sysenter_stack + SYSENTER_STACK_SIZE - 5));
 #else
@@ -432,7 +423,7 @@ void host_cpu_vmcs_init( GUEST_CPU_HANDLE gcpu)
 
     VMM_ASSERT(g_host_cpus);
     if (gcpu_get_guest_level(gcpu) == GUEST_LEVEL_1_SIMPLE) {
-        VMM_ASSERT(vmcs_hierarchy_get_vmcs(gcpu_get_vmcs_hierarchy( gcpu ), VMCS_MERGED) == vmcs)
+        VMM_ASSERT(vmcs_hierarchy_get_vmcs(gcpu_get_vmcs_hierarchy(gcpu), VMCS_MERGED) == vmcs)
         if ((g_host_cpus[cpu].vmexit_msr_load_count != 0) && (!hmm_hva_to_hpa((HVA)g_host_cpus[cpu].vmexit_msr_load_list, &host_msr_load_addr))) {
             VMM_LOG(mask_anonymous, level_trace,"%s:(%d):ASSERT: HVA to HPA conversion failed\n", __FUNCTION__, __LINE__);
             VMM_DEADLOOP();

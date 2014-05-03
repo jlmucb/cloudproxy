@@ -688,5 +688,3 @@ void bprint(const char *fmt, ...)
 exit:
     va_end(ap);
 }
-
-

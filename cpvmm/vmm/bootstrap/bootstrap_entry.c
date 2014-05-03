@@ -184,6 +184,20 @@ int                                     evmm_num_of_aps= 0;
 static uint64_t                         evmm_reserved = 0;
 static uint32_t                         local_apic_id = 0;
 
+static IA32_GDTR                        tboot_gdtr_32;
+static uint16_t                         tboot_cs_selector= 0;
+static uint32_t                         tboot_cs_base= 0;
+static uint32_t                         tboot_cs_limit= 0;
+static uint16_t                         tboot_cs_attr= 0;
+static uint16_t                         tboot_ds_selector= 0;
+static uint32_t                         tboot_ds_base= 0;
+static uint32_t                         tboot_ds_limit= 0;
+static uint16_t                         tboot_ds_attr= 0;
+static uint16_t                         tboot_ss_selector= 0;
+static uint32_t                         tboot_ss_base= 0;
+static uint32_t                         tboot_ss_limit= 0;
+static uint16_t                         tboot_ss_attr= 0;
+
 
 // -------------------------------------------------------------------------
 
@@ -191,23 +205,163 @@ static uint32_t                         local_apic_id = 0;
 // machine setup and paging
 
 
+int ia32_get_selector(uint32_t* p, uint32_t* base, uint32_t* limit, uint16_t* access)
+{
+    IA32_SEGMENT_DESCRIPTOR* desc= (IA32_SEGMENT_DESCRIPTOR*)p;
+    IA32_SEGMENT_DESCRIPTOR_ATTR attr;
+
+
+    *base= (UINT64)((desc->gen.lo.base_address_15_00) |
+        (desc->gen.hi.base_address_23_16 << 16) |
+        (desc->gen.hi.base_address_31_24 << 24));
+
+    *limit= (UINT32)( (desc->gen.lo.limit_15_00) |
+        (desc->gen.hi.limit_19_16 << 16));
+
+    if(desc->gen.hi.granularity)
+        *limit = (*limit << 12) | 0x00000fff;
+
+    attr.attr16 = desc->gen_attr.attributes;
+    attr.bits.limit_19_16 = 0;
+
+    *access= (uint32_t) attr.attr16;
+
+    return 0;
+}
+
+
+uint16_t ia32_read_cs()
+{
+    uint16_t  cs= 0;
+
+    asm volatile(
+        "\txorw %%ax,%%ax\n"
+        "\tmovw %%cs, %%ax\n"
+        "\tmovw %%ax, %[cs]\n"
+    :[cs] "=g" (cs)
+    : : "%ax");
+    return cs;
+}
+
+
+uint16_t ia32_read_ds()
+{
+    uint16_t  ds= 0;
+
+    asm volatile(
+        "\txorw %%ax,%%ax\n"
+        "\tmovw %%ds,%%ax\n"
+        "\tmovw %%ax, %[ds]\n"
+    :[ds] "=g" (ds)
+    : : "%ax");
+    return ds;
+}
+
+
+uint16_t ia32_read_es()
+{
+    uint16_t  es= 0;
+
+    asm volatile(
+        "\txorw %%ax,%%ax\n"
+        "\tmovw %%es,%%ax\n"
+        "\tmovw %%ax, %[es]\n"
+    :[es] "=g" (es)
+    : : "%ax");
+    return es;
+}
+
+
+uint16_t ia32_read_fs()
+{
+    uint16_t  fs= 0;
+
+    asm volatile(
+        "\txorw %%ax,%%ax\n"
+        "\tmovw %%fs,%%ax\n"
+        "\tmovw %%ax, %[fs]\n"
+    :[fs] "=g" (fs)
+    : : "%ax");
+    return fs;
+}
+
+
+uint16_t ia32_read_gs()
+{
+    uint16_t  gs= 0;
+
+    asm volatile(
+        "\txorw %%ax,%%ax\n"
+        "\tmovw %%gs,%%ax\n"
+        "\tmovw %%ax, %[gs]\n"
+    :[gs] "=g" (gs)
+    : : "%ax");
+    return gs;
+}
+
+
+uint16_t ia32_read_ss()
+{
+    uint16_t  ss= 0;
+
+    asm volatile(
+        "\txorw %%ax,%%ax\n"
+        "\tmovw %%ss,%%ax\n"
+        "\tmovw %%ax, %[ss]\n"
+    :[ss] "=g" (ss)
+    : : "%ax");
+    return ss;
+}
+
+
+void  ia32_read_idtr(IA32_IDTR* p_descriptor)
+{
+#if 0
+    asm volatile(
+        "\tmovl %[p_descriptor], %%edx\n"
+        "\tsidt (%%edx)\n"
+    :[p_descriptor] "=g" (p_descriptor)
+    :: "%edx");
+#else
+    asm volatile(
+        "\tsidt (%[p_descriptor])\n"
+    :[p_descriptor] "=p" (p_descriptor)
+    ::);
+#endif
+}
+
+
 void  ia32_read_gdtr(IA32_GDTR *p_descriptor)
 {
+#if 0
     asm volatile(
         "\tmovl %[p_descriptor], %%edx\n"
         "\tsgdt (%%edx)\n"
     :[p_descriptor] "=g" (p_descriptor)
-    :: "%edx");
+    : : "%edx");
+#else
+    asm volatile(
+        "\tsgdt (%[p_descriptor])\n"
+    :[p_descriptor] "=p" (p_descriptor)
+    :: );
+#endif
 }
 
 
 void  ia32_write_gdtr(IA32_GDTR *p_descriptor)
 {
+#if 0
     asm volatile(
         "\tmovl   %[p_descriptor], %%edx\n"
         "\t lgdt  (%%edx)\n"
     ::[p_descriptor] "g" (p_descriptor) 
     :"%edx");
+#else
+    asm volatile(
+        "\t lgdt  (%[p_descriptor])\n"
+    ::[p_descriptor] "p" (p_descriptor) 
+    :);
+#endif
 }
 
 
@@ -856,14 +1010,14 @@ int linux_setup(void)
         guest_processor_state[0].gp.reg[i] = (uint64_t) 0;
     }
 
-    guest_processor_state[0].control.gdtr.base = (uint64_t)(uint32_t)&gdt_table;
-    guest_processor_state[0].control.gdtr.limit = (uint64_t)(uint32_t)gdt_table + 
-                                     sizeof(gdt_table) -1;
-    guest_processor_state[0].control.idtr.base = (UINT64)idtr.base;
-    guest_processor_state[0].control.idtr.limit = (UINT32)idtr.limit;
     guest_processor_state[0].gp.reg[IA32_REG_RIP] = (uint64_t) linux_entry_address;
     guest_processor_state[0].gp.reg[IA32_REG_RSI] = (uint64_t) linux_esi_register;
     guest_processor_state[0].gp.reg[IA32_REG_RSP] = (uint64_t) linux_esp_register;
+
+    guest_processor_state[0].gp.reg[IA32_REG_RFLAGS] = 0;
+    guest_processor_state[0].gp.reg[IA32_REG_RBP] = 0;
+    guest_processor_state[0].gp.reg[IA32_REG_RDI] = 0;
+
     for (i = 0; i < IA32_REG_XMM_COUNT; i++) {
         guest_processor_state[0].xmm.reg[i].uint64[0] = (uint64_t)0;
         guest_processor_state[0].xmm.reg[i].uint64[1] = (uint64_t)0;
@@ -899,27 +1053,55 @@ int linux_setup(void)
         guest_processor_state[0].seg.segment[i].base = 0;
         guest_processor_state[0].seg.segment[i].limit = 0;
     }
-    
+   
+#if 0 
+    guest_processor_state[0].control.gdtr.base = (uint64_t)(uint32_t)&gdt_table;
+    guest_processor_state[0].control.gdtr.limit = (uint64_t)(uint32_t)gdt_table + 
+                                     sizeof(gdt_table) -1;
+    guest_processor_state[0].control.idtr.base = (UINT64)idtr.base;
+    guest_processor_state[0].control.idtr.limit = (UINT32)idtr.limit;
     guest_processor_state[0].seg.segment[IA32_SEG_CS].base = (uint64_t) LINUX_BOOT_CS;
     guest_processor_state[0].seg.segment[IA32_SEG_DS].base = (uint64_t) LINUX_BOOT_DS;
     guest_processor_state[0].seg.segment[IA32_SEG_ES].base = 0;
     guest_processor_state[0].seg.segment[IA32_SEG_FS].base = 0;
     guest_processor_state[0].seg.segment[IA32_SEG_GS].base = 0;
-    guest_processor_state[0].seg.segment[IA32_SEG_LDTR].attributes=
-                                0x00010000;
-    guest_processor_state[0].seg.segment[IA32_SEG_TR].attributes=
-                                0x0000808b;
-    guest_processor_state[0].seg.segment[IA32_SEG_TR].limit=
-                                0xffffffff;
+    guest_processor_state[0].seg.segment[IA32_SEG_LDTR].attributes= 0x00010000;
+    guest_processor_state[0].seg.segment[IA32_SEG_TR].attributes= 0x0000808b;
+    guest_processor_state[0].seg.segment[IA32_SEG_TR].limit= 0xffffffff;
+#else
+    guest_processor_state[0].control.gdtr.base = (uint64_t)(uint32_t)
+                    tboot_gdtr_32.base;
+    guest_processor_state[0].control.gdtr.limit = (uint64_t)(uint32_t)
+                    tboot_gdtr_32.limit;
+    ia32_read_idtr(&idtr);
+    guest_processor_state[0].control.idtr.base = (UINT64)idtr.base;
+    guest_processor_state[0].control.idtr.limit = (UINT32)idtr.limit;
+    guest_processor_state[0].seg.segment[IA32_SEG_CS].selector = 
+                    (uint64_t) tboot_cs_selector;
+    guest_processor_state[0].seg.segment[IA32_SEG_DS].selector = 
+                    (uint64_t) tboot_ds_selector;
+    guest_processor_state[0].seg.segment[IA32_SEG_SS].selector = 
+                    (uint64_t) tboot_ss_selector;
+    guest_processor_state[0].seg.segment[IA32_SEG_ES].selector = 0;
+    guest_processor_state[0].seg.segment[IA32_SEG_FS].selector = 0;
+    guest_processor_state[0].seg.segment[IA32_SEG_GS].selector = 0;
+    guest_processor_state[0].seg.segment[IA32_SEG_CS].base =  tboot_cs_base;
+    guest_processor_state[0].seg.segment[IA32_SEG_DS].base = tboot_ds_base;
+    guest_processor_state[0].seg.segment[IA32_SEG_SS].base = tboot_ss_base;
+    guest_processor_state[0].seg.segment[IA32_SEG_CS].limit =  tboot_cs_limit;
+    guest_processor_state[0].seg.segment[IA32_SEG_DS].limit = tboot_ds_limit;
+    guest_processor_state[0].seg.segment[IA32_SEG_SS].limit = tboot_ss_limit;
+    guest_processor_state[0].seg.segment[IA32_SEG_CS].attributes =  tboot_cs_attr;
+    guest_processor_state[0].seg.segment[IA32_SEG_DS].attributes = tboot_ds_attr;
+    guest_processor_state[0].seg.segment[IA32_SEG_SS].attributes = tboot_ss_attr;
+    guest_processor_state[0].seg.segment[IA32_SEG_ES].base = 0;
+    guest_processor_state[0].seg.segment[IA32_SEG_FS].base = 0;
+    guest_processor_state[0].seg.segment[IA32_SEG_GS].base = 0;
+    guest_processor_state[0].seg.segment[IA32_SEG_LDTR].attributes= 0x00010000;
+    guest_processor_state[0].seg.segment[IA32_SEG_TR].attributes= 0x0000808b;
+    guest_processor_state[0].seg.segment[IA32_SEG_TR].limit= 0xffffffff;
 
-    /*
-     *  save_segment_data(readcs(), &guest_processor_state[0].seg.segment[IA32_SEG_CS]);
-     *  save_segment_data(readds(), &guest_processor_state[0].seg.segment[IA32_SEG_DS]);
-     *  save_segment_data(reades(), &guest_processor_state[0].seg.segment[IA32_SEG_ES]);
-     *  save_segment_data(readfs(), &guest_processor_state[0].seg.segment[IA32_SEG_FS]);
-     *  save_segment_data(readgs(), &guest_processor_state[0].seg.segment[IA32_SEG_GS]);
-     *  save_segment_data(readss(), &guest_processor_state[0].seg.segment[IA32_SEG_SS])
-     */
+#endif
 
     // AP's are in real mode waiting for sipi (halt state)
     // Set the VMCS GUEST ACTIVITY STATE in the VMCS Guest State Area
@@ -1000,14 +1182,6 @@ int linux_setup(void)
                                 0x0000808b;
         guest_processor_state[k].seg.segment[IA32_SEG_TR].limit= 
                                 0xffffffff;
-        /*
-         *  save_segment_data(readcs(), &guest_processor_state[k].seg.segment[IA32_SEG_CS]);
-         *  save_segment_data(readds(), &guest_processor_state[k].seg.segment[IA32_SEG_DS]);
-         *  save_segment_data(reades(), &guest_processor_state[k].seg.segment[IA32_SEG_ES]);
-         *  save_segment_data(readfs(), &guest_processor_state[k].seg.segment[IA32_SEG_FS]);
-         *  save_segment_data(readgs(), &guest_processor_state[k].seg.segment[IA32_SEG_GS]);
-         *  save_segment_data(readss(), &guest_processor_state[k].seg.segment[IA32_SEG_SS])
-         */
     }
 
     return 0;
@@ -1496,7 +1670,7 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     evmm_g0.cpu_affinity = -1;
     evmm_g0.cpu_states_count = 1+evmm_num_of_aps;
     evmm_g0.devices_count = 0;
-    evmm_g0.image_size = linux_end - linux_start;
+    evmm_g0.image_size = 0; // linux_end - linux_start;
     evmm_g0.image_address= linux_start_address;
     evmm_g0.image_offset_in_guest_physical_memory = linux_start_address;
     evmm_g0.physical_memory_size = 0; 
@@ -1718,15 +1892,18 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     if(evmm_num_of_aps < 0)
         evmm_num_of_aps = 0; 
 
-#ifdef JLMDEBUG
-    uint32_t   tcr0, tcr3, tcr4;
+    // this is a weird hack
     IA32_GDTR tdesc;
     ia32_read_gdtr(&tdesc);
+
+#ifdef JLMDEBUG
+    uint32_t   tcr0, tcr3, tcr4;
     read_cr0(&tcr0);
     read_cr3(&tcr3);
     read_cr4(&tcr4);
     bprint("cr0: 0x%08x, cr3: 0x%0x, cr4: 0x%08x\n", tcr0, tcr3, tcr4);
-    bprint("GTDT base/limit: 0x%08x, %04x\n", tdesc.base, tdesc.limit);
+    bprint("GDTR base/limit: 0x%08x, %04x (stack)\n", tdesc.base, tdesc.limit);
+    HexDump((uint8_t*) &tdesc, (uint8_t*) &tdesc+32);
 #endif
 
     if(evmm_num_of_aps>=MAXPROCESSORS) {
@@ -1735,6 +1912,31 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     }
 #ifndef MULTIAPS_ENABLED
     evmm_num_of_aps = 0;
+#endif
+
+    // get original gdtr and old selectors and descriptors
+    tboot_gdtr_32.base= tdesc.base;
+    tboot_gdtr_32.limit= tdesc.limit;
+    uint32_t*  p;
+    tboot_cs_selector= ia32_read_cs();
+    tboot_ds_selector= ia32_read_ds();
+    tboot_ss_selector= ia32_read_ss();
+#ifdef JLMDEBUG
+    bprint("gdt base: %08x, limit: %04x\n", tboot_gdtr_32.base, tboot_gdtr_32.limit);
+#endif
+    p= (uint32_t*)(tboot_gdtr_32.base+tboot_cs_selector); 
+    ia32_get_selector(p, &tboot_cs_base, &tboot_cs_limit, &tboot_cs_attr);
+    p= (uint32_t*)(tboot_gdtr_32.base+tboot_ds_selector); 
+    ia32_get_selector(p, &tboot_ds_base, &tboot_ds_limit, &tboot_ds_attr);
+    p= (uint32_t*)(tboot_gdtr_32.base+tboot_ss_selector); 
+    ia32_get_selector(p, &tboot_ss_base, &tboot_ss_limit, &tboot_ss_attr);
+#ifdef JLMDEBUG
+    bprint("tboot cs selector: %04x, base: %08x, limit: %04x, attr: %04x\n",
+           tboot_cs_selector, tboot_cs_base, tboot_cs_limit, tboot_cs_attr);
+    bprint("tboot ds selector: %04x, base: %08x, limit: %04x, attr: %04x\n",
+           tboot_ds_selector, tboot_ds_base, tboot_ds_limit, tboot_ds_attr);
+    bprint("tboot ss selector: %04x, base: %08x, limit: %04x, attr: %04x\n",
+           tboot_ss_selector, tboot_ss_base, tboot_ss_limit, tboot_ss_attr);
 #endif
 
     init32.i32_low_memory_page = low_mem;

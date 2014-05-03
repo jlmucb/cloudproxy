@@ -98,9 +98,7 @@ BOOLEAN vmm_stack_initialize(IN const VMM_STARTUP_STRUCT* startup_struct) {
     if (startup_struct == NULL) {
         return FALSE;
     }
-
     vmm_memset( &g_stacks_infos_s, 0, sizeof(g_stacks_infos_s));
-
     vmm_stack_base_address = vmm_stacks_retrieve_stacks_base_addr_from_startup_struct(startup_struct);
     vmm_stack_size_per_cpu = vmm_stacks_retrieve_stack_size_per_cpu_from_startup_struct(startup_struct);
     vmm_max_allowed_cpus = vmm_stack_retrieve_max_allowed_cpus_from_startup_struct(startup_struct);
@@ -108,12 +106,14 @@ BOOLEAN vmm_stack_initialize(IN const VMM_STARTUP_STRUCT* startup_struct) {
     bprint("stack_base: 0x%016lx, stack size per cpu: 0x%016lx\n",
            vmm_stack_base_address,vmm_stack_size_per_cpu);
 #endif
-
     vmm_stacks_info_set_stacks_base(g_stacks_infos, vmm_stack_base_address);
     vmm_stacks_info_set_size_of_single_stack(g_stacks_infos, vmm_stack_size_per_cpu);
     vmm_stacks_info_set_max_allowed_cpus(g_stacks_infos, vmm_max_allowed_cpus);
     vmm_stacks_info_set_num_of_exception_stacks(g_stacks_infos, idt_get_extra_stacks_required());
     vmm_stacks_set_initialized(g_stacks_infos);
+#ifdef JLMDEBUG
+    bprint("vmm_stack_initialize succeeded\n");
+#endif
     return TRUE;
 }
 
@@ -126,16 +126,12 @@ BOOLEAN vmm_stack_get_stack_pointer_for_cpu(IN CPU_ID cpu_id, OUT HVA* stack_poi
     UINT32 vmm_stack_size_per_cpu;
     UINT64 stack_pointer_tmp;
 
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(vmm_stack_is_initialized());
-
     if (cpu_id >= vmm_stacks_info_get_max_allowed_cpus(g_stacks_infos)) {
         return FALSE;
     }
-
     vmm_stack_base_address = vmm_stacks_info_get_stacks_base(g_stacks_infos);
-    vmm_stack_size_per_cpu = vmm_stacks_info_get_size_of_single_stack(g_stacks_infos);
-
+    vmm_stack_size_per_cpu= vmm_stacks_info_get_size_of_single_stack(g_stacks_infos);
     stack_pointer_tmp = vmm_stack_caclulate_stack_pointer_for_cpu(vmm_stack_base_address, vmm_stack_size_per_cpu, cpu_id);
     *stack_pointer = *((HVA*)(&stack_pointer_tmp));
     return TRUE;

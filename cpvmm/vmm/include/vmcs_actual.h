@@ -56,7 +56,7 @@ typedef enum _VMCS_INSTRUCTION_ERROR {
 
 struct _VMCS_OBJECT * vmcs_act_create(GUEST_CPU_HANDLE gcpu);
 
-// Functions which are not a part ofg general VMCS API,
+// Functions which are not a part of general VMCS API,
 // but are specific to VMCS applied to real hardware
 void    vmcs_clear_cache( VMCS_OBJECT *);
 void    vmcs_activate(VMCS_OBJECT *);

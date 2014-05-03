@@ -20,12 +20,11 @@
 #include "guest_cpu_internal.h"
 
 
-#define IS_MODE_UNRESTRICTED_GUEST( gcpu )    (GET_UNRESTRICTED_GUEST_FLAG( gcpu ) == 1)
-#define SET_MODE_UNRESTRICTED_GUEST( gcpu )   SET_UNRESTRICTED_GUEST_FLAG( gcpu )
-
-#define SET_UNRESTRICTED_GUEST_FLAG( gcpu )    BIT_SET( (gcpu)->state_flags, GCPU_UNRESTRICTED_GUEST_FLAG)
-#define CLR_UNRESTRICTED_GUEST_FLAG( gcpu )    BIT_CLR( (gcpu)->state_flags, GCPU_UNRESTRICTED_GUEST_FLAG)
-#define GET_UNRESTRICTED_GUEST_FLAG( gcpu )    BIT_GET( (gcpu)->state_flags, GCPU_UNRESTRICTED_GUEST_FLAG)
+#define IS_MODE_UNRESTRICTED_GUEST(gcpu)  (GET_UNRESTRICTED_GUEST_FLAG( gcpu ) == 1)
+#define SET_MODE_UNRESTRICTED_GUEST(gcpu) SET_UNRESTRICTED_GUEST_FLAG( gcpu )
+#define SET_UNRESTRICTED_GUEST_FLAG(gcpu) BIT_SET( (gcpu)->state_flags, GCPU_UNRESTRICTED_GUEST_FLAG)
+#define CLR_UNRESTRICTED_GUEST_FLAG(gcpu) BIT_CLR( (gcpu)->state_flags, GCPU_UNRESTRICTED_GUEST_FLAG)
+#define GET_UNRESTRICTED_GUEST_FLAG(gcpu) BIT_GET( (gcpu)->state_flags, GCPU_UNRESTRICTED_GUEST_FLAG)
 
 // Counter to run emulator initially and then switch to unrestricted guest.
 #define UNRESTRICTED_GUEST_EMU_COUNTER 1
@@ -33,18 +32,14 @@
 BOOLEAN is_unrestricted_guest_enabled(GUEST_CPU_HANDLE gcpu);
 BOOLEAN hw_is_unrestricted_guest_enabled(GUEST_CPU_HANDLE gcpu);
 void unrestricted_guest_hw_disable(GUEST_CPU_HANDLE gcpu);
-
 void gcpu_clr_unrestricted_guest(GUEST_CPU_HANDLE gcpu);
-
 void unrestricted_guest_disable(GUEST_CPU_HANDLE gcpu);
 void unrestricted_guest_enable(GUEST_CPU_HANDLE gcpu);
 
 //Check whether Unrestricted guest is supported 
-INLINE
-BOOLEAN is_unrestricted_guest_supported(void)
+INLINE BOOLEAN is_unrestricted_guest_supported(void)
 {
     const VMCS_HW_CONSTRAINTS *hw_constraints = vmcs_hw_get_vmx_constraints();
-	
     return (hw_constraints->unrestricted_guest_supported);
 }
 

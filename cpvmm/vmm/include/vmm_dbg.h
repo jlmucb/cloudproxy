@@ -27,23 +27,18 @@ extern BOOLEAN vmm_debug_port_init_params(const VMM_DEBUG_PORT_PARAMS *p_params)
 extern VMM_DEBUG_PORT_VIRT_MODE vmm_debug_port_get_virt_mode(void);
 extern UINT16 vmm_debug_port_get_io_base(void);// If the debug port uses an I/O range, returns its base address. -Otherwise, returns 0
 extern UINT16 vmm_debug_port_get_io_end(void);// If the debug port uses an I/O range, returns its end address. - Otherwise, returns 0
-extern int CDECL vmm_printf( const char *format, ...);// __attribute__((format (printf, 1,2)));
-extern int CDECL vmm_vprintf(const char *format, va_list args);
+extern int vmm_printf( const char *format, ...);// __attribute__((format (printf, 1,2)));
+extern int vmm_vprintf(const char *format, va_list args);
 #ifdef VMM_DEBUG_SCREEN
-extern void CDECL vmm_printf_screen( const char *format, ...);
-extern void CDECL vmm_clear_screen(void);
+extern void vmm_printf_screen( const char *format, ...);
+extern void vmm_clear_screen(void);
 #endif
 
 extern VMM_STARTUP_STRUCT vmm_startup_data;
 extern void vmm_deadloop_dump(UINT32 file_code, UINT32 line_num);
 
-BOOLEAN DeadloopHelper( const char* assert_condition,
-                        const char* func_name,
-                        const char* file_name,
-                        UINT32      line_num,
-                        UINT32      access_level);
-
-
+BOOLEAN DeadloopHelper(const char* assert_condition, const char* func_name,
+                       const char* file_name, UINT32 line_num, UINT32 access_level);
 
 #ifdef DEBUG
 #define VMM_DEBUG_CODE(__xxx) __xxx
@@ -79,8 +74,6 @@ enum msg_level
     level_info          = 3,
     level_trace         = 4
 };
-
-
 
 
 #define VMM_COMPILE_TIME_ADDRESS(__a) ((__a) - vmm_startup_data.vmm_memory_layout[uvmm_image].base_address)
@@ -176,7 +169,8 @@ enum msg_level
 }
 #endif
 #else
-#define VMM_ASSERT_LOG(FILE_CODE, __condition)
+#define VMM_ASSERT_LOG(FILE_CODE, __condition) 
+
 #endif
 
 #define VMM_ASSERT_NOLOCK_LOG(FILE_CODE, __condition)    VMM_ASSERT_LOG(FILE_CODE, __condition)

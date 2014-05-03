@@ -108,24 +108,28 @@ void hw_write_port_32( UINT16 port, UINT32 val)
 
 void hw_write_msr(UINT32 msr_id, UINT64 val)
 {
+    UINT32 low = (val & (UINT32)-1);
+    UINT32 high = (UINT32)(val >> 32);
     asm volatile (
         "\twrmsr\n"
-    ::[val] "A" (val), [msr_id] "c" (msr_id):);
+    :: "a" (low), "d" (high), "c" (msr_id):);
     return;
 }
 
 
 UINT64 hw_read_msr(UINT32 msr_id)
 {
-    UINT64  out;
+    UINT32 high;
+    UINT32 low;
 
     // RDMSR reads the processor (MSR) whose index is stored in ECX, 
     // and stores the result in EDX:EAX. 
     asm volatile (
         "\trdmsr\n"
-    :[out] "=A" (out)
-    :[msr_id] "c" (msr_id):);
-    return out;
+    : "=a" (low), "=d" (high)
+    : "c" (msr_id):);
+
+    return ((UINT64)high << 32) | low;
 }
 
 
@@ -491,52 +495,62 @@ void hw_store_fence(void)
 
 // CHECK(JLM)
 INT32 hw_interlocked_compare_exchange(INT32 volatile * destination,
-                                       INT32 exchange, INT32 comperand)
+                                       INT32 expected, INT32 comperand)
 {
+#ifdef JLMDEBUG
+    bprint("expected: %d, new: %d --- ", expected, comperand);
+#endif
+    INT32 old = *destination;
     asm volatile(
-        "\tmovq     %[destination], %%rbx\n"
-        "\tmovl     %[exchange], %%eax\n"
+        "\tmovq     %[destination], %%r15\n"
+        "\tmovl     (%%r15), %%edx\n"
+        "\tmovl     %[expected], %%eax\n"
         "\tmovl     %[comperand], %%ecx\n"
-        "\tcmpxchgl %%ecx, %%eax\n"
-        "\tmovl     %%eax, (%%rbx)\n"
+        "\tcmpxchgl %%ecx, %%edx\n"
+        "\tmovl     %%edx, (%%r15)\n"
     :
-    : [exchange] "m" (exchange), [comperand] "m" (comperand),
+    : [expected] "m" (expected), [comperand] "m" (comperand),
       [destination] "m" (destination)
-    :"%eax", "%ecx", "%rbx");
-    return *destination;
+    :"%eax", "%ecx", "%edx", "%rbx", "%r15");
+#ifdef JLMDEBUG
+    bprint("destination: %d\n", *destination);
+#endif
+    return old;
 }
 
 
 INT8 hw_interlocked_compare_exchange_8(INT8 volatile * destination,
-            INT8 exchange, INT8 comperand)
+            INT8 expected, INT8 comperand)
 {
     asm volatile(
-        "\tmovq     %[destination], %%rbx\n"
-        "\tmovb     %[exchange], %%al\n"
+        "\tmovq     %[destination], %%r15\n"
+        "\tmovb     (%%r15), %%dl\n"
+        "\tmovb     %[expected], %%al\n"
         "\tmovb     %[comperand], %%cl\n"
-        "\tcmpxchgb %%cl, %%al\n"
-        "\tmovb     %%al, (%%rbx)\n"
+        "\tcmpxchgb %%cl, %%dl\n"
+        "\tmovb     %%dl, (%%r15)\n"
     :
-    : [exchange] "m" (exchange), [comperand] "m" (comperand),
+    : [expected] "m" (expected), [comperand] "m" (comperand),
       [destination] "m" (destination)
-    :"%rax", "%rcx", "%rbx");
+    :"%rax", "%rcx", "%rbx", "%r15");
     return *destination;
 }
 
 
 INT64 hw_interlocked_compare_exchange_64(INT64 volatile * destination,
-            INT64 exchange, INT64 comperand)
+            INT64 expected, INT64 comperand)
 {
     asm volatile(
-        "\tmovq     %[destination], %%rbx\n"
-        "\tmovq     %[exchange], %%rax\n"
+        "\tmovq     %[destination], %%r15\n"
+        "\tmovq     (%%r15), %%rdx\n"
+        "\tmovq     %[expected], %%rax\n"
         "\tmovq     %[comperand], %%rcx\n"
-        "\tcmpxchgq %%rcx, %%rax\n"
-        "\tmovq     %%rax, (%%rbx)\n"
+        "\tcmpxchgq %%rcx, %%rdx\n"
+        "\tmovq     %%rdx, (%%r15)\n"
     :
-    : [exchange] "m" (exchange), [comperand] "m" (comperand),
+    : [expected] "m" (expected), [comperand] "m" (comperand),
       [destination] "m" (destination)
-    :"%rax", "%rcx", "%rbx");
+    :"%rax", "%rcx", "%rbx", "%r15");
     return *destination;
 }
 
@@ -1022,6 +1036,7 @@ void hw_write_cr2 (UINT64 value) {
 #define TSS_ENTRY_SIZE_SHIFT 4
 
 asm(
+".text\n"
 ".globl hw_cpu_id\n"
 ".type hw_cpu_id,@function\n"
 "hw_cpu_id:\n"
@@ -1218,20 +1233,23 @@ void hw_mwait( UINT32 extension, UINT32 hint ) {
 // from em64t_gcpu_regs_save_restore.c
 #include "guest_save_area.h"
 
-// pointer to the array of pointers to the GUEST_CPU_SAVE_AREA_PREFIt_regs_save_area
+// pointer to the array of pointers to the GUEST_CPU_SAVE_AREA
 extern GUEST_CPU_SAVE_AREA** g_guest_regs_save_area;
 
-// Utility function for getting the save area into rbx, using the host cpu id
+// Utility function for getting the save area pointer into rbx, using the host cpu id
 // from a call to hw_cpu_id
 asm(
+".text\n"
 ".globl load_save_area_into_rbx\n"
 ".type load_save_area_into_rbx,@function\n"
 "load_save_area_into_rbx:\n"
         "\tpush %rax\n" // save rax, since it's used by hw_cpu_id
         "\tcall hw_cpu_id\n" // no arguments, and this only uses rax
-        "\tmov g_guest_regs_save_area, %rbx\n"
-        "\tmov (%rbx), %rbx\n" // double indirection, since it's a ** ptr
+        "\tmov g_guest_regs_save_area, %rbx\n" // get g_guest_regs_save_area
+         // the original code has this, but it's one indirection too many
+        // "\tmov (%rbx), %rbx\n"
         "\tmov (%rbx, %rax, 8), %rbx\n" // SIZEOF QWORD == 8 for multiplier
+        "\tpop %rax\n"
         "\tret\n"
 );
 
@@ -1254,6 +1272,7 @@ asm(
  *   All are saved on return.
  */
 asm(
+".text\n"
 ".globl gcpu_save_registers\n"
 ".type gcpu_save_registers,@function\n"
 "gcpu_save_registers:\n"
@@ -1276,12 +1295,13 @@ asm(
         "\tmovq   %r14, 112(%rbx)\n"
         "\tmovq   %r15, 120(%rbx)\n"
         // skip RIP and RFLAGS here (16 missing bytes)
+        // Note that the XMM registers require 16-byte alignment
         "\tmovaps %xmm0, 144(%rbx)\n"
-        "\tmovaps %xmm1, 152(%rbx)\n"
-        "\tmovaps %xmm2, 160(%rbx)\n"
-        "\tmovaps %xmm3, 168(%rbx)\n"
-        "\tmovaps %xmm4, 176(%rbx)\n"
-        "\tmovaps %xmm5, 182(%rbx)\n"
+        "\tmovaps %xmm1, 160(%rbx)\n"
+        "\tmovaps %xmm2, 176(%rbx)\n"
+        "\tmovaps %xmm3, 192(%rbx)\n"
+        "\tmovaps %xmm4, 208(%rbx)\n"
+        "\tmovaps %xmm5, 224(%rbx)\n"
         "\tret\n"
 );
 
@@ -1292,12 +1312,13 @@ asm(
 "gcpu_restore_registers:\n"
         "\tcall load_save_area_into_rbx\n"
         // restore XMM registers first
+        // These are aligned on 16-byte boundaries
         "\tmovaps 144(%rbx), %xmm0\n"
-        "\tmovaps 152(%rbx), %xmm1\n"
-        "\tmovaps 160(%rbx), %xmm2\n"
-        "\tmovaps 168(%rbx), %xmm3\n"
-        "\tmovaps 176(%rbx), %xmm4\n"
-        "\tmovaps 182(%rbx), %xmm5\n"
+        "\tmovaps 160(%rbx), %xmm1\n"
+        "\tmovaps 176(%rbx), %xmm2\n"
+        "\tmovaps 192(%rbx), %xmm3\n"
+        "\tmovaps 208(%rbx), %xmm4\n"
+        "\tmovaps 224(%rbx), %xmm5\n"
 
         "\tmovq   (%rbx), %rax\n"
         // rbx is restored at the end

@@ -45,6 +45,9 @@
 #include "memory_dump.h"
 #include "vmexit_dtr_tr.h"
 #include "profiling.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 BOOLEAN legacy_scheduling_enabled = TRUE;
 
@@ -79,6 +82,7 @@ VMEXIT_HANDLING_STATUS vmexit_invalid_vmfunc(GUEST_CPU_HANDLE gcpu);
 #endif
 
 UINT32 vmexit_check_ept_violation(void);
+extern UINT32 vmexit_reason(void);
 
 extern int CLI_active(void);
 
@@ -201,7 +205,6 @@ void vmexit_initialize(void)
 // PURPOSE  : Populate guest table, containing specific VMEXIT handlers with
 //          : default handlers
 // ARGUMENTS: GUEST_ID guest_id
-// RETURNS  : void
 void vmexit_guest_initialize(GUEST_ID guest_id)
 {
     GUEST_VMEXIT_CONTROL *guest_vmexit_control = NULL;
@@ -261,7 +264,8 @@ void vmexit_guest_initialize(GUEST_ID guest_id)
     // install IO VMEXITs
     io_vmexit_guest_initialize(guest_id);
 
-#if 0 /* this is commented out for now to work with serial card from Startech
+#if 0 
+    /* this is commented out for now to work with serial card from Startech
          or the guest OS boot up would be stuck */
     // Handle debug port virtualization
     if ((vmm_debug_port_get_virt_mode() == VMM_DEBUG_PORT_VIRT_HIDE) &&
@@ -283,7 +287,8 @@ void vmexit_guest_initialize(GUEST_ID guest_id)
 
     // install VMCALL services
     vmcall_guest_intialize(guest_id);
-    VMM_LOG(mask_uvmm, level_trace,"vmexit_guest_initialize end guest_id=#%d\r\n", guest_id);
+    VMM_LOG(mask_uvmm, level_trace,"vmexit_guest_initialize end guest_id=#%d\n", 
+            guest_id);
 }
 
 static void vmexit_bottom_up_all_vmms_skip_instruction(GUEST_CPU_HANDLE gcpu,
@@ -473,7 +478,7 @@ void vmentry_failure_function(ADDRESS flags)
     VMCS_INSTRUCTION_ERROR code;
     EM64T_RFLAGS     rflags;
 #ifndef DEBUG
-    IA32_VMX_VMCS_GUEST_INTERRUPTIBILITY    interruptibility;
+    IA32_VMX_VMCS_GUEST_INTERRUPTIBILITY interruptibility;
 #endif
 
     rflags.Uint64 = flags;
@@ -481,8 +486,34 @@ void vmentry_failure_function(ADDRESS flags)
 
     VMM_LOG(mask_uvmm, level_error,"CPU%d: VMENTRY Failed on ", hw_cpu_id());
     PRINT_GCPU_IDENTITY(gcpu);
-    VMM_LOG(mask_uvmm, level_error," FLAGS=0x%X (ZF=%d CF=%d) ErrorCode=0x%X Desc=%s\n",
+    VMM_LOG(mask_uvmm, level_error,
+            " FLAGS=0x%X (ZF=%d CF=%d) ErrorCode=0x%X Desc=%s\n",
             flags, rflags.Bits.ZF, rflags.Bits.CF, code, err);
+#ifdef JLMDEBUG
+    bprint("vmentry_failure_function FLAGS=0x%x (ZF=%d CF=%d) ErrorCode=0x%x\nDesc=%s\n",
+            flags, rflags.Bits.ZF, rflags.Bits.CF, code, err);
+    UINT64 out= -1;
+    extern int vmx_vmread(UINT64, UINT64*);
+    if(vmx_vmread(0x4012, &out)==0) {
+        bprint("vmentry_failure_function read succeeded 0x%016lx\n", out);
+    }
+    else {
+        bprint("vmentry_failure_function read failed\n");
+    }
+    out= -1;
+    vmx_vmread(0x4402, &out);
+    bprint("vmentry_failure_function exit reason: 0x%016lx\n", out);
+    out= -1;
+    vmx_vmread(0x4406, &out);
+    bprint("vmentry_failure_function error code: 0x%016lx\n", out);
+    out= -1;
+    vmx_vmread(0x4018, &out);
+    bprint("vmentry_failure_function entry error code: 0x%016lx\n", out);
+    out= -1;
+    vmx_vmread(0x4400, &out);
+    bprint("vmentry_failure_function vmcs instruction error: 0x%016lx\n", out);
+    LOOP_FOREVER
+#endif
 #ifdef CLI_INCLUDE
     vmcs_print_all(vmcs);
 #endif
@@ -693,7 +724,6 @@ VMM_STATUS vmexit_install_handler(
     return status;
 }
 
-extern UINT32 vmexit_reason(void);
 UINT64 gcpu_read_guestrip(void);
 
 

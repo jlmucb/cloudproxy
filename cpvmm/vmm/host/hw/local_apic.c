@@ -19,13 +19,12 @@
 #include "host_memory_manager_api.h"
 #include "memory_allocator.h"
 #include "file_codes.h"
-#include "jlmdebug.h"
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(LOCAL_APIC_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(LOCAL_APIC_C, __condition)
+#include "jlmdebug.h"
 
 #pragma warning( disable : 4100)        // unreferenced formal parameter
-
 #define STRINGIFY(x)     #x
 
 /*
@@ -552,10 +551,7 @@ BOOLEAN local_apic_init( UINT16 num_of_cpus )
     UINT32 chunk_size = num_of_cpus * sizeof( LOCAL_APIC_PER_CPU_DATA );
     if (lapic_cpu_data == 0) {
         lapic_cpu_data = vmm_page_alloc( PAGE_ROUNDUP( chunk_size ));
-
-        // BEFORE_VMLAUNCH
         VMM_ASSERT( lapic_cpu_data != NULL );
-
         vmm_memset( lapic_cpu_data, 0, chunk_size );
     }
 

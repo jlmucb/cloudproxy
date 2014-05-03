@@ -53,7 +53,7 @@ clean:
 $(E)/bootstrap.bin: $(B)/bootstrap_entry.o $(B)/bootstrap_e820.o \
 	$(B)/bootstrap_print.o $(B)/bootstrap_string.o \
 	$(B)/bootstrap_startap.o $(B)/bootstrap_ap_procs_init.o
-	$(LINK) -m32 -static -fno-stack-protector -nostdlib -e start32_evmm \
+	$(LINK) -m32 -static -fno-stack-protector -nostdlib  -fno-tree-loop-distribute-patterns -e start32_evmm \
 		-T bootstrap.script  -o $(E)/bootstrap.bin \
 		$(B)/bootstrap_entry.o $(B)/bootstrap_e820.o \
 		$(B)/bootstrap_print.o $(B)/bootstrap_string.o \

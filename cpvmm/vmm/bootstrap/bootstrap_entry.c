@@ -197,6 +197,12 @@ static uint16_t                         tboot_ss_selector= 0;
 static uint32_t                         tboot_ss_base= 0;
 static uint32_t                         tboot_ss_limit= 0;
 static uint16_t                         tboot_ss_attr= 0;
+static uint64_t                         tboot_msr_debugctl= 0;
+static uint64_t                         tboot_msr_efer= 0;
+static uint64_t                         tboot_msr_pat= 0;
+static uint64_t                         tboot_msr_sysenter_cs= 0;
+static uint64_t                         tboot_msr_sysenter_esp= 0;
+static uint64_t                         tboot_msr_sysenter_eip= 0;
 
 
 // -------------------------------------------------------------------------
@@ -316,52 +322,28 @@ uint16_t ia32_read_ss()
 
 void  ia32_read_idtr(IA32_IDTR* p_descriptor)
 {
-#if 0
-    asm volatile(
-        "\tmovl %[p_descriptor], %%edx\n"
-        "\tsidt (%%edx)\n"
-    :[p_descriptor] "=g" (p_descriptor)
-    :: "%edx");
-#else
     asm volatile(
         "\tsidt (%[p_descriptor])\n"
     :[p_descriptor] "=p" (p_descriptor)
     ::);
-#endif
 }
 
 
 void  ia32_read_gdtr(IA32_GDTR *p_descriptor)
 {
-#if 0
-    asm volatile(
-        "\tmovl %[p_descriptor], %%edx\n"
-        "\tsgdt (%%edx)\n"
-    :[p_descriptor] "=g" (p_descriptor)
-    : : "%edx");
-#else
     asm volatile(
         "\tsgdt (%[p_descriptor])\n"
     :[p_descriptor] "=p" (p_descriptor)
     :: );
-#endif
 }
 
 
 void  ia32_write_gdtr(IA32_GDTR *p_descriptor)
 {
-#if 0
-    asm volatile(
-        "\tmovl   %[p_descriptor], %%edx\n"
-        "\t lgdt  (%%edx)\n"
-    ::[p_descriptor] "g" (p_descriptor) 
-    :"%edx");
-#else
     asm volatile(
         "\t lgdt  (%[p_descriptor])\n"
     ::[p_descriptor] "p" (p_descriptor) 
     :);
-#endif
 }
 
 
@@ -990,7 +972,6 @@ int linux_setup(void)
     IA32_IDTR       idtr;
     IA32_SELECTOR   sel;
     IA32_SEGMENT_DESCRIPTOR *desc;
-    uint64_t        tmp;
 
     // stack grows down, BSP only
     linux_esp_register= linux_stack_base+PAGE_SIZE;
@@ -1022,6 +1003,8 @@ int linux_setup(void)
         guest_processor_state[0].xmm.reg[i].uint64[0] = (uint64_t)0;
         guest_processor_state[0].xmm.reg[i].uint64[1] = (uint64_t)0;
     }
+#if 0
+    uint64_t        tmp;
     ia32_read_msr(IA32_MSR_DEBUGCTL, &guest_processor_state[0].msr.msr_debugctl);
     ia32_read_msr(IA32_MSR_EFER, &guest_processor_state[0].msr.msr_efer);
     ia32_read_msr(IA32_MSR_PAT, &guest_processor_state[0].msr.msr_pat);
@@ -1031,6 +1014,14 @@ int linux_setup(void)
                   &guest_processor_state[0].msr.msr_sysenter_eip);
     ia32_read_msr(IA32_MSR_SYSENTER_CS, &tmp);
     guest_processor_state[0].msr.msr_sysenter_cs= (uint32_t)tmp;
+#else
+    guest_processor_state[0].msr.msr_debugctl= tboot_msr_debugctl;
+    guest_processor_state[0].msr.msr_efer= tboot_msr_efer;
+    guest_processor_state[0].msr.msr_pat= tboot_msr_pat;
+    guest_processor_state[0].msr.msr_sysenter_esp= tboot_msr_sysenter_esp;
+    guest_processor_state[0].msr.msr_sysenter_eip= tboot_msr_sysenter_eip;
+    guest_processor_state[0].msr.msr_sysenter_cs= tboot_msr_sysenter_cs;
+#endif
     guest_processor_state[0].msr.pending_exceptions = 0;
     guest_processor_state[0].msr.interruptibility_state = 0;
     guest_processor_state[0].msr.activity_state = 0;
@@ -1134,6 +1125,7 @@ int linux_setup(void)
             guest_processor_state[0].xmm.reg[i].uint64[1] = (uint64_t)0;
         }
 
+#if 0
         ia32_read_msr(IA32_MSR_DEBUGCTL, &guest_processor_state[k].msr.msr_debugctl);
         ia32_read_msr(IA32_MSR_EFER, &guest_processor_state[k].msr.msr_efer);
         ia32_read_msr(IA32_MSR_PAT, &guest_processor_state[k].msr.msr_pat);
@@ -1143,6 +1135,7 @@ int linux_setup(void)
                     &guest_processor_state[k].msr.msr_sysenter_eip);
         ia32_read_msr(IA32_MSR_SYSENTER_CS, &tmp);
         guest_processor_state[k].msr.msr_sysenter_cs= (uint32_t) tmp;
+#endif
         guest_processor_state[k].msr.pending_exceptions = 0;
         guest_processor_state[k].msr.interruptibility_state = 0;
         guest_processor_state[k].msr.activity_state = 0;
@@ -1921,6 +1914,12 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     tboot_cs_selector= ia32_read_cs();
     tboot_ds_selector= ia32_read_ds();
     tboot_ss_selector= ia32_read_ss();
+    ia32_read_msr(IA32_MSR_DEBUGCTL, &tboot_msr_debugctl);
+    ia32_read_msr(IA32_MSR_EFER, &tboot_msr_efer);
+    ia32_read_msr(IA32_MSR_PAT, &tboot_msr_pat);
+    ia32_read_msr(IA32_MSR_SYSENTER_ESP, &tboot_msr_sysenter_esp);
+    ia32_read_msr(IA32_MSR_SYSENTER_EIP, &tboot_msr_sysenter_eip);
+    ia32_read_msr(IA32_MSR_SYSENTER_CS, &tboot_msr_sysenter_cs);
 #ifdef JLMDEBUG
     bprint("gdt base: %08x, limit: %04x\n", tboot_gdtr_32.base, tboot_gdtr_32.limit);
 #endif
@@ -1937,6 +1936,12 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
            tboot_ds_selector, tboot_ds_base, tboot_ds_limit, tboot_ds_attr);
     bprint("tboot ss selector: %04x, base: %08x, limit: %04x, attr: %04x\n",
            tboot_ss_selector, tboot_ss_base, tboot_ss_limit, tboot_ss_attr);
+    bprint("msr_debugctl: 0x%016llx\n", tboot_msr_debugctl);
+    bprint("msr_efer: 0x%016llx\n", tboot_msr_efer);
+    bprint("msr_pat: 0x%016llx\n", tboot_msr_pat);
+    bprint("msr_sysenter_esp: 0x%016llx\n", tboot_msr_sysenter_esp);
+    bprint("msr_sysenter_eip: 0x%016llx\n", tboot_msr_sysenter_eip);
+    bprint("msr_sysenter_cs: 0x%016llx\n", tboot_msr_sysenter_cs);
 #endif
 
     init32.i32_low_memory_page = low_mem;

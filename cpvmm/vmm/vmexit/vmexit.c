@@ -492,6 +492,7 @@ void vmentry_failure_function(ADDRESS flags)
 #ifdef JLMDEBUG
     bprint("vmentry_failure_function FLAGS=0x%x (ZF=%d CF=%d) ErrorCode=0x%x\nDesc=%s\n",
             flags, rflags.Bits.ZF, rflags.Bits.CF, code, err);
+#if 0
     UINT64 out= -1;
     extern int vmx_vmread(UINT64, UINT64*);
     if(vmx_vmread(0x4012, &out)==0) {
@@ -512,6 +513,7 @@ void vmentry_failure_function(ADDRESS flags)
     out= -1;
     vmx_vmread(0x4400, &out);
     bprint("vmentry_failure_function vmcs instruction error: 0x%016lx\n", out);
+#endif
     LOOP_FOREVER
 #endif
 #ifdef CLI_INCLUDE

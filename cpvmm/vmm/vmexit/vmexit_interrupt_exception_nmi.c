@@ -13,7 +13,6 @@
  */
 
 #include "vmm_defs.h"
-//#include "vmcs_object.h"
 #include "vmcs_api.h"
 #include "guest_cpu.h"
 #include "isr.h"
@@ -28,15 +27,16 @@
 #include "vmx_ctrl_msrs.h"
 #include "vmx_nmi.h"
 #include "file_codes.h"
-
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMEXIT_INTERRUPT_EXCEPTION_NMI_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMEXIT_INTERRUPT_EXCEPTION_NMI_C, __condition)
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 VMEXIT_HANDLING_STATUS vmexit_nmi_window(GUEST_CPU_HANDLE gcpu);
 static VMEXIT_HANDLING_STATUS vmexit_software_interrupt_exception_nmi(GUEST_CPU_HANDLE gcpu);
 
-static
-BOOLEAN page_fault( GUEST_CPU_HANDLE gcpu, VMCS_OBJECT* vmcs )
+static BOOLEAN page_fault( GUEST_CPU_HANDLE gcpu, VMCS_OBJECT* vmcs )
 {
     IA32_VMX_EXIT_QUALIFICATION qualification;
     EVENT_GCPU_PAGE_FAULT_DATA  data;
@@ -63,8 +63,6 @@ void vmexit_nmi_exception_handlers_install(GUEST_ID guest_id)
 {
     vmexit_install_handler( guest_id, vmexit_software_interrupt_exception_nmi,
         Ia32VmxExitBasicReasonSoftwareInterruptExceptionNmi);
-
-
     vmexit_install_handler( guest_id, nmi_window_vmexit_handler,
         Ia32VmxExitNmiWindow);
 }

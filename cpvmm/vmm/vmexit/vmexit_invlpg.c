@@ -24,18 +24,15 @@
 VMEXIT_HANDLING_STATUS vmexit_invlpg(GUEST_CPU_HANDLE gcpu)
 {
     EVENT_GCPU_INVALIDATE_PAGE_DATA data;
-    IA32_VMX_EXIT_QUALIFICATION qualification;
-    VMCS_OBJECT*                vmcs = gcpu_get_vmcs(gcpu);
+    IA32_VMX_EXIT_QUALIFICATION     qualification;
+    VMCS_OBJECT*                    vmcs = gcpu_get_vmcs(gcpu);
 
     qualification.Uint64 = vmcs_read(vmcs, VMCS_EXIT_INFO_QUALIFICATION);
     data.invlpg_addr = qualification.InvlpgInstruction.Address;
-
     // Return value of raising event is not important
     event_raise( EVENT_GCPU_INVALIDATE_PAGE, gcpu, &data );
-
     // Instruction will be skipped in upper "bottom-up" handler
-    //gcpu_skip_guest_instruction(gcpu);
-
+    // gcpu_skip_guest_instruction(gcpu);
     return VMEXIT_HANDLED;
 }
 

@@ -26,12 +26,11 @@
 #include "vmm_api.h"
 #include "unrestricted_guest.h"
 #include "file_codes.h"
+#define VMM_DEADLOOP()     VMM_DEADLOOP_LOG(GUEST_CPU_CONTROL_C)
+#define VMM_ASSERT(__condition) VMM_ASSERT_LOG(GUEST_CPU_CONTROL_C, __condition)
 #ifdef JLMDEBUG
 #include "jlmdebug.h"
 #endif
-
-#define VMM_DEADLOOP()     VMM_DEADLOOP_LOG(GUEST_CPU_CONTROL_C)
-#define VMM_ASSERT(__condition) VMM_ASSERT_LOG(GUEST_CPU_CONTROL_C, __condition)
 
 extern VMM_PAGING_POLICY g_pg_policy;
 extern void disable_vmcs_load_save_for_msr (MSR_ID msr_index);
@@ -40,7 +39,6 @@ extern BOOLEAN is_cr4_osxsave_supported(void);
 //  Main implementation idea:
 //    Count requests for each VmExit control bit. Require VmExit if at least
 //    one request is outstanding.
-
 
 // global static vars that indicate host CPU support for extra controls
 static BOOLEAN g_init_done = FALSE;

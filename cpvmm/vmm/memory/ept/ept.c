@@ -41,6 +41,9 @@
 #include "unrestricted_guest.h"
 #include "fvs.h"
 #include "ve.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 EPT_STATE ept;
 HPA redirect_physical_addr = 0;

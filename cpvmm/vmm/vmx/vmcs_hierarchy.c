@@ -21,12 +21,11 @@
 #include "vmcs_actual.h"
 #include "vmcs_hierarchy.h"
 #include "file_codes.h"
+#define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMCS_HIERARCHY_C)
+#define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMCS_HIERARCHY_C, __condition)
 #ifdef JLMDEBUG
 #include "jlmdebug.h"
 #endif
-
-#define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMCS_HIERARCHY_C)
-#define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMCS_HIERARCHY_C, __condition)
 
 typedef struct {
     VMCS_OBJECT    *vmcs;

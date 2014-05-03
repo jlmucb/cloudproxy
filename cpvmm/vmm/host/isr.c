@@ -27,6 +27,10 @@
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(ISR_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(ISR_C, __condition)
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
+
 
 extern ISR_PARAMETERS_ON_STACK *g_exception_stack;
 

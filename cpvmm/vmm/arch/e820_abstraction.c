@@ -28,6 +28,10 @@
 #include "guest.h"
 #include "host_memory_manager_api.h"
 #include "../guest/guest_cpu/unrestricted_guest.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
+
 
 UINT32 g_int15_trapped_page = 0;
 UINT32 g_int15_orignal_vector = 0;

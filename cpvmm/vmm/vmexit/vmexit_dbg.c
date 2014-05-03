@@ -17,9 +17,11 @@
 #include <libc.h>
 #include <vmm_dbg.h>
 #include "file_codes.h"
-
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMEXIT_DBG_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMEXIT_DBG_C, __condition)
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #pragma warning (disable : 4100) // enable non referenced formal parameters
 

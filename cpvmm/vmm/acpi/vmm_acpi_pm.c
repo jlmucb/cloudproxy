@@ -35,20 +35,19 @@
 #include "vmm_stack_api.h"
 #include "vmm_bootstrap_utils.h"
 #include "event_mgr.h"
-
 #include "vmm_globals.h"
 #include "ept.h"
 #include "vmm_events_data.h"
-
 #include "unrestricted_guest.h"
 #include "file_codes.h"
-
 #include "vmm_acpi.h"
 #include "vmm_callback.h"
-
-
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMM_ACPI_PM_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMM_ACPI_PM_C, __condition)
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
+
 #ifdef USE_ACPI
 #pragma warning( disable : 4100 ) // not used parameter
 

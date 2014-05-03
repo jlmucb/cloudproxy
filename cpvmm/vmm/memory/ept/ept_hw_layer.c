@@ -23,6 +23,9 @@
 #include "scheduler.h"
 #include "guest_cpu_internal.h"
 #include "file_codes.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(EPT_HW_LAYER_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(EPT_HW_LAYER_C, __condition)

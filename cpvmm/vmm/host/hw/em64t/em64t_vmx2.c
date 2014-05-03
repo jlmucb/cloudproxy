@@ -14,7 +14,6 @@
 #include "vmm_defs.h"
 #ifdef JLMDEBUG
 #include "bootstrap_print.h"
-#include "jlmdebug.h"
 #endif
 #define VMM_NATIVE_VMCALL_SIGNATURE 0x024694D40
 #ifdef JLMDEBUG
@@ -54,11 +53,24 @@ void zero_exit_time(struct VMEXIT_TIME *p)
     p->this_cpu_id= 0ULL;
 }
 
-void vmexit_func()
+// temporary hack so we dont loop
+#ifdef JLMDEBUG
+static int count= 0;
+#endif
+
 // Function:    Called upon VMEXIT. Saves GP registers, allocates stack
 //              for C-function and calls it.
+#if 0
+void vmexit_func()
 {
+#ifdef JLMDEBUG
+    bprint("vmexit_func %d\n", count);
+    if(count>1)
+        LOOP_FOREVER
+    count++;
+#endif
     gcpu_save_registers();
+#if 0
     asm volatile(
         "\txor      %%rcx, %%rcx\n"
         "\tshlq     $3, %%rcx\n" 
@@ -67,7 +79,26 @@ void vmexit_func()
         "2:\n"
         "\tjmp     2b\n"
     : : :"%rcx");
+#else
+    vmexit_common_handler();
+#endif
 }
+#else
+asm(
+".text\n"
+".globl vmexit_func\n"
+".type vmexit_func,@function\n"
+"vmexit_func:\n"
+    "\tcall   gcpu_save_registers\n"
+    // call c-function
+    // QUESTION for Tom: do need to do this mov to rbp?
+    "\tmov    %rsp, %rbp\n"
+    "\tcall    vmexit_common_handler\n"
+    "\tjmp    .\n"
+    "\tret\n"
+);
+
+#endif
 
 void vmentry_func(UINT32 firsttime)
 // Function:    Called upon VMENTRY.
@@ -78,9 +109,7 @@ void vmentry_func(UINT32 firsttime)
     if(firsttime) {
         bprint("vmentry_func: %d, vmcs area:\n", firsttime);
         vmm_vmcs_guest_state_read((UINT64*) t_vmcs_save_area);
-        bprint("finished guest read\n");
         vmm_print_vmcs_region((UINT64*) t_vmcs_save_area);
-
         bprint("I think linux starts at 0x%016llx\n", t_vmcs_save_area[0]);
     }
 #endif
@@ -100,8 +129,10 @@ void vmentry_func(UINT32 firsttime)
     } 
     else {  //do_resume
         gcpu_restore_registers();
+#ifdef JLMDEBUG
         bprint("In resume\n");
         LOOP_FOREVER
+#endif
         asm volatile(
             // Resume execution of Guest Virtual Machine
             "\tvmresume\n" 
@@ -112,6 +143,9 @@ void vmentry_func(UINT32 firsttime)
         ::);
     }               
     vmentry_failure_function(rflags_arg);
+#ifdef JLMDEBUG
+    LOOP_FOREVER
+#endif
     vmentry_func(0ULL);
 }
 

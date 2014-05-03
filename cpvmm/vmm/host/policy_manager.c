@@ -18,9 +18,11 @@
 //#include "libc.h"
 #include "vmm_dbg.h"
 #include "file_codes.h"
-
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(POLICY_MANAGER_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(POLICY_MANAGER_C, __condition)
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define FIELD_MASK(size, offset) ((BIT_VALUE64((size)) - 1) << (offset))
 

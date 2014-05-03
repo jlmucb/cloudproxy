@@ -23,7 +23,6 @@
 #include "guest.h"
 #include "guest_cpu.h"
 #include "vmexit.h"
-//#include "vmcs_object.h"
 #include "vmcs_api.h"
 #include "vmx_ctrl_msrs.h"
 #include "host_memory_manager_api.h"
@@ -32,6 +31,9 @@
 #include "memory_allocator.h"
 #include "address.h"
 #include "guest_cpu_vmenter_event.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 
 #define IO_VMEXIT_MAX_COUNT   64

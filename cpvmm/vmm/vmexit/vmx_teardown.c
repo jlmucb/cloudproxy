@@ -20,7 +20,9 @@
 #include "hw_utils.h"
 #include "guest_cpu.h"
 #include "vmm_callback.h"
-
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 // Following defintions are based on uVMM operated in 64 bits PAE mode
 

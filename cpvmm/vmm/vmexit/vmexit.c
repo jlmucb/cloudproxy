@@ -415,13 +415,10 @@ void vmexit_top_down_common_handler(GUEST_CPU_HANDLE gcpu, UINT32 reason) {
 
     guest_vmexit_control = vmexit_find_guest_vmexit_control(guest_id);
     VMM_ASSERT(guest_vmexit_control);
-
     VMM_ASSERT(reason < Ia32VmxExitBasicReasonCount);
     hw_interlocked_increment((INT32*)&(guest_vmexit_control->vmexit_counter[reason]));
-
     if (guest_level == GUEST_LEVEL_2 && gcpu_is_native_execution(gcpu)) {
         VMCS_OBJECT* level1_vmcs = vmcs_hierarchy_get_vmcs(vmcs_hierarchy, VMCS_LEVEL_1);
-
         VMM_ASSERT(level1_vmcs != NULL);
         // Check whether it can be handled in Level-1
         if (vmexit_analysis_was_control_requested(gcpu, merged_vmcs, level1_vmcs, (IA32_VMX_EXIT_BASIC_REASON)reason)) {
@@ -469,7 +466,6 @@ void vmexit_handler_invoke( GUEST_CPU_HANDLE gcpu, UINT32 reason)
 // FUNCTION : vmentry_failure_function
 // PURPOSE  : Called upon VMENTER failure
 // ARGUMENTS: ADDRESS flag - value of processor flags register
-// RETURNS  : void
 void vmentry_failure_function(ADDRESS flags)
 {
     GUEST_CPU_HANDLE gcpu = scheduler_current_gcpu();
@@ -492,6 +488,8 @@ void vmentry_failure_function(ADDRESS flags)
 #ifdef JLMDEBUG
     bprint("vmentry_failure_function FLAGS=0x%x (ZF=%d CF=%d) ErrorCode=0x%x\nDesc=%s\n",
             flags, rflags.Bits.ZF, rflags.Bits.CF, code, err);
+    LOOP_FOREVER
+#endif
 #if 0
     UINT64 out= -1;
     extern int vmx_vmread(UINT64, UINT64*);
@@ -513,9 +511,8 @@ void vmentry_failure_function(ADDRESS flags)
     out= -1;
     vmx_vmread(0x4400, &out);
     bprint("vmentry_failure_function vmcs instruction error: 0x%016lx\n", out);
-#endif
-    LOOP_FOREVER
-#endif
+#endif // 0
+
 #ifdef CLI_INCLUDE
     vmcs_print_all(vmcs);
 #endif
@@ -729,6 +726,10 @@ VMM_STATUS vmexit_install_handler(
 UINT64 gcpu_read_guestrip(void);
 
 
+#ifdef JLMDEBUG
+int count= 0;
+#endif 
+
 // FUNCTION : vmexit_common_handler()
 // PURPOSE  : Called by vmexit_func() upon each VMEXIT
 void vmexit_common_handler(void)
@@ -739,14 +740,17 @@ void vmexit_common_handler(void)
     IA32_VMX_EXIT_REASON    reason;
     REPORT_INITIAL_VMEXIT_CHECK_DATA initial_vmexit_check_data;
 
+#ifdef JLMDEBUG
+    bprint("vmexit_common_handler %d\n", count);
+    if(count>=0)
+        LOOP_FOREVER
+#endif 
     gcpu = scheduler_current_gcpu();
     VMM_ASSERT(gcpu);
-
     // Disable the VMCS Software Shadow/Cache
     // This is required since GCPU and VMCS cache has not yet been 
     // flushed and might have stale values from previous VMExit
     vmcs_sw_shadow_disable[hw_cpu_id()] = TRUE;
-
     if( gcpu->trigger_log_event && (vmexit_reason() == Ia32VmxExitBasicReasonMonitorTrapFlag) ) {
         REPORT_VMM_LOG_EVENT_DATA vmm_log_event_data;
                 
@@ -777,12 +781,10 @@ void vmexit_common_handler(void)
         fvs_vmexit_handler(gcpu);
     }
 #endif
-
     VMM_ASSERT(hw_cpu_id() < VMM_MAX_CPU_SUPPORTED);
     // OPTIMIZATION: For EPT violation, do not enable the software VMCS cache
     if ((vmexit_check_ept_violation() & 7) == 0)
         vmcs_sw_shadow_disable[hw_cpu_id()] = FALSE;
-
     // clear guest cpu cache data. in fact it clears all VMCS caches too.
     gcpu_vmexit_start(gcpu);
     //host_cpu_restore_dr7(hw_cpu_id());

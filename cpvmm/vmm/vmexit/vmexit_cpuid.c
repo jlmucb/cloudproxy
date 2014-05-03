@@ -22,6 +22,9 @@
 #include "guest.h"
 #include "hw_utils.h"
 #include "vmexit_cpuid.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define CPUID_EAX 0
 #define CPUID_EBX 1

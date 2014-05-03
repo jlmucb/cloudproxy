@@ -28,12 +28,11 @@
 #include "isr.h"
 #include "memory_dump.h"
 #include "file_codes.h"
+#define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMCS_C)
+#define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMCS_C, __condition)
 #ifdef JLMDEBUG
 #include "jlmdebug.h"
 #endif
-
-#define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMCS_C)
-#define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMCS_C, __condition)
 
 #pragma warning (disable : 4710)
 

@@ -18,9 +18,12 @@
 #include "host_memory_manager_api.h"
 #include "file_codes.h"
 #include "vmm_acpi.h"
-
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMM_ACPI_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMM_ACPI_C, __condition)
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
+
 
 #ifdef USE_ACPI
 

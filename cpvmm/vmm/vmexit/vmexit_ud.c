@@ -22,10 +22,10 @@ VMEXIT_HANDLING_STATUS vmexit_undefined_opcode(GUEST_CPU_HANDLE gcpu)
 {
     VMENTER_EVENT ud_event;
 
-    ud_event.interrupt_info.Bits.Valid           = 1;
-    ud_event.interrupt_info.Bits.Vector          = IA32_EXCEPTION_VECTOR_UNDEFINED_OPCODE;
-    ud_event.interrupt_info.Bits.InterruptType   = VmEnterInterruptTypeHardwareException;
-    ud_event.interrupt_info.Bits.DeliverCode     = 0;    // no error code delivered
+    ud_event.interrupt_info.Bits.Valid = 1;
+    ud_event.interrupt_info.Bits.Vector = IA32_EXCEPTION_VECTOR_UNDEFINED_OPCODE;
+    ud_event.interrupt_info.Bits.InterruptType = VmEnterInterruptTypeHardwareException;
+    ud_event.interrupt_info.Bits.DeliverCode = 0;    // no error code delivered
     gcpu_inject_event(gcpu, &ud_event);
     return VMEXIT_HANDLED;
 }

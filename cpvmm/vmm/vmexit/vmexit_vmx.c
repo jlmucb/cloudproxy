@@ -17,9 +17,11 @@
 #include "guest_cpu.h"
 #include "guest_cpu_vmenter_event.h"
 #include "file_codes.h"
-
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMEXIT_VMX_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMEXIT_VMX_C, __condition)
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 extern BOOLEAN gcpu_inject_invalid_opcode_exception(GUEST_CPU_HANDLE    gcpu);
 

@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,14 +17,15 @@
 #include "vmm_dbg.h"
 #include "libc.h"
 #include "file_codes.h"
-
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMM_GLOBALS_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMM_GLOBALS_C, __condition)
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 
-//
 // Just instaniation of global variables
-//
+
 
 VMM_STATE g_vmm_state = VMM_STATE_UNINITIALIZED;
 

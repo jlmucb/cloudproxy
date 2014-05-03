@@ -16,6 +16,9 @@
 #include <hw_utils.h>
 #include <efer_msr_abstraction.h>
 #include <em64t_defs.h>
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #pragma warning( disable : 4214 )
 

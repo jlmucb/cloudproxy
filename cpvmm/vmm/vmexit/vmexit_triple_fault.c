@@ -31,7 +31,8 @@ VMEXIT_HANDLING_STATUS vmexit_triple_fault(GUEST_CPU_HANDLE gcpu)
     hw_reset_platform();
     // TODO: Tear down the guest
 
-    if (0) gcpu = NULL;  // just to pass release compilation
+    if (0) 
+        gcpu = NULL;  // just to pass release compilation
     return VMEXIT_HANDLED;
 }
 

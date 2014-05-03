@@ -24,6 +24,9 @@
 #include <guest_cpu.h>
 #include <hw_interlocked.h>
 #include <page_walker.h>
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 
 typedef union PW_PAGE_ENTRY_U {

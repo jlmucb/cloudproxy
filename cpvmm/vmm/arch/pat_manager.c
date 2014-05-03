@@ -28,17 +28,18 @@
 #include <host_cpu.h>
 #include <flat_page_tables.h>
 #include "file_codes.h"
-
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(PAT_MANAGER_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(PAT_MANAGER_C, __condition)
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #pragma warning (disable : 4100) // enable non-referenced formal parameters
 
 #define PAT_MNGR_INVALID_PAT_MSR_VALUE (~((UINT64)0))
 #define PAT_MNGR_NUM_OF_ATTRUBUTE_FIELDS 8
 
-static
-VMM_PHYS_MEM_TYPE pat_mngr_get_memory_type(UINT64 pat_value, UINT32 index) {
+static VMM_PHYS_MEM_TYPE pat_mngr_get_memory_type(UINT64 pat_value, UINT32 index) {
     UINT64 memory_type = ((pat_value >> (index*8)) & 0xff);
     return (VMM_PHYS_MEM_TYPE)memory_type;
 }

@@ -24,6 +24,9 @@
 #include <vmm_phys_mem_types.h>
 #include <pat_manager.h>
 #include <flat_page_tables.h>
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define FTP_INVALID_RANGE (MAM_MAPPING_SUCCESSFUL+1)
 

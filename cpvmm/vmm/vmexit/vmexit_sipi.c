@@ -21,6 +21,9 @@
 #include "vmx_trace.h"
 #include "pat_manager.h"
 #include "hw_interlocked.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 UINT32 g_guest_num_of_cpus=1; //BSP Core
 extern UINT32 g_s3_resume_flag;

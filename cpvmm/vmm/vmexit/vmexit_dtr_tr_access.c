@@ -20,9 +20,11 @@
 #include "host_memory_manager_api.h"
 #include "vmm_callback.h"
 #include "file_codes.h"
-
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMEXIT_DTR_TR_ACCESS_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMEXIT_DTR_TR_ACCESS_C, __condition)
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define _MTF_SINGLE_STEP_
 

@@ -29,6 +29,10 @@
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(GUEST_CPU_VMENTER_EVENT_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(GUEST_CPU_VMENTER_EVENT_C, __condition)
 
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
+
 
 /*
 #define PRINT_GCPU_IDENTITY(__gcpu)                                            \

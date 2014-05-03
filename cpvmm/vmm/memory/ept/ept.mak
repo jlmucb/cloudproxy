@@ -40,9 +40,11 @@ B=		$(E)/vmmobjects/memory/ept
 INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw \
 		-I$(S)/vmm/guest -I$(S)/vmm/guest/guest_cpu \
-		-I$(S)/common/include/platform -I$(mainsrc)
-DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs 
-RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3 -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs 
+		-I$(S)/common/include/platform -I$(mainsrc) \
+		-I$(S)/vmm -I$(S)/vmm/bootstrap
+
+DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs -D INVMM -D JLMDEBUG
+RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3 -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs -D INVMM -D JLMDEBUG
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 

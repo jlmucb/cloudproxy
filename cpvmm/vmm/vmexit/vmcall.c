@@ -28,6 +28,10 @@
 #include "lock.h"
 #include "memory_allocator.h"
 #include "../guest/guest_cpu/unrestricted_guest.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
+
 
 #ifdef VMCALL_NOT_ALLOWED_FROM_RING_1_TO_3
 #include "guest_cpu_vmenter_event.h"

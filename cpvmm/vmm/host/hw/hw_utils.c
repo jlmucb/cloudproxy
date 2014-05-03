@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,9 +20,12 @@
 #include "8259a_pic.h"
 #include "vmm_dbg.h"
 #include "file_codes.h"
-
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(HW_UTILS_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(HW_UTILS_C, __condition)
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
+
 
 static UINT64 hw_tsc_ticks_per_second = 0;
 
@@ -34,9 +35,7 @@ static UINT64 hw_tsc_ticks_per_second = 0;
 // Stall (busy loop) for a given time, using the platform's speaker port
 // h/w.  Should only be called at initialization, since a guest OS may
 // change the platform setting.
-
 void hw_stall(UINT32 stall_usec)
-
 {
     UINT32   count;
     for(count = 0; count < stall_usec; count ++)

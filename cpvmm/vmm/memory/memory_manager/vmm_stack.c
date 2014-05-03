@@ -20,13 +20,11 @@
 #include "vmm_dbg.h"
 #include <libc.h>
 #include "file_codes.h"
+#define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMM_STACK_C)
+#define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMM_STACK_C, __condition)
 #ifdef JLMDEBUG
 #include "jlmdebug.h"
 #endif
-
-
-#define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMM_STACK_C)
-#define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMM_STACK_C, __condition)
 
 static VMM_STACKS_INFO g_stacks_infos_s;
 static VMM_STACKS_INFO* const g_stacks_infos = &g_stacks_infos_s;

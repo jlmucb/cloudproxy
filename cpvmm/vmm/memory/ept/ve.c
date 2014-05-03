@@ -24,6 +24,9 @@
 #include "ve.h"
 #include "memory_address_mapper_api.h"
 #include "gpm_api.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 BOOLEAN ve_is_hw_supported(void)
 {

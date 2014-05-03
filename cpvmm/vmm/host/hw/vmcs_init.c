@@ -25,7 +25,6 @@
 #include "hw_vmx_utils.h"
 #include "vmm_dbg.h"
 #include "file_codes.h"
-
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMCS_INIT_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMCS_INIT_C, __condition)
 #ifdef JLMDEBUG

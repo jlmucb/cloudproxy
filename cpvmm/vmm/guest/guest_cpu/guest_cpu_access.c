@@ -372,9 +372,6 @@ UINT64 gcpu_get_guest_visible_control_reg_layered(const GUEST_CPU_HANDLE gcpu,
         return real_value;
     }
     real_value = gcpu_get_control_reg_layered(gcpu, reg, level);
-#ifdef JLMDEBUG
-    bprint("real value: 0x%016lx\n", real_value);
-#endif
     if (reg == IA32_CTRL_CR0) {
         mask = vmcs_read(vmcs, VMCS_CR0_MASK);
         shadow = vmcs_read(vmcs, VMCS_CR0_READ_SHADOW);

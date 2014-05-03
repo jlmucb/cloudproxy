@@ -18,9 +18,11 @@
 #include "vmm_dbg.h"
 #include "address.h"
 #include "file_codes.h"
-
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(MTRRS_ABSTRACTION_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(MTRRS_ABSTRACTION_C, __condition)
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #pragma warning( disable : 4214 )
 

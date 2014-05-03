@@ -28,6 +28,9 @@
 #include <gpm_api.h>
 #include <ia32_defs.h>
 #include "vmcs_internal.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 // do not report warning on unused params
 #pragma warning( disable: 4100 )

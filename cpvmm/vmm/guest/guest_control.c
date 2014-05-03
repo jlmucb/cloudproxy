@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,6 +21,10 @@
 #include "vmm_globals.h"
 #include "ipc.h"
 #include "scheduler.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
+
 
 //
 // Main implementatuion idea:
@@ -41,8 +43,7 @@ typedef struct _IPC_COMM_GUEST_STRUCT {
 #pragma warning (disable : 4100)
 
 // apply vmexit config to the gcpu that are allocated for the current host cpu
-static
-void apply_vmexit_config(CPU_ID from UNUSED, void* arg)
+static void apply_vmexit_config(CPU_ID from UNUSED, void* arg)
 {
     GUEST_GCPU_ECONTEXT ctx;
     GUEST_CPU_HANDLE    gcpu;
@@ -74,16 +75,13 @@ void guest_control_setup( GUEST_HANDLE guest, const VMEXIT_CONTROL* request )
     CPU_ID              this_hcpu_id = hw_cpu_id();
 
     VMM_ASSERT( guest );
-
     // setup vmexit requests without applying
     for( gcpu = guest_gcpu_first( guest, &ctx ); 
             gcpu; gcpu = guest_gcpu_next( &ctx )) {
         gcpu_control_setup_only( gcpu, request );
     }
-
     // now apply
     vmm_state = vmm_get_state();
-
     if (VMM_STATE_BOOT == vmm_state) {
         // may be run on BSP only
         VMM_ASSERT( 0 == this_hcpu_id );
@@ -104,19 +102,15 @@ void guest_control_setup( GUEST_HANDLE guest, const VMEXIT_CONTROL* request )
 
         // multi-thread mode with all APs ready and running or in Wait-For-SIPI state
         // on behalf of guest
-
         ipc.guest = guest;
 
         // first apply for gcpus allocated for this hw cpu
         apply_vmexit_config( this_hcpu_id, &ipc );
-
         // reset executed counter and flush memory
         hw_assign_as_barrier( &(ipc.executed), 0);
-
         // send for execution
         ipc_dst.addr_shorthand = IPI_DST_ALL_EXCLUDING_SELF;
         wait_for_ipc_count = ipc_execute_handler( ipc_dst, apply_vmexit_config, &ipc );
-
         // wait for execution finish
         while (wait_for_ipc_count != ipc.executed) {
             // avoid deadlock - process one IPC if exist

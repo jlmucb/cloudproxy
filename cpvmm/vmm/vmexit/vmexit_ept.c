@@ -20,9 +20,11 @@
 #include "emulator_if.h"
 #include "vmm_callback.h"
 #include "file_codes.h"
-
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMEXIT_EPT_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMEXIT_EPT_C, __condition)
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #pragma warning (push)
 #pragma warning (disable : 4100) // disable non-referenced formal parameters

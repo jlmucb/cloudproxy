@@ -23,6 +23,9 @@
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(GPM_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(GPM_C, __condition)
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define GPM_INVALID_MAPPING (MAM_MAPPING_SUCCESSFUL + 1)
 #define GPM_MMIO            (MAM_MAPPING_SUCCESSFUL + 2)

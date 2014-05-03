@@ -224,16 +224,16 @@ void vmm_print_vmcs_region(UINT64* pu)
     VMCS_SAVED_REGION* p= (VMCS_SAVED_REGION*) pu;
 #ifdef JLMDEBUG
     bprint("Guest values:\n");
-    bprint("rip: 0x%016llx, rflags: 0x%016llx g_il: 0xllx \n",
+    bprint("rip: 0x%016llx, rflags: 0x%016llx g_il: 0x%016llx\n",
         p->g_rip, p->g_rflags, p->g_il );
     bprint("cr0: 0x%016llx, cr3: 0x%016llx, g_cr4: 0x%016llx\n",
         p->g_cr0, p->g_cr3, p->g_cr4);
     bprint("g_dr7: 0x%016llx\n", p->g_dr7);
-    bprint("g_cs: 0x%016llx, g_cs_base: 0x%016llx, g_cs_limit: 0x%llx g_cs_access: 0x%llx\n",
+    bprint("cs: 0x%016llx, _base: 0x%016llx, g_cs_limit: 0x%llx, access: 0x%llx\n",
         p->g_cs, p->g_cs_base, p->g_cs_limit, p->g_cs_access);
-    bprint("g_ss: 0x%016llx, g_ss_base: 0x%016llx g_ss_limit: 0x%016llx, g_ss_access: 0x%016llx\n",
+    bprint("ss: 0x%016llx, base: 0x%016llx limit: 0x%016llx, access: 0x%016llx\n",
         p->g_ss, p->g_ss_base, p->g_ss_limit, p->g_ss_access);
-    bprint("g_ds: 0x%016llx g_ds_base: 0x%016llx, g_ds_limit: 0x%016llx g_ds_access: 0x%016llx\n",
+    bprint("ds: 0x%016llx base: 0x%016llx, limit: 0x%016llx access: 0x%016llx\n",
         p->g_ds, p->g_ds_base, p->g_ds_limit, p->g_ds_access);
 #if 0
     bprint("g_fs: 0x%016llx g_fs_base: 0x%016llx g_fs_limit: 0x%016llx g_fs_access: 0x%016llx\n",

@@ -26,6 +26,9 @@
 #include "guest_cpu.h"
 #include "hw_utils.h"
 #include "heap.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 #ifdef PCI_SCAN
 #pragma warning (disable:4100)
 

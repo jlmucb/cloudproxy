@@ -23,7 +23,9 @@
 #include "hw_utils.h"
 #include "vmcs_init.h"
 #include "vmm_events_data.h"
-
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 
 // FUNCTION : vmexit_init_event()
@@ -37,9 +39,7 @@ VMEXIT_HANDLING_STATUS vmexit_init_event(GUEST_CPU_HANDLE gcpu)
     VMM_LOG(mask_anonymous, level_trace,
             "INIT signal in Guest#%d GuestCPU#%d HostCPU#%d\n",
             guest_vcpu(gcpu)->guest_id, guest_vcpu(gcpu)->guest_cpu_id, hw_cpu_id());
-
     VMM_ASSERT(guest_is_primary(gcpu_guest_handle(gcpu)));
-
     if (cpu_id == 0) { // If cpu is BSP
         VMM_LOG(mask_anonymous, level_trace,"[%d] Perform global reset\n", cpu_id);
         hw_reset_platform();   // then preform cold reset.

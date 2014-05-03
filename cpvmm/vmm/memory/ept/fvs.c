@@ -32,6 +32,9 @@
 #include "vmm_callback.h"
 #include "common_types.h"
 #include "profiling.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 static void fvs_init_eptp_switching(GUEST_DESCRIPTOR *guest);
 static HPA fvs_get_eptp_list_paddress(GUEST_CPU_HANDLE gcpu);

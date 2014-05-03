@@ -136,9 +136,8 @@ hw_isr_c_wrapper:
         pop     %rcx    # just in case
         pop     %rsi    # just in case
         pop     %rdi    # restored from parameter passing
-        
-        pop     %rsp             # isr_c_handler replaces vector ID with pointer to the
-                                # RIP. Just pop the pointer to the RIP into RSP.
+        pop     %rsp    # isr_c_handler replaces vector ID with pointer to the
+                        # RIP. Just pop the pointer to the RIP into RSP.
         iretq
 
 #; functions below instantiate isr_entry_macro for 256 vectors (IDT entries)

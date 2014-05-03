@@ -30,6 +30,10 @@
 #include <host_memory_manager_api.h>
 #include <vmexit_analysis.h>
 #include "vmm_callback.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
+
 
 #pragma warning (disable : 4100)
 

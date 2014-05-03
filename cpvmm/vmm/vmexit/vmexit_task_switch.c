@@ -18,10 +18,12 @@
 #include "vmx_vmcs.h"
 #include "guest_cpu_vmenter_event.h"
 #include "host_memory_manager_api.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 
 // This is 32-bit TSS.
-
 #pragma pack(1)
 typedef struct {
     UINT32  prev_tr;            // 0

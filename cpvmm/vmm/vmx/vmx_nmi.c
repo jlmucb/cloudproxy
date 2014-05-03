@@ -16,7 +16,6 @@
 // need these defines for guest.h -> array_iterators.h
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMX_NMI_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMX_NMI_C, __condition)
-
 #include "vmm_defs.h"
 #include "vmm_dbg.h"
 #include "common_libc.h"
@@ -31,6 +30,9 @@
 #include "vmexit.h"
 #include "vmx_ctrl_msrs.h"
 #include "vmx_nmi.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 
 /*

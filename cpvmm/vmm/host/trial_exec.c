@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,9 +16,11 @@
 #include "vmm_dbg.h"
 #include "trial_exec.h"
 #include "file_codes.h"
-
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(TRIAL_EXEC_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(TRIAL_EXEC_C, __condition)
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 static TRIAL_DATA *trial_data[VMM_MAX_CPU_SUPPORTED]; // max phys. CPUs supported
 

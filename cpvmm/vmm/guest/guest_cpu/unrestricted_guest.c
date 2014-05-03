@@ -19,9 +19,12 @@
 #include "vmx_ctrl_msrs.h"
 #include "unrestricted_guest.h"
 #include "file_codes.h"
-
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(UNRESTRICTED_GUEST_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(UNRESTRICTED_GUEST_C, __condition)
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
+
 
 // Temporary external declarations
 extern BOOLEAN ept_enable(GUEST_CPU_HANDLE gcpu);

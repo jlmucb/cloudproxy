@@ -19,17 +19,18 @@
 #include "host_memory_manager_api.h"
 #include "memory_allocator.h"
 #include "file_codes.h"
-
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(LOCAL_APIC_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(LOCAL_APIC_C, __condition)
+#ifdef JLMDEBUG
 #include "jlmdebug.h"
+#endif
 
 #pragma warning( disable : 4100)        // unreferenced formal parameter
 #define STRINGIFY(x)     #x
 
-/*
- *                       Local Macros and Types
- */
+
+//                       Local Macros and Types
+
 typedef struct _LOCAL_APIC_PER_CPU_DATA {
     ADDRESS                 lapic_base_address_hpa;
     ADDRESS                 lapic_base_address_hva;

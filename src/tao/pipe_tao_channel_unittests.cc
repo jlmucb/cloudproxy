@@ -43,7 +43,6 @@ using tao::PipeTaoChannel;
 using tao::PipeTaoChannelParams;
 using tao::ScopedFd;
 using tao::ScopedTempDir;
-using tao::Tao;
 using tao::TaoChildChannelParams;
 using tao::UnixDomainSocketTaoAdminChannel;
 using tao::UnixFdTaoChildChannel;
@@ -124,21 +123,21 @@ TEST_F(PipeTaoChannelTest, SealTest) {
   string bytes;
   EXPECT_TRUE(child_channel_->GetRandomBytes(128, &bytes));
   string sealed;
-  EXPECT_TRUE(child_channel_->Seal(bytes, Tao::PolicySameProgHash, &sealed));
+  EXPECT_TRUE(child_channel_->Seal(bytes, 0 /* policy */, &sealed));
 }
 
 TEST_F(PipeTaoChannelTest, UnsealTest) {
   string bytes;
   EXPECT_TRUE(child_channel_->GetRandomBytes(128, &bytes));
   string sealed;
-  EXPECT_TRUE(child_channel_->Seal(bytes, Tao::PolicySameProgHash, &sealed));
+  EXPECT_TRUE(child_channel_->Seal(bytes, 0 /* policy */, &sealed));
 
   string unsealed;
   int policy;
   EXPECT_TRUE(child_channel_->Unseal(sealed, &unsealed, &policy));
 
   EXPECT_EQ(bytes, unsealed);
-  EXPECT_TRUE(policy == Tao::PolicySameProgHash);
+  EXPECT_EQ(policy, 0);
 }
 
 TEST_F(PipeTaoChannelTest, AttestTest) {

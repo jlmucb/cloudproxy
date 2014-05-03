@@ -33,7 +33,11 @@ bool TaoAdminChannel::Shutdown() const {
     LOG(ERROR) << "RPC on admin channel failed";
     return false;
   }
-  return resp.success();
+  if (!resp.success()) {
+    LOG(ERROR) << "RPC on admin channel returned failure";
+    return false;
+  }
+  return true;
 }
 
 bool TaoAdminChannel::StartHostedProgram(const string &path,
@@ -52,17 +56,17 @@ bool TaoAdminChannel::StartHostedProgram(const string &path,
     LOG(ERROR) << "RPC on admin channel failed";
     return false;
   }
-
-  if (resp.success()) {
-    if (!resp.has_data()) {
-      LOG(ERROR) << "A successful StartHostedProgram did not return data";
-      return false;
-    }
-
-    child_name->assign(resp.data().data(), resp.data().size());
+  if (!resp.success()) {
+    LOG(ERROR) << "RPC on admin channel returned failure";
+    return false;
+  }
+  if (!resp.has_data()) {
+    LOG(ERROR) << "A successful StartHostedProgram did not return data";
+    return false;
   }
 
-  return resp.success();
+  child_name->assign(resp.data().data(), resp.data().size());
+  return true;
 }
 
 bool TaoAdminChannel::RemoveHostedProgram(const string &child_name) const {
@@ -75,8 +79,11 @@ bool TaoAdminChannel::RemoveHostedProgram(const string &child_name) const {
     LOG(ERROR) << "RPC on admin channel failed";
     return false;
   }
-
-  return resp.success();
+  if (!resp.success()) {
+    LOG(ERROR) << "RPC on admin channel returned failure";
+    return false;
+  }
+  return true;
 }
 
 bool TaoAdminChannel::GetTaoFullName(string *tao_name) const {
@@ -88,17 +95,16 @@ bool TaoAdminChannel::GetTaoFullName(string *tao_name) const {
     LOG(ERROR) << "RPC on admin channel failed";
     return false;
   }
-
-  if (resp.success()) {
-    if (!resp.has_data()) {
-      LOG(ERROR) << "A successful call did not return data";
-      return false;
-    }
-
-    tao_name->assign(resp.data().data(), resp.data().size());
+  if (!resp.success()) {
+    LOG(ERROR) << "RPC on admin channel returned failure";
+    return false;
   }
-
-  return resp.success();
+  if (!resp.has_data()) {
+    LOG(ERROR) << "A successful call did not return data";
+    return false;
+  }
+  tao_name->assign(resp.data().data(), resp.data().size());
+  return true;
 }
 
 }  // namespace tao

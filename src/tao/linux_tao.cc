@@ -69,7 +69,7 @@ bool LinuxTao::Init() {
     return false;
   }
 
-  if (host_channel_->GetHostedProgramFullName(&full_name_)) {
+  if (!host_channel_->GetHostedProgramFullName(&full_name_)) {
     LOG(ERROR) << "Could not obtain our own name from host channel";
     return false;
   }

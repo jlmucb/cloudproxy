@@ -33,6 +33,10 @@ bool TaoChildChannel::GetRandomBytes(size_t size, string *bytes) const {
     LOG(ERROR) << "RPC on host channel failed";
     return false;
   }
+  if (!resp.success()) {
+    LOG(ERROR) << "RPC on host channel returned failure";
+    return false;
+  }
   if (!resp.has_data()) {
     LOG(ERROR) << "A successful call did not return enough data";
     return false;
@@ -50,6 +54,10 @@ bool TaoChildChannel::Seal(const string &data, int policy,
   TaoChildResponse resp;
   if (!SendRPC(rpc) || !ReceiveRPC(&resp)) {
     LOG(ERROR) << "RPC on host channel failed";
+    return false;
+  }
+  if (!resp.success()) {
+    LOG(ERROR) << "RPC on host channel returned failure";
     return false;
   }
   if (!resp.has_data()) {
@@ -70,6 +78,10 @@ bool TaoChildChannel::Unseal(const string &sealed, string *data,
     LOG(ERROR) << "RPC on host channel failed";
     return false;
   }
+  if (!resp.success()) {
+    LOG(ERROR) << "RPC on host channel returned failure";
+    return false;
+  }
   if (!resp.has_data() || !resp.has_policy()) {
     LOG(ERROR) << "A successful call did not return enough data";
     return false;
@@ -88,6 +100,10 @@ bool TaoChildChannel::Attest(const string &data, string *attestation) const {
     LOG(ERROR) << "RPC on host channel failed";
     return false;
   }
+  if (!resp.success()) {
+    LOG(ERROR) << "RPC on host channel returned failure";
+    return false;
+  }
   if (!resp.has_data()) {
     LOG(ERROR) << "A successful call did not return enough data";
     return false;
@@ -101,6 +117,10 @@ bool TaoChildChannel::GetHostedProgramFullName(string *full_name) const {
   TaoChildResponse resp;
   if (!SendRPC(rpc) || !ReceiveRPC(&resp)) {
     LOG(ERROR) << "RPC on host channel failed";
+    return false;
+  }
+  if (!resp.success()) {
+    LOG(ERROR) << "RPC on host channel returned failure";
     return false;
   }
   if (!resp.has_data()) {
@@ -118,6 +138,10 @@ bool TaoChildChannel::ExtendName(const string &subprin) const {
   TaoChildResponse resp;
   if (!SendRPC(rpc) || !ReceiveRPC(&resp)) {
     LOG(ERROR) << "RPC on host channel failed";
+    return false;
+  }
+  if (!resp.success()) {
+    LOG(ERROR) << "RPC on host channel returned failure";
     return false;
   }
   return true;

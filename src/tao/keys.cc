@@ -1034,7 +1034,7 @@ bool Keys::InitHosted(const TaoChildChannel &channel) {
 //                                        DSA, EVP_PKEY_free>> ScopedDsa;
 
 bool Keys::SignerUniqueID(string *identifier) const {
-  // Any unique ID will do. We use base64w encoded hash of pubic signing key.
+  // We use base64w encoded pubic signing key.
   tao::ScopedEvpPkey pem_key;
   if (!ExportSignerToOpenSSL(&pem_key)) {
     LOG(ERROR) << "Could not export signing key to openssl";
@@ -1060,14 +1060,15 @@ bool Keys::SignerUniqueID(string *identifier) const {
     LOG(ERROR) << "Could not read serialize public signing key";
     return false;
   }
-  string key_data(key_bytes.get(), len);
-  string hash;
-  if (!Sha256(key_data, &hash)) {
-    LOG(ERROR) << "Can't compute hash of public signing key";
-    return false;
-  }
 
-  return Base64WEncode(hash, identifier);
+  string key_data(key_bytes.get(), len);
+  // string hash;
+  // if (!Sha256(key_data, &hash)) {
+  //  LOG(ERROR) << "Can't compute hash of public signing key";
+  //  return false;
+  // }
+  // return Base64WEncode(hash, identifier);
+  return Base64WEncode(key_data, identifier);
 }
 
 string Keys::GetPath(const string &suffix) const {

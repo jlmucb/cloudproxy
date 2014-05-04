@@ -84,7 +84,6 @@ UINT64 vmm_read_xcr()
 }
 
 
-//CHECK(JLM)
 UINT64 gcpu_read_guestrip(void)
 {
     UINT64  result;
@@ -93,8 +92,8 @@ UINT64 gcpu_read_guestrip(void)
     bprint("vmm_read_guest_rip\n");
     LOOP_FOREVER
 #endif
-    // JLM(FIX): is this right?
     asm volatile(
+        "\tmovq     $0x681e, %%rax\n"
         "\tvmread    %%rax,%%rax\n"
         "\tmovq     %%rax, %[result]\n"
     : [result]"=g"(result)

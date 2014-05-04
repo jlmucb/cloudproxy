@@ -121,11 +121,11 @@ void vmentry_func(UINT32 firsttime)
         gcpu_restore_registers();
         asm volatile (
             "\tvmlaunch\n"
-            "\tpushfq\n" 
+            "\tpushfq\n"  // push rflags
             "\tpop      %%rdx\n" 
             "\tmovq     %%rdx, %[rflags_arg]\n" 
         :[rflags_arg] "=m" (rflags_arg) 
-        ::);
+        ::"%rdx");
     } 
     else {  //do_resume
         gcpu_restore_registers();
@@ -136,17 +136,18 @@ void vmentry_func(UINT32 firsttime)
         asm volatile(
             // Resume execution of Guest Virtual Machine
             "\tvmresume\n" 
-            "\tpushfq \n"
+            "\tpushfq \n"  // push rflags
             "\tpop      %%rdx\n" 
             "\tmovq     %%rdx, %[rflags_arg]\n" 
         : [rflags_arg] "=m" (rflags_arg) 
-        ::);
+        ::"%rdx");
     }               
     vmentry_failure_function(rflags_arg);
 #ifdef JLMDEBUG
+    bprint("after vmentry_failure_function returns\n");
     LOOP_FOREVER
 #endif
-    vmentry_func(0ULL);
+    vmentry_func(0ULL);  // 0ULL= FALSE
 }
 
 
@@ -155,9 +156,9 @@ UINT64 hw_vmcall(UINT64 vmcall_id, UINT64 arg1, UINT64 arg2, UINT64 arg3)
 // Function:    VMCALL
 // uVMM expects the following:
 {
-    UINT64  result;
+    UINT64  result= 0ULL;
 
-    //Original asm file mov r8 -> rsi and r9 ->rdi, not sure why?
+    // Original asm file mov r8 -> rsi and r9 ->rdi, not sure why?
     asm volatile(
         "\tmovq %[vmcall_id], %%rcx\n"
         "\tmovq %[arg1], %%rdx\n"
@@ -165,13 +166,14 @@ UINT64 hw_vmcall(UINT64 vmcall_id, UINT64 arg1, UINT64 arg2, UINT64 arg3)
         "\tmovq %[arg3], %%rsi\n"
         "\tmovq $0x024694D40, %%rax\n"
         "\tvmcall\n"
-        "\t movq %%rax, %[result] \n"
+        "\tmovq %%rax, %[result] \n"
         "\tjmp  2f\n"
         "1:\n"
         "\tjmp 1b\n"
         "2:\n"
-    :[result] "=g" (result) 
-    : [vmcall_id] "g" (vmcall_id), [arg1] "g" (arg1), [arg2] "g" (arg2), [arg3] "g" (arg3)
+    : [result] "=g" (result) 
+    : [vmcall_id] "g" (vmcall_id), [arg1] "g" (arg1), 
+      [arg2] "g" (arg2), [arg3] "g" (arg3)
     : "%rax", "%rdi", "%rsi", "%r8", "%rcx", "%rdx");
     return result;
 }

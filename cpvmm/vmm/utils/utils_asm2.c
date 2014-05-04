@@ -102,7 +102,6 @@ UINT64 gcpu_read_guestrip(void)
 }
 
 
-//CHECK(JLM)
 UINT64 vmexit_reason()
 {
 #ifdef JLMDEBUG1

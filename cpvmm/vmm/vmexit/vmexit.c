@@ -742,10 +742,12 @@ void vmexit_common_handler(void)
 
 #ifdef JLMDEBUG
     bprint("vmexit_common_handler %d\n", count);
+    bprint("guest rip: 0x016llx, exit reason: 0x%016lx\n", 
+            gcpu_read_guestrip(), vmexit_reason());
     if(count>=0)
         LOOP_FOREVER
 #endif 
-    gcpu = scheduler_current_gcpu();
+    gcpu= scheduler_current_gcpu();
     VMM_ASSERT(gcpu);
     // Disable the VMCS Software Shadow/Cache
     // This is required since GCPU and VMCS cache has not yet been 
@@ -874,7 +876,6 @@ void vmexit_direct_call_handler(GUEST_CPU_HANDLE gcpu)
 
 #define vmexit_hardware_interrupt           vmexit_handler_default
 #define vmexit_pending_interrupt            vmexit_handler_default
-//#define vmexit_halt_instruction             vmexit_handler_default
 #define vmexit_invalid_instruction          vmexit_handler_default
 #define vmexit_dr_access                    vmexit_handler_default
 #define vmexit_io_instruction               vmexit_handler_default

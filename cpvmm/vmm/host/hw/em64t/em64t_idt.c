@@ -16,8 +16,6 @@
 
 //  This code is assumed to be running in 32-bit mode,
 //  but configure IDT for 64-bit mode.
-
-
 #include "vmm_defs.h"
 #include "common_libc.h"
 #include "heap.h"
@@ -27,9 +25,7 @@
 #include "idt.h"
 
 extern void dump_memory(const void * mem_location,UINT32 count,UINT32 size);
-
 #define IDT_VECTOR_COUNT 256
-
 #define IA32E_IDT_GATE_TYPE_INTERRUPT_GATE  0xE
 #define IA32E_IDT_GATE_TYPE_TRAP_GATE       0xF
 
@@ -315,8 +311,6 @@ static void init_isr_handler_table() {
     isr_handler_table[254] = (ADDRESS)(isr_entry_fe);
     isr_handler_table[255] = (ADDRESS)(isr_entry_ff);
 }
-
-
 //    (ADDRESS) isr_entry_fa,
 //    (ADDRESS) isr_entry_fb,
 //    (ADDRESS) isr_entry_fc,
@@ -329,10 +323,9 @@ static void init_isr_handler_table() {
 // PURPOSE      : Register interrupt handler at spec. vector
 // ARGUMENTS    : UINT8 vector_id
 //              : ADDRESS isr_handler_address - address of function
-// RETURNS      : void
 void hw_idt_register_handler( VECTOR_ID vector_id, ADDRESS isr_handler_address)
 {
-    // fill IDT entries with it
+    // fill IDT entries 
     idt[vector_id].offset_0_15    = (UINT32) GET_2BYTE(isr_handler_address, 0);
     idt[vector_id].offset_15_31   = (UINT32) GET_2BYTE(isr_handler_address, 1);
     idt[vector_id].offset_32_63   = (UINT32) GET_4BYTE(isr_handler_address, 1);
@@ -346,8 +339,6 @@ void hw_idt_register_handler( VECTOR_ID vector_id, ADDRESS isr_handler_address)
 
 // FUNCTION     : hw_idt_setup()
 // PURPOSE      : Build and populate IDT table, used by all CPUs
-// ARGUMENTS    : void
-// RETURNS      : void
 void hw_idt_setup(void)
 {
     unsigned vector_id;
@@ -360,8 +351,6 @@ void hw_idt_setup(void)
 
 // FUNCTION     : hw_idt_load()
 // PURPOSE      : Load IDT descriptor into IDTR of CPU, currently excuted
-// ARGUMENTS    : void
-// RETURNS      : void
 void hw_idt_load(void)
 {
     EM64T_IDT_DESCRIPTOR idt_desc;
@@ -374,10 +363,9 @@ void hw_idt_load(void)
 
 // FUNCTION     : idt_get_extra_stacks_required()
 // PURPOSE      : Returns the number of extra stacks required by ISRs
-// ARGUMENTS    : void
 // RETURNS      : number between 0..7
 // NOTES        : per CPU
-UINT8 idt_get_extra_stacks_required( void)
+UINT8 idt_get_extra_stacks_required(void)
 {
     return 6;   // the number of no-zero elements in array <ist_used>
 }

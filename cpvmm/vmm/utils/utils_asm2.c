@@ -106,7 +106,6 @@ UINT64 vmexit_reason()
 {
 #ifdef JLMDEBUG1
     bprint("vmexit_reason\n");
-    LOOP_FOREVER
 #endif
     UINT64  result;
     asm volatile(
@@ -222,16 +221,16 @@ void vmm_print_vmcs_region(UINT64* pu)
     VMCS_SAVED_REGION* p= (VMCS_SAVED_REGION*) pu;
 #ifdef JLMDEBUG
     bprint("Guest values:\n");
-    bprint("rip: 0x%016llx, rflags: 0x%016llx g_il: 0x%016llx\n",
+    bprint("rip: 0x%016llx, rflags: 0x%016llx il: %d\n",
         p->g_rip, p->g_rflags, p->g_il );
-    bprint("cr0: 0x%016llx, cr3: 0x%016llx, g_cr4: 0x%016llx\n",
+    bprint("cr0: %016llx, cr3: %016llx, cr4: %016llx\n",
         p->g_cr0, p->g_cr3, p->g_cr4);
-    bprint("g_dr7: 0x%016llx\n", p->g_dr7);
-    bprint("cs: 0x%016llx, _base: 0x%016llx, g_cs_limit: 0x%llx, access: 0x%llx\n",
+    bprint("dr7: 0x%016llx\n", p->g_dr7);
+    bprint("cs: %016llx, base: %016llx, limit: %08llx, access: %04llx\n",
         p->g_cs, p->g_cs_base, p->g_cs_limit, p->g_cs_access);
-    bprint("ss: 0x%016llx, base: 0x%016llx limit: 0x%016llx, access: 0x%016llx\n",
+    bprint("ss: %016llx, base: %016llx limit: %08llx, access: %04llx\n",
         p->g_ss, p->g_ss_base, p->g_ss_limit, p->g_ss_access);
-    bprint("ds: 0x%016llx base: 0x%016llx, limit: 0x%016llx access: 0x%016llx\n",
+    bprint("ds: %016llx base: %016llx, limit: %08llx access: %04llx\n",
         p->g_ds, p->g_ds_base, p->g_ds_limit, p->g_ds_access);
 #if 0
     bprint("g_fs: 0x%016llx g_fs_base: 0x%016llx g_fs_limit: 0x%016llx g_fs_access: 0x%016llx\n",
@@ -239,16 +238,16 @@ void vmm_print_vmcs_region(UINT64* pu)
     bprint("g_gs: 0x%016llx g_gs_base: 0x%016llx g_gs_limit: 0x%016llx g_gs_access: 0x%016llx\n",
         p->g_gs, p->g_gs_base, p->g_gs_limit, p->g_gs_access);
 #endif
-    bprint("g_ldtr: 0x%016llx g_ldtr_base: 0x%016llx g_ldtr_limit: 0x%016llx g_ldtr_access: 0x%016llx\n",
+    bprint("ldtr: %016llx, base: %016llx, limit: %08llx, access: %08llx\n",
         p->g_ldtr, p->g_ldtr_base, p->g_ldtr_limit, p->g_ldtr_access);
-    bprint("g_tr: 0x%016llx g_tr_base: 0x%016llx g_tr_limit: 0x%016llx g_tr_access: 0x%016llx\n",
+    bprint("tr: %016llx base: %016llx limit: %08llx access: %04llx\n",
         p->g_tr, p->g_tr_base, p->g_tr_limit, p->g_tr_access);
-    bprint("g_gdtr1: 0x%016llx g_gdtr2: 0x%016llx g_idtr1: 0x%016llx g_idtr2: 0x%016llx\n",
+    bprint("gdtr1: 0x%016llx, gdtr2: 0x%016llx\nidtr1: 0x%016llx, idtr2: 0x%016llx\n",
         p->g_gdtr1, p->g_gdtr2, p->g_idtr1, p->g_idtr2);
-    bprint("g_etpt: 0x%016llx\n", p->g_etpt);
-    bprint("g_controls: 0x%016llx, g_exit_controls: 0x%016llx\n", p->g_controls,
+    bprint("etpt: 0x%016llx\n", p->g_etpt);
+    bprint("pin controls: 0x%016llx, exit controls: 0x%016llx\n", p->g_controls,
            p->g_exit_controls);
-    bprint("g_entry_controls: 0x%016llx\n", p->g_entry_controls);
+    bprint("entry controls: 0x%016llx\n", p->g_entry_controls);
 #if 0
     bprint("g_rsp: 0x%016llx g_rflg2: 0x%016llx\n",
         p->g_rsp, p->g_rflg2);

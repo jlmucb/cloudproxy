@@ -22,12 +22,11 @@
 #include "gdt.h"
 #include "vmm_dbg.h"
 #include "file_codes.h"
+#define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(EM64T_GDT_C)
+#define VMM_ASSERT(__condition) VMM_ASSERT_LOG(EM64T_GDT_C, __condition)
 #ifdef JLMDEBUG
 #include "jlmdebug.h"
 #endif
-
-#define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(EM64T_GDT_C)
-#define VMM_ASSERT(__condition) VMM_ASSERT_LOG(EM64T_GDT_C, __condition)
 
 
 static UINT8 *gdt = NULL;

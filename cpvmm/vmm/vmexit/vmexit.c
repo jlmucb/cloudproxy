@@ -744,7 +744,7 @@ void vmexit_common_handler(void)
     bprint("vmexit_common_handler %d\n", count);
     bprint("guest rip: 0x%016llx, exit reason: 0x%016lx\n", 
             gcpu_read_guestrip(), vmexit_reason());
-    if(count>=0)
+    if(count>0)
         LOOP_FOREVER
 #endif 
     gcpu= scheduler_current_gcpu();

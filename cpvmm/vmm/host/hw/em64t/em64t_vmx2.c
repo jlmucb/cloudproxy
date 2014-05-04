@@ -12,11 +12,9 @@
  * limitations under the License. 
  */
 #include "vmm_defs.h"
-#ifdef JLMDEBUG
-#include "bootstrap_print.h"
-#endif
 #define VMM_NATIVE_VMCALL_SIGNATURE 0x024694D40
 #ifdef JLMDEBUG
+#include "bootstrap_print.h"
 #include "jlmdebug.h"
 
 UINT64   t_vmcs_save_area[128];
@@ -53,14 +51,14 @@ void zero_exit_time(struct VMEXIT_TIME *p)
     p->this_cpu_id= 0ULL;
 }
 
-// temporary hack so we dont loop
-#ifdef JLMDEBUG
-static int count= 0;
-#endif
 
 // Function:    Called upon VMEXIT. Saves GP registers, allocates stack
 //              for C-function and calls it.
 #if 0
+// temporary hack so we dont loop
+#ifdef JLMDEBUG
+static int count= 0;
+#endif
 void vmexit_func()
 {
 #ifdef JLMDEBUG
@@ -83,7 +81,9 @@ void vmexit_func()
     vmexit_common_handler();
 #endif
 }
+
 #else
+
 asm(
 ".text\n"
 ".globl vmexit_func\n"
@@ -93,13 +93,18 @@ asm(
     // call c-function
     // QUESTION for Tom: do need to do this mov to rbp?
     "\tmov    %rsp, %rbp\n"
-    "\tcall    vmexit_common_handler\n"
+    "\tsubq   $8, %rsp\n"  // is this needed?
+    "\tcall   vmexit_common_handler\n"
     "\tjmp    .\n"
     "\tret\n"
 );
 
 #endif
 
+#ifdef JLMDEBUG
+// remove: to prevent loops in single guest testing
+static int count= 0;
+#endif
 void vmentry_func(UINT32 firsttime)
 // Function:    Called upon VMENTRY.
 // Arguments:   firsttime = 1 if called first time
@@ -107,6 +112,8 @@ void vmentry_func(UINT32 firsttime)
 #ifdef JLMDEBUG
     // first time print out vmcs
     if(firsttime) {
+        if(count++>0)
+            LOOP_FOREVER
         bprint("vmentry_func: %d, vmcs area:\n", firsttime);
         vmm_vmcs_guest_state_read((UINT64*) t_vmcs_save_area);
         vmm_print_vmcs_region((UINT64*) t_vmcs_save_area);
@@ -125,7 +132,7 @@ void vmentry_func(UINT32 firsttime)
             "\tpop      %%rdx\n" 
             "\tmovq     %%rdx, %[rflags_arg]\n" 
         :[rflags_arg] "=m" (rflags_arg) 
-        ::"%rdx");
+        ::);  // rdx need not be saved
     } 
     else {  //do_resume
         gcpu_restore_registers();
@@ -140,7 +147,7 @@ void vmentry_func(UINT32 firsttime)
             "\tpop      %%rdx\n" 
             "\tmovq     %%rdx, %[rflags_arg]\n" 
         : [rflags_arg] "=m" (rflags_arg) 
-        ::"%rdx");
+        ::);  // rdx need not be saved
     }               
     vmentry_failure_function(rflags_arg);
 #ifdef JLMDEBUG

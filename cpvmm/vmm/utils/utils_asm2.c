@@ -230,7 +230,7 @@ void vmm_print_vmcs_region(UINT64* pu)
         p->g_cs, p->g_cs_base, p->g_cs_limit, p->g_cs_access);
     bprint("ss: %016llx, base: %016llx limit: %08llx, access: %04llx\n",
         p->g_ss, p->g_ss_base, p->g_ss_limit, p->g_ss_access);
-    bprint("ds: %016llx base: %016llx, limit: %08llx access: %04llx\n",
+    bprint("ds: %016llx, base: %016llx, limit: %08llx access: %04llx\n",
         p->g_ds, p->g_ds_base, p->g_ds_limit, p->g_ds_access);
 #if 0
     bprint("g_fs: 0x%016llx g_fs_base: 0x%016llx g_fs_limit: 0x%016llx g_fs_access: 0x%016llx\n",
@@ -238,12 +238,12 @@ void vmm_print_vmcs_region(UINT64* pu)
     bprint("g_gs: 0x%016llx g_gs_base: 0x%016llx g_gs_limit: 0x%016llx g_gs_access: 0x%016llx\n",
         p->g_gs, p->g_gs_base, p->g_gs_limit, p->g_gs_access);
 #endif
-    bprint("ldtr: %016llx, base: %016llx, limit: %08llx, access: %08llx\n",
+    bprint("ldtr: %016llx, base: %016llx, limit: %08llx, access: %04llx\n",
         p->g_ldtr, p->g_ldtr_base, p->g_ldtr_limit, p->g_ldtr_access);
     bprint("tr: %016llx base: %016llx limit: %08llx access: %04llx\n",
         p->g_tr, p->g_tr_base, p->g_tr_limit, p->g_tr_access);
-    bprint("gdtr1: 0x%016llx, gdtr2: 0x%016llx\nidtr1: 0x%016llx, idtr2: 0x%016llx\n",
-        p->g_gdtr1, p->g_gdtr2, p->g_idtr1, p->g_idtr2);
+    bprint("gdtr1: 0x%016llx, gdtr2: 0x%016llx\n", p->g_gdtr1, p->g_gdtr2);
+    bprint("idtr1: 0x%016llx, idtr2: 0x%016llx\n", p->g_idtr1, p->g_idtr2);
     bprint("etpt: 0x%016llx\n", p->g_etpt);
     bprint("pin controls: 0x%016llx, exit controls: 0x%016llx\n", p->g_controls,
            p->g_exit_controls);

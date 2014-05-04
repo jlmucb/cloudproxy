@@ -312,7 +312,7 @@ void vmm_print_vmcs_region(UINT64* pu)
         p->guest_ldtr, p->guest_ldtr_base, p->guest_ldtr_limit, p->guest_ldtr_access);
 #endif
     bprint("gdtrbase: %016llx, gdtrlimit: 0x%016llx\n", p->guest_gdtr_base, p->guest_gdtr_limit);
-    bprint("idtrbase: 0x%016llx, idtrlimit: 0x%016llx\n", p->g_idtr_base, p->g_idtr_limit);
+    bprint("idtrbase: 0x%016llx, idtrlimit: 0x%016llx\n", p->guest_idtr_base, p->guest_idtr_limit);
     bprint("tr: %016llx base: %016llx limit: %08llx access: %04llx\n",
         p->guest_tr, p->guest_tr_base, p->guest_tr_limit, p->guest_tr_access);
 

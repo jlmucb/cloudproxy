@@ -17,7 +17,7 @@
 #include "bootstrap_print.h"
 #include "jlmdebug.h"
 
-UINT64   t_vmcs_save_area[128];
+UINT64   t_vmcs_save_area[512];  // never bigger than 4KB
 extern void vmm_print_vmcs_region(UINT64* pu);
 extern void vmm_vmcs_guest_state_read(UINT64* area);
 #endif

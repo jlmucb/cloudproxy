@@ -77,9 +77,10 @@ int main(int argc, char **argv) {
   scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
   CHECK(admin.get() != nullptr) << "Could not load configuration";
 
+  int policy = 0;  // TODO(kwalsh) chose policy here
   cloudproxy::FileServer fs(FLAGS_file_path, FLAGS_meta_path, FLAGS_server_keys,
                             FLAGS_acls, FLAGS_address, FLAGS_port,
-                            channel.release(), admin.release());
+                            channel.release(), policy, admin.release());
   CHECK(fs.Init());
 
   LOG(INFO) << "FileServer listening";

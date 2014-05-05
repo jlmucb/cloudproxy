@@ -50,11 +50,12 @@ class HttpsEchoServer {
   /// @param server_keys A directory for server keys and TLS files. If the files
   /// don't yet exist, they will be created (admin must be unlocked in this
   /// case).
-  /// @param secret The secret for encrypting server keys.
+  /// @param channel A connection to the host Tao. Ownership is taken.
+  /// @param policy A seal/unseal policy to use for secret keys.
   /// @param host The name or IP address of the host to bind the server to.
   /// @param port The port to bind the server to.
   HttpsEchoServer(const string &server_config_path, const string &host,
-                  const string &port, tao::TaoChildChannel *channel,
+                  const string &port, tao::TaoChildChannel *channel, int policy,
                   tao::TaoDomain *admin);
 
   /// Start listening to the port and handle connections as they arrive.

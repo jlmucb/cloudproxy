@@ -320,8 +320,7 @@ bool WhitelistAuth::CheckTPM12Quote(const Attestation &a) const {
   SHA1(qinfo, sizeof(qinfo), quote_hash);
   if (RSA_verify(NID_sha1, quote_hash, sizeof(quote_hash),
                  reinterpret_cast<const uint8 *>(a.signature().data()),
-                 a.signature().size(), aik.get()) !=
-      1) {
+                 a.signature().size(), aik.get()) != 1) {
     LOG(ERROR) << "The RSA signature did not pass verification";
     return false;
   }

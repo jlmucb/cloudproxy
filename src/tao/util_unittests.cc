@@ -94,11 +94,12 @@ TEST(TaoUtilTest, SealOrUnsealSecretTest) {
   DirectTaoChildChannel channel(ft.release(), fake_hash);
 
   string secret("Fake secret");
-  EXPECT_TRUE(SealOrUnsealSecret(channel, seal_path, &secret))
+  EXPECT_TRUE(SealOrUnsealSecret(channel, seal_path, &secret, 0 /* policy */))
       << "Could not seal the secret";
 
   string unsealed_secret;
-  EXPECT_TRUE(SealOrUnsealSecret(channel, seal_path, &unsealed_secret))
+  EXPECT_TRUE(
+      SealOrUnsealSecret(channel, seal_path, &unsealed_secret, 0 /* policy */))
       << "Could not unseal the secret";
 
   EXPECT_EQ(secret, unsealed_secret)

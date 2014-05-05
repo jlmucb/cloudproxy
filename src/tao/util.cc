@@ -380,8 +380,9 @@ bool OpenTCPSocket(const string &host, const string &port, int *sock) {
   return true;
 }
 
+// TODO(kwalsh) fix policy hack
 bool MakeSealedSecret(const TaoChildChannel &t, const string &path,
-                      int secret_size, string *secret) {
+                      int secret_size, string *secret, int policy) {
   if (secret == nullptr) {
     LOG(ERROR) << "Could not seal null secret";
     return false;
@@ -391,8 +392,7 @@ bool MakeSealedSecret(const TaoChildChannel &t, const string &path,
     return false;
   }
   string sealed_secret;
-  if (!t.Seal(*secret, Tao::PolicySameProgHash | Tao::PolicySameArgHash,
-              &sealed_secret)) {
+  if (!t.Seal(*secret, policy, &sealed_secret)) {
     LOG(ERROR) << "Can't seal the secret";
     return false;
   }
@@ -409,7 +409,7 @@ bool MakeSealedSecret(const TaoChildChannel &t, const string &path,
 }
 
 bool GetSealedSecret(const TaoChildChannel &t, const string &path,
-                     string *secret) {
+                     string *secret, int *policy) {
   if (secret == nullptr) {
     LOG(ERROR) << "Could not unseal null secret";
     return false;
@@ -419,13 +419,8 @@ bool GetSealedSecret(const TaoChildChannel &t, const string &path,
     LOG(ERROR) << "Can't read the sealed secret from " << path;
     return false;
   }
-  int policy;
-  if (!t.Unseal(sealed_secret, secret, &policy)) {
+  if (!t.Unseal(sealed_secret, secret, policy)) {
     LOG(ERROR) << "Can't unseal the secret";
-    return false;
-  }
-  if (policy != (Tao::PolicySameProgHash | Tao::PolicySameArgHash)) {
-    LOG(ERROR) << "Unsealed data, but providence is uncertain";
     return false;
   }
   VLOG(2) << "Unsealed a secret of size " << secret->size();
@@ -434,12 +429,17 @@ bool GetSealedSecret(const TaoChildChannel &t, const string &path,
 
 // TODO(kwalsh) Remove this function
 bool SealOrUnsealSecret(const TaoChildChannel &t, const string &path,
-                        string *secret) {
+                        string *secret, int policy) {
   if (PathExists(FilePath(path))) {
-    return GetSealedSecret(t, path, secret);
+    int unseal_policy;
+    return GetSealedSecret(t, path, secret, &unseal_policy);
+    if (policy != unseal_policy) {
+      LOG(ERROR) << "Unsealed data, but provenance is uncertain.";
+      return false;
+    }
   } else {
     const int SecretSize = 16;
-    return MakeSealedSecret(t, path, SecretSize, secret);
+    return MakeSealedSecret(t, path, SecretSize, secret, policy);
   }
 }
 

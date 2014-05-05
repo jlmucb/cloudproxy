@@ -989,18 +989,24 @@ bool Keys::InitNonHosted(const string &password) {
   return true;
 }
 
-bool Keys::InitHosted(const TaoChildChannel &channel) {
+bool Keys::InitHosted(const TaoChildChannel &channel, int policy) {
   ScopedSafeString secret(new string());
   if (PathExists(FilePath(SecretPath()))) {
     // Load Tao-protected secret.
-    if (!GetSealedSecret(channel, SecretPath(), secret.get())) {
+    int unseal_policy;
+    if (!GetSealedSecret(channel, SecretPath(), secret.get(), &unseal_policy)) {
       LOG(ERROR) << "Could not unseal a secret using the Tao";
+      return false;
+    }
+    if (unseal_policy != policy) {
+      LOG(ERROR) << "Keys secret was unsealed, but provenance is uncertain";
       return false;
     }
   } else {
     // Generate Tao-protected secret.
     int secret_size = Tao::DefaultRandomSecretSize;
-    if (!MakeSealedSecret(channel, SecretPath(), secret_size, secret.get())) {
+    if (!MakeSealedSecret(channel, SecretPath(), secret_size, secret.get(),
+                          policy)) {
       LOG(ERROR) << "Could not generate and seal a secret using the Tao";
       return false;
     }

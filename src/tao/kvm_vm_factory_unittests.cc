@@ -76,8 +76,9 @@ TEST_F(KvmVmFactoryTest, HashTest) {
   args.push_back(FLAGS_initrd_file);
   args.push_back(FLAGS_disk_file);
   string child_name;
-  EXPECT_TRUE(factory_->GetHostedProgramTentativeName(
-      1234, "test", args, &child_name)) << "Could not hash the program";
+  EXPECT_TRUE(
+      factory_->GetHostedProgramTentativeName(1234, "test", args, &child_name))
+      << "Could not hash the program";
 }
 
 TEST_F(KvmVmFactoryTest, CreationTest) {

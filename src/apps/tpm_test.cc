@@ -64,7 +64,11 @@ int main(int argc, char **argv) {
   TSS_RESULT result;
   TSS_HKEY srk = 0;
   TSS_HPOLICY srk_policy = 0;
-  TSS_UUID srk_uuid = {0x00000000, 0x0000, 0x0000, 0x00, 0x00,
+  TSS_UUID srk_uuid = {0x00000000,
+                       0x0000,
+                       0x0000,
+                       0x00,
+                       0x00,
                        {0x00, 0x00, 0x00, 0x00, 0x00, 0x01}};
   BYTE secret[20];
 
@@ -112,9 +116,9 @@ int main(int argc, char **argv) {
 
   // Create a fresh key for the sealing operation
   TSS_HKEY seal_key;
-  UINT32 key_flags =
-      TSS_KEY_TYPE_STORAGE | TSS_KEY_SIZE_2048 | TSS_KEY_VOLATILE |
-      TSS_KEY_AUTHORIZATION | TSS_KEY_NOT_MIGRATABLE;
+  UINT32 key_flags = TSS_KEY_TYPE_STORAGE | TSS_KEY_SIZE_2048 |
+                     TSS_KEY_VOLATILE | TSS_KEY_AUTHORIZATION |
+                     TSS_KEY_NOT_MIGRATABLE;
   result = Tspi_Context_CreateObject(tss_ctx, TSS_OBJECT_TYPE_RSAKEY, key_flags,
                                      &seal_key);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not create a new sealing key object";
@@ -194,8 +198,9 @@ int main(int argc, char **argv) {
 
   // The following code for setting up the composite hash is based on
   // aikquote.c, the sample AIK quote code.
-  scoped_array<BYTE> serialized_pcrs(new BYTE[
-      sizeof(UINT16) + pcr_mask_len + sizeof(UINT32) + PCR_LEN * pcr_max]);
+  scoped_array<BYTE> serialized_pcrs(
+      new BYTE[sizeof(UINT16) + pcr_mask_len + sizeof(UINT32) +
+               PCR_LEN * pcr_max]);
 
   // So, the format is:
   // UINT16: size of pcr mask (in network byte order)
@@ -251,8 +256,7 @@ int main(int argc, char **argv) {
   SHA1(pcr_buf, index, pcr_digest);
 
   if (memcmp(pcr_digest, quote_info->compositeHash.digest,
-             sizeof(pcr_digest)) !=
-      0) {
+             sizeof(pcr_digest)) != 0) {
     // aikquote.c here says "Try with a smaller digest length". I don't know
     // why. This code removes one of the bytes in the pcr mask and shifts
     // everything over to account for the difference, then hashes and tries
@@ -264,8 +268,7 @@ int main(int argc, char **argv) {
     index -= 1;
     SHA1(pcr_buf, index, pcr_digest);
     if (memcmp(pcr_digest, quote_info->compositeHash.digest,
-               sizeof(pcr_digest)) !=
-        0) {
+               sizeof(pcr_digest)) != 0) {
       LOG(FATAL) << "Neither size of hash input worked";
       return 1;
     }
@@ -315,7 +318,8 @@ int main(int argc, char **argv) {
   UINT32 sig_len = valid.ulValidationDataLength;
   CHECK_EQ(RSA_verify(NID_sha1, quote_hash, sizeof(quote_hash), sig, sig_len,
                       aik_rsa),
-           1) << "The RSA signature did not pass verification";
+           1)
+      << "The RSA signature did not pass verification";
 
   // Clean-up code.
   result = Tspi_Context_FreeMemory(tss_ctx, nullptr);

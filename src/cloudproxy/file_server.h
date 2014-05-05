@@ -43,12 +43,13 @@ class FileServer : public CloudServer {
   /// @param host The name or IP address of the host to bind the server to.
   /// @param port The port to bind the server to.
   /// @param channel A connection to the host Tao. Ownership is taken.
+  /// @param policy A seal/unseal policy to use for secret keys.
   /// @param admin The configuration for this administrative domain. Ownership
   /// is taken
   FileServer(const string &file_path, const string &meta_path,
              const string &server_config_path, const string &acl_location,
              const string &host, const string &port,
-             tao::TaoChildChannel *channel, tao::TaoDomain *admin);
+             tao::TaoChildChannel *channel, int policy, tao::TaoDomain *admin);
   virtual bool Init();
   virtual ~FileServer() {}
 

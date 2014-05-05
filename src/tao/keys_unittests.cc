@@ -75,7 +75,7 @@ TEST_F(TaoKeysTest, GenerateHostedKeysTest) {
   string fake_hash("fake hash");
   DirectTaoChildChannel channel(ft.release(), fake_hash);
 
-  EXPECT_TRUE(keys_->InitHosted(channel));
+  EXPECT_TRUE(keys_->InitHosted(channel, 0 /* policy */));
   EXPECT_TRUE(keys_->Verifier() != nullptr);
   EXPECT_TRUE(keys_->Signer() != nullptr);
   EXPECT_TRUE(keys_->Crypter() != nullptr);

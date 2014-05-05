@@ -36,10 +36,11 @@ class FileClient : public CloudClient {
   /// other than file_path have the same semantics as in CloudClient.
   /// @param file_path The path to the files managed by this client.
   /// @param client_config_path A directory to use for keys and TLS files.
-  /// @param secret A string to use for a encrypting private keys.
+  /// @param channel A connection to the host Tao. Ownership is taken.
+  /// @param policy A seal/unseal policy to use for secret keys.
   /// @param admin The configuration for this administrative domain.
   FileClient(const string &file_path, const string &client_config_path,
-             tao::TaoChildChannel *channel, tao::TaoDomain *admin);
+             tao::TaoChildChannel *channel, int policy, tao::TaoDomain *admin);
   virtual bool Init();
   virtual ~FileClient() {}
 

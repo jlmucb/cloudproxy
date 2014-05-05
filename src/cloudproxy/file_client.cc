@@ -34,8 +34,10 @@ namespace cloudproxy {
 
 FileClient::FileClient(const string &file_path,
                        const string &client_config_path,
-                       tao::TaoChildChannel *channel, tao::TaoDomain *admin)
-    : CloudClient(client_config_path, channel, admin), file_path_(file_path) {}
+                       tao::TaoChildChannel *channel, int policy,
+                       tao::TaoDomain *admin)
+    : CloudClient(client_config_path, channel, policy, admin),
+      file_path_(file_path) {}
 
 bool FileClient::Init() {
   if (!CloudClient::Init()) {

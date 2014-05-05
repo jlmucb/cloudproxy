@@ -84,8 +84,9 @@ int main(int argc, char** argv) {
   scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
   CHECK(admin.get() != nullptr) << "Could not load configuration";
 
+  int policy = 0;  // TODO(kwalsh) chose policy here
   cloudproxy::FileClient fc(FLAGS_file_path, FLAGS_client_keys,
-                            channel.release(), admin.release());
+                            channel.release(), policy, admin.release());
   CHECK(fc.Init());
 
   ScopedSSL ssl;

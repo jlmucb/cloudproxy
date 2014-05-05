@@ -68,7 +68,6 @@ bool KvmVmFactory::Init() {
 bool KvmVmFactory::GetHostedProgramTentativeName(
     int id, const string &path, const list<string> &args,
     string *tentative_child_name) const {
-
   if (args.size() != 4) {
     LOG(ERROR) << "Wrong number of arguments for creating VM";
     return false;
@@ -152,9 +151,9 @@ bool KvmVmFactory::CreateHostedProgram(int id, const string &name,
 
   // The final + 1 is due to the final null byte. This is larger than needed,
   // since snprintf removes the %s that gets replaced each time.
-  size_t formatted_size =
-      vmspec.size() + name.size() + kernel.size() + initrd.size() +
-      encoded_params.size() + disk.size() + path.size() + 1;
+  size_t formatted_size = vmspec.size() + name.size() + kernel.size() +
+                          initrd.size() + encoded_params.size() + disk.size() +
+                          path.size() + 1;
 
   scoped_array<char> buf(new char[formatted_size]);
   int count = snprintf(buf.get(), formatted_size, vmspec.c_str(), name.c_str(),

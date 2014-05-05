@@ -50,10 +50,11 @@ TEST(CloudProxyUtilTest, X509SSLTest) {
 
   scoped_ptr<Keys> key(new Keys(*temp_dir, "test client key", Keys::Signing));
   ASSERT_TRUE(key->InitNonHosted("dummy_password"));
-  string details = "country: \"US\" "
-                   "state: \"Washington\" "
-                   "organization: \"Google\" "
-                   "commonname: \"testclient\"";
+  string details =
+      "country: \"US\" "
+      "state: \"Washington\" "
+      "organization: \"Google\" "
+      "commonname: \"testclient\"";
   ASSERT_TRUE(key->CreateSelfSignedX509(details));
 
   ScopedSSLCtx ctx;

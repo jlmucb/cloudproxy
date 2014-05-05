@@ -87,7 +87,8 @@ int main(int argc, char** argv) {
   CHECK(channel->GetRandomBytes(size, &name_bytes))
       << "Could not get a random name from the Tao";
 
-  CloudClient cc(FLAGS_client_keys, channel.release(), admin.release());
+  int policy = 0;  // TODO(kwalsh) chose policy here
+  CloudClient cc(FLAGS_client_keys, channel.release(), policy, admin.release());
   CHECK(cc.Init());
 
   ScopedSSL ssl;

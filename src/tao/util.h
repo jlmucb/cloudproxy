@@ -202,15 +202,17 @@ string DebugString(const Statement &stmt);
 /// @param path The location to store the sealed secret.
 /// @param secret_size The number of random bytes for the new secret.
 /// @param[out] secret The new random secret.
+/// @param policy A seal/unseal policy under which to seal the secret.
 bool MakeSealedSecret(const TaoChildChannel &t, const string &path,
-                      int secret_size, string *secret);
+                      int secret_size, string *secret, int policy);
 
 /// Read and unseal a secret that is sealed against the host Tao.
 /// @param t The channel to access the host Tao.
 /// @param path The location to store the sealed secret.
 /// @param secret[out] The unsealed secret.
+/// @param policy[out] The policy under which the secret had been sealed.
 bool GetSealedSecret(const TaoChildChannel &t, const string &path,
-                     string *secret);
+                     string *secret, int *policy);
 
 /// Read and unseal a secret that is sealed against the host Tao, if possible.
 /// Otherwise, if the file does not exist, generate and save a new random sealed
@@ -218,9 +220,10 @@ bool GetSealedSecret(const TaoChildChannel &t, const string &path,
 /// @param t The channel to access the host Tao.
 /// @param path The location to read or store the sealed secret.
 /// @param secret[out] The unsealed or new random secret.
+/// @param policy A seal/unseal policy for this secret.
 /// TODO(kwalsh) Delete this: bad semantics, and all existing uses are bugs.
 bool SealOrUnsealSecret(const TaoChildChannel &t, const string &path,
-                        string *secret);
+                        string *secret, int policy);
 
 /// Receive a protobuf message on a file descriptor.
 /// @param fd The file descriptor to read.

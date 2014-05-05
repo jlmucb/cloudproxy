@@ -54,7 +54,14 @@ bool LinuxTao::Init() {
     LOG(ERROR) << "Could not initialize the host channel";
     return false;
   }
-  if (!keys_->InitHosted(*host_channel_)) {
+  if (!host_channel_->GetHostedProgramFullName(&full_name_)) {
+    LOG(ERROR) << "Could not obtain our own name from host channel";
+    return false;
+  }
+  int policy = 0;
+  VLOG(0) << "linux tao is named " << full_name_;
+  policy = LinuxTao::PolicySameProgHash | LinuxTao::PolicySameArgHash;
+  if (!keys_->InitHosted(*host_channel_, policy)) {
     LOG(ERROR) << "Could not initialize keys";
     return false;
   }
@@ -66,11 +73,6 @@ bool LinuxTao::Init() {
   }
   if (!ReadFileToString(keys_->AttestationPath(), &attestation_)) {
     LOG(ERROR) << "Could not load attestation for signing key";
-    return false;
-  }
-
-  if (!host_channel_->GetHostedProgramFullName(&full_name_)) {
-    LOG(ERROR) << "Could not obtain our own name from host channel";
     return false;
   }
 

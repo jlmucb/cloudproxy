@@ -51,8 +51,9 @@ FileServer::FileServer(const string &file_path, const string &meta_path,
                        const string &server_config_path,
                        const string &acl_location, const string &host,
                        const string &port, tao::TaoChildChannel *channel,
-                       tao::TaoDomain *admin)
-    : CloudServer(server_config_path, acl_location, host, port, channel, admin),
+                       int policy, tao::TaoDomain *admin)
+    : CloudServer(server_config_path, acl_location, host, port, channel, policy,
+                  admin),
       main_key_(new Keys(server_config_path, "file_server", Keys::KeyDeriving)),
       enc_key_(new string()),
       hmac_key_(new string()),
@@ -64,7 +65,7 @@ bool FileServer::Init() {
     LOG(ERROR) << "Could not initialize file cloud server";
     return false;
   }
-  if (!main_key_->InitHosted(*host_channel_)) {
+  if (!main_key_->InitHosted(*host_channel_, seal_key_policy_)) {
     LOG(ERROR) << "Could not initialize file server key-deriving key";
     return false;
   }

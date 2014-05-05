@@ -56,10 +56,11 @@ class CloudClient {
   /// Create a CloudClient.
   /// @param client_config_path A directory to use for keys and TLS files.
   /// @param channel A channel to access the host Tao. Ownership is taken.
+  /// @param policy A seal/unseal policy to use for secret keys.
   /// @param admin The configuration for this administrative domain. Ownership
   /// is taken.
   CloudClient(const string &client_config_path, tao::TaoChildChannel *channel,
-              tao::TaoDomain *admin);
+              int policy, tao::TaoDomain *admin);
   virtual bool Init();
   virtual ~CloudClient() {}
 
@@ -158,6 +159,9 @@ class CloudClient {
 
   /// A connection to the host Tao.
   scoped_ptr<tao::TaoChildChannel> host_channel_;
+
+  /// Seal policy for secret keys.
+  int seal_key_policy_;
 
   /// A signing key.
   scoped_ptr<tao::Keys> keys_;

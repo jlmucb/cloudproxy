@@ -61,24 +61,25 @@ namespace cloudproxy {
 
 HttpsEchoServer::HttpsEchoServer(const string &server_config_path,
                                  const string &host, const string &port,
-                                 TaoChildChannel *channel, TaoDomain *admin)
+                                 TaoChildChannel *channel, int policy,
+                                 TaoDomain *admin)
     : admin_(admin),
       rand_(keyczar::CryptoFactory::Rand()),
       host_(host),
       port_(port),
       host_channel_(channel),
       keys_(new Keys(server_config_path, "https echo server", Keys::Signing)) {
-
   // FIXME(kwalsh) merge most of this with CloudServer
-  CHECK(keys_->InitHosted(*host_channel_))
+  CHECK(keys_->InitHosted(*host_channel_, policy))
       << "Could not initialize HttpsEchoServer keys";
 
   // TODO(kwalsh) x509 details should come from elsewhere
   if (keys_->HasFreshKeys()) {
-    string details = "country: \"US\" "
-                     "state: \"Washington\" "
-                     "organization: \"Google\" "
-                     "commonname: \"127.0.0.1\"";
+    string details =
+        "country: \"US\" "
+        "state: \"Washington\" "
+        "organization: \"Google\" "
+        "commonname: \"127.0.0.1\"";
     if (!GetTaoCAX509Chain(details)) {
       LOG(ERROR) << "Could not get x509 chain";
       CHECK(false);

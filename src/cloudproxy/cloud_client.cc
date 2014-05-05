@@ -45,24 +45,27 @@ namespace cloudproxy {
 
 // TODO(kwalsh) move work to Init().
 CloudClient::CloudClient(const string &client_config_path,
-                         tao::TaoChildChannel *channel, tao::TaoDomain *admin)
+                         tao::TaoChildChannel *channel, int policy,
+                         tao::TaoDomain *admin)
     : admin_(admin),
       users_(new CloudUserManager()),
       host_channel_(channel),
+      seal_key_policy_(policy),
       keys_(new Keys(client_config_path, "cloudclient", Keys::Signing)) {}
 
 bool CloudClient::Init() {
-  if (!keys_->InitHosted(*host_channel_)) {
+  if (!keys_->InitHosted(*host_channel_, seal_key_policy_)) {
     LOG(ERROR) << "Could not initialize CloudClient keys";
     return false;
   }
 
   // TODO(kwalsh) x509 details should come from elsewhere
   if (keys_->HasFreshKeys()) {
-    string details = "country: \"US\" "
-                     "state: \"Washington\" "
-                     "organization: \"Google\" "
-                     "commonname: \"cloudclient\"";
+    string details =
+        "country: \"US\" "
+        "state: \"Washington\" "
+        "organization: \"Google\" "
+        "commonname: \"cloudclient\"";
     if (!keys_->CreateSelfSignedX509(details)) {
       LOG(ERROR) << "Could not generate self-signed x509";
       return false;

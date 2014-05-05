@@ -70,8 +70,11 @@ int main(int argc, char **argv) {
   scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
   if (admin.get() == nullptr) return 1;
 
+  // TODO(kwalsh) chose a good policy here
+  int policy = 0;
+
   cloudproxy::HttpsEchoServer shes(FLAGS_server_keys, FLAGS_address, FLAGS_port,
-                                   channel.release(), admin.release());
+                                   channel.release(), policy, admin.release());
 
   LOG(INFO) << "HttpsEchoServer listening on " << FLAGS_address << ":"
             << FLAGS_port;

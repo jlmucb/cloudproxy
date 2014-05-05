@@ -56,8 +56,9 @@ DEFINE_string(state, "Washington", "x509 State for a new configuration");
 DEFINE_string(org, "(not really) Google",
               "x509 Organization for a new configuration");
 
-DEFINE_string(whitelist, "", "Comma separated list of program or "
-                             "hash:alg:name values to whitelist");
+DEFINE_string(whitelist, "",
+              "Comma separated list of program or "
+              "hash:alg:name values to whitelist");
 DEFINE_bool(refresh, false,
             "Remove old whitelist entries before adding new ones");
 
@@ -156,8 +157,8 @@ int main(int argc, char **argv) {
     VLOG(0) << "  name: " << admin->GetName();
     VLOG(0) << "  policy key: ";
     VLOG(0) << "    public: " << admin->GetPolicyKeys()->SigningPublicKeyPath();
-    VLOG(0)
-        << "    private: " << admin->GetPolicyKeys()->SigningPrivateKeyPath();
+    VLOG(0) << "    private: "
+            << admin->GetPolicyKeys()->SigningPrivateKeyPath();
     VLOG(0) << "  tao ca: " << admin->GetTaoCAHost() << ":"
             << admin->GetTaoCAPort();
     VLOG(0) << "  auth type: " << admin->GetAuthType();

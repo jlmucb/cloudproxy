@@ -50,7 +50,11 @@ TPMTaoChildChannel::TPMTaoChildChannel(const string &aik_blob,
 
 bool TPMTaoChildChannel::Init() {
   TSS_RESULT result;
-  TSS_UUID srk_uuid = {0x00000000, 0x0000, 0x0000, 0x00, 0x00,
+  TSS_UUID srk_uuid = {0x00000000,
+                       0x0000,
+                       0x0000,
+                       0x00,
+                       0x00,
                        {0x00, 0x00, 0x00, 0x00, 0x00, 0x01}};
   BYTE secret[20];
 
@@ -252,8 +256,9 @@ bool TPMTaoChildChannel::Attest(const string &data, string *attestation) const {
 
   // The following code for setting up the composite hash is based on
   // aikquote.c, the sample AIK quote code.
-  scoped_array<BYTE> serialized_pcrs(new BYTE[
-      sizeof(UINT16) + pcr_mask_len_ + sizeof(UINT32) + PcrLen * pcr_max_]);
+  scoped_array<BYTE> serialized_pcrs(
+      new BYTE[sizeof(UINT16) + pcr_mask_len_ + sizeof(UINT32) +
+               PcrLen * pcr_max_]);
 
   // The Quote format is:
   // UINT16: size of pcr mask (in network byte order)
@@ -332,8 +337,7 @@ bool TPMTaoChildChannel::Attest(const string &data, string *attestation) const {
   SHA1(pcr_buf, index, pcr_digest);
 
   if (memcmp(pcr_digest, quote_info->compositeHash.digest,
-             sizeof(pcr_digest)) !=
-      0) {
+             sizeof(pcr_digest)) != 0) {
     // aikquote.c here says "Try with a smaller digest length". I don't know
     // why. This code removes one of the bytes in the pcr mask and shifts
     // everything over to account for the difference, then hashes and tries
@@ -350,8 +354,7 @@ bool TPMTaoChildChannel::Attest(const string &data, string *attestation) const {
     index -= 1;
     SHA1(pcr_buf, index, pcr_digest);
     if (memcmp(pcr_digest, quote_info->compositeHash.digest,
-               sizeof(pcr_digest)) !=
-        0) {
+               sizeof(pcr_digest)) != 0) {
       LOG(ERROR) << "Neither size of hash input worked for Quote computation";
       return 1;
     }

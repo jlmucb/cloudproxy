@@ -204,7 +204,8 @@ TEST_F(WhitelistAuthTest, TPMQuoteTest) {
   scoped_array<BYTE> sig(new BYTE[sig_len]);
   ASSERT_EQ(RSA_sign(NID_sha1, quote_hash, sizeof(quote_hash), sig.get(),
                      &sig_len, rsa.get()),
-            1) << "Could not sign the message";
+            1)
+      << "Could not sign the message";
 
   string signature(reinterpret_cast<char *>(sig.get()), sig_len);
   a.set_signature(signature);

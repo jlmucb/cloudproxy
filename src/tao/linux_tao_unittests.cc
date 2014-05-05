@@ -69,9 +69,9 @@ class LinuxTaoTest : public ::testing::Test {
     Base64WEncode(test_binary_proghash, &test_binary_progdigest);
     string test_binary_argdigest =
         "47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU";
-    test_binary_name_ =
-        "Program(1, \"" + test_binary_path_ + "\", \"" +
-        test_binary_progdigest + "\", \"" + test_binary_argdigest + "\")";
+    test_binary_name_ = "Program(1, \"" + test_binary_path_ + "\", \"" +
+                        test_binary_progdigest + "\", \"" +
+                        test_binary_argdigest + "\")";
 
     scoped_ptr<FakeTao> ft(new FakeTao());
     ASSERT_TRUE(ft->InitTemporaryTPM()) << "Could not init the FakeTao";
@@ -93,9 +93,9 @@ class LinuxTaoTest : public ::testing::Test {
     ASSERT_TRUE(
         admin->Authorize(fake_linux_tao_hash, TaoAuth::FakeHash, "LinuxTao"));
 
-    tao_.reset(
-        new LinuxTao(keys_path, channel.release(), child_channel.release(),
-                     program_factory.release(), admin.release()));
+    tao_.reset(new LinuxTao(keys_path, channel.release(),
+                            child_channel.release(), program_factory.release(),
+                            admin.release()));
     ASSERT_TRUE(tao_->Init());
   }
 

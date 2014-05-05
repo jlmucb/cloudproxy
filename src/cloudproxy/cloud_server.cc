@@ -57,8 +57,9 @@ namespace cloudproxy {
 CloudServer::CloudServer(const string &server_config_path,
                          const string &acl_location, const string &host,
                          const string &port, TaoChildChannel *channel,
-                         TaoDomain *admin)
+                         int policy, TaoDomain *admin)
     : host_channel_(channel),
+      seal_key_policy_(policy),
       admin_(admin),
       rand_(keyczar::CryptoFactory::Rand()),
       host_(host),
@@ -69,16 +70,17 @@ CloudServer::CloudServer(const string &server_config_path,
       keys_(new Keys(server_config_path, "cloudserver", Keys::Signing)) {}
 
 bool CloudServer::Init() {
-  if (!keys_->InitHosted(*host_channel_)) {
+  if (!keys_->InitHosted(*host_channel_, seal_key_policy_)) {
     LOG(ERROR) << "Could not initialize CloudServer keys";
     return false;
   }
   // TODO(kwalsh) x509 details should come from elsewhere
   if (keys_->HasFreshKeys()) {
-    string details = "country: \"US\" "
-                     "state: \"Washington\" "
-                     "organization: \"Google\" "
-                     "commonname: \"cloudserver\"";
+    string details =
+        "country: \"US\" "
+        "state: \"Washington\" "
+        "organization: \"Google\" "
+        "commonname: \"cloudserver\"";
     if (!keys_->CreateSelfSignedX509(details)) {
       LOG(ERROR) << "Could not create self signed x509";
       return false;

@@ -43,7 +43,6 @@ namespace tao {
 bool ProcessFactory::GetHostedProgramTentativeName(
     int id, const string &path, const list<string> &args,
     string *tentative_child_name) const {
-
   // TODO(kwalsh) Nice toc-tou error here...
   string program_buf;
   if (!ReadFileToString(path, &program_buf)) {

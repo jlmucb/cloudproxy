@@ -58,8 +58,9 @@ DEFINE_string(aik_attestation, "tpm/aik.attest",
 DEFINE_bool(use_tpm, true, "Whether or not to use the TPM Tao");
 DEFINE_string(linux_hash, "FAKE_PCRS",
               "The hash of the Linux OS for the DirectTaoChildChannel");
-DEFINE_string(fake_keys, "./fake_tpm", "Directory containing signing_key and "
-                                       "sealing_key to use with the fake tao");
+DEFINE_string(fake_keys, "./fake_tpm",
+              "Directory containing signing_key and "
+              "sealing_key to use with the fake tao");
 DEFINE_bool(ignore_seal_hashes, false,
             "Whether or not to ignore hashes during unseal operations");
 

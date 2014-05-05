@@ -53,7 +53,11 @@ int main(int argc, char **argv) {
   TSS_RESULT result;
   TSS_HKEY srk = 0;
   TSS_HPOLICY srk_policy = 0;
-  TSS_UUID srk_uuid = {0x00000000, 0x0000, 0x0000, 0x00, 0x00,
+  TSS_UUID srk_uuid = {0x00000000,
+                       0x0000,
+                       0x0000,
+                       0x00,
+                       0x00,
                        {0x00, 0x00, 0x00, 0x00, 0x00, 0x01}};
   BYTE secret[20];
 

@@ -101,10 +101,50 @@ asm(
 
 #endif
 
+
 #ifdef JLMDEBUG
 // remove: to prevent loops in single guest testing
 static int count= 0;
+
+asm(
+".text\n"
+".globl loop_forever\n"
+".type loop_forever, @function\n"
+"loop_forever:\n"
+    "\tjmp   .\n"
+    "\tret\n"
+);
+
+
+extern int vmx_vmread(UINT64 index, UINT64 *value);
+extern int vmx_vmwrite(UINT64 index, UINT64 value);
+// fixup control registers and make guest loop forever
+void fixupvmcs()
+{
+    UINT64  value;
+    void loop_forever();
+    UINT16* loop= loop_forever;
+
+    vmx_vmread(0x681e, &value);  // guest_rip
+    *((UINT16*) value)= *loop;    // feeb
+
+    vmx_vmread(0x4000, &value);  // vmx_pin_controls
+    // vmx_vmwrite(0x4000, value);  // vmx_pin_controls
+
+    vmx_vmread(0x4002, &value);  // vmx_cpu_controls)
+    // vmx_vmwrite(0x4002, value);  // vmx_cpu_controls)
+
+    vmx_vmread(0x4012, &value);  // vmx_entry_controls
+    // vmx_vmwrite(0x4012, value);  // vmx_entry_controls
+
+    vmx_vmread(0x4002, &value);  // vmx_exit_controls
+    // vmx_vmwrite(0x4002, value);  // vmx_exit_controls
+}
+
+
 #endif
+
+
 void vmentry_func(UINT32 firsttime)
 // Function:    Called upon VMENTRY.
 // Arguments:   firsttime = 1 if called first time
@@ -112,6 +152,7 @@ void vmentry_func(UINT32 firsttime)
 #ifdef JLMDEBUG
     // first time print out vmcs
     if(firsttime) {
+        fixupvmcs();
         if(count++>0)
             LOOP_FOREVER
         bprint("vmentry_func: %d, vmcs area:\n", firsttime);

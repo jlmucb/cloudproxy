@@ -49,6 +49,7 @@ class FileServer : public CloudServer {
              const string &server_config_path, const string &acl_location,
              const string &host, const string &port,
              tao::TaoChildChannel *channel, tao::TaoDomain *admin);
+  virtual bool Init();
   virtual ~FileServer() {}
 
   constexpr static auto ObjectMetadataSigningContext =

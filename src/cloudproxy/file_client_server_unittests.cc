@@ -94,6 +94,7 @@ class FileClientTest : public ::testing::Test {
         client_file_path_, client_keys,
         new DirectTaoChildChannel(fake_tao->DeepCopy(), "Test hash 1"),
         admin_->DeepCopy()));
+    ASSERT_TRUE(file_client_->Init());
 
     // set up file server
     string server_keys = *temp_dir_ + string("/server_keys");
@@ -136,6 +137,7 @@ class FileClientTest : public ::testing::Test {
         server_addr, server_port,
         new DirectTaoChildChannel(fake_tao.release(), "Test hash 2"),
         admin_->DeepCopy()));
+    ASSERT_TRUE(file_server_->Init());
 
     server_thread_.reset(new thread(&FileServer::Listen, file_server_.get(),
                                     true /* stop after one connection */));

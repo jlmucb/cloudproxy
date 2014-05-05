@@ -40,6 +40,7 @@ class FileClient : public CloudClient {
   /// @param admin The configuration for this administrative domain.
   FileClient(const string &file_path, const string &client_config_path,
              tao::TaoChildChannel *channel, tao::TaoDomain *admin);
+  virtual bool Init();
   virtual ~FileClient() {}
 
   /// Create a file on a FileServer.

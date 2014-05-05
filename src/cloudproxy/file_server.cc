@@ -57,27 +57,43 @@ FileServer::FileServer(const string &file_path, const string &meta_path,
       enc_key_(new string()),
       hmac_key_(new string()),
       file_path_(file_path),
-      meta_path_(meta_path) {
+      meta_path_(meta_path) {}
 
-  CHECK(main_key_->InitHosted(*channel))
-      << "Could not initialize file server key-deriving key";
-
+bool FileServer::Init() {
+  if (!CloudServer::Init()) {
+    LOG(ERROR) << "Could not initialize file cloud server";
+    return false;
+  }
+  if (!main_key_->InitHosted(*host_channel_)) {
+    LOG(ERROR) << "Could not initialize file server key-deriving key";
+    return false;
+  }
   // check to see if these paths actually exist
   struct stat st;
-  CHECK_EQ(stat(file_path_.c_str(), &st), 0) << "Could not stat the directory "
-                                             << file_path_;
-  CHECK(S_ISDIR(st.st_mode)) << "The path " << file_path_
-                             << " is not a directory";
-
-  CHECK_EQ(stat(meta_path_.c_str(), &st), 0) << "Could not stat the directory "
-                                             << meta_path_;
-  CHECK(S_ISDIR(st.st_mode)) << "The path " << meta_path_
-                             << " is not a directory";
-
+  if (stat(file_path_.c_str(), &st) != 0) {
+    LOG(ERROR) << "Could not stat the directory " << file_path_;
+    return false;
+  }
+  if (!S_ISDIR(st.st_mode)) {
+    LOG(ERROR) << "The path " << file_path_ << " is not a directory";
+    return false;
+  }
+  if (stat(meta_path_.c_str(), &st) != 0) {
+    LOG(ERROR) << "Could not stat the directory " << meta_path_;
+    return false;
+  }
+  if (!S_ISDIR(st.st_mode)) {
+    LOG(ERROR) << "The path " << meta_path_ << " is not a directory";
+    return false;
+  }
   // generate derived keys
-  CHECK(main_key_->DeriveKey("encryption", AesKeySize, enc_key_.get()) &&
-        main_key_->DeriveKey("hmac", HmacKeySize, hmac_key_.get()))
-      << "Could not derive enc and hmac keys for authenticated encryption";
+  if (!main_key_->DeriveKey("encryption", AesKeySize, enc_key_.get()) ||
+      !main_key_->DeriveKey("hmac", HmacKeySize, hmac_key_.get())) {
+    LOG(ERROR)
+        << "Could not derive enc and hmac keys for authenticated encryption";
+    return false;
+  }
+  return true;
 }
 
 bool FileServer::HandleCreate(const Action &action, SSL *ssl, string *reason,

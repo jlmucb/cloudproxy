@@ -60,7 +60,7 @@ class CloudClient {
   /// is taken.
   CloudClient(const string &client_config_path, tao::TaoChildChannel *channel,
               tao::TaoDomain *admin);
-
+  virtual bool Init();
   virtual ~CloudClient() {}
 
   /// Connect to a server.

@@ -88,6 +88,7 @@ int main(int argc, char** argv) {
       << "Could not get a random name from the Tao";
 
   CloudClient cc(FLAGS_client_keys, channel.release(), admin.release());
+  CHECK(cc.Init());
 
   ScopedSSL ssl;
   CHECK(cc.Connect(FLAGS_address, FLAGS_port, &ssl))

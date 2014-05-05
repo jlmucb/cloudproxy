@@ -58,34 +58,42 @@ CloudServer::CloudServer(const string &server_config_path,
                          const string &acl_location, const string &host,
                          const string &port, TaoChildChannel *channel,
                          TaoDomain *admin)
-    : admin_(admin),
+    : host_channel_(channel),
+      admin_(admin),
       rand_(keyczar::CryptoFactory::Rand()),
       host_(host),
       port_(port),
-      auth_(),
+      auth_(new CloudAuth(acl_location, admin_->GetPolicyVerifier())),
       users_(new CloudUserManager()),
       objects_(),
-      host_channel_(channel),
-      keys_(new Keys(server_config_path, "cloudserver", Keys::Signing)) {
+      keys_(new Keys(server_config_path, "cloudserver", Keys::Signing)) {}
 
-  auth_.reset(new CloudAuth(acl_location, admin_->GetPolicyVerifier()));
-
-  CHECK(keys_->InitHosted(*host_channel_))
-      << "Could not initialize CloudServer keys";
-
+bool CloudServer::Init() {
+  if (!keys_->InitHosted(*host_channel_)) {
+    LOG(ERROR) << "Could not initialize CloudServer keys";
+    return false;
+  }
   // TODO(kwalsh) x509 details should come from elsewhere
   if (keys_->HasFreshKeys()) {
     string details = "country: \"US\" "
                      "state: \"Washington\" "
                      "organization: \"Google\" "
                      "commonname: \"cloudserver\"";
-    CHECK(keys_->CreateSelfSignedX509(details));
+    if (!keys_->CreateSelfSignedX509(details)) {
+      LOG(ERROR) << "Could not create self signed x509";
+      return false;
+    }
   }
-
   // set up the SSL context and SSLs for getting client connections
-  CHECK(SetUpSSLServerCtx(*keys_, &context_)) << "Could not set up server TLS";
-
-  CHECK(rand_->Init()) << "Could not initialize the random-number generator";
+  if (!SetUpSSLServerCtx(*keys_, &context_)) {
+    LOG(ERROR) << "Could not set up server TLS";
+    return false;
+  }
+  if (!rand_->Init()) {
+    LOG(ERROR) << "Could not initialize the random-number generator";
+    return false;
+  }
+  return true;
 }
 
 bool CloudServer::Listen(bool single_channel) {

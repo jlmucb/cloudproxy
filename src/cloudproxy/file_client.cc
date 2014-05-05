@@ -35,10 +35,23 @@ namespace cloudproxy {
 FileClient::FileClient(const string &file_path,
                        const string &client_config_path,
                        tao::TaoChildChannel *channel, tao::TaoDomain *admin)
-    : CloudClient(client_config_path, channel, admin), file_path_(file_path) {
+    : CloudClient(client_config_path, channel, admin), file_path_(file_path) {}
+
+bool FileClient::Init() {
+  if (!CloudClient::Init()) {
+    LOG(ERROR) << "Could not initialize file cloud client";
+    return false;
+  }
   struct stat st;
-  CHECK_EQ(stat(file_path.c_str(), &st), 0) << file_path << " does not exist";
-  CHECK(S_ISDIR(st.st_mode)) << file_path << " is not a directory";
+  if (stat(file_path_.c_str(), &st) != 0) {
+    LOG(ERROR) << file_path_ << " does not exist";
+    return false;
+  }
+  if (!S_ISDIR(st.st_mode)) {
+    LOG(ERROR) << file_path_ << " is not a directory";
+    return false;
+  }
+  return true;
 }
 
 bool FileClient::Create(SSL *ssl, const string &owner,

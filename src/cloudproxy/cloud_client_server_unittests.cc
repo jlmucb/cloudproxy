@@ -81,6 +81,7 @@ class CloudClientTest : public ::testing::Test {
         client_keys,
         new DirectTaoChildChannel(fake_tao->DeepCopy(), "Test hash 1"),
         admin_->DeepCopy()));
+    ASSERT_TRUE(cloud_client_->Init());
 
     // set up cloud server
     string server_keys = *temp_dir_ + string("/server_keys");
@@ -116,6 +117,7 @@ class CloudClientTest : public ::testing::Test {
         server_keys, signed_acl_path, server_addr, server_port,
         new DirectTaoChildChannel(fake_tao.release(), "Test hash 2"),
         admin_->DeepCopy()));
+    ASSERT_TRUE(cloud_server_->Init());
 
     server_thread_.reset(new thread(&CloudServer::Listen, cloud_server_.get(),
                                     true /* stop after one connection */));

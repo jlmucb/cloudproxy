@@ -49,10 +49,13 @@ CloudClient::CloudClient(const string &client_config_path,
     : admin_(admin),
       users_(new CloudUserManager()),
       host_channel_(channel),
-      keys_(new Keys(client_config_path, "cloudclient", Keys::Signing)) {
+      keys_(new Keys(client_config_path, "cloudclient", Keys::Signing)) {}
 
-  CHECK(keys_->InitHosted(*host_channel_))
-      << "Could not initialize CloudClient keys";
+bool CloudClient::Init() {
+  if (!keys_->InitHosted(*host_channel_)) {
+    LOG(ERROR) << "Could not initialize CloudClient keys";
+    return false;
+  }
 
   // TODO(kwalsh) x509 details should come from elsewhere
   if (keys_->HasFreshKeys()) {
@@ -60,11 +63,18 @@ CloudClient::CloudClient(const string &client_config_path,
                      "state: \"Washington\" "
                      "organization: \"Google\" "
                      "commonname: \"cloudclient\"";
-    CHECK(keys_->CreateSelfSignedX509(details));
+    if (!keys_->CreateSelfSignedX509(details)) {
+      LOG(ERROR) << "Could not generate self-signed x509";
+      return false;
+    }
   }
 
   // set up the TLS connection with the cert and keys and trust DB
-  CHECK(SetUpSSLClientCtx(*keys_, &context_));
+  if (!SetUpSSLClientCtx(*keys_, &context_)) {
+    LOG(ERROR) << "Could not set up ssl client context";
+    return false;
+  }
+  return true;
 }
 
 bool CloudClient::Connect(const string &server, const string &port,

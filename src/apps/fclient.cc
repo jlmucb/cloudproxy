@@ -86,6 +86,7 @@ int main(int argc, char** argv) {
 
   cloudproxy::FileClient fc(FLAGS_file_path, FLAGS_client_keys,
                             channel.release(), admin.release());
+  CHECK(fc.Init());
 
   ScopedSSL ssl;
   CHECK(fc.Connect(FLAGS_address, FLAGS_port, &ssl))

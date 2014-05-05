@@ -66,6 +66,7 @@ class CloudServer {
   CloudServer(const string &server_config_path, const string &acl_location,
               const string &host, const string &port,
               tao::TaoChildChannel *channel, tao::TaoDomain *admin);
+  virtual bool Init();
   virtual ~CloudServer() {}
 
   /// Start listening to the port and handle connections as they arrive.
@@ -122,6 +123,10 @@ class CloudServer {
   /// @param success The success value to communicate in the reply.
   /// @param reason The reason for failure, if the action failed.
   bool SendReply(SSL *ssl, bool success, const string &reason);
+
+ protected:
+  /// A connection to the host Tao.
+  scoped_ptr<tao::TaoChildChannel> host_channel_;
 
  private:
   /// Configuration for this administrative domain
@@ -189,9 +194,6 @@ class CloudServer {
 
   /// A simple object management tool: a set of object names.
   set<string> objects_;
-
-  /// A connection to the host Tao.
-  scoped_ptr<tao::TaoChildChannel> host_channel_;
 
   /// A signing key.
   scoped_ptr<tao::Keys> keys_;

@@ -82,6 +82,7 @@ int main(int argc, char **argv) {
 
   CloudServer cs(FLAGS_server_keys, FLAGS_acls, FLAGS_address, FLAGS_port,
                  channel.release(), admin.release());
+  CHECK(cs.Init());
 
   LOG(INFO) << "CloudServer listening";
   CHECK(cs.Listen(false /* not single_channel */))

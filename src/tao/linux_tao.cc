@@ -176,7 +176,7 @@ bool LinuxTao::Seal(const string &child_name, const string &data, int policy,
     lock_guard<mutex> l(data_m_);
     auto child_it = running_children_.find(child_name);
     if (running_children_.end() == child_it) {
-      LOG(ERROR) << child_name << "is not executing";
+      LOG(ERROR) << child_name << " is not executing";
       return false;
     }
   }

@@ -955,14 +955,14 @@ string quotedString(const string &s) {
 stringstream &getQuotedString(stringstream &in, string *s) {  // NOLINT
   stringstream out;
   char c;
-  while ((in >> c) && (c == ' ' || c == '\t')) {
+  while (in.get(c) && (c == ' ' || c == '\t')) {
   }
   if (!in || c != '\"') {
     in.setstate(std::ios::failbit);
     return in;
   }
   bool escape = false;
-  while (!(in >> c)) {
+  while (in.get(c)) {
     if (!escape) {
       if (c == '\"') {
         s->assign(out.str());
@@ -989,7 +989,7 @@ stringstream &getQuotedString(stringstream &in, string *s) {  // NOLINT
 stringstream &skip(stringstream &in, const string &s) {  // NOLINT
   for (unsigned int i = 0; in && i < s.size(); i++) {
     char c;
-    in >> c;
+    in.get(c);
     if (c != s[i]) in.setstate(std::ios::failbit);
   }
   return in;

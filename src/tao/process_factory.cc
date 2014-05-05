@@ -175,7 +175,9 @@ bool ProcessFactory::ParseChildName(string child_name, int *id, string *path,
   getQuotedString(in, arg_hash);
   skip(in, ")");
 
-  if (in && in.str() != "") {
+  string remaining;
+  if (in && getline(in, remaining, '\0') && in && remaining != "") {
+    in.str(remaining);
     skip(in, "::");
     skip(in, "PID(");
     int i;
@@ -188,14 +190,16 @@ bool ProcessFactory::ParseChildName(string child_name, int *id, string *path,
     pid->assign("");
   }
 
-  if (in && in.str() != "") {
+  if (in && getline(in, remaining, '\0') && in && remaining != "") {
+    in.str(remaining);
     skip(in, "::");
-    subprin->assign(in.str());
+    getline(in, remaining, '\0');
+    subprin->assign(remaining);
   } else {
     subprin->assign("");
   }
 
-  if (!in) {
+  if (in.bad()) {
     LOG(ERROR) << "Bad child name: " << child_name;
     return false;
   }

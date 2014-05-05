@@ -20,7 +20,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <keyczar/base/file_util.h>
+#include <keyczar/base/base64w.h>
 #include <keyczar/base/values.h>
 
 #include "tao/direct_tao_child_channel.h"
@@ -33,7 +33,7 @@
 #include "tao/tao_domain.h"
 #include "tao/util.h"
 
-using keyczar::base::WriteStringToFile;
+using keyczar::base::Base64WEncode;
 
 using tao::DirectTaoChildChannel;
 using tao::FakeProgramFactory;
@@ -64,11 +64,12 @@ class LinuxTaoTest : public ::testing::Test {
 
     test_binary_path_ = FLAGS_program;
 
-    string test_binary_progdigest;
-    ASSERT_TRUE(Sha256FileHash(test_binary_path_, &test_binary_progdigest));
+    string test_binary_proghash, test_binary_progdigest;
+    ASSERT_TRUE(Sha256FileHash(test_binary_path_, &test_binary_proghash));
+    Base64WEncode(test_binary_proghash, &test_binary_progdigest);
     string test_binary_argdigest =
         "47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU";
-    string test_binary_name_ =
+    test_binary_name_ =
         "Program(1, \"" + test_binary_path_ + "\", \"" +
         test_binary_progdigest + "\", \"" + test_binary_argdigest + "\")";
 

@@ -116,7 +116,8 @@ TEST(TaoUtilTest, SendAndReceiveMessageTest) {
   EXPECT_TRUE(SendMessage(fd[1], tccp)) << "Could not send the message";
 
   TaoChildChannelParams received_tccp;
-  EXPECT_TRUE(ReceiveMessage(fd[0], &received_tccp))
+  bool eof;
+  EXPECT_TRUE(ReceiveMessage(fd[0], &received_tccp, &eof) && !eof)
       << "Could not receive the message";
 
   EXPECT_EQ(received_tccp.params(), tccp.params())

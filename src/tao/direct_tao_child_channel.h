@@ -56,7 +56,10 @@ class DirectTaoChildChannel : public TaoChildChannel {
 
  protected:
   virtual bool SendRPC(const TaoChildRequest &rpc) const { return false; }
-  virtual bool ReceiveRPC(TaoChildResponse *resp) const { return false; }
+  virtual bool ReceiveRPC(TaoChildResponse *resp, bool *eof) const {
+    *eof = false;
+    return false;
+  }
 
  private:
   // The underlying Tao object to call.

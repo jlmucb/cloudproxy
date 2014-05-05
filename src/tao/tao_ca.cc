@@ -60,8 +60,13 @@ bool TaoCA::SendRequest(const TaoCARequest &req, TaoCAResponse *resp) {
     LOG(ERROR) << "Could not send to TaoCAServer " << host << ":" << port;
     return false;
   }
-  if (!tao::ReceiveMessage(*sock, resp)) {
-    LOG(ERROR) << "Could not receive from TaoCAServer " << host << ":" << port;
+  bool eof;
+  if (!tao::ReceiveMessage(*sock, resp, &eof) || eof) {
+    if (eof)
+      LOG(ERROR) << "Unexpected disconnect TaoCAServer " << host << ":" << port;
+    else
+      LOG(ERROR) << "Could not receive from TaoCAServer " << host << ":"
+                 << port;
     return false;
   }
   if (resp->type() != TAO_CA_RESPONSE_SUCCESS) {

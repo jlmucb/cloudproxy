@@ -50,8 +50,8 @@ class UnixFdTaoChildChannel : public TaoChildChannel {
     return SendMessage(writefd_, rpc);
   }
 
-  bool ReceiveRPC(TaoChildResponse *resp) const {
-    return ReceiveMessage(readfd_, resp);
+  bool ReceiveRPC(TaoChildResponse *resp, bool *eof) const {
+    return ReceiveMessage(readfd_, resp, eof);
   }
 
   /// File descriptor for writing to host Tao.

@@ -29,8 +29,12 @@ bool TaoAdminChannel::Shutdown() const {
   TaoAdminRequest rpc;
   rpc.set_rpc(TAO_ADMIN_RPC_SHUTDOWN);
   TaoAdminResponse resp;
-  if (!SendRPC(rpc) || !ReceiveRPC(&resp)) {
-    LOG(ERROR) << "RPC on admin channel failed";
+  bool eof;
+  if (!SendRPC(rpc) || !ReceiveRPC(&resp, &eof) || eof) {
+    if (eof)
+      LOG(ERROR) << "Unexpected disconnect from admin channel";
+    else
+      LOG(ERROR) << "RPC on admin channel failed";
     return false;
   }
   if (!resp.success()) {
@@ -52,8 +56,12 @@ bool TaoAdminChannel::StartHostedProgram(const string &path,
   }
 
   TaoAdminResponse resp;
-  if (!SendRPC(rpc) || !ReceiveRPC(&resp)) {
-    LOG(ERROR) << "RPC on admin channel failed";
+  bool eof;
+  if (!SendRPC(rpc) || !ReceiveRPC(&resp, &eof) || eof) {
+    if (eof)
+      LOG(ERROR) << "Unexpected disconnect from admin channel";
+    else
+      LOG(ERROR) << "RPC on admin channel failed";
     return false;
   }
   if (!resp.success()) {
@@ -75,8 +83,12 @@ bool TaoAdminChannel::RemoveHostedProgram(const string &child_name) const {
   rpc.set_data(child_name);
 
   TaoAdminResponse resp;
-  if (!SendRPC(rpc) || !ReceiveRPC(&resp)) {
-    LOG(ERROR) << "RPC on admin channel failed";
+  bool eof;
+  if (!SendRPC(rpc) || !ReceiveRPC(&resp, &eof) || eof) {
+    if (eof)
+      LOG(ERROR) << "Unexpected disconnect from admin channel";
+    else
+      LOG(ERROR) << "RPC on admin channel failed";
     return false;
   }
   if (!resp.success()) {
@@ -91,8 +103,12 @@ bool TaoAdminChannel::GetTaoFullName(string *tao_name) const {
   rpc.set_rpc(TAO_ADMIN_RPC_GET_TAO_FULL_NAME);
 
   TaoAdminResponse resp;
-  if (!SendRPC(rpc) || !ReceiveRPC(&resp)) {
-    LOG(ERROR) << "RPC on admin channel failed";
+  bool eof;
+  if (!SendRPC(rpc) || !ReceiveRPC(&resp, &eof) || eof) {
+    if (eof)
+      LOG(ERROR) << "Unexpected disconnect from admin channel";
+    else
+      LOG(ERROR) << "RPC on admin channel failed";
     return false;
   }
   if (!resp.success()) {

@@ -117,9 +117,11 @@ bool TaoCAServer::Listen() {
     for (int fd : descriptors_) {
       if (FD_ISSET(fd, &read_fds)) {
         TaoCARequest req;
-        if (!ReceiveMessage(fd, &req)) {
-          LOG(ERROR)
-              << "Could not receive a TaoCAServer request from the socket";
+        bool eof;
+        if (!ReceiveMessage(fd, &req, &eof) || eof) {
+          if (!eof)
+            LOG(ERROR)
+                << "Could not receive a TaoCAServer request from the socket";
           sockets_to_close.push_back(fd);
           continue;
         }

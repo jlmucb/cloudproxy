@@ -130,11 +130,14 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
         TaoChildRequest rpc;
         TaoChildResponse resp;
         string child_name = original_child_name;
-        if (!tao::ReceiveMessage(read_fd, &rpc) ||
+        bool eof;
+        if (!tao::ReceiveMessage(read_fd, &rpc, &eof) || eof ||
             !HandleChildRPC(tao, &child_name, rpc, &resp) ||
             !tao::SendMessage(write_fd, resp)) {
           tao->RemoveHostedProgram(child_name);
-          LOG(ERROR) << "Error handling RPC for child " << original_child_name;
+          if (!eof)
+            LOG(ERROR) << "Error handling RPC for child "
+                       << original_child_name;
           failed_child.push_back(it);
         } else if (child_name != original_child_name) {
           child_extends.push_back(make_pair(original_child_name, child_name));
@@ -153,7 +156,7 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
       const string &child_name = it.first;
       int read_fd = it.second.first;
       int write_fd = it.second.second;
-      LOG(ERROR) << "Closing channel to child " << child_name;
+      LOG(INFO) << "Closing channel to child " << child_name;
       // TODO(kwalsh) close fds here?
       close(read_fd);
       close(write_fd);
@@ -166,10 +169,11 @@ bool UnixFdTaoChannel::Listen(Tao *tao) {
       if (FD_ISSET(fd, &read_fds)) {
         TaoAdminRequest rpc;
         TaoAdminResponse resp;
-        if (!tao::ReceiveMessage(fd, &rpc) ||
+        bool eof;
+        if (!tao::ReceiveMessage(fd, &rpc, &eof) || eof ||
             !HandleAdminRPC(tao, rpc, &resp, &graceful_shutdown) ||
             !tao::SendMessage(fd, resp)) {
-          LOG(ERROR) << "Error handling admin RPC on channel " << fd;
+          if (!eof) LOG(ERROR) << "Error handling admin RPC on channel " << fd;
           failed_socket.push_back(fd);
         }
       }

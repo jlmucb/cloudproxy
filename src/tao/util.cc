@@ -540,11 +540,13 @@ bool ReceiveMessageFrom(int fd, google::protobuf::Message *m,
 }
 
 // TODO(kwalsh) move cloudproxy ReceivePartialData functions here and use them
-bool ReceiveMessage(int fd, google::protobuf::Message *m) {
+bool ReceiveMessage(int fd, google::protobuf::Message *m, bool *eof) {
   if (m == nullptr) {
     LOG(ERROR) << "null message";
     return false;
   }
+
+  *eof = false;
 
   // Some channels don't return all the bytes you request when you request them.
   // TODO(tmroeder): change this implementation to support select better so it
@@ -566,8 +568,9 @@ bool ReceiveMessage(int fd, google::protobuf::Message *m) {
 
     if (rv == 0) {
       // end of file, which can happen on some fds
-      LOG(ERROR) << "Got an end-of-file message on the fd";
-      return false;
+      LOG(INFO) << "Got an end-of-file message on the fd";
+      *eof = true;
+      return true;
     }
 
     bytes_read += rv;

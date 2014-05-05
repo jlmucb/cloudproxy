@@ -68,8 +68,9 @@ class TaoAdminChannel {
   virtual bool SendRPC(const TaoAdminRequest &rpc) const = 0;
 
   /// Receive an RPC response from the Tao.
-  /// @param resp The response received.
-  virtual bool ReceiveRPC(TaoAdminResponse *resp) const = 0;
+  /// @param[out] resp The response received.
+  /// @param[out] eof Set to true if end of stream reached.
+  virtual bool ReceiveRPC(TaoAdminResponse *resp, bool *eof) const = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TaoAdminChannel);

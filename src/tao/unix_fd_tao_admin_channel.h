@@ -48,8 +48,8 @@ class UnixFdTaoAdminChannel : public TaoAdminChannel {
   virtual bool SendRPC(const TaoAdminRequest &rpc) const {
     return SendMessage(writefd_, rpc);
   }
-  virtual bool ReceiveRPC(TaoAdminResponse *resp) const {
-    return ReceiveMessage(readfd_, resp);
+  virtual bool ReceiveRPC(TaoAdminResponse *resp, bool *eof) const {
+    return ReceiveMessage(readfd_, resp, eof);
   }
 
   int readfd_;

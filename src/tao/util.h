@@ -228,7 +228,8 @@ bool SealOrUnsealSecret(const TaoChildChannel &t, const string &path,
 /// Receive a protobuf message on a file descriptor.
 /// @param fd The file descriptor to read.
 /// @param[out] m The received message.
-bool ReceiveMessage(int fd, google::protobuf::Message *m);
+/// @param[out] eof Set to true if end of stream is reached.
+bool ReceiveMessage(int fd, google::protobuf::Message *m, bool *eof);
 
 /// Send a protobuf message on a file descriptor.
 /// @param fd The file descriptor to write.

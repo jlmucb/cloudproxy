@@ -67,10 +67,12 @@ bool TaoChannel::HandleChildRPC(Tao *tao, string *child_name,
       success = tao->GetHostedProgramFullName(*child_name, &result_data);
       VLOG(0) << "got " << success << " for full name, " << *child_name
               << " --> " << result_data;
+      break;
     case TAO_CHILD_RPC_EXTEND_NAME:
       // TODO(kwalsh) Check well-formedness of rpc.data() as a subprin name
       success = tao->ExtendName(child_name, rpc.data());
       success = true;
+      break;
     default:
       LOG(ERROR) << "Unknown RPC " << rpc.rpc();
       break;

@@ -493,11 +493,11 @@ void hw_store_fence(void)
     return;
 }
 
-// CHECK(JLM)
+
 INT32 hw_interlocked_compare_exchange(INT32 volatile * destination,
-                                       INT32 expected, INT32 comperand)
+                                      INT32 expected, INT32 comperand)
 {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("expected: %d, new: %d --- ", expected, comperand);
 #endif
     INT32 old = *destination;

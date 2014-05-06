@@ -571,6 +571,7 @@ typedef scoped_ptr_malloc<
     BIGNUM, keyczar::openssl::OSSLDestroyer<BIGNUM, BN_clear_free> >
     ScopedSecretBIGNUM;
 
+// TODO(kwalsh) pem_key should be evp_key here.
 static bool ExportKeysetToOpenSSL(const Keyset &keyset, bool include_private,
                                   ScopedEvpPkey *pem_key) {
   // Note: Much of this function is adapted from code in
@@ -1040,7 +1041,9 @@ bool Keys::InitHosted(const TaoChildChannel &channel, int policy) {
 //                                        DSA, EVP_PKEY_free>> ScopedDsa;
 
 bool Keys::SignerUniqueID(string *identifier) const {
-  // We use base64w encoded pubic signing key.
+  // TODO(kwalsh) This should use SerializePublicKey(), not openssl nonsense.
+  // We use format Key("..K..") where "..K.." is them PEM-encoded public key.
+#if 0
   tao::ScopedEvpPkey pem_key;
   if (!ExportSignerToOpenSSL(&pem_key)) {
     LOG(ERROR) << "Could not export signing key to openssl";
@@ -1067,14 +1070,19 @@ bool Keys::SignerUniqueID(string *identifier) const {
     return false;
   }
 
+  string key_id;
   string key_data(key_bytes.get(), len);
-  // string hash;
-  // if (!Sha256(key_data, &hash)) {
-  //  LOG(ERROR) << "Can't compute hash of public signing key";
-  //  return false;
-  // }
-  // return Base64WEncode(hash, identifier);
-  return Base64WEncode(key_data, identifier);
+  Base64WEncode(key_data, &key_id);
+#endif  // 0
+  string key_data, key_text;
+  if (!SerializePublicKey(&key_data) || !Base64WEncode(key_data, &key_text)) {
+    LOG(ERROR) << "Could not serialize public signing key";
+    return false;
+  }
+  stringstream out;
+  out << "Key(" << quotedString(key_text) << ")";
+  identifier->assign(out.str());
+  return true;
 }
 
 string Keys::GetPath(const string &suffix) const {

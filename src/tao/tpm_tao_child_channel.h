@@ -66,6 +66,13 @@ class TPMTaoChildChannel : public TaoChildChannel {
   virtual bool GetHostedProgramFullName(string *full_name) const;
   virtual bool ExtendName(const string &subprin) const;
 
+  /// Verify a TPM-generated quote signature.
+  /// @param v A keyczar verifier representing the TPM public AIK.
+  /// @param data The serialized Statement message that was signed.
+  /// @param sig The signature to be verified.
+  static bool VerifySignature(const Verifier &v, const string &stmt,
+                              const string &sig);
+
  protected:
   virtual bool SendRPC(const TaoChildRequest &rpc) const { return false; }
   virtual bool ReceiveRPC(TaoChildResponse *resp, bool *eof) const {

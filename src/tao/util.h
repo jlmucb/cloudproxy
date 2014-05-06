@@ -39,9 +39,6 @@ class Message;
 }  // namespace google
 
 namespace tao {
-class Attestation;
-class Keys;
-class Statement;
 class TaoChildChannel;
 class TaoChildChannelRegistry;
 class TaoDomain;
@@ -176,35 +173,6 @@ bool OpenSSLSuccess();
 /// @param port The port to listen on.
 /// @param[out] sock The socket opened for this port.
 bool OpenTCPSocket(const string &host, const string &port, int *sock);
-
-/// Generate a signed ROOT or INTERMEDIATE key-to-name binding attestation.
-/// @param key The signing key, i.e. the principal attesting to this binding.
-/// @param delegation A serialized Attestation to provide evidence that the
-/// signing key speaks for the name being bound, or evidence if no evidence is
-/// needed (i.e. if the name is a equal to or a subprincipal of the signing
-/// key).
-/// @param pem_key. The key being bound, serialized in PEM format.
-/// @param name. The name to which the key is being bound.
-/// @param[out] attestation The signed attestation.
-/// Note: Reasonable default values will be chosen for the expiration and
-/// timestamp.
-bool AttestKeyNameBinding(const Keys &key, const string &delegation,
-                          const string &pem_key, const string &name,
-                          string *attestation);
-
-/// Extract the name part of a key-to-name binding attestation.
-/// @param attestation The attestation, which is assumed to be valid (no
-/// signature or structural checks are done).
-/// @param[out] name The name part of the binding.
-bool GetNameFromKeyNameBinding(const string &attestation, string *name);
-
-/// Generate a pretty-printed representation of an Attestation.
-/// @param a The attestation to pretty-print.
-string DebugString(const Attestation &a);
-
-/// Generate a pretty-printed representation of a Statement.
-/// @param s The statement to pretty-print.
-string DebugString(const Statement &s);
 
 /// Generate and save a random secret, sealed against the host Tao.
 /// @param t The channel to access the host Tao.

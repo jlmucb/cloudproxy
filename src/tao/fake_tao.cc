@@ -118,15 +118,7 @@ bool FakeTao::GetTaoFullName(string *tao_name) {
 }
 
 bool FakeTao::GetLocalName(string *name) {
-  string key_id;
-  if (!keys_->SignerUniqueID(&key_id)) {
-    LOG(ERROR) << "Could not create Tao full name";
-    return false;
-  }
-  stringstream out;
-  out << "Key(" << quotedString(key_id) << ")";
-  name->assign(out.str());
-  return true;
+  return keys_->SignerUniqueID(&key_id);
 }
 
 bool FakeTao::GetPolicyName(string *name) {

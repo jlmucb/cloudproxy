@@ -36,6 +36,7 @@
 using std::stringstream;
 
 using keyczar::base::Base64WEncode;
+using keyczar::base::Base64WDecode;
 
 namespace tao {
 TPMTaoChildChannel::TPMTaoChildChannel(const string &aik_blob,
@@ -160,6 +161,157 @@ bool TPMTaoChildChannel::Init() {
   return true;
 }
 
+bool TPMTaoChildChannel::VerifySignature(const Verifier &v, const string &stmt,
+                            const string &sig) {
+  ScopedEvpPkey evp_key;
+  if (!ExportPublicKeyToOpenSSL(v, &evp_key)) {
+    LOG(ERROR) << "Could not export key to openssl format";
+    return false;
+  }
+  ScopedRsa rsa_key(EVP_PKEY_get1_RSA(evp_key.get()));
+  if (!rsa_key.get()) {
+    LOG(ERROR) << "Key was not expected (RSA) type."
+    return false;
+  }
+  Statement s;
+  if (!s.ParseFromString(stmt)) {
+    LOG(ERROR) << "Could not parse statement";
+    return false;
+  }
+  // Extract PCR info from name in the statement
+  string aik_name;
+  if (!GetLocalName(&aik_name)) {
+    LOG(ERROR) << "Could not get aik name";
+    return false;
+  }
+  string child_name = stmt.name();
+  stringstream in(child_name);
+  skip(in, aik_name);
+  skip(in, "::");
+  skip(in, "PCRs(");
+  string pcr_index_list, pcr_value_list;
+  getQuotedString(in, &pcr_index_list);
+  skip(in, ", ");
+  getQuotedString(in, &pcr_value_list);
+  skip(in, ")");
+  if (!in || !in.str().empty()) {
+    LOG(ERROR) << "Bad child name in TPM quote statement";
+    return false;
+  }
+  list <UINT32> pcr_indexes;
+  in.str(pcr_index_list);
+  int max_pcr = 0;
+  bool first = true;
+  while (in && !in.str().empty()) {
+    if (!first)
+      skip(in, ", ");
+    first = false;
+    UINT32 idx;
+    in >> idx;
+    pcr_indexes.push_back(idx);
+    max_pcr = (idx > max_pcr ? idx : max_pcr);
+  }
+  if (!in) {
+    LOG(ERROR) << "Bad PCR index list in TPM quote statement";
+    return false;
+  }
+  list <string> pcr_values;
+  in.str(pcr_value_list);
+  first = true;
+  while (in && !in.str().empty()) {
+    if (!first)
+      skip(in, ", ");
+    first = false;
+    string value;
+    getQuotedString(in, &value);
+    pcr_values.push_back(value);
+  }
+  if (!in || pcr_values.size(_ != pcr_indexes.size())) {
+    LOG(ERROR) << "Bad PCR value list in TPM quote statement";
+    return false;
+  }
+
+  // Hash the statement for the external data part of the quote.
+  uint8 stmt_hash[20];
+  SHA1(reinterpret_cast<const uint8 *>(stmt.data()), stmt.size, stmt_hash);
+
+  // Reconstruct pcrbuf
+
+  // Serialized PCR format is:
+  // UINT16: size of pcr mask (in network byte order)
+  // BYTES: pcr mask
+  // UINT32: size of serialized pcrs
+  // BYTES: serialized pcrs
+  int pcr_mask_len_min = (pcr_max + 7) / 8;
+  pcr_mask_len_min = pcr_mask_len_min < 3 ? 3 : pcr_mask_len_min;
+
+  // Try with minimal mask, then try larger mask.
+  for (int i = 0; i < 2; i++) {
+    int pcr_mask_len = pcr_mask_len_min + i;
+
+    scoped_array<BYTE> serialized_pcrs(
+        new BYTE[sizeof(UINT16) + pcr_mask_len_ + sizeof(UINT32) +
+                 PcrLen * pcr_values.size()]);
+    BYTE *pcr_buf = serialized_pcrs.get();
+    UINT32 index = 0;
+
+    // Size of pcr mask.
+    *(UINT16 *)(pcr_buf + index) = htons(pcr_mask_len);
+    index += sizeof(UINT16);
+    memset(pcr_buf + index, 0, pcr_mask_len);
+
+    // Set the appropriate bits for the PCRs.
+    for (UINT32 idx : pcr_indexes) {
+      pcr_buf[index + (idx / 8)] |= 1 << (idx % 8);
+    }
+    index += pcr_mask_len;
+
+    // Size of the set of PCR values.
+    *(UINT32 *)(pcr_buf + index) = htonl(PcrLen * pcr_values.size());
+    index += sizeof(UINT32);
+
+    // Set the PCR values.
+    for (auto &pcr_info : pcr_values) {
+      string pcr;
+      if (!Base64WDecode(pcr_info, &pcr) || pcr.size() != PcrLen) {
+        LOG(ERROR) << "Bad PCR encoded in TPM quote";
+        return false;
+      }
+      memcpy(pcr_buf + index, pcr, PcrLen);
+      index += PcrLen;
+    }
+
+    // Hash the pcrbuf for the internal data part of the quote.
+    uint8 pcr_hash[20];
+    SHA1(pcr_buf, index, pcr_hash);
+
+    // The quote signature can be verified in a qinfo, which has a header of 8
+    // bytes, and two hashes.  The first hash is the hash of the external data,
+    // and the second is the hash of the quote itself. This can be hashed and
+    // verified directly using the key.
+
+    uint8 qinfo[8 + 20 + 20];
+    memcpy(qinfo, "\x1\x1\0\0QUOT", 8);  // 1 1 0 0 Q U O T
+    memcpy(qinfo + 8, pcr_hash, 20);
+    memcpy(qinfo + 8 + 20, stmt_hash, 20);
+
+    uint8 quote_hash[20];
+    SHA1(qinfo, sizeof(qinfo), quote_hash);
+
+    if (1 == RSA_verify(NID_sha1, quote_hash, 20,
+                        reinterpret_cast<const uint8 *>(sig.data()), sig.size(),
+                        rsa.get())) {
+      return true;
+    }
+    LOG(INFO) << "The RSA signature did not pass verification with mask size "
+              << pcr_mask_len;
+  }
+  LOG(ERROR) << "The RSA signature did not pass verification";
+  return false;
+}
+
+// TODO(kwalsh) This file could use some love
+
 bool TPMTaoChildChannel::Destroy() {
   // Clean-up code.
   TSS_RESULT result;
@@ -256,16 +408,15 @@ bool TPMTaoChildChannel::Attest(const string &pem_key, string *attestation) cons
 
   // The following code for setting up the composite hash is based on
   // aikquote.c, the sample AIK quote code.
-  scoped_array<BYTE> serialized_pcrs(
-      new BYTE[sizeof(UINT16) + pcr_mask_len_ + sizeof(UINT32) +
-               PcrLen * pcr_max_]);
 
-  // The Quote format is:
+  // Serialized PCR format is:
   // UINT16: size of pcr mask (in network byte order)
-  // pcr mask
+  // BYTES: pcr mask
   // UINT32: size of serialized pcrs
-  // serialized pcrs
+  // BYTES: serialized pcrs
 
+  scoped_array<BYTE> serialized_pcrs(new BYTE[
+      sizeof(UINT16) + pcr_mask_len_ + sizeof(UINT32) + PcrLen * pcr_max_]);
   BYTE *pcr_buf = serialized_pcrs.get();
   UINT32 index = 0;
 
@@ -456,10 +607,10 @@ bool TPMTaoChildChannel::GetHostedProgramFullName(string *full_name) const {
   out << aik_name;
   
   // now get the pcrs
-  out << "::PCRs(\"17 18\",\"";
-  list<UINT32> pcrs_to_seal{17, 18};
+  out << "::PCRs(\"17, 18\",\"";
+  list<UINT32> pcrs_to_quote{17, 18};
   bool first = true;
-  for (UINT32 pcr_val : pcrs_to_seal) {
+  for (UINT32 pcr_val : pcrs_to_quote) {
     BYTE *temp_pcr;
     UINT32 temp_pcr_len;
     result = Tspi_PcrComposite_GetPcrValue(seal_pcrs_, pcr_val, &temp_pcr_len,
@@ -469,7 +620,7 @@ bool TPMTaoChildChannel::GetHostedProgramFullName(string *full_name) const {
     string pcr((char *)temp_pcr, temp_pcr_len);
     string pcr_info;
     Base64WEncode(pcr, &pcr_info);
-    if (!first) out << " ";
+    if (!first) out << ", ";
     out << pcr_info;
 
     Tspi_Context_FreeMemory(tss_ctx_, temp_pcr);

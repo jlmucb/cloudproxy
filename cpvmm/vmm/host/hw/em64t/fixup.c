@@ -57,14 +57,14 @@ void fixupvmcs()
 
     // was 3e, cruse has 16
     vmx_vmread(0x4000, &value);  // vmx_pin_controls
-    value= 0x16;
-    vmx_vmwrite(0x4000, value);  // vmx_pin_controls
+    // value= 0x16;
+    // vmx_vmwrite(0x4000, value);  // vmx_pin_controls
 
     // was 96006172, cruse has 401e172
     vmx_vmread(0x4002, &value);  // vmx_cpu_controls
-    value= 0x80016172;           // can't figure out anything to change here
+    //value= 0x80016172;         // can't figure out anything to change here
     //value= 0x96006172;         // can't figure out anything to change here
-    vmx_vmwrite(0x4002, value);  // vmx_cpu_controls
+    //vmx_vmwrite(0x4002, value);  // vmx_cpu_controls
 
     vmx_vmread(0x401e, &value);  // vmx_secondary_controls
     value= 0x8a;                 // no vpid

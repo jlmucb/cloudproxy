@@ -284,6 +284,13 @@ typedef struct VMCS_SAVED_REGION {
     UINT64  host_tr_base;
     UINT64  host_gdtr_base;
     UINT64  host_idtr_base;
+
+    // msr index is 0x38d(?)
+    UINT64  guest_perf_ctrl;    // 0x2808
+    UINT64  guest_perf_high;    // 0x2809
+    UINT64  host_perf_ctrl;	// 0x2c04
+    UINT64  host_perf_high;	// 0x2c06
+
 } PACKED VMCS_SAVED_REGION;
 
 

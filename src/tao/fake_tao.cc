@@ -77,19 +77,19 @@ bool FakeTao::InitPseudoTPM(const string &keys_path, const TaoDomain &admin) {
   }
   string attestation_path = keys_->AttestationPath();
   if (!keys_->HasFreshKeys()) {
-    VLOG(2) << "Fake tao: Using attestation " << attestation_path;
-    if (!ReadFileToString(attestation_path, &attestation_)) {
-      LOG(ERROR) << "Could not load attestation";
+    VLOG(2) << "Fake tao: Using policy attestation " << attestation_path;
+    if (!ReadFileToString(attestation_path, &policy_attestation_)) {
+      LOG(ERROR) << "Could not load policy attestation";
       return false;
     }
   } else {
-    VLOG(2) << "Fake tao: Creating attestation " << attestation_path;
+    VLOG(2) << "Fake tao: Creating policy attestation " << attestation_path;
     if (!MakePolicyAttestation(admin)) {
-      LOG(ERROR) << "Could not create attestation";
+      LOG(ERROR) << "Could not create policy attestation";
       return false;
     }
-    if (!WriteStringToFile(attestation_path, attestation_)) {
-      LOG(ERROR) << "Could not write attestation";
+    if (!WriteStringToFile(attestation_path, policy_attestation_)) {
+      LOG(ERROR) << "Could not write policy attestation";
       return false;
     }
   }
@@ -99,7 +99,7 @@ bool FakeTao::InitPseudoTPM(const string &keys_path, const TaoDomain &admin) {
 FakeTao *FakeTao::DeepCopy() const {
   scoped_ptr<FakeTao> other(new FakeTao());
   other->keys_.reset(keys_->DeepCopy());
-  other->attestation_ = attestation_;
+  other->policy_attestation_ = policy_attestation_;
   return other.release();
 }
 
@@ -113,15 +113,28 @@ bool FakeTao::StartHostedProgram(const string &path, const list<string> &args,
 }
 
 bool FakeTao::GetTaoFullName(string *tao_name) {
+  // FakeTao has no parent, so the local and full name are identical
+  return GetLocalName(tao_name);
+}
+
+bool FakeTao::GetLocalName(string *name) {
   string key_id;
   if (!keys_->SignerUniqueID(&key_id)) {
     LOG(ERROR) << "Could not create Tao full name";
     return false;
   }
   stringstream out;
-  out << "FakeTao(" << quotedString(key_id) << ")";
-  tao_name->assign(out.str());
+  out << "Key(" << quotedString(key_id) << ")";
+  name->assign(out.str());
   return true;
+}
+
+bool FakeTao::GetPolicyName(string *name) {
+  if (policy_attestation_ == "") {
+    LOG(ERROR) << "FakeTao configured without policy key-to-name binding.";
+    return false;
+  }
+  return GetNameFromKeyNameBinding(policy_attestation_, name);
 }
 
 bool FakeTao::GetRandomBytes(const string &child_name, size_t size,
@@ -191,30 +204,61 @@ bool FakeTao::Unseal(const string &child_name, const string &sealed,
   return true;
 }
 
-bool FakeTao::Attest(const string &child_name, const string &data,
+bool FakeTao::Attest(const string &child_name, const string &pem_key,
                      string *attestation) const {
-  Statement s;
-  s.set_data(data);
-  s.set_hash_alg(TaoDomain::Sha256);
-  s.set_hash(child_name);
-
-  return GenerateAttestation(*keys_, attestation_, &s, attestation);
+  string name, delegation;
+  // We have choices here.
+  // (1) We can create a binding via parent name, to get:
+  //   parent_tao::tao_subprin::child_name
+  // where parent_tao is the name of our parent (e.g. a TPM key) and tao_subprin
+  // is our name (e.g. a set of PCRs). 
+  // (2) We can create a binding via our key, to get:
+  //   K_fake::child_name
+  // where K_fake is our own attestation key.
+  // (3) We can create a binding via the policy key, to get:
+  //   K_policy::TrustedOS::child_name
+  // where K_policy::TrustedOS is the name we bound to K_fake by TaoCA.
+  int option = 2;
+  if (option == 1) {
+    LOG(ERROR) << "Oops, fake tao does not have a parent";
+    return false;
+    // if (!GetTaoFullName(&name)) {
+    //   LOG(ERROR) << "Could not get full name for attestation";
+    //   return false;
+    // }
+    // name += "::" + child_name;
+    // delegation = parent_attestation_;
+  } else if (option == 2) {
+    if (!GetLocalName(&name)) {
+      LOG(ERROR) << "Could not get full name for attestation";
+      return false;
+    }
+    name += "::" + child_name;
+    delegation = "";
+  } else {
+    if (!policy_attestation_) {
+      LOG(ERROR) << "No policy attestation available";
+      return false;
+    }
+    if (!GetPolicyName(&name)) {
+      LOG(ERROR) << "Could not get full name for attestation";
+      return false;
+    }
+    name += "::" + child_name;
+    delegation = policy_attestation_;
+  }
+  return tao::AttestKeyNameBinding(*keys_, delegation, pem_key, name,
+                                   attestation);
 }
 
 bool FakeTao::MakePolicyAttestation(const TaoDomain &admin) {
-  string serialized_key;
-  if (!keys_->SerializePublicKey(&serialized_key)) {
+  string pem_key;
+  if (!keys_->SerializePublicKey(&pem_key)) {
     LOG(ERROR) << "Could not serialize key";
     return false;
   }
-  // create a signed, fake tpm attestation
-  Statement s;
-  s.set_data(serialized_key);
-  s.set_hash_alg(TaoDomain::FakeHash);
-  s.set_hash("FAKE_TPM");
-  // sign this serialized data with policy key
-  if (!admin.AttestByRoot(&s, &attestation_)) {
-    LOG(ERROR) << "Could not obtain root attestation";
+  if (!admin.AttestKeyNameBinding(pem_key, "FakeTPM", , &policy_attestation_)) {
+    LOG(ERROR) << "Could not obtain policy attestation";
     return false;
   }
   return true;

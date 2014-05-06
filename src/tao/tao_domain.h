@@ -39,7 +39,6 @@ class Verifier;
 namespace tao {
 class Attestation;
 class Keys;
-class Statement;
 
 /// A TaoDomain stores and manages a set of configuration parameters for a
 /// single administrative domain, including a policy key pair, the host:port
@@ -78,7 +77,7 @@ class TaoDomain : public TaoAuth {
       "}";
 
   /// An example json string useful for constructing domains for testing
-  constexpr static auto ExampleRootAuthDomain =
+  /* constexpr static auto ExampleRootAuthDomain =
       "{\n"
       "   \"name\": \"tao example root domain\",\n"
       "\n"
@@ -93,6 +92,7 @@ class TaoDomain : public TaoAuth {
       "   \"tao_ca_host\": \"localhost\",\n"
       "   \"tao_ca_port\": \"11238\"\n"
       "}";
+    */
 
   /// Name strings for name:value pairs in JSON config.
   constexpr static auto JSONName = "name";
@@ -157,18 +157,22 @@ class TaoDomain : public TaoAuth {
   /// Get the policy keys.
   Keys *GetPolicyKeys() const { return keys_.get(); }
 
-  /// Create a attestation signed by the policy private key.
-  /// Typical statements might assert:
-  ///     (i) that a given aik is trusted (on certain matters)
-  ///    (ii) that a given fake_tpm is trusted (on certain matters)
-  ///   (iii) that a given program key speaks for a specific name.
-  /// @param s[in,out] The statement to be attested to. If the statement
-  /// timestamp is missing, it will be filled with the current time. If the
-  /// statement expiration is missing, it will be set to some default duration
-  /// after the timestamp.
-  /// @param attestation[out] The signed attestation.
-  bool AttestByRoot(Statement *s, Attestation *attestation) const;
-  bool AttestByRoot(Statement *s, string *serialized_attestation) const;
+  /// Create a key-to-name binding attestation, signed by the policy private
+  /// key. If K_policy is the policy key, typical bindings are:
+  ///     (i) K_aik binds to K_policy::TrustedPlatform
+  ///         (a name that is trusted on certain tpm-related matters)
+  ///    (ii) K_os binds to K_policy::TrustedOS
+  ///         (a name that is trusted on certain OS-related matters)
+  ///   (iii) K_app binds to K_policy::App("name")
+  ///         (a name that is trusted to execute within this domain
+  ///         and may also be trusted on certain other matters).
+  /// The attestation's statement timestamp and expiration will be filled with
+  /// reasonable values, i.e. the current time and a default expiration.
+  /// @param pem_key A PEM encoding of the key to be bound.
+  /// @param subprin The subprincipal part of the binding name.
+  /// @param[out] attestation The signed attestation.
+  bool AttestKeyNameBinding(string pem_key, string subprin,
+                                     string *attestation) const;
 
   /// Check a signature made by the policy key.
   bool CheckRootSignature(const Attestation &a) const;

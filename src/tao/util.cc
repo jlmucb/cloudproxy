@@ -706,34 +706,18 @@ bool CreateTempDir(const string &prefix, ScopedTempDir *dir) {
   return true;
 }
 
-bool GenerateAttestation(const Keys &key, const string &cert,
-                         Statement *statement, Attestation *attestation) {
-  if (statement == nullptr) {
-    LOG(ERROR) << "Can't sign null statement";
-    return false;
-  }
-  if (!statement->has_data()) {
-    LOG(ERROR) << "Can't sign empty statement";
-    return false;
-  }
-  if (attestation == nullptr) {
-    LOG(ERROR) << "Can't sign null attestation";
-    return false;
-  }
-  if (statement->hash().empty() != statement->hash_alg().empty()) {
-    LOG(ERROR) << "Statement hash and hash_alg are inconsistent";
-    return false;
-  }
-  // Fill in missing timestamp and expiration
-  if (!statement->has_time()) {
-    time_t cur_time;
-    time(&cur_time);
-    statement->set_time(cur_time);
-  }
-  if (!statement->has_expiration()) {
-    statement->set_expiration(statement->time() +
-                              Tao::DefaultAttestationTimeout);
-  }
+bool AttestKeyNameBinding(const Keys &key, const string &delegation,
+                          const string &pem_key, const string &name,
+                          string *attestation) {
+  Statement s;
+  s.set_data(pem_key);
+  s.set_name(name);
+  // Fill in timestamp.
+  time_t cur_time;
+  time(&cur_time);
+  statement->set_time(cur_time);
+  // Fill in expiration.
+  statement->set_expiration(statement->time() + Tao::DefaultAttestationTimeout);
   // Sign the statement.
   string stmt, sig;
   if (!statement->SerializeToString(&stmt)) {
@@ -744,32 +728,46 @@ bool GenerateAttestation(const Keys &key, const string &cert,
     LOG(ERROR) << "Could not sign the statement";
     return false;
   }
-  attestation->set_type(cert.empty() ? tao::ROOT : tao::INTERMEDIATE);
-  attestation->set_serialized_statement(stmt);
-  attestation->set_signature(sig);
-  if (!cert.empty()) {
-    attestation->set_cert(cert);
-  } else {
-    attestation->clear_cert();
-  }
-
-  VLOG(5) << "Generated " << (cert.empty() ? "ROOT" : "INTERMEDIATE")
-          << " attestation\n"
-          << " with key named " << key.Name() << "\n"
-          << " and Attestation " << DebugString(*attestation) << "\n";
-
-  return true;
-}
-
-bool GenerateAttestation(const Keys &key, const string &cert,
-                         Statement *statement, string *attestation) {
   Attestation a;
-  if (!GenerateAttestation(key, cert, statement, &a))
-    return false;  // Plenty of log messages in the above call
+  a.set_type(delegation.empty() ? tao::ROOT : tao::INTERMEDIATE);
+  a.set_serialized_statement(stmt);
+  a.set_signature(sig);
+  if (!delegation.empty()) {
+    Attestation d;
+    if (!d.ParseFromString(delegation)) {
+      LOG(ERROR) << "Could not parse delegation";
+      return false;
+    }
+    a.set_delegation(d);
+  } else {
+    a.clear_delegation();
+  }
   if (!a.SerializeToString(attestation)) {
     LOG(ERROR) << "Could not serialize attestation";
     return false;
   }
+
+  VLOG(5) << "Generated " << (delegation.empty() ? "ROOT" : "INTERMEDIATE")
+          << " key-to-name binding attestation\n"
+          << " via signer " << key.Name() << "\n"
+          << " for name " << name << "\n"
+          << " and Attestation " << DebugString(a) << "\n";
+
+  return true;
+}
+
+bool GetNameFromKeyNameBinding(const string &attestation, string *name) {
+  Attestation a;
+  if (!a.ParseFromString(attestation)) {
+    LOG(ERROR) << "Could not parse the key-to-name attestation";
+    return false;
+  }
+  Statement s;
+  if (!s.ParseFromString(a.serialized_statement())) {
+    LOG(ERROR) << "Could not parse the key-to-name attestation statement";
+    return false;
+  }
+  name->assign(s->name);
   return true;
 }
 
@@ -799,14 +797,14 @@ string DebugString(const Attestation &a) {
   stringstream out;
   string s;
   Statement stmt;
-  Attestation cert;
+  Attestation delegation;
   const Descriptor *desc = a.GetDescriptor();
   const FieldDescriptor *fType =
       desc->FindFieldByNumber(Attestation::kTypeFieldNumber);
+  const FieldDescriptor *fSigner =
+      desc->FindFieldByNumber(Attestation::kSIgnerFieldNumber);
   const FieldDescriptor *fSignature =
       desc->FindFieldByNumber(Attestation::kSignatureFieldNumber);
-  const FieldDescriptor *fQuote =
-      desc->FindFieldByNumber(Attestation::kQuoteFieldNumber);
 
   // type
   TextFormat::PrintFieldValueToString(a, fType, -1, &s);
@@ -814,7 +812,7 @@ string DebugString(const Attestation &a) {
 
   // statement
   if (!a.has_serialized_statement())
-    s = "(none)";
+    s = "(missing)";
   else if (!stmt.ParseFromString(a.serialized_statement()))
     s = "(unparsable)";
   else
@@ -823,26 +821,26 @@ string DebugString(const Attestation &a) {
 
   // signature
   if (!a.has_signature())
-    s = "(none)";
+    s = "(missing)";
   else
     TextFormat::PrintFieldValueToString(a, fSignature, -1, &s);
   out << "signature: " << s << "\n";
 
   // quote
-  if (a.has_quote())
-    s = "(none)";
+  if (a.has_signer())
+    s = "(missing)";
   else
-    TextFormat::PrintFieldValueToString(a, fQuote, -1, &s);
-  out << "quote: " << s << "\n";
+    TextFormat::PrintFieldValueToString(a, fSigner, -1, &s);
+  out << "signer: " << s << "\n";
 
-  // cert
-  if (!a.has_cert())
+  // delegation
+  if (!a.has_delegation())
     s = "(none)";
-  else if (!cert.ParseFromString(a.cert()))
+  else if (!delegation.ParseFromString(a.delegation()))
     s = "(unparsable)";
   else
-    s = Indent("  ", DebugString(cert));
-  out << "cert: " << s << "\n";
+    s = Indent("  ", DebugString(delegation));
+  out << "delegation: " << s << "\n";
 
   return "{\n  " + Indent("  ", out.str()) + "}";
 }
@@ -853,10 +851,8 @@ string DebugString(const Statement &stmt) {
   const Descriptor *desc = stmt.GetDescriptor();
   const FieldDescriptor *fData =
       desc->FindFieldByNumber(Statement::kDataFieldNumber);
-  const FieldDescriptor *fHash =
-      desc->FindFieldByNumber(Statement::kHashFieldNumber);
-  const FieldDescriptor *fHashAlg =
-      desc->FindFieldByNumber(Statement::kHashAlgFieldNumber);
+  const FieldDescriptor *fName =
+      desc->FindFieldByNumber(Statement::kNameFieldNumber);
 
   s = DebugString(static_cast<time_t>(stmt.time()));
   out << "time: " << s << "\n";
@@ -865,19 +861,10 @@ string DebugString(const Statement &stmt) {
   out << "expiration: " << s << "\n";
 
   TextFormat::PrintFieldValueToString(stmt, fData, -1, &s);
-  out << "data: " << s << "\n";
+  out << "data/key: " << s << "\n";
 
-  if (!stmt.has_hash_alg())
-    s = "(none)";
-  else
-    TextFormat::PrintFieldValueToString(stmt, fHashAlg, -1, &s);
-  out << "hash_alg: " << s << "\n";
-
-  if (!stmt.has_hash())
-    s = "(none)";
-  else
-    TextFormat::PrintFieldValueToString(stmt, fHash, -1, &s);
-  out << "hash: " << s << "\n";
+  TextFormat::PrintFieldValueToString(stmt, fName, -1, &s);
+  out << "name:" << s << "\n";
 
   return "{\n  " + Indent("  ", out.str()) + "}";
 }
@@ -893,7 +880,7 @@ bool CreateTempWhitelistDomain(ScopedTempDir *temp_dir,
   return true;
 }
 
-bool CreateTempRootDomain(ScopedTempDir *temp_dir,
+/* bool CreateTempRootDomain(ScopedTempDir *temp_dir,
                           scoped_ptr<TaoDomain> *admin) {
   // lax log messages: this is a top level function only used for unit testing
   if (!CreateTempDir("admin_domain", temp_dir)) return false;
@@ -902,7 +889,7 @@ bool CreateTempRootDomain(ScopedTempDir *temp_dir,
   admin->reset(TaoDomain::Create(config, path, "temppass"));
   if (admin->get() == nullptr) return false;
   return true;
-}
+} */
 
 bool ConnectToTCPServer(const string &host, const string &port, int *sock) {
   // Set up a socket to communicate with the TCCA.

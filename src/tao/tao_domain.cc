@@ -30,7 +30,6 @@
 
 #include "tao/attestation.pb.h"
 #include "tao/keys.pb.h"
-#include "tao/root_auth.h"
 #include "tao/util.h"
 #include "tao/whitelist_auth.h"
 
@@ -76,8 +75,8 @@ TaoDomain *TaoDomain::CreateImpl(const string &config, const string &path) {
   scoped_ptr<TaoDomain> admin;
   if (auth_type == WhitelistAuth::AuthType) {
     admin.reset(new WhitelistAuth(path, dict.release()));
-  } else if (auth_type == RootAuth::AuthType) {
-    admin.reset(new RootAuth(path, dict.release()));
+  //} else if (auth_type == RootAuth::AuthType) {
+  //  admin.reset(new RootAuth(path, dict.release()));
   } else {
     LOG(ERROR) << path << ": unrecognized " << JSONAuthType << " " << auth_type;
     return nullptr;
@@ -197,30 +196,21 @@ string TaoDomain::GetConfigString(const string &name) const {
   return value;
 }
 
-bool TaoDomain::AttestByRoot(Statement *s, Attestation *attestation) const {
+bool TaoDomain::AttestKeyNameBinding(string pem_key, string subprin,
+                                     string *attestation) const {
   if (keys_->Signer() == nullptr) {
     LOG(ERROR) << "Can't sign attestation, admin is currently locked";
     return false;
   }
-  string emptycert = "";  // empty cert because root
-  if (!GenerateAttestation(*keys_, emptycert, s, attestation)) {
-    LOG(ERROR) << "Can't sign attestation";
+  string name;
+  if (!keys_->SignerUniqueID(&name)) {
+    LOG(ERROR) << "Can't get unique ID for policy key";
     return false;
   }
-  return true;
-}
-
-bool TaoDomain::AttestByRoot(Statement *s, string *attestation) const {
-  if (keys_->Signer() == nullptr) {
-    LOG(ERROR) << "Can't sign attestation, admin is currently locked.";
-    return false;
-  }
-  string emptycert = "";  // empty cert because root
-  if (!GenerateAttestation(*keys_, emptycert, s, attestation)) {
-    LOG(ERROR) << "Can't sign attestation";
-    return false;
-  }
-  return true;
+  name += "::" + subprin;
+  string empty_delegation = "";
+  return tao::AttestKeyNameBinding(*keys_, empty_delegation, pem_key, name,
+                                   attestation);
 }
 
 bool TaoDomain::CheckRootSignature(const Attestation &a) const {

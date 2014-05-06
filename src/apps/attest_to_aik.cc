@@ -44,7 +44,6 @@ using std::string;
 using keyczar::base::ReadFileToString;
 using keyczar::base::WriteStringToFile;
 
-using tao::Statement;
 using tao::TaoDomain;
 
 DEFINE_string(config_path, "tao.config", "Location of tao configuration");
@@ -138,9 +137,6 @@ int main(int argc, char **argv) {
   string pem(buf->data, buf->length);
   BIO_free(mem);
 
-  Statement s;
-  s.set_data(pem);
-
   // load policy key
   scoped_ptr<TaoDomain> admin(
       TaoDomain::Load(FLAGS_config_path, FLAGS_policy_pass));
@@ -148,7 +144,7 @@ int main(int argc, char **argv) {
 
   // sign this serialized data with policy key
   string attestation;
-  if (!admin->AttestByRoot(&s, &attestation)) {
+  if (!admin->AttestKeyNameBinding(pem, "TrustedPlatform", &attestation)) {
     LOG(ERROR) << "Could not attest using policy key";
     return 1;
   }

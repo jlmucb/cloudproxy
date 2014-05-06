@@ -107,9 +107,18 @@ class LinuxTao : public Tao {
 
   /// Keys and attestations for signing and sealing.
   scoped_ptr<Keys> keys_;
+  
+  /// Get the attestation key name of this FakeTao.
+  bool GetLocalName(string *name);
 
-  /// An attestation for our signing key.
-  string attestation_;
+  /// Get the policy-given name of this FakeTao.
+  bool GetPolicyName(string *name);
+
+  /// The policy key's attestation for our signing key.
+  string policy_attestation_;
+
+  /// The parent Tao's attestation for our signing key.
+  string parent_attestation_;
 
   /// The channel to use for host communication.
   scoped_ptr<TaoChildChannel> host_channel_;

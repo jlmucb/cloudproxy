@@ -19,47 +19,223 @@
 
 package tao;
 
+// A Statement conveys:
+//   name says ((time < now < expiration) implies ...)
+// where "..." is some message conveyed by the data field. By itself, a
+// Statement can't be verified as it does not include a signature.
+//
+// Eventually, data might convey a variety of information. Currently, however,
+// there is only a single interpretation supported:
+//   (Key(data) speaksfor name)
+// where data is a serialized public key K in PEM format.
+//
+// Note: The 'now' predicate above is not properly scoped. For now, whoever is
+// using or validating a statement, e.g. a guard, fills in their own value of
+// 'now'.
+//
+// Assuming the time restriction is met, from a statement:
+//   name says ((time < now < expiration) implies (Key(data) speaksfor name))
+// we can derive:
+//   name says (Key(data) speaksfor name)
+// and further:
+//   Key(data) speaksfor name
+// That is to say, a Statement really conveys a key-to-name binding.
 message Statement {
-  // the time at which the attestation was made, in 64-bit POSIX time
+  // The earliest time this statement is to be used, in 64-bit POSIX time.
+  // Typically, this is simply the time at which the statement was created.
   required int64 time = 1;
 
-  // the time at which this statement's validity expires
+  // The latest time this statement is to be used, in 64-bit POSIX time.
   required int64 expiration = 2;
 
-  // the data to attest to
-  required bytes data = 3;
-
-  // the name of the algorithm used to hash the program
-  optional string hash_alg = 4;
-
-  // the hash of the program
-  optional string hash = 5;
+  // An encoding of the information being conveyed by this statement.
+  required string data = 3;
+  
+  // The full name of the principal conveying the information in this statement.
+  optional string name = 4;
 }
 
-enum AttestationType {
+// AttestationSignatureType is intended to help verifiers of an Attestation more
+// easily decide how to validate the signature on the Attestation.
+enum AttestationSignatureType {
   UNKNOWN = 0;
   ROOT = 1;
   INTERMEDIATE = 2;
-  TPM_1_2_QUOTE = 3;
+  TPM_1_2 = 3;
 }
 
+// An Attestation conveys:
+//   signer says statement
+// i.e.
+//   signer says (name says ((time < now < expiration) implies data))
+// An valid Attestation carries a signature and enough key information so that anyone
+// can verify it and, eventually, conclude:
+//   name says ((time' < now < expiration') implies data)
+// Note that, because of time restriction on included delegations, the time
+// restrictions (time' and expiration') here do not necessarily exactly match
+// the time and expiration on the serialized statement.
+// 
+// There are two categories of Attestations:
+//
+// (1) In cases where name is a subprincipal of (or identical to) signer, no
+// delegation will be present. In these cases, signer speaksfor name, so the
+// attestation:
+//   signer says (name says ((time < now < expiration) implies data))
+// reduces to:
+//   name says (name says ((time < now < expiration) implies data))
+// from which we can derive:
+//   name says ((time < now < expiration) implies data)
+//
+// Example of a category (1) attestation:
+//   Attestation = {
+//     statement = {
+//       name = K_policy::FileServerApp
+//              (appropriately encoded as a name)
+//       time = 2
+//       expiration = 5
+//       data = K_app
+//              (appropriately encoded as a name)
+//     }
+//     signer = K_policy
+//              (appropriately encoded as a name)
+//     signature = ...
+//     delgation = null
+//   }
+// Here, the policy principal, represented by a key, has signed the statement on
+// behalf of the file server app, one of its subprincipals. If validated, this
+// Attestation conveys:
+//     K_policy::FileServerApp says
+//        ((2 < now < 5) implies (K_app speaksfor K_policy::FileServerApp))
+// Assuming the time restriction is met, this reduces to a key-to-name binding
+// for a public key K_app and the user-friendly name "FileServerApp" within the
+// domain governed by K_policy:
+//     K_app speaksfor K_policy::FileServerApp
+//      
+// (2) In all other cases, a delegation will be present conveying:
+//   name0 says ((time < now < expiration) implies (signer speaksfor name0))
+// where name is a subprincipal of (or identical to) name0. If the delegation is
+// verified, then it can be combined with:
+//   signer says (name says ((time < now < expiration) implies data))
+// to derive:
+//   name0 says ((time0 < now < expiration0) implies
+//               (name says ((time < now < expiration) implies data)))
+// And because name0 speaks for name, we can further derive:
+//   name says ((time' < now < expiration') implies data)
+// where time' = max(time, time0) and expiration = min(expiration, expiration0).
+//
+// Example of a category (2) attestation:
+//   Attestation = {
+//     statement = {
+//       name = K_policy::FileServerApp::User("Alice")
+//              (appropriately encoded as a name)
+//       time = 2
+//       expiration = 5
+//       data = K_alice
+//              (appropriately encoded as a name)
+//     }
+//     signer = K_app
+//              (appropriately encoded as a name)
+//     signature = ...
+//     delgation = {
+//       statement = {
+//         name = K_policy::FileServerApp
+//                (appropriately encoded as a name)
+//         time = 2
+//         expiration = 5
+//         data = K_app
+//                (appropriately encoded as a name)
+//       }
+//       signer = K_policy
+//                (appropriately encoded as a name)
+//       signature = ...
+//       delgation = null
+//     }
+//   }
+// Here, The file server principal, represented by a seemingly unrelated key,
+// has signed the statement on behalf of Alice, one of the file server's
+// subprincipals. The embeded delgation, signed by the policy key, binds the
+// seemingly unrelated key to the file server's name.
+//
+// Verifiying an attestion requires knowing how the signature was produced. We
+// currently define two signature schemes:
+//
+// (a) Some signatures are produced by the TPM, so here we are bound by the
+// mechanisms implemented by the TPM. In this case, we encode the signer name as
+//   TPM("..K..") where "..K.." is the serialized, base64w-encoded public half
+// of RSA key K. The name used in the serialized statement will always have the
+// form:
+//   TPM("..K..")::PCRs("..i..", "..h..")...
+// where "..i.." is a sorted, space-separated list of PCR numbers, and "..h.."
+// is the corresponding, space-separated list of base64w-encoded PCR values. The
+// signature is computed roughly as:
+//   sig = rsa_sign(K, H( H(name|time|expiration|data) | pcrbuf(i, h) ))
+// Here, we first hash the statement in a tpm-specific way, then signing the
+// hash with RSA key K. To obtain the statement hash, first hash the serialized
+// statement, including  name, time, expiration and data. This intermediate hash
+// is then re-hashed with a tpm-specific encoding of the PCR numbers ("..i..")
+// and values ("..h..") extracted from name. 
+//
+// Note: the PCR values are effectively hashed twice, once as part of name, and
+// separately as part of the pcrbuf datastructure.
+// 
+// (b) Other signatures are produced in software, and here Tao has flexibility
+// to use simpler signature schemes. In this case, we code the signer name as
+//   Key("..K..") where "..K.." is the serialized, base64w-encoded public half
+// of DSA key K. The name used in the serialized statement can have any form.
+// The signature is roughly:
+//   sig = dsa_sign(K, H(context|name|time|expiration|data))
+// Here, we simply hash the serialized statement, then signing it with the
+// private DSA key K. The context is defined in Tao::AttestationSigningContext.
+//
+// Together, this results in four possible combinations:
+//
+// (1a) No delegation, normal signature.
+//      This is the ROOT attestation signature type.
+//      Typically (or maybe always?), signer is the policy key.
+// (1b) No delegation, TPM signature.
+//      This is not used, but it in future it could be a variant of the  TPM_1_2
+//      attestation signature type. 
+//      The signer is always TPM("..K..") and the statement name is
+//      always a TPM("..K..")::PCRs("..i..", "..h..")...
+// (2a) Delegation, normal signature.
+//      This is the INTERMEDIATE attestation signature type. 
+//      The delegation is the head of a chain that eventually terminates in a
+//      type (1a) or (1b) attestation.
+// (2b) Delegation, TPM signature.
+//      This is the TPM_1_2 attestation signature type. 
+//      The signer is always TPM("..K..") and typically (or maybe always?) the
+//      statement name is K_policy::TrustedOS. 
+//      The delegation is the head of a chain that eventually terminates in a
+//      type (1a) or (1b) attestation. The name at the head of the chain is
+//      always a TPM("..K..")::PCRs("..i..", "..h..")
+//
+// TODO(kwalsh) Consider moving name out of Statement and into Attestation.
+// Non-tpm signature scheme would just hash in the name separately. This would
+// eliminate the double-hashing of PCR values, and it would let us do a trivial
+// compression trick: if name is empty, then name = signer, if name starts with
+// "::", then signer gets prepended to name, etc.
 message Attestation {
-  required AttestationType type = 1;
+  required AttestationSignatureType type = 1;
 
-  // A serialized Statement message. This can be empty, e.g., when
-  // this attestation is in the cert field, hence the serialized
-  // public_key is the serialized_statement.
+  // A serialized Statement. This is serialized to avoid canonicalization issues
+  // when signing and verifying signatures.
   required bytes serialized_statement = 2;
 
-  // A signature on the serialized statement; this signature is made using
-  // tao::SignData with a context "tao::Attestation Statement version 1".
-  required bytes signature = 3;
+  // The full name of the principal that signed the attestation.
+  required string signer = 3;
 
-  // A TPM 1.2 Quote, if needed
-  optional bytes quote = 4;
+  // Signature over the serialized statement, made using a type-specific method.
+  required bytes signature = 4;
 
-  // A serialized Attestation attesting to the key used to create the signature
-  // and signed by the next Tao level down. If this is empty, then
-  // the key must be the policy key.
-  optional bytes cert = 5;
+  // A delegation that conveys (eventually) that signer speaks for the name in
+  // the serialized statement. If this is empty, then it must be self evident
+  // that signer speaks for the name in the serialized statement.
+  optional Attestation delegation = 5;
 }
+
+// TODO(kwalsh) Previously, names were not always included in statements and
+// attestations, nor did names always include serialized public keys. That makes
+// signed statements more compact. Now, the same public key might appear several
+// times within a single attestation. The problem arises because each
+// attestation is really a collection of statements and nested attestations. We
+// should revisit how to efficiently encode these structures.

@@ -1016,7 +1016,7 @@ bool Keys::InitHosted(const TaoChildChannel &channel, int policy) {
     LOG(ERROR) << "Could not initialize Tao-protected keys";
     return false;
   }
-  // Create a self-attestation for the signing key
+  // Create a parent-attestation for the signing key
   if (signer_.get() != nullptr) {
     string serialized_key;
     if (!SerializePublicKey(&serialized_key)) {
@@ -1028,8 +1028,8 @@ bool Keys::InitHosted(const TaoChildChannel &channel, int policy) {
       LOG(ERROR) << "Could not get an attestation to the serialized key";
       return false;
     }
-    if (!WriteStringToFile(AttestationPath(), serialized_attestation)) {
-      LOG(ERROR) << "Could not store the attestation for the signing key";
+    if (!WriteStringToFile(AttestationPath("parent"), serialized_attestation)) {
+      LOG(ERROR) << "Could not store parent attestation for the signing key";
       return false;
     }
   }

@@ -251,7 +251,7 @@ bool TPMTaoChildChannel::Unseal(const string &sealed, string *data) const {
   return true;
 }
 
-bool TPMTaoChildChannel::Attest(const string &data, string *attestation) const {
+bool TPMTaoChildChannel::Attest(const string &pem_key, string *attestation) const {
   TSS_RESULT result;
 
   // The following code for setting up the composite hash is based on
@@ -289,13 +289,35 @@ bool TPMTaoChildChannel::Attest(const string &data, string *attestation) const {
   time_t cur_time;
   time(&cur_time);
 
+  // We have choices here.
+  // (1) If we had a parent, which we don't, we could use it.
+  // (2) We can create a binding via our key, to get:
+  //   K_aik::PCRs(...)
+  // where K_tpm is the tpm attestation key.
+  // (3) We can create a binding via the policy key, to get:
+  //   K_policy::TrustedPlatform::child_name
+  // where K_policy::TrustedPlatform is the name we bound to K_aik by TaoCA.
+
+  int option = 3;
+  string name, delegation;
+  if (option == 2) {
+    if (!GetHostedProgramFullName(&name)) {
+      LOG(ERROR) << "Could not get child's full name";
+      return false;
+    }
+    delegation = "";
+  } else {
+    if (!GetNameFromKeyNameBinding(aik_attestation_, name)) {
+      LOG(ERROR) << "Could not get full name for policy attestation";
+      return false;
+    }
+    delegation = aik_attestation_;
+  }
+
   s.set_time(cur_time);
   s.set_expiration(cur_time + Tao::DefaultAttestationTimeout);
-  s.set_data(data);
-  // i.e., see Attestation.quote
-  s.set_hash_alg(tao::TaoAuth::PcrSha1);
-  s.set_hash("see:quote");  // hash must be computed from pcr info in external
-                            // data
+  s.set_data(pem_key);
+  s.set_name(name);
 
   string serialized_statement;
   if (!s.SerializeToString(&serialized_statement)) {
@@ -315,6 +337,7 @@ bool TPMTaoChildChannel::Attest(const string &data, string *attestation) const {
   result = Tspi_TPM_Quote(tpm_, aik_, quote_pcrs_, &valid);
   CHECK_EQ(result, TSS_SUCCESS) << "Could not quote data with the AIK";
 
+  /*
   // Check the hash from the quote
   TPM_QUOTE_INFO *quote_info = (TPM_QUOTE_INFO *)valid.rgbData;
 
@@ -362,27 +385,32 @@ bool TPMTaoChildChannel::Attest(const string &data, string *attestation) const {
 
   // At this point, the quote is in pcr_buf with length index.
   string quote(reinterpret_cast<char *>(pcr_buf), index);
+  */
   string signature(reinterpret_cast<char *>(valid.rgbValidationData),
                    valid.ulValidationDataLength);
 
+  string aik_name;
+  if (!GetLocalName(&aik_name)) {
+    LOG(ERROR) << "Could not get aik name";
+    return false;
+  }
+
   Attestation a;
-  a.set_type(TPM_1_2_QUOTE);
+  a.set_type(TPM_1_2);
   a.set_serialized_statement(serialized_statement);
-  a.set_quote(quote);
+  a.set_signer(aik_name);
   a.set_signature(signature);
-  a.set_cert(aik_attestation_);
+  a.set_delegation(aik_attestation_);
 
   if (!a.SerializeToString(attestation)) {
-    LOG(ERROR) << "Could not serialize the TPM 1.2 Quote attestation";
+    LOG(ERROR) << "Could not serialize the TPM 1.2 attestation";
     return false;
   }
 
   return true;
 }
 
-bool TPMTaoChildChannel::GetHostedProgramFullName(string *full_name) const {
-  // encode the host key and PCRs into a name
-
+bool TPMTaoChildChannel::GetLocalName(string *aik_name) const {
   ScopedBio mem(BIO_new(BIO_s_mem()));
   if (!PEM_write_bio_RSA_PUBKEY(mem.get(), aik_rsa_.get())) {
     LOG(ERROR) << "Could not serialize public signing key";
@@ -411,7 +439,22 @@ bool TPMTaoChildChannel::GetHostedProgramFullName(string *full_name) const {
 
   stringstream out;
   out << "TPM(" << quotedString(key_info) << ")";
+  aik_name->assign(out.str());
+  return true;
+}
 
+bool TPMTaoChildChannel::GetHostedProgramFullName(string *full_name) const {
+  // encode the host key and PCRs into a name
+
+  string aik_name;
+  if (!GetLocalName(&aik_name)) {
+    LOG(ERROR) << "Could not get aik name";
+    return false;
+  }
+  
+  stringstream out;
+  out << aik_name;
+  
   // now get the pcrs
   out << "::PCRs(\"17 18\",\"";
   list<UINT32> pcrs_to_seal{17, 18};

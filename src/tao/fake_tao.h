@@ -90,8 +90,14 @@ class FakeTao : public Tao {
   /// @}
 
  private:
-  /// An attestation for our signing public key, or emptystring.
-  string attestation_;
+  /// Get the attestation key name of this FakeTao.
+  bool GetLocalName(string *name);
+
+  /// Get the policy-given name of this FakeTao.
+  bool GetPolicyName(string *name);
+
+  /// A policy attestation for our signing public key, or emptystring.
+  string policy_attestation_;
 
   /// Crypting and signing keys for sealing and signing.
   scoped_ptr<tao::Keys> keys_;

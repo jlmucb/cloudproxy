@@ -45,11 +45,11 @@ TEST_F(TaoDomainTest, CreateWhitelistDomainTest) {
   EXPECT_TRUE(admin_.get() != nullptr);
 }
 
-TEST_F(TaoDomainTest, CreateRootDomainTest) {
+/* TEST_F(TaoDomainTest, CreateRootDomainTest) {
   string config = TaoDomain::ExampleRootAuthDomain;
   admin_.reset(TaoDomain::Create(config, path_, "temppass"));
   EXPECT_TRUE(admin_.get() != nullptr);
-}
+} */
 
 TEST_F(TaoDomainTest, LoadDomainFailTest) {
   admin_.reset(TaoDomain::Load(path_));

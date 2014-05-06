@@ -255,8 +255,9 @@ class Keys {
   string CryptingKeyPath() const { return GetPath(CryptingKeySuffix); }
 
   /// Get the path to the attestation for the managed signing key.
-  string AttestationPath() const {
-    return GetPath(SigningKeyAttestationSuffix);
+  /// @param tag Used to distinguish multiple key-to-name binding attestations.
+  string AttestationPath(const string &tag) const {
+    return GetPath(SigningKeyAttestationSuffix + "." + tag);
   }
 
   /// Get the path to the Tao-sealed secret for protecting managed keys.

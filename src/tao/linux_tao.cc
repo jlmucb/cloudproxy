@@ -71,8 +71,14 @@ bool LinuxTao::Init() {
       return false;
     }
   }
-  if (!ReadFileToString(keys_->AttestationPath(), &attestation_)) {
-    LOG(ERROR) << "Could not load attestation for signing key";
+  if (!ReadFileToString(keys_->AttestationPath("parent"),
+                        &parent_attestation_)) {
+    LOG(ERROR) << "Could not load parent attestation for signing key";
+    return false;
+  }
+  if (!ReadFileToString(keys_->AttestationPath("policy"),
+                        &policy_attestation_)) {
+    LOG(ERROR) << "Could not load parent attestation for signing key";
     return false;
   }
 
@@ -283,7 +289,7 @@ bool LinuxTao::Unseal(const string &child_name, const string &sealed,
   return true;
 }
 
-bool LinuxTao::Attest(const string &child_name, const string &data,
+bool LinuxTao::Attest(const string &child_name, const string &pem_key,
                       string *attestation) const {
   {
     lock_guard<mutex> l(data_m_);
@@ -294,11 +300,42 @@ bool LinuxTao::Attest(const string &child_name, const string &data,
     }
   }
 
-  Statement s;
-  s.set_data(data);
-  s.set_hash(full_name_ + "::" + child_name);  // TODO(kwalsh) should be name
-
-  return GenerateAttestation(*keys_, attestation_, &s, attestation);
+  // We have choices here.
+  // (1) We can create a binding via parent name, to get:
+  //   parent_tao::tao_subprin::child_name
+  // where parent_tao is the name of our parent (e.g. a TPM key) and tao_subprin
+  // is our name (e.g. a set of PCRs). 
+  // (2) We can create a binding via our key, to get:
+  //   K_fake::child_name
+  // where K_fake is our own attestation key.
+  // (3) We can create a binding via the policy key, to get:
+  //   K_policy::TrustedOS::child_name
+  // where K_policy::TrustedOS is the name we bound to K_fake by TaoCA.
+  int option = 2;
+  if (option == 1) {
+    if (!GetTaoFullName(&name)) {
+      LOG(ERROR) << "Could not get full name for parent attestation";
+      return false;
+    }
+    name += "::" + child_name;
+    delegation = parent_attestation_;
+  } else if (option == 2) {
+    if (!GetLocalName(&name)) {
+      LOG(ERROR) << "Could not get full name for local attestation";
+      return false;
+    }
+    name += "::" + child_name;
+    delegation = "";
+  } else {
+    if (!GetNameFromKeyNameBinding(policy_attestation_, &name)) {
+      LOG(ERROR) << "Could not get full name for policy attestation";
+      return false;
+    }
+    name += "::" + child_name;
+    delegation = policy_attestation_;
+  }
+  return tao::AttestKeyNameBinding(*keys_, delegation, pem_key, name,
+                                   attestation);
 }
 
 bool LinuxTao::ExtendName(string *child_name, const string &subprin) {
@@ -328,17 +365,17 @@ bool LinuxTao::Listen() {
 bool LinuxTao::GetTaoCAAttestation() {
   // Use TaoCA to convert intermediate attestation into a root one.
   string intermediate_attestation;
-  if (!ReadFileToString(keys_->AttestationPath(), &intermediate_attestation)) {
-    LOG(ERROR) << "Could not load the intermediate attestation";
+  if (!ReadFileToString(keys_->AttestationPath("parent"), &intermediate_attestation)) {
+    LOG(ERROR) << "Could not load the parent attestation";
     return false;
   }
   TaoCA ca(admin_.get());
-  string root_attestation;
-  if (!ca.GetAttestation(intermediate_attestation, &root_attestation)) {
+  string parent_attestation;
+  if (!ca.GetAttestation(intermediate_attestation, &parent_attestation)) {
     LOG(ERROR) << "Could not get root attestation";
     return false;
   }
-  if (!WriteStringToFile(keys_->AttestationPath(), root_attestation)) {
+  if (!WriteStringToFile(keys_->AttestationPath("policy"), parent_attestation)) {
     LOG(ERROR) << "Could not store the root attestation";
     return false;
   }

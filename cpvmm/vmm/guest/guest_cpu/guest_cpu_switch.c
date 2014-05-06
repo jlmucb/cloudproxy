@@ -654,6 +654,11 @@ void gcpu_resume(GUEST_CPU_HANDLE gcpu)
                 gcpu->vcpu.guest_cpu_id, gcpu->vcpu.guest_id,
                 IS_MODE_NATIVE(gcpu) ? "NATIVE" : "EMULATED" );
     }
+
+#ifdef JLMDEBUG
+    bprint("looping at the end of gcpu_resume\n");
+    LOOP_FOREVER
+#endif
     VMM_DEADLOOP();
     VMM_BREAKPOINT();
 }

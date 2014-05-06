@@ -151,7 +151,11 @@ string ProcessFactory::CreateChildName(int id, const string &path,
                                        const string &arg_hash,
                                        string pid) const {
   stringstream out;
-  out << "Program(" << id << ", ";
+  out << "Program(";
+  if (id == 0)
+    out << "_" << ", ";
+  else
+    out << id << ", ";
   out << quotedString(path) << ", ";
   out << quotedString(prog_hash) << ", ";
   out << quotedString(arg_hash) << ")";

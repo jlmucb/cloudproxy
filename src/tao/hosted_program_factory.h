@@ -43,7 +43,7 @@ class HostedProgramFactory {
   /// Compute a tentative unique name for a hosted program.
   /// The semantics of each input argument depends on the factory
   /// implementation.
-  /// @param id A (tentative) locally-unique id for the hosted program.
+  /// @param id A tentative unique id number, or 0 to elide this information.
   /// @param path The path of the hosted program binary.
   /// @param args The arguments for the hosted program.
   /// @param[out] tentative_child_name A tentative unique name.
@@ -94,7 +94,7 @@ class HostedProgramFactory {
   /// Ideally, these details would be specific to a factory implementation, but
   /// LinuxTao needs to parse these names to enforce execution, seal and unseal
   /// policies.
-  /// @param id A unique id number.
+  /// @param id A (possibly tentative) unique id number, or 0 to elide this.
   /// @param path The path to the program binary.
   /// @param prog_hash Hash of the program binary.
   /// @param arg_hash Hash of the program arguments.

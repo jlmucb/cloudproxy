@@ -26,6 +26,7 @@
 #include <google/protobuf/text_format.h>
 #include <keyczar/keyczar.h>
 
+#include "tao/attestation.h"
 #include "tao/attestation.pb.h"
 #include "tao/keys.h"
 #include "tao/keys.pb.h"
@@ -76,29 +77,28 @@ bool TaoCA::SendRequest(const TaoCARequest &req, TaoCAResponse *resp) {
   return true;
 }
 
-bool TaoCA::GetAttestation(const string &intermediate_attestation,
-                           string *root_attestation) {
-  return GetX509Chain(intermediate_attestation, "" /* x509 details */,
-                      root_attestation, nullptr /* pem_cert */);
+bool TaoCA::GetAttestation(const string &attestation,
+                           const string &desired_name,
+                           string *policy_attestation) {
+  return GetX509Chain(attestation, desired_name, "" /* x509 details */,
+                      policy_attestation, nullptr /* pem_cert */);
 }
 
-bool TaoCA::GetX509Chain(const string &intermediate_attestation,
-                         const string &details_text, string *root_attestation,
+bool TaoCA::GetX509Chain(const string &attestation, const string &desired_name,
+                         const string &details_text, string *policy_attestation,
                          string *pem_cert) {
   // Check the existing attestation
-  string key_data;
-  if (!admin_->VerifyAttestation(intermediate_attestation, &key_data)) {
-    LOG(ERROR) << "The original attestation did not pass verification";
+  // TODO(kwalsh) why bother?
+  string key_prin, name;
+  if (!ValidateKeyNameBinding(attestation, CurrentTime(), &key_prin, &name)) {
+    LOG(ERROR) << "The original attestation is not valid";
     return false;
   }
   TaoCARequest req;
   req.set_type(TAO_CA_REQUEST_ATTESTATION);
-  Attestation *attest = req.mutable_attestation();
-  if (!attest->ParseFromString(intermediate_attestation)) {
-    LOG(ERROR) << "Could not deserialize attestation";
-    return false;
-  }
-  if (pem_cert) {
+  req.set_desired_name(desired_name);
+  req.set_attestation(attestation);
+  if (pem_cert != nullptr) {
     X509Details *details = req.mutable_x509details();
     if (!TextFormat::ParseFromString(details_text, details)) {
       LOG(ERROR) << "Could not parse x509 details";
@@ -115,25 +115,27 @@ bool TaoCA::GetX509Chain(const string &intermediate_attestation,
     LOG(ERROR) << "Missing attestation in TaoCA response";
     return false;
   }
-  const Attestation &root_attest = resp.attestation();
   // Check the attestation to make sure it passes verification.
-  if (root_attest.type() != ROOT) {
-    LOG(ERROR) << "Expected a Root attestation from TaoCA";
+  string new_key_prin, new_name;
+  if (!ValidateKeyNameBinding(resp.attestation(), CurrentTime(), &new_key_prin,
+                              &new_name)) {
+    LOG(ERROR) << "The new attestation did not pass verification";
     return false;
   }
-  if (!root_attest.SerializeToString(root_attestation)) {
-    LOG(ERROR) << "Could not serialize the new attestation";
-    return false;
-  }
-  string resp_key_data;
-  if (!admin_->VerifyAttestation(*root_attestation, &resp_key_data)) {
-    LOG(ERROR) << "The attestation did not pass verification";
-    return false;
-  }
-  if (resp_key_data != key_data) {
+  if (new_key_prin != key_prin) {
     LOG(ERROR) << "The key in the new attestation doesn't match original key";
     return false;
   }
+  string policy_name;
+  if (!admin_->GetPolicyKeys()->GetUniqueID(&policy_name)) {
+    LOG(ERROR) << "Could not get name for policy key";
+    return false;
+  }
+  if (new_name != policy_name + "::" + desired_name) {
+    LOG(ERROR) << "The name in the new attestation doesn't match desired name";
+    return false;
+  }
+  policy_attestation->assign(resp.attestation());
   if (pem_cert) {
     if (!resp.has_x509chain()) {
       LOG(ERROR) << "Missing x509 chain in TaoCA response";

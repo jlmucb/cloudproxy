@@ -34,13 +34,13 @@ namespace tao {
 /// signing key speaks for the name being bound, or evidence if no evidence is
 /// needed (i.e. if the name is a equal to or a subprincipal of the signing
 /// key).
-/// @param pem_key. The key being bound, serialized in PEM format.
-/// @param name. The name to which the key is being bound.
+/// @param key_prin The key being bound, serialized in PEM format.
+/// @param name The name to which the key is being bound.
 /// @param[out] attestation The signed attestation.
 /// Note: Reasonable default values will be chosen for the expiration and
 /// timestamp.
 bool AttestKeyNameBinding(const Keys &key, const string &delegation,
-                          const string &pem_key, const string &name,
+                          const string &key_prin, const string &name,
                           string *attestation);
 
 /// Extract the name part of a key-to-name binding attestation.
@@ -52,16 +52,16 @@ bool GetNameFromKeyNameBinding(const string &attestation, string *name);
 /// Extract the key part of a key-to-name binding attestation.
 /// @param attestation The attestation, which is assumed to be valid (no
 /// signature or structural checks are done).
-/// @param[out] pem_key The key part of the binding.
-bool GetKeyFromKeyNameBinding(const string &attestation, string *pem_key);
+/// @param[out] key_prin The key part of the binding.
+bool GetKeyFromKeyNameBinding(const string &attestation, string *key_prin);
 
 /// Validate a signed key-to-name binding attestation.
 /// @param attestation The attestation to be checked.
 /// @param check_time A timestamp to use for checking time restrictions.
-/// @param[out] pem_key The key part of the binding.
+/// @param[out] key_prin The key part of the binding.
 /// @param[out] name The name part of the binding.
-bool ValidateKeyNameBinding(const string &attestation, time_t check_time, string *pem_key,
-                            string *name);
+bool ValidateKeyNameBinding(const string &attestation, time_t check_time,
+                            string *key_prin, string *name);
 
 /// Generate a pretty-printed representation of an Attestation.
 /// @param a The attestation to pretty-print.

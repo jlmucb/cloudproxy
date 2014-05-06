@@ -28,10 +28,10 @@
 #include <keyczar/base/values.h>
 #include <keyczar/keyczar.h>
 
+#include "tao/acl_guard.h"
 #include "tao/attestation.pb.h"
 #include "tao/keys.pb.h"
 #include "tao/util.h"
-#include "tao/whitelist_auth.h"
 
 using keyczar::base::CreateDirectory;
 using keyczar::base::JSONReader;
@@ -67,18 +67,18 @@ TaoDomain *TaoDomain::CreateImpl(const string &config, const string &path) {
       static_cast<DictionaryValue *>(value.release()));
 
   // Construct an object of the appropriate subclass.
-  string auth_type;
-  if (!dict->GetString(JSONAuthType, &auth_type)) {
+  string guard_type;
+  if (!dict->GetString(JSONAuthType, &guard_type)) {
     LOG(ERROR) << path << ": missing value for " << JSONAuthType;
     return nullptr;
   }
   scoped_ptr<TaoDomain> admin;
-  if (auth_type == WhitelistAuth::AuthType) {
-    admin.reset(new WhitelistAuth(path, dict.release()));
-  //} else if (auth_type == RootAuth::AuthType) {
+  if (guard_type == ACLGuard::GuardType) {
+    admin.reset(new ACLGuard(path, dict.release()));
+  //} else if (guard_type == RootAuth::AuthType) {
   //  admin.reset(new RootAuth(path, dict.release()));
   } else {
-    LOG(ERROR) << path << ": unrecognized " << JSONAuthType << " " << auth_type;
+    LOG(ERROR) << path << ": unrecognized " << JSONAuthType << " " << guard_type;
     return nullptr;
   }
 
@@ -110,7 +110,7 @@ TaoDomain *TaoDomain::Create(const string &initial_config, const string &path,
   }
 
   // Save the configuration. Since we did not ParseConfig(), this should save
-  // any default (empty) whitelist as well.
+  // some default auth data (e.g empty ACLs) as well.
   if (!admin->SaveConfig()) {
     LOG(ERROR) << "Could not save the configuration for " << path;
     return nullptr;
@@ -196,7 +196,7 @@ string TaoDomain::GetConfigString(const string &name) const {
   return value;
 }
 
-bool TaoDomain::AttestKeyNameBinding(string pem_key, string subprin,
+bool TaoDomain::AttestKeyNameBinding(string key_prin, string subprin,
                                      string *attestation) const {
   if (keys_->Signer() == nullptr) {
     LOG(ERROR) << "Can't sign attestation, admin is currently locked";
@@ -209,39 +209,32 @@ bool TaoDomain::AttestKeyNameBinding(string pem_key, string subprin,
   }
   name += "::" + subprin;
   string empty_delegation = "";
-  return tao::AttestKeyNameBinding(*keys_, empty_delegation, pem_key, name,
+  return tao::AttestKeyNameBinding(*keys_, empty_delegation, key_prin, name,
                                    attestation);
 }
 
-bool TaoDomain::CheckRootSignature(const Attestation &a) const {
-  if (a.type() != ROOT) {
-    LOG(ERROR) << "This is not a ROOT attestation, but it claims to be "
-                  "signed with the policy public key";
+bool TaoDomain::AuthorizeProgramToExecute(const string &path,
+                                          const list<string> &args) {
+  string name;
+  ProcessFactory pf;
+  if (!pf.GetHostedProgramTentativeName(0 /* elide id */, 
+        path, args, &name)) {
+    LOG(ERROR) << "Can't compute tentative name for program: " << path;
     return false;
   }
-  if (!keys_->VerifySignature(a.serialized_statement(),
-                              Tao::AttestationSigningContext, a.signature())) {
-    LOG(ERROR) << "Verification failed with the policy key";
-    return false;
-  }
-  return true;
+  return Authorize("::TrustedOS::" + name, "Execute", list<string>{});
+}
+  
+bool TaoDomain::IsAuthorizedToExecute(const string &name) {
+  return IsAuthorized(name, "Execute", list<string>{})
 }
 
-bool TaoDomain::AuthorizeProgram(const string &path) {
-  string program_name = FilePath(path).BaseName().value();
-  string program_sha;
-  if (!Sha256FileHash(path, &program_sha)) {
-    LOG(ERROR) << "Can't hash program";
-    return false;
-  }
+bool TaoDomain::AuthorizeNickname(const string &name, const string &subprin) {
+  return Authorize(name, "ClaimName", list<string>{"::" + subprin});
+}
 
-  string program_hash;
-  if (!keyczar::base::Base64WEncode(program_sha, &program_hash)) {
-    LOG(ERROR) << "Can't encode hash value";
-    return false;
-  }
-
-  return Authorize(program_hash, Sha256, program_name);
+bool TaoDomain::IsAuthorizedNickname(const string &name, const string &subprin) {
+  return IsAuthorized(name, "ClaimName", list<string>{"::" + subprin})
 }
 
 }  // namespace tao

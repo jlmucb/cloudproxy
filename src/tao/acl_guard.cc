@@ -31,6 +31,8 @@ using keyczar::base::ReadFileToString;
 using keyczar::base::WriteStringToFile;
 
 namespace tao {
+
+// TODO(kwalsh) Add wildcard "_" feature
   
 bool ACLGuard::IsMatchingEntry(const ACLEntry &entry, const string &name,
                                const string &op, const list<string> &args) {

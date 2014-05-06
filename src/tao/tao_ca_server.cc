@@ -165,7 +165,7 @@ bool TaoCAServer::Destroy() {
 bool TaoCAServer::HandleRequest(int fd, const TaoCARequest &req,
                                 bool *requests_shutdown) {
   TaoCAResponse resp;
-  scoped_ptr<Verifier> subject_key;
+  string subject_key;
   bool ok = true;
   switch (req.type()) {
     case tao::TAO_CA_REQUEST_SHUTDOWN:
@@ -177,7 +177,7 @@ bool TaoCAServer::HandleRequest(int fd, const TaoCARequest &req,
         ok = false;
       }
       if (ok && req.has_x509details()) {
-        if (!HandleRequestX509Chain(req, *subject_key, &resp)) {
+        if (!HandleRequestX509Chain(req, subject_key, &resp)) {
           resp.set_reason("Certificate chain generation failed");
           ok = false;
         }
@@ -201,60 +201,43 @@ bool TaoCAServer::HandleRequest(int fd, const TaoCARequest &req,
 }
 
 bool TaoCAServer::HandleRequestAttestation(const TaoCARequest &req,
-                                           scoped_ptr<Verifier> *key,
+                                           string *key_prin,
                                            TaoCAResponse *resp) {
   if (!req.has_attestation()) {
     LOG(ERROR) << "Request is missing attestation";
     return false;
   }
 
-  string serialized_attest;
-  if (!req.attestation().SerializeToString(&serialized_attest)) {
-    LOG(ERROR) << "Could not serialize the attestation";
+  if (!req.has_desired_name()) {
+    LOG(ERROR) << "Request is missing desired name";
     return false;
   }
 
-  string key_data;
-  if (!admin_->VerifyAttestation(serialized_attest, &key_data)) {
-    LOG(ERROR) << "The provided attestation did not pass verification";
+  string existing_name;
+  if (!ValidateKeyNameBinding(req.attestation(), CurrentTime(), key_prin,
+                              &existing_name)) {
+    LOG(ERROR) << "The provided attestation is not valid";
     return false;
   }
 
-  // TODO(kwalsh): This code assumes that all verified attestations
-  // sent here are of serialized public keys.
-  if (!DeserializePublicKey(key_data, key)) {
-    LOG(ERROR) << "Could not deserialize the public key";
+  // TODO(kwalsh) Maybe use validity period from existing attestation?
+
+  if (!admin_->IsAuthorizedNickame(existing_name, req.desired_name())) {
+    LOG(ERROR) << "Principal is not authorized to claim desired name";
     return false;
   }
 
-  Statement orig_statement;
-  if (!orig_statement.ParseFromString(
-          req.attestation().serialized_statement())) {
-    LOG(ERROR) << "Could not parse the original statement from the attestation";
+  if (!admin_->AttestKeyNameBinding(*key_prin, desired_name)) {
+    LOG(ERROR) << "Could not generate new attestation";
     return false;
   }
 
-  // Create a new attestation to same key as orig_statement, signed with policy
-  // key
-  Statement root_statement;
-  // root_statement.CopyFrom(orig_statement);
-  root_statement.set_time(orig_statement.time());
-  root_statement.set_expiration(orig_statement.expiration());
-  root_statement.set_data(orig_statement.data());
-
-  if (!admin_->AttestByRoot(&root_statement, resp->mutable_attestation())) {
-    resp->clear_attestation();
-    LOG(ERROR) << "Could not sign a new root attestation";
-    return false;
-  }
-
-  LOG(INFO) << "TaoCAServer generated attestation for "
-            << (*key)->keyset()->metadata()->name();
+  LOG(INFO) << "TaoCAServer generated attestation for " << desired_name;
   return true;
 }
 
 bool TaoCAServer::HandleRequestX509Chain(const TaoCARequest &req,
-                                         const Verifier &subject_key,
+                                         const string &key_prin,
                                          TaoCAResponse *resp) {
   if (!req.has_x509details()) {
     LOG(ERROR) << "Request is missing x509 certificate";
@@ -264,6 +247,24 @@ bool TaoCAServer::HandleRequestX509Chain(const TaoCARequest &req,
     LOG(ERROR) << "Request is missing valid attestation";
     return false;
   }
+
+  string key_data, key_text;
+  stringstream in(key_prin);
+  skip(in, "Key(");
+  getQuotedString(in, &key_text);
+  skip(in, ")");
+  if (!in || !in.str().empty()) {
+    LOG(ERROR) << "Bad key format for x509 certificate";
+    return false;
+  }
+
+  scoped_ptr<Verifier> v;
+  if (!Base64WDecode(key_text, &key_data) ||
+      !DeserializePublicKey(key_data, &v)) {
+    LOG(ERROR) << "Could not deserialize key for x509 certificate";
+    return false;
+  }
+
   const X509Details &subject_details = req.x509details();
 
   // Get a version number
@@ -273,7 +274,9 @@ bool TaoCAServer::HandleRequestX509Chain(const TaoCARequest &req,
     return false;
   }
 
-  if (!admin_->GetPolicyKeys()->CreateCASignedX509(cert_serial, subject_key,
+  // TODO(kwalsh) Check authorization for claiming these x509 details.
+
+  if (!admin_->GetPolicyKeys()->CreateCASignedX509(cert_serial, *v,
                                                    subject_details,
                                                    resp->mutable_x509chain())) {
     resp->clear_x509chain();

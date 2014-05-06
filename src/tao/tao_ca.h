@@ -53,28 +53,32 @@ class TaoCA {
   /// Request shut down of the remote TaoCAServer.
   virtual bool Shutdown();
 
-  /// Request a root attestation from the remote TaoCA to replace an
-  /// intermediate
-  /// attestation. This method verifies the resulting root attestation before
-  /// returning it.
-  /// @param intermediate_attestation An intermediate attestation, e.g. from
+  /// Request a key-to-desired_name binding attestation from the remote TaoCA to
+  /// replace an existing key-to-name attestation. This method verifies the
+  /// resulting attestation before returning it.
+  /// @param attestation An existing key-to-name binding attestation, e.g. from
   /// LinuxTao, FakeTao, or a TPM.
-  /// @param[out] root_attestation An attestation from the policy signing key.
-  virtual bool GetAttestation(const string &intermediate_attestation,
-                              string *root_attestation);
+  /// @param desired_name The desired policy subprincipal name.
+  /// @param[out] policy_attestation An attestation from the policy signing key.
+  virtual bool GetAttestation(const string &attestation,
+                              const string &desired_name,
+                              string *policy_attestation);
 
-  /// Request an X509 certificate chain along with a root attestation from a
-  /// remote TaoCA to replace an intermediate attestation. This method verifies
-  /// the resulting root attestation before returning it.
-  /// @param intermediate_attestation An intermediate attestation, e.g. from
+  /// Request an X509 certificate chain along with a key-to-desired attestation
+  /// from a remote TaoCA to replace an existing key-to-name attestation. This
+  /// method verifies the resulting attestation (but not the x509) before
+  /// returning it.
+  /// @param attestation An existing key-to-name binding attestation, e.g. from
   /// LinuxTao, FakeTao, or a TPM.
-  /// @param details_text Details of requested X509 in text format.
-  /// @param[out] root_attestation An attestation from the policy signing key.
+  /// @param desired_name The desired policy subprincipal name.
+  /// @param details_text Desired details of X509 in text format.
+  /// @param[out] policy_attestation An attestation from the policy signing key.
   /// @param[out] pem_cert An x509 certificate chain in PEM format rooted in the
   /// policy signing key.
-  virtual bool GetX509Chain(const string &intermediate_attestation,
+  virtual bool GetX509Chain(const string &attestation,
+                            const string &desired_name,
                             const string &details_text,
-                            string *root_attestation, string *pem_cert);
+                            string *policy_attestation, string *pem_cert);
 
  protected:
   /// Send a request to a remote TaoCA.

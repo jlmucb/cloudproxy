@@ -24,7 +24,7 @@
 #include <keyczar/base/scoped_ptr.h>
 
 #include "tao/keys.h"
-#include "tao/tao_auth.h"
+#include "tao/tao_guard.h"
 
 using std::string;
 
@@ -42,10 +42,10 @@ class Keys;
 
 /// A TaoDomain stores and manages a set of configuration parameters for a
 /// single administrative domain, including a policy key pair, the host:port
-/// location to access a Tao CA (if available). Classes that implement TaoDomain
-/// also implements TaoAuth to govern authorization for the administrative
+/// location to access a Tao CA (if available). Classes that extend TaoDomain
+/// also implement TaoGuard to govern authorization for the administrative
 /// domain, and they store and manage any configuration necessary for that
-/// purpose, e.g. the location of whitelist files.
+/// purpose, e.g. the location of ACL files.
 ///
 /// Except for a password used to encrypt the policy private key, all
 /// configuration data for TaoDomain is stored in a JSON file, typically named
@@ -53,15 +53,15 @@ class Keys;
 /// files and directories needed by TaoDomain. File and directory paths within
 /// the tao.config file are relative to the location of the tao.config file
 /// itself.
-class TaoDomain : public TaoAuth {
+class TaoDomain : public TaoGuard {
  public:
   virtual ~TaoDomain();
 
   // TODO(kwalsh) use protobuf instead of json?
   /// An example json string useful for constructing domains for testing
-  constexpr static auto ExampleWhitelistAuthDomain =
+  constexpr static auto ExampleACLGuardDomain =
       "{\n"
-      "   \"name\": \"tao example whitelist domain\",\n"
+      "   \"name\": \"tao example ACL-based domain\",\n"
       "\n"
       "   \"policy_keys_path\":     \"policy_keys\",\n"
       "   \"policy_x509_details\":  \"country: \\\"US\\\" state: "
@@ -69,8 +69,8 @@ class TaoDomain : public TaoAuth {
       "example domain\\\"\",\n"
       "   \"policy_x509_last_serial\": 0,\n"
       "\n"
-      "   \"auth_type\": \"whitelist\",\n"
-      "   \"signed_whitelist_path\": \"whitelist\",\n"
+      "   \"guard_type\": \"ACLs\",\n"
+      "   \"signed_acls_path\": \"domain_acls\",\n"
       "\n"
       "   \"tao_ca_host\": \"localhost\",\n"
       "   \"tao_ca_port\": \"11238\"\n"
@@ -87,7 +87,7 @@ class TaoDomain : public TaoAuth {
       "example domain\\\"\",\n"
       "   \"policy_x509_last_serial\": 0,\n"
       "\n"
-      "   \"auth_type\": \"root\",\n"
+      "   \"guard_type\": \"root\",\n"
       "\n"
       "   \"tao_ca_host\": \"localhost\",\n"
       "   \"tao_ca_port\": \"11238\"\n"
@@ -101,12 +101,12 @@ class TaoDomain : public TaoAuth {
   constexpr static auto JSONPolicyX509LastSerial = "policy_x509_last_serial";
   constexpr static auto JSONTaoCAHost = "tao_ca_host";
   constexpr static auto JSONTaoCAPort = "tao_ca_port";
-  constexpr static auto JSONAuthType = "auth_type";
+  constexpr static auto JSONAuthType = "guard_type";
 
   /// Initialize a new TaoDomain and write its configuration files to a
   /// directory. This creates the directory if needed, creates a policy key
   /// pair, and initializes default state for authorization, e.g. an empty
-  /// whitelist.
+  /// set of ACLs.
   /// @param initial_config A JSON string containing the initial configuration
   /// for this TaoDomain.
   /// @param path The location to store the configuration file.
@@ -116,7 +116,7 @@ class TaoDomain : public TaoAuth {
 
   /// Initialize a TaoDomain from an existing configuration file. The object
   /// will be "locked", meaning that the policy private signing key will not be
-  /// available, new whitelists or attestations can not be signed, etc.
+  /// available, new ACL entries or attestations can not be signed, etc.
   /// @param path The location of the existing configuration file.
   static TaoDomain *Load(const string &path) { return Load(path, ""); }
 
@@ -124,7 +124,7 @@ class TaoDomain : public TaoAuth {
   /// @param path The location of the existing configuration file.
   /// @param password The password to unlock the policy private key. If password
   /// is emptystring, then the TaoDomain object will be "locked", meaning that
-  /// the policy private signing key will not be available, new whitelists or
+  /// the policy private signing key will not be available, new ACL entries or
   /// attestations can not be signed, etc.
   static TaoDomain *Load(const string &path, const string &password);
 
@@ -168,27 +168,36 @@ class TaoDomain : public TaoAuth {
   ///         and may also be trusted on certain other matters).
   /// The attestation's statement timestamp and expiration will be filled with
   /// reasonable values, i.e. the current time and a default expiration.
-  /// @param pem_key A PEM encoding of the key to be bound.
+  /// @param key_prin A principal encoding the key to be bound.
   /// @param subprin The subprincipal part of the binding name.
   /// @param[out] attestation The signed attestation.
-  bool AttestKeyNameBinding(string pem_key, string subprin,
+  bool AttestKeyNameBinding(string key_prin, string subprin,
                                      string *attestation) const;
 
-  /// Check a signature made by the policy key.
-  bool CheckRootSignature(const Attestation &a) const;
+  /// Authorize a program to execute with the given arguments. A pattern that
+  /// matches the program's tentative name will be computed and added to the set
+  /// of names authorized to execute.
+  /// @param path The location of the program binary to be added.
+  /// @param args A list of arguments. Arguments listed as "_" are ignored.
+  bool AuthorizeProgramToExecute(const string &path, const list<string> &args);
 
-  /// Authorize a new hosted program to execute. The program's hash will be
-  /// computed and added to the set of hashes authorized to execute, and the
-  /// program's hash will be associated with the program name so that the hash
-  /// is authorized to speak for that name. This is equivalent to
-  /// Authorize(BaseName(path), Sha256, SHA256(Contents(path))).
-  /// @param path The location of the program binary to be added. The last
-  /// component of the path will be used as the program name, and the contents
-  /// of the program binary will be hashed.
-  bool AuthorizeProgram(const string &path);
+  /// Check whether a principal is authorized to execute.
+  /// @param name The tentative name of the hosted program.
+  bool IsAuthorizedToExecute(const string &name);
+
+  /// Authorize a principal to claim a given subprincipal of the policy key,
+  /// enabling principal to speak for that policy subprincipal.
+  /// @param name The name of the principal.
+  /// @param subprin A subprincipal of the policy.
+  bool AuthorizeNickname(const string &name, const string &subprin);
+
+  /// Check whether a principal is authorized to claim a subprincipal name.
+  /// @param name The name of a principal.
+  /// @param subprin The policy subprincipal being claimed by that principal.
+  bool IsAuthorizedNickname(const string &name, const string &subprin);
 
   /// This function will reload the configuration from disk, effectively making
-  /// a deep copy. This is useful for passing out copies of TaoAuth objects to
+  /// a deep copy. This is useful for passing out copies of TaoGuard objects to
   /// other classes that might want ownership of it.
   TaoDomain *DeepCopy();
 

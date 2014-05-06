@@ -101,7 +101,7 @@ bool LinuxTao::StartHostedProgram(const string &path, const list<string> &args,
   {
     lock_guard<mutex> l(auth_m_);
     // TODO(kwalsh) hash alg should come from ProgramFactory::HashHostedProgram
-    if (!admin_->IsAuthorized(full_name_ + "::" + tentative_name)) {
+    if (!admin_->IsAuthorizedToExecute(full_name_ + "::" + tentative_name)) {
       LOG(ERROR) << tentative_name << " is not authorized to run on this Tao";
       return false;
     }

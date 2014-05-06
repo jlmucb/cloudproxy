@@ -68,7 +68,7 @@ class TPMTaoChildChannel : public TaoChildChannel {
 
   /// Verify a TPM-generated quote signature.
   /// @param v A keyczar verifier representing the TPM public AIK.
-  /// @param data The serialized Statement message that was signed.
+  /// @param data The serialized Statement that was signed.
   /// @param sig The signature to be verified.
   static bool VerifySignature(const Verifier &v, const string &stmt,
                               const string &sig);

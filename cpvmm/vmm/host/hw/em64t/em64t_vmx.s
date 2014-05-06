@@ -56,10 +56,8 @@ vmentry_func:
         push    %rdi
         cmp     $0, %rdi
         jnz     1f
-    
         call    gcpu_restore_registers 
-
-		vmresume                        # Resume execution of Guest Virtual Machine
+        vmresume                        # Resume execution of Guest Virtual Machine
 
         jmp     2f
 1:

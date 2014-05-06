@@ -125,6 +125,9 @@ void fixupvmcs()
     void loop_forever();
     UINT16* loop= loop_forever;
 
+#ifdef JLMDEBUG
+    bprint("fixupvmcs %04x\n", *loop);
+#endif
     vmx_vmread(0x681e, &value);  // guest_rip
     *((UINT16*) value)= *loop;    // feeb
 

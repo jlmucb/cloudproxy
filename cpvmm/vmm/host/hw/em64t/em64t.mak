@@ -55,7 +55,7 @@ LINK=       gcc
 LIBMAKER=   ar
 
 dobjs=      $(B)/em64t_idt.o $(B)/em64t_gdt.o $(B)/em64t_setjmp.o \
-	    $(B)/em64t_vmx.o $(B)/em64t_isr.o  
+	    $(B)/em64t_vmx.o $(B)/em64t_isr.o  $(B)/fixup.o
 
 all: $(E)/libhw.a
  
@@ -83,3 +83,8 @@ $(B)/em64t_setjmp.o: $(mainsrc)/em64t_setjmp.s
 $(B)/em64t_vmx.o: $(mainsrc)/em64t_vmx.s
 	echo "em64t_vmx.o"
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/em64t_vmx.o $(mainsrc)/em64t_vmx.s
+
+# debug function
+$(B)/fixup.o: $(mainsrc)/fixup.c
+	echo "fixups.o" 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/fixup.o $(mainsrc)/fixup.c

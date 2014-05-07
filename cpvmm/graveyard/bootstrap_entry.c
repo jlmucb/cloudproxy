@@ -157,6 +157,8 @@ void *evmm_page_alloc(uint32_t pages)
 
 
 //  Machine state and mode transition data structures
+
+
 #define TOTAL_MEM 0x100000000ULL
 
 static uint32_t                         evmm64_cs_selector= 0;
@@ -245,6 +247,7 @@ void ia32_write_ts(uint16_t ts)
     ::[ts] "g" (ts)
     : "%ax");
 }
+
 
 
 uint16_t ia32_read_ts()
@@ -944,6 +947,24 @@ static unsigned int     evmm_num_e820_entries = 0;
 INT15_E820_MEMORY_MAP*  evmm_e820= NULL;
 uint64_t                evmm_start_of_e820_table= 0ULL; // 64 bits version
 
+// for linux primary guest
+#define LINUX_BOOT_CS 0x10
+#define LINUX_BOOT_DS 0x18
+
+// initial GDT table for linux guest
+static const uint64_t gdt_table[] __attribute__ ((aligned(16))) = {
+    0,
+    0,
+    0x00c09b000000ffff, // cs
+    0x00c093000000ffff  // ds
+};
+
+static struct __packed {
+        uint16_t length;
+        uint32_t table;
+} linux_gdt_desc;
+
+
 static const cmdline_option_t linux_cmdline_options[] = {
     { "vga", "" },
     { "mem", "" },
@@ -994,12 +1015,150 @@ int linux_setup(void)
     // stack grows down, BSP only
     linux_esp_register= linux_stack_base+PAGE_SIZE;
 
+    linux_gdt_desc.length = (uint16_t)sizeof(gdt_table)-1;
+    linux_gdt_desc.table = (uint32_t)&gdt_table;
+
+    // base processor
+    guest_processor_state[0].size_of_this_struct = 
+                        sizeof(VMM_GUEST_CPU_STARTUP_STATE);
+    guest_processor_state[0].version_of_this_struct = 
+                        VMM_GUEST_CPU_STARTUP_STATE_VERSION;
+    guest_processor_state[0].reserved_1 = 0;
+
+    // zero out all the registers.  Then set the ones that linux expects.
+    for (i = 0; i < IA32_REG_GP_COUNT; i++) {
+        guest_processor_state[0].gp.reg[i] = (uint64_t) 0;
+    }
+
+    guest_processor_state[0].gp.reg[IA32_REG_RIP] = (uint64_t) linux_entry_address;
+    guest_processor_state[0].gp.reg[IA32_REG_RSI] = (uint64_t) linux_esi_register;
+    guest_processor_state[0].gp.reg[IA32_REG_RSP] = (uint64_t) linux_esp_register;
+    guest_processor_state[0].gp.reg[IA32_REG_RFLAGS] = 0x02;
+    guest_processor_state[0].gp.reg[IA32_REG_RBP] = 0;
+    guest_processor_state[0].gp.reg[IA32_REG_RDI] = 0;
+
+    for (i = 0; i < IA32_REG_XMM_COUNT; i++) {
+        guest_processor_state[0].xmm.reg[i].uint64[0] = (uint64_t)0;
+        guest_processor_state[0].xmm.reg[i].uint64[1] = (uint64_t)0;
+    }
+#if 0
+    uint64_t        tmp;
+    ia32_read_msr(IA32_MSR_DEBUGCTL, &guest_processor_state[0].msr.msr_debugctl);
+    ia32_read_msr(IA32_MSR_EFER, &guest_processor_state[0].msr.msr_efer);
+    ia32_read_msr(IA32_MSR_PAT, &guest_processor_state[0].msr.msr_pat);
+    ia32_read_msr(IA32_MSR_SYSENTER_ESP, 
+                  &guest_processor_state[0].msr.msr_sysenter_esp);
+    ia32_read_msr(IA32_MSR_SYSENTER_EIP, 
+                  &guest_processor_state[0].msr.msr_sysenter_eip);
+    ia32_read_msr(IA32_MSR_SYSENTER_CS, &tmp);
+    guest_processor_state[0].msr.msr_sysenter_cs= (uint32_t)tmp;
+#else
+    guest_processor_state[0].msr.msr_debugctl= tboot_msr_debugctl;
+    guest_processor_state[0].msr.msr_efer= tboot_msr_efer;
+    guest_processor_state[0].msr.msr_pat= tboot_msr_pat;
+    guest_processor_state[0].msr.msr_sysenter_esp= tboot_msr_sysenter_esp;
+    guest_processor_state[0].msr.msr_sysenter_eip= tboot_msr_sysenter_eip;
+    guest_processor_state[0].msr.msr_sysenter_cs= tboot_msr_sysenter_cs;
+#endif
+    guest_processor_state[0].msr.pending_exceptions = 0;
+    guest_processor_state[0].msr.interruptibility_state = 0;
+    guest_processor_state[0].msr.activity_state = 0;
+    guest_processor_state[0].msr.smbase = 0;
+    /* 
+     *  IA32_SELECTOR sel;
+     *  sel.sel16 = __readldtr();
+     *  guest_processor_state[k].msr.smbase = 0;
+     *  guest_processor_state[k].sel.sel16 = __readldtr();
+     *  if (guest_processor_state[k].sel.bits.index != 0)
+     */
+    for (i = 0; i < IA32_CTRL_COUNT; i++) {
+        guest_processor_state[0].control.cr[i] = 0;
+    }
+    guest_processor_state[0].control.cr[IA32_CTRL_CR0]= (uint64_t) tboot_cr0;
+    guest_processor_state[0].control.cr[IA32_CTRL_CR2]= (uint64_t) tboot_cr2;
+    guest_processor_state[0].control.cr[IA32_CTRL_CR3] = (uint64_t) tboot_cr3; 
+    guest_processor_state[0].control.cr[IA32_CTRL_CR4]= (uint64_t) tboot_cr4;
+
+    for (i = 0; i < IA32_SEG_COUNT; i++) {
+        guest_processor_state[0].seg.segment[i].base = 0;
+        guest_processor_state[0].seg.segment[i].limit = 0;
+    }
+   
+#if 0 
+    guest_processor_state[0].control.gdtr.base = (uint64_t)(uint32_t)&gdt_table;
+    guest_processor_state[0].control.gdtr.limit = (uint64_t)(uint32_t)gdt_table + 
+                                     sizeof(gdt_table) -1;
+    guest_processor_state[0].control.idtr.base = (UINT64)idtr.base;
+    guest_processor_state[0].control.idtr.limit = (UINT32)idtr.limit;
+    guest_processor_state[0].seg.segment[IA32_SEG_CS].base = (uint64_t) LINUX_BOOT_CS;
+    guest_processor_state[0].seg.segment[IA32_SEG_DS].base = (uint64_t) LINUX_BOOT_DS;
+    guest_processor_state[0].seg.segment[IA32_SEG_ES].base = 0;
+    guest_processor_state[0].seg.segment[IA32_SEG_FS].base = 0;
+    guest_processor_state[0].seg.segment[IA32_SEG_GS].base = 0;
+    guest_processor_state[0].seg.segment[IA32_SEG_LDTR].attributes= 0x00010000;
+    guest_processor_state[0].seg.segment[IA32_SEG_TR].attributes= 0x0000808b;
+    guest_processor_state[0].seg.segment[IA32_SEG_TR].limit= 0xffffffff;
+#else
+    guest_processor_state[0].control.gdtr.base = (uint64_t)(uint32_t)
+                    tboot_gdtr_32.base;
+    guest_processor_state[0].control.gdtr.limit = (uint64_t)(uint32_t)
+                    tboot_gdtr_32.limit;
+    ia32_read_idtr(&idtr);
+
+    guest_processor_state[0].control.idtr.base = (UINT64)idtr.base;
+    guest_processor_state[0].control.idtr.limit = (UINT32)idtr.limit;
+
+    guest_processor_state[0].seg.segment[IA32_SEG_CS].selector = 
+                    (uint64_t) tboot_cs_selector;
+    guest_processor_state[0].seg.segment[IA32_SEG_DS].selector = 
+                    (uint64_t) tboot_ds_selector;
+    guest_processor_state[0].seg.segment[IA32_SEG_SS].selector = 
+                    (uint64_t) tboot_ss_selector;
+    guest_processor_state[0].seg.segment[IA32_SEG_ES].selector = 
+                    (uint64_t) tboot_ds_selector;
+    guest_processor_state[0].seg.segment[IA32_SEG_FS].selector = 
+                    (uint64_t) tboot_ds_selector;
+    guest_processor_state[0].seg.segment[IA32_SEG_GS].selector = 
+                    (uint64_t) tboot_ds_selector;
+    guest_processor_state[0].seg.segment[IA32_SEG_TR].selector= 
+                    (uint64_t) tboot_tr_selector;
+
+    guest_processor_state[0].seg.segment[IA32_SEG_CS].base = tboot_cs_base;
+    guest_processor_state[0].seg.segment[IA32_SEG_DS].base = tboot_ds_base;
+    guest_processor_state[0].seg.segment[IA32_SEG_SS].base = tboot_ss_base;
+    guest_processor_state[0].seg.segment[IA32_SEG_ES].base = tboot_ds_base;
+    guest_processor_state[0].seg.segment[IA32_SEG_FS].base = tboot_ds_base;
+    guest_processor_state[0].seg.segment[IA32_SEG_GS].base = tboot_ds_base;
+    guest_processor_state[0].seg.segment[IA32_SEG_TR].base = tboot_ds_base;
+
+    guest_processor_state[0].seg.segment[IA32_SEG_CS].limit = tboot_cs_limit;
+    guest_processor_state[0].seg.segment[IA32_SEG_DS].limit = tboot_ds_limit;
+    guest_processor_state[0].seg.segment[IA32_SEG_SS].limit = tboot_ss_limit;
+    guest_processor_state[0].seg.segment[IA32_SEG_ES].limit = tboot_ds_limit;
+    guest_processor_state[0].seg.segment[IA32_SEG_FS].limit = tboot_ds_limit;
+    guest_processor_state[0].seg.segment[IA32_SEG_GS].limit = tboot_ds_limit;
+    guest_processor_state[0].seg.segment[IA32_SEG_TR].limit = tboot_tr_limit;
+
+    guest_processor_state[0].seg.segment[IA32_SEG_CS].attributes = tboot_cs_attr;
+    guest_processor_state[0].seg.segment[IA32_SEG_DS].attributes = tboot_ds_attr;
+    guest_processor_state[0].seg.segment[IA32_SEG_SS].attributes = tboot_ss_attr;
+    guest_processor_state[0].seg.segment[IA32_SEG_ES].attributes = tboot_ds_attr;
+    guest_processor_state[0].seg.segment[IA32_SEG_FS].attributes = tboot_ds_attr;
+    guest_processor_state[0].seg.segment[IA32_SEG_GS].attributes = tboot_ds_attr;
+    guest_processor_state[0].seg.segment[IA32_SEG_TR].attributes = tboot_tr_attr;
+
+    guest_processor_state[0].seg.segment[IA32_SEG_LDTR].selector= 0x0;
+    guest_processor_state[0].seg.segment[IA32_SEG_LDTR].base= 0x0;
+    guest_processor_state[0].seg.segment[IA32_SEG_LDTR].limit= 0xffffffff;
+    guest_processor_state[0].seg.segment[IA32_SEG_LDTR].attributes= 0x00010000;
+#endif
+
     // AP's are in real mode waiting for sipi (halt state)
     // Set the VMCS GUEST ACTIVITY STATE in the VMCS Guest State Area
     // to "halted."
-    // Bootstrap processor is 0
+
     int k;
-    for(k=0; k<=evmm_num_of_aps; k++) {
+    for(k=1; k<=evmm_num_of_aps; k++) {
         guest_processor_state[k].size_of_this_struct = 
                         sizeof(VMM_GUEST_CPU_STARTUP_STATE);
         guest_processor_state[k].version_of_this_struct = 
@@ -1008,102 +1167,75 @@ int linux_setup(void)
 
         // zero out all the registers.  Then set the ones that linux expects.
         for (i = 0; i < IA32_REG_GP_COUNT; i++) {
-            guest_processor_state[k].gp.reg[i]= (uint64_t) 0;
+            guest_processor_state[k].gp.reg[i] = (uint64_t) 0;
         }
 
-        guest_processor_state[k].gp.reg[IA32_REG_RIP]= (uint64_t)linux_entry_address;
-        guest_processor_state[k].gp.reg[IA32_REG_RSI]= (uint64_t) linux_esi_register;
-#if 0
-        guest_processor_state[k].gp.reg[IA32_REG_RSP]= (uint64_t) linux_esp_register;
-#else
-        guest_processor_state[k].gp.reg[IA32_REG_RSP]= (uint64_t) 
-                        evmm_stack_pointers_array[k];
-#endif
-        guest_processor_state[k].gp.reg[IA32_REG_RFLAGS] = 0x02;
-        guest_processor_state[k].gp.reg[IA32_REG_RBP] = 0;
-        guest_processor_state[k].gp.reg[IA32_REG_RDI] = 0;
-    
+        guest_processor_state[k].control.gdtr.base = (uint64_t)(uint32_t)&gdt_table;
+        guest_processor_state[k].control.gdtr.limit = (uint64_t)(uint32_t)gdt_table +
+                                     sizeof(gdt_table) -1;
+        guest_processor_state[k].control.idtr.base = (UINT64)idtr.base;
+        guest_processor_state[k].control.idtr.limit = (UINT32)idtr.limit;
+
+        guest_processor_state[k].gp.reg[IA32_REG_RIP] = (uint64_t) 0;
+        guest_processor_state[k].gp.reg[IA32_REG_RSI] = (uint64_t) 0;
+        guest_processor_state[k].gp.reg[IA32_REG_RSP] = (uint64_t) 0;
         for (i = 0; i < IA32_REG_XMM_COUNT; i++) {
             guest_processor_state[k].xmm.reg[i].uint64[0] = (uint64_t)0;
             guest_processor_state[k].xmm.reg[i].uint64[1] = (uint64_t)0;
         }
-        guest_processor_state[k].msr.msr_debugctl= tboot_msr_debugctl;
-        guest_processor_state[k].msr.msr_efer= tboot_msr_efer;
-        guest_processor_state[k].msr.msr_pat= tboot_msr_pat;
-        guest_processor_state[k].msr.msr_sysenter_esp= tboot_msr_sysenter_esp;
-        guest_processor_state[k].msr.msr_sysenter_eip= tboot_msr_sysenter_eip;
-        guest_processor_state[k].msr.msr_sysenter_cs= tboot_msr_sysenter_cs;
+
+#if 0
+        ia32_read_msr(IA32_MSR_DEBUGCTL, &guest_processor_state[k].msr.msr_debugctl);
+        ia32_read_msr(IA32_MSR_EFER, &guest_processor_state[k].msr.msr_efer);
+        ia32_read_msr(IA32_MSR_PAT, &guest_processor_state[k].msr.msr_pat);
+        ia32_read_msr(IA32_MSR_SYSENTER_ESP,
+                    &guest_processor_state[k].msr.msr_sysenter_esp);
+        ia32_read_msr(IA32_MSR_SYSENTER_EIP,
+                    &guest_processor_state[k].msr.msr_sysenter_eip);
+        ia32_read_msr(IA32_MSR_SYSENTER_CS, &tmp);
+        guest_processor_state[k].msr.msr_sysenter_cs= (uint32_t) tmp;
+#endif
         guest_processor_state[k].msr.pending_exceptions = 0;
         guest_processor_state[k].msr.interruptibility_state = 0;
         guest_processor_state[k].msr.activity_state = 0;
         guest_processor_state[k].msr.smbase = 0;
-     
+        /* 
+         *  IA32_SELECTOR sel;
+         *  sel.sel16 = __readldtr();
+         *  guest_processor_state[k].msr.smbase = 0;
+         *  guest_processor_state[k].sel.sel16 = __readldtr();
+         *  if (guest_processor_state[k].sel.bits.index != 0)
+         *      return
+         */
         for (i = 0; i < IA32_CTRL_COUNT; i++) {
             guest_processor_state[k].control.cr[i] = 0;
         }
-        guest_processor_state[k].control.cr[IA32_CTRL_CR0]= (uint64_t) tboot_cr0;
-        guest_processor_state[k].control.cr[IA32_CTRL_CR2]= (uint64_t) tboot_cr2;
-        guest_processor_state[k].control.cr[IA32_CTRL_CR3] = (uint64_t) tboot_cr3; 
-        guest_processor_state[k].control.cr[IA32_CTRL_CR4]= (uint64_t) tboot_cr4;
+
+        // CHECK
+        guest_processor_state[k].control.cr[IA32_CTRL_CR0]= 0x60000010;
+        guest_processor_state[k].control.cr[IA32_CTRL_CR3] = 0x0; 
+        guest_processor_state[k].control.cr[IA32_CTRL_CR4]= 0x0;
 
         for (i = 0; i < IA32_SEG_COUNT; i++) {
             guest_processor_state[k].seg.segment[i].base = 0;
             guest_processor_state[k].seg.segment[i].limit = 0;
         }
-   
-        guest_processor_state[k].control.gdtr.base = (uint64_t)(uint32_t)
-                        tboot_gdtr_32.base;
-        guest_processor_state[k].control.gdtr.limit = (uint64_t)(uint32_t)
-                        tboot_gdtr_32.limit;
-        ia32_read_idtr(&idtr);
-    
-        guest_processor_state[k].control.idtr.base = (UINT64)idtr.base;
-        guest_processor_state[k].control.idtr.limit = (UINT32)idtr.limit;
-    
-        guest_processor_state[k].seg.segment[IA32_SEG_CS].selector = 
-                        (uint64_t) tboot_cs_selector;
-        guest_processor_state[k].seg.segment[IA32_SEG_DS].selector = 
-                        (uint64_t) tboot_ds_selector;
-        guest_processor_state[k].seg.segment[IA32_SEG_SS].selector = 
-                        (uint64_t) tboot_ss_selector;
-        guest_processor_state[k].seg.segment[IA32_SEG_ES].selector = 
-                        (uint64_t) tboot_ds_selector;
-        guest_processor_state[k].seg.segment[IA32_SEG_FS].selector = 
-                        (uint64_t) tboot_ds_selector;
-        guest_processor_state[k].seg.segment[IA32_SEG_GS].selector = 
-                        (uint64_t) tboot_ds_selector;
-        guest_processor_state[k].seg.segment[IA32_SEG_TR].selector= 
-                        (uint64_t) tboot_tr_selector;
+        guest_processor_state[k].seg.segment[IA32_SEG_CS].base = 
+                (uint64_t) LINUX_BOOT_CS;
+        guest_processor_state[k].seg.segment[IA32_SEG_DS].base = 
+                (uint64_t) LINUX_BOOT_DS;
+        guest_processor_state[k].seg.segment[IA32_SEG_ES].base = 0;
+        guest_processor_state[k].seg.segment[IA32_SEG_FS].base = 0;
+        guest_processor_state[k].seg.segment[IA32_SEG_GS].base = 0;
 
-        guest_processor_state[k].seg.segment[IA32_SEG_CS].base = tboot_cs_base;
-        guest_processor_state[k].seg.segment[IA32_SEG_DS].base = tboot_ds_base;
-        guest_processor_state[k].seg.segment[IA32_SEG_SS].base = tboot_ss_base;
-        guest_processor_state[k].seg.segment[IA32_SEG_ES].base = tboot_ds_base;
-        guest_processor_state[k].seg.segment[IA32_SEG_FS].base = tboot_ds_base;
-        guest_processor_state[k].seg.segment[IA32_SEG_GS].base = tboot_ds_base;
-        guest_processor_state[k].seg.segment[IA32_SEG_TR].base = tboot_ds_base;
-
-        guest_processor_state[k].seg.segment[IA32_SEG_CS].limit = tboot_cs_limit;
-        guest_processor_state[k].seg.segment[IA32_SEG_DS].limit = tboot_ds_limit;
-        guest_processor_state[k].seg.segment[IA32_SEG_SS].limit = tboot_ss_limit;
-        guest_processor_state[k].seg.segment[IA32_SEG_ES].limit = tboot_ds_limit;
-        guest_processor_state[k].seg.segment[IA32_SEG_FS].limit = tboot_ds_limit;
-        guest_processor_state[k].seg.segment[IA32_SEG_GS].limit = tboot_ds_limit;
-        guest_processor_state[k].seg.segment[IA32_SEG_TR].limit = tboot_tr_limit;
-
-        guest_processor_state[k].seg.segment[IA32_SEG_CS].attributes = tboot_cs_attr;
-        guest_processor_state[k].seg.segment[IA32_SEG_DS].attributes = tboot_ds_attr;
-        guest_processor_state[k].seg.segment[IA32_SEG_SS].attributes = tboot_ss_attr;
-        guest_processor_state[k].seg.segment[IA32_SEG_ES].attributes = tboot_ds_attr;
-        guest_processor_state[k].seg.segment[IA32_SEG_FS].attributes = tboot_ds_attr;
-        guest_processor_state[k].seg.segment[IA32_SEG_GS].attributes = tboot_ds_attr;
-        guest_processor_state[k].seg.segment[IA32_SEG_TR].attributes = tboot_tr_attr;
-    
-        guest_processor_state[k].seg.segment[IA32_SEG_LDTR].selector= 0x0;
-        guest_processor_state[k].seg.segment[IA32_SEG_LDTR].base= 0x0;
-        guest_processor_state[k].seg.segment[IA32_SEG_LDTR].limit= 0xffffffff;
-        guest_processor_state[k].seg.segment[IA32_SEG_LDTR].attributes= 0x00010000;
+        guest_processor_state[k].seg.segment[IA32_SEG_LDTR].attributes= 
+                                0x00010000;
+        guest_processor_state[k].seg.segment[IA32_SEG_TR].attributes= 
+                                0x0000808b;
+        guest_processor_state[k].seg.segment[IA32_SEG_TR].limit= 
+                                0xffffffff;
     }
+
     return 0;
 }
 

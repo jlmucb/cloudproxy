@@ -29,8 +29,6 @@ extern int vmx_vmwrite(UINT64 index, UINT64 value);
 
 // fixup control registers and make guest loop forever
 
-static int count= 0;
-
 asm(
 ".text\n"
 ".globl loop_forever\n"
@@ -49,11 +47,9 @@ void fixupvmcs()
 
 #ifdef JLMDEBUG
     bprint("fixupvmcs %04x\n", *loop);
-#endif
-    if(count++>0)
-        LOOP_FOREVER
     vmx_vmread(0x681e, &value);  // guest_rip
     *((UINT16*) value)= *loop;    // feeb
+#endif
 
     // was 3e, cruse has 16
     // vmx_vmread(0x4000, &value);  // vmx_pin_controls

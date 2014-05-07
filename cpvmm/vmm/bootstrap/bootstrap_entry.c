@@ -208,6 +208,11 @@ static uint32_t                         tboot_tr_base= 0;
 static uint32_t                         tboot_tr_limit= 0;
 static uint16_t                         tboot_tr_attr= 0;
 
+static uint32_t                         tboot_cr0= 0;
+static uint32_t                         tboot_cr2= 0;
+static uint32_t                         tboot_cr3= 0;
+static uint32_t                         tboot_cr4= 0;
+
 
 // -------------------------------------------------------------------------
 
@@ -375,6 +380,17 @@ void read_cr0(uint32_t* ret)
     asm volatile(
         "\tmovl  %[ret],%%ebx\n"
         "\tmovl  %%cr0,%%eax\n"
+        "\tmovl %%eax, (%%ebx)\n"
+    ::[ret] "p" (ret) 
+    : "%eax","%ebx");
+}
+
+
+void read_cr2(uint32_t* ret)
+{
+    asm volatile(
+        "\tmovl  %[ret],%%ebx\n"
+        "\tmovl  %%cr2,%%eax\n"
         "\tmovl %%eax, (%%ebx)\n"
     ::[ret] "p" (ret) 
     : "%eax","%ebx");
@@ -1058,9 +1074,10 @@ int linux_setup(void)
     for (i = 0; i < IA32_CTRL_COUNT; i++) {
         guest_processor_state[0].control.cr[i] = 0;
     }
-    guest_processor_state[0].control.cr[IA32_CTRL_CR0]= 0x33;
-    guest_processor_state[0].control.cr[IA32_CTRL_CR3] = 0x0; 
-    guest_processor_state[0].control.cr[IA32_CTRL_CR4]= 0x4240;
+    guest_processor_state[0].control.cr[IA32_CTRL_CR0]= (uint64_t) tboot_cr0;
+    guest_processor_state[0].control.cr[IA32_CTRL_CR2]= (uint64_t) tboot_cr2;
+    guest_processor_state[0].control.cr[IA32_CTRL_CR3] = (uint64_t) tboot_cr3; 
+    guest_processor_state[0].control.cr[IA32_CTRL_CR4]= (uint64_t) tboot_cr4;
 
     for (i = 0; i < IA32_SEG_COUNT; i++) {
         guest_processor_state[0].seg.segment[i].base = 0;
@@ -1087,34 +1104,53 @@ int linux_setup(void)
     guest_processor_state[0].control.gdtr.limit = (uint64_t)(uint32_t)
                     tboot_gdtr_32.limit;
     ia32_read_idtr(&idtr);
+
     guest_processor_state[0].control.idtr.base = (UINT64)idtr.base;
     guest_processor_state[0].control.idtr.limit = (UINT32)idtr.limit;
+
     guest_processor_state[0].seg.segment[IA32_SEG_CS].selector = 
                     (uint64_t) tboot_cs_selector;
     guest_processor_state[0].seg.segment[IA32_SEG_DS].selector = 
                     (uint64_t) tboot_ds_selector;
     guest_processor_state[0].seg.segment[IA32_SEG_SS].selector = 
                     (uint64_t) tboot_ss_selector;
-    guest_processor_state[0].seg.segment[IA32_SEG_ES].selector = 0;
-    guest_processor_state[0].seg.segment[IA32_SEG_FS].selector = 0;
-    guest_processor_state[0].seg.segment[IA32_SEG_GS].selector = 0;
-    guest_processor_state[0].seg.segment[IA32_SEG_CS].base =  tboot_cs_base;
+    guest_processor_state[0].seg.segment[IA32_SEG_ES].selector = 
+                    (uint64_t) tboot_ds_selector;
+    guest_processor_state[0].seg.segment[IA32_SEG_FS].selector = 
+                    (uint64_t) tboot_ds_selector;
+    guest_processor_state[0].seg.segment[IA32_SEG_GS].selector = 
+                    (uint64_t) tboot_ds_selector;
+    guest_processor_state[0].seg.segment[IA32_SEG_TR].selector= 
+                    (uint64_t) tboot_tr_selector;
+
+    guest_processor_state[0].seg.segment[IA32_SEG_CS].base = tboot_cs_base;
     guest_processor_state[0].seg.segment[IA32_SEG_DS].base = tboot_ds_base;
     guest_processor_state[0].seg.segment[IA32_SEG_SS].base = tboot_ss_base;
-    guest_processor_state[0].seg.segment[IA32_SEG_CS].limit =  tboot_cs_limit;
+    guest_processor_state[0].seg.segment[IA32_SEG_ES].base = tboot_ds_base;
+    guest_processor_state[0].seg.segment[IA32_SEG_FS].base = tboot_ds_base;
+    guest_processor_state[0].seg.segment[IA32_SEG_GS].base = tboot_ds_base;
+    guest_processor_state[0].seg.segment[IA32_SEG_TR].base = tboot_ds_base;
+
+    guest_processor_state[0].seg.segment[IA32_SEG_CS].limit = tboot_cs_limit;
     guest_processor_state[0].seg.segment[IA32_SEG_DS].limit = tboot_ds_limit;
     guest_processor_state[0].seg.segment[IA32_SEG_SS].limit = tboot_ss_limit;
-    guest_processor_state[0].seg.segment[IA32_SEG_CS].attributes =  tboot_cs_attr;
+    guest_processor_state[0].seg.segment[IA32_SEG_ES].limit = tboot_ds_limit;
+    guest_processor_state[0].seg.segment[IA32_SEG_FS].limit = tboot_ds_limit;
+    guest_processor_state[0].seg.segment[IA32_SEG_GS].limit = tboot_ds_limit;
+    guest_processor_state[0].seg.segment[IA32_SEG_TR].limit = tboot_tr_limit;
+
+    guest_processor_state[0].seg.segment[IA32_SEG_CS].attributes = tboot_cs_attr;
     guest_processor_state[0].seg.segment[IA32_SEG_DS].attributes = tboot_ds_attr;
     guest_processor_state[0].seg.segment[IA32_SEG_SS].attributes = tboot_ss_attr;
-    guest_processor_state[0].seg.segment[IA32_SEG_ES].base = 0;
-    guest_processor_state[0].seg.segment[IA32_SEG_FS].base = 0;
-    guest_processor_state[0].seg.segment[IA32_SEG_GS].base = 0;
-    guest_processor_state[0].seg.segment[IA32_SEG_LDTR].attributes= 0x00010000;
-    guest_processor_state[0].seg.segment[IA32_SEG_TR].selector= tboot_tr_selector;
-    guest_processor_state[0].seg.segment[IA32_SEG_TR].attributes= 0x0000808b;
-    guest_processor_state[0].seg.segment[IA32_SEG_TR].limit= 0xffffffff;
+    guest_processor_state[0].seg.segment[IA32_SEG_ES].attributes = tboot_ds_attr;
+    guest_processor_state[0].seg.segment[IA32_SEG_FS].attributes = tboot_ds_attr;
+    guest_processor_state[0].seg.segment[IA32_SEG_GS].attributes = tboot_ds_attr;
+    guest_processor_state[0].seg.segment[IA32_SEG_TR].attributes = tboot_tr_attr;
 
+    guest_processor_state[0].seg.segment[IA32_SEG_LDTR].selector= 0x0;
+    guest_processor_state[0].seg.segment[IA32_SEG_LDTR].base= 0x0;
+    guest_processor_state[0].seg.segment[IA32_SEG_LDTR].limit= 0xffffffff;
+    guest_processor_state[0].seg.segment[IA32_SEG_LDTR].attributes= 0x00010000;
 #endif
 
     // AP's are in real mode waiting for sipi (halt state)
@@ -1951,6 +1987,10 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     ia32_read_msr(IA32_MSR_SYSENTER_ESP, &tboot_msr_sysenter_esp);
     ia32_read_msr(IA32_MSR_SYSENTER_EIP, &tboot_msr_sysenter_eip);
     ia32_read_msr(IA32_MSR_SYSENTER_CS, &tboot_msr_sysenter_cs);
+    read_cr0(&tboot_cr0);
+    read_cr2(&tboot_cr2);
+    read_cr3(&tboot_cr3);
+    read_cr4(&tboot_cr4);
 
     p= (uint32_t*)(tboot_gdtr_32.base+tboot_cs_selector); 
     ia32_get_selector(p, &tboot_cs_base, &tboot_cs_limit, &tboot_cs_attr);

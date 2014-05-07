@@ -56,9 +56,9 @@ void fixupvmcs()
     *((UINT16*) value)= *loop;    // feeb
 
     // was 3e, cruse has 16
-    vmx_vmread(0x4000, &value);  // vmx_pin_controls
-    //value= 0x16;
-    //vmx_vmwrite(0x4000, value);  // vmx_pin_controls
+    // vmx_vmread(0x4000, &value);  // vmx_pin_controls
+    // value= 0x16;
+    // vmx_vmwrite(0x4000, value);  // vmx_pin_controls
 
     // was 96006172, cruse has 401e172
     // vmx_vmread(0x4002, &value);  // vmx_cpu_controls

@@ -153,6 +153,7 @@ typedef struct VMCS_SAVED_REGION {
     UINT64  vmexit_il;
 
     UINT64  guest_cr0;
+    UINT64  guest_cr2;
     UINT64  guest_cr3;
     UINT64  guest_cr4;
     UINT64  guest_dr7;
@@ -302,34 +303,34 @@ void vmm_print_vmcs_region(UINT64* pu)
     bprint("Guest values:\n");
     bprint("rip: %016llx, rflags: %016llx, rsp: %016llx\n",
         p->guest_rip, p->guest_rflags, p->guest_rsp);
-    bprint("cr0: %016llx, cr3: %016llx, cr4: %016llx\n",
-        p->guest_cr0, p->guest_cr3, p->guest_cr4);
-    bprint("dr7: %016llx\n", p->guest_dr7);
-    bprint("cs: %016llx, base: %016llx, limit: %08llx, access: %04llx\n",
+    bprint("cr0: %08llx, cr2: %08llx, cr3: %08llx, cr4: %08llx\n",
+        p->guest_cr0, p->guest_cr2, p->guest_cr3, p->guest_cr4);
+    bprint("dr7: %08llx\n", p->guest_dr7);
+    bprint("cs: %08llx, base: %08llx, limit: %08llx, access: %04llx\n",
         p->guest_cs, p->guest_cs_base, p->guest_cs_limit, p->guest_cs_access);
-    bprint("ss: %016llx, base: %016llx, limit: %08llx, access: %04llx\n",
+    bprint("ss: %08llx, base: %08llx, limit: %08llx, access: %04llx\n",
         p->guest_ss, p->guest_ss_base, p->guest_ss_limit, p->guest_ss_access);
-    bprint("ds: %016llx, base: %016llx, limit: %08llx, access: %04llx\n",
+    bprint("ds: %08llx, base: %08llx, limit: %08llx, access: %04llx\n",
         p->guest_ds, p->guest_ds_base, p->guest_ds_limit, p->guest_ds_access);
 #if 0
-    bprint("fs: %016llx, base: %016llx, limit: %08llx, access: %04llx\n",
+    bprint("fs: %08llx, base: %08llx, limit: %08llx, access: %04llx\n",
         p->guest_fs, p->guest_fs_base, p->guest_fs_limit, p->guest_fs_access);
-    bprint("gs: %016llx, base: %016llx, limit: %08llx, access: %04llx\n",
+    bprint("gs: %08llx, base: %08llx, limit: %08llx, access: %04llx\n",
         p->guest_gs, p->guest_gs_base, p->guest_gs_limit, p->guest_gs_access);
-    bprint("ldtr: %016llx, base: %016llx, limit: %08llx, access: %04llx\n",
+    bprint("ldtr: %08llx, base: %08llx, limit: %08llx, access: %04llx\n",
        p->guest_ldtr, p->guest_ldtr_base, p->guest_ldtr_limit, p->guest_ldtr_access);
 #endif
-    bprint("gdtr base: %016llx, limit: %016llx\n", p->guest_gdtr_base, 
+    bprint("gdtr base: %08llx, limit: %08llx\n", p->guest_gdtr_base, 
            p->guest_gdtr_limit);
-    bprint("idtr base: %016llx, limit: %016llx\n", p->guest_idtr_base, 
+    bprint("idtr base: %08llx, limit: %08llx\n", p->guest_idtr_base, 
            p->guest_idtr_limit);
-    bprint("tr: %016llx, base: %016llx, limit: %08llx, access: %04llx\n",
+    bprint("tr: %08llx, base: %08llx, limit: %08llx, access: %04llx\n",
         p->guest_tr, p->guest_tr_base, p->guest_tr_limit, p->guest_tr_access);
-    bprint("secondary controls: %016llx, etpt: %016llx\n", 
+    bprint("secondary controls: %08llx, etpt: %08llx\n", 
            p->vmx_secondary_controls, p->guest_etpt);
-    bprint("pin controls: %016llx, cpu controls: %016llx\n", p->vmx_pin_controls,
+    bprint("pin controls: %08llx, cpu controls: %08llx\n", p->vmx_pin_controls,
            p->vmx_cpu_controls);
-    bprint("entry controls: %016llx, exit controls: %016llx\n", 
+    bprint("entry controls: %08llx, exit controls: %08llx\n", 
            p->vmx_entry_controls, p->vmx_exit_controls);
     bprint("pdpte0: %llx, pdpte1: %llx, pdpte2: %llx, pdpte3: %llx\n",
         p->guest_pdpte0, p->guest_pdpte1, p->guest_pdpte2, p->guest_pdpte3);

@@ -203,6 +203,10 @@ static uint64_t                         tboot_msr_pat= 0;
 static uint64_t                         tboot_msr_sysenter_cs= 0;
 static uint64_t                         tboot_msr_sysenter_esp= 0;
 static uint64_t                         tboot_msr_sysenter_eip= 0;
+static uint16_t                         tboot_tr_selector= 0;
+static uint32_t                         tboot_tr_base= 0;
+static uint32_t                         tboot_tr_limit= 0;
+static uint16_t                         tboot_tr_attr= 0;
 
 
 // -------------------------------------------------------------------------
@@ -233,6 +237,20 @@ int ia32_get_selector(uint32_t* p, uint32_t* base, uint32_t* limit, uint16_t* ac
     *access= (uint32_t) attr.attr16;
 
     return 0;
+}
+
+
+uint16_t ia32_read_ts()
+{
+    uint16_t  ts= 0;
+
+    asm volatile(
+        "\txorw %%ax,%%ax\n"
+        "\tstr  %%ax\n"
+        "\tmovw %%ax, %[ts]\n"
+    :[ts] "=g" (ts)
+    : : "%ax");
+    return ts;
 }
 
 
@@ -1088,6 +1106,7 @@ int linux_setup(void)
     guest_processor_state[0].seg.segment[IA32_SEG_FS].base = 0;
     guest_processor_state[0].seg.segment[IA32_SEG_GS].base = 0;
     guest_processor_state[0].seg.segment[IA32_SEG_LDTR].attributes= 0x00010000;
+    guest_processor_state[0].seg.segment[IA32_SEG_TR].selector= tboot_tr_selector;
     guest_processor_state[0].seg.segment[IA32_SEG_TR].attributes= 0x0000808b;
     guest_processor_state[0].seg.segment[IA32_SEG_TR].limit= 0xffffffff;
 
@@ -1913,21 +1932,25 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     tboot_cs_selector= ia32_read_cs();
     tboot_ds_selector= ia32_read_ds();
     tboot_ss_selector= ia32_read_ss();
+    tboot_tr_selector= ia32_read_ts();
     ia32_read_msr(IA32_MSR_DEBUGCTL, &tboot_msr_debugctl);
     ia32_read_msr(IA32_MSR_EFER, &tboot_msr_efer);
     ia32_read_msr(IA32_MSR_PAT, &tboot_msr_pat);
     ia32_read_msr(IA32_MSR_SYSENTER_ESP, &tboot_msr_sysenter_esp);
     ia32_read_msr(IA32_MSR_SYSENTER_EIP, &tboot_msr_sysenter_eip);
     ia32_read_msr(IA32_MSR_SYSENTER_CS, &tboot_msr_sysenter_cs);
-#ifdef JLMDEBUG
-    bprint("gdt base: %08x, limit: %04x\n", tboot_gdtr_32.base, tboot_gdtr_32.limit);
-#endif
+
     p= (uint32_t*)(tboot_gdtr_32.base+tboot_cs_selector); 
     ia32_get_selector(p, &tboot_cs_base, &tboot_cs_limit, &tboot_cs_attr);
     p= (uint32_t*)(tboot_gdtr_32.base+tboot_ds_selector); 
     ia32_get_selector(p, &tboot_ds_base, &tboot_ds_limit, &tboot_ds_attr);
     p= (uint32_t*)(tboot_gdtr_32.base+tboot_ss_selector); 
     ia32_get_selector(p, &tboot_ss_base, &tboot_ss_limit, &tboot_ss_attr);
+    // tboot_tr_base= 0;
+    // tboot_tr_limit= 0;
+    // tboot_tr_attr= 0;
+    p= (uint32_t*)(tboot_gdtr_32.base+tboot_tr_selector); 
+    ia32_get_selector(p, &tboot_tr_base, &tboot_tr_limit, &tboot_tr_attr);
 #ifdef JLMDEBUG
     bprint("tboot cs selector: %04x, base: %08x, limit: %04x, attr: %04x\n",
            tboot_cs_selector, tboot_cs_base, tboot_cs_limit, tboot_cs_attr);
@@ -1935,12 +1958,16 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
            tboot_ds_selector, tboot_ds_base, tboot_ds_limit, tboot_ds_attr);
     bprint("tboot ss selector: %04x, base: %08x, limit: %04x, attr: %04x\n",
            tboot_ss_selector, tboot_ss_base, tboot_ss_limit, tboot_ss_attr);
+    bprint("tboot tr selector: %04x, base: %08x, limit: %04x, attr: %04x\n",
+           tboot_tr_selector, tboot_tr_base, tboot_tr_limit, tboot_tr_attr);
     bprint("msr_debugctl: 0x%016llx\n", tboot_msr_debugctl);
     bprint("msr_efer: 0x%016llx\n", tboot_msr_efer);
     bprint("msr_pat: 0x%016llx\n", tboot_msr_pat);
     bprint("msr_sysenter_esp: 0x%016llx\n", tboot_msr_sysenter_esp);
     bprint("msr_sysenter_eip: 0x%016llx\n", tboot_msr_sysenter_eip);
     bprint("msr_sysenter_cs: 0x%016llx\n", tboot_msr_sysenter_cs);
+    bprint("gdt base: %08x, limit: %04x\n", tboot_gdtr_32.base, tboot_gdtr_32.limit);
+    HexDump((UINT8*)tboot_gdtr_32.base, (UINT8*)tboot_gdtr_32.base+32);
 #endif
 
     init32.i32_low_memory_page = low_mem;

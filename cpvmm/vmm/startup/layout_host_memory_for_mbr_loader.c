@@ -149,26 +149,29 @@ BOOLEAN init_memory_layout_from_mbr(
 #if 1
     // JLM(FIX)
     // now remove the VMM area from the primary guest
-    ok = gpm_remove_mapping( primary_guest_gpm, vmm_memory_layout[uvmm_image].base_address,
-                             vmm_memory_layout[uvmm_image].total_size );
+#if 0
+    ok = gpm_remove_mapping(primary_guest_gpm, vmm_memory_layout[uvmm_image].base_address,
+                             vmm_memory_layout[uvmm_image].total_size);
     VMM_LOG(mask_anonymous, level_trace,"Primary guest GPM: remove uvmm image base %p size 0x%x\r\n", 
     vmm_memory_layout[uvmm_image].base_address,
     vmm_memory_layout[uvmm_image].total_size);
+#endif
 
     // and remove thunk area from the primary guest also
     // if post launch skip it.
-
+#if 0
     ok = gpm_remove_mapping( primary_guest_gpm, vmm_memory_layout[thunk_image].base_address,
                              vmm_memory_layout[thunk_image].total_size );
     VMM_LOG(mask_anonymous, level_trace,"Primary guest GPM: remove thunk image base %p size 0x%x\r\n", 
         vmm_memory_layout[thunk_image].base_address, vmm_memory_layout[thunk_image].total_size);
+#endif
 
     if (g_is_post_launch) {
         VMM_ASSERT (application_params != NULL);
         entry_list = (UINT64 *)application_params->address_entry_list;
         
         for (page_index = 0; page_index < application_params->entry_number && ok; page_index++) {
-            ok = gpm_remove_mapping( primary_guest_gpm, (GPA)entry_list[page_index], PAGE_4KB_SIZE);
+            ok = gpm_remove_mapping(primary_guest_gpm, (GPA)entry_list[page_index], PAGE_4KB_SIZE);
             //VMM_LOG(mask_anonymous, level_trace,"Primary guest GPM: remove heap page base %p 4K size\r\n", (GPA)entry_list[page_index]);
         }
     }

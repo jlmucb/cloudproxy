@@ -48,7 +48,9 @@ void fixupvmcs()
 #ifdef JLMDEBUG
     bprint("fixupvmcs %04x\n", *loop);
     vmx_vmread(0x681e, &value);  // guest_rip
-    *((UINT16*) value)= *loop;    // feeb
+    bprint("Code at %p\n", value);
+    HexDump((UINT8*)value, (UINT8*)value+32);
+    // *((UINT16*) value)= *loop;    // feeb
 #endif
 
     // was 3e, cruse has 16

@@ -36,14 +36,14 @@ message TaoCARequest {
 
   // An key-to-name binding attestation. If this name is authorized to claim
   // desired_name, then a key-to-desired_name attestation will be returned.
-  optional string attestation = 2;
+  optional string attestation = 3;
 
   // Details for an x509 certificate chain. Optionally used when type is
   // TAO_CA_REQUEST_ATTESTATION. When included in such requests, a new x509
   // certificate chain will be returned for the same public key and the same
   // certificate details, rooted at the policy key. The name in the attestation
   // must be authorized to claim these x509 details.
-  optional X509Details x509details = 3;
+  optional X509Details x509details = 4;
 }
 
 enum TaoCAResponseType {

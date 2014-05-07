@@ -50,7 +50,7 @@ class DirectTaoChildChannel : public TaoChildChannel {
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
   virtual bool Seal(const string &data, int policy, string *sealed) const;
   virtual bool Unseal(const string &sealed, string *data, int *policy) const;
-  virtual bool Attest(const string &data, string *attestation) const;
+  virtual bool Attest(const string &key_prin, string *attestation) const;
   virtual bool GetHostedProgramFullName(string *full_name) const;
   /// @}
 

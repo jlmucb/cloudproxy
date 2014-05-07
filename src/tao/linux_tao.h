@@ -90,7 +90,7 @@ class LinuxTao : public Tao {
                     string *sealed) const;
   virtual bool Unseal(const string &child_name, const string &sealed,
                       string *data, int *policy) const;
-  virtual bool Attest(const string &child_name, const string &data,
+  virtual bool Attest(const string &child_name, const string &key_prin,
                       string *attestation) const;
   virtual bool ExtendName(string *child_name, const string &subprin);
   /// @}

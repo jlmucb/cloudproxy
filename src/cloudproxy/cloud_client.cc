@@ -116,10 +116,11 @@ bool CloudClient::Connect(const string &server, const string &port,
   CHECK(SerializeX509(self_cert, &serialized_client_cert))
       << "Could not serialize the client certificate";
 
+  // TODO(kwalsh) - Don't attest the self-signed x509. Just attest the key.
   ClientMessage cm;
   string *signature = cm.mutable_attestation();
-  CHECK(host_channel_->Attest(serialized_client_cert, signature))
-      << "Could not get a SignedAttestation for our client certificate";
+  //CHECK(host_channel_->Attest(serialized_client_cert, signature))
+  //    << "Could not get a SignedAttestation for our client certificate";
 
   string serialized_cm;
   CHECK(cm.SerializeToString(&serialized_cm))

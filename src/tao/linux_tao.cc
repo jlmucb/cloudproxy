@@ -289,7 +289,7 @@ bool LinuxTao::Unseal(const string &child_name, const string &sealed,
   return true;
 }
 
-bool LinuxTao::Attest(const string &child_name, const string &pem_key,
+bool LinuxTao::Attest(const string &child_name, const string &key_prin,
                       string *attestation) const {
   {
     lock_guard<mutex> l(data_m_);
@@ -311,6 +311,7 @@ bool LinuxTao::Attest(const string &child_name, const string &pem_key,
   // (3) We can create a binding via the policy key, to get:
   //   K_policy::TrustedOS::child_name
   // where K_policy::TrustedOS is the name we bound to K_fake by TaoCA.
+  string name;
   int option = 2;
   if (option == 1) {
     if (!GetTaoFullName(&name)) {
@@ -334,7 +335,7 @@ bool LinuxTao::Attest(const string &child_name, const string &pem_key,
     name += "::" + child_name;
     delegation = policy_attestation_;
   }
-  return tao::AttestKeyNameBinding(*keys_, delegation, pem_key, name,
+  return tao::AttestKeyNameBinding(*keys_, delegation, key_prin, name,
                                    attestation);
 }
 

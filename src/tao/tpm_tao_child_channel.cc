@@ -403,7 +403,7 @@ bool TPMTaoChildChannel::Unseal(const string &sealed, string *data) const {
   return true;
 }
 
-bool TPMTaoChildChannel::Attest(const string &pem_key, string *attestation) const {
+bool TPMTaoChildChannel::Attest(const string &key_prin, string *attestation) const {
   TSS_RESULT result;
 
   // The following code for setting up the composite hash is based on
@@ -467,7 +467,7 @@ bool TPMTaoChildChannel::Attest(const string &pem_key, string *attestation) cons
 
   s.set_time(cur_time);
   s.set_expiration(cur_time + Tao::DefaultAttestationTimeout);
-  s.set_data(pem_key);
+  s.set_data(key_prin);
   s.set_name(name);
 
   string serialized_statement;

@@ -86,8 +86,8 @@ static bool SetUpSSLCtx(const SSL_METHOD *method, const Keys &key,
     LOG(ERROR) << "Invalid SetUpSSLCTX parameters";
     return false;
   }
-  tao::ScopedEvpPkey pem_key;
-  if (!key.ExportSignerToOpenSSL(&pem_key)) {
+  tao::ScopedEvpPkey evp_key;
+  if (!key.ExportSignerToOpenSSL(&evp_key)) {
     LOG(ERROR) << "Could not export key to openssl";
     return false;
   }
@@ -134,7 +134,7 @@ static bool SetUpSSLCtx(const SSL_METHOD *method, const Keys &key,
     return false;
   }
 
-  if (!SSL_CTX_use_PrivateKey(ctx->get(), pem_key.get())) {
+  if (!SSL_CTX_use_PrivateKey(ctx->get(), evp_key.get())) {
     LOG(ERROR) << "Could not set the private key for this connection";
     return false;
   }

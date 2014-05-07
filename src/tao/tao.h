@@ -170,11 +170,11 @@ class Tao {
   /// Produce a signed statement that asserts that a given program produced a
   /// given data string.
   /// @param child_name The local name of the hosted program making the request.
-  /// @param data The data produced by the hosted program.
+  /// @param key_prin A key principal produced by the hosted program.
   /// @param[out] attestation The resulting signed message. For verification see
   /// TaoAuth and its implementations.
   /// TODO(kwalsh) Make the opaque data string into a statement in some logic?
-  virtual bool Attest(const string &child_name, const string &data,
+  virtual bool Attest(const string &child_name, const string &key_prin,
                       string *attestation) const = 0;
 
   /// Extend a childs name with a new subprincipal name.

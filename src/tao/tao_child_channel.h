@@ -63,7 +63,7 @@ class TaoChildChannel {
   virtual bool Unseal(const string &sealed, string *data, int *policy) const;
 
   /// Generate attestation. See Tao for semantics.
-  virtual bool Attest(const string &data, string *attestation) const;
+  virtual bool Attest(const string &key_prin, string *attestation) const;
 
   /// Get our full name. See Tao for semantics.
   virtual bool GetHostedProgramFullName(string *full_name) const;

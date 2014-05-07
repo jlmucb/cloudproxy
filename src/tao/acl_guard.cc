@@ -33,12 +33,13 @@ using keyczar::base::WriteStringToFile;
 namespace tao {
 
 // TODO(kwalsh) Add wildcard "_" feature
-  
+
 bool ACLGuard::IsMatchingEntry(const ACLEntry &entry, const string &name,
-                               const string &op, const list<string> &args) {
+                               const string &op,
+                               const list<string> &args) const {
     if (entry.name() != name) return false;
     if (entry.op() != op) return false;
-    if (entry.args_size() != args.size()) return false;
+    if (entry.args_size() != int(args.size())) return false;
     int i = 0;
     for (auto &arg : args) 
       if (entry.args(i++) != arg)
@@ -61,7 +62,7 @@ bool ACLGuard::IsAuthorized(const string &name, const string &op,
 }
 
 bool ACLGuard::Authorize(const string &name, const string &op,
-                         const list<string> &args) const {
+                         const list<string> &args) {
   ACLEntry *entry = aclset_.add_entries();
   entry->set_name(name);
   entry->set_op(op);

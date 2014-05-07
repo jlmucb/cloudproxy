@@ -29,7 +29,9 @@
 #include <keyczar/keyczar.h>
 
 #include "tao/acl_guard.h"
+#include "tao/attestation.h"
 #include "tao/attestation.pb.h"
+#include "tao/process_factory.h"
 #include "tao/keys.pb.h"
 #include "tao/util.h"
 

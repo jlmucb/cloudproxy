@@ -27,6 +27,7 @@
 using std::string;
 
 namespace tao {
+class Keys;
 
 /// Generate a signed key-to-name binding attestation.
 /// @param key The signing key, i.e. the principal attesting to this binding.
@@ -62,6 +63,11 @@ bool GetKeyFromKeyNameBinding(const string &attestation, string *key_prin);
 /// @param[out] name The name part of the binding.
 bool ValidateKeyNameBinding(const string &attestation, time_t check_time,
                             string *key_prin, string *name);
+
+// TODO(kwalsh) Above should return time period.
+
+/// Get the current time.
+time_t CurrentTime();
 
 /// Generate a pretty-printed representation of an Attestation.
 /// @param a The attestation to pretty-print.

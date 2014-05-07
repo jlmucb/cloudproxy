@@ -141,8 +141,7 @@ TEST_F(PipeTaoChannelTest, UnsealTest) {
 }
 
 TEST_F(PipeTaoChannelTest, AttestTest) {
-  string bytes;
-  EXPECT_TRUE(child_channel_->GetRandomBytes(128, &bytes));
   string attestation;
-  EXPECT_TRUE(child_channel_->Attest(bytes, &attestation));
+  string key_prin = "Key(\"..stuff..\")";
+  EXPECT_TRUE(child_channel_->Attest(key_prin, &attestation));
 }

@@ -222,8 +222,6 @@ message Statement {
 // compression trick: if name is empty, then name = signer, if name starts with
 // "::", then signer gets prepended to name, etc.
 message Attestation {
-  required AttestationSignatureType signature_type = 1;
-
   // A serialized Statement. This is serialized to avoid canonicalization issues
   // when signing and verifying signatures.
   required bytes serialized_statement = 2;

@@ -42,9 +42,9 @@ bool DirectTaoChildChannel::Unseal(const string &sealed, string *data,
   return tao_->Unseal(child_name_, sealed, data, policy);
 }
 
-bool DirectTaoChildChannel::Attest(const string &data,
+bool DirectTaoChildChannel::Attest(const string &key_prin,
                                    string *attestation) const {
-  return tao_->Attest(child_name_, data, attestation);
+  return tao_->Attest(child_name_, key_prin, attestation);
 }
 
 bool DirectTaoChildChannel::GetHostedProgramFullName(string *full_name) const {

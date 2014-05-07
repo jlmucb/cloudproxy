@@ -154,8 +154,7 @@ TEST_F(KvmUnixTaoChannelTest, UnsealTest) {
 }
 
 TEST_F(KvmUnixTaoChannelTest, AttestTest) {
-  string bytes;
-  EXPECT_TRUE(child_channel_->GetRandomBytes(128, &bytes));
+  string key_prin = "Key(\"..stuff..\")";
   string attestation;
-  EXPECT_TRUE(child_channel_->Attest(bytes, &attestation));
+  EXPECT_TRUE(child_channel_->Attest(key_prin, &attestation));
 }

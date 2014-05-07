@@ -40,6 +40,10 @@
 
 using std::string;
 
+namespace keyczar {
+class Verifier;
+}  // namespace keyczar
+
 namespace tao {
 /// A TaoChildChannel implementation that wraps a TPM and presents the Tao
 /// interface. This allows OS or hypervisor Tao implementations to treat the TPM
@@ -62,7 +66,7 @@ class TPMTaoChildChannel : public TaoChildChannel {
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
   virtual bool Seal(const string &data, string *sealed) const;
   virtual bool Unseal(const string &sealed, string *data) const;
-  virtual bool Attest(const string &data, string *attestation) const;
+  virtual bool Attest(const string &key_prin, string *attestation) const;
   virtual bool GetHostedProgramFullName(string *full_name) const;
   virtual bool ExtendName(const string &subprin) const;
 
@@ -70,7 +74,7 @@ class TPMTaoChildChannel : public TaoChildChannel {
   /// @param v A keyczar verifier representing the TPM public AIK.
   /// @param data The serialized Statement that was signed.
   /// @param sig The signature to be verified.
-  static bool VerifySignature(const Verifier &v, const string &stmt,
+  static bool VerifySignature(const keyczar::Verifier &v, const string &stmt,
                               const string &sig);
 
  protected:

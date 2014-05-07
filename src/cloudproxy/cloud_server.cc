@@ -522,11 +522,12 @@ bool CloudServer::HandleAttestation(const string &attestation, SSL *ssl,
   string *signature = sm.mutable_attestation();
   {
     lock_guard<mutex> l(tao_m_);
-    if (!host_channel_->Attest(cstd.GetSelfCert(), signature)) {
-      LOG(ERROR)
-          << "Could not get a signed attestation for our own X.509 certificate";
-      return false;
-    }
+    // TODO(kwalsh) attest key, not cert
+    //if (!host_channel_->Attest(cstd.GetSelfCert(), signature)) {
+    //  LOG(ERROR)
+    //      << "Could not get a signed attestation for our own X.509 certificate";
+    //  return false;
+    // }
   }
 
   string serialized_sm;

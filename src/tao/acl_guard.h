@@ -25,10 +25,12 @@
 #include <keyczar/base/values.h>
 
 #include "tao/tao_domain.h"
+#include "tao/acl_guard.pb.h"
 
 using std::string;
 
 namespace tao {
+
 /// An authorization guard that uses ACLs stored in a single file, signed by the
 /// policy key.
 class ACLGuard : public TaoDomain {
@@ -45,9 +47,9 @@ class ACLGuard : public TaoDomain {
   virtual bool IsAuthorized(const string &name, const string &op,
                             const list<string> &args) const;
   virtual bool Authorize(const string &name, const string &op,
-                         const list<string> &args) const;
+                         const list<string> &args);
   virtual bool Forbid(const string &name, const string &op,
-                      const list<string> &args) const;
+                      const list<string> &args);
   virtual string DebugString() const;
   /// @}
 
@@ -55,8 +57,8 @@ class ACLGuard : public TaoDomain {
   int ACLEntryCount() const;
 
   /// Get information about the i^th ACL entry.
-  bool ACLEntry(int i, string *name, string *op, list<string> *args) const;
-  bool ACLEntry(int i, string *desc) const;
+  bool GetACLEntry(int i, string *name, string *op, list<string> *args) const;
+  bool GetACLEntry(int i, string *desc) const;
 
   // TODO(kwalsh) Maybe also map a name to pair<op, args>?
 
@@ -78,7 +80,7 @@ class ACLGuard : public TaoDomain {
 
   /// Check whether an acl entry matches a given name, op, args tuple.
   virtual bool IsMatchingEntry(const ACLEntry &entry, const string &name,
-                               const string &op, const list<string> &args);
+                               const string &op, const list<string> &args) const;
 
   string DebugString(const ACLEntry &entry);
 

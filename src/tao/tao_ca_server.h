@@ -72,16 +72,15 @@ class TaoCAServer {
   /// @param req The request.
   /// @param[out] key The subject key extracted from the request.
   /// @param[out] resp The response.
-  virtual bool HandleRequestAttestation(
-      const TaoCARequest &req, scoped_ptr<keyczar::Verifier> *subject_key,
-      TaoCAResponse *resp);
+  virtual bool HandleRequestAttestation(const TaoCARequest &req,
+                                        string *key_prin, TaoCAResponse *resp);
 
   /// Process an x509 chain request.
   /// @param req The request.
   /// @param subject_key The subject key for the new x509 certificate.
   /// @param[in,out] resp The response.
   virtual bool HandleRequestX509Chain(const TaoCARequest &req,
-                                      const keyczar::Verifier &subject_key,
+                                      const string &key_prin,
                                       TaoCAResponse *resp);
 
  private:

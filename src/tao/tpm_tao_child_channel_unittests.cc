@@ -68,7 +68,7 @@ TEST_F(TPMTaoChildChannelTest, UnsealTest) {
 }
 
 TEST_F(TPMTaoChildChannelTest, AttestTest) {
-  string bytes("Data to attest to");
+  string key_prin = "Key(\"..stuff..\")";
   string attestation;
-  EXPECT_TRUE(tao_->Attest(bytes, &attestation));
+  EXPECT_TRUE(tao_->Attest(key_prin, &attestation));
 }

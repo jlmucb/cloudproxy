@@ -45,14 +45,14 @@ class TaoGuard {
   /// @param op The name of the operation.
   /// @param args A list of arguments to the operation.
   virtual bool Authorize(const string &name, const string &op,
-                         const list<string> &args) const = 0;
+                         const list<string> &args) = 0;
 
   /// Attempt to revoke authorization for a principal to perform an operation.
   /// @param name The name of the principal.
   /// @param op The name of the operation.
   /// @param args A list of arguments to the operation.
   virtual bool Forbid(const string &name, const string &op,
-                      const list<string> &args) const = 0;
+                      const list<string> &args) = 0;
 
   /// Get a string suitable for showing users authorization info.
   virtual string DebugString() const = 0;

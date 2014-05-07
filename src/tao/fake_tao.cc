@@ -196,7 +196,7 @@ bool FakeTao::Unseal(const string &child_name, const string &sealed,
   return true;
 }
 
-bool FakeTao::Attest(const string &child_name, const string &pem_key,
+bool FakeTao::Attest(const string &child_name, const string &key_prin,
                      string *attestation) const {
   string name, delegation;
   // We have choices here.
@@ -239,17 +239,17 @@ bool FakeTao::Attest(const string &child_name, const string &pem_key,
     name += "::" + child_name;
     delegation = policy_attestation_;
   }
-  return tao::AttestKeyNameBinding(*keys_, delegation, pem_key, name,
+  return tao::AttestKeyNameBinding(*keys_, delegation, key_prin, name,
                                    attestation);
 }
 
 bool FakeTao::MakePolicyAttestation(const TaoDomain &admin) {
-  string pem_key;
-  if (!keys_->SerializePublicKey(&pem_key)) {
+  string key_prin;
+  if (!keys_->SignerUniqueID(&key_prin)) {
     LOG(ERROR) << "Could not serialize key";
     return false;
   }
-  if (!admin.AttestKeyNameBinding(pem_key, "FakeTPM", , &policy_attestation_)) {
+  if (!admin.AttestKeyNameBinding(key_prin, "FakeTPM", , &policy_attestation_)) {
     LOG(ERROR) << "Could not obtain policy attestation";
     return false;
   }

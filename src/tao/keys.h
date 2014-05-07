@@ -114,17 +114,17 @@ bool DeriveKey(const keyczar::Signer &key, const string &name, int size,
 /// Only the primary key from the keyset is exported. The resulting EVP_PKEY
 /// will contain both public and private keys.
 /// @param key The keyczar key to export.
-/// @param pem_key[out] The new OpenSSL EVP_PKEY.
+/// @param evp_key[out] The new OpenSSL EVP_PKEY.
 bool ExportPrivateKeyToOpenSSL(const keyczar::Signer &key,
-                               ScopedEvpPkey *pem_key);
+                               ScopedEvpPkey *evp_key);
 
 /// Convert a keyczar public signing key to an OpenSSL EVP_PKEY structure.
 /// Only the primary key from the keyset is exported. The EVP_PKEY will
 /// contain only a public key, even if key is actually a keyczar::Signer.
 /// @param key The keyczar key to export.
-/// @param pem_key[out] The new OpenSSL EVP_PKEY.
+/// @param evp_key[out] The new OpenSSL EVP_PKEY.
 bool ExportPublicKeyToOpenSSL(const keyczar::Verifier &key,
-                              ScopedEvpPkey *pem_key);
+                              ScopedEvpPkey *evp_key);
 
 /// Create a self-signed X509 certificate for a key.
 /// @param key The key to use for both the subject and the issuer.
@@ -257,7 +257,7 @@ class Keys {
   /// Get the path to the attestation for the managed signing key.
   /// @param tag Used to distinguish multiple key-to-name binding attestations.
   string AttestationPath(const string &tag) const {
-    return GetPath(SigningKeyAttestationSuffix + "." + tag);
+    return GetPath(string(SigningKeyAttestationSuffix) + "." + tag);
   }
 
   /// Get the path to the Tao-sealed secret for protecting managed keys.
@@ -337,14 +337,14 @@ class Keys {
   /// Convert the managed signing private key to an OpenSSL EVP_PKEY structure.
   /// Only the primary key from the keyset is exported. The EVP_PKEY will
   /// contain both public and private keys.
-  /// @param pem_key[out] The new OpenSSL EVP_PKEY.
-  bool ExportSignerToOpenSSL(ScopedEvpPkey *pem_key) const;
+  /// @param evp_key[out] The new OpenSSL EVP_PKEY.
+  bool ExportSignerToOpenSSL(ScopedEvpPkey *evp_key) const;
 
   /// Convert the managed signing public key to an OpenSSL EVP_PKEY structure.
   /// Only the primary key from the keyset is exported. The EVP_PKEY will
   /// contain only a public key.
-  /// @param pem_key[out] The new OpenSSL EVP_PKEY.
-  bool ExportVerifierToOpenSSL(ScopedEvpPkey *pem_key) const;
+  /// @param evp_key[out] The new OpenSSL EVP_PKEY.
+  bool ExportVerifierToOpenSSL(ScopedEvpPkey *evp_key) const;
 
   /// Keys stores all its files under a single path using these naming
   /// conventions. For consistency, other applications may use these same naming

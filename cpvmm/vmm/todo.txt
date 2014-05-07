@@ -113,3 +113,54 @@ bsp_enumerate_aps(void)
             ap_presence_array[i] = ++ap_num;
     return ap_num;
 
+
+LOAD_DEBUG_CONTROLS in vmentry must be 0
+if IA32_PERF_CONTROL==1 the controlMSR must be 0
+if IA32_PAT entry control == 1 PAT_MSR must be one that can be written by wrmsr withuot fault
+if IA32_LOADEFER vmentry control is 1  efermsr must be 0 and efer.LMA==vmexit control mode guest
+guest must be in IA32e mode must be 1
+any one of the registers is useable if unuseable but (16) ==0
+TR selector TI (bit2) flag =0
+LDR TI flag (bit 2) = 0
+SS RPL==RPL for CS
+
+bits 3:0
+CS
+  if UG=0 bits 9, 11, 13, 15
+  if 9,11==dpl
+SS
+   if UG==0 dpl==c[l
+   dpl=0 if type of cs = 3
+DS,ES ...
+	DPL>=rpl in selector if UG
+   bit 0 = 1
+   bit 4 1
+ 
+   bit 6:5 dpl
+      type =3
+
+  bit 7 
+      cs or useable =1
+  bits 11:8
+      0
+  bit 14
+      0 for cs
+  bit 15
+ bit 31:17 0
+
+TR
+  bits 3:0 3 or 11
+  bit 4 0
+  bit 7 1
+  bit 11:8 0
+        type =3
+
+  bit 15
+
+
+bit 2 in interruptability is 1 if smm vmentry control ia 1
+
+   
+
+
+

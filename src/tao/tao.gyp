@@ -103,7 +103,6 @@
 				'tao_admin_channel.cc',
 				'tao_admin_channel.h',
 				'tao_admin_channel.proto',
-				'tao_auth.h',
 				'tao_ca.cc',
 				'tao_ca.h',
 				'tao_ca.proto',

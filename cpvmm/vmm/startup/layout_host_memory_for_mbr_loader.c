@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -149,21 +147,23 @@ BOOLEAN init_memory_layout_from_mbr(
 #if 1
     // JLM(FIX)
     // now remove the VMM area from the primary guest
-#if 0
-    ok = gpm_remove_mapping(primary_guest_gpm, vmm_memory_layout[uvmm_image].base_address,
-                             vmm_memory_layout[uvmm_image].total_size);
+    ok= gpm_remove_mapping(primary_guest_gpm, 
+                            vmm_memory_layout[0].base_address,
+                            vmm_memory_layout[0].total_size);
     VMM_LOG(mask_anonymous, level_trace,"Primary guest GPM: remove uvmm image base %p size 0x%x\r\n", 
     vmm_memory_layout[uvmm_image].base_address,
     vmm_memory_layout[uvmm_image].total_size);
-#endif
 
+#if 0
     // and remove thunk area from the primary guest also
     // if post launch skip it.
-#if 0
-    ok = gpm_remove_mapping( primary_guest_gpm, vmm_memory_layout[thunk_image].base_address,
-                             vmm_memory_layout[thunk_image].total_size );
-    VMM_LOG(mask_anonymous, level_trace,"Primary guest GPM: remove thunk image base %p size 0x%x\r\n", 
-        vmm_memory_layout[thunk_image].base_address, vmm_memory_layout[thunk_image].total_size);
+    ok = gpm_remove_mapping(primary_guest_gpm, 
+                            vmm_memory_layout[thunk_image].base_address,
+                            vmm_memory_layout[thunk_image].total_size);
+    VMM_LOG(mask_anonymous, level_trace,
+            "Primary guest GPM: remove thunk image base %p size 0x%x\r\n", 
+        vmm_memory_layout[thunk_image].base_address, 
+        vmm_memory_layout[thunk_image].total_size);
 #endif
 
     if (g_is_post_launch) {

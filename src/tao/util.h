@@ -246,12 +246,12 @@ bool ConnectToUnixDomainSocket(const string &path, int *sock);
 /// new temporary directory.
 bool CreateTempDir(const string &prefix, ScopedTempDir *dir);
 
-/// Create a temporary directory with a temporary configuration using whitelist
-/// auth. The policy password will be "temppass".
+/// Create a temporary directory with a temporary configuration using ACL
+/// guards. The policy password will be "temppass".
 /// @param[out] temp_dir The new directory.
 /// @param[out] admin The new configuration.
-bool CreateTempWhitelistDomain(ScopedTempDir *temp_dir,
-                               scoped_ptr<TaoDomain> *admin);
+bool CreateTempACLsDomain(ScopedTempDir *temp_dir,
+                          scoped_ptr<TaoDomain> *admin);
 
 /// Create a temporary directory with a temporary configuration using root auth.
 /// @param[out] temp_dir The new directory. The policy password will be

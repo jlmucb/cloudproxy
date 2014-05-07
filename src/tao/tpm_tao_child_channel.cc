@@ -26,17 +26,20 @@
 #include <sstream>
 
 #include <glog/logging.h>
+#include <keyczar/keyczar.h>
 #include <keyczar/base/base64w.h>
 #include <openssl/pem.h>
 #include <openssl/sha.h>
 
 #include "tao/attestation.pb.h"
 #include "tao/tao_auth.h"
+#include "tao/util.h"
 
 using std::stringstream;
 
-using keyczar::base::Base64WEncode;
+using keyczar::Verifier;
 using keyczar::base::Base64WDecode;
+using keyczar::base::Base64WEncode;
 
 namespace tao {
 TPMTaoChildChannel::TPMTaoChildChannel(const string &aik_blob,

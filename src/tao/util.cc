@@ -706,12 +706,12 @@ bool CreateTempDir(const string &prefix, ScopedTempDir *dir) {
   return true;
 }
 
-bool CreateTempWhitelistDomain(ScopedTempDir *temp_dir,
+bool CreateTempACLsDomain(ScopedTempDir *temp_dir,
                                scoped_ptr<TaoDomain> *admin) {
   // lax log messages: this is a top level function only used for unit testing
   if (!CreateTempDir("admin_domain", temp_dir)) return false;
   string path = **temp_dir + "/tao.config";
-  string config = TaoDomain::ExampleWhitelistAuthDomain;
+  string config = TaoDomain::ExampleACLGuardDomain;
   admin->reset(TaoDomain::Create(config, path, "temppass"));
   if (admin->get() == nullptr) return false;
   return true;

@@ -67,12 +67,12 @@ bool ACLGuard::Authorize(const string &name, const string &op,
   entry->set_name(name);
   entry->set_op(op);
   for (auto &arg : args)
-    entry->add_arg(arg);
+    entry->add_args(arg);
   return SaveConfig();
 }
 
 bool ACLGuard::Forbid(const string &name, const string &op,
-                      const list<string> &args) const {
+                      const list<string> &args) {
   bool found = false;
   for (int i = aclset_.entries_size() - 1; i >= 0; i--) {
     if (IsMatchingEntry(aclset_.entries(i), name, op, args)) {
@@ -95,9 +95,9 @@ string ACLGuard::DebugString() const {
   return out.str();
 }
 
-int ACLGuard::ACLEntryCount() const { return entryset_.entries_size(); }
+int ACLGuard::ACLEntryCount() const { return aclset_.entries_size(); }
 
-bool ACLGuard::ACLEntry(int i, string *name, string *op,
+bool ACLGuard::GetACLEntry(int i, string *name, string *op,
                         list<string> *args) const {
   if (i < 0 || i > aclset_.entries_size()) {
     LOG(ERROR) << "Invalid ACL entry index";
@@ -108,11 +108,11 @@ bool ACLGuard::ACLEntry(int i, string *name, string *op,
   op->assign(entry.op());
   args->clear();
   for (auto &arg : entry.args())
-    args.push_back(arg);
+    args->push_back(arg);
   return true;
 }
 
-bool ACLGuard::ACLEntry(int i, string *desc) const {
+bool ACLGuard::GetACLEntry(int i, string *desc) const {
   if (i < 0 || i > aclset_.entries_size()) {
     LOG(ERROR) << "Invalid ACL entry index";
     return false;
@@ -122,7 +122,7 @@ bool ACLGuard::ACLEntry(int i, string *desc) const {
   return true;
 }
 
-string ACLGuard::DebugString(const ACLEntry &entry) {
+string ACLGuard::DebugString(const ACLEntry &entry) const {
   std::stringstream out;
   out << entry.name() << " : " << entry.op() << "(";
   string delim = "";
@@ -191,7 +191,7 @@ bool ACLGuard::SaveConfig() const {
   }
   // Sign ACL set.
   SignedACLSet sacls;
-  sacls.set_serialized_acls(serialized_aclset);
+  sacls.set_serialized_aclset(serialized_aclset);
   sacls.set_signature(aclset_signature);
   string serialized;
   if (!sacls.SerializeToString(&serialized)) {

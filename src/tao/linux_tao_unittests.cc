@@ -54,7 +54,7 @@ class LinuxTaoTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
     scoped_ptr<TaoDomain> admin;
-    ASSERT_TRUE(tao::CreateTempWhitelistDomain(&temp_dir_, &admin));
+    ASSERT_TRUE(tao::CreateTempACLsDomain(&temp_dir_, &admin));
 
     admin->GetConfig()->SetString(TaoDomain::JSONTaoCAHost, "");
     admin->SaveConfig();
@@ -87,11 +87,10 @@ class LinuxTaoTest : public ::testing::Test {
     scoped_ptr<TaoChannel> child_channel(new FakeTaoChannel());
     ASSERT_TRUE(child_channel->Init());
 
-    // Create a whitelist with a dummy hosted program, since we don't want the
+    // Create ACLs for a dummy hosted program, since we don't want the
     // LinuxTao to start any hosted programs during this test.
-    ASSERT_TRUE(admin->AuthorizeProgram(test_binary_path_));
-    ASSERT_TRUE(
-        admin->Authorize(fake_linux_tao_hash, TaoAuth::FakeHash, "LinuxTao"));
+    // ASSERT_TRUE(admin->AuthorizeProgram(test_binary_path_));
+    // ASSERT_TRUE(admin->Authorize(fake_linux_tao_hash, TaoAuth::FakeHash, "LinuxTao"));
 
     tao_.reset(new LinuxTao(keys_path, channel.release(),
                             child_channel.release(), program_factory.release(),

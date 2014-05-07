@@ -59,7 +59,7 @@ using cloudproxy::FileServer;
 using cloudproxy::ScopedSSL;
 using cloudproxy::SignedACL;
 using cloudproxy::SignedSpeaksFor;
-using tao::CreateTempWhitelistDomain;
+using tao::CreateTempACLsDomain;
 using tao::DirectTaoChildChannel;
 using tao::FakeTao;
 using tao::Keys;
@@ -70,12 +70,12 @@ using tao::TaoDomain;
 class FileClientTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    CHECK(CreateTempWhitelistDomain(&temp_dir_, &admin_));
+    CHECK(CreateTempACLsDomain(&temp_dir_, &admin_));
 
     // Create a whitelist with some test programs.
-    ASSERT_TRUE(admin_->Authorize("Test hash 1", TaoDomain::Sha256, "Test 1"));
-    ASSERT_TRUE(admin_->Authorize("Test hash 2", TaoDomain::Sha256, "Test 2"));
-    ASSERT_TRUE(admin_->Authorize("FAKE_TPM", TaoDomain::FakeHash, "BogusTPM"));
+    //ASSERT_TRUE(admin_->Authorize("Test hash 1", TaoDomain::Sha256, "Test 1"));
+    //ASSERT_TRUE(admin_->Authorize("Test hash 2", TaoDomain::Sha256, "Test 2"));
+    //ASSERT_TRUE(admin_->Authorize("FAKE_TPM", TaoDomain::FakeHash, "BogusTPM"));
 
     // set up file client
     string client_keys = *temp_dir_ + string("/client_keys");

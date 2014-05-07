@@ -32,7 +32,7 @@
 using tao::ConnectToUnixDomainSocket;
 using tao::CreateTempDir;
 using tao::CreateTempRootDomain;
-using tao::CreateTempWhitelistDomain;
+using tao::CreateTempACLsDomain;
 using tao::DirectTaoChildChannel;
 using tao::FakeTao;
 using tao::OpenTCPSocket;
@@ -78,7 +78,7 @@ TEST(TaoUtilTest, SocketTest) {
 TEST(TaoUtilTest, CreateDomainTest) {
   ScopedTempDir temp_dir;
   scoped_ptr<TaoDomain> admin;
-  ASSERT_TRUE(CreateTempWhitelistDomain(&temp_dir, &admin));
+  ASSERT_TRUE(CreateTempACLsDomain(&temp_dir, &admin));
   ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
 }
 

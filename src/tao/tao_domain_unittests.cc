@@ -39,8 +39,8 @@ class TaoDomainTest : public ::testing::Test {
   string path_;
 };
 
-TEST_F(TaoDomainTest, CreateWhitelistDomainTest) {
-  string config = TaoDomain::ExampleWhitelistAuthDomain;
+TEST_F(TaoDomainTest, CreateACLsDomainTest) {
+  string config = TaoDomain::ExampleACLGuardDomain;
   admin_.reset(TaoDomain::Create(config, path_, "temppass"));
   EXPECT_TRUE(admin_.get() != nullptr);
 }
@@ -57,7 +57,7 @@ TEST_F(TaoDomainTest, LoadDomainFailTest) {
 }
 
 TEST_F(TaoDomainTest, LoadUnlockDomainTest) {
-  string config = TaoDomain::ExampleWhitelistAuthDomain;
+  string config = TaoDomain::ExampleACLGuardDomain;
   admin_.reset(TaoDomain::Create(config, path_, "temppass"));
   EXPECT_TRUE(admin_.get() != nullptr);
 
@@ -68,7 +68,7 @@ TEST_F(TaoDomainTest, LoadUnlockDomainTest) {
 }
 
 TEST_F(TaoDomainTest, DeepCopyTest) {
-  string config = TaoDomain::ExampleWhitelistAuthDomain;
+  string config = TaoDomain::ExampleACLGuardDomain;
   admin_.reset(TaoDomain::Create(config, path_, "temppass"));
   EXPECT_TRUE(admin_.get() != nullptr);
 

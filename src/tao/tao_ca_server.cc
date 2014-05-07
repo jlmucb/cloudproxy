@@ -22,16 +22,24 @@
 #include <signal.h>
 #include <sys/types.h>
 
+#include <sstream>
+
 #include <glog/logging.h>
+#include <keyczar/base/base64w.h>
 #include <keyczar/keyczar.h>
 
+#include "tao/attestation.h"
 #include "tao/attestation.pb.h"
 #include "tao/keys.h"
 #include "tao/keys.pb.h"
 #include "tao/tao_ca.pb.h"
 #include "tao/tao_domain.h"
 
+using std::stringstream;
+
 using keyczar::Verifier;
+using keyczar::base::Base64WDecode;
+using keyczar::base::Base64WEncode;
 
 using tao::DeserializePublicKey;
 using tao::OpenTCPSocket;
@@ -222,17 +230,20 @@ bool TaoCAServer::HandleRequestAttestation(const TaoCARequest &req,
 
   // TODO(kwalsh) Maybe use validity period from existing attestation?
 
-  if (!admin_->IsAuthorizedNickame(existing_name, req.desired_name())) {
+  if (!admin_->IsAuthorizedNickname(existing_name, req.desired_name())) {
     LOG(ERROR) << "Principal is not authorized to claim desired name";
     return false;
   }
 
-  if (!admin_->AttestKeyNameBinding(*key_prin, desired_name)) {
+  string attestation;
+  if (!admin_->AttestKeyNameBinding(*key_prin, req.desired_name(),
+                                    &attestation)) {
     LOG(ERROR) << "Could not generate new attestation";
     return false;
   }
+  resp->set_attestation(attestation);
 
-  LOG(INFO) << "TaoCAServer generated attestation for " << desired_name;
+  LOG(INFO) << "TaoCAServer generated attestation for " << req.desired_name();
   return true;
 }
 

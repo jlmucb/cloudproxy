@@ -75,7 +75,7 @@ bool FakeTao::InitPseudoTPM(const string &keys_path, const TaoDomain &admin) {
     LOG(ERROR) << "Could not initialize fake tao keys";
     return false;
   }
-  string attestation_path = keys_->AttestationPath();
+  string attestation_path = keys_->AttestationPath("policy");
   if (!keys_->HasFreshKeys()) {
     VLOG(2) << "Fake tao: Using policy attestation " << attestation_path;
     if (!ReadFileToString(attestation_path, &policy_attestation_)) {

@@ -39,7 +39,7 @@ using cloudproxy::ScopedSSLCtx;
 using cloudproxy::SetUpSSLClientCtx;
 using cloudproxy::SetUpSSLServerCtx;
 using tao::CreateTempDir;
-using tao::CreateTempWhitelistDomain;
+using tao::CreateTempACLsDomain;
 using tao::Keys;
 using tao::ScopedTempDir;
 using tao::TaoDomain;
@@ -65,7 +65,7 @@ TEST(CloudProxyUtilTest, X509SSLTest) {
 TEST(CloudProxyUtilTest, ExtractACLTest) {
   ScopedTempDir temp_dir;
   scoped_ptr<TaoDomain> admin;
-  ASSERT_TRUE(CreateTempWhitelistDomain(&temp_dir, &admin));
+  ASSERT_TRUE(CreateTempACLsDomain(&temp_dir, &admin));
 
   // Set up a simple ACL to query.
   string acl =

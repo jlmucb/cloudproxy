@@ -25,7 +25,6 @@
 #include "tao/attestation.pb.h"
 #include "tao/tao.h"
 #include "tao/util.h"
-#include "tao/whitelist_auth.h"
 
 using keyczar::base::Base64WEncode;
 
@@ -37,7 +36,7 @@ using tao::TaoDomain;
 class FakeTaoTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    ASSERT_TRUE(tao::CreateTempWhitelistDomain(&temp_dir_, &admin_));
+    ASSERT_TRUE(tao::CreateTempACLsDomain(&temp_dir_, &admin_));
 
     // create a fake tao with new keys and an attestation
     attested_tao_.reset(new FakeTao());

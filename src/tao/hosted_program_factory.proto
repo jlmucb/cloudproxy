@@ -1,7 +1,7 @@
-//  File: hosted_programs.proto
+//  File: hosted_program_factory.proto
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: Protocol buffers for program binaries and whitelists
+//  Description: Protocol buffers for hosted program factory.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //

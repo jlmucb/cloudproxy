@@ -171,7 +171,7 @@ class TaoDomain : public TaoGuard {
   /// @param key_prin A principal encoding the key to be bound.
   /// @param subprin The subprincipal part of the binding name.
   /// @param[out] attestation The signed attestation.
-  bool AttestKeyNameBinding(string key_prin, string subprin,
+  bool AttestKeyNameBinding(const string &key_prin, const string &subprin,
                                      string *attestation) const;
 
   /// Authorize a program to execute with the given arguments. A pattern that

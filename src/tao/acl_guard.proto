@@ -1,9 +1,9 @@
-//  File: hosted_programs.proto
-//  Author: Tom Roeder <tmroeder@google.com>
+//  File: acl_guard.proto
+//  Author: Kevin Walsh <kwalsh@holycross.edu>
 //
-//  Description: Protocol buffers for program binaries and whitelists
+//  Description: Protocol buffers for ACLs.
 //
-//  Copyright (c) 2013, Google Inc.  All rights reserved.
+//  Copyright (c) 2014, Kevin Walsh.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

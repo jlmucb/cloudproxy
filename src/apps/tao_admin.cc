@@ -25,12 +25,12 @@
 
 #include "cloudproxy/cloud_auth.h"
 #include "cloudproxy/cloud_user_manager.h"
+#include "tao/acl_guard.h"
 #include "tao/fake_tao.h"
 #include "tao/hosted_programs.pb.h"
 #include "tao/keys.h"
 #include "tao/tao_domain.h"
 #include "tao/util.h"
-#include "tao/whitelist_auth.h"
 
 using std::getline;
 using std::string;
@@ -56,11 +56,14 @@ DEFINE_string(state, "Washington", "x509 State for a new configuration");
 DEFINE_string(org, "(not really) Google",
               "x509 Organization for a new configuration");
 
-DEFINE_string(whitelist, "",
-              "Comma separated list of program or "
-              "hash:alg:name values to whitelist");
-DEFINE_bool(refresh, false,
-            "Remove old whitelist entries before adding new ones");
+DEFINE_string(canexecute, "",
+              "Comma-separated list of paths of programs "
+              "to be authorized to execute");
+DEFINE_string(canclaim, "",
+              "Comma-separated list of name:subprin pairs "
+              "to be authorized for claiming policy subprincipal names");
+//DEFINE_bool(clear_acls, false,
+//            "Remove all ACL entries before adding new ones");
 
 DEFINE_string(make_fake_tpm, "",
               "Directory to store a new and attested fake tpm");
@@ -104,25 +107,30 @@ int main(int argc, char **argv) {
     CHECK_NOTNULL(admin.get());
   }
 
-  if (!FLAGS_whitelist.empty()) {
-    stringstream principals(FLAGS_whitelist);
-    string principal;
-    while (getline(principals, principal, ',')) {  // split on commas
-      string hash, alg, name;
-      stringstream ss(principal);
-      if (getline(ss, hash, ':') && getline(ss, alg, ':') &&
-          getline(ss, name) && ss.eof()) {
-        if (FLAGS_refresh && admin->Forbid(name))
-          VLOG(0) << "Removed principal from whitelist: *:*:" << name;
-        VLOG(0) << "Adding principal to whitelist: " << principal;
-        CHECK(admin->Authorize(hash, alg, name));
-      } else {
-        string basename = FilePath(principal).BaseName().value();
-        if (FLAGS_refresh && admin->Forbid(basename))
-          VLOG(0) << "Removed principal from whitelist: *:*:" << basename;
-        VLOG(0) << "Adding program to whitelist: " << principal;
-        CHECK(admin->AuthorizeProgram(principal));
-      }
+  if (!FLAGS_canexecute.empty()) {
+    stringstream paths(FLAGS_canexecute);
+    string path;
+    while (getline(paths, path, ',')) {  // split on commas
+        // TODO(kwalsh) Need a decent way to specify arguments (better yet,
+        // policies) here. For now, require a single "--v=2" argument.
+      VLOG(0) << "Authorizing program to execute:\n"
+              << "  path: " << path << "\n"
+              << "  args: \"--v=2\"";
+      CHECK(admin->AuthorizeProgramToExecute(path, list<string>{"--v=2"}));
+    }
+    did_work = true;
+  }
+  if (!FLAGS_canclaim.empty()) {
+    stringstream tuples(FLAGS_canclaim);
+    string tuple;
+    while (getline(tuples, tuple, ',')) {  // split on commas
+      string name, subprin;
+      stringstream ss(tuple);
+      CHECK(getline(ss, name, ':') && getline(ss, subprin, '\0'));
+      VLOG(0) << "Authorizing principal to claim policy subprin:\n"
+              << "  name: " << name << "\n"
+              << "  subprin: " << subprin;
+      CHECK(admin->AuthorizeNickname(name, subprin));
     }
     did_work = true;
   }

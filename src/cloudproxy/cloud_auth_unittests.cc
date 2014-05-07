@@ -31,14 +31,14 @@
 using keyczar::base::WriteStringToFile;
 
 using cloudproxy::CloudAuth;
-using tao::CreateTempWhitelistDomain;
+using tao::CreateTempACLsDomain;
 using tao::ScopedTempDir;
 using tao::TaoDomain;
 
 class CloudAuthTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    ASSERT_TRUE(CreateTempWhitelistDomain(&temp_dir_, &admin_));
+    ASSERT_TRUE(CreateTempACLsDomain(&temp_dir_, &admin_));
 
     // Set up a simple ACL to query.
     string acl =

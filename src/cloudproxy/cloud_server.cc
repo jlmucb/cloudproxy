@@ -38,7 +38,6 @@
 #include "tao/keys.h"
 #include "tao/tao_auth.h"
 #include "tao/util.h"
-#include "tao/whitelist_auth.h"
 
 using std::lock_guard;
 using std::thread;

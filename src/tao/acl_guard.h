@@ -3,7 +3,7 @@
 //
 //  Description: Authorization guard based on ACLs.
 //
-//  Copyright (c) 2013, Google Inc.  All rights reserved.
+//  Copyright (c) 2014, Kevin Walsh.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ class ACLGuard : public TaoDomain {
   virtual string DebugString() const;
   /// @}
 
-  /// Get a count of how many whitelist entries there are.
+  /// Get a count of how many ACL entries there are.
   int ACLEntryCount() const;
 
   /// Get information about the i^th ACL entry.
@@ -70,11 +70,11 @@ class ACLGuard : public TaoDomain {
  protected:
   /// Parse all configuration parameters from the configuration file and load
   /// keys and other state. This loads and checks the signature on the
-  /// whitelist, then imports it into a local data store.
+  /// ACLs, then imports it into a local data store.
   virtual bool ParseConfig();
 
   /// Save all configuration parameters to the configuration file and save all
-  /// other state. This signs and saves the whitelist. This fails if the
+  /// other state. This signs and saves the ACLs. This fails if the
   /// TaoDomain is locked.
   virtual bool SaveConfig() const;
 
@@ -82,7 +82,7 @@ class ACLGuard : public TaoDomain {
   virtual bool IsMatchingEntry(const ACLEntry &entry, const string &name,
                                const string &op, const list<string> &args) const;
 
-  string DebugString(const ACLEntry &entry);
+  string DebugString(const ACLEntry &entry) const;
 
  private:
   // The set of ACL entries.

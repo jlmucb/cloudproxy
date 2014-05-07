@@ -48,7 +48,7 @@ using cloudproxy::CloudServer;
 using cloudproxy::CloudUserManager;
 using cloudproxy::ScopedSSL;
 using cloudproxy::SignedACL;
-using tao::CreateTempWhitelistDomain;
+using tao::CreateTempACLsDomain;
 using tao::DirectTaoChildChannel;
 using tao::FakeTao;
 using tao::Keys;
@@ -59,12 +59,19 @@ using tao::TaoDomain;
 class CloudClientTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    CHECK(CreateTempWhitelistDomain(&temp_dir_, &admin_));
+    CHECK(CreateTempACLsDomain(&temp_dir_, &admin_));
 
-    // Create a whitelist with some test programs.
-    ASSERT_TRUE(admin_->Authorize("Test hash 1", TaoDomain::Sha256, "Test 1"));
-    ASSERT_TRUE(admin_->Authorize("Test hash 2", TaoDomain::Sha256, "Test 2"));
-    ASSERT_TRUE(admin_->Authorize("FAKE_TPM", TaoDomain::FakeHash, "BogusTPM"));
+    // Create ACLs for some test programs.
+    ASSERT_TRUE(admin_->Authorize(
+          "::TrustedOS::"
+          "Program(1, \"Test1Path\", \"Test1ProgHash\", \"Test1ArgHash\")", 
+          "Execute",
+          list<string>{}));
+    ASSERT_TRUE(admin_->Authorize(
+          "::TrustedOS::"
+          "Program(2, \"Test2Path\", \"Test2ProgHash\", \"Test2ArgHash\")", 
+          "Execute",
+          list<string>{}));
 
     // set up cloud client
     string client_keys = *temp_dir_ + string("/client_keys");

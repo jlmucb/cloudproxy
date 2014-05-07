@@ -32,7 +32,7 @@ using keyczar::base::ReadFileToString;
 
 using cloudproxy::CloudUserManager;
 using cloudproxy::SignedSpeaksFor;
-using tao::CreateTempWhitelistDomain;
+using tao::CreateTempACLsDomain;
 using tao::Keys;
 using tao::ScopedTempDir;
 using tao::TaoDomain;
@@ -40,7 +40,7 @@ using tao::TaoDomain;
 class CloudUserManagerTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    ASSERT_TRUE(CreateTempWhitelistDomain(&temp_dir_, &admin_));
+    ASSERT_TRUE(CreateTempACLsDomain(&temp_dir_, &admin_));
 
     // Create two users and matching delegations.
     string u;

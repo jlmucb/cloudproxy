@@ -228,7 +228,7 @@ bool TaoDomain::AuthorizeProgramToExecute(const string &path,
 }
   
 bool TaoDomain::IsAuthorizedToExecute(const string &name) {
-  return IsAuthorized(name, "Execute", list<string>{})
+  return IsAuthorized(name, "Execute", list<string>{});
 }
 
 bool TaoDomain::AuthorizeNickname(const string &name, const string &subprin) {
@@ -236,7 +236,7 @@ bool TaoDomain::AuthorizeNickname(const string &name, const string &subprin) {
 }
 
 bool TaoDomain::IsAuthorizedNickname(const string &name, const string &subprin) {
-  return IsAuthorized(name, "ClaimName", list<string>{"::" + subprin})
+  return IsAuthorized(name, "ClaimName", list<string>{"::" + subprin});
 }
 
 }  // namespace tao

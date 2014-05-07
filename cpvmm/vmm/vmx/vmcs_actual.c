@@ -411,7 +411,7 @@ void vmcs_act_flush_to_cpu(const struct _VMCS_OBJECT *vmcs)
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) vmcs;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmcs_act_flush_to_cpu\n");
 #endif
     VMM_ASSERT((p_vmcs->flags&ACTIVATED_FLAG)!=0);
@@ -426,7 +426,7 @@ void vmcs_act_flush_to_cpu(const struct _VMCS_OBJECT *vmcs)
             UINT64_ALL_ONES, BIT_VALUE64(NMI_WINDOW_BIT));
     }
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("Halfway through vmcs_act_flush_to_cpu\n");
 #endif
     if (cache64_is_dirty(p_vmcs->cache)) {

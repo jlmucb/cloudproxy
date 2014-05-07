@@ -220,24 +220,29 @@ int ia32_get_selector(uint32_t* p, uint32_t* base, uint32_t* limit, uint16_t* ac
     IA32_SEGMENT_DESCRIPTOR* desc= (IA32_SEGMENT_DESCRIPTOR*)p;
     IA32_SEGMENT_DESCRIPTOR_ATTR attr;
 
-
     *base= (UINT64)((desc->gen.lo.base_address_15_00) |
         (desc->gen.hi.base_address_23_16 << 16) |
         (desc->gen.hi.base_address_31_24 << 24));
-
     *limit= (UINT32)( (desc->gen.lo.limit_15_00) |
         (desc->gen.hi.limit_19_16 << 16));
-
     if(desc->gen.hi.granularity)
         *limit = (*limit << 12) | 0x00000fff;
-
     attr.attr16 = desc->gen_attr.attributes;
     attr.bits.limit_19_16 = 0;
-
     *access= (uint32_t) attr.attr16;
-
     return 0;
 }
+
+
+void ia32_write_ts(uint16_t ts)
+{
+    asm volatile(
+        "\tmovw %[ts],%%ax\n"
+        "\tltr  %%ax\n"
+    ::[ts] "g" (ts)
+    : "%ax");
+}
+
 
 
 uint16_t ia32_read_ts()
@@ -1925,6 +1930,13 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     evmm_num_of_aps = 0;
 #endif
 
+    // make a fake TSS to keep vmcs happy
+    ia32_write_ts(24);
+    *((UINT64*)tboot_gdtr_32.base+24)= 0ULL;
+    *((UINT8*)tboot_gdtr_32.base+29)= 0x89;
+    tboot_tr_attr= 0x0000808b;
+    tboot_tr_limit= 0xffffffff;
+
     // get original gdtr and old selectors and descriptors
     tboot_gdtr_32.base= tdesc.base;
     tboot_gdtr_32.limit= tdesc.limit;
@@ -1946,12 +1958,10 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     ia32_get_selector(p, &tboot_ds_base, &tboot_ds_limit, &tboot_ds_attr);
     p= (uint32_t*)(tboot_gdtr_32.base+tboot_ss_selector); 
     ia32_get_selector(p, &tboot_ss_base, &tboot_ss_limit, &tboot_ss_attr);
-    // tboot_tr_base= 0;
-    // tboot_tr_limit= 0;
-    // tboot_tr_attr= 0;
     p= (uint32_t*)(tboot_gdtr_32.base+tboot_tr_selector); 
     ia32_get_selector(p, &tboot_tr_base, &tboot_tr_limit, &tboot_tr_attr);
 #ifdef JLMDEBUG
+    bprint("gdt base: %08x, limit: %04x\n", tboot_gdtr_32.base, tboot_gdtr_32.limit);
     bprint("tboot cs selector: %04x, base: %08x, limit: %04x, attr: %04x\n",
            tboot_cs_selector, tboot_cs_base, tboot_cs_limit, tboot_cs_attr);
     bprint("tboot ds selector: %04x, base: %08x, limit: %04x, attr: %04x\n",
@@ -1966,8 +1976,6 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     bprint("msr_sysenter_esp: 0x%016llx\n", tboot_msr_sysenter_esp);
     bprint("msr_sysenter_eip: 0x%016llx\n", tboot_msr_sysenter_eip);
     bprint("msr_sysenter_cs: 0x%016llx\n", tboot_msr_sysenter_cs);
-    bprint("gdt base: %08x, limit: %04x\n", tboot_gdtr_32.base, tboot_gdtr_32.limit);
-    HexDump((UINT8*)tboot_gdtr_32.base, (UINT8*)tboot_gdtr_32.base+32);
 #endif
 
     init32.i32_low_memory_page = low_mem;

@@ -512,7 +512,7 @@ INT32 hw_interlocked_compare_exchange(INT32 volatile * destination,
     : [expected] "m" (expected), [comperand] "m" (comperand),
       [destination] "m" (destination)
     :"%eax", "%ecx", "%edx", "%rbx", "%r15");
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("destination: %d\n", *destination);
 #endif
     return old;

@@ -275,7 +275,7 @@ void  gcpu_set_segment_reg_layered(GUEST_CPU_HANDLE gcpu,
 UINT64 gcpu_get_control_reg_layered(const GUEST_CPU_HANDLE gcpu,
                               VMM_IA32_CONTROL_REGISTERS reg, VMCS_LEVEL level)
 {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("gcpu_get_control_reg_layered 0x%016lx %d 0x%016lx\n",
           gcpu, reg, level);
 #endif
@@ -309,7 +309,7 @@ void  gcpu_set_control_reg_layered(GUEST_CPU_HANDLE gcpu,
 {
     VMCS_OBJECT *vmcs;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("gcpu_set_control_reg_layered\n");
 #endif
     VMM_ASSERT(gcpu && IS_MODE_NATIVE(gcpu));
@@ -352,7 +352,7 @@ void  gcpu_set_control_reg_layered(GUEST_CPU_HANDLE gcpu,
 UINT64 gcpu_get_guest_visible_control_reg_layered(const GUEST_CPU_HANDLE gcpu,
                     VMM_IA32_CONTROL_REGISTERS reg, VMCS_LEVEL level)
 {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("gcpu_get_guest_visible_control_reg_layered\n");
 #endif
     UINT64  mask;
@@ -360,7 +360,7 @@ UINT64 gcpu_get_guest_visible_control_reg_layered(const GUEST_CPU_HANDLE gcpu,
     UINT64  real_value;
     VMCS_OBJECT *vmcs = vmcs_hierarchy_get_vmcs(&gcpu->vmcs_hierarchy, level);
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("past vmcs_hierarchy_get_vmcs\n");
 #endif
     VMM_ASSERT(gcpu);
@@ -383,7 +383,7 @@ UINT64 gcpu_get_guest_visible_control_reg_layered(const GUEST_CPU_HANDLE gcpu,
     else {
         return real_value;
     }
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("gcpu_get_guest_visible_control_reg_layered about to return 0x%016lx\n",
            (real_value&~mask) | (shadow&mask));
 #endif

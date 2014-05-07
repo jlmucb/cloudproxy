@@ -266,19 +266,20 @@ bool HttpsEchoServer::HandleHttpsRequest(
 
 bool HttpsEchoServer::GetTaoCAX509Chain(const string &details_text) {
   string intermediate_attestation;
-  if (!ReadFileToString(keys_->AttestationPath(), &intermediate_attestation)) {
+  if (!ReadFileToString(keys_->AttestationPath("parent"),
+                        &intermediate_attestation)) {
     LOG(ERROR) << "Could not load the intermediate attestation";
     return false;
   }
   TaoCA ca(admin_.get());
   string root_attestation;
   string pem_cert;
-  if (!ca.GetX509Chain(intermediate_attestation, details_text,
+  if (!ca.GetX509Chain(intermediate_attestation, "App(\"https\")", details_text,
                        &root_attestation, &pem_cert)) {
     LOG(ERROR) << "Could not get root attestation";
     return false;
   }
-  if (!WriteStringToFile(keys_->AttestationPath(), root_attestation)) {
+  if (!WriteStringToFile(keys_->AttestationPath("policy"), root_attestation)) {
     LOG(ERROR) << "Could not store the root attestation";
     return false;
   }

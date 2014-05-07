@@ -73,6 +73,8 @@
 				'acl_guard.cc',
 				'acl_guard.h',
 				'acl_guard.proto',
+				'attestation.cc',
+				'attestation.h',
 				'attestation.proto',
 				'direct_tao_child_channel.cc',
 				'direct_tao_child_channel.h',

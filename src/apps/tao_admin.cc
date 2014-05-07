@@ -62,7 +62,7 @@ DEFINE_string(canexecute, "",
 DEFINE_string(canclaim, "",
               "Comma-separated list of name:subprin pairs "
               "to be authorized for claiming policy subprincipal names");
-//DEFINE_bool(clear_acls, false,
+// DEFINE_bool(clear_acls, false,
 //            "Remove all ACL entries before adding new ones");
 
 DEFINE_string(make_fake_tpm, "",
@@ -111,8 +111,8 @@ int main(int argc, char **argv) {
     stringstream paths(FLAGS_canexecute);
     string path;
     while (getline(paths, path, ',')) {  // split on commas
-        // TODO(kwalsh) Need a decent way to specify arguments (better yet,
-        // policies) here. For now, require a single "--v=2" argument.
+      // TODO(kwalsh) Need a decent way to specify arguments (better yet,
+      // policies) here. For now, require a single "--v=2" argument.
       VLOG(0) << "Authorizing program to execute:\n"
               << "  path: " << path << "\n"
               << "  args: \"--v=2\"";

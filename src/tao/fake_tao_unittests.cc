@@ -113,8 +113,9 @@ TEST_F(FakeTaoTest, UnsealTest) {
 }
 
 TEST_F(FakeTaoTest, AttestTest) {
+  string child_name = "FakeProgram()";
   string key_prin = "Key(\"..stuff..\")";
   string attestation;
-  EXPECT_TRUE(tao_->Attest(encoded_hash, key_prin, &attestation));
-  EXPECT_TRUE(attested_tao_->Attest(encoded_hash, key_prin, &attestation));
+  EXPECT_TRUE(tao_->Attest(child_name, key_prin, &attestation));
+  EXPECT_TRUE(attested_tao_->Attest(child_name, key_prin, &attestation));
 }

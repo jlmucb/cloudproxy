@@ -30,9 +30,8 @@
 #include "tao/tao_domain.h"
 
 using tao::ConnectToUnixDomainSocket;
-using tao::CreateTempDir;
-using tao::CreateTempRootDomain;
 using tao::CreateTempACLsDomain;
+using tao::CreateTempDir;
 using tao::DirectTaoChildChannel;
 using tao::FakeTao;
 using tao::OpenTCPSocket;
@@ -79,7 +78,6 @@ TEST(TaoUtilTest, CreateDomainTest) {
   ScopedTempDir temp_dir;
   scoped_ptr<TaoDomain> admin;
   ASSERT_TRUE(CreateTempACLsDomain(&temp_dir, &admin));
-  ASSERT_TRUE(CreateTempRootDomain(&temp_dir, &admin));
 }
 
 TEST(TaoUtilTest, SealOrUnsealSecretTest) {

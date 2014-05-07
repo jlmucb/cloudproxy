@@ -19,13 +19,18 @@
 
 #include "tao/acl_guard.h"
 
+#include <list>
 #include <sstream>
+#include <string>
 
 #include <glog/logging.h>
 #include <keyczar/base/file_util.h>
 
 #include "tao/acl_guard.pb.h"
 #include "tao/util.h"
+
+using std::list;
+using std::string;
 
 using keyczar::base::ReadFileToString;
 using keyczar::base::WriteStringToFile;
@@ -37,16 +42,15 @@ namespace tao {
 bool ACLGuard::IsMatchingEntry(const ACLEntry &entry, const string &name,
                                const string &op,
                                const list<string> &args) const {
-    if (entry.name() != name) return false;
-    if (entry.op() != op) return false;
-    if (entry.args_size() != int(args.size())) return false;
-    int i = 0;
-    for (auto &arg : args) 
-      if (entry.args(i++) != arg)
-        return false;
-    return true;
+  if (entry.name() != name) return false;
+  if (entry.op() != op) return false;
+  if (entry.args_size() != int(args.size())) return false;
+  int i = 0;
+  for (auto &arg : args)
+    if (entry.args(i++) != arg) return false;
+  return true;
 }
-  
+
 bool ACLGuard::IsAuthorized(const string &name, const string &op,
                             const list<string> &args) const {
   for (auto &entry : aclset_.entries()) {
@@ -66,8 +70,7 @@ bool ACLGuard::Authorize(const string &name, const string &op,
   ACLEntry *entry = aclset_.add_entries();
   entry->set_name(name);
   entry->set_op(op);
-  for (auto &arg : args)
-    entry->add_args(arg);
+  for (auto &arg : args) entry->add_args(arg);
   return SaveConfig();
 }
 
@@ -90,7 +93,7 @@ string ACLGuard::DebugString() const {
   std::stringstream out;
   out << "Set of " << aclset_.entries_size() << " authorizations:";
   int i = 0;
-  for (auto &entry : aclset_.entries()) 
+  for (auto &entry : aclset_.entries())
     out << "\n  " << (i++) << ". " << DebugString(entry);
   return out.str();
 }
@@ -98,7 +101,7 @@ string ACLGuard::DebugString() const {
 int ACLGuard::ACLEntryCount() const { return aclset_.entries_size(); }
 
 bool ACLGuard::GetACLEntry(int i, string *name, string *op,
-                        list<string> *args) const {
+                           list<string> *args) const {
   if (i < 0 || i > aclset_.entries_size()) {
     LOG(ERROR) << "Invalid ACL entry index";
     return false;
@@ -107,8 +110,7 @@ bool ACLGuard::GetACLEntry(int i, string *name, string *op,
   name->assign(entry.name());
   op->assign(entry.op());
   args->clear();
-  for (auto &arg : entry.args())
-    args->push_back(arg);
+  for (auto &arg : entry.args()) args->push_back(arg);
   return true;
 }
 

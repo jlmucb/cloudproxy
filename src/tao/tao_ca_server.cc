@@ -39,13 +39,11 @@ using std::stringstream;
 
 using keyczar::Verifier;
 using keyczar::base::Base64WDecode;
-using keyczar::base::Base64WEncode;
 
 using tao::DeserializePublicKey;
 using tao::OpenTCPSocket;
 using tao::ReceiveMessage;
 using tao::SendMessage;
-using tao::Statement;
 using tao::TaoCARequest;
 using tao::TaoCAResponse;
 using tao::TaoDomain;
@@ -287,9 +285,8 @@ bool TaoCAServer::HandleRequestX509Chain(const TaoCARequest &req,
 
   // TODO(kwalsh) Check authorization for claiming these x509 details.
 
-  if (!admin_->GetPolicyKeys()->CreateCASignedX509(cert_serial, *v,
-                                                   subject_details,
-                                                   resp->mutable_x509chain())) {
+  if (!admin_->GetPolicyKeys()->CreateCASignedX509(
+          cert_serial, *v, subject_details, resp->mutable_x509chain())) {
     resp->clear_x509chain();
     LOG(ERROR) << "Could not generate x509 chain";
     return false;

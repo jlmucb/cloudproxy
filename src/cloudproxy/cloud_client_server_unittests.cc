@@ -32,7 +32,6 @@
 #include "tao/fake_tao.h"
 #include "tao/hosted_programs.pb.h"
 #include "tao/keys.h"
-#include "tao/tao_auth.h"
 #include "tao/tao_domain.h"
 #include "tao/util.h"
 
@@ -63,15 +62,13 @@ class CloudClientTest : public ::testing::Test {
 
     // Create ACLs for some test programs.
     ASSERT_TRUE(admin_->Authorize(
-          "::TrustedOS::"
-          "Program(1, \"Test1Path\", \"Test1ProgHash\", \"Test1ArgHash\")", 
-          "Execute",
-          list<string>{}));
+        "::TrustedOS::"
+        "Program(1, \"Test1Path\", \"Test1ProgHash\", \"Test1ArgHash\")",
+        "Execute", list<string>{}));
     ASSERT_TRUE(admin_->Authorize(
-          "::TrustedOS::"
-          "Program(2, \"Test2Path\", \"Test2ProgHash\", \"Test2ArgHash\")", 
-          "Execute",
-          list<string>{}));
+        "::TrustedOS::"
+        "Program(2, \"Test2Path\", \"Test2ProgHash\", \"Test2ArgHash\")",
+        "Execute", list<string>{}));
 
     // set up cloud client
     string client_keys = *temp_dir_ + string("/client_keys");

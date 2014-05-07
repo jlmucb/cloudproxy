@@ -19,14 +19,16 @@
 #ifndef TAO_ACL_GUARD_H_
 #define TAO_ACL_GUARD_H_
 
+#include <list>
 #include <string>
 
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <keyczar/base/values.h>
 
-#include "tao/tao_domain.h"
 #include "tao/acl_guard.pb.h"
+#include "tao/tao_domain.h"
 
+using std::list;
 using std::string;
 
 namespace tao {
@@ -62,8 +64,7 @@ class ACLGuard : public TaoDomain {
 
   // TODO(kwalsh) Maybe also map a name to pair<op, args>?
 
-  constexpr static auto ACLSigningContext =
-      "tao::SignedACLs Version 1";
+  constexpr static auto ACLSigningContext = "tao::SignedACLs Version 1";
 
   constexpr static auto GuardType = "ACLs";
 
@@ -80,7 +81,8 @@ class ACLGuard : public TaoDomain {
 
   /// Check whether an acl entry matches a given name, op, args tuple.
   virtual bool IsMatchingEntry(const ACLEntry &entry, const string &name,
-                               const string &op, const list<string> &args) const;
+                               const string &op,
+                               const list<string> &args) const;
 
   string DebugString(const ACLEntry &entry) const;
 

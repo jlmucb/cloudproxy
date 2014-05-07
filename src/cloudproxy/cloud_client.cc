@@ -30,7 +30,6 @@
 #include "cloudproxy/cloudproxy.pb.h"
 #include "tao/attestation.pb.h"
 #include "tao/keys.h"
-#include "tao/tao_auth.h"
 #include "tao/util.h"
 
 using keyczar::base::ReadFileToString;
@@ -117,9 +116,10 @@ bool CloudClient::Connect(const string &server, const string &port,
       << "Could not serialize the client certificate";
 
   // TODO(kwalsh) - Don't attest the self-signed x509. Just attest the key.
+  CHECK(false);
   ClientMessage cm;
-  string *signature = cm.mutable_attestation();
-  //CHECK(host_channel_->Attest(serialized_client_cert, signature))
+  // string *signature = cm.mutable_attestation();
+  // CHECK(host_channel_->Attest(serialized_client_cert, signature))
   //    << "Could not get a SignedAttestation for our client certificate";
 
   string serialized_cm;
@@ -144,12 +144,14 @@ bool CloudClient::Connect(const string &server, const string &port,
       << "Could not serialize the server's X.509 certificate";
 
   // this step also checks to see if the program hash is authorized
-  string data;
-  CHECK(admin_->VerifyAttestation(sm.attestation(), &data))
-      << "The Attestation from the server did not pass verification";
-
-  CHECK_EQ(data.compare(serialized_peer_cert), 0)
-      << "The Attestation passed verification, but the data didn't match";
+  // TODO(kwalsh) fix this
+  // string data;
+  // CHECK(->VerifyAttestation(sm.attestation(), &data))
+  //    << "The Attestation from the server did not pass verification";
+  //
+  // CHECK_EQ(data.compare(serialized_peer_cert), 0)
+  //    << "The Attestation passed verification, but the data didn't match";
+  CHECK(false);
 
   // Once we get here, both sides have verified their quotes and know
   // that they are talked to authorized applications under the Tao.

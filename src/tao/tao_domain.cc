@@ -18,6 +18,7 @@
 // limitations under the License.
 #include "tao/tao_domain.h"
 
+#include <list>
 #include <string>
 
 #include <glog/logging.h>
@@ -31,9 +32,12 @@
 #include "tao/acl_guard.h"
 #include "tao/attestation.h"
 #include "tao/attestation.pb.h"
-#include "tao/process_factory.h"
 #include "tao/keys.pb.h"
+#include "tao/process_factory.h"
 #include "tao/util.h"
+
+using std::list;
+using std::string;
 
 using keyczar::base::CreateDirectory;
 using keyczar::base::JSONReader;
@@ -77,10 +81,11 @@ TaoDomain *TaoDomain::CreateImpl(const string &config, const string &path) {
   scoped_ptr<TaoDomain> admin;
   if (guard_type == ACLGuard::GuardType) {
     admin.reset(new ACLGuard(path, dict.release()));
-  //} else if (guard_type == RootAuth::AuthType) {
-  //  admin.reset(new RootAuth(path, dict.release()));
+    // } else if (guard_type == RootAuth::AuthType) {
+    //    admin.reset(new RootAuth(path, dict.release()));
   } else {
-    LOG(ERROR) << path << ": unrecognized " << JSONAuthType << " " << guard_type;
+    LOG(ERROR) << path << ": unrecognized " << JSONAuthType << " "
+               << guard_type;
     return nullptr;
   }
 
@@ -198,7 +203,8 @@ string TaoDomain::GetConfigString(const string &name) const {
   return value;
 }
 
-bool TaoDomain::AttestKeyNameBinding(string key_prin, string subprin,
+bool TaoDomain::AttestKeyNameBinding(const string &key_prin,
+                                     const string &subprin,
                                      string *attestation) const {
   if (keys_->Signer() == nullptr) {
     LOG(ERROR) << "Can't sign attestation, admin is currently locked";
@@ -219,14 +225,13 @@ bool TaoDomain::AuthorizeProgramToExecute(const string &path,
                                           const list<string> &args) {
   string name;
   ProcessFactory pf;
-  if (!pf.GetHostedProgramTentativeName(0 /* elide id */, 
-        path, args, &name)) {
+  if (!pf.GetHostedProgramTentativeName(0 /* elide id */, path, args, &name)) {
     LOG(ERROR) << "Can't compute tentative name for program: " << path;
     return false;
   }
   return Authorize("::TrustedOS::" + name, "Execute", list<string>{});
 }
-  
+
 bool TaoDomain::IsAuthorizedToExecute(const string &name) {
   return IsAuthorized(name, "Execute", list<string>{});
 }
@@ -235,7 +240,8 @@ bool TaoDomain::AuthorizeNickname(const string &name, const string &subprin) {
   return Authorize(name, "ClaimName", list<string>{"::" + subprin});
 }
 
-bool TaoDomain::IsAuthorizedNickname(const string &name, const string &subprin) {
+bool TaoDomain::IsAuthorizedNickname(const string &name,
+                                     const string &subprin) {
   return IsAuthorized(name, "ClaimName", list<string>{"::" + subprin});
 }
 

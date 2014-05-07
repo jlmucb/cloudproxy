@@ -28,6 +28,7 @@
 #include <keyczar/crypto_factory.h>
 #include <keyczar/keyczar.h>
 
+#include "tao/attestation.h"
 #include "tao/attestation.pb.h"
 #include "tao/keys.h"
 #include "tao/sealed_data.pb.h"
@@ -112,16 +113,16 @@ bool FakeTao::StartHostedProgram(const string &path, const list<string> &args,
   return true;
 }
 
-bool FakeTao::GetTaoFullName(string *tao_name) {
+bool FakeTao::GetTaoFullName(string *tao_name) const {
   // FakeTao has no parent, so the local and full name are identical
   return GetLocalName(tao_name);
 }
 
-bool FakeTao::GetLocalName(string *name) {
-  return keys_->SignerUniqueID(&key_id);
+bool FakeTao::GetLocalName(string *name) const {
+  return keys_->SignerUniqueID(name);
 }
 
-bool FakeTao::GetPolicyName(string *name) {
+bool FakeTao::GetPolicyName(string *name) const {
   if (policy_attestation_ == "") {
     LOG(ERROR) << "FakeTao configured without policy key-to-name binding.";
     return false;
@@ -203,7 +204,7 @@ bool FakeTao::Attest(const string &child_name, const string &key_prin,
   // (1) We can create a binding via parent name, to get:
   //   parent_tao::tao_subprin::child_name
   // where parent_tao is the name of our parent (e.g. a TPM key) and tao_subprin
-  // is our name (e.g. a set of PCRs). 
+  // is our name (e.g. a set of PCRs).
   // (2) We can create a binding via our key, to get:
   //   K_fake::child_name
   // where K_fake is our own attestation key.
@@ -228,7 +229,7 @@ bool FakeTao::Attest(const string &child_name, const string &key_prin,
     name += "::" + child_name;
     delegation = "";
   } else {
-    if (!policy_attestation_) {
+    if (policy_attestation_.empty()) {
       LOG(ERROR) << "No policy attestation available";
       return false;
     }
@@ -249,7 +250,8 @@ bool FakeTao::MakePolicyAttestation(const TaoDomain &admin) {
     LOG(ERROR) << "Could not serialize key";
     return false;
   }
-  if (!admin.AttestKeyNameBinding(key_prin, "FakeTPM", , &policy_attestation_)) {
+  if (!admin.AttestKeyNameBinding(key_prin, "TrustedPlatform",
+                                  &policy_attestation_)) {
     LOG(ERROR) << "Could not obtain policy attestation";
     return false;
   }

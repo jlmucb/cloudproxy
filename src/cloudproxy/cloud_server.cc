@@ -36,7 +36,6 @@
 #include "cloudproxy/util.h"
 #include "tao/attestation.pb.h"
 #include "tao/keys.h"
-#include "tao/tao_auth.h"
 #include "tao/util.h"
 
 using std::lock_guard;
@@ -502,7 +501,9 @@ bool CloudServer::HandleAttestation(const string &attestation, SSL *ssl,
   {
     lock_guard<mutex> l(tao_m_);
     string data;
-    if (!admin_->VerifyAttestation(attestation, &data)) {
+    // TODO(kwalsh) fix this
+    CHECK(false);
+    /*if (!admin_->VerifyAttestation(attestation, &data)) {
       LOG(ERROR) << "The Attestation did not pass Tao verification";
       return false;
     }
@@ -511,20 +512,22 @@ bool CloudServer::HandleAttestation(const string &attestation, SSL *ssl,
       LOG(ERROR)
           << "The Attestation passed validation, but the data didn't match";
       return false;
-    }
+    } */
   }
 
   cstd.SetCertValidated();
 
   // quote it to send it to the client
   ServerMessage sm;
-  string *signature = sm.mutable_attestation();
+  // string *signature = sm.mutable_attestation();
   {
     lock_guard<mutex> l(tao_m_);
     // TODO(kwalsh) attest key, not cert
-    //if (!host_channel_->Attest(cstd.GetSelfCert(), signature)) {
+    CHECK(false);
+    // if (!host_channel_->Attest(cstd.GetSelfCert(), signature)) {
     //  LOG(ERROR)
-    //      << "Could not get a signed attestation for our own X.509 certificate";
+    //      << "Could not get a signed attestation for our own X.509
+    //      certificate";
     //  return false;
     // }
   }

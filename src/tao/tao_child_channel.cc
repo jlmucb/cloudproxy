@@ -32,7 +32,7 @@ bool TaoChildChannel::GetRandomBytes(size_t size, string *bytes) const {
   bool eof;
   if (!SendRPC(rpc) || !ReceiveRPC(&resp, &eof) || eof) {
     if (eof)
-      LOG(ERROR) << "Unexpected disconnnect from host channel";
+      LOG(ERROR) << "Unexpected disconnect from host channel";
     else
       LOG(ERROR) << "RPC on host channel failed";
     return false;
@@ -59,7 +59,7 @@ bool TaoChildChannel::Seal(const string &data, int policy,
   bool eof;
   if (!SendRPC(rpc) || !ReceiveRPC(&resp, &eof) || eof) {
     if (eof)
-      LOG(ERROR) << "Unexpected disconnnect from host channel";
+      LOG(ERROR) << "Unexpected disconnect from host channel";
     else
       LOG(ERROR) << "RPC on host channel failed";
     return false;
@@ -85,7 +85,7 @@ bool TaoChildChannel::Unseal(const string &sealed, string *data,
   bool eof;
   if (!SendRPC(rpc) || !ReceiveRPC(&resp, &eof) || eof) {
     if (eof)
-      LOG(ERROR) << "Unexpected disconnnect from host channel";
+      LOG(ERROR) << "Unexpected disconnect from host channel";
     else
       LOG(ERROR) << "RPC on host channel failed";
     return false;
@@ -103,7 +103,8 @@ bool TaoChildChannel::Unseal(const string &sealed, string *data,
   return true;
 }
 
-bool TaoChildChannel::Attest(const string &key_prin, string *attestation) const {
+bool TaoChildChannel::Attest(const string &key_prin,
+                             string *attestation) const {
   TaoChildRequest rpc;
   rpc.set_rpc(TAO_CHILD_RPC_ATTEST);
   rpc.set_data(key_prin);
@@ -111,7 +112,7 @@ bool TaoChildChannel::Attest(const string &key_prin, string *attestation) const 
   bool eof;
   if (!SendRPC(rpc) || !ReceiveRPC(&resp, &eof) || eof) {
     if (eof)
-      LOG(ERROR) << "Unexpected disconnnect from host channel";
+      LOG(ERROR) << "Unexpected disconnect from host channel";
     else
       LOG(ERROR) << "RPC on host channel failed";
     return false;
@@ -134,7 +135,7 @@ bool TaoChildChannel::GetHostedProgramFullName(string *full_name) const {
   bool eof;
   if (!SendRPC(rpc) || !ReceiveRPC(&resp, &eof) || eof) {
     if (eof)
-      LOG(ERROR) << "Unexpected disconnnect from host channel";
+      LOG(ERROR) << "Unexpected disconnect from host channel";
     else
       LOG(ERROR) << "RPC on host channel failed";
     return false;
@@ -159,7 +160,7 @@ bool TaoChildChannel::ExtendName(const string &subprin) const {
   bool eof;
   if (!SendRPC(rpc) || !ReceiveRPC(&resp, &eof) || eof) {
     if (eof)
-      LOG(ERROR) << "Unexpected disconnnect from host channel";
+      LOG(ERROR) << "Unexpected disconnect from host channel";
     else
       LOG(ERROR) << "RPC on host channel failed";
     return false;

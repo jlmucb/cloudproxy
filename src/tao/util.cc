@@ -60,11 +60,7 @@ using std::shared_ptr;
 using std::stringstream;
 using std::vector;
 
-using google::protobuf::Descriptor;
-using google::protobuf::FieldDescriptor;
-using google::protobuf::TextFormat;
 using keyczar::CryptoFactory;
-using keyczar::base::Base64WEncode;
 using keyczar::base::CreateDirectory;
 using keyczar::base::Delete;
 using keyczar::base::PathExists;
@@ -707,7 +703,7 @@ bool CreateTempDir(const string &prefix, ScopedTempDir *dir) {
 }
 
 bool CreateTempACLsDomain(ScopedTempDir *temp_dir,
-                               scoped_ptr<TaoDomain> *admin) {
+                          scoped_ptr<TaoDomain> *admin) {
   // lax log messages: this is a top level function only used for unit testing
   if (!CreateTempDir("admin_domain", temp_dir)) return false;
   string path = **temp_dir + "/tao.config";
@@ -755,17 +751,6 @@ bool ConnectToTCPServer(const string &host, const string &port, int *sock) {
   freeaddrinfo(addrs);
 
   return true;
-}
-
-bool AuthorizeProgram(const string &path, TaoDomain *admin) {
-  string program_name = FilePath(path).BaseName().value();
-  string program_sha;
-  if (!Sha256FileHash(path, &program_sha)) return false;
-
-  string program_hash;
-  if (!Base64WEncode(program_sha, &program_hash)) return false;
-
-  return admin->Authorize(program_hash, TaoAuth::Sha256, program_name);
 }
 
 string quotedString(const string &s) {

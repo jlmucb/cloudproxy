@@ -153,7 +153,8 @@ string ProcessFactory::CreateChildName(int id, const string &path,
   stringstream out;
   out << "Program(";
   if (id == 0)
-    out << "_" << ", ";
+    out << "_"
+        << ", ";
   else
     out << id << ", ";
   out << quotedString(path) << ", ";

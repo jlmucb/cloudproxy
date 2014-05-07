@@ -26,7 +26,6 @@
 #include "cloudproxy/cloud_auth.h"
 #include "cloudproxy/cloud_user_manager.h"
 #include "cloudproxy/file_client.h"
-#include "tao/tao_auth.h"
 
 using std::string;
 

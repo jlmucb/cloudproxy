@@ -19,6 +19,7 @@
 #ifndef TAO_TAO_DOMAIN_H_
 #define TAO_TAO_DOMAIN_H_
 
+#include <list>
 #include <string>
 
 #include <keyczar/base/scoped_ptr.h>
@@ -26,6 +27,7 @@
 #include "tao/keys.h"
 #include "tao/tao_guard.h"
 
+using std::list;
 using std::string;
 
 class DictionaryValue;
@@ -172,7 +174,7 @@ class TaoDomain : public TaoGuard {
   /// @param subprin The subprincipal part of the binding name.
   /// @param[out] attestation The signed attestation.
   bool AttestKeyNameBinding(const string &key_prin, const string &subprin,
-                                     string *attestation) const;
+                            string *attestation) const;
 
   /// Authorize a program to execute with the given arguments. A pattern that
   /// matches the program's tentative name will be computed and added to the set

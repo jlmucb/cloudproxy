@@ -103,7 +103,7 @@ class Tao {
 
   /// Get the full name of this Tao, starting at the root Tao.
   /// @param[out] tao_name The full, globally-unique name of the Tao.
-  virtual bool GetTaoFullName(string *tao_name) = 0;
+  virtual bool GetTaoFullName(string *tao_name) const = 0;
 
   // @}
 
@@ -116,7 +116,8 @@ class Tao {
   /// @param child_name The local name of the hosted program making the request.
   /// @param[out] full_name The full, globally-unique name of the child.
   /// Note: This is never called: it is implemented entirely by TaoChannel.
-  bool GetHostedProgramFullName(const string &child_name, string *full_name) {
+  bool GetHostedProgramFullName(const string &child_name,
+                                string *full_name) const {
     string tao_name;
     bool success = GetTaoFullName(&tao_name);
     if (success) full_name->assign(tao_name + "::" + child_name);

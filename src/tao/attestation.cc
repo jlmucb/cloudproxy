@@ -22,6 +22,7 @@
 #include <sstream>
 
 #include <glog/logging.h>
+#include <google/protobuf/text_format.h>
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/file_util.h>
 #include <keyczar/keyczar.h>
@@ -30,13 +31,17 @@
 #include <openssl/sha.h>
 
 #include "tao/attestation.pb.h"
+#include "tao/keys.h"
+#include "tao/tpm_tao_child_channel.h"
 #include "tao/util.h"
 
 using std::stringstream;
 
+using google::protobuf::Descriptor;
+using google::protobuf::FieldDescriptor;
+using google::protobuf::TextFormat;
 using keyczar::Verifier;
-using keyczar::base::ReadFileToString;
-using keyczar::base::WriteStringToFile;
+using keyczar::base::Base64WDecode;
 
 namespace tao {
 
@@ -45,7 +50,7 @@ bool AttestKeyNameBinding(const Keys &key, const string &delegation,
                           string *attestation) {
   // Get signer name.
   string signer;
-  if (!key.GetSignerUniqueID(&signer)) {
+  if (!key.SignerUniqueID(&signer)) {
     LOG(ERROR) << "Could not get signer name";
     return false;
   }
@@ -53,12 +58,12 @@ bool AttestKeyNameBinding(const Keys &key, const string &delegation,
   s.set_key(key_prin);
   s.set_name(name);
   // Fill in timestamp.
-  statement->set_time(CurrentTime());
+  s.set_time(CurrentTime());
   // Fill in expiration.
-  statement->set_expiration(statement->time() + Tao::DefaultAttestationTimeout);
+  s.set_expiration(s.time() + Tao::DefaultAttestationTimeout);
   // Serialize and sign the statement.
   string stmt, sig;
-  if (!statement->SerializeToString(&stmt)) {
+  if (!s.SerializeToString(&stmt)) {
     LOG(ERROR) << "Could not serialize statement";
     return false;
   }
@@ -97,7 +102,7 @@ bool GetNameFromKeyNameBinding(const string &attestation, string *name) {
     LOG(ERROR) << "Could not parse the key-to-name attestation statement";
     return false;
   }
-  name->assign(s->name);
+  name->assign(s.name());
   return true;
 }
 
@@ -112,19 +117,19 @@ bool GetKeyFromKeyNameBinding(const string &attestation, string *key_prin) {
     LOG(ERROR) << "Could not parse the key-to-name attestation statement";
     return false;
   }
-  key_prin->assign(s->key());
+  key_prin->assign(s.key());
   return true;
 }
 
 static bool IsSubPrincipalOrIdentical(const string &child_name,
                                       const string &parent_name) {
-    return (child_name == parent_name) ||
-           (child_name.substr(parent_name.size() + 2) == parent_name + "::");
+  return (child_name == parent_name) ||
+         (child_name.substr(parent_name.size() + 2) == parent_name + "::");
 }
 
 static bool VerifyAttestationSignature(const Attestation &a) {
   string signer = a.signer();
-  bool tpm_signature =  signer.substr(3) == "TPM";
+  bool tpm_signature = signer.substr(3) == "TPM";
   string key_data, key_text;
   stringstream in(signer);
   if (tpm_signature) {
@@ -183,7 +188,7 @@ bool ValidateKeyNameBinding(const string &attestation, time_t check_time,
     return false;
   }
   // Establish that signer speaks for name
-  if (!a.has_delegation()) {
+  if (!a.has_serialized_delegation()) {
     // Case (1), no delegation present.
     // Require that s.name be a subprincipal of (or identical to) a.signer.
     if (!IsSubPrincipalOrIdentical(s.name(), a.signer())) {
@@ -193,13 +198,13 @@ bool ValidateKeyNameBinding(const string &attestation, time_t check_time,
     }
   } else {
     // Case (2), delegation present.
-    // Require that 
+    // Require that
     // - delegation conveys a key-to-name binding, signer0 speaksfor name0,
     // - signer0 is identical to signer
     // - and name is a subprincipal of (or identical to) a.signer
     string delegation_key, delegation_name;
-    if (!ValidateKeyNameBinding(a.serialized_delegation(),
-          check_time, &delegation_key, &delegation_name)) {
+    if (!ValidateKeyNameBinding(a.serialized_delegation(), check_time,
+                                &delegation_key, &delegation_name)) {
       LOG(ERROR) << "Delegation failed to verify";
       return false;
     }
@@ -243,21 +248,15 @@ static string DebugString(time_t t) {
 string DebugString(const Attestation &a) {
   stringstream out;
   string s;
-  Statement stmt;
-  Attestation delegation;
+
   const Descriptor *desc = a.GetDescriptor();
-  const FieldDescriptor *fType =
-      desc->FindFieldByNumber(Attestation::kTypeFieldNumber);
   const FieldDescriptor *fSigner =
-      desc->FindFieldByNumber(Attestation::kSIgnerFieldNumber);
+      desc->FindFieldByNumber(Attestation::kSignerFieldNumber);
   const FieldDescriptor *fSignature =
       desc->FindFieldByNumber(Attestation::kSignatureFieldNumber);
 
-  // type
-  TextFormat::PrintFieldValueToString(a, fType, -1, &s);
-  out << "type: " << s << "\n";
-
   // statement
+  Statement stmt;
   if (!a.has_serialized_statement())
     s = "(missing)";
   else if (!stmt.ParseFromString(a.serialized_statement()))
@@ -281,9 +280,10 @@ string DebugString(const Attestation &a) {
   out << "signer: " << s << "\n";
 
   // delegation
-  if (!a.has_delegation())
+  Attestation delegation;
+  if (!a.has_serialized_delegation())
     s = "(none)";
-  else if (!delegation.ParseFromString(a.delegation()))
+  else if (!delegation.ParseFromString(a.serialized_delegation()))
     s = "(unparsable)";
   else
     s = Indent("  ", DebugString(delegation));
@@ -314,5 +314,11 @@ string DebugString(const Statement &stmt) {
   out << "key: " << s << "\n";
 
   return "{\n  " + Indent("  ", out.str()) + "}";
+}
+
+time_t CurrentTime() {
+  time_t cur_time;
+  time(&cur_time);
+  return cur_time;
 }
 }  // namespace tao

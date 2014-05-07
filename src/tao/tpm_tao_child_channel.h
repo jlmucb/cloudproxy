@@ -83,6 +83,7 @@ class TPMTaoChildChannel : public TaoChildChannel {
     *eof = false;
     return false;
   }
+  virtual bool GetLocalName(string *name) const;
 
  private:
   static const int PcrLen = 20;

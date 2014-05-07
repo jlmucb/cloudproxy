@@ -44,7 +44,6 @@ using tao::LinuxTao;
 using tao::ScopedTempDir;
 using tao::Sha256FileHash;
 using tao::Tao;
-using tao::TaoAuth;
 using tao::TaoChannel;
 using tao::TaoDomain;
 
@@ -90,7 +89,8 @@ class LinuxTaoTest : public ::testing::Test {
     // Create ACLs for a dummy hosted program, since we don't want the
     // LinuxTao to start any hosted programs during this test.
     // ASSERT_TRUE(admin->AuthorizeProgram(test_binary_path_));
-    // ASSERT_TRUE(admin->Authorize(fake_linux_tao_hash, TaoAuth::FakeHash, "LinuxTao"));
+    // ASSERT_TRUE(admin->Authorize(fake_linux_tao_hash, TaoAuth::FakeHash,
+    // "LinuxTao"));
 
     tao_.reset(new LinuxTao(keys_path, channel.release(),
                             child_channel.release(), program_factory.release(),
@@ -140,8 +140,9 @@ TEST_F(LinuxTaoTest, FailUnsealTest) {
 
 TEST_F(LinuxTaoTest, FailAttestTest) {
   string attestation;
+  string child_name = "FakeProgram()";
   string key_prin = "Key(\"..stuff..\")";
-  EXPECT_FALSE(tao_->Attest(fake_hash, key_prin, &attestation));
+  EXPECT_FALSE(tao_->Attest(child_name, key_prin, &attestation));
 }
 
 TEST_F(LinuxTaoTest, SealTest) {
@@ -181,7 +182,6 @@ TEST_F(LinuxTaoTest, UnsealTest) {
 }
 
 TEST_F(LinuxTaoTest, AttestTest) {
-
   list<string> args;
   string child_name;
   EXPECT_TRUE(tao_->StartHostedProgram(test_binary_path_, args, &child_name));

@@ -73,9 +73,12 @@ class FileClientTest : public ::testing::Test {
     CHECK(CreateTempACLsDomain(&temp_dir_, &admin_));
 
     // Create a whitelist with some test programs.
-    //ASSERT_TRUE(admin_->Authorize("Test hash 1", TaoDomain::Sha256, "Test 1"));
-    //ASSERT_TRUE(admin_->Authorize("Test hash 2", TaoDomain::Sha256, "Test 2"));
-    //ASSERT_TRUE(admin_->Authorize("FAKE_TPM", TaoDomain::FakeHash, "BogusTPM"));
+    // ASSERT_TRUE(admin_->Authorize("Test hash 1", TaoDomain::Sha256, "Test
+    // 1"));
+    // ASSERT_TRUE(admin_->Authorize("Test hash 2", TaoDomain::Sha256, "Test
+    // 2"));
+    // ASSERT_TRUE(admin_->Authorize("FAKE_TPM", TaoDomain::FakeHash,
+    // "BogusTPM"));
 
     // set up file client
     string client_keys = *temp_dir_ + string("/client_keys");

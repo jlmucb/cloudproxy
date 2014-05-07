@@ -31,7 +31,6 @@
 #include "cloudproxy/file_server.h"
 #include "cloudproxy/util.h"
 #include "tao/keys.h"
-#include "tao/tao_auth.h"
 #include "tao/util.h"
 
 using keyczar::Signer;

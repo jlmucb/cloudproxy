@@ -20,11 +20,11 @@
 #ifndef TAO_TAO_GUARD_H_
 #define TAO_TAO_GUARD_H_
 
-#include <string>
 #include <list>
+#include <string>
 
-using std::string;
 using std::list;
+using std::string;
 
 namespace tao {
 /// An simple interface for authorization guards. This may be a stand-in until a

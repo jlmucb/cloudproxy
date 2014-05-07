@@ -18,8 +18,8 @@
 // limitations under the License.
 #include "tao/keys.h"
 
-#include <string>
 #include <sstream>
+#include <string>
 
 #include <glog/logging.h>
 #include <google/protobuf/text_format.h>
@@ -1039,12 +1039,10 @@ bool Keys::InitHosted(const TaoChildChannel &channel, int policy) {
   return true;
 }
 
-// typedef scoped_ptr_malloc<DSA, keyczar::openssl::OSSLDestroyer<
-//                                        DSA, EVP_PKEY_free>> ScopedDsa;
-
-bool Keys::SignerUniqueID(string *identifier) const {
+bool VerifierUniqueID(const Verifier &key, string *identifier) {
   string key_data, key_text;
-  if (!SerializePublicKey(&key_data) || !Base64WEncode(key_data, &key_text)) {
+  if (!SerializePublicKey(key, &key_data) ||
+      !Base64WEncode(key_data, &key_text)) {
     LOG(ERROR) << "Could not serialize public signing key";
     return false;
   }
@@ -1052,6 +1050,14 @@ bool Keys::SignerUniqueID(string *identifier) const {
   out << "Key(" << quotedString(key_text) << ")";
   identifier->assign(out.str());
   return true;
+}
+
+bool Keys::SignerUniqueID(string *identifier) const {
+  if (!Verifier()) {
+    LOG(ERROR) << "No managed verifier";
+    return false;
+  }
+  return tao::VerifierUniqueID(*Verifier(), identifier);
 }
 
 string Keys::GetPath(const string &suffix) const {

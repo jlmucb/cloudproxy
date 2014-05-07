@@ -26,13 +26,14 @@
 #include <sstream>
 
 #include <glog/logging.h>
-#include <keyczar/keyczar.h>
 #include <keyczar/base/base64w.h>
+#include <keyczar/keyczar.h>
 #include <openssl/pem.h>
 #include <openssl/sha.h>
 
+#include "tao/attestation.h"
 #include "tao/attestation.pb.h"
-#include "tao/tao_auth.h"
+#include "tao/keys.h"
 #include "tao/util.h"
 
 using std::stringstream;
@@ -165,7 +166,7 @@ bool TPMTaoChildChannel::Init() {
 }
 
 bool TPMTaoChildChannel::VerifySignature(const Verifier &v, const string &stmt,
-                            const string &sig) {
+                                         const string &sig) {
   ScopedEvpPkey evp_key;
   if (!ExportPublicKeyToOpenSSL(v, &evp_key)) {
     LOG(ERROR) << "Could not export key to openssl format";
@@ -173,7 +174,7 @@ bool TPMTaoChildChannel::VerifySignature(const Verifier &v, const string &stmt,
   }
   ScopedRsa rsa_key(EVP_PKEY_get1_RSA(evp_key.get()));
   if (!rsa_key.get()) {
-    LOG(ERROR) << "Key was not expected (RSA) type."
+    LOG(ERROR) << "Key was not expected (RSA) type.";
     return false;
   }
   Statement s;
@@ -183,11 +184,11 @@ bool TPMTaoChildChannel::VerifySignature(const Verifier &v, const string &stmt,
   }
   // Extract PCR info from name in the statement
   string aik_name;
-  if (!GetLocalName(&aik_name)) {
+  if (!VerifierUniqueID(v, &aik_name)) {
     LOG(ERROR) << "Could not get aik name";
     return false;
   }
-  string child_name = stmt.name();
+  string child_name = s.name();
   stringstream in(child_name);
   skip(in, aik_name);
   skip(in, "::");
@@ -201,42 +202,40 @@ bool TPMTaoChildChannel::VerifySignature(const Verifier &v, const string &stmt,
     LOG(ERROR) << "Bad child name in TPM quote statement";
     return false;
   }
-  list <UINT32> pcr_indexes;
+  list<UINT32> pcr_indexes;
   in.str(pcr_index_list);
-  int max_pcr = 0;
+  UINT32 pcr_max = 0;
   bool first = true;
   while (in && !in.str().empty()) {
-    if (!first)
-      skip(in, ", ");
+    if (!first) skip(in, ", ");
     first = false;
     UINT32 idx;
     in >> idx;
     pcr_indexes.push_back(idx);
-    max_pcr = (idx > max_pcr ? idx : max_pcr);
+    pcr_max = (idx > pcr_max ? idx : pcr_max);
   }
   if (!in) {
     LOG(ERROR) << "Bad PCR index list in TPM quote statement";
     return false;
   }
-  list <string> pcr_values;
+  list<string> pcr_values;
   in.str(pcr_value_list);
   first = true;
   while (in && !in.str().empty()) {
-    if (!first)
-      skip(in, ", ");
+    if (!first) skip(in, ", ");
     first = false;
     string value;
     getQuotedString(in, &value);
     pcr_values.push_back(value);
   }
-  if (!in || pcr_values.size(_ != pcr_indexes.size())) {
+  if (!in || pcr_values.size() != pcr_indexes.size()) {
     LOG(ERROR) << "Bad PCR value list in TPM quote statement";
     return false;
   }
 
   // Hash the statement for the external data part of the quote.
   uint8 stmt_hash[20];
-  SHA1(reinterpret_cast<const uint8 *>(stmt.data()), stmt.size, stmt_hash);
+  SHA1(reinterpret_cast<const uint8 *>(stmt.data()), stmt.size(), stmt_hash);
 
   // Reconstruct pcrbuf
 
@@ -253,7 +252,7 @@ bool TPMTaoChildChannel::VerifySignature(const Verifier &v, const string &stmt,
     int pcr_mask_len = pcr_mask_len_min + i;
 
     scoped_array<BYTE> serialized_pcrs(
-        new BYTE[sizeof(UINT16) + pcr_mask_len_ + sizeof(UINT32) +
+        new BYTE[sizeof(UINT16) + pcr_mask_len + sizeof(UINT32) +
                  PcrLen * pcr_values.size()]);
     BYTE *pcr_buf = serialized_pcrs.get();
     UINT32 index = 0;
@@ -280,7 +279,7 @@ bool TPMTaoChildChannel::VerifySignature(const Verifier &v, const string &stmt,
         LOG(ERROR) << "Bad PCR encoded in TPM quote";
         return false;
       }
-      memcpy(pcr_buf + index, pcr, PcrLen);
+      memcpy(pcr_buf + index, pcr.data(), PcrLen);
       index += PcrLen;
     }
 
@@ -303,7 +302,7 @@ bool TPMTaoChildChannel::VerifySignature(const Verifier &v, const string &stmt,
 
     if (1 == RSA_verify(NID_sha1, quote_hash, 20,
                         reinterpret_cast<const uint8 *>(sig.data()), sig.size(),
-                        rsa.get())) {
+                        rsa_key.get())) {
       return true;
     }
     LOG(INFO) << "The RSA signature did not pass verification with mask size "
@@ -406,7 +405,8 @@ bool TPMTaoChildChannel::Unseal(const string &sealed, string *data) const {
   return true;
 }
 
-bool TPMTaoChildChannel::Attest(const string &key_prin, string *attestation) const {
+bool TPMTaoChildChannel::Attest(const string &key_prin,
+                                string *attestation) const {
   TSS_RESULT result;
 
   // The following code for setting up the composite hash is based on
@@ -418,8 +418,9 @@ bool TPMTaoChildChannel::Attest(const string &key_prin, string *attestation) con
   // UINT32: size of serialized pcrs
   // BYTES: serialized pcrs
 
-  scoped_array<BYTE> serialized_pcrs(new BYTE[
-      sizeof(UINT16) + pcr_mask_len_ + sizeof(UINT32) + PcrLen * pcr_max_]);
+  scoped_array<BYTE> serialized_pcrs(
+      new BYTE[sizeof(UINT16) + pcr_mask_len_ + sizeof(UINT32) +
+               PcrLen * pcr_max_]);
   BYTE *pcr_buf = serialized_pcrs.get();
   UINT32 index = 0;
 
@@ -440,8 +441,6 @@ bool TPMTaoChildChannel::Attest(const string &key_prin, string *attestation) con
 
   // Set up a statement containing the data and hash it with SHA1
   Statement s;
-  time_t cur_time;
-  time(&cur_time);
 
   // We have choices here.
   // (1) If we had a parent, which we don't, we could use it.
@@ -461,16 +460,16 @@ bool TPMTaoChildChannel::Attest(const string &key_prin, string *attestation) con
     }
     delegation = "";
   } else {
-    if (!GetNameFromKeyNameBinding(aik_attestation_, name)) {
+    if (!GetNameFromKeyNameBinding(aik_attestation_, &name)) {
       LOG(ERROR) << "Could not get full name for policy attestation";
       return false;
     }
     delegation = aik_attestation_;
   }
 
-  s.set_time(cur_time);
-  s.set_expiration(cur_time + Tao::DefaultAttestationTimeout);
-  s.set_data(key_prin);
+  s.set_time(CurrentTime());
+  s.set_expiration(s.time() + Tao::DefaultAttestationTimeout);
+  s.set_key(key_prin);
   s.set_name(name);
 
   string serialized_statement;
@@ -550,11 +549,10 @@ bool TPMTaoChildChannel::Attest(const string &key_prin, string *attestation) con
   }
 
   Attestation a;
-  a.set_type(TPM_1_2);
   a.set_serialized_statement(serialized_statement);
   a.set_signer(aik_name);
   a.set_signature(signature);
-  a.set_delegation(aik_attestation_);
+  a.set_serialized_delegation(aik_attestation_);
 
   if (!a.SerializeToString(attestation)) {
     LOG(ERROR) << "Could not serialize the TPM 1.2 attestation";
@@ -605,10 +603,10 @@ bool TPMTaoChildChannel::GetHostedProgramFullName(string *full_name) const {
     LOG(ERROR) << "Could not get aik name";
     return false;
   }
-  
+
   stringstream out;
   out << aik_name;
-  
+
   // now get the pcrs
   out << "::PCRs(\"17, 18\",\"";
   list<UINT32> pcrs_to_quote{17, 18};
@@ -616,6 +614,7 @@ bool TPMTaoChildChannel::GetHostedProgramFullName(string *full_name) const {
   for (UINT32 pcr_val : pcrs_to_quote) {
     BYTE *temp_pcr;
     UINT32 temp_pcr_len;
+    TSS_RESULT result;
     result = Tspi_PcrComposite_GetPcrValue(seal_pcrs_, pcr_val, &temp_pcr_len,
                                            &temp_pcr);
     CHECK_EQ(result, TSS_SUCCESS) << "Could not get PCR " << (int)pcr_val;

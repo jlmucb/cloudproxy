@@ -66,6 +66,8 @@ bool DeserializePublicKey(const string &s, scoped_ptr<keyczar::Verifier> *key);
 /// @param[out] s The serialized key.
 bool SerializePublicKey(const keyczar::Verifier &key, string *serialized_key);
 
+bool VerifierUniqueID(const keyczar::Verifier &key, string *identifier);
+
 /// Sign data with a key using Signer.
 /// @param data The data to sign.
 /// @param context The context string to add to the tao::Signature. WARNING:

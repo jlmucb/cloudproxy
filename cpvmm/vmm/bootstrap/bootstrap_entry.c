@@ -1485,13 +1485,6 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
 
     // set esi register
     linux_esi_register= linux_boot_parameters;
-
-// temporarily NUll cammand line for test
-#if 1
-    new_boot_params->hdr.cmdline_size= 0;
-    new_boot_params->hdr.cmd_line_ptr= (uint32_t) 0;
-    linux_esi_register= linux_boot_parameters= linux_original_boot_parameters;
-#endif
     return 0;
 }
 

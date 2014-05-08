@@ -710,9 +710,9 @@ performance optimizations using their own local keys.
 A second alternative way to implement groups is to make use of predicates
 directly, and not use groups at all. So we might say that a principal P
 is authorized perform some operation "op" if
-  K_policy says Authorized("op", P)
+  K_policy says Authorized(P, "op")
 And we arrange for K_policy to define this predicate, e.g.
-  K_policy says Authorized("op", K_tpm::PCRs(...)::Prog(...))
+  K_policy says Authorized(K_tpm::PCRs(...)::Prog(...), "op")
 or:
   K_policy says
       ((exists t, o :

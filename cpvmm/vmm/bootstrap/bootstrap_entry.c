@@ -1310,6 +1310,7 @@ int expand_linux_image( multiboot_info_t* mbi,
     if ( hdr->relocatable_kernel ) {
 #if 1
         protected_mode_base =  0x02000000;
+        hdr->loadflags|= 0x40;  // keep segments
 #else
         bprint("relocatable kernel\n");
         protected_mode_base = (uint32_t)get_bootstrap_mem_end();

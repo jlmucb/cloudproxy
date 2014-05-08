@@ -56,9 +56,9 @@ void check_boot_parameters()
 
     bprint("rdi on entry: %p, rsi: %p\n", rdi_reg, rsi_reg);
     boot_params_t* boot_params= (boot_params_t*) rdi_reg;
-    HexDump((UINT8*)rdi_reg, (UINT8*)rdi_reg+32);
-    bprint("cmd line ptr: %p\n", boot_params->hdr.cmd_line_ptr);
-    bprint("code32_start: %p\n", boot_params->hdr.code32_start);
+    //HexDump((UINT8*)rdi_reg, (UINT8*)rdi_reg+32);
+    //bprint("cmd line ptr: %p\n", boot_params->hdr.cmd_line_ptr);
+    //bprint("code32_start: %p\n", boot_params->hdr.code32_start);
     bprint("loadflags: %02x\n", boot_params->hdr.loadflags);
 
     vmx_vmread(0x201a, &ept);
@@ -101,13 +101,13 @@ void fixupvmcs()
 
     bprint("fixupvmcs %04x\n\n", *loop);
     vmx_vmread(0x681e, &value);  // guest_rip
-    // bprint("Code at %p\n", value);
-    // HexDump((UINT8*)value, (UINT8*)value+32);
     check_boot_parameters();
-     *((UINT16*) value+0x8)= *loop;  // feeb
-     *((UINT16*) value+0xa)= *loop;  // feeb
-     *((UINT16*) value+0x10)= *loop;  // feeb
-     *((UINT16*) value+0x16)= *loop;  // feeb
+    //bprint("Code at %p\n", value);
+    //HexDump((UINT8*)value, (UINT8*)value+32);
+     //*(UINT16*) (value+0x8)= *loop;  // feeb
+     //*(UINT16*) (value+0xa)= *loop;  // feeb
+     //*(UINT16*) (value+0x10)= *loop;  // feeb
+     //*(UINT16*) (value+0x16)= *loop;  // feeb
 
     // vmx_vmread(0x4000, &value);  // vmx_pin_controls
     // vmx_vmwrite(0x4000, value);  // vmx_pin_controls

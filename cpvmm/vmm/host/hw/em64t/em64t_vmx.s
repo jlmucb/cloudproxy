@@ -62,7 +62,7 @@ vmentry_func:
         jmp     2f
 1:
         # remove the following 
-        call    fixupvmcs               # temporary debug function
+        #call    fixupvmcs               # temporary debug function
         call    gcpu_restore_registers
         vmlaunch                        # Launch execution of Guest Virtual Machine
 

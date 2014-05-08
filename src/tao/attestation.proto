@@ -33,15 +33,15 @@ package tao;
 // only two interpretations are supported.
 //
 // Delegation Statements:
-//   issuer says (... implies (key speaksfor issuer))
-// Here, 'key' is the name of a (non-tpm) key principal, i.e. Key("...") where
-// "..." is a base64w-encoded, serialized public key as produced by
-// Keys::SignerUniqueID(). If time restrictions are met, from a delegation
-// statement we can derive:
-//   issuer says (key speaksfor issuer)
+//   issuer says (... implies (delegate speaksfor issuer))
+// Here, delegate is the name of some principal, usually a (non-tpm) Tao key
+// principal, i.e. Key("...") where "..." is a base64w-encoded, serialized
+// public key as produced by Keys::SignerUniqueID(). If time restrictions are
+// met, from a delegation statement we can derive:
+//   issuer says (delegate speaksfor issuer)
 // and further:
-//   key speaksfor issuer
-// That is to say, a delegation statement conveys a key-to-name binding.
+//   delegate speaksfor issuer
+// That is to say, a delegation statement conveys a speaks-for relationship.
 //
 // Delegation Statement Example:
 // Suppose some program Prog(...), running on some OS PCRs(...), running on some
@@ -51,7 +51,7 @@ package tao;
 //    issuer = K_aik::PCRs(...)::Prog(...)
 //    time = today
 //    expiration = next year
-//    delegation_key = K_prog
+//    delegate = K_prog
 //  }
 //
 // Predicate Statements:
@@ -80,24 +80,24 @@ package tao;
 //  }
 message Statement {
   // The identity of the issuer.
-  optional string issuer = 4;
+  optional string issuer = 1;
   
   // The earliest time this statement is to be used, in 64-bit POSIX time.
   // Typically, this is simply the time at which the statement was created.
-  required int64 time = 1;
+  required int64 time = 2;
 
   // The latest time this statement is to be used, in 64-bit POSIX time.
-  required int64 expiration = 2;
+  required int64 expiration = 3;
 
   // The following fields encodes information from the issuer.
   // @{
 
-  // For a delegation credential, the key part of the delegation.
-  optional string delegation_key = 3;
+  // For a delegation credential, the identity of the delegate principal.
+  optional string delegate = 4;
 
   // For a predicate credential, the name of the predicate and its arguments.
-  optional string predicate_name;
-  repeated string predicate_args;
+  optional string predicate_name = 5;
+  repeated string predicate_args = 6;
 
   // @}
 }
@@ -114,7 +114,7 @@ message Statement {
 // match the restriction (time <= now < exp) on the serialized statement. 
 // If the modified time restriction is met, then we can derive the same
 // conclusion as we would for the included statement, i.e.:
-//   key speaksfor issuer                   (for a delegation statement)
+//   delgate speaksfor issuer               (for a delegation statement)
 // or:
 //   issuer says pred(arg_1, ..., arg_n)    (for a predicate statement)
 // That is to say, a valid Attestation that meets its time restriction conveys
@@ -136,7 +136,7 @@ message Statement {
 //     statement = {
 //       issuer = K_aik::PCRs(...)
 //       ...
-//       delegation_key = K_os
+//       delegate = K_os
 //     }
 //     signer = K_aik
 //     signature = ...
@@ -167,7 +167,7 @@ message Statement {
 //     statement = {
 //       issuer = K_aik::PCRs(...)::Prog(...)
 //       ...
-//       delegation_key = K_app
+//       delegate = K_app
 //     }
 //     signer = K_os
 //     signature = ...
@@ -175,7 +175,7 @@ message Statement {
 //       statement = {
 //         issuer = K_aik::PCRs(...)
 //         ...
-//         delegation_key = K_os
+//         delegate = K_os
 //       }
 //       signer = K_aik
 //       signature = ...
@@ -201,12 +201,12 @@ message Statement {
 // where "..i.." is a sorted, space-separated list of PCR numbers, and "..h.."
 // is the corresponding, space-separated list of base64w-encoded PCR values. The
 // signature is computed roughly as:
-//   sig = rsa_sign(K, H( H(issuer|time|expiration|key) | pcrbuf(i, h) ))
+//   sig = rsa_sign(K, H( H(issuer|time|expiration|...) | pcrbuf(i, h) ))
 // Here, we first hash the statement in a tpm-specific way, then signing the
 // hash with RSA key K. To obtain the statement hash, first hash the serialized
-// statement, including  issuer, time, expiration and key. This intermediate hash
-// is then re-hashed with a tpm-specific encoding of the PCR numbers ("..i..")
-// and values ("..h..") extracted from issuer. 
+// statement, including  issuer, time, expiration and other information. This
+// intermediate hash is then re-hashed with a tpm-specific encoding of the PCR
+// numbers ("..i..") and values ("..h..") extracted from issuer. 
 //
 // Note: The PCR values are effectively hashed twice, once as part of issuer, and
 // separately as part of the pcrbuf datastructure. See optimization note below.
@@ -216,7 +216,7 @@ message Statement {
 //   Key("..K..") where "..K.." is the serialized, base64w-encoded public half
 // of a DSA key K. The issuer used in the serialized statement can have any
 // form. The signature is roughly:
-//   sig = dsa_sign(K, H(context|issuer|time|expiration|key))
+//   sig = dsa_sign(K, H(context|issuer|time|expiration|...))
 // Here, we simply hash the serialized statement, then sign it with the private
 // DSA key K. The context is defined in Tao::AttestationSigningContext.
 //
@@ -245,18 +245,18 @@ message Statement {
 message Attestation {
   // A serialized Statement. This is serialized to avoid canonicalization issues
   // when signing and verifying signatures.
-  required bytes serialized_statement = 2;
+  required bytes serialized_statement = 1;
 
   // The signer's public key, encoded as a principal name.
-  required string signer = 3;
+  required string signer = 2;
 
   // Signature over the serialized statement using TPM or Tao signing.
-  required bytes signature = 4;
+  required bytes signature = 3;
 
   // A delegation that conveys (eventually) that signer speaks for the issuer in
   // the serialized statement. If this is empty, then it must be self evident
   // that signer speaks for the issuer in the serialized statement.
-  optional string serialized_delegation = 5;
+  optional string serialized_delegation = 4;
 }
 
 // TODO(kwalsh) Consider moving issuer out of Statement and into Attestation.

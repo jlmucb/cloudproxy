@@ -1308,6 +1308,9 @@ int expand_linux_image( multiboot_info_t* mbi,
     // if kernel is relocatable then move it above tboot 
     // else it may expand over top of tboot 
     if ( hdr->relocatable_kernel ) {
+#if 1
+        protected_mode_base =  0x020000000;
+#else
         bprint("relocatable kernel\n");
         protected_mode_base = (uint32_t)get_bootstrap_mem_end();
         /* fix possible mbi overwrite in grub2 case */
@@ -1325,6 +1328,7 @@ int expand_linux_image( multiboot_info_t* mbi,
         // round it up to kernel alignment
         protected_mode_base= (protected_mode_base+hdr->kernel_alignment-1)
                               & ~(hdr->kernel_alignment-1);
+#endif
         hdr->code32_start = protected_mode_base;
     }
     else if ( hdr->loadflags & FLAG_LOAD_HIGH ) {
@@ -1721,6 +1725,32 @@ uint64_t OriginalEntryAddress(uint32_t base)
 }
 
 
+// get rid of hole from tboot
+// from 0x4005000 to 0xb83f3000
+/*uint32_t size;
+        uint32_t base_addr_low;
+        uint32_t base_addr_high;
+        uint32_t length_low;
+        uint32_t length_high;
+        uint32_t type;
+ */
+void fixe820map()
+{
+    int           i;
+    memory_map_t *entry;
+
+    for(i=0; i<g_nr_map; i++) {
+        entry= &bootstrap_e820[i];
+        if(entry->base_addr_low<0xa0000000 && 
+           (entry->base_addr_low+entry->size)>0xa0000000 &&
+           entry->base_addr_high==0) {
+            entry->type= E820_RAM;
+            break;
+        }
+    }
+}
+
+
 // -------------------------------------------------------------------------
 
 
@@ -1966,8 +1996,7 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     // back if the size exceeds the number in this option, but the side 
     // effect is the device memory before the reenabled usabled ram will 
     // be DMA protected.
-
-    // FIX(JLM): we should unreserve them.
+    fixe820map();
 
     // reserve bootstrap
     if(!e820_reserve_ram(bootstrap_start, (bootstrap_end - bootstrap_start))) {

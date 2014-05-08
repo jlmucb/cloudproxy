@@ -78,6 +78,9 @@ class FakeTao : public Tao {
   /// FakeTao follows the normal semantics of the Tao for these methods.
   /// @{
   virtual bool GetTaoFullName(string *tao_name) const;
+  virtual bool GetLocalName(string *local_name) const;
+  virtual bool GetPolicyName(string *policy_name) const;
+  virtual bool InstallPolicyAttestation(const string &attestation);
   virtual bool GetRandomBytes(const string &child_name, size_t size,
                               string *bytes) const;
   virtual bool Seal(const string &child_name, const string &data, int policy,
@@ -90,12 +93,6 @@ class FakeTao : public Tao {
   /// @}
 
  private:
-  /// Get the attestation key name of this FakeTao.
-  bool GetLocalName(string *name) const;
-
-  /// Get the policy-given name of this FakeTao.
-  bool GetPolicyName(string *name) const;
-
   /// A policy attestation for our signing public key, or emptystring.
   string policy_attestation_;
 

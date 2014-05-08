@@ -59,26 +59,18 @@ bool LinuxTao::Init() {
     return false;
   }
   int policy = 0;
-  VLOG(0) << "linux tao is named " << full_name_;
   policy = LinuxTao::PolicySameProgHash | LinuxTao::PolicySameArgHash;
   if (!keys_->InitHosted(*host_channel_, policy)) {
     LOG(ERROR) << "Could not initialize keys";
     return false;
-  }
-  if (keys_->HasFreshKeys() && !admin_->GetTaoCAHost().empty()) {
-    if (!GetTaoCAAttestation()) {
-      LOG(ERROR) << "Could not trade intermediate for root attestation";
-      return false;
-    }
   }
   if (!ReadFileToString(keys_->AttestationPath("parent"),
                         &parent_attestation_)) {
     LOG(ERROR) << "Could not load parent attestation for signing key";
     return false;
   }
-  if (!ReadFileToString(keys_->AttestationPath("policy"),
-                        &policy_attestation_)) {
-    LOG(ERROR) << "Could not load parent attestation for signing key";
+  if (!admin_->GetTaoCAHost().empty() && !GetTaoCAAttestation()) {
+    LOG(ERROR) << "Could not trade intermediate for root attestation";
     return false;
   }
 
@@ -98,11 +90,27 @@ bool LinuxTao::StartHostedProgram(const string &path, const list<string> &args,
     return false;
   }
 
+  // We have options here. We could use our full parent name, our local name, or
+  // our policy name, when checking policy. Makes the most sense to use the
+  // policy name here, when possible, since we are asking a policy question. If
+  // that is not available, default to full_name_, since it is likely nobody
+  // else would know the local name.
+  string name;
+  if (!policy_attestation_.empty()) {
+    if (!GetPolicyName(&name)) {
+      LOG(ERROR) << "Could not get policy name";
+      return false;
+    }
+  } else {
+    name = full_name_;
+  }
+
   {
     lock_guard<mutex> l(auth_m_);
     // TODO(kwalsh) hash alg should come from ProgramFactory::HashHostedProgram
-    if (!admin_->IsAuthorizedToExecute(full_name_ + "::" + tentative_name)) {
-      LOG(ERROR) << tentative_name << " is not authorized to run on this Tao";
+    if (!admin_->IsAuthorizedToExecute(name + "::" + tentative_name)) {
+      LOG(ERROR) << "Hosted program " << elideString(tentative_name)
+                 << " is not authorized to run on this Tao";
       return false;
     }
   }
@@ -167,12 +175,35 @@ bool LinuxTao::GetTaoFullName(string *tao_name) const {
   return true;
 }
 
-bool LinuxTao::GetLocalName(string *name) const {
-  return keys_->SignerUniqueID(name);
+bool LinuxTao::GetLocalName(string *local_name) const {
+  return keys_->SignerUniqueID(local_name);
 }
 
-bool LinuxTao::GetPolicyName(string *name) const {
-  return GetNameFromKeyNameBinding(policy_attestation_, name);
+bool LinuxTao::GetPolicyName(string *policy_name) const {
+  if (policy_attestation_.empty()) {
+    LOG(ERROR) << "No policy attestation";
+    return false;
+  }
+  return GetNameFromKeyNameBinding(policy_attestation_, policy_name);
+}
+
+bool InstallPolicyAttestation(const string &attestation) {
+  string key_prin;
+  if (!GetKeyFromKeyNameBinding(attestation, &key_prin)) {
+    LOG(ERROR) << "Could not retrieve key from new attestation";
+    return false;
+  }
+  string local_name;
+  if (!GetLocalName(&local_name)) {
+    LOG(ERROR) << "Could not get local name';
+    return false;
+  }
+  if (key_prin != local_name) {
+    LOG(ERROR) << "New attestation does not match our key";
+    return false;
+  }
+  policy_attestation_ = attestation;
+  return true;
 }
 
 bool LinuxTao::GetRandomBytes(const string &child_name, size_t size,
@@ -314,13 +345,13 @@ bool LinuxTao::Attest(const string &child_name, const string &key_prin,
   // where parent_tao is the name of our parent (e.g. a TPM key) and tao_subprin
   // is our name (e.g. a set of PCRs).
   // (2) We can create a binding via our key, to get:
-  //   K_fake::child_name
-  // where K_fake is our own attestation key.
+  //   K_os::child_name
+  // where K_os is our own attestation key.
   // (3) We can create a binding via the policy key, to get:
   //   K_policy::TrustedOS::child_name
-  // where K_policy::TrustedOS is the name we bound to K_fake by TaoCA.
+  // where K_policy::TrustedOS is the name we bound to K_os by TaoCA.
   string name;
-  int option = 2;
+  int option = 1;
   string delegation;
   if (option == 1) {
     if (!GetTaoFullName(&name)) {
@@ -373,24 +404,25 @@ bool LinuxTao::Listen() {
 }
 
 bool LinuxTao::GetTaoCAAttestation() {
-  // Use TaoCA to convert intermediate attestation into a root one.
-  string intermediate_attestation;
-  if (!ReadFileToString(keys_->AttestationPath("parent"),
-                        &intermediate_attestation)) {
-    LOG(ERROR) << "Could not load the parent attestation";
-    return false;
-  }
+  // Use TaoCA to trade parent attestation for a policy attestation.
   TaoCA ca(admin_.get());
-  string parent_attestation;
-  if (!ca.GetAttestation(intermediate_attestation, "TrustedOS",
-                         &parent_attestation)) {
-    LOG(ERROR) << "Could not get root attestation";
-    return false;
-  }
-  if (!WriteStringToFile(keys_->AttestationPath("policy"),
-                         parent_attestation)) {
-    LOG(ERROR) << "Could not store the root attestation";
-    return false;
+  if (keys_->HasFreshKeys()) {
+    if (!ca.GetAttestation(parent_attestation_, "TrustedOS",
+                           &policy_attestation_)) {
+      LOG(ERROR) << "Could not get root attestation";
+      return false;
+    }
+    if (!WriteStringToFile(keys_->AttestationPath("policy"),
+                           policy_attestation_)) {
+      LOG(ERROR) << "Could not store the root attestation";
+      return false;
+    }
+  } else {
+    if (!ReadFileToString(keys_->AttestationPath("policy"),
+                          &policy_attestation_)) {
+      LOG(ERROR) << "Could not load policy attestation for signing key";
+      return false;
+    }
   }
   return true;
 }

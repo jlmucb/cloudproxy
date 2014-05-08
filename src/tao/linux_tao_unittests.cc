@@ -17,6 +17,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <list>
+#include <string>
+
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -32,6 +35,9 @@
 #include "tao/linux_tao.h"
 #include "tao/tao_domain.h"
 #include "tao/util.h"
+
+using std::list;
+using std::string;
 
 using keyczar::base::Base64WEncode;
 
@@ -88,14 +94,21 @@ class LinuxTaoTest : public ::testing::Test {
 
     // Create ACLs for a dummy hosted program, since we don't want the
     // LinuxTao to start any hosted programs during this test.
-    // ASSERT_TRUE(admin->AuthorizeProgram(test_binary_path_));
+    ASSERT_TRUE(
+        admin->AuthorizeProgramToExecute(test_binary_path_, list<string>{}));
     // ASSERT_TRUE(admin->Authorize(fake_linux_tao_hash, TaoAuth::FakeHash,
     // "LinuxTao"));
 
     tao_.reset(new LinuxTao(keys_path, channel.release(),
                             child_channel.release(), program_factory.release(),
-                            admin.release()));
+                            admin->DeepCopy()));
     ASSERT_TRUE(tao_->Init());
+
+    string key_prin, attestation;;
+    ASSERT_TRUE(tao_->GetLocalName(key_prin));
+    ASSERT_TRUE(
+        admin->AttestKeyNameBinding(key_prin, "TrustedOS", &attestation));
+    ASSERT_TRUE(tao_->InstallPolicyAttestation(attestation));
   }
 
   ScopedTempDir temp_dir_;

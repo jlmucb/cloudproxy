@@ -807,4 +807,95 @@ stringstream &skip(stringstream &in, const string &s) {  // NOLINT
   return in;
 }
 
+/// Elide a already-escaped string if necessary. If the string is short, it will
+/// be returned as-is. Otherwise, a few characters at the beginning and end
+/// will be left, and the middle replaced with ellipses. Escape sequences will
+/// not be broken, and it is assumed that all backslashes are followed by
+/// either a 3-character octal escape or a 1-character non-octal escape.
+/// @param s The string to be elided.
+/// @param thresh If s is no longer than this, it will be returned as-is.
+/// @param prefix At least this many characters will be left before the
+/// ellipses.
+/// @param suffix At least this many characters will be left after the ellipses.
+static string elideQuote(const string &s, size_t thresh, size_t prefix,
+                         size_t suffix) {
+  if (s.size() < thresh) return s;
+  size_t i = 0;
+  while (i < prefix) {
+    if (s[i] == '\\' && '0' <= s[i + 1] && s[i + 1] <= '7')
+      i += 4;  // skip octal escape
+    else if (s[i] == '\\')
+      i += 2;  // skip other escape
+    else
+      i++;
+  }
+  prefix = i;
+  size_t j = i;
+  while (s.size() - i >= suffix) {
+    j = i;
+    if (s[i] == '\\' && '0' <= s[i + 1] && s[i + 1] <= '7')
+      i += 4;  // skip octal escape
+    else if (s[i] == '\\')
+      i += 2;  // skip other escape
+    else
+      i++;
+  }
+  suffix = j;
+  return s.substr(0, prefix) + "..." + s.substr(suffix);
+}
+
+string elideString(const string &s) {
+  stringstream out, elided;
+  bool inQuote = false;
+  for (auto &c : s) {
+    if (c == '\0')
+      out << "\0";
+    else if (c == '\a')
+      out << "\\a";
+    else if (c == '\b')
+      out << "\\b";
+    else if (c == '\t')
+      out << "\\t";
+    else if (c == '\n')
+      out << "\\n";
+    else if (c == '\v')
+      out << "\\v";
+    else if (c == '\f')
+      out << "\\f";
+    else if (c == '\r')
+      out << "\\r";
+    else if (c == '\\')
+      out << "\\\\";
+    else if (c < ' ' || c > '~') {
+      out << "\\" << ('0' + ((c >> 6) & 0x7)) << ('0' + ((c >> 3) & 0xf))
+          << ('0' + ((c >> 0) & 0x7));
+    } else if (c == '\"') {
+      if (!inQuote)
+        elided << out.str() << "\"";
+      else
+        elided << elideQuote(out.str(), 30, 10, 10) << "\"";
+      out.str("");
+      inQuote = !inQuote;
+    } else {
+      out << c;
+    }
+  }
+  elided << out.str();
+  return elided.str();
+}
+
+string elideBytes(const string &s) {
+  stringstream out;
+  string hex = "0123456789abcdef";
+  if (s.length() <= 20) {
+    for (auto &c : s) out << hex[(c >> 4) & 0xf] << hex[(c >> 4) & 0xf];
+  } else {
+    for (unsigned int i = 0; i < 5; i++)
+      out << hex[(s[i] >> 4) & 0xf] << hex[(s[i] >> 4) & 0xf];
+    out << "...";
+    for (unsigned int i = s.size() - 5; i < s.size(); i++)
+      out << hex[(s[i] >> 4) & 0xf] << hex[(s[i] >> 4) & 0xf];
+  }
+  return out.str();
+}
 }  // namespace tao

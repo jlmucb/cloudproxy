@@ -223,13 +223,20 @@ bool TaoDomain::AttestKeyNameBinding(const string &key_prin,
 
 bool TaoDomain::AuthorizeProgramToExecute(const string &path,
                                           const list<string> &args) {
-  string name;
+  string subprin;
   ProcessFactory pf;
-  if (!pf.GetHostedProgramTentativeName(0 /* elide id */, path, args, &name)) {
+  if (!pf.GetHostedProgramTentativeName(0 /* elide id */, path, args,
+                                        &subprin)) {
     LOG(ERROR) << "Can't compute tentative name for program: " << path;
     return false;
   }
-  return Authorize("::TrustedOS::" + name, "Execute", list<string>{});
+  string name;
+  if (!keys_->SignerUniqueID(&name)) {
+    LOG(ERROR) << "Can't get unique ID for policy key";
+    return false;
+  }
+  name += "::TrustedOS::" + subprin;
+  return Authorize(name, "Execute", list<string>{});
 }
 
 bool TaoDomain::IsAuthorizedToExecute(const string &name) {

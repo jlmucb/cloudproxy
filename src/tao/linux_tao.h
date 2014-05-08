@@ -83,6 +83,9 @@ class LinuxTao : public Tao {
                                   const list<string> &args, string *child_name);
   virtual bool RemoveHostedProgram(const string &child_name);
   virtual bool GetTaoFullName(string *tao_name) const;
+  virtual bool GetLocalName(string *local_name) const;
+  virtual bool GetPolicyName(string *policy_name) const;
+  virtual bool InstallPolicyAttestation(const string &attestation);
 
   virtual bool GetRandomBytes(const string &child_name, size_t size,
                               string *bytes) const;
@@ -107,12 +110,6 @@ class LinuxTao : public Tao {
 
   /// Keys and attestations for signing and sealing.
   scoped_ptr<Keys> keys_;
-
-  /// Get the attestation key name of this FakeTao.
-  bool GetLocalName(string *name) const;
-
-  /// Get the policy-given name of this FakeTao.
-  bool GetPolicyName(string *name) const;
 
   /// The policy key's attestation for our signing key.
   string policy_attestation_;

@@ -60,6 +60,27 @@ namespace tao {
 /// with its host Tao and has a TaoChannel to communicated with hosted programs.
 /// Hosts use implementations of HostedProgramFactory to instantiate hosted
 /// programs.
+///
+/// Naming within a stack of Tao instances can be... interesting. The root Tao,
+/// typically a TPM or a FakeTao, has a signing key which is its primary
+/// identity (where "identity" implies a globally unique name for this specific
+/// instance). A root Tao may also have an attestation from one (or more?) other
+/// principal (or multiple other principals?), allowing it to speak for some
+/// other name (or names?). These other names are not necessarily globally
+/// unique. For instance each of several TPMs, with key K_tpm1, K_tpm2, etc.,
+/// may have attestations allowing them each to speak for
+/// K_policy::TrustedPlatform.
+///
+/// To summarize, a root Tao has:
+///  - One unique identity that encodes its signing key.
+///  - Zero or more additional names that it can speak for.
+///
+/// A hosted Tao has a signing key, which can serve as an identity. But it also
+/// has one or more identities that are constructed as subprincipals from the
+/// identity or identities of its host Tao. For example, a LinuxTao instance
+/// running on top of a TPM with key K_tpm will have, in addition to its own
+/// key, an identity of the form K_tpm::PCRs(...). 
+
 class Tao {
  public:
   Tao() {}
@@ -101,9 +122,20 @@ class Tao {
   /// Note: This is never called: it is implemented entirely by TaoChannel.
   bool Shutdown() { return false; }
 
-  /// Get the full name of this Tao, starting at the root Tao.
+  /// Get the full name of this Tao, i.e. as a descendent of the root Tao.
   /// @param[out] tao_name The full, globally-unique name of the Tao.
   virtual bool GetTaoFullName(string *tao_name) const = 0;
+
+  /// Get the local name of this Tao, i.e. as identified by its own signing key.
+  /// @param[out] local_name The public signing key, encoded as a principal name.
+  virtual bool GetLocalName(string *local_name) const = 0;
+
+  /// Get the policy name of this Tao, i.e. as shown in the policy attestation.
+  /// @param[out] policy_name The name encoded in the policy attestation.
+  virtual bool GetPolicyName(string *policy_name) const = 0;
+  
+  /// Install a new policy attestation for this Tao.
+  virtual bool InstallPolicyAttestation(const string &attestation) = 0;
 
   // @}
 
@@ -112,10 +144,22 @@ class Tao {
   /// hosted program.
   /// @{
 
-  /// Get the full name of the requesting hosted program.
+  /// Get the full name of the requesting hosted program, i.e. as a descendent
+  /// of the root Tao.
   /// @param child_name The local name of the hosted program making the request.
   /// @param[out] full_name The full, globally-unique name of the child.
-  /// Note: This is never called: it is implemented entirely by TaoChannel.
+  bool GetHostedProgramFullName(const string &child_name,
+                                string *full_name) const {
+    string tao_name;
+    bool success = GetTaoFullName(&tao_name);
+    if (success) full_name->assign(tao_name + "::" + child_name);
+    return success;
+  }
+
+  /// Get the local name of the requesting hosted program, i.e. as a descendent
+  /// of the Tao's local signing key.
+  /// @param child_name The local name of the hosted program making the request.
+  /// @param[out] local_name The name of the child.
   bool GetHostedProgramFullName(const string &child_name,
                                 string *full_name) const {
     string tao_name;

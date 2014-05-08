@@ -118,17 +118,38 @@ bool FakeTao::GetTaoFullName(string *tao_name) const {
   return GetLocalName(tao_name);
 }
 
-bool FakeTao::GetLocalName(string *name) const {
-  return keys_->SignerUniqueID(name);
+bool FakeTao::GetLocalName(string *local_name) const {
+  return keys_->SignerUniqueID(local_name);
 }
 
-bool FakeTao::GetPolicyName(string *name) const {
-  if (policy_attestation_ == "") {
+bool FakeTao::GetPolicyName(string *policy_name) const {
+  if (policy_attestation_.empty()) {
     LOG(ERROR) << "FakeTao configured without policy key-to-name binding.";
     return false;
   }
-  return GetNameFromKeyNameBinding(policy_attestation_, name);
+  return GetNameFromKeyNameBinding(policy_attestation_, policy_name);
 }
+
+bool InstallPolicyAttestation(const string &attestation) {
+  string key_prin;
+  if (!GetKeyFromKeyNameBinding(attestation, &key_prin)) {
+    LOG(ERROR) << "Could not retrieve key from new attestation";
+    return false;
+  }
+  string local_name;
+  if (!GetLocalName(&local_name)) {
+    LOG(ERROR) << "Could not get local name';
+    return false;
+  }
+  if (key_prin != local_name) {
+    LOG(ERROR) << "New attestation does not match our key";
+    return false;
+  }
+  policy_attestation_ = attestation;
+  return true;
+}
+
+
 
 bool FakeTao::GetRandomBytes(const string &child_name, size_t size,
                              string *bytes) const {
@@ -246,11 +267,8 @@ bool FakeTao::Attest(const string &child_name, const string &key_prin,
 
 bool FakeTao::MakePolicyAttestation(const TaoDomain &admin) {
   string key_prin;
-  if (!keys_->SignerUniqueID(&key_prin)) {
-    LOG(ERROR) << "Could not serialize key";
-    return false;
-  }
-  if (!admin.AttestKeyNameBinding(key_prin, "TrustedPlatform",
+  if (!GetLocalName(key_prin) ||
+      !admin.AttestKeyNameBinding(key_prin, "TrustedPlatform",
                                   &policy_attestation_)) {
     LOG(ERROR) << "Could not obtain policy attestation";
     return false;

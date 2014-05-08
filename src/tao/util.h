@@ -278,7 +278,19 @@ string quotedString(const string &s);
 /// @param s The resulting quoted string.
 std::stringstream &getQuotedString(std::stringstream &in, string *s);  // NOLINT
 
+/// Skip a sequence of characters in a stream.
+/// @param in The input stream.
+/// @param s The characters to skip.
 std::stringstream &skip(std::stringstream &in, const string &s);  // NOLINT
+
+/// Elide a string for debug-printing purposes.
+/// Non-printing and backslashes will be converted to escape sequences, and
+/// long sequences of characters between double-quotes will be truncated.
+string elideString(const string &s);
+
+/// Elide an array of bytes for debug-printing purposes.
+/// Bytes will be printed in hex, with long sequences truncated.
+string elideBytes(const string &s);
 
 }  // namespace tao
 

@@ -22,7 +22,6 @@
 #include <sstream>
 
 #include <glog/logging.h>
-#include <google/protobuf/text_format.h>
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/file_util.h>
 #include <keyczar/keyczar.h>
@@ -37,9 +36,6 @@
 
 using std::stringstream;
 
-using google::protobuf::Descriptor;
-using google::protobuf::FieldDescriptor;
-using google::protobuf::TextFormat;
 using keyczar::Verifier;
 using keyczar::base::Base64WDecode;
 
@@ -85,9 +81,11 @@ bool AttestKeyNameBinding(const Keys &key, const string &delegation,
     return false;
   }
   VLOG(5) << "Generated key-to-name binding attestation\n"
-          << " via signer nicknamed " << key.Name() << "\n"
-          << " for name " << name << "\n"
-          << " and Attestation " << DebugString(a) << "\n";
+          << " via signer " << elideString(signer) << "\n"
+          << " nicknamed " << key.Name() << "\n"
+          << " for name " << elideString(name) << "\n"
+          << " and key " << elideString(key_prin) << "\n"
+          << " with result Attestation " << DebugString(a) << "\n";
   return true;
 }
 
@@ -249,12 +247,6 @@ string DebugString(const Attestation &a) {
   stringstream out;
   string s;
 
-  const Descriptor *desc = a.GetDescriptor();
-  const FieldDescriptor *fSigner =
-      desc->FindFieldByNumber(Attestation::kSignerFieldNumber);
-  const FieldDescriptor *fSignature =
-      desc->FindFieldByNumber(Attestation::kSignatureFieldNumber);
-
   // statement
   Statement stmt;
   if (!a.has_serialized_statement())
@@ -269,14 +261,14 @@ string DebugString(const Attestation &a) {
   if (!a.has_signature())
     s = "(missing)";
   else
-    TextFormat::PrintFieldValueToString(a, fSignature, -1, &s);
+    s = elideBytes(a.signature());
   out << "signature: " << s << "\n";
 
   // quote
-  if (a.has_signer())
+  if (!a.has_signer())
     s = "(missing)";
   else
-    TextFormat::PrintFieldValueToString(a, fSigner, -1, &s);
+    s = elideString(a.signer());
   out << "signer: " << s << "\n";
 
   // delegation
@@ -295,14 +287,8 @@ string DebugString(const Attestation &a) {
 string DebugString(const Statement &stmt) {
   stringstream out;
   string s;
-  const Descriptor *desc = stmt.GetDescriptor();
-  const FieldDescriptor *fName =
-      desc->FindFieldByNumber(Statement::kNameFieldNumber);
-  const FieldDescriptor *fKey =
-      desc->FindFieldByNumber(Statement::kKeyFieldNumber);
 
-  TextFormat::PrintFieldValueToString(stmt, fName, -1, &s);
-  out << "name:" << s << "\n";
+  out << "name: " << elideString(stmt.name()) << "\n";
 
   s = DebugString(static_cast<time_t>(stmt.time()));
   out << "time: " << s << "\n";
@@ -310,8 +296,7 @@ string DebugString(const Statement &stmt) {
   s = DebugString(static_cast<time_t>(stmt.expiration()));
   out << "expiration: " << s << "\n";
 
-  TextFormat::PrintFieldValueToString(stmt, fKey, -1, &s);
-  out << "key: " << s << "\n";
+  out << "key: " << elideString(stmt.key()) << "\n";
 
   return "{\n  " + Indent("  ", out.str()) + "}";
 }

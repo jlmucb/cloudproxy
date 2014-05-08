@@ -641,3 +641,89 @@ information in a Tao attestation chain, since those chains are rooted in the TPM
 which does not generate x509-compatible certificates. Currently,
 https-compatible x509 chains are produced by the policy server.  Aside from
 this, there isn't much of a role for the policy server.
+
+== Groups and Sub-principals ==
+
+It is tempting to use subprincipals and delegation instead of groups and
+membership. For example, K_policy::TrustedPlatform could be the name for some
+group of TPM-based platforms. K_policy can issue delegations that effectively
+convey group membership, e.g.
+  K_policy says (K_tpm speaksfor K_policy::TrustedPlatform)
+from which we can derive:
+  K_tpm speaksfor K_policy::TrustedPlatform
+From here, K_tpm can speak for the group.
+
+But things get complicated quickly. Each time the TPM speaks, we must decide
+whether it should speak as K_tpm or as K_policy::TrustedPlatform. And for a
+program OS hosted on this TPM, we must decide if the program should be identified
+as a subprincipal of K_tpm or as a subprincipal of K_policy::TrustedPlatform.
+The latter, e.g. K_policy::TrustedPlatform::TrustedOS, is tempting because
+K_policy is likely to be a well known name (whereas K_tpm and its subprincipals are
+possibly known only locally and to K_policy). So we are effectively creating a
+"sub-group", K_policy::TrustedPlatform::TrustedOS, containing all instances of
+certain programs hosted on some platform in the K_policy::TrustedPlatform group.
+This makes the job of writing policies somewhat easy. For example,
+K_policy::TrustedPlatform::TrustedOS can be put on an ACL, and that will cover
+all of the instances of OS. Or, we can arrange for OS to have its own key, K_os,
+and create delegations K_os speaksfor K_policy::TrustedPlatform::TrustedOS. Or
+create a chain of delegations, e.g. K_os speaksfor
+K_policy::TrustedPlatform::PCRs(...), K_policy::TrustedPlatform::PCRs(...)
+speaksfor K_policy::TrustedPlatform::TrustedOS. Or maybe keep the names shorter
+with a chain K_os speaksfor K_policy::TrustedPlatform::PCRs(...),
+K_policy::TrustedPlatform::PCRs(...) speaksfor K_policy::TrustedOS. The
+variations are seemginly endless.
+
+But notice that according to the logic, if mutually inconsistent statements are
+made by any of the platforms, the entire group is compromised. When we make a
+group in this way, we are essentially taking all the statements of the members
+and taking the closure. Also, a lot of policy-relevant decision making has to be
+done at the time statements and delegations are issued and when naming
+principals. Ideally, every Tao has some well defined name or names, and uses
+those names in simple, clear, and consistent ways that do not depend on the
+vagaries of higher-level policy.
+
+So it seems that when a Tao obtains and makes use of some policy attestation,
+this is treating K_policy as if it were a "parent" Tao, and ionly leads to
+trouble and confusion. 
+
+One alternative to using a subprincipal as groups is to use an intensional group
+defined by a characteristic predicate.  Here, we would put on the ACL something
+like:
+   { p : (exists t, o :
+			   p speaksfor o::Prog(h) and K_policy says isTrustedProgram(h) and
+                   o speaksfor t::PCRS(r) and K_policy says isTrustedOS(r) and
+						K_policy says isTrustedPlatform(t) ) }
+And we arrange for K_policy to define each predicate, e.g.
+  K_policy says isTrustedPlatform(K_tpm)
+  K_policy says isTrustedOS("...pcrs...")
+  K_policy says isTrustedProgram("...hash...");
+
+Notice that here, the TPM always speaks using its single identity, K_tpm. A
+hosted Tao always speaks as a subprincipal, e.g. K_tpm::PCRs(...). For
+performance reasons, a hosted Tao can create its own key K_os, and then obtain
+from its parent a delegation K_os speaksfor K_tpm::PCRs(...). This allowing it
+to speak as K_tpm::PCRs(...) while actually doing cryptography using the local
+key K_os. A child of this hosted Tao would always speak as
+K_tpm::PCRs(...)::Prog(...), and so on, and these too could make similar
+performance optimizations using their own local keys.
+
+A second alternative way to implement groups is to make use of predicates
+directly, and not use groups at all. So we might say that a principal P
+is authorized perform some operation "op" if
+  K_policy says Authorized("op", P)
+And we arrange for K_policy to define this predicate, e.g.
+  K_policy says Authorized("op", K_tpm::PCRs(...)::Prog(...))
+or:
+  K_policy says
+      ((exists t, o :
+			   P speaksfor o::Prog(h) and K_policy says isTrustedProgram(h) and
+                   o speaksfor t::PCRS(r) and K_policy says isTrustedOS(r) and
+						K_policy says isTrustedPlatform(t) )
+	   implies (K_policy says Authorized("op", P)))
+The latter would be coupled with the same kinds of predicate definitions we saw
+above, e.g.:
+  K_policy says isTrustedPlatform(K_tpm)
+  K_policy says isTrustedOS("...pcrs...")
+  K_policy says isTrustedProgram("...hash...");
+
+Let's take this second alternative and try it out.

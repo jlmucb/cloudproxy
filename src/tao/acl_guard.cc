@@ -55,13 +55,14 @@ bool ACLGuard::IsAuthorized(const string &name, const string &op,
                             const list<string> &args) const {
   for (auto &entry : aclset_.entries()) {
     if (IsMatchingEntry(entry, name, op, args)) {
-      LOG(INFO) << "Principal " << name << " is authorized to perform " << op
-                << "(...)";
+      LOG(INFO) << "Principal " << elideString(name)
+                << " is authorized to perform " << op << "(...)";
       return true;
     }
   }
-  LOG(INFO) << "Principal " << name << " is not authorized to perform " << op
-            << "(...)";
+  LOG(INFO) << "Principal " << elideString(name)
+            << " is not authorized to perform " << op << "(...)";
+  LOG(INFO) << DebugString();
   return false;
 }
 
@@ -126,10 +127,10 @@ bool ACLGuard::GetACLEntry(int i, string *desc) const {
 
 string ACLGuard::DebugString(const ACLEntry &entry) const {
   std::stringstream out;
-  out << entry.name() << " : " << entry.op() << "(";
+  out << elideString(entry.name()) << " : " << entry.op() << "(";
   string delim = "";
   for (auto &arg : entry.args()) {
-    out << delim << arg;
+    out << delim << elideString(arg);
     delim = ", ";
   }
   out << ")";

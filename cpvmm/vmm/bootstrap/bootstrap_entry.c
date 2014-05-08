@@ -1458,14 +1458,11 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
                sizeof(boot_params_t));
 
     // set address of copied tboot shared page 
-    vmm_memcpy((void*)new_boot_params->tboot_shared_addr, 
-               (void*)&shared_page, 
-               sizeof(shared_page));
+    *(uint64_t *)&(new_boot_params->tboot_shared_addr[0])=
+                                      (uint64_t)(uint32_t)shared_page;
 
     // copy command line after boot parameters
     new_cmdline= (char*)(linux_boot_parameters+sizeof(boot_params_t));
-    *(uint64_t *)&new_boot_params->tboot_shared_addr =
-                                      (uint64_t)(uint32_t)shared_page;
 #ifdef INCLUDETBOOTCMDLINE
     if(adjust_kernel_cmdline(mbi, (const void*)new_boot_params->tboot_shared_addr)!=0) {
       bprint("cant adjust linux command line\n");

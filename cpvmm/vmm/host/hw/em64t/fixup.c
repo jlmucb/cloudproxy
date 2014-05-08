@@ -27,6 +27,27 @@ extern int vmx_vmread(UINT64 index, UINT64 *value);
 extern int vmx_vmwrite(UINT64 index, UINT64 value);
 
 
+#ifdef JLMDEBUG
+typedef unsigned char      uint8_t;
+typedef unsigned short     uint16_t;
+typedef unsigned int       uint32_t;
+typedef long long unsigned uint64_t;
+
+typedef int                 bool;
+typedef unsigned char       u8;
+typedef unsigned short      u16;
+typedef unsigned int        u32;
+typedef long long unsigned  u64;
+#include "../../../bootstrap/linux_defns.h"
+void check_boot_parameters(UINT64 rsi_reg)
+{
+    bprint("rsi on entry: %p\n", rsi_reg);
+    boot_params_t* boot_params= (boot_params_t*) rsi_reg;
+    bprint("cmd line ptr: %p\n", boot_params->hdr.cmd_line_ptr);
+}
+#endif
+
+
 // fixup control registers and make guest loop forever
 
 asm(
@@ -42,6 +63,7 @@ asm(
 void fixupvmcs()
 {
     UINT64  value;
+    UINT64  rsi_reg;
     void loop_forever();
     UINT16* loop= (UINT16*)loop_forever;
 
@@ -50,7 +72,12 @@ void fixupvmcs()
     vmx_vmread(0x681e, &value);  // guest_rip
     // bprint("Code at %p\n", value);
     // HexDump((UINT8*)value, (UINT8*)value+32);
-    *((UINT16*) value)= *loop;    // feeb
+    *((UINT16*) value+8)= *loop;    // feeb
+    asm volatile (
+        "\t movq   %%rsi, %[rsi_reg]\n"
+    : [rsi_reg] "=g" (rsi_reg)
+    ::);
+    check_boot_parameters(rsi_reg);
 #endif
 
     // was 3e, cruse has 16

@@ -80,7 +80,7 @@ void fixupvmcs()
     // bprint("Code at %p\n", value);
     // HexDump((UINT8*)value, (UINT8*)value+32);
     check_boot_parameters();
-    // *((UINT16*) value+8)= *loop;    // feeb
+    *((UINT16*) value+0x22)= *loop;    // feeb
 #endif
 
     // was 3e, cruse has 16

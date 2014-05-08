@@ -1013,15 +1013,11 @@ int linux_setup(void)
 
         guest_processor_state[k].gp.reg[IA32_REG_RIP]= (uint64_t)linux_entry_address;
         guest_processor_state[k].gp.reg[IA32_REG_RDI]= (uint64_t) linux_edi_register;
-#if 0
-        guest_processor_state[k].gp.reg[IA32_REG_RSP]= (uint64_t) linux_esp_register;
-#else
+        guest_processor_state[k].gp.reg[IA32_REG_RSI]= (uint64_t) linux_edi_register;
         guest_processor_state[k].gp.reg[IA32_REG_RSP]= (uint64_t) 
                         evmm_stack_pointers_array[k];
-#endif
         guest_processor_state[k].gp.reg[IA32_REG_RFLAGS] = 0x02;
         guest_processor_state[k].gp.reg[IA32_REG_RBP] = 0;
-        guest_processor_state[k].gp.reg[IA32_REG_RSI] = 0;
     
         for (i = 0; i < IA32_REG_XMM_COUNT; i++) {
             guest_processor_state[k].xmm.reg[i].uint64[0] = (uint64_t)0;

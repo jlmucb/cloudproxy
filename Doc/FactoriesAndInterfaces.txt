@@ -1,0 +1,102 @@
+
+May 8, 2014
+A Tao implementation (FakeTao or LinuxTao) is embedded in some other environment,
+e.g. an OS kernel, a hypervisor, a JVM, or just a process that is the root of a
+process tree. The interface between Tao and its environment is a mess.
+
+Env
+ allocate Tao
+ init/setup
+  - specify TaoDomain
+      for policy stuff
+  - specify ChildChan
+    - specify child chans
+    - also specify admin chans
+  - speicfy ParentChan
+  - specify ProgFactory
+ call listen
+                                                      Tao::Listen()
+													    call ChildChan::Listen()
+					     ChildChan::Listen()
+						  listen on
+						    admin/child chans
+						  wait for rpc
+Env
+  set up admin
+   channel
+  call Start()
+                          receive rpc
+						  dispatch to, e.g.,
+						    Tao::Start()
+							or unseal/seal/etc.
+							...
+
+							                         Tao::Start()
+													   call ProgFactory::NewName()
+						ProgFactory::NewName()
+						  Depends on env.
+						                               make auth decision
+						                               call ChildChan::Add()
+						ChildChan::Add()
+						   setup chan
+						   return encoded params
+						                               call ProgFactory::Start()
+													     - give it the encoded
+														   params
+						ProgFactory::Start()
+						  decode encoded params
+						  start it up
+						  return
+						                               return
+
+					     ... ChildChan resume
+						  send response
+  get response
+
+
+Down the middle we have:
+- TaoChannel: This provides the main "listen" loop driving Tao, and it provides
+  the server/Tao side of channels to hosted programs. It is also a kind of
+  factory for setting up those connections to hosted programs. It also provides
+  the server side for admin channels.
+- ProgramFactory: responsible for starting/stopping programs (but not making
+  authorization decisions about which hosted programs should be allowed to
+  execute).
+
+The two are intimately tied, obviously, since each kind of child container will
+only support some limited range of channel types, and vice versa. You can have
+pipes + processes, or VMsockets + VMs, but not pipes + VMs or VMsockets +
+processes, for example. The same goes for the admin channels, which currently
+only work with unix sockets (i.e. no direct connector, pipes, etc.).
+
+Over in Tao::Start(), there are some unpleasant dependencies on the details of
+starting/stopping programs, and nearly all of the work is done by env, even
+though Tao::Start() drives it.
+
+There are three places where Tao needs to make difficult policy decisions:
+1. Checking whether a program should be allowed to execute. This is handed off
+   to TaoDomain, of which there might be a variety of choices (it was passed in
+   by env during startup, and this is the only place it is used by Tao).
+2/3. Seal/Unseal. Children need to specify a policy during seal, e.g. "same PCRs
+   as me" or "same program hash as me, but ignore the arguments". Info about the
+   policy needs to get encoded and put into the sealed bundle. Then, on unseal,
+   after we decrypt the data, we need to check the policy. This isn't really
+   something Tao can do itself, since it depends, at minimum, on the child names
+   chosen by program factory. The unseal part is conceivably something that
+   could just be passed off to TaoDomain. Perhaps the unseal part could too?
+
+I propose moving a much of this as possible out of Tao/LinuxTao. Also, we should
+clarify the interface between Tao and its environment. Generally, Tao should not
+call out to the environment. All policy checking should be done in the
+environment. All locking/threading issues should be handled in the environment.
+
+For the three policy decisions, those are easy to move into TaoChannel -- they
+all happen right at the start or end of the methods. Tao::Start should be moved
+almost entirely to TaoChannel, since that does almost all the work anyway.
+Tao just gets notified upon hosted program startup.
+
+Another upside: Tao doesn't need to know about TaoDomain and policy at all, and
+doesn't need a policy credential.
+
+Finally, TaoChannel should probably be renamed and/or split into multiple
+pieces.

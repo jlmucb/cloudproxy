@@ -30,6 +30,7 @@ using std::string;
 
 namespace tao {
 
+
 /// The Tao is the fundamental interface for Trustworthy Computing in
 /// CloudProxy. Each level of a system can implement a Tao interface and provide
 /// Tao services to higher-level hosted programs.

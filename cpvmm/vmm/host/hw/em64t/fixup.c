@@ -43,7 +43,9 @@ void check_boot_parameters(UINT64 rsi_reg)
 {
     bprint("rsi on entry: %p\n", rsi_reg);
     boot_params_t* boot_params= (boot_params_t*) rsi_reg;
+    HexDump((UINT8*)rsi_reg, (UINT8*)rsi_reg+32);
     bprint("cmd line ptr: %p\n", boot_params->hdr.cmd_line_ptr);
+    bprint("code32_start: %p\n", boot_params->hdr.code32_start);
 }
 #endif
 

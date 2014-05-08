@@ -1472,14 +1472,15 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
     if(linux_command_line!=0) {
         vmm_memcpy((void*)new_cmdline, (void*) linux_command_line,
                vmm_strlen((char*)linux_command_line)+1);
+        new_boot_params->hdr.cmdline_size= vmm_strlen(new_cmdline)+1;
+        new_boot_params->hdr.cmd_line_ptr= (uint32_t) new_cmdline;
     }
     else {
         new_cmdline= NULL;
+        new_boot_params->hdr.cmdline_size= 0;
+        new_boot_params->hdr.cmd_line_ptr= (uint32_t) 0;
     }
 #endif
-    new_boot_params->hdr.cmdline_size= vmm_strlen(new_cmdline)+1;
-    new_boot_params->hdr.cmd_line_ptr= (uint32_t) new_cmdline;
-
     // set esi register
     linux_esi_register= linux_boot_parameters;
     return 0;

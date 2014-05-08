@@ -51,9 +51,10 @@ void check_boot_parameters()
     HexDump((UINT8*)rdi_reg, (UINT8*)rdi_reg+32);
     bprint("cmd line ptr: %p\n", boot_params->hdr.cmd_line_ptr);
     bprint("code32_start: %p\n", boot_params->hdr.code32_start);
-    boot_params->hdr.cmd_line_ptr= 0;
+    bprint("loadflags: %02x\n", boot_params->hdr.loadflags);
 }
 #endif
+
 
 
 // fixup control registers and make guest loop forever
@@ -80,7 +81,12 @@ void fixupvmcs()
     // bprint("Code at %p\n", value);
     // HexDump((UINT8*)value, (UINT8*)value+32);
     check_boot_parameters();
-    *((UINT16*) value+0x22)= *loop;    // feeb
+    *((UINT16*) value+0x8)= *loop;    // feeb
+    *((UINT16*) value+0x10)= *loop;    // feeb
+    *((UINT16*) value+0x12)= *loop;    // feeb
+    *((UINT16*) value+0x14)= *loop;    // feeb
+    *((UINT16*) value+0x16)= *loop;    // feeb
+    *((UINT16*) value+0x18)= *loop;    // feeb
 #endif
 
     // was 3e, cruse has 16

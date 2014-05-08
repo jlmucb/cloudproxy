@@ -105,6 +105,9 @@ void fixupvmcs()
     // HexDump((UINT8*)value, (UINT8*)value+32);
     check_boot_parameters();
      *((UINT16*) value+0x8)= *loop;  // feeb
+     *((UINT16*) value+0xa)= *loop;  // feeb
+     *((UINT16*) value+0x10)= *loop;  // feeb
+     *((UINT16*) value+0x16)= *loop;  // feeb
 
     // vmx_vmread(0x4000, &value);  // vmx_pin_controls
     // vmx_vmwrite(0x4000, value);  // vmx_pin_controls

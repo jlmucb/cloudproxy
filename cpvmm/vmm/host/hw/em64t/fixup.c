@@ -27,6 +27,8 @@ extern void vmm_vmcs_guest_state_read(UINT64* area);
 extern int vmx_vmread(UINT64 index, UINT64 *value);
 extern int vmx_vmwrite(UINT64 index, UINT64 value);
 
+extern UINT64 getphysical(UINT64 cr3, UINT64 virt);
+
 
 #ifdef JLMDEBUG
 typedef unsigned char      uint8_t;
@@ -46,12 +48,23 @@ void check_boot_parameters()
 {
     UINT64* regs = *g_guest_regs_save_area;
     UINT64 rdi_reg= regs[4];
+    UINT64  ept;
+    UINT64  real;
+    UINT64  virt;
+
     bprint("rdi on entry: %p\n", rdi_reg);
     boot_params_t* boot_params= (boot_params_t*) rdi_reg;
     HexDump((UINT8*)rdi_reg, (UINT8*)rdi_reg+32);
     bprint("cmd line ptr: %p\n", boot_params->hdr.cmd_line_ptr);
     bprint("code32_start: %p\n", boot_params->hdr.code32_start);
     bprint("loadflags: %02x\n", boot_params->hdr.loadflags);
+    vmx_vmread(0x201a, &ept);
+    virt= rdi_reg;
+    real= getphysical(ept, virt);
+    bprint("virt: %016llx, real: %016llx\n", virt, real);
+    virt= (UINT64) &(boot_params->hdr.loadflags);
+    real= getphysical(ept, virt);
+    bprint("virt: %016llx, real: %016llx\n", virt, real);
 }
 #endif
 

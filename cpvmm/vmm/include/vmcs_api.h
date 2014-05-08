@@ -179,8 +179,6 @@ typedef enum _VMCS_FIELD {
 #define VMCS_WRITABLE           2
 #define VMCS_WRITABLE_IN_CACHE  4
 
-
-
 #define VMCS_SIGNATURE 0x12345678
 
 typedef enum {

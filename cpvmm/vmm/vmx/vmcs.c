@@ -1147,98 +1147,94 @@ BOOLEAN vmm_copy_to_guest_phy_addr(GUEST_CPU_HANDLE gcpu, void* gpa,
 // Save initial vmcs state for deadloop/asssert handler
 void vmcs_store_initial(GUEST_CPU_HANDLE gcpu, CPU_ID cpu_id)
 {
-        VMCS_FIELD       field_id;
-        VMCS_OBJECT* vmcs;
-        UINT32       i, j, count;
-        UINT64       *initial_vmcs;
+    VMCS_FIELD   field_id;
+    VMCS_OBJECT* vmcs;
+    UINT32       i, j, count;
+    UINT64       *initial_vmcs;
 
-        count = NELEMENTS(g_control_fields)+NELEMENTS(g_guest_state_fields)+NELEMENTS(g_host_state_fields);
-        vmcs = gcpu_get_vmcs(gcpu);
-
-        if (g_initial_vmcs[cpu_id] == 0) {
-                g_initial_vmcs[cpu_id] = (UINT64)vmm_malloc(sizeof(UINT64) * count);
-        }
-        initial_vmcs = (UINT64 *)g_initial_vmcs[cpu_id];
-        if (initial_vmcs == NULL) {
+    count = NELEMENTS(g_control_fields)+NELEMENTS(g_guest_state_fields)+
+                    NELEMENTS(g_host_state_fields);
+    vmcs = gcpu_get_vmcs(gcpu);
+    if (g_initial_vmcs[cpu_id] == 0) {
+        g_initial_vmcs[cpu_id] = (UINT64)vmm_malloc(sizeof(UINT64) * count);
+    }
+    initial_vmcs = (UINT64 *)g_initial_vmcs[cpu_id];
+    if (initial_vmcs == NULL) {
         VMM_LOG(mask_anonymous, level_trace, "%s: Failed to allocate memory\n", __FUNCTION__);
-                return;
-        }
-
-        j = 0;
-        // save control fields
-        for (i = 0; i < NELEMENTS(g_control_fields); i++) {
-                field_id = g_control_fields[i];
-                if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
+        return;
+    }
+    j = 0;
+    // save control fields
+    for (i = 0; i < NELEMENTS(g_control_fields); i++) {
+        field_id = g_control_fields[i];
+        if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
             initial_vmcs[j++] = vmcs_read(vmcs, field_id);
-                }
         }
-        // save guest fields
-        for (i = 0; i < NELEMENTS(g_guest_state_fields); i++) {
-                field_id = g_guest_state_fields[i];
-                if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
+    }
+    // save guest fields
+    for (i = 0; i < NELEMENTS(g_guest_state_fields); i++) {
+        field_id = g_guest_state_fields[i];
+        if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
             initial_vmcs[j++] = vmcs_read(vmcs, field_id);
-                }
         }
-        // save host fields
-        for (i = 0; i < NELEMENTS(g_host_state_fields); i++) {
-                field_id = g_host_state_fields[i];
-                if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
+    }
+    // save host fields
+    for (i = 0; i < NELEMENTS(g_host_state_fields); i++) {
+        field_id = g_host_state_fields[i];
+        if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
             initial_vmcs[j++] = vmcs_read(vmcs, field_id);
-                }
-        }
+            }
+    }
 }
 
 // Restore initial vmcs state for deadloop/asssert handler
 void vmcs_restore_initial(GUEST_CPU_HANDLE gcpu)
 {
-        VMCS_FIELD       field_id;
-        VMCS_OBJECT* vmcs;
-        UINT32           i, j;
-        UINT64           *initial_vmcs;
-        CPU_ID           cpu_id;
-        GUEST_HANDLE guest;
-        UINT64           eptp;
+    VMCS_FIELD       field_id;
+    VMCS_OBJECT* vmcs;
+    UINT32           i, j;
+    UINT64           *initial_vmcs;
+    CPU_ID           cpu_id;
+    GUEST_HANDLE guest;
+    UINT64           eptp;
     UINT64 default_ept_root_table_hpa = 0;
     UINT32 default_ept_gaw = 0;
 
-        cpu_id = hw_cpu_id();
-        if (g_initial_vmcs[cpu_id] == 0)
-                return;
-
-        vmcs = gcpu_get_vmcs(gcpu);
-        initial_vmcs = (UINT64 *)g_initial_vmcs[cpu_id];
-
-        // write vmcs directly to HW
-        vmcs_sw_shadow_disable[cpu_id] = TRUE;
-
-        j = 0;
-        // restore control fields
-        for (i = 0; i < NELEMENTS(g_control_fields); i++) {
-                field_id = g_control_fields[i];
-                if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
+    cpu_id = hw_cpu_id();
+    if (g_initial_vmcs[cpu_id] == 0)
+        return;
+    vmcs = gcpu_get_vmcs(gcpu);
+    initial_vmcs = (UINT64 *)g_initial_vmcs[cpu_id];
+    // write vmcs directly to HW
+    vmcs_sw_shadow_disable[cpu_id] = TRUE;
+    j = 0;
+    // restore control fields
+    for (i = 0; i < NELEMENTS(g_control_fields); i++) {
+        field_id = g_control_fields[i];
+        if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
             vmcs_write(vmcs, field_id, initial_vmcs[j++]);
-                }
         }
-        // restore guest fields
-        for (i = 0; i < NELEMENTS(g_guest_state_fields); i++) {
-                field_id = g_guest_state_fields[i];
-                if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
+    }
+    // restore guest fields
+    for (i = 0; i < NELEMENTS(g_guest_state_fields); i++) {
+        field_id = g_guest_state_fields[i];
+        if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
             vmcs_write(vmcs, field_id, initial_vmcs[j++]);
-                }
         }
-        // restore host fields
-        for (i = 0; i < NELEMENTS(g_host_state_fields); i++) {
-                field_id = g_host_state_fields[i];
-                if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
+    }
+    // restore host fields
+    for (i = 0; i < NELEMENTS(g_host_state_fields); i++) {
+        field_id = g_host_state_fields[i];
+        if (FIELD_IS_READABLE(field_id) && FIELD_IS_WRITEABLE(field_id)) {
             vmcs_write(vmcs, field_id, initial_vmcs[j++]);
-                }
         }
+    }
 
-        // Set EPTP to default EPT
-        guest = gcpu_guest_handle(gcpu);
-        ept_get_default_ept(guest, &default_ept_root_table_hpa, &default_ept_gaw);
-        eptp = ept_compute_eptp(guest, default_ept_root_table_hpa, default_ept_gaw);
-        vmcs_write(vmcs, VMCS_EPTP_ADDRESS, eptp);
+    // Set EPTP to default EPT
+    guest = gcpu_guest_handle(gcpu);
+    ept_get_default_ept(guest, &default_ept_root_table_hpa, &default_ept_gaw);
+    eptp = ept_compute_eptp(guest, default_ept_root_table_hpa, default_ept_gaw);
+    vmcs_write(vmcs, VMCS_EPTP_ADDRESS, eptp);
 }
 
 // required buffer byte size for control-532, guest-592, host-222
@@ -1281,8 +1277,7 @@ static void vmcs_dump_group(GUEST_CPU_HANDLE gcpu, const struct _VMCS_OBJECT* vm
     vmm_memcpy(buf, (void *)&entry_count, sizeof(UINT16));
 
     // copy vmcs group to guest buffer
-    if (!vmm_copy_to_guest_phy_addr(gcpu,
-                                   (void*)(debug_gpa),
+    if (!vmm_copy_to_guest_phy_addr(gcpu, (void*)(debug_gpa),
                                    sizeof(UINT16) + (sizeof(VMCS_ENTRY)*entry_count),
                                    (void*)buf)) {
         VMM_LOG(mask_uvmm, level_error,
@@ -1308,18 +1303,14 @@ void vmcs_dump_all(GUEST_CPU_HANDLE gcpu)
         VMM_LOG(mask_uvmm, level_error, "%s: Error: Debug info exceeds guest buffer size\n",
             __FUNCTION__);
         return;
-        }
-
-        vmcs = gcpu_get_vmcs(gcpu);
-
+    }
+    vmcs = gcpu_get_vmcs(gcpu);
     // write control fields to guest buffer
     debug_gpa = g_debug_gpa + OFFSET_VMCS;
     vmcs_dump_group(gcpu, vmcs, g_control_fields, NELEMENTS(g_control_fields), debug_gpa);
-
     // write guest fields to guest buffer
     debug_gpa = debug_gpa + control_size;
     vmcs_dump_group(gcpu, vmcs, g_guest_state_fields, NELEMENTS(g_guest_state_fields), debug_gpa);
-
     // write host fields to guest buffer
     debug_gpa = debug_gpa + guest_size;
     vmcs_dump_group(gcpu, vmcs, g_host_state_fields, NELEMENTS(g_host_state_fields), debug_gpa);

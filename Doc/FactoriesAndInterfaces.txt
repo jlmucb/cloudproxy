@@ -99,4 +99,5 @@ Another upside: Tao doesn't need to know about TaoDomain and policy at all, and
 doesn't need a policy credential.
 
 Finally, TaoChannel should probably be renamed and/or split into multiple
-pieces.
+pieces, and LinuxTao doesn't really need the word "linux" in it any more.
+

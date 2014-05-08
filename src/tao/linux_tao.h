@@ -45,6 +45,50 @@ class TaoChannel;
 class TaoChildChannel;
 class TaoDomain;
 
+/// LinuxTao implements a generic implementation
+/// of the Tao that can be configured for a variety of environments.
+///
+/// Similarly, the a KVM Guests as hosted programs
+/// (using the KvmVmFactory instead of the ProcessFactory). In this case, the
+/// interaction would be: TPMTaoChildChannel <-> LinuxTao <-> KvmUnixTaoChannel.
+///
+///
+/// For example, a Linux OS installed on hardware with a TPM might work as
+/// follows. 
+///
+/// The Tao within the Linux OS might use a PipeTaoChannel to communicate with
+/// hosted programs running as processes. 
+///
+///
+/// TPMTaoChildChannel <-> Linux Tao <-> PipeTaoChannel. The
+/// TPMTaoChildChannel implements a shim for the TPM hardware to convert Tao
+/// operations into TPM commands. 
+///
+/// A hosted program called CloudServer
+/// would then have the following interactions: PipeTaoChildChannel <->
+/// CloudServer. The PipeTaoChildChannel and the PipeTaoChannel communicate over
+/// Unix pipes to send Tao messages between Linux's Tao and CloudServer. See the
+/// apps/ folder for applications that implement exactly this setup:
+/// apps/linux_tao_service.cc implements the LinuxTao, and apps/server.cc
+/// implements CloudServer.
+///
+/// A Tao that has KVM guests as hosted programs might instead use
+/// KvmUnixTaoChannel 
+/// (using the KvmVmFactory instead of the ProcessFactory). In this case, the
+/// interaction would be: TPMTaoChildChannel <-> LinuxTao <-> KvmUnixTaoChannel.
+///
+/// And the guest OS would have another instance of the LinuxTao that would have
+/// the following interactions:
+/// KvmUnixTaoChildChannel <-> LinuxTao <-> PipeTaoChannel. This version of
+/// the LinuxTao in the Guest OS would use the ProcessFactory to start hosted
+/// programs as processes in the guest.
+///
+/// In summary: each level of the Tao can have a TaoChildChannel to communicate
+/// with its host Tao and has a TaoChannel to communicated with hosted programs.
+/// Hosts use implementations of HostedProgramFactory to instantiate hosted
+/// programs.
+///
+
 /// An implementation of the Tao for Linux. This implementation can take
 /// different HostedProgramFactory implementations, different TaoChannel
 /// implementations for communicating with its hosted programs, and different

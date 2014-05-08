@@ -176,7 +176,7 @@ bool LinuxTao::GetTaoFullName(string *tao_name) const {
 }
 
 bool LinuxTao::GetLocalName(string *local_name) const {
-  return keys_->SignerUniqueID(local_name);
+  return keys_->SignerPrincipalName(local_name);
 }
 
 bool LinuxTao::GetPolicyName(string *policy_name) const {

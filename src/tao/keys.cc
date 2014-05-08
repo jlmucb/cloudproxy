@@ -1022,7 +1022,7 @@ bool Keys::InitHosted(const TaoChildChannel &channel, int policy) {
   // Create a parent-attestation for the signing key
   if (signer_.get() != nullptr) {
     string key_prin;
-    if (!SignerUniqueID(&key_prin)) {
+    if (!SignerPrincipalName(&key_prin)) {
       LOG(ERROR) << "Could not serialize signing key";
       return false;
     }
@@ -1039,7 +1039,7 @@ bool Keys::InitHosted(const TaoChildChannel &channel, int policy) {
   return true;
 }
 
-bool VerifierUniqueID(const Verifier &key, string *identifier) {
+bool VerifierPrincipalName(const Verifier &key, string *identifier) {
   string key_data, key_text;
   if (!SerializePublicKey(key, &key_data) ||
       !Base64WEncode(key_data, &key_text)) {
@@ -1052,12 +1052,12 @@ bool VerifierUniqueID(const Verifier &key, string *identifier) {
   return true;
 }
 
-bool Keys::SignerUniqueID(string *identifier) const {
+bool Keys::SignerPrincipalName(string *identifier) const {
   if (!Verifier()) {
     LOG(ERROR) << "No managed verifier";
     return false;
   }
-  return tao::VerifierUniqueID(*Verifier(), identifier);
+  return tao::VerifierPrincipalName(*Verifier(), identifier);
 }
 
 string Keys::GetPath(const string &suffix) const {

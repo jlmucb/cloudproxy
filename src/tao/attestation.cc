@@ -41,85 +41,20 @@ using keyczar::base::Base64WDecode;
 
 namespace tao {
 
-bool AttestKeyNameBinding(const Keys &key, const string &delegation,
-                          const string &key_prin, const string &name,
-                          string *attestation) {
-  // Get signer name.
-  string signer;
-  if (!key.SignerUniqueID(&signer)) {
-    LOG(ERROR) << "Could not get signer name";
+static bool CheckRestrictions(const Statement &s, time_t check_time)
+{
+  if (check_time < s.time()) {
+    LOG(ERROR) << "Attestation is not yet valid";
     return false;
   }
-  Statement s;
-  s.set_key(key_prin);
-  s.set_name(name);
-  // Fill in timestamp.
-  s.set_time(CurrentTime());
-  // Fill in expiration.
-  s.set_expiration(s.time() + Tao::DefaultAttestationTimeout);
-  // Serialize and sign the statement.
-  string stmt, sig;
-  if (!s.SerializeToString(&stmt)) {
-    LOG(ERROR) << "Could not serialize statement";
+  if (check_time >= s.expiration()) {
+    LOG(ERROR) << "Attestation has expired";
     return false;
   }
-  if (!key.SignData(stmt, Tao::AttestationSigningContext, &sig)) {
-    LOG(ERROR) << "Could not sign the statement";
-    return false;
-  }
-  Attestation a;
-  a.set_serialized_statement(stmt);
-  a.set_signature(sig);
-  a.set_signer(signer);
-  if (!delegation.empty()) {
-    a.set_serialized_delegation(delegation);
-  } else {
-    a.clear_serialized_delegation();
-  }
-  if (!a.SerializeToString(attestation)) {
-    LOG(ERROR) << "Could not serialize attestation";
-    return false;
-  }
-  VLOG(5) << "Generated key-to-name binding attestation\n"
-          << " via signer " << elideString(signer) << "\n"
-          << " nicknamed " << key.Name() << "\n"
-          << " for name " << elideString(name) << "\n"
-          << " and key " << elideString(key_prin) << "\n"
-          << " with result Attestation " << DebugString(a) << "\n";
   return true;
 }
 
-bool GetNameFromKeyNameBinding(const string &attestation, string *name) {
-  Attestation a;
-  if (!a.ParseFromString(attestation)) {
-    LOG(ERROR) << "Could not parse the key-to-name attestation";
-    return false;
-  }
-  Statement s;
-  if (!s.ParseFromString(a.serialized_statement())) {
-    LOG(ERROR) << "Could not parse the key-to-name attestation statement";
-    return false;
-  }
-  name->assign(s.name());
-  return true;
-}
-
-bool GetKeyFromKeyNameBinding(const string &attestation, string *key_prin) {
-  Attestation a;
-  if (!a.ParseFromString(attestation)) {
-    LOG(ERROR) << "Could not parse the key-to-name attestation";
-    return false;
-  }
-  Statement s;
-  if (!s.ParseFromString(a.serialized_statement())) {
-    LOG(ERROR) << "Could not parse the key-to-name attestation statement";
-    return false;
-  }
-  key_prin->assign(s.key());
-  return true;
-}
-
-static bool IsSubPrincipalOrIdentical(const string &child_name,
+static bool IsSubprincipalOrIdentical(const string &child_name,
                                       const string &parent_name) {
   return (child_name == parent_name) ||
          (child_name.substr(parent_name.size() + 2) == parent_name + "::");
@@ -143,7 +78,6 @@ static bool VerifyAttestationSignature(const Attestation &a) {
     LOG(ERROR) << "Bad format for attestation signer key";
     return false;
   }
-
   scoped_ptr<Verifier> v;
   if (!Base64WDecode(key_text, &key_data) ||
       !DeserializePublicKey(key_data, &v)) {
@@ -159,66 +93,118 @@ static bool VerifyAttestationSignature(const Attestation &a) {
   }
 }
 
-bool ValidateKeyNameBinding(const string &attestation, time_t check_time,
-                            string *key_prin, string *name) {
+static bool ValidateAttestation(const string &attestation, Statement *s)
+{
   Attestation a;
   if (!a.ParseFromString(attestation)) {
-    LOG(ERROR) << "Could not parse the key-to-name attestation";
+    LOG(ERROR) << "Could not parse attestation";
     return false;
   }
-  Statement s;
-  if (!s.ParseFromString(a.serialized_statement())) {
-    LOG(ERROR) << "Could not parse the key-to-name attestation statement";
+  if (!s->ParseFromString(a.serialized_statement())) {
+    LOG(ERROR) << "Could not parse attestation statement";
     return false;
   }
-  // Establish that the time restrictions are met.
-  if (check_time < s.time()) {
-    LOG(ERROR) << "Attestation is not yet valid";
-    return false;
-  }
-  if (check_time >= s.expiration()) {
-    LOG(ERROR) << "Attestation has expired";
-    return false;
-  }
-  // Establish that signer says (name says ...)
+  // Establish that signer says (issuer says ...)
   if (!VerifyAttestationSignature(a)) {
     LOG(ERROR) << "The attestation statement was not properly signed";
     return false;
   }
-  // Establish that signer speaks for name
+  // Establish that signer speaks for issuer
   if (!a.has_serialized_delegation()) {
     // Case (1), no delegation present.
-    // Require that s.name be a subprincipal of (or identical to) a.signer.
-    if (!IsSubPrincipalOrIdentical(s.name(), a.signer())) {
-      LOG(ERROR) << "It is not evident that the signer speaks for the name in "
-                    "the statement.";
+    // Require that s.issuer be a subprincipal of (or identical to) a.signer.
+    if (!IsSubprincipalOrIdentical(s->issuer(), a.signer())) {
+      LOG(ERROR) << "It is not evident that the signer speaks for the issuer".
       return false;
     }
   } else {
     // Case (2), delegation present.
-    // Require that
-    // - delegation conveys a key-to-name binding, signer0 speaksfor name0,
-    // - signer0 is identical to signer
-    // - and name is a subprincipal of (or identical to) a.signer
-    string delegation_key, delegation_name;
-    if (!ValidateKeyNameBinding(a.serialized_delegation(), check_time,
-                                &delegation_key, &delegation_name)) {
+    // Require that:
+    // - delegation conveys delegate speaksfor issuer0,
+    // - a.signer speaks for delegate
+    // - and issuer0 speaks for s.issuer
+    Statement delegation;
+    if (!ValidateAttestation(a.serialized_delegation(), &delegation)) {
       LOG(ERROR) << "Delegation failed to verify";
       return false;
     }
-    if (delegation_key != a.signer()) {
-      LOG(ERROR) << "Delegation is not for the signer key";
+    if (!delegation.has_delegate()) {
+      LOG(ERROR) << "Invalid embedded delegation";
       return false;
     }
-    if (!IsSubPrincipalOrIdentical(s.name(), delegation_name)) {
-      LOG(ERROR) << "It is not evident that the signer's name speaks for the "
-                    "name in the statement.";
+    string delegate = delegation.delegate();
+    string issuer0 = delegation.issuer();
+    if (!IsSubprincipalOrIdentical(delegate, a.signer())) {
+      LOG(ERROR) << "Delegation is not relevant to signer";
       return false;
     }
+    if (!IsSubprincipalOrIdentical(s.issuer(), issuer0)) {
+      LOG(ERROR) << "Delegation is not relevant to issuer";
+      return false;
+    }
+    // Modify the statement timestamps accordingly
+    if (s.time() < delegation.time())
+      s.set_time(delegation.time());
+    if (s.expiration() >= delegation.expiration())
+      s.set_expiration(delegation.expiration());
   }
-  key_prin->assign(s.key());
-  name->assign(s.name());
   return true;
+}
+
+static bool Attest(const Keys &key, const string &delegation,
+                   const Statement &s, string *attestation) {
+  // Get signer name.
+  string signer;
+  if (!key.SignerPrincipalName(&signer)) {
+    LOG(ERROR) << "Could not get signer principal name";
+    return false;
+  }
+  // Serialize and sign the statement.
+  string stmt, sig;
+  if (!s.SerializeToString(&stmt)) {
+    LOG(ERROR) << "Could not serialize statement";
+    return false;
+  }
+  if (!key.SignData(stmt, Tao::AttestationSigningContext, &sig)) {
+    LOG(ERROR) << "Could not sign the statement";
+    return false;
+  }
+  // Construct and serialize the attestation.
+  Attestation a;
+  a.set_serialized_statement(stmt);
+  a.set_signature(sig);
+  a.set_signer(signer);
+  if (!delegation.empty()) {
+    a.set_serialized_delegation(delegation);
+  } else {
+    a.clear_serialized_delegation();
+  }
+  if (!a.SerializeToString(attestation)) {
+    LOG(ERROR) << "Could not serialize attestation";
+    return false;
+  }
+  return true;
+}
+
+bool GetAttestationIssuer(const string &attestation, string *issuer) {
+  Attestation a;
+  if (!a.ParseFromString(attestation)) {
+    LOG(ERROR) << "Could not parse attestation";
+    return false;
+  }
+  Statement s;
+  if (!s.ParseFromString(a.serialized_statement())) {
+    LOG(ERROR) << "Could not parse attestation statement";
+    return false;
+  }
+  issuer->assign(s.issuer());
+  return true;
+}
+
+time_t CurrentTime() {
+  time_t cur_time;
+  time(&cur_time);
+  return cur_time;
 }
 
 /// Indent each line of a string after the first line.
@@ -301,9 +287,132 @@ string DebugString(const Statement &stmt) {
   return "{\n  " + Indent("  ", out.str()) + "}";
 }
 
-time_t CurrentTime() {
-  time_t cur_time;
-  time(&cur_time);
-  return cur_time;
+bool AttestDelegation(const Keys &key, const string &delegation,
+                      const string &delegate, const string &issuer,
+                      string *attestation) {
+  string signer;
+  if (!key.SignerPrincipalName(&signer)) {
+    LOG(ERROR) << "Could not get signer principal name";
+    return false;
+  }
+  Statement s;
+  s.set_delegate(delegate);
+  s.set_issuer(issuer);
+  s.set_time(CurrentTime());
+  s.set_expiration(s.time() + Tao::DefaultAttestationTimeout);
+  if (!Attest(key, delegation, s, attestation)) {
+    LOG(ERROR) << "Could not sign attestation";
+    return false;
+  }
+  VLOG(5) << "Generated delegation attestation\n"
+          << " via signer " << elideString(signer) << "\n"
+          << " nicknamed " << key.Name() << "\n"
+          << " for issuer " << elideString(issuer) << "\n"
+          << " and delegate " << elideString(delegate) << "\n"
+          << " with result Attestation " << DebugString(a) << "\n";
+  return true;
 }
+
+bool ValidateDelegation(const string &attestation, time_t check_time,
+                        string *delegate, string *issuer) {
+  Statement s;
+  if (!ValidateAttestation(attestation, &s)) {
+    LOG(ERROR) << "Attestation did not validate";
+    return false;
+  }
+  if (!CheckRestrictions(s, check_time)) {
+    LOG(ERROR) << "Attestation restrictions not met";
+    return false;
+  }
+  if (!s.has_delegate()) {
+    LOG(ERROR) << "Attestation missing delegate";
+    return false;
+  }
+  delegate->assign(s.delegate());
+  issuer->assign(s.issuer());
+  return true;
+}
+
+bool GetAttestationDelegate(const string &attestation, string *delegate) {
+  Attestation a;
+  if (!a.ParseFromString(attestation)) {
+    LOG(ERROR) << "Could not parse attestation";
+    return false;
+  }
+  if (!s->ParseFromString(a.serialized_statement())) {
+    LOG(ERROR) << "Could not parse attestation statement";
+    return false;
+  }
+  delegate->assign(s.delegate());
+  return true;
+}
+
+bool AttestPredicate(const Keys &key, const string &delegation,
+                     const string &issuer, const string &predicate,
+                     const list<string> &args, string *attestation) {
+  string signer;
+  if (!key.SignerPrincipalName(&signer)) {
+    LOG(ERROR) << "Could not get signer principal name";
+    return false;
+  }
+  Statement s;
+  s.set_predicate_name(predicate);
+  for (auto &arg : args)
+    s.add_predicate_args(arg);
+  s.set_issuer(issuer);
+  s.set_time(CurrentTime());
+  s.set_expiration(s.time() + Tao::DefaultAttestationTimeout);
+  if (!Attest(key, delegation, s, attestation)) {
+    LOG(ERROR) << "Could not sign attestation";
+    return false;
+  }
+  VLOG(5) << "Generated predicate attestation\n"
+          << " via signer " << elideString(signer) << "\n"
+          << " nicknamed " << key.Name() << "\n"
+          << " for issuer " << elideString(issuer) << "\n"
+          << " and predicate " << predicate << "(...)\n"
+          << " with result Attestation " << DebugString(a) << "\n";
+  return true;
+}
+
+bool ValidatePredicate(const string &attestation, time_t check_time,
+                       string *issuer, string *predicate, list<string> *args) {
+  Statement s;
+  if (!ValidateAttestation(attestation, &s)) {
+    LOG(ERROR) << "Attestation did not validate";
+    return false;
+  }
+  if (!CheckRestrictions(s, check_time)) {
+    LOG(ERROR) << "Attestation restrictions not met";
+    return false;
+  }
+  if (!s.has_predicate_name()) {
+    LOG(ERROR) << "Attestation missing predicate";
+    return false;
+  }
+  predicate->assign(s.predicate_name());
+  args->clear();
+  for (const &arg : s.predicate_args())
+    args->push_back(arg);
+  return true;
+}
+
+bool GetAttestationPredicate(const string &attestation, string *predicate,
+                             list<string> *args) {
+  Attestation a;
+  if (!a.ParseFromString(attestation)) {
+    LOG(ERROR) << "Could not parse attestation";
+    return false;
+  }
+  if (!s->ParseFromString(a.serialized_statement())) {
+    LOG(ERROR) << "Could not parse attestation statement";
+    return false;
+  }
+  predicate->assign(s.predicate_name());
+  args->clear();
+  for (const &arg : s.predicate_args())
+    args->push_back(arg);
+  return true;
+}
+
 }  // namespace tao

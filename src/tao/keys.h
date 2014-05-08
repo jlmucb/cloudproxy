@@ -66,7 +66,7 @@ bool DeserializePublicKey(const string &s, scoped_ptr<keyczar::Verifier> *key);
 /// @param[out] s The serialized key.
 bool SerializePublicKey(const keyczar::Verifier &key, string *serialized_key);
 
-bool VerifierUniqueID(const keyczar::Verifier &key, string *identifier);
+bool VerifierPrincipalName(const keyczar::Verifier &key, string *identifier);
 
 /// Sign data with a key using Signer.
 /// @param data The data to sign.
@@ -220,7 +220,7 @@ class Keys {
 
   /// Get a unique ID for the signing key.
   /// @param[out] identifier The unique ID.
-  bool SignerUniqueID(string *identifier) const;
+  bool SignerPrincipalName(string *identifier) const;
 
   /// Get the managed verifier key. If no verifier is available, the signer will
   /// be returned instead if it is available. Otherwise, nullptr will be

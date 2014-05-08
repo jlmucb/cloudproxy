@@ -184,7 +184,7 @@ bool TPMTaoChildChannel::VerifySignature(const Verifier &v, const string &stmt,
   }
   // Extract PCR info from name in the statement
   string aik_name;
-  if (!VerifierUniqueID(v, &aik_name)) {
+  if (!VerifierPrincipalName(v, &aik_name)) {
     LOG(ERROR) << "Could not get aik name";
     return false;
   }

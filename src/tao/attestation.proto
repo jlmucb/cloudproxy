@@ -36,8 +36,8 @@ package tao;
 //   issuer says (... implies (delegate speaksfor issuer))
 // Here, delegate is the name of some principal, usually a (non-tpm) Tao key
 // principal, i.e. Key("...") where "..." is a base64w-encoded, serialized
-// public key as produced by Keys::SignerUniqueID(). If time restrictions are
-// met, from a delegation statement we can derive:
+// public key as produced by Keys::SignerPrincipalName(). If time restrictions
+// are met, from a delegation statement we can derive:
 //   issuer says (delegate speaksfor issuer)
 // and further:
 //   delegate speaksfor issuer
@@ -148,8 +148,9 @@ message Statement {
 // for the OS. 
 //      
 // (2) In all other cases, a delegation will be present that, if valid, conveys:
-//   issuer0 says ((time0 <= now < exp0) implies (signer speaksfor issuer0))
-// where issuer is a subprincipal of (or identical to) issuer0. Such a valid
+//   issuer0 says ((time0 <= now < exp0) implies (delegate speaksfor issuer0))
+// where issuer is a subprincipal of (or identical to) issuer0 and delegate is a
+// subprincipal of (or identical to) signer. Such a valid
 // delegation can be combined with:
 //   signer says (
 //      issuer says (

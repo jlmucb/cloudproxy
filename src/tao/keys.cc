@@ -1022,7 +1022,7 @@ bool Keys::InitHosted(const TaoChildChannel &channel, int policy) {
   // Create a parent-attestation for the signing key
   if (signer_.get() != nullptr) {
     string key_prin;
-    if (!SignerPrincipalName(&key_prin)) {
+    if (!GetPrincipalName(&key_prin)) {
       LOG(ERROR) << "Could not serialize signing key";
       return false;
     }
@@ -1039,7 +1039,7 @@ bool Keys::InitHosted(const TaoChildChannel &channel, int policy) {
   return true;
 }
 
-bool VerifierPrincipalName(const Verifier &key, string *identifier) {
+bool VerifierToPrincipalName(const Verifier &key, string *name) {
   string key_data, key_text;
   if (!SerializePublicKey(key, &key_data) ||
       !Base64WEncode(key_data, &key_text)) {
@@ -1048,16 +1048,36 @@ bool VerifierPrincipalName(const Verifier &key, string *identifier) {
   }
   stringstream out;
   out << "Key(" << quotedString(key_text) << ")";
-  identifier->assign(out.str());
+  name->assign(out.str());
   return true;
 }
 
-bool Keys::SignerPrincipalName(string *identifier) const {
+bool VerifierFromPrincipalName(const string &name, scoped_ptr<Verifier> &key)
+{
+  string key_text;
+  stringstream in(name);
+  skip(in, "Key(");
+  getQuotedString(in, &key_text);
+  skip(in, ")");
+  if (!in || !in.str().empty()) {
+    LOG(ERROR) << "Bad format for Tao signer principal name";
+    return false;
+  }
+  string key_data;
+  if (!Base64WDecode(key_text, &key_data) ||
+      !DeserializePublicKey(key_data, v)) {
+    LOG(ERROR) << "Could not deserialize the Tao signer key";
+    return false;
+  }
+  return true;
+}
+
+bool Keys::GetPrincipalName(string *name) const {
   if (!Verifier()) {
     LOG(ERROR) << "No managed verifier";
     return false;
   }
-  return tao::VerifierPrincipalName(*Verifier(), identifier);
+  return tao::VerifierToPrincipalName(*Verifier(), name);
 }
 
 string Keys::GetPath(const string &suffix) const {

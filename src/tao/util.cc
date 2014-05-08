@@ -885,16 +885,37 @@ string elideString(const string &s) {
 }
 
 string elideBytes(const string &s) {
+  if (s.length() <= 20)
+    return bytesToHex(s);
+  else
+    return bytesToHex(s.substr(0, 4)) + "..." +
+           bytesToHex(s.substr(s.size() - 5));
+}
+
+string bytesToHex(const string &s) {
   stringstream out;
   string hex = "0123456789abcdef";
-  if (s.length() <= 20) {
-    for (auto &c : s) out << hex[(c >> 4) & 0xf] << hex[(c >> 4) & 0xf];
-  } else {
-    for (unsigned int i = 0; i < 5; i++)
-      out << hex[(s[i] >> 4) & 0xf] << hex[(s[i] >> 4) & 0xf];
-    out << "...";
-    for (unsigned int i = s.size() - 5; i < s.size(); i++)
-      out << hex[(s[i] >> 4) & 0xf] << hex[(s[i] >> 4) & 0xf];
+  for (auto &c : s) out << hex[(c >> 4) & 0xf] << hex[(c >> 4) & 0xf];
+  return out.str();
+}
+
+static hexToInt(char c, int *i) {
+  if ('0' <= c && c <= '9') *i = (c - '0');
+  else if ('a' <= c && c <= 'f') *i = 10 + (c - 'a');
+  else if ('A' <= c && c <= 'F') *i = 10 + (c - 'A');
+  else return false;
+  return true;
+}
+
+bool bytesFromHex(const string &hex, string *s) {
+  stringstream out;
+  if (hex.size() % 2)
+    return false;
+  for (int i = 0; i < hex.size(); i += 2) {
+    int x, y;
+    if (!hexToInt(hex[i], &x) || !hexToInt(hex[i+1], &y))
+      return false;
+    out.put((x << 4) | y);
   }
   return out.str();
 }

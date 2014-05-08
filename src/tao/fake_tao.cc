@@ -119,7 +119,7 @@ bool FakeTao::GetTaoFullName(string *tao_name) const {
 }
 
 bool FakeTao::GetLocalName(string *local_name) const {
-  return keys_->SignerPrincipalName(local_name);
+  return keys_->GetPrincipalName(local_name);
 }
 
 bool FakeTao::GetPolicyName(string *policy_name) const {

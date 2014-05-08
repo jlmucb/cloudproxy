@@ -103,11 +103,10 @@ bool TaoChildChannel::Unseal(const string &sealed, string *data,
   return true;
 }
 
-bool TaoChildChannel::Attest(const string &key_prin,
-                             string *attestation) const {
+bool TaoChildChannel::Attest(const string &stmt, string *attestation) const {
   TaoChildRequest rpc;
   rpc.set_rpc(TAO_CHILD_RPC_ATTEST);
-  rpc.set_data(key_prin);
+  rpc.set_data(stmt);
   TaoChildResponse resp;
   bool eof;
   if (!SendRPC(rpc) || !ReceiveRPC(&resp, &eof) || eof) {

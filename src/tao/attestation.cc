@@ -63,31 +63,17 @@ static bool IsSubprincipalOrIdentical(const string &child_name,
 static bool VerifyAttestationSignature(const Attestation &a) {
   string signer = a.signer();
   bool tpm_signature = signer.substr(3) == "TPM";
-  string key_data, key_text;
-  stringstream in(signer);
   if (tpm_signature) {
-    skip(in, "TPM(");
-    getQuotedString(in, &key_text);
-    skip(in, ")");
-  } else {
-    skip(in, "Key(");
-    getQuotedString(in, &key_text);
-    skip(in, ")");
-  }
-  if (!in || !in.str().empty()) {
-    LOG(ERROR) << "Bad format for attestation signer key";
-    return false;
-  }
-  scoped_ptr<Verifier> v;
-  if (!Base64WDecode(key_text, &key_data) ||
-      !DeserializePublicKey(key_data, &v)) {
-    LOG(ERROR) << "Could not deserialize the attestation signer key";
-    return false;
-  }
-  if (tpm_signature) {
-    return TPMTaoChildChannel::VerifySignature(*v, a.serialized_statement(),
+    // TODO(kwalsh) TPMTaoChildChannel does its own key serialize/descerialize.
+    // Maybe unify that with VerifierFromPrincipalName()?
+    return TPMTaoChildChannel::VerifySignature(signer, a.serialized_statement(),
                                                a.signature());
   } else {
+    scoped_ptr<Verifier> v;
+    if (!VerifierFromPrincipalName(signer, &v)) {
+      LOG(ERROR) << "Could not deserialize the attestation signer key";
+      return false;
+    }
     return VerifySignature(*v, a.serialized_statement(),
                            Tao::AttestationSigningContext, a.signature());
   }

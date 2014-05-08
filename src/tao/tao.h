@@ -212,14 +212,12 @@ class Tao {
   virtual bool Unseal(const string &child_name, const string &sealed,
                       string *data, int *policy) const = 0;
 
-  /// Produce a signed statement that asserts that a given program produced a
-  /// given data string.
+  /// Request the Tao sign a Statement on behalf of the child.
   /// @param child_name The local name of the hosted program making the request.
-  /// @param key_prin A key principal produced by the hosted program.
-  /// @param[out] attestation The resulting signed message. For verification see
-  /// TaoAuth and its implementations.
-  /// TODO(kwalsh) Make the opaque data string into a statement in some logic?
-  virtual bool Attest(const string &child_name, const string &key_prin,
+  /// @param stmt A serialized Statement. The time, expiration, and issuer
+  /// fields will be filled in with appropriate defaults if they are left empty.
+  /// @param[out] attestation The resulting signed message.
+  virtual bool Attest(const string &child_name, const string &stmt,
                       string *attestation) const = 0;
 
   /// Extend a childs name with a new subprincipal name.

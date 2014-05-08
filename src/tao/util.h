@@ -292,6 +292,15 @@ string elideString(const string &s);
 /// Bytes will be printed in hex, with long sequences truncated.
 string elideBytes(const string &s);
 
+/// Encode an array of bytes as hex.
+/// @param s The array of bytes.
+string bytesToHex(const string &s);
+
+/// Decode hex into an array of bytes.
+/// @param hex The hex string.
+/// @param[out] s The array of bytes.
+bool bytesFromHex(const string &hex, string *s);
+
 }  // namespace tao
 
 #endif  // TAO_UTIL_H_

@@ -211,7 +211,7 @@ bool TaoDomain::AttestKeyNameBinding(const string &key_prin,
     return false;
   }
   string name;
-  if (!keys_->SignerPrincipalName(&name)) {
+  if (!keys_->GetPrincipalName(&name)) {
     LOG(ERROR) << "Can't get unique ID for policy key";
     return false;
   }
@@ -231,7 +231,7 @@ bool TaoDomain::AuthorizeProgramToExecute(const string &path,
     return false;
   }
   string name;
-  if (!keys_->SignerPrincipalName(&name)) {
+  if (!keys_->GetPrincipalName(&name)) {
     LOG(ERROR) << "Can't get unique ID for policy key";
     return false;
   }

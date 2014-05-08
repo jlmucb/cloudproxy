@@ -127,7 +127,7 @@ bool TaoCA::GetX509Chain(const string &attestation, const string &desired_name,
     return false;
   }
   string policy_name;
-  if (!admin_->GetPolicyKeys()->SignerPrincipalName(&policy_name)) {
+  if (!admin_->GetPolicyKeys()->GetPrincipalName(&policy_name)) {
     LOG(ERROR) << "Could not get name for policy key";
     return false;
   }

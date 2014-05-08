@@ -36,8 +36,9 @@ package tao;
 //   issuer says (... implies (delegate speaksfor issuer))
 // Here, delegate is the name of some principal, usually a (non-tpm) Tao key
 // principal, i.e. Key("...") where "..." is a base64w-encoded, serialized
-// public key as produced by Keys::SignerPrincipalName(). If time restrictions
-// are met, from a delegation statement we can derive:
+// public key as produced by Keys::GetPrincipalName() or
+// VerifierToPrincipalName(). If time restrictions are met, from a delegation
+// statement we can derive:
 //   issuer says (delegate speaksfor issuer)
 // and further:
 //   delegate speaksfor issuer
@@ -199,8 +200,8 @@ message Statement {
 // hosted programs, so the issuer used in the serialized statement will always
 // have the form:
 //   TPM("..K..")::PCRs("..i..", "..h..")...
-// where "..i.." is a sorted, space-separated list of PCR numbers, and "..h.."
-// is the corresponding, space-separated list of base64w-encoded PCR values. The
+// where "..i.." is a sorted, comma-separated list of PCR numbers, and "..h.."
+// is the corresponding, comma-separated list of hex-encoded PCR values. The
 // signature is computed roughly as:
 //   sig = rsa_sign(K, H( H(issuer|time|expiration|...) | pcrbuf(i, h) ))
 // Here, we first hash the statement in a tpm-specific way, then signing the

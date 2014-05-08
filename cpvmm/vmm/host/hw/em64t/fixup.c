@@ -48,21 +48,32 @@ void check_boot_parameters()
 {
     UINT64* regs = *g_guest_regs_save_area;
     UINT64 rdi_reg= regs[4];
+    UINT64 rsi_reg= regs[5];
     UINT64  ept;
     UINT64  real;
     UINT64  virt;
+    UINT64  value;
 
-    bprint("rdi on entry: %p\n", rdi_reg);
+    bprint("rdi on entry: %p, rsi: %p\n", rdi_reg, rsi_reg);
     boot_params_t* boot_params= (boot_params_t*) rdi_reg;
     HexDump((UINT8*)rdi_reg, (UINT8*)rdi_reg+32);
     bprint("cmd line ptr: %p\n", boot_params->hdr.cmd_line_ptr);
     bprint("code32_start: %p\n", boot_params->hdr.code32_start);
     bprint("loadflags: %02x\n", boot_params->hdr.loadflags);
+
     vmx_vmread(0x201a, &ept);
     virt= rdi_reg;
     real= getphysical(ept, virt);
     bprint("virt: %016llx, real: %016llx\n", virt, real);
     virt= (UINT64) &(boot_params->hdr.loadflags);
+    real= getphysical(ept, virt);
+    bprint("virt: %016llx, real: %016llx\n", virt, real);
+
+    vmx_vmread(0x681e, &value);  // guest_rip
+    virt =value;
+    real= getphysical(ept, virt);
+    bprint("virt: %016llx, real: %016llx\n", virt, real);
+    virt =value+10;
     real= getphysical(ept, virt);
     bprint("virt: %016llx, real: %016llx\n", virt, real);
 }
@@ -88,41 +99,35 @@ void fixupvmcs()
     void loop_forever();
     UINT16* loop= (UINT16*)loop_forever;
 
-#ifdef JLMDEBUG
-    bprint("fixupvmcs %04x\n", *loop);
+    bprint("fixupvmcs %04x\n\n", *loop);
     vmx_vmread(0x681e, &value);  // guest_rip
     // bprint("Code at %p\n", value);
     // HexDump((UINT8*)value, (UINT8*)value+32);
     check_boot_parameters();
-    *((UINT16*) value+0x8)= *loop;    // feeb
+    *((UINT16*) value+0x8)= *loop;  // feeb
+    *((UINT16*) value+0xa)= *loop;     // feeb
+    *((UINT16*) value+0xc)= *loop;     // feeb
+    *((UINT16*) value+0xe)= *loop;     // feeb
     *((UINT16*) value+0x10)= *loop;    // feeb
     *((UINT16*) value+0x12)= *loop;    // feeb
     *((UINT16*) value+0x14)= *loop;    // feeb
     *((UINT16*) value+0x16)= *loop;    // feeb
     *((UINT16*) value+0x18)= *loop;    // feeb
-#endif
+    *((UINT16*) value+0x20)= *loop;    // feeb
+    *((UINT16*) value+0x22)= *loop;    // feeb
 
-    // was 3e, cruse has 16
     // vmx_vmread(0x4000, &value);  // vmx_pin_controls
-    // value= 0x16;
     // vmx_vmwrite(0x4000, value);  // vmx_pin_controls
 
-    // was 96006172, cruse has 401e172
     // vmx_vmread(0x4002, &value);  // vmx_cpu_controls
-    // value= 0x80016172;         // can't figure out anything to change here
-    // value= 0x96006172;         // can't figure out anything to change here
     // vmx_vmwrite(0x4002, value);  // vmx_cpu_controls
 
     // vmx_vmread(0x401e, &value);  // vmx_secondary_controls
-    // value= 0x8a;                 // no vpid
     // vmx_vmwrite(0x401e, value);  // vmx_secondary_controls
 
-    // was d1ff, cruse has 11ff 
     // vmx_vmread(0x4012, &value);  // vmx_entry_controls
-    // value= 0x11ff;
     // vmx_vmwrite(0x4012, value);  // vmx_entry_controls
 
-    // was 3f7fff, cruse has 36fff
     // vmx_vmread(0x4002, &value);  // vmx_exit_controls
     // vmx_vmwrite(0x4002, value);  // vmx_exit_controls
 

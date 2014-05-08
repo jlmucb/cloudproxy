@@ -171,6 +171,7 @@ void vmentry_func(UINT32 firsttime)
     if(firsttime) { //do_launch
         gcpu_restore_registers();
         asm volatile (
+            "\t movq   $0x6fefc000, %%rsi\n" // hack! --- remove this
             "\tvmlaunch\n"
             "\tpushfq\n"  // push rflags
             "\tpop      %%rdx\n" 

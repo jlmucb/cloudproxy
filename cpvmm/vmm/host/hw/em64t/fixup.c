@@ -17,6 +17,7 @@
 #include "bootstrap_print.h"
 #include "jlmdebug.h"
 
+extern void** g_guest_regs_save_area;
 UINT64   t_vmcs_save_area[512];  // never bigger than 4KB
 extern void vmm_print_vmcs_region(UINT64* pu);
 extern void vmm_vmcs_guest_state_read(UINT64* area);
@@ -38,14 +39,19 @@ typedef unsigned char       u8;
 typedef unsigned short      u16;
 typedef unsigned int        u32;
 typedef long long unsigned  u64;
+
 #include "../../../bootstrap/linux_defns.h"
-void check_boot_parameters(UINT64 rsi_reg)
+
+void check_boot_parameters()
 {
-    bprint("rsi on entry: %p\n", rsi_reg);
-    boot_params_t* boot_params= (boot_params_t*) rsi_reg;
-    HexDump((UINT8*)rsi_reg, (UINT8*)rsi_reg+32);
+    UINT64* regs = *g_guest_regs_save_area;
+    UINT64 rdi_reg= regs[4];
+    bprint("rdi on entry: %p\n", rdi_reg);
+    boot_params_t* boot_params= (boot_params_t*) rdi_reg;
+    HexDump((UINT8*)rdi_reg, (UINT8*)rdi_reg+32);
     bprint("cmd line ptr: %p\n", boot_params->hdr.cmd_line_ptr);
     bprint("code32_start: %p\n", boot_params->hdr.code32_start);
+    boot_params->hdr.cmd_line_ptr= 0;
 }
 #endif
 
@@ -65,7 +71,6 @@ asm(
 void fixupvmcs()
 {
     UINT64  value;
-    UINT64  rsi_reg;
     void loop_forever();
     UINT16* loop= (UINT16*)loop_forever;
 
@@ -74,12 +79,8 @@ void fixupvmcs()
     vmx_vmread(0x681e, &value);  // guest_rip
     // bprint("Code at %p\n", value);
     // HexDump((UINT8*)value, (UINT8*)value+32);
-    *((UINT16*) value+8)= *loop;    // feeb
-    asm volatile (
-        "\t movq   %%rsi, %[rsi_reg]\n"
-    : [rsi_reg] "=g" (rsi_reg)
-    ::);
-    check_boot_parameters(rsi_reg);
+    check_boot_parameters();
+    // *((UINT16*) value+8)= *loop;    // feeb
 #endif
 
     // was 3e, cruse has 16

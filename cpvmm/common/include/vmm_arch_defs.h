@@ -232,7 +232,7 @@ typedef struct _VMM_CONTROL_REGISTERS {
     // Control registers
     UINT64                cr[IA32_CTRL_COUNT];
     // GDT
-        VMM_IA32_GDT_REGISTER gdtr;
+    VMM_IA32_GDT_REGISTER gdtr;
     UINT32                reserved_1;
     // IDT
     VMM_IA32_IDT_REGISTER idtr;

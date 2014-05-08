@@ -115,7 +115,7 @@ uint32_t linux_protected_mode_size= 0;  // size of protected mode
 uint32_t linux_start_address= 0;        // start address of image
 uint32_t initram_start_address= 0; // address of the initram 
 uint32_t linux_entry_address= 0;   // address of the eip guest entry
-uint32_t linux_esi_register= 0;    // esi register on guest entry
+uint32_t linux_edi_register= 0;    // edi register on guest entry
 uint32_t linux_esp_register= 0;    // esp on guest entry
 uint32_t linux_stack_base= 0;      // base of the stack on entry
 uint32_t linux_stack_size= 0;      // stack size on guest entry
@@ -1012,7 +1012,7 @@ int linux_setup(void)
         }
 
         guest_processor_state[k].gp.reg[IA32_REG_RIP]= (uint64_t)linux_entry_address;
-        guest_processor_state[k].gp.reg[IA32_REG_RSI]= (uint64_t) linux_esi_register;
+        guest_processor_state[k].gp.reg[IA32_REG_RDI]= (uint64_t) linux_edi_register;
 #if 0
         guest_processor_state[k].gp.reg[IA32_REG_RSP]= (uint64_t) linux_esp_register;
 #else
@@ -1021,7 +1021,7 @@ int linux_setup(void)
 #endif
         guest_processor_state[k].gp.reg[IA32_REG_RFLAGS] = 0x02;
         guest_processor_state[k].gp.reg[IA32_REG_RBP] = 0;
-        guest_processor_state[k].gp.reg[IA32_REG_RDI] = 0;
+        guest_processor_state[k].gp.reg[IA32_REG_RSI] = 0;
     
         for (i = 0; i < IA32_REG_XMM_COUNT; i++) {
             guest_processor_state[k].xmm.reg[i].uint64[0] = (uint64_t)0;
@@ -1481,8 +1481,14 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
         new_boot_params->hdr.cmd_line_ptr= (uint32_t) 0;
     }
 #endif
-    // set esi register
-    linux_esi_register= linux_boot_parameters;
+    // set edi register
+    linux_edi_register= linux_boot_parameters;
+#ifdef JLMDEBUG1  // TEST1
+    bprint("edi reg: %08x\n", linux_edi_register);
+    bprint("cmd_ptr: %08x, code32_start: %08x\n", new_boot_params->hdr.cmd_line_ptr, 
+new_boot_params->hdr.code32_start);
+    LOOP_FOREVER
+#endif
     return 0;
 }
 
@@ -1574,7 +1580,7 @@ typedef enum _GUEST_FLAGS {
 int prepare_primary_guest_environment(const multiboot_info_t *mbi)
 {
     // setup stack ,control and gp registers for VMCS to init guest
-    // Guest wakes up in 32 bit protected mode with arguments in esi
+    // Guest wakes up in 32 bit protected mode with arguments in edi
     linux_setup(); 
 
     // Guest state initialization for relocated inage

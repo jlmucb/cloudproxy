@@ -229,7 +229,7 @@ message Statement {
 //      Typically (or maybe always?), signer is the policy key.
 //      The signer is always Key("..K..").
 // (1b) No delegation, TPM signature.
-//      This is produced by TpmTaoChildChannel.
+//      This is produced by TPMTaoChildChannel.
 //      The signer is always TPM("..K..") and the statement issuer is
 //      always a TPM("..K..")::PCRs("..i..", "..h..")...
 // (2a) Delegation, Tao signature.

@@ -114,12 +114,6 @@ class TPMTaoChildChannel : public TaoChildChannel {
   /// for Quote operations.
   TSS_HPCRS tss_pcr_indexes_;
 
-  // The maximum number of PCRs in this TPM.
-  //UINT32 pcr_max_;
-
-  // The total number of bytes needed to store the PCR bit mask.
-  //UINT32 pcr_mask_len_;
-
   /// A handle to the Storage Root Key for the TPM, used for Seal operations.
   TSS_HKEY srk_;
   

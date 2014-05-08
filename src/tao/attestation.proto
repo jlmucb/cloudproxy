@@ -257,8 +257,17 @@ message Attestation {
 
   // A delegation that conveys (eventually) that signer speaks for the issuer in
   // the serialized statement. If this is empty, then it must be self evident
-  // that signer speaks for the issuer in the serialized statement.
+  // that signer speaks for the issuer in the serialized statement. This can be
+  // added, removed, or replaced without changing the attestation signature, but
+  // verification may fail if a required delegation is missing.
   optional string serialized_delegation = 4;
+
+  // An optional set of further attestations that may pertain, in some way, to
+  // the the issuer or signer of this attestation. These can be added or removed
+  // without changing the attestation signature. This allows attestations to be
+  // piggy-backed, e.g. when an authorization guard requires multiple
+  // attestations to check a policy.
+  repeated string serialized_endorsements = 5;
 }
 
 // TODO(kwalsh) Consider moving issuer out of Statement and into Attestation.

@@ -504,9 +504,7 @@ GUEST_CPU_HANDLE gcpu_perform_split_merge (GUEST_CPU_HANDLE gcpu)
     return gcpu;
 }
 
-static
-void
-gcpu_process_activity_state_change( GUEST_CPU_HANDLE gcpu )
+static void gcpu_process_activity_state_change( GUEST_CPU_HANDLE gcpu )
 {
     EVENT_GCPU_ACTIVITY_STATE_CHANGE_DATA event_data;
 

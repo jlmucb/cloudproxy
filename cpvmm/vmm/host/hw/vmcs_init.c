@@ -544,7 +544,6 @@ BOOLEAN vmcs_hw_allocate_vmxon_regions(UINT16 max_host_cpus)
     UINT16  cpu_idx = 0;
 
     VMM_ASSERT( max_host_cpus );
-    
     for(cpu_idx = 0; cpu_idx < max_host_cpus; cpu_idx ++ ) {
         vmxon_region_hva = vmcs_hw_allocate_region(&vmxon_region_hpa);
         host_cpu_set_vmxon_region(vmxon_region_hva, vmxon_region_hpa, cpu_idx);

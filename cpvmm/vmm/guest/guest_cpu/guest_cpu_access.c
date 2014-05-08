@@ -617,7 +617,8 @@ void gcpu_set_vmenter_control_layered(const GUEST_CPU_HANDLE gcpu, VMCS_LEVEL le
                        (UINT64) entry_ctrl_mask.Uint32);
 }
 
-static BOOLEAN gcpu_get_msr_value_from_list(IN UINT32 msr_index, IN IA32_VMX_MSR_ENTRY* list,
+static BOOLEAN gcpu_get_msr_value_from_list(IN UINT32 msr_index, 
+                IN IA32_VMX_MSR_ENTRY* list,
                 IN UINT32 count, OUT UINT64* value) {
     if (msr_index == IA32_INVALID_MSR_INDEX) {
         return FALSE;

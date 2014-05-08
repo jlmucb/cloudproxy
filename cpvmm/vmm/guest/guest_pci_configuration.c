@@ -90,34 +90,25 @@ BOOLEAN gpci_initialize(void)
     vmm_zeromem(guest_pci_devices, sizeof(guest_pci_devices));
     list_init(guest_pci_devices);
     device_to_guest = hash64_create_default_hash(256);
-
     for( guest = guest_first( &guest_ctx ); guest; guest = guest_next( &guest_ctx )) {
         gpci_guest_initialize(guest_get_id(guest));
     }
-
     return TRUE;
 }
 
 BOOLEAN gpci_guest_initialize(GUEST_ID guest_id)
 {
     GUEST_PCI_DEVICES *gpci = NULL;
-    // UINT32 port;
 
     gpci = (GUEST_PCI_DEVICES *)vmm_memory_alloc(sizeof(GUEST_PCI_DEVICES));
     VMM_ASSERT(gpci);
-
     if(gpci == NULL) {
         return FALSE;
     }
-
     gpci->guest_id = guest_id;
-
     list_add(guest_pci_devices, gpci->guests);
-
     gpci->gcpu_pci_access_address = (PCI_CONFIG_ADDRESS *) vmm_malloc(guest_gcpu_count(guest_handle(guest_id)) * sizeof(PCI_CONFIG_ADDRESS));
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(gpci->gcpu_pci_access_address);
-
     apply_default_device_assignment(guest_id);
     return TRUE;
 }
@@ -152,59 +143,42 @@ static void apply_default_device_assignment(GUEST_ID guest_id)
 
 }
 
-BOOLEAN gpci_register_device(GUEST_ID guest_id,
-                             GUEST_DEVICE_VIRTUALIZATION_TYPE type,
-                             HOST_PCI_DEVICE                  *host_pci_device,
-                             UINT8*                           config_space,
-                             GUEST_PCI_READ_HANDLER           pci_read,
-                             GUEST_PCI_WRITE_HANDLER          pci_write)
+BOOLEAN gpci_register_device(GUEST_ID guest_id, GUEST_DEVICE_VIRTUALIZATION_TYPE type,
+                             HOST_PCI_DEVICE *host_pci_device, UINT8* config_space,
+                             GUEST_PCI_READ_HANDLER pci_read, GUEST_PCI_WRITE_HANDLER pci_write)
 {
     GUEST_PCI_DEVICE *guest_pci_device = NULL;
     GUEST_PCI_DEVICES *gpci = find_guest_devices(guest_id);
     PCI_DEV_INDEX dev_index = 0;
 
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(NULL != gpci);
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(NULL != host_pci_device);
-
     dev_index = gpci->device_lookup_table[host_pci_device->address];
-
     if(dev_index != 0) { // already registered
         VMM_LOG(mask_anonymous, level_trace,"Warning: guest pci duplicate registration: guest #%d device(%d, %d, %d)\r\n",
             guest_id, GET_PCI_BUS(host_pci_device->address), GET_PCI_DEVICE(host_pci_device->address), GET_PCI_FUNCTION(host_pci_device->address));
         return FALSE;
     }
-
     dev_index = (PCI_DEV_INDEX) gpci->num_devices++;
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(dev_index < PCI_MAX_NUM_SUPPORTED_DEVICES + 1);
     gpci->device_lookup_table[host_pci_device->address] = dev_index;
     guest_pci_device = &gpci->devices[dev_index];
     vmm_zeromem(guest_pci_device, sizeof(GUEST_PCI_DEVICE));
-
     guest_pci_device->guest_id = guest_id;
     guest_pci_device->host_device = host_pci_device;
     guest_pci_device->config_space = config_space;
     guest_pci_device->pci_read = pci_read;
     guest_pci_device->pci_write = pci_write;
     guest_pci_device->type = type;
-
-    switch(type)
-    {
-    case GUEST_DEVICE_VIRTUALIZATION_DIRECT_ASSIGNMENT:
+    switch(type) {
+      case GUEST_DEVICE_VIRTUALIZATION_DIRECT_ASSIGNMENT:
         hash64_insert(device_to_guest, (UINT64) host_pci_device->address, guest_id);
-        break;
 
-    case GUEST_DEVICE_VIRTUALIZATION_HIDDEN:
+      case GUEST_DEVICE_VIRTUALIZATION_HIDDEN:
         break;
-
-    default:
-        // BEFORE_VMLAUNCH. This case should not happen.
-        VMM_ASSERT(0);
+      default:
         break;
     }
-
     return TRUE;
 }
 
@@ -276,41 +250,25 @@ GUEST_ID gpci_get_device_guest_id(UINT16 bus, UINT16 device, UINT16 function)
     return (GUEST_ID) owner_guest_id;
 }
 
-static
-void pci_read_hide (GUEST_CPU_HANDLE  gcpu UNUSED,
-                    GUEST_PCI_DEVICE *pci_device UNUSED,
-                    UINT32 port_id UNUSED,
-                    UINT32 port_size,
-                    void   *value)
+static void pci_read_hide (GUEST_CPU_HANDLE  gcpu UNUSED, GUEST_PCI_DEVICE *pci_device UNUSED,
+                    UINT32 port_id UNUSED, UINT32 port_size, void *value)
 {
     vmm_memset(value, 0xff, port_size);
 }
 
-static
-void pci_write_hide (GUEST_CPU_HANDLE  gcpu UNUSED,
-                     GUEST_PCI_DEVICE *pci_device UNUSED,
-                     UINT32 port_id UNUSED,
-                     UINT32 port_size UNUSED,
-                     void   *value UNUSED)
+static void pci_write_hide (GUEST_CPU_HANDLE  gcpu UNUSED, GUEST_PCI_DEVICE *pci_device UNUSED,
+                     UINT32 port_id UNUSED, UINT32 port_size UNUSED, void *value UNUSED)
 {
 }
 
-static
-void pci_read_passthrough (GUEST_CPU_HANDLE  gcpu,
-                           GUEST_PCI_DEVICE *pci_device UNUSED,
-                           UINT32 port_id,
-                           UINT32 port_size,
-                           void   *value)
+static void pci_read_passthrough (GUEST_CPU_HANDLE  gcpu, GUEST_PCI_DEVICE *pci_device UNUSED,
+                           UINT32 port_id, UINT32 port_size, void   *value)
 {
     io_transparent_read_handler(gcpu, (IO_PORT_ID) port_id, port_size, value);
 }
 
-static
-void pci_write_passthrough (GUEST_CPU_HANDLE  gcpu,
-                            GUEST_PCI_DEVICE *pci_device UNUSED,
-                            UINT32 port_id,
-                            UINT32 port_size,
-                            void   *value)
+static void pci_write_passthrough (GUEST_CPU_HANDLE  gcpu, GUEST_PCI_DEVICE *pci_device UNUSED,
+                            UINT32 port_id, UINT32 port_size, void   *value)
 {
     io_transparent_write_handler(gcpu, (IO_PORT_ID) port_id, port_size, &value);
 }
@@ -424,16 +382,17 @@ static void io_pci_data_handler(GUEST_CPU_HANDLE  gcpu,
                       UINT16 port_id, unsigned  port_size, // 1, 2, 4
                       RW_ACCESS access, void  *p_value)
 {
-    VMM_LOG(mask_anonymous, level_trace,"io_pci_data_handler cpu#%d: port %p size %p rw %p\n", hw_cpu_id(), port_id, port_size, access);
-
+    VMM_LOG(mask_anonymous, level_trace,
+            "io_pci_data_handler cpu#%d: port %p size %p rw %p\n", 
+             hw_cpu_id(), port_id, port_size, access);
     switch (access) {
-    case WRITE_ACCESS:
+      case WRITE_ACCESS:
         io_write_pci_data(gcpu, port_id, port_size, p_value);
         break;
-    case READ_ACCESS:
+      case READ_ACCESS:
         io_read_pci_data(gcpu, port_id, port_size, p_value);
         break;
-    default:
+      default:
         VMM_LOG(mask_anonymous, level_trace,"Invalid IO access(%d)\n", access);
         VMM_DEADLOOP();
         break;

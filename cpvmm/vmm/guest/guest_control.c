@@ -120,7 +120,8 @@ void guest_control_setup( GUEST_HANDLE guest, const VMEXIT_CONTROL* request )
     }
     else {
         // not supported mode
-        VMM_LOG(mask_anonymous, level_trace,"Unsupported global vmm_state=%d in guest_request_vmexit_on()\n", vmm_state);
+        VMM_LOG(mask_anonymous, level_trace,
+                "Unsupported global vmm_state=%d in guest_request_vmexit_on()\n", vmm_state);
         VMM_DEADLOOP();
     }
 }

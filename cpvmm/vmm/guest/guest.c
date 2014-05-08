@@ -505,8 +505,7 @@ void    guest_begin_physical_memory_modifications( GUEST_HANDLE guest )
 #pragma warning( push )
 #pragma warning (disable : 4100) // disable non-referenced formal parameters
 
-static
-void guest_notify_gcpu_about_gpm_change( CPU_ID from UNUSED, void* arg )
+static void guest_notify_gcpu_about_gpm_change( CPU_ID from UNUSED, void* arg )
 {
     CPU_ID guest_id = (CPU_ID)(size_t)arg;
     GUEST_CPU_HANDLE gcpu;

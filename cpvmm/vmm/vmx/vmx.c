@@ -54,7 +54,7 @@ void vmx_off() {
 
 
 int vmx_vmclear(UINT64* ptr_to_vmcs_region) {
-    int ret= 0;
+    int      ret= 0;
     UINT64   address= *ptr_to_vmcs_region;
 #ifdef JLMDEBUG
     bprint("vmclear %p\n", ptr_to_vmcs_region);
@@ -121,7 +121,7 @@ int vmx_vmresume() {
 
 
 int vmx_vmptrld(UINT64 *ptr_to_vmcs_region) {
-    int ret= 0;
+    int      ret= 0;
     UINT64   address= *ptr_to_vmcs_region;
 #ifdef JLMDEBUG
     bprint("vmptrld, waiting 0x%016lx\n", address);

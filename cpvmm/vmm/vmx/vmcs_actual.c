@@ -132,14 +132,14 @@ static void vmcs_act_write_to_hardware(VMCS_ACTUAL_OBJECT *p_vmcs,
 
 static UINT64  temp_replace_vmcs_ptr(UINT64 new_ptr);
 static void    restore_previous_vmcs_ptr(UINT64 ptr_to_restore);
-static void    error_processing(UINT64 vmcs, HW_VMX_RET_VALUE ret_val,
+static void    error_processing(UINT64 vmcs, int ret_val,
                               const char* operation, VMCS_FIELD  field);
 static BOOLEAN nmi_window[VMM_MAX_CPU_SUPPORTED]; // stores NMI Windows which should be injected per CPU
 
 
 // JLM:added
-extern HW_VMX_RET_VALUE hw_vmx_read_current_vmcs(UINT64 field_id, UINT64 *value );
-extern HW_VMX_RET_VALUE hw_vmx_flush_current_vmcs(UINT64 *address);
+extern int hw_vmx_read_current_vmcs(UINT64 field_id, UINT64 *value );
+extern int hw_vmx_flush_current_vmcs(UINT64 *address);
 
 /*----------------------------------------------------------------------------*
 **                              NMI Handling
@@ -342,13 +342,14 @@ UINT64 vmcs_act_read(const struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id)
 UINT64 vmcs_act_read_from_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_id)
 {
     UINT64           value;
-    HW_VMX_RET_VALUE ret_val;
+    int              ret_val;
     UINT64           previous_vmcs = 0; // 0 - not replaced
     UINT32           encoding;
 
     VMM_DEBUG_CODE(
         if ((p_vmcs->owning_host_cpu != CPU_NEVER_USED) && (p_vmcs->owning_host_cpu != hw_cpu_id())) {
-            VMM_LOG(mask_anonymous, level_trace,"Trying to access VMCS, used on another CPU\n");
+            VMM_LOG(mask_anonymous, level_trace,
+                    "Trying to access VMCS, used on another CPU\n");
             VMM_DEADLOOP();
         }
     )
@@ -381,14 +382,13 @@ UINT64 vmcs_act_read_from_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_
 
 void vmcs_act_write_to_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_id, UINT64 value)
 {
-    HW_VMX_RET_VALUE ret_val;
+    int ret_val;
     UINT32           encoding;
     RW_ACCESS        access_type;
 
     VMM_DEBUG_CODE(
         if ((p_vmcs->owning_host_cpu != CPU_NEVER_USED) &&
-            (p_vmcs->owning_host_cpu != hw_cpu_id()))
-        {
+            (p_vmcs->owning_host_cpu != hw_cpu_id())) {
             VMM_LOG(mask_anonymous, level_trace,"Trying to access VMCS, used on another CPU\n");
             VMM_DEADLOOP();
         }
@@ -481,7 +481,7 @@ void vmcs_act_flush_nmi_depended_field_to_cpu(VMCS_ACTUAL_OBJECT *p_vmcs, UINT64
 void vmcs_act_flush_to_memory(struct _VMCS_OBJECT *vmcs)
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) vmcs;
-    HW_VMX_RET_VALUE ret_val;
+    int ret_val;
     UINT64           previous_vmcs;
 
     VMM_ASSERT(p_vmcs);
@@ -503,7 +503,8 @@ void vmcs_act_flush_to_memory(struct _VMCS_OBJECT *vmcs)
     ret_val = hw_vmx_flush_current_vmcs(&p_vmcs->hpa);
 
     if (ret_val != HW_VMX_SUCCESS) {
-        error_processing(p_vmcs->hpa, ret_val, "hw_vmx_flush_current_vmcs", VMCS_FIELD_COUNT);
+        error_processing(p_vmcs->hpa, ret_val, 
+        "hw_vmx_flush_current_vmcs", VMCS_FIELD_COUNT);
     }
     vmcs_deactivate(vmcs);
 
@@ -532,7 +533,7 @@ void vmcs_act_destroy(struct _VMCS_OBJECT *vmcs)
 // Handle temporary VMCS PTR replacements
 UINT64 temp_replace_vmcs_ptr( UINT64 new_ptr ) // return previous ptr
 {
-    HW_VMX_RET_VALUE ret_val;
+    int ret_val;
     UINT64           previous_vmcs;
 
     vmx_vmptrst(&previous_vmcs);
@@ -546,7 +547,7 @@ UINT64 temp_replace_vmcs_ptr( UINT64 new_ptr ) // return previous ptr
 
 void restore_previous_vmcs_ptr( UINT64 ptr_to_restore )
 {
-    HW_VMX_RET_VALUE ret_val;
+    int ret_val;
     UINT64           temp_vmcs_ptr;
 
     // restore previous VMCS pointer
@@ -589,7 +590,7 @@ void vmcs_activate(VMCS_OBJECT* obj)
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
     CPU_ID                      this_cpu = hw_cpu_id();
-    HW_VMX_RET_VALUE            ret_val;
+    int            ret_val;
 
 #ifdef JLMDEBUG
     bprint("vmcs_activate\n");
@@ -675,12 +676,12 @@ VMCS_INSTRUCTION_ERROR vmcs_last_instruction_error_code(const VMCS_OBJECT* obj,
 
 #pragma warning( push )
 #pragma warning( disable : 4100 )
-void error_processing(UINT64 vmcs, HW_VMX_RET_VALUE ret_val,
+void error_processing(UINT64 vmcs, int ret_val,
                       const char* operation, VMCS_FIELD  field)
 {
     const char* error_message = 0;
     UINT64      err = 0;
-    HW_VMX_RET_VALUE my_err;
+    int my_err;
 
     switch (ret_val) {
         case HW_VMX_SUCCESS:
@@ -721,7 +722,6 @@ void error_processing(UINT64 vmcs, HW_VMX_RET_VALUE ret_val,
                  error_message ? error_message : "unknown error");
 #endif
     }
-
 
 #ifdef JLMDEBUG
     LOOP_FOREVER

@@ -66,12 +66,14 @@ static VMEXIT_HANDLING_STATUS vmexit_cpuid_instruction(GUEST_CPU_HANDLE gcpu)
     cpuid_params.m_rbx = gcpu_get_native_gp_reg(gcpu, IA32_REG_RBX);
     cpuid_params.m_rcx = gcpu_get_native_gp_reg(gcpu, IA32_REG_RCX);
     cpuid_params.m_rdx = gcpu_get_native_gp_reg(gcpu, IA32_REG_RDX);
-
     req_id = (UINT32)cpuid_params.m_rax;
 
+#ifdef JLMDEBUG
+    bprint("vmexit_cpuid_instruction\n");
+    LOOP_FOREVER
+#endif
     // get the real h/w values
     hw_cpuid(&cpuid_params);
-
     // pass to filters for virtualization
     LIST_FOR_EACH(filter_desc_list, list_iterator) {
         p_filter_desc = LIST_ENTRY(list_iterator, CPUID_FILTER_DESCRIPTOR, list);
@@ -79,16 +81,13 @@ static VMEXIT_HANDLING_STATUS vmexit_cpuid_instruction(GUEST_CPU_HANDLE gcpu)
             p_filter_desc->handler(gcpu, &cpuid_params);
         }
     }
-
     // write back to guest OS
     gcpu_set_native_gp_reg(gcpu, IA32_REG_RAX, cpuid_params.m_rax);
     gcpu_set_native_gp_reg(gcpu, IA32_REG_RBX, cpuid_params.m_rbx);
     gcpu_set_native_gp_reg(gcpu, IA32_REG_RCX, cpuid_params.m_rcx);
     gcpu_set_native_gp_reg(gcpu, IA32_REG_RDX, cpuid_params.m_rdx);
-
     // increment IP to skip executed CPUID instruction
     gcpu_skip_guest_instruction(gcpu);
-
     return VMEXIT_HANDLED;
 }
 

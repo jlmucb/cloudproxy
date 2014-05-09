@@ -210,9 +210,9 @@ void vmexit_guest_initialize(GUEST_ID guest_id)
     GUEST_VMEXIT_CONTROL *guest_vmexit_control = NULL;
     UINT32 i;
 
-    VMM_LOG(mask_uvmm, level_trace,"vmexit_guest_initialize start guest_id=#%d\r\n", guest_id);
+    VMM_LOG(mask_uvmm, level_trace,
+            "vmexit_guest_initialize start guest_id=#%d\r\n", guest_id);
     guest_vmexit_control = (GUEST_VMEXIT_CONTROL *) vmm_malloc(sizeof(GUEST_VMEXIT_CONTROL));
-    // BEFORE_VMLAUNCH
     VMM_ASSERT(guest_vmexit_control);
 
     guest_vmexit_control->guest_id = guest_id;
@@ -281,10 +281,8 @@ void vmexit_guest_initialize(GUEST_ID guest_id)
 
     // install NMI and Exceptions VMEXITs
     vmexit_nmi_exception_handlers_install(guest_id);
-
     // init CPUID instruction vmexit handlers
     vmexit_cpuid_guest_intialize(guest_id);
-
     // install VMCALL services
     vmcall_guest_intialize(guest_id);
     VMM_LOG(mask_uvmm, level_trace,"vmexit_guest_initialize end guest_id=#%d\n", 
@@ -335,23 +333,22 @@ static void vmexit_bottom_up_all_vmms_skip_instruction(GUEST_CPU_HANDLE gcpu,
 }
 
 void vmexit_bottom_up_common_handler(GUEST_CPU_HANDLE gcpu, UINT32 reason) {
-    GUEST_HANDLE    guest = gcpu_guest_handle(gcpu);
-    GUEST_ID        guest_id = guest_get_id(guest);
-    GUEST_VMEXIT_CONTROL *guest_vmexit_control = NULL;
-    VMEXIT_HANDLING_STATUS vmexit_handling_status = VMEXIT_NOT_HANDLED;
-    VMCS_HIERARCHY* vmcs_hierarchy = gcpu_get_vmcs_hierarchy(gcpu);
-    VMCS_OBJECT* level0_vmcs = vmcs_hierarchy_get_vmcs(vmcs_hierarchy, VMCS_LEVEL_0);
-    VMCS_OBJECT* merged_vmcs = vmcs_hierarchy_get_vmcs(vmcs_hierarchy, VMCS_MERGED);
-    GUEST_LEVEL_ENUM guest_level = gcpu_get_guest_level(gcpu);
+    GUEST_HANDLE            guest = gcpu_guest_handle(gcpu);
+    GUEST_ID                guest_id = guest_get_id(guest);
+    GUEST_VMEXIT_CONTROL*   guest_vmexit_control = NULL;
+    VMEXIT_HANDLING_STATUS  vmexit_handling_status = VMEXIT_NOT_HANDLED;
+    VMCS_HIERARCHY*         vmcs_hierarchy = gcpu_get_vmcs_hierarchy(gcpu);
+    VMCS_OBJECT*            level0_vmcs = 
+                               vmcs_hierarchy_get_vmcs(vmcs_hierarchy, VMCS_LEVEL_0);
+    VMCS_OBJECT*            merged_vmcs = 
+                               vmcs_hierarchy_get_vmcs(vmcs_hierarchy, VMCS_MERGED);
+    GUEST_LEVEL_ENUM        guest_level = gcpu_get_guest_level(gcpu);
 
     guest_vmexit_control = vmexit_find_guest_vmexit_control(guest_id);
     VMM_ASSERT(guest_vmexit_control);
-
     VMM_ASSERT(reason < Ia32VmxExitBasicReasonCount);
-
     VMM_ASSERT(level0_vmcs != NULL);
     hw_interlocked_increment((INT32*)&(guest_vmexit_control->vmexit_counter[reason]));
-
     if ((guest_level == GUEST_LEVEL_1_SIMPLE) ||    // non -layered vmexit
         (guest_level == GUEST_LEVEL_1_VMM)    ||    // or vmexit from level 1
 #ifdef ENABLE_EMULATOR
@@ -359,7 +356,6 @@ void vmexit_bottom_up_common_handler(GUEST_CPU_HANDLE gcpu, UINT32 reason) {
 #endif
         (vmexit_analysis_was_control_requested(gcpu, merged_vmcs, level0_vmcs, (IA32_VMX_EXIT_BASIC_REASON)reason))) {
         IA32_VMX_EXIT_REASON exit_reason;
-
 #ifdef DEBUG
         // Check that in GUEST_LEVEL_1_SIMPLE and GUEST_LEVEL_1_VMM modes
         // the vmexit was requested in the level-0 controls
@@ -367,31 +363,26 @@ void vmexit_bottom_up_common_handler(GUEST_CPU_HANDLE gcpu, UINT32 reason) {
             VMM_ASSERT(vmexit_analysis_was_control_requested(gcpu, merged_vmcs, level0_vmcs, reason));
         }
 #endif
-
         vmexit_handling_status = guest_vmexit_control->vmexit_handlers[reason](gcpu);
-
         // reason can be changed after the attempt to handle
         exit_reason.Uint32 = (UINT32)vmcs_read(merged_vmcs, VMCS_EXIT_INFO_REASON);
         reason = exit_reason.Bits.BasicReason;
     }
 
-    if ((vmexit_handling_status != VMEXIT_HANDLED) &&
-        (guest_level == GUEST_LEVEL_2)) {
+    if ((vmexit_handling_status!=VMEXIT_HANDLED) && (guest_level==GUEST_LEVEL_2)) {
         VMCS_OBJECT* level1_vmcs = vmcs_hierarchy_get_vmcs(vmcs_hierarchy, VMCS_LEVEL_1);
-
         VMM_ASSERT(level1_vmcs != NULL);
-
-        // Check if layer2 can accept the event, if not inject event to (level-2) guest
+        // Check if layer2 can accept event, if not inject it into (level-2) guest
         if (vmexit_analysis_was_control_requested(gcpu, merged_vmcs, level1_vmcs, (IA32_VMX_EXIT_BASIC_REASON)reason)) {
             gcpu_set_next_guest_level(gcpu, GUEST_LEVEL_1_VMM);
             vmexit_handling_status = VMEXIT_HANDLED;
         }
     }
-
     if (vmexit_handling_status != VMEXIT_HANDLED) {
         // Currently it can happen only for exception
         if (reason != Ia32VmxExitBasicReasonSoftwareInterruptExceptionNmi) {
-            VMM_LOG(mask_uvmm, level_trace,"%s: reason = %d\n", __FUNCTION__, reason);
+            VMM_LOG(mask_uvmm, level_trace,"%s: reason = %d\n", 
+                    __FUNCTION__, reason);
         }
         VMM_ASSERT(reason == Ia32VmxExitBasicReasonSoftwareInterruptExceptionNmi);
         gcpu_vmexit_exception_reflect(gcpu);
@@ -405,12 +396,13 @@ void vmexit_bottom_up_common_handler(GUEST_CPU_HANDLE gcpu, UINT32 reason) {
 }
 
 void vmexit_top_down_common_handler(GUEST_CPU_HANDLE gcpu, UINT32 reason) {
-    GUEST_HANDLE    guest = gcpu_guest_handle(gcpu);
-    GUEST_ID        guest_id = guest_get_id(guest);
-    GUEST_VMEXIT_CONTROL *guest_vmexit_control = NULL;
-    VMEXIT_HANDLING_STATUS vmexit_handling_status = VMEXIT_NOT_HANDLED;
-    VMCS_HIERARCHY* vmcs_hierarchy = gcpu_get_vmcs_hierarchy(gcpu);
-    VMCS_OBJECT* merged_vmcs = vmcs_hierarchy_get_vmcs(vmcs_hierarchy, VMCS_MERGED);
+    GUEST_HANDLE            guest = gcpu_guest_handle(gcpu);
+    GUEST_ID                guest_id = guest_get_id(guest);
+    GUEST_VMEXIT_CONTROL *  guest_vmexit_control = NULL;
+    VMEXIT_HANDLING_STATUS  vmexit_handling_status = VMEXIT_NOT_HANDLED;
+    VMCS_HIERARCHY*         vmcs_hierarchy = gcpu_get_vmcs_hierarchy(gcpu);
+    VMCS_OBJECT*            merged_vmcs = vmcs_hierarchy_get_vmcs(vmcs_hierarchy, 
+                                                        VMCS_MERGED);
     GUEST_LEVEL_ENUM guest_level = gcpu_get_guest_level(gcpu);
 
     guest_vmexit_control = vmexit_find_guest_vmexit_control(guest_id);
@@ -457,7 +449,8 @@ void vmexit_handler_invoke( GUEST_CPU_HANDLE gcpu, UINT32 reason)
         vmexit_classification_func[reason](gcpu, reason);
     }
     else {
-        VMM_LOG(mask_uvmm, level_trace,"Warning: Unknown VMEXIT reason(%d)\n", reason);
+        VMM_LOG(mask_uvmm, level_trace,"Warning: Unknown VMEXIT reason(%d)\n", 
+                reason);
         vmexit_handler_default(gcpu);
     }
 }
@@ -486,37 +479,14 @@ void vmentry_failure_function(ADDRESS flags)
             " FLAGS=0x%X (ZF=%d CF=%d) ErrorCode=0x%X Desc=%s\n",
             flags, rflags.Bits.ZF, rflags.Bits.CF, code, err);
 #ifdef JLMDEBUG
-    bprint("vmentry_failure_function FLAGS=0x%x (ZF=%d CF=%d) ErrorCode=0x%x\nDesc=%s\n",
-            flags, rflags.Bits.ZF, rflags.Bits.CF, code, err);
+    bprint(
+       "vmentry_failure_function FLAGS=0x%x (ZF=%d CF=%d) ErrorCode=0x%x\nDesc=%s\n",
+       flags, rflags.Bits.ZF, rflags.Bits.CF, code, err);
     LOOP_FOREVER
 #endif
-#if 0
-    UINT64 out= -1;
-    extern int vmx_vmread(UINT64, UINT64*);
-    if(vmx_vmread(0x4012, &out)==0) {
-        bprint("vmentry_failure_function read succeeded 0x%016lx\n", out);
-    }
-    else {
-        bprint("vmentry_failure_function read failed\n");
-    }
-    out= -1;
-    vmx_vmread(0x4402, &out);
-    bprint("vmentry_failure_function exit reason: 0x%016lx\n", out);
-    out= -1;
-    vmx_vmread(0x4406, &out);
-    bprint("vmentry_failure_function error code: 0x%016lx\n", out);
-    out= -1;
-    vmx_vmread(0x4018, &out);
-    bprint("vmentry_failure_function entry error code: 0x%016lx\n", out);
-    out= -1;
-    vmx_vmread(0x4400, &out);
-    bprint("vmentry_failure_function vmcs instruction error: 0x%016lx\n", out);
-#endif // 0
-
 #ifdef CLI_INCLUDE
     vmcs_print_all(vmcs);
 #endif
-
 #ifdef DEBUG
     VMM_DEADLOOP();
 #else
@@ -531,14 +501,13 @@ void vmentry_failure_function(ADDRESS flags)
     interruptibility.Uint32 = gcpu_get_interruptibility_state(gcpu);
     interruptibility.Bits.BlockNextInstruction = 0;
     gcpu_set_interruptibility_state(gcpu, interruptibility.Uint32);
-
     gcpu_inject_gp0(gcpu);
     gcpu_resume(gcpu);
 #endif
 }
 
-extern void /* __attribute((_stdcall)) */ vmm_write_xcr(UINT64,UINT64,UINT64);
-extern void /* __attribute((_stdcall)) */ vmm_read_xcr(UINT32*,UINT32*,UINT32);
+extern void vmm_write_xcr(UINT64,UINT64,UINT64);
+extern void vmm_read_xcr(UINT32*,UINT32*,UINT32);
 // FUNCTION : vmexit_xsetbv()
 // PURPOSE  : Handler for xsetbv instruction
 // ARGUMENTS: gcpu
@@ -642,29 +611,26 @@ VMEXIT_HANDLING_STATUS vmexit_invalid_vmfunc(GUEST_CPU_HANDLE gcpu)
 // ARGUMENTS: IN VMEXIT_EXECUTION_CONTEXT *vmexit - contains guest handles
 VMEXIT_HANDLING_STATUS vmexit_handler_default(GUEST_CPU_HANDLE gcpu)
 {
-    VMCS_OBJECT          *vmcs = gcpu_get_vmcs(gcpu);
-    IA32_VMX_EXIT_REASON  reason;
+    VMCS_OBJECT*            vmcs = gcpu_get_vmcs(gcpu);
+    IA32_VMX_EXIT_REASON    reason;
 #if defined DEBUG || defined ENABLE_RELEASE_VMM_LOG
     const VIRTUAL_CPU_ID *vcpuid = guest_vcpu(gcpu);
 #else
     EM64T_RFLAGS rflags;
     IA32_VMX_VMCS_GUEST_INTERRUPTIBILITY    interruptibility;
 #endif
-
     reason.Uint32 = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_REASON);
 #if defined DEBUG || defined ENABLE_RELEASE_VMM_LOG
     VMM_ASSERT(vcpuid);
     VMM_LOG(mask_uvmm, level_error,"NOT supported VMEXIT(%d) occurred on CPU(%d) Guest(%d) GuestCPU(%d)\n",
-                reason.Bits.BasicReason, hw_cpu_id(), vcpuid->guest_id, vcpuid->guest_cpu_id );
+       reason.Bits.BasicReason, hw_cpu_id(), vcpuid->guest_id, vcpuid->guest_cpu_id);
 #endif
-
     VMM_DEBUG_CODE(
-        if( reason.Bits.BasicReason == Ia32VmxExitBasicReasonFailedVmEnterGuestState || 
-            reason.Bits.BasicReason == Ia32VmxExitBasicReasonFailedVmEnterMsrLoading ) {
+        if(reason.Bits.BasicReason==Ia32VmxExitBasicReasonFailedVmEnterGuestState|| 
+           reason.Bits.BasicReason==Ia32VmxExitBasicReasonFailedVmEnterMsrLoading) {
             vmenter_failure_check_guest_state();
         }
     )
-    
 #ifdef JLMDEBUG
         bprint("Looping forever in vmexit_handler_default\n");
         LOOP_FOREVER
@@ -695,24 +661,21 @@ VMEXIT_HANDLING_STATUS vmexit_handler_default(GUEST_CPU_HANDLE gcpu)
     return VMEXIT_NOT_HANDLED;
 }
 
+
 // FUNCTION : vmexit_install_handler
 // PURPOSE  : Install specific VMEXIT handler
 // ARGUMENTS: GUEST_ID        guest_id
 //          : VMEXIT_HANDLER  handler
 //          : UINT32          reason
 // RETURNS  : VMM_STATUS
-VMM_STATUS vmexit_install_handler(
-    GUEST_ID        guest_id,
-    VMEXIT_HANDLER  handler,
-    UINT32          reason)
+VMM_STATUS vmexit_install_handler(GUEST_ID guest_id, VMEXIT_HANDLER  handler,
+                                  UINT32  reason)
 {
     VMM_STATUS status = VMM_OK;
     GUEST_VMEXIT_CONTROL *guest_vmexit_control = NULL;
 
     guest_vmexit_control = vmexit_find_guest_vmexit_control(guest_id);
-    // BEFORE_VMLAUNCH
     VMM_ASSERT(guest_vmexit_control);
-
     if (reason < Ia32VmxExitBasicReasonCount) {
         guest_vmexit_control->vmexit_handlers[reason] = handler;
     }
@@ -730,10 +693,6 @@ VMM_STATUS vmexit_install_handler(
 UINT64 gcpu_read_guestrip(void);
 
 
-#ifdef JLMDEBUG
-int count= 0;
-#endif 
-
 // FUNCTION : vmexit_common_handler()
 // PURPOSE  : Called by vmexit_func() upon each VMEXIT
 void vmexit_common_handler(void)
@@ -745,14 +704,17 @@ void vmexit_common_handler(void)
     REPORT_INITIAL_VMEXIT_CHECK_DATA initial_vmexit_check_data;
 
 #ifdef JLMDEBUG
-    bprint("vmexit_common_handler %d\n", count);
+    bprint("vmexit_common_handler\n");
     bprint("guest rip: 0x%016llx, exit reason: 0x%016lx\n", 
             gcpu_read_guestrip(), vmexit_reason());
-    if(count>0)
-        LOOP_FOREVER
 #endif 
     gcpu= scheduler_current_gcpu();
-    VMM_ASSERT(gcpu);
+    if(gcpu==0) {
+#ifdef JLMDEBUG
+        bprint("vm_common_exit assert 1\n");
+        LOOP_FOREVER
+#endif
+    }
     // Disable the VMCS Software Shadow/Cache
     // This is required since GCPU and VMCS cache has not yet been 
     // flushed and might have stale values from previous VMExit
@@ -787,7 +749,7 @@ void vmexit_common_handler(void)
         fvs_vmexit_handler(gcpu);
     }
 #endif
-    VMM_ASSERT(hw_cpu_id() < VMM_MAX_CPU_SUPPORTED);
+    // TEST5 VMM_ASSERT(hw_cpu_id() < VMM_MAX_CPU_SUPPORTED);
     // OPTIMIZATION: For EPT violation, do not enable the software VMCS cache
     if ((vmexit_check_ept_violation() & 7) == 0)
         vmcs_sw_shadow_disable[hw_cpu_id()] = FALSE;
@@ -827,6 +789,9 @@ void vmexit_common_handler(void)
     VMM_ASSERT(next_gcpu);
     // finally process NMI injection
     NMI_DO_PROCESSING();
+#ifdef JLMDEBUG
+    bprint("vmexit_common_handler about to resume\n");
+#endif
     gcpu_resume(next_gcpu);
 }
 

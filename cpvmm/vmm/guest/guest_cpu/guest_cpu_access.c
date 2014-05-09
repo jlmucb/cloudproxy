@@ -959,12 +959,14 @@ void gcpu_set_msr_reg_by_index_layered(GUEST_CPU_HANDLE gcpu, UINT32  msr_index,
 
 void gcpu_skip_guest_instruction( GUEST_CPU_HANDLE gcpu )
 {
-    VMCS_OBJECT *vmcs = vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, VMCS_MERGED );
-    UINT64 inst_length = vmcs_read(vmcs, VMCS_EXIT_INFO_INSTRUCTION_LENGTH);
-    UINT64 rip         = vmcs_read(vmcs, VMCS_GUEST_RIP);
+    VMCS_OBJECT *vmcs= vmcs_hierarchy_get_vmcs( &gcpu->vmcs_hierarchy, VMCS_MERGED );
+    UINT64 inst_length= vmcs_read(vmcs, VMCS_EXIT_INFO_INSTRUCTION_LENGTH);
+    UINT64 rip= vmcs_read(vmcs, VMCS_GUEST_RIP);
 
     vmcs_write(vmcs, VMCS_GUEST_RIP, rip + inst_length);
-    report_uvmm_event(UVMM_EVENT_SINGLE_STEPPING_CHECK, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), NULL);
+    report_uvmm_event(UVMM_EVENT_SINGLE_STEPPING_CHECK, 
+                      (VMM_IDENTIFICATION_DATA)gcpu, 
+                      (const GUEST_VCPU*)guest_vcpu(gcpu), NULL);
 }
 
 GUEST_LEVEL_ENUM gcpu_get_guest_level(GUEST_CPU_HANDLE gcpu)

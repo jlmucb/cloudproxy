@@ -30,8 +30,6 @@
 #define CPUID_EBX 1
 #define CPUID_ECX 2
 #define CPUID_EDX 3
-
-
 #define DESCRIPTOR_L_BIT 0x2000
 
 typedef struct _CPUID_FILTER_DESCRIPTOR {
@@ -58,7 +56,7 @@ static VMEXIT_HANDLING_STATUS vmexit_cpuid_instruction(GUEST_CPU_HANDLE gcpu)
 {
     CPUID_PARAMS    cpuid_params;
     UINT32          req_id;
-    LIST_ELEMENT    *filter_desc_list = guest_get_cpuid_list(gcpu_guest_handle(gcpu));
+    LIST_ELEMENT    *filter_desc_list= guest_get_cpuid_list(gcpu_guest_handle(gcpu));
     LIST_ELEMENT    *list_iterator;
     CPUID_FILTER_DESCRIPTOR *p_filter_desc;
 
@@ -67,11 +65,6 @@ static VMEXIT_HANDLING_STATUS vmexit_cpuid_instruction(GUEST_CPU_HANDLE gcpu)
     cpuid_params.m_rcx = gcpu_get_native_gp_reg(gcpu, IA32_REG_RCX);
     cpuid_params.m_rdx = gcpu_get_native_gp_reg(gcpu, IA32_REG_RDX);
     req_id = (UINT32)cpuid_params.m_rax;
-
-#ifdef JLMDEBUG
-    bprint("vmexit_cpuid_instruction\n");
-    LOOP_FOREVER
-#endif
     // get the real h/w values
     hw_cpuid(&cpuid_params);
     // pass to filters for virtualization
@@ -86,6 +79,12 @@ static VMEXIT_HANDLING_STATUS vmexit_cpuid_instruction(GUEST_CPU_HANDLE gcpu)
     gcpu_set_native_gp_reg(gcpu, IA32_REG_RBX, cpuid_params.m_rbx);
     gcpu_set_native_gp_reg(gcpu, IA32_REG_RCX, cpuid_params.m_rcx);
     gcpu_set_native_gp_reg(gcpu, IA32_REG_RDX, cpuid_params.m_rdx);
+#ifdef JLMDEBUG
+    bprint("vmexit_cpuid_instruction\n");
+    bprint("rax: %016lx, rbx: %016lx, rcx: %016lx, rdx: %016lx\n",
+            cpuid_params.m_rax, cpuid_params.m_rbx, 
+            cpuid_params.m_rcx, cpuid_params.m_rdx);
+#endif
     // increment IP to skip executed CPUID instruction
     gcpu_skip_guest_instruction(gcpu);
     return VMEXIT_HANDLED;

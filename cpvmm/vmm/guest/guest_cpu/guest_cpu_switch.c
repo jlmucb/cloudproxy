@@ -155,8 +155,8 @@ static BOOLEAN gcpu_decide_on_resume_actions(const GUEST_CPU_HANDLE  gcpu, UINT6
         }
     }
     if (PE == FALSE) {
+        // if we start emulator, emulator will take care for everything
         if (!is_unrestricted_guest_supported()) {
-                        // if we start emulator, emulator will take care for everything
             action->emulator = GCPU_RESUME_EMULATOR_ACTION_START_EMULATOR;
             do_something = TRUE;
         }
@@ -195,8 +195,7 @@ static BOOLEAN gcpu_decide_on_resume_actions(const GUEST_CPU_HANDLE  gcpu, UINT6
 // Working with flat page tables
 
 // called each time before resume if flat page tables are active
-static
-void gcpu_enforce_flat_memory_setup( GUEST_CPU* gcpu )
+static void gcpu_enforce_flat_memory_setup( GUEST_CPU* gcpu )
 {
     EM64T_CR4  cr4;
     EM64T_CR0  cr0;
@@ -223,7 +222,8 @@ void gcpu_enforce_flat_memory_setup( GUEST_CPU* gcpu )
     }
 }
 
-static void gcpu_install_flat_memory( GUEST_CPU* gcpu, GCPU_RESUME_FLAT_PT_ACTION pt_type )
+static void gcpu_install_flat_memory( GUEST_CPU* gcpu, 
+                            GCPU_RESUME_FLAT_PT_ACTION pt_type )
 {
     BOOLEAN    gpm_flat_page_tables_ok = FALSE;
 
@@ -604,26 +604,26 @@ void gcpu_resume(GUEST_CPU_HANDLE gcpu)
     { 
         IA32_VMX_VMCS_VM_EXIT_INFO_IDT_VECTORING    idt_vectoring_info;
         idt_vectoring_info.Uint32 = (UINT32)vmcs_read(vmcs,VMCS_EXIT_INFO_IDT_VECTORING);
-        if(idt_vectoring_info.Bits.Valid && ((idt_vectoring_info.Bits.InterruptType == 
-                IdtVectoringInterruptTypeExternalInterrupt )
+        if(idt_vectoring_info.Bits.Valid && 
+           ((idt_vectoring_info.Bits.InterruptType==IdtVectoringInterruptTypeExternalInterrupt )
                 ||(idt_vectoring_info.Bits.InterruptType==IdtVectoringInterruptTypeNmi))) {
             IA32_VMX_VMCS_VM_ENTER_INTERRUPT_INFO   interrupt_info;
             PROCESSOR_BASED_VM_EXECUTION_CONTROLS ctrls;
 
-            interrupt_info.Uint32 = (UINT32)vmcs_read(vmcs,VMCS_ENTER_INTERRUPT_INFO);
+            interrupt_info.Uint32= (UINT32)vmcs_read(vmcs,VMCS_ENTER_INTERRUPT_INFO);
             VMM_ASSERT(!interrupt_info.Bits.Valid);
             interrupt_info.Uint32 = 0;
             interrupt_info.Bits.Valid = 1;
             interrupt_info.Bits.Vector = idt_vectoring_info.Bits.Vector;
             interrupt_info.Bits.InterruptType= idt_vectoring_info.Bits.InterruptType;
             vmcs_write(vmcs,VMCS_ENTER_INTERRUPT_INFO, interrupt_info.Uint32);
-            if(idt_vectoring_info.Bits.InterruptType == IdtVectoringInterruptTypeNmi )
+            if(idt_vectoring_info.Bits.InterruptType == IdtVectoringInterruptTypeNmi)
                 vmcs_write(vmcs,VMCS_GUEST_INTERRUPTIBILITY,0);
             else
                 vmcs_write(vmcs,VMCS_GUEST_INTERRUPTIBILITY,
                     vmcs_read(vmcs,VMCS_GUEST_INTERRUPTIBILITY) & ~0x3 );
             ctrls.Uint32 = (UINT32)vmcs_read(vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS);
-            if( (ctrls.Bits.MonitorTrapFlag) && (vmcs_read(vmcs,VMCS_EXIT_INFO_REASON) == 
+            if((ctrls.Bits.MonitorTrapFlag)&&(vmcs_read(vmcs,VMCS_EXIT_INFO_REASON)==
                 Ia32VmxExitBasicReasonEptViolation))
                 gcpu->trigger_log_event = 1 + interrupt_info.Bits.Vector; 
         }
@@ -637,6 +637,9 @@ void gcpu_resume(GUEST_CPU_HANDLE gcpu)
     // check for Launch and resume
     if (vmcs_launch_required(vmcs)) {
         vmcs_set_launched(vmcs);
+#ifdef JLMDEBUG
+        bprint("launch required\n");
+#endif
         // call assembler launch
         vmentry_func(TRUE);
         VMM_LOG(mask_anonymous, level_trace,
@@ -645,6 +648,9 @@ void gcpu_resume(GUEST_CPU_HANDLE gcpu)
                 IS_MODE_NATIVE(gcpu) ? "NATIVE" : "EMULATED");
     }
     else {
+#ifdef JLMDEBUG
+        bprint("launch NOT required\n");
+#endif
         // call assembler resume
         vmentry_func(FALSE);
         VMM_LOG(mask_anonymous, level_trace,
@@ -652,7 +658,6 @@ void gcpu_resume(GUEST_CPU_HANDLE gcpu)
                 gcpu->vcpu.guest_cpu_id, gcpu->vcpu.guest_id,
                 IS_MODE_NATIVE(gcpu) ? "NATIVE" : "EMULATED" );
     }
-
 #ifdef JLMDEBUG
     bprint("looping at the end of gcpu_resume\n");
     LOOP_FOREVER
@@ -679,8 +684,9 @@ void gcpu_run_emulator(const GUEST_CPU_HANDLE gcpu)
 
 
 // Change execution mode - switch to native execution mode
-VMM_STATUS gcpu_return_to_native_execution( GUEST_CPU_HANDLE gcpu,
-                     ADDRESS* arg1 UNUSED, ADDRESS* arg2 UNUSED, ADDRESS* arg3 UNUSED)
+VMM_STATUS gcpu_return_to_native_execution(GUEST_CPU_HANDLE gcpu, 
+                ADDRESS* arg1 UNUSED, ADDRESS* arg2 UNUSED, 
+                ADDRESS* arg3 UNUSED)
 {
     // check if emulator finished already
     if (IS_MODE_EMULATOR(gcpu) && (gcpu->emulator_handle != NULL) &&
@@ -742,7 +748,7 @@ VMM_STATUS gcpu_remove_hw_enforcement(GUEST_CPU_HANDLE gcpu,
         status = VMM_ERROR;
         break;
     }
-    gcpu->hw_enforcements &= ~enforcement;
+    gcpu->hw_enforcements&= ~enforcement;
     return status;
 }
 

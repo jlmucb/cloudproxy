@@ -39,12 +39,9 @@
 #define UPDATE_SUCCEEDED    0
 #define UPDATE_FINISHED     1
 #define UPDATE_FAILED       2
-
-typedef enum _FLAGS {
-    LAUNCHED_FLAG = 0,      // was already launched
-    ACTIVATED_FLAG,         // is set curent on the owning CPU
-    NEVER_ACTIVATED_FLAG    // is in the init stage
-} FLAGS;
+#define LAUNCHED_FLAG 1
+#define ACTIVATED_FLAG 2
+#define NEVER_ACTIVATED_FLAG 4
 
 #define FIELD_IS_HW_WRITABLE(__access) (VMCS_WRITABLE & (__access))
 #define NMI_WINDOW_BIT  22
@@ -56,7 +53,7 @@ typedef struct _VMCS_ACTUAL_OBJECT {
     ADDRESS             hva;
     GUEST_CPU_HANDLE    gcpu_owner;
     UINT32              update_status;
-    FLAGS               flags;
+    UINT16              flags;
     CPU_ID              owning_host_cpu; // the VMCS object was launched in this cpu
     UINT8               pad[6];
 } VMCS_ACTUAL_OBJECT;
@@ -381,7 +378,7 @@ UINT64 vmcs_act_read_from_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_
 
 void vmcs_act_write_to_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_id, UINT64 value)
 {
-    int ret_val;
+    int              ret_val;
     UINT32           encoding;
     RW_ACCESS        access_type;
 
@@ -413,7 +410,7 @@ void vmcs_act_flush_to_cpu(const struct _VMCS_OBJECT *vmcs)
 #ifdef JLMDEBUG1
     bprint("vmcs_act_flush_to_cpu\n");
 #endif
-    VMM_ASSERT((p_vmcs->flags&ACTIVATED_FLAG)!=0);
+    // TEST VMM_ASSERT((p_vmcs->flags&ACTIVATED_FLAG)!=0);
     VMM_ASSERT(p_vmcs->owning_host_cpu == hw_cpu_id());
 
     /* in case the guest was re-scheduled, NMI Window is set in other VMCS
@@ -484,7 +481,7 @@ void vmcs_act_flush_to_memory(struct _VMCS_OBJECT *vmcs)
     UINT64           previous_vmcs;
 
     VMM_ASSERT(p_vmcs);
-    VMM_ASSERT((p_vmcs->flags&ACTIVATED_FLAG) == 0);
+    // TEST VMM_ASSERT((p_vmcs->flags&ACTIVATED_FLAG) == 0);
     if (p_vmcs->owning_host_cpu == CPU_NEVER_USED) {
         return;
     }
@@ -613,7 +610,7 @@ void vmcs_activate(VMCS_OBJECT* obj)
     }
     p_vmcs->owning_host_cpu = this_cpu;
     p_vmcs->flags|= ACTIVATED_FLAG;
-    VMM_ASSERT((p_vmcs->flags&ACTIVATED_FLAG) == 1);
+    // TEST 1 VMM_ASSERT((p_vmcs->flags&ACTIVATED_FLAG) == 1);
     p_vmcs->flags&= (UINT16)(~NEVER_ACTIVATED_FLAG);
 }
 
@@ -628,25 +625,30 @@ void vmcs_deactivate( VMCS_OBJECT* obj )
     p_vmcs->flags&= (UINT16)(~ACTIVATED_FLAG);
 }
 
-BOOLEAN vmcs_launch_required( const VMCS_OBJECT* obj )
+BOOLEAN vmcs_launch_required(const VMCS_OBJECT* obj)
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
     VMM_ASSERT(p_vmcs);
-    return ((p_vmcs->flags&LAUNCHED_FLAG) == 0);
+    return((p_vmcs->flags&LAUNCHED_FLAG)==0);
 }
 
-void vmcs_set_launched( VMCS_OBJECT* obj )
+void vmcs_set_launched(VMCS_OBJECT* obj)
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
 
+#ifdef JLMDEBUG
+   bprint("set launched\n");
+#endif
     VMM_ASSERT(p_vmcs);
     p_vmcs->flags|= LAUNCHED_FLAG;
 }
 
-void vmcs_set_launch_required( VMCS_OBJECT* obj )
+void vmcs_set_launch_required(VMCS_OBJECT* obj)
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
-
+#ifdef JLMDEBUG
+    bprint("set launch required\n");
+#endif
     VMM_ASSERT(p_vmcs);
     p_vmcs->flags&= (UINT16)(~LAUNCHED_FLAG);
 }

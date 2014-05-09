@@ -1,7 +1,7 @@
-//  File: attestation.proto
+//  File: sealed_data.proto
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: Protocol buffers for Tao Attestation
+//  Description: Protocol buffers for sealing.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -19,23 +19,7 @@
 
 package tao;
 
-message LinuxTaoSealedData {
-  // Policy info
-  optional int32 policy_id = 1;
-  optional string policy_prog_hash = 2;
-  optional string policy_arg_hash = 3;
-  optional string policy_pid = 4; 
-  optional string policy_subprin = 5;
-  // optional int32 policy_time, etc.
-
-  // The data
-  required bytes data = 6;
-}
-
-message FakeTaoSealedData {
-  // Policy info
-  required string policy_name = 1;
-
-  // The data 
-  required bytes data = 4;
+message TaoSealedBundle {
+  required string policy = 1;
+  required bytes data = 2;
 }

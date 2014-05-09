@@ -36,7 +36,7 @@ using std::string;
 /// communicate with their host, others may use sockets, etc.
 class Tao {
  public:
-  /// Get the Tao principal name assigned to this hosted program.  The name is
+  /// Get the Tao principal name assigned to this hosted program. The name
   /// encodes the full path from the root Tao, through all intermediary Tao
   /// hosts, to this hosted program. The name will be globally unique: different
   /// hosted program (for some definition of "different") will be given

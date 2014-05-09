@@ -1037,6 +1037,7 @@ bool Keys::InitHosted(const TaoChildChannel &channel, int policy) {
     }
   }
   return true;
+todo: also save
 }
 
 bool VerifierToPrincipalName(const Verifier &key, string *name) {

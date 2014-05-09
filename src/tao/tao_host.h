@@ -54,15 +54,15 @@ class TaoDomain;
 ///
 ///
 /// For example, a Linux OS installed on hardware with a TPM might work as
-/// follows. 
+/// follows.
 ///
 /// The Tao within the Linux OS might use a PipeTaoChannel to communicate with
-/// hosted programs running as processes. 
+/// hosted programs running as processes.
 ///
 ///
 /// TPMTaoChildChannel <-> Linux Tao <-> PipeTaoChannel. The
 /// TPMTaoChildChannel implements a shim for the TPM hardware to convert Tao
-/// operations into TPM commands. 
+/// operations into TPM commands.
 ///
 /// A hosted program called CloudServer
 /// would then have the following interactions: PipeTaoChildChannel <->
@@ -73,7 +73,7 @@ class TaoDomain;
 /// implements CloudServer.
 ///
 /// A Tao that has KVM guests as hosted programs might instead use
-/// KvmUnixTaoChannel 
+/// KvmUnixTaoChannel
 /// (using the KvmVmFactory instead of the ProcessFactory). In this case, the
 /// interaction would be: TPMTaoChildChannel <-> LinuxTao <-> KvmUnixTaoChannel.
 ///

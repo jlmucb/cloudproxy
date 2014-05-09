@@ -76,15 +76,15 @@ bool VerifierToPrincipalName(const keyczar::Verifier &key, string *name);
 /// @param[out] The converted key.
 bool VerifierFromPrincipalName(const string &name, scoped_ptr<Verifier> &key)
 
-/// Sign data with a key using Signer.
-/// @param data The data to sign.
-/// @param context The context string to add to the tao::Signature. WARNING:
-/// for security, this must be unique for each context in which signed
-/// messages are used.
-/// @param[out] signature The resulting signature.
-/// @param key The key to use for signing.
-bool SignData(const keyczar::Signer &key, const string &data,
-              const string &context, string *signature);
+    /// Sign data with a key using Signer.
+    /// @param data The data to sign.
+    /// @param context The context string to add to the tao::Signature. WARNING:
+    /// for security, this must be unique for each context in which signed
+    /// messages are used.
+    /// @param[out] signature The resulting signature.
+    /// @param key The key to use for signing.
+    bool SignData(const keyczar::Signer &key, const string &data,
+                  const string &context, string *signature);
 
 /// Verify a signature using Verifier.
 /// @param data The data that was signed.
@@ -377,6 +377,9 @@ class Keys {
   constexpr static auto CryptingSecretSuffix = "secret";
 
   /// @}
+
+  /// Default size of secret for protecting crypting and signing keys.
+  static const int DefaultRandomSecretSize = 128;
 
  private:
   /// The types of keys to be generated or loaded.

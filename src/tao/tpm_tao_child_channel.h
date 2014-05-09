@@ -88,7 +88,7 @@ class TPMTaoChildChannel : public TaoChildChannel {
 
  private:
   static const int PcrLen = 20;
-  static const int PcrMaxIndex = 0x7fff; // uint16 max
+  static const int PcrMaxIndex = 0x7fff;  // uint16 max
 
   /// An Attestation Identity Key associated with this TPM.
   string aik_blob_;
@@ -106,20 +106,22 @@ class TPMTaoChildChannel : public TaoChildChannel {
   /// A set of PCR values for the hosted program, encoded as hex strings.
   std::list<string> child_pcr_values_;
 
-  /// A handle to a set of PCR values within the TPM for the hosted program, used
+  /// A handle to a set of PCR values within the TPM for the hosted program,
+  /// used
   /// for Seal operations.
   TSS_HPCRS tss_pcr_values_;
 
-  /// A handle to a set of PCR indexes within the TPM for the hosted program, used
+  /// A handle to a set of PCR indexes within the TPM for the hosted program,
+  /// used
   /// for Quote operations.
   TSS_HPCRS tss_pcr_indexes_;
 
   /// A handle to the Storage Root Key for the TPM, used for Seal operations.
   TSS_HKEY srk_;
-  
+
   /// A handle for a connection to the TPM.
   TSS_HTPM tpm_;
-  
+
   /// The context for TSS operations (e.g., handles memory management).
   TSS_HCONTEXT tss_ctx_;
 

@@ -139,7 +139,7 @@ bool InstallPolicyAttestation(const string &attestation) {
   string local_name;
   if (!GetLocalName(&local_name)) {
     LOG(ERROR) << "Could not get local name';
-    return false;
+        return false;
   }
   if (key_prin != local_name) {
     LOG(ERROR) << "New attestation does not match our key";
@@ -148,8 +148,6 @@ bool InstallPolicyAttestation(const string &attestation) {
   policy_attestation_ = attestation;
   return true;
 }
-
-
 
 bool FakeTao::GetRandomBytes(const string &child_name, size_t size,
                              string *bytes) const {

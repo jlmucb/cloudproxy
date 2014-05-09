@@ -41,8 +41,7 @@ using keyczar::base::Base64WDecode;
 
 namespace tao {
 
-static bool CheckRestrictions(const Statement &s, time_t check_time)
-{
+static bool CheckRestrictions(const Statement &s, time_t check_time) {
   if (check_time < s.time()) {
     LOG(ERROR) << "Attestation is not yet valid";
     return false;
@@ -79,8 +78,7 @@ static bool VerifyAttestationSignature(const Attestation &a) {
   }
 }
 
-static bool ValidateAttestation(const string &attestation, Statement *s)
-{
+static bool ValidateAttestation(const string &attestation, Statement *s) {
   Attestation a;
   if (!a.ParseFromString(attestation)) {
     LOG(ERROR) << "Could not parse attestation";
@@ -100,8 +98,8 @@ static bool ValidateAttestation(const string &attestation, Statement *s)
     // Case (1), no delegation present.
     // Require that s.issuer be a subprincipal of (or identical to) a.signer.
     if (!IsSubprincipalOrIdentical(s->issuer(), a.signer())) {
-      LOG(ERROR) << "It is not evident that the signer speaks for the issuer".
-      return false;
+      LOG(ERROR) << "It is not evident that the signer speaks for the issuer"
+                        .return false;
     }
   } else {
     // Case (2), delegation present.
@@ -129,8 +127,7 @@ static bool ValidateAttestation(const string &attestation, Statement *s)
       return false;
     }
     // Modify the statement timestamps accordingly
-    if (s.time() < delegation.time())
-      s.set_time(delegation.time());
+    if (s.time() < delegation.time()) s.set_time(delegation.time());
     if (s.expiration() >= delegation.expiration())
       s.set_expiration(delegation.expiration());
   }
@@ -343,8 +340,7 @@ bool AttestPredicate(const Keys &key, const string &delegation,
   }
   Statement s;
   s.set_predicate_name(predicate);
-  for (auto &arg : args)
-    s.add_predicate_args(arg);
+  for (auto &arg : args) s.add_predicate_args(arg);
   s.set_issuer(issuer);
   s.set_time(CurrentTime());
   s.set_expiration(s.time() + Tao::DefaultAttestationTimeout);
@@ -378,8 +374,7 @@ bool ValidatePredicate(const string &attestation, time_t check_time,
   }
   predicate->assign(s.predicate_name());
   args->clear();
-  for (const &arg : s.predicate_args())
-    args->push_back(arg);
+  for (const &arg : s.predicate_args()) args->push_back(arg);
   return true;
 }
 
@@ -396,8 +391,7 @@ bool GetAttestationPredicate(const string &attestation, string *predicate,
   }
   predicate->assign(s.predicate_name());
   args->clear();
-  for (const &arg : s.predicate_args())
-    args->push_back(arg);
+  for (const &arg : s.predicate_args()) args->push_back(arg);
   return true;
 }
 

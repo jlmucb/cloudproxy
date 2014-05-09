@@ -1,7 +1,7 @@
-//  File: tao_child_channel.proto
+//  File: tao_rpc.proto
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: Protocol buffers for TaoChildChannel RPC.
+//  Description: Protocol buffers for TaoRPC.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -19,26 +19,26 @@
 
 package tao;
 
-enum TaoChildRequestType {
-  TAO_CHILD_RPC_UNKNOWN = 0;  // unused
-  TAO_CHILD_RPC_GET_RANDOM_BYTES = 1;
-  TAO_CHILD_RPC_SEAL = 2;
-  TAO_CHILD_RPC_UNSEAL = 3;
-  TAO_CHILD_RPC_ATTEST = 4;
-  TAO_CHILD_RPC_GET_HOSTED_PROGRAM_FULL_NAME = 5;
-  TAO_CHILD_RPC_EXTEND_NAME = 6;
+enum TaoRPCOperation {
+  TAO_RPC_UNKNOWN = 0;  // unused
+  TAO_RPC_GET_RANDOM_BYTES = 1;
+  TAO_RPC_SEAL = 2;
+  TAO_RPC_UNSEAL = 3;
+  TAO_RPC_ATTEST = 4;
+  TAO_RPC_GET_TAO_NAME = 5;
+  TAO_RPC_EXTEND_TAO_NAME = 6;
 }
 
-message TaoChildRequest {
-  required TaoChildRequestType rpc = 1;
+message TaoRPCRequest {
+  required TaoRPCOperation rpc = 1;
   optional bytes data = 2;
   optional int32 size = 3;
-  optional int32 policy = 4;  // TODO(kwalsh) fix policy hack
+  optional string policy = 4;
 }
 
-message TaoChildResponse {
-  required TaoChildRequestType rpc = 1;
+message TaoRPCResponse {
+  required TaoRPCOperation rpc = 1;
   required bool success = 2;
   optional bytes data = 3;
-  optional int32 policy = 4;  // TODO(kwalsh) fix policy hack
+  optional string policy = 4;
 }

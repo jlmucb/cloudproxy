@@ -104,7 +104,8 @@ class LinuxTaoTest : public ::testing::Test {
                             admin->DeepCopy()));
     ASSERT_TRUE(tao_->Init());
 
-    string key_prin, attestation;;
+    string key_prin, attestation;
+    ;
     ASSERT_TRUE(tao_->GetLocalName(key_prin));
     ASSERT_TRUE(
         admin->AttestKeyNameBinding(key_prin, "TrustedOS", &attestation));

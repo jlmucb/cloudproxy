@@ -1052,8 +1052,7 @@ bool VerifierToPrincipalName(const Verifier &key, string *name) {
   return true;
 }
 
-bool VerifierFromPrincipalName(const string &name, scoped_ptr<Verifier> &key)
-{
+bool VerifierFromPrincipalName(const string &name, scoped_ptr<Verifier> &key) {
   string key_text;
   stringstream in(name);
   skip(in, "Key(");

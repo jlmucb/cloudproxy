@@ -1,7 +1,7 @@
-//  File: tao_child_channel.h
+//  File: tao.h
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: A class for communication from hosted program to the host
+//  Description: Interface used by hosted programs to access Tao services.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -17,75 +17,102 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef TAO_TAO_CHILD_CHANNEL_H_
-#define TAO_TAO_CHILD_CHANNEL_H_
+#ifndef TAO_TAO_H_
+#define TAO_TAO_H_
 
-#include <list>
 #include <string>
 
-#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
-
-#include "tao/tao_child_channel.pb.h"
-
+namespace tao {
 using std::string;
 
-namespace tao {
-/// An interface that hosted programs use to communicate with a host Tao. It
-/// implements an interface similar to the Tao but without the child_name
-/// parameter in cases where it is implicit. Other parameters are bundled
-/// up and sent in a message along the channel. The details of this message
-/// passing depend on the specific implementation). The host TaoChannel RPC
-/// server will, upon receiving a message, add the appropriate child_name
-/// parameter. In this way, a hosted program is not free to use an arbitrary
-/// hash.
-class TaoChildChannel {
+/// Tao is the fundamental Trustworthy Computing interface provided by a host to
+/// its hosted programs. Each level of a system can act as a host by exporting
+/// the Tao interface and providing Tao services to higher-level hosted
+/// programs.
+///
+/// In most cases, a hosted program will use a stub Tao that performs RPC over a
+/// channel to its host. The details of such RPC depend on the specific
+/// implementation of the host: some hosted programs may use pipes to
+/// communicate with their host, others may use sockets, etc.
+class Tao {
  public:
-  TaoChildChannel() {}
-  virtual ~TaoChildChannel() {}
+  /// Get the Tao principal name assigned to this hosted program.  The name is
+  /// encodes the full path from the root Tao, through all intermediary Tao
+  /// hosts, to this hosted program. The name will be globally unique: different
+  /// hosted program (for some definition of "different") will be given
+  /// different Tao names.
+  /// @param[out] name The full, globally-unique name of this hosted program.
+  virtual bool GetTaoName(string *name) const = 0;
 
-  /// Initialize by opening ports and acquiring resources as needed.
-  virtual bool Init() { return true; }
+  /// Irreversibly extend the Tao principal name of this hosted program. In
+  /// effect, the hosted program can drop privileges by taking on the identity
+  /// of its subprincipal.
+  /// @param subprin The subprincipal to append to the principal name.
+  virtual bool ExtendTaoName(const string &subprin) const = 0;
 
-  /// Disconnect ports and release resources acquired during Init().
-  virtual bool Destroy() { return true; }
+  /// Get random bytes.
+  /// @param size The number of bytes to get.
+  /// @param[out] bytes The random bytes.
+  virtual bool GetRandomBytes(size_t size, string *bytes) const = 0;
 
-  /// Methods that invoke the hosted-program interfaces of the host Tao.
-  /// These methods omit the child_name parameter since it is implicit.
+  /// Request the Tao host sign a Statement on behalf of this hosted program.
+  /// @param stmt A serialized Statement. The time, expiration, and issuer
+  /// fields will be filled in with appropriate defaults if they are left empty.
+  /// @param[out] attestation The resulting signed attestation.
+  virtual bool Attest(const string &stmt, string *attestation) const = 0;
+
+  /// Encrypt data so only certain hosted programs can unseal it.
+  /// @param data The data to seal.
+  /// @param policy A policy controlling which hosted programs can seal or
+  /// unseal the
+  /// data. The semantics of this value are host-specific, except: all Tao hosts
+  /// support at least the policies defined below; and the policy must be
+  /// satisfied both during Seal() and during Unseal().
+  /// @param[out] sealed The encrypted data.
+  /// TODO(kwalsh) Add expiration.
+  virtual bool Seal(const string &data, const string &policy,
+                    string *sealed) const = 0;
+
+  /// Decrypt data that has been sealed by the Seal() operation, but only
+  /// if the policy specified during the Seal() operation is satisfied.
+  /// @param sealed The sealed data to decrypt.
+  /// @param[out] data The decrypted data, if the policy was satisfied.
+  /// @param[out] policy The sealing policy, if it was satisfied.
+  /// Note: The returned policy can be used as a limited integrity check, since
+  /// only a hosted program that itself satisfies the policy could have
+  /// performed the Seal() operation.
+  virtual bool Unseal(const string &sealed, string *data,
+                      string *policy) const = 0;
+
+  /// Policy for sealing and unsealing. Hosts may implement additional policies.
   /// @{
 
-  /// Get random bytes. See Tao for semantics.
-  virtual bool GetRandomBytes(size_t size, string *bytes) const;
+  /// The default sealing policy, which corresponds roughly to "a past or future
+  /// instance of a hosted program having a similar identity as the caller". The
+  /// definition of "similar" is host-specific. For example, for a TPM, it may
+  /// mean "has identical PCR values, for some subset of the PCRs". And for a
+  /// Linux OS, it may mean "has the same program binary".
+  constexpr static auto SealPolicyDefault = "self";
 
-  /// Seal data. See Tao for semantics.
-  virtual bool Seal(const string &data, int policy, string *sealed) const;
+  /// The most conservative (but non-trivial) sealing policy supported by the
+  /// host. For example, a Linux OS may interpret this to mean "the same hosted
+  /// program instance, including process ID, program hash and argument hash".
+  constexpr static auto SealPolicyConservative = "few";
 
-  /// Unseal data. See Tao for semantics.
-  virtual bool Unseal(const string &sealed, string *data, int *policy) const;
-
-  /// Generate attestation. See Tao for semantics.
-  virtual bool Attest(const string &stmt, string *attestation) const;
-
-  /// Get our full name. See Tao for semantics.
-  virtual bool GetHostedProgramFullName(string *full_name) const;
-
-  /// Extend our name. See Tao for semantics.
-  virtual bool ExtendName(const string &subprin) const;
+  /// The most liberal (but non-trivial) sealing policy supported by the host.
+  /// For example, a TPM may interpret this to mean "any hosted program on the
+  /// same platform".
+  constexpr static auto SealPolicyLiberal = "any";
 
   /// @}
 
- protected:
-  /// Send an RPC request to the host Tao.
-  /// @param rpc The rpc to send.
-  virtual bool SendRPC(const TaoChildRequest &rpc) const = 0;
+  /// A context string for signed attestations.
+  constexpr static auto AttestationSigningContext =
+      "tao::Attestation Version 1";
 
-  /// Receive an RPC response from the host Tao.
-  /// @param[out] resp The response received.
-  /// @param[out] eof Set to true if end of stream reached.
-  virtual bool ReceiveRPC(TaoChildResponse *resp, bool *eof) const = 0;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(TaoChildChannel);
+  /// Default timeout for Attestation (= 1 year in seconds).
+  static const int DefaultAttestationTimeout = 31556926;
 };
 }  // namespace tao
 
-#endif  // TAO_TAO_CHILD_CHANNEL_H_
+#endif  // TAO_TAO_H_

@@ -196,7 +196,7 @@ bool InstallPolicyAttestation(const string &attestation) {
   string local_name;
   if (!GetLocalName(&local_name)) {
     LOG(ERROR) << "Could not get local name';
-    return false;
+        return false;
   }
   if (key_prin != local_name) {
     LOG(ERROR) << "New attestation does not match our key";

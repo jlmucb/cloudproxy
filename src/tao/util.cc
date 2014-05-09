@@ -900,21 +900,23 @@ string bytesToHex(const string &s) {
 }
 
 static hexToInt(char c, int *i) {
-  if ('0' <= c && c <= '9') *i = (c - '0');
-  else if ('a' <= c && c <= 'f') *i = 10 + (c - 'a');
-  else if ('A' <= c && c <= 'F') *i = 10 + (c - 'A');
-  else return false;
+  if ('0' <= c && c <= '9')
+    *i = (c - '0');
+  else if ('a' <= c && c <= 'f')
+    *i = 10 + (c - 'a');
+  else if ('A' <= c && c <= 'F')
+    *i = 10 + (c - 'A');
+  else
+    return false;
   return true;
 }
 
 bool bytesFromHex(const string &hex, string *s) {
   stringstream out;
-  if (hex.size() % 2)
-    return false;
+  if (hex.size() % 2) return false;
   for (int i = 0; i < hex.size(); i += 2) {
     int x, y;
-    if (!hexToInt(hex[i], &x) || !hexToInt(hex[i+1], &y))
-      return false;
+    if (!hexToInt(hex[i], &x) || !hexToInt(hex[i + 1], &y)) return false;
     out.put((x << 4) | y);
   }
   return out.str();

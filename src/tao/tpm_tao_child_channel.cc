@@ -125,8 +125,7 @@ static string join(const list<T> &values, const string &delim) {
 
 static bool split(const string &s, const string &delim, list<string> *values) {
   values->clear();
-  if (s == "")
-    return true;
+  if (s == "") return true;
   in.str(s);
   while (in) {
     // no errors yet, still strings to be read
@@ -134,8 +133,7 @@ static bool split(const string &s, const string &delim, list<string> *values) {
     getline(in, value, delim[0]);
     // no errors yet, eof set if last string, maybe other chars
     values->push_back(value);
-    if (in.eof())
-      return true;
+    if (in.eof()) return true;
     // no errors yet, not last string, maybe other chars
     skip(in, delim);
     // errors if delim was missing, else still strings to be read
@@ -145,19 +143,16 @@ static bool split(const string &s, const string &delim, list<string> *values) {
 
 static bool split(const string &s, const string &delim, list<int> *values) {
   values->clear();
-  if (s == "")
-    return true;
+  if (s == "") return true;
   in.str(s);
   while (in) {
     // no errors yet, still values to be read
     UINT32 value;
     in >> value;
-    if (!in)
-      return false;
+    if (!in) return false;
     // no errors yet, eof set if last int, maybe other chars
     values->push_back(value);
-    if (in.eof())
-      return true;
+    if (in.eof()) return true;
     // no errors yet, not last int, maybe other chars
     skip(in, delim);
     // errors if delim was missing, else still values to be read
@@ -165,7 +160,7 @@ static bool split(const string &s, const string &delim, list<int> *values) {
   return false;
 }
 
-// There is, apparently, some flexibility in the bitmask size used within 
+// There is, apparently, some flexibility in the bitmask size used within
 // the serialized PCR buffer, since one can always append some extra zero bytes
 // to the end of the mask without changing the semantics. The extra_mask_len
 // parameter specifies how many extra zero bytes to include in the mask.
@@ -183,11 +178,11 @@ static bool serializePCRs(const list<int> &pcr_indexes,
   for (auto &pcr_idx : pcr_indexes) {
     if (pcr_idx < 0 || pcr_idx > PcrMaxIndex) {
       LOG(ERROR) << "Invalid PCR index: " << pcr_idx;
-      return false; 
+      return false;
     }
   }
 
-  int pcr_max = 24; // always include at least 24 PCR indexes for TPM 1.2
+  int pcr_max = 24;  // always include at least 24 PCR indexes for TPM 1.2
   for (auto &pcr_idx : pcr_indexes)
     pcr_max = (pcr_max >= pcr_idx ? pcr_max : pcr_idx);
 
@@ -201,9 +196,9 @@ static bool serializePCRs(const list<int> &pcr_indexes,
   // BYTES: serialized pcr values
 
   int buf_len = 0;
-  buf_len += sizeof(UINT16); // mask len
+  buf_len += sizeof(UINT16);  // mask len
   buf_len += pcr_mask_len;
-  buf_len += sizeof(UINT32); // values len
+  buf_len += sizeof(UINT32);  // values len
   buf_len += n * PcrLen;
 
   scoped_array<BYTE> scoped_pcr_buf(new BYTE[buf_len]);
@@ -212,7 +207,7 @@ static bool serializePCRs(const list<int> &pcr_indexes,
   // Set mask len.
   *(UINT16 *)pcr_buf = htons(pcr_mask_len);
   pcr_buf += sizeof(UINT16);
-   
+
   // Set mask bits.
   memset(pcr_buf, 0, pcr_mask_len);
   for (auto &pcr_idx : pcr_indexes)
@@ -241,7 +236,7 @@ static bool serializePCRs(const list<int> &pcr_indexes,
 TPMTaoChildChannel::TPMTaoChildChannel(const string &aik_blob,
                                        const list<UINT32> &pcr_indexes)
     : aik_blob_(aik_blob),
-      pcr_indexes_(pcr_indexes.begin(), pcr_indexes.end()) { }
+      pcr_indexes_(pcr_indexes.begin(), pcr_indexes.end()) {}
 
 bool TPMTaoChildChannel::Init() {
   TSS_RESULT result;
@@ -288,7 +283,7 @@ bool TPMTaoChildChannel::Init() {
   CHECK_EQ(result, TSS_SUCCESS) << "Could not get the number of PCRs";
   pcr_max = *(UINT32 *)npcrs;
   Tspi_Context_FreeMemory(tss_ctx_, npcrs);
-  
+
   // Get the AIK and encode it as a principal name.
   BYTE *blob = reinterpret_cast<BYTE *>(const_cast<char *>(aik_blob_.data()));
   result =
@@ -319,11 +314,12 @@ bool TPMTaoChildChannel::Init() {
     BYTE *pcr_value = nullptr;
     UINT32 pcr_value_len = 0;
     result = Tspi_TPM_PcrRead(tpm_, pcr_idx, &pcr_value_len, &pcr_value);
-    CHECK_EQ(result, TSS_SUCCESS) << "Could not read the value of PCR " << pcr_idx;
+    CHECK_EQ(result, TSS_SUCCESS) << "Could not read the value of PCR "
+                                  << pcr_idx;
 
     // Store value (for use in seal operations).
-    result =
-        Tspi_PcrComposite_SetPcrValue(tss_pcr_values_, pcr_idx, pcr_value_len, pcr_value);
+    result = Tspi_PcrComposite_SetPcrValue(tss_pcr_values_, pcr_idx,
+                                           pcr_value_len, pcr_value);
     CHECK_EQ(result, TSS_SUCCESS) << "Could not set the PCR value" << pcr_idx
                                   << " for sealing";
 
@@ -331,8 +327,8 @@ bool TPMTaoChildChannel::Init() {
     string pcr_bytes((char *)pcr_value, pcr_value_len);
     child_pcr_values_.push_back(bytesToHex(pcr_bytes))
 
-    // Select index (for use in quote operation).
-    result = Tspi_PcrComposite_SelectPcrIndex(tss_pcr_indexes_, pcr_idx);
+        // Select index (for use in quote operation).
+        result = Tspi_PcrComposite_SelectPcrIndex(tss_pcr_indexes_, pcr_idx);
     CHECK_EQ(result, TSS_SUCCESS) << "Could not select PCR " << pcr_idx;
 
     Tspi_Context_FreeMemory(tss_ctx_, pcr_value);
@@ -356,14 +352,16 @@ bool TPMTaoChildChannel::GetHostedProgramFullName(string *full_name) const {
   stringstream out;
   out << aik_name_;
   out << "::PCRs(\"" << join(pcr_indexes_, ", ") << "\"";
-  out << ", \"" << join(child_pcr_values_, ", ") << ")";;
+  out << ", \"" << join(child_pcr_values_, ", ") << ")";
+  ;
   full_name->assign(out.str());
   return true;
 }
 
-static bool ParseHostedProgramFullName(
-    const string &full_name, const string &aik_name, list<int> *pcr_indexes,
-    list<string> *pcr_values) {
+static bool ParseHostedProgramFullName(const string &full_name,
+                                       const string &aik_name,
+                                       list<int> *pcr_indexes,
+                                       list<string> *pcr_values) {
   stringstream in(full_name);
   skip(in, aik_name);
   skip(in, "::");
@@ -405,7 +403,8 @@ bool TPMTaoChildChannel::VerifySignature(const string &signer,
   // Extract PCR info from name in the statement
   list<int> pcr_indexes;
   list<string> pcr_values;
-  if (!ParseHostedProgramFullName(s.issuer(), signer, &pcr_indexes, &pcr_values)) {
+  if (!ParseHostedProgramFullName(s.issuer(), signer, &pcr_indexes,
+                                  &pcr_values)) {
     LOG(ERROR) << "Could not parse statement issuer";
     return false;
   }
@@ -416,7 +415,6 @@ bool TPMTaoChildChannel::VerifySignature(const string &signer,
 
   // Try with defaul mask size, then try one byte larger.
   for (int padding = 0; padding < 2; padding++) {
-
     // Reconstruct pcrbuf
     string serialized_pcrs;
     if (!serializePCRs(pcr_indexes, pcr_values, padding, &serialized_pcrs)) {
@@ -531,17 +529,14 @@ bool TPMTaoChildChannel::Unseal(const string &sealed, string *data) const {
   return true;
 }
 
-bool TPMTaoChildChannel::Attest(const string &stmt,
-                                string *attestation) const {
-
+bool TPMTaoChildChannel::Attest(const string &stmt, string *attestation) const {
   // Set up a statement containing the data and hash it with SHA1
   Statement s;
   if (!s->ParsePartialFromString(stmt)) {
     LOG(ERROR) << "Could not parse statement";
     return false;
   }
-  if (!s.has_time())
-    s.set_time(CurrentTime());
+  if (!s.has_time()) s.set_time(CurrentTime());
   if (!s.has_expiration())
     s.set_expiration(s.time() + Tao::DefaultAttestationTimeout);
   if (!s.has_issuer()) {

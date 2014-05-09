@@ -82,6 +82,7 @@
 				'tao_rpc.cc',
 				'tao_rpc.h',
 				'tao_rpc.proto',
+				'util.cc',
 				'util.h',
 #				'acl_guard.cc',
 #				'acl_guard.h',
@@ -137,7 +138,6 @@
 #				'unix_fd_tao_channel.h',
 #				'unix_fd_tao_child_channel.cc',
 #				'unix_fd_tao_child_channel.h',
-#				'util.cc',
 			],
 			'libraries' : [
 				'-lcrypto',

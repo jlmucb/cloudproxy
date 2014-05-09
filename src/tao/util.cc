@@ -36,36 +36,30 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <google/protobuf/text_format.h>
-#include <keyczar/base/base64w.h>
-#include <keyczar/base/file_util.h>
+//#include <google/protobuf/text_format.h>
+//#include <keyczar/base/base64w.h>
+//#include <keyczar/base/file_util.h>
 #include <keyczar/crypto_factory.h>
 #include <openssl/crypto.h>
+#include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
-#include <openssl/x509.h>
+//#include <openssl/x509.h>
 
 #include "tao/attestation.pb.h"
 #include "tao/keys.h"
-#include "tao/kvm_unix_tao_child_channel.h"
-#include "tao/pipe_tao_child_channel.h"
+//#include "tao/kvm_unix_tao_child_channel.h"
+//#include "tao/pipe_tao_child_channel.h"
 #include "tao/signature.pb.h"
-#include "tao/tao_child_channel.h"
-#include "tao/tao_child_channel_registry.h"
-#include "tao/tao_domain.h"
+//#include "tao/tao_child_channel.h"
+//#include "tao/tao_child_channel_registry.h"
+//#include "tao/tao_domain.h"
 
 using std::lock_guard;
 using std::mutex;
 using std::shared_ptr;
 using std::stringstream;
 using std::vector;
-
-using keyczar::CryptoFactory;
-using keyczar::base::CreateDirectory;
-using keyczar::base::Delete;
-using keyczar::base::PathExists;
-using keyczar::base::ReadFileToString;
-using keyczar::base::WriteStringToFile;
 
 // Workaround for keyczar logging.
 // There is no obvious API to disable keyczar message logging to console. This
@@ -129,7 +123,7 @@ void file_close(FILE *file) {
 
 void temp_file_cleaner(string *dir) {
   if (dir) {
-    if (!Delete(FilePath(*dir), true /* recursive */))
+    if (!keyczar::base::Delete(FilePath(*dir), true /* recursive */))
       PLOG(ERROR) << "Could not remove temp directory " << *dir;
     delete dir;
   }
@@ -160,7 +154,7 @@ bool LetChildProcsDie() {
 }
 
 bool Sha256(const string &s, string *hash) {
-  if (!CryptoFactory::SHA256()->Digest(s, hash)) {
+  if (!keyczar::CryptoFactory::SHA256()->Digest(s, hash)) {
     // This should be fatal. If it happens, then openssl has died.
     LOG(ERROR) << "Can't compute hash";
     return false;
@@ -178,6 +172,7 @@ bool Sha256FileHash(const string &path, string *hash) {
   return Sha256(contents, hash);
 }
 
+/*
 bool RegisterKnownChannels(TaoChildChannelRegistry *registry) {
   if (registry == nullptr) {
     LOG(ERROR) << "Could not register channels with a null registry";
@@ -194,6 +189,7 @@ bool RegisterKnownChannels(TaoChildChannelRegistry *registry) {
 
   return true;
 }
+*/
 
 bool OpenSSLSuccess() {
   uint32 last_error = ERR_get_error();
@@ -376,19 +372,18 @@ bool OpenTCPSocket(const string &host, const string &port, int *sock) {
   return true;
 }
 
-// TODO(kwalsh) fix policy hack
-bool MakeSealedSecret(const TaoChildChannel &t, const string &path,
-                      int secret_size, string *secret, int policy) {
+bool MakeSealedSecret(const Tao &tao, const string &path, const string &policy,
+                      int secret_size, string *secret) {
   if (secret == nullptr) {
     LOG(ERROR) << "Could not seal null secret";
     return false;
   }
-  if (!t.GetRandomBytes(secret_size, secret)) {
+  if (!tao.GetRandomBytes(secret_size, secret)) {
     LOG(ERROR) << "Could not generate a random secret to seal";
     return false;
   }
   string sealed_secret;
-  if (!t.Seal(*secret, policy, &sealed_secret)) {
+  if (!tao.Seal(*secret, policy, &sealed_secret)) {
     LOG(ERROR) << "Can't seal the secret";
     return false;
   }
@@ -404,8 +399,8 @@ bool MakeSealedSecret(const TaoChildChannel &t, const string &path,
   return true;
 }
 
-bool GetSealedSecret(const TaoChildChannel &t, const string &path,
-                     string *secret, int *policy) {
+bool GetSealedSecret(const Tao &tao, const string &path, const string &policy,
+                     string *secret) {
   if (secret == nullptr) {
     LOG(ERROR) << "Could not unseal null secret";
     return false;
@@ -415,28 +410,17 @@ bool GetSealedSecret(const TaoChildChannel &t, const string &path,
     LOG(ERROR) << "Can't read the sealed secret from " << path;
     return false;
   }
-  if (!t.Unseal(sealed_secret, secret, policy)) {
+  string unseal_policy;
+  if (!tao.Unseal(sealed_secret, secret, &unseal_policy)) {
     LOG(ERROR) << "Can't unseal the secret";
+    return false;
+  }
+  if (unseal_policy != policy) {
+    LOG(ERROR) << "Unsealed secret, but provenance is uncertain";
     return false;
   }
   VLOG(2) << "Unsealed a secret of size " << secret->size();
   return true;
-}
-
-// TODO(kwalsh) Remove this function
-bool SealOrUnsealSecret(const TaoChildChannel &t, const string &path,
-                        string *secret, int policy) {
-  if (PathExists(FilePath(path))) {
-    int unseal_policy;
-    return GetSealedSecret(t, path, secret, &unseal_policy);
-    if (policy != unseal_policy) {
-      LOG(ERROR) << "Unsealed data, but provenance is uncertain.";
-      return false;
-    }
-  } else {
-    const int SecretSize = 16;
-    return MakeSealedSecret(t, path, SecretSize, secret, policy);
-  }
 }
 
 bool SendMessage(int fd, const google::protobuf::Message &m) {
@@ -702,6 +686,7 @@ bool CreateTempDir(const string &prefix, ScopedTempDir *dir) {
   return true;
 }
 
+/*
 bool CreateTempACLsDomain(ScopedTempDir *temp_dir,
                           scoped_ptr<TaoDomain> *admin) {
   // lax log messages: this is a top level function only used for unit testing
@@ -712,6 +697,7 @@ bool CreateTempACLsDomain(ScopedTempDir *temp_dir,
   if (admin->get() == nullptr) return false;
   return true;
 }
+*/
 
 /* bool CreateTempRootDomain(ScopedTempDir *temp_dir,
                           scoped_ptr<TaoDomain> *admin) {
@@ -899,7 +885,7 @@ string bytesToHex(const string &s) {
   return out.str();
 }
 
-static hexToInt(char c, int *i) {
+static int hexToInt(char c, int *i) {
   if ('0' <= c && c <= '9')
     *i = (c - '0');
   else if ('a' <= c && c <= 'f')
@@ -914,18 +900,19 @@ static hexToInt(char c, int *i) {
 bool bytesFromHex(const string &hex, string *s) {
   stringstream out;
   if (hex.size() % 2) return false;
-  for (int i = 0; i < hex.size(); i += 2) {
+  for (unsigned int i = 0; i < hex.size(); i += 2) {
     int x, y;
     if (!hexToInt(hex[i], &x) || !hexToInt(hex[i + 1], &y)) return false;
     out.put((x << 4) | y);
   }
-  return out.str();
+  s->assign(out.str());
+  return true;
 }
 
 bool split(const string &s, const string &delim, list<string> *values) {
   values->clear();
   if (s == "") return true;
-  in.str(s);
+  stringstream in(s);
   while (in) {
     // no errors yet, still strings to be read
     string value;
@@ -943,10 +930,10 @@ bool split(const string &s, const string &delim, list<string> *values) {
 bool split(const string &s, const string &delim, list<int> *values) {
   values->clear();
   if (s == "") return true;
-  in.str(s);
+  stringstream in(s);
   while (in) {
     // no errors yet, still values to be read
-    UINT32 value;
+    int value;
     in >> value;
     if (!in) return false;
     // no errors yet, eof set if last int, maybe other chars

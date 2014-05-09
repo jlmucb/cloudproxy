@@ -82,7 +82,7 @@ EVENT_CHARACTERISTICS   events_characteristics[] =
 
     // guest cpu invalidate page
     {NO_EVENT_SPECIFIC_LIMIT, EVENT_ALL_SCOPE, (CHAR8 *)"EVENT_GCPU_INVALIDATE_PAGE"},
-    {1,                       EVENT_GCPU_SCOPE, (CHAR8 *)"EVENT_GCPU_PAGE_FAULT"},
+    {1, EVENT_GCPU_SCOPE, (CHAR8 *)"EVENT_GCPU_PAGE_FAULT"},
 
     // guest cpu msr writes
     {NO_EVENT_SPECIFIC_LIMIT, EVENT_ALL_SCOPE, (CHAR8 *)"EVENT_GCPU_AFTER_EFER_MSR_WRITE"},
@@ -95,11 +95,11 @@ EVENT_CHARACTERISTICS   events_characteristics[] =
     {NO_EVENT_SPECIFIC_LIMIT, EVENT_ALL_SCOPE, (CHAR8 *)"EVENT_GCPU_RETRUNED_FROM_S3"},
 
     // EPT events
-    {1,                       EVENT_GCPU_SCOPE, (CHAR8 *)"EVENT_GCPU_EPT_MISCONFIGURATION"},
-    {1,                       EVENT_GCPU_SCOPE, (CHAR8 *)"EVENT_GCPU_EPT_VIOLATION"},
+    {1, EVENT_GCPU_SCOPE, (CHAR8 *)"EVENT_GCPU_EPT_MISCONFIGURATION"},
+    {1, EVENT_GCPU_SCOPE, (CHAR8 *)"EVENT_GCPU_EPT_VIOLATION"},
 
     // MTF events
-    {1,                       EVENT_GCPU_SCOPE, (CHAR8 *)"EVENT_GCPU_MTF"},
+    {1, EVENT_GCPU_SCOPE, (CHAR8 *)"EVENT_GCPU_MTF"},
 
     // GPM modification
     {NO_EVENT_SPECIFIC_LIMIT, EVENT_ALL_SCOPE, (CHAR8 *)"EVENT_BEGIN_GPM_MODIFICATION_BEFORE_CPUS_STOPPED"},
@@ -111,7 +111,6 @@ EVENT_CHARACTERISTICS   events_characteristics[] =
     {NO_EVENT_SPECIFIC_LIMIT, EVENT_ALL_SCOPE, (CHAR8 *)"EVENT_BEGIN_GUEST_MEMORY_MODIFICATION"},
     {NO_EVENT_SPECIFIC_LIMIT, EVENT_ALL_SCOPE, (CHAR8 *)"EVENT_END_GUEST_MEMORY_MODIFICATION"},
 
-
     // guest lifecycle
     {NO_EVENT_SPECIFIC_LIMIT, EVENT_ALL_SCOPE, (CHAR8 *)"EVENT_GUEST_CREATE"},
     {NO_EVENT_SPECIFIC_LIMIT, EVENT_ALL_SCOPE, (CHAR8 *)"EVENT_GUEST_DESTROY"},
@@ -121,8 +120,8 @@ EVENT_CHARACTERISTICS   events_characteristics[] =
     {NO_EVENT_SPECIFIC_LIMIT, EVENT_ALL_SCOPE, (CHAR8 *)"EVENT_GCPU_REMOVE"},
     {NO_EVENT_SPECIFIC_LIMIT, EVENT_ALL_SCOPE, (CHAR8 *)"EVENT_GUEST_LAUNCH"},
 
-    {1,                       EVENT_ALL_SCOPE, (CHAR8 *)"EVENT_GUEST_CPU_BREAKPOINT"},
-    {1,                       EVENT_ALL_SCOPE, (CHAR8 *)"EVENT_GUEST_CPU_SINGLE_STEP"},
+    {1, EVENT_ALL_SCOPE, (CHAR8 *)"EVENT_GUEST_CPU_BREAKPOINT"},
+    {1, EVENT_ALL_SCOPE, (CHAR8 *)"EVENT_GUEST_CPU_SINGLE_STEP"},
 };
 
 
@@ -157,7 +156,6 @@ static EVENT_ENTRY * get_gcpu_observers(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE 
     res = hash64_lookup(event_mgr.gcpu_events,
                         (UINT64) (p_vcpu->guest_id << (8 * sizeof(GUEST_ID)) | p_vcpu->guest_cpu_id),
                         (UINT64 *) &p_cpu_events);
-
     if(p_cpu_events != NULL) {
         p_event = &(p_cpu_events->event[e]);
     }
@@ -196,7 +194,7 @@ static UINT32  event_observers_limit (UVMM_EVENT_INTERNAL e)
      *  See if event has specific observers limits. (If none, we'll use the 
      *  array boundry limits).
      */
-    if (events_characteristics[e].specific_observers_limits == NO_EVENT_SPECIFIC_LIMIT) {
+    if(events_characteristics[e].specific_observers_limits==NO_EVENT_SPECIFIC_LIMIT){
         observers_limits = OBSERVERS_LIMIT;
     }
     else {
@@ -250,15 +248,12 @@ UINT32 event_manager_guest_initialize(GUEST_ID guest_id)
     p_new_guest_events = vmm_malloc(sizeof(*p_new_guest_events));
     VMM_ASSERT(p_new_guest_events);
     vmm_memset(p_new_guest_events, 0, sizeof(*p_new_guest_events));
-
     // init lock for each event
     for(i = 0; i < EVENTS_COUNT; i++) {
         event = &(p_new_guest_events->event[i]);
         lock_initialize_read_write_lock(&(event->lock));
     }
-
     p_new_guest_events->guest_id = guest_id;
-
     /* for each guest/cpu we keep the event (callbacks) array */
     for( gcpu = guest_gcpu_first(guest, &gcpu_context); gcpu; gcpu = guest_gcpu_next(&gcpu_context)) {
         event_manager_gcpu_initialize(gcpu);
@@ -367,10 +362,12 @@ BOOLEAN event_guest_register( UVMM_EVENT_INTERNAL e,
     PEVENT_ENTRY    list;
     BOOLEAN         registered = FALSE;
 
-    if (call == 0) return FALSE;
-    if (e >= EVENTS_COUNT) return FALSE;
-    if (0 == (events_characteristics[e].scope & EVENT_GUEST_SCOPE)) return FALSE;
-
+    if (call == 0) 
+        return FALSE;
+    if (e >= EVENTS_COUNT) 
+        return FALSE;
+    if (0 == (events_characteristics[e].scope & EVENT_GUEST_SCOPE)) 
+        return FALSE;
     list = get_guest_observers(e, guest);
     if (NULL != list) {
         registered = event_register_internal(list, e, call);
@@ -492,8 +489,8 @@ BOOLEAN event_raise_internal( PEVENT_ENTRY p_event, UVMM_EVENT_INTERNAL e,
     observers_limits = event_observers_limit(e);
     lock_acquire_readlock(&p_event->lock);
 #ifdef JLMDEBUG
-    bprint("event_guest_raise_internal observers limit: %d, LIMIT: %d\n",
-            observers_limits, OBSERVERS_LIMIT);
+    bprint("event_guest_raise_internal observers limit: %d, LIMIT: %d, gcpu: %d\n",
+            observers_limits, OBSERVERS_LIMIT, gcpu);
 #endif
     VMM_ASSERT(observers_limits<=OBSERVERS_LIMIT);
     vmm_memcpy(call, p_event->call, sizeof(call));

@@ -1,4 +1,3 @@
-//  File: tpm_tao_child_channel.cc
 //  Author: Tom Roeder <tmroeder@google.com>
 //
 //  Description: An implementation of the TPM Tao child channel.
@@ -16,18 +15,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#include "tao/tpm_tao_child_channel.h"
+#include "tao/tpm_tao.h"
 
 #include <netinet/in.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
-#include <sstream>
+//#include <sys/stat.h>
+//#include <sys/types.h> 
 
 #include <glog/logging.h>
-#include <keyczar/base/base64w.h>
-#include <keyczar/keyczar.h>
 #include <openssl/pem.h>
 #include <openssl/sha.h>
 
@@ -36,19 +30,13 @@
 #include "tao/keys.h"
 #include "tao/util.h"
 
-using std::stringstream;
-
-using keyczar::Verifier;
-using keyczar::base::Base64WDecode;
-using keyczar::base::Base64WEncode;
-
 namespace tao {
-static bool AIKToPrincipalName(TSS_HKEY aik_, string *name) {
+static bool AIKToPrincipalName(TSS_HCONTEXT tss_ctx, TSS_HKEY aik, string *name) {
   // Extract the modulus from the AIK
   TSS_RESULT result;
   UINT32 aik_mod_len;
   BYTE *aik_mod;
-  result = Tspi_GetAttribData(aik_, TSS_TSPATTRIB_RSAKEY_INFO,
+  result = Tspi_GetAttribData(aik, TSS_TSPATTRIB_RSAKEY_INFO,
                               TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, &aik_mod_len,
                               &aik_mod);
   if (result != TSS_SUCCESS) {
@@ -61,7 +49,7 @@ static bool AIKToPrincipalName(TSS_HKEY aik_, string *name) {
   aik_rsa->n = BN_bin2bn(aik_mod, aik_mod_len, nullptr);
   aik_rsa->e = BN_new();
   BN_set_word(aik_rsa->e, 0x10001);
-  Tspi_Context_FreeMemory(tss_ctx_, aik_mod);
+  Tspi_Context_FreeMemory(tss_ctx, aik_mod);
   // Serialize the OpenSSL key
   ScopedBio mem(BIO_new(BIO_s_mem()));
   if (!PEM_write_bio_RSA_PUBKEY(mem.get(), aik_rsa.get())) {
@@ -70,8 +58,8 @@ static bool AIKToPrincipalName(TSS_HKEY aik_, string *name) {
   }
   size_t len = BIO_ctrl_pending(mem.get());
   scoped_array<char> key_bytes(new char[len]);
-  int result = BIO_read(mem.get(), key_bytes.get(), len);
-  if (result <= 0 || size_t(result) != len) {
+  int bio_len = BIO_read(mem.get(), key_bytes.get(), len);
+  if (bio_len <= 0 || size_t(bio_len) != len) {
     LOG(ERROR) << "Could not read serialize public signing key";
     return false;
   }
@@ -101,9 +89,11 @@ static bool PrincipalNameToAIKRsa(const string &name, ScopedRsa *rsa_key) {
     LOG(ERROR) << "Could not decode AIK key";
     return false;
   }
-  ScopedBio mem(BIO_new_mem_buf(key_data.data(), key_data.size()));
+  char* key_data_ptr = const_cast<char *>(key_data.data());
+  ScopedBio mem(BIO_new_mem_buf(key_data_ptr, key_data.size()));
   RSA *rsa;
-  if (!PEM_read_bio_RSA_PUBKEY(mem.get(), &rsa)) {
+  if (!PEM_read_bio_RSA_PUBKEY(mem.get(), &rsa, nullptr /* password callback */,
+                               nullptr /* callback arg */)) {
     LOG(ERROR) << "Could not deserialize AIK key";
     return false;
   }
@@ -119,15 +109,15 @@ static bool PrincipalNameToAIKRsa(const string &name, ScopedRsa *rsa_key) {
 static bool serializePCRs(const list<int> &pcr_indexes,
                           const list<string> &pcr_values, int extra_mask_len,
                           string *serialized_pcrs) {
-  int n = pcr_indexes.size();
-  if (n > PcrMaxIndex || pcr_values.size() != n) {
+  size_t n = pcr_indexes.size();
+  if (n > TPMTao::PcrMaxIndex || pcr_values.size() != n) {
     LOG(ERROR) << "Invalid PCR value list";
     return false;
   }
 
   // sanity check the pcr indexes
   for (auto &pcr_idx : pcr_indexes) {
-    if (pcr_idx < 0 || pcr_idx > PcrMaxIndex) {
+    if (pcr_idx < 0 || pcr_idx > TPMTao::PcrMaxIndex) {
       LOG(ERROR) << "Invalid PCR index: " << pcr_idx;
       return false;
     }
@@ -150,7 +140,7 @@ static bool serializePCRs(const list<int> &pcr_indexes,
   buf_len += sizeof(UINT16);  // mask len
   buf_len += pcr_mask_len;
   buf_len += sizeof(UINT32);  // values len
-  buf_len += n * PcrLen;
+  buf_len += n * TPMTao::PcrLen;
 
   scoped_array<BYTE> scoped_pcr_buf(new BYTE[buf_len]);
   BYTE *pcr_buf = scoped_pcr_buf.get();
@@ -166,36 +156,32 @@ static bool serializePCRs(const list<int> &pcr_indexes,
   pcr_buf += pcr_mask_len;
 
   // Set values len.
-  *(UINT32 *)pcr_buf = htonl(n * PcrLen);
+  *(UINT32 *)pcr_buf = htonl(n * TPMTao::PcrLen);
   pcr_buf += sizeof(UINT32);
 
   // Set values.
   for (auto &pcr_hex : pcr_values) {
     string pcr_data;
-    if (!Base64WDecode(pcr_hex, &pcr_data) || pcr_data.size() != PcrLen) {
+    if (!Base64WDecode(pcr_hex, &pcr_data) || pcr_data.size() != TPMTao::PcrLen) {
       LOG(ERROR) << "Bad PCR encoded in TPM quote";
       return false;
     }
-    memcpy(pcr_buf, pcr_data.data(), PcrLen);
-    pcr_buf += PcrLen;
+    memcpy(pcr_buf, pcr_data.data(), TPMTao::PcrLen);
+    pcr_buf += TPMTao::PcrLen;
   }
 
-  serialized_pcrs->assign(string(scoped_pcr_buf.release(), buf_len));
+  const char *pcr_bytes = reinterpret_cast<const char *>(scoped_pcr_buf.get());
+  serialized_pcrs->assign(string(pcr_bytes, buf_len));
   return true;
 }
 
-TPMTaoChildChannel::TPMTaoChildChannel(const string &aik_blob,
-                                       const list<UINT32> &pcr_indexes)
+TPMTao::TPMTao(const string &aik_blob, const list<int> &pcr_indexes)
     : aik_blob_(aik_blob),
       pcr_indexes_(pcr_indexes.begin(), pcr_indexes.end()) {}
 
-bool TPMTaoChildChannel::Init() {
+bool TPMTao::Init() {
   TSS_RESULT result;
-  TSS_UUID srk_uuid = {0x00000000,
-                       0x0000,
-                       0x0000,
-                       0x00,
-                       0x00,
+  TSS_UUID srk_uuid = {0x00000000, 0x0000, 0x0000, 0x00, 0x00,
                        {0x00, 0x00, 0x00, 0x00, 0x00, 0x01}};
   BYTE secret[20];
 
@@ -205,24 +191,42 @@ bool TPMTaoChildChannel::Init() {
 
   // Set up the TSS context and the SRK + policy (with the right secret).
   result = Tspi_Context_Create(&tss_ctx_);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not create a TSS context.";
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not create a TSS context.";
+    return false;
+  }
 
   result = Tspi_Context_Connect(tss_ctx_, nullptr /* Default TPM */);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not connect to the default TPM";
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not connect to the default TPM";
+    return false;
+  }
 
   result = Tspi_Context_GetTpmObject(tss_ctx_, &tpm_);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not get a handle to the TPM";
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not get a handle to the TPM";
+    return false;
+  }
 
   result =
       Tspi_Context_LoadKeyByUUID(tss_ctx_, TSS_PS_TYPE_SYSTEM, srk_uuid, &srk_);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not load the SRK handle";
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not load the SRK handle";
+    return false;
+  }
 
   TSS_HPOLICY srk_policy;
   result = Tspi_GetPolicyObject(srk_, TSS_POLICY_USAGE, &srk_policy);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not get the SRK policy handle";
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not get the SRK policy handle";
+    return false;
+  }
 
   result = Tspi_Policy_SetSecret(srk_policy, TSS_SECRET_MODE_SHA1, 20, secret);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not set the well-known secret";
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not set the well-known secret";
+    return false;
+  }
 
   // Get the max number of PCRs in the TPM.
   UINT32 tpm_property = TSS_TPMCAP_PROP_PCR;
@@ -231,17 +235,23 @@ bool TPMTaoChildChannel::Init() {
   result =
       Tspi_TPM_GetCapability(tpm_, TSS_TPMCAP_PROPERTY, sizeof(tpm_property),
                              (BYTE *)&tpm_property, &npcrs_len, &npcrs);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not get the number of PCRs";
-  pcr_max = *(UINT32 *)npcrs;
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not get the number of PCRs";
+    return false;
+  }
+  UINT32 pcr_max = *(UINT32 *)npcrs;
   Tspi_Context_FreeMemory(tss_ctx_, npcrs);
 
   // Get the AIK and encode it as a principal name.
   BYTE *blob = reinterpret_cast<BYTE *>(const_cast<char *>(aik_blob_.data()));
   result =
       Tspi_Context_LoadKeyByBlob(tss_ctx_, srk_, aik_blob_.size(), blob, &aik_);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not load the AIK";
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not load the AIK";
+    return false;
+  }
 
-  if (!AIKToPrincipalName(aik_, &aik_name_)) {
+  if (!AIKToPrincipalName(tss_ctx_, aik_, &aik_name_)) {
     LOG(ERROR) << "Could not get TPM principal name";
     return false;
   }
@@ -251,13 +261,19 @@ bool TPMTaoChildChannel::Init() {
 
   result = Tspi_Context_CreateObject(tss_ctx_, TSS_OBJECT_TYPE_PCRS, 0,
                                      &tss_pcr_values_);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not create a PCRs object";
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not create a PCRs object";
+    return false;
+  }
   result = Tspi_Context_CreateObject(tss_ctx_, TSS_OBJECT_TYPE_PCRS, 0,
                                      &tss_pcr_indexes_);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not create a PCR values handle";
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not create a PCR values handle";
+    return false;
+  }
 
   for (auto &pcr_idx : pcr_indexes_) {
-    if (pcr_idx < 0 || pcr_idx > pcr_max) {
+    if (pcr_idx < 0 || pcr_idx > PcrMaxIndex || (UINT32)pcr_idx > pcr_max) {
       LOG(ERROR) << "Invalid PCR index: " << pcr_idx;
       return false;
     }
@@ -265,22 +281,30 @@ bool TPMTaoChildChannel::Init() {
     BYTE *pcr_value = nullptr;
     UINT32 pcr_value_len = 0;
     result = Tspi_TPM_PcrRead(tpm_, pcr_idx, &pcr_value_len, &pcr_value);
-    CHECK_EQ(result, TSS_SUCCESS) << "Could not read the value of PCR "
-                                  << pcr_idx;
+    if (result != TSS_SUCCESS) {
+      LOG(ERROR) << "Could not read the value of PCR " << pcr_idx;
+      return false;
+    }
 
     // Store value (for use in seal operations).
     result = Tspi_PcrComposite_SetPcrValue(tss_pcr_values_, pcr_idx,
                                            pcr_value_len, pcr_value);
-    CHECK_EQ(result, TSS_SUCCESS) << "Could not set the PCR value" << pcr_idx
-                                  << " for sealing";
+    if (result != TSS_SUCCESS) {
+      LOG(ERROR) << "Could not set the PCR value" << pcr_idx
+                 << " for sealing";
+      return false;
+    }
 
     // Cache value (for building hosted program name).
     string pcr_bytes((char *)pcr_value, pcr_value_len);
-    child_pcr_values_.push_back(bytesToHex(pcr_bytes))
+    child_pcr_values_.push_back(bytesToHex(pcr_bytes));
 
-        // Select index (for use in quote operation).
-        result = Tspi_PcrComposite_SelectPcrIndex(tss_pcr_indexes_, pcr_idx);
-    CHECK_EQ(result, TSS_SUCCESS) << "Could not select PCR " << pcr_idx;
+    // Select index (for use in quote operation).
+    result = Tspi_PcrComposite_SelectPcrIndex(tss_pcr_indexes_, pcr_idx);
+    if (result != TSS_SUCCESS) {
+      LOG(ERROR) << "Could not select PCR " << pcr_idx;
+      return false;
+    }
 
     Tspi_Context_FreeMemory(tss_ctx_, pcr_value);
   }
@@ -288,18 +312,25 @@ bool TPMTaoChildChannel::Init() {
   return true;
 }
 
-bool TPMTaoChildChannel::Destroy() {
+bool TPMTao::Destroy() {
   // Clean-up code.
+  bool ok = true;
   TSS_RESULT result;
   result = Tspi_Context_FreeMemory(tss_ctx_, nullptr);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not free the context";
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not free the context";
+    ok = false;
+  }
 
   result = Tspi_Context_Close(tss_ctx_);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not clean up the context";
-  return true;
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not clean up the context";
+    ok = false;
+  }
+  return ok;
 }
 
-bool TPMTaoChildChannel::GetHostedProgramFullName(string *full_name) const {
+bool TPMTao::GetTaoName(string *full_name) const {
   stringstream out;
   out << aik_name_;
   out << "::PCRs(\"" << join(pcr_indexes_, ", ") << "\"";
@@ -307,6 +338,12 @@ bool TPMTaoChildChannel::GetHostedProgramFullName(string *full_name) const {
   ;
   full_name->assign(out.str());
   return true;
+}
+
+bool TPMTao::ExtendTaoName(const string &subprin) const {
+  LOG(ERROR) << "Not yet implemented -- extend the pcrs";
+  // extend pcr 20 (or 21 or 22)?
+  return false;
 }
 
 static bool ParseHostedProgramFullName(const string &full_name,
@@ -330,7 +367,6 @@ static bool ParseHostedProgramFullName(const string &full_name,
     LOG(ERROR) << "Bad PCR index list in TPM quote statement";
     return false;
   }
-  list<string> pcr_values;
   if (!split(pcr_value_list, ", ", pcr_values)) {
     LOG(ERROR) << "Bad PCR value list in TPM quote statement";
     return false;
@@ -338,9 +374,8 @@ static bool ParseHostedProgramFullName(const string &full_name,
   return true;
 }
 
-bool TPMTaoChildChannel::VerifySignature(const string &signer,
-                                         const string &stmt,
-                                         const string &sig) {
+bool TPMTao::VerifySignature(const string &signer, const string &stmt,
+                             const string &sig) {
   ScopedRsa rsa_key;
   if (!PrincipalNameToAIKRsa(signer, &rsa_key)) {
     LOG(ERROR) << "Could not deserialize AIK";
@@ -375,7 +410,8 @@ bool TPMTaoChildChannel::VerifySignature(const string &signer,
 
     // Hash the pcrbuf for the internal data part of the quote.
     uint8 pcr_hash[20];
-    SHA1(serialized_pcrs.data(), serialized_pcrs.size(), pcr_hash);
+    SHA1(reinterpret_cast<const unsigned char *>(serialized_pcrs.data()),
+         serialized_pcrs.size(), pcr_hash);
 
     // TPM Quote Info format is:
     // BYTES[8]: header
@@ -401,7 +437,7 @@ bool TPMTaoChildChannel::VerifySignature(const string &signer,
   return false;
 }
 
-bool TPMTaoChildChannel::GetRandomBytes(size_t size, string *bytes) const {
+bool TPMTao::GetRandomBytes(size_t size, string *bytes) const {
   TSS_RESULT result;
   BYTE *random;
   result = Tspi_TPM_GetRandom(tpm_, size, &random);
@@ -415,7 +451,11 @@ bool TPMTaoChildChannel::GetRandomBytes(size_t size, string *bytes) const {
   return true;
 }
 
-bool TPMTaoChildChannel::Seal(const string &data, string *sealed) const {
+bool TPMTao::Seal(const string &data, const string &policy, string *sealed) const {
+  if (policy != Tao::SealPolicyDefault) {
+    LOG(ERROR) << "Policy not yet implemented: " << policy;
+    return false;
+  }
   TSS_RESULT result;
   TSS_HENCDATA enc_data;
   result = Tspi_Context_CreateObject(tss_ctx_, TSS_OBJECT_TYPE_ENCDATA,
@@ -451,7 +491,7 @@ bool TPMTaoChildChannel::Seal(const string &data, string *sealed) const {
   return true;
 }
 
-bool TPMTaoChildChannel::Unseal(const string &sealed, string *data) const {
+bool TPMTao::Unseal(const string &sealed, string *data, string *policy) const {
   TSS_RESULT result;
   TSS_HENCDATA enc_data;
   result = Tspi_Context_CreateObject(tss_ctx_, TSS_OBJECT_TYPE_ENCDATA,
@@ -465,34 +505,37 @@ bool TPMTaoChildChannel::Unseal(const string &sealed, string *data) const {
   result =
       Tspi_SetAttribData(enc_data, TSS_TSPATTRIB_ENCDATA_BLOB,
                          TSS_TSPATTRIB_ENCDATABLOB_BLOB, sealed.size(), bytes);
-  CHECK_EQ(result, TSS_SUCCESS)
-      << "Could not set the sealed data for unsealing";
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not set the sealed data for unsealing";
+    return false;
+  }
 
   BYTE *unsealed_data;
   UINT32 unsealed_data_len;
   result = Tspi_Data_Unseal(enc_data, srk_, &unsealed_data_len, &unsealed_data);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not unseal the data";
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not unseal the data";
+    return false;
+  }
 
   data->assign(reinterpret_cast<char *>(unsealed_data), unsealed_data_len);
+  policy->assign(Tao::SealPolicyDefault);
 
   Tspi_Context_FreeMemory(tss_ctx_, unsealed_data);
   Tspi_Context_CloseObject(tss_ctx_, enc_data);
   return true;
 }
 
-bool TPMTaoChildChannel::Attest(const string &stmt, string *attestation) const {
-  // Set up a statement containing the data and hash it with SHA1
+bool TPMTao::Attest(const Statement &stmt, string *attestation) const {
+  // Set up a (copy) of statement and fill in defaults.
   Statement s;
-  if (!s->ParsePartialFromString(stmt)) {
-    LOG(ERROR) << "Could not parse statement";
-    return false;
-  }
+  s.MergeFrom(stmt);
   if (!s.has_time()) s.set_time(CurrentTime());
   if (!s.has_expiration())
     s.set_expiration(s.time() + Tao::DefaultAttestationTimeout);
   if (!s.has_issuer()) {
     string child_name;
-    if (!GetHostedProgramFullName(&child_name)) {
+    if (!GetTaoName(&child_name)) {
       LOG(ERROR) << "Could not get child's full name";
       return false;
     }
@@ -516,7 +559,10 @@ bool TPMTaoChildChannel::Attest(const string &stmt, string *attestation) const {
 
   TSS_RESULT result;
   result = Tspi_TPM_Quote(tpm_, aik_, tss_pcr_indexes_, &valid);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not quote data with the AIK";
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not quote data with the AIK";
+    return false;
+  }
 
   string signature(reinterpret_cast<char *>(valid.rgbValidationData),
                    valid.ulValidationDataLength);
@@ -532,12 +578,6 @@ bool TPMTaoChildChannel::Attest(const string &stmt, string *attestation) const {
   }
 
   return true;
-}
-
-bool TPMTaoChildChannel::ExtendName(const string &subprin) const {
-  LOG(ERROR) << "Not yet implemented -- extend the pcrs";
-  // extend pcr 20 (or 21 or 22)?
-  return false;
 }
 
 }  // namespace tao

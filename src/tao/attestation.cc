@@ -24,8 +24,7 @@
 #include <keyczar/keyczar.h>
 
 #include "tao/keys.h"
-// #include "tao/tpm_tao_child_channel.h"
-// #include "tao/util.h"
+#include "tao/tpm_tao.h"
 
 using std::stringstream;
 
@@ -57,8 +56,8 @@ static bool VerifyAttestationSignature(const Attestation &a) {
   if (tpm_signature) {
     // TODO(kwalsh) TPMTaoChildChannel does its own key serialize/descerialize.
     // Maybe unify that with VerifierFromPrincipalName()?
-  //  return TPMTaoChildChannel::VerifySignature(signer, a.serialized_statement(),
-                                               // a.signature());
+    return TPMTao::VerifySignature(signer, a.serialized_statement(),
+                                   a.signature());
   } else {
     scoped_ptr<Verifier> v;
     if (!VerifierFromPrincipalName(signer, &v)) {

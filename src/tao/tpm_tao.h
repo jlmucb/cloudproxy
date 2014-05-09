@@ -1,8 +1,7 @@
-//  File: tpm_tao_child_channel.h
+//  File: tpm_tao.h
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: A channel that communicates with tpmd in the Linux kernel to
-//  implement the Tao over TPM hardware.
+//  Description: A Tao interface for accessing a hardware TPM.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -17,9 +16,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#ifndef TAO_TPM_TAO_CHILD_CHANNEL_H_
-#define TAO_TPM_TAO_CHILD_CHANNEL_H_
+#ifndef TAO_TPM_TAO_H_
+#define TAO_TPM_TAO_H_
 
 #include <list>
 #include <string>
@@ -33,21 +31,15 @@
 
 #include <trousers/trousers.h>
 
-#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
-
-#include "tao/tao_child_channel.h"
+#include "tao/tao.h"
 #include "tao/util.h"
 
-using std::string;
-
 namespace tao {
-/// A TaoChildChannel implementation that wraps a TPM and presents the Tao
-/// interface. This allows other Tao implementations to treat the TPM
-/// like an implementation of the Tao. This implementation uses the TrouSerS
-/// library (hence implicitly the tcsd service) to access the TPM.
-class TPMTaoChildChannel : public TaoChildChannel {
+/// A Tao interface for accessing a hardware TPM. This implementation uses the
+/// TrouSerS library (hence implicitly the tcsd service) to access the TPM.
+class TPMTao : public Tao {
  public:
-  /// Initializes the TPMTaoChildChannel
+  /// Construct a TPMTao.
   /// @param aik_blob A public AIK blob produced by the TPM.
   /// @param pcrs_indexes A list of PCR indexes used for sealing and unsealing.
   /// For DRTM we typically use indexes 17 and 18. Relevant PCR indexes are:
@@ -57,19 +49,20 @@ class TPMTaoChildChannel : public TaoChildChannel {
   ///   20 - trusted os kernel and other code (?)
   ///   21 - defined by trusted os
   ///   22 - defined by trusted os
-  TPMTaoChildChannel(const string &aik_blob, const list<int> &pcr_indexes);
-  virtual ~TPMTaoChildChannel() {}
-
-  /// These methods have the same semantics as TaoChildChannel.
-  /// @{
+  TPMTao(const string &aik_blob, const list<int> &pcr_indexes);
   virtual bool Init();
   virtual bool Destroy();
+  virtual ~TPMTao() {}
+
+  /// These methods have the same semantics as Tao.
+  /// @{
+  virtual bool GetTaoName(string *name) const;
+  virtual bool ExtendTaoName(const string &subprin) const;
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
-  virtual bool Seal(const string &data, int policy, string *sealed) const;
-  virtual bool Unseal(const string &sealed, string *data, int *policy) const;
-  virtual bool Attest(const string &stmt, string *attestation) const;
-  virtual bool GetHostedProgramFullName(string *full_name) const;
-  virtual bool ExtendName(const string &subprin) const;
+  virtual bool Attest(const Statement &stmt, string *attestation) const;
+  virtual bool Seal(const string &data, const string &policy,
+                    string *sealed) const;
+  virtual bool Unseal(const string &sealed, string *data, string *policy) const;
   /// @}
 
   /// Verify a TPM-generated quote signature.
@@ -79,16 +72,13 @@ class TPMTaoChildChannel : public TaoChildChannel {
   static bool VerifySignature(const string &signer, const string &stmt,
                               const string &sig);
 
- protected:
-  virtual bool SendRPC(const TaoChildRequest &rpc) const { return false; }
-  virtual bool ReceiveRPC(TaoChildResponse *resp, bool *eof) const {
-    *eof = false;
-    return false;
-  }
+  /// Size of PCR values.
+  static const int PcrLen = 20;
+ 
+  /// The largest possible PCR index (24 is the minimum for TPM 1.2).
+  static const int PcrMaxIndex = 0x7fff;  // max value for INT16
 
  private:
-  static const int PcrLen = 20;
-  static const int PcrMaxIndex = 0x7fff;  // uint16 max
 
   /// An Attestation Identity Key associated with this TPM.
   string aik_blob_;
@@ -125,8 +115,8 @@ class TPMTaoChildChannel : public TaoChildChannel {
   /// The context for TSS operations (e.g., handles memory management).
   TSS_HCONTEXT tss_ctx_;
 
-  DISALLOW_COPY_AND_ASSIGN(TPMTaoChildChannel);
+  DISALLOW_COPY_AND_ASSIGN(TPMTao);
 };
 }  // namespace tao
 
-#endif  // TAO_TPM_TAO_CHILD_CHANNEL_H_
+#endif  // TAO_TPM_TAO_H_

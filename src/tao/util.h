@@ -19,10 +19,11 @@
 #ifndef TAO_UTIL_H_
 #define TAO_UTIL_H_
 
-#include <sys/socket.h>  // for socklen_t
-#include <keyczar/base/file_util.h>
 #include <keyczar/base/base64w.h>
+#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/file_util.h>
 #include <keyczar/base/values.h>  // for ScopedSafeString
+#include <sys/socket.h>  // for socklen_t
 
 #include <list>
 #include <set>

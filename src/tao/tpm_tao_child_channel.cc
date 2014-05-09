@@ -111,55 +111,6 @@ static bool PrincipalNameToAIKRsa(const string &name, ScopedRsa *rsa_key) {
   return true;
 }
 
-template <class T>
-static string join(const list<T> &values, const string &delim) {
-  stringstream out;
-  bool first = true;
-  for (T value : values) {
-    if (!first) out << delim;
-    first = false;
-    out << value
-  }
-  return out.str();
-}
-
-static bool split(const string &s, const string &delim, list<string> *values) {
-  values->clear();
-  if (s == "") return true;
-  in.str(s);
-  while (in) {
-    // no errors yet, still strings to be read
-    string value;
-    getline(in, value, delim[0]);
-    // no errors yet, eof set if last string, maybe other chars
-    values->push_back(value);
-    if (in.eof()) return true;
-    // no errors yet, not last string, maybe other chars
-    skip(in, delim);
-    // errors if delim was missing, else still strings to be read
-  }
-  return false;
-}
-
-static bool split(const string &s, const string &delim, list<int> *values) {
-  values->clear();
-  if (s == "") return true;
-  in.str(s);
-  while (in) {
-    // no errors yet, still values to be read
-    UINT32 value;
-    in >> value;
-    if (!in) return false;
-    // no errors yet, eof set if last int, maybe other chars
-    values->push_back(value);
-    if (in.eof()) return true;
-    // no errors yet, not last int, maybe other chars
-    skip(in, delim);
-    // errors if delim was missing, else still values to be read
-  }
-  return false;
-}
-
 // There is, apparently, some flexibility in the bitmask size used within
 // the serialized PCR buffer, since one can always append some extra zero bytes
 // to the end of the mask without changing the semantics. The extra_mask_len

@@ -921,4 +921,41 @@ bool bytesFromHex(const string &hex, string *s) {
   }
   return out.str();
 }
+
+bool split(const string &s, const string &delim, list<string> *values) {
+  values->clear();
+  if (s == "") return true;
+  in.str(s);
+  while (in) {
+    // no errors yet, still strings to be read
+    string value;
+    getline(in, value, delim[0]);
+    // no errors yet, eof set if last string, maybe other chars
+    values->push_back(value);
+    if (in.eof()) return true;
+    // no errors yet, not last string, maybe other chars
+    skip(in, delim);
+    // errors if delim was missing, else still strings to be read
+  }
+  return false;
+}
+
+bool split(const string &s, const string &delim, list<int> *values) {
+  values->clear();
+  if (s == "") return true;
+  in.str(s);
+  while (in) {
+    // no errors yet, still values to be read
+    UINT32 value;
+    in >> value;
+    if (!in) return false;
+    // no errors yet, eof set if last int, maybe other chars
+    values->push_back(value);
+    if (in.eof()) return true;
+    // no errors yet, not last int, maybe other chars
+    skip(in, delim);
+    // errors if delim was missing, else still values to be read
+  }
+  return false;
+}
 }  // namespace tao

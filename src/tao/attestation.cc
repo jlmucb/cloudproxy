@@ -140,7 +140,7 @@ bool GenerateAttestation(const Keys &key, const string &delegation,
     LOG(ERROR) << "Could not serialize statement";
     return false;
   }
-  if (!key.SignData(stmt, Tao::AttestationSigningContext, &sig)) {
+  if (!key.Sign(stmt, Tao::AttestationSigningContext, &sig)) {
     LOG(ERROR) << "Could not sign the statement";
     return false;
   }
@@ -243,23 +243,6 @@ string DebugString(const Attestation &a) {
   out << "delegation: " << s << "\n";
 
   return "{\n  " + Indent("  ", out.str()) + "}";
-}
-
-// TODO(kwalsh) Move this to util.h
-template <class T>
-static string join(T it, T end, const string &delim) {
-  stringstream out;
-  bool first = true;
-  for ( ; it != end; ++it) {
-    if (!first) out << delim;
-    first = false;
-    out << *it;
-  }
-  return out.str();
-}
-template <class T>
-static string join(const list<T> &values, const string &delim) {
-  return join(values.begin(), values.end(), delim);
 }
 
 string DebugString(const Statement &stmt) {

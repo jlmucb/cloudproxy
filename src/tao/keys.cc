@@ -23,8 +23,6 @@
 
 #include <glog/logging.h>
 #include <google/protobuf/text_format.h>
-#include <keyczar/base/base64w.h>
-#include <keyczar/base/file_util.h>
 #include <keyczar/base/json_reader.h>
 #include <keyczar/base/json_writer.h>
 #include <keyczar/base/values.h>
@@ -35,15 +33,11 @@
 #include <openssl/pem.h>
 #include <openssl/sha.h>
 #include <openssl/x509v3.h>
-// #include <openssl/ssl.h>
 
 #include "tao/attestation.pb.h"
 #include "tao/keys.pb.h"
 #include "tao/signature.pb.h"
 #include "tao/util.h"
-
-using std::string;
-using std::stringstream;
 
 using google::protobuf::TextFormat;
 using keyczar::Crypter;
@@ -56,15 +50,9 @@ using keyczar::Keyset;
 using keyczar::KeysetMetadata;
 using keyczar::Signer;
 using keyczar::Verifier;
-using keyczar::base::Base64WDecode;
-using keyczar::base::Base64WEncode;
-using keyczar::base::CreateDirectory;
-using keyczar::base::DirectoryExists;
 using keyczar::base::JSONReader;
 using keyczar::base::JSONWriter;
-using keyczar::base::PathExists;
 using keyczar::base::ScopedSafeString;
-using keyczar::base::WriteStringToFile;
 using keyczar::rw::KeysetJSONFileWriter;
 using keyczar::rw::KeysetPBEJSONFileReader;
 using keyczar::rw::KeysetPBEJSONFileWriter;
@@ -572,9 +560,8 @@ bool DeriveKey(const keyczar::Signer &key, const string &name, int size,
   return true;
 }
 
-typedef scoped_ptr_malloc<
-    BIGNUM, keyczar::openssl::OSSLDestroyer<BIGNUM, BN_clear_free> >
-    ScopedSecretBIGNUM;
+typedef scoped_ptr_malloc<BIGNUM, CallUnlessNull<BIGNUM, BN_clear_free> >
+    ScopedBIGNUM;
 
 static bool ExportKeysetToOpenSSL(const Keyset &keyset, bool include_private,
                                   ScopedEvpPkey *evp_key) {
@@ -651,7 +638,7 @@ static bool ExportKeysetToOpenSSL(const Keyset &keyset, bool include_private,
     }
     const unsigned char *private_key_bytes =
         reinterpret_cast<const unsigned char *>(private_bytes.data());
-    ScopedSecretBIGNUM bn(
+    ScopedBIGNUM bn(
         BN_bin2bn(private_key_bytes, private_bytes.length(), nullptr));
     if (!OpenSSLSuccess() || bn.get() == NULL) {
       LOG(ERROR) << "Could not parse keyczar private key data";
@@ -998,20 +985,14 @@ bool Keys::InitHosted(const Tao &tao, const string &policy) {
   ScopedSafeString secret(new string());
   if (PathExists(FilePath(SecretPath()))) {
     // Load Tao-protected secret.
-    string unseal_policy;
-    if (!GetSealedSecret(tao, SecretPath(), secret.get(), &unseal_policy)) {
+    if (!GetSealedSecret(tao, SecretPath(), policy, secret.get())) {
       LOG(ERROR) << "Could not unseal a secret using the Tao";
-      return false;
-    }
-    if (unseal_policy != policy) {
-      LOG(ERROR) << "Keys secret was unsealed, but provenance is uncertain";
       return false;
     }
   } else {
     // Generate Tao-protected secret.
     int secret_size = DefaultRandomSecretSize;
-    if (!MakeSealedSecret(tao, SecretPath(), secret_size, secret.get(),
-                          policy)) {
+    if (!MakeSealedSecret(tao, SecretPath(), policy, secret_size, secret.get())) {
       LOG(ERROR) << "Could not generate and seal a secret using the Tao";
       return false;
     }
@@ -1025,7 +1006,7 @@ bool Keys::InitHosted(const Tao &tao, const string &policy) {
   if (signer_.get() != nullptr) {
     string filename = DelegationPath("host");
     if (PathExists(FilePath(filename))) {
-      if (!ReadStringFromFile(filename, &host_delegation_)) {
+      if (!ReadFileToString(filename, &host_delegation_)) {
         LOG(ERROR) << "Could not load delegation for signing key";
         return false;
       }
@@ -1090,7 +1071,7 @@ bool Keys::GetPrincipalName(string *name) const {
   return tao::VerifierToPrincipalName(*Verifier(), name);
 }
 
-bool Keys::GetHostDelegation(string *attestation) {
+bool Keys::GetHostDelegation(string *attestation) const {
   if (host_delegation_.empty()) {
     LOG(ERROR) << "No host delegation";
     return false;
@@ -1138,7 +1119,7 @@ bool Keys::Sign(const string &data, const string &context,
     LOG(ERROR) << "No managed signer";
     return false;
   }
-  return tao::Sign(*Signer(), data, context, signature);
+  return tao::SignData(*Signer(), data, context, signature);
 }
 
 bool Keys::Verify(const string &data, const string &context,
@@ -1158,7 +1139,7 @@ bool Keys::Encrypt(const string &data, string *encrypted) const {
   return Crypter()->Encrypt(data, encrypted);
 }
 
-bool Keys::Decrypt(const string &decrypt, string *data) const {
+bool Keys::Decrypt(const string &encrypted, string *data) const {
   if (!Crypter()) {
     LOG(ERROR) << "No managed crypter";
     return false;

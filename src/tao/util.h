@@ -19,16 +19,17 @@
 #ifndef TAO_UTIL_H_
 #define TAO_UTIL_H_
 
-#include <sys/socket.h>
+#include <sys/socket.h>  // for socklen_t
+#include <keyczar/base/file_util.h>
+#include <keyczar/base/base64w.h>
+#include <keyczar/base/values.h>  // for ScopedSafeString
 
+#include <list>
+#include <set>
+#include <sstream>
 #include <string>
 
-#include <keyczar/openssl/util.h>
-#include <openssl/x509.h>
-
 #include "tao/tao.h"
-
-using std::string;
 
 struct sockaddr;
 
@@ -39,9 +40,30 @@ class Message;
 }  // namespace google
 
 namespace tao {
-class TaoChildChannel;
-class TaoChildChannelRegistry;
-class TaoDomain;
+/// These basic utilities from Keyczar and the standard library are used
+/// extensively throughout the Tao implementation, so we import them into the
+/// tao namespace here.
+/// @{
+
+using std::list;
+using std::set;
+using std::string;
+using std::stringstream;
+
+using keyczar::base::Base64WDecode;
+using keyczar::base::Base64WEncode;
+using keyczar::base::CreateDirectory;
+using keyczar::base::DirectoryExists;
+// using keyczar::base::FilePath;  // Why isn't this in keyczar::base ?
+using keyczar::base::PathExists;
+using keyczar::base::ReadFileToString;
+using keyczar::base::ScopedSafeString;
+using keyczar::base::WriteStringToFile;
+
+/// @}
+
+//class TaoChildChannelRegistry;
+// class TaoDomain;
 
 /// Close a file descriptor and ignore the return value. This is used by the
 /// definition of ScopedFd.
@@ -52,7 +74,7 @@ void fd_close(int *fd);
 /// definition of ScopedFile.
 /// @param fd A pointer to the FILE to close and free.
 void file_close(FILE *file);
-
+  
 /// Remove a directory and all its subfiles and subdirectories. This is used by
 /// the definition of ScopedTempDir.
 /// @param dir The path to the directory.
@@ -63,27 +85,28 @@ void temp_file_cleaner(string *dir);
 /// @param fd A pointer to the self-pipe file descriptor.
 void selfpipe_release(int *fd);
 
-/// A pointer to a managed file descriptor that gets closed when this wrapper is
-/// deleted.
-typedef scoped_ptr_malloc<int, keyczar::openssl::OSSLDestroyer<int, fd_close>>
-    ScopedFd;
 
-/// A smart pointer wrapping a FILE pointer that gets closed when this wrapper
-/// is deleted.
-typedef scoped_ptr_malloc<
-    FILE, keyczar::openssl::OSSLDestroyer<FILE, file_close>> ScopedFile;
+/// A functor template for wrapping deallocators that misbehave on nullptr.
+template <typename T, void (*F)(T *)>
+struct CallUnlessNull {
+  void operator()(T *ptr) const {
+    if (ptr) F(ptr);
+  }
+};
 
-/// A smart pointer wrapping an OpenSSL X509 structure that gets cleaned up
-/// when this wrapper is deleted.
-typedef scoped_ptr_malloc<
-    X509, keyczar::openssl::OSSLDestroyer<X509, X509_free>> ScopedX509;
+/// A smart pointer to a file descriptor.
+typedef scoped_ptr_malloc<int, CallUnlessNull<int, fd_close>> ScopedFd;
 
-typedef scoped_ptr_malloc<string, keyczar::openssl::OSSLDestroyer<
-                                      string, temp_file_cleaner>> ScopedTempDir;
+/// A smart pointer to a FILE.
+typedef scoped_ptr_malloc<FILE, CallUnlessNull<FILE, file_close>> ScopedFile;
 
-/// A pointer to a self-pipe that gets cleaned up when this wrapper is deleted.
-typedef scoped_ptr_malloc<int, keyczar::openssl::OSSLDestroyer<
-                                   int, selfpipe_release>> ScopedSelfPipeFd;
+/// A smart pointer to a temporary directory to be cleaned upon destruction.
+typedef scoped_ptr_malloc<string, CallUnlessNull<string, temp_file_cleaner>>
+    ScopedTempDir;
+
+/// A smart pointer to a self-pipe.
+typedef scoped_ptr_malloc<int, CallUnlessNull<int, selfpipe_release>>
+    ScopedSelfPipeFd;
 
 /// Create a self-pipe for a signal. A signal handler is installed that writes
 /// the signal number (cast to a byte) to the pipe. Callers can use the returned
@@ -117,7 +140,7 @@ bool Sha256FileHash(const string &path, string *hash);
 /// - KvmUnixTaoChannel
 /// - PipeTaoChannel
 /// @param registry The registry to fill with the channels
-bool RegisterKnownChannels(TaoChildChannelRegistry *registry);
+// bool RegisterKnownChannels(TaoChildChannelRegistry *registry);
 
 /// Call the OpenSSL initialization routines and set up locking for
 /// multi-threaded access.
@@ -143,14 +166,11 @@ bool InitializeApp(int *argc, char ***argv, bool remove_args);
 ///
 /// Or, this function can be used with google-glog CHECK for fatal errors, e.g.
 ///    X509 *cert = SSL_get_certificate(...);
-///    CHECK(OpenSSLSuccess()) << "Could not find a required certificate,
-/// exiting program";
+///    CHECK(OpenSSLSuccess()) << "Required cert missing, exiting program";
 ///
 /// We also install an OpenSSL FailureFunction that will call this function
-/// before
-/// exiting on any FATAL error, e.g. errors from any CHECK(...) failure. So this
-/// will also
-/// print details on ssl errors:
+/// before exiting on any FATAL error, e.g. errors from any CHECK(...) failure.
+/// So this will also print details on ssl errors:
 ///    X509 *cert = SSL_get_certificate(...);
 ///    CHECK(cert != null) << "Could not find a required certificate, exiting
 /// program";
@@ -163,32 +183,23 @@ bool OpenSSLSuccess();
 bool OpenTCPSocket(const string &host, const string &port, int *sock);
 
 /// Generate and save a random secret, sealed against the host Tao.
-/// @param t The channel to access the host Tao.
+/// @param tao The interface to access the host Tao.
 /// @param path The location to store the sealed secret.
+/// @param policy A sealing policy under which to seal the secret.
 /// @param secret_size The number of random bytes for the new secret.
 /// @param[out] secret The new random secret.
-/// @param policy A seal/unseal policy under which to seal the secret.
-bool MakeSealedSecret(const TaoChildChannel &t, const string &path,
-                      int secret_size, string *secret, int policy);
+bool MakeSealedSecret(const Tao &tao, const string &path, const string &policy,
+                      int secret_size, string *secret);
 
 /// Read and unseal a secret that is sealed against the host Tao.
-/// @param t The channel to access the host Tao.
+/// @param tao The interface to access the host Tao.
 /// @param path The location to store the sealed secret.
+/// @param policy The policy under which the secret is expected to have been
+/// sealed. The call will fail if this does not match the actual policy under
+/// which the secret was sealed.
 /// @param secret[out] The unsealed secret.
-/// @param policy[out] The policy under which the secret had been sealed.
-bool GetSealedSecret(const TaoChildChannel &t, const string &path,
-                     string *secret, int *policy);
-
-/// Read and unseal a secret that is sealed against the host Tao, if possible.
-/// Otherwise, if the file does not exist, generate and save a new random sealed
-/// secret.
-/// @param t The channel to access the host Tao.
-/// @param path The location to read or store the sealed secret.
-/// @param secret[out] The unsealed or new random secret.
-/// @param policy A seal/unseal policy for this secret.
-/// TODO(kwalsh) Delete this: bad semantics, and all existing uses are bugs.
-bool SealOrUnsealSecret(const TaoChildChannel &t, const string &path,
-                        string *secret, int policy);
+bool GetSealedSecret(const Tao &tao, const string &path, const string &policy,
+                     string *secret);
 
 /// Receive a protobuf message on a file descriptor.
 /// @param fd The file descriptor to read.
@@ -238,15 +249,8 @@ bool CreateTempDir(const string &prefix, ScopedTempDir *dir);
 /// guards. The policy password will be "temppass".
 /// @param[out] temp_dir The new directory.
 /// @param[out] admin The new configuration.
-bool CreateTempACLsDomain(ScopedTempDir *temp_dir,
-                          scoped_ptr<TaoDomain> *admin);
-
-/// Create a temporary directory with a temporary configuration using root auth.
-/// @param[out] temp_dir The new directory. The policy password will be
-/// "temppass".
-/// @param[out] admin The new configuration.
-/* bool CreateTempRootDomain(ScopedTempDir *temp_dir,
-                          scoped_ptr<TaoDomain> *admin); */
+//bool CreateTempACLsDomain(ScopedTempDir *temp_dir,
+//                          scoped_ptr<TaoDomain> *admin);
 
 /// Connect to a remote server.
 /// @param host The name of the remote host.
@@ -288,6 +292,44 @@ string bytesToHex(const string &s);
 /// @param hex The hex string.
 /// @param[out] s The array of bytes.
 bool bytesFromHex(const string &hex, string *s);
+
+/// Join a sequence of printable values as a string. Values are converted to
+/// strings using the standard put << operator.
+/// @param it An STL-like iterator marking the start of the sequence.
+/// @param end An STL-like iterator marking the end of the sequence.
+/// @param delim A dilimiter to put between values.
+template <class T>
+static string join(T it, T end, const string &delim) {
+  stringstream out;
+  bool first = true;
+  for ( ; it != end; ++it) {
+    if (!first) out << delim;
+    first = false;
+    out << *it;
+  }
+  return out.str();
+}
+
+/// Join a list of printable values as a string. Values are converted to
+/// strings using the standard put << operator.
+/// @param values A list of values.
+/// @param delim A dilimiter to put between values.
+template <class T>
+static string join(const list<T> &values, const string &delim) {
+  return join(values.begin(), values.end(), delim);
+}
+
+/// Split a string into a list of strings.
+/// @param s The string to split.
+/// @param delim The delimiter used to separate the values.
+/// @param[out] values A list of substrings from s, with delimiters discarded.
+bool split(const string &s, const string &delim, list<string> *values);
+
+/// Split a string into a list of integers.
+/// @param s The string to split.
+/// @param delim The delimiter used to separate the integers.
+/// @param[out] values A list of integers from s.
+bool split(const string &s, const string &delim, list<int> *values);
 
 }  // namespace tao
 

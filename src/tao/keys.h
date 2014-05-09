@@ -30,6 +30,7 @@
 
 #include "tao/keys.pb.h"
 #include "tao/tao.h"
+#include "tao/util.h"
 
 namespace keyczar {
 class Signer;
@@ -40,12 +41,8 @@ class Verifier;
 namespace tao {
 using std::string;
 
-template <typename T, void (*F)(T *)>
-struct CallUnlessNull {
-  void operator()(T *ptr) const {
-    if (ptr) F(ptr);
-  }
-};
+/// A smart pointer to an OpenSSL X509 structure.
+typedef scoped_ptr_malloc<X509, CallUnlessNull<X509, X509_free>> ScopedX509;
 
 /// A smart pointer to an OpenSSL EVP_PKEY object.
 typedef scoped_ptr_malloc<EVP_PKEY, CallUnlessNull<EVP_PKEY, EVP_PKEY_free>>

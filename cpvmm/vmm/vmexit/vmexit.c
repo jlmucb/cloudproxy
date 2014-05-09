@@ -719,7 +719,7 @@ void vmexit_common_handler(void)
     // This is required since GCPU and VMCS cache has not yet been 
     // flushed and might have stale values from previous VMExit
     vmcs_sw_shadow_disable[hw_cpu_id()] = TRUE;
-    if( gcpu->trigger_log_event && (vmexit_reason() == Ia32VmxExitBasicReasonMonitorTrapFlag) ) {
+    if(gcpu->trigger_log_event && (vmexit_reason()==Ia32VmxExitBasicReasonMonitorTrapFlag) ) {
         REPORT_VMM_LOG_EVENT_DATA vmm_log_event_data;
                 
         vmm_log_event_data.vector = gcpu->trigger_log_event - 1;
@@ -786,7 +786,12 @@ void vmexit_common_handler(void)
     else {
         scheduler_schedule_gcpu(next_gcpu);
     }
-    VMM_ASSERT(next_gcpu);
+    if(next_gcpu==0) {
+#ifdef JLMDEBUG
+        bprint("next_cpu is NULL\n");
+        LOOP_FOREVER
+#endif
+    }
     // finally process NMI injection
     NMI_DO_PROCESSING();
 #ifdef JLMDEBUG

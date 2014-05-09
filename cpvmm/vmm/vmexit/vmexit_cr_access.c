@@ -33,7 +33,6 @@
 #endif
 
 #define CR0_TASK_SWITCH     8
-
 #define GCPU_SET_GUEST_VISIBLE_CONTROL_TO_L0_M(__gcpu, __reg_id, __value) {     \
     if (IA32_CTRL_CR0 == (__reg_id) ||  IA32_CTRL_CR4 == (__reg_id))           \
         gcpu_set_guest_visible_control_reg_layered(__gcpu, __reg_id, __value, VMCS_LEVEL_0);\
@@ -41,7 +40,6 @@
 }
 
 extern BOOLEAN is_cr4_osxsave_supported(void);
-
 static UVMM_EVENT lkup_write_event[IA32_CTRL_COUNT] = {
     EVENT_GCPU_AFTER_GUEST_CR0_WRITE,   // IA32_CTRL_CR0,
     EVENTS_COUNT,                       // IA32_CTRL_CR2,
@@ -99,16 +97,13 @@ BOOLEAN is_cr4_smep_supported(void)
     cpuid_params.m_rax = CPUID_M_RAX_7;
     /* Set sub-leaf RCX to 0 */
     cpuid_params.m_rcx = 0;
-
     /* Execute CPUID */
     hw_cpuid(&cpuid_params);
-
     /* Return whether SMEP is supported or not */
     return (BOOLEAN) BIT_GET64( cpuid_params.m_rbx, CPUID_SMEP_SUPPORTED_BIT );
 }
 
-static
-BOOLEAN vmexit_cr_access_is_gpf0(GUEST_CPU_HANDLE gcpu) {
+static BOOLEAN vmexit_cr_access_is_gpf0(GUEST_CPU_HANDLE gcpu) {
     EM64T_CR0 cr0;
     UINT64    cr3;
     EM64T_CR4 cr4;
@@ -138,7 +133,6 @@ BOOLEAN vmexit_cr_access_is_gpf0(GUEST_CPU_HANDLE gcpu) {
     if (efer.Bits.LME && (!cr4.Bits.PAE)) {
         return TRUE;
     }
-
     // #GP conditions due to PCIDE feature. 
     if (cr4.Bits.PCIDE){
         //If this bit is not supported by h/w .
@@ -159,7 +153,6 @@ BOOLEAN vmexit_cr_access_is_gpf0(GUEST_CPU_HANDLE gcpu) {
             return TRUE;
         }        
     }
-
     if (cr0.Bits.PG && cr4.Bits.PAE && (!efer.Bits.LME)) {
         UINT8 pdpt[PW_NUM_OF_PDPT_ENTRIES_IN_32_BIT_MODE * PW_SIZE_OF_PAE_ENTRY];
 
@@ -171,10 +164,13 @@ BOOLEAN vmexit_cr_access_is_gpf0(GUEST_CPU_HANDLE gcpu) {
     return FALSE;
 }
 
-static BOOLEAN cr_guest_update(GUEST_CPU_HANDLE gcpu, VMM_IA32_CONTROL_REGISTERS reg_id,
-                               ADDRESS bits_to_update, IA32_VMX_EXIT_QUALIFICATION qualification);
 
-static BOOLEAN cr_mov(GUEST_CPU_HANDLE gcpu, IA32_VMX_EXIT_QUALIFICATION qualification);
+static BOOLEAN cr_guest_update(GUEST_CPU_HANDLE gcpu, 
+                VMM_IA32_CONTROL_REGISTERS reg_id,
+                ADDRESS bits_to_update, IA32_VMX_EXIT_QUALIFICATION qualification);
+static BOOLEAN cr_mov(GUEST_CPU_HANDLE gcpu, 
+        IA32_VMX_EXIT_QUALIFICATION qualification);
+
 
 RAISE_EVENT_RETVAL cr_raise_write_events( GUEST_CPU_HANDLE gcpu,
                             VMM_IA32_CONTROL_REGISTERS reg_id, ADDRESS new_value )
@@ -185,8 +181,7 @@ RAISE_EVENT_RETVAL cr_raise_write_events( GUEST_CPU_HANDLE gcpu,
 
     if(reg_id >= IA32_CTRL_COUNT)
         return result;
-
-    event = lkup_write_event[ reg_id ];
+    event = lkup_write_event[reg_id];
     if (event != (UVMM_EVENT)EVENTS_COUNT) {
         event_data.new_guest_visible_value = new_value;
         if(TRUE == event_raise( event, gcpu, &event_data )) {
@@ -198,8 +193,8 @@ RAISE_EVENT_RETVAL cr_raise_write_events( GUEST_CPU_HANDLE gcpu,
     return result;
 }
 
-BOOLEAN cr_guest_update( GUEST_CPU_HANDLE gcpu, VMM_IA32_CONTROL_REGISTERS  reg_id,
-                    ADDRESS bits_to_update, IA32_VMX_EXIT_QUALIFICATION qualification)
+BOOLEAN cr_guest_update(GUEST_CPU_HANDLE gcpu, VMM_IA32_CONTROL_REGISTERS reg_id,
+                ADDRESS bits_to_update, IA32_VMX_EXIT_QUALIFICATION qualification)
 {
     UINT64 guest_cr;
     UINT64 old_visible_reg_value;
@@ -208,95 +203,119 @@ BOOLEAN cr_guest_update( GUEST_CPU_HANDLE gcpu, VMM_IA32_CONTROL_REGISTERS  reg_
     ADDRESS value;
     REPORT_CR_DR_LOAD_ACCESS_DATA cr_access_data;
 
+#ifdef JLMDEBUG
+    bprint("cr_guest_update %d\n", reg_id);
+#endif
     if(qualification.CrAccess.AccessType == 3)
         value = qualification.CrAccess.LmswData;
     else
         value = 0;
     cr_access_data.qualification = qualification.Uint64;
-    if (report_uvmm_event(UVMM_EVENT_CR_ACCESS, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), (void *)&cr_access_data)) {
+    if (report_uvmm_event(UVMM_EVENT_CR_ACCESS, (VMM_IDENTIFICATION_DATA)gcpu, 
+                          (const GUEST_VCPU*)guest_vcpu(gcpu), 
+                          (void *)&cr_access_data)) {
         return FALSE;
     }
-
-    old_visible_reg_value = gcpu_get_guest_visible_control_reg_layered(gcpu, reg_id, VMCS_MERGED);
+    old_visible_reg_value = gcpu_get_guest_visible_control_reg_layered(gcpu, 
+                                            reg_id, VMCS_MERGED);
     visible_guest_cr = old_visible_reg_value;
     BITMAP_ASSIGN64(visible_guest_cr, bits_to_update, value);
 
     // update guest visible CR-X
-    //    gcpu_set_guest_visible_control_reg_layered(gcpu, reg_id, visible_guest_cr, VMCS_MERGED);
+    // gcpu_set_guest_visible_control_reg_layered(gcpu, reg_id, 
+    //                  visible_guest_cr, VMCS_MERGED);
     GCPU_SET_GUEST_VISIBLE_CONTROL_TO_L0_M(gcpu, reg_id, visible_guest_cr);
-
     if (vmexit_cr_access_is_gpf0(gcpu)) {
-    // gcpu_set_guest_visible_control_reg_layered(gcpu, reg_id, old_visible_reg_value, VMCS_MERGED);
+    // gcpu_set_guest_visible_control_reg_layered(gcpu, reg_id, 
+    //          old_visible_reg_value, VMCS_MERGED);
         GCPU_SET_GUEST_VISIBLE_CONTROL_TO_L0_M(gcpu, reg_id, old_visible_reg_value);
 
         // CR* access vmexit is changed to GPF0 exception.
-        VMM_LOG(mask_anonymous, level_trace,"%s: CR* access caused GPF0\n", __FUNCTION__);
-
+        VMM_LOG(mask_anonymous, level_trace,"%s: CR* access caused GPF0\n", 
+                __FUNCTION__);
         VMM_DEBUG_CODE(VMM_DEADLOOP());
         gcpu_inject_gp0(gcpu);
         return FALSE;
     }
-
     // update guest CR-X
     guest_cr = gcpu_get_control_reg_layered(gcpu, reg_id, VMCS_MERGED);
     BITMAP_ASSIGN64(guest_cr, bits_to_update, value);
     gcpu_set_control_reg_layered(gcpu, reg_id, guest_cr, VMCS_MERGED);
-
     cr_update_event = cr_raise_write_events( gcpu, reg_id, visible_guest_cr );
-    VMM_ASSERT(cr_update_event != EVENT_NOT_HANDLED);
-
+    if(cr_update_event==EVENT_NOT_HANDLED) {
+#ifdef JLMDEBUG
+        bprint("cr_guest_update event not handled\n");
+        LOOP_FOREVER
+#endif
+    }
+#ifdef JLMDEBUG
+    bprint("cr_guest_update returning true\n");
+#endif
     return TRUE;
 }
 
-BOOLEAN cr_guest_write( GUEST_CPU_HANDLE gcpu, VMM_IA32_CONTROL_REGISTERS  reg_id,
+BOOLEAN cr_guest_write( GUEST_CPU_HANDLE gcpu, VMM_IA32_CONTROL_REGISTERS reg_id,
                         ADDRESS value)
 {
     RAISE_EVENT_RETVAL cr_update_event;
     UINT64 old_visible_reg_value;
-
-        const VIRTUAL_CPU_ID* vcpu_id = NULL;
+    const VIRTUAL_CPU_ID* vcpu_id = NULL;
     EPT_GUEST_STATE *ept_guest = NULL;
     EPT_GUEST_CPU_STATE *ept_guest_cpu = NULL;
 
-    old_visible_reg_value = gcpu_get_guest_visible_control_reg_layered(gcpu, reg_id, VMCS_MERGED);
+#ifdef JLMDEBUG
+    bprint("cr_guest_write %d\n", reg_id);
+#endif
+    old_visible_reg_value = gcpu_get_guest_visible_control_reg_layered(gcpu, 
+                                        reg_id, VMCS_MERGED);
     // gcpu_set_guest_visible_control_reg_layered(gcpu, reg_id, value, VMCS_MERGED);
     GCPU_SET_GUEST_VISIBLE_CONTROL_TO_L0_M(gcpu, reg_id, value);
-
     if (vmexit_cr_access_is_gpf0(gcpu)) {
-        //  gcpu_set_guest_visible_control_reg_layered(gcpu, reg_id, old_visible_reg_value, VMCS_MERGED);
+        //  gcpu_set_guest_visible_control_reg_layered(gcpu, reg_id, 
+        //                  old_visible_reg_value, VMCS_MERGED);
         GCPU_SET_GUEST_VISIBLE_CONTROL_TO_L0_M(gcpu, reg_id, old_visible_reg_value);
 
         // CR* access vmexit is changed to GPF0 exception.
-        VMM_LOG(mask_anonymous, level_trace,"%s: CR* access caused GPF0\n", __FUNCTION__);
+        VMM_LOG(mask_anonymous, level_trace,"%s: CR* access caused GPF0\n", 
+                __FUNCTION__);
         VMM_DEBUG_CODE(VMM_DEADLOOP());
         gcpu_inject_gp0(gcpu);
         return FALSE;
     }
-
-    if( is_unrestricted_guest_supported() ) {
-        vcpu_id = guest_vcpu( gcpu );
+    if(is_unrestricted_guest_supported()) {
+        vcpu_id = guest_vcpu(gcpu);
         VMM_ASSERT(vcpu_id);        
         ept_guest = ept_find_guest_state(vcpu_id->guest_id);
         VMM_ASSERT(ept_guest);
         ept_guest_cpu = ept_guest->gcpu_state[vcpu_id->guest_cpu_id];
-
-        ept_guest_cpu->cr0 = gcpu_get_control_reg_layered(gcpu, IA32_CTRL_CR0, VMCS_MERGED);
-        ept_guest_cpu->cr4 = gcpu_get_control_reg_layered(gcpu, IA32_CTRL_CR4, VMCS_MERGED);
+        ept_guest_cpu->cr0 = gcpu_get_control_reg_layered(gcpu, IA32_CTRL_CR0, 
+                                            VMCS_MERGED);
+        ept_guest_cpu->cr4 = gcpu_get_control_reg_layered(gcpu, IA32_CTRL_CR4, 
+                                            VMCS_MERGED);
     }
-
     gcpu_set_control_reg_layered(gcpu, reg_id, value, VMCS_MERGED);
-
-    cr_update_event = cr_raise_write_events( gcpu, reg_id, value );
-    VMM_ASSERT(cr_update_event != EVENT_NOT_HANDLED);
-
-    if ( (reg_id == IA32_CTRL_CR4) && is_cr4_osxsave_supported() ) {
+    cr_update_event= cr_raise_write_events(gcpu, reg_id, value);
+#ifdef JLMDEBUG
+    bprint("cr_guest_write, position 8\n");
+#endif
+    if(cr_update_event==EVENT_NOT_HANDLED) {
+#ifdef JLMDEBUG
+        bprint("event not handled\n");
+        LOOP_FOREVER
+#endif
+    }
+    if((reg_id == IA32_CTRL_CR4) && is_cr4_osxsave_supported()) {
         EM64T_CR4 cr4_mask;
                 
         cr4_mask.Uint64 = 0;
         cr4_mask.Bits.OSXSAVE = 1;
-        vmcs_write(gcpu_get_vmcs(gcpu), VMCS_HOST_CR4, (vmcs_read(gcpu_get_vmcs(gcpu),VMCS_HOST_CR4) 
-                        & ~cr4_mask.Uint64) | (value & cr4_mask.Uint64) );
+        vmcs_write(gcpu_get_vmcs(gcpu), VMCS_HOST_CR4, 
+                   (vmcs_read(gcpu_get_vmcs(gcpu),VMCS_HOST_CR4) 
+                    & ~cr4_mask.Uint64) | (value & cr4_mask.Uint64) );
     }
+#ifdef JLMDEBUG
+    bprint("cr_guest_write returning true\n");
+#endif
     return TRUE;
 }
 
@@ -309,71 +328,66 @@ BOOLEAN cr_mov( GUEST_CPU_HANDLE gcpu, IA32_VMX_EXIT_QUALIFICATION qualification
     BOOLEAN status = TRUE;
     REPORT_CR_DR_LOAD_ACCESS_DATA cr_access_data;
 
+#ifdef JLMDEBUG
+    bprint("cr_mov\n");
+#endif
     cr_access_data.qualification = qualification.Uint64;
-
-    if (report_uvmm_event(UVMM_EVENT_CR_ACCESS, (VMM_IDENTIFICATION_DATA)gcpu, (const GUEST_VCPU*)guest_vcpu(gcpu), (void *)&cr_access_data)) {
+    if (report_uvmm_event(UVMM_EVENT_CR_ACCESS, (VMM_IDENTIFICATION_DATA)gcpu, 
+                    (const GUEST_VCPU*)guest_vcpu(gcpu), (void *)&cr_access_data)) {
         return FALSE;
     }
-
     VMM_ASSERT(qualification.CrAccess.Number < NELEMENTS(lkup_cr));
     cr_id = lkup_cr[qualification.CrAccess.Number];
     VMM_ASSERT(UNSUPPORTED_CR != cr_id);
-
     VMM_ASSERT(qualification.CrAccess.MoveGpr < NELEMENTS(lkup_operand));
     operand = lkup_operand[qualification.CrAccess.MoveGpr];
 
     switch (qualification.CrAccess.AccessType) {
-    case 0: // move to CR
+      case 0: // move to CR
         cr_value = gcpu_get_gp_reg(gcpu, operand);
         status = cr_guest_write(gcpu, cr_id, cr_value);
         break;
-
-    case 1: // move from CR
+      case 1: // move from CR
         cr_value = gcpu_get_guest_visible_control_reg(gcpu, cr_id);
                 // VMM_LOG(mask_anonymous, level_trace, "move from CR") ;
         gcpu_set_gp_reg(gcpu, operand, cr_value);
         break;
-
-    default:
+      default:
         VMM_DEADLOOP();
         break;
     }
-
-        return status;
+    return status;
 }
 
 VMEXIT_HANDLING_STATUS vmexit_cr_access(GUEST_CPU_HANDLE gcpu)
 {
-    VMCS_OBJECT                *vmcs = gcpu_get_vmcs(gcpu);
+    VMCS_OBJECT*                vmcs = gcpu_get_vmcs(gcpu);
     IA32_VMX_EXIT_QUALIFICATION qualification;
-    BOOLEAN status = TRUE;
+    BOOLEAN                     status = TRUE;
 
     qualification.Uint64 = vmcs_read(vmcs, VMCS_EXIT_INFO_QUALIFICATION);
-
     switch (qualification.CrAccess.AccessType) {
-    case 0: // move to CR
-    case 1: // move from CR
+      case 0: // move to CR
+      case 1: // move from CR
         status = cr_mov(gcpu, qualification);
         break;
-
-    case 2: // CLTS
+      case 2: // CLTS
         VMM_ASSERT(0 == qualification.CrAccess.Number);
-        status = cr_guest_update(gcpu, IA32_CTRL_CR0, CR0_TASK_SWITCH, qualification);
+        status= cr_guest_update(gcpu, IA32_CTRL_CR0, CR0_TASK_SWITCH, qualification);
         break;
-
-    case 3: // LMSW
+      case 3: // LMSW
         VMM_ASSERT(0 == qualification.CrAccess.Number);
         status = cr_guest_update(gcpu, IA32_CTRL_CR0, 0xFFFF, qualification);
         break;
     }
-
     if (TRUE == status) {
         gcpu_skip_guest_instruction(gcpu);
     }
     return VMEXIT_HANDLED;
 }
 
-VMM_IA32_CONTROL_REGISTERS vmexit_cr_access_get_cr_from_qualification(UINT64 qualification) {
+VMM_IA32_CONTROL_REGISTERS vmexit_cr_access_get_cr_from_qualification(
+                                        UINT64 qualification) {
     IA32_VMX_EXIT_QUALIFICATION qualification_tmp;
 
     qualification_tmp.Uint64 = qualification;

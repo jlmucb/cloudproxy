@@ -126,8 +126,7 @@ EVENT_CHARACTERISTICS   events_characteristics[] =
 };
 
 
-static BOOLEAN event_manager_add_gcpu( GUEST_CPU_HANDLE gcpu,
-    void *pv);
+static BOOLEAN event_manager_add_gcpu( GUEST_CPU_HANDLE gcpu, void *pv);
 static BOOLEAN event_register_internal( PEVENT_ENTRY p_event,
         UVMM_EVENT_INTERNAL      e,      //  in: event
         event_callback  call    //  in: callback to register on event e
@@ -281,7 +280,7 @@ UINT32 event_manager_guest_initialize(GUEST_ID guest_id)
 
 static
 BOOLEAN event_manager_add_gcpu (GUEST_CPU_HANDLE gcpu,
-	                            void*            pv UNUSED)
+                                    void*            pv UNUSED)
 {
     event_manager_gcpu_initialize(gcpu);
     return TRUE;
@@ -493,9 +492,12 @@ BOOLEAN event_raise_internal( PEVENT_ENTRY p_event, UVMM_EVENT_INTERNAL e,
     BOOLEAN         event_is_handled = FALSE;
 
     observers_limits = event_observers_limit(e);
-
     lock_acquire_readlock(&p_event->lock);
-    VMM_ASSERT(observers_limits <= OBSERVERS_LIMIT);
+#ifdef JLMDEBUG
+    bprint("event_guest_raise observers limit: %d, LIMIT: %d\n",
+            observers_limits, OBSERVERS_LIMIT);
+#endif
+    VMM_ASSERT(observers_limits<=OBSERVERS_LIMIT);
     vmm_memcpy(call, p_event->call, sizeof(call));
     lock_release_readlock(&p_event->lock);
 
@@ -508,8 +510,7 @@ BOOLEAN event_raise_internal( PEVENT_ENTRY p_event, UVMM_EVENT_INTERNAL e,
 }
 
 
-BOOLEAN event_global_raise( UVMM_EVENT_INTERNAL e,
-    GUEST_CPU_HANDLE    gcpu, void * p )
+BOOLEAN event_global_raise(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void * p)
 {
     PEVENT_ENTRY    list;
     list = get_global_observers(e);
@@ -517,18 +518,16 @@ BOOLEAN event_global_raise( UVMM_EVENT_INTERNAL e,
 }
 
 
-BOOLEAN event_guest_raise(
-    UVMM_EVENT_INTERNAL          e,      // in:  event
-    GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
-    void               *p       // in:  pointer to event specific structure
-    )
+BOOLEAN event_guest_raise(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void *p)
 {
     GUEST_HANDLE    guest;
     PEVENT_ENTRY    list;
     BOOLEAN         event_handled = FALSE;
 
+#ifdef JLMDEBUG
+    bprint("event_guest_raise\n");
+#endif
     VMM_ASSERT(gcpu);
-
     guest = gcpu_guest_handle(gcpu);
     VMM_ASSERT(guest);
     list = get_guest_observers(e, guest);
@@ -553,20 +552,20 @@ BOOLEAN event_gcpu_raise( UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu,
 }
 
 
-BOOLEAN event_raise( UVMM_EVENT_INTERNAL e,
-    GUEST_CPU_HANDLE gcpu, void *p)
+BOOLEAN event_raise(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void *p)
 {
     BOOLEAN raised = FALSE;
 
+#ifdef JLMDEBUG
+    bprint("event_raise(%d), EVENT_COUNT: %d\n", e, EVENTS_COUNT);
+#endif
     VMM_ASSERT(e < EVENTS_COUNT);
     if (e < EVENTS_COUNT) {
-        if (NULL != gcpu)                                   // try to raise GCPU-scope event
+        if (NULL != gcpu)  // try to raise GCPU-scope event
             raised = event_gcpu_raise(e, gcpu, p);
-
-        if (NULL != gcpu)                                   // try to raise GUEST-scope event
+        if (NULL != gcpu)  // try to raise GUEST-scope event
             raised = raised || event_guest_raise(e, gcpu, p);
-
-        raised = raised || event_global_raise(e, gcpu, p);  // try to raise global-scope event
+        raised = raised || event_global_raise(e, gcpu, p);  
     }
     return raised;
 }
@@ -580,18 +579,16 @@ BOOLEAN event_is_registered( UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu,
     UINT32          observers_limits;
     BOOLEAN         res = FALSE;
 
-    if (call == 0) return FALSE;
-    if (e >= EVENTS_COUNT) return FALSE;
-
+    if (call == 0) 
+        return FALSE;
+    if (e >= EVENTS_COUNT) 
+        return FALSE;
     list = get_gcpu_observers(e, gcpu);
-
     if (list == NULL)
         return FALSE;
-
     observers_limits = event_observers_limit(e);
     lock_acquire_readlock(&list->lock);
-
-     // Find free observer slot
+    // Find free observer slot
     while (i < observers_limits && list->call[i]) {
         if (list->call[i] == call) {
             res = TRUE;

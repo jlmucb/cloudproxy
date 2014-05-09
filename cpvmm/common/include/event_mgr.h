@@ -97,7 +97,7 @@ typedef enum {
     EVENT_GUEST_CPU_BREAKPOINT,
     EVENT_GUEST_CPU_SINGLE_STEP,
 
-	EVENTS_COUNT
+    EVENTS_COUNT
 } UVMM_EVENT_INTERNAL;
 #endif
 
@@ -121,9 +121,7 @@ typedef struct _EVENT_CHARACTERISTICS
  *	Event Manager Interface
  */
 
-
 UINT32 event_initialize_event_manger(const VMM_STARTUP_STRUCT* startup_struct);
-
 UINT32 event_manager_initialize(UINT32 num_of_host_cpus);
 UINT32 event_manager_guest_initialize(GUEST_ID guest_id);
 UINT32 event_manager_gcpu_initialize(GUEST_CPU_HANDLE gcpu);

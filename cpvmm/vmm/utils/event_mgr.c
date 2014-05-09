@@ -127,7 +127,7 @@ EVENT_CHARACTERISTICS   events_characteristics[] =
 
 
 static BOOLEAN event_manager_add_gcpu( GUEST_CPU_HANDLE gcpu, void *pv);
-static BOOLEAN event_register_internal( PEVENT_ENTRY p_event,
+static BOOLEAN event_register_internal(PEVENT_ENTRY p_event,
         UVMM_EVENT_INTERNAL      e,      //  in: event
         event_callback  call    //  in: callback to register on event e
     );
@@ -140,8 +140,7 @@ static BOOLEAN event_raise_internal( PEVENT_ENTRY  p_event,
     );
 static BOOLEAN event_global_raise(
     UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void * p );
-static BOOLEAN event_guest_raise( UVMM_EVENT_INTERNAL e,
-    GUEST_CPU_HANDLE gcpu, void  *p );
+BOOLEAN event_guest_raise( UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void  *p);
 static BOOLEAN event_gcpu_raise(
     UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void *p );
 
@@ -222,25 +221,19 @@ UINT32 event_manager_initialize(UINT32 num_of_host_cpus)
      *  Assert that all events are registed both in events_characteristics
      *  and in the events enumeration UVMM_EVENT_INTERNAL
      */
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(ARRAY_SIZE(events_characteristics) == EVENTS_COUNT);
-
     host_physical_cpus = num_of_host_cpus;
     vmm_memset( &event_mgr, 0, sizeof( event_mgr ));
     event_mgr.gcpu_events = hash64_create_default_hash(host_physical_cpus * host_physical_cpus);
-
     for(i = 0; i < EVENTS_COUNT; i++) {
         general_event = &(event_mgr.general_event[i]);
         lock_initialize_read_write_lock(&(general_event->lock));
     }
-
     list_init(&event_mgr.guest_events);
-
     for(guest = guest_first(&context); guest != NULL; guest = guest_next(&context)) {
         guest_id = guest_get_id(guest);
         event_manager_guest_initialize(guest_id);
     }
-
     event_global_register(EVENT_GCPU_ADD, event_manager_add_gcpu);
     return 0;
 }
@@ -278,9 +271,7 @@ UINT32 event_manager_guest_initialize(GUEST_ID guest_id)
 #pragma warning( push )
 #pragma warning (disable : 4100) // disable non-referenced formal parameters
 
-static
-BOOLEAN event_manager_add_gcpu (GUEST_CPU_HANDLE gcpu,
-                                    void*            pv UNUSED)
+static BOOLEAN event_manager_add_gcpu (GUEST_CPU_HANDLE gcpu, void* pv UNUSED)
 {
     event_manager_gcpu_initialize(gcpu);
     return TRUE;
@@ -295,16 +286,21 @@ UINT32 event_manager_gcpu_initialize(GUEST_CPU_HANDLE gcpu)
     PEVENT_ENTRY event = NULL;
     int i;
 
+#ifdef JLMDEBUG
+    bprint("event_manager_gcpu_initialize\n");
+#endif
     p_vcpu = guest_vcpu( gcpu );
     VMM_ASSERT(p_vcpu);
     gcpu_events = (CPU_EVENTS *) vmm_malloc(sizeof(CPU_EVENTS));
     VMM_ASSERT(gcpu_events);
 
-    VMM_LOG(mask_anonymous, level_trace,"event mgr add gcpu guest id=%d cpu id=%d with key %p\n", p_vcpu->guest_id, p_vcpu->guest_cpu_id, (UINT64) (p_vcpu->guest_id << (8 * sizeof(GUEST_ID)) | p_vcpu->guest_cpu_id));
+    VMM_LOG(mask_anonymous, level_trace,
+            "event mgr add gcpu guest id=%d cpu id=%d with key %p\n", 
+            p_vcpu->guest_id, p_vcpu->guest_cpu_id, 
+            (UINT64) (p_vcpu->guest_id<<(8*sizeof(GUEST_ID))|p_vcpu->guest_cpu_id));
     hash64_insert(event_mgr.gcpu_events,
-                  (UINT64) (p_vcpu->guest_id << (8 * sizeof(GUEST_ID)) | p_vcpu->guest_cpu_id),
-                  (UINT64) gcpu_events);
-
+             (UINT64) (p_vcpu->guest_id<<(8*sizeof(GUEST_ID))|p_vcpu->guest_cpu_id),
+             (UINT64) gcpu_events);
     // init lock for each event
     for(i = 0; i < EVENTS_COUNT; i++) {
         event = &(gcpu_events->event[i]);
@@ -320,27 +316,26 @@ void event_cleanup_event_manger(void)
 }
 #endif
 
-BOOLEAN event_register_internal( PEVENT_ENTRY p_event,
+BOOLEAN event_register_internal(PEVENT_ENTRY p_event,
     UVMM_EVENT_INTERNAL  e, event_callback  call)
 {
     UINT32  i = 0;
     UINT32  observers_limits;
     BOOLEAN registered = FALSE;
 
+#ifdef JLMDEBUG
+    bprint("event_register_internal\n");
+#endif
     observers_limits = event_observers_limit(e);
     lock_acquire_writelock(&p_event->lock);
-
     //  Find free observer slot
     while (i < observers_limits && p_event->call[i])
         ++i;
-
     if (i < observers_limits) {
         p_event->call[i] = call;
         registered = TRUE;
     }
     else {
-         // Exceeding allowed observers count
-        // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
         VMM_DEADLOOP();
     }
     lock_release_writelock(&p_event->lock);
@@ -352,8 +347,13 @@ BOOLEAN event_global_register( UVMM_EVENT_INTERNAL e, event_callback call)
 {
     PEVENT_ENTRY    list;
 
-    if (call == 0) return FALSE;
-    if (e >= EVENTS_COUNT) return FALSE;
+#ifdef JLMDEBUG
+    bprint("event_global_register\n");
+#endif
+    if (call == 0) 
+        return FALSE;
+    if (e >= EVENTS_COUNT) 
+        return FALSE;
     if (0 == (events_characteristics[e].scope & EVENT_GLOBAL_SCOPE)) return FALSE;
     list = get_global_observers(e);
     return event_register_internal(list, e, call);
@@ -386,13 +386,17 @@ BOOLEAN event_gcpu_register( UVMM_EVENT_INTERNAL e,
     PEVENT_ENTRY    list;
     BOOLEAN         registered = FALSE;
 
-    if (call == 0) return FALSE;
-    if (e >= EVENTS_COUNT) return FALSE;
-    if (0 == (events_characteristics[e].scope & EVENT_GCPU_SCOPE)) return FALSE;
-
+#ifdef JLMDEBUG
+    bprint("event_gcpu_register\n");
+#endif
+    if (call == 0) 
+        return FALSE;
+    if (e >= EVENTS_COUNT) 
+        return FALSE;
+    if (0 == (events_characteristics[e].scope & EVENT_GCPU_SCOPE)) 
+        return FALSE;
     list = get_gcpu_observers(e, gcpu);
-    if (NULL != list)
-    {
+    if (NULL != list) {
         registered = event_register_internal(list, e, call);
     }
     return registered;
@@ -408,14 +412,10 @@ BOOLEAN event_unregister_internal( PEVENT_ENTRY p_event,
 
     observers_limits = event_observers_limit(e);
     lock_acquire_writelock(&p_event->lock);
-
     while (i < observers_limits && p_event->call[i]) {
         if (p_event->call[i] == call) {
             unregistered = TRUE;
-
-            /*
-             *  Match. Delete entry (promote the following entries, one entry forward)
-             */
+            //  Match, delete entry (promote following entries, one entry forward)
             while ((i+1) < observers_limits && p_event->call[i+1]) {
                 p_event->call[i] = p_event->call[i+1];
                 ++i;
@@ -423,12 +423,9 @@ BOOLEAN event_unregister_internal( PEVENT_ENTRY p_event,
             p_event->call[i] = 0;
             break;
         }
-
         ++i;
     } // while (i < observers_limits && list->call[i])
-
     lock_release_writelock(&p_event->lock);
-
     return unregistered;
 }
 
@@ -437,9 +434,10 @@ BOOLEAN event_global_unregister( UVMM_EVENT_INTERNAL e, event_callback call )
     PEVENT_ENTRY    list;
     BOOLEAN         unregistered = FALSE;
 
-    if (call == 0) return FALSE;
-    if (e >= EVENTS_COUNT) return FALSE;
-
+    if (call == 0) 
+        return FALSE;
+    if (e >= EVENTS_COUNT) 
+        return FALSE;
     list = get_global_observers(e);
     if (NULL != list) {
         unregistered = event_unregister_internal(list, e, call);
@@ -494,18 +492,23 @@ BOOLEAN event_raise_internal( PEVENT_ENTRY p_event, UVMM_EVENT_INTERNAL e,
     observers_limits = event_observers_limit(e);
     lock_acquire_readlock(&p_event->lock);
 #ifdef JLMDEBUG
-    bprint("event_guest_raise observers limit: %d, LIMIT: %d\n",
+    bprint("event_guest_raise_internal observers limit: %d, LIMIT: %d\n",
             observers_limits, OBSERVERS_LIMIT);
 #endif
     VMM_ASSERT(observers_limits<=OBSERVERS_LIMIT);
     vmm_memcpy(call, p_event->call, sizeof(call));
     lock_release_readlock(&p_event->lock);
-
-    while (i < observers_limits && call[i]) {
+#ifdef JLMDEBUG
+    bprint("event_guest_raise_internal position 1\n");
+#endif
+    while(i<observers_limits && call[i]) {
         call[i](gcpu, p);
-        event_is_handled = TRUE;
+        event_is_handled= TRUE;
         ++i;
     }
+#ifdef JLMDEBUG
+    bprint("event_guest_raise_internal returning %d\n", event_is_handled);
+#endif
     return event_is_handled;
 }
 
@@ -544,6 +547,9 @@ BOOLEAN event_gcpu_raise( UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu,
     PEVENT_ENTRY    list;
     BOOLEAN         event_handled = FALSE;
 
+#ifdef JLMDEBUG
+    bprint("event_gcpu_raise\n");
+#endif
     list = get_gcpu_observers(e, gcpu);
     if (NULL != list) {
         event_handled = event_raise_internal(list, e, gcpu, p);

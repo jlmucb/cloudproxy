@@ -184,7 +184,7 @@ RAISE_EVENT_RETVAL cr_raise_write_events( GUEST_CPU_HANDLE gcpu,
     event = lkup_write_event[reg_id];
     if (event != (UVMM_EVENT)EVENTS_COUNT) {
         event_data.new_guest_visible_value = new_value;
-        if(TRUE == event_raise( event, gcpu, &event_data )) {
+        if(TRUE == event_raise(event, gcpu, &event_data)) {
             result = EVENT_HANDLED;
         } else {
             result = EVENT_NOT_HANDLED;

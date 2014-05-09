@@ -78,12 +78,12 @@ void lock_release( VMM_LOCK* lock )
 
     lock->owner_cpu_id = (CPU_ID)-1;
     hw_interlocked_assign ((INT32 volatile *)(&(lock->uint32_lock)), 0);
+#endif
 }
 
-// lock_try_acquire - returns TRUE if lock was aquired and FALSE if lock is taken
-// by another cpu
 BOOLEAN lock_try_acquire( VMM_LOCK* lock )
 {
+#if 0
     UINT32 expected_value = 0, current_value;
     UINT32 new_value = 1;
 

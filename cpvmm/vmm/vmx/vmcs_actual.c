@@ -353,7 +353,6 @@ UINT64 vmcs_act_read_from_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_
             VMM_DEADLOOP();
         }
     )
-
     encoding = vmcs_get_field_encoding(field_id, NULL);
     VMM_ASSERT(encoding != VMCS_NO_COMPONENT);
     // if VMCS is not "current" now, make it current temporary
@@ -367,9 +366,9 @@ UINT64 vmcs_act_read_from_hardware(VMCS_ACTUAL_OBJECT *p_vmcs, VMCS_FIELD field_
     // flush current VMCS if it was never used on this CPU
     if (p_vmcs->owning_host_cpu == CPU_NEVER_USED) {
         ret_val = hw_vmx_flush_current_vmcs(&p_vmcs->hpa);
-
         if (ret_val != HW_VMX_SUCCESS) {
-            error_processing(p_vmcs->hpa, ret_val, "hw_vmx_flush_current_vmcs", VMCS_FIELD_COUNT);
+            error_processing(p_vmcs->hpa, ret_val, "hw_vmx_flush_current_vmcs", 
+                             VMCS_FIELD_COUNT);
         }
     }
     // restore the previous "current" VMCS
@@ -486,19 +485,15 @@ void vmcs_act_flush_to_memory(struct _VMCS_OBJECT *vmcs)
 
     VMM_ASSERT(p_vmcs);
     VMM_ASSERT((p_vmcs->flags&ACTIVATED_FLAG) == 0);
-
     if (p_vmcs->owning_host_cpu == CPU_NEVER_USED) {
         return;
     }
     VMM_ASSERT(hw_cpu_id() == p_vmcs->owning_host_cpu);
     vmx_vmptrst(&previous_vmcs);
-
     // make my active temporary
     vmcs_activate(vmcs);
-
     // flush all modifications from cache to CPU
     vmcs_act_flush_to_cpu(vmcs);
-
     // now flush from hardware
     ret_val = hw_vmx_flush_current_vmcs(&p_vmcs->hpa);
 
@@ -507,14 +502,11 @@ void vmcs_act_flush_to_memory(struct _VMCS_OBJECT *vmcs)
         "hw_vmx_flush_current_vmcs", VMCS_FIELD_COUNT);
     }
     vmcs_deactivate(vmcs);
-
     // reset launching field
     p_vmcs->flags&= (UINT16)(~LAUNCHED_FLAG);
     p_vmcs->owning_host_cpu = CPU_NEVER_USED;
-
     // restore previous
     restore_previous_vmcs_ptr(previous_vmcs);
-
 }
 
 

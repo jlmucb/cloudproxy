@@ -808,7 +808,8 @@ static void vmcs_free_msr_list(UINT64 msr_list_addr, BOOLEAN address_is_in_hpa) 
 
         if (address_is_in_hpa) {
             if (!hmm_hpa_to_hva(msr_list_addr, &msr_list_addr_hva)) {
-                VMM_LOG(mask_anonymous, level_trace,"%s: Could not retrieve HVA of MSR list\n", __FUNCTION__);
+                VMM_LOG(mask_anonymous, level_trace,
+                        "%s: Could not retrieve HVA of MSR list\n", __FUNCTION__);
                 VMM_DEADLOOP();
             }
         }
@@ -847,7 +848,8 @@ static void vmcs_alloc_msr_list(IN UINT32 requested_num_of_msrs,
 
     *msl_list_memory = vmm_malloc_aligned(num_of_msrs * sizeof(IA32_VMX_MSR_ENTRY), sizeof(IA32_VMX_MSR_ENTRY));
     if (*msl_list_memory == NULL) {
-        VMM_LOG(mask_anonymous, level_trace,"%s: Failed to allocate memory for MSR list\n", __FUNCTION__);
+        VMM_LOG(mask_anonymous, level_trace,
+                "%s: Failed to allocate memory for MSR list\n", __FUNCTION__);
         VMM_DEADLOOP();
         *allocated_num_of_msrs = 0;
     }
@@ -881,7 +883,9 @@ void vmcs_add_msr_to_list(struct _VMCS_OBJECT* vmcs, UINT32 msr_index, UINT64  v
         if (is_addres_hpa) {
             // Address that is written in VMCS is HPA, convert it to pointer
             if (!hmm_hpa_to_hva((HPA)msr_list_addr, (HVA*)&msr_list_addr_ptr)) {
-                VMM_LOG(mask_anonymous, level_trace,"%s: Failed to retrieve HVA of MSR list from HPA=%P\n", __FUNCTION__, msr_list_addr);
+                VMM_LOG(mask_anonymous, level_trace,
+                        "%s: Failed to retrieve HVA of MSR list from HPA=%P\n", 
+                        __FUNCTION__, msr_list_addr);
                 VMM_DEADLOOP();
             }
         }
@@ -925,7 +929,9 @@ void vmcs_add_msr_to_list(struct _VMCS_OBJECT* vmcs, UINT32 msr_index, UINT64  v
                 UINT64  msr_list_addr_hpa;
 
                 if (!hmm_hva_to_hpa((UINT64)msr_list_addr_ptr, &msr_list_addr_hpa)) {
-                    VMM_LOG(mask_anonymous, level_trace,"%s: Failed to retrieve HPA of MSR list\n", __FUNCTION__);
+                    VMM_LOG(mask_anonymous, level_trace,
+                            "%s: Failed to retrieve HPA of MSR list\n", 
+                            __FUNCTION__);
                     VMM_DEADLOOP();
                 }
                 vmcs_write(vmcs, list_address, msr_list_addr_hpa);
@@ -936,9 +942,7 @@ void vmcs_add_msr_to_list(struct _VMCS_OBJECT* vmcs, UINT32 msr_index, UINT64  v
 
             *max_msrs_counter = new_max_counter;
         }
-
         new_msr_ptr = msr_list_addr_ptr + msr_list_count;
-
         vmcs_write(vmcs, list_count, msr_list_count + 1);
     }
 
@@ -947,7 +951,6 @@ void vmcs_add_msr_to_list(struct _VMCS_OBJECT* vmcs, UINT32 msr_index, UINT64  v
             new_msr_ptr->Reserved = 0;
             new_msr_ptr->MsrData = value;
     }
-
 }
 
 void vmcs_delete_msr_from_list(struct _VMCS_OBJECT*  vmcs, UINT32 msr_index,
@@ -1160,7 +1163,8 @@ void vmcs_store_initial(GUEST_CPU_HANDLE gcpu, CPU_ID cpu_id)
     }
     initial_vmcs = (UINT64 *)g_initial_vmcs[cpu_id];
     if (initial_vmcs == NULL) {
-        VMM_LOG(mask_anonymous, level_trace, "%s: Failed to allocate memory\n", __FUNCTION__);
+        VMM_LOG(mask_anonymous, level_trace, 
+                "%s: Failed to allocate memory\n", __FUNCTION__);
         return;
     }
     j = 0;
@@ -1190,15 +1194,15 @@ void vmcs_store_initial(GUEST_CPU_HANDLE gcpu, CPU_ID cpu_id)
 // Restore initial vmcs state for deadloop/asssert handler
 void vmcs_restore_initial(GUEST_CPU_HANDLE gcpu)
 {
-    VMCS_FIELD       field_id;
-    VMCS_OBJECT* vmcs;
-    UINT32           i, j;
-    UINT64           *initial_vmcs;
-    CPU_ID           cpu_id;
-    GUEST_HANDLE guest;
-    UINT64           eptp;
-    UINT64 default_ept_root_table_hpa = 0;
-    UINT32 default_ept_gaw = 0;
+    VMCS_FIELD      field_id;
+    VMCS_OBJECT*    vmcs;
+    UINT32          i, j;
+    UINT64          *initial_vmcs;
+    CPU_ID          cpu_id;
+    GUEST_HANDLE    guest;
+    UINT64          eptp;
+    UINT64	    default_ept_root_table_hpa = 0;
+    UINT32	    default_ept_gaw = 0;
 
     cpu_id = hw_cpu_id();
     if (g_initial_vmcs[cpu_id] == 0)
@@ -1229,7 +1233,6 @@ void vmcs_restore_initial(GUEST_CPU_HANDLE gcpu)
             vmcs_write(vmcs, field_id, initial_vmcs[j++]);
         }
     }
-
     // Set EPTP to default EPT
     guest = gcpu_guest_handle(gcpu);
     ept_get_default_ept(guest, &default_ept_root_table_hpa, &default_ept_gaw);
@@ -1244,7 +1247,7 @@ void vmcs_restore_initial(GUEST_CPU_HANDLE gcpu)
 
 // format vmcs info and write to guest buffer
 static void vmcs_dump_group(GUEST_CPU_HANDLE gcpu, const struct _VMCS_OBJECT* vmcs,
-                     const VMCS_FIELD* fields_to_print, UINT32 count, UINT64 debug_gpa)
+                  const VMCS_FIELD* fields_to_print, UINT32 count, UINT64 debug_gpa)
 {
     char                 buf[MAX_VMCS_BUF_SIZE], *bufptr;
     UINT32               i;

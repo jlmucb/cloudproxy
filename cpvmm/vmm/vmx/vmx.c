@@ -24,7 +24,7 @@ int vmx_on(UINT64* ptr_to_vmcs_region) {
     int  ret= 0;
     UINT64   address= *ptr_to_vmcs_region;
 #ifdef JLMDEBUG
-    bprint("vmx_on %p %d %d\n", ptr_to_vmcs_region, sizeof(int), ret);
+    bprint("vmx_on %p %p\n", ptr_to_vmcs_region, address);
 #endif
     asm volatile(
         "\tmovl $0, %[ret]\n"
@@ -57,7 +57,7 @@ int vmx_vmclear(UINT64* ptr_to_vmcs_region) {
     int      ret= 0;
     UINT64   address= *ptr_to_vmcs_region;
 #ifdef JLMDEBUG
-    bprint("vmclear %p\n", ptr_to_vmcs_region);
+    bprint("vmclear %p %p\n", ptr_to_vmcs_region, address);
 #endif
     asm volatile(
         "\tmovl $0, %[ret]\n"
@@ -82,7 +82,7 @@ int hw_vmx_flush_current_vmcs(UINT64 *address) {
 int vmx_vmlaunch() {
     int ret= 0;
 #ifdef JLMDEBUG
-    bprint("vmxlaunch, waiting\n");
+    bprint("vmxlaunch\n");
 #endif
     asm volatile(
         "\tmovl $0, %[ret]\n"
@@ -124,7 +124,7 @@ int vmx_vmptrld(UINT64 *ptr_to_vmcs_region) {
     int      ret= 0;
     UINT64   address= *ptr_to_vmcs_region;
 #ifdef JLMDEBUG
-    bprint("vmptrld, waiting 0x%016lx\n", address);
+    bprint("vmptrld %p %p\n", ptr_to_vmcs_region, address);
 #endif
     asm volatile(
         "\tmovl $0, %[ret]\n"
@@ -145,7 +145,7 @@ int vmx_vmptrld(UINT64 *ptr_to_vmcs_region) {
 void vmx_vmptrst(UINT64 *ptr_to_vmcs_region) {
     UINT64   address= *ptr_to_vmcs_region;
 #ifdef JLMDEBUG
-    bprint("vmptrst, waiting\n");
+    bprint("vmptrst %p %p\n", ptr_to_vmcs_region, address);
 #endif
     asm volatile(
         "\tvmptrst %[address]\n"
@@ -188,7 +188,7 @@ int vmx_vmread(UINT64 index, UINT64 *value) {
 int vmx_vmwrite(UINT64 index, UINT64 value) {
     int ret= 0;
 #ifdef JLMDEBUG1
-    bprint("vmwrite, waiting %p\n", value);
+    bprint("vmwrite, %p\n", value);
 #endif
     asm volatile(
         "\tmovq %[index], %%rax\n"

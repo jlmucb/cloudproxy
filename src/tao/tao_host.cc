@@ -16,34 +16,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "tao/linux_tao.h"
-
-#include <list>
-#include <mutex>
-#include <sstream>
+#include "tao/tao_host.h"
 
 #include <glog/logging.h>
-#include <keyczar/base/base64w.h>
-#include <keyczar/base/file_path.h>
-#include <keyczar/base/file_util.h>
-#include <keyczar/keyczar.h>
 
 #include "tao/attestation.h"
 #include "tao/attestation.pb.h"
-#include "tao/hosted_program_factory.h"
-#include "tao/hosted_programs.pb.h"
-#include "tao/sealed_data.pb.h"
-#include "tao/tao_ca.h"
-#include "tao/tao_channel.h"
-#include "tao/tao_child_channel.h"
-#include "tao/util.h"
-
-using std::lock_guard;
-using std::mutex;
-
-using keyczar::base::Base64WEncode;
-using keyczar::base::ReadFileToString;
-using keyczar::base::WriteStringToFile;
+#include "tao/keys.h"
+#include "tao/tao.h"
 
 namespace tao {
 
@@ -55,7 +35,7 @@ bool TaoHost::Init() {
   }
   // When using a signing key, we require a delegation to accompany it.
   if (keys_ != nullptr && keys_->Signer() != nullptr &&
-      !keys_->GetDelegation(&parent_delegation_)) {
+      !keys_->GetHostDelegation(&host_delegation_)) {
     LOG(ERROR) << "Could not load delegation for attestation key";
     return false;
   }
@@ -70,7 +50,7 @@ bool TaoHost::GetTaoName(const string &child_name, string *name) const {
   return true;
 }
 
-bool TaoHost::ExtendName(const string &child_name, const string &subprin) const {
+bool TaoHost::ExtendTaoName(const string &child_name, const string &subprin) const {
   // TODO(kwalsh) Sanity checking on subprin format.
   // Nothing to do.
   return true;
@@ -88,33 +68,34 @@ static bool IsSubprincipalOrIdentical(const string &child_name,
          (child_name.substr(parent_name.size() + 2) == parent_name + "::");
 }
 
-bool TaoHost::Attest(const string &child_name, const string &stmt,
+bool TaoHost::Attest(const string &child_name, Statement *stmt,
                       string *attestation) const {
-  if (!s->ParseFromString(stmt)) {
-    LOG(ERROR) << "Could not parse statement";
-    return false;
-  }
   // Make sure issuer is identical to (or a subprincipal of) the hosted
   // program's principal name.
-  if (!s.has_issuer()) {
-    s.set_issuer(tao_host_name_ + "::" + child_name);
-  } else if (!IsSubprincipalOrIdentical(s.issuer(),
+  if (!stmt->has_issuer()) {
+    stmt->set_issuer(tao_host_name_ + "::" + child_name);
+  } else if (!IsSubprincipalOrIdentical(stmt->issuer(),
         tao_host_name_ + "::" + child_name)) {
     LOG(ERROR) << "Invalid issuer in statement";
     return false;
   }
   // Sign it.
   if (keys_ == nullptr || keys_->Signer() == nullptr) {
-    // Need to reserialize with new issuer name.
-    string modified_stmt;
-    if (!s.SerializePartialToString(&modified_stmt)) {
-      LOG(ERROR) << "Could not serialize statement";
-      return false;
-    }
-    return host_tao_->Attest(modified_stmt, attestation);
+    return host_tao_->Attest(*stmt, attestation);
   } else {
-    return CreateAttestation(*keys_, parent_delegation_, s, attestation);
+    return GenerateAttestation(*keys_, host_delegation_, *stmt, attestation);
   }
+}
+
+bool TaoHost::SealToHost(const string &data, const string &policy,
+                         string *sealed) const {
+  return host_tao_->Seal(data, policy, sealed);
+}
+
+// Unseal data by invoking the host Tao. See Tao::Unseal() for semantics.
+bool TaoHost::UnsealFromHost(const string &sealed, string *data,
+                             string *policy) const {
+  return host_tao_->Unseal(sealed, data, policy);
 }
 
 bool TaoHost::Encrypt(const string &data, string *encrypted) const {
@@ -122,7 +103,7 @@ bool TaoHost::Encrypt(const string &data, string *encrypted) const {
     LOG(ERROR) << "TaoHost can not encrypt without a crypting key.";
     return false;
   }
-  return keys_->Crypter()->Encrypt(data, encrypted);
+  return keys_->Encrypt(data, encrypted);
 }
 
 bool TaoHost::Decrypt(const string &encrypted, string *data) const {
@@ -130,7 +111,7 @@ bool TaoHost::Decrypt(const string &encrypted, string *data) const {
     LOG(ERROR) << "TaoHost can not decrypt without a crypting key.";
     return false;
   }
-  return keys_->Crypter()->Encrypt(encrypted, data);
+  return keys_->Decrypt(encrypted, data);
 }
 
 bool TaoHost::GetAttestationName(string *name) const {

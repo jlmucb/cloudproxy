@@ -16,11 +16,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #ifndef TAO_TAO_H_
 #define TAO_TAO_H_
 
 #include <string>
+
+#include "tao/attestation.pb.h"
 
 namespace tao {
 using std::string;
@@ -36,6 +37,9 @@ using std::string;
 /// communicate with their host, others may use sockets, etc.
 class Tao {
  public:
+   Tao() {}
+   virtual ~Tao() {}
+
   /// Get the Tao principal name assigned to this hosted program. The name
   /// encodes the full path from the root Tao, through all intermediary Tao
   /// hosts, to this hosted program. The name will be globally unique: different
@@ -56,10 +60,10 @@ class Tao {
   virtual bool GetRandomBytes(size_t size, string *bytes) const = 0;
 
   /// Request the Tao host sign a Statement on behalf of this hosted program.
-  /// @param stmt A serialized Statement. The time, expiration, and issuer
+  /// @param stmt A Statement to be signed. The issuer, time, and expiration
   /// fields will be filled in with appropriate defaults if they are left empty.
   /// @param[out] attestation The resulting signed attestation.
-  virtual bool Attest(const string &stmt, string *attestation) const = 0;
+  virtual bool Attest(const Statement &stmt, string *attestation) const = 0;
 
   /// Encrypt data so only certain hosted programs can unseal it.
   /// @param data The data to seal.

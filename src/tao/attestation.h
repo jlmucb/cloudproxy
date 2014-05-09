@@ -16,7 +16,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #ifndef TAO_ATTESTATION_H_
 #define TAO_ATTESTATION_H_
 
@@ -25,16 +24,26 @@
 
 #include "tao/attestation.pb.h"
 
+namespace tao {
 using std::list;
 using std::string;
 
-namespace tao {
 class Keys;
 
 /// Utilities for arbitrary attestations.
 /// @{
 
-/// Validate an attestation.
+/// Generate a signed attestation.
+/// @param key The signing key.
+/// @param delegation A serialized delegation attestation to provide evidence
+/// that the signing key speaks for the issuer, or emptystring if no such
+/// evidence is needed.
+/// @param s The Statement to be signed.
+/// @param[out] attestation The signed attestation.
+bool GenerateAttestation(const Keys &key, const string &delegation,
+                         const Statement &s, string *attestation);
+
+/// Validate a signed attestation.
 /// @param attestation The attestation to be checked.
 /// @param[out] issuer The issuer from the attestation statement.
 /// @param[out] stmt The statement conveyed by this attestation.

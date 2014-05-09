@@ -16,12 +16,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #ifndef TAO_TAO_RPC_H_
 #define TAO_TAO_RPC_H_
 
 #include <string>
 
+#include "tao/tao.h"
 #include "tao/tao_rpc.pb.h"
 
 namespace tao {
@@ -29,14 +29,14 @@ using std::string;
 
 /// A class that sends Tao requests and responses over a channel between Tao
 /// hosts and Tao hosted programs. Channel details are left to subclasses.
-class TaoRPC {
+class TaoRPC : public Tao {
  public:
   /// Tao implementation.
   /// @{
   virtual bool GetTaoName(string *name) const;
   virtual bool ExtendTaoName(const string &subprin) const;
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
-  virtual bool Attest(const string &stmt, string *attestation) const;
+  virtual bool Attest(const Statement &stmt, string *attestation) const;
   virtual bool Seal(const string &data, const string &policy,
                     string *sealed) const;
   virtual bool Unseal(const string &sealed, string *data, string *policy) const;

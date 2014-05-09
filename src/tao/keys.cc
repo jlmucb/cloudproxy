@@ -32,15 +32,17 @@
 #include <keyczar/rw/keyset_file_reader.h>
 #include <keyczar/rw/keyset_file_writer.h>
 #include <keyczar/rw/keyset_writer.h>
-#include <openssl/ssl.h>
-#include <openssl/x509.h>
+#include <openssl/pem.h>
+#include <openssl/sha.h>
 #include <openssl/x509v3.h>
+// #include <openssl/ssl.h>
 
 #include "tao/attestation.pb.h"
 #include "tao/keys.pb.h"
 #include "tao/signature.pb.h"
 #include "tao/util.h"
 
+using std::string;
 using std::stringstream;
 
 using google::protobuf::TextFormat;
@@ -88,14 +90,14 @@ static void KeyczarCleanupFix(scoped_ptr<Keyset> *keyset,
 /// Generate a key and write it to disk.
 /// @param key_type The type of key, e.g. RSA_PRIV, ECDSA_PRIV, HMAC.
 /// @param key_purpose The purpose of key, e.g. SIGN_AND_VERIFY.
-/// @param name A name for the new key.
+/// @param nickname A nickname for the new key.
 /// @param password A password for encrypting the private key.
 /// @param private_path Location to store the private key.
 /// @param public_path Location to store public key, or emptystring.
 /// @param[out] key A scoped pointer to write the key to.
 template <class T>
 static bool GenerateKey(KeyType::Type key_type, KeyPurpose::Type key_purpose,
-                        const string &name, const string &password,
+                        const string &nickname, const string &password,
                         const string &private_path, const string &public_path,
                         scoped_ptr<T> *key) {
   if (!CreateDirectory(FilePath(private_path)) ||
@@ -112,7 +114,7 @@ static bool GenerateKey(KeyType::Type key_type, KeyPurpose::Type key_purpose,
   keyset->AddObserver(private_writer.get());
   keyset->set_encrypted(encrypted);
   keyset->set_metadata(
-      new KeysetMetadata(name, key_type, key_purpose, encrypted, next_version));
+      new KeysetMetadata(nickname, key_type, key_purpose, encrypted, next_version));
   // There is browser TLSv1.2 support for prime256v1 (secp256r1),
   // but not for keyczar's default secp224r1
   // keyset->GenerateDefaultKeySize(KeyStatus::PRIMARY);
@@ -131,41 +133,41 @@ static bool GenerateKey(KeyType::Type key_type, KeyPurpose::Type key_purpose,
   return true;
 }
 
-static bool GenerateCryptingKey(const string &name, const string &password,
+static bool GenerateCryptingKey(const string &nickname, const string &password,
                                 const string &path, scoped_ptr<Crypter> *key) {
-  return GenerateKey(KeyType::AES, KeyPurpose::DECRYPT_AND_ENCRYPT, name,
+  return GenerateKey(KeyType::AES, KeyPurpose::DECRYPT_AND_ENCRYPT, nickname,
                      password, path, "" /* no public */, key);
 }
 
-static bool GenerateSigningKey(const string &name, const string &password,
+static bool GenerateSigningKey(const string &nickname, const string &password,
                                const string &private_path,
                                const string &public_path,
                                scoped_ptr<Signer> *key) {
-  return GenerateKey(KeyType::ECDSA_PRIV, KeyPurpose::SIGN_AND_VERIFY, name,
+  return GenerateKey(KeyType::ECDSA_PRIV, KeyPurpose::SIGN_AND_VERIFY, nickname,
                      password, private_path, public_path, key);
 }
 
-static bool GenerateKeyDerivingKey(const string &name, const string &password,
+static bool GenerateKeyDerivingKey(const string &nickname, const string &password,
                                    const string &path,
                                    scoped_ptr<Signer> *key) {
-  return GenerateKey(KeyType::HMAC, KeyPurpose::SIGN_AND_VERIFY, name, password,
+  return GenerateKey(KeyType::HMAC, KeyPurpose::SIGN_AND_VERIFY, nickname, password,
                      path, "" /* no public */, key);
 }
 
 /// Generate a temporary key.
 /// @param key_type The type of key, e.g. RSA_PRIV, ECDSA_PRIV, HMAC.
 /// @param key_purpose The purpose of key, e.g. SIGN_AND_VERIFY.
-/// @param name A name for the new key.
+/// @param nickname A nickname for the new key.
 /// @param[out] key A scoped pointer to write the key to.
 template <class T>
 static bool GenerateKey(KeyType::Type key_type, KeyPurpose::Type key_purpose,
-                        const string &name, scoped_ptr<T> *key) {
+                        const string &nickname, scoped_ptr<T> *key) {
   int next_version = 1;
   int encrypted = true;  // note: unused, AFAIK
   scoped_ptr<Keyset> keyset(new Keyset());
   keyset->set_encrypted(encrypted);
   keyset->set_metadata(
-      new KeysetMetadata(name, key_type, key_purpose, encrypted, next_version));
+      new KeysetMetadata(nickname, key_type, key_purpose, encrypted, next_version));
   // There is browser TLSv1.2 support for prime256v1 (secp256r1),
   // but not for keyczar's default secp224r1
   // keyset->GenerateDefaultKeySize(KeyStatus::PRIMARY);
@@ -176,18 +178,18 @@ static bool GenerateKey(KeyType::Type key_type, KeyPurpose::Type key_purpose,
   return true;
 }
 
-static bool GenerateCryptingKey(const string &name, scoped_ptr<Crypter> *key) {
-  return GenerateKey(KeyType::AES, KeyPurpose::DECRYPT_AND_ENCRYPT, name, key);
+static bool GenerateCryptingKey(const string &nickname, scoped_ptr<Crypter> *key) {
+  return GenerateKey(KeyType::AES, KeyPurpose::DECRYPT_AND_ENCRYPT, nickname, key);
 }
 
-static bool GenerateSigningKey(const string &name, scoped_ptr<Signer> *key) {
-  return GenerateKey(KeyType::ECDSA_PRIV, KeyPurpose::SIGN_AND_VERIFY, name,
+static bool GenerateSigningKey(const string &nickname, scoped_ptr<Signer> *key) {
+  return GenerateKey(KeyType::ECDSA_PRIV, KeyPurpose::SIGN_AND_VERIFY, nickname,
                      key);
 }
 
-static bool GenerateKeyDerivingKey(const string &name,
+static bool GenerateKeyDerivingKey(const string &nickname,
                                    scoped_ptr<Signer> *key) {
-  return GenerateKey(KeyType::HMAC, KeyPurpose::SIGN_AND_VERIFY, name, key);
+  return GenerateKey(KeyType::HMAC, KeyPurpose::SIGN_AND_VERIFY, nickname, key);
 }
 
 /// Load a key from disk.
@@ -853,11 +855,11 @@ static int no_password_callback(char *buf, int size, int rwflag, void *u) {
   return 0;  // return error
 }
 
-Keys::Keys(const string &name, int key_types)
-    : key_types_(key_types), name_(name) {}
+Keys::Keys(const string &nickname, int key_types)
+    : key_types_(key_types), nickname_(nickname) {}
 
-Keys::Keys(const string &path, const string &name, int key_types)
-    : key_types_(key_types), path_(path), name_(name) {}
+Keys::Keys(const string &path, const string &nickname, int key_types)
+    : key_types_(key_types), path_(path), nickname_(nickname) {}
 
 Keys::Keys(keyczar::Verifier *verifying_key, keyczar::Signer *signing_key,
            keyczar::Signer *derivation_key, keyczar::Crypter *crypting_key)
@@ -931,11 +933,11 @@ bool CreateCASignedX509(const Signer &ca_key, const string &ca_cert_path,
 bool Keys::InitTemporary() {
   // Generate temporary keys.
   if ((key_types_ & Type::Crypting &&
-       !GenerateCryptingKey(name_ + "_crypting", &crypter_)) ||
+       !GenerateCryptingKey(nickname_ + "_crypting", &crypter_)) ||
       (key_types_ & Type::Signing &&
-       !GenerateSigningKey(name_ + "_signing", &signer_)) ||
+       !GenerateSigningKey(nickname_ + "_signing", &signer_)) ||
       (key_types_ & Type::KeyDeriving &&
-       !GenerateKeyDerivingKey(name_ + "_key_deriving", &key_deriver_))) {
+       !GenerateKeyDerivingKey(nickname_ + "_key_deriving", &key_deriver_))) {
     LOG(ERROR) << "Could not generate temporary keys";
     return false;
   }
@@ -963,14 +965,14 @@ bool Keys::InitNonHosted(const string &password) {
               !DirectoryExists(FilePath(KeyDerivingKeyPath())))) {
     // Generate PBE-protected keys.
     if ((key_types_ & Type::Crypting &&
-         !GenerateCryptingKey(name_ + "_crypting", password, CryptingKeyPath(),
+         !GenerateCryptingKey(nickname_ + "_crypting", password, CryptingKeyPath(),
                               &crypter_)) ||
         (key_types_ & Type::Signing &&
-         !GenerateSigningKey(name_ + "_signing", password,
+         !GenerateSigningKey(nickname_ + "_signing", password,
                              SigningPrivateKeyPath(), SigningPublicKeyPath(),
                              &signer_)) ||
         (key_types_ & Type::KeyDeriving &&
-         !GenerateKeyDerivingKey(name_ + "_key_deriving", password,
+         !GenerateKeyDerivingKey(nickname_ + "_key_deriving", password,
                                  KeyDerivingKeyPath(), &key_deriver_))) {
       LOG(ERROR) << "Could not generate protected keys";
       return false;
@@ -992,12 +994,12 @@ bool Keys::InitNonHosted(const string &password) {
   return true;
 }
 
-bool Keys::InitHosted(const TaoChildChannel &channel, int policy) {
+bool Keys::InitHosted(const Tao &tao, const string &policy) {
   ScopedSafeString secret(new string());
   if (PathExists(FilePath(SecretPath()))) {
     // Load Tao-protected secret.
-    int unseal_policy;
-    if (!GetSealedSecret(channel, SecretPath(), secret.get(), &unseal_policy)) {
+    string unseal_policy;
+    if (!GetSealedSecret(tao, SecretPath(), secret.get(), &unseal_policy)) {
       LOG(ERROR) << "Could not unseal a secret using the Tao";
       return false;
     }
@@ -1007,8 +1009,8 @@ bool Keys::InitHosted(const TaoChildChannel &channel, int policy) {
     }
   } else {
     // Generate Tao-protected secret.
-    int secret_size = Tao::DefaultRandomSecretSize;
-    if (!MakeSealedSecret(channel, SecretPath(), secret_size, secret.get(),
+    int secret_size = DefaultRandomSecretSize;
+    if (!MakeSealedSecret(tao, SecretPath(), secret_size, secret.get(),
                           policy)) {
       LOG(ERROR) << "Could not generate and seal a secret using the Tao";
       return false;
@@ -1019,25 +1021,33 @@ bool Keys::InitHosted(const TaoChildChannel &channel, int policy) {
     LOG(ERROR) << "Could not initialize Tao-protected keys";
     return false;
   }
-  // Create a parent-attestation for the signing key
+  // Create a delegation for the signing key from the host Tao.
   if (signer_.get() != nullptr) {
-    string key_prin;
-    if (!GetPrincipalName(&key_prin)) {
-      LOG(ERROR) << "Could not serialize signing key";
-      return false;
-    }
-    string serialized_attestation;
-    if (!channel.Attest(key_prin, &serialized_attestation)) {
-      LOG(ERROR) << "Could not get an attestation to the serialized key";
-      return false;
-    }
-    if (!WriteStringToFile(AttestationPath("parent"), serialized_attestation)) {
-      LOG(ERROR) << "Could not store parent attestation for the signing key";
-      return false;
+    string filename = DelegationPath("host");
+    if (PathExists(FilePath(filename))) {
+      if (!ReadStringFromFile(filename, &host_delegation_)) {
+        LOG(ERROR) << "Could not load delegation for signing key";
+        return false;
+      }
+    } else {
+      string key_name;
+      if (!GetPrincipalName(&key_name)) {
+        LOG(ERROR) << "Could not get principal name for signing key";
+        return false;
+      }
+      Statement stmt;
+      stmt.set_delegate(key_name);
+      if (!tao.Attest(stmt, &host_delegation_)) {
+        LOG(ERROR) << "Could not get delegation for signing key";
+        return false;
+      }
+      if (!WriteStringToFile(DelegationPath("host"), host_delegation_)) {
+        LOG(ERROR) << "Could not store delegation for signing key";
+        return false;
+      }
     }
   }
   return true;
-todo: also save
 }
 
 bool VerifierToPrincipalName(const Verifier &key, string *name) {
@@ -1053,7 +1063,7 @@ bool VerifierToPrincipalName(const Verifier &key, string *name) {
   return true;
 }
 
-bool VerifierFromPrincipalName(const string &name, scoped_ptr<Verifier> &key) {
+bool VerifierFromPrincipalName(const string &name, scoped_ptr<Verifier> *key) {
   string key_text;
   stringstream in(name);
   skip(in, "Key(");
@@ -1065,7 +1075,7 @@ bool VerifierFromPrincipalName(const string &name, scoped_ptr<Verifier> &key) {
   }
   string key_data;
   if (!Base64WDecode(key_text, &key_data) ||
-      !DeserializePublicKey(key_data, v)) {
+      !DeserializePublicKey(key_data, key)) {
     LOG(ERROR) << "Could not deserialize the Tao signer key";
     return false;
   }
@@ -1080,12 +1090,21 @@ bool Keys::GetPrincipalName(string *name) const {
   return tao::VerifierToPrincipalName(*Verifier(), name);
 }
 
+bool Keys::GetHostDelegation(string *attestation) {
+  if (host_delegation_.empty()) {
+    LOG(ERROR) << "No host delegation";
+    return false;
+  }
+  attestation->assign(host_delegation_);
+  return true;
+}
+
 string Keys::GetPath(const string &suffix) const {
   return FilePath(path_).Append(suffix).value();
 }
 
 Keys *Keys::DeepCopy() const {
-  scoped_ptr<Keys> other(new Keys(name_, path_, key_types_));
+  scoped_ptr<Keys> other(new Keys(nickname_, path_, key_types_));
   if ((verifier_.get() && !tao::CopyVerifier(*verifier_, &other->verifier_)) ||
       (signer_.get() && !tao::CopySigner(*signer_, &other->signer_)) ||
       (key_deriver_.get() &&
@@ -1113,22 +1132,38 @@ bool Keys::SerializePublicKey(string *s) const {
   return tao::SerializePublicKey(*Verifier(), s);
 }
 
-bool Keys::SignData(const string &data, const string &context,
-                    string *signature) const {
+bool Keys::Sign(const string &data, const string &context,
+                string *signature) const {
   if (!Signer()) {
     LOG(ERROR) << "No managed signer";
     return false;
   }
-  return tao::SignData(*Signer(), data, context, signature);
+  return tao::Sign(*Signer(), data, context, signature);
 }
 
-bool Keys::VerifySignature(const string &data, const string &context,
-                           const string &signature) const {
+bool Keys::Verify(const string &data, const string &context,
+                  const string &signature) const {
   if (!Verifier()) {
     LOG(ERROR) << "No managed verifier";
     return false;
   }
   return tao::VerifySignature(*Verifier(), data, context, signature);
+}
+
+bool Keys::Encrypt(const string &data, string *encrypted) const {
+  if (!Crypter()) {
+    LOG(ERROR) << "No managed crypter";
+    return false;
+  }
+  return Crypter()->Encrypt(data, encrypted);
+}
+
+bool Keys::Decrypt(const string &decrypt, string *data) const {
+  if (!Crypter()) {
+    LOG(ERROR) << "No managed crypter";
+    return false;
+  }
+  return Crypter()->Decrypt(encrypted, data);
 }
 
 bool Keys::CopySigner(scoped_ptr<keyczar::Signer> *copy) const {

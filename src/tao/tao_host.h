@@ -16,18 +16,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #ifndef TAO_TAO_HOST_H_
 #define TAO_TAO_HOST_H_
 
-#include <set>
 #include <string>
 
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <keyczar/base/scoped_ptr.h>
 
+#include "tao/attestation.pb.h"
+
 namespace tao {
-using std::set;
 using std::string;
 
 class Keys;
@@ -69,7 +68,9 @@ class TaoHost {
                              const string &subprin) const;
   virtual bool GetRandomBytes(const string &child_name, size_t size,
                               string *bytes) const;
-  virtual bool Attest(const string &child_name, const string &stmt,
+
+  /// Attest to a statement after modifying it to fill in missing fields.
+  virtual bool Attest(const string &child_name, Statement *stmt,
                       string *attestation) const;
   /// @}
   
@@ -79,15 +80,11 @@ class TaoHost {
 
   /// Seal data by invoking the host Tao. See Tao::Seal() for semantics.
   virtual bool SealToHost(const string &data, const string &policy,
-                          string *sealed) const {
-    return host_tao_->Seal(data, policy, sealed);
-  }
+                          string *sealed) const;
 
   // Unseal data by invoking the host Tao. See Tao::Unseal() for semantics.
   virtual bool UnsealFromHost(const string &sealed, string *data,
-                              string *policy) const {
-    return host_tao_->Uneal(sealed, data, policy);
-  }
+                              string *policy) const;
 
   /// @}
   
@@ -115,17 +112,16 @@ class TaoHost {
 
   /// Notify this TaoHost that a new hosted program has been created.
   /// @param child_name The subprincipal for the new hosted program.
-  virtual bool AddHostedProgram(const string &child_name) {}
+  virtual bool AddHostedProgram(const string &child_name) { return true; }
   
   /// Notify this TaoHost that a hosted program has been killed.
   /// @param child_name The subprincipal for the dead hosted program.
-  virtual bool RemoveHostedProgram(const string &child_name) {}
+  virtual bool RemoveHostedProgram(const string &child_name) { return true; }
  
   /// Get the Tao principal name assigned to this hosted Tao host. The name
   /// encodes the full path from the root Tao, through all intermediary Tao
   /// hosts, to this hosted Tao host. 
-  /// @param[out] name The full, globally-unique name of this hosted Tao host.
-  virtual bool GetTaoHostName(string *name) const { return tao_host_name_; }
+  virtual string TaoHostName() const { return tao_host_name_; }
 
   /// Get the principal name associated with this Tao's attestation signing key.
   /// @param[out] name The globally-unique name of the signing key.
@@ -136,7 +132,7 @@ class TaoHost {
   scoped_ptr<Keys> keys_;
 
   /// A delegation for our signing key from the host Tao.
-  string parent_delegation_;
+  string host_delegation_;
 
   /// The channel to use for host communication.
   scoped_ptr<Tao> host_tao_;

@@ -43,18 +43,6 @@ class TaoChildChannel;
 class TaoChildChannelRegistry;
 class TaoDomain;
 
-/// A pointer to an OpenSSL RSA object.
-typedef scoped_ptr_malloc<RSA, keyczar::openssl::OSSLDestroyer<RSA, RSA_free>>
-    ScopedRsa;
-
-/// A pointer to an OpenSSL EC_KEY object.
-typedef scoped_ptr_malloc<
-    EC_KEY, keyczar::openssl::OSSLDestroyer<EC_KEY, EC_KEY_free>> ScopedECKey;
-
-/// A pointer to an OpenSSL BIO object.
-typedef scoped_ptr_malloc<
-    BIO, keyczar::openssl::OSSLDestroyer<BIO, BIO_free_all>> ScopedBio;
-
 /// Close a file descriptor and ignore the return value. This is used by the
 /// definition of ScopedFd.
 /// @param fd A pointer to the file descriptor to close and free.

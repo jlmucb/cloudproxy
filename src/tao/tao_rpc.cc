@@ -16,7 +16,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "tao/tao_rpc.h"
 
 #include <glog/logging.h>
@@ -43,10 +42,15 @@ bool TaoRPC::GetRandomBytes(size_t size, string *bytes) const {
   return Request(rpc, bytes, nullptr /* policy */);
 }
 
-bool TaoRPC::Attest(const string &stmt, string *attestation) const {
+bool TaoRPC::Attest(const Statement &stmt, string *attestation) const {
+  string serialized_stmt;
+  if (!stmt.SerializePartialToString(&serialized_stmt)) {
+    LOG(ERROR) << "Could not serialize partial statement";
+    return false;
+  }
   TaoRPCRequest rpc;
   rpc.set_rpc(TAO_RPC_ATTEST);
-  rpc.set_data(stmt);
+  rpc.set_data(serialized_stmt);
   return Request(rpc, attestation, nullptr /* policy */);
 }
 

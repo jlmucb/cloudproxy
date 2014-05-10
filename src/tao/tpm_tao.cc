@@ -175,10 +175,6 @@ static bool serializePCRs(const list<int> &pcr_indexes,
   return true;
 }
 
-TPMTao::TPMTao(const string &aik_blob, const list<int> &pcr_indexes)
-    : aik_blob_(aik_blob),
-      pcr_indexes_(pcr_indexes.begin(), pcr_indexes.end()) {}
-
 bool TPMTao::Init() {
   TSS_RESULT result;
   TSS_UUID srk_uuid = {0x00000000, 0x0000, 0x0000, 0x00, 0x00,
@@ -243,17 +239,22 @@ bool TPMTao::Init() {
   Tspi_Context_FreeMemory(tss_ctx_, npcrs);
 
   // Get the AIK and encode it as a principal name.
-  BYTE *blob = reinterpret_cast<BYTE *>(const_cast<char *>(aik_blob_.data()));
-  result =
-      Tspi_Context_LoadKeyByBlob(tss_ctx_, srk_, aik_blob_.size(), blob, &aik_);
-  if (result != TSS_SUCCESS) {
-    LOG(ERROR) << "Could not load the AIK";
-    return false;
-  }
+  if (!aik_blob_.empty()) {
+    BYTE *blob = reinterpret_cast<BYTE *>(const_cast<char *>(aik_blob_.data()));
+    result =
+        Tspi_Context_LoadKeyByBlob(tss_ctx_, srk_, aik_blob_.size(), blob, &aik_);
+    if (result != TSS_SUCCESS) {
+      LOG(ERROR) << "Could not load the AIK";
+      return false;
+    }
 
-  if (!AIKToPrincipalName(tss_ctx_, aik_, &aik_name_)) {
-    LOG(ERROR) << "Could not get TPM principal name";
-    return false;
+    if (!AIKToPrincipalName(tss_ctx_, aik_, &aik_name_)) {
+      LOG(ERROR) << "Could not get TPM principal name";
+      return false;
+    }
+  } else {
+    aik_ = 0;
+    aik_name_ = "TPM()";
   }
 
   // Gather PCR info.
@@ -527,6 +528,10 @@ bool TPMTao::Unseal(const string &sealed, string *data, string *policy) const {
 }
 
 bool TPMTao::Attest(const Statement &stmt, string *attestation) const {
+  if (!aik_) {
+    LOG(ERROR) << "TPMTao was configured without a signing key";
+    return false;
+  }
   // Set up a (copy) of statement and fill in defaults.
   Statement s;
   s.MergeFrom(stmt);

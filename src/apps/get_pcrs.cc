@@ -1,8 +1,7 @@
 //  File: get_pcrs.cc
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: Gets a Base64W-encoded representation of the current PCRs 17
-//  and 18
+//  Description: Prints a hex-encoded representation of current PCR values.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -18,102 +17,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <netinet/in.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
+#include <iostream>
 #include <list>
 #include <string>
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
-#include <keyczar/base/base64w.h>
-#include <keyczar/keyczar.h>
-#include <tss/platform.h>
-#include <tss/tspi.h>
-#include <tss/tss_defines.h>
-#include <tss/tss_error.h>
-#include <tss/tss_structs.h>
-#include <tss/tss_typedef.h>
+#include "glog/logging.h"
+#include "tao/tpm_tao.h"
+#include "tao/util.h"
 
-#include <trousers/trousers.h>
-
+using std::cout;
+using std::endl;
 using std::list;
 using std::string;
-
-#define PCR_LEN 20
+using tao::TPMTao;
 
 int main(int argc, char **argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  FLAGS_alsologtostderr = true;
-  google::InitGoogleLogging(argv[0]);
+  tao::InitializeApp(&argc, &argv, true);
 
-  TSS_HCONTEXT tss_ctx;
-  TSS_HTPM tpm;
-  TSS_RESULT result;
-  TSS_HKEY srk = 0;
-  TSS_HPOLICY srk_policy = 0;
-  TSS_UUID srk_uuid = {0x00000000,
-                       0x0000,
-                       0x0000,
-                       0x00,
-                       0x00,
-                       {0x00, 0x00, 0x00, 0x00, 0x00, 0x01}};
-  BYTE secret[20];
+  list<int> pcr_indexes;
+  list<string> pcr_values;
 
-  // Use the well-known secret of 20 zeroes.
-  memset(secret, 0, 20);
-
-  // Set up the TSS context and the SRK + policy (with the right secret).
-  result = Tspi_Context_Create(&tss_ctx);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not create a TSS context.";
-
-  result = Tspi_Context_Connect(tss_ctx, nullptr /* Default TPM */);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not connect to the default TPM";
-
-  result = Tspi_Context_GetTpmObject(tss_ctx, &tpm);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not get a handle to the TPM";
-
-  result =
-      Tspi_Context_LoadKeyByUUID(tss_ctx, TSS_PS_TYPE_SYSTEM, srk_uuid, &srk);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not load the SRK handle";
-
-  result = Tspi_GetPolicyObject(srk, TSS_POLICY_USAGE, &srk_policy);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not get the SRK policy handle";
-
-  result = Tspi_Policy_SetSecret(srk_policy, TSS_SECRET_MODE_SHA1, 20, secret);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not set the well-known secret";
-
-  // Create and fill the PCR information.
-  TSS_HPCRS pcrs;
-  result = Tspi_Context_CreateObject(tss_ctx, TSS_OBJECT_TYPE_PCRS, 0, &pcrs);
-  CHECK_EQ(result, TSS_SUCCESS) << "Could not create a PCRs object";
-
-  // This seal operation is meant to be used with DRTM, so the only PCRs that it
-  // reads are 17 and 18. This is where you can set other PCRs to use.
-  list<UINT32> pcrs_to_read{17, 18};
-  BYTE *pcr_value = nullptr;
-  UINT32 pcr_value_len = 0;
-  scoped_array<char> vals(new char[pcrs_to_read.size() * PCR_LEN]);
-  size_t index = 0;
-  for (UINT32 ui : pcrs_to_read) {
-    result = Tspi_TPM_PcrRead(tpm, ui, &pcr_value_len, &pcr_value);
-    CHECK_EQ(result, TSS_SUCCESS) << "Could not read the value of PCR " << ui;
-
-    memcpy(vals.get() + index, pcr_value, pcr_value_len);
-    index += pcr_value_len;
+  if (argc == 1) {
+    pcr_indexes.push_back(17);
+    pcr_indexes.push_back(18);
+  } else {
+    for (int i = 1; i < argc; i++)
+      pcr_indexes.push_back(atoi(argv[i]));
   }
 
-  string pcr_str(vals.get(), index);
-  string serialized;
-  if (!keyczar::base::Base64WEncode(pcr_str, &serialized)) {
-    LOG(ERROR) << "Could not base64-encode the pcrs";
-    return 1;
+  TPMTao tao(pcr_indexes);
+  CHECK(tao.Init());
+  CHECK(tao.GetPCRValues(&pcr_values));
+
+  auto idx = pcr_indexes.begin();
+  auto val = pcr_values.begin();
+  while (idx != pcr_indexes.end()) {
+    cout << "PCR[" << *idx << "] = " << *val << endl;
+    ++idx;
+    ++val;
   }
 
-  printf("%s", serialized.c_str());
   return 0;
 }

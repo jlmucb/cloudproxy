@@ -49,7 +49,16 @@ class TPMTao : public Tao {
   ///   20 - trusted os kernel and other code (?)
   ///   21 - defined by trusted os
   ///   22 - defined by trusted os
-  TPMTao(const string &aik_blob, const list<int> &pcr_indexes);
+  TPMTao(const string &aik_blob, const list<int> &pcr_indexes)
+      : aik_blob_(aik_blob),
+        pcr_indexes_(pcr_indexes.begin(), pcr_indexes.end()) {}
+
+  /// Construct a TPMTao without an AIK. The TPMTao will not be able to perform
+  /// Attest operations, but it can be used for examing the current PCR values,
+  /// creating AIK blobs, etc.
+  /// @param pcrs_indexes A list of PCR indexes used for sealing and unsealing.
+  TPMTao(const list<int> &pcr_indexes) : TPMTao("", pcr_indexes) {}
+
   virtual bool Init();
   virtual bool Destroy();
   virtual ~TPMTao() {}
@@ -71,6 +80,14 @@ class TPMTao : public Tao {
   /// @param sig The signature to be verified.
   static bool VerifySignature(const string &signer, const string &stmt,
                               const string &sig);
+
+  /// Get the list of PCR values corresponding to the PCR indexes specified when
+  /// the TPMTao was constructed.
+  /// @param 
+  bool GetPCRValues(std::list<std::string> *values) {
+    values->assign(child_pcr_values_.begin(), child_pcr_values_.end());
+    return true;
+  }
 
   /// Size of PCR values.
   static const int PcrLen = 20;

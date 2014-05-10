@@ -637,7 +637,7 @@ void gcpu_resume(GUEST_CPU_HANDLE gcpu)
     // check for Launch and resume
     if (vmcs_launch_required(vmcs)) {
         vmcs_set_launched(vmcs);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
         bprint("launch required\n");
 #endif
         // call assembler launch
@@ -648,7 +648,7 @@ void gcpu_resume(GUEST_CPU_HANDLE gcpu)
                 IS_MODE_NATIVE(gcpu) ? "NATIVE" : "EMULATED");
     }
     else {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
         bprint("launch NOT required\n");
 #endif
         // call assembler resume

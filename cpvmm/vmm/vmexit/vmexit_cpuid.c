@@ -81,6 +81,8 @@ static VMEXIT_HANDLING_STATUS vmexit_cpuid_instruction(GUEST_CPU_HANDLE gcpu)
     gcpu_set_native_gp_reg(gcpu, IA32_REG_RDX, cpuid_params.m_rdx);
 #ifdef JLMDEBUG
     bprint("vmexit_cpuid_instruction\n");
+#endif
+#ifdef JLMDEBUG1
     bprint("rax: %016lx, rbx: %016lx, rcx: %016lx, rdx: %016lx\n",
             cpuid_params.m_rax, cpuid_params.m_rbx, 
             cpuid_params.m_rcx, cpuid_params.m_rdx);

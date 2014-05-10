@@ -489,7 +489,7 @@ BOOLEAN event_raise_internal(PEVENT_ENTRY p_event, UVMM_EVENT_INTERNAL e,
 
     observers_limits = event_observers_limit(e);
     lock_acquire_readlock(&p_event->lock);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("event_guest_raise_internal observers limit: %d, LIMIT: %d\n",
             observers_limits, OBSERVERS_LIMIT);
 #endif
@@ -539,7 +539,7 @@ BOOLEAN event_gcpu_raise(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu,
     PEVENT_ENTRY    list;
     BOOLEAN         event_handled = FALSE;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("event_gcpu_raise\n");
 #endif
     list = get_gcpu_observers(e, gcpu);

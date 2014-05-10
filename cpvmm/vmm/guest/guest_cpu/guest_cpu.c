@@ -328,7 +328,7 @@ void gcpu_do_use_host_page_tables(GUEST_CPU_HANDLE gcpu, BOOLEAN use)
 }
 
 // Get VIRTUAL_CPU_ID by Guest CPU
-const VIRTUAL_CPU_ID* guest_vcpu( const GUEST_CPU_HANDLE gcpu )
+const VIRTUAL_CPU_ID* guest_vcpu(const GUEST_CPU_HANDLE gcpu)
 {
     if(gcpu == NULL) {
         return NULL;

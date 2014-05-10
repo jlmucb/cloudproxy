@@ -188,6 +188,9 @@ BOOLEAN ept_hw_is_invvpid_supported(void)
     if(ept_hw_is_ept_supported() && hw_constraints->ept_vpid_capabilities.Bits.InvvpidSupported) {
         return TRUE;
     }
+#ifdef JLMDEBUG
+    bprint("ept_hw_is_invvpid_supported is returning false\n");
+#endif
     return FALSE;
 }
 
@@ -274,8 +277,8 @@ BOOLEAN ept_hw_invvpid_individual_address(UINT64 vpid, ADDRESS gva)
     UINT64 rflags;
     BOOLEAN status = FALSE;
 
-    if(! ept_hw_is_invvpid_supported()) {
-                VMM_ASSERT(0);
+    if(!ept_hw_is_invvpid_supported()) {
+        VMM_ASSERT(0);
         return TRUE;
     }
     arg.vpid = vpid;
@@ -326,7 +329,10 @@ BOOLEAN ept_hw_invvpid_single_context(UINT64 vpid)
     UINT64 rflags;
     BOOLEAN status = FALSE;
 
-    if(! ept_hw_is_invvpid_supported()) {
+#ifdef JLMDEBUG
+    bprint("ept_hw_invvpid_single_context\n");
+#endif
+    if(!ept_hw_is_invvpid_supported()) {
         VMM_ASSERT(0);
         return TRUE;
     }
@@ -334,12 +340,15 @@ BOOLEAN ept_hw_invvpid_single_context(UINT64 vpid)
     if(hw_constraints->ept_vpid_capabilities.Bits.InvvpidContextWide) {
         vmm_asm_invvpid(&arg, INVVPID_SINGLE_CONTEXT, &rflags);
         status = ((rflags & 0x8d5) == 0);
-        if(! status) {
-            VMM_LOG(mask_anonymous, level_trace,"ept_hw_invvpid_all_contexts ERROR: rflags = %p\r\n", rflags);
-                        VMM_ASSERT(0);
+        if(!status) {
+#ifdef JLMDEBUG
+            bprint("vmm_asm_invvpid failed\n");
+#endif
+            VMM_LOG(mask_anonymous, level_trace,
+            "ept_hw_invvpid_all_contexts ERROR: rflags = %p\r\n", rflags);
+            VMM_ASSERT(0);
         }
     }
-
     return status;
 }
 

@@ -46,13 +46,8 @@ typedef struct _SCHEDULER_VCPU_OBJECT {
 } SCHEDULER_VCPU_OBJECT;
 
 // SCHEDULER_VCPU_OBJECT flags
-typedef enum _VCPU_FLAGS_ENUM {
-    VCPU_ALLOCATED_FLAG = 0,    // vcpu is allocated for some guest
-    VCPU_READY_FLAG             // vcpu is ready for execution
-} VCPU_FLAGS_ENUM;
-
-#define CLR_ALLOCATED_FLAG( obj )    BIT_CLR( (obj)->flags, VCPU_ALLOCATED_FLAG)
-#define CLR_READY_FLAG( obj )    BIT_CLR( (obj)->flags, VCPU_READY_FLAG)
+#define VCPU_ALLOCATED_FLAG 1
+#define VCPU_READY_FLAG  2
 
 typedef struct _SCHEDULER_CPU_STATE {
     SCHEDULER_VCPU_OBJECT*  vcpu_obj_list;

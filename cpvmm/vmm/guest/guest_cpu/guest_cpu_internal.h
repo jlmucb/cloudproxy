@@ -100,11 +100,11 @@ typedef struct _GUEST_CPU {
 #ifdef FAST_VIEW_SWITCH
     FVS_CPU_DESCRIPTOR          fvs_cpu_desc;
 #else
-        UINT8                       pad1[16];
+    UINT8                       pad1[16];
 #endif
-        UINT32                      trigger_log_event;
-        UINT8                       pad2[4];
-        VE_DESCRIPTOR               ve_desc;
+    UINT32                      trigger_log_event;
+    UINT8                       pad2[4];
+    VE_DESCRIPTOR               ve_desc;
 
 } GUEST_CPU;
 

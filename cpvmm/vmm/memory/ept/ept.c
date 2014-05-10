@@ -489,7 +489,7 @@ static BOOLEAN ept_cr4_update(GUEST_CPU_HANDLE gcpu, void* pv)
     UINT64 cr4;
 
 #ifdef JLMDEBUG
-    bprint("ept_cr4_update %d %p\n", vcpu_id, ept_guest);
+    bprint("ept_cr4_update\n");
 #endif
     ept_acquire_lock();
     vcpu_id = guest_vcpu(gcpu);
@@ -506,8 +506,14 @@ static BOOLEAN ept_cr4_update(GUEST_CPU_HANDLE gcpu, void* pv)
         ept_set_pdtprs(gcpu, cr4);
     }
     // Flush TLB
+#ifdef JLMDEBUG
+    bprint("ept_cr4_update position 1\n");
+#endif
     ept_hw_invvpid_single_context(1 + gcpu->vcpu.guest_id);
     ept_release_lock();
+#ifdef JLMDEBUG
+    bprint("ept_cr4_update returning true\n");
+#endif
     return TRUE;
 }
 
@@ -545,7 +551,7 @@ static BOOLEAN ept_emulator_exit(GUEST_CPU_HANDLE gcpu, void* pv UNUSED)
     bprint("ept_emulator exit\n");
 #endif
     ept_acquire_lock();
-    vcpu_id = guest_vcpu( gcpu );
+    vcpu_id = guest_vcpu(gcpu);
     VMM_ASSERT(vcpu_id);
     ept_guest = ept_find_guest_state(vcpu_id->guest_id);
     VMM_ASSERT(ept_guest);
@@ -576,7 +582,8 @@ static void ept_register_events(GUEST_CPU_HANDLE gcpu)
     event_gcpu_register(EVENT_GCPU_AFTER_GUEST_CR4_WRITE, gcpu, ept_cr4_update);
     event_gcpu_register(EVENT_EMULATOR_AS_GUEST_ENTER, gcpu, ept_emulator_enter);
     event_gcpu_register(EVENT_EMULATOR_AS_GUEST_LEAVE, gcpu, ept_emulator_exit);
-    event_gcpu_register(EVENT_GCPU_EPT_MISCONFIGURATION, gcpu, ept_misconfiguration_vmexit);
+    event_gcpu_register(EVENT_GCPU_EPT_MISCONFIGURATION, gcpu, 
+                        ept_misconfiguration_vmexit);
     event_gcpu_register(EVENT_GCPU_EPT_VIOLATION, gcpu, ept_violation_vmexit);
 }
 

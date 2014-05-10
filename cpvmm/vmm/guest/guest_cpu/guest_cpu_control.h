@@ -57,10 +57,10 @@ typedef enum _GCPU_TEMP_EXCEPTIONS_SETUP {
 void gcpu_temp_exceptions_setup( GUEST_CPU_HANDLE gcpu,
                                  GCPU_TEMP_EXCEPTIONS_SETUP action );
 
-BOOLEAN gcpu_cr3_virtualized( GUEST_CPU_HANDLE gcpu );
+BOOLEAN gcpu_cr3_virtualized(GUEST_CPU_HANDLE gcpu);
 
-void gcpu_enforce_settings_on_hardware(GUEST_CPU_HANDLE             gcpu,
-                                       GCPU_TEMP_EXCEPTIONS_SETUP   action);
+void gcpu_enforce_settings_on_hardware(GUEST_CPU_HANDLE gcpu,
+                                       GCPU_TEMP_EXCEPTIONS_SETUP action);
 
 #endif // _GUEST_CPU_CONTROL_INTERNAL_H_
 

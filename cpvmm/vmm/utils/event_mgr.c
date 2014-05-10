@@ -27,6 +27,7 @@
 #include "memory_allocator.h"
 #include "guest.h"
 #include "list.h"
+#include "vmm_callback.h"
 
 #define OBSERVERS_LIMIT         5
 #define NO_EVENT_SPECIFIC_LIMIT (UINT32)-1
@@ -318,7 +319,7 @@ BOOLEAN event_register_internal(PEVENT_ENTRY p_event,
     UINT32  observers_limits;
     BOOLEAN registered = FALSE;
 
-#ifdef JLMDEBUG
+#ifdef LMDEBUG
     bprint("event_register_internal\n");
 #endif
     observers_limits = event_observers_limit(e);
@@ -478,8 +479,8 @@ BOOLEAN event_gcpu_unregister( UVMM_EVENT_INTERNAL e,
 }
 #endif
 
-BOOLEAN event_raise_internal( PEVENT_ENTRY p_event, UVMM_EVENT_INTERNAL e,
-    GUEST_CPU_HANDLE gcpu, void *  p )
+BOOLEAN event_raise_internal(PEVENT_ENTRY p_event, UVMM_EVENT_INTERNAL e,
+    GUEST_CPU_HANDLE gcpu, void* p)
 {
     UINT32          i= 0;
     UINT32          observers_limits;
@@ -489,23 +490,17 @@ BOOLEAN event_raise_internal( PEVENT_ENTRY p_event, UVMM_EVENT_INTERNAL e,
     observers_limits = event_observers_limit(e);
     lock_acquire_readlock(&p_event->lock);
 #ifdef JLMDEBUG
-    bprint("event_guest_raise_internal observers limit: %d, LIMIT: %d, gcpu: %d\n",
-            observers_limits, OBSERVERS_LIMIT, gcpu);
+    bprint("event_guest_raise_internal observers limit: %d, LIMIT: %d\n",
+            observers_limits, OBSERVERS_LIMIT);
 #endif
     VMM_ASSERT(observers_limits<=OBSERVERS_LIMIT);
     vmm_memcpy(call, p_event->call, sizeof(call));
     lock_release_readlock(&p_event->lock);
-#ifdef JLMDEBUG
-    bprint("event_guest_raise_internal position 1\n");
-#endif
     while(i<observers_limits && call[i]) {
         call[i](gcpu, p);
         event_is_handled= TRUE;
         ++i;
     }
-#ifdef JLMDEBUG
-    bprint("event_guest_raise_internal returning %d\n", event_is_handled);
-#endif
     return event_is_handled;
 }
 
@@ -525,7 +520,7 @@ BOOLEAN event_guest_raise(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void *p)
     BOOLEAN         event_handled = FALSE;
 
 #ifdef JLMDEBUG
-    bprint("event_guest_raise\n");
+    bprint("event_guest_raise gcpu: %d\n", gcpu);
 #endif
     VMM_ASSERT(gcpu);
     guest = gcpu_guest_handle(gcpu);
@@ -538,8 +533,8 @@ BOOLEAN event_guest_raise(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void *p)
 }
 
 
-BOOLEAN event_gcpu_raise( UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu,
-                        void *p )
+BOOLEAN event_gcpu_raise(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu,
+                        void *p)
 {
     PEVENT_ENTRY    list;
     BOOLEAN         event_handled = FALSE;
@@ -560,7 +555,8 @@ BOOLEAN event_raise(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void *p)
     BOOLEAN raised = FALSE;
 
 #ifdef JLMDEBUG
-    bprint("event_raise(%d), EVENT_COUNT: %d\n", e, EVENTS_COUNT);
+    bprint("event_raise(%d), EVENT_COUNT: %d, gcpu: %d\n", 
+           e, EVENTS_COUNT, gcpu);
 #endif
     VMM_ASSERT(e < EVENTS_COUNT);
     if (e < EVENTS_COUNT) {

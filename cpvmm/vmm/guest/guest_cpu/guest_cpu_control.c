@@ -551,8 +551,8 @@ UINT64 gcpu_get_processor_ctrls2_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL leve
     return vmcs_read( vmcs, VMCS_CONTROL2_VECTOR_PROCESSOR_EVENTS );
 }
 
-INLINE UINT32 calculate_exceptions_map( GUEST_CPU_HANDLE gcpu, UINT32 request, UINT32 bitmask,
-                                 EXCEPTIONS_POLICY_TYPE* pf_policy)
+INLINE UINT32 calculate_exceptions_map( GUEST_CPU_HANDLE gcpu, UINT32 request, 
+                            UINT32 bitmask, EXCEPTIONS_POLICY_TYPE* pf_policy)
 {
     IA32_VMCS_EXCEPTION_BITMAP exceptions;
 
@@ -564,7 +564,8 @@ INLINE UINT32 calculate_exceptions_map( GUEST_CPU_HANDLE gcpu, UINT32 request, U
     return (UINT32)GET_FINAL_SETTINGS( gcpu, exceptions_ctrls, exceptions.Uint32 );
 }
 
-void gcpu_set_exceptions_map_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level, UINT64 value)
+void gcpu_set_exceptions_map_layered( GUEST_CPU_HANDLE gcpu, VMCS_LEVEL level, 
+                            UINT64 value)
 {
     VMCS_OBJECT* vmcs = gcpu_get_vmcs_layered(gcpu, level);
     VMM_ASSERT(vmcs);

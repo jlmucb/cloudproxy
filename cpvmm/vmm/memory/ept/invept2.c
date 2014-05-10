@@ -16,7 +16,7 @@
 #include "ept_hw_layer.h"
 
 // CHECK(JLM)
-void vmm_asm_invept (INVEPT_ARG *arg, UINT32 modifier, UINT64 *rflags)
+void vmm_asm_invept(INVEPT_ARG *arg, UINT32 modifier, UINT64 *rflags)
 {
     asm volatile(
         "\tmovq %[arg], %%rcx\n" 
@@ -30,7 +30,7 @@ void vmm_asm_invept (INVEPT_ARG *arg, UINT32 modifier, UINT64 *rflags)
     : 
     : [arg] "m" (arg), [modifier] "m" (modifier), [rflags] "m" (rflags)
     : "rax", "rcx", "rdx", "r8");
-        return;
+    return;
 }
 
 /*

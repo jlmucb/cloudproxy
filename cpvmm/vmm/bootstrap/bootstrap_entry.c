@@ -1568,14 +1568,12 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
 
 
 #define MIN_ANONYMOUS_GUEST_ID  30000
-typedef enum _GUEST_FLAGS {
-   GUEST_IS_PRIMARY_FLAG = 0,
-   GUEST_IS_NMI_OWNER_FLAG,
-   GUEST_IS_ACPI_OWNER_FLAG,
-   GUEST_IS_DEFAULT_DEVICE_OWNER_FLAG,
-   GUEST_BIOS_ACCESS_ENABLED_FLAG,
-   GUEST_SAVED_IMAGE_IS_COMPRESSED_FLAG
-} GUEST_FLAGS;
+#define GUEST_IS_PRIMARY_FLAG 1
+#define GUEST_IS_NMI_OWNER_FLAG 2
+#define GUEST_IS_ACPI_OWNER_FLAG 4
+#define GUEST_IS_DEFAULT_DEVICE_OWNER_FLAG 8
+#define GUEST_BIOS_ACCESS_ENABLED_FLAG 16
+#define GUEST_SAVED_IMAGE_IS_COMPRESSED_FLAG 32
 
 
 int prepare_primary_guest_environment(const multiboot_info_t *mbi)
@@ -1589,7 +1587,7 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     evmm_g0.version_of_this_struct = VMM_GUEST_STARTUP_VERSION;
     evmm_g0.flags = 0;
     BITMAP_SET(evmm_g0.flags, VMM_GUEST_FLAG_LAUNCH_IMMEDIATELY);
-    BIT_SET(evmm_g0.flags, GUEST_IS_PRIMARY_FLAG | GUEST_IS_DEFAULT_DEVICE_OWNER_FLAG);
+    evmm_g0.flags= GUEST_IS_PRIMARY_FLAG | GUEST_IS_DEFAULT_DEVICE_OWNER_FLAG;
     evmm_g0.guest_magic_number = MIN_ANONYMOUS_GUEST_ID;
     evmm_g0.cpu_affinity = -1;
     evmm_g0.cpu_states_count = 1+evmm_num_of_aps;

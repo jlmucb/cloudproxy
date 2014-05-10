@@ -145,7 +145,7 @@ BOOLEAN init_memory_layout_from_mbr(
     }
 
 #if 1
-    // JLM(FIX)
+#if 1   // UNMAP EVMM
     // now remove the VMM area from the primary guest
     ok= gpm_remove_mapping(primary_guest_gpm, 
                             vmm_memory_layout[0].base_address,
@@ -153,7 +153,7 @@ BOOLEAN init_memory_layout_from_mbr(
     VMM_LOG(mask_anonymous, level_trace,"Primary guest GPM: remove uvmm image base %p size 0x%x\r\n", 
     vmm_memory_layout[uvmm_image].base_address,
     vmm_memory_layout[uvmm_image].total_size);
-
+#endif
 #if 0
     // and remove thunk area from the primary guest also
     // if post launch skip it.

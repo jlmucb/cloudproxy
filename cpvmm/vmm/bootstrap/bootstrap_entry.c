@@ -113,14 +113,14 @@ uint32_t linux_real_mode_size= 0;       // size of real mode size
 uint32_t linux_protected_mode_start= 0; // address of protected mode
 uint32_t linux_protected_mode_size= 0;  // size of protected mode
 uint32_t linux_start_address= 0;        // start address of image
-uint32_t initram_start_address= 0; // address of the initram 
-uint32_t linux_entry_address= 0;   // address of the eip guest entry
-uint32_t linux_edi_register= 0;    // edi register on guest entry
-uint32_t linux_esp_register= 0;    // esp on guest entry
-uint32_t linux_stack_base= 0;      // base of the stack on entry
-uint32_t linux_stack_size= 0;      // stack size on guest entry
-char*    linux_command_line= NULL; // old command line
-char*    new_cmdline= NULL;        // new command line
+uint32_t initram_start_address= 0;      // address of the initram 
+uint32_t linux_entry_address= 0;        // address of the eip guest entry
+uint32_t linux_edi_register= 0;         // edi register on guest entry
+uint32_t linux_esp_register= 0;         // esp on guest entry
+uint32_t linux_stack_base= 0;           // base of the stack on entry
+uint32_t linux_stack_size= 0;           // stack size on guest entry
+char*    linux_command_line= NULL;      // old command line
+char*    new_cmdline= NULL;             // new command line
 
 // boot parameters for linux guest
 uint32_t linux_original_boot_parameters= 0;
@@ -2018,9 +2018,8 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     print_map(&g_copy_e820_map[5], 10);
 #endif
 
-    // Set up evmm IDT.  CHECK(JLM): Is this necessary?
 #ifdef SETUPIDT
-    extern void SetupIDT(); // this may not be needed
+    extern void SetupIDT(); // this is not needed
     SetupIDT();
 #endif
 
@@ -2120,9 +2119,11 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
            (uint32_t) evmm64_cs_selector, (uint32_t) evmm64_cr3);
     HexDump((uint8_t*)evmm_descriptor_table, 
             (uint8_t*)evmm_descriptor_table+24);
-    bprint("arguments to vmm_main:\n");
-    bprint("\tapic %d, p_startup_struct, 0x%08x\n",
+    bprint("arguments to vmm_main: ");
+    bprint("apic %d, p_startup_struct, 0x%08x\n",
        (int) local_apic_id, (int) p_startup_struct);
+    bprint("linux stack base: %08x, linux_edi_reg: %08x\n",
+           linux_stack_base, linux_edi_register);
     bprint("\tapplication struct 0x%08x, reserved, 0x%08x\n",
            (int)evmm_p_a0, (int)evmm_reserved);
 #endif

@@ -1,7 +1,7 @@
-//  File: fake_tao_unittests.cc
+//  File: soft_tao_unittests.cc
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: Tests the basic FakeTao functionality
+//  Description: Tests the basic SoftTao functionality
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -28,39 +28,36 @@
 
 using keyczar::base::Base64WEncode;
 
-using tao::FakeTao;
+using tao::SoftTao;
 using tao::ScopedTempDir;
 using tao::Tao;
 using tao::TaoDomain;
 
-class FakeTaoTest : public ::testing::Test {
+class SoftTaoTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    ASSERT_TRUE(tao::CreateTempACLsDomain(&temp_dir_, &admin_));
-
-    // create a fake tao with new keys and an attestation
-    attested_tao_.reset(new FakeTao());
+    attested_tao_.reset(new SoftTao());
     ASSERT_TRUE(
         attested_tao_->InitPseudoTPM(*temp_dir_ + "/fake_tpm", *admin_));
 
     // create a fake tao with temporary keys and no attestation
-    tao_.reset(new FakeTao());
+    tao_.reset(new SoftTao());
     ASSERT_TRUE(tao_->InitTemporaryTPM());
   }
 
-  scoped_ptr<FakeTao> tao_;
-  scoped_ptr<FakeTao> attested_tao_;
+  scoped_ptr<SoftTao> tao_;
+  scoped_ptr<SoftTao> attested_tao_;
   ScopedTempDir temp_dir_;
   scoped_ptr<TaoDomain> admin_;
 };
 
-TEST_F(FakeTaoTest, FullNameTest) {
+TEST_F(SoftTaoTest, FullNameTest) {
   string tao_name;
   EXPECT_TRUE(tao_->GetTaoFullName(&tao_name));
   EXPECT_TRUE(!tao_name.empty());
 }
 
-TEST_F(FakeTaoTest, RandomBytesTest) {
+TEST_F(SoftTaoTest, RandomBytesTest) {
   string bytes;
 
   EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 10, &bytes));
@@ -68,7 +65,7 @@ TEST_F(FakeTaoTest, RandomBytesTest) {
   EXPECT_TRUE(attested_tao_->GetRandomBytes("fake hash", 128, &bytes));
 }
 
-TEST_F(FakeTaoTest, SealTest) {
+TEST_F(SoftTaoTest, SealTest) {
   string bytes;
   EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 128, &bytes));
 
@@ -85,7 +82,7 @@ TEST_F(FakeTaoTest, SealTest) {
                                   &sealed));
 }
 
-TEST_F(FakeTaoTest, UnsealTest) {
+TEST_F(SoftTaoTest, UnsealTest) {
   string bytes;
   EXPECT_TRUE(tao_->GetRandomBytes("fake hash", 128, &bytes));
 
@@ -112,7 +109,7 @@ TEST_F(FakeTaoTest, UnsealTest) {
   EXPECT_EQ(bytes, unsealed);
 }
 
-TEST_F(FakeTaoTest, AttestTest) {
+TEST_F(SoftTaoTest, AttestTest) {
   string child_name = "FakeProgram()";
   string key_prin = "Key(\"..stuff..\")";
   string attestation;

@@ -453,7 +453,7 @@ bool TPMTao::GetRandomBytes(size_t size, string *bytes) const {
 
 bool TPMTao::Seal(const string &data, const string &policy, string *sealed) const {
   if (policy != Tao::SealPolicyDefault) {
-    LOG(ERROR) << "Policy not yet implemented: " << policy;
+    LOG(ERROR) << "TPM-specific policies not yet implemented: " << policy;
     return false;
   }
   TSS_RESULT result;
@@ -538,14 +538,13 @@ bool TPMTao::Attest(const Statement &stmt, string *attestation) const {
   if (!s.has_expiration())
     s.set_expiration(s.time() + Tao::DefaultAttestationTimeout);
   if (!s.has_issuer()) {
-    string child_name;
-    if (!GetTaoName(&child_name)) {
-      LOG(ERROR) << "Could not get child's full name";
+    string issuer;
+    if (!GetTaoName(&issuer)) {
+      LOG(ERROR) << "Could not get issuer name";
       return false;
     }
-    s.set_issuer(child_name);
+    s.set_issuer(issuer);
   }
-
   string serialized_statement;
   if (!s.SerializeToString(&serialized_statement)) {
     LOG(ERROR) << "Could not serialize the statement to a string";

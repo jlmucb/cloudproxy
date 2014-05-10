@@ -28,8 +28,8 @@
 			'sources' : [
 				'tao_test.cc',
 				'tpm_tao_unittests.cc',
+				'keys_unittests.cc',
 #				'fake_tao_unittests.cc',
-#				'keys_unittests.cc',
 #				'kvm_unix_tao_channel_unittests.cc',
 #				'kvm_vm_factory_unittests.cc',
 #				'linux_tao_unittests.cc',
@@ -54,8 +54,6 @@
 #			'target_name' : 'tao_test_utilities',
 #			'type' : 'static_library',
 #			'sources' : [
-#				'fake_tao.h',
-#				'fake_tao.cc',
 #				'fake_tao_channel.h',
 #				'fake_tao_channel.cc',
 #				'fake_program_factory.h',
@@ -78,6 +76,8 @@
 				'keys.h',
 				'keys.proto',
 				'signature.proto',
+				'soft_tao.cc',
+				'soft_tao.h',
 				'tao.h',
 				'tao_host.cc',
 				'tao_host.h',

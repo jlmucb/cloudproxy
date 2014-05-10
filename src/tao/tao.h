@@ -38,6 +38,7 @@ using std::string;
 class Tao {
  public:
    Tao() {}
+   virtual bool Destroy() { return true; }
    virtual ~Tao() {}
 
   /// Get the Tao principal name assigned to this hosted program. The name

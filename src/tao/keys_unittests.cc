@@ -1,7 +1,7 @@
-//  File: util_unittests.cc
+//  File: keys_unittests.cc
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: Unit tests for the utility functions
+//  Description: Unit tests for key utility functions
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -22,19 +22,18 @@
 #include <gtest/gtest.h>
 #include <keyczar/keyczar.h>
 
-#include "tao/direct_tao_child_channel.h"
-#include "tao/fake_tao.h"
+#include "tao/soft_tao.h"
 #include "tao/util.h"
 
-using keyczar::Verifier;
+using std::string;
 
 using tao::CreateTempDir;
 using tao::DeserializePublicKey;
-using tao::DirectTaoChildChannel;
-using tao::FakeTao;
 using tao::Keys;
 using tao::ScopedTempDir;
 using tao::SerializePublicKey;
+using tao::SoftTao;
+using tao::Tao;
 
 class TaoKeysTest : public ::testing::Test {
  protected:
@@ -70,12 +69,11 @@ TEST_F(TaoKeysTest, GenerateHostedKeysTest) {
   keys_.reset(new Keys(*temp_dir_, "unittest",
                        Keys::Signing | Keys::Crypting | Keys::KeyDeriving));
 
-  scoped_ptr<FakeTao> ft(new FakeTao());
-  EXPECT_TRUE(ft->InitTemporaryTPM()) << "Could not Init the tao";
-  string fake_hash("fake hash");
-  DirectTaoChildChannel channel(ft.release(), fake_hash);
+  SoftTao tao;
+  EXPECT_TRUE(tao.InitWithTemporaryKeys());
 
-  EXPECT_TRUE(keys_->InitHosted(channel, 0 /* policy */));
+  string policy = Tao::SealPolicyDefault;
+  EXPECT_TRUE(keys_->InitHosted(tao, policy));
   EXPECT_TRUE(keys_->Verifier() != nullptr);
   EXPECT_TRUE(keys_->Signer() != nullptr);
   EXPECT_TRUE(keys_->Crypter() != nullptr);
@@ -86,9 +84,9 @@ TEST_F(TaoKeysTest, SignVerifyDataTest) {
   string message("Test message");
   string context("Test context");
   string signature;
-  ASSERT_TRUE(keys_->SignData(message, context, &signature))
+  ASSERT_TRUE(keys_->Sign(message, context, &signature))
       << "Could not sign the test message";
-  EXPECT_TRUE(keys_->VerifySignature(message, context, signature))
+  EXPECT_TRUE(keys_->Verify(message, context, signature))
       << "The signature did not pass verification";
 }
 
@@ -97,7 +95,7 @@ TEST_F(TaoKeysTest, SerializeKeyTest) {
   ASSERT_TRUE(keys_->SerializePublicKey(&s))  // serializes Signer
       << "Could not serialize the public key";
 
-  scoped_ptr<Verifier> public_key;
+  scoped_ptr<keyczar::Verifier> public_key;
   ASSERT_TRUE(DeserializePublicKey(s, &public_key))
       << "Could not deserialize the public key";
 
@@ -106,8 +104,7 @@ TEST_F(TaoKeysTest, SerializeKeyTest) {
   string message("Test message");
   string context("Test context");
   string signature;
-  ASSERT_TRUE(keys_->SignData(message, context, &signature));
-  ASSERT_TRUE(keys_->SignData(message, context, &signature))
+  ASSERT_TRUE(keys_->Sign(message, context, &signature))
       << "Could not sign the test message";
   EXPECT_TRUE(tao::VerifySignature(*public_key, message, context, signature))
       << "Deserialized key could not verify signature";
@@ -122,9 +119,9 @@ TEST_F(TaoKeysTest, WrongContextTest) {
   string message("Test message");
   string context("Test context");
   string signature;
-  ASSERT_TRUE(keys_->SignData(message, context, &signature))
+  ASSERT_TRUE(keys_->Sign(message, context, &signature))
       << "Could not sign the test message";
-  EXPECT_FALSE(keys_->VerifySignature(message, "Wrong context", signature))
+  EXPECT_FALSE(keys_->Verify(message, "Wrong context", signature))
       << "Signature with wrong context falsely verified";
 }
 
@@ -132,7 +129,7 @@ TEST_F(TaoKeysTest, NoContextTest) {
   string message("Test message");
   string context;
   string signature;
-  EXPECT_FALSE(keys_->SignData(message, context, &signature))
+  EXPECT_FALSE(keys_->Sign(message, context, &signature))
       << "Could not sign the test message";
 }
 
@@ -146,7 +143,7 @@ TEST_F(TaoKeysTest, LoadKeysTest) {
   string message("Test message");
   string context("Test context");
   string signature;
-  ASSERT_TRUE(keys_->SignData(message, context, &signature))
+  ASSERT_TRUE(keys_->Sign(message, context, &signature))
       << "Could not sign the test message";
 
   // crypt something
@@ -164,7 +161,7 @@ TEST_F(TaoKeysTest, LoadKeysTest) {
   ASSERT_TRUE(keys_->InitNonHosted("unitpass"));
   EXPECT_TRUE(!keys_->HasFreshKeys());
 
-  EXPECT_TRUE(keys_->VerifySignature(message, context, signature))
+  EXPECT_TRUE(keys_->Verify(message, context, signature))
       << "Loaded key did not verify signature";
 
   EXPECT_TRUE(keys_->Crypter()->Decrypt(ciphertext, &decrypted));
@@ -180,7 +177,7 @@ TEST_F(TaoKeysTest, CopyKeysTest) {
   string message("Test message");
   string context("Test context");
   string signature;
-  ASSERT_TRUE(keys_->SignData(message, context, &signature))
+  ASSERT_TRUE(keys_->Sign(message, context, &signature))
       << "Could not sign the test message";
 
   // crypt something
@@ -196,7 +193,7 @@ TEST_F(TaoKeysTest, CopyKeysTest) {
   keys_.reset(keys_->DeepCopy());
   ASSERT_TRUE(keys_ != nullptr);
 
-  EXPECT_TRUE(keys_->VerifySignature(message, context, signature))
+  EXPECT_TRUE(keys_->Verify(message, context, signature))
       << "Copied key did not verify signature";
 
   EXPECT_TRUE(keys_->Crypter()->Decrypt(ciphertext, &decrypted));

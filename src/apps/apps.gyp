@@ -58,25 +58,6 @@
 			],
 		},
 #		{
-#			'target_name' : 'tpm_test',
-#			'type' : 'executable',
-#			'sources' : [
-#				'tpm_test.cc',
-#			],
-#			'include_dirs' : [
-#				'.',
-#			],
-#			'libraries' : [
-#				'-ltspi',
-#				'-lcrypto',
-#			],
-#			'dependencies' : [
-#				'../third_party/gflags/gflags.gyp:gflags',
-#				'../third_party/google-glog/glog.gyp:glog',
-#				'../third_party/keyczar/keyczar.gyp:keyczar'
-#			],
-#		},
-#		{
 #			'target_name' : 'stop_service',
 #			'type' : 'executable',
 #			'sources' : [

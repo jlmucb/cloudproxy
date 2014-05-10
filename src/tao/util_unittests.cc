@@ -20,31 +20,38 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <keyczar/base/file_util.h>
+//#include <keyczar/base/file_util.h>
 
-#include "tao/direct_tao_child_channel.h"
-#include "tao/fake_tao.h"
-#include "tao/pipe_tao_child_channel.h"
-#include "tao/tao_child_channel_params.pb.h"
-#include "tao/tao_child_channel_registry.h"
-#include "tao/tao_domain.h"
+//#include "tao/direct_tao_child_channel.h"
+//#include "tao/pipe_tao_child_channel.h"
+#include "tao/soft_tao.h"
+//#include "tao/tao_child_channel_params.pb.h"
+//#include "tao/tao_child_channel_registry.h"
+//#include "tao/tao_domain.h"
+
+using std::string;
 
 using tao::ConnectToUnixDomainSocket;
-using tao::CreateTempACLsDomain;
+//using tao::CreateTempACLsDomain;
 using tao::CreateTempDir;
-using tao::DirectTaoChildChannel;
-using tao::FakeTao;
+//using tao::DirectTaoChildChannel;
 using tao::OpenTCPSocket;
+using tao::GetTCPSocketInfo;
+using tao::ConnectToTCPServer;
 using tao::OpenUnixDomainSocket;
-using tao::PipeTaoChildChannel;
-using tao::RegisterKnownChannels;
+//using tao::PipeTaoChildChannel;
+//using tao::RegisterKnownChannels;
 using tao::ScopedFd;
 using tao::ScopedTempDir;
-using tao::TaoChildChannel;
-using tao::TaoChildChannelParams;
-using tao::TaoChildChannelRegistry;
-using tao::TaoDomain;
+using tao::SoftTao;
+using tao::Statement;
+using tao::Tao;
+//using tao::TaoChildChannel;
+//using tao::TaoChildChannelParams;
+//using tao::TaoChildChannelRegistry;
+// using tao::TaoDomain;
 
+/*
 TEST(TaoUtilTest, RegistryTest) {
   TaoChildChannelRegistry registry;
   EXPECT_TRUE(RegisterKnownChannels(&registry))
@@ -65,40 +72,46 @@ TEST(TaoUtilTest, RegistryTest) {
   TaoChildChannel *channel = registry.Create(serialized);
   EXPECT_TRUE(channel != nullptr);
 }
+*/
 
 TEST(TaoUtilTest, SocketTest) {
-  ScopedFd sock(new int(-1));
+  ScopedFd server_sock(new int(-1));
+  ScopedFd client_sock(new int(-1));
 
   // Passing 0 as the port means you get an auto-assigned port.
-  EXPECT_TRUE(OpenTCPSocket("localhost", "0", sock.get()))
+  ASSERT_TRUE(OpenTCPSocket("localhost", "0", server_sock.get()))
       << "Could not create and bind a TCP socket";
+  ASSERT_GE(*server_sock, 0);
+
+  string host, port;
+  ASSERT_TRUE(GetTCPSocketInfo(*server_sock, &host, &port));
+
+  ASSERT_TRUE(ConnectToTCPServer("localhost", port, client_sock.get()));
+  ASSERT_GE(*client_sock, 0);
 }
 
+/*
 TEST(TaoUtilTest, CreateDomainTest) {
   ScopedTempDir temp_dir;
   scoped_ptr<TaoDomain> admin;
   ASSERT_TRUE(CreateTempACLsDomain(&temp_dir, &admin));
 }
+*/
 
-TEST(TaoUtilTest, SealOrUnsealSecretTest) {
+TEST(TaoUtilTest, SealAndUnsealSecretTest) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(CreateTempDir("seal_or_unseal_test", &temp_dir));
   string seal_path = *temp_dir + string("/sealed_secret");
 
-  scoped_ptr<FakeTao> ft(new FakeTao());
-  EXPECT_TRUE(ft->InitTemporaryTPM()) << "Could not Init the tao";
-  string fake_hash("fake hash");
+  SoftTao tao;
+  EXPECT_TRUE(tao.InitWithTemporaryKeys());
 
-  DirectTaoChildChannel channel(ft.release(), fake_hash);
-
-  string secret("Fake secret");
-  EXPECT_TRUE(SealOrUnsealSecret(channel, seal_path, &secret, 0 /* policy */))
-      << "Could not seal the secret";
+  string secret;
+  string policy = Tao::SealPolicyDefault;
+  EXPECT_TRUE(MakeSealedSecret(tao, seal_path, policy, 10, &secret));
 
   string unsealed_secret;
-  EXPECT_TRUE(
-      SealOrUnsealSecret(channel, seal_path, &unsealed_secret, 0 /* policy */))
-      << "Could not unseal the secret";
+  EXPECT_TRUE(GetSealedSecret(tao, seal_path, policy, &unsealed_secret));
 
   EXPECT_EQ(secret, unsealed_secret)
       << "The unsealed secret did not match the original secret";
@@ -107,22 +120,29 @@ TEST(TaoUtilTest, SealOrUnsealSecretTest) {
 TEST(TaoUtilTest, SendAndReceiveMessageTest) {
   int fd[2];
   EXPECT_EQ(pipe(fd), 0) << "Could not create a pipe pair";
-  TaoChildChannelParams tccp;
-  tccp.set_channel_type("FakeChannel");
-  tccp.set_params("Fake Params");
+  ScopedFd send_fd(new int(fd[1]));
+  ScopedFd recv_fd(new int(fd[0]));
+  Statement msg;
+  msg.set_issuer("Alice");
+  msg.set_delegate("Bob");
+  msg.set_time(1);
+  msg.set_expiration(2);
 
-  EXPECT_TRUE(SendMessage(fd[1], tccp)) << "Could not send the message";
+  EXPECT_TRUE(SendMessage(*send_fd, msg)) << "Could not send the message";
 
-  TaoChildChannelParams received_tccp;
-  bool eof;
-  EXPECT_TRUE(ReceiveMessage(fd[0], &received_tccp, &eof) && !eof)
+  Statement received_msg;
+  bool eof = true;
+  EXPECT_TRUE(ReceiveMessage(*recv_fd, &received_msg, &eof) && !eof)
       << "Could not receive the message";
 
-  EXPECT_EQ(received_tccp.params(), tccp.params())
-      << "The received params don't match the original params";
+  EXPECT_EQ(received_msg.issuer(), "Alice");
+  EXPECT_EQ(received_msg.delegate(), "Bob");
+  EXPECT_EQ(received_msg.time(), 1);
+  EXPECT_EQ(received_msg.expiration(), 2);
 
-  EXPECT_EQ(received_tccp.channel_type(), tccp.channel_type())
-      << "The received channel type doesn't match the original channel type";
+  send_fd.reset(new int(-1));
+  EXPECT_TRUE(ReceiveMessage(*recv_fd, &received_msg, &eof) && eof)
+    << "Was expecting EOF";
 }
 
 TEST(TaoUtilTest, SocketUtilTest) {
@@ -134,11 +154,14 @@ TEST(TaoUtilTest, SocketUtilTest) {
   {
     // In a sub scope to make sure the sockets get closed before the temp
     // directory is deleted.
-    ScopedFd sock(new int(-1));
-    EXPECT_TRUE(OpenUnixDomainSocket(socket_path, sock.get()))
+    ScopedFd server_sock(new int(-1));
+    EXPECT_TRUE(OpenUnixDomainSocket(socket_path, server_sock.get()))
         << "Could not open a Unix domain socket";
+    ASSERT_GE(*server_sock, 0);
+
     ScopedFd client_sock(new int(-1));
     EXPECT_TRUE(ConnectToUnixDomainSocket(socket_path, client_sock.get()))
         << "Could not connect to the Unix domain socket";
+    ASSERT_GE(*client_sock, 0);
   }
 }

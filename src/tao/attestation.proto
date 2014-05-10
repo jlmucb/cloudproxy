@@ -81,7 +81,7 @@ package tao;
 //  }
 message Statement {
   // The identity of the issuer.
-  optional string issuer = 1;
+  required string issuer = 1;
   
   // The earliest time this statement is to be used, in 64-bit POSIX time.
   // Typically, this is simply the time at which the statement was created.

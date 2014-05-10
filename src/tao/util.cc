@@ -18,6 +18,7 @@
 // limitations under the License.
 #include "tao/util.h"
 
+#include <arpa/inet.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <netdb.h>
@@ -372,6 +373,21 @@ bool OpenTCPSocket(const string &host, const string &port, int *sock) {
   return true;
 }
 
+bool GetTCPSocketInfo(int sock, string *host, string *port) {
+  struct sockaddr_in addr;
+  unsigned int len = sizeof(addr);
+  if (getsockname(sock, (struct sockaddr *)&addr, &len) == -1) {
+    PLOG(ERROR) << "Could not get socket name";
+    return false;
+  }
+  char buf[INET_ADDRSTRLEN];
+  host->assign(inet_ntop(AF_INET, &addr.sin_addr, buf, sizeof(buf)));
+  stringstream out;
+  out << (unsigned)ntohs(addr.sin_port);
+  port->assign(out.str());
+  return true;
+}
+
 bool MakeSealedSecret(const Tao &tao, const string &path, const string &policy,
                       int secret_size, string *secret) {
   if (secret == nullptr) {
@@ -521,12 +537,11 @@ bool ReceiveMessageFrom(int fd, google::protobuf::Message *m,
 
 // TODO(kwalsh) move cloudproxy ReceivePartialData functions here and use them
 bool ReceiveMessage(int fd, google::protobuf::Message *m, bool *eof) {
+  *eof = false;
   if (m == nullptr) {
     LOG(ERROR) << "null message";
     return false;
   }
-
-  *eof = false;
 
   // Some channels don't return all the bytes you request when you request them.
   // TODO(tmroeder): change this implementation to support select better so it

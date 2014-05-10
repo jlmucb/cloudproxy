@@ -29,6 +29,7 @@
 				'tao_test.cc',
 				'tpm_tao_unittests.cc',
 				'keys_unittests.cc',
+				'util_unittests.cc',
 #				'fake_tao_unittests.cc',
 #				'kvm_unix_tao_channel_unittests.cc',
 #				'kvm_vm_factory_unittests.cc',
@@ -38,7 +39,6 @@
 #				'tao_child_channel_registry_unittests.cc',
 #				'tao_domain_unittests.cc',
 #				'tpm_tao_child_channel_unittests.cc',
-#				'util_unittests.cc',
 			],
 			'include_dirs' : [
 				'..',

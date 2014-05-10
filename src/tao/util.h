@@ -19,16 +19,17 @@
 #ifndef TAO_UTIL_H_
 #define TAO_UTIL_H_
 
-#include <keyczar/base/base64w.h>
-#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
-#include <keyczar/base/file_util.h>
-#include <keyczar/base/values.h>  // for ScopedSafeString
 #include <sys/socket.h>  // for socklen_t
 
 #include <list>
 #include <set>
 #include <sstream>
 #include <string>
+
+#include <keyczar/base/base64w.h>
+#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/file_util.h>
+#include <keyczar/base/values.h>  // for ScopedSafeString
 
 #include "tao/tao.h"
 
@@ -183,6 +184,18 @@ bool OpenSSLSuccess();
 /// @param[out] sock The socket opened for this port.
 bool OpenTCPSocket(const string &host, const string &port, int *sock);
 
+/// Get local address information about an open TCP socket.
+/// @param sock The socket.
+/// @param[out] host The local host address.
+/// @param[out] port The local port.
+bool GetTCPSocketInfo(int sock, string *host, string *port);
+
+/// Connect to a remote server.
+/// @param host The name of the remote host.
+/// @param port The port to connect to.
+/// @param[out] sock The connected client socket.
+bool ConnectToTCPServer(const string &host, const string &port, int *sock);
+
 /// Generate and save a random secret, sealed against the host Tao.
 /// @param tao The interface to access the host Tao.
 /// @param path The location to store the sealed secret.
@@ -252,12 +265,6 @@ bool CreateTempDir(const string &prefix, ScopedTempDir *dir);
 /// @param[out] admin The new configuration.
 //bool CreateTempACLsDomain(ScopedTempDir *temp_dir,
 //                          scoped_ptr<TaoDomain> *admin);
-
-/// Connect to a remote server.
-/// @param host The name of the remote host.
-/// @param port The port to connect to.
-/// @param[out] sock The connected client socket.
-bool ConnectToTCPServer(const string &host, const string &port, int *sock);
 
 /// Add double-quotes to a string, but escape any existing backslashes or
 /// double-quotes.

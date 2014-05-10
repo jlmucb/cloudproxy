@@ -1050,7 +1050,7 @@ bool VerifierFromPrincipalName(const string &name, scoped_ptr<Verifier> *key) {
   skip(in, "Key(");
   getQuotedString(in, &key_text);
   skip(in, ")");
-  if (!in || !in.str().empty()) {
+  if (!in || (in.get() && !in.eof())) {
     LOG(ERROR) << "Bad format for Tao signer principal name";
     return false;
   }

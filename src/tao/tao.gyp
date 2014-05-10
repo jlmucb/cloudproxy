@@ -22,10 +22,12 @@
 		'proto_dir' : '<(SHARED_INTERMEDIATE_DIR)/tao',
 	},
 	'targets' : [
-#		{
-#			'target_name' : 'tao_test',
-#			'type' : 'executable',
-#			'sources' : [
+		{
+			'target_name' : 'tao_test',
+			'type' : 'executable',
+			'sources' : [
+				'tao_test.cc',
+				'tpm_tao_unittests.cc',
 #				'fake_tao_unittests.cc',
 #				'keys_unittests.cc',
 #				'kvm_unix_tao_channel_unittests.cc',
@@ -35,20 +37,19 @@
 #				'process_factory_unittests.cc',
 #				'tao_child_channel_registry_unittests.cc',
 #				'tao_domain_unittests.cc',
-#				'tao_test.cc',
 #				'tpm_tao_child_channel_unittests.cc',
 #				'util_unittests.cc',
-#			],
-#			'include_dirs' : [
-#				'..',
-#			],
-#			'dependencies' : [
-#				'tao',
+			],
+			'include_dirs' : [
+				'..',
+			],
+			'dependencies' : [
+				'tao',
 #				'tao_test_utilities',
-#				'../third_party/googlemock/gmock.gyp:gmock',
-#				'../third_party/googlemock/gtest/gtest.gyp:gtest',
-#			],
-#		},
+				'../third_party/googlemock/gmock.gyp:gmock',
+				'../third_party/googlemock/gtest/gtest.gyp:gtest',
+			],
+		},
 #		{
 #			'target_name' : 'tao_test_utilities',
 #			'type' : 'static_library',
@@ -76,6 +77,7 @@
 				'keys.cc',
 				'keys.h',
 				'keys.proto',
+				'signature.proto',
 				'tao.h',
 				'tao_host.cc',
 				'tao_host.h',
@@ -110,7 +112,6 @@
 #				'process_factory.cc',
 #				'process_factory.h',
 #				'sealed_data.proto',
-#				'signature.proto',
 #				'tao.h',
 #				'tao_admin_channel.cc',
 #				'tao_admin_channel.h',

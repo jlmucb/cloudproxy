@@ -921,7 +921,7 @@ bool split(const string &s, const string &delim, list<string> *values) {
     values->push_back(value);
     if (in.eof()) return true;
     // no errors yet, not last string, maybe other chars
-    skip(in, delim);
+    skip(in, delim.substr(1));
     // errors if delim was missing, else still strings to be read
   }
   return false;

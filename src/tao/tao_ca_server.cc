@@ -262,7 +262,7 @@ bool TaoCAServer::HandleRequestX509Chain(const TaoCARequest &req,
   skip(in, "Key(");
   getQuotedString(in, &key_text);
   skip(in, ")");
-  if (!in || !in.str().empty()) {
+  if (!in || (in.get() && !in.eof())) {
     LOG(ERROR) << "Bad key format for x509 certificate";
     return false;
   }

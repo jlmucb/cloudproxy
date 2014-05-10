@@ -47,12 +47,12 @@ static bool CheckRestrictions(const Statement &s, time_t check_time) {
 static bool IsSubprincipalOrIdentical(const string &child_name,
                                       const string &parent_name) {
   return (child_name == parent_name) ||
-         (child_name.substr(parent_name.size() + 2) == parent_name + "::");
+         (child_name.substr(0, parent_name.size() + 2) == (parent_name + "::"));
 }
 
 static bool VerifyAttestationSignature(const Attestation &a) {
   string signer = a.signer();
-  bool tpm_signature = signer.substr(3) == "TPM";
+  bool tpm_signature = signer.substr(0, 3) == "TPM";
   if (tpm_signature) {
     // TODO(kwalsh) TPMTaoChildChannel does its own key serialize/descerialize.
     // Maybe unify that with VerifierFromPrincipalName()?

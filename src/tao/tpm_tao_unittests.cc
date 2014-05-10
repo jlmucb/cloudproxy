@@ -1,7 +1,7 @@
-//  File: tpm_tao_child_channel_unittests.cc
+//  File: tpm_tao_unittests.cc
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: Tests the basic TPMTaoChildChannel functionality
+//  Description: Tests the basic TPMTao functionality
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -16,59 +16,56 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#include "tao/tpm_tao_child_channel.h"
-
-#include <list>
+#include "tao/tpm_tao.h"
 
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
-#include <keyczar/base/file_util.h>
 
+#include "tao/attestation.h"
+#include "tao/util.h"
+
+using std::list;
 using std::string;
 
-using keyczar::base::ReadFileToString;
-
-using tao::TPMTaoChildChannel;
+using tao::ReadFileToString;
+using tao::Statement;
+using tao::TPMTao;
+using tao::Tao;
 
 DEFINE_string(aik_blob_file, "/home/tmroeder/src/fileProxy/src/apps/aikblob",
               "The blob for an AIK loaded in the TPM");
 
-class TPMTaoChildChannelTest : public ::testing::Test {
+class TPMTaoTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
     string blob;
     ASSERT_TRUE(ReadFileToString(FLAGS_aik_blob_file, &blob));
-    list<UINT32> pcrs_to_seal{17, 18};
-    // For the purposes of this simple test, we don't need a real attestation.
-    // But if this test is modified to have a hosted program talk to the
-    // channel, then that program will expect the AIK to be certified correctly
-    // by the policy key.
-    tao_.reset(
-        new TPMTaoChildChannel(blob, "" /* empty attestation */, pcrs_to_seal));
+    tao_.reset(new TPMTao(blob, list<int>{17, 18}));
     ASSERT_TRUE(tao_->Init());
   }
-
-  scoped_ptr<TPMTaoChildChannel> tao_;
+  scoped_ptr<TPMTao> tao_;
 };
 
-TEST_F(TPMTaoChildChannelTest, SealTest) {
+TEST_F(TPMTaoTest, SealUnsealTest) {
   string bytes("Test bytes for sealing");
   string sealed;
-  EXPECT_TRUE(tao_->Seal(bytes, &sealed));
-}
-
-TEST_F(TPMTaoChildChannelTest, UnsealTest) {
-  string bytes("Test bytes for sealing");
-  string sealed;
-  EXPECT_TRUE(tao_->Seal(bytes, &sealed));
-  string unsealed;
-  EXPECT_TRUE(tao_->Unseal(sealed, &unsealed));
+  string seal_policy = Tao::SealPolicyDefault;
+  EXPECT_TRUE(tao_->Seal(bytes, seal_policy, &sealed));
+  string unsealed, unseal_policy;
+  EXPECT_TRUE(tao_->Unseal(sealed, &unsealed, &unseal_policy));
   EXPECT_EQ(unsealed, bytes);
+  EXPECT_EQ(seal_policy, unseal_policy);
 }
 
-TEST_F(TPMTaoChildChannelTest, AttestTest) {
-  string key_prin = "Key(\"..stuff..\")";
+TEST_F(TPMTaoTest, AttestTest) {
+  Statement s;
+  s.set_delegate("Key(\"..stuff..\")");
   string attestation;
-  EXPECT_TRUE(tao_->Attest(key_prin, &attestation));
+  ASSERT_TRUE(tao_->Attest(s, &attestation));
+  Statement s2;
+  ASSERT_TRUE(ValidateAttestation(attestation, &s2));
+  EXPECT_EQ(s.delegate(), s2.delegate());
+  string name;
+  ASSERT_TRUE(tao_->GetTaoName(&name));
+  EXPECT_EQ(s2.issuer(), name);
 }

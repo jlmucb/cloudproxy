@@ -80,7 +80,7 @@ static bool PrincipalNameToAIKRsa(const string &name, ScopedRsa *rsa_key) {
   skip(in, "TPM(");
   getQuotedString(in, &key_text);
   skip(in, ")");
-  if (!in || !in.str().empty()) {
+  if (!in || (in.get() && !in.eof())) {
     LOG(ERROR) << "Bad format for TPM AIK principal name";
     return false;
   }
@@ -91,7 +91,7 @@ static bool PrincipalNameToAIKRsa(const string &name, ScopedRsa *rsa_key) {
   }
   char* key_data_ptr = const_cast<char *>(key_data.data());
   ScopedBio mem(BIO_new_mem_buf(key_data_ptr, key_data.size()));
-  RSA *rsa;
+  RSA *rsa = nullptr;
   if (!PEM_read_bio_RSA_PUBKEY(mem.get(), &rsa, nullptr /* password callback */,
                                nullptr /* callback arg */)) {
     LOG(ERROR) << "Could not deserialize AIK key";
@@ -162,7 +162,7 @@ static bool serializePCRs(const list<int> &pcr_indexes,
   // Set values.
   for (auto &pcr_hex : pcr_values) {
     string pcr_data;
-    if (!Base64WDecode(pcr_hex, &pcr_data) || pcr_data.size() != TPMTao::PcrLen) {
+    if (!bytesFromHex(pcr_hex, &pcr_data) || pcr_data.size() != TPMTao::PcrLen) {
       LOG(ERROR) << "Bad PCR encoded in TPM quote";
       return false;
     }
@@ -334,7 +334,7 @@ bool TPMTao::GetTaoName(string *full_name) const {
   stringstream out;
   out << aik_name_;
   out << "::PCRs(\"" << join(pcr_indexes_, ", ") << "\"";
-  out << ", \"" << join(child_pcr_values_, ", ") << ")";
+  out << ", \"" << join(child_pcr_values_, ", ") << "\")";
   ;
   full_name->assign(out.str());
   return true;

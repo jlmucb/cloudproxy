@@ -33,9 +33,8 @@ using tao::PipeTaoChannel;
 using tao::ProcessFactory;
 using tao::ScopedTempDir;
 
-DEFINE_string(program, "out/Release/bin/protoc",
-              "The program to execute, "
-              "preferably one that will stop on its own");
+DEFINE_string(program, "/bin/true", "The program to execute, "
+                                    "preferably one that will stop on its own");
 
 class ProcessFactoryTest : public ::testing::Test {
  protected:

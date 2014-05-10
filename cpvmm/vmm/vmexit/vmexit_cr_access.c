@@ -248,9 +248,6 @@ BOOLEAN cr_guest_update(GUEST_CPU_HANDLE gcpu, VMM_IA32_CONTROL_REGISTERS reg_id
         LOOP_FOREVER
 #endif
     }
-#ifdef JLMDEBUG
-    bprint("cr_guest_update returning true\n");
-#endif
     return TRUE;
 }
 
@@ -295,9 +292,6 @@ BOOLEAN cr_guest_write( GUEST_CPU_HANDLE gcpu, VMM_IA32_CONTROL_REGISTERS reg_id
     }
     gcpu_set_control_reg_layered(gcpu, reg_id, value, VMCS_MERGED);
     cr_update_event= cr_raise_write_events(gcpu, reg_id, value);
-#ifdef JLMDEBUG
-    bprint("cr_guest_write, position 8\n");
-#endif
     if(cr_update_event==EVENT_NOT_HANDLED) {
 #ifdef JLMDEBUG
         bprint("event not handled\n");
@@ -313,9 +307,6 @@ BOOLEAN cr_guest_write( GUEST_CPU_HANDLE gcpu, VMM_IA32_CONTROL_REGISTERS reg_id
                    (vmcs_read(gcpu_get_vmcs(gcpu),VMCS_HOST_CR4) 
                     & ~cr4_mask.Uint64) | (value & cr4_mask.Uint64) );
     }
-#ifdef JLMDEBUG
-    bprint("cr_guest_write returning true\n");
-#endif
     return TRUE;
 }
 

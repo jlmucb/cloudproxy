@@ -83,11 +83,15 @@ class TPMTao : public Tao {
 
   /// Get the list of PCR values corresponding to the PCR indexes specified when
   /// the TPMTao was constructed.
-  /// @param 
-  bool GetPCRValues(std::list<std::string> *values) {
+  /// @param[out] values A list of hex-encoded PCR values.
+  bool GetPCRValues(list<string> *values) const {
     values->assign(child_pcr_values_.begin(), child_pcr_values_.end());
     return true;
   }
+
+  /// Create a fresh AIK blob.
+  /// @param[out] aik_blob The AIK blob.
+  bool CreateAIK(string *aik_blob);
 
   /// Size of PCR values.
   static const int PcrLen = 20;
@@ -108,10 +112,10 @@ class TPMTao : public Tao {
 
   /// A list of Platform Configuration Register indexes used to identify the
   /// hosted program.
-  std::list<int> pcr_indexes_;
+  list<int> pcr_indexes_;
 
   /// A set of PCR values for the hosted program, encoded as hex strings.
-  std::list<string> child_pcr_values_;
+  list<string> child_pcr_values_;
 
   /// A handle to a set of PCR values within the TPM for the hosted program,
   /// used

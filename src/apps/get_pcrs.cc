@@ -21,7 +21,8 @@
 #include <list>
 #include <string>
 
-#include "glog/logging.h"
+#include <glog/logging.h>
+
 #include "tao/tpm_tao.h"
 #include "tao/util.h"
 
@@ -29,6 +30,7 @@ using std::cout;
 using std::endl;
 using std::list;
 using std::string;
+
 using tao::TPMTao;
 
 int main(int argc, char **argv) {

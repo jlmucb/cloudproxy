@@ -44,8 +44,7 @@ static bool AIKToPrincipalName(TSS_HCONTEXT tss_ctx, TSS_HKEY aik, string *name)
     return false;
   }
   // Set up an OpenSSL RSA public key to use to verify the Quote
-  ScopedRsa aik_rsa;
-  aik_rsa.reset(RSA_new());
+  ScopedRsa aik_rsa(RSA_new());
   aik_rsa->n = BN_bin2bn(aik_mod, aik_mod_len, nullptr);
   aik_rsa->e = BN_new();
   BN_set_word(aik_rsa->e, 0x10001);
@@ -581,6 +580,82 @@ bool TPMTao::Attest(const Statement &stmt, string *attestation) const {
     LOG(ERROR) << "Could not serialize the TPM 1.2 attestation";
     return false;
   }
+
+  return true;
+}
+
+bool TPMTao::CreateAIK(string *aik_blob) {
+  TSS_HKEY aik;
+  TSS_RESULT result;
+  // Create the AIK.
+  result =
+      Tspi_Context_CreateObject(tss_ctx_, TSS_OBJECT_TYPE_RSAKEY,
+                                TSS_KEY_TYPE_IDENTITY | TSS_KEY_SIZE_2048 |
+                                    TSS_KEY_VOLATILE | TSS_KEY_NOT_MIGRATABLE,
+                                &aik);
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not create an AIK";
+    return false;
+  }
+
+  // Create a bogus key to serve as a Privacy Certificate Authority Key (PCAKey)
+  TSS_HKEY pca_key;
+  result = Tspi_Context_CreateObject(tss_ctx_, TSS_OBJECT_TYPE_RSAKEY,
+                                     TSS_KEY_TYPE_LEGACY | TSS_KEY_SIZE_2048,
+                                     &pca_key);
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not create a fake PCAKey";
+    return false;
+  }
+  result = Tspi_SetAttribUint32(pca_key, TSS_TSPATTRIB_KEY_INFO,
+                                TSS_TSPATTRIB_KEYINFO_ENCSCHEME,
+                                TSS_ES_RSAESPKCSV15);
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not set the encryption scheme to PKCS v1.5";
+    return false;
+  }
+  // Use all 1s for the bogus pca_key.
+  BYTE pca_modulus_bytes[2048 / 8];
+  memset(pca_modulus_bytes, 0xff, sizeof(pca_modulus_bytes));
+  result = Tspi_SetAttribData(pca_key, TSS_TSPATTRIB_RSAKEY_INFO,
+                              TSS_TSPATTRIB_KEYINFO_RSA_MODULUS,
+                              sizeof(pca_modulus_bytes), pca_modulus_bytes);
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not add a fake modulus to the PCAKey";
+    return false;
+  }
+  // Create an identity request for the bogus PCA and get the AIK blob.
+  BYTE *id_req = nullptr;
+  UINT32 id_req_len = 0;
+  result = Tspi_TPM_CollateIdentityRequest(tpm_, srk_, pca_key, 0, nullptr, aik,
+                                           TSS_ALG_AES, &id_req_len, &id_req);
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not set up a fake identity request for the AIK";
+    return false;
+  }
+
+  result = Tspi_Key_LoadKey(aik, srk_);
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not load the AIK";
+    return false;
+  }
+
+  BYTE *blob = nullptr;
+  UINT32 blob_len = 0;
+  result = Tspi_GetAttribData(aik, TSS_TSPATTRIB_KEY_BLOB,
+                              TSS_TSPATTRIB_KEYBLOB_BLOB, &blob_len, &blob);
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Could not get the blob data";
+    return false;
+  }
+
+  const char *blob_bytes = reinterpret_cast<const char *>(blob);
+  aik_blob->assign(blob_bytes, blob_len);
+    
+  Tspi_Context_FreeMemory(tss_ctx_, blob);
+  Tspi_Context_CloseObject(tss_ctx_, pca_key);
+  Tspi_Context_CloseObject(tss_ctx_, aik);
+  // TODO(kwalsh) This method leaks Tspi objects if there are errors.
 
   return true;
 }

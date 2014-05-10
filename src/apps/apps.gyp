@@ -19,24 +19,25 @@
 		],
 	},
 	'targets' : [
-#		{
-#			'target_name' : 'make_aik',
-#			'type' : 'executable',
-#			'sources' : [
-#				'make_aik.cc',
-#			],
-#			'include_dirs' : [
-#				'.',
-#			],
-#			'libraries' : [
-#				'-ltspi',
-#			],
-#			'dependencies' : [
-#				'../third_party/gflags/gflags.gyp:gflags',
-#				'../third_party/google-glog/glog.gyp:glog',
-#				'../third_party/keyczar/keyczar.gyp:keyczar',
-#			],
-#		},
+		{
+			'target_name' : 'make_aik',
+			'type' : 'executable',
+			'sources' : [
+				'make_aik.cc',
+			],
+			'include_dirs' : [
+				'.',
+			],
+			'libraries' : [
+				'-ltspi',
+			],
+			'dependencies' : [
+				'../tao/tao.gyp:tao',
+				'../third_party/gflags/gflags.gyp:gflags',
+				'../third_party/google-glog/glog.gyp:glog',
+				'../third_party/keyczar/keyczar.gyp:keyczar',
+			],
+		},
 		{
 			'target_name' : 'get_pcrs',
 			'type' : 'executable',

@@ -254,7 +254,7 @@ bool LinuxHost::Listen() {
     }
 
     for (auto &child : hosted_processes_) {
-      fd = child->channel->GetReadFileDescriptor();
+      fd = child->rpc_channel->GetReadFileDescriptor();
       FD_SET(fd, &read_fds);
       if (fd > max_fd) max_fd = fd;
     }
@@ -299,7 +299,7 @@ bool LinuxHost::Listen() {
         else
           LOG(ERROR) << "Error handling RPC for ::" << subprin;
         LOG(INFO) << "Closing channel for ::" << subprin;
-        child->channel->Destroy();
+        child->channel->Close();
         it = hosted_processes_->erase(it);
         tao_host_->RemovedHostedProgram(subprin);
       } else {

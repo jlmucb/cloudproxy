@@ -21,7 +21,7 @@
 
 #include <string>
 
-#include "tao/unix_fd_tao_admin_channel.h"
+#include "tao/fd_message_channel.h"
 #include "tao/util.h"
 
 namespace tao {
@@ -30,7 +30,7 @@ class UnixSocketFactory {
  public:
   /// Construct UnixSocketFactory.
   /// @param path The path for the unix domain server socket.
-  explicit UnixSocketFactory(const string &path) : path_(path), listen_fd_(-1);
+  explicit UnixSocketFactory(const string &path) : path_(path), listen_fd_(-1) {};
   virtual bool Init();
   virtual ~UnixSocketFactory() { Close(); }
 

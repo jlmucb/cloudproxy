@@ -229,53 +229,6 @@ bool ExtractACL(const string &signed_acls_file, const keyczar::Verifier *key,
   return true;
 }
 
-int ReceivePartialData(int fd, void *buffer, size_t filled_len,
-                       size_t buffer_len) {
-  if (fd < 0 || buffer == nullptr || filled_len >= buffer_len) {
-    LOG(ERROR) << "Invalid ReceivePartialData parameters";
-    return -1;
-  }
-
-  int in_len = read(fd, reinterpret_cast<unsigned char *>(buffer) + filled_len,
-                    buffer_len - filled_len);
-  if (in_len < 0) PLOG(ERROR) << "Failed to read data from file descriptor";
-
-  return in_len;
-}
-
-bool ReceiveData(int fd, void *buffer, size_t buffer_len) {
-  size_t filled_len = 0;
-  while (filled_len != buffer_len) {
-    int in_len = ReceivePartialData(fd, buffer, filled_len, buffer_len);
-    if (in_len == 0) return false;  // fail on truncated message
-    if (in_len < 0) return false;   // fail on errors
-    filled_len += in_len;
-  }
-
-  return true;
-}
-
-bool ReceiveData(int fd, string *data) {
-  uint32_t net_len;
-  if (!ReceiveData(fd, &net_len, sizeof(net_len))) {
-    LOG(ERROR) << "Could not get the length of the data";
-    return false;
-  }
-
-  // convert from network byte order to get the length
-  uint32_t len = ntohl(net_len);
-  scoped_array<char> temp_data(new char[len]);
-
-  if (!ReceiveData(fd, temp_data.get(), static_cast<size_t>(len))) {
-    LOG(ERROR) << "Could not get the data";
-    return false;
-  }
-
-  data->assign(temp_data.get(), len);
-
-  return true;
-}
-
 int ReceivePartialData(SSL *ssl, void *buffer, size_t filled_len,
                        size_t buffer_len) {
   if (ssl == nullptr || buffer == nullptr || filled_len >= buffer_len) {

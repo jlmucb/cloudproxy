@@ -38,17 +38,17 @@ class FDMessageChannel : public MessageChannel {
 
   virtual ~FDMessageChannel() { Close(); }
 
-  virtual bool SendMessage(const Message &m) const { return SendMessage(writefd_, m); }
+  virtual bool SendMessage(const google::protobuf::Message &m) const;
 
-  virtual bool ReceiveMessage(Message *m, bool *eof) const {
-    return ReceiveMessage(readfd_, m, eof);
-  }
+  virtual bool ReceiveMessage(google::protobuf::Message *m, bool *eof) const;
 
   virtual bool GetFileDescriptors(list<int> *keep_open) const;
 
   virtual bool SerializeToString(string *s) const;
 
   virtual bool Close();
+
+  static constexpr size_t MaxMessageSize = 20 * 1024 * 1024;
 
  protected:
   /// File descriptor for writing to host Tao.

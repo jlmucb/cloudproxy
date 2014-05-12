@@ -31,14 +31,13 @@
 
 using std::string;
 
-//using tao::ConnectToUnixDomainSocket;
 //using tao::CreateTempACLsDomain;
 using tao::CreateTempDir;
 //using tao::DirectTaoChildChannel;
 using tao::OpenTCPSocket;
 using tao::GetTCPSocketInfo;
 using tao::ConnectToTCPServer;
-using tao::OpenUnixDomainSocket;
+//using tao::OpenUnixDomainSocket;
 //using tao::PipeTaoChildChannel;
 //using tao::RegisterKnownChannels;
 using tao::ScopedFd;
@@ -117,6 +116,7 @@ TEST(TaoUtilTest, SealAndUnsealSecretTest) {
       << "The unsealed secret did not match the original secret";
 }
 
+/*
 TEST(TaoUtilTest, SendAndReceiveMessageTest) {
   int fd[2];
   EXPECT_EQ(pipe(fd), 0) << "Could not create a pipe pair";
@@ -144,26 +144,5 @@ TEST(TaoUtilTest, SendAndReceiveMessageTest) {
   EXPECT_TRUE(ReceiveMessage(*recv_fd, &received_msg, &eof) && eof)
     << "Was expecting EOF";
 }
-
-/*
-TEST(TaoUtilTest, SocketUtilTest) {
-  ScopedTempDir temp_dir;
-  EXPECT_TRUE(CreateTempDir("socket_util_test", &temp_dir))
-      << "Could not create a temporary directory";
-
-  string socket_path = *temp_dir + string("/socket");
-  {
-    // In a sub scope to make sure the sockets get closed before the temp
-    // directory is deleted.
-    ScopedFd server_sock(new int(-1));
-    EXPECT_TRUE(OpenUnixDomainSocket(socket_path, server_sock.get()))
-        << "Could not open a Unix domain socket";
-    ASSERT_GE(*server_sock, 0);
-
-    ScopedFd client_sock(new int(-1));
-    EXPECT_TRUE(ConnectToUnixDomainSocket(socket_path, client_sock.get()))
-        << "Could not connect to the Unix domain socket";
-    ASSERT_GE(*client_sock, 0);
-  }
-}
 */
+

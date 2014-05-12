@@ -16,38 +16,41 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "tao/process_factory.h"
+#include "tao/linux_process_factory.h"
+
+#include <fcntl.h>
+#include <dirent.h>
+#include <errno.h>
+#include <sys/resource.h>
+
+#include <algorithm>
 
 #include <glog/logging.h>
 
 #include "tao/pipe_factory.h"
+#include "tao/tao_rpc.h"
 #include "tao/util.h"
 
 namespace tao {
 bool LinuxProcessFactory::MakeHostedProgramSubprin(int id, const string &path,
                                                    string *subprin) const {
   // TODO(kwalsh) Nice toc-tou error here... maybe copy binary to temp file?
-  string prog_digest;
-  if (!Sha256FileHash(path, &prog_digest)) {
+  string prog_hash;
+  if (!Sha256FileHash(path, &prog_hash)) {
     LOG(ERROR) << "Could not compute the program digest";
     return false;
   }
-  string prog_hash;
-  if (!bytesToHex(prog_digest, &prog_hash)) {
-    LOG(ERROR) << "Could not encode the digest as Base64W";
-    return false;
-  }
-  subprin->assign(FormatHostedProgramSubprin(id, prog_hash));
+  subprin->assign(FormatHostedProgramSubprin(id, bytesToHex(prog_hash)));
   return true;
 }
 
-bool LinuxProcessFactory::StarteHostedProgram(
+bool LinuxProcessFactory::StartHostedProgram(
     const PipeFactory &child_channel_factory, const string &path,
     const list<string> &args, const string &subprin,
     scoped_ptr<HostedLinuxProcess> *child) const {
 
   scoped_ptr<FDMessageChannel> channel_to_parent, channel_to_child;
-  if (!child_channel_factory->CreateChannelPair(&channel_to_parent,
+  if (!child_channel_factory.CreateChannelPair(&channel_to_parent,
                                                 &channel_to_child)) {
     LOG(ERROR) << "Could not create channel for hosted program";
     return false;
@@ -83,7 +86,7 @@ bool LinuxProcessFactory::StarteHostedProgram(
     dup2(open("/dev/null", O_RDONLY), STDIN_FILENO);
 
     list<int> keep_open;
-    if (!channel_to_parent->GetFileDescriptors(&keep-open)) {
+    if (!channel_to_parent->GetFileDescriptors(&keep_open)) {
       LOG(ERROR) << "Could not get file descriptors for channel to parent";
       exit(1);
       /* never reached */
@@ -109,16 +112,16 @@ bool LinuxProcessFactory::StarteHostedProgram(
     channel_to_parent->Close();
 
     child->reset(new HostedLinuxProcess);
-    child->subprin = subprin;
-    child->pid = child_pid;
-    child->channel.reset(new TaoRPC(channel_to_child.release()));
+    (*child)->subprin = subprin;
+    (*child)->pid = child_pid;
+    (*child)->channel.reset(channel_to_child.release());
     return true;
   }
 }
 
 // TODO(kwalsh) Replace this with formula formatting routines
-string LinuxProcessFactory::FormatHostedProgramSubprin(int id,
-                                                  const string &prog_hash) {
+string LinuxProcessFactory::FormatHostedProgramSubprin(
+    int id, const string &prog_hash) const {
   stringstream out;
   if (id != 0)
     out << "Process(" << id << ", ";
@@ -133,7 +136,7 @@ bool LinuxProcessFactory::ParseHostedProgramSubprin(string subprin, int *id,
                                                string *prog_hash,
                                                string *extension) const {
   stringstream in(subprin);
-  if (subprin.substr(0, 8, "Program(")) {
+  if (subprin.substr(0, 8) == "Program(") {
     skip(in, "Program(");
     *id = 0;
     getQuotedString(in, prog_hash);
@@ -164,64 +167,60 @@ bool LinuxProcessFactory::ParseHostedProgramSubprin(string subprin, int *id,
   return true;
 }
 
-bool LinuxProcessFactory::CloseAllFileDescriptorsExcept(const list<int> keep_open)
+static bool CloseExcept(int fd, const list<int> &keep_open) {
+  if (std::find(keep_open.begin(), keep_open.end(), fd) != keep_open.end()) {
+    return true;
+  } else if (close(fd) < 0 && errno != EBADF) {
+    PLOG(ERROR) << "Could not close fd " << fd;
+    return false;
+  } else {
+    return true;
+  }
+}
+
+bool LinuxProcessFactory::CloseAllFileDescriptorsExcept(const list<int> &keep_open)
 {
-  struct rlimit rl;
-  int fd;
-#ifdef __linux__
-  DIR *d;
-  assert(except_fds);
-  if ((d = opendir("/proc/self/fd"))) {
-    struct dirent *de;
-        while ((de = readdir(d))) {
-          int found;
-          long l;
-          char *e = NULL;
-          int i;
-      if (de->d_name[0] == '.') continue;
+  DIR *dir = opendir("/proc/self/fd");
+  int dir_fd = dirfd(dir);
+  if (dir != nullptr) {
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != nullptr) {
+      if (entry->d_name[0] == '.') continue;
+      char *end = nullptr;
       errno = 0;
-      l = strtol(de->d_name, &e, 10);
-      if (errno != 0 || !e || *e) {
-        closedir(d);
-        errno = EINVAL;
-        return -1;
+      long n = strtol(entry->d_name, &end, 10);
+      if (errno != 0) {
+        PLOG(ERROR) << "Error enumerating /proc/self/fd";
+        closedir(dir);
+        return false;
+      } else if (end == nullptr || end == entry->d_name || end[0] != '\0' ||
+                 n < 0 || n > INT_MAX) {
+        LOG(ERROR) << "Error enumerating /proc/self/fd";
+        closedir(dir);
+        return false;
       }
-      fd = (int)l;
-      if ((long)fd != l) {
-        closedir(d);
-        errno = EINVAL;
-        return -1;
-      }
-      if (fd < 3) continue;
-      if (fd == dirfd(d)) continue;
-      found = 0;
-      for (i = 0; except_fds[i] >= 0; i++)
-        if (except_fds[i] == fd) {
-          found = 1;
-          break;
-        }
-      if (found) continue;
-      if (close(fd) < 0) {
-        int saved_errno;
-        saved_errno = errno;
-        closedir(d);
-        errno = saved_errno;
-        return -1;
+      int fd = static_cast<int>(n);
+      if (fd != dir_fd && !CloseExcept(fd, keep_open)) {
+        closedir(dir);
+        return false;
       }
     }
-    closedir(d);
-    return 0;
+    closedir(dir);
+    return true;
+  } else {
+    struct rlimit limits;
+    if (getrlimit(RLIMIT_NOFILE, &limits) < 0) {
+      LOG(ERROR) << "Could not get rlimits";
+      return false;
+    }
+    for (int fd = 0; fd < static_cast<int>(limits.rlim_max); fd++) {
+      if (fd != dir_fd && !CloseExcept(fd, keep_open)) {
+        closedir(dir);
+        return false;
+      }
+    }
+    return true;
   }
-#endif
-  if (getrlimit(RLIMIT_NOFILE, &rl) < 0) return -1;
-  for (fd = 0; fd < (int)rl.rlim_max; fd++) {
-    int i;
-    if (fd <= 3) continue;
-    for (i = 0; except_fds[i] >= 0; i++)
-      if (except_fds[i] == fd) continue;
-    if (close(fd) < 0 && errno != EBADF) return -1;
-  }
-  return 0;
 }
 
 }  // namespace tao

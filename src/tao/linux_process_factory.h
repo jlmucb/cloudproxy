@@ -29,6 +29,7 @@ using std::list;
 using std::string;
 
 class PipeFactory;
+class FDMessageChannel;
 
 /// A struct to hold data about a hosted process.
 struct HostedLinuxProcess {
@@ -61,7 +62,7 @@ class LinuxProcessFactory {
 
  protected:
 
-  bool CloseAllFileDescriptorsExcept(const list<int> keep_open);
+  static bool CloseAllFileDescriptorsExcept(const list<int> &keep_open);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(LinuxProcessFactory);

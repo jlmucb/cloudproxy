@@ -107,27 +107,7 @@ bool SetUpSSLClientCtx(const tao::Keys &key, ScopedSSLCtx *ctx);
 bool ExtractACL(const string &serialized_signed_acls,
                 const keyczar::Verifier *key, string *acls);
 
-/// Receive partial data from a file descriptor. This will read as
-/// many bytes as possible into buffer[i], where filled_len <= i < buffer_len,
-/// and it returns the number of bytes read, or 0 if end of stream, or negative
-/// on error.
-/// @param fd The file descriptor to use to receive the data.
-/// @param[out] buffer The buffer to fill with data.
-/// @param filed_len The length of buffer that is already filled.
-/// @param buffer_len The total length of buffer.
-int ReceivePartialData(int fd, void *buffer, size_t filled_len,
-                       size_t buffer_len);
-
-/// Receive data from a file descriptor.
-/// @param fd The file descriptor to use to receive the data.
-/// @param[out] buffer The buffer to fill with data.
-/// @param buffer_len The length of buffer.
-bool ReceiveData(int fd, void *buffer, size_t buffer_len);
-
-/// Receive data from a file descriptor.
-/// @param fd The file descriptor to use to receive the data.
-/// @param[out] data The object to receive the data.
-bool ReceiveData(int fd, string *data);
+// TODO(kwalsh) Consier merge with similarly-named functions in tao/util.cc?
 
 /// Receive partial data from an OpenSSL SSL. This will read as
 /// many bytes as possible into buffer[i], where filled_len <= i < buffer_len,

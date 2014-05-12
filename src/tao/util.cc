@@ -106,9 +106,6 @@ static void QuietKeyczarLogHandler(LogLevel level, const char *filename,
 
 namespace tao {
 
-/// 20 MB is the maximum allowed message on our channel implementations.
-static size_t MaxChannelMessage = 20 * 1024 * 1024;
-
 void fd_close(int *fd) {
   if (fd && *fd >= 0) {
     if (close(*fd) < 0) {
@@ -439,174 +436,6 @@ bool GetSealedSecret(const Tao &tao, const string &path, const string &policy,
   return true;
 }
 
-bool SendMessage(int fd, const google::protobuf::Message &m) {
-  // send the length then the serialized message
-  string serialized;
-  if (!m.SerializeToString(&serialized)) {
-    LOG(ERROR) << "Could not serialize the Message to a string";
-    return false;
-  }
-
-  size_t len = serialized.size();
-  ssize_t bytes_written = write(fd, &len, sizeof(size_t));
-  if (bytes_written != sizeof(size_t)) {
-    PLOG(ERROR) << "Could not write the length to the fd " << fd;
-    return false;
-  }
-
-  bytes_written = write(fd, serialized.data(), len);
-  if (bytes_written != static_cast<ssize_t>(len)) {
-    PLOG(ERROR) << "Could not write the serialized message to the fd";
-    return false;
-  }
-
-  return true;
-}
-
-bool SendMessageTo(int fd, const google::protobuf::Message &m,
-                   const struct sockaddr *addr, socklen_t addr_len) {
-  // send the length then the serialized message
-  string serialized;
-  if (!m.SerializeToString(&serialized)) {
-    LOG(ERROR) << "Could not serialize the Message to a string";
-    return false;
-  }
-
-  size_t len = serialized.size();
-  ssize_t bytes_written = sendto(fd, &len, sizeof(size_t), 0, addr, addr_len);
-  if (bytes_written != sizeof(size_t)) {
-    PLOG(ERROR) << "Could not write the length to the fd " << fd;
-    return false;
-  }
-
-  bytes_written = sendto(fd, serialized.data(), len, 0, addr, addr_len);
-  if (bytes_written != static_cast<ssize_t>(len)) {
-    PLOG(ERROR) << "Could not write the serialized message to the fd";
-    return false;
-  }
-
-  return true;
-}
-
-bool ReceiveMessageFrom(int fd, google::protobuf::Message *m,
-                        struct sockaddr *addr, socklen_t *addr_len) {
-  // TODO(kwalsh) better handling of addr, addrlen, and recvfrom
-  if (m == nullptr) {
-    LOG(ERROR) << "null message";
-    return false;
-  }
-
-  size_t len = 0;
-  struct sockaddr_un first_addr;
-  socklen_t first_addr_len = *addr_len;  // whatever size it should be
-  ssize_t bytes_recvd =
-      recvfrom(fd, &len, sizeof(len), 0, (struct sockaddr *)&first_addr,
-               &first_addr_len);
-  if (bytes_recvd == -1) {
-    PLOG(ERROR) << "Could not receive any bytes on the channel";
-    return false;
-  }
-
-  if (len > MaxChannelMessage) {
-    LOG(ERROR) << "The length of the message on fd " << fd
-               << " was too large to be reasonable: " << len;
-    return false;
-  }
-
-  // Read this many bytes as the message.
-  scoped_array<char> bytes(new char[len]);
-  bytes_recvd = recvfrom(fd, bytes.get(), len, 0, addr, addr_len);
-  if (bytes_recvd == -1) {
-    PLOG(ERROR) << "Could not receive the actual message on fd " << fd;
-    return false;
-  }
-
-  if (*addr_len != first_addr_len) {
-    LOG(ERROR) << "Sock type mismatch";
-    return false;
-  }
-
-  if (memcmp(&first_addr, addr, *addr_len) != 0) {
-    LOG(ERROR) << "Receive message pieces from two different clients";
-    return false;
-  }
-
-  string serialized(bytes.get(), len);
-  return m->ParseFromString(serialized);
-}
-
-// TODO(kwalsh) move cloudproxy ReceivePartialData functions here and use them
-bool ReceiveMessage(int fd, google::protobuf::Message *m, bool *eof) {
-  *eof = false;
-  if (m == nullptr) {
-    LOG(ERROR) << "null message";
-    return false;
-  }
-
-  // Some channels don't return all the bytes you request when you request them.
-  // TODO(tmroeder): change this implementation to support select better so it
-  // isn't subject to denial of service attacks by parties sending messages.
-  size_t len = 0;
-  ssize_t bytes_read = 0;
-  while (static_cast<size_t>(bytes_read) < sizeof(len)) {
-    ssize_t rv = read(fd, (reinterpret_cast<char *>(&len)) + bytes_read,
-                      sizeof(len) - bytes_read);
-    if (rv < 0) {
-      if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
-        continue;
-      } else {
-        PLOG(ERROR) << "Could not get an integer: expected " << sizeof(size_t)
-                    << " bytes but only received " << bytes_read;
-        return false;
-      }
-    }
-
-    if (rv == 0) {
-      // end of file, which can happen on some fds
-      LOG(INFO) << "Got an end-of-file message on the fd";
-      *eof = true;
-      return true;
-    }
-
-    bytes_read += rv;
-  }
-
-  if (len > MaxChannelMessage) {
-    LOG(ERROR) << "The length of the message on fd " << fd
-               << " was too large to be reasonable: " << len;
-    return false;
-  }
-
-  // Read this many bytes as the message.
-  bytes_read = 0;
-  scoped_array<char> bytes(new char[len]);
-  while (bytes_read < static_cast<ssize_t>(len)) {
-    int rv = read(fd, bytes.get() + bytes_read,
-                  len - static_cast<size_t>(bytes_read));
-    if (rv < 0) {
-      if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
-        continue;
-      } else {
-        PLOG(ERROR) << "Could not read enough bytes from the stream: "
-                    << "expected " << static_cast<int>(len)
-                    << " but received only " << bytes_read;
-        return false;
-      }
-    }
-
-    if (rv == 0) {
-      // end of file, which can happen on some fds
-      LOG(ERROR) << "Got an end-of-file message on the fd";
-      return false;
-    }
-
-    bytes_read += rv;
-  }
-
-  string serialized(bytes.get(), len);
-  return m->ParseFromString(serialized);
-}
-
 bool CreateTempDir(const string &prefix, ScopedTempDir *dir) {
   // Get a temporary directory to use for the files.
   string dir_template = string("/tmp/temp_") + prefix + string("_XXXXXX");
@@ -673,6 +502,83 @@ bool ConnectToTCPServer(const string &host, const string &port, int *sock) {
   freeaddrinfo(addrs);
 
   return true;
+}
+
+int ReceivePartialData(int fd, void *buffer, size_t filled_len,
+                       size_t buffer_len) {
+  if (fd < 0 || buffer == nullptr || filled_len >= buffer_len) {
+    LOG(ERROR) << "Invalid ReceivePartialData parameters";
+    return -1;
+  }
+
+  int in_len = read(fd, reinterpret_cast<unsigned char *>(buffer) + filled_len,
+                    buffer_len - filled_len);
+  if (in_len < 0) PLOG(ERROR) << "Failed to read data from file descriptor";
+
+  return in_len;
+}
+
+bool ReceiveData(int fd, void *buffer, size_t buffer_len, bool *eof) {
+  *eof = false;
+  size_t filled_len = 0;
+  while (filled_len != buffer_len) {
+    int in_len = ReceivePartialData(fd, buffer, filled_len, buffer_len);
+    if (in_len == 0) {
+      *eof = true;
+      return (filled_len == 0);  // fail only on truncated message
+    }
+    if (in_len < 0) return false;   // fail on errors
+    filled_len += in_len;
+  }
+
+  return true;
+}
+
+bool ReceiveString(int fd, size_t max_size, string *s, bool *eof) {
+  uint32_t net_len;
+  if (!ReceiveData(fd, &net_len, sizeof(net_len), eof)) {
+    LOG(ERROR) << "Could not get the length of the data";
+    return false;
+  } else if (eof) {
+    return true;
+  }
+
+  // convert from network byte order to get the length
+  uint32_t len = ntohl(net_len);
+  
+  if (len > max_size) {
+    LOG(ERROR) << "Message exceeded maximum allowable size";
+    return false;
+  }
+  scoped_array<char> temp_data(new char[len]);
+
+  if (!ReceiveData(fd, temp_data.get(), static_cast<size_t>(len), eof) || eof) {
+    LOG(ERROR) << "Could not get the data";
+    return false;
+  }
+
+  s->assign(temp_data.get(), len);
+
+  return true;
+}
+
+bool SendData(int fd, const void *buffer, size_t buffer_len) {
+  int bytes_written = write(fd, buffer, buffer_len);
+  if (bytes_written < 0) {
+    PLOG(ERROR) << "Could not send data";
+    return false;
+  }
+  if (static_cast<size_t>(bytes_written) != buffer_len) {
+    LOG(ERROR) << "Could not send complete data";
+    return false;
+  }
+  return true;
+}
+
+bool SendString(int fd, const string &s) {
+  uint32_t net_len = htonl(s.size());
+  return SendData(fd, &net_len, sizeof(net_len)) &&
+      SendData(fd, s.c_str(), s.size());
 }
 
 string quotedString(const string &s) {

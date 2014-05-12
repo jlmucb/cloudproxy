@@ -22,6 +22,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
+#include <sys/fcntl.h>
 
 #include <string>
 
@@ -117,11 +118,10 @@ bool ConnectToUnixDomainSocket(const string &path, int *sock) {
 }
 
 bool UnixSocketFactory::Init() {
-  if (!OpenUnixDomainSocket(tao_socket_path_, &listen_fd_)) {
+  if (!OpenUnixDomainSocket(path_, &listen_fd_)) {
     LOG(ERROR) << "Could not open unnamed client socket";
     return false;
   }
-  writefd_ = readfd_ = sockfd;
   return true;
 }
 
@@ -144,9 +144,9 @@ FDMessageChannel *UnixSocketFactory::AcceptConnection() const {
 
 FDMessageChannel *UnixSocketFactory::Connect(const string &path) {
   int fd;
-  if (!ConnectToUnixDomainSocket(tao_socket_path_, &fd)) {
+  if (!ConnectToUnixDomainSocket(path, &fd)) {
     LOG(ERROR) << "Could not open unnamed client socket";
-    return false;
+    return nullptr;
   }
   return new FDMessageChannel(fd, fd);
 }

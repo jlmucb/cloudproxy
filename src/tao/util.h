@@ -218,39 +218,46 @@ bool MakeSealedSecret(const Tao &tao, const string &path, const string &policy,
 bool GetSealedSecret(const Tao &tao, const string &path, const string &policy,
                      string *secret);
 
-/// Receive a protobuf message on a file descriptor.
-/// @param fd The file descriptor to read.
-/// @param[out] m The received message.
-/// @param[out] eof Set to true if end of stream is reached.
-bool ReceiveMessage(int fd, google::protobuf::Message *m, bool *eof);
-
-/// Send a protobuf message on a file descriptor.
-/// @param fd The file descriptor to write.
-/// @param m The message to send.
-bool SendMessage(int fd, const google::protobuf::Message &m);
-
-/// Receive a protobuf message on a file descriptor.
-/// @param fd The file descriptor to read.
-/// @param[out] m The received message.
-/// @param[out] addr The address the message was received from.
-/// @param[out] addr_len The length of the address the message was received
-/// from.
-bool ReceiveMessageFrom(int fd, google::protobuf::Message *m,
-                        struct sockaddr *addr, socklen_t *addr_len);
-
-/// Send a protobuf message on a file descriptor.
-/// @param fd The file descriptor to write.
-/// @param m The message to send.
-/// @param addr The address to send the message to.
-/// @param addr_len The length of the address to send the message to.
-bool SendMessageTo(int fd, const google::protobuf::Message &m,
-                   const struct sockaddr *addr, socklen_t addr_len);
-
 /// Create a temporary directory.
 /// @param prefix The partial path of the directory to create.
 /// @param[out] dir A pointer to an object that will take ownership of the
 /// new temporary directory.
 bool CreateTempDir(const string &prefix, ScopedTempDir *dir);
+
+/// Receive partial data from a file descriptor. This reads into buffer[i],
+/// where filled_len <= i < buffer_len, and it returns the number of bytes read,
+/// or 0 if end of stream, or negative on error.
+/// @param fd The file descriptor to use to receive the data.
+/// @param[out] buffer The buffer to fill with data.
+/// @param filed_len The length of buffer that is already filled.
+/// @param buffer_len The total length of buffer.
+int ReceivePartialData(int fd, void *buffer, size_t filled_len,
+                       size_t buffer_len);
+
+/// Receive data from a file descriptor.
+/// @param fd The file descriptor to use to receive the data.
+/// @param[out] buffer The buffer to fill with data.
+/// @param buffer_len The length of buffer.
+/// @param[out] eof Will be set to true iff end of stream reached.
+bool ReceiveData(int fd, void *buffer, size_t buffer_len, bool *eof);
+
+/// Receive a string from a file descriptor.
+/// @param fd The file descriptor to use to receive the data.
+/// @param max_size The maximum allowable size string to receive.
+/// @param[out] s The string to receive the data.
+/// @param[out] eof Will be set to true iff end of stream reached.
+bool ReceiveString(int fd, size_t max_size, string *s, bool *eof);
+
+/// Send data to a file descriptor.
+/// @param fd The file descriptor to use to send the data.
+/// @param buffer The buffer containing data to send.
+/// @param buffer_len The length of buffer.
+bool SendData(int fd, const void *buffer, size_t buffer_len);
+
+/// Send a string to a file descriptor.
+/// @param fd The file descriptor to use to send the string.
+/// @param s The string to send.
+bool SendString(int fd, const string &s);
 
 /// Create a temporary directory with a temporary configuration using ACL
 /// guards. The policy password will be "temppass".

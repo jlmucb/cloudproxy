@@ -18,9 +18,17 @@
 // limitations under the License.
 #include "tao/fd_message_channel.h"
 
+#include <unistd.h>
+
+#include <glog/logging.h>
+
 #include "tao/util.h"
 
 namespace tao {
+
+/// 20 MB is the maximum allowed message on our channel implementations.
+constexpr size_t FDMessageChannel::MaxMessageSize;
+
 bool FDMessageChannel::Close() {
   if (readfd_ != -1) {
     close(readfd_);
@@ -29,6 +37,32 @@ bool FDMessageChannel::Close() {
     close(writefd_);
   }
   readfd_ = writefd_ = -1;
+  return true;
+}
+
+bool FDMessageChannel::SendMessage(const google::protobuf::Message &m) const
+{
+  string serialized;
+  if (!m.SerializeToString(&serialized)) {
+    LOG(ERROR) << "Could not serialize the Message to a string";
+    return false;
+  }
+  return SendString(writefd_, serialized);
+}
+
+bool FDMessageChannel::ReceiveMessage(google::protobuf::Message *m, bool *eof) const
+{
+  string s;
+  if (!ReceiveString(readfd_, MaxMessageSize, &s, eof)) {
+    LOG(ERROR) << "Could not recieve message";
+    return false;
+  } else if (eof) {
+    return true;
+  }
+  if (!m->ParseFromString(s)) {
+    LOG(ERROR) << "Could not parse message";
+    return false;
+  }
   return true;
 }
 
@@ -42,9 +76,9 @@ bool FDMessageChannel::GetFileDescriptors(list<int> *keep_open) const {
   return true;
 }
 
-virtual bool SerializeToString(string *s) const {
+bool FDMessageChannel::SerializeToString(string *s) const {
   stringstream out;
-  out << "tao::FDMessageChannel(" << readfd_ << ", " << writefd << ")";
+  out << "tao::FDMessageChannel(" << readfd_ << ", " << writefd_ << ")";
   s->assign(out.str());
   return true;
 }

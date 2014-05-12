@@ -137,12 +137,6 @@
 #				'tao_child_channel_registry.h',
 #				'tao_domain.cc',
 #				'tao_domain.h',
-#				'unix_domain_socket_tao_admin_channel.cc',
-#				'unix_domain_socket_tao_admin_channel.h',
-#				'unix_fd_tao_channel.cc',
-#				'unix_fd_tao_channel.h',
-#				'unix_fd_tao_child_channel.cc',
-#				'unix_fd_tao_child_channel.h',
 			],
 			'libraries' : [
 				'-lcrypto',

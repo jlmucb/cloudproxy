@@ -37,9 +37,25 @@ using std::string;
 /// communicate with their host, others may use sockets, etc.
 class Tao {
  public:
-   Tao() {}
-   virtual bool Destroy() { return true; }
-   virtual ~Tao() {}
+  Tao() {}
+  virtual bool Destroy() { return true; }
+  virtual ~Tao() {
+    if (host_tao_ == this) host_tao_ = nullptr;
+  }
+
+  /// Get the interface to the host Tao for this hosted program.
+  /// Every hosted program is provided with one such interface.
+  /// Ownership is of the returned pointer retained by this (static) class.
+  static Tao *GetHostTao() { return host_tao_; }
+
+  /// Set the interface to the host tao for this hosted program. The caller
+  /// takes ownership of the previous Tao interface pointer, which is returned.
+  /// @param tao The new Tao interface. Ownership is taken.
+  virtual Tao *SetHostTao(Tao * tao) {
+    Tao *prev_tao = host_tao_;
+    host_tao_ = tao;
+    return prev_tao;
+  }
 
   /// Get the Tao principal name assigned to this hosted program. The name
   /// encodes the full path from the root Tao, through all intermediary Tao
@@ -117,6 +133,9 @@ class Tao {
 
   /// Default timeout for Attestation (= 1 year in seconds).
   static const int DefaultAttestationTimeout = 31556926;
+
+ private:
+  static Tao *host_tao_;
 };
 }  // namespace tao
 

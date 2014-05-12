@@ -31,7 +31,7 @@
 
 using std::string;
 
-using tao::ConnectToUnixDomainSocket;
+//using tao::ConnectToUnixDomainSocket;
 //using tao::CreateTempACLsDomain;
 using tao::CreateTempDir;
 //using tao::DirectTaoChildChannel;
@@ -145,6 +145,7 @@ TEST(TaoUtilTest, SendAndReceiveMessageTest) {
     << "Was expecting EOF";
 }
 
+/*
 TEST(TaoUtilTest, SocketUtilTest) {
   ScopedTempDir temp_dir;
   EXPECT_TRUE(CreateTempDir("socket_util_test", &temp_dir))
@@ -165,3 +166,4 @@ TEST(TaoUtilTest, SocketUtilTest) {
     ASSERT_GE(*client_sock, 0);
   }
 }
+*/

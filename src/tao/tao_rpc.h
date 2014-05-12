@@ -21,6 +21,7 @@
 
 #include <string>
 
+#include "tao/message_channel.h"
 #include "tao/tao.h"
 #include "tao/tao_rpc.pb.h"
 
@@ -28,9 +29,14 @@ namespace tao {
 using std::string;
 
 /// A class that sends Tao requests and responses over a channel between Tao
-/// hosts and Tao hosted programs. Channel details are left to subclasses.
+/// hosts and Tao hosted programs. 
 class TaoRPC : public Tao {
  public:
+   /// Construct a TaoRPC.
+   /// @param channel The channel over which to send and recieve messages.
+   /// Ownership is taken.
+  TaoRPC(MessageChannel *channel) : channel_(channel) {}
+
   /// Tao implementation.
   /// @{
   virtual bool GetTaoName(string *name) const;
@@ -43,13 +49,8 @@ class TaoRPC : public Tao {
   /// @}
 
  protected:
-  /// Send an RPC request to the host Tao.
-  /// @param rpc The rpc to send.
-  virtual bool SendRPC(const TaoRPCRequest &rpc) const = 0;
-
-  /// Receive an RPC response from the host Tao.
-  /// @param[out] resp The response received.
-  virtual bool ReceiveRPC(TaoRPCResponse *resp) const = 0;
+  /// The channel over which to send andd receive messages.
+  scoped_ptr<MessageChannel> channel_;
 
  private:
   /// Do an RPC request/response interaction with the host Tao.

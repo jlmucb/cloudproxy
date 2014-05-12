@@ -26,9 +26,12 @@
 #include <sstream>
 #include <string>
 
+/// These basic utilities from Keyczar and the standard library are used
+/// extensively throughout the Tao implementation, so we include them here.
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <keyczar/base/file_util.h>
+#include <keyczar/base/scoped_ptr.h>
 #include <keyczar/base/values.h>  // for ScopedSafeString
 
 #include "tao/tao.h"
@@ -242,16 +245,6 @@ bool ReceiveMessageFrom(int fd, google::protobuf::Message *m,
 /// @param addr_len The length of the address to send the message to.
 bool SendMessageTo(int fd, const google::protobuf::Message &m,
                    const struct sockaddr *addr, socklen_t addr_len);
-
-/// Opens a Unix domain socket at a given path.
-/// @param path The path for the new Unix domain socket.
-/// @param[out] sock The file descriptor for this socket.
-bool OpenUnixDomainSocket(const string &path, int *sock);
-
-/// Connect as a client to a Unix domain socket.
-/// @param path The path to the existing socket.
-/// @param[out] sock The connected socket.
-bool ConnectToUnixDomainSocket(const string &path, int *sock);
 
 /// Create a temporary directory.
 /// @param prefix The partial path of the directory to create.

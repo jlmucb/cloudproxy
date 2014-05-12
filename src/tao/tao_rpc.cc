@@ -73,7 +73,9 @@ bool TaoRPC::Unseal(const string &sealed, string *data, string *policy) const {
 bool TaoRPC::Request(const TaoRPCRequest &req, string *data,
                      string *policy) const {
   TaoRPCResponse resp;
-  if (!SendRPC(req) || !ReceiveRPC(&resp) || !resp.success()) {
+  bool eof;
+  if (!channel_->SendMessage(req) || !channel_->ReceiveMessage(&resp, &eof) ||
+      eof || !resp.success()) {
     LOG(ERROR) << "RPC to Tao host failed";
     return false;
   }

@@ -21,10 +21,8 @@
 
 #include <string>
 
-#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
-#include <keyczar/base/scoped_ptr.h>
-
 #include "tao/attestation.pb.h"
+#include "tao/util.h"
 
 namespace tao {
 using std::string;
@@ -54,7 +52,6 @@ class TaoHost {
   TaoHost(Keys *keys, Tao *host_tao) : keys_(keys), host_tao_(host_tao) {}
 
   virtual bool Init();
-  virtual bool Destroy() { return true; }
   virtual ~TaoHost() {}
 
   /// TaoHost mostly follows the semantics of the Tao interface for these
@@ -112,11 +109,11 @@ class TaoHost {
 
   /// Notify this TaoHost that a new hosted program has been created.
   /// @param child_name The subprincipal for the new hosted program.
-  virtual bool AddHostedProgram(const string &child_name) { return true; }
+  virtual bool AddedHostedProgram(const string &child_name) { return true; }
   
   /// Notify this TaoHost that a hosted program has been killed.
   /// @param child_name The subprincipal for the dead hosted program.
-  virtual bool RemoveHostedProgram(const string &child_name) { return true; }
+  virtual bool RemovedHostedProgram(const string &child_name) { return true; }
  
   /// Get the Tao principal name assigned to this hosted Tao host. The name
   /// encodes the full path from the root Tao, through all intermediary Tao

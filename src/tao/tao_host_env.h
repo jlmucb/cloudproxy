@@ -1,12 +1,9 @@
-//  File: tao_channel.h
-//  Author: Tom Roeder <tmroeder@google.com>
+//  File: tao_host_env.h
+//  Author: Kevin Walsh <kwalsh@holycross.edu>
 //
-//  Description: A class for communication between hosted programs and the Tao
-//  and between administrative programs and the Tao. It implements the
-//  high-level details of communication (like protobuf serialization) and
-//  depends on subclasses for the details of byte transport
+//  Description: A base class for implementating a Tao host environment.
 //
-//  Copyright (c) 2013, Google Inc.  All rights reserved.
+//  Copyright (c) 2014, Kevin Walsh.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,9 +16,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#ifndef TAO_TAO_CHANNEL_H_
-#define TAO_TAO_CHANNEL_H_
+#ifndef TAO_TAO_HOST_ENV_H_
+#define TAO_TAO_HOST_ENV_H_
 
 #include <string>
 
@@ -34,13 +30,17 @@
 using std::string;
 
 namespace tao {
-
-/// An RPC server class that handles communication with a set of remote
-/// TaoChildChannel and TaoAdminChannel clients.
-class TaoChannel {
+/// A base class for implementing a Tao host environment that provides the Tao
+/// interface and services to hosted programs. This class provides a partial
+/// implementation for driving a TaoHost.  Derived classes specialize this
+/// implementation for specific environments, e.g. a Linux OS, a Linux process
+/// group, a hypervisor, or a JVM.
+class TaoHostEnv {
  public:
-  TaoChannel() {}
-  virtual ~TaoChannel() {}
+  /// Construct a TaoHostEnv.
+  /// @param tao The Tao
+  TaoHostEnv(TaoChildChannel {}
+  virtual ~TaoHostEnv() {}
 
   /// Initialize the server, opening ports and allocating resources as needed.
   virtual bool Init() = 0;
@@ -57,13 +57,13 @@ class TaoChannel {
   /// connect using the same type.
   /// @param tentative_child_name The tentative name of the child to add.
   /// @param[out] params The Base64W-encoded TaoChildChannelParams that the
-  /// child will use to connect to this TaoChannel.
+  /// child will use to connect to this TaoHostEnv.
   virtual bool AddChildChannel(const string &tentative_child_name,
                                string *params) = 0;
 
   /// Clean up host state in child during hosted program creation.
   /// @param encoded_params The Base64W-encoded TaoChildChannelParams that the
-  /// child will use to connect to this TaoChannel.
+  /// child will use to connect to this TaoHostEnv.
   /// @param subprin A subprincipal name used to finalize our name.
   virtual bool ChildCleanup(const string &encoded_params,
                             const string &subprin) = 0;
@@ -107,8 +107,8 @@ class TaoChannel {
                              string *child_name) const;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(TaoChannel);
+  DISALLOW_COPY_AND_ASSIGN(TaoHostEnv);
 };
 }  // namespace tao
 
-#endif  // TAO_TAO_CHANNEL_H_
+#endif  // TAO_TAO_HOST_ENV_H_

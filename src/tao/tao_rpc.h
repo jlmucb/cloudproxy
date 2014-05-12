@@ -32,9 +32,9 @@ using std::string;
 /// hosts and Tao hosted programs. 
 class TaoRPC : public Tao {
  public:
-   /// Construct a TaoRPC.
-   /// @param channel The channel over which to send and recieve messages.
-   /// Ownership is taken.
+  /// Construct a TaoRPC.
+  /// @param channel The channel over which to send and recieve messages.
+  /// Ownership is taken.
   TaoRPC(MessageChannel *channel) : channel_(channel) {}
 
   /// Tao implementation.
@@ -49,7 +49,7 @@ class TaoRPC : public Tao {
   /// @}
 
  protected:
-  /// The channel over which to send andd receive messages.
+  /// The channel over which to send and receive messages.
   scoped_ptr<MessageChannel> channel_;
 
  private:

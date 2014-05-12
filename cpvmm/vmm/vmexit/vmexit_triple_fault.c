@@ -21,6 +21,9 @@
 
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(VMEXIT_TRIPLE_fault_C)
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(VMEXIT_TRIPLE_fault_C, __condition)
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 VMEXIT_HANDLING_STATUS vmexit_triple_fault(GUEST_CPU_HANDLE gcpu)
 {
@@ -28,6 +31,10 @@ VMEXIT_HANDLING_STATUS vmexit_triple_fault(GUEST_CPU_HANDLE gcpu)
     PRINT_GCPU_IDENTITY(gcpu);
     VMM_LOG(mask_anonymous, level_trace,"  Reset the System.\n");
     VMM_DEBUG_CODE(VMM_DEADLOOP());
+#ifdef JLMDEBUG
+    bprint("triple fault\n");
+    LOOP_FOREVER
+#endif
     hw_reset_platform();
     // TODO: Tear down the guest
 

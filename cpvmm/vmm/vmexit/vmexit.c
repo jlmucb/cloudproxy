@@ -707,7 +707,7 @@ void vmexit_common_handler(void)
     bprint("vmexit_common_handler\n");
     bprint("guest rip: 0x%016llx, exit reason: 0x%016lx\n", 
             gcpu_read_guestrip(), vmexit_reason());
-    evmmdebugwait();
+    evmmdebugwait(LONGLOOP);
 #endif 
     gcpu= scheduler_current_gcpu();
     if(gcpu==0) {

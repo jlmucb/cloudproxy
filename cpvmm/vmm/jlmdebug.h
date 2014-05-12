@@ -10,10 +10,13 @@
 #define VMM_ASSERT(x) \
     if(!(x)) { bprint("VMM_ASSERT\n"); LOOP_FOREVER }
 
-inline static int evmmdebugwait() 
+#define LONGLOOP  8000000000ULL
+#define SHORTLOOP 2000000000ULL
+
+inline static int evmmdebugwait(UINT64 limit) 
 {
     volatile UINT64 l;
-    for(l=0; l<80000000000;l++);
+    for(l=0; l<limit;l++);
     return l;
 }
 #endif

@@ -213,11 +213,12 @@ static uint32_t                         tboot_cr4= 0;
 
 // guest gdt
 static IA32_GDTR __attribute__((aligned (16))) guest_gdtr;
-uint64_t __attribute__((aligned (16)))         guest_gdt[5] = {
+uint64_t __attribute__((aligned (16)))         guest_gdt[6] = {
     0x0000000000000000,         // NULL descriptor 
-    0x00af9a000000ffff,         // __KERNEL_CS 
+    0x00cf9b000000ffff,         // __KERNEL_CS 
     0x00cf92000000ffff,         // __KERNEL_DS 
-    0x0080890000000000,         // TS descriptor 
+    0x008f93000000ffff,         // SS
+    0x00808b000000ffff,         // TS descriptor 
     0x0000000000000000          // TS continued 
 };
 static uint16_t                         guest_cs_selector= 0;
@@ -1031,17 +1032,17 @@ int linux_setup(void)
     linux_esp_register= linux_stack_base+PAGE_SIZE;
 
     // guest state from tboot state
-    guest_gdtr.base= (uint32_t)&guest_gdt;
-    guest_gdtr.limit= 39;
-    guest_cs_selector= 0x10;
+    guest_gdtr.base= (uint32_t)guest_gdt;
+    guest_gdtr.limit= 47;
+    guest_cs_selector= 0x8;
     guest_cs_base= 0;
     guest_cs_limit= 0xffff;
     guest_cs_attr= tboot_cs_attr;
-    guest_ds_selector= 0x20;
+    guest_ds_selector= 0x10;
     guest_ds_base= 0;
     guest_ds_limit= 0xffff;
     guest_ds_attr= tboot_ds_attr;
-    guest_ss_selector= 0x20;
+    guest_ss_selector= 0x18;
     guest_ss_base= 0;
     guest_ss_limit= 0xffff;
     guest_ss_attr= tboot_ds_attr;
@@ -1053,9 +1054,9 @@ int linux_setup(void)
     guest_msr_sysenter_esp= tboot_msr_sysenter_esp;
     guest_msr_sysenter_eip= tboot_msr_sysenter_eip;
 
-    guest_tr_selector= 0x30;
+    guest_tr_selector= 0x20;
     guest_tr_base= 0;
-    guest_tr_limit= 0xffffffff;
+    guest_tr_limit= 0x0000ffff;
     guest_tr_attr= 0x0000808b;
     guest_cr0= tboot_cr0;
     guest_cr2= tboot_cr2;
@@ -1119,8 +1120,8 @@ int linux_setup(void)
                         guest_gdtr.base;
         guest_processor_state[k].control.gdtr.limit = (uint64_t)(uint32_t)
                         guest_gdtr.limit;
+
         ia32_read_idtr(&idtr);
-    
         guest_processor_state[k].control.idtr.base = (UINT64)idtr.base;
         guest_processor_state[k].control.idtr.limit = (UINT32)idtr.limit;
     
@@ -1922,9 +1923,9 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     ia32_read_gdtr(&tdesc);
     tboot_gdtr_32.base= tdesc.base;
     tboot_gdtr_32.limit= tdesc.limit;
-#if 0
+#if 1
     // make a fake TSS to keep vmcs happy
-    *((UINT64*)tboot_gdtr_32.base+24)= 0x0080890000000000ULL;
+    *((UINT64*)tboot_gdtr_32.base+24)= 0x00808b0000000000ULL;
     *((UINT64*)tboot_gdtr_32.base+32)= 0ULL;
     tboot_gdtr_32.limit= 39;
     tboot_tr_attr= 0x0000808b;
@@ -2183,6 +2184,8 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
             tboot_cs_selector,tboot_ds_selector,tboot_tr_selector);
     HexDump((uint8_t*)(tboot_gdtr_32.base), 
             (uint8_t*)(tboot_gdtr_32.base+tboot_gdtr_32.limit));
+    bprint("cr0: %08x, cr2: %08x, cr3: %08x, cr4: %08x\n", guest_cr0, 
+           guest_cr2, guest_cr3, guest_cr4);
     bprint("Guest descriptor table, cs_sel: %08x, ds_sel: %08x, tr_sel: %08x:\n",
             guest_cs_selector,guest_ds_selector,guest_tr_selector);
     HexDump((uint8_t*)(guest_gdtr.base), 
@@ -2194,6 +2197,7 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
            linux_stack_base, linux_edi_register);
     bprint("\tapplication struct 0x%08x, reserved, 0x%08x\n",
            (int)evmm_p_a0, (int)evmm_reserved);
+    LOOP_FOREVER
 #endif
     if (evmm_num_of_aps > 0) {
         startap_main(&init32, &init64, p_startup_struct, vmm_main_entry_point);

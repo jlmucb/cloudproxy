@@ -40,7 +40,7 @@ class TaoRPC : public Tao {
   /// Tao implementation.
   /// @{
   virtual bool GetTaoName(string *name) const;
-  virtual bool ExtendTaoName(const string &subprin) const;
+  virtual bool ExtendTaoName(const string &subprin);
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
   virtual bool Attest(const Statement &stmt, string *attestation) const;
   virtual bool Seal(const string &data, const string &policy,

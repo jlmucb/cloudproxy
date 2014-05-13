@@ -31,8 +31,10 @@
 				'fd_message_channel.h',
 				'keys_unittests.cc',
 				'pipe_factory_unittests.cc',
+				# 'soft_tao.cc' # see 'tao_unittests.cc'
 				'tao_test.cc',
-				'tpm_tao_unittests.cc',
+				# 'tpm_tao.cc' # see 'tao_unittests.cc'
+				'tao_unittests.cc',
 				'util_unittests.cc',
 				'linux_process_factory_unittests.cc',
 #				'fake_tao_unittests.cc',

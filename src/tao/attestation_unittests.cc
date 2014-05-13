@@ -40,6 +40,19 @@ class AttestationTest : public ::testing::Test {
   string key_child_;
 };
 
+TEST_F(AttestationTest, SubprinTest) {
+  EXPECT_TRUE(IsSubprincipalOrIdentical("a", "a"));
+  EXPECT_TRUE(IsSubprincipalOrIdentical("a::b", "a"));
+  EXPECT_TRUE(IsSubprincipalOrIdentical("a::b::c", "a"));
+  EXPECT_TRUE(IsSubprincipalOrIdentical("a::b::c", "a::b"));
+
+  EXPECT_FALSE(IsSubprincipalOrIdentical("a::b", "a::"));
+  EXPECT_FALSE(IsSubprincipalOrIdentical("a::", "a"));
+  EXPECT_FALSE(IsSubprincipalOrIdentical("b", "a"));
+  EXPECT_FALSE(IsSubprincipalOrIdentical("b::c", "a"));
+  EXPECT_FALSE(IsSubprincipalOrIdentical("a::c", "a::b"));
+}
+
 // Protobuf throws an exception for this test
 // TEST_F(AttestationTest, GenerateTestFail) {
 //   string a;

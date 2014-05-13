@@ -43,12 +43,20 @@ class TPMTao : public Tao {
   /// @param aik_blob A public AIK blob produced by the TPM.
   /// @param pcrs_indexes A list of PCR indexes used for sealing and unsealing.
   /// For DRTM we typically use indexes 17 and 18. Relevant PCR indexes are:
-  ///   17 - trusted os policy (DRTM LCP)
-  ///   18 - trusted os startup code (DRTM MLE)
-  ///   19 - tboot initrd hash (?)
-  ///   20 - trusted os kernel and other code (?)
-  ///   21 - defined by trusted os
-  ///   22 - defined by trusted os
+  ///   16 - debug, resettable at any locality
+  ///   17 - trusted os policy (DRTM LCP), resettable at loc >= 4 [cpu]
+  ///   18 - trusted os startup code (DRTM MLE), resettable at loc >= 3/4 [os]
+  ///   19 - tboot initrd hash (?), resettable at loc >= 2/4
+  ///   20 - trusted os kernel and other code (?), resettable at loc >= 1/4+2
+  ///   21 - dynamic trusted os, resettable at loc == 2
+  ///   22 - dynamic trusted os, resettable at loc == 2
+  ///   23 - application specific, resettable at any locality
+  /// Where localities are roughly as follows:
+  ///   Locality 0 - Non trusted and legacy TPM operation
+  ///   Locality 1 - An environment for use by the Trusted Operating System
+  ///   Locality 2 - Trusted Operating System
+  ///   Locality 3 - Authenticated Code Module (ACM)
+  ///   Locality 4 - Intel TXT hardware use only (SENTER)
   TPMTao(const string &aik_blob, const list<int> &pcr_indexes)
       : aik_blob_(aik_blob),
         pcr_indexes_(pcr_indexes.begin(), pcr_indexes.end()) {}
@@ -60,13 +68,13 @@ class TPMTao : public Tao {
   TPMTao(const list<int> &pcr_indexes) : TPMTao("", pcr_indexes) {}
 
   virtual bool Init();
-  virtual bool Destroy();
-  virtual ~TPMTao() {}
+  virtual bool Close();
+  virtual ~TPMTao() { Close(); }
 
   /// These methods have the same semantics as Tao.
   /// @{
   virtual bool GetTaoName(string *name) const;
-  virtual bool ExtendTaoName(const string &subprin) const;
+  virtual bool ExtendTaoName(const string &subprin);
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
   virtual bool Attest(const Statement &stmt, string *attestation) const;
   virtual bool Seal(const string &data, const string &policy,
@@ -109,6 +117,9 @@ class TPMTao : public Tao {
 
   /// The AIK encoded as a principal name.
   string aik_name_;
+
+  /// Subprincipal names extended to this TPMTao's principal name.
+  string name_extension_;
 
   /// A list of Platform Configuration Register indexes used to identify the
   /// hosted program.

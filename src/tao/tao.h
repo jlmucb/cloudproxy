@@ -69,7 +69,7 @@ class Tao {
   /// effect, the hosted program can drop privileges by taking on the identity
   /// of its subprincipal.
   /// @param subprin The subprincipal to append to the principal name.
-  virtual bool ExtendTaoName(const string &subprin) const = 0;
+  virtual bool ExtendTaoName(const string &subprin) = 0;
 
   /// Get random bytes.
   /// @param size The number of bytes to get.

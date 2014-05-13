@@ -60,9 +60,9 @@ class TaoHost {
   /// all cases, the child_subprin parameter specifies the subprincipal that
   /// appears after this Tao host's own full name.
   /// @{
-  virtual bool GetTaoName(const string &child_subprin, string *name) const;
-  virtual bool ExtendTaoName(const string &child_subprin,
-                             const string &subprin) const;
+  // virtual bool GetTaoName(const string &child_subprin, string *name) const;
+  // virtual bool ExtendTaoName(const string &child_subprin,
+  //                           const string &subprin) const;
   virtual bool GetRandomBytes(const string &child_subprin, size_t size,
                               string *bytes) const;
 

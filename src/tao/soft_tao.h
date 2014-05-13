@@ -49,7 +49,7 @@ class SoftTao : public Tao {
   /// These methods have the same semantics as Tao.
   /// @{
   virtual bool GetTaoName(string *name) const;
-  virtual bool ExtendTaoName(const string &subprin) const;
+  virtual bool ExtendTaoName(const string &subprin);
   virtual bool GetRandomBytes(size_t size, string *bytes) const;
   virtual bool Attest(const Statement &stmt, string *attestation) const;
   virtual bool Seal(const string &data, const string &policy,
@@ -60,6 +60,12 @@ class SoftTao : public Tao {
  private:
   /// Crypting and signing keys for sealing and signing.
   scoped_ptr<tao::Keys> keys_;
+  
+  /// Base name of this SoftTao, encoded as a principal.
+  string key_name_;
+
+  /// Subprincipal names extended to this SoftTao's principal name.
+  string name_extension_;
 
   DISALLOW_COPY_AND_ASSIGN(SoftTao);
 };

@@ -28,7 +28,7 @@ bool TaoRPC::GetTaoName(string *name) const {
   return Request(rpc, name, nullptr /* policy */);
 }
 
-bool TaoRPC::ExtendTaoName(const string &subprin) const {
+bool TaoRPC::ExtendTaoName(const string &subprin) {
   TaoRPCRequest rpc;
   rpc.set_rpc(TAO_RPC_EXTEND_TAO_NAME);
   rpc.set_data(subprin);

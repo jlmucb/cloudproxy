@@ -312,8 +312,10 @@ bool TPMTao::Init() {
   return true;
 }
 
-bool TPMTao::Destroy() {
+bool TPMTao::Close() {
   // Clean-up code.
+  if (!tss_ctx_)
+    return true;
   bool ok = true;
   TSS_RESULT result;
   result = Tspi_Context_FreeMemory(tss_ctx_, nullptr);
@@ -321,12 +323,12 @@ bool TPMTao::Destroy() {
     LOG(ERROR) << "Could not free the context";
     ok = false;
   }
-
   result = Tspi_Context_Close(tss_ctx_);
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Could not clean up the context";
     ok = false;
   }
+  tss_ctx_ =  0;
   return ok;
 }
 
@@ -336,13 +338,28 @@ bool TPMTao::GetTaoName(string *full_name) const {
   out << "::PCRs(\"" << join(pcr_indexes_, ", ") << "\"";
   out << ", \"" << join(child_pcr_values_, ", ") << "\")";
   ;
-  full_name->assign(out.str());
+  full_name->assign(out.str() + name_extension_);
   return true;
 }
 
-bool TPMTao::ExtendTaoName(const string &subprin) const {
-  LOG(ERROR) << "Not yet implemented -- extend the pcrs";
-  // extend pcr 20 (or 21 or 22)?
+bool TPMTao::ExtendTaoName(const string &subprin) {
+  // We should extend the PCRs, e.g. PCR 20 (or 21 or 22). But the semantics are
+  // complicated: we need to have a single TPMTao instance on the machine, and
+  // that instance should do one of the following:
+  // - Reset those PCRs on each execution. This can't be done within the
+  // TaoHost, obviously, because that lets a subprincipal escalate back to a
+  // parent principal by partially replaying the ExtendTaoName operations. So it
+  // would have to be controlled externally.
+  // - Don't reset the PCRs, but keep track of list of extensions across each
+  // execution of this TaoHost. Upon boot, the TPM principal would be
+  // AIK::PCRs(p). After extend "foo", the principal would be
+  // AIK::PCRs(p)::Extend("foo") where we can take p and "foo" and calculate the
+  // new PCR values p' to use in verifying quotes.
+  // - Don't reset the PCRs, and don't track list of extensions across each
+  // execution of the TaoHost. The principal name would always be AIK::PCRs(p)
+  // with the current PCR values p. But when we extend from p to p', also give out a
+  // delegation so that p speaks for p', since that wouldn't be evident from the
+  // names.
   return false;
 }
 

@@ -32,6 +32,14 @@ using keyczar::Verifier;
 
 namespace tao {
 
+bool IsSubprincipalOrIdentical(const string &child_name,
+                                      const string &parent_name) {
+  // TODO(kwalsh) Additional well-formedness checks?
+  return (child_name == parent_name) ||
+         (child_name.size() > parent_name.size() + 2 &&
+          child_name.substr(0, parent_name.size() + 2) == parent_name + "::");
+}
+
 static bool CheckRestrictions(const Statement &s, time_t check_time) {
   if (check_time < s.time()) {
     LOG(ERROR) << "Attestation is not yet valid";
@@ -42,12 +50,6 @@ static bool CheckRestrictions(const Statement &s, time_t check_time) {
     return false;
   }
   return true;
-}
-
-static bool IsSubprincipalOrIdentical(const string &child_name,
-                                      const string &parent_name) {
-  return (child_name == parent_name) ||
-         (child_name.substr(0, parent_name.size() + 2) == (parent_name + "::"));
 }
 
 static bool VerifyAttestationSignature(const Attestation &a) {

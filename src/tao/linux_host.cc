@@ -64,17 +64,17 @@ bool LinuxHost::HandleTaoRPC(HostedLinuxProcess *child,
   bool success = false;
   switch (rpc.rpc()) {
     case TAO_RPC_GET_TAO_NAME:
-      success = tao_host_->GetTaoName(child->subprin, &result_data);
+      result_data = tao_host_->TaoHostName() + "::" + child->subprin;
+      success = true;
       break;
     case TAO_RPC_EXTEND_TAO_NAME:
-      if (!rpc.has_data()) {
+      if (!rpc.has_data() && rpc.data() != "") {
         LOG(ERROR) << "Invalid RPC: must supply data for ExtendName";
         break;
       }
-      success = tao_host_->ExtendTaoName(child->subprin, rpc.data());
-      if (success) {
-        child->subprin += "::" + rpc.data();
-      }
+      // TODO(kwalsh) Sanity checking on subprin format.
+      child->subprin += "::" + rpc.data();
+      success = true;
       break;
     case TAO_RPC_GET_RANDOM_BYTES:
       if (!rpc.has_size()) {

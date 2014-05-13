@@ -1,7 +1,7 @@
-//  File: tpm_tao_unittests.cc
+//  File: tao_unittests.cc
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: Tests the basic TPMTao functionality
+//  Description: Unit tests for TPMTao and SoftTao.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -16,37 +16,46 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "tao/tpm_tao.h"
+#include "tao/tao.h"
 
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 #include "tao/attestation.h"
+#include "tao/soft_tao.h"
+#include "tao/tpm_tao.h"
 #include "tao/util.h"
 
-using std::list;
-using std::string;
-
-using tao::ReadFileToString;
-using tao::Statement;
-using tao::TPMTao;
-using tao::Tao;
+using namespace tao;
 
 DEFINE_string(aik_blob_file, "/home/tmroeder/src/fileProxy/src/apps/aikblob",
               "The blob for an AIK loaded in the TPM");
 
-class TPMTaoTest : public ::testing::Test {
+template <typename T>
+class TaoTest : public ::testing::Test {
  protected:
-  virtual void SetUp() {
+  virtual void Setup(scoped_ptr<TPMTao> *tao) {
     string blob;
     ASSERT_TRUE(ReadFileToString(FLAGS_aik_blob_file, &blob));
-    tao_.reset(new TPMTao(blob, list<int>{17, 18}));
-    ASSERT_TRUE(tao_->Init());
+    tao->reset(new TPMTao(blob, list<int>{17, 18}));
+    ASSERT_TRUE(tao->get()->Init());
   }
-  scoped_ptr<TPMTao> tao_;
+  virtual void Setup(scoped_ptr<SoftTao> *tao) {
+    string blob;
+    ASSERT_TRUE(ReadFileToString(FLAGS_aik_blob_file, &blob));
+    tao->reset(new SoftTao());
+    ASSERT_TRUE(tao->get()->InitWithTemporaryKeys());
+  }
+  virtual void SetUp() {
+    Setup(&tao_);
+  }
+  scoped_ptr<T> tao_;
 };
+typedef ::testing::Types<TPMTao, SoftTao> TaoTypes;
+TYPED_TEST_CASE(TaoTest, TaoTypes);
 
-TEST_F(TPMTaoTest, SealUnsealTest) {
+/*
+TYPED_TEST(TaoTest, SealUnsealTest) {
   string bytes("Test bytes for sealing");
   string sealed;
   string seal_policy = Tao::SealPolicyDefault;
@@ -57,7 +66,7 @@ TEST_F(TPMTaoTest, SealUnsealTest) {
   EXPECT_EQ(seal_policy, unseal_policy);
 }
 
-TEST_F(TPMTaoTest, AttestTest) {
+TYPED_TEST(TaoTest, AttestTest) {
   Statement s;
   s.set_delegate("Key(\"..stuff..\")");
   string attestation;
@@ -70,17 +79,26 @@ TEST_F(TPMTaoTest, AttestTest) {
   EXPECT_NE("", name);
   EXPECT_EQ(s2.issuer(), name);
 }
+*/
 
-TEST_F(TPMTaoTest, RandomTest) {
-  Statement s;
-  s.set_delegate("Key(\"..stuff..\")");
-  string attestation;
-  ASSERT_TRUE(tao_->Attest(s, &attestation));
-  Statement s2;
-  ASSERT_TRUE(ValidateAttestation(attestation, &s2));
-  EXPECT_EQ(s.delegate(), s2.delegate());
-  string name;
-  ASSERT_TRUE(tao_->GetTaoName(&name));
-  EXPECT_EQ(s2.issuer(), name);
+TYPED_TEST(TaoTest, RandomTest) {
+  string bytes;
+  ASSERT_TRUE(this->tao_->GetRandomBytes(4, &bytes));
+  ASSERT_EQ(4, bytes.size());
+  EXPECT_FALSE(bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0 &&
+               bytes[3] == 0);
 }
+
+TYPED_TEST(TaoTest, ExtendTest) {
+  string name, ename;
+  ASSERT_TRUE(this->tao_->GetTaoName(&name));
+  EXPECT_NE("", name);
+  // TODO(kwalsh) implement extend for TPM
+  if (name.substr(0, 3) != "TPM") {
+    ASSERT_TRUE(this->tao_->ExtendTaoName("Test1::Test2"));
+    ASSERT_TRUE(this->tao_->GetTaoName(&ename));
+    EXPECT_EQ(name+"::"+"Test1::Test2", ename);
+  }
+}
+
 

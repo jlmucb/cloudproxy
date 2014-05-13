@@ -32,29 +32,45 @@ using keyczar::CryptoFactory;
 namespace tao {
 bool SoftTao::InitWithTemporaryKeys() {
   keys_.reset(new Keys("soft_tpm", Keys::Signing | Keys::Crypting));
-  return keys_->InitTemporary();
+  if (!keys_->InitTemporary()) {
+    LOG(ERROR) << "Could not generate temporary keys";
+    return false;
+  }
+  return Init(keys_.release());
 }
 
 bool SoftTao::Init(Keys *keys) {
-  if (keys->Signer() == nullptr || keys->Crypter() == nullptr) {
+  keys_.reset(keys);
+  if (keys_->Signer() == nullptr || keys_->Crypter() == nullptr) {
     LOG(ERROR) << "SoftTao is missing a required key";
     return false;
   }
-  keys_.reset(keys);
+  if (!keys_->GetPrincipalName(&key_name_)) {
+    LOG(ERROR) << "Could not get key principal name";
+    return false;
+  }
   return true;
 }
 
 SoftTao *SoftTao::DeepCopy() const {
   scoped_ptr<SoftTao> other(new SoftTao());
   other->keys_.reset(keys_->DeepCopy());
+  other->key_name_ = key_name_;
+  other->name_extension_ = name_extension_;
   return other.release();
 }
 
 bool SoftTao::GetTaoName(string *name) const {
-  return keys_->GetPrincipalName(name);
+  name->assign(key_name_ + name_extension_);
+  return true;
 }
 
-bool SoftTao::ExtendTaoName(const string &subprin) const {
+bool SoftTao::ExtendTaoName(const string &subprin) {
+  if (subprin == "") {
+    LOG(ERROR) << "Invalid subprincipal name";
+    return false;
+  }
+  name_extension_ += "::" + subprin;
   return true;
 }
 
@@ -69,13 +85,12 @@ bool SoftTao::Attest(const Statement &stmt, string *attestation) const {
   if (!s.has_time()) s.set_time(CurrentTime());
   if (!s.has_expiration())
     s.set_expiration(s.time() + Tao::DefaultAttestationTimeout);
+  string name = key_name_ + name_extension_;
   if (!s.has_issuer()) {
-    string issuer;
-    if (!GetTaoName(&issuer)) {
-      LOG(ERROR) << "Could not get issuer name";
-      return false;
-    }
-    s.set_issuer(issuer);
+    s.set_issuer(name);
+  } else if (!IsSubprincipalOrIdentical(s.issuer(), name)) {
+    LOG(ERROR) << "Invalid issuer in statement";
+    return false;
   }
   return GenerateAttestation(*keys_, "" /* delegation */, s, attestation);
 }

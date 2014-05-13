@@ -33,6 +33,12 @@ class Keys;
 /// Utilities for arbitrary attestations.
 /// @{
 
+/// Check whether a principal is a subprincipal of (or identical to) another.
+/// @param child_name The principal name of the purported child.
+/// @param parent_name The principal name of the purported parent.
+bool IsSubprincipalOrIdentical(const string &child_name,
+                               const string &parent_name);
+
 /// Generate a signed attestation.
 /// @param key The signing key.
 /// @param delegation A serialized delegation attestation to provide evidence

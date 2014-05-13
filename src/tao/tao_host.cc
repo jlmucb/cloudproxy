@@ -45,27 +45,19 @@ bool TaoHost::Init() {
   return true;
 }
 
-bool TaoHost::GetTaoName(const string &child_subprin, string *name) const {
-  name->assign(tao_host_name_ + "::" + child_subprin);
-  return true;
-}
+// bool TaoHost::GetTaoName(const string &child_subprin, string *name) const {
+//   name->assign(tao_host_name_ + "::" + child_subprin);
+//   return true;
+// }
 
-bool TaoHost::ExtendTaoName(const string &child_subprin, const string &subprin) const {
-  // TODO(kwalsh) Sanity checking on subprin format.
-  // Nothing to do.
-  return true;
-}
+// bool TaoHost::ExtendTaoName(const string &child_subprin, const string &subprin) const {
+//   // Nothing to do.
+//   return true;
+// }
 
 bool TaoHost::GetRandomBytes(const string &child_subprin, size_t size,
                               string *bytes) const {
   return host_tao_->GetRandomBytes(size, bytes);
-}
-
-// TODO(kwalsh) move this back to attestation.cc
-static bool IsSubprincipalOrIdentical(const string &child_subprin,
-                                      const string &parent_name) {
-  return (child_subprin == parent_name) ||
-         (child_subprin.substr(parent_name.size() + 2) == parent_name + "::");
 }
 
 bool TaoHost::Attest(const string &child_subprin, Statement *stmt,

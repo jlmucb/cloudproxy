@@ -142,7 +142,10 @@ bool LinuxHost::HandleAdminRPC(const LinuxAdminRPCRequest &rpc,
       if (success) resp->set_data(child_subprin);
       break;
     case LINUX_ADMIN_RPC_STOP_HOSTED_PROGRAM:
-      success = HandleStopHostedProgram(rpc);
+      success = HandleStopHostedProgram(rpc, SIGTERM);
+      break;
+    case LINUX_ADMIN_RPC_KILL_HOSTED_PROGRAM:
+      success = HandleStopHostedProgram(rpc, SIGKILL);
       break;
     case LINUX_ADMIN_RPC_GET_TAO_HOST_NAME:
       resp->set_data(tao_host_->TaoHostName());
@@ -227,7 +230,7 @@ bool LinuxHost::HandleStartHostedProgram(const LinuxAdminRPCRequest &rpc,
   return true;
 }
 
-bool LinuxHost::HandleStopHostedProgram(const LinuxAdminRPCRequest &rpc) {
+bool LinuxHost::HandleStopHostedProgram(const LinuxAdminRPCRequest &rpc, int signum) {
   if (!rpc.has_data()) {
     LOG(ERROR) << "Hosted Program stop request is missing child subprin";
     return false;
@@ -235,27 +238,32 @@ bool LinuxHost::HandleStopHostedProgram(const LinuxAdminRPCRequest &rpc) {
   string child_subprin = rpc.data();
   int killed = 0;
   int errors = 0;
-  for (auto it = hosted_processes_.begin(); it != hosted_processes_.end(); /**/ ) {
+  for (auto it = hosted_processes_.begin(); it != hosted_processes_.end();
+       /**/) {
     HostedLinuxProcess *child = it->get();
     if (child->subprin != child_subprin) {
       ++it;
-    } else if (!child_factory_->StopHostedProgram(child)) {
+      continue;
+    } 
+    child->rpc_channel->Close();  // close channel to prevent future RPCs
+    if (!child_factory_->StopHostedProgram(child, signum)) {
       errors++;
-      it = hosted_processes_.erase(it);  // remove so we ignore future RPCs
+      ++it;  // leave it in case it exits later
     } else {
       killed++;
-      it = hosted_processes_.erase(it);
+      // it = hosted_processes_.erase(it);
+      ++it;  // leave it in so SIGCHLD can remove it
     }
   }
   if (killed == 0 && errors == 0) {
     LOG(ERROR) << "There are no children named ::" << child_subprin;
     return false;
   } else if (errors > 0) {
-    LOG(ERROR) << "Killed only " << killed << " of " << killed + errors
+    LOG(ERROR) << "Signaled only " << killed << " of " << (killed + errors)
                << " children matching ::" << child_subprin;
     return false;
   } else {
-    LOG(ERROR) << "Killed " << killed << " children matching ::" << child_subprin;
+    LOG(ERROR) << "Signaled " << killed << " children matching ::" << child_subprin;
     return true;
   }
 }
@@ -314,23 +322,48 @@ bool LinuxHost::HandleUnseal(const string &child_subprin, const string &sealed,
   return true;
 }
 
+bool LinuxHost::HandleChildSignal() {
+  int pid = child_factory_->WaitForHostedProgram();
+  if (pid == 0 || pid == -1) return false;
+  for (auto it = hosted_processes_.begin(); it != hosted_processes_.end();
+       /**/) {
+    HostedLinuxProcess *child = it->get();
+    if (child->pid == pid) {
+      LOG(INFO)
+          << "LinuxHost: removed dead hosted program ::" << child->subprin;
+      child->rpc_channel->Close();
+      child->pid = 0;
+      hosted_processes_.erase(it);
+      return true;
+    }
+  }
+  LOG(WARNING) << "Could not find hosted program with PID " << pid;
+  return false;
+}
+
 bool LinuxHost::Listen() {
-  ScopedSelfPipeFd stop_fd(new int(GetSelfPipeSignalFd(SIGTERM)));
+  // When we get SIGTERM, we do a graceful shutdown.
+  // Also, restart system calls interrupted by this signal if possible.
+  ScopedSelfPipeFd stop_fd(new int(GetSelfPipeSignalFd(SIGTERM, SA_RESTART)));
   if (*stop_fd < 0) {
-    LOG(ERROR) << "Could not create self-pipe";
+    LOG(ERROR) << "Could not create SIGTERM self-pipe";
     return false;
   }
-
-  // Keep SIGPIPE from killing this program when a child dies and is connected
-  // over a pipe.
-  // TODO(tmroeder): maybe this step should be generalized and put in the apps/
-  // code rather than in the library.
-  struct sigaction act;
-  memset(&act, 0, sizeof(struct sigaction));
-  act.sa_handler = SIG_IGN;
-  struct sigaction old_act;
-  if (sigaction(SIGPIPE, &act, &old_act) < 0) {
-    PLOG(ERROR) << "Could not set up the handler to block SIGPIPE";
+  // When we get SIGCHLD, we wait for it then remove it from process list.
+  // Also, don't get notified when child stops or resumes.
+  // Also, YES let children be zombies, so omit SA_NOCLDWAIT.
+  // Also, restart system calls interrupted by this signal if possible.
+  ScopedSelfPipeFd child_fd(
+      new int(GetSelfPipeSignalFd(SIGCHLD, SA_RESTART | SA_NOCLDSTOP)));
+  if (*child_fd < 0) {
+    LOG(ERROR) << "Could not create SIGCHLD self-pipe";
+    return false;
+  }
+  // When we get SIGPIPE, we just ignore it.
+  // Also, restart system calls interrupted by this signal if possible.
+  ScopedSelfPipeFd pipe_fd(new int(GetSelfPipeSignalFd(SIGPIPE, SA_RESTART)));
+  if (*pipe_fd < 0) {
+    LOG(ERROR) << "Could not create SIGPIPE self-pipe";
     return false;
   }
 
@@ -341,6 +374,14 @@ bool LinuxHost::Listen() {
     int fd, max_fd = 0;
 
     fd = *stop_fd;
+    FD_SET(fd, &read_fds);
+    if (fd > max_fd) max_fd = fd;
+
+    fd = *child_fd;
+    FD_SET(fd, &read_fds);
+    if (fd > max_fd) max_fd = fd;
+    
+    fd = *pipe_fd;
     FD_SET(fd, &read_fds);
     if (fd > max_fd) max_fd = fd;
 
@@ -370,6 +411,15 @@ bool LinuxHost::Listen() {
       PLOG(ERROR) << "Error selecting descriptors";
       break;  // Abnormal termination.
     }
+    
+    if (FD_ISSET(*pipe_fd, &read_fds)) {
+      char b;
+      if (read(*stop_fd, &b, 1) < 0) {
+        PLOG(ERROR) << "Error reading signal number";
+        break;  // Abnormal termination.
+      }
+      // Do nothing.
+    }
 
     if (FD_ISSET(*stop_fd, &read_fds)) {
       char b;
@@ -384,7 +434,8 @@ bool LinuxHost::Listen() {
     }
 
     // Check for requests from child channels.
-    for (auto it = hosted_processes_.begin(); it != hosted_processes_.end(); /**/ ) {
+    for (auto it = hosted_processes_.begin(); it != hosted_processes_.end();
+         /**/) {
       HostedLinuxProcess *child = it->get();
       fd = child->rpc_channel->GetReadFileDescriptor();
       TaoRPCRequest rpc;
@@ -442,12 +493,20 @@ bool LinuxHost::Listen() {
             std::shared_ptr<FDMessageChannel>(admin.release()));
       }
     }
-  }
 
-  // Restore the old SIGPIPE signal handler.
-  if (sigaction(SIGPIPE, &old_act, nullptr) < 0) {
-    PLOG(ERROR) << "Could not restore the old signal handler.";
-    return false;
+    // Reap children that have exited.
+    if (FD_ISSET(*child_fd, &read_fds)) {
+      char b;
+      if (read(*child_fd, &b, 1) < 0) {
+        PLOG(ERROR) << "Error reading signal number";
+        break;  // Abnormal termination.
+      }
+      int signum = 0xff & static_cast<int>(b);
+      LOG(INFO) << "LinuxHost: received signal " << signum << ", reaping child";
+      if (!HandleChildSignal()) {
+        LOG(WARNING) << "Could not reap child";
+      } 
+    }
   }
 
   return graceful_shutdown;

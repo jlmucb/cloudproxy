@@ -1,7 +1,7 @@
 //  File: pipe_factory_unittests.cc
 //  Author: Kevin Walsh <kwalsh@holycross.edu>
 //
-//  Description: Unit tests for FDMessageChannel.
+//  Description: Unit tests for PipeFactory and FDMessageChannel.
 //
 //  Copyright (c) 2014, Kevin Walsh.  All rights reserved.
 //

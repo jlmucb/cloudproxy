@@ -1,7 +1,7 @@
-//  File: process_factory_unittests.cc
+//  File: linux_process_factory_unittests.cc
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: Tests the basic process creation facility.
+//  Description: Unit tests for LinuxProcessFactory.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -16,64 +16,96 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "tao/linux_process_factory.h"
+
+#include <unistd.h>
+#include <signal.h>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <keyczar/base/base64w.h>
 
-#include "tao/pipe_tao_channel.h"
-#include "tao/process_factory.h"
+#include "tao/fd_message_channel.h"
+#include "tao/pipe_factory.h"
 #include "tao/util.h"
 
-using keyczar::base::Base64WEncode;
+using namespace tao;
 
-using tao::CreateTempDir;
-using tao::PipeTaoChannel;
-using tao::ProcessFactory;
-using tao::ScopedTempDir;
+DEFINE_string(short_program, "/bin/true",
+              "A short program to execute, "
+              "preferably one that will stop on its own");
 
-DEFINE_string(program, "/bin/true", "The program to execute, "
-                                    "preferably one that will stop on its own");
+DEFINE_string(long_program, "/bin/sleep",
+              "A long program to execute, "
+              "preferably one that will run for a while");
 
-class ProcessFactoryTest : public ::testing::Test {
+DEFINE_string(long_program_arg, "5", "An argument for the long program");
+
+class LinuxProcessFactoryTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    ASSERT_TRUE(CreateTempDir("process_factory_test", &temp_dir_));
-
-    string domain_socket = *temp_dir_ + "/domain_socket";
-
-    channel_.reset(new PipeTaoChannel(domain_socket));
-
-    child_name_ = "Fake hash";
-    ASSERT_TRUE(channel_->AddChildChannel(child_name_, &params_))
-        << "Could not create the channel for the child";
-
-    ASSERT_TRUE(Base64WEncode(params_, &encoded_params_))
-        << "Could not encode the parameters";
-
-    factory_.reset(new ProcessFactory());
+    path_ = FLAGS_short_program;
+    long_path_ = FLAGS_long_program;
+    long_arg_ = FLAGS_long_program_arg;
   }
-
-  scoped_ptr<PipeTaoChannel> channel_;
-  scoped_ptr<ProcessFactory> factory_;
-  ScopedTempDir temp_dir_;
-  string params_;
-  string encoded_params_;
-  string child_name_;
+  LinuxProcessFactory factory_;
+  string path_, long_path_, long_arg_;
 };
 
-TEST_F(ProcessFactoryTest, HashTest) {
-  list<string> args;
-  string tentative_child_name;
-  EXPECT_TRUE(factory_->GetHostedProgramTentativeName(1234, FLAGS_program, args,
-                                                      &tentative_child_name))
-      << "Could not hash the program";
-  string child_name;
-  EXPECT_TRUE(factory_->CreateHostedProgram(1234, FLAGS_program, args,
-                                            tentative_child_name,
-                                            channel_.get(), &child_name))
-      << "Could not create a process";
-  EXPECT_TRUE(!child_name.empty())
-      << "Did not get an identifier from the factory";
+TEST_F(LinuxProcessFactoryTest, SubprinTest) {
+  string subprin0, subprin1;
+  ASSERT_TRUE(factory_.MakeHostedProgramSubprin(0, path_, &subprin0));
+  ASSERT_TRUE(factory_.MakeHostedProgramSubprin(1, path_, &subprin1));
+  // subprin1 should include the id
+  EXPECT_TRUE(subprin0.size() < subprin1.size());
+
+  int id0, id1;
+  string hash0, hash1;
+  string ext0, ext1;
+
+  ASSERT_TRUE(
+      factory_.ParseHostedProgramSubprin(subprin0, &id0, &hash0, &ext0));
+  ASSERT_TRUE(
+      factory_.ParseHostedProgramSubprin(subprin1, &id1, &hash1, &ext1));
+  EXPECT_EQ(id0, 0);
+  EXPECT_EQ(id1, 1);
+  EXPECT_EQ(hash0, hash1);
+  EXPECT_EQ("", ext0);
+  EXPECT_EQ("", ext1);
+
+  ASSERT_TRUE(factory_.ParseHostedProgramSubprin(subprin0 + "::Test1::Test2",
+                                                  &id0, &hash0, &ext0));
+  EXPECT_EQ(id0, 0);
+  EXPECT_EQ(hash0, hash1);
+  EXPECT_EQ("Test1::Test2", ext0);
+}
+
+TEST_F(LinuxProcessFactoryTest, StartTest) {
+  PipeFactory pipe_factory;
+  string subprin;
+  scoped_ptr<HostedLinuxProcess> child;
+  ASSERT_TRUE(factory_.MakeHostedProgramSubprin(0, path_, &subprin));
+  ASSERT_TRUE(factory_.StartHostedProgram(pipe_factory, path_, list<string>{},
+                                           subprin, &child));
+  EXPECT_TRUE(child->pid > 0);
+  EXPECT_EQ(subprin, child->subprin);
+  sleep(1);
+  // it should have already stopped
+  ASSERT_TRUE(factory_.StopHostedProgram(child.get(), SIGTERM));
+  EXPECT_EQ(child->pid, 0);
+}
+
+TEST_F(LinuxProcessFactoryTest, StartStopTest) {
+  PipeFactory pipe_factory;
+  string subprin;
+  scoped_ptr<HostedLinuxProcess> child;
+  ASSERT_TRUE(factory_.MakeHostedProgramSubprin(0, long_path_, &subprin));
+  ASSERT_TRUE(factory_.StartHostedProgram(
+      pipe_factory, long_path_, list<string>{long_arg_}, subprin, &child));
+  EXPECT_TRUE(child->pid > 0);
+  EXPECT_EQ(subprin, child->subprin);
+  sleep(1);
+  // it should still be running
+  ASSERT_TRUE(factory_.StopHostedProgram(child.get(), SIGTERM));
+  EXPECT_EQ(child->pid, 0);
 }

@@ -54,11 +54,13 @@ class LinuxProcessFactory {
                                   const string &subprin,
                                   scoped_ptr<HostedLinuxProcess> *child) const;
 
-  virtual bool StopHostedProgram(HostedLinuxProcess *child) const;
+  virtual bool StopHostedProgram(HostedLinuxProcess *child, int signum) const;
+
+  virtual int WaitForHostedProgram() const;
 
   virtual string FormatHostedProgramSubprin(int id, const string &prog_hash) const;
 
-  virtual bool ParseHostedProgramSubprin(string subprin, int *id,
+  virtual bool ParseHostedProgramSubprin(const string &subprin, int *id,
                                          string *prog_hash,
                                          string *extension) const;
 

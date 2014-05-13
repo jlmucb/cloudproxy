@@ -94,9 +94,13 @@ class LinuxHost {
   bool HandleStartHostedProgram(const LinuxAdminRPCRequest &rpc,
                                 string *child_subprin);
 
-  /// Handle a StopHostedProgram RPC.
+  /// Handle a StopHostedProgram or KillHostedProgram RPC.
   /// @param rpc The RPC containing the StopHostedProgram request.
-  bool HandleStopHostedProgram(const LinuxAdminRPCRequest &rpc);
+  /// @param signum The signal that should be sent to matching hosted programs.
+  bool HandleStopHostedProgram(const LinuxAdminRPCRequest &rpc, int signum);
+
+  /// Handle a SIGCHLD signal.
+  bool HandleChildSignal();
 
   /// Handle a Seal RPC.
   /// @param child_subprin The name of the requesting hosted program.

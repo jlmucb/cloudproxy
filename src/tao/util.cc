@@ -262,7 +262,7 @@ static bool SetFdFlags(int fd, int flags) {
 }
 
 // TODO(kwalsh) Take multiple signums if needed.
-int GetSelfPipeSignalFd(int signum) {
+int GetSelfPipeSignalFd(int signum, int sa_flags) {
   {
     lock_guard<mutex> l(selfPipeMutex);
     if (selfPipe[0] != -1) {
@@ -284,6 +284,7 @@ int GetSelfPipeSignalFd(int signum) {
     struct sigaction act;
     memset(&act, 0, sizeof(struct sigaction));
     act.sa_handler = SelfPipeHandler;
+    act.sa_flags = sa_flags;
     selfPipeSignum = signum;
     if (sigaction(signum, &act, &selfPipeSavedAction) < 0) {
       PLOG(ERROR) << "Could not set self-pipe handler";

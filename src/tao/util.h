@@ -120,8 +120,9 @@ typedef scoped_ptr_malloc<int, CallUnlessNull<int, selfpipe_release>>
 /// returned if another self-pipe already exists (this limitation stems from the
 /// need for global variables).
 /// @param signum The signal to catch.
+/// @param sa_flags Flags to modify the signal behavior. See sigaction(2).
 /// @return A file descriptor suitable for select() and read(), or -1 on error.
-int GetSelfPipeSignalFd(int signum);
+int GetSelfPipeSignalFd(int signum, int sa_flags);
 
 /// Destroy a self-pipe, restoring any previous signal handler.
 /// @param fd The file descriptor returned from GetSelfPipeSignalFd().

@@ -18,10 +18,12 @@
 // limitations under the License.
 #include "tao/linux_process_factory.h"
 
-#include <fcntl.h>
 #include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <signal.h>
 #include <sys/resource.h>
+#include <wait.h>
 
 #include <algorithm>
 
@@ -100,6 +102,9 @@ bool LinuxProcessFactory::StartHostedProgram(
       /* never reached */
     }
 
+    // Become process group leader.
+    setpgrp();
+
     int rv = execv(path.c_str(), argv);
     if (rv == -1) {
       PLOG(ERROR) << "Could not exec " << path;
@@ -119,6 +124,37 @@ bool LinuxProcessFactory::StartHostedProgram(
   }
 }
 
+bool LinuxProcessFactory::StopHostedProgram(HostedLinuxProcess *child,
+                                            int signum) const {
+  if (child->pid == 0)
+    return true;  // already dead
+  if (child->pid < 0)
+    return false;  // invalid PID
+  if (!kill(-1 * child->pid, signum)) {
+    PLOG(ERROR) << "Could not stop hosted program with PID " << child->pid;
+    return false;
+  }
+  return true;
+}
+
+int LinuxProcessFactory::WaitForHostedProgram() const {
+  int status;
+  int pid = waitpid(-1, &status, WNOHANG);
+  if (pid == 0) {
+    // There are children, but they haven't exited.
+  } else if (pid == -1) {
+    // There are no children.
+  } else if (WIFEXITED(status)) {
+    LOG(INFO) << "Hosted process with PID " << pid << " has exited";
+  } else if (WIFSIGNALED(status)) {
+    LOG(INFO) << "Hosted process with PID " << pid << " has been killed";
+  } else {
+    LOG(INFO) << "Hosted process with PID " << pid
+              << " died for unknown reasons";
+  }
+  return pid;
+}
+
 // TODO(kwalsh) Replace this with formula formatting routines
 string LinuxProcessFactory::FormatHostedProgramSubprin(
     int id, const string &prog_hash) const {
@@ -132,9 +168,9 @@ string LinuxProcessFactory::FormatHostedProgramSubprin(
 }
 
 // TODO(kwalsh) Replace this with formula parsing routines
-bool LinuxProcessFactory::ParseHostedProgramSubprin(string subprin, int *id,
-                                               string *prog_hash,
-                                               string *extension) const {
+bool LinuxProcessFactory::ParseHostedProgramSubprin(const string &subprin,
+                                                    int *id, string *prog_hash,
+                                                    string *extension) const {
   stringstream in(subprin);
   if (subprin.substr(0, 8) == "Program(") {
     skip(in, "Program(");

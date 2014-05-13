@@ -28,6 +28,7 @@
 			'sources' : [
 				'attestation_unittests.cc',
 				'keys_unittests.cc',
+				'pipe_factory_unittests.cc',
 				'tao_test.cc',
 				'tpm_tao_unittests.cc',
 				'util_unittests.cc',

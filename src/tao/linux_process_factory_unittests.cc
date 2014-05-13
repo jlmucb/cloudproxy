@@ -31,25 +31,22 @@
 
 using namespace tao;
 
-DEFINE_string(short_program, "/bin/true",
-              "A short program to execute, "
-              "preferably one that will stop on its own");
-
-DEFINE_string(long_program, "/bin/sleep",
-              "A long program to execute, "
-              "preferably one that will run for a while");
-
-DEFINE_string(long_program_arg, "5", "An argument for the long program");
+// See flags definitions in tao_test.cc
+DECLARE_string(short_program);
+DECLARE_string(short_program_arg);
+DECLARE_string(long_program);
+DECLARE_string(long_program_arg);
 
 class LinuxProcessFactoryTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
     path_ = FLAGS_short_program;
+	arg_ = FLAGS_short_program_arg;
     long_path_ = FLAGS_long_program;
     long_arg_ = FLAGS_long_program_arg;
   }
   LinuxProcessFactory factory_;
-  string path_, long_path_, long_arg_;
+  string path_, arg_, long_path_, long_arg_;
 };
 
 TEST_F(LinuxProcessFactoryTest, SubprinTest) {
@@ -67,15 +64,15 @@ TEST_F(LinuxProcessFactoryTest, SubprinTest) {
       factory_.ParseHostedProgramSubprin(subprin0, &id0, &hash0, &ext0));
   ASSERT_TRUE(
       factory_.ParseHostedProgramSubprin(subprin1, &id1, &hash1, &ext1));
-  EXPECT_EQ(id0, 0);
-  EXPECT_EQ(id1, 1);
+  EXPECT_EQ(0, id0);
+  EXPECT_EQ(1, id1);
   EXPECT_EQ(hash0, hash1);
   EXPECT_EQ("", ext0);
   EXPECT_EQ("", ext1);
 
   ASSERT_TRUE(factory_.ParseHostedProgramSubprin(subprin0 + "::Test1::Test2",
                                                   &id0, &hash0, &ext0));
-  EXPECT_EQ(id0, 0);
+  EXPECT_EQ(0, id0);
   EXPECT_EQ(hash0, hash1);
   EXPECT_EQ("Test1::Test2", ext0);
 }
@@ -85,14 +82,15 @@ TEST_F(LinuxProcessFactoryTest, StartTest) {
   string subprin;
   scoped_ptr<HostedLinuxProcess> child;
   ASSERT_TRUE(factory_.MakeHostedProgramSubprin(0, path_, &subprin));
-  ASSERT_TRUE(factory_.StartHostedProgram(pipe_factory, path_, list<string>{},
+  ASSERT_TRUE(factory_.StartHostedProgram(pipe_factory, path_, list<string>{arg_},
                                            subprin, &child));
   EXPECT_TRUE(child->pid > 0);
   EXPECT_EQ(subprin, child->subprin);
   sleep(1);
   // it should have already stopped
-  ASSERT_TRUE(factory_.StopHostedProgram(child.get(), SIGTERM));
-  EXPECT_EQ(child->pid, 0);
+  int pid = factory_.WaitForHostedProgram();
+  EXPECT_EQ(child->pid, pid);
+  EXPECT_FALSE(factory_.StopHostedProgram(child.get(), SIGTERM));
 }
 
 TEST_F(LinuxProcessFactoryTest, StartStopTest) {
@@ -106,6 +104,11 @@ TEST_F(LinuxProcessFactoryTest, StartStopTest) {
   EXPECT_EQ(subprin, child->subprin);
   sleep(1);
   // it should still be running
-  ASSERT_TRUE(factory_.StopHostedProgram(child.get(), SIGTERM));
-  EXPECT_EQ(child->pid, 0);
+  EXPECT_EQ(0, factory_.WaitForHostedProgram());
+  EXPECT_TRUE(factory_.StopHostedProgram(child.get(), SIGTERM));
+  sleep(1);
+  // now it should be stopped
+  int pid = factory_.WaitForHostedProgram();
+  EXPECT_EQ(child->pid, pid);
+  EXPECT_FALSE(factory_.StopHostedProgram(child.get(), SIGTERM));
 }

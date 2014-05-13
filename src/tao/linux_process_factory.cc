@@ -126,14 +126,14 @@ bool LinuxProcessFactory::StartHostedProgram(
 
 bool LinuxProcessFactory::StopHostedProgram(HostedLinuxProcess *child,
                                             int signum) const {
-  if (child->pid == 0)
-    return true;  // already dead
-  if (child->pid < 0)
-    return false;  // invalid PID
-  if (!kill(-1 * child->pid, signum)) {
+  if (child->pid <= 0)
+    return false;  // already dead or invalid PID
+  if (kill(-1 * child->pid, signum) < 0) {
     PLOG(ERROR) << "Could not stop hosted program with PID " << child->pid;
     return false;
   }
+  LOG(INFO) << "Sent signal " << signum << " to hosted program with PID "
+            << child->pid;
   return true;
 }
 
@@ -185,12 +185,13 @@ bool LinuxProcessFactory::ParseHostedProgramSubprin(const string &subprin,
     skip(in, ")");
   }
 
-  string remaining;
-  if (in && getline(in, remaining, '\0') && remaining != "") {
-    in.str(remaining);
-    skip(in, "::");
-    getline(in, remaining, '\0');
-    extension->assign(remaining);
+  string rest;
+  if (in && getline(in, rest, '\0') && rest != "") {
+    stringstream in_rest(rest);
+    skip(in_rest, "::");
+    string ext;
+    getline(in_rest, ext, '\0');
+    extension->assign(ext);
   } else {
     extension->assign("");
   }

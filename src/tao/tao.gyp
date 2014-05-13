@@ -27,6 +27,8 @@
 			'type' : 'executable',
 			'sources' : [
 				'attestation_unittests.cc',
+				# 'fd_message_channel_unittests.cc', # see 'pipe_factory_unittests.cc'
+				'fd_message_channel.h',
 				'keys_unittests.cc',
 				'pipe_factory_unittests.cc',
 				'tao_test.cc',

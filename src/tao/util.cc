@@ -539,7 +539,7 @@ bool ReceiveString(int fd, size_t max_size, string *s, bool *eof) {
   if (!ReceiveData(fd, &net_len, sizeof(net_len), eof)) {
     LOG(ERROR) << "Could not get the length of the data";
     return false;
-  } else if (eof) {
+  } else if (*eof) {
     return true;
   }
 
@@ -552,7 +552,7 @@ bool ReceiveString(int fd, size_t max_size, string *s, bool *eof) {
   }
   scoped_array<char> temp_data(new char[len]);
 
-  if (!ReceiveData(fd, temp_data.get(), static_cast<size_t>(len), eof) || eof) {
+  if (!ReceiveData(fd, temp_data.get(), static_cast<size_t>(len), eof) || *eof) {
     LOG(ERROR) << "Could not get the data";
     return false;
   }

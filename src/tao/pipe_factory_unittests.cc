@@ -26,50 +26,53 @@
 
 using namespace tao;
 
-TEST(PipeFactoryTest, CreateTest) {
-  PipeFactory factory;
-  scoped_ptr<FDMessageChannel> up, down;
-  ASSERT_TRUE(factory.CreateChannelPair(up, down));
+class PipeFactoryTest : public ::testing::Test {
+ protected:
+  virtual void SetUp() {
+    ASSERT_TRUE(factory_.CreateChannelPair(&up_, &down_));
+    s_.set_issuer("bogus_issuer");
+    s_.set_time(123);
+    s_.set_expiration(234);
+  }
+  PipeFactory factory_;
+  scoped_ptr<FDMessageChannel> up_, down_;
+  bool eof_;
+  Statement s_, r_;
+};
 
+TEST_F(PipeFactoryTest, CreateTest) {
   list<int> fds;
-  ASSERT_TRUE(up->GetFileDescriptors(fds));
-  EXPECT(up->GetReadFileDescriptor() >= 0);
+  ASSERT_TRUE(up_->GetFileDescriptors(&fds));
+  EXPECT_TRUE(up_->GetReadFileDescriptor() >= 0);
   EXPECT_TRUE(fds.size() == 2);
   if (fds.size() == 2) {
-    EXPECT_EQ(*fds.begin() == up->GetReadFileDescriptor());
+    EXPECT_EQ(*fds.begin(), up_->GetReadFileDescriptor());
   }
-  string s;
-  EXPECT_TRUE(up.SerializeToString(&s));
-  EXPECT_NE("", s);
-  EXPECT_TRUE(up.Close());
-  EXPECT_EQ(up->GetReadFileDescriptor(), -1);
+  string serialized;
+  EXPECT_TRUE(up_->SerializeToString(&serialized));
+  EXPECT_NE("", serialized);
+  EXPECT_TRUE(up_->Close());
+  EXPECT_EQ(up_->GetReadFileDescriptor(), -1);
 }
 
-TEST(PipeFactoryTest, SendRecvTest) {
-  PipeFactory factory;
-  scoped_ptr<FDMessageChannel> up, down;
-  ASSERT_TRUE(factory.CreateChannelPair(up, down));
-
-  bool eof;
-  Statement s, r;
-  s.set_issuer("bogus_issuer");
-  s.set_time(123);
-  s.set_expiration(234);
+TEST_F(PipeFactoryTest, SendRecvTest) {
   
-  ASSERT_TRUE(down.SendMessage(s));
-  ASSERT_TRUE(up.ReceiveMessage(&r, &eof));
-  ASSERT_TRUE(!eof);
-  EXPECT_EQ("bogus_issuer", r.issuer());
-  EXPECT_EQ(123, r.time());
-  EXPECT_EQ(234, r.expiration());
+  ASSERT_TRUE(down_->SendMessage(s_));
+  ASSERT_TRUE(up_->ReceiveMessage(&r_, &eof_));
+  ASSERT_TRUE(!eof_);
+  EXPECT_EQ("bogus_issuer", r_.issuer());
+  EXPECT_EQ(123, r_.time());
+  EXPECT_EQ(234, r_.expiration());
 
-  ASSERT_TRUE(up.SendMessage(s));
-  ASSERT_TRUE(down.ReceiveMessage(&r, &eof));
-  ASSERT_TRUE(!eof);
+  ASSERT_TRUE(up_->SendMessage(s_));
+  ASSERT_TRUE(down_->ReceiveMessage(&r_, &eof_));
+  ASSERT_TRUE(!eof_);
+}
 
-  up.Close();
-  ASSERT_TRUE(down.ReceiveMessage(&r, &eof));
-  EXPECT_TRUE(eof);
-  EXPECT_FALSE(up.SendMessage(s));
+TEST_F(PipeFactoryTest, CloseTest) {
+  ASSERT_TRUE(up_->Close());
+  ASSERT_TRUE(down_->ReceiveMessage(&r_, &eof_));
+  EXPECT_TRUE(eof_);
+  EXPECT_FALSE(up_->SendMessage(s_));
 }
 

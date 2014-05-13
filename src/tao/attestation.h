@@ -132,7 +132,7 @@ bool ValidatePredicate(const string &attestation, time_t check_time,
                        string *issuer, string *predicate, list<string> *args);
 
 /// Extract the predicate name and arguments from a predicate attestation,
-/// without verifying it..
+/// without verifying it.
 /// @param attestation The attestation, which is assumed to be valid (no
 /// signature or structural checks are done).
 /// @param[out] predicate The predicate name from the attestation.

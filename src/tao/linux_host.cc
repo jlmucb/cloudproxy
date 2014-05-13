@@ -103,7 +103,6 @@ bool LinuxHost::HandleTaoRPC(HostedLinuxProcess *child,
         LOG(ERROR) << "Invalid RPC: must supply data for Seal";
         break;
       }
-      // TODO(kwalsh) Encode policy here
       success =
           HandleSeal(child->subprin, rpc.data(), rpc.policy(), &result_data);
       break;
@@ -114,7 +113,6 @@ bool LinuxHost::HandleTaoRPC(HostedLinuxProcess *child,
       }
       success = HandleUnseal(child->subprin, rpc.data(), &result_data,
                              &result_policy);
-      // TODO(kwalsh) Enforce policy here
       if (success) resp->set_policy(result_policy);
       break;
     default:

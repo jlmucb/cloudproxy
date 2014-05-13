@@ -29,10 +29,10 @@ using namespace tao;
 class AttestationTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    key_->reset(new Keys("unittest", Keys::Signing));
+    key_.reset(new Keys("unittest", Keys::Signing));
     ASSERT_TRUE(key_->InitTemporary());
     ASSERT_TRUE(key_->GetPrincipalName(&key_name_));
-    key_child_ = key_name + "::Test1::Test2";
+    key_child_ = key_name_ + "::Test1::Test2";
   }
 
   scoped_ptr<Keys> key_;
@@ -40,7 +40,7 @@ class AttestationTest : public ::testing::Test {
   string key_child_;
 };
 
-TEST(AttestationTest, GenerateTestFail) {
+TEST_F(AttestationTest, GenerateTestFail) {
   string a;
   Statement s;
   
@@ -49,9 +49,9 @@ TEST(AttestationTest, GenerateTestFail) {
   EXPECT_FALSE(GenerateAttestation(*key_, "bogus_delegation", s, &a));
 }
 
-TEST(AttestationTest, VerifyTestFail) {
-  string a;
-  Statement s;
+TEST_F(AttestationTest, VerifyTestFail) {
+  string a, issuer;
+  Statement s, v;
 
   // With bad issuer, generate should pass, verify should fail.
   s.set_issuer("bogus_issuer");
@@ -68,7 +68,7 @@ TEST(AttestationTest, VerifyTestFail) {
   EXPECT_FALSE(ValidateAttestation(a, &v));
 }
 
-TEST(AttestationTest, GenerateTestOk) {
+TEST_F(AttestationTest, GenerateTestOk) {
   string a, issuer;
   Statement s, v;
 
@@ -81,7 +81,7 @@ TEST(AttestationTest, GenerateTestOk) {
   EXPECT_EQ(key_name_, v.issuer());
   EXPECT_EQ(123, v.time());
   EXPECT_EQ(234, v.expiration());
-  EXPECT_FALSE(v.has_delegation());
+  EXPECT_FALSE(v.has_delegate());
 
   // With key::subprin as issuer, generate should pass, verify should pass.
   s.set_issuer(key_child_);
@@ -89,13 +89,13 @@ TEST(AttestationTest, GenerateTestOk) {
   EXPECT_TRUE(GetAttestationIssuer(a, &issuer));
   EXPECT_EQ(key_child_, issuer);
   EXPECT_TRUE(ValidateAttestation(a, &v));
-  EXPECT_EQ(key_child, v.issuer());
+  EXPECT_EQ(key_child_, v.issuer());
   EXPECT_EQ(123, v.time());
   EXPECT_EQ(234, v.expiration());
-  EXPECT_FALSE(v.has_delegation());
+  EXPECT_FALSE(v.has_delegate());
 }
 
-TEST(AttestationTest, DelegateTest) {
+TEST_F(AttestationTest, DelegateTest) {
   string a, issuer, delegate;
   Statement s, v;
 
@@ -113,7 +113,7 @@ TEST(AttestationTest, DelegateTest) {
   EXPECT_EQ("bogus_delegate", delegate);
 }
 
-TEST(AttestationTest, PrediateTest) {
+TEST_F(AttestationTest, PredicateTest) {
   string a, issuer, predicate;
   list<string> args;
   Statement s, v;
@@ -131,8 +131,8 @@ TEST(AttestationTest, PrediateTest) {
     EXPECT_EQ("\"Hello\"", *args.begin());
     EXPECT_EQ("1234", *(++args.begin()));
   }
-  EXPECT_FALSE(ValidatePrediate(a, now-1, &issuer, &predicate, &args));
-  ASSERT_TRUE(ValidatePrediate(a, CurrentTime(), &issuer, &predicate, &args));
+  EXPECT_FALSE(ValidatePredicate(a, now-1, &issuer, &predicate, &args));
+  ASSERT_TRUE(ValidatePredicate(a, CurrentTime(), &issuer, &predicate, &args));
   EXPECT_EQ(key_child_, issuer);
   if (args.size() == 2) {
     EXPECT_EQ("\"Hello\"", *args.begin());
@@ -140,13 +140,13 @@ TEST(AttestationTest, PrediateTest) {
   }
 }
 
-TEST(AttestationTest, DelegatePredicateTest) {
+TEST_F(AttestationTest, DelegatePredicateTest) {
   string a, d, issuer, delegate, predicate;
   list<string> args;
   Statement s, v;
   scoped_ptr<Keys> key2;
   string key2_name;
-  key2->reset(new Keys("unittest2", Keys::Signing));
+  key2.reset(new Keys("unittest2", Keys::Signing));
   ASSERT_TRUE(key2->InitTemporary());
   ASSERT_TRUE(key2->GetPrincipalName(&key2_name));
   string key2_child = key2_name + "::Test3::Test4";
@@ -154,7 +154,7 @@ TEST(AttestationTest, DelegatePredicateTest) {
   time_t now = CurrentTime();
 
   // key_child speaksfor key2_child
-  ASSERT_TRUE(AttestDelegation(*key2, "" /* delegation */, key_child,
+  ASSERT_TRUE(AttestDelegation(*key2, "" /* delegation */, key_child_,
                                key2_child, &d));
 
   // key2_child says predicate using key to sign
@@ -169,8 +169,8 @@ TEST(AttestationTest, DelegatePredicateTest) {
     EXPECT_EQ("\"Hello\"", *args.begin());
     EXPECT_EQ("1234", *(++args.begin()));
   }
-  EXPECT_FALSE(ValidatePrediate(a, now-1, &issuer, &predicate, &args));
-  ASSERT_TRUE(ValidatePrediate(a, CurrentTime(), &issuer, &predicate, &args));
+  EXPECT_FALSE(ValidatePredicate(a, now-1, &issuer, &predicate, &args));
+  ASSERT_TRUE(ValidatePredicate(a, CurrentTime(), &issuer, &predicate, &args));
   EXPECT_EQ(key2_child, issuer);
   if (args.size() == 2) {
     EXPECT_EQ("\"Hello\"", *args.begin());

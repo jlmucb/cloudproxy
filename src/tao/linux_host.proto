@@ -1,7 +1,7 @@
-//  File: sealed_data.proto
+//  File: linux_host.proto
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: Protocol buffers for sealing.
+//  Description: Protocol buffers for LinuxHost.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -19,7 +19,8 @@
 
 package tao;
 
-message TaoSealedBundle {
+message LinuxHostSealedBundle {
   required string policy = 1;
-  required bytes data = 2;
+  optional string policy_info = 2;
+  required bytes data = 3;
 }

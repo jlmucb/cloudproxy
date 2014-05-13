@@ -20,13 +20,22 @@
 #define TAO_LINUX_HOST_H_
 
 #include <string>
+#include <memory>
 
+#include "tao/linux_admin_rpc.pb.h"
 #include "tao/tao.h"
+#include "tao/tao_rpc.pb.h"
+#include "tao/util.h"
 
 namespace tao {
 using std::string;
 
+class FDMessageChannel;
+class HostedLinuxProcess;
+class LinuxProcessFactory;
+class PipeFactory;
 class TaoHost;
+class UnixSocketFactory;
 
 /// A Tao host environment in which hosted programs are Linux processes. Pipes
 /// are used for communication with the hosted processes. A unix-domain socket
@@ -62,31 +71,48 @@ class LinuxHost {
  protected:
   /// Handle incoming messages from a hosted program.
   /// @param tao The Tao implementation that handles the message.
-  /// @param[in,out] child_name The name of the hosted program that sent the
-  /// message. If the child requests a name extension, this will be modified.
+  /// @param[in,out] child The hosted program that sent the message.
+  /// If the child requests a name extension, this will be modified.
   /// @param rpc The RPC containing the received message.
   /// @param[out] resp The response to send if return value is true.
-  virtual bool HandleChildRPC(Tao *tao, string *child_name,
-                              const TaoChildRequest &rpc,
-                              TaoChildResponse *resp) const;
+  virtual bool HandleTaoRPC(HostedLinuxProcess *child, const TaoRPCRequest &rpc,
+                            TaoRPCResponse *resp) const;
 
   /// Handle incoming messages from an administrative program.
   /// @param tao The Tao implementation that handles the message.
   /// @param rpc The RPC containing the received message.
   /// @param[out] resp The response to send if return value is true.
   /// @param[out] shutdown_request Set to true if shutdown is requested.
-  virtual bool HandleAdminRPC(Tao *tao, const TaoAdminRequest &rpc,
-                              TaoAdminResponse *resp,
-                              bool *shutdown_request) const;
+  virtual bool HandleAdminRPC(const LinuxAdminRPCRequest &rpc,
+                              LinuxAdminRPCResponse *resp,
+                              bool *shutdown_request);
 
  protected:
-  /// Handle the StartHostedProgram RPC.
-  /// @param tao The Tao implementation that handles the message.
+  /// Handle a StartHostedProgram RPC.
   /// @param rpc The RPC containing the StartHostedProgram request.
-  /// @param[out] child_name The name for the new hosted program.
-  bool HandleProgramCreation(Tao *tao, const TaoAdminRequest &rpc,
-                             string *child_name) const;
+  /// @param[out] child_subprin The name for the new hosted program.
+  bool HandleStartHostedProgram(const LinuxAdminRPCRequest &rpc,
+                                string *child_subprin);
 
+  /// Handle a StopHostedProgram RPC.
+  /// @param rpc The RPC containing the StopHostedProgram request.
+  bool HandleStopHostedProgram(const LinuxAdminRPCRequest &rpc);
+
+  /// Handle a Seal RPC.
+  /// @param child_subprin The name of the requesting hosted program.
+  /// @param data The data to be sealed.
+  /// @param policy The policy under which to seal the data.
+  /// @param[out] sealed The sealed data.
+  bool HandleSeal(const string &child_subprin, const string &data,
+                  const string &policy, string *sealed) const;
+
+  /// Handle an Unseal RPC.
+  /// @param child_subprin The name of the requesting hosted program.
+  /// @param sealed The sealed data.
+  /// @param[out] data The unsealed data.
+  /// @param[out] policy The policy under which the data was sealed.
+  bool HandleUnseal(const string &child_subprin, const string &sealed,
+                    string *data, string *policy) const;
 
   /// The host tao.
   scoped_ptr<Tao> host_tao_;
@@ -116,9 +142,9 @@ class LinuxHost {
   /// program should be allowed to execute.
   //scoped_ptr<ACLGuard> child_policy_;
 
-  list<HostedLinuxProcess> hosted_processes_;
+  list<std::shared_ptr<HostedLinuxProcess>> hosted_processes_;
 
-  list<scoped_ptr<FDMessageChannel>> admin_clients_;
+  list<std::shared_ptr<FDMessageChannel>> admin_clients_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(LinuxHost);

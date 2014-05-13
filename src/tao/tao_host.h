@@ -55,19 +55,19 @@ class TaoHost {
   virtual ~TaoHost() {}
 
   /// TaoHost mostly follows the semantics of the Tao interface for these
-  /// methods. An extra child_name parameter is added to each call to specify
+  /// methods. An extra child_subprin parameter is added to each call to specify
   /// the identity of the hosted program that requested to invoke the method. In
-  /// all cases, the child_name parameter specifies the subprincipal that
+  /// all cases, the child_subprin parameter specifies the subprincipal that
   /// appears after this Tao host's own full name.
   /// @{
-  virtual bool GetTaoName(const string &child_name, string *name) const;
-  virtual bool ExtendTaoName(const string &child_name,
+  virtual bool GetTaoName(const string &child_subprin, string *name) const;
+  virtual bool ExtendTaoName(const string &child_subprin,
                              const string &subprin) const;
-  virtual bool GetRandomBytes(const string &child_name, size_t size,
+  virtual bool GetRandomBytes(const string &child_subprin, size_t size,
                               string *bytes) const;
 
   /// Attest to a statement after modifying it to fill in missing fields.
-  virtual bool Attest(const string &child_name, Statement *stmt,
+  virtual bool Attest(const string &child_subprin, Statement *stmt,
                       string *attestation) const;
   /// @}
   
@@ -95,25 +95,27 @@ class TaoHost {
   /// Encrypt data using the crypting key.
   /// @param data The data to be encrypted.
   /// @param[out] encrypted The encrypted data.
-  virtual bool Encrypt(const string &data, string *encrypted) const;
+  virtual bool Encrypt(const google::protobuf::Message &data,
+                       string *encrypted) const;
 
   /// Decrypt data using the crypting key.
   /// @param encrypted The encrypted data.
   /// @param[out] ddata The decrypted data.
-  virtual bool Decrypt(const string &encrypted, string *data) const;
-  
+  virtual bool Decrypt(const string &encrypted,
+                       google::protobuf::Message *data) const;
+
   /// @}
 
   /// These methods are called by the host environment on certain events.
   /// @{
 
   /// Notify this TaoHost that a new hosted program has been created.
-  /// @param child_name The subprincipal for the new hosted program.
-  virtual bool AddedHostedProgram(const string &child_name) { return true; }
+  /// @param child_subprin The subprincipal for the new hosted program.
+  virtual bool AddedHostedProgram(const string &child_subprin) { return true; }
   
   /// Notify this TaoHost that a hosted program has been killed.
-  /// @param child_name The subprincipal for the dead hosted program.
-  virtual bool RemovedHostedProgram(const string &child_name) { return true; }
+  /// @param child_subprin The subprincipal for the dead hosted program.
+  virtual bool RemovedHostedProgram(const string &child_subprin) { return true; }
  
   /// Get the Tao principal name assigned to this hosted Tao host. The name
   /// encodes the full path from the root Tao, through all intermediary Tao

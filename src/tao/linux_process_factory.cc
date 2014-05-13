@@ -114,7 +114,7 @@ bool LinuxProcessFactory::StartHostedProgram(
     child->reset(new HostedLinuxProcess);
     (*child)->subprin = subprin;
     (*child)->pid = child_pid;
-    (*child)->channel.reset(channel_to_child.release());
+    (*child)->rpc_channel.reset(channel_to_child.release());
     return true;
   }
 }

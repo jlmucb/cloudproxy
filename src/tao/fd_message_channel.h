@@ -44,6 +44,8 @@ class FDMessageChannel : public MessageChannel {
 
   virtual bool GetFileDescriptors(list<int> *keep_open) const;
 
+  virtual int GetReadFileDescriptor() { return readfd_; }
+
   virtual bool SerializeToString(string *s) const;
 
   virtual bool Close();

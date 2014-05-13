@@ -35,7 +35,7 @@ class FDMessageChannel;
 struct HostedLinuxProcess {
   string subprin;
   int pid;
-  scoped_ptr<FDMessageChannel> channel;
+  scoped_ptr<FDMessageChannel> rpc_channel;
 };
 
 /// A factory that creates hosted programs as processes. It forks and execs the
@@ -53,6 +53,8 @@ class LinuxProcessFactory {
                                   const string &path, const list<string> &args,
                                   const string &subprin,
                                   scoped_ptr<HostedLinuxProcess> *child) const;
+
+  virtual bool StopHostedProgram(HostedLinuxProcess *child) const;
 
   virtual string FormatHostedProgramSubprin(int id, const string &prog_hash) const;
 

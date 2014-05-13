@@ -45,37 +45,37 @@ bool TaoHost::Init() {
   return true;
 }
 
-bool TaoHost::GetTaoName(const string &child_name, string *name) const {
-  name->assign(tao_host_name_ + "::" + child_name);
+bool TaoHost::GetTaoName(const string &child_subprin, string *name) const {
+  name->assign(tao_host_name_ + "::" + child_subprin);
   return true;
 }
 
-bool TaoHost::ExtendTaoName(const string &child_name, const string &subprin) const {
+bool TaoHost::ExtendTaoName(const string &child_subprin, const string &subprin) const {
   // TODO(kwalsh) Sanity checking on subprin format.
   // Nothing to do.
   return true;
 }
 
-bool TaoHost::GetRandomBytes(const string &child_name, size_t size,
+bool TaoHost::GetRandomBytes(const string &child_subprin, size_t size,
                               string *bytes) const {
   return host_tao_->GetRandomBytes(size, bytes);
 }
 
 // TODO(kwalsh) move this back to attestation.cc
-static bool IsSubprincipalOrIdentical(const string &child_name,
+static bool IsSubprincipalOrIdentical(const string &child_subprin,
                                       const string &parent_name) {
-  return (child_name == parent_name) ||
-         (child_name.substr(parent_name.size() + 2) == parent_name + "::");
+  return (child_subprin == parent_name) ||
+         (child_subprin.substr(parent_name.size() + 2) == parent_name + "::");
 }
 
-bool TaoHost::Attest(const string &child_name, Statement *stmt,
+bool TaoHost::Attest(const string &child_subprin, Statement *stmt,
                       string *attestation) const {
   // Make sure issuer is identical to (or a subprincipal of) the hosted
   // program's principal name.
   if (!stmt->has_issuer()) {
-    stmt->set_issuer(tao_host_name_ + "::" + child_name);
+    stmt->set_issuer(tao_host_name_ + "::" + child_subprin);
   } else if (!IsSubprincipalOrIdentical(stmt->issuer(),
-        tao_host_name_ + "::" + child_name)) {
+        tao_host_name_ + "::" + child_subprin)) {
     LOG(ERROR) << "Invalid issuer in statement";
     return false;
   }
@@ -98,20 +98,36 @@ bool TaoHost::UnsealFromHost(const string &sealed, string *data,
   return host_tao_->Unseal(sealed, data, policy);
 }
 
-bool TaoHost::Encrypt(const string &data, string *encrypted) const {
+bool TaoHost::Encrypt(const google::protobuf::Message &data,
+                      string *encrypted) const {
   if (keys_ == nullptr || keys_->Crypter() == nullptr) {
     LOG(ERROR) << "TaoHost can not encrypt without a crypting key.";
     return false;
   }
-  return keys_->Encrypt(data, encrypted);
+  string serialized_data;
+  if (!data.SerializeToString(&serialized_data)) {
+    LOG(ERROR) << "Could not serialize data to be sealed";
+    return false;
+  }
+  return keys_->Encrypt(serialized_data, encrypted);
 }
 
-bool TaoHost::Decrypt(const string &encrypted, string *data) const {
+bool TaoHost::Decrypt(const string &encrypted,
+                      google::protobuf::Message *data) const {
   if (keys_ == nullptr || keys_->Crypter() == nullptr) {
     LOG(ERROR) << "TaoHost can not decrypt without a crypting key.";
     return false;
   }
-  return keys_->Decrypt(encrypted, data);
+  string serialized_data;
+  if (!keys_->Decrypt(encrypted, &serialized_data)) {
+    LOG(ERROR) << "Could not decrypt sealed data";
+    return false;
+  }
+  if (!data->ParseFromString(serialized_data)) {
+    LOG(ERROR) << "Could not deserialize sealed data";
+    return false;
+  }
+  return true;
 }
 
 bool TaoHost::GetAttestationName(string *name) const {

@@ -27,24 +27,20 @@
 			'type' : 'executable',
 			'sources' : [
 				'attestation_unittests.cc',
-				# 'fd_message_channel_unittests.cc', # see 'pipe_factory_unittests.cc'
-				'fd_message_channel.h',
+				# 'fd_message_channel.cc', # see 'pipe_factory_unittests.cc'
 				'keys_unittests.cc',
+				# 'linux_admin_rpc.cc', # no unit tests yet (but see 'linux_host_unittests.cc')
+				# 'linux_host.cc', # no unit tests yet
+				'linux_process_factory_unittests.cc',
 				'pipe_factory_unittests.cc',
 				# 'soft_tao.cc' # see 'tao_unittests.cc'
 				'tao_test.cc',
-				# 'tpm_tao.cc' # see 'tao_unittests.cc'
 				'tao_unittests.cc',
+				# 'tao_host.cc', no unit tests yet (but see 'linux_host_unittests.cc')
+				# 'tao_rpc.cc', no unit tests yet (but see 'linux_host_unittests.cc')
+				# 'tpm_tao.cc' # see 'tao_unittests.cc'
+				'unix_socket_factory_unittests.cc',
 				'util_unittests.cc',
-				'linux_process_factory_unittests.cc',
-#				'fake_tao_unittests.cc',
-#				'kvm_unix_tao_channel_unittests.cc',
-#				'kvm_vm_factory_unittests.cc',
-#				'linux_tao_unittests.cc',
-#				'process_factory_unittests.cc',
-#				'tao_child_channel_registry_unittests.cc',
-#				'tao_domain_unittests.cc',
-#				'tpm_tao_child_channel_unittests.cc',
 			],
 			'include_dirs' : [
 				'..',

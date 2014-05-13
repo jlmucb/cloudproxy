@@ -1044,8 +1044,6 @@ int linux_setup(void)
     // guest state from table
     guest_gdtr.base= (uint32_t)&guest_gdt[0];
     guest_gdtr.limit= 63;
-    // vmm_memcpy((void*)guest_gdtr.base, (void*)tboot_gdtr_32.base, 
-    //            tboot_gdtr_32.limit+1);
     guest_cs_selector= 0x08;
     guest_cs_base= 0;
     guest_cs_limit= 0xffffffff;
@@ -1058,7 +1056,7 @@ int linux_setup(void)
     guest_ss_base=  0;
     guest_ss_limit=  0xffffffff;
     guest_ss_attr= tboot_ss_attr;
-    guest_tr_selector= tboot_tr_selector;
+    guest_tr_selector= 0x18;
     guest_tr_base= 0;
     guest_tr_limit= 0x0000ffff;
     guest_tr_attr= 0x0000808b;

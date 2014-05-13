@@ -213,13 +213,23 @@ static uint32_t                         tboot_cr4= 0;
 
 // guest gdt
 static IA32_GDTR __attribute__((aligned (16))) guest_gdtr;
-uint64_t __attribute__((aligned (16)))         guest_gdt[6] = {
+uint64_t __attribute__((aligned (16)))         guest_gdt[16] = {
     0x0000000000000000,         // NULL descriptor 
     0x00cf9b000000ffff,         // __KERNEL_CS 
-    0x00cf92000000ffff,         // __KERNEL_DS 
-    0x008f93000000ffff,         // SS
+    0x00cf93000000ffff,         // __KERNEL_DS 
     0x00808b000000ffff,         // TS descriptor 
-    0x0000000000000000          // TS continued 
+    0x0000000000000000,         // TS continued 
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
+    0x0000000000000000,
 };
 static uint16_t                         guest_cs_selector= 0;
 static uint32_t                         guest_cs_base= 0;
@@ -1031,21 +1041,27 @@ int linux_setup(void)
     // stack grows down, BSP only
     linux_esp_register= linux_stack_base+PAGE_SIZE;
 
-    // guest state from tboot state
-    guest_gdtr.base= (uint32_t)guest_gdt;
-    guest_gdtr.limit= 47;
-    guest_cs_selector= 0x8;
+    // guest state from table
+    guest_gdtr.base= (uint32_t)&guest_gdt[0];
+    guest_gdtr.limit= 63;
+    // vmm_memcpy((void*)guest_gdtr.base, (void*)tboot_gdtr_32.base, 
+    //            tboot_gdtr_32.limit+1);
+    guest_cs_selector= 0x08;
     guest_cs_base= 0;
-    guest_cs_limit= 0xffff;
-    guest_cs_attr= tboot_cs_attr;
+    guest_cs_limit= 0xffffffff;
+    guest_cs_attr=  tboot_cs_attr;
     guest_ds_selector= 0x10;
     guest_ds_base= 0;
-    guest_ds_limit= 0xffff;
+    guest_ds_limit= 0xffffffff;
     guest_ds_attr= tboot_ds_attr;
-    guest_ss_selector= 0x18;
-    guest_ss_base= 0;
-    guest_ss_limit= 0xffff;
-    guest_ss_attr= tboot_ds_attr;
+    guest_ss_selector= 0x10;
+    guest_ss_base=  0;
+    guest_ss_limit=  0xffffffff;
+    guest_ss_attr= tboot_ss_attr;
+    guest_tr_selector= tboot_tr_selector;
+    guest_tr_base= 0;
+    guest_tr_limit= 0x0000ffff;
+    guest_tr_attr= 0x0000808b;
 
     guest_msr_debugctl= tboot_msr_debugctl;
     guest_msr_efer= tboot_msr_efer;
@@ -1054,13 +1070,9 @@ int linux_setup(void)
     guest_msr_sysenter_esp= tboot_msr_sysenter_esp;
     guest_msr_sysenter_eip= tboot_msr_sysenter_eip;
 
-    guest_tr_selector= 0x20;
-    guest_tr_base= 0;
-    guest_tr_limit= 0x0000ffff;
-    guest_tr_attr= 0x0000808b;
     guest_cr0= tboot_cr0;
     guest_cr2= tboot_cr2;
-    guest_cr3= tboot_cr3;
+    guest_cr3= 0;
     guest_cr4= tboot_cr4;
 
     // AP's are in real mode waiting for sipi (halt state)
@@ -2180,14 +2192,21 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
            (uint32_t) evmm64_cs_selector, (uint32_t) evmm64_cr3);
     HexDump((uint8_t*)gdtr_64.base, 
             (uint8_t*)gdtr_64.base+gdtr_64.limit);
-    bprint("Tboot descriptor table, cs_sel: %08x, ds_sel: %08x, tr_sel: %08x:\n",
-            tboot_cs_selector,tboot_ds_selector,tboot_tr_selector);
+    bprint("Tboot descriptors, cs_sel: %04x, ds_sel: %04x, ss_sel: %04x, tr_sel: %04x:\n",
+            tboot_cs_selector,tboot_ds_selector,
+            tboot_ss_selector, tboot_tr_selector);
+    bprint("Tboot attrs, cs_attr: %08x, ds_attr: %08x, ss_attr: %08x, tr_attr: %08x:\n",
+            tboot_cs_attr,tboot_ds_attr,
+            tboot_ss_attr, tboot_tr_attr);
+    bprint("Tboot limits, cs_limit: %04x, ds_limit: %04x, ss_limit: %04x, tr_limit: %04x:\n",
+            tboot_cs_limit,tboot_ds_limit, tboot_ss_limit, tboot_tr_limit);
     HexDump((uint8_t*)(tboot_gdtr_32.base), 
             (uint8_t*)(tboot_gdtr_32.base+tboot_gdtr_32.limit));
     bprint("cr0: %08x, cr2: %08x, cr3: %08x, cr4: %08x\n", guest_cr0, 
            guest_cr2, guest_cr3, guest_cr4);
-    bprint("Guest descriptor table, cs_sel: %08x, ds_sel: %08x, tr_sel: %08x:\n",
-            guest_cs_selector,guest_ds_selector,guest_tr_selector);
+    bprint("Guest descriptor table, cs_sel: %04x, ds_sel: %04x, ss_sel: %04x, tr_sel: %04x:\n",
+            guest_cs_selector, guest_ds_selector,
+            guest_ss_selector, guest_tr_selector);
     HexDump((uint8_t*)(guest_gdtr.base), 
             (uint8_t*)(guest_gdtr.base+guest_gdtr.limit));
     bprint("arguments to vmm_main: ");
@@ -2197,7 +2216,7 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
            linux_stack_base, linux_edi_register);
     bprint("\tapplication struct 0x%08x, reserved, 0x%08x\n",
            (int)evmm_p_a0, (int)evmm_reserved);
-    LOOP_FOREVER
+    // LOOP_FOREVER
 #endif
     if (evmm_num_of_aps > 0) {
         startap_main(&init32, &init64, p_startup_struct, vmm_main_entry_point);

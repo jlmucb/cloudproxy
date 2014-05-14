@@ -340,6 +340,9 @@ bool LinuxHost::HandleChildSignal() {
     }
   }
   LOG(WARNING) << "Could not find hosted program with PID " << pid;
+  for (auto &child : hosted_processes_) {
+    LOG(INFO) << "PID " << child->pid << " subprin " << child->subprin;
+  }
   return false;
 }
 
@@ -462,8 +465,10 @@ bool LinuxHost::Listen() {
           LOG(ERROR) << "Error handling RPC for ::" << subprin;
         LOG(INFO) << "Closing channel for ::" << subprin;
         child->rpc_channel->Close();
-        it = hosted_processes_.erase(it);
-        tao_host_->RemovedHostedProgram(subprin);
+        // leave it in so StopHostedProgram or SIGCHLD can remove it
+        // it = hosted_processes_.erase(it);
+        // tao_host_->RemovedHostedProgram(subprin);
+        ++it;
       } else {
         ++it;
       }

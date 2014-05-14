@@ -37,6 +37,8 @@ DECLARE_string(short_program);
 DECLARE_string(short_program_arg);
 DECLARE_string(long_program);
 DECLARE_string(long_program_arg);
+DECLARE_string(hosted_program);
+DECLARE_string(hosted_program_arg);
 
 class LinuxHostTest : public ::testing::Test {
  protected:
@@ -82,7 +84,22 @@ TEST_F(LinuxHostTest, StartStopTest) {
       FLAGS_long_program, list<string>{FLAGS_long_program_arg}, &name));
   EXPECT_NE("", name);
   EXPECT_TRUE(admin_->StopHostedProgram(name));
+  EXPECT_FALSE(admin_->StopHostedProgram(name));
   EXPECT_FALSE(admin_->StopHostedProgram("nobody"));
+}
+
+TEST_F(LinuxHostTest, HostedTest) {
+  string name;
+  string result_path = *temp_dir_ + "/results";
+  EXPECT_TRUE(admin_->StartHostedProgram(
+      FLAGS_hosted_program,
+      list<string>{FLAGS_hosted_program_arg, result_path}, &name));
+  EXPECT_NE("", name);
+  sleep(1);
+  EXPECT_FALSE(admin_->StopHostedProgram(name)); // should have already exited
+  string hosted_program_result;
+  EXPECT_TRUE(ReadFileToString(result_path, &hosted_program_result));
+  EXPECT_EQ("Connect OK Rand OK TaoName OK Extend OK", hosted_program_result);
 }
 
 TEST_F(LinuxHostTest, ShutdownTest) {

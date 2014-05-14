@@ -63,7 +63,7 @@ bool LinuxProcessFactory::StartHostedProgram(
     LOG(ERROR) << "Could not encode child channel parameters";
     return false;
   }
-  child_channel_params = "tao::TaoRPC(" + child_channel_params + ")";
+  child_channel_params = "tao::TaoRPC+" + child_channel_params;
   VLOG(0) << "Channel to parent is: " << child_channel_params;
 
   int child_pid = fork();
@@ -125,6 +125,7 @@ bool LinuxProcessFactory::StartHostedProgram(
     (*child)->subprin = subprin;
     (*child)->pid = child_pid;
     (*child)->rpc_channel.reset(channel_to_child.release());
+    LOG(INFO) << "Started PID " << child_pid << "for " << subprin;
     return true;
   }
 }

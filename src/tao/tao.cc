@@ -37,7 +37,7 @@ Tao *Tao::GetHostTao() {
     return nullptr;
   }
   string parent_channel_params(p);
-  if (parent_channel_params.substr(0, 12) == "tao::TaoRPC:") {
+  if (parent_channel_params.substr(0, 12) == "tao::TaoRPC+") {
     string channel_params = parent_channel_params.substr(12);
     scoped_ptr<MessageChannel> chan;
     if (channel_params.substr(0, 22) == "tao::FDMessageChannel(") {

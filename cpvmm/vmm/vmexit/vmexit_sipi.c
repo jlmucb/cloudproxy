@@ -59,9 +59,8 @@ VMEXIT_HANDLING_STATUS vmexit_sipi_event(GUEST_CPU_HANDLE gcpu)
             break;  // level-1 must handle
         }
 #endif
-        /* AP currently is in Wait for SIPI state,
-         * gets guest SIPI(vector not 0xff) and activates the AP
-         */
+        // AP currently is in Wait for SIPI state,
+        // gets guest SIPI(vector not 0xff) and activates the AP
 #ifdef ENABLE_PM_S3
         if ( g_s3_resume_flag == 0 ) {
 #else
@@ -77,39 +76,29 @@ VMEXIT_HANDLING_STATUS vmexit_sipi_event(GUEST_CPU_HANDLE gcpu)
 
         VMM_DEBUG_CODE(vmm_trace(gcpu, "[sipi] Leave SIPI State\n"));
 
-
-        /* emulator configures guest with host state, and setup emulator context to real mode,
-         * thus we have to configure the guest with the values of Real Mode, i.e.
-         * those values, CPU sets to registers after RESET, 
-         * though we never launch guest in that way
-         */
-
+        // emulator configures guest with host state, and setup emulator 
+        // context to real mode,
+        // thus we have to configure the guest with the values of Real Mode, i.e.
+        // those values, CPU sets to registers after RESET, 
+        // though we never launch guest in that way
         gcpu_set_guest_visible_control_reg(gcpu, IA32_CTRL_CR0, 0x60000010);
         gcpu_set_control_reg(gcpu, IA32_CTRL_CR0, 0x60000010);
-
         gcpu_set_guest_visible_control_reg(gcpu, IA32_CTRL_CR3, 0);
         gcpu_set_control_reg(gcpu, IA32_CTRL_CR3, 0);
-
         gcpu_set_guest_visible_control_reg(gcpu, IA32_CTRL_CR4, 0);
         gcpu_set_control_reg(gcpu, IA32_CTRL_CR4, 0);
-
         gcpu_set_control_reg(gcpu, IA32_CTRL_CR2, 0);
         gcpu_set_control_reg(gcpu, IA32_CTRL_CR8, 0);
-
-
         qualification.Uint64 = vmcs_read(vmcs, VMCS_EXIT_INFO_QUALIFICATION);
         real_mode_segment = (UINT16) qualification.Sipi.Vector << 8;
-
         gcpu_set_segment_reg(gcpu, IA32_SEG_CS, real_mode_segment,
                             real_mode_segment << 4, 0xFFFF, 0x9B);
-
         // Attribute set bits: Present, R/W, Accessed
         gcpu_set_segment_reg(gcpu, IA32_SEG_DS, 0, 0, 0xFFFF, 0x93);
         gcpu_set_segment_reg(gcpu, IA32_SEG_ES, 0, 0, 0xFFFF, 0x93);
         gcpu_set_segment_reg(gcpu, IA32_SEG_FS, 0, 0, 0xFFFF, 0x93);
         gcpu_set_segment_reg(gcpu, IA32_SEG_GS, 0, 0, 0xFFFF, 0x93);
         gcpu_set_segment_reg(gcpu, IA32_SEG_SS, 0, 0, 0xFFFF, 0x93);
-
 	/* IA Manual 3B: 23.3.1.2 
 	  For TR Bits 3:0 (Type).
 	  — If the guest will not be IA-32e mode, the Type must be 3 or 11
@@ -118,17 +107,14 @@ VMEXIT_HANDLING_STATUS vmexit_sipi_event(GUEST_CPU_HANDLE gcpu)
 	*/
         gcpu_set_segment_reg(gcpu, IA32_SEG_TR  , 0, 0, 0xFFFF, 0x8B); // CIRT uses 8Bh
         gcpu_set_segment_reg(gcpu, IA32_SEG_LDTR, 0, 0, 0xFFFF, 0x82); // CIRT uses 10082h
-
         gcpu_set_gdt_reg(gcpu, 0, 0xFFFF);
         gcpu_set_idt_reg(gcpu, 0, 0xFFFF);
-
         gcpu_set_debug_reg(gcpu, IA32_REG_DR0, 0);
         gcpu_set_debug_reg(gcpu, IA32_REG_DR1, 0);
         gcpu_set_debug_reg(gcpu, IA32_REG_DR2, 0);
         gcpu_set_debug_reg(gcpu, IA32_REG_DR3, 0);
         gcpu_set_debug_reg(gcpu, IA32_REG_DR6, 0xFFFF0FF0);
         gcpu_set_debug_reg(gcpu, IA32_REG_DR7, 0x00000400);
-
         gcpu_set_gp_reg(gcpu, IA32_REG_RAX, 0);
         gcpu_set_gp_reg(gcpu, IA32_REG_RBX, 0);
         gcpu_set_gp_reg(gcpu, IA32_REG_RCX, 0);
@@ -139,17 +125,12 @@ VMEXIT_HANDLING_STATUS vmexit_sipi_event(GUEST_CPU_HANDLE gcpu)
         gcpu_set_gp_reg(gcpu, IA32_REG_RSP, 0); // CIRT uses FFFCh ??
         gcpu_set_gp_reg(gcpu, IA32_REG_RIP, 0);
         gcpu_set_gp_reg(gcpu, IA32_REG_RFLAGS, 2);  // CIRT uses 46h ??
-
         gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_EFER, 0);
-
         gcpu_set_activity_state(gcpu, Ia32VmxVmcsGuestSleepStateActive);
 	// set state in vmenter control fields
 	gcpu_set_vmenter_control( gcpu );
-
         ret_status = VMEXIT_HANDLED;
-
     } while (0);
-
     return ret_status;
 }
 

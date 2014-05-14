@@ -204,7 +204,6 @@ typedef union {
 #define SelectorRpl(sel)    ((sel) & 0x0003)
 
 
-
 int copy_from_gva(GUEST_CPU_HANDLE gcpu, UINT64 gva, UINT32 size, UINT64 hva)
 {
     UINT64 dst_hva = 0;
@@ -284,15 +283,9 @@ static int copy_to_gva(GUEST_CPU_HANDLE gcpu, UINT64 gva, UINT32 size, UINT64 hv
 
 static void parse_desc(desc_t *dsc, seg_reg_t *seg)
 {
-    seg->base =
-        (dsc->bits.base_15_00) |
-        (dsc->bits.base_23_16 << 16) |
-        (dsc->bits.base_31_24 << 24);
-
-    seg->limit =
-        (dsc->bits.limit_15_00) |
-        (dsc->bits.limit_19_16 << 16);
-
+    seg->base = (dsc->bits.base_15_00) |
+        (dsc->bits.base_23_16 << 16) | (dsc->bits.base_31_24 << 24);
+    seg->limit = (dsc->bits.limit_15_00) | (dsc->bits.limit_19_16 << 16);
     seg->ar.value = 0;
     seg->ar.bits.type       = dsc->bits.type;
     seg->ar.bits.s_bit      = dsc->bits.s_bit;
@@ -620,36 +613,26 @@ int task_switch_for_guest(GUEST_CPU_HANDLE gcpu, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_
 
     cr0_t cr0;
     dr7_t dr7;
-
     seg_reg_t gdtr;
     seg_reg_t old_ldtr;
     seg_reg_t new_ldtr;
-
     seg_reg_t new_tr;
     seg_reg_t old_tr;
     desc_t new_tss_desc;
     desc_t old_tss_desc;
-
     gcpu_get_gdt_reg(gcpu, (UINT64 *)&(gdtr.base), (UINT32 *)&(gdtr.limit));
     gdtr.ar.value = 0x000080;
-
-    cr0.value =
-        (UINT32) gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR0);
+    cr0.value = (UINT32) gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR0);
 
     // Find new tr & tss.
-
     get_task_info(gcpu, &inst_type, &(new_tr.selector), vec_info);
-
     ret = copy_from_gva(gcpu, (UINT64)(gdtr.base + SelectorIdx(new_tr.selector)),
         sizeof(new_tss_desc), (UINT64)(&new_tss_desc));
-
     if (ret != 0) {
         gcpu_inject_ts(gcpu, new_tr.selector);
         return -1;
     }
-
     parse_desc(&new_tss_desc, &new_tr);
-
     if (!IsTss32(new_tr.ar.bits.type)) {
         gcpu_inject_ts(gcpu, new_tr.selector);
         return -1;
@@ -664,8 +647,7 @@ int task_switch_for_guest(GUEST_CPU_HANDLE gcpu, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_
     gcpu_get_segment_reg( gcpu, IA32_SEG_TR, (UINT16 *)&(old_tr.selector),
         (UINT64 *)&(old_tr.base), (UINT32 *)&(old_tr.limit), (UINT32 *)&(old_tr.ar));
 
-    if (!IsTss32Busy(old_tr.ar.bits.type))
-    {
+    if (!IsTss32Busy(old_tr.ar.bits.type)) {
         gcpu_inject_ts(gcpu, old_tr.selector);
         return -1;
     }
@@ -676,27 +658,21 @@ int task_switch_for_guest(GUEST_CPU_HANDLE gcpu, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_
 
     vmm_memset(&tss, 0, sizeof(tss));
     copy_vmcs_to_tss32(gcpu, &tss);
-
     if (inst_type == TASK_SWITCH_TYPE_IRET) {
         ((eflags_t *)&(tss.eflags))->bits.nested_task = 0;
     }
-
     ret = copy_to_gva(gcpu,
         (UINT64)(old_tr.base + 32), // gva of old_tss.eip
         64,                         // from eip to gs: total 64 bytes
-        (UINT64)&(tss.eip)          // hva of old_tss.eip
-        );
+        (UINT64)&(tss.eip));          // hva of old_tss.eip
 
     if (ret != 0) {
         gcpu_inject_ts(gcpu, old_tr.selector);
         return -1;
     }
-
     // Read new tss from memory.
     vmm_memset(&tss, 0, sizeof(tss));
-
     ret = copy_from_gva(gcpu, (UINT64)(new_tr.base), sizeof(tss), (UINT64)&(tss));
-
     if (ret != 0) {
         gcpu_inject_ts(gcpu, new_tr.selector);
         return -1;
@@ -706,18 +682,14 @@ int task_switch_for_guest(GUEST_CPU_HANDLE gcpu, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_
     if ((inst_type == TASK_SWITCH_TYPE_JMP) || (inst_type == TASK_SWITCH_TYPE_IRET)) {
         ret = copy_from_gva(gcpu, (UINT64)(gdtr.base + SelectorIdx(old_tr.selector)),
             sizeof(old_tss_desc), (UINT64)(&old_tss_desc));
-
         if (ret != 0) {
             gcpu_inject_ts(gcpu, old_tr.selector);
             return -1;
         }
-
         // Clear the B bit, and write it back.
         old_tss_desc.bits.type = Tss32Aval;
-
         ret = copy_to_gva(gcpu, (UINT64)(gdtr.base + SelectorIdx(old_tr.selector)),
             sizeof(old_tss_desc), (UINT64)(&old_tss_desc));
-
         if (ret != 0) {
             gcpu_inject_ts(gcpu, old_tr.selector);
             return -1;
@@ -729,33 +701,24 @@ int task_switch_for_guest(GUEST_CPU_HANDLE gcpu, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_
         new_tss_desc.bits.type = Tss32Busy;
         new_tr.ar.bits.type = Tss32Busy;
 
-        ret = copy_to_gva(gcpu,
-            (UINT64)(gdtr.base + SelectorIdx(new_tr.selector)),
-            sizeof(new_tss_desc),
-            (UINT64)(&new_tss_desc)
-            );
-
-            if (ret != 0)
-            {
-                gcpu_inject_ts(gcpu, new_tr.selector);
-                return -1;
-            }
+        ret = copy_to_gva(gcpu, (UINT64)(gdtr.base + SelectorIdx(new_tr.selector)),
+            sizeof(new_tss_desc), (UINT64)(&new_tss_desc));
+        if (ret != 0) {
+            gcpu_inject_ts(gcpu, new_tr.selector);
+            return -1;
+        }
     }
 
     // Save old tr in new tss.
     if ((inst_type == TASK_SWITCH_TYPE_CALL) || (inst_type == TASK_SWITCH_TYPE_IDT)) {
-        ret = copy_to_gva(gcpu,
-            (UINT64)(new_tr.base + 0),      // gva of new_tss.prev_tr
+        ret = copy_to_gva(gcpu, (UINT64)(new_tr.base + 0), // gva of new_tss.prev_tr
             sizeof(old_tr.selector),        // two bytes
-            (UINT64)(&(old_tr.selector))    // hva
-            );
+            (UINT64)(&(old_tr.selector)));    // hva
 
         if (ret != 0) {
             new_tss_desc.bits.type = Tss32Aval;
-
             copy_to_gva(gcpu, (UINT64)(gdtr.base + SelectorIdx(new_tr.selector)),
                 sizeof(new_tss_desc), (UINT64)(&new_tss_desc));
-
             gcpu_inject_ts(gcpu, new_tr.selector);
             return -1;
         }
@@ -775,7 +738,6 @@ int task_switch_for_guest(GUEST_CPU_HANDLE gcpu, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_
     if ((inst_type == TASK_SWITCH_TYPE_CALL) || (inst_type == TASK_SWITCH_TYPE_IDT)) {
         ((eflags_t *)&(tss.eflags))->bits.nested_task = 1;
     }
-
     ((eflags_t *)&(tss.eflags))->bits.rsvd_1 = 1;
 
     // Load general regs.
@@ -824,7 +786,6 @@ int task_switch_for_guest(GUEST_CPU_HANDLE gcpu, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_
     // Load new ss.
     if (set_guest_ss(gcpu, &gdtr, &new_ldtr, &tss) != 0)
         return -1;
-
     // Load new es, ds, fs, gs.
     if ((set_guest_seg(gcpu, &gdtr, &new_ldtr, &tss, IA32_SEG_ES) != 0) ||
         (set_guest_seg(gcpu, &gdtr, &new_ldtr, &tss, IA32_SEG_DS) != 0) ||
@@ -832,7 +793,6 @@ int task_switch_for_guest(GUEST_CPU_HANDLE gcpu, IA32_VMX_VMCS_VM_EXIT_INFO_IDT_
         (set_guest_seg(gcpu, &gdtr, &new_ldtr, &tss, IA32_SEG_GS) != 0)) {
         return -1;
     }
-
     // Load new cs.
     if (set_guest_cs(gcpu, &gdtr, &new_ldtr, &tss) != 0)
         return -1;
@@ -864,7 +824,7 @@ VMEXIT_HANDLING_STATUS vmexit_task_switch(GUEST_CPU_HANDLE gcpu)
     IA32_VMX_EXIT_QUALIFICATION                 qualification;
     
     idt_vectoring_info.Uint32 = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_IDT_VECTORING);
-    qualification.Uint64      =  vmcs_read(vmcs, VMCS_EXIT_INFO_QUALIFICATION);
+    qualification.Uint64 =  vmcs_read(vmcs, VMCS_EXIT_INFO_QUALIFICATION);
 
 #ifdef DEBUG
     {

@@ -83,4 +83,19 @@ bool FDMessageChannel::SerializeToString(string *s) const {
   return true;
 }
 
+FDMessageChannel *FDMessageChannel::DeserializeFromString(const string &s) {
+  int rfd, wfd;
+  stringstream in(s);
+  skip(in, "tao::FDMessageChannel(");
+  in >> rfd;
+  skip(in, ", ");
+  in >> wfd;
+  skip(in, ")");
+  if (!in || (in.get() && !in.eof())) {
+    LOG(ERROR) << "Could not deserialize FDMessageChannel";
+    return nullptr;
+  }
+  return new FDMessageChannel(rfd, wfd);
+}
+
 }  // namespace tao

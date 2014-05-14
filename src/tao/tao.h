@@ -45,17 +45,9 @@ class Tao {
 
   /// Get the interface to the host Tao for this hosted program.
   /// Every hosted program is provided with one such interface.
-  /// Ownership is of the returned pointer retained by this (static) class.
-  static Tao *GetHostTao() { return host_tao_; }
-
-  /// Set the interface to the host tao for this hosted program. The caller
-  /// takes ownership of the previous Tao interface pointer, which is returned.
-  /// @param tao The new Tao interface. Ownership is taken.
-  virtual Tao *SetHostTao(Tao * tao) {
-    Tao *prev_tao = host_tao_;
-    host_tao_ = tao;
-    return prev_tao;
-  }
+  /// Ownership is of the returned pointer retained by this (static) class,
+  /// though the caller can do a Close() if desired.
+  static Tao *GetHostTao();
 
   /// Get the Tao principal name assigned to this hosted program. The name
   /// encodes the full path from the root Tao, through all intermediary Tao
@@ -133,6 +125,10 @@ class Tao {
 
   /// Default timeout for Attestation (= 1 year in seconds).
   static const int DefaultAttestationTimeout = 31556926;
+
+  /// Environment variable for passing parent/child channel parameters from a
+  /// parent to a hosted process.
+  constexpr static auto HostedProcessChannelEnvVar = "GOOGLE_TAO_CHILD_CHANNEL_PARAMS";
 
  private:
   static Tao *host_tao_;

@@ -48,6 +48,8 @@ class FDMessageChannel : public MessageChannel {
 
   virtual bool SerializeToString(string *s) const;
 
+  static FDMessageChannel *DeserializeFromString(const string &s);
+
   virtual bool Close();
 
   static constexpr size_t MaxMessageSize = 20 * 1024 * 1024;

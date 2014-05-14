@@ -63,6 +63,8 @@ bool LinuxProcessFactory::StartHostedProgram(
     LOG(ERROR) << "Could not encode child channel parameters";
     return false;
   }
+  child_channel_params = "tao::TaoRPC(" + child_channel_params + ")";
+  VLOG(0) << "Channel to parent is: " << child_channel_params;
 
   int child_pid = fork();
   if (child_pid == -1) {
@@ -71,16 +73,19 @@ bool LinuxProcessFactory::StartHostedProgram(
   }
 
   if (child_pid == 0) {
-    int argc = 1 + (int)args.size() + 1;
+    int argc = 1 + (int)args.size(); // 1+ for path at start
     char **argv = new char *[argc + 1];  // +1 for null at end
     int i = 0;
     argv[i++] = strdup(path.c_str());
     for (const string &arg : args) {
       argv[i++] = strdup(arg.c_str());
     }
-    // TODO(kwalsh) maybe put channel_params in env instead?
-    argv[i++] = strdup(child_channel_params.c_str());
     argv[i++] = nullptr;
+    // We couuld put channel params in argv:
+    // argv[..] = strdup(child_channel_params.c_str());
+    // Instead, put it in environment variable so we can host Tao-oblivious
+    // programs without messing up their argv...
+    setenv(Tao::HostedProcessChannelEnvVar, child_channel_params.c_str(), 1);
 
     channel_to_child->Close();
 

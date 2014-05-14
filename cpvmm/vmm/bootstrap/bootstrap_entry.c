@@ -216,8 +216,8 @@ static IA32_GDTR __attribute__((aligned (16))) guest_gdtr;
 uint64_t __attribute__((aligned (16)))         guest_gdt[16] = {
     0x0000000000000000,
     0x0000000000000000,         // NULL descriptor 
-    0x00cf0b000000ffff,         // __KERNEL_CS 
-    0x00cf03000000ffff,         // __KERNEL_DS 
+    0x00c09b000000ffff,         // __KERNEL_CS 
+    0x00c093000000ffff,         // __KERNEL_DS 
     0x00808b000000ffff,         // TS descriptor 
     0x0000000000000000,         // TS continued 
     0x0000000000000000,

@@ -214,12 +214,12 @@ static uint32_t                         tboot_cr4= 0;
 // guest gdt
 static IA32_GDTR __attribute__((aligned (16))) guest_gdtr;
 uint64_t __attribute__((aligned (16)))         guest_gdt[16] = {
+    0x0000000000000000,
     0x0000000000000000,         // NULL descriptor 
-    0x00c09b000000ffff,         // __KERNEL_CS 
-    0x00c093000000ffff,         // __KERNEL_DS 
+    0x00cf0b000000ffff,         // __KERNEL_CS 
+    0x00cf03000000ffff,         // __KERNEL_DS 
     0x00808b000000ffff,         // TS descriptor 
     0x0000000000000000,         // TS continued 
-    0x0000000000000000,
     0x0000000000000000,
     0x0000000000000000,
     0x0000000000000000,
@@ -1044,19 +1044,19 @@ int linux_setup(void)
     // guest state from table
     guest_gdtr.base= (uint32_t)&guest_gdt[0];
     guest_gdtr.limit= 63;
-    guest_cs_selector= 0x08;
+    guest_cs_selector= 0x10;
     guest_cs_base= 0;
     guest_cs_limit= 0xffffffff;
     guest_cs_attr=  0xc09b;
-    guest_ds_selector= 0x10;
+    guest_ds_selector= 0x18;
     guest_ds_base= 0;
     guest_ds_limit= 0xffffffff;
     guest_ds_attr= 0xc093;
-    guest_ss_selector= 0x10;
+    guest_ss_selector= 0x18;
     guest_ss_base=  0;
     guest_ss_limit=  0xffffffff;
     guest_ss_attr= 0xc093;
-    guest_tr_selector= 0x18;
+    guest_tr_selector= 0x20;
     guest_tr_base= 0;
     guest_tr_limit= 0x0000ffff;
     guest_tr_attr= 0x0000808b;

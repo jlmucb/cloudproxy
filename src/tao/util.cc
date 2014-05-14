@@ -232,19 +232,30 @@ bool InitializeApp(int *argc, char ***argv, bool remove_args) {
   google::InitGoogleLogging((*argv)[0]);
   google::InstallFailureSignalHandler();
   SetLogHandler(QuietKeyczarLogHandler);
+  signal(SIGPIPE, SIG_IGN);
   return InitializeOpenSSL();
 }
 
-// TODO(kwalsh) handle interaction between multi-threading and signals
+static constexpr int MaxSelfPipeSignum = 32;
+struct SelfPipe {
+  int fd[2];
+  struct sigaction sa;
+};
+#define SELFPIPE1 {{-1,-1}, {}}
+#define SELFPIPE4 SELFPIPE1, SELFPIPE1, SELFPIPE1, SELFPIPE1
+#define SELFPIPE16 SELFPIPE4, SELFPIPE4, SELFPIPE4, SELFPIPE4
+SelfPipe selfPipe[MaxSelfPipeSignum] = { SELFPIPE16, SELFPIPE16 };
+#undef SELFPIPE1
+#undef SELFPIPE4
+#undef SELFPIPE16
 static mutex selfPipeMutex;
-static int selfPipe[2] = {-1, -1};
-static int selfPipeSignum;
-static struct sigaction selfPipeSavedAction;
 
 static void SelfPipeHandler(int signum) {
+  if (signum <= 0 || signum > MaxSelfPipeSignum)
+    return;
   int savedErrno = errno;
   char b = static_cast<char>(signum);
-  write(selfPipe[1], &b, 1);
+  write(selfPipe[signum-1].fd[1], &b, 1);
   errno = savedErrno;
 }
 
@@ -261,55 +272,62 @@ static bool SetFdFlags(int fd, int flags) {
   return true;
 }
 
-// TODO(kwalsh) Take multiple signums if needed.
 int GetSelfPipeSignalFd(int signum, int sa_flags) {
-  {
-    lock_guard<mutex> l(selfPipeMutex);
-    if (selfPipe[0] != -1) {
-      LOG(ERROR) << "Self-pipe already opened";
-      return -1;
-    }
-    if (pipe(selfPipe) == -1) {
-      LOG(ERROR) << "Could not create self-pipe";
-      return -1;
-    }
-    if (!SetFdFlags(selfPipe[0], O_NONBLOCK) ||
-        !SetFdFlags(selfPipe[1], O_NONBLOCK)) {
-      PLOG(ERROR) << "Could not set self-pipe disposition";
-      close(selfPipe[0]);
-      close(selfPipe[1]);
-      selfPipe[0] = selfPipe[1] = -1;
-      return -1;
-    }
-    struct sigaction act;
-    memset(&act, 0, sizeof(struct sigaction));
-    act.sa_handler = SelfPipeHandler;
-    act.sa_flags = sa_flags;
-    selfPipeSignum = signum;
-    if (sigaction(signum, &act, &selfPipeSavedAction) < 0) {
-      PLOG(ERROR) << "Could not set self-pipe handler";
-      close(selfPipe[0]);
-      close(selfPipe[1]);
-      selfPipe[0] = selfPipe[1] = -1;
-      return false;
-    }
-    return selfPipe[0];
+  if (signum <= 0 || signum > MaxSelfPipeSignum) {
+    LOG(ERROR) << "Invalid self-pipe signal number " << signum;
+    return -1;
   }
+  lock_guard<mutex> l(selfPipeMutex);
+  if (selfPipe[signum - 1].fd[0] != -1) {
+    LOG(ERROR) << "Self-pipe already opened";
+    // We could instead return the existing fd here if callers can share it.
+    return -1;
+  }
+  if (pipe(selfPipe[signum - 1].fd) == -1) {
+    LOG(ERROR) << "Could not create self-pipe";
+    return -1;
+  }
+  if (!SetFdFlags(selfPipe[signum - 1].fd[0], O_NONBLOCK) ||
+      !SetFdFlags(selfPipe[signum - 1].fd[1], O_NONBLOCK)) {
+    PLOG(ERROR) << "Could not set self-pipe disposition";
+    close(selfPipe[signum - 1].fd[0]);
+    close(selfPipe[signum - 1].fd[1]);
+    selfPipe[signum - 1].fd[0] = selfPipe[signum - 1].fd[1] = -1;
+    return -1;
+  }
+  struct sigaction act;
+  memset(&act, 0, sizeof(struct sigaction));
+  act.sa_handler = SelfPipeHandler;
+  act.sa_flags = sa_flags;
+  if (sigaction(signum, &act, &selfPipe[signum - 1].sa) < 0) {
+    PLOG(ERROR) << "Could not set self-pipe handler";
+    close(selfPipe[signum - 1].fd[0]);
+    close(selfPipe[signum - 1].fd[1]);
+    selfPipe[signum - 1].fd[0] = selfPipe[signum - 1].fd[1] = -1;
+    return false;
+  }
+  return selfPipe[signum - 1].fd[0];
 }
 
 bool ReleaseSelfPipeSignalFd(int fd) {
-  lock_guard<mutex> l(selfPipeMutex);
-  if (fd == -1 || selfPipe[0] != fd) {
-    LOG(ERROR) << "Incorrect self-pipe fd " << fd;
+  if (fd < 0) {
+    LOG(ERROR) << "Invalid self-pipe fd " << fd;
     return false;
   }
-  if (sigaction(selfPipeSignum, &selfPipeSavedAction, nullptr) < 0) {
-    PLOG(ERROR) << "Could not restore the old signal handler.";
+  lock_guard<mutex> l(selfPipeMutex);
+  for (int signum = 1; signum <= MaxSelfPipeSignum; signum++) {
+    if (selfPipe[signum-1].fd[0] != fd) 
+      continue;
+    if (sigaction(signum, &selfPipe[signum-1].sa, nullptr) < 0) {
+      PLOG(ERROR) << "Could not restore the old signal handler.";
+    }
+    close(selfPipe[signum-1].fd[0]);
+    close(selfPipe[signum-1].fd[1]);
+    selfPipe[signum-1].fd[0] = selfPipe[signum-1].fd[1] = -1;
+    return true;
   }
-  close(selfPipe[0]);
-  close(selfPipe[1]);
-  selfPipe[0] = selfPipe[1] = -1;
-  return true;
+  LOG(ERROR) << "No such self-pipe fd " << fd;
+  return false;
 }
 
 void selfpipe_release(int *fd) {
@@ -724,7 +742,7 @@ string elideBytes(const string &s) {
 string bytesToHex(const string &s) {
   stringstream out;
   string hex = "0123456789abcdef";
-  for (auto &c : s) out << hex[(c >> 4) & 0xf] << hex[(c >> 4) & 0xf];
+  for (auto &c : s) out << hex[(c >> 4) & 0xf] << hex[(c >> 0) & 0xf];
   return out.str();
 }
 

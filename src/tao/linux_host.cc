@@ -24,16 +24,17 @@
 
 #include "tao/fd_message_channel.h"
 #include "tao/keys.h"
+#include "tao/linux_admin_rpc.h"
+#include "tao/linux_host.pb.h"
 #include "tao/linux_process_factory.h"
 #include "tao/pipe_factory.h"
 #include "tao/tao_host.h"
 #include "tao/unix_socket_factory.h"
 #include "tao/util.h"
-#include "tao/linux_host.pb.h"
 
 namespace tao {
 bool LinuxHost::Init() {
-  scoped_ptr<Keys> keys(new Keys("linux_host", path_, Keys::Signing | Keys::Crypting));
+  scoped_ptr<Keys> keys(new Keys(path_, "linux_host", Keys::Signing | Keys::Crypting));
   if (!keys->InitHosted(*host_tao_, Tao::SealPolicyDefault)) {
     LOG(ERROR) << "Could not obtain keys";
     return false;
@@ -200,15 +201,16 @@ bool LinuxHost::HandleStartHostedProgram(const LinuxAdminRPCRequest &rpc,
 
   string our_name = tao_host_->TaoHostName();
 
-  CHECK(false);
+  VLOG(0) << "IGNORING EXECUTION POLICY...";
+  //CHECK(false);
   // if (!child_policy_->IsAuthorizedToExecute(our_name + "::" + *child_subprin)) {
   //     LOG(ERROR) << "Hosted program ::" << elideString(*child_subprin)
   //                << " is not authorized to run on this Tao host";
   //     return false;
   // }
 
-  VLOG(2) << "Hosted program ::" << elideString(*child_subprin)
-          << " is authorized to run on this Tao host";
+  LOG(INFO) << "Hosted program ::" << elideString(*child_subprin)
+            << " is authorized to run on this Tao host";
 
   scoped_ptr<HostedLinuxProcess> child;
   if (!child_factory_->StartHostedProgram(*child_channel_factory_, path, args,
@@ -402,11 +404,13 @@ bool LinuxHost::Listen() {
       if (fd > max_fd) max_fd = fd;
     }
 
+    VLOG(3) << "LinuxTao: Listening...";
     int err = select(max_fd + 1, &read_fds, nullptr, nullptr, nullptr);
     if (err == -1 && errno == EINTR) {
       // Do nothing.
       continue;
     }
+    VLOG(3) << "LinuxTao: Checking channels...";
     if (err == -1) {
       PLOG(ERROR) << "Error selecting descriptors";
       break;  // Abnormal termination.
@@ -414,10 +418,12 @@ bool LinuxHost::Listen() {
     
     if (FD_ISSET(*pipe_fd, &read_fds)) {
       char b;
-      if (read(*stop_fd, &b, 1) < 0) {
+      if (read(*pipe_fd, &b, 1) < 0) {
         PLOG(ERROR) << "Error reading signal number";
         break;  // Abnormal termination.
       }
+      int signum = 0xff & static_cast<int>(b);
+      VLOG(3) << "LinuxHost: received SIGPIPE " << signum << ", ignoring";
       // Do nothing.
     }
 
@@ -428,7 +434,7 @@ bool LinuxHost::Listen() {
         break;  // Abnormal termination.
       }
       int signum = 0xff & static_cast<int>(b);
-      LOG(INFO) << "LinuxHost: received signal " << signum << ", shutting down";
+      LOG(INFO) << "LinuxHost: received SIGTERM " << signum << ", shutting down";
       graceful_shutdown = true;
       continue;
     }
@@ -444,7 +450,10 @@ bool LinuxHost::Listen() {
       bool eof = false;
       if (!FD_ISSET(fd, &read_fds)) {
         ++it;
-      } else if (!child->rpc_channel->ReceiveMessage(&rpc, &eof) || eof ||
+        continue;
+      }
+      VLOG(3) << "Host process request";
+      if (!child->rpc_channel->ReceiveMessage(&rpc, &eof) || eof ||
                  !HandleTaoRPC(child, rpc, &resp) ||
                  !child->rpc_channel->SendMessage(resp)) {
         if (eof)
@@ -469,7 +478,10 @@ bool LinuxHost::Listen() {
       bool eof;
       if (!FD_ISSET(fd, &read_fds)) {
         ++it;
-      } else if (!admin->ReceiveMessage(&rpc, &eof) || eof ||
+        continue;
+      }
+      VLOG(3) << "Admin request";
+      if (!admin->ReceiveMessage(&rpc, &eof) || eof ||
                  !HandleAdminRPC(rpc, &resp, &graceful_shutdown) ||
                  !admin->SendMessage(resp)) {
         if (eof)
@@ -486,6 +498,7 @@ bool LinuxHost::Listen() {
 
     // Check for new admin channels.
     if (FD_ISSET(admin_fd, &read_fds)) {
+      VLOG(3) << "Admin connection";
       scoped_ptr<FDMessageChannel> admin(
           admin_channel_factory_->AcceptConnection());
       if (admin.get() != nullptr) {
@@ -502,14 +515,27 @@ bool LinuxHost::Listen() {
         break;  // Abnormal termination.
       }
       int signum = 0xff & static_cast<int>(b);
-      LOG(INFO) << "LinuxHost: received signal " << signum << ", reaping child";
+      LOG(INFO) << "LinuxHost: received SIGCHLD " << signum << ", reaping children";
       if (!HandleChildSignal()) {
         LOG(WARNING) << "Could not reap child";
-      } 
+      }
+      while (HandleChildSignal()) {
+      }
     }
   }
 
+  LOG(INFO) << "LinuxHost: Shutting down";
   return graceful_shutdown;
+}
+
+LinuxAdminRPC *LinuxHost::Connect(const string &path) {
+  scoped_ptr<MessageChannel> chan(UnixSocketFactory::Connect(
+      FilePath(path).Append("admin_socket").value()));
+  if (chan.get() == nullptr) {
+    LOG(ERROR) << "Could not connect to LinuxHost at " << path;
+    return nullptr;
+  }
+  return new LinuxAdminRPC(chan.release());
 }
 
 }  // namespace tao

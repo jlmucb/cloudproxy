@@ -67,8 +67,9 @@ class UnixSocketFactoryTest : public ::testing::Test {
     listener_.reset(new thread(&UnixSocketFactoryTest::Listen, this));
   }
   virtual void TearDown() {
-    factory_->Close();
-    if (listener_->joinable())
+    if (factory_.get() != nullptr)
+      factory_->Close();
+    if (listener_.get() != nullptr && listener_->joinable())
       listener_->join();
   }
   scoped_ptr<thread> listener_;

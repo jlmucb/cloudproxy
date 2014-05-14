@@ -27,15 +27,17 @@
 #include "tao/tao_rpc.pb.h"
 #include "tao/util.h"
 
+#include "tao/tao_host.h"
+#include "tao/linux_process_factory.h"
+#include "tao/pipe_factory.h"
+#include "tao/unix_socket_factory.h"
+
 namespace tao {
 using std::string;
 
 class FDMessageChannel;
 class HostedLinuxProcess;
-class LinuxProcessFactory;
-class PipeFactory;
-class TaoHost;
-class UnixSocketFactory;
+class LinuxAdminRPC;
 
 /// A Tao host environment in which hosted programs are Linux processes. Pipes
 /// are used for communication with the hosted processes. A unix-domain socket
@@ -66,7 +68,9 @@ class LinuxHost {
 
   /// Listen for and process messages from child and admin channels until a
   /// shutdown is initiated.
-  virtual bool Listen() = 0;
+  virtual bool Listen();
+
+  static LinuxAdminRPC *Connect(const string &path);
 
  protected:
   /// Handle incoming messages from a hosted program.

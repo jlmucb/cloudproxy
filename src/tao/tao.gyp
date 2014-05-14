@@ -29,14 +29,14 @@
 				'attestation_unittests.cc',
 				# 'fd_message_channel.cc', # see 'pipe_factory_unittests.cc'
 				'keys_unittests.cc',
-				# 'linux_admin_rpc.cc', # no unit tests yet (but see 'linux_host_unittests.cc')
-				# 'linux_host.cc', # no unit tests yet
+				# 'linux_admin_rpc.cc', # see 'linux_host_unittests.cc'
+				'linux_host_unittests.cc',
 				'linux_process_factory_unittests.cc',
 				'pipe_factory_unittests.cc',
 				# 'soft_tao.cc' # see 'tao_unittests.cc'
 				'tao_test.cc',
 				'tao_unittests.cc',
-				# 'tao_host.cc', no unit tests yet (but see 'linux_host_unittests.cc')
+				'tao_host.cc', # see 'linux_host_unittests.cc'
 				# 'tao_rpc.cc', no unit tests yet (but see 'linux_host_unittests.cc')
 				# 'tpm_tao.cc' # see 'tao_unittests.cc'
 				'unix_socket_factory_unittests.cc',

@@ -41,7 +41,7 @@ bool TaoHost::Init() {
   }
 
   VLOG(1) << "TaoHost: Initialization finished successfully";
-  VLOG(1) << "TaoHost: " << tao_host_name_;
+  VLOG(1) << "TaoHost: " << elideString(tao_host_name_);
   return true;
 }
 

@@ -158,7 +158,6 @@
 #			],
 #			'dependencies' : [
 #				'../tao/tao.gyp:tao',
-#				'../tao/tao.gyp:tao_test_utilities',
 #				'../third_party/gflags/gflags.gyp:gflags',
 #				'../third_party/google-glog/glog.gyp:glog',
 #				'../third_party/keyczar/keyczar.gyp:keyczar'
@@ -263,7 +262,6 @@
 #			],
 #			'dependencies' : [
 #				'../tao/tao.gyp:tao',
-#				'../tao/tao.gyp:tao_test_utilities',
 #				'../cloudproxy/cloudproxy.gyp:cloudproxy',
 #				'../third_party/gflags/gflags.gyp:gflags',
 #				'../third_party/google-glog/glog.gyp:glog',

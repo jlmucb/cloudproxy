@@ -50,26 +50,10 @@
 			],
 			'dependencies' : [
 				'tao',
-#				'tao_test_utilities',
 				'../third_party/googlemock/gmock.gyp:gmock',
 				'../third_party/googlemock/gtest/gtest.gyp:gtest',
 			],
 		},
-#		{
-#			'target_name' : 'tao_test_utilities',
-#			'type' : 'static_library',
-#			'sources' : [
-#				'fake_tao_channel.h',
-#				'fake_tao_channel.cc',
-#				'fake_program_factory.h',
-#			],
-#			'include_dirs' : [
-#				'..',
-#			],
-#			'dependencies' : [
-#				'tao',
-#			],
-#		},
 		{
 			'target_name' : 'tao',
 			'type' : 'static_library',
@@ -129,8 +113,6 @@
 #				'tao_ca.proto',
 #				'tao_ca_server.cc',
 #				'tao_ca_server.h',
-#				'tao_child_channel_registry.cc',
-#				'tao_child_channel_registry.h',
 			],
 			'libraries' : [
 				'-lcrypto',

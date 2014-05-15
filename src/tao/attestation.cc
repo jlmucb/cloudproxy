@@ -128,26 +128,33 @@ bool ValidateAttestation(const string &attestation, Statement *s) {
 }
 
 bool GenerateAttestation(const Keys &key, const string &delegation,
-                         const Statement &s, string *attestation) {
+                         const Statement &stmt, string *attestation) {
   // Get signer name.
   string signer;
   if (!key.GetPrincipalName(&signer)) {
     LOG(ERROR) << "Could not get signer principal name";
     return false;
   }
+  // Fill in default expirations
+  Statement s;
+  s.MergeFrom(stmt);
+  if (!s.has_time())
+    s.set_time(CurrentTime());
+  if (!s.has_expiration())
+    s.set_expiration(s.time() + Tao::DefaultAttestationTimeout);
   // Serialize and sign the statement.
-  string stmt, sig;
-  if (!s.SerializeToString(&stmt)) {
+  string serialized_stmt, sig;
+  if (!s.SerializeToString(&serialized_stmt)) {
     LOG(ERROR) << "Could not serialize statement";
     return false;
   }
-  if (!key.Sign(stmt, Tao::AttestationSigningContext, &sig)) {
+  if (!key.Sign(serialized_stmt, Tao::AttestationSigningContext, &sig)) {
     LOG(ERROR) << "Could not sign the statement";
     return false;
   }
   // Construct and serialize the attestation.
   Attestation a;
-  a.set_serialized_statement(stmt);
+  a.set_serialized_statement(serialized_stmt);
   a.set_signature(sig);
   a.set_signer(signer);
   if (!delegation.empty()) {
@@ -283,8 +290,6 @@ bool AttestDelegation(const Keys &key, const string &delegation,
   Statement s;
   s.set_delegate(delegate);
   s.set_issuer(issuer);
-  s.set_time(CurrentTime());
-  s.set_expiration(s.time() + Tao::DefaultAttestationTimeout);
   if (!GenerateAttestation(key, delegation, s, attestation)) {
     LOG(ERROR) << "Could not sign attestation";
     return false;
@@ -344,8 +349,6 @@ bool AttestPredicate(const Keys &key, const string &delegation,
   s.set_predicate_name(predicate);
   for (auto &arg : args) s.add_predicate_args(arg);
   s.set_issuer(issuer);
-  s.set_time(CurrentTime());
-  s.set_expiration(s.time() + Tao::DefaultAttestationTimeout);
   if (!GenerateAttestation(key, delegation, s, attestation)) {
     LOG(ERROR) << "Could not sign attestation";
     return false;

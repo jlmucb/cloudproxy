@@ -43,7 +43,8 @@ bool IsSubprincipalOrIdentical(const string &child_name,
 /// @param key The signing key.
 /// @param delegation A serialized delegation attestation to provide evidence
 /// that the signing key speaks for the issuer, or emptystring if no such
-/// evidence is needed.
+/// evidence is needed. If the time and expiration are missing, they will be
+/// filled in with default values.
 /// @param s The Statement to be signed.
 /// @param[out] attestation The signed attestation.
 bool GenerateAttestation(const Keys &key, const string &delegation,

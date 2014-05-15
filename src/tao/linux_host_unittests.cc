@@ -80,7 +80,7 @@ string doSeal(Tao *tao) {
     return "Seal failed";
   } else if (sealed.size() == 0) {
     return "Seal empty";
-  } else if (!WriteStringToFile(string(test_argv[2]) + ".sealed", sealed)) {
+  } else if (!WriteStringToFile(string(test_argv[3]) + ".sealed", sealed)) {
     return "Seal write failed";
   } else {
     return "Seal OK";
@@ -89,7 +89,7 @@ string doSeal(Tao *tao) {
 
 string doUnseal(Tao *tao) {
   string sealed, data, policy;
-  if (!ReadFileToString(string(test_argv[2]) + ".sealed", &sealed)) {
+  if (!ReadFileToString(string(test_argv[3]) + ".sealed", &sealed)) {
     return "Unseal read failed";
   } else if (!tao->Unseal(sealed, &data, &policy)) {
     return "Unseal failed";
@@ -104,9 +104,9 @@ string doUnseal(Tao *tao) {
   if (!tao->ExtendTaoName("Test1::Test2")) {
     return "Unseal OK Extend failed";
   } else if (tao->Unseal(sealed, &data, &policy)) {
-    return "Unseal OK Extend+Seal leaked";
+    return "Unseal OK Extend+Unseal leaked";
   } else {
-    return "Unseal OK Extend+Seal denied";
+    return "Unseal OK Extend+Unseal denied";
   }
 }
 
@@ -118,11 +118,14 @@ string doAttest(Tao *tao) {
   Statement s;
   s.set_delegate("Alice");
   string a;
+  tao->Attest(s, &a);
+
   if (!tao->Attest(s, &a)) {
+    std::cout << " died\n";
     return "Attest failed";
   } else if (a.size() == 0) {
     return "Attest empty";
-  } else if (!WriteStringToFile(string(test_argv[2]) + ".delegation", a)) {
+  } else if (!WriteStringToFile(string(test_argv[3]) + ".delegation", a)) {
     return "Attest write failed";
   }
   // Now do another one on behalf of a subprincipal
@@ -132,7 +135,7 @@ string doAttest(Tao *tao) {
     return "Attest OK AttestSubprin failed";
   } else if (a.size() == 0) {
     return "Attest OK AttestSubprin empty";
-  } else if (!WriteStringToFile(string(test_argv[2]) + ".subprin-delegation", a)) {
+  } else if (!WriteStringToFile(string(test_argv[3]) + ".subprin-delegation", a)) {
     return "Attest OK AttestSubprin write failed";
   } else {
     return "Attest OK AttestSubprin OK";
@@ -242,11 +245,13 @@ TEST_F(LinuxHostTest, HostedSealUnsealTest) {
   sleep(1);
   EXPECT_FALSE(admin_->StopHostedProgram(name)); // should have already exited
   EXPECT_TRUE(ReadFileToString(result_path, &hosted_program_result));
-  EXPECT_EQ("Unseal OK Extend+Unseal OK", hosted_program_result);
+  EXPECT_EQ("Unseal OK Extend+Unseal denied", hosted_program_result);
 }
 
 TEST_F(LinuxHostTest, HostedAttestValidateTest) {
   string name;
+  string host;
+  ASSERT_TRUE(admin_->GetTaoHostName(&host));
   string result_path = *temp_dir_ + "/results";
   string hosted_program_result;
   // attest something via hosted program
@@ -262,7 +267,7 @@ TEST_F(LinuxHostTest, HostedAttestValidateTest) {
   EXPECT_TRUE(
       ValidateDelegation(delegation, CurrentTime(), &delegate, &issuer));
   EXPECT_EQ("Alice", delegate);
-  EXPECT_EQ(name, issuer);
+  EXPECT_EQ(host+"::"+name, issuer);
 
   // validate the subprin attestation
   EXPECT_TRUE(
@@ -270,7 +275,7 @@ TEST_F(LinuxHostTest, HostedAttestValidateTest) {
   EXPECT_TRUE(
       ValidateDelegation(delegation, CurrentTime(), &delegate, &issuer));
   EXPECT_EQ("Bob", delegate);
-  EXPECT_EQ(name + "::Test1::Test2", issuer);
+  EXPECT_EQ(host + "::" + name + "::Test1::Test2", issuer);
 }
 
 TEST_F(LinuxHostTest, ShutdownTest) {

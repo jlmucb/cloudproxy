@@ -65,10 +65,12 @@ bool LinuxHost::HandleTaoRPC(HostedLinuxProcess *child,
   bool success = false;
   switch (rpc.rpc()) {
     case TAO_RPC_GET_TAO_NAME:
+      LOG(INFO) << "GetTaoName() for ::" << elideString(child->subprin);
       result_data = tao_host_->TaoHostName() + "::" + child->subprin;
       success = true;
       break;
     case TAO_RPC_EXTEND_TAO_NAME:
+      LOG(INFO) << "ExtendTaoName() for ::" << elideString(child->subprin);
       if (!rpc.has_data() && rpc.data() != "") {
         LOG(ERROR) << "Invalid RPC: must supply data for ExtendName";
         break;
@@ -78,6 +80,7 @@ bool LinuxHost::HandleTaoRPC(HostedLinuxProcess *child,
       success = true;
       break;
     case TAO_RPC_GET_RANDOM_BYTES:
+      LOG(INFO) << "GetRandomBytes() for ::" << elideString(child->subprin);
       if (!rpc.has_size()) {
         LOG(ERROR) << "Invalid RPC: must supply arguments for GetRandomBytes";
         break;
@@ -85,6 +88,7 @@ bool LinuxHost::HandleTaoRPC(HostedLinuxProcess *child,
       success = tao_host_->GetRandomBytes(child->subprin, rpc.size(), &result_data);
       break;
     case TAO_RPC_ATTEST:
+      LOG(INFO) << "Attest() for ::" << elideString(child->subprin);
       if (!rpc.has_data()) {
         LOG(ERROR) << "Invalid RPC: must supply arguments for GetRandomBytes";
         break;
@@ -100,6 +104,7 @@ bool LinuxHost::HandleTaoRPC(HostedLinuxProcess *child,
       }
       break;
     case TAO_RPC_SEAL:
+      LOG(INFO) << "Seal() for ::" << elideString(child->subprin);
       if (!rpc.has_data()) {
         LOG(ERROR) << "Invalid RPC: must supply data for Seal";
         break;
@@ -108,6 +113,7 @@ bool LinuxHost::HandleTaoRPC(HostedLinuxProcess *child,
           HandleSeal(child->subprin, rpc.data(), rpc.policy(), &result_data);
       break;
     case TAO_RPC_UNSEAL:
+      LOG(INFO) << "Unseal() for ::" << elideString(child->subprin);
       if (!rpc.has_data()) {
         LOG(ERROR) << "Invalid RPC: must supply sealed data for Unseal";
         break;
@@ -120,6 +126,7 @@ bool LinuxHost::HandleTaoRPC(HostedLinuxProcess *child,
       LOG(ERROR) << "Unknown Tao RPC " << rpc.rpc();
       break;
   }
+  LOG(INFO) << "Result: " << (success ? "OK" : "FAIL");
 
   resp->set_success(success);
   if (success) resp->set_data(result_data);
@@ -135,20 +142,25 @@ bool LinuxHost::HandleAdminRPC(const LinuxAdminRPCRequest &rpc,
   string child_subprin, tao_name;
   switch (rpc.rpc()) {
     case LINUX_ADMIN_RPC_SHUTDOWN:
+      LOG(INFO) << "Shutdown()";
       *shutdown_request = true;
       success = true;
       break;
     case LINUX_ADMIN_RPC_START_HOSTED_PROGRAM:
+      LOG(INFO) << "StartHostedProgram()";
       success = HandleStartHostedProgram(rpc, &child_subprin);
       if (success) resp->set_data(child_subprin);
       break;
     case LINUX_ADMIN_RPC_STOP_HOSTED_PROGRAM:
+      LOG(INFO) << "StopHostedProgram()";
       success = HandleStopHostedProgram(rpc, SIGTERM);
       break;
     case LINUX_ADMIN_RPC_KILL_HOSTED_PROGRAM:
+      LOG(INFO) << "KillHostedProgram()";
       success = HandleStopHostedProgram(rpc, SIGKILL);
       break;
     case LINUX_ADMIN_RPC_GET_TAO_HOST_NAME:
+      LOG(INFO) << "GetTaoHostName()";
       resp->set_data(tao_host_->TaoHostName());
       success = true;
       break;
@@ -157,6 +169,7 @@ bool LinuxHost::HandleAdminRPC(const LinuxAdminRPCRequest &rpc,
       break;
   }
 
+  LOG(INFO) << "Result: " << (success ? "OK" : "FAIL");
   resp->set_success(success);
 
   return true;

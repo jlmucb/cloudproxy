@@ -82,9 +82,6 @@ bool SoftTao::Attest(const Statement &stmt, string *attestation) const {
   // Set up a (copy) of statement and fill in defaults.
   Statement s;
   s.MergeFrom(stmt);
-  if (!s.has_time()) s.set_time(CurrentTime());
-  if (!s.has_expiration())
-    s.set_expiration(s.time() + Tao::DefaultAttestationTimeout);
   string name = key_name_ + name_extension_;
   if (!s.has_issuer()) {
     s.set_issuer(name);

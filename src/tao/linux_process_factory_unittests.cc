@@ -32,7 +32,7 @@
 
 using namespace tao;
 
-int doQuit() { std::cout << "Quit!\n"; return 0; }
+int doQuit() { return 0; }
 int doSleep() {
   sleep(10);
   return 0;

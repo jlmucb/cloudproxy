@@ -111,6 +111,7 @@
 				'tao_rpc.proto',
 				'tpm_tao.cc',
 				'tpm_tao.h',
+				'trivial_guard.h',
 				'unix_socket_factory.cc',
 				'unix_socket_factory.h',
 				'util.cc',

@@ -331,31 +331,35 @@ BOOLEAN mtrrs_abstraction_ap_initialize(void) {
         goto failed;
     }
     if (mtrrs_abstraction_are_fixed_regs_supported()) {
-        if ((mtrrs_cached_info.ia32_mtrr_fix[0].value != hw_read_msr(IA32_MTRR_FIX64K_00000_ADDR)) ||
-            (mtrrs_cached_info.ia32_mtrr_fix[1].value != hw_read_msr(IA32_MTRR_FIX16K_80000_ADDR)) ||
-            (mtrrs_cached_info.ia32_mtrr_fix[2].value != hw_read_msr(IA32_MTRR_FIX16K_A0000_ADDR)) ||
-            (mtrrs_cached_info.ia32_mtrr_fix[3].value != hw_read_msr(IA32_MTRR_FIX4K_C0000_ADDR))  ||
-            (mtrrs_cached_info.ia32_mtrr_fix[4].value != hw_read_msr(IA32_MTRR_FIX4K_C8000_ADDR))  ||
-            (mtrrs_cached_info.ia32_mtrr_fix[5].value != hw_read_msr(IA32_MTRR_FIX4K_D0000_ADDR))  ||
-            (mtrrs_cached_info.ia32_mtrr_fix[6].value != hw_read_msr(IA32_MTRR_FIX4K_D8000_ADDR))  ||
-            (mtrrs_cached_info.ia32_mtrr_fix[7].value != hw_read_msr(IA32_MTRR_FIX4K_E0000_ADDR))  ||
-            (mtrrs_cached_info.ia32_mtrr_fix[8].value != hw_read_msr(IA32_MTRR_FIX4K_E8000_ADDR))  ||
-            (mtrrs_cached_info.ia32_mtrr_fix[9].value != hw_read_msr(IA32_MTRR_FIX4K_F0000_ADDR))  ||
-            (mtrrs_cached_info.ia32_mtrr_fix[10].value != hw_read_msr(IA32_MTRR_FIX4K_F8000_ADDR))) {
+        if((mtrrs_cached_info.ia32_mtrr_fix[0].value!=hw_read_msr(IA32_MTRR_FIX64K_00000_ADDR))||
+           (mtrrs_cached_info.ia32_mtrr_fix[1].value!=hw_read_msr(IA32_MTRR_FIX16K_80000_ADDR))||
+           (mtrrs_cached_info.ia32_mtrr_fix[2].value!=hw_read_msr(IA32_MTRR_FIX16K_A0000_ADDR))||
+           (mtrrs_cached_info.ia32_mtrr_fix[3].value!=hw_read_msr(IA32_MTRR_FIX4K_C0000_ADDR))||
+           (mtrrs_cached_info.ia32_mtrr_fix[4].value!=hw_read_msr(IA32_MTRR_FIX4K_C8000_ADDR))||
+           (mtrrs_cached_info.ia32_mtrr_fix[5].value!=hw_read_msr(IA32_MTRR_FIX4K_D0000_ADDR))||
+           (mtrrs_cached_info.ia32_mtrr_fix[6].value!=hw_read_msr(IA32_MTRR_FIX4K_D8000_ADDR))||
+           (mtrrs_cached_info.ia32_mtrr_fix[7].value!=hw_read_msr(IA32_MTRR_FIX4K_E0000_ADDR))||
+           (mtrrs_cached_info.ia32_mtrr_fix[8].value!=hw_read_msr(IA32_MTRR_FIX4K_E8000_ADDR))||
+           (mtrrs_cached_info.ia32_mtrr_fix[9].value!=hw_read_msr(IA32_MTRR_FIX4K_F0000_ADDR))||
+           (mtrrs_cached_info.ia32_mtrr_fix[10].value!=hw_read_msr(IA32_MTRR_FIX4K_F8000_ADDR))){
 
-            VMM_LOG(mask_anonymous, level_error,"ERROR: MTRRs Abstraction: One (or more) of the fixed range MTRRs doesn't match\n");
+            VMM_LOG(mask_anonymous, level_error,
+             "ERROR: MTRRs Abstraction: One (or more) of the fixed range MTRRs doesn't match\n");
             goto failed;
         }
     }
 
     for (msr_addr = IA32_MTRR_PHYSBASE0_ADDR, index = 0; index < mtrrs_abstraction_get_num_of_variable_range_regs(); msr_addr += 2, index++) {
         if (msr_addr > IA32_MTRR_MAX_PHYSMASK_ADDR) {
-                VMM_LOG(mask_uvmm,level_error, "AP: ERROR: MTRRs Abstraction: Variable MTRRs count > %d", MTRRS_ABS_NUM_OF_VAR_RANGE_MTRRS);
+                VMM_LOG(mask_uvmm,level_error, 
+                        "AP: ERROR: MTRRs Abstraction: Variable MTRRs count > %d", 
+                        MTRRS_ABS_NUM_OF_VAR_RANGE_MTRRS);
             VMM_DEADLOOP();
         }
-        if ((mtrrs_cached_info.ia32_mtrr_var_phys_base[index].value != hw_read_msr(msr_addr)) ||
-           (mtrrs_cached_info.ia32_mtrr_var_phys_mask[index].value != hw_read_msr(msr_addr + 1))) {
-            VMM_LOG(mask_anonymous, level_error,"ERROR: MTRRs Abstraction: One (or more) of the variable range MTRRs doesn't match\n");
+        if((mtrrs_cached_info.ia32_mtrr_var_phys_base[index].value!=hw_read_msr(msr_addr)) ||
+           (mtrrs_cached_info.ia32_mtrr_var_phys_mask[index].value!=hw_read_msr(msr_addr+1))) {
+            VMM_LOG(mask_anonymous, level_error,
+             "ERROR: MTRRs Abstraction of the variable range MTRRs doesn't match\n");
             goto failed;
         }
     }
@@ -387,11 +391,11 @@ VMM_PHYS_MEM_TYPE mtrrs_abstraction_get_memory_type(HPA address) {
         for (index = 0; index < MTRRS_ABS_NUM_OF_FIXED_RANGE_MTRRS; index++) {
             if (address <= mtrrs_cached_info.ia32_mtrr_fix_range[index].end_addr) {
                 // Find proper sub-range
-                UINT64 offset = address - mtrrs_cached_info.ia32_mtrr_fix_range[index].start_addr;
+                UINT64 offset= address-mtrrs_cached_info.ia32_mtrr_fix_range[index].start_addr;
                 UINT32 size = mtrrs_cached_info.ia32_mtrr_fix_range[index].end_addr + 1 - mtrrs_cached_info.ia32_mtrr_fix_range[index].start_addr;
                 UINT32 sub_range_size = size / MTRRS_ABS_NUM_OF_SUB_RANGES;
                 UINT64 sub_range_index = offset / sub_range_size;
-                                remsize = (sub_range_index+1) * sub_range_size - offset;
+                remsize = (sub_range_index+1) * sub_range_size - offset;
                 VMM_ASSERT((size % MTRRS_ABS_NUM_OF_SUB_RANGES) == 0);
                 VMM_ASSERT(sub_range_index < MTRRS_ABS_NUM_OF_SUB_RANGES);
                 return (VMM_PHYS_MEM_TYPE)mtrrs_cached_info.ia32_mtrr_fix[index].type[sub_range_index];
@@ -504,40 +508,40 @@ BOOLEAN mtrrs_abstraction_track_mtrr_update(UINT32 mtrr_index, UINT64 value) {
         UINT32 fixed_index = (~((UINT32)0));
         switch(mtrr_index) {
 
-        case IA32_MTRR_FIX64K_00000_ADDR:
+          case IA32_MTRR_FIX64K_00000_ADDR:
             fixed_index = 0;
             break;
-        case IA32_MTRR_FIX16K_80000_ADDR:
+          case IA32_MTRR_FIX16K_80000_ADDR:
             fixed_index = 1;
             break;
-        case IA32_MTRR_FIX16K_A0000_ADDR:
+          case IA32_MTRR_FIX16K_A0000_ADDR:
             fixed_index = 2;
             break;
-        case IA32_MTRR_FIX4K_C0000_ADDR:
+          case IA32_MTRR_FIX4K_C0000_ADDR:
             fixed_index = 3;
             break;
-        case IA32_MTRR_FIX4K_C8000_ADDR:
+          case IA32_MTRR_FIX4K_C8000_ADDR:
             fixed_index = 4;
             break;
-        case IA32_MTRR_FIX4K_D0000_ADDR:
+          case IA32_MTRR_FIX4K_D0000_ADDR:
             fixed_index = 5;
             break;
-        case IA32_MTRR_FIX4K_D8000_ADDR:
+          case IA32_MTRR_FIX4K_D8000_ADDR:
             fixed_index = 6;
             break;
-        case IA32_MTRR_FIX4K_E0000_ADDR:
+          case IA32_MTRR_FIX4K_E0000_ADDR:
             fixed_index = 7;
             break;
-        case IA32_MTRR_FIX4K_E8000_ADDR:
+          case IA32_MTRR_FIX4K_E8000_ADDR:
             fixed_index = 8;
             break;
-        case IA32_MTRR_FIX4K_F0000_ADDR:
+          case IA32_MTRR_FIX4K_F0000_ADDR:
             fixed_index = 9;
             break;
-        case IA32_MTRR_FIX4K_F8000_ADDR:
+          case IA32_MTRR_FIX4K_F8000_ADDR:
             fixed_index = 10;
             break;
-        default:
+          default:
             VMM_ASSERT(0);
             return FALSE;
         }
@@ -547,7 +551,6 @@ BOOLEAN mtrrs_abstraction_track_mtrr_update(UINT32 mtrr_index, UINT64 value) {
         mtrrs_cached_info.ia32_mtrr_fix[fixed_index].value = value;
         return TRUE;
     }
-
     if ((mtrr_index >= IA32_MTRR_PHYSBASE0_ADDR) && (mtrr_index <= IA32_MTRR_MAX_PHYSMASK_ADDR)){
         BOOLEAN is_phys_base = ((mtrr_index % 2) == 0);
         if (is_phys_base) {
@@ -566,6 +569,5 @@ BOOLEAN mtrrs_abstraction_track_mtrr_update(UINT32 mtrr_index, UINT64 value) {
         }
         return TRUE;
     }
-
     return FALSE;
 }

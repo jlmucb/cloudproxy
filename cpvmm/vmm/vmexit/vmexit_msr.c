@@ -42,14 +42,13 @@
 
 #define MSR_LOW_RANGE_IN_BITS   ((MSR_LOW_LAST - MSR_LOW_FIRST + 1) / 8)
 #define MSR_HIGH_RANGE_IN_BITS  ((MSR_HIGH_LAST - MSR_HIGH_FIRST + 1) / 8)
-
 #define MSR_READ_LOW_OFFSET     0
 #define MSR_READ_HIGH_OFFSET    (MSR_READ_LOW_OFFSET  + MSR_LOW_RANGE_IN_BITS)
 #define MSR_WRITE_LOW_OFFSET    (MSR_READ_HIGH_OFFSET + MSR_LOW_RANGE_IN_BITS)
 #define MSR_WRITE_HIGH_OFFSET   (MSR_WRITE_LOW_OFFSET + MSR_HIGH_RANGE_IN_BITS)
 
 /*
- *    *** Hyper-V MSRs access workaround  ***
+ * *** Hyper-V MSRs access workaround  ***
  * When we run our pnp launch driver with Alpha4_882 IBAgent,
  * we saw msr read at 0x40000081, since it isn't a real hardware MSR, we got
  * "RDMSR[0x40000081] failed. FaultVector=0x0000000D ErrCode=0x00000000" message
@@ -89,9 +88,11 @@ static struct {
 
 
 static MSR_VMEXIT_DESCRIPTOR *msr_descriptor_lookup(LIST_ELEMENT *msr_list, MSR_ID msr_id);
-/*static*/ VMM_STATUS msr_vmexit_bits_config(UINT8 *p_bitmap, MSR_ID msr_id, RW_ACCESS access, BOOLEAN set);
-static BOOLEAN  msr_common_vmexit_handler(GUEST_CPU_HANDLE gcpu, RW_ACCESS access, UINT64 *msr_value);
-static BOOLEAN  msr_unsupported_access_handler(GUEST_CPU_HANDLE gcpu, MSR_ID msr_id, UINT64 *value, void *context);
+VMM_STATUS msr_vmexit_bits_config(UINT8 *p_bitmap, MSR_ID msr_id, RW_ACCESS access, BOOLEAN set);
+static BOOLEAN  msr_common_vmexit_handler(GUEST_CPU_HANDLE gcpu, RW_ACCESS access, 
+                    UINT64 *msr_value);
+static BOOLEAN  msr_unsupported_access_handler(GUEST_CPU_HANDLE gcpu, MSR_ID msr_id, 
+                    UINT64 *value, void *context);
 static VMEXIT_HANDLING_STATUS vmexit_msr_read(GUEST_CPU_HANDLE  gcpu);
 static VMEXIT_HANDLING_STATUS vmexit_msr_write(GUEST_CPU_HANDLE gcpu);
 static BOOLEAN  msr_efer_write_handler(GUEST_CPU_HANDLE gcpu, MSR_ID msr_id, 
@@ -148,6 +149,9 @@ VMM_STATUS msr_vmexit_bits_config( UINT8 *p_bitmap, MSR_ID msr_id,
     MSR_ID      bitno;
     RW_ACCESS   access_index;
 
+#ifdef JLMDEBUG
+    bprint("msr_vmexit_bits_config\n");
+#endif
     for (access_index = WRITE_ACCESS; access_index <= READ_ACCESS; ++access_index) {
         if (access_index & access) {  // is access of iterest ?
             if (msr_id <= MSR_LOW_LAST) {
@@ -184,6 +188,9 @@ MSR_VMEXIT_DESCRIPTOR * msr_descriptor_lookup( LIST_ELEMENT *msr_list, MSR_ID ms
     MSR_VMEXIT_DESCRIPTOR   *p_msr_desc;
     LIST_ELEMENT            *list_iterator;
 
+#ifdef JLMDEBUG
+    bprint("msr_descriptor_lookup\n");
+#endif
     LIST_FOR_EACH(msr_list, list_iterator) {
         p_msr_desc = LIST_ENTRY(list_iterator, MSR_VMEXIT_DESCRIPTOR, msr_list);
         if (p_msr_desc->msr_id == msr_id) {
@@ -197,6 +204,9 @@ static void msr_vmexit_register_mtrr_accesses_handler(GUEST_HANDLE guest) {
 
     UINT32 i,msr_addr;
 
+#ifdef JLMDEBUG
+    bprint("msr_vmexit_register_mtrr_accesses_handler\n");
+#endif
     msr_vmexit_handler_register( guest, IA32_MTRRCAP_ADDR, msr_mtrr_write_handler,
         WRITE_ACCESS, NULL);
     msr_vmexit_handler_register( guest, IA32_MTRR_DEF_TYPE_ADDR, msr_mtrr_write_handler,
@@ -334,6 +344,9 @@ VMM_STATUS msr_vmexit_handler_register( GUEST_HANDLE guest, MSR_ID msr_id,
     VMM_STATUS status = VMM_OK;
     MSR_VMEXIT_CONTROL *p_msr_ctrl = guest_get_msr_control(guest);
 
+#ifdef JLMDEBUG
+    bprint("msr_vmexit_handler_register\n");
+#endif
     // check first if it already registered
     p_desc = msr_descriptor_lookup(p_msr_ctrl->msr_list, msr_id);
     if (NULL == p_desc) {
@@ -381,6 +394,9 @@ VMM_STATUS msr_vmexit_handler_unregister( GUEST_HANDLE guest,
     VMM_STATUS status = VMM_OK;
     MSR_VMEXIT_CONTROL *p_msr_ctrl = guest_get_msr_control(guest);
 
+#ifdef JLMDEBUG
+    bprint("msr_vmexit_handler_unregister\n");
+#endif
     p_desc = msr_descriptor_lookup(p_msr_ctrl->msr_list, msr_id);
     if (NULL == p_desc) {
         status = VMM_ERROR;
@@ -439,12 +455,14 @@ VMEXIT_HANDLING_STATUS vmexit_msr_write(GUEST_CPU_HANDLE gcpu)
     UINT64 msr_value;
     MSR_ID msr_id = (MSR_ID) gcpu_get_native_gp_reg(gcpu, IA32_REG_RCX);
 
+#ifdef JLMDEBUG
+    bprint("vmexit_msr_write\n");
+#endif
     /* hypervisor synthenic MSR is not hardware MSR, inject GP to guest */
     if( (msr_id >= HYPER_V_MSR_MIN) && (msr_id <= HYPER_V_MSR_MAX)) {
         gcpu_inject_gp0(gcpu);
         return VMEXIT_HANDLED;
     }
-
     msr_value = (gcpu_get_native_gp_reg(gcpu, IA32_REG_RDX) << 32);
     msr_value |= gcpu_get_native_gp_reg(gcpu, IA32_REG_RAX) & LOW_BITS_32_MASK;
     msr_common_vmexit_handler(gcpu, WRITE_ACCESS, &msr_value);
@@ -589,7 +607,6 @@ BOOLEAN msr_vmcs_resident_default_handler( GUEST_CPU_HANDLE gcpu, MSR_ID msr_id,
 
     if (found) {
         vmcs_field_id = vmcs_resident_guest_msrs[i].vmcs_field_id;
-
         switch (access) {
         case READ_ACCESS:
             *msr_value = vmcs_read(vmcs, vmcs_field_id);
@@ -683,8 +700,10 @@ BOOLEAN msr_efer_write_handler( GUEST_CPU_HANDLE gcpu,
         return FALSE;
 
    if (msr_efer_update_is_gpf0(gcpu, *msr_value)) {
-        VMM_LOG(mask_uvmm, level_trace,"%s: EFER update should have caused GPF0 in native mode\n", __FUNCTION__);
-        VMM_LOG(mask_uvmm, level_trace,"%s: Changing vmexit to GP is not implemented yet\n", __FUNCTION__);
+        VMM_LOG(mask_uvmm, level_trace,
+                "%s: EFER update should have caused GPF0 in native mode\n", __FUNCTION__);
+        VMM_LOG(mask_uvmm, level_trace,
+                "%s: Changing vmexit to GP is not implemented yet\n", __FUNCTION__);
         VMM_DEADLOOP();
     }
 
@@ -725,6 +744,9 @@ BOOLEAN msr_pat_write_handler( GUEST_CPU_HANDLE gcpu, MSR_ID msr_id,
 {
     REPORT_MSR_WRITE_ACCESS_DATA msr_write_access_data;
 
+#ifdef JLMDEBUG
+    bprint("msr_pat_write_handler\n");
+#endif
     VMM_ASSERT(IA32_MSR_PAT== msr_id);
     msr_write_access_data.msr_id = msr_id;
     if (!report_uvmm_event(UVMM_EVENT_MSR_WRITE_ACCESS, 
@@ -785,6 +807,9 @@ BOOLEAN msr_lapic_base_write_handler( GUEST_CPU_HANDLE gcpu, MSR_ID msr_id,
 {
     REPORT_MSR_WRITE_ACCESS_DATA msr_write_access_data;
 
+#ifdef JLMDEBUG
+    bprint("msr_lapic_base_write_handler\n");
+#endif
     VMM_ASSERT(IA32_MSR_APIC_BASE == msr_id);
     msr_write_access_data.msr_id = msr_id;
     if (!report_uvmm_event(UVMM_EVENT_MSR_WRITE_ACCESS, 
@@ -818,7 +843,9 @@ BOOLEAN msr_feature_control_read_handler( GUEST_CPU_HANDLE gcpu,
     // IA32 spec V2, 5.3,  GETSEC[SENTER]
     // IA32_FEATURE_CONTROL is only available on SMX or VMX enabled processors
     // otherwise, it its treated as reserved.
-    VMM_LOG(mask_uvmm, level_trace,"%s: IA32_FEATURE_CONTROL is only available on SMX or VMX enabled processors.\n", __FUNCTION__);
+    VMM_LOG(mask_uvmm, level_trace,
+            "%s: IA32_FEATURE_CONTROL is only available on SMX or VMX enabled processors.\n", 
+            __FUNCTION__);
     gcpu_inject_gp0(gcpu);
     return TRUE;
 }
@@ -834,6 +861,9 @@ BOOLEAN msr_feature_control_read_handler( GUEST_CPU_HANDLE gcpu,
 BOOLEAN msr_feature_control_write_handler( GUEST_CPU_HANDLE gcpu, MSR_ID msr_id,
         UINT64 *msr_value, void *context UNUSED)
 {
+#ifdef JLMDEBUG
+    bprint("msr_feature_control_write_handler\n");
+#endif
     VMM_ASSERT(IA32_MSR_FEATURE_CONTROL == msr_id);
     // IA32 spec V2, 5.3,  GETSEC[SENTER]
     // IA32_FEATURE_CONTROL is only available on SMX or VMX enabled processors
@@ -918,6 +948,9 @@ VMEXIT_HANDLING_STATUS  msr_failed_vmenter_loading_handler(GUEST_CPU_HANDLE gcpu
 BOOLEAN vmexit_register_unregister_for_efer( GUEST_HANDLE guest, MSR_ID msr_id,
             RW_ACCESS access, BOOLEAN  reg_dereg)
 {
+#ifdef JLMDEBUG
+    bprint("vmexit_register_unregister_for_efer\n");
+#endif
     if( !is_unrestricted_guest_supported() )
         return FALSE;
     if ( (msr_id == IA32_MSR_EFER) && reg_dereg ) {

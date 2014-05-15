@@ -29,6 +29,17 @@
 
 namespace tao {
 
+bool ACLGuard::GetSubprincipalName(string *subprin) const {
+  // Use policy key as part of name
+  string key_prin;
+  if (!GetPolicyKeys()->GetPrincipalName(&key_prin)) {
+    LOG(ERROR) << "Could not get policy key principal name";
+    return false;
+  }
+  subprin->assign("ACLGuard(" + key_prin + ")");
+  return true;
+}
+
 // TODO(kwalsh) Add wildcard feature for name, op, and args.
 
 bool ACLGuard::IsMatchingEntry(const ACLEntry &entry, const string &name,

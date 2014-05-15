@@ -39,10 +39,11 @@ class ACLGuard : public TaoDomain {
 
   ACLGuard(const string &path, DictionaryValue *value)
       : TaoDomain(path, value) {}
-  virtual ~ACLGuard() {}
+
 
   /// These methods have the same semantics as in TaoGuard.
   /// @{
+  virtual bool GetSubprincipalName(string *subprin) const;
   virtual bool IsAuthorized(const string &name, const string &op,
                             const list<string> &args) const;
   virtual bool Authorize(const string &name, const string &op,

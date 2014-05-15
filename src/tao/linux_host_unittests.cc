@@ -28,6 +28,7 @@
 #include "tao/linux_admin_rpc.h"
 #include "tao/soft_tao.h"
 #include "tao/tao_test.h"
+#include "tao/trivial_guard.h"
 #include "tao/util.h"
 
 using std::string;
@@ -176,7 +177,8 @@ class LinuxHostTest : public ::testing::Test {
     ASSERT_TRUE(CreateTempDir("linux_host_test", &temp_dir_));
     tao_.reset(new SoftTao());
     ASSERT_TRUE(tao_->InitWithTemporaryKeys());
-    host_.reset(new LinuxHost(tao_.release(), *temp_dir_));
+    scoped_ptr<TaoGuard> policy(new TrivialGuard(TrivialGuard::LiberalPolicy));
+    host_.reset(new LinuxHost(tao_.release(), policy.release(), *temp_dir_));
     ASSERT_TRUE(host_->Init());
 
     listener_.reset(new thread(&LinuxHostTest::Main, this));

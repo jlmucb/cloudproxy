@@ -34,6 +34,18 @@
 
 namespace tao {
 bool LinuxHost::Init() {
+  // Before attempting to initialize keys or doing anything else, make sure the
+  // policy unique name becomes part of our name.
+  string policy_subprin;
+  if (!child_policy_->GetSubprincipalName(&policy_subprin)) {
+    LOG(ERROR) << "Could not obtain policy name";
+    return false;
+  }
+  if (!host_tao_->ExtendTaoName(policy_subprin)) {
+    LOG(ERROR) << "Could not extend with policy name";
+    return false;
+  }
+
   scoped_ptr<Keys> keys(new Keys(path_, "linux_host", Keys::Signing | Keys::Crypting));
   if (!keys->InitHosted(*host_tao_, Tao::SealPolicyDefault)) {
     LOG(ERROR) << "Could not obtain keys";
@@ -214,13 +226,12 @@ bool LinuxHost::HandleStartHostedProgram(const LinuxAdminRPCRequest &rpc,
 
   string our_name = tao_host_->TaoHostName();
 
-  VLOG(0) << "IGNORING EXECUTION POLICY...";
-  //CHECK(false);
-  // if (!child_policy_->IsAuthorizedToExecute(our_name + "::" + *child_subprin)) {
-  //     LOG(ERROR) << "Hosted program ::" << elideString(*child_subprin)
-  //                << " is not authorized to run on this Tao host";
-  //     return false;
-  // }
+  if (!child_policy_->IsAuthorized(our_name + "::" + *child_subprin, "Execute",
+                                   list<string>{})) {
+      LOG(ERROR) << "Hosted program ::" << elideString(*child_subprin)
+                 << " is not authorized to execute on this Tao host";
+      return false;
+  }
 
   LOG(INFO) << "Hosted program ::" << elideString(*child_subprin)
             << " is authorized to run on this Tao host";

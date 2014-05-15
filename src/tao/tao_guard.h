@@ -33,6 +33,10 @@ class TaoGuard {
  public:
   virtual ~TaoGuard() {}
 
+  /// Get a unique name for this policy that can be used as a subprincipal name.
+  /// @param[out] subprin The name.
+  virtual bool GetSubprincipalName(string *subprin) const = 0;
+
   /// Check whether a principal is authorized to perform an operation.
   /// @param name The name of the principal requesting the operation.
   /// @param op The name of the operation.

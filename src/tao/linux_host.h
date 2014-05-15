@@ -27,9 +27,10 @@
 #include "tao/tao_rpc.pb.h"
 #include "tao/util.h"
 
-#include "tao/tao_host.h"
 #include "tao/linux_process_factory.h"
 #include "tao/pipe_factory.h"
+#include "tao/tao_guard.h"
+#include "tao/tao_host.h"
 #include "tao/unix_socket_factory.h"
 
 namespace tao {
@@ -48,9 +49,14 @@ class LinuxHost {
   /// Construct a LinuxHost.
   /// @param host_tao The host Tao on which this environment is running.
   /// Ownership is taken.
+  /// @param policy A guard for enforcing execution policy. This policy's unique
+  /// name will become part of this tao host's name. Ownership is taken.
   /// @param path A directory for storing keys and other state.
-  LinuxHost(Tao *host_tao, const string &path)
-      : host_tao_(host_tao), path_(path), next_child_id_(0) {}
+  LinuxHost(Tao *host_tao, TaoGuard *policy, const string &path)
+      : host_tao_(host_tao),
+        path_(path),
+        next_child_id_(0),
+        child_policy_(policy) {}
 
   /// Open ports and aquire resources.
   virtual bool Init();
@@ -148,7 +154,8 @@ class LinuxHost {
 
   /// The hosted program policy agent, responsible for deciding whether a hosted
   /// program should be allowed to execute.
-  //scoped_ptr<ACLGuard> child_policy_;
+  /// TODO(kwalsh) Maybe also helps with seal/unseal policy enforcement?
+  scoped_ptr<TaoGuard> child_policy_;
 
   list<std::shared_ptr<HostedLinuxProcess>> hosted_processes_;
 

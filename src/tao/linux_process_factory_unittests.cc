@@ -34,9 +34,7 @@ using namespace tao;
 
 int doQuit() { std::cout << "Quit!\n"; return 0; }
 int doSleep() {
-  std::cout << "Sleeping...\n";
   sleep(10);
-  std::cout << "Awake!\n";
   return 0;
 }
 

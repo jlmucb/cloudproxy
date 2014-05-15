@@ -238,20 +238,17 @@ bool InitializeApp(int *argc, char ***argv, bool remove_args) {
 
 constexpr int MaxSelfPipeSignum = NSIG;
 struct SelfPipe {
+  bool open;
   int fd[2];
   struct sigaction sa;
 };
-#define SELFPIPE1 {{-1,-1}, {}}
-#define SELFPIPE4 SELFPIPE1, SELFPIPE1, SELFPIPE1, SELFPIPE1
-#define SELFPIPE16 SELFPIPE4, SELFPIPE4, SELFPIPE4, SELFPIPE4
-SelfPipe selfPipe[MaxSelfPipeSignum] = { SELFPIPE16, SELFPIPE16 };
-#undef SELFPIPE1
-#undef SELFPIPE4
-#undef SELFPIPE16
+SelfPipe selfPipe[MaxSelfPipeSignum] = { };
 static mutex selfPipeMutex;
 
 static void SelfPipeHandler(int signum) {
   if (signum <= 0 || signum > MaxSelfPipeSignum)
+    return;
+  if (!selfPipe[signum-1].open)
     return;
   int savedErrno = errno;
   char b = static_cast<char>(signum);
@@ -278,7 +275,7 @@ int GetSelfPipeSignalFd(int signum, int sa_flags) {
     return -1;
   }
   lock_guard<mutex> l(selfPipeMutex);
-  if (selfPipe[signum - 1].fd[0] != -1) {
+  if (selfPipe[signum - 1].open) {
     LOG(ERROR) << "Self-pipe already opened";
     // We could instead return the existing fd here if callers can share it.
     return -1;
@@ -304,8 +301,9 @@ int GetSelfPipeSignalFd(int signum, int sa_flags) {
     close(selfPipe[signum - 1].fd[0]);
     close(selfPipe[signum - 1].fd[1]);
     selfPipe[signum - 1].fd[0] = selfPipe[signum - 1].fd[1] = -1;
-    return false;
+    return -1;
   }
+  selfPipe[signum - 1].open = true;
   return selfPipe[signum - 1].fd[0];
 }
 
@@ -316,15 +314,18 @@ bool ReleaseSelfPipeSignalFd(int fd) {
   }
   lock_guard<mutex> l(selfPipeMutex);
   for (int signum = 1; signum <= MaxSelfPipeSignum; signum++) {
-    if (selfPipe[signum-1].fd[0] != fd) 
+    if (!selfPipe[signum-1].open || selfPipe[signum-1].fd[0] != fd) 
       continue;
+    selfPipe[signum -1].open = false;
+    bool success = true;
     if (sigaction(signum, &selfPipe[signum-1].sa, nullptr) < 0) {
-      PLOG(ERROR) << "Could not restore the old signal handler.";
+      PLOG(ERROR) << "Could not restore old handler for signal " << signum;
+      success = false;
     }
     close(selfPipe[signum-1].fd[0]);
     close(selfPipe[signum-1].fd[1]);
     selfPipe[signum-1].fd[0] = selfPipe[signum-1].fd[1] = -1;
-    return true;
+    return success;
   }
   LOG(ERROR) << "No such self-pipe fd " << fd;
   return false;

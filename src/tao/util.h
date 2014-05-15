@@ -61,7 +61,7 @@ using keyczar::base::CreateDirectory;
 using keyczar::base::DirectoryExists;
 // using keyczar::base::FilePath;  // Why isn't this in keyczar::base ?
 using keyczar::base::PathExists;
-using keyczar::base::ReadFileToString;
+// using keyczar::base::ReadFileToString; // Define our own version below.
 using keyczar::base::ScopedSafeString;
 using keyczar::base::WriteStringToFile;
 
@@ -140,6 +140,16 @@ bool Sha256(const string &s, string *hash);
 /// @param path The path of the file to hash.
 /// @param[out] hash The resulting hash.
 bool Sha256FileHash(const string &path, string *hash);
+
+/// Read contents of a file and store (not append) in string. In contrast,
+/// keyczar::base::ReadFileToString() appends the contents to the string.
+/// @param path The path to the file, can be string or FilePath.
+/// @param[out] contents The contents of the file.
+template<class T>
+bool ReadFileToString(const T &path, string *contents) {
+  contents->clear();
+  return keyczar::base::ReadFileToString(path, contents);
+}
 
 /// Register some well-known TaoChannels with the registry. The list of
 /// registered TaoChannels is:

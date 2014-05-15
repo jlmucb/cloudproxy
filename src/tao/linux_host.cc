@@ -258,14 +258,15 @@ bool LinuxHost::HandleStopHostedProgram(const LinuxAdminRPCRequest &rpc, int sig
     }
   }
   if (killed == 0 && errors == 0) {
-    LOG(ERROR) << "There are no children named ::" << child_subprin;
+    LOG(ERROR) << "There are no children named ::" << elideString(child_subprin);
     return false;
   } else if (errors > 0) {
     LOG(ERROR) << "Signaled only " << killed << " of " << (killed + errors)
                << " children matching ::" << child_subprin;
     return false;
   } else {
-    LOG(ERROR) << "Signaled " << killed << " children matching ::" << child_subprin;
+    LOG(ERROR) << "Signaled " << killed
+               << " children matching ::" << elideString(child_subprin);
     return true;
   }
 }
@@ -341,7 +342,7 @@ bool LinuxHost::HandleChildSignal() {
   }
   LOG(WARNING) << "Could not find hosted program with PID " << pid;
   for (auto &child : hosted_processes_) {
-    LOG(INFO) << "PID " << child->pid << " subprin " << child->subprin;
+    LOG(INFO) << "PID " << child->pid << " subprin " << elideString(child->subprin);
   }
   return false;
 }
@@ -460,10 +461,10 @@ bool LinuxHost::Listen() {
                  !HandleTaoRPC(child, rpc, &resp) ||
                  !child->rpc_channel->SendMessage(resp)) {
         if (eof)
-          LOG(INFO) << "Lost connection to ::" << subprin;
+          LOG(INFO) << "Lost connection to ::" << elideString(subprin);
         else
-          LOG(ERROR) << "Error handling RPC for ::" << subprin;
-        LOG(INFO) << "Closing channel for ::" << subprin;
+          LOG(ERROR) << "Error handling RPC for ::" << elideString(subprin);
+        LOG(INFO) << "Closing channel for ::" << elideString(subprin);
         child->rpc_channel->Close();
         // leave it in so StopHostedProgram or SIGCHLD can remove it
         // it = hosted_processes_.erase(it);

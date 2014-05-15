@@ -125,7 +125,7 @@ bool LinuxProcessFactory::StartHostedProgram(
     (*child)->subprin = subprin;
     (*child)->pid = child_pid;
     (*child)->rpc_channel.reset(channel_to_child.release());
-    LOG(INFO) << "Started PID " << child_pid << "for " << subprin;
+    LOG(INFO) << "Started PID " << child_pid << " for " << elideString(subprin);
     return true;
   }
 }

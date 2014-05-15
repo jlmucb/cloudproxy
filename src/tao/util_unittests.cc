@@ -29,29 +29,10 @@
 //#include "tao/tao_child_channel_registry.h"
 //#include "tao/tao_domain.h"
 
-using std::string;
-
-//using tao::CreateTempACLsDomain;
-using tao::CreateTempDir;
-//using tao::DirectTaoChildChannel;
-using tao::OpenTCPSocket;
-using tao::GetTCPSocketInfo;
-using tao::ConnectToTCPServer;
-//using tao::OpenUnixDomainSocket;
-//using tao::PipeTaoChildChannel;
-//using tao::RegisterKnownChannels;
-using tao::ScopedFd;
-using tao::ScopedTempDir;
-using tao::SoftTao;
-using tao::Statement;
-using tao::Tao;
-//using tao::TaoChildChannel;
-//using tao::TaoChildChannelParams;
-//using tao::TaoChildChannelRegistry;
-// using tao::TaoDomain;
+using namespace tao;
 
 /*
-TEST(TaoUtilTest, RegistryTest) {
+TEST(UtilTest, RegistryTest) {
   TaoChildChannelRegistry registry;
   EXPECT_TRUE(RegisterKnownChannels(&registry))
       << "Could not register known channels with the registry";
@@ -73,7 +54,7 @@ TEST(TaoUtilTest, RegistryTest) {
 }
 */
 
-TEST(TaoUtilTest, SocketTest) {
+TEST(UtilTest, SocketTest) {
   ScopedFd server_sock(new int(-1));
   ScopedFd client_sock(new int(-1));
 
@@ -90,14 +71,14 @@ TEST(TaoUtilTest, SocketTest) {
 }
 
 /*
-TEST(TaoUtilTest, CreateDomainTest) {
+TEST(UtilTest, CreateDomainTest) {
   ScopedTempDir temp_dir;
   scoped_ptr<TaoDomain> admin;
   ASSERT_TRUE(CreateTempACLsDomain(&temp_dir, &admin));
 }
 */
 
-TEST(TaoUtilTest, SealAndUnsealSecretTest) {
+TEST(UtilTest, SealAndUnsealSecretTest) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(CreateTempDir("seal_or_unseal_test", &temp_dir));
   string seal_path = *temp_dir + string("/sealed_secret");
@@ -116,33 +97,93 @@ TEST(TaoUtilTest, SealAndUnsealSecretTest) {
       << "The unsealed secret did not match the original secret";
 }
 
-/*
-TEST(TaoUtilTest, SendAndReceiveMessageTest) {
-  int fd[2];
-  EXPECT_EQ(pipe(fd), 0) << "Could not create a pipe pair";
-  ScopedFd send_fd(new int(fd[1]));
-  ScopedFd recv_fd(new int(fd[0]));
-  Statement msg;
-  msg.set_issuer("Alice");
-  msg.set_delegate("Bob");
-  msg.set_time(1);
-  msg.set_expiration(2);
-
-  EXPECT_TRUE(SendMessage(*send_fd, msg)) << "Could not send the message";
-
-  Statement received_msg;
-  bool eof = true;
-  EXPECT_TRUE(ReceiveMessage(*recv_fd, &received_msg, &eof) && !eof)
-      << "Could not receive the message";
-
-  EXPECT_EQ(received_msg.issuer(), "Alice");
-  EXPECT_EQ(received_msg.delegate(), "Bob");
-  EXPECT_EQ(received_msg.time(), 1);
-  EXPECT_EQ(received_msg.expiration(), 2);
-
-  send_fd.reset(new int(-1));
-  EXPECT_TRUE(ReceiveMessage(*recv_fd, &received_msg, &eof) && eof)
-    << "Was expecting EOF";
+void shouldNotBeNull(int *x) {
+  ASSERT_NE(x, nullptr);
+  if (x != nullptr)
+    *x += 1;
 }
-*/
+typedef scoped_ptr_malloc<int, CallUnlessNull<int, shouldNotBeNull>> ScopedIntPtr;
+
+TEST(UtilTest, CallUnlessNullTest) {
+  int x = 42, y = 123;
+  ScopedIntPtr p(&x);
+  p.release();
+  EXPECT_EQ(42, x);
+  p.reset(&x);
+  EXPECT_EQ(42, x);
+  p.reset(&y);
+  EXPECT_EQ(43, x);
+  p.reset(nullptr);
+  EXPECT_EQ(124, y);
+  p.release();
+}
+
+TEST(UtilTest, SelfPipeTest) {
+  EXPECT_TRUE(GetSelfPipeSignalFd(-1, 0 /* no flags */) < 0);
+  int fd = GetSelfPipeSignalFd(SIGUSR1, 0 /* no flags */);
+  EXPECT_TRUE(fd >= 0);
+  kill(getpid(), SIGUSR1);
+  char b;
+  EXPECT_EQ(1, read(fd, &b, 1));
+  EXPECT_EQ(SIGUSR1, unsigned(b));
+  EXPECT_TRUE(ReleaseSelfPipeSignalFd(fd));
+  EXPECT_FALSE(ReleaseSelfPipeSignalFd(0));
+}
+
+TEST(UtilTest, ShaTest) {
+  string txt = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
+  string h;
+  EXPECT_TRUE(bytesFromHex(txt, &h));
+
+  string hash;
+  EXPECT_TRUE(Sha256("hello", &hash));
+  EXPECT_EQ(h, hash);
+
+  ScopedTempDir temp_dir;
+  EXPECT_TRUE(CreateTempDir("util_test", &temp_dir));
+  EXPECT_TRUE(WriteStringToFile(*temp_dir+"/hello.txt", "hello"));
+  EXPECT_TRUE(Sha256FileHash(*temp_dir+"/hello.txt", &hash));
+  EXPECT_EQ(h, hash);
+}
+
+TEST(UtilTest, ReadWriteTest) {
+  string s;
+  string path;
+  {
+    ScopedTempDir temp_dir;
+    EXPECT_TRUE(CreateTempDir("util_test", &temp_dir));
+    path = *temp_dir + "/hello.txt";
+
+    EXPECT_TRUE(WriteStringToFile(path, "hello"));
+    EXPECT_TRUE(ReadFileToString(path, &s));
+    EXPECT_EQ("hello", s);
+
+    EXPECT_TRUE(WriteStringToFile(path, "foo"));
+    EXPECT_TRUE(ReadFileToString(path, &s));
+    EXPECT_EQ("foo", s);
+  }
+  EXPECT_FALSE(ReadFileToString(path, &s));
+}
+
+TEST(UtilTest, HexTest) {
+  string txt;
+  EXPECT_TRUE(bytesFromHex("0122f00d", &txt));
+  ASSERT_EQ(4, txt.size());
+  EXPECT_EQ(0x01, (unsigned char)(txt[0]));
+  EXPECT_EQ(0x22, (unsigned char)(txt[1]));
+  EXPECT_EQ(0xf0, (unsigned char)(txt[2]));
+  EXPECT_EQ(0x0d, (unsigned char)(txt[3]));
+
+  EXPECT_TRUE(bytesFromHex("ABCDef01", &txt));
+  ASSERT_EQ(4, txt.size());
+  EXPECT_EQ(0xab, (unsigned char)(txt[0]));
+  EXPECT_EQ(0xcd, (unsigned char)(txt[1]));
+  EXPECT_EQ(0xef, (unsigned char)(txt[2]));
+  EXPECT_EQ(0x01, (unsigned char)(txt[3]));
+
+  EXPECT_EQ("abcdef01", bytesToHex(txt));
+  EXPECT_FALSE(bytesFromHex("01234", &txt));
+  EXPECT_FALSE(bytesFromHex("01g3", &txt));
+}
+
 

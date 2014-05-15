@@ -27,32 +27,26 @@
 
 #include "tao/fd_message_channel.h"
 #include "tao/pipe_factory.h"
+#include "tao/tao_test.h"
 #include "tao/util.h"
 
 using namespace tao;
 
-// See flags definitions in tao_test.cc
-DECLARE_string(short_program);
-DECLARE_string(short_program_arg);
-DECLARE_string(long_program);
-DECLARE_string(long_program_arg);
+int doQuit() { return 0; }
+int doSleep() {
+  sleep(10);
+  return 0;
+}
 
 class LinuxProcessFactoryTest : public ::testing::Test {
  protected:
-  virtual void SetUp() {
-    path_ = FLAGS_short_program;
-	arg_ = FLAGS_short_program_arg;
-    long_path_ = FLAGS_long_program;
-    long_arg_ = FLAGS_long_program_arg;
-  }
   LinuxProcessFactory factory_;
-  string path_, arg_, long_path_, long_arg_;
 };
 
 TEST_F(LinuxProcessFactoryTest, SubprinTest) {
   string subprin0, subprin1;
-  ASSERT_TRUE(factory_.MakeHostedProgramSubprin(0, path_, &subprin0));
-  ASSERT_TRUE(factory_.MakeHostedProgramSubprin(1, path_, &subprin1));
+  ASSERT_TRUE(factory_.MakeHostedProgramSubprin(0, test_argv[0], &subprin0));
+  ASSERT_TRUE(factory_.MakeHostedProgramSubprin(1, test_argv[0], &subprin1));
   // subprin1 should include the id
   EXPECT_TRUE(subprin0.size() < subprin1.size());
 
@@ -81,8 +75,8 @@ TEST_F(LinuxProcessFactoryTest, StartTest) {
   PipeFactory pipe_factory;
   string subprin;
   scoped_ptr<HostedLinuxProcess> child;
-  ASSERT_TRUE(factory_.MakeHostedProgramSubprin(0, path_, &subprin));
-  ASSERT_TRUE(factory_.StartHostedProgram(pipe_factory, path_, list<string>{arg_},
+  ASSERT_TRUE(factory_.MakeHostedProgramSubprin(0, test_argv[0], &subprin));
+  ASSERT_TRUE(factory_.StartHostedProgram(pipe_factory, test_argv[0], list<string>{"quit"},
                                            subprin, &child));
   EXPECT_TRUE(child->pid > 0);
   EXPECT_EQ(subprin, child->subprin);
@@ -97,9 +91,9 @@ TEST_F(LinuxProcessFactoryTest, StartStopTest) {
   PipeFactory pipe_factory;
   string subprin;
   scoped_ptr<HostedLinuxProcess> child;
-  ASSERT_TRUE(factory_.MakeHostedProgramSubprin(0, long_path_, &subprin));
+  ASSERT_TRUE(factory_.MakeHostedProgramSubprin(0, test_argv[0], &subprin));
   ASSERT_TRUE(factory_.StartHostedProgram(
-      pipe_factory, long_path_, list<string>{long_arg_}, subprin, &child));
+      pipe_factory, test_argv[0], list<string>{"sleep"}, subprin, &child));
   EXPECT_TRUE(child->pid > 0);
   EXPECT_EQ(subprin, child->subprin);
   sleep(1);

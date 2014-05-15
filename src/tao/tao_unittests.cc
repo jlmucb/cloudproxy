@@ -54,14 +54,13 @@ class TaoTest : public ::testing::Test {
 typedef ::testing::Types<TPMTao, SoftTao> TaoTypes;
 TYPED_TEST_CASE(TaoTest, TaoTypes);
 
-/*
 TYPED_TEST(TaoTest, SealUnsealTest) {
   string bytes("Test bytes for sealing");
   string sealed;
   string seal_policy = Tao::SealPolicyDefault;
-  EXPECT_TRUE(tao_->Seal(bytes, seal_policy, &sealed));
+  EXPECT_TRUE(this->tao_->Seal(bytes, seal_policy, &sealed));
   string unsealed, unseal_policy;
-  EXPECT_TRUE(tao_->Unseal(sealed, &unsealed, &unseal_policy));
+  EXPECT_TRUE(this->tao_->Unseal(sealed, &unsealed, &unseal_policy));
   EXPECT_EQ(unsealed, bytes);
   EXPECT_EQ(seal_policy, unseal_policy);
 }
@@ -70,16 +69,15 @@ TYPED_TEST(TaoTest, AttestTest) {
   Statement s;
   s.set_delegate("Key(\"..stuff..\")");
   string attestation;
-  ASSERT_TRUE(tao_->Attest(s, &attestation));
+  ASSERT_TRUE(this->tao_->Attest(s, &attestation));
   Statement s2;
   ASSERT_TRUE(ValidateAttestation(attestation, &s2));
   EXPECT_EQ(s.delegate(), s2.delegate());
   string name;
-  ASSERT_TRUE(tao_->GetTaoName(&name));
+  ASSERT_TRUE(this->tao_->GetTaoName(&name));
   EXPECT_NE("", name);
   EXPECT_EQ(s2.issuer(), name);
 }
-*/
 
 TYPED_TEST(TaoTest, RandomTest) {
   string bytes;

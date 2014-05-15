@@ -20,4 +20,11 @@ inline static int evmmdebugwait(UINT64 limit)
     for(l=0; l<limit;l++);
     return l;
 }
+
+#if 1
+#ifdef JLMDEBUG
+#undef VMM_DEADLOOP
+#define VMM_DEADLOOP() {bprint("Hit Deadloop\n");LOOP_FOREVER}
+#endif
+#endif
 #endif

@@ -704,9 +704,12 @@ void vmexit_common_handler(void)
     REPORT_INITIAL_VMEXIT_CHECK_DATA initial_vmexit_check_data;
 
 #ifdef JLMDEBUG
+    int exit_reason= (int)vmexit_reason();
     bprint("vmexit_common_handler\n");
     bprint("guest rip: 0x%016llx, exit reason: 0x%016lx\n", 
-            gcpu_read_guestrip(), vmexit_reason());
+            gcpu_read_guestrip(), exit_reason);
+    if(exit_reason==0x20)
+        LOOP_FOREVER
     evmmdebugwait(SHORTLOOP);
 #endif 
     gcpu= scheduler_current_gcpu();

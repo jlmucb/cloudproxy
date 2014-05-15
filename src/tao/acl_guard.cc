@@ -1,7 +1,7 @@
 //  File: acl_guard.cc
 //  Author: Kevin Walsh <kwalsh@holycross.edu>
 //
-//  Description: Implementation of an authorization guard based on ACLs.
+//  Description: Authorization guard based on ACLs.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -16,7 +16,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "tao/acl_guard.h"
 
 #include <list>
@@ -24,20 +23,13 @@
 #include <string>
 
 #include <glog/logging.h>
-#include <keyczar/base/file_util.h>
 
 #include "tao/acl_guard.pb.h"
 #include "tao/util.h"
 
-using std::list;
-using std::string;
-
-using keyczar::base::ReadFileToString;
-using keyczar::base::WriteStringToFile;
-
 namespace tao {
 
-// TODO(kwalsh) Add wildcard "_" feature
+// TODO(kwalsh) Add wildcard feature for name, op, and args.
 
 bool ACLGuard::IsMatchingEntry(const ACLEntry &entry, const string &name,
                                const string &op,
@@ -75,7 +67,7 @@ bool ACLGuard::Authorize(const string &name, const string &op,
   return SaveConfig();
 }
 
-bool ACLGuard::Forbid(const string &name, const string &op,
+bool ACLGuard::Revoke(const string &name, const string &op,
                       const list<string> &args) {
   bool found = false;
   for (int i = aclset_.entries_size() - 1; i >= 0; i--) {
@@ -157,8 +149,8 @@ bool ACLGuard::ParseConfig() {
     return false;
   }
   // Verify its signature.
-  if (!GetPolicyKeys()->VerifySignature(sacls.serialized_aclset(),
-                                        ACLSigningContext, sacls.signature())) {
+  if (!GetPolicyKeys()->Verify(sacls.serialized_aclset(), ACLSigningContext,
+                               sacls.signature())) {
     LOG(ERROR) << "Signature did not verify on signed ACL set from " << path;
     return false;
   }
@@ -187,8 +179,8 @@ bool ACLGuard::SaveConfig() const {
     return false;
   }
   string aclset_signature;
-  if (!GetPolicyKeys()->SignData(serialized_aclset, ACLSigningContext,
-                                 &aclset_signature)) {
+  if (!GetPolicyKeys()->Sign(serialized_aclset, ACLSigningContext,
+                             &aclset_signature)) {
     LOG(ERROR) << "Can't sign ACL set";
     return false;
   }

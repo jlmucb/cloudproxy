@@ -22,23 +22,21 @@
 #include <list>
 #include <string>
 
-#include <keyczar/base/scoped_ptr.h>
-
 #include "tao/keys.h"
 #include "tao/tao_guard.h"
-
-using std::list;
-using std::string;
+#include "tao/util.h"
 
 class DictionaryValue;
 
 namespace keyczar {
-class Crypter;
 class Signer;
 class Verifier;
 }  // namespace keyczar
 
 namespace tao {
+using std::list;
+using std::string;
+
 class Attestation;
 class Keys;
 
@@ -63,7 +61,7 @@ class TaoDomain : public TaoGuard {
   /// An example json string useful for constructing domains for testing
   constexpr static auto ExampleACLGuardDomain =
       "{\n"
-      "   \"name\": \"tao example ACL-based domain\",\n"
+      "   \"name\": \"Tao example ACL-based domain\",\n"
       "\n"
       "   \"policy_keys_path\":     \"policy_keys\",\n"
       "   \"policy_x509_details\":  \"country: \\\"US\\\" state: "
@@ -77,24 +75,6 @@ class TaoDomain : public TaoGuard {
       "   \"tao_ca_host\": \"localhost\",\n"
       "   \"tao_ca_port\": \"11238\"\n"
       "}";
-
-  /// An example json string useful for constructing domains for testing
-  /* constexpr static auto ExampleRootAuthDomain =
-      "{\n"
-      "   \"name\": \"tao example root domain\",\n"
-      "\n"
-      "   \"policy_keys_path\":     \"policy_keys\",\n"
-      "   \"policy_x509_details\":  \"country: \\\"US\\\" state: "
-      "\\\"Washington\\\" organization: \\\"Google\\\" commonname: \\\"tao "
-      "example domain\\\"\",\n"
-      "   \"policy_x509_last_serial\": 0,\n"
-      "\n"
-      "   \"guard_type\": \"root\",\n"
-      "\n"
-      "   \"tao_ca_host\": \"localhost\",\n"
-      "   \"tao_ca_port\": \"11238\"\n"
-      "}";
-    */
 
   /// Name strings for name:value pairs in JSON config.
   constexpr static auto JSONName = "name";
@@ -173,30 +153,30 @@ class TaoDomain : public TaoGuard {
   /// @param key_prin A principal encoding the key to be bound.
   /// @param subprin The subprincipal part of the binding name.
   /// @param[out] attestation The signed attestation.
-  bool AttestKeyNameBinding(const string &key_prin, const string &subprin,
-                            string *attestation) const;
+  //bool AttestKeyNameBinding(const string &key_prin, const string &subprin,
+  //                          string *attestation) const;
 
   /// Authorize a program to execute with the given arguments. A pattern that
   /// matches the program's tentative name will be computed and added to the set
   /// of names authorized to execute.
   /// @param path The location of the program binary to be added.
   /// @param args A list of arguments. Arguments listed as "_" are ignored.
-  bool AuthorizeProgramToExecute(const string &path, const list<string> &args);
+  //bool AuthorizeProgramToExecute(const string &path, const list<string> &args);
 
   /// Check whether a principal is authorized to execute.
   /// @param name The tentative name of the hosted program.
-  bool IsAuthorizedToExecute(const string &name);
+  //bool IsAuthorizedToExecute(const string &name);
 
   /// Authorize a principal to claim a given subprincipal of the policy key,
   /// enabling principal to speak for that policy subprincipal.
   /// @param name The name of the principal.
   /// @param subprin A subprincipal of the policy.
-  bool AuthorizeNickname(const string &name, const string &subprin);
+  //bool AuthorizeNickname(const string &name, const string &subprin);
 
   /// Check whether a principal is authorized to claim a subprincipal name.
   /// @param name The name of a principal.
   /// @param subprin The policy subprincipal being claimed by that principal.
-  bool IsAuthorizedNickname(const string &name, const string &subprin);
+  //bool IsAuthorizedNickname(const string &name, const string &subprin);
 
   /// This function will reload the configuration from disk, effectively making
   /// a deep copy. This is useful for passing out copies of TaoGuard objects to

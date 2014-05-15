@@ -22,14 +22,11 @@
 #include <list>
 #include <string>
 
-#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <keyczar/base/values.h>
 
 #include "tao/acl_guard.pb.h"
 #include "tao/tao_domain.h"
-
-using std::list;
-using std::string;
+#include "tao/util.h"
 
 namespace tao {
 
@@ -50,7 +47,7 @@ class ACLGuard : public TaoDomain {
                             const list<string> &args) const;
   virtual bool Authorize(const string &name, const string &op,
                          const list<string> &args);
-  virtual bool Forbid(const string &name, const string &op,
+  virtual bool Revoke(const string &name, const string &op,
                       const list<string> &args);
   virtual string DebugString() const;
   /// @}

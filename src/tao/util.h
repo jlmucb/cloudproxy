@@ -68,7 +68,7 @@ using keyczar::base::WriteStringToFile;
 /// @}
 
 //class TaoChildChannelRegistry;
-// class TaoDomain;
+class TaoDomain;
 
 /// Close a file descriptor and ignore the return value. This is used by the
 /// definition of ScopedFd.
@@ -274,8 +274,7 @@ bool SendString(int fd, const string &s);
 /// guards. The policy password will be "temppass".
 /// @param[out] temp_dir The new directory.
 /// @param[out] admin The new configuration.
-//bool CreateTempACLsDomain(ScopedTempDir *temp_dir,
-//                          scoped_ptr<TaoDomain> *admin);
+bool CreateTempACLsDomain(ScopedTempDir *temp_dir, scoped_ptr<TaoDomain> *admin);
 
 /// Add double-quotes to a string, but escape any existing backslashes or
 /// double-quotes.

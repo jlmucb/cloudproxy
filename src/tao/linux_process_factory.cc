@@ -26,6 +26,7 @@
 #include <wait.h>
 
 #include <algorithm>
+#include <iostream>
 
 #include <glog/logging.h>
 
@@ -69,12 +70,11 @@ bool LinuxProcessFactory::StartHostedProgram(
   // There is a race between fork-kill and fork-exec. We currently have various
   // signal handlers installed (e.g. SIGTERM for graceful shutdown in Listen
   // loop, SIGPIPE ignored, SIGCHLD for catching child exits). These are
-  // inherited across fork. If someone
-  // calls StopHostedProgram() very soon after fork, then the kill will happen
-  // before the exec, meaning the child will accidentally (mis)handle the
-  // SIGTERM. Solution: either use vfork and rely its obscure "block until child
-  // execs" semantics, or block signals before the fork then have parent
-  // re-enable them and child clear them to defaults.
+  // inherited across fork. If someone calls StopHostedProgram() very soon after
+  // fork, then the kill will happen before the exec, meaning the child will
+  // accidentally (mis)handle the SIGTERM. Solution: either use vfork and rely
+  // its obscure "block until child execs" semantics, or block signals before
+  // the fork then have parent re-enable them and child clear them to defaults.
 
   // Block all signals.
   sigset_t old_signals, all_signals, no_signals;
@@ -94,6 +94,18 @@ bool LinuxProcessFactory::StartHostedProgram(
 
   if (child_pid == 0) {
     // Child
+
+    // Become process group leader.
+    setpgrp();
+ 
+    // Reset all signals
+    for (int signum = 1; signum <= NSIG; signum++) {
+      struct sigaction sig_act;
+      memset(&sig_act, 0, sizeof(sig_act));
+      sig_act.sa_handler = SIG_DFL;
+      sig_act.sa_flags = 0;
+      sigaction(signum, &sig_act, nullptr);
+    }
   
     // Unblock all signals.
     if (pthread_sigmask(SIG_SETMASK, &no_signals, nullptr) < 0) {
@@ -135,9 +147,6 @@ bool LinuxProcessFactory::StartHostedProgram(
       /* never reached */
     }
 
-    // Become process group leader.
-    setpgrp();
-
     int rv = execv(path.c_str(), argv);
     if (rv == -1) {
       PLOG(ERROR) << "Could not exec " << path;
@@ -170,13 +179,30 @@ bool LinuxProcessFactory::StopHostedProgram(HostedLinuxProcess *child,
                                             int signum) const {
   if (child->pid <= 0)
     return false;  // already dead or invalid PID
-  if (kill(-1 * child->pid, signum) < 0) {
+  // There is a race between fork-kill and fork-setpgrp. After fork, if we try
+  // to kill the entire child group, the child may not yet have called setpgrp.
+  // So we first kill the child individually. If it has not called setpgrp, then
+  // we are done. Otherwise there may still be descendents that need to be
+  // killed. So in both cases, we next kill the group. If there are no
+  // descendents, then no harm is done.
+  //
+  // Note: There is no race between exit and kill, since PIDs will not be reused
+  // before we do waitpid, which zeros out the child pid, or before all
+  // group members have exited.
+  bool success = true;
+  if (kill(child->pid, signum) < 0) {
     PLOG(ERROR) << "Could not stop hosted program with PID " << child->pid;
-    return false;
+    success = false;
+  } else {
+    LOG(INFO) << "Sent signal " << signum << " to hosted program with PID "
+              << child->pid;
   }
-  LOG(INFO) << "Sent signal " << signum << " to hosted program with PID "
-            << child->pid;
-  return true;
+  if (kill(-1 * child->pid, signum) < 0) {
+    LOG(INFO) << "No group members killed for PID " << child->pid;
+  } else {
+    LOG(INFO) << "Group members also killed for PID " << child->pid;
+  }
+  return success;
 }
 
 int LinuxProcessFactory::WaitForHostedProgram() const {

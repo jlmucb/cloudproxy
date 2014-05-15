@@ -54,7 +54,7 @@
 #include "tao/signature.pb.h"
 //#include "tao/tao_child_channel.h"
 //#include "tao/tao_child_channel_registry.h"
-//#include "tao/tao_domain.h"
+#include "tao/tao_domain.h"
 
 using std::lock_guard;
 using std::mutex;
@@ -236,7 +236,7 @@ bool InitializeApp(int *argc, char ***argv, bool remove_args) {
   return InitializeOpenSSL();
 }
 
-static constexpr int MaxSelfPipeSignum = 32;
+constexpr int MaxSelfPipeSignum = NSIG;
 struct SelfPipe {
   int fd[2];
   struct sigaction sa;
@@ -470,7 +470,6 @@ bool CreateTempDir(const string &prefix, ScopedTempDir *dir) {
   return true;
 }
 
-/*
 bool CreateTempACLsDomain(ScopedTempDir *temp_dir,
                           scoped_ptr<TaoDomain> *admin) {
   // lax log messages: this is a top level function only used for unit testing
@@ -478,10 +477,8 @@ bool CreateTempACLsDomain(ScopedTempDir *temp_dir,
   string path = **temp_dir + "/tao.config";
   string config = TaoDomain::ExampleACLGuardDomain;
   admin->reset(TaoDomain::Create(config, path, "temppass"));
-  if (admin->get() == nullptr) return false;
-  return true;
+  return (admin->get() != nullptr);
 }
-*/
 
 /* bool CreateTempRootDomain(ScopedTempDir *temp_dir,
                           scoped_ptr<TaoDomain> *admin) {

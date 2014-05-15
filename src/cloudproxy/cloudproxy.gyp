@@ -40,7 +40,6 @@
 			'dependencies' : [
 				'cloudproxy',
 				'../tao/tao.gyp:tao',
-				'../tao/tao.gyp:tao_test_utilities',
 				'../third_party/googlemock/gmock.gyp:gmock',
 				'../third_party/googlemock/gtest/gtest.gyp:gtest',
 			],

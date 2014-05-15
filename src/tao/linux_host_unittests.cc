@@ -143,9 +143,9 @@ string doAttest(Tao *tao) {
 }
 
 int doHosted() {
+  tao::InitializeApp(&test_argc, &test_argv, true);
   string op = test_argv[2];
   string tempfile = test_argv[3];
-  // tao::InitializeApp(&test_argc, &test_argv, true);
   string result;
   Tao *tao = Tao::GetHostTao();
   if (tao == nullptr)
@@ -208,6 +208,7 @@ TEST_F(LinuxHostTest, StartStopTest) {
   EXPECT_TRUE(admin_->StartHostedProgram(test_argv[0], list<string>{"sleep"}, &name));
   EXPECT_NE("", name);
   EXPECT_TRUE(admin_->StopHostedProgram(name));
+  sleep(1); // Wait for it to be completely dead (SIGCHLD is asyncrhonous).
   EXPECT_FALSE(admin_->StopHostedProgram(name));
   EXPECT_FALSE(admin_->StopHostedProgram("nobody"));
 }

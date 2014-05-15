@@ -66,13 +66,41 @@ bool LinuxProcessFactory::StartHostedProgram(
   child_channel_params = "tao::TaoRPC+" + child_channel_params;
   VLOG(0) << "Channel to parent is: " << child_channel_params;
 
+  // There is a race between fork-kill and fork-exec. We currently have various
+  // signal handlers installed (e.g. SIGTERM for graceful shutdown in Listen
+  // loop, SIGPIPE ignored, SIGCHLD for catching child exits). These are
+  // inherited across fork. If someone
+  // calls StopHostedProgram() very soon after fork, then the kill will happen
+  // before the exec, meaning the child will accidentally (mis)handle the
+  // SIGTERM. Solution: either use vfork and rely its obscure "block until child
+  // execs" semantics, or block signals before the fork then have parent
+  // re-enable them and child clear them to defaults.
+
+  // Block all signals.
+  sigset_t old_signals, all_signals, no_signals;
+  sigfillset(&all_signals);
+  sigemptyset(&no_signals);
+  if (pthread_sigmask(SIG_SETMASK, &all_signals, &old_signals) < 0) {
+    LOG(ERROR) << "Could not block signals";
+    return false;
+  }
+
   int child_pid = fork();
   if (child_pid == -1) {
+    pthread_sigmask(SIG_SETMASK, &old_signals, nullptr);
     LOG(ERROR) << "Could not fork hosted program";
     return false;
   }
 
   if (child_pid == 0) {
+    // Child
+  
+    // Unblock all signals.
+    if (pthread_sigmask(SIG_SETMASK, &no_signals, nullptr) < 0) {
+      LOG(ERROR) << "Could not unblock signals";
+      exit(1);
+    }
+
     int argc = 1 + (int)args.size(); // 1+ for path at start
     char **argv = new char *[argc + 1];  // +1 for null at end
     int i = 0;
@@ -119,6 +147,14 @@ bool LinuxProcessFactory::StartHostedProgram(
     CHECK(false);
     return false;
   } else {
+    // Parent
+    
+    // Unblock old signals.
+    if (pthread_sigmask(SIG_SETMASK, &old_signals, nullptr) < 0) {
+      LOG(ERROR) << "Could not unblock signals";
+      exit(1);
+    }
+
     channel_to_parent->Close();
 
     child->reset(new HostedLinuxProcess);

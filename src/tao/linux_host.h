@@ -50,7 +50,7 @@ class LinuxHost {
   /// Ownership is taken.
   /// @param path A directory for storing keys and other state.
   LinuxHost(Tao *host_tao, const string &path)
-      : host_tao_(host_tao), path_(path) {}
+      : host_tao_(host_tao), path_(path), next_child_id_(0) {}
 
   /// Open ports and aquire resources.
   virtual bool Init();

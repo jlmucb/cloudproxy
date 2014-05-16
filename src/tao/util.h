@@ -64,6 +64,7 @@ using keyczar::base::PathExists;
 // using keyczar::base::ReadFileToString; // Define our own version below.
 using keyczar::base::ScopedSafeString;
 using keyczar::base::WriteStringToFile;
+using keyczar::base::Delete;
 
 /// @}
 

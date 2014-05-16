@@ -1,4 +1,4 @@
-//  File: make_aik.cc
+//  File: tpm_tao.cc
 //  Author: Tom Roeder <tmroeder@google.com>
 //
 //  Description: Administration tool for TPMTao.
@@ -29,24 +29,34 @@
 using std::list;
 using std::string;
 
-using tao::Tao;
-using tao::TPMTao;
-using tao::WriteStringToFile;
+using tao::CreateDirectory;
+using tao::DirectoryExists;
 using tao::ReadFileToString;
-using tao::split;
+using tao::TPMTao;
+using tao::Tao;
+using tao::WriteStringToFile;
 using tao::join;
+using tao::split;
 
-DEFINE_string(tao_path, "tpm", "A path in which to store TPMTao AIK and settings");
+DEFINE_string(tao_path, "tpm",
+              "A path in which to store TPMTao AIK and settings.");
 DEFINE_string(pcrs, "17, 18", "A comma-separated list of PCR numbers to use.");
 DEFINE_bool(create, false, "Create a new TPMTao AIK and settings.");
-DEFINE_bool(show, false, "(default) Show the current TPMTao AIK and settings.");
+DEFINE_bool(show, true, "Show the current TPMTao AIK and settings.");
 
 int main(int argc, char **argv) {
+  string usage = "Administrative utility for TPMTao.\nUsage:\n  ";
+  google::SetUsageMessage(usage + argv[0] + " [options]");
   tao::InitializeApp(&argc, &argv, true);
+
+  string path = FLAGS_tao_path;
 
   scoped_ptr<TPMTao> tao;
 
   if (FLAGS_create) {
+    CHECK(!DirectoryExists(FilePath(path)));
+    CHECK(CreateDirectory(FilePath(path)));
+
     list<int> pcrs;
     CHECK(split(FLAGS_pcrs, ",", &pcrs));
 
@@ -57,12 +67,12 @@ int main(int argc, char **argv) {
     CHECK(tao->CreateAIK(&aik_blob));
     printf("# Done!\n");
 
-    CHECK(WriteStringToFile(FLAGS_tao_path + "/aikblob", aik_blob));
-    CHECK(WriteStringToFile(FLAGS_tao_path + "/pcrlist", join(pcrs, ", ")));
+    CHECK(WriteStringToFile(path + "/aikblob", aik_blob));
+    CHECK(WriteStringToFile(path + "/pcrlist", join(pcrs, ", ")));
   } else {
     string aik_blob, pcr_list;
-    CHECK(ReadFileToString(FLAGS_tao_path + "/aikblob", &aik_blob));
-    CHECK(ReadFileToString(FLAGS_tao_path + "/pcrlist", &pcr_list));
+    CHECK(ReadFileToString(path + "/aikblob", &aik_blob));
+    CHECK(ReadFileToString(path + "/pcrlist", &pcr_list));
 
     list<int> pcrs;
     CHECK(split(pcr_list, ",", &pcrs));
@@ -74,15 +84,17 @@ int main(int argc, char **argv) {
   string ser1;
   CHECK(tao->SerializeToString(&ser1));
   string ser2;
-  CHECK(tao->SerializeToStringWithFile(FLAGS_tao_path + "/aikblob", &ser2));
+  CHECK(tao->SerializeToStringWithFile(path + "/aikblob", &ser2));
   string ser3;
-  CHECK(tao->SerializeToStringWithDirectory(FLAGS_tao_path, &ser3));
+  CHECK(tao->SerializeToStringWithDirectory(path, &ser3));
 
-  printf("# TPMTao AIK and settings are in: %s/*\n", FLAGS_tao_path.c_str());
-  printf("# Use any of these:\n");
-  printf("export %s='%s'\n", Tao::HostTaoEnvVar, ser1.c_str());
-  printf("export %s='%s'\n", Tao::HostTaoEnvVar, ser2.c_str());
-  printf("export %s='%s'\n", Tao::HostTaoEnvVar, ser3.c_str());
+  if (FLAGS_show) {
+    printf("# TPMTao AIK and settings are in: %s/*\n", path.c_str());
+    printf("# Use any of these:\n");
+    printf("export %s='%s'\n", Tao::HostTaoEnvVar, ser1.c_str());
+    printf("export %s='%s'\n", Tao::HostTaoEnvVar, ser2.c_str());
+    printf("export %s='%s'\n", Tao::HostTaoEnvVar, ser3.c_str());
+  }
 
   return 0;
 }

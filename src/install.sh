@@ -124,7 +124,7 @@ Typical next steps:
   ./scripts/test.sh fserver   # Run fserver test.
   ./scripts/stop.sh           # Kill all Tao programs.
   ./scripts/refresh.sh        # Refresh hashes, ACLs, etc.
-Run $test_dir/scripts/help.sh for more info."
+Run $test_dir/scripts/help.sh for more info.
 END
 fi
 exit 0
@@ -157,6 +157,8 @@ WATCHFILES="bin/tcca bin/linux_tao whitelist tao.config"
 ADMIN_ARGS="-config_path tao.config -policy_pass $PASS -alsologtostderr=1"
 admin="bin/tao_admin $ADMIN_ARGS"
 start_hosted="bin/start_hosted_program -program"
+tpm_tao="bin/tpm_tao -alsologtostderr=1"
+soft_tao="bin/soft_tao -alsologtostderr=1"
 
 function extract_pid()
 {
@@ -225,25 +227,24 @@ function setup()
 	$admin -init ${ROOT}/run/tao-default.config -name testing 
 	if [ "$USE_TPM" == "yes" ]; then
 		echo "Creating TPMTao AIK and settings."
-		mkdir -p tpm
-		bin/tpm_tao -alsologtostderr=1 --tao_path tpm --pcrs=$TPM_PCRS --create
-		bin/tpm_tao -alsologtostderr=1 --aik_blob_file tpm/aikblob --print
-		export GOOGLE_HOST_TAO=`bin/read_aik --aik_blob_file tpm/aikblob --pcrs="17, 18"`
-		echo 'export GOOGLE_HOST_TAO=$GOOGLE_HOST_TAO'
+		rm -rf tpm
+		$tpm_tao --tao_path tpm --pcrs=$TPM_PCRS --create | tee /tmp/tao_env
+		source /tmp/tao_env
 	else
 		echo "Creating SoftTao key and settings."
-		$admin -make_fake_tpm fake_tpm
-		$admin -whitelist "FAKE_TPM:FAKE_HASH:BogusTPM"
-		# fixme: this should be FAKE_HASH, not SHA256, but the channels
-		# don't yet support hash_alg parameter
-		$admin -whitelist "FAKE_PCRS:SHA256:Linux"
+		rm -rf soft_tao
+		$tpm_tao --tao_path soft_tao --pass=$PASS --create | tee /tmp/tao_env
+		source /tmp/tao_env
 	fi
-	$admin -whitelist ${HOSTED_PROGRAMS// /,}
-	$admin -newusers tmroeder,jlm
-	$admin -signacl ${ROOT}/run/acls.ascii -acl_sig_path acls_sig
-	mkdir -p file_client_files
-	mkdir -p file_server_files
-	mkdir -p file_server_meta
+	rm -f /tmp/tao_env
+
+	# TODO(kwalsh) set up ACLs here
+	#$admin -whitelist ${HOSTED_PROGRAMS// /,}
+	#$admin -newusers tmroeder,jlm
+	#$admin -signacl ${ROOT}/run/acls.ascii -acl_sig_path acls_sig
+	#mkdir -p file_client_files
+	#mkdir -p file_server_files
+	#mkdir -p file_server_meta
 	echo "Tao configuration is ready"
 }
 

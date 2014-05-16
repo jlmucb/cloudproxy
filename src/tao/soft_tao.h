@@ -42,9 +42,12 @@ class SoftTao : public Tao {
 
   virtual bool Init();
 
-  // SoftTao can't be serialized because we don't keep the key password. 
+  // Serializing all the keys in one large blob is inconvenient...
   // virtual bool SerializeToString(string *params) const;
- 
+  virtual bool SerializeToStringWithDirectory(const string &path,
+                                              const string &pass,
+                                              string *params) const;
+
   // Deserialize a string of the form "tao::SoftTao(path, passwd)".
   static SoftTao *DeserializeFromString(const string &params);
 

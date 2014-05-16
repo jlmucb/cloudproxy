@@ -107,6 +107,16 @@ bool SoftTao::Unseal(const string &sealed, string *data, string *policy) const {
   return true;
 }
 
+bool SoftTao::SerializeToStringWithDirectory(const string &path, const string &pass, string *params) const {
+  stringstream out;
+  out << "tao::TPMTao(";
+  out << quotedString(path);
+  out << ", ";
+  out << quotedString(pass);
+  out << ")";
+  params->assign(out.str());
+  return true;
+}
 
 SoftTao *SoftTao::DeserializeFromString(const string &params) {
   stringstream in(params);

@@ -38,7 +38,7 @@ using tao::WriteStringToFile;
 using tao::join;
 using tao::split;
 
-DEFINE_string(tao_path, "tpm",
+DEFINE_string(path, "tpm",
               "A path in which to store TPMTao AIK and settings.");
 DEFINE_string(pcrs, "17, 18", "A comma-separated list of PCR numbers to use.");
 DEFINE_bool(create, false, "Create a new TPMTao AIK and settings.");
@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
   google::SetUsageMessage(usage + argv[0] + " [options]");
   tao::InitializeApp(&argc, &argv, true);
 
-  string path = FLAGS_tao_path;
+  string path = FLAGS_path;
 
   scoped_ptr<TPMTao> tao;
 
@@ -63,12 +63,12 @@ int main(int argc, char **argv) {
     tao.reset(new TPMTao(pcrs));
     CHECK(tao->Init());
     string aik_blob;
-    printf("# Creating new TPMTao AIK...\n");
+    printf("Creating new TPMTao AIK...\n");
     CHECK(tao->CreateAIK(&aik_blob));
-    printf("# Done!\n");
 
     CHECK(WriteStringToFile(path + "/aikblob", aik_blob));
     CHECK(WriteStringToFile(path + "/pcrlist", join(pcrs, ", ")));
+    printf("TPMTao AIK and settings are in: %s/*\n", path.c_str());
   } else {
     string aik_blob, pcr_list;
     CHECK(ReadFileToString(path + "/aikblob", &aik_blob));
@@ -81,19 +81,17 @@ int main(int argc, char **argv) {
     // CHECK(tao.Init());  // not necessary for just serializing
   }
 
-  string ser1;
-  CHECK(tao->SerializeToString(&ser1));
-  string ser2;
-  CHECK(tao->SerializeToStringWithFile(path + "/aikblob", &ser2));
-  string ser3;
-  CHECK(tao->SerializeToStringWithDirectory(path, &ser3));
-
   if (FLAGS_show) {
-    printf("# TPMTao AIK and settings are in: %s/*\n", path.c_str());
-    printf("# Use any of these:\n");
-    printf("export %s='%s'\n", Tao::HostTaoEnvVar, ser1.c_str());
-    printf("export %s='%s'\n", Tao::HostTaoEnvVar, ser2.c_str());
-    printf("export %s='%s'\n", Tao::HostTaoEnvVar, ser3.c_str());
+    string ser1;
+    CHECK(tao->SerializeToString(&ser1));
+    string ser2;
+    CHECK(tao->SerializeToStringWithFile(path + "/aikblob", &ser2));
+    string ser3;
+    CHECK(tao->SerializeToStringWithDirectory(path, &ser3));
+
+    printf("export %s='%s';\n", Tao::HostTaoEnvVar, ser1.c_str());
+    printf("export %s='%s';\n", Tao::HostTaoEnvVar, ser2.c_str());
+    printf("export %s='%s';\n", Tao::HostTaoEnvVar, ser3.c_str());
   }
 
   return 0;

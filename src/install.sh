@@ -15,12 +15,12 @@
 
 # Multi-purpose script for setting up and running tao and cloudproxy tests.
 #
-# Before using this script, you must have built everything in ROOT/src:
-#    cd $ROOT/src && \
+# Before using this script, you must have built everything in $TAO_ROOT/src:
+#    cd $TAO_ROOT/src && \
 #    ./build/bootstrap.sh && \
 #    ./third_party/ninja/ninja -C out/Debug
 # If you wish to use the TPM, you must have also followed the directions in
-# $ROOT/Doc/SetupTPM.txt to take ownership of the TPM.
+# $TAO_ROOT/Doc/SetupTPM.txt to take ownership of the TPM.
 
 set -e # quit script on first error
 
@@ -90,7 +90,7 @@ if [ ! -f "$root_dir/src/install.sh" -o ! -d "$test_dir" ]; then
 	exit 1
 fi
 mkdir -p "$test_dir/scripts"
-scripts="setup.sh env.sh start.sh restart.sh monitor.sh test.sh refresh.sh
+scripts="setup.sh start.sh restart.sh monitor.sh test.sh refresh.sh
 stop.sh clean.sh hash.sh"
 rm -f "$test_dir/scripts/tao.sh"
 sed '/^#INSTALL BEGIN/,/^#INSTALL END/d' "$root_dir/src/install.sh" \
@@ -98,11 +98,8 @@ sed '/^#INSTALL BEGIN/,/^#INSTALL END/d' "$root_dir/src/install.sh" \
 chmod +x "$test_dir/scripts/tao.sh"
 	
 cd "$test_dir/scripts/"
-perl -p -i -e "s|^export TAO_VERSION=.*\$|export TAO_VERSION="\""$test_ver"\""|" tao.sh
-perl -p -i -e "s|^export ROOT=.*\$|export ROOT="\""$root_dir"\""|" tao.sh
-perl -p -i -e "s|^export TEST=.*\$|export TEST="\""$test_dir"\""|" tao.sh
-perl -p -i -e "s|^export USE_TPM=.*\$|export USE_TPM="\""$test_tpm"\""|" tao.sh
-for script in "setup.sh" "env.sh" "start.sh" "restart.sh" "monitor.sh" \
+perl -p -i -e "s|^export TAO_TEST=.*\$|export TAO_TEST="\""$test_dir"\""|" tao.sh
+for script in "setup.sh" "start.sh" "restart.sh" "monitor.sh" \
 	"test.sh" "refresh.sh" "stop.sh" "clean.sh" "hash.sh" "help.sh"; do
 	rm -f $script
 	ln -s tao.sh $script
@@ -111,12 +108,42 @@ cd "$test_dir"
 rm -f bin
 ln -s $root_dir/src/out/$test_ver/bin bin
 mkdir -p logs
+
+cat <<END > "$test_dir/tao.env"
+# Tao/CloudProxy environment variables"
+# export TAO_TEST="$test_dir" # Hardcoded into $test_dir/scripts/*.sh
+
+export TAO_ROOT="$root_dir"
+export TAO_VERSION="$test_ver"
+export TAO_USE_TPM="$test_tpm"
+export TAO_BUILD="\${TAO_ROOT}/src/out/\${TAO_VERSION}/bin"
+export TAO_PASS="BogusPass"
+export TAO_TPM_PCRS="17, 18"
+export GLOG_v=2
+export GLOG_logtostderr="no"
+export GLOG_alsologtostderr="no"
+export GLOG_stderrthreshold=3 # Only log FATAL to stderr.
+export GLOG_log_dir="\${TAO_TEST}/logs"
+
+export TAO_HOSTED_PROGRAMS="
+\${TAO_BUILD}/client 
+\${TAO_BUILD}/server 
+\${TAO_BUILD}/fclient 
+\${TAO_BUILD}/fserver 
+\${TAO_BUILD}/http_echo_server 
+\${TAO_BUILD}/https_echo_server 
+"
+
+export GOOGLE_HOST_TAO="" # Use $test_dir/scripts/setup.sh to make this.
+END
+
 if [ "$verbose" == "yes" ]; then
 	cat <<END
 Done installing. 
   $test_dir/bin               # Link to out/$test_ver/bin.
   $test_dir/logs              # Log files.
   $test_dir/scripts           # Useful scripts.
+  $test_dir/tao.env           # Environment variables.
 Typical next steps:
   cd $test_dir/
   ./scripts/setup.sh          # Create keys, hashes, ACLs, etc.
@@ -127,35 +154,20 @@ Typical next steps:
 Run $test_dir/scripts/help.sh for more info.
 END
 fi
+
 exit 0
 #INSTALL END
 
-export TAO_VERSION=undef # replaced with "Debug" or "Release" by install.sh
-export ROOT=undef # replaced with path to root dir by install.sh
-export TEST=undef # replaced with path to test dir by install.sh
-export USE_TPM=undef # replaced with "yes" or "no" by install.sh
+export TAO_TEST=undef # replaced with path to test dir by install.sh
+source $TAO_TEST/tao.env
 
-export BUILD=${ROOT}/src/out/${TAO_VERSION}/bin
-export PASS=cppolicy # policy password
+TAO_PROGRAMS=$(cd $TAO_TEST/bin; echo * | grep -v '\.a$')
 
-export GLOG_v=2
-export GLOG_logtostderr=no
-export GLOG_alsologtostderr=no
-export GLOG_stderrthreshold=3  # only log FATAL to stderr
-export GLOG_log_dir=${TEST}/logs
-
-#export HOSTED_PROGRAMS=$(echo ${BUILD}/*)
-HOSTED_PROGRAMS=$(echo ${BUILD}/{client,server,fclient,fserver})
-HOSTED_PROGRAMS=$HOSTED_PROGRAMS,${BUILD}/http_echo_server
-HOSTED_PROGRAMS=$HOSTED_PROGRAMS,${BUILD}/https_echo_server
-TPM_PCRS="17, 18"
-TAO_PROGRAMS=$(cd $TEST/bin; echo * | grep -v '\.a$')
-
-WATCHFILES="bin/tcca bin/linux_tao whitelist tao.config"
+WATCHFILES="bin/tcca bin/linux_tao domain_acls tao.config tao.env"
 
 # log a to stderr for admin stuff, otherwise it is really quiet
-ADMIN_ARGS="-config_path tao.config -policy_pass $PASS -alsologtostderr=1"
-admin="bin/tao_admin $ADMIN_ARGS"
+admin_args="-config_path tao.config -policy_pass $TAO_PASS -alsologtostderr=1"
+admin="bin/tao_admin $admin_args"
 start_hosted="bin/start_hosted_program -program"
 tpm_tao="bin/tpm_tao -alsologtostderr=1"
 soft_tao="bin/soft_tao -alsologtostderr=1"
@@ -167,7 +179,7 @@ function extract_pid()
 	echo "$pid"
 }
 
-cd $TEST
+cd $TAO_TEST
 
 # return at most the first 15 chars of argument
 # suitable for pgrep -x or pkill -x
@@ -180,28 +192,24 @@ function shortname()
 
 function showenv()
 {
-	echo "# Tao/CloudProxy environment variables"
-	echo export ROOT=\"$ROOT\"
-	echo export BUILD=\"$BUILD\"
-	echo export TEST=\"$TEST\"
-	echo export PASS=\"$PASS\"
-	echo export GLOG_v=\"$GLOG_v\"
-	echo export GLOG_logtostderr=\"$GLOG_logtostderr\"
-	echo export GLOG_alsologtostderr=\"$GLOG_alsologtostderr\"
-	echo export GLOG_stderrthreshold=\"$GLOG_stderrthreshold\"
-	echo export GLOG_log_dir=\"$GLOG_log_dir\"
-	echo export HOSTED_PROGRAMS=\"$HOSTED_PROGRAMS\"
+	cat tao.env
 }
 
 function cleanup()
 {
-	rm -f ${TEST}/logs/*
-	rm -rf ${TEST}/{*keys,tpm,fake_tpm,whitelist,tao.config,acls_sig}
+	rm -f ${TAO_TEST}/logs/*
+	rm -rf ${TAO_TEST}/{*keys,tpm,fake_tpm,whitelist,tao.config,acls_sig}
 	echo "Cleared all Tao configuration data"
 }
 
 function stoptests()
 {
+	echo "Attempting graceful shutdown..."
+	# Try graceful shutdown
+	(bin/shutdown_linux_tao 2>/dev/null | grep -v "^Aborted$") || true
+	sleep 1
+
+	# Try to shutdown 
 	killed=0
 	for prog in $TAO_PROGRAMS; do
 		if pgrep -lx `shortname "$prog"`; then
@@ -211,9 +219,9 @@ function stoptests()
 	done
 	if [ $killed -eq 1 ]; then
 		sleep 1
-		echo "Killed all Tao services and processes"
+		echo "Attempted to kill remaining Tao services and processes"
 	else
-		echo "No running Tao services or processes"
+		echo "No Tao services or processes remaining"
 	fi
 	rm -f *_socket */*_socket
 }
@@ -221,27 +229,29 @@ function stoptests()
 function setup()
 {
 	rm -f bin
-	ln -s ${BUILD} bin
+	ln -s ${TAO_BUILD} bin
 	mkdir -p logs
 
-	$admin -init ${ROOT}/run/tao-default.config -name testing 
-	if [ "$USE_TPM" == "yes" ]; then
+	$admin -init ${TAO_ROOT}/run/tao-default.config -name testing 
+	grep -v "^export GOOGLE_HOST_TAO" tao.env >/tmp/tao_env
+	if [ "$TAO_USE_TPM" == "yes" ]; then
 		echo "Creating TPMTao AIK and settings."
 		rm -rf tpm
-		$tpm_tao --tao_path tpm --pcrs=$TPM_PCRS --create | tee /tmp/tao_env
+		$tpm_tao --path tpm --pcrs=$TAO_TPM_PCRS --create --noshow
+		$tpm_tao --path tpm --show >> /tmp/tao_env
 		source /tmp/tao_env
 	else
 		echo "Creating SoftTao key and settings."
 		rm -rf soft_tao
-		$tpm_tao --tao_path soft_tao --pass=$PASS --create | tee /tmp/tao_env
-		source /tmp/tao_env
+		$soft_tao --path soft_tao --pass=$TAO_PASS --create --noshow
+		$soft_tao --path soft_tao --pass=$TAO_PASS --show >> /tmp/tao_env
 	fi
-	rm -f /tmp/tao_env
+	mv /tmp/tao_env tao.env
 
 	# TODO(kwalsh) set up ACLs here
-	#$admin -whitelist ${HOSTED_PROGRAMS// /,}
+	#$admin -whitelist ${TAO_HOSTED_PROGRAMS// /,}
 	#$admin -newusers tmroeder,jlm
-	#$admin -signacl ${ROOT}/run/acls.ascii -acl_sig_path acls_sig
+	#$admin -signacl ${TAO_ROOT}/run/acls.ascii -acl_sig_path acls_sig
 	#mkdir -p file_client_files
 	#mkdir -p file_server_files
 	#mkdir -p file_server_meta
@@ -250,28 +260,24 @@ function setup()
 
 function refresh()
 {
-	$admin -refresh -whitelist ${HOSTED_PROGRAMS// /,}
+	$admin -refresh -whitelist ${TAO_HOSTED_PROGRAMS// /,}
 }
 
 function startsvcs()
 {
-	if pgrep -x `shortname tcca` >/dev/null; then
-		echo "TCCA service already running";
-	else
-		bin/tcca $ADMIN_ARGS &
-		sleep 1
-		echo "TCCA service now running"
-	fi
+	# TODO(kwalsh) tcca
+	# if pgrep -x `shortname tcca` >/dev/null; then
+	# 	echo "TCCA service already running";
+	# else
+	# 	bin/tcca $admin_args &
+	# 	sleep 1
+	# 	echo "TCCA service now running"
+	# fi
 
 	if pgrep -x `shortname linux_tao` >/dev/null; then
-		echo "LinuxTao service already running";
+		echo "LinuxHost service already running";
 	else
-		if [ "$USE_TPM" == "yes" ]; then
-			bin/linux_tao &
-		else
-			bin/linux_tao -nouse_tpm &
-		fi
-		sleep 1
+		bin/linux_tao &
 		echo "LinuxTao service now running"
 	fi
 }
@@ -297,16 +303,19 @@ function monitor()
 function gethash()
 {
 	cat "$1" | sha256sum | cut -d' ' -f1 | xxd -r -ps | base64 | tr '/+' '_-' | tr -d '=' 
+	if [ "${PIPESTATUS[0]}" != 0 ]; then false; fi
 }
 
 function base64wdecode()
 {
 	cat "$1" | tr "_-" "/+" | base64 -d
+	if [ "${PIPESTATUS[0]}" != 0 ]; then false; fi
 }
 
 function base64wencode()
 {
 	cat "$1" | base64 | tr '/+' '_-' | tr -d '=' 
+	if [ "${PIPESTATUS[0]}" != 0 ]; then false; fi
 }
 
 function testpgm()
@@ -417,9 +426,6 @@ case "$(basename $0)" in
 		cleanup
 		setup
 		;;
-	env.sh)
-		showenv
-		;;
 	start.sh)
 		startsvcs
 		;;
@@ -468,9 +474,8 @@ case "$(basename $0)" in
 		;;
 	help|*)
 		cat <<END
-Scripts in $TEST/scripts:
+Scripts in $TAO_TEST/scripts:
   setup.sh               # Re-initialize all keys, whitelists, configuration, etc.
-  env.sh                 # Show environment variables.
   start.sh               # Start Tao services.
   restart.sh             # Restart Tao services.
   monitor.sh             # Watch binaries and restart Tao services as needed.

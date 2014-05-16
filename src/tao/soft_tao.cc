@@ -109,7 +109,7 @@ bool SoftTao::Unseal(const string &sealed, string *data, string *policy) const {
 
 bool SoftTao::SerializeToStringWithDirectory(const string &path, const string &pass, string *params) const {
   stringstream out;
-  out << "tao::TPMTao(";
+  out << "tao::SoftTao(";
   out << quotedString(path);
   out << ", ";
   out << quotedString(pass);
@@ -122,10 +122,10 @@ SoftTao *SoftTao::DeserializeFromString(const string &params) {
   stringstream in(params);
   skip(in, "tao::SoftTao(");
   if (!in) return nullptr;  // not for us
-  string path, passwd;
+  string path, pass;
   getQuotedString(in, &path);
   skip(in, ", ");
-  getQuotedString(in, &passwd);
+  getQuotedString(in, &pass);
   skip(in, ")");
   if (!in || (in.get() && !in.eof())) {
     LOG(ERROR) << "Could not deserialize SoftTao";
@@ -133,7 +133,7 @@ SoftTao *SoftTao::DeserializeFromString(const string &params) {
   }
   string nickname = FilePath(path).BaseName().value();
   scoped_ptr<Keys> keys(new Keys(path, nickname, Keys::Signing | Keys::Crypting));
-  if (!keys->InitNonHosted(passwd)) {
+  if (!keys->InitNonHosted(pass)) {
     LOG(ERROR) << "Could not load keys for SoftTao";
     return nullptr;
   }

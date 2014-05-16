@@ -36,7 +36,7 @@ using tao::SoftTao;
 using tao::Tao;
 using tao::WriteStringToFile;
 
-DEFINE_string(tao_path, "soft_tao",
+DEFINE_string(path, "soft_tao",
               "A path in which to store SoftTao keys and settings.");
 DEFINE_string(pass, "", "A password for the SoftTao keys.");
 DEFINE_bool(create, false, "Create a new SoftTao key and settings.");
@@ -47,34 +47,32 @@ int main(int argc, char **argv) {
   google::SetUsageMessage(usage + argv[0] + " [options]");
   tao::InitializeApp(&argc, &argv, true);
 
-  string path = FLAGS_tao_path;
+  string path = FLAGS_path;
   string pass = FLAGS_pass;
   CHECK(!pass.empty());
 
-  scoped_ptr<SoftTao> tao;
   scoped_ptr<Keys> keys;
 
   if (FLAGS_create) {
     CHECK(!DirectoryExists(FilePath(path)));
     CHECK(CreateDirectory(FilePath(path)));
 
-    printf("# Creating new SoftTao key...\n");
+    printf("Creating new SoftTao key...\n");
     keys.reset(new Keys(path, "soft_tao", Keys::Signing | Keys::Crypting));
     CHECK(keys->InitNonHosted(pass));
+    printf("SoftTao key and settings are in: %s/*\n", path.c_str());
   } else {
     keys.reset(new Keys(path, "soft_tao", Keys::Signing | Keys::Crypting));
     CHECK(keys->InitNonHosted(pass));
   }
     
-  tao.reset(new SoftTao(keys.release()));
-
-  string ser;
-  CHECK(tao->SerializeToStringWithDirectory(path, pass, &ser));
-
   if (FLAGS_show) {
-    printf("# SoftTao key and settings are in: %s/*\n", path.c_str());
-    printf("# Use this:\n");
-    printf("export %s='%s'\n", Tao::HostTaoEnvVar, ser.c_str());
+    scoped_ptr<SoftTao> tao;
+    tao.reset(new SoftTao(keys.release()));
+
+    string ser;
+    CHECK(tao->SerializeToStringWithDirectory(path, pass, &ser));
+    printf("export %s='%s';\n", Tao::HostTaoEnvVar, ser.c_str());
   }
 
   return 0;

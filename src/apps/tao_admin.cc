@@ -16,6 +16,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <cstdio>
 #include <sstream>
 #include <string>
 
@@ -25,8 +26,6 @@
 //#include "cloudproxy/cloud_auth.h"
 //#include "cloudproxy/cloud_user_manager.h"
 //#include "tao/acl_guard.h"
-#include "tao/soft_tao.h"
-#include "tao/tpm_tao.h"
 #include "tao/linux_process_factory.h"
 //#include "tao/hosted_programs.pb.h"
 #include "tao/keys.h"
@@ -40,7 +39,6 @@ using std::list;
 
 //using cloudproxy::CloudAuth;
 //using cloudproxy::CloudUserManager;
-using tao::SoftTao;
 using tao::TaoDomain;
 using tao::ReadFileToString;
 using tao::LinuxProcessFactory;
@@ -72,11 +70,6 @@ DEFINE_string(host, "",
 // DEFINE_bool(clear_acls, false,
 //            "Remove all ACL entries before adding new ones");
 
-DEFINE_string(make_soft_tao, "",
-              "Directory to store a new SoftTpm");
-DEFINE_string(soft_tao_pass, "",
-              "Password for SoftTpm keys");
-
 
 //DEFINE_string(newusers, "", "Comma separated list of user names to create");
 //DEFINE_string(user_keys, "user_keys", "Directory for storing new user keys");
@@ -98,8 +91,7 @@ int main(int argc, char **argv) {
   bool did_work = false;
 
   if (!FLAGS_init.empty()) {
-    VLOG(0) << "Initializing new configuration in " << FLAGS_config_path;
-    VLOG(5) << "  using template " << FLAGS_init;
+    printf("Initializing new configuration in: %s\n", FLAGS_config_path.c_str());
     string initial_config;
     CHECK(ReadFileToString(FLAGS_init, &initial_config));
     StringReplaceAll("<NAME>", FLAGS_name, &initial_config);
@@ -112,7 +104,7 @@ int main(int argc, char **argv) {
     CHECK_NOTNULL(admin.get());
     did_work = true;
   } else {
-    VLOG(5) << "Loading configuration from " << FLAGS_config_path;
+    printf("Loading configuration from: %s\n", FLAGS_config_path.c_str());
     admin.reset(TaoDomain::Load(FLAGS_config_path, FLAGS_policy_pass));
     CHECK_NOTNULL(admin.get());
   }
@@ -134,22 +126,13 @@ int main(int argc, char **argv) {
       int next_id = 0; // assume no IDs.
       CHECK(factory.MakeHostedProgramSubprin(next_id, path, &child_subprin));
 
-      VLOG(0) << "Authorizing program to execute:\n"
-              << "  path: " << path << "\n"
-              << "  host: " << host << "\n"
-              << "  name: ::" << child_subprin << "\n";
+      printf("Authorizing program to execute:\n"
+             "  path: %s\n"
+             "  host: %s\n"
+             "  name: ::%s\n",
+             path.c_str(), host.c_str(), child_subprin.c_str());
       CHECK(admin->Authorize(host+"::"+child_subprin, "Execute", list<string>{}));
     }
-    did_work = true;
-  }
-
-  if (!FLAGS_make_soft_tao.empty()) {
-    string pass = FLAGS_soft_tao_pass;
-    CHECK(!pass.empty());
-    string path = admin->GetPath(FLAGS_make_soft_tao);
-    VLOG(0) << "Initializing keys for SoftTao in " << path;
-    scoped_ptr<Keys> keys(new Keys(path, "soft_tao", Keys::Signing | Keys::Crypting));
-    CHECK(!keys->InitNonHosted(pass));
     did_work = true;
   }
 

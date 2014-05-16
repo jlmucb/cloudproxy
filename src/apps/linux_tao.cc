@@ -16,7 +16,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+#include <cstdio>
 #include <string>
 
 #include <gflags/gflags.h>
@@ -33,6 +33,7 @@ using tao::InitializeApp;
 using tao::LinuxHost;
 using tao::TaoDomain;
 using tao::Tao;
+using tao::elideString;
 
 static constexpr auto defaultHost = "TPMTao(\"file:tpm/aikblob\", \"17, 18\")";
 
@@ -60,8 +61,8 @@ int main(int argc, char **argv) {
   scoped_ptr<LinuxHost> host(new LinuxHost(tao, admin.release(), FLAGS_host_path));
   CHECK(host->Init());
 
-  LOG(INFO) << "LinuxHost Service: " << host->DebugString();
-  LOG(INFO) << "Linux Tao Service started and waiting for requests";
+  printf("LinuxHost Service: %s", elideString(host->DebugString()).c_str());
+  printf("Linux Tao Service started and waiting for requests\n");;
 
   CHECK(host->Listen());
 

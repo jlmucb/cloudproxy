@@ -31,6 +31,7 @@ using std::string;
 using tao::InitializeApp;
 using tao::LinuxAdminRPC;
 using tao::LinuxHost;
+using tao::elideString;
 
 DEFINE_string(host_path, "linux_tao_host", "Location of linux host configuration");
 
@@ -45,7 +46,7 @@ int main(int argc, char **argv) {
   
   CHECK(host->Shutdown());
 
-  printf("Shutdown: %s\n", name.c_str());
+  printf("Shutdown: %s\n", elideString(name).c_str());
 
   return 0;
 }

@@ -133,7 +133,7 @@ class Tao {
 
   /// Environment variable for passing parent/child channel parameters from a
   /// parent to a hosted process.
-  constexpr static auto HostTaoEnvVar = "GOOGLE_TAO_CHILD_CHANNEL_PARAMS";
+  constexpr static auto HostTaoEnvVar = "GOOGLE_HOST_TAO";
 
  private:
   static Tao *host_tao_;

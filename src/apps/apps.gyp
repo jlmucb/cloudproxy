@@ -20,10 +20,10 @@
 	},
 	'targets' : [
 		{
-			'target_name' : 'make_aik',
+			'target_name' : 'tpm_tao',
 			'type' : 'executable',
 			'sources' : [
-				'make_aik.cc',
+				'tpm_tao.cc',
 			],
 			'include_dirs' : [
 				'.',

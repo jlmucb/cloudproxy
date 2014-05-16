@@ -73,6 +73,9 @@ class TPMTao : public Tao {
   virtual ~TPMTao() { Close(); }
 
   virtual bool SerializeToString(string *params) const;
+  virtual bool SerializeToStringWithFile(const string &path, string *params) const;
+  virtual bool SerializeToStringWithDirectory(const string &path,
+                                              string *params) const;
 
   static TPMTao *DeserializeFromString(const string &params);
 

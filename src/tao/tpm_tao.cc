@@ -253,7 +253,7 @@ bool TPMTao::Init() {
     }
   } else {
     aik_ = 0;
-    aik_name_ = "TPM()";
+    aik_name_ = "TPMTao()";
   }
 
   // Gather PCR info.
@@ -603,6 +603,10 @@ bool TPMTao::Attest(const Statement &stmt, string *attestation) const {
 bool TPMTao::CreateAIK(string *aik_blob) {
   TSS_HKEY aik;
   TSS_RESULT result;
+  if (aik_ != 0) {
+    LOG(ERROR) << "AIK already installed";
+    return false;
+  }
   // Create the AIK.
   result =
       Tspi_Context_CreateObject(tss_ctx_, TSS_OBJECT_TYPE_RSAKEY,
@@ -649,6 +653,7 @@ bool TPMTao::CreateAIK(string *aik_blob) {
     LOG(ERROR) << "Could not set up a fake identity request for the AIK";
     return false;
   }
+  Tspi_Context_CloseObject(tss_ctx_, pca_key);
 
   result = Tspi_Key_LoadKey(aik, srk_);
   if (result != TSS_SUCCESS) {
@@ -667,10 +672,18 @@ bool TPMTao::CreateAIK(string *aik_blob) {
 
   const char *blob_bytes = reinterpret_cast<const char *>(blob);
   aik_blob->assign(blob_bytes, blob_len);
-    
   Tspi_Context_FreeMemory(tss_ctx_, blob);
-  Tspi_Context_CloseObject(tss_ctx_, pca_key);
-  Tspi_Context_CloseObject(tss_ctx_, aik);
+  
+  string aik_name;
+  if (!AIKToPrincipalName(tss_ctx_, aik, &aik_name)) {
+    LOG(ERROR) << "Could not get TPM principal name";
+    return false;
+  }
+    
+  aik_ = aik;
+  aik_name_ = aik_name;
+  aik_blob_ = *aik_blob;
+
   // TODO(kwalsh) This method leaks Tspi objects if there are errors.
 
   return true;
@@ -684,6 +697,26 @@ bool TPMTao::SerializeToString(string *params) const {
   out << quotedString("base64w:" + aik_encoded);
   out << ", ";
   out << quotedString(join(pcr_indexes_, ", "));
+  out << ")";
+  params->assign(out.str());
+  return true;
+}
+
+bool TPMTao::SerializeToStringWithFile(const string &path, string *params) const {
+  stringstream out;
+  out << "tao::TPMTao(";
+  out << quotedString("file:" + path);
+  out << ", ";
+  out << quotedString(join(pcr_indexes_, ", "));
+  out << ")";
+  params->assign(out.str());
+  return true;
+}
+
+bool TPMTao::SerializeToStringWithDirectory(const string &path, string *params) const {
+  stringstream out;
+  out << "tao::TPMTao(";
+  out << quotedString("dir:" + path);
   out << ")";
   params->assign(out.str());
   return true;
@@ -703,7 +736,18 @@ TPMTao *TPMTao::DeserializeFromString(const string &params) {
     return nullptr;
   }
   string aik_blob;
-  if (aik_encoded.substr(0, 5) == "file:") {
+  if (aik_encoded.substr(0, 5) == "dir:") {
+    string path = aik_encoded.substr(4);
+    if (!ReadFileToString(path + "/aikblob", &aik_blob)) {
+      LOG(ERROR) << "Could not read aik blob for TPMTao";
+      return nullptr;
+    }
+    string pcr_index_list;
+    if (!ReadFileToString(path + "/pcrlist", &pcr_index_list)) {
+      LOG(ERROR) << "Could not read pcr index list for TPMTao";
+      return nullptr;
+    }
+  } else if (aik_encoded.substr(0, 5) == "file:") {
     if (!ReadFileToString(aik_encoded.substr(5), &aik_blob)) {
       LOG(ERROR) << "Could not decode aik blob for TPMTao";
       return nullptr;
@@ -718,7 +762,7 @@ TPMTao *TPMTao::DeserializeFromString(const string &params) {
     return nullptr;
   }
   list<int> pcr_indexes;
-  if (!split(pcr_index_list, ", ", &pcr_indexes)) {
+  if (!split(pcr_index_list, ",", &pcr_indexes)) {
     LOG(ERROR) << "Bad PCR index list in serialized TPMTao";
     return nullptr;
   }

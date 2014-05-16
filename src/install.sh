@@ -119,11 +119,11 @@ Done installing.
   $test_dir/scripts           # Useful scripts.
 Typical next steps:
   cd $test_dir/
-  ./scripts/setup.sh          # Create keys, hashes, whitelists, etc.
+  ./scripts/setup.sh          # Create keys, hashes, ACLs, etc.
   ./scripts/start.sh          # Run Tao CA and Linux Tao server.
   ./scripts/test.sh fserver   # Run fserver test.
   ./scripts/stop.sh           # Kill all Tao programs.
-  ./scripts/refresh.sh        # Refresh hashes and whitelists.
+  ./scripts/refresh.sh        # Refresh hashes, ACLs, etc.
 Run $test_dir/scripts/help.sh for more info."
 END
 fi
@@ -148,9 +148,10 @@ export GLOG_log_dir=${TEST}/logs
 HOSTED_PROGRAMS=$(echo ${BUILD}/{client,server,fclient,fserver})
 HOSTED_PROGRAMS=$HOSTED_PROGRAMS,${BUILD}/http_echo_server
 HOSTED_PROGRAMS=$HOSTED_PROGRAMS,${BUILD}/https_echo_server
+TPM_PCRS="17, 18"
 TAO_PROGRAMS=$(cd $TEST/bin; echo * | grep -v '\.a$')
 
-WATCHFILES="bin/tcca bin/linux_tao_service whitelist tao.config"
+WATCHFILES="bin/tcca bin/linux_tao whitelist tao.config"
 
 # log a to stderr for admin stuff, otherwise it is really quiet
 ADMIN_ARGS="-config_path tao.config -policy_pass $PASS -alsologtostderr=1"
@@ -212,7 +213,7 @@ function stoptests()
 	else
 		echo "No running Tao services or processes"
 	fi
-	rm -f _linux_tao_socket _start_hosted_program_socket _linux_tao_stop_socket
+	rm -f *_socket */*_socket
 }
 
 function setup()
@@ -223,15 +224,14 @@ function setup()
 
 	$admin -init ${ROOT}/run/tao-default.config -name testing 
 	if [ "$USE_TPM" == "yes" ]; then
-		echo "Creating and attesting a new TPM AIK."
+		echo "Creating TPMTao AIK and settings."
 		mkdir -p tpm
-		bin/make_aik -alsologtostderr=1 --aik_blob_file tpm/aikblob
-		bin/attest_to_aik $ADMIN_ARGS --aik_blob_file tpm/aikblob \
-			--aik_attest_file tpm/aik.attest
-		PCRS=`bin/get_pcrs`
-	    $admin -whitelist "${PCRS}:PCR_SHA1:Linux"
+		bin/tpm_tao -alsologtostderr=1 --tao_path tpm --pcrs=$TPM_PCRS --create
+		bin/tpm_tao -alsologtostderr=1 --aik_blob_file tpm/aikblob --print
+		export GOOGLE_HOST_TAO=`bin/read_aik --aik_blob_file tpm/aikblob --pcrs="17, 18"`
+		echo 'export GOOGLE_HOST_TAO=$GOOGLE_HOST_TAO'
 	else
-		echo "Creating and attesting a new fake TPM key."
+		echo "Creating SoftTao key and settings."
 		$admin -make_fake_tpm fake_tpm
 		$admin -whitelist "FAKE_TPM:FAKE_HASH:BogusTPM"
 		# fixme: this should be FAKE_HASH, not SHA256, but the channels
@@ -262,13 +262,13 @@ function startsvcs()
 		echo "TCCA service now running"
 	fi
 
-	if pgrep -x `shortname linux_tao_service` >/dev/null; then
+	if pgrep -x `shortname linux_tao` >/dev/null; then
 		echo "LinuxTao service already running";
 	else
 		if [ "$USE_TPM" == "yes" ]; then
-			bin/linux_tao_service &
+			bin/linux_tao &
 		else
-			bin/linux_tao_service -nouse_tpm &
+			bin/linux_tao -nouse_tpm &
 		fi
 		sleep 1
 		echo "LinuxTao service now running"
@@ -296,6 +296,16 @@ function monitor()
 function gethash()
 {
 	cat "$1" | sha256sum | cut -d' ' -f1 | xxd -r -ps | base64 | tr '/+' '_-' | tr -d '=' 
+}
+
+function base64wdecode()
+{
+	cat "$1" | tr "_-" "/+" | base64 -d
+}
+
+function base64wencode()
+{
+	cat "$1" | base64 | tr '/+' '_-' | tr -d '=' 
 }
 
 function testpgm()
@@ -445,19 +455,30 @@ case "$(basename $0)" in
 			gethash $f
 		done
 		;;
+	base64w-encode.sh)
+		for f in "$@"; do
+			base64wencode $f
+		done
+		;;
+	base64w-decode)
+		for f in "$@"; do
+			base64wdecode $f
+		done
+		;;
 	help|*)
 		cat <<END
 Scripts in $TEST/scripts:
-  setup.sh           # Re-initialize all keys, whitelists, configuration, etc.
-  env.sh             # Show environment variables.
-  start.sh           # Start Tao services.
-  restart.sh         # Restart Tao services.
-  monitor.sh         # Watch binaries and restart Tao services as needed.
-  test.sh <prog>     # Run tests for <prog>. Use prog "help" for choices.
-  refresh.sh         # Refresh hashes and whitelists, but keep existing keys.
-  stop.sh            # Kill processes, remove logs.
-  clean.sh           # Remove all keys, configuration, logs, etc.
-  hash.sh [file...]  # Hash files; use - for stdin.
+  setup.sh               # Re-initialize all keys, whitelists, configuration, etc.
+  env.sh                 # Show environment variables.
+  start.sh               # Start Tao services.
+  restart.sh             # Restart Tao services.
+  monitor.sh             # Watch binaries and restart Tao services as needed.
+  test.sh <prog>         # Run tests for <prog>. Use prog "help" for choices.
+  refresh.sh             # Refresh hashes and whitelists, but keep existing keys.
+  stop.sh                # Kill processes, remove logs.
+  clean.sh               # Remove all keys, configuration, logs, etc.
+  hash.sh [file...]      # Hash files; use - for stdin.
+  base64w-*.sh [file...] # Encode/decode files; use - for stdin.
 END
 		exit 0
 		;;

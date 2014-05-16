@@ -72,8 +72,11 @@ DEFINE_string(host, "",
 // DEFINE_bool(clear_acls, false,
 //            "Remove all ACL entries before adding new ones");
 
-DEFINE_string(make_soft_tpm, "",
+DEFINE_string(make_soft_tao, "",
               "Directory to store a new SoftTpm");
+DEFINE_string(soft_tao_pass, "",
+              "Password for SoftTpm keys");
+
 
 //DEFINE_string(newusers, "", "Comma separated list of user names to create");
 //DEFINE_string(user_keys, "user_keys", "Directory for storing new user keys");
@@ -140,11 +143,13 @@ int main(int argc, char **argv) {
     did_work = true;
   }
 
-  if (!FLAGS_make_soft_tpm.empty()) {
-    string path = admin->GetPath(FLAGS_make_soft_tpm);
+  if (!FLAGS_make_soft_tao.empty()) {
+    string pass = FLAGS_soft_tao_pass;
+    CHECK(!pass.empty());
+    string path = admin->GetPath(FLAGS_make_soft_tao);
     VLOG(0) << "Initializing keys for SoftTao in " << path;
     scoped_ptr<Keys> keys(new Keys(path, "soft_tao", Keys::Signing | Keys::Crypting));
-    CHECK(!keys->InitNonHosted("BogusPassword"));
+    CHECK(!keys->InitNonHosted(pass));
     did_work = true;
   }
 

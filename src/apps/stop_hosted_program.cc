@@ -1,4 +1,4 @@
-//  File: start_hosted_program.cc
+//  File: stop_hosted_program.cc
 //  Author: Tom Roeder <tmroeder@google.com>
 //
 //  Description: Invoke linux_tao admin interface to start a program.
@@ -17,7 +17,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include <cstdio>
-#include <list>
 #include <string>
 
 #include <gflags/gflags.h>
@@ -27,36 +26,30 @@
 #include "tao/linux_host.h"
 #include "tao/util.h"
 
-using std::list;
 using std::string;
 
 using tao::InitializeApp;
-using tao::LinuxHost;
 using tao::LinuxAdminRPC;
+using tao::LinuxHost;
 
 DEFINE_string(host_path, "linux_tao_host", "Location of linux host configuration");
 
 int main(int argc, char **argv) {
   InitializeApp(&argc, &argv, true);
 
-  if (argc == 1) {
-    printf("usage: %s [options] -- program args...\n", argv[0]);
+  if (argc != 2) {
+    printf("usage: %s [options] -- name\n", argv[0]);
     return 1;
   }
 
-  string prog = argv[1];
-  list<string> args;
-  for (int i = 2; i < argc; i++) {
-    args.push_back(string(argv[i]));
-  }
+  string child_name = argv[1];
 
   scoped_ptr<LinuxAdminRPC> host(LinuxHost::Connect(FLAGS_host_path));
   CHECK(host.get() != nullptr);
   
-  string child_name;
-  CHECK(host->StartHostedProgram(prog, args, &child_name));
+  CHECK(host->StopHostedProgram(child_name));
 
-  printf("Started: %s\n", child_name.c_str());
+  printf("Stopped: %s\n", child_name.c_str());
 
   return 0;
 }

@@ -22,13 +22,12 @@
 #include <string>
 
 #include "tao/attestation.pb.h"
+#include "tao/keys.h"
+#include "tao/tao.h"
 #include "tao/util.h"
 
 namespace tao {
 using std::string;
-
-class Keys;
-class Tao;
 
 /// TaoHost provides a generic implementation of a Tao host that can be
 /// configured for, and driven by, a variety of host environments. Generally,

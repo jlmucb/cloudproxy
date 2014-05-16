@@ -69,19 +69,32 @@
 #				'../third_party/google-glog/glog.gyp:glog',
 #			],
 #		},
-#		{
-#			'target_name' : 'start_hosted_program',
-#			'type' : 'executable',
-#			'sources' : [
-#				'start_hosted_program.cc',
-#			],
-#			'dependencies' : [
-#				'../tao/tao.gyp:tao',
-#				'../third_party/gflags/gflags.gyp:gflags',
-#				'../third_party/google-glog/glog.gyp:glog',
-#				'../third_party/keyczar/keyczar.gyp:keyczar'
-#			],
-#		},
+		{
+			'target_name' : 'start_hosted_program',
+			'type' : 'executable',
+			'sources' : [
+				'start_hosted_program.cc',
+			],
+			'dependencies' : [
+				'../tao/tao.gyp:tao',
+				'../third_party/gflags/gflags.gyp:gflags',
+				'../third_party/google-glog/glog.gyp:glog',
+				'../third_party/keyczar/keyczar.gyp:keyczar'
+			],
+		},
+		{
+			'target_name' : 'stop_hosted_program',
+			'type' : 'executable',
+			'sources' : [
+				'stop_hosted_program.cc',
+			],
+			'dependencies' : [
+				'../tao/tao.gyp:tao',
+				'../third_party/gflags/gflags.gyp:gflags',
+				'../third_party/google-glog/glog.gyp:glog',
+				'../third_party/keyczar/keyczar.gyp:keyczar'
+			],
+		},
 #		{
 #			'target_name' : 'attest_to_aik',
 #			'type' : 'executable',

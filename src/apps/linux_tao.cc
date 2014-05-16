@@ -37,7 +37,7 @@ using tao::Tao;
 static constexpr auto defaultHost = "TPMTao(\"file:tpm/aikblob\", \"17, 18\")";
 
 DEFINE_string(config_path, "tao.config", "Location of tao domain configuration");
-DEFINE_string(host_path, "linux_tao_keys", "Location of linux host configuration");
+DEFINE_string(host_path, "linux_tao_host", "Location of linux host configuration");
 DEFINE_string(tao_host, "",
               "Parameters to connect to host Tao. If empty try env "
               " or use a TPM default instead.");

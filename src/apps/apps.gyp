@@ -57,18 +57,18 @@
 				'../third_party/keyczar/keyczar.gyp:keyczar'
 			],
 		},
-#		{
-#			'target_name' : 'stop_service',
-#			'type' : 'executable',
-#			'sources' : [
-#				'stop_service.cc',
-#			],
-#			'dependencies' : [
-#				'../tao/tao.gyp:tao',
-#				'../third_party/gflags/gflags.gyp:gflags',
-#				'../third_party/google-glog/glog.gyp:glog',
-#			],
-#		},
+		{
+			'target_name' : 'shutdown_linux_tao',
+			'type' : 'executable',
+			'sources' : [
+				'shutdown_linux_tao.cc',
+			],
+			'dependencies' : [
+				'../tao/tao.gyp:tao',
+				'../third_party/gflags/gflags.gyp:gflags',
+				'../third_party/google-glog/glog.gyp:glog',
+			],
+		},
 		{
 			'target_name' : 'start_hosted_program',
 			'type' : 'executable',

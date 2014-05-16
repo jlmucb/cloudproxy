@@ -1,7 +1,7 @@
 //  File: stop_hosted_program.cc
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: Invoke linux_tao admin interface to start a program.
+//  Description: Invoke linux_tao admin interface to kill a program.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //

@@ -1,9 +1,9 @@
-//  File: stop_service.cc
+//  File: shutdown_linux_tao.cc
 //  Author: Tom Roeder <tmroeder@google.com>
 //
-//  Description: A program that requests a host Tao be shut down.
+//  Description: Invoke linux_tao admin interface to shutdown.
 //
-//  Copyright (c) 2014, Google Inc.  All rights reserved.
+//  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,29 +16,36 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#include <unistd.h>
+#include <cstdio>
+#include <string>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
-#include "tao/unix_domain_socket_tao_admin_channel.h"
+#include "tao/linux_admin_rpc.h"
+#include "tao/linux_host.h"
 #include "tao/util.h"
 
-using tao::InitializeApp;
-using tao::UnixDomainSocketTaoAdminChannel;
+using std::string;
 
-DEFINE_string(domain_socket, "_linux_tao_socket",
-              "The unix domain socket to use to contact the LinuxTaoService");
+using tao::InitializeApp;
+using tao::LinuxAdminRPC;
+using tao::LinuxHost;
+
+DEFINE_string(host_path, "linux_tao_host", "Location of linux host configuration");
 
 int main(int argc, char **argv) {
   InitializeApp(&argc, &argv, true);
 
-  scoped_ptr<UnixDomainSocketTaoAdminChannel> chan(
-      new UnixDomainSocketTaoAdminChannel(FLAGS_domain_socket));
-  CHECK(chan->Init()) << "Could not open a socket for communication";
-  CHECK(chan->Shutdown()) << "Failed to shut down the host Tao";
-  CHECK(chan->Destroy()) << "Could not destroy socket";
+  scoped_ptr<LinuxAdminRPC> host(LinuxHost::Connect(FLAGS_host_path));
+  CHECK(host.get() != nullptr);
+
+  string name;
+  CHECK(host->GetTaoHostName(&name));
+  
+  CHECK(host->Shutdown());
+
+  printf("Shutdown: %s\n", name.c_str());
 
   return 0;
 }

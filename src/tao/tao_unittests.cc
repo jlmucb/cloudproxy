@@ -44,7 +44,7 @@ class TaoTest : public ::testing::Test {
     string blob;
     ASSERT_TRUE(ReadFileToString(FLAGS_aik_blob_file, &blob));
     tao->reset(new SoftTao());
-    ASSERT_TRUE(tao->get()->InitWithTemporaryKeys());
+    ASSERT_TRUE(tao->get()->Init());
   }
   virtual void SetUp() {
     Setup(&tao_);

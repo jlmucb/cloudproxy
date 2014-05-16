@@ -37,6 +37,12 @@ class TaoRPC : public Tao {
   /// Ownership is taken.
   TaoRPC(MessageChannel *channel) : channel_(channel) {}
 
+  virtual void Close() { channel_->Close(); }
+
+  virtual bool SerializeToString(string *params) const;
+
+  static TaoRPC *DeserializeFromString(const string &params);
+
   /// Tao implementation.
   /// @{
   virtual bool GetTaoName(string *name) const;

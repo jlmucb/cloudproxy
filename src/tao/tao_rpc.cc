@@ -20,6 +20,8 @@
 
 #include <glog/logging.h>
 
+#include "tao/fd_message_channel.h"
+
 namespace tao {
 
 bool TaoRPC::GetTaoName(string *name) const {
@@ -94,6 +96,31 @@ bool TaoRPC::Request(const TaoRPCRequest &req, string *data,
     policy->assign(resp.policy());
   }
   return true;
+}
+
+bool TaoRPC::SerializeToString(string *params) const {
+  string channel_params;
+  if (!channel_->SerializeToString(&channel_params)) {
+    LOG(ERROR) << "Could not serialize TaoRPC";
+    return false;
+  }
+  params->assign("tao::TaoRPC+" + channel_params);
+  return true;
+}
+
+TaoRPC *TaoRPC::DeserializeFromString(const string &params) {
+  stringstream in(params);
+  skip(in, "tao::TaoRPC+");
+  if (!in) return nullptr; // not for us
+  string channel_params;
+  getline(in, channel_params, '\0');
+  // Try each known channel type.
+  MessageChannel *channel;
+  channel = FDMessageChannel::DeserializeFromString(channel_params);
+  if (channel != nullptr)
+    return new TaoRPC(channel);
+  LOG(ERROR) << "Unknown channel serialized for TaoRPC";
+  return nullptr;
 }
 
 }  // namespace tao

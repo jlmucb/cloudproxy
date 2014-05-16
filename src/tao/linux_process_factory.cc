@@ -59,13 +59,23 @@ bool LinuxProcessFactory::StartHostedProgram(
     return false;
   }
 
-  string child_channel_params;
-  if (!channel_to_parent->SerializeToString(&child_channel_params)) {
-    LOG(ERROR) << "Could not encode child channel parameters";
+  list<int> keep_open;
+  if (!channel_to_parent->GetFileDescriptors(&keep_open)) {
+    LOG(ERROR) << "Could not get file descriptors for channel to parent";
+    exit(1);
+    /* never reached */
+  }
+  keep_open.push_back(STDIN_FILENO);
+  keep_open.push_back(STDOUT_FILENO);
+  keep_open.push_back(STDERR_FILENO);
+
+  scoped_ptr<TaoRPC> rpc_to_parent(new TaoRPC(channel_to_parent.release()));
+  string child_rpc_params;
+  if (!rpc_to_parent->SerializeToString(&child_rpc_params)) {
+    LOG(ERROR) << "Could not encode child RPC channel parameters";
     return false;
   }
-  child_channel_params = "tao::TaoRPC+" + child_channel_params;
-  VLOG(0) << "Channel to parent is: " << child_channel_params;
+  VLOG(0) << "Channel to parent is: " << child_rpc_params;
 
   // There is a race between fork-kill and fork-exec. We currently have various
   // signal handlers installed (e.g. SIGTERM for graceful shutdown in Listen
@@ -122,25 +132,15 @@ bool LinuxProcessFactory::StartHostedProgram(
     }
     argv[i++] = nullptr;
     // We couuld put channel params in argv:
-    // argv[..] = strdup(child_channel_params.c_str());
+    // argv[..] = strdup(child_rpc_params.c_str());
     // Instead, put it in environment variable so we can host Tao-oblivious
     // programs without messing up their argv...
-    setenv(Tao::HostedProcessChannelEnvVar, child_channel_params.c_str(), 1);
+    setenv(Tao::HostTaoEnvVar, child_rpc_params.c_str(), 1);
 
     channel_to_child->Close();
 
     close(STDIN_FILENO);
     dup2(open("/dev/null", O_RDONLY), STDIN_FILENO);
-
-    list<int> keep_open;
-    if (!channel_to_parent->GetFileDescriptors(&keep_open)) {
-      LOG(ERROR) << "Could not get file descriptors for channel to parent";
-      exit(1);
-      /* never reached */
-    }
-    keep_open.push_back(STDIN_FILENO);
-    keep_open.push_back(STDOUT_FILENO);
-    keep_open.push_back(STDERR_FILENO);
     if (!CloseAllFileDescriptorsExcept(keep_open)) {
       LOG(ERROR) << "Could not clean up file descriptors";
       exit(1);
@@ -164,7 +164,7 @@ bool LinuxProcessFactory::StartHostedProgram(
       exit(1);
     }
 
-    channel_to_parent->Close();
+    rpc_to_parent->Close();
 
     child->reset(new HostedLinuxProcess);
     (*child)->subprin = subprin;

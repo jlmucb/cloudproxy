@@ -76,17 +76,18 @@ bool FDMessageChannel::GetFileDescriptors(list<int> *keep_open) const {
   return true;
 }
 
-bool FDMessageChannel::SerializeToString(string *s) const {
+bool FDMessageChannel::SerializeToString(string *params) const { 
   stringstream out;
   out << "tao::FDMessageChannel(" << readfd_ << ", " << writefd_ << ")";
-  s->assign(out.str());
+  params->assign(out.str());
   return true;
 }
 
-FDMessageChannel *FDMessageChannel::DeserializeFromString(const string &s) {
-  int rfd, wfd;
-  stringstream in(s);
+FDMessageChannel *FDMessageChannel::DeserializeFromString(const string &params) {
+  stringstream in(params);
   skip(in, "tao::FDMessageChannel(");
+  if (!in) return nullptr;  // not for us
+  int rfd, wfd;
   in >> rfd;
   skip(in, ", ");
   in >> wfd;

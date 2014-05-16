@@ -129,26 +129,12 @@ void temp_file_cleaner(string *dir) {
 
 vector<shared_ptr<mutex>> locks;
 
-void locking_function(int mode, int n, const char *file, int line) {
+static void locking_function(int mode, int n, const char *file, int line) {
   if (mode & CRYPTO_LOCK) {
     locks[n]->lock();
   } else {
     locks[n]->unlock();
   }
-}
-
-bool LetChildProcsDie() {
-  struct sigaction sig_act;
-  memset(&sig_act, 0, sizeof(sig_act));
-  sig_act.sa_handler = SIG_DFL;
-  sig_act.sa_flags = SA_NOCLDWAIT;  // don't zombify child processes
-  int sig_rv = sigaction(SIGCHLD, &sig_act, nullptr);
-  if (sig_rv < 0) {
-    LOG(ERROR) << "Could not set the disposition of SIGCHLD";
-    return false;
-  }
-
-  return true;
 }
 
 bool Sha256(const string &s, string *hash) {

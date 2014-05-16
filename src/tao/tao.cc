@@ -24,6 +24,8 @@
 
 #include "tao/fd_message_channel.h"
 #include "tao/tao_rpc.h"
+#include "tao/tpm_tao.h"
+#include "tao/soft_tao.h"
 #include "tao/util.h"
 
 namespace tao {
@@ -31,31 +33,24 @@ Tao *Tao::host_tao_;
 
 Tao *Tao::GetHostTao() {
   if (host_tao_ != nullptr) return host_tao_;
-  const char *p = getenv(HostedProcessChannelEnvVar);
+  const char *p = getenv(HostTaoEnvVar);
   if (p == nullptr) {
-    LOG(ERROR) << "Missing environment variable " << HostedProcessChannelEnvVar;
+    LOG(ERROR) << "Missing environment variable " << HostTaoEnvVar;
     return nullptr;
   }
-  string parent_channel_params(p);
-  if (parent_channel_params.substr(0, 12) == "tao::TaoRPC+") {
-    string channel_params = parent_channel_params.substr(12);
-    scoped_ptr<MessageChannel> chan;
-    if (channel_params.substr(0, 22) == "tao::FDMessageChannel(") {
-      chan.reset(FDMessageChannel::DeserializeFromString(channel_params));
-      if (chan.get() == nullptr) {
-        LOG(ERROR) << "Could not create channel for TaoRPC";
-        return nullptr;
-      }
-    } else {
-      LOG(ERROR) << "Unrecognized channel for TaoRPC";
-      return nullptr;
-    }
-    host_tao_ = new TaoRPC(chan.release());
-  } else {
-    LOG(ERROR) << "Unrecognized parent channel: " << parent_channel_params;
-    return nullptr;
-  }
-  return host_tao_;
+  string params(p);
+  // Try each known type of Tao in turn.
+  host_tao_ = TaoRPC::DeserializeFromString(params);
+  if (host_tao_ != nullptr)
+    return host_tao_;
+  host_tao_ = SoftTao::DeserializeFromString(params);
+  if (host_tao_ != nullptr)
+    return host_tao_;
+  host_tao_ = TPMTao::DeserializeFromString(params);
+  if (host_tao_ != nullptr)
+    return host_tao_;
+  LOG(ERROR) << "Unrecognized host Tao channel: " << params;
+  return nullptr;
 }
 
 }  // namespace tao

@@ -43,6 +43,12 @@ class MessageChannel {
   /// @param[out] m The received Message.
   /// @param[out] eof Will be set to true iff end of stream reached.
   virtual bool ReceiveMessage(google::protobuf::Message *resp, bool *eof) const = 0;
+
+  /// Serialize channel parameters for passing across fork/exec or between
+  /// processes, if possible. This does not close the channel. Not all channel
+  /// types must necessarily be serializable. 
+  /// @param params[out] The serialized parameters.
+  virtual bool SerializeToString(string *params) const { return false; }
 };
 }  // namespace tao
 

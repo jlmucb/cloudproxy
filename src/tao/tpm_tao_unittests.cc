@@ -32,8 +32,7 @@ using tao::Statement;
 using tao::TPMTao;
 using tao::Tao;
 
-DEFINE_string(aik_blob_file, "/home/tmroeder/src/fileProxy/src/apps/aikblob",
-              "The blob for an AIK loaded in the TPM");
+DEFINE_string(aik_blob_file, "tpm/aikblob", "The blob for an AIK loaded in the TPM");
 
 class TPMTaoTest : public ::testing::Test {
  protected:

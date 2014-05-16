@@ -38,10 +38,15 @@ using std::string;
 class Tao {
  public:
   Tao() {}
-  virtual bool Destroy() { return true; }
   virtual ~Tao() {
     if (host_tao_ == this) host_tao_ = nullptr;
   }
+
+  /// Serialize Tao parameters for passing across fork/exec or between
+  /// processes, if possible. Not all Tao implementations must necessarily be
+  /// serializable. 
+  /// @param params[out] The serialized parameters.
+  virtual bool SerializeToString(string *params) const { return false; }
 
   /// Get the interface to the host Tao for this hosted program.
   /// Every hosted program is provided with one such interface.
@@ -128,7 +133,7 @@ class Tao {
 
   /// Environment variable for passing parent/child channel parameters from a
   /// parent to a hosted process.
-  constexpr static auto HostedProcessChannelEnvVar = "GOOGLE_TAO_CHILD_CHANNEL_PARAMS";
+  constexpr static auto HostTaoEnvVar = "GOOGLE_TAO_CHILD_CHANNEL_PARAMS";
 
  private:
   static Tao *host_tao_;

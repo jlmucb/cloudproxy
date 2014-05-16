@@ -21,13 +21,14 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <keyczar/base/file_util.h>
 
-#include "cloudproxy/cloud_auth.h"
-#include "cloudproxy/cloud_user_manager.h"
-#include "tao/acl_guard.h"
-#include "tao/fake_tao.h"
-#include "tao/hosted_programs.pb.h"
+//#include "cloudproxy/cloud_auth.h"
+//#include "cloudproxy/cloud_user_manager.h"
+//#include "tao/acl_guard.h"
+#include "tao/soft_tao.h"
+#include "tao/tpm_tao.h"
+#include "tao/linux_process_factory.h"
+//#include "tao/hosted_programs.pb.h"
 #include "tao/keys.h"
 #include "tao/tao_domain.h"
 #include "tao/util.h"
@@ -35,13 +36,15 @@
 using std::getline;
 using std::string;
 using std::stringstream;
+using std::list;
 
-using keyczar::base::ReadFileToString;
-
-using cloudproxy::CloudAuth;
-using cloudproxy::CloudUserManager;
-using tao::FakeTao;
+//using cloudproxy::CloudAuth;
+//using cloudproxy::CloudUserManager;
+using tao::SoftTao;
 using tao::TaoDomain;
+using tao::ReadFileToString;
+using tao::LinuxProcessFactory;
+using tao::Keys;
 
 DEFINE_string(config_path, "tao.config", "Location of tao configuration");
 DEFINE_string(policy_pass, "", "A password for the policy private key");
@@ -56,23 +59,27 @@ DEFINE_string(state, "Washington", "x509 State for a new configuration");
 DEFINE_string(org, "(not really) Google",
               "x509 Organization for a new configuration");
 
+
 DEFINE_string(canexecute, "",
               "Comma-separated list of paths of programs "
               "to be authorized to execute");
-DEFINE_string(canclaim, "",
-              "Comma-separated list of name:subprin pairs "
-              "to be authorized for claiming policy subprincipal names");
+DEFINE_string(host, "",
+              "The principal name of the host where programs will execute.");
+
+//DEFINE_string(canclaim, "",
+//              "Comma-separated list of name:subprin pairs "
+//              "to be authorized for claiming policy subprincipal names");
 // DEFINE_bool(clear_acls, false,
 //            "Remove all ACL entries before adding new ones");
 
-DEFINE_string(make_fake_tpm, "",
-              "Directory to store a new and attested fake tpm");
+DEFINE_string(make_soft_tpm, "",
+              "Directory to store a new SoftTpm");
 
-DEFINE_string(newusers, "", "Comma separated list of user names to create");
-DEFINE_string(user_keys, "user_keys", "Directory for storing new user keys");
+//DEFINE_string(newusers, "", "Comma separated list of user names to create");
+//DEFINE_string(user_keys, "user_keys", "Directory for storing new user keys");
 
-DEFINE_string(signacl, "", "A text-based ACL file to sign");
-DEFINE_string(acl_sig_path, "acls_sig", "Location for storing signed ACL file");
+//DEFINE_string(signacl, "", "A text-based ACL file to sign");
+//DEFINE_string(acl_sig_path, "acls_sig", "Location for storing signed ACL file");
 
 // In-place replacement of all occurrences in s of x with y
 void StringReplaceAll(const string &x, const string &y, string *s) {
@@ -108,58 +115,56 @@ int main(int argc, char **argv) {
   }
 
   if (!FLAGS_canexecute.empty()) {
+    // TODO(kwalsh) For host, we could deserialize Tao from env var then call
+    // GetTaoName().
+    string host = FLAGS_host;
+    CHECK(!host.empty());
+    // TODO(kwalsh) We assume LinuxHost and LinuxProcessFactory here.
+    string policy_subprin;
+    CHECK(admin->GetSubprincipalName(&policy_subprin));
+    host += "::" + policy_subprin;
+    LinuxProcessFactory factory;
+    string child_subprin;
     stringstream paths(FLAGS_canexecute);
     string path;
     while (getline(paths, path, ',')) {  // split on commas
-      // TODO(kwalsh) Need a decent way to specify arguments (better yet,
-      // policies) here. For now, require a single "--v=2" argument.
+      int next_id = 0; // assume no IDs.
+      CHECK(factory.MakeHostedProgramSubprin(next_id, path, &child_subprin));
+
       VLOG(0) << "Authorizing program to execute:\n"
               << "  path: " << path << "\n"
-              << "  args: \"--v=2\"";
-      CHECK(admin->AuthorizeProgramToExecute(path, list<string>{"--v=2"}));
-    }
-    did_work = true;
-  }
-  if (!FLAGS_canclaim.empty()) {
-    stringstream tuples(FLAGS_canclaim);
-    string tuple;
-    while (getline(tuples, tuple, ',')) {  // split on commas
-      string name, subprin;
-      stringstream ss(tuple);
-      CHECK(getline(ss, name, ':') && getline(ss, subprin, '\0'));
-      VLOG(0) << "Authorizing principal to claim policy subprin:\n"
-              << "  name: " << name << "\n"
-              << "  subprin: " << subprin;
-      CHECK(admin->AuthorizeNickname(name, subprin));
+              << "  host: " << host << "\n"
+              << "  name: ::" << child_subprin << "\n";
+      CHECK(admin->Authorize(host+"::"+child_subprin, "Execute", list<string>{}));
     }
     did_work = true;
   }
 
-  if (!FLAGS_make_fake_tpm.empty()) {
-    string path = admin->GetPath(FLAGS_make_fake_tpm);
-    VLOG(0) << "Initializing fake tpm in " << path;
-    scoped_ptr<FakeTao> ft(new FakeTao());
-    if (!ft->InitPseudoTPM(path, *admin)) return 1;
+  if (!FLAGS_make_soft_tpm.empty()) {
+    string path = admin->GetPath(FLAGS_make_soft_tpm);
+    VLOG(0) << "Initializing keys for SoftTao in " << path;
+    scoped_ptr<Keys> keys(new Keys(path, "soft_tao", Keys::Signing | Keys::Crypting));
+    CHECK(!keys->InitNonHosted("BogusPassword"));
     did_work = true;
   }
 
-  if (!FLAGS_newusers.empty()) {
-    stringstream names(FLAGS_newusers);
-    string name;
-    while (getline(names, name, ',')) {  // split on commas
-      string password = name;            // such security, wow
-      scoped_ptr<tao::Keys> key;
-      CHECK(CloudUserManager::MakeNewUser(FLAGS_user_keys, name, password,
-                                          *admin->GetPolicySigner(), &key));
-    }
-    did_work = true;
-  }
+//  if (!FLAGS_newusers.empty()) {
+//    stringstream names(FLAGS_newusers);
+//    string name;
+//    while (getline(names, name, ',')) {  // split on commas
+//      string password = name;            // such security, wow
+//      scoped_ptr<tao::Keys> key;
+//      CHECK(CloudUserManager::MakeNewUser(FLAGS_user_keys, name, password,
+//                                          *admin->GetPolicySigner(), &key));
+//    }
+//    did_work = true;
+//  }
 
-  if (!FLAGS_signacl.empty()) {
-    CHECK(CloudAuth::SignACL(admin->GetPolicySigner(), FLAGS_signacl,
-                             FLAGS_acl_sig_path));
-    did_work = true;
-  }
+//  if (!FLAGS_signacl.empty()) {
+//    CHECK(CloudAuth::SignACL(admin->GetPolicySigner(), FLAGS_signacl,
+//                             FLAGS_acl_sig_path));
+//    did_work = true;
+//  }
 
   if (!did_work) {
     VLOG(0) << "  name: " << admin->GetName();

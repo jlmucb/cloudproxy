@@ -39,6 +39,7 @@ namespace tao {
 /// TrouSerS library (hence implicitly the tcsd service) to access the TPM.
 class TPMTao : public Tao {
  public:
+
   /// Construct a TPMTao.
   /// @param aik_blob A public AIK blob produced by the TPM.
   /// @param pcrs_indexes A list of PCR indexes used for sealing and unsealing.
@@ -70,6 +71,11 @@ class TPMTao : public Tao {
   virtual bool Init();
   virtual bool Close();
   virtual ~TPMTao() { Close(); }
+
+  virtual bool SerializeToString(string *params) const;
+
+  static TPMTao *DeserializeFromString(const string &params);
+
 
   /// These methods have the same semantics as Tao.
   /// @{

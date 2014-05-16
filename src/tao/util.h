@@ -128,9 +128,6 @@ int GetSelfPipeSignalFd(int signum, int sa_flags);
 /// @param fd The file descriptor returned from GetSelfPipeSignalFd().
 bool ReleaseSelfPipeSignalFd(int fd);
 
-/// Set the disposition of SIGCHLD to prevent child zombification.
-bool LetChildProcsDie();
-
 /// Hash a string using SHA256.
 /// @param s The string to hash.
 /// @param[out] hash The resulting hash.

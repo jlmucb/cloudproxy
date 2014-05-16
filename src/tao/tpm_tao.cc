@@ -676,4 +676,58 @@ bool TPMTao::CreateAIK(string *aik_blob) {
   return true;
 }
 
+bool TPMTao::SerializeToString(string *params) const {
+  stringstream out;
+  string aik_encoded;
+  Base64WEncode(aik_blob_, &aik_encoded);
+  out << "tao::TPMTao(";
+  out << quotedString("base64w:" + aik_encoded);
+  out << ", ";
+  out << quotedString(join(pcr_indexes_, ", "));
+  out << ")";
+  params->assign(out.str());
+  return true;
+}
+
+TPMTao *TPMTao::DeserializeFromString(const string &params) {
+  string aik_encoded, pcr_index_list;
+  stringstream in(params);
+  skip(in, "tao::TPMTao(");
+  if (!in) return nullptr;  // not for us
+  getQuotedString(in, &aik_encoded);
+  skip(in, ", ");
+  getQuotedString(in, &pcr_index_list);
+  skip(in, ")");
+  if (!in || (in.get() && !in.eof())) {
+    LOG(ERROR) << "Could not deserialize TPMTao";
+    return nullptr;
+  }
+  string aik_blob;
+  if (aik_encoded.substr(0, 5) == "file:") {
+    if (!ReadFileToString(aik_encoded.substr(5), &aik_blob)) {
+      LOG(ERROR) << "Could not decode aik blob for TPMTao";
+      return nullptr;
+    }
+  } else if (aik_encoded.substr(0, 8) == "base64w:") {
+    if (!Base64WDecode(aik_encoded, &aik_blob)) {
+      LOG(ERROR) << "Could not decode aik blob for TPMTao";
+      return nullptr;
+    }
+  } else {
+    LOG(ERROR) << "Bad encoding of aik blob for TPMTao";
+    return nullptr;
+  }
+  list<int> pcr_indexes;
+  if (!split(pcr_index_list, ", ", &pcr_indexes)) {
+    LOG(ERROR) << "Bad PCR index list in serialized TPMTao";
+    return nullptr;
+  }
+  scoped_ptr<TPMTao> tao(new TPMTao(aik_blob, pcr_indexes));
+  if (!tao->Init()) {
+    LOG(ERROR) << "Could not initialize TPMTao";
+    return nullptr;
+  }
+  return tao.release();
+}
+
 }  // namespace tao

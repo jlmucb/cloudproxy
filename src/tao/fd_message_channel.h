@@ -42,13 +42,13 @@ class FDMessageChannel : public MessageChannel {
 
   virtual bool ReceiveMessage(google::protobuf::Message *m, bool *eof) const;
 
+  virtual bool SerializeToString(string *params) const;
+
+  static FDMessageChannel *DeserializeFromString(const string &params);
+
   virtual bool GetFileDescriptors(list<int> *keep_open) const;
 
   virtual int GetReadFileDescriptor() { return readfd_; }
-
-  virtual bool SerializeToString(string *s) const;
-
-  static FDMessageChannel *DeserializeFromString(const string &s);
 
   virtual bool Close();
 

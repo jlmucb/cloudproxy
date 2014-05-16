@@ -176,7 +176,7 @@ class LinuxHostTest : public ::testing::Test {
   virtual void SetUp() {
     ASSERT_TRUE(CreateTempDir("linux_host_test", &temp_dir_));
     tao_.reset(new SoftTao());
-    ASSERT_TRUE(tao_->InitWithTemporaryKeys());
+    ASSERT_TRUE(tao_->Init());
     scoped_ptr<TaoGuard> policy(new TrivialGuard(TrivialGuard::LiberalPolicy));
     host_.reset(new LinuxHost(tao_.release(), policy.release(), *temp_dir_));
     ASSERT_TRUE(host_->Init());

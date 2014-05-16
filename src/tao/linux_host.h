@@ -77,6 +77,10 @@ class LinuxHost {
   virtual bool Listen();
 
   static LinuxAdminRPC *Connect(const string &path);
+  
+  virtual string DebugString() const {
+    return tao_host_->TaoHostName();
+  }
 
  protected:
   /// Handle incoming messages from a hosted program.

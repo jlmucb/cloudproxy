@@ -33,15 +33,20 @@ namespace tao {
 class SoftTao : public Tao {
  public:
 
-  SoftTao() {}
-  virtual ~SoftTao() {}
-
   /// Use temporary keys for signing and sealing. This is useful for unit tests.
-  virtual bool InitWithTemporaryKeys();
+  SoftTao() {}
 
   /// Use the provided keys for signing and sealing.
   /// @param keys A set of signing and crypting keys. Ownership is taken.
-  virtual bool Init(Keys *keys);
+  SoftTao(Keys *keys) : keys_(keys) {}
+
+  virtual bool Init();
+
+  // SoftTao can't be serialized because we don't keep the key password. 
+  // virtual bool SerializeToString(string *params) const;
+ 
+  // Deserialize a string of the form "tao::SoftTao(path, passwd)".
+  static SoftTao *DeserializeFromString(const string &params);
 
   /// Make a (deep) copy of this object.
   virtual SoftTao *DeepCopy() const;

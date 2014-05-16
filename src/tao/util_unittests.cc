@@ -84,7 +84,7 @@ TEST(UtilTest, SealAndUnsealSecretTest) {
   string seal_path = *temp_dir + string("/sealed_secret");
 
   SoftTao tao;
-  EXPECT_TRUE(tao.InitWithTemporaryKeys());
+  EXPECT_TRUE(tao.Init());
 
   string secret;
   string policy = Tao::SealPolicyDefault;

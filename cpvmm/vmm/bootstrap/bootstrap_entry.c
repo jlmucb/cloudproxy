@@ -54,6 +54,9 @@ tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
 #define MAXPROCESSORS 64
 
 
+#define LOWBOOTPARAMS
+
+
 // -------------------------------------------------------------------------
 
 
@@ -1020,7 +1023,11 @@ int allocate_linux_data()
     vmm_memset((void*)linux_stack_base, 0, PAGE_SIZE); 
 
     // linux data area
+#ifdef LOWBOOTPARAMS
+    linux_boot_parameters= 0x20000;
+#else
     linux_boot_parameters= (linux_stack_base-linux_stack_size-2*PAGE_SIZE);
+#endif
     vmm_memset((void*)linux_boot_parameters, 0, 2*PAGE_SIZE); 
     return 0;
 }
@@ -2126,11 +2133,23 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     }
 
     // mark linux data area as reserved
+#ifdef LOWBOOTPARAMS
+    if(!e820_reserve_ram(linux_stack_base,
+                         evmm_heap_base-linux_stack_base)) {
+      bprint("Unable to reserve bootstrap region in e820 table\n");
+      LOOP_FOREVER
+    }
+    if(!e820_reserve_ram(linux_boot_parameters, 2*PAGE_SIZE)) {
+      bprint("Unable to reserve bootstrap region in e820 table\n");
+      LOOP_FOREVER
+    }
+#else
     if(!e820_reserve_ram(linux_boot_parameters, 
                          evmm_heap_base-linux_boot_parameters)) {
       bprint("Unable to reserve bootstrap region in e820 table\n");
       LOOP_FOREVER
-    } 
+    }
+#endif
 
     // prepare linux for evmm
     if(prepare_linux_image_for_evmm(mbi)) {

@@ -98,7 +98,7 @@ sed '/^#INSTALL BEGIN/,/^#INSTALL END/d' "$root_dir/src/install.sh" \
 chmod +x "$test_dir/scripts/tao.sh"
 	
 cd "$test_dir/scripts/"
-perl -p -i -e "s|^export TAO_TEST=.*\$|export TAO_TEST="\""$test_dir"\""|" tao.sh
+perl -p -i -e "s|^export TAO_TEST=undef .*\$|export TAO_TEST="\""$test_dir"\""|" tao.sh
 for script in "setup.sh" "start.sh" "restart.sh" "monitor.sh" \
 	"test.sh" "refresh.sh" "stop.sh" "clean.sh" "hash.sh" "help.sh"; do
 	rm -f $script
@@ -111,7 +111,7 @@ mkdir -p logs
 
 cat <<END > "$test_dir/tao.env"
 # Tao/CloudProxy environment variables"
-# export TAO_TEST="$test_dir" # Hardcoded into $test_dir/scripts/*.sh
+export TAO_TEST="$test_dir" # Also hardcoded into $test_dir/scripts/*.sh
 
 export TAO_ROOT="$root_dir"
 export TAO_VERSION="$test_ver"
@@ -205,10 +205,9 @@ function cleanup()
 function stoptests()
 {
 	echo "Attempting graceful shutdown..."
-	# Try graceful shutdown
-	(bin/shutdown_linux_tao 2>/dev/null | grep -v "^Aborted$") || true
-	sleep 1
-
+	(if bin/shutdown_linux_tao; then sleep 1; fi ) 2>/dev/null | grep -v "^Aborted$" || true
+	
+	echo "Checking for remainning Tao services and processes..."
 	# Try to shutdown 
 	killed=0
 	for prog in $TAO_PROGRAMS; do

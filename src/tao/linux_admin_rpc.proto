@@ -26,6 +26,7 @@ enum LinuxAdminRPCRequestType {
   LINUX_ADMIN_RPC_STOP_HOSTED_PROGRAM = 3;
   LINUX_ADMIN_RPC_KILL_HOSTED_PROGRAM = 4;
   LINUX_ADMIN_RPC_GET_TAO_HOST_NAME = 5;
+  LINUX_ADMIN_RPC_LIST_HOSTED_PROGRAMS = 6;
 }
 
 message LinuxAdminRPCRequest {
@@ -35,9 +36,15 @@ message LinuxAdminRPCRequest {
   repeated string args = 4;
 }
 
+message LinuxAdminRPCHostedProgramList {
+  repeated string name = 1;
+  repeated int32 pid = 2;
+}
+
 message LinuxAdminRPCResponse {
   required LinuxAdminRPCRequestType rpc = 1;
   required bool success = 2;
-  optional bytes data = 3;
+  optional bytes data = 3; // either a string or 
+						   // serialized LinuxAdminRPCHostedProgramList
 }
 

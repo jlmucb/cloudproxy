@@ -84,6 +84,8 @@ void StringReplaceAll(const string &x, const string &y, string *s) {
 }
 
 int main(int argc, char **argv) {
+  string usage = "Administrative utility for TaoDomain.\nUsage:\n  ";
+  google::SetUsageMessage(usage + argv[0] + " [options]");
   tao::InitializeApp(&argc, &argv, true);
 
   scoped_ptr<TaoDomain> admin;

@@ -21,6 +21,7 @@
 
 #include <list>
 #include <string>
+#include <utility>
 
 #include "tao/message_channel.h"
 #include "tao/linux_admin_rpc.pb.h"
@@ -28,6 +29,7 @@
 
 namespace tao {
 using std::list;
+using std::pair;
 using std::string;
 
 // RPC interface for administering a LinuxHost.
@@ -60,7 +62,15 @@ class LinuxAdminRPC {
   /// @param[out] child_subprin The subprincipal name of the hosted program(s).
   virtual bool StopHostedProgram(const string &child_subprin) const;
 
-  /// @}
+  /// Request the LinuxTao send SIGTERM to a hosted program. If there are
+  /// multiple hosted programs with the same name, all of them will be sent the
+  /// signal.
+  /// @param[out] child_subprin The subprincipal name of the hosted program(s).
+  virtual bool KillHostedProgram(const string &child_subprin) const;
+
+  /// Request from LinuxTao a list of hosted programs.
+  /// @param[out] child_info A list of <child_subprin, pid> pairs.
+  virtual bool ListHostedPrograms(list<pair<string, int>> *child_info) const;
 
  protected:
   /// The channel over which to send and receive messages.

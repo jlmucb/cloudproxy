@@ -52,6 +52,29 @@ bool LinuxAdminRPC::StopHostedProgram(const string &child_subprin) const {
   return Request(rpc, nullptr /* data */);
 }
 
+bool LinuxAdminRPC::KillHostedProgram(const string &child_subprin) const {
+  LinuxAdminRPCRequest rpc;
+  rpc.set_rpc(LINUX_ADMIN_RPC_KILL_HOSTED_PROGRAM);
+  rpc.set_data(child_subprin);
+  return Request(rpc, nullptr /* data */);
+}
+
+bool LinuxAdminRPC::ListHostedPrograms(list<pair<string, int>> *child_info) const {
+  LinuxAdminRPCRequest rpc;
+  rpc.set_rpc(LINUX_ADMIN_RPC_LIST_HOSTED_PROGRAMS);
+  string data;
+  LinuxAdminRPCHostedProgramList info;
+  if (!Request(rpc, &data) ||
+      !info.ParseFromString(data) ||
+      info.name_size() != info.pid_size())
+      return false;
+  child_info->clear();
+  for (int i = 0; i < info.name_size(); i++) {
+    child_info->push_back(make_pair(info.name(i), info.pid(i)));
+  }
+  return true;
+}
+
 bool LinuxAdminRPC::Request(const LinuxAdminRPCRequest &req, string *data) const {
   LinuxAdminRPCResponse resp;
   bool eof;

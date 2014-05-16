@@ -167,6 +167,19 @@ bool LinuxHost::HandleAdminRPC(const LinuxAdminRPCRequest &rpc,
       LOG(INFO) << "StopHostedProgram()";
       success = HandleStopHostedProgram(rpc, SIGTERM);
       break;
+    case LINUX_ADMIN_RPC_LIST_HOSTED_PROGRAMS:
+      LOG(INFO) << "ListHostedPrograms()";
+      {
+        LinuxAdminRPCHostedProgramList info;
+        for (auto &child : hosted_processes_) {
+          info.add_name(child->subprin);
+          info.add_pid(child->pid);
+        }
+        string data;
+        success = info.SerializeToString(&data);
+        if (success) resp->set_data(data);
+      }
+      break;
     case LINUX_ADMIN_RPC_KILL_HOSTED_PROGRAM:
       LOG(INFO) << "KillHostedProgram()";
       success = HandleStopHostedProgram(rpc, SIGKILL);

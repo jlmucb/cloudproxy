@@ -36,7 +36,7 @@
 				'pipe_factory_unittests.cc',
 				# 'soft_tao.cc', see 'tao_unittests.cc'
 				# 'tao.cc', see 'linux_host_unittests.cc'
-				# 'tao_domain.cc', see 'acl_guard_unittests.cc'
+				'tao_domain_unittests.cc', # also see 'acl_guard_unittests.cc'
 				# 'tao_host.cc', see 'linux_host_unittests.cc'
 				# 'tao_rpc.cc', see 'linux_host_unittests.cc'
 				'tao_test.cc',

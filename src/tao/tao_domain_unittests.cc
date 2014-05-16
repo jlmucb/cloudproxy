@@ -24,9 +24,7 @@
 
 #include "tao/util.h"
 
-using tao::CreateTempDir;
-using tao::ScopedTempDir;
-using tao::TaoDomain;
+using namespace tao;
 
 class TaoDomainTest : public ::testing::Test {
  protected:

@@ -39,10 +39,11 @@ using std::list;
 
 //using cloudproxy::CloudAuth;
 //using cloudproxy::CloudUserManager;
-using tao::TaoDomain;
-using tao::ReadFileToString;
-using tao::LinuxProcessFactory;
 using tao::Keys;
+using tao::LinuxProcessFactory;
+using tao::ReadFileToString;
+using tao::TaoDomain;
+using tao::elideString;
 
 DEFINE_string(config_path, "tao.config", "Location of tao configuration");
 DEFINE_string(policy_pass, "", "A password for the policy private key");
@@ -113,13 +114,14 @@ int main(int argc, char **argv) {
 
   if (!FLAGS_canexecute.empty()) {
     // TODO(kwalsh) For host, we could deserialize Tao from env var then call
-    // GetTaoName().
+    // GetTaoName(), then append policy prin. Or assume linuxhost and call
+    // GetTaoName for that.
     string host = FLAGS_host;
     CHECK(!host.empty());
     // TODO(kwalsh) We assume LinuxHost and LinuxProcessFactory here.
-    string policy_subprin;
-    CHECK(admin->GetSubprincipalName(&policy_subprin));
-    host += "::" + policy_subprin;
+    // string policy_subprin;
+    //CHECK(admin->GetSubprincipalName(&policy_subprin));
+    //host += "::" + policy_subprin;
     LinuxProcessFactory factory;
     string child_subprin;
     stringstream paths(FLAGS_canexecute);
@@ -132,7 +134,8 @@ int main(int argc, char **argv) {
              "  path: %s\n"
              "  host: %s\n"
              "  name: ::%s\n",
-             path.c_str(), host.c_str(), child_subprin.c_str());
+             path.c_str(), elideString(host).c_str(),
+             elideString(child_subprin).c_str());
       CHECK(admin->Authorize(host+"::"+child_subprin, "Execute", list<string>{}));
     }
     did_work = true;

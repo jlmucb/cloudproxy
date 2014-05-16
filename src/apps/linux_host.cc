@@ -51,6 +51,7 @@ DEFINE_string(tao_host, "",
 
 DEFINE_bool(service, false, "Start the LinuxHost service.");
 DEFINE_bool(shutdown, false, "Shut down the LinuxHost service.");
+DEFINE_bool(name, false, "Show the LinuxHost principal name.");
 
 DEFINE_bool(run, false, "Start a hosted program (path and args follow --).");
 DEFINE_bool(list, false, "List hosted programs.");
@@ -62,6 +63,7 @@ int main(int argc, char **argv) {
   string tab = "  ";
   usage += tab + argv[0] + " [options] --service\n";
   usage += tab + argv[0] + " [options] --shutdown\n";
+  usage += tab + argv[0] + " [options] --name\n";
   usage += tab + argv[0] + " [options] --run -- program args...\n";
   usage += tab + argv[0] + " [options] --stop -- name...\n";
   usage += tab + argv[0] + " [options] --kill -- name...\n";
@@ -69,11 +71,10 @@ int main(int argc, char **argv) {
   google::SetUsageMessage(usage);
   InitializeApp(&argc, &argv, true);
 
-  int ncmds = FLAGS_service + FLAGS_shutdown + FLAGS_run + FLAGS_list +
-              FLAGS_kill + FLAGS_stop;
+  int ncmds = FLAGS_service + FLAGS_shutdown + FLAGS_name + FLAGS_run +
+              FLAGS_list + FLAGS_kill + FLAGS_stop;
   if (ncmds > 1) {
-    fprintf(stderr, "Error: Specify at most one of:\n"
-                    "  --service --shutdown --run --stop --kill --list\n");
+    fprintf(stderr, "Error: Specify one of the command options\n");
     return 1;
   }
 
@@ -145,8 +146,10 @@ int main(int argc, char **argv) {
       for (auto &info : child_info) {
         printf(" PID %d subprin ::%s\n", info.second, info.first.c_str());
       }
+    } else if (FLAGS_name) {
+      printf("%s\n", name.c_str()); // show full name here
     } else {
-      printf("LinuxHost: %s\n", name.c_str()); // show full name here
+      printf("LinuxHost: %s\n", elideString(name).c_str());
     }
   }
 

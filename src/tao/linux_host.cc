@@ -241,8 +241,10 @@ bool LinuxHost::HandleStartHostedProgram(const LinuxAdminRPCRequest &rpc,
 
   if (!child_policy_->IsAuthorized(our_name + "::" + *child_subprin, "Execute",
                                    list<string>{})) {
-      LOG(ERROR) << "Hosted program ::" << elideString(*child_subprin)
-                 << " is not authorized to execute on this Tao host";
+    LOG(ERROR)
+        << "Hosted program denied authorization to execute on this host\n"
+        << "Program: ::" << elideString(*child_subprin) << "\n"
+        << "LinuxHost: " << elideString(our_name);
       return false;
   }
 

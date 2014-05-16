@@ -31,6 +31,6 @@ message ACLSet { repeated ACLEntry entries = 1; }
 
 // A set of ACL entries signed by a key.
 message SignedACLSet {
-  required string serialized_aclset = 1;
+  required bytes serialized_aclset = 1;
   required bytes signature = 2;
 }

@@ -163,12 +163,12 @@ source $TAO_TEST/tao.env
 
 TAO_PROGRAMS=$(cd $TAO_TEST/bin; echo * | grep -v '\.a$')
 
-WATCHFILES="bin/tcca bin/linux_tao domain_acls tao.config tao.env"
+WATCHFILES="bin/tcca bin/linux_host domain_acls tao.config tao.env"
 
 # log a to stderr for admin stuff, otherwise it is really quiet
 admin_args="-config_path tao.config -policy_pass $TAO_PASS -alsologtostderr=1"
 admin="bin/tao_admin $admin_args"
-start_hosted="bin/start_hosted_program -program"
+start_hosted="bin/linux_host --run -- "
 tpm_tao="bin/tpm_tao -alsologtostderr=1"
 soft_tao="bin/soft_tao -alsologtostderr=1"
 
@@ -198,14 +198,19 @@ function showenv()
 function cleanup()
 {
 	rm -f ${TAO_TEST}/logs/*
-	rm -rf ${TAO_TEST}/{*keys,tpm,fake_tpm,whitelist,tao.config,acls_sig}
+	rm -rf ${TAO_TEST}/{*keys,tpm,soft_tao,linux_tao_host,domain_acls,tao.config,acls_sig}
+	grep -v "^export GOOGLE_HOST_TAO" ${TAO_TEST}/tao.env >/tmp/tao_env
+	cat <<END >>/tmp/tao_env
+export GOOGLE_HOST_TAO="" # Use ${TAO_TEST}\/scripts\/setup.sh to make this.
+END
+	mv /tmp/tao_env tao.env
 	echo "Cleared all Tao configuration data"
 }
 
 function stoptests()
 {
 	echo "Attempting graceful shutdown..."
-	(if bin/shutdown_linux_tao; then sleep 1; fi ) 2>/dev/null | grep -v "^Aborted$" || true
+	(if bin/linux_host --shutdown; then sleep 1; fi ) 2>/dev/null | grep -v "^Aborted$" || true
 	
 	echo "Checking for remainning Tao services and processes..."
 	# Try to shutdown 
@@ -273,10 +278,10 @@ function startsvcs()
 	# 	echo "TCCA service now running"
 	# fi
 
-	if pgrep -x `shortname linux_tao` >/dev/null; then
+	if pgrep -x `shortname linux_host` >/dev/null; then
 		echo "LinuxHost service already running";
 	else
-		bin/linux_tao &
+		bin/linux_host --service &
 		echo "LinuxTao service now running"
 	fi
 }
@@ -322,14 +327,14 @@ function testpgm()
 	case "$1" in
 		client|server)
 			echo "Starting cloudproxy server..."
-			server_id=`$start_hosted bin/server -- --v=2`
+			server_id=`$start_hosted bin/server --v=2`
 			echo "$server_id";
 			server_pid=`extract_pid $server_id`
 			sleep 2
 			tail -f $GLOG_log_dir/server.INFO &
 			server_tail_pid=$!
 			echo "Starting cloudproxy client..."
-			client_id=`$start_hosted  bin/client -- --v=2`
+			client_id=`$start_hosted  bin/client --v=2`
 			client_pid=`extract_pid $client_id`
 			sleep 2
 			tail -f $GLOG_log_dir/client.INFO &
@@ -346,13 +351,13 @@ function testpgm()
 			# make some test data too
 			echo "test data $RANDOM" >> file_client_files/test
 			echo "Starting cloudproxy file server..."
-			server_id=`$start_hosted  bin/fserver -- --v=2`
+			server_id=`$start_hosted  bin/fserver --v=2`
 			server_pid=`extract_pid $server_id`
 			sleep 2
 			tail -f $GLOG_log_dir/fserver.INFO &
 			server_tail_pid=$!
 			echo "Starting cloudproxy file client..."
-			client_id=`$start_hosted  bin/fclient -- --v=2`
+			client_id=`$start_hosted  bin/fclient --v=2`
 			client_pid=`extract_pid $client_id`
 			sleep 2
 			tail -f $GLOG_log_dir/fclient.INFO &
@@ -365,7 +370,7 @@ function testpgm()
 			;;
 		http)
 			echo "Starting cloudproxy http echo server..."
-			server_id=`$start_hosted  bin/http_echo_server -- --v=2`
+			server_id=`$start_hosted  bin/http_echo_server --v=2`
 			server_pid=`extract_pid $server_id`
 			sleep 2
 			tail -f $GLOG_log_dir/http_echo_server.INFO &
@@ -379,7 +384,7 @@ function testpgm()
 			;;
 		https)
 			echo "Starting cloudproxy https echo server..."
-			server_id=`$start_hosted  bin/https_echo_server -- --v=2`
+			server_id=`$start_hosted  bin/https_echo_server --v=2`
 			server_pid=`extract_pid $server_id`
 			sleep 2
 			tail -f $GLOG_log_dir/https_echo_server.INFO &

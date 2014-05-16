@@ -53,34 +53,35 @@ UINT32 vmm_rdtsc (UINT32 *upper)
 }
 
 
-void vmm_write_xcr(UINT64 xcr)
+void vmm_write_xcr(UINT64 xcr, UINT64 high, UINT64 low)
 {
 #ifdef JLMDEBUG1
-    bprint("vmm_write_xcr\n");
-    LOOP_FOREVER
+    bprint("vmm_write_xcr with value %llx\n", xcr);
+    LOOP_FOREVER;
 #endif
+
     asm volatile(
-        "\tmovq       %[xcr], %%rax\n"
         "\txsetbv\n"
-    : : [xcr] "g"(xcr)
-    :"%rax");
+    :: "d" (high), "a" (low), "c" (xcr)
+    :);
 }
 
 
-UINT64 vmm_read_xcr()
+void vmm_read_xcr(UINT32* low, UINT32* high, UINT32 xcr)
 {
 #ifdef JLMDEBUG1
     bprint("vmm_read_xcr\n");
     LOOP_FOREVER
 #endif
-    UINT64  result;
-
+    UINT32 highval, lowval;
     asm volatile(
         "\txgetbv\n"
-        "movq   %%rcx, %[result]\n"
-    : [result]"=g"(result)
-    : :"%rcx", "%rdx");
-    return result;
+    : "=d" (highval), "=a" (lowval)
+    : "c" (xcr) :);
+
+    *high = highval;
+    *low = lowval;
+    return;
 }
 
 

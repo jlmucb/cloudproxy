@@ -379,6 +379,8 @@ static BOOLEAN vmexit_analysis_io_exiting(GUEST_CPU_HANDLE gcpu UNUSED, VMCS_OBJ
     }
 }
 
+
+// IAH: annotate this function to see if we get into and then where we get
 static BOOLEAN vmexit_analysis_msr_access_exiting(GUEST_CPU_HANDLE gcpu,
                                VMCS_OBJECT* control_vmcs, BOOLEAN is_rdmsr) {
     MSR_ID msr_id;
@@ -388,6 +390,10 @@ static BOOLEAN vmexit_analysis_msr_access_exiting(GUEST_CPU_HANDLE gcpu,
     VMCS_LEVEL control_vmcs_level;
     PROCESSOR_BASED_VM_EXECUTION_CONTROLS ctrls;
 
+#ifdef JLMDEBUG
+    bprint("About to read the proc controls MSR\n");
+    LOOP_FOREVER
+#endif
     ctrls.Uint32 = (UINT32)vmcs_read(control_vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS);
     if (ctrls.Bits.UseMsrBitmaps == 0) {
         return TRUE;

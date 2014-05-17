@@ -1539,10 +1539,10 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
       bprint("linux boot parameter area fails\n");
       LOOP_FOREVER
     }
-
-    boot_params_t* new_boot_params= (boot_params_t*)linux_boot_parameters;
     vmm_memcpy((void*)linux_boot_parameters, (void*)linux_original_boot_parameters,
                sizeof(boot_params_t));
+    boot_params_t* new_boot_params= (boot_params_t*)linux_boot_parameters;
+    new_boot_params->e820_entries= g_nr_map;
 
     // set address of copied tboot shared page 
     *(uint64_t *)&(new_boot_params->tboot_shared_addr[0])=
@@ -1607,8 +1607,8 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
     }
     linux_mbi.mods_count--;
     linux_mbi.mods_addr+= sizeof(module_t);
-    mbi->mmap_addr= (uint32_t)g_copy_e820_map;
-    mbi->mmap_length= g_nr_map*sizeof(memory_map_t);
+    linux_mbi.mmap_addr= (uint32_t)g_copy_e820_map;
+    linux_mbi.mmap_length= g_nr_map*sizeof(memory_map_t);
 
 #ifdef JLMDEBUG1
     bprint("linux mbi, %d modules\n", linux_mbi.mods_count);
@@ -2233,7 +2233,19 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
            linux_stack_base, linux_edi_register);
     bprint("\tapplication struct 0x%08x, reserved, 0x%08x\n",
            (int)evmm_p_a0, (int)evmm_reserved);
-    // LOOP_FOREVER
+#endif
+#ifdef JLMDEBUG1
+    boot_params_t* linux_boot_params= (boot_params_t*)linux_boot_parameters;
+    bprint("bootparams at: %p, e820 map in boot params to linux (%d entries)\n",
+          linux_boot_params, linux_boot_params->e820_entries);
+    bprint("command line: %s\n", 
+           (char*) (linux_boot_parameters+sizeof(boot_params_t)));
+    e820entry_t* pent= linux_boot_params->e820_map;
+    for(i=0; i<linux_boot_params->e820_entries;i++) {
+        bprint("\taddr: %016llx, size: %lld, type: %d\n",
+                pent->addr, pent->size, pent->type);
+        pent++;
+    }
 #endif
     if (evmm_num_of_aps > 0) {
         startap_main(&init32, &init64, p_startup_struct, vmm_main_entry_point);

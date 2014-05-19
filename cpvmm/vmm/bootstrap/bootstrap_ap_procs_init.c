@@ -173,7 +173,7 @@ static void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     vmm_memcpy(code_to_patch, (const void*)APStartUpCode, sizeof(APStartUpCode));
 
     // get current segments
-    asm volatile (
+    __asm__ volatile (
         "\tmovw %%cs, %[cs_value]\n"
         "\tmovw %%ds, %[ds_value]\n"
         "\tmovw %%es, %[es_value]\n"
@@ -204,7 +204,7 @@ static void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
                                             (uint32_t)(ap_continue_wakeup_code);
 
     // get GDTR from BSP
-    asm volatile (
+    __asm__ volatile (
         "\tsgdt %[gdtr_32]\n"
     :
     : [gdtr_32] "m" (gdtr_32)
@@ -226,7 +226,7 @@ static void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 static void ap_continue_wakeup_code_C( uint32_t local_apic_id )
 {
     // mark that the command was accepted
-    asm volatile (
+    __asm__ volatile (
         "\tlock; incl %[g_ready_counter]\n"
     : [g_ready_counter] "=m" (g_ready_counter)
     ::);
@@ -240,7 +240,7 @@ static void ap_continue_wakeup_code_C( uint32_t local_apic_id )
 // Asm-level initial AP setup in protected mode
 static void ap_continue_wakeup_code(void)
 {
-    asm volatile (
+    __asm__ volatile (
         "\tcli\n"
 
         // get the Local APIC ID
@@ -313,7 +313,7 @@ static void ap_continue_wakeup_code(void)
 
 static uint8_t read_port_8( uint32_t port )
 {
-    asm volatile (
+    __asm__ volatile (
         "\tlock; incl %[g_ready_counter]\n"
         "\tmovl %[port],%%edx\n"
         "\txorl %%eax, %%eax\n"
@@ -372,7 +372,7 @@ static void startap_stall_using_tsc(uint32_t stall_usec)
                 start_tsc = (uint32_t) startap_rdtsc();
         }
     while (start_tsc < end_tsc) {
-        asm volatile (
+        __asm__ volatile (
             "\tpause\n"
         :::);
         start_tsc = (uint32_t) startap_rdtsc();
@@ -382,12 +382,13 @@ static void startap_stall_using_tsc(uint32_t stall_usec)
 
 
 // send IPI
+#if 0
 static void send_ipi_to_all_excluding_self(uint32_t vector_number, uint32_t delivery_mode)
 {
-    IA32_ICR_LOW           icr_low = {0};
-    IA32_ICR_LOW           icr_low_status = {0};
-    IA32_ICR_HIGH          icr_high = {0};
-    UINT64                 apic_base = 0;
+  IA32_ICR_LOW           icr_low = {{0}};
+  IA32_ICR_LOW           icr_low_status = {{0}};
+  IA32_ICR_HIGH          icr_high = {{0}};
+  UINT64                 apic_base = 0;
 
     icr_low.bits.vector = vector_number;
     icr_low.bits.delivery_mode = delivery_mode;
@@ -421,15 +422,16 @@ static void send_ipi_to_all_excluding_self(uint32_t vector_number, uint32_t deli
     } while (icr_low_status.bits.delivery_status != 0);
     return;
 }
+#endif
 
 
 static void send_ipi_to_specific_cpu (uint32_t vector_number, 
                 uint32_t delivery_mode, uint8_t dst)
 {
-    IA32_ICR_LOW           icr_low = {0};
-    IA32_ICR_LOW           icr_low_status = {0};
-    IA32_ICR_HIGH          icr_high = {0};
-    UINT64                 apic_base = 0;
+  IA32_ICR_LOW           icr_low = {{0}};
+  IA32_ICR_LOW           icr_low_status = {{0}};
+  IA32_ICR_HIGH          icr_high = {{0}};
+  UINT64                 apic_base = 0;
 
     icr_low.bits.vector= vector_number;
     icr_low.bits.delivery_mode = delivery_mode;
@@ -463,11 +465,11 @@ static void send_ipi_to_specific_cpu (uint32_t vector_number,
 }
 
 
+#if 0
 static void send_init_ipi( void )
 {
     send_ipi_to_all_excluding_self( 0, LOCAL_APIC_DELIVERY_MODE_INIT );
 }
-
 
 static void send_sipi_ipi( void* code_start )
 {
@@ -490,7 +492,7 @@ static void send_broadcast_init_sipi(INIT32_STRUCT *p_init32_data)
     send_sipi_ipi( (void *) p_init32_data->i32_low_memory_page );
     startap_stall_using_tsc(  200000 ); // timeout - 200 miliseconds
 }
-
+#endif
 
 // Send INIT IPI - SIPI to all active APs
 static void send_targeted_init_sipi(struct _INIT32_STRUCT *p_init32_data,
@@ -541,7 +543,7 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
     ap_initialize_environment( );
 
     // save IDT and GDT
-    asm volatile (
+    __asm__ volatile (
         "\tsgdt %[gp_GDT]\n"
         "\tsidt %[gp_IDT]\n"
     : [gp_GDT] "=m" (gp_GDT), [gp_IDT] "=m" (gp_IDT)
@@ -577,7 +579,7 @@ void ap_procs_run(FUNC_CONTINUE_AP_BOOT continue_ap_boot_func, void *any_data)
     mp_set_bootstrap_state(MP_BOOTSTRAP_STATE_APS_ENUMERATED);
     // wait until all APs will accept this
     while (g_ready_counter != g_aps_counter) {
-        asm volatile (
+        __asm__ volatile (
             "\tpause\n" :::);
     }
     return;
@@ -615,7 +617,7 @@ void ap_initialize_environment(void)
 
 void mp_set_bootstrap_state(MP_BOOTSTRAP_STATE new_state)
 {
-    asm volatile (
+    __asm__ volatile (
         "\tpush  %%eax\n"
         "\tmovl  %[new_state], %%eax\n"
         "\tlock; xchgl %%eax, %[mp_bootstrap_state]\n"
@@ -629,7 +631,7 @@ void mp_set_bootstrap_state(MP_BOOTSTRAP_STATE new_state)
 uint32_t startap_rdtsc (uint32_t* upper)
 {
     uint32_t ret;
-    asm volatile(
+    __asm__ volatile(
         "\tmovl  %[upper], %%ecx\n"
         "\trdtsc\n"
         "\tmovl    (%%ecx), %%edx\n"

@@ -506,7 +506,7 @@ void vmentry_failure_function(ADDRESS flags)
             flags, rflags.Bits.ZF, rflags.Bits.CF, code, err);
 #ifdef JLMDEBUG
     bprint(
-       "vmentry_failure_function FLAGS=0x%x (ZF=%d CF=%d) ErrorCode=0x%x\nDesc=%s\n",
+       "vmentry_failure_function FLAGS=%llx (ZF=%d CF=%d) ErrorCode=0x%x\nDesc=%s\n",
        flags, rflags.Bits.ZF, rflags.Bits.CF, code, err);
     LOOP_FOREVER
 #endif
@@ -737,9 +737,8 @@ void vmexit_common_handler(void)
     REPORT_INITIAL_VMEXIT_CHECK_DATA initial_vmexit_check_data;
 
 #ifdef JLMDEBUG
-    int exit_reason= (int)vmexit_reason();
     bprint("vmexit_common_handler\n");
-    bprint("guest rip: 0x%016llx, exit reason: 0x%016lx\n", 
+    bprint("guest rip: 0x%016llx, exit reason: %x\n", 
             gcpu_read_guestrip(), vmexit_reason());
     //evmmdebugwait(MEDIUMLOOP);
     bprint("After the wait\n");

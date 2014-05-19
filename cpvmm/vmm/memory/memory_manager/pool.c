@@ -23,8 +23,13 @@
 #include "jlmdebug.h"
 #endif
 
+#ifndef VMM_DEADLOOP
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(POOL_C)
+#endif
+
+#ifndef VMM_ASSERT
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(POOL_C, __condition)
+#endif
 
 #pragma warning(disable : 4710)
 #pragma warning (disable : 4101 4189)

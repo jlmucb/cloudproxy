@@ -47,7 +47,7 @@ LINK=       gcc
 all: $(E)/bootstrap.bin
 
 clean:
-	rm  $(E)/bootstrap.bin
+	rm -f $(E)/bootstrap.bin
 	rm -f $(B)/*.o
 
 $(E)/bootstrap.bin: $(B)/bootstrap_entry.o $(B)/bootstrap_e820.o \

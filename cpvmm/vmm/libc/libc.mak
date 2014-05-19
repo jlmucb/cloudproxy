@@ -38,8 +38,8 @@ INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
 HW_DIR = 	em64t
 HW_COMMON_LIBC_DIR = $(S)/common/libc/$(HW_DIR)
 ASM_SRC = 	
-DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs 
-RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs 
+DEBUG_CFLAGS     := -Wall -Wno-format -fwrapv -Wall -Werror -g -DDEBUG -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs 
+RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -fwrapv -Wall -Werror -O3  -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs 
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 libcsrc=	$(S)/common/libc
@@ -89,5 +89,5 @@ $(BINDIR)/bitarray_utilities.o: $(libcsrc)/bitarray_utilities.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/bitarray_utilities.o $(libcsrc)/bitarray_utilities.c
 
 $(BINDIR)/em64t_mem2.o: $(libcsubdir)/em64t_mem2.c
-	echo "sprintf.o" 
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/em64t_mem2.o $(libcsubdir)/em64t_mem2.c
+			echo "em64t_mem2.o" 
+			$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/em64t_mem2.o $(libcsubdir)/em64t_mem2.c

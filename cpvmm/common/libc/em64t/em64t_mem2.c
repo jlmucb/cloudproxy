@@ -18,30 +18,6 @@
 #include "jlmdebug.h"
 #endif
 
-
-//  force compiler intrinsics to use our code
-void memset (void *str, int c, int n) {
-    vmm_memset (str, c, n);
-    return;
-}
-
-
-void memcpy(void *str1, void *str2, int n) {
-    vmm_memcpy(str1, str2, n);
-    return; 
-}
-
-
-int strlen (const char *str) {
-    return vmm_strlen(str);
-}
-
-
-void *memmove(void *dest, const void *src, int n) {
-    return vmm_memmove(dest, src, n);
-}
-
-
 void vmm_lock_xchg_qword (UINT64 *dst, UINT64 *src) 
 {
 #ifdef JLMDEBUG

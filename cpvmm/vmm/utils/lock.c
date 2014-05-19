@@ -97,6 +97,7 @@ BOOLEAN lock_try_acquire( VMM_LOCK* lock )
                                               expected_value, new_value );
     return (current_value == expected_value);
 #endif
+    return TRUE;
 }
 
 

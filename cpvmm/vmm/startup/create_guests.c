@@ -46,7 +46,10 @@
 #ifdef FAST_VIEW_SWITCH
 extern void fvs_initialize(GUEST_HANDLE guest, UINT32 number_of_host_processors);
 #endif
+
+#if 0 // never defined
 static void raise_guest_create_event(GUEST_ID guest_id);  // moved to guest.c
+#endif
 
 #define PRIMARY_MAGIC 0
 

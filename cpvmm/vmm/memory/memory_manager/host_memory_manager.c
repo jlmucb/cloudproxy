@@ -975,15 +975,15 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
     VMM_ASSERT(vmm_stack_is_initialized());
     VMM_LOG(mask_anonymous, level_trace,"HMM: Remapping the exception stacks:\n");
     for (i = 0; i < startup_struct->number_of_processors_at_boot_time; i++) {
+
+        // JLM (FIX) fix addresses so we can have stack guard
+#if 0
         HVA page;
         HPA page_hpa;
         UINT32 exception_stack_index;
         UINT64 page_to_assign_hva;
-
         HVA page_hva_tmp;
         HPA page_hpa_tmp;
-        // JLM (FIX) fix addresses so we can have stack guard
-#if 0
         for (exception_stack_index = 0; 
              exception_stack_index < idt_get_extra_stacks_required(); 
              exception_stack_index++) {

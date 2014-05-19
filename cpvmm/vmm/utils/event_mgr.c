@@ -28,6 +28,9 @@
 #include "guest.h"
 #include "list.h"
 #include "vmm_callback.h"
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
 
 #define OBSERVERS_LIMIT         5
 #define NO_EVENT_SPECIFIC_LIMIT (UINT32)-1
@@ -131,8 +134,11 @@ static BOOLEAN event_register_internal(PEVENT_ENTRY p_event,
         UVMM_EVENT_INTERNAL      e,      //  in: event
         event_callback  call    //  in: callback to register on event e
     );
+#if 0 // never defined
 static BOOLEAN event_unregister_internal( PEVENT_ENTRY    p_event,
         UVMM_EVENT_INTERNAL e, event_callback  call);
+#endif
+
 static BOOLEAN event_raise_internal( PEVENT_ENTRY  p_event,
     UVMM_EVENT_INTERNAL e, 
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
@@ -150,11 +156,11 @@ static EVENT_ENTRY * get_gcpu_observers(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE 
     const VIRTUAL_CPU_ID*   p_vcpu;
     PCPU_EVENTS             p_cpu_events = NULL;
     EVENT_ENTRY             *p_event = NULL;
-    BOOLEAN                 res;
+    // BOOLEAN                 res;
 
     p_vcpu = guest_vcpu(gcpu);
     VMM_ASSERT(p_vcpu);
-    res = hash64_lookup(event_mgr.gcpu_events,
+    hash64_lookup(event_mgr.gcpu_events,
                         (UINT64) (p_vcpu->guest_id << (8 * sizeof(GUEST_ID)) | p_vcpu->guest_cpu_id),
                         (UINT64 *) &p_cpu_events);
     if(p_cpu_events != NULL) {
@@ -520,7 +526,7 @@ BOOLEAN event_guest_raise(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void *p)
     BOOLEAN         event_handled = FALSE;
 
 #ifdef JLMDEBUG
-    bprint("event_guest_raise gcpu: %d\n", gcpu);
+    bprint("event_guest_raise gcpu: %p\n", gcpu);
 #endif
     VMM_ASSERT(gcpu);
     guest = gcpu_guest_handle(gcpu);
@@ -555,7 +561,7 @@ BOOLEAN event_raise(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void *p)
     BOOLEAN raised = FALSE;
 
 #ifdef JLMDEBUG
-    bprint("event_raise(%d), EVENT_COUNT: %d, gcpu: %d\n", 
+    bprint("event_raise(%d), EVENT_COUNT: %d, gcpu: %p\n", 
            e, EVENTS_COUNT, gcpu);
 #endif
     VMM_ASSERT(e < EVENTS_COUNT);

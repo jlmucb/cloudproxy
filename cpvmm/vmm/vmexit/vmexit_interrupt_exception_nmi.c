@@ -118,10 +118,10 @@ VMEXIT_HANDLING_STATUS vmexit_software_interrupt_exception_nmi(GUEST_CPU_HANDLE 
         case IA32_EXCEPTION_VECTOR_PAGE_FAULT:
             // flat page tables support
             {
+#ifdef ENABLE_EMULATOR
                 EM64T_CR0 cr0;
                 cr0.Uint64 = gcpu_get_guest_visible_control_reg( gcpu, IA32_CTRL_CR0 );
 
-#ifdef ENABLE_EMULATOR
                 if (cr0.Bits.PG == 0) {
                     // page fault without paging in guest ? it's our
                     gcpu_perform_single_step( gcpu );

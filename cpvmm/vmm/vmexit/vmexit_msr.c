@@ -99,10 +99,14 @@ static BOOLEAN  msr_efer_write_handler(GUEST_CPU_HANDLE gcpu, MSR_ID msr_id,
                                        UINT64 *msr_value, void *context);
 static BOOLEAN  msr_efer_read_handler(GUEST_CPU_HANDLE gcpu, MSR_ID msr_id, 
                                       UINT64 *msr_value, void *context);
+
+#if 0 // Unused functions
 static BOOLEAN  msr_pat_read_handler(GUEST_CPU_HANDLE gcpu, MSR_ID msr_id, 
                                      UINT64 *msr_value, void *context);
 static BOOLEAN  msr_pat_write_handler(GUEST_CPU_HANDLE gcpu, MSR_ID msr_id, 
                                       UINT64 *msr_value, void *context);
+#endif
+
 static BOOLEAN  msr_lapic_base_write_handler(GUEST_CPU_HANDLE gcpu, MSR_ID msr_id, 
                                              UINT64 *msr_value, void *context);
 static BOOLEAN  msr_feature_control_read_handler(GUEST_CPU_HANDLE gcpu, 
@@ -465,7 +469,7 @@ VMEXIT_HANDLING_STATUS vmexit_msr_write(GUEST_CPU_HANDLE gcpu)
         if( (msr_id >= HYPER_V_MSR_MIN) && (msr_id <= HYPER_V_MSR_MAX))
         {
 #ifdef JLMDEBUG
-            bprint("Injecting GP to guest for msr %llu\n", msr_id);
+            bprint("Injecting GP to guest for msr %u\n", msr_id);
             LOOP_FOREVER
 #endif
                 gcpu_inject_gp0(gcpu);
@@ -476,11 +480,11 @@ VMEXIT_HANDLING_STATUS vmexit_msr_write(GUEST_CPU_HANDLE gcpu)
     msr_value |= gcpu_get_native_gp_reg(gcpu, IA32_REG_RAX) & LOW_BITS_32_MASK;
 
 #ifdef JLMDEBUG
-    bprint("Handling msr %llu\n", msr_id);
+    bprint("Handling msr %u\n", msr_id);
 #endif
     msr_common_vmexit_handler(gcpu, WRITE_ACCESS, &msr_value);
 #ifdef JLMDEBUG
-    bprint("Handled msr %llu\n", msr_id);
+    bprint("Handled msr %u\n", msr_id);
 #endif
     return VMEXIT_HANDLED;
 }
@@ -780,6 +784,7 @@ BOOLEAN msr_efer_read_handler( GUEST_CPU_HANDLE gcpu,
 #pragma warning( push )
 #pragma warning (disable : 4100)  // Supress warnings about unreferenced formal parameter
 
+#if 0 // Unused function
 BOOLEAN msr_pat_write_handler( GUEST_CPU_HANDLE gcpu, MSR_ID msr_id,
                 UINT64 *msr_value, void *context UNUSED)
 {
@@ -797,7 +802,9 @@ BOOLEAN msr_pat_write_handler( GUEST_CPU_HANDLE gcpu, MSR_ID msr_id,
     gcpu_set_msr_reg(gcpu, IA32_VMM_MSR_PAT, *msr_value);
     return TRUE;
 }
+#endif
 
+#if 0 // unused function
 BOOLEAN msr_pat_read_handler( GUEST_CPU_HANDLE gcpu, MSR_ID  msr_id,
             UINT64  *msr_value, void *context UNUSED)
 {
@@ -808,6 +815,7 @@ BOOLEAN msr_pat_read_handler( GUEST_CPU_HANDLE gcpu, MSR_ID  msr_id,
     *msr_value = gcpu_get_msr_reg(gcpu, IA32_VMM_MSR_PAT);
     return TRUE;
 }
+#endif
 
 
 static BOOLEAN msr_mtrr_write_handler( GUEST_CPU_HANDLE  gcpu, MSR_ID  msr_id,

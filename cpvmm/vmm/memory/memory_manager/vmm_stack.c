@@ -101,7 +101,7 @@ BOOLEAN vmm_stack_initialize(IN const VMM_STARTUP_STRUCT* startup_struct) {
     vmm_stack_size_per_cpu = vmm_stacks_retrieve_stack_size_per_cpu_from_startup_struct(startup_struct);
     vmm_max_allowed_cpus = vmm_stack_retrieve_max_allowed_cpus_from_startup_struct(startup_struct);
 #ifdef JLMDEBUG
-    bprint("stack_base: 0x%016lx, stack size per cpu: 0x%016lx\n",
+    bprint("stack_base: %llx, stack size per cpu: %u\n",
            vmm_stack_base_address,vmm_stack_size_per_cpu);
 #endif
     vmm_stacks_info_set_stacks_base(g_stacks_infos, vmm_stack_base_address);

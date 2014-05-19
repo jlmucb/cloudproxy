@@ -193,13 +193,15 @@ static void set_minimal_processor_ctrls( GCPU_VMEXIT_CONTROL_FIELD_COUNTERS* fie
 
 static void set_minimal_processor_ctrls2( GCPU_VMEXIT_CONTROL_FIELD_COUNTERS* field )
 {
-    PROCESSOR_BASED_VM_EXECUTION_CONTROLS2 proc_ctrl2, proc_ctrl2_fixed;
+  PROCESSOR_BASED_VM_EXECUTION_CONTROLS2 proc_ctrl2;
 
     if (!g_processor_ctrls2_supported) {
         return;
     }
+#if 0 // not used
     GET_FIXED_MASK( UINT32, proc_ctrl2_fixed.Uint32,
                     vmcs_hw_make_compliant_processor_based_exec_ctrl2 );
+#endif
     GET_MINIMAL_VALUE( proc_ctrl2.Uint32,
                     vmcs_hw_make_compliant_processor_based_exec_ctrl2 );
 
@@ -854,22 +856,26 @@ void gcpu_temp_exceptions_setup( GUEST_CPU_HANDLE gcpu, GCPU_TEMP_EXCEPTIONS_SET
     switch (action) {
     case GCPU_TEMP_EXIT_ON_INTR_UNBLOCK:
         {
+#if 0 // not used
             PROCESSOR_BASED_VM_EXECUTION_CONTROLS proc_ctrl;
 
             proc_ctrl.Uint32 = 0;
             proc_ctrl.Bits.VirtualInterrupt = 1;
+#endif
             request_vmexit_on_proc_ctrls( gcpu, 0, 0);
         }
         break;
 
     case GCPU_TEMP_NO_EXIT_ON_INTR_UNBLOCK:
         {
+#if 0 // not used
             PROCESSOR_BASED_VM_EXECUTION_CONTROLS proc_ctrl;
 
             proc_ctrl.Uint32 = 0;
             proc_ctrl.Bits.VirtualInterrupt = 1;
 //            gcpu->vmexit_setup.processor_ctrls.enforce_1_settings &= ~(UINT64)proc_ctrl.Uint32;
 //            gcpu->vmexit_setup.processor_ctrls.enforce_0_settings |= proc_ctrl.Uint32;
+#endif
             request_vmexit_on_proc_ctrls( gcpu, 0, 0);
         }
         break;

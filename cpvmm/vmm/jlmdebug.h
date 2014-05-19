@@ -14,9 +14,9 @@
 #define MEDIUMLOOP  800000000ULL
 #define SHORTLOOP   100000000ULL
 
-inline static int evmmdebugwait(UINT64 limit) 
+inline static int evmmdebugwait(unsigned long long limit) 
 {
-    volatile UINT64 l;
+    volatile unsigned long long l;
     for(l=0; l<limit;l++);
     return l;
 }

@@ -177,8 +177,8 @@ static inline void reset_screen(void)
 
 static void scroll_screen(void)
 {
-    int x;
-    int y;
+    size_t x;
+    size_t y;
     for ( y = 1; y < MAX_LINES; y++ ) {
         for ( x = 0; x < MAX_COLS; x++ )
             writew(VGA_ADDR(x, y-1), readw(VGA_ADDR(x, y)));
@@ -675,16 +675,15 @@ void bprint(const char *fmt, ...)
     char *pbuf = buf;
     int n;
     va_list ap;
-    static bool last_line_cr = true;
+    // static bool last_line_cr = true;
 
     vmm_memset(buf, '\0', sizeof(buf));
     va_start(ap, fmt);
     n = vscnprintf(buf, sizeof(buf), fmt, ap);
     // mtx_enter(&print_lock);  //JLM FIX
-    last_line_cr = (n > 0 && (*(pbuf+n-1) == '\n'));
+    // last_line_cr = (n > 0 && (*(pbuf+n-1) == '\n'));
     vga_write(pbuf, n);
     // mtx_leave(&print_lock);  //JLM FIX
 
-exit:
     va_end(ap);
 }

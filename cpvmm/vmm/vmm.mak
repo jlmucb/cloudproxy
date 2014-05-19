@@ -44,8 +44,8 @@ INCLUDES=	-I$(S)/vmm -I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
 
 JLMDEBUG= -I$(S)/vmm -I$(S)/common/include -I$(S)/vmm/include -I$(mainsrc)/bootstrap -D INVMM -D JLMDEBUG
 
-DEBUG_CFLAGS:=  -Wno-format -g -DDEBUG -D INCLUDE_LAYERING -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs -fPIE
-RELEASE_CFLAGS:= -Wno-unknown-pragmas -Wno-format -O3  -Wunused-function -D INCLUDE_LAYERING -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs -fPIE
+DEBUG_CFLAGS:=  -Wno-format -fwrapv -Wall -Werror -g -DDEBUG -D INCLUDE_LAYERING -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs -fPIE
+RELEASE_CFLAGS:= -Wno-unknown-pragmas -Wno-format -fwrapv -Wall -Werror -O3  -Wunused-function -D INCLUDE_LAYERING -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs -fPIE
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 
@@ -88,7 +88,7 @@ HOSTHW=		$(B)/host/hw/host_pci_configuration.o  $(B)/host/hw/hw_utils.o  \
 IPCOBJ=		$(B)/ipc/ipc_api.o  $(B)/ipc/ipc.o
 
 LIBCOBJ=	$(B)/libc/bitarray_utilities.o  $(B)/libc/common_libc.o  \
-		$(B)/libc/libc.o  $(B)/libc/sprintf.o  $(B)/libc/em64t_mem2.o \
+		$(B)/libc/libc.o  $(B)/libc/sprintf.o $(B)/libc/em64t_mem2.o \
 		$(B)/libc/vmm_io.o $(B)/libc/vmm_serial.o 
 
 EPTOBJ=		$(B)/memory/ept/ept_hw_layer.o  $(B)/memory/ept/ept.o  \

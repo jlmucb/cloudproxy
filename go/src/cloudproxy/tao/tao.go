@@ -65,13 +65,13 @@ type Tao interface {
 
 	// Seal protects the given data for the given hosted program and
 	// returns an opaque protected blob that can be unsealed later.
-	Seal(hostedProgramHash []byte, data []byte) (sealed []byte, err error)
+	Seal(data []byte) (sealed []byte, err error)
 
 	// Unseal opens a blob created by Seal if the hosted program matches
 	// the program that sealed the data.
-	Unseal(hostedProgramHash []byte, sealed []byte) (data []byte, err error)
+	Unseal(sealed []byte) (data []byte, err error)
 
 	// Attest generates a cryptographic attestation to a given data blob
 	// for a given hosted program.
-	Attest(hostedProgramHash []byte, data []byte) (attestation []byte, err error)
+	Attest(data []byte) (attestation []byte, err error)
 }

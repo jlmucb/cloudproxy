@@ -97,7 +97,7 @@ int vmm_strncmp (const char * str1, const char * str2, int n)
 
 
 #ifndef INVMM
-void *vmm_memset(void *dest, int val, uint32_t count)
+void *vmm_memset(void *dest, int val, size_t count)
 {
     uint8_t* p= (uint8_t*) dest;
     while(count-->0)
@@ -106,7 +106,7 @@ void *vmm_memset(void *dest, int val, uint32_t count)
 }
 
 
-void *vmm_memcpy(void *dest, const void* src, uint32_t count)
+void *vmm_memcpy(void *dest, const void* src, size_t count)
 {
     uint8_t* p= (uint8_t*) dest;
     uint8_t* q= (uint8_t*) src;
@@ -116,9 +116,9 @@ void *vmm_memcpy(void *dest, const void* src, uint32_t count)
 }
 
 
-uint32_t vmm_strlen(const char* p)
+size_t vmm_strlen(const char* p)
 {
-    uint32_t count= 0;
+    size_t count= 0;
 
     if(p==NULL)
         return 0;

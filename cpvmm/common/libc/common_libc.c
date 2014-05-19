@@ -160,7 +160,7 @@ char*  vmm_strcpy_s(char* dst, size_t dst_length, const char* src)
     return dst;
 }
 
-UINT32  vmm_strcmp(const char* string1, const char* string2)
+int vmm_strcmp(const char* string1, const char* string2)
 {
     const char* str1 = string1;
     const char* str2 = string2;
@@ -169,7 +169,7 @@ UINT32  vmm_strcmp(const char* string1, const char* string2)
         return 0;
     }
     if(NULL == str1) {
-        return (UINT32) -1;
+        return -1;
     }
     if(NULL == str2) {
         return 1;

@@ -44,11 +44,14 @@ BOOLEAN Cli_set_level( UINT32 level );
 #pragma warning( push )
 #pragma warning( disable : 4100 )
 INLINE void CLI_OpenSession(const char* reason, UINT32 access_level ){
+  (void)reason;
+  (void)access_level;
 }
 INLINE BOOLEAN CLI_CloseSession(void){
     return FALSE;
 }
 INLINE void CLI_EndSession(BOOLEAN cli_retvalue){
+  (void)cli_retvalue;
 }
 INLINE BOOLEAN CLI_IsSessionActive(void){
     return FALSE;
@@ -59,17 +62,27 @@ INLINE BOOLEAN CLI_IsSessionActiveOnThisCpu(void){
 INLINE void CLI_PrintSessionReason(void){
 }
 INLINE int  CLI_AddCommand(CLI_FUNCTION function, char *path, char *help, char *usage, UINT32 access_level){
-	return -1;
+  (void)function;
+  (void)path;
+  (void)help;
+  (void)usage;
+  (void)access_level;
+  return -1;
 }
 INLINE int  CLI_ExecCommand(char *path) {
-	return -1;
+  (void)path;
+  return -1;
 }
 INLINE void CLI_Prompt(void) {
 }
 INLINE void Cli_emulator_register( GUEST_ID guest_id ) {
+  (void)guest_id;
 }
 INLINE UINT32 Cli_get_level(void){ return 0; }
-INLINE BOOLEAN Cli_set_level( UINT32 level ) {return FALSE;}
+INLINE BOOLEAN Cli_set_level( UINT32 level ) {
+  (void)level;
+  return FALSE;
+}
 #pragma warning( pop )
 #endif // CLI_INCLUDE
 

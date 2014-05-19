@@ -27,11 +27,15 @@ extern char*    vmm_strncpy(char *dest, const char *src, int n);
 extern char*    vmm_strcpy(char *dest, const char *src);
 extern char*    vmm_strchr (const char * str, int character);
 extern int      vmm_strncmp (const char * str1, const char * str2, int n);
-#ifndef INVMM
 extern int      vmm_strcmp (const char * str1, const char * str2);
+#ifdef INVMM
+extern unsigned long long   vmm_strlen(const char* p);
+extern void*    vmm_memset(void *dest, int val, unsigned long long count);
+extern void*    vmm_memcpy(void *dest, const void* src, unsigned long long count);
+#else
+extern uint32_t vmm_strlen(const char* p);
 extern void*    vmm_memset(void *dest, int val, uint32_t count);
 extern void*    vmm_memcpy(void *dest, const void* src, uint32_t count);
-extern uint32_t vmm_strlen(const char* p);
 #endif
 extern uint64_t vmm_strtoul (const char* str, char** endptr, int base);
 extern void HexDump(uint8_t* start, uint8_t* end);

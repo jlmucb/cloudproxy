@@ -275,8 +275,8 @@ void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u,
 #ifdef JLMDEBUG
     bootstrap_partial_reset();
     bprint("vmm_main in 64 bit mode\n");
-    bprint("local_apic_id %d, startup_struct_u %016lx\n", local_apic_id, startup_struct_u);
-    bprint("application_params_struct_u %016lx, reserved  %016lx\n",
+    bprint("local_apic_id %d, startup_struct_u %llx\n", local_apic_id, startup_struct_u);
+    bprint("application_params_struct_u %llx, reserved  %llx\n",
             application_params_struct_u, reserved);
 #endif
     const VMM_STARTUP_STRUCT* startup_struct = 
@@ -427,7 +427,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
                 "\nFAILURE: Loader-VMM version mismatch (init structure size mismatch)\n");
         VMM_DEADLOOP();
 #ifdef JLMDEBUG
-        bprint("startup struct wrong size %d %d\n",  sizeof(VMM_STARTUP_STRUCT),
+        bprint("startup struct wrong size %lu %d\n",  sizeof(VMM_STARTUP_STRUCT),
                startup_struct->size_of_this_struct);
 #endif
     };
@@ -461,7 +461,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     heap_last_occupied_address = vmm_heap_initialize(heap_address, heap_size);
 #ifdef JLMDEBUG
     bprint("stack initialized %d\n", vmm_stack_is_initialized());
-    bprint("heap_address, heap_size, heap_last_occupied_address: 0x%016lx, %ld, 0x%016lx\n", 
+    bprint("heap_address, heap_size, heap_last_occupied_address: 0x%llx, %u, 0x%llx\n", 
            heap_address, heap_size, heap_last_occupied_address);
 #endif
     VMM_LOG(mask_uvmm, level_trace,"\nBSP:Heap is successfully initialized: \n");
@@ -574,12 +574,12 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     hmm_set_required_values_to_control_registers();
 
     new_cr3 = hmm_get_vmm_page_tables(); // PCD and PWT bits will be 0;
+#ifdef JLMDEBUG1
     UINT64 old_cr3= hw_read_cr3();
     UINT64 old_cr4= hw_read_cr4();
-#ifdef JLMDEBUG1
     bprint("evmm position about to change memory mapping new cr3: 0x%016x, old cr3: 0x%016x\n",
             new_cr3, old_cr3);
-    bprint("old cr4: 0x%016lx\n", old_cr4);
+    bprint("old cr4: 0x%llx\n", old_cr4);
     HexDump((UINT8*)new_cr3, (UINT8*)new_cr3+40);
     bprint("resetting cr3\n");
     hw_write_cr3(old_cr3);
@@ -588,24 +588,24 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     UINT64 tvirt= 0x70000000ULL;
     UINT64 tphys= 0ULL;
     tphys= getphysical(new_cr3, tvirt);
-    bprint("virt: 0x%016lx, phys: 0x%016lx\n", tvirt, tphys);
+    bprint("virt: 0x%llx, phys: 0x%llx\n", tvirt, tphys);
     tvirt= (UINT64) vmm_bsp_proc_main;
     tphys= getphysical(new_cr3, tvirt);
-    bprint("(bsp)virt: 0x%016lx, phys: 0x%016lx\n", tvirt, tphys);
+    bprint("(bsp)virt: 0x%llx, phys: 0x%llx\n", tvirt, tphys);
     tvirt= (UINT64) bprint;
     tphys= getphysical(new_cr3, tvirt);
-    bprint("(bprint)virt: 0x%016lx, phys: 0x%016lx\n", tvirt, tphys);
+    bprint("(bprint)virt: 0x%llx, phys: 0x%llx\n", tvirt, tphys);
     bprint("old map\n");
     tvirt= 0x70000000ULL;
     tphys= 0ULL;
     tphys= getphysical(old_cr3, tvirt);
-    bprint("virt: 0x%016lx, phys: 0x%016lx\n", tvirt, tphys);
+    bprint("virt: 0x%llx, phys: 0x%llx\n", tvirt, tphys);
     tvirt= (UINT64) vmm_bsp_proc_main;
     tphys= getphysical(old_cr3, tvirt);
-    bprint("(bsp)virt: 0x%016lx, phys: 0x%016lx\n", tvirt, tphys);
+    bprint("(bsp)virt: 0x%llx, phys: 0x%llx\n", tvirt, tphys);
     tvirt= (UINT64) bprint;
     tphys= getphysical(old_cr3, tvirt);
-    bprint("(bprint)virt: 0x%016lx, phys: 0x%016lx\n", tvirt, tphys);
+    bprint("(bprint)virt: 0x%llx, phys: 0x%llx\n", tvirt, tphys);
 #endif
 
     VMM_ASSERT(new_cr3 != HMM_INVALID_VMM_PAGE_TABLES);
@@ -666,7 +666,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     UINT64 old_cr0= hw_read_cr0();
     UINT64 new_cr0= vmcs_hw_make_compliant_cr0(old_cr0);
 #ifdef JLMDEBUG
-    bprint("evmm: make cr0 vmx compatible. old_cr0: 0x%016lx, new_cr0: 0x%016lx\n",
+    bprint("evmm: make cr0 vmx compatible. old_cr0: 0x%llx, new_cr0: 0x%llx\n",
            old_cr0, new_cr0);
 #endif
     hw_write_cr0(new_cr0);  
@@ -764,7 +764,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     device_default_owner_guest = guest_handle_by_magic_number(
                                     startup_struct->default_device_owner);
 #ifdef JLMDEBUG
-    bprint("evmm: nmi_owner, acpi owner, defaut device owner: 0x%016lx 0x%0lx 0x%0lx\n", nmi_owner_guest, acpi_owner_guest, device_default_owner_guest);
+    bprint("evmm: nmi_owner, acpi owner, defaut device owner: %p %p %p\n", (void*)nmi_owner_guest, (void*)acpi_owner_guest, (void*)device_default_owner_guest);
 #endif
     VMM_ASSERT(nmi_owner_guest);
     VMM_ASSERT(acpi_owner_guest);
@@ -911,7 +911,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 #endif
     }
 #ifdef JLMDEBUG
-    bprint("evmm: gcpu active, 0x%016lx\n", initial_gcpu);
+    bprint("evmm: gcpu active, %p\n", (void*)initial_gcpu);
 #endif
     VMM_ASSERT(initial_gcpu != NULL);
     VMM_LOG(mask_uvmm, level_trace,
@@ -959,7 +959,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         bprint("evmm: about to call gcpu_get_guest_visible_control_reg\n");
         UINT64 my_cr0= gcpu_get_guest_visible_control_reg(initial_gcpu,
                                            IA32_CTRL_CR0);
-        bprint("my_cr0: 0x%016lx, level: %d\n", my_cr0, VMCS_MERGED);
+        bprint("my_cr0: 0x%llx, level: %d\n", my_cr0, VMCS_MERGED);
         LOOP_FOREVER
 #endif
         EM64T_CR0 guest_cr0;

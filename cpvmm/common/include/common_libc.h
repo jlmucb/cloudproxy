@@ -27,7 +27,7 @@ void *  CDECL vmm_lock_memcpy(void *dest, const void* src, size_t count);
 size_t  CDECL vmm_strlen(const char* string);
 char*   CDECL vmm_strcpy(char* dst, const char* src);
 char*   CDECL vmm_strcpy_s(char* dst, size_t dst_length, const char* src);
-UINT32  CDECL vmm_strcmp(const char* string1, const char* string2);
+int     CDECL vmm_strcmp(const char* string1, const char* string2);
 void    CDECL vmm_memcpy_assuming_mmio(UINT8 *dst, UINT8 *src, INT32 count);
 int CDECL vmm_memcmp(const void* mem1, const void* mem2, size_t count);
 

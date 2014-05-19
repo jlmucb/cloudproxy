@@ -44,10 +44,6 @@
 typedef unsigned long       size_t;
 #endif
 
-extern void *   vmm_memset(void *dest, int val, uint32_t count);
-extern uint32_t vmm_strlen(const char* p);
-extern void *   vmm_memset(void *dest, int val, uint32_t count);
-
 extern bool isdigit(int c);
 extern bool isspace(int c);
 extern bool isxdigit(int c);
@@ -177,8 +173,8 @@ static inline void reset_screen(void)
 
 static void scroll_screen(void)
 {
-    int x;
-    int y;
+    unsigned long x;
+    unsigned long y;
     for ( y = 1; y < MAX_LINES; y++ ) {
         for ( x = 0; x < MAX_COLS; x++ )
             writew(VGA_ADDR(x, y-1), readw(VGA_ADDR(x, y)));
@@ -675,16 +671,12 @@ void bprint(const char *fmt, ...)
     char *pbuf = buf;
     int n;
     va_list ap;
-    static bool last_line_cr = true;
-
     vmm_memset(buf, '\0', sizeof(buf));
     va_start(ap, fmt);
     n = vscnprintf(buf, sizeof(buf), fmt, ap);
     // mtx_enter(&print_lock);  //JLM FIX
-    last_line_cr = (n > 0 && (*(pbuf+n-1) == '\n'));
     vga_write(pbuf, n);
     // mtx_leave(&print_lock);  //JLM FIX
 
-exit:
     va_end(ap);
 }

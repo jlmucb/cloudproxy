@@ -23,8 +23,13 @@
 #include "jlmdebug.h"
 #endif
 
+#ifndef VMM_DEADLOOP
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(POOL_C)
+#endif 
+
+#ifndef VMM_ASSERT
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(POOL_C, __condition)
+#endif
 
 #pragma warning(disable : 4710)
 #pragma warning (disable : 4101 4189)
@@ -401,6 +406,7 @@ static void pool_try_to_free_unused_page_from_elements_list(POOL* pool,
             break;
         }
         res = (BOOLEAN)hash64_lookup(hash, node_addr, &num_of_elements);
+	(void)res;
         VMM_ASSERT(res);
         if (num_of_elements == num_of_elements_per_page) {
             res = (BOOLEAN)hash64_remove(hash, node_addr);
@@ -440,6 +446,7 @@ static void* pool_allocate_hash_node(void* context) {
         page_addr = ALIGN_BACKWARD(free_element_u64, PAGE_4KB_SIZE);
 
         res = hash64_lookup(hash, page_addr, &element_counter);
+	(void)res;
         VMM_ASSERT(res);
 
         VMM_ASSERT(element_counter > 0);
@@ -533,6 +540,7 @@ static void pool_free_hash_node(void* context, void* element) {
     if (page_addr == element_addr) {
         // The first node always describes the page of hash nodes
         UINT64 num_of_elements_tmp;
+	(void)num_of_elements_tmp;
         // insert first node in the page to the tail
         pool_insert_node_into_list_at_tail(hash_elements_list_head, hash_element);
 

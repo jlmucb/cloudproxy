@@ -139,8 +139,13 @@ Concise algorithm description and code walkthrough:
 #include "jlmdebug.h"
 #endif
 
+#ifndef VMM_DEADLOOP
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(MEMORY_ADDRESS_MAPPER_C)
+#endif
+
+#ifndef VMM_ASSERT
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(MEMORY_ADDRESS_MAPPER_C, __condition)
+#endif
 
 #define EPT_INNER_ENTRY_RESERVED 0x0000000000000008L //for debug
 
@@ -254,7 +259,7 @@ INLINE MAM_ENTRY_TYPE get_mam_entry_type(IN MAM_ENTRY* entry) {
 
     //get inner MAM entry type      
     entry_type = (MAM_ENTRY_TYPE)(entry->any_entry.avl & MAM_INNER_ENTRY_TYPE_MASK); 
-    if ((MAM_ENTRY_TYPE)entry_type != MAM_VTDPT_ENTRY) {
+    if ((MAM_BASIC_ENTRY_TYPE)entry_type != MAM_VTDPT_ENTRY) {
         entry_type = (MAM_ENTRY_TYPE)(entry->any_entry.avl);
     }
     else {

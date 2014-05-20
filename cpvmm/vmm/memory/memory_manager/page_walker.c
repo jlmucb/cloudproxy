@@ -450,6 +450,7 @@ static void pw_update_ad_bits_in_entry(PW_PAGE_ENTRY* native_entry,
     if (old_native_value->non_pae_entry.uint32 != new_native_value->non_pae_entry.uint32) {
 
         cmpxch_result = hw_interlocked_compare_exchange((INT32 volatile *)native_entry, old_native_value->non_pae_entry.uint32, new_native_value->non_pae_entry.uint32);
+	(void)cmpxch_result;
         // The result is not checked. If the cmpxchg has failed,
         // it means that the guest entry was changed,
         // so it is wrong to set status bits on the updated entry

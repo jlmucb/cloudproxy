@@ -488,6 +488,7 @@ static BOOLEAN ept_cr4_update(GUEST_CPU_HANDLE gcpu, void* pv)
     EPT_GUEST_CPU_STATE *ept_guest_cpu = NULL;
     UINT64 cr4;
 
+    (void)pg;
 #ifdef JLMDEBUG
     bprint("ept_cr4_update\n");
 #endif

@@ -18,30 +18,6 @@
 #include "jlmdebug.h"
 #endif
 
-
-//  force compiler intrinsics to use our code
-void memset (void *str, int c, int n) {
-    vmm_memset (str, c, n);
-    return;
-}
-
-
-void memcpy(void *str1, void *str2, int n) {
-    vmm_memcpy(str1, str2, n);
-    return; 
-}
-
-
-int strlen (const char *str) {
-    return vmm_strlen(str);
-}
-
-
-void *memmove(void *dest, const void *src, int n) {
-    return vmm_memmove(dest, src, n);
-}
-
-
 void vmm_lock_xchg_qword (UINT64 *dst, UINT64 *src) 
 {
 #ifdef JLMDEBUG
@@ -49,7 +25,7 @@ void vmm_lock_xchg_qword (UINT64 *dst, UINT64 *src)
     LOOP_FOREVER
 #endif
     // CHECK(JLM)
-    asm volatile(
+    __asm__ volatile(
         "\tmovq %[src], %%r8\n"
         "\tmovq %[src], %%rdx\n"
         "\tmovq %[dst], %%rcx\n"
@@ -67,7 +43,7 @@ void vmm_lock_xchg_byte (UINT8 *dst, UINT8 *src)
     bprint("vmm_lock_xchg_byte\n");
     LOOP_FOREVER
 #endif
-    asm volatile(
+    __asm__ volatile(
         "\tmovq %[src], %%rdx\n"
         "\tmovq %[dst], %%rcx\n"
         "\tmovb (%%rdx), %%bl\n"

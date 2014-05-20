@@ -226,7 +226,7 @@ UINT32 ipc_execute_send(IPC_DESTINATION   dst,
     UINT64                  nmi_accounted_flag[CPU_BITMAP_MAX] = {0};
     UINT64                  enqueue_flag[CPU_BITMAP_MAX] = {0};
     UINT64                  next_send_tsc;
-
+    (void)status;
     // Initializ ack array.
     vmm_memset((void *) ack_array, 0, num_of_host_processors * sizeof(UINT32));
 

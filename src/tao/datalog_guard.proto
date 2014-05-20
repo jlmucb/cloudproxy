@@ -26,7 +26,7 @@ package tao;
 message DatalogPredicate {
   // The identity of the issuer.
   optional string issuer = 1;
-  optional string pred = 2;
+  required string pred = 2;
   repeated string args = 3;
 }
 

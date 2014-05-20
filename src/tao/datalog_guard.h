@@ -82,7 +82,9 @@ typedef scoped_ptr_malloc<DatalogEngine,
 /// will be safe. A variable Vi can also appear in place of a term in the
 /// consequent. In all other cases, the arguments to predicates must be terms.
 /// By convention, datalog variables start with an uppercase. We require
-/// variables to match [A-Z][a-zA-Z0-9_]*.
+/// variables to match [A-Z][a-zA-Z0-9_]*. By convention, datalog predicate
+/// names start with a lowercase. We require predicate names to match
+/// [a-zA-Z][a-zA-Z0-9_]*.
 ///
 /// Authorization query: IsAuthorized(P, op, args...)
 /// Datalog query: isAuthorized(P, op, args...)
@@ -177,6 +179,9 @@ class DatalogGuard : public TaoDomain {
   /// Get a debug string for a rule.
   /// @param rule The rule.
   virtual string DebugString(const DatalogRule &rule);
+
+  /// Get a debug string for a predicate.
+  virtual string DebugString(const DatalogPredicate &pred);
 
  private:
   // The set of ACL entries.

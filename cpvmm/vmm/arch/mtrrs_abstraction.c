@@ -234,13 +234,11 @@ BOOLEAN mtrrs_is_variable_mtrrr_supported(UINT32 msr_id) {
     if(msr_id >= IA32_MTRR_PHYSBASE8_ADDR && msr_id <= IA32_MTRR_MAX_PHYSMASK_ADDR) {
         for(index = IA32_MTRR_MAX_PHYSMASK_ADDR, i = 1; index > IA32_MTRR_PHYSBASE8_ADDR; 
                                                       index -= 2, i++) {
-	  if( ((index == msr_id) || (index - 1 == msr_id)) ) {
-	    if (mtrrs_abstraction_get_num_of_variable_range_regs() > (MTRRS_ABS_NUM_OF_VAR_RANGE_MTRRS - i) ) {
-	      return TRUE;
-	    } else {
-	      return FALSE;
-	    }
-	  }
+            if( ((index == msr_id) || (index - 1 == msr_id)) )
+                if (mtrrs_abstraction_get_num_of_variable_range_regs() > (MTRRS_ABS_NUM_OF_VAR_RANGE_MTRRS - i) )
+                    return TRUE;
+                else
+                    return FALSE;
         }
         return TRUE; // dummy added to suppress warning, should never get here
     } else // MSR is not within unsupported variable MTRR range.

@@ -26,7 +26,7 @@ typedef struct _VMM_LOCK {
     char padding[2];
 } VMM_LOCK;
 
-#define LOCK_INIT_STATE     {(UINT32) 0, (CPU_ID) -1, {0}}
+#define LOCK_INIT_STATE     {(UINT32) 0, (CPU_ID) -1, 0}
 
 
 // Read/Write lock

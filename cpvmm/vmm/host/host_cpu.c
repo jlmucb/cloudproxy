@@ -32,13 +32,8 @@
 #include "jlmdebug.h"
 #endif
 
-#ifndef VMM_DEADLOOP
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(HOST_CPU_C)
-#endif
-
-#ifndef VMM_ASSERT
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(HOST_CPU_C, __condition)
-#endif
 
 
 // Host CPU model for VMCS

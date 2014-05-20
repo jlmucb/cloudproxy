@@ -54,7 +54,7 @@ void check_boot_parameters()
     UINT64  virt;
     UINT64  value;
 
-    bprint("rdi on entry: %llx, rsi: %llx\n", rdi_reg, rsi_reg);
+    bprint("rdi on entry: %p, rsi: %p\n", rdi_reg, rsi_reg);
     boot_params_t* boot_params= (boot_params_t*) rdi_reg;
     //HexDump((UINT8*)rdi_reg, (UINT8*)rdi_reg+32);
     //bprint("cmd line ptr: %p\n", boot_params->hdr.cmd_line_ptr);

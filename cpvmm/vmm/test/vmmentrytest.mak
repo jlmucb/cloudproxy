@@ -35,8 +35,8 @@ mainsrc=    $(S)/vmm
 B=		$(E)/vmmobjects/test
 INCLUDES=	-I$(S)/vmm -I$(S)/common/include -I$(S)/vmm/include -I../bootstrap
 
-DEBUG_CFLAGS:=  -Wno-format -fwrapv -Wall -Werror -g -DDEBUG -D INVMM_BLOCKER -D INCLUDE_LAYERING -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs  -fno-tree-loop-distribute-patterns  -fPIE
-RELEASE_CFLAGS:= -Wno-unknown-pragmas -Wno-format -fwrapv -Wall -Werror -O3  -Wunused-function -D INVMM_BLOCKER -D INCLUDE_LAYERING -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs  -fno-tree-loop-distribute-patterns  -fPIE
+DEBUG_CFLAGS:=  -Wno-format -g -DDEBUG -D INVMM_BLOCKER -D INCLUDE_LAYERING -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs  -fno-tree-loop-distribute-patterns  -fPIE
+RELEASE_CFLAGS:= -Wno-unknown-pragmas -Wno-format -O3  -Wunused-function -D INVMM_BLOCKER -D INCLUDE_LAYERING -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs  -fno-tree-loop-distribute-patterns  -fPIE
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 

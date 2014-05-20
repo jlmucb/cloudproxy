@@ -28,8 +28,6 @@
 #include "jlmdebug.h"
 #endif
 
-extern INT32 hw_interlocked_compare_exchange(UINT32 volatile * destination,
-					     INT32 expected, INT32 comperand);
 
 typedef union PW_PAGE_ENTRY_U {
     union {
@@ -443,7 +441,7 @@ static UINT32 pw_get_big_page_offset(UINT64 virtual_address,
 static void pw_update_ad_bits_in_entry(PW_PAGE_ENTRY* native_entry,
                      PW_PAGE_ENTRY* old_native_value,
                      PW_PAGE_ENTRY* new_native_value) {
-  // UINT32 cmpxch_result = 0;
+    UINT32 cmpxch_result = 0;
 
     VMM_ASSERT(native_entry != NULL);
     VMM_ASSERT(old_native_value->non_pae_entry.bits.present);
@@ -451,7 +449,7 @@ static void pw_update_ad_bits_in_entry(PW_PAGE_ENTRY* native_entry,
 
     if (old_native_value->non_pae_entry.uint32 != new_native_value->non_pae_entry.uint32) {
 
-      hw_interlocked_compare_exchange((UINT32 volatile *)native_entry, old_native_value->non_pae_entry.uint32, new_native_value->non_pae_entry.uint32);
+        cmpxch_result = hw_interlocked_compare_exchange((INT32 volatile *)native_entry, old_native_value->non_pae_entry.uint32, new_native_value->non_pae_entry.uint32);
         // The result is not checked. If the cmpxchg has failed,
         // it means that the guest entry was changed,
         // so it is wrong to set status bits on the updated entry

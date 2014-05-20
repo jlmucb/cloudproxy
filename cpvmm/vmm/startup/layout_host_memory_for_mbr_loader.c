@@ -58,8 +58,8 @@ BOOLEAN init_memory_layout_from_mbr(
     BOOLEAN                                 ok;
     UINT64                                  range_start;
     UINT64                                  range_end;
-    // INT15_E820_RANGE_TYPE                   range_type;
-    //    INT15_E820_MEMORY_MAP_EXT_ATTRIBUTES    range_attr;
+    INT15_E820_RANGE_TYPE                   range_type;
+    INT15_E820_MEMORY_MAP_EXT_ATTRIBUTES    range_attr;
     UINT64                                  page_index;
     UINT64                                 *entry_list;
 
@@ -88,8 +88,8 @@ BOOLEAN init_memory_layout_from_mbr(
 
         range_start = e820_entry->basic_entry.base_address;
         range_end   = range_start + e820_entry->basic_entry.length;
-        // range_type  = e820_entry->basic_entry.address_range_type;
-        // range_attr  = e820_entry->extended_attributes;
+        range_type  = e820_entry->basic_entry.address_range_type;
+        range_attr  = e820_entry->extended_attributes;
 
         // align ranges and sizes on 4K boundaries
         range_start = ALIGN_FORWARD(range_start, PAGE_4KB_SIZE);
@@ -117,8 +117,6 @@ BOOLEAN init_memory_layout_from_mbr(
 
         // add memory to the "memory layout object" if this is a real memory
         // lower 4G
-
-#if 0 // These statements have no effect
         if (are_secondary_guests_exist && (range_start < FOUR_GIGABYTE) &&
             range_attr.Bits.enabled && (!range_attr.Bits.non_volatile)) {
             UINT64 top = (range_end < FOUR_GIGABYTE) ? range_end : FOUR_GIGABYTE;
@@ -131,7 +129,6 @@ BOOLEAN init_memory_layout_from_mbr(
                 top = 0;
             }
         }
-#endif
 
         // add memory to the primary guest if this is a memory above 4G
         if (range_end > FOUR_GIGABYTE) {

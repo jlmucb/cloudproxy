@@ -29,8 +29,6 @@
 
 
 extern int CLI_active(void);
-extern INT32 hw_interlocked_compare_exchange(UINT32 volatile * destination,
-					     INT32 expected, INT32 comperand);
 
 // C-written CRT routines should be put here
 
@@ -62,7 +60,7 @@ static void raw_lock(volatile UINT32 *p_lock_var)
     for (;;) {
         // Loop until the successfully incremented the lock variable
         // from 0 to 1 (i.e., we are the only lockers
-        old_value = hw_interlocked_compare_exchange(p_lock_var,
+        old_value = hw_interlocked_compare_exchange((INT32 *)p_lock_var,
                                                     0,   // Expected
                                                     1);  // New
         if (0 == old_value)
@@ -80,7 +78,7 @@ static void raw_force_lock(volatile UINT32 *p_lock_var)
         // Loop until successfully incremented the lock variable
         old_value = *p_lock_var;
         if (old_value ==
-                hw_interlocked_compare_exchange(p_lock_var,
+                hw_interlocked_compare_exchange((INT32 *)p_lock_var,
                                                 old_value,       // Expected
                                                 old_value + 1))  // New
             break;
@@ -97,7 +95,7 @@ static void raw_unlock(volatile UINT32 *p_lock_var)
 
         old_value = *p_lock_var;
         if (old_value ==
-                hw_interlocked_compare_exchange(p_lock_var,
+                hw_interlocked_compare_exchange((INT32 *)p_lock_var,
                                                 old_value,       // Expected
                                                 old_value - 1))  // New
             break;

@@ -489,7 +489,6 @@ static void ms_merge_bitmaps(IN void* bitmap0, IN void* bitmap1,
     }
 }
 
-#if 0
 static BOOLEAN ms_is_msr_in_list(IN IA32_VMX_MSR_ENTRY* list, IN UINT32 msr_index,
                           IN UINT32 count, OUT UINT64* value) {
     UINT32 i;
@@ -504,7 +503,6 @@ static BOOLEAN ms_is_msr_in_list(IN IA32_VMX_MSR_ENTRY* list, IN UINT32 msr_inde
     }
     return FALSE;
 }
-#endif
 
 static void ms_merge_msr_list(IN GUEST_CPU_HANDLE gcpu, IN VMCS_OBJECT* merged_vmcs,
                        IN IA32_VMX_MSR_ENTRY* first_list, IN IA32_VMX_MSR_ENTRY* second_list,

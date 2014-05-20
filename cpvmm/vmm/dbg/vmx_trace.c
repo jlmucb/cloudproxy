@@ -21,11 +21,8 @@
 #include "hw_utils.h"
 #include "vmm_dbg.h"
 #include "file_codes.h"
-#ifdef JLMDEBUG
-#include "jlmdebug.h"
-#endif
 
-#define __builtin_va_end /* nothing */
+#define __builtin_va_end(p)
 #define __builtin_stdarg_start(a,b)
 #define __builtin_va_arg(a,p) 0
 
@@ -110,7 +107,7 @@ BOOLEAN vmm_trace_buffer(GUEST_CPU_HANDLE   guest_cpu, UINT8  buffer_index,
 
     va_start(marker, format);
     vmm_trace_print_string(format, marker, data.string);
-    va_end;
+    va_end(marker);
 
     vmcs_obj = gcpu_get_vmcs(guest_cpu);
     virtual_cpu_id = guest_vcpu(guest_cpu);
@@ -156,7 +153,7 @@ vmm_trace( GUEST_CPU_HANDLE  guest_cpu, const char       *format,
 
     va_start(marker, format);
     vmm_trace_print_string(format, marker, data.string);
-    va_end;
+    va_end(marker);
 
     vmcs_obj = gcpu_get_vmcs(guest_cpu);
     virtual_cpu_id = guest_vcpu(guest_cpu);
@@ -214,7 +211,8 @@ vmm_trace_print_all(UINT32 guest_num, char *guest_names[])
         VMM_LOG(mask_anonymous, level_trace,"%2d %8d %016lx |%4s %1d  %4d  %018P | %s",
             buffer_index, record_index, record_data.tsc, vm_name, cpu_index,
             record_data.exit_reason, record_data.guest_eip, record_data.string);
-	(void)vm_name;
+
+
     }
 
     trace_unlock();

@@ -15,12 +15,10 @@
 
 #include "common_libc.h"
 
-#if 0
 // fix for builtin_stdarg
 #define __builtin_va_end(p)
 #define __builtin_stdarg_start(a,b)
 #define __builtin_va_arg(a,p) 0
-#endif
 
 #define LEFT_JUSTIFY    0x01
 #define PREFIX_SIGN     0x02
@@ -66,12 +64,14 @@ Returns:
 --*/
 static UINT32 safe_guid_to_string ( VMM_GUID* guid, char* buffer, size_t buffer_size )
 {
+    UINT32 size;
+
     if (buffer_size <= STRING_CHARS(GUID_PLACEHOLDER)) {
         // Not enough room for terminating null
         return 0;
     }
 
-    vmm_sprintf_s( buffer, buffer_size, "%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+    size = vmm_sprintf_s( buffer, buffer_size, "%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",
             guid->data1, guid->data2, guid->data3, guid->data4[0], guid->data4[1],
             guid->data4[2], guid->data4[3], guid->data4[4], guid->data4[5], guid->data4[6],
             guid->data4[7]); 
@@ -223,11 +223,13 @@ Returns:
 --*/
 static UINT32 safe_time_to_string ( VMM_TIME* time, char* buffer, UINT32 buffer_size)
 {
+    UINT32 size;
+
     if (buffer_size <= STRING_CHARS(TIME_PLACEHOLDER)) {
         // Not enough room for terminating null
         return 0;
     }
-    vmm_sprintf_s ( buffer, buffer_size, "%02d/%02d/%04d  %02d:%02d", time->day,
+    size = vmm_sprintf_s ( buffer, buffer_size, "%02d/%02d/%04d  %02d:%02d", time->day,
             time->month, time->year, time->hour, time->minute);
   // Sprint will null terminate the string. The -1 skips the null
   return STRING_CHARS(TIME_PLACEHOLDER);

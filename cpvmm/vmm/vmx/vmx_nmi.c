@@ -295,12 +295,12 @@ VMEXIT_HANDLING_STATUS nmi_propagate_nmi_window(GUEST_CPU_HANDLE gcpu)
 void nmi_emulate_nmi_vmexit(GUEST_CPU_HANDLE gcpu)
 {
     VMCS_OBJECT *vmcs = gcpu_get_vmcs_layered(gcpu, VMCS_MERGED);
-    //UINT32  reason;
+    UINT32  reason;
     IA32_VMX_VMCS_VM_EXIT_INFO_INTERRUPT_INFO exception_info;
 
     VMM_CALLTRACE_ENTER();
-    //reason = (UINT32)vmcs_read(vmcs, VMCS_EXIT_INFO_REASON);
-    
+    reason = (UINT32)vmcs_read(vmcs, VMCS_EXIT_INFO_REASON);
+
     // change VMEXIT INFO, which is read-only. It is done in cache only
     // and should not be writeen to hardware VMCS
     vmcs_write_nocheck(vmcs, VMCS_EXIT_INFO_REASON,

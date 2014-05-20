@@ -635,16 +635,13 @@ BOOLEAN vmdb_exception_handler(GUEST_CPU_HANDLE gcpu)
 #endif
 
                     if (0 != vmdb->skip_counter[i]) {
-		      // I don't know why they had this statement with no effect.
-		      //vmdb->skip_counter[i];
+                        vmdb->skip_counter[i];
                         continue;
-                    }
+                        }
 
                     VMDB_LOG(level_print_always,"[vmdb] %s break occurred at address(%P) on thread(%d,%d)\n",
                         bp_type_name[db_type], vmdb->dr[i],
                         vcpu->guest_id, vcpu->guest_id);
-		    (void)bp_type_name;
-		    (void)bp_actual_length;
 
                     // If it is breakpoint for the VMDB STUB, then propagate it.
                     if (FALSE == event_raise(EVENT_GUEST_CPU_SINGLE_STEP, gcpu, 0)) {

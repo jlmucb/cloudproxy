@@ -19,9 +19,6 @@
 // this is all 32 bit code
 #include "bootstrap_types.h"
 #include "bootstrap_string.h"
-#ifdef JLMDEBUG
-#include "jlmdebug.h"
-#endif
 
 char* vmm_strncpy(char *dest, const char *src, int n)
 {
@@ -141,10 +138,10 @@ void HexDump(uint8_t* start, uint8_t* end)
     int      i;
 
     while(p<=end) {
-        bprint("%p: ", p);
+        bprint("0x%08x: ", p);
         i= 0;
         while(p<=end) {
-            bprint("%u ", *(uint32_t*)p);
+            bprint("0x%08x ", *(uint32_t*)p);
             p+= 4;
             i++;
             if(i>3)

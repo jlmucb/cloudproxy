@@ -42,8 +42,8 @@ INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     -I$(S)/common/include/arch -I$(S)/vmm/include/hw -I$(S)/common/include/platform \
     -I$(S)/vmm/guest/guest_cpu -I$(S)/vmm/guest -I$(mainsrc)/hw -I$(S)/vmm/memory/ept
 ASM_SRC = 	
-DEBUG_CFLAGS:=  -Wall -Wno-format -fwrapv -Wall -Werror -g -DDEBUG -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs 
-RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -fwrapv -Wall -Werror -O3  -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs 
+DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs 
+RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs 
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 

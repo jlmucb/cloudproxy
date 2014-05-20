@@ -282,7 +282,6 @@ BOOLEAN ipc_initialize(UINT16 number_of_host_processors)
     GUEST_ID          guest_id = INVALID_GUEST_ID;
     GUEST_ECONTEXT    context;
 
-    (void)status;
     vmm_zeromem(&ipc_start_stop_context, sizeof(ipc_start_stop_context));
 
     status = ipc_state_init(number_of_host_processors);
@@ -315,7 +314,6 @@ BOOLEAN ipc_guest_initialize(GUEST_ID guest_id)
     BOOLEAN           status;
     STOP_CPU_CONTEXT  *stop_guest_cpus_context = NULL;
 
-    (void)status;
     status = ipc_guest_state_init(guest_id);
     // BEFORE_VMLAUNCH. NOT_USED. OLD_IPC is not defined.
     VMM_ASSERT(status);

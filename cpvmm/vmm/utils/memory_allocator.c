@@ -23,13 +23,8 @@
 #include "jlmdebug.h"
 #endif
 
-#ifndef VMM_DEADLOOP
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(MEMORY_ALLOCATOR_C)
-#endif
-
-#ifndef VMM_ASSERT
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(MEMORY_ALLOCATOR_C, __condition)
-#endif
 
 typedef struct {
     UINT32 size;

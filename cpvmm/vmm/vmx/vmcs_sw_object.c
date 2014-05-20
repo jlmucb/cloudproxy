@@ -47,9 +47,7 @@ static GUEST_CPU_HANDLE vmcs_sw_get_owner(const struct _VMCS_OBJECT *vmcs);
 
 static void     vmcs_sw_add_msr_to_vmexit_store_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value);
 static void     vmcs_sw_add_msr_to_vmexit_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value);
-#if 0
 static void     vmcs_sw_add_msr_to_vmenter_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value);
-#endif
 static void     vmcs_sw_add_msr_to_vmexit_store_and_vmenter_load_lists(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, UINT64 value);
 
 static void     vmcs_sw_delete_msr_from_vmexit_store_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index);
@@ -436,13 +434,11 @@ static void vmcs_sw_add_msr_to_vmexit_load_list(struct _VMCS_OBJECT *vmcs, UINT3
     vmcs_add_msr_to_vmexit_load_list_internal(vmcs, msr_index, value, FALSE);
 }
 
-#if 0 // Not currently used.
 static void vmcs_sw_add_msr_to_vmenter_load_list(struct _VMCS_OBJECT *vmcs, UINT32 msr_index, 
                                                 UINT64 value)
 {
     vmcs_add_msr_to_vmenter_load_list_internal(vmcs, msr_index, value, FALSE);
 }
-#endif
 
 static void vmcs_sw_add_msr_to_vmexit_store_and_vmenter_load_lists(struct _VMCS_OBJECT *vmcs, 
                                                 UINT32 msr_index, UINT64 value)

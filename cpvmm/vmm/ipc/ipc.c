@@ -246,7 +246,6 @@ UINT32 ipc_execute_send(IPC_DESTINATION   dst,
                     ipc->num_of_sent_ipc_messages++;            // IPC sent message counting.
                     // BEFORE_VMLAUNCH
                     VMM_ASSERT(status);
-		    (void)status;
 
                     // Check if IPC signal should be sent.
                     if (empty_queue) {

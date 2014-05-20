@@ -53,7 +53,6 @@ extern void isr_entry_00(void);
 extern void isr_entry_01(void);
 static ADDRESS isr_handler_table[256];
 
-#if 0 // not currently used
 static void init_isr_handler_table() {
     isr_handler_table[0] = (ADDRESS)(isr_entry_00);
     isr_handler_table[1] = (ADDRESS)(isr_entry_01);
@@ -318,7 +317,7 @@ static void init_isr_handler_table() {
 //    (ADDRESS) isr_entry_fd,
 //    (ADDRESS) isr_entry_fe,
 //    (ADDRESS) isr_entry_ff
-#endif // 0
+
 
 // FUNCTION     : hw_idt_register_handler()
 // PURPOSE      : Register interrupt handler at spec. vector

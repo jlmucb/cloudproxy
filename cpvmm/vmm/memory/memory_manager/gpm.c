@@ -118,17 +118,17 @@ failed_to_allocated_gpm:
 BOOLEAN gpm_add_mapping(IN GPM_HANDLE gpm_handle, IN GPA gpa, IN HPA hpa, IN UINT64 size, MAM_ATTRIBUTES attrs) {
         GPM* gpm = (GPM*)gpm_handle;
     MAM_HANDLE gpa_to_hpa;
+    MAM_HANDLE hpa_to_gpa;
 
     if (gpm_handle == GPM_INVALID_HANDLE) {
         return FALSE;
     }
     gpa_to_hpa = gpm->gpa_to_hpa;
+    hpa_to_gpa = gpm->hpa_to_gpa;
     if (!mam_insert_range(gpa_to_hpa, (UINT64)gpa, (UINT64)hpa, size, attrs)) {
         return FALSE;
     }
 #ifdef USE_HPA_TO_GPA
-    MAM_HANDLE hpa_to_gpa;
-    hpa_to_gpa = gpm->hpa_to_gpa;
     if (!mam_insert_range(hpa_to_gpa, (UINT64)hpa, (UINT64)gpa, size, attrs)) {
         return FALSE;
     }

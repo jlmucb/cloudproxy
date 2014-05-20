@@ -47,8 +47,8 @@ INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
      		-I$(S)/vmm/guest/guest_cpu -I$(mainsrc)/hw -I$(S)/vmm/memory/ept  \
 		-I$(S)/vmm/include/appliances -I$(S)/vmm -I$(S)/vmm/bootstrap
 
-DEBUG_CFLAGS:=  -Wall -Wno-format -fwrapv -Wall -Werror -g -DDEBUG -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs -D INVMM -D JLMDEBUG
-RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -fwrapv -Wall -Werror -O3  -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs -D INVMM -D JLMDEBUG
+DEBUG_CFLAGS:=  -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs -D INVMM -D JLMDEBUG
+RELEASE_CFLAGS:= -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs -D INVMM -D JLMDEBUG
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 

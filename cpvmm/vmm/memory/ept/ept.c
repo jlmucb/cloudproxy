@@ -480,7 +480,7 @@ static BOOLEAN ept_cr3_update( GUEST_CPU_HANDLE gcpu, void* pv UNUSED )
 static BOOLEAN ept_cr4_update(GUEST_CPU_HANDLE gcpu, void* pv)
 {
     UINT64 new_cr4 = ((EVENT_GCPU_GUEST_CR_WRITE_DATA*) pv)->new_guest_visible_value;
-    // BOOLEAN pg;
+    BOOLEAN pg;
     BOOLEAN pae = 0;
     BOOLEAN prev_pae = 0;
     const VIRTUAL_CPU_ID* vcpu_id = NULL;
@@ -499,7 +499,7 @@ static BOOLEAN ept_cr4_update(GUEST_CPU_HANDLE gcpu, void* pv)
     ept_guest_cpu = ept_guest->gcpu_state[vcpu_id->guest_cpu_id];
     prev_pae = (ept_guest_cpu->cr4 & CR4_PAE) != 0;
     ept_guest_cpu->cr4 = new_cr4;
-    // pg = (ept_guest_cpu->cr0 & CR0_PG) != 0;
+    pg = (ept_guest_cpu->cr0 & CR0_PG) != 0;
     pae = (ept_guest_cpu->cr4 & CR4_PAE) != 0;
     if(ept_is_ept_enabled(gcpu) && pae != prev_pae) {
         cr4 = ept_guest_cpu->cr4;

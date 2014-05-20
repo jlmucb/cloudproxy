@@ -494,7 +494,7 @@ void hw_store_fence(void)
 }
 
 
-INT32 hw_interlocked_compare_exchange(UINT32 volatile * destination,
+INT32 hw_interlocked_compare_exchange(INT32 volatile * destination,
                                       INT32 expected, INT32 comperand)
 {
 #ifdef JLMDEBUG1
@@ -1173,7 +1173,7 @@ void hw_set_stack_pointer (HVA new_stack_pointer, main_continue_fn func,
         "\tmovq %[new_stack_pointer], %%rsp\n"
         "\tmovq %[params], %[new_stack_pointer]\n"
         "\tsubq $32, %%rsp\n" // allocate home space for 4 input params
-        "\tcall *%[func]\n" 
+        "\tcall %[func]\n" 
         "\tjmp L1\n"
     :
     :[new_stack_pointer] "g"(new_stack_pointer),

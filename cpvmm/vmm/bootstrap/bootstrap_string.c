@@ -19,7 +19,6 @@
 // this is all 32 bit code
 #include "bootstrap_types.h"
 #include "bootstrap_string.h"
-#include "common_libc.h"
 #ifdef JLMDEBUG
 #include "jlmdebug.h"
 #endif

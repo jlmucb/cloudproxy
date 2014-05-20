@@ -29,7 +29,7 @@
 UINT64  g_debug_gpa = 0;
 UINT64  g_initial_vmcs[VMM_MAX_CPU_SUPPORTED] = {0};
 ISR_PARAMETERS_ON_STACK *g_exception_stack = NULL;
-VMM_GP_REGISTERS g_exception_gpr = {0};
+VMM_GP_REGISTERS g_exception_gpr = {{0}};
 
 extern BOOLEAN vmm_copy_to_guest_phy_addr(GUEST_CPU_HANDLE gcpu, void* gpa, UINT32 size, void* hva);
 
@@ -86,7 +86,7 @@ void vmm_deadloop_internal(UINT32 file_code, UINT32 line_num, GUEST_CPU_HANDLE g
 
     // only copy signature, VERSION, cpu_id, exception info, vmcs to guest
     // buffer once
-    if (hw_interlocked_compare_exchange(&dump_started,0,1) == 0) {
+    if (hw_interlocked_compare_exchange((INT32*)&dump_started,0,1) == 0) {
         size = vmm_sprintf_s(buffer, BUFFER_SIZE, "%c%c%c%c%c%c%c%c%s%04d",
             DEADLOOP_SIGNATURE[0], DEADLOOP_SIGNATURE[1],
             DEADLOOP_SIGNATURE[2], DEADLOOP_SIGNATURE[3],
@@ -150,8 +150,9 @@ void vmm_deadloop_internal(UINT32 file_code, UINT32 line_num, GUEST_CPU_HANDLE g
             if (!vmm_copy_to_guest_phy_addr(gcpu,
                                            (void*)(g_debug_gpa+OFFSET_EXCEPTION),
                                            sizeof(UINT64),
-                                           (void*)buffer))
+					    (void*)buffer)) {
                 VMM_LOG(mask_uvmm, level_error, err_msg);
+	    }
         }
 
         // copy vmcs to guest buffer
@@ -203,6 +204,7 @@ BOOLEAN DeadloopHelper( const char* assert_condition,
                         UINT32      line_num,
                         UINT32      access_level)
 {
+  (void)access_level;
     if (!assert_condition)
     {
         vmm_printf("Deadloop in %s() - %s:%d\n",

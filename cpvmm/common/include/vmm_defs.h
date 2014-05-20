@@ -491,9 +491,9 @@ extern void bitarray_enumerate_bits( UINT8* bitarray, UINT32 bitarray_size_in_bi
 
 #ifdef __GNUC__
   #define va_list         __builtin_va_list
-  #define va_start(ap,v)  __builtin_stdarg_start((ap),v)
+  #define va_start(ap,v)  __builtin_va_start((ap),v)
   #define va_arg(ap,t)    __builtin_va_arg(ap,t)
-  #define va_end(ap)      __builtin_va_end
+  #define va_end          __builtin_va_end
 #else
   typedef char*   va_list;
   #define va_start(ap,v)  ( ap = (va_list)&(v) + _VMM_INT_SIZE_OF(v) )

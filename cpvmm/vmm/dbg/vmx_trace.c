@@ -199,6 +199,7 @@ vmm_trace_print_all(UINT32 guest_num, char *guest_names[])
                 "-----------------------------+---------------------------------+---------------------\n");
         }
 
+	(void)vm_name;
         if (vm_index < guest_num) {
             vm_name = guest_names[vm_index];
 

@@ -190,6 +190,9 @@ static void vmdb_remote_single_step_enable(GUEST_CPU_HANDLE gcpu, BOOLEAN enable
 #pragma warning ( disable : 4100 )
 void vmdb_thread_log(GUEST_CPU_HANDLE gcpu, const char *msg, const char *function_name)
     {
+      (void)gcpu;
+      (void)msg;
+      (void)function_name;
 #if defined DEBUG || defined ENABLE_RELEASE_VMM_LOG
     const VIRTUAL_CPU_ID *vcpu = guest_vcpu(gcpu);
     VMM_ASSERT(vcpu);
@@ -635,10 +638,12 @@ BOOLEAN vmdb_exception_handler(GUEST_CPU_HANDLE gcpu)
 #endif
 
                     if (0 != vmdb->skip_counter[i]) {
-                        vmdb->skip_counter[i];
+		      (void)vmdb->skip_counter[i];
                         continue;
                         }
 
+		    (void)bp_type_name;
+		    (void)bp_actual_length;
                     VMDB_LOG(level_print_always,"[vmdb] %s break occurred at address(%P) on thread(%d,%d)\n",
                         bp_type_name[db_type], vmdb->dr[i],
                         vcpu->guest_id, vcpu->guest_id);

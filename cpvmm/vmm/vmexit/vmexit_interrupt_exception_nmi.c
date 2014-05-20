@@ -119,6 +119,7 @@ VMEXIT_HANDLING_STATUS vmexit_software_interrupt_exception_nmi(GUEST_CPU_HANDLE 
             // flat page tables support
             {
                 EM64T_CR0 cr0;
+		(void)cr0;
                 cr0.Uint64 = gcpu_get_guest_visible_control_reg( gcpu, IA32_CTRL_CR0 );
 
 #ifdef ENABLE_EMULATOR

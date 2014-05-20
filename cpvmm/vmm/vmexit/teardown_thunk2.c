@@ -22,9 +22,9 @@
 // since this function will not return, all the registers free to use.
 #include "vmm_defs.h"
 
-int call_teardown_thunk32 (UINT64 current_guest_states_phy_addr,
-                UINT16 compatibility_cs, UINT64 teardown_thunk_entry_phy_addr,
-                UINT64 cr3_td_sm_32, BOOLEAN cr4_pae_is_on)
+int call_teardown_thunk32 (UINT64 current_guest_states_phy_addr UNUSED,
+                UINT16 compatibility_cs UNUSED, UINT64 teardown_thunk_entry_phy_addr UNUSED,
+                UINT64 cr3_td_sm_32 UNUSED, BOOLEAN cr4_pae_is_on UNUSED)
 {
 #if 0
     UINT64 result = 0;
@@ -145,8 +145,8 @@ int call_teardown_thunk32 (UINT64 current_guest_states_phy_addr,
 //    arg3      in R8
 // never return: 
 // since this function will not return, all the registers free to use.
-int call_teardown_thunk64(UINT32 current_cpu_idx,
-                          UINT64 current_guest_states_hva, UINT64 teardown_thunk_entry_hva)
+int call_teardown_thunk64(UINT32 current_cpu_idx UNUSED,
+                          UINT64 current_guest_states_hva UNUSED, UINT64 teardown_thunk_entry_hva UNUSED)
 {
 #if 0
         int result = 0;

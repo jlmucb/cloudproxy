@@ -795,7 +795,7 @@ void ept_set_remote_eptp(CPU_ID from, void* arg)
 {
     EPT_SET_EPTP_CMD *set_eptp_cmd = arg;
     GUEST_CPU_HANDLE gcpu;
-
+    (void)from;
     gcpu = scheduler_get_current_gcpu_for_guest(set_eptp_cmd->guest_id);
     if(gcpu == NULL || !ept_is_ept_enabled(gcpu)) {
         return;

@@ -298,6 +298,7 @@ void nmi_emulate_nmi_vmexit(GUEST_CPU_HANDLE gcpu)
     UINT32  reason;
     IA32_VMX_VMCS_VM_EXIT_INFO_INTERRUPT_INFO exception_info;
 
+    (void)reason;
     VMM_CALLTRACE_ENTER();
     reason = (UINT32)vmcs_read(vmcs, VMCS_EXIT_INFO_REASON);
 

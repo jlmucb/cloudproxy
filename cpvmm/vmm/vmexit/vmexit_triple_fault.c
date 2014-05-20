@@ -27,6 +27,7 @@
 
 VMEXIT_HANDLING_STATUS vmexit_triple_fault(GUEST_CPU_HANDLE gcpu)
 {
+  (void)gcpu;
     VMM_LOG(mask_anonymous, level_trace,"Triple Fault Occured on \n");
     PRINT_GCPU_IDENTITY(gcpu);
     VMM_LOG(mask_anonymous, level_trace,"  Reset the System.\n");

@@ -58,7 +58,7 @@ int monitor_was_requested(char key)
 
 
 
-void vmexit_check_keystroke(GUEST_CPU_HANDLE gcpu)
+void vmexit_check_keystroke(GUEST_CPU_HANDLE gcpu UNUSED)
 {
     UINT8 key = vmm_getc();
     int monitor_cpu;

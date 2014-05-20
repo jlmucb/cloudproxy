@@ -24,8 +24,13 @@
 #include "jlmdebug.h"
 #endif
 
+#ifndef VMM_DEADLOOP
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(HEAP_C)
+#endif
+
+#ifndef VMM_ASSERT
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(HEAP_C, __condition)
+#endif
 
 #define CHECK_ADDRESS_IN_RANGE(addr, range_start, size) \
     (((UINT64)addr) >= ((UINT64)range_start) && ((UINT64)addr) <= ((UINT64)range_start) + (size))

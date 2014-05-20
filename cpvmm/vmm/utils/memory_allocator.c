@@ -23,8 +23,13 @@
 #include "jlmdebug.h"
 #endif
 
+#ifndef VMM_DEADLOOP
 #define VMM_DEADLOOP()          VMM_DEADLOOP_LOG(MEMORY_ALLOCATOR_C)
+#endif
+
+#ifndef VMM_ASSERT
 #define VMM_ASSERT(__condition) VMM_ASSERT_LOG(MEMORY_ALLOCATOR_C, __condition)
+#endif
 
 typedef struct {
     UINT32 size;
@@ -66,6 +71,10 @@ static void* vmm_mem_allocate_internal( char *file_name,
     UINT64 allocated_addr;
     MEM_ALLOCATION_INFO *alloc_info;
     UINT32 size_to_request;
+
+    // Unused variables
+    (void)file_name;
+    (void)line_number;
 #ifdef JLMDEBUG1
     bprint("In vmm_mem_allocate_internal size: %d, align: %08x\n", size, alignment);
 #endif
@@ -144,6 +153,9 @@ void vmm_mem_free( char *file_name, INT32 line_number, IN void *buff)
     UINT32 pool_element_size = 0;
     UINT32 pool_index = 0;
     POOL_HANDLE pool = NULL;
+    // Unused variables
+    (void)file_name;
+    (void)line_number;
 
     if (buff == NULL) {
         VMM_LOG(mask_anonymous, level_trace,"In %s#%d try to free NULL\n", file_name, line_number);
@@ -180,6 +192,9 @@ UINT32 vmm_mem_buff_size( char *file_name, INT32 line_number, IN void *buff)
     MEM_ALLOCATION_INFO *alloc_info;
     UINT32 pool_element_size = 0;
 
+    // Unused variables
+    (void)file_name;
+    (void)line_number;
     if (buff == NULL) {
         VMM_LOG(mask_anonymous, level_trace,"In %s#%d try to access NULL\n", file_name, line_number);
         return 0;
@@ -197,6 +212,9 @@ static UINT32 vmm_mem_pool_size_internal( char *file_name, INT32 line_number,
     UINT32 pool_element_size = 0;
     UINT32 size_to_request;
 
+    // Unused variables
+    (void)file_name;
+    (void)line_number;
     if (alignment > sizeof(MEM_ALLOCATION_INFO)) {
         UINT32 adjusted_size = (size < alignment) ? alignment : size;
 

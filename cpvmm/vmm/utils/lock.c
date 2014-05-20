@@ -29,6 +29,7 @@ BOOLEAN lock_try_acquire( VMM_LOCK* lock );
 
 void lock_acquire( VMM_LOCK* lock )
 {
+  (void)lock;
 #if 0
     CPU_ID this_cpu_id = hw_cpu_id();
 
@@ -46,6 +47,7 @@ void lock_acquire( VMM_LOCK* lock )
 
 void interruptible_lock_acquire( VMM_LOCK* lock )
 {
+  (void)lock;
 #if 0
     CPU_ID this_cpu_id = hw_cpu_id();
     BOOLEAN ipc_processed = FALSE;
@@ -70,6 +72,7 @@ void interruptible_lock_acquire( VMM_LOCK* lock )
 
 void lock_release( VMM_LOCK* lock )
 {
+  (void)lock;
 #if 0
     if (! lock) {
         // error
@@ -83,6 +86,8 @@ void lock_release( VMM_LOCK* lock )
 
 BOOLEAN lock_try_acquire( VMM_LOCK* lock )
 {
+  (void)lock;
+  return TRUE;
 #if 0
     UINT32 expected_value = 0, current_value;
     UINT32 new_value = 1;
@@ -102,6 +107,7 @@ BOOLEAN lock_try_acquire( VMM_LOCK* lock )
 
 void lock_initialize(  VMM_LOCK* lock )
 {
+  (void)lock;
 #if 0
     lock_release( lock );
 #endif
@@ -109,6 +115,7 @@ void lock_initialize(  VMM_LOCK* lock )
 
 void lock_initialize_read_write_lock( VMM_READ_WRITE_LOCK * lock )
 {
+  (void)lock;
 #if 0
     lock_initialize(&lock->lock);
     lock->readers = 0;
@@ -118,6 +125,7 @@ void lock_initialize_read_write_lock( VMM_READ_WRITE_LOCK * lock )
 
 void lock_acquire_readlock( VMM_READ_WRITE_LOCK * lock )
 {
+  (void)lock;
 #if 0
     lock_acquire(&lock->lock);
     hw_interlocked_increment((INT32*)(&lock->readers));
@@ -128,6 +136,7 @@ void lock_acquire_readlock( VMM_READ_WRITE_LOCK * lock )
 
 void interruptible_lock_acquire_readlock( VMM_READ_WRITE_LOCK * lock )
 {
+  (void)lock;
 #if 0
     interruptible_lock_acquire(&lock->lock);
     hw_interlocked_increment((INT32*)(&lock->readers));
@@ -138,6 +147,7 @@ void interruptible_lock_acquire_readlock( VMM_READ_WRITE_LOCK * lock )
 
 void lock_release_readlock( VMM_READ_WRITE_LOCK * lock )
 {
+  (void)lock;
 #if 0
     VMM_ASSERT( lock->readers );
     hw_interlocked_decrement((INT32*)(&lock->readers));
@@ -147,6 +157,7 @@ void lock_release_readlock( VMM_READ_WRITE_LOCK * lock )
 
 void lock_acquire_writelock( VMM_READ_WRITE_LOCK * lock )
 {
+  (void)lock;
 #if 0
     lock_acquire(&lock->lock);
     while(lock->readers) {
@@ -160,6 +171,7 @@ void lock_acquire_writelock( VMM_READ_WRITE_LOCK * lock )
 
 void interruptible_lock_acquire_writelock( VMM_READ_WRITE_LOCK * lock )
 {
+  (void)lock;
 #if 0
     BOOLEAN ipc_processed = FALSE;
 
@@ -179,6 +191,7 @@ void interruptible_lock_acquire_writelock( VMM_READ_WRITE_LOCK * lock )
 
 void lock_release_writelock( VMM_READ_WRITE_LOCK * lock )
 {
+  (void)lock;
 #if 0
     VMM_ASSERT( lock->readers == 0 );
     lock_release(&lock->lock);
@@ -190,6 +203,7 @@ VMM_DEBUG_CODE(
 
 void lock_print( VMM_LOCK* lock )
 {
+  (void)lock;
 #if 0
     VMM_LOG(mask_anonymous, level_trace,"lock %p: value=%d, owner=%d\r\n", lock, lock->uint32_lock, lock->owner_cpu_id);
 #endif

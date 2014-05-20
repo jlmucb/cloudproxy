@@ -23,7 +23,7 @@ void vmm_lock_write (UINT64 *mem_loc, UINT64 new_data)
     bprint("vmm_lock_write\n");
     LOOP_FOREVER
 #endif
-    asm volatile(
+    __asm__ volatile(
         "\tmovq       %[mem_loc], %%rcx\n"
         "\tmovq       %[new_data], %%rdx\n"
         "\tlock; xchgq (%%rcx),%%rdx\n"
@@ -41,7 +41,7 @@ UINT32 vmm_rdtsc (UINT32 *upper)
     bprint("vmm_rdtsc\n");
     LOOP_FOREVER
 #endif
-    asm volatile(
+    __asm__ volatile(
         "\tmovl  %[upper], %%ecx\n"
         "\trdtsc\n"
         "\tmovl    (%%ecx), %%edx\n"
@@ -60,7 +60,7 @@ void vmm_write_xcr(UINT64 xcr, UINT64 high, UINT64 low)
     LOOP_FOREVER;
 #endif
 
-    asm volatile(
+    __asm__ volatile(
         "\txsetbv\n"
     :: "d" (high), "a" (low), "c" (xcr)
     :);
@@ -74,7 +74,7 @@ void vmm_read_xcr(UINT32* low, UINT32* high, UINT32 xcr)
     LOOP_FOREVER
 #endif
     UINT32 highval, lowval;
-    asm volatile(
+    __asm__ volatile(
         "\txgetbv\n"
     : "=d" (highval), "=a" (lowval)
     : "c" (xcr) :);
@@ -93,7 +93,7 @@ UINT64 gcpu_read_guestrip(void)
     bprint("vmm_read_guest_rip\n");
     LOOP_FOREVER
 #endif
-    asm volatile(
+    __asm__ volatile(
         "\tmovq     $0x681e, %%rax\n"
         "\tvmread    %%rax,%%rax\n"
         "\tmovq     %%rax, %[result]\n"
@@ -109,7 +109,7 @@ UINT64 vmexit_reason()
     bprint("vmexit_reason\n");
 #endif
     UINT64  result;
-    asm volatile(
+    __asm__ volatile(
         "\tmovq   $0x4402, %%rax\n"
         "\tvmread %%rax, %%rax\n"
         "\tmovq   %%rax, %[result]\n"
@@ -128,7 +128,7 @@ UINT32 vmexit_check_ept_violation(void)
     LOOP_FOREVER
 #endif
     UINT32  result;
-    asm volatile(
+    __asm__ volatile(
         "\tmovq   $0x4402, %%rax\n"
         "\tvmread %%rax, %%rax\n" 
         "\tcmp     $48,%%ax\n" 

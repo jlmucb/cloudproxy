@@ -26,7 +26,7 @@ int vmx_on(UINT64* ptr_to_vmcs_region) {
 #ifdef JLMDEBUG
     bprint("vmx_on %p %llx\n", ptr_to_vmcs_region, address);
 #endif
-    asm volatile(
+    __asm__ volatile(
         "\tmovl $0, %[ret]\n"
         "\tvmxon %[address]\n"
         "\tjnc    1f\n"
@@ -46,7 +46,7 @@ void vmx_off() {
 #ifdef JLMDEBUG
     bprint("vmx_off\n");
 #endif
-    asm volatile(
+    __asm__ volatile(
         "\tvmxoff\n"
     :: :"cc");
     return;
@@ -59,7 +59,7 @@ int vmx_vmclear(UINT64* ptr_to_vmcs_region) {
 #ifdef JLMDEBUG
     bprint("vmclear %p %llx\n", ptr_to_vmcs_region, address);
 #endif
-    asm volatile(
+    __asm__ volatile(
         "\tmovl $0, %[ret]\n"
         "\tvmclear %[address]\n"
         "\tjnc    1f\n"
@@ -84,7 +84,7 @@ int vmx_vmlaunch() {
 #ifdef JLMDEBUG
     bprint("vmxlaunch\n");
 #endif
-    asm volatile(
+    __asm__ volatile(
         "\tmovl $0, %[ret]\n"
         "\tvmlaunch\n"
         "\tjnc    1f\n"
@@ -104,7 +104,7 @@ int vmx_vmresume() {
 #ifdef JLMDEBUG
     bprint("vmresume\n");
 #endif
-    asm volatile(
+    __asm__ volatile(
         "\tmovl $0, %[ret]\n"
         "\tvmresume\n"
         "\tjnc    1f\n"
@@ -126,7 +126,7 @@ int vmx_vmptrld(UINT64 *ptr_to_vmcs_region) {
 #ifdef JLMDEBUG
     bprint("vmptrld %p %llx\n", ptr_to_vmcs_region, address);
 #endif
-    asm volatile(
+    __asm__ volatile(
         "\tmovl $0, %[ret]\n"
         "\tvmptrld %[address]\n"
         "\tjnc    1f\n"
@@ -147,7 +147,7 @@ void vmx_vmptrst(UINT64 *ptr_to_vmcs_region) {
 #ifdef JLMDEBUG
     bprint("vmptrst %p %llx\n", ptr_to_vmcs_region, address);
 #endif
-    asm volatile(
+    __asm__ volatile(
         "\tvmptrst %[address]\n"
     ::[address] "m" (address)
     :"memory");
@@ -160,7 +160,7 @@ int vmx_vmread(UINT64 index, UINT64 *value) {
 #ifdef JLMDEBUG1
     bprint("vmread, waiting %d, 0x%016lx\n", index, *value);
 #endif
-    asm volatile(
+    __asm__ volatile(
         "\tmovq %[index], %%rax\n"
         "\tmovl $0, %[ret]\n"
         "\tvmread %%rax, %%rax\n"
@@ -190,7 +190,7 @@ int vmx_vmwrite(UINT64 index, UINT64 value) {
 #ifdef JLMDEBUG1
     bprint("vmwrite, %p\n", value);
 #endif
-    asm volatile(
+    __asm__ volatile(
         "\tmovq %[index], %%rax\n"
         "\tmovq %[value], %%rbx\n"
         "\tmovl $0, %[ret]\n"

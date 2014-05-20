@@ -1,0 +1,56 @@
+.TH "DATALOG" 1 "Jan 2012" "" ""
+.SH NAME
+datalog \- a lightweight deductive database system
+.SH SYNOPSIS
+.B datalog
+.RI [ OPTIONS ]
+.RI [ FILE ]
+.br
+.SH DESCRIPTION
+.PP
+The 
+.B datalog
+program provides a lightweight deductive database system.  Queries and
+database updates are expressed using Datalog\-a declarative logic
+language in which each formula is a function-free Horn clause, and
+every variable in the head of a clause must appear in the body of the
+clause.  The use of Datalog syntax and an implementation based on
+tabling intermediate results, ensures that all queries terminate.  The
+program reads and executes the assertions and queries in
+.IR FILE ,
+or enters interactive mode if an input file is not given.
+.SH OPTIONS
+.TP
+.BI \-o\  FILE
+Send output to a file (default is standard output).
+.TP
+.B \-i
+Enter interactive mode after loading input file.
+.TP
+.BI \-l\  FILE
+Load extensions written in Lua.
+.TP
+.B \-t
+Print output as tab separated values.
+.TP
+.B \-h
+Display command usage info.
+.TP
+.B \-v
+Display command version info.
+.SH EXIT STATUS
+The exit status is non-zero if there is a syntax error in the input
+file or an internal error is detected.
+.SH SEE ALSO
+The full documentation for
+.B datalog
+is maintained as a Texinfo manual.
+If the
+.B info
+and
+.B datalog
+programs are properly installed at your site, the command
+.IP
+.B info datalog
+.PP
+should give you access to the complete manual.

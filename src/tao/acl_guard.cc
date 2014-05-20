@@ -189,13 +189,13 @@ bool ACLGuard::SaveConfig() const {
     LOG(ERROR) << "Could not serialize the ACL set";
     return false;
   }
+  // Sign ACL set.
   string aclset_signature;
   if (!GetPolicyKeys()->Sign(serialized_aclset, ACLSigningContext,
                              &aclset_signature)) {
     LOG(ERROR) << "Can't sign ACL set";
     return false;
   }
-  // Sign ACL set.
   SignedACLSet sacls;
   sacls.set_serialized_aclset(serialized_aclset);
   sacls.set_signature(aclset_signature);

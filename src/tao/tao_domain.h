@@ -219,6 +219,7 @@ class TaoDomain : public TaoGuard {
 
  protected:
   TaoDomain(const string &path, DictionaryValue *value);
+  virtual bool Init(void) { return true; }
 
  private:
   /// Construct an object of the appropriate TaoDomain subclass. The caller

@@ -1,0 +1,48 @@
+//  File: datalog_guard.proto
+//  Author: Kevin Walsh <kwalsh@holycross.edu>
+//
+//  Description: Protocol buffers for DatalogGuard rules.
+//
+//  Copyright (c) 2014, Kevin Walsh.  All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package tao;
+
+// A structure conveying either (if issuer is present):
+//   issuer says Pred(args...)
+// or (if issuer is not present):
+//   Pred(args...)
+message DatalogPredicate {
+  // The identity of the issuer.
+  optional string issuer = 1;
+  optional string pred = 2;
+  repeated string args = 3;
+}
+
+// A policy rule conveying the formula:
+//    (forall V1, V2, (Cond1 and Cond2 and ...) implies Pred(args...))
+message DatalogRule {
+  repeated string vars;
+  repeated DatalogPredicate conds;
+  required DatalogPredicate consequent;
+}
+
+// A set of rules.
+message DatalogRules { repeated DatalogRule rules = 1; }
+
+// A set of rules signed by a key.
+message SignedDatalogRules {
+  required bytes serialized_rules = 1;
+  required bytes signature = 2;
+}

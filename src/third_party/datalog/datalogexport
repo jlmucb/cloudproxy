@@ -1,0 +1,5 @@
+#! /bin/sh
+sed 's/"\([^\t]*\)"/\1/g' -- "$@" | awk '
+BEGIN { print "BEGIN {" }
+{ print "print \""$0"\"" }
+END { print "}" }' | awk -f -

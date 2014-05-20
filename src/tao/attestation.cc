@@ -268,8 +268,6 @@ string DebugString(const Statement &stmt) {
   if (stmt.has_delegate()) {
     out << "delegate: " << elideString(stmt.delegate()) << "\n";
   }
-//join(std::list<std::basic_string<char> >::iterator,
- //    std::list<std::basic_string<char> >::iterator, std::string&)’
   if (stmt.has_predicate_name()) {
     auto &args = stmt.predicate_args();
     out << "predicate: " << stmt.predicate_name();

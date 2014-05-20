@@ -1,0 +1,364 @@
+2013-03-23  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* config.guess, config.sub: Distribution rebuild to support the
+	ARM 64 bit CPU architecture (aarch64).
+
+	* git: Tagged as datalog-2.4 with tag v2.4.
+
+2012-09-29  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* git: Tagged as datalog-2.3 with tag v2.3.
+
+2012-04-28  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* loader.c (pushstring): Added a check for hexadecimal escape
+	sequences in strings.  An error is signaled when one is found.
+
+	* stackless.diff: Added a patch that prevents Lua stack exhaustion
+	when evaluating deep queries.  It does so by moving Datalog search
+	control information from the Lua stack into a table of thunks.
+	This patch addresses an issue reported by Pierre Carbonnelle.
+
+2012-04-26  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* git: Tagged as datalog-2.2 with tag v2.2.
+
+2012-04-20  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* interp.c (getaline): Added a space to the prompt.  The space was
+	inadvertently deleted when readline support was added.
+
+2012-04-18  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* tc.dl: Added a test case based on the transitive closure.
+
+2012-04-13  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* datalog.texi (Stand-Alone):  Added a chapter on using the
+	datalog module in the stand-alone Lua interpreter.
+
+	* datalog.texi (Library):  Added a section on making assertions via
+	the C API.
+
+	* even.lua: Added the code that makes up the Stand-Alone chapter.
+
+2012-04-08  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* git: Tagged as datalog-2.1 with tag v2.1.
+
+	* try.sh, Makefile.am: Changed the extension used for Datalog input
+	from .prolog to .dl.
+
+	* interp.c (getaline): Fixed end of line bugs when using
+	readline for the case of a line continued with '\' and when
+	reading a file with '='.
+
+	* add.lua: Added checks to ensure arguments are numbers.
+
+	* datalog.c (dl_pcall, dl_lua): Removed DATALOG_DEBUG, and now
+	always print the error message returned from Lua.  This message is
+	very useful now that its so easy to add primitives using the -l
+	option.
+
+2012-04-07  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* git: Tagged as datalog-2.0 with tag v2.0.
+
+	* configure.ac:  Enabled the use of the one C99 feature used in
+	the program.  When compiled with a C99 compiler, pushstring in
+	loader.c uses a variable length array instead of a malloc.
+
+	* interp.c (getaline): Added support for GNU readline in the
+	interpreter when it is available.
+
+2012-04-06  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* loader.c (addstr): Fixed two bugs associated with the end of a
+	string.  Fixed the case in which the last character in a buffer is
+	double quote and the previous character is part of a numerical
+	escape.  Also fixed the case in which a pushed buffer was followed
+	by a buffer read giving a double quote, but the state s1 was not
+	SEEN_NOTHING.
+
+2012-04-05  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* loader.c (pushstring, addstr): In order to better integrate with
+	other Unix tools, numeric string escapes now consist of one, two,
+	or three octal digits.  This change makes this version
+	incompatible with previous versions.
+
+	* interp.c (main): Added the -l option that loads a Lua script
+	after the loading of datalog.lua.  The Lua script can be used to
+	add primitives.
+
+2012-04-04  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* NEWS: Converted the file to use outline format.
+
+2012-04-03  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* datalog.texi (Import/Export): Added an example showing
+	/etc/passwd as the source of a database table.
+
+	* Makefile.am (dist_noinst_SCRIPTS): Added the datalogimport and
+	datalogexport scripts.
+
+2012-04-02  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* datalog.texi (Import/Export):  Added a new chapter describing
+	how to import and export tab seperated values.
+
+2012-04-01  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* interp.c (print_answers_as_tab_separated_values): Added the -t
+	option that prints answers using tab separated values.
+
+	* datalog.texi (Extending): Added a reference to the addition
+	primitive comment in datalog.lua.in.
+
+	* datalog.lua.in (add_iter_prim): Added a comment that shows how
+	to add addition as a primitive.
+
+	* datalog.lua.in (mk_intern): Coerced identifiers to be interned
+	into a string instead of relying on callers to always provide a
+	string.
+
+2012-02-25  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* lua/*: Updated Lua sources to version 5.1.5.
+
+2012-01-19  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* git: Tagged as datalog-1_8 with tag v1.8.
+
+	* datalog.c (dl_open): Fix standard library loading for Lua 5.2.
+
+	* datalog.c (dl_ask): Replace use of lua_strlen and lua_tostring
+	with lua_tolstring.
+
+	* datalog.lua.in: Replaced table.getn with #.
+
+	* interp.c (interp, print_version): Remove compiler warnings about
+	testing against a constant address.
+
+	* bin2c.c (print_version): Remove compiler warnings about testing
+	against a constant address.
+
+	* configure.ac: Corrected the NO_LUA test.  Added check for
+	lauxlib.h.  Changed lua function used in lua library check from
+	lua_pcall to lua_pushboolean, as lua_pcall is a macro in Lua 5.2.
+
+2012-01-18  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* datalog.lua.in, COPYING.LIB: Fixed the address of the Free
+	Software Foundation.
+
+	* datalog.1: Added a manual page.
+
+2011-09-30  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* git: Tagged as datalog-1_7 with tag v1.7.
+
+2011-09-29  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* Makefile.am (lib_LTLIBRARIES): Added support for shared
+	libraries via libtool.  The default is static libraries.
+
+2011-09-27  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* configure.ac, Makefile.am, datalog.spec.in: Added --with-lua
+	option and when specified, use the installed lua package.
+
+	* acinclude.m4: Changed to be GNU's ax_lua.m4.
+
+2011-09-22  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* datalog.spec.in (BuildRequires): Added build dependency on
+	texinfo.
+
+2011-09-20  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* datalog.spec.in (Release): Removed devel packages and bumped
+	release number to 2.
+
+2011-07-05  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* CVS: Tagged as datalog-1_6.
+
+	* lua/*: Applied patch http://www.lua.org/ftp/patch-lua-5.1.4-3.
+
+	* datalog.spec.in:  Added changelog and SMP make flags.
+
+2011-07-01  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* loader.c (addstr): Corrected the computation of the mark for a
+	quoted constant that spans multiple buffers.  When reading a
+	quoted string that spans multiple buffers, bytes were lost.  This
+	fixes a reader bug reported by Georges Louis.
+
+2010-05-27  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* CVS: Tagged as datalog-1_5.
+
+	* interp.c (getaline): Rename function from getline to avoid
+	conflict with the one in <stdio.h>.
+
+2009-03-30  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* CVS: Tagged as datalog-1_4.
+
+	* datalog.c (dl_ask): Added forgotten pop of the answer array so
+	as to fix a space leak reported by Faisal Alquaddoomi.
+
+	* Updated Lua sources to version 5.1.4.
+
+2007-07-18  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* CVS: Tagged as datalog-1_3.
+
+	* interp.c (main): Add dl_close so as to allow valgrind leak
+	check.
+
+2007-04-14  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* Updated Lua sources to version 5.1.2.
+
+	* configure.ac: Changed version number to 1.3
+
+2006-09-29  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* CVS: Tagged as datalog-1_2.
+
+	* Added the Lua sources into the distribution so that this program
+	no longer depends on the right Lua distribution being installed.
+
+	* datalog.spec.in: The library and the header are made available
+	only in a separate development package.  The development package
+	still depends on the right Lua distribution being installed.
+
+2006-08-24  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* bin2c.c, datalog.c, interp.c, loader.c: Replace zeros with NULLs
+	when used as null pointer constants.
+
+2006-07-27  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* CVS: Tagged as datalog-1_1.
+
+2006-07-19  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* datalog.c (dl_open): Libraries are now opened using lua_call as
+	is done in luaL_openlibs.
+
+2006-05-24  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* CVS: Tagged as datalog-1_0.
+
+2006-05-18  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* datalog.c: Modified so as to make use of the Lua 5.1 C API.
+
+	* datalog.h: Changed the definition of dl_db_t to expose the Lua
+	state.  Users of this header file must include lua.h.
+
+2006-03-04  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* CVS: Tagged as datalog-0_7.
+
+	* datalog.lua.in: Converted usages of the n field in an array to
+	calls to table.getn(...).
+
+2006-02-27  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* bin2c.c: Made binary data to C source file converter non-Lua
+	specific.
+
+2005-12-12  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* CVS: Tagged as datalog-0_6.
+
+	* datalog.lua.in: Made the copying of the database include copying
+	each predicate so that a predicate's clauses are not shared.
+
+2005-12-07  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* CVS: Tagged as datalog-0_5.
+
+2005-11-16  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* datalog.lua.in: Added copy and revert, another way to save and
+	restore databases.  With copy and revert, one can use one copy of
+	a database multiple times to revert to a previous database.
+
+2005-11-09  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* datalog.c (dl_version): Provided version information via a
+	library function.
+
+2005-08-10  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* datalog.lua.in: Added the ability to save and restore
+	databases.
+
+2005-05-23  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* CVS: Tagged as datalog-0_4.
+
+	* Changed notation to use literal to describe an atomic formula
+	and other name changes so as to follow the conventions in "What
+	You Always Wanted to Know About Datalog (And Never Dared to Ask)",
+	Stefano Ceri, Georg Gottlob, and Letizia Tanca, IEEE Transactions
+	of Knowledge and Data Engineering, Vol. 1, No. 1, March 1989.
+
+2005-01-21  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* CVS: Tagged as datalog-0_3.
+
+	* datalog.lua (rename_clause): Changed so that all variables in a
+	clause are renamed rather than just the ones in the clause's goal.
+	The previous implementation allowed inferences to fail when they
+	should have succeeded.
+
+2004-12-27  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* CVS: Tagged as datalog-0_2.
+
+	* datalog.lua.in (insert, remove, assert, retract): Return value
+	changed.  Each returns their argument, except that assert returns
+	nil when given an unsafe clause.
+
+	* acinclude.m4: Added a lua library version checking macro.
+
+2004-12-23  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* datalog.lua.in: Optimized for performance.  Removed needless
+	dispatches through metatables and converted calls to tail calls
+	whenever possible.
+
+	* try.sh: Added a simple testing framework.
+
+2004-12-22  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* datalog.lua.in (datalog): Lua functions are exported in the
+	datalog package.
+
+	* datalog.texi (Introduction): Added references to journals with
+	articles describing tabled logic programming.
+
+2004-12-21  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* CVS: Tagged as datalog-0_1.
+
+	* datalog.h (dl_db_t): Changed the name of the type of a Datalog
+	database to dl_db_t.  Functions exported by the library are
+	prefixed with DATALOG_API.
+
+	* datalog.c (dl_init): Added an init function so that an existing
+	Lua structure can be used with the deductive database.
+
+	* datalog.texi: The LGPL is the license for the manual.  Updated
+	the manual to document the dl_db_t and dl_init changes.
+
+2004-12-20  John D. Ramsdell  <ramsdell@mitre.org>
+
+	* CVS: Tagged as datalog-0_0.

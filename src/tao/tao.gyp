@@ -23,6 +23,26 @@
 	},
 	'targets' : [
 		{
+			'target_name' : 'auth_lua',
+			'type' : 'none',
+			'dependencies' : [
+				'../third_party/datalog/datalog.gyp:bin2c',
+			],
+			'actions' : [
+				{
+					'inputs' : [ '<(PRODUCT_DIR)/bin/bin2c', 'auth.lua' ],
+					'outputs' : [ '<(SHARED_INTERMEDIATE_DIR)/auth_lua.h' ],
+					'action_name' : 'bin2c', 
+					'action' : [
+						'<(PRODUCT_DIR)/bin/bin2c',
+					  '-o', '<(SHARED_INTERMEDIATE_DIR)/auth_lua.h',
+						'auth.lua'
+					],
+					'message' : 'Embedding lua source in C',
+				}
+			]
+		},
+		{
 			'target_name' : 'tao_test',
 			'type' : 'executable',
 			'sources' : [
@@ -64,6 +84,9 @@
 				'attestation.cc',
 				'attestation.h',
 				'attestation.proto',
+				'datalog_guard.cc',
+				'datalog_guard.h',
+				'datalog_guard.proto',
 				'fd_message_channel.cc',
 				'fd_message_channel.h',
 				'keys.cc',
@@ -128,6 +151,8 @@
 				'../build/protoc.gypi',
 			],
 			'dependencies' : [
+				'auth_lua',
+				'../third_party/datalog/datalog.gyp:datalog',
 				'../third_party/gflags/gflags.gyp:gflags',
 				'../third_party/google-glog/glog.gyp:glog',
 				'../third_party/keyczar/keyczar.gyp:keyczar',

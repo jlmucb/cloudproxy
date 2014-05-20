@@ -76,6 +76,11 @@ TaoDomain *TaoDomain::CreateImpl(const string &config, const string &path) {
     return nullptr;
   }
 
+  if (!admin->Init()) {
+    LOG(ERROR) << "Could not initialize guard";
+    return nullptr;
+  }
+
   return admin.release();
 }
 

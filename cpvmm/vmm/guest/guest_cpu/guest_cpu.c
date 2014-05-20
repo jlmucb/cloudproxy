@@ -377,6 +377,7 @@ BOOLEAN gcpu_process_interrupt(VECTOR_ID vector_id)
 #else
 BOOLEAN gcpu_process_interrupt(VECTOR_ID vector_id)
 {
+  (void)vector_id;
     return FALSE;
 }
 #endif

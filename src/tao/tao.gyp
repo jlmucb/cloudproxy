@@ -84,6 +84,8 @@
 				'attestation.cc',
 				'attestation.h',
 				'attestation.proto',
+				'auth.cc',
+				'auth.h',
 				'datalog_guard.cc',
 				'datalog_guard.h',
 				'datalog_guard.proto',

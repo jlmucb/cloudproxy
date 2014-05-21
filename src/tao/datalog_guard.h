@@ -24,7 +24,7 @@
 
 #include <keyczar/base/values.h>
 
-#include "tao/acl_guard.pb.h"
+#include "tao/datalog_guard.pb.h"
 #include "tao/tao_domain.h"
 #include "tao/util.h"
 
@@ -60,34 +60,30 @@ typedef scoped_ptr_malloc<DatalogEngine,
 /// Datalog: converted to quoted string
 /// Note: Principals are "::"-separated lists of components of the form
 /// Name(args...), where args is a comma-sparated list of integers or quoted
-/// strings.
+///   strings.
 ///
-/// Attestation: P says Pred(args...)   (for P other than K_policy)
+/// Attestation: P says Pred(args...)
 /// Datalog: says(P, Pred, args...)
-/// Note: args is a comma-separated list of terms.
-///
-/// Policy rule: K_policy says Pred(args...)
-/// Datalog: Pred(args...)
 /// Note: args is a comma-separated list of terms.
 ///
 /// Policy rule: K_policy says
 ///                (forall V1, V2, ... 
 ///                   (Cond1 and Cond2 and ...) implies Pred(args...))
 /// Datalog rule: says(K_policy, Pred, args...) :- c1, c2, ..
-///   where each condition can be either P says Pred(...), a predicate
-///   Pred(...), or the built-in predicate subprin(P, O, E). The former is
-///   translated exactly as above, and the latter two are left as is.
+///   where each condition can be either P says Pred(...), translated as above
+///   to says(P,...), a predicate Pred(...), translated as above to
+///   says(K_policy,...), or P = O::E, translated to the built-in predicate
+///   subprin(P, O, E).
 /// Note: Variable Vi can appear in place of a term in the conditions, and each
-/// Vi must appear at least once in the conditions to ensure the datalog rule
-/// will be safe. A variable Vi can also appear in place of a term in the
-/// consequent. In all other cases, the arguments to predicates must be terms.
-/// By convention, datalog variables start with an uppercase. We require
-/// variables to match [A-Z][a-zA-Z0-9_]*. By convention, datalog predicate
-/// names start with a lowercase. We require predicate names to match
-/// [a-zA-Z][a-zA-Z0-9_]*.
+///   Vi must appear at least once in the conditions to ensure the datalog rule
+///   will be safe. A variable Vi can also appear in place of a term in the
+///   consequent. In all other cases, the arguments to predicates must be terms.
+///   By convention, datalog variables start with an uppercase and predicates
+///   start with a lowercase. We require instead that variables and predicates
+///   match [a-zA-Z][a-zA-Z0-9_]*.
 ///
 /// Authorization query: IsAuthorized(P, op, args...)
-/// Datalog query: isAuthorized(P, op, args...)
+/// Datalog query: says(K_policy, "IsAuthorized", P, op, args...)
 /// Note: Op is a string, and arguments are terms.
 ///
 /// Predicates from principal names: For a principal P of the form
@@ -172,16 +168,24 @@ class DatalogGuard : public TaoDomain {
   /// TaoDomain is locked.
   virtual bool SaveConfig() const;
 
-  /// Install a rule into the datalog engine.
-  /// @param rule The rule to install.
-  virtual bool InstallRule(const DatalogRule &rule);
+  /// Install or remove a rule for the datalog engine.
+  /// @param rule The rule to install or remove.
+  /// @param install Whether to install the rule.
+  virtual bool ProcessRule(const DatalogRule &rule, bool install);
+
+  /// Construct a datalog rule comprising a simple predicate of the form
+  /// says(K_policy, "IsAuthorized", name, op, args...).
+  /// @param name The third argument to the says() predicate.
+  /// @param op The fourth argument to the says() predicate.
+  /// @param args The remaining arguments to the says() predicate.
+  /// @param[out] rule The constructed rule.
+  virtual bool ParsePolicySaysIsAuthorized(const string &name, const string &op,
+                                           const list<string> &args,
+                                           DatalogRule *rule);
 
   /// Get a debug string for a rule.
   /// @param rule The rule.
   virtual string DebugString(const DatalogRule &rule);
-
-  /// Get a debug string for a predicate.
-  virtual string DebugString(const DatalogPredicate &pred);
 
  private:
   // The set of ACL entries.

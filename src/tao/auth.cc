@@ -33,7 +33,7 @@ namespace tao {
 
 static string GetIdentifier(stringstream &in) {  // NOLINT
   // [a-zA-Z][a-zA-Z0-9_]*
-  stringstream &out;
+  stringstream out;
   char c = in.peek();
   if (in && isalpha(c)) {
     out << c;
@@ -47,7 +47,7 @@ static string GetIdentifier(stringstream &in) {  // NOLINT
       }
     } while (in);
   }
-  in.setstate(std::ios::bad);
+  in.setstate(std::ios::failbit);
   return "";
 }
 
@@ -60,7 +60,7 @@ Term *Term::ParseFromStream(stringstream &in) {
       LOG(ERROR) << "Expecting quoted string";
       return nullptr;
     }
-    return new Term(quoteString(q));
+    return new Term(q, QUOTED_STRING);
   } else if (c == '-' || isdigit(c)) {
     int i;
     in >> i;
@@ -80,12 +80,12 @@ Term *Term::ParseFromStream(stringstream &in) {
       in.seekg(pos);
       scoped_ptr<Principal> prin(Principal::ParseFromStream(in));
       if (prin.get() == nullptr || !in) {
-        LOG(ERROR << "Expecting principal";
+        LOG(ERROR) << "Expecting principal";
         return nullptr;
       }
       return new Term(prin.release());
     } else {
-      return new Term(name);
+      return new Term(name, VARIABLE);
     }
   }
 }
@@ -103,11 +103,22 @@ Term *Term::ParseFromString(const string &name) {
   return term.release();
 }
 
+bool Term::IsPredicate() const {
+  return type_ == PREDICATE || (type_ == PRINCIPAL && !prin_val_->HasParent());
+}
+
+const Predicate *Term::GetPredicate() const {
+  if (type_ == PRINCIPAL && !prin_val_->HasParent())
+    return prin_val_->Extension();
+  else
+    return pred_val_.get();
+}
+
 string Term::SerializeToString() const {
   stringstream out;
   switch (type_) {
     case QUOTED_STRING:
-      return string_val_;
+      return quotedString(string_val_);
     case INTEGER:
       out << int_val_;
       return out.str();
@@ -124,7 +135,7 @@ string Term::SerializeToString() const {
 }
 
 Predicate *Predicate::ParseFromStream(stringstream &in) {
-  string name = getIdentifier(in);
+  string name = GetIdentifier(in);
   if (!in) {
     LOG(ERROR) << "Expecting predicate name";
     return nullptr;
@@ -175,7 +186,7 @@ string Predicate::SerializeToString() const {
   out << name_ << "(";
   string delim = "";
   for (const auto &arg : args_) {
-    out << delim << arg->serializeToString();
+    out << delim << arg->SerializeToString();
     delim = ", ";
   }
   out << ")";
@@ -192,7 +203,7 @@ Principal *Principal::ParseFromStream(stringstream &in) {
   while (!in.eof() && in.peek() == ':') {
     skip(in, "::");
     scoped_ptr<Predicate> ext(Predicate::ParseFromStream(in));
-    if (!in || ext.get() == nullptr()) {
+    if (!in || ext.get() == nullptr) {
       LOG(ERROR) << "Could not parse principal extension";
       return nullptr;
     }
@@ -225,4 +236,3 @@ string Principal::SerializeToString() const {
 }
 
 }  // namespace tao
-

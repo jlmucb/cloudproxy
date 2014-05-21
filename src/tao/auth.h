@@ -19,16 +19,21 @@
 #ifndef TAO_AUTH_H_
 #define TAO_AUTH_H_
 
-#include <vector>
+#include <memory>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "tao/attestation.pb.h"
+#include "tao/util.h"
 
 namespace tao {
 using std::vector;
 using std::string;
 using std::stringstream;
+
+class Predicate;
+class Principal;
 
 // TODO(kwalsh) Revise attesation code to use these classes where appropriate.
 
@@ -41,11 +46,11 @@ class Term {
 
   /// Parse a term from a stream.
   /// @param[in, out] in Stream containing the name and maybe more.
-  Term *ParseFromStream(stringstring &in);  // NOLINT
+  static Term *ParseFromStream(stringstream &in);  // NOLINT
  
   /// Parse a term from a string.
   /// @param name The name of the principal.
-  Term *ParseFromString(const string &ext);
+  static Term *ParseFromString(const string &ext);
 
   ~Term();
   
@@ -74,18 +79,10 @@ class Term {
   string GetVariable() const { return var_val_; }
 
   /// Check whether this term is a nested predicate.
-  bool IsPredicate() const {
-    return type_ == PREDICATE ||
-           (type_ == PRINCIPAL && !prin_val_->HasParent());
-  }
+  bool IsPredicate() const;
 
   /// Check whether this term is a nested term and get it.
-  const Predicate *GetPredicate() const {
-    if (type == PRINCIPAL && !prin_val_->HasParent())
-      return prin_val_->Extension();
-    else
-      return pred_val_.get();
-  }
+  const Predicate *GetPredicate() const;
 
   /// Check whether this term is a principal name (or a nested term).
   bool IsPrincipal() const { return type_ == PRINCIPAL; }
@@ -94,12 +91,13 @@ class Term {
   const Principal *GetPrincipal() const { return prin_val_.get(); }
 
  private:
-  Term(const string &s) : type_(s[0]=='"'?QUOTED_STRING:VARIABLE),
-                          string_val_(s[0]=='"'?s:""),
-                          var_val(s[0]!='"'?s:"") {}
+  Term(const string &s, TermType type)
+      : type_(type),
+        string_val_(type == QUOTED_STRING ? s : ""),
+        var_val_(type == VARIABLE ? s : "") {}
   Term(int i) : type_(INTEGER), int_val_(i) {}
   Term(Predicate *pred) : type_(PREDICATE), pred_val_(pred) {}
-  Term(Principal *pred) : type_(PRINCIPAL), pred_val_(pred) {}
+  Term(Principal *prin) : type_(PRINCIPAL), prin_val_(prin) {}
 
   /// The type of term.
   TermType type_;
@@ -122,34 +120,36 @@ class Predicate {
  public:
   /// Parse a predicate from a stream.
   /// @param[in, out] in Stream containing the name and maybe more.
-  Predicate *ParseFromStream(stringstring &in);  // NOLINT
+  static Predicate *ParseFromStream(stringstream &in);  // NOLINT
  
   /// Parse a predicate from a string.
   /// @param name The name of the principal.
-  Predicate *ParseFromString(const string &ext);
+  static Predicate *ParseFromString(const string &ext);
   
+  Predicate(const string &name) : name_(name) {}
+
+  /// Add an argument to this predicate. 
+  /// @param t The term to add. Ownership is taken.
+  void AddArgument(Term *t) { args_.push_back(std::shared_ptr<Term>(t)); }
+
   ~Predicate() {}
  
   /// Produce a string representation.
   string SerializeToString() const;
 
   /// Get the name of the predicate.
-  const string &Name() { return name_; }
+  const string &Name() const { return name_; }
 
   /// Get the predicate arity.
-  int ArgumentCount() { return args_.size(); }
+  int ArgumentCount() const { return args_.size(); }
 
   /// Get one argument.
   /// @param i The index of the argument.
-  const Term *Argument(int i) {
-    return (i < 0 || i >= args_.size()) ? nullptr : args_[i].get();
+  const Term *Argument(int i) const {
+    return (i < 0 || (unsigned)i >= args_.size()) ? nullptr : args_[i].get();
   }
 
  private:
-  Predicate(const string &name) : name_(name) {}
-
-  void AddArgument(Term *t) { args_.push_back(t); }
-
   /// The predicate name.
   string name_;
 
@@ -165,11 +165,11 @@ class Principal {
  public:
   /// Parse a name from a stream.
   /// @param[in, out] in Stream containing the name and maybe more.
-  Principal *ParseFromStream(stringstring &in);  // NOLINT
+  static Principal *ParseFromStream(stringstream &in);  // NOLINT
  
   /// Parse a name from a string.
   /// @param name The name of the principal.
-  Principal *ParseFromString(const string &name);
+  static Principal *ParseFromString(const string &name);
 
   ~Principal() {}
 
@@ -188,13 +188,13 @@ class Principal {
 
 
  private:
-  Principal(Principal *parent, Term *ext) : parent_(parent), ext_(ext) {}
+  Principal(Principal *parent, Predicate *ext) : parent_(parent), ext_(ext) {}
 
   scoped_ptr<Principal> parent_;
   scoped_ptr<Predicate> ext_;
 
   DISALLOW_COPY_AND_ASSIGN(Principal);
-}
+};
 
 }  // namespace tao
 #endif  // TAO_AUTH_H_

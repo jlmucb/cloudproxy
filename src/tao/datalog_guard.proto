@@ -19,23 +19,12 @@
 
 package tao;
 
-// A structure conveying either (if issuer is present):
-//   issuer says Pred(args...)
-// or (if issuer is not present):
-//   Pred(args...)
-message DatalogPredicate {
-  // The identity of the issuer.
-  optional string issuer = 1;
-  required string pred = 2;
-  repeated string args = 3;
-}
-
 // A policy rule conveying the formula:
 //    (forall V1, V2, (Cond1 and Cond2 and ...) implies Pred(args...))
 message DatalogRule {
-  repeated string vars;
-  repeated DatalogPredicate conds;
-  required DatalogPredicate consequent;
+  repeated string vars = 1;
+  repeated string conds = 2;  // serialized Predicates
+  required string consequent = 3;  // serialized Predicate
 }
 
 // A set of rules.

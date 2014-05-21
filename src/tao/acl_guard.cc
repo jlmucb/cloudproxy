@@ -87,10 +87,13 @@ bool ACLGuard::Revoke(const string &name, const string &op,
       aclset_.mutable_entries()->DeleteSubrange(i, 1);
     }
   }
-  if (!found)
+  if (!found) {
     LOG(WARNING) << "Principal " << name << " was not authorized to perform "
                  << op << "(...)";
-  return found;
+    return false;
+  } else {
+    return SaveConfig();
+  }
 }
 
 string ACLGuard::DebugString() const {

@@ -129,6 +129,24 @@ class DatalogGuard : public TaoDomain {
   /// Name strings for name:value pairs in JSON config.
   constexpr static auto JSONSignedDatalogRulesPath = "signed_rules_path";
 
+  /// Example json strings useful for constructing domains for testing.
+  constexpr static auto ExampleGuardDomain =
+      "{\n"
+      "   \"name\": \"Tao example Datalog-based domain\",\n"
+      "\n"
+      "   \"policy_keys_path\":     \"policy_keys\",\n"
+      "   \"policy_x509_details\":  \"country: \\\"US\\\" state: "
+      "\\\"Washington\\\" organization: \\\"Google\\\" commonname: \\\"tao "
+      "example domain\\\"\",\n"
+      "   \"policy_x509_last_serial\": 0,\n"
+      "\n"
+      "   \"guard_type\": \"Datalog\",\n"
+      "   \"signed_rules_path\": \"domain_rules\",\n"
+      "\n"
+      "   \"tao_ca_host\": \"localhost\",\n"
+      "   \"tao_ca_port\": \"11238\"\n"
+      "}";
+
   DatalogGuard(const string &path, DictionaryValue *value)
       : TaoDomain(path, value) {}
   virtual ~DatalogGuard() {}

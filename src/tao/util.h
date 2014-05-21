@@ -268,12 +268,6 @@ bool SendData(int fd, const void *buffer, size_t buffer_len);
 /// @param s The string to send.
 bool SendString(int fd, const string &s);
 
-/// Create a temporary directory with a temporary configuration using ACL
-/// guards. The policy password will be "temppass".
-/// @param[out] temp_dir The new directory.
-/// @param[out] admin The new configuration.
-bool CreateTempACLsDomain(ScopedTempDir *temp_dir, scoped_ptr<TaoDomain> *admin);
-
 /// Add double-quotes to a string, but escape any existing backslashes or
 /// double-quotes.
 /// @param s The string to escape and add quotes around.

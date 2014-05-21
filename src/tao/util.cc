@@ -457,27 +457,6 @@ bool CreateTempDir(const string &prefix, ScopedTempDir *dir) {
   return true;
 }
 
-bool CreateTempACLsDomain(ScopedTempDir *temp_dir,
-                          scoped_ptr<TaoDomain> *admin) {
-  // lax log messages: this is a top level function only used for unit testing
-  if (!CreateTempDir("admin_domain", temp_dir)) return false;
-  string path = **temp_dir + "/tao.config";
-  string config = TaoDomain::ExampleACLGuardDomain;
-  admin->reset(TaoDomain::Create(config, path, "temppass"));
-  return (admin->get() != nullptr);
-}
-
-/* bool CreateTempRootDomain(ScopedTempDir *temp_dir,
-                          scoped_ptr<TaoDomain> *admin) {
-  // lax log messages: this is a top level function only used for unit testing
-  if (!CreateTempDir("admin_domain", temp_dir)) return false;
-  string path = **temp_dir + "/tao.config";
-  string config = TaoDomain::ExampleRootAuthDomain;
-  admin->reset(TaoDomain::Create(config, path, "temppass"));
-  if (admin->get() == nullptr) return false;
-  return true;
-} */
-
 bool ConnectToTCPServer(const string &host, const string &port, int *sock) {
   // Set up a socket to communicate with the TCCA.
   *sock = socket(AF_INET, SOCK_STREAM, 0);

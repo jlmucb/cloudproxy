@@ -37,6 +37,24 @@ class ACLGuard : public TaoDomain {
   /// Name strings for name:value pairs in JSON config.
   constexpr static auto JSONSignedACLsPath = "signed_acls_path";
 
+  /// Example json strings useful for constructing domains for testing.
+  constexpr static auto ExampleGuardDomain =
+      "{\n"
+      "   \"name\": \"Tao example ACL-based domain\",\n"
+      "\n"
+      "   \"policy_keys_path\":     \"policy_keys\",\n"
+      "   \"policy_x509_details\":  \"country: \\\"US\\\" state: "
+      "\\\"Washington\\\" organization: \\\"Google\\\" commonname: \\\"tao "
+      "example domain\\\"\",\n"
+      "   \"policy_x509_last_serial\": 0,\n"
+      "\n"
+      "   \"guard_type\": \"ACLs\",\n"
+      "   \"signed_acls_path\": \"domain_acls\",\n"
+      "\n"
+      "   \"tao_ca_host\": \"localhost\",\n"
+      "   \"tao_ca_port\": \"11238\"\n"
+      "}";
+
   ACLGuard(const string &path, DictionaryValue *value)
       : TaoDomain(path, value) {}
 

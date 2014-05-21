@@ -66,6 +66,7 @@ static UINT32 safe_guid_to_string ( VMM_GUID* guid, char* buffer, size_t buffer_
 {
     UINT32 size;
 
+    (void)size;
     if (buffer_size <= STRING_CHARS(GUID_PLACEHOLDER)) {
         // Not enough room for terminating null
         return 0;
@@ -225,6 +226,7 @@ static UINT32 safe_time_to_string ( VMM_TIME* time, char* buffer, UINT32 buffer_
 {
     UINT32 size;
 
+    (void)size;
     if (buffer_size <= STRING_CHARS(TIME_PLACEHOLDER)) {
         // Not enough room for terminating null
         return 0;
@@ -258,13 +260,14 @@ static const char* get_flags_and_width_and_precision ( const char* format, UINT3
 #else
   va_list*  marker
 #endif
-  )
+)
 {
     UINT32  count;
     BOOLEAN done;
     BOOLEAN at_precision;
     BOOLEAN done_precision;
 
+    (void)marker;
     *flags = 0;
     *width = 0;
     *precision = 0xFFFF;

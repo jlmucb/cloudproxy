@@ -73,7 +73,9 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
     // start_application(0, &application_params);
 }
 
-
+extern void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data, 
+			  uint32_t start_address, void * arg1, void * arg2, 
+			  void * arg3, void * arg4);
 static void start_application(uint32_t cpu_id, const APPLICATION_PARAMS_STRUCT *params)
 {
     // FIX(JLM): stack pointers seem to be set elsewhere

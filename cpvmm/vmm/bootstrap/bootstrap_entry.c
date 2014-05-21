@@ -290,7 +290,7 @@ int ia32_get_selector(uint32_t* p, uint32_t* base, uint32_t* limit, uint16_t* ac
 
 void ia32_write_ts(uint16_t ts)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tmovw %[ts],%%ax\n"
         "\tltr  %%ax\n"
     ::[ts] "g" (ts)
@@ -302,7 +302,7 @@ uint16_t ia32_read_ts()
 {
     uint16_t  ts= 0;
 
-    asm volatile(
+    __asm__ volatile(
         "\txorw %%ax,%%ax\n"
         "\tstr  %%ax\n"
         "\tmovw %%ax, %[ts]\n"
@@ -316,7 +316,7 @@ uint16_t ia32_read_cs()
 {
     uint16_t  cs= 0;
 
-    asm volatile(
+    __asm__ volatile(
         "\txorw %%ax,%%ax\n"
         "\tmovw %%cs, %%ax\n"
         "\tmovw %%ax, %[cs]\n"
@@ -330,7 +330,7 @@ uint16_t ia32_read_ds()
 {
     uint16_t  ds= 0;
 
-    asm volatile(
+    __asm__ volatile(
         "\txorw %%ax,%%ax\n"
         "\tmovw %%ds,%%ax\n"
         "\tmovw %%ax, %[ds]\n"
@@ -344,7 +344,7 @@ uint16_t ia32_read_es()
 {
     uint16_t  es= 0;
 
-    asm volatile(
+    __asm__ volatile(
         "\txorw %%ax,%%ax\n"
         "\tmovw %%es,%%ax\n"
         "\tmovw %%ax, %[es]\n"
@@ -358,7 +358,7 @@ uint16_t ia32_read_fs()
 {
     uint16_t  fs= 0;
 
-    asm volatile(
+    __asm__ volatile(
         "\txorw %%ax,%%ax\n"
         "\tmovw %%fs,%%ax\n"
         "\tmovw %%ax, %[fs]\n"
@@ -372,7 +372,7 @@ uint16_t ia32_read_gs()
 {
     uint16_t  gs= 0;
 
-    asm volatile(
+    __asm__ volatile(
         "\txorw %%ax,%%ax\n"
         "\tmovw %%gs,%%ax\n"
         "\tmovw %%ax, %[gs]\n"
@@ -386,7 +386,7 @@ uint16_t ia32_read_ss()
 {
     uint16_t  ss= 0;
 
-    asm volatile(
+    __asm__ volatile(
         "\txorw %%ax,%%ax\n"
         "\tmovw %%ss,%%ax\n"
         "\tmovw %%ax, %[ss]\n"
@@ -398,7 +398,7 @@ uint16_t ia32_read_ss()
 
 void  ia32_read_idtr(IA32_IDTR* p_descriptor)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tsidt (%[p_descriptor])\n"
     :[p_descriptor] "=p" (p_descriptor)
     ::);
@@ -407,25 +407,25 @@ void  ia32_read_idtr(IA32_IDTR* p_descriptor)
 
 void  ia32_read_gdtr(IA32_GDTR *p_descriptor)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tsgdt (%[p_descriptor])\n"
-    :[p_descriptor] "=p" (p_descriptor)
+    :[p_descriptor] "=r" (p_descriptor)
     :: );
 }
 
 
 void  ia32_write_gdtr(IA32_GDTR *p_descriptor)
 {
-    asm volatile(
+    __asm__ volatile(
         "\t lgdt  (%[p_descriptor])\n"
-    ::[p_descriptor] "p" (p_descriptor) 
+    ::[p_descriptor] "r" (p_descriptor) 
     :);
 }
 
 
 void read_cr0(uint32_t* ret)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tmovl  %[ret],%%ebx\n"
         "\tmovl  %%cr0,%%eax\n"
         "\tmovl %%eax, (%%ebx)\n"
@@ -436,7 +436,7 @@ void read_cr0(uint32_t* ret)
 
 void read_cr2(uint32_t* ret)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tmovl  %[ret],%%ebx\n"
         "\tmovl  %%cr2,%%eax\n"
         "\tmovl %%eax, (%%ebx)\n"
@@ -447,7 +447,7 @@ void read_cr2(uint32_t* ret)
 
 void read_cr3(uint32_t* ret)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tmovl  %[ret],%%ebx\n"
         "\tmovl  %%cr3,%%eax\n"
         "\tmovl %%eax, (%%ebx)\n"
@@ -458,7 +458,7 @@ void read_cr3(uint32_t* ret)
 
 void  write_cr3(uint32_t value)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tmovl     %[value], %%eax\n"
         "\t movl    %%eax, %%cr3\n"
     ::[value] "m" (value)
@@ -468,18 +468,18 @@ void  write_cr3(uint32_t value)
 
 void read_cr4(uint32_t* ret)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tmovl  %[ret],%%ebx\n"
         "\tmovl  %%cr4,%%eax\n"
         "\tmovl %%eax, (%%ebx)\n"
-    ::[ret] "p" (ret) 
+    ::[ret] "r" (ret) 
     : "%eax","%ebx");
 }
 
 
 void write_cr4(uint32_t val)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tmovl  %[val],%%eax\n"
         "\tmovl  %%eax, %%cr4\n"
     ::[val] "p" (val) 
@@ -489,7 +489,7 @@ void write_cr4(uint32_t val)
 
 void  ia32_read_msr(uint32_t msr_id, uint64_t *p_value)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tmovl %[msr_id], %%ecx\n"
         "\trdmsr\n"        //write from EDX:EAX into MSR[ECX]
         "\tmovl %[p_value], %%ecx\n"
@@ -502,7 +502,7 @@ void  ia32_read_msr(uint32_t msr_id, uint64_t *p_value)
 
 void  ia32_write_msr(uint32_t msr_id, uint64_t *p_value)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tmovl %[p_value], %%ecx\n"
         "\tmovl (%%ecx), %%eax\n"
         "\tmovl 4(%%ecx), %%edx\n"
@@ -549,8 +549,6 @@ int setup_evmm_stacks()
 
 void setup_64bit_descriptors(void)
 {
-    uint32_t last_index;
-
     // 1 page for segment descriptors
     evmm_descriptor_table = (uint32_t) evmm_page_alloc(1);
 
@@ -698,7 +696,7 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
                 uint32_t segment, uint32_t* arg1, uint32_t* arg2, 
                 uint32_t* arg3, uint32_t* arg4)
 {
-    asm volatile (
+    __asm__ volatile (
 
         "\tcli\n"
 
@@ -1043,8 +1041,6 @@ int linux_setup(void)
 {
     uint32_t        i;
     IA32_IDTR       idtr;
-    IA32_SELECTOR   sel;
-
     // stack grows down, BSP only
     linux_esp_register= linux_stack_base+PAGE_SIZE;
 
@@ -1531,6 +1527,7 @@ int adjust_kernel_cmdline(multiboot_info_t *mbi,
 // relocate and setup variables for evmm entry
 int prepare_primary_guest_args(multiboot_info_t *mbi)
 {
+  (void)mbi;
     if(linux_original_boot_parameters==0) {
         bprint("original boot parameters not set\n");
         return 1;
@@ -1545,8 +1542,7 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
     new_boot_params->e820_entries= g_nr_map;
 
     // set address of copied tboot shared page 
-    *(uint64_t *)&(new_boot_params->tboot_shared_addr[0])=
-                                      (uint64_t)(uint32_t)shared_page;
+    *(uint64_t *)(new_boot_params->tboot_shared_addr)= (uint32_t)shared_page;
 
     // copy command line after boot parameters
     new_cmdline= (char*)(linux_boot_parameters+sizeof(boot_params_t));
@@ -1748,7 +1744,7 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
 
     // set up evmm e820 table
     p_startup_struct->physical_memory_layout_E820 = evmm_get_e820_table(mbi);
-    if (p_startup_struct->physical_memory_layout_E820 == -1) {
+    if (p_startup_struct->physical_memory_layout_E820 == (uint32_t)-1) {
         bprint("Error getting e820 table\n");
         return 1;
     }
@@ -1821,7 +1817,7 @@ uint64_t OriginalEntryAddress(uint32_t base)
  */
 void fixe820map()
 {
-    int           i;
+    unsigned int           i;
     memory_map_t *entry;
 
     for(i=0; i<g_nr_map; i++) {
@@ -1915,7 +1911,7 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
 
     // get CPU info
     uint32_t info;
-    asm volatile (
+    __asm__ volatile (
         "\tmovl    $1, %%eax\n"
         "\tcpuid\n"
         "\tmovl    %%ebx, %[info]\n"
@@ -2251,7 +2247,7 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
         startap_main(&init32, &init64, p_startup_struct, vmm_main_entry_point);
     }
 
-    asm volatile (
+    __asm__ volatile (
 
         "\tcli\n"
 

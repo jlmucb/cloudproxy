@@ -38,8 +38,8 @@ INCLUDES=	-I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
 HW_DIR = 	em64t
 HW_COMMON_LIBC_DIR = $(S)/common/libc/$(HW_DIR)
 ASM_SRC = 	
-DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs 
-RELEASE_CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs 
+DEBUG_CFLAGS     := -Wall -Wextra -Werror -fwrapv -std=c99 -Wno-format -g -DDEBUG -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs 
+RELEASE_CFLAGS   := -Wall -Wextra -Werror -fwrapv -std=c99 -Wno-unknown-pragmas -Wno-format -O3  -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs 
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 libcsrc=	$(S)/common/libc

@@ -29,11 +29,12 @@ extern void xuvmm_initialize(UINT32 num_of_threads);
 
 extern BOOLEAN legacy_scheduling_enabled;
 
-#pragma warning (disable : 4100) // disable non-referenced formal parameters
 void start_addons( UINT32 num_of_cpus,
                    const VMM_STARTUP_STRUCT* startup_struct,
-                   const VMM_APPLICATION_PARAMS_STRUCT* application_params_struct UNUSED)
+                   const VMM_APPLICATION_PARAMS_STRUCT* application_params_struct)
 {
+  (void)startup_struct;
+  (void)application_params_struct;
     VMM_LOG(mask_anonymous, level_trace,"start addons\r\n");
 #ifdef VTLB_IS_SUPPORTED
     if (global_policy_uses_vtlb()) {

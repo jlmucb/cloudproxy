@@ -20,6 +20,8 @@
 #include "bootstrap_types.h"
 #include "bootstrap_string.h"
 
+extern void bprint(const char *fmt, ...) __attribute__((format (printf, 1, 2)));
+
 char* vmm_strncpy(char *dest, const char *src, int n)
 {
     char* out= dest;
@@ -128,7 +130,10 @@ uint32_t vmm_strlen(const char* p)
 
 uint64_t vmm_strtoul (const char* str, char** endptr, int base)
 {
-    return 0;
+  (void)str;
+  (void)endptr;
+  (void)base;
+  return 0;
 }
 
 
@@ -138,10 +143,10 @@ void HexDump(uint8_t* start, uint8_t* end)
     int      i;
 
     while(p<=end) {
-        bprint("0x%08x: ", p);
+      bprint("%p: ", p);
         i= 0;
         while(p<=end) {
-            bprint("0x%08x ", *(uint32_t*)p);
+            bprint("%u ", *(uint32_t*)p);
             p+= 4;
             i++;
             if(i>3)

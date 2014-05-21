@@ -22,6 +22,9 @@
 BOOLEAN report_uvmm_event(UVMM_EVENT event, VMM_IDENTIFICATION_DATA gcpu, const GUEST_VCPU *vcpu_id, void *event_specific_data)
 {
     BOOLEAN status = TRUE;
+    (void)gcpu;
+    (void)vcpu_id;
+    (void)event_specific_data;
 
     switch(event) {
         case UVMM_EVENT_INITIALIZATION_BEFORE_APS_STARTED:

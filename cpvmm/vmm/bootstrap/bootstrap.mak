@@ -40,6 +40,10 @@ INCLUDES=	-I$(bootsrc) -I$(S)/common/include -I$(S)/vmm  \
     		-I$(S)/common/include/arch -I$(S)/vmm/include/hw \
 		-I$(S)/common/include/platform \
     		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept 
+DEBUG_CFLAGS=  -Wall -Wextra -Werror -fwrapv -std=c99 -Wno-format -fno-strict-aliasing -fno-stack-protector -g -nostdlib -fno-tree-loop-distribute-patterns
+RELEASE_CFLAGS= -Wall -Wextra -Werror -fwrapv -std=c99 -Wno-unknown-pragmas -Wno-format -fno-strict-aliasing -fno-stack-protector -O3  -Wunused-function -nostdlib -fno-tree-loop-distribute-patterns
+CFLAGS= -m32 $(RELEASE_CFLAGS) 
+LDFLAGS= 	
 
 CC=         gcc
 LINK=       gcc
@@ -47,34 +51,34 @@ LINK=       gcc
 all: $(E)/bootstrap.bin
 
 clean:
-	rm  $(E)/bootstrap.bin
+	rm -f $(E)/bootstrap.bin
 	rm -f $(B)/*.o
 
 $(E)/bootstrap.bin: $(B)/bootstrap_entry.o $(B)/bootstrap_e820.o \
 	$(B)/bootstrap_print.o $(B)/bootstrap_string.o \
 	$(B)/bootstrap_startap.o $(B)/bootstrap_ap_procs_init.o
-	$(LINK) -m32 -static -fno-stack-protector -nostdlib  -fno-tree-loop-distribute-patterns -e start32_evmm \
+	$(LINK) -static $(CFLAGS) -e start32_evmm \
 		-T bootstrap.script  -o $(E)/bootstrap.bin \
 		$(B)/bootstrap_entry.o $(B)/bootstrap_e820.o \
 		$(B)/bootstrap_print.o $(B)/bootstrap_string.o \
 		$(B)/bootstrap_startap.o $(B)/bootstrap_ap_procs_init.o 
 
 $(B)/bootstrap_entry.o: $(bootsrc)/bootstrap_entry.c
-	$(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(B)/bootstrap_entry.o $(bootsrc)/bootstrap_entry.c 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/bootstrap_entry.o $(bootsrc)/bootstrap_entry.c 
 
 $(B)/bootstrap_print.o: $(bootsrc)/bootstrap_print.c
-	$(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(B)/bootstrap_print.o $(bootsrc)/bootstrap_print.c 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/bootstrap_print.o $(bootsrc)/bootstrap_print.c 
 
 $(B)/bootstrap_e820.o: $(bootsrc)/bootstrap_e820.c
-	$(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(B)/bootstrap_e820.o $(bootsrc)/bootstrap_e820.c 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/bootstrap_e820.o $(bootsrc)/bootstrap_e820.c 
 
 $(B)/bootstrap_string.o: $(bootsrc)/bootstrap_string.c
-	$(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(B)/bootstrap_string.o $(bootsrc)/bootstrap_string.c 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/bootstrap_string.o $(bootsrc)/bootstrap_string.c 
 
 $(B)/bootstrap_startap.o: $(bootsrc)/bootstrap_startap.c
-	$(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(B)/bootstrap_startap.o $(bootsrc)/bootstrap_startap.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/bootstrap_startap.o $(bootsrc)/bootstrap_startap.c
 
 $(B)/bootstrap_ap_procs_init.o: $(bootsrc)/bootstrap_ap_procs_init.c
-	$(CC) $(INCLUDES) -m32 -fno-stack-protector -c -o $(B)/bootstrap_ap_procs_init.o $(bootsrc)/bootstrap_ap_procs_init.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/bootstrap_ap_procs_init.o $(bootsrc)/bootstrap_ap_procs_init.c
 
 

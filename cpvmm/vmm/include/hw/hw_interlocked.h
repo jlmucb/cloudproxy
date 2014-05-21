@@ -104,6 +104,8 @@ INT8  hw_interlocked_compare_exchange_8(INT8 volatile * destination,
 #endif
 #endif
 
+INT32 hw_interlocked_compare_exchange(INT32 volatile * destination,
+                                      INT32 expected, INT32 comperand);
 
 // Decrement value by 1
 // INT32 hw_interlocked_decrement( volatile INT32 *p_counter);

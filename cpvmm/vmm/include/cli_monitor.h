@@ -38,16 +38,28 @@ void Cli_HandleError( const char* assert_condition,
 
 INLINE void CliMonitorInit(void){}
 INLINE BOOLEAN CliMonitor( const char* title, UINT32 access_level )
-        { return FALSE; }
+{ (void)title; (void)access_level; return FALSE; }
 INLINE BOOLEAN Cli_DeadloopHelper( const char* assert_condition,
                 const char* func_name, const char* file_name,
-                UINT32 line_num, UINT32 access_level) 
-        { return TRUE; }
+                UINT32 line_num, UINT32 access_level) { 
+  (void)assert_condition;
+  (void)func_name;
+  (void)file_name;
+  (void)line_num;
+  (void)access_level;
+  return TRUE;
+}
 
 INLINE void Cli_HandleError( const char* assert_condition,
-                const char* func_name, const char* file_name,
-                UINT32 line_num, UINT32 error_level) 
-        { VMM_UP_BREAKPOINT(); }
+			     const char* func_name, const char* file_name,
+			     UINT32 line_num, UINT32 error_level) {
+  (void)assert_condition;
+  (void)func_name;
+  (void)file_name;
+  (void)line_num;
+  (void)error_level;
+  VMM_UP_BREAKPOINT();
+}
 
 #pragma warning( pop )
 

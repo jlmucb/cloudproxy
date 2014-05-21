@@ -92,10 +92,7 @@ static VMEXIT_HANDLING_STATUS vmexit_cpuid_instruction(GUEST_CPU_HANDLE gcpu)
     return VMEXIT_HANDLED;
 }
 
-#pragma warning( push )
-#pragma warning (disable : 4100) // disable unreferenced formal parameters
-
-static void cpuid_leaf_1h_filter( GUEST_CPU_HANDLE gcpu, CPUID_PARAMS *p_cpuid )
+static void cpuid_leaf_1h_filter( GUEST_CPU_HANDLE gcpu UNUSED, CPUID_PARAMS *p_cpuid UNUSED )
 {
     VMM_ASSERT(p_cpuid);
 
@@ -106,7 +103,7 @@ static void cpuid_leaf_1h_filter( GUEST_CPU_HANDLE gcpu, CPUID_PARAMS *p_cpuid )
     BIT_CLR64(p_cpuid->m_rcx, CPUID_LEAF_1H_ECX_VMX_SUPPORT);
 }
 
-static void cpuid_leaf_3h_filter( GUEST_CPU_HANDLE gcpu, CPUID_PARAMS *p_cpuid )
+static void cpuid_leaf_3h_filter( GUEST_CPU_HANDLE gcpu UNUSED, CPUID_PARAMS *p_cpuid )
 {
     VMM_ASSERT(p_cpuid);
 

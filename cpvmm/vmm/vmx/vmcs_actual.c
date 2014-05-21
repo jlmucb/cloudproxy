@@ -137,6 +137,7 @@ static BOOLEAN nmi_window[VMM_MAX_CPU_SUPPORTED]; // stores NMI Windows which sh
 // JLM:added
 extern int hw_vmx_read_current_vmcs(UINT64 field_id, UINT64 *value );
 extern int hw_vmx_flush_current_vmcs(UINT64 *address);
+extern int hw_vmx_write_current_vmcs(UINT64 field_id, UINT64 value);
 
 /*----------------------------------------------------------------------------*
 **                              NMI Handling
@@ -464,7 +465,7 @@ void vmcs_act_flush_nmi_depended_field_to_cpu(VMCS_ACTUAL_OBJECT *p_vmcs, UINT64
         vmcs_act_write_to_hardware(p_vmcs, VMCS_CONTROL_VECTOR_PROCESSOR_EVENTS,
                                     value);
         if (UPDATE_SUCCEEDED == hw_interlocked_compare_exchange(
-                                    &p_vmcs->update_status, UPDATE_SUCCEEDED,
+				    (INT32 *)&p_vmcs->update_status, UPDATE_SUCCEEDED,
                                     UPDATE_FINISHED)) {
             success = TRUE;
         }
@@ -696,7 +697,7 @@ void error_processing(UINT64 vmcs, int ret_val,
     }
     if (field == VMCS_FIELD_COUNT) {
 #ifdef JLMDEBUG
-        bprint("%s ( %p ) failed with the error: %s\n", operation, vmcs,
+        bprint("%s ( %llx ) failed with the error: %s\n", operation, vmcs,
                 error_message ? error_message : "unknown error");
 #endif
 #if 0
@@ -706,7 +707,7 @@ void error_processing(UINT64 vmcs, int ret_val,
     }
     else {
 #ifdef JLMDEBUG
-        bprint("%s( %p, %s ) failed with the error: %s\n", operation, vmcs,
+        bprint("%s( %llx, %s ) failed with the error: %s\n", operation, vmcs,
                 vmcs_get_field_name(field),
                 error_message ? error_message : "unknown error");
 #endif

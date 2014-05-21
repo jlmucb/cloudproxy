@@ -120,7 +120,7 @@ BOOLEAN init_memory_layout_from_mbr(
         if (are_secondary_guests_exist && (range_start < FOUR_GIGABYTE) &&
             range_attr.Bits.enabled && (!range_attr.Bits.non_volatile)) {
             UINT64 top = (range_end < FOUR_GIGABYTE) ? range_end : FOUR_GIGABYTE;
-
+	    (void)top;
             if ((range_type == INT15_E820_ADDRESS_RANGE_TYPE_MEMORY) ||
                 (range_type == INT15_E820_ADDRESS_RANGE_TYPE_ACPI)) {
                 // here we need to all a call to the "memory layout object"

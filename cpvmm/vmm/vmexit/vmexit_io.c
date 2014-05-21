@@ -290,8 +290,12 @@ void io_blocking_write_handler(
 BOOLEAN io_blocking_handler( GUEST_CPU_HANDLE gcpu, IO_PORT_ID  port_id,
             unsigned  port_size, RW_ACCESS access, BOOLEAN string_intr, 
             BOOLEAN  rep_prefix, UINT32 rep_count, void *p_value,
-    void *context UNUSED)
+    void *context)
 {
+  (void)string_intr;
+  (void)rep_prefix;
+  (void)rep_count;
+  (void)context;
     switch (access) {
     case WRITE_ACCESS:
         io_blocking_write_handler(gcpu, port_id, port_size, p_value);

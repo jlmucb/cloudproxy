@@ -18,7 +18,7 @@
 
 void vmm_asm_invept(INVEPT_ARG *arg, UINT32 modifier, UINT64 *rflags)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tmovq     %[arg], %%rdi\n" 
         "\txorq     %%rsi, %%rsi\n" 
         "\tmovl     %[modifier], %%esi\n" 
@@ -35,7 +35,7 @@ void vmm_asm_invept(INVEPT_ARG *arg, UINT32 modifier, UINT64 *rflags)
 
 void vmm_asm_invvpid (INVVPID_ARG *arg, UINT32 modifier, UINT64 *rflags) 
 {
-    asm volatile(
+    __asm__ volatile(
         "\tmovq     %[arg], %%rdi\n" 
         "\txorq     %%rsi, %%rsi\n" 
         "\tmovl     %[modifier], %%esi\n" 

@@ -53,6 +53,7 @@ extern void isr_entry_00(void);
 extern void isr_entry_01(void);
 static ADDRESS isr_handler_table[256];
 
+#if 0 // not used
 static void init_isr_handler_table() {
     isr_handler_table[0] = (ADDRESS)(isr_entry_00);
     isr_handler_table[1] = (ADDRESS)(isr_entry_01);
@@ -311,6 +312,7 @@ static void init_isr_handler_table() {
     isr_handler_table[254] = (ADDRESS)(isr_entry_fe);
     isr_handler_table[255] = (ADDRESS)(isr_entry_ff);
 }
+#endif
 //    (ADDRESS) isr_entry_fa,
 //    (ADDRESS) isr_entry_fb,
 //    (ADDRESS) isr_entry_fc,

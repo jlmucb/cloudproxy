@@ -31,7 +31,7 @@ UINT64 hw_rdtsc(void)
     UINT64      out;
     UINT64*     pout= &out;
 
-    asm volatile (
+    __asm__ volatile (
         "\trdtsc\n"
         "\tmovq     %[pout],%%rcx\n"
         "\tmovl     %%eax, (%%rcx)\n"
@@ -46,7 +46,7 @@ UINT8 hw_read_port_8( UINT16 port )
 {
     UINT8 out;
 
-    asm volatile(
+    __asm__ volatile(
         "\tinb      %[port], %[out]\n"
     :[out] "=a" (out)
     :[port] "Nd" (port)
@@ -59,7 +59,7 @@ UINT16 hw_read_port_16( UINT16 port )
 {
     UINT16 out;
 
-    asm volatile(
+    __asm__ volatile(
         "\tinw      %[port], %[out]\n"
     :[out] "=a" (out)
     :[port] "Nd" (port) :);
@@ -71,7 +71,7 @@ UINT32 hw_read_port_32( UINT16 port )
 {
     UINT32 out;
 
-    asm volatile(
+    __asm__ volatile(
         "\tinl      %[port], %[out]\n"
     :[out] "=a" (out)
     :[port] "Nd" (port) :);
@@ -81,7 +81,7 @@ UINT32 hw_read_port_32( UINT16 port )
 
 void hw_write_port_8(UINT16 port, UINT8 val)
 {
-    asm volatile(
+    __asm__ volatile(
         "\toutb     %[val], %[port]\n"
     ::[val] "a" (val), [port] "Nd" (port) :);
     return;
@@ -90,7 +90,7 @@ void hw_write_port_8(UINT16 port, UINT8 val)
 
 void hw_write_port_16( UINT16 port, UINT16 val)
 {
-    asm volatile(
+    __asm__ volatile(
         "\toutw     %[val], %[port]\n"
     ::[val] "a" (val), [port] "Nd" (port) :);
     return;
@@ -99,7 +99,7 @@ void hw_write_port_16( UINT16 port, UINT16 val)
 
 void hw_write_port_32( UINT16 port, UINT32 val)
 {
-    asm volatile(
+    __asm__ volatile(
         "\toutl     %[val], %[port]\n"
     ::[val] "a" (val), [port] "Nd" (port) :);
     return;
@@ -110,7 +110,7 @@ void hw_write_msr(UINT32 msr_id, UINT64 val)
 {
     UINT32 low = (val & (UINT32)-1);
     UINT32 high = (UINT32)(val >> 32);
-    asm volatile (
+    __asm__ volatile (
         "\twrmsr\n"
     :: "a" (low), "d" (high), "c" (msr_id):);
     return;
@@ -124,7 +124,7 @@ UINT64 hw_read_msr(UINT32 msr_id)
 
     // RDMSR reads the processor (MSR) whose index is stored in ECX, 
     // and stores the result in EDX:EAX. 
-    asm volatile (
+    __asm__ volatile (
         "\trdmsr\n"
     : "=a" (low), "=d" (high)
     : "c" (msr_id):);
@@ -136,7 +136,7 @@ UINT64 hw_read_msr(UINT32 msr_id)
 UINT64 hw_read_cr0(void)
 {
     UINT64  out;
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %%cr0, %[out]\n"
     :[out] "=r" (out) ::); 
     return out;
@@ -146,7 +146,7 @@ UINT64 hw_read_cr0(void)
 UINT64 hw_read_cr2(void)
 {
     UINT64  out;
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %%cr2, %[out]\n"
     :[out] "=r" (out) ::); 
     return out;
@@ -156,7 +156,7 @@ UINT64 hw_read_cr2(void)
 UINT64 hw_read_cr3(void)
 {
     UINT64  out;
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %%cr3, %[out]\n"
     :[out] "=r" (out) ::); 
     return out;
@@ -166,7 +166,7 @@ UINT64 hw_read_cr3(void)
 UINT64 hw_read_cr4(void)
 {
     UINT64  out;
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %%cr4, %[out]\n"
     :[out] "=r" (out) ::); 
     return out;
@@ -176,7 +176,7 @@ UINT64 hw_read_cr4(void)
 UINT64 hw_read_cr8(void)
 {
     UINT64  out;
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %%cr8, %[out]\n"
     :[out] "=r" (out) ::); 
     return out;
@@ -185,7 +185,7 @@ UINT64 hw_read_cr8(void)
 
 void hw_write_cr0(UINT64 data)
 {
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %[data], %%cr0\n"
     ::[data] "g" (data):); 
     return;
@@ -194,7 +194,7 @@ void hw_write_cr0(UINT64 data)
 
 void hw_write_cr3(UINT64 data)
 {
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %[data], %%cr3\n"
     ::[data] "g" (data):); 
     return;
@@ -203,7 +203,7 @@ void hw_write_cr3(UINT64 data)
 
 void hw_write_cr4(UINT64 data)
 {
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %[data], %%cr4\n"
     ::[data] "g" (data):); 
     return;
@@ -212,7 +212,7 @@ void hw_write_cr4(UINT64 data)
 
 void hw_write_cr8(UINT64 data)
 {
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %[data], %%cr8\n"
     ::[data] "g" (data):); 
     return;
@@ -222,7 +222,7 @@ void hw_write_cr8(UINT64 data)
 UINT64 hw_read_dr0(void)
 {
     UINT64  out;
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %%dr0, %[out]\n"
     :[out] "=r" (out) ::); 
     return out;
@@ -232,7 +232,7 @@ UINT64 hw_read_dr0(void)
 UINT64 hw_read_dr1(void)
 {
     UINT64  out;
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %%dr1, %[out]\n"
     :[out] "=r" (out) ::); 
     return out;
@@ -242,7 +242,7 @@ UINT64 hw_read_dr1(void)
 UINT64 hw_read_dr2(void)
 {
     UINT64  out;
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %%dr2, %[out]\n"
     :[out] "=r" (out) ::); 
     return out;
@@ -252,7 +252,7 @@ UINT64 hw_read_dr2(void)
 UINT64 hw_read_dr3(void)
 {
     UINT64  out;
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %%dr3, %[out]\n"
     :[out] "=r" (out) ::); 
     return out;
@@ -262,7 +262,7 @@ UINT64 hw_read_dr3(void)
 UINT64 hw_read_dr4(void)
 {
     UINT64  out;
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %%dr4, %[out]\n"
     :[out] "=r" (out) ::); 
     return out;
@@ -272,7 +272,7 @@ UINT64 hw_read_dr4(void)
 UINT64 hw_read_dr5(void)
 {
     UINT64  out;
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %%dr5, %[out]\n"
     :[out] "=r" (out) ::); 
     return out;
@@ -282,7 +282,7 @@ UINT64 hw_read_dr5(void)
 UINT64 hw_read_dr6(void)
 {
     UINT64  out;
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %%dr6, %[out]\n"
     :[out] "=r" (out) ::); 
     return out;
@@ -292,7 +292,7 @@ UINT64 hw_read_dr6(void)
 UINT64 hw_read_dr7(void)
 {
     UINT64  out;
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %%dr7, %[out]\n"
     :[out] "=r" (out) ::); 
     return out;
@@ -301,7 +301,7 @@ UINT64 hw_read_dr7(void)
 
 void hw_write_dr0(UINT64 value)
 {
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %[value], %%dr0\n"
     ::[value] "g" (value):); 
     return;
@@ -310,7 +310,7 @@ void hw_write_dr0(UINT64 value)
 
 void hw_write_dr1(UINT64 value)
 {
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %[value], %%dr1\n"
     ::[value] "g" (value):); 
     return;
@@ -319,7 +319,7 @@ void hw_write_dr1(UINT64 value)
 
 void hw_write_dr2(UINT64 value)
 {
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %[value], %%dr2\n"
     ::[value] "g" (value):); 
     return;
@@ -328,7 +328,7 @@ void hw_write_dr2(UINT64 value)
 
 void hw_write_dr3(UINT64 value)
 {
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %[value], %%dr3\n"
     ::[value] "g" (value):); 
     return;
@@ -337,7 +337,7 @@ void hw_write_dr3(UINT64 value)
 
 void hw_write_dr4(UINT64 value)
 {
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %[value], %%dr4\n"
     ::[value] "g" (value):); 
     return;
@@ -346,7 +346,7 @@ void hw_write_dr4(UINT64 value)
 
 void hw_write_dr5(UINT64 value)
 {
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %[value], %%dr5\n"
     ::[value] "g" (value):); 
     return;
@@ -355,7 +355,7 @@ void hw_write_dr5(UINT64 value)
 
 void hw_write_dr6(UINT64 value)
 {
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %[value], %%dr6\n"
     ::[value] "g" (value):); 
     return;
@@ -364,7 +364,7 @@ void hw_write_dr6(UINT64 value)
 
 void hw_write_dr7(UINT64 value)
 {
-    asm volatile (
+    __asm__ volatile (
         "\tmovq     %[value], %%dr7\n"
     ::[value] "g" (value):); 
     return;
@@ -374,7 +374,7 @@ void hw_write_dr7(UINT64 value)
 // CHECK(JLM)
 void hw_invlpg(void *address)
 {
-    asm volatile (
+    __asm__ volatile (
         "\tinvlpg   %[address]\n"
     ::[address] "m" (address):); 
     return;
@@ -383,7 +383,7 @@ void hw_invlpg(void *address)
 
 void hw_wbinvd(void)
 {
-    asm volatile(
+    __asm__ volatile(
         "\twbinvd\n"
     : : :);
     return;
@@ -392,7 +392,7 @@ void hw_wbinvd(void)
 
 void hw_halt( void )
 {
-    asm volatile(
+    __asm__ volatile(
         "\thlt\n"
     :::);
     return;
@@ -401,7 +401,7 @@ void hw_halt( void )
 
 void hw_lidt(void *source)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tlidt     (%[source])\n"
     ::[source] "p" (source):);
     return;
@@ -410,7 +410,7 @@ void hw_lidt(void *source)
 
 void hw_sidt(void *destination)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tsidt (%[destination])\n"
     ::[destination] "p" (destination) 
     :);
@@ -420,7 +420,7 @@ void hw_sidt(void *destination)
 
 INT32  hw_interlocked_increment(INT32 *addend)
 {
-    asm volatile(
+    __asm__ volatile(
       "\tlock; incl (%[addend])\n"
     :
     :[addend] "p" (addend)
@@ -431,7 +431,7 @@ INT32  hw_interlocked_increment(INT32 *addend)
 
 UINT64 hw_interlocked_increment64(INT64* addend)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tlock; incq (%[addend])\n"
     : :[addend] "p" (addend)
     :"memory");
@@ -440,7 +440,7 @@ UINT64 hw_interlocked_increment64(INT64* addend)
 
 INT32 hw_interlocked_decrement(INT32 * minuend)
 {
-    asm volatile(
+    __asm__ volatile(
       "\tlock; decl (%[minuend])\n"
     : :[minuend] "p" (minuend)
     :"memory");
@@ -449,7 +449,7 @@ INT32 hw_interlocked_decrement(INT32 * minuend)
 
 INT32 hw_interlocked_add(INT32 volatile * addend, INT32 value)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tmovq     %[addend], %%rbx\n"
         "\tmovl     %[value], %%eax\n"
         "\tlock;    addl %%eax, (%%rbx)\n"
@@ -461,7 +461,7 @@ INT32 hw_interlocked_add(INT32 volatile * addend, INT32 value)
 
 INT32 hw_interlocked_or(INT32 volatile * value, INT32 mask)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tmovq     %[value], %%rbx\n"
         "\tmovl     %[mask], %%eax\n"
         "\tlock;    orl %%eax, (%%rbx)\n"
@@ -473,7 +473,7 @@ INT32 hw_interlocked_or(INT32 volatile * value, INT32 mask)
 
 INT32 hw_interlocked_xor(INT32 volatile * value, INT32 mask)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tmovq     %[value], %%rbx\n"
         "\tmovl     %[mask], %%eax\n"
         "\tlock;    xorl %%eax, (%%rbx)\n"
@@ -486,7 +486,7 @@ INT32 hw_interlocked_xor(INT32 volatile * value, INT32 mask)
 void hw_store_fence(void)
 {
 #if 0
-    asm volatile(
+    __asm__ volatile(
         "\tlock; sfence\n"
     :::);
 #endif
@@ -501,7 +501,7 @@ INT32 hw_interlocked_compare_exchange(INT32 volatile * destination,
     bprint("expected: %d, new: %d --- ", expected, comperand);
 #endif
     INT32 old = *destination;
-    asm volatile(
+    __asm__ volatile(
         "\tmovq     %[destination], %%r15\n"
         "\tmovl     (%%r15), %%edx\n"
         "\tmovl     %[expected], %%eax\n"
@@ -522,7 +522,7 @@ INT32 hw_interlocked_compare_exchange(INT32 volatile * destination,
 INT8 hw_interlocked_compare_exchange_8(INT8 volatile * destination,
             INT8 expected, INT8 comperand)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tmovq     %[destination], %%r15\n"
         "\tmovb     (%%r15), %%dl\n"
         "\tmovb     %[expected], %%al\n"
@@ -540,7 +540,7 @@ INT8 hw_interlocked_compare_exchange_8(INT8 volatile * destination,
 INT64 hw_interlocked_compare_exchange_64(INT64 volatile * destination,
             INT64 expected, INT64 comperand)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tmovq     %[destination], %%r15\n"
         "\tmovq     (%%r15), %%rdx\n"
         "\tmovq     %[expected], %%rax\n"
@@ -557,7 +557,7 @@ INT64 hw_interlocked_compare_exchange_64(INT64 volatile * destination,
 
 INT32 hw_interlocked_assign(INT32 volatile * target, INT32 new_value)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tmovq     %[target], %%rbx\n"
         "\tmovl     %[new_value], %%eax\n"
         "\tlock;    xchgl %%eax, (%%rbx)\n"
@@ -581,7 +581,7 @@ INT32 hw_interlocked_assign(INT32 volatile * target, INT32 new_value)
 
 BOOLEAN hw_scan_bit_forward(UINT32 *bit_number_ptr, UINT32 bitset)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tbsfl %[bitset], %%eax\n"
         "\tmovq %[bit_number_ptr], %%rbx\n"
         "\tmovl %%eax, (%%rbx)\n"
@@ -592,7 +592,7 @@ BOOLEAN hw_scan_bit_forward(UINT32 *bit_number_ptr, UINT32 bitset)
 
 BOOLEAN hw_scan_bit_forward64(UINT32 *bit_number_ptr, UINT64 bitset)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tbsfq %[bitset], %%rax\n"
         "\tmovq %[bit_number_ptr], %%rbx\n"
         "\tmovl %%eax, (%%rbx)\n"
@@ -604,7 +604,7 @@ BOOLEAN hw_scan_bit_forward64(UINT32 *bit_number_ptr, UINT64 bitset)
 
 BOOLEAN hw_scan_bit_backward(UINT32 *bit_number_ptr, UINT32 bitset)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tbsrl %[bitset], %%eax\n"
         "\tmovq %[bit_number_ptr], %%rbx\n"
         "\tmovl %%eax, (%%rbx)\n"
@@ -617,7 +617,7 @@ BOOLEAN hw_scan_bit_backward(UINT32 *bit_number_ptr, UINT32 bitset)
 
 BOOLEAN hw_scan_bit_backward64(UINT32 *bit_number_ptr, UINT64 bitset)
 {
-    asm volatile(
+    __asm__ volatile(
         "\tbsrq %[bitset], %%rax\n"
         "\tmovq %[bit_number_ptr], %%rbx\n"
         "\tmovl %%eax, (%%rbx)\n"
@@ -636,7 +636,7 @@ void hw_fnstsw (UINT16* loc) {
 #endif
     // Read FPU status word, this doesnt seem to be called
     // CHECK(JLM)
-    asm volatile(
+    __asm__ volatile(
         "\tmovq %[loc], %%rax\n" 
         "\tfnstsw (%%rax)\n"
         : : [loc] "m"(loc)
@@ -652,7 +652,7 @@ void hw_fnstcw ( UINT16 * loc )
     bprint("hw_fnstcw\n");
     LOOP_FOREVER
 #endif
-    asm volatile(
+    __asm__ volatile(
         "\tmovq %[loc], %%rax\n"
         "\tfnstcw (%%rax)\n"
         :
@@ -669,7 +669,7 @@ void hw_fninit()
     bprint("hw_fninit\n");
     LOOP_FOREVER
 #endif
-    asm volatile(
+    __asm__ volatile(
         "\tfninit\n"
         :::);
     return;
@@ -689,7 +689,7 @@ SMI_PORT_PARAMS spp;
 CPUID_PARAMS cp;
 
 void  hw_lgdt (void *gdtr) {
-     asm volatile(
+     __asm__ volatile(
         "lgdt (%[gdtr])\n"
      : :[gdtr] "p" (gdtr)
      :);
@@ -698,7 +698,7 @@ void  hw_lgdt (void *gdtr) {
 
 void hw_sgdt (void * gdtr) {
     //  Store GDTR (to buffer pointed by RCX)
-    asm volatile(
+    __asm__ volatile(
         "\tsgdt (%[gdtr])\n"
     : :[gdtr] "p" (gdtr)
     :);
@@ -713,7 +713,7 @@ UINT16 hw_read_cs () {
                 
     UINT16 ret = 0;
 
-    asm volatile(
+    __asm__ volatile(
         "\txor %%rax, %%rax\n"
         "\tmovw %%cs, %%ax\n"
         "\tmovw %%ax, %[ret]\n"
@@ -726,7 +726,7 @@ UINT16 hw_read_cs () {
 
 void hw_write_cs (UINT16 i) { 
     // push segment selector
-    asm volatile (
+    __asm__ volatile (
         "\txor %%rax, %%rax\n"
         "\tmovw %[i], %%ax\n"
         "\tshlq $32, %%rax\n"
@@ -748,7 +748,7 @@ void hw_write_cs (UINT16 i) {
 UINT16 hw_read_ds () {
     UINT16 ret = 0;
 
-    asm volatile(
+    __asm__ volatile(
         "\txor %%rax, %%rax\n"
         "\tmovw %%ds, %%ax\n"
         "\tmovw %%ax, %[ret]\n"
@@ -761,7 +761,7 @@ UINT16 hw_read_ds () {
 //  void hw_write_ds ( UINT16);
 //  Write to Data Segment Selector
 void hw_write_ds(UINT16 i) {
-    asm volatile(
+    __asm__ volatile(
         "\tmovw %[i], %%ds\n"
     :
     :[i] "g" (i) :);
@@ -777,7 +777,7 @@ UINT16 hw_read_es() {
 
     UINT16 ret = 0;
 
-     asm volatile(
+     __asm__ volatile(
         "\txor %%rax, %%rax\n"
         "\tmovw %%es, %%ax\n"
         "\tmovw %%ax, %[ret]\n"
@@ -790,7 +790,7 @@ UINT16 hw_read_es() {
 //  void hw_write_es ( UINT16);
 //  Write to ES Segment Selector
 void hw_write_es (UINT16 i) { 
-    asm volatile(
+    __asm__ volatile(
         "\tmovw %[i], %%es\n"
     :
     :[i] "g" (i)
@@ -805,7 +805,7 @@ void hw_write_es (UINT16 i) {
 UINT16 hw_read_ss() {
     UINT16 ret = 0;
 
-    asm volatile(
+    __asm__ volatile(
         "\txor %%rax, %%rax\n"
         "\tmovw %%es, %%ax\n"
         "\tmovw %%ax, %[ret]\n"
@@ -818,7 +818,7 @@ UINT16 hw_read_ss() {
 //  void hw_write_ss ( UINT16);
 //  Write to Stack Segment Selector
 void hw_write_ss (UINT16 i) { 
-    asm volatile(
+    __asm__ volatile(
         "\tmovw %[i], %%ss\n"
     : :[i] "g" (i)
     :);
@@ -832,7 +832,7 @@ void hw_write_ss (UINT16 i) {
 UINT16 hw_read_fs() {
     UINT16 ret = 0;
 
-    asm volatile(
+    __asm__ volatile(
         "\txor %%rax, %%rax\n"
         "\tmovw %%fs, %%ax\n"
         "\tmovw %%ax, %[ret]\n"
@@ -846,7 +846,7 @@ UINT16 hw_read_fs() {
 //  void hw_write_fs ( UINT16);
 //  Write to FS
 void hw_write_fs (UINT16 i) { 
-    asm volatile(
+    __asm__ volatile(
         "\tmovw %[i], %%fs\n"
     :
     :[i] "r" (i)
@@ -861,7 +861,7 @@ void hw_write_fs (UINT16 i) {
 UINT16 hw_read_gs() {
     UINT16 ret = 0;
 
-    asm volatile(
+    __asm__ volatile(
         "\txor %%rax, %%rax\n"
         "\tmovw %%gs, %%ax\n"
         "\tmovw %%ax, %[ret]\n"
@@ -874,7 +874,7 @@ UINT16 hw_read_gs() {
 //  void hw_write_gs ( UINT16);
 //  Write to GS
 void hw_write_gs (UINT16 i) { 
-    asm volatile(
+    __asm__ volatile(
         "\tmovw %[i], %%gs\n"
     :
     :[i] "r" (i)
@@ -886,7 +886,7 @@ void hw_write_gs (UINT16 i) {
 //  UINT64 hw_read_rsp (void);
 UINT64 hw_read_rsp () {
     UINT64 ret = 0;
-    asm volatile(
+    __asm__ volatile(
         "\tmovq %%rsp, %%rax\n"
         "\tadd $8,%%rax\n"
         "\tmovq %%rax, %[ret]\n"
@@ -910,8 +910,15 @@ void hw_write_to_smi_port(
     bprint("hw_write_to_smi_port\n");
     LOOP_FOREVER
 #endif
+      (void)p_rax;
+    (void)p_rbx;
+    (void)p_rcx;
+    (void)p_rdx;
+    (void)p_rsi;
+    (void)p_rdi;
+    (void)p_rflags;
     // save callee saved registers
-     asm volatile(
+     __asm__ volatile(
         "\tpush %%rbp\n"
         "\tmovq %%rbp, %%rsp\n" //setup stack frame pointer
         "\tpush %%rbx\n"
@@ -983,19 +990,19 @@ void hw_write_to_smi_port(
 
 //  void hw_enable_interrupts (void);
 void hw_enable_interrupts () {
-    asm volatile("\tsti\n");
+    __asm__ volatile("\tsti\n");
     return;
 }
 
 //  void hw_disable_interrupts (void);
 void hw_disable_interrupts () {
-    asm volatile("\tcli\n");
+    __asm__ volatile("\tcli\n");
     return;
 }
 
 //  void hw_fxsave (void* buffer);
 void hw_fxsave (void *buffer) {
-    asm volatile(
+    __asm__ volatile(
         "\tmovq   %[buffer], %%rbx\n"
         "\tfxsave (%%rbx)\n"
     :
@@ -1007,7 +1014,7 @@ void hw_fxsave (void *buffer) {
 
 //  void hw_fxrestore (void* buffer);
 void hw_fxrestore (void *buffer) {
-    asm volatile(
+    __asm__ volatile(
         "\tmovq   %[buffer], %%rbx\n"
         "\tfxrstor (%%rbx)\n"
     :
@@ -1019,7 +1026,7 @@ void hw_fxrestore (void *buffer) {
 
 //  void hw_write_cr2 (UINT64 value);
 void hw_write_cr2 (UINT64 value) {
-    asm volatile(
+    __asm__ volatile(
         "\tmovq %%cr2, %[value]\n"
     :[value] "=g" (value)
     : :"cc", "memory");
@@ -1035,7 +1042,7 @@ void hw_write_cr2 (UINT64 value) {
 #define CPU_LOCATOR_GDT_ENTRY_OFFSET 32
 #define TSS_ENTRY_SIZE_SHIFT 4
 
-asm(
+__asm__(
 ".text\n"
 ".globl hw_cpu_id\n"
 ".type hw_cpu_id,@function\n"
@@ -1055,7 +1062,7 @@ UINT16 hw_read_tr() {
     UINT16 ret = 0;
 
     //RNB: Added the movw instruction to move the return value into 'ret'
-   asm volatile(
+   __asm__ volatile(
         "\tstr %%ax\n"
         "\tmovw %%ax, %[ret]\n"
     :[ret] "=g" (ret)
@@ -1067,7 +1074,7 @@ UINT16 hw_read_tr() {
 //  void hw_write_tr ( UINT16);
 //  Write Task Register
 void hw_write_tr (UINT16 i) {
-    asm volatile(
+    __asm__ volatile(
         "\tltr %[i]\n"
     :
     :[i] "g" (i)
@@ -1081,7 +1088,7 @@ void hw_write_tr (UINT16 i) {
 //  ax register will contain result
 UINT16 hw_read_ldtr () {
     UINT16 ret = 0;
-    asm volatile (
+    __asm__ volatile (
         "\tsldt %[ret]\n"
     :[ret] "=g" (ret)
     : :);
@@ -1092,7 +1099,7 @@ UINT16 hw_read_ldtr () {
 //  void hw_write_ldtr ( UINT16);
 //  Write LDT Register
 void hw_write_ldtr (UINT16 i) {
-    asm volatile(
+    __asm__ volatile(
         "\tlldt %[i]\n"
     :
     :[i] "r" (i) :);
@@ -1103,7 +1110,7 @@ void hw_write_ldtr (UINT16 i) {
 //  void hw_cpuid (CPUID_PARAMS *)
 //  Execute cpuid instruction
 void hw_cpuid (CPUID_PARAMS *cp) {
-    asm volatile(
+    __asm__ volatile(
         "\tmovq %[cp], %%r8\n" 
         //# fill regs for cpuid
         "\tmovq (%%r8), %%rax\n"
@@ -1138,7 +1145,7 @@ void hw_cpuid (CPUID_PARAMS *cp) {
  * [       RIP        ] <= RSP should point prior iret
  */
 void hw_perform_asm_iret () {
-    asm volatile(
+    __asm__ volatile(
         "\tsubq $0x20, %%rsp\n"     //prepare space for "interrupt stack"
         "\tpush %%rax\n"                               //save scratch registers
         "\tpush %%rbx\n"
@@ -1168,12 +1175,12 @@ void hw_perform_asm_iret () {
 void hw_set_stack_pointer (HVA new_stack_pointer, main_continue_fn func, 
                            void *params) 
 {
-    asm volatile(
+    __asm__ volatile(
         "L1:\n"
         "\tmovq %[new_stack_pointer], %%rsp\n"
         "\tmovq %[params], %[new_stack_pointer]\n"
         "\tsubq $32, %%rsp\n" // allocate home space for 4 input params
-        "\tcall %[func]\n" 
+        "\tcall *%[func]\n" 
         "\tjmp L1\n"
     :
     :[new_stack_pointer] "g"(new_stack_pointer),
@@ -1187,7 +1194,7 @@ void hw_set_stack_pointer (HVA new_stack_pointer, main_continue_fn func,
 
 void hw_pause( void ) {
 // Execute assembler 'pause' instruction
-    asm volatile(
+    __asm__ volatile(
         "\tpause\n"
         :::);
     return;
@@ -1200,7 +1207,7 @@ void hw_monitor( void* addr, UINT32 extension, UINT32 hint) {
     LOOP_FOREVER
 #endif
     // Execute assembler 'monitor' instruction
-    asm volatile(
+    __asm__ volatile(
         "\tmovq %[addr], %%rcx\n" 
         "\tmovq %[extension], %%rdx\n" 
         "\tmovq %[hint], %%r8\n" 
@@ -1219,7 +1226,7 @@ void hw_mwait( UINT32 extension, UINT32 hint ) {
     bprint("hw_mwait\n");
     LOOP_FOREVER
 #endif
-    asm volatile(
+    __asm__ volatile(
         "\tmovq %[extension], %%rcx\n"
         "\tmovq %[hint], %%rdx\n"
         "\tmovq %%rdx, %%rax\n"
@@ -1238,7 +1245,7 @@ extern GUEST_CPU_SAVE_AREA** g_guest_regs_save_area;
 
 // Utility function for getting the save area pointer into rbx, using the host cpu id
 // from a call to hw_cpu_id
-asm(
+__asm__(
 ".text\n"
 ".globl load_save_area_into_rbx\n"
 ".type load_save_area_into_rbx,@function\n"
@@ -1271,7 +1278,7 @@ asm(
  *   No free registers except for RSP/RFLAGS.
  *   All are saved on return.
  */
-asm(
+__asm__(
 ".text\n"
 ".globl gcpu_save_registers\n"
 ".type gcpu_save_registers,@function\n"
@@ -1306,7 +1313,7 @@ asm(
 );
 
 
-asm(
+__asm__(
 ".globl gcpu_restore_registers\n"
 ".type gcpu_restore_registers,@function\n"
 "gcpu_restore_registers:\n"

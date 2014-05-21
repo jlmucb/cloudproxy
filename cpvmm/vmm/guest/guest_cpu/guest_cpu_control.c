@@ -194,7 +194,7 @@ static void set_minimal_processor_ctrls( GCPU_VMEXIT_CONTROL_FIELD_COUNTERS* fie
 static void set_minimal_processor_ctrls2( GCPU_VMEXIT_CONTROL_FIELD_COUNTERS* field )
 {
     PROCESSOR_BASED_VM_EXECUTION_CONTROLS2 proc_ctrl2, proc_ctrl2_fixed;
-
+    (void)proc_ctrl2_fixed;
     if (!g_processor_ctrls2_supported) {
         return;
     }
@@ -858,6 +858,7 @@ void gcpu_temp_exceptions_setup( GUEST_CPU_HANDLE gcpu, GCPU_TEMP_EXCEPTIONS_SET
 
             proc_ctrl.Uint32 = 0;
             proc_ctrl.Bits.VirtualInterrupt = 1;
+	    (void)proc_ctrl;
             request_vmexit_on_proc_ctrls( gcpu, 0, 0);
         }
         break;
@@ -868,6 +869,7 @@ void gcpu_temp_exceptions_setup( GUEST_CPU_HANDLE gcpu, GCPU_TEMP_EXCEPTIONS_SET
 
             proc_ctrl.Uint32 = 0;
             proc_ctrl.Bits.VirtualInterrupt = 1;
+	    (void)proc_ctrl;
 //            gcpu->vmexit_setup.processor_ctrls.enforce_1_settings &= ~(UINT64)proc_ctrl.Uint32;
 //            gcpu->vmexit_setup.processor_ctrls.enforce_0_settings |= proc_ctrl.Uint32;
             request_vmexit_on_proc_ctrls( gcpu, 0, 0);

@@ -107,6 +107,7 @@ const UINT32 g_msr_2_index[] = {
 
 BOOLEAN gcpu_is_native_execution( GUEST_CPU_HANDLE gcpu )
 {
+  (void)gcpu;
     return IS_MODE_NATIVE(gcpu);
 }
 

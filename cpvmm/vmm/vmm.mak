@@ -44,8 +44,8 @@ INCLUDES=	-I$(S)/vmm -I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
 
 JLMDEBUG= -I$(S)/vmm -I$(S)/common/include -I$(S)/vmm/include -I$(mainsrc)/bootstrap -D INVMM -D JLMDEBUG
 
-DEBUG_CFLAGS:=  -Wno-format -g -DDEBUG -D INCLUDE_LAYERING -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs -fPIE
-RELEASE_CFLAGS:= -Wno-unknown-pragmas -Wno-format -O3  -Wunused-function -D INCLUDE_LAYERING -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs -fPIE
+DEBUG_CFLAGS=  -Wall -Wextra -Werror -fwrapv -std=c99 -Wno-format -g -DDEBUG -D INCLUDE_LAYERING -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs -fPIE
+RELEASE_CFLAGS= -Wall -Wextra -Werror -fwrapv -std=c99 -Wno-unknown-pragmas -Wno-format -O3  -Wunused-function -D INCLUDE_LAYERING -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs -fPIE
 CFLAGS=     	$(RELEASE_CFLAGS) 
 LDFLAGS= 	
 
@@ -182,7 +182,7 @@ $(BINDIR)/bootstrap_print.o: $(mainsrc)/bootstrap/bootstrap_print.c
 # endif
 clean:
 	rm -f $(E)/evmm.bin 
-	rm -f $(E)/vmmobjects/vmm.o
+	rm -f $(E)/vmmobjects/vmm/*.o
 	rm -f $(E)/vmmobjects/acpi/*.o
 	rm -f $(E)/vmmobjects/vmx/*.o
 	rm -f $(E)/vmmobjects/libc/*.o

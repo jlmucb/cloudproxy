@@ -32,27 +32,27 @@ template <typename T>
 class TaoDomainTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    ASSERT_TRUE(CreateTempDir("admin_domain", temp_dir_));
+    ASSERT_TRUE(CreateTempDir("admin_domain", &temp_dir_));
     config_path_ = *temp_dir_ + "/tao.config";
-    string config = T::ExampleGuardDomain;
-    scoped_ptr<TaoDomain> guard(TaoDomain::Create(config, path, "temppass"));
+    config_ = T::ExampleGuardDomain;
+    scoped_ptr<TaoDomain> guard(TaoDomain::Create(config_, config_path_, "temppass"));
     ASSERT_TRUE(dynamic_cast<T *>(domain_.get()) != nullptr);
   }
   ScopedTempDir temp_dir_;
   string config_path_;
+  string config_;
   scoped_ptr<TaoDomain> domain_;
 };
 typedef ::testing::Types<ACLGuard, DatalogGuard> GuardTypes;
 TYPED_TEST_CASE(TaoDomainTest, GuardTypes);
 
-TEST_F(TaoDomainTest, LoadDomainFailTest) {
+TYPED_TEST(TaoDomainTest, LoadDomainFailTest) {
   this->domain_.reset(TaoDomain::Load(this->config_path_));
   EXPECT_FALSE(this->domain_.get() != nullptr);
 }
 
-TEST_F(TaoDomainTest, LoadUnlockDomainTest) {
-  string config = TaoDomain::ExampleACLGuardDomain;
-  this->domain_.reset(TaoDomain::Create(config, this->config_path_, "temppass"));
+TYPED_TEST(TaoDomainTest, LoadUnlockDomainTest) {
+  this->domain_.reset(TaoDomain::Create(this->config_, this->config_path_, "temppass"));
   EXPECT_TRUE(this->domain_.get() != nullptr);
 
   this->domain_.reset(TaoDomain::Load(this->config_path_, "badpass"));
@@ -61,9 +61,8 @@ TEST_F(TaoDomainTest, LoadUnlockDomainTest) {
   ASSERT_TRUE(this->domain_.get() != nullptr);
 }
 
-TEST_F(TaoDomainTest, DeepCopyTest) {
-  string config = TaoDomain::ExampleACLGuardDomain;
-  this->domain_.reset(TaoDomain::Create(config, this->config_path_, "temppass"));
+TYPED_TEST(TaoDomainTest, DeepCopyTest) {
+  this->domain_.reset(TaoDomain::Create(this->config_, this->config_path_, "temppass"));
   EXPECT_TRUE(this->domain_.get() != nullptr);
 
   // DeepCopy after Create
@@ -82,7 +81,7 @@ TEST_F(TaoDomainTest, DeepCopyTest) {
   EXPECT_TRUE(other_admin->GetPolicySigner() == nullptr);
 }
 
-TEST_F(TaoDomainTest, AuthorizeTest) {
+TYPED_TEST(TaoDomainTest, AuthorizeTest) {
   EXPECT_FALSE(this->domain_->IsAuthorized("Alice", "Read", list<string>{"hello.txt"}));
   EXPECT_FALSE(this->domain_->IsAuthorized("Alice", "Write", list<string>{"hello.txt"}));
   EXPECT_FALSE(this->domain_->IsAuthorized("Alice", "Read", list<string>{"foo.txt"}));

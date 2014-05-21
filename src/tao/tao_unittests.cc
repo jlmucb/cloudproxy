@@ -34,20 +34,20 @@ DEFINE_string(aik_blob_file, "/home/tmroeder/src/fileProxy/src/apps/aikblob",
 template <typename T>
 class TaoTest : public ::testing::Test {
  protected:
-  virtual void Setup(scoped_ptr<TPMTao> *tao) {
+  virtual void SetUp(scoped_ptr<TPMTao> *tao) {
     string blob;
     ASSERT_TRUE(ReadFileToString(FLAGS_aik_blob_file, &blob));
     tao->reset(new TPMTao(blob, list<int>{17, 18}));
     ASSERT_TRUE(tao->get()->Init());
   }
-  virtual void Setup(scoped_ptr<SoftTao> *tao) {
+  virtual void SetUp(scoped_ptr<SoftTao> *tao) {
     string blob;
     ASSERT_TRUE(ReadFileToString(FLAGS_aik_blob_file, &blob));
     tao->reset(new SoftTao());
     ASSERT_TRUE(tao->get()->Init());
   }
   virtual void SetUp() {
-    Setup(&tao_);
+    SetUp(&tao_);
   }
   scoped_ptr<T> tao_;
 };

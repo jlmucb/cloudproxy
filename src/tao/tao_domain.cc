@@ -29,6 +29,7 @@
 
 #include "tao/acl_guard.h"
 #include "tao/attestation.h"
+#include "tao/datalog_guard.h"
 #include "tao/util.h"
 
 using keyczar::base::JSONReader;
@@ -70,6 +71,8 @@ TaoDomain *TaoDomain::CreateImpl(const string &config, const string &path) {
   scoped_ptr<TaoDomain> admin;
   if (guard_type == ACLGuard::GuardType) {
     admin.reset(new ACLGuard(path, dict.release()));
+  } else if (guard_type == DatalogGuard::GuardType) {
+    admin.reset(new DatalogGuard(path, dict.release()));
   } else {
     LOG(ERROR) << path << ": unrecognized " << JSONAuthType << " "
                << guard_type;

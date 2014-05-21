@@ -60,7 +60,7 @@ class Term {
   /// @param name The name of the principal.
   static Term *ParseFromString(const string &ext);
 
-  ~Term();
+  ~Term() {}
   
   /// Produce a string representation.
   string SerializeToString() const;

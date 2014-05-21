@@ -30,6 +30,7 @@ test_dir=""
 test_ver="Debug"
 test_tpm="no"
 verbose="yes"
+test_guard="acls"
 for arg in "$@"; do
 	case "$arg" in
 		-Debug|-debug)
@@ -46,6 +47,14 @@ for arg in "$@"; do
 			;;
 		-tpm)
 			test_tpm="yes"
+			shift
+			;;
+		-acls)
+			test_guard="acls"
+			shift
+			;;
+		-datalog)
+			test_guard="datalog"
 			shift
 			;;
 		-q)
@@ -116,6 +125,7 @@ export TAO_TEST="$test_dir" # Also hardcoded into $test_dir/scripts/*.sh
 export TAO_ROOT="$root_dir"
 export TAO_VERSION="$test_ver"
 export TAO_USE_TPM="$test_tpm"
+export TAO_GUARD="$test_guard"
 export TAO_BUILD="\${TAO_ROOT}/src/out/\${TAO_VERSION}/bin"
 export TAO_PASS="BogusPass"
 export TAO_TPM_PCRS="17, 18"
@@ -163,7 +173,7 @@ source $TAO_TEST/tao.env
 
 TAO_PROGRAMS=$(cd $TAO_TEST/bin; echo * | grep -v '\.a$')
 
-WATCHFILES="bin/tcca bin/linux_host domain_acls tao.config tao.env"
+WATCHFILES="bin/tcca bin/linux_host domain_acls domain_rules tao.config tao.env"
 
 # log a to stderr for admin stuff, otherwise it is really quiet
 admin_args="-config_path tao.config -policy_pass $TAO_PASS -alsologtostderr=1"
@@ -198,7 +208,8 @@ function showenv()
 function cleanup()
 {
 	rm -f ${TAO_TEST}/logs/*
-	rm -rf ${TAO_TEST}/{*keys,tpm,soft_tao,linux_tao_host,domain_acls,tao.config,acls_sig}
+	rm -rf
+	${TAO_TEST}/{*keys,tpm,soft_tao,linux_tao_host,domain_acls,domain_rules,tao.config,user_acls_sig}
 	grep -v "^export GOOGLE_HOST_TAO" ${TAO_TEST}/tao.env >/tmp/tao_env
 	cat <<END >>/tmp/tao_env
 export GOOGLE_HOST_TAO="" # Use ${TAO_TEST}\/scripts\/setup.sh to make this.
@@ -236,7 +247,7 @@ function setup()
 	ln -s ${TAO_BUILD} bin
 	mkdir -p logs
 
-	$admin -init ${TAO_ROOT}/run/tao-default.config -name testing 
+	$admin -init ${TAO_ROOT}/run/tao-default-${TAO_GUARD}.config -name testing 
 	grep -v "^export GOOGLE_HOST_TAO" tao.env >/tmp/tao_env
 	if [ "$TAO_USE_TPM" == "yes" ]; then
 		echo "Creating TPMTao AIK and settings."
@@ -252,10 +263,10 @@ function setup()
 	fi
 	mv /tmp/tao_env tao.env
 
-	# TODO(kwalsh) set up ACLs here
+	# TODO(kwalsh) set up ACLs or datalog rules here
 	#$admin -whitelist ${TAO_HOSTED_PROGRAMS// /,}
 	#$admin -newusers tmroeder,jlm
-	#$admin -signacl ${TAO_ROOT}/run/acls.ascii -acl_sig_path acls_sig
+	#$admin -signacl ${TAO_ROOT}/run/acls.ascii -acl_sig_path user_acls_sig
 	#mkdir -p file_client_files
 	#mkdir -p file_server_files
 	#mkdir -p file_server_meta

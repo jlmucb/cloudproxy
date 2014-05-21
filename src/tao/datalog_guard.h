@@ -131,7 +131,7 @@ class DatalogGuard : public TaoDomain {
 
   DatalogGuard(const string &path, DictionaryValue *value)
       : TaoDomain(path, value) {}
-  ~DatalogGuard();
+  virtual ~DatalogGuard() {}
 
   /// These methods have the same semantics as in TaoGuard.
   /// @{

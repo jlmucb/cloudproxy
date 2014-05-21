@@ -28,9 +28,9 @@
 			'include_dirs' : [
 				'.',
 			],
-			'libraries' : [
-				'-ltspi',
-			],
+			#			'libraries' : [
+			#				'-ltspi',
+			#			],
 			'dependencies' : [
 				'../tao/tao.gyp:tao',
 				'../third_party/gflags/gflags.gyp:gflags',
@@ -47,9 +47,9 @@
 			'include_dirs' : [
 				'.',
 			],
-			'libraries' : [
-				'-ltspi',
-			],
+			#			'libraries' : [
+			#				'-ltspi',
+			#			],
 			'dependencies' : [
 				'../tao/tao.gyp:tao',
 				'../third_party/gflags/gflags.gyp:gflags',
@@ -66,9 +66,9 @@
 			'include_dirs' : [
 				'.',
 			],
-			'libraries' : [
-				'-ltspi',
-			],
+			#			'libraries' : [
+			#				'-ltspi',
+			#			],
 			'dependencies' : [
 				'../tao/tao.gyp:tao',
 				'../third_party/gflags/gflags.gyp:gflags',
@@ -156,10 +156,10 @@
 				'../third_party/google-glog/glog.gyp:glog',
 				'../third_party/keyczar/keyczar.gyp:keyczar'
 			],
-			'libraries' : [
-				'-lcrypto',
-				'-lssl',
-			],
+			#			'libraries' : [
+			#				'-lcrypto',
+			#				'-lssl',
+			#			],
 		},
 #		{
 #			'target_name' : 'client',

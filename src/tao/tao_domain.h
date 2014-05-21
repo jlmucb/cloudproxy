@@ -58,7 +58,9 @@ class TaoDomain : public TaoGuard {
   virtual ~TaoDomain();
 
   // TODO(kwalsh) use protobuf instead of json?
-  /// An example json string useful for constructing domains for testing
+
+  /// Example json strings useful for constructing domains for testing
+  /// @{
   constexpr static auto ExampleACLGuardDomain =
       "{\n"
       "   \"name\": \"Tao example ACL-based domain\",\n"
@@ -75,6 +77,24 @@ class TaoDomain : public TaoGuard {
       "   \"tao_ca_host\": \"localhost\",\n"
       "   \"tao_ca_port\": \"11238\"\n"
       "}";
+
+  constexpr static auto ExampleDatalogGuardDomain =
+      "{\n"
+      "   \"name\": \"Tao example Datalog-based domain\",\n"
+      "\n"
+      "   \"policy_keys_path\":     \"policy_keys\",\n"
+      "   \"policy_x509_details\":  \"country: \\\"US\\\" state: "
+      "\\\"Washington\\\" organization: \\\"Google\\\" commonname: \\\"tao "
+      "example domain\\\"\",\n"
+      "   \"policy_x509_last_serial\": 0,\n"
+      "\n"
+      "   \"guard_type\": \"Datalog\",\n"
+      "   \"signed_rules_path\": \"domain_rules\",\n"
+      "\n"
+      "   \"tao_ca_host\": \"localhost\",\n"
+      "   \"tao_ca_port\": \"11238\"\n"
+      "}";
+  /// @}
 
   /// Name strings for name:value pairs in JSON config.
   constexpr static auto JSONName = "name";

@@ -25,6 +25,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <memory>
 
 /// These basic utilities from Keyczar and the standard library are used
 /// extensively throughout the Tao implementation, so we include them here.
@@ -54,6 +55,8 @@ using std::list;
 using std::set;
 using std::string;
 using std::stringstream;
+using std::unique_ptr;  // TODO(kwalsh) Discuss unique_ptr vs. scoped_ptr.
+// using std::make_unique;  // TODO(kwalsh) Discuss unique_ptr vs. scoped_ptr.
 
 using keyczar::base::Base64WDecode;
 using keyczar::base::Base64WEncode;
@@ -67,6 +70,14 @@ using keyczar::base::WriteStringToFile;
 using keyczar::base::Delete;
 
 /// @}
+
+/// Exception-safe factory for unique_ptr.
+/// Author: Herb Sutter (http://herbsutter.com/gotw/_102/)
+template<typename T, typename ...Args>
+std::unique_ptr<T> make_unique( Args&& ...args )
+{
+      return std::unique_ptr<T>( new T( std::forward<Args>(args)... ) );
+}
 
 //class TaoChildChannelRegistry;
 class TaoDomain;

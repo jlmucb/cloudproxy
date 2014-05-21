@@ -155,11 +155,11 @@ class DatalogGuard : public TaoDomain {
   /// @{
   virtual bool GetSubprincipalName(string *subprin) const;
   virtual bool IsAuthorized(const string &name, const string &op,
-                            const list<string> &args);
+                            const list<unique_ptr<Term>> &args);
   virtual bool Authorize(const string &name, const string &op,
-                         const list<string> &args);
+                         const list<unique_ptr<Term>> &args);
   virtual bool Revoke(const string &name, const string &op,
-                      const list<string> &args);
+                      const list<unique_ptr<Term>> &args);
   virtual string DebugString() const;
   /// @}
 
@@ -197,7 +197,7 @@ class DatalogGuard : public TaoDomain {
   /// @param args The remaining arguments to the says() predicate.
   /// @param[out] rule The constructed rule.
   virtual bool ParsePolicySaysIsAuthorized(const string &name, const string &op,
-                                           const list<string> &args,
+                                           const list<unique_ptr<Term>> &args,
                                            DatalogRule *rule) const;
 
   /// Get a debug string for a rule.

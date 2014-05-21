@@ -238,7 +238,7 @@ bool DatalogGuard::PushDatalogRule(const DatalogRule &rule) {
 
 bool DatalogGuard::ParsePolicySaysIsAuthorized(const string &name,
                                                const string &op,
-                                               const list<string> &args,
+                                               const list<unique_ptr<Term>> &args,
                                                DatalogRule *rule) const {
   scoped_ptr<Predicate> pred(new Predicate("says"));
   string policy_name;
@@ -254,30 +254,26 @@ bool DatalogGuard::ParsePolicySaysIsAuthorized(const string &name,
   pred->AddArgument(k_policy.release());
   pred->AddArgument(new Term("IsAuthorized", Term::QUOTED_STRING));
   scoped_ptr<Term> prin(Term::ParseFromString(name));
-  if (prin.get() == nullptr || ~prin->IsPrincipal()) {
+  if (prin.get() == nullptr || !prin->IsPrincipal()) {
     LOG(ERROR) << "Could not parse name";
     return false;
   }
   pred->AddArgument(prin.release());
   pred->AddArgument(new Term(op, Term::QUOTED_STRING));
   for (const auto &arg : args) {
-    scoped_ptr<Term> term(Term::ParseFromString(arg));
-    if (term.get() == nullptr) {
-      LOG(ERROR) << "Could not parse argument";
-      return false;
-    }
-    if (term->IsVariable()) {
+    if (arg->IsVariable()) {
       LOG(ERROR) << "Variable appears outside quantification";
       return false;
+    } else {
+      pred->AddArgument(arg->DeepCopy());
     }
-    pred->AddArgument(term.release());
   }
   rule->set_consequent(pred->SerializeToString());
   return true;
 }
 
 bool DatalogGuard::IsAuthorized(const string &name, const string &op,
-                            const list<string> &args) {
+                            const list<unique_ptr<Term>> &args) {
   DatalogRule rule;
   if (!ParsePolicySaysIsAuthorized(name, op, args, &rule)) {
     LOG(ERROR) << "Could not parse authorization query";
@@ -316,7 +312,7 @@ static void AddRule(const DatalogRule &rule, DatalogRules *rules)
 }
 
 bool DatalogGuard::Authorize(const string &name, const string &op,
-                         const list<string> &args) {
+                         const list<unique_ptr<Term>> &args) {
   DatalogRule rule;
   if (!ParsePolicySaysIsAuthorized(name, op, args, &rule)) {
     LOG(ERROR) << "Could not parse authorization rule";
@@ -335,7 +331,7 @@ bool DatalogGuard::Authorize(const string &name, const string &op,
 }
 
 bool DatalogGuard::Revoke(const string &name, const string &op,
-                      const list<string> &args) {
+                      const list<unique_ptr<Term>> &args) {
   DatalogRule rule;
   if (!ParsePolicySaysIsAuthorized(name, op, args, &rule)) {
     LOG(ERROR) << "Could not parse authorization rule";

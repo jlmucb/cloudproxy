@@ -45,17 +45,17 @@ class TrivialGuard : public TaoGuard {
   }
 
   virtual bool IsAuthorized(const string &name, const string &op,
-                            const list<string> &args) {
+                            const list<unique_ptr<Term>> &args) {
     return (policy_ == LiberalPolicy);
   }
 
   virtual bool Authorize(const string &name, const string &op,
-                         const list<string> &args) {
+                         const list<unique_ptr<Term>> &args) {
     return true;
   }
 
   virtual bool Revoke(const string &name, const string &op,
-                      const list<string> &args) {
+                      const list<unique_ptr<Term>> &args) {
     return false;
   }
 

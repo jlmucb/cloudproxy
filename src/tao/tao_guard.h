@@ -22,6 +22,8 @@
 #include <list>
 #include <string>
 
+#include "tao/auth.h"
+#include "tao/util.h"
 
 namespace tao {
 using std::list;
@@ -42,14 +44,14 @@ class TaoGuard {
   /// @param op The name of the operation.
   /// @param args A list of arguments to the operation.
   virtual bool IsAuthorized(const string &name, const string &op,
-                            const list<string> &args) = 0;
+                            const list<unique_ptr<Term>> &args) = 0;
 
   /// Authorize a principal to perform an operation.
   /// @param name The name of the principal.
   /// @param op The name of the operation.
   /// @param args A list of arguments to the operation.
   virtual bool Authorize(const string &name, const string &op,
-                         const list<string> &args) = 0;
+                         const list<unique_ptr<Term>> &args) = 0;
 
   /// Attempt to revoke authorization for a principal to perform an operation,
   /// essentially reversing the effect of an Authorize() call with identical
@@ -66,7 +68,7 @@ class TaoGuard {
   /// principal name was explicitly and individually authorized, e.g. via
   /// Authorize().
   virtual bool Revoke(const string &name, const string &op,
-                      const list<string> &args) = 0;
+                      const list<unique_ptr<Term>> &args) = 0;
 
   /// Get a string suitable for showing users authorization info.
   virtual string DebugString() const = 0;

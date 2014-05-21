@@ -44,18 +44,18 @@ bool ACLGuard::GetSubprincipalName(string *subprin) const {
 
 bool ACLGuard::IsMatchingEntry(const ACLEntry &entry, const string &name,
                                const string &op,
-                               const list<string> &args) const {
+                               const list<unique_ptr<Term>> &args) const {
   if (entry.name() != name) return false;
   if (entry.op() != op) return false;
   if (entry.args_size() != int(args.size())) return false;
   int i = 0;
   for (auto &arg : args)
-    if (entry.args(i++) != arg) return false;
+    if (entry.args(i++) != arg->SerializeToString()) return false;
   return true;
 }
 
 bool ACLGuard::IsAuthorized(const string &name, const string &op,
-                            const list<string> &args) {
+                            const list<unique_ptr<Term>> &args) {
   for (auto &entry : aclset_.entries()) {
     if (IsMatchingEntry(entry, name, op, args)) {
       LOG(INFO) << "Principal " << elideString(name)
@@ -70,16 +70,16 @@ bool ACLGuard::IsAuthorized(const string &name, const string &op,
 }
 
 bool ACLGuard::Authorize(const string &name, const string &op,
-                         const list<string> &args) {
+                         const list<unique_ptr<Term>> &args) {
   ACLEntry *entry = aclset_.add_entries();
   entry->set_name(name);
   entry->set_op(op);
-  for (auto &arg : args) entry->add_args(arg);
+  for (auto &arg : args) entry->add_args(arg->SerializeToString());
   return SaveConfig();
 }
 
 bool ACLGuard::Revoke(const string &name, const string &op,
-                      const list<string> &args) {
+                      const list<unique_ptr<Term>> &args) {
   bool found = false;
   for (int i = aclset_.entries_size() - 1; i >= 0; i--) {
     if (IsMatchingEntry(aclset_.entries(i), name, op, args)) {
@@ -108,7 +108,7 @@ string ACLGuard::DebugString() const {
 int ACLGuard::ACLEntryCount() const { return aclset_.entries_size(); }
 
 bool ACLGuard::GetACLEntry(int i, string *name, string *op,
-                           list<string> *args) const {
+                           list<unique_ptr<Term>> *args) const {
   if (i < 0 || i > aclset_.entries_size()) {
     LOG(ERROR) << "Invalid ACL entry index";
     return false;
@@ -117,7 +117,14 @@ bool ACLGuard::GetACLEntry(int i, string *name, string *op,
   name->assign(entry.name());
   op->assign(entry.op());
   args->clear();
-  for (auto &arg : entry.args()) args->push_back(arg);
+  for (auto &arg : entry.args()) {
+    unique_ptr<Term> term(Term::ParseFromString(arg));
+    if (!term) {
+      LOG(ERROR) << "Could not parse term in ACL entry";
+      return false;
+    }
+    args->push_back(std::move(term));
+  }
   return true;
 }
 

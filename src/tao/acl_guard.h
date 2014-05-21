@@ -63,11 +63,11 @@ class ACLGuard : public TaoDomain {
   /// @{
   virtual bool GetSubprincipalName(string *subprin) const;
   virtual bool IsAuthorized(const string &name, const string &op,
-                            const list<string> &args);
+                            const list<unique_ptr<Term>> &args);
   virtual bool Authorize(const string &name, const string &op,
-                         const list<string> &args);
+                         const list<unique_ptr<Term>> &args);
   virtual bool Revoke(const string &name, const string &op,
-                      const list<string> &args);
+                      const list<unique_ptr<Term>> &args);
   virtual string DebugString() const;
   /// @}
 
@@ -75,7 +75,7 @@ class ACLGuard : public TaoDomain {
   int ACLEntryCount() const;
 
   /// Get information about the i^th ACL entry.
-  bool GetACLEntry(int i, string *name, string *op, list<string> *args) const;
+  bool GetACLEntry(int i, string *name, string *op, list<unique_ptr<Term>> *args) const;
   bool GetACLEntry(int i, string *desc) const;
 
   // TODO(kwalsh) Maybe also map a name to pair<op, args>?
@@ -98,7 +98,7 @@ class ACLGuard : public TaoDomain {
   /// Check whether an acl entry matches a given name, op, args tuple.
   virtual bool IsMatchingEntry(const ACLEntry &entry, const string &name,
                                const string &op,
-                               const list<string> &args) const;
+                               const list<unique_ptr<Term>> &args) const;
 
   string DebugString(const ACLEntry &entry) const;
 

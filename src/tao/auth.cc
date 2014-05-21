@@ -116,6 +116,24 @@ const Predicate *Term::GetPredicate() const {
     return pred_val_.get();
 }
 
+Term *Term::DeepCopy() const {
+  switch (type_) {
+    case QUOTED_STRING:
+      return new Term(string_val_, QUOTED_STRING);
+    case INTEGER:
+      return new Term(int_val_);
+    case VARIABLE:
+      return new Term(var_val_, VARIABLE);
+    case PREDICATE:
+      return new Term(pred_val_->DeepCopy());
+    case PRINCIPAL:
+      return new Term(prin_val_->DeepCopy());
+    default:
+      LOG(ERROR) << "Invalid term type";
+      return nullptr;
+  }
+}
+
 string Term::SerializeToString() const {
   stringstream out;
   switch (type_) {
@@ -183,6 +201,13 @@ Predicate *Predicate::ParseFromString(const string &name) {
   return pred.release();
 }
 
+Predicate *Predicate::DeepCopy() const {
+  scoped_ptr<Predicate> other(new Predicate(name_));
+  for (const auto &arg : args_)
+    other->AddArgument(arg->DeepCopy());
+  return other.release();
+}
+
 string Predicate::SerializeToString() const {
   stringstream out;
   out << name_ << "(";
@@ -225,6 +250,11 @@ Principal *Principal::ParseFromString(const string &name) {
     return nullptr;
   }
   return prin.release();
+}
+
+Principal *Principal::DeepCopy() const {
+  return new Principal(
+      (parent_ == nullptr ? nullptr : parent_->DeepCopy()), ext_->DeepCopy());
 }
 
 string Principal::SerializeToString() const {

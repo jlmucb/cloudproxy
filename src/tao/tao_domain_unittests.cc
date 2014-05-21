@@ -35,7 +35,8 @@ class TaoDomainTest : public ::testing::Test {
     ASSERT_TRUE(CreateTempDir("admin_domain", &temp_dir_));
     config_path_ = *temp_dir_ + "/tao.config";
     config_ = T::ExampleGuardDomain;
-    scoped_ptr<TaoDomain> guard(TaoDomain::Create(config_, config_path_, "temppass"));
+    domain_.reset(TaoDomain::Create(config_, config_path_, "temppass"));
+    ASSERT_NE(nullptr, domain_.get());
     ASSERT_TRUE(dynamic_cast<T *>(domain_.get()) != nullptr);
   }
   ScopedTempDir temp_dir_;
@@ -47,8 +48,8 @@ typedef ::testing::Types<ACLGuard, DatalogGuard> GuardTypes;
 TYPED_TEST_CASE(TaoDomainTest, GuardTypes);
 
 TYPED_TEST(TaoDomainTest, LoadDomainFailTest) {
-  this->domain_.reset(TaoDomain::Load(this->config_path_));
-  EXPECT_FALSE(this->domain_.get() != nullptr);
+  this->domain_.reset(TaoDomain::Load(this->config_path_ + "_missing_"));
+  EXPECT_EQ(nullptr, this->domain_.get());
 }
 
 TYPED_TEST(TaoDomainTest, LoadUnlockDomainTest) {
@@ -82,23 +83,31 @@ TYPED_TEST(TaoDomainTest, DeepCopyTest) {
 }
 
 TYPED_TEST(TaoDomainTest, AuthorizeTest) {
-  EXPECT_FALSE(this->domain_->IsAuthorized("Alice", "Read", list<string>{"hello.txt"}));
-  EXPECT_FALSE(this->domain_->IsAuthorized("Alice", "Write", list<string>{"hello.txt"}));
-  EXPECT_FALSE(this->domain_->IsAuthorized("Alice", "Read", list<string>{"foo.txt"}));
-  EXPECT_FALSE(this->domain_->IsAuthorized("Bob", "Read", list<string>{"hello.txt"}));
+  string alice = "System(\"Test\")::User(\"Alice\")";
+  string bob = "System(\"Test\")::User(\"Bob\")";
+  list<unique_ptr<Term>> hello;
+  hello.push_back(
+      std::move(unique_ptr<Term>(new Term("hello.txt", Term::QUOTED_STRING))));
+  list<unique_ptr<Term>> bad;
+  bad.push_back(
+      std::move(unique_ptr<Term>(new Term("bad.txt", Term::QUOTED_STRING))));
 
-  EXPECT_TRUE(this->domain_->Authorize("Alice", "Read", list<string>{"hello.txt"}));
+  EXPECT_FALSE(this->domain_->IsAuthorized(alice, "Read", hello));
+  EXPECT_FALSE(this->domain_->IsAuthorized(alice, "Write", hello));
+  EXPECT_FALSE(this->domain_->IsAuthorized(alice, "Read", bad));
+  EXPECT_FALSE(this->domain_->IsAuthorized(bob, "Read", hello));
 
-  EXPECT_TRUE(this->domain_->IsAuthorized("Alice", "Read", list<string>{"hello.txt"}));
-  EXPECT_FALSE(this->domain_->IsAuthorized("Alice", "Write", list<string>{"hello.txt"}));
-  EXPECT_FALSE(this->domain_->IsAuthorized("Alice", "Read", list<string>{"foo.txt"}));
-  EXPECT_FALSE(this->domain_->IsAuthorized("Bob", "Read", list<string>{"hello.txt"}));
+  EXPECT_TRUE(this->domain_->Authorize(alice, "Read", hello));
 
-  EXPECT_TRUE(this->domain_->Revoke("Alice", "Read", list<string>{"hello.txt"}));
+  EXPECT_TRUE(this->domain_->IsAuthorized(alice, "Read", hello));
+  EXPECT_FALSE(this->domain_->IsAuthorized(alice, "Write", hello));
+  EXPECT_FALSE(this->domain_->IsAuthorized(alice, "Read", bad));
+  EXPECT_FALSE(this->domain_->IsAuthorized(bob, "Read", hello));
 
-  EXPECT_FALSE(this->domain_->IsAuthorized("Alice", "Read", list<string>{"hello.txt"}));
-  EXPECT_FALSE(this->domain_->IsAuthorized("Alice", "Write", list<string>{"hello.txt"}));
-  EXPECT_FALSE(this->domain_->IsAuthorized("Alice", "Read", list<string>{"foo.txt"}));
-  EXPECT_FALSE(this->domain_->IsAuthorized("Bob", "Read", list<string>{"hello.txt"}));
+  EXPECT_TRUE(this->domain_->Revoke(alice, "Read", hello));
+
+  EXPECT_FALSE(this->domain_->IsAuthorized(alice, "Read", hello));
+  EXPECT_FALSE(this->domain_->IsAuthorized(alice, "Write", hello));
+  EXPECT_FALSE(this->domain_->IsAuthorized(alice, "Read", bad));
+  EXPECT_FALSE(this->domain_->IsAuthorized(bob, "Read", hello));
 }
-

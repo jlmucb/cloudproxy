@@ -28,8 +28,7 @@
 
 using namespace tao;
 
-DEFINE_string(aik_blob_file, "/home/tmroeder/src/fileProxy/src/apps/aikblob",
-              "The blob for an AIK loaded in the TPM");
+DEFINE_string(aik_blob_file, "./tpm/aikblob", "The blob for an AIK loaded in the TPM");
 
 template <typename T>
 class TaoTest : public ::testing::Test {

@@ -43,7 +43,9 @@ using tao::Keys;
 using tao::LinuxProcessFactory;
 using tao::ReadFileToString;
 using tao::TaoDomain;
+using tao::Term;
 using tao::elideString;
+using tao::unique_ptr;
 
 DEFINE_string(config_path, "tao.config", "Location of tao configuration");
 DEFINE_string(policy_pass, "", "A password for the policy private key");
@@ -136,7 +138,7 @@ int main(int argc, char **argv) {
              "  name: ::%s\n",
              path.c_str(), elideString(host).c_str(),
              elideString(child_subprin).c_str());
-      CHECK(admin->Authorize(host+"::"+child_subprin, "Execute", list<string>{}));
+      CHECK(admin->Authorize(host+"::"+child_subprin, "Execute", list<unique_ptr<Term>>{}));
     }
     did_work = true;
   }

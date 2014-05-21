@@ -60,9 +60,18 @@ class Term {
   static Term *ParseFromString(const string &ext);
 
   ~Term() {}
+
+  /// Create a deep copy of this Term.
+  Term *DeepCopy() const;
   
   /// Produce a string representation.
   string SerializeToString() const;
+
+  // /// Compare this Term with another for equality.
+  // /// @param other The other Term.
+  // bool Equals(const Term &other) const {
+  //   return SerializeToString() == other.SerializeToString();
+  // }
 
   /// Get the type of this term.
   TermType GetType() const { return type_; }
@@ -132,6 +141,9 @@ class Predicate {
   void AddArgument(Term *t) { args_.push_back(std::shared_ptr<Term>(t)); }
 
   ~Predicate() {}
+
+  /// Create a deep copy of this Predicate.
+  Predicate *DeepCopy() const;
  
   /// Produce a string representation.
   string SerializeToString() const;
@@ -171,6 +183,9 @@ class Principal {
   static Principal *ParseFromString(const string &name);
 
   ~Principal() {}
+  
+  /// Create a deep copy of this Principal.
+  Principal *DeepCopy() const;
 
   /// Produce a string representation.
   string SerializeToString() const;

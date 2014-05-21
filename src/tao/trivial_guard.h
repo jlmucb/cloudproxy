@@ -45,7 +45,7 @@ class TrivialGuard : public TaoGuard {
   }
 
   virtual bool IsAuthorized(const string &name, const string &op,
-                            const list<string> &args) const {
+                            const list<string> &args) {
     return (policy_ == LiberalPolicy);
   }
 

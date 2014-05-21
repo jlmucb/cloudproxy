@@ -137,7 +137,7 @@ class DatalogGuard : public TaoDomain {
   /// @{
   virtual bool GetSubprincipalName(string *subprin) const;
   virtual bool IsAuthorized(const string &name, const string &op,
-                            const list<string> &args) const;
+                            const list<string> &args);
   virtual bool Authorize(const string &name, const string &op,
                          const list<string> &args);
   virtual bool Revoke(const string &name, const string &op,
@@ -168,10 +168,9 @@ class DatalogGuard : public TaoDomain {
   /// TaoDomain is locked.
   virtual bool SaveConfig() const;
 
-  /// Install or remove a rule for the datalog engine.
-  /// @param rule The rule to install or remove.
-  /// @param install Whether to install the rule.
-  virtual bool ProcessRule(const DatalogRule &rule, bool install);
+  /// Push a rule to the datalog engine.
+  /// @param rule The rule to push on the datalog stack.
+  virtual bool PushDatalogRule(const DatalogRule &rule);
 
   /// Construct a datalog rule comprising a simple predicate of the form
   /// says(K_policy, "IsAuthorized", name, op, args...).
@@ -181,11 +180,11 @@ class DatalogGuard : public TaoDomain {
   /// @param[out] rule The constructed rule.
   virtual bool ParsePolicySaysIsAuthorized(const string &name, const string &op,
                                            const list<string> &args,
-                                           DatalogRule *rule);
+                                           DatalogRule *rule) const;
 
   /// Get a debug string for a rule.
   /// @param rule The rule.
-  virtual string DebugString(const DatalogRule &rule);
+  virtual string DebugString(const DatalogRule &rule) const;
 
  private:
   // The set of ACL entries.

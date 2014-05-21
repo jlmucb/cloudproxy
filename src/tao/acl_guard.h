@@ -45,7 +45,7 @@ class ACLGuard : public TaoDomain {
   /// @{
   virtual bool GetSubprincipalName(string *subprin) const;
   virtual bool IsAuthorized(const string &name, const string &op,
-                            const list<string> &args) const;
+                            const list<string> &args);
   virtual bool Authorize(const string &name, const string &op,
                          const list<string> &args);
   virtual bool Revoke(const string &name, const string &op,

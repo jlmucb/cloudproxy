@@ -55,7 +55,7 @@ bool ACLGuard::IsMatchingEntry(const ACLEntry &entry, const string &name,
 }
 
 bool ACLGuard::IsAuthorized(const string &name, const string &op,
-                            const list<string> &args) const {
+                            const list<string> &args) {
   for (auto &entry : aclset_.entries()) {
     if (IsMatchingEntry(entry, name, op, args)) {
       LOG(INFO) << "Principal " << elideString(name)

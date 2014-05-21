@@ -42,7 +42,7 @@ class TaoGuard {
   /// @param op The name of the operation.
   /// @param args A list of arguments to the operation.
   virtual bool IsAuthorized(const string &name, const string &op,
-                            const list<string> &args) const = 0;
+                            const list<string> &args) = 0;
 
   /// Authorize a principal to perform an operation.
   /// @param name The name of the principal.

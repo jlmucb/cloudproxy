@@ -43,6 +43,14 @@ class Term {
   enum TermType {
     QUOTED_STRING, INTEGER, VARIABLE, PREDICATE, PRINCIPAL
   };
+  
+  Term(const string &s, TermType type)
+      : type_(type),
+        string_val_(type == QUOTED_STRING ? s : ""),
+        var_val_(type == VARIABLE ? s : "") {}
+  Term(int i) : type_(INTEGER), int_val_(i) {}
+  Term(Predicate *pred) : type_(PREDICATE), pred_val_(pred) {}
+  Term(Principal *prin) : type_(PRINCIPAL), prin_val_(prin) {}
 
   /// Parse a term from a stream.
   /// @param[in, out] in Stream containing the name and maybe more.
@@ -91,14 +99,6 @@ class Term {
   const Principal *GetPrincipal() const { return prin_val_.get(); }
 
  private:
-  Term(const string &s, TermType type)
-      : type_(type),
-        string_val_(type == QUOTED_STRING ? s : ""),
-        var_val_(type == VARIABLE ? s : "") {}
-  Term(int i) : type_(INTEGER), int_val_(i) {}
-  Term(Predicate *pred) : type_(PREDICATE), pred_val_(pred) {}
-  Term(Principal *prin) : type_(PRINCIPAL), prin_val_(prin) {}
-
   /// The type of term.
   TermType type_;
 

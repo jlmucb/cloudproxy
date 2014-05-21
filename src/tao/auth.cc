@@ -62,7 +62,7 @@ Term *Term::ParseFromStream(stringstream &in) {
       LOG(ERROR) << "Expecting quoted string";
       return nullptr;
     }
-    return new Term(q, QUOTED_STRING);
+    return new Term(q, STRING);
   } else if (c == '-' || isdigit(c)) {
     int i;
     in >> i;
@@ -118,8 +118,8 @@ const Predicate *Term::GetPredicate() const {
 
 Term *Term::DeepCopy() const {
   switch (type_) {
-    case QUOTED_STRING:
-      return new Term(string_val_, QUOTED_STRING);
+    case STRING:
+      return new Term(string_val_, STRING);
     case INTEGER:
       return new Term(int_val_);
     case VARIABLE:
@@ -137,7 +137,7 @@ Term *Term::DeepCopy() const {
 string Term::SerializeToString() const {
   stringstream out;
   switch (type_) {
-    case QUOTED_STRING:
+    case STRING:
       return quotedString(string_val_);
     case INTEGER:
       out << int_val_;

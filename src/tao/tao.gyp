@@ -47,9 +47,9 @@
 			'type' : 'executable',
 			'sources' : [
 				# 'acl_guard.cc', see 'tao_domain_unittests.cc'
-				# 'datalog_guard.cc', see 'tao_domain_unittests.cc'
 				'auth_unittests.cc', 
 				'attestation_unittests.cc',
+				'datalog_guard_unittests.cc', # also see 'tao_domain_unittests.cc'
 				# 'fd_message_channel.cc', see 'pipe_factory_unittests.cc'
 				'keys_unittests.cc',
 				# 'linux_admin_rpc.cc', see 'linux_host_unittests.cc'

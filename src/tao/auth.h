@@ -40,12 +40,12 @@ class Term {
  public:
 
   enum TermType {
-    QUOTED_STRING, INTEGER, VARIABLE, PREDICATE, PRINCIPAL
+    STRING, INTEGER, VARIABLE, PREDICATE, PRINCIPAL
   };
   
   Term(const string &s, TermType type)
       : type_(type),
-        string_val_(type == QUOTED_STRING ? s : ""),
+        string_val_(type == STRING ? s : ""),
         var_val_(type == VARIABLE ? s : "") {}
   Term(int i) : type_(INTEGER), int_val_(i) {}
   Term(Predicate *pred) : type_(PREDICATE), pred_val_(pred) {}
@@ -77,7 +77,7 @@ class Term {
   TermType GetType() const { return type_; }
 
   /// Check whether this term is a quoted string.
-  bool IsString() const { return type_ == QUOTED_STRING; }
+  bool IsString() const { return type_ == STRING; }
 
   /// Check whether this term is a quoted string and get it.
   string GetString() const { return string_val_; }

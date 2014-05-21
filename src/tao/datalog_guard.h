@@ -163,6 +163,38 @@ class DatalogGuard : public TaoDomain {
   virtual string DebugString() const;
   /// @}
 
+  /// Add an unconditional datalog authorization rule of the form:
+  ///   Pred(args...)
+  /// If the predicate is "says()", the first argument should be a principal
+  /// name. If the predicate is "IsAuthorized", the first argument should be a
+  /// principal name and the second a quoted string describing the operation.
+  /// @param pred The rule predicate, which must not contain quantificaton
+  /// variables.
+  bool AddRule(const Predicate &pred);
+
+  /// Add a conditional datalog authorization rule, without quantification, of
+  /// the form:
+  ///   Condition and ... implies Pred(args...)
+  /// The consequent and conditions are predicates as above.
+  /// @param conditions The condition predicates, which must not contain
+  /// quantificaton variables.
+  /// @param consequent The consequent predicate, which must not contain
+  /// quantificaton variables.
+  bool AddRule(const list<unique_ptr<Predicate>> &conditions,
+               const Predicate &consequent);
+
+  /// Add a conditional datalog authorization rule, with quantification, of the
+  /// form:
+  ///   (forall Var... : Condition and ... implies Pred(args...))
+  /// The consequent and conditions are predicates as above.
+  /// @param conditions The condition predicates, which must contain
+  /// each of the quantificaton variables.
+  /// @param consequent The consequent predicate, which may contain
+  /// some of the quantificaton variables.
+  bool AddRule(const list<string> &variables,
+               const list<unique_ptr<Predicate>> &conditions,
+               const Predicate &consequent);
+
   /// Get a count of how many rules there are.
   int RuleCount() const;
 
@@ -210,6 +242,12 @@ class DatalogGuard : public TaoDomain {
 
   // Datalog engine state.
   ScopedDatalogEngine dl;
+
+  // The principal name for the policy key.
+  string policy_prin_;
+
+  // The principal Term for the policy key.
+  scoped_ptr<Term> policy_term_;
 
   DISALLOW_COPY_AND_ASSIGN(DatalogGuard);
 };

@@ -79,11 +79,6 @@ TaoDomain *TaoDomain::CreateImpl(const string &config, const string &path) {
     return nullptr;
   }
 
-  if (!admin->Init()) {
-    LOG(ERROR) << "Could not initialize guard";
-    return nullptr;
-  }
-
   return admin.release();
 }
 
@@ -111,6 +106,11 @@ TaoDomain *TaoDomain::Create(const string &initial_config, const string &path,
     return nullptr;
   }
 
+  if (!admin->Init()) {
+    LOG(ERROR) << "Could not initialize guard";
+    return nullptr;
+  }
+
   // Save the configuration. Since we did not ParseConfig(), this should save
   // some default auth data (e.g empty ACLs) as well.
   if (!admin->SaveConfig()) {
@@ -134,6 +134,10 @@ TaoDomain *TaoDomain::Load(const string &path, const string &password) {
   }
   if (!admin->keys_->InitNonHosted(password)) {
     LOG(ERROR) << "Can't initialize TaoDomain keys";
+    return nullptr;
+  }
+  if (!admin->Init()) {
+    LOG(ERROR) << "Could not initialize guard";
     return nullptr;
   }
   if (!admin->ParseConfig()) {

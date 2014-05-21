@@ -87,10 +87,10 @@ TYPED_TEST(TaoDomainTest, AuthorizeTest) {
   string bob = "System(\"Test\")::User(\"Bob\")";
   list<unique_ptr<Term>> hello;
   hello.push_back(
-      std::move(unique_ptr<Term>(new Term("hello.txt", Term::QUOTED_STRING))));
+      std::move(unique_ptr<Term>(new Term("hello.txt", Term::STRING))));
   list<unique_ptr<Term>> bad;
   bad.push_back(
-      std::move(unique_ptr<Term>(new Term("bad.txt", Term::QUOTED_STRING))));
+      std::move(unique_ptr<Term>(new Term("bad.txt", Term::STRING))));
 
   EXPECT_FALSE(this->domain_->IsAuthorized(alice, "Read", hello));
   EXPECT_FALSE(this->domain_->IsAuthorized(alice, "Write", hello));

@@ -109,7 +109,7 @@ TEST_F(AuthTest, PredicateTest) {
     ASSERT_NE(nullptr, pred->Argument(i));
   }
 
-  ASSERT_TRUE(Term::QUOTED_STRING == pred->Argument(0)->GetType());
+  ASSERT_TRUE(Term::STRING == pred->Argument(0)->GetType());
   ASSERT_TRUE(pred->Argument(0)->IsString());
   EXPECT_EQ("test", pred->Argument(0)->GetString());
 

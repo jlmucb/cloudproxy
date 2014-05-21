@@ -48,19 +48,23 @@ void datalog_close(DatalogEngine *dl) {
 }
 
 bool DatalogGuard::Init() {
-      dl.reset(new DatalogEngine());
-      dl->db = dl_open();
-      return true;
+  dl.reset(new DatalogEngine());
+  dl->db = dl_open();
+  if (!GetPolicyKeys()->GetPrincipalName(&policy_prin_)) {
+    LOG(ERROR) << "Could not get policy key principal name";
+    return false;
+  }
+  policy_term_.reset(Term::ParseFromString(policy_prin_));
+  if (policy_term_.get() == nullptr) {
+    LOG(ERROR) << "Could not parse policy key principal name";
+    return false;
+  }
+  return true;
 }
 
 bool DatalogGuard::GetSubprincipalName(string *subprin) const {
   // Use policy key as part of name
-  string key_prin;
-  if (!GetPolicyKeys()->GetPrincipalName(&key_prin)) {
-    LOG(ERROR) << "Could not get policy key principal name";
-    return false;
-  }
-  subprin->assign("DatalogGuard(" + key_prin + ")");
+  subprin->assign("DatalogGuard(" + policy_prin_ + ")");
   return true;
 }
 
@@ -207,7 +211,7 @@ static void PushPredicate(dl_db_t db, Predicate &pred)
         dl_pushstring(db, term->SerializeToString().c_str());
         dl_addconst(db);
         break;
-      case Term::QUOTED_STRING:
+      case Term::STRING:
         dl_pushstring(db, term->GetString().c_str());
         dl_addconst(db);
         break;
@@ -236,32 +240,36 @@ bool DatalogGuard::PushDatalogRule(const DatalogRule &rule) {
   return true;
 }
 
+static Predicate *AddPolicySays(const Predicate &pred, const Term &policy_term)
+{
+  if (pred.Name() == "says") {
+    return pred.DeepCopy();
+  } else {
+    scoped_ptr<Predicate> says_pred(new Predicate("says"));
+    says_pred->AddArgument(policy_term.DeepCopy());
+    says_pred->AddArgument(new Term(pred.Name(), Term::STRING));
+    for (int i = 0; i < pred.ArgumentCount(); i++)
+      says_pred->AddArgument(pred.Argument(i)->DeepCopy());
+    return says_pred.release();
+  }
+}
+
 bool DatalogGuard::ParsePolicySaysIsAuthorized(const string &name,
                                                const string &op,
                                                const list<unique_ptr<Term>> &args,
                                                DatalogRule *rule) const {
   scoped_ptr<Predicate> pred(new Predicate("says"));
-  string policy_name;
-  if (!GetPolicyKeys()->GetPrincipalName(&policy_name)) {
-    LOG(ERROR) << "Could not get policy key principal name";
-    return false;
-  }
-  scoped_ptr<Term> k_policy(Term::ParseFromString(policy_name));
-  if (k_policy.get() == nullptr) {
-    LOG(ERROR) << "Could not parse policy key principal name";
-    return false;
-  }
-  pred->AddArgument(k_policy.release());
-  pred->AddArgument(new Term("IsAuthorized", Term::QUOTED_STRING));
+  pred->AddArgument(policy_term_->DeepCopy());
+  pred->AddArgument(new Term("IsAuthorized", Term::STRING));
   scoped_ptr<Term> prin(Term::ParseFromString(name));
   if (prin.get() == nullptr || !prin->IsPrincipal()) {
     LOG(ERROR) << "Could not parse name";
     return false;
   }
   pred->AddArgument(prin.release());
-  pred->AddArgument(new Term(op, Term::QUOTED_STRING));
+  pred->AddArgument(new Term(op, Term::STRING));
   for (const auto &arg : args) {
-    if (arg->IsVariable()) {
+    if (ContainsNestedVariables(*arg)) {
       LOG(ERROR) << "Variable appears outside quantification";
       return false;
     } else {
@@ -298,7 +306,7 @@ bool DatalogGuard::IsAuthorized(const string &name, const string &op,
   return true;
 }
 
-static void AddRule(const DatalogRule &rule, DatalogRules *rules)
+static void AddDatalogRule(const DatalogRule &rule, DatalogRules *rules)
 {
   // Allocate and copy in rule (can't add existing one).
   DatalogRule *new_rule = rules->add_rules();
@@ -323,7 +331,7 @@ bool DatalogGuard::Authorize(const string &name, const string &op,
     return false;
   }
   dl_assert(dl->db);
-  AddRule(rule, &rules_);
+  AddDatalogRule(rule, &rules_);
 
   // TODO(kwalsh) Also add implicit rules for subprincipals
   
@@ -351,7 +359,7 @@ bool DatalogGuard::Revoke(const string &name, const string &op,
       return false;
     }
     if (serialized_rule != other_rule) {
-      AddRule(rules_.rules(i), &new_rules);
+      AddDatalogRule(rules_.rules(i), &new_rules);
     } else {
       found = true;
     }
@@ -372,7 +380,44 @@ bool DatalogGuard::Revoke(const string &name, const string &op,
   return SaveConfig();
 }
 
-// TODO(kwalsh) add more powerful rule making api
+bool DatalogGuard::AddRule(const Predicate &pred) {
+  list<unique_ptr<Predicate>> conditions;
+  list<string> variables;
+  return AddRule(variables, conditions, pred);
+}
+
+bool DatalogGuard::AddRule(const list<unique_ptr<Predicate>> &conditions,
+                           const Predicate &consequent) {
+  list<string> variables;
+  return AddRule(variables, conditions, consequent);
+}
+
+bool DatalogGuard::AddRule(const list<string> &variables,
+                           const list<unique_ptr<Predicate>> &conditions,
+                           const Predicate &consequent) {
+  DatalogRule rule;
+  for (const auto &var : variables) {
+    rule.add_vars(var);
+  }
+  for (const auto &cond : conditions) {
+    scoped_ptr<Predicate> policy_says_cond(AddPolicySays(*cond, *policy_term_));
+    rule.add_conds(policy_says_cond->SerializeToString());
+  }
+  scoped_ptr<Predicate> policy_says_consequent(AddPolicySays(consequent, *policy_term_));
+  rule.set_consequent(policy_says_consequent->SerializeToString());
+  if (!PushDatalogRule(rule)) {
+    LOG(ERROR) << "Could not install authorization rule";
+    return false;
+  }
+  dl_assert(dl->db);
+  AddDatalogRule(rule, &rules_);
+
+  // TODO(kwalsh) Also add implicit rules for subprincipals
+  
+  return SaveConfig();
+}
+
+// TODO(kwalsh) Add RemoveRule() methods.
 
 string DatalogGuard::DebugString() const {
   std::stringstream out;

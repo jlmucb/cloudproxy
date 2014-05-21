@@ -371,7 +371,6 @@ void hw_write_dr7(UINT64 value)
 }
 
 
-// CHECK(JLM)
 void hw_invlpg(void *address)
 {
     __asm__ volatile (
@@ -485,6 +484,7 @@ INT32 hw_interlocked_xor(INT32 volatile * value, INT32 mask)
 
 void hw_store_fence(void)
 {
+// CHECK
 #if 0
     __asm__ volatile(
         "\tlock; sfence\n"
@@ -629,13 +629,8 @@ BOOLEAN hw_scan_bit_backward64(UINT32 *bit_number_ptr, UINT64 bitset)
 
 // from fpu2
 
+// Read FPU status word, this doesnt seem to be called
 void hw_fnstsw (UINT16* loc) {
-#ifdef JLMDEBUG
-    bprint("hw_fnstsw\n");
-    LOOP_FOREVER
-#endif
-    // Read FPU status word, this doesnt seem to be called
-    // CHECK(JLM)
     __asm__ volatile(
         "\tmovq %[loc], %%rax\n" 
         "\tfnstsw (%%rax)\n"
@@ -645,13 +640,9 @@ void hw_fnstsw (UINT16* loc) {
 }
 
 
-void hw_fnstcw ( UINT16 * loc )
 // Read FPU control word
+void hw_fnstcw ( UINT16 * loc )
 {
-#ifdef JLMDEBUG
-    bprint("hw_fnstcw\n");
-    LOOP_FOREVER
-#endif
     __asm__ volatile(
         "\tmovq %[loc], %%rax\n"
         "\tfnstcw (%%rax)\n"
@@ -662,18 +653,15 @@ void hw_fnstcw ( UINT16 * loc )
 }
 
 
-void hw_fninit()
 // Init FP Unit
+void hw_fninit()
 {
-#ifdef JLMDEBUG
-    bprint("hw_fninit\n");
-    LOOP_FOREVER
-#endif
     __asm__ volatile(
         "\tfninit\n"
         :::);
     return;
 }
+
 
 // from em64t_utils2.c
 typedef struct {
@@ -896,7 +884,7 @@ UINT64 hw_read_rsp () {
 }
 
 
-//RNB: TODO the args/offsets need to be double-checked
+// CHECK the args/offsets need to be double-checked
 void hw_write_to_smi_port(
     UINT64 * p_rax,     // rcx
     UINT64 * p_rbx,     // rdx
@@ -1061,7 +1049,6 @@ __asm__(
 UINT16 hw_read_tr() {
     UINT16 ret = 0;
 
-    //RNB: Added the movw instruction to move the return value into 'ret'
    __asm__ volatile(
         "\tstr %%ax\n"
         "\tmovw %%ax, %[ret]\n"
@@ -1076,8 +1063,7 @@ UINT16 hw_read_tr() {
 void hw_write_tr (UINT16 i) {
     __asm__ volatile(
         "\tltr %[i]\n"
-    :
-    :[i] "g" (i)
+    : :[i] "g" (i)
     :);
     return;
 }
@@ -1147,7 +1133,7 @@ void hw_cpuid (CPUID_PARAMS *cp) {
 void hw_perform_asm_iret () {
     __asm__ volatile(
         "\tsubq $0x20, %%rsp\n"     //prepare space for "interrupt stack"
-        "\tpush %%rax\n"                               //save scratch registers
+        "\tpush %%rax\n"            //save scratch registers
         "\tpush %%rbx\n"
         "\tpush %%rcx\n"
         "\tpush %%rdx\n"
@@ -1192,8 +1178,8 @@ void hw_set_stack_pointer (HVA new_stack_pointer, main_continue_fn func,
 
 // from em64t_interlocked2.c
 
-void hw_pause( void ) {
 // Execute assembler 'pause' instruction
+void hw_pause( void ) {
     __asm__ volatile(
         "\tpause\n"
         :::);
@@ -1201,12 +1187,13 @@ void hw_pause( void ) {
 }
 
 
+// Execute assembler 'monitor' instruction
+// CHECK
 void hw_monitor( void* addr, UINT32 extension, UINT32 hint) {
 #ifdef JLMDEBUG
     bprint("hw_monitor\n");
     LOOP_FOREVER
 #endif
-    // Execute assembler 'monitor' instruction
     __asm__ volatile(
         "\tmovq %[addr], %%rcx\n" 
         "\tmovq %[extension], %%rdx\n" 
@@ -1395,5 +1382,5 @@ compat_code:                    ;; compatibility mode starts right here
         out dx, ax              ;; write to PM register
         ret                     ;; should never get here
 } //hw_leave_64bit_mode
-#endif
+#endif // never ported
 

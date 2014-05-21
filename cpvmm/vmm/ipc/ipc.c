@@ -4,9 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
-
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -135,8 +133,6 @@ static BOOLEAN ipc_cpu_is_destination(IPC_DESTINATION dst, CPU_ID this_cpu_id, C
 }
 
 
-// **********************  Message Queue Management ***************************
-
 static void ipc_increment_ack(volatile UINT32 *ack)
 {
     if (NULL != ack)
@@ -158,14 +154,12 @@ static BOOLEAN ipc_enqueue_message(IPC_CPU_CONTEXT *ipc, IPC_MESSAGE_TYPE type, 
 
     VMM_ASSERT(ipc != NULL);
     VMM_ASSERT(handler != NULL);
-
     msg.type = type;
     msg.from = cpu_id;
     msg.handler = handler;
     msg.arg = arg;
     msg.before_handler_ack = before_handler_ack;
     msg.after_handler_ack = after_handler_ack;
-
     return array_list_add(ipc->message_queue, &msg);
 }
 
@@ -202,17 +196,12 @@ static void ipc_clear_message_queue(IPC_CPU_CONTEXT *ipc)
 }
 #endif
 
-// **********************  IPC Mechanism ***************************
 
 // FUNCTION:        ipc_execute_send
 // DESCRIPTION:     Send message to destination processors.
 // RETURN VALUE:    number of CPUs on which handler is about to execute
-
-UINT32 ipc_execute_send(IPC_DESTINATION   dst,
-                        IPC_MESSAGE_TYPE  type,
-                        IPC_HANDLER_FN    handler,
-                        void              *arg,
-                        BOOLEAN           wait_for_handler_finish)
+UINT32 ipc_execute_send(IPC_DESTINATION dst, IPC_MESSAGE_TYPE type, IPC_HANDLER_FN handler,
+                        void *arg, BOOLEAN wait_for_handler_finish)
 {
     CPU_ID                  i;
     CPU_ID                  sender_cpu_id = IPC_CPU_ID();
@@ -268,7 +257,6 @@ UINT32 ipc_execute_send(IPC_DESTINATION   dst,
     }
 
     if (num_required_acks > 0) {
-        // BEFORE_VMLAUNCH
         VMM_ASSERT(hw_get_tsc_ticks_per_second() != 0);
 
         // Calculate next tsc tick to resend NMI.
@@ -287,8 +275,6 @@ UINT32 ipc_execute_send(IPC_DESTINATION   dst,
                          // exclude yourself and non active CPUs.
                         single_dst.addr_shorthand = IPI_DST_NO_SHORTHAND;
                         single_dst.addr = (UINT8) i;
-
-                        // BEFORE_VMLAUNCH
                         // Check that CPU is still active.
                         VMM_ASSERT(cpu_activity_state[i] != IPC_CPU_NOT_ACTIVE);
                         if (!debug_not_resend) {
@@ -311,22 +297,21 @@ UINT32 ipc_execute_send(IPC_DESTINATION   dst,
                                         (int) sender_cpu_id, (int) i);
                             }
                         lock_release(&ipc->data_lock);
+                        }
                     }
                 }
             }
-        }
-        else {
-            // Try to processs own received messages.
-            // To prevent deadlock situation when 2 core send messages simultaneously.
-            if (!ipc_process_one_ipc())
-                hw_pause();
-            // Count received acks.
-            for (i = 0, num_received_acks = 0; i < num_of_host_processors; i++)
-                num_received_acks += ack_array[i];
+            else {
+                // Try to processs own received messages.
+                // To prevent deadlock situation when 2 core send messages simultaneously.
+                if (!ipc_process_one_ipc())
+                    hw_pause();
+                // Count received acks.
+                for (i = 0, num_received_acks = 0; i < num_of_host_processors; i++)
+                    num_received_acks += ack_array[i];
+            }
         }
     }
-    }
-
     return num_required_acks;
 }
 
@@ -416,7 +401,8 @@ static BOOLEAN ipc_dispatcher(IPC_CPU_CONTEXT *ipc, GUEST_CPU_HANDLE gcpu UNUSED
     }
     else if (ipc->num_of_sent_ipc_nmi_interrupts != ipc->num_received_nmi_interrupts &&
              NMIS_WAITING_FOR_PROCESSING(ipc) != IPC_NMIS_WAITING_FOR_PROCESSING(ipc)) {
-     /*   VMM_LOG(mask_anonymous, level_trace,
+        /*   
+        VMM_LOG(mask_anonymous, level_trace,
            "[%d] - %s: NMI_RCVD = %d NMI_PROCESSED = %d, IPC_NMI_SENT = %d IPC_NMI_PROCESSED = %d\n",
                  IPC_CPU_ID(), __FUNCTION__,
                  ipc->num_received_nmi_interrupts, ipc->num_processed_nmi_interrupts,
@@ -424,7 +410,6 @@ static BOOLEAN ipc_dispatcher(IPC_CPU_CONTEXT *ipc, GUEST_CPU_HANDLE gcpu UNUSED
         */
         nmi_injected_to_guest = TRUE;                   // Set injection flag.
         ipc->num_processed_nmi_interrupts++;            // Adjust common NMI processed counter.
-
         nmi_raise_this();
     }
     lock_release(&ipc->data_lock);
@@ -450,9 +435,7 @@ static void ipc_nmi_interrupt_handler(const ISR_PARAMETERS_ON_STACK  *p_stack UN
         return;
     }
 #endif // ENABLE_VTD
-
     hw_interlocked_increment64((INT64*)(&ipc->num_received_nmi_interrupts));
-
     // inject nmi windows to right guest on this host cpu.
     gcpu = scheduler_current_gcpu();
     VMM_ASSERT(gcpu);
@@ -469,9 +452,7 @@ BOOLEAN ipc_nmi_window_vmexit_handler(GUEST_CPU_HANDLE gcpu)
     IPC_CPU_CONTEXT  *ipc = &ipc_cpu_contexts[cpu_id];
 
     VMM_ASSERT(gcpu != NULL);
-
     gcpu_set_pending_nmi(gcpu, 0);                      // disable nmi window
-
     // handle queued IPC's
     return !ipc_dispatcher(ipc, gcpu);
 }
@@ -492,11 +473,8 @@ BOOLEAN ipc_nmi_vmexit_handler(GUEST_CPU_HANDLE gcpu)
         return TRUE;
     }
 #endif //ENABLE_VTD
-
     hw_interlocked_increment64((INT64*)&ipc->num_received_nmi_interrupts);
-    
     hw_perform_asm_iret();
-
     // Handle queued IPC's
     return !ipc_dispatcher(ipc, gcpu);
 }
@@ -536,8 +514,6 @@ BOOLEAN ipc_sipi_vmexit_handler(GUEST_CPU_HANDLE gcpu)
     return ret_val;
 }
 
-
-// **********************  IPC Send Preprocessing ***************************
 
 // FUNCTION:        ipc_preprocess_normal_message
 // DESCRIPTION:     Preprocess normal message. Caller must acquire the lock before calling.
@@ -604,8 +580,6 @@ BOOLEAN ipc_preprocess_message(IPC_CPU_CONTEXT *ipc , CPU_ID dst, IPC_MESSAGE_TY
     return enqueue_to_dst;
 }
 
-
-// **********************  IPC API Implementation ***************************
 
 // FUNCTION:        ipc_send_message
 // DESCRIPTION:     Send IPC to destination CPUs. Returns just before handlers are about to execute.
@@ -722,7 +696,6 @@ BOOLEAN ipc_process_one_ipc(void)
 // DESCRIPTION:     Mark CPU as ready for IPC. Called when CPU is no longer in Wait-for-SIPI state.
 //                  Waits for all start/stop messages to arrive before changing CPU's state.
 void ipc_change_state_to_active(GUEST_CPU_HANDLE gcpu UNUSED)
-//void ipc_change_state_to_active(GUEST_CPU_HANDLE gcpu UNUSED)
 {
     CPU_ID           cpu_id = IPC_CPU_ID();
     IPC_CPU_CONTEXT  *ipc = &ipc_cpu_contexts[cpu_id];
@@ -767,8 +740,6 @@ void ipc_mni_injection_failed(void)
 }
 
 
-// ***************************** IPC Initialize/ Finalize **************************************
-
 BOOLEAN ipc_state_init(UINT16 number_of_host_processors)
 {
     UINT32   i = 0,
@@ -783,19 +754,13 @@ BOOLEAN ipc_state_init(UINT16 number_of_host_processors)
     VMM_LOG(mask_anonymous, level_trace,"IPC state init: #host CPUs = %d\r\n", number_of_host_processors);
     num_of_host_processors = number_of_host_processors;
     nmi_owner_guest_id = INVALID_GUEST_ID;
-
     ipc_cpu_context_size = number_of_host_processors * ALIGN_FORWARD(sizeof(IPC_CPU_CONTEXT), IPC_ALIGNMENT);
-
     ipc_msg_array_size = number_of_host_processors * ipc_get_message_array_list_size(number_of_host_processors);
-
     cpu_state_size = (UINT32) ALIGN_FORWARD(num_of_host_processors * sizeof(IPC_CPU_ACTIVITY_STATE), IPC_ALIGNMENT);
-
     ipc_ack_array_size = number_of_host_processors * sizeof(UINT32) * number_of_host_processors;
     ipc_ack_array_size = (UINT32) ALIGN_FORWARD(ipc_ack_array_size, IPC_ALIGNMENT);
-
     ipc_data_size = ipc_cpu_context_size + ipc_msg_array_size + cpu_state_size + ipc_ack_array_size;
     ipc_state_memory = (char *) vmm_memory_alloc(ipc_data_size);
-
     if(ipc_state_memory == NULL) {
         return FALSE;
     }
@@ -817,12 +782,10 @@ BOOLEAN ipc_state_init(UINT16 number_of_host_processors)
     }
 
     cpu_activity_state = (IPC_CPU_ACTIVITY_STATE *) (ipc_state_memory + ipc_cpu_context_size + ipc_msg_array_size);
-
     ipc_ack_array = (UINT32 *) ((char *) cpu_activity_state + cpu_state_size);
     lock_initialize(&send_lock);
     isr_register_handler((VMM_ISR_HANDLER) ipc_nmi_interrupt_handler, NMI_VECTOR);
     ipc_cli_register();
-
     return TRUE;
 }
 

@@ -46,7 +46,9 @@
 			'target_name' : 'tao_test',
 			'type' : 'executable',
 			'sources' : [
-				'acl_guard_unittests.cc',
+				# 'acl_guard.cc', see 'tao_domain_unittests.cc'
+				# 'datalog_guard.cc', see 'tao_domain_unittests.cc'
+				# 'auth.cc', not yet written
 				'attestation_unittests.cc',
 				# 'fd_message_channel.cc', see 'pipe_factory_unittests.cc'
 				'keys_unittests.cc',
@@ -56,7 +58,7 @@
 				'pipe_factory_unittests.cc',
 				# 'soft_tao.cc', see 'tao_unittests.cc'
 				# 'tao.cc', see 'linux_host_unittests.cc'
-				'tao_domain_unittests.cc', # also see 'acl_guard_unittests.cc'
+				'tao_domain_unittests.cc', 
 				# 'tao_host.cc', see 'linux_host_unittests.cc'
 				# 'tao_rpc.cc', see 'linux_host_unittests.cc'
 				'tao_test.cc',

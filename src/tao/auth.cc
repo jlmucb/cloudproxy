@@ -18,6 +18,7 @@
 // limitations under the License.
 #include "tao/auth.h"
 
+#include <iostream>
 #include <cctype>
 #include <regex>
 #include <sstream>
@@ -36,6 +37,7 @@ static string GetIdentifier(stringstream &in) {  // NOLINT
   stringstream out;
   char c = in.peek();
   if (in && isalpha(c)) {
+    in.get();
     out << c;
     do {
       c = in.peek();
@@ -142,11 +144,11 @@ Predicate *Predicate::ParseFromStream(stringstream &in) {
   }
   char c = in.get();
   if (!in || c != '(') {
-    LOG(ERROR) << "Expecting parenthesis";
+    LOG(ERROR) << "Expecting parentheses";
     return nullptr;
   }
   scoped_ptr<Predicate> pred(new Predicate(name));
-  while (!in.eof() && in.peek() == ')') {
+  while (!in.eof() && in.peek() != ')') {
     if (pred->ArgumentCount() > 0) {
       skip(in, ", ");
       if (!in) {
@@ -162,7 +164,7 @@ Predicate *Predicate::ParseFromStream(stringstream &in) {
     pred->AddArgument(term.release());
   }
   if (in.eof() || in.get() != ')') {
-    LOG(ERROR) << "Expecting close parenthesis at end of argument list";
+    LOG(ERROR) << "Expecting close parentheses at end of argument list";
     return nullptr;
   }
   return pred.release();

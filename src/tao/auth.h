@@ -24,7 +24,6 @@
 #include <string>
 #include <vector>
 
-#include "tao/attestation.pb.h"
 #include "tao/util.h"
 
 namespace tao {

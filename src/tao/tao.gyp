@@ -48,7 +48,7 @@
 			'sources' : [
 				# 'acl_guard.cc', see 'tao_domain_unittests.cc'
 				# 'datalog_guard.cc', see 'tao_domain_unittests.cc'
-				# 'auth.cc', not yet written
+				'auth_unittests.cc', 
 				'attestation_unittests.cc',
 				# 'fd_message_channel.cc', see 'pipe_factory_unittests.cc'
 				'keys_unittests.cc',

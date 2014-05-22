@@ -102,7 +102,7 @@ TEST_F(DatalogGuardTest, StringImplicationRuleTest) {
 TEST_F(DatalogGuardTest, SubprinImplicationRuleTest) {
 
   EXPECT_TRUE(
-      domain_->AddRule("(forall P,S,U: IsGoodUserName(U) and IsGoodSystem(S) "
+      domain_->AddRule("(forall P, S, U: IsGoodUserName(U) and IsGoodSystem(S) "
                        "and subprin(P, S, U) implies IsGoodUser(P))"));
   EXPECT_TRUE(
       domain_->AddRule("(forall U, F: IsGoodUser(U) and IsPrivateFile(F) "

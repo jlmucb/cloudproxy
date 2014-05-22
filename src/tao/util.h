@@ -340,6 +340,15 @@ static string join(const list<T> &values, const string &delim) {
   return join(values.begin(), values.end(), delim);
 }
 
+/// Join a set of printable values as a string. Values are converted to
+/// strings using the standard put << operator.
+/// @param values A set of values.
+/// @param delim A dilimiter to put between values.
+template <class T>
+static string join(const set<T> &values, const string &delim) {
+  return join(values.begin(), values.end(), delim);
+}
+
 /// Split a string into a list of strings.
 /// @param s The string to split.
 /// @param delim The delimiter used to separate the values.

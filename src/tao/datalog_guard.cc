@@ -20,15 +20,18 @@
 
 #include <cctype>
 #include <list>
+#include <set>
 #include <sstream>
 #include <string>
 
 #include <glog/logging.h>
 #include <lua.h>
+#include <lauxlib.h>
 // lua.h must come before datalog.h
 #include <datalog.h>
 
 #include "tao/auth.h"
+#include "auth_lua.h"
 #include "tao/datalog_guard.pb.h"
 #include "tao/util.h"
 
@@ -43,9 +46,35 @@ void datalog_close(DatalogEngine *dl) {
   dl->db = nullptr;
 }
 
+static string LuaGetError(dl_db_t db) {
+  const char *errmsg = lua_tostring(db, -1);
+  string s(errmsg ? errmsg : "Unknown Lua Error");
+  lua_pop(db, 1);
+  return s;
+}
+
+static bool LuaLoadAuthModule(dl_db_t db) {
+  int err = luaL_loadbuffer(db, (const char *)auth_lua_bytes,
+                            sizeof(auth_lua_bytes), auth_lua_source);
+  if (err) {
+    LOG(ERROR) << "Could not load Lua module: " << LuaGetError(db);
+    return false;
+  }
+  err = lua_pcall(db, 0 /* numargs */, 0 /* num results */, 0 /* err func */);
+  if (err) {
+    LOG(ERROR) << "Could not initialize Lua module: " << LuaGetError(db);
+    return false;
+  }
+  return true;
+}
+
 bool DatalogGuard::Init() {
   dl.reset(new DatalogEngine());
   dl->db = dl_open();
+  if (!LuaLoadAuthModule(dl->db)) {
+    LOG(ERROR) << "Could not initialize Datalog auth module";
+    return false;
+  }
   if (!GetPolicyKeys()->GetPrincipalName(&policy_prin_)) {
     LOG(ERROR) << "Could not get policy key principal name";
     return false;
@@ -84,11 +113,11 @@ static bool ContainsNestedVariables(const Term &term) {
   return false;
 }
 
-static void GetVariables(const Predicate &pred, list<string> *refvars) {
+static void GetVariables(const Predicate &pred, set<string> *refvars) {
   for (int i = 0; i < pred.ArgumentCount(); i++) {
     const Term *term = pred.Argument(i);
     if (term->IsVariable()) {
-      refvars->push_back(term->GetVariable());
+      refvars->insert(term->GetVariable());
     } else if (term->IsPredicate()) {
       // Nested predicates get turned into strings, assume here they don't
       // contain variables.
@@ -113,17 +142,17 @@ static bool IsLegalVariableName(const string &s) {
 
 static bool ParseRule(const DatalogRule &rule, list<std::shared_ptr<Predicate>> *conds, scoped_ptr<Predicate> *consequent) {
   // Check vars for legality.
-  list<string> vars;
+  set<string> vars;
   for (const string &var : rule.vars()) {
     if (!IsLegalVariableName(var)) {
       LOG(ERROR) << "Illegal variable name: " << var;
       return false;
     } 
-    if (std::find(vars.begin(), vars.end(), var) != vars.end()) {
+    if (vars.find(var) != vars.end()) {
       LOG(ERROR) << "Duplicate quntification variable: " << var;
       return false;
     }
-    vars.push_back(var);
+    vars.insert(var);
   }
   // Check conditions for legality.
   for (const auto &serialized_cond : rule.conds()) {
@@ -167,68 +196,93 @@ static bool ParseRule(const DatalogRule &rule, list<std::shared_ptr<Predicate>> 
     }
   }
   // Make list of variables referenced in conditions.
-  list<string> cond_refvars;
+  set<string> cond_refvars;
   if (conds != nullptr) {
     for (const auto &cond : *conds) {
       GetVariables(*cond, &cond_refvars);
     }
   }
   // Make list of variables referenced in consequent.
-  list<string> consequent_refvars;
+  set<string> consequent_refvars;
   GetVariables(**consequent, &consequent_refvars);
   // Check that each quantification variable is referenced.
-  list<string> missing_vars;
+  set<string> missing_vars;
   std::set_difference(vars.begin(), vars.end(), cond_refvars.begin(),
-                      cond_refvars.end(), back_inserter(missing_vars));
+                      cond_refvars.end(), std::inserter(missing_vars, missing_vars.begin()));
   if (missing_vars.size() > 0) {
-    LOG(ERROR) << "Unreferenced quantification variables: " << join(vars, ", ");
+    LOG(ERROR) << "Unreferenced quantification variables: " << join(missing_vars, ", ");
+    if (conds != nullptr) {
+      LOG(INFO) << "There were " << conds->size() << " conditions";
+      int i = 0;
+      for (const auto &cond : *conds) {
+        LOG(INFO) << "Condition " << (i++) << ". " << cond->SerializeToString();
+      }
+      LOG(INFO) << "Using these variables: " << join(cond_refvars, ", ");
+      LOG(INFO) << "Quantification variables were : " << join(cond_refvars, ", ");
+    }
     return false;
   }
   // Check that each reference variable in conditions was quantified.
   std::set_difference(cond_refvars.begin(), cond_refvars.end(), vars.begin(),
-                      vars.end(), back_inserter(missing_vars));
+                      vars.end(), std::inserter(missing_vars, missing_vars.begin()));
   if (missing_vars.size() > 0) {
     LOG(ERROR) << "Unquantified condition variables: " << join(missing_vars, ", ");
+    if (conds != nullptr) {
+      LOG(INFO) << "There were " << conds->size() << " conditions";
+      int i = 0;
+      for (const auto &cond : *conds) {
+        LOG(INFO) << "Condition " << (i++) << ". " << cond->SerializeToString();
+      }
+      LOG(INFO) << "Using these variables: " << join(list<string>(cond_refvars.begin(), cond_refvars.end()), ", ");
+      LOG(INFO) << "Quantification variables were : " << join(vars, ", ");
+    }
     return false;
   }
   // Check that each reference variable in consequent was quantified.
   std::set_difference(consequent_refvars.begin(), consequent_refvars.end(),
-                      vars.begin(), vars.end(), back_inserter(missing_vars));
+                      vars.begin(), vars.end(), std::inserter(missing_vars, missing_vars.begin()));
   if (missing_vars.size() > 0) {
-    LOG(ERROR) << "Unquantified consequent variables: " << join(missing_vars, ", ");
+    LOG(ERROR) << "Unquantified consequent variables: " << join(list<string>(missing_vars.begin(), missing_vars.end()), ", ");
     return false;
   }
   return true;
 }
 
-static void PushPredicate(dl_db_t db, Predicate &pred)
+static void PushPredicate(dl_db_t db, const Predicate &pred, stringstream &dl_transcript)  // NOLINT
 {
   // pred = Name(args...)
   dl_pushliteral(db);  // ?(?)
   dl_pushstring(db, pred.Name().c_str());
   dl_addpred(db); // Name(?)
+  dl_transcript << pred.Name() << "(";
+  string delim = "";
   for (int i = 0; i < pred.ArgumentCount(); i++) {
     const Term *term = pred.Argument(i);
     switch (term->GetType()) {
       case Term::VARIABLE:
         dl_pushstring(db, term->GetVariable().c_str());
         dl_addvar(db);
+        dl_transcript << delim << term->GetVariable();
         break;
       case Term::INTEGER:
       case Term::PREDICATE:
       case Term::PRINCIPAL:
         dl_pushstring(db, term->SerializeToString().c_str());
         dl_addconst(db);
+        dl_transcript << delim << quotedString(term->SerializeToString());
         break;
       case Term::STRING:
         dl_pushstring(db, term->GetString().c_str());
+        dl_transcript << delim << quotedString(term->GetString());
         dl_addconst(db);
         break;
       default:
         LOG(ERROR) << "Internal error, should never happen";
         break;
     }
+    delim = ", ";
   }
+  dl_transcript << ")";
   dl_makeliteral(db);
 }
 
@@ -239,10 +293,15 @@ bool DatalogGuard::PushDatalogRule(const DatalogRule &rule) {
     LOG(ERROR) << "Illegal rule";
     return false;
   }
-  PushPredicate(dl->db, *consequent);
+  PushPredicate(dl->db, *consequent, dl_transcript);
   dl_pushhead(dl->db);
+  if (conds.size() > 0)
+    dl_transcript << " :- ";
+  string delim = "";
   for (const auto &cond : conds) {
-    PushPredicate(dl->db, *cond);
+    dl_transcript << delim;
+    delim = ", ";
+    PushPredicate(dl->db, *cond, dl_transcript);
     dl_addliteral(dl->db);
   }
   dl_makeclause(dl->db);
@@ -251,7 +310,7 @@ bool DatalogGuard::PushDatalogRule(const DatalogRule &rule) {
 
 static Predicate *AddPolicySays(const Predicate &pred, const Term &policy_term)
 {
-  if (pred.Name() == "says") {
+  if (pred.Name() == "says" || pred.Name() == "subprin") {
     return pred.DeepCopy();
   } else {
     scoped_ptr<Predicate> says_pred(new Predicate("says"));
@@ -301,12 +360,23 @@ bool DatalogGuard::IsAuthorized(const string &name, const string &op,
     LOG(ERROR) << "Illegal query";
     return false;
   }
-  PushPredicate(dl->db, *query);
+  PushPredicate(dl->db, *query, dl_transcript);
+  dl_transcript << "?";
+  VLOG(3) << "Datalog transcript:\n" << dl_transcript.str();
+  dl_transcript.str("");
+  dl_transcript.clear();
   dl_answers_t a;
   dl_ask(dl->db, &a);
   if (a == nullptr) {
     LOG(INFO) << "Principal " << elideString(name)
               << " is not authorized to perform " << op << "(...)";
+    
+    LOG(INFO) << " There were " << RuleCount() << " rules:";
+    for (int i = 0; i < RuleCount(); i++) {
+      string desc;
+      GetRule(i, &desc);
+      LOG(INFO) << " Rule " << (i) << ". " << desc;
+    }
     return false;
   }
   dl_free(a);
@@ -340,6 +410,10 @@ bool DatalogGuard::Authorize(const string &name, const string &op,
     return false;
   }
   dl_assert(dl->db);
+  dl_transcript << ".";
+  VLOG(3) << "Datalog transcript:\n" << dl_transcript.str();
+  dl_transcript.str("");
+  dl_transcript.clear();
   AddDatalogRule(rule, &rules_);
 
   // TODO(kwalsh) Also add implicit rules for subprincipals
@@ -383,6 +457,10 @@ bool DatalogGuard::Revoke(const string &name, const string &op,
     return false;
   }
   dl_retract(dl->db);
+  dl_transcript << "~";
+  VLOG(3) << "Datalog transcript:\n" << dl_transcript.str();
+  dl_transcript.str("");
+  dl_transcript.clear();
   rules_ = new_rules;
   // We don't have enough state to remvoe the implicit subprincipal rules, but
   // leaving them in should be safe.
@@ -419,6 +497,10 @@ bool DatalogGuard::AddRule(const list<string> &variables,
     return false;
   }
   dl_assert(dl->db);
+  dl_transcript << ".";
+  VLOG(3) << "Datalog transcript:\n" << dl_transcript.str();
+  dl_transcript.str("");
+  dl_transcript.clear();
   AddDatalogRule(rule, &rules_);
 
   // TODO(kwalsh) Also add implicit rules for subprincipals
@@ -541,7 +623,7 @@ string DatalogGuard::DebugString(const DatalogRule &rule) const {
   if (need_paren) out << "(";
   if (rule.vars_size() > 0) {
     const auto &vars = rule.vars();
-    out << "for all " << join(vars.begin(), vars.end(), ", ");
+    out << "forall " << join(vars.begin(), vars.end(), ", ");
     out << " : ";
   }
   if (rule.conds_size() > 0) {
@@ -593,6 +675,10 @@ bool DatalogGuard::ParseConfig() {
       return false;
     }
     dl_assert(dl->db);
+    dl_transcript << ".";
+    VLOG(3) << "Datalog transcript:\n" << dl_transcript.str();
+    dl_transcript.str("");
+    dl_transcript.clear();
   }
   return true;
 }

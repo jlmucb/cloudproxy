@@ -157,6 +157,7 @@
 			'dependencies' : [
 				'auth_lua',
 				'../third_party/datalog/datalog.gyp:datalog',
+				'../third_party/datalog/datalog.gyp:lua',
 				'../third_party/gflags/gflags.gyp:gflags',
 				'../third_party/google-glog/glog.gyp:glog',
 				'../third_party/keyczar/keyczar.gyp:keyczar',

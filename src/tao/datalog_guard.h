@@ -259,6 +259,9 @@ class DatalogGuard : public TaoDomain {
   // The principal Term for the policy key.
   scoped_ptr<Term> policy_term_;
 
+  // Transcript of recent datalog API calls (for debugging).
+  stringstream dl_transcript;
+
   DISALLOW_COPY_AND_ASSIGN(DatalogGuard);
 };
 }  // namespace tao

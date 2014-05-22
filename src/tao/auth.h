@@ -36,6 +36,8 @@ class Principal;
 
 // TODO(kwalsh) Revise attesation code to use these classes where appropriate.
 
+string GetIdentifier(stringstream &in);  // NOLINT
+
 class Term {
  public:
 

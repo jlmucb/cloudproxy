@@ -18,9 +18,8 @@
 // limitations under the License.
 #include "tao/datalog_guard.h"
 
+#include <cctype>
 #include <list>
-#include <regex>
-#include <set>
 #include <sstream>
 #include <string>
 
@@ -32,9 +31,6 @@
 #include "tao/auth.h"
 #include "tao/datalog_guard.pb.h"
 #include "tao/util.h"
-
-using std::regex;
-using std::regex_match;
 
 namespace tao {
 
@@ -103,11 +99,23 @@ static void GetVariables(const Predicate &pred, list<string> *refvars) {
   }
 }
 
+static bool IsLegalVariableName(const string &s) {
+  if (s.size() < 1)
+    return false;
+  if (!isalpha(s[0]))
+    return false;
+  for (unsigned int i = 1; i < s.size(); i++) {
+    if (!isalnum(s[i]) && s[i] != '_')
+      return false;
+  }
+  return true;
+}
+
 static bool ParseRule(const DatalogRule &rule, list<std::shared_ptr<Predicate>> *conds, scoped_ptr<Predicate> *consequent) {
   // Check vars for legality.
   list<string> vars;
   for (const string &var : rule.vars()) {
-    if (!regex_match(var, std::regex("[a-zA-Z][a-zA-Z0-9_]*"))) {
+    if (!IsLegalVariableName(var)) {
       LOG(ERROR) << "Illegal variable name: " << var;
       return false;
     } 
@@ -115,6 +123,7 @@ static bool ParseRule(const DatalogRule &rule, list<std::shared_ptr<Predicate>> 
       LOG(ERROR) << "Duplicate quntification variable: " << var;
       return false;
     }
+    vars.push_back(var);
   }
   // Check conditions for legality.
   for (const auto &serialized_cond : rule.conds()) {
@@ -179,14 +188,14 @@ static bool ParseRule(const DatalogRule &rule, list<std::shared_ptr<Predicate>> 
   std::set_difference(cond_refvars.begin(), cond_refvars.end(), vars.begin(),
                       vars.end(), back_inserter(missing_vars));
   if (missing_vars.size() > 0) {
-    LOG(ERROR) << "Unquantified condition variables: " << join(vars, ", ");
+    LOG(ERROR) << "Unquantified condition variables: " << join(missing_vars, ", ");
     return false;
   }
   // Check that each reference variable in consequent was quantified.
   std::set_difference(consequent_refvars.begin(), consequent_refvars.end(),
                       vars.begin(), vars.end(), back_inserter(missing_vars));
   if (missing_vars.size() > 0) {
-    LOG(ERROR) << "Unquantified consequent variables: " << join(vars, ", ");
+    LOG(ERROR) << "Unquantified consequent variables: " << join(missing_vars, ", ");
     return false;
   }
   return true;
@@ -417,6 +426,93 @@ bool DatalogGuard::AddRule(const list<string> &variables,
   return SaveConfig();
 }
 
+bool DatalogGuard::AddRule(const string &desc) {
+  stringstream in(desc);
+  bool quantified = (in.peek() == '(');
+  list<string> vars;
+  if (quantified) {
+    skip(in, "(forall ");
+    if (!in) {
+      LOG(ERROR) << "Expecting 'forall ' after parentheses";
+      return false;
+    }
+    for (;;) {
+      vars.push_back(GetIdentifier(in));
+      if (!in) {
+        LOG(ERROR) << "Expecting variable name after 'forall'";
+        return false;
+      }
+      if (in.peek() != ',')
+        break;
+      skip(in, ", ");
+      if (!in) {
+        LOG(ERROR) << "Expecting space after comma";
+        return false;
+      }
+    }
+    skip(in, ": ");
+    if (!in) {
+      LOG(ERROR) << "Expecting ': ' after variable list";
+      return false;
+    }
+  }
+  list<unique_ptr<Predicate>> conds;
+  scoped_ptr<Predicate> consequent;
+  scoped_ptr<Predicate> pred(Predicate::ParseFromStream(in));
+  if (!in) {
+    LOG(ERROR) << "Expecting condition or consequent after variable list";
+    return false;
+  }
+  if (in.peek() == ' ') {
+    conds.push_back(std::move(unique_ptr<Predicate>(pred.release())));
+    skip(in, " ");
+    while (in && in.peek() == 'a') {
+      skip(in, "and ");
+      pred.reset(Predicate::ParseFromStream(in));
+      if (!in) {
+        LOG(ERROR) << "Expecting condition after 'and'";
+        return false;
+      }
+      conds.push_back(std::move(unique_ptr<Predicate>(pred.release())));
+      skip(in, " ");
+    } 
+    if (!in) {
+      LOG(ERROR) << "Expecting space after condition";
+      return false;
+    }
+    skip(in, "implies ");
+    if (!in) {
+      LOG(ERROR) << "Expecting 'and ' or 'implies ' after condition";
+      return false;
+    }
+    consequent.reset(Predicate::ParseFromStream(in));
+    if (!in) {
+      LOG(ERROR) << "Expecting consequent after 'implies'";
+      return false;
+    }
+  } if (in.eof()) {
+    if (quantified) {
+      LOG(ERROR) << "Expecting implication inside quantification";
+      return false;
+    }
+    // no conditions
+    consequent.reset(pred.release());
+  }
+
+  if (quantified) {
+    skip(in, ")");
+    if (!in) {
+      LOG(ERROR) << "Expecting ')' after consequent";
+      return false;
+    }
+  }
+  if (!in || (in.get() && !in.eof())) {
+    LOG(ERROR) << "Trailing text after rule";
+    return false;
+  }
+  return AddRule(vars, conds, *consequent);
+}
+
 // TODO(kwalsh) Add RemoveRule() methods.
 
 string DatalogGuard::DebugString() const {
@@ -467,7 +563,7 @@ bool DatalogGuard::ParseConfig() {
     LOG(ERROR) << "Can't load basic configuration";
     return false;
   }
-  // Load the signed ACL set file.
+  // Load the signed rule file.
   string path = GetConfigPath(JSONSignedDatalogRulesPath);
   string serialized;
   if (!ReadFileToString(path, &serialized)) {
@@ -486,7 +582,7 @@ bool DatalogGuard::ParseConfig() {
     LOG(ERROR) << "Signature did not verify on signed policy rules from " << path;
     return false;
   }
-  // Parse the ACL set.
+  // Parse the rules.
   if (!rules_.ParseFromString(srules.serialized_rules())) {
     LOG(ERROR) << "Can't parse serialized policy rules from " << path;
     return false;

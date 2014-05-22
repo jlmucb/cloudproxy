@@ -195,6 +195,16 @@ class DatalogGuard : public TaoDomain {
                const list<unique_ptr<Predicate>> &conditions,
                const Predicate &consequent);
 
+  /// Add a conditional (with or without quantification) or unconditional rule
+  /// of the form:
+  ///   (forall Var... : Condition and ... implies Pred(args...))
+  /// or:
+  ///   Condition and ... implies Pred(args...)
+  /// or:
+  ///   Pred(args...)
+  /// @param desc The rule, encoded as text.
+  bool AddRule(const string &desc);
+
   /// Get a count of how many rules there are.
   int RuleCount() const;
 

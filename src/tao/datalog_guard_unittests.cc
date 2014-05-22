@@ -52,5 +52,50 @@ TEST_F(DatalogGuardTest, SimpleRuleTest) {
   hello.push_back(
       std::move(unique_ptr<Term>(new Term("hello.txt", Term::STRING))));
   EXPECT_TRUE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", hello));
+  EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Bob\")", "Read", hello));
+  EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Write", hello));
+  EXPECT_FALSE(domain_->IsAuthorized("System(2)::User(\"Alice\")", "Read", hello));
+}
+
+TEST_F(DatalogGuardTest, ImplicationRuleTest) {
+  string simplecond = "IsGoodUser(U)";
+  string simplerule = "IsAuthorized(U, \"Read\", \"hello.txt\")";
+  string alice_is_good = "IsGoodUser(System(1)::User(\"Alice\"))";
+  scoped_ptr<Predicate> pred(Predicate::ParseFromString(simplerule));
+  scoped_ptr<Predicate> cond(Predicate::ParseFromString(simplecond));
+  scoped_ptr<Predicate> fact(Predicate::ParseFromString(alice_is_good));
+  list<unique_ptr<Predicate>> conds;
+  conds.push_back(std::move(unique_ptr<Predicate>(cond.release())));
+  EXPECT_TRUE(domain_->AddRule(list<string>{"U"}, conds, *pred));
+  EXPECT_TRUE(domain_->AddRule(*fact));
+  list<unique_ptr<Term>> hello;
+  hello.push_back(
+      std::move(unique_ptr<Term>(new Term("hello.txt", Term::STRING))));
+  EXPECT_TRUE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", hello));
+  EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Bob\")", "Read", hello));
+  EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Write", hello));
+  EXPECT_FALSE(domain_->IsAuthorized("System(2)::User(\"Alice\")", "Read", hello));
+}
+
+TEST_F(DatalogGuardTest, StringImplicationRuleTest) {
+
+  EXPECT_TRUE(
+      domain_->AddRule("(forall U, F: IsGoodUser(U) and IsPrivateFile(F) "
+                       "implies IsAuthorized(U, \"Read\", F))"));
+  EXPECT_TRUE(domain_->AddRule("IsGoodUser(System(1)::User(\"Alice\"))"));
+  EXPECT_TRUE(domain_->AddRule("IsPrivateFile(\"hello.txt\")"));
+
+  list<unique_ptr<Term>> hello;
+  hello.push_back(
+      std::move(unique_ptr<Term>(new Term("hello.txt", Term::STRING))));
+  list<unique_ptr<Term>> bad;
+  bad.push_back(
+      std::move(unique_ptr<Term>(new Term("bad.txt", Term::STRING))));
+
+  EXPECT_TRUE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", hello));
+  EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", bad));
+  EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Bob\")", "Read", hello));
+  EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Write", hello));
+  EXPECT_FALSE(domain_->IsAuthorized("System(2)::User(\"Alice\")", "Read", hello));
 }
 

@@ -20,19 +20,15 @@
 
 #include <iostream>
 #include <cctype>
-#include <regex>
 #include <sstream>
 
 #include <glog/logging.h>
 
 #include "tao/util.h"
 
-using std::regex;
-using std::regex_match;
-
 namespace tao {
 
-static string GetIdentifier(stringstream &in) {  // NOLINT
+string GetIdentifier(stringstream &in) {  // NOLINT
   // [a-zA-Z][a-zA-Z0-9_]*
   stringstream out;
   char c = in.peek();

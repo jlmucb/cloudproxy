@@ -25,8 +25,10 @@
 #include <string>
 
 #include <glog/logging.h>
+extern "C" {
 #include <lua.h>
 #include <lauxlib.h>
+}
 // lua.h must come before datalog.h
 #include <datalog.h>
 

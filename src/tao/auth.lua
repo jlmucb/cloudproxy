@@ -177,7 +177,7 @@ end
 local function subprin(literal)
   return function(s, v)
     if v then
-      print("end of iter\n")
+      -- print("end of iter\n")
       return nil
     else
       local p = literal[1]
@@ -186,23 +186,23 @@ local function subprin(literal)
       if p:is_const() then
         local prin = mk_prin(tostring(p.id))
         if not prin or not prin.parent then
-          print("bad prin or no parent\n")
+          -- print("bad prin or no parent\n")
           return nil
         else
-          print(string.format("got one, prin is %q\n", tostring(prin)))
+          -- print(string.format("got one, prin is %q\n", tostring(prin)))
           return {tostring(prin), tostring(prin.parent), tostring(prin.ext)}
         end
       elseif o:is_const() and e:is_const() then
         local parent = mk_prin(tostring(o.id))
         local ext = mk_prin(tostring(e.id))
         if not parent or not ext or ext.parent then
-          print("no parent, no ext, or has ext.parent\n")
+          -- print("no parent, no ext, or has ext.parent\n")
           return nil
         else
           return { tostring(parent) .. "::" .. tostring(ext), tostring(parent), tostring(ext) }
         end
       else
-        print("too many vars\n")
+        print("warning: subprin/3 can't deal with so many variables\n")
         return nil
       end
     end

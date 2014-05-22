@@ -22,7 +22,7 @@
 
 namespace tao {
 
-static string TaoGuard::MakePredicate(const string &name, const string &op,
+string TaoGuard::MakePredicate(const string &name, const string &op,
                                       const list<unique_ptr<Term>> &args) {
   stringstream out;
   out << "Authorized(" << name << ", " << quotedString(op);
@@ -33,7 +33,7 @@ static string TaoGuard::MakePredicate(const string &name, const string &op,
   return out.str();
 }
 
-static string TaoGuard::MakePredicate(const string &name, const string &op,
+string TaoGuard::MakePredicate(const string &name, const string &op,
                                       const list<string> &args) {
   stringstream out;
   out << "Authorized(" << name << ", " << quotedString(op);
@@ -45,8 +45,7 @@ static string TaoGuard::MakePredicate(const string &name, const string &op,
 }
 
 bool TaoGuard::IsAuthorized(const string &name, const string &op,
-                            const list<unique_ptr<Term>> &args);
-{
+                            const list<unique_ptr<Term>> &args) {
   if (!Query(MakePredicate(name, op, args))) {
     LOG(INFO) << "Principal " << elideString(name) << " not authorized for "
               << op << "(...)";
@@ -58,8 +57,7 @@ bool TaoGuard::IsAuthorized(const string &name, const string &op,
 }
 
 bool TaoGuard::IsAuthorized(const string &name, const string &op,
-                            const list<string> &args);
-{
+                            const list<string> &args) {
   if (!Query(MakePredicate(name, op, args))) {
     LOG(INFO) << "Principal " << elideString(name) << " not authorized for "
               << op << "(...)";

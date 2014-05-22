@@ -58,7 +58,7 @@ class ACLGuard : public TaoDomain {
   ACLGuard(const string &path, DictionaryValue *value)
       : TaoDomain(path, value) {}
 
-  virtual string GuardTypeName() { return "ACLGuard"; }
+  virtual string GuardTypeName() const { return "ACLGuard"; }
 
   /// These methods have the same semantics as in TaoGuard. ACLGuard supports
   /// the basic syntax for rules and queries, i.e. 
@@ -89,13 +89,6 @@ class ACLGuard : public TaoDomain {
   /// other state. This signs and saves the ACLs. This fails if the
   /// TaoDomain is locked.
   virtual bool SaveConfig() const;
-
-  /// Check whether an acl entry matches a given name, op, args tuple.
-  virtual bool IsMatchingEntry(const ACLEntry &entry, const string &name,
-                               const string &op,
-                               const list<unique_ptr<Term>> &args) const;
-
-  string DebugString(const ACLEntry &entry) const;
 
  private:
   // The set of ACL entries.

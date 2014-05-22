@@ -147,7 +147,7 @@ TaoDomain *TaoDomain::Load(const string &path, const string &password) {
   return admin.release();
 }
 
-bool ACLGuard::GetSubprincipalName(string *subprin) const {
+bool TaoDomain::GetSubprincipalName(string *subprin) const {
   // Use policy key and guard type as part of name
   string key_prin;
   if (!GetPolicyKeys()->GetPrincipalName(&key_prin)) {

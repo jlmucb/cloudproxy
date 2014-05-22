@@ -33,7 +33,7 @@ bool ACLGuard::AddRule(const string &rule) {
   return SaveConfig();
 }
 
-bool ACLGuard::RevokeRule(const string &rule) {
+bool ACLGuard::RetractRule(const string &rule) {
   bool found = false;
   for (int i = aclset_.entries_size() - 1; i >= 0; i--) {
     if (aclset_.entries(i) == rule) {

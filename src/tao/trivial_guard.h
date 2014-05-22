@@ -44,19 +44,17 @@ class TrivialGuard : public TaoGuard {
     return true;
   }
 
-  virtual bool IsAuthorized(const string &name, const string &op,
-                            const list<unique_ptr<Term>> &args) {
-    return (policy_ == LiberalPolicy);
+  virtual string GuardTypeName() const {
+    return (policy_ == LiberalPolicy) ? "TrivialLiberalGuard"
+                                      : "TrivialConservativeGuard";
   }
 
-  virtual bool Authorize(const string &name, const string &op,
-                         const list<unique_ptr<Term>> &args) {
-    return true;
-  }
-
-  virtual bool Revoke(const string &name, const string &op,
-                      const list<unique_ptr<Term>> &args) {
-    return false;
+  virtual bool AddRule(const string &rule) { return false; }
+  virtual bool RetractRule(const string &rule) { return false; }
+  virtual bool Query(const string &query) { return (policy_ == LiberalPolicy); }
+  virtual int RuleCount() const { return 1; }
+  virtual string GetRule(int i) const {
+    return (policy_ == LiberalPolicy) ? "Allow All" : "Deny All";
   }
 
   virtual string DebugString() const {

@@ -114,6 +114,7 @@
 				'tao.h',
 				'tao_domain.cc',
 				'tao_domain.h',
+				'tao_guard.cc',
 				'tao_guard.h',
 				'tao_host.cc',
 				'tao_host.h',

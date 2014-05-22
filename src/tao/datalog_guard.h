@@ -151,7 +151,7 @@ class DatalogGuard : public TaoDomain {
       : TaoDomain(path, value) {}
   virtual ~DatalogGuard() {}
 
-  virtual string GuardTypeName() { return "DatalogGuard"; }
+  virtual string GuardTypeName() const { return "DatalogGuard"; }
 
   /// These methods have the same semantics as in TaoGuard. DatalogGuard
   /// supports the basic syntax for rules and queries, i.e.
@@ -233,26 +233,12 @@ class DatalogGuard : public TaoDomain {
   /// TaoDomain is locked.
   virtual bool SaveConfig() const;
 
-  /// Construct a datalog rule comprising a simple predicate of the form
-  /// says(K_policy, "IsAuthorized", name, op, args...).
-  /// @param name The third argument to the says() predicate.
-  /// @param op The fourth argument to the says() predicate.
-  /// @param args The remaining arguments to the says() predicate.
-  /// @param[out] rule The constructed rule.
-  virtual bool ParsePolicySaysIsAuthorized(const string &name, const string &op,
-                                           const list<unique_ptr<Term>> &args,
-                                           DatalogRule *rule) const;
-
-  /// Get a debug string for a rule.
-  /// @param rule The rule.
-  virtual string DebugString(const DatalogRule &rule) const;
-
  private:
-  // The set of ACL entries.
+  // The set of datalog rules.
   DatalogRules rules_;
 
   // Datalog engine state.
-  ScopedDatalogEngine dl;
+  ScopedDatalogEngine dl_;
 
   // The principal name for the policy key.
   string policy_prin_;
@@ -261,7 +247,7 @@ class DatalogGuard : public TaoDomain {
   scoped_ptr<Term> policy_term_;
 
   // Transcript of recent datalog API calls (for debugging).
-  stringstream dl_transcript;
+  stringstream dl_transcript_;
 
   DISALLOW_COPY_AND_ASSIGN(DatalogGuard);
 };

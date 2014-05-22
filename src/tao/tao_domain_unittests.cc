@@ -104,7 +104,7 @@ TYPED_TEST(TaoDomainTest, AuthorizeTest) {
   EXPECT_FALSE(this->domain_->IsAuthorized(alice, "Read", bad));
   EXPECT_FALSE(this->domain_->IsAuthorized(bob, "Read", hello));
 
-  EXPECT_TRUE(this->domain_->Revoke(alice, "Read", hello));
+  EXPECT_TRUE(this->domain_->Retract(alice, "Read", hello));
 
   EXPECT_FALSE(this->domain_->IsAuthorized(alice, "Read", hello));
   EXPECT_FALSE(this->domain_->IsAuthorized(alice, "Write", hello));

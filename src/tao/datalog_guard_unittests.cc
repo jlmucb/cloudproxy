@@ -45,12 +45,9 @@ class DatalogGuardTest : public ::testing::Test {
 };
 
 TEST_F(DatalogGuardTest, SimpleRuleTest) {
-  string simplerule = "IsAuthorized(System(1)::User(\"Alice\"), \"Read\", \"hello.txt\")";
-  scoped_ptr<Predicate> pred(Predicate::ParseFromString(simplerule));
-  EXPECT_TRUE(domain_->AddRule(*pred));
-  list<unique_ptr<Term>> hello;
-  hello.push_back(
-      std::move(unique_ptr<Term>(new Term("hello.txt", Term::STRING))));
+  EXPECT_TRUE(domain_->AddRule(
+      "Authorized(System(1)::User(\"Alice\"), \"Read\", \"hello.txt\")"));
+  list<string> hello{"hello.txt"};
   EXPECT_TRUE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", hello));
   EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Bob\")", "Read", hello));
   EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Write", hello));
@@ -58,19 +55,10 @@ TEST_F(DatalogGuardTest, SimpleRuleTest) {
 }
 
 TEST_F(DatalogGuardTest, ImplicationRuleTest) {
-  string simplecond = "IsGoodUser(U)";
-  string simplerule = "IsAuthorized(U, \"Read\", \"hello.txt\")";
-  string alice_is_good = "IsGoodUser(System(1)::User(\"Alice\"))";
-  scoped_ptr<Predicate> pred(Predicate::ParseFromString(simplerule));
-  scoped_ptr<Predicate> cond(Predicate::ParseFromString(simplecond));
-  scoped_ptr<Predicate> fact(Predicate::ParseFromString(alice_is_good));
-  list<unique_ptr<Predicate>> conds;
-  conds.push_back(std::move(unique_ptr<Predicate>(cond.release())));
-  EXPECT_TRUE(domain_->AddRule(list<string>{"U"}, conds, *pred));
-  EXPECT_TRUE(domain_->AddRule(*fact));
-  list<unique_ptr<Term>> hello;
-  hello.push_back(
-      std::move(unique_ptr<Term>(new Term("hello.txt", Term::STRING))));
+  EXPECT_TRUE(domain_->AddRule("(forall U: IsGoodUser(U) implies "
+                               "Authorized(U, \"Read\", \"hello.txt\"))"));
+  EXPECT_TRUE(domain_->AddRule("IsGoodUser(System(1)::User(\"Alice\"))"));
+  list<string> hello{"hello.txt"};
   EXPECT_TRUE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", hello));
   EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Bob\")", "Read", hello));
   EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Write", hello));
@@ -81,17 +69,11 @@ TEST_F(DatalogGuardTest, StringImplicationRuleTest) {
 
   EXPECT_TRUE(
       domain_->AddRule("(forall U, F: IsGoodUser(U) and IsPrivateFile(F) "
-                       "implies IsAuthorized(U, \"Read\", F))"));
+                       "implies Authorized(U, \"Read\", F))"));
   EXPECT_TRUE(domain_->AddRule("IsGoodUser(System(1)::User(\"Alice\"))"));
   EXPECT_TRUE(domain_->AddRule("IsPrivateFile(\"hello.txt\")"));
-
-  list<unique_ptr<Term>> hello;
-  hello.push_back(
-      std::move(unique_ptr<Term>(new Term("hello.txt", Term::STRING))));
-  list<unique_ptr<Term>> bad;
-  bad.push_back(
-      std::move(unique_ptr<Term>(new Term("bad.txt", Term::STRING))));
-
+  list<string> hello{"hello.txt"};
+  list<string> bad{"bad.txt"};
   EXPECT_TRUE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", hello));
   EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", bad));
   EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Bob\")", "Read", hello));
@@ -106,20 +88,15 @@ TEST_F(DatalogGuardTest, SubprinImplicationRuleTest) {
                        "and subprin(P, S, U) implies IsGoodUser(P))"));
   EXPECT_TRUE(
       domain_->AddRule("(forall U, F: IsGoodUser(U) and IsPrivateFile(F) "
-                       "implies IsAuthorized(U, \"Read\", F))"));
+                       "implies Authorized(U, \"Read\", F))"));
   EXPECT_TRUE(domain_->AddRule("IsGoodSystem(System(1))"));
   EXPECT_TRUE(domain_->AddRule("IsGoodSystem(System(0))"));
   EXPECT_TRUE(domain_->AddRule("IsGoodUserName(User(\"Alice\"))"));
   EXPECT_TRUE(domain_->AddRule("IsGoodUserName(User(\"Bob\"))"));
   EXPECT_TRUE(domain_->AddRule("IsPrivateFile(\"hello.txt\")"));
 
-  list<unique_ptr<Term>> hello;
-  hello.push_back(
-      std::move(unique_ptr<Term>(new Term("hello.txt", Term::STRING))));
-  list<unique_ptr<Term>> bad;
-  bad.push_back(
-      std::move(unique_ptr<Term>(new Term("bad.txt", Term::STRING))));
-
+  list<string> hello{"hello.txt"};
+  list<string> bad{"bad.txt"};
   EXPECT_TRUE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", hello));
   EXPECT_TRUE(domain_->IsAuthorized("System(0)::User(\"Alice\")", "Read", hello));
   EXPECT_TRUE(domain_->IsAuthorized("System(1)::User(\"Bob\")", "Read", hello));

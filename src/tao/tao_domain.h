@@ -161,6 +161,8 @@ class TaoDomain : public TaoGuard {
   /// @param subprin The policy subprincipal being claimed by that principal.
   //bool IsAuthorizedNickname(const string &name, const string &subprin);
 
+  virtual bool GetSubprincipalName(string *subprin) const;
+
   /// This function will reload the configuration from disk, effectively making
   /// a deep copy. This is useful for passing out copies of TaoGuard objects to
   /// other classes that might want ownership of it.

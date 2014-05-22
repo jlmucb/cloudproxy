@@ -19,15 +19,8 @@
 
 package tao;
 
-// One entry of an ACL, conveying that name is authorized to perform op(args).
-message ACLEntry {
-	required string name = 1;
-	required string op = 2;
-	repeated string args = 3;
-}
-
 // A set of ACL entries.
-message ACLSet { repeated ACLEntry entries = 1; }
+message ACLSet { repeated string entries = 1; }
 
 // A set of ACL entries signed by a key.
 message SignedACLSet {

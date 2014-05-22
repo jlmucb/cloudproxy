@@ -58,27 +58,22 @@ class ACLGuard : public TaoDomain {
   ACLGuard(const string &path, DictionaryValue *value)
       : TaoDomain(path, value) {}
 
+  virtual string GuardTypeName() { return "ACLGuard"; }
 
-  /// These methods have the same semantics as in TaoGuard.
+  /// These methods have the same semantics as in TaoGuard. ACLGuard supports
+  /// the basic syntax for rules and queries, i.e. 
+  ///   Authorized(P, op, args...).
+  /// ACLGuard does not interpret the rules and queries in any way, so
+  /// additional rules and queries could be used if desired. There is little use
+  /// for this feature, however, as op and args already encode arbitrary,
+  /// uninterpreted strings.
   /// @{
-  virtual bool GetSubprincipalName(string *subprin) const;
-  virtual bool IsAuthorized(const string &name, const string &op,
-                            const list<unique_ptr<Term>> &args);
-  virtual bool Authorize(const string &name, const string &op,
-                         const list<unique_ptr<Term>> &args);
-  virtual bool Revoke(const string &name, const string &op,
-                      const list<unique_ptr<Term>> &args);
-  virtual string DebugString() const;
+  virtual bool AddRule(const string &rule);
+  virtual bool RetractRule(const string &rule);
+  virtual bool Query(const string &query);
+  virtual int RuleCount() const;
+  virtual string GetRule(int i) const;
   /// @}
-
-  /// Get a count of how many ACL entries there are.
-  int ACLEntryCount() const;
-
-  /// Get information about the i^th ACL entry.
-  bool GetACLEntry(int i, string *name, string *op, list<unique_ptr<Term>> *args) const;
-  bool GetACLEntry(int i, string *desc) const;
-
-  // TODO(kwalsh) Maybe also map a name to pair<op, args>?
 
   constexpr static auto ACLSigningContext = "tao::SignedACLs Version 1";
 

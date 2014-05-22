@@ -28,127 +28,38 @@
 #include "tao/util.h"
 
 namespace tao {
-
-bool ACLGuard::GetSubprincipalName(string *subprin) const {
-  // Use policy key as part of name
-  string key_prin;
-  if (!GetPolicyKeys()->GetPrincipalName(&key_prin)) {
-    LOG(ERROR) << "Could not get policy key principal name";
-    return false;
-  }
-  subprin->assign("ACLGuard(" + key_prin + ")");
-  return true;
-}
-
-// TODO(kwalsh) Add wildcard feature for name, op, and args.
-
-bool ACLGuard::IsMatchingEntry(const ACLEntry &entry, const string &name,
-                               const string &op,
-                               const list<unique_ptr<Term>> &args) const {
-  if (entry.name() != name) return false;
-  if (entry.op() != op) return false;
-  if (entry.args_size() != int(args.size())) return false;
-  int i = 0;
-  for (auto &arg : args)
-    if (entry.args(i++) != arg->SerializeToString()) return false;
-  return true;
-}
-
-bool ACLGuard::IsAuthorized(const string &name, const string &op,
-                            const list<unique_ptr<Term>> &args) {
-  for (auto &entry : aclset_.entries()) {
-    if (IsMatchingEntry(entry, name, op, args)) {
-      LOG(INFO) << "Principal " << elideString(name)
-                << " is authorized to perform " << op << "(...)";
-      return true;
-    }
-  }
-  LOG(INFO) << "Principal " << elideString(name)
-            << " is not authorized to perform " << op << "(...)";
-  LOG(INFO) << DebugString();
-  return false;
-}
-
-bool ACLGuard::Authorize(const string &name, const string &op,
-                         const list<unique_ptr<Term>> &args) {
-  ACLEntry *entry = aclset_.add_entries();
-  entry->set_name(name);
-  entry->set_op(op);
-  for (auto &arg : args) entry->add_args(arg->SerializeToString());
+bool ACLGuard::AddRule(const string &rule) {
+  aclset_.add_entries(rule);
   return SaveConfig();
 }
 
-bool ACLGuard::Revoke(const string &name, const string &op,
-                      const list<unique_ptr<Term>> &args) {
+bool ACLGuard::RevokeRule(const string &rule) {
   bool found = false;
   for (int i = aclset_.entries_size() - 1; i >= 0; i--) {
-    if (IsMatchingEntry(aclset_.entries(i), name, op, args)) {
+    if (aclset_.entries(i) == rule) {
       found = true;
       aclset_.mutable_entries()->DeleteSubrange(i, 1);
     }
   }
   if (!found) {
-    LOG(WARNING) << "Principal " << name << " was not authorized to perform "
-                 << op << "(...)";
-    return false;
-  } else {
-    return SaveConfig();
-  }
-}
-
-string ACLGuard::DebugString() const {
-  std::stringstream out;
-  out << "Set of " << aclset_.entries_size() << " authorizations:";
-  int i = 0;
-  for (auto &entry : aclset_.entries())
-    out << "\n  " << (i++) << ". " << DebugString(entry);
-  return out.str();
-}
-
-int ACLGuard::ACLEntryCount() const { return aclset_.entries_size(); }
-
-bool ACLGuard::GetACLEntry(int i, string *name, string *op,
-                           list<unique_ptr<Term>> *args) const {
-  if (i < 0 || i > aclset_.entries_size()) {
-    LOG(ERROR) << "Invalid ACL entry index";
+    LOG(WARNING) << "Rule to be revoked was not found";
     return false;
   }
-  const ACLEntry &entry = aclset_.entries(i);
-  name->assign(entry.name());
-  op->assign(entry.op());
-  args->clear();
-  for (auto &arg : entry.args()) {
-    unique_ptr<Term> term(Term::ParseFromString(arg));
-    if (!term) {
-      LOG(ERROR) << "Could not parse term in ACL entry";
-      return false;
+  return SaveConfig();
+}
+
+bool ACLGuard::Query(const string &query) {
+  for (auto &entry : aclset_.entries()) {
+    if (entry == query) {
+      return true;
     }
-    args->push_back(std::move(term));
   }
-  return true;
+  return false;
 }
 
-bool ACLGuard::GetACLEntry(int i, string *desc) const {
-  if (i < 0 || i > aclset_.entries_size()) {
-    LOG(ERROR) << "Invalid ACL entry index";
-    return false;
-  }
-  const ACLEntry &entry = aclset_.entries(i);
-  desc->assign(DebugString(entry));
-  return true;
-}
+int ACLGuard::RuleCount() const { return aclset_.entries_size(); }
 
-string ACLGuard::DebugString(const ACLEntry &entry) const {
-  std::stringstream out;
-  out << elideString(entry.name()) << " : " << entry.op() << "(";
-  string delim = "";
-  for (auto &arg : entry.args()) {
-    out << delim << elideString(arg);
-    delim = ", ";
-  }
-  out << ")";
-  return out.str();
-}
+string ACLGuard::GetRule(int i) const { return aclset_.entries(i); }
 
 bool ACLGuard::ParseConfig() {
   // Load basic configuration.

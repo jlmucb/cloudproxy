@@ -19,16 +19,8 @@
 
 package tao;
 
-// A policy rule conveying the formula:
-//    (forall V1, V2, (Cond1 and Cond2 and ...) implies Pred(args...))
-message DatalogRule {
-  repeated string vars = 1;
-  repeated string conds = 2;  // serialized Predicates
-  required string consequent = 3;  // serialized Predicate
-}
-
 // A set of rules.
-message DatalogRules { repeated DatalogRule rules = 1; }
+message DatalogRules { repeated string rules = 1; }
 
 // A set of rules signed by a key.
 message SignedDatalogRules {

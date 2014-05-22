@@ -1,7 +1,7 @@
 //  File: tao_admin.cc
 //  Author: Kevin Walsh <kwalsh@holycross.edu>
 //
-//  Description: Produces an attestation for a keyczar key
+//  Description: Interface for various Tao setup and admin operations.
 //
 //  Copyright (c) 2014, Google Inc.  All rights reserved.
 //

@@ -89,10 +89,19 @@ bool DatalogGuard::Init() {
   return true;
 }
 
-bool DatalogGuard::GetSubprincipalName(string *subprin) const {
-  // Use policy key as part of name
-  subprin->assign("DatalogGuard(" + policy_prin_ + ")");
-  return true;
+static void GetVariables(const Predicate &pred, set<string> *refvars) {
+  for (int i = 0; i < pred.ArgumentCount(); i++) {
+    const Term *term = pred.Argument(i);
+    if (term->IsVariable()) {
+      refvars->insert(term->GetVariable());
+    } else if (term->IsPredicate()) {
+      // Nested predicates get turned into strings, assume here they don't
+      // contain variables.
+    } else if (term->IsPrincipal()) {
+      // Nested principals get turned into strings, assume here they don't
+      // contain variables.
+    }
+  }
 }
 
 static bool ContainsNestedVariables(const Term &term) {
@@ -115,84 +124,26 @@ static bool ContainsNestedVariables(const Term &term) {
   return false;
 }
 
-static void GetVariables(const Predicate &pred, set<string> *refvars) {
-  for (int i = 0; i < pred.ArgumentCount(); i++) {
-    const Term *term = pred.Argument(i);
-    if (term->IsVariable()) {
-      refvars->insert(term->GetVariable());
-    } else if (term->IsPredicate()) {
-      // Nested predicates get turned into strings, assume here they don't
-      // contain variables.
-    } else if (term->IsPrincipal()) {
-      // Nested principals get turned into strings, assume here they don't
-      // contain variables.
-    }
-  }
-}
-
-static bool IsLegalVariableName(const string &s) {
-  if (s.size() < 1)
-    return false;
-  if (!isalpha(s[0]))
-    return false;
-  for (unsigned int i = 1; i < s.size(); i++) {
-    if (!isalnum(s[i]) && s[i] != '_')
-      return false;
-  }
-  return true;
-}
-
-static bool ParseRule(const DatalogRule &rule, list<std::shared_ptr<Predicate>> *conds, scoped_ptr<Predicate> *consequent) {
-  // Check vars for legality.
-  set<string> vars;
-  for (const string &var : rule.vars()) {
-    if (!IsLegalVariableName(var)) {
-      LOG(ERROR) << "Illegal variable name: " << var;
-      return false;
-    } 
-    if (vars.find(var) != vars.end()) {
-      LOG(ERROR) << "Duplicate quntification variable: " << var;
-      return false;
-    }
-    vars.insert(var);
-  }
-  // Check conditions for legality.
-  for (const auto &serialized_cond : rule.conds()) {
-    scoped_ptr<Predicate> cond(Predicate::ParseFromString(serialized_cond));
-    if (cond.get() == nullptr) {
-      LOG(ERROR) << "Could not parse datalog predicate";
-      return false;
-    }
-    if (conds == nullptr) {
-      LOG(ERROR) << "Conditions are not allowed in this rule";
-      return false;
-    }
-    conds->push_back(std::shared_ptr<Predicate>(cond.release()));
-  }
-  // Check consequent for legality.
-  consequent->reset(Predicate::ParseFromString(rule.consequent()));
-  if (consequent->get() == nullptr) {
-    LOG(ERROR) << "Could not parse datalog consequent";
-    return false;
-  }
-  // Make sure nested terms in conditions don't contain variables (since we
-  // convert nested terms into strings).
-  if (conds != nullptr) {
-    for (const auto &cond : *conds) {
-      for (int i = 0; i < cond->ArgumentCount(); i++) {
-        if (!cond->Argument(i)->IsVariable() &&
+static bool CheckRule(const set<string> &vars,
+                      const list<unique_ptr<Predicate>> &conds,
+                      const Predicate &consequent) {
+  // Make sure nested predicates in conditions don't contain variables (since we
+  // convert nested predicates into strings).
+  for (const auto &cond : conds) {
+    for (int i = 0; i < cond->ArgumentCount(); i++) {
+      if (!cond->Argument(i)->IsVariable() &&
           ContainsNestedVariables(*cond->Argument(i))) {
-          LOG(ERROR) << "Nested quantification variables in condition not allowed";
-          return false;
-        }
+        LOG(ERROR)
+            << "Nested quantification variables in condition not allowed";
+        return false;
       }
     }
   }
-  // Make sure nested terms in conditions don't contain variables (since we
+  // Make sure nested predicates in conditions don't contain variables (since we
   // convert nested terms into strings).
-  for (int i = 0; i < (*consequent)->ArgumentCount(); i++) {
-    if (!(*consequent)->Argument(i)->IsVariable() &&
-      ContainsNestedVariables(*(*consequent)->Argument(i))) {
+  for (int i = 0; i < consequent->ArgumentCount(); i++) {
+    if (!consequent->Argument(i)->IsVariable() &&
+        ContainsNestedVariables(*consequent->Argument(i))) {
       LOG(ERROR) << "Nested quantification variables in consequent not allowed";
       return false;
     }
@@ -208,75 +159,63 @@ static bool ParseRule(const DatalogRule &rule, list<std::shared_ptr<Predicate>> 
   set<string> consequent_refvars;
   GetVariables(**consequent, &consequent_refvars);
   // Check that each quantification variable is referenced.
-  set<string> missing_vars;
+  // And check that each reference variable in conditions was quantified.
+  set<string> missing_qvars;
   std::set_difference(vars.begin(), vars.end(), cond_refvars.begin(),
-                      cond_refvars.end(), std::inserter(missing_vars, missing_vars.begin()));
-  if (missing_vars.size() > 0) {
-    LOG(ERROR) << "Unreferenced quantification variables: " << join(missing_vars, ", ");
-    if (conds != nullptr) {
-      LOG(INFO) << "There were " << conds->size() << " conditions";
-      int i = 0;
-      for (const auto &cond : *conds) {
-        LOG(INFO) << "Condition " << (i++) << ". " << cond->SerializeToString();
-      }
-      LOG(INFO) << "Using these variables: " << join(cond_refvars, ", ");
-      LOG(INFO) << "Quantification variables were : " << join(cond_refvars, ", ");
-    }
-    return false;
-  }
-  // Check that each reference variable in conditions was quantified.
+                      cond_refvars.end(), std::inserter(missingq_vars, missingq_vars.begin()));
+  set<string> missing_cvars;
   std::set_difference(cond_refvars.begin(), cond_refvars.end(), vars.begin(),
-                      vars.end(), std::inserter(missing_vars, missing_vars.begin()));
-  if (missing_vars.size() > 0) {
-    LOG(ERROR) << "Unquantified condition variables: " << join(missing_vars, ", ");
-    if (conds != nullptr) {
-      LOG(INFO) << "There were " << conds->size() << " conditions";
-      int i = 0;
-      for (const auto &cond : *conds) {
-        LOG(INFO) << "Condition " << (i++) << ". " << cond->SerializeToString();
-      }
-      LOG(INFO) << "Using these variables: " << join(list<string>(cond_refvars.begin(), cond_refvars.end()), ", ");
-      LOG(INFO) << "Quantification variables were : " << join(vars, ", ");
-    }
+                      vars.end(), std::inserter(missing_cvars, missing_cvars.begin()));
+  if (missing_qvars.size() > 0 || missing_cvars.size() > 0) {
+    if (missing_qvars.size() > 0)
+      LOG(ERROR) << "Unreferenced quantification variables: "
+                 << join(missing_qvars, ", ");
+    if (missing_cvars.size() > 0)
+      LOG(ERROR)
+          << "Unquantified condition variables: " << join(missing_cvars, ", ");
+    LOG(INFO) << "Condition variables: " << join(cond_refvars, ", ");
+    LOG(INFO) << "Quantification variables were : " << join(vars, ", ");
     return false;
   }
   // Check that each reference variable in consequent was quantified.
   std::set_difference(consequent_refvars.begin(), consequent_refvars.end(),
                       vars.begin(), vars.end(), std::inserter(missing_vars, missing_vars.begin()));
   if (missing_vars.size() > 0) {
-    LOG(ERROR) << "Unquantified consequent variables: " << join(list<string>(missing_vars.begin(), missing_vars.end()), ", ");
+    LOG(ERROR)
+        << "Unquantified consequent variables: " << join(missing_vars, ", ");
+    LOG(INFO) << "Consequent variables: " << join(consequent_refvars, ", ");
+    LOG(INFO) << "Quantification variables were : " << join(vars, ", ");
     return false;
   }
   return true;
 }
 
-static void PushPredicate(dl_db_t db, const Predicate &pred, stringstream &dl_transcript)  // NOLINT
-{
+void DatalogGuard::PushPredicate(const Predicate &pred) {
   // pred = Name(args...)
-  dl_pushliteral(db);  // ?(?)
-  dl_pushstring(db, pred.Name().c_str());
-  dl_addpred(db); // Name(?)
+  dl_pushliteral(dl_->db);  // ?(?)
+  dl_pushstring(dl_->db, pred.Name().c_str());
+  dl_addpred(dl_->db);  // Name(?)
   dl_transcript << pred.Name() << "(";
   string delim = "";
   for (int i = 0; i < pred.ArgumentCount(); i++) {
     const Term *term = pred.Argument(i);
     switch (term->GetType()) {
       case Term::VARIABLE:
-        dl_pushstring(db, term->GetVariable().c_str());
-        dl_addvar(db);
+        dl_pushstring(dl_->db, term->GetVariable().c_str());
+        dl_addvar(dl_->db);
         dl_transcript << delim << term->GetVariable();
         break;
       case Term::INTEGER:
       case Term::PREDICATE:
       case Term::PRINCIPAL:
-        dl_pushstring(db, term->SerializeToString().c_str());
-        dl_addconst(db);
+        dl_pushstring(dl_->db, term->SerializeToString().c_str());
+        dl_addconst(dl_->db);
         dl_transcript << delim << quotedString(term->SerializeToString());
         break;
       case Term::STRING:
-        dl_pushstring(db, term->GetString().c_str());
+        dl_pushstring(dl_->db, term->GetString().c_str());
         dl_transcript << delim << quotedString(term->GetString());
-        dl_addconst(db);
+        dl_addconst(dl_->db);
         break;
       default:
         LOG(ERROR) << "Internal error, should never happen";
@@ -284,18 +223,14 @@ static void PushPredicate(dl_db_t db, const Predicate &pred, stringstream &dl_tr
     }
     delim = ", ";
   }
-  dl_transcript << ")";
-  dl_makeliteral(db);
+  dl_transcript_ << ")";
+  dl_makeliteral(dl_->db);
 }
 
-bool DatalogGuard::PushDatalogRule(const DatalogRule &rule) {
-  list<std::shared_ptr<Predicate>> conds;
-  scoped_ptr<Predicate> consequent;
-  if (!ParseRule(rule, &conds, &consequent)) {
-    LOG(ERROR) << "Illegal rule";
-    return false;
-  }
-  PushPredicate(dl->db, *consequent, dl_transcript);
+bool DatalogGuard::PushRule(const list<string> &vars,
+                            const list<unique_ptr<Predicate>> &conds,
+                            const Predicate &consequent) {
+  PushPredicate(*consequent);
   dl_pushhead(dl->db);
   if (conds.size() > 0)
     dl_transcript << " :- ";
@@ -303,11 +238,10 @@ bool DatalogGuard::PushDatalogRule(const DatalogRule &rule) {
   for (const auto &cond : conds) {
     dl_transcript << delim;
     delim = ", ";
-    PushPredicate(dl->db, *cond, dl_transcript);
+    PushPredicate(*cond);
     dl_addliteral(dl->db);
   }
   dl_makeclause(dl->db);
-  return true;
 }
 
 static Predicate *AddPolicySays(const Predicate &pred, const Term &policy_term)
@@ -324,196 +258,13 @@ static Predicate *AddPolicySays(const Predicate &pred, const Term &policy_term)
   }
 }
 
-bool DatalogGuard::ParsePolicySaysIsAuthorized(const string &name,
-                                               const string &op,
-                                               const list<unique_ptr<Term>> &args,
-                                               DatalogRule *rule) const {
-  scoped_ptr<Predicate> pred(new Predicate("says"));
-  pred->AddArgument(policy_term_->DeepCopy());
-  pred->AddArgument(new Term("IsAuthorized", Term::STRING));
-  scoped_ptr<Term> prin(Term::ParseFromString(name));
-  if (prin.get() == nullptr || !prin->IsPrincipal()) {
-    LOG(ERROR) << "Could not parse name";
-    return false;
-  }
-  pred->AddArgument(prin.release());
-  pred->AddArgument(new Term(op, Term::STRING));
-  for (const auto &arg : args) {
-    if (ContainsNestedVariables(*arg)) {
-      LOG(ERROR) << "Variable appears outside quantification";
-      return false;
-    } else {
-      pred->AddArgument(arg->DeepCopy());
-    }
-  }
-  rule->set_consequent(pred->SerializeToString());
-  return true;
-}
-
-bool DatalogGuard::IsAuthorized(const string &name, const string &op,
-                            const list<unique_ptr<Term>> &args) {
-  DatalogRule rule;
-  if (!ParsePolicySaysIsAuthorized(name, op, args, &rule)) {
-    LOG(ERROR) << "Could not parse authorization query";
-    return false;
-  }
-  scoped_ptr<Predicate> query;
-  if (!ParseRule(rule, nullptr /* no conditions */, &query)) {
-    LOG(ERROR) << "Illegal query";
-    return false;
-  }
-  PushPredicate(dl->db, *query, dl_transcript);
-  dl_transcript << "?";
-  VLOG(3) << "Datalog transcript:\n" << dl_transcript.str();
-  dl_transcript.str("");
-  dl_transcript.clear();
-  dl_answers_t a;
-  dl_ask(dl->db, &a);
-  if (a == nullptr) {
-    LOG(INFO) << "Principal " << elideString(name)
-              << " is not authorized to perform " << op << "(...)";
-    
-    LOG(INFO) << " There were " << RuleCount() << " rules:";
-    for (int i = 0; i < RuleCount(); i++) {
-      string desc;
-      GetRule(i, &desc);
-      LOG(INFO) << " Rule " << (i) << ". " << desc;
-    }
-    return false;
-  }
-  dl_free(a);
-  LOG(INFO) << "Principal " << elideString(name)
-            << " is authorized to perform " << op << "(...)";
-  return true;
-}
-
-static void AddDatalogRule(const DatalogRule &rule, DatalogRules *rules)
-{
-  // Allocate and copy in rule (can't add existing one).
-  DatalogRule *new_rule = rules->add_rules();
-  for (int i = 0; i < rule.vars_size(); i++) {
-    new_rule->add_vars(rule.vars(i));
-  }
-  for (int i = 0; i < rule.conds_size(); i++) {
-    new_rule->add_conds(rule.conds(i));
-  }
-  new_rule->set_consequent(rule.consequent());
-}
-
-bool DatalogGuard::Authorize(const string &name, const string &op,
-                         const list<unique_ptr<Term>> &args) {
-  DatalogRule rule;
-  if (!ParsePolicySaysIsAuthorized(name, op, args, &rule)) {
-    LOG(ERROR) << "Could not parse authorization rule";
-    return false;
-  }
-  if (!PushDatalogRule(rule)) {
-    LOG(ERROR) << "Could not install authorization rule";
-    return false;
-  }
-  dl_assert(dl->db);
-  dl_transcript << ".";
-  VLOG(3) << "Datalog transcript:\n" << dl_transcript.str();
-  dl_transcript.str("");
-  dl_transcript.clear();
-  AddDatalogRule(rule, &rules_);
-
-  // TODO(kwalsh) Also add implicit rules for subprincipals
-  
-  return SaveConfig();
-}
-
-bool DatalogGuard::Revoke(const string &name, const string &op,
-                      const list<unique_ptr<Term>> &args) {
-  DatalogRule rule;
-  if (!ParsePolicySaysIsAuthorized(name, op, args, &rule)) {
-    LOG(ERROR) << "Could not parse authorization rule";
-    return false;
-  }
-  string serialized_rule;
-  if (!rule.SerializeToString(&serialized_rule)) {
-    LOG(ERROR) << "Could not serialize authorization rule";
-    return false;
-  }
-  bool found = false;
-  DatalogRules new_rules;
-  for (int i = 0; i < rules_.rules_size(); i++) {
-    string other_rule;
-    if (!rules_.rules(i).SerializeToString(&other_rule)) {
-      LOG(ERROR) << "Could not serialize authorization rule";
-      return false;
-    }
-    if (serialized_rule != other_rule) {
-      AddDatalogRule(rules_.rules(i), &new_rules);
-    } else {
-      found = true;
-    }
-  }
-  if (!found) {
-    // TODO(kwalsh) maybe we should instead use datalog negation?
-    LOG(WARNING) << "Rule not found";
-    return false;
-  }
-  if (!PushDatalogRule(rule)) {
-    LOG(ERROR) << "Could not retract authorization rule";
-    return false;
-  }
-  dl_retract(dl->db);
-  dl_transcript << "~";
-  VLOG(3) << "Datalog transcript:\n" << dl_transcript.str();
-  dl_transcript.str("");
-  dl_transcript.clear();
-  rules_ = new_rules;
-  // We don't have enough state to remvoe the implicit subprincipal rules, but
-  // leaving them in should be safe.
-  return SaveConfig();
-}
-
-bool DatalogGuard::AddRule(const Predicate &pred) {
-  list<unique_ptr<Predicate>> conditions;
-  list<string> variables;
-  return AddRule(variables, conditions, pred);
-}
-
-bool DatalogGuard::AddRule(const list<unique_ptr<Predicate>> &conditions,
-                           const Predicate &consequent) {
-  list<string> variables;
-  return AddRule(variables, conditions, consequent);
-}
-
-bool DatalogGuard::AddRule(const list<string> &variables,
-                           const list<unique_ptr<Predicate>> &conditions,
-                           const Predicate &consequent) {
-  DatalogRule rule;
-  for (const auto &var : variables) {
-    rule.add_vars(var);
-  }
-  for (const auto &cond : conditions) {
-    scoped_ptr<Predicate> policy_says_cond(AddPolicySays(*cond, *policy_term_));
-    rule.add_conds(policy_says_cond->SerializeToString());
-  }
-  scoped_ptr<Predicate> policy_says_consequent(AddPolicySays(consequent, *policy_term_));
-  rule.set_consequent(policy_says_consequent->SerializeToString());
-  if (!PushDatalogRule(rule)) {
-    LOG(ERROR) << "Could not install authorization rule";
-    return false;
-  }
-  dl_assert(dl->db);
-  dl_transcript << ".";
-  VLOG(3) << "Datalog transcript:\n" << dl_transcript.str();
-  dl_transcript.str("");
-  dl_transcript.clear();
-  AddDatalogRule(rule, &rules_);
-
-  // TODO(kwalsh) Also add implicit rules for subprincipals
-  
-  return SaveConfig();
-}
-
-bool DatalogGuard::AddRule(const string &desc) {
-  stringstream in(desc);
+bool DatalogGuard::ParseRule(const string &rule, set<string> *vars,
+                             list<unique_ptr<Predicate>> *conds,
+                             scoped_ptr<Predicate> *consequent) {
+  stringstream in(rule);
   bool quantified = (in.peek() == '(');
-  list<string> vars;
+  // Get the variables, if any.
+  vars->clear();
   if (quantified) {
     skip(in, "(forall ");
     if (!in) {
@@ -521,7 +272,11 @@ bool DatalogGuard::AddRule(const string &desc) {
       return false;
     }
     for (;;) {
-      vars.push_back(GetIdentifier(in));
+      if (vars.find(var) != vars.end()) {
+        LOG(ERROR) << "Duplicate quantification variable ";
+        return false;
+      }
+      vars->insert(GetIdentifier(in));
       if (!in) {
         LOG(ERROR) << "Expecting variable name after 'forall'";
         return false;
@@ -540,15 +295,25 @@ bool DatalogGuard::AddRule(const string &desc) {
       return false;
     }
   }
-  list<unique_ptr<Predicate>> conds;
-  scoped_ptr<Predicate> consequent;
+  // Check for conditions.
+  conds->clear();
   scoped_ptr<Predicate> pred(Predicate::ParseFromStream(in));
   if (!in) {
-    LOG(ERROR) << "Expecting condition or consequent after variable list";
+    LOG(ERROR) << "Expecting condition or consequent";
     return false;
   }
-  if (in.peek() == ' ') {
-    conds.push_back(std::move(unique_ptr<Predicate>(pred.release())));
+  if (in.peek() != ' ' && in.eof()) {
+    // No conditions, get the consequent.
+    if (quantified) {
+      LOG(ERROR) << "Expecting implication inside quantification";
+      return false;
+    }
+    // no conditions
+    consequent.reset(pred.release());
+  } else {
+    // Have conditions, get them.
+    conds->push_back(
+        std::move(unique_ptr<Predicate>(AddPolicySays(*pred, *policy_term))));
     skip(in, " ");
     while (in && in.peek() == 'a') {
       skip(in, "and ");
@@ -557,32 +322,27 @@ bool DatalogGuard::AddRule(const string &desc) {
         LOG(ERROR) << "Expecting condition after 'and'";
         return false;
       }
-      conds.push_back(std::move(unique_ptr<Predicate>(pred.release())));
+      conds->push_back(
+          std::move(unique_ptr<Predicate>(AddPolicySays(*pred, *policy_term))));
       skip(in, " ");
     } 
     if (!in) {
       LOG(ERROR) << "Expecting space after condition";
       return false;
     }
+    // Get the implication and consequent after the conditions.
     skip(in, "implies ");
     if (!in) {
       LOG(ERROR) << "Expecting 'and ' or 'implies ' after condition";
       return false;
     }
-    consequent.reset(Predicate::ParseFromStream(in));
+    pred.reset(Predicate::ParseFromStream(in));
     if (!in) {
       LOG(ERROR) << "Expecting consequent after 'implies'";
       return false;
     }
-  } if (in.eof()) {
-    if (quantified) {
-      LOG(ERROR) << "Expecting implication inside quantification";
-      return false;
-    }
-    // no conditions
-    consequent.reset(pred.release());
+    consequent->reset(AddPolicySays(*pred, *policy_term_));
   }
-
   if (quantified) {
     skip(in, ")");
     if (!in) {
@@ -594,52 +354,89 @@ bool DatalogGuard::AddRule(const string &desc) {
     LOG(ERROR) << "Trailing text after rule";
     return false;
   }
-  return AddRule(vars, conds, *consequent);
+  return true;
 }
 
-// TODO(kwalsh) Add RemoveRule() methods.
+bool DatalogGuard::ProcessRule(const string &rule, bool retract) {
+  set<string> vars;
+  list<unique_ptr<Predicate>> conds;
+  scoped_ptr<Predicate> consequent;
+  if (!ParseRule(rule, &vars, &conds, &consequent)) {
+    LOG(ERROR) << "Could not parse rule";
+    return false;
+  }
+  if (!CheckRule(vars, conds, consequent)) {
+    LOG(ERROR) << "Rejecting unsafe rule";
+    return false;
+  }
+  PushRule(vars, conds, consequent);
+  if (retract) {
+    dl_retract(dl->db);
+    dl_transcript << "~";
+  } else {
+    dl_assert(dl->db);
+    dl_transcript << ".";
+  }
+  VLOG(3) << "Datalog transcript:\n" << dl_transcript.str();
+  dl_transcript.str("");
+  dl_transcript.clear();
+  return true;
+}
 
-string DatalogGuard::DebugString() const {
-  std::stringstream out;
-  out << "Database of " << rules_.rules_size() << " policy rules:";
-  int i = 0;
-  for (auto &rule : rules_.rules())
-    out << "\n  " << (i++) << ". " << DebugString(rule);
-  return out.str();
+bool DatalogGuard::AddRule(const string &rule) {
+  if (!ProcessRule(rule, false /* do not retract */)) {
+    LOG(ERROR) << "Could not process rule";
+    return false;
+  }
+  rules_.add_rules(rule);
+  // TODO(kwalsh) Also add implicit rules for subprincipals
+  return SaveConfig();
+}
+
+bool DatalogGuard::RetractRule(const string &rule) {
+  if (!ProcessRule(rule, true /* retract */)) {
+    LOG(ERROR) << "Could not process rule";
+    return false;
+  }
+  bool found = false;
+  for (int i = rules_.rules_size() - 1; i >= 0; i--) {
+    if (rules_.rules(i) == rule) {
+      found = true;
+      rules_.mutable_rules()->DeleteSubrange(i, 1);
+    }
+  }
+  if (!found) {
+    LOG(WARNING) << "Rule to be revoked was not found";
+    return false;
+  }
+  // We don't have enough state to remvoe the implicit subprincipal rules, but
+  // leaving them in should be safe.
+  return SaveConfig();
+}
+
+bool DatalogGuard::Query(const string &query) {
+  scoped_ptr<Predicate> pred(Predicate::ParseFromString(query));;
+  if (pred.get() == nullptr) {
+    LOG(ERROR) << "Could not parse query";
+    return false;
+  }
+  PushPredicate(*pred);
+  dl_transcript << "?";
+  VLOG(3) << "Datalog transcript:\n" << dl_transcript.str();
+  dl_transcript.str("");
+  dl_transcript.clear();
+  dl_answers_t a;
+  dl_ask(dl->db, &a);
+  if (a == nullptr) {
+    return false;
+  }
+  dl_free(a);
+  return true;
 }
 
 int DatalogGuard::RuleCount() const { return rules_.rules_size(); }
 
-bool DatalogGuard::GetRule(int i, string *desc) const {
-  if (i < 0 || i > rules_.rules_size()) {
-    LOG(ERROR) << "Invalid policy rule index";
-    return false;
-  }
-  desc->assign(DebugString(rules_.rules(i)));
-  return true;
-}
-
-string DatalogGuard::DebugString(const DatalogRule &rule) const {
-  std::stringstream out;
-  bool need_paren = (rule.vars_size() > 0);
-  if (need_paren) out << "(";
-  if (rule.vars_size() > 0) {
-    const auto &vars = rule.vars();
-    out << "forall " << join(vars.begin(), vars.end(), ", ");
-    out << " : ";
-  }
-  if (rule.conds_size() > 0) {
-    string delim = "";
-    for (const auto &cond : rule.conds()) {
-      out << delim << cond;
-      delim = " and ";
-    }
-    out << " implies ";
-  }
-  out << rule.consequent();
-  if (need_paren) out << ")";
-  return out.str();
-}
+string DatalogGuard::GetRule(int i) const { return rules_.rule(i); }
 
 bool DatalogGuard::ParseConfig() {
   // Load basic configuration.
@@ -672,15 +469,10 @@ bool DatalogGuard::ParseConfig() {
     return false;
   }
   for (const auto &rule : rules_.rules()) {
-    if (!PushDatalogRule(rule)) {
-      LOG(ERROR) << "Rule could not be installed";
+    if (!ProcessRule(rule, false /* do not retract */)) {
+      LOG(ERROR) << "Could not process rule";
       return false;
     }
-    dl_assert(dl->db);
-    dl_transcript << ".";
-    VLOG(3) << "Datalog transcript:\n" << dl_transcript.str();
-    dl_transcript.str("");
-    dl_transcript.clear();
   }
   return true;
 }

@@ -147,6 +147,17 @@ TaoDomain *TaoDomain::Load(const string &path, const string &password) {
   return admin.release();
 }
 
+bool ACLGuard::GetSubprincipalName(string *subprin) const {
+  // Use policy key and guard type as part of name
+  string key_prin;
+  if (!GetPolicyKeys()->GetPrincipalName(&key_prin)) {
+    LOG(ERROR) << "Could not get policy key principal name";
+    return false;
+  }
+  subprin->assign(GuardTypeName() + "(" + key_prin + ")");
+  return true;
+}
+
 TaoDomain *TaoDomain::DeepCopy() {
   scoped_ptr<TaoDomain> other(Load(path_));
   if (other.get() == nullptr) {

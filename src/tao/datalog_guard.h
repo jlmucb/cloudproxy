@@ -151,65 +151,43 @@ class DatalogGuard : public TaoDomain {
       : TaoDomain(path, value) {}
   virtual ~DatalogGuard() {}
 
-  /// These methods have the same semantics as in TaoGuard.
+  virtual string GuardTypeName() { return "DatalogGuard"; }
+
+  /// These methods have the same semantics as in TaoGuard. DatalogGuard
+  /// supports the basic syntax for rules and queries, i.e.
+  ///   Authorized(P, op, args...).
+  ///
+  /// DatalogGuard also supports two built-in predicates for rules or queries:
+  ///   says(P, "Pred", args...)
+  /// and
+  ///   subprin(P, Parent, Extension).
+  ///
+  /// DatalogGuard also supports any other predicate for rules or queries:
+  ///   Pred(args...).
+  /// Internally, predicates other than the built-in ones are translated to
+  /// says()-style predicates with the policy principal as the speaker, i.e.:
+  ///   says("Key(\"policy key material...\")", "Pred", args...)
+  /// where each arg is converted to a string or integer or, in some cases, to a
+  /// quantification variable.
+  ///
+  /// DatalogGuard also supports conditional predicates for rules:
+  ///   Condition and ... implies Consequent.
+  /// Here, the conditions and consequent are predicates as above.
+  ///
+  /// DatalogGuard also supports quantified conditional predicates for rules:
+  ///   (forall Varaible...: Condition and ... implies Consequent).
+  /// Here, the conditions and consequent are predicates as above, and the
+  /// variables are simple identifiers. In order to ensure Datalog safety, all
+  /// quantification variables must appear somewhere in the conditions, and a
+  /// subset of them may appear in the consequent.
+  ///
   /// @{
-  virtual bool GetSubprincipalName(string *subprin) const;
-  virtual bool IsAuthorized(const string &name, const string &op,
-                            const list<unique_ptr<Term>> &args);
-  virtual bool Authorize(const string &name, const string &op,
-                         const list<unique_ptr<Term>> &args);
-  virtual bool Revoke(const string &name, const string &op,
-                      const list<unique_ptr<Term>> &args);
-  virtual string DebugString() const;
+  virtual bool AddRule(const string &rule);
+  virtual bool RetractRule(const string &rule);
+  virtual bool Query(const string &query);
+  virtual int RuleCount() const;
+  virtual string GetRule(int i) const;
   /// @}
-
-  /// Add an unconditional datalog authorization rule of the form:
-  ///   Pred(args...)
-  /// If the predicate is "says()", the first argument should be a principal
-  /// name. If the predicate is "IsAuthorized", the first argument should be a
-  /// principal name and the second a quoted string describing the operation.
-  /// @param pred The rule predicate, which must not contain quantificaton
-  /// variables.
-  bool AddRule(const Predicate &pred);
-
-  /// Add a conditional datalog authorization rule, without quantification, of
-  /// the form:
-  ///   Condition and ... implies Pred(args...)
-  /// The consequent and conditions are predicates as above.
-  /// @param conditions The condition predicates, which must not contain
-  /// quantificaton variables.
-  /// @param consequent The consequent predicate, which must not contain
-  /// quantificaton variables.
-  bool AddRule(const list<unique_ptr<Predicate>> &conditions,
-               const Predicate &consequent);
-
-  /// Add a conditional datalog authorization rule, with quantification, of the
-  /// form:
-  ///   (forall Var... : Condition and ... implies Pred(args...))
-  /// The consequent and conditions are predicates as above.
-  /// @param conditions The condition predicates, which must contain
-  /// each of the quantificaton variables.
-  /// @param consequent The consequent predicate, which may contain
-  /// some of the quantificaton variables.
-  bool AddRule(const list<string> &variables,
-               const list<unique_ptr<Predicate>> &conditions,
-               const Predicate &consequent);
-
-  /// Add a conditional (with or without quantification) or unconditional rule
-  /// of the form:
-  ///   (forall Var... : Condition and ... implies Pred(args...))
-  /// or:
-  ///   Condition and ... implies Pred(args...)
-  /// or:
-  ///   Pred(args...)
-  /// @param desc The rule, encoded as text.
-  bool AddRule(const string &desc);
-
-  /// Get a count of how many rules there are.
-  int RuleCount() const;
-
-  /// Get information about the i^th policy rule
-  bool GetRule(int i, string *desc) const;
 
   constexpr static auto DatalogSigningContext = "tao::SignedDatalogRules Version 1";
 
@@ -217,6 +195,33 @@ class DatalogGuard : public TaoDomain {
 
  protected:
   virtual bool Init();
+
+  /// Push a predicate to the datalog engine. 
+  /// @param pred The predicate.
+  virtual void PushPredicate(const Predicate &pred);
+
+  /// Push a rule to the datalog engine. No checking is done for rule safety.
+  /// @param vars The quantification variables, if any.
+  /// @param conds The conditions, if any.
+  /// @param consequent The consequent.
+  virtual void PushRule(const set<string> &vars,
+                        const list<unique_ptr<Predicate>> &conds,
+                        const Predicate &consequent);
+
+  /// Parse a rule, adding implicity says(K_Policy, ...) as needed. No checking
+  /// is done for variable usage (i.e. Datalog rule safety).
+  /// @param rule The rule.
+  /// @param[out] vars The quantification variables, if any.
+  /// @param[out] conds The conditions, if any.
+  /// @param[out] consequent The consequent.
+  virtual bool ParseRule(const string &rule, set<string> *vars,
+                         list <unique_ptr<Predicate>> *conds,
+                         scoped_ptr<Predicate> *consequent);
+
+  /// Push a rule to the datalog policy engine stack. 
+  /// @param rule The rule.
+  /// @param revoke Whether to retract the rule (vs. assert it).
+  virtual bool ProcessRule(const string &rule, bool retract);
 
   /// Parse all configuration parameters from the configuration file and load
   /// keys and other state. This loads and checks the signature on the
@@ -227,10 +232,6 @@ class DatalogGuard : public TaoDomain {
   /// other state. This signs and saves the ACLs. This fails if the
   /// TaoDomain is locked.
   virtual bool SaveConfig() const;
-
-  /// Push a rule to the datalog engine.
-  /// @param rule The rule to push on the datalog stack.
-  virtual bool PushDatalogRule(const DatalogRule &rule);
 
   /// Construct a datalog rule comprising a simple predicate of the form
   /// says(K_policy, "IsAuthorized", name, op, args...).

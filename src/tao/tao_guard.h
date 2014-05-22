@@ -39,39 +39,107 @@ class TaoGuard {
   /// @param[out] subprin The name.
   virtual bool GetSubprincipalName(string *subprin) const = 0;
 
-  /// Check whether a principal is authorized to perform an operation.
-  /// @param name The name of the principal requesting the operation.
+  /// Get a name for this type of guard that can be used as a predicate name.
+  virtual string GuardTypeName() const = 0;
+
+  /// Methods that take lists of Term arguments.
+  /// @{
+
+  // Construct an authorization predicate of the form:
+  //   Authorize(name, op, args...)
+  /// @param name The name of the principal.
   /// @param op The name of the operation.
   /// @param args A list of arguments to the operation.
-  virtual bool IsAuthorized(const string &name, const string &op,
-                            const list<unique_ptr<Term>> &args) = 0;
+  static string MakePredicate(const string &name, const string &op,
+                              const list<unique_ptr<Term>> &args);
 
   /// Authorize a principal to perform an operation.
   /// @param name The name of the principal.
   /// @param op The name of the operation.
   /// @param args A list of arguments to the operation.
   virtual bool Authorize(const string &name, const string &op,
-                         const list<unique_ptr<Term>> &args) = 0;
+                         const list<unique_ptr<Term>> &args) {
+    return AddRule(MakePredicate(name, op, args));
+  }
 
-  /// Attempt to revoke authorization for a principal to perform an operation,
+  /// Retract an authorization for a principal to perform an operation,
   /// essentially reversing the effect of an Authorize() call with identical
-  /// name, op, and args.
+  /// name, op, and args. Note: This reverses the effect of an Authorize() call
+  /// with identical parameters or the equivalent AddRule() call. However,
+  /// particluarly when expressive policies are supported (e.g. an "authorize
+  /// all" rule), other rules may still be in place authorizing the principal to
+  /// perform the operation.
   /// @param name The name of the principal.
   /// @param op The name of the operation.
   /// @param args A list of arguments to the operation.
-  /// Note, we say "attempt" because there may be a variety of policies in place
-  /// that authorize a principal to perform the operation, particularly when the
-  /// authorization logic is expressive. For instance, if there is an "allow
-  /// all" policy, or an "allow any principal with property P" policy, then this
-  /// function can't be expected to know if or when the given name meets those
-  /// criteria. Instead, this function just handles the simplest case where the
-  /// principal name was explicitly and individually authorized, e.g. via
-  /// Authorize().
-  virtual bool Revoke(const string &name, const string &op,
-                      const list<unique_ptr<Term>> &args) = 0;
+  virtual bool Retract(const string &name, const string &op,
+                      const list<unique_ptr<Term>> &args) {
+    return RetractRule(MakePredicate(name, op, args));
+  }
+
+  /// Check whether a principal is authorized to perform an operation.
+  /// @param name The name of the principal requesting the operation.
+  /// @param op The name of the operation.
+  /// @param args A list of arguments to the operation.
+  virtual bool IsAuthorized(const string &name, const string &op,
+                            const list<unique_ptr<Term>> &args);
+
+  /// @}
+  
+  /// Methods that take lists of string arguments. Semantics are the same as
+  /// above.
+  /// @{
+  static string MakePredicate(const string &name, const string &op,
+                              const list<string> &args);
+  virtual bool Authorize(const string &name, const string &op,
+                         const list<string> &args) {
+    return AddRule(MakePredicate(name, op, args));
+  }
+  virtual bool Retract(const string &name, const string &op,
+                      const list<string> &args) {
+    return RetractRule(MakePredicate(name, op, args));
+  }
+  virtual bool IsAuthorized(const string &name, const string &op,
+                            const list<string> &args);
+  /// @}
+
+  /// Methods for manipulating subclass-specific policy rules.
+  /// @{
+
+  /// Add a policy rule. Subclasses should support at least rules of the form:
+  ///   Authorized(P, op, args...)
+  /// Which is equivalent to calling Authorize(P, op, args...), with each of the
+  /// arguments converted to either a string or integer.
+  /// @param rule The rule, encoded as text.
+  virtual bool AddRule(const string &rule) = 0;
+
+  /// Retract a rule previously added via AddRule() or the equivalent
+  /// Authorize() methods.
+  /// @param rule The rule, encoded as text.
+  virtual bool RetractRule(const string &rule) = 0;
+
+  /// Query the policy. Subclasses should support at least queries of the form:
+  ///   Authorized(P, op, args...)
+  /// @param query The query, encoded as text.
+  virtual bool Query(const string &query) = 0;
+
+  /// Get a count of how many rules there are.
+  virtual int RuleCount() const = 0;
+
+  /// Get the i^th policy rule, if it exists.
+  /// @param i The rule index.
+  virtual string GetRule(int i) const = 0;
+
+  /// Get a debug string for the i^th policy rule.
+  /// @param i The rule index.
+  virtual string RuleDebugString(int i) const {
+    return elideString(GetRule(i));
+  }
+
+  /// @}
 
   /// Get a string suitable for showing users authorization info.
-  virtual string DebugString() const = 0;
+  virtual string DebugString() const;
 };
 }  // namespace tao
 

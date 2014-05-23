@@ -229,6 +229,13 @@
 #			],
 #		},
 		{
+			'target_name' : 'demo',
+			'type' : 'executable',
+			'sources' : [ 'demo.cc', ],
+			'include_dirs' : [ '..', ],
+			'dependencies' : [ '../tao/tao.gyp:tao', ],
+		},
+		{
 			'target_name' : 'tao_admin',
 			'type' : 'executable',
 			'sources' : [

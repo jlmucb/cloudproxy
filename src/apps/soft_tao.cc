@@ -69,6 +69,7 @@ int main(int argc, char **argv) {
   if (FLAGS_show) {
     scoped_ptr<SoftTao> tao;
     tao.reset(new SoftTao(keys.release()));
+    CHECK(tao->Init());
 
     string ser;
     CHECK(tao->SerializeToStringWithDirectory(path, pass, &ser));

@@ -98,11 +98,29 @@ void StringReplaceAll(const string &x, const string &y, string *s) {
     s->replace(i, x.length(), y);
 }
 
+string getEnvString(const string &name) {
+  const char *p = getenv(name.c_str());
+  if (p == nullptr)
+    return "";
+  else
+    return string(p);
+}
+
 void handleCanExecute(TaoDomain *admin, const string &pathlist, bool retract) {
   // TODO(kwalsh) For host, we could deserialize Tao from env var then call
   // GetTaoName(), then append policy prin. Or assume linuxhost and call
   // GetTaoName for that.
   string host = FLAGS_host;
+  if (host.empty()) {
+    host = getEnvString("GOOGLE_TAO_SOFT");
+  }
+  if (host.empty()) {
+    host = getEnvString("GOOGLE_TAO_TPM");
+    string pcrs = getEnvString("GOOGLE_TAO_PCRS");
+    if (!host.empty() &&  !pcrs.empty()) {
+      host += "::" + pcrs;
+    }
+  }
   CHECK(!host.empty());
   // TODO(kwalsh) We assume LinuxHost and LinuxProcessFactory here.
   // string policy_subprin;

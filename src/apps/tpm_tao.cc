@@ -23,6 +23,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include "tao/auth.h"
 #include "tao/tpm_tao.h"
 #include "tao/util.h"
 
@@ -37,6 +38,7 @@ using tao::Tao;
 using tao::WriteStringToFile;
 using tao::join;
 using tao::split;
+using tao::Principal;
 
 DEFINE_string(path, "tpm",
               "A path in which to store TPMTao AIK and settings.");
@@ -89,9 +91,18 @@ int main(int argc, char **argv) {
     string ser3;
     CHECK(tao->SerializeToStringWithDirectory(path, &ser3));
 
-    printf("export %s='%s';\n", Tao::HostTaoEnvVar, ser1.c_str());
-    printf("export %s='%s';\n", Tao::HostTaoEnvVar, ser2.c_str());
-    printf("export %s='%s';\n", Tao::HostTaoEnvVar, ser3.c_str());
+    printf("# export %s='%s'\n", Tao::HostTaoEnvVar, ser1.c_str());
+    printf("# export %s='%s'\n", Tao::HostTaoEnvVar, ser2.c_str());
+    printf("export %s='%s'\n", Tao::HostTaoEnvVar, ser3.c_str());
+
+    string tao_name;
+    CHECK(tao->GetTaoName(&tao_name));
+    scoped_ptr<Principal> tao_prin(Principal::ParseFromString(tao_name));
+    CHECK(tao_prin.get() != nullptr);
+    printf("export GOOGLE_TAO_TPM='%s'\n",
+           tao_prin->Parent()->SerializeToString().c_str());
+    printf("export GOOGLE_TAO_PCRS='%s'\n",
+           tao_prin->Extension()->SerializeToString().c_str());
   }
 
   return 0;

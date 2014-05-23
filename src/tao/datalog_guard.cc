@@ -414,6 +414,13 @@ bool DatalogGuard::RetractRule(const string &rule) {
   return SaveConfig();
 }
 
+bool DatalogGuard::Clear() {
+  rules_.clear_rules();
+  dl_close(dl_->db);
+  dl_->db = dl_open();
+  return SaveConfig();
+}
+
 bool DatalogGuard::Query(const string &query) {
   scoped_ptr<Predicate> pred(Predicate::ParseFromString(query));
   if (pred.get() == nullptr) {

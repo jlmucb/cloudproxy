@@ -64,8 +64,20 @@ DEFINE_string(org, "(not really) Google",
 DEFINE_string(canexecute, "",
               "Comma-separated list of paths of programs "
               "to be authorized to execute");
+DEFINE_string(retractcanexecute, "",
+              "Comma-separated list of paths of programs "
+              "for which to retract authorization to execute");
 DEFINE_string(host, "",
               "The principal name of the host where programs will execute.");
+
+DEFINE_string(add, "", "A policy rule to be added");
+DEFINE_string(retract, "", "A policy rule to be retracted");
+DEFINE_bool(clear, false, "Clear all policy rules before other changes");
+DEFINE_string(query, "", "A policy query to be checked");
+
+DEFINE_string(getprogramhash, "", "Path of program to be hashed");
+
+DEFINE_bool(quiet, false, "Be more quiet");
 
 //DEFINE_string(canclaim, "",
 //              "Comma-separated list of name:subprin pairs "
@@ -86,6 +98,46 @@ void StringReplaceAll(const string &x, const string &y, string *s) {
     s->replace(i, x.length(), y);
 }
 
+void handleCanExecute(TaoDomain *admin, const string &pathlist, bool retract) {
+  // TODO(kwalsh) For host, we could deserialize Tao from env var then call
+  // GetTaoName(), then append policy prin. Or assume linuxhost and call
+  // GetTaoName for that.
+  string host = FLAGS_host;
+  CHECK(!host.empty());
+  // TODO(kwalsh) We assume LinuxHost and LinuxProcessFactory here.
+  // string policy_subprin;
+  // CHECK(admin->GetSubprincipalName(&policy_subprin));
+  // host += "::" + policy_subprin;
+  LinuxProcessFactory factory;
+  string child_subprin;
+  stringstream in(pathlist);
+  string path;
+  while (getline(in, path, ',')) {  // split on commas
+    int next_id = 0;                // assume no IDs.
+    CHECK(factory.MakeHostedProgramSubprin(next_id, path, &child_subprin));
+
+    if (retract) {
+      if (!FLAGS_quiet)
+        printf("Retracting program authorization to execute:\n"
+               "  path: %s\n"
+               "  host: %s\n"
+               "  name: ::%s\n",
+               path.c_str(), elideString(host).c_str(),
+               elideString(child_subprin).c_str());
+      CHECK(admin->Retract(host + "::" + child_subprin, "Execute", list<string>{}));
+    } else {
+      if (!FLAGS_quiet)
+        printf("Authorizing program to execute:\n"
+               "  path: %s\n"
+               "  host: %s\n"
+               "  name: ::%s\n",
+               path.c_str(), elideString(host).c_str(),
+               elideString(child_subprin).c_str());
+      CHECK(admin->Authorize(host + "::" + child_subprin, "Execute", list<string>{}));
+    }
+  }
+}
+
 int main(int argc, char **argv) {
   string usage = "Administrative utility for TaoDomain.\nUsage:\n  ";
   google::SetUsageMessage(usage + argv[0] + " [options]");
@@ -96,7 +148,8 @@ int main(int argc, char **argv) {
   bool did_work = false;
 
   if (!FLAGS_init.empty()) {
-    printf("Initializing new configuration in: %s\n", FLAGS_config_path.c_str());
+    if (!FLAGS_quiet)
+      printf("Initializing new configuration in: %s\n", FLAGS_config_path.c_str());
     string initial_config;
     CHECK(ReadFileToString(FLAGS_init, &initial_config));
     StringReplaceAll("<NAME>", FLAGS_name, &initial_config);
@@ -109,37 +162,61 @@ int main(int argc, char **argv) {
     CHECK_NOTNULL(admin.get());
     did_work = true;
   } else {
-    printf("Loading configuration from: %s\n", FLAGS_config_path.c_str());
+    if (!FLAGS_quiet) 
+      printf("Loading configuration from: %s\n", FLAGS_config_path.c_str());
     admin.reset(TaoDomain::Load(FLAGS_config_path, FLAGS_policy_pass));
     CHECK_NOTNULL(admin.get());
   }
 
+  if (FLAGS_clear) {
+    if (!FLAGS_quiet)
+      printf("Clearing all policy rules.\n");
+    CHECK(admin->Clear());
+  }
+
   if (!FLAGS_canexecute.empty()) {
-    // TODO(kwalsh) For host, we could deserialize Tao from env var then call
-    // GetTaoName(), then append policy prin. Or assume linuxhost and call
-    // GetTaoName for that.
-    string host = FLAGS_host;
-    CHECK(!host.empty());
-    // TODO(kwalsh) We assume LinuxHost and LinuxProcessFactory here.
-    // string policy_subprin;
-    //CHECK(admin->GetSubprincipalName(&policy_subprin));
-    //host += "::" + policy_subprin;
+    handleCanExecute(admin.get(), FLAGS_canexecute, false /* do not retract */);
+    did_work = true;
+  }
+
+  if (!FLAGS_retractcanexecute.empty()) {
+    handleCanExecute(admin.get(), FLAGS_retractcanexecute, true /* do retract */);
+    did_work = true;
+  }
+
+  if (!FLAGS_add.empty()) {
+    if (!FLAGS_quiet)
+      printf("Adding policy rule: %s\n", FLAGS_add.c_str());
+    CHECK(admin->AddRule(FLAGS_add));
+    did_work = true;
+  }
+
+  if (!FLAGS_retract.empty()) {
+    if (!FLAGS_quiet)
+      printf("Retracting policy rule: %s\n", FLAGS_retract.c_str());
+    CHECK(admin->AddRule(FLAGS_retract));
+    did_work = true;
+  }
+
+  if (!FLAGS_query.empty()) {
+    if (!FLAGS_quiet)
+      printf("Querying policy guard: %s\n", FLAGS_query.c_str());
+    bool ok = admin->AddRule(FLAGS_query);
+    if (ok) {
+      printf("Policy supports query\n");
+    } else {
+      printf("Policy rejects query\n");
+    }
+    did_work = true;
+  }
+
+  if (!FLAGS_getprogramhash.empty()) {
     LinuxProcessFactory factory;
     string child_subprin;
-    stringstream paths(FLAGS_canexecute);
-    string path;
-    while (getline(paths, path, ',')) {  // split on commas
-      int next_id = 0; // assume no IDs.
-      CHECK(factory.MakeHostedProgramSubprin(next_id, path, &child_subprin));
-
-      printf("Authorizing program to execute:\n"
-             "  path: %s\n"
-             "  host: %s\n"
-             "  name: ::%s\n",
-             path.c_str(), elideString(host).c_str(),
-             elideString(child_subprin).c_str());
-      CHECK(admin->Authorize(host+"::"+child_subprin, "Execute", list<unique_ptr<Term>>{}));
-    }
+    string path = FLAGS_getprogramhash;;
+    int next_id = 0;  // assume no IDs.
+    CHECK(factory.MakeHostedProgramSubprin(next_id, path, &child_subprin));
+    printf("%s\n", child_subprin.c_str());
     did_work = true;
   }
 
@@ -162,15 +239,16 @@ int main(int argc, char **argv) {
 //  }
 
   if (!did_work) {
-    VLOG(0) << "  name: " << admin->GetName();
-    VLOG(0) << "  policy key: ";
-    VLOG(0) << "    public: " << admin->GetPolicyKeys()->SigningPublicKeyPath();
-    VLOG(0) << "    private: "
-            << admin->GetPolicyKeys()->SigningPrivateKeyPath();
-    VLOG(0) << "  tao ca: " << admin->GetTaoCAHost() << ":"
-            << admin->GetTaoCAPort();
-    VLOG(0) << "  auth type: " << admin->GetAuthType();
-    VLOG(0) << admin->DebugString();
+    printf("  name: %s\n", admin->GetName().c_str());
+    printf("  policy key: ");
+    printf("    public: %s\n",
+           admin->GetPolicyKeys()->SigningPublicKeyPath().c_str());
+    printf("    private: %s\n",
+           admin->GetPolicyKeys()->SigningPrivateKeyPath().c_str());
+    printf("  tao ca: %s:%s\n", admin->GetTaoCAHost().c_str(),
+           admin->GetTaoCAPort().c_str());
+    printf("  auth type: %s\n", admin->GetAuthType().c_str());
+    printf("%s\n", admin->DebugString().c_str());
   }
 
   return 0;

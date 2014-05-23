@@ -118,6 +118,9 @@ class TaoGuard {
   /// @param rule The rule, encoded as text.
   virtual bool RetractRule(const string &rule) = 0;
 
+  /// Retract all rules.
+  virtual bool Clear() = 0;
+
   /// Query the policy. Subclasses should support at least queries of the form:
   ///   Authorized(P, op, args...)
   /// @param query The query, encoded as text.

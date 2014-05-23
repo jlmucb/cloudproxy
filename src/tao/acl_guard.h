@@ -70,6 +70,7 @@ class ACLGuard : public TaoDomain {
   /// @{
   virtual bool AddRule(const string &rule);
   virtual bool RetractRule(const string &rule);
+  virtual bool Clear();
   virtual bool Query(const string &query);
   virtual int RuleCount() const;
   virtual string GetRule(int i) const;

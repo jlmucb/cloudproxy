@@ -48,6 +48,11 @@ bool ACLGuard::RetractRule(const string &rule) {
   return SaveConfig();
 }
 
+bool ACLGuard::Clear() {
+  aclset_.clear_entries();
+  return SaveConfig();
+}
+
 bool ACLGuard::Query(const string &query) {
   for (auto &entry : aclset_.entries()) {
     if (entry == query) {

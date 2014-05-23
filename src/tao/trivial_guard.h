@@ -51,6 +51,7 @@ class TrivialGuard : public TaoGuard {
 
   virtual bool AddRule(const string &rule) { return false; }
   virtual bool RetractRule(const string &rule) { return false; }
+  virtual bool Clear() { return false; }
   virtual bool Query(const string &query) { return (policy_ == LiberalPolicy); }
   virtual int RuleCount() const { return 1; }
   virtual string GetRule(int i) const {

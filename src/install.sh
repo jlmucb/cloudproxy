@@ -254,7 +254,6 @@ function setup()
 		rm -rf tpm
 		$tpm_tao --path tpm --pcrs=$TAO_TPM_PCRS --create --noshow
 		$tpm_tao --path tpm --show >> /tmp/tao_env
-		source /tmp/tao_env
 	else
 		echo "Creating SoftTao key and settings."
 		rm -rf soft_tao
@@ -263,19 +262,46 @@ function setup()
 	fi
 	mv /tmp/tao_env tao.env
 
-	# TODO(kwalsh) set up ACLs or datalog rules here
-	#$admin -whitelist ${TAO_HOSTED_PROGRAMS// /,}
+	refresh
+}
+
+function refresh()
+{
+	source tao.env # sets $GOOGLE_HOST_TAO,
+	               # GOOGLE_TAO_TPM, GOOGLE_TAO_PCRS, and/or GOOGLE_TAO_SOFT
+
+	# Set up default execution policy.
+	if [ "${TAO_GUARD}" == "datalog" ]; then
+		$admin -clear
+		# Rule for TPM and PCRs combinations that make for a good OS
+		$admin -add "(forall S, TPM, PCRs: TrustedPlatform(TPM) and TrustedKernelPCRs(PCRs) and subprin(S, TPM, PCRs) implies TrustedOS(S))"
+		# Rule for OS and program hash that make for a good hosted program
+		$admin -add "(forall P, OS, Hash: TrustedOS(OS) and TrustedProgramHash(Hash) and subprin(P, OS, Hash) implies MemberProgram(P))"
+		# Rule for programs that can execute
+		$admin -add "(forall P: MemberProgram(P) implies Authorized(P, \"Execute\"))"
+		# Add the TPM keys, PCRs, and/or SoftTao keys
+		if [ "$TAO_USE_TPM" == "yes" ]; then
+			$admin -add 'TrustedPlatform('${GOOGLE_TAO_TPM}')'
+			$admin -add 'TrustedKernelPCRs('${GOOGLE_TAO_PCRS}')'
+		else
+			$admin -add 'TrustedOS('${GOOGLE_TAO_SOFT}')'
+		fi
+		# Add the program hashes, assuming LinuxHost and LinuxProcessFactory.
+		for prog in ${TAO_HOSTED_PROGRAMS}; do
+			proghash=`$admin -quiet -getprogramhash "$prog"`
+			$admin -add 'TrustedProgramHash('${proghash}')'
+		done
+	else
+		$admin -clear -canexecute ${TAO_HOSTED_PROGRAMS// /,}
+	fi
+
+	# TODO(kwalsh) set up fserver user ACLs here.
 	#$admin -newusers tmroeder,jlm
 	#$admin -signacl ${TAO_ROOT}/run/acls.ascii -acl_sig_path user_acls_sig
 	#mkdir -p file_client_files
 	#mkdir -p file_server_files
 	#mkdir -p file_server_meta
 	echo "Tao configuration is ready"
-}
-
-function refresh()
-{
-	$admin -refresh -whitelist ${TAO_HOSTED_PROGRAMS// /,}
 }
 
 function startsvcs()

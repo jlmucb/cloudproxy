@@ -72,7 +72,11 @@ int main(int argc, char **argv) {
 
     string ser;
     CHECK(tao->SerializeToStringWithDirectory(path, pass, &ser));
-    printf("export %s='%s';\n", Tao::HostTaoEnvVar, ser.c_str());
+    printf("export %s='%s'\n", Tao::HostTaoEnvVar, ser.c_str());
+
+    string tao_name;
+    CHECK(tao->GetTaoName(&tao_name));
+    printf("export GOOGLE_TAO_SOFT='%s'\n", tao_name.c_str());
   }
 
   return 0;

@@ -151,7 +151,7 @@ VMCS_OBJECT* vmcs_hierarchy_get_vmcs(VMCS_HIERARCHY *obj, VMCS_LEVEL level)
         return NULL;
 #endif
     VMM_ASSERT(obj);
-    if (level>=VMCS_LEVEL_0 && level<VMCS_LEVELS) {
+    if (((int)level)>=VMCS_LEVEL_0 && ((int)level)<VMCS_LEVELS) {
         vmcs = obj->vmcs[level];
     }
     else {

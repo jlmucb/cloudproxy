@@ -490,9 +490,9 @@ VMM_STATUS vmdb_breakpoint_info ( GUEST_CPU_HANDLE gcpu, UINT32 bp_id,
 // Arguments: self-descriptive
 // Returns  : VMM_STATUS
 VMM_STATUS vmdb_breakpoint_add (GUEST_CPU_HANDLE gcpu,
-    ADDRESS  linear_address, VMDB_BREAKPOINT_TYPE    bp_type,
+    ADDRESS  linear_address, VMDB_BREAKPOINT_TYPE bp_type,
     VMDB_BREAK_LENGTH_TYPE  bp_len, UINT16   skip_counter)
-    {
+{
     int                     bp_id;
     VMDB_THREAD_CONTEXT     *vmdb;
     VMM_STATUS              status = VMM_ERROR;
@@ -508,7 +508,7 @@ VMM_STATUS vmdb_breakpoint_add (GUEST_CPU_HANDLE gcpu,
             break;
             }
 
-        if (bp_type < VMDB_BREAK_TYPE_FIRST || bp_type > VMDB_BREAK_TYPE_LAST) {
+        if(((int)bp_type)<VMDB_BREAK_TYPE_FIRST || bp_type>VMDB_BREAK_TYPE_LAST) {
             VMDB_LOG(level_warning,"[vmdb] Invalid break type(%d)\n", bp_type);
             break;
             }
@@ -517,7 +517,7 @@ VMM_STATUS vmdb_breakpoint_add (GUEST_CPU_HANDLE gcpu,
             bp_len = VMDB_BREAK_LENGTH_1;
             }
 
-        if (bp_len < VMDB_BREAK_LENGTH_FIRST || bp_len > VMDB_BREAK_LENGTH_LAST) {
+        if (((int)bp_len)<VMDB_BREAK_LENGTH_FIRST || bp_len>VMDB_BREAK_LENGTH_LAST) {
             VMDB_LOG(level_warning,"[vmdb] Invalid break length(%d)\n", bp_len);
             break;
             }
@@ -529,8 +529,7 @@ VMM_STATUS vmdb_breakpoint_add (GUEST_CPU_HANDLE gcpu,
             break;
             }
 
-        /* here free entry for breakpoint is found, so update VMDB context
-        */
+        // here free entry for breakpoint is found, so update VMDB context
         vmdb->dr[bp_id] = linear_address;
         vmdb->skip_counter[bp_id] = skip_counter;
         DR7_GLOBAL_SET(vmdb->dr7, bp_id);

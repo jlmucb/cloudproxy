@@ -108,7 +108,7 @@ STARTOBJ=	$(B)/startup/addons.o $(B)/startup/create_guests.o \
 		$(B)/startup/layout_host_memory_for_mbr_loader.o \
 		$(B)/startup/vmm_extension.o
 
-VMEXITOBJ=	$(B)/vmexit/teardown_thunk2.o $(B)/vmexit/vmexit_ept.o \
+VMEXITOBJ=	$(B)/vmexit/vmexit_ept.o \
 		$(B)/vmexit/vmexit.o $(B)/vmexit/vmcall.o \
 		$(B)/vmexit/vmexit_init.o $(B)/vmexit/vmexit_sipi.o \
 		$(B)/vmexit/vmexit_analysis.o  \

@@ -36,7 +36,6 @@ endif
 #   vmexit_ud.c vmexit_task_switch.c vmexit_sipi.c vmexit_init.c
 #   vmcall.c vmexit_invlpg.c vmexit_invd.c vmexit_dbg.c vmexit_ept.c
 #   vmexit_analysis.c vmexit_dtr_tr_access.c vmexit_vmx.c vmx_teardown.c
-#   teardown_thunk.asm
 #   output: libvmexit.a
 
 mainsrc=    $(S)/vmm/vmexit
@@ -70,10 +69,11 @@ dobjs=      $(BINDIR)/vmexit.o $(BINDIR)/vmexit_io.o \
 	    $(BINDIR)/vmexit_invd.o $(BINDIR)/vmexit_dbg.o \
 	    $(BINDIR)/vmexit_dtr_tr_access.o $(BINDIR)/vmexit_vmx.o \
 	    $(BINDIR)/vmexit_vmx.o $(BINDIR)/vmx_teardown.o \
-	    $(BINDIR)/teardown_thunk2.o $(BINDIR)/vmexit_analysis.o \
+	    $(BINDIR)/vmexit_analysis.o \
 	    $(BINDIR)/vmexit_cr_access.o \
 	    $(BINDIR)/vmexit_msr.o \
 	    $(BINDIR)/vmexit_ept.o 
+#	    $(BINDIR)/teardown_thunk2.o 
 
 all: $(E)/libvmexit.a
  
@@ -82,9 +82,9 @@ $(E)/libvmexit.a: $(dobjs)
 	#$(LIBMAKER) -static -o $(E)/libvmexit.a $(dobjs)
 	$(LIBMAKER) -r $(E)/libvmexit.a $(dobjs)
 
-$(BINDIR)/teardown_thunk2.o: $(mainsrc)/teardown_thunk2.c
-	echo "teardown_thunk2.o"
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/teardown_thunk2.o $(mainsrc)/teardown_thunk2.c
+#$(BINDIR)/teardown_thunk2.o: $(mainsrc)/teardown_thunk2.c
+#	echo "teardown_thunk2.o"
+#	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(BINDIR)/teardown_thunk2.o $(mainsrc)/teardown_thunk2.c
 
 $(BINDIR)/vmexit.o: $(mainsrc)/vmexit.c
 	echo "vmexit.o" 

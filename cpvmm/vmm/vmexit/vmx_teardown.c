@@ -73,7 +73,9 @@ static
 void read_vmcs_to_get_guest_states(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_GUEST_STATES *guest_states);
 
 static BOOLEAN is_params_ok(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *p, UINT64 *state_hva);
+#if 0
 static BOOLEAN map_thunk_pages(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *teardown);
+#endif
 
 static UINT64 vmam_get_pml4_base_from_cr3(UINT64 cr3);
 static BOOLEAN vmam_hpa_to_hva(IN UINT64 hpa, OUT UINT64* hva);
@@ -100,7 +102,9 @@ BOOLEAN vmexit_vmm_teardown(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *vmm_tear
     VMM_TEARDOWN_GUEST_STATES* vm_guest_states = NULL;
     UINT64 state_hva = 0;
     REPORT_VMM_TEARDOWN_DATA vmm_teardown_data;
+#if 0
     UINT32 cpu_idx = hw_cpu_id();
+#endif
 
     vmm_teardown_data.nonce = vmm_teardown_params->nonce;
     if (!is_params_ok(gcpu, vmm_teardown_params, &state_hva) ||
@@ -130,18 +134,21 @@ BOOLEAN vmexit_vmm_teardown(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *vmm_tear
         idtr->limit = (UINT16)(vm_guest_states->IA32_IDTR_LIMIT);
         idtr->base  = (UINT64)(vm_guest_states->IA32_IDTR_BASE);
                 VMM_LOG(mask_anonymous, level_trace,"vmcall_teardown_64bits: idtr->limit = %p, idtr->base = %p\r\n", idtr->limit, idtr->base);
-
+#if 0
         if (!map_thunk_pages(gcpu, vmm_teardown_params)) {
             return FALSE;
         }
         // restore the guest states and jump to teardown thunk. 
         // never returns
-        call_teardown_thunk64( cpu_idx, vmm_teardown_params->guest_states_storage_virt_addr,
+        call_teardown_thunk64(cpu_idx, 
+            vmm_teardown_params->guest_states_storage_virt_addr,
             vm_guest_states->ADDR_OF_TEARDOWN_THUNK);
+#endif
     }
     else if(vmm_teardown_params->is_guest_x64_mode == 0){
         IA32_GDTR *gdtr = NULL;
         IA32_IDTR *idtr = NULL;
+#if 0
         BOOLEAN cr4_pae_is_on = FALSE;
 
         /* Boolean cr4_pae_is_on is obtained from guest CR4. This is
@@ -149,6 +156,7 @@ BOOLEAN vmexit_vmm_teardown(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *vmm_tear
          * call_teardown_thunk32() method below. */
         cr4_pae_is_on = BIT_GET64(
                    gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR4), 5);
+#endif
         gdtr = (IA32_GDTR *) (&(vm_guest_states->GUEST_GDTR_LO));
 
         // update gdtr contents
@@ -161,13 +169,14 @@ BOOLEAN vmexit_vmm_teardown(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *vmm_tear
         idtr->limit = (UINT16)(vm_guest_states->IA32_IDTR_LIMIT);
         idtr->base  = (UINT32)(vm_guest_states->IA32_IDTR_BASE);
                 VMM_LOG(mask_anonymous, level_trace, "vmcall_teardown_32bits: idtr->limit = %p, idtr->base = %p\r\n", idtr->limit, idtr->base);
-
+#if 0
         // restore the guest states and jump to teardown thunk. 
         // never returns
         call_teardown_thunk32( vmm_teardown_params->guest_states_storage_virt_addr,
                 COMPATIBILITY_CODE32_CS /*vmm_compat_cs*/,
                 vm_guest_states->ADDR_OF_TEARDOWN_THUNK,
                 vmm_teardown_params->cr3_td_sm_32, cr4_pae_is_on);
+#endif
     }
     else{
         VMM_LOG(mask_anonymous, level_error,"%%s (line %d): Error - teardown feature is not implemented in unknown processor mode\n", __FUNCTION__, __LINE__);
@@ -300,8 +309,10 @@ static BOOLEAN is_params_ok(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *p, UINT6
 }
 
 static VMM_LOCK teardown_lock = LOCK_INIT_STATE;
+#if 0
 static int teardown_mapped = 0;
 static int teardown_failed = 0;
+#endif
 
 void init_teardown_lock(void)
 {
@@ -316,29 +327,24 @@ void init_teardown_lock(void)
  *          1           0       return success
  *          1           1       return failure
  */
-
+#if 0
 static BOOLEAN map_thunk_pages(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *p)
 {
     BOOLEAN ret = FALSE;
     UINT64 tmp;
 
     lock_acquire(&teardown_lock);
-
     if ((teardown_mapped != 0) || (teardown_failed != 0)) {
         ret = (teardown_failed == 0) ? TRUE : FALSE;
         goto clean_up;
     }
-
     ret = vmam_add_to_host_page_table( gcpu, p->teardownthunk_gva, 1);
-
     if (!ret) {
         teardown_failed = 1;
         goto clean_up;
     }
-
     ret = vmam_add_to_host_page_table( gcpu, p->teardown_buffer_gva,
                       p->teardown_buffer_size / PAGE_4KB_SIZE);
-
     if (!ret) {
         teardown_failed = 1;
         goto clean_up;
@@ -349,7 +355,6 @@ clean_up:
 
     tmp = 0;
     hw_invlpg((void *)(p->teardownthunk_gva));
-
     while (tmp < p->teardown_buffer_size) {
         hw_invlpg((void *)(p->teardown_buffer_gva + tmp));
         tmp += PAGE_4KB_SIZE;
@@ -357,9 +362,9 @@ clean_up:
     lock_release(&teardown_lock);
     return ret;
 }
+#endif
 
-static 
-UINT64 vmam_get_pml4_base_from_cr3(UINT64 cr3) {
+static UINT64 vmam_get_pml4_base_from_cr3(UINT64 cr3) {
     return ALIGN_BACKWARD(cr3, VMAM_PDPT_ALIGNMENT);
 }
 

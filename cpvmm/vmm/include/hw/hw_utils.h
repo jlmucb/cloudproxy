@@ -221,13 +221,13 @@ typedef struct _CPUID_INFO_STRUCT {
 INLINE UINT32 hw_read_address_size(void)
 {
     CPUID_INFO_STRUCT cpu_info;
-    cpuid ( &cpu_info, 0x80000008);
+    cpuid(&cpu_info, 0x80000008);
     return CPUID_VALUE_EAX(cpu_info);
 }
 
 INLINE BOOLEAN is_rdtscp_supported(void)
 {
-    CPUID_PARAMS cpuid_params = {0};
+    CPUID_PARAMS cpuid_params = {0,0,0,0};
     cpuid_params.m_rax = CPUID_EXT_LEAF_1H; 
     hw_cpuid(&cpuid_params);  
     return BIT_GET64( cpuid_params.m_rdx, CPUID_EXT_LEAF_1H_EDX_RDTSCP_BIT)? TRUE:FALSE;
@@ -236,29 +236,28 @@ INLINE BOOLEAN is_rdtscp_supported(void)
 
 INLINE BOOLEAN is_invpcid_supported(void)
 {
-    CPUID_PARAMS cpuid_params = {0};
-
+    CPUID_PARAMS cpuid_params = {0,0,0,0};
     cpuid_params.m_rax = CPUID_LEAF_7H; 
     cpuid_params.m_rcx = CPUID_SUB_LEAF_0H; 
     hw_cpuid(&cpuid_params);  
-    return BIT_GET64( cpuid_params.m_rbx, CPUID_LEAF_7H_0H_EBX_INVPCID_BIT)? TRUE:FALSE;
+    return BIT_GET64(cpuid_params.m_rbx, CPUID_LEAF_7H_0H_EBX_INVPCID_BIT)? 
+                     TRUE:FALSE;
 }
 
 INLINE BOOLEAN is_fsgsbase_supported(void)
 {
-    CPUID_PARAMS cpuid_params = {0};
-
+    CPUID_PARAMS cpuid_params = {0,0,0,0};
     cpuid_params.m_rax = CPUID_LEAF_7H; 
     cpuid_params.m_rcx = CPUID_SUB_LEAF_0H; 
     hw_cpuid(&cpuid_params);  
-    return BIT_GET64( cpuid_params.m_rbx, CPUID_LEAF_7H_0H_EBX_FSGSBASE_BIT)? TRUE:FALSE;
+    return BIT_GET64(cpuid_params.m_rbx, CPUID_LEAF_7H_0H_EBX_FSGSBASE_BIT)? 
+              TRUE:FALSE;
 }
 
 
 INLINE BOOLEAN is_pcid_supported(void)
 {
-    CPUID_PARAMS cpuid_params = {0};
-
+    CPUID_PARAMS cpuid_params = {0,0,0,0};
     cpuid_params.m_rax = CPUID_LEAF_1H; 
     hw_cpuid(&cpuid_params);  
     return BIT_GET64( cpuid_params.m_rcx, CPUID_LEAF_1H_ECX_PCID_SUPPORT)? TRUE:FALSE;

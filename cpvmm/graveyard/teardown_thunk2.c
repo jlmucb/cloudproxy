@@ -149,7 +149,7 @@ int call_teardown_thunk64(UINT32 current_cpu_idx UNUSED,
                           UINT64 current_guest_states_hva UNUSED, UINT64 teardown_thunk_entry_hva UNUSED)
 {
 #if 0
-        int result = 0;
+  int result = 0;
   asm volatile(
         "\tmovl    %[current_cpu_idx], %%rcx\n"
         "\tmovq    %[current_guest_states_hvu], %%rdx\n"

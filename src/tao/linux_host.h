@@ -43,24 +43,29 @@ class LinuxAdminRPC;
 /// A Tao host environment in which hosted programs are Linux processes. Pipes
 /// are used for communication with the hosted processes. A unix-domain socket
 /// accepts administrative commands for controlling the host, e.g. starting
-/// hosted processes, stopping hosted processes, or shutting down the host.
+/// hosted processes, stopping hosted processes, or shutting down the host. The
+/// linuxTao can be run in "stacked" mode (on top of a host Tao) or in "root"
+/// mode (without an underlying host Tao).
 class LinuxHost {
  public:
   /// Construct a LinuxHost.
-  /// @param host_tao The host Tao on which this environment is running.
-  /// Ownership is taken.
   /// @param policy A guard for enforcing execution policy. This policy's unique
   /// name will become part of this tao host's name. Ownership is taken.
   /// @param path A directory for storing keys and other state.
-  LinuxHost(Tao *host_tao, TaoGuard *policy, const string &path)
-      : host_tao_(host_tao),
+  /// @param pass A password for unlocking keys. This is only used if 
+  LinuxHost(TaoGuard *policy, const string &path) :
         path_(path),
         next_child_id_(0),
         child_policy_(policy) {}
 
-  /// Open ports and aquire resources.
-  virtual bool Init();
+  /// Open ports and aquire resources for a stacked Tao.
+  /// @param host_tao The host Tao, i.e. obtained from Tao::GetHostTao().
+  virtual bool InitStacked(Tao *host_tao);
 
+  /// Open ports and aquire resources for a root Tao.
+  /// @param pass The password for unlocking signing and crypting keys.
+  virtual bool InitRoot(const string &pass);
+  
   virtual ~LinuxHost() {}
 
   /// Set the ID of the next child to be created. Child IDs will not be used
@@ -102,6 +107,9 @@ class LinuxHost {
                               bool *shutdown_request);
 
  protected:
+  /// Common initialization.
+  bool Init();
+
   /// Handle a StartHostedProgram RPC.
   /// @param rpc The RPC containing the StartHostedProgram request.
   /// @param[out] child_subprin The name for the new hosted program.
@@ -131,9 +139,6 @@ class LinuxHost {
   /// @param[out] policy The policy under which the data was sealed.
   bool HandleUnseal(const string &child_subprin, const string &sealed,
                     string *data, string *policy) const;
-
-  /// The host tao.
-  scoped_ptr<Tao> host_tao_;
 
   /// The tao host.
   scoped_ptr<TaoHost> tao_host_;

@@ -29,11 +29,17 @@
 #include "tao/linux_process_factory.h"
 #include "tao/pipe_factory.h"
 #include "tao/tao_host.h"
+#include "tao/tao_stacked_host.h"
+#include "tao/tao_root_host.h"
 #include "tao/unix_socket_factory.h"
 #include "tao/util.h"
 
 namespace tao {
-bool LinuxHost::Init() {
+bool LinuxHost::InitStacked(Tao *host_tao) {
+  if (host_tao != nullptr) {
+    LOG(ERROR) << "No host tao connection available";
+    return false;
+  }
   // Before attempting to initialize keys or doing anything else, make sure the
   // policy unique name becomes part of our name.
   string policy_subprin;
@@ -41,17 +47,33 @@ bool LinuxHost::Init() {
     LOG(ERROR) << "Could not obtain policy name";
     return false;
   }
-  if (!host_tao_->ExtendTaoName(policy_subprin)) {
+  if (!host_tao->ExtendTaoName(policy_subprin)) {
     LOG(ERROR) << "Could not extend with policy name";
     return false;
   }
-
   scoped_ptr<Keys> keys(new Keys(path_, "linux_host", Keys::Signing | Keys::Crypting));
-  if (!keys->InitHosted(*host_tao_, Tao::SealPolicyDefault)) {
+  if (!keys->InitHosted(*host_tao, Tao::SealPolicyDefault)) {
     LOG(ERROR) << "Could not obtain keys";
     return false;
   }
-  tao_host_.reset(new TaoHost(keys.release(), host_tao_.release()));
+  tao_host_.reset(new TaoStackedHost(keys.release(), host_tao));
+  return Init();
+}
+
+bool LinuxHost::InitRoot(const string &pass) {
+  // There is no point in extending our own name in root mode -- we have the
+  // key so we can do anything, including undoing an extend operation, and no
+  // other principal should ever be led to believe otherwise. 
+  scoped_ptr<Keys> keys(new Keys(path_, "linux_host", Keys::Signing | Keys::Crypting));
+  if (!keys->InitNonHosted(pass)) {
+    LOG(ERROR) << "Could not unlock keys";
+    return false;
+  }
+  tao_host_.reset(new TaoRootHost(keys.release()));
+  return Init();
+}
+
+bool LinuxHost::Init() {
   if (!tao_host_->Init()) {
     LOG(ERROR) << "Could not initialize TaoHost";
     return false;

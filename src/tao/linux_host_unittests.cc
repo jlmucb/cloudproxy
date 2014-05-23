@@ -175,11 +175,9 @@ class LinuxHostTest : public ::testing::Test {
 
   virtual void SetUp() {
     ASSERT_TRUE(CreateTempDir("linux_host_test", &temp_dir_));
-    tao_.reset(new SoftTao());
-    ASSERT_TRUE(tao_->Init());
     scoped_ptr<TaoGuard> policy(new TrivialGuard(TrivialGuard::LiberalPolicy));
-    host_.reset(new LinuxHost(tao_.release(), policy.release(), *temp_dir_));
-    ASSERT_TRUE(host_->Init());
+    host_.reset(new LinuxHost(policy.release(), *temp_dir_));
+    ASSERT_TRUE(host_->InitRoot("test_password"));
 
     listener_.reset(new thread(&LinuxHostTest::Main, this));
 
@@ -193,7 +191,6 @@ class LinuxHostTest : public ::testing::Test {
       listener_->join();
   }
   ScopedTempDir temp_dir_;
-  scoped_ptr<SoftTao> tao_;
   scoped_ptr<LinuxHost> host_;
   scoped_ptr<thread> listener_;
   scoped_ptr<LinuxAdminRPC> admin_;

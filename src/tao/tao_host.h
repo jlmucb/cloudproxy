@@ -22,86 +22,67 @@
 #include <string>
 
 #include "tao/attestation.pb.h"
-#include "tao/keys.h"
-#include "tao/tao.h"
-#include "tao/util.h"
 
 namespace tao {
 using std::string;
 
-/// TaoHost provides a generic implementation of a Tao host that can be
-/// configured for, and driven by, a variety of host environments. Generally,
-/// the host environment is responsible for enforcing and managing policy,
-/// managing hosted programs (e.g. naming, measuring, starting, stopping),
-/// communication with hosted programs (e.g. channel creation, RPC reception),
-/// and other host-specific details. Elsewhere are classes, implemented using a
-/// variety of approaches, that implement some of these tasks and make the
-/// appropriate calls into TaoHost.
+/// TaoHost provides a generic interface  for a Tao host that can be configured
+/// and driven by a variety of host environments. Generally, the host
+/// environment is responsible for enforcing and managing policy, managing
+/// hosted programs (e.g. measuring, naming, starting, stopping), communication
+/// with hosted programs (e.g. channel creation, RPC reception), and other
+/// host-specific details. Elsewhere are various classes that implement a
+/// variety of approaches to these tasks and make the appropriate calls into
+/// TaoHost.
+///
+/// Because the environment calls TaoHost in response to requests from hosted
+/// processes invoking the Tao interface, several TaoHost methods resemble
+/// methods in Tao. Semantics and method signatures differ slightly, however,
+/// since the environment can add context (e.g. the subprincipal name of the
+/// requesting child) or do part of the implenentation (e.g. manage policy on
+/// seal/unseal).
 class TaoHost {
  public:
-  /// Construct and configure a TaoHost. Ownership is taken for all relevant
-  /// parameters.
-  /// @param keys A set of keys, or nullptr. If the set contains a signing key
-  /// and accompanying delegation attestation, they will be used for signing
-  /// attestations on behalf of hosted programs, otherwise attestation will
-  /// invoke host_tao. If the set contains a crypting key, it will be used for
-  /// sealing and unsealing data, otherwise sealing and unsealing wil invoke
-  /// host_tao.
-  /// @param host_tao The host tao on top of which this hosted Tao executes.
-  TaoHost(Keys *keys, Tao *host_tao) : keys_(keys), host_tao_(host_tao) {}
-
-  virtual bool Init();
+  virtual bool Init() { return true; }
   virtual ~TaoHost() {}
 
-  /// TaoHost mostly follows the semantics of the Tao interface for these
-  /// methods. An extra child_subprin parameter is added to each call to specify
-  /// the identity of the hosted program that requested to invoke the method. In
-  /// all cases, the child_subprin parameter specifies the subprincipal that
-  /// appears after this Tao host's own full name.
-  /// @{
-  // virtual bool GetTaoName(const string &child_subprin, string *name) const;
-  // virtual bool ExtendTaoName(const string &child_subprin,
-  //                           const string &subprin) const;
+  /// Get random bytes. A TaoHost is expected to be a good source of randomness.
+  /// @param child_subprin. The principal name extension identifying the hosted
+  /// program requesting the random bytes. (This parameter is currently unused.)
+  /// @param size The number of bytes requested.
+  /// @param bytes[out] The random bytes.
   virtual bool GetRandomBytes(const string &child_subprin, size_t size,
-                              string *bytes) const;
+                              string *bytes) const = 0;
 
   /// Attest to a statement after modifying it to fill in missing fields.
+  /// @param child_subprin. The principal name extension identifying the hosted
+  /// program requesting the attestation. This is used for filling in the issuer
+  /// field of the statement or checking that the issuer field is reasonable.
+  /// @param stmt The partially-completed statement to be attested.
+  /// @param attestation[out] The signed attestation.
   virtual bool Attest(const string &child_subprin, Statement *stmt,
-                      string *attestation) const;
-  /// @}
+                      string *attestation) const = 0;
   
-  /// TaoHost does not itself enforce policy for seal and unseal operations.
-  /// These methods invoke the host tao, which is assumed to enforce the policy.
+  /// TaoHost does not itself enforce policy for seal and unseal operations. The
+  /// following methods encrypt and decrypt data using the crypting key, if so
+  /// configured, without enforcing any policy. It is assumed that the crypting
+  /// key is accessible only to this host. If so, and if the host environment
+  /// enforces policy, then the following methods can be used as part of the
+  /// implementation for Seal() and Unseal() services provided to hosted
+  /// programs.
   /// @{
 
-  /// Seal data by invoking the host Tao. See Tao::Seal() for semantics.
-  virtual bool SealToHost(const string &data, const string &policy,
-                          string *sealed) const;
-
-  // Unseal data by invoking the host Tao. See Tao::Unseal() for semantics.
-  virtual bool UnsealFromHost(const string &sealed, string *data,
-                              string *policy) const;
-
-  /// @}
-  
-  /// TaoHost does not itself enforce policy for seal and unseal operations.
-  /// These methods encrypt and decrypt data using the crypting key, if so
-  /// configured, without enforcing any policy. If the host environment enforces
-  /// policy, these can be used to provide Seal() and Unseal() services to
-  /// hosted programs.
-  /// @{
-
-  /// Encrypt data using the crypting key.
+  /// Encrypt data so that only this host can access it.
   /// @param data The data to be encrypted.
   /// @param[out] encrypted The encrypted data.
   virtual bool Encrypt(const google::protobuf::Message &data,
-                       string *encrypted) const;
+                       string *encrypted) const = 0;
 
-  /// Decrypt data using the crypting key.
+  /// Decrypt data that only this host can access.
   /// @param encrypted The encrypted data.
   /// @param[out] ddata The decrypted data.
   virtual bool Decrypt(const string &encrypted,
-                       google::protobuf::Message *data) const;
+                       google::protobuf::Message *data) const = 0;
 
   /// @}
 
@@ -115,30 +96,14 @@ class TaoHost {
   /// Notify this TaoHost that a hosted program has been killed.
   /// @param child_subprin The subprincipal for the dead hosted program.
   virtual bool RemovedHostedProgram(const string &child_subprin) { return true; }
- 
+
+  /// @}
+  
   /// Get the Tao principal name assigned to this hosted Tao host. The name
   /// encodes the full path from the root Tao, through all intermediary Tao
   /// hosts, to this hosted Tao host. 
-  virtual string TaoHostName() const { return tao_host_name_; }
+  virtual string TaoHostName() const = 0;
 
-  /// Get the principal name associated with this Tao's attestation signing key.
-  /// @param[out] name The globally-unique name of the signing key.
-  virtual bool GetAttestationName(string *name) const;
-
- private:
-  /// Keys for attestations and/or sealing, or nullptr.
-  scoped_ptr<Keys> keys_;
-
-  /// A delegation for our signing key from the host Tao.
-  string host_delegation_;
-
-  /// The channel to use for host communication.
-  scoped_ptr<Tao> host_tao_;
-
-  /// Our own principal name, as obtained from the host Tao.
-  string tao_host_name_;
-
-  DISALLOW_COPY_AND_ASSIGN(TaoHost);
 };
 }  // namespace tao
 

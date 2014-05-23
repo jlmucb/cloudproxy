@@ -41,13 +41,9 @@ using tao::Tao;
 using tao::TaoDomain;
 using tao::elideString;
 
-static constexpr auto defaultHost = "TPMTao(\"file:tpm/aikblob\", \"17, 18\")";
-
 DEFINE_string(config_path, "tao.config", "Location of tao domain configuration");
 DEFINE_string(host_path, "linux_tao_host", "Location of linux host configuration");
-DEFINE_string(tao_host, "",
-              "Parameters to connect to host Tao. If empty try env "
-              " or use a TPM default instead.");
+DEFINE_string(pass, "", "Password for unlocking keys if running in root mode");
 
 DEFINE_bool(service, false, "Start the LinuxHost service.");
 DEFINE_bool(shutdown, false, "Shut down the LinuxHost service.");
@@ -78,21 +74,23 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  if (!FLAGS_tao_host.empty()) {
-    setenv(Tao::HostTaoEnvVar, FLAGS_tao_host.c_str(), 1 /* overwrite */);
-  } else {
-    setenv(Tao::HostTaoEnvVar, defaultHost, 0 /* no overwrite */);
-  }
-
   if (FLAGS_service) {
-    Tao *tao = Tao::GetHostTao();
-    CHECK(tao != nullptr) << "Could not connect to host Tao";
-
+    
     scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
     CHECK(admin.get() != nullptr) << "Could not load configuration";
+      
+    scoped_ptr<LinuxHost> host(new LinuxHost(admin.release(), FLAGS_host_path));
 
-    scoped_ptr<LinuxHost> host(new LinuxHost(tao, admin.release(), FLAGS_host_path));
-    CHECK(host->Init());
+    Tao *host_tao = Tao::GetHostTao();
+    if (host_tao == nullptr) {
+      if (FLAGS_pass.empty()) {
+        fprintf(stderr, "Error: Host tao not found, no password specified\n");
+        return 1;
+      }
+      CHECK(host->InitRoot(FLAGS_pass));
+    } else {
+      CHECK(host->InitStacked(host_tao));
+    }
 
     printf("LinuxHost Service: %s\n", elideString(host->DebugString()).c_str());
     printf("Linux Tao Service started and waiting for requests\n");;

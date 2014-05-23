@@ -1,9 +1,9 @@
-//  File: tao_host.cc
-//  Author: Tom Roeder <tmroeder@google.com>
+//  File: tao_stacked_host.cc
+//  Author: Kevin Walsh <kwalsh@holycross.edu>
 //
-//  Description: Tao host implementation.
+//  Description: Tao host implemented on top of a host Tao.
 //
-//  Copyright (c) 2013, Google Inc.  All rights reserved.
+//  Copyright (c) 2014, Kevin Walsh.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "tao/tao_host.h"
+#include "tao/tao_stacked_host.h"
 
 #include <glog/logging.h>
 
@@ -27,7 +27,7 @@
 
 namespace tao {
 
-bool TaoHost::Init() {
+bool TaoStackedHost::Init() {
   // Get our name early and cache it.
   if (!host_tao_->GetTaoName(&tao_host_name_)) {
     LOG(ERROR) << "Could not obtain Tao host name";
@@ -40,27 +40,17 @@ bool TaoHost::Init() {
     return false;
   }
 
-  VLOG(1) << "TaoHost: Initialization finished successfully";
-  VLOG(1) << "TaoHost: " << elideString(tao_host_name_);
+  VLOG(1) << "TaoStackedHost: Initialization finished successfully";
+  VLOG(1) << "TaoStackedHost: " << elideString(tao_host_name_);
   return true;
 }
 
-// bool TaoHost::GetTaoName(const string &child_subprin, string *name) const {
-//   name->assign(tao_host_name_ + "::" + child_subprin);
-//   return true;
-// }
-
-// bool TaoHost::ExtendTaoName(const string &child_subprin, const string &subprin) const {
-//   // Nothing to do.
-//   return true;
-// }
-
-bool TaoHost::GetRandomBytes(const string &child_subprin, size_t size,
+bool TaoStackedHost::GetRandomBytes(const string &child_subprin, size_t size,
                               string *bytes) const {
   return host_tao_->GetRandomBytes(size, bytes);
 }
 
-bool TaoHost::Attest(const string &child_subprin, Statement *stmt,
+bool TaoStackedHost::Attest(const string &child_subprin, Statement *stmt,
                       string *attestation) const {
   // Make sure issuer is identical to (or a subprincipal of) the hosted
   // program's principal name.
@@ -79,55 +69,46 @@ bool TaoHost::Attest(const string &child_subprin, Statement *stmt,
   }
 }
 
-bool TaoHost::SealToHost(const string &data, const string &policy,
-                         string *sealed) const {
-  return host_tao_->Seal(data, policy, sealed);
-}
 
-// Unseal data by invoking the host Tao. See Tao::Unseal() for semantics.
-bool TaoHost::UnsealFromHost(const string &sealed, string *data,
-                             string *policy) const {
-  return host_tao_->Unseal(sealed, data, policy);
-}
-
-bool TaoHost::Encrypt(const google::protobuf::Message &data,
+bool TaoStackedHost::Encrypt(const google::protobuf::Message &data,
                       string *encrypted) const {
-  if (keys_ == nullptr || keys_->Crypter() == nullptr) {
-    LOG(ERROR) << "TaoHost can not encrypt without a crypting key.";
-    return false;
-  }
   string serialized_data;
   if (!data.SerializeToString(&serialized_data)) {
     LOG(ERROR) << "Could not serialize data to be sealed";
     return false;
   }
-  return keys_->Encrypt(serialized_data, encrypted);
+  if (keys_ == nullptr || keys_->Crypter() == nullptr) {
+    // TODO(kwalsh) Should policy here come from elsewhere?
+    return host_tao_->Seal(serialized_data, Tao::SealPolicyDefault, encrypted);
+  } else {
+    return keys_->Encrypt(serialized_data, encrypted);
+  }
 }
 
-bool TaoHost::Decrypt(const string &encrypted,
+bool TaoStackedHost::Decrypt(const string &encrypted,
                       google::protobuf::Message *data) const {
-  if (keys_ == nullptr || keys_->Crypter() == nullptr) {
-    LOG(ERROR) << "TaoHost can not decrypt without a crypting key.";
-    return false;
-  }
   string serialized_data;
-  if (!keys_->Decrypt(encrypted, &serialized_data)) {
-    LOG(ERROR) << "Could not decrypt sealed data";
-    return false;
+  if (keys_ == nullptr || keys_->Crypter() == nullptr) {
+    string policy;
+    if (!host_tao_->Unseal(encrypted, &serialized_data, &policy)) {
+      LOG(ERROR) << "Could not unseal sealed data";
+      return false;
+    }
+    if (policy != Tao::SealPolicyDefault) {
+      LOG(ERROR) << "Unsealed data with uncertain provenance";
+      return false;
+    }
+  } else {
+    if (!keys_->Decrypt(encrypted, &serialized_data)) {
+      LOG(ERROR) << "Could not decrypt sealed data";
+      return false;
+    }
   }
   if (!data->ParseFromString(serialized_data)) {
     LOG(ERROR) << "Could not deserialize sealed data";
     return false;
   }
   return true;
-}
-
-bool TaoHost::GetAttestationName(string *name) const {
-  if (keys_ == nullptr || keys_->Signer() == nullptr) {
-    LOG(ERROR) << "Tao host is not configured with an attestation key";
-    return false;
-  }
-  return keys_->GetPrincipalName(name);
 }
 
 }  // namespace tao

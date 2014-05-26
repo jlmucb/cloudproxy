@@ -46,24 +46,17 @@
 			'target_name' : 'tao_test',
 			'type' : 'executable',
 			'sources' : [
-				# 'acl_guard.cc', see 'tao_domain_unittests.cc'
-				'auth_unittests.cc', 
 				'attestation_unittests.cc',
-				'datalog_guard_unittests.cc', # also see 'tao_domain_unittests.cc'
-				# 'fd_message_channel.cc', see 'pipe_factory_unittests.cc'
+				'auth_unittests.cc', 
+				'datalog_guard_unittests.cc',
 				'keys_unittests.cc',
-				# 'linux_admin_rpc.cc', see 'linux_host_unittests.cc'
 				'linux_host_unittests.cc',
 				'linux_process_factory_unittests.cc',
 				'pipe_factory_unittests.cc',
-				# 'soft_tao.cc', see 'tao_unittests.cc'
-				# 'tao.cc', see 'linux_host_unittests.cc'
 				'tao_domain_unittests.cc', 
-				# 'tao_host.cc', see 'linux_host_unittests.cc'
-				# 'tao_rpc.cc', see 'linux_host_unittests.cc'
 				'tao_test.cc',
+				'tao_test.h',
 				'tao_unittests.cc',
-				# 'tpm_tao.cc' see 'tao_unittests.cc'
 				'unix_socket_factory_unittests.cc',
 				'util_unittests.cc',
 			],
@@ -80,63 +73,57 @@
 			'target_name' : 'tao',
 			'type' : 'static_library',
 			'sources' : [
-				'acl_guard.cc',
-				'acl_guard.h',
-				'acl_guard.proto',
-				'attestation.cc',
-				'attestation.h',
-				'attestation.proto',
-				'auth.cc',
-				'auth.h',
-				'datalog_guard.cc',
-				'datalog_guard.h',
-				'datalog_guard.proto',
-				'fd_message_channel.cc',
-				'fd_message_channel.h',
-				'keys.cc',
-				'keys.h',
-				'keys.proto',
-				'linux_admin_rpc.cc',
-				'linux_admin_rpc.h',
-				'linux_admin_rpc.proto',
-				'linux_host.cc',
-				'linux_host.h',
-				'linux_host.proto',
-				'linux_process_factory.cc',
-				'linux_process_factory.h',
-				'message_channel.h',
-				'pipe_factory.cc',
-				'pipe_factory.h',
-				'signature.proto',
-				'soft_tao.cc',
-				'soft_tao.h',
-				'tao.cc',
-				'tao.h',
-				'tao_domain.cc',
-				'tao_domain.h',
-				'tao_guard.cc',
-				'tao_guard.h',
-				'tao_host.h',
+				'acl_guard.cc', # unit test: tao_domain_unittests.cc
+				'acl_guard.h', # unit test: tao_domain_unittests.cc
+				'acl_guard.proto', # unit test: tao_domain_unittests.cc
+				'attestation.cc', # unit test: attestation_unittests.cc
+				'attestation.h', # unit test: attestation_unittests.cc
+				'attestation.proto', # unit test: attestation_unittests.cc
+				'auth.cc', # unit test: auth_unittests.cc
+				'auth.h', # unit test: auth_unittests.cc
+				'datalog_guard.cc', # unit test: datalog_guard_unittests.cc, tao_domain_unittests.cc
+				'datalog_guard.h', # unit test: datalog_guard_unittests.cc, tao_domain_unittests.cc
+				'datalog_guard.proto', # unit test: datalog_guard_unittests.cc, tao_domain_unittests.cc
+				'fd_message_channel.cc', # unit test: pipe_factory_unittests.cc
+				'fd_message_channel.h', # unit test: pipe_factory_unittests.cc
+				'keys.cc', # unit test: keys_unittests.cc
+				'keys.h', # unit test: keys_unittests.cc
+				'keys.proto', # unit test: keys_unittests.cc
+				'linux_admin_rpc.cc', # unit test: linux_host_unittests.cc
+				'linux_admin_rpc.h', # unit test: linux_host_unittests.cc
+				'linux_admin_rpc.proto', # unit test: linux_host_unittests.cc
+				'linux_host.cc', # unit test: linux_host_unittests.cc
+				'linux_host.h', # unit test: linux_host_unittests.cc
+				'linux_host.proto', # unit test: linux_host_unittests.cc
+				'linux_process_factory.cc', # unit test: linux_process_factory_unittests.cc
+				'linux_process_factory.h', # unit test: linux_process_factory_unittests.cc
+				'message_channel.h', # unit test: pipe_factory_unittests.cc
+				'pipe_factory.cc', # unit test: pipe_factory_unittests.cc
+				'pipe_factory.h', # unit test: pipe_factory_unittests.cc
+				'signature.proto', # unit test: keys_unittests.cc
+				'soft_tao.cc', # unit test: tao_unittests.cc
+				'soft_tao.h', # unit test: tao_unittests.cc
+				'tao.cc', # unit test: tao_unittests.cc, linux_host_unittests.cc
+				'tao.h', # unit test: tao_unittests.cc, linux_host_unittests.cc
+				'tao_domain.cc', # unit test: tao_domain_unittests.cc
+				'tao_domain.h', # unit test: tao_domain_unittests.cc
+				'tao_guard.cc', # unit test: tao_domain_unittests.cc
+				'tao_guard.h', # unit test: tao_domain_unittests.cc
+				'tao_host.h', # unit test: linux_host_unittests.cc
 				'tao_root_host.cc',
 				'tao_root_host.h',
-				'tao_rpc.cc',
+				'tao_rpc.cc', # unit test: linux_host_unittests.cc
+				'tao_rpc.h', # unit test: linux_host_unittests.cc
+				'tao_rpc.proto', # unit test: linux_host_unittests.cc
 				'tao_stacked_host.cc',
 				'tao_stacked_host.h',
-				'tao_rpc.h',
-				'tao_rpc.proto',
-				'tpm_tao.cc',
-				'tpm_tao.h',
-				'trivial_guard.h',
-				'unix_socket_factory.cc',
-				'unix_socket_factory.h',
-				'util.cc',
-				'util.h',
-#				'hosted_program_factory.h',
-#				'tao_ca.cc',
-#				'tao_ca.h',
-#				'tao_ca.proto',
-#				'tao_ca_server.cc',
-#				'tao_ca_server.h',
+				'tpm_tao.cc', # unit test: tao_unittests.cc
+				'tpm_tao.h', # unit test: tao_unittests.cc
+				'trivial_guard.h', # unit test: tao_domain_unittests.cc
+				'unix_socket_factory.cc', # unit test: unix_socket_factory_unittests.cc
+				'unix_socket_factory.h', # unit test: unix_socket_factory_unittests.cc
+				'util.cc', # unit test: util_unittests.cc
+				'util.h', # unit test: util_unittests.cc
 			],
 			'libraries' : [
 				'-lcrypto',

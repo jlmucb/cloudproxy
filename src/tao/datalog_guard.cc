@@ -453,7 +453,7 @@ bool DatalogGuard::ParseConfig() {
     return false;
   }
   // Load the signed rule file.
-  string rules_path_ = GetConfigPath(JSONSignedDatalogRulesPath);
+  rules_path_ = GetConfigPath(JSONSignedDatalogRulesPath);
   rules_mod_time_ = 0; // force refresh
   return ReloadRulesIfModified();
 }

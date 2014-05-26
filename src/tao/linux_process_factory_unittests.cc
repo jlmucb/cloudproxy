@@ -80,7 +80,7 @@ TEST_F(LinuxProcessFactoryTest, StartTest) {
                                            subprin, &child));
   EXPECT_TRUE(child->pid > 0);
   EXPECT_EQ(subprin, child->subprin);
-  sleep(1);
+  usleep(250*1000);
   // it should have already stopped
   int pid = factory_.WaitForHostedProgram();
   EXPECT_EQ(child->pid, pid);
@@ -96,11 +96,11 @@ TEST_F(LinuxProcessFactoryTest, StartStopTest) {
       pipe_factory, test_argv[0], list<string>{"sleep"}, subprin, &child));
   EXPECT_TRUE(child->pid > 0);
   EXPECT_EQ(subprin, child->subprin);
-  sleep(1);
+  usleep(250*1000);
   // it should still be running
   EXPECT_EQ(0, factory_.WaitForHostedProgram());
   EXPECT_TRUE(factory_.StopHostedProgram(child.get(), SIGTERM));
-  sleep(1);
+  usleep(250*1000);
   // now it should be stopped
   int pid = factory_.WaitForHostedProgram();
   EXPECT_EQ(child->pid, pid);

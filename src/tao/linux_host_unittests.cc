@@ -207,7 +207,7 @@ TEST_F(LinuxHostTest, StartStopTest) {
   EXPECT_TRUE(admin_->StartHostedProgram(test_argv[0], list<string>{"sleep"}, &name));
   EXPECT_NE("", name);
   EXPECT_TRUE(admin_->StopHostedProgram(name));
-  sleep(1); // Wait for it to be completely dead (SIGCHLD is asyncrhonous).
+  usleep(250*1000); // Wait for it to be completely dead (SIGCHLD is asynchronous).
   EXPECT_FALSE(admin_->StopHostedProgram(name));
   EXPECT_FALSE(admin_->StopHostedProgram("nobody"));
 }
@@ -220,7 +220,7 @@ TEST_F(LinuxHostTest, HostedTest) {
   EXPECT_TRUE(admin_->StartHostedProgram(
       test_argv[0], list<string>{"hosted", "tests", result_path}, &name));
   EXPECT_NE("", name);
-  sleep(1);
+  usleep(250*1000);
   EXPECT_FALSE(admin_->StopHostedProgram(name)); // should have already exited
   EXPECT_TRUE(ReadFileToString(result_path, &hosted_program_result));
   EXPECT_EQ("Rand OK TaoName OK Extend OK", hosted_program_result);
@@ -234,7 +234,7 @@ TEST_F(LinuxHostTest, HostedSealUnsealTest) {
   EXPECT_TRUE(admin_->StartHostedProgram(
       test_argv[0], list<string>{"hosted", "seal", result_path}, &name));
   EXPECT_NE("", name);
-  sleep(1);
+  usleep(250*1000);
   EXPECT_FALSE(admin_->StopHostedProgram(name)); // should have already exited
   EXPECT_TRUE(ReadFileToString(result_path, &hosted_program_result));
   EXPECT_EQ("Seal OK", hosted_program_result);
@@ -242,7 +242,7 @@ TEST_F(LinuxHostTest, HostedSealUnsealTest) {
   EXPECT_TRUE(admin_->StartHostedProgram(
       test_argv[0], list<string>{"hosted", "unseal", result_path}, &name));
   EXPECT_NE("", name);
-  sleep(1);
+  usleep(250*1000);
   EXPECT_FALSE(admin_->StopHostedProgram(name)); // should have already exited
   EXPECT_TRUE(ReadFileToString(result_path, &hosted_program_result));
   EXPECT_EQ("Unseal OK Extend+Unseal denied", hosted_program_result);
@@ -258,7 +258,7 @@ TEST_F(LinuxHostTest, HostedAttestValidateTest) {
   EXPECT_TRUE(admin_->StartHostedProgram(
       test_argv[0], list<string>{"hosted", "attest", result_path}, &name));
   EXPECT_NE("", name);
-  sleep(1);
+  usleep(250*1000);
   EXPECT_FALSE(admin_->StopHostedProgram(name)); // should have already exited
   EXPECT_TRUE(ReadFileToString(result_path, &hosted_program_result));
   // validate the attestation

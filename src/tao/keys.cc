@@ -36,7 +36,6 @@
 
 #include "tao/attestation.pb.h"
 #include "tao/keys.pb.h"
-#include "tao/signature.pb.h"
 #include "tao/util.h"
 
 using google::protobuf::TextFormat;
@@ -545,7 +544,7 @@ bool DeriveKey(const keyczar::Signer &key, const string &name, int size,
   string context = "1 || " + name;
   keyczar::base::ScopedSafeString sig(new string());
   // Note that this is not an application of a signature in the normal sense, so
-  // it does not need to be transformed into an application of tao::SignData.
+  // it does not need to be transformed into an application of tao::SignData().
   if (!key.Sign(context, sig.get())) {
     LOG(ERROR) << "Could not derive key material";
     return false;

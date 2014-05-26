@@ -100,7 +100,6 @@
 				'message_channel.h', # unit test: pipe_factory_unittests.cc
 				'pipe_factory.cc', # unit test: pipe_factory_unittests.cc
 				'pipe_factory.h', # unit test: pipe_factory_unittests.cc
-				'signature.proto', # unit test: keys_unittests.cc
 				'soft_tao.cc', # unit test: tao_unittests.cc
 				'soft_tao.h', # unit test: tao_unittests.cc
 				'tao.cc', # unit test: tao_unittests.cc, linux_host_unittests.cc

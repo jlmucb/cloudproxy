@@ -42,3 +42,15 @@ message X509Details {
   // Requested x509 Organization detail
   optional bytes organization = 6;
 }
+
+// A signed serialized protobuf message, including a require context to ensure
+// unique deserialization.
+message SignedData {
+  // SECURITY WARNING: Always choose a unique context for each unique type of
+  // message. One easy way to do this is to number the messages in a protocol
+  // and make the context "ProtocolName Message Y: ProtobufName Version X"
+  required string context = 1;
+
+  // The serialized protobuf representing this message.
+  required bytes data = 2;
+}

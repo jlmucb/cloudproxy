@@ -52,7 +52,6 @@
 #include "tao/keys.h"
 //#include "tao/kvm_unix_tao_child_channel.h"
 //#include "tao/pipe_tao_child_channel.h"
-#include "tao/signature.pb.h"
 //#include "tao/tao_child_channel.h"
 //#include "tao/tao_child_channel_registry.h"
 #include "tao/tao_domain.h"

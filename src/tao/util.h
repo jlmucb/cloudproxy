@@ -60,13 +60,13 @@ using std::unique_ptr;  // TODO(kwalsh) Discuss unique_ptr vs. scoped_ptr.
 
 // using keyczar::base::FilePath;  // Why isn't this in keyczar::base ?
 // using keyczar::base::ReadFileToString; // Define our own version below.
-using keyczar::base::Base64WDecode;  // NOLINT
-using keyczar::base::Base64WEncode;  // NOLINT
-using keyczar::base::CreateDirectory;  // NOLINT
-using keyczar::base::Delete;  // NOLINT
-using keyczar::base::DirectoryExists;  // NOLINT
-using keyczar::base::PathExists;  // NOLINT
-using keyczar::base::ScopedSafeString;  // NOLINT
+using keyczar::base::Base64WDecode;      // NOLINT
+using keyczar::base::Base64WEncode;      // NOLINT
+using keyczar::base::CreateDirectory;    // NOLINT
+using keyczar::base::Delete;             // NOLINT
+using keyczar::base::DirectoryExists;    // NOLINT
+using keyczar::base::PathExists;         // NOLINT
+using keyczar::base::ScopedSafeString;   // NOLINT
 using keyczar::base::WriteStringToFile;  // NOLINT
 
 /// @}
@@ -316,7 +316,7 @@ bool bytesFromHex(const string &hex, string *s);
 /// strings using the standard put << operator.
 /// @param it An STL-like iterator marking the start of the sequence.
 /// @param end An STL-like iterator marking the end of the sequence.
-/// @param delim A dilimiter to put between values.
+/// @param delim A delimiter to put between values.
 template <class T>
 static string join(T it, T end, const string &delim) {
   stringstream out;
@@ -332,7 +332,7 @@ static string join(T it, T end, const string &delim) {
 /// Join a list of printable values as a string. Values are converted to
 /// strings using the standard put << operator.
 /// @param values A list of values.
-/// @param delim A dilimiter to put between values.
+/// @param delim A delimiter to put between values.
 template <class T>
 static string join(const list<T> &values, const string &delim) {
   return join(values.begin(), values.end(), delim);
@@ -341,7 +341,7 @@ static string join(const list<T> &values, const string &delim) {
 /// Join a set of printable values as a string. Values are converted to
 /// strings using the standard put << operator.
 /// @param values A set of values.
-/// @param delim A dilimiter to put between values.
+/// @param delim A delimiter to put between values.
 template <class T>
 static string join(const set<T> &values, const string &delim) {
   return join(values.begin(), values.end(), delim);

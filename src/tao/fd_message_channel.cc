@@ -56,7 +56,7 @@ bool FDMessageChannel::ReceiveMessage(google::protobuf::Message *m,
                                       bool *eof) const {
   string s;
   if (!ReceiveString(readfd_, MaxMessageSize, &s, eof)) {
-    LOG(ERROR) << "Could not recieve message";
+    LOG(ERROR) << "Could not receive message";
     return false;
   } else if (*eof) {
     return true;

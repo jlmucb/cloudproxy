@@ -34,7 +34,7 @@ using std::vector;
 class Predicate;
 class Principal;
 
-// TODO(kwalsh) Revise attesation code to use these classes where appropriate.
+// TODO(kwalsh) Revise attestation code to use these classes where appropriate.
 
 string GetIdentifier(stringstream &in);  // NOLINT
 

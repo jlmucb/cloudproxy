@@ -60,7 +60,7 @@ typedef scoped_ptr_malloc<DatalogEngine,
 /// Term: principal
 /// Datalog: converted to quoted string
 /// Note: Principals are "::"-separated lists of components of the form
-/// Name(args...), where args is a comma-sparated list of integers or quoted
+/// Name(args...), where args is a comma-separated list of integers or quoted
 ///   strings.
 ///
 /// Attestation: P says Pred(args...)
@@ -176,7 +176,7 @@ class DatalogGuard : public TaoDomain {
   /// Here, the conditions and consequent are predicates as above.
   ///
   /// DatalogGuard also supports quantified conditional predicates for rules:
-  ///   (forall Varaible...: Condition and ... implies Consequent).
+  ///   (forall Variable...: Condition and ... implies Consequent).
   /// Here, the conditions and consequent are predicates as above, and the
   /// variables are simple identifiers. In order to ensure Datalog safety, all
   /// quantification variables must appear somewhere in the conditions, and a
@@ -211,7 +211,7 @@ class DatalogGuard : public TaoDomain {
                         const list<unique_ptr<Predicate>> &conds,
                         const Predicate &consequent);
 
-  /// Parse a rule, adding implicity says(K_Policy, ...) as needed. No checking
+  /// Parse a rule, adding implicitly says(K_Policy, ...) as needed. No checking
   /// is done for variable usage (i.e. Datalog rule safety).
   /// @param rule The rule.
   /// @param[out] vars The quantification variables, if any.

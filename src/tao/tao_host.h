@@ -39,7 +39,7 @@ using std::string;
 /// processes invoking the Tao interface, several TaoHost methods resemble
 /// methods in Tao. Semantics and method signatures differ slightly, however,
 /// since the environment can add context (e.g. the subprincipal name of the
-/// requesting child) or do part of the implenentation (e.g. manage policy on
+/// requesting child) or do part of the implementation (e.g. manage policy on
 /// seal/unseal).
 class TaoHost {
  public:
@@ -80,7 +80,7 @@ class TaoHost {
 
   /// Decrypt data that only this host can access.
   /// @param encrypted The encrypted data.
-  /// @param[out] ddata The decrypted data.
+  /// @param[out] data The decrypted data.
   virtual bool Decrypt(const string &encrypted,
                        google::protobuf::Message *data) const = 0;
 

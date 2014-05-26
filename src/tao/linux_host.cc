@@ -265,7 +265,7 @@ bool LinuxHost::HandleStartHostedProgram(const LinuxAdminRPCRequest &rpc,
   // not globally unique across reboots or even within a single boot, so it
   // doesn't really mean much.
   // * We (optionally) add a monotonic counter: child can't easily do that. If
-  // the host Tao hunderlying this Tao host gives out names that change across
+  // the host Tao underlying this Tao host gives out names that change across
   // restarts (i.e. reboots of TPM), then the counter will ensure that our
   // hosted
   // programs have names that change across restart (i.e. kill and run again
@@ -313,8 +313,8 @@ bool LinuxHost::HandleStartHostedProgram(const LinuxAdminRPCRequest &rpc,
   if (next_child_id_ != 0) {
     next_child_id_++;
     if (next_child_id_ == 0) {
-      LOG(WARNING)
-          << "Exhasted child ID space, disabling child IDs for future children";
+      LOG(WARNING) << "Exhausted child ID space, disabling child IDs for "
+                      "future children";
     }
   }
 

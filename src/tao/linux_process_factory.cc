@@ -129,7 +129,7 @@ bool LinuxProcessFactory::StartHostedProgram(
       argv[i++] = strdup(arg.c_str());
     }
     argv[i++] = nullptr;
-    // We couuld put channel params in argv:
+    // We could put channel params in argv:
     // argv[..] = strdup(child_rpc_params.c_str());
     // Instead, put it in environment variable so we can host Tao-oblivious
     // programs without messing up their argv...

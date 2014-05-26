@@ -55,7 +55,7 @@ static bool VerifyAttestationSignature(const Attestation &a) {
   string signer = a.signer();
   bool tpm_signature = signer.substr(0, 3) == "TPM";
   if (tpm_signature) {
-    // TODO(kwalsh) TPMTaoChildChannel does its own key serialize/descerialize.
+    // TODO(kwalsh) TPMTaoChildChannel does its own key serialize/deserialize.
     // Maybe unify that with VerifierFromPrincipalName()?
     return TPMTao::VerifySignature(signer, a.serialized_statement(),
                                    a.signature());

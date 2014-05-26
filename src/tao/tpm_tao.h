@@ -62,7 +62,8 @@ class TPMTao : public Tao {
         pcr_indexes_(pcr_indexes.begin(), pcr_indexes.end()) {}
 
   /// Construct a TPMTao without an AIK. The TPMTao will not be able to perform
-  /// Attest operations, but it can be used for examing the current PCR values,
+  /// Attest operations, but it can be used for examining the current PCR
+  /// values,
   /// creating AIK blobs, etc.
   /// @param pcrs_indexes A list of PCR indexes used for sealing and unsealing.
   explicit TPMTao(const list<int> &pcr_indexes) : TPMTao("", pcr_indexes) {}

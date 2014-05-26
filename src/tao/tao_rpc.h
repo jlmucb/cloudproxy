@@ -33,7 +33,7 @@ using std::string;
 class TaoRPC : public Tao {
  public:
   /// Construct a TaoRPC.
-  /// @param channel The channel over which to send and recieve messages.
+  /// @param channel The channel over which to send and receive messages.
   /// Ownership is taken.
   explicit TaoRPC(MessageChannel *channel) : channel_(channel) {}
 

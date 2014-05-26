@@ -36,7 +36,7 @@ using std::string;
 class LinuxAdminRPC {
  public:
   /// Construct a TaoRPC.
-  /// @param channel The channel over which to send and recieve messages.
+  /// @param channel The channel over which to send and receive messages.
   /// Ownership is taken.
   explicit LinuxAdminRPC(MessageChannel *channel) : channel_(channel) {}
   virtual ~LinuxAdminRPC() {}

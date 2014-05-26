@@ -57,11 +57,11 @@ class LinuxHost {
   LinuxHost(TaoGuard *policy, const string &path)
       : path_(path), next_child_id_(0), child_policy_(policy) {}
 
-  /// Open ports and aquire resources for a stacked Tao.
+  /// Open ports and acquire resources for a stacked Tao.
   /// @param host_tao The host Tao, i.e. obtained from Tao::GetHostTao().
   virtual bool InitStacked(Tao *host_tao);
 
-  /// Open ports and aquire resources for a root Tao.
+  /// Open ports and acquire resources for a root Tao.
   /// @param pass The password for unlocking signing and crypting keys.
   virtual bool InitRoot(const string &pass);
 
@@ -150,7 +150,7 @@ class LinuxHost {
   /// Path to config directory.
   string path_;
 
-  /// The ID of the next child to create, or 0 to disable monootonic child IDs.
+  /// The ID of the next child to create, or 0 to disable monotonic child IDs.
   unsigned int next_child_id_;
 
   /// The hosted program factory, responsible for starting and stopping hosted

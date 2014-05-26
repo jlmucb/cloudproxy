@@ -27,7 +27,7 @@
 namespace tao {
 using std::string;
 
-/// An interface for a channel that can send and recive Message objects.
+/// An interface for a channel that can send and receive Message objects.
 class MessageChannel {
  public:
   virtual ~MessageChannel() {}

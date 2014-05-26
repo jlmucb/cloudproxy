@@ -66,7 +66,7 @@ class TaoGuard {
   /// essentially reversing the effect of an Authorize() call with identical
   /// name, op, and args. Note: This reverses the effect of an Authorize() call
   /// with identical parameters or the equivalent AddRule() call. However,
-  /// particluarly when expressive policies are supported (e.g. an "authorize
+  /// particularly when expressive policies are supported (e.g. an "authorize
   /// all" rule), other rules may still be in place authorizing the principal to
   /// perform the operation.
   /// @param name The name of the principal.

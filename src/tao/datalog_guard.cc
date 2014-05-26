@@ -410,7 +410,7 @@ bool DatalogGuard::RetractRule(const string &rule) {
     LOG(WARNING) << "Rule to be revoked was not found";
     return false;
   }
-  // We don't have enough state to remvoe the implicit subprincipal rules, but
+  // We don't have enough state to remove the implicit subprincipal rules, but
   // leaving them in should be safe.
   return SaveConfig();
 }

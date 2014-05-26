@@ -1,0 +1,127 @@
+Overview of Authorization-Oriented Restructuring (auth-testing branch)
+======================================================================
+
+Status:
+- All unit tests pass.
+- Install script and some small demo hosted programs work.
+- There is an ACL-based guard and a Datalog-based guard.
+- Policy key is only used offline, e.g. when authorizing new tpms or binaries.
+- Online "TaoCA" (aka policy server, keynego) is unused and no longer compiles.
+- "CloudProxy apps" (fserver, fclient, etc.) no longer compile.
+
+Tao interface (tao/tao.h)
+-------------------------
+
+This is the API used by *hosted programs* to talk to their host Tao.
+
+// Get my name, e.g. TPM("...")::PCRs("...")::Program("...")
+GetTaoName() -> string
+
+// Append a new component to my name, irreversibly (e.g. like chroot)
+ExtendTaoName(string ext)
+
+// Get random bytes
+GetRandomBytes(int n) -> bytes
+
+// Request an attestation, signed by my host tao on my behalf.
+Attest(Statement s) -> signed blob
+
+// Seal. Policy controls which principals (within same host Tao) can seal or
+// unseal, and caller must satsify this too.
+// Policy grammar and semantics are host-specific.
+Seal(string data, string policy) -> sealed blob
+
+// Unseal. Also returns policy (which sealer must have satisfied).
+Unseal(string blob) -> data, policy
+
+// Internal use: encode params, e.g. for passing over fork/exec boundary.
+SerializeToString() -> string
+
+Implementations of Tao API - RPCTao, TPMTao, SoftTao
+----------------------------------------------------
+
+RPCTao (tao/rpc_tao.*) - This just passes all calls over a MessageChannel, e.g.
+to another process that is serving as the Tao host.
+
+TPMTao (tao/tpm_tao.*) - This passes calls over the trousers driver to the TPM.
+
+SoftTao (tao/soft_tao.*) - This does all operations locally. This was a mistake
+and it is no longer used. Use TaoRootHost (see below) instead.
+
+Tao Hosts
+---------
+
+A "Tao Host" is something that hosts programs and implements all the services
+needed to provide the above Tao API for those hosted programs. A Tao Host is
+itself probably part of some bigger environment (e.g. embedded inside a kernel,
+a hypervisor, a jvm, or just a daemon or process). So I split the work into a
+generic TaoHost piece and an environment-specific part.
+
+TaoHost (tao/tao_host.h) - Generic helper interface that should work in any
+environment. It can do encrypt/Decrypt (without policies), Attest,
+GetRandomBytes, etc. 
+
+TaoStackedHost (tao/tao_stacked_host.*) - Helper for hosts that are stacked on
+top of another Tao (e.g. a TPM). It calls down to the underlying Tao for some
+things. It can be optionally configured with keys (sealed to the underlying Tao)
+so that it can do encrypt/decrypt/sign faster than the underlying Tao.
+
+TaoRootHost (tao/tao_root_host.*) - Helper for hosts that are not stacked on top
+of anything. It has password-protected keys and uses them to do
+encrypt/decrypt/sign.
+
+Implementation of Tao Host Environments - LinuxHost
+---------------------------------------------------
+
+LinuxHost (tao/linux_host.*) defines all the environment-specific stuff for a
+host that uses linux processes as its hosted programs. It can be run in stacked
+mode (e.g. on a TPM, but with its own keys for performance) or as a standalone
+"root" Tao without an underlying Tao. It exports the Tao API to its children. It
+also has a unix-domain socket so that other programs can make requests for
+starting, stopping, or killing hosted programs, or shuting down the LinuxHost.
+
+The code is split into a few different files, e.g. LinuxProcessFactory
+(tao/linux_process_factory.*) for creating and killing processes, PipeFactory
+(tao/pipe_factory.*) for setting up the pipes between child and parent
+processes, and a factory for creating admin channels.
+
+LinuxHost enforces policy. It has a policy key that it consults when deciding if
+it should run a given hosted program. When in stacked mode, the policy key is
+embedded into its own name, by calling ExtendTaoName() on the underlying Tao
+early in Init(). And during seal/unseal it can (or could) implement policies
+that depend on program hash, PID, username, or other things that it knows about.
+Actually, currently it only implements 2 policies: "allow all siblings on same
+LinuxHost" or "allow any process with same name as caller", where name includes
+the program hash and any other info the child added via ExtendTaoName().
+
+Guards
+------
+
+TaoGuard (tao/tao_guard.*) is the API for authorization, with 3 main methods:
+- AddRule(string) // Add a new authorization rule
+- RetractRule(string) // Retract a rule
+- Query(string) // Make a query
+The exact grammar for rules and queries is guard-specific for now, but there are
+some helpers for parsing/formatting rule and query strings for common
+operations like "authorize principal P to do operation Op with arguments
+A1, A2, ..." or "Does principal P have authorization to do Op(A1, A2, ...)".
+
+TrivialGuard (tao/trivial_guard.*) This guard always answers YES (or NO,
+depending on its configuration) to every query.
+
+ACLGuard (tao/acl_gaurd.*) provides a minimalistic guard. You configure it by
+providing a list of queries for which it should answer YES. If a query isn't on
+the list, it answers NO. Note: The principal names embedded in the queries are
+the *full* path from TPM AIK down to program hash. And there are no wildcards or
+other fancy features here... every combination of AIK, OS, Program hash,
+operation, etc., need to be listed individually.
+
+DatalogGuard (tao/datalog_guard.*) provides a smarter guard. It can do certain
+kinds of universal quantification and "conditional" rules, e.g. "If P is a
+subprincipal of X, and X is a trusted OS, and P's program hash is listed in set
+S, and if Op is either Read or Write, then P is authorized to do Op," where the
+definition of "X is a trusted OS" is set up by specifying other similar rules.
+
+
+
+

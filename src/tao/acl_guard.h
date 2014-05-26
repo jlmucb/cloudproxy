@@ -91,9 +91,21 @@ class ACLGuard : public TaoDomain {
   /// TaoDomain is locked.
   virtual bool SaveConfig() const;
 
+  /// Reload ACLs from disk if they were changed recently.
+  bool ReloadACLsIfModified();
+
  private:
   // The set of ACL entries.
   ACLSet aclset_;
+
+  // The path to the signed ACL file.
+  string acl_path_;
+
+  // Modification time of signed ACL file when it was read.
+  time_t acl_mod_time_;
+
+  // Minimum time in seconds before re-checking modification time of ACL file.
+  constexpr static int ACLFileRefreshTimeout = 10;
 
   DISALLOW_COPY_AND_ASSIGN(ACLGuard);
 };

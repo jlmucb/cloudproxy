@@ -36,7 +36,7 @@
 
 namespace tao {
 bool LinuxHost::InitStacked(Tao *host_tao) {
-  if (host_tao != nullptr) {
+  if (host_tao == nullptr) {
     LOG(ERROR) << "No host tao connection available";
     return false;
   }
@@ -47,6 +47,8 @@ bool LinuxHost::InitStacked(Tao *host_tao) {
     LOG(ERROR) << "Could not obtain policy name";
     return false;
   }
+  // Make sure name extension happens *before* keys initialized, so they are
+  // sealed to proper name.
   if (!host_tao->ExtendTaoName(policy_subprin)) {
     LOG(ERROR) << "Could not extend with policy name";
     return false;
@@ -469,7 +471,8 @@ bool LinuxHost::Listen() {
       if (fd > max_fd) max_fd = fd;
     }
 
-    VLOG(3) << "LinuxTao: Listening...";
+    VLOG(3) << "LinuxTao: Waiting...";
+    google::FlushLogFiles(google::INFO);
     int err = select(max_fd + 1, &read_fds, nullptr, nullptr, nullptr);
     if (err == -1 && errno == EINTR) {
       // Do nothing.

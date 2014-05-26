@@ -183,11 +183,11 @@ tao_bin=${TAO_TEST}/bin
 tao_env=${TAO_TEST}/tao.env
 
 # log a to stderr for admin stuff, otherwise it is really quiet
-admin_args="-config_path ${TAO_TEST}/tao.config -policy_pass $TAO_PASS -alsologtostderr=1"
+admin_args="-config_path ${TAO_TEST}/tao.config -policy_pass "$TAO_PASS" -alsologtostderr=1"
 admin="${tao_bin}/tao_admin $admin_args"
-start_hosted="${tao_bin}/linux_host --run -- "
+linux_host="${tao_bin}/linux_host"
+start_hosted="${linux_host} --run -- "
 tpm_tao="${tao_bin}/tpm_tao -alsologtostderr=1"
-soft_tao="${tao_bin}/soft_tao -alsologtostderr=1"
 
 all_tao_progs=$(cd ${tao_bin}; echo * | grep -v '\.a$') # exclude lib*.a
 watchfiles="bin/tcca bin/linux_host domain_acls domain_rules tao.config tao.env"
@@ -216,7 +216,7 @@ function showenv()
 function cleanup()
 {
 	rm -f ${TAO_TEST}/logs/*
-	rm -rf ${TAO_TEST}/{*keys,tpm,soft_tao,linux_tao_host,domain_acls,domain_rules,tao.config,user_acls_sig}
+	rm -rf ${TAO_TEST}/{*keys,tpm,linux_tao_host,domain_acls,domain_rules,tao.config,user_acls_sig}
 	sed -i '/^# BEGIN SETUP VARIABLES/,/^# END SETUP VARIABLES/d' ${tao_env}
 	echo "# BEGIN SETUP VARIABLES" >> ${tao_env}
 	echo "# These variables come from ${TAO_TEST}/scripts/setup.sh" >> ${tao_env}
@@ -229,9 +229,9 @@ function cleanup()
 function stoptests()
 {
 	echo "Attempting graceful shutdown..."
-	(if ${tao_bin}/linux_host --shutdown; then sleep 1; fi ) 2>/dev/null | grep -v "^Aborted$" || true
+	(if ${linux_host} --shutdown; then sleep 1; fi ) 2>/dev/null | grep -v "^Aborted$" || true
 	
-	echo "Checking for remainning Tao services and processes..."
+	echo "Checking for remaining Tao services and processes..."
 	# Try to shutdown 
 	killed=0
 	for prog in $all_tao_progs; do
@@ -261,22 +261,27 @@ function setup()
 	)
 
 	# This sets:
-	# $GOOGLE_HOST_TAO,
-	# GOOGLE_TAO_TPM, GOOGLE_TAO_PCRS,
-	# and/or GOOGLE_TAO_SOFT
+	# $GOOGLE_HOST_TAO # name of underlying host tao, i.e. the TPM (if any)
+	# GOOGLE_TAO_TPM, GOOGLE_TAO_PCRS, # more details about TPM (if any)
+	# and GOOGLE_TAO_LINUX # name of the LinuxHost
 	sed -i '/^# BEGIN SETUP VARIABLES/,/^# END SETUP VARIABLES/d' ${tao_env} 
 	echo "# BEGIN SETUP VARIABLES" >> ${tao_env}
 	echo "# These variables come from ${TAO_TEST}/scripts/setup.sh" >> ${tao_env}
 	if [ "$TAO_USE_TPM" == "yes" ]; then
 		echo "Creating TPMTao AIK and settings."
 		rm -rf ${TAO_TEST}/tpm
-		$tpm_tao --path ${TAO_TEST}/tpm --pcrs=$TAO_TPM_PCRS --create --noshow
+		$tpm_tao --path ${TAO_TEST}/tpm --pcrs "$TAO_TPM_PCRS" --create --noshow
 		$tpm_tao --path ${TAO_TEST}/tpm --show >> ${tao_env}
+	
+		echo "Creating stacked LinuxHost keys and settings."
+		rm -rf ${TAO_TEST}/linux_tao_host
+		$linux_host --path ${TAO_TEST}/linux_tao_host --create --noshow
+		$linux_host --path ${TAO_TEST}/linux_tao_host --show >> ${tao_env}
 	else
-		echo "Creating SoftTao key and settings."
-		rm -rf ${TAO_TEST}/soft_tao
-		$soft_tao --path ${TAO_TEST}/soft_tao --pass=$TAO_PASS --create --noshow
-		$soft_tao --path ${TAO_TEST}/soft_tao --pass=$TAO_PASS --show >> ${tao_env}
+		echo "Creating root LinuxHost keys and settings."
+		rm -rf ${TAO_TEST}/linux_tao_host
+		$linux_host --path ${TAO_TEST}/linux_tao_host --pass "$TAO_PASS" --create --noshow
+		$linux_host --path ${TAO_TEST}/linux_tao_host --pass "$TAO_PASS" --show >> ${tao_env}
 	fi
 	echo "# END SETUP VARIABLES" >> ${tao_env}
 
@@ -296,12 +301,12 @@ function refresh()
 		$admin -add "(forall P, OS, Hash: TrustedOS(OS) and TrustedProgramHash(Hash) and subprin(P, OS, Hash) implies MemberProgram(P))"
 		# Rule for programs that can execute
 		$admin -add "(forall P: MemberProgram(P) implies Authorized(P, \"Execute\"))"
-		# Add the TPM keys, PCRs, and/or SoftTao keys
+		# Add the TPM keys, PCRs, and/or LinuxHost keys
 		if [ "$TAO_USE_TPM" == "yes" ]; then
 			$admin -add 'TrustedPlatform('${GOOGLE_TAO_TPM}')'
 			$admin -add 'TrustedKernelPCRs('${GOOGLE_TAO_PCRS}')'
 		else
-			$admin -add 'TrustedOS('${GOOGLE_TAO_SOFT}')'
+			$admin -add 'TrustedOS('${GOOGLE_TAO_LINUX}')'
 		fi
 		# Add the program hashes, assuming LinuxHost and LinuxProcessFactory.
 		for prog in ${TAO_HOSTED_PROGRAMS}; do
@@ -336,7 +341,11 @@ function startsvcs()
 	if pgrep -x `shortname linux_host` >/dev/null; then
 		echo "LinuxHost service already running";
 	else
-		${tao_bin}/linux_host --service &
+		if [ "$TAO_USE_TPM" == "yes" ]; then
+			${linux_host} --path ${TAO_TEST}/linux_tao_host --service &
+		else
+			${linux_host} --path ${TAO_TEST}/linux_tao_host -pass "$TAO_PASS" --service &
+		fi
 		echo "LinuxTao service now running"
 	fi
 }

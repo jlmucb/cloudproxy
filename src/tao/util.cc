@@ -26,6 +26,7 @@
 #include <signal.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/un.h>
 #include <sys/unistd.h>
@@ -769,4 +770,14 @@ bool split(const string &s, const string &delim, list<int> *values) {
   }
   return false;
 }
+
+time_t FileModificationTime(const string &path) {
+  struct stat st;
+  if (stat(path.c_str(), &st) != 0) {
+    LOG(ERROR) << "File does not exist: " << path;
+    return 0;
+  }
+  return st.st_mtime;
+}
+
 }  // namespace tao

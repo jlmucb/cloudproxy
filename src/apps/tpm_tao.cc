@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
     CHECK(split(pcr_list, ",", &pcrs));
     
     tao.reset(new TPMTao(aik_blob, pcrs));
-    // CHECK(tao.Init());  // not necessary for just serializing
+    CHECK(tao->Init());
   }
 
   if (FLAGS_show) {

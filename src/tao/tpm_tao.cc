@@ -337,8 +337,8 @@ bool TPMTao::GetTaoName(string *full_name) const {
   out << aik_name_;
   out << "::PCRs(\"" << join(pcr_indexes_, ", ") << "\"";
   out << ", \"" << join(child_pcr_values_, ", ") << "\")";
-  ;
-  full_name->assign(out.str() + name_extension_);
+  out << name_extension_;
+  full_name->assign(out.str());
   return true;
 }
 
@@ -360,7 +360,9 @@ bool TPMTao::ExtendTaoName(const string &subprin) {
   // with the current PCR values p. But when we extend from p to p', also give out a
   // delegation so that p speaks for p', since that wouldn't be evident from the
   // names.
-  return false;
+  // TODO(kwalsh) This needs to go to PCRs, not simply stored here. 
+  name_extension_ += "::" + subprin;
+  return true;
 }
 
 static bool ParseHostedProgramFullName(const string &full_name,
@@ -723,42 +725,49 @@ bool TPMTao::SerializeToStringWithDirectory(const string &path, string *params) 
 }
 
 TPMTao *TPMTao::DeserializeFromString(const string &params) {
-  string aik_encoded, pcr_index_list;
+  string aik_blob, pcr_index_list;
   stringstream in(params);
   skip(in, "tao::TPMTao(");
   if (!in) return nullptr;  // not for us
-  getQuotedString(in, &aik_encoded);
-  skip(in, ", ");
-  getQuotedString(in, &pcr_index_list);
-  skip(in, ")");
-  if (!in || (in.get() && !in.eof())) {
-    LOG(ERROR) << "Could not deserialize TPMTao";
+  string s;
+  getQuotedString(in, &s);
+  if (!in) {
+    LOG(ERROR) << "Could not parse TPMTao parameters";
     return nullptr;
   }
-  string aik_blob;
-  if (aik_encoded.substr(0, 5) == "dir:") {
-    string path = aik_encoded.substr(4);
+  if (s.substr(0, 4) == "dir:") {
+    string path = s.substr(4);
     if (!ReadFileToString(path + "/aikblob", &aik_blob)) {
       LOG(ERROR) << "Could not read aik blob for TPMTao";
       return nullptr;
     }
-    string pcr_index_list;
     if (!ReadFileToString(path + "/pcrlist", &pcr_index_list)) {
       LOG(ERROR) << "Could not read pcr index list for TPMTao";
       return nullptr;
     }
-  } else if (aik_encoded.substr(0, 5) == "file:") {
-    if (!ReadFileToString(aik_encoded.substr(5), &aik_blob)) {
-      LOG(ERROR) << "Could not decode aik blob for TPMTao";
-      return nullptr;
-    }
-  } else if (aik_encoded.substr(0, 8) == "base64w:") {
-    if (!Base64WDecode(aik_encoded, &aik_blob)) {
-      LOG(ERROR) << "Could not decode aik blob for TPMTao";
-      return nullptr;
-    }
   } else {
-    LOG(ERROR) << "Bad encoding of aik blob for TPMTao";
+    if (s.substr(0, 5) == "file:") {
+      string path = s.substr(5);
+      if (!ReadFileToString(path, &aik_blob)) {
+        LOG(ERROR) << "Could not decode aik blob for TPMTao";
+        return nullptr;
+      }
+    } else if (s.substr(0, 8) == "base64w:") {
+      string aik_encoded = s.substr(8);
+      if (!Base64WDecode(aik_encoded, &aik_blob)) {
+        LOG(ERROR) << "Could not decode aik blob for TPMTao";
+        return nullptr;
+      }
+    } else {
+      LOG(ERROR) << "Bad encoding of aik blob for TPMTao";
+      return nullptr;
+    }
+    skip(in, ", ");
+    getQuotedString(in, &pcr_index_list);
+  }
+  skip(in, ")");
+  if (!in || (in.get() && !in.eof())) {
+    LOG(ERROR) << "Could not deserialize TPMTao";
     return nullptr;
   }
   list<int> pcr_indexes;

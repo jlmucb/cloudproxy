@@ -453,7 +453,24 @@ bool DatalogGuard::ParseConfig() {
     return false;
   }
   // Load the signed rule file.
-  string path = GetConfigPath(JSONSignedDatalogRulesPath);
+  string rules_path_ = GetConfigPath(JSONSignedDatalogRulesPath);
+  rules_mod_time_ = 0; // force refresh
+  return ReloadRulesIfModified();
+}
+
+bool DatalogGuard::ReloadRulesIfModified() {
+  string path = rules_path_;
+  time_t mod_time = FileModificationTime(path);
+  if (mod_time == 0) {
+    LOG(ERROR) << "Can't stat rules from " << path;
+    return false;
+  }
+  if (mod_time < rules_mod_time_) {
+    LOG(WARNING) << "Ignoring bogus timestamp for " << path;
+  } else if (mod_time - rules_mod_time_ < RulesFileRefreshTimeout) {
+    return true;
+  }
+  // Read the file.
   string serialized;
   if (!ReadFileToString(path, &serialized)) {
     LOG(ERROR) << "Can't load signed policy rules from " << path;
@@ -474,14 +491,17 @@ bool DatalogGuard::ParseConfig() {
   // Parse the rules.
   if (!rules_.ParseFromString(srules.serialized_rules())) {
     LOG(ERROR) << "Can't parse serialized policy rules from " << path;
+      // TODO(kwalsh) Does this leave rules_ out of sync with datalog engine?
     return false;
   }
   for (const auto &rule : rules_.rules()) {
     if (!ProcessRule(rule, false /* do not retract */)) {
       LOG(ERROR) << "Could not process rule";
+      // TODO(kwalsh) This leaves datalog engine in an incomplete state.
       return false;
     }
   }
+  rules_mod_time_ = mod_time;
   return true;
 }
 

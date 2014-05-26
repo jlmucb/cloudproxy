@@ -42,28 +42,32 @@ using tao::TaoDomain;
 using tao::elideString;
 
 DEFINE_string(config_path, "tao.config", "Location of tao domain configuration");
-DEFINE_string(host_path, "linux_tao_host", "Location of linux host configuration");
+DEFINE_string(path, "linux_tao_host", "Location of linux host configuration");
 DEFINE_string(pass, "", "Password for unlocking keys if running in root mode");
 
+DEFINE_bool(create, false, "Create a new LinuxHost service.");
+DEFINE_bool(show, false, "Show principal name for LinuxHost service.");
 DEFINE_bool(service, false, "Start the LinuxHost service.");
 DEFINE_bool(shutdown, false, "Shut down the LinuxHost service.");
-DEFINE_bool(name, false, "Show the LinuxHost principal name.");
 
 DEFINE_bool(run, false, "Start a hosted program (path and args follow --).");
 DEFINE_bool(list, false, "List hosted programs.");
 DEFINE_bool(stop, false, "Stop a hosted program (names follow --) .");
 DEFINE_bool(kill, false, "Kill a hosted program (names follow --) .");
+DEFINE_bool(name, false, "Show the principal name of running LinuxHost.");
 
 int main(int argc, char **argv) {
   string usage = "Administrative utility for LinuxHost.\nUsage:\n";
   string tab = "  ";
+  usage += tab + argv[0] + " [options] --create\n";
+  usage += tab + argv[0] + " [options] --show\n";
   usage += tab + argv[0] + " [options] --service\n";
   usage += tab + argv[0] + " [options] --shutdown\n";
-  usage += tab + argv[0] + " [options] --name\n";
   usage += tab + argv[0] + " [options] --run -- program args...\n";
   usage += tab + argv[0] + " [options] --stop -- name...\n";
   usage += tab + argv[0] + " [options] --kill -- name...\n";
-  usage += tab + argv[0] + " [options] --list";
+  usage += tab + argv[0] + " [options] --list\n";
+  usage += tab + argv[0] + " [options] --name";
   google::SetUsageMessage(usage);
   InitializeApp(&argc, &argv, true);
 
@@ -74,12 +78,12 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  if (FLAGS_service) {
+  if (FLAGS_create || FLAGS_service || FLAGS_show) {
     
     scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
     CHECK(admin.get() != nullptr) << "Could not load configuration";
       
-    scoped_ptr<LinuxHost> host(new LinuxHost(admin.release(), FLAGS_host_path));
+    scoped_ptr<LinuxHost> host(new LinuxHost(admin.release(), FLAGS_path));
 
     Tao *host_tao = Tao::GetHostTao();
     if (host_tao == nullptr) {
@@ -92,12 +96,17 @@ int main(int argc, char **argv) {
       CHECK(host->InitStacked(host_tao));
     }
 
-    printf("LinuxHost Service: %s\n", elideString(host->DebugString()).c_str());
-    printf("Linux Tao Service started and waiting for requests\n");;
-
-    CHECK(host->Listen());
+    if (FLAGS_show) {
+      printf("export GOOGLE_TAO_LINUX='%s'\n", host->TaoHostName().c_str());
+    } else {
+      printf("LinuxHost Service: %s\n", host->DebugString().c_str());
+    }
+    if (FLAGS_service) {
+      printf("Linux Tao Service started and waiting for requests\n");;
+      CHECK(host->Listen());
+    }
   } else {
-    scoped_ptr<LinuxAdminRPC> host(LinuxHost::Connect(FLAGS_host_path));
+    scoped_ptr<LinuxAdminRPC> host(LinuxHost::Connect(FLAGS_path));
     CHECK(host.get() != nullptr);
 
     string name;

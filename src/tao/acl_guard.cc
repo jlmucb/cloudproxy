@@ -54,6 +54,7 @@ bool ACLGuard::Clear() {
 }
 
 bool ACLGuard::Query(const string &query) {
+  ReloadACLsIfModified();
   for (auto &entry : aclset_.entries()) {
     if (entry == query) {
       return true;
@@ -73,7 +74,24 @@ bool ACLGuard::ParseConfig() {
     return false;
   }
   // Load the signed ACL set file.
-  string path = GetConfigPath(JSONSignedACLsPath);
+  acl_path_ = GetConfigPath(JSONSignedACLsPath);
+  acl_mod_time_ = 0; // force refresh
+  return ReloadACLsIfModified();
+}
+
+bool ACLGuard::ReloadACLsIfModified() {
+  string path = acl_path_;
+  time_t mod_time = FileModificationTime(path);
+  if (mod_time == 0) {
+    LOG(ERROR) << "Can't stat ACL set from " << path;
+    return false;
+  }
+  if (mod_time < acl_mod_time_) {
+    LOG(WARNING) << "Ignoring bogus timestamp for " << path;
+  } else if (mod_time - acl_mod_time_ < ACLFileRefreshTimeout) {
+    return true;
+  }
+  // Read the file.
   string serialized;
   if (!ReadFileToString(path, &serialized)) {
     LOG(ERROR) << "Can't load signed ACL set from " << path;
@@ -94,8 +112,10 @@ bool ACLGuard::ParseConfig() {
   // Parse the ACL set.
   if (!aclset_.ParseFromString(sacls.serialized_aclset())) {
     LOG(ERROR) << "Can't parse serialized ACL set from " << path;
+    // TODO(kwalsh) Does this leave aclset_ in bad state?
     return false;
   }
+  acl_mod_time_ = mod_time;
   return true;
 }
 

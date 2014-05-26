@@ -233,6 +233,9 @@ class DatalogGuard : public TaoDomain {
   /// other state. This signs and saves the ACLs. This fails if the
   /// TaoDomain is locked.
   virtual bool SaveConfig() const;
+  
+  /// Reload rules from disk if they were changed recently.
+  bool ReloadRulesIfModified();
 
  private:
   // The set of datalog rules.
@@ -249,6 +252,15 @@ class DatalogGuard : public TaoDomain {
 
   // Transcript of recent datalog API calls (for debugging).
   stringstream dl_transcript_;
+
+  // The path to the signed rules file.
+  string rules_path_;
+
+  // Modification time of signed rules file when it was read.
+  time_t rules_mod_time_;
+
+  // Minimum time in seconds before re-checking modification time of rules file.
+  constexpr static int RulesFileRefreshTimeout = 10;
 
   DISALLOW_COPY_AND_ASSIGN(DatalogGuard);
 };

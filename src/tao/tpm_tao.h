@@ -128,6 +128,7 @@ class TPMTao : public Tao {
   string aik_name_;
 
   /// Subprincipal names extended to this TPMTao's principal name.
+  /// TODO(kwalsh) This needs to be sent to PCRs, not stored here.
   string name_extension_;
 
   /// A list of Platform Configuration Register indexes used to identify the

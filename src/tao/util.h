@@ -361,6 +361,10 @@ bool split(const string &s, const string &delim, list<string> *values);
 /// @param[out] values A list of integers from s.
 bool split(const string &s, const string &delim, list<int> *values);
 
+/// Get the modification timestamp for a file.
+/// @param path The file path.
+time_t FileModificationTime(const string &path);
+
 }  // namespace tao
 
 #endif  // TAO_UTIL_H_

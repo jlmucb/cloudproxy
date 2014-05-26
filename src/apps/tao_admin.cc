@@ -112,15 +112,15 @@ void handleCanExecute(TaoDomain *admin, const string &pathlist, bool retract) {
   // GetTaoName for that.
   string host = FLAGS_host;
   if (host.empty()) {
-    host = getEnvString("GOOGLE_TAO_SOFT");
+    host = getEnvString("GOOGLE_TAO_LINUX");
   }
-  if (host.empty()) {
-    host = getEnvString("GOOGLE_TAO_TPM");
-    string pcrs = getEnvString("GOOGLE_TAO_PCRS");
-    if (!host.empty() &&  !pcrs.empty()) {
-      host += "::" + pcrs;
-    }
-  }
+  // if (host.empty()) {
+  //   host = getEnvString("GOOGLE_TAO_TPM");
+  //   string pcrs = getEnvString("GOOGLE_TAO_PCRS");
+  //   if (!host.empty() &&  !pcrs.empty()) {
+  //     host += "::" + pcrs;
+  //   }
+  // }
   CHECK(!host.empty());
   // TODO(kwalsh) We assume LinuxHost and LinuxProcessFactory here.
   // string policy_subprin;

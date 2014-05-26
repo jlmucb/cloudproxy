@@ -34,7 +34,7 @@ Tao *Tao::host_tao_;
 Tao *Tao::GetHostTao() {
   if (host_tao_ != nullptr) return host_tao_;
   const char *p = getenv(HostTaoEnvVar);
-  if (p == nullptr) {
+  if (p == nullptr || strlen(p) == 0) {
     LOG(ERROR) << "Missing environment variable " << HostTaoEnvVar;
     return nullptr;
   }

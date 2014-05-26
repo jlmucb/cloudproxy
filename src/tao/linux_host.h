@@ -82,9 +82,13 @@ class LinuxHost {
   virtual bool Listen();
 
   static LinuxAdminRPC *Connect(const string &path);
+
+  virtual string TaoHostName() {
+    return tao_host_->TaoHostName();
+  }
   
   virtual string DebugString() const {
-    return tao_host_->TaoHostName();
+    return elideString(tao_host_->TaoHostName());
   }
 
  protected:

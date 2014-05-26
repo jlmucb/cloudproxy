@@ -57,25 +57,26 @@ SoftTao *SoftTao::DeepCopy() const {
   return other.release();
 }
 
-bool SoftTao::GetTaoName(string *name) const {
+bool SoftTao::GetTaoName(string *name) {
   name->assign(key_name_ + name_extension_);
   return true;
 }
 
 bool SoftTao::ExtendTaoName(const string &subprin) {
   if (subprin == "") {
-    LOG(ERROR) << "Invalid subprincipal name";
+    failure_msg_ = "Invalid subprincipal name";
+    LOG(ERROR) << failure_msg_;
     return false;
   }
   name_extension_ += "::" + subprin;
   return true;
 }
 
-bool SoftTao::GetRandomBytes(size_t size, string *bytes) const {
+bool SoftTao::GetRandomBytes(size_t size, string *bytes) {
   return CryptoFactory::Rand()->RandBytes(size, bytes);
 }
 
-bool SoftTao::Attest(const Statement &stmt, string *attestation) const {
+bool SoftTao::Attest(const Statement &stmt, string *attestation) {
   // Set up a (copy) of statement and fill in defaults.
   Statement s;
   s.MergeFrom(stmt);
@@ -83,24 +84,27 @@ bool SoftTao::Attest(const Statement &stmt, string *attestation) const {
   if (!s.has_issuer()) {
     s.set_issuer(name);
   } else if (!IsSubprincipalOrIdentical(s.issuer(), name)) {
-    LOG(ERROR) << "Invalid issuer in statement";
+    failure_msg_ = "Invalid issuer in statement";
+    LOG(ERROR) << failure_msg_;
     return false;
   }
   return GenerateAttestation(*keys_, "" /* delegation */, s, attestation);
 }
 
 bool SoftTao::Seal(const string &data, const string &policy,
-                   string *sealed) const {
+                   string *sealed) {
   if (policy != Tao::SealPolicyDefault) {
-    LOG(ERROR) << "SoftTao-specific policies not yet implemented: " << policy;
+    failure_msg_ = "SoftTao policies not yet implemented";
+    LOG(ERROR) << failure_msg_;
     return false;
   }
   return keys_->Encrypt(data, sealed);
 }
 
-bool SoftTao::Unseal(const string &sealed, string *data, string *policy) const {
+bool SoftTao::Unseal(const string &sealed, string *data, string *policy) {
   if (!keys_->Decrypt(sealed, data)) {
-    LOG(ERROR) << "Could not decrypt the sealed data";
+    failure_msg_ = "Could not decrypt the sealed data";
+    LOG(ERROR) << failure_msg_;
     return false;
   }
   policy->assign(Tao::SealPolicyDefault);

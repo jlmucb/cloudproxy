@@ -91,9 +91,10 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Error: Host tao not found, no password specified\n");
         return 1;
       }
-      CHECK(host->InitRoot(FLAGS_pass));
+      CHECK(host->InitRoot(FLAGS_pass)) << "Could not initialize root Tao host";
     } else {
-      CHECK(host->InitStacked(host_tao));
+      CHECK(host->InitStacked(host_tao))
+          << "Could not initialize stacked Tao host";
     }
 
     if (FLAGS_show) {
@@ -103,17 +104,20 @@ int main(int argc, char **argv) {
     }
     if (FLAGS_service) {
       printf("Linux Tao Service started and waiting for requests\n");;
-      CHECK(host->Listen());
+      CHECK(host->Listen()) << "TaoHost main loop failed";
     }
   } else {
     scoped_ptr<LinuxAdminRPC> host(LinuxHost::Connect(FLAGS_path));
-    CHECK(host.get() != nullptr);
+    CHECK(host.get() != nullptr)
+      << "Could not connect to Tao host";
 
     string name;
-    CHECK(host->GetTaoHostName(&name));
-    
+    CHECK(host->GetTaoHostName(&name))
+        << "Could not get Tao host name: " << host->GetRecentErrorMessage();
+
     if (FLAGS_shutdown) {
-      CHECK(host->Shutdown());
+      CHECK(host->Shutdown())
+          << "Could not shut down Tao host: " << host->GetRecentErrorMessage();
       printf("Shutdown: %s\n", elideString(name).c_str());
     } else if (FLAGS_run) {
       if (argc < 2) {
@@ -127,7 +131,9 @@ int main(int argc, char **argv) {
       }
 
       string child_name;
-      CHECK(host->StartHostedProgram(prog, args, &child_name));
+      CHECK(host->StartHostedProgram(prog, args, &child_name))
+          << "Could not start hosted program: "
+          << host->GetRecentErrorMessage();
 
       printf("Started: %s\n", child_name.c_str());
       printf("LinuxHost: %s\n", elideString(name).c_str());
@@ -138,16 +144,22 @@ int main(int argc, char **argv) {
       }
       for (int i = 1; i < argc; i++) {
         if (FLAGS_kill) {
-          CHECK(host->KillHostedProgram(argv[i]));
+          CHECK(host->KillHostedProgram(argv[i]))
+              << "Could not kill hosted program: "
+              << host->GetRecentErrorMessage();
           printf("Killed: %s\n", argv[i]);
         } else {
-          CHECK(host->StopHostedProgram(argv[i]));
+          CHECK(host->StopHostedProgram(argv[i]))
+              << "Could not stop hosted program: "
+              << host->GetRecentErrorMessage();
           printf("Requested stop: %s\n", argv[i]);
         }
       }
     } else if (FLAGS_list) {
       list<pair<string, int>> child_info;
-      CHECK(host->ListHostedPrograms(&child_info));
+      CHECK(host->ListHostedPrograms(&child_info))
+          << "Could not get list of hosted programs: "
+          << host->GetRecentErrorMessage();
       printf("LinuxHost: %s\n", elideString(name).c_str());
       printf("Hosts %lu programs:", child_info.size());
       for (auto &info : child_info) {

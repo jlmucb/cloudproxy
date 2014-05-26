@@ -88,10 +88,10 @@ TEST(UtilTest, SealAndUnsealSecretTest) {
 
   string secret;
   string policy = Tao::SealPolicyDefault;
-  EXPECT_TRUE(MakeSealedSecret(tao, seal_path, policy, 10, &secret));
+  EXPECT_TRUE(MakeSealedSecret(&tao, seal_path, policy, 10, &secret));
 
   string unsealed_secret;
-  EXPECT_TRUE(GetSealedSecret(tao, seal_path, policy, &unsealed_secret));
+  EXPECT_TRUE(GetSealedSecret(&tao, seal_path, policy, &unsealed_secret));
 
   EXPECT_EQ(secret, unsealed_secret)
       << "The unsealed secret did not match the original secret";

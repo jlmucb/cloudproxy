@@ -45,25 +45,34 @@ class TaoRPC : public Tao {
 
   /// Tao implementation.
   /// @{
-  virtual bool GetTaoName(string *name) const;
+  virtual bool GetTaoName(string *name);
   virtual bool ExtendTaoName(const string &subprin);
-  virtual bool GetRandomBytes(size_t size, string *bytes) const;
-  virtual bool Attest(const Statement &stmt, string *attestation) const;
+  virtual bool GetRandomBytes(size_t size, string *bytes);
+  virtual bool Attest(const Statement &stmt, string *attestation);
   virtual bool Seal(const string &data, const string &policy,
-                    string *sealed) const;
-  virtual bool Unseal(const string &sealed, string *data, string *policy) const;
+                    string *sealed);
+  virtual bool Unseal(const string &sealed, string *data, string *policy);
+  virtual string GetRecentErrorMessage() const { return failure_msg_; }
+  virtual string ResetRecentErrorMessage() {
+    string msg = failure_msg_;
+    failure_msg_ = "";
+    return msg;
+  }
   /// @}
 
  protected:
   /// The channel over which to send and receive messages.
   scoped_ptr<MessageChannel> channel_;
 
+  /// Most recent RPC failure message, if any.
+  string failure_msg_;
+
  private:
   /// Do an RPC request/response interaction with the host Tao.
   /// @param req The request to send.
   /// @param[out] data The returned data, if not nullptr.
   /// @param[out] policy The returned policy, if not nullptr.
-  bool Request(const TaoRPCRequest &req, string *data, string *policy) const;
+  bool Request(const TaoRPCRequest &req, string *data, string *policy);
 };
 }  // namespace tao
 

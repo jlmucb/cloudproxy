@@ -23,13 +23,13 @@
 #include "tao/util.h"
 
 namespace tao {
-bool LinuxAdminRPC::GetTaoHostName(string *name) const {
+bool LinuxAdminRPC::GetTaoHostName(string *name) {
   LinuxAdminRPCRequest rpc;
   rpc.set_rpc(LINUX_ADMIN_RPC_GET_TAO_HOST_NAME);
   return Request(rpc, name);
 }
 
-bool LinuxAdminRPC::Shutdown() const {
+bool LinuxAdminRPC::Shutdown() {
   LinuxAdminRPCRequest rpc;
   rpc.set_rpc(LINUX_ADMIN_RPC_SHUTDOWN);
   return Request(rpc, nullptr /* data */);
@@ -37,7 +37,7 @@ bool LinuxAdminRPC::Shutdown() const {
 
 bool LinuxAdminRPC::StartHostedProgram(const string &path,
                                          const list<string> &args,
-                                         string *child_subprin) const {
+                                         string *child_subprin) {
   LinuxAdminRPCRequest rpc;
   rpc.set_rpc(LINUX_ADMIN_RPC_START_HOSTED_PROGRAM);
   rpc.set_path(path);
@@ -45,21 +45,21 @@ bool LinuxAdminRPC::StartHostedProgram(const string &path,
   return Request(rpc, child_subprin);
 }
 
-bool LinuxAdminRPC::StopHostedProgram(const string &child_subprin) const {
+bool LinuxAdminRPC::StopHostedProgram(const string &child_subprin) {
   LinuxAdminRPCRequest rpc;
   rpc.set_rpc(LINUX_ADMIN_RPC_STOP_HOSTED_PROGRAM);
   rpc.set_data(child_subprin);
   return Request(rpc, nullptr /* data */);
 }
 
-bool LinuxAdminRPC::KillHostedProgram(const string &child_subprin) const {
+bool LinuxAdminRPC::KillHostedProgram(const string &child_subprin) {
   LinuxAdminRPCRequest rpc;
   rpc.set_rpc(LINUX_ADMIN_RPC_KILL_HOSTED_PROGRAM);
   rpc.set_data(child_subprin);
   return Request(rpc, nullptr /* data */);
 }
 
-bool LinuxAdminRPC::ListHostedPrograms(list<pair<string, int>> *child_info) const {
+bool LinuxAdminRPC::ListHostedPrograms(list<pair<string, int>> *child_info) {
   LinuxAdminRPCRequest rpc;
   rpc.set_rpc(LINUX_ADMIN_RPC_LIST_HOSTED_PROGRAMS);
   string data;
@@ -75,17 +75,37 @@ bool LinuxAdminRPC::ListHostedPrograms(list<pair<string, int>> *child_info) cons
   return true;
 }
 
-bool LinuxAdminRPC::Request(const LinuxAdminRPCRequest &req, string *data) const {
+bool LinuxAdminRPC::Request(const LinuxAdminRPCRequest &req, string *data) {
   LinuxAdminRPCResponse resp;
   bool eof;
-  if (!channel_->SendMessage(req) || !channel_->ReceiveMessage(&resp, &eof) ||
-      eof || !resp.success()) {
-    LOG(ERROR) << "RPC to LinuxTao host failed";
+
+  if (!channel_->SendMessage(req)) {
+    failure_msg_ = "Channel send failed";
+    LOG(ERROR) << "Admin RPC to LinuxTao host failed: " << failure_msg_;
+    return false;
+  }
+  if (!channel_->ReceiveMessage(&resp, &eof)) {
+    failure_msg_ = "Channel receive failed";
+    LOG(ERROR) << "Admin RPC to LinuxTao host failed: " << failure_msg_;
+    return false;
+  }
+  if (eof) {
+    failure_msg_ = "Channel is closed";
+    LOG(ERROR) << "Admin RPC to LinuxTao host failed: " << failure_msg_;
+    return false;
+  }
+  if (!resp.success()) {
+    if (resp.has_reason() && resp.reason().size() > 0)
+      failure_msg_ = resp.reason();
+    else
+      failure_msg_ = "Unknown failure from Tao host";
+    LOG(ERROR) << "Admin RPC to LinuxTao host failed: " << failure_msg_;
     return false;
   }
   if (data != nullptr) {
     if (!resp.has_data()) {
-      LOG(ERROR) << "RPC response from LinuxTao host is missing data";
+      failure_msg_ = "Malformed response (missing data)";
+      LOG(ERROR) << "Admin RPC to LinuxTao host failed: " << failure_msg_;
       return false;
     }
     data->assign(resp.data());

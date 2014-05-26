@@ -54,7 +54,7 @@ bool LinuxHost::InitStacked(Tao *host_tao) {
     return false;
   }
   scoped_ptr<Keys> keys(new Keys(path_, "linux_host", Keys::Signing | Keys::Crypting));
-  if (!keys->InitHosted(*host_tao, Tao::SealPolicyDefault)) {
+  if (!keys->InitHosted(host_tao, Tao::SealPolicyDefault)) {
     LOG(ERROR) << "Could not obtain keys";
     return false;
   }
@@ -160,12 +160,15 @@ bool LinuxHost::HandleTaoRPC(HostedLinuxProcess *child,
       break;
     default:
       LOG(ERROR) << "Unknown Tao RPC " << rpc.rpc();
+      resp->set_reason("Unknown Tao RPC");
+      success = false;
       break;
   }
   LOG(INFO) << "Result: " << (success ? "OK" : "FAIL");
 
   resp->set_success(success);
   if (success) resp->set_data(result_data);
+  // TODO(kwalsh) Propagate other error messages?
 
   return true;
 }
@@ -176,6 +179,7 @@ bool LinuxHost::HandleAdminRPC(const LinuxAdminRPCRequest &rpc,
   resp->set_rpc(rpc.rpc());
   bool success = false;
   string child_subprin, tao_name;
+  string failure_msg;
   switch (rpc.rpc()) {
     case LINUX_ADMIN_RPC_SHUTDOWN:
       LOG(INFO) << "Shutdown()";
@@ -184,12 +188,14 @@ bool LinuxHost::HandleAdminRPC(const LinuxAdminRPCRequest &rpc,
       break;
     case LINUX_ADMIN_RPC_START_HOSTED_PROGRAM:
       LOG(INFO) << "StartHostedProgram()";
-      success = HandleStartHostedProgram(rpc, &child_subprin);
+      success = HandleStartHostedProgram(rpc, &child_subprin, &failure_msg);
       if (success) resp->set_data(child_subprin);
+      else resp->set_reason(failure_msg);
       break;
     case LINUX_ADMIN_RPC_STOP_HOSTED_PROGRAM:
       LOG(INFO) << "StopHostedProgram()";
-      success = HandleStopHostedProgram(rpc, SIGTERM);
+      success = HandleStopHostedProgram(rpc, SIGTERM, &failure_msg);
+      if (!success) resp->set_reason(failure_msg);
       break;
     case LINUX_ADMIN_RPC_LIST_HOSTED_PROGRAMS:
       LOG(INFO) << "ListHostedPrograms()";
@@ -206,7 +212,8 @@ bool LinuxHost::HandleAdminRPC(const LinuxAdminRPCRequest &rpc,
       break;
     case LINUX_ADMIN_RPC_KILL_HOSTED_PROGRAM:
       LOG(INFO) << "KillHostedProgram()";
-      success = HandleStopHostedProgram(rpc, SIGKILL);
+      success = HandleStopHostedProgram(rpc, SIGKILL, &failure_msg);
+      if (!success) resp->set_reason(failure_msg);
       break;
     case LINUX_ADMIN_RPC_GET_TAO_HOST_NAME:
       LOG(INFO) << "GetTaoHostName()";
@@ -215,6 +222,8 @@ bool LinuxHost::HandleAdminRPC(const LinuxAdminRPCRequest &rpc,
       break;
     default:
       LOG(ERROR) << "Unknown Linux Admin RPC " << rpc.rpc();
+      resp->set_reason("Unknown Linux Admin RPC");
+      success = false;
       break;
   }
 
@@ -225,9 +234,11 @@ bool LinuxHost::HandleAdminRPC(const LinuxAdminRPCRequest &rpc,
 }
 
 bool LinuxHost::HandleStartHostedProgram(const LinuxAdminRPCRequest &rpc,
-                                         string *child_subprin) {
+                                         string *child_subprin,
+                                         string *failure_msg) {
   if (!rpc.has_path()) {
-    LOG(ERROR) << "Hosted program creation request is missing path";
+    failure_msg->assign("Hosted program creation request is missing path");
+    LOG(ERROR) << *failure_msg;
     return false;
   }
   string path = rpc.path();
@@ -257,7 +268,8 @@ bool LinuxHost::HandleStartHostedProgram(const LinuxAdminRPCRequest &rpc,
   // non-unique host Tao names?
 
   if (!child_factory_->MakeHostedProgramSubprin(next_child_id_, path, child_subprin)) {
-    LOG(ERROR) << "Could not make hosted program name";
+    failure_msg->assign("Could not make hosted program name");
+    LOG(ERROR) << *failure_msg;
     return false;
   }
 
@@ -269,7 +281,8 @@ bool LinuxHost::HandleStartHostedProgram(const LinuxAdminRPCRequest &rpc,
         << "Hosted program denied authorization to execute on this host\n"
         << "Program: ::" << elideString(*child_subprin) << "\n"
         << "LinuxHost: " << elideString(our_name);
-      return false;
+    failure_msg->assign("Authorization to execute the hosted program is denied");
+    return false;
   }
 
   LOG(INFO) << "Hosted program ::" << elideString(*child_subprin)
@@ -279,6 +292,7 @@ bool LinuxHost::HandleStartHostedProgram(const LinuxAdminRPCRequest &rpc,
   if (!child_factory_->StartHostedProgram(*child_channel_factory_, path, args,
                                           *child_subprin, &child)) {
     LOG(ERROR) << "Could not start hosted program ::" << elideString(*child_subprin);
+    failure_msg->assign("Could not start the hosted program");
     return false;
   }
 
@@ -295,9 +309,11 @@ bool LinuxHost::HandleStartHostedProgram(const LinuxAdminRPCRequest &rpc,
   return true;
 }
 
-bool LinuxHost::HandleStopHostedProgram(const LinuxAdminRPCRequest &rpc, int signum) {
+bool LinuxHost::HandleStopHostedProgram(const LinuxAdminRPCRequest &rpc,
+                                        int signum, string *failure_msg) {
   if (!rpc.has_data()) {
-    LOG(ERROR) << "Hosted Program stop request is missing child subprin";
+    failure_msg->assign("Hosted Program stop request is missing child subprin");
+    LOG(ERROR) << *failure_msg;
     return false;
   }
   string child_subprin = rpc.data();
@@ -321,14 +337,16 @@ bool LinuxHost::HandleStopHostedProgram(const LinuxAdminRPCRequest &rpc, int sig
     }
   }
   if (killed == 0 && errors == 0) {
-    LOG(ERROR) << "There are no children named ::" << elideString(child_subprin);
+    LOG(ERROR) << "There are no hosted programs named ::" << elideString(child_subprin);
+    failure_msg->assign("No such hosted program");
     return false;
   } else if (errors > 0) {
     LOG(ERROR) << "Signaled only " << killed << " of " << (killed + errors)
                << " children matching ::" << child_subprin;
+    failure_msg->assign("Some matching hosted programs could not be killed");
     return false;
   } else {
-    LOG(ERROR) << "Signaled " << killed
+    LOG(INFO) << "Signaled " << killed
                << " children matching ::" << elideString(child_subprin);
     return true;
   }

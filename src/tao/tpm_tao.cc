@@ -332,7 +332,7 @@ bool TPMTao::Close() {
   return ok;
 }
 
-bool TPMTao::GetTaoName(string *full_name) const {
+bool TPMTao::GetTaoName(string *full_name) {
   stringstream out;
   out << aik_name_;
   out << "::PCRs(\"" << join(pcr_indexes_, ", ") << "\"";
@@ -456,12 +456,13 @@ bool TPMTao::VerifySignature(const string &signer, const string &stmt,
   return false;
 }
 
-bool TPMTao::GetRandomBytes(size_t size, string *bytes) const {
+bool TPMTao::GetRandomBytes(size_t size, string *bytes) {
   TSS_RESULT result;
   BYTE *random;
   result = Tspi_TPM_GetRandom(tpm_, size, &random);
   if (result != TSS_SUCCESS) {
-    LOG(ERROR) << "Could not get random bytes from the TPM";
+    failure_msg_ = "Could not get random bytes from the TPM";
+    LOG(ERROR) << failure_msg_;
     return false;
   }
 
@@ -470,9 +471,10 @@ bool TPMTao::GetRandomBytes(size_t size, string *bytes) const {
   return true;
 }
 
-bool TPMTao::Seal(const string &data, const string &policy, string *sealed) const {
+bool TPMTao::Seal(const string &data, const string &policy, string *sealed) {
   if (policy != Tao::SealPolicyDefault) {
-    LOG(ERROR) << "TPM-specific policies not yet implemented: " << policy;
+    failure_msg_ = "TPM-specific policies not yet implemented";
+    LOG(ERROR) << failure_msg_;
     return false;
   }
   TSS_RESULT result;
@@ -480,14 +482,16 @@ bool TPMTao::Seal(const string &data, const string &policy, string *sealed) cons
   result = Tspi_Context_CreateObject(tss_ctx_, TSS_OBJECT_TYPE_ENCDATA,
                                      TSS_ENCDATA_SEAL, &enc_data);
   if (result != TSS_SUCCESS) {
-    LOG(ERROR) << "Could not create the data for sealing";
+    failure_msg_ = "Could not create the data for sealing";
+    LOG(ERROR) << failure_msg_;
     return false;
   }
 
   BYTE *bytes = reinterpret_cast<BYTE *>(const_cast<char *>(data.data()));
   result = Tspi_Data_Seal(enc_data, srk_, data.size(), bytes, tss_pcr_values_);
   if (result != TSS_SUCCESS) {
-    LOG(ERROR) << "Could not seal the test data";
+    failure_msg_ = "Could not seal the test data";
+    LOG(ERROR) << failure_msg_;
     return false;
   }
 
@@ -498,7 +502,8 @@ bool TPMTao::Seal(const string &data, const string &policy, string *sealed) cons
                               TSS_TSPATTRIB_ENCDATABLOB_BLOB, &sealed_data_len,
                               &sealed_data);
   if (result != TSS_SUCCESS) {
-    LOG(ERROR) << "Could not get the sealed bits";
+    failure_msg_ = "Could not get the sealed bits";
+    LOG(ERROR) << failure_msg_;
     return false;
   }
 
@@ -510,13 +515,14 @@ bool TPMTao::Seal(const string &data, const string &policy, string *sealed) cons
   return true;
 }
 
-bool TPMTao::Unseal(const string &sealed, string *data, string *policy) const {
+bool TPMTao::Unseal(const string &sealed, string *data, string *policy) {
   TSS_RESULT result;
   TSS_HENCDATA enc_data;
   result = Tspi_Context_CreateObject(tss_ctx_, TSS_OBJECT_TYPE_ENCDATA,
                                      TSS_ENCDATA_SEAL, &enc_data);
   if (result != TSS_SUCCESS) {
-    LOG(ERROR) << "Could not create the data for sealing";
+    failure_msg_ = "Could not create the data for sealing";
+    LOG(ERROR) << failure_msg_;
     return false;
   }
 
@@ -525,7 +531,8 @@ bool TPMTao::Unseal(const string &sealed, string *data, string *policy) const {
       Tspi_SetAttribData(enc_data, TSS_TSPATTRIB_ENCDATA_BLOB,
                          TSS_TSPATTRIB_ENCDATABLOB_BLOB, sealed.size(), bytes);
   if (result != TSS_SUCCESS) {
-    LOG(ERROR) << "Could not set the sealed data for unsealing";
+    failure_msg_ = "Could not set the sealed data for unsealing";
+    LOG(ERROR) << failure_msg_;
     return false;
   }
 
@@ -533,7 +540,8 @@ bool TPMTao::Unseal(const string &sealed, string *data, string *policy) const {
   UINT32 unsealed_data_len;
   result = Tspi_Data_Unseal(enc_data, srk_, &unsealed_data_len, &unsealed_data);
   if (result != TSS_SUCCESS) {
-    LOG(ERROR) << "Could not unseal the data";
+    failure_msg_ = "Could not unseal the data";
+    LOG(ERROR) << failure_msg_;
     return false;
   }
 
@@ -545,9 +553,10 @@ bool TPMTao::Unseal(const string &sealed, string *data, string *policy) const {
   return true;
 }
 
-bool TPMTao::Attest(const Statement &stmt, string *attestation) const {
+bool TPMTao::Attest(const Statement &stmt, string *attestation) {
   if (!aik_) {
-    LOG(ERROR) << "TPMTao was configured without a signing key";
+    failure_msg_ = "TPMTao was configured without a signing key";
+    LOG(ERROR) << failure_msg_;
     return false;
   }
   // Set up a (copy) of statement and fill in defaults.
@@ -559,14 +568,16 @@ bool TPMTao::Attest(const Statement &stmt, string *attestation) const {
   if (!s.has_issuer()) {
     string issuer;
     if (!GetTaoName(&issuer)) {
-      LOG(ERROR) << "Could not get issuer name";
+      failure_msg_ = "Could not get issuer name";
+      LOG(ERROR) << failure_msg_;
       return false;
     }
     s.set_issuer(issuer);
   }
   string serialized_statement;
   if (!s.SerializeToString(&serialized_statement)) {
-    LOG(ERROR) << "Could not serialize the statement to a string";
+    failure_msg_ = "Could not serialize the statement to a string";
+    LOG(ERROR) << failure_msg_;
     return false;
   }
 
@@ -582,7 +593,8 @@ bool TPMTao::Attest(const Statement &stmt, string *attestation) const {
   TSS_RESULT result;
   result = Tspi_TPM_Quote(tpm_, aik_, tss_pcr_indexes_, &valid);
   if (result != TSS_SUCCESS) {
-    LOG(ERROR) << "Could not quote data with the AIK";
+    failure_msg_ = "Could not quote data with the AIK";
+    LOG(ERROR) << failure_msg_;
     return false;
   }
 
@@ -595,7 +607,8 @@ bool TPMTao::Attest(const Statement &stmt, string *attestation) const {
   a.set_signature(signature);
 
   if (!a.SerializeToString(attestation)) {
-    LOG(ERROR) << "Could not serialize the TPM 1.2 attestation";
+    failure_msg_ = "Could not serialize the TPM 1.2 attestation";
+    LOG(ERROR) << failure_msg_;
     return false;
   }
 

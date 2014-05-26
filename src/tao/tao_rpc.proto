@@ -41,4 +41,5 @@ message TaoRPCResponse {
   required bool success = 2;
   optional bytes data = 3;
   optional string policy = 4;
+  optional string reason = 5;  // failure message
 }

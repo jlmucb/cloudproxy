@@ -45,42 +45,52 @@ class LinuxAdminRPC {
   /// @{
   
   /// Request the full name of the LinuxTao. 
-  virtual bool GetTaoHostName(string *name) const;
+  virtual bool GetTaoHostName(string *name);
 
   /// Request the LinuxTao be shut down.
-  virtual bool Shutdown() const;
+  virtual bool Shutdown();
 
   /// Request the LinuxTao start a new hosted program. 
   /// @param path The path to the hosted program binary.
   /// @param args The arguments for the hosted program.
   /// @param[out] child_subprin The subprincipal name of the new hosted program.
   virtual bool StartHostedProgram(const string &path, const list<string> &args,
-                                  string *child_subprin) const;
+                                  string *child_subprin);
 
   /// Request the LinuxTao stop a hosted program. If there are multiple hosted
   /// programs with the same name, all of them will be stopped.
   /// @param[out] child_subprin The subprincipal name of the hosted program(s).
-  virtual bool StopHostedProgram(const string &child_subprin) const;
+  virtual bool StopHostedProgram(const string &child_subprin);
 
   /// Request the LinuxTao send SIGTERM to a hosted program. If there are
   /// multiple hosted programs with the same name, all of them will be sent the
   /// signal.
   /// @param[out] child_subprin The subprincipal name of the hosted program(s).
-  virtual bool KillHostedProgram(const string &child_subprin) const;
+  virtual bool KillHostedProgram(const string &child_subprin);
 
   /// Request from LinuxTao a list of hosted programs.
   /// @param[out] child_info A list of <child_subprin, pid> pairs.
-  virtual bool ListHostedPrograms(list<pair<string, int>> *child_info) const;
+  virtual bool ListHostedPrograms(list<pair<string, int>> *child_info);
+
+  virtual string GetRecentErrorMessage() const { return failure_msg_; }
+  virtual string ResetRecentErrorMessage() {
+    string msg = failure_msg_;
+    failure_msg_ = "";
+    return msg;
+  }
 
  protected:
   /// The channel over which to send and receive messages.
   scoped_ptr<MessageChannel> channel_;
 
+  /// Most recent RPC failure message, if any.
+  string failure_msg_;
+
  private:
   /// Do an RPC request/response interaction with the LinuxTao host.
   /// @param req The request to send.
   /// @param[out] data The returned data, if not nullptr.
-  bool Request(const LinuxAdminRPCRequest &req, string *data) const;
+  bool Request(const LinuxAdminRPCRequest &req, string *data);
 
   DISALLOW_COPY_AND_ASSIGN(LinuxAdminRPC);
 };

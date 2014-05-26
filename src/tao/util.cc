@@ -392,18 +392,18 @@ bool GetTCPSocketInfo(int sock, string *host, string *port) {
   return true;
 }
 
-bool MakeSealedSecret(const Tao &tao, const string &path, const string &policy,
+bool MakeSealedSecret(Tao *tao, const string &path, const string &policy,
                       int secret_size, string *secret) {
   if (secret == nullptr) {
     LOG(ERROR) << "Could not seal null secret";
     return false;
   }
-  if (!tao.GetRandomBytes(secret_size, secret)) {
+  if (!tao->GetRandomBytes(secret_size, secret)) {
     LOG(ERROR) << "Could not generate a random secret to seal";
     return false;
   }
   string sealed_secret;
-  if (!tao.Seal(*secret, policy, &sealed_secret)) {
+  if (!tao->Seal(*secret, policy, &sealed_secret)) {
     LOG(ERROR) << "Can't seal the secret";
     return false;
   }
@@ -419,7 +419,7 @@ bool MakeSealedSecret(const Tao &tao, const string &path, const string &policy,
   return true;
 }
 
-bool GetSealedSecret(const Tao &tao, const string &path, const string &policy,
+bool GetSealedSecret(Tao *tao, const string &path, const string &policy,
                      string *secret) {
   if (secret == nullptr) {
     LOG(ERROR) << "Could not unseal null secret";
@@ -431,7 +431,7 @@ bool GetSealedSecret(const Tao &tao, const string &path, const string &policy,
     return false;
   }
   string unseal_policy;
-  if (!tao.Unseal(sealed_secret, secret, &unseal_policy)) {
+  if (!tao->Unseal(sealed_secret, secret, &unseal_policy)) {
     LOG(ERROR) << "Can't unseal the secret";
     return false;
   }

@@ -46,5 +46,6 @@ message LinuxAdminRPCResponse {
   required bool success = 2;
   optional bytes data = 3; // either a string or 
 						   // serialized LinuxAdminRPCHostedProgramList
+  optional string reason = 4; // reason in case of failure
 }
 

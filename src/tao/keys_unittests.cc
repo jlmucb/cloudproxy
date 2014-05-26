@@ -73,7 +73,7 @@ TEST_F(TaoKeysTest, GenerateHostedKeysTest) {
   EXPECT_TRUE(tao.Init());
 
   string policy = Tao::SealPolicyDefault;
-  EXPECT_TRUE(keys_->InitHosted(tao, policy));
+  EXPECT_TRUE(keys_->InitHosted(&tao, policy));
   EXPECT_TRUE(keys_->Verifier() != nullptr);
   EXPECT_TRUE(keys_->Signer() != nullptr);
   EXPECT_TRUE(keys_->Crypter() != nullptr);

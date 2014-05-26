@@ -981,7 +981,7 @@ bool Keys::InitNonHosted(const string &password) {
   return true;
 }
 
-bool Keys::InitHosted(const Tao &tao, const string &policy) {
+bool Keys::InitHosted(Tao *tao, const string &policy) {
   ScopedSafeString secret(new string());
   if (PathExists(FilePath(SecretPath()))) {
     // Load Tao-protected secret.
@@ -1018,7 +1018,7 @@ bool Keys::InitHosted(const Tao &tao, const string &policy) {
       }
       Statement stmt;
       stmt.set_delegate(key_name);
-      if (!tao.Attest(stmt, &host_delegation_)) {
+      if (!tao->Attest(stmt, &host_delegation_)) {
         LOG(ERROR) << "Could not get delegation for signing key";
         return false;
       }

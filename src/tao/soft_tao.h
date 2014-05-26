@@ -56,13 +56,18 @@ class SoftTao : public Tao {
   
   /// These methods have the same semantics as Tao.
   /// @{
-  virtual bool GetTaoName(string *name) const;
+  virtual bool GetTaoName(string *name);
   virtual bool ExtendTaoName(const string &subprin);
-  virtual bool GetRandomBytes(size_t size, string *bytes) const;
-  virtual bool Attest(const Statement &stmt, string *attestation) const;
-  virtual bool Seal(const string &data, const string &policy,
-                    string *sealed) const;
-  virtual bool Unseal(const string &sealed, string *data, string *policy) const;
+  virtual bool GetRandomBytes(size_t size, string *bytes);
+  virtual bool Attest(const Statement &stmt, string *attestation);
+  virtual bool Seal(const string &data, const string &policy, string *sealed);
+  virtual bool Unseal(const string &sealed, string *data, string *policy);
+  virtual string GetRecentErrorMessage() const { return failure_msg_; }
+  virtual string ResetRecentErrorMessage() {
+    string msg = failure_msg_;
+    failure_msg_ = "";
+    return msg;
+  }
   /// @}
 
  private:
@@ -74,6 +79,9 @@ class SoftTao : public Tao {
 
   /// Subprincipal names extended to this SoftTao's principal name.
   string name_extension_;
+
+  /// Most recent failure message, if any.
+  string failure_msg_;
 
   DISALLOW_COPY_AND_ASSIGN(SoftTao);
 };

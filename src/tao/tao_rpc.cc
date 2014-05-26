@@ -24,7 +24,7 @@
 
 namespace tao {
 
-bool TaoRPC::GetTaoName(string *name) const {
+bool TaoRPC::GetTaoName(string *name) {
   TaoRPCRequest rpc;
   rpc.set_rpc(TAO_RPC_GET_TAO_NAME);
   return Request(rpc, name, nullptr /* policy */);
@@ -37,14 +37,14 @@ bool TaoRPC::ExtendTaoName(const string &subprin) {
   return Request(rpc, nullptr /* data */, nullptr /* policy */);
 }
 
-bool TaoRPC::GetRandomBytes(size_t size, string *bytes) const {
+bool TaoRPC::GetRandomBytes(size_t size, string *bytes) {
   TaoRPCRequest rpc;
   rpc.set_rpc(TAO_RPC_GET_RANDOM_BYTES);
   rpc.set_size(size);
   return Request(rpc, bytes, nullptr /* policy */);
 }
 
-bool TaoRPC::Attest(const Statement &stmt, string *attestation) const {
+bool TaoRPC::Attest(const Statement &stmt, string *attestation) {
   string serialized_stmt;
   if (!stmt.SerializePartialToString(&serialized_stmt)) {
     LOG(ERROR) << "Could not serialize partial statement";
@@ -57,7 +57,7 @@ bool TaoRPC::Attest(const Statement &stmt, string *attestation) const {
 }
 
 bool TaoRPC::Seal(const string &data, const string &policy,
-                  string *sealed) const {
+                  string *sealed) {
   TaoRPCRequest rpc;
   rpc.set_rpc(TAO_RPC_SEAL);
   rpc.set_data(data);
@@ -65,7 +65,7 @@ bool TaoRPC::Seal(const string &data, const string &policy,
   return Request(rpc, sealed, nullptr /* policy */);
 }
 
-bool TaoRPC::Unseal(const string &sealed, string *data, string *policy) const {
+bool TaoRPC::Unseal(const string &sealed, string *data, string *policy) {
   TaoRPCRequest rpc;
   rpc.set_rpc(TAO_RPC_UNSEAL);
   rpc.set_data(sealed);
@@ -73,24 +73,44 @@ bool TaoRPC::Unseal(const string &sealed, string *data, string *policy) const {
 }
 
 bool TaoRPC::Request(const TaoRPCRequest &req, string *data,
-                     string *policy) const {
+                     string *policy) {
   TaoRPCResponse resp;
   bool eof;
-  if (!channel_->SendMessage(req) || !channel_->ReceiveMessage(&resp, &eof) ||
-      eof || !resp.success()) {
-    LOG(ERROR) << "RPC to Tao host failed";
+  if (!channel_->SendMessage(req)) {
+    failure_msg_ = "Channel send failed";
+    LOG(ERROR) << "RPC to Tao host failed: " << failure_msg_;
+    return false;
+  }
+  if (!channel_->ReceiveMessage(&resp, &eof)) {
+    failure_msg_ = "Channel receive failed";
+    LOG(ERROR) << "RPC to Tao host failed: " << failure_msg_;
+    return false;
+  }
+  if (eof) {
+    failure_msg_ = "Channel is closed";
+    LOG(ERROR) << "RPC to Tao host failed: " << failure_msg_;
+    return false;
+  }
+  if (!resp.success()) {
+    if (resp.has_reason() && resp.reason().size() > 0)
+      failure_msg_ = resp.reason();
+    else
+      failure_msg_ = "Unknown failure from Tao host";
+    LOG(ERROR) << "RPC to Tao host failed: " << failure_msg_;
     return false;
   }
   if (data != nullptr) {
     if (!resp.has_data()) {
-      LOG(ERROR) << "RPC response from Tao host is missing data";
+      failure_msg_ = "Malformed response (missing data)";
+      LOG(ERROR) << "RPC to Tao host failed: " << failure_msg_;
       return false;
     }
     data->assign(resp.data());
   }
   if (policy != nullptr) {
     if (!resp.has_policy()) {
-      LOG(ERROR) << "RPC response from Tao host is missing policy";
+      failure_msg_ = "Malformed response (missing policy)";
+      LOG(ERROR) << "RPC to Tao host failed: " << failure_msg_;
       return false;
     }
     policy->assign(resp.policy());

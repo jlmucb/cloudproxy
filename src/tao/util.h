@@ -225,7 +225,7 @@ bool ConnectToTCPServer(const string &host, const string &port, int *sock);
 /// @param policy A sealing policy under which to seal the secret.
 /// @param secret_size The number of random bytes for the new secret.
 /// @param[out] secret The new random secret.
-bool MakeSealedSecret(const Tao &tao, const string &path, const string &policy,
+bool MakeSealedSecret(Tao *tao, const string &path, const string &policy,
                       int secret_size, string *secret);
 
 /// Read and unseal a secret that is sealed against the host Tao.
@@ -235,7 +235,7 @@ bool MakeSealedSecret(const Tao &tao, const string &path, const string &policy,
 /// sealed. The call will fail if this does not match the actual policy under
 /// which the secret was sealed.
 /// @param secret[out] The unsealed secret.
-bool GetSealedSecret(const Tao &tao, const string &path, const string &policy,
+bool GetSealedSecret(Tao *tao, const string &path, const string &policy,
                      string *secret);
 
 /// Create a temporary directory.

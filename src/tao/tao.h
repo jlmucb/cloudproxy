@@ -60,7 +60,7 @@ class Tao {
   /// hosted program (for some definition of "different") will be given
   /// different Tao names.
   /// @param[out] name The full, globally-unique name of this hosted program.
-  virtual bool GetTaoName(string *name) const = 0;
+  virtual bool GetTaoName(string *name) = 0;
 
   /// Irreversibly extend the Tao principal name of this hosted program. In
   /// effect, the hosted program can drop privileges by taking on the identity
@@ -71,13 +71,13 @@ class Tao {
   /// Get random bytes.
   /// @param size The number of bytes to get.
   /// @param[out] bytes The random bytes.
-  virtual bool GetRandomBytes(size_t size, string *bytes) const = 0;
+  virtual bool GetRandomBytes(size_t size, string *bytes) = 0;
 
   /// Request the Tao host sign a Statement on behalf of this hosted program.
   /// @param stmt A Statement to be signed. The issuer, time, and expiration
   /// fields will be filled in with appropriate defaults if they are left empty.
   /// @param[out] attestation The resulting signed attestation.
-  virtual bool Attest(const Statement &stmt, string *attestation) const = 0;
+  virtual bool Attest(const Statement &stmt, string *attestation) = 0;
 
   /// Encrypt data so only certain hosted programs can unseal it.
   /// @param data The data to seal.
@@ -89,7 +89,7 @@ class Tao {
   /// @param[out] sealed The encrypted data.
   /// TODO(kwalsh) Add expiration.
   virtual bool Seal(const string &data, const string &policy,
-                    string *sealed) const = 0;
+                    string *sealed) = 0;
 
   /// Decrypt data that has been sealed by the Seal() operation, but only
   /// if the policy specified during the Seal() operation is satisfied.
@@ -100,7 +100,7 @@ class Tao {
   /// only a hosted program that itself satisfies the policy could have
   /// performed the Seal() operation.
   virtual bool Unseal(const string &sealed, string *data,
-                      string *policy) const = 0;
+                      string *policy) = 0;
 
   /// Policy for sealing and unsealing. Hosts may implement additional policies.
   /// @{
@@ -123,6 +123,12 @@ class Tao {
   constexpr static auto SealPolicyLiberal = "any";
 
   /// @}
+
+  /// Get most recent error message, or emptystring if there have been no errors. 
+  virtual string GetRecentErrorMessage() const = 0;
+
+  // Clear the most recent error message and return the previous value, if any.
+  virtual string ResetRecentErrorMessage() = 0;
 
   /// A context string for signed attestations.
   constexpr static auto AttestationSigningContext =

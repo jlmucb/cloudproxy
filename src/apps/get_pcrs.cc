@@ -43,8 +43,7 @@ int main(int argc, char **argv) {
     pcr_indexes.push_back(17);
     pcr_indexes.push_back(18);
   } else {
-    for (int i = 1; i < argc; i++)
-      pcr_indexes.push_back(atoi(argv[i]));
+    for (int i = 1; i < argc; i++) pcr_indexes.push_back(atoi(argv[i]));
   }
 
   TPMTao tao(pcr_indexes);

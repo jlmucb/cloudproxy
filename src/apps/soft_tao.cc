@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
     keys.reset(new Keys(path, "soft_tao", Keys::Signing | Keys::Crypting));
     CHECK(keys->InitNonHosted(pass));
   }
-    
+
   if (FLAGS_show) {
     scoped_ptr<SoftTao> tao;
     tao.reset(new SoftTao(keys.release()));

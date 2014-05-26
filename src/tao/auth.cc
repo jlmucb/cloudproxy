@@ -199,8 +199,7 @@ Predicate *Predicate::ParseFromString(const string &name) {
 
 Predicate *Predicate::DeepCopy() const {
   scoped_ptr<Predicate> other(new Predicate(name_));
-  for (const auto &arg : args_)
-    other->AddArgument(arg->DeepCopy());
+  for (const auto &arg : args_) other->AddArgument(arg->DeepCopy());
   return other.release();
 }
 
@@ -249,8 +248,8 @@ Principal *Principal::ParseFromString(const string &name) {
 }
 
 Principal *Principal::DeepCopy() const {
-  return new Principal(
-      (parent_ == nullptr ? nullptr : parent_->DeepCopy()), ext_->DeepCopy());
+  return new Principal((parent_ == nullptr ? nullptr : parent_->DeepCopy()),
+                       ext_->DeepCopy());
 }
 
 string Principal::SerializeToString() const {

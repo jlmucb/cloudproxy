@@ -99,10 +99,10 @@ TEST(UtilTest, SealAndUnsealSecretTest) {
 
 void shouldNotBeNull(int *x) {
   ASSERT_NE(x, nullptr);
-  if (x != nullptr)
-    *x += 1;
+  if (x != nullptr) *x += 1;
 }
-typedef scoped_ptr_malloc<int, CallUnlessNull<int, shouldNotBeNull>> ScopedIntPtr;
+typedef scoped_ptr_malloc<int, CallUnlessNull<int, shouldNotBeNull>>
+    ScopedIntPtr;
 
 TEST(UtilTest, CallUnlessNullTest) {
   int x = 42, y = 123;
@@ -131,7 +131,8 @@ TEST(UtilTest, SelfPipeTest) {
 }
 
 TEST(UtilTest, ShaTest) {
-  string txt = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
+  string txt =
+      "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
   string h;
   EXPECT_TRUE(bytesFromHex(txt, &h));
 
@@ -141,8 +142,8 @@ TEST(UtilTest, ShaTest) {
 
   ScopedTempDir temp_dir;
   EXPECT_TRUE(CreateTempDir("util_test", &temp_dir));
-  EXPECT_TRUE(WriteStringToFile(*temp_dir+"/hello.txt", "hello"));
-  EXPECT_TRUE(Sha256FileHash(*temp_dir+"/hello.txt", &hash));
+  EXPECT_TRUE(WriteStringToFile(*temp_dir + "/hello.txt", "hello"));
+  EXPECT_TRUE(Sha256FileHash(*temp_dir + "/hello.txt", &hash));
   EXPECT_EQ(h, hash);
 }
 
@@ -185,5 +186,3 @@ TEST(UtilTest, HexTest) {
   EXPECT_FALSE(bytesFromHex("01234", &txt));
   EXPECT_FALSE(bytesFromHex("01g3", &txt));
 }
-
-

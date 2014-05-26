@@ -36,8 +36,8 @@ bool LinuxAdminRPC::Shutdown() {
 }
 
 bool LinuxAdminRPC::StartHostedProgram(const string &path,
-                                         const list<string> &args,
-                                         string *child_subprin) {
+                                       const list<string> &args,
+                                       string *child_subprin) {
   LinuxAdminRPCRequest rpc;
   rpc.set_rpc(LINUX_ADMIN_RPC_START_HOSTED_PROGRAM);
   rpc.set_path(path);
@@ -64,10 +64,9 @@ bool LinuxAdminRPC::ListHostedPrograms(list<pair<string, int>> *child_info) {
   rpc.set_rpc(LINUX_ADMIN_RPC_LIST_HOSTED_PROGRAMS);
   string data;
   LinuxAdminRPCHostedProgramList info;
-  if (!Request(rpc, &data) ||
-      !info.ParseFromString(data) ||
+  if (!Request(rpc, &data) || !info.ParseFromString(data) ||
       info.name_size() != info.pid_size())
-      return false;
+    return false;
   child_info->clear();
   for (int i = 0; i < info.name_size(); i++) {
     child_info->push_back(make_pair(info.name(i), info.pid(i)));

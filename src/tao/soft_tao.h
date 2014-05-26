@@ -26,13 +26,11 @@
 #include "tao/tao.h"
 #include "tao/util.h"
 
-
 namespace tao {
 /// A Tao interface implemented entirely in software and not backed by any
 /// hardware TPM or any host Tao.
 class SoftTao : public Tao {
  public:
-
   /// Use temporary keys for signing and sealing. This is useful for unit tests.
   SoftTao() {}
 
@@ -53,7 +51,7 @@ class SoftTao : public Tao {
 
   /// Make a (deep) copy of this object.
   virtual SoftTao *DeepCopy() const;
-  
+
   /// These methods have the same semantics as Tao.
   /// @{
   virtual bool GetTaoName(string *name);
@@ -73,7 +71,7 @@ class SoftTao : public Tao {
  private:
   /// Crypting and signing keys for sealing and signing.
   scoped_ptr<tao::Keys> keys_;
-  
+
   /// Base name of this SoftTao, encoded as a principal.
   string key_name_;
 

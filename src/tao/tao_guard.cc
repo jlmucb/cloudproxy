@@ -23,7 +23,7 @@
 namespace tao {
 
 string TaoGuard::MakePredicate(const string &name, const string &op,
-                                      const list<unique_ptr<Term>> &args) {
+                               const list<unique_ptr<Term>> &args) {
   stringstream out;
   out << "Authorized(" << name << ", " << quotedString(op);
   for (const auto &arg : args) {
@@ -34,7 +34,7 @@ string TaoGuard::MakePredicate(const string &name, const string &op,
 }
 
 string TaoGuard::MakePredicate(const string &name, const string &op,
-                                      const list<string> &args) {
+                               const list<string> &args) {
   stringstream out;
   out << "Authorized(" << name << ", " << quotedString(op);
   for (const auto &arg : args) {

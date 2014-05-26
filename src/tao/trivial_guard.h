@@ -30,9 +30,7 @@ using std::string;
 /// authorization query.
 class TrivialGuard : public TaoGuard {
  public:
-  enum Policy {
-    ConservativePolicy, LiberalPolicy
-  };
+  enum Policy { ConservativePolicy, LiberalPolicy };
 
   TrivialGuard(Policy policy) : policy_(policy) {}
 
@@ -68,6 +66,7 @@ class TrivialGuard : public TaoGuard {
  protected:
   /// The policy.
   Policy policy_;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(TrivialGuard);
 };

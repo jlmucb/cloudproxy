@@ -53,18 +53,18 @@ bool TaoRootHost::Init() {
 }
 
 bool TaoRootHost::GetRandomBytes(const string &child_subprin, size_t size,
-                              string *bytes) const {
+                                 string *bytes) const {
   return CryptoFactory::Rand()->RandBytes(size, bytes);
 }
 
 bool TaoRootHost::Attest(const string &child_subprin, Statement *stmt,
-                      string *attestation) const {
+                         string *attestation) const {
   // Make sure issuer is identical to (or a subprincipal of) the hosted
   // program's principal name.
   if (!stmt->has_issuer()) {
     stmt->set_issuer(tao_host_name_ + "::" + child_subprin);
-  } else if (!IsSubprincipalOrIdentical(stmt->issuer(),
-        tao_host_name_ + "::" + child_subprin)) {
+  } else if (!IsSubprincipalOrIdentical(
+                 stmt->issuer(), tao_host_name_ + "::" + child_subprin)) {
     LOG(ERROR) << "Invalid issuer in statement";
     return false;
   }
@@ -73,7 +73,7 @@ bool TaoRootHost::Attest(const string &child_subprin, Statement *stmt,
 }
 
 bool TaoRootHost::Encrypt(const google::protobuf::Message &data,
-                      string *encrypted) const {
+                          string *encrypted) const {
   string serialized_data;
   if (!data.SerializeToString(&serialized_data)) {
     LOG(ERROR) << "Could not serialize data to be sealed";
@@ -83,7 +83,7 @@ bool TaoRootHost::Encrypt(const google::protobuf::Message &data,
 }
 
 bool TaoRootHost::Decrypt(const string &encrypted,
-                      google::protobuf::Message *data) const {
+                          google::protobuf::Message *data) const {
   string serialized_data;
   if (!keys_->Decrypt(encrypted, &serialized_data)) {
     LOG(ERROR) << "Could not decrypt sealed data";

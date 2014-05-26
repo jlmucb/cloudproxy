@@ -51,10 +51,9 @@ bool LinuxProcessFactory::StartHostedProgram(
     const PipeFactory &child_channel_factory, const string &path,
     const list<string> &args, const string &subprin,
     scoped_ptr<HostedLinuxProcess> *child) const {
-
   scoped_ptr<FDMessageChannel> channel_to_parent, channel_to_child;
   if (!child_channel_factory.CreateChannelPair(&channel_to_parent,
-                                                &channel_to_child)) {
+                                               &channel_to_child)) {
     LOG(ERROR) << "Could not create channel for hosted program";
     return false;
   }
@@ -107,7 +106,7 @@ bool LinuxProcessFactory::StartHostedProgram(
 
     // Become process group leader.
     setpgrp();
- 
+
     // Reset all signals
     for (int signum = 1; signum <= NSIG; signum++) {
       struct sigaction sig_act;
@@ -116,14 +115,14 @@ bool LinuxProcessFactory::StartHostedProgram(
       sig_act.sa_flags = 0;
       sigaction(signum, &sig_act, nullptr);
     }
-  
+
     // Unblock all signals.
     if (pthread_sigmask(SIG_SETMASK, &no_signals, nullptr) < 0) {
       LOG(ERROR) << "Could not unblock signals";
       exit(1);
     }
 
-    int argc = 1 + (int)args.size(); // 1+ for path at start
+    int argc = 1 + (int)args.size();     // 1+ for path at start
     char **argv = new char *[argc + 1];  // +1 for null at end
     int i = 0;
     argv[i++] = strdup(path.c_str());
@@ -157,7 +156,7 @@ bool LinuxProcessFactory::StartHostedProgram(
     return false;
   } else {
     // Parent
-    
+
     // Unblock old signals.
     if (pthread_sigmask(SIG_SETMASK, &old_signals, nullptr) < 0) {
       LOG(ERROR) << "Could not unblock signals";
@@ -177,8 +176,7 @@ bool LinuxProcessFactory::StartHostedProgram(
 
 bool LinuxProcessFactory::StopHostedProgram(HostedLinuxProcess *child,
                                             int signum) const {
-  if (child->pid <= 0)
-    return false;  // already dead or invalid PID
+  if (child->pid <= 0) return false;  // already dead or invalid PID
   // There is a race between fork-kill and fork-setpgrp. After fork, if we try
   // to kill the entire child group, the child may not yet have called setpgrp.
   // So we first kill the child individually. If it has not called setpgrp, then
@@ -283,8 +281,8 @@ static bool CloseExcept(int fd, const list<int> &keep_open) {
   }
 }
 
-bool LinuxProcessFactory::CloseAllFileDescriptorsExcept(const list<int> &keep_open)
-{
+bool LinuxProcessFactory::CloseAllFileDescriptorsExcept(
+    const list<int> &keep_open) {
   DIR *dir = opendir("/proc/self/fd");
   int dir_fd = dirfd(dir);
   if (dir != nullptr) {

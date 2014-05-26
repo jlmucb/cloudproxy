@@ -29,8 +29,7 @@ using namespace tao;
 
 class AuthTest : public ::testing::Test {
  protected:
-  virtual void SetUp() {
-  }
+  virtual void SetUp() {}
 };
 
 TEST_F(AuthTest, PrincipalTest) {
@@ -43,15 +42,14 @@ TEST_F(AuthTest, PrincipalTest) {
   for (i = 0; i < 4; i++) {
     scoped_ptr<Principal> prin(Principal::ParseFromString(p[i]));
     EXPECT_NE(nullptr, prin.get());
-    if (prin.get() == nullptr)
-      continue;
+    if (prin.get() == nullptr) continue;
     EXPECT_EQ(p[i], prin->SerializeToString());
     if (i > 0) {
       EXPECT_TRUE(prin->HasParent());
       const Principal *parent = prin->Parent();
       EXPECT_NE(nullptr, parent);
       if (parent != nullptr) {
-        EXPECT_EQ(p[i-1], parent->SerializeToString());
+        EXPECT_EQ(p[i - 1], parent->SerializeToString());
       }
     } else {
       EXPECT_FALSE(prin->HasParent());
@@ -84,7 +82,6 @@ TEST_F(AuthTest, PrincipalFailTest) {
     scoped_ptr<Principal> prin(Principal::ParseFromString(p[i]));
     EXPECT_EQ(nullptr, prin.get());
   }
-
 }
 
 TEST_F(AuthTest, PredicateTest) {
@@ -92,7 +89,9 @@ TEST_F(AuthTest, PredicateTest) {
   int i = 0;
   p[i++] = "Empty()";
   p[i++] = "Lots(1, \"one\", 2, \"two\", 3, \"three\")";
-  p[i++] = "Nested(\"test\", 42, One(1), Two(\"two\")::Point(0), Pair(Three(3), \"four\"), X)";
+  p[i++] =
+      "Nested(\"test\", 42, One(1), Two(\"two\")::Point(0), Pair(Three(3), "
+      "\"four\"), X)";
 
   scoped_ptr<Predicate> pred;
   for (i = 0; i < 3; i++) {
@@ -118,7 +117,7 @@ TEST_F(AuthTest, PredicateTest) {
   EXPECT_EQ(42, pred->Argument(1)->GetInteger());
 
   ASSERT_TRUE(Term::PREDICATE == pred->Argument(2)->GetType() ||
-      Term::PRINCIPAL == pred->Argument(2)->GetType());
+              Term::PRINCIPAL == pred->Argument(2)->GetType());
   ASSERT_TRUE(pred->Argument(2)->IsPredicate());
   ASSERT_NE(nullptr, pred->Argument(2)->GetPredicate());
   EXPECT_EQ("One(1)", pred->Argument(2)->SerializeToString());
@@ -126,13 +125,15 @@ TEST_F(AuthTest, PredicateTest) {
   ASSERT_EQ(Term::PRINCIPAL, pred->Argument(3)->GetType());
   ASSERT_TRUE(pred->Argument(3)->IsPrincipal());
   ASSERT_NE(nullptr, pred->Argument(3)->GetPrincipal());
-  EXPECT_EQ("Two(\"two\")::Point(0)", pred->Argument(3)->GetPrincipal()->SerializeToString());
+  EXPECT_EQ("Two(\"two\")::Point(0)",
+            pred->Argument(3)->GetPrincipal()->SerializeToString());
 
   ASSERT_TRUE(Term::PREDICATE == pred->Argument(4)->GetType() ||
-      Term::PRINCIPAL == pred->Argument(4)->GetType());
+              Term::PRINCIPAL == pred->Argument(4)->GetType());
   ASSERT_TRUE(pred->Argument(4)->IsPredicate());
   ASSERT_NE(nullptr, pred->Argument(4)->GetPrincipal());
-  EXPECT_EQ("Pair(Three(3), \"four\")" , pred->Argument(4)->GetPredicate()->SerializeToString());
+  EXPECT_EQ("Pair(Three(3), \"four\")",
+            pred->Argument(4)->GetPredicate()->SerializeToString());
 
   ASSERT_EQ(Term::VARIABLE, pred->Argument(5)->GetType());
   ASSERT_TRUE(pred->Argument(5)->IsVariable());

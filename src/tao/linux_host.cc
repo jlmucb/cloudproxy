@@ -53,7 +53,8 @@ bool LinuxHost::InitStacked(Tao *host_tao) {
     LOG(ERROR) << "Could not extend with policy name";
     return false;
   }
-  scoped_ptr<Keys> keys(new Keys(path_, "linux_host", Keys::Signing | Keys::Crypting));
+  scoped_ptr<Keys> keys(
+      new Keys(path_, "linux_host", Keys::Signing | Keys::Crypting));
   if (!keys->InitHosted(host_tao, Tao::SealPolicyDefault)) {
     LOG(ERROR) << "Could not obtain keys";
     return false;
@@ -65,8 +66,9 @@ bool LinuxHost::InitStacked(Tao *host_tao) {
 bool LinuxHost::InitRoot(const string &pass) {
   // There is no point in extending our own name in root mode -- we have the
   // key so we can do anything, including undoing an extend operation, and no
-  // other principal should ever be led to believe otherwise. 
-  scoped_ptr<Keys> keys(new Keys(path_, "linux_host", Keys::Signing | Keys::Crypting));
+  // other principal should ever be led to believe otherwise.
+  scoped_ptr<Keys> keys(
+      new Keys(path_, "linux_host", Keys::Signing | Keys::Crypting));
   if (!keys->InitNonHosted(pass)) {
     LOG(ERROR) << "Could not unlock keys";
     return false;
@@ -121,7 +123,8 @@ bool LinuxHost::HandleTaoRPC(HostedLinuxProcess *child,
         LOG(ERROR) << "Invalid RPC: must supply arguments for GetRandomBytes";
         break;
       }
-      success = tao_host_->GetRandomBytes(child->subprin, rpc.size(), &result_data);
+      success =
+          tao_host_->GetRandomBytes(child->subprin, rpc.size(), &result_data);
       break;
     case TAO_RPC_ATTEST:
       LOG(INFO) << "Attest() for ::" << elideString(child->subprin);
@@ -189,8 +192,10 @@ bool LinuxHost::HandleAdminRPC(const LinuxAdminRPCRequest &rpc,
     case LINUX_ADMIN_RPC_START_HOSTED_PROGRAM:
       LOG(INFO) << "StartHostedProgram()";
       success = HandleStartHostedProgram(rpc, &child_subprin, &failure_msg);
-      if (success) resp->set_data(child_subprin);
-      else resp->set_reason(failure_msg);
+      if (success)
+        resp->set_data(child_subprin);
+      else
+        resp->set_reason(failure_msg);
       break;
     case LINUX_ADMIN_RPC_STOP_HOSTED_PROGRAM:
       LOG(INFO) << "StopHostedProgram()";
@@ -256,18 +261,20 @@ bool LinuxHost::HandleStartHostedProgram(const LinuxAdminRPCRequest &rpc,
   // * We don't add env hash, but maybe we should, esp. LD_PRELOAD, etc.
   // * We don't add pid: child can add it at top of main if desired. But it is
   // not globally unique across reboots or even within a single boot, so it
-  // doesn't really mean much. 
+  // doesn't really mean much.
   // * We (optionally) add a monotonic counter: child can't easily do that. If
   // the host Tao hunderlying this Tao host gives out names that change across
-  // restarts (i.e. reboots of TPM), then the counter will ensure that our hosted
+  // restarts (i.e. reboots of TPM), then the counter will ensure that our
+  // hosted
   // programs have names that change across restart (i.e. kill and run again
   // within same host Tao). Otherwise, if our Tao name does not vary but is
   // constant across restarts (i.e. reboots of the TPM), then the counter would
-  // do little. 
+  // do little.
   // TODO(kwalsh) Use random ID instead, to make unique child names despite
   // non-unique host Tao names?
 
-  if (!child_factory_->MakeHostedProgramSubprin(next_child_id_, path, child_subprin)) {
+  if (!child_factory_->MakeHostedProgramSubprin(next_child_id_, path,
+                                                child_subprin)) {
     failure_msg->assign("Could not make hosted program name");
     LOG(ERROR) << *failure_msg;
     return false;
@@ -281,7 +288,8 @@ bool LinuxHost::HandleStartHostedProgram(const LinuxAdminRPCRequest &rpc,
         << "Hosted program denied authorization to execute on this host\n"
         << "Program: ::" << elideString(*child_subprin) << "\n"
         << "LinuxHost: " << elideString(our_name);
-    failure_msg->assign("Authorization to execute the hosted program is denied");
+    failure_msg->assign(
+        "Authorization to execute the hosted program is denied");
     return false;
   }
 
@@ -291,7 +299,8 @@ bool LinuxHost::HandleStartHostedProgram(const LinuxAdminRPCRequest &rpc,
   scoped_ptr<HostedLinuxProcess> child;
   if (!child_factory_->StartHostedProgram(*child_channel_factory_, path, args,
                                           *child_subprin, &child)) {
-    LOG(ERROR) << "Could not start hosted program ::" << elideString(*child_subprin);
+    LOG(ERROR) << "Could not start hosted program ::"
+               << elideString(*child_subprin);
     failure_msg->assign("Could not start the hosted program");
     return false;
   }
@@ -302,7 +311,8 @@ bool LinuxHost::HandleStartHostedProgram(const LinuxAdminRPCRequest &rpc,
   if (next_child_id_ != 0) {
     next_child_id_++;
     if (next_child_id_ == 0) {
-      LOG(WARNING) << "Exhasted child ID space, disabling child IDs for future children";
+      LOG(WARNING)
+          << "Exhasted child ID space, disabling child IDs for future children";
     }
   }
 
@@ -325,7 +335,7 @@ bool LinuxHost::HandleStopHostedProgram(const LinuxAdminRPCRequest &rpc,
     if (child->subprin != child_subprin) {
       ++it;
       continue;
-    } 
+    }
     child->rpc_channel->Close();  // close channel to prevent future RPCs
     if (!child_factory_->StopHostedProgram(child, signum)) {
       errors++;
@@ -337,7 +347,8 @@ bool LinuxHost::HandleStopHostedProgram(const LinuxAdminRPCRequest &rpc,
     }
   }
   if (killed == 0 && errors == 0) {
-    LOG(ERROR) << "There are no hosted programs named ::" << elideString(child_subprin);
+    LOG(ERROR) << "There are no hosted programs named ::"
+               << elideString(child_subprin);
     failure_msg->assign("No such hosted program");
     return false;
   } else if (errors > 0) {
@@ -347,7 +358,7 @@ bool LinuxHost::HandleStopHostedProgram(const LinuxAdminRPCRequest &rpc,
     return false;
   } else {
     LOG(INFO) << "Signaled " << killed
-               << " children matching ::" << elideString(child_subprin);
+              << " children matching ::" << elideString(child_subprin);
     return true;
   }
 }
@@ -413,8 +424,8 @@ bool LinuxHost::HandleChildSignal() {
        /**/) {
     HostedLinuxProcess *child = it->get();
     if (child->pid == pid) {
-      LOG(INFO)
-          << "LinuxHost: removed dead hosted program ::" << child->subprin;
+      LOG(INFO) << "LinuxHost: removed dead hosted program ::"
+                << child->subprin;
       child->rpc_channel->Close();
       child->pid = 0;
       hosted_processes_.erase(it);
@@ -423,7 +434,8 @@ bool LinuxHost::HandleChildSignal() {
   }
   LOG(WARNING) << "Could not find hosted program with PID " << pid;
   for (auto &child : hosted_processes_) {
-    LOG(INFO) << "PID " << child->pid << " subprin " << elideString(child->subprin);
+    LOG(INFO) << "PID " << child->pid << " subprin "
+              << elideString(child->subprin);
   }
   return false;
 }
@@ -467,7 +479,7 @@ bool LinuxHost::Listen() {
     fd = *child_fd;
     FD_SET(fd, &read_fds);
     if (fd > max_fd) max_fd = fd;
-    
+
     fd = *pipe_fd;
     FD_SET(fd, &read_fds);
     if (fd > max_fd) max_fd = fd;
@@ -501,7 +513,7 @@ bool LinuxHost::Listen() {
       PLOG(ERROR) << "Error selecting descriptors";
       break;  // Abnormal termination.
     }
-    
+
     if (FD_ISSET(*pipe_fd, &read_fds)) {
       char b;
       if (read(*pipe_fd, &b, 1) < 0) {
@@ -520,7 +532,8 @@ bool LinuxHost::Listen() {
         break;  // Abnormal termination.
       }
       int signum = 0xff & static_cast<int>(b);
-      LOG(INFO) << "LinuxHost: received SIGTERM " << signum << ", shutting down";
+      LOG(INFO) << "LinuxHost: received SIGTERM " << signum
+                << ", shutting down";
       graceful_shutdown = true;
       continue;
     }
@@ -540,8 +553,8 @@ bool LinuxHost::Listen() {
       }
       VLOG(3) << "Host process request";
       if (!child->rpc_channel->ReceiveMessage(&rpc, &eof) || eof ||
-                 !HandleTaoRPC(child, rpc, &resp) ||
-                 !child->rpc_channel->SendMessage(resp)) {
+          !HandleTaoRPC(child, rpc, &resp) ||
+          !child->rpc_channel->SendMessage(resp)) {
         if (eof)
           LOG(INFO) << "Lost connection to ::" << elideString(subprin);
         else
@@ -570,8 +583,8 @@ bool LinuxHost::Listen() {
       }
       VLOG(3) << "Admin request";
       if (!admin->ReceiveMessage(&rpc, &eof) || eof ||
-                 !HandleAdminRPC(rpc, &resp, &graceful_shutdown) ||
-                 !admin->SendMessage(resp)) {
+          !HandleAdminRPC(rpc, &resp, &graceful_shutdown) ||
+          !admin->SendMessage(resp)) {
         if (eof)
           LOG(INFO) << "Lost admin connection";
         else
@@ -603,7 +616,8 @@ bool LinuxHost::Listen() {
         break;  // Abnormal termination.
       }
       int signum = 0xff & static_cast<int>(b);
-      LOG(INFO) << "LinuxHost: received SIGCHLD " << signum << ", reaping children";
+      LOG(INFO) << "LinuxHost: received SIGCHLD " << signum
+                << ", reaping children";
       if (!HandleChildSignal()) {
         LOG(WARNING) << "Could not reap child";
       }

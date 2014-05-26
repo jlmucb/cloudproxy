@@ -53,7 +53,8 @@ TYPED_TEST(TaoDomainTest, LoadDomainFailTest) {
 }
 
 TYPED_TEST(TaoDomainTest, LoadUnlockDomainTest) {
-  this->domain_.reset(TaoDomain::Create(this->config_, this->config_path_, "temppass"));
+  this->domain_.reset(
+      TaoDomain::Create(this->config_, this->config_path_, "temppass"));
   EXPECT_TRUE(this->domain_.get() != nullptr);
 
   this->domain_.reset(TaoDomain::Load(this->config_path_, "badpass"));
@@ -63,7 +64,8 @@ TYPED_TEST(TaoDomainTest, LoadUnlockDomainTest) {
 }
 
 TYPED_TEST(TaoDomainTest, DeepCopyTest) {
-  this->domain_.reset(TaoDomain::Create(this->config_, this->config_path_, "temppass"));
+  this->domain_.reset(
+      TaoDomain::Create(this->config_, this->config_path_, "temppass"));
   EXPECT_TRUE(this->domain_.get() != nullptr);
 
   // DeepCopy after Create
@@ -89,8 +91,7 @@ TYPED_TEST(TaoDomainTest, AuthorizeTest) {
   hello.push_back(
       std::move(unique_ptr<Term>(new Term("hello.txt", Term::STRING))));
   list<unique_ptr<Term>> bad;
-  bad.push_back(
-      std::move(unique_ptr<Term>(new Term("bad.txt", Term::STRING))));
+  bad.push_back(std::move(unique_ptr<Term>(new Term("bad.txt", Term::STRING))));
 
   EXPECT_FALSE(this->domain_->IsAuthorized(alice, "Read", hello));
   EXPECT_FALSE(this->domain_->IsAuthorized(alice, "Write", hello));

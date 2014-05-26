@@ -35,7 +35,7 @@ using keyczar::Verifier;
 
 namespace tao {
 bool IsSubprincipalOrIdentical(const string &child_name,
-                                      const string &parent_name) {
+                               const string &parent_name) {
   // TODO(kwalsh) Additional well-formedness checks?
   return (child_name == parent_name) ||
          (child_name.size() > parent_name.size() + 2 &&
@@ -140,8 +140,7 @@ bool GenerateAttestation(const Keys &key, const string &delegation,
   // Fill in default expirations
   Statement s;
   s.MergeFrom(stmt);
-  if (!s.has_time())
-    s.set_time(CurrentTime());
+  if (!s.has_time()) s.set_time(CurrentTime());
   if (!s.has_expiration())
     s.set_expiration(s.time() + Tao::DefaultAttestationTimeout);
   // Serialize and sign the statement.

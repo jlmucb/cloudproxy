@@ -39,7 +39,6 @@ namespace tao {
 /// TrouSerS library (hence implicitly the tcsd service) to access the TPM.
 class TPMTao : public Tao {
  public:
-
   /// Construct a TPMTao.
   /// @param aik_blob A public AIK blob produced by the TPM.
   /// @param pcrs_indexes A list of PCR indexes used for sealing and unsealing.
@@ -73,12 +72,12 @@ class TPMTao : public Tao {
   virtual ~TPMTao() { Close(); }
 
   virtual bool SerializeToString(string *params) const;
-  virtual bool SerializeToStringWithFile(const string &path, string *params) const;
+  virtual bool SerializeToStringWithFile(const string &path,
+                                         string *params) const;
   virtual bool SerializeToStringWithDirectory(const string &path,
                                               string *params) const;
 
   static TPMTao *DeserializeFromString(const string &params);
-
 
   /// These methods have the same semantics as Tao.
   /// @{
@@ -86,8 +85,7 @@ class TPMTao : public Tao {
   virtual bool ExtendTaoName(const string &subprin);
   virtual bool GetRandomBytes(size_t size, string *bytes);
   virtual bool Attest(const Statement &stmt, string *attestation);
-  virtual bool Seal(const string &data, const string &policy,
-                    string *sealed);
+  virtual bool Seal(const string &data, const string &policy, string *sealed);
   virtual bool Unseal(const string &sealed, string *data, string *policy);
   virtual string GetRecentErrorMessage() const { return failure_msg_; }
   virtual string ResetRecentErrorMessage() {
@@ -118,7 +116,7 @@ class TPMTao : public Tao {
 
   /// Size of PCR values.
   static const int PcrLen = 20;
- 
+
   /// The largest possible PCR index (24 is the minimum for TPM 1.2).
   static const int PcrMaxIndex = 0x7fff;  // max value for INT16
 

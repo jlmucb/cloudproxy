@@ -1,7 +1,8 @@
 //  File: unix_socket_factory.h
 //  Author: Kevin Walsh <kwalsh@holycross.edu>
 //
-//  Description: A factory for creating FDMessageChannels over unix domain sockets.
+//  Description: A factory for creating FDMessageChannels over unix domain
+//  sockets.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -30,7 +31,8 @@ class UnixSocketFactory {
  public:
   /// Construct UnixSocketFactory.
   /// @param path The path for the unix domain server socket.
-  explicit UnixSocketFactory(const string &path) : path_(path), listen_fd_(-1) {};
+  explicit UnixSocketFactory(const string &path)
+      : path_(path), listen_fd_(-1) {};
   virtual bool Init();
   virtual ~UnixSocketFactory() { Close(); }
 

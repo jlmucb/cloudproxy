@@ -42,7 +42,6 @@ struct HostedLinuxProcess {
 /// hosted program, making sure to clean up host state before exec.
 class LinuxProcessFactory {
  public:
-
   LinuxProcessFactory() {}
   virtual ~LinuxProcessFactory() {}
 
@@ -58,14 +57,14 @@ class LinuxProcessFactory {
 
   virtual int WaitForHostedProgram() const;
 
-  virtual string FormatHostedProgramSubprin(int id, const string &prog_hash) const;
+  virtual string FormatHostedProgramSubprin(int id,
+                                            const string &prog_hash) const;
 
   virtual bool ParseHostedProgramSubprin(const string &subprin, int *id,
                                          string *prog_hash,
                                          string *extension) const;
 
  protected:
-
   static bool CloseAllFileDescriptorsExcept(const list<int> &keep_open);
 
  private:

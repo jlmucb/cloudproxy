@@ -347,7 +347,6 @@ class Keys {
   /// @param encrypted The encrypted data.
   /// @param[out] data The decrypted data.
   bool Decrypt(const string &encrypted, string *data) const;
-  
 
   /// Make a (deep) copy of this object.
   Keys *DeepCopy() const;

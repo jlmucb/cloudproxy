@@ -100,8 +100,8 @@ static bool GenerateKey(KeyType::Type key_type, KeyPurpose::Type key_purpose,
   // TODO(kwalsh) Error checking for writer; currently not supported by keyczar.
   keyset->AddObserver(private_writer.get());
   keyset->set_encrypted(encrypted);
-  keyset->set_metadata(
-      new KeysetMetadata(nickname, key_type, key_purpose, encrypted, next_version));
+  keyset->set_metadata(new KeysetMetadata(nickname, key_type, key_purpose,
+                                          encrypted, next_version));
   // There is browser TLSv1.2 support for prime256v1 (secp256r1),
   // but not for keyczar's default secp224r1
   // keyset->GenerateDefaultKeySize(KeyStatus::PRIMARY);
@@ -134,11 +134,11 @@ static bool GenerateSigningKey(const string &nickname, const string &password,
                      password, private_path, public_path, key);
 }
 
-static bool GenerateKeyDerivingKey(const string &nickname, const string &password,
-                                   const string &path,
+static bool GenerateKeyDerivingKey(const string &nickname,
+                                   const string &password, const string &path,
                                    scoped_ptr<Signer> *key) {
-  return GenerateKey(KeyType::HMAC, KeyPurpose::SIGN_AND_VERIFY, nickname, password,
-                     path, "" /* no public */, key);
+  return GenerateKey(KeyType::HMAC, KeyPurpose::SIGN_AND_VERIFY, nickname,
+                     password, path, "" /* no public */, key);
 }
 
 /// Generate a temporary key.
@@ -153,8 +153,8 @@ static bool GenerateKey(KeyType::Type key_type, KeyPurpose::Type key_purpose,
   int encrypted = true;  // note: unused, AFAIK
   scoped_ptr<Keyset> keyset(new Keyset());
   keyset->set_encrypted(encrypted);
-  keyset->set_metadata(
-      new KeysetMetadata(nickname, key_type, key_purpose, encrypted, next_version));
+  keyset->set_metadata(new KeysetMetadata(nickname, key_type, key_purpose,
+                                          encrypted, next_version));
   // There is browser TLSv1.2 support for prime256v1 (secp256r1),
   // but not for keyczar's default secp224r1
   // keyset->GenerateDefaultKeySize(KeyStatus::PRIMARY);
@@ -165,11 +165,14 @@ static bool GenerateKey(KeyType::Type key_type, KeyPurpose::Type key_purpose,
   return true;
 }
 
-static bool GenerateCryptingKey(const string &nickname, scoped_ptr<Crypter> *key) {
-  return GenerateKey(KeyType::AES, KeyPurpose::DECRYPT_AND_ENCRYPT, nickname, key);
+static bool GenerateCryptingKey(const string &nickname,
+                                scoped_ptr<Crypter> *key) {
+  return GenerateKey(KeyType::AES, KeyPurpose::DECRYPT_AND_ENCRYPT, nickname,
+                     key);
 }
 
-static bool GenerateSigningKey(const string &nickname, scoped_ptr<Signer> *key) {
+static bool GenerateSigningKey(const string &nickname,
+                               scoped_ptr<Signer> *key) {
   return GenerateKey(KeyType::ECDSA_PRIV, KeyPurpose::SIGN_AND_VERIFY, nickname,
                      key);
 }
@@ -951,8 +954,8 @@ bool Keys::InitNonHosted(const string &password) {
               !DirectoryExists(FilePath(KeyDerivingKeyPath())))) {
     // Generate PBE-protected keys.
     if ((key_types_ & Type::Crypting &&
-         !GenerateCryptingKey(nickname_ + "_crypting", password, CryptingKeyPath(),
-                              &crypter_)) ||
+         !GenerateCryptingKey(nickname_ + "_crypting", password,
+                              CryptingKeyPath(), &crypter_)) ||
         (key_types_ & Type::Signing &&
          !GenerateSigningKey(nickname_ + "_signing", password,
                              SigningPrivateKeyPath(), SigningPublicKeyPath(),
@@ -991,7 +994,8 @@ bool Keys::InitHosted(Tao *tao, const string &policy) {
   } else {
     // Generate Tao-protected secret.
     int secret_size = DefaultRandomSecretSize;
-    if (!MakeSealedSecret(tao, SecretPath(), policy, secret_size, secret.get())) {
+    if (!MakeSealedSecret(tao, SecretPath(), policy, secret_size,
+                          secret.get())) {
       LOG(ERROR) << "Could not generate and seal a secret using the Tao";
       return false;
     }

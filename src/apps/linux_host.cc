@@ -41,7 +41,8 @@ using tao::Tao;
 using tao::TaoDomain;
 using tao::elideString;
 
-DEFINE_string(config_path, "tao.config", "Location of tao domain configuration");
+DEFINE_string(config_path, "tao.config",
+              "Location of tao domain configuration");
 DEFINE_string(path, "linux_tao_host", "Location of linux host configuration");
 DEFINE_string(pass, "", "Password for unlocking keys if running in root mode");
 
@@ -79,10 +80,9 @@ int main(int argc, char **argv) {
   }
 
   if (FLAGS_create || FLAGS_service || FLAGS_show) {
-    
     scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
     CHECK(admin.get() != nullptr) << "Could not load configuration";
-      
+
     scoped_ptr<LinuxHost> host(new LinuxHost(admin.release(), FLAGS_path));
 
     Tao *host_tao = Tao::GetHostTao();
@@ -103,13 +103,13 @@ int main(int argc, char **argv) {
       printf("LinuxHost Service: %s\n", host->DebugString().c_str());
     }
     if (FLAGS_service) {
-      printf("Linux Tao Service started and waiting for requests\n");;
+      printf("Linux Tao Service started and waiting for requests\n");
+      ;
       CHECK(host->Listen()) << "TaoHost main loop failed";
     }
   } else {
     scoped_ptr<LinuxAdminRPC> host(LinuxHost::Connect(FLAGS_path));
-    CHECK(host.get() != nullptr)
-      << "Could not connect to Tao host";
+    CHECK(host.get() != nullptr) << "Could not connect to Tao host";
 
     string name;
     CHECK(host->GetTaoHostName(&name))
@@ -166,7 +166,7 @@ int main(int argc, char **argv) {
         printf(" PID %d subprin ::%s\n", info.second, info.first.c_str());
       }
     } else if (FLAGS_name) {
-      printf("%s\n", name.c_str()); // show full name here
+      printf("%s\n", name.c_str());  // show full name here
     } else {
       printf("LinuxHost: %s\n", elideString(name).c_str());
     }

@@ -31,9 +31,7 @@ using namespace tao;
 
 DEFINE_bool(raw, false, "Show raw, non-elided output");
 
-string shorten(string s) {
-  return (FLAGS_raw ? s : elideString(s));
-}
+string shorten(string s) { return (FLAGS_raw ? s : elideString(s)); }
 
 int main(int argc, char **argv) {
   string usage = "Tao Hosted Program Demo.\nUsage:\n  ";
@@ -43,8 +41,10 @@ int main(int argc, char **argv) {
   Tao *tao = Tao::GetHostTao();
 
   if (!tao) {
-    printf("# Sorry, no Tao Host found.\n"
-           "# This program does not appear to be running as a Tao hosted program.\n");
+    printf(
+        "# Sorry, no Tao Host found.\n"
+        "# This program does not appear to be running as a Tao hosted "
+        "program.\n");
     return 1;
   } else {
     printf("# Greetings from a Tao hosted program!\n");
@@ -58,8 +58,10 @@ int main(int argc, char **argv) {
   CHECK(prin.get() != nullptr);
   if (prin->HasParent()) {
     printf("# This program is running on top of a Tao host...\n");
-    printf("ParentName='%s'\n", shorten(prin->Parent()->SerializeToString()).c_str());
-    printf("Extension='%s'\n", shorten(prin->Extension()->SerializeToString()).c_str());
+    printf("ParentName='%s'\n",
+           shorten(prin->Parent()->SerializeToString()).c_str());
+    printf("Extension='%s'\n",
+           shorten(prin->Extension()->SerializeToString()).c_str());
   } else {
     printf("# This program is running as the root Tao host.\n");
   }
@@ -71,4 +73,3 @@ int main(int argc, char **argv) {
   printf("Success\n");
   return 0;
 }
-

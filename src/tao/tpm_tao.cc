@@ -19,7 +19,7 @@
 
 #include <netinet/in.h>
 //#include <sys/stat.h>
-//#include <sys/types.h> 
+//#include <sys/types.h>
 
 #include <glog/logging.h>
 #include <openssl/pem.h>
@@ -31,7 +31,8 @@
 #include "tao/util.h"
 
 namespace tao {
-static bool AIKToPrincipalName(TSS_HCONTEXT tss_ctx, TSS_HKEY aik, string *name) {
+static bool AIKToPrincipalName(TSS_HCONTEXT tss_ctx, TSS_HKEY aik,
+                               string *name) {
   // Extract the modulus from the AIK
   TSS_RESULT result;
   UINT32 aik_mod_len;
@@ -88,7 +89,7 @@ static bool PrincipalNameToAIKRsa(const string &name, ScopedRsa *rsa_key) {
     LOG(ERROR) << "Could not decode AIK key";
     return false;
   }
-  char* key_data_ptr = const_cast<char *>(key_data.data());
+  char *key_data_ptr = const_cast<char *>(key_data.data());
   ScopedBio mem(BIO_new_mem_buf(key_data_ptr, key_data.size()));
   RSA *rsa = nullptr;
   if (!PEM_read_bio_RSA_PUBKEY(mem.get(), &rsa, nullptr /* password callback */,
@@ -161,7 +162,8 @@ static bool serializePCRs(const list<int> &pcr_indexes,
   // Set values.
   for (auto &pcr_hex : pcr_values) {
     string pcr_data;
-    if (!bytesFromHex(pcr_hex, &pcr_data) || pcr_data.size() != TPMTao::PcrLen) {
+    if (!bytesFromHex(pcr_hex, &pcr_data) ||
+        pcr_data.size() != TPMTao::PcrLen) {
       LOG(ERROR) << "Bad PCR encoded in TPM quote";
       return false;
     }
@@ -176,7 +178,11 @@ static bool serializePCRs(const list<int> &pcr_indexes,
 
 bool TPMTao::Init() {
   TSS_RESULT result;
-  TSS_UUID srk_uuid = {0x00000000, 0x0000, 0x0000, 0x00, 0x00,
+  TSS_UUID srk_uuid = {0x00000000,
+                       0x0000,
+                       0x0000,
+                       0x00,
+                       0x00,
                        {0x00, 0x00, 0x00, 0x00, 0x00, 0x01}};
   BYTE secret[20];
 
@@ -240,8 +246,8 @@ bool TPMTao::Init() {
   // Get the AIK and encode it as a principal name.
   if (!aik_blob_.empty()) {
     BYTE *blob = reinterpret_cast<BYTE *>(const_cast<char *>(aik_blob_.data()));
-    result =
-        Tspi_Context_LoadKeyByBlob(tss_ctx_, srk_, aik_blob_.size(), blob, &aik_);
+    result = Tspi_Context_LoadKeyByBlob(tss_ctx_, srk_, aik_blob_.size(), blob,
+                                        &aik_);
     if (result != TSS_SUCCESS) {
       LOG(ERROR) << "Could not load the AIK";
       return false;
@@ -290,8 +296,7 @@ bool TPMTao::Init() {
     result = Tspi_PcrComposite_SetPcrValue(tss_pcr_values_, pcr_idx,
                                            pcr_value_len, pcr_value);
     if (result != TSS_SUCCESS) {
-      LOG(ERROR) << "Could not set the PCR value" << pcr_idx
-                 << " for sealing";
+      LOG(ERROR) << "Could not set the PCR value" << pcr_idx << " for sealing";
       return false;
     }
 
@@ -314,8 +319,7 @@ bool TPMTao::Init() {
 
 bool TPMTao::Close() {
   // Clean-up code.
-  if (!tss_ctx_)
-    return true;
+  if (!tss_ctx_) return true;
   bool ok = true;
   TSS_RESULT result;
   result = Tspi_Context_FreeMemory(tss_ctx_, nullptr);
@@ -328,7 +332,7 @@ bool TPMTao::Close() {
     LOG(ERROR) << "Could not clean up the context";
     ok = false;
   }
-  tss_ctx_ =  0;
+  tss_ctx_ = 0;
   return ok;
 }
 
@@ -357,10 +361,11 @@ bool TPMTao::ExtendTaoName(const string &subprin) {
   // new PCR values p' to use in verifying quotes.
   // - Don't reset the PCRs, and don't track list of extensions across each
   // execution of the TaoHost. The principal name would always be AIK::PCRs(p)
-  // with the current PCR values p. But when we extend from p to p', also give out a
+  // with the current PCR values p. But when we extend from p to p', also give
+  // out a
   // delegation so that p speaks for p', since that wouldn't be evident from the
   // names.
-  // TODO(kwalsh) This needs to go to PCRs, not simply stored here. 
+  // TODO(kwalsh) This needs to go to PCRs, not simply stored here.
   name_extension_ += "::" + subprin;
   return true;
 }
@@ -688,13 +693,13 @@ bool TPMTao::CreateAIK(string *aik_blob) {
   const char *blob_bytes = reinterpret_cast<const char *>(blob);
   aik_blob->assign(blob_bytes, blob_len);
   Tspi_Context_FreeMemory(tss_ctx_, blob);
-  
+
   string aik_name;
   if (!AIKToPrincipalName(tss_ctx_, aik, &aik_name)) {
     LOG(ERROR) << "Could not get TPM principal name";
     return false;
   }
-    
+
   aik_ = aik;
   aik_name_ = aik_name;
   aik_blob_ = *aik_blob;
@@ -717,7 +722,8 @@ bool TPMTao::SerializeToString(string *params) const {
   return true;
 }
 
-bool TPMTao::SerializeToStringWithFile(const string &path, string *params) const {
+bool TPMTao::SerializeToStringWithFile(const string &path,
+                                       string *params) const {
   stringstream out;
   out << "tao::TPMTao(";
   out << quotedString("file:" + path);
@@ -728,7 +734,8 @@ bool TPMTao::SerializeToStringWithFile(const string &path, string *params) const
   return true;
 }
 
-bool TPMTao::SerializeToStringWithDirectory(const string &path, string *params) const {
+bool TPMTao::SerializeToStringWithDirectory(const string &path,
+                                            string *params) const {
   stringstream out;
   out << "tao::TPMTao(";
   out << quotedString("dir:" + path);

@@ -43,14 +43,14 @@ class LinuxAdminRPC {
 
   /// Methods that invoke the administrative interfaces of LinuxTao.
   /// @{
-  
-  /// Request the full name of the LinuxTao. 
+
+  /// Request the full name of the LinuxTao.
   virtual bool GetTaoHostName(string *name);
 
   /// Request the LinuxTao be shut down.
   virtual bool Shutdown();
 
-  /// Request the LinuxTao start a new hosted program. 
+  /// Request the LinuxTao start a new hosted program.
   /// @param path The path to the hosted program binary.
   /// @param args The arguments for the hosted program.
   /// @param[out] child_subprin The subprincipal name of the new hosted program.

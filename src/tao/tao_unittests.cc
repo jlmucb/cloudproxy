@@ -28,7 +28,8 @@
 
 using namespace tao;
 
-DEFINE_string(aik_blob_file, "./tpm/aikblob", "The blob for an AIK loaded in the TPM");
+DEFINE_string(aik_blob_file, "./tpm/aikblob",
+              "The blob for an AIK loaded in the TPM");
 
 template <typename T>
 class TaoTest : public ::testing::Test {
@@ -45,9 +46,7 @@ class TaoTest : public ::testing::Test {
     tao->reset(new SoftTao());
     ASSERT_TRUE(tao->get()->Init());
   }
-  virtual void SetUp() {
-    SetUp(&tao_);
-  }
+  virtual void SetUp() { SetUp(&tao_); }
   scoped_ptr<T> tao_;
 };
 typedef ::testing::Types<TPMTao, SoftTao> TaoTypes;
@@ -94,8 +93,6 @@ TYPED_TEST(TaoTest, ExtendTest) {
   if (name.substr(0, 3) != "TPM") {
     ASSERT_TRUE(this->tao_->ExtendTaoName("Test1::Test2"));
     ASSERT_TRUE(this->tao_->GetTaoName(&ename));
-    EXPECT_EQ(name+"::"+"Test1::Test2", ename);
+    EXPECT_EQ(name + "::" + "Test1::Test2", ename);
   }
 }
-
-

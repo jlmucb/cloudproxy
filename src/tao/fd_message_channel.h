@@ -27,7 +27,7 @@ namespace tao {
 //  A MessageChannel that communicates with a remote endpoint using a pair of
 //  file descriptors. One file descriptor is used for sending messages, the
 //  other for receiving messages. The descriptors can be the same. On Destroy(),
-//  the file descriptors will be closed. 
+//  the file descriptors will be closed.
 class FDMessageChannel : public MessageChannel {
  public:
   /// Construct FDMessageChannel.

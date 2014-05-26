@@ -40,11 +40,8 @@ string GetIdentifier(stringstream &in);  // NOLINT
 
 class Term {
  public:
+  enum TermType { STRING, INTEGER, VARIABLE, PREDICATE, PRINCIPAL };
 
-  enum TermType {
-    STRING, INTEGER, VARIABLE, PREDICATE, PRINCIPAL
-  };
-  
   Term(const string &s, TermType type)
       : type_(type),
         string_val_(type == STRING ? s : ""),
@@ -56,7 +53,7 @@ class Term {
   /// Parse a term from a stream.
   /// @param[in, out] in Stream containing the name and maybe more.
   static Term *ParseFromStream(stringstream &in);  // NOLINT
- 
+
   /// Parse a term from a string.
   /// @param name The name of the principal.
   static Term *ParseFromString(const string &ext);
@@ -65,7 +62,7 @@ class Term {
 
   /// Create a deep copy of this Term.
   Term *DeepCopy() const;
-  
+
   /// Produce a string representation.
   string SerializeToString() const;
 
@@ -83,13 +80,13 @@ class Term {
 
   /// Check whether this term is a quoted string and get it.
   string GetString() const { return string_val_; }
-  
+
   /// Check whether this term is an integer.
   bool IsInteger() const { return type_ == INTEGER; }
-  
+
   /// Check whether this term is an integer and get it.
   int GetInteger() const { return int_val_; }
-  
+
   /// Check whether this term is a quantification variable.
   bool IsVariable() const { return type_ == VARIABLE; }
 
@@ -104,7 +101,7 @@ class Term {
 
   /// Check whether this term is a principal name (or a nested term).
   bool IsPrincipal() const { return type_ == PRINCIPAL; }
- 
+
   /// Check whether this term is a principal name (or a nested term) and get it.
   const Principal *GetPrincipal() const { return prin_val_.get(); }
 
@@ -131,14 +128,14 @@ class Predicate {
   /// Parse a predicate from a stream.
   /// @param[in, out] in Stream containing the name and maybe more.
   static Predicate *ParseFromStream(stringstream &in);  // NOLINT
- 
+
   /// Parse a predicate from a string.
   /// @param name The name of the principal.
   static Predicate *ParseFromString(const string &ext);
-  
+
   Predicate(const string &name) : name_(name) {}
 
-  /// Add an argument to this predicate. 
+  /// Add an argument to this predicate.
   /// @param t The term to add. Ownership is taken.
   void AddArgument(Term *t) { args_.push_back(std::shared_ptr<Term>(t)); }
 
@@ -146,7 +143,7 @@ class Predicate {
 
   /// Create a deep copy of this Predicate.
   Predicate *DeepCopy() const;
- 
+
   /// Produce a string representation.
   string SerializeToString() const;
 
@@ -172,20 +169,19 @@ class Predicate {
   DISALLOW_COPY_AND_ASSIGN(Predicate);
 };
 
-
 /// A class to represent a principal name.
 class Principal {
  public:
   /// Parse a name from a stream.
   /// @param[in, out] in Stream containing the name and maybe more.
   static Principal *ParseFromStream(stringstream &in);  // NOLINT
- 
+
   /// Parse a name from a string.
   /// @param name The name of the principal.
   static Principal *ParseFromString(const string &name);
 
   ~Principal() {}
-  
+
   /// Create a deep copy of this Principal.
   Principal *DeepCopy() const;
 
@@ -202,7 +198,6 @@ class Principal {
   /// full name.
   const Predicate *Extension() const { return ext_.get(); }
 
-
  private:
   Principal(Principal *parent, Predicate *ext) : parent_(parent), ext_(ext) {}
 
@@ -214,4 +209,3 @@ class Principal {
 
 }  // namespace tao
 #endif  // TAO_AUTH_H_
-

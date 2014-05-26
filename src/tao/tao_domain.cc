@@ -230,7 +230,7 @@ string TaoDomain::GetConfigString(const string &name) const {
 //   return tao::AttestKeyNameBinding(*keys_, empty_delegation, key_prin, name,
 //                                    attestation);
 // }
-// 
+//
 // bool TaoDomain::AuthorizeProgramToExecute(const string &path,
 //                                           const list<string> &args) {
 //   string subprin;
@@ -248,15 +248,16 @@ string TaoDomain::GetConfigString(const string &name) const {
 //   name += "::TrustedOS::" + subprin;
 //   return Authorize(name, "Execute", list<string>{});
 // }
-// 
+//
 // bool TaoDomain::IsAuthorizedToExecute(const string &name) {
 //   return IsAuthorized(name, "Execute", list<string>{});
 // }
-// 
-// bool TaoDomain::AuthorizeNickname(const string &name, const string &subprin) {
+//
+// bool TaoDomain::AuthorizeNickname(const string &name, const string &subprin)
+// {
 //   return Authorize(name, "ClaimName", list<string>{"::" + subprin});
 // }
-// 
+//
 // bool TaoDomain::IsAuthorizedNickname(const string &name,
 //                                      const string &subprin) {
 //   return IsAuthorized(name, "ClaimName", list<string>{"::" + subprin});

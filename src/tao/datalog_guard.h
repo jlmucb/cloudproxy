@@ -34,7 +34,7 @@ namespace tao {
 struct DatalogEngine;
 
 /// Cleanup routine for datalog engine state.
-void datalog_close(DatalogEngine * dl);
+void datalog_close(DatalogEngine *dl);
 
 /// A smart pointer to datalog engine state.
 typedef scoped_ptr_malloc<DatalogEngine,
@@ -51,12 +51,12 @@ typedef scoped_ptr_malloc<DatalogEngine,
 /// takes place within the worldview of Guard. Aside from that case, and from
 /// the speaksfor logic implemented in attestation.cc for verifying signed
 /// attestations, we do not use any speaksfor operators. So we do not fully
-/// model the logic of says and speaksfor in datalog. 
+/// model the logic of says and speaksfor in datalog.
 ///
 /// Term: integer or quoted string
 /// Datalog: left as is
 ///
-/// Term: principal 
+/// Term: principal
 /// Datalog: converted to quoted string
 /// Note: Principals are "::"-separated lists of components of the form
 /// Name(args...), where args is a comma-sparated list of integers or quoted
@@ -67,7 +67,7 @@ typedef scoped_ptr_malloc<DatalogEngine,
 /// Note: args is a comma-separated list of terms.
 ///
 /// Policy rule: K_policy says
-///                (forall V1, V2, ... 
+///                (forall V1, V2, ...
 ///                   (Cond1 and Cond2 and ...) implies Pred(args...))
 /// Datalog rule: says(K_policy, Pred, args...) :- c1, c2, ..
 ///   where each condition can be either P says Pred(...), translated as above
@@ -90,7 +90,7 @@ typedef scoped_ptr_malloc<DatalogEngine,
 /// Parent::Pred(args...), we assume that parent is also attesting that this
 /// principal has the property indicated by its name. So for every such
 /// principal name, we automatically deduce Parent says Pred(P, args...).
-/// 
+///
 /// The guard provides a built-in predicate subprin/3, where subprin(A, B, C)
 /// iff either A is a string constant or B and C are, and A is equal to B::C,
 /// and all can be used as principal names.
@@ -190,14 +190,15 @@ class DatalogGuard : public TaoDomain {
   virtual string GetRule(int i) const;
   /// @}
 
-  constexpr static auto DatalogSigningContext = "tao::SignedDatalogRules Version 1";
+  constexpr static auto DatalogSigningContext =
+      "tao::SignedDatalogRules Version 1";
 
   constexpr static auto GuardType = "Datalog";
 
  protected:
   virtual bool Init();
 
-  /// Push a predicate to the datalog engine. 
+  /// Push a predicate to the datalog engine.
   /// @param pred The predicate.
   virtual void PushPredicate(const Predicate &pred);
 
@@ -216,10 +217,10 @@ class DatalogGuard : public TaoDomain {
   /// @param[out] conds The conditions, if any.
   /// @param[out] consequent The consequent.
   virtual bool ParseRule(const string &rule, set<string> *vars,
-                         list <unique_ptr<Predicate>> *conds,
+                         list<unique_ptr<Predicate>> *conds,
                          scoped_ptr<Predicate> *consequent);
 
-  /// Push a rule to the datalog policy engine stack. 
+  /// Push a rule to the datalog policy engine stack.
   /// @param rule The rule.
   /// @param revoke Whether to retract the rule (vs. assert it).
   virtual bool ProcessRule(const string &rule, bool retract);
@@ -233,7 +234,7 @@ class DatalogGuard : public TaoDomain {
   /// other state. This signs and saves the ACLs. This fails if the
   /// TaoDomain is locked.
   virtual bool SaveConfig() const;
-  
+
   /// Reload rules from disk if they were changed recently.
   bool ReloadRulesIfModified();
 

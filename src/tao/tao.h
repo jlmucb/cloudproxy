@@ -44,7 +44,7 @@ class Tao {
 
   /// Serialize Tao parameters for passing across fork/exec or between
   /// processes, if possible. Not all Tao implementations must necessarily be
-  /// serializable. 
+  /// serializable.
   /// @param params[out] The serialized parameters.
   virtual bool SerializeToString(string *params) const { return false; }
 
@@ -99,8 +99,7 @@ class Tao {
   /// Note: The returned policy can be used as a limited integrity check, since
   /// only a hosted program that itself satisfies the policy could have
   /// performed the Seal() operation.
-  virtual bool Unseal(const string &sealed, string *data,
-                      string *policy) = 0;
+  virtual bool Unseal(const string &sealed, string *data, string *policy) = 0;
 
   /// Policy for sealing and unsealing. Hosts may implement additional policies.
   /// @{
@@ -124,7 +123,8 @@ class Tao {
 
   /// @}
 
-  /// Get most recent error message, or emptystring if there have been no errors. 
+  /// Get most recent error message, or emptystring if there have been no
+  /// errors.
   virtual string GetRecentErrorMessage() const = 0;
 
   // Clear the most recent error message and return the previous value, if any.

@@ -61,7 +61,7 @@ class ACLGuard : public TaoDomain {
   virtual string GuardTypeName() const { return "ACLGuard"; }
 
   /// These methods have the same semantics as in TaoGuard. ACLGuard supports
-  /// the basic syntax for rules and queries, i.e. 
+  /// the basic syntax for rules and queries, i.e.
   ///   Authorized(P, op, args...).
   /// ACLGuard does not interpret the rules and queries in any way, so
   /// additional rules and queries could be used if desired. There is little use

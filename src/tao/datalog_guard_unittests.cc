@@ -32,7 +32,8 @@ class DatalogGuardTest : public ::testing::Test {
     ASSERT_TRUE(CreateTempDir("admin_domain", &temp_dir_));
     config_path_ = *temp_dir_ + "/tao.config";
     config_ = DatalogGuard::ExampleGuardDomain;
-    scoped_ptr<TaoDomain> domain(TaoDomain::Create(config_, config_path_, "temppass"));
+    scoped_ptr<TaoDomain> domain(
+        TaoDomain::Create(config_, config_path_, "temppass"));
     ASSERT_NE(nullptr, domain.get());
     domain_.reset(dynamic_cast<DatalogGuard *>(domain.get()));
     ASSERT_NE(nullptr, domain_.get());
@@ -48,47 +49,59 @@ TEST_F(DatalogGuardTest, SimpleRuleTest) {
   EXPECT_TRUE(domain_->AddRule(
       "Authorized(System(1)::User(\"Alice\"), \"Read\", \"hello.txt\")"));
   list<string> hello{"hello.txt"};
-  EXPECT_TRUE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", hello));
-  EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Bob\")", "Read", hello));
-  EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Write", hello));
-  EXPECT_FALSE(domain_->IsAuthorized("System(2)::User(\"Alice\")", "Read", hello));
+  EXPECT_TRUE(
+      domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", hello));
+  EXPECT_FALSE(
+      domain_->IsAuthorized("System(1)::User(\"Bob\")", "Read", hello));
+  EXPECT_FALSE(
+      domain_->IsAuthorized("System(1)::User(\"Alice\")", "Write", hello));
+  EXPECT_FALSE(
+      domain_->IsAuthorized("System(2)::User(\"Alice\")", "Read", hello));
 }
 
 TEST_F(DatalogGuardTest, ImplicationRuleTest) {
-  EXPECT_TRUE(domain_->AddRule("(forall U: IsGoodUser(U) implies "
-                               "Authorized(U, \"Read\", \"hello.txt\"))"));
+  EXPECT_TRUE(domain_->AddRule(
+      "(forall U: IsGoodUser(U) implies "
+      "Authorized(U, \"Read\", \"hello.txt\"))"));
   EXPECT_TRUE(domain_->AddRule("IsGoodUser(System(1)::User(\"Alice\"))"));
   list<string> hello{"hello.txt"};
-  EXPECT_TRUE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", hello));
-  EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Bob\")", "Read", hello));
-  EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Write", hello));
-  EXPECT_FALSE(domain_->IsAuthorized("System(2)::User(\"Alice\")", "Read", hello));
+  EXPECT_TRUE(
+      domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", hello));
+  EXPECT_FALSE(
+      domain_->IsAuthorized("System(1)::User(\"Bob\")", "Read", hello));
+  EXPECT_FALSE(
+      domain_->IsAuthorized("System(1)::User(\"Alice\")", "Write", hello));
+  EXPECT_FALSE(
+      domain_->IsAuthorized("System(2)::User(\"Alice\")", "Read", hello));
 }
 
 TEST_F(DatalogGuardTest, StringImplicationRuleTest) {
-
-  EXPECT_TRUE(
-      domain_->AddRule("(forall U, F: IsGoodUser(U) and IsPrivateFile(F) "
-                       "implies Authorized(U, \"Read\", F))"));
+  EXPECT_TRUE(domain_->AddRule(
+      "(forall U, F: IsGoodUser(U) and IsPrivateFile(F) "
+      "implies Authorized(U, \"Read\", F))"));
   EXPECT_TRUE(domain_->AddRule("IsGoodUser(System(1)::User(\"Alice\"))"));
   EXPECT_TRUE(domain_->AddRule("IsPrivateFile(\"hello.txt\")"));
   list<string> hello{"hello.txt"};
   list<string> bad{"bad.txt"};
-  EXPECT_TRUE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", hello));
-  EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", bad));
-  EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Bob\")", "Read", hello));
-  EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Write", hello));
-  EXPECT_FALSE(domain_->IsAuthorized("System(2)::User(\"Alice\")", "Read", hello));
+  EXPECT_TRUE(
+      domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", hello));
+  EXPECT_FALSE(
+      domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", bad));
+  EXPECT_FALSE(
+      domain_->IsAuthorized("System(1)::User(\"Bob\")", "Read", hello));
+  EXPECT_FALSE(
+      domain_->IsAuthorized("System(1)::User(\"Alice\")", "Write", hello));
+  EXPECT_FALSE(
+      domain_->IsAuthorized("System(2)::User(\"Alice\")", "Read", hello));
 }
 
 TEST_F(DatalogGuardTest, SubprinImplicationRuleTest) {
-
-  EXPECT_TRUE(
-      domain_->AddRule("(forall P, S, U: IsGoodUserName(U) and IsGoodSystem(S) "
-                       "and subprin(P, S, U) implies IsGoodUser(P))"));
-  EXPECT_TRUE(
-      domain_->AddRule("(forall U, F: IsGoodUser(U) and IsPrivateFile(F) "
-                       "implies Authorized(U, \"Read\", F))"));
+  EXPECT_TRUE(domain_->AddRule(
+      "(forall P, S, U: IsGoodUserName(U) and IsGoodSystem(S) "
+      "and subprin(P, S, U) implies IsGoodUser(P))"));
+  EXPECT_TRUE(domain_->AddRule(
+      "(forall U, F: IsGoodUser(U) and IsPrivateFile(F) "
+      "implies Authorized(U, \"Read\", F))"));
   EXPECT_TRUE(domain_->AddRule("IsGoodSystem(System(1))"));
   EXPECT_TRUE(domain_->AddRule("IsGoodSystem(System(0))"));
   EXPECT_TRUE(domain_->AddRule("IsGoodUserName(User(\"Alice\"))"));
@@ -97,12 +110,18 @@ TEST_F(DatalogGuardTest, SubprinImplicationRuleTest) {
 
   list<string> hello{"hello.txt"};
   list<string> bad{"bad.txt"};
-  EXPECT_TRUE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", hello));
-  EXPECT_TRUE(domain_->IsAuthorized("System(0)::User(\"Alice\")", "Read", hello));
+  EXPECT_TRUE(
+      domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", hello));
+  EXPECT_TRUE(
+      domain_->IsAuthorized("System(0)::User(\"Alice\")", "Read", hello));
   EXPECT_TRUE(domain_->IsAuthorized("System(1)::User(\"Bob\")", "Read", hello));
   EXPECT_TRUE(domain_->IsAuthorized("System(0)::User(\"Bob\")", "Read", hello));
-  EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", bad));
-  EXPECT_FALSE(domain_->IsAuthorized("System(2)::User(\"Bob\")", "Read", hello));
-  EXPECT_FALSE(domain_->IsAuthorized("System(1)::User(\"Alice\")", "Write", hello));
-  EXPECT_FALSE(domain_->IsAuthorized("System(2)::User(\"Alice\")", "Read", hello));
+  EXPECT_FALSE(
+      domain_->IsAuthorized("System(1)::User(\"Alice\")", "Read", bad));
+  EXPECT_FALSE(
+      domain_->IsAuthorized("System(2)::User(\"Bob\")", "Read", hello));
+  EXPECT_FALSE(
+      domain_->IsAuthorized("System(1)::User(\"Alice\")", "Write", hello));
+  EXPECT_FALSE(
+      domain_->IsAuthorized("System(2)::User(\"Alice\")", "Read", hello));
 }

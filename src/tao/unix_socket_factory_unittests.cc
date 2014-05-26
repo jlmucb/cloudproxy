@@ -34,8 +34,7 @@ class UnixSocketFactoryTest : public ::testing::Test {
   virtual void Listen() {
     for (;;) {
       scoped_ptr<FDMessageChannel> chan(factory_->AcceptConnection());
-      if (chan.get() == nullptr)
-        break;
+      if (chan.get() == nullptr) break;
       for (;;) {
         Statement r, s;
         bool eof;
@@ -44,33 +43,28 @@ class UnixSocketFactoryTest : public ::testing::Test {
           chan->Close();
           break;
         }
-        if (r.issuer() == "quit")
-          return;
-        if (r.issuer() == "close")
-          break;
+        if (r.issuer() == "quit") return;
+        if (r.issuer() == "close") break;
         s.set_issuer("ack");
         s.set_time(r.time());
         s.set_expiration(r.expiration());
         ASSERT_TRUE(chan->SendMessage(s));
-        if (r.issuer() == "last")
-          break;
+        if (r.issuer() == "last") break;
       }
     }
     factory_->Close();
   }
   virtual void SetUp() {
     ASSERT_TRUE(CreateTempDir("sock_test", &temp_dir_));
-    path_ = *temp_dir_+"/socket";
+    path_ = *temp_dir_ + "/socket";
     factory_.reset(new UnixSocketFactory(path_));
     ASSERT_TRUE(factory_->Init());
     ASSERT_TRUE(factory_->GetListenFileDescriptor() >= 0);
     listener_.reset(new thread(&UnixSocketFactoryTest::Listen, this));
   }
   virtual void TearDown() {
-    if (factory_.get() != nullptr)
-      factory_->Close();
-    if (listener_.get() != nullptr && listener_->joinable())
-      listener_->join();
+    if (factory_.get() != nullptr) factory_->Close();
+    if (listener_.get() != nullptr && listener_->joinable()) listener_->join();
   }
   scoped_ptr<thread> listener_;
   scoped_ptr<UnixSocketFactory> factory_;
@@ -85,7 +79,7 @@ TEST_F(UnixSocketFactoryTest, ConnectTest) {
 
   chan.reset(UnixSocketFactory::Connect(path_));
   ASSERT_TRUE(chan.get() != nullptr);
-  chan.reset(); // This should close it, allowing next to proceed.
+  chan.reset();  // This should close it, allowing next to proceed.
 
   chan.reset(UnixSocketFactory::Connect(path_));
   ASSERT_TRUE(chan.get() != nullptr);

@@ -136,7 +136,7 @@ class TaoDomain : public TaoGuard {
   /// @param key_prin A principal encoding the key to be bound.
   /// @param subprin The subprincipal part of the binding name.
   /// @param[out] attestation The signed attestation.
-  //bool AttestKeyNameBinding(const string &key_prin, const string &subprin,
+  // bool AttestKeyNameBinding(const string &key_prin, const string &subprin,
   //                          string *attestation) const;
 
   /// Authorize a program to execute with the given arguments. A pattern that
@@ -144,22 +144,23 @@ class TaoDomain : public TaoGuard {
   /// of names authorized to execute.
   /// @param path The location of the program binary to be added.
   /// @param args A list of arguments. Arguments listed as "_" are ignored.
-  //bool AuthorizeProgramToExecute(const string &path, const list<string> &args);
+  // bool AuthorizeProgramToExecute(const string &path, const list<string>
+  // &args);
 
   /// Check whether a principal is authorized to execute.
   /// @param name The tentative name of the hosted program.
-  //bool IsAuthorizedToExecute(const string &name);
+  // bool IsAuthorizedToExecute(const string &name);
 
   /// Authorize a principal to claim a given subprincipal of the policy key,
   /// enabling principal to speak for that policy subprincipal.
   /// @param name The name of the principal.
   /// @param subprin A subprincipal of the policy.
-  //bool AuthorizeNickname(const string &name, const string &subprin);
+  // bool AuthorizeNickname(const string &name, const string &subprin);
 
   /// Check whether a principal is authorized to claim a subprincipal name.
   /// @param name The name of a principal.
   /// @param subprin The policy subprincipal being claimed by that principal.
-  //bool IsAuthorizedNickname(const string &name, const string &subprin);
+  // bool IsAuthorizedNickname(const string &name, const string &subprin);
 
   virtual bool GetSubprincipalName(string *subprin) const;
 

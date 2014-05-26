@@ -126,8 +126,7 @@ bool UnixSocketFactory::Init() {
 }
 
 bool UnixSocketFactory::Close() {
-  if (listen_fd_ != -1)
-    close(listen_fd_);
+  if (listen_fd_ != -1) close(listen_fd_);
   listen_fd_ = -1;
   return true;
 }
@@ -150,6 +149,5 @@ FDMessageChannel *UnixSocketFactory::Connect(const string &path) {
   }
   return new FDMessageChannel(fd, fd);
 }
-
 
 }  // namespace tao

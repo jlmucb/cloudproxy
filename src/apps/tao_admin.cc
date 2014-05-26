@@ -37,8 +37,8 @@ using std::string;
 using std::stringstream;
 using std::list;
 
-//using cloudproxy::CloudAuth;
-//using cloudproxy::CloudUserManager;
+// using cloudproxy::CloudAuth;
+// using cloudproxy::CloudUserManager;
 using tao::Keys;
 using tao::LinuxProcessFactory;
 using tao::ReadFileToString;
@@ -60,7 +60,6 @@ DEFINE_string(state, "Washington", "x509 State for a new configuration");
 DEFINE_string(org, "(not really) Google",
               "x509 Organization for a new configuration");
 
-
 DEFINE_string(canexecute, "",
               "Comma-separated list of paths of programs "
               "to be authorized to execute");
@@ -80,18 +79,18 @@ DEFINE_string(getprogramhash, "", "Path of program to be hashed");
 DEFINE_bool(quiet, false, "Be more quiet");
 DEFINE_bool(show, false, "Show info when done");
 
-//DEFINE_string(canclaim, "",
+// DEFINE_string(canclaim, "",
 //              "Comma-separated list of name:subprin pairs "
 //              "to be authorized for claiming policy subprincipal names");
 // DEFINE_bool(clear_acls, false,
 //            "Remove all ACL entries before adding new ones");
 
+// DEFINE_string(newusers, "", "Comma separated list of user names to create");
+// DEFINE_string(user_keys, "user_keys", "Directory for storing new user keys");
 
-//DEFINE_string(newusers, "", "Comma separated list of user names to create");
-//DEFINE_string(user_keys, "user_keys", "Directory for storing new user keys");
-
-//DEFINE_string(signacl, "", "A text-based ACL file to sign");
-//DEFINE_string(acl_sig_path, "acls_sig", "Location for storing signed ACL file");
+// DEFINE_string(signacl, "", "A text-based ACL file to sign");
+// DEFINE_string(acl_sig_path, "acls_sig", "Location for storing signed ACL
+// file");
 
 // In-place replacement of all occurrences in s of x with y
 void StringReplaceAll(const string &x, const string &y, string *s) {
@@ -137,22 +136,26 @@ void handleCanExecute(TaoDomain *admin, const string &pathlist, bool retract) {
 
     if (retract) {
       if (!FLAGS_quiet)
-        printf("Retracting program authorization to execute:\n"
-               "  path: %s\n"
-               "  host: %s\n"
-               "  name: ::%s\n",
-               path.c_str(), elideString(host).c_str(),
-               elideString(child_subprin).c_str());
-      CHECK(admin->Retract(host + "::" + child_subprin, "Execute", list<string>{}));
+        printf(
+            "Retracting program authorization to execute:\n"
+            "  path: %s\n"
+            "  host: %s\n"
+            "  name: ::%s\n",
+            path.c_str(), elideString(host).c_str(),
+            elideString(child_subprin).c_str());
+      CHECK(admin->Retract(host + "::" + child_subprin, "Execute",
+                           list<string>{}));
     } else {
       if (!FLAGS_quiet)
-        printf("Authorizing program to execute:\n"
-               "  path: %s\n"
-               "  host: %s\n"
-               "  name: ::%s\n",
-               path.c_str(), elideString(host).c_str(),
-               elideString(child_subprin).c_str());
-      CHECK(admin->Authorize(host + "::" + child_subprin, "Execute", list<string>{}));
+        printf(
+            "Authorizing program to execute:\n"
+            "  path: %s\n"
+            "  host: %s\n"
+            "  name: ::%s\n",
+            path.c_str(), elideString(host).c_str(),
+            elideString(child_subprin).c_str());
+      CHECK(admin->Authorize(host + "::" + child_subprin, "Execute",
+                             list<string>{}));
     }
   }
 }
@@ -168,7 +171,8 @@ int main(int argc, char **argv) {
 
   if (!FLAGS_init.empty()) {
     if (!FLAGS_quiet)
-      printf("Initializing new configuration in: %s\n", FLAGS_config_path.c_str());
+      printf("Initializing new configuration in: %s\n",
+             FLAGS_config_path.c_str());
     string initial_config;
     CHECK(ReadFileToString(FLAGS_init, &initial_config));
     StringReplaceAll("<NAME>", FLAGS_name, &initial_config);
@@ -181,15 +185,14 @@ int main(int argc, char **argv) {
     CHECK_NOTNULL(admin.get());
     did_work = true;
   } else {
-    if (!FLAGS_quiet) 
+    if (!FLAGS_quiet)
       printf("Loading configuration from: %s\n", FLAGS_config_path.c_str());
     admin.reset(TaoDomain::Load(FLAGS_config_path, FLAGS_policy_pass));
     CHECK_NOTNULL(admin.get());
   }
 
   if (FLAGS_clear) {
-    if (!FLAGS_quiet)
-      printf("Clearing all policy rules.\n");
+    if (!FLAGS_quiet) printf("Clearing all policy rules.\n");
     CHECK(admin->Clear());
   }
 
@@ -199,13 +202,13 @@ int main(int argc, char **argv) {
   }
 
   if (!FLAGS_retractcanexecute.empty()) {
-    handleCanExecute(admin.get(), FLAGS_retractcanexecute, true /* do retract */);
+    handleCanExecute(admin.get(), FLAGS_retractcanexecute,
+                     true /* do retract */);
     did_work = true;
   }
 
   if (!FLAGS_add.empty()) {
-    if (!FLAGS_quiet)
-      printf("Adding policy rule: %s\n", FLAGS_add.c_str());
+    if (!FLAGS_quiet) printf("Adding policy rule: %s\n", FLAGS_add.c_str());
     CHECK(admin->AddRule(FLAGS_add));
     did_work = true;
   }
@@ -232,30 +235,31 @@ int main(int argc, char **argv) {
   if (!FLAGS_getprogramhash.empty()) {
     LinuxProcessFactory factory;
     string child_subprin;
-    string path = FLAGS_getprogramhash;;
+    string path = FLAGS_getprogramhash;
+    ;
     int next_id = 0;  // assume no IDs.
     CHECK(factory.MakeHostedProgramSubprin(next_id, path, &child_subprin));
     printf("%s\n", child_subprin.c_str());
     did_work = true;
   }
 
-//  if (!FLAGS_newusers.empty()) {
-//    stringstream names(FLAGS_newusers);
-//    string name;
-//    while (getline(names, name, ',')) {  // split on commas
-//      string password = name;            // such security, wow
-//      scoped_ptr<tao::Keys> key;
-//      CHECK(CloudUserManager::MakeNewUser(FLAGS_user_keys, name, password,
-//                                          *admin->GetPolicySigner(), &key));
-//    }
-//    did_work = true;
-//  }
+  //  if (!FLAGS_newusers.empty()) {
+  //    stringstream names(FLAGS_newusers);
+  //    string name;
+  //    while (getline(names, name, ',')) {  // split on commas
+  //      string password = name;            // such security, wow
+  //      scoped_ptr<tao::Keys> key;
+  //      CHECK(CloudUserManager::MakeNewUser(FLAGS_user_keys, name, password,
+  //                                          *admin->GetPolicySigner(), &key));
+  //    }
+  //    did_work = true;
+  //  }
 
-//  if (!FLAGS_signacl.empty()) {
-//    CHECK(CloudAuth::SignACL(admin->GetPolicySigner(), FLAGS_signacl,
-//                             FLAGS_acl_sig_path));
-//    did_work = true;
-//  }
+  //  if (!FLAGS_signacl.empty()) {
+  //    CHECK(CloudAuth::SignACL(admin->GetPolicySigner(), FLAGS_signacl,
+  //                             FLAGS_acl_sig_path));
+  //    did_work = true;
+  //  }
 
   if (FLAGS_show || !did_work) {
     printf("  name: %s\n", admin->GetName().c_str());

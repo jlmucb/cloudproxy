@@ -41,14 +41,11 @@ Tao *Tao::GetHostTao() {
   string params(p);
   // Try each known type of Tao in turn.
   host_tao_ = TaoRPC::DeserializeFromString(params);
-  if (host_tao_ != nullptr)
-    return host_tao_;
+  if (host_tao_ != nullptr) return host_tao_;
   host_tao_ = SoftTao::DeserializeFromString(params);
-  if (host_tao_ != nullptr)
-    return host_tao_;
+  if (host_tao_ != nullptr) return host_tao_;
   host_tao_ = TPMTao::DeserializeFromString(params);
-  if (host_tao_ != nullptr)
-    return host_tao_;
+  if (host_tao_ != nullptr) return host_tao_;
   LOG(ERROR) << "Unrecognized host Tao channel: " << params;
   return nullptr;
 }

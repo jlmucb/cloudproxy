@@ -228,17 +228,15 @@ struct SelfPipe {
   int fd[2];
   struct sigaction sa;
 };
-SelfPipe selfPipe[MaxSelfPipeSignum] = { };
+SelfPipe selfPipe[MaxSelfPipeSignum] = {};
 static mutex selfPipeMutex;
 
 static void SelfPipeHandler(int signum) {
-  if (signum <= 0 || signum > MaxSelfPipeSignum)
-    return;
-  if (!selfPipe[signum-1].open)
-    return;
+  if (signum <= 0 || signum > MaxSelfPipeSignum) return;
+  if (!selfPipe[signum - 1].open) return;
   int savedErrno = errno;
   char b = static_cast<char>(signum);
-  write(selfPipe[signum-1].fd[1], &b, 1);
+  write(selfPipe[signum - 1].fd[1], &b, 1);
   errno = savedErrno;
 }
 
@@ -300,17 +298,17 @@ bool ReleaseSelfPipeSignalFd(int fd) {
   }
   lock_guard<mutex> l(selfPipeMutex);
   for (int signum = 1; signum <= MaxSelfPipeSignum; signum++) {
-    if (!selfPipe[signum-1].open || selfPipe[signum-1].fd[0] != fd) 
+    if (!selfPipe[signum - 1].open || selfPipe[signum - 1].fd[0] != fd)
       continue;
-    selfPipe[signum -1].open = false;
+    selfPipe[signum - 1].open = false;
     bool success = true;
-    if (sigaction(signum, &selfPipe[signum-1].sa, nullptr) < 0) {
+    if (sigaction(signum, &selfPipe[signum - 1].sa, nullptr) < 0) {
       PLOG(ERROR) << "Could not restore old handler for signal " << signum;
       success = false;
     }
-    close(selfPipe[signum-1].fd[0]);
-    close(selfPipe[signum-1].fd[1]);
-    selfPipe[signum-1].fd[0] = selfPipe[signum-1].fd[1] = -1;
+    close(selfPipe[signum - 1].fd[0]);
+    close(selfPipe[signum - 1].fd[1]);
+    selfPipe[signum - 1].fd[0] = selfPipe[signum - 1].fd[1] = -1;
     return success;
   }
   LOG(ERROR) << "No such self-pipe fd " << fd;
@@ -509,7 +507,7 @@ bool ReceiveData(int fd, void *buffer, size_t buffer_len, bool *eof) {
       *eof = true;
       return (filled_len == 0);  // fail only on truncated message
     }
-    if (in_len < 0) return false;   // fail on errors
+    if (in_len < 0) return false;  // fail on errors
     filled_len += in_len;
   }
 
@@ -527,14 +525,15 @@ bool ReceiveString(int fd, size_t max_size, string *s, bool *eof) {
 
   // convert from network byte order to get the length
   uint32_t len = ntohl(net_len);
-  
+
   if (len > max_size) {
     LOG(ERROR) << "Message exceeded maximum allowable size";
     return false;
   }
   scoped_array<char> temp_data(new char[len]);
 
-  if (!ReceiveData(fd, temp_data.get(), static_cast<size_t>(len), eof) || *eof) {
+  if (!ReceiveData(fd, temp_data.get(), static_cast<size_t>(len), eof) ||
+      *eof) {
     LOG(ERROR) << "Could not get the data";
     return false;
   }
@@ -560,7 +559,7 @@ bool SendData(int fd, const void *buffer, size_t buffer_len) {
 bool SendString(int fd, const string &s) {
   uint32_t net_len = htonl(s.size());
   return SendData(fd, &net_len, sizeof(net_len)) &&
-      SendData(fd, s.c_str(), s.size());
+         SendData(fd, s.c_str(), s.size());
 }
 
 string quotedString(const string &s) {

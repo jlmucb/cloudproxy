@@ -40,8 +40,7 @@ using tao::join;
 using tao::split;
 using tao::Principal;
 
-DEFINE_string(path, "tpm",
-              "A path in which to store TPMTao AIK and settings.");
+DEFINE_string(path, "tpm", "A path in which to store TPMTao AIK and settings.");
 DEFINE_string(pcrs, "17, 18", "A comma-separated list of PCR numbers to use.");
 DEFINE_bool(create, false, "Create a new TPMTao AIK and settings.");
 DEFINE_bool(show, true, "Show the current TPMTao AIK and settings.");
@@ -78,7 +77,7 @@ int main(int argc, char **argv) {
 
     list<int> pcrs;
     CHECK(split(pcr_list, ",", &pcrs));
-    
+
     tao.reset(new TPMTao(aik_blob, pcrs));
     CHECK(tao->Init());
   }

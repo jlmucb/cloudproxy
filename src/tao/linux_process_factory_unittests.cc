@@ -65,7 +65,7 @@ TEST_F(LinuxProcessFactoryTest, SubprinTest) {
   EXPECT_EQ("", ext1);
 
   ASSERT_TRUE(factory_.ParseHostedProgramSubprin(subprin0 + "::Test1::Test2",
-                                                  &id0, &hash0, &ext0));
+                                                 &id0, &hash0, &ext0));
   EXPECT_EQ(0, id0);
   EXPECT_EQ(hash0, hash1);
   EXPECT_EQ("Test1::Test2", ext0);
@@ -76,11 +76,11 @@ TEST_F(LinuxProcessFactoryTest, StartTest) {
   string subprin;
   scoped_ptr<HostedLinuxProcess> child;
   ASSERT_TRUE(factory_.MakeHostedProgramSubprin(0, test_argv[0], &subprin));
-  ASSERT_TRUE(factory_.StartHostedProgram(pipe_factory, test_argv[0], list<string>{"quit"},
-                                           subprin, &child));
+  ASSERT_TRUE(factory_.StartHostedProgram(
+      pipe_factory, test_argv[0], list<string>{"quit"}, subprin, &child));
   EXPECT_TRUE(child->pid > 0);
   EXPECT_EQ(subprin, child->subprin);
-  usleep(250*1000);
+  usleep(250 * 1000);
   // it should have already stopped
   int pid = factory_.WaitForHostedProgram();
   EXPECT_EQ(child->pid, pid);
@@ -96,11 +96,11 @@ TEST_F(LinuxProcessFactoryTest, StartStopTest) {
       pipe_factory, test_argv[0], list<string>{"sleep"}, subprin, &child));
   EXPECT_TRUE(child->pid > 0);
   EXPECT_EQ(subprin, child->subprin);
-  usleep(250*1000);
+  usleep(250 * 1000);
   // it should still be running
   EXPECT_EQ(0, factory_.WaitForHostedProgram());
   EXPECT_TRUE(factory_.StopHostedProgram(child.get(), SIGTERM));
-  usleep(250*1000);
+  usleep(250 * 1000);
   // now it should be stopped
   int pid = factory_.WaitForHostedProgram();
   EXPECT_EQ(child->pid, pid);

@@ -33,7 +33,8 @@ namespace tao {
 /// via RPC).
 class TaoStackedHost : public TaoHost {
  public:
-  /// Construct and configure a TaoStackedHost. Ownership is taken for all relevant
+  /// Construct and configure a TaoStackedHost. Ownership is taken for all
+  /// relevant
   /// parameters.
   /// @param keys A set of keys, or nullptr. If the set contains a signing key
   /// and accompanying delegation attestation, they will be used for signing
@@ -42,7 +43,8 @@ class TaoStackedHost : public TaoHost {
   /// sealing and unsealing data, otherwise sealing and unsealing wil invoke
   /// host_tao using Tao::SealPolicyDefault.
   /// @param host_tao The host tao on top of which this hosted Tao executes.
-  TaoStackedHost(Keys *keys, Tao *host_tao) : keys_(keys), host_tao_(host_tao) {}
+  TaoStackedHost(Keys *keys, Tao *host_tao)
+      : keys_(keys), host_tao_(host_tao) {}
 
   virtual bool Init();
   virtual ~TaoStackedHost() {}

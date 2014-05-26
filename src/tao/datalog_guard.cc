@@ -160,17 +160,19 @@ static bool CheckRule(const set<string> &vars,
   // And check that each reference variable in conditions was quantified.
   set<string> missing_qvars;
   std::set_difference(vars.begin(), vars.end(), cond_refvars.begin(),
-                      cond_refvars.end(), std::inserter(missing_qvars, missing_qvars.begin()));
+                      cond_refvars.end(),
+                      std::inserter(missing_qvars, missing_qvars.begin()));
   set<string> missing_cvars;
   std::set_difference(cond_refvars.begin(), cond_refvars.end(), vars.begin(),
-                      vars.end(), std::inserter(missing_cvars, missing_cvars.begin()));
+                      vars.end(),
+                      std::inserter(missing_cvars, missing_cvars.begin()));
   if (missing_qvars.size() > 0 || missing_cvars.size() > 0) {
     if (missing_qvars.size() > 0)
       LOG(ERROR) << "Unreferenced quantification variables: "
                  << join(missing_qvars, ", ");
     if (missing_cvars.size() > 0)
-      LOG(ERROR)
-          << "Unquantified condition variables: " << join(missing_cvars, ", ");
+      LOG(ERROR) << "Unquantified condition variables: " << join(missing_cvars,
+                                                                 ", ");
     LOG(INFO) << "Condition variables: " << join(cond_refvars, ", ");
     LOG(INFO) << "Quantification variables were : " << join(vars, ", ");
     return false;
@@ -178,10 +180,11 @@ static bool CheckRule(const set<string> &vars,
   // Check that each reference variable in consequent was quantified.
   set<string> missing_vars;
   std::set_difference(consequent_refvars.begin(), consequent_refvars.end(),
-                      vars.begin(), vars.end(), std::inserter(missing_vars, missing_vars.begin()));
+                      vars.begin(), vars.end(),
+                      std::inserter(missing_vars, missing_vars.begin()));
   if (missing_vars.size() > 0) {
-    LOG(ERROR)
-        << "Unquantified consequent variables: " << join(missing_vars, ", ");
+    LOG(ERROR) << "Unquantified consequent variables: " << join(missing_vars,
+                                                                ", ");
     LOG(INFO) << "Consequent variables: " << join(consequent_refvars, ", ");
     LOG(INFO) << "Quantification variables were : " << join(vars, ", ");
     return false;
@@ -231,8 +234,7 @@ void DatalogGuard::PushRule(const set<string> &vars,
                             const Predicate &consequent) {
   PushPredicate(consequent);
   dl_pushhead(dl_->db);
-  if (conds.size() > 0)
-    dl_transcript_ << " :- ";
+  if (conds.size() > 0) dl_transcript_ << " :- ";
   string delim = "";
   for (const auto &cond : conds) {
     dl_transcript_ << delim;
@@ -243,8 +245,8 @@ void DatalogGuard::PushRule(const set<string> &vars,
   dl_makeclause(dl_->db);
 }
 
-static Predicate *AddPolicySays(const Predicate &pred, const Term &policy_term)
-{
+static Predicate *AddPolicySays(const Predicate &pred,
+                                const Term &policy_term) {
   if (pred.Name() == "says" || pred.Name() == "subprin") {
     return pred.DeepCopy();
   } else {
@@ -281,8 +283,7 @@ bool DatalogGuard::ParseRule(const string &rule, set<string> *vars,
         LOG(ERROR) << "Expecting variable name after 'forall'";
         return false;
       }
-      if (in.peek() != ',')
-        break;
+      if (in.peek() != ',') break;
       skip(in, ", ");
       if (!in) {
         LOG(ERROR) << "Expecting space after comma";
@@ -322,10 +323,10 @@ bool DatalogGuard::ParseRule(const string &rule, set<string> *vars,
         LOG(ERROR) << "Expecting condition after 'and'";
         return false;
       }
-      conds->push_back(
-          std::move(unique_ptr<Predicate>(AddPolicySays(*pred, *policy_term_))));
+      conds->push_back(std::move(
+          unique_ptr<Predicate>(AddPolicySays(*pred, *policy_term_))));
       skip(in, " ");
-    } 
+    }
     if (!in) {
       LOG(ERROR) << "Expecting space after condition";
       return false;
@@ -454,7 +455,7 @@ bool DatalogGuard::ParseConfig() {
   }
   // Load the signed rule file.
   rules_path_ = GetConfigPath(JSONSignedDatalogRulesPath);
-  rules_mod_time_ = 0; // force refresh
+  rules_mod_time_ = 0;  // force refresh
   return ReloadRulesIfModified();
 }
 
@@ -485,13 +486,14 @@ bool DatalogGuard::ReloadRulesIfModified() {
   // Verify its signature.
   if (!GetPolicyKeys()->Verify(srules.serialized_rules(), DatalogSigningContext,
                                srules.signature())) {
-    LOG(ERROR) << "Signature did not verify on signed policy rules from " << path;
+    LOG(ERROR) << "Signature did not verify on signed policy rules from "
+               << path;
     return false;
   }
   // Parse the rules.
   if (!rules_.ParseFromString(srules.serialized_rules())) {
     LOG(ERROR) << "Can't parse serialized policy rules from " << path;
-      // TODO(kwalsh) Does this leave rules_ out of sync with datalog engine?
+    // TODO(kwalsh) Does this leave rules_ out of sync with datalog engine?
     return false;
   }
   for (const auto &rule : rules_.rules()) {

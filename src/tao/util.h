@@ -73,13 +73,12 @@ using keyczar::base::Delete;
 
 /// Exception-safe factory for unique_ptr.
 /// Author: Herb Sutter (http://herbsutter.com/gotw/_102/)
-template<typename T, typename ...Args>
-std::unique_ptr<T> make_unique( Args&& ...args )
-{
-      return std::unique_ptr<T>( new T( std::forward<Args>(args)... ) );
+template <typename T, typename... Args>
+std::unique_ptr<T> make_unique(Args &&... args) {
+  return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
 
-//class TaoChildChannelRegistry;
+// class TaoChildChannelRegistry;
 class TaoDomain;
 
 /// Close a file descriptor and ignore the return value. This is used by the
@@ -91,7 +90,7 @@ void fd_close(int *fd);
 /// definition of ScopedFile.
 /// @param fd A pointer to the FILE to close and free.
 void file_close(FILE *file);
-  
+
 /// Remove a directory and all its subfiles and subdirectories. This is used by
 /// the definition of ScopedTempDir.
 /// @param dir The path to the directory.
@@ -101,7 +100,6 @@ void temp_file_cleaner(string *dir);
 /// the definition of ScopedSelfPipeFd.
 /// @param fd A pointer to the self-pipe file descriptor.
 void selfpipe_release(int *fd);
-
 
 /// A functor template for wrapping deallocators that misbehave on nullptr.
 template <typename T, void (*F)(T *)>
@@ -154,7 +152,7 @@ bool Sha256FileHash(const string &path, string *hash);
 /// keyczar::base::ReadFileToString() appends the contents to the string.
 /// @param path The path to the file, can be string or FilePath.
 /// @param[out] contents The contents of the file.
-template<class T>
+template <class T>
 bool ReadFileToString(const T &path, string *contents) {
   contents->clear();
   return keyczar::base::ReadFileToString(path, contents);
@@ -323,7 +321,7 @@ template <class T>
 static string join(T it, T end, const string &delim) {
   stringstream out;
   bool first = true;
-  for ( ; it != end; ++it) {
+  for (; it != end; ++it) {
     if (!first) out << delim;
     first = false;
     out << *it;

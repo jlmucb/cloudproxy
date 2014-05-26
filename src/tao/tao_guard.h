@@ -73,7 +73,7 @@ class TaoGuard {
   /// @param op The name of the operation.
   /// @param args A list of arguments to the operation.
   virtual bool Retract(const string &name, const string &op,
-                      const list<unique_ptr<Term>> &args) {
+                       const list<unique_ptr<Term>> &args) {
     return RetractRule(MakePredicate(name, op, args));
   }
 
@@ -85,7 +85,7 @@ class TaoGuard {
                             const list<unique_ptr<Term>> &args);
 
   /// @}
-  
+
   /// Methods that take lists of string arguments. Semantics are the same as
   /// above.
   /// @{
@@ -96,7 +96,7 @@ class TaoGuard {
     return AddRule(MakePredicate(name, op, args));
   }
   virtual bool Retract(const string &name, const string &op,
-                      const list<string> &args) {
+                       const list<string> &args) {
     return RetractRule(MakePredicate(name, op, args));
   }
   virtual bool IsAuthorized(const string &name, const string &op,

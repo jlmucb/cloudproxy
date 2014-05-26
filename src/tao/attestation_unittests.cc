@@ -57,7 +57,7 @@ TEST_F(AttestationTest, SubprinTest) {
 // TEST_F(AttestationTest, GenerateTestFail) {
 //   string a;
 //   Statement s;
-//   
+//
 //   // With empty statement, generate should fail.
 //   EXPECT_FALSE(GenerateAttestation(*key_, "" /* delegation */, s, &a));
 //   EXPECT_FALSE(GenerateAttestation(*key_, "bogus_delegation", s, &a));
@@ -125,7 +125,7 @@ TEST_F(AttestationTest, DelegateTest) {
   EXPECT_EQ(key_child_, issuer);
   EXPECT_TRUE(GetAttestationDelegate(a, &delegate));
   EXPECT_EQ("bogus_delegate", delegate);
-  EXPECT_FALSE(ValidateDelegation(a, now-1, &delegate, &issuer));
+  EXPECT_FALSE(ValidateDelegation(a, now - 1, &delegate, &issuer));
   ASSERT_TRUE(ValidateDelegation(a, CurrentTime(), &delegate, &issuer));
   EXPECT_EQ(key_child_, issuer);
   EXPECT_EQ("bogus_delegate", delegate);
@@ -149,7 +149,7 @@ TEST_F(AttestationTest, PredicateTest) {
     EXPECT_EQ("\"Hello\"", *args.begin());
     EXPECT_EQ("1234", *(++args.begin()));
   }
-  EXPECT_FALSE(ValidatePredicate(a, now-1, &issuer, &predicate, &args));
+  EXPECT_FALSE(ValidatePredicate(a, now - 1, &issuer, &predicate, &args));
   ASSERT_TRUE(ValidatePredicate(a, CurrentTime(), &issuer, &predicate, &args));
   EXPECT_EQ(key_child_, issuer);
   if (args.size() == 2) {
@@ -172,8 +172,8 @@ TEST_F(AttestationTest, DelegatePredicateTest) {
   time_t now = CurrentTime();
 
   // key_child speaksfor key2_child
-  ASSERT_TRUE(AttestDelegation(*key2, "" /* delegation */, key_child_,
-                               key2_child, &d));
+  ASSERT_TRUE(
+      AttestDelegation(*key2, "" /* delegation */, key_child_, key2_child, &d));
 
   // key2_child says predicate using key to sign
   ASSERT_TRUE(AttestPredicate(*key_, d, key2_child, "Testing",
@@ -187,7 +187,7 @@ TEST_F(AttestationTest, DelegatePredicateTest) {
     EXPECT_EQ("\"Hello\"", *args.begin());
     EXPECT_EQ("1234", *(++args.begin()));
   }
-  EXPECT_FALSE(ValidatePredicate(a, now-1, &issuer, &predicate, &args));
+  EXPECT_FALSE(ValidatePredicate(a, now - 1, &issuer, &predicate, &args));
   ASSERT_TRUE(ValidatePredicate(a, CurrentTime(), &issuer, &predicate, &args));
   EXPECT_EQ(key2_child, issuer);
   if (args.size() == 2) {
@@ -195,4 +195,3 @@ TEST_F(AttestationTest, DelegatePredicateTest) {
     EXPECT_EQ("1234", *(++args.begin()));
   }
 }
-

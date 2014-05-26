@@ -28,8 +28,8 @@ extern int test_argc;
 extern char **test_argv;
 
 // If tao_test is run with certain args, it calls these functions:
-int doQuit();   // args = "quit"
-int doSleep();  // args = "sleep"
+int doQuit();    // args = "quit"
+int doSleep();   // args = "sleep"
 int doHosted();  // args = "hosted", op, tempfile...
 
 #endif  // TAO_TAO_TEST_H_

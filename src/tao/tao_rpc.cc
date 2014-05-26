@@ -56,8 +56,7 @@ bool TaoRPC::Attest(const Statement &stmt, string *attestation) {
   return Request(rpc, attestation, nullptr /* policy */);
 }
 
-bool TaoRPC::Seal(const string &data, const string &policy,
-                  string *sealed) {
+bool TaoRPC::Seal(const string &data, const string &policy, string *sealed) {
   TaoRPCRequest rpc;
   rpc.set_rpc(TAO_RPC_SEAL);
   rpc.set_data(data);
@@ -72,8 +71,7 @@ bool TaoRPC::Unseal(const string &sealed, string *data, string *policy) {
   return Request(rpc, data, policy);
 }
 
-bool TaoRPC::Request(const TaoRPCRequest &req, string *data,
-                     string *policy) {
+bool TaoRPC::Request(const TaoRPCRequest &req, string *data, string *policy) {
   TaoRPCResponse resp;
   bool eof;
   if (!channel_->SendMessage(req)) {
@@ -131,14 +129,13 @@ bool TaoRPC::SerializeToString(string *params) const {
 TaoRPC *TaoRPC::DeserializeFromString(const string &params) {
   stringstream in(params);
   skip(in, "tao::TaoRPC+");
-  if (!in) return nullptr; // not for us
+  if (!in) return nullptr;  // not for us
   string channel_params;
   getline(in, channel_params, '\0');
   // Try each known channel type.
   MessageChannel *channel;
   channel = FDMessageChannel::DeserializeFromString(channel_params);
-  if (channel != nullptr)
-    return new TaoRPC(channel);
+  if (channel != nullptr) return new TaoRPC(channel);
   LOG(ERROR) << "Unknown channel serialized for TaoRPC";
   return nullptr;
 }

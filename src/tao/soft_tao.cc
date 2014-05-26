@@ -91,8 +91,7 @@ bool SoftTao::Attest(const Statement &stmt, string *attestation) {
   return GenerateAttestation(*keys_, "" /* delegation */, s, attestation);
 }
 
-bool SoftTao::Seal(const string &data, const string &policy,
-                   string *sealed) {
+bool SoftTao::Seal(const string &data, const string &policy, string *sealed) {
   if (policy != Tao::SealPolicyDefault) {
     failure_msg_ = "SoftTao policies not yet implemented";
     LOG(ERROR) << failure_msg_;
@@ -111,7 +110,9 @@ bool SoftTao::Unseal(const string &sealed, string *data, string *policy) {
   return true;
 }
 
-bool SoftTao::SerializeToStringWithDirectory(const string &path, const string &pass, string *params) const {
+bool SoftTao::SerializeToStringWithDirectory(const string &path,
+                                             const string &pass,
+                                             string *params) const {
   stringstream out;
   out << "tao::SoftTao(";
   out << quotedString(path);
@@ -136,7 +137,8 @@ SoftTao *SoftTao::DeserializeFromString(const string &params) {
     return nullptr;
   }
   string nickname = FilePath(path).BaseName().value();
-  scoped_ptr<Keys> keys(new Keys(path, nickname, Keys::Signing | Keys::Crypting));
+  scoped_ptr<Keys> keys(
+      new Keys(path, nickname, Keys::Signing | Keys::Crypting));
   if (!keys->InitNonHosted(pass)) {
     LOG(ERROR) << "Could not load keys for SoftTao";
     return nullptr;

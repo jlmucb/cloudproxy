@@ -40,8 +40,7 @@ bool FDMessageChannel::Close() {
   return true;
 }
 
-bool FDMessageChannel::SendMessage(const google::protobuf::Message &m) const
-{
+bool FDMessageChannel::SendMessage(const google::protobuf::Message &m) const {
   string serialized;
   if (!m.SerializeToString(&serialized)) {
     LOG(ERROR) << "Could not serialize the Message to a string";
@@ -50,8 +49,8 @@ bool FDMessageChannel::SendMessage(const google::protobuf::Message &m) const
   return SendString(writefd_, serialized);
 }
 
-bool FDMessageChannel::ReceiveMessage(google::protobuf::Message *m, bool *eof) const
-{
+bool FDMessageChannel::ReceiveMessage(google::protobuf::Message *m,
+                                      bool *eof) const {
   string s;
   if (!ReceiveString(readfd_, MaxMessageSize, &s, eof)) {
     LOG(ERROR) << "Could not recieve message";
@@ -76,14 +75,15 @@ bool FDMessageChannel::GetFileDescriptors(list<int> *keep_open) const {
   return true;
 }
 
-bool FDMessageChannel::SerializeToString(string *params) const { 
+bool FDMessageChannel::SerializeToString(string *params) const {
   stringstream out;
   out << "tao::FDMessageChannel(" << readfd_ << ", " << writefd_ << ")";
   params->assign(out.str());
   return true;
 }
 
-FDMessageChannel *FDMessageChannel::DeserializeFromString(const string &params) {
+FDMessageChannel *FDMessageChannel::DeserializeFromString(
+    const string &params) {
   stringstream in(params);
   skip(in, "tao::FDMessageChannel(");
   if (!in) return nullptr;  // not for us

@@ -32,7 +32,6 @@ namespace tao {
 /// keys and without the services of any underlying host Tao.
 class TaoRootHost : public TaoHost {
  public:
-
   /// Use temporary keys for signing and sealing. This is useful for unit tests.
   TaoRootHost() {}
 

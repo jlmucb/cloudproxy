@@ -29,7 +29,7 @@ namespace tao {
 using std::string;
 
 /// A class that sends Tao requests and responses over a channel between Tao
-/// hosts and Tao hosted programs. 
+/// hosts and Tao hosted programs.
 class TaoRPC : public Tao {
  public:
   /// Construct a TaoRPC.
@@ -49,8 +49,7 @@ class TaoRPC : public Tao {
   virtual bool ExtendTaoName(const string &subprin);
   virtual bool GetRandomBytes(size_t size, string *bytes);
   virtual bool Attest(const Statement &stmt, string *attestation);
-  virtual bool Seal(const string &data, const string &policy,
-                    string *sealed);
+  virtual bool Seal(const string &data, const string &policy, string *sealed);
   virtual bool Unseal(const string &sealed, string *data, string *policy);
   virtual string GetRecentErrorMessage() const { return failure_msg_; }
   virtual string ResetRecentErrorMessage() {

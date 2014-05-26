@@ -62,7 +62,7 @@ class TaoHost {
   /// @param attestation[out] The signed attestation.
   virtual bool Attest(const string &child_subprin, Statement *stmt,
                       string *attestation) const = 0;
-  
+
   /// TaoHost does not itself enforce policy for seal and unseal operations. The
   /// following methods encrypt and decrypt data using the crypting key, if so
   /// configured, without enforcing any policy. It is assumed that the crypting
@@ -92,18 +92,19 @@ class TaoHost {
   /// Notify this TaoHost that a new hosted program has been created.
   /// @param child_subprin The subprincipal for the new hosted program.
   virtual bool AddedHostedProgram(const string &child_subprin) { return true; }
-  
+
   /// Notify this TaoHost that a hosted program has been killed.
   /// @param child_subprin The subprincipal for the dead hosted program.
-  virtual bool RemovedHostedProgram(const string &child_subprin) { return true; }
+  virtual bool RemovedHostedProgram(const string &child_subprin) {
+    return true;
+  }
 
   /// @}
-  
+
   /// Get the Tao principal name assigned to this hosted Tao host. The name
   /// encodes the full path from the root Tao, through all intermediary Tao
-  /// hosts, to this hosted Tao host. 
+  /// hosts, to this hosted Tao host.
   virtual string TaoHostName() const = 0;
-
 };
 }  // namespace tao
 

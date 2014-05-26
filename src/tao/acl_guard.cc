@@ -75,7 +75,7 @@ bool ACLGuard::ParseConfig() {
   }
   // Load the signed ACL set file.
   acl_path_ = GetConfigPath(JSONSignedACLsPath);
-  acl_mod_time_ = 0; // force refresh
+  acl_mod_time_ = 0;  // force refresh
   return ReloadACLsIfModified();
 }
 

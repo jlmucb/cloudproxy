@@ -56,7 +56,6 @@ TEST_F(PipeFactoryTest, CreateTest) {
 }
 
 TEST_F(PipeFactoryTest, SendRecvTest) {
-  
   ASSERT_TRUE(down_->SendMessage(s_));
   ASSERT_TRUE(up_->ReceiveMessage(&r_, &eof_));
   ASSERT_TRUE(!eof_);
@@ -75,4 +74,3 @@ TEST_F(PipeFactoryTest, CloseTest) {
   EXPECT_TRUE(eof_);
   EXPECT_FALSE(up_->SendMessage(s_));
 }
-

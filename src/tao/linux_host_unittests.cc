@@ -43,8 +43,7 @@ string doTests(Tao *tao) {
     results += "Rand failed";
   } else if (bytes.size() != 4) {
     results += "Rand bad size";
-  } else if (bytes[0] == 0 && bytes[1] == 0 &&
-                                   bytes[2] == 0 && bytes[3] == 0) {
+  } else if (bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0 && bytes[3] == 0) {
     results += "Rand zero";
   } else {
     results += "Rand OK";
@@ -136,7 +135,8 @@ string doAttest(Tao *tao) {
     return "Attest OK AttestSubprin failed";
   } else if (a.size() == 0) {
     return "Attest OK AttestSubprin empty";
-  } else if (!WriteStringToFile(string(test_argv[3]) + ".subprin-delegation", a)) {
+  } else if (!WriteStringToFile(string(test_argv[3]) + ".subprin-delegation",
+                                a)) {
     return "Attest OK AttestSubprin write failed";
   } else {
     return "Attest OK AttestSubprin OK";
@@ -165,13 +165,12 @@ int doHosted() {
   return 0;
 }
 
-
 class LinuxHostTest : public ::testing::Test {
  protected:
-   virtual void Main() {
+  virtual void Main() {
     host_->Listen();
-    host_.reset(nullptr); // This will close channels
-   }
+    host_.reset(nullptr);  // This will close channels
+  }
 
   virtual void SetUp() {
     ASSERT_TRUE(CreateTempDir("linux_host_test", &temp_dir_));
@@ -185,10 +184,8 @@ class LinuxHostTest : public ::testing::Test {
     ASSERT_TRUE(admin_.get() != nullptr);
   }
   virtual void TearDown() {
-    if (admin_.get() != nullptr)
-      admin_->Shutdown();
-    if (listener_.get() != nullptr && listener_->joinable())
-      listener_->join();
+    if (admin_.get() != nullptr) admin_->Shutdown();
+    if (listener_.get() != nullptr && listener_->joinable()) listener_->join();
   }
   ScopedTempDir temp_dir_;
   scoped_ptr<LinuxHost> host_;
@@ -204,10 +201,12 @@ TEST_F(LinuxHostTest, GetTaoHostNameTest) {
 
 TEST_F(LinuxHostTest, StartStopTest) {
   string name;
-  EXPECT_TRUE(admin_->StartHostedProgram(test_argv[0], list<string>{"sleep"}, &name));
+  EXPECT_TRUE(
+      admin_->StartHostedProgram(test_argv[0], list<string>{"sleep"}, &name));
   EXPECT_NE("", name);
   EXPECT_TRUE(admin_->StopHostedProgram(name));
-  usleep(250*1000); // Wait for it to be completely dead (SIGCHLD is asynchronous).
+  usleep(250 *
+         1000);  // Wait for it to be completely dead (SIGCHLD is asynchronous).
   EXPECT_FALSE(admin_->StopHostedProgram(name));
   EXPECT_FALSE(admin_->StopHostedProgram("nobody"));
 }
@@ -220,8 +219,8 @@ TEST_F(LinuxHostTest, HostedTest) {
   EXPECT_TRUE(admin_->StartHostedProgram(
       test_argv[0], list<string>{"hosted", "tests", result_path}, &name));
   EXPECT_NE("", name);
-  usleep(250*1000);
-  EXPECT_FALSE(admin_->StopHostedProgram(name)); // should have already exited
+  usleep(250 * 1000);
+  EXPECT_FALSE(admin_->StopHostedProgram(name));  // should have already exited
   EXPECT_TRUE(ReadFileToString(result_path, &hosted_program_result));
   EXPECT_EQ("Rand OK TaoName OK Extend OK", hosted_program_result);
 }
@@ -234,16 +233,16 @@ TEST_F(LinuxHostTest, HostedSealUnsealTest) {
   EXPECT_TRUE(admin_->StartHostedProgram(
       test_argv[0], list<string>{"hosted", "seal", result_path}, &name));
   EXPECT_NE("", name);
-  usleep(250*1000);
-  EXPECT_FALSE(admin_->StopHostedProgram(name)); // should have already exited
+  usleep(250 * 1000);
+  EXPECT_FALSE(admin_->StopHostedProgram(name));  // should have already exited
   EXPECT_TRUE(ReadFileToString(result_path, &hosted_program_result));
   EXPECT_EQ("Seal OK", hosted_program_result);
   // now unseal it via hosted program
   EXPECT_TRUE(admin_->StartHostedProgram(
       test_argv[0], list<string>{"hosted", "unseal", result_path}, &name));
   EXPECT_NE("", name);
-  usleep(250*1000);
-  EXPECT_FALSE(admin_->StopHostedProgram(name)); // should have already exited
+  usleep(250 * 1000);
+  EXPECT_FALSE(admin_->StopHostedProgram(name));  // should have already exited
   EXPECT_TRUE(ReadFileToString(result_path, &hosted_program_result));
   EXPECT_EQ("Unseal OK Extend+Unseal denied", hosted_program_result);
 }
@@ -258,8 +257,8 @@ TEST_F(LinuxHostTest, HostedAttestValidateTest) {
   EXPECT_TRUE(admin_->StartHostedProgram(
       test_argv[0], list<string>{"hosted", "attest", result_path}, &name));
   EXPECT_NE("", name);
-  usleep(250*1000);
-  EXPECT_FALSE(admin_->StopHostedProgram(name)); // should have already exited
+  usleep(250 * 1000);
+  EXPECT_FALSE(admin_->StopHostedProgram(name));  // should have already exited
   EXPECT_TRUE(ReadFileToString(result_path, &hosted_program_result));
   // validate the attestation
   string delegation, delegate, issuer;
@@ -267,7 +266,7 @@ TEST_F(LinuxHostTest, HostedAttestValidateTest) {
   EXPECT_TRUE(
       ValidateDelegation(delegation, CurrentTime(), &delegate, &issuer));
   EXPECT_EQ("Alice", delegate);
-  EXPECT_EQ(host+"::"+name, issuer);
+  EXPECT_EQ(host + "::" + name, issuer);
 
   // validate the subprin attestation
   EXPECT_TRUE(
@@ -280,5 +279,5 @@ TEST_F(LinuxHostTest, HostedAttestValidateTest) {
 
 TEST_F(LinuxHostTest, ShutdownTest) {
   EXPECT_TRUE(admin_->Shutdown());
-  EXPECT_FALSE(admin_->Shutdown()); // should fail, already shut down
+  EXPECT_FALSE(admin_->Shutdown());  // should fail, already shut down
 }

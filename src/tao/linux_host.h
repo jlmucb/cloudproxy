@@ -52,11 +52,9 @@ class LinuxHost {
   /// @param policy A guard for enforcing execution policy. This policy's unique
   /// name will become part of this tao host's name. Ownership is taken.
   /// @param path A directory for storing keys and other state.
-  /// @param pass A password for unlocking keys. This is only used if 
-  LinuxHost(TaoGuard *policy, const string &path) :
-        path_(path),
-        next_child_id_(0),
-        child_policy_(policy) {}
+  /// @param pass A password for unlocking keys. This is only used if
+  LinuxHost(TaoGuard *policy, const string &path)
+      : path_(path), next_child_id_(0), child_policy_(policy) {}
 
   /// Open ports and aquire resources for a stacked Tao.
   /// @param host_tao The host Tao, i.e. obtained from Tao::GetHostTao().
@@ -65,14 +63,14 @@ class LinuxHost {
   /// Open ports and aquire resources for a root Tao.
   /// @param pass The password for unlocking signing and crypting keys.
   virtual bool InitRoot(const string &pass);
-  
+
   virtual ~LinuxHost() {}
 
   /// Set the ID of the next child to be created. Child IDs will not be used
   /// unless this method is called with a non-zero ID.
   /// @param id The ID.
   virtual void SetNextChildID(unsigned int id) { next_child_id_ = id; }
-  
+
   /// Get the ID of the next child to be created. If Child IDs are disabled,
   /// then this method returns 0.
   virtual unsigned int GetNextChildID() { return next_child_id_; }
@@ -83,10 +81,8 @@ class LinuxHost {
 
   static LinuxAdminRPC *Connect(const string &path);
 
-  virtual string TaoHostName() {
-    return tao_host_->TaoHostName();
-  }
-  
+  virtual string TaoHostName() { return tao_host_->TaoHostName(); }
+
   virtual string DebugString() const {
     return elideString(tao_host_->TaoHostName());
   }
@@ -159,7 +155,7 @@ class LinuxHost {
   /// The hosted program factory, responsible for starting and stopping hosted
   /// programs and giving them names.
   scoped_ptr<LinuxProcessFactory> child_factory_;
-  
+
   /// The child channel factory, responsible for setting up and tearing down the
   /// channel between this Tao host and hosted program.
   scoped_ptr<PipeFactory> child_channel_factory_;

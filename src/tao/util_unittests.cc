@@ -115,7 +115,7 @@ TEST(UtilTest, CallUnlessNullTest) {
 TEST(UtilTest, SelfPipeTest) {
   EXPECT_GT(0, GetSelfPipeSignalFd(-1, 0 /* no flags */));
   int fd = GetSelfPipeSignalFd(SIGUSR1, 0 /* no flags */);
-  EXPECT_GE(0, fd);
+  EXPECT_LE(0, fd);
   kill(getpid(), SIGUSR1);
   char b;
   EXPECT_EQ(1, read(fd, &b, 1));

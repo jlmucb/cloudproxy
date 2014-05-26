@@ -20,9 +20,9 @@
 
 #include <thread>
 
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <gflags/gflags.h>
 
 #include "tao/attestation.h"
 #include "tao/linux_admin_rpc.h"
@@ -34,7 +34,7 @@
 using std::string;
 using std::thread;
 
-using namespace tao;
+using namespace tao;  // NOLINT
 
 string doTests(Tao *tao) {
   string results;

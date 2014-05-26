@@ -18,8 +18,6 @@
 #include "tao/tpm_tao.h"
 
 #include <netinet/in.h>
-//#include <sys/stat.h>
-//#include <sys/types.h>
 
 #include <glog/logging.h>
 #include <openssl/pem.h>

@@ -19,8 +19,9 @@
 #ifndef TAO_LINUX_HOST_H_
 #define TAO_LINUX_HOST_H_
 
-#include <string>
+#include <list>
 #include <memory>
+#include <string>
 
 #include "tao/linux_admin_rpc.pb.h"
 #include "tao/tao.h"

@@ -17,7 +17,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <iostream>
+#include <cstdio>
 #include <list>
 #include <string>
 
@@ -26,8 +26,6 @@
 #include "tao/tpm_tao.h"
 #include "tao/util.h"
 
-using std::cout;
-using std::endl;
 using std::list;
 using std::string;
 
@@ -53,7 +51,7 @@ int main(int argc, char **argv) {
   auto idx = pcr_indexes.begin();
   auto val = pcr_values.begin();
   while (idx != pcr_indexes.end()) {
-    cout << "PCR[" << *idx << "] = " << *val << endl;
+    printf("PCR[%d] = %s\n", *idx, val->c_str());
     ++idx;
     ++val;
   }

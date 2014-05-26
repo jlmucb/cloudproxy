@@ -32,13 +32,13 @@ using std::string;
 
 using tao::CreateDirectory;
 using tao::DirectoryExists;
+using tao::Principal;
 using tao::ReadFileToString;
 using tao::TPMTao;
 using tao::Tao;
 using tao::WriteStringToFile;
 using tao::join;
 using tao::split;
-using tao::Principal;
 
 DEFINE_string(path, "tpm", "A path in which to store TPMTao AIK and settings.");
 DEFINE_string(pcrs, "17, 18", "A comma-separated list of PCR numbers to use.");

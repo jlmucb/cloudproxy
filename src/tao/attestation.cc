@@ -18,7 +18,6 @@
 // limitations under the License.
 #include "tao/attestation.h"
 
-#include <regex>
 #include <sstream>
 
 #include <glog/logging.h>
@@ -27,8 +26,6 @@
 #include "tao/keys.h"
 #include "tao/tpm_tao.h"
 
-using std::regex;
-using std::regex_match;
 using std::stringstream;
 
 using keyczar::Verifier;

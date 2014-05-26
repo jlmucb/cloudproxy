@@ -23,29 +23,22 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
-//#include "cloudproxy/cloud_auth.h"
-//#include "cloudproxy/cloud_user_manager.h"
-//#include "tao/acl_guard.h"
-#include "tao/linux_process_factory.h"
-//#include "tao/hosted_programs.pb.h"
 #include "tao/keys.h"
+#include "tao/linux_process_factory.h"
 #include "tao/tao_domain.h"
 #include "tao/util.h"
 
 using std::getline;
+using std::list;
 using std::string;
 using std::stringstream;
-using std::list;
 
 // using cloudproxy::CloudAuth;
 // using cloudproxy::CloudUserManager;
-using tao::Keys;
 using tao::LinuxProcessFactory;
 using tao::ReadFileToString;
 using tao::TaoDomain;
-using tao::Term;
 using tao::elideString;
-using tao::unique_ptr;
 
 DEFINE_string(config_path, "tao.config", "Location of tao configuration");
 DEFINE_string(policy_pass, "", "A password for the policy private key");
@@ -236,7 +229,6 @@ int main(int argc, char **argv) {
     LinuxProcessFactory factory;
     string child_subprin;
     string path = FLAGS_getprogramhash;
-    ;
     int next_id = 0;  // assume no IDs.
     CHECK(factory.MakeHostedProgramSubprin(next_id, path, &child_subprin));
     printf("%s\n", child_subprin.c_str());

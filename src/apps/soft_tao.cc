@@ -31,10 +31,8 @@ using std::string;
 using tao::CreateDirectory;
 using tao::DirectoryExists;
 using tao::Keys;
-using tao::ReadFileToString;
 using tao::SoftTao;
 using tao::Tao;
-using tao::WriteStringToFile;
 
 DEFINE_string(path, "soft_tao",
               "A path in which to store SoftTao keys and settings.");

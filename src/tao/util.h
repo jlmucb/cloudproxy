@@ -22,10 +22,10 @@
 #include <sys/socket.h>  // for socklen_t
 
 #include <list>
+#include <memory>
 #include <set>
 #include <sstream>
 #include <string>
-#include <memory>
 
 /// These basic utilities from Keyczar and the standard library are used
 /// extensively throughout the Tao implementation, so we include them here.
@@ -58,16 +58,16 @@ using std::stringstream;
 using std::unique_ptr;  // TODO(kwalsh) Discuss unique_ptr vs. scoped_ptr.
 // using std::make_unique;  // TODO(kwalsh) Discuss unique_ptr vs. scoped_ptr.
 
-using keyczar::base::Base64WDecode;
-using keyczar::base::Base64WEncode;
-using keyczar::base::CreateDirectory;
-using keyczar::base::DirectoryExists;
 // using keyczar::base::FilePath;  // Why isn't this in keyczar::base ?
-using keyczar::base::PathExists;
 // using keyczar::base::ReadFileToString; // Define our own version below.
-using keyczar::base::ScopedSafeString;
-using keyczar::base::WriteStringToFile;
-using keyczar::base::Delete;
+using keyczar::base::Base64WDecode;  // NOLINT
+using keyczar::base::Base64WEncode;  // NOLINT
+using keyczar::base::CreateDirectory;  // NOLINT
+using keyczar::base::Delete;  // NOLINT
+using keyczar::base::DirectoryExists;  // NOLINT
+using keyczar::base::PathExists;  // NOLINT
+using keyczar::base::ScopedSafeString;  // NOLINT
+using keyczar::base::WriteStringToFile;  // NOLINT
 
 /// @}
 

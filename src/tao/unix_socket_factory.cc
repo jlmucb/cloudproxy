@@ -19,10 +19,10 @@
 // limitations under the License.
 #include "tao/unix_socket_factory.h"
 
+#include <sys/fcntl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
-#include <sys/fcntl.h>
 
 #include <string>
 

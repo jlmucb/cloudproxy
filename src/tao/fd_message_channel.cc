@@ -20,6 +20,9 @@
 
 #include <unistd.h>
 
+#include <list>
+#include <string>
+
 #include <glog/logging.h>
 
 #include "tao/util.h"

@@ -23,9 +23,9 @@
 #include <glog/logging.h>
 
 #include "tao/fd_message_channel.h"
+#include "tao/soft_tao.h"
 #include "tao/tao_rpc.h"
 #include "tao/tpm_tao.h"
-#include "tao/soft_tao.h"
 #include "tao/util.h"
 
 namespace tao {

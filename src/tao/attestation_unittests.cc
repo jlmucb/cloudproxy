@@ -24,7 +24,7 @@
 #include "tao/keys.h"
 #include "tao/util.h"
 
-using namespace tao;
+using namespace tao;  // NOLINT
 
 class AttestationTest : public ::testing::Test {
  protected:

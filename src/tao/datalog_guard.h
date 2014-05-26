@@ -20,6 +20,7 @@
 #define TAO_DATALOG_GUARD_H_
 
 #include <list>
+#include <set>
 #include <string>
 
 #include <keyczar/base/values.h>

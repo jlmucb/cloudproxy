@@ -19,6 +19,9 @@
 #ifndef TAO_FD_MESSAGE_CHANNEL_H_
 #define TAO_FD_MESSAGE_CHANNEL_H_
 
+#include <list>
+#include <string>
+
 #include "tao/message_channel.h"
 
 #include "tao/util.h"

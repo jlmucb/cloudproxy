@@ -27,7 +27,8 @@
 #include "tao/util.h"
 
 using std::string;
-using namespace tao;
+
+using namespace tao;  // NOLINT
 
 int test_argc;
 char **test_argv;

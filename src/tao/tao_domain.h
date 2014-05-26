@@ -34,7 +34,6 @@ class Verifier;
 }  // namespace keyczar
 
 namespace tao {
-using std::list;
 using std::string;
 
 class Attestation;

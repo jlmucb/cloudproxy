@@ -26,14 +26,14 @@
 
 #include <glog/logging.h>
 extern "C" {
-#include <lua.h>
 #include <lauxlib.h>
+#include <lua.h>
 }
 // lua.h must come before datalog.h
 #include <datalog.h>
 
 #include "tao/auth.h"
-#include "auth_lua.h"
+#include "tao/auth_lua.h"
 #include "tao/datalog_guard.pb.h"
 #include "tao/util.h"
 

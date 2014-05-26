@@ -32,7 +32,7 @@ class UnixSocketFactory {
   /// Construct UnixSocketFactory.
   /// @param path The path for the unix domain server socket.
   explicit UnixSocketFactory(const string &path)
-      : path_(path), listen_fd_(-1) {};
+      : path_(path), listen_fd_(-1) {}
   virtual bool Init();
   virtual ~UnixSocketFactory() { Close(); }
 

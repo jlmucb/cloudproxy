@@ -16,16 +16,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "tao/linux_host.h"
+
 #include <cstdio>
 #include <list>
-#include <utility>
 #include <string>
+#include <utility>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include "tao/linux_admin_rpc.h"
-#include "tao/linux_host.h"
 #include "tao/tao.h"
 #include "tao/tao_domain.h"
 #include "tao/util.h"
@@ -104,7 +105,6 @@ int main(int argc, char **argv) {
     }
     if (FLAGS_service) {
       printf("Linux Tao Service started and waiting for requests\n");
-      ;
       CHECK(host->Listen()) << "TaoHost main loop failed";
     }
   } else {

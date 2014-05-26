@@ -24,7 +24,7 @@
 #include "tao/attestation.pb.h"
 #include "tao/util.h"
 
-using namespace tao;
+using namespace tao;  // NOLINT
 
 class PipeFactoryTest : public ::testing::Test {
  protected:
@@ -43,8 +43,8 @@ class PipeFactoryTest : public ::testing::Test {
 TEST_F(PipeFactoryTest, CreateTest) {
   list<int> fds;
   ASSERT_TRUE(up_->GetFileDescriptors(&fds));
-  EXPECT_TRUE(up_->GetReadFileDescriptor() >= 0);
-  EXPECT_TRUE(fds.size() == 2);
+  EXPECT_LE(0, up_->GetReadFileDescriptor());
+  EXPECT_EQ(2, fds.size());
   if (fds.size() == 2) {
     EXPECT_EQ(*fds.begin(), up_->GetReadFileDescriptor());
   }

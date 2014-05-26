@@ -18,8 +18,8 @@
 // limitations under the License.
 #include "tao/linux_process_factory.h"
 
-#include <unistd.h>
 #include <signal.h>
+#include <unistd.h>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -30,7 +30,7 @@
 #include "tao/tao_test.h"
 #include "tao/util.h"
 
-using namespace tao;
+using namespace tao;  // NOLINT
 
 int doQuit() { return 0; }
 int doSleep() {
@@ -78,7 +78,7 @@ TEST_F(LinuxProcessFactoryTest, StartTest) {
   ASSERT_TRUE(factory_.MakeHostedProgramSubprin(0, test_argv[0], &subprin));
   ASSERT_TRUE(factory_.StartHostedProgram(
       pipe_factory, test_argv[0], list<string>{"quit"}, subprin, &child));
-  EXPECT_TRUE(child->pid > 0);
+  EXPECT_LT(0, child->pid);
   EXPECT_EQ(subprin, child->subprin);
   usleep(250 * 1000);
   // it should have already stopped
@@ -94,7 +94,7 @@ TEST_F(LinuxProcessFactoryTest, StartStopTest) {
   ASSERT_TRUE(factory_.MakeHostedProgramSubprin(0, test_argv[0], &subprin));
   ASSERT_TRUE(factory_.StartHostedProgram(
       pipe_factory, test_argv[0], list<string>{"sleep"}, subprin, &child));
-  EXPECT_TRUE(child->pid > 0);
+  EXPECT_LT(0, child->pid);
   EXPECT_EQ(subprin, child->subprin);
   usleep(250 * 1000);
   // it should still be running

@@ -24,7 +24,7 @@
 #include "tao/auth.h"
 #include "tao/util.h"
 
-using namespace tao;
+using namespace tao;  // NOLINT
 
 class DatalogGuardTest : public ::testing::Test {
  protected:

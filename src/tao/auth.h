@@ -27,9 +27,9 @@
 #include "tao/util.h"
 
 namespace tao {
-using std::vector;
 using std::string;
 using std::stringstream;
+using std::vector;
 
 class Predicate;
 class Principal;
@@ -46,9 +46,9 @@ class Term {
       : type_(type),
         string_val_(type == STRING ? s : ""),
         var_val_(type == VARIABLE ? s : "") {}
-  Term(int i) : type_(INTEGER), int_val_(i) {}
-  Term(Predicate *pred) : type_(PREDICATE), pred_val_(pred) {}
-  Term(Principal *prin) : type_(PRINCIPAL), prin_val_(prin) {}
+  explicit Term(int i) : type_(INTEGER), int_val_(i) {}
+  explicit Term(Predicate *pred) : type_(PREDICATE), pred_val_(pred) {}
+  explicit Term(Principal *prin) : type_(PRINCIPAL), prin_val_(prin) {}
 
   /// Parse a term from a stream.
   /// @param[in, out] in Stream containing the name and maybe more.
@@ -133,7 +133,7 @@ class Predicate {
   /// @param name The name of the principal.
   static Predicate *ParseFromString(const string &ext);
 
-  Predicate(const string &name) : name_(name) {}
+  explicit Predicate(const string &name) : name_(name) {}
 
   /// Add an argument to this predicate.
   /// @param t The term to add. Ownership is taken.

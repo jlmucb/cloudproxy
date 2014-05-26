@@ -36,7 +36,7 @@ class SoftTao : public Tao {
 
   /// Use the provided keys for signing and sealing.
   /// @param keys A set of signing and crypting keys. Ownership is taken.
-  SoftTao(Keys *keys) : keys_(keys) {}
+  explicit SoftTao(Keys *keys) : keys_(keys) {}
 
   virtual bool Init();
 

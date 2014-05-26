@@ -25,7 +25,7 @@
 
 using std::string;
 
-using namespace tao;
+using namespace tao;  // NOLINT
 
 class AuthTest : public ::testing::Test {
  protected:

@@ -19,10 +19,6 @@
 #ifndef TAO_TAO_TEST_H_
 #define TAO_TAO_TEST_H_
 
-#include <string>
-
-using std::string;
-
 // Saved args from tao_test main.
 extern int test_argc;
 extern char **test_argv;

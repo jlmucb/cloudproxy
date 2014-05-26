@@ -20,6 +20,8 @@
 
 #include <signal.h>
 
+#include <list>
+
 #include <glog/logging.h>
 
 #include "tao/fd_message_channel.h"
@@ -29,8 +31,8 @@
 #include "tao/linux_process_factory.h"
 #include "tao/pipe_factory.h"
 #include "tao/tao_host.h"
-#include "tao/tao_stacked_host.h"
 #include "tao/tao_root_host.h"
+#include "tao/tao_stacked_host.h"
 #include "tao/unix_socket_factory.h"
 #include "tao/util.h"
 

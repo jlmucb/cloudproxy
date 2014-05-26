@@ -21,9 +21,9 @@
 
 #include <string>
 
-#include "tao/tao_host.h"
 #include "tao/keys.h"
 #include "tao/tao.h"
+#include "tao/tao_host.h"
 #include "tao/util.h"
 
 namespace tao {

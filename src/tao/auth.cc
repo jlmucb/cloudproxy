@@ -18,7 +18,6 @@
 // limitations under the License.
 #include "tao/auth.h"
 
-#include <iostream>
 #include <cctype>
 #include <sstream>
 
@@ -49,7 +48,7 @@ string GetIdentifier(stringstream &in) {  // NOLINT
   return "";
 }
 
-Term *Term::ParseFromStream(stringstream &in) {
+Term *Term::ParseFromStream(stringstream &in) {  // NOLINT
   char c = in.peek();
   if (c == '"') {
     string q;
@@ -150,7 +149,7 @@ string Term::SerializeToString() const {
   }
 }
 
-Predicate *Predicate::ParseFromStream(stringstream &in) {
+Predicate *Predicate::ParseFromStream(stringstream &in) {  // NOLINT
   string name = GetIdentifier(in);
   if (!in) {
     LOG(ERROR) << "Expecting predicate name";
@@ -215,7 +214,7 @@ string Predicate::SerializeToString() const {
   return out.str();
 }
 
-Principal *Principal::ParseFromStream(stringstream &in) {
+Principal *Principal::ParseFromStream(stringstream &in) {  // NOLINT
   scoped_ptr<Predicate> base(Predicate::ParseFromStream(in));
   if (!in || base.get() == nullptr) {
     LOG(ERROR) << "Could not parse principal name";

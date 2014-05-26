@@ -21,9 +21,9 @@
 
 #include <string>
 
-#include "tao/tao_host.h"
 #include "tao/keys.h"
 #include "tao/tao.h"
+#include "tao/tao_host.h"
 #include "tao/util.h"
 
 namespace tao {
@@ -37,7 +37,7 @@ class TaoRootHost : public TaoHost {
 
   /// Use the provided keys for signing and sealing.
   /// @param keys A set of signing and crypting keys. Ownership is taken.
-  TaoRootHost(Keys *keys) : keys_(keys) {}
+  explicit TaoRootHost(Keys *keys) : keys_(keys) {}
 
   virtual bool Init();
   virtual ~TaoRootHost() {}

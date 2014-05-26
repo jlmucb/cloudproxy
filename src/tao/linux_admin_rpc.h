@@ -23,8 +23,8 @@
 #include <string>
 #include <utility>
 
-#include "tao/message_channel.h"
 #include "tao/linux_admin_rpc.pb.h"
+#include "tao/message_channel.h"
 #include "tao/util.h"
 
 namespace tao {
@@ -38,7 +38,7 @@ class LinuxAdminRPC {
   /// Construct a TaoRPC.
   /// @param channel The channel over which to send and recieve messages.
   /// Ownership is taken.
-  LinuxAdminRPC(MessageChannel *channel) : channel_(channel) {}
+  explicit LinuxAdminRPC(MessageChannel *channel) : channel_(channel) {}
   virtual ~LinuxAdminRPC() {}
 
   /// Methods that invoke the administrative interfaces of LinuxTao.

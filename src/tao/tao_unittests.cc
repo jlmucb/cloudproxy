@@ -26,7 +26,7 @@
 #include "tao/tpm_tao.h"
 #include "tao/util.h"
 
-using namespace tao;
+using namespace tao;  // NOLINT
 
 DEFINE_string(aik_blob_file, "./tpm/aikblob",
               "The blob for an AIK loaded in the TPM");

@@ -26,7 +26,7 @@
 #include "tao/soft_tao.h"
 #include "tao/util.h"
 
-using namespace tao;
+using namespace tao;  // NOLINT
 
 template <typename T>
 class TaoDomainTest : public ::testing::Test {

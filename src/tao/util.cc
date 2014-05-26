@@ -38,22 +38,14 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-//#include <google/protobuf/text_format.h>
-//#include <keyczar/base/base64w.h>
-//#include <keyczar/base/file_util.h>
 #include <keyczar/crypto_factory.h>
-#include <openssl/crypto.h>
 #include <openssl/bio.h>
+#include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
-//#include <openssl/x509.h>
 
 #include "tao/attestation.pb.h"
 #include "tao/keys.h"
-//#include "tao/kvm_unix_tao_child_channel.h"
-//#include "tao/pipe_tao_child_channel.h"
-//#include "tao/tao_child_channel.h"
-//#include "tao/tao_child_channel_registry.h"
 #include "tao/tao_domain.h"
 
 using std::lock_guard;

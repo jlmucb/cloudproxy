@@ -65,7 +65,7 @@ class TPMTao : public Tao {
   /// Attest operations, but it can be used for examing the current PCR values,
   /// creating AIK blobs, etc.
   /// @param pcrs_indexes A list of PCR indexes used for sealing and unsealing.
-  TPMTao(const list<int> &pcr_indexes) : TPMTao("", pcr_indexes) {}
+  explicit TPMTao(const list<int> &pcr_indexes) : TPMTao("", pcr_indexes) {}
 
   virtual bool Init();
   virtual bool Close();

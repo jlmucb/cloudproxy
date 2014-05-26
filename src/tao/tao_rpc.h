@@ -35,7 +35,7 @@ class TaoRPC : public Tao {
   /// Construct a TaoRPC.
   /// @param channel The channel over which to send and recieve messages.
   /// Ownership is taken.
-  TaoRPC(MessageChannel *channel) : channel_(channel) {}
+  explicit TaoRPC(MessageChannel *channel) : channel_(channel) {}
 
   virtual void Close() { channel_->Close(); }
 

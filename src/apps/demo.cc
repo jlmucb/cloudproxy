@@ -23,11 +23,16 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
-#include "tao/tao.h"
 #include "tao/auth.h"
+#include "tao/tao.h"
 #include "tao/util.h"
 
-using namespace tao;
+using std::string;
+
+using tao::Principal;
+using tao::Tao;
+using tao::bytesToHex;
+using tao::elideString;
 
 DEFINE_bool(raw, false, "Show raw, non-elided output");
 

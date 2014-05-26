@@ -31,11 +31,11 @@
 			'actions' : [
 				{
 					'inputs' : [ '<(PRODUCT_DIR)/bin/bin2c', 'auth.lua' ],
-					'outputs' : [ '<(SHARED_INTERMEDIATE_DIR)/auth_lua.h' ],
+					'outputs' : [ '<(SHARED_INTERMEDIATE_DIR)/tao/auth_lua.h' ],
 					'action_name' : 'bin2c', 
 					'action' : [
 						'<(PRODUCT_DIR)/bin/bin2c',
-					  '-o', '<(SHARED_INTERMEDIATE_DIR)/auth_lua.h',
+					  '-o', '<(SHARED_INTERMEDIATE_DIR)/tao/auth_lua.h',
 						'auth.lua'
 					],
 					'message' : 'Embedding lua source in C',

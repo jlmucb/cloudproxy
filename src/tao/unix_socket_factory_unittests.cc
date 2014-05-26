@@ -27,7 +27,7 @@
 
 using std::thread;
 
-using namespace tao;
+using namespace tao;  // NOLINT
 
 class UnixSocketFactoryTest : public ::testing::Test {
  protected:
@@ -59,7 +59,7 @@ class UnixSocketFactoryTest : public ::testing::Test {
     path_ = *temp_dir_ + "/socket";
     factory_.reset(new UnixSocketFactory(path_));
     ASSERT_TRUE(factory_->Init());
-    ASSERT_TRUE(factory_->GetListenFileDescriptor() >= 0);
+    ASSERT_LE(0, factory_->GetListenFileDescriptor());
     listener_.reset(new thread(&UnixSocketFactoryTest::Listen, this));
   }
   virtual void TearDown() {

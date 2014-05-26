@@ -25,7 +25,6 @@
 #include "tao/util.h"
 
 namespace tao {
-using std::list;
 using std::string;
 
 /// An interface for a channel that can send and recive Message objects.

@@ -20,16 +20,10 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-//#include <keyczar/base/file_util.h>
 
-//#include "tao/direct_tao_child_channel.h"
-//#include "tao/pipe_tao_child_channel.h"
 #include "tao/soft_tao.h"
-//#include "tao/tao_child_channel_params.pb.h"
-//#include "tao/tao_child_channel_registry.h"
-//#include "tao/tao_domain.h"
 
-using namespace tao;
+using namespace tao;  // NOLINT
 
 /*
 TEST(UtilTest, RegistryTest) {
@@ -119,9 +113,9 @@ TEST(UtilTest, CallUnlessNullTest) {
 }
 
 TEST(UtilTest, SelfPipeTest) {
-  EXPECT_TRUE(GetSelfPipeSignalFd(-1, 0 /* no flags */) < 0);
+  EXPECT_GT(0, GetSelfPipeSignalFd(-1, 0 /* no flags */));
   int fd = GetSelfPipeSignalFd(SIGUSR1, 0 /* no flags */);
-  EXPECT_TRUE(fd >= 0);
+  EXPECT_GE(0, fd);
   kill(getpid(), SIGUSR1);
   char b;
   EXPECT_EQ(1, read(fd, &b, 1));

@@ -26,7 +26,6 @@
 #include <wait.h>
 
 #include <algorithm>
-#include <iostream>
 
 #include <glog/logging.h>
 
@@ -291,7 +290,7 @@ bool LinuxProcessFactory::CloseAllFileDescriptorsExcept(
       if (entry->d_name[0] == '.') continue;
       char *end = nullptr;
       errno = 0;
-      long n = strtol(entry->d_name, &end, 10);
+      int n = strtol(entry->d_name, &end, 10);
       if (errno != 0) {
         PLOG(ERROR) << "Error enumerating /proc/self/fd";
         closedir(dir);

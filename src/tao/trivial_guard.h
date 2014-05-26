@@ -32,7 +32,7 @@ class TrivialGuard : public TaoGuard {
  public:
   enum Policy { ConservativePolicy, LiberalPolicy };
 
-  TrivialGuard(Policy policy) : policy_(policy) {}
+  explicit TrivialGuard(Policy policy) : policy_(policy) {}
 
   virtual bool GetSubprincipalName(string *subprin) const {
     if (policy_ == LiberalPolicy)

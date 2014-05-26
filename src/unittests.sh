@@ -70,9 +70,15 @@ if [ ! -f "$tpm/aikblob" ]; then
 	$bin/tpm_tao -path $tpm -create
 fi
 
+errors=0
+
 # Run individual unit tests
-$bin/tao_test --aik_blob_file $tpm/aikblob -- --gtest_filter=*
-# $bin/cloudproxy_test -- --gtest_filter=*
+if ! $bin/tao_test --aik_blob_file $tpm/aikblob -- --gtest_filter=*; then
+	errors=$((errors+1))
+fi
+# if ! $bin/cloudproxy_test -- --gtest_filter=*; then
+# 	errors=$((errors+1))
+# fi
 
 # Run an end-to-end unit test
 green="[32m"
@@ -80,17 +86,27 @@ red="[31m"
 reset="[0m"
 echo
 echo "${green}[----------]${reset} 1 End-to-end Tao unit test"
-echo "${green}[ RUN      ]${reset} Install and run demo"
-if (
-	${root_dir}/src/install.sh -q -${test_ver} .
-	./scripts/setup.sh
-	./scripts/start.sh
-	sleep 0.25
-	./scripts/host.sh bin/demo
-	./scripts/stop.sh
-) > ./logs/end-to-end.msgs 2>&1; then
-	echo "${green}[       OK ]${reset} Install and run demo"
-else
-	echo "${red}[     FAIL ]${reset} End-to-end Tao unit test"; exit 1
-fi
+for guard in "acls" "datalog"; do
+	echo "${green}[ RUN      ]${reset} Run demo, with guard = $guard"
+	if (
+		${root_dir}/src/install.sh -q -${guard} -${test_ver} .
+		./scripts/setup.sh
+		./scripts/start.sh
+		sleep 0.25
+		./scripts/host.sh bin/demo
+		./scripts/stop.sh
+	) > ./logs/end-to-end.msgs 2>&1; then
+		echo "${green}[       OK ]${reset} Run demo, with guard = $guard"
+	else
+		echo "${red}[     FAIL ]${reset} Run demo, with guard = $guard"
+		errors=$((errors+1))
+	fi
+done
 echo "${green}[----------]${reset} 1 End-to-end Tao unit test"
+
+echo
+if [ $errors -ne 0 ]; then
+	echo "${red}Some unit tests failed${reset}"
+else
+	echo "${green}All unit tests passed${reset}"
+fi

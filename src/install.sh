@@ -246,7 +246,7 @@ function stoptests()
 	else
 		echo "No Tao services or processes remaining"
 	fi
-	rm -f ${TAO_TEST}/*_socket ${TAO_TEST}/*/*_socket
+	rm -f ${TAO_TEST}/linux_tao_host/admin_socket ${TAO_TEST}/*/*_socket
 }
 
 function setup()
@@ -316,6 +316,7 @@ function refresh()
 	else
 		$admin -clear -canexecute ${TAO_HOSTED_PROGRAMS// /,}
 	fi
+	$admin -show
 
 	# TODO(kwalsh) set up fserver user ACLs here.
 	#$admin -newusers tmroeder,jlm

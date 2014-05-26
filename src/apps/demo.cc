@@ -68,6 +68,7 @@ int main(int argc, char **argv) {
   CHECK(tao->GetRandomBytes(4, &bytes));
   printf("RandomBytes='%s'\n", bytesToHex(bytes).c_str());
 
+  printf("Success\n");
   return 0;
 }
 

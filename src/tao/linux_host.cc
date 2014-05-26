@@ -599,10 +599,10 @@ bool LinuxHost::Listen() {
 }
 
 LinuxAdminRPC *LinuxHost::Connect(const string &path) {
-  scoped_ptr<MessageChannel> chan(UnixSocketFactory::Connect(
-      FilePath(path).Append("admin_socket").value()));
+  string sock_path = FilePath(path).Append("admin_socket").value();
+  scoped_ptr<MessageChannel> chan(UnixSocketFactory::Connect(sock_path));
   if (chan.get() == nullptr) {
-    LOG(ERROR) << "Could not connect to LinuxHost at " << path;
+    LOG(ERROR) << "Could not connect to LinuxHost at " << sock_path;
     return nullptr;
   }
   return new LinuxAdminRPC(chan.release());

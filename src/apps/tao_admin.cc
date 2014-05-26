@@ -78,6 +78,7 @@ DEFINE_string(query, "", "A policy query to be checked");
 DEFINE_string(getprogramhash, "", "Path of program to be hashed");
 
 DEFINE_bool(quiet, false, "Be more quiet");
+DEFINE_bool(show, false, "Show info when done");
 
 //DEFINE_string(canclaim, "",
 //              "Comma-separated list of name:subprin pairs "
@@ -256,9 +257,9 @@ int main(int argc, char **argv) {
 //    did_work = true;
 //  }
 
-  if (!did_work) {
+  if (FLAGS_show || !did_work) {
     printf("  name: %s\n", admin->GetName().c_str());
-    printf("  policy key: ");
+    printf("  policy key:\n");
     printf("    public: %s\n",
            admin->GetPolicyKeys()->SigningPublicKeyPath().c_str());
     printf("    private: %s\n",

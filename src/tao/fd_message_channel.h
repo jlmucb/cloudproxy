@@ -41,20 +41,28 @@ class FDMessageChannel : public MessageChannel {
 
   virtual ~FDMessageChannel() { Close(); }
 
+  /// These methods have the same semantics as MessageChannel.
+  /// @{
   virtual bool SendMessage(const google::protobuf::Message &m) const;
-
   virtual bool ReceiveMessage(google::protobuf::Message *m, bool *eof) const;
-
   virtual bool SerializeToString(string *params) const;
+  /// @}
 
+  /// Attempt to deserialize a channel.
+  /// @param params Channel parameters from SerializeToString().
   static FDMessageChannel *DeserializeFromString(const string &params);
 
+  /// Get a list of file descriptors that should be kept open across fork/exec.
+  /// @param[out] keep_open The list of file descriptors to preserve.
   virtual bool GetFileDescriptors(list<int> *keep_open) const;
 
+  /// Get the read file descriptor, e.g. to use for select().
   virtual int GetReadFileDescriptor() { return readfd_; }
 
+  /// Close the underlying file descriptors.
   virtual bool Close();
 
+  /// Maximum 20 MB for message reception on this channel.
   static constexpr size_t MaxMessageSize = 20 * 1024 * 1024;
 
  protected:

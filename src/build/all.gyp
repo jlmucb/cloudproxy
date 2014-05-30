@@ -41,7 +41,7 @@
       },
       'dependencies': [
         '../apps/apps.gyp:*',
-#       '../cloudproxy/cloudproxy.gyp:*',
+       '../cloudproxy/cloudproxy.gyp:*',
         '../tao/tao.gyp:*',
         '../third_party/keyczar/keyczar.gyp:keyczart',
       ],

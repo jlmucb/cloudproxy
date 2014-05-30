@@ -16,35 +16,73 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #ifndef CLOUDPROXY_UTIL_H_
 #define CLOUDPROXY_UTIL_H_
 
-#include <stdio.h>
+// #include <stdio.h>
 
+/// These basic utilities from the standard library are used extensively
+/// throughout the CloudProxy implementation, so we include them here.
+#include <list>
+#include <memory>
+#include <set>
+#include <sstream>
 #include <string>
 
-#include <keyczar/base/basictypes.h>
+/// These basic utilities from Keyczar and OpenSSL are used extensively
+/// throughout the CloudProxy implementation, so we include them here.
+#include <keyczar/base/base64w.h>
+#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
+#include <keyczar/base/file_util.h>
 #include <keyczar/base/scoped_ptr.h>
-#include <keyczar/base/stl_util-inl.h>
+#include <keyczar/base/values.h>  // for ScopedSafeString
+// #include <keyczar/base/stl_util-inl.h>
 #include <keyczar/openssl/util.h>
 #include <openssl/crypto.h>
 #include <openssl/evp.h>
 #include <openssl/ssl.h>
 
-using std::string;
+#include "tao/util.h"
 
 namespace keyczar {
 class Signer;
 class Verifier;
-}  // namespace keyczar
+}
 
 namespace tao {
 class Keys;
 }
 
 namespace cloudproxy {
+/// These basic utilities from Keyczar and the standard library are used
+/// extensively throughout the CloudProxy implementation, so we import them into
+/// the cloudproxy namespace here.
+/// @{
 
+using std::list;
+using std::set;
+using std::string;
+using std::stringstream;
+using std::unique_ptr;  // TODO(kwalsh) Discuss unique_ptr vs. scoped_ptr.
+// using std::make_unique;  // TODO(kwalsh) Discuss unique_ptr vs. scoped_ptr.
+
+// using keyczar::base::FilePath;  // Why isn't this in keyczar::base ?
+// using keyczar::base::ReadFileToString; // Define our own version below.
+using keyczar::base::Base64WDecode;      // NOLINT
+using keyczar::base::Base64WEncode;      // NOLINT
+using keyczar::base::CreateDirectory;    // NOLINT
+using keyczar::base::Delete;             // NOLINT
+using keyczar::base::DirectoryExists;    // NOLINT
+using keyczar::base::PathExists;         // NOLINT
+using keyczar::base::ScopedSafeString;   // NOLINT
+using keyczar::base::WriteStringToFile;  // NOLINT
+
+using tao::make_unique;
+using tao::CallUnlessNull;
+
+/// @}
+
+#if 0
 static const int AesKeySize = 16;
 static const int AesBlockSize = 16;
 static const int IvSize = AesBlockSize;
@@ -60,8 +98,13 @@ void ecleanup(EVP_CIPHER_CTX *ctx);
 /// @param ctx The context to clean up.
 void hcleanup(HMAC_CTX *ctx);
 
+#endif
+
+/// Clean up an OpenSSL SSL connection.
+/// @param ssl The connection to clean up.
 void ssl_cleanup(SSL *ssl);
 
+#if 0
 // Taken from a private definition in keyczar/openssl/aes.h
 // A smart pointer wrapping an OpenSSL EVP_CIPHER_CTX.
 typedef scoped_ptr_malloc<
@@ -71,21 +114,23 @@ typedef scoped_ptr_malloc<
 // A smart pointer wrapping an OpenSSL HMAC_CTX.
 typedef scoped_ptr_malloc<HMAC_CTX, keyczar::openssl::OSSLDestroyer<
                                         HMAC_CTX, hcleanup> > ScopedHmacCtx;
+#endif
+/// A smart pointer to an OpenSSL SSL_CTX.
+typedef scoped_ptr_malloc<SSL_CTX, CallUnlessNull<SSL_CTX, SSL_CTX_free>>
+    ScopedSSLCtx;
 
-// A smart pointer wrapping an OpenSSL SSL_CTX.
-typedef scoped_ptr_malloc<SSL_CTX, keyczar::openssl::OSSLDestroyer<
-                                       SSL_CTX, SSL_CTX_free> > ScopedSSLCtx;
-
-// A smart pointer wrapping an SSL object.
-typedef scoped_ptr_malloc<
-    SSL, keyczar::openssl::OSSLDestroyer<SSL, ssl_cleanup> > ScopedSSL;
+/// A smart pointer to an SSL object.
+typedef scoped_ptr_malloc<SSL, CallUnlessNull<SSL, ssl_cleanup>> ScopedSSL;
 
 /// Prepare an SSL_CTX for a server to accepts connections from clients.
 /// Peer certificates will be required.
 /// @param key The private signing key and x509 certificate to use.
+/// @param cert A serialized PEM-format x509 certificate for the key.
 /// @param ctx The OpenSSL context to prepare.
-bool SetUpSSLServerCtx(const tao::Keys &key, ScopedSSLCtx *ctx);
+bool SetUpSSLServerCtx(const tao::Keys &key, const string &cert,
+                       ScopedSSLCtx *ctx);
 
+#if 0
 /// Prepare an SSL_CTX for a server to accepts connections from clients.
 /// Peer certificates will not be required.
 /// @param key The private signing key and x509 certificate to use.
@@ -107,40 +152,6 @@ bool SetUpSSLClientCtx(const tao::Keys &key, ScopedSSLCtx *ctx);
 bool ExtractACL(const string &serialized_signed_acls,
                 const keyczar::Verifier *key, string *acls);
 
-// TODO(kwalsh) Consier merge with similarly-named functions in tao/util.cc?
-
-/// Receive partial data from an OpenSSL SSL. This will read as
-/// many bytes as possible into buffer[i], where filled_len <= i < buffer_len,
-/// and it returns the number of bytes read, or 0 if end of stream, or negative
-/// on error.
-/// @param ssl The SSL to use to receive the data.
-/// @param[out] buffer The buffer to fill with data.
-/// @param filed_len The length of buffer that is already filled.
-/// @param buffer_len The total length of buffer.
-int ReceivePartialData(SSL *ssl, void *buffer, size_t filled_len,
-                       size_t buffer_len);
-
-/// Receive data from an OpenSSL SSL.
-/// @param ssl The SSL to use to receive the data.
-/// @param[out] buffer The buffer to fill with data.
-/// @param buffer_len The length of buffer.
-bool ReceiveData(SSL *ssl, void *buffer, size_t buffer_len);
-
-/// Receive data from an OpenSSL SSL.
-/// @param ssl The SSL to use to receive the data.
-/// @param[out] data The object to receive the data.
-bool ReceiveData(SSL *ssl, string *data);
-
-/// Send data on an OpenSSL SSL.
-/// @param ssl The SSL to use to send the data.
-/// @param buffer The buffer of data to send.
-/// @param buffer_len The length of the data to send.
-bool SendData(SSL *ssl, const void *buffer, size_t buffer_len);
-
-/// Send data on an OpenSSL SSL.
-/// @param ssl The SSL to use to send the data.
-/// @param data The data to send.
-bool SendData(SSL *ssl, const string &data);
 
 /// Receive a file on an OpenSSL SSL.
 /// @param ssl The SSL to use to receive the data.
@@ -251,6 +262,6 @@ bool GetFinalEncryptedBytes(unsigned char *out, int *out_size,
 /// @param hmac The HMAC context to use for the operation.
 bool GetHmacOutput(char *out, unsigned int *out_size, HMAC_CTX *hmac);
 
+#endif
 }  // namespace cloudproxy
-
 #endif  // CLOUDPROXY_UTIL_H_

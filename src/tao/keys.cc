@@ -283,11 +283,9 @@ bool DeserializePublicKey(const string &s, scoped_ptr<Verifier> *key) {
     }
     // We can't cleanly copy keyset metadata because the primary key status is
     // tracked in twice: in the metadata
-    // (KeysetMetadata::KeyVersion::key_status_)
-    // and also in the keyset (Keyset::primary_key_version_number_). These get
-    // out
-    // of sync. Ideally, Keyset::set_metadata() would update
-    // Keyset::primary_key_version_number_.
+    // (KeysetMetadata::KeyVersion::key_status_) and also in the keyset
+    // (Keyset::primary_key_version_number_). These get out of sync. Ideally,
+    // Keyset::set_metadata() would update Keyset::primary_key_version_number_.
     // Workaround: demote the primary key then re-promote it.
     if (it->second->key_status() == KeyStatus::PRIMARY) {
       ks->DemoteKey(version);
@@ -801,8 +799,117 @@ bool SerializeX509(X509 *x509, string *pem) {
   return true;
 }
 
+static int no_password_callback(char *buf, int size, int rwflag, void *u) {
+  return 0;  // return error
+}
+
+bool DeserializeX509(const string &pem, ScopedX509 *x509) {
+  if (x509 == nullptr) {
+    LOG(ERROR) << "null params";
+    return false;
+  }
+  char *data = const_cast<char *>(pem.c_str());
+  ScopedBio mem(BIO_new_mem_buf(data, -1));
+  x509->reset(PEM_read_bio_X509(mem.get(), nullptr /* ptr */,
+                                no_password_callback, nullptr /* cbdata */));
+  if (!OpenSSLSuccess() || x509->get() == nullptr) {
+    LOG(ERROR) << "Could not deserialize x509 from PEM";
+    return false;
+  }
+  return true;
+}
+
+Verifier *VerifierFromX509(const string &serialized_cert) {
+  ScopedX509 x509;
+  if (!DeserializeX509(serialized_cert, &x509)) {
+    LOG(ERROR) << "Could not deserialize x509";
+    return nullptr;
+  }
+  /*
+  int nid = OBJ_obj2nid(x509->cert_info->key->algor->algorithm);
+  if (nid == NID_undef || true) {
+    LOG(ERROR) << "x509 has invalid key type: " << nid;
+    return nullptr;
+  }
+  */
+  ScopedEvpPkey evp_key(X509_get_pubkey(x509.get()));
+  if (evp_key.get() == nullptr) {
+    LOG(ERROR) << "Could not get public key from x509";
+    return nullptr;
+  }
+  ScopedECKey ec_key(EVP_PKEY_get1_EC_KEY(evp_key.get()));
+  if (ec_key.get() == nullptr) {
+    LOG(ERROR) << "Could not get EC key from x509";
+    return nullptr;
+  }
+  int curve_nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key.get()));
+  string curve;
+  switch (curve_nid) {
+    case NID_X9_62_prime192v1:
+      curve = "prime192v1";
+      break;
+    case NID_secp224r1:
+      curve = "secp224r1";
+      break;
+    case NID_X9_62_prime256v1:
+      curve = "prime256v1";
+      break;
+    case NID_secp384r1:
+      curve = "secp384r1";
+      break;
+    default:
+      LOG(ERROR) << "Unrecognized elliptic curve";
+      return nullptr;
+  }
+  unsigned char *buf = nullptr;
+  int len = i2o_ECPublicKey(ec_key.get(), &buf);
+  if (len <= 0) {
+    LOG(ERROR) << "Could not encode key";
+    return nullptr;
+  }
+  string public_bytes(reinterpret_cast<char *>(buf), len);
+  string public_bytes64;
+  if (!Base64WEncode(public_bytes, &public_bytes64)) {
+    LOG(ERROR) << "Could not encode key";
+    return nullptr;
+  }
+  X509_NAME *subject = X509_get_subject_name(x509.get());
+  len = X509_NAME_get_text_by_NID(subject, NID_commonName, nullptr /* buf */,
+                                  0 /* len */);
+  if (len <= 0) {
+    LOG(ERROR) << "x509 subject missing CommonName";
+    return nullptr;
+  }
+  scoped_array<char> name_buf(new char[len]);
+  if (X509_NAME_get_text_by_NID(subject, NID_commonName, name_buf.get(), len) !=
+      len) {
+    LOG(ERROR) << "Could not get x509 subject CommonName";
+    return nullptr;
+  }
+  string nickname(name_buf.get(), len);
+
+  scoped_ptr<Keyset> keyset(new Keyset());
+  bool encrypted = false;
+  bool next_version_number = 1;
+  scoped_ptr<KeysetMetadata> meta(
+      new KeysetMetadata(nickname, KeyType::ECDSA_PUB, KeyPurpose::VERIFY,
+                         encrypted, next_version_number));
+  keyset->set_metadata(meta.release());
+  DictionaryValue dict;
+  dict.SetString("curve", curve);
+  dict.SetString("publicBytes", public_bytes64);
+  scoped_ptr<Key> newkey(Key::CreateFromValue(KeyType::ECDSA_PUB, dict));
+  if (!keyset->AddKey(newkey.release(), 1 /* version */)) {
+    LOG(ERROR) << "Could not add key";
+    return nullptr;
+  }
+  scoped_ptr<Verifier> verifier(new Verifier(keyset.release()));
+  verifier->set_encoding(Keyczar::NO_ENCODING);
+  return verifier.release();
+}
+
 bool CreateSelfSignedX509(const Signer &key, const X509Details &details,
-                          const string &public_cert_path) {
+                          string *pem_cert) {
   // we need an openssl version of the key to create and sign the x509 cert
   ScopedEvpPkey evp_key;
   if (!ExportPrivateKeyToOpenSSL(key, &evp_key)) return false;
@@ -830,18 +937,11 @@ bool CreateSelfSignedX509(const Signer &key, const X509Details &details,
     return false;
   }
 
-  string pem;
-  if (!SerializeX509(x509.get(), &pem) ||
-      !CreateDirectory(FilePath(public_cert_path).DirName()) ||
-      !WriteStringToFile(public_cert_path, pem)) {
-    LOG(ERROR) << "Could not write x509 to " << public_cert_path;
+  if (!SerializeX509(x509.get(), pem_cert)) {
+    LOG(ERROR) << "Could not serialize X509";
     return false;
   }
   return true;
-}
-
-static int no_password_callback(char *buf, int size, int rwflag, void *u) {
-  return 0;  // return error
 }
 
 Keys::Keys(const string &nickname, int key_types)
@@ -931,6 +1031,27 @@ bool Keys::InitTemporary() {
     return false;
   }
   fresh_ = true;
+  return true;
+}
+bool Keys::InitTemporaryHosted(Tao *tao) {
+  if (!InitTemporary()) {
+    LOG(ERROR) << "Could not initialize temporary keys";
+    return false;
+  }
+  // Create a delegation for the signing key from the host Tao.
+  if (signer_.get() != nullptr) {
+    string key_name;
+    if (!GetPrincipalName(&key_name)) {
+      LOG(ERROR) << "Could not get principal name for signing key";
+      return false;
+    }
+    Statement stmt;
+    stmt.set_delegate(key_name);
+    if (!tao->Attest(stmt, &host_delegation_)) {
+      LOG(ERROR) << "Could not get delegation for signing key";
+      return false;
+    }
+  }
   return true;
 }
 
@@ -1084,6 +1205,10 @@ bool Keys::GetHostDelegation(string *attestation) const {
 }
 
 string Keys::GetPath(const string &suffix) const {
+  if (path_.empty()) {
+    LOG(WARNING) << "Empty keys path is interpreted as current directory";
+    return FilePath(".").Append(suffix).value();
+  }
   return FilePath(path_).Append(suffix).value();
 }
 
@@ -1206,22 +1331,30 @@ bool Keys::ExportVerifierToOpenSSL(ScopedEvpPkey *evp_key) const {
   return tao::ExportPublicKeyToOpenSSL(*Verifier(), evp_key);
 }
 
-bool Keys::CreateSelfSignedX509(const X509Details &details) const {
+bool Keys::CreateSelfSignedX509(const string &details_text,
+                                string *pem_cert) const {
   if (!Signer()) {
     LOG(ERROR) << "No managed signer";
     return false;
   }
-  string path = SigningX509CertificatePath();
-  return tao::CreateSelfSignedX509(*Signer(), details, path);
-}
-
-bool Keys::CreateSelfSignedX509(const string &details_text) const {
   X509Details details;
   if (!TextFormat::ParseFromString(details_text, &details)) {
     LOG(ERROR) << "Could not parse x509 details";
     return false;
   }
-  return CreateSelfSignedX509(details);
+  return tao::CreateSelfSignedX509(*Signer(), details, pem_cert);
+}
+
+bool Keys::CreateSelfSignedX509(const string &details_text) const {
+  string path = SigningX509CertificatePath();
+  string pem_cert;
+  if (!CreateSelfSignedX509(details_text, &pem_cert) ||
+      !CreateDirectory(FilePath(path).DirName()) ||
+      !WriteStringToFile(path, pem_cert)) {
+    LOG(ERROR) << "Could not create self signed certificate";
+    return false;
+  }
+  return true;
 }
 
 bool Keys::CreateCASignedX509(int cert_serial,

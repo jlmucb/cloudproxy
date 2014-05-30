@@ -21,14 +21,16 @@
 
 #include <sys/socket.h>  // for socklen_t
 
+/// These basic utilities from the standard library are used extensively
+/// throughout the Tao implementation, so we include them here.
 #include <list>
 #include <memory>
 #include <set>
 #include <sstream>
 #include <string>
 
-/// These basic utilities from Keyczar and the standard library are used
-/// extensively throughout the Tao implementation, so we include them here.
+/// These basic utilities from Keyczar are used extensively throughout the Tao
+/// implementation, so we include them here.
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <keyczar/base/file_util.h>
@@ -241,41 +243,6 @@ bool GetSealedSecret(Tao *tao, const string &path, const string &policy,
 /// @param[out] dir A pointer to an object that will take ownership of the
 /// new temporary directory.
 bool CreateTempDir(const string &prefix, ScopedTempDir *dir);
-
-/// Receive partial data from a file descriptor. This reads into buffer[i],
-/// where filled_len <= i < buffer_len, and it returns the number of bytes read,
-/// or 0 if end of stream, or negative on error.
-/// @param fd The file descriptor to use to receive the data.
-/// @param[out] buffer The buffer to fill with data.
-/// @param filed_len The length of buffer that is already filled.
-/// @param buffer_len The total length of buffer.
-int ReceivePartialData(int fd, void *buffer, size_t filled_len,
-                       size_t buffer_len);
-
-/// Receive data from a file descriptor.
-/// @param fd The file descriptor to use to receive the data.
-/// @param[out] buffer The buffer to fill with data.
-/// @param buffer_len The length of buffer.
-/// @param[out] eof Will be set to true iff end of stream reached.
-bool ReceiveData(int fd, void *buffer, size_t buffer_len, bool *eof);
-
-/// Receive a string from a file descriptor.
-/// @param fd The file descriptor to use to receive the data.
-/// @param max_size The maximum allowable size string to receive.
-/// @param[out] s The string to receive the data.
-/// @param[out] eof Will be set to true iff end of stream reached.
-bool ReceiveString(int fd, size_t max_size, string *s, bool *eof);
-
-/// Send data to a file descriptor.
-/// @param fd The file descriptor to use to send the data.
-/// @param buffer The buffer containing data to send.
-/// @param buffer_len The length of buffer.
-bool SendData(int fd, const void *buffer, size_t buffer_len);
-
-/// Send a string to a file descriptor.
-/// @param fd The file descriptor to use to send the string.
-/// @param s The string to send.
-bool SendString(int fd, const string &s);
 
 /// Add double-quotes to a string, but escape any existing backslashes or
 /// double-quotes.

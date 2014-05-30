@@ -7,10 +7,10 @@ can be obscure and time consuming.
 
 
 install trousers
-sudo agt-get install trousers
-sudo agt-get install tpm-dev
-sudo agt-get install tpm-tools
-sudo agt-get install libtspi-dev
+sudo apt-get install trousers
+sudo apt-get install tpm-dev
+sudo apt-get install tpm-tools
+sudo apt-get install libtspi-dev
 
 
 Enable and activate the TPM in BIOS and make sure TXT and vt-d 

@@ -156,10 +156,9 @@ bool ExportPublicKeyToOpenSSL(const keyczar::Verifier &key,
 /// Create a self-signed X509 certificate for a key.
 /// @param key The key to use for both the subject and the issuer.
 /// @param details The x509 details for the subject.
-/// @param public_cert_path File name to hold the resulting x509 certificate.
+/// @param[out] pem_cert The serialized PEM-format self-signed certificate.
 bool CreateSelfSignedX509(const keyczar::Signer &key,
-                          const X509Details &details,
-                          const string &public_cert_path);
+                          const X509Details &details, string *pem_cert);
 
 /// Create a CA-signed X509 certificate for a key.
 /// @param ca_key The key to use for the issuer.
@@ -167,7 +166,7 @@ bool CreateSelfSignedX509(const keyczar::Signer &key,
 /// @param cert_serial The serial number to use for the new certificate.
 /// @param subject_key The key to use for the subject.
 /// @param subject_details The x509 details for the subject.
-/// @param[out] pem_cert The signed certificate chain.
+/// @param[out] pem_cert The serialized PEM-format signed certificate chain.
 bool CreateCASignedX509(const keyczar::Signer &ca_key,
                         const string &ca_cert_path, int cert_serial,
                         const keyczar::Verifier &subject_key,
@@ -176,7 +175,17 @@ bool CreateCASignedX509(const keyczar::Signer &ca_key,
 /// Serialize an openssl X509 structure in PEM format.
 /// @param x509 The certificate to serialize.
 /// @param[out] pem The serialized certificate.
-bool SerializeX509(X509 *x509, string *serialized_x509);
+bool SerializeX509(X509 *x509, string *pem);
+
+/// Deserialize an openssl X509 structure from PEM format.
+/// @param pem The serialized certificate.
+/// @param[out] x509 The deserialized certificate.
+bool DeserializeX509(const string &pem, ScopedX509 *x509);
+
+/// Obtain a Verifier for an x509 subject key.
+/// @param serialized_cert The x509 certificate, which is assumed to have been
+/// validated if necessary.
+keyczar::Verifier *VerifierFromX509(const string &serialized_cert);
 
 /// A Keys object manages a group of cryptographic verifier, signing, crypting,
 /// and key-derivation keys. Currently, at most one of each type of key can be
@@ -218,6 +227,11 @@ class Keys {
   /// Initialize a group of temporary keys. Unit tests use this initializer.
   /// Fresh keys are generated, and none of the keys are stored on disk.
   bool InitTemporary();
+
+  /// Initialize a group of temporary keys, along with a delegation from the Tao
+  /// host. Fresh keys are generated, and none of the keys or the delegation are
+  /// stored on disk.
+  bool InitTemporaryHosted(Tao *tao);
 
   /// Initialize the group of keys using PBE. If password is emptystring, only
   /// verification keys can be loaded. Otherwise, keys will be loaded if
@@ -300,14 +314,14 @@ class Keys {
     return GetPath(SigningPublicKeyX509Suffix);
   }
 
-  /// Create a self-signed X509 certificate for the managed signing key.
-  /// The certificate will be written to SigningX509CertificatePath().
-  /// @param details Details for the subject.
-  bool CreateSelfSignedX509(const X509Details &details) const;
+  /// Create a self-signed X509 certificate for a key.
+  /// @param details Text-format encoded X509Details for the subject.
+  /// @param pem_cert The serialized PEM-format self-signed certificate.
+  bool CreateSelfSignedX509(const string &details_text, string *pem_cert) const;
 
   /// Create a self-signed X509 certificate for a key.
   /// The certificate will be written to SigningX509CertificatePath().
-  /// @param details Text-format encoded x509Details for the subject.
+  /// @param details Text-format encoded X509Details for the subject.
   bool CreateSelfSignedX509(const string &details_text) const;
 
   /// Create a signed X509 certificate issued by the managed signing key.

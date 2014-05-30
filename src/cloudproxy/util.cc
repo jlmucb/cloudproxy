@@ -16,46 +16,53 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <arpa/inet.h>
-
-#include <glog/logging.h>
-#include <keyczar/base/file_util.h>
-#include <keyczar/base/values.h>
-#include <keyczar/crypto_factory.h>
-#include <keyczar/keyczar.h>
-#include <openssl/x509v3.h>
-
-#include "cloudproxy/cloud_auth.h"
-#include "cloudproxy/cloud_user_manager.h"
-#include "cloudproxy/cloudproxy.pb.h"
-#include "cloudproxy/file_server.h"
 #include "cloudproxy/util.h"
+
+// #include <arpa/inet.h>
+// 
+#include <glog/logging.h>
+// #include <keyczar/base/file_util.h>
+// #include <keyczar/base/values.h>
+#include <keyczar/crypto_factory.h>
+// #include <keyczar/keyczar.h>
+// #include <openssl/ssl.h>
+// 
+// #include "cloudproxy/cloud_auth.h"
+// #include "cloudproxy/cloud_user_manager.h"
+// #include "cloudproxy/cloudproxy.pb.h"
+// #include "cloudproxy/file_server.h"
 #include "tao/keys.h"
 #include "tao/util.h"
-
-using keyczar::Signer;
-using keyczar::base::PathExists;
-using keyczar::base::ReadFileToString;
-using keyczar::base::ScopedSafeString;
-using keyczar::base::WriteStringToFile;
-
-using cloudproxy::CloudAuth;
+// 
+// using keyczar::Signer;
+// using keyczar::base::PathExists;
+// using keyczar::base::ReadFileToString;
+// using keyczar::base::ScopedSafeString;
+// using keyczar::base::WriteStringToFile;
+// 
+// using cloudproxy::CloudAuth;
 using tao::Keys;
 using tao::OpenSSLSuccess;
-using tao::ScopedFile;
-using tao::SignData;
-using tao::VerifySignature;
+using tao::ScopedX509;
+// using tao::ScopedFile;
+// using tao::SignData;
+// using tao::VerifySignature;
+// 
+// #define READ_BUFFER_LEN 16384
 
-#define READ_BUFFER_LEN 16384
 
 namespace cloudproxy {
 
-static const int SessionIDSize = 20;
+/// Size of random SSL session IDs, large enough to avoid rollover or session
+/// clashes in the common case.
+static const int SessionIDSize = 4;
 
+#if 0
 void ecleanup(EVP_CIPHER_CTX *ctx) { EVP_CIPHER_CTX_cleanup(ctx); }
 
 // TODO(kwalsh) use keyczar HMACImpl instead of openssl, it has nicer api
 void hcleanup(HMAC_CTX *ctx) { HMAC_CTX_cleanup(ctx); }
+#endif
 
 void ssl_cleanup(SSL *ssl) {
   if (ssl != nullptr) {
@@ -72,16 +79,14 @@ void ssl_cleanup(SSL *ssl) {
 
 static int AlwaysAcceptCert(int preverify_ok, X509_STORE_CTX *ctx) {
   // we always let the X.509 cert pass verification because we're
-  // going to check it using a SignedQuote in the first message (and
-  // fail if no SignedQuote is provided or if it doesn't pass
-  // verification)
+  // going to check it using a Tao handshake message exchange.
   return 1;
 }
 
 static bool SetUpSSLCtx(const SSL_METHOD *method, const Keys &key,
-                        bool require_peer_cert, ScopedSSLCtx *ctx) {
-  string tls_cert = key.SigningX509CertificatePath();
-  if (!ctx || !key.Signer() || !PathExists(FilePath(tls_cert))) {
+                        const string &cert, bool require_peer_cert,
+                        ScopedSSLCtx *ctx) {
+  if (!ctx || !key.Signer() || cert.empty()) {
     LOG(ERROR) << "Invalid SetUpSSLCTX parameters";
     return false;
   }
@@ -128,7 +133,16 @@ static bool SetUpSSLCtx(const SSL_METHOD *method, const Keys &key,
     return false;
   }
 
-  if (!SSL_CTX_use_certificate_chain_file(ctx->get(), tls_cert.c_str())) {
+  // string tls_cert_file = keys->SigningX509CertificatePath();
+  // if (!SSL_CTX_use_certificate_chain_file(ctx->get(), tls_cert_file.c_str())) {
+  //   LOG(ERROR) << "Could not load the certificate chain for this connection";
+  //   return false;
+  // }
+  ScopedX509 x509;
+  if (!tao::DeserializeX509(cert, &x509) ||
+      !SSL_CTX_use_certificate(ctx->get(), x509.get())) {
+    // TODO(kwalsh) Does SSL_CTX_use_certificate take ownership of x509 pointer?
+    // TODO(kwalsh) handle x509 chains?
     LOG(ERROR) << "Could not load the certificate chain for this connection";
     return false;
   }
@@ -144,24 +158,12 @@ static bool SetUpSSLCtx(const SSL_METHOD *method, const Keys &key,
   if (require_peer_cert) verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
   SSL_CTX_set_verify(ctx->get(), verify_mode, AlwaysAcceptCert);
 
-  // set session id context to a unique id to avoid session reuse problems
-
-  // note that the output of CryptoFactory::Rand is static and doesn't need to
-  // be cleaned up
-  keyczar::RandImpl *rand = keyczar::CryptoFactory::Rand();
-  if (!rand || !rand->Init()) {
-    LOG(ERROR) << "Could not get a random number generator";
-    return false;
-  }
-
-  // get an IV
+  // Set session id context to a unique id to avoid session reuse problems when
+  // using client certs. No need to use a strong random -- we could just use a
+  // counter instead.
   string sid;
-  if (!rand->RandBytes(SessionIDSize, &sid)) {
-    LOG(ERROR) << "Could not get enough random bytes for the session id";
-    return false;
-  }
-
-  if (!SSL_CTX_set_session_id_context(
+  if (!keyczar::CryptoFactory::Rand()->RandBytes(SessionIDSize, &sid) ||
+      !SSL_CTX_set_session_id_context(
           ctx->get(), reinterpret_cast<const unsigned char *>(sid.c_str()),
           sid.length())) {
     LOG(ERROR) << "Could not set session id";
@@ -188,10 +190,11 @@ static bool SetUpSSLCtx(const SSL_METHOD *method, const Keys &key,
   return true;
 }
 
-bool SetUpSSLServerCtx(const Keys &key, ScopedSSLCtx *ctx) {
-  return SetUpSSLCtx(TLSv1_2_server_method(), key, true, ctx);
+bool SetUpSSLServerCtx(const Keys &key, const string &cert, ScopedSSLCtx *ctx) {
+  return SetUpSSLCtx(TLSv1_2_server_method(), key, cert, true, ctx);
 }
 
+#if 0
 bool SetUpPermissiveSSLServerCtx(const Keys &key, ScopedSSLCtx *ctx) {
   return SetUpSSLCtx(TLSv1_2_server_method(), key, false, ctx);
 }
@@ -226,103 +229,6 @@ bool ExtractACL(const string &signed_acls_file, const keyczar::Verifier *key,
   }
 
   acl->assign(sacl.serialized_acls());
-  return true;
-}
-
-int ReceivePartialData(SSL *ssl, void *buffer, size_t filled_len,
-                       size_t buffer_len) {
-  if (ssl == nullptr || buffer == nullptr || filled_len >= buffer_len) {
-    LOG(ERROR) << "Invalid ReceivePartialData parameters";
-    return -1;
-  }
-
-  int in_len =
-      SSL_read(ssl, reinterpret_cast<unsigned char *>(buffer) + filled_len,
-               buffer_len - filled_len);
-  if (!OpenSSLSuccess()) LOG(ERROR) << "Failed to read data from SSL";
-
-  return in_len;
-}
-
-bool ReceiveData(SSL *ssl, void *buffer, size_t buffer_len) {
-  size_t filled_len = 0;
-  while (filled_len != buffer_len) {
-    int in_len = ReceivePartialData(ssl, buffer, filled_len, buffer_len);
-    if (in_len == 0) return false;  // fail on truncated message
-    if (in_len < 0) return false;   // fail on errors
-    filled_len += in_len;
-  }
-
-  return true;
-}
-
-bool ReceiveData(SSL *ssl, string *data) {
-  uint32_t net_len;
-  if (!ReceiveData(ssl, &net_len, sizeof(net_len))) {
-    LOG(ERROR) << "Could not get the length of the data";
-    return false;
-  }
-
-  // convert from network byte order to get the length
-  uint32_t len = ntohl(net_len);
-  scoped_array<char> temp_data(new char[len]);
-
-  if (!ReceiveData(ssl, temp_data.get(), static_cast<size_t>(len))) {
-    LOG(ERROR) << "Could not get the data";
-    return false;
-  }
-
-  data->assign(temp_data.get(), len);
-
-  return true;
-}
-
-bool SendData(SSL *ssl, const void *buffer, size_t buffer_len) {
-  if (ssl == nullptr || buffer == nullptr) {
-    LOG(ERROR) << "Invalid SendData parameters";
-    return false;
-  }
-
-  // SSL_write with length 0 is undefined, so catch that case here
-  if (buffer_len > 0) {
-    // SSL is configured as blocking with auto-retry, so
-    // SSL_write will either succeed completely or fail immediately.
-    int out_len = SSL_write(ssl, buffer, buffer_len);
-    if (!OpenSSLSuccess()) {
-      LOG(ERROR) << "Failed to write data to SSL";
-      return false;
-    }
-    if (out_len == 0) {
-      LOG(ERROR) << "SSL connection closed";
-      return false;
-    }
-    if (out_len < 0) {
-      LOG(ERROR) << "SSL write failed";
-      return false;
-    }
-    // Unless someone sets SSL_MODE_ENABLE_PARTIAL_WRITE,
-    // SSL_write should always write the whole buffer.
-    CHECK(static_cast<size_t>(out_len) == buffer_len);
-  }
-
-  return true;
-}
-
-bool SendData(SSL *ssl, const string &data) {
-  size_t s = data.length();
-  uint32_t net_len = htonl(s);
-
-  // send the length to the client first
-  if (!SendData(ssl, &net_len, sizeof(net_len))) {
-    LOG(ERROR) << "Could not send the len";
-    return false;
-  }
-
-  if (!SendData(ssl, data.data(), data.length())) {
-    LOG(ERROR) << "Could not send the data";
-    return false;
-  }
-
   return true;
 }
 
@@ -877,4 +783,5 @@ bool DecryptAndSendStreamData(const string &path, const string &meta_path,
 
   return true;
 }
+#endif
 }  // namespace cloudproxy

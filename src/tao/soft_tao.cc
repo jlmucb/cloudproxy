@@ -32,7 +32,7 @@ using keyczar::CryptoFactory;
 namespace tao {
 bool SoftTao::Init() {
   if (keys_.get() == nullptr) {
-    keys_.reset(new Keys("soft_tpm", Keys::Signing | Keys::Crypting));
+    keys_.reset(new Keys("soft_tao", Keys::Signing | Keys::Crypting));
     if (!keys_->InitTemporary()) {
       LOG(ERROR) << "Could not generate temporary keys";
       return false;

@@ -41,7 +41,7 @@ class MessageChannel {
   /// Receive a a Message over the channel.
   /// @param[out] m The received Message.
   /// @param[out] eof Will be set to true iff end of stream reached.
-  virtual bool ReceiveMessage(google::protobuf::Message *resp,
+  virtual bool ReceiveMessage(google::protobuf::Message *m,
                               bool *eof) const = 0;
 
   /// Serialize channel parameters for passing across fork/exec or between

@@ -45,6 +45,8 @@ using tao::elideString;
 DEFINE_string(config_path, "tao.config",
               "Location of tao domain configuration");
 DEFINE_string(path, "linux_tao_host", "Location of linux host configuration");
+DEFINE_bool(root, false, "Run in root mode");
+DEFINE_bool(stacked, false, "Run in stacked mode");
 DEFINE_string(pass, "", "Password for unlocking keys if running in root mode");
 
 DEFINE_bool(create, false, "Create a new LinuxHost service.");
@@ -86,16 +88,20 @@ int main(int argc, char **argv) {
 
     scoped_ptr<LinuxHost> host(new LinuxHost(admin.release(), FLAGS_path));
 
-    Tao *host_tao = Tao::GetHostTao();
-    if (host_tao == nullptr) {
+    if (FLAGS_root) {
       if (FLAGS_pass.empty()) {
-        fprintf(stderr, "Error: Host tao not found, no password specified\n");
+        fprintf(stderr, "Error: Root mode, but no password specified\n");
         return 1;
       }
       CHECK(host->InitRoot(FLAGS_pass)) << "Could not initialize root Tao host";
-    } else {
+    } else if (FLAGS_stacked) {
+      Tao *host_tao = Tao::GetHostTao();
+      CHECK(host_tao);
       CHECK(host->InitStacked(host_tao))
           << "Could not initialize stacked Tao host";
+    } else {
+      fprintf(stderr, "Error: Must specify either '-root' or '-stacked'.\n");
+      return 1;
     }
 
     if (FLAGS_show) {

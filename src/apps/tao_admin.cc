@@ -17,7 +17,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include <cstdio>
-#include <sstream>
 #include <string>
 
 #include <gflags/gflags.h>
@@ -28,10 +27,8 @@
 #include "tao/tao_domain.h"
 #include "tao/util.h"
 
-using std::getline;
 using std::list;
 using std::string;
-using std::stringstream;
 
 // using cloudproxy::CloudAuth;
 // using cloudproxy::CloudUserManager;
@@ -53,12 +50,9 @@ DEFINE_string(state, "Washington", "x509 State for a new configuration");
 DEFINE_string(org, "(not really) Google",
               "x509 Organization for a new configuration");
 
-DEFINE_string(canexecute, "",
-              "Comma-separated list of paths of programs "
-              "to be authorized to execute");
+DEFINE_string(canexecute, "", "Path of a program to be authorized to execute");
 DEFINE_string(retractcanexecute, "",
-              "Comma-separated list of paths of programs "
-              "for which to retract authorization to execute");
+              "Path of a program to retract authorization to execute");
 DEFINE_string(host, "",
               "The principal name of the host where programs will execute.");
 
@@ -99,7 +93,7 @@ string getEnvString(const string &name) {
     return string(p);
 }
 
-void handleCanExecute(TaoDomain *admin, const string &pathlist, bool retract) {
+void handleCanExecute(TaoDomain *admin, const string &path, bool retract) {
   // TODO(kwalsh) For host, we could deserialize Tao from env var then call
   // GetTaoName(), then append policy prin. Or assume linuxhost and call
   // GetTaoName for that.
@@ -121,35 +115,31 @@ void handleCanExecute(TaoDomain *admin, const string &pathlist, bool retract) {
   // host += "::" + policy_subprin;
   LinuxProcessFactory factory;
   string child_subprin;
-  stringstream in(pathlist);
-  string path;
-  while (getline(in, path, ',')) {  // split on commas
-    int next_id = 0;                // assume no IDs.
-    CHECK(factory.MakeHostedProgramSubprin(next_id, path, &child_subprin));
+  int next_id = 0;  // assume no IDs.
+  CHECK(factory.MakeHostedProgramSubprin(next_id, path, &child_subprin));
 
-    if (retract) {
-      if (!FLAGS_quiet)
-        printf(
-            "Retracting program authorization to execute:\n"
-            "  path: %s\n"
-            "  host: %s\n"
-            "  name: ::%s\n",
-            path.c_str(), elideString(host).c_str(),
-            elideString(child_subprin).c_str());
-      CHECK(admin->Retract(host + "::" + child_subprin, "Execute",
+  if (retract) {
+    if (!FLAGS_quiet)
+      printf(
+          "Retracting program authorization to execute:\n"
+          "  path: %s\n"
+          "  host: %s\n"
+          "  name: ::%s\n",
+          path.c_str(), elideString(host).c_str(),
+          elideString(child_subprin).c_str());
+    CHECK(
+        admin->Retract(host + "::" + child_subprin, "Execute", list<string>{}));
+  } else {
+    if (!FLAGS_quiet)
+      printf(
+          "Authorizing program to execute:\n"
+          "  path: %s\n"
+          "  host: %s\n"
+          "  name: ::%s\n",
+          path.c_str(), elideString(host).c_str(),
+          elideString(child_subprin).c_str());
+    CHECK(admin->Authorize(host + "::" + child_subprin, "Execute",
                            list<string>{}));
-    } else {
-      if (!FLAGS_quiet)
-        printf(
-            "Authorizing program to execute:\n"
-            "  path: %s\n"
-            "  host: %s\n"
-            "  name: ::%s\n",
-            path.c_str(), elideString(host).c_str(),
-            elideString(child_subprin).c_str());
-      CHECK(admin->Authorize(host + "::" + child_subprin, "Execute",
-                             list<string>{}));
-    }
   }
 }
 

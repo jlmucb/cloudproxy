@@ -18,6 +18,9 @@
 			'../build/common.gypi',
 		],
 	},
+	'variables' : {
+		'proto_dir' : '<(SHARED_INTERMEDIATE_DIR)/apps',
+	},
 	'targets' : [
 		{
 			'target_name' : 'tpm_tao',
@@ -234,6 +237,14 @@
 			'sources' : [ 'demo.cc', ],
 			'include_dirs' : [ '..', ],
 			'dependencies' : [ '../tao/tao.gyp:tao', ],
+		},
+		{
+			'target_name' : 'demo_server',
+			'type' : 'executable',
+			'sources' : [ 'demo_server.cc', 'demo_server.proto', ],
+			'include_dirs' : [ '..', ],
+			'dependencies' : [ '../cloudproxy/cloudproxy.gyp:cloudproxy', ],
+			'includes' : [ '../build/protoc.gypi', ],
 		},
 		{
 			'target_name' : 'tao_admin',

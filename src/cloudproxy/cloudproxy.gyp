@@ -28,7 +28,6 @@
 		#			'sources' : [
 		#				'cloud_auth_unittests.cc',
 		#				'cloud_client_server_unittests.cc',
-		#				'cloud_server_thread_data_unittests.cc',
 		#				'cloud_user_manager_unittests.cc',
 		#				'cloudproxy_test.cc',
 		#				'file_client_server_unittests.cc',
@@ -60,8 +59,6 @@
 				#				'cloudproxy.proto',
 				#				'cloud_auth.cc',
 				#				'cloud_auth.h',
-				#				'cloud_server_thread_data.cc',
-				#				'cloud_server_thread_data.h',
 				#				'cloud_user_manager.cc',
 				#				'cloud_user_manager.h',
 				#				'file_client.cc',
@@ -90,6 +87,7 @@
 				'../third_party/protobuf/protobuf.gyp:protobuf',
 			],
 			'export_dependent_settings' : [
+				'../tao/tao.gyp:tao',
 				'../third_party/gflags/gflags.gyp:gflags',
 				'../third_party/google-glog/glog.gyp:glog',
 				'../third_party/keyczar/keyczar.gyp:keyczar',

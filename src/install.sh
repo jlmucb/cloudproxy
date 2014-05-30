@@ -139,6 +139,7 @@ export GLOG_log_dir="\${TAO_TEST}/logs"
 
 export TAO_HOSTED_PROGRAMS="
 \${TAO_TEST}/bin/demo 
+\${TAO_TEST}/bin/demo_server
 \${TAO_TEST}/bin/client 
 \${TAO_TEST}/bin/server 
 \${TAO_TEST}/bin/fclient 
@@ -185,7 +186,11 @@ tao_env=${TAO_TEST}/tao.env
 # log a to stderr for admin stuff, otherwise it is really quiet
 admin_args="-config_path ${TAO_TEST}/tao.config -policy_pass "$TAO_PASS" -alsologtostderr=1"
 admin="${tao_bin}/tao_admin $admin_args"
-linux_host="${tao_bin}/linux_host"
+if [ "$TAO_USE_TPM" == "yes" ]; then
+	linux_host="${tao_bin}/linux_host -stacked"
+else
+	linux_host="${tao_bin}/linux_host -root"
+fi
 start_hosted="${linux_host} --run -- "
 tpm_tao="${tao_bin}/tpm_tao -alsologtostderr=1"
 
@@ -293,8 +298,8 @@ function refresh()
 	source ${tao_env}
 
 	# Set up default execution policy.
+	$admin -clear
 	if [ "${TAO_GUARD}" == "datalog" ]; then
-		$admin -clear
 		# Rule for TPM and PCRs combinations that make for a good OS
 		$admin -add "(forall S, TPM, PCRs: TrustedPlatform(TPM) and TrustedKernelPCRs(PCRs) and subprin(S, TPM, PCRs) implies TrustedOS(S))"
 		# Rule for OS and program hash that make for a good hosted program
@@ -310,11 +315,17 @@ function refresh()
 		fi
 		# Add the program hashes, assuming LinuxHost and LinuxProcessFactory.
 		for prog in ${TAO_HOSTED_PROGRAMS}; do
-			proghash=`$admin -quiet -getprogramhash "$prog"`
-			$admin -add 'TrustedProgramHash('${proghash}')'
+			if [ -f "$prog" ]; then
+				proghash=`$admin -quiet -getprogramhash "$prog"`
+				$admin -add 'TrustedProgramHash('${proghash}')'
+			fi
 		done
 	else
-		$admin -clear -canexecute ${TAO_HOSTED_PROGRAMS// /,}
+		for prog in ${TAO_HOSTED_PROGRAMS}; do
+			if [ -f "$prog" ]; then
+				$admin -canexecute "$prog"
+			fi
+		done
 	fi
 	$admin -show
 

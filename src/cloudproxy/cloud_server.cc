@@ -145,8 +145,8 @@ void CloudServer::HandleNewConnection(CloudChannel *unscoped_chan) {
     LOG(ERROR) << "Tao handshake failed";
     return;
   }
-  if (!guard_->IsAuthorized(chan->GetPeerName(), "Connect",
-                           list<string>{chan->GetSelfName()})) {
+  if (!guard_->IsAuthorized(chan->PeerName(), "Connect",
+                           list<string>{chan->SelfName()})) {
     LOG(ERROR) << "Peer is not authorized to connect to this process";
     chan->Abort("authorization denied");
     return;

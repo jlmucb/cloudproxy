@@ -24,9 +24,9 @@
 #include <string>
 
 #include "cloudproxy/util.h"
+#include "tao/keys.h"
 
 namespace tao {
-class Keys;
 class TaoGuard;
 }
 

@@ -34,7 +34,7 @@ class CloudChannel : public tao::MessageChannel {
   /// @param sock A newly accepted TCP socket.
   CloudChannel(SSL_CTX *ssl_ctx, int sock);
   
-  virtual ~CloudChannel();
+  virtual ~CloudChannel() {}
 
   /// Perform TLS handshaking. Must be called before other methods.
   /// @{
@@ -61,10 +61,10 @@ class CloudChannel : public tao::MessageChannel {
   virtual bool Close();
 
   /// Get our own Tao name. Only valid after successful TaoHandshake().
-  virtual string GetSelfName() { return self_name_; }
+  virtual string SelfName() { return self_name_; }
 
   /// Get peer's Tao name. Only valid after successful TaoHandshake().
-  virtual string GetPeerName() { return peer_name_; }
+  virtual string PeerName() { return peer_name_; }
 
   /// Maximum 20 MB for message reception on this channel.
   static constexpr size_t MaxMessageSize = 20 * 1024 * 1024;
@@ -110,6 +110,8 @@ class CloudChannel : public tao::MessageChannel {
 
   // Peer's Tao name.
   string peer_name_;
+
+  DISALLOW_COPY_AND_ASSIGN(CloudChannel);
 };
 }  // namespace cloudproxy
 #endif  // CLOUDPROXY_CLOUD_CHANNEL_H_

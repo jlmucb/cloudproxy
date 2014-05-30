@@ -43,16 +43,16 @@ CloudServer::CloudServer(const string &host, const string &port,
     : host_(host),
       port_(port),
       guard_(guard),
-      host_tao_(Tao::GetHostTao()),
       tls_key_(new Keys("CloudServer", Keys::Signing)),
       server_sock_(new int(-1)) {}
 
 bool CloudServer::Init() {
-  if (host_tao_ == nullptr) {
+  Tao *host_tao = Tao::GetHostTao();
+  if (host_tao == nullptr) {
     LOG(ERROR) << "No host tao available";
     return false;
   }
-  if (!tls_key_->InitTemporaryHosted(host_tao_)) {
+  if (!tls_key_->InitTemporaryHosted(host_tao)) {
     LOG(ERROR) << "Could not initialize CloudServer keys";
     return false;
   }
@@ -62,15 +62,15 @@ bool CloudServer::Init() {
   }
   // x509 details are mostly not used by peers, so we use arbitrary constants
   // here. However, commonname must match the Key nickname, above.
-  string details = "country: \"US\" "
-                   "state: \"Washington\" "
-                   "organization: \"Google\" "
-                   "commonname: \"CloudServer\""; 
+  string nickname = tao::quotedString(tls_key_->Nickname());
+  string details = string("country: \"US\" "
+                          "state: \"Washington\" "
+                          "organization: \"Google\" ") +
+                   "commonname: " + nickname;
   if (!tls_key_->CreateSelfSignedX509(details, &tls_self_cert_)) {
     LOG(ERROR) << "Could not create self signed x509";
     return false;
   }
-  // set up the SSL context and SSLs for getting client connections
   if (!SetUpSSLServerCtx(*tls_key_, tls_self_cert_, &tls_context_)) {
     LOG(ERROR) << "Could not set up server TLS";
     return false;
@@ -137,30 +137,25 @@ bool CloudServer::Shutdown() {
 
 void CloudServer::HandleNewConnection(CloudChannel *unscoped_chan) {
   scoped_ptr<CloudChannel> chan(unscoped_chan);
-
-  if (!chan->TLSHandshake()) {
+  if (!chan->TLSServerHandshake()) {
     LOG(ERROR) << "TLS handshake failed";
     return;
   }
-
   if (!chan->TaoHandshake(tls_delegation_)) {
     LOG(ERROR) << "Tao handshake failed";
     return;
   }
-
   if (!guard_->IsAuthorized(chan->GetPeerName(), "Connect",
                            list<string>{chan->GetSelfName()})) {
     LOG(ERROR) << "Peer is not authorized to connect to this process";
     chan->Abort("authorization denied");
     return;
   }
-
   if (!HandleAuthenticatedConnection(chan.get())) {
     LOG(ERROR) << "Error handling requests on authenticated channel";
     chan->Abort("unknown error");
     return;
   }
-
   chan->Disconnect();
 }
 

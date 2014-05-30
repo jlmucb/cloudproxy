@@ -198,11 +198,13 @@ bool SetUpSSLServerCtx(const Keys &key, const string &cert, ScopedSSLCtx *ctx) {
 bool SetUpPermissiveSSLServerCtx(const Keys &key, ScopedSSLCtx *ctx) {
   return SetUpSSLCtx(TLSv1_2_server_method(), key, false, ctx);
 }
+#endif
 
-bool SetUpSSLClientCtx(const Keys &key, ScopedSSLCtx *ctx) {
-  return SetUpSSLCtx(TLSv1_2_client_method(), key, true, ctx);
+bool SetUpSSLClientCtx(const Keys &key, const string &cert, ScopedSSLCtx *ctx) {
+  return SetUpSSLCtx(TLSv1_2_client_method(), key, cert, true, ctx);
 }
 
+#if 0
 bool ExtractACL(const string &signed_acls_file, const keyczar::Verifier *key,
                 string *acl) {
   if (key == nullptr || acl == nullptr) {

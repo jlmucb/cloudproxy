@@ -136,12 +136,15 @@ bool SetUpSSLServerCtx(const tao::Keys &key, const string &cert,
 /// @param key The private signing key and x509 certificate to use.
 /// @param ctx The OpenSSL context to prepare.
 bool SetUpPermissiveSSLServerCtx(const tao::Keys &key, ScopedSSLCtx *ctx);
+#endif
 
 /// Prepare an SSL_CTX for a client to connect to a server.
 /// @param key The private signing key and x509 certificate to use.
 /// @param ctx The OpenSSL context to prepare.
-bool SetUpSSLClientCtx(const tao::Keys &key, ScopedSSLCtx *ctx);
+bool SetUpSSLClientCtx(const tao::Keys &key, const string &cert,
+                       ScopedSSLCtx *ctx);
 
+#if 0
 /// Check the signature on a SignedACL file and get a serialized ACL.
 /// @param serialized_signed_acls A path to a file containing a serialized
 /// SignedACL.

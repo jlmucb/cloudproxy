@@ -41,9 +41,25 @@ CloudChannel::CloudChannel(SSL_CTX *ssl_ctx, int sock)
   SSL_set_fd(ssl_.get(), sock);
 }
 
-bool CloudChannel::TLSHandshake() {
+bool CloudChannel::TLSServerHandshake() {
   if (SSL_accept(ssl_.get()) == -1) {
-    LOG(ERROR) << "Could not perform TLS handshake";
+    LOG(ERROR) << "Could not perform TLS server handshake";
+    return false;
+  }
+  if (!InitTLSSelfCert()) {
+    LOG(ERROR) << "Could not initialize TLS self cert";
+    return false;
+  }
+  if (!InitTLSPeerCert()) {
+    LOG(ERROR) << "Could not initialize TLS peer cert";
+    return false;
+  }
+  return true;
+}
+
+bool CloudChannel::TLSClientHandshake() {
+  if (SSL_connect(ssl_.get()) == -1) {
+    LOG(ERROR) << "Could not perform TLS client handshake";
     return false;
   }
   if (!InitTLSSelfCert()) {

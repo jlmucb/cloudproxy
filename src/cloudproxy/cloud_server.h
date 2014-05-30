@@ -24,12 +24,11 @@
 #include <string>
 
 #include "cloudproxy/util.h"
-#include "tao/keys.h"
 
 namespace tao {
-class Tao;
+class Keys;
 class TaoGuard;
-};
+}
 
 namespace cloudproxy {
 class CloudChannel;
@@ -80,9 +79,6 @@ class CloudServer {
 
   /// A guard for authorization queries.
   scoped_ptr<tao::TaoGuard> guard_;
-
-  /// The host Tao.
-  tao::Tao *host_tao_;
   
  private:
   /// A context object that stores TLS parameters.

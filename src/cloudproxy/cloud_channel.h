@@ -37,7 +37,10 @@ class CloudChannel : public tao::MessageChannel {
   virtual ~CloudChannel();
 
   /// Perform TLS handshaking. Must be called before other methods.
-  virtual bool TLSHandshake();
+  /// @{
+  virtual bool TLSServerHandshake();
+  virtual bool TLSClientHandshake();
+  /// @}
 
   /// Perform Tao handshaking.
   /// @param self_delegation_ Degation containing our own TLS key and name.

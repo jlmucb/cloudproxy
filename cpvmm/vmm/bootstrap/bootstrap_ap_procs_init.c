@@ -428,11 +428,14 @@ static void send_ipi_to_all_excluding_self(uint32_t vector_number, uint32_t deli
 static void send_ipi_to_specific_cpu (uint32_t vector_number, 
                 uint32_t delivery_mode, uint8_t dst)
 {
-  IA32_ICR_LOW           icr_low = {{0}};
-  IA32_ICR_LOW           icr_low_status = {{0}};
-  IA32_ICR_HIGH          icr_high = {{0}};
-  UINT64                 apic_base = 0;
+    IA32_ICR_LOW           icr_low;
+    IA32_ICR_LOW           icr_low_status;
+    IA32_ICR_HIGH          icr_high;
+    UINT64                 apic_base = 0;
 
+    vmm_memset(&icr_low, 0, sizeof(IA32_ICR_LOW));
+    vmm_memset(&icr_low_status, 0, sizeof(IA32_ICR_LOW));
+    vmm_memset(&icr_high, 0, sizeof(IA32_ICR_HIGH));
     icr_low.bits.vector= vector_number;
     icr_low.bits.delivery_mode = delivery_mode;
 

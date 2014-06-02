@@ -43,7 +43,11 @@
 //#define MULTIAPS_ENABLED
 
 // FIX(JLM): Remove this soon 
+#ifdef TBOOT_SHARED_PAGE
 tboot_shared_t *shared_page = (tboot_shared_t *)0x829000;
+#else
+tboot_shared_t *shared_page = (tboot_shared_t *)NULL;
+#endif
 
 
 #define PSE_BIT     0x10
@@ -1542,7 +1546,11 @@ int prepare_primary_guest_args(multiboot_info_t *mbi)
     new_boot_params->e820_entries= g_nr_map;
 
     // set address of copied tboot shared page 
+#ifdef TBOOT_SHARED_PAGE
     *(uint64_t *)(new_boot_params->tboot_shared_addr)= (uint32_t)shared_page;
+#else
+    *(uint64_t *)(new_boot_params->tboot_shared_addr)= 0;
+#endif
 
     // copy command line after boot parameters
     new_cmdline= (char*)(linux_boot_parameters+sizeof(boot_params_t));
@@ -1855,8 +1863,13 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     mbi = (multiboot_info_t*)0x10000;
     // tboot start/end, this is the only data from the shared
     // page we use
+#ifdef TBOOT_SHARED_PAGE
     tboot_start= shared_page->tboot_base;
     tboot_end= shared_page->tboot_base+shared_page->tboot_size;
+#else
+    tboot_start= 0;
+    tboot_end= 0;
+#endif
 
     // bootstrap's start (load) address and its end address
     bootstrap_start= (uint32_t)&_start_bootstrap;

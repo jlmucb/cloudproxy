@@ -305,9 +305,7 @@ INLINE void mam_invalidate_entry(IN MAM_ENTRY* entry,
     // resides in high part of the entry when "avl" bits in low entry
     // should still contain the correct type of the entry
     entry->invalid_entry.low_part.must_be_zero0 = 0;
-#if 0   // Fence
     hw_store_fence(); // make sure that clearing present bits are visible for every cpu;
-#endif
     entry->invalid_entry.low_part.must_be_zero1 = 0;
     entry->invalid_entry.low_part.avl = (UINT32)entry_type;
     entry->invalid_entry.high_part.reason = reason;
@@ -489,30 +487,23 @@ static void mam_update_leaf_internal_entry(IN MAM_ENTRY* entry,
                         IN const MAM_LEVEL_OPS* level_ops UNUSED) {
     VMM_ASSERT(ALIGN_BACKWARD(addr, PAGE_4KB_SIZE) == addr);
     entry->uint64 = 0;
-#if 0
     hw_store_fence();
-#endif
     entry->any_entry.avl = MAM_LEAF_INTERNAL_ENTRY;
     mam_set_address_in_any_entry(entry, addr);
     entry->mam_internal_entry.attributes = attr.uint32;
-#if 0   // Fence
     hw_store_fence();
-#endif
     entry->mam_internal_entry.present = 1;
 }
 
 
-static
-void mam_update_leaf_page_table_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
+static void mam_update_leaf_page_table_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
                                       IN MAM_ATTRIBUTES attr,
                                       IN const MAM_LEVEL_OPS* level_ops) {
     UINT32 pwt_bit, pcd_bit, pat_bit;
 
     VMM_ASSERT(ALIGN_BACKWARD(addr, PAGE_4KB_SIZE) == addr);
     entry->uint64 = 0;
-#if 0
     hw_store_fence();
-#endif
     entry->any_entry.avl = MAM_LEAF_PAGE_TABLE_ENTRY;
 
     // address
@@ -522,7 +513,7 @@ void mam_update_leaf_page_table_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
     entry->page_table_entry.writable = attr.paging_attr.writable;
     entry->page_table_entry.user = attr.paging_attr.user;
     entry->page_table_entry.global = attr.paging_attr.global;
-#if 0   // Not sure why this is out
+#if 0   // NX
     entry->page_table_entry.exb = (attr.paging_attr.executable) ? 0 : 1;
 #endif
     mam_calculate_caching_attributes_from_pat_index(
@@ -543,20 +534,15 @@ void mam_update_leaf_page_table_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
             entry->page_table_entry.addr_low |= 0x1;
         }
     }
-#if 0   // Fence
     hw_store_fence();
-#endif
     entry->page_table_entry.present = 1;
 }
 
-static
-void mam_update_leaf_ept_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
+static void mam_update_leaf_ept_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
                                IN MAM_ATTRIBUTES attr,
                                IN const MAM_LEVEL_OPS* level_ops) {
     entry->uint64 = 0;
-#if 0   // Fence
     hw_store_fence();
-#endif
     entry->any_entry.avl = MAM_LEAF_EPT_ENTRY;
 
     //address
@@ -570,25 +556,19 @@ void mam_update_leaf_ept_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
         entry->ept_entry.sp = 1;
     }
 
-#if 0   // Fence
     hw_store_fence();
-#endif
     entry->ept_entry.readable = attr.ept_attr.readable;
     entry->ept_entry.writable = attr.ept_attr.writable;
     entry->ept_entry.executable = attr.ept_attr.executable;
-
-        //VMM_LOG(mask_anonymous, level_trace,"Updating leaf ept entry %P \n", entry->uint64);
+    //VMM_LOG(mask_anonymous, level_trace,"Updating leaf ept entry %P \n", entry->uint64);
     VMM_ASSERT(mam_is_ept_entry_present(entry));
 }
 
-static
-void mam_update_leaf_vtdpt_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
+static void mam_update_leaf_vtdpt_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
                                IN MAM_ATTRIBUTES attr,
                                IN const MAM_LEVEL_OPS* level_ops) {
     entry->uint64 = 0;
-#if 0   // Fence
     hw_store_fence();
-#endif
 
     entry->vtdpt_entry.avl_2 = MAM_VTDPT_ENTRY;
     entry->vtdpt_entry.avl_1 = MAM_LEAF_ENTRY_TYPE_MASK >> 2;
@@ -601,9 +581,7 @@ void mam_update_leaf_vtdpt_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
         entry->vtdpt_entry.sp = 1;
     }
 
-#if 0   //Fence
     hw_store_fence();
-#endif
     entry->vtdpt_entry.readable = attr.vtdpt_attr.readable;
     entry->vtdpt_entry.writable = attr.vtdpt_attr.writable;
     entry->vtdpt_entry.snoop = attr.vtdpt_attr.snoop;
@@ -879,15 +857,11 @@ static void mam_update_inner_internal_entry(MAM* mam, MAM_ENTRY* entry,
     VMM_ASSERT(ALIGN_BACKWARD(next_table, PAGE_4KB_SIZE) == next_table);
 
     entry->uint64 = 0;
-#if 0   // Fence
     hw_store_fence();
-#endif
     entry->any_entry.avl = MAM_INNER_INTERNAL_ENTRY;
     mam_set_address_in_any_entry(entry, next_table);
     entry->mam_internal_entry.attributes = attrs.uint32; 
-#if 0   // Fence
     hw_store_fence();
-#endif
     entry->mam_internal_entry.present = 1; 
 }
 
@@ -902,9 +876,7 @@ static void mam_update_inner_page_table_entry(MAM* mam, MAM_ENTRY* entry,
     VMM_ASSERT(ALIGN_BACKWARD(next_table, PAGE_4KB_SIZE) == next_table);
     next_table_hpa = mam_hva_to_hpa(next_table);
     entry->uint64 = 0;
-#if 0   // Fence
     hw_store_fence();
-#endif
     entry->any_entry.avl = MAM_INNER_PAGE_TABLE_ENTRY;
 
     mam_set_address_in_any_entry(entry, next_table_hpa);
@@ -922,9 +894,7 @@ static void mam_update_inner_page_table_entry(MAM* mam, MAM_ENTRY* entry,
     VMM_ASSERT(pat_bit == 0);
     entry->page_table_entry.pwt = pwt_bit;
     entry->page_table_entry.pcd = pcd_bit;
-#if 0   // Fence
     hw_store_fence();
-#endif
     entry->page_table_entry.present = 1;
 }
 
@@ -940,20 +910,13 @@ static void mam_update_inner_ept_entry(MAM* mam,
     next_table_hpa = mam_hva_to_hpa(next_table);
 
     entry->uint64 = 0;
-#if 0   // Fence
     hw_store_fence();
-#endif
     entry->any_entry.avl = MAM_INNER_EPT_ENTRY;
-
     mam_set_address_in_any_entry(entry, next_table_hpa);
-
     VMM_ASSERT(attrs.ept_attr.igmt == 0);
     VMM_ASSERT(attrs.ept_attr.emt == 0);
-
     // igmt and emt remains 0
-#if 0   // Fence
     hw_store_fence();
-#endif
     entry->ept_entry.readable = attrs.ept_attr.readable;
     entry->ept_entry.writable = attrs.ept_attr.writable;
     entry->ept_entry.executable = attrs.ept_attr.executable;
@@ -973,14 +936,10 @@ static void mam_update_inner_vtdpt_entry(MAM* mam, MAM_ENTRY* entry,
     VMM_ASSERT(ALIGN_BACKWARD(next_table, PAGE_4KB_SIZE) == next_table);
     next_table_hpa = mam_hva_to_hpa(next_table);
     entry->uint64 = 0;
-#if 0   // Fence
     hw_store_fence();
-#endif
     entry->vtdpt_entry.avl_2 = MAM_INNER_VTDPT_ENTRY;
     mam_set_address_in_any_entry(entry, next_table_hpa);
-#if 0   // Fence
     hw_store_fence();
-#endif
     entry->vtdpt_entry.readable = attrs.vtdpt_attr.readable;
     entry->vtdpt_entry.writable = attrs.vtdpt_attr.writable;
     VMM_ASSERT(mam_is_vtdpt_entry_present(entry));

@@ -484,7 +484,6 @@ INT32 hw_interlocked_xor(INT32 volatile * value, INT32 mask)
 
 void hw_store_fence(void)
 {
-// CHECK
 #if 0  // Fence
     __asm__ volatile(
         "\tlock; sfence\n"

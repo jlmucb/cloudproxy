@@ -34,7 +34,7 @@ void vmx_off(void);
 // 1 - The operation failed with extended status available in the
 //     VM-instruction error field of the current VMCS.
 // 2 - The operation failed without status available.
-#if 0
+#if 0   // old success definitions
 typedef enum _HW_VMX_RET_VALUE {
     HW_VMX_SUCCESS            = 0,
     HW_VMX_FAILED_WITH_STATUS = 1,

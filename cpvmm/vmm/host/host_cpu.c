@@ -291,7 +291,7 @@ void host_cpu_init( void )
 #ifdef JLMDEBUG
     bprint("Not using SYSENTER_STACK. CS = %d\n", IA32_MSR_SYSENTER_CS);
 #endif
-#if 0
+#if 0    // SYSENTER support?
     hw_write_msr(IA32_MSR_SYSENTER_CS, 0);
 #ifdef JLMDEBUG
     bprint("First msr write\n");

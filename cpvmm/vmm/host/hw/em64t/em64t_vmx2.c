@@ -54,36 +54,6 @@ void zero_exit_time(struct VMEXIT_TIME *p)
 
 // Function:    Called upon VMEXIT. Saves GP registers, allocates stack
 //              for C-function and calls it.
-#if 0
-// temporary hack so we dont loop
-#ifdef JLMDEBUG
-static int count= 0;
-#endif
-void vmexit_func()
-{
-#ifdef JLMDEBUG
-    bprint("vmexit_func %d\n", count);
-    if(count>1)
-        LOOP_FOREVER
-    count++;
-#endif
-    gcpu_save_registers();
-#if 0
-    asm volatile(
-        "\txor      %%rcx, %%rcx\n"
-        "\tshlq     $3, %%rcx\n" 
-        "\tsubq     %%rcx, %%rsp\n"
-        "\tcall     vmexit_common_handler\n"
-        "2:\n"
-        "\tjmp     2b\n"
-    : : :"%rcx");
-#else
-    vmexit_common_handler();
-#endif
-}
-
-#else
-
 asm(
 ".text\n"
 ".globl vmexit_func\n"
@@ -98,8 +68,6 @@ asm(
     "\tjmp    .\n"
     "\tret\n"
 );
-
-#endif
 
 
 #ifdef JLMDEBUG

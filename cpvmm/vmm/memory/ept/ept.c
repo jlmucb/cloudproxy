@@ -227,11 +227,11 @@ MAM_EPT_SUPER_PAGE_SUPPORT ept_get_mam_super_page_support(void)
     IA32_VMX_EPT_VPID_CAP ept_cap = hw_constraints->ept_vpid_capabilities;
     MAM_EPT_SUPER_PAGE_SUPPORT sp_support = MAM_EPT_NO_SUPER_PAGE_SUPPORT;
 
-//Currently we support 2MB pages in implementation
+// Currently we support 2MB pages in implementation
     if(ept_cap.Bits.SP_21_bit) {
         sp_support |= MAM_EPT_SUPPORT_2MB_PAGE;
     }
-#if 0
+#if 0  // Support for different memory page sizes
     if(ept_cap.Bits.SP_30_bit) {
         sp_support |= MAM_EPT_SUPPORT_1GB_PAGE;
     }

@@ -700,7 +700,7 @@ void error_processing(UINT64 vmcs, int ret_val,
         bprint("%s ( %llx ) failed with the error: %s\n", operation, vmcs,
                 error_message ? error_message : "unknown error");
 #endif
-#if 0
+#if 0   // Debug Support
         VMM_LOG(mask_anonymous, level_trace,"%s( %P ) failed with the error: %s\n",
                  operation, vmcs, error_message ? error_message : "unknown error");
 #endif
@@ -711,7 +711,7 @@ void error_processing(UINT64 vmcs, int ret_val,
                 vmcs_get_field_name(field),
                 error_message ? error_message : "unknown error");
 #endif
-#if 0
+#if 0   // Debug Support
         VMM_LOG(mask_anonymous, level_trace,"%s( %P, %s ) failed with the error: %s\n",
                  operation, vmcs, vmcs_get_field_name(field),
                  error_message ? error_message : "unknown error");

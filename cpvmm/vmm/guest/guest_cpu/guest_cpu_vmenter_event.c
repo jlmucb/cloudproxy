@@ -634,7 +634,7 @@ BOOLEAN gcpu_inject_invalid_opcode_exception(GUEST_CPU_HANDLE    gcpu)
     return inject_allowed;
 }
 
-#if 0
+#if 0   // Obsolete function
 // This function is obsolete, it checks VMEnter information for GP, in order to
 // identify the situation whether VTLB has injected GPF0 exception, in the scheme
 // VTLB doesn't inject anything

@@ -45,57 +45,16 @@ extern void __faststorefence(void);
 // returns previous value
 // Assigns new value if previous value == expected_value
 // If previous value != expected_value do not change it
-//
 // Compare returned value with expected to discover.
-//
-// INT32 ASM_FUNCTION
-// hw_interlocked_compare_exchange(
-//     volatile        INT32* p_number,
-//     INT32           expected_value,
-//     INT32           new_value
-//    );
-//------------------------------------------------------------------------------
-#if 0
-INT32    gcc_interlocked_compare_exchange(
-            INT32 volatile * destination,
-            INT32 exchange,
-            INT32 comperand );
 
-#define hw_interlocked_compare_exchange( p_number, expected_value, new_value )  \
-    (INT32) gcc_interlocked_compare_exchange(                                   \
-            (INT32 volatile*)(p_number),                                        \
-            (INT32)(new_value),                                                 \
-            (INT32)(expected_value))
 
-#define hw_interlocked_compare_exchange( p_number, expected_value, new_value )  \
-    (INT32)_InterlockedCompareExchange(                                         \
-            (long volatile*)(p_number),                                         \
-            (long)(new_value),                                                  \
-            (long)(expected_value))
-
-#endif
-
-//------------------------------------------------------------------------------
-// returns previous value
-// Assigns new value if previous value == expected_value
-// If previous value != expected_value do not change it
-//
-// Compare returned value with expected to discover.
-//
-// INT64 ASM_FUNCTION
-// hw_interlocked_compare_exchange_8(
-//     volatile UINT64 *p_number,
-//     INT64 expected_value,
-//     INT64 new_value
-//     );
-//------------------------------------------------------------------------------
 #ifdef __GNUC__
 INT64  hw_interlocked_compare_exchange_64( INT64 volatile * destination,
             INT64 exchange, INT64 comperand );
 
 INT8  hw_interlocked_compare_exchange_8(INT8 volatile * destination,
             INT8 exchange, INT8 comperand );
-#if 0
+#if 0  // fixed interlock exchange
 #define hw_interlocked_compare_exchange( p_number, expected_value, new_value )\
     (INT64)gcc_interlocked_compare_exchange_8(                                \
             (INT64 volatile*)(p_number),                                      \

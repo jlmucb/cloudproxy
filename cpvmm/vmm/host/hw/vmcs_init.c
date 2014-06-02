@@ -525,7 +525,7 @@ HVA vmcs_hw_allocate_region(HPA* hpa)
     vmcs = (IA32_VMX_VMCS*)hva;
     vmcs->RevisionIdentifier = VMCS_REVISION;
     // unmap VMCS region from the host memory
-#if 0
+#if 0  // unmap VMCS region from host
     if(!hmm_unmap_hpa(*hpa, ALIGN_FORWARD(VMCS_REGION_SIZE, PAGE_4KB_SIZE), FALSE)) {
         VMM_LOG(mask_anonymous, level_trace,"ERROR: failed to unmap VMCS\n");
         VMM_DEADLOOP();

@@ -485,7 +485,7 @@ INT32 hw_interlocked_xor(INT32 volatile * value, INT32 mask)
 void hw_store_fence(void)
 {
 // CHECK
-#if 0
+#if 0  // Fence
     __asm__ volatile(
         "\tlock; sfence\n"
     :::);
@@ -1339,8 +1339,7 @@ __asm__(
 
 
 
-#if 0
-// never ported
+#if 0   // never ported
 void hw_leave_64bit_mode (unsigned int compatibility_segment,
     unsigned short int port_id,
     unsigned short int value,

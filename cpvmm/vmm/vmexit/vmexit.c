@@ -264,7 +264,7 @@ void vmexit_guest_initialize(GUEST_ID guest_id)
     // install IO VMEXITs
     io_vmexit_guest_initialize(guest_id);
 
-#if 0 
+#if 0 // Serial card fix
     /* this is commented out for now to work with serial card from Startech
          or the guest OS boot up would be stuck */
     // Handle debug port virtualization

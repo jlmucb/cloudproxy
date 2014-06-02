@@ -73,7 +73,7 @@ static
 void read_vmcs_to_get_guest_states(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_GUEST_STATES *guest_states);
 
 static BOOLEAN is_params_ok(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *p, UINT64 *state_hva);
-#if 0
+#if 0   // Unused teardown
 static BOOLEAN map_thunk_pages(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *teardown);
 #endif
 
@@ -102,7 +102,7 @@ BOOLEAN vmexit_vmm_teardown(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *vmm_tear
     VMM_TEARDOWN_GUEST_STATES* vm_guest_states = NULL;
     UINT64 state_hva = 0;
     REPORT_VMM_TEARDOWN_DATA vmm_teardown_data;
-#if 0
+#if 0   // Unused teardown
     UINT32 cpu_idx = hw_cpu_id();
 #endif
 
@@ -134,7 +134,7 @@ BOOLEAN vmexit_vmm_teardown(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *vmm_tear
         idtr->limit = (UINT16)(vm_guest_states->IA32_IDTR_LIMIT);
         idtr->base  = (UINT64)(vm_guest_states->IA32_IDTR_BASE);
                 VMM_LOG(mask_anonymous, level_trace,"vmcall_teardown_64bits: idtr->limit = %p, idtr->base = %p\r\n", idtr->limit, idtr->base);
-#if 0
+#if 0   // Unused teardown
         if (!map_thunk_pages(gcpu, vmm_teardown_params)) {
             return FALSE;
         }
@@ -148,7 +148,7 @@ BOOLEAN vmexit_vmm_teardown(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *vmm_tear
     else if(vmm_teardown_params->is_guest_x64_mode == 0){
         IA32_GDTR *gdtr = NULL;
         IA32_IDTR *idtr = NULL;
-#if 0
+#if 0   // Unused teardown
         BOOLEAN cr4_pae_is_on = FALSE;
 
         /* Boolean cr4_pae_is_on is obtained from guest CR4. This is
@@ -169,7 +169,7 @@ BOOLEAN vmexit_vmm_teardown(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *vmm_tear
         idtr->limit = (UINT16)(vm_guest_states->IA32_IDTR_LIMIT);
         idtr->base  = (UINT32)(vm_guest_states->IA32_IDTR_BASE);
                 VMM_LOG(mask_anonymous, level_trace, "vmcall_teardown_32bits: idtr->limit = %p, idtr->base = %p\r\n", idtr->limit, idtr->base);
-#if 0
+#if 0   // Unused teardown
         // restore the guest states and jump to teardown thunk. 
         // never returns
         call_teardown_thunk32( vmm_teardown_params->guest_states_storage_virt_addr,
@@ -309,7 +309,7 @@ static BOOLEAN is_params_ok(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *p, UINT6
 }
 
 static VMM_LOCK teardown_lock = LOCK_INIT_STATE;
-#if 0
+#if 0   // Unused teardown
 static int teardown_mapped = 0;
 static int teardown_failed = 0;
 #endif
@@ -327,7 +327,7 @@ void init_teardown_lock(void)
  *          1           0       return success
  *          1           1       return failure
  */
-#if 0
+#if 0   // Unused teardown
 static BOOLEAN map_thunk_pages(GUEST_CPU_HANDLE gcpu, VMM_TEARDOWN_PARAMS *p)
 {
     BOOLEAN ret = FALSE;

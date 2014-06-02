@@ -871,7 +871,7 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
     // Update permissions for VMM image
     VMM_LOG(mask_anonymous, level_trace,"HMM: Updating permissions to VMM image:\n");
     
-#if 0
+#if 0  // NX
     image_section_info = exec_image_section_first((const void*)startup_struct->vmm_memory_layout[uvmm_image].base_address, startup_struct->vmm_memory_layout[uvmm_image].image_size, &image_iter);
     while (image_section_info != NULL) {
         UINT64 section_start = (UINT64)image_section_info->start;
@@ -913,7 +913,7 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
     }
 #endif
 
-#if 0
+#if 0  // Thunk (remove)
     // update permissions for the thunk image
     if (startup_struct->vmm_memory_layout[thunk_image].image_size != 0) {
         MAM_ATTRIBUTES attributes_to_remove;
@@ -976,7 +976,7 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
     VMM_LOG(mask_anonymous, level_trace,"HMM: Remapping the exception stacks:\n");
     for (i = 0; i < startup_struct->number_of_processors_at_boot_time; i++) {
         // JLM (FIX) fix addresses so we can have stack guard
-#if 0
+#if 0 // Stack guard
         HVA page;
         HPA page_hpa;
         UINT32 exception_stack_index;

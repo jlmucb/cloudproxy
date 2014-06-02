@@ -468,7 +468,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     VMM_LOG(mask_uvmm, level_trace,"\theap base address = %P \n", heap_address);
     VMM_LOG(mask_uvmm, level_trace,"\theap last occupied address = %P \n", 
                 heap_last_occupied_address);
-#if 0
+#if 0   // Debug print
     VMM_LOG(mask_uvmm, level_trace,"\tactual size is %P, when requested size was %P\n", 
             heap_last_occupied_address-heap_address, heap_size);
     VMM_ASSERT(heap_last_occupied_address<=(startup_struct->vmm_memory_layout[0].base_address + startup_struct->vmm_memory_layout[0].total_size));
@@ -546,7 +546,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     }
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: MTRRs were successfully cached.\n");
 
-#if 0
+#if 0   // No longer needed
     // no longer needed, executable info will be in vmm_memory_map
     // init uVMM image parser.  TODO: mark executable areas
     exec_image_initialize();
@@ -619,7 +619,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     VMM_LOG(mask_uvmm, level_trace,"BSP: Successfully updated CR3 to new value\n");
     VMM_ASSERT(hw_read_cr3() == new_cr3);
 
-#if 0
+#if 0  // S3 support (may depend on thunk?
     // Allocates memory from heap for s3 resume structure on AP's
     // This should be called before calling vmm_heap_extend() in order to
     // ensure identity mapped memory within 4GB for post-OS launch.
@@ -733,9 +733,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     VMM_ASSERT((num_of_guests == 1) || (secondary_guests_array != 0));
 
     if (!initialize_all_guests(num_of_cpus, 
-#if 0
+#if 0   // Further memory exclusion support
          // vmm_memory map will be changed to exclude multiple regions
-                       (int) startup_struct->num_excluded_regions, startup_struct->vmm_memory_layout,
+            (int) startup_struct->num_excluded_regions, 
+            startup_struct->vmm_memory_layout,
 #else
                        &(startup_struct->vmm_memory_layout[0]),
 #endif

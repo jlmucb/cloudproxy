@@ -305,8 +305,7 @@ INLINE void mam_invalidate_entry(IN MAM_ENTRY* entry,
     // resides in high part of the entry when "avl" bits in low entry
     // should still contain the correct type of the entry
     entry->invalid_entry.low_part.must_be_zero0 = 0;
-    // JLM(FIX)
-#if 0
+#if 0   // Fence
     hw_store_fence(); // make sure that clearing present bits are visible for every cpu;
 #endif
     entry->invalid_entry.low_part.must_be_zero1 = 0;
@@ -486,7 +485,7 @@ static UINT64 mam_get_address_from_leaf_vtdpt_entry(IN MAM_ENTRY* entry,
 
 
 static void mam_update_leaf_internal_entry(IN MAM_ENTRY* entry, 
-			IN UINT64 addr, IN MAM_ATTRIBUTES attr,
+                        IN UINT64 addr, IN MAM_ATTRIBUTES attr,
                         IN const MAM_LEVEL_OPS* level_ops UNUSED) {
     VMM_ASSERT(ALIGN_BACKWARD(addr, PAGE_4KB_SIZE) == addr);
     entry->uint64 = 0;
@@ -496,7 +495,7 @@ static void mam_update_leaf_internal_entry(IN MAM_ENTRY* entry,
     entry->any_entry.avl = MAM_LEAF_INTERNAL_ENTRY;
     mam_set_address_in_any_entry(entry, addr);
     entry->mam_internal_entry.attributes = attr.uint32;
-#if 0
+#if 0   // Fence
     hw_store_fence();
 #endif
     entry->mam_internal_entry.present = 1;
@@ -523,7 +522,7 @@ void mam_update_leaf_page_table_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
     entry->page_table_entry.writable = attr.paging_attr.writable;
     entry->page_table_entry.user = attr.paging_attr.user;
     entry->page_table_entry.global = attr.paging_attr.global;
-#if 0
+#if 0   // Not sure why this is out
     entry->page_table_entry.exb = (attr.paging_attr.executable) ? 0 : 1;
 #endif
     mam_calculate_caching_attributes_from_pat_index(
@@ -544,7 +543,7 @@ void mam_update_leaf_page_table_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
             entry->page_table_entry.addr_low |= 0x1;
         }
     }
-#if 0
+#if 0   // Fence
     hw_store_fence();
 #endif
     entry->page_table_entry.present = 1;
@@ -555,7 +554,7 @@ void mam_update_leaf_ept_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
                                IN MAM_ATTRIBUTES attr,
                                IN const MAM_LEVEL_OPS* level_ops) {
     entry->uint64 = 0;
-#if 0
+#if 0   // Fence
     hw_store_fence();
 #endif
     entry->any_entry.avl = MAM_LEAF_EPT_ENTRY;
@@ -567,12 +566,11 @@ void mam_update_leaf_ept_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
     entry->ept_entry.igmt = attr.ept_attr.igmt;
     entry->ept_entry.emt = attr.ept_attr.emt;
     entry->ept_entry.suppress_ve = attr.ept_attr.suppress_ve;
-    if(level_ops != MAM_LEVEL1_OPS)
-    {
+    if(level_ops != MAM_LEVEL1_OPS) {
         entry->ept_entry.sp = 1;
     }
 
-#if 0
+#if 0   // Fence
     hw_store_fence();
 #endif
     entry->ept_entry.readable = attr.ept_attr.readable;
@@ -588,7 +586,7 @@ void mam_update_leaf_vtdpt_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
                                IN MAM_ATTRIBUTES attr,
                                IN const MAM_LEVEL_OPS* level_ops) {
     entry->uint64 = 0;
-#if 0
+#if 0   // Fence
     hw_store_fence();
 #endif
 
@@ -603,21 +601,19 @@ void mam_update_leaf_vtdpt_entry(IN MAM_ENTRY* entry, IN UINT64 addr,
         entry->vtdpt_entry.sp = 1;
     }
 
-#if 0
+#if 0   //Fence
     hw_store_fence();
 #endif
     entry->vtdpt_entry.readable = attr.vtdpt_attr.readable;
     entry->vtdpt_entry.writable = attr.vtdpt_attr.writable;
     entry->vtdpt_entry.snoop = attr.vtdpt_attr.snoop;
     entry->vtdpt_entry.tm = attr.vtdpt_attr.tm;
-
-        //VMM_LOG(mask_anonymous, level_trace,"Updating leaf vtdpt entry %P \n", entry->uint64);
     VMM_ASSERT(mam_is_vtdpt_entry_present(entry));
 }
 
 
 static MAM_ATTRIBUTES mam_get_attributes_from_internal_entry(IN MAM_ENTRY* entry, 
-	IN const MAM_LEVEL_OPS* level_ops UNUSED) {
+        IN const MAM_LEVEL_OPS* level_ops UNUSED) {
     MAM_ATTRIBUTES attrs;
 
     VMM_ASSERT((entry->any_entry.avl == MAM_INNER_INTERNAL_ENTRY) || (entry->any_entry.avl == MAM_LEAF_INTERNAL_ENTRY));
@@ -883,33 +879,30 @@ static void mam_update_inner_internal_entry(MAM* mam, MAM_ENTRY* entry,
     VMM_ASSERT(ALIGN_BACKWARD(next_table, PAGE_4KB_SIZE) == next_table);
 
     entry->uint64 = 0;
-#if 0
+#if 0   // Fence
     hw_store_fence();
 #endif
     entry->any_entry.avl = MAM_INNER_INTERNAL_ENTRY;
     mam_set_address_in_any_entry(entry, next_table);
     entry->mam_internal_entry.attributes = attrs.uint32; 
-#if 0
+#if 0   // Fence
     hw_store_fence();
 #endif
     entry->mam_internal_entry.present = 1; 
 }
 
 
-static
-void mam_update_inner_page_table_entry(MAM* mam, MAM_ENTRY* entry, MAM_HVA next_table, const MAM_LEVEL_OPS* level_ops) {
+static void mam_update_inner_page_table_entry(MAM* mam, MAM_ENTRY* entry, 
+            MAM_HVA next_table, const MAM_LEVEL_OPS* level_ops) {
     MAM_ATTRIBUTES attrs = mam->inner_level_attributes;
     MAM_HPA next_table_hpa;
     UINT32 pwt_bit, pcd_bit, pat_bit;
 
     // Entry type must be updated
-
     VMM_ASSERT(ALIGN_BACKWARD(next_table, PAGE_4KB_SIZE) == next_table);
-
     next_table_hpa = mam_hva_to_hpa(next_table);
-
     entry->uint64 = 0;
-#if 0
+#if 0   // Fence
     hw_store_fence();
 #endif
     entry->any_entry.avl = MAM_INNER_PAGE_TABLE_ENTRY;
@@ -920,7 +913,7 @@ void mam_update_inner_page_table_entry(MAM* mam, MAM_ENTRY* entry, MAM_HVA next_
         entry->page_table_entry.writable = attrs.paging_attr.writable;
         entry->page_table_entry.user = attrs.paging_attr.user;
         entry->page_table_entry.global = attrs.paging_attr.global;
-#if 0
+#if 0   // NX
         entry->page_table_entry.exb = (attrs.paging_attr.executable) ? 0 : 1;
 #endif
     }
@@ -929,7 +922,7 @@ void mam_update_inner_page_table_entry(MAM* mam, MAM_ENTRY* entry, MAM_HVA next_
     VMM_ASSERT(pat_bit == 0);
     entry->page_table_entry.pwt = pwt_bit;
     entry->page_table_entry.pcd = pcd_bit;
-#if 0
+#if 0   // Fence
     hw_store_fence();
 #endif
     entry->page_table_entry.present = 1;
@@ -947,7 +940,7 @@ static void mam_update_inner_ept_entry(MAM* mam,
     next_table_hpa = mam_hva_to_hpa(next_table);
 
     entry->uint64 = 0;
-#if 0
+#if 0   // Fence
     hw_store_fence();
 #endif
     entry->any_entry.avl = MAM_INNER_EPT_ENTRY;
@@ -958,7 +951,7 @@ static void mam_update_inner_ept_entry(MAM* mam,
     VMM_ASSERT(attrs.ept_attr.emt == 0);
 
     // igmt and emt remains 0
-#if 0
+#if 0   // Fence
     hw_store_fence();
 #endif
     entry->ept_entry.readable = attrs.ept_attr.readable;
@@ -972,49 +965,43 @@ static void mam_update_inner_ept_entry(MAM* mam,
         VMM_ASSERT(mam_is_ept_entry_present(entry));
 }
 
-static
-void mam_update_inner_vtdpt_entry(MAM* mam, MAM_ENTRY* entry, MAM_HVA next_table, const MAM_LEVEL_OPS* level_ops UNUSED) {
+static void mam_update_inner_vtdpt_entry(MAM* mam, MAM_ENTRY* entry, 
+        MAM_HVA next_table, const MAM_LEVEL_OPS* level_ops UNUSED) {
     MAM_ATTRIBUTES attrs = mam->inner_level_attributes;
     MAM_HPA next_table_hpa;
 
     VMM_ASSERT(ALIGN_BACKWARD(next_table, PAGE_4KB_SIZE) == next_table);
-
     next_table_hpa = mam_hva_to_hpa(next_table);
-
     entry->uint64 = 0;
-#if 0
+#if 0   // Fence
     hw_store_fence();
 #endif
     entry->vtdpt_entry.avl_2 = MAM_INNER_VTDPT_ENTRY;
-
     mam_set_address_in_any_entry(entry, next_table_hpa);
-
-#if 0
+#if 0   // Fence
     hw_store_fence();
 #endif
     entry->vtdpt_entry.readable = attrs.vtdpt_attr.readable;
     entry->vtdpt_entry.writable = attrs.vtdpt_attr.writable;
-
-        VMM_ASSERT(mam_is_vtdpt_entry_present(entry));
+    VMM_ASSERT(mam_is_vtdpt_entry_present(entry));
 }
 
-static
-void mam_update_attributes_in_leaf_internal_entry(MAM_ENTRY* entry, MAM_ATTRIBUTES attrs, const MAM_LEVEL_OPS* level_ops UNUSED) {
+static void mam_update_attributes_in_leaf_internal_entry(MAM_ENTRY* entry, 
+        MAM_ATTRIBUTES attrs, const MAM_LEVEL_OPS* level_ops UNUSED) {
     VMM_ASSERT(entry->any_entry.avl == MAM_LEAF_INTERNAL_ENTRY);
 
     entry->mam_internal_entry.attributes = attrs.uint32;
     VMM_ASSERT(mam_is_internal_entry_present(entry));
 }
 
-static
-void mam_update_attributes_in_leaf_page_table_entry(MAM_ENTRY* entry, MAM_ATTRIBUTES attrs, const MAM_LEVEL_OPS* level_ops) {
+static void mam_update_attributes_in_leaf_page_table_entry(MAM_ENTRY* entry, 
+        MAM_ATTRIBUTES attrs, const MAM_LEVEL_OPS* level_ops) {
     UINT32 pwt_bit, pcd_bit, pat_bit;
 
     VMM_ASSERT(entry->any_entry.avl == MAM_LEAF_PAGE_TABLE_ENTRY);
-
     entry->page_table_entry.writable = attrs.paging_attr.writable;
     entry->page_table_entry.user = attrs.paging_attr.user;
-#if 0
+#if 0  // NX
     entry->page_table_entry.exb = (attrs.paging_attr.executable) ? 0 : 1;
 #endif
     entry->page_table_entry.global = attrs.paging_attr.global;
@@ -1036,8 +1023,8 @@ void mam_update_attributes_in_leaf_page_table_entry(MAM_ENTRY* entry, MAM_ATTRIB
     VMM_ASSERT(mam_is_page_table_entry_present(entry));
 }
 
-static
-void mam_update_attributes_in_leaf_ept_entry(MAM_ENTRY* entry, MAM_ATTRIBUTES attrs, const MAM_LEVEL_OPS* level_ops) {
+static void mam_update_attributes_in_leaf_ept_entry(MAM_ENTRY* entry, 
+        MAM_ATTRIBUTES attrs, const MAM_LEVEL_OPS* level_ops) {
     entry->ept_entry.readable = attrs.ept_attr.readable;
     entry->ept_entry.writable = attrs.ept_attr.writable;
     entry->ept_entry.executable = attrs.ept_attr.executable;
@@ -1047,22 +1034,19 @@ void mam_update_attributes_in_leaf_ept_entry(MAM_ENTRY* entry, MAM_ATTRIBUTES at
     if(level_ops != MAM_LEVEL1_OPS) {
         entry->ept_entry.sp = 1;
     }
-
     VMM_ASSERT(mam_is_ept_entry_present(entry));
 }
 
-static
-void mam_update_attributes_in_leaf_vtdpt_entry(MAM_ENTRY* entry, MAM_ATTRIBUTES attrs, const MAM_LEVEL_OPS* level_ops) {
+static void mam_update_attributes_in_leaf_vtdpt_entry(MAM_ENTRY* entry, 
+        MAM_ATTRIBUTES attrs, const MAM_LEVEL_OPS* level_ops) {
     entry->vtdpt_entry.readable = attrs.vtdpt_attr.readable;
     entry->vtdpt_entry.writable = attrs.vtdpt_attr.writable;
     entry->vtdpt_entry.snoop = attrs.vtdpt_attr.snoop;
     entry->vtdpt_entry.tm = attrs.vtdpt_attr.tm;
-    if(level_ops != MAM_LEVEL1_OPS)
-    {
+    if(level_ops != MAM_LEVEL1_OPS) {
         entry->vtdpt_entry.sp = 1;
     }
-
-        VMM_ASSERT(mam_is_vtdpt_entry_present(entry));
+    VMM_ASSERT(mam_is_vtdpt_entry_present(entry));
 }
 
 static MAM_ENTRY_TYPE mam_get_leaf_internal_entry_type(void) {
@@ -1130,9 +1114,9 @@ static MAM_HVA mam_create_table(IN MAM_MAPPING_RESULT unmapped_reason,
 *         table - created lower level table.
 *  Ret. value: TRUE in case of success. FALSE in case of insufficient memory.
 */
-static
-BOOLEAN mam_expand_leaf_entry(IN MAM* mam, IN MAM_ENTRY* entry, IN const MAM_LEVEL_OPS* level_ops,
-                              IN const MAM_ENTRY_OPS* entry_ops, OUT MAM_HVA* table) {
+static BOOLEAN mam_expand_leaf_entry(IN MAM* mam, IN MAM_ENTRY* entry, 
+            IN const MAM_LEVEL_OPS* level_ops,
+            IN const MAM_ENTRY_OPS* entry_ops, OUT MAM_HVA* table) {
     MAM_ENTRY_TYPE entry_type = get_mam_entry_type(entry);
     UINT64 tgt_addr = mam_get_address_from_leaf_entry(entry, level_ops, entry_ops); // virtual call
     MAM_ATTRIBUTES attrs = mam_get_attributes_from_entry(entry, level_ops, entry_ops); // virtual call
@@ -1177,9 +1161,10 @@ BOOLEAN mam_expand_leaf_entry(IN MAM* mam, IN MAM_ENTRY* entry, IN const MAM_LEV
  *         level_ops - virtual table for relevant table operations
  *         entry_ops - virtual table for relevant (according to type) entry operations
  */
-static
-void mam_try_to_retract_inner_entry_to_leaf(IN MAM* mam, IN MAM_ENTRY* entry_to_retract,
-                                            IN const MAM_LEVEL_OPS* level_ops, IN const MAM_ENTRY_OPS* entry_ops) {
+static void mam_try_to_retract_inner_entry_to_leaf(IN MAM* mam, 
+                IN MAM_ENTRY* entry_to_retract,
+                IN const MAM_LEVEL_OPS* level_ops, IN const MAM_ENTRY_OPS* entry_ops)
+{
 
     MAM_HVA table_pointed_by_entry;
     MAM_HVA entry_hva;
@@ -1212,9 +1197,7 @@ void mam_try_to_retract_inner_entry_to_leaf(IN MAM* mam, IN MAM_ENTRY* entry_to_
             // The entry is not leaf, the retraction is not possible
             return;
         }
-
         // In case when first entry present and leaf, retrieve mapped address and attributes
-
         tgt_addr = mam_get_address_from_leaf_entry(first_entry, lower_level_ops, entry_ops);
 
         // Check whether the entry can be retracted to leaf with calculated tgt_addr (check for alignment)
@@ -1222,7 +1205,6 @@ void mam_try_to_retract_inner_entry_to_leaf(IN MAM* mam, IN MAM_ENTRY* entry_to_
             // Cannot retract the entry
             return;
         }
-
         attr = mam_get_attributes_from_entry(first_entry, lower_level_ops, entry_ops); // virtual call
     }
     else {
@@ -1249,15 +1231,16 @@ void mam_try_to_retract_inner_entry_to_leaf(IN MAM* mam, IN MAM_ENTRY* entry_to_
             UINT64 curr_tgt_addr = mam_get_address_from_leaf_entry(entry, lower_level_ops, entry_ops); // virtual call
             MAM_ATTRIBUTES curr_attrs;
 
-            if (curr_tgt_addr != (tgt_addr + (entry_index * size_covered_by_lower_level_entry))) {
+            if (curr_tgt_addr != (tgt_addr + 
+                    (entry_index * size_covered_by_lower_level_entry))) {
                 // address written to current entry is not sequential to previous one, retraction is not possible
                 return;
             }
 
             // Check whether the attributes are the same
             curr_attrs = mam_get_attributes_from_entry(entry, lower_level_ops, entry_ops);
+            // the attributes differ, retraction is not possible
             if (curr_attrs.uint32 != attr.uint32) {
-                // the attributes differ, retraction is not possible
                 return;
             }
 
@@ -1288,113 +1271,97 @@ void mam_try_to_retract_inner_entry_to_leaf(IN MAM* mam, IN MAM_ENTRY* entry_to_
     mam_destroy_table(table_pointed_by_entry);
 }
 
-static
-UINT64 mam_get_size_covered_by_level1_entry(void) {
+static UINT64 mam_get_size_covered_by_level1_entry(void) {
     UINT64 retval = PAGE_4KB_SIZE;
     return retval;
 }
 
-static
-UINT64 mam_get_size_covered_by_level2_entry(void) {
+static UINT64 mam_get_size_covered_by_level2_entry(void) {
     UINT64 retval = mam_get_size_covered_by_level1_table();
     return retval;
 }
 
-static
-UINT64 mam_get_size_covered_by_level3_entry(void) {
+static UINT64 mam_get_size_covered_by_level3_entry(void) {
     UINT64 retval = mam_get_size_covered_by_level2_table();
     return retval;
 }
 
-static
-UINT64 mam_get_size_covered_by_level4_entry(void) {
+static UINT64 mam_get_size_covered_by_level4_entry(void) {
     UINT64 retval = mam_get_size_covered_by_level3_table();
     return retval;
 }
 
-static
-UINT32 mam_get_level1_entry_index(IN UINT64 address) {
+static UINT32 mam_get_level1_entry_index(IN UINT64 address) {
     UINT64 idx_tmp = ((address >> MAM_LEVEL1_TABLE_POS) & MAM_ENTRY_INDEX_MASK);
     return (UINT32)idx_tmp;
 }
 
-static
-UINT32 mam_get_level2_entry_index(IN UINT64 address) {
+static UINT32 mam_get_level2_entry_index(IN UINT64 address) {
     UINT64 idx_tmp = ((address >> MAM_LEVEL2_TABLE_POS) & MAM_ENTRY_INDEX_MASK);
     return (UINT32)idx_tmp;
 }
 
-static
-UINT32 mam_get_level3_entry_index(IN UINT64 address) {
+static UINT32 mam_get_level3_entry_index(IN UINT64 address) {
     UINT64 idx_tmp = ((address >> MAM_LEVEL3_TABLE_POS) & MAM_ENTRY_INDEX_MASK);
     return (UINT32)idx_tmp;
 }
 
-static
-UINT32 mam_get_level4_entry_index(IN UINT64 address) {
+static UINT32 mam_get_level4_entry_index(IN UINT64 address) {
     UINT64 idx_tmp = ((address >> MAM_LEVEL4_TABLE_POS) & MAM_ENTRY_INDEX_MASK);
     return (UINT32)idx_tmp;
 }
 
-static
-const MAM_LEVEL_OPS* mam_get_non_existing_ops(void) {
+static const MAM_LEVEL_OPS* mam_get_non_existing_ops(void) {
     return NULL;
 }
 
-static
-const MAM_LEVEL_OPS* mam_get_level1_ops(void) {
+static const MAM_LEVEL_OPS* mam_get_level1_ops(void) {
     return MAM_LEVEL1_OPS;
 }
 
-static
-const MAM_LEVEL_OPS* mam_get_level2_ops(void) {
+static const MAM_LEVEL_OPS* mam_get_level2_ops(void) {
     return MAM_LEVEL2_OPS;
 }
 
-static
-const MAM_LEVEL_OPS* mam_get_level3_ops(void) {
+static const MAM_LEVEL_OPS* mam_get_level3_ops(void) {
     return MAM_LEVEL3_OPS;
 }
 
-static
-const MAM_LEVEL_OPS* mam_get_level4_ops(void) {
+static const MAM_LEVEL_OPS* mam_get_level4_ops(void) {
     return MAM_LEVEL4_OPS;
 }
 
-static
-const MAM_ENTRY_OPS* mam_get_entry_ops(IN MAM_ENTRY* entry) {
-        UINT32 entry_type = get_mam_entry_type(entry);
+static const MAM_ENTRY_OPS* mam_get_entry_ops(IN MAM_ENTRY* entry) {
+    UINT32 entry_type = get_mam_entry_type(entry);
 
-        switch(entry_type) {
+    switch(entry_type) {
 
-    case MAM_INNER_INTERNAL_ENTRY:
-    case MAM_LEAF_INTERNAL_ENTRY:
+      case MAM_INNER_INTERNAL_ENTRY:
+      case MAM_LEAF_INTERNAL_ENTRY:
         return MAM_INTERNAL_ENTRY_OPS;
 
-    case MAM_INNER_PAGE_TABLE_ENTRY:
-    case MAM_LEAF_PAGE_TABLE_ENTRY:
+      case MAM_INNER_PAGE_TABLE_ENTRY:
+      case MAM_LEAF_PAGE_TABLE_ENTRY:
         return MAM_PAGE_TABLE_ENTRY_OPS;
 
-    case MAM_INNER_EPT_ENTRY:
-    case MAM_LEAF_EPT_ENTRY:
+      case MAM_INNER_EPT_ENTRY:
+      case MAM_LEAF_EPT_ENTRY:
         return MAM_EPT_ENTRY_OPS;
 
-    case MAM_INNER_VTDPT_ENTRY:
-    case MAM_LEAF_VTDPT_ENTRY:
+      case MAM_INNER_VTDPT_ENTRY:
+      case MAM_LEAF_VTDPT_ENTRY:
         return MAM_VTDPT_ENTRY_OPS;
 
-    default:
+      default:
         VMM_LOG(mask_anonymous, level_trace,"Entry=%P (at %P) type=0x%x\n", entry->uint64, entry, get_mam_entry_type(entry));
-        // BEFORE_VMLAUNCH. We must ASSERT for wrong case.
         VMM_ASSERT(0);
     }
     return NULL;
 }
 
-static
-MAM_MAPPING_RESULT mam_get_mapping_from_table(IN const MAM_LEVEL_OPS* level_ops, 
-                        IN MAM_HVA table, IN UINT64 src_addr, 
-                        OUT UINT64* tgt_addr_out, OUT MAM_ATTRIBUTES* attributes_out) {
+static MAM_MAPPING_RESULT mam_get_mapping_from_table(IN const MAM_LEVEL_OPS* level_ops, 
+                 IN MAM_HVA table, IN UINT64 src_addr, 
+                 OUT UINT64* tgt_addr_out, OUT MAM_ATTRIBUTES* attributes_out) {
     UINT32 entry_index;
     MAM_HVA entry_addr;
     MAM_ENTRY* entry;
@@ -1450,14 +1417,12 @@ MAM_MAPPING_RESULT mam_get_mapping_from_table(IN const MAM_LEVEL_OPS* level_ops,
 
     // Recursive call in order to retrieve the address and attributes
     return mam_get_mapping_from_table(lower_level_ops, lower_level_table, src_addr, tgt_addr_out, attributes_out);
-
 }
 
 
 // Note, before destroying table, make sure no reference to the table exists,
 // (no entry points to this table)
-static
-void mam_destroy_table(IN MAM_HVA table) {
+static void mam_destroy_table(IN MAM_HVA table) {
     const UINT64 entry_increment = sizeof(MAM_ENTRY);
     MAM_HVA entry_hva;
     void* table_ptr;
@@ -1476,7 +1441,7 @@ void mam_destroy_table(IN MAM_HVA table) {
         MAM_ENTRY* entry = (MAM_ENTRY*)mam_hva_to_ptr(entry_hva);
 
         if (!mam_is_leaf_entry(entry)) {
-            // There is additional table pointed by this entry, destroy it recursively
+            // Additional table pointed by this entry, destroy it recursively
             MAM_HVA lower_level_table = mam_get_table_pointed_by_entry(entry, entry_ops); // virtual call
 
             // Recursive call
@@ -1504,11 +1469,11 @@ void mam_destroy_table(IN MAM_HVA table) {
 *         update_op - which update operation must be done
 * Ret. value - TRUE in case of success, FALSE in case of insufficient memory
 */
-static
-BOOLEAN mam_update_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops,
+static BOOLEAN mam_update_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops,
                          IN MAM_HVA table, IN UINT64 first_mapped_address,
                          IN UINT64 src_addr, IN UINT64 tgt_addr,
-                         IN UINT64 size, IN MAM_ATTRIBUTES attrs, IN MAM_UPDATE_OP update_op) {
+                         IN UINT64 size, IN MAM_ATTRIBUTES attrs, 
+                         IN MAM_UPDATE_OP update_op) {
 
     UINT32 curr_entry_index;
     UINT32 final_entry_index;
@@ -1518,13 +1483,9 @@ BOOLEAN mam_update_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops,
     const MAM_ENTRY_OPS* entry_ops;
     const MAM_LEVEL_OPS* lower_level_ops = mam_get_lower_level_ops(level_ops); // virtual call
 
-
     // Internal checks
-    // BEFORE_VMLAUNCH.
     VMM_ASSERT(mam_get_size_covered_by_table(level_ops) >= size);
-    // BEFORE_VMLAUNCH.
     VMM_ASSERT(first_mapped_address <= src_addr);
-    // BEFORE_VMLAUNCH.
     VMM_ASSERT((first_mapped_address + mam_get_size_covered_by_table(level_ops)) >= (src_addr + size));
 
     // Retrieve the indeces of the entries within the table to be updated
@@ -1551,20 +1512,15 @@ BOOLEAN mam_update_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops,
         // choose the minimum between the sizes
         size_covered_by_curr_entry = (remaining_size > max_possible_size_for_entry) ? max_possible_size_for_entry : remaining_size;
 
-
         if (update_op == MAM_OVERWRITE_ADDR_AND_ATTRS) {
             MAM_HVA lower_level_table;
 
             if (mam_can_be_leaf_entry(mam, level_ops, size_covered_by_curr_entry, tgt_addr, entry_ops)) {
                 // The entry in the current level can be leaf entry
-
-                // BEFORE_VMLAUNCH.
                 VMM_ASSERT(curr_entry_first_mapped_address == src_addr);
-
                 // The overwrite, destroy all the subtrees of this entry and overwrite its contents
                 if (is_entry_present) {
                     if (!mam_is_leaf_entry(entry)) {
-
                         lower_level_table = mam_get_table_pointed_by_entry(entry, entry_ops); // virtual call
 
                         // first clear the current entry
@@ -1589,7 +1545,7 @@ BOOLEAN mam_update_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops,
                 if (!is_entry_present) {
                     // The entry is not present, create sub tree (expansion of non present entry)
 
-                    MAM_MAPPING_RESULT reason = entry->invalid_entry.high_part.reason;
+                    MAM_MAPPING_RESULT reason= entry->invalid_entry.high_part.reason;
                     MAM_ENTRY_TYPE entry_type = get_mam_entry_type(entry);
 
                     lower_level_table = mam_create_table(reason, entry_type);
@@ -1606,10 +1562,8 @@ BOOLEAN mam_update_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops,
                     // The next step is to update lower level table
                 }
                 else if (mam_is_leaf_entry(entry)) {
-
-                    // Currently the entry is leaf, but it can not remain it any longer,
+                    // Currently entry is leaf, but it can not remain it any longer,
                     // expand the entry to lower level table
-
                     if (!mam_expand_leaf_entry(mam, entry, level_ops, entry_ops, &lower_level_table)) {
                         VMM_LOG(mask_anonymous, level_trace,"%s (line %d): ERROR: memory allocation has failed\n", __FUNCTION__, __LINE__);
                         return FALSE;
@@ -1628,7 +1582,6 @@ BOOLEAN mam_update_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops,
                     // The next step is to update lower level table
                 }
 
-
                 // Updating lower level table
                 // Recursive call for lower level table
                 res = mam_update_table(mam, lower_level_ops, lower_level_table, curr_entry_first_mapped_address, src_addr, tgt_addr, size_covered_by_curr_entry, attrs, update_op);
@@ -1639,20 +1592,13 @@ BOOLEAN mam_update_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops,
             }
         }
         else {
-
-            // BEFORE_VMLAUNCH.
             // The operation if to update attributes (permissions) in the entry
             VMM_ASSERT((update_op == MAM_SET_ATTRS) || (update_op == MAM_CLEAR_ATTRS) || (update_op == MAM_OVERWRITE_ATTRS));
-            // BEFORE_VMLAUNCH.
             VMM_ASSERT((attrs.paging_attr.pat_index == 0) || (attrs.ept_attr.emt == 0));
-
             if (is_entry_present) {
-
-                // Only if the entry is present, update of permissions can change something
-
+                // if the entry is present, update of permissions can change 
                 if (mam_is_leaf_entry(entry)) {
                     // This is leaf entry
-
                     MAM_ATTRIBUTES curr_entry_attrs;
                     MAM_ATTRIBUTES new_attrs;
                     BOOLEAN attrs_are_updated = FALSE;
@@ -1663,7 +1609,6 @@ BOOLEAN mam_update_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops,
                         // Check whether the attributes are already set
                         new_attrs.uint32 = curr_entry_attrs.uint32 | attrs.uint32;
                         attrs_are_updated = (new_attrs.uint32 == curr_entry_attrs.uint32);
-
                     }
                     else if (update_op == MAM_OVERWRITE_ATTRS) {
                         new_attrs.uint32 = curr_entry_attrs.uint32;
@@ -1684,8 +1629,7 @@ BOOLEAN mam_update_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops,
 
                     if (!attrs_are_updated) {
                         // The attributess must be updated,
-                        // check whether the entry may remain leaf or must be expanded
-
+                        // check whether entry may remain leaf or must be expanded
                         if (size_covered_by_curr_entry == size_covered_by_entry) {
                             // The entry may remain leaf
 
@@ -1694,7 +1638,6 @@ BOOLEAN mam_update_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops,
                         }
                         else {
                             // The entry can not remain leaf any longer
-
                             MAM_HVA lower_level_table;
                             BOOLEAN res;
 
@@ -1704,7 +1647,6 @@ BOOLEAN mam_update_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops,
                                 VMM_LOG(mask_anonymous, level_trace,"%s (line %d): ERROR: memory allocation has failed\n", __FUNCTION__, __LINE__);
                                 return FALSE;
                             }
-
                             // Update the attributes in lower level table. Recursive call
                             res = mam_update_table(mam, lower_level_ops, lower_level_table, curr_entry_first_mapped_address, src_addr, tgt_addr, size_covered_by_curr_entry, attrs, update_op);
                             if (!res) {
@@ -1719,7 +1661,6 @@ BOOLEAN mam_update_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops,
                 else {
                     // Non leaf entry
                     // Update the attributes in lower level table
-
                     MAM_HVA lower_level_table;
                     BOOLEAN res;
 
@@ -1744,7 +1685,6 @@ BOOLEAN mam_update_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops,
             mam_try_to_retract_inner_entry_to_leaf(mam, entry, level_ops, entry_ops);
         }
 
-
         curr_entry_index++;
         curr_entry_first_mapped_address += size_covered_by_entry;
         VMM_ASSERT(remaining_size >= size_covered_by_curr_entry);
@@ -1752,7 +1692,6 @@ BOOLEAN mam_update_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops,
         src_addr += size_covered_by_curr_entry;
         tgt_addr += size_covered_by_curr_entry;
     }
-
     return TRUE;
 }
 
@@ -1770,10 +1709,10 @@ BOOLEAN mam_update_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops,
  *         reason - reason of removal
  * Ret. value - TRUE in case of success, FALSE in case of insufficient memory
  */
-static
-BOOLEAN mam_remove_range_from_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_ops, IN MAM_HVA table,
-                                    IN UINT64 first_mapped_address, IN UINT64 src_addr,
-                                    IN UINT64 size, IN MAM_MAPPING_RESULT reason) {
+static BOOLEAN mam_remove_range_from_table(IN MAM* mam, 
+                    IN const MAM_LEVEL_OPS* level_ops, IN MAM_HVA table,
+                    IN UINT64 first_mapped_address, IN UINT64 src_addr,
+                    IN UINT64 size, IN MAM_MAPPING_RESULT reason) {
     UINT32 curr_entry_index;
     UINT32 final_entry_index;
     UINT64 curr_entry_first_mapped_address;
@@ -1783,11 +1722,8 @@ BOOLEAN mam_remove_range_from_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_o
     const MAM_LEVEL_OPS* lower_level_ops = mam_get_lower_level_ops(level_ops); // virtual call
 
     // Internal checks
-    // BEFORE_VMLAUNCH
     VMM_ASSERT(mam_get_size_covered_by_table(level_ops) >= size);
-    // BEFORE_VMLAUNCH
     VMM_ASSERT(first_mapped_address <= src_addr);
-    // BEFORE_VMLAUNCH
     VMM_ASSERT((first_mapped_address + mam_get_size_covered_by_table(level_ops)) >= (src_addr + size));
 
     // Retrieve the indeces of the entries within the table to be updated
@@ -1845,21 +1781,16 @@ BOOLEAN mam_remove_range_from_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_o
             if (!mam_is_entry_present(entry, entry_ops)) {
                 // The entry is invalidated already
                 MAM_MAPPING_RESULT curr_reason = entry->invalid_entry.high_part.reason;
-
                 // Check whether the requested reason differs with existing one
-
                 if (curr_reason != reason) {
                     // The reasons differ, expand the existing invalid entry
-
                     MAM_ENTRY_TYPE entry_type = get_mam_entry_type(entry);
-
                     lower_level_table = mam_create_table(curr_reason, entry_type);
                     if (lower_level_table == mam_ptr_to_hva(NULL)) {
                         // ERROR: memory allocation failed
                         VMM_LOG(mask_anonymous, level_trace,"%s (line %d): ERROR: memory allocation has failed\n", __FUNCTION__, __LINE__);
                         return FALSE;
                     }
-
                     mam_update_inner_level_entry(mam, entry, lower_level_table, level_ops, entry_ops);
 
                     // Updating lower level table
@@ -1869,9 +1800,7 @@ BOOLEAN mam_remove_range_from_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_o
                         VMM_LOG(mask_anonymous, level_trace,"%s (line %d): ERROR: memory allocation has failed\n", __FUNCTION__, __LINE__);
                         return FALSE;
                     }
-
                     check_for_retraction = FALSE; // no need for retraction check
-
                     // The next step is to update lower level table
                 }
                 else {
@@ -1882,14 +1811,11 @@ BOOLEAN mam_remove_range_from_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_o
             }
             else {
                 // The entry is present
-
                 if (mam_is_leaf_entry(entry)) {
-
                     if (!mam_expand_leaf_entry(mam, entry, level_ops, entry_ops, &lower_level_table)) {
                         VMM_LOG(mask_anonymous, level_trace,"%s (line %d): ERROR: memory allocation has failed\n", __FUNCTION__, __LINE__);
                         return FALSE;
                     }
-
                     check_for_retraction = FALSE; // no need for retraction check
                     // The next step is to update lower level table
                 }
@@ -1899,7 +1825,6 @@ BOOLEAN mam_remove_range_from_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_o
 
                     // The next step is to update lower level table
                 }
-
 
                 // Updating lower level table
                 // Recursive call for lower level table
@@ -1919,29 +1844,28 @@ BOOLEAN mam_remove_range_from_table(IN MAM* mam, IN const MAM_LEVEL_OPS* level_o
 
         curr_entry_index++;
         curr_entry_first_mapped_address += size_covered_by_entry;
-        // BEFORE_VMLAUNCH
         VMM_ASSERT(remaining_size >= size_covered_by_curr_entry);
         remaining_size -= size_covered_by_curr_entry;
         src_addr += size_covered_by_curr_entry;
     }
-
     return TRUE;
 }
 
 /* Function: mam_convert_entries_in_table
-*  Description: The function recursively converts entries in the tables from one type to another
-*               Used in order to convert internal type to page tables, ept or VT-d page tables 
-*               entries
-*  Input:
-*         mam - main MAM structure
-*         table - HVA of the table to convert
-*         level_ops - virtual table for relevant table operations
-*         new_entry_ops - virtual table for the entries of new type
-* Ret. value - TRUE in case of success, FALSE in case of failure
-*/
-static
-BOOLEAN mam_convert_entries_in_table(IN MAM* mam, IN MAM_HVA table, IN const MAM_LEVEL_OPS* level_ops,
-                                     IN const MAM_ENTRY_OPS* new_entry_ops) {
+ *  Description: The function recursively converts entries in the tables from 
+ *  one type to another
+ *  Used in order to convert internal type to page tables, ept or VT-d page tables 
+ *  entries
+ *  Input:
+ *         mam - main MAM structure
+ *         table - HVA of the table to convert
+ *         level_ops - virtual table for relevant table operations
+ *         new_entry_ops - virtual table for the entries of new type
+ * Ret. value - TRUE in case of success, FALSE in case of failure
+ */
+static BOOLEAN mam_convert_entries_in_table(IN MAM* mam, IN MAM_HVA table, 
+                    IN const MAM_LEVEL_OPS* level_ops,
+                    IN const MAM_ENTRY_OPS* new_entry_ops) {
     MAM_HVA entry_hva;
     UINT64 size_covered_by_entry = mam_get_size_covered_by_entry(level_ops); // virtual call
 
@@ -1960,8 +1884,7 @@ BOOLEAN mam_convert_entries_in_table(IN MAM* mam, IN MAM_HVA table, IN const MAM
                 // The entry is invalid, just change the type of the entry
                 MAM_MAPPING_RESULT reason = entry->invalid_entry.high_part.reason;
                 MAM_ENTRY_TYPE new_entry_type = mam_get_leaf_entry_type(new_entry_ops);
-
-                // suppress #VE for not present memory in Hardware #VE supported system
+                // suppress #VE for not present memory in HW #VE supported system
                 if (new_entry_ops == MAM_EPT_ENTRY_OPS) {
                         entry->invalid_entry.high_part.suppress_ve = mam->ept_hw_ve_support;
                 }
@@ -1995,24 +1918,18 @@ BOOLEAN mam_convert_entries_in_table(IN MAM* mam, IN MAM_HVA table, IN const MAM
                     }
 
                     lower_level_ops = mam_get_lower_level_ops(level_ops);
-                    // BEFORE_VMLAUNCH
                     VMM_ASSERT(lower_level_ops != NULL);
-
                     // Convert entries in the lower level table. Recursive call.
                     res = mam_convert_entries_in_table(mam, lower_level_table, lower_level_ops, new_entry_ops);
                     if (!res) {
                         return FALSE;
                     }
-
                     // Update the current entry with new information
                     mam_update_inner_level_entry(mam, entry, lower_level_table, level_ops, new_entry_ops);
                 }
             }
             else {
-
                 // The entry is of inner level (non-leaf)
-
-                // BEFORE_VMLAUNCH
                 VMM_ASSERT(mam_is_entry_present(entry, curr_entry_ops));
 
                 // Retrieve information of lower level table
@@ -2030,13 +1947,9 @@ BOOLEAN mam_convert_entries_in_table(IN MAM* mam, IN MAM_HVA table, IN const MAM
                 mam_update_inner_level_entry(mam, entry, lower_level_table, level_ops, new_entry_ops);
             }
         }
-
-        // BEFORE_VMLAUNCH
         VMM_ASSERT(mam_get_entry_ops(entry) == new_entry_ops);
-
         entry_hva += sizeof(MAM_ENTRY);
     }
-
     return TRUE;
 }
 
@@ -2048,8 +1961,8 @@ BOOLEAN mam_convert_entries_in_table(IN MAM* mam, IN MAM_HVA table, IN const MAM
 *         src_addr - initial address of the range
 *         size - size of the range
 */
-static
-void mam_update_first_table_to_cover_requested_range(IN MAM* mam, IN UINT64 src_addr, IN UINT64 size) {
+static void mam_update_first_table_to_cover_requested_range(IN MAM* mam, 
+                    IN UINT64 src_addr, IN UINT64 size) {
     const MAM_ENTRY_OPS* entry_ops;
     MAM_HVA curr_first_table;
 
@@ -2058,12 +1971,10 @@ void mam_update_first_table_to_cover_requested_range(IN MAM* mam, IN UINT64 src_
     VMM_ASSERT(mam_get_size_covered_by_table(MAM_LEVEL4_OPS) >= (src_addr + size));
 
     curr_first_table = mam->first_table;
-
 #ifdef DEBUG
     {
         // Only internal representation can be extended
         MAM_ENTRY* entry_tmp = mam_hva_to_ptr(mam->first_table);
-        // BEFORE_VMLAUNCH
         VMM_ASSERT((mam_get_size_covered_by_table(mam->first_table_ops) >= (src_addr + size)) ||
                    (entry_tmp->any_entry.avl == MAM_INNER_INTERNAL_ENTRY) ||
                    (entry_tmp->any_entry.avl == MAM_LEAF_INTERNAL_ENTRY));
@@ -2073,7 +1984,6 @@ void mam_update_first_table_to_cover_requested_range(IN MAM* mam, IN UINT64 src_
     entry_ops = mam_get_entry_ops(mam_hva_to_ptr(curr_first_table)); // virtual call
     while (mam_get_size_covered_by_table(mam->first_table_ops) < (src_addr + size)) {
         // Current first table doesn't cover the requested range
-
         MAM_HVA new_first_table;
         MAM_ENTRY* first_entry_of_new_first_table;
         const MAM_LEVEL_OPS* new_first_table_ops;
@@ -2084,11 +1994,9 @@ void mam_update_first_table_to_cover_requested_range(IN MAM* mam, IN UINT64 src_
             VMM_LOG(mask_anonymous, level_trace,"%s (line %d): MAM ERROR: failed to allocate memory\n", __FUNCTION__, __LINE__);
             return;
         }
-
-        // Update the first entry in newly created table to point to existing first table
+        // Update first entry in newly created table to point to existing first table
         first_entry_of_new_first_table = mam_hva_to_ptr(new_first_table);
         new_first_table_ops = mam_get_upper_level_ops(mam->first_table_ops);
-
         mam_update_inner_level_entry(mam, first_entry_of_new_first_table, mam->first_table, new_first_table_ops, entry_ops);
 
 
@@ -2113,9 +2021,9 @@ void mam_update_first_table_to_cover_requested_range(IN MAM* mam, IN UINT64 src_
 * Output:
 *         size - size of the range
 */
-static
-void mam_get_size_of_range(IN UINT64 src_addr, IN const MAM_LEVEL_OPS* level_ops,
-                           IN MAM_HVA table, OUT UINT64* size) {
+static void mam_get_size_of_range(IN UINT64 src_addr, 
+                IN const MAM_LEVEL_OPS* level_ops,
+                IN MAM_HVA table, OUT UINT64* size) {
     UINT32 start_index = mam_get_entry_index(level_ops, src_addr); // virtual call
     MAM_HVA entry_hva = table + (start_index * sizeof(MAM_ENTRY));
     MAM_ENTRY* first_entry = mam_hva_to_ptr(entry_hva);
@@ -2130,9 +2038,8 @@ void mam_get_size_of_range(IN UINT64 src_addr, IN const MAM_LEVEL_OPS* level_ops
 
     // Retrieve the information from the first entry of the range
     if (is_first_entry_present) {
-
         if (!mam_is_leaf_entry(first_entry)) {
-            // The entry is of inner level, make a recursive call for the lower level table
+            // entry is inner level, make a recursive call for the lower level table
             MAM_HVA lower_level_table = mam_get_table_pointed_by_entry(first_entry, entry_ops); // virtual call
             const MAM_LEVEL_OPS* lower_level_ops = mam_get_lower_level_ops(level_ops); // virtual call
 
@@ -2141,12 +2048,10 @@ void mam_get_size_of_range(IN UINT64 src_addr, IN const MAM_LEVEL_OPS* level_ops
 
             // Recursive call
             mam_get_size_of_range(src_addr, lower_level_ops, lower_level_table, size);
-
             // Output parameter "size" is updated in recursive call
             return;
 
         }
-
         // The entry is leaf, record the information of the first entry
         first_entry_tgt_addr = mam_get_address_from_leaf_entry(first_entry, level_ops, entry_ops); // virtual call
         first_entry_attrs = mam_get_attributes_from_entry(first_entry, level_ops, entry_ops); // virtual call
@@ -2163,7 +2068,6 @@ void mam_get_size_of_range(IN UINT64 src_addr, IN const MAM_LEVEL_OPS* level_ops
         MAM_ENTRY* entry = mam_hva_to_ptr(entry_hva);
 
         VMM_ASSERT(mam_get_entry_ops(entry) == entry_ops);
-
         if (is_first_entry_present) {
             UINT64 tgt_addr;
             MAM_ATTRIBUTES attrs;
@@ -2201,7 +2105,6 @@ void mam_get_size_of_range(IN UINT64 src_addr, IN const MAM_LEVEL_OPS* level_ops
         entry_hva += sizeof(MAM_ENTRY);
         size_tmp += size_covered_by_entry;
     }
-
     *size = size_tmp;
 }
 
@@ -2293,12 +2196,9 @@ MAM_MAPPING_RESULT mam_get_mapping(IN MAM_HANDLE mam_handle, IN UINT64 src_addr,
     UINT32 update_counter1;
     UINT32 update_counter2;
 
-    // BEFORE_VMLAUNCH. We must ASSERT if condition is false.
     VMM_ASSERT(mam_handle != MAM_INVALID_HANDLE);
-
     first_table_ops = mam->first_table_ops;
     first_table = mam->first_table;
-
     // No range was inserted yet
     if (first_table_ops == NULL) {
         return MAM_UNKNOWN_MAPPING;
@@ -2325,7 +2225,8 @@ MAM_MAPPING_RESULT mam_get_mapping(IN MAM_HANDLE mam_handle, IN UINT64 src_addr,
     return res;
 }
 
-BOOLEAN mam_insert_range(IN MAM_HANDLE mam_handle, IN UINT64 src_addr, IN UINT64 tgt_addr,
+BOOLEAN mam_insert_range(IN MAM_HANDLE mam_handle, IN UINT64 src_addr, 
+                         IN UINT64 tgt_addr,
                          IN UINT64 size, IN MAM_ATTRIBUTES attrs) {
     MAM* mam = (MAM*)mam_handle;
     const MAM_LEVEL_OPS* first_table_ops = NULL;
@@ -2335,12 +2236,9 @@ BOOLEAN mam_insert_range(IN MAM_HANDLE mam_handle, IN UINT64 src_addr, IN UINT64
     if (mam_handle == MAM_INVALID_HANDLE) {
         return FALSE;
     }
-
     lock_acquire(&(mam->update_lock));
-
     mam->update_on_cpu = hw_cpu_id();
     mam->update_counter++; // first update (becomes odd number)
-    // BEFORE_VMLAUNCH. We must ASSERT if condition is false.
     VMM_ASSERT((mam->update_counter & 0x1) != 0);
 
     if ((src_addr & (PAGE_4KB_SIZE - 1)) ||
@@ -2372,8 +2270,6 @@ BOOLEAN mam_insert_range(IN MAM_HANDLE mam_handle, IN UINT64 src_addr, IN UINT64
         goto out;
     }
 
-
-    // BEFORE_VMLAUNCH.
     VMM_ASSERT(first_table_ops != NULL);
     res = mam_update_table(mam, first_table_ops, first_table, 0, src_addr, tgt_addr,
                            size, attrs, MAM_OVERWRITE_ADDR_AND_ATTRS);
@@ -2405,7 +2301,6 @@ BOOLEAN mam_insert_not_existing_range(IN MAM_HANDLE mam_handle, IN UINT64 src_ad
     if (mam_handle == MAM_INVALID_HANDLE) {
         return FALSE;
     }
-
     lock_acquire(&(mam->update_lock));
 
 #ifdef JLMDEBUG1
@@ -2425,20 +2320,16 @@ BOOLEAN mam_insert_not_existing_range(IN MAM_HANDLE mam_handle, IN UINT64 src_ad
         res = FALSE;
         goto out;
     }
-
     if ((reason == MAM_MAPPING_SUCCESSFUL) || (reason == MAM_UNKNOWN_MAPPING)) {
         res = FALSE;
         goto out;
     }
-
     if ((src_addr + size) > mam_get_size_covered_by_table(MAM_LEVEL4_OPS)) {
         res = FALSE;
         goto out;
     }
 
-
     mam_update_first_table_to_cover_requested_range(mam, src_addr, size);
-
     first_table = mam->first_table;
     first_table_ops = mam->first_table_ops;
 
@@ -2465,8 +2356,9 @@ out:
     return res;
 }
 
-BOOLEAN mam_add_permissions_to_existing_mapping(IN MAM_HANDLE mam_handle, IN UINT64 src_addr,
-                                                IN UINT64 size, IN MAM_ATTRIBUTES attrs) {
+BOOLEAN mam_add_permissions_to_existing_mapping(IN MAM_HANDLE mam_handle, 
+                                    IN UINT64 src_addr,
+                                    IN UINT64 size, IN MAM_ATTRIBUTES attrs) {
     MAM* mam = (MAM*)mam_handle;
     const MAM_LEVEL_OPS* first_table_ops = mam->first_table_ops;
     MAM_HVA first_table = mam->first_table;
@@ -2475,12 +2367,9 @@ BOOLEAN mam_add_permissions_to_existing_mapping(IN MAM_HANDLE mam_handle, IN UIN
     if (mam_handle == MAM_INVALID_HANDLE) {
         return FALSE;
     }
-
     lock_acquire(&(mam->update_lock));
-
     mam->update_on_cpu = hw_cpu_id();
     mam->update_counter++; // first update (becomes odd number)
-    // BEFORE_VMLAUNCH. PARANOID check.
     VMM_ASSERT((mam->update_counter & 0x1) != 0);
 
     if ((src_addr & (PAGE_4KB_SIZE - 1)) ||
@@ -2489,7 +2378,6 @@ BOOLEAN mam_add_permissions_to_existing_mapping(IN MAM_HANDLE mam_handle, IN UIN
         res = FALSE;
         goto out;
     }
-
     res = mam_update_table(mam, first_table_ops, first_table,
                            0, src_addr, MAM_INVALID_ADDRESS,
                            size, attrs, MAM_SET_ATTRS);
@@ -2503,8 +2391,9 @@ out:
     return res;
 }
 
-BOOLEAN mam_remove_permissions_from_existing_mapping(IN MAM_HANDLE mam_handle, IN UINT64 src_addr,
-                                                     IN UINT64 size, IN MAM_ATTRIBUTES attrs) {
+BOOLEAN mam_remove_permissions_from_existing_mapping(IN MAM_HANDLE mam_handle, 
+                        IN UINT64 src_addr,
+                       IN UINT64 size, IN MAM_ATTRIBUTES attrs) {
     MAM* mam = (MAM*)mam_handle;
     const MAM_LEVEL_OPS* first_table_ops = mam->first_table_ops;
     MAM_HVA first_table = mam->first_table;
@@ -2513,12 +2402,9 @@ BOOLEAN mam_remove_permissions_from_existing_mapping(IN MAM_HANDLE mam_handle, I
     if (mam_handle == MAM_INVALID_HANDLE) {
         return FALSE;
     }
-
     lock_acquire(&(mam->update_lock));
-
     mam->update_on_cpu = hw_cpu_id();
     mam->update_counter++; // first update (becomes odd number)
-    // BEFORE_VMLAUNCH. PARANOID check.
     VMM_ASSERT((mam->update_counter & 0x1) != 0);
 
     if ((src_addr & (PAGE_4KB_SIZE - 1)) ||
@@ -2527,21 +2413,19 @@ BOOLEAN mam_remove_permissions_from_existing_mapping(IN MAM_HANDLE mam_handle, I
         res = FALSE;
         goto out;
     }
-
     res = mam_update_table(mam, first_table_ops, first_table, 0, src_addr,
                            MAM_INVALID_ADDRESS, size, attrs, MAM_CLEAR_ATTRS);
 
 out:
     mam->update_counter++; // second update (becomes even number);
-    // BEFORE_VMLAUNCH. PARANOID check.
     VMM_ASSERT((mam->update_counter & 0x1) == 0);
     mam->update_on_cpu = MAM_INVALID_CPU_ID;
     lock_release(&(mam->update_lock));
     return res;
 }
 
-BOOLEAN mam_overwrite_permissions_in_existing_mapping(IN MAM_HANDLE mam_handle, IN UINT64 src_addr,
-                                                     IN UINT64 size, IN MAM_ATTRIBUTES attrs) {
+BOOLEAN mam_overwrite_permissions_in_existing_mapping(IN MAM_HANDLE mam_handle, 
+                    IN UINT64 src_addr, IN UINT64 size, IN MAM_ATTRIBUTES attrs) {
     MAM* mam = (MAM*)mam_handle;
     const MAM_LEVEL_OPS* first_table_ops = mam->first_table_ops;
     MAM_HVA first_table = mam->first_table;
@@ -2550,20 +2434,16 @@ BOOLEAN mam_overwrite_permissions_in_existing_mapping(IN MAM_HANDLE mam_handle, 
     if (mam_handle == MAM_INVALID_HANDLE) {
         return FALSE;
     }
-
     lock_acquire(&(mam->update_lock));
-
     mam->update_on_cpu = hw_cpu_id();
     mam->update_counter++; // first update (becomes odd number)
     VMM_ASSERT((mam->update_counter & 0x1) != 0);
-
     if ((src_addr & (PAGE_4KB_SIZE - 1)) ||
         (size & (PAGE_4KB_SIZE - 1))) {
         // Must be 4K aligned
         res = FALSE;
         goto out;
     }
-        
     res = mam_update_table(mam, first_table_ops, first_table, 0, src_addr,
                            MAM_INVALID_ADDRESS, size, attrs, MAM_OVERWRITE_ATTRS);
 out:
@@ -2574,7 +2454,8 @@ out:
     return res;
 }
 
-BOOLEAN mam_convert_to_64bit_page_tables(IN MAM_HANDLE mam_handle, OUT UINT64* pml4t_hpa) {
+BOOLEAN mam_convert_to_64bit_page_tables(IN MAM_HANDLE mam_handle, 
+                    OUT UINT64* pml4t_hpa) {
     MAM* mam = (MAM*)mam_handle;
     MAM_HPA first_table_hpa;
     BOOLEAN res;
@@ -2582,31 +2463,24 @@ BOOLEAN mam_convert_to_64bit_page_tables(IN MAM_HANDLE mam_handle, OUT UINT64* p
     if (mam_handle == MAM_INVALID_HANDLE) {
         return FALSE;
     }
-
     lock_acquire(&(mam->update_lock));
-
     mam->update_on_cpu = hw_cpu_id();
     mam->update_counter++; // first update (becomes odd number)
-    // BEFORE_VMLAUNCH. PARANOID check.
     VMM_ASSERT((mam->update_counter & 0x1) != 0);
 
     // the first table must be level4 table (PML4T)
     mam_update_first_table_to_cover_requested_range(mam, 0, mam_get_size_covered_by_table(MAM_LEVEL4_OPS));
-
     if (mam->first_table_ops != MAM_LEVEL4_OPS) {
         VMM_LOG(mask_anonymous, level_trace,"MAM ERROR: %s: Memory allocation error (1)\n", __FUNCTION__);
         res = FALSE;
         goto out;
     }
-
     if (!mam_convert_entries_in_table(mam, mam->first_table, mam->first_table_ops, MAM_PAGE_TABLE_ENTRY_OPS)) {
         res = FALSE;
         goto out;
     }
-
     first_table_hpa = mam_hva_to_hpa(mam->first_table);
     *pml4t_hpa = (UINT64)first_table_hpa;
-
     res = TRUE;
 
 out:
@@ -2617,7 +2491,8 @@ out:
     return res;
 }
 
-BOOLEAN mam_convert_to_32bit_pae_page_tables(IN MAM_HANDLE mam_handle, OUT UINT32* pdpt_hpa) {
+BOOLEAN mam_convert_to_32bit_pae_page_tables(IN MAM_HANDLE mam_handle, 
+            OUT UINT32* pdpt_hpa) {
     MAM* mam = (MAM*)mam_handle;
     MAM_HPA first_table_hpa;
     BOOLEAN res;
@@ -2625,12 +2500,9 @@ BOOLEAN mam_convert_to_32bit_pae_page_tables(IN MAM_HANDLE mam_handle, OUT UINT3
     if (mam_handle == MAM_INVALID_HANDLE) {
         return FALSE;
     }
-
     lock_acquire(&(mam->update_lock));
-
     mam->update_on_cpu = hw_cpu_id();
     mam->update_counter++; // first update (becomes odd number)
-    // BEFORE_VMLAUNCH. PARANOID check.
     VMM_ASSERT((mam->update_counter & 0x1) != 0);
 
     // the first table must be level3 table (PDPT)
@@ -2641,12 +2513,10 @@ BOOLEAN mam_convert_to_32bit_pae_page_tables(IN MAM_HANDLE mam_handle, OUT UINT3
         res = FALSE;
         goto out;
     }
-
     if (!mam_convert_entries_in_table(mam, mam->first_table, mam->first_table_ops, MAM_PAGE_TABLE_ENTRY_OPS)) {
         res = FALSE;
         goto out;
     }
-
     mam_clear_reserved_bits_in_pdpt(mam->first_table);
     mam->is_32bit_page_tables = TRUE;
 
@@ -2656,7 +2526,6 @@ BOOLEAN mam_convert_to_32bit_pae_page_tables(IN MAM_HANDLE mam_handle, OUT UINT3
 
 out:
     mam->update_counter++; // second update (becomes even number);
-    // BEFORE_VMLAUNCH. PARANOID check.
     VMM_ASSERT((mam->update_counter & 0x1) == 0);
     mam->update_on_cpu = MAM_INVALID_CPU_ID;
     lock_release(&(mam->update_lock));
@@ -2670,20 +2539,18 @@ MAM_MEMORY_RANGES_ITERATOR mam_get_memory_ranges_iterator(IN MAM_HANDLE mam_hand
     if (mam_handle == MAM_INVALID_HANDLE) {
         return MAM_INVALID_MEMORY_RANGES_ITERATOR;
     }
-
     mam->last_iterator = MAM_INVALID_MEMORY_RANGES_ITERATOR;
     mam->last_range_size = 0;
-
     if (first_table_ops == NULL) {
         return MAM_INVALID_MEMORY_RANGES_ITERATOR;
     }
-
     return (MAM_MEMORY_RANGES_ITERATOR)0;
 }
 
-MAM_MEMORY_RANGES_ITERATOR mam_get_range_details_from_iterator(IN MAM_HANDLE mam_handle,
-                                                               IN MAM_MEMORY_RANGES_ITERATOR iter,
-                                                               OUT UINT64* src_addr, OUT UINT64* size) {
+MAM_MEMORY_RANGES_ITERATOR mam_get_range_details_from_iterator(
+                            IN MAM_HANDLE mam_handle,
+                           IN MAM_MEMORY_RANGES_ITERATOR iter,
+                           OUT UINT64* src_addr, OUT UINT64* size) {
     MAM* mam = (MAM*)mam_handle;
     const MAM_LEVEL_OPS* first_table_ops = mam->first_table_ops;
     MAM_HVA first_table = mam->first_table;
@@ -2693,38 +2560,28 @@ MAM_MEMORY_RANGES_ITERATOR mam_get_range_details_from_iterator(IN MAM_HANDLE mam
 
     *src_addr = ~((UINT64)0x0);
     *size = 0;
-
     if (mam_handle == MAM_INVALID_HANDLE) {
         return MAM_INVALID_MEMORY_RANGES_ITERATOR;
     }
-
     if (iter == MAM_INVALID_MEMORY_RANGES_ITERATOR) {
         return MAM_INVALID_MEMORY_RANGES_ITERATOR;
     }
-
-    // BEFORE_VMLAUNCH. We must ASSERT if condition is false.
     VMM_ASSERT(iter < mam_get_size_covered_by_table(first_table_ops));
 
     do {
         update_counter1 = mam->update_counter;
         *src_addr = (UINT64)iter;
         mam_get_size_of_range((UINT64)iter, first_table_ops, first_table, size);
-        // BEFORE_VMLAUNCH. We must ASSERT if condition is false.
         VMM_ASSERT(*size > 0);
-
         next_iter = iter + *size;
-
         if (next_iter >= mam_get_size_covered_by_table(first_table_ops)) {
             next_iter = MAM_INVALID_MEMORY_RANGES_ITERATOR;
         }
-
         update_counter2 = mam->update_counter;
     } while ((update_counter1 != update_counter2) ||
              ((update_counter2 & 0x1) != 0)); // must be even number
-
     mam->last_iterator = iter;
     mam->last_range_size = *size;
-
     return (MAM_MEMORY_RANGES_ITERATOR)next_iter;
 }
 #ifdef INCLUDE_UNUSED_CODE
@@ -2732,22 +2589,18 @@ MAM_MEMORY_RANGES_ITERATOR mam_iterator_get_next(IN MAM_HANDLE mam_handle,
                                                  IN MAM_MEMORY_RANGES_ITERATOR iter) {
     MAM* mam = (MAM*)mam_handle;
 
-
     if (mam_handle == MAM_INVALID_HANDLE) {
         return MAM_INVALID_MEMORY_RANGES_ITERATOR;
     }
-
     if (iter == MAM_INVALID_MEMORY_RANGES_ITERATOR) {
         return MAM_INVALID_MEMORY_RANGES_ITERATOR;
     }
-
     if (mam->last_iterator == iter) {
         return iter + mam->last_range_size;
     }
     else {
         UINT64 src_addr;
         UINT64 size;
-
         return mam_get_range_details_from_iterator(mam_handle, iter, &src_addr, &size);
     }
 }
@@ -2774,11 +2627,9 @@ BOOLEAN mam_convert_to_ept(IN MAM_HANDLE mam_handle,
     if (mam_handle == MAM_INVALID_HANDLE) {
         return FALSE;
     }
-
     lock_acquire(&(mam->update_lock));
     mam->update_on_cpu = hw_cpu_id();
     mam->update_counter++; // first update (becomes odd number)
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT((mam->update_counter & 0x1) != 0);
 
     if (ept_supported_gaw == MAM_EPT_21_BITS_GAW) {
@@ -2819,13 +2670,11 @@ BOOLEAN mam_convert_to_ept(IN MAM_HANDLE mam_handle,
 
     // Update super page support to default lowest value
     mam->ept_supper_page_support = 0;
-
     *first_table_hpa = mam_hva_to_hpa(mam->first_table);
     res = TRUE;
 
 out:
     mam->update_counter++; // second update (becomes even number);
-    // BEFORE_VMLAUNCH. PARANOID check.
     VMM_ASSERT((mam->update_counter & 0x1) == 0);
     mam->update_on_cpu = MAM_INVALID_CPU_ID;
     lock_release(&(mam->update_lock));
@@ -2891,7 +2740,6 @@ BOOLEAN mam_convert_to_vtdpt(IN MAM_HANDLE mam_handle,
         res = FALSE;
         goto out;
     }
-
     *first_table_hpa = mam_hva_to_hpa(mam->first_table);
     res = TRUE;
 

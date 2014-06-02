@@ -42,7 +42,7 @@ const char* g_vmm_version_string = NULL;
 
 void vmm_version_print( void )
 {
-#if 0
+#if 0	// version print disabled
     UINT32 global_string_length = 0;
     UINT32 header_len, trailer_len;
     UINT32 cur;

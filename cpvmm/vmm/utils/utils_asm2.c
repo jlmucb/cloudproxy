@@ -313,7 +313,7 @@ void vmm_print_vmcs_region(UINT64* pu)
         p->guest_ss, p->guest_ss_base, p->guest_ss_limit, p->guest_ss_access);
     bprint("ds: %08llx, base: %08llx, limit: %08llx, access: %04llx\n",
         p->guest_ds, p->guest_ds_base, p->guest_ds_limit, p->guest_ds_access);
-#if 0
+#if 0  // unused prints
     bprint("fs: %08llx, base: %08llx, limit: %08llx, access: %04llx\n",
         p->guest_fs, p->guest_fs_base, p->guest_fs_limit, p->guest_fs_access);
     bprint("gs: %08llx, base: %08llx, limit: %08llx, access: %04llx\n",

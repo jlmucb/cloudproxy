@@ -47,7 +47,7 @@
 extern void fvs_initialize(GUEST_HANDLE guest, UINT32 number_of_host_processors);
 #endif
 
-#if 0 // not define
+#if 0 // not defined
 static void raise_guest_create_event(GUEST_ID guest_id);  // moved to guest.c
 #endif
 
@@ -198,7 +198,7 @@ static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
 // Should be called on BSP only while all APs are stopped
 // Return TRUE for success
 BOOLEAN initialize_all_guests( UINT32 number_of_host_processors,
-#if 0
+#if 0  // for later: additional excluded areas
         int num_excluded,
 #endif
         const VMM_MEMORY_LAYOUT* vmm_memory_layout,

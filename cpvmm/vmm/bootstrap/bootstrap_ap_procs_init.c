@@ -540,6 +540,7 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
 {
 #ifdef JLMDEBUG
     bprint("ap_procs_startup init32 data: %p, startup: %p\n", p_init32_data, p_startup);
+    LOOP_FOREVER
 #endif
     if(NULL==p_init32_data || 0 == p_init32_data->i32_low_memory_page) {
         return (uint32_t)(-1);
@@ -630,6 +631,7 @@ void mp_set_bootstrap_state(MP_BOOTSTRAP_STATE new_state)
 {
 #ifdef JLMDEBUG
     bprint("mp_set_bootstrap_state\n");
+    LOOP_FOREVER
 #endif
     __asm__ volatile (
         "\tpush  %%eax\n"

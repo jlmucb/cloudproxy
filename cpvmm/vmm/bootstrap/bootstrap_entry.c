@@ -700,6 +700,9 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
                 uint32_t segment, uint32_t* arg1, uint32_t* arg2, 
                 uint32_t* arg3, uint32_t* arg4)
 {
+#ifdef JLMDEBUG
+    bprint("start_64bit_mode_on_aps %p *p\n", stack_pointer, start_address);
+#endif
     __asm__ volatile (
 
         "\tcli\n"
@@ -775,6 +778,9 @@ void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data,
 {
     uint32_t cr4;
 
+#ifdef JLMDEBUG
+    bprint("init64_on_aps%p *p\n", stack_pointer, start_address);
+#endif
     // CHECK(JLM): is this right (cr4)?
     ia32_write_gdtr(&p_init64_data->i64_gdtr);
     write_cr3(p_init64_data->i64_cr3);
@@ -2257,6 +2263,9 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     }
 #endif
     if (evmm_num_of_aps > 0) {
+#ifdef JLMDEBUG
+        bprint("about to call startap_main, %d aps\n", evmm_num_of_aps);
+#endif
         startap_main(&init32, &init64, p_startup_struct, vmm_main_entry_point);
     }
 

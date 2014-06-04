@@ -538,6 +538,9 @@ static void send_targeted_init_sipi(struct _INIT32_STRUCT *p_init32_data,
 uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data, 
                           VMM_STARTUP_STRUCT *p_startup)
 {
+#ifdef JLMDEBUG
+    bprint("ap_procs_startup init32 data: %p, startup: %p\n", p_init32_data, p_startup);
+#endif
     if(NULL==p_init32_data || 0 == p_init32_data->i32_low_memory_page) {
         return (uint32_t)(-1);
     }
@@ -563,7 +566,9 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
 
     // Stage 2 
     g_aps_counter = bsp_enumerate_aps();
-
+#ifdef JLMDEBUG
+    bprint("stage 2, num aps: %d\n", g_aps_counter);
+#endif
     return g_aps_counter;
 }
 
@@ -575,6 +580,9 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
 //  any_data - data to be passed to the function
 void ap_procs_run(FUNC_CONTINUE_AP_BOOT continue_ap_boot_func, void *any_data)
 {
+#ifdef JLMDEBUG
+    bprint("ap_procs_run function: %p\n", continue_ap_boot_func);
+#endif
     g_user_func = continue_ap_boot_func;
     g_any_data_for_user_func = any_data;
 
@@ -620,6 +628,9 @@ void ap_initialize_environment(void)
 
 void mp_set_bootstrap_state(MP_BOOTSTRAP_STATE new_state)
 {
+#ifdef JLMDEBUG
+    bprint("mp_set_bootstrap_state\n");
+#endif
     __asm__ volatile (
         "\tpush  %%eax\n"
         "\tmovl  %[new_state], %%eax\n"

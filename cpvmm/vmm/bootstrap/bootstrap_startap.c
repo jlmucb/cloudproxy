@@ -40,23 +40,26 @@ extern uint32_t evmm_stack_pointers_array[];  // stack pointers
 void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
                    VMM_STARTUP_STRUCT *p_startup, uint32_t entry_point)
 {
-    uint32_t application_procesors;
+    uint32_t application_processors;
     
+#ifdef JLMDEBUG
+    bprint("startap_main %p *p\n", stack_pointer, start_address);
+#endif
     if (NULL != p_init32) {
         //wakeup APs
-        application_procesors = ap_procs_startup(p_init32, p_startup);
+        application_processors = ap_procs_startup(p_init32, p_startup);
     }
     else {
-        application_procesors = 0;
+        application_processors = 0;
     }
 #ifdef UNIPROC
-    application_procesors = 0;
+    application_processors = 0;
 #endif
     gp_init64 = p_init64;
 
     if (BITMAP_GET(p_startup->flags, VMM_STARTUP_POST_OS_LAUNCH_MODE) == 0) {
         // update the number of processors in VMM_STARTUP_STRUCT for pre os launch
-        p_startup->number_of_processors_at_boot_time = application_procesors + 1;
+        p_startup->number_of_processors_at_boot_time = application_processors + 1;
     }
 
     application_params.ep = entry_point;
@@ -65,7 +68,7 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
     application_params.any_data3 = NULL;
 
     // first launch application on AP cores
-    if (application_procesors > 0) {
+    if (application_processors > 0) {
         ap_procs_run((FUNC_CONTINUE_AP_BOOT)start_application, &application_params);
     }
     // launch application on BSP

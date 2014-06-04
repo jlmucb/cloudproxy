@@ -2269,7 +2269,10 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     if (evmm_num_of_aps > 0) {
 #ifdef JLMDEBUG
         bprint("about to call startap_main, %d aps\n", evmm_num_of_aps);
-        LOOP_FOREVER
+        bprint("&init32: %p\n", &init32);
+        bprint("&init64: %p\n", &init64);
+        bprint("p_startup_struct: %p\n", p_startup_struct);
+        bprint("vmm_main_entry_point: %p\n", vmm_main_entry_point);
 #endif
         startap_main(&init32, &init64, p_startup_struct, vmm_main_entry_point);
     }

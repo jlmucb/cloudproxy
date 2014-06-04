@@ -14,10 +14,13 @@
 
 
 #include "bootstrap_types.h"
+#include "bootstrap_print.h"
 #include "vmm_defs.h"
 #include "x32_init64.h"
 #include "bootstrap_ap_procs_init.h"
 #include "vmm_startup.h"
+
+#define JLMDEBUG
 
 
 typedef void (*LVMM_IMAGE_ENTRY_POINT) (uint32_t local_apic_id, 
@@ -40,12 +43,11 @@ extern uint32_t evmm_stack_pointers_array[];  // stack pointers
 void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
                    VMM_STARTUP_STRUCT *p_startup, uint32_t entry_point)
 {
+#ifdef JLMDEBUG
+    bprint("startap_main %p %p\n", p_startup, entry_point);
+#endif
     uint32_t application_processors;
     
-#ifdef JLMDEBUG
-    bprint("startap_main %p *p\n", stack_pointer, start_address);
-    LOOP_FOREVER
-#endif
     if (NULL != p_init32) {
         //wakeup APs
         application_processors = ap_procs_startup(p_init32, p_startup);
@@ -53,6 +55,11 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
     else {
         application_processors = 0;
     }
+#ifdef JLMDEBUG
+    bprint("back from ap_procs_startup\n");
+    LOOP_FOREVER
+#endif
+
 #ifdef UNIPROC
     application_processors = 0;
 #endif
@@ -68,6 +75,10 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
     application_params.any_data2 = NULL;
     application_params.any_data3 = NULL;
 
+#ifdef JLMDEBUG
+    bprint("startap_main %d application processors\n", application_processors);
+    LOOP_FOREVER
+#endif
     // first launch application on AP cores
     if (application_processors > 0) {
         ap_procs_run((FUNC_CONTINUE_AP_BOOT)start_application, &application_params);
@@ -75,6 +86,10 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
     // launch application on BSP
     // JLM: this is already done in bootstrap_entry
     // start_application(0, &application_params);
+#ifdef JLMDEBUG
+    bprint("returning from startap_main\n");
+    LOOP_FOREVER
+#endif
 }
 
 extern void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data, 

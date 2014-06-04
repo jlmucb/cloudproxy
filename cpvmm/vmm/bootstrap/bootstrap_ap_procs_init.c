@@ -19,10 +19,14 @@
 #include "vmm_defs.h"
 #include "vmm_startup.h"
 #include "bootstrap_ap_procs_init.h"
+#include "bootstrap_print.h"
 #include "common_libc.h"
 #include "ia32_defs.h"
 #include "x32_init64.h"
 #include "em64t_defs.h"
+
+
+#define JLMDEBUG
 
 
 // AP startup algorithm
@@ -540,14 +544,16 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
 {
 #ifdef JLMDEBUG
     bprint("ap_procs_startup init32 data: %p, startup: %p\n", p_init32_data, p_startup);
-    LOOP_FOREVER
 #endif
     if(NULL==p_init32_data || 0 == p_init32_data->i32_low_memory_page) {
         return (uint32_t)(-1);
     }
 
     // Stage 1 
-    ap_initialize_environment( );
+    ap_initialize_environment();
+#ifdef JLMDEBUG
+    bprint("back from ap_initialize_environment\n");
+#endif
 
     // save IDT and GDT
     __asm__ volatile (
@@ -557,13 +563,24 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
     ::);
 
     // create AP startup code in low memory
-    setup_low_memory_ap_code( p_init32_data->i32_low_memory_page );
+    setup_low_memory_ap_code(p_init32_data->i32_low_memory_page);
+#ifdef JLMDEBUG
+    bprint("back from setup_low_memory_ap_code\n");
+#endif
 
     // This call is valid only in the pre_os launch case.
     send_targeted_init_sipi(p_init32_data, p_startup);
+#ifdef JLMDEBUG
+    bprint("back from send_targeted_init_sipi\n");
+    LOOP_FOREVER
+#endif
 
     // wait for predefined timeout
-    startap_stall_using_tsc(  INITIAL_WAIT_FOR_APS_TIMEOUT_IN_MILIS );
+    startap_stall_using_tsc(INITIAL_WAIT_FOR_APS_TIMEOUT_IN_MILIS);
+#ifdef JLMDEBUG
+    bprint("back from startap_stall_using_tsc\n");
+    LOOP_FOREVER
+#endif
 
     // Stage 2 
     g_aps_counter = bsp_enumerate_aps();

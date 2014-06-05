@@ -97,7 +97,8 @@ extern void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data,
 			  void * arg3, void * arg4);
 
 
-static void start_application(uint32_t cpu_id, const APPLICATION_PARAMS_STRUCT *params)
+static void start_application(uint32_t cpu_id, 
+                  const APPLICATION_PARAMS_STRUCT *params)
 {
 #ifdef JLMDEBUG
     bprint("startap_application %d\n", cpu_id);
@@ -111,7 +112,7 @@ static void start_application(uint32_t cpu_id, const APPLICATION_PARAMS_STRUCT *
             (cpu_id, params->any_data1, params->any_data2, params->any_data3);
     }
     else {
-        init64_on_aps(stack_pointer, gp_init64, (uint32_t)params->ep, (void *) cpu_id,
+        init64_on_aps(stack_pointer, gp_init64, (uint32_t)params->ep, (void*) cpu_id,
             params->any_data1, params->any_data2, params->any_data3);
     }
 }

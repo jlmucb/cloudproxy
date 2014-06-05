@@ -48,7 +48,7 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
 #endif
     uint32_t application_processors;
     
-    if (NULL != p_init32) {
+    if(NULL!=p_init32) {
         //wakeup APs
         application_processors = ap_procs_startup(p_init32, p_startup);
     }
@@ -57,7 +57,6 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
     }
 #ifdef JLMDEBUG
     bprint("back from ap_procs_startup\n");
-    LOOP_FOREVER
 #endif
 
 #ifdef UNIPROC
@@ -77,7 +76,6 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
 
 #ifdef JLMDEBUG
     bprint("startap_main %d application processors\n", application_processors);
-    LOOP_FOREVER
 #endif
     // first launch application on AP cores
     if (application_processors > 0) {
@@ -104,7 +102,7 @@ static void start_application(uint32_t cpu_id,
     bprint("startap_application %d\n", cpu_id);
     LOOP_FOREVER
 #endif
-    // FIX(JLM): stack pointers seem to be set elsewhere
+    // JLM: stack pointers were set elsewhere
     uint32_t  stack_pointer= evmm_stack_pointers_array[cpu_id];
 
     if (NULL == gp_init64) {

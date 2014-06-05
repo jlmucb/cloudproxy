@@ -175,6 +175,9 @@ static void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     UINT16      ss_value;
     IA32_GDTR*  new_gdtr_32;
 
+#ifdef JLMDEBUG
+    bprint("setup_low_memory\n");
+#endif
     // Copy the Startup code to the beginning of the page
     vmm_memcpy(code_to_patch, (const void*)APStartUpCode, sizeof(APStartUpCode));
 
@@ -227,8 +230,11 @@ static void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 
 
 // Initial AP setup in protected mode - should never return
-static void ap_continue_wakeup_code_C( uint32_t local_apic_id )
+void ap_continue_wakeup_code_C(uint32_t local_apic_id)
 {
+#ifdef JLMDEBUG1
+    bprint("ap_continue_wakeup_code_C\n");
+#endif
     // mark that the command was accepted
     __asm__ volatile (
         "\tlock; incl %[g_ready_counter]\n"
@@ -236,13 +242,13 @@ static void ap_continue_wakeup_code_C( uint32_t local_apic_id )
     ::);
 
     // user_func now contains address of the function to be called
-    g_user_func( local_apic_id, g_any_data_for_user_func );
+    g_user_func(local_apic_id, g_any_data_for_user_func);
     return;
 }
 
 
 // Asm-level initial AP setup in protected mode
-static void ap_continue_wakeup_code(void)
+void ap_continue_wakeup_code(void)
 {
     __asm__ volatile (
         "\tcli\n"
@@ -435,9 +441,7 @@ static void send_ipi_to_specific_cpu (uint32_t vector_number,
 #endif
     *(uint32_t*)(uint32_t)(apic_base+LOCAL_APIC_ICR_OFFSET_HIGH)= 
                 *(uint32_t*)&icr_high;
-#if 0
     *(uint32_t*)(uint32_t)(apic_base+LOCAL_APIC_ICR_OFFSET)= *(uint32_t*)&icr_low;
-#endif
     do {
         startap_stall_using_tsc(10);
         *(uint32_t*)&icr_low_status= *(uint32_t*)(uint32_t)
@@ -445,7 +449,6 @@ static void send_ipi_to_specific_cpu (uint32_t vector_number,
     } while (icr_low_status.bits.delivery_status!=0);
 #ifdef JLMDEBUG
     bprint("send_ipi_to_specific_cpu returning\n");
-    LOOP_FOREVER
 #endif
     return;
 }
@@ -527,14 +530,12 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
     send_init_ipi();
 #ifdef JLMDEBUG
     bprint("back from send_init_ipi\n");
-    LOOP_FOREVER
 #endif
 
     // wait for predefined timeout
     startap_stall_using_tsc(INITIAL_WAIT_FOR_APS_TIMEOUT_IN_MILIS);
 #ifdef JLMDEBUG
     bprint("back from startap_stall_using_tsc\n");
-    LOOP_FOREVER
 #endif
 
     // Stage 2 
@@ -555,6 +556,7 @@ void ap_procs_run(FUNC_CONTINUE_AP_BOOT continue_ap_boot_func, void *any_data)
 {
 #ifdef JLMDEBUG
     bprint("ap_procs_run function: %p\n", continue_ap_boot_func);
+    LOOP_FOREVER
 #endif
     g_user_func = continue_ap_boot_func;
     g_any_data_for_user_func = any_data;
@@ -578,7 +580,7 @@ void ap_procs_run(FUNC_CONTINUE_AP_BOOT continue_ap_boot_func, void *any_data)
 // Notes     : Should be called on BSP
 uint8_t bsp_enumerate_aps(void)
 {
-    int     i;
+    int       i;
     uint8_t   ap_num = 0;
 
     for (i = 1; i<NELEMENTS(ap_presence_array); ++i) {
@@ -602,7 +604,7 @@ void ap_initialize_environment(void)
 void mp_set_bootstrap_state(MP_BOOTSTRAP_STATE new_state)
 {
 #ifdef JLMDEBUG
-    bprint("mp_set_bootstrap_state\n");
+    bprint("mp_set_bootstrap_state %d\n", new_state);
     LOOP_FOREVER
 #endif
     __asm__ volatile (
@@ -716,7 +718,6 @@ void send_ipi_to_all_excluding_self(uint32_t vector_number,
     } while (icr_low_status.bits.delivery_status!=0);
 #ifdef JLMDEBUG
     bprint("returning from send_ipi_to_all_excluding_self\n");
-    LOOP_FOREVER
 #endif
     return;
 }

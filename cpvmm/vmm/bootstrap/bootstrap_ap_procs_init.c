@@ -4,7 +4,6 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -66,7 +65,6 @@
 
 extern uint32_t startap_rdtsc();
 extern void ia32_read_msr(uint32_t msr_id, uint64_t *p_value);
-
 static uint32_t startap_tsc_ticks_per_msec = 0;
 
 
@@ -194,16 +192,14 @@ static void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
                                     (UINT16)(temp_low_memory_4K >> 4);
     *((UINT16*)(code_to_patch + GDTR_OFFSET_IN_CODE)) =
                                     (UINT16)(GDTR_OFFSET_IN_PAGE);
-    *((uint32_t*)(code_to_patch + CONT16_IN_CODE_OFFSET)) =
-                                            (uint32_t)code_to_patch + CONT16_VALUE_OFFSET;
-
+    *((uint32_t*)(code_to_patch+CONT16_IN_CODE_OFFSET)) =
+                                   (uint32_t)code_to_patch + CONT16_VALUE_OFFSET;
     *((UINT16*)(code_to_patch + CS_IN_CODE_OFFSET)) = cs_value;
     *((UINT16*)(code_to_patch + DS_IN_CODE_OFFSET)) = ds_value;
     *((UINT16*)(code_to_patch + ES_IN_CODE_OFFSET)) = es_value;
     *((UINT16*)(code_to_patch + GS_IN_CODE_OFFSET)) = gs_value;
     *((UINT16*)(code_to_patch + FS_IN_CODE_OFFSET)) = fs_value;
     *((UINT16*)(code_to_patch + SS_IN_CODE_OFFSET)) = ss_value;
-
     *((uint32_t*)(code_to_patch + AP_CONTINUE_WAKEUP_CODE_IN_CODE_OFFSET)) =
                                             (uint32_t)(ap_continue_wakeup_code);
 
@@ -246,7 +242,6 @@ static void ap_continue_wakeup_code(void)
 {
     __asm__ volatile (
         "\tcli\n"
-
         // get the Local APIC ID
         // IA32_MSR_APIC_BASE= 0x01B
         "\tmovl  $0x01B, %%ecx\n"
@@ -315,17 +310,19 @@ static void ap_continue_wakeup_code(void)
 }
 
 
-static uint8_t read_port_8( uint32_t port )
+static uint8_t read_port_8(uint32_t port)
 {
+    uint8_t out;
     __asm__ volatile (
         "\tlock; incl %[g_ready_counter]\n"
         "\tmovl %[port],%%edx\n"
         "\txorl %%eax, %%eax\n"
-        "\tin %%dx, %%al\n"
-    : [g_ready_counter] "=m" (g_ready_counter)
+        "\tin   %%dx, %%al\n"
+        "\tmovb %%al, %[out]\n"
+    : [g_ready_counter] "=m" (g_ready_counter), [out] "=m" (out)
     : [port] "m" (port)
-    :);
-    return 0;
+    :"%edx", "%eax");
+    return out;
 }
 
 
@@ -335,7 +332,7 @@ static uint8_t read_port_8( uint32_t port )
 void startap_stall(uint32_t stall_usec)
 {
     uint32_t   c = 0;
-    for(c = 0; c < stall_usec; c ++)
+    for(c= 0; c<stall_usec; c++)
         read_port_8(IA32_DEBUG_IO_PORT);
     return;
 }
@@ -347,12 +344,12 @@ void startap_calibrate_tsc_ticks_per_msec(void)
 {
     uint32_t start_tsc = 1, end_tsc = 0;
 
-    while(start_tsc > end_tsc) {
-        start_tsc = (uint32_t) startap_rdtsc();
+    while(start_tsc>end_tsc) {
+        start_tsc= (uint32_t) startap_rdtsc();
         startap_stall(1000);   // 1 ms
-        end_tsc = (uint32_t) startap_rdtsc();
+        end_tsc= (uint32_t) startap_rdtsc();
     }
-    startap_tsc_ticks_per_msec = (end_tsc - start_tsc);
+    startap_tsc_ticks_per_msec= (end_tsc-start_tsc);
     return;
 }
 
@@ -372,7 +369,7 @@ static void startap_stall_using_tsc(uint32_t stall_usec)
     // While loop is to overcome the overflow of 32-bit rdtsc value
         while(start_tsc > end_tsc) {
             end_tsc = (uint32_t) startap_rdtsc() + 
-                        (stall_usec * startap_tsc_ticks_per_msec / 1000);
+                        (stall_usec*startap_tsc_ticks_per_msec/1000);
                 start_tsc = (uint32_t) startap_rdtsc();
         }
     while (start_tsc < end_tsc) {
@@ -385,50 +382,6 @@ static void startap_stall_using_tsc(uint32_t stall_usec)
 }
 
 
-// send IPI
-#if 0
-static void send_ipi_to_all_excluding_self(uint32_t vector_number, uint32_t delivery_mode)
-{
-  IA32_ICR_LOW           icr_low = {{0}};
-  IA32_ICR_LOW           icr_low_status = {{0}};
-  IA32_ICR_HIGH          icr_high = {{0}};
-  UINT64                 apic_base = 0;
-
-    icr_low.bits.vector = vector_number;
-    icr_low.bits.delivery_mode = delivery_mode;
-
-    // level is set to 1 (except for INIT_DEASSERT, 
-    //         which is not supported in P3 and P4)
-    // trigger mode is set to 0 (except for INIT_DEASSERT)
-    icr_low.bits.level = 1;
-    icr_low.bits.trigger_mode = 0;
-
-    // broadcast mode - ALL_EXCLUDING_SELF
-    icr_low.bits.destination_shorthand = 
-            LOCAL_APIC_BROADCAST_MODE_ALL_EXCLUDING_SELF;
-
-    // send
-    ia32_read_msr(IA32_MSR_APIC_BASE, &apic_base);
-    apic_base &= LOCAL_APIC_BASE_MSR_MASK;
-
-    do {
-        icr_low_status.uint32 = *(uint32_t *)(uint32_t)
-                    (apic_base + LOCAL_APIC_ICR_OFFSET);
-    } while (icr_low_status.bits.delivery_status != 0);
-
-    *(uint32_t *)(uint32_t)(apic_base + LOCAL_APIC_ICR_OFFSET_HIGH) = icr_high.uint32;
-    *(uint32_t *)(uint32_t)(apic_base + LOCAL_APIC_ICR_OFFSET) = icr_low.uint32;
-
-    do {
-        startap_stall_using_tsc(10);
-        icr_low_status.uint32 = *(uint32_t *)(uint32_t)
-                    (apic_base + LOCAL_APIC_ICR_OFFSET);
-    } while (icr_low_status.bits.delivery_status != 0);
-    return;
-}
-#endif
-
-
 static void send_ipi_to_specific_cpu (uint32_t vector_number, 
                 uint32_t delivery_mode, uint8_t dst)
 {
@@ -437,6 +390,10 @@ static void send_ipi_to_specific_cpu (uint32_t vector_number,
     IA32_ICR_HIGH          icr_high;
     UINT64                 apic_base = 0;
 
+#ifdef JLMDEBUG
+    bprint("send_ipi_to_specific_cpu (%d, %d, %d)\n",
+                 vector_number, delivery_mode, dst);
+#endif
     vmm_memset(&icr_low, 0, sizeof(IA32_ICR_LOW));
     vmm_memset(&icr_low_status, 0, sizeof(IA32_ICR_LOW));
     vmm_memset(&icr_high, 0, sizeof(IA32_ICR_HIGH));
@@ -450,56 +407,52 @@ static void send_ipi_to_specific_cpu (uint32_t vector_number,
 
     // send to specific cpu
     icr_low.bits.destination_shorthand = LOCAL_APIC_BROADCAST_MODE_SPECIFY_CPU;
-        icr_high.bits.destination = dst;
+    icr_high.bits.destination = dst;
 
     // send
     ia32_read_msr(IA32_MSR_APIC_BASE, &apic_base);
-    apic_base &= LOCAL_APIC_BASE_MSR_MASK;
+    apic_base&= LOCAL_APIC_BASE_MSR_MASK;
+#ifdef JLMDEBUG
+    bprint("about to call do loop base: %p %x\n", apic_base, LOCAL_APIC_ICR_OFFSET);
+#endif
 
     do {
-        icr_low_status.uint32 = *(uint32_t *)(uint32_t)(apic_base + LOCAL_APIC_ICR_OFFSET);
-    } while (icr_low_status.bits.delivery_status != 0);
+        *(uint32_t*)&icr_low_status= *(uint32_t*)(uint32_t)
+                           (apic_base+LOCAL_APIC_ICR_OFFSET);
+    } while (icr_low_status.bits.delivery_status!=0);
 
-    *(uint32_t *)(uint32_t)(apic_base + LOCAL_APIC_ICR_OFFSET_HIGH) = icr_high.uint32;
-    *(uint32_t *)(uint32_t)(apic_base + LOCAL_APIC_ICR_OFFSET) = icr_low.uint32;;
-
+#ifdef JLMDEBUG
+    bprint("back from first do, size of IA32_ICR_LOW %d\n", sizeof(IA32_ICR_LOW));
+    bprint("vector_number: 0x%08x\n", vector_number);
+    bprint("delivery mode: 0x%08x\n", delivery_mode);
+    bprint("destination_shorthand: 0x%08x\n", LOCAL_APIC_BROADCAST_MODE_SPECIFY_CPU);
+    bprint("apic_base+LOCAL_APIC_ICR_OFFSET_HIGH 0x%08x= 0x%08x\n", 
+           apic_base+LOCAL_APIC_ICR_OFFSET_HIGH, icr_high.uint32);
+    bprint("apic_base+LOCAL_APIC_ICR_OFFSET 0x%08x= 0x%08x\n", 
+           apic_base+LOCAL_APIC_ICR_OFFSET, icr_low.uint32);
+    bprint("pointer style low: 0x%08x\n", *(uint32_t*)&icr_low);
+    bprint("pointer style hi: 0x%08x\n", *(uint32_t*)&icr_high);
+    // LOOP_FOREVER
+#endif
+#if 0
+    *(uint32_t*)(uint32_t)(apic_base+LOCAL_APIC_ICR_OFFSET_HIGH)= 
+                *(uint32_t*)&icr_high;
+    *(uint32_t*)(uint32_t)(apic_base+LOCAL_APIC_ICR_OFFSET)= *(uint32_t*)&icr_low;
+#endif
+#ifdef JLMDEBUG
+    bprint("second do\n");
+#endif
     do {
         startap_stall_using_tsc(10);
-        icr_low_status.uint32 = *(uint32_t *)(uint32_t)
-                    (apic_base + LOCAL_APIC_ICR_OFFSET);
+        *(uint32_t*)&icr_low_status= *(uint32_t*)(uint32_t)
+                    (apic_base+LOCAL_APIC_ICR_OFFSET);
     } while (icr_low_status.bits.delivery_status != 0);
+#ifdef JLMDEBUG
+    bprint("send_ipi_to_specific_cpu returning\n");
+    LOOP_FOREVER
+#endif
     return;
 }
-
-
-#if 0
-static void send_init_ipi( void )
-{
-    send_ipi_to_all_excluding_self( 0, LOCAL_APIC_DELIVERY_MODE_INIT );
-}
-
-static void send_sipi_ipi( void* code_start )
-{
-    // SIPI message contains address of the code, shifted right to 12 bits
-    send_ipi_to_all_excluding_self(
-            ((uint32_t)code_start)>>12, LOCAL_APIC_DELIVERY_MODE_SIPI);
-}
-
-
-// Send INIT IPI - SIPI to all APs in broadcast mode
-static void send_broadcast_init_sipi(INIT32_STRUCT *p_init32_data)
-{
-    send_init_ipi();
-    startap_stall_using_tsc( 10000 ); // timeout - 10 miliseconds
-
-    // SIPI message contains address of the code, shifted right to 12 bits
-    // send it twice - according to manual
-    send_sipi_ipi( (void *) p_init32_data->i32_low_memory_page );
-    startap_stall_using_tsc(  200000 ); // timeout - 200 miliseconds
-    send_sipi_ipi( (void *) p_init32_data->i32_low_memory_page );
-    startap_stall_using_tsc(  200000 ); // timeout - 200 miliseconds
-}
-#endif
 
 // Send INIT IPI - SIPI to all active APs
 static void send_targeted_init_sipi(struct _INIT32_STRUCT *p_init32_data,
@@ -508,25 +461,26 @@ static void send_targeted_init_sipi(struct _INIT32_STRUCT *p_init32_data,
     int i;
         
     for (i = 0; i < p_startup->number_of_processors_at_boot_time - 1; i++) {
+#ifdef JLMDEBUG
+        bprint("send_targeted_init_sipi\n");
+#endif
         send_ipi_to_specific_cpu(0, LOCAL_APIC_DELIVERY_MODE_INIT, 
                                  p_startup->cpu_local_apic_ids[i+1]);
     }
-    startap_stall_using_tsc( 10000 ); // timeout - 10 miliseconds
+    startap_stall_using_tsc(10000); // timeout - 10 miliseconds
 
     // SIPI message contains address of the code, shifted right to 12 bits
     // send it twice - according to manual
-    for (i = 0; i < p_startup->number_of_processors_at_boot_time - 1; i++) {
-        send_ipi_to_specific_cpu(
-                ((uint32_t)p_init32_data->i32_low_memory_page)>>12, 
-                LOCAL_APIC_DELIVERY_MODE_SIPI, 
-                p_startup->cpu_local_apic_ids[i+1]);
+    for (i= 0; i<p_startup->number_of_processors_at_boot_time-1; i++) {
+        send_ipi_to_specific_cpu(((uint32_t)p_init32_data->i32_low_memory_page)>>12, 
+                LOCAL_APIC_DELIVERY_MODE_SIPI, p_startup->cpu_local_apic_ids[i+1]);
     }
-    startap_stall_using_tsc(  200000 ); // timeout - 200 miliseconds
+    startap_stall_using_tsc(200000); // timeout - 200 miliseconds
     for (i = 0; i < p_startup->number_of_processors_at_boot_time - 1; i++) {
-            send_ipi_to_specific_cpu( ((uint32_t)p_init32_data->i32_low_memory_page) >> 12, 
-                    LOCAL_APIC_DELIVERY_MODE_SIPI, p_startup->cpu_local_apic_ids[i+1]);
+        send_ipi_to_specific_cpu(((uint32_t)p_init32_data->i32_low_memory_page)>>12, 
+            LOCAL_APIC_DELIVERY_MODE_SIPI, p_startup->cpu_local_apic_ids[i+1]);
     }
-    startap_stall_using_tsc(  200000 ); // timeout - 200 miliseconds
+    startap_stall_using_tsc(200000); // timeout - 200 miliseconds
 }
 
 
@@ -675,3 +629,77 @@ uint32_t startap_rdtsc (uint32_t* upper)
     return ret;
 }
 
+
+
+#if 0
+static void send_init_ipi( void )
+{
+    send_ipi_to_all_excluding_self( 0, LOCAL_APIC_DELIVERY_MODE_INIT );
+}
+
+static void send_sipi_ipi( void* code_start )
+{
+    // SIPI message contains address of the code, shifted right to 12 bits
+    send_ipi_to_all_excluding_self(
+            ((uint32_t)code_start)>>12, LOCAL_APIC_DELIVERY_MODE_SIPI);
+}
+
+
+// Send INIT IPI - SIPI to all APs in broadcast mode
+static void send_broadcast_init_sipi(INIT32_STRUCT *p_init32_data)
+{
+    send_init_ipi();
+    startap_stall_using_tsc( 10000 ); // timeout - 10 miliseconds
+
+    // SIPI message contains address of the code, shifted right to 12 bits
+    // send it twice - according to manual
+    send_sipi_ipi( (void *) p_init32_data->i32_low_memory_page );
+    startap_stall_using_tsc(  200000 ); // timeout - 200 miliseconds
+    send_sipi_ipi( (void *) p_init32_data->i32_low_memory_page );
+    startap_stall_using_tsc(  200000 ); // timeout - 200 miliseconds
+}
+#endif
+
+
+// send IPI
+#if 0
+static void send_ipi_to_all_excluding_self(uint32_t vector_number, uint32_t delivery_mode)
+{
+  IA32_ICR_LOW           icr_low = {{0}};
+  IA32_ICR_LOW           icr_low_status = {{0}};
+  IA32_ICR_HIGH          icr_high = {{0}};
+  UINT64                 apic_base = 0;
+
+    icr_low.bits.vector = vector_number;
+    icr_low.bits.delivery_mode = delivery_mode;
+
+    // level is set to 1 (except for INIT_DEASSERT, 
+    //         which is not supported in P3 and P4)
+    // trigger mode is set to 0 (except for INIT_DEASSERT)
+    icr_low.bits.level = 1;
+    icr_low.bits.trigger_mode = 0;
+
+    // broadcast mode - ALL_EXCLUDING_SELF
+    icr_low.bits.destination_shorthand = 
+            LOCAL_APIC_BROADCAST_MODE_ALL_EXCLUDING_SELF;
+
+    // send
+    ia32_read_msr(IA32_MSR_APIC_BASE, &apic_base);
+    apic_base &= LOCAL_APIC_BASE_MSR_MASK;
+
+    do {
+        icr_low_status.uint32 = *(uint32_t *)(uint32_t)
+                    (apic_base + LOCAL_APIC_ICR_OFFSET);
+    } while (icr_low_status.bits.delivery_status != 0);
+
+    *(uint32_t *)(uint32_t)(apic_base + LOCAL_APIC_ICR_OFFSET_HIGH) = icr_high.uint32;
+    *(uint32_t *)(uint32_t)(apic_base + LOCAL_APIC_ICR_OFFSET) = icr_low.uint32;
+
+    do {
+        startap_stall_using_tsc(10);
+        icr_low_status.uint32 = *(uint32_t *)(uint32_t)
+                    (apic_base + LOCAL_APIC_ICR_OFFSET);
+    } while (icr_low_status.bits.delivery_status != 0);
+    return;
+}
+#endif

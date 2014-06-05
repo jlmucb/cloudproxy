@@ -206,8 +206,8 @@ typedef union {
         UINT32      reserved_2              : 2;
         UINT32      destination_shorthand   : 2;
         UINT32      reserved_3              : 12;
-    }                             bits;
-    UINT32                        uint32;
+    } bits;
+    UINT32          uint32;
 } IA32_ICR_LOW;
 
 typedef struct {

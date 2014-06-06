@@ -213,8 +213,7 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     // get GDTR from BSP
     __asm__ volatile (
         "\tsgdt %[gdtr_32]\n"
-    :
-    : [gdtr_32] "m" (gdtr_32)
+    : : [gdtr_32] "m" (gdtr_32)
     :);
 
     // copy GDT from bsp to its place. gdtr_32.limit is an address of the last byte
@@ -233,7 +232,8 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 void ap_continue_wakeup_code_C(uint32_t local_apic_id)
 {
 #ifdef JLMDEBUG
-    bprint("ap_continue_wakeup_code_C\n");
+    bprint("ap_continue_wakeup_code_C %d\n", local_apic_id);
+    LOOP_FOREVER
 #endif
     // mark that the command was accepted
     __asm__ volatile (
@@ -330,55 +330,52 @@ __asm__(
         "\tmov  $0x01B, %ecx\n"
         "\trdmsr\n"
         // LOCAL_APIC_BASE_MSR_MASK= $0xfffff000
-        "\tand $0xfffff000, %eax\n"
+        "\tand   $0xfffff000, %eax\n"
         // LOCAL_APIC_IDENTIFICATION_OFFSET= 0x20
-        "\tmov 0x20(%eax), %ecx\n"
+        "\tmov   0x20(%eax), %ecx\n"
         // LOCAL_APIC_ID_LOW_RESERVED_BITS_COUNT= 24
-        "\tshr $24, %ecx\n"
+        "\tshr   $24, %ecx\n"
 
         // edx <- address of presence array
-        "\tlea ap_presence_array, %edx\n"
+        "\tlea   ap_presence_array, %edx\n"
         // edx <- address of AP CPU presence location
-        "\tadd %ecx, %edx\n"
+        "\tadd   %ecx, %edx\n"
         // mark current CPU as present
-        "\tmovl $1, (%edx)\n"
+        "\tmovl  $1, (%edx)\n"
         // wait until BSP will init stacks, GDT, IDT, etc
 "1:\n"
         // MP_BOOTSTRAP_STATE_APS_ENUMERATED= 1
-        "\tcmp $1, mp_bootstrap_state\n"
-        "\tje 2f\n"
+        "\tcmpl  $1, mp_bootstrap_state\n"
+        "\tje    2f\n"
         "\tpause\n"
-        "\tjmp 1b\n"
+        "\tjmp   1b\n"
 
         // stage 2 - setup the stack, GDT, IDT and jump to "C"
 "2:\n"
         // find my stack. My stack offset is in the array 
         // edx contains CPU ID
-        "\txor %ecx,  %ecx\n"
+        "\txor   %ecx,  %ecx\n"
         // now ecx contains AP ordered ID [1..Max]
-        "\tmov  (%edx), %cl\n"
-        "\tmov  %ecx, %eax\n"
+        "\tmovb  (%edx), %cl\n"
+        "\tmov   %ecx, %eax\n"
         //  AP starts from 1, so subtract one to get proper index in g_stacks_arr
-        "\tdec  %eax\n"
+        "\tdec   %eax\n"
 
         // point edx to right stack
-        "\tmov  evmm_stack_pointers_array, %edx\n"
-        "\tlea  (%eax, %edx, 4), %eax\n"
-        "\tmov  (%edx), %esp\n"
+        "\tmov   evmm_stack_pointers_array, %edx\n"
+        "\tlea   (%eax, %edx, 4), %eax\n"
+        "\tmov   (%edx), %esp\n"
 
         // setup GDT
-        "\tmov  gp_GDT, %eax\n"
-        "\tlgdt (%eax) \n"
+        "\tmov   gp_GDT, %eax\n"
+        "\tlgdt  (%eax) \n"
 
         // setup IDT
-        "\tmov  gp_IDT, %eax\n"
+        "\tmov   gp_IDT, %eax\n"
         "\tlidt (%eax)\n"
 
         // enter "C" function
-        // JLM(FIX): this seems wrong
-        //  %ecx is an arg to C function
         //  push  AP ordered ID
-        // "\tpushl    %%ecx\n"
         "\tmov    %ecx, %edi\n"
         // should never return
         "\tcall  ap_continue_wakeup_code_C\n"
@@ -587,7 +584,6 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
 #ifdef JLMDEBUG
     bprint("back from setup_low_memory_ap_code\n");
 #endif
-
     // send_targeted_init_sipi(p_init32_data, p_startup);
     // send_init_ipi();
     send_broadcast_init_sipi(p_init32_data);
@@ -626,6 +622,7 @@ void ap_procs_run(FUNC_CONTINUE_AP_BOOT continue_ap_boot_func, void *any_data)
 
     // signal to APs to pass to the next stage
     mp_set_bootstrap_state(MP_BOOTSTRAP_STATE_APS_ENUMERATED);
+
     // wait until all APs will accept this
     while (g_ready_counter != g_aps_counter) {
         __asm__ volatile (
@@ -703,6 +700,9 @@ void send_init_ipi(void)
 
 void send_sipi_ipi(void* code_start)
 {
+#ifdef JLMDEBUG
+    bprint("send_sipi_ipi\n");
+#endif
     // SIPI message contains address of the code, shifted right to 12 bits
     send_ipi_to_all_excluding_self( ((uint32_t)code_start)>>12, 
         LOCAL_APIC_DELIVERY_MODE_SIPI);
@@ -716,19 +716,30 @@ void send_broadcast_init_sipi(INIT32_STRUCT *p_init32_data)
     bprint("send_broadcast_init_sipi\n");
 #endif
     send_init_ipi();
-
 #ifdef JLMDEBUG
-    bprint("about to call send_sipi_ipi\n");
-    LOOP_FOREVER
+    bprint("back from send_init_ipi\n");
 #endif
     startap_stall_using_tsc(10000); // timeout - 10 miliseconds
+#ifdef JLMDEBUG
+    bprint("past stall\n");
+    // LOOP_FOREVER
+#endif
 
     // SIPI message contains address of the code, shifted right to 12 bits
     // send it twice - according to manual
     send_sipi_ipi((void *)p_init32_data->i32_low_memory_page);
     startap_stall_using_tsc(200000); // timeout - 200 miliseconds
+#ifdef JLMDEBUG
+    bprint("back from first send_sipi_ipi\n");
+    return;
+    LOOP_FOREVER
+#endif
     send_sipi_ipi((void*)p_init32_data->i32_low_memory_page);
     startap_stall_using_tsc(200000); // timeout - 200 miliseconds
+#ifdef JLMDEBUG
+    bprint("back from second send_sipi_ipi\n");
+    LOOP_FOREVER
+#endif
 }
 
 

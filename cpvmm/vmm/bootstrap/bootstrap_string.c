@@ -146,7 +146,7 @@ void HexDump(uint8_t* start, uint8_t* end)
       bprint("%p: ", p);
         i= 0;
         while(p<=end) {
-            bprint("%u ", *(uint32_t*)p);
+            bprint("%08x ", *(uint32_t*)p);
             p+= 4;
             i++;
             if(i>3)

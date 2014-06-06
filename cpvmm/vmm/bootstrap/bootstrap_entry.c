@@ -1959,7 +1959,7 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     ia32_read_gdtr(&tdesc);
     tboot_gdtr_32.base= tdesc.base;
     tboot_gdtr_32.limit= tdesc.limit;
-#if 1
+
     // make a fake TSS to keep vmcs happy
     *((UINT64*)tboot_gdtr_32.base+24)= 0x00808b0000000000ULL;
     *((UINT64*)tboot_gdtr_32.base+32)= 0ULL;
@@ -1967,7 +1967,6 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     tboot_tr_attr= 0x0000808b;
     tboot_tr_limit= 0xffffffff;
     ia32_write_ts(24);
-#endif
 
     tboot_cs_selector= ia32_read_cs();
     tboot_ds_selector= ia32_read_ds();

@@ -100,7 +100,7 @@ extern uint32_t evmm_stack_pointers_array[];
 //   GdtTable
 
 // Uncomment the following line to deadloop in AP startup
-//#define BREAK_IN_AP_STARTUP
+#define BREAK_IN_AP_STARTUP
 const uint8_t APStartUpCode[] =
 {
 #ifdef BREAK_IN_AP_STARTUP
@@ -165,7 +165,7 @@ void     mp_set_bootstrap_state(MP_BOOTSTRAP_STATE new_state);
 // Setup AP low memory startup code
 void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 {
-    uint8_t*      code_to_patch = (uint8_t*)temp_low_memory_4K;
+    uint8_t*    code_to_patch = (uint8_t*)temp_low_memory_4K;
     IA32_GDTR   gdtr_32;
     UINT16      cs_value;
     UINT16      ds_value;
@@ -173,7 +173,6 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     UINT16      gs_value;
     UINT16      fs_value;
     UINT16      ss_value;
-    IA32_GDTR*  new_gdtr_32;
 
 #ifdef JLMDEBUG
     bprint("setup_low_memory\n");
@@ -211,19 +210,30 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
                                             (uint32_t)(ap_continue_wakeup_code);
 
     // get GDTR from BSP
-    __asm__ volatile (
-        "\tsgdt %[gdtr_32]\n"
-    : : [gdtr_32] "m" (gdtr_32)
-    :);
+    extern void  ia32_read_gdtr(IA32_GDTR *p_descriptor);
+    ia32_read_gdtr(&gdtr_32);
 
-    // copy GDT from bsp to its place. gdtr_32.limit is an address of the last byte
-    // assume that there is sufficient place for this
-    vmm_memcpy(code_to_patch + GDT_OFFSET_IN_PAGE,
-               (uint8_t*)gdtr_32.base, gdtr_32.limit + 1 );
-    
+    // copy GDT 
+    vmm_memcpy(code_to_patch+GDT_OFFSET_IN_PAGE,
+               (uint8_t*)gdtr_32.base, gdtr_32.limit+1);
+
+#ifdef JLMDEBUG
+    extern void HexDump(uint8_t*, uint8_t*);
+    bprint("patched code, gdtr base: 0x%08x, limit: %d\n", 
+           gdtr_32.base, gdtr_32.limit);
+    HexDump((uint8_t*)gdtr_32.base, (uint8_t*)gdtr_32.base+gdtr_32.limit);
+    bprint("cs_value: 0x%04x\n", cs_value);
+    bprint("patched code\n");
+    HexDump(code_to_patch, code_to_patch+sizeof(APStartUpCode));
+    LOOP_FOREVER
+#endif
+// what is this for?
+#if 0    
+    IA32_GDTR*  new_gdtr_32;
     // Patch the GDT base address in memory
-    new_gdtr_32 = (IA32_GDTR *)(code_to_patch + GDTR_OFFSET_IN_PAGE);
-    new_gdtr_32->base = (uint32_t)code_to_patch + GDT_OFFSET_IN_PAGE;
+    new_gdtr_32 = (IA32_GDTR *)(code_to_patch+GDTR_OFFSET_IN_PAGE);
+    new_gdtr_32->base = (uint32_t)code_to_patch+GDT_OFFSET_IN_PAGE;
+#endif
     return;
 }
 
@@ -325,6 +335,9 @@ __asm__(
 ".type ap_continue_wakeup_code,@function\n"
 "ap_continue_wakeup_code:\n"
         "\tcli\n"
+// DEBUG
+//        "\tjmp .\n"
+// DEBUG
         // get the Local APIC ID
         // IA32_MSR_APIC_BASE= 0x01B
         "\tmov  $0x01B, %ecx\n"
@@ -722,7 +735,6 @@ void send_broadcast_init_sipi(INIT32_STRUCT *p_init32_data)
     startap_stall_using_tsc(10000); // timeout - 10 miliseconds
 #ifdef JLMDEBUG
     bprint("past stall\n");
-    // LOOP_FOREVER
 #endif
 
     // SIPI message contains address of the code, shifted right to 12 bits
@@ -735,7 +747,7 @@ void send_broadcast_init_sipi(INIT32_STRUCT *p_init32_data)
     LOOP_FOREVER
 #endif
     send_sipi_ipi((void*)p_init32_data->i32_low_memory_page);
-    startap_stall_using_tsc(200000); // timeout - 200 miliseconds
+    startap_stall_using_tsc(200000); // timeout - 200 milliseconds
 #ifdef JLMDEBUG
     bprint("back from second send_sipi_ipi\n");
     LOOP_FOREVER

@@ -155,15 +155,15 @@ const uint8_t APStartUpCode[] =
 #define GDTR_OFFSET_IN_PAGE  ((sizeof(APStartUpCode) + 7) & ~7)
 #define GDT_OFFSET_IN_PAGE   (GDTR_OFFSET_IN_PAGE + 8)
 
-static void     ap_continue_wakeup_code( void );
-static void     ap_continue_wakeup_code_C(uint32_t local_apic_id);
-static uint8_t  bsp_enumerate_aps(void);
-static void     ap_initialize_environment(void);
-static void     mp_set_bootstrap_state(MP_BOOTSTRAP_STATE new_state);
+void     ap_continue_wakeup_code(void);
+void     ap_continue_wakeup_code_C(uint32_t local_apic_id);
+uint8_t  bsp_enumerate_aps(void);
+void     ap_initialize_environment(void);
+void     mp_set_bootstrap_state(MP_BOOTSTRAP_STATE new_state);
 
 
 // Setup AP low memory startup code
-static void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
+void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 {
     uint8_t*      code_to_patch = (uint8_t*)temp_low_memory_4K;
     IA32_GDTR   gdtr_32;
@@ -232,7 +232,7 @@ static void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 // Initial AP setup in protected mode - should never return
 void ap_continue_wakeup_code_C(uint32_t local_apic_id)
 {
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     bprint("ap_continue_wakeup_code_C\n");
 #endif
     // mark that the command was accepted
@@ -246,7 +246,7 @@ void ap_continue_wakeup_code_C(uint32_t local_apic_id)
     return;
 }
 
-
+#if 0
 // Asm-level initial AP setup in protected mode
 void ap_continue_wakeup_code(void)
 {
@@ -318,6 +318,72 @@ void ap_continue_wakeup_code(void)
       [gp_GDT] "g" (gp_GDT), [gp_IDT] "g" (gp_IDT)
     :"%eax", "%ebx", "%ecx", "%edx", "memory");
 }
+#else
+__asm__(
+".text\n"
+".globl ap_continue_wakeup_code\n"
+".type ap_continue_wakeup_code,@function\n"
+"ap_continue_wakeup_code:\n"
+        "\tcli\n"
+        // get the Local APIC ID
+        // IA32_MSR_APIC_BASE= 0x01B
+        "\tmov  $0x01B, %ecx\n"
+        "\trdmsr\n"
+        // LOCAL_APIC_BASE_MSR_MASK= $0xfffff000
+        "\tand $0xfffff000, %eax\n"
+        // LOCAL_APIC_IDENTIFICATION_OFFSET= 0x20
+        "\tmov 0x20(%eax), %ecx\n"
+        // LOCAL_APIC_ID_LOW_RESERVED_BITS_COUNT= 24
+        "\tshr $24, %ecx\n"
+
+        // edx <- address of presence array
+        "\tlea ap_presence_array, %edx\n"
+        // edx <- address of AP CPU presence location
+        "\tadd %ecx, %edx\n"
+        // mark current CPU as present
+        "\tmovl $1, (%edx)\n"
+        // wait until BSP will init stacks, GDT, IDT, etc
+"1:\n"
+        // MP_BOOTSTRAP_STATE_APS_ENUMERATED= 1
+        "\tcmp $1, mp_bootstrap_state\n"
+        "\tje 2f\n"
+        "\tpause\n"
+        "\tjmp 1b\n"
+
+        // stage 2 - setup the stack, GDT, IDT and jump to "C"
+"2:\n"
+        // find my stack. My stack offset is in the array 
+        // edx contains CPU ID
+        "\txor %ecx,  %ecx\n"
+        // now ecx contains AP ordered ID [1..Max]
+        "\tmov  (%edx), %cl\n"
+        "\tmov  %ecx, %eax\n"
+        //  AP starts from 1, so subtract one to get proper index in g_stacks_arr
+        "\tdec  %eax\n"
+
+        // point edx to right stack
+        "\tmov  evmm_stack_pointers_array, %edx\n"
+        "\tlea  (%eax, %edx, 4), %eax\n"
+        "\tmov  (%edx), %esp\n"
+
+        // setup GDT
+        "\tmov  gp_GDT, %eax\n"
+        "\tlgdt (%eax) \n"
+
+        // setup IDT
+        "\tmov  gp_IDT, %eax\n"
+        "\tlidt (%eax)\n"
+
+        // enter "C" function
+        // JLM(FIX): this seems wrong
+        //  %ecx is an arg to C function
+        //  push  AP ordered ID
+        // "\tpushl    %%ecx\n"
+        "\tmov    %ecx, %edi\n"
+        // should never return
+        "\tcall  ap_continue_wakeup_code_C\n"
+);
+#endif
 
 
 static uint8_t read_port_8(uint32_t port)
@@ -367,7 +433,7 @@ void startap_calibrate_tsc_ticks_per_msec(void)
 // Stall (busy loop) for a given time, using the CPU TSC register.
 // Note that, depending on the CPU and ASCI modes, the stall accuracy 
 // may be rough.
-static void startap_stall_using_tsc(uint32_t stall_usec)
+void startap_stall_using_tsc(uint32_t stall_usec)
 {
     uint32_t   start_tsc = 1, end_tsc = 0;
 
@@ -392,7 +458,7 @@ static void startap_stall_using_tsc(uint32_t stall_usec)
 }
 
 
-static void send_ipi_to_specific_cpu (uint32_t vector_number, 
+void send_ipi_to_specific_cpu (uint32_t vector_number, 
                             uint32_t delivery_mode, uint8_t dst)
 {
     IA32_ICR_LOW           icr_low;
@@ -508,9 +574,6 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
 
     // Stage 1 
     ap_initialize_environment();
-#ifdef JLMDEBUG
-    bprint("back from ap_initialize_environment\n");
-#endif
 
     // save IDT and GDT
     __asm__ volatile (
@@ -525,11 +588,11 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
     bprint("back from setup_low_memory_ap_code\n");
 #endif
 
-    // This call is valid only in the pre_os launch case.
     // send_targeted_init_sipi(p_init32_data, p_startup);
-    send_init_ipi();
+    // send_init_ipi();
+    send_broadcast_init_sipi(p_init32_data);
 #ifdef JLMDEBUG
-    bprint("back from send_init_ipi\n");
+    bprint("back from send_broadcast_init_sipi\n");
 #endif
 
     // wait for predefined timeout
@@ -649,14 +712,22 @@ void send_sipi_ipi(void* code_start)
 // Send INIT IPI - SIPI to all APs in broadcast mode
 void send_broadcast_init_sipi(INIT32_STRUCT *p_init32_data)
 {
+#ifdef JLMDEBUG
+    bprint("send_broadcast_init_sipi\n");
+#endif
     send_init_ipi();
+
+#ifdef JLMDEBUG
+    bprint("about to call send_sipi_ipi\n");
+    LOOP_FOREVER
+#endif
     startap_stall_using_tsc(10000); // timeout - 10 miliseconds
 
     // SIPI message contains address of the code, shifted right to 12 bits
     // send it twice - according to manual
     send_sipi_ipi((void *)p_init32_data->i32_low_memory_page);
     startap_stall_using_tsc(200000); // timeout - 200 miliseconds
-    send_sipi_ipi((void *) p_init32_data->i32_low_memory_page );
+    send_sipi_ipi((void*)p_init32_data->i32_low_memory_page);
     startap_stall_using_tsc(200000); // timeout - 200 miliseconds
 }
 
@@ -683,7 +754,7 @@ void send_ipi_to_all_excluding_self(uint32_t vector_number,
     icr_low.bits.delivery_mode = delivery_mode;
 
     // level is set to 1 (except for INIT_DEASSERT, 
-    //         which is not supported in P3 and P4)
+    //   which is not supported in P3 and P4)
     // trigger mode is set to 0 (except for INIT_DEASSERT)
     icr_low.bits.level = 1;
     icr_low.bits.trigger_mode = 0;
@@ -709,15 +780,17 @@ void send_ipi_to_all_excluding_self(uint32_t vector_number,
 #endif
     *(uint32_t*)(uint32_t)(apic_base+LOCAL_APIC_ICR_OFFSET_HIGH)=
                 *(uint32_t*)&icr_high;
-    *(uint32_t*)(uint32_t)(apic_base+LOCAL_APIC_ICR_OFFSET)= *(uint32_t*)&icr_low;
+    *(uint32_t*)(uint32_t)(apic_base+LOCAL_APIC_ICR_OFFSET)= 
+                *(uint32_t*)&icr_low;
 
     do {
         startap_stall_using_tsc(10);
         *(uint32_t*)&icr_low_status= *(uint32_t*)(uint32_t)
-                    (apic_base+LOCAL_APIC_ICR_OFFSET);
+                (apic_base+LOCAL_APIC_ICR_OFFSET);
     } while (icr_low_status.bits.delivery_status!=0);
 #ifdef JLMDEBUG
     bprint("returning from send_ipi_to_all_excluding_self\n");
 #endif
     return;
 }
+

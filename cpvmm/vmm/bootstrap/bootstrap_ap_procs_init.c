@@ -172,10 +172,6 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     UINT16      gs_value;
     UINT16      fs_value;
     UINT16      ss_value;
-    extern IA32_GDTR*      p_tboot_gdtr;
-    extern uint16_t        tboot_cs_selector;
-    extern uint16_t        tboot_ds_selector;
-    extern uint16_t        tboot_ss_selector;
 
 #ifdef JLMDEBUG
     bprint("setup_low_memory\n");
@@ -183,12 +179,22 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     // Copy the Startup code to the beginning of the page
     vmm_memcpy(code_to_patch, (const void*)APStartUpCode, sizeof(APStartUpCode));
 
-    cs_value= tboot_cs_selector;
-    ds_value= tboot_ds_selector;
-    es_value= tboot_ds_selector;
-    gs_value= tboot_ds_selector;
-    fs_value= tboot_ds_selector;
-    ss_value= tboot_ss_selector;
+    IA32_GDTR current_gdtr;
+    __asm__ volatile (
+       "\tsgdt  %[current_gdtr]\n"
+    :[current_gdtr] "=m" (current_gdtr)
+    ::);
+  
+    extern uint16_t ia32_read_cs();
+    extern uint16_t ia32_read_ds();
+    extern uint16_t ia32_read_ss();
+ 
+    cs_value= ia32_read_cs();
+    ds_value= ia32_read_ds();
+    es_value= ia32_read_ds();
+    gs_value= ia32_read_ds();
+    fs_value= ia32_read_ds();
+    ss_value= ia32_read_ss();
 
     // Patch the startup code
     *((UINT16*)(code_to_patch+AP_START_UP_SEGMENT_IN_CODE_OFFSET)) =
@@ -197,34 +203,34 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
                                     (UINT16)(GDTR_OFFSET_IN_PAGE);
     *((uint32_t*)(code_to_patch+CONT16_IN_CODE_OFFSET)) =
                                    (uint32_t)code_to_patch + CONT16_VALUE_OFFSET;
-    *((UINT16*)(code_to_patch+CS_IN_CODE_OFFSET)) = cs_value;
-    *((UINT16*)(code_to_patch+DS_IN_CODE_OFFSET)) = ds_value;
-    *((UINT16*)(code_to_patch+ES_IN_CODE_OFFSET)) = es_value;
-    *((UINT16*)(code_to_patch+GS_IN_CODE_OFFSET)) = gs_value;
-    *((UINT16*)(code_to_patch+FS_IN_CODE_OFFSET)) = fs_value;
-    *((UINT16*)(code_to_patch+SS_IN_CODE_OFFSET)) = ss_value;
+    *((UINT16*)(code_to_patch+CS_IN_CODE_OFFSET))= cs_value;
+    *((UINT16*)(code_to_patch+DS_IN_CODE_OFFSET))= ds_value;
+    *((UINT16*)(code_to_patch+ES_IN_CODE_OFFSET))= es_value;
+    *((UINT16*)(code_to_patch+GS_IN_CODE_OFFSET))= gs_value;
+    *((UINT16*)(code_to_patch+FS_IN_CODE_OFFSET))= fs_value;
+    *((UINT16*)(code_to_patch+SS_IN_CODE_OFFSET))= ss_value;
     *((uint32_t*)(code_to_patch+AP_CONTINUE_WAKEUP_CODE_IN_CODE_OFFSET)) =
                                             (uint32_t)(ap_continue_wakeup_code);
 
     // copy GDT 
     vmm_memcpy(code_to_patch+GDT_OFFSET_IN_PAGE,
-               (uint8_t*)p_tboot_gdtr->base, p_tboot_gdtr->limit+1);
+               (uint8_t*)current_gdtr.base, current_gdtr.limit+1);
 
 #ifdef JLMDEBUG
     extern void HexDump(uint8_t*, uint8_t*);
-    bprint("patched code, gdtr base: 0x%08x, limit: %d\n", 
-           p_tboot_gdtr->base, p_tboot_gdtr->limit);
-    HexDump((uint8_t*)p_tboot_gdtr->base, 
-            (uint8_t*)p_tboot_gdtr->base+p_tboot_gdtr->limit);
+    bprint("gdtr base: 0x%08x, limit: %d\n", 
+           current_gdtr.base, current_gdtr.limit);
+    HexDump((uint8_t*)current_gdtr.base, 
+            (uint8_t*)current_gdtr.base+current_gdtr.limit);
     bprint("cs_value: 0x%04x\n", cs_value);
     bprint("ds_value: 0x%04x\n", ds_value);
     bprint("ss_value: 0x%04x\n", ss_value);
-    bprint("patched code\n");
+    bprint("\npatched code\n");
     HexDump(code_to_patch, code_to_patch+sizeof(APStartUpCode));
     bprint("gdt\n");
     HexDump(code_to_patch+GDT_OFFSET_IN_PAGE, code_to_patch+GDT_OFFSET_IN_PAGE+
-            p_tboot_gdtr->limit+1);
-    //LOOP_FOREVER
+            current_gdtr.limit+1);
+    LOOP_FOREVER
 #endif
     return;
 }

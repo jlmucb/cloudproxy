@@ -190,7 +190,6 @@ static uint64_t                         evmm_reserved = 0;
 static uint32_t                         local_apic_id = 0;
 
 static IA32_GDTR                        tboot_gdtr_32;
-IA32_GDTR*                              p_tboot_gdtr= &tboot_gdtr_32;
 uint16_t                                tboot_cs_selector= 0;
 static uint32_t                         tboot_cs_base= 0;
 static uint32_t                         tboot_cs_limit= 0;
@@ -401,33 +400,6 @@ uint16_t ia32_read_ss()
 }
 
 
-void  ia32_read_idtr(IA32_IDTR* p_descriptor)
-{
-    __asm__ volatile(
-        "\tsidt (%[p_descriptor])\n"
-    :[p_descriptor] "=p" (p_descriptor)
-    ::);
-}
-
-
-void  ia32_read_gdtr(IA32_GDTR *p_descriptor)
-{
-    __asm__ volatile(
-        "\tsgdt (%[p_descriptor])\n"
-    :[p_descriptor] "=r" (p_descriptor)
-    :: );
-}
-
-
-void  ia32_write_gdtr(IA32_GDTR *p_descriptor)
-{
-    __asm__ volatile(
-        "\t lgdt  (%[p_descriptor])\n"
-    ::[p_descriptor] "r" (p_descriptor) 
-    :);
-}
-
-
 void read_cr0(uint32_t* ret)
 {
     __asm__ volatile(
@@ -561,7 +533,10 @@ void setup_64bit_descriptors(void)
     vmm_memset((void*)evmm_descriptor_table, 0, PAGE_4KB_SIZE);
 
     // read 32-bit GDTR
-    ia32_read_gdtr(&gdtr_32);
+    __asm__ volatile (
+       "\tsgdt  %[gdtr_32]\n"
+    :[gdtr_32] "=m" (gdtr_32)
+    ::);
 
     // copy it to the new 64-bit GDT
     vmm_memcpy((void*)evmm_descriptor_table, (void *) gdtr_32.base, gdtr_32.limit+1);
@@ -587,11 +562,26 @@ void setup_64bit_descriptors(void)
 
     // set 64 bit
     gdtr_64.base= (uint32_t) evmm_descriptor_table;
-    gdtr_64.limit = gdtr_32.limit + (uint32_t)(&end_of_desciptor_table[4])-
+    gdtr_64.limit= gdtr_32.limit + (uint32_t)(&end_of_desciptor_table[4])-
                     (uint32_t)(&end_of_desciptor_table[0]);
 
+#ifdef JLMDEBUG
+   bprint("\nevmm64_cs_selector: %d, evmm64_ds_selector: %d\n", 
+          evmm64_cs_selector, evmm64_ds_selector);
+   bprint("\ngdtr_32, base: 0x%08x, limit: %d\n", 
+          gdtr_32.base, gdtr_32.limit);
+   HexDump((uint8_t*)gdtr_32.base, (uint8_t*)gdtr_32.base+gdtr_32.limit+1);
+   bprint("\ngdtr_64, base: 0x%08x, limit: %d\n", 
+          gdtr_64.base, gdtr_64.limit);
+   HexDump((uint8_t*)gdtr_64.base, (uint8_t*)gdtr_64.base+gdtr_64.limit+1);
+   // LOOP_FOREVER
+#endif
     // load gdtr
-    ia32_write_gdtr(&gdtr_64);
+    // ia32_write_gdtr(&gdtr_64);
+    __asm__ volatile (
+       "\tlgdt  %[gdtr_64]\n"
+    :[gdtr_64] "=m" (gdtr_64)
+    ::);
 }
 
 
@@ -751,7 +741,8 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
         // LMA=1, CS.L=0, CS.D=1
         // jump from 32bit compatibility mode into 64bit mode.
         // mode switch
-        "ljmp   $16, $1f\n"
+        // "ljmp   $16, $1f\n"
+        "ljmp   $64, $1f\n"
 
 "1:\n"
         // in 64 bit this is actually pop rdi (arg1)
@@ -783,7 +774,11 @@ void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data,
     bprint("init64_on_aps %p *p\n", stack_pointer, start_address);
 #endif
     // CHECK(JLM): is this right (cr4)?
-    ia32_write_gdtr(&p_init64_data->i64_gdtr);
+    // ia32_write_gdtr(&p_init64_data->i64_gdtr);
+    __asm__ volatile (
+       "\tsgdt  %[gdtr_64]\n"
+    :[gdtr_64] "=m" (gdtr_64)
+    ::);
     write_cr3(p_init64_data->i64_cr3);
     read_cr4(&cr4);
     BITMAP_SET(cr4, PAE_BIT|PSE_BIT);
@@ -1149,7 +1144,11 @@ int linux_setup(void)
         guest_processor_state[k].control.gdtr.limit = (uint64_t)(uint32_t)
                         guest_gdtr.limit;
 
-        ia32_read_idtr(&idtr);
+        __asm__ volatile (
+           "\tsgdt  %[idtr]\n"
+        :[idtr] "=m" (idtr)
+        ::);
+
         guest_processor_state[k].control.idtr.base = (UINT64)idtr.base;
         guest_processor_state[k].control.idtr.limit = (UINT32)idtr.limit;
     
@@ -2264,6 +2263,12 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
         pent++;
     }
 #endif
+
+    if(evmm64_cs_selector!=64) {
+        bprint("cs_selector is wrong, 0x08x\n", evmm64_cs_selector);
+        LOOP_FOREVER
+    }
+
     if (evmm_num_of_aps > 0) {
 #ifdef JLMDEBUG
         bprint("about to call startap_main, %d aps\n", evmm_num_of_aps);
@@ -2323,7 +2328,8 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
         // jump from 32bit compatibility mode into 64bit mode.
 
         // mode switch
-        "ljmp   $16, $1f\n"
+        // "ljmp   $16, $1f\n"
+        "ljmp   $64, $1f\n"
 
 "1:\n"
         // in 64 bit this is actually pop rdi (local apic)

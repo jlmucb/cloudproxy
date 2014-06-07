@@ -67,7 +67,6 @@ void send_broadcast_init_sipi(INIT32_STRUCT *p_init32_data);
 void send_ipi_to_all_excluding_self(uint32_t vector_number, 
               uint32_t delivery_mode);
 
-extern uint32_t startap_rdtsc();
 extern void ia32_read_msr(uint32_t msr_id, uint64_t *p_value);
 static uint32_t startap_tsc_ticks_per_msec = 0;
 
@@ -113,9 +112,9 @@ const uint8_t APStartUpCode[] =
     0x0F, 0x20, 0xC0,              // 12: mov  eax,cr0
     0x0C, 0x01,                    // 15: or   al,1
     0x0F, 0x22, 0xC0,              // 17: mov  cr0,eax
-    0x66, 0xEA,                    // 20: fjmp CS,CONT16
-    0x00, 0x00, 0x00, 0x00,        // 22:   CONT16
-    0x00, 0x00,                    // 26:   CS_VALUE
+    0x66, 0xEA,                    // 20: ljmp CS,CONT16
+    0x00, 0x00, 0x00, 0x00,        // 22: CONT16
+    0x00, 0x00,                    // 26: CS_VALUE
 //CONT16:
     0xFA,                          // 28: cli
     0x66, 0xB8, 0x00, 0x00,        // 29: mov  ax,DS_VALUE
@@ -132,7 +131,7 @@ const uint8_t APStartUpCode[] =
     0xFF, 0xE0,                    // 69: jmp  eax
     ////    0x00                   // 71: 32 bytes alignment
 // debug
-//    0xEB, 0xFE,                    // jmp $
+    0xEB, 0xFE,                    // jmp $
 // debug
 };
 
@@ -163,6 +162,18 @@ void     ap_continue_wakeup_code_C(uint32_t local_apic_id);
 uint8_t  bsp_enumerate_aps(void);
 void     ap_initialize_environment(void);
 void     mp_set_bootstrap_state(MP_BOOTSTRAP_STATE new_state);
+
+
+uint32_t startap_rdtsc()
+{
+    uint32_t ret;
+    __asm__ volatile(
+        "\trdtsc\n"
+        "\tmovl  %%eax,%[ret]\n"
+    : [ret] "=m" (ret)
+    : :"%eax");
+    return ret;
+}
 
 
 // Setup AP low memory startup code
@@ -219,12 +230,28 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     vmm_memcpy(code_to_patch+GDT_OFFSET_IN_PAGE,
                (uint8_t*)current_gdtr.base, current_gdtr.limit+1);
 
+#if 1
+    uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET-2;
+    *(pnop++)= 0xeb; *(pnop++)= 0xfe; *(pnop++)= 0x90; *(pnop++)= 0x90;
+    *(pnop++)= 0x90; *(pnop++)= 0x90; *(pnop++)= 0x90; *(pnop++)= 0x90;
+#else
+    uint16_t* pseldesc= (uint16_t*)(code_to_patch+GDT_OFFSET_IN_PAGE);
+    pseldesc[4]= 0xffff;
+    pseldesc[5]= 0x0;
+    pseldesc[6]= 0x9a01;
+    pseldesc[7]= 0x0;
+    pseldesc[8]= 0xffff;
+    pseldesc[9]= 0x0;
+    pseldesc[10]= 0x9201;
+    pseldesc[11]= 0x0;
+    uint8_t* pnop= code_to_patch;
+    *(pnop++)= 0xeb; *(pnop++)= 0xfe;
+#endif
+
 #ifdef JLMDEBUG
+    bprint("code_to_patch: 0x%08x, offset: 0x%08x, address: 0x%08x\n",  
+           code_to_patch, CONT16_VALUE_OFFSET, code_to_patch+CONT16_VALUE_OFFSET);
     extern void HexDump(uint8_t*, uint8_t*);
-    bprint("gdtr base: 0x%08x, limit: %d\n", 
-           current_gdtr.base, current_gdtr.limit);
-    HexDump((uint8_t*)current_gdtr.base, 
-            (uint8_t*)current_gdtr.base+current_gdtr.limit);
     bprint("cs_value: 0x%04x\n", cs_value);
     bprint("ds_value: 0x%04x\n", ds_value);
     bprint("ss_value: 0x%04x\n", ss_value);
@@ -233,6 +260,7 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     bprint("gdt\n");
     HexDump(code_to_patch+GDT_OFFSET_IN_PAGE, code_to_patch+GDT_OFFSET_IN_PAGE+
             current_gdtr.limit+1);
+    // LOOP_FOREVER
 #endif
     return;
 }
@@ -335,6 +363,7 @@ __asm__(
 ".type ap_continue_wakeup_code,@function\n"
 "ap_continue_wakeup_code:\n"
         "\tcli\n"
+        // "\tjmp .\n"    // debug
         // get the Local APIC ID
         // IA32_MSR_APIC_BASE= 0x01B
         "\tmov  $0x01B, %ecx\n"
@@ -352,7 +381,6 @@ __asm__(
         "\tadd   %ecx, %edx\n"
         // mark current CPU as present
         "\tmovl  $1, (%edx)\n"
-        // wait until BSP will init stacks, GDT, IDT, etc
         // last debug place
 "1:\n"
         // MP_BOOTSTRAP_STATE_APS_ENUMERATED= 1
@@ -363,7 +391,6 @@ __asm__(
 
         // stage 2 - setup the stack, GDT, IDT and jump to "C"
 "2:\n"
-        "\tjmp .\n"    // debug
         // find my stack. My stack offset is in the array 
         // edx contains CPU ID
         "\txor   %ecx,  %ecx\n"
@@ -371,20 +398,18 @@ __asm__(
         "\tmovb  (%edx), %cl\n"
         "\tmov   %ecx, %eax\n"
         //  AP starts from 1, so subtract one to get proper index in g_stacks_arr
-        "\tdec   %eax\n"
+        // "\tdec   %eax\n"
 
         // point edx to right stack
         "\tmov   evmm_stack_pointers_array, %edx\n"
-        "\tlea   (%eax, %edx, 4), %eax\n"
+        "\tlea   (%edx, %eax, 4), %edx\n"
         "\tmov   (%edx), %esp\n"
 
         // setup GDT
-        "\tmov   gp_GDT, %eax\n"
-        "\tlgdt  (%eax) \n"
+        "\tlgdt  gp_GDT\n"
 
         // setup IDT
-        "\tmov   gp_IDT, %eax\n"
-        "\tlidt (%eax)\n"
+        "\tlidt gp_IDT\n"
 
         // enter "C" function
         //  push  AP ordered ID
@@ -429,6 +454,9 @@ void startap_calibrate_tsc_ticks_per_msec(void)
 {
     uint32_t start_tsc = 1, end_tsc = 0;
 
+#ifdef JLMDEBUG
+    bprint("startap_stall_using_tsc\n");
+#endif
     while(start_tsc>end_tsc) {
         start_tsc= (uint32_t) startap_rdtsc();
         startap_stall(1000);   // 1 ms
@@ -453,19 +481,25 @@ void startap_stall_using_tsc(uint32_t stall_usec)
     if(startap_tsc_ticks_per_msec == 0) {
         startap_calibrate_tsc_ticks_per_msec();
     }
+#ifdef JLMDEBUG
+    bprint("startap_stall_using_tsc calibrated %d\n", startap_tsc_ticks_per_msec);
+#endif
     // Calculate the start_tsc and end_tsc
     // While loop is to overcome the overflow of 32-bit rdtsc value
-        while(start_tsc > end_tsc) {
-            end_tsc = (uint32_t) startap_rdtsc() + 
-                        (stall_usec*startap_tsc_ticks_per_msec/1000);
-                start_tsc = (uint32_t) startap_rdtsc();
-        }
+    while(start_tsc > end_tsc) {
+        end_tsc = (uint32_t) startap_rdtsc() + 
+                    (stall_usec*startap_tsc_ticks_per_msec/1000);
+            start_tsc = (uint32_t) startap_rdtsc();
+    }
     while (start_tsc < end_tsc) {
         __asm__ volatile (
             "\tpause\n"
         :::);
         start_tsc = (uint32_t) startap_rdtsc();
     }
+#ifdef JLMDEBUG
+    bprint("startap_stall_using_tsc returning\n");
+#endif
     return;
 }
 
@@ -688,24 +722,10 @@ void mp_set_bootstrap_state(MP_BOOTSTRAP_STATE new_state)
         "\tmovl  %[new_state], %%eax\n"
         "\tlock; xchgl %%eax, %[mp_bootstrap_state]\n"
         "\tpopl  %%eax\n"
-    : [mp_bootstrap_state] "=m" (mp_bootstrap_state), 
-      [new_state] "=m" (new_state)
-    : : "%eax");
+    : [mp_bootstrap_state] "=m" (mp_bootstrap_state)
+    : [new_state] "g" (new_state)
+    : "%eax");
     return;
-}
-
-uint32_t startap_rdtsc (uint32_t* upper)
-{
-    uint32_t ret;
-    __asm__ volatile(
-        "\tmovl  %[upper], %%ecx\n"
-        "\trdtsc\n"
-        "\tmovl    (%%ecx), %%edx\n"
-        "\tmovl    %%edx,%[ret]\n"
-    : [ret] "=m" (ret)
-    : [upper] "m"(upper)
-    :"%ecx", "%edx");
-    return ret;
 }
 
 
@@ -720,7 +740,7 @@ void send_sipi_ipi(void* code_start)
     bprint("send_sipi_ipi\n");
 #endif
     // SIPI message contains address of the code, shifted right to 12 bits
-    send_ipi_to_all_excluding_self( ((uint32_t)code_start)>>12, 
+    send_ipi_to_all_excluding_self(((uint32_t)code_start)>>12, 
         LOCAL_APIC_DELIVERY_MODE_SIPI);
 }
 

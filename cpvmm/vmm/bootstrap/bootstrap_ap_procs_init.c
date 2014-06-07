@@ -173,6 +173,10 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     UINT16      gs_value;
     UINT16      fs_value;
     UINT16      ss_value;
+    extern IA32_GDTR*      p_tboot_gdtr;
+    extern uint16_t        tboot_cs_selector;
+    extern uint16_t        tboot_ds_selector;
+    extern uint16_t        tboot_ss_selector;
 
 #ifdef JLMDEBUG
     bprint("setup_low_memory\n");
@@ -181,6 +185,7 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     vmm_memcpy(code_to_patch, (const void*)APStartUpCode, sizeof(APStartUpCode));
 
     // get current segments
+#if 0
     __asm__ volatile (
         "\tmovw %%cs, %[cs_value]\n"
         "\tmovw %%ds, %[ds_value]\n"
@@ -192,6 +197,14 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
       [es_value] "=m" (es_value), [gs_value] "=m" (gs_value), 
       [fs_value] "=m" (fs_value), [ss_value] "=m" (ss_value)
     ::);
+#else
+    cs_value= tboot_cs_selector;
+    ds_value= tboot_ds_selector;
+    es_value= tboot_ds_selector;
+    gs_value= tboot_ds_selector;
+    fs_value= tboot_ds_selector;
+    ss_value= tboot_ss_selector;
+#endif
 
     // Patch the startup code
     *((UINT16*)(code_to_patch + AP_START_UP_SEGMENT_IN_CODE_OFFSET)) =
@@ -220,8 +233,9 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 #ifdef JLMDEBUG
     extern void HexDump(uint8_t*, uint8_t*);
     bprint("patched code, gdtr base: 0x%08x, limit: %d\n", 
-           gdtr_32.base, gdtr_32.limit);
-    HexDump((uint8_t*)gdtr_32.base, (uint8_t*)gdtr_32.base+gdtr_32.limit);
+           p_tboot_gdtr->base, p_tboot_gdtr->limit);
+    HexDump((uint8_t*)p_tboot_gdtr->base, 
+            (uint8_t*)p_tboot_gdtr->base+p_tboot_gdtr->limit);
     bprint("cs_value: 0x%04x\n", cs_value);
     bprint("patched code\n");
     HexDump(code_to_patch, code_to_patch+sizeof(APStartUpCode));

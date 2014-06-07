@@ -190,15 +190,16 @@ static uint64_t                         evmm_reserved = 0;
 static uint32_t                         local_apic_id = 0;
 
 static IA32_GDTR                        tboot_gdtr_32;
-static uint16_t                         tboot_cs_selector= 0;
+IA32_GDTR*                              p_tboot_gdtr= &tboot_gdtr_32;
+uint16_t                                tboot_cs_selector= 0;
 static uint32_t                         tboot_cs_base= 0;
 static uint32_t                         tboot_cs_limit= 0;
 static uint16_t                         tboot_cs_attr= 0;
-static uint16_t                         tboot_ds_selector= 0;
+uint16_t                                tboot_ds_selector= 0;
 static uint32_t                         tboot_ds_base= 0;
 static uint32_t                         tboot_ds_limit= 0;
 static uint16_t                         tboot_ds_attr= 0;
-static uint16_t                         tboot_ss_selector= 0;
+uint16_t                                tboot_ss_selector= 0;
 static uint32_t                         tboot_ss_base= 0;
 static uint32_t                         tboot_ss_limit= 0;
 static uint16_t                         tboot_ss_attr= 0;
@@ -1952,13 +1953,11 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     evmm_num_of_aps = 0;
 #endif
 
-    // this is a weird hack
-    IA32_GDTR tdesc;
-
-    // get original tboot gdtr, selectors and descriptors
-    ia32_read_gdtr(&tdesc);
-    tboot_gdtr_32.base= tdesc.base;
-    tboot_gdtr_32.limit= tdesc.limit;
+    // get tboot gdtr
+    __asm__ volatile (
+       "\tsgdt  %[tboot_gdtr_32]\n"
+   :[tboot_gdtr_32] "=m" (tboot_gdtr_32)
+   ::);
 
     // make a fake TSS to keep vmcs happy
     *((UINT64*)tboot_gdtr_32.base+24)= 0x00808b0000000000ULL;

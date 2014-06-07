@@ -741,7 +741,6 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
         // LMA=1, CS.L=0, CS.D=1
         // jump from 32bit compatibility mode into 64bit mode.
         // mode switch
-        // "ljmp   $16, $1f\n"
         "ljmp   $64, $1f\n"
 
 "1:\n"
@@ -2328,7 +2327,6 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
         // jump from 32bit compatibility mode into 64bit mode.
 
         // mode switch
-        // "ljmp   $16, $1f\n"
         "ljmp   $64, $1f\n"
 
 "1:\n"

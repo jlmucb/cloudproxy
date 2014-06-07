@@ -100,7 +100,7 @@ extern uint32_t evmm_stack_pointers_array[];
 //   GdtTable
 
 // Uncomment the following line to deadloop in AP startup
-//#define BREAK_IN_AP_STARTUP
+// #define BREAK_IN_AP_STARTUP
 const uint8_t APStartUpCode[] =
 {
 #ifdef BREAK_IN_AP_STARTUP
@@ -131,6 +131,9 @@ const uint8_t APStartUpCode[] =
     0xB8, 0x00, 0x00, 0x00, 0x00,  // 64: mov  eax,AP_CONTINUE_WAKEUP_CODE
     0xFF, 0xE0,                    // 69: jmp  eax
     ////    0x00                   // 71: 32 bytes alignment
+// debug
+//    0xEB, 0xFE,                    // jmp $
+// debug
 };
 
 #ifdef BREAK_IN_AP_STARTUP
@@ -230,7 +233,6 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     bprint("gdt\n");
     HexDump(code_to_patch+GDT_OFFSET_IN_PAGE, code_to_patch+GDT_OFFSET_IN_PAGE+
             current_gdtr.limit+1);
-    LOOP_FOREVER
 #endif
     return;
 }
@@ -612,6 +614,7 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
     g_aps_counter = bsp_enumerate_aps();
 #ifdef JLMDEBUG
     bprint("stage 2, num aps: %d\n", g_aps_counter);
+    LOOP_FOREVER
 #endif
     return g_aps_counter;
 }
@@ -741,14 +744,11 @@ void send_broadcast_init_sipi(INIT32_STRUCT *p_init32_data)
     startap_stall_using_tsc(200000); // timeout - 200 miliseconds
 #ifdef JLMDEBUG
     bprint("back from first send_sipi_ipi\n");
-    return;
-    LOOP_FOREVER
 #endif
     send_sipi_ipi((void*)p_init32_data->i32_low_memory_page);
     startap_stall_using_tsc(200000); // timeout - 200 milliseconds
 #ifdef JLMDEBUG
     bprint("back from second send_sipi_ipi\n");
-    LOOP_FOREVER
 #endif
 }
 

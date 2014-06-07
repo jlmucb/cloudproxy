@@ -335,9 +335,6 @@ __asm__(
 ".type ap_continue_wakeup_code,@function\n"
 "ap_continue_wakeup_code:\n"
         "\tcli\n"
-// DEBUG
-//        "\tjmp .\n"
-// DEBUG
         // get the Local APIC ID
         // IA32_MSR_APIC_BASE= 0x01B
         "\tmov  $0x01B, %ecx\n"
@@ -356,6 +353,7 @@ __asm__(
         // mark current CPU as present
         "\tmovl  $1, (%edx)\n"
         // wait until BSP will init stacks, GDT, IDT, etc
+        // last debug place
 "1:\n"
         // MP_BOOTSTRAP_STATE_APS_ENUMERATED= 1
         "\tcmpl  $1, mp_bootstrap_state\n"
@@ -365,6 +363,7 @@ __asm__(
 
         // stage 2 - setup the stack, GDT, IDT and jump to "C"
 "2:\n"
+        "\tjmp .\n"    // debug
         // find my stack. My stack offset is in the array 
         // edx contains CPU ID
         "\txor   %ecx,  %ecx\n"
@@ -445,6 +444,9 @@ void startap_calibrate_tsc_ticks_per_msec(void)
 // may be rough.
 void startap_stall_using_tsc(uint32_t stall_usec)
 {
+#ifdef JLMDEBUG
+    bprint("startap_stall_using_tsc\n");
+#endif
     uint32_t   start_tsc = 1, end_tsc = 0;
 
     // Initialize startap_tsc_ticks_per_msec. Happens at boot time

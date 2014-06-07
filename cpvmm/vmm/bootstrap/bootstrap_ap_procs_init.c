@@ -100,7 +100,7 @@ extern uint32_t evmm_stack_pointers_array[];
 //   GdtTable
 
 // Uncomment the following line to deadloop in AP startup
-#define BREAK_IN_AP_STARTUP
+//#define BREAK_IN_AP_STARTUP
 const uint8_t APStartUpCode[] =
 {
 #ifdef BREAK_IN_AP_STARTUP
@@ -166,7 +166,6 @@ void     mp_set_bootstrap_state(MP_BOOTSTRAP_STATE new_state);
 void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 {
     uint8_t*    code_to_patch = (uint8_t*)temp_low_memory_4K;
-    IA32_GDTR   gdtr_32;
     UINT16      cs_value;
     UINT16      ds_value;
     UINT16      es_value;
@@ -184,51 +183,32 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     // Copy the Startup code to the beginning of the page
     vmm_memcpy(code_to_patch, (const void*)APStartUpCode, sizeof(APStartUpCode));
 
-    // get current segments
-#if 0
-    __asm__ volatile (
-        "\tmovw %%cs, %[cs_value]\n"
-        "\tmovw %%ds, %[ds_value]\n"
-        "\tmovw %%es, %[es_value]\n"
-        "\tmovw %%gs, %[gs_value]\n"
-        "\tmovw %%fs, %[fs_value]\n"
-        "\tmovw %%ss, %[ss_value]\n"
-    : [cs_value] "=m" (cs_value), [ds_value] "=m" (ds_value), 
-      [es_value] "=m" (es_value), [gs_value] "=m" (gs_value), 
-      [fs_value] "=m" (fs_value), [ss_value] "=m" (ss_value)
-    ::);
-#else
     cs_value= tboot_cs_selector;
     ds_value= tboot_ds_selector;
     es_value= tboot_ds_selector;
     gs_value= tboot_ds_selector;
     fs_value= tboot_ds_selector;
     ss_value= tboot_ss_selector;
-#endif
 
     // Patch the startup code
-    *((UINT16*)(code_to_patch + AP_START_UP_SEGMENT_IN_CODE_OFFSET)) =
+    *((UINT16*)(code_to_patch+AP_START_UP_SEGMENT_IN_CODE_OFFSET)) =
                                     (UINT16)(temp_low_memory_4K >> 4);
-    *((UINT16*)(code_to_patch + GDTR_OFFSET_IN_CODE)) =
+    *((UINT16*)(code_to_patch+GDTR_OFFSET_IN_CODE)) =
                                     (UINT16)(GDTR_OFFSET_IN_PAGE);
     *((uint32_t*)(code_to_patch+CONT16_IN_CODE_OFFSET)) =
                                    (uint32_t)code_to_patch + CONT16_VALUE_OFFSET;
-    *((UINT16*)(code_to_patch + CS_IN_CODE_OFFSET)) = cs_value;
-    *((UINT16*)(code_to_patch + DS_IN_CODE_OFFSET)) = ds_value;
-    *((UINT16*)(code_to_patch + ES_IN_CODE_OFFSET)) = es_value;
-    *((UINT16*)(code_to_patch + GS_IN_CODE_OFFSET)) = gs_value;
-    *((UINT16*)(code_to_patch + FS_IN_CODE_OFFSET)) = fs_value;
-    *((UINT16*)(code_to_patch + SS_IN_CODE_OFFSET)) = ss_value;
-    *((uint32_t*)(code_to_patch + AP_CONTINUE_WAKEUP_CODE_IN_CODE_OFFSET)) =
+    *((UINT16*)(code_to_patch+CS_IN_CODE_OFFSET)) = cs_value;
+    *((UINT16*)(code_to_patch+DS_IN_CODE_OFFSET)) = ds_value;
+    *((UINT16*)(code_to_patch+ES_IN_CODE_OFFSET)) = es_value;
+    *((UINT16*)(code_to_patch+GS_IN_CODE_OFFSET)) = gs_value;
+    *((UINT16*)(code_to_patch+FS_IN_CODE_OFFSET)) = fs_value;
+    *((UINT16*)(code_to_patch+SS_IN_CODE_OFFSET)) = ss_value;
+    *((uint32_t*)(code_to_patch+AP_CONTINUE_WAKEUP_CODE_IN_CODE_OFFSET)) =
                                             (uint32_t)(ap_continue_wakeup_code);
-
-    // get GDTR from BSP
-    extern void  ia32_read_gdtr(IA32_GDTR *p_descriptor);
-    ia32_read_gdtr(&gdtr_32);
 
     // copy GDT 
     vmm_memcpy(code_to_patch+GDT_OFFSET_IN_PAGE,
-               (uint8_t*)gdtr_32.base, gdtr_32.limit+1);
+               (uint8_t*)p_tboot_gdtr->base, p_tboot_gdtr->limit+1);
 
 #ifdef JLMDEBUG
     extern void HexDump(uint8_t*, uint8_t*);
@@ -237,16 +217,14 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     HexDump((uint8_t*)p_tboot_gdtr->base, 
             (uint8_t*)p_tboot_gdtr->base+p_tboot_gdtr->limit);
     bprint("cs_value: 0x%04x\n", cs_value);
+    bprint("ds_value: 0x%04x\n", ds_value);
+    bprint("ss_value: 0x%04x\n", ss_value);
     bprint("patched code\n");
     HexDump(code_to_patch, code_to_patch+sizeof(APStartUpCode));
-    LOOP_FOREVER
-#endif
-// what is this for?
-#if 0    
-    IA32_GDTR*  new_gdtr_32;
-    // Patch the GDT base address in memory
-    new_gdtr_32 = (IA32_GDTR *)(code_to_patch+GDTR_OFFSET_IN_PAGE);
-    new_gdtr_32->base = (uint32_t)code_to_patch+GDT_OFFSET_IN_PAGE;
+    bprint("gdt\n");
+    HexDump(code_to_patch+GDT_OFFSET_IN_PAGE, code_to_patch+GDT_OFFSET_IN_PAGE+
+            p_tboot_gdtr->limit+1);
+    //LOOP_FOREVER
 #endif
     return;
 }

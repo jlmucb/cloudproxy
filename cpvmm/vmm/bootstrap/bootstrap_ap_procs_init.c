@@ -187,7 +187,7 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     UINT16      fs_value;
     UINT16      ss_value;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("setup_low_memory\n");
 #endif
     // Copy the Startup code to the beginning of the page
@@ -238,18 +238,18 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     *(pnop++)= 0x90; *(pnop++)= 0x90; 
     *(pnop++)= 0x90; *(pnop++)= 0x90; 
     // this loops after the ljmp location
-    //uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET+6;
-    //*(pnop++)= 0xeb; *(pnop++)= 0xfe; 
+    // uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET+6;
+    // *(pnop++)= 0xeb; *(pnop++)= 0xfe; 
 #endif
 
 #ifdef JLMDEBUG
     bprint("code_to_patch: 0x%08x, offset: 0x%08x, address: 0x%08x\n",  
            code_to_patch, CONT16_VALUE_OFFSET, code_to_patch+CONT16_VALUE_OFFSET);
     extern void HexDump(uint8_t*, uint8_t*);
-    bprint("cs_value: 0x%04x\n", cs_value);
-    bprint("ds_value: 0x%04x\n", ds_value);
+    bprint("cs_value: 0x%04x, ", cs_value);
+    bprint("ds_value: 0x%04x, ", ds_value);
     bprint("ss_value: 0x%04x\n", ss_value);
-    bprint("\npatched code\n");
+    bprint("patched code\n");
     HexDump(code_to_patch, code_to_patch+sizeof(APStartUpCode));
     bprint("gdt\n");
     HexDump(code_to_patch+GDT_OFFSET_IN_PAGE, code_to_patch+GDT_OFFSET_IN_PAGE+
@@ -435,7 +435,7 @@ static uint8_t read_port_8(uint32_t port)
 // change the platform setting.
 void startap_stall(uint32_t stall_usec)
 {
-    uint32_t   c = 0;
+    uint32_t   c= 0;
     for(c= 0; c<stall_usec; c++)
         read_port_8(IA32_DEBUG_IO_PORT);
     return;
@@ -448,15 +448,15 @@ void startap_calibrate_tsc_ticks_per_msec(void)
 {
     uint32_t start_tsc = 1, end_tsc = 0;
 
-#ifdef JLMDEBUG
-    bprint("startap_stall_using_tsc\n");
-#endif
     while(start_tsc>end_tsc) {
         start_tsc= (uint32_t) startap_rdtsc();
         startap_stall(1000);   // 1 ms
         end_tsc= (uint32_t) startap_rdtsc();
     }
     startap_tsc_ticks_per_msec= (end_tsc-start_tsc);
+#ifdef JLMDEBUG
+    bprint("ticks/ms %d\n", startap_tsc_ticks_per_msec);
+#endif
     return;
 }
 
@@ -466,23 +466,17 @@ void startap_calibrate_tsc_ticks_per_msec(void)
 // may be rough.
 void startap_stall_using_tsc(uint32_t stall_usec)
 {
-#ifdef JLMDEBUG
-    bprint("startap_stall_using_tsc\n");
-#endif
     uint32_t   start_tsc = 1, end_tsc = 0;
 
     // Initialize startap_tsc_ticks_per_msec. Happens at boot time
     if(startap_tsc_ticks_per_msec == 0) {
         startap_calibrate_tsc_ticks_per_msec();
     }
-#ifdef JLMDEBUG
-    bprint("startap_stall_using_tsc calibrated %d\n", startap_tsc_ticks_per_msec);
-#endif
     // Calculate the start_tsc and end_tsc
     // While loop is to overcome the overflow of 32-bit rdtsc value
     while(start_tsc > end_tsc) {
         end_tsc = (uint32_t) startap_rdtsc() + 
-                    (stall_usec*startap_tsc_ticks_per_msec/1000);
+                    ((stall_usec/1000)*startap_tsc_ticks_per_msec);
             start_tsc = (uint32_t) startap_rdtsc();
     }
     while (start_tsc < end_tsc) {
@@ -491,9 +485,6 @@ void startap_stall_using_tsc(uint32_t stall_usec)
         :::);
         start_tsc = (uint32_t) startap_rdtsc();
     }
-#ifdef JLMDEBUG
-    bprint("startap_stall_using_tsc returning\n");
-#endif
     return;
 }
 
@@ -528,7 +519,7 @@ void send_ipi_to_specific_cpu (uint32_t vector_number,
     // send
     ia32_read_msr(IA32_MSR_APIC_BASE, &apic_base);
     apic_base&= LOCAL_APIC_BASE_MSR_MASK;
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("about to call do loop base: %p %x\n", apic_base, LOCAL_APIC_ICR_OFFSET);
 #endif
 
@@ -538,12 +529,11 @@ void send_ipi_to_specific_cpu (uint32_t vector_number,
     } while (icr_low_status.bits.delivery_status!=0);
 
 #ifdef JLMDEBUG
-    bprint("back from first do, size of IA32_ICR_LOW %d\n", sizeof(IA32_ICR_LOW));
-    bprint("vector_number: 0x%08x\n", vector_number);
-    bprint("delivery mode: 0x%08x\n", delivery_mode);
-    bprint("destination_shorthand: 0x%08x\n", LOCAL_APIC_BROADCAST_MODE_SPECIFY_CPU);
-    bprint("pointer style low: 0x%08x\n", *(uint32_t*)&icr_low);
-    bprint("pointer style hi: 0x%08x\n", *(uint32_t*)&icr_high);
+    bprint("vector: 0x%04x, ", vector_number);
+    bprint("delivery: 0x%04x\n", delivery_mode);
+    bprint("shorthand: 0x%04x, ", LOCAL_APIC_BROADCAST_MODE_SPECIFY_CPU);
+    bprint("pointer hi: 0x%08x, ", *(uint32_t*)&icr_high);
+    bprint("low: 0x%08x\n", *(uint32_t*)&icr_low);
 #endif
     *(uint32_t*)(uint32_t)(apic_base+LOCAL_APIC_ICR_OFFSET_HIGH)= 
                 *(uint32_t*)&icr_high;
@@ -624,21 +614,10 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
 
     // create AP startup code in low memory
     setup_low_memory_ap_code(p_init32_data->i32_low_memory_page);
-#ifdef JLMDEBUG
-    bprint("back from setup_low_memory_ap_code\n");
-#endif
-    // send_targeted_init_sipi(p_init32_data, p_startup);
-    // send_init_ipi();
     send_broadcast_init_sipi(p_init32_data);
-#ifdef JLMDEBUG
-    bprint("back from send_broadcast_init_sipi\n");
-#endif
 
     // wait for predefined timeout
     startap_stall_using_tsc(INITIAL_WAIT_FOR_APS_TIMEOUT_IN_MILIS);
-#ifdef JLMDEBUG
-    bprint("back from startap_stall_using_tsc\n");
-#endif
 
     // Stage 2 
     g_aps_counter = bsp_enumerate_aps();
@@ -730,9 +709,6 @@ void send_init_ipi(void)
 
 void send_sipi_ipi(void* code_start)
 {
-#ifdef JLMDEBUG
-    bprint("send_sipi_ipi\n");
-#endif
     // SIPI message contains address of the code, shifted right to 12 bits
     send_ipi_to_all_excluding_self(((uint32_t)code_start)>>12, 
         LOCAL_APIC_DELIVERY_MODE_SIPI);
@@ -742,22 +718,13 @@ void send_sipi_ipi(void* code_start)
 // Send INIT IPI - SIPI to all APs in broadcast mode
 void send_broadcast_init_sipi(INIT32_STRUCT *p_init32_data)
 {
-#ifdef JLMDEBUG
-    bprint("send_broadcast_init_sipi\n");
-#endif
     send_init_ipi();
-#ifdef JLMDEBUG
-    bprint("back from send_broadcast_init_sipi\n");
-#endif
-    startap_stall_using_tsc(10000); // timeout - 10 miliseconds
-#ifdef JLMDEBUG
-    bprint("past stall\n");
-#endif
+    startap_stall_using_tsc(10000); // timeout - 10 milliseconds
 
     // SIPI message contains address of the code, shifted right to 12 bits
     // send it twice - according to manual
     send_sipi_ipi((void *)p_init32_data->i32_low_memory_page);
-    startap_stall_using_tsc(200000); // timeout - 200 miliseconds
+    startap_stall_using_tsc(200000); // timeout - 200 milliseconds
 #ifdef JLMDEBUG
     bprint("back from first send_sipi_ipi\n");
 #endif
@@ -778,7 +745,7 @@ void send_ipi_to_all_excluding_self(uint32_t vector_number,
     IA32_ICR_HIGH          icr_high;
     UINT64                 apic_base = 0;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("send_ipi_to_all_excluding_self(%d, %d)\n",
                  vector_number, delivery_mode);
 #endif
@@ -786,8 +753,6 @@ void send_ipi_to_all_excluding_self(uint32_t vector_number,
     vmm_memset(&icr_low_status, 0, sizeof(IA32_ICR_LOW));
     vmm_memset(&icr_high, 0, sizeof(IA32_ICR_HIGH));
     icr_low.bits.vector= vector_number;
-    icr_low.bits.delivery_mode = delivery_mode;
-    icr_low.bits.vector = vector_number;
     icr_low.bits.delivery_mode = delivery_mode;
 
     // level is set to 1 (except for INIT_DEASSERT, 
@@ -809,11 +774,10 @@ void send_ipi_to_all_excluding_self(uint32_t vector_number,
     } while (icr_low_status.bits.delivery_status!=0);
 
 #ifdef JLMDEBUG
-    bprint("back from first do\n");
-    bprint("vector_number: 0x%08x\n", vector_number);
-    bprint("delivery mode: 0x%08x\n", delivery_mode);
-    bprint("pointer style low: 0x%08x\n", *(uint32_t*)&icr_low);
-    bprint("pointer style hi: 0x%08x\n", *(uint32_t*)&icr_high);
+    bprint("vector: 0x%04x, ", vector_number);
+    bprint("mode: 0x%04x, ", delivery_mode);
+    bprint("pointer hi: 0x%08x, ", *(uint32_t*)&icr_high);
+    bprint("low: 0x%08x\n", *(uint32_t*)&icr_low);
 #endif
     *(uint32_t*)(uint32_t)(apic_base+LOCAL_APIC_ICR_OFFSET_HIGH)=
                 *(uint32_t*)&icr_high;
@@ -825,7 +789,7 @@ void send_ipi_to_all_excluding_self(uint32_t vector_number,
         *(uint32_t*)&icr_low_status= *(uint32_t*)(uint32_t)
                 (apic_base+LOCAL_APIC_ICR_OFFSET);
     } while (icr_low_status.bits.delivery_status!=0);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("returning from send_ipi_to_all_excluding_self\n");
 #endif
     return;

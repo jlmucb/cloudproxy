@@ -97,6 +97,9 @@
 				'linux_host.proto', # unit test: linux_host_unittests.cc
 				'linux_process_factory.cc', # unit test: linux_process_factory_unittests.cc
 				'linux_process_factory.h', # unit test: linux_process_factory_unittests.cc
+				'log_net.cc', # no unit test needed
+				'log_net.h', # no unit test needed
+				'log_net.proto', # no unit test needed
 				'message_channel.h', # unit test: pipe_factory_unittests.cc
 				'pipe_factory.cc', # unit test: pipe_factory_unittests.cc
 				'pipe_factory.h', # unit test: pipe_factory_unittests.cc

@@ -46,6 +46,7 @@
 
 #include "tao/attestation.pb.h"
 #include "tao/keys.h"
+#include "tao/log_net.h"
 #include "tao/tao_domain.h"
 
 using std::lock_guard;
@@ -210,6 +211,7 @@ bool InitializeApp(int *argc, char ***argv, bool remove_args) {
   google::InitGoogleLogging((*argv)[0]);
   google::InstallFailureSignalHandler();
   SetLogHandler(QuietKeyczarLogHandler);
+  LogNet::Init("localhost", "5514", (*argv)[0]);
   signal(SIGPIPE, SIG_IGN);
   return InitializeOpenSSL();
 }

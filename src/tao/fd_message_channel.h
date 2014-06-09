@@ -48,6 +48,27 @@ class FDMessageChannel : public MessageChannel {
   virtual bool SerializeToString(string *params) const;
   /// @}
 
+  /// Receive raw data from the channel.
+  /// @param[out] buffer The buffer to fill with data.
+  /// @param buffer_len The length of buffer.
+  /// @param[out] eof Will be set to true iff end of stream reached.
+  virtual bool ReceiveData(void *buffer, size_t buffer_len, bool *eof) const;
+
+  /// Receive a string from a file descriptor.
+  /// @param max_size The maximum allowable size string to receive.
+  /// @param[out] s The string to receive the data.
+  /// @param[out] eof Will be set to true iff end of stream reached.
+  virtual bool ReceiveString(size_t max_size, string *s, bool *eof) const;
+
+  /// Send raw data to the channel.
+  /// @param buffer The buffer containing data to send.
+  /// @param buffer_len The length of buffer.
+  virtual bool SendData(const void *buffer, size_t buffer_len) const;
+
+  /// Send a raw string to the channel.
+  /// @param s The string to send.
+  virtual bool SendString(const string &s) const;
+
   /// Attempt to deserialize a channel.
   /// @param params Channel parameters from SerializeToString().
   static FDMessageChannel *DeserializeFromString(const string &params);
@@ -58,6 +79,9 @@ class FDMessageChannel : public MessageChannel {
 
   /// Get the read file descriptor, e.g. to use for select().
   virtual int GetReadFileDescriptor() { return readfd_; }
+
+  /// Get the write file descriptor.
+  virtual int GetWriteFileDescriptor() { return writefd_; }
 
   /// Close the underlying file descriptors.
   virtual bool Close();
@@ -72,9 +96,20 @@ class FDMessageChannel : public MessageChannel {
   /// File descriptor for reading from host Tao.
   int writefd_;
 
+  /// Receive partial data from a file descriptor. This reads into buffer[i],
+  /// where filled_len <= i < buffer_len, and it returns the number of bytes
+  /// read,
+  /// or 0 if end of stream, or negative on error.
+  /// @param[out] buffer The buffer to fill with data.
+  /// @param filed_len The length of buffer that is already filled.
+  /// @param buffer_len The total length of buffer.
+  virtual int ReceivePartialData(void *buffer, size_t filled_len,
+                                 size_t buffer_len) const;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(FDMessageChannel);
 };
+
 }  // namespace tao
 
 #endif  // TAO_FD_MESSAGE_CHANNEL_H_

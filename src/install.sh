@@ -178,10 +178,14 @@ exit 0
 
 export TAO_TEST=undef # replaced with path to test dir by install.sh
 
-source ${TAO_TEST}/tao.env
-
 tao_bin=${TAO_TEST}/bin
 tao_env=${TAO_TEST}/tao.env
+
+if [ ! -f ${tao_env} ]; then
+	echo "Missing ${tao_env}"
+	exit 1
+fi
+source ${tao_env}
 
 # log a to stderr for admin stuff, otherwise it is really quiet
 admin_args="-config_path ${TAO_TEST}/tao.config -policy_pass "$TAO_PASS" -alsologtostderr=1"
@@ -194,7 +198,7 @@ fi
 start_hosted="${linux_host} --run -- "
 tpm_tao="${tao_bin}/tpm_tao -alsologtostderr=1"
 
-all_tao_progs=$(cd ${tao_bin}; echo * | grep -v '\.a$') # exclude lib*.a
+all_tao_progs=$(cd ${tao_bin}; echo * | grep -v '\.a$' | grep -v 'log_net_server') # exclude lib*.a
 watchfiles="bin/tcca bin/linux_host domain_acls domain_rules tao.config tao.env"
 
 function extract_pid()

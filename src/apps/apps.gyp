@@ -247,6 +247,13 @@
 			'includes' : [ '../build/protoc.gypi', ],
 		},
 		{
+			'target_name' : 'log_net_server',
+			'type' : 'executable',
+			'sources' : [ 'log_net_server.cc' ],
+			'include_dirs' : [ '..', ],
+			'dependencies' : [ '../tao/tao.gyp:tao', ],
+		},
+		{
 			'target_name' : 'tao_admin',
 			'type' : 'executable',
 			'sources' : [

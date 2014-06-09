@@ -26,6 +26,12 @@
 
 
 #define JLMDEBUG
+#ifdef JLMDEBUG
+extern void HexDump(uint8_t*, uint8_t*);
+extern uint16_t ia32_read_cs();
+extern uint16_t ia32_read_ds();
+extern uint16_t ia32_read_ss();
+#endif 
 
 
 // AP startup algorithm
@@ -164,14 +170,19 @@ void     ap_initialize_environment(void);
 void     mp_set_bootstrap_state(MP_BOOTSTRAP_STATE new_state);
 
 
-uint32_t startap_rdtsc()
+uint64_t startap_rdtsc()
 {
-    uint32_t ret;
+    uint64_t  ret= 0;
+    uint64_t  hi= 0;
+    uint64_t  lo= 0;
+
     __asm__ volatile(
         "\trdtsc\n"
-        "\tmovl  %%eax,%[ret]\n"
-    : [ret] "=m" (ret)
-    : :"%eax");
+        "\tmovl  %%eax,%[lo]\n"
+        "\tmovl  %%edx,%[hi]\n"
+    : [hi] "=m" (hi), [lo] "=m" (lo)
+    : :);
+    ret= (hi<<32ULL)|lo;
     return ret;
 }
 
@@ -199,10 +210,6 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     :[current_gdtr] "=m" (current_gdtr)
     ::);
   
-    extern uint16_t ia32_read_cs();
-    extern uint16_t ia32_read_ds();
-    extern uint16_t ia32_read_ss();
- 
     cs_value= ia32_read_cs();
     ds_value= ia32_read_ds();
     es_value= ia32_read_ds();
@@ -231,21 +238,19 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
                (uint8_t*)current_gdtr.base, current_gdtr.limit+1);
 
 #if 1
+    // this loops after the ljmp location
+    // uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET+6;
     // this loops at the ljmp location
     uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET-2;
     *(pnop++)= 0xeb; *(pnop++)= 0xfe; 
     *(pnop++)= 0x90; *(pnop++)= 0x90; 
     *(pnop++)= 0x90; *(pnop++)= 0x90; 
     *(pnop++)= 0x90; *(pnop++)= 0x90; 
-    // this loops after the ljmp location
-    // uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET+6;
-    // *(pnop++)= 0xeb; *(pnop++)= 0xfe; 
 #endif
 
 #ifdef JLMDEBUG
     bprint("code_to_patch: 0x%08x, offset: 0x%08x, address: 0x%08x\n",  
            code_to_patch, CONT16_VALUE_OFFSET, code_to_patch+CONT16_VALUE_OFFSET);
-    extern void HexDump(uint8_t*, uint8_t*);
     bprint("cs_value: 0x%04x, ", cs_value);
     bprint("ds_value: 0x%04x, ", ds_value);
     bprint("ss_value: 0x%04x\n", ss_value);
@@ -446,16 +451,14 @@ void startap_stall(uint32_t stall_usec)
 // Should only be called at initialization, as it relies on startap_stall()
 void startap_calibrate_tsc_ticks_per_msec(void)
 {
-    uint32_t start_tsc = 1, end_tsc = 0;
+    uint64_t start_tsc, end_tsc;
 
-    while(start_tsc>end_tsc) {
-        start_tsc= (uint32_t) startap_rdtsc();
-        startap_stall(1000);   // 1 ms
-        end_tsc= (uint32_t) startap_rdtsc();
-    }
-    startap_tsc_ticks_per_msec= (end_tsc-start_tsc);
+    start_tsc= startap_rdtsc();
+    startap_stall(1000);   // 1 ms
+    end_tsc= startap_rdtsc();
+    startap_tsc_ticks_per_msec= (uint32_t)(end_tsc-start_tsc);
 #ifdef JLMDEBUG
-    bprint("ticks/ms %d\n", startap_tsc_ticks_per_msec);
+    bprint("ticks/ms: %d\n", startap_tsc_ticks_per_msec);
 #endif
     return;
 }
@@ -466,24 +469,21 @@ void startap_calibrate_tsc_ticks_per_msec(void)
 // may be rough.
 void startap_stall_using_tsc(uint32_t stall_usec)
 {
-    uint32_t   start_tsc = 1, end_tsc = 0;
+    uint64_t   start_tsc, end_tsc;
 
     // Initialize startap_tsc_ticks_per_msec. Happens at boot time
     if(startap_tsc_ticks_per_msec == 0) {
         startap_calibrate_tsc_ticks_per_msec();
     }
     // Calculate the start_tsc and end_tsc
-    // While loop is to overcome the overflow of 32-bit rdtsc value
-    while(start_tsc > end_tsc) {
-        end_tsc = (uint32_t) startap_rdtsc() + 
-                    ((stall_usec/1000)*startap_tsc_ticks_per_msec);
-            start_tsc = (uint32_t) startap_rdtsc();
-    }
-    while (start_tsc < end_tsc) {
+    start_tsc = startap_rdtsc();
+    end_tsc= startap_rdtsc()+(((uint64_t)stall_usec/1000)*
+                             (uint64_t)startap_tsc_ticks_per_msec);
+    while (start_tsc<end_tsc) {
         __asm__ volatile (
             "\tpause\n"
         :::);
-        start_tsc = (uint32_t) startap_rdtsc();
+        start_tsc = startap_rdtsc();
     }
     return;
 }
@@ -539,7 +539,7 @@ void send_ipi_to_specific_cpu (uint32_t vector_number,
                 *(uint32_t*)&icr_high;
     *(uint32_t*)(uint32_t)(apic_base+LOCAL_APIC_ICR_OFFSET)= *(uint32_t*)&icr_low;
     do {
-        startap_stall_using_tsc(10);
+        startap_stall_using_tsc(10000);
         *(uint32_t*)&icr_low_status= *(uint32_t*)(uint32_t)
                     (apic_base+LOCAL_APIC_ICR_OFFSET);
     } while (icr_low_status.bits.delivery_status!=0);
@@ -566,7 +566,7 @@ void send_targeted_init_sipi(struct _INIT32_STRUCT *p_init32_data,
         send_ipi_to_specific_cpu(0, LOCAL_APIC_DELIVERY_MODE_INIT, 
                                  p_startup->cpu_local_apic_ids[i+1]);
     }
-    startap_stall_using_tsc(10000); // timeout - 10 miliseconds
+    startap_stall_using_tsc(10000); // timeout - 10 milliseconds
 
     // SIPI message contains address of the code, shifted right to 12 bits
     // send it twice - according to manual
@@ -621,6 +621,14 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
 
     // Stage 2 
     g_aps_counter = bsp_enumerate_aps();
+#ifdef JLMDEBUG1
+    bprint("patched code\n");
+    HexDump((uint8_t*) p_init32_data->i32_low_memory_page, 
+        (uint8_t*) p_init32_data->i32_low_memory_page+sizeof(APStartUpCode));
+    bprint("gdt\n");
+    HexDump((uint8_t*) p_init32_data->i32_low_memory_page+GDT_OFFSET_IN_PAGE, 
+        (uint8_t*) p_init32_data->i32_low_memory_page+GDT_OFFSET_IN_PAGE+96);
+#endif
 #ifdef JLMDEBUG
     bprint("stage 2, num aps: %d\n", g_aps_counter);
     LOOP_FOREVER
@@ -785,7 +793,7 @@ void send_ipi_to_all_excluding_self(uint32_t vector_number,
                 *(uint32_t*)&icr_low;
 
     do {
-        startap_stall_using_tsc(10);
+        startap_stall_using_tsc(10000);
         *(uint32_t*)&icr_low_status= *(uint32_t*)(uint32_t)
                 (apic_base+LOCAL_APIC_ICR_OFFSET);
     } while (icr_low_status.bits.delivery_status!=0);

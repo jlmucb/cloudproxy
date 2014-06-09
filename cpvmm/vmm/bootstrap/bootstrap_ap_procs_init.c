@@ -88,8 +88,8 @@ static volatile MP_BOOTSTRAP_STATE mp_bootstrap_state;
 static uint32_t  g_aps_counter = 0;
 
 // stage 2
-static uint8_t   gp_GDT[6] = {0};  // xx:xxxx
-static uint8_t   gp_IDT[6] = {0};  // xx:xxxx
+static uint8_t   gp_GDT[128] = {0};  // xx:xxxx
+static uint8_t   gp_IDT[128] = {0};  // xx:xxxx
 
 static volatile uint32_t        g_ready_counter = 0;
 static FUNC_CONTINUE_AP_BOOT    g_user_func = 0;
@@ -100,9 +100,10 @@ static uint8_t ap_presence_array[VMM_MAX_CPU_SUPPORTED] = {0};
 extern uint32_t evmm_stack_pointers_array[];
 
 
-// Low memory page layout
-//   APStartUpCode
-//   GdtTable
+// Layout of low memory page
+//   APStartUpCode  <--- low_mem
+//   GdtTable       <-- ALIGN16(low_mem+sizeof(APStartupCode))= loc_gdt
+//   GDT Register   <-- ALIGN16(loc_gdt+sizeof(gdt))= loc_gdtr
 
 // Uncomment the following line to deadloop in AP startup
 // #define BREAK_IN_AP_STARTUP
@@ -160,8 +161,8 @@ const uint8_t APStartUpCode[] =
 
 #define AP_CONTINUE_WAKEUP_CODE_IN_CODE_OFFSET  (65 + AP_CODE_START)
 
-#define GDTR_OFFSET_IN_PAGE  ((sizeof(APStartUpCode) + 7) & ~7)
-#define GDT_OFFSET_IN_PAGE   (GDTR_OFFSET_IN_PAGE + 8)
+// #define GDTR_OFFSET_IN_PAGE  ((sizeof(APStartUpCode) + 7) & ~7)
+// #define GDT_OFFSET_IN_PAGE   (GDTR_OFFSET_IN_PAGE + 8)
 
 void     ap_continue_wakeup_code(void);
 void     ap_continue_wakeup_code_C(uint32_t local_apic_id);
@@ -191,6 +192,9 @@ uint64_t startap_rdtsc()
 void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 {
     uint8_t*    code_to_patch = (uint8_t*)temp_low_memory_4K;
+    uint32_t    loc_gdt;
+    uint32_t    loc_gdtr;
+    uint32_t    end_page;
     UINT16      cs_value;
     UINT16      ds_value;
     UINT16      es_value;
@@ -201,6 +205,7 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 #ifdef JLMDEBUG1
     bprint("setup_low_memory\n");
 #endif
+
     // Copy the Startup code to the beginning of the page
     vmm_memcpy(code_to_patch, (const void*)APStartUpCode, sizeof(APStartUpCode));
 
@@ -209,6 +214,13 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
        "\tsgdt  %[current_gdtr]\n"
     :[current_gdtr] "=m" (current_gdtr)
     ::);
+
+    loc_gdt= (temp_low_memory_4K+sizeof(APStartUpCode)+15)&(uint32_t)0xfffffff0;
+    loc_gdtr= (loc_gdt+current_gdtr.limit+16)&(uint32_t)0xfffffff0;
+
+    // GDTR in page
+    *(uint16_t*)loc_gdtr= current_gdtr.limit;
+    *(uint32_t*)(loc_gdtr+2)= loc_gdt;
   
     cs_value= ia32_read_cs();
     ds_value= ia32_read_ds();
@@ -219,9 +231,8 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 
     // Patch the startup code
     *((UINT16*)(code_to_patch+AP_START_UP_SEGMENT_IN_CODE_OFFSET)) =
-                                    (UINT16)(temp_low_memory_4K >> 4);
-    *((UINT16*)(code_to_patch+GDTR_OFFSET_IN_CODE)) =
-                                    (UINT16)(GDTR_OFFSET_IN_PAGE);
+                                    (UINT16)(temp_low_memory_4K>>4);
+    *((UINT16*)(code_to_patch+GDTR_OFFSET_IN_CODE))= (uint16_t) loc_gdtr;
     *((uint32_t*)(code_to_patch+CONT16_IN_CODE_OFFSET)) =
                                    (uint32_t)code_to_patch + CONT16_VALUE_OFFSET;
     *((UINT16*)(code_to_patch+CS_IN_CODE_OFFSET))= cs_value;
@@ -233,15 +244,15 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     *((uint32_t*)(code_to_patch+AP_CONTINUE_WAKEUP_CODE_IN_CODE_OFFSET)) =
                                             (uint32_t)(ap_continue_wakeup_code);
 
-    // copy GDT 
-    vmm_memcpy(code_to_patch+GDT_OFFSET_IN_PAGE,
-               (uint8_t*)current_gdtr.base, current_gdtr.limit+1);
+    // GDT in page
+    vmm_memcpy((uint8_t*)loc_gdt, (uint8_t*)current_gdtr.base, current_gdtr.limit+1);
 
 #if 1
+    end_page= loc_gdtr+6;
     // this loops after the ljmp location
-    // uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET+6;
+    uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET+6;
     // this loops at the ljmp location
-    uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET-2;
+    // uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET-2;
     *(pnop++)= 0xeb; *(pnop++)= 0xfe; 
     *(pnop++)= 0x90; *(pnop++)= 0x90; 
     *(pnop++)= 0x90; *(pnop++)= 0x90; 
@@ -249,17 +260,14 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 #endif
 
 #ifdef JLMDEBUG
-    bprint("code_to_patch: 0x%08x, offset: 0x%08x, address: 0x%08x\n",  
+    bprint("code_to_patch: 0x%08x, ljmp offset offset: 0x%08x, address: 0x%08x\n",  
            code_to_patch, CONT16_VALUE_OFFSET, code_to_patch+CONT16_VALUE_OFFSET);
     bprint("cs_value: 0x%04x, ", cs_value);
     bprint("ds_value: 0x%04x, ", ds_value);
     bprint("ss_value: 0x%04x\n", ss_value);
-    bprint("patched code\n");
-    HexDump(code_to_patch, code_to_patch+sizeof(APStartUpCode));
-    bprint("gdt\n");
-    HexDump(code_to_patch+GDT_OFFSET_IN_PAGE, code_to_patch+GDT_OFFSET_IN_PAGE+
-            current_gdtr.limit+1);
-    // LOOP_FOREVER
+    bprint("loc_gdt: 0x%08x, loc_gdtr: 0x%08x, base: 0x%08x, limit: 0x%04x\n",
+            loc_gdt, loc_gdtr, loc_gdt, current_gdtr.limit);
+    HexDump(code_to_patch, (uint8_t*)end_page);
 #endif
     return;
 }

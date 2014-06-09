@@ -231,21 +231,15 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
                (uint8_t*)current_gdtr.base, current_gdtr.limit+1);
 
 #if 1
+    // this loops at the ljmp location
     uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET-2;
-    *(pnop++)= 0xeb; *(pnop++)= 0xfe; *(pnop++)= 0x90; *(pnop++)= 0x90;
-    *(pnop++)= 0x90; *(pnop++)= 0x90; *(pnop++)= 0x90; *(pnop++)= 0x90;
-#else
-    uint16_t* pseldesc= (uint16_t*)(code_to_patch+GDT_OFFSET_IN_PAGE);
-    pseldesc[4]= 0xffff;
-    pseldesc[5]= 0x0;
-    pseldesc[6]= 0x9a01;
-    pseldesc[7]= 0x0;
-    pseldesc[8]= 0xffff;
-    pseldesc[9]= 0x0;
-    pseldesc[10]= 0x9201;
-    pseldesc[11]= 0x0;
-    uint8_t* pnop= code_to_patch;
-    *(pnop++)= 0xeb; *(pnop++)= 0xfe;
+    *(pnop++)= 0xeb; *(pnop++)= 0xfe; 
+    *(pnop++)= 0x90; *(pnop++)= 0x90; 
+    *(pnop++)= 0x90; *(pnop++)= 0x90; 
+    *(pnop++)= 0x90; *(pnop++)= 0x90; 
+    // this loops after the ljmp location
+    //uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET+6;
+    //*(pnop++)= 0xeb; *(pnop++)= 0xfe; 
 #endif
 
 #ifdef JLMDEBUG
@@ -753,7 +747,7 @@ void send_broadcast_init_sipi(INIT32_STRUCT *p_init32_data)
 #endif
     send_init_ipi();
 #ifdef JLMDEBUG
-    bprint("back from send_init_ipi\n");
+    bprint("back from send_broadcast_init_sipi\n");
 #endif
     startap_stall_using_tsc(10000); // timeout - 10 miliseconds
 #ifdef JLMDEBUG

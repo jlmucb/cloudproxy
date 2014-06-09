@@ -40,7 +40,7 @@
 // this is all 32 bit code
 
 #define JLMDEBUG
-//#define MULTIAPS_ENABLED
+// #define MULTIAPS_ENABLED
 
 // JLM: Remove this soon 
 #ifdef TBOOT_SHARED_PAGE

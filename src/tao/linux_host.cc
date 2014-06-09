@@ -427,7 +427,7 @@ bool LinuxHost::HandleChildSignal() {
     HostedLinuxProcess *child = it->get();
     if (child->pid == pid) {
       LOG(INFO) << "LinuxHost: removed dead hosted program ::"
-                << child->subprin;
+                << elideString(child->subprin);
       child->rpc_channel->Close();
       child->pid = 0;
       hosted_processes_.erase(it);

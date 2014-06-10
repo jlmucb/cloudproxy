@@ -88,8 +88,8 @@ static volatile MP_BOOTSTRAP_STATE mp_bootstrap_state;
 static uint32_t  g_aps_counter = 0;
 
 // stage 2
-static uint8_t   gp_GDT[128] = {0};  // xx:xxxx
-static uint8_t   gp_IDT[128] = {0};  // xx:xxxx
+static uint8_t   gp_GDT[6] = {0};  // xx:xxxx
+static uint8_t   gp_IDT[6] = {0};  // xx:xxxx
 
 static volatile uint32_t        g_ready_counter = 0;
 static FUNC_CONTINUE_AP_BOOT    g_user_func = 0;
@@ -112,34 +112,27 @@ const uint8_t APStartUpCode[] =
 #ifdef BREAK_IN_AP_STARTUP
     0xEB, 0xFE,                    // jmp $
 #endif
-    0xB8, 0x00, 0x00,              // 00: mov  ax,AP_START_UP_SEGMENT
-    0x8E, 0xD8,                    // 03: mov  ds,ax
-    0x8D, 0x36, 0x00, 0x00,        // 05: lea  si,GDTR_OFFSET_IN_PAGE
-    0x0F, 0x01, 0x14,              // 09: lgdt fword ptr [si]
-    0x0F, 0x20, 0xC0,              // 12: mov  eax,cr0
-    0x0C, 0x01,                    // 15: or   al,1
-    0x0F, 0x22, 0xC0,              // 17: mov  cr0,eax
-    0x66, 0xEA,                    // 20: ljmp CS,CONT16
-    0x00, 0x00, 0x00, 0x00,        // 22: CONT16
-    0x00, 0x00,                    // 26: CS_VALUE
+    0x0f, 0x01, 0x16, 0x00, 0x00,  // 00: lgdt  GDTR
+    0x0F, 0x20, 0xC0,              // 05: mov  eax,cr0
+    0x0C, 0x01,                    // 08: or   al,1
+    0x0F, 0x22, 0xC0,              // 10: mov  cr0,eax
+    0x66, 0xEA,                    // 13: ljmp CS,CONT16
+    0x00, 0x00, 0x00, 0x00,        // 15: CONT16
+    0x00, 0x00,                    // 19: CS_VALUE
 //CONT16:
-    0xFA,                          // 28: cli
-    0x66, 0xB8, 0x00, 0x00,        // 29: mov  ax,DS_VALUE
-    0x66, 0x8E, 0xD8,              // 33: mov  ds,ax
-    0x66, 0xB8, 0x00, 0x00,        // 36: mov  ax,ES_VALUE
-    0x66, 0x8E, 0xC0,              // 40: mov  es,ax
-    0x66, 0xB8, 0x00, 0x00,        // 43: mov  ax,GS_VALUE
-    0x66, 0x8E, 0xE8,              // 47: mov  gs,ax
-    0x66, 0xB8, 0x00, 0x00,        // 50: mov  ax,FS_VALUE
-    0x66, 0x8E, 0xE0,              // 54: mov  fs,ax
-    0x66, 0xB8, 0x00, 0x00,        // 57: mov  ax,SS_VALUE
-    0x66, 0x8E, 0xD0,              // 61: mov  ss,ax
-    0xB8, 0x00, 0x00, 0x00, 0x00,  // 64: mov  eax,AP_CONTINUE_WAKEUP_CODE
-    0xFF, 0xE0,                    // 69: jmp  eax
-    ////    0x00                   // 71: 32 bytes alignment
-// debug
-    0xEB, 0xFE,                    // jmp $
-// debug
+    0xFA,                          // 21: cli
+    0x66, 0xB8, 0x00, 0x00,        // 22: mov  ax,DS_VALUE
+    0x66, 0x8E, 0xD8,              // 26: mov  ds,ax
+    0x66, 0xB8, 0x00, 0x00,        // 29: mov  ax,ES_VALUE
+    0x66, 0x8E, 0xC0,              // 33: mov  es,ax
+    0x66, 0xB8, 0x00, 0x00,        // 36: mov  ax,GS_VALUE
+    0x66, 0x8E, 0xE8,              // 40: mov  gs,ax
+    0x66, 0xB8, 0x00, 0x00,        // 43: mov  ax,FS_VALUE
+    0x66, 0x8E, 0xE0,              // 47: mov  fs,ax
+    0x66, 0xB8, 0x00, 0x00,        // 50: mov  ax,SS_VALUE
+    0x66, 0x8E, 0xD0,              // 54: mov  ss,ax
+    0xB8, 0x00, 0x00, 0x00, 0x00,  // 57: mov  eax,AP_CONTINUE_WAKEUP_CODE
+    0xFF, 0xE0,                    // 62: jmp  eax
 };
 
 #ifdef BREAK_IN_AP_STARTUP
@@ -148,21 +141,17 @@ const uint8_t APStartUpCode[] =
 #define AP_CODE_START                           0
 #endif
 
-#define AP_START_UP_SEGMENT_IN_CODE_OFFSET      (1 + AP_CODE_START)
-#define GDTR_OFFSET_IN_CODE                     (7 + AP_CODE_START)
-#define CONT16_IN_CODE_OFFSET                   (22 + AP_CODE_START)
-#define CONT16_VALUE_OFFSET                     (28 + AP_CODE_START)
-#define CS_IN_CODE_OFFSET                       (26 + AP_CODE_START)
-#define DS_IN_CODE_OFFSET                       (31 + AP_CODE_START)
-#define ES_IN_CODE_OFFSET                       (38 + AP_CODE_START)
-#define GS_IN_CODE_OFFSET                       (45 + AP_CODE_START)
-#define FS_IN_CODE_OFFSET                       (52 + AP_CODE_START)
-#define SS_IN_CODE_OFFSET                       (59 + AP_CODE_START)
+#define GDTR_OFFSET_IN_CODE                     (3 + AP_CODE_START)
+#define CONT16_IN_CODE_OFFSET                   (15 + AP_CODE_START)
+#define CONT16_VALUE_OFFSET                     (21 + AP_CODE_START)
+#define CS_IN_CODE_OFFSET                       (19 + AP_CODE_START)
+#define DS_IN_CODE_OFFSET                       (24 + AP_CODE_START)
+#define ES_IN_CODE_OFFSET                       (27 + AP_CODE_START)
+#define GS_IN_CODE_OFFSET                       (34 + AP_CODE_START)
+#define FS_IN_CODE_OFFSET                       (41 + AP_CODE_START)
+#define SS_IN_CODE_OFFSET                       (48 + AP_CODE_START)
+#define AP_CONTINUE_WAKEUP_CODE_IN_CODE_OFFSET  (58 + AP_CODE_START)
 
-#define AP_CONTINUE_WAKEUP_CODE_IN_CODE_OFFSET  (65 + AP_CODE_START)
-
-// #define GDTR_OFFSET_IN_PAGE  ((sizeof(APStartUpCode) + 7) & ~7)
-// #define GDT_OFFSET_IN_PAGE   (GDTR_OFFSET_IN_PAGE + 8)
 
 void     ap_continue_wakeup_code(void);
 void     ap_continue_wakeup_code_C(uint32_t local_apic_id);
@@ -195,16 +184,19 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     uint32_t    loc_gdt;
     uint32_t    loc_gdtr;
     uint32_t    end_page;
-    UINT16      cs_value;
-    UINT16      ds_value;
-    UINT16      es_value;
-    UINT16      gs_value;
-    UINT16      fs_value;
-    UINT16      ss_value;
+    UINT16      cs_sel= 0;
+    UINT16      ds_sel= 0;
+    UINT16      es_sel= 0;
+    UINT16      gs_sel= 0;
+    UINT16      fs_sel= 0;
+    UINT16      ss_sel= 0;
 
 #ifdef JLMDEBUG1
     bprint("setup_low_memory\n");
 #endif
+
+    // zero low memory
+    vmm_memset(code_to_patch, 0, 0x1000);
 
     // Copy the Startup code to the beginning of the page
     vmm_memcpy(code_to_patch, (const void*)APStartUpCode, sizeof(APStartUpCode));
@@ -222,25 +214,22 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     *(uint16_t*)loc_gdtr= current_gdtr.limit;
     *(uint32_t*)(loc_gdtr+2)= loc_gdt;
   
-    cs_value= ia32_read_cs();
-    ds_value= ia32_read_ds();
-    es_value= ia32_read_ds();
-    gs_value= ia32_read_ds();
-    fs_value= ia32_read_ds();
-    ss_value= ia32_read_ss();
+    cs_sel= ia32_read_cs();
+    ds_sel= ia32_read_ds();
+    ss_sel= ia32_read_ss();
+    es_sel= ia32_read_ds();
+    fs_sel= ia32_read_ds();
 
     // Patch the startup code
-    *((UINT16*)(code_to_patch+AP_START_UP_SEGMENT_IN_CODE_OFFSET)) =
-                                    (UINT16)(temp_low_memory_4K>>4);
     *((UINT16*)(code_to_patch+GDTR_OFFSET_IN_CODE))= (uint16_t) loc_gdtr;
     *((uint32_t*)(code_to_patch+CONT16_IN_CODE_OFFSET)) =
                                    (uint32_t)code_to_patch + CONT16_VALUE_OFFSET;
-    *((UINT16*)(code_to_patch+CS_IN_CODE_OFFSET))= cs_value;
-    *((UINT16*)(code_to_patch+DS_IN_CODE_OFFSET))= ds_value;
-    *((UINT16*)(code_to_patch+ES_IN_CODE_OFFSET))= es_value;
-    *((UINT16*)(code_to_patch+GS_IN_CODE_OFFSET))= gs_value;
-    *((UINT16*)(code_to_patch+FS_IN_CODE_OFFSET))= fs_value;
-    *((UINT16*)(code_to_patch+SS_IN_CODE_OFFSET))= ss_value;
+    *((UINT16*)(code_to_patch+CS_IN_CODE_OFFSET))= cs_sel;
+    *((UINT16*)(code_to_patch+DS_IN_CODE_OFFSET))= ds_sel;
+    *((UINT16*)(code_to_patch+ES_IN_CODE_OFFSET))= es_sel;
+    *((UINT16*)(code_to_patch+GS_IN_CODE_OFFSET))= gs_sel;
+    *((UINT16*)(code_to_patch+FS_IN_CODE_OFFSET))= fs_sel;
+    *((UINT16*)(code_to_patch+SS_IN_CODE_OFFSET))= ss_sel;
     *((uint32_t*)(code_to_patch+AP_CONTINUE_WAKEUP_CODE_IN_CODE_OFFSET)) =
                                             (uint32_t)(ap_continue_wakeup_code);
 
@@ -248,11 +237,9 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     vmm_memcpy((uint8_t*)loc_gdt, (uint8_t*)current_gdtr.base, current_gdtr.limit+1);
 
 #if 1
-    end_page= loc_gdtr+6;
-    // this loops after the ljmp location
-    uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET+6;
     // this loops at the ljmp location
-    // uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET-2;
+    uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET-2;
+    // uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET+6;
     *(pnop++)= 0xeb; *(pnop++)= 0xfe; 
     *(pnop++)= 0x90; *(pnop++)= 0x90; 
     *(pnop++)= 0x90; *(pnop++)= 0x90; 
@@ -260,11 +247,12 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 #endif
 
 #ifdef JLMDEBUG
+    end_page= loc_gdtr+6;
     bprint("code_to_patch: 0x%08x, ljmp offset offset: 0x%08x, address: 0x%08x\n",  
            code_to_patch, CONT16_VALUE_OFFSET, code_to_patch+CONT16_VALUE_OFFSET);
-    bprint("cs_value: 0x%04x, ", cs_value);
-    bprint("ds_value: 0x%04x, ", ds_value);
-    bprint("ss_value: 0x%04x\n", ss_value);
+    bprint("cs_sel: 0x%04x, ", cs_sel);
+    bprint("ds_sel: 0x%04x, ", ds_sel);
+    bprint("ss_sel: 0x%04x\n", ss_sel);
     bprint("loc_gdt: 0x%08x, loc_gdtr: 0x%08x, base: 0x%08x, limit: 0x%04x\n",
             loc_gdt, loc_gdtr, loc_gdt, current_gdtr.limit);
     HexDump(code_to_patch, (uint8_t*)end_page);

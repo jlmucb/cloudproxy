@@ -141,16 +141,17 @@ const uint8_t APStartUpCode[] =
 #define AP_CODE_START                           0
 #endif
 
-#define GDTR_OFFSET_IN_CODE                     (3 + AP_CODE_START)
+#define GDTR_OFFSET_IN_CODE                      (3 + AP_CODE_START)
 #define CONT16_IN_CODE_OFFSET                   (15 + AP_CODE_START)
-#define CONT16_VALUE_OFFSET                     (21 + AP_CODE_START)
 #define CS_IN_CODE_OFFSET                       (19 + AP_CODE_START)
 #define DS_IN_CODE_OFFSET                       (24 + AP_CODE_START)
-#define ES_IN_CODE_OFFSET                       (27 + AP_CODE_START)
-#define GS_IN_CODE_OFFSET                       (34 + AP_CODE_START)
-#define FS_IN_CODE_OFFSET                       (41 + AP_CODE_START)
-#define SS_IN_CODE_OFFSET                       (48 + AP_CODE_START)
+#define ES_IN_CODE_OFFSET                       (31 + AP_CODE_START)
+#define GS_IN_CODE_OFFSET                       (38 + AP_CODE_START)
+#define FS_IN_CODE_OFFSET                       (45 + AP_CODE_START)
+#define SS_IN_CODE_OFFSET                       (52 + AP_CODE_START)
 #define AP_CONTINUE_WAKEUP_CODE_IN_CODE_OFFSET  (58 + AP_CODE_START)
+
+#define CONT16_VALUE_OFFSET                     (21 + AP_CODE_START)
 
 
 void     ap_continue_wakeup_code(void);
@@ -183,6 +184,7 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     uint8_t*    code_to_patch = (uint8_t*)temp_low_memory_4K;
     uint32_t    loc_gdt;
     uint32_t    loc_gdtr;
+    // uint32_t    loc_idtr;
     uint32_t    end_page;
     UINT16      cs_sel= 0;
     UINT16      ds_sel= 0;
@@ -202,17 +204,24 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     vmm_memcpy(code_to_patch, (const void*)APStartUpCode, sizeof(APStartUpCode));
 
     IA32_GDTR current_gdtr;
+    //IA32_IDTR current_idtr;
     __asm__ volatile (
        "\tsgdt  %[current_gdtr]\n"
-    :[current_gdtr] "=m" (current_gdtr)
+       // "\tsidt  %[current_idtr]\n"
+    :[current_gdtr] "=m" (current_gdtr)// ,
+     // [current_idtr] "=m" (current_idtr)
     ::);
 
     loc_gdt= (temp_low_memory_4K+sizeof(APStartUpCode)+15)&(uint32_t)0xfffffff0;
     loc_gdtr= (loc_gdt+current_gdtr.limit+16)&(uint32_t)0xfffffff0;
+    // loc_idtr= (loc_gdtr+6);
 
     // GDTR in page
     *(uint16_t*)loc_gdtr= current_gdtr.limit;
     *(uint32_t*)(loc_gdtr+2)= loc_gdt;
+    // IDTR in page
+    // *(uint16_t*)loc_idtr= current_idtr.limit;
+    // *(uint32_t*)(loc_idtr+2)= current_idtr.base;
   
     cs_sel= ia32_read_cs();
     ds_sel= ia32_read_ds();
@@ -238,8 +247,8 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 
 #if 1
     // this loops at the ljmp location
-    uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET-2;
-    // uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET+6;
+    // uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET-2;
+    uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET+6;
     *(pnop++)= 0xeb; *(pnop++)= 0xfe; 
     *(pnop++)= 0x90; *(pnop++)= 0x90; 
     *(pnop++)= 0x90; *(pnop++)= 0x90; 

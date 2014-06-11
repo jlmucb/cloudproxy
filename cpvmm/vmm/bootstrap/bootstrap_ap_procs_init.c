@@ -310,13 +310,13 @@ __asm__(
         // LOCAL_APIC_ID_LOW_RESERVED_BITS_COUNT= 24
         "\tshr   $24, %ecx\n"
 
-        "\tjmp .\n"    // debug
         // edx <- address of presence array
         "\tlea   ap_presence_array, %edx\n"
         // edx <- address of AP CPU presence location
         "\tadd   %ecx, %edx\n"
         // mark current CPU as present
         "\tmovl  $1, (%edx)\n"
+        "\tjmp .\n"    // debug
         // last debug place
 "1:\n"
         // MP_BOOTSTRAP_STATE_APS_ENUMERATED= 1

@@ -566,6 +566,10 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
         (uint8_t*) p_init32_data->i32_low_memory_page+GDT_OFFSET_IN_PAGE+96);
 #endif
 #ifdef JLMDEBUG
+    bprint("gdt limit: %d, gdt base: 0x%08x\n", *(uint16_t*)(&gp_GDT[0]),
+            *(uint32_t*)(&gp_GDT[2]));
+    bprint("idt limit: %d, idt base: 0x%08x\n", *(uint16_t*)(&gp_IDT[0]),
+            *(uint32_t*)(&gp_IDT[2]));
     bprint("stage 2, num aps: %d\n", g_aps_counter);
     LOOP_FOREVER
 #endif

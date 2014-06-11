@@ -198,7 +198,8 @@ fi
 start_hosted="${linux_host} --run -- "
 tpm_tao="${tao_bin}/tpm_tao -alsologtostderr=1"
 
-all_tao_progs=$(cd ${tao_bin}; echo * | grep -v '\.a$' | grep -v 'log_net_server') # exclude lib*.a
+# nb: cat at the end of pipeline hides exit code of grep -v
+all_tao_progs=$(cd ${tao_bin}; echo * | grep -v '\.a$' | grep -v 'log_net_server' | cat) # exclude lib*.a
 watchfiles="bin/tcca bin/linux_host domain_acls domain_rules tao.config tao.env"
 
 function extract_pid()

@@ -101,6 +101,8 @@ bool DemoClient::Send(const string &msg) {
 }
 
 int main(int argc, char **argv) {
+  string usage = "Demo client/server for CloudProxy.\nUsage:\n  ";
+  google::SetUsageMessage(usage + argv[0] + " [options]");
   tao::InitializeApp(&argc, &argv, true);
   Tao *tao = Tao::GetHostTao();
   CHECK(tao != nullptr);

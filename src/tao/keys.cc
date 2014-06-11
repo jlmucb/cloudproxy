@@ -882,10 +882,11 @@ Verifier *VerifierFromX509(const string &serialized_cert) {
   }
   scoped_array<char> name_buf(new char[len]);
   if (X509_NAME_get_text_by_NID(subject, NID_commonName, name_buf.get(), len) !=
-      len) {
+      len - 1) {
     LOG(ERROR) << "Could not get x509 subject CommonName";
     return nullptr;
   }
+  name_buf[len - 1] = '\0';
   string nickname(name_buf.get(), len);
 
   scoped_ptr<Keyset> keyset(new Keyset());
@@ -899,8 +900,12 @@ Verifier *VerifierFromX509(const string &serialized_cert) {
   dict.SetString("curve", curve);
   dict.SetString("publicBytes", public_bytes64);
   scoped_ptr<Key> newkey(Key::CreateFromValue(KeyType::ECDSA_PUB, dict));
+  if (newkey.get() == nullptr) {
+    LOG(ERROR) << "Could not create key from x509";
+    return nullptr;
+  }
   if (!keyset->AddKey(newkey.release(), 1 /* version */)) {
-    LOG(ERROR) << "Could not add key";
+    LOG(ERROR) << "Could not add key to keyset";
     return nullptr;
   }
   scoped_ptr<Verifier> verifier(new Verifier(keyset.release()));

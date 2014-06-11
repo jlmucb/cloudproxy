@@ -423,7 +423,7 @@ bool LinuxHost::HandleChildSignal() {
   int pid = child_factory_->WaitForHostedProgram();
   if (pid == 0 || pid == -1) return false;
   for (auto it = hosted_processes_.begin(); it != hosted_processes_.end();
-       /**/) {
+       ++it) {
     HostedLinuxProcess *child = it->get();
     if (child->pid == pid) {
       LOG(INFO) << "LinuxHost: removed dead hosted program ::"

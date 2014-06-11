@@ -268,6 +268,7 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     bprint("loc_gdt: 0x%08x, loc_gdtr: 0x%08x, base: 0x%08x, limit: 0x%04x\n",
             loc_gdt, loc_gdtr, loc_gdt, current_gdtr.limit);
     HexDump(code_to_patch, (uint8_t*)end_page);
+    // LOOP_FOREVER
 #endif
     return;
 }
@@ -277,6 +278,7 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 void ap_continue_wakeup_code_C(uint32_t local_apic_id)
 {
 #ifdef JLMDEBUG
+    // bootstrap_partial_reset();
     // bprint("ap_continue_wakeup_code_C %d\n", local_apic_id);
 #endif
     // mark that the command was accepted
@@ -346,10 +348,13 @@ __asm__(
         // setup IDT
         "\tlidt gp_IDT\n"
 
+        // align stack
+        "\tand   $0xfffffff0, %esp\n"
+
         // enter "C" function
         //  push  AP ordered ID
         "\tmov    %ecx, %edi\n"
-        "\tpush   %ecx\n"
+        // "\tpush   %ecx\n"
         // should never return
         // "\tjmp .\n"    // debug
         "\tcall  ap_continue_wakeup_code_C\n"
@@ -647,6 +652,7 @@ void mp_set_bootstrap_state(uint32_t new_state)
     : "%eax");
 #ifdef JLMDEBUG
     bprint("mp_set_bootstrap_state returning\n");
+    bprint("address of bprint: 0x%08x\n", (uint32_t)bprint);
     LOOP_FOREVER
 #endif
     return;

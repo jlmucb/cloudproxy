@@ -192,15 +192,15 @@ static uint32_t                         local_apic_id = 0;
 static IA32_GDTR                        tboot_gdtr_32;
 uint16_t                                tboot_cs_selector= 0;
 static uint32_t                         tboot_cs_base= 0;
-static uint32_t                         tboot_cs_limit= 0;
+static uint16_t                         tboot_cs_limit= 0;
 static uint16_t                         tboot_cs_attr= 0;
 uint16_t                                tboot_ds_selector= 0;
 static uint32_t                         tboot_ds_base= 0;
-static uint32_t                         tboot_ds_limit= 0;
+static uint16_t                         tboot_ds_limit= 0;
 static uint16_t                         tboot_ds_attr= 0;
 uint16_t                                tboot_ss_selector= 0;
 static uint32_t                         tboot_ss_base= 0;
-static uint32_t                         tboot_ss_limit= 0;
+static uint16_t                         tboot_ss_limit= 0;
 static uint16_t                         tboot_ss_attr= 0;
 static uint64_t                         tboot_msr_debugctl= 0;
 static uint64_t                         tboot_msr_efer= 0;
@@ -210,7 +210,7 @@ static uint64_t                         tboot_msr_sysenter_esp= 0;
 static uint64_t                         tboot_msr_sysenter_eip= 0;
 static uint16_t                         tboot_tr_selector= 0;
 static uint32_t                         tboot_tr_base= 0;
-static uint32_t                         tboot_tr_limit= 0;
+static uint16_t                         tboot_tr_limit= 0;
 static uint16_t                         tboot_tr_attr= 0;
 
 static uint32_t                         tboot_cr0= 0;
@@ -273,20 +273,20 @@ static uint32_t                         guest_cr4= 0;
 // machine setup and paging
 
 
-int ia32_get_selector(uint32_t* p, uint32_t* base, uint32_t* limit, uint16_t* access)
+int ia32_get_selector(uint32_t* p, uint32_t* base, uint16_t* limit, uint16_t* access)
 {
     IA32_SEGMENT_DESCRIPTOR* desc= (IA32_SEGMENT_DESCRIPTOR*)p;
     IA32_SEGMENT_DESCRIPTOR_ATTR attr;
 
-    *base= (UINT64)((desc->gen.lo.base_address_15_00) |
+    *base= (UINT32)((desc->gen.lo.base_address_15_00) |
         (desc->gen.hi.base_address_23_16 << 16) |
         (desc->gen.hi.base_address_31_24 << 24));
-    *limit= (UINT32)( (desc->gen.lo.limit_15_00) |
-        (desc->gen.hi.limit_19_16 << 16));
+    *limit= desc->gen.lo.limit_15_00; // |
+        //(desc->gen.hi.limit_19_16 << 16));
     if(desc->gen.hi.granularity)
         *limit = (*limit << 12) | 0x00000fff;
     attr.attr16 = desc->gen_attr.attributes;
-    attr.bits.limit_19_16 = 0;
+    attr.bits.limit_19_16 = 0; 
     *access= (uint32_t) attr.attr16;
     return 0;
 }
@@ -1962,7 +1962,7 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     *((UINT64*)tboot_gdtr_32.base+32)= 0ULL;
     tboot_gdtr_32.limit= 39;
     tboot_tr_attr= 0x0000808b;
-    tboot_tr_limit= 0xffffffff;
+    tboot_tr_limit= 0xffff;
     ia32_write_ts(24);
 
     tboot_cs_selector= ia32_read_cs();
@@ -1980,6 +1980,12 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     read_cr3(&tboot_cr3);
     read_cr4(&tboot_cr4);
 
+#ifdef JLMDEBUG
+    bprint("original gdt\n");
+    HexDump((uint8_t*) tboot_gdtr_32.base, 
+            (uint8_t*) tboot_gdtr_32.base+tboot_gdtr_32.limit);
+#endif
+
     uint32_t*  p;
     p= (uint32_t*)(tboot_gdtr_32.base+tboot_cs_selector); 
     ia32_get_selector(p, &tboot_cs_base, &tboot_cs_limit, &tboot_cs_attr);
@@ -1989,6 +1995,7 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     ia32_get_selector(p, &tboot_ss_base, &tboot_ss_limit, &tboot_ss_attr);
     p= (uint32_t*)(tboot_gdtr_32.base+tboot_tr_selector); 
     ia32_get_selector(p, &tboot_tr_base, &tboot_tr_limit, &tboot_tr_attr);
+
 #ifdef JLMDEBUG
     bprint("gdt base: %08x, limit: %04x\n", tboot_gdtr_32.base, tboot_gdtr_32.limit);
     bprint("tboot cs selector: %04x, base: %08x, limit: %04x, attr: %04x\n",
@@ -1999,6 +2006,9 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
            tboot_ss_selector, tboot_ss_base, tboot_ss_limit, tboot_ss_attr);
     bprint("tboot tr selector: %04x, base: %08x, limit: %04x, attr: %04x\n",
            tboot_tr_selector, tboot_tr_base, tboot_tr_limit, tboot_tr_attr);
+    HexDump((uint8_t*) tboot_gdtr_32.base, 
+            (uint8_t*) tboot_gdtr_32.base+tboot_gdtr_32.limit);
+    // LOOP_FOREVER
     bprint("msr_debugctl: 0x%016llx\n", tboot_msr_debugctl);
     bprint("msr_efer: 0x%016llx\n", tboot_msr_efer);
     bprint("msr_pat: 0x%016llx\n", tboot_msr_pat);

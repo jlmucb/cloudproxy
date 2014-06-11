@@ -897,7 +897,7 @@ Verifier *VerifierFromX509(const string &serialized_cert) {
                          encrypted, next_version_number));
   keyset->set_metadata(meta.release());
   DictionaryValue dict;
-  dict.SetString("curve", curve);
+  dict.SetString("namedCurve", curve);
   dict.SetString("publicBytes", public_bytes64);
   scoped_ptr<Key> newkey(Key::CreateFromValue(KeyType::ECDSA_PUB, dict));
   if (newkey.get() == nullptr) {

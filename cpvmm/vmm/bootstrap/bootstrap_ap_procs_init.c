@@ -277,7 +277,7 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 void ap_continue_wakeup_code_C(uint32_t local_apic_id)
 {
 #ifdef JLMDEBUG
-    bprint("ap_continue_wakeup_code_C %d\n", local_apic_id);
+    // bprint("ap_continue_wakeup_code_C %d\n", local_apic_id);
     LOOP_FOREVER
 #endif
     // mark that the command was accepted
@@ -327,7 +327,6 @@ __asm__(
 "2:\n"
         // find my stack. My stack offset is in the array 
         // edx contains CPU ID
-        "\tjmp .\n"    // debug
         "\txor   %ecx,  %ecx\n"
         // now ecx contains AP ordered ID [1..Max]
         "\tmovb  (%edx), %cl\n"
@@ -349,7 +348,9 @@ __asm__(
         // enter "C" function
         //  push  AP ordered ID
         "\tmov    %ecx, %edi\n"
+        "\tpush   %ecx\n"
         // should never return
+        // "\tjmp .\n"    // debug
         "\tcall  ap_continue_wakeup_code_C\n"
 );
 

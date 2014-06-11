@@ -278,7 +278,6 @@ void ap_continue_wakeup_code_C(uint32_t local_apic_id)
 {
 #ifdef JLMDEBUG
     // bprint("ap_continue_wakeup_code_C %d\n", local_apic_id);
-    LOOP_FOREVER
 #endif
     // mark that the command was accepted
     __asm__ volatile (
@@ -286,6 +285,8 @@ void ap_continue_wakeup_code_C(uint32_t local_apic_id)
     : [g_ready_counter] "=m" (g_ready_counter)
     ::);
 
+    if(g_user_func==0)
+        LOOP_FOREVER
     // user_func now contains address of the function to be called
     g_user_func(local_apic_id, g_any_data_for_user_func);
     return;
@@ -584,7 +585,7 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
 //  any_data - data to be passed to the function
 void ap_procs_run(FUNC_CONTINUE_AP_BOOT continue_ap_boot_func, void *any_data)
 {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("ap_procs_run function: %p\n", continue_ap_boot_func);
 #endif
     g_user_func = continue_ap_boot_func;

@@ -77,12 +77,11 @@ extern void ia32_read_msr(uint32_t msr_id, uint64_t *p_value);
 static uint32_t startap_tsc_ticks_per_msec = 0;
 
 
-typedef enum {
-    MP_BOOTSTRAP_STATE_INIT = 0,
-    MP_BOOTSTRAP_STATE_APS_ENUMERATED = 1,
-} MP_BOOTSTRAP_STATE;
+#define  MP_BOOTSTRAP_STATE_INIT  0
+#define MP_BOOTSTRAP_STATE_APS_ENUMERATED 1
 
-static volatile MP_BOOTSTRAP_STATE mp_bootstrap_state;
+
+static volatile uint32_t mp_bootstrap_state;
 
 // stage 1
 static uint32_t  g_aps_counter = 0;
@@ -158,7 +157,7 @@ void     ap_continue_wakeup_code(void);
 void     ap_continue_wakeup_code_C(uint32_t local_apic_id);
 uint8_t  bsp_enumerate_aps(void);
 void     ap_initialize_environment(void);
-void     mp_set_bootstrap_state(MP_BOOTSTRAP_STATE new_state);
+void     mp_set_bootstrap_state(uint32_t new_state);
 
 
 uint64_t startap_rdtsc()
@@ -316,7 +315,6 @@ __asm__(
         "\tadd   %ecx, %edx\n"
         // mark current CPU as present
         "\tmovl  $1, (%edx)\n"
-        "\tjmp .\n"    // debug
         // last debug place
 "1:\n"
         // MP_BOOTSTRAP_STATE_APS_ENUMERATED= 1
@@ -329,6 +327,7 @@ __asm__(
 "2:\n"
         // find my stack. My stack offset is in the array 
         // edx contains CPU ID
+        "\tjmp .\n"    // debug
         "\txor   %ecx,  %ecx\n"
         // now ecx contains AP ordered ID [1..Max]
         "\tmovb  (%edx), %cl\n"
@@ -570,8 +569,8 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
             *(uint32_t*)(&gp_GDT[2]));
     bprint("idt limit: %d, idt base: 0x%08x\n", *(uint16_t*)(&gp_IDT[0]),
             *(uint32_t*)(&gp_IDT[2]));
+    bprint("mp_bootstrap_state: %d\n", mp_bootstrap_state);
     bprint("stage 2, num aps: %d\n", g_aps_counter);
-    LOOP_FOREVER
 #endif
     return g_aps_counter;
 }
@@ -632,7 +631,7 @@ void ap_initialize_environment(void)
 }
 
 
-void mp_set_bootstrap_state(MP_BOOTSTRAP_STATE new_state)
+void mp_set_bootstrap_state(uint32_t new_state)
 {
 #ifdef JLMDEBUG
     bprint("mp_set_bootstrap_state %d\n", new_state);

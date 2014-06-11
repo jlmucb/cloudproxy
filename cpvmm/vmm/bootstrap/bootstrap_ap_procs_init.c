@@ -327,7 +327,7 @@ __asm__(
 "2:\n"
         // find my stack. My stack offset is in the array 
         // edx contains CPU ID
-        // "\tjmp .\n"    // debug
+        "\tjmp .\n"    // debug
         "\txor   %ecx,  %ecx\n"
         // now ecx contains AP ordered ID [1..Max]
         "\tmovb  (%edx), %cl\n"
@@ -634,7 +634,6 @@ void mp_set_bootstrap_state(uint32_t new_state)
 {
 #ifdef JLMDEBUG
     bprint("mp_set_bootstrap_state %d\n", new_state);
-    LOOP_FOREVER
 #endif
     __asm__ volatile (
         "\tpush  %%eax\n"
@@ -644,6 +643,10 @@ void mp_set_bootstrap_state(uint32_t new_state)
     : [mp_bootstrap_state] "=m" (mp_bootstrap_state)
     : [new_state] "g" (new_state)
     : "%eax");
+#ifdef JLMDEBUG
+    bprint("mp_set_bootstrap_state returning\n");
+    LOOP_FOREVER
+#endif
     return;
 }
 

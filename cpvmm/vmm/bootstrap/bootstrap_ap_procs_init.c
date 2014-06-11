@@ -178,13 +178,16 @@ uint64_t startap_rdtsc()
 }
 
 
+// location of gdt and gdtr in low memory page
+uint32_t    loc_gdt= 0;
+uint32_t    loc_gdtr= 0;
+uint32_t    loc_idtr= 0;
+
+
 // Setup AP low memory startup code
 void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 {
     uint8_t*    code_to_patch = (uint8_t*)temp_low_memory_4K;
-    uint32_t    loc_gdt;
-    uint32_t    loc_gdtr;
-    // uint32_t    loc_idtr;
     uint32_t    end_page;
     UINT16      cs_sel= 0;
     UINT16      ds_sel= 0;
@@ -214,7 +217,7 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 
     loc_gdt= (temp_low_memory_4K+sizeof(APStartUpCode)+15)&(uint32_t)0xfffffff0;
     loc_gdtr= (loc_gdt+current_gdtr.limit+16)&(uint32_t)0xfffffff0;
-    // loc_idtr= (loc_gdtr+6);
+    loc_idtr= (loc_gdtr+6);
 
     // GDTR in page
     *(uint16_t*)loc_gdtr= current_gdtr.limit;
@@ -257,7 +260,7 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 #endif
 
 #ifdef JLMDEBUG
-    end_page= loc_gdtr+6;
+    end_page= loc_idtr+6;
     bprint("code_to_patch: 0x%08x, ljmp offset offset: 0x%08x, address: 0x%08x\n",  
            code_to_patch, CONT16_VALUE_OFFSET, code_to_patch+CONT16_VALUE_OFFSET);
     bprint("cs_sel: 0x%04x, ", cs_sel);

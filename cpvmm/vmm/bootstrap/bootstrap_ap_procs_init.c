@@ -289,86 +289,13 @@ void ap_continue_wakeup_code_C(uint32_t local_apic_id)
     return;
 }
 
-#if 0
-// Asm-level initial AP setup in protected mode
-void ap_continue_wakeup_code(void)
-{
-    __asm__ volatile (
-        "\tcli\n"
-        // get the Local APIC ID
-        // IA32_MSR_APIC_BASE= 0x01B
-        "\tmovl  $0x01B, %%ecx\n"
-        "\trdmsr\n"
-        // LOCAL_APIC_BASE_MSR_MASK= $0xfffff000
-        "\tandl $0xfffff000, %%eax\n"
-        // LOCAL_APIC_IDENTIFICATION_OFFSET= 0x20
-        "\tmovl 0x20(%%eax), %%ecx\n"
-        // LOCAL_APIC_ID_LOW_RESERVED_BITS_COUNT= 24
-        "\tshrl $24, %%ecx\n"
 
-        // edx <- address of presence array
-        "\tleal (%[ap_presence_array]), %%edx\n"
-        // edx <- address of AP CPU presence location
-        "\taddl %%ecx, %%edx\n"
-        // mark current CPU as present
-        "\tmovl $1, (%%edx)\n"
-        // wait until BSP will init stacks, GDT, IDT, etc
-"1:\n"
-        // MP_BOOTSTRAP_STATE_APS_ENUMERATED= 1
-        "\tcmpl $1, %[mp_bootstrap_state]\n"
-        "\tje 2f\n"
-        "\tpause\n"
-        "\tjmp 1b\n"
-
-        // stage 2 - setup the stack, GDT, IDT and jump to "C"
-"2:\n"
-        // find my stack. My stack offset is in the array 
-        // edx contains CPU ID
-        "\txorl %%ecx,  %%ecx\n"
-        // now ecx contains AP ordered ID [1..Max]
-        "\tmovb (%%edx), %%cl\n"
-        "\tmovl %%ecx, %%eax\n"
-        //  AP starts from 1, so subtract one to get proper index in g_stacks_arr
-        "\tdecl %%eax\n"
-
-        // point edx to right stack
-        "\tmovl %[evmm_stack_pointers_array], %%edx\n"
-        "\tleal (%%eax, %%edx, 4), %%eax\n"
-        "\tmovl (%%edx), %%esp\n"
-
-        // setup GDT
-        "\tmovl %[gp_GDT], %%eax\n"
-        "\tlgdt (%%eax) \n"
-
-        // setup IDT
-        "\tmovl %[gp_IDT], %%eax\n"
-        "\tlidt (%%eax)\n"
-
-        // enter "C" function
-        // JLM(FIX): this seems wrong
-        //  %ecx is an arg to C function
-        //  push  AP ordered ID
-        // "\tpushl    %%ecx\n"
-        "\tmovl    %%ecx, %%edi\n"
-
-        // should never return
-        "\tcall  ap_continue_wakeup_code_C\n"
-    : 
-    : [ap_continue_wakeup_code_C] "g" (ap_continue_wakeup_code_C),
-      [mp_bootstrap_state] "g" (mp_bootstrap_state),
-      [ap_presence_array] "r" (ap_presence_array),
-      [evmm_stack_pointers_array] "p" (evmm_stack_pointers_array),
-      [gp_GDT] "g" (gp_GDT), [gp_IDT] "g" (gp_IDT)
-    :"%eax", "%ebx", "%ecx", "%edx", "memory");
-}
-#else
 __asm__(
 ".text\n"
 ".globl ap_continue_wakeup_code\n"
 ".type ap_continue_wakeup_code,@function\n"
 "ap_continue_wakeup_code:\n"
         "\tcli\n"
-        // "\tjmp .\n"    // debug
         // get the Local APIC ID
         // IA32_MSR_APIC_BASE= 0x01B
         "\tmov  $0x01B, %ecx\n"
@@ -380,6 +307,7 @@ __asm__(
         // LOCAL_APIC_ID_LOW_RESERVED_BITS_COUNT= 24
         "\tshr   $24, %ecx\n"
 
+        "\tjmp .\n"    // debug
         // edx <- address of presence array
         "\tlea   ap_presence_array, %edx\n"
         // edx <- address of AP CPU presence location
@@ -422,7 +350,6 @@ __asm__(
         // should never return
         "\tcall  ap_continue_wakeup_code_C\n"
 );
-#endif
 
 
 static uint8_t read_port_8(uint32_t port)

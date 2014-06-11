@@ -77,7 +77,7 @@ extern void ia32_read_msr(uint32_t msr_id, uint64_t *p_value);
 static uint32_t startap_tsc_ticks_per_msec = 0;
 
 
-#define  MP_BOOTSTRAP_STATE_INIT  0
+#define MP_BOOTSTRAP_STATE_INIT  0
 #define MP_BOOTSTRAP_STATE_APS_ENUMERATED 1
 
 
@@ -327,7 +327,7 @@ __asm__(
 "2:\n"
         // find my stack. My stack offset is in the array 
         // edx contains CPU ID
-        "\tjmp .\n"    // debug
+        // "\tjmp .\n"    // debug
         "\txor   %ecx,  %ecx\n"
         // now ecx contains AP ordered ID [1..Max]
         "\tmovb  (%edx), %cl\n"
@@ -585,7 +585,6 @@ void ap_procs_run(FUNC_CONTINUE_AP_BOOT continue_ap_boot_func, void *any_data)
 {
 #ifdef JLMDEBUG
     bprint("ap_procs_run function: %p\n", continue_ap_boot_func);
-    LOOP_FOREVER
 #endif
     g_user_func = continue_ap_boot_func;
     g_any_data_for_user_func = any_data;

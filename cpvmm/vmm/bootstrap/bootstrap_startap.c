@@ -76,10 +76,9 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
 
 #ifdef JLMDEBUG
     bprint("startap_main %d application processors\n", application_processors);
-    LOOP_FOREVER
 #endif
     // first launch application on AP cores
-    if (application_processors > 0) {
+    if (application_processors>0) {
         ap_procs_run((FUNC_CONTINUE_AP_BOOT)start_application, &application_params);
     }
     // launch application on BSP

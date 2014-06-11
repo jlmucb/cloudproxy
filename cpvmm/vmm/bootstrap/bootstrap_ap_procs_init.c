@@ -245,14 +245,15 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     // GDT in page
     vmm_memcpy((uint8_t*)loc_gdt, (uint8_t*)current_gdtr.base, current_gdtr.limit+1);
 
-#if 1
-    // this loops at the ljmp location
-    // uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET-2;
-    uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET+6;
+#if 0
+    // this loops after the ljmp location
+    // uint8_t* pnop= code_to_patch+CONT16_IN_CODE_OFFSET+6;
+    // uint8_t* pnop= code_to_patch+57;
+    uint8_t* pnop= code_to_patch+62;
     *(pnop++)= 0xeb; *(pnop++)= 0xfe; 
-    *(pnop++)= 0x90; *(pnop++)= 0x90; 
-    *(pnop++)= 0x90; *(pnop++)= 0x90; 
-    *(pnop++)= 0x90; *(pnop++)= 0x90; 
+    // *(pnop++)= 0x90; *(pnop++)= 0x90; 
+    //*(pnop++)= 0x90; *(pnop++)= 0x90; 
+    //*(pnop++)= 0x90; *(pnop++)= 0x90; 
 #endif
 
 #ifdef JLMDEBUG

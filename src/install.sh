@@ -572,7 +572,7 @@ case "$(basename $0)" in
 			base64wencode $f
 		done
 		;;
-	base64w-decode)
+	base64w-decode.sh)
 		for f in "$@"; do
 			base64wdecode $f
 		done

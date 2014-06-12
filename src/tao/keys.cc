@@ -880,14 +880,15 @@ Verifier *VerifierFromX509(const string &serialized_cert) {
     LOG(ERROR) << "x509 subject missing CommonName";
     return nullptr;
   }
-  scoped_array<char> name_buf(new char[len]);
-  if (X509_NAME_get_text_by_NID(subject, NID_commonName, name_buf.get(), len) !=
-      len - 1) {
+  scoped_array<char> name_buf(new char[len + 1]);
+  if (X509_NAME_get_text_by_NID(subject, NID_commonName, name_buf.get(),
+                                len + 1) != len) {
     LOG(ERROR) << "Could not get x509 subject CommonName";
     return nullptr;
   }
-  name_buf[len - 1] = '\0';
+  name_buf[len] = '\0';
   string nickname(name_buf.get(), len);
+  nickname += "_signing";
 
   scoped_ptr<Keyset> keyset(new Keyset());
   bool encrypted = false;
@@ -895,6 +896,12 @@ Verifier *VerifierFromX509(const string &serialized_cert) {
   scoped_ptr<KeysetMetadata> meta(
       new KeysetMetadata(nickname, KeyType::ECDSA_PUB, KeyPurpose::VERIFY,
                          encrypted, next_version_number));
+  bool exportable = false;
+  if (!meta->AddVersion(new KeysetMetadata::KeyVersion(
+          0 /* auto version number */, KeyStatus::PRIMARY, exportable))) {
+    LOG(ERROR) << "Could not add keyset version info";
+    return nullptr;
+  }
   keyset->set_metadata(meta.release());
   DictionaryValue dict;
   dict.SetString("namedCurve", curve);

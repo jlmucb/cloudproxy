@@ -257,6 +257,16 @@ class Keys {
   /// Get the nickname of this group of keys.
   string Nickname() const { return nickname_; }
 
+  // Get the nickname of a key from this group.
+  // string Nickname(Type key_type) const {
+  //   if (key_type == Type::Crypting)
+  //     return nickname_ + "_crypting";
+  //   else if (key_type == Type::Signing)
+  //     return nickname_ + "_signing";
+  //   else if (key_type == Type::KeyDeriving)
+  //     return nickname_ + "_key_deriving";
+  // }
+
   /// Get the full Tao principal name identifying the public signing key.
   /// @param[out] name The principal name.
   bool GetPrincipalName(string *name) const;

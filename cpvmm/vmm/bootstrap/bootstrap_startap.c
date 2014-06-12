@@ -92,6 +92,14 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
     // start_application(0, &application_params);
 #ifdef JLMDEBUG
     bprint("returning from startap_main %d %d %d\n", g_numstarted, g_calls, g_num_init64);
+    uint32_t t_stack= 0;
+     __asm__ volatile(
+         "\tmovl  $0x8fa0, %%ebx\n"
+         "\tmovl   (%%ebx), %%eax\n"
+         "\tmovl   %%eax, %[t_stack]\n"
+    : [t_stack] "=m" (t_stack)
+    : :"%eax", "%ebx");
+    bprint("ap stack: 0x%08x\n", t_stack);
     LOOP_FOREVER
 #endif
 }

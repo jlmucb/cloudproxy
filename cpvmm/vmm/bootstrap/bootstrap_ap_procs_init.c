@@ -113,7 +113,7 @@ const uint8_t APStartUpCode[] =
 #endif
     0x0f, 0x01, 0x16, 0x00, 0x00,  // 00: lgdt  GDTR
     0x0F, 0x20, 0xC0,              // 05: mov  eax,cr0
-    0x0C, 0x01,                    // 08: or   al,1
+    0x0C, 0x33,                    // 08: or   al,1
     0x0F, 0x22, 0xC0,              // 10: mov  cr0,eax
     0x66, 0xEA,                    // 13: ljmp CS,CONT16
     0x00, 0x00, 0x00, 0x00,        // 15: CONT16
@@ -227,7 +227,7 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
   
     cs_sel= ia32_read_cs();
     ds_sel= ia32_read_ds();
-    ss_sel= ia32_read_ss();
+    ss_sel= ia32_read_ds();
     es_sel= ia32_read_ds();
     fs_sel= ia32_read_ds();
     gs_sel= ia32_read_ds();
@@ -275,18 +275,11 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 }
 
 
-void bptest(void)
-{
-    // bootstrap_partial_reset();
-}
-
-
 // Initial AP setup in protected mode - should never return
 void ap_continue_wakeup_code_C(uint32_t local_apic_id)
 {
 #ifdef JLMDEBUG
-    bptest();
-    // bprint("ap_continue_wakeup_code_C %d\n", local_apic_id);
+    bprint("ap_continue_wakeup_code_C %d\n", local_apic_id);
 #endif
     // mark that the command was accepted
     __asm__ volatile (
@@ -294,7 +287,7 @@ void ap_continue_wakeup_code_C(uint32_t local_apic_id)
         "\tincl %[g_ready_counter]\n"
     : [g_ready_counter] "=m" (g_ready_counter)
     ::);
-
+LOOP_FOREVER
     if(g_user_func==0)
         LOOP_FOREVER
     // user_func now contains address of the function to be called
@@ -338,18 +331,23 @@ __asm__(
 "2:\n"
 
         // find my stack. My stack offset is in the array 
-        // edx contains CPU ID
-        "\txor   %ecx,  %ecx\n"
+        // ecx contains CPU ID
+        // "\txor   %ecx,  %ecx\n"
         // now ecx contains AP ordered ID [1..Max]
-        "\tmovb  (%edx), %cl\n"
-        "\tmov   %ecx, %eax\n"
+        // "\tmovb  (%edx), %cl\n"
+        // "\tmov   %ecx, %eax\n"
         //  AP starts from 1, so subtract one to get proper index in g_stacks_arr
         // "\tdec   %eax\n"
 
         // point edx to right stack
+#if 0        
+"\tmovl  $1, %ecx\n"  // DEBUG
         "\tmov   evmm_stack_pointers_array, %edx\n"
-        "\tlea   (%edx, %eax, 4), %edx\n"
+        "\tlea   (%edx, %ecx, 4), %edx\n"
         "\tmov   (%edx), %esp\n"
+#else
+        "\tmov   $0x6ff1b00, %esp\n"
+#endif
 
         // setup GDT
         //"\tlgdt  gp_GDT\n"

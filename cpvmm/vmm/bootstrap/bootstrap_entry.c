@@ -511,6 +511,8 @@ int setup_evmm_stacks()
     for(i=0; i<evmm_num_of_aps;i++) {
         evmm_ap_stack_base= (uint32_t) 
                 evmm_page_alloc(UVMM_DEFAULT_STACK_SIZE_PAGES);
+        vmm_memset((void*)evmm_ap_stack_base, 0, 
+                   PAGE_4KB_SIZE*UVMM_DEFAULT_STACK_SIZE_PAGES);
         if(evmm_ap_stack_base==0) {
             return 1;
         }

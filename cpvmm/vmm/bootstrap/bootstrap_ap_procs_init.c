@@ -230,6 +230,7 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     ss_sel= ia32_read_ss();
     es_sel= ia32_read_ds();
     fs_sel= ia32_read_ds();
+    gs_sel= ia32_read_ds();
 
     // Patch the startup code
     *((UINT16*)(code_to_patch+GDTR_OFFSET_IN_CODE))= (uint16_t) loc_gdtr;
@@ -274,16 +275,23 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 }
 
 
+void bptest(void)
+{
+    // bootstrap_partial_reset();
+}
+
+
 // Initial AP setup in protected mode - should never return
 void ap_continue_wakeup_code_C(uint32_t local_apic_id)
 {
 #ifdef JLMDEBUG
-    // bootstrap_partial_reset();
+    bptest();
     // bprint("ap_continue_wakeup_code_C %d\n", local_apic_id);
 #endif
     // mark that the command was accepted
     __asm__ volatile (
-        "\tlock; incl %[g_ready_counter]\n"
+        // "\tlock; incl %[g_ready_counter]\n"
+        "\tincl %[g_ready_counter]\n"
     : [g_ready_counter] "=m" (g_ready_counter)
     ::);
 
@@ -328,6 +336,7 @@ __asm__(
 
         // stage 2 - setup the stack, GDT, IDT and jump to "C"
 "2:\n"
+
         // find my stack. My stack offset is in the array 
         // edx contains CPU ID
         "\txor   %ecx,  %ecx\n"
@@ -343,7 +352,7 @@ __asm__(
         "\tmov   (%edx), %esp\n"
 
         // setup GDT
-        "\tlgdt  gp_GDT\n"
+        //"\tlgdt  gp_GDT\n"
 
         // setup IDT
         "\tlidt gp_IDT\n"
@@ -356,7 +365,6 @@ __asm__(
         "\tmov    %ecx, %edi\n"
         // "\tpush   %ecx\n"
         // should never return
-        // "\tjmp .\n"    // debug
         "\tcall  ap_continue_wakeup_code_C\n"
 );
 
@@ -365,12 +373,11 @@ static uint8_t read_port_8(uint32_t port)
 {
     uint8_t out;
     __asm__ volatile (
-        "\tlock; incl %[g_ready_counter]\n"
         "\tmovl %[port],%%edx\n"
         "\txorl %%eax, %%eax\n"
         "\tin   %%dx, %%al\n"
         "\tmovb %%al, %[out]\n"
-    : [g_ready_counter] "=m" (g_ready_counter), [out] "=m" (out)
+    : [out] "=m" (out)
     : [port] "m" (port)
     :"%edx", "%eax");
     return out;
@@ -577,6 +584,10 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
     bprint("idt limit: %d, idt base: 0x%08x\n", *(uint16_t*)(&gp_IDT[0]),
             *(uint32_t*)(&gp_IDT[2]));
     bprint("mp_bootstrap_state: %d\n", mp_bootstrap_state);
+    for(int i=0; i<3; i++) {
+        bprint("stack[%d]= 0x%08x, ", i, evmm_stack_pointers_array[i]);
+    }
+    bprint("\n");
     bprint("stage 2, num aps: %d\n", g_aps_counter);
 #endif
     return g_aps_counter;
@@ -590,8 +601,9 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
 //  any_data - data to be passed to the function
 void ap_procs_run(FUNC_CONTINUE_AP_BOOT continue_ap_boot_func, void *any_data)
 {
-#ifdef JLMDEBUG1
-    bprint("ap_procs_run function: %p\n", continue_ap_boot_func);
+#ifdef JLMDEBUG
+    bprint("ap_procs_run function: %p, ready counter: %d, aps counter: %d\n", 
+           continue_ap_boot_func, g_ready_counter, g_aps_counter);
 #endif
     g_user_func = continue_ap_boot_func;
     g_any_data_for_user_func = any_data;
@@ -599,11 +611,15 @@ void ap_procs_run(FUNC_CONTINUE_AP_BOOT continue_ap_boot_func, void *any_data)
     // signal to APs to pass to the next stage
     mp_set_bootstrap_state(MP_BOOTSTRAP_STATE_APS_ENUMERATED);
 
-    // wait until all APs will accept this
-    while (g_ready_counter != g_aps_counter) {
+    // wait until all APs accept this
+    while (g_ready_counter<g_aps_counter) {
         __asm__ volatile (
             "\tpause\n" :::);
     }
+#ifdef JLMDEBUG
+    bprint("ap_procs_run function returning %d %d\n",
+           g_ready_counter, g_aps_counter);
+#endif
     return;
 }
 
@@ -653,7 +669,6 @@ void mp_set_bootstrap_state(uint32_t new_state)
 #ifdef JLMDEBUG
     bprint("mp_set_bootstrap_state returning\n");
     bprint("address of bprint: 0x%08x\n", (uint32_t)bprint);
-    LOOP_FOREVER
 #endif
     return;
 }

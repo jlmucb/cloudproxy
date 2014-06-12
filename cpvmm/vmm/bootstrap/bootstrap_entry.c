@@ -281,8 +281,7 @@ int ia32_get_selector(uint32_t* p, uint32_t* base, uint16_t* limit, uint16_t* ac
     *base= (UINT32)((desc->gen.lo.base_address_15_00) |
         (desc->gen.hi.base_address_23_16 << 16) |
         (desc->gen.hi.base_address_31_24 << 24));
-    *limit= desc->gen.lo.limit_15_00; // |
-        //(desc->gen.hi.limit_19_16 << 16));
+    *limit= desc->gen.lo.limit_15_00; 
     if(desc->gen.hi.granularity)
         *limit = (*limit << 12) | 0x00000fff;
     attr.attr16 = desc->gen_attr.attributes;
@@ -763,6 +762,9 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
 }
 
 
+int g_num_init64= 0;
+
+
 void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data, 
                     uint32_t start_address, void * arg1, void * arg2, 
                     void * arg3, void * arg4)
@@ -772,6 +774,7 @@ void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data,
 #ifdef JLMDEBUG
     bprint("init64_on_aps %p *p\n", stack_pointer, start_address);
 #endif
+    g_num_init64++;
     // CHECK(JLM): is this right (cr4)?
     // ia32_write_gdtr(&p_init64_data->i64_gdtr);
     __asm__ volatile (

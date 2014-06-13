@@ -60,11 +60,12 @@ class CloudChannel {
   /// @param self_delegation_ Degation containing our own TLS key and name.
   virtual bool TaoHandshake(const string &self_delegation);
 
-  /// Notify peer of error before closing connection.
+  /// Notify peer of error, not wait for confirmation, then close connection.
   /// @param msg The error message.
   virtual bool Abort(const string &msg);
 
-  /// Notify peer of no error before closing connection.
+  /// Notify peer of no error, wait for confirmation from peer, then close
+  /// connection.
   virtual bool Disconnect();
 
   /// Get our own Tao name. Only valid after successful TaoHandshake().

@@ -153,10 +153,12 @@ void CloudServer::HandleNewConnection(CloudChannel *unscoped_chan) {
   }
   if (!HandleAuthenticatedConnection(chan.get())) {
     LOG(ERROR) << "Error handling requests on authenticated channel";
-    chan->Abort("unknown error");
+    if (!chan->IsClosed())
+      chan->Abort("unknown error");
     return;
   }
-  chan->Disconnect();
+  if (!chan->IsClosed())
+    chan->Disconnect();
 }
 
 }  // namespace cloudproxy

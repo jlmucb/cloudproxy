@@ -131,8 +131,13 @@ bool CloudChannel::ReceiveFrame(CloudChannelFrameTag expected_tag, string *msg,
       *eof = true;
       return true;
     case CLOUD_CHANNEL_FRAME_SHUTDOWN:
-      LOG(INFO) << "Connection closed by peer";
+      LOG(INFO) << "Connection about to close by peer";
       *eof = true;
+      if (!SendFrame(CLOUD_CHANNEL_FRAME_SHUTDOWN_RESPONSE, "" /* empty message */)) {
+        LOG(ERROR) << "Could not send disconnect response";
+        Close();
+        return false;
+      }
       Close();
       return true;
     default:
@@ -152,7 +157,7 @@ bool CloudChannel::ReceiveData(void *buffer, size_t buffer_len, bool *eof) {
     LOG(ERROR) << "Could not receive wrapped buffer";
     return false;
   } else if (*eof) {
-    LOG(WARNING) << "Connection has unexpectedly closed";
+    // LOG(WARNING) << "Connection has unexpectedly closed";
     return true;
   }
   if (s.size() != buffer_len) {
@@ -169,7 +174,7 @@ bool CloudChannel::ReceiveString(string *s, bool *eof) {
     LOG(ERROR) << "Could not receive wrapped string";
     return false;
   } else if (*eof) {
-    LOG(WARNING) << "Connection has unexpectedly closed";
+    // LOG(WARNING) << "Connection has unexpectedly closed";
     return true;
   }
   return true;
@@ -182,7 +187,7 @@ bool CloudChannel::ReceiveMessage(google::protobuf::Message *m,
     LOG(ERROR) << "Could not receive wrapped message";
     return false;
   } else if (*eof) {
-    LOG(WARNING) << "Connection has unexpectedly closed";
+    // LOG(WARNING) << "Connection has unexpectedly closed";
     return true;
   }
   if (!m->ParseFromString(serialized)) {
@@ -203,6 +208,11 @@ bool CloudChannel::Abort(const string &msg) {
 bool CloudChannel::Disconnect() {
   LOG(INFO) << "Disconnecting";
   bool success = SendFrame(CLOUD_CHANNEL_FRAME_SHUTDOWN, "" /* empty message */);
+  if (success) {
+    string msg;
+    bool eof;
+    success = ReceiveFrame(CLOUD_CHANNEL_FRAME_SHUTDOWN_RESPONSE, &msg, &eof) && !eof;
+  }
   Close();
   return success;
 }

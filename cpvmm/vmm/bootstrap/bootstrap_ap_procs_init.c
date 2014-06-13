@@ -286,10 +286,12 @@ void ap_continue_wakeup_code_C(uint32_t local_apic_id)
     ::);
 #ifdef JLMDEBUG
    bprint("ap_continue_wakeup_code_C 0x%08x\n", local_apic_id);
+   LOOP_FOREVER
 #endif
-LOOP_FOREVER
-    if(g_user_func==0)
+    if(g_user_func==0) {
+        bprint("null user function in ap_continue_wakeup_code_C\n");
         LOOP_FOREVER
+    }
     // user_func now contains address of the function to be called
     g_user_func(local_apic_id, g_any_data_for_user_func);
     return;

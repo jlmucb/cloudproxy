@@ -75,7 +75,7 @@ class UnixSocketFactoryTest : public ::testing::Test {
 TEST_F(UnixSocketFactoryTest, ConnectTest) {
   scoped_ptr<FDMessageChannel> chan(UnixSocketFactory::Connect(path_));
   ASSERT_TRUE(chan.get() != nullptr);
-  ASSERT_TRUE(chan->Close());
+  chan->Close();
 
   chan.reset(UnixSocketFactory::Connect(path_));
   ASSERT_TRUE(chan.get() != nullptr);

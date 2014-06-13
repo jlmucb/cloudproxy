@@ -20,35 +20,45 @@
 #define CLOUDPROXY_CLOUD_CHANNEL_H_
 
 #include "cloudproxy/cloud_channel.pb.h"
+#include "cloudproxy/tls_message_channel.h"
 #include "cloudproxy/util.h"
 #include "tao/message_channel.h"
 
 namespace cloudproxy {
 
-// A CloudChannel is a socket-based MessageChannel that is authenticated
-// using TLS and Tao handshaking.
-class CloudChannel : public tao::MessageChannel {
+// A socket-based MessageChannel authenticated using TLS and Tao handshaking,
+// augmented with messages for clean disconnect and abort.
+class CloudChannel {
  public:
   /// Construct CloudChannel in un-authenticated state.
-  /// @param ssl_ctx Parameters for TLS connection setup.
+  /// @param tls_ctx Parameters for TLS connection setup.
   /// @param sock A newly accepted TCP socket.
-  CloudChannel(SSL_CTX *ssl_ctx, int sock);
+  CloudChannel(SSL_CTX *tls_ctx, int sock);
   
   virtual ~CloudChannel() {}
 
-  /// Perform TLS handshaking. Must be called before other methods.
+  /// These methods have the same semantics as MessageChannel.
   /// @{
-  virtual bool TLSServerHandshake();
-  virtual bool TLSClientHandshake();
+  virtual void Close() { chan_.Close(); }
+  virtual bool IsClosed() { return chan_.IsClosed(); }
+  virtual bool SendData(const void *buffer, size_t buffer_len);
+  virtual bool ReceiveData(void *buffer, size_t buffer_len, bool *eof);
+  virtual bool SendString(const string &s);
+  virtual bool ReceiveString(string *s, bool *eof);
+  virtual bool SendMessage(const google::protobuf::Message &m);
+  virtual bool ReceiveMessage(google::protobuf::Message *m, bool *eof);
   /// @}
 
-  /// Perform Tao handshaking.
+  /// Perform TLS handshaking. Must be called before other methods.
+  /// @{
+  virtual bool TLSServerHandshake() { return chan_.TLSServerHandshake(); }
+  virtual bool TLSClientHandshake() { return chan_.TLSClientHandshake(); }
+  /// @}
+
+  /// Perform Tao handshaking. Must be called after TLS handshake and
+  /// before other methods.
   /// @param self_delegation_ Degation containing our own TLS key and name.
   virtual bool TaoHandshake(const string &self_delegation);
-
-  virtual bool SendMessage(const google::protobuf::Message &m) const;
-
-  virtual bool ReceiveMessage(google::protobuf::Message *m, bool *eof) const;
 
   /// Notify peer of error before closing connection.
   /// @param msg The error message.
@@ -57,25 +67,13 @@ class CloudChannel : public tao::MessageChannel {
   /// Notify peer of no error before closing connection.
   virtual bool Disconnect();
 
-  /// Close connection.
-  virtual bool Close();
-
   /// Get our own Tao name. Only valid after successful TaoHandshake().
   virtual string SelfName() { return self_name_; }
 
   /// Get peer's Tao name. Only valid after successful TaoHandshake().
   virtual string PeerName() { return peer_name_; }
 
-  /// Maximum 20 MB for message reception on this channel.
-  static constexpr size_t MaxMessageSize = 20 * 1024 * 1024;
-
  protected:
-  /// Record our own self-signed certificate from the connection.
-  bool InitTLSSelfCert();
-
-  /// Record peer self-signed certificate from the connection.
-  bool InitTLSPeerCert();
-
   /// Validate a delgation purportedly conveying cert->key speaksfor name.
   /// @param delegation The delegation to validate.
   /// @param cert A serialized self-signed x509 certificate for some key
@@ -83,27 +81,29 @@ class CloudChannel : public tao::MessageChannel {
   bool ValidateDelegation(const string &delegation, const string &cert,
                           string *name);
 
-  /// Send a message without an encapsulating CloudConnectionMessage wrapper.
+  /// Send a message in an encapsulating CloudChannelFrame wrapper.
   /// @param tag The tag to send.
   /// @param msg The string to send.
-  virtual bool SendFrame(CloudChannelFrameTag tag, const string &msg) const;
+  virtual bool SendFrame(CloudChannelFrameTag tag, const string &msg);
 
-  /// Receive a message without an encapsulating CloudConnectionMessage wrapper.
+  /// Receive a message in an encapsulating CloudChannelFrame wrapper.
   /// @param expected_tag The expected tag to be received.
   /// @param[out] msg The received string.
   /// @param[out] eof Whether the connection has been closed.
   virtual bool ReceiveFrame(CloudChannelFrameTag expeted_tag, string *msg,
-                            bool *eof) const;
+                            bool *eof);
+
+  /// This method is never used since the underlying channel is
+  /// message-oriented, not streams oriented..
+  virtual bool ReceivePartialData(void *buffer, size_t max_recv_len,
+                                  size_t *recv_len, bool *eof) {
+    Close();
+    return false;
+  }
 
  private:
   /// The underlying TLS connection.
-  ScopedSSL ssl_;
-
-  /// Our own serialized, self-signed x509.
-  string serialized_self_cert_;
-
-  /// Peer's serialized, self-signed x509.
-  string serialized_peer_cert_;
+  TLSMessageChannel chan_;
 
   // Our own Tao name.
   string self_name_;

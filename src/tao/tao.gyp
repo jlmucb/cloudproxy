@@ -100,6 +100,7 @@
 				'log_net.cc', # no unit test needed
 				'log_net.h', # no unit test needed
 				'log_net.proto', # no unit test needed
+				'message_channel.cc', # unit test: pipe_factory_unittests.cc
 				'message_channel.h', # unit test: pipe_factory_unittests.cc
 				'pipe_factory.cc', # unit test: pipe_factory_unittests.cc
 				'pipe_factory.h', # unit test: pipe_factory_unittests.cc

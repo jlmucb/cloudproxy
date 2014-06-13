@@ -51,7 +51,7 @@ TEST_F(PipeFactoryTest, CreateTest) {
   string serialized;
   EXPECT_TRUE(up_->SerializeToString(&serialized));
   EXPECT_NE("", serialized);
-  EXPECT_TRUE(up_->Close());
+  up_->Close();
   EXPECT_EQ(up_->GetReadFileDescriptor(), -1);
 }
 
@@ -69,7 +69,7 @@ TEST_F(PipeFactoryTest, SendRecvTest) {
 }
 
 TEST_F(PipeFactoryTest, CloseTest) {
-  ASSERT_TRUE(up_->Close());
+  up_->Close();
   ASSERT_TRUE(down_->ReceiveMessage(&r_, &eof_));
   EXPECT_TRUE(eof_);
   EXPECT_FALSE(up_->SendMessage(s_));

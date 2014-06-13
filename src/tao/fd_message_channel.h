@@ -27,10 +27,10 @@
 #include "tao/util.h"
 
 namespace tao {
-//  A MessageChannel that communicates with a remote endpoint using a pair of
-//  file descriptors. One file descriptor is used for sending messages, the
-//  other for receiving messages. The descriptors can be the same. On Destroy(),
-//  the file descriptors will be closed.
+/// A MessageChannel that communicates with a remote endpoint using a pair of
+/// file descriptors. One file descriptor is used for sending messages, the
+/// other for receiving messages. The descriptors can be the same. On Close() or
+/// object destruction the file descriptors will be closed.
 class FDMessageChannel : public MessageChannel {
  public:
   /// Construct FDMessageChannel.
@@ -39,35 +39,15 @@ class FDMessageChannel : public MessageChannel {
   FDMessageChannel(int readfd, int writefd)
       : readfd_(readfd), writefd_(writefd) {}
 
-  virtual ~FDMessageChannel() { Close(); }
+  virtual ~FDMessageChannel() { FDClose(); }
 
   /// These methods have the same semantics as MessageChannel.
   /// @{
-  virtual bool SendMessage(const google::protobuf::Message &m) const;
-  virtual bool ReceiveMessage(google::protobuf::Message *m, bool *eof) const;
+  virtual void Close() { FDClose(); }
+  virtual bool IsClosed() const { return (readfd_ < 0 || writefd_ < 0); }
+  virtual bool SendData(const void *buffer, size_t buffer_len);
   virtual bool SerializeToString(string *params) const;
   /// @}
-
-  /// Receive raw data from the channel.
-  /// @param[out] buffer The buffer to fill with data.
-  /// @param buffer_len The length of buffer.
-  /// @param[out] eof Will be set to true iff end of stream reached.
-  virtual bool ReceiveData(void *buffer, size_t buffer_len, bool *eof) const;
-
-  /// Receive a string from a file descriptor.
-  /// @param max_size The maximum allowable size string to receive.
-  /// @param[out] s The string to receive the data.
-  /// @param[out] eof Will be set to true iff end of stream reached.
-  virtual bool ReceiveString(size_t max_size, string *s, bool *eof) const;
-
-  /// Send raw data to the channel.
-  /// @param buffer The buffer containing data to send.
-  /// @param buffer_len The length of buffer.
-  virtual bool SendData(const void *buffer, size_t buffer_len) const;
-
-  /// Send a raw string to the channel.
-  /// @param s The string to send.
-  virtual bool SendString(const string &s) const;
 
   /// Attempt to deserialize a channel.
   /// @param params Channel parameters from SerializeToString().
@@ -83,12 +63,6 @@ class FDMessageChannel : public MessageChannel {
   /// Get the write file descriptor.
   virtual int GetWriteFileDescriptor() { return writefd_; }
 
-  /// Close the underlying file descriptors.
-  virtual bool Close();
-
-  /// Maximum 20 MB for message reception on this channel.
-  static constexpr size_t MaxMessageSize = 20 * 1024 * 1024;
-
  protected:
   /// File descriptor for writing to host Tao.
   int readfd_;
@@ -96,15 +70,14 @@ class FDMessageChannel : public MessageChannel {
   /// File descriptor for reading from host Tao.
   int writefd_;
 
-  /// Receive partial data from a file descriptor. This reads into buffer[i],
-  /// where filled_len <= i < buffer_len, and it returns the number of bytes
-  /// read,
-  /// or 0 if end of stream, or negative on error.
-  /// @param[out] buffer The buffer to fill with data.
-  /// @param filed_len The length of buffer that is already filled.
-  /// @param buffer_len The total length of buffer.
-  virtual int ReceivePartialData(void *buffer, size_t filled_len,
-                                 size_t buffer_len) const;
+  /// These methods have the same semantics as MessageChannel.
+  /// @{
+  virtual bool ReceivePartialData(void *buffer, size_t max_recv_len,
+                                  size_t *recv_len, bool *eof);
+  /// @}
+
+  /// A non-virtual version of Close for use in destructor.
+  void FDClose();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FDMessageChannel);

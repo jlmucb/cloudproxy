@@ -63,8 +63,8 @@ bool DemoServer::HandleAuthenticatedConnection(CloudChannel *chan) {
   printf("Authenticated connection from %s\n", peer.c_str());
   for (;;) {
     bool eof;
-    DemoServerMessage m;
-    if (!chan->ReceiveMessage(&m, &eof)) {
+    DemoServerMessage req, resp;
+    if (!chan->ReceiveMessage(&req, &eof)) {
       printf("Lost connection from %s\n", peer.c_str());
       return false;
     }
@@ -72,10 +72,12 @@ bool DemoServer::HandleAuthenticatedConnection(CloudChannel *chan) {
       printf("Closing connection to %s\n", peer.c_str());
       return true;
     }
-    printf("Peer %s says %s\n", peer.c_str(), m.msg().c_str());
-    m.set_msg("Echo(" + quotedString(m.msg()) + ")");
-    if (!chan->SendMessage(m)) printf("Lost connection to %s\n", peer.c_str());
-    return false;
+    printf("Peer %s says %s\n", peer.c_str(), req.msg().c_str());
+    resp.set_msg("Echo(" + quotedString(req.msg()) + ")");
+    if (!chan->SendMessage(resp)) {
+      printf("Lost connection to %s\n", peer.c_str());
+      return false;
+    }
   }
 }
 
@@ -90,13 +92,13 @@ class DemoClient : public CloudClient {
 
 bool DemoClient::Send(const string &msg) {
   printf("Sending: %s\n", msg.c_str());
-  DemoServerMessage m;
-  m.set_msg(msg);
-  CHECK(Channel()->SendMessage(m));
+  DemoServerMessage req, resp;
+  req.set_msg(msg);
+  CHECK(Channel()->SendMessage(req));
   bool eof;
-  CHECK(Channel()->ReceiveMessage(&m, &eof));
+  CHECK(Channel()->ReceiveMessage(&resp, &eof));
   CHECK(!eof);
-  printf("Response: %s\n", m.msg().c_str());
+  printf("Response: %s\n", resp.msg().c_str());
   return true;
 }
 

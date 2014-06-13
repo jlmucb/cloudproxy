@@ -54,6 +54,8 @@
 				'cloud_client.h',
 				'cloud_server.cc',
 				'cloud_server.h',
+				'tls_message_channel.cc',
+				'tls_message_channel.h',
 				'util.cc',
 				'util.h',
 				#				'cloudproxy.proto',

@@ -29,9 +29,8 @@
 #include "tao/util.h"
 
 namespace tao {
-constexpr size_t FDMessageChannel::MaxMessageSize;
 
-bool FDMessageChannel::Close() {
+void FDMessageChannel::FDClose() {
   if (readfd_ != -1) {
     close(readfd_);
   }
@@ -39,101 +38,48 @@ bool FDMessageChannel::Close() {
     close(writefd_);
   }
   readfd_ = writefd_ = -1;
-  return true;
 }
 
-bool FDMessageChannel::SendData(const void *buffer, size_t buffer_len) const {
+bool FDMessageChannel::SendData(const void *buffer, size_t buffer_len) {
+  if (IsClosed() < 0) {
+    LOG(ERROR) << "Could not send data, channel already closed";
+    return false;
+  }
   int bytes_written = write(writefd_, buffer, buffer_len);
   if (bytes_written < 0) {
     PLOG(ERROR) << "Could not send data";
+    Close();
     return false;
   }
   if (static_cast<size_t>(bytes_written) != buffer_len) {
     LOG(ERROR) << "Could not send complete data";
+    Close();
     return false;
   }
   return true;
 }
 
-bool FDMessageChannel::SendString(const string &s) const {
-  uint32_t net_len = htonl(s.size());
-  return SendData(&net_len, sizeof(net_len)) && SendData(s.c_str(), s.size());
-}
-
-bool FDMessageChannel::SendMessage(const google::protobuf::Message &m) const {
-  string serialized;
-  if (!m.SerializeToString(&serialized)) {
-    LOG(ERROR) << "Could not serialize the Message to a string";
-    return false;
-  }
-  return SendString(serialized);
-}
-
-int FDMessageChannel::ReceivePartialData(void *buffer, size_t filled_len,
-                                         size_t buffer_len) const {
-  if (readfd_ < 0 || buffer == nullptr || filled_len >= buffer_len) {
-    LOG(ERROR) << "Invalid ReceivePartialData parameters";
-    return -1;
+bool FDMessageChannel::ReceivePartialData(void *buffer, size_t max_recv_len,
+                                          size_t *recv_len, bool *eof) {
+  if (IsClosed()) {
+    LOG(ERROR) << "Can't receive data, channel is already closed";
+    *eof = true;
+    return true;
+  } else {
+    *eof = false;
   }
   int in_len =
-      read(readfd_, reinterpret_cast<unsigned char *>(buffer) + filled_len,
-           buffer_len - filled_len);
-  if (in_len < 0) PLOG(ERROR) << "Failed to read data from file descriptor";
-  return in_len;
-}
-
-bool FDMessageChannel::ReceiveData(void *buffer, size_t buffer_len,
-                                   bool *eof) const {
-  *eof = false;
-  size_t filled_len = 0;
-  while (filled_len != buffer_len) {
-    int in_len = ReceivePartialData(buffer, filled_len, buffer_len);
-    if (in_len == 0) {
-      *eof = true;
-      return (filled_len == 0);  // fail only on truncated message
-    }
-    if (in_len < 0) return false;  // fail on errors
-    filled_len += in_len;
-  }
-  return true;
-}
-
-bool FDMessageChannel::ReceiveString(size_t max_size, string *s,
-                                     bool *eof) const {
-  uint32_t net_len;
-  if (!ReceiveData(&net_len, sizeof(net_len), eof)) {
-    LOG(ERROR) << "Could not get the length of the data";
-    return false;
-  } else if (*eof) {
+      read(readfd_, reinterpret_cast<unsigned char *>(buffer), max_recv_len);
+  if (in_len == 0) {
+    *eof = true;
+    Close();
     return true;
-  }
-  uint32_t len = ntohl(net_len);
-  if (len > max_size) {
-    LOG(ERROR) << "Message exceeded maximum allowable size";
+  } else if (in_len < 0) {
+    PLOG(ERROR) << "Failed to read data from file descriptor";
+    Close();
     return false;
   }
-  scoped_array<char> temp_data(new char[len]);
-  if (!ReceiveData(temp_data.get(), static_cast<size_t>(len), eof) || *eof) {
-    LOG(ERROR) << "Could not get the data";
-    return false;
-  }
-  s->assign(temp_data.get(), len);
-  return true;
-}
-
-bool FDMessageChannel::ReceiveMessage(google::protobuf::Message *m,
-                                      bool *eof) const {
-  string s;
-  if (!ReceiveString(MaxMessageSize, &s, eof)) {
-    LOG(ERROR) << "Could not receive message";
-    return false;
-  } else if (*eof) {
-    return true;
-  }
-  if (!m->ParseFromString(s)) {
-    LOG(ERROR) << "Could not parse message";
-    return false;
-  }
+  *recv_len = in_len;
   return true;
 }
 

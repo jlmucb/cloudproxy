@@ -30,25 +30,96 @@ using std::string;
 /// An interface for a channel that can send and receive Message objects.
 class MessageChannel {
  public:
-  virtual ~MessageChannel() {}
+  MessageChannel() : maxMessageSize_(DefaultMaxMessageSize) {}
+  virtual ~MessageChannel() {}  // sub-classes should Close() here.
 
-  virtual bool Close() = 0;
+  /// Close a channel. It is safe to call this multiple times.
+  virtual void Close() = 0;
+
+  /// Check if a channel is closed.
+  virtual bool IsClosed() const = 0;
+
+  /// Get the maximum message reception size.
+  size_t MaxMessageSize() const { return maxMessageSize_; }
+
+  /// Set the maximum message reception size.
+  void SetMaxMessageSize(size_t size) { maxMessageSize_ = size; }
+
+  /// Low-level functions for raw data.
+  /// @{
+
+  /// Send raw data to the channel.
+  /// Failure will close the channel.
+  /// @param buffer The buffer containing data to send.
+  /// @param buffer_len The length of buffer.
+  virtual bool SendData(const void *buffer, size_t buffer_len) = 0;
+
+  /// Receive raw data from the channel.
+  /// No maximum message size applies, the caller is expected to supply a
+  /// reasonable buffer_len, which will be filled entirely.
+  /// Failure or eof will close the channel.
+  /// @param[out] buffer The buffer to fill with data.
+  /// @param buffer_len The number of bytes to be filled.
+  /// @param[out] eof Will be set to true iff end of stream reached.
+  virtual bool ReceiveData(void *buffer, size_t buffer_len, bool *eof);
+
+  /// @}
+
+  /// Mid-level functions for strings.
+  /// @{
+
+  /// Send a raw string to the channel.
+  /// Failure will close the channel.
+  /// @param s The string to send.
+  virtual bool SendString(const string &s);
+
+  /// Receive a string from a file descriptor.
+  /// Failure or eof will close the channel.
+  /// @param max_size The maximum allowable size string to receive.
+  /// @param[out] s The string to receive the data.
+  /// @param[out] eof Will be set to true iff end of stream reached.
+  virtual bool ReceiveString(string *s, bool *eof);
+
+  /// @}
+
+  /// High-level functions for Messages.
+  /// @{
 
   /// Send a Message over the channel.
+  /// Failure will close the channel.
   /// @param m The Message to send.
-  virtual bool SendMessage(const google::protobuf::Message &m) const = 0;
+  virtual bool SendMessage(const google::protobuf::Message &m);
 
-  /// Receive a a Message over the channel.
+  /// Receive a Message over the channel.
+  /// Failure or eof will close the channel.
   /// @param[out] m The received Message.
   /// @param[out] eof Will be set to true iff end of stream reached.
-  virtual bool ReceiveMessage(google::protobuf::Message *m,
-                              bool *eof) const = 0;
+  virtual bool ReceiveMessage(google::protobuf::Message *m, bool *eof);
+
+  /// @}
 
   /// Serialize channel parameters for passing across fork/exec or between
   /// processes, if possible. This does not close the channel. Not all channel
   /// types must necessarily be serializable.
   /// @param params[out] The serialized parameters.
   virtual bool SerializeToString(string *params) const { return false; }
+
+  /// Maximum 20 MB for message reception on this channel by default.
+  static constexpr size_t DefaultMaxMessageSize = 20 * 1024 * 1024;
+
+ protected:
+  /// The max Message (or string) reception size.
+  size_t maxMessageSize_;
+
+  /// Receive raw data from the channel.
+  /// No maximum message size applies, the caller is expected to supply a
+  /// reasonable buffer_len. Partial messages are accepted.
+  /// Failure or eof will close the channel.
+  /// @param[out] buffer The buffer to fill with data.
+  /// @param max_recv_len The maximum number of bytes to be filled.
+  /// @param[out] eof Will be set to true iff end of stream reached.
+  virtual bool ReceivePartialData(void *buffer, size_t max_recv_len,
+                                  size_t *recv_len, bool *eof) = 0;
 };
 }  // namespace tao
 

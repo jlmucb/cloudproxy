@@ -21,16 +21,17 @@ package cloudproxy;
 
 // Types of CloudChannelFrame messages.
 enum CloudChannelFrameTag {
-  // permission to perform any operation on any object
   CLOUD_CHANNEL_FRAME_HANDSHAKE = 1;
-  CLOUD_CHANNEL_FRAME_WRAPPED = 2;
-  CLOUD_CHANNEL_FRAME_ABORT = 3;
-  CLOUD_CHANNEL_FRAME_SHUTDOWN = 4;
+  CLOUD_CHANNEL_FRAME_ABORT = 2;
+  CLOUD_CHANNEL_FRAME_SHUTDOWN = 3;
+  CLOUD_CHANNEL_FRAME_WRAPPED_MESSAGE = 4;
+  CLOUD_CHANNEL_FRAME_WRAPPED_STRING = 5;
+  CLOUD_CHANNEL_FRAME_WRAPPED_BUFFER = 6;
 }
 
 // A tagged frame of data that contains handshaking and other
-// connection-management messages or a wrapped message for some higher layer..
+// connection-management messages or a wrapped message for some higher layer.
 message CloudChannelFrame  {
 	required CloudChannelFrameTag tag = 1;
-	required string msg = 2;
+	optional bytes data = 2;
 }

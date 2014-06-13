@@ -45,20 +45,60 @@ typedef unsigned long       size_t;
 #endif
 
 
-volatile int bprint_lock= 0;
+struct mutex {
+        __volatile__ uint32_t mtx_lock;
+};
+
+void mtx_init(struct mutex *);
+void mtx_enter(struct mutex *);
+void mtx_leave(struct mutex *);
+
+struct mutex print_lock;
 
 
-void spin_lock(volatile int *p)
-{
-    while(!__sync_bool_compare_and_swap(p, 0, 1));
-}
- 
+__asm__(
+".text\n"
+".globl mtx_init\n"
+".type mtx_init,@function\n"
+"mtx_init:\n"
+    "\tpushl   %ebp\n"
+    "\tmovl    %esp, %ebp\n"
+    "\tmovl    8(%ebp), %eax\n"
+    "\txorl    %edx, %edx\n"
+    "\tmovl    %edx, (%eax)\n"
+    "\tleave\n"
+    "\tret\n"
+".globl mtx_enter\n"
+".type mtx_enter,@function\n"
+"mtx_enter:\n"
+    "\tpushl   %ebp\n"
+    "\tmovl    %esp, %ebp\n"
+"1:  movl    8(%ebp), %ecx\n"
+     // %ecx contains the mtx.
+    "\tmovl    $1, %eax\n"
+    "\txchgl   %eax, (%ecx)\n"    // test_and_set(mtx->mtx_lock)
+    "\ttestl   %eax, %eax\n"      // if (already held)
+    "\tjnz     2f\n"
+    "\tleave\n"
+    "\tret\n"
+"2:     pause\n"
+    "\tmovl    (%ecx), %eax\n"
+    "\ttestl   %eax, %eax\n"
+    "\tjz      1b\n"
+    "\tjmp     2b\n"
 
-void spin_unlock(int volatile *p)
-{
-    __asm__ volatile (""); // acts as a memory barrier.
-    *p = 0;
-}
+".globl mtx_leave\n"
+".type mtx_leave,@function\n"
+"mtx_leave:\n"
+    "\tpushl   %ebp\n"
+    "\tmovl    %esp, %ebp\n"
+    "\tmovl    8(%ebp), %ecx\n"
+    "\txorl    %eax, %eax\n"
+    "\tmovl    %eax, (%ecx)\n"
+    "\tleave\n"
+    "\tret\n"
+);
+
 
 
 extern bool isdigit(int c);
@@ -169,6 +209,7 @@ void delay(int millisecs)
 
 void bootstrap_partial_reset(void)
 {
+    mtx_init(&print_lock);
     cursor_x = 0;
     cursor_y = MAX_LINES-1;
     num_lines = MAX_LINES;
@@ -677,7 +718,7 @@ int snprintf(char *buf, size_t size, const char *fmt, ...)
 
 void bprint_init(void)
 {
-    // mtx_init(&print_lock);
+    mtx_init(&print_lock);
     vga_init();
 }
 
@@ -691,9 +732,9 @@ void bprint(const char *fmt, ...)
     vmm_memset(buf, '\0', sizeof(buf));
     va_start(ap, fmt);
     n = vscnprintf(buf, sizeof(buf), fmt, ap);
-    // spin_lock(&bprint_lock);
+    mtx_enter(&print_lock);
     vga_write(pbuf, n);
-    // spin_unlock(&bprint_lock);
+    mtx_leave(&print_lock);
 
     va_end(ap);
 }

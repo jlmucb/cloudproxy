@@ -97,7 +97,6 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
     : [t_stack] "=m" (t_stack)
     : :"%eax", "%ebx");
     bprint("ap stack: 0x%08x\n", t_stack);
-    LOOP_FOREVER
 #endif
 }
 
@@ -109,9 +108,9 @@ extern void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data,
 static void start_application(uint32_t cpu_id, 
                   const APPLICATION_PARAMS_STRUCT *params)
 {
-#ifdef JLMDEBUG1
-    LOOP_FOREVER
+#ifdef JLMDEBUG
     bprint("startap_application %d\n", cpu_id);
+    LOOP_FOREVER
 #endif
     // JLM: stack pointers were set elsewhere
     uint32_t  stack_pointer= evmm_stack_pointers_array[cpu_id];

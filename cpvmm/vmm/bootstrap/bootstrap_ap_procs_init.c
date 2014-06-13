@@ -285,8 +285,7 @@ void ap_continue_wakeup_code_C(uint32_t local_apic_id)
     : [g_ready_counter] "=m" (g_ready_counter)
     ::);
 #ifdef JLMDEBUG
-   __asm__ volatile ("\tpause\n":::);
-   bprint("\n\nap_continue_wakeup_code_C 0x%08x\n", local_apic_id);
+   bprint("ap_continue_wakeup_code_C 0x%08x\n", local_apic_id);
 #endif
 LOOP_FOREVER
     if(g_user_func==0)
@@ -336,7 +335,6 @@ __asm__(
         // point edx to right stack
         "\tleal  evmm_stack_pointers_array, %edx\n"
         "\tmovl   %ecx, %eax\n"
-        "\tdecl   %eax\n"
         "\tshl    $2, %eax\n"
         "\taddl   %eax, %edx\n"
         "\tmov   (%edx), %esp\n"

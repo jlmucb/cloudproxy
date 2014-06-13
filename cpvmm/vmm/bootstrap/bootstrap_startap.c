@@ -23,8 +23,6 @@
 #define JLMDEBUG
 
 
-int g_numstarted= 0;
-int g_calls= 0;
 extern int g_num_init64;
 
 
@@ -84,14 +82,13 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
 #endif
     // first launch application on AP cores
     if (application_processors>0) {
-        g_calls++;
         ap_procs_run((FUNC_CONTINUE_AP_BOOT)start_application, &application_params);
     }
     // launch application on BSP
     // JLM: this is already done in bootstrap_entry
     // start_application(0, &application_params);
 #ifdef JLMDEBUG
-    bprint("returning from startap_main %d %d %d\n", g_numstarted, g_calls, g_num_init64);
+    bprint("returning from startap_main\n");
     uint32_t t_stack= 0;
      __asm__ volatile(
          "\tmovl  $0x8fa0, %%ebx\n"
@@ -119,7 +116,6 @@ static void start_application(uint32_t cpu_id,
     // JLM: stack pointers were set elsewhere
     uint32_t  stack_pointer= evmm_stack_pointers_array[cpu_id];
 
-    g_numstarted++;
     if (NULL == gp_init64) {
         ((LVMM_IMAGE_ENTRY_POINT)((uint32_t)params->ep))
             (cpu_id, params->any_data1, params->any_data2, params->any_data3);

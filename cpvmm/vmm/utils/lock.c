@@ -24,10 +24,10 @@
 #define VMM_ASSERT_NOLOCK(__condition) VMM_ASSERT_NOLOCK_LOG(LOCK_C, __condition)
 
 // lock_try_acquire - returns TRUE if lock was acquired and FALSE if not
-BOOLEAN lock_try_acquire( VMM_LOCK* lock );
+BOOLEAN lock_try_acquire(VMM_LOCK* lock);
 
 
-void lock_acquire( VMM_LOCK* lock )
+void lock_acquire(VMM_LOCK* lock)
 {
   (void)lock;
     CPU_ID this_cpu_id = hw_cpu_id();
@@ -86,7 +86,7 @@ BOOLEAN lock_try_acquire(VMM_LOCK* lock)
 }
 
 
-void lock_initialize(  VMM_LOCK* lock )
+void lock_initialize(VMM_LOCK* lock)
 {
   (void)lock;
     lock_release( lock );
@@ -123,7 +123,7 @@ void lock_release_readlock( VMM_READ_WRITE_LOCK * lock )
 }
 
 
-void lock_acquire_writelock( VMM_READ_WRITE_LOCK * lock )
+void lock_acquire_writelock(VMM_READ_WRITE_LOCK * lock)
 {
   (void)lock;
     lock_acquire(&lock->lock);
@@ -134,7 +134,7 @@ void lock_acquire_writelock( VMM_READ_WRITE_LOCK * lock )
 }
 
 
-void interruptible_lock_acquire_writelock( VMM_READ_WRITE_LOCK * lock )
+void interruptible_lock_acquire_writelock(VMM_READ_WRITE_LOCK * lock)
 {
   (void)lock;
     BOOLEAN ipc_processed = FALSE;

@@ -278,15 +278,16 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 // Initial AP setup in protected mode - should never return
 void ap_continue_wakeup_code_C(uint32_t local_apic_id)
 {
-#ifdef JLMDEBUG
-    bprint("ap_continue_wakeup_code_C %d\n", local_apic_id);
-#endif
     // mark that the command was accepted
     __asm__ volatile (
         // "\tlock; incl %[g_ready_counter]\n"
         "\tincl %[g_ready_counter]\n"
     : [g_ready_counter] "=m" (g_ready_counter)
     ::);
+#ifdef JLMDEBUG
+   __asm__ volatile ("\tpause\n":::);
+   bprint("\n\nap_continue_wakeup_code_C 0x%08x\n", local_apic_id);
+#endif
 LOOP_FOREVER
     if(g_user_func==0)
         LOOP_FOREVER
@@ -332,22 +333,13 @@ __asm__(
 
         // find my stack. My stack offset is in the array 
         // ecx contains CPU ID
-        // "\txor   %ecx,  %ecx\n"
-        // now ecx contains AP ordered ID [1..Max]
-        // "\tmovb  (%edx), %cl\n"
-        // "\tmov   %ecx, %eax\n"
-        //  AP starts from 1, so subtract one to get proper index in g_stacks_arr
-        // "\tdec   %eax\n"
-
         // point edx to right stack
-#if 0        
-"\tmovl  $1, %ecx\n"  // DEBUG
-        "\tmov   evmm_stack_pointers_array, %edx\n"
-        "\tlea   (%edx, %ecx, 4), %edx\n"
+        "\tleal  evmm_stack_pointers_array, %edx\n"
+        "\tmovl   %ecx, %eax\n"
+        "\tdecl   %eax\n"
+        "\tshl    $2, %eax\n"
+        "\taddl   %eax, %edx\n"
         "\tmov   (%edx), %esp\n"
-#else
-        "\tmov   $0x6ff1b00, %esp\n"
-#endif
 
         // setup GDT
         //"\tlgdt  gp_GDT\n"
@@ -361,7 +353,8 @@ __asm__(
         // enter "C" function
         //  push  AP ordered ID
         "\tmov    %ecx, %edi\n"
-        // "\tpush   %ecx\n"
+        "\tmov    %ecx, %esi\n"
+        "\tpush   %ecx\n"
         // should never return
         "\tcall  ap_continue_wakeup_code_C\n"
 );
@@ -611,8 +604,7 @@ void ap_procs_run(FUNC_CONTINUE_AP_BOOT continue_ap_boot_func, void *any_data)
 
     // wait until all APs accept this
     while (g_ready_counter<g_aps_counter) {
-        __asm__ volatile (
-            "\tpause\n" :::);
+        __asm__ volatile ( "\tpause\n" :::);
     }
 #ifdef JLMDEBUG
     bprint("ap_procs_run function returning %d %d\n",
@@ -664,10 +656,6 @@ void mp_set_bootstrap_state(uint32_t new_state)
     : [mp_bootstrap_state] "=m" (mp_bootstrap_state)
     : [new_state] "g" (new_state)
     : "%eax");
-#ifdef JLMDEBUG
-    bprint("mp_set_bootstrap_state returning\n");
-    bprint("address of bprint: 0x%08x\n", (uint32_t)bprint);
-#endif
     return;
 }
 

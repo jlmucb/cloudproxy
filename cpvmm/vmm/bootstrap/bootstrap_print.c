@@ -44,6 +44,23 @@
 typedef unsigned long       size_t;
 #endif
 
+
+volatile int bprint_lock= 0;
+
+
+void spin_lock(volatile int *p)
+{
+    while(!__sync_bool_compare_and_swap(p, 0, 1));
+}
+ 
+
+void spin_unlock(int volatile *p)
+{
+    __asm__ volatile (""); // acts as a memory barrier.
+    *p = 0;
+}
+
+
 extern bool isdigit(int c);
 extern bool isspace(int c);
 extern bool isxdigit(int c);
@@ -674,9 +691,9 @@ void bprint(const char *fmt, ...)
     vmm_memset(buf, '\0', sizeof(buf));
     va_start(ap, fmt);
     n = vscnprintf(buf, sizeof(buf), fmt, ap);
-    // mtx_enter(&print_lock);  //JLM FIX
+    // spin_lock(&bprint_lock);
     vga_write(pbuf, n);
-    // mtx_leave(&print_lock);  //JLM FIX
+    // spin_unlock(&bprint_lock);
 
     va_end(ap);
 }

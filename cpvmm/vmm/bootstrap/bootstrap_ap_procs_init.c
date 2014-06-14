@@ -315,10 +315,9 @@ __asm__(
 
         // edx <- address of presence array
         "\tlea   ap_presence_array, %edx\n"
-        // edx <- address of AP CPU presence location
         "\tadd   %ecx, %edx\n"
         // mark current CPU as present
-        "\tmovl  $1, (%edx)\n"
+        "\tmovb  $1, (%edx)\n"
         // last debug place
 "1:\n"
         // MP_BOOTSTRAP_STATE_APS_ENUMERATED= 1

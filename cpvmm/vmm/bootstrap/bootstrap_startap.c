@@ -23,9 +23,6 @@
 #define JLMDEBUG
 
 
-extern int g_num_init64;
-
-
 typedef void (*LVMM_IMAGE_ENTRY_POINT) (uint32_t local_apic_id, 
                    void* any_data1, void* any_data2, void* any_data3); 
 
@@ -39,7 +36,7 @@ typedef struct {
 static APPLICATION_PARAMS_STRUCT application_params;
 static INIT64_STRUCT *gp_init64= NULL;
 
-static void start_application(uint32_t cpu_id, const APPLICATION_PARAMS_STRUCT *params);
+void start_application(uint32_t cpu_id, const APPLICATION_PARAMS_STRUCT *params);
 extern uint32_t evmm_stack_pointers_array[];  // stack pointers
 
 
@@ -98,17 +95,16 @@ extern void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data,
 			  void * arg3, void * arg4);
 
 
-static void start_application(uint32_t cpu_id, 
+void start_application(uint32_t cpu_id, 
                   const APPLICATION_PARAMS_STRUCT *params)
 {
 #ifdef JLMDEBUG
-    bprint("startap_application %d\n", cpu_id);
-    LOOP_FOREVER
+    bprint("startap_application %d, gp_init64: %p\n", cpu_id, gp_init64);
 #endif
     // JLM: stack pointers were set elsewhere
     uint32_t  stack_pointer= evmm_stack_pointers_array[cpu_id];
 
-    if (NULL == gp_init64) {
+    if (NULL==gp_init64) {
         ((LVMM_IMAGE_ENTRY_POINT)((uint32_t)params->ep))
             (cpu_id, params->any_data1, params->any_data2, params->any_data3);
     }

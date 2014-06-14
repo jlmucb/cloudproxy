@@ -280,13 +280,11 @@ void ap_continue_wakeup_code_C(uint32_t local_apic_id)
 {
     // mark that the command was accepted
     __asm__ volatile (
-        // "\tlock; incl %[g_ready_counter]\n"
-        "\tincl %[g_ready_counter]\n"
+        "\tlock; incl %[g_ready_counter]\n"
     : [g_ready_counter] "=m" (g_ready_counter)
     ::);
 #ifdef JLMDEBUG
    bprint("ap_continue_wakeup_code_C 0x%08x\n", local_apic_id);
-   LOOP_FOREVER
 #endif
     if(g_user_func==0) {
         bprint("null user function in ap_continue_wakeup_code_C\n");
@@ -560,29 +558,34 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
     startap_stall_using_tsc(INITIAL_WAIT_FOR_APS_TIMEOUT_IN_MILIS);
 
     // Stage 2 
-    g_aps_counter = bsp_enumerate_aps();
-#ifdef JLMDEBUG1
-    bprint("patched code\n");
-    HexDump((uint8_t*) p_init32_data->i32_low_memory_page, 
-        (uint8_t*) p_init32_data->i32_low_memory_page+sizeof(APStartUpCode));
-    bprint("gdt\n");
-    HexDump((uint8_t*) p_init32_data->i32_low_memory_page+GDT_OFFSET_IN_PAGE, 
-        (uint8_t*) p_init32_data->i32_low_memory_page+GDT_OFFSET_IN_PAGE+96);
-#endif
+    g_aps_counter= bsp_enumerate_aps();
 #ifdef JLMDEBUG
+    bprint("g_aps_counter: %d\n", g_aps_counter);
     bprint("gdt limit: %d, gdt base: 0x%08x\n", *(uint16_t*)(&gp_GDT[0]),
             *(uint32_t*)(&gp_GDT[2]));
     bprint("idt limit: %d, idt base: 0x%08x\n", *(uint16_t*)(&gp_IDT[0]),
             *(uint32_t*)(&gp_IDT[2]));
     bprint("mp_bootstrap_state: %d\n", mp_bootstrap_state);
-    for(int i=0; i<3; i++) {
+    for(int i=0; i<4; i++) {
         bprint("stack[%d]= 0x%08x, ", i, evmm_stack_pointers_array[i]);
     }
     bprint("\n");
-    bprint("stage 2, num aps: %d\n", g_aps_counter);
+    extern int evmm_num_of_aps;
+    bprint("stage 2, num aps: %d, num aps: %d\n", g_aps_counter, evmm_num_of_aps);
+    for(int i=0; i<4; i++) {
+        bprint("presence[%d]= %d, ", i, ap_presence_array[i]);
+    }
 #endif
     return g_aps_counter;
 }
+
+
+typedef struct {
+    void*           any_data1;
+    void*           any_data2;
+    void*           any_data3;
+    UINT64          ep;
+} APPLICATION_PARAMS_STRUCT;
 
 
 // Run user specified function on all APs.
@@ -593,11 +596,14 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
 void ap_procs_run(FUNC_CONTINUE_AP_BOOT continue_ap_boot_func, void *any_data)
 {
 #ifdef JLMDEBUG
+    extern void start_application(uint32_t cpu_id, 
+                  const APPLICATION_PARAMS_STRUCT *params);
     bprint("ap_procs_run function: %p, ready counter: %d, aps counter: %d\n", 
            continue_ap_boot_func, g_ready_counter, g_aps_counter);
+    bprint("start_application: %p\n", start_application);
 #endif
-    g_user_func = continue_ap_boot_func;
-    g_any_data_for_user_func = any_data;
+    g_user_func= continue_ap_boot_func;
+    g_any_data_for_user_func= any_data;
 
     // signal to APs to pass to the next stage
     mp_set_bootstrap_state(MP_BOOTSTRAP_STATE_APS_ENUMERATED);

@@ -693,7 +693,7 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
                 uint32_t* arg3, uint32_t* arg4)
 {
 #ifdef JLMDEBUG
-    bprint("start_64bit_mode_on_aps %p *p\n", stack_pointer, start_address);
+    bprint("start_64bit_mode_on_aps %p %p\n", stack_pointer, start_address);
 #endif
     __asm__ volatile (
 
@@ -733,6 +733,8 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
         // write EFER
         "\twrmsr\n"
 
+        "\tjmp .\n"   // debug
+
         // enable paging CR0.PG=1
         "\tmovl %%cr0, %%eax\n"
         "\tbts  $31, %%eax\n"
@@ -764,7 +766,7 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
 }
 
 
-int g_num_init64= 0;
+// int g_num_init64= 0;
 
 
 void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data, 
@@ -774,10 +776,8 @@ void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data,
     uint32_t cr4;
 
 #ifdef JLMDEBUG
-    bprint("init64_on_aps %p *p\n", stack_pointer, start_address);
+    bprint("init64_on_aps %p %p\n", stack_pointer, start_address);
 #endif
-    g_num_init64++;
-    // CHECK(JLM): is this right (cr4)?
     // ia32_write_gdtr(&p_init64_data->i64_gdtr);
     __asm__ volatile (
        "\tsgdt  %[gdtr_64]\n"
@@ -790,6 +790,7 @@ void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data,
     start_64bit_mode_on_aps(stack_pointer, start_address, 
                    p_init64_data->i64_cs, arg1, arg2, arg3, arg4);
 #ifdef JLMDEBUG
+    // should never get here
     bprint("init64_on_aps done\n");
     LOOP_FOREVER
 #endif

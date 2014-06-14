@@ -706,8 +706,8 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
         "\tmovl %[evmm64_cr3], %%eax\n"
         "\tmovl %%eax, %%cr3 \n"
 
-        // evmm_initial_stack points to the start of the stack
-        "movl   %[stack_pointer], %%esp\n"
+        // evmm_initial_stack is alread set, just 16 byte align it
+        // "movl   %[stack_pointer], %%esp\n"
         "\tandl  $0xfffffff8, %%esp\n"
 
         // prepare arguments for 64-bit mode
@@ -730,6 +730,9 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
 
         // set EFER.LME=1
         "\tbts $8, %%eax\n"
+        // set EFER.LMA=1 on BSP?
+        // "\tbts $10, %%eax\n"
+
         // write EFER
         "\twrmsr\n"
 

@@ -45,10 +45,9 @@ typedef unsigned long       size_t;
 #endif
 
 #ifdef INVMM
-#define NOPRINTMUTEX
+#define PRINTMUTEX64
 #endif
 
-#ifndef NOPRINTMUTEX
 struct mutex {
         __volatile__ uint32_t mtx_lock;
 };
@@ -57,52 +56,61 @@ void mtx_init(struct mutex *);
 void mtx_enter(struct mutex *);
 void mtx_leave(struct mutex *);
 
-struct mutex print_lock;
+
+struct mutex print_lock= {0};
 
 
-__asm__(
-".text\n"
-".globl mtx_init\n"
-".type mtx_init,@function\n"
-"mtx_init:\n"
-    "\tpushl   %ebp\n"
-    "\tmovl    %esp, %ebp\n"
-    "\tmovl    8(%ebp), %eax\n"
-    "\txorl    %edx, %edx\n"
-    "\tmovl    %edx, (%eax)\n"
-    "\tleave\n"
-    "\tret\n"
-".globl mtx_enter\n"
-".type mtx_enter,@function\n"
-"mtx_enter:\n"
-    "\tpushl   %ebp\n"
-    "\tmovl    %esp, %ebp\n"
-"1:  movl    8(%ebp), %ecx\n"
-     // %ecx contains the mtx.
-    "\tmovl    $1, %eax\n"
-    "\txchgl   %eax, (%ecx)\n"    // test_and_set(mtx->mtx_lock)
-    "\ttestl   %eax, %eax\n"      // if (already held)
-    "\tjnz     2f\n"
-    "\tleave\n"
-    "\tret\n"
-"2:     pause\n"
-    "\tmovl    (%ecx), %eax\n"
-    "\ttestl   %eax, %eax\n"
-    "\tjz      1b\n"
-    "\tjmp     2b\n"
+void mtx_init(struct mutex* the_mutex) 
+{
+    the_mutex->mtx_lock= 0;
+}
 
-".globl mtx_leave\n"
-".type mtx_leave,@function\n"
-"mtx_leave:\n"
-    "\tpushl   %ebp\n"
-    "\tmovl    %esp, %ebp\n"
-    "\tmovl    8(%ebp), %ecx\n"
-    "\txorl    %eax, %eax\n"
-    "\tmovl    %eax, (%ecx)\n"
-    "\tleave\n"
-    "\tret\n"
-);
+
+void mtx_enter(struct mutex* pmutex)
+{
+#ifdef PRINTMUTEX64
+    __asm__ volatile (
+        "1:\n"
+        "\tmovq    %[pmutex], %%rcx\n"
+        "\tmovq    $1, %%rax\n"
+        "\txchgl   %%eax, (%%rcx)\n"    // test_and_set(mtx->mtx_lock)
+        "\ttestl   %%eax, %%eax\n"      // if (already held)
+        "\tjz      3f\n"
+        "2:\n"
+        "\tpause\n"
+        "\tmovl    (%%rcx), %%eax\n"
+        "\ttestl   %%eax, %%eax\n"
+        "\tjz      1b\n"
+        "\tjmp     2b\n"
+        "3:\n"
+    :: [pmutex] "p" (pmutex)
+    : "%rax", "%rcx");
+#else
+    __asm__ volatile (
+        "1:\n"
+        "\tmovl    %[pmutex], %%ecx\n"
+        "\tmovl    $1, %%eax\n"
+        "\txchgl   %%eax, (%%ecx)\n"    // test_and_set(mtx->mtx_lock)
+        "\ttestl   %%eax, %%eax\n"      // if (already held)
+        "\tjz      3f\n"
+        "2:\n"
+        "\tpause\n"
+        "\tmovl    (%%ecx), %%eax\n"
+        "\ttestl   %%eax, %%eax\n"
+        "\tjz      1b\n"
+        "\tjmp     2b\n"
+        "3:\n"
+    :: [pmutex] "p" (pmutex)
+    : "%eax", "%ecx");
 #endif
+    return;
+}
+
+
+void mtx_leave(struct mutex* the_mutex)
+{
+    the_mutex->mtx_lock= 0;
+}
 
 
 extern bool isdigit(int c);
@@ -213,9 +221,6 @@ void delay(int millisecs)
 
 void bootstrap_partial_reset(void)
 {
-#ifndef NOPRINTMUTEX
-    mtx_init(&print_lock);
-#endif
     cursor_x = 0;
     cursor_y = MAX_LINES-1;
     num_lines = MAX_LINES;
@@ -724,9 +729,6 @@ int snprintf(char *buf, size_t size, const char *fmt, ...)
 
 void bprint_init(void)
 {
-#ifndef NOPRINTMUTEX
-    mtx_init(&print_lock);
-#endif
     vga_init();
 }
 
@@ -741,12 +743,10 @@ void bprint(const char *fmt, ...)
     vmm_memset(buf, '\0', sizeof(buf));
     va_start(ap, fmt);
     n = vscnprintf(buf, sizeof(buf), fmt, ap);
-#ifndef NOPRINTMUTEX
     mtx_enter(&print_lock);
-#endif
     vga_write(pbuf, n);
-#ifndef NOPRINTMUTEX
     mtx_leave(&print_lock);
-#endif
     va_end(ap);
 }
+
+

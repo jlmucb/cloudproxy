@@ -86,7 +86,7 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
     // start_application(0, &application_params);
 #ifdef JLMDEBUG
     bprint("returning from startap_main\n");
-    LOOP_FOREVER
+    // LOOP_FOREVER
 #endif
 }
 

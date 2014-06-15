@@ -667,8 +667,8 @@ int setup_64bit()
 
     // set cr3 and cr4
     write_cr3(evmm64_cr3);
+
     read_cr4(&evmm64_cr4);
-    // evmm64_cr4 = ia32_read_cr4();
     BITMAP_SET(evmm64_cr4, PAE_BIT|PSE_BIT);
     write_cr4(evmm64_cr4);
 
@@ -774,8 +774,6 @@ void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data,
                     uint32_t start_address, void * arg1, void * arg2, 
                     void * arg3, void * arg4)
 {
-    uint32_t cr4;
-
 #ifdef JLMDEBUG
     bprint("init64_on_aps %p %p\n", stack_pointer, start_address);
 #endif
@@ -784,10 +782,9 @@ void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data,
        "\tsgdt  %[gdtr_64]\n"
     :[gdtr_64] "=m" (gdtr_64)
     ::);
-    write_cr3(p_init64_data->i64_cr3);
-    read_cr4(&cr4);
-    BITMAP_SET(cr4, PAE_BIT|PSE_BIT);
-    write_cr4(cr4);
+
+    write_cr3(evmm64_cr3);
+    write_cr4(evmm64_cr4);
     start_64bit_mode_on_aps(stack_pointer, start_address, 
                    p_init64_data->i64_cs, arg1, arg2, arg3, arg4);
 #ifdef JLMDEBUG

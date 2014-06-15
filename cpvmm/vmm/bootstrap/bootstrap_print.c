@@ -45,6 +45,7 @@ typedef unsigned long       size_t;
 #endif
 
 
+#ifndef INVMM
 struct mutex {
         __volatile__ uint32_t mtx_lock;
 };
@@ -98,7 +99,7 @@ __asm__(
     "\tleave\n"
     "\tret\n"
 );
-
+#endif
 
 
 extern bool isdigit(int c);
@@ -209,7 +210,9 @@ void delay(int millisecs)
 
 void bootstrap_partial_reset(void)
 {
+#ifndef INVMM
     mtx_init(&print_lock);
+#endif
     cursor_x = 0;
     cursor_y = MAX_LINES-1;
     num_lines = MAX_LINES;
@@ -718,7 +721,9 @@ int snprintf(char *buf, size_t size, const char *fmt, ...)
 
 void bprint_init(void)
 {
+#ifndef INVMM
     mtx_init(&print_lock);
+#endif
     vga_init();
 }
 
@@ -729,12 +734,16 @@ void bprint(const char *fmt, ...)
     char *pbuf = buf;
     int n;
     va_list ap;
+
     vmm_memset(buf, '\0', sizeof(buf));
     va_start(ap, fmt);
     n = vscnprintf(buf, sizeof(buf), fmt, ap);
+#ifndef INVMM
     mtx_enter(&print_lock);
+#endif
     vga_write(pbuf, n);
+#ifndef INVMM
     mtx_leave(&print_lock);
-
+#endif
     va_end(ap);
 }

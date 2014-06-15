@@ -20,16 +20,16 @@
 
 // Subset of CRT-like routines to be used in VMM and loader environments
 
-void *  CDECL vmm_memset(void *dest, int filler, size_t count);
-void *  CDECL vmm_memcpy(void *dest, const void* src, size_t count);
-void *  CDECL vmm_memmove(void *dest, const void* src, int count);
-void *  CDECL vmm_lock_memcpy(void *dest, const void* src, size_t count);
-size_t  CDECL vmm_strlen(const char* string);
-char*   CDECL vmm_strcpy(char* dst, const char* src);
-char*   CDECL vmm_strcpy_s(char* dst, size_t dst_length, const char* src);
-int     CDECL vmm_strcmp(const char* string1, const char* string2);
-void    CDECL vmm_memcpy_assuming_mmio(UINT8 *dst, UINT8 *src, INT32 count);
-int CDECL vmm_memcmp(const void* mem1, const void* mem2, size_t count);
+void *  vmm_memset(void *dest, int filler, size_t count);
+void *  vmm_memcpy(void *dest, const void* src, size_t count);
+void *  vmm_memmove(void *dest, const void* src, int count);
+void *  vmm_lock_memcpy(void *dest, const void* src, size_t count);
+size_t  vmm_strlen(const char* string);
+char*   vmm_strcpy(char* dst, const char* src);
+char*   vmm_strcpy_s(char* dst, size_t dst_length, const char* src);
+int     vmm_strcmp(const char* string1, const char* string2);
+void    vmm_memcpy_assuming_mmio(UINT8 *dst, UINT8 *src, INT32 count);
+int     vmm_memcmp(const void* mem1, const void* mem2, size_t count);
 
 #define vmm_zeromem(dest_, count_) vmm_memset(dest_, 0, count_);
 

@@ -42,7 +42,7 @@ INCLUDES=	-I$(S)/vmm -I$(S)/common/include -I$(S)/vmm/include -I$(S)/common/hw \
     		-I$(mainsrc)/hw -I$(S)/vmm/memory/ept \
 		-I$(S)/vmm -I$(S)/vmm/bootstrap
 
-JLMDEBUG= -I$(S)/vmm -I$(S)/common/include -I$(S)/vmm/include -I$(mainsrc)/bootstrap -D INVMM -D JLMDEBUG
+JLMDEBUG= -I$(S)/vmm -I$(S)/common/include -I$(S)/vmm/include -I$(mainsrc)/bootstrap -D INVMM_BLOCKER -D JLMDEBUG -D INVMM
 
 DEBUG_CFLAGS=  -Wall -Wextra -Werror -fwrapv -std=c99 -Wno-format -g -DDEBUG -D INCLUDE_LAYERING -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs -fPIE
 RELEASE_CFLAGS= -Wall -Wextra -Werror -fwrapv -std=c99 -Wno-unknown-pragmas -Wno-format -O3  -Wunused-function -D INCLUDE_LAYERING -nostartfiles -nostdlib  -fno-tree-loop-distribute-patterns -nodefaultlibs -fPIE

@@ -731,12 +731,9 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
         // set EFER.LME=1
         "\tbts $8, %%eax\n"
         // set EFER.LMA=1 on BSP?
-        // "\tbts $10, %%eax\n"
-
+        "\tbts $10, %%eax\n"
         // write EFER
         "\twrmsr\n"
-
-        "\tjmp .\n"   // debug
 
         // enable paging CR0.PG=1
         "\tmovl %%cr0, %%eax\n"
@@ -761,6 +758,7 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
 
         "\tjmp *%%ebx\n"
         "\tud2\n"
+        // "\tjmp .\n"   // debug
         :
         : [arg1] "g" (arg1), [arg2] "g" (arg2), [arg3] "g" (arg3), [arg4] "g" (arg4), 
           [start_address] "g" (start_address), [segment] "g" (segment), 

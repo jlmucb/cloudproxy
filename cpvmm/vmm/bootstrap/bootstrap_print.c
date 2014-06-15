@@ -44,8 +44,11 @@
 typedef unsigned long       size_t;
 #endif
 
+#ifdef INVMM
+#define NOPRINTMUTEX
+#endif
 
-#ifndef INVMM
+#ifndef NOPRINTMUTEX
 struct mutex {
         __volatile__ uint32_t mtx_lock;
 };
@@ -210,7 +213,7 @@ void delay(int millisecs)
 
 void bootstrap_partial_reset(void)
 {
-#ifndef INVMM
+#ifndef NOPRINTMUTEX
     mtx_init(&print_lock);
 #endif
     cursor_x = 0;
@@ -721,7 +724,7 @@ int snprintf(char *buf, size_t size, const char *fmt, ...)
 
 void bprint_init(void)
 {
-#ifndef INVMM
+#ifndef NOPRINTMUTEX
     mtx_init(&print_lock);
 #endif
     vga_init();
@@ -738,11 +741,11 @@ void bprint(const char *fmt, ...)
     vmm_memset(buf, '\0', sizeof(buf));
     va_start(ap, fmt);
     n = vscnprintf(buf, sizeof(buf), fmt, ap);
-#ifndef INVMM
+#ifndef NOPRINTMUTEX
     mtx_enter(&print_lock);
 #endif
     vga_write(pbuf, n);
-#ifndef INVMM
+#ifndef NOPRINTMUTEX
     mtx_leave(&print_lock);
 #endif
     va_end(ap);

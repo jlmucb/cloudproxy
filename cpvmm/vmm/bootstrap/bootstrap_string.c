@@ -35,7 +35,7 @@ char* vmm_strncpy(char *dest, const char *src, int n)
 }
 
 
-#ifndef INVMM_BLOCKER
+#ifndef INVMM
 char* vmm_strcpy(char *dest, const char *src)
 {
     char* out= dest;

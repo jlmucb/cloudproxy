@@ -31,6 +31,8 @@ void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u,
               UINT64 application_params_struct_u, UINT64 reserved UNUSED)
 {
     LOOP_FOREVER
+    if(local_apic_id!=0)
+        LOOP_FOREVER
     bootstrap_partial_reset();
     bprint("***********************\n");
     bprint("vmm_main in 64 bit mode\n");

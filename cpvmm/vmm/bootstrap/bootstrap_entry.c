@@ -756,7 +756,7 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
         // in 64 bit this is actually pop rcx (arg4)
         "\tpop %%ecx\n"
 
-        "\tjmp .\n"   // REMOVE!
+        // "\tjmp .\n"   // REMOVE!
         "\tjmp *%%ebx\n"
         "\tud2\n"
         :

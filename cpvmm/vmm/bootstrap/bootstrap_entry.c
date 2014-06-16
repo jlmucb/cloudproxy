@@ -40,6 +40,7 @@
 // this is all 32 bit code
 
 #define JLMDEBUG
+
 // #define MULTIAPS_ENABLED
 
 // JLM: Remove this soon 
@@ -265,6 +266,41 @@ static uint32_t                         guest_cr0= 0;
 static uint32_t                         guest_cr2= 0;
 static uint32_t                         guest_cr3= 0;
 static uint32_t                         guest_cr4= 0;
+
+
+// -------------------------------------------------------------------------
+
+
+// linux guest initialization definitions and globals
+
+typedef struct VMM_INPUT_PARAMS_S {
+    uint64_t local_apic_id;
+    uint64_t startup_struct;
+    uint64_t guest_params_struct;
+} VMM_INPUT_PARAMS;
+
+VMM_GUEST_STARTUP                       evmm_g0;
+VMM_APPLICATION_PARAMS_STRUCT           evmm_a0;
+VMM_APPLICATION_PARAMS_STRUCT*          evmm_p_a0= &evmm_a0;
+
+// state of primary linux guest on startup
+VMM_GUEST_CPU_STARTUP_STATE      guest_processor_state[MAXPROCESSORS];
+VMM_STARTUP_STRUCT               startup_struct;
+VMM_STARTUP_STRUCT *             p_startup_struct = &startup_struct;
+
+#define PRIMARY_MAGIC 0x0
+
+// expanded e820 table used by evmm
+static unsigned int     evmm_num_e820_entries = 0;
+INT15_E820_MEMORY_MAP*  evmm_e820= NULL;
+uint64_t                evmm_start_of_e820_table= 0ULL; // 64 bits version
+
+static const cmdline_option_t linux_cmdline_options[] = {
+    { "vga", "" },
+    { "mem", "" },
+    { NULL, NULL }
+};
+static char linux_param_values[ARRAY_SIZE(linux_cmdline_options)][MAX_VALUE_LEN];
 
 
 // -------------------------------------------------------------------------
@@ -566,7 +602,7 @@ void setup_64bit_descriptors(void)
     gdtr_64.limit= gdtr_32.limit + (uint32_t)(&end_of_desciptor_table[4])-
                     (uint32_t)(&end_of_desciptor_table[0]);
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
    bprint("\nevmm64_cs_selector: %d, evmm64_ds_selector: %d\n", 
           evmm64_cs_selector, evmm64_ds_selector);
    bprint("\ngdtr_32, base: 0x%08x, limit: %d\n", 
@@ -689,11 +725,11 @@ extern void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
 
 
 void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address, 
-                uint32_t segment, uint32_t* arg1, uint32_t* arg2, 
-                uint32_t* arg3, uint32_t* arg4)
+                uint32_t segment, uint32_t cpu_id)
 {
+    uint32_t evmm_reserved= 0;
 #ifdef JLMDEBUG
-    bprint("start_64bit_mode_on_aps %p %p\n", stack_pointer, start_address);
+    bprint("start_64bit_mode_on_aps %p %p, cpu: %d\n", stack_pointer, start_address, cpu_id);
 #endif
     __asm__ volatile (
 
@@ -714,13 +750,13 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
         // there are 4 arguments (including reserved)
         "\txor  %%eax, %%eax\n"
         "\tpush %%eax\n"
-        "\tpush %[arg4]\n"
+        "\tpush %[evmm_reserved]\n"
         "\tpush %%eax\n"
-        "\tpush %[arg3]\n"
+        "\tpush %[evmm_p_a0]\n"
         "\tpush %%eax\n"
-        "\tpush %[arg2]\n"
+        "\tpush %[p_startup_struct]\n"
         "\tpush %%eax\n"
-        "\tpush %[arg1]\n"
+        "\tpush %[cpu_id]\n"
 
         // enable 64-bit mode
         // EFER MSR register
@@ -760,19 +796,16 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
         "\tjmp *%%ebx\n"
         "\tud2\n"
         :
-        : [arg1] "g" (arg1), [arg2] "g" (arg2), [arg3] "g" (arg3), [arg4] "g" (arg4), 
+        : [cpu_id] "g" (cpu_id), [p_startup_struct] "g" (p_startup_struct), 
+          [evmm_p_a0] "g" (evmm_p_a0), [evmm_reserved] "g" (evmm_reserved), 
           [start_address] "g" (start_address), [segment] "g" (segment), 
           [stack_pointer] "m" (stack_pointer), [evmm64_cr3] "m" (evmm64_cr3)
         : "%eax", "%ebx", "%ecx", "%edx");
 }
 
 
-// int g_num_init64= 0;
-
-
 void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data, 
-                    uint32_t start_address, void * arg1, void * arg2, 
-                    void * arg3, void * arg4)
+                    uint32_t start_address, uint32_t cpu_id)
 {
 #ifdef JLMDEBUG
     bprint("init64_on_aps %p %p\n", stack_pointer, start_address);
@@ -786,7 +819,7 @@ void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data,
     write_cr3(evmm64_cr3);
     write_cr4(evmm64_cr4);
     start_64bit_mode_on_aps(stack_pointer, start_address, 
-                   p_init64_data->i64_cs, arg1, arg2, arg3, arg4);
+                   p_init64_data->i64_cs, cpu_id);
 #ifdef JLMDEBUG
     // should never get here
     bprint("init64_on_aps done\n");
@@ -977,41 +1010,6 @@ unsigned long get_mbi_mem_end(const multiboot_info_t *mbi)
 
     return PAGE_UP(end);
 }
-
-
-// -------------------------------------------------------------------------
-
-
-// linux guest initialization definitions and globals
-
-typedef struct VMM_INPUT_PARAMS_S {
-    uint64_t local_apic_id;
-    uint64_t startup_struct;
-    uint64_t guest_params_struct;
-} VMM_INPUT_PARAMS;
-
-VMM_GUEST_STARTUP                       evmm_g0;
-VMM_APPLICATION_PARAMS_STRUCT           evmm_a0;
-VMM_APPLICATION_PARAMS_STRUCT*          evmm_p_a0= &evmm_a0;
-
-// state of primary linux guest on startup
-VMM_GUEST_CPU_STARTUP_STATE      guest_processor_state[MAXPROCESSORS];
-VMM_STARTUP_STRUCT               startup_struct;
-VMM_STARTUP_STRUCT *             p_startup_struct = &startup_struct;
-
-#define PRIMARY_MAGIC 0x0
-
-// expanded e820 table used by evmm
-static unsigned int     evmm_num_e820_entries = 0;
-INT15_E820_MEMORY_MAP*  evmm_e820= NULL;
-uint64_t                evmm_start_of_e820_table= 0ULL; // 64 bits version
-
-static const cmdline_option_t linux_cmdline_options[] = {
-    { "vga", "" },
-    { "mem", "" },
-    { NULL, NULL }
-};
-static char linux_param_values[ARRAY_SIZE(linux_cmdline_options)][MAX_VALUE_LEN];
 
 
 // -------------------------------------------------------------------------
@@ -1377,9 +1375,6 @@ int expand_linux_image( multiboot_info_t* mbi,
     }
 
     vmm_memcpy ((void *)initrd_base, (void*)initrd_image, initrd_size);
-    bprint("Initrd from 0x%lx to 0x%lx\n",
-           (unsigned long)initrd_base,
-           (unsigned long)(initrd_base + initrd_size));
 
     hdr->ramdisk_image = initrd_base;
     hdr->ramdisk_size = initrd_size;
@@ -1462,15 +1457,19 @@ int expand_linux_image( multiboot_info_t* mbi,
     vmm_memcpy((void *)protected_mode_base, 
                (void*)(linux_image + real_mode_size),
                protected_mode_size);
+#ifdef JLMDEBUG1
     bprint("Kernel (protected mode) from 0x%lx to 0x%lx\n",
            (unsigned long)protected_mode_base,
            (unsigned long)(protected_mode_base + protected_mode_size));
+#endif
 
     // load real-mode part 
     vmm_memcpy((void *)real_mode_base, (void*)linux_image, real_mode_size);
+#ifdef JLMDEBUG1
     bprint("Kernel (real mode) from 0x%lx to 0x%lx\n",
            (unsigned long)real_mode_base,
            (unsigned long)(real_mode_base + real_mode_size));
+#endif
 
     // copy cmdline 
     if ( mbi->flags & MBI_CMDLINE ) {
@@ -1665,7 +1664,6 @@ int prepare_linux_image_for_evmm(multiboot_info_t *mbi)
     bprint("ramdisk image 0x%08x, ramdisk size %d\n", 
         hdr->ramdisk_image, hdr->ramdisk_size);
 #endif
-    bprint("Linux kernel @%p...\n", (void*)linux_entry_address);
     return 0;
 }
 
@@ -1913,7 +1911,7 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
         initram_end= (uint32_t)m->mod_end;
     }
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     // shared page
     bprint("tboot_start, tboot_end: 0x%08x 0x%08x\n", tboot_start, tboot_end);
     bprint("bootstrap_start, bootstrap_end: 0x%08x 0x%08x, size: %d\n", 
@@ -1984,7 +1982,7 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     read_cr3(&tboot_cr3);
     read_cr4(&tboot_cr4);
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("original gdt\n");
     HexDump((uint8_t*) tboot_gdtr_32.base, 
             (uint8_t*) tboot_gdtr_32.base+tboot_gdtr_32.limit);
@@ -2000,7 +1998,7 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     p= (uint32_t*)(tboot_gdtr_32.base+tboot_tr_selector); 
     ia32_get_selector(p, &tboot_tr_base, &tboot_tr_limit, &tboot_tr_attr);
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("gdt base: %08x, limit: %04x\n", tboot_gdtr_32.base, tboot_gdtr_32.limit);
     bprint("tboot cs selector: %04x, base: %08x, limit: %04x, attr: %04x\n",
            tboot_cs_selector, tboot_cs_base, tboot_cs_limit, tboot_cs_attr);
@@ -2142,7 +2140,7 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
       LOOP_FOREVER
     }
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("evmm_bsp_stack: 0x%08x\n", evmm_bsp_stack);
     bprint("%d processors, stacks:\n", 1+evmm_num_of_aps);
     for(i=0; i<=evmm_num_of_aps; i++) {
@@ -2226,7 +2224,7 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     //               uint64_t application_params_struct_u, 
     //               uint64_t reserved UNUSED)
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("evmm_image_size: 0x%016lx, evmm_mem_size: 0x%016lx\n",
             (long unsigned int)evmm_image_size, (long unsigned int)evmm_mem_size);
     bprint("Orig extra mem: 0x%016lx, diff: 0x%016lx\n",
@@ -2285,10 +2283,6 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
     if (evmm_num_of_aps > 0) {
 #ifdef JLMDEBUG
         bprint("about to call startap_main, %d aps\n", evmm_num_of_aps);
-        bprint("&init32: %p\n", &init32);
-        bprint("&init64: %p\n", &init64);
-        bprint("p_startup_struct: %p\n", p_startup_struct);
-        bprint("vmm_main_entry_point: %p\n", vmm_main_entry_point);
 #endif
         startap_main(&init32, &init64, p_startup_struct, vmm_main_entry_point);
     }

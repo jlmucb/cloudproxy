@@ -33,6 +33,10 @@ extern uint16_t ia32_read_ds();
 extern uint16_t ia32_read_ss();
 #endif 
 
+#ifndef UNUSEDVAR
+#define UNUSEDVAR(x) ((void)x)
+#endif
+
 
 // AP startup algorithm
 //  Stage 1
@@ -198,6 +202,7 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 #ifdef JLMDEBUG1
     bprint("setup_low_memory\n");
 #endif
+    UNUSEDVAR(end_page);
 
     // zero low memory
     vmm_memset(code_to_patch, 0, 0x1000);
@@ -259,7 +264,7 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     //*(pnop++)= 0x90; *(pnop++)= 0x90; 
 #endif
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     end_page= loc_idtr+6;
     bprint("code_to_patch: 0x%08x, ljmp offset offset: 0x%08x, address: 0x%08x\n",  
            code_to_patch, CONT16_VALUE_OFFSET, code_to_patch+CONT16_VALUE_OFFSET);
@@ -283,7 +288,7 @@ void ap_continue_wakeup_code_C(uint32_t local_apic_id)
         "\tlock; incl %[g_ready_counter]\n"
     : [g_ready_counter] "=m" (g_ready_counter)
     ::);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
    bprint("ap_continue_wakeup_code_C 0x%08x\n", local_apic_id);
 #endif
     if(g_user_func==0) {
@@ -394,7 +399,7 @@ void startap_calibrate_tsc_ticks_per_msec(void)
     startap_stall(1000);   // 1 ms
     end_tsc= startap_rdtsc();
     startap_tsc_ticks_per_msec= (uint32_t)(end_tsc-start_tsc);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("ticks/ms: %d\n", startap_tsc_ticks_per_msec);
 #endif
     return;
@@ -558,7 +563,7 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
 
     // Stage 2 
     g_aps_counter= bsp_enumerate_aps();
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("g_aps_counter: %d\n", g_aps_counter);
     bprint("gdt limit: %d, gdt base: 0x%08x\n", *(uint16_t*)(&gp_GDT[0]),
             *(uint32_t*)(&gp_GDT[2]));
@@ -594,7 +599,7 @@ typedef struct {
 //  any_data - data to be passed to the function
 void ap_procs_run(FUNC_CONTINUE_AP_BOOT continue_ap_boot_func, void *any_data)
 {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     extern void start_application(uint32_t cpu_id, 
                   const APPLICATION_PARAMS_STRUCT *params);
     bprint("ap_procs_run function: %p, ready counter: %d, aps counter: %d\n", 
@@ -611,7 +616,7 @@ void ap_procs_run(FUNC_CONTINUE_AP_BOOT continue_ap_boot_func, void *any_data)
     while (g_ready_counter<g_aps_counter) {
         __asm__ volatile ( "\tpause\n" :::);
     }
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("ap_procs_run function returning %d %d\n",
            g_ready_counter, g_aps_counter);
 #endif
@@ -650,7 +655,7 @@ void ap_initialize_environment(void)
 
 void mp_set_bootstrap_state(uint32_t new_state)
 {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("mp_set_bootstrap_state %d\n", new_state);
 #endif
     __asm__ volatile (
@@ -688,12 +693,12 @@ void send_broadcast_init_sipi(INIT32_STRUCT *p_init32_data)
     // send it twice - according to manual
     send_sipi_ipi((void *)p_init32_data->i32_low_memory_page);
     startap_stall_using_tsc(200000); // timeout - 200 milliseconds
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("back from first send_sipi_ipi\n");
 #endif
     send_sipi_ipi((void*)p_init32_data->i32_low_memory_page);
     startap_stall_using_tsc(200000); // timeout - 200 milliseconds
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("back from second send_sipi_ipi\n");
 #endif
 }
@@ -736,7 +741,7 @@ void send_ipi_to_all_excluding_self(uint32_t vector_number,
                     (apic_base+LOCAL_APIC_ICR_OFFSET);
     } while (icr_low_status.bits.delivery_status!=0);
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vector: 0x%04x, ", vector_number);
     bprint("mode: 0x%04x, ", delivery_mode);
     bprint("pointer hi: 0x%08x, ", *(uint32_t*)&icr_high);

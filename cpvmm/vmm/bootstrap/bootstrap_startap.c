@@ -99,7 +99,7 @@ void start_application(uint32_t cpu_id,
                   const APPLICATION_PARAMS_STRUCT *params)
 {
 #ifdef JLMDEBUG
-    bprint("startap_application %d, gp_init64: %p\n", cpu_id, gp_init64);
+    bprint("startap_application, cpu: %d, gp_init64: %p\n", cpu_id, gp_init64);
 #endif
     // JLM: stack pointers were set elsewhere
     uint32_t  stack_pointer= evmm_stack_pointers_array[cpu_id];

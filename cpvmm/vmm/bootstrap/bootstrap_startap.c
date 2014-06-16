@@ -86,13 +86,12 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
     // start_application(0, &application_params);
 #ifdef JLMDEBUG
     bprint("returning from startap_main\n");
-    // LOOP_FOREVER
 #endif
 }
 
-extern void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data, 
-			  uint32_t start_address, void * arg1, void * arg2, 
-			  void * arg3, void * arg4);
+extern void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data,
+                    uint32_t start_address, uint32_t cpu_id);
+
 
 
 void start_application(uint32_t cpu_id, 
@@ -109,8 +108,7 @@ void start_application(uint32_t cpu_id,
             (cpu_id, params->any_data1, params->any_data2, params->any_data3);
     }
     else {
-        init64_on_aps(stack_pointer, gp_init64, (uint32_t)params->ep, (void*) cpu_id,
-            params->any_data1, params->any_data2, params->any_data3);
+        init64_on_aps(stack_pointer, gp_init64, (uint32_t)params->ep, cpu_id);
     }
 }
 

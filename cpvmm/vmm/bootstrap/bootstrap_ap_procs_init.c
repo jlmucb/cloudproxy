@@ -199,7 +199,7 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     UINT16      fs_sel= 0;
     UINT16      ss_sel= 0;
 
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     bprint("setup_low_memory\n");
 #endif
     UNUSEDVAR(end_page);
@@ -264,7 +264,7 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
     //*(pnop++)= 0x90; *(pnop++)= 0x90; 
 #endif
 
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     end_page= loc_idtr+6;
     bprint("code_to_patch: 0x%08x, ljmp offset offset: 0x%08x, address: 0x%08x\n",  
            code_to_patch, CONT16_VALUE_OFFSET, code_to_patch+CONT16_VALUE_OFFSET);
@@ -283,13 +283,16 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 // Initial AP setup in protected mode - should never return
 void ap_continue_wakeup_code_C(uint32_t local_apic_id)
 {
+#ifdef JLMDEBUG
+   bprint("ap_continue_wakeup_code_C 0x%08x\n", local_apic_id);
+#endif
     // mark that the command was accepted
     __asm__ volatile (
         "\tlock; incl %[g_ready_counter]\n"
     : [g_ready_counter] "=m" (g_ready_counter)
     ::);
-#ifdef JLMDEBUG1
-   bprint("ap_continue_wakeup_code_C 0x%08x\n", local_apic_id);
+#ifdef JLMDEBUG
+   bprint("calling user function\n");
 #endif
     if(g_user_func==0) {
         bprint("null user function in ap_continue_wakeup_code_C\n");
@@ -399,7 +402,7 @@ void startap_calibrate_tsc_ticks_per_msec(void)
     startap_stall(1000);   // 1 ms
     end_tsc= startap_rdtsc();
     startap_tsc_ticks_per_msec= (uint32_t)(end_tsc-start_tsc);
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     bprint("ticks/ms: %d\n", startap_tsc_ticks_per_msec);
 #endif
     return;
@@ -461,7 +464,7 @@ void send_ipi_to_specific_cpu (uint32_t vector_number,
     // send
     ia32_read_msr(IA32_MSR_APIC_BASE, &apic_base);
     apic_base&= LOCAL_APIC_BASE_MSR_MASK;
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     bprint("about to call do loop base: %p %x\n", apic_base, LOCAL_APIC_ICR_OFFSET);
 #endif
 
@@ -546,6 +549,9 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
 
     // Stage 1 
     ap_initialize_environment();
+#ifdef JLMDEBUG
+    bprint("back from ap_initialize_environment()\n");
+#endif
 
     // save IDT and GDT
     __asm__ volatile (
@@ -562,8 +568,11 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
     startap_stall_using_tsc(INITIAL_WAIT_FOR_APS_TIMEOUT_IN_MILIS);
 
     // Stage 2 
+#ifdef JLMDEBUG
+    bprint("About to call bsp_enumerate_aps\n");
+#endif
     g_aps_counter= bsp_enumerate_aps();
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     bprint("g_aps_counter: %d\n", g_aps_counter);
     bprint("gdt limit: %d, gdt base: 0x%08x\n", *(uint16_t*)(&gp_GDT[0]),
             *(uint32_t*)(&gp_GDT[2]));
@@ -574,11 +583,14 @@ uint32_t ap_procs_startup(struct _INIT32_STRUCT *p_init32_data,
         bprint("stack[%d]= 0x%08x, ", i, evmm_stack_pointers_array[i]);
     }
     bprint("\n");
+#endif
+#ifdef JLMDEBUG
     extern int evmm_num_of_aps;
     bprint("stage 2, num aps: %d, num aps: %d\n", g_aps_counter, evmm_num_of_aps);
     for(int i=0; i<4; i++) {
         bprint("presence[%d]= %d, ", i, ap_presence_array[i]);
     }
+    bprint("\n");
 #endif
     return g_aps_counter;
 }
@@ -599,7 +611,7 @@ typedef struct {
 //  any_data - data to be passed to the function
 void ap_procs_run(FUNC_CONTINUE_AP_BOOT continue_ap_boot_func, void *any_data)
 {
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     extern void start_application(uint32_t cpu_id, 
                   const APPLICATION_PARAMS_STRUCT *params);
     bprint("ap_procs_run function: %p, ready counter: %d, aps counter: %d\n", 
@@ -616,7 +628,7 @@ void ap_procs_run(FUNC_CONTINUE_AP_BOOT continue_ap_boot_func, void *any_data)
     while (g_ready_counter<g_aps_counter) {
         __asm__ volatile ( "\tpause\n" :::);
     }
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     bprint("ap_procs_run function returning %d %d\n",
            g_ready_counter, g_aps_counter);
 #endif
@@ -655,7 +667,7 @@ void ap_initialize_environment(void)
 
 void mp_set_bootstrap_state(uint32_t new_state)
 {
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     bprint("mp_set_bootstrap_state %d\n", new_state);
 #endif
     __asm__ volatile (
@@ -677,6 +689,9 @@ void send_init_ipi(void)
 
 void send_sipi_ipi(void* code_start)
 {
+#ifdef JLMDEBUG
+    bprint("send_ipi_to_all_excluding_self\n");
+#endif
     // SIPI message contains address of the code, shifted right to 12 bits
     send_ipi_to_all_excluding_self(((uint32_t)code_start)>>12, 
         LOCAL_APIC_DELIVERY_MODE_SIPI);
@@ -686,19 +701,25 @@ void send_sipi_ipi(void* code_start)
 // Send INIT IPI - SIPI to all APs in broadcast mode
 void send_broadcast_init_sipi(INIT32_STRUCT *p_init32_data)
 {
+#ifdef JLMDEBUG
+    bprint("send_broadcast_init_sipi\n");
+#endif
     send_init_ipi();
     startap_stall_using_tsc(10000); // timeout - 10 milliseconds
 
+#ifdef JLMDEBUG
+    bprint("back from stall\n");
+#endif
     // SIPI message contains address of the code, shifted right to 12 bits
     // send it twice - according to manual
     send_sipi_ipi((void *)p_init32_data->i32_low_memory_page);
     startap_stall_using_tsc(200000); // timeout - 200 milliseconds
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     bprint("back from first send_sipi_ipi\n");
 #endif
     send_sipi_ipi((void*)p_init32_data->i32_low_memory_page);
     startap_stall_using_tsc(200000); // timeout - 200 milliseconds
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     bprint("back from second send_sipi_ipi\n");
 #endif
 }
@@ -713,7 +734,7 @@ void send_ipi_to_all_excluding_self(uint32_t vector_number,
     IA32_ICR_HIGH          icr_high;
     UINT64                 apic_base = 0;
 
-#ifdef JLMDEBUG1
+#ifdef JLMDEBG1
     bprint("send_ipi_to_all_excluding_self(%d, %d)\n",
                  vector_number, delivery_mode);
 #endif
@@ -741,7 +762,7 @@ void send_ipi_to_all_excluding_self(uint32_t vector_number,
                     (apic_base+LOCAL_APIC_ICR_OFFSET);
     } while (icr_low_status.bits.delivery_status!=0);
 
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     bprint("vector: 0x%04x, ", vector_number);
     bprint("mode: 0x%04x, ", delivery_mode);
     bprint("pointer hi: 0x%08x, ", *(uint32_t*)&icr_high);
@@ -757,7 +778,7 @@ void send_ipi_to_all_excluding_self(uint32_t vector_number,
         *(uint32_t*)&icr_low_status= *(uint32_t*)(uint32_t)
                 (apic_base+LOCAL_APIC_ICR_OFFSET);
     } while (icr_low_status.bits.delivery_status!=0);
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     bprint("returning from send_ipi_to_all_excluding_self\n");
 #endif
     return;

@@ -703,9 +703,8 @@ int setup_64bit()
 
     // set cr3 and cr4
     write_cr3(evmm64_cr3);
-
     read_cr4(&evmm64_cr4);
-    BITMAP_SET(evmm64_cr4, PAE_BIT|PSE_BIT);
+    evmm64_cr4|= PAE_BIT|PSE_BIT;
     write_cr4(evmm64_cr4);
 
     // we don't really use this structure
@@ -729,7 +728,8 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
 {
     uint32_t evmm_reserved= 0;
 #ifdef JLMDEBUG
-    bprint("start_64bit_mode_on_aps %p %p, cpu: %d\n", stack_pointer, start_address, cpu_id);
+    bprint("start_64bit_mode_on_aps %p %p, cpu: %d\n", 
+           stack_pointer, start_address, cpu_id);
 #endif
     __asm__ volatile (
 
@@ -783,13 +783,13 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
         "ljmp   $64, $1f\n"
 
 "1:\n"
-        // in 64 bit this is actually pop rdi (arg1)
+        // in 64 bit this is actually pop rdi (cpiuid)
         "\tpop %%edi\n"
-        // in 64 bit this is actually pop rsi (arg2)
+        // in 64 bit this is actually pop rsi (startup)
         "\tpop %%esi\n"
-        // in 64 bit this is actually pop rdx (arg3)
+        // in 64 bit this is actually pop rdx (app struct)
         "\tpop %%edx\n"
-        // in 64 bit this is actually pop rcx (arg4)
+        // in 64 bit this is actually pop rcx (reserved)
         "\tpop %%ecx\n"
 
         // "\tjmp .\n"   // REMOVE!
@@ -1687,7 +1687,11 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     evmm_g0.size_of_this_struct = sizeof(VMM_GUEST_STARTUP);
     evmm_g0.version_of_this_struct = VMM_GUEST_STARTUP_VERSION;
     evmm_g0.flags = 0;
+#if 1
     BITMAP_SET(evmm_g0.flags, VMM_GUEST_FLAG_LAUNCH_IMMEDIATELY);
+#else
+    evmm_g0.flags|=  VMM_GUEST_FLAG_LAUNCH_IMMEDIATELY;
+#endif
     evmm_g0.flags= GUEST_IS_PRIMARY_FLAG | GUEST_IS_DEFAULT_DEVICE_OWNER_FLAG;
     evmm_g0.guest_magic_number = MIN_ANONYMOUS_GUEST_ID;
     evmm_g0.cpu_affinity = -1;

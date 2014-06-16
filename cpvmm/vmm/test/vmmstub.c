@@ -20,6 +20,19 @@
 #include "vmm_startup.h"
 
 
+uint64_t  num_procs_registered= 0;
+uint64_t  volatile timer= 0;
+
+
+void bump_proc_count()
+{
+    __asm__ volatile (
+        "\tlock;incq  %[num_procs_registered]\n"
+    : [num_procs_registered] "=m"(num_procs_registered)
+    ::);
+}
+
+
 typedef struct VMM_INPUT_PARAMS_S {
     UINT64 local_apic_id;
     UINT64 startup_struct;
@@ -30,8 +43,9 @@ typedef struct VMM_INPUT_PARAMS_S {
 void vmm_main(UINT32 local_apic_id, UINT64 startup_struct_u, 
               UINT64 application_params_struct_u, UINT64 reserved UNUSED)
 {
+    bump_proc_count();
     bootstrap_partial_reset();
-    bprint("*********************** ");
+    bprint("****** ");
     bprint("vmm_main in 64 bit mode\n");
     bprint("local_apic_id %d, startup_struct_u %016lx\n", local_apic_id, 
            startup_struct_u);

@@ -57,7 +57,7 @@ void mtx_enter(struct mutex *);
 void mtx_leave(struct mutex *);
 
 
-struct mutex print_lock= {0};
+struct mutex print_lock;
 
 
 void mtx_init(struct mutex* the_mutex) 
@@ -221,6 +221,7 @@ void delay(int millisecs)
 
 void bootstrap_partial_reset(void)
 {
+    // mtx_init(&print_lock);
     cursor_x = 0;
     cursor_y = MAX_LINES-1;
     num_lines = MAX_LINES;
@@ -729,6 +730,7 @@ int snprintf(char *buf, size_t size, const char *fmt, ...)
 
 void bprint_init(void)
 {
+    // mtx_init(&print_lock);
     vga_init();
 }
 

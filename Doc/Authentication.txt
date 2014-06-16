@@ -1,0 +1,166 @@
+Authentication in the Cloud, 
+i.e. A Survey of Approaches to Authentication for Tao applications
+------------------------------------------------------------------
+
+Let's consider how services (components, programs, etc.) running within a cloud
+infrastructure can authenticate each other. Specifically, let's assume:
+* There are two programs, A and B. Program B opens a connection to A, and B
+  wants assurance that it is really speaking with A (or vice versa).
+* Assume that A and B can be identified by code hashes Ha and Hb.
+* A and B are part of the same administrative domain, Dapp, which I'll represent
+  as signing key Kd.
+* When executed, A and B are configured with domain-specific
+  information containing, e.g. Ha, Hb, and Kd.
+* A and B may be running on the same cloud node or on different nodes within a
+  single cloud. 
+* The underlying cloud nodes and infrastructure are probably a different
+  administrative domain, Dcloud, which I'll represent as signing key Kc.
+* The cloud infrastructure implements Tao, or something like Tao, which provides
+  to A and B various trusted local services, i.e. management of encryption or
+  signing keys, sealed storage, measurement and attestation, etc.
+
+We want to construct an authenticated channel between A and B. 
+
+Authentication Across Cloud Nodes
+---------------------------------
+
+Suppose A and B are executing on different cloud nodes. Here are some approaches
+we could take:
+
+1. TLS + local asym. keys + local Tao attestation + offline TPM attestation.
+
+This is what is currently used in the Tao implementation.
+* Kd publishes an attestation describing what constitutes a "good platform".
+  This includes, e.g. Kc and various other parameters.
+* Kd publishes an attestation describing what constitutes a "good program", i.e.
+  containing Ha and Hb.
+* Each local cloud node platform i has a TPM, represented by key Ktpm_i, that
+  serves as a local root of trust.
+* Kc attests that Ktpm_i is held by a good platform, i.e. a platform with
+  certain properties P_i. This step is done offline, e.g. during
+  installation/configuration of the cloud node.
+* Programs A and B generate asymmetric keys Ka and Kb. This might happen when
+  A and B first execute or when they are installed and configured.
+* Ktpm_i attests (through one or more levels of Tao) that Ka is held by
+  program A and that A has been configured to run under domain Kd.
+* B opens a TLS channel to A and the two authenticate using Ka and Kb and
+  self-signed certificates.
+* A then sends to B the attestations from Kc and from Ktpm_i.
+* B does this:
+  - Using Kd's attestation about platforms, B checks that Kc and Kc's
+	attestation about Ktpm_i satisfies the definition for Ktpm_i to be a "good
+	platform".
+  - B extracts the domain key from Ktpm_i's attestation and checks that it
+    matches the app domain key Kd that B itself was configured with.
+  - Using Kd's attestation about programs, B extracts the hash from Ktpm_i's
+	attestation and checks that it meets the domain's definition of "program A".
+  - B extracts the key from Ktpm_i's attestation and checks that it matches the
+    TLS key that was used during connection handshaking.
+
+At this point, B knows that it is connected to program A.
+
+2. TLS + local asym. keys + app certs (+ bootstrap via option 1)
+
+Similar to option 1, but don't use self-signed TLS certificates. Instead, A and
+B, after generating their local keys Ka and Kb, both contact some service that
+represents the appplication domain. That service provides A and B with x509
+certificates signed by Kd. At connection time, B just does normal TLS
+authentication then checks that the peer certificate was provided by Kd and
+contains the name "program A". This is close to typical https/TLS usage. How
+does the service decide whether to issue a certificate for some key? Presumably
+using option 1 between A (or B) and the service.
+
+3. TLS + preshared sym. keys (+ bootstrap via option 1 or 2)
+
+The shared app service generates a symmetric key Kab for the pair (A, B), and
+provides A with (B, Kab) and B with (A, Kab). B connects to A TLS pre-shared key
+using Kab. Since B was given (A, Kab) by the trusted shared service, B knows it
+is connected to A (or to itself -- but that case is easy to rule out by just
+exchanging names).  How does the service decide to give some program the key
+Kab? Presumably using option 1 or 2 between A (or B) and the service, or using
+any of a variety of (very interesting) proposals found in the literature for
+identity-based crypto and symmetric key generation/distribution among a group of
+nodes.
+
+4. TLS + shared sym. keys (+ bootstrap via Tao)
+
+Suppose the underlying cloud platform can generate a shared key for any pair of
+programs. A and B both request a shared key, then use TLS pre-shared key to
+establish a connection. There are lots of ways for the underlying platforms to
+generate shared keys. One is for them to derive shared keys from a shared
+master key, presumably installed at platform-configuration time.
+
+5. Platform-provided authentication
+
+Let the underlying platform perform authentication on behalf of A and B. A and B
+would establish a TLS or TLS-like connection, but the authentication handshaking
+would be done by the underlying platform. How do the underlying platforms
+authenticate? Presumably using option 1, 2, 3, or 6.
+
+6. TLS + cached sessions (+ bootstrap via option 1 or 2)
+
+B connects to A using option 1 or 2. Both sides then cache their TLS sessions.
+Subsequently, B connects to A using the cached TLS sessions.
+
+Authentication Within a Cloud Node
+----------------------------------
+
+Suppose A and B are executing on the same cloud node.  Any of options 1 - 6
+still work, of course. Option 4 becomes somewhat easier, because there is no
+longer a need to share a master key across cloud platforms.  Option 5 becomes
+easier because the underlying platform can trivially authenticate to itself. And
+for options that rely on an shared app service for generating or attesting to
+keys, if the shared app service is co-located on the same cloud node, then
+bootstrapping can be done using option 4 or 5 or any of the other options.
+
+Some other options become available when A and B execute on the same cloud node:
+
+7. OS-secured channels
+
+Within a single machine, TLS and cryptography aren't really necessary if we have
+some other means of establishing authenticated channels. Linux pipes, for
+example.
+
+Authorization Without Authentication
+------------------------------------
+
+8. Macaroons / Cookies
+
+In some scenarios, we care more about authorization than about authentication or
+auditing. In Macaroons, for example, clients (which are essentially anonymous)
+hold cookie-like secret tokens, and services grant any bearer of an appropriate
+token access to resources. Applying this scheme to our intra-cloud scenario,
+program A might hold a macaroon which it sends to B over a TLS connection, and B
+makes decisions on the basis of that macaroon without every authenticating the
+connection. However, there are issues:
+
+Before program A sends a macaroon to B over some connection, A needs to
+authenticate the connection. Presumably this is done with options 1-7 (in
+typical end-user https sceanios, this would be option 2).
+
+Program A needs to obtain the macaroon from B either directly or through some
+intermediary. These connections need to be authenticated as well, presumably
+using options 1-7 (in typical end-user https scenarios, this would be passwords
+which function here like pre-shared keys).
+
+Other Approaches or Existing Work?
+----------------------------------
+
+Are there other approaches and related work I should be looking at? I am not
+finding a whole lot of literature on authentication (or authorization) *within*
+cloud services.
+
+Short Paper Outline
+-------------------
+
+* Problem introduction
+* Survey of approaches 1-8
+* Discussion of tradeoffs 
+ - Setup costs (per-platform and/or per-program) vs. connection-time costs
+ - Crypto tradeoffs: need for secure storage, performance of shared vs. symmetric crypto
+ - Trust issues, size of tusted computing base, multi-tennant issues
+* Quantitative Evaluation (?)
+ - Can we look at patterns of connections in a cloud service so that we can make
+   a more informed discussion of the costs?
+
+

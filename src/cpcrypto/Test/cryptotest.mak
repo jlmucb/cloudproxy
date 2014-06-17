@@ -16,7 +16,7 @@ endif
 mainsrc=        $(S)
 B=              $(E)/cryptotestobjects
 INCLUDES=       -I$(S) -I$(S)/bignum -I$(S)/symmetric -I$(S)/ecc \
-                -I$(S)/support -I$(s)/Test 
+                -I$(S)/ecc/pointcount -I$(S)/support -I$(S)/Test 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
 CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI -D FAST -D TEST
 CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O3 -D NOAESNI -D FAST -D TEST
@@ -28,8 +28,9 @@ LINK=       g++
 aesobjs=      $(B)/aestest.o $(B)/logging.o 
 shaobjs=      $(B)/shatest.o $(B)/logging.o 
 sha256objs=   $(B)/sha256test.o $(B)/logging.o 
+polyobjs=     $(B)/polytest.o $(B)/polyarith.o $(B)/logging.o $(B)/bsgs.o
 
-all: $(E)/aestest.exe $(E)/sha256test.exe $(E)/shatest.exe
+all: $(E)/aestest.exe $(E)/sha256test.exe $(E)/shatest.exe $(E)/polytest.exe
 
 $(E)/aestest.exe: $(aesobjs) $(E)/cpcryptolib.a
 	@echo "aestest"
@@ -43,6 +44,10 @@ $(E)/sha256test.exe: $(sha256objs) $(E)/cpcryptolib.a
 	@echo "shatest"
 	$(LINK) -o $(E)/sha256test.exe $(sha256objs) $(E)/cpcryptolib.a
 
+$(E)/polytest.exe: $(polyobjs) $(E)/cpcryptolib.a
+	@echo "polytest"
+	$(LINK) -o $(E)/polytest.exe $(polyobjs) $(E)/cpcryptolib.a
+
 $(B)/logging.o: $(S)/support/logging.cc 
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/logging.o $(S)/support/logging.cc
 
@@ -55,8 +60,18 @@ $(B)/shatest.o: shatest.cc
 $(B)/sha256test.o: sha256test.cc 
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/sha256test.o sha256test.cc
 
+$(B)/polytest.o: polytest.cc 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/polytest.o polytest.cc
+
+$(B)/polyarith.o: $(S)/ecc/pointcount/polyarith.cc 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/polyarith.o $(S)/ecc/pointcount/polyarith.cc
+
+$(B)/bsgs.o: $(S)/ecc/pointcount/bsgs.cc 
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/bsgs.o $(S)/ecc/pointcount/bsgs.cc
+
 clean:
 	rm $(B)/*.o
 	rm $(E)/aestest.exe
 	rm $(E)/shatest.exe
 	rm $(E)/sha256test.exe
+	rm $(E)/polytest.exe

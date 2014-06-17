@@ -17,7 +17,7 @@ endif
 mainsrc=        $(S)
 B=              $(E)/sha256speedtestobjects
 INCLUDES=       -I$(S) -I$(S)/bignum -I$(S)/symmetric -I$(S)/ecc \
-                -I$(S)/support -I$(s)/Test 
+                -I$(S)/support -I$(S)/Test 
 DEBUG_CFLAGS     := -Wall -Wno-format -g -DDEBUG
 CFLAGS   := -Wall -Wno-unknown-pragmas -Wno-format -O3 -D NOAESNI -D FAST -D TEST
 CFLAGS1   := -Wall -Wno-unknown-pragmas -Wno-format  -O3 -D NOAESNI -D FAST -D TEST

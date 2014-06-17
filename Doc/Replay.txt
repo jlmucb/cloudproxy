@@ -1,0 +1,72 @@
+Replay Resistant State
+----------------------
+
+The current Tao interface does not offer support for protecting state against
+replay attacks or building any storage facilities that do so. That is, Tao
+itself doesn't have any storage API, and none of the other existing APIs would
+be useful for building one.
+
+Simple example:
+
+Suppose we want to build an CA that hands out X509 certificates for https. The
+CA needs to keep track of the serial numbers it has handed out so far. It can
+store the next SN in a file, and it can sign or encrypt that file using
+Tao-protected keys, but there is still no guarantee that the file is fresh.
+
+Prior Work
+----------
+
+TPM offers monotonic counters that can posibly help with replay-resistance. But
+these are limited: Only a few exist (four or so), and only one can be "active"
+during any boot cycle. 
+
+Some prior work looks at using merkle hash trees and the TPM counters to
+bootstrap many more counters. This works without needing any trusted OS or
+trusted software beyond the TPM itself---essentially, the TPM is used as a
+trusted log, with the TPM counter providing replay resistance for the log.
+
+Other related work? To do...
+
+Replay resistance in Tao
+------------------------
+
+Option 0: Do nothing. Assume there is a trusted replay-resistant mechanism
+elsewhere.
+
+Option 1: Implement hash-tree work outside Tao. The TPM implements the counter
+and small NV storage at the base. Some storage service on top of that,
+independent of Tao, implements the hash-tree approach. Applications at layers of
+Tao would talk to that same storage service. Tao API is left unchanged.
+
+Option 2: Implement hash-tree work inside Tao at a single level. The TPM
+implements the counter and small NV storage at the base. The first Tao host
+above that implements the hash-tree approach and exposes that interface to each
+hosted program. Subsequent stacked Tao hosts would either just re-expose the
+same interface. It's not clear what each level would provide beyond the first
+level, though. Perhaps each higher level would do authorization checks specific
+to that level while just passing the operation down when the auth check
+succeeds. Or perhaps it would just forward all calls downward and let
+authorization happen at the first level above the TPM. The Tao API would include
+interfaces for creating, managing, and manipulating counters.
+
+
+Option 3: Provide support at every Tao level for hash-tree or other approaches.
+Every Tao host, including the TPM, implements a set of counters and some NV
+storage. Presumably, every hosted program would get one dedicated counter and a
+small amount of NV storage. If a hosted program needs more than what the host
+Tao provides, then the hosted program can use a hash-tree approach or any other
+similar approach internally. In particular, a hosted Tao would presumably need
+to use hash-trees or something similar to multiplex the the counter provided by
+its own host Tao. The Tao API would include a few simple calls for hosted
+programs to access the limited counters provided by the host Tao.
+
+Option 4: Provide support for hash-trees at every level (except TPM). The TPM
+provides one counter and some NV storage. Every other Tao level provides a
+higher-level API for creating, managing, and manipulating counters and/or NV
+storage. A hosted application might use these counters directly, or just use a
+small number of them combined with something like the hash-tree approach.
+Similarly, a hosted Tao could either pass calls from its own hosted programs
+down to the underlying Tao (ala option 2), or the hosted Tao could locally
+implement a hash-tree approach using just one or two counters from the
+underlying Tao (ala option 3). 
+

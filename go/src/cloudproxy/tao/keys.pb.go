@@ -60,9 +60,13 @@ func (m *KeyczarPublicKey_KeyFile) GetData() string {
 }
 
 type X509Details struct {
-	Commonname       []byte `protobuf:"bytes,3,opt,name=commonname" json:"commonname,omitempty"`
-	Country          []byte `protobuf:"bytes,4,opt,name=country" json:"country,omitempty"`
-	State            []byte `protobuf:"bytes,5,opt,name=state" json:"state,omitempty"`
+	// Requested x509 CommonName detail
+	Commonname []byte `protobuf:"bytes,3,opt,name=commonname" json:"commonname,omitempty"`
+	// Requested x509 Country detail
+	Country []byte `protobuf:"bytes,4,opt,name=country" json:"country,omitempty"`
+	// Requested x509 State detail
+	State []byte `protobuf:"bytes,5,opt,name=state" json:"state,omitempty"`
+	// Requested x509 Organization detail
 	Organization     []byte `protobuf:"bytes,6,opt,name=organization" json:"organization,omitempty"`
 	XXX_unrecognized []byte `json:"-"`
 }
@@ -95,6 +99,36 @@ func (m *X509Details) GetState() []byte {
 func (m *X509Details) GetOrganization() []byte {
 	if m != nil {
 		return m.Organization
+	}
+	return nil
+}
+
+// A signed serialized protobuf message, including a require context to ensure
+// unique deserialization.
+type SignedData struct {
+	// SECURITY WARNING: Always choose a unique context for each unique type of
+	// message. One easy way to do this is to number the messages in a protocol
+	// and make the context "ProtocolName Message Y: ProtobufName Version X"
+	Context *string `protobuf:"bytes,1,req,name=context" json:"context,omitempty"`
+	// The serialized protobuf representing this message.
+	Data             []byte `protobuf:"bytes,2,req,name=data" json:"data,omitempty"`
+	XXX_unrecognized []byte `json:"-"`
+}
+
+func (m *SignedData) Reset()         { *m = SignedData{} }
+func (m *SignedData) String() string { return proto.CompactTextString(m) }
+func (*SignedData) ProtoMessage()    {}
+
+func (m *SignedData) GetContext() string {
+	if m != nil && m.Context != nil {
+		return *m.Context
+	}
+	return ""
+}
+
+func (m *SignedData) GetData() []byte {
+	if m != nil {
+		return m.Data
 	}
 	return nil
 }

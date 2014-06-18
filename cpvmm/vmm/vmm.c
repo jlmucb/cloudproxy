@@ -653,7 +653,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         if (g_additional_heap_pa)
             build_extend_heap_hpa_to_hva();
     }
-    VMM_DEBUG_CODE ( vmm_trace_init(VMM_MAX_GUESTS_SUPPORTED, num_of_cpus) );
+    VMM_DEBUG_CODE(vmm_trace_init(VMM_MAX_GUESTS_SUPPORTED, num_of_cpus));
 
 #ifdef PCI_SCAN
     host_pci_initialize();
@@ -922,7 +922,15 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     ipc_change_state_to_active(initial_gcpu);
     vmm_print_test(local_apic_id);
     VMM_LOG(mask_uvmm, level_trace,"BSP: Wait for APs to launch the first Guest CPU\n");
-    WAIT_FOR_APPLICATION_PROCS_LAUNCHED_THE_GUEST( num_of_cpus - 1 );
+
+#if 1
+    bprint("bsp about to WAIT_FOR_APPLICATION_PROCS_LAUNCHED_THE_GUEST\n");
+#endif
+    WAIT_FOR_APPLICATION_PROCS_LAUNCHED_THE_GUEST(num_of_cpus-1);
+#if 1
+    bprint("bsp after WAIT_FOR_APPLICATION_PROCS_LAUNCHED_THE_GUEST\n");
+    // LOOP_FOREVER
+#endif
 
     // Assumption: initialization_data was not changed
     if (!report_uvmm_event(UVMM_EVENT_INITIALIZATION_AFTER_APS_STARTED, 
@@ -1006,7 +1014,8 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 void vmm_application_procs_main(UINT32 local_apic_id)
 {
 #ifdef JLMDEBUG
-    bprint("evmm: ap_main\n");
+    bprint("evmm: ap_main %d\n", local_apic_id);
+    LOOP_FOREVER
 #endif
     CPU_ID cpu_id = (CPU_ID)local_apic_id;
     HPA new_cr3 = 0;
@@ -1092,6 +1101,9 @@ void vmm_application_procs_main(UINT32 local_apic_id)
     }
 #endif
 
+#if 1
+   bprint("ap proc %d at gp_resume\n", local_apic_id);
+#endif
     vmcs_store_initial(initial_gcpu, cpu_id);
     gcpu_resume( initial_gcpu );
     VMM_LOG(mask_uvmm, level_error,"AP%d: Resume initial guest cpu failed\n", cpu_id);

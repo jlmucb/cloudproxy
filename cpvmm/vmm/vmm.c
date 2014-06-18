@@ -165,7 +165,7 @@ extern BOOLEAN build_extend_heap_hpa_to_hva(void);
     {while (g_application_procs_launch_the_guest != (UINT32)(count)) { hw_pause(); }}
 
 #define APPLICATION_PROC_LAUNCHING_THE_GUEST()                      \
-    {hw_interlocked_increment( (INT32*)(&g_application_procs_launch_the_guest) );}
+    {hw_interlocked_increment((INT32*)(&g_application_procs_launch_the_guest));}
 
 
 // main for BSP - should never return.  local_apic_id is always 0
@@ -920,7 +920,9 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
             guest_vcpu(initial_gcpu)->guest_id, 
             guest_vcpu(initial_gcpu)->guest_cpu_id);
     ipc_change_state_to_active(initial_gcpu);
+#if 0
     vmm_print_test(local_apic_id);
+#endif
     VMM_LOG(mask_uvmm, level_trace,"BSP: Wait for APs to launch the first Guest CPU\n");
 
 #if 1
@@ -1072,9 +1074,21 @@ void vmm_application_procs_main(UINT32 local_apic_id)
             cpu_id, guest_vcpu( initial_gcpu )->guest_id, guest_vcpu( initial_gcpu )->guest_cpu_id );
 
     ipc_change_state_to_active( initial_gcpu );
+#if 0
     vmm_print_test(local_apic_id);
+#endif
+#if 1
+    bprint("calling APPLICATION_PROC_LAUNCHING_THE_GUEST %d\n", 
+           g_application_procs_launch_the_guest);
+    // LOOP_FOREVER
+#endif
     APPLICATION_PROC_LAUNCHING_THE_GUEST();
     VMM_LOG(mask_uvmm, level_trace,"AP%d: Resuming the first Guest CPU\n", cpu_id);
+#if 1
+    bprint("called APPLICATION_PROC_LAUNCHING_THE_GUEST %d\n", 
+           g_application_procs_launch_the_guest);
+    // LOOP_FOREVER
+#endif
     //VMM_DEADLOOP();
 
     event_raise(EVENT_GUEST_LAUNCH, initial_gcpu, &local_apic_id);

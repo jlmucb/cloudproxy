@@ -266,7 +266,7 @@ void setup_low_memory_ap_code(uint32_t temp_low_memory_4K)
 
 #ifdef JLMDEBUG
     end_page= loc_idtr+6;
-    bprint("code_to_patch: 0x%08x, ljmp offset offset: 0x%08x, address: 0x%08x\n",  
+    bprint("code_to_patch: %p, ljmp offset offset: 0x%08x, address: %p\n",  
            code_to_patch, CONT16_VALUE_OFFSET, code_to_patch+CONT16_VALUE_OFFSET);
     bprint("cs_sel: 0x%04x, ", cs_sel);
     bprint("ds_sel: 0x%04x, ", ds_sel);
@@ -465,7 +465,7 @@ void send_ipi_to_specific_cpu (uint32_t vector_number,
     ia32_read_msr(IA32_MSR_APIC_BASE, &apic_base);
     apic_base&= LOCAL_APIC_BASE_MSR_MASK;
 #ifdef JLMDEBUG
-    bprint("about to call do loop base: %p %x\n", apic_base, LOCAL_APIC_ICR_OFFSET);
+    bprint("about to call do loop base: %llx %x\n", apic_base, LOCAL_APIC_ICR_OFFSET);
 #endif
 
     do {

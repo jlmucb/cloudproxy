@@ -728,7 +728,7 @@ void start_64bit_mode_on_aps(uint32_t stack_pointer, uint32_t start_address,
 {
     uint32_t evmm_reserved= 0;
 #ifdef JLMDEBUG
-    bprint("start_64bit_mode_on_aps %p %p, cpu: %d\n", 
+    bprint("start_64bit_mode_on_aps %u %u, cpu: %d\n", 
            stack_pointer, start_address, cpu_id);
 #endif
     __asm__ volatile (
@@ -808,7 +808,7 @@ void init64_on_aps(uint32_t stack_pointer, INIT64_STRUCT *p_init64_data,
                     uint32_t start_address, uint32_t cpu_id)
 {
 #ifdef JLMDEBUG
-    bprint("init64_on_aps %p %p\n", stack_pointer, start_address);
+    bprint("init64_on_aps %u %u\n", stack_pointer, start_address);
 #endif
     // ia32_write_gdtr(&p_init64_data->i64_gdtr);
     __asm__ volatile (
@@ -2280,7 +2280,7 @@ int start32_evmm(uint32_t magic, multiboot_info_t* mbi, uint32_t initial_entry)
 #endif
 
     if(evmm64_cs_selector!=64) {
-        bprint("cs_selector is wrong, 0x08x\n", evmm64_cs_selector);
+        bprint("cs_selector is wrong, %0x\n", evmm64_cs_selector);
         LOOP_FOREVER
     }
 

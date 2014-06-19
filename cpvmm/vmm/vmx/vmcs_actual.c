@@ -430,7 +430,7 @@ void vmcs_act_flush_to_cpu(const struct _VMCS_OBJECT *vmcs)
         cache64_flush_dirty(p_vmcs->cache, CACHE_ALL_ENTRIES,
             (CACHE64_FIELD_PROCESS_FUNCTION) vmcs_act_flush_field_to_cpu, p_vmcs);
     }
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmcs_act_flush_to_cpu, done\n");
 #endif
 }

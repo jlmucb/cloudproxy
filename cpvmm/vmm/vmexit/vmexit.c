@@ -738,11 +738,12 @@ void vmexit_common_handler(void)
     REPORT_INITIAL_VMEXIT_CHECK_DATA initial_vmexit_check_data;
 
 #ifdef JLMDEBUG
-    bprint("vmexit_common_handler\n");
-    bprint("guest rip: 0x%016llx, exit reason: %x\n", 
+    if(vmexit_reason()!=0xa) {
+        bprint("vmexit_common_handler\n");
+        bprint("guest rip: 0x%016llx, exit reason: %x\n", 
             gcpu_read_guestrip(), vmexit_reason());
-    //evmmdebugwait(MEDIUMLOOP);
-    bprint("After the wait\n");
+        bprint("After the wait\n");
+    }
     int x20 = 0;
     if (0x20 == vmexit_reason()) {
         bprint("got 0x20\n");

@@ -538,7 +538,7 @@ static void gcpu_process_activity_state_change( GUEST_CPU_HANDLE gcpu )
 void gcpu_resume(GUEST_CPU_HANDLE gcpu)
 {
     VMCS_OBJECT* vmcs;
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("gcpu_resume\n");
 #endif
 

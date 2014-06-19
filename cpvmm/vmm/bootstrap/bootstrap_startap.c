@@ -44,7 +44,7 @@ void startap_main(INIT32_STRUCT *p_init32, INIT64_STRUCT *p_init64,
                    VMM_STARTUP_STRUCT *p_startup, uint32_t entry_point)
 {
 #ifdef JLMDEBUG
-    bprint("startap_main %p %p\n", p_startup, entry_point);
+    bprint("startap_main %p %u\n", p_startup, entry_point);
 #endif
     uint32_t application_processors;
     

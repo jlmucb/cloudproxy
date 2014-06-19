@@ -84,21 +84,31 @@ void unrestricted_guest_enable(GUEST_CPU_HANDLE gcpu)
     VMEXIT_CONTROL vmexit_request;
 
     SET_UNRESTRICTED_GUEST_FLAG(gcpu);
+#ifdef JLMDEBUG
+    bprint("unrestricted_guest_enable, acquiring lock, ");
+#endif
     ept_acquire_lock();
+#ifdef JLMDEBUG
+    bprint("lock acquired\n");
+#endif
     proc_ctrls2.Uint32 = 0;
     vmm_zeromem(&vmexit_request, sizeof(vmexit_request));
     proc_ctrls2.Bits.UnrestrictedGuest = 1;
-    vmexit_request.proc_ctrls2.bit_mask    = proc_ctrls2.Uint32;
+    vmexit_request.proc_ctrls2.bit_mask= proc_ctrls2.Uint32;
     vmexit_request.proc_ctrls2.bit_request = UINT64_ALL_ONES;
     gcpu_control2_setup( gcpu, &vmexit_request );
-    // BEFORE_VMLAUNCH. CRITICAL check that should not fail.
     VMM_ASSERT(is_unrestricted_guest_enabled(gcpu));
     if(!ept_is_ept_enabled(gcpu)) {
         ept_enable(gcpu);
         cr4 = gcpu_get_guest_visible_control_reg(gcpu, IA32_CTRL_CR4);
         ept_set_pdtprs(gcpu, cr4);
     }
-    // BEFORE_VMLAUNCH. PARANOID check as it is already checked before.
     VMM_ASSERT(ept_is_ept_enabled(gcpu));
+#ifdef JLMDEBUG
+    bprint("unrestricted_guest_enable, releasing lock, ");
+#endif
     ept_release_lock();
+#ifdef JLMDEBUG
+    bprint("lock released\n");
+#endif
 }

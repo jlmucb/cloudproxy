@@ -403,7 +403,7 @@ void vmexit_top_down_common_handler(GUEST_CPU_HANDLE gcpu, UINT32 reason) {
     VMCS_HIERARCHY*         vmcs_hierarchy = gcpu_get_vmcs_hierarchy(gcpu);
     VMCS_OBJECT*            merged_vmcs = vmcs_hierarchy_get_vmcs(vmcs_hierarchy, 
                                                         VMCS_MERGED);
-    GUEST_LEVEL_ENUM guest_level = gcpu_get_guest_level(gcpu);
+    GUEST_LEVEL_ENUM        guest_level = gcpu_get_guest_level(gcpu);
 
 #ifdef JLMDEBUG
     if (reason == 0x20) {
@@ -742,7 +742,6 @@ void vmexit_common_handler(void)
         bprint("vmexit_common_handler\n");
         bprint("guest rip: 0x%016llx, exit reason: %x\n", 
             gcpu_read_guestrip(), vmexit_reason());
-        bprint("After the wait\n");
     }
     int x20 = 0;
     if (0x20 == vmexit_reason()) {

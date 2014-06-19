@@ -950,8 +950,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         bprint("evmm: unrestricted guest supported, bsp\n");
 #endif
         make_guest_state_compliant(initial_gcpu);
+#ifdef JLMDEBUG
+        bprint("evmm: make_guest_state_compliant, bsp\n");
+#endif
         unrestricted_guest_enable(initial_gcpu);
-        //make_guest_state_compliant(initial_gcpu);
     } 
     else {
 #ifdef JLMDEBUG
@@ -983,12 +985,12 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 #endif  // FAST_VIEW_SWITCH
 
 #ifdef JLMDEBUG
-    bprint("evmm: about to call vmcs_store_initial\n");
+    bprint("evmm: about to call vmcs_store_initial, bsp\n");
 #endif
     vmcs_store_initial(initial_gcpu, cpu_id);
 #ifdef JLMDEBUG
-    bprint("evmm: vmcs_store_initial complete\n");
-    bprint("evmm: about to guest resume\n");
+    bprint("evmm: vmcs_store_initial complete, bsp\n");
+    bprint("evmm: about to guest resume, bsp\n");
 #endif
     gcpu_resume(initial_gcpu);
     VMM_LOG(mask_uvmm, level_error,"BSP: Resume initial guest cpu failed\n", cpu_id);
@@ -1063,10 +1065,6 @@ void vmm_application_procs_main(UINT32 local_apic_id)
 
     ipc_change_state_to_active( initial_gcpu );
     vmm_print_test(local_apic_id);
-#ifdef JLMDEBUG
-    bprint("calling APPLICATION_PROC_LAUNCHING_THE_GUEST %d\n", 
-           g_application_procs_launch_the_guest);
-#endif
     APPLICATION_PROC_LAUNCHING_THE_GUEST();
     VMM_LOG(mask_uvmm, level_trace,"AP%d: Resuming the first Guest CPU\n", cpu_id);
 #ifdef JLMDEBUG
@@ -1082,7 +1080,6 @@ void vmm_application_procs_main(UINT32 local_apic_id)
     if(is_unrestricted_guest_supported()) {
         make_guest_state_compliant(initial_gcpu);
         unrestricted_guest_enable(initial_gcpu);
-        //make_guest_state_compliant(initial_gcpu);
     } else {
         // For non-UG systems enable EPT, if guest is in paging mode
         EM64T_CR0 guest_cr0;

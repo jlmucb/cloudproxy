@@ -98,6 +98,9 @@ void ept_set_pdtprs(GUEST_CPU_HANDLE gcpu, UINT64 cr4_value)
 
 void ept_acquire_lock(void)
 {
+#ifdef JLMDEBUG1
+    bprint("(ept_acquire_lock %d)", ept.lock_count);
+#endif
     if (ept.lock.owner_cpu_id == hw_cpu_id()) {
         ept.lock_count++;
         return;
@@ -493,6 +496,9 @@ static BOOLEAN ept_cr4_update(GUEST_CPU_HANDLE gcpu, void* pv)
     bprint("ept_cr4_update\n");
 #endif
     ept_acquire_lock();
+#ifdef JLMDEBUG
+    bprint("ept_cr4_update, acquired lock %d\n", ept.lock);
+#endif
     vcpu_id = guest_vcpu(gcpu);
     VMM_ASSERT(vcpu_id);
     ept_guest = ept_find_guest_state(vcpu_id->guest_id);
@@ -507,10 +513,10 @@ static BOOLEAN ept_cr4_update(GUEST_CPU_HANDLE gcpu, void* pv)
         ept_set_pdtprs(gcpu, cr4);
     }
     // Flush TLB
-#ifdef JLMDEBUG
-    bprint("ept_cr4_update position 1\n");
+#ifdef JLMDEBUG1
+    bprint("ept_cr4_update position 1, ");
 #endif
-    ept_hw_invvpid_single_context(1 + gcpu->vcpu.guest_id);
+    ept_hw_invvpid_single_context(1+gcpu->vcpu.guest_id);
     ept_release_lock();
 #ifdef JLMDEBUG
     bprint("ept_cr4_update returning true\n");

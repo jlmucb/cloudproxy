@@ -319,7 +319,7 @@ BOOLEAN cr_mov( GUEST_CPU_HANDLE gcpu, IA32_VMX_EXIT_QUALIFICATION qualification
     BOOLEAN status = TRUE;
     REPORT_CR_DR_LOAD_ACCESS_DATA cr_access_data;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("cr_mov\n");
 #endif
     cr_access_data.qualification = qualification.Uint64;

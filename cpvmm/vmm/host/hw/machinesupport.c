@@ -557,7 +557,7 @@ INT32 hw_interlocked_assign(INT32 volatile * target, INT32 new_value)
     __asm__ volatile(
         "\tmovq     %[target], %%rbx\n"
         "\tmovl     %[new_value], %%eax\n"
-        "\tlock;    xchgl %%eax, (%%rbx)\n"
+        "\txchgl %%eax, (%%rbx)\n"
     : 
     : [new_value] "m" (new_value), [target] "r" (target)
     : "%eax", "%rbx");

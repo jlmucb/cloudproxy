@@ -204,7 +204,6 @@ INLINE void enable_ept_during_launch(GUEST_CPU_HANDLE initial_gcpu)
   
 #ifdef JLMDEBUG
     bprint("enable_ept_during_launch\n");
-    LOOP_FOREVER
 #endif
     ept_acquire_lock();
     // Enable EPT, if it is currently not enabled
@@ -547,7 +546,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     VMM_LOG(mask_uvmm, level_trace,"\nBSP: MTRRs were successfully cached.\n");
 
 #if 0   // No longer needed
-    // no longer needed, executable info will be in vmm_memory_map
+    // Executable info will now be in vmm_memory_map
     // init uVMM image parser.  TODO: mark executable areas
     exec_image_initialize();
 #endif
@@ -734,9 +733,9 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
 
     if (!initialize_all_guests(num_of_cpus, 
 #if 0   // Further memory exclusion support
-         // vmm_memory map will be changed to exclude multiple regions
-            (int) startup_struct->num_excluded_regions, 
-            startup_struct->vmm_memory_layout,
+        // vmm_memory map will be changed to exclude multiple regions
+                       (int) startup_struct->num_excluded_regions, 
+                       startup_struct->vmm_memory_layout,
 #else
                        &(startup_struct->vmm_memory_layout[0]),
 #endif
@@ -849,7 +848,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     vmcs_hw_allocate_vmxon_regions(num_of_cpus);
 #ifdef JLMDEBUG
     bprint("evmm: vmx allocate regions done\n");
-    // LOOP_FOREVER
 #endif
 
     // Initialize guest data
@@ -858,7 +856,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         initialization_data.guest_data[i].guest_id = INVALID_GUEST_ID;
         initialization_data.guest_data[i].primary_guest = FALSE;
     }
-    if (num_of_guests > VMM_MAX_GUESTS_SUPPORTED) {
+    if (num_of_guests>VMM_MAX_GUESTS_SUPPORTED) {
         VMM_LOG(mask_uvmm, level_error, 
                 "%s: %d guests not supported by VMM.\n", 
                 __FUNCTION__, num_of_guests);
@@ -920,18 +918,12 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
             guest_vcpu(initial_gcpu)->guest_id, 
             guest_vcpu(initial_gcpu)->guest_cpu_id);
     ipc_change_state_to_active(initial_gcpu);
-#if 0
     vmm_print_test(local_apic_id);
-#endif
     VMM_LOG(mask_uvmm, level_trace,"BSP: Wait for APs to launch the first Guest CPU\n");
 
-#if 1
-    bprint("bsp about to WAIT_FOR_APPLICATION_PROCS_LAUNCHED_THE_GUEST\n");
-#endif
     WAIT_FOR_APPLICATION_PROCS_LAUNCHED_THE_GUEST(num_of_cpus-1);
-#if 1
+#ifdef JLMDEBUG
     bprint("bsp after WAIT_FOR_APPLICATION_PROCS_LAUNCHED_THE_GUEST\n");
-    // LOOP_FOREVER
 #endif
 
     // Assumption: initialization_data was not changed
@@ -955,7 +947,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     // On systems w/o UG, emulator takes care of it
     if(is_unrestricted_guest_supported()) {
 #ifdef JLMDEBUG
-        bprint("evmm: unrestricted guest supported\n");
+        bprint("evmm: unrestricted guest supported, bsp\n");
 #endif
         make_guest_state_compliant(initial_gcpu);
         unrestricted_guest_enable(initial_gcpu);
@@ -966,13 +958,6 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
         bprint("evmm: unrestricted guest NOT supported\n");
 #endif
         // For non-UG systems enable EPT, if guest is in paging mode
-#ifdef JLMDEBUG1
-        bprint("evmm: about to call gcpu_get_guest_visible_control_reg\n");
-        UINT64 my_cr0= gcpu_get_guest_visible_control_reg(initial_gcpu,
-                                           IA32_CTRL_CR0);
-        bprint("my_cr0: 0x%llx, level: %d\n", my_cr0, VMCS_MERGED);
-        LOOP_FOREVER
-#endif
         EM64T_CR0 guest_cr0;
         guest_cr0.Uint64 = gcpu_get_guest_visible_control_reg(initial_gcpu,
                                            IA32_CTRL_CR0);
@@ -1017,14 +1002,14 @@ void vmm_application_procs_main(UINT32 local_apic_id)
 {
 #ifdef JLMDEBUG
     bprint("evmm: ap_main %d\n", local_apic_id);
-    LOOP_FOREVER
 #endif
     CPU_ID cpu_id = (CPU_ID)local_apic_id;
     HPA new_cr3 = 0;
     GUEST_CPU_HANDLE initial_gcpu = NULL;
 
     WAIT_FOR_APPLICATION_PROCS_LAUNCH();
-    VMM_LOG(mask_uvmm, level_trace,"\n\nAP%d: Alive.  Local APIC ID=%P\n", cpu_id, lapic_id());
+    VMM_LOG(mask_uvmm, level_trace,"\n\nAP%d: Alive.  Local APIC ID=%P\n", 
+            cpu_id, lapic_id());
 
     // Load GDT/IDT
     hw_gdt_load(cpu_id);
@@ -1033,7 +1018,8 @@ void vmm_application_procs_main(UINT32 local_apic_id)
     VMM_LOG(mask_uvmm, level_trace,"AP%d: ISR handling started.\n", cpu_id);
 
     if (!mtrrs_abstraction_ap_initialize()) {
-        VMM_LOG(mask_uvmm, level_error,"AP%d FAILURE: Failed to cache MTRRs\n", cpu_id);
+        VMM_LOG(mask_uvmm, level_error,"AP%d FAILURE: Failed to cache MTRRs\n", 
+                cpu_id);
         VMM_DEADLOOP();
     }
     VMM_LOG(mask_uvmm, level_trace,"AP%d: MTRRs were successfully cached\n", cpu_id);
@@ -1044,18 +1030,18 @@ void vmm_application_procs_main(UINT32 local_apic_id)
     VMM_ASSERT(new_cr3 != HMM_INVALID_VMM_PAGE_TABLES);
     VMM_LOG(mask_uvmm, level_trace,"AP%d: New cr3=%P. \n", cpu_id, new_cr3);
     hw_write_cr3(new_cr3);
-    VMM_LOG(mask_uvmm, level_trace,"AP%d: Successfully updated CR3 to new value\n", cpu_id);
+    VMM_LOG(mask_uvmm, level_trace,"AP%d: Successfully updated CR3 to new value\n", 
+            cpu_id);
     VMM_ASSERT(hw_read_cr3() == new_cr3);
-
-    VMM_ASSERT( vmcs_hw_is_cpu_vmx_capable() );
+    VMM_ASSERT(vmcs_hw_is_cpu_vmx_capable());
 
     // init CR0/CR4 to the VMX compatible values
-    hw_write_cr0(  vmcs_hw_make_compliant_cr0( hw_read_cr0() ) );
+    hw_write_cr0(vmcs_hw_make_compliant_cr0(hw_read_cr0()));
     if(g_is_post_launch) {
        // clear TS bit, since we need to operate on XMM registers.
        enable_fx_ops();
     }
-    hw_write_cr4(  vmcs_hw_make_compliant_cr4( hw_read_cr4() ) );
+    hw_write_cr4(vmcs_hw_make_compliant_cr4(hw_read_cr4()));
 
     // init current host CPU
     host_cpu_init();
@@ -1070,26 +1056,23 @@ void vmm_application_procs_main(UINT32 local_apic_id)
     // schedule first gcpu
     initial_gcpu = scheduler_select_initial_gcpu();
     VMM_ASSERT( initial_gcpu != NULL );
-    VMM_LOG(mask_uvmm, level_trace,"AP%d: initial guest selected: GUEST_ID: %d GUEST_CPU_ID: %d\n",
-            cpu_id, guest_vcpu( initial_gcpu )->guest_id, guest_vcpu( initial_gcpu )->guest_cpu_id );
+    VMM_LOG(mask_uvmm, level_trace,
+            "AP%d: initial guest selected: GUEST_ID: %d GUEST_CPU_ID: %d\n",
+            cpu_id, guest_vcpu( initial_gcpu )->guest_id, 
+            guest_vcpu( initial_gcpu )->guest_cpu_id );
 
     ipc_change_state_to_active( initial_gcpu );
-#if 0
     vmm_print_test(local_apic_id);
-#endif
-#if 1
+#ifdef JLMDEBUG
     bprint("calling APPLICATION_PROC_LAUNCHING_THE_GUEST %d\n", 
            g_application_procs_launch_the_guest);
-    // LOOP_FOREVER
 #endif
     APPLICATION_PROC_LAUNCHING_THE_GUEST();
     VMM_LOG(mask_uvmm, level_trace,"AP%d: Resuming the first Guest CPU\n", cpu_id);
-#if 1
+#ifdef JLMDEBUG
     bprint("called APPLICATION_PROC_LAUNCHING_THE_GUEST %d\n", 
            g_application_procs_launch_the_guest);
-    // LOOP_FOREVER
 #endif
-    //VMM_DEADLOOP();
 
     event_raise(EVENT_GUEST_LAUNCH, initial_gcpu, &local_apic_id);
 
@@ -1109,18 +1092,20 @@ void vmm_application_procs_main(UINT32 local_apic_id)
         }
     }
 #ifdef FAST_VIEW_SWITCH
-    if ( fvs_is_eptp_switching_supported() ) {
+    if (fvs_is_eptp_switching_supported()) {
         fvs_guest_vmfunc_enable(initial_gcpu);
         fvs_vmfunc_vmcs_init(initial_gcpu);
     }
 #endif
 
-#if 1
-   bprint("ap proc %d at gp_resume\n", local_apic_id);
+#ifdef JLMDEBUG
+    bprint("ap proc %d at gp_resume\n", local_apic_id);
+    // LOOP_FOREVER
 #endif
     vmcs_store_initial(initial_gcpu, cpu_id);
-    gcpu_resume( initial_gcpu );
-    VMM_LOG(mask_uvmm, level_error,"AP%d: Resume initial guest cpu failed\n", cpu_id);
+    gcpu_resume(initial_gcpu);
+    VMM_LOG(mask_uvmm, level_error,
+            "AP%d: Resume initial guest cpu failed\n", cpu_id);
     VMM_DEADLOOP();
 }
 
@@ -1139,8 +1124,10 @@ void make_guest_state_compliant(GUEST_CPU_HANDLE initial_gcpu)
         // its state needs to be in certain way
         // this code enforces it
         for (idx = IA32_SEG_CS; idx < IA32_SEG_COUNT; ++idx) {
-            gcpu_get_segment_reg(initial_gcpu, (VMM_IA32_SEGMENT_REGISTERS)idx, &selector, &base, &limit, &attr);
-            make_segreg_hw_real_mode_compliant(initial_gcpu, selector, base, limit, attr, (VMM_IA32_SEGMENT_REGISTERS)idx);
+            gcpu_get_segment_reg(initial_gcpu, (VMM_IA32_SEGMENT_REGISTERS)idx, 
+                                 &selector, &base, &limit, &attr);
+            make_segreg_hw_real_mode_compliant(initial_gcpu, selector, base, 
+                                limit, attr, (VMM_IA32_SEGMENT_REGISTERS)idx);
         }
         VMM_LOG(mask_uvmm, level_info,"BSP: guest compliant in real mode  for UG early boot.\n");
     }

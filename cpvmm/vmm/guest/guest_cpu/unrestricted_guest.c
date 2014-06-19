@@ -84,11 +84,11 @@ void unrestricted_guest_enable(GUEST_CPU_HANDLE gcpu)
     VMEXIT_CONTROL vmexit_request;
 
     SET_UNRESTRICTED_GUEST_FLAG(gcpu);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("unrestricted_guest_enable, acquiring lock, ");
 #endif
     ept_acquire_lock();
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("lock acquired\n");
 #endif
     proc_ctrls2.Uint32 = 0;
@@ -104,11 +104,8 @@ void unrestricted_guest_enable(GUEST_CPU_HANDLE gcpu)
         ept_set_pdtprs(gcpu, cr4);
     }
     VMM_ASSERT(ept_is_ept_enabled(gcpu));
-#ifdef JLMDEBUG
-    bprint("unrestricted_guest_enable, releasing lock, ");
-#endif
     ept_release_lock();
 #ifdef JLMDEBUG
-    bprint("lock released\n");
+    bprint("unrestricted_guest_enable, lock released\n");
 #endif
 }

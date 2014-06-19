@@ -29,7 +29,7 @@ BOOLEAN lock_try_acquire(VMM_LOCK* lock);
 
 void lock_acquire(VMM_LOCK* lock)
 {
-  (void)lock;
+    (void)lock;
     CPU_ID this_cpu_id = hw_cpu_id();
 
     if (! lock) {
@@ -67,7 +67,11 @@ void lock_release(VMM_LOCK* lock)
         return;  // error
     }
     lock->owner_cpu_id = (CPU_ID)-1;
-    hw_interlocked_assign ((INT32 volatile *)(&(lock->uint32_lock)), 0);
+#if 0
+    hw_interlocked_assign((INT32 volatile *)(&(lock->uint32_lock)), 0);
+#else
+    lock->uint32_lock= 0;
+#endif
 }
 
 BOOLEAN lock_try_acquire(VMM_LOCK* lock)
@@ -80,8 +84,7 @@ BOOLEAN lock_try_acquire(VMM_LOCK* lock)
     }
     current_value =
             hw_interlocked_compare_exchange((INT32 volatile *)(&(lock->uint32_lock)),
-            // hw_interlocked_compare_exchange((INT32 volatile *)lock,
-                                              expected_value, new_value );
+                                              expected_value, new_value);
     return (current_value == expected_value);
 }
 

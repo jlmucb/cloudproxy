@@ -468,7 +468,7 @@ void vmcs_update(struct _VMCS_OBJECT *vmcs, VMCS_FIELD field_id,
 {
     UINT64 result_value;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmcs_update\n");
 #endif
     VMM_ASSERT(field_id < VMCS_FIELD_COUNT);

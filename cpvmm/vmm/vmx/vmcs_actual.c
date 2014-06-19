@@ -582,7 +582,7 @@ void vmcs_activate(VMCS_OBJECT* obj)
     CPU_ID                      this_cpu = hw_cpu_id();
     int            ret_val;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmcs_activate\n");
 #endif
     VMM_ASSERT(obj);
@@ -637,7 +637,7 @@ void vmcs_set_launched(VMCS_OBJECT* obj)
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
    bprint("set launched\n");
 #endif
     VMM_ASSERT(p_vmcs);
@@ -647,7 +647,7 @@ void vmcs_set_launched(VMCS_OBJECT* obj)
 void vmcs_set_launch_required(VMCS_OBJECT* obj)
 {
     struct _VMCS_ACTUAL_OBJECT *p_vmcs = (struct _VMCS_ACTUAL_OBJECT *) obj;
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("set launch required\n");
 #endif
     VMM_ASSERT(p_vmcs);

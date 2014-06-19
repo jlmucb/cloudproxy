@@ -260,7 +260,7 @@ BOOLEAN cr_guest_write( GUEST_CPU_HANDLE gcpu, VMM_IA32_CONTROL_REGISTERS reg_id
     EPT_GUEST_STATE *ept_guest = NULL;
     EPT_GUEST_CPU_STATE *ept_guest_cpu = NULL;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("cr_guest_write %d\n", reg_id);
 #endif
     old_visible_reg_value = gcpu_get_guest_visible_control_reg_layered(gcpu, 

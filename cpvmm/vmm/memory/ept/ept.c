@@ -393,9 +393,6 @@ static BOOLEAN ept_end_gpm_modification_after_cpus_resume(GUEST_CPU_HANDLE gcpu 
 
 static BOOLEAN ept_cr0_update(GUEST_CPU_HANDLE gcpu, void* pv)
 {
-#ifdef JLMDEBUG
-    bprint("ept_cr0_update\n");
-#endif
     UINT64 value = ((EVENT_GCPU_GUEST_CR_WRITE_DATA*) pv)->new_guest_visible_value;
     BOOLEAN pg;
     BOOLEAN prev_pg = 0;
@@ -407,6 +404,9 @@ static BOOLEAN ept_cr0_update(GUEST_CPU_HANDLE gcpu, void* pv)
     VM_ENTRY_CONTROLS entry_ctrl_mask;
     VMCS_OBJECT* vmcs = gcpu_get_vmcs(gcpu);
 
+#ifdef JLMDEBUG
+    bprint("ept_cr0_update, ");
+#endif
     ept_acquire_lock();
     vcpu_id = guest_vcpu(gcpu);
     VMM_ASSERT(vcpu_id);
@@ -450,6 +450,9 @@ static BOOLEAN ept_cr0_update(GUEST_CPU_HANDLE gcpu, void* pv)
     if(!pg && !is_unrestricted_guest_supported() && ept_is_ept_enabled(gcpu))
         ept_disable(gcpu);
     ept_release_lock();
+#ifdef JLMDEBUG
+    bprint("ept_cr0_update complete\n");
+#endif
     return TRUE;
 }
 
@@ -493,12 +496,9 @@ static BOOLEAN ept_cr4_update(GUEST_CPU_HANDLE gcpu, void* pv)
 
     (void)pg;
 #ifdef JLMDEBUG
-    bprint("ept_cr4_update\n");
+    bprint("ept_cr4_update, \n");
 #endif
     ept_acquire_lock();
-#ifdef JLMDEBUG
-    bprint("ept_cr4_update, acquired lock %d\n", ept.lock);
-#endif
     vcpu_id = guest_vcpu(gcpu);
     VMM_ASSERT(vcpu_id);
     ept_guest = ept_find_guest_state(vcpu_id->guest_id);
@@ -513,13 +513,10 @@ static BOOLEAN ept_cr4_update(GUEST_CPU_HANDLE gcpu, void* pv)
         ept_set_pdtprs(gcpu, cr4);
     }
     // Flush TLB
-#ifdef JLMDEBUG1
-    bprint("ept_cr4_update position 1, ");
-#endif
     ept_hw_invvpid_single_context(1+gcpu->vcpu.guest_id);
     ept_release_lock();
 #ifdef JLMDEBUG
-    bprint("ept_cr4_update returning true\n");
+    bprint("ept_cr4_update complete\n");
 #endif
     return TRUE;
 }

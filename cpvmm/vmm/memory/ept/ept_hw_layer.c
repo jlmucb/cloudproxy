@@ -329,7 +329,7 @@ BOOLEAN ept_hw_invvpid_single_context(UINT64 vpid)
     UINT64 rflags;
     BOOLEAN status = FALSE;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("ept_hw_invvpid_single_context\n");
 #endif
     if(!ept_hw_is_invvpid_supported()) {

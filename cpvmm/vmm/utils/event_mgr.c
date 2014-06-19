@@ -290,7 +290,7 @@ UINT32 event_manager_gcpu_initialize(GUEST_CPU_HANDLE gcpu)
     PEVENT_ENTRY event = NULL;
     int i;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("event_manager_gcpu_initialize\n");
 #endif
     p_vcpu = guest_vcpu( gcpu );
@@ -527,7 +527,7 @@ BOOLEAN event_guest_raise(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void *p)
     PEVENT_ENTRY    list;
     BOOLEAN         event_handled = FALSE;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("event_guest_raise gcpu: %p\n", gcpu);
 #endif
     VMM_ASSERT(gcpu);

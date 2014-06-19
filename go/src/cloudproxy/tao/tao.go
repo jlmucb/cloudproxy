@@ -1,8 +1,3 @@
-//  File: tao.go
-//  Author: Tom Roeder <tmroeder@google.com>
-//
-//  Description: The Tao interface for Trusted Computing
-//
 //  Copyright (c) 2014, Google Inc.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,9 +13,6 @@
 // limitations under the License.
 
 package tao
-
-import (
-)
 
 // Tao is the fundamental interface for Trustworthy Computing in CloudProxy.
 // Each level of a system can implement a Tao interface and provide Tao
@@ -52,26 +44,53 @@ import (
 // with its host Tao and has a TaoChannel to communicated with hosted programs.
 // Hosts use implementations of HostedProgramFactory to instantiate hosted
 // programs.
-type Tao interface {
-	// Init initializes and acquires resources.
-	Init() error
 
-	// Destroy cleans up resources that were allocated in Init.
-	Destroy() error
+type Sealer interface {
+	// Seal protects the given data for the given hosted program and
+	// returns an opaque protected blob that can be unsealed later.
+	Seal(data, policy []byte) ([]byte, error)
+}
+
+type SealUnsealer interface {
+	Sealer
+
+	// Unseal opens a blob created by Seal if the hosted program matches
+	// the program that sealed the data.
+	Unseal(sealed []byte) (data, policy []byte, err error)
+}
+
+
+type Attester interface {
+	// Attest generates a cryptographic attestation to a given data blob
+	// for a given hosted program.
+	Attest(s *Statement) (*Attestation, error)
+}
+
+type Verifier interface {
+	// Verify verifies an attestation and returns the statement attested
+	// to.
+	Verify(a *Attestation) (*Statement, bool)
+}
+
+// The Tao is a combination of other interfaces.
+type Tao interface {
+	SealUnsealer
+	Attester
 
 	// GetRandomBytes fills the given slice with random bytes, up to the
 	// length of the slice.
 	GetRandomBytes(bytes []byte) error
-
-	// Seal protects the given data for the given hosted program and
-	// returns an opaque protected blob that can be unsealed later.
-	Seal(data []byte) (sealed []byte, err error)
-
-	// Unseal opens a blob created by Seal if the hosted program matches
-	// the program that sealed the data.
-	Unseal(sealed []byte) (data []byte, err error)
-
-	// Attest generates a cryptographic attestation to a given data blob
-	// for a given hosted program.
-	Attest(data []byte) (attestation []byte, err error)
 }
+
+// These values repesent the current sealing policies for the Tao.
+var SealPolicyDefault string = "self"
+var SealPolicyConservative string = "few"
+var SealPolicyLiberal string = "any"
+
+// 1 year in seconds.
+var DefaultAttestTimeout int64 = 31556926
+
+// This context differs from the corresponding context in the C++ tao because
+// this version uses keyczar's AttachedSign directly, and that version rolls
+// its own attached signatures.
+var AttestationSigningContext string = "tao::Attestation Version 2"

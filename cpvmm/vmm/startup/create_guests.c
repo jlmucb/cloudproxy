@@ -106,7 +106,7 @@ void add_cpu_to_guest(const VMM_GUEST_STARTUP* gstartup, GUEST_HANDLE guest,
 
 // Init guest except for guest memory
 // Return NULL on error
-static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
+static GUEST_HANDLE init_single_guest(UINT32 number_of_host_processors,
                                 const VMM_GUEST_STARTUP* gstartup, 
                                 const VMM_POLICY  *guest_policy)
 {
@@ -115,9 +115,10 @@ static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
     UINT32        bit_number;
     BOOLEAN       ready_to_run = FALSE;
 
-    if ((gstartup->size_of_this_struct != sizeof(VMM_GUEST_STARTUP)) ||
-        (gstartup->version_of_this_struct != VMM_GUEST_STARTUP_VERSION )) {
-        VMM_LOG(mask_anonymous, level_trace,"ASSERT: unknown guest struct: size: %#x version %d\n",
+    if ((gstartup->size_of_this_struct!=sizeof(VMM_GUEST_STARTUP)) ||
+        (gstartup->version_of_this_struct!=VMM_GUEST_STARTUP_VERSION )) {
+        VMM_LOG(mask_anonymous, level_trace,
+                "ASSERT: unknown guest struct: size: %#x version %d\n",
                 gstartup->size_of_this_struct, gstartup->version_of_this_struct );
         return NULL;
     }
@@ -129,7 +130,7 @@ static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
     // create guest
     guest= guest_register(gstartup->guest_magic_number, 
                           gstartup->physical_memory_size,
-                          gstartup->cpu_affinity, guest_policy );
+                          gstartup->cpu_affinity, guest_policy);
     if (!guest) {
 #ifdef JLMDEBUG
         bprint("guest register failed\n");
@@ -151,9 +152,9 @@ static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
     if (gstartup->image_size) {
         guest_set_executable_image( guest, (const UINT8*)gstartup->image_address,
             gstartup->image_size, gstartup->image_offset_in_guest_physical_memory,
-            BITMAP_GET(gstartup->flags, VMM_GUEST_FLAG_IMAGE_COMPRESSED) != 0);
+            BITMAP_GET(gstartup->flags, VMM_GUEST_FLAG_IMAGE_COMPRESSED)!=0);
     }
-    if (BITMAP_GET(gstartup->flags, VMM_GUEST_FLAG_REAL_BIOS_ACCESS_ENABLE) != 0) {
+    if(BITMAP_GET(gstartup->flags, VMM_GUEST_FLAG_REAL_BIOS_ACCESS_ENABLE)!=0) {
 #ifdef JLMDEBUG
         bprint("calling guest_set_real_BIOS_access_enabled\n");
 #endif
@@ -167,13 +168,13 @@ static GUEST_HANDLE init_single_guest( UINT32 number_of_host_processors,
     // init cpus.
     // first init CPUs that has initial state
     cpu_affinity = gstartup->cpu_affinity;
-    if (cpu_affinity == 0) {
+    if (cpu_affinity==0) {
         return NULL;
     }
     ready_to_run= (BITMAP_GET(gstartup->flags, VMM_GUEST_FLAG_LAUNCH_IMMEDIATELY)!=0);
     if (cpu_affinity == (UINT32)-1) {
         // special case - run on all existing CPUs
-        for(bit_number = 0; bit_number<number_of_host_processors; bit_number++) {
+        for(bit_number= 0; bit_number<number_of_host_processors; bit_number++) {
 #ifdef JLMDEBUG1
             bprint("bit_number: %d\n", bit_number);
             bprint("gstartup: %p\n", gstartup);
@@ -218,7 +219,7 @@ BOOLEAN initialize_all_guests( UINT32 number_of_host_processors,
     VMM_ASSERT(vmm_memory_layout);
     VMM_ASSERT(primary_guest_startup_state);
 
-    if (number_of_secondary_guests > 0) {
+    if (number_of_secondary_guests>0) {
         VMM_LOG(mask_anonymous, level_trace,"initialize_all_guests ASSERT: Secondary guests are yet not implemented\n");
         VMM_ASSERT( secondary_guests_startup_state_array );
         // init guests and allocate memory for them

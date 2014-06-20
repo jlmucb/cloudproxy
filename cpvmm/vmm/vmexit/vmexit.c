@@ -727,6 +727,10 @@ void vmexit_common_handler(void)
         bprint("triple fault guest rip: 0x%016llx, exit reason: %x\n", 
             gcpu_read_guestrip(), vmexit_reason());
     }
+    if(vmexit_reason()==0x3) {
+        bprint("init event rip: 0x%016llx, exit reason: %x\n", 
+            gcpu_read_guestrip(), vmexit_reason());
+    }
     if(vmexit_reason()==0x4) {
         bprint("sipi init guest rip: 0x%016llx, exit reason: %x\n", 
             gcpu_read_guestrip(), vmexit_reason());

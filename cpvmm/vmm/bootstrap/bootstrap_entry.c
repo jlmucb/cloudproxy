@@ -1047,6 +1047,54 @@ int allocate_linux_data()
 #define  Ia32VmxVmcsGuestSleepStateWaitForSipi 3
 #endif
 
+void setup_real_mode(VMM_GUEST_CPU_STARTUP_STATE *s)
+{
+    s->size_of_this_struct = sizeof(VMM_GUEST_CPU_STARTUP_STATE);
+    s->version_of_this_struct = VMM_GUEST_CPU_STARTUP_STATE_VERSION;
+    s->msr.msr_sysenter_cs = tboot_msr_sysenter_cs;
+    s->msr.msr_sysenter_eip = tboot_msr_sysenter_eip;
+    s->msr.msr_sysenter_esp = tboot_msr_sysenter_esp;
+    s->msr.msr_efer = tboot_msr_efer;
+    s->msr.msr_pat = tboot_msr_pat;
+    s->msr.msr_debugctl = tboot_msr_debugctl;
+    s->msr.pending_exceptions = 0;
+    s->msr.interruptibility_state = 0;
+    s->msr.activity_state = 0;
+    s->msr.smbase = 0;
+    s->control.gdtr.base = (UINT64)0;
+    s->control.gdtr.limit = (UINT32)0xffff;
+    s->control.idtr.base = 0x0;
+    s->control.idtr.limit = 0xffff;
+    s->control.cr[IA32_CTRL_CR0] = 0;
+    s->control.cr[IA32_CTRL_CR2] = 0;
+    s->control.cr[IA32_CTRL_CR3] = 0;
+    s->control.cr[IA32_CTRL_CR4] = 0;
+    s->seg.segment[IA32_SEG_LDTR].attributes = 0x00010000;
+    s->seg.segment[IA32_SEG_CS].base = 0;
+    s->seg.segment[IA32_SEG_CS].limit = 0xffff;
+    s->seg.segment[IA32_SEG_CS].attributes = 0x93;
+    s->seg.segment[IA32_SEG_DS].base = 0;
+    s->seg.segment[IA32_SEG_DS].limit = 0xffff;
+    s->seg.segment[IA32_SEG_DS].attributes = 0x93;
+    s->seg.segment[IA32_SEG_ES].base = 0;
+    s->seg.segment[IA32_SEG_ES].limit = 0xffff;
+    s->seg.segment[IA32_SEG_ES].attributes = 0x93;
+    s->seg.segment[IA32_SEG_FS].base = 0;
+    s->seg.segment[IA32_SEG_FS].limit = 0xffff;
+    s->seg.segment[IA32_SEG_FS].attributes = 0x93;
+    s->seg.segment[IA32_SEG_GS].base = 0;
+    s->seg.segment[IA32_SEG_GS].limit = 0xffff;
+    s->seg.segment[IA32_SEG_GS].attributes = 0x93;
+    s->seg.segment[IA32_SEG_SS].base = 0;
+    s->seg.segment[IA32_SEG_SS].limit = 0xffff;
+    s->seg.segment[IA32_SEG_SS].attributes = 0x93;
+    s->gp.reg[IA32_REG_RDX] = 0x0080; // boot from hd0
+    s->gp.reg[IA32_REG_RIP] = 0x2000; // grub stage 1.5 buffer
+    s->gp.reg[IA32_REG_RSP] = 0x2000; // grub stage 1.5 buffer
+    s->gp.reg[IA32_REG_RFLAGS] &= 0xfffffdff;
+    return;
+}
+
 
 int linux_setup(void)
 {
@@ -1093,6 +1141,10 @@ int linux_setup(void)
     // Bootstrap processor is 0
     int k;
     for(k=0; k<=evmm_num_of_aps; k++) {
+        if(k>0) {
+            setup_real_mode(&guest_processor_state[k]);
+            continue;
+        }
         guest_processor_state[k].size_of_this_struct = 
                         sizeof(VMM_GUEST_CPU_STARTUP_STATE);
         guest_processor_state[k].version_of_this_struct = 

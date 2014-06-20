@@ -183,10 +183,8 @@ extern void vmexit_nmi_exception_handlers_install(GUEST_ID guest_id);
 static void vmexit_handler_invoke(GUEST_CPU_HANDLE gcpu, UINT32 reason);
 static GUEST_VMEXIT_CONTROL* vmexit_find_guest_vmexit_control(GUEST_ID guest_id);
 
-// FUNCTION : vmexit_setup()
-// PURPOSE  : Populate guest table, containing specific VMEXIT handlers with
-//          : default handlers
-// ARGUMENTS: GUEST_ID num_of_guests
+// Populate guest table, containing specific VMEXIT handlers with
+// default handlers
 void vmexit_initialize(void)
 {
     GUEST_HANDLE   guest;
@@ -201,10 +199,8 @@ void vmexit_initialize(void)
     }
 }
 
-// FUNCTION : vmexit_guest_initialize()
-// PURPOSE  : Populate guest table, containing specific VMEXIT handlers with
-//          : default handlers
-// ARGUMENTS: GUEST_ID guest_id
+// Populate guest table, containing specific VMEXIT handlers with
+// default handlers
 void vmexit_guest_initialize(GUEST_ID guest_id)
 {
     GUEST_VMEXIT_CONTROL *guest_vmexit_control = NULL;
@@ -406,8 +402,8 @@ void vmexit_top_down_common_handler(GUEST_CPU_HANDLE gcpu, UINT32 reason) {
     GUEST_LEVEL_ENUM        guest_level = gcpu_get_guest_level(gcpu);
 
 #ifdef JLMDEBUG1
-    if (reason == 0x20) {
-        bprint("In vmexit_top_down_common_handler with reason 0x20\n");
+    if (reason == 0x2) {
+        bprint("Triple fault\n");
     }
 #endif
     guest_vmexit_control = vmexit_find_guest_vmexit_control(guest_id);
@@ -423,11 +419,6 @@ void vmexit_top_down_common_handler(GUEST_CPU_HANDLE gcpu, UINT32 reason) {
             vmexit_handling_status = VMEXIT_HANDLED;
         }
     }
-#ifdef JLMDEBUG1
-    if (reason == 0x20) {
-        bprint("Got the exit controls and the handler\n");
-    }
-#endif
     if (vmexit_handling_status != VMEXIT_HANDLED) {
         // Handle in Level-0
         vmexit_handling_status = guest_vmexit_control->vmexit_handlers[reason](gcpu);
@@ -471,7 +462,7 @@ void vmexit_handler_invoke( GUEST_CPU_HANDLE gcpu, UINT32 reason)
     else {
 #ifdef JLMDEBUG
         if (reason == 0x20) {
-            bprint("In vmexit_handler_invoke for 0x20 and this is an unknown reason\n");
+            bprint("In vmexit_handler_invoke for 0x20, unknown reason\n");
             LOOP_FOREVER;
         }
 #endif
@@ -482,9 +473,8 @@ void vmexit_handler_invoke( GUEST_CPU_HANDLE gcpu, UINT32 reason)
 }
 
 
-// FUNCTION : vmentry_failure_function
-// PURPOSE  : Called upon VMENTER failure
-// ARGUMENTS: ADDRESS flag - value of processor flags register
+// Called upon VMENTER failure
+// ADDRESS flag - value of processor flags register
 void vmentry_failure_function(ADDRESS flags)
 {
     GUEST_CPU_HANDLE gcpu = scheduler_current_gcpu();
@@ -534,9 +524,9 @@ void vmentry_failure_function(ADDRESS flags)
 
 extern void vmm_write_xcr(UINT64,UINT64,UINT64);
 extern void vmm_read_xcr(UINT32*,UINT32*,UINT32);
-// FUNCTION : vmexit_xsetbv()
-// PURPOSE  : Handler for xsetbv instruction
-// ARGUMENTS: gcpu
+
+
+// Handler for xsetbv instruction
 VMEXIT_HANDLING_STATUS vmexit_xsetbv(GUEST_CPU_HANDLE gcpu)
 {
     UINT32 XCR0_Mask_low,XCR0_Mask_high;
@@ -596,9 +586,8 @@ VMEXIT_HANDLING_STATUS vmexit_halt_instruction(GUEST_CPU_HANDLE gcpu)
     return VMEXIT_HANDLED;
 }
 
-// FUNCTION : vmexit_vmentry_failure_due2_machine_check()
-// PURPOSE  : Handler for vmexit that happens in vmentry due to machine check
-// ARGUMENTS: gcpu
+
+// Handler for vmexit that happens in vmentry due to machine check
 // RETURNS  : VMEXIT_HANDLING_STATUS
 #pragma warning(push)
 #pragma warning(disable : 4100)  // Supress warnings about unreferenced formal parameter
@@ -619,9 +608,8 @@ VMEXIT_HANDLING_STATUS vmexit_vmentry_failure_due2_machine_check(GUEST_CPU_HANDL
 
 
 #ifdef FAST_VIEW_SWITCH
-// FUNCTION : vmexit_invalid_vmfunc()
-// PURPOSE  : Handler for invalid vmfunc instruction
-// ARGUMENTS: gcpu
+
+// Handler for invalid vmfunc instruction
 // RETURNS  : VMEXIT_HANDLING_STATUS
 //CHECK(JLM):  I think the ecx is from the MSFT calling convention
 VMEXIT_HANDLING_STATUS vmexit_invalid_vmfunc(GUEST_CPU_HANDLE gcpu)
@@ -640,8 +628,8 @@ VMEXIT_HANDLING_STATUS vmexit_invalid_vmfunc(GUEST_CPU_HANDLE gcpu)
 }
 #endif
 
-// FUNCTION : vmexit_handler_default()
-// PURPOSE  : Handler for unimplemented/not supported VMEXITs
+
+// Handler for unimplemented/not supported VMEXITs
 // ARGUMENTS: IN VMEXIT_EXECUTION_CONTEXT *vmexit - contains guest handles
 VMEXIT_HANDLING_STATUS vmexit_handler_default(GUEST_CPU_HANDLE gcpu)
 {
@@ -696,8 +684,7 @@ VMEXIT_HANDLING_STATUS vmexit_handler_default(GUEST_CPU_HANDLE gcpu)
 }
 
 
-// FUNCTION : vmexit_install_handler
-// PURPOSE  : Install specific VMEXIT handler
+// Install specific VMEXIT handler
 // ARGUMENTS: GUEST_ID        guest_id
 //          : VMEXIT_HANDLER  handler
 //          : UINT32          reason
@@ -726,8 +713,7 @@ VMM_STATUS vmexit_install_handler(GUEST_ID guest_id, VMEXIT_HANDLER  handler,
 UINT64 gcpu_read_guestrip(void);
 
 
-// FUNCTION : vmexit_common_handler()
-// PURPOSE  : Called by vmexit_func() upon each VMEXIT
+// Called by vmexit_func() upon each VMEXIT
 void vmexit_common_handler(void)
 {
     GUEST_CPU_HANDLE        gcpu;
@@ -736,14 +722,17 @@ void vmexit_common_handler(void)
     IA32_VMX_EXIT_REASON    reason;
     REPORT_INITIAL_VMEXIT_CHECK_DATA initial_vmexit_check_data;
 
-#ifdef JLMDEBUG1
-#ifdef JLMDEBUG1
-    if(vmexit_reason()!=0xa) {
-        bprint("vmexit_common_handler, ");
-        bprint("guest rip: 0x%016llx, exit reason: %x\n", 
+#ifdef JLMDEBUG
+    if(vmexit_reason()==0x2) {
+        bprint("triple fault guest rip: 0x%016llx, exit reason: %x\n", 
+            gcpu_read_guestrip(), vmexit_reason());
+    }
+    if(vmexit_reason()==0x4) {
+        bprint("sipi init guest rip: 0x%016llx, exit reason: %x\n", 
             gcpu_read_guestrip(), vmexit_reason());
     }
 #endif
+#ifdef JLMDEBUG1
     int x20 = 0;
     if (0x20 == vmexit_reason()) {
         bprint("got 0x20\n");
@@ -751,11 +740,6 @@ void vmexit_common_handler(void)
     }
 #endif 
     gcpu= scheduler_current_gcpu();
-#ifdef JLMDEBUG1
-    if (x20) {
-        bprint("Made it past the scheduler\n");
-    }
-#endif
     if(gcpu==0) {
         bprint("vm_common_exit assert 1\n");
         LOOP_FOREVER

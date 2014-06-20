@@ -30,6 +30,10 @@
 #include "vmx_nmi.h"
 #include "hw_includes.h"
 
+#ifdef JLMDEBUG
+#include "jlmdebug.h"
+#endif
+
 extern UINT64 hw_interlocked_increment64(INT64* p_counter);
 
 
@@ -71,25 +75,27 @@ static UINT32 ipc_get_max_pending_messages(UINT32 number_of_host_processors)
 
 static UINT32 ipc_get_message_array_list_size(UINT32 number_of_host_processors) 
 {
-    return (UINT32) ALIGN_FORWARD(array_list_memory_size(
-                                    NULL, sizeof(IPC_MESSAGE), 
-                                    ipc_get_max_pending_messages(number_of_host_processors), 
-                                    IPC_ALIGNMENT), IPC_ALIGNMENT);
+    return (UINT32) ALIGN_FORWARD(array_list_memory_size( NULL, sizeof(IPC_MESSAGE), 
+                        ipc_get_max_pending_messages(number_of_host_processors), 
+                        IPC_ALIGNMENT), IPC_ALIGNMENT);
 }
 
 static BOOLEAN ipc_hw_signal_nmi(IPC_DESTINATION dst)
 {
-    return local_apic_send_ipi(dst.addr_shorthand, dst.addr, IPI_DESTINATION_MODE_PHYSICAL,
-                               IPI_DELIVERY_MODE_NMI, 0, IPI_DELIVERY_LEVEL_ASSERT /* must be 1 */,
-                               IPI_DELIVERY_TRIGGER_MODE_EDGE);
+    return local_apic_send_ipi(dst.addr_shorthand, dst.addr, 
+                       IPI_DESTINATION_MODE_PHYSICAL,
+                       IPI_DELIVERY_MODE_NMI, 0, 
+                       IPI_DELIVERY_LEVEL_ASSERT /* must be 1 */,
+                       IPI_DELIVERY_TRIGGER_MODE_EDGE);
 }
 
 
 static BOOLEAN ipc_hw_signal_sipi(IPC_DESTINATION dst)
 {
-    return local_apic_send_ipi(dst.addr_shorthand, dst.addr, IPI_DESTINATION_MODE_PHYSICAL,
-                               IPI_DELIVERY_MODE_START_UP, 0xFF, IPI_DELIVERY_LEVEL_ASSERT,
-                               IPI_DELIVERY_TRIGGER_MODE_EDGE);
+    return local_apic_send_ipi(dst.addr_shorthand, dst.addr, 
+                      IPI_DESTINATION_MODE_PHYSICAL,
+                      IPI_DELIVERY_MODE_START_UP, 0xFF, IPI_DELIVERY_LEVEL_ASSERT,
+                      IPI_DELIVERY_TRIGGER_MODE_EDGE);
 }
 
 #ifdef INCLUDE_UNUSED_CODE
@@ -98,7 +104,6 @@ static BOOLEAN ipc_is_nmi_owner_gcpu(GUEST_CPU_HANDLE gcpu)
     const VIRTUAL_CPU_ID *vcpu = NULL;
 
     vcpu = guest_vcpu(gcpu);
-
     return (vcpu->guest_id == nmi_owner_guest_id);
 }
 #endif
@@ -112,19 +117,15 @@ static BOOLEAN ipc_cpu_is_destination(IPC_DESTINATION dst, CPU_ID this_cpu_id, C
       case IPI_DST_SELF:
         retVal = (this_cpu_id == dst_cpu_id);
         break;
-
       case IPI_DST_ALL_INCLUDING_SELF:
         retVal = TRUE;
         break;
-  
       case IPI_DST_ALL_EXCLUDING_SELF:
         retVal = (this_cpu_id != dst_cpu_id);
         break;
-
       case IPI_DST_NO_SHORTHAND:
         retVal = ((CPU_ID) dst.addr == dst_cpu_id);
         break;
-
       case IPI_DST_CORE_ID_BITMAP:
         retVal = (BITMAP_ARRAY64_GET(dst.CoreBitMap, dst_cpu_id) != 0);
         break;
@@ -141,10 +142,8 @@ static void ipc_increment_ack(volatile UINT32 *ack)
     }
 }
 
-// NOTE: Queue function are not multi-thread safe. Caller must first aquire the lock !!!
-
-// FUNCTION:        ipc_enqueue_message
-// DESCRIPTION:     Add message to the queue. Caller must acquire the lock before calling.
+// NOTE: Queue function are not multi-thread safe. Caller must acquire lock
+// Add message to the queue. Caller must acquire the lock before calling.
 // RETURN VALUE:    TRUE if message was queued, FALSE if message could not be queued
 static BOOLEAN ipc_enqueue_message(IPC_CPU_CONTEXT *ipc, IPC_MESSAGE_TYPE type, IPC_HANDLER_FN handler, void* arg,
                                    volatile UINT32 *before_handler_ack, volatile UINT32 *after_handler_ack)
@@ -163,8 +162,8 @@ static BOOLEAN ipc_enqueue_message(IPC_CPU_CONTEXT *ipc, IPC_MESSAGE_TYPE type, 
     return array_list_add(ipc->message_queue, &msg);
 }
 
-// FUNCTION:        ipc_dequeue_message
-// DESCRIPTION:     Dequeue message for processing. Acknowledge the sender. Caller must acquire the lock before calling.
+// Dequeue message for processing. Acknowledge the sender. 
+// Caller must acquire the lock before calling.
 // RETURN VALUE:    TRUE if message was dequeued, FALSE if queue is empty
 static IPC_MESSAGE *ipc_dequeue_message(IPC_CPU_CONTEXT *ipc)
 {
@@ -181,8 +180,7 @@ static IPC_MESSAGE *ipc_dequeue_message(IPC_CPU_CONTEXT *ipc)
 }
 
 #ifdef INCLUDE_UNUSED_CODE
-// FUNCTION:        ipc_clear_message_queue
-// DESCRIPTION:     Clear message queue without processing. Acknowledge the sender. Caller must acquire the lock before calling.
+// Clear message queue without processing. Acknowledge the sender. Caller must acquire the lock before calling.
 static void ipc_clear_message_queue(IPC_CPU_CONTEXT *ipc)
 {
     IPC_MESSAGE *msg = NULL;
@@ -197,10 +195,10 @@ static void ipc_clear_message_queue(IPC_CPU_CONTEXT *ipc)
 #endif
 
 
-// FUNCTION:        ipc_execute_send
-// DESCRIPTION:     Send message to destination processors.
+// Send message to destination processors.
 // RETURN VALUE:    number of CPUs on which handler is about to execute
-UINT32 ipc_execute_send(IPC_DESTINATION dst, IPC_MESSAGE_TYPE type, IPC_HANDLER_FN handler,
+UINT32 ipc_execute_send(IPC_DESTINATION dst, IPC_MESSAGE_TYPE type, 
+                        IPC_HANDLER_FN handler,
                         void *arg, BOOLEAN wait_for_handler_finish)
 {
     CPU_ID                  i;
@@ -223,25 +221,22 @@ UINT32 ipc_execute_send(IPC_DESTINATION dst, IPC_MESSAGE_TYPE type, IPC_HANDLER_
         if (i != sender_cpu_id) {                               // Exclude yourself.
             if (ipc_cpu_is_destination(dst, sender_cpu_id, i)) {
                 ipc = &ipc_cpu_contexts[i];
-                lock_acquire(&ipc->data_lock);    // Aquire lock to prevent mutual data access.
+                lock_acquire(&ipc->data_lock);
                 if (ipc_preprocess_message(ipc, i, type)) {     // Preprocess IPC and check if need to enqueue.
-                    BOOLEAN  empty_queue = (array_list_size(ipc->message_queue) == 0);
-                    BITMAP_ARRAY64_SET(enqueue_flag, i);                    // Mark CPU active.
+                    BOOLEAN  empty_queue= (array_list_size(ipc->message_queue)==0);
+                    BITMAP_ARRAY64_SET(enqueue_flag, i);  // Mark CPU active.
                     num_required_acks++;
-                    if (!wait_for_handler_finish)               // Do not wait for handlers to finish.
+                    if (!wait_for_handler_finish)  // Dont wait for handlers to finish.
                         status = ipc_enqueue_message(ipc, type, handler, arg, &ack_array[i], NULL);
-                    else                                        // Wait for handlers to finish.
+                    else   // Wait for handlers to finish.
                         status = ipc_enqueue_message(ipc, type, handler, arg, NULL, &ack_array[i]);
                     ipc->num_of_sent_ipc_messages++;            // IPC sent message counting.
-                    // BEFORE_VMLAUNCH
                     VMM_ASSERT(status);
-
                     // Check if IPC signal should be sent.
                     if (empty_queue) {
                         // Send IPC signal (NMI or SIPI)
                         single_dst.addr_shorthand = IPI_DST_NO_SHORTHAND;
                         single_dst.addr = (UINT8)i;
-
                         if (cpu_activity_state[i] == IPC_CPU_ACTIVE) {
                             BITMAP_ARRAY64_SET(nmi_accounted_flag, i);
                             ipc->num_of_sent_ipc_nmi_interrupts++;
@@ -316,8 +311,7 @@ UINT32 ipc_execute_send(IPC_DESTINATION dst, IPC_MESSAGE_TYPE type, IPC_HANDLER_
 }
 
 
-// FUNCTION:        ipc_process_all_ipc_messages
-// DESCRIPTION:     Process all IPC from this CPU's message queue.
+// Process all IPC from this CPU's message queue.
 void ipc_process_all_ipc_messages(IPC_CPU_CONTEXT  *ipc, BOOLEAN  nmi_flag)
 {
     IPC_MESSAGE      *msg = 0;
@@ -335,13 +329,10 @@ void ipc_process_all_ipc_messages(IPC_CPU_CONTEXT  *ipc, BOOLEAN  nmi_flag)
     do {
         // Get an IPC message from the queue.
         msg = ipc_dequeue_message(ipc);
-
         VMM_ASSERT(msg != NULL);
-
         // Check for last message.
         if (array_list_size(ipc->message_queue) == 0) {
             last_msg = TRUE;
-
             // Adjust processed interrupt counters.
             if (nmi_flag) {
                 ipc->num_processed_nmi_interrupts++;
@@ -353,7 +344,6 @@ void ipc_process_all_ipc_messages(IPC_CPU_CONTEXT  *ipc, BOOLEAN  nmi_flag)
         handler = msg->handler;
         arg = msg->arg;
         after_handler_ack = msg->after_handler_ack;
-
         lock_release(&ipc->data_lock);
         handler(IPC_CPU_ID(), arg);
         lock_acquire(&ipc->data_lock);
@@ -361,7 +351,6 @@ void ipc_process_all_ipc_messages(IPC_CPU_CONTEXT  *ipc, BOOLEAN  nmi_flag)
         // Postprocessing.
         ipc_increment_ack(after_handler_ack);
     } while (!last_msg);
-
     lock_release(&ipc->data_lock);
 }
 
@@ -369,23 +358,21 @@ void ipc_process_all_ipc_messages(IPC_CPU_CONTEXT  *ipc, BOOLEAN  nmi_flag)
 extern BOOLEAN vtd_handle_fault(void);
 #endif
 
-// FUNCTION:        ipc_dispatcher
-// DESCRIPTION:     Dequeue message and call the handler. Caller must acquire the lock before calling.
-// RETURN VALUE:    TRUE if message was handled, FALSE if queue is empty
+
+// Dequeue message and call the handler. Caller must acquire the lock before calling.
+// RETURN: TRUE if message was handled, FALSE if queue is empty
 static BOOLEAN ipc_dispatcher(IPC_CPU_CONTEXT *ipc, GUEST_CPU_HANDLE gcpu UNUSED)
 {
     BOOLEAN  nmi_injected_to_guest = FALSE;
 
     // Process all IPC messages.
     ipc_process_all_ipc_messages(ipc, TRUE);
-
     // Perform decision about MNI injection to guest.
     lock_acquire(&ipc->data_lock);
-
     VMM_DEBUG_CODE(
     // Sanity check.
     if (ipc->num_received_nmi_interrupts < ipc->num_processed_nmi_interrupts ||
-        ipc->num_of_sent_ipc_nmi_interrupts < ipc->num_of_processed_ipc_nmi_interrupts) {
+        ipc->num_of_sent_ipc_nmi_interrupts<ipc->num_of_processed_ipc_nmi_interrupts) {
         VMM_LOG(mask_anonymous, level_trace,"[%d] IPC Anomaly\n", IPC_CPU_ID());
         VMM_DEADLOOP();
     }
@@ -396,10 +383,10 @@ static BOOLEAN ipc_dispatcher(IPC_CPU_CONTEXT *ipc, GUEST_CPU_HANDLE gcpu UNUSED
         VMM_LOG(mask_anonymous, level_trace,"[%d] - %s: Blocked Injection counter = %d\n", IPC_CPU_ID(),
                 __FUNCTION__, ipc->num_blocked_nmi_injections_to_guest);
 
-        nmi_injected_to_guest = TRUE;                   // Set injection flag.
-        ipc->num_blocked_nmi_injections_to_guest--;     // Adjust blocked NMI counter.
+        nmi_injected_to_guest = TRUE;               // Set injection flag.
+        ipc->num_blocked_nmi_injections_to_guest--; // Adjust blocked NMI counter.
     }
-    else if (ipc->num_of_sent_ipc_nmi_interrupts != ipc->num_received_nmi_interrupts &&
+    else if (ipc->num_of_sent_ipc_nmi_interrupts!=ipc->num_received_nmi_interrupts &&
              NMIS_WAITING_FOR_PROCESSING(ipc) != IPC_NMIS_WAITING_FOR_PROCESSING(ipc)) {
         /*   
         VMM_LOG(mask_anonymous, level_trace,
@@ -408,8 +395,8 @@ static BOOLEAN ipc_dispatcher(IPC_CPU_CONTEXT *ipc, GUEST_CPU_HANDLE gcpu UNUSED
                  ipc->num_received_nmi_interrupts, ipc->num_processed_nmi_interrupts,
                  ipc->num_of_sent_ipc_nmi_interrupts, ipc->num_of_processed_ipc_nmi_interrupts);
         */
-        nmi_injected_to_guest = TRUE;                   // Set injection flag.
-        ipc->num_processed_nmi_interrupts++;            // Adjust common NMI processed counter.
+        nmi_injected_to_guest = TRUE;     // Set injection flag.
+        ipc->num_processed_nmi_interrupts++; // Adjust common NMI processed counter.
         nmi_raise_this();
     }
     lock_release(&ipc->data_lock);
@@ -420,10 +407,10 @@ static BOOLEAN ipc_dispatcher(IPC_CPU_CONTEXT *ipc, GUEST_CPU_HANDLE gcpu UNUSED
 extern BOOLEAN vtd_handle_fault(void);
 #endif
 
-// FUNCTION:        ipc_nmi_interrupt_handler
-// DESCRIPTION:     ISR to handle NMI exception while in VMM (vector 2).
-//                  Enables NMI Window for all guests to defer handling to more
-//                  convinient conditions (e.g. stack, blocking etc.)
+
+// ISR to handle NMI exception while in VMM (vector 2).
+// Enables NMI Window for all guests to defer handling to more
+// convinient conditions (e.g. stack, blocking etc.)
 static void ipc_nmi_interrupt_handler(const ISR_PARAMETERS_ON_STACK  *p_stack UNUSED)
 {
     CPU_ID            cpu_id = IPC_CPU_ID();
@@ -443,9 +430,8 @@ static void ipc_nmi_interrupt_handler(const ISR_PARAMETERS_ON_STACK  *p_stack UN
 }
 
 
-// FUNCTION:        ipc_nmi_window_vmexit_handler
-// DESCRIPTION:     Handle Vm-Exit due to NMI Window -- handle pending IPC if any.
-//                  Decide on injecting NMIs to guest if required.
+// Handle Vm-Exit due to NMI Window -- handle pending IPC if any.
+// Decide on injecting NMIs to guest if required.
 BOOLEAN ipc_nmi_window_vmexit_handler(GUEST_CPU_HANDLE gcpu)
 {
     CPU_ID           cpu_id = IPC_CPU_ID();
@@ -458,9 +444,8 @@ BOOLEAN ipc_nmi_window_vmexit_handler(GUEST_CPU_HANDLE gcpu)
 }
 
 
-// FUNCTION:        ipc_nmi_vmexit_handler
-// DESCRIPTION:     Handle Vm-Exit due to NMI while in guest. Handle IPC if NMI was due to IPC.
-//                  Reflect NMI back to guest if it is hardware or guest initiated NMI.
+// Handle Vm-Exit due to NMI while in guest. Handle IPC if NMI was due to IPC.
+// Reflect NMI back to guest if it is hardware or guest initiated NMI.
 BOOLEAN ipc_nmi_vmexit_handler(GUEST_CPU_HANDLE gcpu)
 {
     CPU_ID           cpu_id = IPC_CPU_ID();
@@ -480,9 +465,8 @@ BOOLEAN ipc_nmi_vmexit_handler(GUEST_CPU_HANDLE gcpu)
 }
 
 
-// FUNCTION:        ipc_sipi_vmexit_handler
-// DESCRIPTION:     Handle IPC if SIPI was due to IPC.
-// RETURN VALUE:    TRUE, if SIPI was due to IPC, FALSE otherwise.
+// Handle IPC if SIPI was due to IPC.
+// RETURN : TRUE, if SIPI was due to IPC, FALSE otherwise.
 BOOLEAN ipc_sipi_vmexit_handler(GUEST_CPU_HANDLE gcpu)
 {
     CPU_ID                       cpu_id = IPC_CPU_ID();
@@ -491,33 +475,30 @@ BOOLEAN ipc_sipi_vmexit_handler(GUEST_CPU_HANDLE gcpu)
     IA32_VMX_EXIT_QUALIFICATION  qualification;
     BOOLEAN                      ret_val = FALSE;
 
+#ifdef JLMDEBUG
+    bprint("ipc_sipi_vmexit_handle, cpu: %d\n", cpu_id);
+#endif
     qualification.Uint64 = vmcs_read(vmcs, VMCS_EXIT_INFO_QUALIFICATION);
-
     // Check if this is IPC SIPI signal.
     if (qualification.Sipi.Vector == 0xFF) {
         // Process all IPC messages.
         ipc_process_all_ipc_messages(ipc, FALSE);
-
         // Clear all NMI counters.
         lock_acquire(&ipc->data_lock);
-
         ipc->num_received_nmi_interrupts = 0;
         ipc->num_processed_nmi_interrupts = 0;
         ipc->num_of_sent_ipc_nmi_interrupts = 0;
         ipc->num_of_processed_ipc_nmi_interrupts = 0;
         ipc->num_blocked_nmi_injections_to_guest = 0;
-
         lock_release(&ipc->data_lock);
-
         ret_val = TRUE;
     }
     return ret_val;
 }
 
 
-// FUNCTION:        ipc_preprocess_normal_message
-// DESCRIPTION:     Preprocess normal message. Caller must acquire the lock before calling.
-// RETURN VALUE:    TRUE if message must be enqueued at destination CPU, FALSE if message should not be queued
+// Preprocess normal message. Caller must acquire the lock before calling.
+// RETURN VALUE: TRUE if message must be enqueued at destination CPU
 BOOLEAN ipc_preprocess_normal_message(IPC_CPU_CONTEXT *ipc UNUSED, CPU_ID dst)
 {
     BOOLEAN enqueue_to_dst;
@@ -527,9 +508,8 @@ BOOLEAN ipc_preprocess_normal_message(IPC_CPU_CONTEXT *ipc UNUSED, CPU_ID dst)
 }
 
 
-// FUNCTION:        ipc_preprocess_start_message
-// DESCRIPTION:     Preprocess ON message. Caller must acquire the lock before calling.
-// RETURN VALUE:    TRUE if message must be enqueued at destination CPU, FALSE if message should not be queued
+// Preprocess ON message. Caller must acquire the lock before calling.
+// RETURN : TRUE if message must be enqueued at destination CPU
 BOOLEAN ipc_preprocess_start_message(IPC_CPU_CONTEXT *ipc, CPU_ID dst UNUSED)
 {
     ipc->num_start_messages++;
@@ -538,9 +518,8 @@ BOOLEAN ipc_preprocess_start_message(IPC_CPU_CONTEXT *ipc, CPU_ID dst UNUSED)
 }
 
 
-// FUNCTION:        ipc_preprocess_stop_message
-// DESCRIPTION:     Preprocess OFF message. Caller must acquire the lock before calling.
-// RETURN VALUE:    TRUE if message must be enqueued at destination CPU, FALSE if message should not be queued
+// Preprocess OFF message. Caller must acquire the lock before calling.
+// RETURN :    TRUE if message must be enqueued at destination CPU
 BOOLEAN ipc_preprocess_stop_message(IPC_CPU_CONTEXT *ipc, CPU_ID dst)
 {
     BOOLEAN enqueue_to_dst;
@@ -551,10 +530,8 @@ BOOLEAN ipc_preprocess_stop_message(IPC_CPU_CONTEXT *ipc, CPU_ID dst)
 }
 
 
-// FUNCTION:        ipc_preprocess_message
-// DESCRIPTION:     Preprocess message. Caller must acquire the lock before calling.
-// RETURN VALUE:    TRUE  if message must be enqueued at destination CPU,
-//                  FALSE if message should not be queued
+// Preprocess message. Caller must acquire the lock before calling.
+// RETURN TRUE  if message must be enqueued at destination CPU,
 BOOLEAN ipc_preprocess_message(IPC_CPU_CONTEXT *ipc , CPU_ID dst, IPC_MESSAGE_TYPE  msg_type)
 {
     BOOLEAN enqueue_to_dst = FALSE;
@@ -563,26 +540,21 @@ BOOLEAN ipc_preprocess_message(IPC_CPU_CONTEXT *ipc , CPU_ID dst, IPC_MESSAGE_TY
         case IPC_TYPE_NORMAL:
             enqueue_to_dst = ipc_preprocess_normal_message(ipc, dst);
             break;
-
         case IPC_TYPE_START:
             enqueue_to_dst = ipc_preprocess_start_message(ipc, dst);
             break;
-
         case IPC_TYPE_STOP:
             enqueue_to_dst = ipc_preprocess_stop_message(ipc, dst);
             break;
-
         case IPC_TYPE_SYNC:
         default:
             break;
     }
-
     return enqueue_to_dst;
 }
 
 
-// FUNCTION:        ipc_send_message
-// DESCRIPTION:     Send IPC to destination CPUs. Returns just before handlers are about to execute.
+// Send IPC to destination CPUs. Returns just before handlers are about to execute.
 // RETURN VALUE:    number of CPUs on which handler is about to execute
 UINT32 ipc_send_message(IPC_DESTINATION dst, IPC_MESSAGE_TYPE type, IPC_HANDLER_FN handler, void* arg)
 {
@@ -596,13 +568,12 @@ UINT32 ipc_send_message(IPC_DESTINATION dst, IPC_MESSAGE_TYPE type, IPC_HANDLER_
                 case IPI_DST_NO_SHORTHAND:
                 case IPI_DST_CORE_ID_BITMAP:
                 //      interruptible_lock_acquire(&send_lock);
-                        num_of_receivers = ipc_execute_send(dst, type, handler, arg, FALSE);
+                  num_of_receivers= ipc_execute_send(dst, type, handler, arg, FALSE);
                 //      lock_release(&send_lock);
-                        break;
-
+                  break;
                 default:
-                        VMM_LOG(mask_anonymous, level_trace,"ipc_send_message: Bad message destination shorthand 0x%X\r\n", dst.addr_shorthand);
-                        break;
+                  VMM_LOG(mask_anonymous, level_trace,"ipc_send_message: Bad message destination shorthand 0x%X\r\n", dst.addr_shorthand);
+                  break;
         }
     }
     else {
@@ -613,8 +584,7 @@ UINT32 ipc_send_message(IPC_DESTINATION dst, IPC_MESSAGE_TYPE type, IPC_HANDLER_
 }
 
 
-// FUNCTION:        ipc_send_message_sync
-// DESCRIPTION:     Send IPC to destination CPUs. Returns after handlers finished their execution
+// Send IPC to destination CPUs. Returns after handlers finished their execution
 // RETURN VALUE:    number of CPUs on which handler is about to execute
 UINT32 ipc_send_message_sync(IPC_DESTINATION dst, IPC_MESSAGE_TYPE type, IPC_HANDLER_FN handler, void* arg)
 {
@@ -644,8 +614,7 @@ UINT32 ipc_send_message_sync(IPC_DESTINATION dst, IPC_MESSAGE_TYPE type, IPC_HAN
 }
 
 
-// FUNCTION:        ipc_process_one_ipc
-// DESCRIPTION:     Process one IPC from this CPU's message queue.
+// Process one IPC from this CPU's message queue.
 // RETURN VALUE:    TRUE if IPC was processed, FALSE if there were no pending IPCs.
 BOOLEAN ipc_process_one_ipc(void)
 {
@@ -692,9 +661,8 @@ BOOLEAN ipc_process_one_ipc(void)
 }
 
 
-// FUNCTION:        ipc_change_state_to_active
-// DESCRIPTION:     Mark CPU as ready for IPC. Called when CPU is no longer in Wait-for-SIPI state.
-//                  Waits for all start/stop messages to arrive before changing CPU's state.
+// Mark CPU as ready for IPC. Called when CPU is no longer in Wait-for-SIPI state.
+// Waits for all start/stop messages to arrive before changing CPU's state.
 void ipc_change_state_to_active(GUEST_CPU_HANDLE gcpu UNUSED)
 {
     CPU_ID           cpu_id = IPC_CPU_ID();
@@ -710,9 +678,9 @@ void ipc_change_state_to_active(GUEST_CPU_HANDLE gcpu UNUSED)
 }
 
 
-// FUNCTION:        ipc_change_state_to_sipi
-// DESCRIPTION:     Mark CPU as NOT ready for IPC. Called when CPU is about to enter Wait-for-SIPI state.
-//                  Acknowledge and discard all queued messages.
+// Mark CPU as NOT ready for IPC. 
+// Called when CPU is about to enter Wait-for-SIPI state.
+// Acknowledge and discard all queued messages.
 void ipc_change_state_to_sipi(GUEST_CPU_HANDLE gcpu)
 {
     CPU_ID           cpu_id = IPC_CPU_ID();
@@ -727,9 +695,8 @@ void ipc_change_state_to_sipi(GUEST_CPU_HANDLE gcpu)
     VMM_LOG(mask_anonymous, level_trace,"CPU%d: IPC state changed to SIPI\n", cpu_id);
 }
 
-// FUNCTION:        ipc_mni_injection_failed
-// DESCRIPTION:     Called when NMI injection to gues failed and should be performed once more later.
-//                  Adjust right ounters.
+// Called when NMI injection to gues failed and should be performed once more later.
+// Adjust right ounters.
 void ipc_mni_injection_failed(void)
 {
     CPU_ID           cpu_id = IPC_CPU_ID();
@@ -878,14 +845,12 @@ static int cli_ipc_resend(unsigned argc UNUSED, char *argv[] UNUSED)
                 no_resend = FALSE;
         else if (!CLI_STRNCMP(argv[1], "stop", sizeof("stop")))
                 no_resend = TRUE;
-        else if (!CLI_STRNCMP(argv[1], "state", sizeof("state")))
-        {
+        else if (!CLI_STRNCMP(argv[1], "state", sizeof("state"))) {
                 CLI_PRINT("IPC resend disable state counter = %d\n", debug_not_resend);
                 CLI_PRINT("IPC resend is %s\n", (debug_not_resend == 0) ? "ENABLED" : "DISABLED");
         return 0;
         }
-        else
-        {
+        else {
                 CLI_PRINT("Wrong command argument\n");
                 return -1;
         }
@@ -903,11 +868,13 @@ static void ipc_cli_register(void)
 {
     VMM_DEBUG_CODE(
         CLI_AddCommand(cli_ipc_print, "ipc print",
-                                  "Print internal IPC state for given CPU.", "<cpu id>", CLI_ACCESS_LEVEL_SYSTEM)
+             "Print internal IPC state for given CPU.", "<cpu id>", 
+              CLI_ACCESS_LEVEL_SYSTEM)
         );
     VMM_DEBUG_CODE(
         CLI_AddCommand(cli_ipc_resend, "ipc resend",
-                                  "Stop/Start resend IPC signal.", "stop | start | state", CLI_ACCESS_LEVEL_SYSTEM)
+             "Stop/Start resend IPC signal.", "stop | start | state", 
+              CLI_ACCESS_LEVEL_SYSTEM)
         );
 }
 #else

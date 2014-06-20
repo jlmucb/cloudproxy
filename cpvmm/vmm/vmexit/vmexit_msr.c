@@ -147,7 +147,7 @@ void msr_vmexit_on_all(GUEST_CPU_HANDLE gcpu, BOOLEAN enable)
 // workaround by turning off optimization
 #pragma optimize("",off)
 VMM_STATUS msr_vmexit_bits_config( UINT8 *p_bitmap, MSR_ID msr_id,
-                RW_ACCESS   access, BOOLEAN     set)
+                RW_ACCESS access, BOOLEAN set)
 {
     UINT8       *p_bitarray;
     MSR_ID      bitno;
@@ -457,29 +457,26 @@ VMEXIT_HANDLING_STATUS vmexit_msr_read(GUEST_CPU_HANDLE gcpu)
 VMEXIT_HANDLING_STATUS vmexit_msr_write(GUEST_CPU_HANDLE gcpu)
 {
     UINT64 msr_value;
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("In vmexit_msr_write\n");
 #endif
     MSR_ID msr_id = (MSR_ID) gcpu_get_native_gp_reg(gcpu, IA32_REG_RCX);
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmexit_msr_write\n");
 #endif
     /* hypervisor synthenic MSR is not hardware MSR, inject GP to guest */
-        if( (msr_id >= HYPER_V_MSR_MIN) && (msr_id <= HYPER_V_MSR_MAX))
-        {
-#ifdef JLMDEBUG
-            bprint("Injecting GP to guest for msr %x\n", msr_id);
-            LOOP_FOREVER
+    if( (msr_id >= HYPER_V_MSR_MIN) && (msr_id <= HYPER_V_MSR_MAX)) {
+#ifdef JLMDEBUG1
+        bprint("Injecting GP to guest for msr %x\n", msr_id);
 #endif
-                gcpu_inject_gp0(gcpu);
-                return VMEXIT_HANDLED;
-        }
-
+        gcpu_inject_gp0(gcpu);
+        return VMEXIT_HANDLED;
+    }
     msr_value = (gcpu_get_native_gp_reg(gcpu, IA32_REG_RDX) << 32);
     msr_value |= gcpu_get_native_gp_reg(gcpu, IA32_REG_RAX) & LOW_BITS_32_MASK;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("Handling msr %x\n", msr_id);
 #endif
     msr_common_vmexit_handler(gcpu, WRITE_ACCESS, &msr_value);
@@ -501,9 +498,6 @@ VMEXIT_HANDLING_STATUS vmexit_msr_write(GUEST_CPU_HANDLE gcpu)
 BOOLEAN msr_common_vmexit_handler( GUEST_CPU_HANDLE gcpu,
                 RW_ACCESS access, UINT64 *msr_value)
 {
-#ifdef JLMDEBUG
-    bprint("In common vmexit handler for msrs\n");
-#endif
     MSR_ID msr_id = (MSR_ID) gcpu_get_native_gp_reg(gcpu, IA32_REG_RCX);
     GUEST_HANDLE guest = NULL;
     MSR_VMEXIT_CONTROL *p_msr_ctrl = NULL;
@@ -522,17 +516,17 @@ BOOLEAN msr_common_vmexit_handler( GUEST_CPU_HANDLE gcpu,
     msr_descriptor = msr_descriptor_lookup(p_msr_ctrl->msr_list, msr_id);
 
     if (NULL != msr_descriptor) {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
         bprint("non-null msr_descriptor %p\n", msr_descriptor);
 #endif
-                // VMM_LOG(mask_uvmm, level_trace,"%s: msr_descriptor is NOT NULL.\n", __FUNCTION__);
+        // VMM_LOG(mask_uvmm, level_trace,"%s: msr_descriptor is NOT NULL.\n", __FUNCTION__);
         if (access & WRITE_ACCESS) {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
             bprint("Write handler\n");
 #endif
             msr_handler = msr_descriptor->msr_write_handler;
          } else if (access & READ_ACCESS) {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
             bprint("Read handler\n");
 #endif
             msr_handler = msr_descriptor->msr_read_handler;
@@ -540,7 +534,7 @@ BOOLEAN msr_common_vmexit_handler( GUEST_CPU_HANDLE gcpu,
     }
 
     if (NULL == msr_handler) {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
         bprint("Case 1: null msr_handler\n");
 #endif
                 // VMM_LOG(mask_uvmm, level_trace,"%s: msr_handler is NULL.\n", __FUNCTION__);
@@ -549,7 +543,7 @@ BOOLEAN msr_common_vmexit_handler( GUEST_CPU_HANDLE gcpu,
             msr_trial_access(gcpu, msr_id, access, msr_value);
     }
     else {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
         bprint("Case 2: non-null msr_handler for msr %x\n", msr_id);
 #endif
                 // VMM_LOG(mask_uvmm, level_trace,"%s: msr_handler is NOT NULL.\n", __FUNCTION__);
@@ -562,7 +556,7 @@ BOOLEAN msr_common_vmexit_handler( GUEST_CPU_HANDLE gcpu,
     if (TRUE == instruction_was_executed) {
         gcpu_skip_guest_instruction(gcpu);
     }
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("Instruction was executed: %d\n", instruction_was_executed);
 #endif
     return instruction_was_executed;
@@ -817,7 +811,7 @@ static BOOLEAN msr_mtrr_write_handler( GUEST_CPU_HANDLE  gcpu, MSR_ID  msr_id,
     RAISE_EVENT_RETVAL event_retval;
     REPORT_MSR_WRITE_ACCESS_DATA msr_write_access_data;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("It's in msr_mtrr_write_handler\n");
 #endif
     VMM_ASSERT(msr_id != IA32_MTRRCAP_ADDR); // IA32_MTRRCAP_ADDR is read only mtrr
@@ -827,23 +821,13 @@ static BOOLEAN msr_mtrr_write_handler( GUEST_CPU_HANDLE  gcpu, MSR_ID  msr_id,
             &msr_write_access_data))
         return FALSE;
 
-#ifdef JLMDEBUG
-    bprint("About to write the msr value\n");
-#endif
     hw_write_msr(msr_id, *msr_value);
-#ifdef JLMDEBUG
-    bprint("Wrote msr_id %x with value %llu\n", msr_id, *msr_value);
-#endif
     mtrrs_abstraction_track_mtrr_update(msr_id, *msr_value);
     vmm_memset(&data, 0, sizeof(data));
     data.new_guest_visible_value = *msr_value;
     data.msr_index = msr_id;
     event_retval = event_raise( EVENT_GCPU_AFTER_MTRR_MSR_WRITE, gcpu, &data );
     VMM_ASSERT(event_retval != EVENT_NOT_HANDLED);
-
-#ifdef JLMDEBUG
-    bprint("Returning true\n");
-#endif
     return TRUE;
 }
 

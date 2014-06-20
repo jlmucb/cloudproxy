@@ -405,7 +405,7 @@ void vmexit_top_down_common_handler(GUEST_CPU_HANDLE gcpu, UINT32 reason) {
                                                         VMCS_MERGED);
     GUEST_LEVEL_ENUM        guest_level = gcpu_get_guest_level(gcpu);
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     if (reason == 0x20) {
         bprint("In vmexit_top_down_common_handler with reason 0x20\n");
     }
@@ -423,7 +423,7 @@ void vmexit_top_down_common_handler(GUEST_CPU_HANDLE gcpu, UINT32 reason) {
             vmexit_handling_status = VMEXIT_HANDLED;
         }
     }
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     if (reason == 0x20) {
         bprint("Got the exit controls and the handler\n");
     }
@@ -456,13 +456,13 @@ void vmexit_handler_invoke( GUEST_CPU_HANDLE gcpu, UINT32 reason)
 #endif
     if (reason < Ia32VmxExitBasicReasonCount) {
         // Call top-down or bottom-up common handler;
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
         if (reason == 0x20) {
             bprint("In vmexit_handler_invoke for 0x20\n");
         }
 #endif
         vmexit_classification_func[reason](gcpu, reason);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
         if (reason == 0x20) {
             bprint("Finished vmexit_handler_invoke for 0x20\n");
         }
@@ -542,7 +542,7 @@ VMEXIT_HANDLING_STATUS vmexit_xsetbv(GUEST_CPU_HANDLE gcpu)
     UINT32 XCR0_Mask_low,XCR0_Mask_high;
     CPUID_PARAMS    cpuid_params;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("In vmexit_xsetbv\n");
 #endif
     cpuid_params.m_rax = 0xd;
@@ -568,7 +568,7 @@ VMEXIT_HANDLING_STATUS vmexit_xsetbv(GUEST_CPU_HANDLE gcpu)
         ((gcpu->save_area.gp.reg[IA32_REG_RAX] & 0x6) == 0x4)) {
 #ifdef JLMDEBUG
         bprint("Bad instruction: injecting gp fault\n");
-        LOOP_FOREVER;
+        // LOOP_FOREVER;
 #endif
         gcpu_inject_gp0(gcpu);
         return VMEXIT_HANDLED;
@@ -666,8 +666,8 @@ VMEXIT_HANDLING_STATUS vmexit_handler_default(GUEST_CPU_HANDLE gcpu)
         }
     )
 #ifdef JLMDEBUG
-        bprint("Looping forever in vmexit_handler_default\n");
-        LOOP_FOREVER
+    bprint("Looping forever in vmexit_handler_default\n");
+    // LOOP_FOREVER
 #endif
 #if defined DEBUG || defined ENABLE_RELEASE_VMM_LOG
     VMM_DEADLOOP(); // VTDBG
@@ -718,7 +718,6 @@ VMM_STATUS vmexit_install_handler(GUEST_ID guest_id, VMEXIT_HANDLER  handler,
                 "CPU%d: Error: VMEXIT Reason(%d) exceeds supported limit\n",
                 hw_cpu_id(), reason);
         status = VMM_ERROR;
-        // BEFORE_VMLAUNCH. It could happen due to coding error.
         VMM_ASSERT(reason < Ia32VmxExitBasicReasonCount);
     }
     return status;
@@ -737,7 +736,7 @@ void vmexit_common_handler(void)
     IA32_VMX_EXIT_REASON    reason;
     REPORT_INITIAL_VMEXIT_CHECK_DATA initial_vmexit_check_data;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
 #ifdef JLMDEBUG1
     if(vmexit_reason()!=0xa) {
         bprint("vmexit_common_handler, ");
@@ -752,16 +751,14 @@ void vmexit_common_handler(void)
     }
 #endif 
     gcpu= scheduler_current_gcpu();
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     if (x20) {
         bprint("Made it past the scheduler\n");
     }
 #endif
     if(gcpu==0) {
-#ifdef JLMDEBUG
         bprint("vm_common_exit assert 1\n");
         LOOP_FOREVER
-#endif
     }
 
     // Disable the VMCS Software Shadow/Cache
@@ -805,7 +802,7 @@ void vmexit_common_handler(void)
     if ((vmexit_check_ept_violation() & 7) == 0)
         vmcs_sw_shadow_disable[hw_cpu_id()] = FALSE;
     // clear guest cpu cache data. in fact it clears all VMCS caches too.
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     if (x20) {
         bprint("right before gcpu_vmexit_start\n");
     }
@@ -817,7 +814,7 @@ void vmexit_common_handler(void)
         // Check keystroke
         vmexit_check_keystroke(gcpu);
     }
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     if (x20) {
         bprint("after CLI activate\n");
     }
@@ -832,7 +829,7 @@ void vmexit_common_handler(void)
     vmcs = gcpu_get_vmcs(gcpu);
     reason.Uint32 = (UINT32) vmcs_read(vmcs, VMCS_EXIT_INFO_REASON);
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     if (x20) {
         bprint("About to call vmexit function\n");
     }
@@ -842,7 +839,7 @@ void vmexit_common_handler(void)
     // if legacy_scheduling_enabled == FALSE, scheduling must be done in gcpu_resume
     next_gcpu = gcpu_call_vmexit_function(gcpu, reason.Bits.BasicReason);
     if (NULL == next_gcpu) {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
         if (x20) {
             bprint("It's null. Calling specific function\n");
         }
@@ -866,7 +863,7 @@ void vmexit_common_handler(void)
     }
     // finally process NMI injection
     NMI_DO_PROCESSING();
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     if (x20) {
         bprint("vmexit_common_handler about to resume\n");
     }

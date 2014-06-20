@@ -192,7 +192,7 @@ MSR_VMEXIT_DESCRIPTOR * msr_descriptor_lookup( LIST_ELEMENT *msr_list, MSR_ID ms
     MSR_VMEXIT_DESCRIPTOR   *p_msr_desc;
     LIST_ELEMENT            *list_iterator;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("msr_descriptor_lookup\n");
 #endif
     LIST_FOR_EACH(msr_list, list_iterator) {
@@ -265,7 +265,7 @@ void msr_vmexit_guest_setup(GUEST_HANDLE guest)
 {
     MSR_VMEXIT_CONTROL *p_msr_ctrl;
     MSR_ID msr_id;
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint(" msr_vmexit_guest_setup\n");
     // LOOP_FOREVER
 #endif
@@ -317,7 +317,7 @@ void msr_vmexit_activate(GUEST_CPU_HANDLE gcpu)
     MSR_VMEXIT_CONTROL     *p_msr_ctrl;
     UINT64                  msr_bitmap;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("msr_vmexit_activate\n");
 #endif
     VMM_ASSERT(gcpu);
@@ -348,7 +348,7 @@ VMM_STATUS msr_vmexit_handler_register( GUEST_HANDLE guest, MSR_ID msr_id,
     VMM_STATUS status = VMM_OK;
     MSR_VMEXIT_CONTROL *p_msr_ctrl = guest_get_msr_control(guest);
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("msr_vmexit_handler_register\n");
 #endif
     // check first if it already registered
@@ -398,7 +398,7 @@ VMM_STATUS msr_vmexit_handler_unregister( GUEST_HANDLE guest,
     VMM_STATUS status = VMM_OK;
     MSR_VMEXIT_CONTROL *p_msr_ctrl = guest_get_msr_control(guest);
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("msr_vmexit_handler_unregister\n");
 #endif
     p_desc = msr_descriptor_lookup(p_msr_ctrl->msr_list, msr_id);
@@ -432,7 +432,7 @@ VMEXIT_HANDLING_STATUS vmexit_msr_read(GUEST_CPU_HANDLE gcpu)
     UINT64 msr_value = 0;
     MSR_ID msr_id = (MSR_ID) gcpu_get_native_gp_reg(gcpu, IA32_REG_RCX);
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmexit_msr_read\n");
 #endif
     /* hypervisor synthenic MSR is not hardware MSR, inject GP to guest */
@@ -480,7 +480,7 @@ VMEXIT_HANDLING_STATUS vmexit_msr_write(GUEST_CPU_HANDLE gcpu)
     bprint("Handling msr %x\n", msr_id);
 #endif
     msr_common_vmexit_handler(gcpu, WRITE_ACCESS, &msr_value);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("Handled msr %x\n", msr_id);
 #endif
     return VMEXIT_HANDLED;
@@ -505,7 +505,7 @@ BOOLEAN msr_common_vmexit_handler( GUEST_CPU_HANDLE gcpu,
     BOOLEAN instruction_was_executed = FALSE;
     MSR_ACCESS_HANDLER  msr_handler = NULL;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("msr_common_vmexit_handler\n");
 #endif
     guest = gcpu_guest_handle(gcpu);
@@ -549,7 +549,7 @@ BOOLEAN msr_common_vmexit_handler( GUEST_CPU_HANDLE gcpu,
                 // VMM_LOG(mask_uvmm, level_trace,"%s: msr_handler is NOT NULL.\n", __FUNCTION__);
         instruction_was_executed =
             msr_handler(gcpu, msr_id, msr_value, msr_descriptor->msr_context);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
         bprint("Done with handling msr %x\n", msr_id);
 #endif
     }
@@ -578,7 +578,7 @@ BOOLEAN msr_trial_access( GUEST_CPU_HANDLE gcpu, MSR_ID  msr_id,
     UINT32      error_code  = 0;   // just to shut up the warning
     VMCS_OBJECT *vmcs       = gcpu_get_vmcs(gcpu);
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("msr_trial_access\n");
 #endif
     switch (access) {
@@ -707,7 +707,7 @@ static BOOLEAN msr_efer_update_is_gpf0(GUEST_CPU_HANDLE gcpu, UINT64 new_value) 
     IA32_EFER_S efer;
     efer.Uint64 = new_value;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("msr_efer_update_is_gpf0\n");
 #endif
     if (efer.Bits.LME) {
@@ -728,7 +728,7 @@ BOOLEAN msr_efer_write_handler( GUEST_CPU_HANDLE gcpu,
     RAISE_EVENT_RETVAL event_retval;
     REPORT_MSR_WRITE_ACCESS_DATA msr_write_access_data;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("msr_efer_read_handler\n");
 #endif
     VMM_ASSERT(IA32_MSR_EFER == msr_id);
@@ -758,7 +758,7 @@ BOOLEAN msr_efer_write_handler( GUEST_CPU_HANDLE gcpu,
 BOOLEAN msr_efer_read_handler( GUEST_CPU_HANDLE gcpu,
     MSR_ID msr_id UNUSED, UINT64 *msr_value, void  *context UNUSED)
 {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("msr_efer_read_handler\n");
 #endif
 #ifdef USE_MTF_FOR_CR_MSR_AS_WELL
@@ -843,7 +843,7 @@ BOOLEAN msr_lapic_base_write_handler( GUEST_CPU_HANDLE gcpu, MSR_ID msr_id,
 {
     REPORT_MSR_WRITE_ACCESS_DATA msr_write_access_data;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("msr_lapic_base_write_handler\n");
 #endif
     VMM_ASSERT(IA32_MSR_APIC_BASE == msr_id);
@@ -872,7 +872,7 @@ BOOLEAN msr_lapic_base_write_handler( GUEST_CPU_HANDLE gcpu, MSR_ID msr_id,
 BOOLEAN msr_feature_control_read_handler( GUEST_CPU_HANDLE gcpu,
         MSR_ID  msr_id, UINT64  *msr_value UNUSED, void   *context UNUSED)
 {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("msr_feature_control_read_handler\n");
 #endif
     VMM_ASSERT(IA32_MSR_FEATURE_CONTROL == msr_id);
@@ -897,7 +897,7 @@ BOOLEAN msr_feature_control_read_handler( GUEST_CPU_HANDLE gcpu,
 BOOLEAN msr_feature_control_write_handler( GUEST_CPU_HANDLE gcpu, MSR_ID msr_id,
         UINT64 *msr_value UNUSED, void *context UNUSED)
 {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("msr_feature_control_write_handler\n");
 #endif
     VMM_ASSERT(IA32_MSR_FEATURE_CONTROL == msr_id);
@@ -923,7 +923,7 @@ BOOLEAN msr_misc_enable_write_handler( GUEST_CPU_HANDLE gcpu, MSR_ID msr_id,
     REPORT_MSR_WRITE_ACCESS_DATA msr_write_access_data;
     VMM_ASSERT(IA32_MSR_MISC_ENABLE == msr_id);
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("msr_misc_enable_write_handler\n");
 #endif
     msr_write_access_data.msr_id = msr_id;
@@ -984,7 +984,7 @@ VMEXIT_HANDLING_STATUS  msr_failed_vmenter_loading_handler(GUEST_CPU_HANDLE gcpu
 BOOLEAN vmexit_register_unregister_for_efer( GUEST_HANDLE guest, MSR_ID msr_id,
             RW_ACCESS access, BOOLEAN  reg_dereg)
 {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmexit_register_unregister_for_efer\n");
 #endif
     if( !is_unrestricted_guest_supported() )

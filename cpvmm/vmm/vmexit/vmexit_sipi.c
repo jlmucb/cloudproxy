@@ -46,6 +46,10 @@ VMEXIT_HANDLING_STATUS vmexit_sipi_event(GUEST_CPU_HANDLE gcpu)
     UINT16                      real_mode_segment;
     VMEXIT_HANDLING_STATUS      ret_status = VMEXIT_NOT_HANDLED;
 
+#ifdef JLMDEBUG
+    bprint("vmexit_sipi_event(%p)\n", gcpu);
+    LOOP_FOREVER
+#endif
     do {    // single-execution loop
         // Check if this is IPC SIPI signal.
         if (ipc_sipi_vmexit_handler(gcpu)) {

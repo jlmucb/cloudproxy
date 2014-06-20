@@ -9,7 +9,7 @@ import (
 // TaoClient implements the Tao and passes on calls to a parent Tao across an
 // RPC channel.
 type TaoClient struct {
-	Parent rpc.Client
+	Parent *rpc.Client
 	HostedProgramHash []byte
 }
 

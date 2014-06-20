@@ -5,7 +5,7 @@ import (
 )
 
 type TaoServer struct {
-	t Tao
+	T Tao
 }
 
 func (ts *TaoServer) GetRandomBytes(r *TaoRPCRequest, s *TaoRPCResponse) error {
@@ -18,5 +18,5 @@ func (ts *TaoServer) GetRandomBytes(r *TaoRPCRequest, s *TaoRPCResponse) error {
 	}
 
 	s.Data = make([]byte, r.GetSize())
-	return ts.t.GetRandomBytes(s.GetData())
+	return ts.T.GetRandomBytes(s.GetData())
 }

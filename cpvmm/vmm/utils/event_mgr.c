@@ -145,11 +145,9 @@ static BOOLEAN event_raise_internal( PEVENT_ENTRY  p_event,
     GUEST_CPU_HANDLE    gcpu,   // in:  guest cpu
     void *              p       // in:  pointer to event specific structure
     );
-static BOOLEAN event_global_raise(
-    UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void * p );
-BOOLEAN event_guest_raise( UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void  *p);
-static BOOLEAN event_gcpu_raise(
-    UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void *p );
+static BOOLEAN event_global_raise(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void * p );
+BOOLEAN event_guest_raise(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void  *p);
+static BOOLEAN event_gcpu_raise(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu, void *p );
 
 
 static EVENT_ENTRY * get_gcpu_observers(UVMM_EVENT_INTERNAL e, GUEST_CPU_HANDLE gcpu)

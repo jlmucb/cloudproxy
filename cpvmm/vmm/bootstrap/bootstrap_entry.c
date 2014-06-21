@@ -1739,11 +1739,7 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     evmm_g0.size_of_this_struct = sizeof(VMM_GUEST_STARTUP);
     evmm_g0.version_of_this_struct = VMM_GUEST_STARTUP_VERSION;
     evmm_g0.flags = 0;
-#if 1
     BITMAP_SET(evmm_g0.flags, VMM_GUEST_FLAG_LAUNCH_IMMEDIATELY);
-#else
-    evmm_g0.flags|=  VMM_GUEST_FLAG_LAUNCH_IMMEDIATELY;
-#endif
     evmm_g0.flags= GUEST_IS_PRIMARY_FLAG | GUEST_IS_DEFAULT_DEVICE_OWNER_FLAG;
     evmm_g0.guest_magic_number = MIN_ANONYMOUS_GUEST_ID;
     evmm_g0.cpu_affinity = -1;

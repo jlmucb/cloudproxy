@@ -105,7 +105,7 @@ void unrestricted_guest_enable(GUEST_CPU_HANDLE gcpu)
     }
     VMM_ASSERT(ept_is_ept_enabled(gcpu));
     ept_release_lock();
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("unrestricted_guest_enable, lock released\n");
 #endif
 }

@@ -46,9 +46,8 @@ VMEXIT_HANDLING_STATUS vmexit_sipi_event(GUEST_CPU_HANDLE gcpu)
     UINT16                      real_mode_segment;
     VMEXIT_HANDLING_STATUS      ret_status = VMEXIT_NOT_HANDLED;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     bprint("vmexit_sipi_event(%p)\n", gcpu);
-    LOOP_FOREVER
 #endif
     do {    // single-execution loop
         // Check if this is IPC SIPI signal.
@@ -66,7 +65,7 @@ VMEXIT_HANDLING_STATUS vmexit_sipi_event(GUEST_CPU_HANDLE gcpu)
         // AP currently is in Wait for SIPI state,
         // gets guest SIPI(vector not 0xff) and activates the AP
 #ifdef ENABLE_PM_S3
-        if ( g_s3_resume_flag == 0 ) {
+        if (g_s3_resume_flag==0) {
 #else
         {
 #endif
@@ -77,8 +76,10 @@ VMEXIT_HANDLING_STATUS vmexit_sipi_event(GUEST_CPU_HANDLE gcpu)
         VMM_LOG(mask_anonymous, level_trace,
             "CPU-%d Leave SIPI State: Guest Core Count is %d.\n", hw_cpu_id(),
             g_guest_num_of_cpus);
-
         VMM_DEBUG_CODE(vmm_trace(gcpu, "[sipi] Leave SIPI State\n"));
+#ifdef JLMDEBUG1
+        bprint("%D guest cpus\n", g_guest_num_of_cpus);
+#endif
 
         // emulator configures guest with host state, and setup emulator 
         // context to real mode,

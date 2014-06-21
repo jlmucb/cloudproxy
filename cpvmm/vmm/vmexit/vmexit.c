@@ -722,7 +722,7 @@ void vmexit_common_handler(void)
     IA32_VMX_EXIT_REASON    reason;
     REPORT_INITIAL_VMEXIT_CHECK_DATA initial_vmexit_check_data;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     if(vmexit_reason()==0x2) {
         bprint("triple fault guest rip: 0x%016llx, exit reason: %x\n", 
             gcpu_read_guestrip(), vmexit_reason());

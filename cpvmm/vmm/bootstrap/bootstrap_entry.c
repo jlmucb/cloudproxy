@@ -41,7 +41,7 @@
 
 #define JLMDEBUG
 
-// #define MULTIAPS_ENABLED
+#define MULTIAPS_ENABLED
 
 // JLM: Remove this soon 
 #ifdef TBOOT_SHARED_PAGE
@@ -1142,7 +1142,7 @@ int linux_setup(void)
     int k;
     for(k=0; k<=evmm_num_of_aps; k++) {
         if(k>0) {
-            setup_real_mode(&guest_processor_state[k]);
+            // setup_real_mode(&guest_processor_state[k]);
             continue;
         }
         guest_processor_state[k].size_of_this_struct = 

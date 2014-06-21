@@ -1735,7 +1735,7 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     // Guest wakes up in 32 bit protected mode with arguments in edi
     linux_setup(); 
 
-    // Guest state initialization for relocated inage
+    // Guest state initialization for relocated image
     evmm_g0.size_of_this_struct = sizeof(VMM_GUEST_STARTUP);
     evmm_g0.version_of_this_struct = VMM_GUEST_STARTUP_VERSION;
     evmm_g0.flags = 0;
@@ -1743,7 +1743,11 @@ int prepare_primary_guest_environment(const multiboot_info_t *mbi)
     evmm_g0.flags= GUEST_IS_PRIMARY_FLAG | GUEST_IS_DEFAULT_DEVICE_OWNER_FLAG;
     evmm_g0.guest_magic_number = MIN_ANONYMOUS_GUEST_ID;
     evmm_g0.cpu_affinity = -1;
+#if 0
     evmm_g0.cpu_states_count = 1+evmm_num_of_aps;
+#else
+    evmm_g0.cpu_states_count = 1;
+#endif
     evmm_g0.devices_count = 0;
     evmm_g0.image_size = 0; // linux_end - linux_start;
     evmm_g0.image_address= linux_start_address;

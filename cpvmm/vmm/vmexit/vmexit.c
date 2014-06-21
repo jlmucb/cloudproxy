@@ -654,7 +654,7 @@ VMEXIT_HANDLING_STATUS vmexit_handler_default(GUEST_CPU_HANDLE gcpu)
         }
     )
 #ifdef JLMDEBUG
-    bprint("Looping forever in vmexit_handler_default\n");
+    //bprint("Looping forever in vmexit_handler_default\n");
     // LOOP_FOREVER
 #endif
 #if defined DEBUG || defined ENABLE_RELEASE_VMM_LOG

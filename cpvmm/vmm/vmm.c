@@ -945,7 +945,7 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     if(is_unrestricted_guest_supported()) {
         make_guest_state_compliant(initial_gcpu);
         unrestricted_guest_enable(initial_gcpu);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
         bprint("evmm: unrestricted_guest_enable complete, bsp\n");
 #endif
     } 
@@ -1073,7 +1073,7 @@ void vmm_application_procs_main(UINT32 local_apic_id)
     if(is_unrestricted_guest_supported()) {
         make_guest_state_compliant(initial_gcpu);
         unrestricted_guest_enable(initial_gcpu);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
         bprint("evmm: unrestricted_guest_enable complete, ap %d\n", local_apic_id);
 #endif
     } else {
@@ -1092,7 +1092,7 @@ void vmm_application_procs_main(UINT32 local_apic_id)
 #endif
 
     vmcs_store_initial(initial_gcpu, cpu_id);
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
     bprint("ap proc %d at gp_resume\n", local_apic_id);
 #endif
     gcpu_resume(initial_gcpu);

@@ -69,6 +69,7 @@ func (s *SoftTao) Init(name, crypterPath, signerPath string) error {
 	s.name = name
 
 	var err error
+  var cr key.KeyReader
 	if _, err = os.Stat(crypterPath); os.IsNotExist(err) {
 		km := key.NewKeyManager()
 		if err = km.Create("softtao_crypt", key.P_DECRYPT_AND_ENCRYPT, key.T_AES); err != nil {
@@ -79,16 +80,21 @@ func (s *SoftTao) Init(name, crypterPath, signerPath string) error {
 			return err
 		}
 
-		if err = WriteKeys(km, nil, crypterPath); err != nil {
-			return err
-		}
+    cr = key.NewJSONKeyReader(km.ToJSONs(nil))
+    if crypterPath != "" {
+      if err = WriteKeys(km, nil, crypterPath); err != nil {
+        return err
+      }
+    }
 	} else {
-		r := key.NewFileReader(crypterPath)
-		if s.crypter, err = key.NewCrypter(r); err != nil {
-			return err
-		}
+		cr = key.NewFileReader(crypterPath)
 	}
 
+  if s.crypter, err = key.NewCrypter(cr); err != nil {
+    return err
+  }
+
+  var sr key.KeyReader
 	if _, err = os.Stat(signerPath); os.IsNotExist(err) {
 		km := key.NewKeyManager()
 		// TODO(tmroeder): add ECDSA support.
@@ -100,15 +106,19 @@ func (s *SoftTao) Init(name, crypterPath, signerPath string) error {
 			return err
 		}
 
-		if err = WriteKeys(km, nil, signerPath); err != nil {
-			return err
-		}
+    sr = key.NewJSONKeyReader(km.ToJSONs(nil))
+    if signerPath != "" {
+      if err = WriteKeys(km, nil, signerPath); err != nil {
+        return err
+      }
+    }
 	} else {
-		r := key.NewFileReader(signerPath)
-		if s.signer, err = key.NewSigner(r); err != nil {
-			return err
-		}
+		sr = key.NewFileReader(signerPath)
 	}
+
+  if s.signer, err = key.NewSigner(sr); err != nil {
+    return err
+  }
 
 	return nil
 }

@@ -30,9 +30,9 @@ import (
 // A SoftTao is an implementation of the Tao that isn't backed by any hardware
 // mechanisms.
 type SoftTao struct {
-	crypter key.Crypter
-	signer key.Signer
-	name string
+	crypter    key.Crypter
+	signer     key.Signer
+	name       string
 	delegation []byte
 }
 
@@ -40,7 +40,7 @@ type SoftTao struct {
 // it. Pass a nil Encrypter to skip encryption for the key information on disk.
 func WriteKeys(km key.KeyManager, enc key.Encrypter, kp string) error {
 	d := km.ToJSONs(enc)
-	
+
 	var err error
 	if err = os.MkdirAll(kp, 0700); err != nil {
 		return err
@@ -54,7 +54,7 @@ func WriteKeys(km key.KeyManager, enc key.Encrypter, kp string) error {
 				return err
 			}
 		} else {
-			keyNum := strconv.FormatInt(int64(i - 1), 10)
+			keyNum := strconv.FormatInt(int64(i), 10)
 			if err = ioutil.WriteFile(path.Join(kp, keyNum), []byte(s), 0600); err != nil {
 				return err
 			}
@@ -71,7 +71,14 @@ func (s *SoftTao) Init(name, crypterPath, signerPath string) error {
 	var err error
 	if _, err = os.Stat(crypterPath); os.IsNotExist(err) {
 		km := key.NewKeyManager()
-		km.Create("softtao_crypt", key.P_DECRYPT_AND_ENCRYPT, key.T_AES)
+		if err = km.Create("softtao_crypt", key.P_DECRYPT_AND_ENCRYPT, key.T_AES); err != nil {
+			return err
+		}
+
+		if err = km.AddKey(256, key.S_PRIMARY); err != nil {
+			return err
+		}
+
 		if err = WriteKeys(km, nil, crypterPath); err != nil {
 			return err
 		}
@@ -85,8 +92,15 @@ func (s *SoftTao) Init(name, crypterPath, signerPath string) error {
 	if _, err = os.Stat(signerPath); os.IsNotExist(err) {
 		km := key.NewKeyManager()
 		// TODO(tmroeder): add ECDSA support.
-		km.Create("softtao_sign", key.P_SIGN_AND_VERIFY, key.T_RSA_PUB)
-		if err = WriteKeys(km, nil, crypterPath); err != nil {
+		if err = km.Create("softtao_sign", key.P_SIGN_AND_VERIFY, key.T_RSA_PRIV); err != nil {
+			return err
+		}
+
+		if err = km.AddKey(2048, key.S_PRIMARY); err != nil {
+			return err
+		}
+
+		if err = WriteKeys(km, nil, signerPath); err != nil {
 			return err
 		}
 	} else {
@@ -132,7 +146,7 @@ func (s *SoftTao) Attest(stmt *Statement) (*Attestation, error) {
 	proto.Merge(st, stmt)
 
 	if st.Issuer == nil {
-		st.Issuer = proto.String(s.name)	
+		st.Issuer = proto.String(s.name)
 	} else if st.GetIssuer() != s.name {
 		return nil, errors.New("Invalid issuer in statement")
 	}
@@ -154,7 +168,6 @@ func (s *SoftTao) Attest(stmt *Statement) (*Attestation, error) {
 	if err != nil {
 		return nil, err
 	}
-
 
 	a := new(Attestation)
 	a.SerializedStatement = ser

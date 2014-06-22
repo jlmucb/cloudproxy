@@ -9,13 +9,13 @@ import (
 // TaoClient implements the Tao and passes on calls to a parent Tao across an
 // RPC channel.
 type TaoClient struct {
-	Parent *rpc.Client
+	Parent            *rpc.Client
 	HostedProgramHash []byte
 }
 
 func (t *TaoClient) GetRandomBytes(bytes []byte) (err error) {
-	r := &TaoRPCRequest {
-		Rpc: new(TaoRPCOperation),
+	r := &TaoRPCRequest{
+		Rpc:  new(TaoRPCOperation),
 		Size: proto.Int32(int32(len(bytes))),
 	}
 

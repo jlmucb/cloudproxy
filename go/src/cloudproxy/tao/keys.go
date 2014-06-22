@@ -7,9 +7,10 @@ import (
 var _ = key.NewKeyManager
 
 type KeyType int
+
 const (
-	Signing KeyType = 1 << iota
-	Crypting KeyType = 1 << iota
+	Signing     KeyType = 1 << iota
+	Crypting    KeyType = 1 << iota
 	KeyDeriving KeyType = 1 << iota
 )
 
@@ -21,7 +22,7 @@ type Keys interface {
 }
 
 func NewTempKeys(nickname string, kt KeyType, t Tao) Keys {
-	return nil	
+	return nil
 }
 
 func NewHostedKeys(t Tao, policy string) Keys {

@@ -17,25 +17,29 @@ func main() {
 	var clientRead, clientWrite *os.File
 	serverRWC.R, clientWrite, err = os.Pipe()
 	if err != nil {
-		panic("Couldn't create a pipe")
+		panic(err)
 	}
 
 	clientRead, serverRWC.W, err = os.Pipe()
 	if err != nil {
-		panic("Couldn't create the second pipe")
+		panic(err)
 	}
 
 	server := rpc.NewServer()
 	s := new(tao.SoftTao)
-	s.Init("test", "crypter", "signer")
+	if err = s.Init("test", "crypter", "signer"); err != nil {
+		panic(err)
+	}
 
-	ts := &tao.TaoServer {
+	fmt.Println("Initialized the keys")
+
+	ts := &tao.TaoServer{
 		T: s,
 	}
 
 	err = server.Register(ts)
 	if err != nil {
-		panic("Couldn't register the TaoServer as a service")
+		panic(err)
 	}
 
 	// Start the child program.
@@ -49,7 +53,7 @@ func main() {
 	fmt.Println("About to start the hosted program")
 	err = c.Start()
 	if err != nil {
-		panic("Couldn't start the command")
+		panic(err)
 	}
 	fmt.Println("Started the child. About to serve the connection")
 	server.ServeConn(serverRWC)

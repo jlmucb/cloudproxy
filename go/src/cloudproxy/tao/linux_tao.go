@@ -4,10 +4,8 @@ import (
 	"net/rpc"
 )
 
-
 type LinuxTao struct {
 	parent rpc.Client
-
 }
 
 func (tao *LinuxTao) Init() (err error) {
@@ -19,5 +17,5 @@ func (tao *LinuxTao) Destroy() (err error) {
 }
 
 // func (tao *LinuxTao) GetRandomBytes(bytes []byte) (err error) {
-	
+
 // }

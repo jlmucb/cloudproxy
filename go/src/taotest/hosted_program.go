@@ -17,7 +17,7 @@ func main() {
 	clientRWC.R = os.NewFile(3, "")
 	clientRWC.W = os.NewFile(4, "")
 
-	t := &tao.TaoClient {
+	t := &tao.TaoClient{
 		Parent: rpc.NewClient(clientRWC),
 	}
 
@@ -31,5 +31,3 @@ func main() {
 	fmt.Println("Got 10 random bytes")
 	return
 }
-
-

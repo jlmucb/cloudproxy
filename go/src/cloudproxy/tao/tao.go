@@ -59,7 +59,6 @@ type SealUnsealer interface {
 	Unseal(sealed []byte) (data, policy []byte, err error)
 }
 
-
 type Attester interface {
 	// Attest generates a cryptographic attestation to a given data blob
 	// for a given hosted program.

@@ -15,95 +15,95 @@
 package tao
 
 import (
-    "math/rand"
-    "testing"
-    "time"
+	"math/rand"
+	"testing"
+	"time"
 
-    "code.google.com/p/goprotobuf/proto"
+	"code.google.com/p/goprotobuf/proto"
 )
 
 func TestInMemoryInit(t *testing.T) {
-  st := new(SoftTao)
-  if err := st.Init("test", "", ""); err != nil {
-    t.Error(err.Error())
-  }
+	st := new(SoftTao)
+	if err := st.Init("test", "", ""); err != nil {
+		t.Error(err.Error())
+	}
 }
 
 func TestSoftTaoRandom(t *testing.T) {
-  st := new(SoftTao)
-  if err := st.Init("test", "", ""); err != nil {
-    t.Error(err.Error())
-  }
+	st := new(SoftTao)
+	if err := st.Init("test", "", ""); err != nil {
+		t.Error(err.Error())
+	}
 
-  var b []byte
-  if err := st.GetRandomBytes(b); err != nil {
-    t.Error(err.Error())
-  }
+	var b []byte
+	if err := st.GetRandomBytes(b); err != nil {
+		t.Error(err.Error())
+	}
 }
 
 func TestSoftTaoSeal(t *testing.T) {
-  st := new(SoftTao)
-  if err := st.Init("test", "", ""); err != nil {
-    t.Error(err.Error())
-  }
+	st := new(SoftTao)
+	if err := st.Init("test", "", ""); err != nil {
+		t.Error(err.Error())
+	}
 
-  r := rand.New(rand.NewSource(time.Now().UnixNano()))
-  b := make([]byte, 33)
-  for i := range b {
-    b[i] = byte(r.Intn(256))
-  }
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	b := make([]byte, 33)
+	for i := range b {
+		b[i] = byte(r.Intn(256))
+	}
 
-  _, err := st.Seal(b, []byte(SealPolicyDefault))
-  if err != nil {
-    t.Error(err.Error())
-  }
+	_, err := st.Seal(b, []byte(SealPolicyDefault))
+	if err != nil {
+		t.Error(err.Error())
+	}
 }
 
 func TestSoftTaoUnseal(t *testing.T) {
-  st := new(SoftTao)
-  if err := st.Init("test", "", ""); err != nil {
-    t.Error(err.Error())
-  }
+	st := new(SoftTao)
+	if err := st.Init("test", "", ""); err != nil {
+		t.Error(err.Error())
+	}
 
-  r := rand.New(rand.NewSource(time.Now().UnixNano()))
-  b := make([]byte, 33)
-  for i := range b {
-    b[i] = byte(r.Intn(256))
-  }
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	b := make([]byte, 33)
+	for i := range b {
+		b[i] = byte(r.Intn(256))
+	}
 
-  s, err := st.Seal(b, []byte(SealPolicyDefault))
-  if err != nil {
-    t.Error(err.Error())
-  }
+	s, err := st.Seal(b, []byte(SealPolicyDefault))
+	if err != nil {
+		t.Error(err.Error())
+	}
 
-  u, p, err := st.Unseal(s)
-  if string(p) != SealPolicyDefault {
-    t.Error("Invalid policy returned by Unseal")
-  }
+	u, p, err := st.Unseal(s)
+	if string(p) != SealPolicyDefault {
+		t.Error("Invalid policy returned by Unseal")
+	}
 
-  if len(u) != len(b) {
-    t.Error("Invalid unsealed length")
-  }
+	if len(u) != len(b) {
+		t.Error("Invalid unsealed length")
+	}
 
-  for i, v := range u {
-    if v != b[i] {
-      t.Errorf("Incorrect byte at position %d", i)
-    }
-  }
+	for i, v := range u {
+		if v != b[i] {
+			t.Errorf("Incorrect byte at position %d", i)
+		}
+	}
 }
 
 func TestSoftTaoAttest(t *testing.T) {
-  st := new(SoftTao)
-  if err := st.Init("test", "", ""); err != nil {
-    t.Error(err.Error())
-  }
+	st := new(SoftTao)
+	if err := st.Init("test", "", ""); err != nil {
+		t.Error(err.Error())
+	}
 
-  stmt := &Statement {
-    Delegate: proto.String("Test Principal"),
-  }
+	stmt := &Statement{
+		Delegate: proto.String("Test Principal"),
+	}
 
-  _, err := st.Attest(stmt)
-  if err != nil {
-    t.Error(err.Error())
-  }
+	_, err := st.Attest(stmt)
+	if err != nil {
+		t.Error(err.Error())
+	}
 }

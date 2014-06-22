@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"net/rpc"
 	"os"
+  "time"
 
 	"cloudproxy/tao"
 	"cloudproxy/util"
+
+  "code.google.com/p/goprotobuf/proto"
 )
 
 func main() {
@@ -29,5 +32,52 @@ func main() {
 	}
 
 	fmt.Println("Got 10 random bytes")
+
+  // Seal, Unseal, and Attest to the bytes
+  sealed, err := t.Seal(b, []byte(tao.SealPolicyDefault))
+  if err != nil {
+    fmt.Println("Couldn't seal the data:", err)
+    return
+  }
+
+  unsealed, policy, err := t.Unseal(sealed)
+  if err != nil {
+    fmt.Println("Couldn't unseal the data:", err)
+    return
+  }
+
+  if string(policy) != tao.SealPolicyDefault {
+    fmt.Println("Invalid policy returned by the Tao")
+    return
+  }
+
+  if len(unsealed) != len(b) {
+    fmt.Println("Invalid unsealed length")
+    return
+  }
+
+  for i, v := range unsealed {
+    if v != b[i] {
+      fmt.Printf("Incorrect value returned at byte %d\n", i)
+      return
+    }
+  }
+
+  s := &tao.Statement{
+    // TODO(tmroeder): Issuer, Time, and Expiration are required, but they
+    // should be optional.
+    Issuer: proto.String("test"),
+    Time: proto.Int64(time.Now().UnixNano()),
+    Expiration: proto.Int64(time.Now().UnixNano() + 100),
+    Delegate: proto.String(string(b)),
+  }
+
+  _, err = t.Attest(s)
+  if err != nil {
+    fmt.Println("Couldn't attest to the bytes:", err)
+    return
+  }
+
+  fmt.Println("All actions worked correctly")
 	return
 }

@@ -40,7 +40,7 @@ class TaoStackedHost : public TaoHost {
   /// and accompanying delegation attestation, they will be used for signing
   /// attestations on behalf of hosted programs, otherwise attestation will
   /// invoke host_tao. If the set contains a crypting key, it will be used for
-  /// sealing and unsealing data, otherwise sealing and unsealing wil invoke
+  /// sealing and unsealing data, otherwise sealing and unsealing will invoke
   /// host_tao using Tao::SealPolicyDefault.
   /// @param host_tao The host tao on top of which this hosted Tao executes.
   TaoStackedHost(Keys *keys, Tao *host_tao)

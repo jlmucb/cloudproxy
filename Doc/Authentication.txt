@@ -1,5 +1,5 @@
 Authentication in the Cloud, 
-i.e. A Survey of Approaches to Authentication for Tao applications
+i.e. A Survey of Approaches to Authentication for Tao Applications
 ------------------------------------------------------------------
 
 Let's consider how services (components, programs, etc.) running within a cloud
@@ -59,6 +59,81 @@ This is what is currently used in the Tao implementation.
 
 At this point, B knows that it is connected to program A.
 
+Messages:
+  C -> D : "I am key=Kc and I run various platforms"
+  D -> ? : D1a = sign(kd, "key=Kc platforms with properties prop=P1 running Tao hash=Hta, are good")
+  D -> ? : D1b = sign(kd, "key=Kc platforms with properties prop=P2 running Tao hash=Htb, are good")
+  D -> ? : D2a = sign(kd, "On good platforms, prog=Ha(Kd) are good")
+  D -> ? : D2b = sign(kd, "On good platforms, prog=Hb(Kd) are good")
+  C -> M_1 -> A: C1 = sign(kc, "tpm=Ktpm_1 has properties prop=P1")
+  C -> M_2 -> B: C2 = sign(kc, "tpm=Ktpm_2 has properties prop=P2")
+  M_1    : run code that constitutes Tao and A(Kd)
+  M_2    : run code that constitutes Tao and B(Kd)
+  A      : generate Ka,ka
+  B      : generate Kb,kb
+  Ktpm_1 -> A : A1 = sign(ktpm_1, "Code with hash=Ht says key=Ka binds to id=Ha(Kd)")
+  M_1 -> A    : C1
+  Ktpm_2 -> B : B1 = sign(ktpm_2, "Code with hash=Ht says key=Kb binds to id=Hb(Kd)")
+  M_1 -> B    : C2
+  A <-> B     : Establish TLS channel with Ka and Kb and self-signed certs
+  A -> B      : C1
+  A -> B      : A1
+  B : verify(Kd, D1a)              // B learns D's policy about platforms
+    : verify(D1a.key, C1)          // B learns C's view of A's purported platform
+    : verify C1.prop == D1a.prop   // A's purported platform is good for D
+    : verify(C1.tpm, A1)           // B learns A's purported platform's view of A's code
+    : verify A1.hash == D1a.hash   // B learns A's purported platform OS is good for D
+	: verify(Kd, D2a)              // B learns D's policy about programs
+	: verify A1.id == D2a.prog     // A's puported program is good for D
+    : verify A1.key == TLS.peerkey // B learns peer is really as purported (*)
+	: conclude my peer is A1.id
+  A : similar...
+
+  (*) Note - Any good program A would not leak ka to any bad program, and no
+  good program would use ka even if it had access (e.g. Tao or TPM). And a good
+  TPM would not generate A1 for a bad program. So when B sees combination of Ka
+  in the TLS handshake, plus a matching A1, it knows peer is good.
+
+Performance:
+  Setup: 3 asymmetric signature generations
+    * D signs 1 messages (or many) during configuration of domain
+    * C signs 1 message per platform during installation/setup of platform(s)
+  Program launch: 2 asym key generations, 2 asym signatures
+    * A and B generate asymmetric keys
+    * TPMs each sign 1 message per program (or more with Tao indirect key)
+  Connection: 6 asym verifications, 2-party asym TLS with length-1 cert chains.
+    * A and B each verify 1 message from D 
+    * A and B each verify 1 message from C
+    * A and B each verify 1 message from TPM
+    * A and B do TLS
+
+Assumptions:
+  Unforgeable asymmeric key signatures
+    (used for Kd platform attestation, Kd program attestation, Kc platform
+	attestation, ...)
+  [NO - An ideal hash function (used to compute program identity)]
+  [NO - Ability to audit code]
+  A suitable and well-known mechanism for associating short identifiers with OS
+    (i.e. TPM+tboot PCR scheme)
+  A suitable and well-known mechanism for associating short, unique identifiers with
+    configured, executing programs.
+    (used for Tao, e.g. an ideal hash function and a schema for code, args, env, etc.)
+  Various non-interactive (i.e. offline) principals can keep long-term secrets
+    (holders of Kd and Kc need to protect corresponding private half)
+  Cloud provider key Kc is well-known
+    (in practice - via web and dns/dnssec, social mechanisms, etc.)
+  Cloud provider has a way to learn Ktpm_i and learn/eval platform properties
+    (this is completely unspecified, probably has some physical aspects to take
+	ownership and get Ktpm_i out of the TPM, i.e. TPM "physical presence", and
+	may involve generating and keeping TPM "owner" passwords)
+  TPMs and Tao work as advertised
+    (tpm protects ktpm_i, only signs correct statements, etc.)
+  Online/interactive programs can generate random asymmetric keys 
+  Online/interactive programs can keep secrets in short term (or long-term?)
+    (kc is secret from all but local TPM, local OS/Tao, C, and D)
+  TLS works as advertised
+    (B can authenticate peer as a public key)
+
 2. TLS + local asym. keys + app certs (+ bootstrap via option 1)
 
 Similar to option 1, but don't use self-signed TLS certificates. Instead, A and
@@ -69,6 +144,52 @@ authentication then checks that the peer certificate was provided by Kd and
 contains the name "program A". This is close to typical https/TLS usage. How
 does the service decide whether to issue a certificate for some key? Presumably
 using option 1 between A (or B) and the service.
+
+Messages:
+  C -> D : C0 = "I am key=Kc and I run various platforms"
+  C -> M_1 -> A: C1 = sign(kc, "tpm=Ktpm_1 has properties prop=P1")
+  C -> M_2 -> B: C2 = sign(kc, "tpm=Ktpm_2 has properties prop=P2")
+  M_1    : run code that constitutes Tao and A(Kd)
+  M_2    : run code that constitutes Tao and B(Kd)
+  A      : generate Ka,ka
+  B      : generate Kb,kb
+  Ktpm_1 -> A : A1 = sign(ktpm_1, "Code with hash=Ht says key=Ka binds to id=Ha(Kd)")
+  M_1 -> A    : C1
+  Ktpm_2 -> B : B1 = sign(ktpm_2, "Code with hash=Ht says key=Kb binds to id=Hb(Kd)")
+  M_1 -> B    : C2
+  A -> D      : Kc, C1, A1
+  D : verify Kc is reasonable
+    : verify(Kc, C1)
+    : verify C1.prop are reasonable
+	: verify(C1.tpm, A1)
+	: verify A1.hash and A1.id are reasonable
+  D -> A : D1a = sign_x509(kd, "key=Ka binds to commonname=Ha(Kd) for ca=Kd ...")
+  B -> D      : Kc, C2, B1
+  D : same as above
+  D -> B : D1b = sign_x509(kd, "key=Kb binds to commonname=Hb(Kd) for ca=Kd ...")
+  A <-> B     : Establish TLS channel with Ka and Kb and certs D1a, D1b
+  B : verify TLS.peercert.ca == Kd && TLS.peercert.key == TLS.peerkey
+	: conclude my peer is TLS.peercert.commonname
+  A : similar...
+
+Performance:
+  Setup: 2 asymmetric signature generations, 2 asym verifications
+    * C signs 1 message per platform during installation/setup of platform(s)
+    * D verifies 2 messages from C
+  Program launch: 2 asym key generations, 4 asym signatures, 2 asym
+    verifications, and extra round-trip to D (twice).
+    * A and B generate asymmetric keys
+    * TPMs each sign 1 message per program (or more with Tao indirect key)
+    * D verifies 2 messages from TPMs
+    * D signs 2 messages
+  Connection: 2-party asym TLS with length-2 cert chains.
+    * A and B do TLS
+
+Assumptions: Same as (1) except...
+  Fewer non-interactive principals involved
+  Interactive principal can keep long-term secrets
+    (holder of Kd needs to be online but also protect the private half)
+  x509 is secure
 
 3. TLS + preshared sym. keys (+ bootstrap via option 1 or 2)
 
@@ -82,6 +203,25 @@ any of a variety of (very interesting) proposals found in the literature for
 identity-based crypto and symmetric key generation/distribution among a group of
 nodes.
 
+Performance:
+  Setup: 2 asymmetric signature generations, 2 asym verifications
+    * C signs 1 message per platform during installation/setup of platform(s)
+    * D verifies 2 messages from C
+  Program launch e.g.: 2 asym key generations, 2 asym signatures, 1-party TLS
+	with length-1 cert chain (twice), extra round-trip to D (twice), 2 asym
+	verifications, and 1 sym key generation (twice).
+    * A and B generate asymmetric keys
+    * TPMs each sign 1 message per program (or more with Tao indirect key)
+    * D verifies 2 messages from TPMs
+    * D generates 1 symmetric shared key
+  Connection: 2-party sym TLS with psk and no cert chains.
+    * A and B do TLS
+
+Assumptions: Same as (2) except...
+  Ability to generate short-term symmetric shared keys
+  No x509
+
+
 4. TLS + shared sym. keys (+ bootstrap via Tao)
 
 Suppose the underlying cloud platform can generate a shared key for any pair of
@@ -89,6 +229,31 @@ programs. A and B both request a shared key, then use TLS pre-shared key to
 establish a connection. There are lots of ways for the underlying platforms to
 generate shared keys. One is for them to derive shared keys from a shared
 master key, presumably installed at platform-configuration time.
+
+Messages:
+  ? -> M_* : km 
+  M_1      : run code that constitutes Tao and A(...)
+  M_2      : run code that constitutes Tao and B(...)
+  A        : generate Ka,ka
+  B        : generate Kb,kb
+  A -> OSa : request key for Ha(...),Hb(...)
+  OSa      : generate Kab
+  OSa -> A : Kab
+  B -> OSb : request key for Ha(...),Hb(...)
+  OSb      : generate Kab
+  OSb -> B : Kab
+  A <-> B  : TLS with psk, hint Ha(...),Hb(...)
+
+Performance:
+  Setup: None.
+  Program launch: 2 sym key generations.
+  Connection: 2-party sym TLS with psk and no cert chains.
+
+Assumptions: 
+  Ability to generate short-term symmetric shared keys
+  Interactive principal can keep long-term master secret
+    (OS is online but also holds a master shared secret)
+  Ability to safeguard shared master secret
 
 5. Platform-provided authentication
 
@@ -149,6 +314,8 @@ Other Approaches or Existing Work?
 Are there other approaches and related work I should be looking at? I am not
 finding a whole lot of literature on authentication (or authorization) *within*
 cloud services.
+
+* Check how Amazon EC2, or Google or Microsoft cloud providers authenticate.
 
 Short Paper Outline
 -------------------

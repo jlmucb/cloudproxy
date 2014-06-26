@@ -73,9 +73,8 @@ class MessageChannel {
   /// @param s The string to send.
   virtual bool SendString(const string &s);
 
-  /// Receive a string from a file descriptor.
+  /// Receive a string over the channel.
   /// Failure or eof will close the channel.
-  /// @param max_size The maximum allowable size string to receive.
   /// @param[out] s The string to receive the data.
   /// @param[out] eof Will be set to true iff end of stream reached.
   virtual bool ReceiveString(string *s, bool *eof);
@@ -85,7 +84,7 @@ class MessageChannel {
   /// High-level functions for Messages.
   /// @{
 
-  /// Send a Message over the channel.
+  /// Send a Message to the channel.
   /// Failure will close the channel.
   /// @param m The Message to send.
   virtual bool SendMessage(const google::protobuf::Message &m);

@@ -28,6 +28,7 @@ import (
 
 var _ = key.NewKeyManager
 
+// A KeyType represent the type(s) of keys held by a Keys struct.
 type KeyType int
 
 const (
@@ -37,6 +38,8 @@ const (
 	X509	    KeyType = 1 << iota
 )
 
+// A Keys holds a set of Keyczar keys and provides an interface to perform
+// actions with these keys.
 type Keys struct {
 	nickname string
 	dir string
@@ -50,6 +53,8 @@ type Keys struct {
 	cert *x509.Certificate
 }
 
+// writeKeys writes the keys from a KeyManager to disk at kp (the key path). It
+// optionally uses an Encrypter to encrypt the keys on disk if enc is non-nil.
 func writeKeys(km key.KeyManager, enc key.Encrypter, kp string) error {
 	d := km.ToJSONs(enc)
 
@@ -76,6 +81,10 @@ func writeKeys(km key.KeyManager, enc key.Encrypter, kp string) error {
 	return nil
 }
 
+// instantiateKey creates a Keyczar key of a given type, with an optional path,
+// a name, and an optional crypter for encrypting or decrypting the key. It
+// would be better to take the keyPurpose and keyType directly, but those types
+// aren't exported from dkeyczar.
 func (k *Keys) instantiateKey(keyType KeyType, keyPath, name string, crypter key.Crypter) error {
 	var r key.KeyReader
 	var err error
@@ -131,6 +140,7 @@ func (k *Keys) instantiateKey(keyType KeyType, keyPath, name string, crypter key
 	return err
 }
 
+// SignerPath returns the path to the signing keys, if any.
 func (k *Keys) SignerPath() string {
 	if k.dir == "" {
 		return ""
@@ -139,10 +149,12 @@ func (k *Keys) SignerPath() string {
 	}
 }
 
+// SignerName returns a user-readable name of the signing key.
 func (k *Keys) SignerName() string {
 	return k.nickname + "_signer"
 }
 
+// CrypterPath returns the path to the encryption key, if any.
 func (k *Keys) CrypterPath() string {
 	if k.dir == "" {
 		return ""
@@ -151,10 +163,12 @@ func (k *Keys) CrypterPath() string {
 	}
 }
 
+// CrypterName returns a user-readable name for the encryption key.
 func (k *Keys) CrypterName() string {
 	return k.nickname + "_crypter"
 }
 
+// KeyDeriverPath returns the path to the key-deriving key, if any.
 func (k *Keys) KeyDeriverPath() string {
 	if k.dir == "" {
 		return ""
@@ -163,10 +177,13 @@ func (k *Keys) KeyDeriverPath() string {
 	}
 }
 
+// KeyDeriverName returns a user-readable name for the key-deriving key.
 func (k *Keys) KeyDeriverName() string {
 	return k.nickname + "_key_deriver"
 }
 
+// TaoSecretPath returns the path to a Tao-sealed secret, if any. This secret
+// is used to create a PBEEncrypter to encrypt generated keys.
 func (k *Keys) TaoSecretPath() string {
 	if k.dir == "" {
 		return ""
@@ -175,6 +192,8 @@ func (k *Keys) TaoSecretPath() string {
 	}
 }
 
+// instantiate creates multiple keys as specified by the bits of keyTypes. It
+// encrypts them with the crypter, if it's non-nil.
 func (k *Keys) instantiate(keyTypes KeyType, crypter key.Crypter) error {
 	if keyTypes & Signing == Signing {
 		if err := k.instantiateKey(Signing, k.SignerPath(), k.SignerName(), crypter); err != nil {
@@ -197,6 +216,8 @@ func (k *Keys) instantiate(keyTypes KeyType, crypter key.Crypter) error {
 	return nil
 }
 
+// NewTempKeys creates a new set of temporary keys with a given type. These
+// keys are not written to disk.
 func NewTempKeys(nickname string, keyTypes KeyType) *Keys {
 	// For temp keys, there aren't any paths, so the keys aren't written to disk.
 	k := &Keys{
@@ -210,6 +231,9 @@ func NewTempKeys(nickname string, keyTypes KeyType) *Keys {
 	return k
 }
 
+// NewTempHostedKeys creates a new set of temporary keys hosted by a given Tao,
+// often the SoftTao in a test case. These keys are encrypted by the Tao-sealed
+// secret but are not written to disk.
 func NewTempHostedKeys(nickname string, keyTypes KeyType, tao Tao) *Keys {
 	// For temp keys, there aren't any paths, so the keys aren't written to disk.
 	k := &Keys{
@@ -232,6 +256,8 @@ func NewTempHostedKeys(nickname string, keyTypes KeyType, tao Tao) *Keys {
 	return k
 }
 
+// NewNonHostedKeys creates or restores a set of keys encrypted by PBE under a
+// password and stored under a directory dir.
 func NewNonHostedKeys(dir, password, nickname string, keyTypes KeyType) *Keys {
 	k := &Keys{
 		nickname: nickname,
@@ -247,14 +273,18 @@ func NewNonHostedKeys(dir, password, nickname string, keyTypes KeyType) *Keys {
 	return k
 }
 
+// zeroBytes clears the bytes in a slice.
 func zeroBytes(b []byte) {
 	for i := range b {
 		b[i] = 0
 	}
 }
 
+// secretLength is the length of any Tao-sealed secret.
 var secretLength int = 128
 
+// newTaoPBECrypter uses the Tao to unseal or to generate and seal a new
+// secret; it then uses this secret to create a PBEEncrypter.
 func (k *Keys) newTaoPBECrypter(tao Tao) (key.Crypter, error) {
 	// Create or read the secret, using the Tao.
 	secretPath := k.TaoSecretPath()
@@ -272,10 +302,12 @@ func (k *Keys) newTaoPBECrypter(tao Tao) (key.Crypter, error) {
 			return nil, err
 		}
 
-		if err = ioutil.WriteFile(secretPath, sealed, 0600); err != nil {
-			return nil, err
+		// Only write to a path if there is a path to write at all.
+		if secretPath != "" {
+			if err = ioutil.WriteFile(secretPath, sealed, 0600); err != nil {
+				return nil, err
+			}
 		}
-
 
 	} else {
 		sealed, err := ioutil.ReadFile(secretPath)
@@ -292,6 +324,8 @@ func (k *Keys) newTaoPBECrypter(tao Tao) (key.Crypter, error) {
 	return key.NewPBECrypter(sec), nil
 }
 
+// NewHostedKeys creates or restores a set of keys encrypted using PBE from a
+// Tao-sealed secret. The sealing operation uses the given policy.
 func NewHostedKeys(dir, policy, nickname string, keyTypes KeyType, tao Tao) *Keys {
 	k := &Keys{
 		nickname: nickname,
@@ -318,6 +352,7 @@ func NewHostedKeys(dir, policy, nickname string, keyTypes KeyType, tao Tao) *Key
 	return k
 }
 
+// Sign signs a message with a given context and returns the signature.
 func (k *Keys) Sign(msg, context []byte) (string, error) {
 	if k.signer == nil {
 		return "", errors.New("No signer available")
@@ -336,6 +371,7 @@ func (k *Keys) Sign(msg, context []byte) (string, error) {
 	return k.signer.Sign(s)
 }
 
+// Verify verifies a signature for a message with a given context.
 func (k *Keys) Verify(msg, context, signature []byte) (bool, error) {
 	if k.signer == nil {
 		return false, errors.New("No signer available")

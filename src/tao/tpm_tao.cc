@@ -474,6 +474,12 @@ bool TPMTao::GetRandomBytes(size_t size, string *bytes) {
   return true;
 }
 
+bool TPMTao::GetSharedSecret(size_t size, const string &policy, string *bytes) {
+  failure_msg_ = "TPMTao shared secrets not yet implemented";
+  LOG(ERROR) << failure_msg_;
+  return false;
+}
+
 bool TPMTao::Seal(const string &data, const string &policy, string *sealed) {
   if (policy != Tao::SealPolicyDefault) {
     failure_msg_ = "TPM-specific policies not yet implemented";

@@ -57,6 +57,8 @@ class SoftTao : public Tao {
   virtual bool GetTaoName(string *name);
   virtual bool ExtendTaoName(const string &subprin);
   virtual bool GetRandomBytes(size_t size, string *bytes);
+  virtual bool GetSharedSecret(size_t size, const string &policy,
+                               string *bytes);
   virtual bool Attest(const Statement &stmt, string *attestation);
   virtual bool Seal(const string &data, const string &policy, string *sealed);
   virtual bool Unseal(const string &sealed, string *data, string *policy);

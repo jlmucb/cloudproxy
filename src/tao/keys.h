@@ -134,7 +134,7 @@ bool CopyCrypter(const keyczar::Crypter &key,
 /// @param name A unique name for the derived key.
 /// @param size The size of the material to be derived.
 /// @param[out] material The key material derived from main_key.
-bool DeriveKey(const keyczar::Signer &key, const string &name, int size,
+bool DeriveKey(const keyczar::Signer &key, const string &name, size_t size,
                string *material);
 
 /// Convert a keyczar private signing key to an OpenSSL EVP_PKEY structure.
@@ -397,7 +397,7 @@ class Keys {
   /// @param name A unique name for the derived key.
   /// @param size The size of the material to be derived.
   /// @param[out] material The key material derived from main_key.
-  bool DeriveKey(const string &name, int size, string *material) const;
+  bool DeriveKey(const string &name, size_t size, string *material) const;
 
   /// Convert the managed signing private key to an OpenSSL EVP_PKEY structure.
   /// Only the primary key from the keyset is exported. The EVP_PKEY will

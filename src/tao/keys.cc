@@ -531,7 +531,7 @@ bool CopyCrypter(const Crypter &key, scoped_ptr<Crypter> *copy) {
   return true;
 }
 
-bool DeriveKey(const keyczar::Signer &key, const string &name, int size,
+bool DeriveKey(const keyczar::Signer &key, const string &name, size_t size,
                string *material) {
   if (material == nullptr) {
     LOG(ERROR) << "Invalid DeriveKey parameters";
@@ -541,22 +541,34 @@ bool DeriveKey(const keyczar::Signer &key, const string &name, int size,
     LOG(ERROR) << "DeriveKey requires symmetric main key";
     return false;
   }
-  // derive the keys
-  string context = "1 || " + name;
-  keyczar::base::ScopedSafeString sig(new string());
-  // Note that this is not an application of a signature in the normal sense, so
-  // it does not need to be transformed into an application of tao::SignData().
-  if (!key.Sign(context, sig.get())) {
-    LOG(ERROR) << "Could not derive key material";
-    return false;
-  }
-  // skip the header to get the bytes
-  size_t header_size = keyczar::Key::GetHeaderSize();
-  if (size + header_size > sig->size()) {
-    LOG(ERROR) << "There were not enough bytes to get the derived key";
-    return false;
-  }
-  material->assign(sig->data() + header_size, size);
+  // derive the key material
+  KeyDerivationBuffer context;
+  context.set_count(size);
+  context.set_index(0);
+  context.set_tag(name);
+  keyczar::base::ScopedSafeString buf(new string());
+  do {
+    context.set_index(context.index() + 1);
+    string header;
+    if (!context.SerializeToString(&header)) {
+      LOG(ERROR) << "Could not serialize header";
+      return false;
+    }
+    keyczar::base::ScopedSafeString sig(new string());
+    // Note that this is not an application of a signature in the normal sense,
+    // so
+    // it does not need to be transformed into an application of
+    // tao::SignData().
+    if (!key.Sign(header, sig.get())) {
+      LOG(ERROR) << "Could not derive key material";
+      return false;
+    }
+    // skip the header to get the bytes
+    size_t header_size = keyczar::Key::GetHeaderSize();
+    buf->append(*sig, header_size, sig->size() - header_size);
+  } while (buf->size() < size);
+
+  material->assign(buf->data(), size);
   return true;
 }
 
@@ -1319,7 +1331,7 @@ bool Keys::CopyCrypter(scoped_ptr<keyczar::Crypter> *copy) const {
   return tao::CopyCrypter(*Crypter(), copy);
 }
 
-bool Keys::DeriveKey(const string &name, int size, string *material) const {
+bool Keys::DeriveKey(const string &name, size_t size, string *material) const {
   if (!KeyDeriver()) {
     LOG(ERROR) << "No managed key-deriver";
     return false;

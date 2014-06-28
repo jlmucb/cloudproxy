@@ -57,6 +57,19 @@ bool TaoRootHost::GetRandomBytes(const string &child_subprin, size_t size,
   return CryptoFactory::Rand()->RandBytes(size, bytes);
 }
 
+bool TaoRootHost::GetSharedSecret(const string &tag, size_t size,
+                                  string *bytes) const {
+  if (keys_ == nullptr || keys_->KeyDeriver() == nullptr) {
+    LOG(ERROR) << "This host does not implement shared secrets";
+    return false;
+  }
+  if (!keys_->DeriveKey(tag, size, bytes)) {
+    LOG(ERROR) << "Could not derive shared secret";
+    return false;
+  }
+  return true;
+}
+
 bool TaoRootHost::Attest(const string &child_subprin, Statement *stmt,
                          string *attestation) const {
   // Make sure issuer is identical to (or a subprincipal of) the hosted

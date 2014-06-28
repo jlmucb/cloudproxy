@@ -73,6 +73,40 @@ class Tao {
   /// @param[out] bytes The random bytes.
   virtual bool GetRandomBytes(size_t size, string *bytes) = 0;
 
+  /// Get a shared random secret, e.g. to be used as a shared secret key.
+  /// Some levels (i.e. the TPM) do not implement this.
+  /// @param size The number of bytes to get.
+  /// @param policy A policy controlling which hosted programs can get this
+  /// secret. The semantics of this value are host-specific, except
+  /// all Tao hosts support at least the policies defined below.
+  /// @param[out] sealed The encrypted data.
+  virtual bool GetSharedSecret(size_t size, const string &policy,
+                               string *bytes) = 0;
+
+  /// Policy for shared secrets. Hosts may implement additional policies.
+  /// @{
+
+  /// The default shared secret, which corresponds roughly to "a past or future
+  /// instance of a hosted program having a similar identity as the caller". The
+  /// definition of "similar" is host-specific. For example, for a Linux OS, it
+  /// may mean "has the same program binary (and is running on the same Linux OS
+  /// platform)".
+  constexpr static auto SharedSecretPolicyDefault = "self";
+
+  /// The most conservative (but non-trivial) shared secret policy supported by
+  /// the
+  /// host. For example, a Linux OS may interpret this to mean "the same hosted
+  /// program instance, including process ID, program hash and argument hash".
+  constexpr static auto SharedSecretPolicyConservative = "few";
+
+  /// The most liberal (but non-trivial) sealing policy supported by the host.
+  /// For example, a Linux OS may interpret this to mean "any hosted program on
+  /// the
+  /// same Linux OS".
+  constexpr static auto SharedSecretPolicyLiberal = "any";
+
+  /// @}
+
   /// Request the Tao host sign a Statement on behalf of this hosted program.
   /// @param stmt A Statement to be signed. The issuer, time, and expiration
   /// fields will be filled in with appropriate defaults if they are left empty.
@@ -82,10 +116,9 @@ class Tao {
   /// Encrypt data so only certain hosted programs can unseal it.
   /// @param data The data to seal.
   /// @param policy A policy controlling which hosted programs can seal or
-  /// unseal the
-  /// data. The semantics of this value are host-specific, except: all Tao hosts
-  /// support at least the policies defined below; and the policy must be
-  /// satisfied both during Seal() and during Unseal().
+  /// unseal the data. The semantics of this value are host-specific, except:
+  /// all Tao hosts support at least the policies defined below; and the policy
+  /// must be satisfied both during Seal() and during Unseal().
   /// @param[out] sealed The encrypted data.
   /// TODO(kwalsh) Add expiration.
   virtual bool Seal(const string &data, const string &policy,
@@ -108,7 +141,8 @@ class Tao {
   /// instance of a hosted program having a similar identity as the caller". The
   /// definition of "similar" is host-specific. For example, for a TPM, it may
   /// mean "has identical PCR values, for some subset of the PCRs". And for a
-  /// Linux OS, it may mean "has the same program binary".
+  /// Linux OS, it may mean "has the same program binary (and is running on the
+  /// same Linux OS platform)".
   constexpr static auto SealPolicyDefault = "self";
 
   /// The most conservative (but non-trivial) sealing policy supported by the
@@ -118,7 +152,8 @@ class Tao {
 
   /// The most liberal (but non-trivial) sealing policy supported by the host.
   /// For example, a TPM may interpret this to mean "any hosted program on the
-  /// same platform".
+  /// same platform". And a Linux OS might interpret this to mean "any hosted
+  /// program on the same Linux OS".
   constexpr static auto SealPolicyLiberal = "any";
 
   /// @}

@@ -110,6 +110,96 @@ string doUnseal(Tao *tao) {
   }
 }
 
+string make3Secrets(Tao *tao, string policies[3], string secrets[3]) {
+  string name;
+  if (!tao->GetTaoName(&name)) {
+    name = "unknown";
+  }
+  policies[0] = Tao::SharedSecretPolicyDefault;
+  policies[1] = Tao::SharedSecretPolicyConservative;
+  policies[2] = Tao::SharedSecretPolicyLiberal;
+  for (int i = 0; i < 3; i++) {
+    string pol = policies[i];
+    if (!tao->GetSharedSecret(200, pol, &secrets[i])) {
+      return string("GetSharedSecret failed for policy ") + pol;
+    }
+    if (secrets[i].size() != 200) {
+      return string("GetSharedSecret wrong size for policy ") + pol;
+    }
+    // Different policies should yield different secrets
+    for (int j = 0; j < i; j++) {
+      if (secrets[i] == secrets[j]) return "GetSharedSecret non-unique secret";
+    }
+  }
+  return "";
+}
+
+string doMakeSecrets(Tao *tao) {
+  string err, policies[3], secrets[3], subsecrets[3];
+  err = make3Secrets(tao, policies, secrets);
+  if (err != "") return err;
+  if (!tao->ExtendTaoName("Test1::Test2")) {
+    return "GetSharedSecret Extend failed";
+  }
+  err = make3Secrets(tao, policies, subsecrets);
+  if (err != "") return err;
+  for (int i = 0; i < 3; i++) {
+    string pol = policies[i];
+    if (!WriteStringToFile(string(test_argv[3]) + ".secret-" + pol,
+                           secrets[i])) {
+      return "GetSharedSecret write failed";
+    }
+    if (!WriteStringToFile(string(test_argv[3]) + ".subsecret-" + pol,
+                           subsecrets[i])) {
+      return "GetSharedSecret sub write failed";
+    }
+  }
+  return "GetSharedSecret OK created";
+}
+
+string doCheckSecrets(Tao *tao) {
+  string err, policies[3], secrets[3], subsecrets[3];
+  string oldsecrets[3], oldsubsecrets[3];
+  err = make3Secrets(tao, policies, secrets);
+  if (err != "") return err;
+  if (!tao->ExtendTaoName("Test1::Test2")) {
+    return "GetSharedSecret Extend failed";
+  }
+  err = make3Secrets(tao, policies, subsecrets);
+  if (err != "") return err;
+  for (int i = 0; i < 3; i++) {
+    string pol = policies[i];
+    if (!ReadFileToString(string(test_argv[3]) + ".secret-" + pol,
+                          &oldsecrets[i])) {
+      return "GetSharedSecret read failed";
+    }
+    if (!ReadFileToString(string(test_argv[3]) + ".subsecret-" + pol,
+                          &oldsubsecrets[i])) {
+      return "GetSharedSecret sub read failed";
+    }
+  }
+  // Old and new should match under any policy (for linux host)
+  string errs = "";
+  for (int i = 0; i < 3; i++) {
+    if (secrets[i] != oldsecrets[i])
+      errs += string(", secret mismatch for policy ") + policies[i];
+    if (subsecrets[i] != oldsubsecrets[i])
+      errs += string(", sub secret mismatch for policy ") + policies[i];
+  }
+  // subprin secret and parent secret should not match for non-liberal policies
+  if (secrets[0] == subsecrets[0] || secrets[1] == subsecrets[1]) {
+    errs += ", bad subprin match for non-liberal policy";
+  }
+  // subprin secret and parent secret should match for liberal policy
+  if (secrets[2] != subsecrets[2]) {
+    errs += "mismatch for liberal policy";
+  }
+  if (errs != "") {
+    return "GetSharedSecret failed" + errs;
+  }
+  return "GetSharedSecret OK checked";
+}
+
 string doAttest(Tao *tao) {
   string name;
   if (!tao->GetTaoName(&name)) {
@@ -121,7 +211,6 @@ string doAttest(Tao *tao) {
   tao->Attest(s, &a);
 
   if (!tao->Attest(s, &a)) {
-    std::cout << " died\n";
     return "Attest failed";
   } else if (a.size() == 0) {
     return "Attest empty";
@@ -159,6 +248,10 @@ int doHosted() {
     result = doUnseal(tao);
   else if (op == "attest")
     result = doAttest(tao);
+  else if (op == "makesecrets")
+    result = doMakeSecrets(tao);
+  else if (op == "checksecrets")
+    result = doCheckSecrets(tao);
   else
     result = "Bad op for unit test";
   WriteStringToFile(tempfile, result);
@@ -223,6 +316,29 @@ TEST_F(LinuxHostTest, HostedTest) {
   EXPECT_FALSE(admin_->StopHostedProgram(name));  // should have already exited
   EXPECT_TRUE(ReadFileToString(result_path, &hosted_program_result));
   EXPECT_EQ("Rand OK TaoName OK Extend OK", hosted_program_result);
+}
+
+TEST_F(LinuxHostTest, HostedSecretsTest) {
+  string name;
+  string result_path = *temp_dir_ + "/results";
+  string hosted_program_result;
+  // get some secrets via hosted program
+  EXPECT_TRUE(admin_->StartHostedProgram(
+      test_argv[0], list<string>{"hosted", "makesecrets", result_path}, &name));
+  EXPECT_NE("", name);
+  usleep(250 * 1000);
+  EXPECT_FALSE(admin_->StopHostedProgram(name));  // should have already exited
+  EXPECT_TRUE(ReadFileToString(result_path, &hosted_program_result));
+  EXPECT_EQ("GetSharedSecret OK created", hosted_program_result);
+  // now recheck them via hosted program
+  EXPECT_TRUE(admin_->StartHostedProgram(
+      test_argv[0], list<string>{"hosted", "checksecrets", result_path},
+      &name));
+  EXPECT_NE("", name);
+  usleep(250 * 1000);
+  EXPECT_FALSE(admin_->StopHostedProgram(name));  // should have already exited
+  EXPECT_TRUE(ReadFileToString(result_path, &hosted_program_result));
+  EXPECT_EQ("GetSharedSecret OK checked", hosted_program_result);
 }
 
 TEST_F(LinuxHostTest, HostedSealUnsealTest) {

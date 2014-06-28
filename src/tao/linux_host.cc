@@ -56,7 +56,8 @@ bool LinuxHost::InitStacked(Tao *host_tao) {
     return false;
   }
   scoped_ptr<Keys> keys(
-      new Keys(path_, "linux_host", Keys::Signing | Keys::Crypting));
+      new Keys(path_, "linux_stacked_host",
+               Keys::Signing | Keys::Crypting | Keys::KeyDeriving));
   if (!keys->InitHosted(host_tao, Tao::SealPolicyDefault)) {
     LOG(ERROR) << "Could not obtain keys";
     return false;
@@ -70,7 +71,8 @@ bool LinuxHost::InitRoot(const string &pass) {
   // key so we can do anything, including undoing an extend operation, and no
   // other principal should ever be led to believe otherwise.
   scoped_ptr<Keys> keys(
-      new Keys(path_, "linux_host", Keys::Signing | Keys::Crypting));
+      new Keys(path_, "linux_root_host",
+               Keys::Signing | Keys::Crypting | Keys::KeyDeriving));
   if (!keys->InitNonHosted(pass)) {
     LOG(ERROR) << "Could not unlock keys";
     return false;
@@ -127,6 +129,15 @@ bool LinuxHost::HandleTaoRPC(HostedLinuxProcess *child,
       }
       success =
           tao_host_->GetRandomBytes(child->subprin, rpc.size(), &result_data);
+      break;
+    case TAO_RPC_GET_SHARED_SECRET:
+      LOG(INFO) << "GetSharedSecret() for ::" << elideString(child->subprin);
+      if (!rpc.has_size() || !rpc.has_policy()) {
+        LOG(ERROR) << "Invalid RPC: must supply arguments for GetSharedSecret";
+        break;
+      }
+      success = HandleGetSharedSecret(child->subprin, rpc.size(), rpc.policy(),
+                                      &result_data);
       break;
     case TAO_RPC_ATTEST:
       LOG(INFO) << "Attest() for ::" << elideString(child->subprin);
@@ -365,6 +376,39 @@ bool LinuxHost::HandleStopHostedProgram(const LinuxAdminRPCRequest &rpc,
   }
 }
 
+bool LinuxHost::HandleGetSharedSecret(const string &child_subprin, int size,
+                                      const string &policy,
+                                      string *bytes) const {
+  if (size < 0) {
+    LOG(ERROR) << "Invalid size parameter";
+    return false;
+  }
+  // Chose a unique tag based on policy (and child_subprin).
+  string tag;
+  if (policy == Tao::SharedSecretPolicyDefault ||
+      policy == Tao::SharedSecretPolicyConservative) {
+    // We are using a master key-deriving key shared among all "similar"
+    // LinuxHost instances. For LinuxHost, the default and conservative policies
+    // means any process running the same program binary as the caller hosted on
+    // a "similar" LinuxHost.
+    // TODO(kwalsh) conservative policy could include PID, other child info
+    tag = policy + "|" + child_subprin;
+  } else if (policy == Tao::SharedSecretPolicyLiberal) {
+    // The most liberal we can do is allow any hosted process running on a
+    // "similar" LinuxHost instance.
+    tag = policy;
+  } else {
+    // TODO(kwalsh) support more policies... but how?
+    LOG(ERROR) << "GetSharedSecret policy not supported: " << policy;
+    return false;
+  }
+  if (!tao_host_->GetSharedSecret(tag, size, bytes)) {
+    LOG(ERROR) << "Could not get shared secret";
+    return false;
+  }
+  return true;
+}
+
 bool LinuxHost::HandleSeal(const string &child_subprin, const string &data,
                            const string &policy, string *sealed) const {
   LinuxHostSealedBundle bundle;
@@ -376,6 +420,7 @@ bool LinuxHost::HandleSeal(const string &child_subprin, const string &data,
     // LinuxHost instances. For LinuxHost, the default and conservative policies
     // means any process running the same program binary as the caller hosted on
     // a "similar" LinuxHost.
+    // TODO(kwalsh) conservative policy could include PID, other child info
     bundle.set_policy_info(child_subprin);
   } else if (policy == Tao::SealPolicyLiberal) {
     // The most liberal we can do is allow any hosted process running on a

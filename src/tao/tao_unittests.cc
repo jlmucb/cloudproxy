@@ -63,6 +63,34 @@ TYPED_TEST(TaoTest, SealUnsealTest) {
   EXPECT_EQ(seal_policy, unseal_policy);
 }
 
+/*
+ * No unit test for shared secrets - not implemented by TPMTao, nothing
+ * interesting in SoftTao.
+ */
+/*
+TYPED_TEST(TaoTest, SharedSecretTest) {
+  // same policy and size should yield same secret
+  EXPECT_TRUE(this->tao_->GetSharedSecret(200, def, &bytes1));
+  EXPECT_TRUE(this->tao_->GetSharedSecret(200, def, &bytes2));
+  EXPECT_NE("", bytes1);
+  EXPECT_EQ(bytes1, bytes2);
+  // different policy should yield different secret
+  EXPECT_TRUE(this->tao_->GetSharedSecret(200, any, &bytes3));
+  EXPECT_NE("", bytes3);
+  EXPECT_NE(bytes1, bytes3);
+  // different name should yield different secret for some policies
+  EXPECT_TRUE(this->tao_->GetSharedSecret(200, def, &bytes4));
+  EXPECT_NE("", bytes4);
+  EXPECT_NE(bytes1, bytes4);
+  EXPECT_TRUE(this->tao_->GetSharedSecret(200, self, &bytes4));
+  EXPECT_NE("", bytes4);
+  EXPECT_NE(bytes1, bytes4);
+
+  ASSERT_TRUE(this->tao_->ExtendTaoName("Test1::Test2"));
+  EXPECT_TRUE(this->tao_->GetSharedSecret(200, policy3, &bytes4));
+}
+*/
+
 TYPED_TEST(TaoTest, AttestTest) {
   Statement s;
   s.set_delegate("Key(\"..stuff..\")");

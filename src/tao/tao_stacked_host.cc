@@ -50,6 +50,35 @@ bool TaoStackedHost::GetRandomBytes(const string &child_subprin, size_t size,
   return host_tao_->GetRandomBytes(size, bytes);
 }
 
+bool TaoStackedHost::GetSharedSecret(const string &tag, size_t size,
+                                     string *bytes) const {
+  if (keys_ == nullptr || keys_->KeyDeriver() == nullptr) {
+    // TODO(kwalsh) - Generate new deriver key using shared secret material from
+    // our host, e.g.:
+    // int key_size = 256;
+    // string key_bytes;
+    // if (!host_tao_->GetSharedSecret(key_size, &key_bytes,
+    // SharedSecretPolicyDefault)) {
+    //   LOG(ERROR) << "Stacked tao host could not get shared master secret";
+    //   return false;
+    // }
+    // Keys keys(Keys::KeyDeriving, ...key_bytes...);
+    // if (!keys.DeriveKey(tag, size, bytes)) {
+    //   LOG(ERROR) << "Could not derive shared secret";
+    //   return false;
+    // }
+    // return true;
+    LOG(ERROR) << "Not yet implemented";
+    return false;
+  } else {
+    if (!keys_->DeriveKey(tag, size, bytes)) {
+      LOG(ERROR) << "Could not derive shared secret";
+      return false;
+    }
+    return true;
+  }
+}
+
 bool TaoStackedHost::Attest(const string &child_subprin, Statement *stmt,
                             string *attestation) const {
   // Make sure issuer is identical to (or a subprincipal of) the hosted

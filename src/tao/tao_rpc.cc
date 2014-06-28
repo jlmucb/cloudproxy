@@ -44,6 +44,14 @@ bool TaoRPC::GetRandomBytes(size_t size, string *bytes) {
   return Request(rpc, bytes, nullptr /* policy */);
 }
 
+bool TaoRPC::GetSharedSecret(size_t size, const string &policy, string *bytes) {
+  TaoRPCRequest rpc;
+  rpc.set_rpc(TAO_RPC_GET_SHARED_SECRET);
+  rpc.set_size(size);
+  rpc.set_policy(policy);
+  return Request(rpc, bytes, nullptr /* policy */);
+}
+
 bool TaoRPC::Attest(const Statement &stmt, string *attestation) {
   string serialized_stmt;
   if (!stmt.SerializePartialToString(&serialized_stmt)) {

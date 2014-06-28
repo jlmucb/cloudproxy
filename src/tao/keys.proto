@@ -54,3 +54,9 @@ message SignedData {
   // The serialized protobuf representing this message.
   required bytes data = 2;
 }
+
+message KeyDerivationBuffer {
+  required int32 count = 1;
+  required int32 index = 2;
+  required string tag = 3;
+}

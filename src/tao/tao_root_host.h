@@ -32,11 +32,14 @@ namespace tao {
 /// keys and without the services of any underlying host Tao.
 class TaoRootHost : public TaoHost {
  public:
-  /// Use temporary keys for signing and sealing. This is useful for unit tests.
+  /// Use temporary keys for signing, sealing, and key deriving. This is useful
+  /// for
+  /// unit tests.
   TaoRootHost() {}
 
-  /// Use the provided keys for signing and sealing.
-  /// @param keys A set of signing and crypting keys. Ownership is taken.
+  /// Use the provided keys for signing, sealing, and key deriving.
+  /// @param keys A set of signing, crypting, and key-deriving keys. Ownership
+  /// is taken.
   explicit TaoRootHost(Keys *keys) : keys_(keys) {}
 
   virtual bool Init();
@@ -46,6 +49,8 @@ class TaoRootHost : public TaoHost {
   /// @{
   virtual bool GetRandomBytes(const string &child_subprin, size_t size,
                               string *bytes) const;
+  virtual bool GetSharedSecret(const string &tag, size_t size,
+                               string *bytes) const;
   virtual bool Attest(const string &child_subprin, Statement *stmt,
                       string *attestation) const;
   virtual bool Encrypt(const google::protobuf::Message &data,

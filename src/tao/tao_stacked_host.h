@@ -41,7 +41,9 @@ class TaoStackedHost : public TaoHost {
   /// attestations on behalf of hosted programs, otherwise attestation will
   /// invoke host_tao. If the set contains a crypting key, it will be used for
   /// sealing and unsealing data, otherwise sealing and unsealing will invoke
-  /// host_tao using Tao::SealPolicyDefault.
+  /// host_tao using Tao::SealPolicyDefault. If the set contains a key-deriving
+  /// key, it will be used for generating shared secrets, otherwise generating
+  /// shared secrets will invoke host_tao using Tao::SharedSecretPolicyDefault.
   /// @param host_tao The host tao on top of which this hosted Tao executes.
   TaoStackedHost(Keys *keys, Tao *host_tao)
       : keys_(keys), host_tao_(host_tao) {}
@@ -53,6 +55,8 @@ class TaoStackedHost : public TaoHost {
   /// @{
   virtual bool GetRandomBytes(const string &child_subprin, size_t size,
                               string *bytes) const;
+  virtual bool GetSharedSecret(const string &tag, size_t size,
+                               string *bytes) const;
   virtual bool Attest(const string &child_subprin, Statement *stmt,
                       string *attestation) const;
   virtual bool Encrypt(const google::protobuf::Message &data,

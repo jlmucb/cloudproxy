@@ -128,6 +128,14 @@ class LinuxHost {
   /// Handle a SIGCHLD signal.
   bool HandleChildSignal();
 
+  /// Handle a GetSharedSecret RPC.
+  /// @param child_subprin The name of the requesting hosted program.
+  /// @param size The number of bytes to generate.
+  /// @param policy The policy under which to generate the secret.
+  /// @param[out] bytes The shared secret.
+  bool HandleGetSharedSecret(const string &child_subprin, int size,
+                             const string &policy, string *bytes) const;
+
   /// Handle a Seal RPC.
   /// @param child_subprin The name of the requesting hosted program.
   /// @param data The data to be sealed.

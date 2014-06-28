@@ -32,7 +32,8 @@ using keyczar::CryptoFactory;
 namespace tao {
 bool SoftTao::Init() {
   if (keys_.get() == nullptr) {
-    keys_.reset(new Keys("soft_tao", Keys::Signing | Keys::Crypting));
+    keys_.reset(new Keys("soft_tao",
+                         Keys::Signing | Keys::Crypting | Keys::KeyDeriving));
     if (!keys_->InitTemporary()) {
       LOG(ERROR) << "Could not generate temporary keys";
       return false;
@@ -74,6 +75,26 @@ bool SoftTao::ExtendTaoName(const string &subprin) {
 
 bool SoftTao::GetRandomBytes(size_t size, string *bytes) {
   return CryptoFactory::Rand()->RandBytes(size, bytes);
+}
+
+bool SoftTao::GetSharedSecret(size_t size, const string &policy,
+                              string *bytes) {
+  if (keys_ == nullptr || keys_->KeyDeriver() == nullptr) {
+    failure_msg_ = "SoftTao does not implement shared secrets";
+    LOG(ERROR) << failure_msg_;
+    return false;
+  }
+  if (policy != Tao::SharedSecretPolicyDefault) {
+    failure_msg_ = "SoftTao policies not yet implemented";
+    LOG(ERROR) << failure_msg_;
+    return false;
+  }
+  if (!keys_->DeriveKey("derive shared secret", size, bytes)) {
+    failure_msg_ = "Could not derive shared secret";
+    LOG(ERROR) << failure_msg_;
+    return false;
+  }
+  return true;
 }
 
 bool SoftTao::Attest(const Statement &stmt, string *attestation) {
@@ -137,8 +158,8 @@ SoftTao *SoftTao::DeserializeFromString(const string &params) {
     return nullptr;
   }
   string nickname = FilePath(path).BaseName().value();
-  scoped_ptr<Keys> keys(
-      new Keys(path, nickname, Keys::Signing | Keys::Crypting));
+  scoped_ptr<Keys> keys(new Keys(
+      path, nickname, Keys::Signing | Keys::Crypting | Keys::KeyDeriving));
   if (!keys->InitNonHosted(pass)) {
     LOG(ERROR) << "Could not load keys for SoftTao";
     return nullptr;

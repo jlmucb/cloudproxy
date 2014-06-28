@@ -54,12 +54,21 @@ class TaoHost {
   virtual bool GetRandomBytes(const string &child_subprin, size_t size,
                               string *bytes) const = 0;
 
+  /// Get a shared secret.
+  /// @param tag A unique identifier for the secret. Each tag (and size)
+  /// corresponds to a secret, and different tags (or sizes) will (probably)
+  /// yield different secrets.
+  /// @param size The desired length of the secret.
+  /// @param[out] bytes The secret.
+  virtual bool GetSharedSecret(const string &tag, size_t size,
+                               string *bytes) const = 0;
+
   /// Attest to a statement after modifying it to fill in missing fields.
   /// @param child_subprin. The principal name extension identifying the hosted
   /// program requesting the attestation. This is used for filling in the issuer
   /// field of the statement or checking that the issuer field is reasonable.
   /// @param stmt The partially-completed statement to be attested.
-  /// @param attestation[out] The signed attestation.
+  /// @param[out] attestation The signed attestation.
   virtual bool Attest(const string &child_subprin, Statement *stmt,
                       string *attestation) const = 0;
 

@@ -27,6 +27,7 @@ enum TaoRPCOperation {
   TAO_RPC_ATTEST = 4;
   TAO_RPC_GET_TAO_NAME = 5;
   TAO_RPC_EXTEND_TAO_NAME = 6;
+  TAO_RPC_GET_SHARED_SECRET = 7;
 }
 
 message TaoRPCRequest {

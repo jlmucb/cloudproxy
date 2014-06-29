@@ -39,13 +39,14 @@
 int           g_maxcoeff= -1;   // max coeff calculated
 polynomial**  g_phi= NULL;      // x poly 
 bnum**        g_coeff_y= NULL;  // coefficient of y factor
-short int     g_exp_y= NULL;    // exponent of y
+i16*          g_exp_y= NULL;    // exponent of y
 
 
 // ----------------------------------------------------------------------------
 
 
-// A.mpCopyNum(bnum& bnC), C<--A
+bool evenphirecurrence(int m, bnum& a, bnum& b, bnum& p);
+bool oddphirecurrence(int m, bnum& a, bnum& b, bnum& p);
 
 
 bool initphicalc(int max, bnum& p, int maxnum, bnum& a, bnum& b) {
@@ -66,7 +67,7 @@ bool initphicalc(int max, bnum& p, int maxnum, bnum& a, bnum& b) {
 
   g_phi= new polynomial* [max+1];
   g_coeff_y= new bnum* [max+1];
-  g_exp_y= new short int [max+1];
+  g_exp_y= new i16[max+1];
 
   // phi[0]= 0
   g_phi[0]= new polynomial(p, 1, 1); 
@@ -97,13 +98,13 @@ bool initphicalc(int max, bnum& p, int maxnum, bnum& a, bnum& b) {
   g_exp_y[3]= 0;
   g_phi[3]->c_array_[4]->m_pValue[0]= 3ULL;
   g_phi[3]->c_array_[3]->m_pValue[0]= 0ULL;
-  ZeroNum(t);
+  mpZeroNum(t);
   t.m_pValue[0]= 6ULL;
   mpModMult(t,a,p,*(g_phi[3]->c_array_[2]));
-  ZeroNum(t);
+  mpZeroNum(t);
   t.m_pValue[0]= 12ULL;
   mpModMult(t,b,p,*(g_phi[3]->c_array_[1]));
-  ZeroNum(s);
+  mpZeroNum(s);
   mpModMult(a,a,p,s);
   mpModSub(g_bnZero,s,p,*(g_phi[4]->c_array_[0]));
 
@@ -116,46 +117,46 @@ bool initphicalc(int max, bnum& p, int maxnum, bnum& a, bnum& b) {
 
   g_phi[4]->c_array_[6]->m_pValue[0]= 1ULL;     // x^6
   g_phi[4]->c_array_[5]->m_pValue[0]= 0ULL;
-  ZeroNum(t);
+  mpZeroNum(t);
   t.m_pValue[0]= 5ULL;
   mpModMult(t,a,p,*(g_phi[4]->c_array_[4]));    // 5ax^4
-  ZeroNum(t);
+  mpZeroNum(t);
   t.m_pValue[0]= 20ULL;
   mpModMult(t,b,p,*(g_phi[4]->c_array_[3]));    // 20bx^3
-  ZeroNum(r);
-  ZeroNum(t);
-  ZeroNum(s);
+  mpZeroNum(r);
+  mpZeroNum(t);
+  mpZeroNum(s);
   s.m_pValue[0]= 5ULL;
   mpModMult(a,a,p,t);
   mpModMult(s,t,p,r);
   mpModSub(g_bnZero,r,p,*(g_phi[4]->c_array_[2])); // -5a^2x^2
-  ZeroNum(r);
-  ZeroNum(t);
-  ZeroNum(s);
+  mpZeroNum(r);
+  mpZeroNum(t);
+  mpZeroNum(s);
   mpModMult(a,b,p,t);
   s.m_pValue[0]= 4ULL;
   mpModMult(t,s,p,r);
   mpModSub(g_bnZero,r,p,*(g_phi[4]->c_array_[1])); // -4abx
-  ZeroNum(r);
-  ZeroNum(s);
-  ZeroNum(t);
+  mpZeroNum(r);
+  mpZeroNum(s);
+  mpZeroNum(t);
   mpModMult(b,b,p,t);
   s.m_pValue[0]= 8ULL;
   mpModMult(t,s,p,r);                             // 8b^2
-  ZeroNum(s);
-  ZeroNum(t);
+  mpZeroNum(s);
+  mpZeroNum(t);
   mpModMult(a,a,p,s);
   mpModMult(s,a,p,t);                             // a^3
-  ZeroNum(s);
+  mpZeroNum(s);
   mpModAdd(r,t,p,s);                              // 8b^2+a^3
   mpModSub(g_bnZero,s,p,(*g_phi[4]->c_array_[0])); // -8b^2-a^3
 
   int i;
-  oddphirecurrence(2, a, b);
+  oddphirecurrence(2, a, b, p);
   for(i=3; i+=2;i<=(max-1)/2) {
-    if(!evenphirecurrence(i, a, b))
+    if(!evenphirecurrence(i, a, b, p))
       return false;
-    if(!oddphirecurrence(i, a, b))
+    if(!oddphirecurrence(i, a, b, p))
       return false;
   }
   g_maxcoeff= max;
@@ -164,10 +165,10 @@ bool initphicalc(int max, bnum& p, int maxnum, bnum& a, bnum& b) {
 
 // calculate phi[2m+1]
 // phi[2m+1]= phi[m+2]phi^3[m]-phi[m-1]phi^3[m+1]
-bool oddphirecurrence(int m, bnum& a, bnum& b) {
-  polynomial r(p,numc,size_num);  // Fix: numc and size_num
-  polynomial s(p,numc,size_num);  // Fix: numc and size_num
-  polynomial t(p,numc,size_num);  // Fix: numc and size_num
+bool oddphirecurrence(int m, bnum& a, bnum& b, bnum& p) {
+  polynomial r(p,(2*m+1)*(2*m+1), 2*p.mpSize());
+  polynomial s(p,(2*m+1)*(2*m+1), 2*p.mpSize());
+  polynomial t(p,(2*m+1)*(2*m+1), 2*p.mpSize());
 
   r.ZeroPoly();
   s.ZeroPoly();
@@ -202,10 +203,10 @@ bool oddphirecurrence(int m, bnum& a, bnum& b) {
 
 // calculate phi[2m]
 // phi[2m]= phi[m]/phi[2](phi[m+2]phi^2[m-1]-phi[m-2]phi^2[m+1])
-bool evenphirecurrence(int m, bnum& a, bnum& b) {
-  polynomial r(p,numc,size_num);  // Fix: numc and size_num
-  polynomial s(p,numc,size_num);  // Fix: numc and size_num
-  polynomial t(p,numc,size_num);  // Fix: numc and size_num
+bool evenphirecurrence(int m, bnum& a, bnum& b, bnum& p) {
+  polynomial r(p,(2*m+1)*(2*m+1), 2*p.mpSize());
+  polynomial s(p,(2*m+1)*(2*m+1), 2*p.mpSize());
+  polynomial t(p,(2*m+1)*(2*m+1), 2*p.mpSize());
 
   r.ZeroPoly();
   s.ZeroPoly();

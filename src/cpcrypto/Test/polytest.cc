@@ -1,4 +1,4 @@
-
+//
 //  File: polytest.cc
 //  Description: polynomial test
 //
@@ -31,6 +31,13 @@ using namespace std;
 
 
 // ----------------------------------------------------------------------------
+
+
+extern bool pickS(bnum& p);
+extern int   g_sizeS;
+extern u64  g_S[];
+extern u64  g_tl[];
+extern bool useCRT(bnum& t);
 
 
 int main(int an, char** av) {
@@ -164,6 +171,35 @@ int main(int an, char** av) {
     }
   }
 
+  printf("ECC counting\n");
+  mpZeroNum(p);
+  p.m_pValue[0]= 3671;
+  printf("Prime "); printNumberToConsole(p); printf("\n");
+  if(!pickS(p)) {
+    printf("can't pick primes for ");
+    printNumberToConsole(p);
+    printf("\n");
+    return 0;
+  }
+  printf("pickS got %d primes\n\t", g_sizeS);
+  for(i=0; i<g_sizeS;i++)
+    printf("%lld, ", g_S[i]);
+  printf("\n");
+  for(i=0;i<g_sizeS;i++)
+    g_tl[i]= g_S[i]-1;
+  bnum	solution(2);
+  if(!useCRT(solution)) {
+    printf("can't solve CRT\n");
+    return 1;
+  }
+  printf("tl's\n\t");
+  for(i=0; i<g_sizeS;i++)
+    printf("%lld, ", g_tl[i]);
+  printf("\n");
+
+  printf("CRT solution is ");
+  printNumberToConsole(solution);
+  printf("\n");
   return 0;
 }
 

@@ -19,6 +19,8 @@
 
 #include "common.h"
 #include "bignum.h"
+#include "polyarith.h"
+#include "stdio.h"
 
 // ----------------------------------------------------------------------------
 
@@ -46,19 +48,43 @@
  */
 
 int   g_sizeS= 0;
-u64*  g_S= NULL;
-u64*  g_tl= NULL;
+u64   g_S[512];
+u64   g_tl[512];
 
-extern const i32 s_iSizeofFirstPrimes;
+const i32 sizeofFirstPrimes= 512;
 extern u32 s_rgFirstPrimes[];
 
+// select primes != p until prod>4(sqrt p)
 bool pickS(bnum& p)
 {
   int   j;
-  // select primes != p until prod>4(sqrt p)
+  bnum  v(2*p.mpSize());
+  bnum  w(2*p.mpSize());
+  bnum  prod(2*p.mpSize());
+  bnum  top(2*p.mpSize());
+  u64   nextprime;
+
+  if(!SquareRoot(p, v))
+    return false;
+  mpUAddTo(v, g_bnOne);
+  mpMult(v, g_bnTwo, w);
+  mpMult(w, g_bnTwo, top);
+  prod.m_pValue[0]= 1ULL;
+  for(j=0;j<sizeofFirstPrimes;j++) {
+    nextprime= (u64)s_rgFirstPrimes[j];
+    mpZeroNum(v);
+    mpZeroNum(w);
+    v.m_pValue[0]= nextprime;
+    mpMult(prod,v, w);
+    w.mpCopyNum(prod);
+    g_S[g_sizeS++]= nextprime;
+    if(mpCompare(prod, top)!=s_isLessThan)
+      break;
+  }
   return true;
 }
 
+#if 0
 // compute t (mod 2)
 bool computetmod2(bnum& a, bnum& b, bnum& p, u64* tl)
 {
@@ -70,8 +96,8 @@ bool computetmod2(bnum& a, bnum& b, bnum& p, u64* tl)
 // compute t (mod l)
 bool computetmododdprime(bnum& a, bnum& b, bnum& p, u64 l, u64* tl)
 {
-  i64         pbar
-  polynomial  xprime(l,numc, sizenum);
+  i64         pbar;
+  polynomial  xprime(l,numc, sizenum);;
   polynomial  reduced_xprime(l,numc, sizenum);
   polynomial  yprime(l,numc, sizenum);
   i64         t;
@@ -89,49 +115,61 @@ bool computetmododdprime(bnum& a, bnum& b, bnum& p, u64 l, u64* tl)
   // if(gcd(num((y^p-y[w])/y), phi[l])==1) *tl= -2*w; else *tl= 2w; return true;
   return true;
 }
+#endif
 
 
-bool useCRT(bnum& order)
+bool useCRT(bnum& t)
 {
-  bnum  m1(1);
-  bnum  m2(1);
-  bnum  prodprimes(1);
-  bnum  crt_soln(1);
-  bnum  current_soln(1);
-  bnum  current_prime(1);
-  bnum  current_prime_solution(1);
   int   j;
+  bnum  v(2*t.mpSize());
+  bnum  crt_solution(2*t.mpSize());
+  bnum  current_solution(2*t.mpSize());
+  bnum  current_prime(2*t.mpSize());
+  bnum  current_prime_solution(2*t.mpSize());
+  bnum  prodprimes(2*t.mpSize());
 
   prodprimes.m_pValue[0]= 2ULL;
   current_solution.m_pValue[0]= g_tl[0];
-
   for(j=1; j<g_sizeS;j++) {
-    ZeroNum(current_prime);
-    ZeroNum(current_prime_solution);
-    ZeroNum(crt_solution);
-    ZeroNum(current_prime);
+    mpZeroNum(current_prime);
+    mpZeroNum(current_prime_solution);
+    mpZeroNum(crt_solution);
+    mpZeroNum(current_prime);
     current_prime.m_pValue[0]= g_S[j];
-    current_solution.m_pValue[0]= g_tl[j];
-    if(!mpCRT(current_solution, prodprimes, current_prime_solution, current_prime, crt_soln))
+    current_prime_solution.m_pValue[0]= g_tl[j];
+    if(!mpCRT(current_solution, prodprimes, current_prime_solution, current_prime, crt_solution))
       return false;
-    // prodprimes*= current_prime;
-    // current_solution= crt_soln;
+#if 0
+    printf("current solution ");printNumberToConsole(current_solution); printf(", ");
+    printf("prodprimes ");printNumberToConsole(prodprimes); printf("\n");
+    printf("current prime ");printNumberToConsole(current_prime); printf(", ");
+    printf("current prime solution ");printNumberToConsole(current_prime_solution); printf(", ");
+    printf("crt solution (%lld, %lld) ", g_S[j], g_tl[j]);
+      printNumberToConsole(crt_solution); printf("\n");
+#endif
+    mpZeroNum(current_solution);
+    crt_solution.mpCopyNum(current_solution);
+    mpZeroNum(v);
+    mpMult(prodprimes, current_prime, v);
+    mpZeroNum(prodprimes);
+    v.mpCopyNum(prodprimes);
   }
+  current_solution.mpCopyNum(t);
   return true;
 }
 
 
-bool schoof(bnum& a, bnum& p, bnum& p, bnum& order)
+bool schoof(bnum& a, bnum& b, bnum& p, bnum& order)
 {
-  int   j;
-  i64   pbar;
   bnum  t(order.mpSize());
 
   // pick primes to use
   if(!pickS(p))
     return false;
+#if 0
   g_tl= new u64 [g_sizeS];
-
+  i64   pbar;
+  int   j;
   // make sure division polys have been calculated
   if(!computetmod2(a, b, p, &g_tl[0]))
     return false;
@@ -139,11 +177,12 @@ bool schoof(bnum& a, bnum& p, bnum& p, bnum& order)
     if(!computetmododdprime(a, b, p, g_S[j], &g_tl[j]))
       return false;
   }
+#endif
   if(!useCRT(t))
     return false;
   // #E= p+1-t
-  ZeroNum(order);
-  p.CopyNum(order);
+  mpZeroNum(order);
+  p.mpCopyNum(order);
   mpUAddTo(order, g_bnOne);
   mpUSubFrom(order, t);
   return true;

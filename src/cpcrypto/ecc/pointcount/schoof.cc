@@ -17,6 +17,9 @@
 // the entire License in the file, the file must contain a reference
 // to the location of the License.
 
+#include "common.h"
+#include "bignum.h"
+
 // ----------------------------------------------------------------------------
 
 /*
@@ -41,6 +44,110 @@
  *           if this is 1, d= 2w (mod l), otherwise, d= -2w (mod l)
  *  4. User CRT to compute d, #E(q)= q+1-d, with d in right range for Hasse
  */
+
+int   g_sizeS= 0;
+u64*  g_S= NULL;
+u64*  g_tl= NULL;
+
+extern const i32 s_iSizeofFirstPrimes;
+extern u32 s_rgFirstPrimes[];
+
+bool pickS(bnum& p)
+{
+  int   j;
+  // select primes != p until prod>4(sqrt p)
+  return true;
+}
+
+// compute t (mod 2)
+bool computetmod2(bnum& a, bnum& b, bnum& p, u64* tl)
+{
+  *tl= 0ULL;
+  // if (x^q-x, x^3+ax+b)=1, t=1
+  return true;
+}
+
+// compute t (mod l)
+bool computetmododdprime(bnum& a, bnum& b, bnum& p, u64 l, u64* tl)
+{
+  i64         pbar
+  polynomial  xprime(l,numc, sizenum);
+  polynomial  reduced_xprime(l,numc, sizenum);
+  polynomial  yprime(l,numc, sizenum);
+  i64         t;
+
+  // pbar= p (mod l), |pbar|<l/2
+  // compute xprime= (y^(p^2) - y[pbar])/(x^(q^2)-x[pbar]) -x^(q^2)-x[pbar]
+  // compute reduced_xprime= xprime (mod phi[l])
+  for(t=1; t<=(l-1)/2; t++) {
+    // if (reduced_xprime - x[t]^p (mod phi[l]) !=0) continue;
+    // if ((yprime-y[t]^p)/y= 0 (mod phi[l]) *tl= t; else *tl= -t; return true
+  }
+  // were at (d)
+  // if p is not a square root mod l, *tl= 0; return true;
+  // w= sqrt(p) (mod l)
+  // if(gcd(num((y^p-y[w])/y), phi[l])==1) *tl= -2*w; else *tl= 2w; return true;
+  return true;
+}
+
+
+bool useCRT(bnum& order)
+{
+  bnum  m1(1);
+  bnum  m2(1);
+  bnum  prodprimes(1);
+  bnum  crt_soln(1);
+  bnum  current_soln(1);
+  bnum  current_prime(1);
+  bnum  current_prime_solution(1);
+  int   j;
+
+  prodprimes.m_pValue[0]= 2ULL;
+  current_solution.m_pValue[0]= g_tl[0];
+
+  for(j=1; j<g_sizeS;j++) {
+    ZeroNum(current_prime);
+    ZeroNum(current_prime_solution);
+    ZeroNum(crt_solution);
+    ZeroNum(current_prime);
+    current_prime.m_pValue[0]= g_S[j];
+    current_solution.m_pValue[0]= g_tl[j];
+    if(!mpCRT(current_solution, prodprimes, current_prime_solution, current_prime, crt_soln))
+      return false;
+    // prodprimes*= current_prime;
+    // current_solution= crt_soln;
+  }
+  return true;
+}
+
+
+bool schoof(bnum& a, bnum& p, bnum& p, bnum& order)
+{
+  int   j;
+  i64   pbar;
+  bnum  t(order.mpSize());
+
+  // pick primes to use
+  if(!pickS(p))
+    return false;
+  g_tl= new u64 [g_sizeS];
+
+  // make sure division polys have been calculated
+  if(!computetmod2(a, b, p, &g_tl[0]))
+    return false;
+  for(j=1; j<g_sizeS; j++) {
+    if(!computetmododdprime(a, b, p, g_S[j], &g_tl[j]))
+      return false;
+  }
+  if(!useCRT(t))
+    return false;
+  // #E= p+1-t
+  ZeroNum(order);
+  p.CopyNum(order);
+  mpUAddTo(order, g_bnOne);
+  mpUSubFrom(order, t);
+  return true;
+}
 
 
 // ----------------------------------------------------------------------------

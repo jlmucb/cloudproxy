@@ -41,7 +41,22 @@ public:
   bool Copyfrom(polynomial& from);
   bool Copyto(polynomial& to);
   bool IsZero();
+  bool MultiplyByNum(bnum& c);
 };
+
+
+class rationalpoly {
+public:
+  polynomial* numerator;
+  polynomial* denominator;
+
+  rationalpoly(bnum& p, int numc1, int sizenum1, int numc2, int sizenum2);
+  ~rationalpoly();
+  void ZeroRational();
+  bool Copyfrom(rationalpoly& from);
+  bool Copyto(rationalpoly& to);
+};
+
 
 bool PolyAdd(polynomial& in1, polynomial& in2, polynomial& out);
 bool PolySub(polynomial& in1, polynomial& in2, polynomial& out);

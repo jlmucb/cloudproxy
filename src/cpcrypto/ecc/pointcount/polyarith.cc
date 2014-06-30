@@ -117,6 +117,24 @@ int polynomial::Degree() {
 }
 
 
+bool polynomial::MultiplyByNum(bnum& c) {
+  int j, k, n;
+
+  n= 0;
+  for(j=0;j<numc_;j++) {
+    k= c_array_[j]->mpSize();
+    if(k>n)
+      n= k;
+  }
+  bnum  t(n+1);
+  for(j=0;j<numc_;j++) {
+    mpZeroNum(t);
+    mpModMult(*c_array_[j],c,*characteristic_,t);
+    t.mpCopyNum(*c_array_[j]);
+  }
+  return true;
+}
+
 void printpoly(polynomial& p) {
   int i;
 
@@ -128,6 +146,36 @@ void printpoly(polynomial& p) {
     printf(" * x**%d +", i);
   }
   printf("\n");
+}
+
+
+rationalpoly::rationalpoly(bnum& p, int numc1, int sizenum1, int numc2, int sizenum2) {
+  numerator= new polynomial(p, numc1, sizenum1);
+  denominator= new polynomial(p, numc2, sizenum2);
+}
+
+rationalpoly::~rationalpoly() {
+  delete numerator;
+  delete denominator;
+  numerator= NULL;
+  denominator= NULL;
+}
+
+void rationalpoly::ZeroRational() {
+  numerator->ZeroPoly();
+  denominator->ZeroPoly();
+}
+
+bool rationalpoly::Copyfrom(rationalpoly& from) {
+  numerator->Copyfrom(*from.numerator);
+  denominator->Copyto(*from.denominator);
+  return true;
+}
+
+bool rationalpoly::Copyto(rationalpoly& to) {
+  numerator->ZeroPoly();
+  denominator->ZeroPoly();
+  return true;
 }
 
 

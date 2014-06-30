@@ -84,38 +84,93 @@ bool pickS(bnum& p)
   return true;
 }
 
-#if 0
+// return p_bar= p (mod l), |pbar|<l/2
+i64 Reducedp(bnum& p, u64 l) {
+  return 0;
+}
+
+bool eccMultPoint(polynomial& curve_x_poly, i64 t, polynomial& x_bar, polynomial& y_bar) {
+  return true;
+}
+
 // compute t (mod 2)
-bool computetmod2(bnum& a, bnum& b, bnum& p, u64* tl)
+bool computetmod2(polynomial& curve_x_poly, u64* tl)
 {
-  *tl= 0ULL;
-  // if (x^q-x, x^3+ax+b)=1, t=1
+  int         j;
+  bnum*       p= curve_x_poly.characteristic_;
+  polynomial  result(*p,4,p->mpSize());
+
+  *tl= 1ULL;
+  if(!Reducelargepower(*p, curve_x_poly, result))
+    return false;
+  for(j=1;j<result.numc_;j++) {
+    if(mpCompare(*(result.c_array_[j]), g_bnZero) != s_isEqualTo) {
+      *tl= 0ULL;
+      return true;
+    }
+  }
   return true;
 }
 
 // compute t (mod l)
-bool computetmododdprime(bnum& a, bnum& b, bnum& p, u64 l, u64* tl)
+bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
 {
-  i64         pbar;
-  polynomial  xprime(l,numc, sizenum);;
-  polynomial  reduced_xprime(l,numc, sizenum);
-  polynomial  yprime(l,numc, sizenum);
-  i64         t;
+  u64           j;
+  i64           p_bar= Reducedp(*curve_x_poly.characteristic_, l);
+  int           n= curve_x_poly.characteristic_->mpSize();
+  rationalpoly  x_prime(*curve_x_poly.characteristic_, 5, n, 5, n);
+  rationalpoly  y_prime(*curve_x_poly.characteristic_, 5, n, 5, n);
+  polynomial    reduced_x_p_squared(*curve_x_poly.characteristic_, 5, n);
+  polynomial    reduced_y_p_squared(*curve_x_poly.characteristic_, 5, n);
+  polynomial    reduced_x_j_squared(*curve_x_poly.characteristic_, 5, n);
+  polynomial    reduced_y_j_squared(*curve_x_poly.characteristic_, 5, n);
+  polynomial    x_p_bar(*curve_x_poly.characteristic_, 5, n);
+  polynomial    y_p_bar(*curve_x_poly.characteristic_, 5, n);
+  polynomial    x_j(*curve_x_poly.characteristic_, 5, n);
+  polynomial    y_j(*curve_x_poly.characteristic_, 5, n);
+  bnum          p_squared(2*n+1);
+  bnum          small_num(1);
+  bnum          w(n);  // square root of p
 
-  // pbar= p (mod l), |pbar|<l/2
-  // compute xprime= (y^(p^2) - y[pbar])/(x^(q^2)-x[pbar]) -x^(q^2)-x[pbar]
-  // compute reduced_xprime= xprime (mod phi[l])
-  for(t=1; t<=(l-1)/2; t++) {
-    // if (reduced_xprime - x[t]^p (mod phi[l]) !=0) continue;
-    // if ((yprime-y[t]^p)/y= 0 (mod phi[l]) *tl= t; else *tl= -t; return true
+  mpMult(*curve_x_poly.characteristic_, *curve_x_poly.characteristic_, p_squared);
+  if(!Reducelargepower(p_squared, curve_x_poly, reduced_x_p_squared))
+     return false;
+
+  // Define j(x,y)= (x_j,y_j)
+  //    Compute (x_p_bar, y_p_bar)
+  if(!eccMultPoint(curve_x_poly, p_bar, x_p_bar, y_p_bar))
+    return false;
+
+  //    Compute x_prime= (y^(p^2) - y_p_bar)/(x^(p^2)-x_p_bar]) -x^(p^2)-x_p_bar, reduced by curve
+  //    Compute y_prime
+
+  for(j=1; j<=(l-1)/2; j++) {
+    // compute j(x,y)= (x_j,y_j)
+    if(!eccMultPoint(curve_x_poly, j, x_j, y_j))
+      return false;
+    small_num.m_pValue[0]= j;
+    if(!Reducelargepower(small_num, curve_x_poly, reduced_x_j_squared))
+      return false;
+    // if(x_prime-x_j^p != 0 (mod phi[l]) continue;
+    // compute test= (y_prime-y_j)/y (mod phi[l])
+    // if test==0 *tl= j; else *tl= -j;
+    *tl= j;
+    return true;
   }
-  // were at (d)
-  // if p is not a square root mod l, *tl= 0; return true;
-  // w= sqrt(p) (mod l)
-  // if(gcd(num((y^p-y[w])/y), phi[l])==1) *tl= -2*w; else *tl= 2w; return true;
+
+  // we're at (d)
+  small_num.m_pValue[0]= l;
+  if(!mpModisSquare(*curve_x_poly.characteristic_, small_num)) {
+    *tl= 0;
+    return true;
+  }
+  if(!mpModSquareRoot(*curve_x_poly.characteristic_, small_num, w))
+    return false;
+  u64  small_w= w.m_pValue[0];
+  // if(gcd(num((y^p-y[w])/y), phi[l])==1) *tl= -2*w; else *tl= 2w;
+  *tl= 2*small_w;
   return true;
 }
-#endif
 
 
 bool useCRT(bnum& t)
@@ -139,7 +194,7 @@ bool useCRT(bnum& t)
     current_prime_solution.m_pValue[0]= g_tl[j];
     if(!mpCRT(current_solution, prodprimes, current_prime_solution, current_prime, crt_solution))
       return false;
-#if 0
+#ifdef JLMDEBUG
     printf("current solution ");printNumberToConsole(current_solution); printf(", ");
     printf("prodprimes ");printNumberToConsole(prodprimes); printf("\n");
     printf("current prime ");printNumberToConsole(current_prime); printf(", ");
@@ -162,29 +217,33 @@ bool useCRT(bnum& t)
 bool schoof(bnum& a, bnum& b, bnum& p, bnum& order)
 {
   bnum  t(order.mpSize());
+  bnum  s(order.mpSize());
+  int   n= p.mpSize();
+  polynomial curve_x_poly(p, 4, n);
 
   // pick primes to use
   if(!pickS(p))
     return false;
-#if 0
-  g_tl= new u64 [g_sizeS];
-  i64   pbar;
+  curve_x_poly.c_array_[3]->m_pValue[0]= 1ULL;
+  curve_x_poly.c_array_[2]->m_pValue[0]= 0ULL;
+  a.mpCopyNum(*curve_x_poly.c_array_[1]);
+  b.mpCopyNum(*curve_x_poly.c_array_[0]);
+
   int   j;
   // make sure division polys have been calculated
-  if(!computetmod2(a, b, p, &g_tl[0]))
+  if(!computetmod2(curve_x_poly, &g_tl[0]))
     return false;
   for(j=1; j<g_sizeS; j++) {
-    if(!computetmododdprime(a, b, p, g_S[j], &g_tl[j]))
+    if(!computetmododdprime(curve_x_poly, g_S[j], &g_tl[j]))
       return false;
   }
-#endif
   if(!useCRT(t))
     return false;
   // #E= p+1-t
   mpZeroNum(order);
-  p.mpCopyNum(order);
-  mpUAddTo(order, g_bnOne);
-  mpUSubFrom(order, t);
+  p.mpCopyNum(s);
+  mpUAddTo(s, g_bnOne);
+  mpSub(s, t, order);
   return true;
 }
 

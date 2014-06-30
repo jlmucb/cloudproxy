@@ -15,31 +15,31 @@
 package tao
 
 import (
-  "net/rpc"
+	"net/rpc"
 	"testing"
-  "time"
+	"time"
 
-  "cloudproxy/util"
-  "code.google.com/p/goprotobuf/proto"
+	"cloudproxy/util"
+	"code.google.com/p/goprotobuf/proto"
 )
 
 func TestTaoChanServer(t *testing.T) {
-  serverWrite := make(chan []byte)
-  clientWrite := make(chan []byte)
-  c := &util.ChanReadWriteCloser{
-    R: serverWrite,
-    W: clientWrite,
-  }
+	serverWrite := make(chan []byte)
+	clientWrite := make(chan []byte)
+	c := &util.ChanReadWriteCloser{
+		R: serverWrite,
+		W: clientWrite,
+	}
 
-  s := &util.ChanReadWriteCloser{
-    R: clientWrite,
-    W: serverWrite,
-  }
+	s := &util.ChanReadWriteCloser{
+		R: clientWrite,
+		W: serverWrite,
+	}
 
 	server := rpc.NewServer()
 	tao := new(SoftTao)
-  if err := tao.Init("test", "", ""); err != nil {
-    t.Error(err.Error())
+	if err := tao.Init("test", "", ""); err != nil {
+		t.Error(err.Error())
 	}
 
 	t.Log("Initialized the keys")
@@ -48,64 +48,64 @@ func TestTaoChanServer(t *testing.T) {
 		T: tao,
 	}
 
-  err := server.Register(ts)
+	err := server.Register(ts)
 	if err != nil {
 		panic(err)
 	}
 
 	go server.ServeConn(s)
 
-  tc := &TaoClient{
-    Parent: rpc.NewClient(c),
-  }
-  defer tc.Parent.Close()
+	tc := &TaoClient{
+		Parent: rpc.NewClient(c),
+	}
+	defer tc.Parent.Close()
 
-  b := make([]byte, 10)
-  err = tc.GetRandomBytes(b)
-  if err != nil {
-    t.Error("Couldn't get random bytes:", err)
-  }
+	b := make([]byte, 10)
+	err = tc.GetRandomBytes(b)
+	if err != nil {
+		t.Error("Couldn't get random bytes:", err)
+	}
 
-  t.Log("Got 10 random bytes")
+	t.Log("Got 10 random bytes")
 
-  // Seal, Unseal, and Attest to the bytes
-  sealed, err := tc.Seal(b, []byte(SealPolicyDefault))
-  if err != nil {
-    t.Error("Couldn't seal the data:", err)
-  }
+	// Seal, Unseal, and Attest to the bytes
+	sealed, err := tc.Seal(b, []byte(SealPolicyDefault))
+	if err != nil {
+		t.Error("Couldn't seal the data:", err)
+	}
 
-  unsealed, policy, err := tc.Unseal(sealed)
-  if err != nil {
-    t.Error("Couldn't unseal the data:", err)
-  }
+	unsealed, policy, err := tc.Unseal(sealed)
+	if err != nil {
+		t.Error("Couldn't unseal the data:", err)
+	}
 
-  if string(policy) != SealPolicyDefault {
-    t.Error("Invalid policy returned by the Tao")
-  }
+	if string(policy) != SealPolicyDefault {
+		t.Error("Invalid policy returned by the Tao")
+	}
 
-  if len(unsealed) != len(b) {
-    t.Error("Invalid unsealed length")
-  }
+	if len(unsealed) != len(b) {
+		t.Error("Invalid unsealed length")
+	}
 
-  for i, v := range unsealed {
-    if v != b[i] {
-      t.Errorf("Incorrect value returned at byte %d\n", i)
-    }
-  }
+	for i, v := range unsealed {
+		if v != b[i] {
+			t.Errorf("Incorrect value returned at byte %d\n", i)
+		}
+	}
 
-  stmt := &Statement{
-    // TODO(tmroeder): Issuer, Time, and Expiration are required, but they
-    // should be optional.
-    Issuer: proto.String("test"),
-    Time: proto.Int64(time.Now().UnixNano()),
-    Expiration: proto.Int64(time.Now().UnixNano() + 100),
-    Delegate: proto.String(string(b)),
-  }
+	stmt := &Statement{
+		// TODO(tmroeder): Issuer, Time, and Expiration are required, but they
+		// should be optional.
+		Issuer:     proto.String("test"),
+		Time:       proto.Int64(time.Now().UnixNano()),
+		Expiration: proto.Int64(time.Now().UnixNano() + 100),
+		Delegate:   proto.String(string(b)),
+	}
 
-  _, err = tc.Attest(stmt)
-  if err != nil {
-    t.Error("Couldn't attest to the bytes:", err)
-  }
+	_, err = tc.Attest(stmt)
+	if err != nil {
+		t.Error("Couldn't attest to the bytes:", err)
+	}
 
-  t.Log("All actions worked correctly")
+	t.Log("All actions worked correctly")
 }

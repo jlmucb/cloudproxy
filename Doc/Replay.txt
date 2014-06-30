@@ -49,7 +49,6 @@ succeeds. Or perhaps it would just forward all calls downward and let
 authorization happen at the first level above the TPM. The Tao API would include
 interfaces for creating, managing, and manipulating counters.
 
-
 Option 3: Provide support at every Tao level for hash-tree or other approaches.
 Every Tao host, including the TPM, implements a set of counters and some NV
 storage. Presumably, every hosted program would get one dedicated counter and a
@@ -69,4 +68,86 @@ Similarly, a hosted Tao could either pass calls from its own hosted programs
 down to the underlying Tao (ala option 2), or the hosted Tao could locally
 implement a hash-tree approach using just one or two counters from the
 underlying Tao (ala option 3). 
+
+Option 5: Implement replay-resistant storage without counters. Don't use
+counters at all, rely instead on policies to control access to storage. Each Tao
+provides:
+  void Put(policy, name, data) // creates new slot containing data
+  data = Get(policy, name) // get data from previously created slot
+  void Set(policy, name, data) // overwrite slot with new data
+  void Delete(policy, name) // delete slot
+Note that policy is used in two ways: it defines a namespace to avoid
+unintentional collisions for the name parameter; and it governs access to the
+data. Each Tao level might have resources for storing only a few pieces of data,
+or for storing only small data. Hosted programs can avoid large data by storing
+the actual data elsewhere (e.g. in encrypted but replay-susceptible storage) and
+storing only hashes in the Tao. Hosted programs can avoid using too many slots
+by merging multiple data items into a single slot.
+
+Comments: Counters vs Non-volatile storage
+------------------------------------------
+
+Monotonicic counters are a nice primitive, but
+they are not necessary if replay-resistant non-volatile storage with
+fine-grained authorization is available. Since Tao can authenticate and
+authorize at the level of individual hosted programs (or smaller), a hosted
+program can be sure that no other entity rolled back changes to its data, since
+no other entity has access to the data. Or, at least, that such changes would be
+detected.
+
+Some levels of Tao could just pass all Put/Get/Set/Delete calls down to lower
+layers. The TPM implements particularly restricted storage, so perhaps the first
+Tao layer (i.e. LinuxTao) should implement a version with more available space.
+
+Comments: Rate limiting and buffering
+-------------------------------------
+
+The TPM, at the lowest layer, simply can not perform efficient updates to
+non-volatile storage (or counters). A TPM NV update might take a second or more,
+and we may be rate-limited to around one update per five seconds. Simplistic
+buffering and write-aggregation ruin replay resistance.
+
+During write operations (Put, Set, and Delete), Tao should buffer the write and
+pass back a token T. The hosted process can subsequently invoke Commit(T) which
+will either force or wait for a buffer flush. When Commit(T) returns, the caller
+knows that the corresponding write, and all previous writes, have been
+committed. If the system crashes with dirty buffers, upon startup everything
+rolls back to the state at the last successful commit. (Perhaps we could attempt
+to roll forward some, e.g. if we have signed logs showing changes made since the
+last commit.) The system will then have to make some conservative estimate of
+how much the data may have changed since the last commit.
+
+Consider, for example, an app that issues certificates each marked with a unique
+serial number. The serial numbers need not be sequential, but they need to be
+unique and never reused. The app can store the last-issued serial number in the
+host Tao like, and limit bufferring to (say) N=5 writes like so:
+  During installation:
+    t = Put(self, "serialnum", 0)
+	WriteFile("state.txt", "0")
+	Commit(t)
+  During each startup:
+    x = Get(self, "serialnum")
+	y = ReadFile("state.txt")
+	if (x != y) {
+      // y could be a little ahead or behind x due to buffering of file writes
+      // and/or NV writes. Here, we can just take the NV value and ignore the
+      // file value. Other apps might need to keep (or generate) multiple y
+      // file values to find one that matches x.
+      y = x
+	}
+    // x is reasonably fresh, and there have been no more than N writes
+    // since then, so start issueing from x+N
+    last_issued_serial = x+N
+  During normal operation:
+    last_commit = last_issued_serial
+    loop {
+	  ...
+	  cert.serial = ++last_issued_serial;
+	  WriteFile("state.txt", cert.serial)
+	  t[i] = Put(self, "serialnum", cert.serial)
+	  if (last_issued_serial >= last_commit + N) {
+	    Commit(t[i-N])
+	  }
+	  ...
+	}
 

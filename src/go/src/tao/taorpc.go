@@ -116,6 +116,21 @@ func (tao *TaoRPC) GetRandomBytes(n int) (bytes []byte, err error) {
 	return
 }
 
+func (tao *TaoRPC) GetSharedSecret(n int, policy string) (bytes []byte, err error) {
+	req := new(TaoRPCRequest)
+	op := TaoRPCOperation_TAO_RPC_GET_SHARED_SECRET
+	req.Rpc = &op
+	req.Policy = &policy
+	if n > math.MaxUint32 {
+		tao.err = "Request for too many random bytes"
+		return nil, errors.New(tao.err)
+	}
+	size := int32(n)
+	req.Size = &size
+	err = tao.request(req, &bytes, nil /* policy */)
+	return
+}
+
 func (tao *TaoRPC) Seal(data []byte, policy string) (sealed []byte, err error) {
 	req := new(TaoRPCRequest)
 	op := TaoRPCOperation_TAO_RPC_SEAL

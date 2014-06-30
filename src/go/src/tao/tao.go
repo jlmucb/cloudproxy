@@ -26,6 +26,11 @@ import (
 
 const (
 	HostTaoEnvVar = "GOOGLE_HOST_TAO"
+
+	SharedSecretPolicyDefault = "self"
+	SharedSecretPolicyConservative = "few"
+	SharedSecretPolicyLiberal = "any"
+
 	SealPolicyDefault = "self"
 	SealPolicyConservative = "few"
 	SealPolicyLiberal = "any"
@@ -51,6 +56,9 @@ type Tao interface {
 
 	// GetRandomBytes returns a slice of n random bytes.
 	GetRandomBytes(n int) (bytes []byte, err error)
+
+	// GetSharedSecret returns a slice of n secret bytes.
+	GetSharedSecret(n int, policy string) (bytes []byte, err error)
 
 	// Attest requests the Tao host sign a Statement on behalf of this hosted program.
 	// Attest(stmt *Statement) (*Attestation, error)

@@ -24,13 +24,14 @@ var _ = math.Inf
 type TaoRPCOperation int32
 
 const (
-	TaoRPCOperation_TAO_RPC_UNKNOWN          TaoRPCOperation = 0
-	TaoRPCOperation_TAO_RPC_GET_RANDOM_BYTES TaoRPCOperation = 1
-	TaoRPCOperation_TAO_RPC_SEAL             TaoRPCOperation = 2
-	TaoRPCOperation_TAO_RPC_UNSEAL           TaoRPCOperation = 3
-	TaoRPCOperation_TAO_RPC_ATTEST           TaoRPCOperation = 4
-	TaoRPCOperation_TAO_RPC_GET_TAO_NAME     TaoRPCOperation = 5
-	TaoRPCOperation_TAO_RPC_EXTEND_TAO_NAME  TaoRPCOperation = 6
+	TaoRPCOperation_TAO_RPC_UNKNOWN           TaoRPCOperation = 0
+	TaoRPCOperation_TAO_RPC_GET_RANDOM_BYTES  TaoRPCOperation = 1
+	TaoRPCOperation_TAO_RPC_SEAL              TaoRPCOperation = 2
+	TaoRPCOperation_TAO_RPC_UNSEAL            TaoRPCOperation = 3
+	TaoRPCOperation_TAO_RPC_ATTEST            TaoRPCOperation = 4
+	TaoRPCOperation_TAO_RPC_GET_TAO_NAME      TaoRPCOperation = 5
+	TaoRPCOperation_TAO_RPC_EXTEND_TAO_NAME   TaoRPCOperation = 6
+	TaoRPCOperation_TAO_RPC_GET_SHARED_SECRET TaoRPCOperation = 7
 )
 
 var TaoRPCOperation_name = map[int32]string{
@@ -41,15 +42,17 @@ var TaoRPCOperation_name = map[int32]string{
 	4: "TAO_RPC_ATTEST",
 	5: "TAO_RPC_GET_TAO_NAME",
 	6: "TAO_RPC_EXTEND_TAO_NAME",
+	7: "TAO_RPC_GET_SHARED_SECRET",
 }
 var TaoRPCOperation_value = map[string]int32{
-	"TAO_RPC_UNKNOWN":          0,
-	"TAO_RPC_GET_RANDOM_BYTES": 1,
-	"TAO_RPC_SEAL":             2,
-	"TAO_RPC_UNSEAL":           3,
-	"TAO_RPC_ATTEST":           4,
-	"TAO_RPC_GET_TAO_NAME":     5,
-	"TAO_RPC_EXTEND_TAO_NAME":  6,
+	"TAO_RPC_UNKNOWN":           0,
+	"TAO_RPC_GET_RANDOM_BYTES":  1,
+	"TAO_RPC_SEAL":              2,
+	"TAO_RPC_UNSEAL":            3,
+	"TAO_RPC_ATTEST":            4,
+	"TAO_RPC_GET_TAO_NAME":      5,
+	"TAO_RPC_EXTEND_TAO_NAME":   6,
+	"TAO_RPC_GET_SHARED_SECRET": 7,
 }
 
 func (x TaoRPCOperation) Enum() *TaoRPCOperation {

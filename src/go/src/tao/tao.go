@@ -61,7 +61,7 @@ type Tao interface {
 	GetSharedSecret(n int, policy string) (bytes []byte, err error)
 
 	// Attest requests the Tao host sign a Statement on behalf of this hosted program.
-	// Attest(stmt *Statement) (*Attestation, error)
+	Attest(stmt *Statement) (*Attestation, error)
 
 	// Seal encrypts data so only certain hosted programs can unseal it.
 	Seal(data []byte, policy string) (sealed []byte, err error)

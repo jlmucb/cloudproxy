@@ -20,6 +20,7 @@
 package tao
 
 import (
+	"code.google.com/p/goprotobuf/proto"
 	"errors"
 	"math"
 	"strings"
@@ -82,80 +83,106 @@ func (rpc *TaoRPC) request(req *TaoRPCRequest, data *[]byte, policy *string) err
 	return nil
 }
 
-func (tao *TaoRPC) GetTaoName() (name string, err error) {
+func (rpc *TaoRPC) GetTaoName() (name string, err error) {
 	req := new(TaoRPCRequest)
 	op := TaoRPCOperation_TAO_RPC_GET_TAO_NAME
 	req.Rpc = &op
 	var data []byte
-	err = tao.request(req, &data, nil /* policy */)
+	err = rpc.request(req, &data, nil /* policy */)
 	if err == nil {
 		name = string(data)
 	}
 	return
 }
 
-func (tao *TaoRPC) ExtendTaoName(subprin string) error {
+func (rpc *TaoRPC) ExtendTaoName(subprin string) error {
 	req := new(TaoRPCRequest)
 	op := TaoRPCOperation_TAO_RPC_EXTEND_TAO_NAME
 	req.Rpc = &op
 	req.Data = []byte(subprin)
-	return tao.request(req, nil /* data */, nil /* policy */)
+	return rpc.request(req, nil /* data */, nil /* policy */)
 }
 
-func (tao *TaoRPC) GetRandomBytes(n int) (bytes []byte, err error) {
+func (rpc *TaoRPC) GetRandomBytes(n int) (bytes []byte, err error) {
 	req := new(TaoRPCRequest)
 	op := TaoRPCOperation_TAO_RPC_GET_RANDOM_BYTES
 	req.Rpc = &op
 	if n > math.MaxUint32 {
-		tao.err = "Request for too many random bytes"
-		return nil, errors.New(tao.err)
+		rpc.err = "Request for too many random bytes"
+		return nil, errors.New(rpc.err)
 	}
 	size := int32(n)
 	req.Size = &size
-	err = tao.request(req, &bytes, nil /* policy */)
+	err = rpc.request(req, &bytes, nil /* policy */)
 	return
 }
 
-func (tao *TaoRPC) GetSharedSecret(n int, policy string) (bytes []byte, err error) {
+func (rpc *TaoRPC) GetSharedSecret(n int, policy string) (bytes []byte, err error) {
 	req := new(TaoRPCRequest)
 	op := TaoRPCOperation_TAO_RPC_GET_SHARED_SECRET
 	req.Rpc = &op
 	req.Policy = &policy
 	if n > math.MaxUint32 {
-		tao.err = "Request for too many random bytes"
-		return nil, errors.New(tao.err)
+		rpc.err = "Request for too many random bytes"
+		return nil, errors.New(rpc.err)
 	}
 	size := int32(n)
 	req.Size = &size
-	err = tao.request(req, &bytes, nil /* policy */)
+	err = rpc.request(req, &bytes, nil /* policy */)
 	return
 }
 
-func (tao *TaoRPC) Seal(data []byte, policy string) (sealed []byte, err error) {
+func (rpc *TaoRPC) Attest(stmt *Statement) (*Attestation, error) {
+	data, err := proto.Marshal(stmt)
+	if err != nil {
+		_, ok := err.(*proto.RequiredNotSetError)
+		if !ok {
+			rpc.err = "Can't serialize statement"
+			return nil, err
+		}
+	}
+	req := new(TaoRPCRequest)
+	op := TaoRPCOperation_TAO_RPC_ATTEST
+	req.Rpc = &op
+	req.Data = data
+	var adata []byte
+	err = rpc.request(req, &adata, nil /* policy */)
+	if err != nil {
+		return nil, err
+	}
+	var a Attestation
+	err = proto.Unmarshal(adata, &a)
+	if err != nil {
+		return nil, err
+	}
+	return &a, nil
+}
+
+func (rpc *TaoRPC) Seal(data []byte, policy string) (sealed []byte, err error) {
 	req := new(TaoRPCRequest)
 	op := TaoRPCOperation_TAO_RPC_SEAL
 	req.Rpc = &op
 	req.Data = data
 	req.Policy = &policy
-	err = tao.request(req, &sealed, nil /* policy */)
+	err = rpc.request(req, &sealed, nil /* policy */)
 	return
 }
 
-func (tao *TaoRPC) Unseal(sealed []byte) (data []byte, policy string, err error) {
+func (rpc *TaoRPC) Unseal(sealed []byte) (data []byte, policy string, err error) {
 	req := new(TaoRPCRequest)
 	op := TaoRPCOperation_TAO_RPC_UNSEAL
 	req.Rpc = &op
 	req.Data = sealed
-	err = tao.request(req, &data, &policy)
+	err = rpc.request(req, &data, &policy)
 	return
 }
 
-func (tao *TaoRPC) GetRecentErrorMessage() string {
-	return tao.err
+func (rpc *TaoRPC) GetRecentErrorMessage() string {
+	return rpc.err
 }
 
-func (tao *TaoRPC) ResetRecentErrorMessage() string {
-	err := tao.err
-	tao.err = ""
+func (rpc *TaoRPC) ResetRecentErrorMessage() string {
+	err := rpc.err
+	rpc.err = ""
 	return err
 }

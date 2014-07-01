@@ -28,7 +28,28 @@ const (
 	server_addr = server_host + ":" + server_port
 )
 
-func doTCPServer() {
+func simpleRequest(conn net.Conn, request string) {
+	fmt.Fprintf(conn, "%s\n", request)
+	msg, err := bufio.NewReader(conn).ReadString('\n')
+	if err != nil {
+		fmt.Printf("Can't read: ", err.Error())
+		return
+	}
+	fmt.Printf("Got reply: %s\n", msg)
+}
+
+func simpleResponse(conn net.Conn, response string) {
+	defer conn.Close()
+	msg, err := bufio.NewReader(conn).ReadString('\n')
+	if err != nil {
+		fmt.Printf("Can't read: ", err.Error())
+		return
+	}
+	fmt.Printf("Got message: %s\n", msg)
+	fmt.Fprintf(conn, "%s\n", response)
+}
+
+func doTCPServer(responder func(net.Conn)) {
 	fmt.Printf("Entering TCP server mode\n")
 	sock, err := net.Listen("tcp", server_addr)
     if err != nil {
@@ -44,22 +65,11 @@ func doTCPServer() {
             return
         }
         // Handle connections in a new goroutine.
-        go simpleResponse(conn, "OK\n")
+        go responder(conn)
     }
 }
 
-func simpleResponse(conn net.Conn, response string) {
-	defer conn.Close()
-	msg, err := bufio.NewReader(conn).ReadString('\n')
-	if err != nil {
-		fmt.Printf("Can't read: ", err.Error())
-		return
-	}
-	fmt.Printf("Got message: %s\n", msg)
-	fmt.Fprintf(conn, response)
-}
-
-func doTCPClient() {
+func doTCPClient(requester func(net.Conn)) {
 	fmt.Printf("Entering TCP client mode\n")
 	conn, err := net.Dial("tcp", server_addr)
 	if err != nil {
@@ -67,13 +77,7 @@ func doTCPClient() {
 		return
 	}
 	defer conn.Close()
-	fmt.Fprintf(conn, "Hello\n")
-	msg, err := bufio.NewReader(conn).ReadString('\n')
-	if err != nil {
-		fmt.Printf("Can't read: ", err.Error())
-		return
-	}
-	fmt.Printf("Got reply: %s\n", msg)
+	requester(conn)
 }
 
 /// Generate self-signed x509 cert.
@@ -83,11 +87,10 @@ const (
 	x509keySize = 2048
 )
 
-func GenerateX509() (certPemBytes []byte, keyPemBytes []byte, err error) {
-
+func GenerateX509() (cert tls.Certificate, certPemBytes []byte, keyPemBytes []byte, err error) {
 	priv, err := rsa.GenerateKey(rand.Reader, x509keySize)
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 
 	notBefore := time.Now()
@@ -96,7 +99,7 @@ func GenerateX509() (certPemBytes []byte, keyPemBytes []byte, err error) {
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 
 	template := x509.Certificate{
@@ -122,15 +125,22 @@ func GenerateX509() (certPemBytes []byte, keyPemBytes []byte, err error) {
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 
 	certPemBytes = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 	keyPemBytes = pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
-	return certPemBytes, keyPemBytes, nil
+
+	cert, err = tls.X509KeyPair(certPem, keyPem)
+	if err != nil {
+		fmt.Printf("Can't parse my cert\n")
+		return
+	}
+
+	return
 }
 
-func doTLSServer() {
+func doTLSServer(responder func(net.Conn)) {
 	fmt.Printf("Entering TLS server mode\n")
 
 	certPem, keyPem, err := GenerateX509()
@@ -163,11 +173,11 @@ func doTLSServer() {
             return
         }
         // Handle connections in a new goroutine.
-        go simpleResponse(conn, "OK Secret\n")
+        go responder(conn)
     }
 }
 
-func doTLSClient() {
+func doTLSClient(requester func(net.Conn)) {
 	fmt.Printf("Entering TLS client mode\n")
 
 	certPem, keyPem, err := GenerateX509()
@@ -192,13 +202,27 @@ func doTLSClient() {
 		return
 	}
 	defer conn.Close()
-	fmt.Fprintf(conn, "Secret Hello\n")
-	msg, err := bufio.NewReader(conn).ReadString('\n')
+	requester(conn)
+}
+
+func getDelegation(certPem []byte) (delegation Attestation, err error) {
+	// todo: serialize in keyczar json format, then base64w
+	key_name, err := GetPrincipalName(certPem)
 	if err != nil {
-		fmt.Printf("Can't read: ", err.Error())
 		return
 	}
-	fmt.Printf("Got reply: %s\n", msg)
+	stmt Statement
+	stmt.Delegate = key_name
+	delegation, err = tao.Host().Attest(stmt)
+	if err != nil {
+		fmt.Printf("Can't get delegation for my key")
+		return
+	}
+	return
+}
+
+func simpleRequest(conn net.Conn, request string) {
+	
 }
 
 func main() {
@@ -276,17 +300,29 @@ func main() {
 
 	if len(os.Args) > 1 {
 		if os.Args[1] == "-tcpclient" {
-			doTCPClient()
+			doTCPClient(func(conn net.Conn) {
+				simpleRequest(conn, "Plaintext Hello")
+			})
 		} else if os.Args[1] == "-tcpserver" {
-			doTCPServer()
+			doTCPServer(func(conn net.Conn) {
+				simpleResponse(conn, "Plaintext OK")
+			})
 		} else if os.Args[1] == "-tlsclient" {
-			doTLSClient()
+			doTLSClient(func(conn net.Conn) {
+				simpleRequest(conn, "Encrypted Hello")
+			})
 		} else if os.Args[1] == "-tlsserver" {
-			doTLSServer()
+			doTLSServer(func(conn net.Conn) {
+				simpleResponse(conn, "Encrypted OK")
+			})
 		} else if os.Args[1] == "-taoclient" {
-			//doTaoClient()
+			doTaoClient(func(conn net.Conn) {
+				authRequest(conn, "Tao-Authenticated Hello")
+			})
 		} else if os.Args[1] == "-taoserver" {
-			//doTaoServer()
+			doTaoServer(func(conn net.Conn) {
+				authResponse(conn, "Tao-Authenticated OK")
+			})
 		}
 	}
 }

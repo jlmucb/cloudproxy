@@ -28,10 +28,10 @@
 using std::string;
 
 using tao::CreateTempDir;
-using tao::DeserializePublicKey;
+// using tao::DeserializePublicKey;
 using tao::Keys;
 using tao::ScopedTempDir;
-using tao::SerializePublicKey;
+// using tao::SerializePublicKey;
 using tao::SoftTao;
 using tao::Tao;
 
@@ -90,6 +90,7 @@ TEST_F(TaoKeysTest, SignVerifyDataTest) {
       << "The signature did not pass verification";
 }
 
+/*
 TEST_F(TaoKeysTest, SerializeKeyTest) {
   string s;
   ASSERT_TRUE(keys_->SerializePublicKey(&s))  // serializes Signer
@@ -114,6 +115,7 @@ TEST_F(TaoKeysTest, SerializeKeyTest) {
   ASSERT_TRUE(SerializePublicKey(*public_key, &s2));
   ASSERT_EQ(s, s2);
 }
+*/
 
 TEST_F(TaoKeysTest, WrongContextTest) {
   string message("Test message");

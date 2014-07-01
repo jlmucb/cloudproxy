@@ -86,30 +86,6 @@ typedef scoped_ptr_malloc<RSA, CallUnlessNull<RSA, RSA_free>> ScopedRsa;
 /// A smart pointer to an OpenSSL BIO object.
 typedef scoped_ptr_malloc<BIO, CallUnlessNull<BIO, BIO_free_all>> ScopedBio;
 
-/// Load a clear-text ECDSA verifier key.
-/// @param path The location of the key on disk.
-/// @param[in,out] key A scoped Verifier to fill with the key.
-/// TODO(kwalsh) Eventually, this function should be removed.
-bool LoadVerifierKey(const string &path, scoped_ptr<keyczar::Verifier> *key);
-
-/// Load a password-protected ECDSA signing private key.
-/// @param path path The location of the key on disk.
-/// @param password The password used to encrypt the key on disk.
-/// TODO(kwalsh) Eventually, this function should be removed.
-bool LoadSigningKey(const string &path, const string &password,
-                    scoped_ptr<keyczar::Signer> *key);
-
-/// Convert a serialized verifier key representation to an in-memory key.
-/// @param s The serialized key.
-/// @param[out] key A verifier key created from this public key.
-bool DeserializePublicKey(const string &s, scoped_ptr<keyczar::Verifier> *key);
-
-/// Convert a Keyczar public key to a serialized string. If the key is
-/// actually a Signer, only the public half will be serialized.
-/// @param key The key to serialize.
-/// @param[out] s The serialized key.
-bool SerializePublicKey(const keyczar::Verifier &key, string *serialized_key);
-
 /// Convert a Keyczar public key to a Tao principal name.
 /// @param key The key to be converted.
 /// @param[out] name The name, encoded as Key("..base64w-encoded-data..").
@@ -138,67 +114,6 @@ bool SignData(const keyczar::Signer &key, const string &data,
 /// @param key The key to use for verification.
 bool VerifySignature(const keyczar::Verifier &key, const string &data,
                      const string &context, const string &signature);
-
-/// Make a (deep) copy of a Signer, either a signing or a key-derivation key.
-/// @param key The key to be copied.
-/// @param[out] copy The key to fill with the copy.
-bool CopySigner(const keyczar::Signer &key, scoped_ptr<keyczar::Signer> *copy);
-
-/// Make a (deep) copy of a Verifier or the public half of a Signer.
-/// @param key The key to be copied. If key is actually a Signer, only
-/// the public half will be copied.
-/// @param[out] copy The key to fill with the copy.
-bool CopyVerifier(const keyczar::Verifier &key,
-                  scoped_ptr<keyczar::Verifier> *copy);
-
-/// Make a (deep) copy of a Crypter.
-/// @param key The key to be copied.
-/// @param[out] copy The key to fill with the copy.
-bool CopyCrypter(const keyczar::Crypter &key,
-                 scoped_ptr<keyczar::Crypter> *copy);
-
-/// Derive a key from a main key.
-/// @param key The key to use for key derivation.
-/// @param name A unique name for the derived key.
-/// @param size The size of the material to be derived.
-/// @param[out] material The key material derived from main_key.
-bool DeriveKey(const keyczar::Signer &key, const string &name, size_t size,
-               string *material);
-
-/// Convert a keyczar private signing key to an OpenSSL EVP_PKEY structure.
-/// Only the primary key from the keyset is exported. The resulting EVP_PKEY
-/// will contain both public and private keys.
-/// @param key The keyczar key to export.
-/// @param evp_key[out] The new OpenSSL EVP_PKEY.
-bool ExportPrivateKeyToOpenSSL(const keyczar::Signer &key,
-                               ScopedEvpPkey *evp_key);
-
-/// Convert a keyczar public signing key to an OpenSSL EVP_PKEY structure.
-/// Only the primary key from the keyset is exported. The EVP_PKEY will
-/// contain only a public key, even if key is actually a keyczar::Signer.
-/// @param key The keyczar key to export.
-/// @param evp_key[out] The new OpenSSL EVP_PKEY.
-bool ExportPublicKeyToOpenSSL(const keyczar::Verifier &key,
-                              ScopedEvpPkey *evp_key);
-
-/// Create a self-signed X509 certificate for a key.
-/// @param key The key to use for both the subject and the issuer.
-/// @param details The x509 details for the subject.
-/// @param[out] pem_cert The serialized PEM-format self-signed certificate.
-bool CreateSelfSignedX509(const keyczar::Signer &key,
-                          const X509Details &details, string *pem_cert);
-
-/// Create a CA-signed X509 certificate for a key.
-/// @param ca_key The key to use for the issuer.
-/// @param ca_cert_path The location of the issuer certificate.
-/// @param cert_serial The serial number to use for the new certificate.
-/// @param subject_key The key to use for the subject.
-/// @param subject_details The x509 details for the subject.
-/// @param[out] pem_cert The serialized PEM-format signed certificate chain.
-bool CreateCASignedX509(const keyczar::Signer &ca_key,
-                        const string &ca_cert_path, int cert_serial,
-                        const keyczar::Verifier &subject_key,
-                        const X509Details &subject_details, string *pem_cert);
 
 /// Serialize an openssl X509 structure in PEM format.
 /// @param x509 The certificate to serialize.
@@ -373,7 +288,7 @@ class Keys {
 
   /// Convert the managed signing public key to a serialized string.
   /// @param[out] s The serialized key.
-  bool SerializePublicKey(string *s) const;
+  // bool SerializePublicKey(string *s) const;
 
   /// Sign data with the managed signing private key.
   /// @param data The data to sign.
@@ -405,21 +320,21 @@ class Keys {
 
   /// Make a (deep) copy of the managed signing private key.
   /// @param[out] copy The key to fill with the copy.
-  bool CopySigner(scoped_ptr<keyczar::Signer> *copy) const;
+  // bool CopySigner(scoped_ptr<keyczar::Signer> *copy) const;
 
   /// Make a (deep) copy of the managed key-derivation key.
   /// @param[out] copy The key to fill with the copy.
-  bool CopyKeyDeriver(scoped_ptr<keyczar::Signer> *copy) const;
+  // bool CopyKeyDeriver(scoped_ptr<keyczar::Signer> *copy) const;
 
   /// Make a (deep) copy of the managed Verifier or the public half of the
   /// managed Signer.
   /// @param[out] copy The key to fill with the copy.
-  bool CopyVerifier(scoped_ptr<keyczar::Verifier> *copy) const;
+  // bool CopyVerifier(scoped_ptr<keyczar::Verifier> *copy) const;
 
   /// Make a (deep) copy of the managed Crypter.
   /// @param key The key to be copied.
   /// @param[out] copy The key to fill with the copy.
-  bool CopyCrypter(scoped_ptr<keyczar::Crypter> *copy) const;
+  // bool CopyCrypter(scoped_ptr<keyczar::Crypter> *copy) const;
 
   /// Derive key material from the managed key-derivation key.
   /// @param name A unique name for the derived key.

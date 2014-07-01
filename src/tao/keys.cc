@@ -214,12 +214,20 @@ static bool LoadKey(KeyType::Type key_type, const string &path,
   return true;
 }
 
+/// Load a clear-text ECDSA verifier key.
+/// @param path The location of the key on disk.
+/// @param[in,out] key A scoped Verifier to fill with the key.
+/// TODO(kwalsh) Eventually, this function should be removed.
 bool LoadVerifierKey(const string &path, scoped_ptr<Verifier> *key) {
   return LoadKey(KeyType::ECDSA_PUB, path, nullptr /* no passwd */, key);
 }
 
-bool LoadSigningKey(const string &path, const string &password,
-                    scoped_ptr<Signer> *key) {
+/// Load a password-protected ECDSA signing private key.
+/// @param path path The location of the key on disk.
+/// @param password The password used to encrypt the key on disk.
+/// TODO(kwalsh) Eventually, this function should be removed.
+static bool LoadSigningKey(const string &path, const string &password,
+                           scoped_ptr<Signer> *key) {
   return LoadKey(KeyType::ECDSA_PRIV, path, &password, key);
 }
 
@@ -233,7 +241,10 @@ static bool LoadCryptingKey(const string &path, const string &password,
   return LoadKey(KeyType::AES, path, &password, key);
 }
 
-bool DeserializePublicKey(const string &s, scoped_ptr<Verifier> *key) {
+/// Convert a serialized verifier key representation to an in-memory key.
+/// @param s The serialized key.
+/// @param[out] key A verifier key created from this public key.
+static bool DeserializePublicKey(const string &s, scoped_ptr<Verifier> *key) {
   if (key == nullptr) {
     LOG(ERROR) << "null key";
     return false;
@@ -314,7 +325,11 @@ static KeyType::Type KeyTypeToPublic(KeyType::Type key_type) {
     return key_type;
 }
 
-bool SerializePublicKey(const Verifier &key, string *s) {
+/// Convert a Keyczar public key to a serialized string. If the key is
+/// actually a Signer, only the public half will be serialized.
+/// @param key The key to serialize.
+/// @param[out] s The serialized key.
+static bool SerializePublicKey(const Verifier &key, string *s) {
   if (s == nullptr) {
     LOG(ERROR) << "Could not serialize to a null string";
     return false;
@@ -486,7 +501,10 @@ static bool CopyKeyset(const Keyset &keyset, scoped_ptr<Keyset> *copy) {
   return true;
 }
 
-bool CopySigner(const Signer &key, scoped_ptr<Signer> *copy) {
+/// Make a (deep) copy of a Signer, either a signing or a key-derivation key.
+/// @param key The key to be copied.
+/// @param[out] copy The key to fill with the copy.
+static bool CopySigner(const Signer &key, scoped_ptr<Signer> *copy) {
   scoped_ptr<Keyset> keyset;
   if (!CopyKeyset(*key.keyset(), &keyset)) {
     LOG(ERROR) << "Could not copy Signer keyset";
@@ -501,7 +519,11 @@ bool CopySigner(const Signer &key, scoped_ptr<Signer> *copy) {
   return true;
 }
 
-bool CopyVerifier(const Verifier &key, scoped_ptr<Verifier> *copy) {
+/// Make a (deep) copy of a Verifier or the public half of a Signer.
+/// @param key The key to be copied. If key is actually a Signer, only
+/// the public half will be copied.
+/// @param[out] copy The key to fill with the copy.
+static bool CopyVerifier(const Verifier &key, scoped_ptr<Verifier> *copy) {
   scoped_ptr<Keyset> keyset;
   if (!CopyKeyset(*key.keyset(), &keyset)) {
     LOG(ERROR) << "Could not copy Verifier keyset";
@@ -516,7 +538,10 @@ bool CopyVerifier(const Verifier &key, scoped_ptr<Verifier> *copy) {
   return true;
 }
 
-bool CopyCrypter(const Crypter &key, scoped_ptr<Crypter> *copy) {
+/// Make a (deep) copy of a Crypter.
+/// @param key The key to be copied.
+/// @param[out] copy The key to fill with the copy.
+static bool CopyCrypter(const Crypter &key, scoped_ptr<Crypter> *copy) {
   scoped_ptr<Keyset> keyset;
   if (!CopyKeyset(*key.keyset(), &keyset)) {
     LOG(ERROR) << "Could not copy Crypter keyset";
@@ -531,8 +556,13 @@ bool CopyCrypter(const Crypter &key, scoped_ptr<Crypter> *copy) {
   return true;
 }
 
-bool DeriveKey(const keyczar::Signer &key, const string &name, size_t size,
-               string *material) {
+/// Derive a key from a main key.
+/// @param key The key to use for key derivation.
+/// @param name A unique name for the derived key.
+/// @param size The size of the material to be derived.
+/// @param[out] material The key material derived from main_key.
+static bool DeriveKey(const keyczar::Signer &key, const string &name,
+                      size_t size, string *material) {
   if (material == nullptr) {
     LOG(ERROR) << "Invalid DeriveKey parameters";
     return false;
@@ -685,7 +715,13 @@ static bool ExportKeysetToOpenSSL(const Keyset &keyset, bool include_private,
   return true;
 }
 
-bool ExportPrivateKeyToOpenSSL(const Signer &key, ScopedEvpPkey *evp_key) {
+/// Convert a keyczar private signing key to an OpenSSL EVP_PKEY structure.
+/// Only the primary key from the keyset is exported. The resulting EVP_PKEY
+/// will contain both public and private keys.
+/// @param key The keyczar key to export.
+/// @param evp_key[out] The new OpenSSL EVP_PKEY.
+static bool ExportPrivateKeyToOpenSSL(const Signer &key,
+                                      ScopedEvpPkey *evp_key) {
   if (evp_key == nullptr) {
     LOG(ERROR) << "null evp_key";
     return false;
@@ -693,7 +729,13 @@ bool ExportPrivateKeyToOpenSSL(const Signer &key, ScopedEvpPkey *evp_key) {
   return ExportKeysetToOpenSSL(*key.keyset(), true /* private too */, evp_key);
 }
 
-bool ExportPublicKeyToOpenSSL(const Verifier &key, ScopedEvpPkey *evp_key) {
+/// Convert a keyczar public signing key to an OpenSSL EVP_PKEY structure.
+/// Only the primary key from the keyset is exported. The EVP_PKEY will
+/// contain only a public key, even if key is actually a keyczar::Signer.
+/// @param key The keyczar key to export.
+/// @param evp_key[out] The new OpenSSL EVP_PKEY.
+static bool ExportPublicKeyToOpenSSL(const Verifier &key,
+                                     ScopedEvpPkey *evp_key) {
   if (evp_key == nullptr) {
     LOG(ERROR) << "null evp_key";
     return false;
@@ -932,8 +974,12 @@ Verifier *VerifierFromX509(const string &serialized_cert) {
   return verifier.release();
 }
 
-bool CreateSelfSignedX509(const Signer &key, const X509Details &details,
-                          string *pem_cert) {
+/// Create a self-signed X509 certificate for a key.
+/// @param key The key to use for both the subject and the issuer.
+/// @param details The x509 details for the subject.
+/// @param[out] pem_cert The serialized PEM-format self-signed certificate.
+static bool CreateSelfSignedX509(const Signer &key, const X509Details &details,
+                                 string *pem_cert) {
   // we need an openssl version of the key to create and sign the x509 cert
   ScopedEvpPkey evp_key;
   if (!ExportPrivateKeyToOpenSSL(key, &evp_key)) return false;
@@ -983,9 +1029,17 @@ Keys::Keys(keyczar::Verifier *verifying_key, keyczar::Signer *signing_key,
 
 Keys::~Keys() {}
 
-bool CreateCASignedX509(const Signer &ca_key, const string &ca_cert_path,
-                        int cert_serial, const Verifier &subject_key,
-                        const X509Details &subject_details, string *pem_cert) {
+/// Create a CA-signed X509 certificate for a key.
+/// @param ca_key The key to use for the issuer.
+/// @param ca_cert_path The location of the issuer certificate.
+/// @param cert_serial The serial number to use for the new certificate.
+/// @param subject_key The key to use for the subject.
+/// @param subject_details The x509 details for the subject.
+/// @param[out] pem_cert The serialized PEM-format signed certificate chain.
+static bool CreateCASignedX509(const Signer &ca_key, const string &ca_cert_path,
+                               int cert_serial, const Verifier &subject_key,
+                               const X509Details &subject_details,
+                               string *pem_cert) {
   if (!pem_cert) {
     LOG(ERROR) << "null pem";
     return false;
@@ -1257,13 +1311,13 @@ Verifier *Keys::Verifier() const {
     return signer_.get();
 }
 
-bool Keys::SerializePublicKey(string *s) const {
-  if (!Verifier()) {
-    LOG(ERROR) << "No managed verifier";
-    return false;
-  }
-  return tao::SerializePublicKey(*Verifier(), s);
-}
+// bool Keys::SerializePublicKey(string *s) const {
+//   if (!Verifier()) {
+//     LOG(ERROR) << "No managed verifier";
+//     return false;
+//   }
+//   return tao::SerializePublicKey(*Verifier(), s);
+// }
 
 bool Keys::Sign(const string &data, const string &context,
                 string *signature) const {
@@ -1299,37 +1353,37 @@ bool Keys::Decrypt(const string &encrypted, string *data) const {
   return Crypter()->Decrypt(encrypted, data);
 }
 
-bool Keys::CopySigner(scoped_ptr<keyczar::Signer> *copy) const {
-  if (!Signer()) {
-    LOG(ERROR) << "No managed signer";
-    return false;
-  }
-  return tao::CopySigner(*Signer(), copy);
-}
-
-bool Keys::CopyKeyDeriver(scoped_ptr<keyczar::Signer> *copy) const {
-  if (!KeyDeriver()) {
-    LOG(ERROR) << "No managed key-deriver";
-    return false;
-  }
-  return tao::CopySigner(*KeyDeriver(), copy);
-}
-
-bool Keys::CopyVerifier(scoped_ptr<keyczar::Verifier> *copy) const {
-  if (!Verifier()) {
-    LOG(ERROR) << "No managed verifier";
-    return false;
-  }
-  return tao::CopyVerifier(*Verifier(), copy);
-}
-
-bool Keys::CopyCrypter(scoped_ptr<keyczar::Crypter> *copy) const {
-  if (!Crypter()) {
-    LOG(ERROR) << "No managed crypter";
-    return false;
-  }
-  return tao::CopyCrypter(*Crypter(), copy);
-}
+// bool Keys::CopySigner(scoped_ptr<keyczar::Signer> *copy) const {
+//   if (!Signer()) {
+//     LOG(ERROR) << "No managed signer";
+//     return false;
+//   }
+//   return tao::CopySigner(*Signer(), copy);
+// }
+//
+// bool Keys::CopyKeyDeriver(scoped_ptr<keyczar::Signer> *copy) const {
+//   if (!KeyDeriver()) {
+//     LOG(ERROR) << "No managed key-deriver";
+//     return false;
+//   }
+//   return tao::CopySigner(*KeyDeriver(), copy);
+// }
+//
+// bool Keys::CopyVerifier(scoped_ptr<keyczar::Verifier> *copy) const {
+//   if (!Verifier()) {
+//     LOG(ERROR) << "No managed verifier";
+//     return false;
+//   }
+//   return tao::CopyVerifier(*Verifier(), copy);
+// }
+//
+// bool Keys::CopyCrypter(scoped_ptr<keyczar::Crypter> *copy) const {
+//   if (!Crypter()) {
+//     LOG(ERROR) << "No managed crypter";
+//     return false;
+//   }
+//   return tao::CopyCrypter(*Crypter(), copy);
+// }
 
 bool Keys::DeriveKey(const string &name, size_t size, string *material) const {
   if (!KeyDeriver()) {

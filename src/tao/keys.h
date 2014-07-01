@@ -38,6 +38,34 @@ class Crypter;
 class Verifier;
 }  // namespace keyczar
 
+// Eliminating keyczar
+// Signer:
+//   Generate(type=ECDSA_PAIR, purpose=sign+verify)
+//   WriteToDisk(path, password)
+//   LoadFromDisk(path, password)
+//   Sign(data)
+//   [export to openssl for generating x509]
+//   CreateSelfSignedX509
+//   CreateCASignedX509
+//   [copy]
+// Verifier:
+//   Serialize()
+//   Deserialize()
+//   Verify(data, sig)
+//   [copy]
+//   GetPrincipalName()
+// Deriver (e.g. HKDF):
+//   Generate(type=HMAC, purpose=derive)
+//   WriteToDisk(password)
+//   Derive(n)
+//   [copy]
+// Crypter:
+//   Generate(type=AES, purpose=encrypt+decrypt)
+//   WriteToDisk(password)
+//   Encrypt()
+//   Decrypt()
+//   [copy]
+
 namespace tao {
 using std::string;
 

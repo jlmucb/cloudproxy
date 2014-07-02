@@ -662,11 +662,33 @@ bool RationalDiv(rationalpoly& in1, rationalpoly& in2, rationalpoly& out) {
 }
 
 bool RationalReduce(rationalpoly& inout) {
-#if 0
   bnum* p= inout.numerator->characteristic_;
   int   nn= inout.numerator->numc_;
   int   nd= inout.denominator->numc_;
-#endif
+
+  polynomial num(*p, nn, p->mpSize());
+  polynomial den(*p, nd, p->mpSize());
+  num.Copyfrom(*inout.numerator);
+  den.Copyfrom(*inout.denominator);
+  int n= nn;
+  if(nd>nn)
+      n= nd;
+  polynomial t1(*p, n, p->mpSize());
+  polynomial t2(*p, n, p->mpSize());
+  polynomial t3(*p, n, p->mpSize());
+  polynomial g(*p, n, p->mpSize());
+  if(!PolyExtendedgcd(num, den, t1, t2, g))
+    return false;
+  t1.ZeroPoly();
+  t2.ZeroPoly();
+  t3.ZeroPoly();
+  if(!PolyEuclid(num,g,t3,t1))
+    return false;
+  t3.ZeroPoly();
+  if(!PolyEuclid(den,g,t3,t2))
+    return false;
+  t1.Copyto(*inout.numerator);
+  t2.Copyto(*inout.denominator);
   return true;
 }
 

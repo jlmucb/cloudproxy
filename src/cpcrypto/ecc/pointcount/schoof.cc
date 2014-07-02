@@ -208,7 +208,21 @@ bool EccSymbolicSub(polynomial& curve_x_poly,
                     rationalpoly& in1x, rationalpoly& in1y,
                     rationalpoly& in2x, rationalpoly& in2y, 
                     rationalpoly& outx, rationalpoly& outy) {
-  return true;
+  bnum*         p= curve_x_poly.characteristic_;
+  int           n= p->mpSize();
+  rationalpoly  s1(*p, in2y.numerator->numc_, n, in2y.denominator->numc_, n);
+  int           i;
+  bnum*         bn1;
+  bnum*         bn2;
+
+  s1.Copyfrom(in2y);
+  for(i=0; i<in2y.numerator->numc_;i++) {
+    bn1= in2y.numerator->c_array_[i];
+    bn2= s1.numerator->c_array_[i];
+    mpModSub(g_bnZero, *bn1, *p, *bn2);
+  }
+  return EccSymbolicAdd(curve_x_poly, in1x, in1y,
+                      in2x, s1, outx, outy);
 }
 
 int HighBit(i64 x) {
@@ -280,10 +294,9 @@ bool EccSymbolicPointMult(polynomial& curve_x_poly, i64 t,
 
 // Since this is an endomorphism, the result is (r(x), yq(x)) and we return
 // out_x= r[x] and out_y= q(x).  So out_y should be multiplied by y to give the answer
-bool ComputeMultEndomorphism(polynomial& curve_x_poly, u64 c, 
+bool ComputeMultEndomorphism(polynomial& curve_x_poly, i64 c, 
                               rationalpoly& out_x, rationalpoly& out_y)
 {
-#if 0
   bnum*         p= curve_x_poly.characteristic_;
   int           n= p->mpSize();
   rationalpoly  x_poly(*p, 5, n, 5, n);
@@ -294,8 +307,9 @@ bool ComputeMultEndomorphism(polynomial& curve_x_poly, u64 c,
   x_poly.denominator->c_array_[0]->m_pValue[0]= 1ULL;
   y_poly.numerator->c_array_[0]->m_pValue[0]= 1ULL;
   y_poly.denominator->c_array_[0]->m_pValue[0]= 1ULL;
-#endif
-
+  if(!EccSymbolicPointMult(curve_x_poly, c, x_poly, y_poly, 
+                          out_x, out_y))
+    return false;
   return true;
 }
 

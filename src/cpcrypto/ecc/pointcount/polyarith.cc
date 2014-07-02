@@ -689,7 +689,8 @@ bool RationalMultBy(rationalpoly& inout, rationalpoly& by) {
 }
 
 bool RationalisEqual(rationalpoly& in1, rationalpoly& in2) {
-  return PolyisEqual(*in1.numerator, *in2.numerator) && PolyisEqual(*in1.denominator, *in2.denominator);
+  return PolyisEqual(*in1.numerator, *in2.numerator) && 
+          PolyisEqual(*in1.denominator, *in2.denominator);
 }
 
 void printrational(rationalpoly& p) {

@@ -319,21 +319,20 @@ bool ComputeMultEndomorphism(polynomial& curve_x_poly, i64 c,
 bool ComputePowerEndomorphism(polynomial& curve_x_poly, bnum& power, 
                               rationalpoly& out_x, rationalpoly& out_y)
 {
-#if 0
   bnum*         p= curve_x_poly.characteristic_;
-  int           n= p->mpSize();
-  rationalpoly  x_poly(*p, 5, n, 5, n);
-  rationalpoly  y_poly(*p, 5, n, 5, n);
+  bnum          t1(power.mpSize());
+  bnum          t2(power.mpSize());
 
-  // set (x, y)
-  x_poly.numerator->c_array_[1]->m_pValue[0]= 1ULL;
-  x_poly.denominator->c_array_[0]->m_pValue[0]= 1ULL;
-  y_poly.numerator->c_array_[0]->m_pValue[0]= 1ULL;
-  y_poly.denominator->c_array_[0]->m_pValue[0]= 1ULL;
-#endif
+  power.mpCopyNum(t1);
+  mpUSubFrom(t1, g_bnOne);
+  mpShift(t1, -1, t2);
 
   if(!Reducelargepower(power, curve_x_poly, *out_x.numerator))
     return false;
+  if(!Reducelargepower(t2, curve_x_poly, *out_y.numerator))
+    return false;
+  out_x.denominator->c_array_[0]->m_pValue[0]= 1ULL;
+  out_x.numerator->c_array_[0]->m_pValue[0]= 1ULL;
   return true;
 }
 

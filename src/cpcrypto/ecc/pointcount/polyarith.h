@@ -44,7 +44,6 @@ public:
   bool MultiplyByNum(bnum& c);
 };
 
-
 class rationalpoly {
 public:
   polynomial* numerator;
@@ -57,17 +56,26 @@ public:
   bool Copyto(rationalpoly& to);
 };
 
-
 bool PolyAdd(polynomial& in1, polynomial& in2, polynomial& out);
 bool PolySub(polynomial& in1, polynomial& in2, polynomial& out);
 bool PolyMult(polynomial& in1, polynomial& in2, polynomial& out);
+bool PolyisEqual(polynomial& in1, polynomial& in2);
+
 bool PolyEuclid(polynomial& a, polynomial& b, polynomial& q, polynomial& r);
-bool PolyExtendedgcd(polynomial& a, polynomial& b, 
-                     polynomial& c, polynomial& d, polynomial& g);
+bool PolyExtendedgcd(polynomial& a, polynomial& b, polynomial& c, 
+                     polynomial& d, polynomial& g);
 bool Reducelargepower(bnum& power, polynomial& mod_poly, polynomial& result);
 bool SquareRoot(bnum& num , bnum& result);
-
 void printpoly(polynomial& p);
+
+bool RationalAdd(rationalpoly& in1, rationalpoly& in2, rationalpoly& out);
+bool RationalSub(rationalpoly& in1, rationalpoly& in2, rationalpoly& out);
+bool RationalMult(rationalpoly& in1, rationalpoly& in2, rationalpoly& out);
+bool RationalDiv(rationalpoly& in1, rationalpoly& in2, rationalpoly& out);
+bool RationalMultBy(rationalpoly& inout, rationalpoly& by);
+bool RationalisEqual(rationalpoly& in1, rationalpoly& in2);
+bool RationalReduce(rationalpoly& inout);
+void printrational(rationalpoly& p);
 #endif
 
 // ----------------------------------------------------------------------------

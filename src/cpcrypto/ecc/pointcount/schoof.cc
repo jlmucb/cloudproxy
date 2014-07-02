@@ -51,9 +51,11 @@ int   g_sizeS= 0;
 u64   g_S[512];
 u64   g_tl[512];
 
-const i32 sizeofFirstPrimes= 512;
-extern u32 s_rgFirstPrimes[];
-extern int g_maxcoeff;
+const i32           sizeofFirstPrimes= 512;
+extern u32          s_rgFirstPrimes[];
+extern int          g_maxcoeff;
+extern polynomial** g_phi2;
+
 extern bool Initphi(int max, polynomial& curve_x_poly);
 extern void Freephi();
 extern bool Reducelargepower(bnum&, polynomial&, polynomial&);
@@ -237,31 +239,37 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
   rationalpoly  y_p_bar(*p, 5, n, 5, n);
   rationalpoly  x_j(*p, 5, n, 5, n);
   rationalpoly  y_j(*p, 5, n, 5, n);
+  rationalpoly  x_w(*p, 5, n, 5, n);
+  rationalpoly  y_w(*p, 5, n, 5, n);
   rationalpoly  x_poly(*p, 5, n, 5, n);
   rationalpoly  y_poly(*p, 5, n, 5, n);
   rationalpoly  out_x(*p, 5, n, 5, n);
   rationalpoly  out_y(*p, 5, n, 5, n);
   rationalpoly  t_x(*p, 5, n, 5, n);
   rationalpoly  t_y(*p, 5, n, 5, n);
+  rationalpoly  s1(*p, 5, n, 5, n);
+  rationalpoly  s2(*p, 5, n, 5, n);
+  rationalpoly  s3(*p, 5, n, 5, n);
+  polynomial    t1(*p, (int) l, n);
+  polynomial    t2(*p, (int) l, n);
   polynomial    g(*p, (int) l, n);
   polynomial    test(*p, (int) l, n);
   bnum          p_squared(2*n+1);
   bnum          small_num(1);
   bnum          w(n);  // square root of p
 
+  // compute p^2
   mpMult(*p, *p, p_squared);
 
   // set (x, y)
   x_poly.numerator->c_array_[1]->m_pValue[0]= 1ULL;
   x_poly.denominator->c_array_[0]->m_pValue[0]= 1ULL;
-  y_poly.numerator->c_array_[1]->m_pValue[0]= 1ULL;
+  y_poly.numerator->c_array_[0]->m_pValue[0]= 1ULL;
   y_poly.denominator->c_array_[0]->m_pValue[0]= 1ULL;
 
-  // Define j(x,y)= (x_j,y_j)
-  //    Compute (x_p_bar, y_p_bar)
+  //    Compute (x_p_bar, y_p_bar) and (x^(p^2), y^(p^2))
   if(!ComputeMultEndomorphism(curve_x_poly, p_bar, x_p_bar, y_p_bar))
     return false;
-
   if(!ComputePowerEndomorphism(curve_x_poly, p_squared, x_p_squared, y_p_squared))
     return false;
 
@@ -270,18 +278,48 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
     return false;
   if(!RationalSub(x_p_squared, x_p_bar, t_x))
     return false;
+  if(!RationalDiv(t_y, t_x, s1))
+    return false;
+  if(!RationalMult(s1, s1, s2))
+    return false;
+  s1.ZeroRational();
+  s3.ZeroRational();
+  s1.denominator->c_array_[0]->m_pValue[0]= 1ULL;
+  curve_x_poly.Copyto(*s1.numerator);
+  if(!RationalMult(s2, s1, s3))
+    return false;
+  s1.ZeroRational();
+  if(!RationalSub(s3, x_p_squared, s1))
+    return false;
+  if(!RationalSub(s1, x_p_bar, x_prime))
+    return false;
+
   // Compute y_prime= 
 
   for(j=1; j<=(l-1)/2; j++) {
     // compute j(x,y)= (x_j,y_j)
     if(!ComputeMultEndomorphism(curve_x_poly, j, x_j, y_j))
       return false;
-    // compute test= x_prime-x_j^p (mod phi[l])
     if(!ComputePowerEndomorphism(curve_x_poly, *p, t_x, t_y))
+      return false;
+    s1.ZeroRational();
+    s2.ZeroRational();
+    s3.ZeroRational();
+    // compute test= x_prime-x_j^p (mod phi[l])
+    if(!RationalSub(x_prime, t_x, s1))
+      return false;
+    g.ZeroPoly();
+    if(!PolyEuclid(*s1.numerator, *g_phi2[(int)l], g, test))
       return false;
     if(!test.IsZero())
       continue;
+    g.ZeroPoly();
     // compute test= num (y_prime-y_j)/y (mod phi[l])
+    if(!RationalSub(y_prime, y_j, s1))
+      return false;
+    test.ZeroPoly();
+    if(!PolyEuclid(*s1.numerator, *g_phi2[(int)l], g, test))
+       return false;
     if(test.IsZero())
       *tl= j; 
     else 
@@ -300,8 +338,15 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
   i64  small_w= (i64)w.m_pValue[0];
 
   // compute g= (num((y^p-y[w])/y), phi[l])
-  // if(!PolyExtendedgcd(a, b, c, d, g))
-  //   return false;
+  if(!ComputeMultEndomorphism(curve_x_poly, (u64)small_w, x_w, y_w))
+    return false;
+  s1.ZeroRational();
+  g.ZeroPoly();
+  if(!RationalSub(y_prime, y_w, s1))
+    return false;
+  if(!PolyEuclid(*s1.numerator, *g_phi2[(int)l], g, test))
+     return false;
+  // if test is degree1, ((num((y^p-y[w])/y), phi[l])=1
   if(g.Degree()==1) 
     *tl= -2*small_w; 
   else

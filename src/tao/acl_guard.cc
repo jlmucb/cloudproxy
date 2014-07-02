@@ -104,8 +104,8 @@ bool ACLGuard::ReloadACLsIfModified() {
     return false;
   }
   // Verify its signature.
-  if (!GetPolicyKeys()->Verify(sacls.serialized_aclset(), ACLSigningContext,
-                               sacls.signature())) {
+  if (!GetPolicyVerifier()->Verify(sacls.serialized_aclset(), ACLSigningContext,
+                                   sacls.signature())) {
     LOG(ERROR) << "Signature did not verify on signed ACL set from " << path;
     return false;
   }
@@ -137,8 +137,8 @@ bool ACLGuard::SaveConfig() const {
   }
   // Sign ACL set.
   string aclset_signature;
-  if (!GetPolicyKeys()->Sign(serialized_aclset, ACLSigningContext,
-                             &aclset_signature)) {
+  if (!GetPolicySigner()->Sign(serialized_aclset, ACLSigningContext,
+                               &aclset_signature)) {
     LOG(ERROR) << "Can't sign ACL set";
     return false;
   }

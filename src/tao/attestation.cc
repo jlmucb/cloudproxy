@@ -21,14 +21,11 @@
 #include <sstream>
 
 #include <glog/logging.h>
-#include <keyczar/keyczar.h>
 
 #include "tao/keys.h"
 #include "tao/tpm_tao.h"
 
 using std::stringstream;
-
-using keyczar::Verifier;
 
 namespace tao {
 bool IsSubprincipalOrIdentical(const string &child_name,
@@ -55,18 +52,18 @@ static bool VerifyAttestationSignature(const Attestation &a) {
   string signer = a.signer();
   bool tpm_signature = signer.substr(0, 3) == "TPM";
   if (tpm_signature) {
-    // TODO(kwalsh) TPMTaoChildChannel does its own key serialize/deserialize.
-    // Maybe unify that with VerifierFromPrincipalName()?
+    // TODO(kwalsh) TPMTao does its own key serialize/deserialize. Maybe unify
+    // that with VerifierFromPrincipalName()?
     return TPMTao::VerifySignature(signer, a.serialized_statement(),
                                    a.signature());
   } else {
-    scoped_ptr<Verifier> v;
-    if (!VerifierFromPrincipalName(signer, &v)) {
+    scoped_ptr<Verifier> v(Verifier::FromPrincipalName(signer));
+    if (v.get() == nullptr) {
       LOG(ERROR) << "Could not deserialize the attestation signer key";
       return false;
     }
-    return VerifySignature(*v, a.serialized_statement(),
-                           Tao::AttestationSigningContext, a.signature());
+    return v->Verify(a.serialized_statement(), Tao::AttestationSigningContext,
+                     a.signature());
   }
 }
 
@@ -126,11 +123,11 @@ bool ValidateAttestation(const string &attestation, Statement *s) {
   return true;
 }
 
-bool GenerateAttestation(const Keys &key, const string &delegation,
+bool GenerateAttestation(const Signer &key, const string &delegation,
                          const Statement &stmt, string *attestation) {
   // Get signer name.
-  string signer;
-  if (!key.GetPrincipalName(&signer)) {
+  string signer = key.ToPrincipalName();
+  if (signer == "") {
     LOG(ERROR) << "Could not get signer principal name";
     return false;
   }
@@ -275,11 +272,11 @@ string DebugString(const Statement &stmt) {
   return "{\n  " + Indent("  ", out.str()) + "}";
 }
 
-bool AttestDelegation(const Keys &key, const string &delegation,
+bool AttestDelegation(const Signer &key, const string &delegation,
                       const string &delegate, const string &issuer,
                       string *attestation) {
-  string signer;
-  if (!key.GetPrincipalName(&signer)) {
+  string signer = key.ToPrincipalName();
+  if (signer == "") {
     LOG(ERROR) << "Could not get signer principal name";
     return false;
   }
@@ -292,7 +289,6 @@ bool AttestDelegation(const Keys &key, const string &delegation,
   }
   VLOG(5) << "Generated delegation attestation\n"
           << " via signer " << elideString(signer) << "\n"
-          << " nicknamed " << key.Nickname() << "\n"
           << " for issuer " << elideString(issuer) << "\n"
           << " and delegate " << elideString(delegate) << "\n";
   return true;
@@ -333,11 +329,11 @@ bool GetAttestationDelegate(const string &attestation, string *delegate) {
   return true;
 }
 
-bool AttestPredicate(const Keys &key, const string &delegation,
+bool AttestPredicate(const Signer &key, const string &delegation,
                      const string &issuer, const string &predicate,
                      const list<string> &args, string *attestation) {
-  string signer;
-  if (!key.GetPrincipalName(&signer)) {
+  string signer = key.ToPrincipalName();
+  if (signer == "") {
     LOG(ERROR) << "Could not get signer principal name";
     return false;
   }
@@ -351,7 +347,6 @@ bool AttestPredicate(const Keys &key, const string &delegation,
   }
   VLOG(5) << "Generated predicate attestation\n"
           << " via signer " << elideString(signer) << "\n"
-          << " nicknamed " << key.Nickname() << "\n"
           << " for issuer " << elideString(issuer) << "\n"
           << " and predicate " << predicate << "(" << join(args, ", ") << ")\n";
   return true;

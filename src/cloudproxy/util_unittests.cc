@@ -48,8 +48,8 @@ TEST(CloudProxyUtilTest, X509SSLTest) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(CreateTempDir("cloud_proxy_util_test", &temp_dir));
 
-  scoped_ptr<Keys> key(new Keys(*temp_dir, "test client key", Keys::Signing));
-  ASSERT_TRUE(key->InitNonHosted("dummy_password"));
+  scoped_ptr<Keys> key(new Keys(*temp_dir, Keys::Signing));
+  ASSERT_TRUE(key->InitWithPassword("dummy_password"));
   string details =
       "country: \"US\" "
       "state: \"Washington\" "

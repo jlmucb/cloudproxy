@@ -34,8 +34,8 @@ bool TaoStackedHost::Init() {
     return false;
   }
   // When using a signing key, we require a delegation to accompany it.
-  if (keys_ != nullptr && keys_->Signer() != nullptr &&
-      !keys_->GetHostDelegation(&host_delegation_)) {
+  if (keys_ == nullptr || keys_->Signer() == nullptr ||
+      keys_->GetHostDelegation() == "") {
     LOG(ERROR) << "Could not load delegation for attestation key";
     return false;
   }
@@ -52,7 +52,7 @@ bool TaoStackedHost::GetRandomBytes(const string &child_subprin, size_t size,
 
 bool TaoStackedHost::GetSharedSecret(const string &tag, size_t size,
                                      string *bytes) const {
-  if (keys_ == nullptr || keys_->KeyDeriver() == nullptr) {
+  if (keys_ == nullptr || keys_->Deriver() == nullptr) {
     // TODO(kwalsh) - Generate new deriver key using shared secret material from
     // our host, e.g.:
     // int key_size = 256;
@@ -62,7 +62,7 @@ bool TaoStackedHost::GetSharedSecret(const string &tag, size_t size,
     //   LOG(ERROR) << "Stacked tao host could not get shared master secret";
     //   return false;
     // }
-    // Keys keys(Keys::KeyDeriving, ...key_bytes...);
+    // Keys keys(Keys::Deriving, ...key_bytes...);
     // if (!keys.DeriveKey(tag, size, bytes)) {
     //   LOG(ERROR) << "Could not derive shared secret";
     //   return false;
@@ -71,7 +71,7 @@ bool TaoStackedHost::GetSharedSecret(const string &tag, size_t size,
     LOG(ERROR) << "Not yet implemented";
     return false;
   } else {
-    if (!keys_->DeriveKey(tag, size, bytes)) {
+    if (!keys_->Deriver()->Derive(size, tag, bytes)) {
       LOG(ERROR) << "Could not derive shared secret";
       return false;
     }
@@ -94,7 +94,8 @@ bool TaoStackedHost::Attest(const string &child_subprin, Statement *stmt,
   if (keys_ == nullptr || keys_->Signer() == nullptr) {
     return host_tao_->Attest(*stmt, attestation);
   } else {
-    return GenerateAttestation(*keys_, host_delegation_, *stmt, attestation);
+    return GenerateAttestation(*keys_->Signer(), keys_->GetHostDelegation(),
+                               *stmt, attestation);
   }
 }
 
@@ -109,7 +110,7 @@ bool TaoStackedHost::Encrypt(const google::protobuf::Message &data,
     // TODO(kwalsh) Should policy here come from elsewhere?
     return host_tao_->Seal(serialized_data, Tao::SealPolicyDefault, encrypted);
   } else {
-    return keys_->Encrypt(serialized_data, encrypted);
+    return keys_->Crypter()->Encrypt(serialized_data, encrypted);
   }
 }
 
@@ -127,7 +128,7 @@ bool TaoStackedHost::Decrypt(const string &encrypted,
       return false;
     }
   } else {
-    if (!keys_->Decrypt(encrypted, &serialized_data)) {
+    if (!keys_->Crypter()->Decrypt(encrypted, &serialized_data)) {
       LOG(ERROR) << "Could not decrypt sealed data";
       return false;
     }

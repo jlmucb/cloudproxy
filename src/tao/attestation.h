@@ -28,7 +28,8 @@ namespace tao {
 using std::list;
 using std::string;
 
-class Keys;
+class Verifier;
+class Signer;
 
 /// Utilities for arbitrary attestations.
 /// @{
@@ -47,7 +48,7 @@ bool IsSubprincipalOrIdentical(const string &child_name,
 /// filled in with default values.
 /// @param s The Statement to be signed.
 /// @param[out] attestation The signed attestation.
-bool GenerateAttestation(const Keys &key, const string &delegation,
+bool GenerateAttestation(const Signer &key, const string &delegation,
                          const Statement &s, string *attestation);
 
 /// Validate a signed attestation.
@@ -90,7 +91,7 @@ string DebugString(const Statement &s);
 /// @param[out] attestation The signed attestation.
 /// Note: Reasonable default values will be chosen for the expiration and
 /// timestamp.
-bool AttestDelegation(const Keys &key, const string &delegation,
+bool AttestDelegation(const Signer &key, const string &delegation,
                       const string &delegate, const string &issuer,
                       string *attestation);
 
@@ -124,7 +125,7 @@ bool GetAttestationDelegate(const string &attestation, string *delegate);
 /// @param[out] attestation The signed attestation.
 /// Note: Reasonable default values will be chosen for the expiration and
 /// timestamp.
-bool AttestPredicate(const Keys &key, const string &delegation,
+bool AttestPredicate(const Signer &key, const string &delegation,
                      const string &issuer, const string &predicate,
                      const list<string> &args, string *attestation);
 

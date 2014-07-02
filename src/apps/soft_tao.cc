@@ -56,12 +56,12 @@ int main(int argc, char **argv) {
     CHECK(CreateDirectory(FilePath(path)));
 
     printf("Creating new SoftTao key...\n");
-    keys.reset(new Keys(path, "soft_tao", Keys::Signing | Keys::Crypting));
-    CHECK(keys->InitNonHosted(pass));
+    keys.reset(new Keys(path, Keys::Signing | Keys::Crypting));
+    CHECK(keys->InitWithPassword(pass));
     printf("SoftTao key and settings are in: %s/*\n", path.c_str());
   } else {
-    keys.reset(new Keys(path, "soft_tao", Keys::Signing | Keys::Crypting));
-    CHECK(keys->InitNonHosted(pass));
+    keys.reset(new Keys(path, Keys::Signing | Keys::Crypting));
+    CHECK(keys->InitWithPassword(pass));
   }
 
   if (FLAGS_show) {

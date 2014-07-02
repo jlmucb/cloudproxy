@@ -77,7 +77,8 @@ bool DatalogGuard::Init() {
     LOG(ERROR) << "Could not initialize Datalog auth module";
     return false;
   }
-  if (!GetPolicyKeys()->GetPrincipalName(&policy_prin_)) {
+  policy_prin_ = GetPolicyVerifier()->ToPrincipalName();
+  if (policy_prin_ == "") {
     LOG(ERROR) << "Could not get policy key principal name";
     return false;
   }
@@ -484,8 +485,8 @@ bool DatalogGuard::ReloadRulesIfModified() {
     return false;
   }
   // Verify its signature.
-  if (!GetPolicyKeys()->Verify(srules.serialized_rules(), DatalogSigningContext,
-                               srules.signature())) {
+  if (!GetPolicyVerifier()->Verify(srules.serialized_rules(),
+                                   DatalogSigningContext, srules.signature())) {
     LOG(ERROR) << "Signature did not verify on signed policy rules from "
                << path;
     return false;
@@ -525,8 +526,8 @@ bool DatalogGuard::SaveConfig() const {
   }
   // Sign rules.
   string rules_signature;
-  if (!GetPolicyKeys()->Sign(serialized_rules, DatalogSigningContext,
-                             &rules_signature)) {
+  if (!GetPolicySigner()->Sign(serialized_rules, DatalogSigningContext,
+                               &rules_signature)) {
     LOG(ERROR) << "Can't sign policy rules";
     return false;
   }

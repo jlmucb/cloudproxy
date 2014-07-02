@@ -47,6 +47,7 @@
 #include "tao/attestation.pb.h"
 #include "tao/keys.h"
 #include "tao/log_net.h"
+#include "tao/tao.h"
 #include "tao/tao_domain.h"
 
 using std::lock_guard;
@@ -99,6 +100,11 @@ static void QuietKeyczarLogHandler(LogLevel level, const char *filename,
 
 namespace tao {
 
+void SecureStringFree(string *s) {
+  SecureStringErase(s);
+  delete s;
+}
+
 void fd_close(int *fd) {
   if (fd && *fd >= 0) {
     if (close(*fd) < 0) {
@@ -145,8 +151,25 @@ bool Sha256FileHash(const string &path, string *hash) {
     LOG(ERROR) << "Can't read " << path;
     return false;
   }
-
   return Sha256(contents, hash);
+}
+
+bool Sha1(const string &s, string *hash) {
+  if (!keyczar::CryptoFactory::SHA1()->Digest(s, hash)) {
+    // This should be fatal. If it happens, then openssl has died.
+    LOG(ERROR) << "Can't compute hash";
+    return false;
+  }
+  return true;
+}
+
+bool Sha1FileHash(const string &path, string *hash) {
+  string contents;
+  if (!ReadFileToString(path, &contents)) {
+    LOG(ERROR) << "Can't read " << path;
+    return false;
+  }
+  return Sha1(contents, hash);
 }
 
 /*
@@ -692,6 +715,16 @@ time_t FileModificationTime(const string &path) {
     return 0;
   }
   return st.st_mtime;
+}
+
+bool RandBytes(size_t size, string *s) {
+  Tao *host = Tao::GetHostTao();
+  if (host == nullptr) {
+    keyczar::CryptoFactory::Rand()->RandBytes(size, s);
+    return true;
+  } else {
+    return host->GetRandomBytes(size, s);
+  }
 }
 
 }  // namespace tao

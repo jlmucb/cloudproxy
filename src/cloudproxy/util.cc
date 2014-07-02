@@ -41,7 +41,7 @@
 // using keyczar::base::WriteStringToFile;
 // 
 // using cloudproxy::CloudAuth;
-using tao::Keys;
+using tao::Signer;
 using tao::OpenSSLSuccess;
 using tao::ScopedX509;
 // using tao::ScopedFile;
@@ -83,15 +83,15 @@ static int AlwaysAcceptCert(int preverify_ok, X509_STORE_CTX *ctx) {
   return 1;
 }
 
-static bool SetUpSSLCtx(const SSL_METHOD *method, const Keys &key,
+static bool SetUpSSLCtx(const SSL_METHOD *method, const Signer &key,
                         const string &cert, bool require_peer_cert,
                         ScopedSSLCtx *ctx) {
-  if (!ctx || !key.Signer() || cert.empty()) {
+  if (!ctx || cert.empty()) {
     LOG(ERROR) << "Invalid SetUpSSLCTX parameters";
     return false;
   }
-  tao::ScopedEvpPkey evp_key;
-  if (!key.ExportSignerToOpenSSL(&evp_key)) {
+  tao::ScopedEvpPkey evp_key(key.GetEvpPkey());
+  if (evp_key.get() == nullptr) {
     LOG(ERROR) << "Could not export key to openssl";
     return false;
   }
@@ -138,8 +138,8 @@ static bool SetUpSSLCtx(const SSL_METHOD *method, const Keys &key,
   //   LOG(ERROR) << "Could not load the certificate chain for this connection";
   //   return false;
   // }
-  ScopedX509 x509;
-  if (!tao::DeserializeX509(cert, &x509) ||
+  ScopedX509 x509(tao::DeserializeX509(cert));
+  if (x509.get() == nullptr ||
       !SSL_CTX_use_certificate(ctx->get(), x509.get())) {
     // TODO(kwalsh) Does SSL_CTX_use_certificate take ownership of x509 pointer?
     // TODO(kwalsh) handle x509 chains?
@@ -190,17 +190,17 @@ static bool SetUpSSLCtx(const SSL_METHOD *method, const Keys &key,
   return true;
 }
 
-bool SetUpSSLServerCtx(const Keys &key, const string &cert, ScopedSSLCtx *ctx) {
+bool SetUpSSLServerCtx(const Signer &key, const string &cert, ScopedSSLCtx *ctx) {
   return SetUpSSLCtx(TLSv1_2_server_method(), key, cert, true, ctx);
 }
 
 #if 0
-bool SetUpPermissiveSSLServerCtx(const Keys &key, ScopedSSLCtx *ctx) {
+bool SetUpPermissiveSSLServerCtx(const Signer &key, ScopedSSLCtx *ctx) {
   return SetUpSSLCtx(TLSv1_2_server_method(), key, false, ctx);
 }
 #endif
 
-bool SetUpSSLClientCtx(const Keys &key, const string &cert, ScopedSSLCtx *ctx) {
+bool SetUpSSLClientCtx(const Signer &key, const string &cert, ScopedSSLCtx *ctx) {
   return SetUpSSLCtx(TLSv1_2_client_method(), key, cert, true, ctx);
 }
 

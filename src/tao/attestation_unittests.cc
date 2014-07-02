@@ -29,9 +29,10 @@ using namespace tao;  // NOLINT
 class AttestationTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    key_.reset(new Keys("unittest", Keys::Signing));
+    key_.reset(new Keys(Keys::Signing));
     ASSERT_TRUE(key_->InitTemporary());
-    ASSERT_TRUE(key_->GetPrincipalName(&key_name_));
+    key_name_ = key_->Verifier()->ToPrincipalName();
+    ASSERT_NE("", key_name_);
     key_child_ = key_name_ + "::Test1::Test2";
   }
 
@@ -71,12 +72,12 @@ TEST_F(AttestationTest, VerifyTestFail) {
   s.set_issuer("bogus_issuer");
   s.set_time(123);
   s.set_expiration(234);
-  ASSERT_TRUE(GenerateAttestation(*key_, "" /* delegation */, s, &a));
+  ASSERT_TRUE(GenerateAttestation(*key_->Signer(), "" /* delegation */, s, &a));
   EXPECT_TRUE(GetAttestationIssuer(a, &issuer));
   EXPECT_EQ("bogus_issuer", issuer);
   EXPECT_FALSE(ValidateAttestation(a, &v));
 
-  ASSERT_TRUE(GenerateAttestation(*key_, "bogus_delegation", s, &a));
+  ASSERT_TRUE(GenerateAttestation(*key_->Signer(), "bogus_delegation", s, &a));
   EXPECT_TRUE(GetAttestationIssuer(a, &issuer));
   EXPECT_EQ("bogus_issuer", issuer);
   EXPECT_FALSE(ValidateAttestation(a, &v));
@@ -90,7 +91,7 @@ TEST_F(AttestationTest, GenerateTestOk) {
   s.set_issuer(key_name_);
   s.set_time(123);
   s.set_expiration(234);
-  ASSERT_TRUE(GenerateAttestation(*key_, "" /* delegation */, s, &a));
+  ASSERT_TRUE(GenerateAttestation(*key_->Signer(), "" /* delegation */, s, &a));
   EXPECT_TRUE(GetAttestationIssuer(a, &issuer));
   EXPECT_EQ(key_name_, issuer);
   EXPECT_TRUE(ValidateAttestation(a, &v));
@@ -103,7 +104,7 @@ TEST_F(AttestationTest, GenerateTestOk) {
   s.set_issuer(key_child_);
   s.set_time(123);
   s.set_expiration(234);
-  ASSERT_TRUE(GenerateAttestation(*key_, "" /* delegation */, s, &a));
+  ASSERT_TRUE(GenerateAttestation(*key_->Signer(), "" /* delegation */, s, &a));
   EXPECT_TRUE(GetAttestationIssuer(a, &issuer));
   EXPECT_EQ(key_child_, issuer);
   EXPECT_TRUE(ValidateAttestation(a, &v));
@@ -119,8 +120,8 @@ TEST_F(AttestationTest, DelegateTest) {
 
   time_t now = CurrentTime();
 
-  ASSERT_TRUE(AttestDelegation(*key_, "" /* delegation */, "bogus_delegate",
-                               key_child_, &a));
+  ASSERT_TRUE(AttestDelegation(*key_->Signer(), "" /* delegation */,
+                               "bogus_delegate", key_child_, &a));
   EXPECT_TRUE(GetAttestationIssuer(a, &issuer));
   EXPECT_EQ(key_child_, issuer);
   EXPECT_TRUE(GetAttestationDelegate(a, &delegate));
@@ -138,8 +139,9 @@ TEST_F(AttestationTest, PredicateTest) {
 
   time_t now = CurrentTime();
 
-  ASSERT_TRUE(AttestPredicate(*key_, "" /* delegation */, key_child_, "Testing",
-                              list<string>{"\"Hello\"", "1234"}, &a));
+  ASSERT_TRUE(AttestPredicate(*key_->Signer(), "" /* delegation */, key_child_,
+                              "Testing", list<string>{"\"Hello\"", "1234"},
+                              &a));
   EXPECT_TRUE(GetAttestationIssuer(a, &issuer));
   EXPECT_EQ(key_child_, issuer);
   EXPECT_TRUE(GetAttestationPredicate(a, &predicate, &args));
@@ -163,20 +165,20 @@ TEST_F(AttestationTest, DelegatePredicateTest) {
   list<string> args;
   Statement s, v;
   scoped_ptr<Keys> key2;
-  string key2_name;
-  key2.reset(new Keys("unittest2", Keys::Signing));
+  key2.reset(new Keys(Keys::Signing));
   ASSERT_TRUE(key2->InitTemporary());
-  ASSERT_TRUE(key2->GetPrincipalName(&key2_name));
+  string key2_name = key2->Verifier()->ToPrincipalName();
+  ASSERT_NE("", key2_name);
   string key2_child = key2_name + "::Test3::Test4";
 
   time_t now = CurrentTime();
 
   // key_child speaksfor key2_child
-  ASSERT_TRUE(
-      AttestDelegation(*key2, "" /* delegation */, key_child_, key2_child, &d));
+  ASSERT_TRUE(AttestDelegation(*key2->Signer(), "" /* delegation */, key_child_,
+                               key2_child, &d));
 
   // key2_child says predicate using key to sign
-  ASSERT_TRUE(AttestPredicate(*key_, d, key2_child, "Testing",
+  ASSERT_TRUE(AttestPredicate(*key_->Signer(), d, key2_child, "Testing",
                               list<string>{"\"Hello\"", "1234"}, &a));
   EXPECT_TRUE(GetAttestationIssuer(a, &issuer));
   EXPECT_EQ(key2_child, issuer);

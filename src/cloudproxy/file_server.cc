@@ -54,7 +54,7 @@ FileServer::FileServer(const string &file_path, const string &meta_path,
                        int policy, tao::TaoDomain *admin)
     : CloudServer(server_config_path, acl_location, host, port, channel, policy,
                   admin),
-      main_key_(new Keys(server_config_path, "file_server", Keys::KeyDeriving)),
+      main_key_(new Keys(server_config_path, Keys::Deriving)),
       enc_key_(new string()),
       hmac_key_(new string()),
       file_path_(file_path),

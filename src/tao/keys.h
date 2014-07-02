@@ -21,8 +21,6 @@
 
 #include <string>
 
-#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
-#include <keyczar/base/scoped_ptr.h>
 #include <openssl/bio.h>
 #include <openssl/dsa.h>
 #include <openssl/rsa.h>
@@ -32,42 +30,15 @@
 #include "tao/tao.h"
 #include "tao/util.h"
 
-namespace keyczar {
-class Signer;
-class Crypter;
-class Verifier;
-}  // namespace keyczar
-
-// Eliminating keyczar
-// Signer:
-//   Generate(type=ECDSA_PAIR, purpose=sign+verify)
-//   WriteToDisk(path, password)
-//   LoadFromDisk(path, password)
-//   Sign(data)
-//   [export to openssl for generating x509]
-//   CreateSelfSignedX509
-//   CreateCASignedX509
-//   [copy]
-// Verifier:
-//   Serialize()
-//   Deserialize()
-//   Verify(data, sig)
-//   [copy]
-//   GetPrincipalName()
-// Deriver (e.g. HKDF):
-//   Generate(type=HMAC, purpose=derive)
-//   WriteToDisk(password)
-//   Derive(n)
-//   [copy]
-// Crypter:
-//   Generate(type=AES, purpose=encrypt+decrypt)
-//   WriteToDisk(password)
-//   Encrypt()
-//   Decrypt()
-//   [copy]
-
 namespace tao {
 using std::string;
+
+/// A variety of utilities and OpenSSL wrappers.
+/// @{
+
+/// Cleanse the contents of a string.
+/// @param s The string to be cleansed.
+void SecureStringErase(string *s);
 
 /// A smart pointer to an OpenSSL X509 structure.
 typedef scoped_ptr_malloc<X509, CallUnlessNull<X509, X509_free>> ScopedX509;
@@ -76,120 +47,313 @@ typedef scoped_ptr_malloc<X509, CallUnlessNull<X509, X509_free>> ScopedX509;
 typedef scoped_ptr_malloc<EVP_PKEY, CallUnlessNull<EVP_PKEY, EVP_PKEY_free>>
     ScopedEvpPkey;
 
-/// A smart pointer to an OpenSSL EC_KEY object.
-typedef scoped_ptr_malloc<EC_KEY, CallUnlessNull<EC_KEY, EC_KEY_free>>
-    ScopedECKey;
-
 /// A smart pointer to an OpenSSL RSA object.
 typedef scoped_ptr_malloc<RSA, CallUnlessNull<RSA, RSA_free>> ScopedRsa;
+
+/// A smart pointer to an OpenSSL EC_KEY object.
+typedef scoped_ptr_malloc<EC_KEY, CallUnlessNull<EC_KEY, EC_KEY_free>> ScopedEc;
 
 /// A smart pointer to an OpenSSL BIO object.
 typedef scoped_ptr_malloc<BIO, CallUnlessNull<BIO, BIO_free_all>> ScopedBio;
 
-/// Convert a Keyczar public key to a Tao principal name.
-/// @param key The key to be converted.
-/// @param[out] name The name, encoded as Key("..base64w-encoded-data..").
-bool VerifierToPrincipalName(const keyczar::Verifier &key, string *name);
-
-/// Convert a Tao principal name to a Keyczar public key.
-/// @param name The name, which must be Key("..base64w-encoded-data..").
-/// @param[out] The converted key.
-bool VerifierFromPrincipalName(const string &name,
-                               scoped_ptr<keyczar::Verifier> *key);
-
-/// Sign data with a key using Signer.
-/// @param data The data to sign.
-/// @param context The context string to add to the tao::Signature. WARNING:
-/// for security, this must be unique for each context in which signed
-/// messages are used.
-/// @param[out] signature The resulting signature.
-/// @param key The key to use for signing.
-bool SignData(const keyczar::Signer &key, const string &data,
-              const string &context, string *signature);
-
-/// Verify a signature using Verifier.
-/// @param data The data that was signed.
-/// @param context The context to check in the tao::Signature.
-/// @param signature The signature on the data.
-/// @param key The key to use for verification.
-bool VerifySignature(const keyczar::Verifier &key, const string &data,
-                     const string &context, const string &signature);
+/// A smart pointer to an OpenSSL EC_KEY object.
+typedef scoped_ptr_malloc<EC_KEY, CallUnlessNull<EC_KEY, EC_KEY_free>>
+    ScopedECKey;
 
 /// Serialize an openssl X509 structure in PEM format.
 /// @param x509 The certificate to serialize.
-/// @param[out] pem The serialized certificate.
-bool SerializeX509(X509 *x509, string *pem);
+string SerializeX509(X509 *x509);
 
 /// Deserialize an openssl X509 structure from PEM format.
 /// @param pem The serialized certificate.
-/// @param[out] x509 The deserialized certificate.
-bool DeserializeX509(const string &pem, ScopedX509 *x509);
+X509 *DeserializeX509(const string &pem);
 
-/// Obtain a Verifier for an x509 subject key.
-/// @param serialized_cert The x509 certificate, which is assumed to have been
-/// validated if necessary.
-keyczar::Verifier *VerifierFromX509(const string &serialized_cert);
+/// @}
 
-/// A Keys object manages a group of cryptographic verifier, signing, crypting,
-/// and key-derivation keys. Currently, at most one of each type of key can be
-/// held in a single Keys object. Static convenience methods are also provided
-/// for generating, loading, using, and exporting Keyczar keys.
+class Verifier;
+
+/// A Signer represents the private half of an asymmetric key pair to be used
+/// for signing data. Currently this only supports 256-bit ECDSA_SHA with the
+/// prime256v1 curve.
+class Signer {
+ public:
+  /// Construct a signer from an OpenSSL key.
+  /// @param key The key. Ownership is taken.
+  explicit Signer(EC_KEY *key) : key_(key) {}
+
+  /// Generate signing key with default algorithm and parameters.
+  static Signer *Generate();
+
+  /// Get the public half of this key as a Verifier.
+  Verifier *GetVerifier() const;
+
+  /// Sign data.
+  /// @param data The data to sign.
+  /// @param context The context string to add to the tao::Signature.
+  /// WARNING: For security, this must be unique for each context in which
+  /// signed messages are used.
+  /// @param[out] signature The resulting signature.
+  bool Sign(const string &data, const string &context, string *signature) const;
+
+  // TODO(kwalsh) Add Verify method here if needed.
+
+  /// Serialize to a plain-text Tao principal name. This is a base64w-encoded
+  /// version of a serialized CryptoKey for the public half of this signing key.
+  string ToPrincipalName() const;
+
+  /// Serialize signing key as PEM-encoded PKCS#8 with password-based
+  /// encryption.
+  /// @param password A password to encrypt the key material.
+  string SerializeWithPassword(const string &password) const;
+
+  /// Deserialize key from PEM-encoded PKCS#8 with with password-based
+  /// encryption.
+  /// @param serialized The serialized signing key.
+  /// @param password The password to decrypt the key material.
+  static Signer *DeserializeWithPassword(const string &serialized,
+                                         const string &password);
+
+  /// Create a self-signed X509 certificate for the corresponding public key.
+  /// @param details Text-format encoded X509Details for the subject.
+  string CreateSelfSignedX509(const string &details_text) const;
+
+  /// Create a signed X509 certificate for some other subject's key.
+  /// @param cert_serial The serial number to use for the new certificate.
+  /// @param subject_key The subject's key.
+  /// @param subject_details The x509 details for the subject.
+  string CreateSignedX509(const string &ca_pem_cert, int cert_serial,
+                          const Verifier &subject_key,
+                          const string &subject_details) const;
+
+  /// Encode signing key as CryptoKey protobuf message.
+  /// @param[out] m A protobuf in which to encode the key.
+  bool Encode(CryptoKey *m) const;
+
+  /// Encode public half of signing key as CryptoKey protobuf message.
+  /// @param[out] m A protobuf in which to encode the public key.
+  bool EncodePublic(CryptoKey *m) const;
+
+  /// Decode signing key from CryptoKey protobuf message.
+  /// @param m A protobuf from which to decode the key.
+  static Signer *Decode(const CryptoKey &m);
+
+  /// Fill in a header with version and key-hint.
+  /// @param[out] h The protobuf to fill.
+  bool Header(CryptoHeader *h) const;
+
+  /// Get a copy of the signer as an EVP_PKEY.
+  EVP_PKEY *GetEvpPkey() const;
+
+  /// Create a deep copy of this key.
+  Signer *DeepCopy() const;
+
+  // Clear or erase?
+
+ private:
+  /// Handle to OpenSSL key.
+  /// TODO(kwalsh) Use EVP_KEY here and EVP_DigestSign* functions?
+  const ScopedECKey key_;
+
+  DISALLOW_COPY_AND_ASSIGN(Signer);
+};
+
+/// A Verifier represents the public half of an asymmetric key pair to be used
+/// for verifying signatures. Currently this only supports 256-bit ECDSA_SHA
+/// with the prime256v1 curve.
+class Verifier {
+ public:
+  /// Construct a verifier from an OpenSSL key.
+  /// @param key The key. Ownership is taken.
+  explicit Verifier(EC_KEY *key) : key_(key) {}
+
+  /// Verify a signature.
+  /// @param data The data that was signed.
+  /// @param context The context to check in the tao::Signature.
+  /// @param signature The signature on the data.
+  bool Verify(const string &data, const string &context,
+              const string &signature) const;
+
+  /// Serialize to a plain-text Tao principal name. This is a base64w-encoded
+  /// version of a serialized CryptoKey.
+  string ToPrincipalName() const;
+
+  /// Deserialize from a plain-text Tao principal name.
+  /// @param name The serialized principal name.
+  static Verifier *FromPrincipalName(const string &name);
+
+  /// Load a key from a previously validated X509 certificate.
+  /// @param pem_cert The serialized PEM-encoded self-signed certificate.
+  static Verifier *FromX509(const string &pem_cert);
+
+  /// Encode verifying key as CryptoKey protobuf message.
+  /// @param[out] m A protobuf in which to encode the key.
+  bool Encode(CryptoKey *m) const;
+
+  /// Decode verifying key from CryptoKey protobuf message.
+  /// @param m A protobuf from which to decode the key.
+  static Verifier *Decode(const CryptoKey &m);
+
+  /// Fill in a header with version and key-hint.
+  /// @param[out] h The protobuf to fill.
+  bool Header(CryptoHeader *h) const;
+
+  /// Get a copy of the verifier as an EVP_PKEY.
+  EVP_PKEY *GetEvpPkey() const;
+
+  /// Create a deep copy of this key.
+  Verifier *DeepCopy() const;
+
+ private:
+  /// Handle to an OpenSSL ECDSA key.
+  const ScopedECKey key_;
+
+  DISALLOW_COPY_AND_ASSIGN(Verifier);
+};
+
+// A Deriver represents a secret symmetric key to be used for deriving secret
+// key material or other random secrets. Currently this only supports
+// HKDF with HMAC-SHA256.
+class Deriver {
+ public:
+  /// Construct a deriver from HMAC-SHA256 key material.
+  /// @param key The key. Ownership is taken.
+  explicit Deriver(const string &key) : key_(new string(key)) {}
+
+  /// Generate deriver key with default algorithm and parameters.
+  static Deriver *Generate();
+
+  /// Derive secrets.
+  /// @param size The number of bytes to generate.
+  /// @param context A context string or tag.
+  /// @param[out] secret The resulting secret data.
+  bool Derive(size_t size, const string &context, string *secret) const;
+
+  /// Encode deriving key as CryptoKey protobuf message.
+  /// @param[out] m A protobuf in which to encode the key.
+  bool Encode(CryptoKey *m) const;
+
+  /// Decode deriving key from CryptoKey protobuf message.
+  /// @param m A protobuf from which to decode the key.
+  static Deriver *Decode(const CryptoKey &m);
+
+  // Note: This is never used because deriver never leaves a key hint anywhere.
+  // Fill in a header with version and key-hint.
+  // @param[out] h The protobuf to fill.
+  // bool Header(CryptoHeader *h) const;
+
+  /// Create a deep copy of this key.
+  Deriver *DeepCopy() const;
+
+  // Clear or erase?
+
+ private:
+  /// The secret key.
+  const ScopedSafeString key_;
+
+  DISALLOW_COPY_AND_ASSIGN(Deriver);
+};
+
+// A Crypter represents a secret symmetric key to be used for encryption and
+// decryption. Currently this only supports AES256 CBC with HMAC-SHA256.
+class Crypter {
+ public:
+  Crypter(const string &aesKey, const string &hmacKey)
+      : aesKey_(new string(aesKey)), hmacKey_(new string(hmacKey)) {}
+
+  /// Generate crypting key with default algorithm and parameters.
+  static Crypter *Generate();
+
+  /// Encrypt data.
+  /// @param data The data to be encrypted.
+  /// @param[out] encrypted The encrypted data.
+  bool Encrypt(const string &data, string *encrypted) const;
+
+  /// Decrypt data.
+  /// @param encrypted The encrypted data.
+  /// @param[out] data The decrypted data.
+  bool Decrypt(const string &encrypted, string *data) const;
+
+  /// Encode crypting key as CryptoKey protobuf message.
+  /// @param[out] m A protobuf in which to encode the key.
+  bool Encode(CryptoKey *m) const;
+
+  /// Decode crypting key from CryptoKey protobuf message.
+  /// @param m A protobuf from which to decode the key.
+  static Crypter *Decode(const CryptoKey &m);
+
+  /// Fill in a header with version and key-hint.
+  /// @param[out] h The protobuf to fill.
+  bool Header(CryptoHeader *h) const;
+
+  /// Create a deep copy of this key.
+  Crypter *DeepCopy() const;
+
+  // Clear or erase?
+
+ private:
+  /// The secret keys.
+  const ScopedSafeString aesKey_, hmacKey_;
+
+  DISALLOW_COPY_AND_ASSIGN(Crypter);
+};
+
+/// A Keys object manages a group of cryptographic signing, crypting, and
+/// deriving keys, along with various related delegations and certificates.
+/// Typically the group is stored together on disk, but temporary key sets not
+/// stored on disk are also supported, e.g. for testing. Currently, at most one
+/// of each type of key can be held in a single Keys object, and there is no
+/// provision for rekeying (i.e. key versioning or lifetimes).
 class Keys {
  public:
   /// Flags used in Keys constructor for declaring which keys should be managed.
-  enum Type {
-    Signing = 1 << 1,  // This is a key pair.
-    Crypting = 1 << 2,
-    KeyDeriving = 1 << 3
+  enum KeyType {
+    Signing = 1,  // Implicitly includes verifying key as well.
+    Crypting = 2,
+    Deriving = 4
   };
 
   /// Construct a new Keys object to manage a group of temporary keys.
-  /// InitTemporary() should be called before using the object.
-  /// @param nickname A nickname for the group of keys.
+  /// InitTemporary() or InitTemporaryHosted() should be called before using the
+  /// object.
   /// @param key_type One or more of the Keys::Type flags.
-  Keys(const string &nickname, int key_types);
+  explicit Keys(int key_types) : key_types_(key_types) {}
 
   /// Construct a new Keys object to manage a group of on-disk keys.
-  /// InitNonHosted() or InitHosted() should be called before using the object.
+  /// InitWithPassword() or InitHosted() should be called before using the
+  /// object.
   /// @param path The directory under which all keys are stored.
-  /// @param nickname A nickname for the group of keys, for debugging.
   /// @param key_type One or more of the Keys::Type flags.
-  Keys(const string &path, const string &nickname, int key_types);
+  Keys(const string &path, int key_types)
+      : key_types_(key_types), path_(new string(path)) {}
 
-  /// Construct a new Keys object to hold the given keys. Ownership is taken
-  /// for all keys. It is not necessary to call any of the Init() methods.
-  /// @param verifying_key A verifier key.
-  /// @param signing_key A signing key.
-  /// @param derivation_key A signing key.
-  /// @param crypting_key A signing key.
-  Keys(keyczar::Verifier *verifying_key, keyczar::Signer *signing_key,
-       keyczar::Signer *derivation_key, keyczar::Crypter *crypting_key);
-
-  virtual ~Keys();
-
-  /// Initialize a group of temporary keys. Unit tests use this initializer.
-  /// Fresh keys are generated, and none of the keys are stored on disk.
+  /// Initialize a group of temporary keys. Fresh keys are generated, and none
+  /// of the keys are stored on disk. Unit tests use this initializer.
   bool InitTemporary();
 
-  /// Initialize a group of temporary keys, along with a delegation from the Tao
-  /// host. Fresh keys are generated, and none of the keys or the delegation are
-  /// stored on disk.
+  /// Initialize a group of temporary keys. Fresh keys are generated, and none
+  /// of the keys are stored on disk. A delegation is created if a signing key
+  /// was requested, otherwise this behaves identically to InitTemporary().
   bool InitTemporaryHosted(Tao *tao);
 
-  /// Initialize the group of keys using PBE. If password is emptystring, only
-  /// verification keys can be loaded. Otherwise, keys will be loaded if
-  /// possible, otherwise generated and saved. Non-hosted programs without
-  /// access to a host Tao should use this initializer.
+  /// Initialize a group of persistent keys using PBE. If keys exist on disk,
+  /// they will be loaded, otherwise keys will be generated and saved. If only a
+  /// signer is requested, the key is stored in PKCS#8 format.  Otherwise, all
+  /// keys are stored in a custom PBE format. The password must be non-empty. As
+  /// a special case, if the password is empty and only a signing key is
+  /// requested, an attempt is made to load just the corresponding public
+  /// verifier key using a previously-generated self-signed or CA-signed x509
+  /// certificate, if available. Non-hosted programs without access to a host
+  /// Tao
+  /// should use this initializer.
+  ///
   /// @param password The password used to encrypt the key on disk, or
   /// emptystring to load only the verification key.
-  bool InitNonHosted(const string &password);
+  bool InitWithPassword(const string &password);
 
-  /// Initialize the group of keys using Tao-sealed secrets. Keys will be
-  /// loaded if they already exist, otherwise they will be generated and saved.
-  /// Hosted programs should use this initializer. If a crypter is available, it
-  /// will be protected using a Tao-sealed secret, and any othe keys will be
-  /// protected using the crypter. Otherwise, if no crypter is available, all
-  /// keys will be protected using a Tao-sealed secret.
+  /// Initialize a group of persistent keys using Tao-sealed secrets. If keys
+  /// exist on disk they will be loaded, otherwise keys will be generated and
+  /// saved. All private keys will be stored in a single Tao-sealed file. Hosted
+  /// programs should use this initializer.
   /// @param tao The interface to access the host Tao.
   /// @param policy A sealing policy used to protect the secret keys.
   bool InitHosted(Tao *tao, const string &policy);
@@ -197,217 +361,104 @@ class Keys {
   /// Whether or not the manged keys were freshly generated by Init methods().
   bool HasFreshKeys() const { return fresh_; }
 
-  /// Get the nickname of this group of keys.
-  string Nickname() const { return nickname_; }
+  /// Get managed keys, or nullptr if not available.
+  /// @{
+  tao::Verifier *Verifier() const { return verifier_.get(); }
+  tao::Signer *Signer() const { return signer_.get(); }
+  tao::Deriver *Deriver() const { return deriver_.get(); }
+  tao::Crypter *Crypter() const { return crypter_.get(); }
+  /// @}
 
-  // Get the nickname of a key from this group.
-  // string Nickname(Type key_type) const {
-  //   if (key_type == Type::Crypting)
-  //     return nickname_ + "_crypting";
-  //   else if (key_type == Type::Signing)
-  //     return nickname_ + "_signing";
-  //   else if (key_type == Type::KeyDeriving)
-  //     return nickname_ + "_key_deriving";
-  // }
+  /// Get the tao delegation for the managed signing key. This is only available
+  /// for hosted key sets. For persistent keysets, the delegation is stored in
+  /// DelegationPath().
+  string GetHostDelegation() const { return delegation_; }
 
-  /// Get the full Tao principal name identifying the public signing key.
-  /// @param[out] name The principal name.
-  bool GetPrincipalName(string *name) const;
+  /// Set the X509 certificate for the managed verifier key. For
+  /// persistent keysets, the certificate will be written to X509Path().
+  /// @param details Text-format encoded X509Details for the subject.
+  bool SetX509(const string &pem_cert);
 
-  /// Get the managed verifier key. If no verifier is available, the signer will
-  /// be returned instead if it is available. Otherwise, nullptr will be
-  /// returned.
-  keyczar::Verifier *Verifier() const;
+  /// Get the X509 certificate for the managed verifier key.
+  string GetX509() const { return x509_; }
 
-  /// Get the managed signing key.
-  keyczar::Signer *Signer() const { return signer_.get(); }
-
-  /// Get the managed key-derivation key.
-  keyczar::Signer *KeyDeriver() const { return key_deriver_.get(); }
-
-  /// Get the managed crypting key.
-  keyczar::Crypter *Crypter() const { return crypter_.get(); }
-
-  /// Get the delegation attestation for the managed signing key obtained
-  /// from the host Tao, if available..
-  /// @param[out] The serialized delegation attestation.
-  bool GetHostDelegation(string *attestation) const;
+  /// Create a deep copy of this key set.
+  /// Note: If an x509 is subsequently added to one of the key sets, the two
+  /// copies will become out of sync.
+  Keys *DeepCopy() const;
 
   /// Get a path relative to the directory where the managed keys are stored.
   /// @param suffix The suffix to append.
   string GetPath(const string &suffix) const;
 
-  /// Get the path to the managed signing public key.
-  string SigningPublicKeyPath() const {
-    return GetPath(SigningPublicKeySuffix);
-  }
+  /// Get the path to the sealed private KeySet.
+  string SealedKeysetPath() const { return GetPath(SealedKeysetSuffix); }
 
-  /// Get the path to the managed signing private key.
-  string SigningPrivateKeyPath() const {
-    return GetPath(SigningPrivateKeySuffix);
-  }
+  /// Get the path to the PBE private KeySet.
+  string PBEKeysetPath() const { return GetPath(PBEKeysetSuffix); }
 
-  /// Get the path to the managed key-deriving key.
-  string KeyDerivingKeyPath() const { return GetPath(KeyDerivingKeySuffix); }
+  /// Get the path to the PKCS#8 PBE private signing key.
+  string PBESignerPath() const { return GetPath(PBESignerSuffix); }
 
-  /// Get the path to the managed crypting key.
-  string CryptingKeyPath() const { return GetPath(CryptingKeySuffix); }
+  /// Get the path to the public verifier delegation.
+  string DelegationPath() const { return GetPath(DelegationSuffix); }
 
-  /// Get the path to a delegation attestation for the managed signing key.
-  /// @param tag Unique name used to distinguish multiple delegations.
-  string DelegationPath(const string &tag) const {
-    return GetPath(string(SigningKeyDelegationSuffix) + "." + tag);
-  }
+  /// Get the path to the public verifier x509 certificate.
+  string X509Path() const { return GetPath(X509Suffix); }
 
-  /// Get the path to the Tao-sealed secret for protecting managed keys.
-  string SecretPath() const { return GetPath(CryptingSecretSuffix); }
-
-  /// Get the path to a self-signed x509 certificate for the signing public key.
-  string SigningX509CertificatePath() const {
-    return GetPath(SigningPublicKeyX509Suffix);
-  }
-
-  /// Create a self-signed X509 certificate for a key.
-  /// @param details Text-format encoded X509Details for the subject.
-  /// @param pem_cert The serialized PEM-format self-signed certificate.
-  bool CreateSelfSignedX509(const string &details_text, string *pem_cert) const;
-
-  /// Create a self-signed X509 certificate for a key.
-  /// The certificate will be written to SigningX509CertificatePath().
-  /// @param details Text-format encoded X509Details for the subject.
-  bool CreateSelfSignedX509(const string &details_text) const;
-
-  /// Create a signed X509 certificate issued by the managed signing key.
-  /// @param cert_serial The serial number to use for the new certificate.
-  /// @param subject_key The key to use for the subject.
-  /// @param subject_details The x509 details for the subject.
-  /// @param[out] pem_cert The signed certificate chain.
-  bool CreateCASignedX509(int cert_serial, const keyczar::Verifier &subject_key,
-                          const X509Details &subject_details,
-                          string *pem_cert) const;
-
-  /// Convert the managed signing public key to a serialized string.
-  /// @param[out] s The serialized key.
-  // bool SerializePublicKey(string *s) const;
-
-  /// Sign data with the managed signing private key.
-  /// @param data The data to sign.
-  /// @param context The context string to add to the tao::Signature.
-  /// WARNING: for security, this must be unique for each context in which
-  /// signed messages are used.
-  /// @param[out] signature The resulting signature.
-  bool Sign(const string &data, const string &context, string *signature) const;
-
-  /// Verify a signature the managed signing public or private key.
-  /// @param data The data that was signed.
-  /// @param context The context to check in the tao::Signature.
-  /// @param signature The signature on the data.
-  bool Verify(const string &data, const string &context,
-              const string &signature) const;
-
-  /// Encrypt with the managed crypting key
-  /// @param data The data to be encrypted.
-  /// @param[out] encrypted The encrypted data.
-  bool Encrypt(const string &data, string *encrypted) const;
-
-  /// Decrypt with the managed crypting key
-  /// @param encrypted The encrypted data.
-  /// @param[out] data The decrypted data.
-  bool Decrypt(const string &encrypted, string *data) const;
-
-  /// Make a (deep) copy of this object.
-  Keys *DeepCopy() const;
-
-  /// Make a (deep) copy of the managed signing private key.
-  /// @param[out] copy The key to fill with the copy.
-  // bool CopySigner(scoped_ptr<keyczar::Signer> *copy) const;
-
-  /// Make a (deep) copy of the managed key-derivation key.
-  /// @param[out] copy The key to fill with the copy.
-  // bool CopyKeyDeriver(scoped_ptr<keyczar::Signer> *copy) const;
-
-  /// Make a (deep) copy of the managed Verifier or the public half of the
-  /// managed Signer.
-  /// @param[out] copy The key to fill with the copy.
-  // bool CopyVerifier(scoped_ptr<keyczar::Verifier> *copy) const;
-
-  /// Make a (deep) copy of the managed Crypter.
-  /// @param key The key to be copied.
-  /// @param[out] copy The key to fill with the copy.
-  // bool CopyCrypter(scoped_ptr<keyczar::Crypter> *copy) const;
-
-  /// Derive key material from the managed key-derivation key.
-  /// @param name A unique name for the derived key.
-  /// @param size The size of the material to be derived.
-  /// @param[out] material The key material derived from main_key.
-  bool DeriveKey(const string &name, size_t size, string *material) const;
-
-  /// Convert the managed signing private key to an OpenSSL EVP_PKEY structure.
-  /// Only the primary key from the keyset is exported. The EVP_PKEY will
-  /// contain both public and private keys.
-  /// @param evp_key[out] The new OpenSSL EVP_PKEY.
-  bool ExportSignerToOpenSSL(ScopedEvpPkey *evp_key) const;
-
-  /// Convert the managed signing public key to an OpenSSL EVP_PKEY structure.
-  /// Only the primary key from the keyset is exported. The EVP_PKEY will
-  /// contain only a public key.
-  /// @param evp_key[out] The new OpenSSL EVP_PKEY.
-  bool ExportVerifierToOpenSSL(ScopedEvpPkey *evp_key) const;
-
-  /// Keys stores all its files under a single path using these naming
-  /// conventions. For consistency, other applications may use these same naming
-  /// conventions as well.
+  /// all files are stored under a single path using these naming conventions.
+  /// For consistency, other applications may use these same naming conventions
+  /// as well.
   /// @{
 
-  /// Suffix for a signing public key in keyczar format.
-  constexpr static auto SigningPublicKeySuffix = "signing/public.key";
-  /// Suffix for a signing private key in keyczar format.
-  constexpr static auto SigningPrivateKeySuffix = "signing/private.key";
-  /// Suffix for a delegation attestation for a signing key.
-  constexpr static auto SigningKeyDelegationSuffix = "signing/delegation";
-  /// Suffix for a signing public key x509 certificate in openssl format.
-  constexpr static auto SigningPublicKeyX509Suffix = "signing/x509cert.pem";
-  /// Suffix for a crypting key in keyczar format.
-  constexpr static auto CryptingKeySuffix = "crypting/private.key";
-  /// Suffix for a key-derivation key in keyczar format.
-  constexpr static auto KeyDerivingKeySuffix = "keyderiving/private.key";
-  /// Suffix for a sealed secret used for Tao-protected keys
-  constexpr static auto CryptingSecretSuffix = "secret";
+  /// Suffix for a tao-sealed keyset.
+  constexpr static auto SealedKeysetSuffix = "keyset.tao_sealed";
+  /// Suffix for a PBE keyset.
+  constexpr static auto PBEKeysetSuffix = "keyset.pbe_sealed";
+  /// Suffix for a PKCS#8 PBE signer.
+  constexpr static auto PBESignerSuffix = "signing.pk8";
+  /// Suffix for a signing key host Tao delegation.
+  constexpr static auto DelegationSuffix = "public_delegation.tao";
+  /// Suffix for a signing key x509 certificate.
+  constexpr static auto X509Suffix = "public_cert.pem";
 
   /// @}
-
-  /// Default size of secret for protecting crypting and signing keys.
-  static const int DefaultRandomSecretSize = 128;
 
  private:
   /// The types of keys to be generated or loaded.
   int key_types_;
 
   /// The path to the directory storing keys and related files, or emptystring.
-  string path_;
-
-  /// A nickname for the group of keys.
-  string nickname_;
+  scoped_ptr<string> path_;
 
   /// Whether or not the manged keys were freshly generated by Init().
   bool fresh_;
 
-  /// The host tao delegation, if hosted.
-  string host_delegation_;
+  /// The host tao delegation, or nullptr.
+  string delegation_;
 
-  /// The managed verifier key, or null.
-  scoped_ptr<keyczar::Verifier> verifier_;
+  /// The host tao delegation, or nullptr.
+  string x509_;
 
-  /// The managed signing private key, or null.
-  scoped_ptr<keyczar::Signer> signer_;
+  /// The managed keys, or nullptr if not requested..
+  /// @{
+  scoped_ptr<tao::Verifier> verifier_;
+  scoped_ptr<tao::Signer> signer_;
+  scoped_ptr<tao::Deriver> deriver_;
+  scoped_ptr<tao::Crypter> crypter_;
+  /// @}
 
-  /// The managed key-derivation key, or null.
-  scoped_ptr<keyczar::Signer> key_deriver_;
+  /// Load specified keys from a keyset.
+  /// @param m The keyset.
+  /// @param signer Whether to expect a signer or not.
+  /// @param deriver Whether to expect a deriver or not.
+  /// @param crypter Whether to expect a crypter or not.
+  bool Decode(const CryptoKeyset &m, bool signer, bool deriver, bool crypter);
 
-  /// The managed derivation key, or null.
-  scoped_ptr<keyczar::Crypter> crypter_;
+  /// Write keys into a keyset.
+  /// @param m The keyset.
+  bool Encode(CryptoKeyset *m) const;
 
- private:
   DISALLOW_COPY_AND_ASSIGN(Keys);
 };
 }  // namespace tao

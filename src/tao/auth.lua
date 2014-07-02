@@ -172,7 +172,7 @@ end
 
 -- subprin/3 primitive. subprin(P, O, E) holds when P is the principal obtained
 -- by extending principal O with subprincipal name E, i.e. when P = O::E. This
--- primitive requries that either P is a constant, or both O and E are
+-- primitive requires that either P is a constant, or both O and E are
 -- constants.
 local function subprin(literal)
   return function(s, v)

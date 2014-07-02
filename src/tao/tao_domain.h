@@ -28,11 +28,6 @@
 
 class DictionaryValue;
 
-namespace keyczar {
-class Signer;
-class Verifier;
-}  // namespace keyczar
-
 namespace tao {
 using std::string;
 
@@ -113,10 +108,10 @@ class TaoDomain : public TaoGuard {
   string GetAuthType() const { return GetConfigString(JSONAuthType); }
 
   /// Get the policy key signer. This returns nullptr if the object is locked.
-  keyczar::Signer *GetPolicySigner() const { return keys_->Signer(); }
+  Signer *GetPolicySigner() const { return keys_->Signer(); }
 
   /// Get the policy key verifier.
-  keyczar::Verifier *GetPolicyVerifier() const { return keys_->Verifier(); }
+  Verifier *GetPolicyVerifier() const { return keys_->Verifier(); }
 
   /// Get the policy keys.
   Keys *GetPolicyKeys() const { return keys_.get(); }

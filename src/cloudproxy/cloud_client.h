@@ -25,7 +25,7 @@
 #include "cloudproxy/util.h"
 
 namespace tao {
-class Keys;
+class Signer;
 }
 
 namespace cloudproxy {
@@ -40,17 +40,18 @@ class CloudClient {
   /// Construct a client. Temporary TLS keys and certificates will be generated.
   CloudClient() {}
   
-  /// Construct a client using the given signing key. A temporary certficate
-  /// will be generated. 
-  /// @param tls_key A key to use for TLS. Ownership is taken.
-  CloudClient(tao::Keys *tls_key) : tls_key_(tls_key) {}
-  
-  /// Construct a client using the given signing key. A temporary certficate
-  /// will be generated. 
-  /// @param tls_key A key to use for TLS. Ownership is taken.
-  /// @param tls_cert A serialized PEM-encoded x509 certficate for tls_key.
-  CloudClient(tao::Keys *tls_key, const string &tls_cert)
-      : tls_key_(tls_key), tls_self_cert_(tls_cert) {}
+  /// Construct a client.
+  /// @param tls_key A key to use for TLS. Ownership is taken. If nullptr, a
+  /// new temporary key will be generated.
+  /// @param tls_cert A serialized PEM-encoded x509 certificate for tls_key. If
+  /// emptystring, a new self-signed certificate will be generated.
+  /// @param tls_delegation A serialized host Tao delegation for tls_key. If
+  /// emptystring, a new delegation will be generated.
+  CloudClient(tao::Signer *tls_key, const string &tls_cert,
+              const string &tls_delegation)
+      : tls_key_(tls_key),
+        tls_self_cert_(tls_cert),
+        tls_delegation_(tls_delegation) {}
 
   virtual bool Init();
   virtual ~CloudClient() {}
@@ -76,7 +77,7 @@ class CloudClient {
   ScopedSSLCtx tls_context_;
 
   /// A signing key for TLS.
-  scoped_ptr<tao::Keys> tls_key_;
+  scoped_ptr<tao::Signer> tls_key_;
 
   /// A self-signed certificate for the TLS key.
   string tls_self_cert_;

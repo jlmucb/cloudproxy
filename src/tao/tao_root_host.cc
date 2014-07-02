@@ -32,7 +32,7 @@ namespace tao {
 
 bool TaoRootHost::Init() {
   if (keys_.get() == nullptr) {
-    keys_.reset(new Keys("soft_tao", Keys::Signing | Keys::Crypting));
+    keys_.reset(new Keys(Keys::Signing | Keys::Crypting));
     if (!keys_->InitTemporary()) {
       LOG(ERROR) << "Could not generate temporary keys";
       return false;
@@ -43,7 +43,8 @@ bool TaoRootHost::Init() {
     return false;
   }
   // Get our name early and cache it.
-  if (!keys_->GetPrincipalName(&tao_host_name_)) {
+  tao_host_name_ = keys_->Verifier()->ToPrincipalName();
+  if (tao_host_name_ == "") {
     LOG(ERROR) << "Could not get key principal name";
     return false;
   }
@@ -59,11 +60,11 @@ bool TaoRootHost::GetRandomBytes(const string &child_subprin, size_t size,
 
 bool TaoRootHost::GetSharedSecret(const string &tag, size_t size,
                                   string *bytes) const {
-  if (keys_ == nullptr || keys_->KeyDeriver() == nullptr) {
+  if (keys_ == nullptr || keys_->Deriver() == nullptr) {
     LOG(ERROR) << "This host does not implement shared secrets";
     return false;
   }
-  if (!keys_->DeriveKey(tag, size, bytes)) {
+  if (!keys_->Deriver()->Derive(size, tag, bytes)) {
     LOG(ERROR) << "Could not derive shared secret";
     return false;
   }
@@ -82,7 +83,8 @@ bool TaoRootHost::Attest(const string &child_subprin, Statement *stmt,
     return false;
   }
   // Sign it.
-  return GenerateAttestation(*keys_, "" /* delegation */, *stmt, attestation);
+  return GenerateAttestation(*keys_->Signer(), "" /* delegation */, *stmt,
+                             attestation);
 }
 
 bool TaoRootHost::Encrypt(const google::protobuf::Message &data,
@@ -92,13 +94,13 @@ bool TaoRootHost::Encrypt(const google::protobuf::Message &data,
     LOG(ERROR) << "Could not serialize data to be sealed";
     return false;
   }
-  return keys_->Encrypt(serialized_data, encrypted);
+  return keys_->Crypter()->Encrypt(serialized_data, encrypted);
 }
 
 bool TaoRootHost::Decrypt(const string &encrypted,
                           google::protobuf::Message *data) const {
   string serialized_data;
-  if (!keys_->Decrypt(encrypted, &serialized_data)) {
+  if (!keys_->Crypter()->Decrypt(encrypted, &serialized_data)) {
     LOG(ERROR) << "Could not decrypt sealed data";
     return false;
   }

@@ -31,11 +31,14 @@
 
 /// These basic utilities from Keyczar are used extensively throughout the Tao
 /// implementation, so we include them here.
+/// TODO(kwalsh) Most of this is actually not original to Keyczar, but is
+/// instead borrowed from Chromium, protobufs, or elsewhere. Perhaps we should
+/// do
+/// likewise?
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <keyczar/base/file_util.h>
 #include <keyczar/base/scoped_ptr.h>
-#include <keyczar/base/values.h>  // for ScopedSafeString
 
 #include "tao/tao.h"
 
@@ -62,13 +65,13 @@ using std::unique_ptr;  // TODO(kwalsh) Discuss unique_ptr vs. scoped_ptr.
 
 // using keyczar::base::FilePath;  // Why isn't this in keyczar::base ?
 // using keyczar::base::ReadFileToString; // Define our own version below.
+// using keyczar::base::ScopedSafeString;  // Define our own version below.
 using keyczar::base::Base64WDecode;      // NOLINT
 using keyczar::base::Base64WEncode;      // NOLINT
 using keyczar::base::CreateDirectory;    // NOLINT
 using keyczar::base::Delete;             // NOLINT
 using keyczar::base::DirectoryExists;    // NOLINT
 using keyczar::base::PathExists;         // NOLINT
-using keyczar::base::ScopedSafeString;   // NOLINT
 using keyczar::base::WriteStringToFile;  // NOLINT
 
 /// @}
@@ -103,6 +106,16 @@ void temp_file_cleaner(string *dir);
 /// @param fd A pointer to the self-pipe file descriptor.
 void selfpipe_release(int *fd);
 
+/// A version of scoped_ptr::reset() that returns the new pointer. Useful for
+/// putting reset inside of conditionals.
+/// @param t The scoped_ptr to be reset.
+/// @param p The new pointer to manage.
+template <typename T>
+T *reset(scoped_ptr<T> &t, T *p) {  // NOLINT
+  t.reset(p);
+  return p;
+}
+
 /// A functor template for wrapping deallocators that misbehave on nullptr.
 template <typename T, void (*F)(T *)>
 struct CallUnlessNull {
@@ -110,6 +123,16 @@ struct CallUnlessNull {
     if (ptr) F(ptr);
   }
 };
+
+/// Cleanse the contents of a string then free it.
+/// @param s The string to be cleansed and freed.
+void SecureStringFree(string *s);
+
+/// A smart pointer to a string that clears itself.
+// Note(kwalsh) Keyczar's version of scopedSafeString seems anything but safe,
+// so we reimplement it here.
+typedef scoped_ptr_malloc<string, CallUnlessNull<string, SecureStringFree>>
+    ScopedSafeString;
 
 /// A smart pointer to a file descriptor.
 typedef scoped_ptr_malloc<int, CallUnlessNull<int, fd_close>> ScopedFd;
@@ -140,15 +163,21 @@ int GetSelfPipeSignalFd(int signum, int sa_flags);
 /// @param fd The file descriptor returned from GetSelfPipeSignalFd().
 bool ReleaseSelfPipeSignalFd(int fd);
 
-/// Hash a string using SHA256.
+/// Hash a string using SHA1 or SHA256.
 /// @param s The string to hash.
 /// @param[out] hash The resulting hash.
+/// @{
+bool Sha1(const string &s, string *hash);
 bool Sha256(const string &s, string *hash);
+/// @}
 
-/// Hash a file using SHA256.
+/// Hash a file using SHA1 or SHA256.
 /// @param path The path of the file to hash.
 /// @param[out] hash The resulting hash.
+/// @{
+bool Sha1FileHash(const string &path, string *hash);
 bool Sha256FileHash(const string &path, string *hash);
+/// @}
 
 /// Read contents of a file and store (not append) in string. In contrast,
 /// keyczar::base::ReadFileToString() appends the contents to the string.
@@ -329,6 +358,13 @@ bool split(const string &s, const string &delim, list<int> *values);
 /// Get the modification timestamp for a file.
 /// @param path The file path.
 time_t FileModificationTime(const string &path);
+
+/// Get random bytes from host Tao, if available, otherwise from Keyczar or
+/// OpenSSL.
+/// @param size The number of bytes to get.
+/// @param[out] s A string in which to place the bytes.
+// TODO(kwalsh) Rethink this function.
+bool RandBytes(size_t size, string *s);
 
 }  // namespace tao
 

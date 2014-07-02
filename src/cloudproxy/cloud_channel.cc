@@ -21,7 +21,6 @@
 #include <arpa/inet.h>
 
 #include <glog/logging.h>
-#include <keyczar/keyczar.h>
 #include <openssl/ssl.h>
 
 #include "cloudproxy/util.h"
@@ -29,6 +28,7 @@
 #include "tao/keys.h"
 
 using tao::OpenSSLSuccess;
+using tao::Verifier;
 
 namespace cloudproxy {
 
@@ -42,13 +42,13 @@ bool CloudChannel::ValidateDelegation(const string &delegation,
     LOG(ERROR) << "Delegation is invalid";
     return false;
   }
-  scoped_ptr<keyczar::Verifier> cert_key(tao::VerifierFromX509(cert));
+  scoped_ptr<Verifier> cert_key(Verifier::FromX509(cert));
   if (cert_key.get() == nullptr) {
     LOG(ERROR) << "Could not parse key from x509";
     return false;
   }
-  string cert_key_name;
-  if (!tao::VerifierToPrincipalName(*cert_key, &cert_key_name)) {
+  string cert_key_name = cert_key->ToPrincipalName();;
+  if (cert_key_name == "") {
     LOG(ERROR) << "Could not get principal name for x509 key";
     return false;
   }

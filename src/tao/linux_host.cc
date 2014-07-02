@@ -56,8 +56,7 @@ bool LinuxHost::InitStacked(Tao *host_tao) {
     return false;
   }
   scoped_ptr<Keys> keys(
-      new Keys(path_, "linux_stacked_host",
-               Keys::Signing | Keys::Crypting | Keys::KeyDeriving));
+      new Keys(path_, Keys::Signing | Keys::Crypting | Keys::Deriving));
   if (!keys->InitHosted(host_tao, Tao::SealPolicyDefault)) {
     LOG(ERROR) << "Could not obtain keys";
     return false;
@@ -71,9 +70,8 @@ bool LinuxHost::InitRoot(const string &pass) {
   // key so we can do anything, including undoing an extend operation, and no
   // other principal should ever be led to believe otherwise.
   scoped_ptr<Keys> keys(
-      new Keys(path_, "linux_root_host",
-               Keys::Signing | Keys::Crypting | Keys::KeyDeriving));
-  if (!keys->InitNonHosted(pass)) {
+      new Keys(path_, Keys::Signing | Keys::Crypting | Keys::Deriving));
+  if (!keys->InitWithPassword(pass)) {
     LOG(ERROR) << "Could not unlock keys";
     return false;
   }

@@ -50,7 +50,7 @@ class Verifier;
 }
 
 namespace tao {
-class Keys;
+class Signer;
 }
 
 namespace cloudproxy {
@@ -127,7 +127,7 @@ typedef scoped_ptr_malloc<SSL, CallUnlessNull<SSL, ssl_cleanup>> ScopedSSL;
 /// @param key The private signing key and x509 certificate to use.
 /// @param cert A serialized PEM-format x509 certificate for the key.
 /// @param ctx The OpenSSL context to prepare.
-bool SetUpSSLServerCtx(const tao::Keys &key, const string &cert,
+bool SetUpSSLServerCtx(const tao::Signer &key, const string &cert,
                        ScopedSSLCtx *ctx);
 
 #if 0
@@ -135,13 +135,13 @@ bool SetUpSSLServerCtx(const tao::Keys &key, const string &cert,
 /// Peer certificates will not be required.
 /// @param key The private signing key and x509 certificate to use.
 /// @param ctx The OpenSSL context to prepare.
-bool SetUpPermissiveSSLServerCtx(const tao::Keys &key, ScopedSSLCtx *ctx);
+bool SetUpPermissiveSSLServerCtx(const tao::Signer &key, ScopedSSLCtx *ctx);
 #endif
 
 /// Prepare an SSL_CTX for a client to connect to a server.
 /// @param key The private signing key and x509 certificate to use.
 /// @param ctx The OpenSSL context to prepare.
-bool SetUpSSLClientCtx(const tao::Keys &key, const string &cert,
+bool SetUpSSLClientCtx(const tao::Signer &key, const string &cert,
                        ScopedSSLCtx *ctx);
 
 #if 0

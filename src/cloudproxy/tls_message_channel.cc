@@ -72,7 +72,8 @@ bool TLSMessageChannel::InitTLSSelfCert() {
   // Don't delete our own X.509 certificate, since it is owned by the SSL_CTX
   // and will be deleted there. 
   X509 *self_cert = SSL_get_certificate(tls_.get());
-  return tao::SerializeX509(self_cert, &serialized_self_cert_);
+  serialized_self_cert_ = tao::SerializeX509(self_cert);
+  return (serialized_self_cert_ != "");
 }
 
 bool TLSMessageChannel::InitTLSPeerCert() {
@@ -82,7 +83,8 @@ bool TLSMessageChannel::InitTLSPeerCert() {
     LOG(ERROR) << "No X.509 certificate received from the client";
     return false;
   }
-  return tao::SerializeX509(peer_cert.get(), &serialized_peer_cert_);
+  serialized_peer_cert_ = tao::SerializeX509(peer_cert.get());
+  return (serialized_peer_cert_ != "");
 }
 
 bool TLSMessageChannel::SendData(const void *buffer, size_t buffer_len) {

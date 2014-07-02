@@ -32,8 +32,7 @@ using keyczar::CryptoFactory;
 namespace tao {
 bool SoftTao::Init() {
   if (keys_.get() == nullptr) {
-    keys_.reset(new Keys("soft_tao",
-                         Keys::Signing | Keys::Crypting | Keys::KeyDeriving));
+    keys_.reset(new Keys(Keys::Signing | Keys::Crypting | Keys::Deriving));
     if (!keys_->InitTemporary()) {
       LOG(ERROR) << "Could not generate temporary keys";
       return false;
@@ -43,7 +42,8 @@ bool SoftTao::Init() {
     LOG(ERROR) << "SoftTao is missing a required key";
     return false;
   }
-  if (!keys_->GetPrincipalName(&key_name_)) {
+  key_name_ = keys_->Verifier()->ToPrincipalName();
+  if (key_name_ == "") {
     LOG(ERROR) << "Could not get key principal name";
     return false;
   }
@@ -79,7 +79,7 @@ bool SoftTao::GetRandomBytes(size_t size, string *bytes) {
 
 bool SoftTao::GetSharedSecret(size_t size, const string &policy,
                               string *bytes) {
-  if (keys_ == nullptr || keys_->KeyDeriver() == nullptr) {
+  if (keys_ == nullptr || keys_->Deriver() == nullptr) {
     failure_msg_ = "SoftTao does not implement shared secrets";
     LOG(ERROR) << failure_msg_;
     return false;
@@ -89,7 +89,7 @@ bool SoftTao::GetSharedSecret(size_t size, const string &policy,
     LOG(ERROR) << failure_msg_;
     return false;
   }
-  if (!keys_->DeriveKey("derive shared secret", size, bytes)) {
+  if (!keys_->Deriver()->Derive(size, "derive shared secret", bytes)) {
     failure_msg_ = "Could not derive shared secret";
     LOG(ERROR) << failure_msg_;
     return false;
@@ -109,7 +109,8 @@ bool SoftTao::Attest(const Statement &stmt, string *attestation) {
     LOG(ERROR) << failure_msg_;
     return false;
   }
-  return GenerateAttestation(*keys_, "" /* delegation */, s, attestation);
+  return GenerateAttestation(*keys_->Signer(), "" /* delegation */, s,
+                             attestation);
 }
 
 bool SoftTao::Seal(const string &data, const string &policy, string *sealed) {
@@ -118,11 +119,11 @@ bool SoftTao::Seal(const string &data, const string &policy, string *sealed) {
     LOG(ERROR) << failure_msg_;
     return false;
   }
-  return keys_->Encrypt(data, sealed);
+  return keys_->Crypter()->Encrypt(data, sealed);
 }
 
 bool SoftTao::Unseal(const string &sealed, string *data, string *policy) {
-  if (!keys_->Decrypt(sealed, data)) {
+  if (!keys_->Crypter()->Decrypt(sealed, data)) {
     failure_msg_ = "Could not decrypt the sealed data";
     LOG(ERROR) << failure_msg_;
     return false;
@@ -157,10 +158,9 @@ SoftTao *SoftTao::DeserializeFromString(const string &params) {
     LOG(ERROR) << "Could not deserialize SoftTao";
     return nullptr;
   }
-  string nickname = FilePath(path).BaseName().value();
-  scoped_ptr<Keys> keys(new Keys(
-      path, nickname, Keys::Signing | Keys::Crypting | Keys::KeyDeriving));
-  if (!keys->InitNonHosted(pass)) {
+  scoped_ptr<Keys> keys(
+      new Keys(path, Keys::Signing | Keys::Crypting | Keys::Deriving));
+  if (!keys->InitWithPassword(pass)) {
     LOG(ERROR) << "Could not load keys for SoftTao";
     return nullptr;
   }

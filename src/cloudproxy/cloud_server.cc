@@ -24,6 +24,7 @@
 #include <glog/logging.h>
 
 #include "cloudproxy/cloud_channel.h"
+#include "tao/attestation.h"
 #include "tao/keys.h"
 #include "tao/tao.h"
 #include "tao/tao_guard.h"
@@ -32,7 +33,8 @@ using std::lock_guard;
 using std::mutex;
 using std::thread;
 
-using tao::Keys;
+using tao::Signer;
+using tao::Statement;
 using tao::Tao;
 using tao::TaoGuard;
 
@@ -43,7 +45,7 @@ CloudServer::CloudServer(const string &host, const string &port,
     : host_(host),
       port_(port),
       guard_(guard),
-      tls_key_(new Keys("CloudServer", Keys::Signing)),
+      tls_key_(Signer::Generate()),
       server_sock_(new int(-1)) {}
 
 bool CloudServer::Init() {
@@ -52,22 +54,23 @@ bool CloudServer::Init() {
     LOG(ERROR) << "No host tao available";
     return false;
   }
-  if (!tls_key_->InitTemporaryHosted(host_tao)) {
+  if (tls_key_.get() == nullptr) {
     LOG(ERROR) << "Could not initialize CloudServer keys";
     return false;
   }
-  if (!tls_key_->GetHostDelegation(&tls_delegation_)) {
-    LOG(ERROR) << "Could not load delegation for attestation key";
+  Statement stmt;
+  stmt.set_delegate(tls_key_->ToPrincipalName());
+  if (!host_tao->Attest(stmt, &tls_delegation_)) {
+    LOG(ERROR) << "Could not create delegation for TLS key";
     return false;
   }
-  // x509 details are mostly not used by peers, so we use arbitrary constants
-  // here. However, commonname must match the Key nickname, above.
-  string nickname = tao::quotedString(tls_key_->Nickname());
-  string details = string("country: \"US\" "
-                          "state: \"Washington\" "
-                          "organization: \"Google\" ") +
-                   "commonname: " + nickname;
-  if (!tls_key_->CreateSelfSignedX509(details, &tls_self_cert_)) {
+  // x509 details are mostly not used by peers, so use arbitrary constants.
+  string details = "country: \"US\" "
+                   "state: \"Washington\" "
+                   "organization: \"Google\" "
+                   "commonname: \"CloudProxy Server\"";
+  tls_self_cert_ = tls_key_->CreateSelfSignedX509(details);
+  if (tls_self_cert_.empty()) {
     LOG(ERROR) << "Could not create self signed x509";
     return false;
   }

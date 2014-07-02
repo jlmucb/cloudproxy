@@ -130,7 +130,7 @@ bool CloudUserManager::MakeNewUser(const string &path, const string &username,
                                    scoped_ptr<Keys> *key) {
   string keys_path = FilePath(path).Append(username).value();
   key->reset(new Keys(keys_path, username, Keys::Signing));
-  if (!(*key)->InitNonHosted(password)) {
+  if (!(*key)->InitWithPassword(password)) {
     LOG(ERROR) << "Could not create key for user " << username;
     return false;
   }
@@ -174,7 +174,7 @@ bool CloudUserManager::LoadUser(const string &path, const string &username,
     return false;
   }
   key->reset(new Keys(keys_path, username, Keys::Signing));
-  if (!(*key)->InitNonHosted(password)) {
+  if (!(*key)->InitWithPassword(password)) {
     LOG(ERROR) << "Could not load key for user " << username;
     return false;
   }

@@ -57,7 +57,7 @@ class CloudChannel {
 
   /// Perform Tao handshaking. Must be called after TLS handshake and
   /// before other methods.
-  /// @param self_delegation_ Degation containing our own TLS key and name.
+  /// @param self_delegation_ Delegation containing our own TLS key and name.
   virtual bool TaoHandshake(const string &self_delegation);
 
   /// Notify peer of error, not wait for confirmation, then close connection.
@@ -75,7 +75,7 @@ class CloudChannel {
   virtual string PeerName() { return peer_name_; }
 
  protected:
-  /// Validate a delgation purportedly conveying cert->key speaksfor name.
+  /// Validate a delegation purportedly conveying cert->key speaksfor name.
   /// @param delegation The delegation to validate.
   /// @param cert A serialized self-signed x509 certificate for some key
   /// @param[out] name A name the certificate key speaks for.
@@ -91,7 +91,7 @@ class CloudChannel {
   /// @param expected_tag The expected tag to be received.
   /// @param[out] msg The received string.
   /// @param[out] eof Whether the connection has been closed.
-  virtual bool ReceiveFrame(CloudChannelFrameTag expeted_tag, string *msg,
+  virtual bool ReceiveFrame(CloudChannelFrameTag expected, string *msg,
                             bool *eof);
 
   /// This method is never used since the underlying channel is

@@ -23,14 +23,9 @@
 
 #include <glog/logging.h>
 #include <google/protobuf/text_format.h>
-#include <keyczar/base/json_reader.h>
-#include <keyczar/base/json_writer.h>
-#include <keyczar/base/values.h>
-#include <keyczar/keyczar.h>
-#include <keyczar/rw/keyset_file_reader.h>
-#include <keyczar/rw/keyset_file_writer.h>
-#include <keyczar/rw/keyset_writer.h>
+#include <openssl/hmac.h>
 #include <openssl/pem.h>
+#include <openssl/pkcs12.h>
 #include <openssl/sha.h>
 #include <openssl/x509v3.h>
 
@@ -39,708 +34,71 @@
 #include "tao/util.h"
 
 using google::protobuf::TextFormat;
-using keyczar::Crypter;
-using keyczar::Key;
-using keyczar::KeyPurpose;
-using keyczar::KeyStatus;
-using keyczar::KeyType;
-using keyczar::Keyczar;
-using keyczar::Keyset;
-using keyczar::KeysetMetadata;
-using keyczar::Signer;
-using keyczar::Verifier;
-using keyczar::base::JSONReader;
-using keyczar::base::JSONWriter;
-using keyczar::base::ScopedSafeString;
-using keyczar::rw::KeysetJSONFileWriter;
-using keyczar::rw::KeysetPBEJSONFileReader;
-using keyczar::rw::KeysetPBEJSONFileWriter;
-using keyczar::rw::KeysetWriter;
 
 namespace tao {
 
-// Keyczar is evil and runs EVP_cleanup(), which removes all the symbols.
-// So, they need to be added again. Typical error is:
-// * 336236785:SSL routines:SSL_CTX_new:unable to load ssl2 md5 routines
-// This needs to be done as close after PBE operations as possible,
-// and we need to reset anything that might be holding a PBE
-// object to force it to destruct and EVP_cleanup.
-// @param keyset A keyset to be reset.
-// @param writer A writer to be reset.
-static void KeyczarCleanupFix(scoped_ptr<Keyset> *keyset,
-                              scoped_ptr<KeysetWriter> *writer) {
-  if (writer) writer->reset();  // reset to force PBE object destruction
-  if (keyset) keyset->reset();  // reset to force PBE object destruction
-  OpenSSL_add_all_algorithms();
-}
-
-/// Generate a key and write it to disk.
-/// @param key_type The type of key, e.g. RSA_PRIV, ECDSA_PRIV, HMAC.
-/// @param key_purpose The purpose of key, e.g. SIGN_AND_VERIFY.
-/// @param nickname A nickname for the new key.
-/// @param password A password for encrypting the private key.
-/// @param private_path Location to store the private key.
-/// @param public_path Location to store public key, or emptystring.
-/// @param[out] key A scoped pointer to write the key to.
-template <class T>
-static bool GenerateKey(KeyType::Type key_type, KeyPurpose::Type key_purpose,
-                        const string &nickname, const string &password,
-                        const string &private_path, const string &public_path,
-                        scoped_ptr<T> *key) {
-  if (!CreateDirectory(FilePath(private_path)) ||
-      (!public_path.empty() && !CreateDirectory(FilePath(public_path)))) {
-    LOG(ERROR) << "Could not create key directories";
-    return false;
-  }
-  int next_version = 1;
-  int encrypted = true;  // note: unused, AFAIK
-  scoped_ptr<KeysetWriter> private_writer(
-      new KeysetPBEJSONFileWriter(private_path, password));
-  scoped_ptr<Keyset> keyset(new Keyset());
-  // TODO(kwalsh) Error checking for writer; currently not supported by keyczar.
-  keyset->AddObserver(private_writer.get());
-  keyset->set_encrypted(encrypted);
-  keyset->set_metadata(new KeysetMetadata(nickname, key_type, key_purpose,
-                                          encrypted, next_version));
-  // There is browser TLSv1.2 support for prime256v1 (secp256r1),
-  // but not for keyczar's default secp224r1
-  // keyset->GenerateDefaultKeySize(KeyStatus::PRIMARY);
-  keyset->GenerateKey(KeyStatus::PRIMARY, 256);
-  // We still own the writer, need to RemoveObserver before end of function.
-  keyset->RemoveObserver(private_writer.get());
-  if (!public_path.empty() &&
-      !keyset->PublicKeyExport(KeysetJSONFileWriter(public_path))) {
-    LOG(ERROR) << "Can't write public key to directory " << public_path;
-    KeyczarCleanupFix(&keyset, &private_writer);
-    return false;
-  }
-  key->reset(new T(keyset.release()));
-  (*key)->set_encoding(Keyczar::NO_ENCODING);
-  KeyczarCleanupFix(&keyset, &private_writer);
-  return true;
-}
-
-static bool GenerateCryptingKey(const string &nickname, const string &password,
-                                const string &path, scoped_ptr<Crypter> *key) {
-  return GenerateKey(KeyType::AES, KeyPurpose::DECRYPT_AND_ENCRYPT, nickname,
-                     password, path, "" /* no public */, key);
-}
-
-static bool GenerateSigningKey(const string &nickname, const string &password,
-                               const string &private_path,
-                               const string &public_path,
-                               scoped_ptr<Signer> *key) {
-  return GenerateKey(KeyType::ECDSA_PRIV, KeyPurpose::SIGN_AND_VERIFY, nickname,
-                     password, private_path, public_path, key);
-}
-
-static bool GenerateKeyDerivingKey(const string &nickname,
-                                   const string &password, const string &path,
-                                   scoped_ptr<Signer> *key) {
-  return GenerateKey(KeyType::HMAC, KeyPurpose::SIGN_AND_VERIFY, nickname,
-                     password, path, "" /* no public */, key);
-}
-
-/// Generate a temporary key.
-/// @param key_type The type of key, e.g. RSA_PRIV, ECDSA_PRIV, HMAC.
-/// @param key_purpose The purpose of key, e.g. SIGN_AND_VERIFY.
-/// @param nickname A nickname for the new key.
-/// @param[out] key A scoped pointer to write the key to.
-template <class T>
-static bool GenerateKey(KeyType::Type key_type, KeyPurpose::Type key_purpose,
-                        const string &nickname, scoped_ptr<T> *key) {
-  int next_version = 1;
-  int encrypted = true;  // note: unused, AFAIK
-  scoped_ptr<Keyset> keyset(new Keyset());
-  keyset->set_encrypted(encrypted);
-  keyset->set_metadata(new KeysetMetadata(nickname, key_type, key_purpose,
-                                          encrypted, next_version));
-  // There is browser TLSv1.2 support for prime256v1 (secp256r1),
-  // but not for keyczar's default secp224r1
-  // keyset->GenerateDefaultKeySize(KeyStatus::PRIMARY);
-  keyset->GenerateKey(KeyStatus::PRIMARY, 256);
-  key->reset(new T(keyset.release()));
-  (*key)->set_encoding(Keyczar::NO_ENCODING);
-  KeyczarCleanupFix(&keyset, nullptr);
-  return true;
-}
-
-static bool GenerateCryptingKey(const string &nickname,
-                                scoped_ptr<Crypter> *key) {
-  return GenerateKey(KeyType::AES, KeyPurpose::DECRYPT_AND_ENCRYPT, nickname,
-                     key);
-}
-
-static bool GenerateSigningKey(const string &nickname,
-                               scoped_ptr<Signer> *key) {
-  return GenerateKey(KeyType::ECDSA_PRIV, KeyPurpose::SIGN_AND_VERIFY, nickname,
-                     key);
-}
-
-static bool GenerateKeyDerivingKey(const string &nickname,
-                                   scoped_ptr<Signer> *key) {
-  return GenerateKey(KeyType::HMAC, KeyPurpose::SIGN_AND_VERIFY, nickname, key);
-}
-
-/// Load a key from disk.
-/// @param key_type The type of key, e.g. RSA_PRIV, ECDSA_PRIV, HMAC.
-/// @param path Location to read the key.
-/// @param password Password protecting the key, or nullptr for unprotected key.
-/// @param[out] key A scoped pointer to write the key to.
-template <class T>
-static bool LoadKey(KeyType::Type key_type, const string &path,
-                    const string *password, scoped_ptr<T> *key) {
-  // Avoid keyczar CHECK fail if path does not exist.
-  if (!PathExists(FilePath(path))) {
-    LOG(ERROR) << "Could not load key from " << path;
-    return false;
-  }
-  if (!password)
-    key->reset(T::Read(path));
-  else
-    key->reset(T::Read(KeysetPBEJSONFileReader(path, *password)));
-  if (key->get() == nullptr) {
-    LOG(ERROR) << "Could not initialize key from " << path;
-    KeyczarCleanupFix(nullptr, nullptr);
-    return false;
-  }
-  if ((*key)->keyset()->metadata()->key_type() != key_type) {
-    LOG(ERROR) << "Wrong key type detected in " << path;
-    KeyczarCleanupFix(nullptr, nullptr);
-    return false;
-  }
-  (*key)->set_encoding(Keyczar::NO_ENCODING);
-  KeyczarCleanupFix(nullptr, nullptr);
-  return true;
-}
-
-/// Load a clear-text ECDSA verifier key.
-/// @param path The location of the key on disk.
-/// @param[in,out] key A scoped Verifier to fill with the key.
-/// TODO(kwalsh) Eventually, this function should be removed.
-bool LoadVerifierKey(const string &path, scoped_ptr<Verifier> *key) {
-  return LoadKey(KeyType::ECDSA_PUB, path, nullptr /* no passwd */, key);
-}
-
-/// Load a password-protected ECDSA signing private key.
-/// @param path path The location of the key on disk.
-/// @param password The password used to encrypt the key on disk.
-/// TODO(kwalsh) Eventually, this function should be removed.
-static bool LoadSigningKey(const string &path, const string &password,
-                           scoped_ptr<Signer> *key) {
-  return LoadKey(KeyType::ECDSA_PRIV, path, &password, key);
-}
-
-static bool LoadKeyDerivingKey(const string &path, const string &password,
-                               scoped_ptr<Signer> *key) {
-  return LoadKey(KeyType::HMAC, path, &password, key);
-}
-
-static bool LoadCryptingKey(const string &path, const string &password,
-                            scoped_ptr<Crypter> *key) {
-  return LoadKey(KeyType::AES, path, &password, key);
-}
-
-/// Convert a serialized verifier key representation to an in-memory key.
-/// @param s The serialized key.
-/// @param[out] key A verifier key created from this public key.
-static bool DeserializePublicKey(const string &s, scoped_ptr<Verifier> *key) {
-  if (key == nullptr) {
-    LOG(ERROR) << "null key";
-    return false;
-  }
-  KeyczarPublicKey kpk;
-  if (!kpk.ParseFromString(s)) {
-    LOG(ERROR) << "Could not deserialize the KeyczarPublicKey";
-    return false;
-  }
-  string json_error;
-  scoped_ptr<Value> meta_value(JSONReader::ReadAndReturnError(
-      kpk.metadata(), false /* no trailing comma */, &json_error));
-  if (meta_value.get() == nullptr) {
-    LOG(ERROR) << "Could not parse keyset metadata: " << json_error;
-    return false;
-  }
-  scoped_ptr<Keyset> ks(new Keyset());
-  ks->set_metadata(KeysetMetadata::CreateFromValue(meta_value.get()));
-  if (ks->metadata() == nullptr) {
-    LOG(ERROR) << "Could not deserialize keyset metadata";
-    return false;
-  }
-  KeyType::Type key_type = ks->metadata()->key_type();
-  int key_count = 0;
-  for (auto it = ks->metadata()->Begin(); it != ks->metadata()->End(); ++it) {
-    int version = it->first;
-    if (key_count >= kpk.files_size()) {
-      LOG(ERROR) << "Missing key version " << version;
-      return false;
-    }
-    const KeyczarPublicKey::KeyFile &kf = kpk.files(key_count);
-    if (kf.name() != version) {
-      LOG(ERROR) << "Unexpected key version " << kf.name();
-      return false;
-    }
-    key_count++;
-    scoped_ptr<Value> key_value(JSONReader::ReadAndReturnError(
-        kf.data(), false /* no trailing comma */, &json_error));
-    if (key_value.get() == nullptr) {
-      LOG(ERROR) << "Could not parse key data: " << json_error;
-      return false;
-    }
-    scoped_ptr<Key> newkey(Key::CreateFromValue(key_type, *key_value));
-    if (!ks->AddKey(newkey.release(), version)) {
-      LOG(ERROR) << "Could not add copied key version " << version;
-      return false;
-    }
-    // We can't cleanly copy keyset metadata because the primary key status is
-    // tracked in twice: in the metadata
-    // (KeysetMetadata::KeyVersion::key_status_) and also in the keyset
-    // (Keyset::primary_key_version_number_). These get out of sync. Ideally,
-    // Keyset::set_metadata() would update Keyset::primary_key_version_number_.
-    // Workaround: demote the primary key then re-promote it.
-    if (it->second->key_status() == KeyStatus::PRIMARY) {
-      ks->DemoteKey(version);
-      ks->PromoteKey(version);
-    }
-  }
-  key->reset(new Verifier(ks.release()));
-  if (key->get() == nullptr) {
-    LOG(ERROR) << "Could not construct deserialized Verifier";
-    return false;
-  }
-  (*key)->set_encoding(Verifier::NO_ENCODING);
-  return true;
-}
-
-/// Return the public keytype, if available, corresponding to a given keytype.
-/// @param key_type A public, private, or symmetric key type.
-static KeyType::Type KeyTypeToPublic(KeyType::Type key_type) {
-  // This relies on keyczar's naming convention, which might not be
-  // as robust as just enumerating all the KeyType::Type values.
-  string name = KeyType::GetNameFromType(key_type);
-  size_t n = name.length();
-  if (n > 5 && name.substr(n - 5) == "_PRIV")
-    return KeyType::GetTypeFromName(name.substr(0, n - 5) + "_PUB");
-  else
-    return key_type;
-}
-
-/// Convert a Keyczar public key to a serialized string. If the key is
-/// actually a Signer, only the public half will be serialized.
-/// @param key The key to serialize.
-/// @param[out] s The serialized key.
-static bool SerializePublicKey(const Verifier &key, string *s) {
-  if (s == nullptr) {
-    LOG(ERROR) << "Could not serialize to a null string";
-    return false;
-  }
-  scoped_ptr<Value> meta_value(key.keyset()->metadata()->GetValue(true));
-  if (meta_value.get() == nullptr) {
-    LOG(ERROR) << "Could not serialize keyset metadata";
-    return false;
-  }
-  // If this is actually actually a Signer, we downgrade as we serialize.
-  KeyType::Type old_key_type = key.keyset()->metadata()->key_type();
-  KeyType::Type new_key_type = KeyTypeToPublic(old_key_type);
-  bool downgrade = (new_key_type != old_key_type);
-  if (downgrade) {
-    // This relies on keyczar's json format.
-    if (!meta_value->IsType(Value::TYPE_DICTIONARY)) {
-      LOG(ERROR) << "Expecting dictionary from keyczar";
-      return false;
-    }
-    DictionaryValue *dict = static_cast<DictionaryValue *>(meta_value.get());
-    dict->SetBoolean("encrypted", false);
-    dict->SetString("type", KeyType::GetNameFromType(new_key_type));
-    dict->SetString("purpose", "VERIFY");
-  }
-  KeyczarPublicKey kpk;
-  string metadata;
-  JSONWriter::Write(meta_value.get(), true /* no pretty print */, &metadata);
-  kpk.set_metadata(metadata);
-  // fix purpose --> goes to VERIFY, not SIGN_AND_VERIFY
-  // fix encrypted --> goes to false
-  // fix type --> goes to ECDSA_PUB
-  const KeysetMetadata *meta = key.keyset()->metadata();
-  for (auto it = meta->Begin(); it != meta->End(); ++it) {
-    int version = it->first;
-    const Key *k = key.keyset()->GetKey(version);
-    if (k == nullptr) {
-      LOG(ERROR) << "Missing key version " << version;
-      return false;
-    }
-    scoped_ptr<Value> key_value(downgrade ? k->GetPublicKeyValue()
-                                          : k->GetValue());
-    if (key_value.get() == nullptr) {
-      LOG(ERROR) << "Could not serialize key version " << version;
-      return false;
-    }
-    string keydata;
-    JSONWriter::Write(key_value.get(), true /* no pretty print */, &keydata);
-    KeyczarPublicKey::KeyFile *kf = kpk.add_files();
-    kf->set_name(version);
-    kf->set_data(keydata);
-  }
-  string serialized_pub_key;
-  if (!kpk.SerializeToString(s)) {
-    LOG(ERROR) << "Could not serialize the key to a string";
-    return "";
-  }
-  return true;
-}
-
-bool SignData(const Signer &key, const string &data, const string &context,
-              string *signature) {
-  if (context.empty()) {
-    LOG(ERROR) << "Cannot sign a message with an empty context";
-    return false;
-  }
-
-  SignedData s;
-  s.set_context(context);
-  s.set_data(data);
-  string serialized;
-  if (!s.SerializeToString(&serialized)) {
-    LOG(ERROR) << "Could not serialize the message and context together";
-    return false;
-  }
-
-  if (!key.Sign(serialized, signature)) {
-    LOG(ERROR) << "Could not sign the data";
-    return false;
-  }
-
-  return true;
-}
-
-bool VerifySignature(const Verifier &key, const string &data,
-                     const string &context, const string &signature) {
-  if (context.empty()) {
-    LOG(ERROR) << "Cannot sign a message with an empty context";
-    return false;
-  }
-
-  SignedData s;
-  s.set_context(context);
-  s.set_data(data);
-  string serialized;
-  if (!s.SerializeToString(&serialized)) {
-    LOG(ERROR) << "Could not serialize the message and context together";
-    return false;
-  }
-
-  if (!key.Verify(serialized, signature)) {
-    LOG(ERROR) << "Verify failed";
-    return false;
-  }
-
-  return true;
-}
-
-// Debug code for dumping a keyczar keyset primary key:
-// {
-//   const Keyset *keyset = key.keyset();
-//   const keyczar::Key *primary_key = keyset->primary_key();
-//   scoped_ptr<Value> v(primary_key->GetValue());
-//   string json;
-//   keyczar::base::JSONWriter::Write(v.get(), true /* pretty print */, &json);
-//   VLOG(0) << "json for keyset is:\n" << json;
-// }
-
-/// Make a (deep) copy of a Keyset.
-/// @param keyset The keyset to be copied.
-/// @param[out] copy The keyset to fill with the copy.
-static bool CopyKeyset(const Keyset &keyset, scoped_ptr<Keyset> *copy) {
-  if (copy == nullptr) {
-    LOG(ERROR) << "null keyset";
-    return false;
-  }
-  scoped_ptr<Value> meta_value(
-      keyset.metadata()->GetValue(true /* "immutable" copy of keyset */));
-  if (meta_value.get() == nullptr) {
-    LOG(ERROR) << "Could not serialize keyset metadata";
-    return false;
-  }
-  scoped_ptr<Keyset> ks(new Keyset());
-  ks->set_metadata(KeysetMetadata::CreateFromValue(meta_value.get()));
-  if (ks->metadata() == nullptr) {
-    LOG(ERROR) << "Could not deserialize keyset metadata";
-    return false;
-  }
-  KeyType::Type key_type = ks->metadata()->key_type();
-  for (auto it = ks->metadata()->Begin(); it != ks->metadata()->End(); ++it) {
-    int version = it->first;
-    const Key *oldkey = keyset.GetKey(version);
-    if (oldkey == nullptr) {
-      LOG(ERROR) << "Missing key version " << version;
-      return false;
-    }
-    scoped_ptr<Value> key_value(oldkey->GetValue());
-    if (key_value.get() == nullptr) {
-      LOG(ERROR) << "Could not serialize key version " << version;
-      return false;
-    }
-    scoped_ptr<Key> newkey(Key::CreateFromValue(key_type, *key_value));
-    if (!ks->AddKey(newkey.release(), version)) {
-      LOG(ERROR) << "Could not add copied key version " << version;
-      return false;
-    }
-  }
-  // We can't cleanly copy keyset metadata because the primary key status is
-  // tracked in twice: in the metadata (KeysetMetadata::KeyVersion::key_status_)
-  // and also in the keyset (Keyset::primary_key_version_number_). These get out
-  // of sync. Ideally, Keyset::set_metadata() would update
-  // Keyset::primary_key_version_number_.
-  // Workaround: demote the primary key then re-promote it.
-  int primary_key = keyset.primary_key_version_number();
-  if (primary_key > 0) {
-    ks->DemoteKey(primary_key);
-    ks->PromoteKey(primary_key);
-  }
-  copy->reset(ks.release());
-  return true;
-}
-
-/// Make a (deep) copy of a Signer, either a signing or a key-derivation key.
-/// @param key The key to be copied.
-/// @param[out] copy The key to fill with the copy.
-static bool CopySigner(const Signer &key, scoped_ptr<Signer> *copy) {
-  scoped_ptr<Keyset> keyset;
-  if (!CopyKeyset(*key.keyset(), &keyset)) {
-    LOG(ERROR) << "Could not copy Signer keyset";
-    return false;
-  }
-  copy->reset(new Signer(keyset.release()));
-  if (copy->get() == nullptr) {
-    LOG(ERROR) << "Could not construct Signer copy";
-    return false;
-  }
-  (*copy)->set_encoding(Signer::NO_ENCODING);
-  return true;
-}
-
-/// Make a (deep) copy of a Verifier or the public half of a Signer.
-/// @param key The key to be copied. If key is actually a Signer, only
-/// the public half will be copied.
-/// @param[out] copy The key to fill with the copy.
-static bool CopyVerifier(const Verifier &key, scoped_ptr<Verifier> *copy) {
-  scoped_ptr<Keyset> keyset;
-  if (!CopyKeyset(*key.keyset(), &keyset)) {
-    LOG(ERROR) << "Could not copy Verifier keyset";
-    return false;
-  }
-  copy->reset(new Verifier(keyset.release()));
-  if (copy->get() == nullptr) {
-    LOG(ERROR) << "Could not construct Verifier copy";
-    return false;
-  }
-  (*copy)->set_encoding(Verifier::NO_ENCODING);
-  return true;
-}
-
-/// Make a (deep) copy of a Crypter.
-/// @param key The key to be copied.
-/// @param[out] copy The key to fill with the copy.
-static bool CopyCrypter(const Crypter &key, scoped_ptr<Crypter> *copy) {
-  scoped_ptr<Keyset> keyset;
-  if (!CopyKeyset(*key.keyset(), &keyset)) {
-    LOG(ERROR) << "Could not copy Crypter keyset";
-    return false;
-  }
-  copy->reset(new Crypter(keyset.release()));
-  if (copy->get() == nullptr) {
-    LOG(ERROR) << "Could not construct Crypter copy";
-    return false;
-  }
-  (*copy)->set_encoding(Crypter::NO_ENCODING);
-  return true;
-}
-
-/// Derive a key from a main key.
-/// @param key The key to use for key derivation.
-/// @param name A unique name for the derived key.
-/// @param size The size of the material to be derived.
-/// @param[out] material The key material derived from main_key.
-static bool DeriveKey(const keyczar::Signer &key, const string &name,
-                      size_t size, string *material) {
-  if (material == nullptr) {
-    LOG(ERROR) << "Invalid DeriveKey parameters";
-    return false;
-  }
-  if (key.keyset()->metadata()->key_type() != keyczar::KeyType::HMAC) {
-    LOG(ERROR) << "DeriveKey requires symmetric main key";
-    return false;
-  }
-  // derive the key material
-  KeyDerivationBuffer context;
-  context.set_count(size);
-  context.set_index(0);
-  context.set_tag(name);
-  keyczar::base::ScopedSafeString buf(new string());
-  do {
-    context.set_index(context.index() + 1);
-    string header;
-    if (!context.SerializeToString(&header)) {
-      LOG(ERROR) << "Could not serialize header";
-      return false;
-    }
-    keyczar::base::ScopedSafeString sig(new string());
-    // Note that this is not an application of a signature in the normal sense,
-    // so
-    // it does not need to be transformed into an application of
-    // tao::SignData().
-    if (!key.Sign(header, sig.get())) {
-      LOG(ERROR) << "Could not derive key material";
-      return false;
-    }
-    // skip the header to get the bytes
-    size_t header_size = keyczar::Key::GetHeaderSize();
-    buf->append(*sig, header_size, sig->size() - header_size);
-  } while (buf->size() < size);
-
-  material->assign(buf->data(), size);
-  return true;
-}
+// TODO(kwalsh) Like Keyczar, this implementation sometimes stores secrets (aes
+// and hmac keys, serialized ec keys, passwords, etc.) inside std::string.
+// ScopedSafeString is meant to clear such strings implicitly upon freeing them.
 
 typedef scoped_ptr_malloc<BIGNUM, CallUnlessNull<BIGNUM, BN_clear_free> >
     ScopedBIGNUM;
 
-static bool ExportKeysetToOpenSSL(const Keyset &keyset, bool include_private,
-                                  ScopedEvpPkey *evp_key) {
-  // Note: Much of this function is adapted from code in
-  // keyczar::openssl::ECDSAOpenSSL::Create().
-  // TODO(kwalsh) Implement this function for RSA, other types
-  KeyType::Type key_type = keyset.metadata()->key_type();
-  if (key_type != KeyType::ECDSA_PUB && key_type != KeyType::ECDSA_PRIV) {
-    LOG(ERROR) << "ExportKeysetToOpenSSL only implemented for ECDSA so far";
-    return false;
-  }
-  // Get raw key data out of keyczar
-  // see also: GetPublicKeyValue()
-  scoped_ptr<Value> value(keyset.primary_key()->GetValue());
-  CHECK(value->IsType(Value::TYPE_DICTIONARY));
-  DictionaryValue *dict = static_cast<DictionaryValue *>(value.get());
-  string curve_name, public_curve_name;
-  string private_base64, public_base64, private_bytes, public_bytes;
-  bool has_private = dict->HasKey("privateKey");
-  if (has_private) {
-    if (!dict->GetString("namedCurve", &curve_name) ||
-        !dict->GetString("privateKey", &private_base64) ||
-        !dict->GetString("publicKey.namedCurve", &public_curve_name) ||
-        !dict->GetString("publicKey.publicBytes", &public_base64)) {
-      LOG(ERROR) << "Keyczar key missing expected values";
-      return false;
-    }
-    if (public_curve_name != curve_name) {
-      LOG(ERROR) << "Keyczar key curve mismatch";
-      return false;
-    }
-  } else {
-    if (!dict->GetString("namedCurve", &curve_name) ||
-        !dict->GetString("publicBytes", &public_base64)) {
-      LOG(ERROR) << "Keyczar key missing expected values";
-      return false;
-    }
-  }
-  if (!Base64WDecode(public_base64, &public_bytes)) {
-    LOG(ERROR) << "Could not decode keyczar public key data";
-    return false;
-  }
-  if (has_private && !Base64WDecode(private_base64, &private_bytes)) {
-    LOG(ERROR) << "Could not decode keyczar private key data";
-    return false;
-  }
-  // check curve name
-  int curve_nid = OBJ_sn2nid(curve_name.c_str());  // txt2nid
-  if (!OpenSSLSuccess() || curve_nid == NID_undef) {
-    LOG(ERROR) << "Keyczar key uses unrecognized ec curve " << curve_name;
-    return false;
-  }
-  ScopedECKey ec_key(EC_KEY_new_by_curve_name(curve_nid));
-  if (!OpenSSLSuccess() || ec_key.get() == NULL) {
-    LOG(ERROR) << "Could not allocate EC_KEY";
-    return false;
-  }
-  // Make sure the ASN1 will have curve OID should this EC_KEY be exported.
-  EC_KEY_set_asn1_flag(ec_key.get(), OPENSSL_EC_NAMED_CURVE);
-  // public_key
-  EC_KEY *key_tmp = ec_key.get();
-  const unsigned char *public_key_bytes =
-      reinterpret_cast<const unsigned char *>(public_bytes.data());
-  if (!o2i_ECPublicKey(&key_tmp, &public_key_bytes, public_bytes.length())) {
-    OpenSSLSuccess();  // print errors
-    LOG(ERROR) << "Could not convert keyczar public key to openssl";
-    return false;
-  }
-  // private_key
-  if (include_private) {
-    if (!has_private) {
-      LOG(ERROR) << "Missing private key during export";
-      return false;
-    }
-    const unsigned char *private_key_bytes =
-        reinterpret_cast<const unsigned char *>(private_bytes.data());
-    ScopedBIGNUM bn(
-        BN_bin2bn(private_key_bytes, private_bytes.length(), nullptr));
-    if (!OpenSSLSuccess() || bn.get() == NULL) {
-      LOG(ERROR) << "Could not parse keyczar private key data";
-      return false;
-    }
-    if (!EC_KEY_set_private_key(ec_key.get(), bn.get())) {
-      OpenSSLSuccess();  // print errors
-      LOG(ERROR) << "Could not convert keyczar private key to openssl";
-      return false;
-    }
-    bn.reset();
-  }
-  // final sanity check
-  if (!EC_KEY_check_key(ec_key.get())) {
-    OpenSSLSuccess();  // print errors
-    LOG(ERROR) << "Converted OpenSSL key fails checks";
-    return false;
-  }
-  // Move EC_KEY into EVP_PKEY
-  ScopedEvpPkey new_evp_key(EVP_PKEY_new());
-  if (!OpenSSLSuccess() || new_evp_key.get() == NULL) {
-    LOG(ERROR) << "Could not allocate EVP_PKEY";
-    return false;
-  }
-  if (!EVP_PKEY_set1_EC_KEY(new_evp_key.get(), ec_key.get())) {
-    LOG(ERROR) << "Could not convert EC_KEY to EVP_PKEY";
-    return false;
-  }
+typedef scoped_ptr_malloc<BN_CTX, CallUnlessNull<BN_CTX, BN_CTX_free> >
+    ScopedBN_CTX;
 
-  evp_key->reset(new_evp_key.release());
+typedef scoped_ptr_malloc<EC_POINT, CallUnlessNull<EC_POINT, EC_POINT_free> >
+    ScopedEC_POINT;
 
-  return true;
+typedef scoped_ptr_malloc<EVP_CIPHER_CTX,
+                          CallUnlessNull<EVP_CIPHER_CTX, EVP_CIPHER_CTX_free> >
+    ScopedCipherCtx;
+
+/// These two functions should be defined in openssl, but are not.
+/// @{
+static HMAC_CTX *HMAC_CTX_new() {
+  HMAC_CTX *ctx = new HMAC_CTX;
+  HMAC_CTX_init(ctx);
+  return ctx;
 }
 
-/// Convert a keyczar private signing key to an OpenSSL EVP_PKEY structure.
-/// Only the primary key from the keyset is exported. The resulting EVP_PKEY
-/// will contain both public and private keys.
-/// @param key The keyczar key to export.
-/// @param evp_key[out] The new OpenSSL EVP_PKEY.
-static bool ExportPrivateKeyToOpenSSL(const Signer &key,
-                                      ScopedEvpPkey *evp_key) {
-  if (evp_key == nullptr) {
-    LOG(ERROR) << "null evp_key";
-    return false;
-  }
-  return ExportKeysetToOpenSSL(*key.keyset(), true /* private too */, evp_key);
+static void HMAC_CTX_free(HMAC_CTX *ctx) {
+  HMAC_CTX_cleanup(ctx);
+  delete ctx;
 }
+/// @}
 
-/// Convert a keyczar public signing key to an OpenSSL EVP_PKEY structure.
-/// Only the primary key from the keyset is exported. The EVP_PKEY will
-/// contain only a public key, even if key is actually a keyczar::Signer.
-/// @param key The keyczar key to export.
-/// @param evp_key[out] The new OpenSSL EVP_PKEY.
-static bool ExportPublicKeyToOpenSSL(const Verifier &key,
-                                     ScopedEvpPkey *evp_key) {
-  if (evp_key == nullptr) {
-    LOG(ERROR) << "null evp_key";
-    return false;
-  }
-  return ExportKeysetToOpenSSL(*key.keyset(), false /* only public */, evp_key);
+typedef scoped_ptr_malloc<HMAC_CTX, CallUnlessNull<HMAC_CTX, HMAC_CTX_free> >
+    ScopedHmacCtx;
+
+typedef scoped_ptr_malloc<
+    X509_ALGOR, CallUnlessNull<X509_ALGOR, X509_ALGOR_free> > ScopedX509Algor;
+
+/// Extract pointer to string data. This is used for the many OpenSSL functions
+/// that require pointers to unsigned chars.
+/// @param s The string.
+/// @{
+// TODO(kwalsh) See cryptic note about string_as_array vs const_cast in Keyczar
+// and elsewhere saying:
+//    DO NOT USE const_cast<char*>(str->data())! See the unittest for why.
+// This likely has to do with the fact that the buffer returned from data() is
+// not meant to be modified and might in fact be copy-on-write shared.
+static const unsigned char *str2uchar(const string &s) {
+  const char *p = s.empty() ? nullptr : &*s.begin();
+  return reinterpret_cast<const unsigned char *>(p);
+}
+static unsigned char *str2uchar(string *s) {
+  char *p = s->empty() ? nullptr : &*s->begin();
+  return reinterpret_cast<unsigned char *>(p);
+}
+/// @}
+
+void SecureStringErase(string *s) {
+  // TODO(kwalsh) Keyczar has a nice 'fixme' note about making sure the memset
+  // isn't optimized away, and a commented-out call to openssl's cleanse. What
+  // to do?
+  OPENSSL_cleanse(str2uchar(s), s->size());
+  memset(str2uchar(s), 0, s->size());
 }
 
 /// Set one detail for an openssl x509 name structure.
@@ -748,14 +106,18 @@ static bool ExportPublicKeyToOpenSSL(const Verifier &key,
 /// @param key The country code, e.g. "US"
 /// @param id The detail id, e.g. "C" for country or "CN' for common name
 /// @param val The value to be set
-static void SetX509NameDetail(X509_NAME *name, const string &id,
+static bool SetX509NameDetail(X509_NAME *name, const string &id,
                               const string &val) {
-  X509_NAME_add_entry_by_txt(
-      name, id.c_str(), MBSTRING_ASC,
-      reinterpret_cast<unsigned char *>(const_cast<char *>(val.c_str())), -1,
-      -1, 0);
-  if (!OpenSSLSuccess())
-    LOG(WARNING) << "Could not set x509 " << id << " detail";
+  // const_cast is (maybe?) safe, X509_NAME_add_entry_by_txt does not modify
+  // buffer.
+  unsigned char *data =
+      reinterpret_cast<unsigned char *>(const_cast<char *>(val.c_str()));
+  X509_NAME_add_entry_by_txt(name, id.c_str(), MBSTRING_ASC, data, -1, -1, 0);
+  if (!OpenSSLSuccess()) {
+    LOG(ERROR) << "Could not set x509 " << id << " detail";
+    return false;
+  }
+  return true;
 }
 
 /// Set the details for an openssl x509 name structure.
@@ -764,13 +126,15 @@ static void SetX509NameDetail(X509_NAME *name, const string &id,
 /// @param o The organization code, e.g. "Google"
 /// @param st The state code, e.g. "Washington"
 /// @param cn The common name, e.g. "Example Tao CA Service" or "localhost"
-static void SetX509NameDetails(X509_NAME *name, const X509Details &details) {
-  if (details.has_country()) SetX509NameDetail(name, "C", details.country());
-  if (details.has_state()) SetX509NameDetail(name, "ST", details.state());
-  if (details.has_organization())
-    SetX509NameDetail(name, "O", details.organization());
-  if (details.has_commonname())
-    SetX509NameDetail(name, "CN", details.commonname());
+static bool SetX509NameDetails(X509_NAME *name, const X509Details &details) {
+  return (!details.has_country() ||
+          SetX509NameDetail(name, "C", details.country())) &&
+         (!details.has_state() ||
+          SetX509NameDetail(name, "ST", details.state())) &&
+         (!details.has_organization() ||
+          SetX509NameDetail(name, "O", details.organization())) &&
+         (!details.has_commonname() ||
+          SetX509NameDetail(name, "CN", details.commonname()));
 }
 
 /// Prepare an X509 structure for signing by filling in version numbers, serial
@@ -805,19 +169,21 @@ static bool PrepareX509(X509 *x509, int version, int serial,
 /// @param x509 The certificate to modify. Must be non-null.
 /// @param nid The NID_* constant for this extension.
 /// @param val The string value to be added.
-static void AddX509Extension(X509 *x509, int nid, const string &val) {
+static bool AddX509Extension(X509 *x509, int nid, const string &val) {
   X509V3_CTX ctx;
   X509V3_set_ctx_nodb(&ctx);
   X509V3_set_ctx(&ctx, x509, x509, nullptr, nullptr, 0);
 
+  // const_cast is (maybe?) safe, X509V3_EXT_conf_nid does not modify buffer.
   char *data = const_cast<char *>(val.c_str());
   X509_EXTENSION *ex = X509V3_EXT_conf_nid(nullptr, &ctx, nid, data);
   if (!OpenSSLSuccess() || ex == nullptr) {
-    LOG(WARNING) << "Could not add x509 extension";
-    return;
+    LOG(ERROR) << "Could not add x509 extension";
+    return false;
   }
   X509_add_ext(x509, ex, -1);
   X509_EXTENSION_free(ex);
+  return true;
 }
 
 // x509 serialization in DER format
@@ -837,45 +203,582 @@ static void AddX509Extension(X509 *x509, int nid, const string &val) {
 //   return true;
 // }
 
-bool SerializeX509(X509 *x509, string *pem) {
-  if (x509 == nullptr || pem == nullptr) {
-    LOG(ERROR) << "null params";
-    return false;
-  }
+string SerializeX509(X509 *x509) {
   ScopedBio mem(BIO_new(BIO_s_mem()));
   if (!PEM_write_bio_X509(mem.get(), x509) || !OpenSSLSuccess()) {
     LOG(ERROR) << "Could not serialize x509 to PEM";
-    return false;
+    return "";
   }
   BUF_MEM *buf;
   BIO_get_mem_ptr(mem.get(), &buf);
-  pem->assign(buf->data, buf->length);
-  return true;
+  return string(buf->data, buf->length);
 }
 
 static int no_password_callback(char *buf, int size, int rwflag, void *u) {
   return 0;  // return error
 }
 
-bool DeserializeX509(const string &pem, ScopedX509 *x509) {
-  if (x509 == nullptr) {
-    LOG(ERROR) << "null params";
-    return false;
-  }
+X509 *DeserializeX509(const string &pem) {
+  // const_cast is safe, we only read from the BIO
   char *data = const_cast<char *>(pem.c_str());
   ScopedBio mem(BIO_new_mem_buf(data, -1));
-  x509->reset(PEM_read_bio_X509(mem.get(), nullptr /* ptr */,
-                                no_password_callback, nullptr /* cbdata */));
-  if (!OpenSSLSuccess() || x509->get() == nullptr) {
+  ScopedX509 x509(PEM_read_bio_X509(mem.get(), nullptr /* ptr */,
+                                    no_password_callback,
+                                    nullptr /* cbdata */));
+  if (!OpenSSLSuccess() || x509.get() == nullptr) {
     LOG(ERROR) << "Could not deserialize x509 from PEM";
+    return nullptr;
+  }
+  return x509.release();
+}
+
+Signer *Signer::Generate() {
+  // Note: some of this code is adapted from Keyczar.
+  // Currently supports only ECDSA-256 with SHA-256 and curve prime256v1 (aka
+  // secp256r1). See recommendations in rfc 5480, section 4.
+  int curve_nid = NID_X9_62_prime256v1;
+  ScopedECKey ec_key(EC_KEY_new_by_curve_name(curve_nid));
+  if (!OpenSSLSuccess() || ec_key.get() == nullptr) {
+    LOG(ERROR) << "Could not allocate EC_KEY";
+    return nullptr;
+  }
+  // Make sure the ASN1 will have curve OID should this EC_KEY be exported.
+  EC_KEY_set_asn1_flag(ec_key.get(), OPENSSL_EC_NAMED_CURVE);
+  if (!EC_KEY_generate_key(ec_key.get())) {
+    OpenSSLSuccess();
+    LOG(ERROR) << "Could not generate EC_KEY";
+    return nullptr;
+  }
+  // Sanity checks.
+  if (!EC_KEY_check_key(ec_key.get()) ||
+      !EC_GROUP_check(EC_KEY_get0_group(ec_key.get()), nullptr)) {
+    OpenSSLSuccess();
+    LOG(ERROR) << "Generated bad EC_KEY";
+    return nullptr;
+  }
+  return new Signer(ec_key.release());
+}
+
+/// Encode EC_KEY public and private keys into a protobuf.
+/// @param key The key.
+/// @param[out] m The protobuf.
+static bool EncodeECDSA_SHA_SigningKey(const EC_KEY *ec_key,
+                                       ECDSA_SHA_SigningKey_v1 *m) {
+  // Curve.
+  m->set_curve(PRIME256_V1);
+  // ec_private.
+  const BIGNUM *n = EC_KEY_get0_private_key(ec_key);
+  string *ec_private = m->mutable_ec_private();
+  size_t max_n_len = BN_num_bytes(n);
+  ec_private->resize(max_n_len);
+  size_t n_len = BN_bn2bin(n, str2uchar(ec_private));
+  // Fail on buffer overflow.
+  CHECK_LE(n_len, max_n_len);
+  ec_private->resize(n_len);
+  // ec_public.
+  const EC_POINT *ec_point = EC_KEY_get0_public_key(ec_key);
+  ScopedBN_CTX bn_ctx(BN_CTX_new());
+  int point_len =
+      EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
+                         POINT_CONVERSION_COMPRESSED, nullptr, 0, bn_ctx.get());
+  string *ec_public = m->mutable_ec_public();
+  ec_public->resize(point_len);
+  EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
+                     POINT_CONVERSION_COMPRESSED, str2uchar(ec_public),
+                     point_len, bn_ctx.get());
+  return true;
+}
+
+/// Decode EC_KEY public and private keys from a protobuf.
+/// @param m The protobuf.
+static EC_KEY *DecodeECDSA_SHA_SigningKey(const ECDSA_SHA_SigningKey_v1 &m) {
+  // Curve.
+  if (m.curve() != PRIME256_V1) {
+    LOG(ERROR) << "Invalid EC curve";
+    return nullptr;
+  }
+  // Allocate EC_KEY.
+  int curve_nid = NID_X9_62_prime256v1;
+  ScopedECKey ec_key(EC_KEY_new_by_curve_name(curve_nid));
+  if (!OpenSSLSuccess() || ec_key.get() == nullptr) {
+    LOG(ERROR) << "Could not allocate EC_KEY";
+    return nullptr;
+  }
+  // Make sure the ASN1 will have curve OID should this EC_KEY be exported.
+  EC_KEY_set_asn1_flag(ec_key.get(), OPENSSL_EC_NAMED_CURVE);
+  // ec_private.
+  const string &ec_priv = m.ec_private();
+  ScopedBIGNUM n(BN_bin2bn(str2uchar(ec_priv), ec_priv.size(), nullptr));
+  if (n.get() == nullptr) {
+    LOG(ERROR) << "Invalid EC private key";
+    return nullptr;
+  }
+  if (!EC_KEY_set_private_key(ec_key.get(), n.get())) {
+    LOG(ERROR) << "Could not set EC private key";
+    return nullptr;
+  }
+  // ec_public.
+  ScopedEC_POINT ec_point(EC_POINT_new(EC_GROUP_new_by_curve_name(curve_nid)));
+  ScopedBN_CTX bn_ctx(BN_CTX_new());
+  const string &ec_pub = m.ec_public();
+  if (!EC_POINT_oct2point(EC_KEY_get0_group(ec_key.get()), ec_point.get(),
+                          str2uchar(ec_pub), ec_pub.size(), bn_ctx.get())) {
+    LOG(ERROR) << "Invalid EC public key";
+    return nullptr;
+  }
+  if (!EC_KEY_set_public_key(ec_key.get(), ec_point.get())) {
+    LOG(ERROR) << "Could not set EC public key";
+    return nullptr;
+  }
+  return ec_key.release();
+}
+
+/// Encode an EC_KEY public key as a protobuf.
+/// @param key The key.
+/// @param[out] m The protobuf.
+static bool EncodeECDSA_SHA_VerifyingKey(const EC_KEY *ec_key,
+                                         ECDSA_SHA_VerifyingKey_v1 *m) {
+  // Curve.
+  m->set_curve(PRIME256_V1);
+  // ec_public.
+  const EC_POINT *ec_point = EC_KEY_get0_public_key(ec_key);
+  ScopedBN_CTX bn_ctx(BN_CTX_new());
+  int point_len =
+      EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
+                         POINT_CONVERSION_COMPRESSED, nullptr, 0, bn_ctx.get());
+  string *ec_pub = m->mutable_ec_public();
+  ec_pub->resize(point_len);
+  EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
+                     POINT_CONVERSION_COMPRESSED, str2uchar(ec_pub), point_len,
+                     bn_ctx.get());
+  return true;
+}
+
+/// Decode an EC_KEY public key from a protobuf.
+/// @param m The protobuf.
+static EC_KEY *DecodeECDSA_SHA_VerifyingKey(
+    const ECDSA_SHA_VerifyingKey_v1 &m) {
+  // Curve.
+  if (m.curve() != PRIME256_V1) {
+    LOG(ERROR) << "Invalid EC curve";
+    return nullptr;
+  }
+  // Allocate EC_KEY.
+  int curve_nid = NID_X9_62_prime256v1;
+  ScopedECKey ec_key(EC_KEY_new_by_curve_name(curve_nid));
+  if (!OpenSSLSuccess() || ec_key.get() == nullptr) {
+    LOG(ERROR) << "Could not allocate EC_KEY";
+    return nullptr;
+  }
+  // Make sure the ASN1 will have curve OID should this EC_KEY be exported.
+  EC_KEY_set_asn1_flag(ec_key.get(), OPENSSL_EC_NAMED_CURVE);
+  // ec_public.
+  ScopedEC_POINT ec_point(EC_POINT_new(EC_GROUP_new_by_curve_name(curve_nid)));
+  ScopedBN_CTX bn_ctx(BN_CTX_new());
+  const string ec_pub = m.ec_public();
+  if (!EC_POINT_oct2point(EC_KEY_get0_group(ec_key.get()), ec_point.get(),
+                          str2uchar(ec_pub), ec_pub.size(), bn_ctx.get())) {
+    LOG(ERROR) << "Invalid EC public key";
+    return nullptr;
+  }
+  if (!EC_KEY_set_public_key(ec_key.get(), ec_point.get())) {
+    LOG(ERROR) << "Could not set EC public key";
+    return nullptr;
+  }
+  return ec_key.release();
+}
+
+Verifier *Signer::GetVerifier() const {
+  // TODO(kwalsh) Is there a better documented way to obtain public half?
+  ECDSA_SHA_VerifyingKey_v1 m;
+  if (!EncodeECDSA_SHA_VerifyingKey(key_.get(), &m)) {
+    LOG(ERROR) << "Could not serialize public key";
+    return nullptr;
+  }
+  ScopedECKey pub_key(DecodeECDSA_SHA_VerifyingKey(m));
+  if (pub_key.get() == nullptr) {
+    LOG(ERROR) << "could not deserialize public key";
+    return nullptr;
+  }
+  return new Verifier(pub_key.release());
+}
+
+/// Create a single string containing both context and data.
+/// @param h The header.
+/// @param data The data.
+/// @param context The context.
+static string ContextualizeData(const CryptoHeader &h, const string &data,
+                                const string &context) {
+  if (context.empty()) {
+    LOG(ERROR) << "Cannot use an empty context.";
+    return "";
+  }
+  SignaturePDU pdu;
+  *pdu.mutable_header() = h;
+  pdu.set_context(context);
+  pdu.set_data(data);
+  string serialized;
+  if (!pdu.SerializeToString(&serialized)) {
+    LOG(ERROR) << "Could not serialize SignaturePDU";
+    return "";
+  }
+  return serialized;
+}
+
+/// Create truncated digest of contextualized data.
+/// @param h The header.
+/// @param data The data.
+/// @param context The context.
+/// @param digest_length The desired digest length, in bytes.
+static string ContextualizedSha256(const CryptoHeader &h, const string &data,
+                                   const string &context,
+                                   size_t digest_length) {
+  string serialized = ContextualizeData(h, data, context);
+  if (serialized.empty()) {
+    LOG(ERROR) << "Cannot sign data without context";
+    return "";
+  }
+  string digest;
+  if (!Sha256(serialized, &digest)) {
+    LOG(ERROR) << "Hash failed";
+    return "";
+  }
+  if (digest.length() > digest_length) digest.resize(digest_length);
+  return digest;
+}
+
+// This code adapted from Keyczar.
+bool Signer::Sign(const string &data, const string &context,
+                  string *signature) const {
+  SignedData sd;
+  CryptoHeader *h = sd.mutable_header();
+  if (!Header(h)) {
+    LOG(ERROR) << "Can't fill header";
+    return false;
+  }
+  size_t ecdsa_size = ECDSA_size(key_.get());
+  string digest = ContextualizedSha256(*h, data, context, ecdsa_size);
+  if (digest.empty()) {
+    LOG(ERROR) << "Cannot sign data without context";
+    return false;
+  }
+  // Generate signature.
+  string *sig = sd.mutable_signature();
+  sig->resize(ecdsa_size);  // base::STLStringResizeUninitialized()
+  unsigned int sig_length = 0;
+  if (!ECDSA_sign(0, str2uchar(&digest), digest.size(), str2uchar(sig),
+                  &sig_length, key_.get())) {
+    OpenSSLSuccess();
+    LOG(ERROR) << "Can't sign";
+    return false;
+  }
+  // Fail on buffer overflow.
+  CHECK_LE(sig_length, ecdsa_size);
+  sig->resize(sig_length);
+  if (!sd.SerializeToString(signature)) {
+    LOG(ERROR) << "Could not serialize";
     return false;
   }
   return true;
 }
 
-Verifier *VerifierFromX509(const string &serialized_cert) {
-  ScopedX509 x509;
-  if (!DeserializeX509(serialized_cert, &x509)) {
+string Signer::ToPrincipalName() const {
+  // Note: Nearly identical to Verifier::ToPrincipalName().
+  CryptoKey m;
+  string s, b;
+  if (!EncodePublic(&m) || !m.SerializeToString(&s) || !Base64WEncode(s, &b)) {
+    LOG(ERROR) << "Could not serialize to principal name";
+    return "";
+  }
+  stringstream out;
+  out << "Key(" << quotedString(b) << ")";
+  return out.str();
+}
+
+string Signer::SerializeWithPassword(const string &password) const {
+  ScopedEvpPkey evp_pkey(GetEvpPkey());
+  if (evp_pkey.get() == nullptr) {
+    LOG(ERROR) << "Could not convert to EVP_PKEY";
+    return "";
+  }
+  // Serialize EVP_PKEY as PEM-encoded PKCS#8.
+  ScopedBio mem(BIO_new(BIO_s_mem()));
+  const EVP_CIPHER *cipher = EVP_aes_128_cbc();
+  // const_cast is (maybe?) safe, default password callback only reads pass
+  char *pass = const_cast<char *>(password.c_str());
+  if (PEM_write_bio_PKCS8PrivateKey(mem.get(), evp_pkey.get(), cipher, nullptr,
+                                    0, nullptr, pass) != 1) {
+    LOG(ERROR) << "Could not serialize EVP_PKEY";
+    return "";
+  }
+  BUF_MEM *buf;
+  BIO_get_mem_ptr(mem.get(), &buf);
+  return string(buf->data, buf->length);
+}
+
+Signer *Signer::DeserializeWithPassword(const string &serialized,
+                                        const string &password) {
+  // Deserialize EVP_PKEY
+  // const_cast is safe, we only read from the BIO
+  char *data = const_cast<char *>(serialized.c_str());
+  ScopedBio mem(BIO_new_mem_buf(data, -1));
+  // const_cast is (maybe?) safe, default password callback only reads pass
+  char *pass = const_cast<char *>(password.c_str());
+  ScopedEvpPkey evp_pkey(
+      PEM_read_bio_PrivateKey(mem.get(), nullptr, nullptr, pass));
+  if (!OpenSSLSuccess() || evp_pkey.get() == nullptr) {
+    LOG(ERROR) << "Could not deserialize password-protected key";
+    return nullptr;
+  }
+  if (evp_pkey->pkey.ec == nullptr) {
+    LOG(ERROR) << "Serialized key has wrong type: expecting ECDSA private key";
+    return nullptr;
+  }
+  // Move EVP_PKEY into EC_KEY.
+  ScopedECKey ec_key(EVP_PKEY_get1_EC_KEY(evp_pkey.get()));
+  if (ec_key.get() == nullptr) {
+    OpenSSLSuccess();
+    LOG(ERROR) << "Could not extract ECDSA private key";
+    return nullptr;
+  }
+  // Sanity checks.
+  if (!EC_KEY_check_key(ec_key.get()) ||
+      !EC_GROUP_check(EC_KEY_get0_group(ec_key.get()), nullptr) ||
+      EC_GROUP_get_asn1_flag(EC_KEY_get0_group(ec_key.get())) !=
+          OPENSSL_EC_NAMED_CURVE) {
+    OpenSSLSuccess();
+    LOG(ERROR) << "Deserialized bad EC_KEY";
+    return nullptr;
+  }
+  // Check curve parameters.
+  int curve_nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key.get()));
+  if (curve_nid != NID_X9_62_prime256v1) {
+    LOG(ERROR) << "Unrecognized EC curve: " << curve_nid;
+    return nullptr;
+  }
+  return new Signer(ec_key.release());
+}
+
+string Signer::CreateSelfSignedX509(const string &details_text) const {
+  X509Details details;
+  ScopedX509 x509(X509_new());
+  int version = 2;  // self sign uses version=2 (which is x509v3)
+  int serial = 1;   // self sign can always use serial 1
+  ScopedEvpPkey evp_pkey(GetEvpPkey());
+  if (evp_pkey.get() == nullptr ||
+      !TextFormat::ParseFromString(details_text, &details) ||
+      !PrepareX509(x509.get(), version, serial, evp_pkey.get()) ||
+      !SetX509NameDetails(X509_get_subject_name(x509.get()), details) ||
+      !SetX509NameDetails(X509_get_issuer_name(x509.get()), details) ||
+      !AddX509Extension(x509.get(), NID_basic_constraints,
+                        "critical,CA:TRUE") ||
+      !AddX509Extension(x509.get(), NID_subject_key_identifier, "hash") ||
+      !AddX509Extension(x509.get(), NID_authority_key_identifier,
+                        "keyid:always") ||
+      !X509_sign(x509.get(), evp_pkey.get(), EVP_sha1()) || !OpenSSLSuccess()) {
+    LOG(ERROR) << "Could not create self-signed X.509 certificate";
+    return "";
+  }
+  return SerializeX509(x509.get());
+}
+
+string Signer::CreateSignedX509(const string &ca_pem_cert, int cert_serial,
+                                const Verifier &subject_key,
+                                const string &subject_details) const {
+  X509Details details;
+  ScopedEvpPkey ca_evp_pkey(GetEvpPkey());
+  ScopedEvpPkey subject_evp_pkey(subject_key.GetEvpPkey());
+  ScopedX509 ca_x509(DeserializeX509(ca_pem_cert));
+  ScopedX509 x509(X509_new());
+  X509_NAME *subject =
+      (x509.get() ? X509_get_subject_name(x509.get()) : nullptr);
+  X509_NAME *issuer =
+      (x509.get() ? X509_get_issuer_name(ca_x509.get()) : nullptr);
+  int version = 0;  // ca-sign uses version=0 (which is x509v1)
+  if (ca_evp_pkey.get() == nullptr || subject_evp_pkey.get() == nullptr ||
+      ca_x509.get() == nullptr || subject == nullptr || issuer == nullptr ||
+      !TextFormat::ParseFromString(subject_details, &details) ||
+      !PrepareX509(x509.get(), version, cert_serial, subject_evp_pkey.get()) ||
+      !SetX509NameDetails(subject, details) ||
+      !X509_set_issuer_name(x509.get(), issuer) ||
+      !X509_sign(x509.get(), ca_evp_pkey.get(), EVP_sha1()) ||
+      !OpenSSLSuccess()) {
+    LOG(ERROR) << "Could not create CA-signed X.509 certificate";
+    return "";
+  }
+  string subject_pem_cert = SerializeX509(x509.get());
+  if (subject_pem_cert == "") {
+    LOG(ERROR) << "Could not serialize x509 certificates";
+    return "";
+  }
+  return subject_pem_cert + ca_pem_cert;
+}
+
+bool Signer::Encode(CryptoKey *m) const {
+  m->set_version(CRYPTO_VERSION_1);
+  m->set_purpose(CryptoKey::SIGNING);
+  m->set_algorithm(CryptoKey::ECDSA_SHA);
+  ECDSA_SHA_SigningKey_v1 k;
+  if (!EncodeECDSA_SHA_SigningKey(key_.get(), &k)) {
+    LOG(ERROR) << "Could not encode EC private key";
+    return false;
+  }
+  // Store it in m.key.
+  if (!k.SerializeToString(m->mutable_key())) {
+    LOG(ERROR) << "Could not serialize key";
+    return false;
+  }
+  SecureStringErase(k.mutable_ec_private());
+  return true;
+}
+
+bool Signer::EncodePublic(CryptoKey *m) const {
+  // Note: Same as Verifier::Encode().
+  m->set_version(CRYPTO_VERSION_1);
+  m->set_purpose(CryptoKey::VERIFYING);
+  m->set_algorithm(CryptoKey::ECDSA_SHA);
+  ECDSA_SHA_VerifyingKey_v1 k;
+  if (!EncodeECDSA_SHA_VerifyingKey(key_.get(), &k)) {
+    LOG(ERROR) << "Could not encode EC public key";
+    return false;
+  }
+  // Store it in m.key.
+  if (!k.SerializeToString(m->mutable_key())) {
+    LOG(ERROR) << "Could not serialize key";
+    return false;
+  }
+  return true;
+}
+
+Signer *Signer::Decode(const CryptoKey &m) {
+  if (m.version() != CRYPTO_VERSION_1) {
+    LOG(ERROR) << "Bad version";
+    return nullptr;
+  }
+  if (m.purpose() != CryptoKey::SIGNING) {
+    LOG(ERROR) << "Bad purpose";
+    return nullptr;
+  }
+  if (m.algorithm() != CryptoKey::ECDSA_SHA) {
+    LOG(ERROR) << "Bad algorithm";
+    return nullptr;
+  }
+  ECDSA_SHA_SigningKey_v1 k;
+  if (!k.ParseFromString(m.key())) {
+    SecureStringErase(k.mutable_ec_private());
+    LOG(ERROR) << "Could not parse key";
+    return nullptr;
+  }
+  ScopedECKey ec_key(DecodeECDSA_SHA_SigningKey(k));
+  SecureStringErase(k.mutable_ec_private());
+  if (ec_key.get() == nullptr) {
+    LOG(ERROR) << "Could not decode EC private key";
+    return nullptr;
+  }
+  return new Signer(ec_key.release());
+}
+
+bool Signer::Header(CryptoHeader *h) const {
+  // Note: Same as Verifier::Header().
+  ECDSA_SHA_VerifyingKey_v1 m;
+  string s, d;
+  if (!EncodeECDSA_SHA_VerifyingKey(key_.get(), &m) ||
+      !m.SerializeToString(&s) || !Sha1(s, &d) || d.size() < 4) {
+    LOG(ERROR) << "Could not compute key hint";
+    return false;
+  }
+  h->set_version(CRYPTO_VERSION_1);
+  h->set_key_hint(d.substr(0, 4));
+  return true;
+}
+
+EVP_PKEY *Signer::GetEvpPkey() const {
+  // Note: Same as Verifier::GetEvpPkey()
+  ScopedEvpPkey evp_pkey(EVP_PKEY_new());
+  if (!OpenSSLSuccess() || evp_pkey.get() == nullptr) {
+    LOG(ERROR) << "Could not allocate EVP_PKEY";
+    return nullptr;
+  }
+  if (!EVP_PKEY_set1_EC_KEY(evp_pkey.get(), key_.get())) {
+    LOG(ERROR) << "Could not convert EC_KEY to EVP_PKEY";
+    return nullptr;
+  }
+  return evp_pkey.release();
+}
+
+Signer *Signer::DeepCopy() const {
+  CryptoKey m;
+  scoped_ptr<Signer> s;
+  if (!Encode(&m) || !reset(s, Decode(m))) {
+    LOG(ERROR) << "Could not copy key";
+    return nullptr;
+  }
+  SecureStringErase(m.mutable_key());
+  return s.release();
+}
+
+bool Verifier::Verify(const string &data, const string &context,
+                      const string &signature) const {
+  SignedData sd;
+  if (!sd.ParseFromString(signature)) {
+    LOG(ERROR) << "Invalid signature";
+    return false;
+  }
+  CryptoHeader h;
+  if (!Header(&h) || sd.header().version() != h.version() ||
+      sd.header().key_hint() != h.key_hint()) {
+    LOG(ERROR) << "Invalid signature version or key hint";
+    return false;
+  }
+  size_t ecdsa_size = ECDSA_size(key_.get());
+  string digest = ContextualizedSha256(h, data, context, ecdsa_size);
+  if (digest.empty()) {
+    LOG(ERROR) << "Cannot verify signature without context";
+    return false;
+  }
+  string *sig = sd.mutable_signature();
+  int ret = ECDSA_verify(0, str2uchar(&digest), digest.size(), str2uchar(sig),
+                         sig->size(), key_.get());
+  if (ret == -1) {
+    OpenSSLSuccess();
+    LOG(ERROR) << "Error validating signature";
+  }
+  return (ret == 1);
+}
+
+string Verifier::ToPrincipalName() const {
+  CryptoKey m;
+  string s, b;
+  if (!Encode(&m) || !m.SerializeToString(&s) || !Base64WEncode(s, &b)) {
+    LOG(ERROR) << "Could not serialize to principal name";
+    return "";
+  }
+  stringstream out;
+  out << "Key(" << quotedString(b) << ")";
+  return out.str();
+}
+
+Verifier *Verifier::FromPrincipalName(const string &name) {
+  CryptoKey m;
+  string s, b;
+  stringstream in(name);
+  skip(in, "Key(");
+  getQuotedString(in, &b);
+  skip(in, ")");
+  if (!in || (in.get() && !in.eof())) {
+    LOG(ERROR) << "Bad format for Tao principal name";
+    return nullptr;
+  }
+  if (!Base64WDecode(b, &s) || !m.ParseFromString(s)) {
+    LOG(ERROR) << "Could not parse the Tao principal name";
+    return nullptr;
+  }
+  return Verifier::Decode(m);
+}
+
+Verifier *Verifier::FromX509(const string &pem_cert) {
+  ScopedX509 x509(DeserializeX509(pem_cert));
+  if (x509.get() == nullptr) {
     LOG(ERROR) << "Could not deserialize x509";
     return nullptr;
   }
@@ -886,231 +789,478 @@ Verifier *VerifierFromX509(const string &serialized_cert) {
     return nullptr;
   }
   */
-  ScopedEvpPkey evp_key(X509_get_pubkey(x509.get()));
-  if (evp_key.get() == nullptr) {
+  ScopedEvpPkey evp_pkey(X509_get_pubkey(x509.get()));
+  if (evp_pkey.get() == nullptr) {
     LOG(ERROR) << "Could not get public key from x509";
     return nullptr;
   }
-  ScopedECKey ec_key(EVP_PKEY_get1_EC_KEY(evp_key.get()));
+  ScopedECKey ec_key(EVP_PKEY_get1_EC_KEY(evp_pkey.get()));
   if (ec_key.get() == nullptr) {
     LOG(ERROR) << "Could not get EC key from x509";
     return nullptr;
   }
   int curve_nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key.get()));
-  string curve;
-  switch (curve_nid) {
-    case NID_X9_62_prime192v1:
-      curve = "prime192v1";
-      break;
-    case NID_secp224r1:
-      curve = "secp224r1";
-      break;
-    case NID_X9_62_prime256v1:
-      curve = "prime256v1";
-      break;
-    case NID_secp384r1:
-      curve = "secp384r1";
-      break;
-    default:
-      LOG(ERROR) << "Unrecognized elliptic curve";
-      return nullptr;
-  }
-  unsigned char *buf = nullptr;
-  int len = i2o_ECPublicKey(ec_key.get(), &buf);
-  if (len <= 0) {
-    LOG(ERROR) << "Could not encode key";
+  if (curve_nid != NID_X9_62_prime256v1) {
+    LOG(ERROR) << "Unrecognized EC curve: " << curve_nid;
     return nullptr;
   }
-  string public_bytes(reinterpret_cast<char *>(buf), len);
-  string public_bytes64;
-  if (!Base64WEncode(public_bytes, &public_bytes64)) {
-    LOG(ERROR) << "Could not encode key";
-    return nullptr;
-  }
-  X509_NAME *subject = X509_get_subject_name(x509.get());
-  len = X509_NAME_get_text_by_NID(subject, NID_commonName, nullptr /* buf */,
-                                  0 /* len */);
-  if (len <= 0) {
-    LOG(ERROR) << "x509 subject missing CommonName";
-    return nullptr;
-  }
-  scoped_array<char> name_buf(new char[len + 1]);
-  if (X509_NAME_get_text_by_NID(subject, NID_commonName, name_buf.get(),
-                                len + 1) != len) {
-    LOG(ERROR) << "Could not get x509 subject CommonName";
-    return nullptr;
-  }
-  name_buf[len] = '\0';
-  string nickname(name_buf.get(), len);
-  nickname += "_signing";
-
-  scoped_ptr<Keyset> keyset(new Keyset());
-  bool encrypted = false;
-  bool next_version_number = 1;
-  scoped_ptr<KeysetMetadata> meta(
-      new KeysetMetadata(nickname, KeyType::ECDSA_PUB, KeyPurpose::VERIFY,
-                         encrypted, next_version_number));
-  bool exportable = false;
-  if (!meta->AddVersion(new KeysetMetadata::KeyVersion(
-          0 /* auto version number */, KeyStatus::PRIMARY, exportable))) {
-    LOG(ERROR) << "Could not add keyset version info";
-    return nullptr;
-  }
-  keyset->set_metadata(meta.release());
-  DictionaryValue dict;
-  dict.SetString("namedCurve", curve);
-  dict.SetString("publicBytes", public_bytes64);
-  scoped_ptr<Key> newkey(Key::CreateFromValue(KeyType::ECDSA_PUB, dict));
-  if (newkey.get() == nullptr) {
-    LOG(ERROR) << "Could not create key from x509";
-    return nullptr;
-  }
-  if (!keyset->AddKey(newkey.release(), 1 /* version */)) {
-    LOG(ERROR) << "Could not add key to keyset";
-    return nullptr;
-  }
-  scoped_ptr<Verifier> verifier(new Verifier(keyset.release()));
-  verifier->set_encoding(Keyczar::NO_ENCODING);
-  return verifier.release();
+  return new Verifier(ec_key.release());
 }
 
-/// Create a self-signed X509 certificate for a key.
-/// @param key The key to use for both the subject and the issuer.
-/// @param details The x509 details for the subject.
-/// @param[out] pem_cert The serialized PEM-format self-signed certificate.
-static bool CreateSelfSignedX509(const Signer &key, const X509Details &details,
-                                 string *pem_cert) {
-  // we need an openssl version of the key to create and sign the x509 cert
-  ScopedEvpPkey evp_key;
-  if (!ExportPrivateKeyToOpenSSL(key, &evp_key)) return false;
-
-  // create the x509 structure
-  ScopedX509 x509(X509_new());
-  int version = 2;  // self sign uses version=2 (which is x509v3)
-  int serial = 1;   // self sign can always use serial 1
-  PrepareX509(x509.get(), version, serial, evp_key.get());
-
-  // set up the subject and issuer details to be the same
-  X509_NAME *subject = X509_get_subject_name(x509.get());
-  SetX509NameDetails(subject, details);
-
-  X509_NAME *issuer = X509_get_issuer_name(x509.get());
-  SetX509NameDetails(issuer, details);
-
-  AddX509Extension(x509.get(), NID_basic_constraints, "critical,CA:TRUE");
-  AddX509Extension(x509.get(), NID_subject_key_identifier, "hash");
-  AddX509Extension(x509.get(), NID_authority_key_identifier, "keyid:always");
-
-  X509_sign(x509.get(), evp_key.get(), EVP_sha1());
-  if (!OpenSSLSuccess()) {
-    LOG(ERROR) << "Could not perform self-signing on the X.509 cert";
+bool Verifier::Encode(CryptoKey *m) const {
+  m->set_version(CRYPTO_VERSION_1);
+  m->set_purpose(CryptoKey::VERIFYING);
+  m->set_algorithm(CryptoKey::ECDSA_SHA);
+  ECDSA_SHA_VerifyingKey_v1 k;
+  if (!EncodeECDSA_SHA_VerifyingKey(key_.get(), &k)) {
+    LOG(ERROR) << "Could not encode EC public key";
     return false;
   }
-
-  if (!SerializeX509(x509.get(), pem_cert)) {
-    LOG(ERROR) << "Could not serialize X509";
+  // Store it in m.key.
+  if (!k.SerializeToString(m->mutable_key())) {
+    LOG(ERROR) << "Could not serialize key";
     return false;
   }
   return true;
 }
 
-Keys::Keys(const string &nickname, int key_types)
-    : key_types_(key_types), nickname_(nickname) {}
+Verifier *Verifier::Decode(const CryptoKey &m) {
+  if (m.version() != CRYPTO_VERSION_1) {
+    LOG(ERROR) << "Bad version";
+    return nullptr;
+  }
+  if (m.purpose() != CryptoKey::VERIFYING) {
+    LOG(ERROR) << "Bad purpose";
+    return nullptr;
+  }
+  if (m.algorithm() != CryptoKey::ECDSA_SHA) {
+    LOG(ERROR) << "Bad algorithm";
+    return nullptr;
+  }
+  ECDSA_SHA_VerifyingKey_v1 k;
+  if (!k.ParseFromString(m.key())) {
+    LOG(ERROR) << "Could not parse key";
+    return nullptr;
+  }
+  ScopedECKey ec_key(DecodeECDSA_SHA_VerifyingKey(k));
+  if (ec_key.get() == nullptr) {
+    LOG(ERROR) << "Could not decode EC private key";
+    return nullptr;
+  }
+  return new Verifier(ec_key.release());
+}
 
-Keys::Keys(const string &path, const string &nickname, int key_types)
-    : key_types_(key_types), path_(path), nickname_(nickname) {}
-
-Keys::Keys(keyczar::Verifier *verifying_key, keyczar::Signer *signing_key,
-           keyczar::Signer *derivation_key, keyczar::Crypter *crypting_key)
-    : verifier_(verifying_key),
-      signer_(signing_key),
-      key_deriver_(derivation_key),
-      crypter_(crypting_key) {}
-
-Keys::~Keys() {}
-
-/// Create a CA-signed X509 certificate for a key.
-/// @param ca_key The key to use for the issuer.
-/// @param ca_cert_path The location of the issuer certificate.
-/// @param cert_serial The serial number to use for the new certificate.
-/// @param subject_key The key to use for the subject.
-/// @param subject_details The x509 details for the subject.
-/// @param[out] pem_cert The serialized PEM-format signed certificate chain.
-static bool CreateCASignedX509(const Signer &ca_key, const string &ca_cert_path,
-                               int cert_serial, const Verifier &subject_key,
-                               const X509Details &subject_details,
-                               string *pem_cert) {
-  if (!pem_cert) {
-    LOG(ERROR) << "null pem";
+bool Verifier::Header(CryptoHeader *h) const {
+  ECDSA_SHA_VerifyingKey_v1 m;
+  string s, d;
+  if (!EncodeECDSA_SHA_VerifyingKey(key_.get(), &m) ||
+      !m.SerializeToString(&s) || !Sha1(s, &d) || d.size() < 4) {
+    LOG(ERROR) << "Could not compute key hint";
     return false;
   }
-  // we need openssl versions of the keys to create and sign the x509 cert
-  ScopedEvpPkey ca_evp_key;
-  if (!ExportPrivateKeyToOpenSSL(ca_key, &ca_evp_key)) {
-    LOG(ERROR) << "Could not export ca key to openssl";
-    return false;
-  }
-  ScopedEvpPkey subject_evp_key;
-  if (!ExportPublicKeyToOpenSSL(subject_key, &subject_evp_key)) {
-    LOG(ERROR) << "Could not export subject key to openssl";
-    return false;
-  }
-  // load the ca cert and extract ca details
-  ScopedFile ca_cert_file(fopen(ca_cert_path.c_str(), "rb"));
-  if (ca_cert_file.get() == nullptr) {
-    PLOG(ERROR) << "Could not read " << ca_cert_path;
-    return false;
-  }
-  ScopedX509 ca_x509(PEM_read_X509(ca_cert_file.get(), nullptr /* ptr */,
-                                   no_password_callback, nullptr /* cbdata */));
-  if (!OpenSSLSuccess() || ca_x509.get() == nullptr) {
-    LOG(ERROR) << "Could not write the X.509 certificate to " << ca_cert_path;
-    return false;
-  }
-
-  // create the x509 structure
-  ScopedX509 x509(X509_new());
-  int version = 0;  // ca-sign uses version=0 (which is x509v1)
-  PrepareX509(x509.get(), version, cert_serial, subject_evp_key.get());
-
-  // set up the subject details
-  X509_NAME *subject = X509_get_subject_name(x509.get());
-  SetX509NameDetails(subject, subject_details);
-
-  // copy the issuer details from ca_cert
-  X509_NAME *issuer = X509_get_issuer_name(ca_x509.get());
-  X509_set_issuer_name(x509.get(), issuer);
-
-  X509_sign(x509.get(), ca_evp_key.get(), EVP_sha1());
-  if (!OpenSSLSuccess()) {
-    LOG(ERROR) << "Could not perform ca-signing on the X.509 cert";
-    return false;
-  }
-
-  string ca_pem, subject_pem;
-  if (!SerializeX509(x509.get(), &subject_pem) ||
-      !SerializeX509(ca_x509.get(), &ca_pem)) {
-    LOG(ERROR) << "Could not serialize x509 certificates";
-    return false;
-  }
-  pem_cert->assign(subject_pem + ca_pem);
+  h->set_version(CRYPTO_VERSION_1);
+  h->set_key_hint(d.substr(0, 4));
   return true;
+}
+
+EVP_PKEY *Verifier::GetEvpPkey() const {
+  ScopedEvpPkey evp_pkey(EVP_PKEY_new());
+  if (!OpenSSLSuccess() || evp_pkey.get() == nullptr) {
+    LOG(ERROR) << "Could not allocate EVP_PKEY";
+    return nullptr;
+  }
+  if (!EVP_PKEY_set1_EC_KEY(evp_pkey.get(), key_.get())) {
+    LOG(ERROR) << "Could not convert EC_KEY to EVP_PKEY";
+    return nullptr;
+  }
+  return evp_pkey.release();
+}
+
+Verifier *Verifier::DeepCopy() const {
+  CryptoKey m;
+  scoped_ptr<Verifier> s;
+  if (!Encode(&m) || !reset(s, Decode(m))) {
+    LOG(ERROR) << "Could not copy key";
+    return nullptr;
+  }
+  SecureStringErase(m.mutable_key());
+  return s.release();
+}
+
+// TODO(kwalsh) Replace OpenSSL (and Keyczar) rand with Tao rand when possible.
+
+Deriver *Deriver::Generate() {
+  // This only supports HKDF with HMAC-SHA256.
+  size_t key_size = 256;
+  ScopedSafeString key(new string());
+  if (!RandBytes(key_size / 8, key.get())) {
+    LOG(ERROR) << "Error getting random bytes";
+    return nullptr;
+  }
+  return new Deriver(*key);
+}
+
+/// Compute an HMAC signature.
+/// @param key The key.
+/// @param data The data.
+/// @param[out] mac The signature.
+static bool SHA256_HMAC_Sign(const string &key, const string &data,
+                             string *mac) {
+  const EVP_MD *md = EVP_sha256();
+  ScopedHmacCtx ctx(HMAC_CTX_new());
+  unsigned int mac_length = 0;  // mac->size();  // don't append
+  mac->resize(mac_length + EVP_MAX_MD_SIZE);
+  unsigned int sig_length = 0;
+  if (!HMAC_Init_ex(ctx.get(), str2uchar(key), key.size(), md,
+                    nullptr /* engine */) ||
+      !HMAC_Update(ctx.get(), str2uchar(data), data.size()) ||
+      !HMAC_Final(ctx.get(), str2uchar(mac) + mac_length, &sig_length)) {
+    LOG(ERROR) << "Could not compute HMAC";
+    return false;
+  }
+  // Fail on buffer overflow.
+  CHECK_LE(sig_length, EVP_MAX_MD_SIZE);
+  mac->resize(mac_length + sig_length);
+  return true;
+}
+
+/// Verify an HMAC signature.
+/// @param key The key.
+/// @param data The data.
+/// @param mac The signature.
+static bool SHA256_HMAC_Verify(const string &key, const string &data,
+                               const string &mac) {
+  string mac2;
+  return (SHA256_HMAC_Sign(key, data, &mac2) && mac.size() == mac2.size() &&
+          CRYPTO_memcmp(str2uchar(mac), str2uchar(mac2), mac.size()) == 0);
+}
+
+bool Deriver::Derive(size_t size, const string &context, string *secret) const {
+  // This omits the optional "extract" stage of HKDF and implements only the
+  // second stage "expand" operation. The output is the first size bytes of:
+  // T = T(1) | T(2) | ... | T(N)
+  // where
+  //   T(0) = emptystring
+  //   T(i) = HMAC(key, T(i-1) | size | context | i)
+  KeyDerivationPDU pdu;
+  pdu.set_size(size);
+  pdu.set_context(context);
+  pdu.set_index(0);
+  secret->clear();
+  string d = "";
+  while (secret->size() < size) {
+    pdu.set_previous_hash(d);
+    pdu.set_index(pdu.index() + 1);
+    string s;
+    if (!pdu.SerializeToString(&s) || !SHA256_HMAC_Sign(*key_, s, &d)) {
+      LOG(ERROR) << "Can't compute hmac";
+      return false;
+    }
+    secret->append(d);
+  }
+  secret->resize(size);
+  return true;
+}
+
+bool Deriver::Encode(CryptoKey *m) const {
+  m->set_version(CRYPTO_VERSION_1);
+  m->set_purpose(CryptoKey::DERIVING);
+  m->set_algorithm(CryptoKey::HMAC_SHA);
+  HMAC_SHA_DerivingKey_v1 k;
+  k.set_mode(DERIVING_MODE_HKDF);
+  k.set_hmac_private(*key_);
+  if (!k.SerializeToString(m->mutable_key())) {
+    SecureStringErase(k.mutable_hmac_private());
+    LOG(ERROR) << "Could not serialize key";
+    return false;
+  }
+  SecureStringErase(k.mutable_hmac_private());
+  return true;
+}
+
+Deriver *Deriver::Decode(const CryptoKey &m) {
+  if (m.version() != CRYPTO_VERSION_1) {
+    LOG(ERROR) << "Bad version";
+    return nullptr;
+  }
+  if (m.purpose() != CryptoKey::DERIVING) {
+    LOG(ERROR) << "Bad purpose";
+    return nullptr;
+  }
+  if (m.algorithm() != CryptoKey::HMAC_SHA) {
+    LOG(ERROR) << "Bad algorithm";
+    return nullptr;
+  }
+  HMAC_SHA_DerivingKey_v1 k;
+  if (!k.ParseFromString(m.key()) || k.mode() != DERIVING_MODE_HKDF) {
+    SecureStringErase(k.mutable_hmac_private());
+    LOG(ERROR) << "Could not parse key";
+    return nullptr;
+  }
+  ScopedSafeString key(new string());
+  key->assign(k.hmac_private());
+  SecureStringErase(k.mutable_hmac_private());
+  // This only supports HKDF with HMAC-SHA256.
+  size_t key_size = 256;
+  if (key->size() * 8 != key_size) {
+    LOG(ERROR) << "Invalid hmac key size";
+    return nullptr;
+  }
+  return new Deriver(*key);
+}
+
+// bool Deriver::Header(CryptoHeader *h) const {
+//   CryptingKey m;
+//   string s, d;
+//   if (!Encode(&m) || !Sha1(m.key(), &d) || d.size() < 4) {
+//     LOG(ERROR) << "Could not compute key hint";
+//     return false;
+//   }
+//   h->set_version(CRYPTO_VERSION_1);
+//   h->set_key_hint(d.substr(0, 4));
+//   return true;
+// }
+
+Deriver *Deriver::DeepCopy() const {
+  CryptoKey m;
+  scoped_ptr<Deriver> s;
+  if (!Encode(&m) || !reset(s, Decode(m))) {
+    LOG(ERROR) << "Could not copy key";
+    return nullptr;
+  }
+  SecureStringErase(m.mutable_key());
+  return s.release();
+}
+
+Crypter *Crypter::Generate() {
+  // This only supports AES-256 CBC with HMAC-SHA256.
+  // See NIST SP800-57 part1, pages 63-64 for hmac key size recommendations.
+  size_t aes_size = 256;
+  size_t hmac_size = 256;
+  ScopedSafeString aes_key(new string());
+  ScopedSafeString hmac_key(new string());
+  if (!RandBytes(aes_size / 8, aes_key.get()) ||
+      !RandBytes(hmac_size / 8, hmac_key.get())) {
+    LOG(ERROR) << "Error getting random bytes";
+    return nullptr;
+  }
+  return new Crypter(*aes_key, *hmac_key);
+}
+
+/// Compute cipher for AES-256 CBC.
+/// @param encrypt True for encryption mode.
+/// @param key The aes key.
+/// @param iv The random iv.
+/// @param in The data to be ciphered.
+/// @param[out] out The output after ciphering.
+static bool AES256_CBC_Cipher(bool encrypt, const string &key, const string &iv,
+                              const string &in, string *out) {
+  const EVP_CIPHER *cipher = EVP_aes_256_cbc();
+  // Initialize with aesKey and iv.
+  ScopedCipherCtx ctx(EVP_CIPHER_CTX_new());
+  if (!EVP_CipherInit_ex(ctx.get(), cipher, nullptr /* engine */,
+                         str2uchar(key), str2uchar(iv), encrypt ? 1 : 0)) {
+    LOG(ERROR) << "Can't init cipher";
+    return false;
+  }
+  // Update with input data.
+  size_t max_out = in.size() + cipher->block_size;  // no -1 ?
+  out->resize(max_out);  // base::STLStringResizeUninitialized()
+  int out_data_length = 0;
+  if (!EVP_CipherUpdate(ctx.get(), str2uchar(out), &out_data_length,
+                        str2uchar(in), in.size())) {
+    LOG(ERROR) << "Can't update cipher";
+    return false;
+  }
+  // Fail on buffer overflow.
+  CHECK_LT(out_data_length, max_out);
+  out->resize(out_data_length);
+  // Finalize.
+  max_out = out_data_length + cipher->block_size;
+  out->resize(max_out);  // base::STLStringResizeUninitialized()
+  int out_finalize_length = 0;
+  if (!EVP_CipherFinal_ex(ctx.get(), str2uchar(out) + out_data_length,
+                          &out_finalize_length)) {
+    LOG(ERROR) << "Can't finalize cipher";
+    return false;
+  }
+  // Fail on buffer overflow.
+  CHECK_LE(out_finalize_length, cipher->block_size);
+  out->resize(out_data_length + out_finalize_length);
+  return true;
+}
+
+bool Crypter::Encrypt(const string &data, string *encrypted) const {
+  const EVP_CIPHER *cipher = EVP_aes_256_cbc();
+  EncryptedData ed;
+  if (!Header(ed.mutable_header())) {
+    LOG(ERROR) << "Can't prepare encrypt header";
+    return false;
+  }
+  // Select iv.
+  size_t iv_size =
+      EVP_CIPHER_iv_length(cipher);  // AES iv size = AES block size =
+                                     // 128 bits = 16 bytes
+  if (!RandBytes(iv_size, ed.mutable_iv())) {
+    LOG(ERROR) << "Can't generate iv";
+    return false;
+  }
+  // Encrypt with key, iv, and data.
+  if (!AES256_CBC_Cipher(true /* encrypt */, *aesKey_, ed.iv(), data,
+                         ed.mutable_ciphertext())) {
+    LOG(ERROR) << "Can't encrypt";
+    return false;
+  }
+  // Serialize and HMAC.
+  string s;
+  if (!ed.SerializeToString(&s) ||
+      !SHA256_HMAC_Sign(*hmacKey_, s, ed.mutable_mac())) {
+    LOG(ERROR) << "Can't compute hmac";
+    return false;
+  }
+  if (!ed.SerializeToString(encrypted)) {
+    LOG(ERROR) << "Can't serialize encrypted data";
+    return false;
+  }
+  return true;
+}
+
+bool Crypter::Decrypt(const string &encrypted, string *data) const {
+  EncryptedData ed;
+  if (!ed.ParseFromString(encrypted)) {
+    LOG(ERROR) << "Invalid encryption";
+    return false;
+  }
+  // Check headers.
+  CryptoHeader h;
+  if (!Header(&h) || ed.header().version() != h.version() ||
+      ed.header().key_hint() != h.key_hint()) {
+    LOG(ERROR) << "Invalid encryption version or key hint";
+    return false;
+  }
+  // Deserialize and HMAC.
+  string mac = ed.mac();
+  ed.clear_mac();
+  string s;
+  if (!ed.SerializeToString(&s) || !SHA256_HMAC_Verify(*hmacKey_, s, mac)) {
+    LOG(ERROR) << "Can't verify hmac";
+    return false;
+  }
+  // Decrypt with key, iv, and ciphertext.
+  if (!AES256_CBC_Cipher(false /* decrypt */, *aesKey_, ed.iv(),
+                         ed.ciphertext(), data)) {
+    LOG(ERROR) << "Can't decrypt";
+    return false;
+  }
+  return true;
+}
+
+bool Crypter::Encode(CryptoKey *m) const {
+  m->set_version(CRYPTO_VERSION_1);
+  m->set_purpose(CryptoKey::CRYPTING);
+  m->set_algorithm(CryptoKey::AES_CBC_HMAC_SHA);
+  AES_CBC_HMAC_SHA_CryptingKey_v1 k;
+  k.set_mode(CIPHER_MODE_CBC);
+  k.set_aes_private(*aesKey_);
+  k.set_hmac_private(*hmacKey_);
+  if (!k.SerializeToString(m->mutable_key())) {
+    SecureStringErase(k.mutable_aes_private());
+    SecureStringErase(k.mutable_hmac_private());
+    LOG(ERROR) << "Could not serialize key";
+    return false;
+  }
+  SecureStringErase(k.mutable_aes_private());
+  SecureStringErase(k.mutable_hmac_private());
+  return true;
+}
+
+Crypter *Crypter::Decode(const CryptoKey &m) {
+  if (m.version() != CRYPTO_VERSION_1) {
+    LOG(ERROR) << "Bad version";
+    return nullptr;
+  }
+  if (m.purpose() != CryptoKey::CRYPTING) {
+    LOG(ERROR) << "Bad purpose";
+    return nullptr;
+  }
+  if (m.algorithm() != CryptoKey::AES_CBC_HMAC_SHA) {
+    LOG(ERROR) << "Bad algorithm";
+    return nullptr;
+  }
+  AES_CBC_HMAC_SHA_CryptingKey_v1 k;
+  if (!k.ParseFromString(m.key()) || k.mode() != CIPHER_MODE_CBC) {
+    SecureStringErase(k.mutable_aes_private());
+    SecureStringErase(k.mutable_hmac_private());
+    LOG(ERROR) << "Could not parse key";
+    return nullptr;
+  }
+  ScopedSafeString aes_key(new string());
+  ScopedSafeString hmac_key(new string());
+  aes_key->assign(k.aes_private());
+  hmac_key->assign(k.hmac_private());
+  SecureStringErase(k.mutable_aes_private());
+  SecureStringErase(k.mutable_hmac_private());
+  // This only supports AES-256 CBC with HMAC-SHA256.
+  // See NIST SP800-57 part1, pages 63-64 for hmac key size recommendations.
+  size_t aes_size = 256;
+  size_t hmac_size = 256;
+  if (aes_key->size() * 8 != aes_size || hmac_key->size() * 8 != hmac_size) {
+    LOG(ERROR) << "Invalid aes or hmac key sizes";
+    return nullptr;
+  }
+  return new Crypter(*aes_key, *hmac_key);
+}
+
+bool Crypter::Header(CryptoHeader *h) const {
+  CryptoKey m;
+  string s, d;
+  if (!Encode(&m) || !Sha1(m.key(), &d) || d.size() < 4) {
+    LOG(ERROR) << "Could not compute key hint";
+    return false;
+  }
+  h->set_version(CRYPTO_VERSION_1);
+  h->set_key_hint(d.substr(0, 4));
+  return true;
+}
+
+Crypter *Crypter::DeepCopy() const {
+  CryptoKey m;
+  scoped_ptr<Crypter> s;
+  if (!Encode(&m) || !reset(s, Decode(m))) {
+    SecureStringErase(m.mutable_key());
+    LOG(ERROR) << "Could not copy key";
+    return nullptr;
+  }
+  SecureStringErase(m.mutable_key());
+  return s.release();
 }
 
 bool Keys::InitTemporary() {
-  // Generate temporary keys.
-  if ((key_types_ & Type::Crypting &&
-       !GenerateCryptingKey(nickname_ + "_crypting", &crypter_)) ||
-      (key_types_ & Type::Signing &&
-       !GenerateSigningKey(nickname_ + "_signing", &signer_)) ||
-      (key_types_ & Type::KeyDeriving &&
-       !GenerateKeyDerivingKey(nickname_ + "_key_deriving", &key_deriver_))) {
-    LOG(ERROR) << "Could not generate temporary keys";
+  bool s = key_types_ & KeyType::Signing;
+  bool d = key_types_ & KeyType::Deriving;
+  bool c = key_types_ & KeyType::Crypting;
+  if (key_types_ == 0 ||
+      key_types_ != ((s ? KeyType::Signing : 0) | (d ? KeyType::Deriving : 0) |
+                     (c ? KeyType::Crypting : 0))) {
+    LOG(ERROR) << "Bad key type";
     return false;
   }
+  // Generate temporary keys.
   fresh_ = true;
+  if ((s && !reset(signer_, Signer::Generate())) ||
+      (s && !reset(verifier_, signer_->GetVerifier())) ||
+      (d && !reset(deriver_, Deriver::Generate())) ||
+      (c && !reset(crypter_, Crypter::Generate()))) {
+    crypter_.reset();
+    deriver_.reset();
+    verifier_.reset();
+    signer_.reset();
+    LOG(ERROR) << "Could not generate keys";
+    return false;
+  }
   return true;
 }
+
 bool Keys::InitTemporaryHosted(Tao *tao) {
   if (!InitTemporary()) {
     LOG(ERROR) << "Could not initialize temporary keys";
@@ -1118,334 +1268,419 @@ bool Keys::InitTemporaryHosted(Tao *tao) {
   }
   // Create a delegation for the signing key from the host Tao.
   if (signer_.get() != nullptr) {
-    string key_name;
-    if (!GetPrincipalName(&key_name)) {
-      LOG(ERROR) << "Could not get principal name for signing key";
-      return false;
-    }
     Statement stmt;
-    stmt.set_delegate(key_name);
-    if (!tao->Attest(stmt, &host_delegation_)) {
-      LOG(ERROR) << "Could not get delegation for signing key";
+    stmt.set_delegate(signer_->ToPrincipalName());
+    if (!tao->Attest(stmt, &delegation_)) {
+      LOG(ERROR) << "Could not create delegation for signing key";
       return false;
     }
   }
   return true;
 }
 
-bool Keys::InitNonHosted(const string &password) {
+/// Compute cipher for AES-128 CBC using key from PBKDF2 with HMAC-SHA256.
+/// @param encrypt True for encryption mode.
+/// @param password The password used to generate the encryption keys.
+/// @param iterations The number of iterations for PBKDF2.
+/// @param salt The random salt for PBKDF2.
+/// @param iv The random iv for AES.
+/// @param in The data to be ciphered.
+/// @param[out] out The output after ciphering.
+static bool PBKDF2_SHA256_AES128_CBC_Cipher(bool encrypt,
+                                            const string &password,
+                                            int iterations, const string &salt,
+                                            const string &iv, const string &in,
+                                            string *out) {
+  /// This code is adapted from Keyczar. It uses seemingly undocument OpenSSL
+  /// PBE functions that (presumably) implement PKCS#5 PBKDF2 with HMAC-SHA256
+  /// for
+  /// key derivation and PKCS#12 AES128 encryption. It isn't clear if a MAC is
+  /// added during the encryption step. Perhaps some of this code should be
+  /// replaced by more explicit calls to PBKDF2, AES, and HMAC.
   if (password.empty()) {
-    // Load unprotected verifying key.
-    if (key_types_ != Type::Signing) {
-      LOG(ERROR) << "With no password, only a signing public key can be loaded";
+    LOG(ERROR) << "Will not perform PBE with empty password";
+    return false;
+  }
+  const EVP_CIPHER *cipher = EVP_aes_128_cbc();
+  // AES iv size = AES block size = 128 bits = 16 bytes
+  if (iterations < PKCS5_DEFAULT_ITER ||
+      iv.size() != static_cast<size_t>(EVP_CIPHER_iv_length(cipher))) {
+    LOG(ERROR) << "Invalid PBE parameters";
+    return false;
+  }
+  int prf_nid = NID_hmacWithSHA256;
+  /// const_cast is safe, PKCS5_pbe2_set_iv doesn't modify salt or iv.
+  unsigned char *salt_buf = const_cast<unsigned char *>(str2uchar(salt));
+  unsigned char *iv_buf = const_cast<unsigned char *>(str2uchar(iv));
+  ScopedX509Algor algo(PKCS5_pbe2_set_iv(cipher, iterations, salt_buf,
+                                         salt.size(), iv_buf, prf_nid));
+  if (algo.get() == nullptr) {
+    LOG(ERROR) << "Can't create PBE cipher";
+    return "";
+  }
+
+  // size_t max_len = in.size() + cipher->block_size;
+  // out->resize(max_len);
+
+  unsigned char *out_ptr = nullptr;
+  int out_len = 0;
+  /// const_cast is safe, PKCS12_pbe_crypt doesn't modify in buffer.
+  unsigned char *in_buf = const_cast<unsigned char *>(str2uchar(in));
+  if (!PKCS12_pbe_crypt(algo.get(), password.c_str(), password.size(), in_buf,
+                        in.size(),
+                        &out_ptr,  // str2uchar(out),
+                        &out_len, encrypt ? 1 : 0)) {
+    LOG(ERROR) << "Can't encrypt with PBE";
+    return false;
+  }
+  // CHECK_LT(out_len, max_len);
+  // out->resize(out_len);
+  out->assign(reinterpret_cast<char *>(out_ptr), out_len);
+  return true;
+}
+
+/// Encrypt a string with PBE.
+/// @param plaintext The string to be encrypted.
+/// @param password The password used to generate the encryption keys.
+/// @param[out] ciphertext The encrypted string.
+static bool PBE_Encrypt(const string &plaintext, const string &password,
+                        string *ciphertext) {
+  PBEData pbe;
+  pbe.set_version(CRYPTO_VERSION_1);
+  pbe.set_cipher("aes128");
+  pbe.set_hmac("sha256");
+  pbe.set_iterations(4096);  // minimum 2048
+  size_t salt_size = 16;     // minimum 8
+  const EVP_CIPHER *cipher = EVP_aes_128_cbc();
+  size_t iv_size =
+      EVP_CIPHER_iv_length(cipher);  // AES iv size = AES block size =
+                                     // 128 bits = 16 bytes
+  if (!RandBytes(salt_size, pbe.mutable_salt()) ||
+      !RandBytes(iv_size, pbe.mutable_iv())) {
+    LOG(ERROR) << "Can't generate salt and iv";
+    return false;
+  }
+  bool encrypt = true;
+  if (!PBKDF2_SHA256_AES128_CBC_Cipher(encrypt, password, pbe.iterations(),
+                                       pbe.salt(), pbe.iv(), plaintext,
+                                       pbe.mutable_ciphertext())) {
+    LOG(ERROR) << "Can't perform PBE";
+    return false;
+  }
+  if (!pbe.SerializeToString(ciphertext)) {
+    LOG(ERROR) << "Can't serialize PBE";
+    return false;
+  }
+  return true;
+}
+
+/// Decrypt a string with PBE.
+/// @param ciphertext The string to be decrypted.
+/// @param password The password used to generate the encryption keys.
+/// @param[out] plaintext The decrypted string.
+static bool PBE_Decrypt(const string &ciphertext, const string &password,
+                        string *plaintext) {
+  PBEData pbe;
+  bool encrypt = false;
+  if (!pbe.ParseFromString(ciphertext) || pbe.version() != CRYPTO_VERSION_1 ||
+      pbe.cipher() != "aes128" || pbe.hmac() != "sha256" ||
+      !PBKDF2_SHA256_AES128_CBC_Cipher(encrypt, password, pbe.iterations(),
+                                       pbe.salt(), pbe.iv(), pbe.ciphertext(),
+                                       plaintext)) {
+    LOG(ERROR) << "Can't decrypt PBE data";
+    return false;
+  }
+  return true;
+}
+
+/// Erase all private contents of a keyset.
+/// @param m The keyset to be cleansed.
+static void SecureKeysetErase(CryptoKeyset *m) {
+  for (int i = 0; i < m->keys_size(); i++) {
+    CryptoKey *k = m->mutable_keys(i);
+    SecureStringErase(k->mutable_key());
+  }
+  m->clear_keys();
+}
+
+bool Keys::InitWithPassword(const string &password) {
+  bool s = key_types_ & KeyType::Signing;
+  bool d = key_types_ & KeyType::Deriving;
+  bool c = key_types_ & KeyType::Crypting;
+  if (key_types_ == 0 ||
+      key_types_ != ((s ? KeyType::Signing : 0) | (d ? KeyType::Deriving : 0) |
+                     (c ? KeyType::Crypting : 0))) {
+    LOG(ERROR) << "Bad key type";
+    return false;
+  }
+  if (path_.get() == nullptr) {
+    LOG(ERROR) << "Bad init call";
+    return false;
+  }
+  if (password.empty()) {
+    // Special case: load just a public verifying key.
+    if (c || d) {
+      LOG(ERROR)
+          << "With no password, only a public verifying key can be loaded";
       return false;
     }
-    if (!LoadVerifierKey(SigningPublicKeyPath(), &verifier_)) {
-      LOG(ERROR) << "Could not load verifying key";
+    // Load the key from a saved x509, if available.
+    string pem_cert;
+    if (!PathExists(FilePath(X509Path()))) {
+      // Can't generate a verifier alone.
+      LOG(ERROR) << "No verifier key found";
+      return false;
+    }
+    if (!ReadFileToString(X509Path(), &pem_cert) ||
+        !reset(verifier_, Verifier::FromX509(pem_cert))) {
+      LOG(ERROR) << "Could not load verifying key from x509";
       return false;
     }
     fresh_ = false;
-  } else if ((key_types_ & Type::Crypting &&
-              !DirectoryExists(FilePath(CryptingKeyPath()))) ||
-             (key_types_ & Type::Signing &&
-              !DirectoryExists(FilePath(SigningPrivateKeyPath()))) ||
-             (key_types_ & Type::KeyDeriving &&
-              !DirectoryExists(FilePath(KeyDerivingKeyPath())))) {
-    // Generate PBE-protected keys.
-    if ((key_types_ & Type::Crypting &&
-         !GenerateCryptingKey(nickname_ + "_crypting", password,
-                              CryptingKeyPath(), &crypter_)) ||
-        (key_types_ & Type::Signing &&
-         !GenerateSigningKey(nickname_ + "_signing", password,
-                             SigningPrivateKeyPath(), SigningPublicKeyPath(),
-                             &signer_)) ||
-        (key_types_ & Type::KeyDeriving &&
-         !GenerateKeyDerivingKey(nickname_ + "_key_deriving", password,
-                                 KeyDerivingKeyPath(), &key_deriver_))) {
-      LOG(ERROR) << "Could not generate protected keys";
-      return false;
-    }
-    fresh_ = true;
   } else {
-    // Load PBE-protected keys.
-    if ((key_types_ & Type::Crypting &&
-         !LoadCryptingKey(CryptingKeyPath(), password, &crypter_)) ||
-        (key_types_ & Type::Signing &&
-         !LoadSigningKey(SigningPrivateKeyPath(), password, &signer_)) ||
-        (key_types_ & Type::KeyDeriving &&
-         !LoadKeyDerivingKey(KeyDerivingKeyPath(), password, &key_deriver_))) {
-      LOG(ERROR) << "Could not load protected keys";
-      return false;
+    // Load or generate PBE-protected keys.
+    if (c || d) {
+      // Contains crypter or deriver, so use custom tao PBE format.
+      if (PathExists(FilePath(PBEKeysetPath()))) {
+        // Load PBE keyset.
+        string pbe, serialized;
+        CryptoKeyset keyset;
+        if (!ReadFileToString(PBEKeysetPath(), &pbe) ||
+            !PBE_Decrypt(pbe, password, &serialized) ||
+            !keyset.ParseFromString(serialized) || !Decode(keyset, s, d, c)) {
+          SecureKeysetErase(&keyset);
+          crypter_.reset();
+          deriver_.reset();
+          verifier_.reset();
+          signer_.reset();
+          LOG(ERROR) << "Could not load PBE keyset";
+          return false;
+        }
+        SecureKeysetErase(&keyset);
+        fresh_ = false;
+      } else {
+        // Save PBE keyset.
+        if (!InitTemporary()) {
+          LOG(ERROR) << "Could not initialize keys";
+          return false;
+        }
+        CryptoKeyset keyset;
+        string serialized, pbe;
+        if (!Encode(&keyset) || !keyset.SerializeToString(&serialized) ||
+            !PBE_Encrypt(serialized, password, &pbe) ||
+            !CreateDirectory(FilePath(PBEKeysetPath()).DirName()) ||
+            !WriteStringToFile(PBEKeysetPath(), pbe)) {
+          SecureKeysetErase(&keyset);
+          LOG(ERROR) << "Could not save PBE keyset";
+          return false;
+        }
+        SecureKeysetErase(&keyset);
+        fresh_ = true;
+      }
+    } else {
+      // A signer, but no crypter and no deriver, so use PKCS#8.
+      if (PathExists(FilePath(PBESignerPath()))) {
+        // Load PKCS#8.
+        string serialized_key;
+        if (!ReadFileToString(PBESignerPath(), &serialized_key) ||
+            !reset(signer_,
+                   Signer::DeserializeWithPassword(serialized_key, password)) ||
+            !reset(verifier_, signer_->GetVerifier())) {
+          signer_.reset();
+          verifier_.reset();
+          LOG(ERROR) << "Could not load PBE signing key";
+          return false;
+        }
+        fresh_ = false;
+      } else {
+        // Save PKCS#8.
+        string serialized_key;
+        if (!reset(signer_, Signer::Generate()) ||
+            !reset(verifier_, signer_->GetVerifier()) ||
+            (serialized_key = signer_->SerializeWithPassword(password)) == "" ||
+            !CreateDirectory(FilePath(PBESignerPath()).DirName()) ||
+            !WriteStringToFile(PBESignerPath(), serialized_key)) {
+          signer_.reset();
+          verifier_.reset();
+          LOG(ERROR) << "Could not save PBE signing key";
+          return false;
+        }
+        fresh_ = true;
+      }
     }
-    fresh_ = false;
+  }
+  // Load optional x509.
+  if (s && !fresh_ && PathExists(FilePath(X509Path())) &&
+      !ReadFileToString(X509Path(), &x509_)) {
+    LOG(ERROR) << "Could not load x509";
+    return false;
   }
   return true;
 }
 
 bool Keys::InitHosted(Tao *tao, const string &policy) {
-  ScopedSafeString secret(new string());
-  if (PathExists(FilePath(SecretPath()))) {
-    // Load Tao-protected secret.
-    if (!GetSealedSecret(tao, SecretPath(), policy, secret.get())) {
-      LOG(ERROR) << "Could not unseal a secret using the Tao";
+  bool s = key_types_ & KeyType::Signing;
+  bool d = key_types_ & KeyType::Deriving;
+  bool c = key_types_ & KeyType::Crypting;
+  if (key_types_ == 0 ||
+      key_types_ != ((s ? KeyType::Signing : 0) | (d ? KeyType::Deriving : 0) |
+                     (c ? KeyType::Crypting : 0))) {
+    LOG(ERROR) << "Bad key type";
+    return false;
+  }
+  if (path_.get() == nullptr) {
+    LOG(ERROR) << "Bad init call";
+    return false;
+  }
+  if (PathExists(FilePath(SealedKeysetPath()))) {
+    // Load Tao-sealed keyset.
+    string sealed, serialized, seal_policy;
+    CryptoKeyset keyset;
+    if (!ReadFileToString(SealedKeysetPath(), &sealed) ||
+        !tao->Unseal(sealed, &serialized, &seal_policy) ||
+        seal_policy != policy || !keyset.ParseFromString(serialized) ||
+        !Decode(keyset, s, d, c)) {
+      SecureKeysetErase(&keyset);
+      crypter_.reset();
+      deriver_.reset();
+      verifier_.reset();
+      signer_.reset();
+      LOG(ERROR) << "Could not load sealed keyset";
       return false;
     }
+    SecureKeysetErase(&keyset);
+    fresh_ = false;
   } else {
-    // Generate Tao-protected secret.
-    int secret_size = DefaultRandomSecretSize;
-    if (!MakeSealedSecret(tao, SecretPath(), policy, secret_size,
-                          secret.get())) {
-      LOG(ERROR) << "Could not generate and seal a secret using the Tao";
+    // Save Tao-sealed keyset.
+    if (!InitTemporary()) {
+      LOG(ERROR) << "Could not initialize keys";
+      return false;
+    }
+    CryptoKeyset keyset;
+    string serialized, sealed;
+    if (!Encode(&keyset) || !keyset.SerializeToString(&serialized) ||
+        !tao->Seal(serialized, policy, &sealed) ||
+        !CreateDirectory(FilePath(SealedKeysetPath()).DirName()) ||
+        !WriteStringToFile(SealedKeysetPath(), sealed)) {
+      SecureKeysetErase(&keyset);
+      LOG(ERROR) << "Could not serialize and seal keyset";
+      return false;
+    }
+    SecureKeysetErase(&keyset);
+    fresh_ = true;
+  }
+  if (s && fresh_) {
+    // Save delegation.
+    Statement stmt;
+    stmt.set_delegate(signer_->ToPrincipalName());
+    if (!tao->Attest(stmt, &delegation_) ||
+        !CreateDirectory(FilePath(DelegationPath()).DirName()) ||
+        !WriteStringToFile(DelegationPath(), delegation_)) {
+      LOG(ERROR) << "Could not create delegation for signing key";
+      return false;
+    }
+  } else if (s && !fresh_) {
+    // Load delegation.
+    if (!ReadFileToString(DelegationPath(), &delegation_)) {
+      LOG(ERROR) << "Could not load tao delegation";
       return false;
     }
   }
-  // Load or generate keys using the Tao-protected secret.
-  if (!InitNonHosted(*secret)) {
-    LOG(ERROR) << "Could not initialize Tao-protected keys";
-    return false;
-  }
-  // Create a delegation for the signing key from the host Tao.
-  if (signer_.get() != nullptr) {
-    string filename = DelegationPath("host");
-    if (PathExists(FilePath(filename))) {
-      if (!ReadFileToString(filename, &host_delegation_)) {
-        LOG(ERROR) << "Could not load delegation for signing key";
-        return false;
-      }
-    } else {
-      string key_name;
-      if (!GetPrincipalName(&key_name)) {
-        LOG(ERROR) << "Could not get principal name for signing key";
-        return false;
-      }
-      Statement stmt;
-      stmt.set_delegate(key_name);
-      if (!tao->Attest(stmt, &host_delegation_)) {
-        LOG(ERROR) << "Could not get delegation for signing key";
-        return false;
-      }
-      if (!WriteStringToFile(DelegationPath("host"), host_delegation_)) {
-        LOG(ERROR) << "Could not store delegation for signing key";
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-bool VerifierToPrincipalName(const Verifier &key, string *name) {
-  string key_data, key_text;
-  if (!SerializePublicKey(key, &key_data) ||
-      !Base64WEncode(key_data, &key_text)) {
-    LOG(ERROR) << "Could not serialize public signing key";
-    return false;
-  }
-  stringstream out;
-  out << "Key(" << quotedString(key_text) << ")";
-  name->assign(out.str());
-  return true;
-}
-
-bool VerifierFromPrincipalName(const string &name, scoped_ptr<Verifier> *key) {
-  string key_text;
-  stringstream in(name);
-  skip(in, "Key(");
-  getQuotedString(in, &key_text);
-  skip(in, ")");
-  if (!in || (in.get() && !in.eof())) {
-    LOG(ERROR) << "Bad format for Tao signer principal name";
-    return false;
-  }
-  string key_data;
-  if (!Base64WDecode(key_text, &key_data) ||
-      !DeserializePublicKey(key_data, key)) {
-    LOG(ERROR) << "Could not deserialize the Tao signer key";
+  // Load optional x509.
+  if (s && !fresh_ && PathExists(FilePath(X509Path())) &&
+      !ReadFileToString(X509Path(), &x509_)) {
+    LOG(ERROR) << "Could not load x509";
     return false;
   }
   return true;
 }
 
-bool Keys::GetPrincipalName(string *name) const {
-  if (!Verifier()) {
-    LOG(ERROR) << "No managed verifier";
+bool Keys::SetX509(const string &pem_cert) {
+  // Add sanity checks for cert? E.g. check for key mismatch?
+  if (path_.get() != nullptr &&
+      (!CreateDirectory(FilePath(X509Path()).DirName()) ||
+       !WriteStringToFile(X509Path(), pem_cert))) {
+    LOG(ERROR) << "Could not save x509";
     return false;
   }
-  return tao::VerifierToPrincipalName(*Verifier(), name);
-}
-
-bool Keys::GetHostDelegation(string *attestation) const {
-  if (host_delegation_.empty()) {
-    LOG(ERROR) << "No host delegation";
-    return false;
-  }
-  attestation->assign(host_delegation_);
+  x509_ = pem_cert;
   return true;
-}
-
-string Keys::GetPath(const string &suffix) const {
-  if (path_.empty()) {
-    LOG(WARNING) << "Empty keys path is interpreted as current directory";
-    return FilePath(".").Append(suffix).value();
-  }
-  return FilePath(path_).Append(suffix).value();
 }
 
 Keys *Keys::DeepCopy() const {
-  scoped_ptr<Keys> other(new Keys(nickname_, path_, key_types_));
-  if ((verifier_.get() && !tao::CopyVerifier(*verifier_, &other->verifier_)) ||
-      (signer_.get() && !tao::CopySigner(*signer_, &other->signer_)) ||
-      (key_deriver_.get() &&
-       !tao::CopySigner(*key_deriver_, &other->key_deriver_)) ||
-      (crypter_.get() && !tao::CopyCrypter(*crypter_, &other->crypter_))) {
-    LOG(ERROR) << "Could not copy managed keys";
+  scoped_ptr<Keys> other(new Keys(key_types_));
+  other->fresh_ = fresh_;
+  other->delegation_ = delegation_;
+  other->x509_ = x509_;
+  if (path_.get() != nullptr) {
+    other->path_.reset(new string(*path_));
+  }
+  if ((signer_.get() != nullptr &&
+       !reset(other->signer_, signer_->DeepCopy())) ||
+      (verifier_.get() != nullptr &&
+       !reset(other->verifier_, verifier_->DeepCopy())) ||
+      (deriver_.get() != nullptr &&
+       !reset(other->deriver_, deriver_->DeepCopy())) ||
+      (crypter_.get() != nullptr &&
+       !reset(other->crypter_, crypter_->DeepCopy()))) {
+    LOG(ERROR) << "Could not copy key set";
     return nullptr;
   }
-  other->fresh_ = fresh_;
   return other.release();
 }
 
-Verifier *Keys::Verifier() const {
-  if (verifier_.get() != nullptr)
-    return verifier_.get();
-  else
-    return signer_.get();
+string Keys::GetPath(const string &suffix) const {
+  if (path_.get() == nullptr) return "";
+  return FilePath(*path_).Append(suffix).value();
 }
 
-// bool Keys::SerializePublicKey(string *s) const {
-//   if (!Verifier()) {
-//     LOG(ERROR) << "No managed verifier";
-//     return false;
-//   }
-//   return tao::SerializePublicKey(*Verifier(), s);
-// }
-
-bool Keys::Sign(const string &data, const string &context,
-                string *signature) const {
-  if (!Signer()) {
-    LOG(ERROR) << "No managed signer";
-    return false;
+bool Keys::Decode(const CryptoKeyset &m, bool signer, bool deriver,
+                  bool crypter) {
+  for (int i = 0; i < m.keys_size(); i++) {
+    const CryptoKey &k = m.keys(i);
+    if (k.purpose() == CryptoKey::SIGNING) {
+      if (!signer || signer_.get() != nullptr ||
+          !reset(signer_, Signer::Decode(k)) ||
+          !reset(verifier_, signer_->GetVerifier())) {
+        LOG(ERROR) << "Could not load signer";
+        return false;
+      }
+    } else if (k.purpose() == CryptoKey::DERIVING) {
+      if (!deriver || deriver_.get() != nullptr ||
+          !reset(deriver_, Deriver::Decode(k))) {
+        LOG(ERROR) << "Could not load deriver";
+        return false;
+      }
+    } else if (k.purpose() == CryptoKey::CRYPTING) {
+      if (!crypter || crypter_.get() != nullptr ||
+          !reset(crypter_, Crypter::Decode(k))) {
+        LOG(ERROR) << "Could not load crypter";
+        return false;
+      }
+    } else {
+      LOG(ERROR) << "Unrecognized key type";
+      return false;
+    }
   }
-  return tao::SignData(*Signer(), data, context, signature);
-}
-
-bool Keys::Verify(const string &data, const string &context,
-                  const string &signature) const {
-  if (!Verifier()) {
-    LOG(ERROR) << "No managed verifier";
-    return false;
-  }
-  return tao::VerifySignature(*Verifier(), data, context, signature);
-}
-
-bool Keys::Encrypt(const string &data, string *encrypted) const {
-  if (!Crypter()) {
-    LOG(ERROR) << "No managed crypter";
-    return false;
-  }
-  return Crypter()->Encrypt(data, encrypted);
-}
-
-bool Keys::Decrypt(const string &encrypted, string *data) const {
-  if (!Crypter()) {
-    LOG(ERROR) << "No managed crypter";
-    return false;
-  }
-  return Crypter()->Decrypt(encrypted, data);
-}
-
-// bool Keys::CopySigner(scoped_ptr<keyczar::Signer> *copy) const {
-//   if (!Signer()) {
-//     LOG(ERROR) << "No managed signer";
-//     return false;
-//   }
-//   return tao::CopySigner(*Signer(), copy);
-// }
-//
-// bool Keys::CopyKeyDeriver(scoped_ptr<keyczar::Signer> *copy) const {
-//   if (!KeyDeriver()) {
-//     LOG(ERROR) << "No managed key-deriver";
-//     return false;
-//   }
-//   return tao::CopySigner(*KeyDeriver(), copy);
-// }
-//
-// bool Keys::CopyVerifier(scoped_ptr<keyczar::Verifier> *copy) const {
-//   if (!Verifier()) {
-//     LOG(ERROR) << "No managed verifier";
-//     return false;
-//   }
-//   return tao::CopyVerifier(*Verifier(), copy);
-// }
-//
-// bool Keys::CopyCrypter(scoped_ptr<keyczar::Crypter> *copy) const {
-//   if (!Crypter()) {
-//     LOG(ERROR) << "No managed crypter";
-//     return false;
-//   }
-//   return tao::CopyCrypter(*Crypter(), copy);
-// }
-
-bool Keys::DeriveKey(const string &name, size_t size, string *material) const {
-  if (!KeyDeriver()) {
-    LOG(ERROR) << "No managed key-deriver";
-    return false;
-  }
-  return tao::DeriveKey(*KeyDeriver(), name, size, material);
-}
-
-bool Keys::ExportSignerToOpenSSL(ScopedEvpPkey *evp_key) const {
-  if (!Signer()) {
-    LOG(ERROR) << "No managed signer";
-    return false;
-  }
-  return tao::ExportPrivateKeyToOpenSSL(*Signer(), evp_key);
-}
-
-bool Keys::ExportVerifierToOpenSSL(ScopedEvpPkey *evp_key) const {
-  if (!Verifier()) {
-    LOG(ERROR) << "No managed verifier";
-    return false;
-  }
-  return tao::ExportPublicKeyToOpenSSL(*Verifier(), evp_key);
-}
-
-bool Keys::CreateSelfSignedX509(const string &details_text,
-                                string *pem_cert) const {
-  if (!Signer()) {
-    LOG(ERROR) << "No managed signer";
-    return false;
-  }
-  X509Details details;
-  if (!TextFormat::ParseFromString(details_text, &details)) {
-    LOG(ERROR) << "Could not parse x509 details";
-    return false;
-  }
-  return tao::CreateSelfSignedX509(*Signer(), details, pem_cert);
-}
-
-bool Keys::CreateSelfSignedX509(const string &details_text) const {
-  string path = SigningX509CertificatePath();
-  string pem_cert;
-  if (!CreateSelfSignedX509(details_text, &pem_cert) ||
-      !CreateDirectory(FilePath(path).DirName()) ||
-      !WriteStringToFile(path, pem_cert)) {
-    LOG(ERROR) << "Could not create self signed certificate";
+  // Make sure all the keys are loaded
+  if ((signer && signer_.get() == nullptr) ||
+      (signer && verifier_.get() == nullptr) ||
+      (deriver && deriver_.get() == nullptr) ||
+      (crypter && crypter_.get() == nullptr)) {
+    LOG(ERROR) << "Missing keys";
     return false;
   }
   return true;
 }
 
-bool Keys::CreateCASignedX509(int cert_serial,
-                              const keyczar::Verifier &subject_key,
-                              const X509Details &subject_details,
-                              string *pem_cert) const {
-  if (!Signer()) {
-    LOG(ERROR) << "No managed signer";
+bool Keys::Encode(CryptoKeyset *m) const {
+  if ((signer_.get() != nullptr && !signer_->Encode(m->add_keys())) ||
+      (deriver_.get() != nullptr && !deriver_->Encode(m->add_keys())) ||
+      (crypter_.get() != nullptr && !crypter_->Encode(m->add_keys()))) {
+    LOG(ERROR) << "Could not encode keyset";
     return false;
   }
-  string ca_cert_path = SigningX509CertificatePath();
-  return tao::CreateCASignedX509(*Signer(), ca_cert_path, cert_serial,
-                                 subject_key, subject_details, pem_cert);
+  return true;
 }
 
 }  // namespace tao

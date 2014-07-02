@@ -22,11 +22,13 @@
 #include <glog/logging.h>
 
 #include "cloudproxy/cloud_channel.h"
+#include "tao/attestation.h"
 #include "tao/keys.h"
 #include "tao/tao.h"
 
 using tao::Tao;
-using tao::Keys;
+using tao::Signer;
+using tao::Statement;
 
 namespace cloudproxy {
 
@@ -37,28 +39,29 @@ bool CloudClient::Init() {
     return false;
   }
   if (tls_key_.get() == nullptr) {
-    tls_key_.reset(new Keys("CloudClient", Keys::Signing));
-    if (!tls_key_->InitTemporaryHosted(host_tao)) {
-      LOG(ERROR) << "Could not initialize CloudClient keys";
+    tls_key_.reset(Signer::Generate());
+    if (tls_key_.get() == nullptr) {
+      LOG(ERROR) << "Could not generate temporary TLS key";
       return false;
     }
   }
   if (tls_self_cert_.empty()) {
-    // x509 details are mostly not used by peers, so we use arbitrary constants
-    // here. However, commonname must match the Key nickname, above.
-    string nickname = tao::quotedString(tls_key_->Nickname());
-    string details = string("country: \"US\" "
-                            "state: \"Washington\" "
-                            "organization: \"Google\" ") +
-                     "commonname: " + nickname;
-    if (!tls_key_->CreateSelfSignedX509(details, &tls_self_cert_)) {
+    // x509 details are mostly not used by peers, so use arbitrary constants.
+    string details = "country: \"US\" "
+                     "state: \"Washington\" "
+                     "organization: \"Google\" "
+                     "commonname: \"CloudProxy Client\"";
+    tls_self_cert_ = tls_key_->CreateSelfSignedX509(details);
+    if (tls_self_cert_.empty()) {
       LOG(ERROR) << "Could not create self signed x509";
       return false;
     }
   }
   if (tls_delegation_.empty()) {
-    if (!tls_key_->GetHostDelegation(&tls_delegation_)) {
-      LOG(ERROR) << "Could not load delegation for attestation key";
+    Statement stmt;
+    stmt.set_delegate(tls_key_->ToPrincipalName());
+    if (!host_tao->Attest(stmt, &tls_delegation_)) {
+      LOG(ERROR) << "Could not create delegation for TLS key";
       return false;
     }
   }

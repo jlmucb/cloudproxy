@@ -85,7 +85,7 @@ class CloudServer {
   ScopedSSLCtx tls_context_;
 
   /// A signing key for TLS.
-  scoped_ptr<tao::Keys> tls_key_;
+  scoped_ptr<tao::Signer> tls_key_;
 
   /// A self-signed certificate for the TLS key.
   string tls_self_cert_;

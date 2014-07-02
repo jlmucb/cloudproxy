@@ -68,7 +68,7 @@ HttpsEchoServer::HttpsEchoServer(const string &server_config_path,
       host_(host),
       port_(port),
       host_channel_(channel),
-      keys_(new Keys(server_config_path, "https echo server", Keys::Signing)) {
+      keys_(new Keys(server_config_path, Keys::Signing)) {
   // FIXME(kwalsh) merge most of this with CloudServer
   CHECK(keys_->InitHosted(*host_channel_, policy))
       << "Could not initialize HttpsEchoServer keys";

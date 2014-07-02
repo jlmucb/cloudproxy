@@ -246,10 +246,8 @@ int main(int argc, char **argv) {
   if (FLAGS_show || !did_work) {
     printf("  name: %s\n", admin->GetName().c_str());
     printf("  policy key:\n");
-    printf("    public: %s\n",
-           admin->GetPolicyKeys()->SigningPublicKeyPath().c_str());
-    printf("    private: %s\n",
-           admin->GetPolicyKeys()->SigningPrivateKeyPath().c_str());
+    printf("    certificate: %s\n", admin->GetPolicyKeys()->X509Path().c_str());
+    printf("    key: %s\n", admin->GetPolicyKeys()->PBESignerPath().c_str());
     printf("  tao ca: %s:%s\n", admin->GetTaoCAHost().c_str(),
            admin->GetTaoCAPort().c_str());
     printf("  auth type: %s\n", admin->GetAuthType().c_str());

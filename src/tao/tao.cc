@@ -30,9 +30,11 @@
 
 namespace tao {
 Tao *Tao::host_tao_;
+static bool initialized;
 
 Tao *Tao::GetHostTao() {
-  if (host_tao_ != nullptr) return host_tao_;
+  if (initialized) return host_tao_;
+  initialized = true;
   const char *p = getenv(HostTaoEnvVar);
   if (p == nullptr || strlen(p) == 0) {
     LOG(ERROR) << "Missing environment variable " << HostTaoEnvVar;

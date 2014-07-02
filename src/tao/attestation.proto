@@ -115,7 +115,7 @@ message Statement {
 // match the restriction (time <= now < exp) on the serialized statement. 
 // If the modified time restriction is met, then we can derive the same
 // conclusion as we would for the included statement, i.e.:
-//   delgate speaksfor issuer               (for a delegation statement)
+//   delegate speaksfor issuer               (for a delegation statement)
 // or:
 //   issuer says pred(arg_1, ..., arg_n)    (for a predicate statement)
 // That is to say, a valid Attestation that meets its time restriction conveys
@@ -141,7 +141,7 @@ message Statement {
 //     }
 //     signer = K_aik
 //     signature = ...
-//     delgation = null
+//     delegation = null
 //   }
 // Here, an OS has published a delegation statement establishing that key K_os
 // speaks for the OS, and this statement was signed by the TPM K_aik on behalf
@@ -173,7 +173,7 @@ message Statement {
 //     }
 //     signer = K_os
 //     signature = ...
-//     delgation = {
+//     delegation = {
 //       statement = {
 //         issuer = K_aik::PCRs(...)
 //         ...
@@ -181,16 +181,16 @@ message Statement {
 //       }
 //       signer = K_aik
 //       signature = ...
-//       delgation = null
+//       delegation = null
 //     }
 //   }
 // Here, the OS identified by K_aik::PCRs(...) has signed, using a
 // seemingly unrelated key K_os, a statement on behalf of one of its hosted
-// programs, K_aik::PCRs(...)::Prog(...). The embeded delegation statement,
+// programs, K_aik::PCRs(...)::Prog(...). The embedded delegation statement,
 // signed by K_aik, binds that seemingly unrelated key K_os to the OS's actual
 // identity, K_aik::PCRs(...).
 //
-// Verifiying an attestion signature requires knowing how the signature was
+// Verifying an attestation signature requires knowing how the signature was
 // produced. We currently define two signature schemes:
 //
 // (a) Some signatures are produced by the TPM, so here we are bound by the

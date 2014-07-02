@@ -25,7 +25,6 @@
 #include <keyczar/base/json_reader.h>
 #include <keyczar/base/json_writer.h>
 #include <keyczar/base/values.h>
-#include <keyczar/keyczar.h>
 
 #include "tao/acl_guard.h"
 #include "tao/attestation.h"
@@ -40,7 +39,7 @@ namespace tao {
 TaoDomain::TaoDomain(const string &path, DictionaryValue *value)
     : path_(path), config_(value) {
   string keys_path = GetConfigPath(JSONPolicyKeysPath);
-  keys_.reset(new Keys(keys_path, "policy", Keys::Signing));
+  keys_.reset(new Keys(keys_path, Keys::Signing));
 }
 
 TaoDomain::~TaoDomain() {}
@@ -96,12 +95,14 @@ TaoDomain *TaoDomain::Create(const string &initial_config, const string &path,
     return nullptr;
   }
 
-  if (!admin->keys_->InitNonHosted(password)) {
+  if (!admin->keys_->InitWithPassword(password)) {
     LOG(ERROR) << "Can't create policy keys";
     return nullptr;
   }
 
-  if (!admin->keys_->CreateSelfSignedX509(admin->GetPolicyX509Details())) {
+  string x509 = admin->keys_->Signer()->CreateSelfSignedX509(
+      admin->GetPolicyX509Details());
+  if (x509 == "" || !admin->keys_->SetX509(x509)) {
     LOG(ERROR) << "Could not create self-signed x509 for policy key";
     return nullptr;
   }
@@ -132,7 +133,7 @@ TaoDomain *TaoDomain::Load(const string &path, const string &password) {
     LOG(ERROR) << "Can't create TaoDomain";
     return nullptr;
   }
-  if (!admin->keys_->InitNonHosted(password)) {
+  if (!admin->keys_->InitWithPassword(password)) {
     LOG(ERROR) << "Can't initialize TaoDomain keys";
     return nullptr;
   }
@@ -149,8 +150,8 @@ TaoDomain *TaoDomain::Load(const string &path, const string &password) {
 
 bool TaoDomain::GetSubprincipalName(string *subprin) const {
   // Use policy key and guard type as part of name
-  string key_prin;
-  if (!GetPolicyKeys()->GetPrincipalName(&key_prin)) {
+  string key_prin = GetPolicyVerifier()->ToPrincipalName();
+  if (key_prin == "") {
     LOG(ERROR) << "Could not get policy key principal name";
     return false;
   }

@@ -37,8 +37,12 @@
 
 
 int             g_maxcoeff= -1;   // max coeff calculated
-rationalpoly**  g_phi= NULL;      // x rational function
-i16*            g_exp_y= NULL;    // exponent of y
+polynomial**    g_phi2= NULL;     // polynomial in x
+
+// note that the real division polynomial, g_phi, is
+//  g_phi[m]= g_phi2[m], if m is odd, and
+//  g_phi[m]= g_phi2[m]/(2y), if m is even.
+//  From now on, the 2y is implicit 
 
 
 // ----------------------------------------------------------------------------
@@ -46,10 +50,10 @@ i16*            g_exp_y= NULL;    // exponent of y
 
 bool evenphirecurrence(int m, polynomial& curve_x_poly);
 bool oddphirecurrence(int m, polynomial& curve_x_poly);
-typedef rationalpoly* rational_p_t;
+typedef polynomial* p_polynomial_t;
 
 
-bool initphicalc(int max, polynomial& curve_x_poly) {
+bool Initphi(int max, polynomial& curve_x_poly) {
   if(max<5)
     return false;
 
@@ -62,71 +66,63 @@ bool initphicalc(int max, polynomial& curve_x_poly) {
   bnum  s(2*n);
   bnum  t(2*n);
 
-  g_phi= (rationalpoly**) new rational_p_t[max+1];
-  g_exp_y= new i16[max+1];
+  g_phi2= (polynomial**) new p_polynomial_t[max+1];
 
   // phi[0]= 0
-  g_phi[0]= new rationalpoly(*p, 1, 1, 1, 1); 
-  g_phi[0]->numerator->c_array_[0]->m_pValue[0]= 0ULL;
-  g_phi[0]->denominator->c_array_[0]->m_pValue[0]= 1ULL;
-  g_exp_y[0]= 0;
+  g_phi2[0]= new polynomial(*p, 1, 1); 
+  g_phi2[0]->c_array_[0]->m_pValue[0]= 0ULL;
 
   // phi[1]= 1
-  g_phi[1]= new rationalpoly(*p, 1, 1, 1, 1); 
-  g_phi[1]->numerator->c_array_[0]->m_pValue[0]= 1ULL;
-  g_phi[1]->denominator->c_array_[0]->m_pValue[0]= 1ULL;
-  g_exp_y[1]= 0;
+  g_phi2[1]= new polynomial(*p, 1, 1); 
+  g_phi2[1]->c_array_[0]->m_pValue[0]= 1ULL;
 
   // phi[2]= 2y
-  g_phi[2]= new rationalpoly(*p, 1, 1, 1, 1); 
-  g_phi[2]->numerator->c_array_[0]->m_pValue[0]= 2ULL;
-  g_phi[2]->denominator->c_array_[0]->m_pValue[0]= 1ULL;
-  g_exp_y[2]= 1;
+  // phi2[2]= 1;
+  g_phi2[2]= new polynomial(*p, 1, 1); 
+  g_phi2[2]->c_array_[0]->m_pValue[0]= 1ULL;
 
   // phi[3]=  3x^4+6ax^2+12bx-a^2
   // Fix: size depends on a, b and p
-  g_phi[3]= new rationalpoly(*p, 5, 1, 1, 1); 
-  g_phi[3]->denominator->c_array_[0]->m_pValue[0]= 1ULL;
-  g_exp_y[3]= 0;
-  g_phi[3]->numerator->c_array_[4]->m_pValue[0]= 3ULL;
-  g_phi[3]->numerator->c_array_[3]->m_pValue[0]= 0ULL;
+  g_phi2[3]= new polynomial(*p, 5, 1); 
+  g_phi2[3]->c_array_[4]->m_pValue[0]= 3ULL;
+  g_phi2[3]->c_array_[3]->m_pValue[0]= 0ULL;
   mpZeroNum(t);
   t.m_pValue[0]= 6ULL;
-  mpModMult(t,*a,*p,*(g_phi[3]->numerator->c_array_[2]));
+  mpModMult(t,*a,*p,*(g_phi2[3]->c_array_[2]));
   mpZeroNum(t);
   t.m_pValue[0]= 12ULL;
-  mpModMult(t,*b,*p,*(g_phi[3]->numerator->c_array_[1]));
+  mpModMult(t,*b,*p,*(g_phi2[3]->c_array_[1]));
   mpZeroNum(s);
   mpModMult(*a,*a,*p,s);
-  mpModSub(g_bnZero,s,*p,*(g_phi[4]->numerator->c_array_[0]));
+  mpModSub(g_bnZero,s,*p,*(g_phi2[4]->c_array_[0]));
 
-  // phi[4]= 4y(x^6+5ax^4+20bx^3-5a^2x^2-4abx-8b^2-a^3
+  // phi[4]= 2y(2(x^6+5ax^4+20bx^3-5a^2x^2-4abx-8b^2-a^3))
+  // phi2[4]= (2(x^6+5ax^4+20bx^3-5a^2x^2-4abx-8b^2-a^3))
   // Fix: size depends on a, b and p
-  g_phi[4]= new rationalpoly(*p, 7, 1, 1, 1); 
-  g_exp_y[4]= 1;
+  g_phi2[4]= new polynomial(*p, 7, 1); 
 
-  g_phi[4]->numerator->c_array_[6]->m_pValue[0]= 1ULL;     // x^6
-  g_phi[4]->numerator->c_array_[5]->m_pValue[0]= 0ULL;
+  g_phi2[4]->c_array_[6]->m_pValue[0]= 1ULL;     // x^6
+  g_phi2[4]->c_array_[5]->m_pValue[0]= 0ULL;
   mpZeroNum(t);
   t.m_pValue[0]= 5ULL;
-  mpModMult(t,*a,*p,*(g_phi[4]->numerator->c_array_[4]));    // 5ax^4
+  mpModMult(t,*a,*p,*(g_phi2[4]->c_array_[4]));    // 5ax^4
   mpZeroNum(t);
   t.m_pValue[0]= 20ULL;
-  mpModMult(t,*b,*p,*(g_phi[4]->numerator->c_array_[3]));    // 20bx^3
+  mpModMult(t,*b,*p,*(g_phi2[4]->c_array_[3]));    // 20bx^3
   mpZeroNum(r);
   mpZeroNum(t);
   mpZeroNum(s);
   s.m_pValue[0]= 5ULL;
   mpModMult(*a,*a,*p,t);
   mpModMult(s,t,*p,r);
-  mpModSub(g_bnZero,r,*p,*(g_phi[4]->numerator->c_array_[2])); // -5a^2x^2
+  mpModSub(g_bnZero,r,*p,*(g_phi2[4]->c_array_[2])); // -5a^2x^2
   mpZeroNum(r);
   mpZeroNum(t);
   mpZeroNum(s);
   mpModMult(*a,*b,*p,t);
   s.m_pValue[0]= 4ULL;
   mpModMult(t,s,*p,r);
-  mpModSub(g_bnZero,r,*p,*(g_phi[4]->numerator->c_array_[1])); // -4abx
+  mpModSub(g_bnZero,r,*p,*(g_phi2[4]->c_array_[1])); // -4abx
   mpZeroNum(r);
   mpZeroNum(s);
   mpZeroNum(t);
@@ -139,10 +135,10 @@ bool initphicalc(int max, polynomial& curve_x_poly) {
   mpModMult(s,*a,*p,t);                             // a^3
   mpZeroNum(s);
   mpModAdd(r,t,*p,s);                              // 8b^2+a^3
-  mpModSub(g_bnZero,s,*p,(*g_phi[4]->numerator->c_array_[0])); // -8b^2-a^3
+  mpModSub(g_bnZero,s,*p,(*g_phi2[4]->c_array_[0])); // -8b^2-a^3
   mpZeroNum(s);
-  s.m_pValue[0]= 4ULL;
-  g_phi[4]->numerator->MultiplyByNum(s);
+  s.m_pValue[0]= 2ULL;
+  g_phi2[4]->MultiplyByNum(s);
 
   int i;
   oddphirecurrence(2, curve_x_poly);
@@ -156,122 +152,106 @@ bool initphicalc(int max, polynomial& curve_x_poly) {
   return true;
 }
 
-bool Reconcile(int m, polynomial& s, polynomial& u, polynomial& q, polynomial& w) {
-  return true;
+void Freephi() {
 }
 
-// calculate phi[2m+1]
-// phi[2m+1]= phi[m+2]phi^3[m]-phi[m-1]phi^3[m+1]
+extern bool EccSymbolicAdd(polynomial& curve_x_poly, 
+                           polynomial& in1x, polynomial& in1y,
+                           polynomial& in2x, polynomial& in2y, 
+                           polynomial& outx, polynomial& outy);
+extern bool EccSymbolicPointMult(polynomial& curve_x_poly, i64 t, 
+                           polynomial& inx, polynomial& iny, 
+                           polynomial& outx, polynomial& outy);
+
+// calculate phi2[2m+1]
+//  phi2[2m+1]= phi2[m+2]phi2^3[m]-phi2[m-1]phi2^3[m+1]
+//  phi[2m+1]= phi1[m]
 bool oddphirecurrence(int m, polynomial& curve_x_poly) {
   bnum*       p= curve_x_poly.characteristic_;
   int         n= p->mpSize();
-  polynomial  r(*p,(2*m+1)*(2*m+1), 2*n);
-  polynomial  s(*p,(2*m+1)*(2*m+1), 2*n);
-  polynomial  t(*p,(2*m+1)*(2*m+1), 2*n);
-  polynomial  u(*p,(2*m+1)*(2*m+1), 2*n);
-  polynomial  v(*p,(2*m+1)*(2*m+1), 2*n);
-  polynomial  w(*p,(2*m+1)*(2*m+1), 2*n);
+  polynomial  r(*p,(2*m+1)*(2*m+1), n);
+  polynomial  s(*p,(2*m+1)*(2*m+1), n);
+  polynomial  t(*p,(2*m+1)*(2*m+1), n);
+  polynomial  v(*p,(2*m+1)*(2*m+1), n);
 
-  g_phi[2*m+1]= new rationalpoly(*p, (2*m+1)*(2*m+1), n, (2*m+1)*(2*m+1), n);
+  g_phi2[2*m+1]= new polynomial(*p, (2*m+1)*(2*m+1),n);
+
   r.ZeroPoly();
   s.ZeroPoly();
   t.ZeroPoly();
-  if(!PolyMult(*g_phi[m+2]->numerator, *g_phi[m]->numerator, t))
+  if(!PolyMult(*g_phi2[m+2], *g_phi2[m], t))
     return false;
-  if(!PolyMult(t, *g_phi[m]->numerator, s))
+  if(!PolyMult(t, *g_phi2[m], s))
     return false;
-  if(!PolyMult(s, *g_phi[m]->numerator, r))
+  if(!PolyMult(s, *g_phi2[m], r))
     return false;
-  // r now has the product of the numerators of phi[m+2] and phi^3[m]
-  s.ZeroPoly();
-  t.ZeroPoly();
-  if(!PolyMult(*g_phi[m+2]->denominator, *g_phi[m]->denominator, t))
-    return false;
-  if(!PolyMult(t, *g_phi[m]->denominator, s))
-    return false;
-  if(!PolyMult(s, *g_phi[m]->denominator, r))
-    return false;
-  // u now has the product of the denominators of phi[m+2] and phi^3[m]
+  // r now has the product phi2[m+2]*phi2^3[m]
 
-  t.ZeroPoly();
-  s.ZeroPoly();
   v.ZeroPoly();
-  w.ZeroPoly();
-  if(!PolyMult(*g_phi[m-1]->numerator, *g_phi[m+1]->numerator, s))
-    return false;
-  if(!PolyMult(s, *g_phi[m+1]->numerator, t))
-    return false;
-  if(!PolyMult(t, *g_phi[m+1]->numerator, v))
-    return false;
-  // v now has the product of the numerators of phi[m-1] and phi^3[m+1]
   t.ZeroPoly();
   s.ZeroPoly();
-  if(!PolyMult(*g_phi[m-1]->denominator, *g_phi[m+1]->denominator, s))
+  if(!PolyMult(*g_phi2[m-1], *g_phi2[m+1], s))
     return false;
-  if(!PolyMult(s, *g_phi[m+1]->denominator, t))
+  if(!PolyMult(s, *g_phi2[m+1], t))
     return false;
-  if(!PolyMult(t, *g_phi[m+1]->denominator, w))
+  if(!PolyMult(t, *g_phi2[m+1], v))
     return false;
-  // w now has the product of the denominators of phi[m-1] and phi^3[m+1]
-
-  g_exp_y[2*m+1]= g_exp_y[m+2]+g_exp_y[m]+g_exp_y[m]+g_exp_y[m];
-  if(!Reconcile(2*m+1,r,u,v,w))
+  // v now has the product phi2[m-1]*phi2^3[m+1]
+ 
+  if(!PolySub(r, v, *g_phi2[2*m+1]))
     return false;
   return true;
 }
 
-// calculate phi[2m]
-// phi[2m]= phi[m]/phi[2](phi[m+2]phi^2[m-1]-phi[m-2]phi^2[m+1])
+// calculate phi2[2m]
+//    phi2[2m]= phi2[m](phi2[m+2]phi2^2[m-1]-phi2[m-2]phi2^2[m+1])
+//    phi[2m]=phi2[2m]/(2y)
 bool evenphirecurrence(int m, polynomial& curve_x_poly) {
   bnum*       p= curve_x_poly.characteristic_;
   int         n= p->mpSize();
-  polynomial  q(*p,(2*m+1)*(2*m+1), 2*n);
-  polynomial  r(*p,(2*m+1)*(2*m+1), 2*n);
-  polynomial  s(*p,(2*m+1)*(2*m+1), 2*n);
-  polynomial  t(*p,(2*m+1)*(2*m+1), 2*n);
-  polynomial  u(*p,(2*m+1)*(2*m+1), 2*n);
-  polynomial  v(*p,(2*m+1)*(2*m+1), 2*n);
-  polynomial  w(*p,(2*m+1)*(2*m+1), 2*n);
+  polynomial  r(*p,(2*m+1)*(2*m+1), n);
+  polynomial  s(*p,(2*m+1)*(2*m+1), n);
+  polynomial  t(*p,(2*m+1)*(2*m+1), n);
+  polynomial  v(*p,(2*m+1)*(2*m+1), n);
 
-  if(!PolyMult(*g_phi[m+2]->numerator, *g_phi[m-1]->numerator, t))
+  g_phi2[2*m]= new polynomial(*p, (2*m)*(2*m), n);
+
+  if(!PolyMult(*g_phi2[m+2], *g_phi2[m-1], t))
     return false;
-  if(!PolyMult(t, *g_phi[m-1]->numerator, r))
+  if(!PolyMult(t, *g_phi2[m-1], s))
     return false;
-  // r now has the product of the numerators phi[m+2] and phi^2[m-1]
-  t.ZeroPoly();
-  if(!PolyMult(*g_phi[m+2]->denominator, *g_phi[m-1]->denominator, t))
+  if(!PolyMult(s, *g_phi2[m], r))
     return false;
-  if(!PolyMult(t, *g_phi[m-1]->denominator, u))
-    return false;
-  // u now has the product of the denominators of phi[m+2] and phi^2[m-1]
+  // r now has the product phi2[m]*phi2[m+2]phi2^2[m-1]
 
   t.ZeroPoly();
-  if(!PolyMult(*g_phi[m-2]->numerator, *g_phi[m+1]->numerator, t))
+  s.ZeroPoly();
+  if(!PolyMult(*g_phi2[m-2], *g_phi2[m+1], t))
     return false;
-  if(!PolyMult(t, *g_phi[m+1]->numerator, v))
+  if(!PolyMult(t, *g_phi2[m+1], s))
     return false;
-  // v now has has the product of the numerators of phi[m-2] and phi^2[m+1]
-  t.ZeroPoly();
-  if(!PolyMult(*g_phi[m-2]->denominator, *g_phi[m+1]->denominator, t))
+  if(!PolyMult(s, *g_phi2[m], v))
     return false;
-  if(!PolyMult(t, *g_phi[m+1]->denominator, w))
-    return false;
-  // w now has has the product of the denominators of phi[m-2] and phi^2[m+1]
+  // v now has has the product phi2[m]*phi[m-2]*phi^2[m+1]
 
-  // now multiply phi[m]/phi[2]
-  bnum       c(1);
-  c.m_pValue[0]= 2ULL;
-  u.MultiplyByNum(c);
-  w.MultiplyByNum(c);
-  if(!PolyMult(r, *g_phi[m]->numerator, s))
-    return false;
-  if(!PolyMult(v, *g_phi[m]->numerator, q))
-    return false;
-  g_exp_y[2*m]= g_exp_y[m+2]+g_exp_y[m-1]+g_exp_y[m-1]+g_exp_y[m]-g_exp_y[2];
-  if(!Reconcile(2*m,s,u,q,w))
+  if(!PolySub(r, v, *g_phi2[2*m]))
     return false;
   return true;
 }
 
+
+void printdivpoly(int m) {
+  extern void printpoly(polynomial&);
+  if(m>=g_maxcoeff) {
+    printf("%d is invalid index, %d div polys calculated\n", m, g_maxcoeff);
+    return;
+  }
+  if((m%2)==1)
+    printf("divpoly(%d): ");
+  else
+    printf("divpoly(%d): (2y) ");
+  printpoly(*g_phi2[m]);
+  printf("\n");
+}
 
 // ----------------------------------------------------------------------------

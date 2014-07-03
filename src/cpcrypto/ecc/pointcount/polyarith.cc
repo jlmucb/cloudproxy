@@ -138,13 +138,12 @@ bool polynomial::MultiplyByNum(bnum& c) {
 void printpoly(polynomial& p) {
   int i;
 
-  printf("Characteristic, ");
-  printNumberToConsole(*p.characteristic_);
-  printf(", degree %d\n", p.Degree());
   for(i=p.Degree(); i>=0; i--) {
     printNumberToConsole(*p.c_array_[i]);
     printf(" * x**%d +", i);
   }
+  printf(", Characteristic, ");
+  printNumberToConsole(*p.characteristic_);
   printf("\n");
 }
 
@@ -330,7 +329,6 @@ bool PolyMult(polynomial& in1, polynomial& in2, polynomial& out) {
   }
   return true;
 }
-
 
 // a(x)= b(x)*q(x)+r(x), deg(r(x))<deg(b(x))
 bool PolyEuclid(polynomial& a, polynomial& b, polynomial& q, polynomial& r) {
@@ -553,5 +551,178 @@ bool Reducelargepower(bnum& power, polynomial& mod_poly, polynomial& result) {
   return true;
 }
 
+bool PolyisEqual(polynomial& in1, polynomial& in2) {
+  int   j;
+
+  if(in1.numc_>in2.numc_) {
+    for(j=0; j<in2.numc_; j++) {
+      if(mpCompare(*in1.c_array_[j], *in2.c_array_[j]) != s_isEqualTo)
+        return false;
+    }
+    for(j=in2.numc_; j<in1.numc_; j++) {
+      if(mpCompare(g_bnZero, *in1.c_array_[j]) != s_isEqualTo)
+        return false;
+    }
+  } else {
+    for(j=0; j<in1.numc_; j++) {
+      if(mpCompare(*in1.c_array_[j], *in2.c_array_[j]) != s_isEqualTo)
+        return false;
+    }
+    for(j=in1.numc_; j<in2.numc_; j++) {
+      if(mpCompare(g_bnZero, *in2.c_array_[j]) != s_isEqualTo)
+        return false;
+    }
+  }
+  return true;
+}
+
 
 // ----------------------------------------------------------------------------
+
+
+// (in1.numerator in2.deniminator + in2.numerator in1.denominator)/ (in1.denominator in2.denominator)
+bool RationalAdd(rationalpoly& in1, rationalpoly& in2, rationalpoly& out) {
+  bnum* p= in1.numerator->characteristic_;
+  int   nn= in1.numerator->numc_;
+  int   nd= in1.denominator->numc_;
+
+  if(in2.numerator->numc_>nn)
+    nn= in2.numerator->numc_;
+  if(in2.denominator->numc_>nd)
+    nd= in2.denominator->numc_;
+
+  polynomial t1(*p, nn+nd, p->mpSize());
+  polynomial t2(*p, nn+nd, p->mpSize());
+  polynomial top(*p, nn+nd, p->mpSize());
+  polynomial bottom(*p, 2*nd, p->mpSize());
+
+  if(!PolyMult(*in1.numerator,*in2.denominator, t1))
+    return false;
+  if(!PolyMult(*in2.numerator,*in1.denominator, t2))
+    return false;
+  if(!PolyAdd(t1, t2, top))
+    return false;
+  if(!PolyMult(*in1.denominator,*in2.denominator, bottom))
+    return false;
+  out.numerator->Copyfrom(top);
+  out.denominator->Copyfrom(bottom);
+  if(!RationalReduce(out))
+    return false;
+  return true;
+}
+
+bool RationalSub(rationalpoly& in1, rationalpoly& in2, rationalpoly& out) {
+  bnum* p= in1.numerator->characteristic_;
+  int   nn= in1.numerator->numc_;
+  int   nd= in1.denominator->numc_;
+
+  if(in2.numerator->numc_>nn)
+    nn= in2.numerator->numc_;
+  if(in2.denominator->numc_>nd)
+    nd= in2.denominator->numc_;
+
+  polynomial t1(*p, nn+nd, p->mpSize());
+  polynomial t2(*p, nn+nd, p->mpSize());
+  polynomial top(*p, nn+nd, p->mpSize());
+  polynomial bottom(*p, 2*nd, p->mpSize());
+
+  if(!PolyMult(*in1.numerator,*in2.denominator, t1))
+    return false;
+  if(!PolyMult(*in2.numerator,*in1.denominator, t2))
+    return false;
+  if(!PolySub(t1, t2, top))
+    return false;
+  if(!PolyMult(*in1.denominator,*in2.denominator, bottom))
+    return false;
+  out.numerator->Copyfrom(top);
+  out.denominator->Copyfrom(bottom);
+  if(!RationalReduce(out))
+    return false;
+  return true;
+}
+
+bool RationalMult(rationalpoly& in1, rationalpoly& in2, rationalpoly& out) {
+  if(!PolyMult(*in1.numerator, *in2.numerator, *out.numerator))
+    return false;
+  if(!PolyMult(*in1.denominator, *in2.denominator, *out.denominator))
+    return false;
+  if(!RationalReduce(out))
+    return false;
+  return true;
+}
+
+bool RationalDiv(rationalpoly& in1, rationalpoly& in2, rationalpoly& out) {
+  if(!PolyMult(*in1.numerator, *in2.denominator, *out.numerator))
+    return false;
+  if(!PolyMult(*in1.denominator, *in2.numerator, *out.denominator))
+    return false;
+  if(!RationalReduce(out))
+    return false;
+  return true;
+}
+
+bool RationalReduce(rationalpoly& inout) {
+  bnum* p= inout.numerator->characteristic_;
+  int   nn= inout.numerator->numc_;
+  int   nd= inout.denominator->numc_;
+
+  polynomial num(*p, nn, p->mpSize());
+  polynomial den(*p, nd, p->mpSize());
+  num.Copyfrom(*inout.numerator);
+  den.Copyfrom(*inout.denominator);
+  int n= nn;
+  if(nd>nn)
+      n= nd;
+  polynomial t1(*p, n, p->mpSize());
+  polynomial t2(*p, n, p->mpSize());
+  polynomial t3(*p, n, p->mpSize());
+  polynomial g(*p, n, p->mpSize());
+  if(!PolyExtendedgcd(num, den, t1, t2, g))
+    return false;
+  t1.ZeroPoly();
+  t2.ZeroPoly();
+  t3.ZeroPoly();
+  if(!PolyEuclid(num,g,t3,t1))
+    return false;
+  t3.ZeroPoly();
+  if(!PolyEuclid(den,g,t3,t2))
+    return false;
+  t1.Copyto(*inout.numerator);
+  t2.Copyto(*inout.denominator);
+  return true;
+}
+
+bool RationalMultBy(rationalpoly& inout, rationalpoly& by) {
+  bnum*       p= inout.numerator->characteristic_;
+  int         nn= inout.numerator->numc_+by.numerator->numc_;
+  int         nd= inout.denominator->numc_+by.denominator->numc_;
+  polynomial  t1(*p, nn, p->mpSize());
+  polynomial  t2(*p, nd, p->mpSize());
+
+  if(!PolyMult(*inout.numerator, *by.numerator, t1))
+    return false;
+  if(!PolyMult(*inout.denominator, *by.denominator, t2))
+    return false;
+  inout.numerator->Copyfrom(t1);
+  inout.denominator->Copyfrom(t2);
+  if(!RationalReduce(inout))
+    return false;
+  return true;
+}
+
+bool RationalisEqual(rationalpoly& in1, rationalpoly& in2) {
+  return PolyisEqual(*in1.numerator, *in2.numerator) && 
+          PolyisEqual(*in1.denominator, *in2.denominator);
+}
+
+void printrational(rationalpoly& p) {
+  printf("Rational polynomial:\n");
+  printpoly(*p.numerator);
+  printf("  /\n");
+  printpoly(*p.denominator);
+}
+
+
+// ----------------------------------------------------------------------------
+
+

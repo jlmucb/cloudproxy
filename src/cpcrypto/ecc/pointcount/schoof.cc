@@ -106,6 +106,19 @@ i64 Reducedp(bnum& p, u64 l) {
 }
 
 
+int maxterms(rationalpoly& in1x, rationalpoly& in1y)
+{
+  int m= in1x.numerator->numc_;
+  if(in1x.denominator->numc_>m)
+    m= in1x.denominator->numc_;
+  if(in1y.numerator->numc_>m)
+    m= in1y.numerator->numc_;
+  if(in1y.denominator->numc_>m)
+    m= in1y.denominator->numc_;
+  return m;
+}
+
+
 //  In the symbolic computations, we assume P=(r(x), yq(x)) but that the 
 //  y is surpressed in the representation of the point as a polynomial 
 //  (r1(x), r2(x)).  r(x) and q(x) are ratio's of polynomials.
@@ -130,16 +143,17 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
                     rationalpoly& outx, rationalpoly& outy) {
   bnum*         p= curve_x_poly.characteristic_;
   int           n= p->mpSize();
-  rationalpoly  s1(*p, 5, n, 5, n);
-  rationalpoly  s2(*p, 5, n, 5, n);
-  rationalpoly  s3(*p, 5, n, 5, n);
-  rationalpoly  slope(*p, 5, n, 5, n);
-  rationalpoly  slope_squared(*p, 5, n, 5, n);
-  rationalpoly  curve_rational(*p, 5, n, 5, n);
+  int           m=  maxterms(outx, outy);
+  rationalpoly  s1(*p, m, n, m, n);
+  rationalpoly  s2(*p, m, n, m, n);
+  rationalpoly  s3(*p, m, n, m, n);
+  rationalpoly  slope(*p, m, n, m, n);
+  rationalpoly  slope_squared(*p, m, n, m, n);
+  rationalpoly  curve_rational(*p, m, n, 1, n);
 
   if(RationalisEqual(in1x, in2x) &&
      RationalisEqual(in1y, in2y)) {
-    // slope= (3x[1]^2+a)/(2curve_x_poly), remember implicit y
+    // slope= (3in1x^2+a)/(2curve_x_poly), remember implicit y
     s1.numerator->c_array_[0]->m_pValue[0]= 3ULL;
     s1.denominator->c_array_[0]->m_pValue[0]= 2ULL;
     curve_rational.numerator->Copyfrom(curve_x_poly);
@@ -186,14 +200,14 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
     return false;
   if(!RationalSub(s2, in2x, outx))
     return false;
+  if(!RationalReduce(outx))
+    return false;
   
   //  outy= m(x[1]-x[3])-y[1]
   s1.ZeroRational();
   s2.ZeroRational();
   s3.ZeroRational();
   if(!RationalSub(in1x, outx, s1))
-    return false;
-  if(!RationalReduce(outx))
     return false;
   if(!RationalMult(slope, s1, s2))
     return false;
@@ -210,7 +224,8 @@ bool EccSymbolicSub(polynomial& curve_x_poly,
                     rationalpoly& outx, rationalpoly& outy) {
   bnum*         p= curve_x_poly.characteristic_;
   int           n= p->mpSize();
-  rationalpoly  s1(*p, in2y.numerator->numc_, n, in2y.denominator->numc_, n);
+  int           m=  maxterms(outx, outy);
+  rationalpoly  s1(*p, m, n, m, n);
   int           i;
   bnum*         bn1;
   bnum*         bn2;
@@ -246,8 +261,9 @@ bool EccSymbolicPointMult(polynomial& curve_x_poly, i64 t,
                           rationalpoly& out_x, rationalpoly& out_y) {
   int i;
   int n = HighBit(t);
-  i64 r= t;
   bnum* p= curve_x_poly.characteristic_;
+  i64 r= t;
+
   rationalpoly  acc_rationalx(*p, x.numerator->numc_, p->mpSize(), 
                               x.denominator->numc_, p->mpSize());
   rationalpoly  acc_rationaly(*p, x.numerator->numc_, p->mpSize(), 
@@ -299,8 +315,9 @@ bool ComputeMultEndomorphism(polynomial& curve_x_poly, i64 c,
 {
   bnum*         p= curve_x_poly.characteristic_;
   int           n= p->mpSize();
-  rationalpoly  x_poly(*p, 5, n, 5, n);
-  rationalpoly  y_poly(*p, 5, n, 5, n);
+  int           m=  maxterms(out_x, out_y);
+  rationalpoly  x_poly(*p, m, n, m, n);
+  rationalpoly  y_poly(*p, m, n, m, n);
 
   // set (x, y)
   x_poly.numerator->c_array_[1]->m_pValue[0]= 1ULL;
@@ -319,7 +336,6 @@ bool ComputeMultEndomorphism(polynomial& curve_x_poly, i64 c,
 bool ComputePowerEndomorphism(polynomial& curve_x_poly, bnum& power, 
                               rationalpoly& out_x, rationalpoly& out_y)
 {
-  bnum*         p= curve_x_poly.characteristic_;
   bnum          t1(power.mpSize());
   bnum          t2(power.mpSize());
 
@@ -341,7 +357,7 @@ bool computetmod2(polynomial& curve_x_poly, u64* tl)
 {
   int         j;
   bnum*       p= curve_x_poly.characteristic_;
-  polynomial  result(*p,4,p->mpSize());
+  polynomial  result(*p, 4, p->mpSize());
 
   *tl= 1ULL;
   if(!Reducelargepower(*p, curve_x_poly, result))
@@ -363,48 +379,45 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
   bnum*         p= curve_x_poly.characteristic_;
   i64           p_bar= Reducedp(*p, l);
   int           n= p->mpSize();
-  rationalpoly  x_prime(*p, 5, n, 5, n);
-  rationalpoly  y_prime(*p, 5, n, 5, n);
-  rationalpoly  x_p_bar(*p, 5, n, 5, n);
-  rationalpoly  x_p_squared(*p, 5, n, 5, n);
-  rationalpoly  y_p_squared(*p, 5, n, 5, n);
-  rationalpoly  y_p_bar(*p, 5, n, 5, n);
-  rationalpoly  x_j(*p, 5, n, 5, n);
-  rationalpoly  y_j(*p, 5, n, 5, n);
-  rationalpoly  x_w(*p, 5, n, 5, n);
-  rationalpoly  y_w(*p, 5, n, 5, n);
-  rationalpoly  x_poly(*p, 5, n, 5, n);
-  rationalpoly  y_poly(*p, 5, n, 5, n);
-  rationalpoly  t_x(*p, 5, n, 5, n);
-  rationalpoly  t_y(*p, 5, n, 5, n);
-  rationalpoly  s1(*p, 5, n, 5, n);
-  rationalpoly  s2(*p, 5, n, 5, n);
-  rationalpoly  s3(*p, 5, n, 5, n);
-  rationalpoly  slope(*p, 5, n, 5, n);
-  polynomial    t1(*p, (int) l, n);
-  polynomial    t2(*p, (int) l, n);
-  polynomial    g(*p, (int) l, n);
-  polynomial    test(*p, (int) l, n);
+  int           m= 2*(int)l;
   bnum          p_squared(2*n+1);
   bnum          small_num(1);
   bnum          w(n);  // square root of p
 
+  // note: check to see if m is an overestimate
+  m= m*m;
+
+  rationalpoly  x_prime(*p, m, n, m, n);
+  rationalpoly  y_prime(*p, m, n, m, n);
+  rationalpoly  x_p_bar(*p, m, n, m, n);
+  rationalpoly  x_p_squared(*p, m, n, m, n);
+  rationalpoly  y_p_squared(*p, m, n, m, n);
+  rationalpoly  y_p_bar(*p, m, n, m, n);
+  rationalpoly  x_j(*p, m, n, m, n);
+  rationalpoly  y_j(*p, m, n, m, n);
+  rationalpoly  x_w(*p, m, n, m, n);
+  rationalpoly  y_w(*p, m, n, m, n);
+  rationalpoly  slope(*p, m, n, m, n);
+  rationalpoly  s1(*p, m, n, m, n);
+  rationalpoly  s2(*p, m, n, m, n);
+  rationalpoly  s3(*p, m, n, m, n);
+  rationalpoly  t_x(*p, m, n, m, n);
+  rationalpoly  t_y(*p, m, n, m, n);
+  polynomial    g(*p, (int) l, n);
+  polynomial    test(*p, (int) l, n);
+  polynomial    t1(*p, (int) l, n);
+  polynomial    t2(*p, (int) l, n);
+
   // compute p^2
   mpMult(*p, *p, p_squared);
 
-  // set (x, y)
-  x_poly.numerator->c_array_[1]->m_pValue[0]= 1ULL;
-  x_poly.denominator->c_array_[0]->m_pValue[0]= 1ULL;
-  y_poly.numerator->c_array_[0]->m_pValue[0]= 1ULL;
-  y_poly.denominator->c_array_[0]->m_pValue[0]= 1ULL;
-
-  //    Compute (x_p_bar, y_p_bar) and (x^(p^2), y^(p^2))
+  // Compute (x_p_bar, y_p_bar) and (x^(p^2), y^(p^2))
   if(!ComputeMultEndomorphism(curve_x_poly, p_bar, x_p_bar, y_p_bar))
     return false;
   if(!ComputePowerEndomorphism(curve_x_poly, p_squared, x_p_squared, y_p_squared))
     return false;
 
-  // Compute x_prime= curve_x_poly((y_p_squared- y_p_bar)/(x_p_squared-x_p_bar]))^2
+  // x_prime= curve_x_poly((y_p_squared- y_p_bar)/(x_p_squared-x_p_bar]))^2
   //                     -x_p_squared-x_p_bar
   if(!RationalSub(y_p_squared, y_p_bar, t_y))
     return false;
@@ -425,8 +438,10 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
     return false;
   if(!RationalSub(s1, x_p_bar, x_prime))
     return false;
+  if(!RationalReduce(x_prime))
+    return false;
 
-  // Compute y_prime= slope(x_p_squared-x_prime)-y_p_squared
+  // y_prime= slope(x_p_squared-x_prime)-y_p_squared
   s1.ZeroRational();
   s2.ZeroRational();
   if(!RationalSub(x_p_squared, x_prime, s1))
@@ -435,29 +450,33 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
     return false;
   if(!RationalSub(s2, y_p_squared, y_prime))
     return false;
+  if(!RationalReduce(y_prime))
+    return false;
 
   for(j=1; j<=(l-1)/2; j++) {
+
     // compute j(x,y)= (x_j,y_j)
     if(!ComputeMultEndomorphism(curve_x_poly, j, x_j, y_j))
       return false;
     if(!ComputePowerEndomorphism(curve_x_poly, *p, t_x, t_y))
       return false;
-    s1.ZeroRational();
-    s2.ZeroRational();
-    s3.ZeroRational();
+
     // compute test= x_prime-x_j^p (mod phi[l])
+    s1.ZeroRational();
+    g.ZeroPoly();
     if(!RationalSub(x_prime, t_x, s1))
       return false;
-    g.ZeroPoly();
     if(!PolyEuclid(*s1.numerator, *g_phi2[(int)l], g, test))
       return false;
     if(!test.IsZero())
       continue;
-    g.ZeroPoly();
+
     // compute test= num (y_prime-y_j)/y (mod phi[l])
+    g.ZeroPoly();
+    test.ZeroPoly();
+    s1.ZeroRational();
     if(!RationalSub(y_prime, y_j, s1))
       return false;
-    test.ZeroPoly();
     if(!PolyEuclid(*s1.numerator, *g_phi2[(int)l], g, test))
        return false;
     if(test.IsZero())

@@ -41,8 +41,10 @@ polynomial**    g_phi2= NULL;     // polynomial in x
 
 // note that the real division polynomial, g_phi, is
 //  g_phi[m]= g_phi2[m], if m is odd, and
-//  g_phi[m]= g_phi2[m]/(2y), if m is even.
-//  From now on, the 2y is implicit 
+//  g_phi[m]= (2y)g_phi2[m], if m is even.
+//  From now on, the 2y is implicit during the calculation for even m
+//  elsewhere, we assume a coefficient of y (not 2y) on
+//  these so, at the end, we multiply through by 2
 
 
 // ----------------------------------------------------------------------------
@@ -148,11 +150,20 @@ bool Initphi(int max, polynomial& curve_x_poly) {
     if(!oddphirecurrence(i, curve_x_poly))
       return false;
   }
+
+  for(i=6; i<=max/2; i+=2)
+    g_phi2[i]->MultiplyByNum(s); // assumed coefficient henceforth is y not 2y
   g_maxcoeff= max+1;
   return true;
 }
 
 void Freephi() {
+  int i;
+  for(i=0; i<g_maxcoeff; i++) {
+    delete g_phi2[i];
+    g_phi2[i]= NULL;
+  }
+  g_maxcoeff= -1;
 }
 
 extern bool EccSymbolicAdd(polynomial& curve_x_poly, 

@@ -147,7 +147,6 @@ void printpoly(polynomial& p) {
   printf("\n");
 }
 
-
 rationalpoly::rationalpoly(bnum& p, int numc1, int sizenum1, int numc2, int sizenum2) {
   numerator= new polynomial(p, numc1, sizenum1);
   denominator= new polynomial(p, numc2, sizenum2);

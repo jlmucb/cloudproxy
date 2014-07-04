@@ -681,10 +681,10 @@ bool RationalReduce(rationalpoly& inout) {
   t1.ZeroPoly();
   t2.ZeroPoly();
   t3.ZeroPoly();
-  if(!PolyEuclid(num,g,t3,t1))
+  if(!PolyEuclid(num,g,t1,t3))
     return false;
   t3.ZeroPoly();
-  if(!PolyEuclid(den,g,t3,t2))
+  if(!PolyEuclid(den,g,t2,t3))
     return false;
   t1.Copyto(*inout.numerator);
   t2.Copyto(*inout.denominator);

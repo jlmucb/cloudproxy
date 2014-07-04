@@ -22,6 +22,7 @@
 #include "mpFunctions.h"
 #include "ecc.h"
 #include "polyarith.h"
+#include "stdio.h"
 
 // ----------------------------------------------------------------------------
 
@@ -79,11 +80,14 @@ int first_primes[first_primes_size] = {
  * 6. Factor M into p[0]^e[0] ... p[l]^e[l]
  * 7. Repeat until failure if (M/p[i]]P=0, replace M with /p[i] 
  * 8. Conclude |P|= M
- *
  * If we're looking for the order of the group, do the above with
  *    random points until LCM divides one N with q+1-2(q^1/2)<=N<=q+1+2(q^1/2).
  *    Conclude N is the order
  */
+
+
+#define JLMDEBUG
+
 
 int PointinTable(ECPoint& P, ECPoint** table, int size) {
   int i;
@@ -115,6 +119,9 @@ bool eccbsgspointorder(ECPoint& P, bnum& order)
   bool        fRet= true;
   u64         n;
 
+#ifdef JLMDEBUG
+  printf("eccbsgspointorder\n");
+#endif
   mpAdd(*mod, g_bnOne, temp);
   if(!ecMult(P, temp, Q))
     return false;
@@ -126,6 +133,13 @@ bool eccbsgspointorder(ECPoint& P, bnum& order)
   if(!SquareRoot(temp, m))
     fRet= false;
 
+#ifdef JLMDEBUG
+  printf("fourth root of ");
+  printNumberToConsole(*mod);
+  printf(" is ");
+  printNumberToConsole(m);
+  printf("\n");
+#endif
   // compute table, Q+jP, j= 0, 1, ..., m
   // m better be small
   if(max2PowerDividing(m)>16) {
@@ -150,6 +164,14 @@ bool eccbsgspointorder(ECPoint& P, bnum& order)
     }
   }
   
+#ifdef JLMDEBUG
+  printf("table computed\n");
+  for(j=0; j<table_size; j++) {
+    printf("\nentry[%d]: ", j);
+    table[j]->printMe();
+  }
+#endif
+
   // Compute Q+k(2mP), k= -m, -m+1, ... 0, 1, ..., m
   //     until table match
   int k;
@@ -165,7 +187,8 @@ bool eccbsgspointorder(ECPoint& P, bnum& order)
       fRet= false;
       goto done;
     }
-    k= PointinTable(temp_point2, table, table_size+1);
+    // k= PointinTable(temp_point2, table, table_size+1);
+    k= PointinTable(temp_point2, table, table_size);
     if(k>=0) {
       n= mod->m_pValue[0]+1+j_num.m_pValue[0]-k;
       break;
@@ -175,13 +198,17 @@ bool eccbsgspointorder(ECPoint& P, bnum& order)
       fRet= false;
       goto done;
     }
-    k= PointinTable(temp_point2, table, table_size+1);
+    // k= PointinTable(temp_point2, table, table_size+1);
+    k= PointinTable(temp_point2, table, table_size);
     if(k>=0) {
       n= mod->m_pValue[0]+1+j_num.m_pValue[0]+k;
       break;
     }
   }
 
+#ifdef JLMDEBUG
+  printf("reducing by small primes\n");
+#endif
   // repeat until minimum order
   for(j=0; j<first_primes_size && n>first_primes[j]; j++) {
     while(n>first_primes[j]) {

@@ -26,6 +26,7 @@
 #include "common.h"
 #include "logging.h"
 #include "polyarith.h"
+#include "ecc.h"
 using namespace std;
 
 
@@ -45,6 +46,8 @@ int main(int an, char** av) {
   p.m_pValue[0]= 47ULL;
 
   initBigNum();
+  initLog(NULL);
+
   polynomial*  pp1= new polynomial(p, 5, 4);
   polynomial*  pp2= new polynomial(p, 5, 4);
   polynomial*  pp3= new polynomial(p, 5, 4);
@@ -199,6 +202,56 @@ int main(int an, char** av) {
 
   printf("CRT solution is ");
   printNumberToConsole(solution);
+  printf("\n");
+
+  printf("\n\n");
+  printf("bsgs tests\n");
+  // y^2= x^3+ 46x + 74 (mod 97)
+  ECurve  curve;
+  bnum	  a(2);
+  bnum	  b(2);
+  bnum	  c(2);
+  bnum    ecp(2);
+  bnum	  order(2);
+  bnum	  X(2);
+  bnum	  Y(2);
+  bnum	  Z(2);
+
+  a.m_pValue[0]= 46ULL;
+  b.m_pValue[0]= 74ULL;
+  ecp.m_pValue[0]= 97ULL;
+  curve.m_bnM= &ecp;
+  curve.m_bnA= &a;
+  curve.m_bnB= &b;
+  printf("curve:\n");
+  curve.printMe(true);
+  ECPoint   P(&curve, 2);
+  ECPoint   R(&curve, 2);
+  P.makeZero();
+  printf("\nP:");
+  P.printMe();
+
+  P.m_bnX->m_pValue[0]= 6ULL;
+  P.m_bnY->m_pValue[0]= 9ULL;
+  P.m_bnZ->m_pValue[0]= 1ULL;
+
+  c.m_pValue[0]= 80ULL;
+  if(!ecMult(P, c, R)) {
+    printf("ecMult failed\n");
+    return 1;
+  }
+
+  P.printMe();
+  printf("\n%lldP is", c.m_pValue[0]);
+  R.printMe();
+
+  extern bool eccbsgspointorder(ECPoint&, bnum&);
+  if(!eccbsgspointorder(P, order)) {
+    printf("eccbsgspointorder failed\n");
+    return 1;
+  }
+  printf("order of P is ");
+  printNumberToConsole(order);
   printf("\n");
   return 0;
 }

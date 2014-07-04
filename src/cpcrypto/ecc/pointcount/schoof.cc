@@ -171,6 +171,9 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
   printf("in2y: "); printrational(in2y);
 #endif
   if(RationalisEqual(in1x, in2x) && RationalisEqual(in1y, in2y)) {
+#ifdef JLMDEBUG
+      printf("EccSymbolicAdd, slope, P=Q\n");
+#endif
     // slope= (3in1x^2+a)/(2curve_x_poly), remember implicit y
     s1.numerator->c_array_[0]->m_pValue[0]= 3ULL;
     s1.denominator->c_array_[0]->m_pValue[0]= 2ULL;
@@ -192,11 +195,11 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
     s3.ZeroRational();
     if(!RationalDiv(s2, curve_rational, slope))
       return false;
-#ifdef JLMDEBUG
-      printf("EccSymbolicAdd, slope, P=Q "); printrational(slope);
-#endif
   }
   else {
+#ifdef JLMDEBUG
+    printf("EccSymbolicAdd, slope, P!=Q\n");
+#endif
     // slope= (in2y-in1y)/(in2x-in1x), remember implicit y
     if(!RationalSub(in2x, in1x, s1))
       return false;
@@ -205,7 +208,7 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
     if(!RationalDiv(s2, s1, slope))
       return false;
 #ifdef JLMDEBUG
-      printf("EccSymbolicAdd, slope, P!=Q "); printrational(slope);
+    printrational(slope);
 #endif
   }
   if(!RationalReduce(slope))

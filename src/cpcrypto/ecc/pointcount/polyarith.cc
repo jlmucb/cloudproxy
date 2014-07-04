@@ -148,6 +148,10 @@ bool polynomial::MultiplyByNum(bnum& c) {
 void printpoly(polynomial& p) {
   int i;
 
+  if(p.Degree()<0) {
+    printf("0\n");
+    return;
+  }
   for(i=p.Degree(); i>=0; i--) {
     printNumberToConsole(*p.c_array_[i]);
     printf(" * x**%d +", i);
@@ -655,21 +659,12 @@ bool RationalSub(rationalpoly& in1, rationalpoly& in2, rationalpoly& out) {
 }
 
 bool RationalMult(rationalpoly& in1, rationalpoly& in2, rationalpoly& out) {
-#ifdef JLMDEBUG1
-  printf("RationalMult in\n"); 
-  printf("in1: "); printrational(in1);
-  printf("in2: "); printrational(in2);
-#endif
   if(!PolyMult(*in1.numerator, *in2.numerator, *out.numerator))
     return false;
   if(!PolyMult(*in1.denominator, *in2.denominator, *out.denominator))
     return false;
   if(!RationalReduce(out))
     return false;
-#ifdef JLMDEBUG1
-  printf("RationalMult out\n"); 
-  printf("out: "); printrational(out);
-#endif
   return true;
 }
 
@@ -688,10 +683,8 @@ bool RationalReduce(rationalpoly& inout) {
   int   nn= inout.numerator->numc_;
   int   nd= inout.denominator->numc_;
 
-#ifdef JLMDEBUG1
-  printf("RationalReduce in\n"); 
-  printf("x: "); printrational(inout);
-  printf("y: "); printrational(inout);
+#ifdef JLMDEBUG
+  printf("RationalReduce in\n"); printrational(inout);
 #endif
 
   polynomial num(*p, nn, p->mpSize());
@@ -708,9 +701,15 @@ bool RationalReduce(rationalpoly& inout) {
   polynomial t3(*p, n, p->mpSize());
   polynomial g(*p, n, p->mpSize());
 
-  if(!PolyExtendedgcd(num, den, t1, t2, g))
-    return false;
-#ifdef JLMDEBUG1
+  if(num.Degree()>=den.Degree()) {
+    if(!PolyExtendedgcd(num, den, t1, t2, g))
+      return false;
+  } else {
+    if(!PolyExtendedgcd(den, num, t1, t2, g))
+      return false;
+  }
+  
+#ifdef JLMDEBUG
   printf("RationalReduce g\n"); printpoly(g);
 #endif
   t1.ZeroPoly();
@@ -723,10 +722,8 @@ bool RationalReduce(rationalpoly& inout) {
     return false;
   t1.Copyto(*inout.numerator);
   t2.Copyto(*inout.denominator);
-#ifdef JLMDEBUG1
-  printf("RationalReduce out\n"); 
-  printf("x: "); printrational(inout);
-  printf("y: "); printrational(inout);
+#ifdef JLMDEBUG
+  printf("RationalReduce out\n"); printrational(inout);
 #endif
   return true;
 }

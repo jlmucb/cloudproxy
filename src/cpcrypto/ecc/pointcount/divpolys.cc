@@ -161,6 +161,7 @@ bool Initphi(int max, polynomial& curve_x_poly) {
     }
   }
 
+  s.m_pValue[0]= 2ULL;
   for(i=2; i<=max/2; i+=2)
     g_phi2[i]->MultiplyByNum(s); // assumed coefficient henceforth is y not 2y
   g_maxcoeff= max+1;

@@ -163,6 +163,9 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
   rationalpoly  slope_squared(*p, m, n, m, n);
   rationalpoly  curve_rational(*p, m, n, 1, n);
 
+#ifdef JLMDEBUG
+  printf("EccSymbolicAdd()\n"); 
+#endif
   if(RationalisEqual(in1x, in2x) &&
      RationalisEqual(in1y, in2y)) {
     // slope= (3in1x^2+a)/(2curve_x_poly), remember implicit y
@@ -242,6 +245,9 @@ bool EccSymbolicSub(polynomial& curve_x_poly,
   bnum*         bn1;
   bnum*         bn2;
 
+#ifdef JLMDEBUG
+  printf("EccSymbolicSub()\n"); 
+#endif
   s1.Copyfrom(in2y);
   for(i=0; i<in2y.numerator->numc_;i++) {
     bn1= in2y.numerator->c_array_[i];
@@ -275,6 +281,9 @@ bool EccSymbolicPointMult(polynomial& curve_x_poly, i64 t,
   int n = HighBit(t);
   bnum* p= curve_x_poly.characteristic_;
   i64 r= t;
+#ifdef JLMDEBUG
+  printf("EccSymbolicPointMult(%lld)\n", t); 
+#endif
 
   rationalpoly  acc_rationalx(*p, x.numerator->numc_, p->mpSize(), 
                               x.denominator->numc_, p->mpSize());
@@ -331,7 +340,7 @@ bool ComputeMultEndomorphism(polynomial& curve_x_poly, i64 c,
   rationalpoly  x_poly(*p, m, n, m, n);
   rationalpoly  y_poly(*p, m, n, m, n);
 
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
   printf("ComputeMultEndomorphism(%d)\n", (int)c);
 #endif
   // set (x, y)
@@ -342,6 +351,10 @@ bool ComputeMultEndomorphism(polynomial& curve_x_poly, i64 c,
   if(!EccSymbolicPointMult(curve_x_poly, c, x_poly, y_poly, 
                           out_x, out_y))
     return false;
+#ifdef JLMDEBUG
+  printf("("); printrational(out_x);
+  printf(", "); printrational(out_y); printf(")\n");
+#endif
   return true;
 }
 
@@ -354,7 +367,7 @@ bool ComputePowerEndomorphism(polynomial& curve_x_poly, bnum& power,
   bnum          t1(power.mpSize());
   bnum          t2(power.mpSize());
 
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
   printf("ComputePowerEndomorphism( "); printNumberToConsole(power); printf(")\n");
 #endif
   power.mpCopyNum(t1);
@@ -367,6 +380,10 @@ bool ComputePowerEndomorphism(polynomial& curve_x_poly, bnum& power,
     return false;
   out_x.denominator->c_array_[0]->m_pValue[0]= 1ULL;
   out_x.numerator->c_array_[0]->m_pValue[0]= 1ULL;
+#ifdef JLMDEBUG
+  printf("("); printrational(out_x);
+  printf(", "); printrational(out_y); printf(")\n");
+#endif
   return true;
 }
 
@@ -627,7 +644,11 @@ bool schoof(bnum& a, bnum& b, bnum& p, bnum& order)
   if(g_maxcoeff<0)
     return false;
 #ifdef JLMDEBUG
-  printf("%d division polynomials computed\n", g_maxcoeff);
+  printf("\n%d division polynomials computed\n", g_maxcoeff);
+  for(j=0; j<g_maxcoeff; j++) {
+    printf("g_phi2[%d]: ", j); printpoly(*g_phi2[j]);
+  }
+  printf("\n");
 #endif
 
   if(!computetmod2(curve_x_poly, &g_tl[0]))

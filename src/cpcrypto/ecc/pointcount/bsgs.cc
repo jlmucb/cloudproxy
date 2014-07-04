@@ -86,8 +86,7 @@ int first_primes[first_primes_size] = {
  */
 
 
-#define JLMDEBUG
-
+// #define JLMDEBUG
 #define FAIL 0xffffffff
 
 
@@ -229,12 +228,11 @@ bool eccbsgspointorder(ECPoint& P, bnum& order)
 #ifdef JLMDEBUG
   printf("reducing by small primes\n");
 #endif
-#if 0
   // repeat until minimum order
   for(j=0; j<first_primes_size && n>first_primes[j]; j++) {
     while(n>first_primes[j]) {
       temp_point.makeZero();
-      j_num.m_pValue[0]= n;
+      j_num.m_pValue[0]= n/first_primes[j];
       if(!ecMult(P, j_num, temp_point)) {
         fRet= false;
         goto done;
@@ -244,7 +242,6 @@ bool eccbsgspointorder(ECPoint& P, bnum& order)
     n/= first_primes[j];
     }
   }
-#endif
   order.m_pValue[0]= n;
 
 done:

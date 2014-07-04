@@ -546,13 +546,16 @@ bool ecInv(ECPoint& P, ECPoint& R) {
 }
 
 bool ecMult(ECPoint& P, bnum& bnA, ECPoint& R) {
+  if(bnA.mpIsZero()) {
+    R.makeZero();
+    return true;
+  }
   ECPoint currentDouble(P.m_myCurve, P.m_myCurve->m_bnM->mpSize() + 2);
   ECPoint newDouble(P.m_myCurve, P.m_myCurve->m_bnM->mpSize() + 2);
   ECPoint currentAcc(P.m_myCurve, P.m_myCurve->m_bnM->mpSize() + 2);
   ECPoint newAcc(P.m_myCurve, P.m_myCurve->m_bnM->mpSize() + 2);
 
   // copy P to currentDouble
-  // currentDouble.copyPoint(P);
   currentDouble.copyPoint(P);
   // zero Acc
   currentAcc.makeZero();

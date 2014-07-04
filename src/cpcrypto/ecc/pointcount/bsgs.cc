@@ -88,9 +88,12 @@ int first_primes[first_primes_size] = {
 
 #define JLMDEBUG
 
+#define FAIL 0xffffffff
+
 
 int PointinTable(ECPoint& P, ECPoint** table, int size) {
   int i;
+  bnum  minusY(P.m_myCurve->m_bnM->mpSize());
 
   for(i=0;i<size;i++) {
     if(P.iszeroPoint() && table[i]->iszeroPoint())
@@ -99,8 +102,14 @@ int PointinTable(ECPoint& P, ECPoint** table, int size) {
           mpCompare(*P.m_bnY, *table[i]->m_bnY)==0 &&
           mpCompare(*P.m_bnZ, *table[i]->m_bnZ)==0)
       return i;
+    mpZeroNum(minusY);
+    mpModSub(*P.m_myCurve->m_bnM, *table[i]->m_bnY, *P.m_myCurve->m_bnM, minusY);
+    if(mpCompare(*P.m_bnX, *table[i]->m_bnX)==0 &&
+          mpCompare(*P.m_bnY, minusY)==0 &&
+          mpCompare(*P.m_bnZ, *table[i]->m_bnZ)==0)
+      return -i;
   }
-  return -1;
+  return FAIL;
 }
 
 
@@ -114,9 +123,10 @@ bool eccbsgspointorder(ECPoint& P, bnum& order)
   bnum        j_num(2*mod->mpSize());
   bnum        m(2*mod->mpSize());
   bnum        M(2*mod->mpSize());
+  bnum        minusY(2*mod->mpSize());
   ECPoint**   table= NULL;
   int         table_size;
-  bool        fRet= true;
+  bool        fRet= false;
   u64         n;
 
 #ifdef JLMDEBUG
@@ -154,17 +164,15 @@ bool eccbsgspointorder(ECPoint& P, bnum& order)
     table[j]= new ECPoint(P.m_myCurve, P.m_myCurve->m_bnM->mpSize());
     temp_point.makeZero();
     j_num.m_pValue[0]= (u64)j;
-    if(!ecMult(P, j_num, temp_point)) {
-      fRet= false;
-      goto done;
-    }
-    if(!ecAdd(Q, temp_point, *table[j])) {
+    if(!ecMult(P, j_num, *table[j])) {
       fRet= false;
       goto done;
     }
   }
   
 #ifdef JLMDEBUG
+  printf("Q\n");
+  Q.printMe();
   printf("table computed\n");
   for(j=0; j<table_size; j++) {
     printf("\nentry[%d]: ", j);
@@ -175,40 +183,53 @@ bool eccbsgspointorder(ECPoint& P, bnum& order)
   // Compute Q+k(2mP), k= -m, -m+1, ... 0, 1, ..., m
   //     until table match
   int k;
-  for(j=(1-table_size); j<table_size-1; j++) {
+  for(j=-table_size; j<table_size; j++) {
     temp_point.makeZero();
-    j_num.m_pValue[0]= 2*(table_size-1)*j;
+    if(j<0)
+      j_num.m_pValue[0]= -2*table_size*j;
+    else
+      j_num.m_pValue[0]= 2*table_size*j;
     if(!ecMult(P, j_num, temp_point)) {
       fRet= false;
       goto done;
     }
+#ifdef JLMDEBUG
+    printf("\nlookup loop, %d(P) ", 2*table_size*j);
+    temp_point.printMe();
+#endif
     temp_point2.makeZero();
-    if(!ecAdd(Q, temp_point, temp_point2)) {
-      fRet= false;
-      goto done;
+    if(j>=0) {
+      if(!ecAdd(Q, temp_point, temp_point2)) {
+        goto done;
+      }
     }
-    // k= PointinTable(temp_point2, table, table_size+1);
+    else {
+      if(!ecSub(Q, temp_point, temp_point2)) {
+        goto done;
+      }
+    }
+#ifdef JLMDEBUG
+    printf("Q+%d(P) ", 2*table_size*j);
+    temp_point2.printMe();
+#endif
     k= PointinTable(temp_point2, table, table_size);
-    if(k>=0) {
-      n= mod->m_pValue[0]+1+j_num.m_pValue[0]-k;
-      break;
-    }
-    temp_point2.makeZero();
-    if(!ecSub(Q, temp_point, temp_point2)) {
-      fRet= false;
-      goto done;
-    }
-    // k= PointinTable(temp_point2, table, table_size+1);
-    k= PointinTable(temp_point2, table, table_size);
-    if(k>=0) {
-      n= mod->m_pValue[0]+1+j_num.m_pValue[0]+k;
+    if(k!=FAIL) {
+#ifdef JLMDEBUG
+      printf("PointinTable returns %d\n", k);
+#endif
+      n= mod->m_pValue[0]+1+2*table_size*j-k;
+      fRet= true;
       break;
     }
   }
 
+  if(!fRet)
+    goto done;
+
 #ifdef JLMDEBUG
   printf("reducing by small primes\n");
 #endif
+#if 0
   // repeat until minimum order
   for(j=0; j<first_primes_size && n>first_primes[j]; j++) {
     while(n>first_primes[j]) {
@@ -223,6 +244,7 @@ bool eccbsgspointorder(ECPoint& P, bnum& order)
     n/= first_primes[j];
     }
   }
+#endif
   order.m_pValue[0]= n;
 
 done:

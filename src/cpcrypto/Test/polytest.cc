@@ -235,12 +235,19 @@ int main(int an, char** av) {
   P.m_bnY->m_pValue[0]= 9ULL;
   P.m_bnZ->m_pValue[0]= 1ULL;
 
+  c.m_pValue[0]= 0ULL;
+  if(!ecMult(P, c, R)) {
+    printf("ecMult failed\n");
+    return 1;
+  }
+  printf("\n%lldP is", c.m_pValue[0]);
+  R.printMe();
+
   c.m_pValue[0]= 80ULL;
   if(!ecMult(P, c, R)) {
     printf("ecMult failed\n");
     return 1;
   }
-
   P.printMe();
   printf("\n%lldP is", c.m_pValue[0]);
   R.printMe();

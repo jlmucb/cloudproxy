@@ -37,6 +37,7 @@ public:
   polynomial(bnum& p, int numc, int sizenum);
   ~polynomial();
   void ZeroPoly();
+  void OnePoly();
   int Degree();
   bool Copyfrom(polynomial& from);
   bool Copyto(polynomial& to);
@@ -52,6 +53,7 @@ public:
   rationalpoly(bnum& p, int numc1, int sizenum1, int numc2, int sizenum2);
   ~rationalpoly();
   void ZeroRational();
+  void OneRational();
   bool Copyfrom(rationalpoly& from);
   bool Copyto(rationalpoly& to);
 };

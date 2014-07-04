@@ -285,20 +285,24 @@ bool EccSymbolicPointMult(polynomial& curve_x_poly, i64 t,
   printf("EccSymbolicPointMult(%lld)\n", t); 
 #endif
 
-  rationalpoly  acc_rationalx(*p, x.numerator->numc_, p->mpSize(), 
-                              x.denominator->numc_, p->mpSize());
-  rationalpoly  acc_rationaly(*p, x.numerator->numc_, p->mpSize(), 
-                              x.denominator->numc_, p->mpSize());
-  rationalpoly  double_rationalx(*p, x.numerator->numc_, p->mpSize(), 
-                                 x.denominator->numc_, p->mpSize());
-  rationalpoly  double_rationaly(*p, x.numerator->numc_, p->mpSize(), 
-                              x.denominator->numc_, p->mpSize());
-  rationalpoly  resultx(*p, x.numerator->numc_, p->mpSize(), 
-                        x.denominator->numc_, p->mpSize());
-  rationalpoly  resulty(*p, x.numerator->numc_, p->mpSize(), 
-                        x.denominator->numc_, p->mpSize());
+  rationalpoly  acc_rationalx(*p, out_x.numerator->numc_, p->mpSize(), 
+                                  out_x.denominator->numc_, p->mpSize());
+  rationalpoly  acc_rationaly(*p, out_y.numerator->numc_, p->mpSize(), 
+                                  out_y.denominator->numc_, p->mpSize());
 
-  double_rationalx.numerator->Copyfrom(*x.numerator);
+  rationalpoly  double_rationalx(*p, out_x.numerator->numc_, p->mpSize(), 
+                                 out_x.denominator->numc_, p->mpSize());
+  rationalpoly  double_rationaly(*p, out_y.numerator->numc_, p->mpSize(), 
+                                     out_y.denominator->numc_, p->mpSize());
+
+  rationalpoly  resultx(*p, out_x.numerator->numc_, p->mpSize(),
+                            out_x.denominator->numc_, p->mpSize());
+  rationalpoly  resulty(*p, out_y.numerator->numc_, p->mpSize(),
+                            out_y.denominator->numc_, p->mpSize());
+
+  double_rationalx.Copyfrom(x);
+  double_rationaly.Copyfrom(y);
+
   double_rationaly.numerator->Copyfrom(*y.numerator);
   double_rationalx.numerator->c_array_[0]->m_pValue[0]= 1ULL;
   double_rationaly.numerator->c_array_[0]->m_pValue[0]= 1ULL;

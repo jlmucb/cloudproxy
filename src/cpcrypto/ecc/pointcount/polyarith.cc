@@ -65,6 +65,14 @@ void polynomial::ZeroPoly() {
 }
 
 
+void polynomial::OnePoly() {
+  int i;
+  for(i=1; i<numc_; i++)
+    mpZeroNum(*c_array_[i]);
+  c_array_[0]->m_pValue[0]= 1ULL;
+}
+
+
 bool polynomial::IsZero() {
   int i;
 
@@ -161,7 +169,12 @@ rationalpoly::~rationalpoly() {
 
 void rationalpoly::ZeroRational() {
   numerator->ZeroPoly();
-  denominator->ZeroPoly();
+  denominator->OnePoly();
+}
+
+void rationalpoly::OneRational() {
+  numerator->OnePoly();
+  denominator->OnePoly();
 }
 
 bool rationalpoly::Copyfrom(rationalpoly& from) {

@@ -165,14 +165,18 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
 
 #ifdef JLMDEBUG
   printf("EccSymbolicAdd()\n"); 
+  printf("in1x: "); printrational(in1x);
+  printf("in1y: "); printrational(in1y);
+  printf("in2x: "); printrational(in2x);
+  printf("in2y: "); printrational(in2y);
 #endif
-  if(RationalisEqual(in1x, in2x) &&
-     RationalisEqual(in1y, in2y)) {
+  if(RationalisEqual(in1x, in2x) && RationalisEqual(in1y, in2y)) {
     // slope= (3in1x^2+a)/(2curve_x_poly), remember implicit y
     s1.numerator->c_array_[0]->m_pValue[0]= 3ULL;
     s1.denominator->c_array_[0]->m_pValue[0]= 2ULL;
     curve_rational.numerator->Copyfrom(curve_x_poly);
     curve_rational.denominator->c_array_[0]->m_pValue[0]= 1ULL;
+
     if(!RationalMult(in1x, in1x, s2))
       return false;
     if(!RationalMult(s2, s1, s3))
@@ -188,6 +192,9 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
     s3.ZeroRational();
     if(!RationalDiv(s2, curve_rational, slope))
       return false;
+#ifdef JLMDEBUG
+      printf("EccSymbolicAdd, slope, P=Q "); printrational(slope);
+#endif
   }
   else {
     // slope= (in2y-in1y)/(in2x-in1x), remember implicit y
@@ -197,6 +204,9 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
       return false;
     if(!RationalDiv(s2, s1, slope))
       return false;
+#ifdef JLMDEBUG
+      printf("EccSymbolicAdd, slope, P!=Q "); printrational(slope);
+#endif
   }
   if(!RationalReduce(slope))
     return false;
@@ -230,6 +240,11 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
     return false;
   if(!RationalReduce(outy))
     return false;
+#ifdef JLMDEBUG
+  printf("EccSymbolicAdd() result\n"); 
+  printf("outx: "); printrational(outx);
+  printf("outy: "); printrational(outy);
+#endif
   return true;
 }
 
@@ -282,7 +297,9 @@ bool EccSymbolicPointMult(polynomial& curve_x_poly, i64 t,
   bnum* p= curve_x_poly.characteristic_;
   i64 r= t;
 #ifdef JLMDEBUG
-  printf("EccSymbolicPointMult(%lld)\n", t); 
+  printf("EccSymbolicPointMult(%lld), (x,y)= \n", t); 
+  printf("("); printrational(x);
+  printf(", "); printrational(y); printf(")\n");
 #endif
 
   rationalpoly  acc_rationalx(*p, out_x.numerator->numc_, p->mpSize(), 
@@ -302,10 +319,16 @@ bool EccSymbolicPointMult(polynomial& curve_x_poly, i64 t,
 
   double_rationalx.Copyfrom(x);
   double_rationaly.Copyfrom(y);
+  acc_rationalx.ZeroRational();
+  acc_rationaly.ZeroRational();
 
-  double_rationaly.numerator->Copyfrom(*y.numerator);
-  double_rationalx.numerator->c_array_[0]->m_pValue[0]= 1ULL;
-  double_rationaly.numerator->c_array_[0]->m_pValue[0]= 1ULL;
+#ifdef JLMDEBUG1
+  printf("double_rational: ("); printrational(double_rationalx);
+  printf(", "); printrational(double_rationaly); printf(")\n");
+  printf("acc_rational: ("); printrational(acc_rationalx);
+  printf(", "); printrational(acc_rationaly); printf(")\n");
+#endif
+
   for (i = 0; i < n; i++) {
     if (r&1) {
       resultx.ZeroRational();
@@ -322,6 +345,8 @@ bool EccSymbolicPointMult(polynomial& curve_x_poly, i64 t,
       resulty.ZeroRational();
       EccSymbolicAdd(curve_x_poly, double_rationalx,  double_rationaly, 
                      double_rationalx, double_rationaly, resultx, resulty);
+      double_rationalx.ZeroRational();
+      double_rationaly.ZeroRational();
       double_rationalx.Copyfrom(resultx);
       double_rationaly.Copyfrom(resulty);
     }
@@ -356,7 +381,7 @@ bool ComputeMultEndomorphism(polynomial& curve_x_poly, i64 c,
                           out_x, out_y))
     return false;
 #ifdef JLMDEBUG
-  printf("("); printrational(out_x);
+  printf("EccSymbolicPointMult returned ("); printrational(out_x);
   printf(", "); printrational(out_y); printf(")\n");
 #endif
   return true;
@@ -377,13 +402,12 @@ bool ComputePowerEndomorphism(polynomial& curve_x_poly, bnum& power,
   power.mpCopyNum(t1);
   mpUSubFrom(t1, g_bnOne);
   mpShift(t1, -1, t2);
-
   if(!Reducelargepower(power, curve_x_poly, *out_x.numerator))
     return false;
   if(!Reducelargepower(t2, curve_x_poly, *out_y.numerator))
     return false;
   out_x.denominator->c_array_[0]->m_pValue[0]= 1ULL;
-  out_x.numerator->c_array_[0]->m_pValue[0]= 1ULL;
+  out_y.denominator->c_array_[0]->m_pValue[0]= 1ULL;
 #ifdef JLMDEBUG
   printf("("); printrational(out_x);
   printf(", "); printrational(out_y); printf(")\n");

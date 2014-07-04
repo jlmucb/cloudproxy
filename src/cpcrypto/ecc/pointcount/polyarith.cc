@@ -26,6 +26,8 @@
 #include "stdio.h"
 
 
+#define JLMDEBUG
+
 // ----------------------------------------------------------------------------
 
 
@@ -119,7 +121,7 @@ bool polynomial::Copyto(polynomial& to) {
 
 int polynomial::Degree() {
   int i= numc_-1;
-  while(i>0 && c_array_[i]->mpIsZero())
+  while(i>=0 && c_array_[i]->mpIsZero())
     i--;
   return i;
 }
@@ -179,13 +181,13 @@ void rationalpoly::OneRational() {
 
 bool rationalpoly::Copyfrom(rationalpoly& from) {
   numerator->Copyfrom(*from.numerator);
-  denominator->Copyto(*from.denominator);
+  denominator->Copyfrom(*from.denominator);
   return true;
 }
 
 bool rationalpoly::Copyto(rationalpoly& to) {
-  numerator->ZeroPoly();
-  denominator->ZeroPoly();
+  numerator->Copyto(*to.numerator);
+  denominator->Copyto(*to.denominator);
   return true;
 }
 
@@ -348,11 +350,12 @@ bool PolyEuclid(polynomial& a, polynomial& b, polynomial& q, polynomial& r) {
   bnum* p_r_lead_coeff;
 
   if(deg_a<deg_b) {
-    printf("PolyEuclid degree(%d)>=degree(%d)1\n", deg_a, deg_b);
+    printf("PolyEuclid degree(b)>degree(a)\n");
     return false;
   }
   // prime characteristic only, for now
   if(a.characteristic_->mpIsZero()) {
+    printf("PolyEuclid only works in finite fields\n");
     return false;
   }
   polynomial  prod_temp(*a.characteristic_, a.numc_, a.size_num_);
@@ -362,7 +365,7 @@ bool PolyEuclid(polynomial& a, polynomial& b, polynomial& q, polynomial& r) {
   a.Copyto(r);
   p_b_lead_coeff= b.c_array_[deg_b];
 
-  while((deg_r=r.Degree())>=deg_b && deg_b>0) {
+  while((deg_r=r.Degree())>=deg_b && deg_b>=0) {
     // Subtract leadcoeff(r)/leadcoeff(b)*b(x)*x^(deg_r-deg_b) from r
     p_r_lead_coeff= r.c_array_[deg_r];
     mpModDiv(*p_r_lead_coeff, *p_b_lead_coeff, *a.characteristic_, *q.c_array_[deg_r-deg_b]);
@@ -652,12 +655,21 @@ bool RationalSub(rationalpoly& in1, rationalpoly& in2, rationalpoly& out) {
 }
 
 bool RationalMult(rationalpoly& in1, rationalpoly& in2, rationalpoly& out) {
+#ifdef JLMDEBUG1
+  printf("RationalMult in\n"); 
+  printf("in1: "); printrational(in1);
+  printf("in2: "); printrational(in2);
+#endif
   if(!PolyMult(*in1.numerator, *in2.numerator, *out.numerator))
     return false;
   if(!PolyMult(*in1.denominator, *in2.denominator, *out.denominator))
     return false;
   if(!RationalReduce(out))
     return false;
+#ifdef JLMDEBUG1
+  printf("RationalMult out\n"); 
+  printf("out: "); printrational(out);
+#endif
   return true;
 }
 
@@ -676,19 +688,31 @@ bool RationalReduce(rationalpoly& inout) {
   int   nn= inout.numerator->numc_;
   int   nd= inout.denominator->numc_;
 
+#ifdef JLMDEBUG1
+  printf("RationalReduce in\n"); 
+  printf("x: "); printrational(inout);
+  printf("y: "); printrational(inout);
+#endif
+
   polynomial num(*p, nn, p->mpSize());
   polynomial den(*p, nd, p->mpSize());
+
   num.Copyfrom(*inout.numerator);
   den.Copyfrom(*inout.denominator);
   int n= nn;
   if(nd>nn)
       n= nd;
+
   polynomial t1(*p, n, p->mpSize());
   polynomial t2(*p, n, p->mpSize());
   polynomial t3(*p, n, p->mpSize());
   polynomial g(*p, n, p->mpSize());
+
   if(!PolyExtendedgcd(num, den, t1, t2, g))
     return false;
+#ifdef JLMDEBUG1
+  printf("RationalReduce g\n"); printpoly(g);
+#endif
   t1.ZeroPoly();
   t2.ZeroPoly();
   t3.ZeroPoly();
@@ -699,6 +723,11 @@ bool RationalReduce(rationalpoly& inout) {
     return false;
   t1.Copyto(*inout.numerator);
   t2.Copyto(*inout.denominator);
+#ifdef JLMDEBUG1
+  printf("RationalReduce out\n"); 
+  printf("x: "); printrational(inout);
+  printf("y: "); printrational(inout);
+#endif
   return true;
 }
 

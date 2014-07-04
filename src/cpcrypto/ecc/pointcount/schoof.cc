@@ -23,6 +23,9 @@
 #include "polyarith.h"
 #include "stdio.h"
 
+
+#define JLMDEBUG
+
 // ----------------------------------------------------------------------------
 
 /*
@@ -71,19 +74,28 @@ bool pickS(bnum& p)
   bnum  top(2*p.mpSize());
   u64   nextprime;
 
+  g_sizeS= 0;
   if(!SquareRoot(p, v))
     return false;
   mpUAddTo(v, g_bnOne);
   mpMult(v, g_bnTwo, w);
   mpMult(w, g_bnTwo, top);
+#ifdef JLMDEBUG1
+  printf("top is "); printNumberToConsole(top); printf("\n");
+#endif
   prod.m_pValue[0]= 1ULL;
   for(j=0;j<sizeofFirstPrimes;j++) {
     nextprime= (u64)s_rgFirstPrimes[j];
     mpZeroNum(v);
     mpZeroNum(w);
     v.m_pValue[0]= nextprime;
-    mpMult(prod,v, w);
+    mpMult(prod, v, w);
+    mpZeroNum(prod);
     w.mpCopyNum(prod);
+#ifdef JLMDEBUG1
+    printf("sizeS: %d, position: %d, prime: %lld, currentprod: ", g_sizeS, j, nextprime);
+    printNumberToConsole(prod); printf("\n");
+#endif
     g_S[g_sizeS++]= nextprime;
     if(mpCompare(prod, top)!=s_isLessThan)
       break;
@@ -534,7 +546,7 @@ bool useCRT(bnum& t)
     current_prime_solution.m_pValue[0]= g_tl[j];
     if(!mpCRT(current_solution, prodprimes, current_prime_solution, current_prime, crt_solution))
       return false;
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     printf("current solution ");printNumberToConsole(current_solution); printf(", ");
     printf("prodprimes ");printNumberToConsole(prodprimes); printf("\n");
     printf("current prime ");printNumberToConsole(current_prime); printf(", ");
@@ -561,9 +573,24 @@ bool schoof(bnum& a, bnum& b, bnum& p, bnum& order)
   polynomial  curve_x_poly(p, 4, n);
   int         j;
 
+#ifdef JLMDEBUG
+  printf("schoof called\n");
+  printf("y^2=x^x + ");
+  printNumberToConsole(a); printf(" x + "); printNumberToConsole(b);
+  printf(" (mod "); printNumberToConsole(p); printf(")\n");
+#endif
+
   // pick primes to use
   if(!pickS(p))
     return false;
+
+#ifdef JLMDEBUG
+  printf("%d primes picked\n\t", g_sizeS);
+  for(j=0; j<g_sizeS;j++) {
+    printf(" %lld", g_S[j]);
+  }
+  printf("\n");
+#endif
 
   // curve
   curve_x_poly.c_array_[3]->m_pValue[0]= 1ULL;
@@ -571,29 +598,53 @@ bool schoof(bnum& a, bnum& b, bnum& p, bnum& order)
   a.mpCopyNum(*curve_x_poly.c_array_[1]);
   b.mpCopyNum(*curve_x_poly.c_array_[0]);
 
-  if(Initphi((int)g_S[g_maxcoeff-1], curve_x_poly))
+  if(!Initphi((int)g_S[g_sizeS-1], curve_x_poly))
     return false;
   if(g_maxcoeff<0)
     return false;
+#ifdef JLMDEBUG
+  printf("%d division polynomials computed\n", g_maxcoeff);
+#endif
 
   if(!computetmod2(curve_x_poly, &g_tl[0]))
     return false;
+#ifdef JLMDEBUG
+  printf("t= %d (mod 2)\n", (int) g_tl[0]);
+#endif
   for(j=1; j<g_sizeS; j++) {
-    if(!computetmododdprime(curve_x_poly, g_S[j], &g_tl[j]))
+    if(!computetmododdprime(curve_x_poly, g_S[j], &g_tl[j])) {
+      printf("computetmododdprime(%d) failed\n", (int)g_S[j]);
       return false;
+    }
+#ifdef JLMDEBUG
+    printf("t= %d (mod %d)\n", (int) g_tl[j], g_S[j]);
+#endif
   }
 
   Freephi();
 
+#ifdef JLMDEBUG
+    printf("division polys freed\n");
+#endif
   // compute t mod prodprimes
   if(!useCRT(t))
     return false;
+#ifdef JLMDEBUG
+    printf("computed t: ");
+    printNumberToConsole(t);
+    printf("\n");
+#endif
 
   // #E= p+1-t
   mpZeroNum(order);
   p.mpCopyNum(s);
   mpUAddTo(s, g_bnOne);
   mpSub(s, t, order);
+#ifdef JLMDEBUG
+    printf("computed order: ");
+    printNumberToConsole(order);
+    printf("\n");
+#endif
   return true;
 }
 

@@ -47,6 +47,8 @@ polynomial**    g_phi2= NULL;     // polynomial in x
 //  these so, at the end, we multiply through by 2
 
 
+#define JLMDEBUG
+
 // ----------------------------------------------------------------------------
 
 
@@ -56,8 +58,13 @@ typedef polynomial* p_polynomial_t;
 
 
 bool Initphi(int max, polynomial& curve_x_poly) {
-  if(max<5)
+#ifdef JLMDEBUG
+  printf("In Initphi(%d)\n", max);
+#endif
+  if(max<5) {
+    printf("Initphi too few polys to be computed\n");
     return false;
+  }
 
   int   n= curve_x_poly.characteristic_->mpSize();
   bnum* a= curve_x_poly.c_array_[1];
@@ -96,10 +103,9 @@ bool Initphi(int max, polynomial& curve_x_poly) {
   mpModMult(t,*b,*p,*(g_phi2[3]->c_array_[1]));
   mpZeroNum(s);
   mpModMult(*a,*a,*p,s);
-  mpModSub(g_bnZero,s,*p,*(g_phi2[4]->c_array_[0]));
+  mpModSub(g_bnZero,s,*p,*(g_phi2[3]->c_array_[0]));
 
   // phi[4]= 2y(2(x^6+5ax^4+20bx^3-5a^2x^2-4abx-8b^2-a^3))
-  // phi2[4]= (2(x^6+5ax^4+20bx^3-5a^2x^2-4abx-8b^2-a^3))
   // Fix: size depends on a, b and p
   g_phi2[4]= new polynomial(*p, 7, 1); 
 
@@ -138,20 +144,24 @@ bool Initphi(int max, polynomial& curve_x_poly) {
   mpZeroNum(s);
   mpModAdd(r,t,*p,s);                              // 8b^2+a^3
   mpModSub(g_bnZero,s,*p,(*g_phi2[4]->c_array_[0])); // -8b^2-a^3
-  mpZeroNum(s);
-  s.m_pValue[0]= 2ULL;
-  g_phi2[4]->MultiplyByNum(s);
 
   int i;
-  oddphirecurrence(2, curve_x_poly);
+  if(!oddphirecurrence(2, curve_x_poly)) {
+    printf("oddphirecurrence(%d) failed\n", 2);
+    return false;
+  }
   for(i=3; i<=(max-1)/2; i+=2) {
-    if(!evenphirecurrence(i, curve_x_poly))
+    if(!evenphirecurrence(i, curve_x_poly)) {
+      printf("evenphirecurrence(%d) failed\n", i);
       return false;
-    if(!oddphirecurrence(i, curve_x_poly))
+    }
+    if(!oddphirecurrence(i, curve_x_poly)) {
+      printf("oddphirecurrence(%d) failed\n", i);
       return false;
+    }
   }
 
-  for(i=6; i<=max/2; i+=2)
+  for(i=2; i<=max/2; i+=2)
     g_phi2[i]->MultiplyByNum(s); // assumed coefficient henceforth is y not 2y
   g_maxcoeff= max+1;
   return true;
@@ -185,6 +195,15 @@ bool oddphirecurrence(int m, polynomial& curve_x_poly) {
   polynomial  t(*p,(2*m+1)*(2*m+1), n);
   polynomial  v(*p,(2*m+1)*(2*m+1), n);
 
+#ifdef JLMDEBUG
+  printf("oddrecurrence(%d), n= %d\n", m, n);
+#endif
+#ifdef JLMDEBUG1
+  printf("oddrecurrence, g_phi2[%d]\n", m); printpoly(*g_phi2[m]);
+  printf("oddrecurrence, g_phi2[%d]\n", m+2); printpoly(*g_phi2[m+2]);
+  printf("oddrecurrence, g_phi2[%d]\n", m-1); printpoly(*g_phi2[m-1]);
+  printf("oddrecurrence, g_phi2[%d]\n", m+1); printpoly(*g_phi2[m+1]);
+#endif
   g_phi2[2*m+1]= new polynomial(*p, (2*m+1)*(2*m+1),n);
 
   r.ZeroPoly();
@@ -220,11 +239,21 @@ bool oddphirecurrence(int m, polynomial& curve_x_poly) {
 bool evenphirecurrence(int m, polynomial& curve_x_poly) {
   bnum*       p= curve_x_poly.characteristic_;
   int         n= p->mpSize();
-  polynomial  r(*p,(2*m+1)*(2*m+1), n);
-  polynomial  s(*p,(2*m+1)*(2*m+1), n);
-  polynomial  t(*p,(2*m+1)*(2*m+1), n);
-  polynomial  v(*p,(2*m+1)*(2*m+1), n);
+  polynomial  r(*p,(2*m)*(2*m), n);
+  polynomial  s(*p,(2*m)*(2*m), n);
+  polynomial  t(*p,(2*m)*(2*m), n);
+  polynomial  v(*p,(2*m)*(2*m), n);
 
+#ifdef JLMDEBUG
+  printf("evenrecurrence(%d), n= %d\n", m, n);
+#endif
+#ifdef JLMDEBUG1
+  printf("evenrecurrence, g_phi2[%d]\n", m); printpoly(*g_phi2[m]);
+  printf("evenrecurrence, g_phi2[%d]\n", m+2); printpoly(*g_phi2[m+2]);
+  printf("evenrecurrence, g_phi2[%d]\n", m-1); printpoly(*g_phi2[m-1]);
+  printf("evenrecurrence, g_phi2[%d]\n", m+1); printpoly(*g_phi2[m+1]);
+  printf("evenrecurrence, g_phi2[%d]\n", m-2); printpoly(*g_phi2[m-2]);
+#endif
   g_phi2[2*m]= new polynomial(*p, (2*m)*(2*m), n);
 
   if(!PolyMult(*g_phi2[m+2], *g_phi2[m-1], t))

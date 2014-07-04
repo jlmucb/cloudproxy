@@ -30,6 +30,8 @@
 using namespace std;
 
 
+extern bool schoof(bnum& a, bnum& b, bnum& p, bnum& order);
+
 
 // ----------------------------------------------------------------------------
 
@@ -212,7 +214,7 @@ int main(int an, char** av) {
   bnum	  b(2);
   bnum	  c(2);
   bnum    ecp(2);
-  bnum	  order(2);
+  bnum	  order(10);
   bnum	  X(2);
   bnum	  Y(2);
   bnum	  Z(2);
@@ -260,6 +262,13 @@ int main(int an, char** av) {
   printf("order of P is ");
   printNumberToConsole(order);
   printf("\n");
+
+  mpZeroNum(order);
+  printf("\nschoof\n");
+  if(!schoof(a, b, ecp, order)) {
+    printf("schoof failed\n");
+    return 1;
+  }
   return 0;
 }
 

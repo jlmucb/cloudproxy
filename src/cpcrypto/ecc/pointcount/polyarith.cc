@@ -250,14 +250,13 @@ bool PolySub(polynomial& in1, polynomial& in2, polynomial& out) {
       for(;j<in1.numc_;j++)
         in1.c_array_[j]->mpCopyNum(*out.c_array_[j]);
     } else {
+// printf("PolySub, position 3\n");
       for(j=0; j<in1.numc_; j++)
         mpModSub(*in1.c_array_[j], *in2.c_array_[j], *in1.characteristic_, *out.c_array_[j]);
       for(;j<in2.numc_;j++)
         mpModSub(g_bnZero, *in2.c_array_[j], *in1.characteristic_, *out.c_array_[j]);
     }
   }
-  // printf("PolySub ");printpoly(in1); printf(" - "); printpoly(in2);
-  // printf(" = ");printpoly(out); printf("\n");
   return true;
 }
 
@@ -274,7 +273,7 @@ bool PolyMult(polynomial& in1, polynomial& in2, polynomial& out) {
     if(!in1.c_array_[j]->mpIsZero())
       break;
   }
-  for(i=in1.numc_-1;i>0;i--) {
+  for(i=in2.numc_-1;i>0;i--) {
     if(!in2.c_array_[i]->mpIsZero())
       break;
   }
@@ -282,7 +281,6 @@ bool PolyMult(polynomial& in1, polynomial& in2, polynomial& out) {
   if(out.numc_<=k)
     return false;
   out.ZeroPoly();
-
   if(in1.characteristic_->mpIsZero()) {
     bnum  c(in1.c_array_[0]->mpSize());
     bnum  t(in1.c_array_[0]->mpSize());

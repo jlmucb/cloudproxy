@@ -250,7 +250,6 @@ bool PolySub(polynomial& in1, polynomial& in2, polynomial& out) {
       for(;j<in1.numc_;j++)
         in1.c_array_[j]->mpCopyNum(*out.c_array_[j]);
     } else {
-// printf("PolySub, position 3\n");
       for(j=0; j<in1.numc_; j++)
         mpModSub(*in1.c_array_[j], *in2.c_array_[j], *in1.characteristic_, *out.c_array_[j]);
       for(;j<in2.numc_;j++)
@@ -336,6 +335,7 @@ bool PolyEuclid(polynomial& a, polynomial& b, polynomial& q, polynomial& r) {
   bnum* p_r_lead_coeff;
 
   if(deg_a<deg_b) {
+    printf("PolyEuclid degree(%d)>=degree(%d)1\n", deg_a, deg_b);
     return false;
   }
   // prime characteristic only, for now

@@ -331,6 +331,9 @@ bool ComputeMultEndomorphism(polynomial& curve_x_poly, i64 c,
   rationalpoly  x_poly(*p, m, n, m, n);
   rationalpoly  y_poly(*p, m, n, m, n);
 
+#ifdef JLMDEBUG1
+  printf("ComputeMultEndomorphism(%d)\n", (int)c);
+#endif
   // set (x, y)
   x_poly.numerator->c_array_[1]->m_pValue[0]= 1ULL;
   x_poly.denominator->c_array_[0]->m_pValue[0]= 1ULL;
@@ -351,6 +354,9 @@ bool ComputePowerEndomorphism(polynomial& curve_x_poly, bnum& power,
   bnum          t1(power.mpSize());
   bnum          t2(power.mpSize());
 
+#ifdef JLMDEBUG1
+  printf("ComputePowerEndomorphism( "); printNumberToConsole(power); printf(")\n");
+#endif
   power.mpCopyNum(t1);
   mpUSubFrom(t1, g_bnOne);
   mpShift(t1, -1, t2);
@@ -396,6 +402,10 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
   bnum          small_num(1);
   bnum          w(n);  // square root of p
 
+#ifdef JLMDEBUG1
+  printf("computetmododdprime(%d)\n", (int) l);
+#endif
+
   // note: check to see if m is an overestimate
   m= m*m;
 
@@ -439,6 +449,7 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
     return false;
   if(!RationalMult(s1, s1, s2))
     return false;
+
   s1.ZeroRational();
   slope.ZeroRational();
   s1.denominator->c_array_[0]->m_pValue[0]= 1ULL;
@@ -478,8 +489,17 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
     g.ZeroPoly();
     if(!RationalSub(x_prime, t_x, s1))
       return false;
-    if(!PolyEuclid(*s1.numerator, *g_phi2[(int)l], g, test))
-      return false;
+#ifdef JLMDEBUG1
+    printf("computetmododdprime\n");
+    printf("s1.numerator: "); printpoly(*s1.numerator);
+    printf("g_phi2(%d): ", (int)l); printpoly(*g_phi2[(int)l]);
+#endif
+    if(!s1.numerator->IsZero()) {
+      if(!PolyEuclid(*s1.numerator, *g_phi2[(int)l], g, test))
+        return false;
+    }
+    else
+      test.ZeroPoly();
     if(!test.IsZero())
       continue;
 
@@ -489,8 +509,12 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
     s1.ZeroRational();
     if(!RationalSub(y_prime, y_j, s1))
       return false;
-    if(!PolyEuclid(*s1.numerator, *g_phi2[(int)l], g, test))
-       return false;
+    if(!s1.numerator->IsZero()) {
+      if(!PolyEuclid(*s1.numerator, *g_phi2[(int)l], g, test))
+        return false;
+    }
+    else
+      test.ZeroPoly();
     if(test.IsZero())
       *tl= j; 
     else 

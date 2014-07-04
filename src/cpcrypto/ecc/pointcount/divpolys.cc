@@ -144,6 +144,9 @@ bool Initphi(int max, polynomial& curve_x_poly) {
   mpZeroNum(s);
   mpModAdd(r,t,*p,s);                              // 8b^2+a^3
   mpModSub(g_bnZero,s,*p,(*g_phi2[4]->c_array_[0])); // -8b^2-a^3
+  mpZeroNum(s);
+  s.m_pValue[0]= 2ULL;
+  g_phi2[4]->MultiplyByNum(s);
 
   int i;
   if(!oddphirecurrence(2, curve_x_poly)) {

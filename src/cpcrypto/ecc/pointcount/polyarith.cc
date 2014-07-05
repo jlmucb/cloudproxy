@@ -802,8 +802,18 @@ bool RationalMultBy(rationalpoly& inout, rationalpoly& by) {
 }
 
 bool RationalisEqual(rationalpoly& in1, rationalpoly& in2) {
-  return PolyisEqual(*in1.numerator, *in2.numerator) && 
-          PolyisEqual(*in1.denominator, *in2.denominator);
+  bnum*       p= in1.numerator->characteristic_;
+  int         n1= in1.numerator->numc_+in2.denominator->numc_;
+  int         n2= in2.numerator->numc_+in1.denominator->numc_;
+  int         n= n1+n2;
+  polynomial  t1(*p, n, p->mpSize());
+  polynomial  t2(*p, n, p->mpSize());
+
+  if(!PolyMult(*in1.numerator, *in2.denominator, t1))
+    return false;
+  if(!PolyMult(*in2.numerator, *in1.denominator, t2))
+    return false;
+  return PolyisEqual(t1,t2);
 }
 
 void printrational(rationalpoly& p) {

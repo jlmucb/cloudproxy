@@ -162,6 +162,7 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
   rationalpoly  slope(*p, m, n, m, n);
   rationalpoly  slope_squared(*p, m, n, m, n);
   rationalpoly  curve_rational(*p, m, n, 1, n);
+  bool          x_equal, y_equal;
 
 #ifdef JLMDEBUG
   printf("EccSymbolicAdd()\n"); 
@@ -182,7 +183,13 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
     return true;
   }
 
-  if(RationalisEqual(in1x, in2x) && RationalisEqual(in1y, in2y)) {
+  x_equal= RationalisEqual(in1x, in2x); 
+  y_equal= RationalisEqual(in1y, in2y);
+  if(x_equal && !y_equal) {
+    MakeInfPoint(outx, outy);
+    return true;
+  }
+  else if(x_equal && y_equal) {
 #ifdef JLMDEBUG1
       printf("EccSymbolicAdd, slope, P=Q\n");
 #endif
@@ -275,6 +282,11 @@ bool EccSymbolicSub(polynomial& curve_x_poly,
 #ifdef JLMDEBUG
   printf("EccSymbolicSub()\n"); 
 #endif
+  if(IsInfPoint(in2x, in2y)) {
+    outx.Copyfrom(in1x);
+    outy.Copyfrom(in1y);
+    return true;
+  }
   s1.Copyfrom(in2y);
   for(i=0; i<in2y.numerator->numc_;i++) {
     bn1= in2y.numerator->c_array_[i];
@@ -304,10 +316,11 @@ int HighBit(i64 x) {
 bool EccSymbolicPointMult(polynomial& curve_x_poly, i64 t, 
                           rationalpoly& x, rationalpoly& y, 
                           rationalpoly& out_x, rationalpoly& out_y) {
-  int i;
-  int n = HighBit(t);
+  int   i;
+  int   n = HighBit(t);
   bnum* p= curve_x_poly.characteristic_;
-  i64 r= t;
+  i64   r= t;
+
 #ifdef JLMDEBUG
   printf("EccSymbolicPointMult(%lld)\n", t); 
 #endif
@@ -326,6 +339,11 @@ bool EccSymbolicPointMult(polynomial& curve_x_poly, i64 t,
                             out_x.denominator->numc_, p->mpSize());
   rationalpoly  resulty(*p, out_y.numerator->numc_, p->mpSize(),
                             out_y.denominator->numc_, p->mpSize());
+
+  if(IsInfPoint(x, y)) {
+    MakeInfPoint(out_x, out_y);
+    return true;
+  }
 
   double_rationalx.Copyfrom(x);
   double_rationaly.Copyfrom(y);

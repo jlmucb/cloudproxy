@@ -165,10 +165,10 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
 
 #ifdef JLMDEBUG
   printf("EccSymbolicAdd()\n"); 
-  printf("in1x: "); printrational(in1x);
-  printf("in1y: "); printrational(in1y);
-  printf("in2x: "); printrational(in2x);
-  printf("in2y: "); printrational(in2y);
+#endif
+#ifdef JLMDEBUG1
+  printf("in1x: "); printrational(in1x); printf("in1y: "); printrational(in1y);
+  printf("in2x: "); printrational(in2x); printf("in2y: "); printrational(in2y);
 #endif
 
   if(IsInfPoint(in1x, in1y)) {
@@ -176,14 +176,14 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
     outy.Copyfrom(in2y);
     return true;
   }
-  if(IsInfPoint(in1x, in1y)) {
+  if(IsInfPoint(in2x, in2y)) {
     outx.Copyfrom(in1x);
     outy.Copyfrom(in1y);
     return true;
   }
 
   if(RationalisEqual(in1x, in2x) && RationalisEqual(in1y, in2y)) {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
       printf("EccSymbolicAdd, slope, P=Q\n");
 #endif
     // slope= (3in1x^2+a)/(2curve_x_poly), remember implicit y
@@ -209,7 +209,7 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
       return false;
   }
   else {
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     printf("EccSymbolicAdd, slope, P!=Q\n");
 #endif
     // slope= (in2y-in1y)/(in2x-in1x), remember implicit y
@@ -219,9 +219,6 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
       return false;
     if(!RationalDiv(s2, s1, slope))
       return false;
-#ifdef JLMDEBUG
-    printrational(slope);
-#endif
   }
   if(!RationalReduce(slope))
     return false;
@@ -255,7 +252,7 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
     return false;
   if(!RationalReduce(outy))
     return false;
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
   printf("EccSymbolicAdd() result\n"); 
   printf("outx: "); printrational(outx);
   printf("outy: "); printrational(outy);
@@ -355,7 +352,7 @@ bool EccSymbolicPointMult(polynomial& curve_x_poly, i64 t,
       double_rationalx.Copyfrom(resultx);
       double_rationaly.Copyfrom(resulty);
     }
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
     printf("double_rationalx(1): "); printrational(double_rationalx);
     printf("double_rationaly(1): "); printrational(double_rationaly); 
     printf("acc_rationalx(1): "); printrational(acc_rationalx);
@@ -365,7 +362,7 @@ bool EccSymbolicPointMult(polynomial& curve_x_poly, i64 t,
   }
   acc_rationalx.Copyto(out_x);
   acc_rationaly.Copyto(out_y);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
   printf("EccSymbolicPointMult returning\n");
   printf("x: "); printrational(acc_rationalx);
   printf("y: "); printrational(acc_rationaly);
@@ -425,6 +422,7 @@ bool ComputePowerEndomorphism(polynomial& curve_x_poly, bnum& power,
   out_x.denominator->c_array_[0]->m_pValue[0]= 1ULL;
   out_y.denominator->c_array_[0]->m_pValue[0]= 1ULL;
 #ifdef JLMDEBUG
+  printf("ComputePowerEndomorphism returning ");
   printf("("); printrational(out_x);
   printf(", "); printrational(out_y); printf(")\n");
 #endif

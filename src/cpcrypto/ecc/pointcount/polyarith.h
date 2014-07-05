@@ -42,6 +42,7 @@ public:
   bool Copyfrom(polynomial& from);
   bool Copyto(polynomial& to);
   bool IsZero();
+  bool IsOne();
   bool MultiplyByNum(bnum& c);
 };
 
@@ -54,9 +55,13 @@ public:
   ~rationalpoly();
   void ZeroRational();
   void OneRational();
+  void InfRational();
   bool Copyfrom(rationalpoly& from);
   bool Copyto(rationalpoly& to);
 };
+
+bool MakeInfPoint(rationalpoly& x, rationalpoly& y);
+bool IsInfPoint(rationalpoly& x, rationalpoly& y);
 
 bool PolyAdd(polynomial& in1, polynomial& in2, polynomial& out);
 bool PolySub(polynomial& in1, polynomial& in2, polynomial& out);

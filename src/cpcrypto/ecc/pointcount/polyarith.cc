@@ -87,6 +87,20 @@ bool polynomial::IsZero() {
 }
 
 
+bool polynomial::IsOne() {
+  int i;
+
+  if(numc_<=0)
+    return true;
+  for(i=1; i<numc_; i++)
+    if(!c_array_[i]->mpIsZero())
+      return false;
+  if(c_array_[0]->m_pValue[0]==1ULL)
+    return true;
+  return false;
+}
+
+
 bool polynomial::Copyfrom(polynomial& from) {
   int   i, j;
 
@@ -181,6 +195,11 @@ void rationalpoly::ZeroRational() {
 void rationalpoly::OneRational() {
   numerator->OnePoly();
   denominator->OnePoly();
+}
+
+void rationalpoly::InfRational() {
+  numerator->OnePoly();
+  denominator->ZeroPoly();
 }
 
 bool rationalpoly::Copyfrom(rationalpoly& from) {
@@ -362,7 +381,7 @@ bool PolyEuclid(polynomial& a, polynomial& b, polynomial& q, polynomial& r) {
     printf("PolyEuclid only works in finite fields\n");
     return false;
   }
-  polynomial  prod_temp(*a.characteristic_, a.numc_, a.size_num_);
+  polynomial  prod_temp(*a.characteristic_, a.numc_, 2*(a.characteristic_->mpSize()));
 
   q.ZeroPoly();
   r.ZeroPoly();
@@ -403,7 +422,7 @@ bool PolyExtendedgcd(polynomial& a, polynomial& b,
 
   num_coeff= 2*a.numc_;
   if(a.characteristic_->mpIsZero())
-    size_num= 4*a.c_array_[0]->mpSize();
+    size_num= 2*(a.c_array_[0]->mpSize()+b.c_array_[0]->mpSize());
   else
     size_num= 2*a.characteristic_->mpSize();
 
@@ -439,6 +458,17 @@ bool PolyExtendedgcd(polynomial& a, polynomial& b,
     return true;
   }
 
+#ifdef JLMDEBUG1
+  printf("PolyExtendedgcd\n");
+  printf("c: "); printpoly(*t_c[prior]);
+  printf("d: "); printpoly(*t_d[prior]);
+  printf("g: "); printpoly(*t_g[prior]);
+  printf("-----------\n");
+  printf("c: "); printpoly(*t_c[current]);
+  printf("d: "); printpoly(*t_d[current]);
+  printf("g: "); printpoly(*t_g[current]);
+#endif
+
   while(1) {
     t_g[next]->ZeroPoly();
     t_c[next]->ZeroPoly();
@@ -457,7 +487,21 @@ bool PolyExtendedgcd(polynomial& a, polynomial& b,
     temp.ZeroPoly();
     PolyMult(*t_g[current], q, temp);
     PolySub(*t_g[prior], temp, *t_g[next]);
-    if(r.Degree()==0 || r.IsZero()) {
+#ifdef JLMDEBUG1
+    printf("-----------\n");
+    printf("c: "); printpoly(*t_c[next]);
+    printf("d: "); printpoly(*t_d[next]);
+    printf("g: "); printpoly(*t_g[next]);
+    printf("q: "); printpoly(q);
+    printf("r: "); printpoly(r);
+#endif
+    if(r.IsZero()) {
+      t_g[current]->Copyto(g);
+      t_c[current]->Copyto(c);
+      t_d[current]->Copyto(d);
+      return true;
+    }
+    if(r.Degree()<=0) {
       t_g[next]->Copyto(g);
       t_c[next]->Copyto(c);
       t_d[next]->Copyto(d);
@@ -597,6 +641,17 @@ bool PolyisEqual(polynomial& in1, polynomial& in2) {
 // ----------------------------------------------------------------------------
 
 
+bool MakeInfPoint(rationalpoly& x, rationalpoly& y) {
+  x.ZeroRational();
+  y.InfRational();
+  return true;
+}
+
+bool IsInfPoint(rationalpoly& x, rationalpoly& y) {
+  return x.numerator->IsZero() && x.denominator->IsOne() &&
+         y.numerator->IsOne() && y.denominator->IsZero();
+}
+
 // (in1.numerator in2.deniminator + in2.numerator in1.denominator)/ (in1.denominator in2.denominator)
 bool RationalAdd(rationalpoly& in1, rationalpoly& in2, rationalpoly& out) {
   bnum* p= in1.numerator->characteristic_;
@@ -683,7 +738,7 @@ bool RationalReduce(rationalpoly& inout) {
   int   nn= inout.numerator->numc_;
   int   nd= inout.denominator->numc_;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
   printf("RationalReduce in\n"); printrational(inout);
 #endif
 
@@ -709,7 +764,7 @@ bool RationalReduce(rationalpoly& inout) {
       return false;
   }
   
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
   printf("RationalReduce g\n"); printpoly(g);
 #endif
   t1.ZeroPoly();
@@ -722,7 +777,7 @@ bool RationalReduce(rationalpoly& inout) {
     return false;
   t1.Copyto(*inout.numerator);
   t2.Copyto(*inout.denominator);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
   printf("RationalReduce out\n"); printrational(inout);
 #endif
   return true;

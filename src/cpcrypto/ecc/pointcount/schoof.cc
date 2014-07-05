@@ -170,6 +170,18 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
   printf("in2x: "); printrational(in2x);
   printf("in2y: "); printrational(in2y);
 #endif
+
+  if(IsInfPoint(in1x, in1y)) {
+    outx.Copyfrom(in2x);
+    outy.Copyfrom(in2y);
+    return true;
+  }
+  if(IsInfPoint(in1x, in1y)) {
+    outx.Copyfrom(in1x);
+    outy.Copyfrom(in1y);
+    return true;
+  }
+
   if(RationalisEqual(in1x, in2x) && RationalisEqual(in1y, in2y)) {
 #ifdef JLMDEBUG
       printf("EccSymbolicAdd, slope, P=Q\n");
@@ -300,9 +312,7 @@ bool EccSymbolicPointMult(polynomial& curve_x_poly, i64 t,
   bnum* p= curve_x_poly.characteristic_;
   i64 r= t;
 #ifdef JLMDEBUG
-  printf("EccSymbolicPointMult(%lld), (x,y)= \n", t); 
-  printf("("); printrational(x);
-  printf(", "); printrational(y); printf(")\n");
+  printf("EccSymbolicPointMult(%lld)\n", t); 
 #endif
 
   rationalpoly  acc_rationalx(*p, out_x.numerator->numc_, p->mpSize(), 
@@ -322,15 +332,7 @@ bool EccSymbolicPointMult(polynomial& curve_x_poly, i64 t,
 
   double_rationalx.Copyfrom(x);
   double_rationaly.Copyfrom(y);
-  acc_rationalx.ZeroRational();
-  acc_rationaly.ZeroRational();
-
-#ifdef JLMDEBUG1
-  printf("double_rational: ("); printrational(double_rationalx);
-  printf(", "); printrational(double_rationaly); printf(")\n");
-  printf("acc_rational: ("); printrational(acc_rationalx);
-  printf(", "); printrational(acc_rationaly); printf(")\n");
-#endif
+  MakeInfPoint(acc_rationalx, acc_rationaly);
 
   for (i = 0; i < n; i++) {
     if (r&1) {
@@ -353,10 +355,21 @@ bool EccSymbolicPointMult(polynomial& curve_x_poly, i64 t,
       double_rationalx.Copyfrom(resultx);
       double_rationaly.Copyfrom(resulty);
     }
+#ifdef JLMDEBUG
+    printf("double_rationalx(1): "); printrational(double_rationalx);
+    printf("double_rationaly(1): "); printrational(double_rationaly); 
+    printf("acc_rationalx(1): "); printrational(acc_rationalx);
+    printf("acc_rationaly(1): "); printrational(acc_rationaly);
+#endif
     r>>= 1ULL;
   }
   acc_rationalx.Copyto(out_x);
   acc_rationaly.Copyto(out_y);
+#ifdef JLMDEBUG
+  printf("EccSymbolicPointMult returning\n");
+  printf("x: "); printrational(acc_rationalx);
+  printf("y: "); printrational(acc_rationaly);
+#endif
   return true;
 }
 

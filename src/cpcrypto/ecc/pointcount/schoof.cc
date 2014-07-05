@@ -513,9 +513,14 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
   // Compute (x_p_bar, y_p_bar) and (x^(p^2), y^(p^2))
   if(!ComputeMultEndomorphism(curve_x_poly, p_bar, x_p_bar, y_p_bar))
     return false;
+#ifdef JLMDEBUG
+  printf("Computing x_p_squared\n");
+#endif
   if(!ComputePowerEndomorphism(curve_x_poly, p_squared, x_p_squared, y_p_squared))
     return false;
-
+#ifdef JLMDEBUG
+  printf("Computing x_prime\n");
+#endif
   // x_prime= curve_x_poly((y_p_squared- y_p_bar)/(x_p_squared-x_p_bar]))^2
   //                     -x_p_squared-x_p_bar
   if(!RationalSub(y_p_squared, y_p_bar, t_y))
@@ -556,12 +561,21 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
   for(j=1; j<=(l-1)/2; j++) {
 
     // compute j(x,y)= (x_j,y_j)
+#ifdef JLMDEBUG
+    printf("Computing x_j\n");
+#endif
     if(!ComputeMultEndomorphism(curve_x_poly, j, x_j, y_j))
       return false;
+#ifdef JLMDEBUG
+    printf("Computing t_x\n");
+#endif
     if(!ComputePowerEndomorphism(curve_x_poly, *p, t_x, t_y))
       return false;
 
     // compute test= x_prime-x_j^p (mod phi[l])
+#ifdef JLMDEBUG
+    printf("Computing x_prime-x_j^p\n");
+#endif
     s1.ZeroRational();
     g.ZeroPoly();
     if(!RationalSub(x_prime, t_x, s1))
@@ -572,8 +586,13 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
     printf("g_phi2(%d): ", (int)l); printpoly(*g_phi2[(int)l]);
 #endif
     if(!s1.numerator->IsZero()) {
-      if(!PolyEuclid(*s1.numerator, *g_phi2[(int)l], g, test))
-        return false;
+      if(s1.numerator->Degree()>g_phi2[(int)l]->Degree()) {
+        if(!PolyEuclid(*s1.numerator, *g_phi2[(int)l], g, test))
+          return false;
+      }
+      else {
+      test.OnePoly();
+      }
     }
     else
       test.ZeroPoly();

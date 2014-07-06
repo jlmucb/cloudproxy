@@ -224,7 +224,6 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
     s1.denominator->c_array_[0]->m_pValue[0]= 2ULL;
     curve_rational.numerator->Copyfrom(curve_x_poly);
     curve_rational.denominator->c_array_[0]->m_pValue[0]= 1ULL;
-
     if(!RationalMult(in1x, in1x, s2))
       return false;
     if(!RationalMult(s2, s1, s3))
@@ -247,8 +246,10 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
       return false;
     if(!RationalSub(in2y, in1y, s2))
       return false;
-    if(!RationalDiv(s2, s1, slope))
+    if(!RationalDiv(s2, s1, slope)) {
+      printf("EccSymbolicAdd fails at RationalDiv\n");
       return false;
+    }
   }
   if(!RationalReduce(slope))
     return false;
@@ -489,7 +490,7 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
   bnum*         p= curve_x_poly.characteristic_;
   i64           p_bar= Reducedp(*p, l);
   int           n= p->mpSize();
-  int           m= 2*(int)l;
+  int           m= 8*(int)l;
   bnum          p_squared(2*n+1);
   bnum          small_num(1);
   bnum          w(n);  // square root of p
@@ -1222,6 +1223,20 @@ void SymbolicTest(u64 test_prime, u64 test_a, u64 test_b)
   smallprintrational(r_t6); 
   printf(")\n");
   t= 2;
+  if(!EccSymbolicPointMult(curve_x_poly, t, r_t3, r_t4, r_t5, r_t6)) {
+    printf("EccSymbolicPointMult fails\n");
+  }
+  printf("%lld( ", t);
+  smallprintrational(r_t3); 
+  printf(", ");
+  smallprintrational(r_t4); 
+  printf(") = ");
+  printf("( ");
+  smallprintrational(r_t5); 
+  printf(", ");
+  smallprintrational(r_t6); 
+  printf(")\n");
+  t= 3;
   if(!EccSymbolicPointMult(curve_x_poly, t, r_t3, r_t4, r_t5, r_t6)) {
     printf("EccSymbolicPointMult fails\n");
   }

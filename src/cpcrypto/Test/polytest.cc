@@ -31,6 +31,7 @@ using namespace std;
 
 
 extern bool schoof(bnum& a, bnum& b, bnum& p, bnum& order);
+extern void SymbolicTest(u64 test_prime, u64 test_a, u64 test_b);
 
 
 // ----------------------------------------------------------------------------
@@ -205,6 +206,9 @@ int main(int an, char** av) {
   printf("CRT solution is ");
   printNumberToConsole(solution);
   printf("\n");
+
+  SymbolicTest(97ULL, 46ULL, 74ULL);
+  return 0;
 
   printf("\n\n");
   printf("bsgs tests\n");

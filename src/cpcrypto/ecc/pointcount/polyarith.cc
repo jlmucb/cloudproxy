@@ -26,7 +26,7 @@
 #include "stdio.h"
 
 
-// #define JLMDEBUG
+#define JLMDEBUG
 
 // ----------------------------------------------------------------------------
 
@@ -366,9 +366,9 @@ bool PolyMult(polynomial& in1, polynomial& in2, polynomial& out) {
 
 // a(x)= b(x)*q(x)+r(x), deg(r(x))<deg(b(x))
 bool PolyEuclid(polynomial& a, polynomial& b, polynomial& q, polynomial& r) {
-  int deg_a= a.Degree();
-  int deg_b= b.Degree();
-  int deg_r;
+  int   deg_a= a.Degree();
+  int   deg_b= b.Degree();
+  int   deg_r;
   bnum* p_b_lead_coeff;
   bnum* p_r_lead_coeff;
 
@@ -511,9 +511,6 @@ bool PolyExtendedgcd(polynomial& a, polynomial& b,
     current= (current+1)%3;
     next= (next+1)%3;
   }
-  t_g[current]->Copyto(g);
-  t_c[current]->Copyto(c);
-  t_d[current]->Copyto(d);
   return true;
 }
 

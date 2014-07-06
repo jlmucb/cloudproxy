@@ -252,7 +252,7 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
   return true;
 }
 
-bool EccSymbolicSub(polynomial& curve_x_poly, 
+bool EccSymbolicMult(polynomial& curve_x_poly, 
                     rationalpoly& in1x, rationalpoly& in1y,
                     rationalpoly& in2x, rationalpoly& in2y, 
                     rationalpoly& outx, rationalpoly& outy) {
@@ -770,6 +770,309 @@ bool schoof(bnum& a, bnum& b, bnum& p, bnum& order)
 #endif
   return true;
 }
+
+
+// ----------------------------------------------------------------------------
+
+
+#ifdef JLMDEBUG
+
+
+void smallprintpoly(polynomial& p,bool printmod=false) {
+  int j;
+
+  for(j=p.numc_-1; j>=0; j--)
+    if(p.c_array_[j]->m_pValue[0]!=0)
+      break;
+  if(j<0) {
+    printf("0 ");
+  }
+  else {
+    int k= j;
+    for(;j>=0; j--) {
+      if(p.c_array_[j]->m_pValue[0]==0)
+        continue;
+      if(k==j && j==0)
+        printf("%lld ", p.c_array_[j]->m_pValue[0],j);
+      else if(k==j && j>0)
+        printf("%lldx^%d", p.c_array_[j]->m_pValue[0],j);
+      else if(j>0)
+        printf("+%lldx^%d", p.c_array_[j]->m_pValue[0],j);
+      else
+        printf("+%lld ", p.c_array_[j]->m_pValue[0]);
+    }
+  }
+  if(printmod)
+    printf("(mod %lld)", p.characteristic_->m_pValue[0]);
+}
+
+void smallprintrational(rationalpoly& r, bool printmod=false) {
+  printf("(");
+  smallprintpoly(*r.numerator, printmod);
+  printf("/");
+  smallprintpoly(*r.denominator, printmod);
+  printf(")");
+}
+
+
+void SymbolicTest(u64 test_prime, u64 test_a, u64 test_b)
+{
+  int         n= 2;   // size of bignum
+  int         m= 8;   // number of terms
+  bnum        p(n);
+  bnum        a(n);
+  bnum        b(n);
+  int         j;
+
+  p.m_pValue[0]= test_prime;
+  a.m_pValue[0]= test_a;
+  b.m_pValue[0]= test_b;
+
+  polynomial  curve_x_poly(p, 4, n);
+
+  printf("\n\nSymbolicTest\n\n");
+
+  // initialize curve
+  curve_x_poly.c_array_[3]->m_pValue[0]= 1ULL;
+  curve_x_poly.c_array_[2]->m_pValue[0]= 0ULL;
+  a.mpCopyNum(*curve_x_poly.c_array_[1]);
+  b.mpCopyNum(*curve_x_poly.c_array_[0]);
+  printf("y^2= ");
+  smallprintpoly(curve_x_poly, true);
+  printf("\n");
+
+  polynomial      p_t1(p,m,n);
+  polynomial      p_t2(p,m,n);
+  polynomial      p_t3(p,m,n);
+  polynomial      p_t4(p,m,n);
+  polynomial      p_t5(p,m,n);
+  polynomial      p_t6(p,m,n);
+
+  rationalpoly    r_t1(p,m,n,m,n);
+  rationalpoly    r_t2(p,m,n,m,n);
+  rationalpoly    r_t3(p,m,n,m,n);
+  rationalpoly    r_t4(p,m,n,m,n);
+
+  p_t1.OnePoly();
+  // x+1
+  p_t2.c_array_[0]->m_pValue[0]= 1;
+  p_t2.c_array_[1]->m_pValue[0]= 1;
+  p_t3.ZeroPoly();
+  p_t4.ZeroPoly();
+  p_t5.ZeroPoly();
+  p_t6.ZeroPoly();
+
+  printf("\n");
+  if(!PolyAdd(p_t1, p_t1, p_t6)) {
+    printf("PolyAdd fails\n");
+  }
+  smallprintpoly(p_t1); printf("+ ");
+  smallprintpoly(p_t1); printf("= ");
+  smallprintpoly(p_t6, true); printf("\n");
+  p_t6.ZeroPoly();
+
+  if(!PolyAdd(p_t1, p_t3, p_t6)) {
+    printf("PolyAdd fails\n");
+  }
+  smallprintpoly(p_t1); printf("+ ");
+  smallprintpoly(p_t3); printf("= ");
+  smallprintpoly(p_t6, true); printf("\n");
+  p_t6.ZeroPoly();
+
+  if(!PolyAdd(p_t2, p_t2, p_t6)) {
+    printf("PolyAdd fails\n");
+  }
+  smallprintpoly(p_t2); printf("+ ");
+  smallprintpoly(p_t2); printf("= ");
+  smallprintpoly(p_t6, true); printf("\n");
+  p_t6.ZeroPoly();
+
+  printf("\n");
+  if(!PolySub(p_t1, p_t1, p_t6)) {
+    printf("PolySub fails\n");
+  }
+  smallprintpoly(p_t1); printf("- ");
+  smallprintpoly(p_t1); printf("= ");
+  smallprintpoly(p_t6, true); printf("\n");
+  p_t6.ZeroPoly();
+
+  if(!PolySub(p_t2, p_t3, p_t6)) {
+    printf("PolySub fails\n");
+  }
+  smallprintpoly(p_t1); printf("- ");
+  smallprintpoly(p_t3); printf("= ");
+  smallprintpoly(p_t6, true); printf("\n");
+  p_t6.ZeroPoly();
+
+  if(!PolySub(p_t1, p_t2, p_t6)) {
+    printf("PolySub fails\n");
+  }
+  smallprintpoly(p_t1); printf("- ");
+  smallprintpoly(p_t2); printf("= ");
+  smallprintpoly(p_t6, true); printf("\n");
+  p_t6.ZeroPoly();
+  
+  printf("\n");
+  if(!PolyMult(p_t1, p_t2, p_t6)) {
+    printf("PolyMult fails\n");
+  }
+  smallprintpoly(p_t1); printf("* ");
+  smallprintpoly(p_t2); printf("= ");
+  smallprintpoly(p_t6, true); printf("\n");
+  p_t6.ZeroPoly();
+  
+  if(!PolyMult(p_t2, p_t2, p_t6)) {
+    printf("PolyMult fails\n");
+  }
+  smallprintpoly(p_t2); printf("* ");
+  smallprintpoly(p_t2); printf("= ");
+  smallprintpoly(p_t6, true); printf("\n");
+
+  if(!PolyMult(p_t6, p_t6, p_t5)) {
+    printf("PolyMult fails\n");
+  }
+  smallprintpoly(p_t6); printf("* ");
+  smallprintpoly(p_t6); printf("= ");
+  smallprintpoly(p_t5, true); printf("\n");
+  p_t6.ZeroPoly();
+  p_t4.ZeroPoly();
+
+  printf("\n");
+  p_t5.Copyto(p_t4);
+  printf("Copy ");
+  smallprintpoly(p_t5, true);
+  printf(" to ");
+  smallprintpoly(p_t4, true);
+  printf("\n");
+  p_t4.ZeroPoly();
+  p_t4.Copyfrom(p_t5);
+  printf("Copy ");
+  smallprintpoly(p_t4, true);
+  printf(" from ");
+  p_t4.Copyfrom(p_t5);
+  smallprintpoly(p_t5, true);
+  printf("\n");
+
+  printf("\n");
+  smallprintpoly(p_t5);
+  if(PolyisEqual(p_t5, p_t5)) {
+    printf(" == ");
+  }
+  else {
+    printf(" != ");
+  }
+  smallprintpoly(p_t5);
+  printf("\n");
+  smallprintpoly(p_t5);
+  if(PolyisEqual(p_t5, p_t1)) {
+    printf(" == ");
+  }
+  else {
+    printf(" != ");
+  }
+  smallprintpoly(p_t1);
+  printf("\n");
+
+  p_t4.ZeroPoly();
+  p_t6.ZeroPoly();
+  printf("\n");
+  printf("Euclid: ");
+  if(!PolyEuclid(p_t5, p_t2, p_t4, p_t6)) {
+    printf("PolyEuclid fails\n");
+  }
+  smallprintpoly(p_t5); printf("= ");
+  smallprintpoly(p_t2); printf(" (");
+  smallprintpoly(p_t4); printf(") + ");
+  smallprintpoly(p_t6); printf("\n");
+
+  p_t4.ZeroPoly();
+  p_t6.ZeroPoly();
+  p_t3.c_array_[0]->m_pValue[0]= test_prime-1;
+  p_t3.c_array_[1]->m_pValue[0]= 1;
+  printf("Euclid: ");
+  if(!PolyEuclid(p_t5, p_t3, p_t4, p_t6)) {
+    printf("PolyEuclid fails\n");
+  }
+  smallprintpoly(p_t5); printf("= ");
+  smallprintpoly(p_t3); printf(" (");
+  smallprintpoly(p_t4); printf(") + ");
+  smallprintpoly(p_t6); printf("\n");
+  printf("\n");
+
+
+  p_t1.ZeroPoly();
+  p_t4.ZeroPoly();
+  p_t6.ZeroPoly();
+  printf("Extended gcd: ");
+  if(!PolyExtendedgcd(p_t5, p_t2, p_t4, p_t1, p_t6)) {
+    printf("Polyextendedgcd fails\n");
+  }
+  smallprintpoly(p_t6); printf("= (");
+  smallprintpoly(p_t5); printf(") (");
+  smallprintpoly(p_t4); printf(") + (");
+  smallprintpoly(p_t2); printf(") (");
+  smallprintpoly(p_t1); printf(")");
+  printf("\n");
+
+#if 0
+  if(!MakeInfPoint(rationalpoly& x, rationalpoly& y)) {
+    printf("MakeInfPoint fails\n");
+  }
+  if(IsInfPoint(rationalpoly& x, rationalpoly& y)) {
+  }
+  if(!Reducelargepower(bnum& power, polynomial& mod_poly, polynomial& result)) {
+    printf("Reducelargepowerfails\n");
+  }
+  if(!RationalAdd(rationalpoly& in1, rationalpoly& in2, rationalpoly& out)) {
+    printf("RationalAdd fails\n");
+  }
+  if(!RationalSub(rationalpoly& in1, rationalpoly& in2, rationalpoly& out)) {
+    printf("RationalSub fails\n");
+  }
+  if(!RationalMult(rationalpoly& in1, rationalpoly& in2, rationalpoly& out)) {
+    printf("RationalMult fails\n");
+  }
+  if(!RationalDiv(rationalpoly& in1, rationalpoly& in2, rationalpoly& out)) {
+    printf("RationalMult fails\n");
+  }
+  if(!RationalMultBy(rationalpoly& inout, rationalpoly& by)) {
+    printf("RationalMultBy fails\n");
+  }
+  if(!RationalisEqual(rationalpoly& in1, rationalpoly& in2)) {
+    printf("RationalisEqual fails\n");
+  }
+  if(!RationalReduce(rationalpoly& inout)) {
+    printf("RationalReduce fails\n");
+  }
+  if(!ComputeMultEndomorphism(polynomial& curve_x_poly, i64 c, 
+                              rationalpoly& out_x, rationalpoly& out_y)) {
+    printf("ComputeMultEndomorphism fails\n");
+  }
+  if(!ComputePowerEndomorphism(polynomial& curve_x_poly, bnum& power, 
+                              rationalpoly& out_x, rationalpoly& out_y)) {
+    printf("ComputePowerEndomorphism fails\n");
+  }
+  if(!EccSymbolicAdd(polynomial& curve_x_poly, 
+                    rationalpoly& in1x, rationalpoly& in1y,
+                    rationalpoly& in2x, rationalpoly& in2y, 
+                    rationalpoly& outx, rationalpoly& outy);) {
+    printf("EccSymbolicAdd fails\n");
+  }
+  if(!EccSymbolicSub(polynomial& curve_x_poly, 
+                    rationalpoly& in1x, rationalpoly& in1y,
+                    rationalpoly& in2x, rationalpoly& in2y, 
+                    rationalpoly& outx, rationalpoly& outy)) {
+    printf("RationalReduce fails\n");
+  }
+  if(!EccSymbolicPointMult(polynomial& curve_x_poly, i64 t, 
+                          rationalpoly& x, rationalpoly& y, 
+                          rationalpoly& out_x, rationalpoly& out_y)) {
+    printf("RationalReduce fails\n");
+  }
+#endif
+}
+
+#endif
 
 
 // ----------------------------------------------------------------------------

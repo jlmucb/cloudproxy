@@ -26,7 +26,7 @@
 #include "stdio.h"
 
 
-#define JLMDEBUG
+// #define JLMDEBUG
 
 // ----------------------------------------------------------------------------
 
@@ -497,8 +497,8 @@ bool PolyExtendedgcd(polynomial& a, polynomial& b,
 #endif
     if(r.IsZero()) {
       t_g[current]->Copyto(g);
-      t_c[current]->Copyto(c);
-      t_d[current]->Copyto(d);
+      t_c[next]->Copyto(c);
+      t_d[next]->Copyto(d);
       return true;
     }
     if(r.Degree()<=0) {
@@ -735,7 +735,7 @@ bool RationalReduce(rationalpoly& inout) {
   int   nn= inout.numerator->numc_;
   int   nd= inout.denominator->numc_;
 
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
   printf("RationalReduce in\n"); printrational(inout);
 #endif
 
@@ -761,7 +761,7 @@ bool RationalReduce(rationalpoly& inout) {
       return false;
   }
   
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
   printf("RationalReduce g\n"); printpoly(g);
 #endif
   t1.ZeroPoly();
@@ -774,7 +774,7 @@ bool RationalReduce(rationalpoly& inout) {
     return false;
   t1.Copyto(*inout.numerator);
   t2.Copyto(*inout.denominator);
-#ifdef JLMDEBUG1
+#ifdef JLMDEBUG
   printf("RationalReduce out\n"); printrational(inout);
 #endif
   return true;

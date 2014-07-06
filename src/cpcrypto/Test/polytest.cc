@@ -208,7 +208,6 @@ int main(int an, char** av) {
   printf("\n");
 
   SymbolicTest(97ULL, 46ULL, 74ULL);
-  return 0;
 
   printf("\n\n");
   printf("bsgs tests\n");

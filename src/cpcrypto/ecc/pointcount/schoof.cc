@@ -64,6 +64,46 @@ extern bool Initphi(int max, polynomial& curve_x_poly);
 extern void Freephi();
 extern bool Reducelargepower(bnum&, polynomial&, polynomial&);
 
+
+void smallprintpoly(polynomial& p,bool printmod=false) {
+  int j;
+
+  for(j=p.numc_-1; j>=0; j--)
+    if(p.c_array_[j]->m_pValue[0]!=0)
+      break;
+  if(j<0) {
+    printf("0 ");
+  }
+  else {
+    int k= j;
+    for(;j>=0; j--) {
+      if(p.c_array_[j]->m_pValue[0]==0)
+        continue;
+      if(k==j && j==0)
+        printf("%lld ", p.c_array_[j]->m_pValue[0],j);
+      else if(k==j && j>0)
+        printf("%lldx^%d", p.c_array_[j]->m_pValue[0],j);
+      else if(j>0)
+        printf("+%lldx^%d", p.c_array_[j]->m_pValue[0],j);
+      else
+        printf("+%lld ", p.c_array_[j]->m_pValue[0]);
+    }
+  }
+  if(printmod)
+    printf("(mod %lld)", p.characteristic_->m_pValue[0]);
+}
+
+void smallprintrational(rationalpoly& r, bool printmod=false) {
+  printf("(");
+  smallprintpoly(*r.numerator, printmod);
+  printf("/");
+  smallprintpoly(*r.denominator, printmod);
+  printf(")");
+}
+
+// ------------------------------------------------------------------------------------
+
+
 // select primes != p until prod>4(sqrt p)
 bool pickS(bnum& p)
 {
@@ -455,7 +495,7 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
   bnum          w(n);  // square root of p
 
 #ifdef JLMDEBUG
-  printf("computetmododdprime(%d)\n", (int) l);
+  printf("computetmododdprime(%d), p_bar: %lld\n", (int) l, p_bar);
 #endif
 
   // note: check to see if m is an overestimate
@@ -535,12 +575,12 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
 
 #ifdef JLMDEBUG
     printf("computetmododdprime\n");
-    printf("x_p_bar: "); printrational(x_p_bar);
-    printf("y_p_bar: "); printrational(y_p_bar);
-    printf("x_p_squared: "); printrational(x_p_squared);
-    printf("y_p_squared: "); printrational(y_p_bar);
-    printf("x_prime: "); printrational(x_prime);
-    printf("y_prime: "); printrational(y_prime);
+    printf("x_p_bar: "); smallprintrational(x_p_bar); printf("\n");
+    printf("y_p_bar: "); smallprintrational(y_p_bar); printf("\n");
+    printf("x_p_squared: "); smallprintrational(x_p_squared); printf("\n");
+    printf("y_p_squared: "); smallprintrational(y_p_bar); printf("\n");
+    printf("x_prime: "); smallprintrational(x_prime); printf("\n");
+    printf("y_prime: "); smallprintrational(y_prime); printf("\n");
     printf("\n");
 #endif
 
@@ -566,10 +606,10 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
     if(!RationalSub(x_prime, t_x, s1))
       return false;
 #ifdef JLMDEBUG
-    printf("x_%d: ", (int)j); printrational(x_j);
-    printf("y_%d: ", (int)j); printrational(y_j);
-    printf("x_prime-x_j^p: "); printrational(s1);
-    printf("g_phi2(%d): ", (int)l); printpoly(*g_phi2[(int)l]);
+    printf("x_%d: ", (int)j); smallprintrational(x_j); printf("\n");
+    printf("y_%d: ", (int)j); smallprintrational(y_j); printf("\n");
+    printf("x_prime-x_j^p: "); smallprintrational(s1); printf("\n");
+    printf("g_phi2(%d): ", (int)l); smallprintpoly(*g_phi2[(int)l], true); printf("\n");
     printf("\n");
 #endif
     // num(s1)= 0 mod g_phi2[l]?
@@ -724,7 +764,7 @@ bool schoof(bnum& a, bnum& b, bnum& p, bnum& order)
 #ifdef JLMDEBUG
   printf("\n%d division polynomials computed\n", g_maxcoeff);
   for(j=0; j<g_maxcoeff; j++) {
-    printf("g_phi2[%d]: ", j); printpoly(*g_phi2[j]);
+    printf("g_phi2[%d]: ", j); smallprintpoly(*g_phi2[j]); printf("\n");
   }
   printf("\n");
 #endif
@@ -778,43 +818,6 @@ bool schoof(bnum& a, bnum& b, bnum& p, bnum& order)
 #ifdef JLMDEBUG
 
 
-void smallprintpoly(polynomial& p,bool printmod=false) {
-  int j;
-
-  for(j=p.numc_-1; j>=0; j--)
-    if(p.c_array_[j]->m_pValue[0]!=0)
-      break;
-  if(j<0) {
-    printf("0 ");
-  }
-  else {
-    int k= j;
-    for(;j>=0; j--) {
-      if(p.c_array_[j]->m_pValue[0]==0)
-        continue;
-      if(k==j && j==0)
-        printf("%lld ", p.c_array_[j]->m_pValue[0],j);
-      else if(k==j && j>0)
-        printf("%lldx^%d", p.c_array_[j]->m_pValue[0],j);
-      else if(j>0)
-        printf("+%lldx^%d", p.c_array_[j]->m_pValue[0],j);
-      else
-        printf("+%lld ", p.c_array_[j]->m_pValue[0]);
-    }
-  }
-  if(printmod)
-    printf("(mod %lld)", p.characteristic_->m_pValue[0]);
-}
-
-void smallprintrational(rationalpoly& r, bool printmod=false) {
-  printf("(");
-  smallprintpoly(*r.numerator, printmod);
-  printf("/");
-  smallprintpoly(*r.denominator, printmod);
-  printf(")");
-}
-
-
 void SymbolicTest(u64 test_prime, u64 test_a, u64 test_b)
 {
   int         n= 2;   // size of bignum
@@ -822,7 +825,6 @@ void SymbolicTest(u64 test_prime, u64 test_a, u64 test_b)
   bnum        p(n);
   bnum        a(n);
   bnum        b(n);
-  int         j;
 
   p.m_pValue[0]= test_prime;
   a.m_pValue[0]= test_a;
@@ -839,7 +841,7 @@ void SymbolicTest(u64 test_prime, u64 test_a, u64 test_b)
   a.mpCopyNum(*curve_x_poly.c_array_[1]);
   b.mpCopyNum(*curve_x_poly.c_array_[0]);
   printf("y^2= ");
-  smallprintpoly(curve_x_poly, true);
+  smallprintpoly(curve_x_poly, true);printf("\n");
   printf("\n");
 
   polynomial      p_t1(p,m,n);

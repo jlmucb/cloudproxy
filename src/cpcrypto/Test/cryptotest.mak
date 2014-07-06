@@ -29,7 +29,7 @@ aesobjs=      $(B)/aestest.o $(B)/logging.o
 shaobjs=      $(B)/shatest.o $(B)/logging.o 
 sha256objs=   $(B)/sha256test.o $(B)/logging.o 
 polyobjs=     $(B)/polytest.o $(B)/polyarith.o $(B)/logging.o $(B)/bsgs.o \
-	      $(B)/divpolys.o $(B)/schoof.o $(B)/mpRand.o
+		$(B)/divpolys.o $(B)/schoof.o
 
 all: $(E)/aestest.exe $(E)/sha256test.exe $(E)/shatest.exe $(E)/polytest.exe
 
@@ -72,9 +72,6 @@ $(B)/bsgs.o: $(S)/ecc/pointcount/bsgs.cc
 
 $(B)/divpolys.o: $(S)/ecc/pointcount/divpolys.cc 
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/divpolys.o $(S)/ecc/pointcount/divpolys.cc
-
-$(B)/mpRand.o: $(S)/bignum/mpRand.cc 
-	$(CC) $(CFLAGS) $(INCLUDES) -DUNIXRANDBITS -c -o $(B)/mpRand.o $(S)/bignum/mpRand.cc
 
 $(B)/schoof.o: $(S)/ecc/pointcount/schoof.cc 
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $(B)/schoof.o $(S)/ecc/pointcount/schoof.cc

@@ -151,15 +151,15 @@ i64 Reducedp(bnum& p, u64 l) {
 }
 
 
-int maxterms(rationalpoly& in1x, rationalpoly& in1y)
+int maxterms(rationalpoly& in1, rationalpoly& in2)
 {
-  int m= in1x.numerator->numc_;
-  if(in1x.denominator->numc_>m)
-    m= in1x.denominator->numc_;
-  if(in1y.numerator->numc_>m)
-    m= in1y.numerator->numc_;
-  if(in1y.denominator->numc_>m)
-    m= in1y.denominator->numc_;
+  int m= in1.numerator->numc_;
+  if(in1.denominator->numc_>m)
+    m= in1.denominator->numc_;
+  if(in2.numerator->numc_>m)
+    m= in2.numerator->numc_;
+  if(in2.denominator->numc_>m)
+    m= in2.denominator->numc_;
   return m;
 }
 
@@ -424,6 +424,8 @@ bool ComputeMultEndomorphism(polynomial& curve_x_poly, i64 c,
 #ifdef JLMDEBUG1
   printf("ComputeMultEndomorphism(%d)\n", (int)c);
 #endif
+  x_poly.ZeroRational();
+  y_poly.ZeroRational();
   // set (x, y)
   x_poly.numerator->c_array_[1]->m_pValue[0]= 1ULL;
   x_poly.denominator->c_array_[0]->m_pValue[0]= 1ULL;
@@ -487,11 +489,11 @@ bool computetmod2(polynomial& curve_x_poly, u64* tl)
 // compute t (mod l)
 bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
 {
-  u64           j;
+  i64           j;
   bnum*         p= curve_x_poly.characteristic_;
   i64           p_bar= Reducedp(*p, l);
   int           n= p->mpSize();
-  int           m= 8*(int)l;
+  int           m= 2*(int)l;
   bnum          p_squared(2*n+1);
   bnum          small_num(1);
   bnum          w(n);  // square root of p
@@ -527,14 +529,23 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
   // compute p^2
   mpMult(*p, *p, p_squared);
 
+  x_p_bar.ZeroRational();
+  y_p_bar.ZeroRational();
+
   // Compute (x_p_bar, y_p_bar) and (x^(p^2), y^(p^2))
-  if(!ComputeMultEndomorphism(curve_x_poly, p_bar, x_p_bar, y_p_bar))
+  // something wierd happens here
+  if(!ComputeMultEndomorphism(curve_x_poly, (i64)p_bar, x_p_bar, y_p_bar))
     return false;
+  if(!ComputeMultEndomorphism(curve_x_poly, (i64)p_bar, x_p_bar, y_p_bar))
+    return false;
+
 #ifdef JLMDEBUG
-  printf("Computing x_p_squared\n");
+  printf("Computing x_p_squared, p_bar= %lld\n", p_bar);
 #endif
+
   if(!ComputePowerEndomorphism(curve_x_poly, p_squared, x_p_squared, y_p_squared))
     return false;
+
 #ifdef JLMDEBUG
   printf("Computing x_prime\n");
 #endif
@@ -612,9 +623,10 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
     printf("y_%d: ", (int)j); smallprintrational(y_j); printf("\n");
     printf("x_prime-x_j^p: "); smallprintrational(s1); printf("\n");
     printf("g_phi2(%d): ", (int)l); smallprintpoly(*g_phi2[(int)l], true); printf("\n");
+    printf("num(x_prime-x_j^p): "); smallprintpoly(*s1.numerator); printf("\n");
     printf("\n");
 #endif
-    // num(s1)= 0 mod g_phi2[l]?
+    // num(s1)= 0 (mod g_phi2[l])
     g.ZeroPoly();
     test.ZeroPoly();
     if(!s1.numerator->IsZero()) {
@@ -626,8 +638,9 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
         test.OnePoly();
       }
     }
-    else
-      test.ZeroPoly();
+#ifdef JLMDEBUG
+    printf("x_prime test: "); smallprintpoly(test); printf("\n");
+#endif
     if(!test.IsZero())
       continue;
 
@@ -643,12 +656,13 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
     }
     else
       test.ZeroPoly();
-    if(test.IsZero())
+    if(!test.IsZero())
       *tl= j; 
     else 
-      *tl= l-(u64)j;
+      *tl= l-j;
 #ifdef JLMDEBUG
-    printf("computetmododdprime returning true from j loop, j= %d\n",j);
+    printf("computemododdprime returning true from j loop, j= %lld\n",j);
+    printf("test: "); smallprintpoly(test); printf("\n");
 #endif
     return true;
   }

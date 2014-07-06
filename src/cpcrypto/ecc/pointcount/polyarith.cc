@@ -76,8 +76,6 @@ void polynomial::OnePoly() {
 bool polynomial::IsZero() {
   int i;
 
-  if(numc_<=0)
-    return true;
   for(i=0; i<numc_; i++)
     if(!c_array_[i]->mpIsZero())
       return false;

@@ -51,6 +51,9 @@ int main(int an, char** av) {
   initBigNum();
   initLog(NULL);
 
+  polynomial   x_poly(p,2,1);
+  x_poly.c_array_[1]->m_pValue[0]= 1ULL;
+
   polynomial*  pp1= new polynomial(p, 5, 4);
   polynomial*  pp2= new polynomial(p, 5, 4);
   polynomial*  pp3= new polynomial(p, 5, 4);
@@ -162,12 +165,12 @@ int main(int an, char** av) {
   }
   result.ZeroPoly();
 
-  u64   v[6]= {0, 1, 2, 3, 4,5};
+  u64   v[6]= {0, 1, 2, 3, 4, 5};
   k= 6;
   for(i=0; i<k;i++) {
     power.m_pValue[0]= v[i];
     result.ZeroPoly();
-    if(!Reducelargepower(power, mod_poly, result)) {
+    if(!Reducelargepower(power, x_poly, mod_poly, result)) {
         printf("Reducelargepower returns false\n");
     }
     else {

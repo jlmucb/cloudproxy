@@ -367,6 +367,7 @@ bool PolyEuclid(polynomial& a, polynomial& b, polynomial& q, polynomial& r) {
   int   deg_r;
   bnum* p_b_lead_coeff;
   bnum* p_r_lead_coeff;
+  int   guard= 1000;
 
   if(deg_a<deg_b) {
     printf("PolyEuclid degree(b)>degree(a)\n");
@@ -387,10 +388,25 @@ bool PolyEuclid(polynomial& a, polynomial& b, polynomial& q, polynomial& r) {
   while((deg_r=r.Degree())>=deg_b && deg_b>=0) {
     // Subtract leadcoeff(r)/leadcoeff(b)*b(x)*x^(deg_r-deg_b) from r
     p_r_lead_coeff= r.c_array_[deg_r];
-    mpModDiv(*p_r_lead_coeff, *p_b_lead_coeff, *a.characteristic_, *q.c_array_[deg_r-deg_b]);
+    if(!mpModDiv(*p_r_lead_coeff, *p_b_lead_coeff, *a.characteristic_, *q.c_array_[deg_r-deg_b]))
+      return false;
+    if(q.c_array_[deg_r-deg_b]->mpIsZero()) {
+        printf("mpModDiv failure in PolyEuclid, deg r: %d, deg b: %d\n", deg_r, deg_b);
+        printf("p_r_lead_coeff: %lld, p_b_lead_coeff: %lld, q.c_array_[deg_r-deg_b]: %lld\n",
+               p_r_lead_coeff->m_pValue[0],  p_b_lead_coeff->m_pValue[0],q.c_array_[deg_r-deg_b]->m_pValue[0]);
+        printf("p: %lld\n", a.characteristic_->m_pValue[0]);
+        return false;
+     }
     prod_temp.ZeroPoly();
-    PolyMult(b, q, prod_temp);
-    PolySub(a, prod_temp, r);
+    if(!PolyMult(b, q, prod_temp))
+      return false;
+    if(!PolySub(a, prod_temp, r))
+      return false;
+    if(guard--<0) {
+      extern void smallprintpoly(polynomial&, bool);
+      printf("PolyEuclid: infinite loop\n");
+      return false;
+    }
   }
   return true;
 }
@@ -550,7 +566,7 @@ bool SquareRoot(bnum& num , bnum& result) {
 }
 
 
-bool Reducelargepower(bnum& power, polynomial& mod_poly, polynomial& result) {
+bool Reducelargepower(bnum& power, polynomial& in_poly, polynomial& mod_poly, polynomial& result) {
   int j;
 
   if(mpCompare(*mod_poly.characteristic_, *result.characteristic_)!=0)
@@ -569,13 +585,15 @@ bool Reducelargepower(bnum& power, polynomial& mod_poly, polynomial& result) {
   polynomial   square(*mod_poly.characteristic_, 2*mod_poly.numc_, mod_poly.size_num_);
   int          deg_mod_poly= mod_poly.Degree();
 
-  current_poly_power.c_array_[1]->m_pValue[0]= 1ULL;  // x
+  in_poly.Copyto(current_poly_power);
   current_poly_accum.c_array_[0]->m_pValue[0]= 1ULL;  // 1
 
   for(j=1; j<=n; j++) {
     if(IsBitPositionNonZero(power,j)) {
       temp_poly.ZeroPoly();
-      PolyMult(current_poly_power, current_poly_accum, temp_poly);
+      if(!PolyMult(current_poly_power, current_poly_accum, temp_poly))
+        return false;
+      current_poly_accum.ZeroPoly();
       if(temp_poly.Degree()>=deg_mod_poly) {  // reduce mod mod_poly
         q.ZeroPoly();
         if(!PolyEuclid(temp_poly, mod_poly, q, current_poly_accum))

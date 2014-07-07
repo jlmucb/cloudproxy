@@ -570,7 +570,7 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
 
   polynomial    x_j_p(*p, m, n);
   polynomial    y_j_p(*p, m, n);
-  polynomial    g(*p, (int)l*(int)l, n);
+  polynomial    g(*p, 2*(int)l, n);
   polynomial    test(*p, 2*(int) l, n);
   polynomial    t1(*p, 2*(int)l, n);
   polynomial    t2(*p, 2*(int)l, n);

@@ -25,6 +25,8 @@
 
 #include "stdio.h"
 
+#define JLMDEBUG
+extern void smallprintpoly(polynomial&, bool);
 
 // ----------------------------------------------------------------------------
 
@@ -217,8 +219,10 @@ bool rationalpoly::Copyto(rationalpoly& to) {
 // in1(x)+in2(x)= out(x)
 bool PolyAdd(polynomial& in1, polynomial& in2, polynomial& out) {
   int j;
+  int in1_size= in1.Degree()+1;
+  int in2_size= in2.Degree()+1;
 
-  if(out.numc_<in1.numc_ || out.numc_<in2.numc_)
+  if(out.numc_<in1_size|| out.numc_<in2_size)
     return false;
   if(mpCompare(*in1.characteristic_, *in2.characteristic_)!=0 || 
       mpCompare(*in1.characteristic_, *out.characteristic_)!=0)
@@ -226,27 +230,27 @@ bool PolyAdd(polynomial& in1, polynomial& in2, polynomial& out) {
   out.ZeroPoly();
 
   if(in1.characteristic_->mpIsZero()) {
-    if(in1.numc_>in2.numc_) {
-      for(j=0; j<in2.numc_; j++)
+    if(in1_size>in2_size) {
+      for(j=0; j<in2_size; j++)
         mpAdd(*in1.c_array_[j], *in2.c_array_[j], *out.c_array_[j]);
-      for(;j<in1.numc_;j++)
+      for(;j<in1_size;j++)
         in1.c_array_[j]->mpCopyNum(*out.c_array_[j]);
     } else {
-      for(j=0; j<in1.numc_; j++)
+      for(j=0; j<in1_size; j++)
         mpAdd(*in1.c_array_[j], *in2.c_array_[j], *out.c_array_[j]);
-      for(;j<in2.numc_;j++)
+      for(;j<in2_size;j++)
         in2.c_array_[j]->mpCopyNum(*out.c_array_[j]);
     }
   } else {
-    if(in1.numc_>in2.numc_) {
-      for(j=0; j<in2.numc_; j++)
+    if(in1_size>in2_size) {
+      for(j=0; j<in2_size; j++)
         mpModAdd(*in1.c_array_[j], *in2.c_array_[j], *in1.characteristic_, *out.c_array_[j]);
-      for(;j<in1.numc_;j++)
+      for(;j<in1_size;j++)
         in1.c_array_[j]->mpCopyNum(*out.c_array_[j]);
     } else {
-      for(j=0; j<in1.numc_; j++)
+      for(j=0; j<in1_size; j++)
         mpModAdd(*in1.c_array_[j], *in2.c_array_[j], *in1.characteristic_, *out.c_array_[j]);
-      for(;j<in2.numc_;j++)
+      for(;j<in2_size;j++)
         in2.c_array_[j]->mpCopyNum(*out.c_array_[j]);
     }
   }
@@ -257,8 +261,10 @@ bool PolyAdd(polynomial& in1, polynomial& in2, polynomial& out) {
 // in1(x)-in2(x)= out(x)
 bool PolySub(polynomial& in1, polynomial& in2, polynomial& out) {
   int j;
+  int in1_size= in1.Degree()+1;
+  int in2_size= in2.Degree()+1;
 
-  if(out.numc_<in1.numc_ || out.numc_<in2.numc_)
+  if(out.numc_<in1_size|| out.numc_<in2_size)
     return false;
   if(mpCompare(*in1.characteristic_, *in2.characteristic_)!=0 || 
       mpCompare(*in1.characteristic_, *out.characteristic_)!=0)
@@ -266,27 +272,27 @@ bool PolySub(polynomial& in1, polynomial& in2, polynomial& out) {
   out.ZeroPoly();
 
   if(in1.characteristic_->mpIsZero()) {
-    if(in1.numc_>in2.numc_) {
+    if(in1_size>in2_size) {
       for(j=0; j<in2.numc_; j++)
         mpSub(*in1.c_array_[j], *in2.c_array_[j], *out.c_array_[j]);
-      for(;j<in1.numc_;j++)
+      for(;j<in1_size;j++)
         in1.c_array_[j]->mpCopyNum(*out.c_array_[j]);
     } else {
-      for(j=0; j<in1.numc_; j++)
+      for(j=0; j<in1_size; j++)
         mpSub(*in1.c_array_[j], *in2.c_array_[j], *out.c_array_[j]);
-      for(;j<in2.numc_;j++)
+      for(;j<in2_size;j++)
         mpSub(g_bnZero, *in2.c_array_[j], *out.c_array_[j]);
     }
   } else {
-    if(in1.numc_>in2.numc_) {
-      for(j=0; j<in2.numc_; j++)
+    if(in1_size>in2_size) {
+      for(j=0; j<in2_size; j++)
         mpModSub(*in1.c_array_[j], *in2.c_array_[j], *in1.characteristic_, *out.c_array_[j]);
-      for(;j<in1.numc_;j++)
+      for(;j<in1_size;j++)
         in1.c_array_[j]->mpCopyNum(*out.c_array_[j]);
     } else {
-      for(j=0; j<in1.numc_; j++)
+      for(j=0; j<in1_size; j++)
         mpModSub(*in1.c_array_[j], *in2.c_array_[j], *in1.characteristic_, *out.c_array_[j]);
-      for(;j<in2.numc_;j++)
+      for(;j<in2_size;j++)
         mpModSub(g_bnZero, *in2.c_array_[j], *in1.characteristic_, *out.c_array_[j]);
     }
   }
@@ -296,21 +302,14 @@ bool PolySub(polynomial& in1, polynomial& in2, polynomial& out) {
 
 // in1(x)*in2(x)= out(x), p is characteristic, 0 if integers
 bool PolyMult(polynomial& in1, polynomial& in2, polynomial& out) {
-  int i, j, k;
+  int i;
+  int in1_size= in1.Degree()+1;
+  int in2_size= in2.Degree()+1;
+  int k=(in1_size+in2_size-2);
 
   if(mpCompare(*in1.characteristic_, *in2.characteristic_)!=0 || 
       mpCompare(*in1.characteristic_, *out.characteristic_)!=0)
     return false;
-  // output size
-  for(j=in1.numc_-1;j>0;j--) {
-    if(!in1.c_array_[j]->mpIsZero())
-      break;
-  }
-  for(i=in2.numc_-1;i>0;i--) {
-    if(!in2.c_array_[i]->mpIsZero())
-      break;
-  }
-  k= i+j;
   if(out.numc_<=k)
     return false;
   out.ZeroPoly();
@@ -322,10 +321,10 @@ bool PolyMult(polynomial& in1, polynomial& in2, polynomial& out) {
     for(i=k;i>=0;i--) {
       mpZeroNum(c);
       for(m=i; m>=0; m--) {
-        if(m>=in1.numc_ || in1.c_array_[m]->mpIsZero())
+        if(m>=in1_size || in1.c_array_[m]->mpIsZero())
           continue;
         n= i-m;
-        if(n>=in2.numc_ || in2.c_array_[m]->mpIsZero())
+        if(n>=in2_size || in2.c_array_[m]->mpIsZero())
           continue;
         mpZeroNum(t);
         mpMult(*in1.c_array_[m], *in2.c_array_[n], t);
@@ -342,10 +341,10 @@ bool PolyMult(polynomial& in1, polynomial& in2, polynomial& out) {
     for(i=k;i>=0;i--) {
       mpZeroNum(c);
       for(m=i; m>=0; m--) {
-        if(m>=in1.numc_ || in1.c_array_[m]->mpIsZero())
+        if(m>=in1_size || in1.c_array_[m]->mpIsZero())
           continue;
         n= i-m;
-        if(n>=in2.numc_ || in2.c_array_[n]->mpIsZero())
+        if(n>=in2_size || in2.c_array_[n]->mpIsZero())
             continue;
         mpZeroNum(t1);
         mpZeroNum(t2);
@@ -370,8 +369,9 @@ bool PolyEuclid(polynomial& a, polynomial& b, polynomial& q, polynomial& r) {
   int   guard= 1000;
 
   if(deg_a<deg_b) {
-    printf("PolyEuclid degree(b)>degree(a)\n");
-    return false;
+    r.Copyfrom(a);
+    q.ZeroPoly();
+    return true;
   }
   // prime characteristic only, for now
   if(a.characteristic_->mpIsZero()) {
@@ -388,8 +388,10 @@ bool PolyEuclid(polynomial& a, polynomial& b, polynomial& q, polynomial& r) {
   while((deg_r=r.Degree())>=deg_b && deg_b>=0) {
     // Subtract leadcoeff(r)/leadcoeff(b)*b(x)*x^(deg_r-deg_b) from r
     p_r_lead_coeff= r.c_array_[deg_r];
-    if(!mpModDiv(*p_r_lead_coeff, *p_b_lead_coeff, *a.characteristic_, *q.c_array_[deg_r-deg_b]))
+    if(!mpModDiv(*p_r_lead_coeff, *p_b_lead_coeff, *a.characteristic_, *q.c_array_[deg_r-deg_b])) {
+      printf("PolyEuclid: mpModDiv(*p_r_lead_coeff, *p_b_lead_coeff, *a.characteristic_, *q.c_array_[deg_r-deg_b]) fails\n");
       return false;
+    }
     if(q.c_array_[deg_r-deg_b]->mpIsZero()) {
         printf("mpModDiv failure in PolyEuclid, deg r: %d, deg b: %d\n", deg_r, deg_b);
         printf("p_r_lead_coeff: %lld, p_b_lead_coeff: %lld, q.c_array_[deg_r-deg_b]: %lld\n",
@@ -398,12 +400,18 @@ bool PolyEuclid(polynomial& a, polynomial& b, polynomial& q, polynomial& r) {
         return false;
      }
     prod_temp.ZeroPoly();
-    if(!PolyMult(b, q, prod_temp))
+    if(!PolyMult(b, q, prod_temp)) {
+      printf("PolyEuclid PolyMult(b, q, prod_temp) fails\n");
       return false;
-    if(!PolySub(a, prod_temp, r))
+    }
+    if(!PolySub(a, prod_temp, r)) {
+      printf("PolyEuclid PolySub(a, prod_temp, r) fails\n");
+      printf("a: "); smallprintpoly(a, true); printf("\n");
+      printf("prod_temp: "); smallprintpoly(prod_temp, true); printf("\n");
+      printf("r.numc_: %d\n", r.numc_); 
       return false;
+    }
     if(guard--<0) {
-      extern void smallprintpoly(polynomial&, bool);
       printf("PolyEuclid: infinite loop\n");
       return false;
     }
@@ -569,6 +577,12 @@ bool SquareRoot(bnum& num , bnum& result) {
 bool Reducelargepower(bnum& power, polynomial& in_poly, polynomial& mod_poly, polynomial& result) {
   int j;
 
+#ifdef JLMDEBUG1
+  printf("Reducelargepower in_poly-deg %d, mod_poly-deg %d result-size %d\n", in_poly.numc_,
+          mod_poly.numc_, result.numc_);
+  printf("in_poly: "); smallprintpoly(in_poly, true); printf("\n");
+  printf("mod_poly: "); smallprintpoly(mod_poly, true); printf("\n");
+#endif
   if(mpCompare(*mod_poly.characteristic_, *result.characteristic_)!=0)
     return false;
 
@@ -578,46 +592,72 @@ bool Reducelargepower(bnum& power, polynomial& in_poly, polynomial& mod_poly, po
     return true;
   }
 
-  polynomial   q(*mod_poly.characteristic_, 2*mod_poly.numc_, mod_poly.size_num_);
-  polynomial   current_poly_power(*mod_poly.characteristic_, 2*mod_poly.numc_, mod_poly.size_num_);
-  polynomial   current_poly_accum(*mod_poly.characteristic_, 2*mod_poly.numc_, mod_poly.size_num_);
-  polynomial   temp_poly(*mod_poly.characteristic_, 2*mod_poly.numc_, mod_poly.size_num_);
-  polynomial   square(*mod_poly.characteristic_, 2*mod_poly.numc_, mod_poly.size_num_);
+  polynomial   q(*mod_poly.characteristic_, 2*result.numc_, result.size_num_);
+  polynomial   current_poly_power(*mod_poly.characteristic_, 2*result.numc_, result.size_num_);
+  polynomial   current_poly_accum(*mod_poly.characteristic_, 2*result.numc_, result.size_num_);
+  polynomial   temp_poly(*mod_poly.characteristic_, 2*result.numc_, result.size_num_);
+  polynomial   square(*mod_poly.characteristic_, 2*result.numc_, result.size_num_);
   int          deg_mod_poly= mod_poly.Degree();
 
   in_poly.Copyto(current_poly_power);
-  current_poly_accum.c_array_[0]->m_pValue[0]= 1ULL;  // 1
+  current_poly_accum.OnePoly();
 
   for(j=1; j<=n; j++) {
     if(IsBitPositionNonZero(power,j)) {
       temp_poly.ZeroPoly();
-      if(!PolyMult(current_poly_power, current_poly_accum, temp_poly))
+      if(!PolyMult(current_poly_power, current_poly_accum, temp_poly)) {
+        printf("Reducelargepower PolyMult(current_poly_power, current_poly_accum, temp_poly) fails\n");
         return false;
+      }
+#ifdef JLMDEBUG1
+      printf("Reducelargepower, current_poly_power: "); smallprintpoly(current_poly_power, true); printf("\n");
+      printf("Reducelargepower, current_poly_accum: "); smallprintpoly(current_poly_accum, true); printf("\n");
+      printf("Reducelargepower, temp_poly: "); smallprintpoly(temp_poly, true); printf("\n");
+#endif
       current_poly_accum.ZeroPoly();
       if(temp_poly.Degree()>=deg_mod_poly) {  // reduce mod mod_poly
         q.ZeroPoly();
-        if(!PolyEuclid(temp_poly, mod_poly, q, current_poly_accum))
+        if(!PolyEuclid(temp_poly, mod_poly, q, current_poly_accum)) {
+          printf("Reducelargepower PolyEuclid(temp_poly, mod_poly, q, current_poly_accum) fails\n");
           return false;
+        }
       } else {
         temp_poly.Copyto(current_poly_accum);
       }
+#ifdef JLMDEBUG1
+      printf("Reducelargepower, Euclid reduced current_poly_accum: "); smallprintpoly(current_poly_accum, true); printf("\n");
+#endif
     }
 
     if(j==n)
       break;
     // next square
     square.ZeroPoly();
-    if(!PolyMult(current_poly_power, current_poly_power, square))
+    if(!PolyMult(current_poly_power, current_poly_power, square)) {
+      printf("Reducelargepower PolyMult(current_poly_power, current_poly_power, square) fails\n");
+      smallprintpoly(current_poly_power, true); printf("\n");
       return false;
+    }
+#ifdef JLMDEBUG1
+      printf("Reducelargepower, square: "); smallprintpoly(square, true); printf("\n");
+#endif
     current_poly_power.ZeroPoly();
     if(square.Degree()>=deg_mod_poly) {  // reduce mod mod_poly
-      if(!PolyEuclid(square, mod_poly, q, current_poly_power))
+      if(!PolyEuclid(square, mod_poly, q, current_poly_power)) {
+        printf("Reducelargepower PolyEuclid(square, mod_poly, q, current_poly_power) fails\n");
         return false;
+      }
     }
     else {
       square.Copyto(current_poly_power);
     }
+#ifdef JLMDEBUG1
+    printf("Reducelargepower, square after reduce: "); smallprintpoly(current_poly_power, true); printf("\n");
+#endif
   }
+#ifdef JLMDEBUG1
+    printf("Reducelargepower returning\n");
+#endif
   result.ZeroPoly();
   current_poly_accum.Copyto(result);
   return true;
@@ -749,7 +789,7 @@ bool RationalReduce(rationalpoly& inout) {
   int   nn= inout.numerator->numc_;
   int   nd= inout.denominator->numc_;
 
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
   printf("RationalReduce in\n"); printrational(inout);
 #endif
 
@@ -775,7 +815,7 @@ bool RationalReduce(rationalpoly& inout) {
       return false;
   }
   
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
   printf("RationalReduce g\n"); printpoly(g);
 #endif
   t1.ZeroPoly();
@@ -788,7 +828,7 @@ bool RationalReduce(rationalpoly& inout) {
     return false;
   t1.Copyto(*inout.numerator);
   t2.Copyto(*inout.denominator);
-#ifdef JLMDEBUG
+#ifdef JLMDEBUG1
   printf("RationalReduce out\n"); printrational(inout);
 #endif
   return true;

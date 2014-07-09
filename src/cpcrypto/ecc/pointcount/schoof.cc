@@ -338,12 +338,10 @@ int HighBit(i64 x) {
   return n;
 }
 
-
 // Because t(x,y) is an endomorphism, t(x,y)=(r[1](x), yr[2](x))
 // Here, out_x= r1[x] and out_y= r[2](x).  So out_y should be multiplied by y
 // to give a correct answer. 
-bool EccSymbolicPointMult(polynomial& curve_x_poly, u64 t, 
-                          rationalpoly& x, rationalpoly& y, 
+bool EccSymbolicPointMult(polynomial& curve_x_poly, u64 t, rationalpoly& x, rationalpoly& y, 
                           rationalpoly& out_x, rationalpoly& out_y) {
   int   i;
   int   n = HighBit(t);
@@ -402,6 +400,104 @@ bool EccSymbolicPointMult(polynomial& curve_x_poly, u64 t,
   acc_rationaly.Copyto(out_y);
 #ifdef JLMDEBUG1
   printf("EccSymbolicPointMult returning\n");
+  printf("x: "); printrational(acc_rationalx);
+  printf("y: "); printrational(acc_rationaly);
+#endif
+  return true;
+}
+
+bool EccSymbolicMinus(rationalpoly& in, rationalpoly& out) {
+  bnum*         p= in.numerator->characteristic_;
+  int           n= p->mpSize()+1;
+  bnum          bn1(n);
+  int           i;
+
+#ifdef JLMDEBUG1
+  printf("EccSymbolicMinus()\n"); 
+#endif
+  if(out.numerator->numc_<=in.numerator->Degree())
+    return false;
+  if(out.denominator->numc_<=in.denominator->Degree())
+    return false;
+  out.denominator->Copyfrom(*in.denominator);
+  for(i=0; i<=in.numerator->Degree();i++) {
+    mpModSub(g_bnZero, *in.numerator->c_array_[i], *p, *out.numerator->c_array_[i]);
+  }
+  return true;
+}
+
+bool EccSymbolicPointMultWithReduction(polynomial& mod_poly, polynomial& curve_x_poly, 
+                u64 t, rationalpoly& x, rationalpoly& y, 
+                rationalpoly& out_x, rationalpoly& out_y) {
+  int   i;
+  int   n = HighBit(t);
+  bnum* p= curve_x_poly.characteristic_;
+  int   nn1= out_x.numerator->numc_;
+  int   nd1= out_x.denominator->numc_;
+  int   nn2= out_y.numerator->numc_;
+  int   nd2= out_y.denominator->numc_;
+  int   size_num= p->mpSize()+1;
+  i64   r= t;
+
+#ifdef JLMDEBUG1
+  printf("EccSymbolicPointMultWithReduction(%lld)\n", t); 
+#endif
+
+  rationalpoly  acc_rationalx(*p, nn1, size_num, nd1, size_num);
+  rationalpoly  acc_rationaly(*p, nn2, size_num, nd2, size_num);
+  rationalpoly  double_rationalx(*p, nn1, size_num, nd1, size_num);
+  rationalpoly  double_rationaly(*p, nn2, size_num, nd2, size_num);
+  rationalpoly  resultx(*p, nn1, size_num, nd1, size_num);
+  rationalpoly  resulty(*p, nn2, size_num, nd2, size_num);
+
+  double_rationalx.Copyfrom(x);
+  double_rationaly.Copyfrom(y);
+  MakeInfPoint(acc_rationalx, acc_rationaly);
+
+  if(IsInfPoint(x, y)) {
+    MakeInfPoint(out_x, out_y);
+    return true;
+  }
+
+  for (i = 0; i < n; i++) {
+    if (r&1) {
+      resultx.ZeroRational();
+      resulty.ZeroRational();
+      EccSymbolicAdd(curve_x_poly, acc_rationalx,  acc_rationaly, 
+                     double_rationalx, double_rationaly, resultx, resulty);
+      acc_rationalx.ZeroRational();
+      acc_rationaly.ZeroRational();
+      if(!ReduceModPoly(*resultx.numerator, mod_poly, *acc_rationalx.numerator))
+        return false;
+      if(!ReduceModPoly(*resulty.numerator, mod_poly, *acc_rationaly.numerator))
+        return false;
+      if(!ReduceModPoly(*resultx.denominator, mod_poly, *acc_rationalx.denominator))
+        return false;
+      if(!ReduceModPoly(*resulty.denominator, mod_poly, *acc_rationaly.denominator))
+        return false;
+    }
+    if (i != n) {
+      resultx.ZeroRational();
+      resulty.ZeroRational();
+      EccSymbolicAdd(curve_x_poly, double_rationalx,  double_rationaly, 
+                     double_rationalx, double_rationaly, resultx, resulty);
+      double_rationalx.ZeroRational();
+      double_rationaly.ZeroRational();
+      if(!ReduceModPoly(*resultx.numerator, mod_poly, *double_rationalx.numerator))
+        return false;
+      if(!ReduceModPoly(*resulty.numerator, mod_poly, *double_rationaly.numerator))
+        return false;
+      if(!ReduceModPoly(*resultx.denominator, mod_poly, *double_rationalx.denominator))
+        return false;
+      if(!ReduceModPoly(*resulty.denominator, mod_poly, *double_rationaly.denominator))
+        return false;
+    }
+    r>>= 1ULL;
+  }
+  acc_rationalx.Copyto(out_x);
+  acc_rationaly.Copyto(out_y);
+#ifdef JLMDEBUG1
+  printf("EccSymbolicPointMultWithReduction returning\n");
   printf("x: "); printrational(acc_rationalx);
   printf("y: "); printrational(acc_rationaly);
 #endif
@@ -534,22 +630,20 @@ bool Raisetopower(bnum& p, polynomial& curve_x_poly, polynomial& mod_poly,
   polynomial    reduced_inx(p, m, n);
   polynomial    reduced_iny(p, m, n);
 
-  s1.ZeroPoly();
   reduced_inx.ZeroPoly();
   reduced_iny.ZeroPoly();
-  if(!PolyEuclid(inx, mod_poly, s1, reduced_inx)) {
-    printf("Raisetopower PolyEuclid(inx, mod_poly, s1, reduced_inx) failed\n");
+  if(!ReduceModPoly(inx, mod_poly, reduced_inx))
     return false;
-  }
+  if(!ReduceModPoly(iny, mod_poly, reduced_iny))
+    return false;
+
 #ifdef JLMDEBUG1
   printf("inx: "); smallprintpoly(inx); printf("\n");
   printf("reduced_inx: "); smallprintpoly(reduced_inx); printf("\n");
 #endif
+
   s1.ZeroPoly();
-  if(!PolyEuclid(iny, mod_poly, s1, reduced_iny)) {
-    printf("Raisetopower PolyEuclid(inx, mod_poly, s1, reduced_iny) failed\n");
-    return false;
-  }
+  s2.ZeroPoly();
   if(!Reducelargepower(p, reduced_inx, mod_poly, outx)) {
     printf("Raisetopower Reducelargepower(p, reduced_inx, mod_poly, outx) failed\n");
     return false;
@@ -571,10 +665,8 @@ bool Raisetopower(bnum& p, polynomial& curve_x_poly, polynomial& mod_poly,
   }
   s1.ZeroPoly();
   if(mod_poly.Degree()<s3.Degree()) {
-    if(!PolyEuclid(s3, mod_poly, s1, outy)) {
-      printf("Raisetopower PolyMult(s1, s2, s3) failed\n");
-      return false;
-    }
+    if(!ReduceModPoly(s3, mod_poly, outy))
+    return false;
   }
   else
     outy.Copyfrom(s3);
@@ -618,19 +710,23 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
   rationalpoly  x_w(*p, m, n, m, n);
   rationalpoly  y_w(*p, m, n, m, n);
   rationalpoly  slope(*p, 100, n, 100, n);
+
   rationalpoly  s1(*p, 100, n, 100, n);
   rationalpoly  s2(*p, 100, n, 100, n);
   rationalpoly  s3(*p, 100, n, 100, n);
 
-  polynomial    x_j_p(*p, 100, n);
-  polynomial    y_j_p(*p, 100, n);
+  rationalpoly  x_j_p(*p, 100, n, 100, n);
+  rationalpoly  y_j_p(*p, 100, n, 100, n);
+  rationalpoly  x_exp_p(*p, 100, n, 100, n);
+  rationalpoly  y_exp_p(*p, 100, n, 100, n);
 
   polynomial    g(*p, 100, n);
-  polynomial    test(*p, 100, n);
   polynomial    t1(*p, 100, n);
   polynomial    t2(*p, 100, n);
+/*
   polynomial    t3(*p, 100, n);
   polynomial    t4(*p, 100, n);
+*/
 
   // current phi2
   polynomial    temp_phi(*p, (int)l*(int)l+1, n);
@@ -639,6 +735,14 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
   polynomial    x_poly(*p, 2, n);
   x_poly.ZeroPoly();
   x_poly.c_array_[1]->m_pValue[0]= 1ULL;
+  polynomial    y_poly(*p, 2, n);
+  y_poly.OnePoly();
+
+  rationalpoly  rational_x(*p, 2, n, 2, n);
+  rational_x.ZeroRational();
+  rational_x.numerator->Copyfrom(x_poly);
+  rationalpoly  rational_y(*p, 2, n, 2, n);
+  rational_y.OneRational();
 
   // compute p^2 and p^2-1
   mpMult(*p, *p, p_squared);
@@ -652,18 +756,18 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
 
   // Compute (x_p_bar, y_p_bar)
   if(p_bar>=0) {
-    if(!ComputeMultEndomorphism(curve_x_poly, p_bar, x_p_bar, y_p_bar))
+    if(!EccSymbolicPointMultWithReduction(temp_phi, curve_x_poly, p_bar, 
+                rational_x, rational_y, x_p_bar, y_p_bar))
       return false;
   }
   else {
-    if(!ComputeMultEndomorphism(curve_x_poly, (u64)(-p_bar), x_p_bar, y_p_bar))
+    if(!EccSymbolicPointMultWithReduction(temp_phi, curve_x_poly, (u64)-p_bar, 
+                rational_x, rational_y, x_p_bar, y_p_bar))
       return false;
-    t1.ZeroPoly();
-    PolySub(t1, *y_p_bar.numerator, t2);
-    y_p_bar.numerator->ZeroPoly();
-    t2.Copyto(*y_p_bar.numerator);
   }
 
+  x_p_squared.ZeroRational();
+  y_p_squared.ZeroRational();
   // Compute (x^(p^2), y^(p^2))
   if(!Raisetopower(*p, curve_x_poly, temp_phi, x_poly, x_poly, *x_p_squared.numerator, *y_p_squared.numerator)) {
     printf("Raisetopower(*p, curve_x_poly, temp_phi, x_poly, x_poly, x_p_squared, y_p_squared) failed\n");
@@ -671,8 +775,79 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
   }
 
   // (y_p_squared-y_p_bar)/((x_p_squared-x_p_bar)= slope
+  s1.ZeroRational();
+  s2.ZeroRational();
+  s3.ZeroRational();
+  if(!RationalSub(x_p_squared, x_p_bar, s2)) {
+    return false;
+  }
+  if(!RationalSub(y_p_squared, y_p_bar, s1)) {
+    return false;
+  }
+  if(!RationalDiv(s1, s2, s3)) {
+    return false;
+  }
+  if(!ReduceModPoly(*s3.numerator, temp_phi, *slope.numerator)) {
+    return false;
+  }
+  if(!ReduceModPoly(*s3.denominator, temp_phi, *slope.denominator)) {
+    return false;
+  }
+
+  // is slope.denominator == 0?
+
   // x_prime= slope^2-x_p_squared-x_p_bar
+  s1.ZeroRational();
+  s2.ZeroRational();
+  s3.ZeroRational();
+  if(!RationalMult(slope, slope, s3))
+    return false;
+  if(!ReduceModPoly(*s3.numerator, temp_phi, *slope.numerator)) {
+    return false;
+  }
+  if(!ReduceModPoly(*s3.denominator, temp_phi, *slope.denominator)) {
+    return false;
+  }
+  if(!RationalSub(s3, x_p_squared, s2)) {
+    return false;
+  }
+  if(!RationalSub(s2, x_p_bar, s1)) {
+    return false;
+  }
+  if(!ReduceModPoly(*s1.numerator, temp_phi, *x_prime.numerator)) {
+    return false;
+  }
+  if(!ReduceModPoly(*s1.denominator, temp_phi, *x_prime.denominator)) {
+    return false;
+  }
+  
   // y_prime= slope(x_p_bar- x_prime) - y_p_squared
+  s1.ZeroRational();
+  s2.ZeroRational();
+  s3.ZeroRational();
+  if(!RationalSub(x_p_bar, x_prime, s1)) {
+    return false;
+  }
+  if(!RationalMult(slope, s1, s2)) {
+    return false;
+  }
+  if(!RationalSub(s2, y_p_squared, s3)) {
+    return false;
+  }
+  if(!ReduceModPoly(*s3.numerator, temp_phi, *y_prime.numerator)) {
+    return false;
+  }
+  if(!ReduceModPoly(*s3.denominator, temp_phi, *y_prime.denominator)) {
+    return false;
+  }
+
+  // (x^p, y^p)
+  x_exp_p.ZeroRational();
+  y_exp_p.ZeroRational();
+  if(!Raisetopower(*p, curve_x_poly, temp_phi, x_poly, x_poly, *x_exp_p.numerator, *y_exp_p.numerator)) {
+    printf("Raisetopower(*p, curve_x_poly, temp_phi, x_poly, x_poly, x_p_exp, y_p_exp) failed\n");
+    return false;
+  }
 
 #ifdef JLMDEBUG
     printf("computetmododdprime\n");
@@ -680,6 +855,8 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
     printf("y_p_squared: "); smallprintrational(y_p_bar); printf("\n");
     printf("x_p_bar: "); smallprintrational(x_p_bar); printf("\n");
     printf("y_p_bar: "); smallprintrational(y_p_bar); printf("\n");
+    printf("x_exp_p: "); smallprintrational(x_exp_p); printf("\n");
+    printf("y_exp_p: "); smallprintrational(y_exp_p); printf("\n");
     printf("x_prime: "); smallprintrational(x_prime); printf("\n");
     printf("y_prime: "); smallprintrational(y_prime); printf("\n");
     printf("\n");
@@ -687,89 +864,40 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
 
   for(j=1; j<=(l-1)/2; j++) {
 
-    // compute j(x,y)= (x_j,y_j) 
-    if(!ComputeMultEndomorphism(curve_x_poly, j, x_j, y_j)) {
-      printf("ComputeMultEndomorphism(curve_x_poly, j, x_j, y_j) failed\n");
+    // compute j(x^p,y^p)
+    if(!EccSymbolicPointMultWithReduction(temp_phi, curve_x_poly, (u64)j, 
+                x_exp_p, y_exp_p, x_j_p, y_j_p))
       return false;
-    }
 
 #ifdef JLMDEBUG
-    printf("x_%d: ", j); smallprintrational(x_j); printf("\n");
-    printf("y_%d: ", j); smallprintrational(y_j); printf("\n");
-#endif
-  
-#if 0 
-    // Compute x_j_p= x_j^p, y_j_p= y_j^p
-    if(!Raisetopower(*p, curve_x_poly, temp_phi, *x_j.numerator, *y_j.numerator, 
-                      x_j_p, y_j_p)) {
-      printf("Raisetopower(*p, curve_x_poly, temp_phi, *x_j.numerator, *y_j.numerator, x_j_p, y_j_p) failed\n");
-      return false;
-    }
-
-#ifdef JLMDEBUG
-    printf("x_j_p: "); smallprintpoly(x_j_p); printf("\n");
-    printf("y_j_p: "); smallprintpoly(y_j_p); printf("\n");
-#endif
-
-    // Compute (t1, t2)= (num(x_prime)-x_j^p, num(y_prime)-y_j_p)
-    t1.ZeroPoly();
-    if(!PolySub(x_prime, x_j_p, t1)) {
-      printf("PolySub 1 failed\n");
-      printf("x_prime.numerator: "); smallprintpoly(*x_prime.numerator); printf("\n");
-      printf("x_j_p: "); smallprintpoly(x_j_p); printf("\n");
-      return false;
-    }
-    t2.ZeroPoly();
-    if(!PolySub(y_prime, y_j_p, t2)) {
-      printf("PolySub 2 failed\n");
-      return false;
-    }
-#endif
-
-#ifdef JLMDEBUG
-    printf("x_%d: ", (int)j); smallprintrational(x_j); printf("\n");
-    printf("y_%d: ", (int)j); smallprintrational(y_j); printf("\n");
-    printf("x_prime-x_j^p: "); smallprintpoly(t1); printf("\n");
-    printf("y_prime-y_j^p: "); smallprintpoly(t2); printf("\n");
-    printf("g_phi2(%d): ", (int)l); smallprintpoly(temp_phi, true); printf("\n");
+    printf("x_j_p"); smallprintrational(x_j_p); printf("\n");
+    printf("y_j_p"); smallprintrational(y_j_p); printf("\n");
+    printf("("); smallprintrational(x_j_p); printf(",");
+    smallprintrational(y_j_p); printf(")\n");
     printf("\n");
 #endif
 
-    // t1= 0 (mod g_phi2[l])?
-    g.ZeroPoly();
-    test.ZeroPoly();
-    if(!t1.IsZero()) {
-      if(t1.Degree()>temp_phi.Degree()) {
-        if(!PolyEuclid(t1, temp_phi, g, test)) {
-            printf("PolyEuclid 1 failed\n");
-            return false;
-        }
-      }
-      else {
-        test.OnePoly();
-      }
-    }
-    if(!test.IsZero())
+    if(!RationalEqualModPoly(x_j_p, x_prime, temp_phi)) {
+      printf("x_prime != x_p_%d\n", j);
       continue;
-
-    // t2= 0 (mod g_phi2[l])?
-    g.ZeroPoly();
-    test.ZeroPoly();
-    if(!t2.IsZero()) {
-      if(t2.Degree()>temp_phi.Degree()) {
-        if(!PolyEuclid(t2, temp_phi, g, test)) {
-          printf("PolyEuclid 2 failed\n");
-          return false;
-        }
-      }
-      else {
-        test.OnePoly();
-      }
     }
-    if(!test.IsZero())
+
+#ifdef JLMDEBUG
+    printf("x_prime != x_p_%d\n", j);
+#endif
+
+    if(RationalEqualModPoly(y_j_p, y_prime, temp_phi)) {
       *tl= j; 
-    else 
+#ifdef JLMDEBUG
+      printf("y_prime == y_p_%d\n", j);
+#endif
+    }
+    else  {
       *tl= l-j;
+#ifdef JLMDEBUG
+      printf("y_prime != y_p_%d\n", j);
+#endif
+    }
 #ifdef JLMDEBUG
     printf("computemododdprime returning true from j loop, j= %lld\n",j);
 #endif
@@ -787,24 +915,53 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
   }
   if(!mpModSquareRoot(*p, small_num, w))
     return false;
-  i64  small_w= (i64)w.m_pValue[0];
+  u64  small_w= w.m_pValue[0];
 
   // compute g= (num((y^p-y[w])/y), phi[l])
-  if(!ComputeMultEndomorphism(curve_x_poly, (u64)small_w, x_w, y_w))
-    return false;
+  if(!EccSymbolicPointMultWithReduction(temp_phi, curve_x_poly, small_w,
+              rational_x, rational_y, x_w, y_w))
+      return false;
   s1.ZeroRational();
-  g.ZeroPoly();
-  if(!RationalSub(y_prime, y_w, s1))
+  if(!RationalSub(x_exp_p, x_w, s1))
     return false;
-  if(!PolyEuclid(*s1.numerator, temp_phi, g, test))
-     return false;
-  // if test is degree1, ((num((y^p-y[w])/y), phi[l])=1
+
+#ifdef JLMDEBUG
+    printf("x_w: "); smallprintrational(x_w); printf("\n");
+    printf("x_exp_p: "); smallprintrational(x_exp_p); printf("\n");
+    printf("num(x_exp_p-x_w): "); smallprintpoly(*s1.numerator); printf("\n");
+#endif
+
+  t1.ZeroPoly();
+  t2.ZeroPoly();
+  if(!PolyExtendedgcd(*s1.numerator, temp_phi, t1, t2, g)) {
+    return false;
+  }
+  if(g.Degree()==1)  {
+    *tl= 0;
+  }
+
+  s2.ZeroRational();
+  if(!RationalSub(y_exp_p, y_w, s2))
+    return false;
+
+#ifdef JLMDEBUG
+    printf("y_w: "); smallprintrational(y_w); printf("\n");
+    printf("y_exp_p: "); smallprintrational(y_exp_p); printf("\n");
+    printf("num(y_exp_p-y_w): "); smallprintpoly(*s2.numerator); printf("\n");
+#endif
+
+  t1.ZeroPoly();
+  t2.ZeroPoly();
+  if(!PolyExtendedgcd(*s2.numerator, temp_phi, t1, t2, g)) {
+    return false;
+  }
+
   if(g.Degree()==1) 
     *tl= l-2*small_w; 
   else
     *tl= 2*small_w;
 #ifdef JLMDEBUG
-    printf("\tcomputetmododdprime returning true after testing square roots\n");
+    printf("computetmododdprime returning true after testing square roots\n");
 #endif
   return true;
 }

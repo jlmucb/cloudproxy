@@ -71,7 +71,7 @@ bool PolyisEqual(polynomial& in1, polynomial& in2);
 bool PolyEuclid(polynomial& a, polynomial& b, polynomial& q, polynomial& r);
 bool PolyExtendedgcd(polynomial& a, polynomial& b, polynomial& c, 
                      polynomial& d, polynomial& g);
-bool Reducelargepower(bnum& power, polynomial& mod_poly, polynomial& result);
+bool Reducelargepower(bnum& power, polynomial& in_poly, polynomial& mod_poly, polynomial& result);
 bool SquareRoot(bnum& num , bnum& result);
 void printpoly(polynomial& p);
 
@@ -82,6 +82,8 @@ bool RationalDiv(rationalpoly& in1, rationalpoly& in2, rationalpoly& out);
 bool RationalMultBy(rationalpoly& inout, rationalpoly& by);
 bool RationalisEqual(rationalpoly& in1, rationalpoly& in2);
 bool RationalReduce(rationalpoly& inout);
+bool RationalEqualModPoly(rationalpoly& in1, rationalpoly& in2, polynomial& mod_poly);
+bool ReduceModPoly(polynomial& in, polynomial& mod_poly, polynomial& out);
 void printrational(rationalpoly& p);
 #endif
 

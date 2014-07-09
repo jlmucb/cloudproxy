@@ -185,6 +185,49 @@ rationalpoly::~rationalpoly() {
   denominator= NULL;
 }
 
+bool ReduceModPoly(polynomial& in, polynomial& mod_poly, polynomial& out) {
+  bnum*       p= in.characteristic_;
+  int         n= p->mpSize()+1;
+  int         m= out.numc_;
+  polynomial  q(*p,m,n);
+
+  if(!PolyEuclid(in,mod_poly,q,out))
+    return false;
+  return true;
+}
+
+bool RationalEqualModPoly(rationalpoly& in1, rationalpoly& in2, polynomial& mod_poly) {
+  bnum*       p= in1.numerator->characteristic_;
+  int         n= p->mpSize()+1;
+  int         m= mod_poly.numc_;
+
+  if(in1.numerator->Degree()>=m)
+    m= in1.numerator->Degree()+1;
+  if(in1.denominator->Degree()>=m)
+    m= in1.denominator->Degree()+1;
+  if(in2.numerator->Degree()>=m)
+    m= in2.numerator->Degree()+1;
+  if(in2.denominator->Degree()>=m)
+    m= in2.denominator->Degree()+1;
+  m= 2*m+1;
+
+  polynomial  left(*p,m,n);
+  polynomial  right(*p,m,n);
+  polynomial  total(*p,m,n);
+
+  if(!PolyMult(*in1.numerator, *in2.denominator, left))
+    return false;
+  if(!PolyMult(*in2.numerator, *in1.denominator, right))
+    return false;
+  if(!PolySub(left, right, total))
+    return false;
+  left.ZeroPoly();
+  if(!ReduceModPoly(total, mod_poly, left)) {
+    return false;
+  }
+  return left.IsZero();
+}
+
 void rationalpoly::ZeroRational() {
   numerator->ZeroPoly();
   denominator->OnePoly();

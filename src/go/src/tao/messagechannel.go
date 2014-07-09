@@ -1,7 +1,7 @@
-//  File: rpc_channel.go
+//  File: messagechannel.go
 //  Author: Kevin Walsh <kwalsh@holycross.edu>
 //
-//  Description: An interface for a Message channel.
+//  Description: MessageChannel implementation.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -20,6 +20,7 @@
 package tao
 
 import (
+	"bytes"
 	"code.google.com/p/goprotobuf/proto"
 	"encoding/binary"
 	"errors"
@@ -65,6 +66,9 @@ func (mc *MessageChannel) SetMaxMessageSize(size uint) {
 // SendData sends raw data to the channel.
 // Failure will close the channel.
 func (mc *MessageChannel) SendData(bytes []byte) error {
+	if mc.pipe == nil {
+		return io.EOF
+	}
 	_, err := mc.pipe.Write(bytes)
 	if err != nil {
 		mc.Close()
@@ -77,6 +81,9 @@ func (mc *MessageChannel) SendData(bytes []byte) error {
 // reasonable size buffer, which will be filled entirely.
 // Failure or eof will close the channel.
 func (mc *MessageChannel) ReceiveData(bytes []byte) error {
+	if mc.pipe == nil {
+		return io.EOF
+	}
 	_, err := io.ReadFull(mc.pipe, bytes)
 	if err != nil {
 		mc.Close()
@@ -100,15 +107,20 @@ func (mc *MessageChannel) SendString(s string) error {
 // ReceiveString receives a string over the channel.
 // Failure or eof will close the channel.
 func (mc *MessageChannel) ReceiveString() (string, error) {
+	if mc.pipe == nil {
+		return "", io.EOF
+	}
 	var sizebytes [4]byte
 	_, err := io.ReadFull(mc.pipe, sizebytes[:])
 	if err != nil {
+		mc.Close()
 		return "", err
 	}
 	n := binary.BigEndian.Uint32(sizebytes[:])
 	strbytes := make([]byte, n)
 	_, err = io.ReadFull(mc.pipe, strbytes)
 	if err != nil {
+		mc.Close()
 		return "", err
 	}
 	return string(strbytes), nil
@@ -178,3 +190,8 @@ func DeserializeMessageChannel(s string) *MessageChannel {
 	}
 	return &MessageChannel{DefaultMaxMessageSize, pipe}
 }
+
+func NewMessageChannel(pipe io.ReadWriteCloser) *MessageChannel {
+	return &MessageChannel{DefaultMaxMessageSize, pipe}
+}
+

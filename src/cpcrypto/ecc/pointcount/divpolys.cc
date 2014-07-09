@@ -28,7 +28,7 @@
 // phi[0]= 0
 // phi[1]= 1
 // phi[2]= 2y
-// phi[3]=  3x^4+6ax+12bx-a^2
+// phi[3]=  3x^4+6ax^2+12bx-a^2
 // phi[4]= 4y(x^6+5ax^4+20bx^3-5a^2x^2-4abx-8b^2-a^3
 // phi[2m+1]= phi[m+2]phi^3[m]-phi[m-1]phi^3[m+1]
 // phi[2m]= phi[m]/phi[2](phi[m+2]phi^2[m-1]-phi[m-2]phi^2[m+1])
@@ -78,21 +78,21 @@ bool Initphi(int max, polynomial& curve_x_poly) {
   g_phi2= (polynomial**) new p_polynomial_t[max+1];
 
   // phi[0]= 0
-  g_phi2[0]= new polynomial(*p, 1, 1); 
+  g_phi2[0]= new polynomial(*p, 1, 2); 
   g_phi2[0]->c_array_[0]->m_pValue[0]= 0ULL;
 
   // phi[1]= 1
-  g_phi2[1]= new polynomial(*p, 1, 1); 
+  g_phi2[1]= new polynomial(*p, 1, 2); 
   g_phi2[1]->c_array_[0]->m_pValue[0]= 1ULL;
 
   // phi[2]= 2y
   // phi2[2]= 1;
-  g_phi2[2]= new polynomial(*p, 1, 1); 
+  g_phi2[2]= new polynomial(*p, 1, 2); 
   g_phi2[2]->c_array_[0]->m_pValue[0]= 1ULL;
 
   // phi[3]=  3x^4+6ax^2+12bx-a^2
   // Fix: size depends on a, b and p
-  g_phi2[3]= new polynomial(*p, 5, 1); 
+  g_phi2[3]= new polynomial(*p, 5, 2); 
   g_phi2[3]->c_array_[4]->m_pValue[0]= 3ULL;
   g_phi2[3]->c_array_[3]->m_pValue[0]= 0ULL;
   mpZeroNum(t);
@@ -107,7 +107,7 @@ bool Initphi(int max, polynomial& curve_x_poly) {
 
   // phi[4]= 2y(2(x^6+5ax^4+20bx^3-5a^2x^2-4abx-8b^2-a^3))
   // Fix: size depends on a, b and p
-  g_phi2[4]= new polynomial(*p, 7, 1); 
+  g_phi2[4]= new polynomial(*p, 7, 2); 
 
   g_phi2[4]->c_array_[6]->m_pValue[0]= 1ULL;     // x^6
   g_phi2[4]->c_array_[5]->m_pValue[0]= 0ULL;
@@ -193,11 +193,13 @@ extern bool EccSymbolicPointMult(polynomial& curve_x_poly, i64 t,
 //  phi[2m+1]= phi1[m]
 bool oddphirecurrence(int m, polynomial& curve_x_poly) {
   bnum*       p= curve_x_poly.characteristic_;
+  bnum        small_bnum(2);
   int         n= p->mpSize();
   polynomial  r(*p,(2*m+1)*(2*m+1), n);
   polynomial  s(*p,(2*m+1)*(2*m+1), n);
   polynomial  t(*p,(2*m+1)*(2*m+1), n);
   polynomial  v(*p,(2*m+1)*(2*m+1), n);
+  polynomial  w(*p,(2*m+1)*(2*m+1), n);
 
 #ifdef JLMDEBUG
   printf("oddrecurrence(%d), n= %d\n", m, n);
@@ -231,8 +233,34 @@ bool oddphirecurrence(int m, polynomial& curve_x_poly) {
   if(!PolyMult(t, *g_phi2[m+1], v))
     return false;
   // v now has the product phi2[m-1]*phi2^3[m+1]
+
+  if(!PolyMult(curve_x_poly, curve_x_poly, w))
+    return false;
+  small_bnum.m_pValue[0]= 16ULL;
+  w.MultiplyByNum(small_bnum);
+  // w now has 16 (curve_x_poly)^2
+
+  // multiply r by 16 y^4, if m is even 
+  s.ZeroPoly();
+  if((m%2)==0) {
+    if(!PolyMult(r, w, s))
+      return false;
+  }
+  else {
+    r.Copyto(s);
+  }
+
+  // multiply v by 16 y^4, if m is odd
+  t.ZeroPoly();
+  if((m%2)==1) {
+    if(!PolyMult(v, w, t))
+      return false;
+  }
+  else {
+    v.Copyto(t);
+  }
  
-  if(!PolySub(r, v, *g_phi2[2*m+1]))
+  if(!PolySub(s, t, *g_phi2[2*m+1]))
     return false;
   return true;
 }
@@ -247,6 +275,7 @@ bool evenphirecurrence(int m, polynomial& curve_x_poly) {
   polynomial  s(*p,(2*m)*(2*m), n);
   polynomial  t(*p,(2*m)*(2*m), n);
   polynomial  v(*p,(2*m)*(2*m), n);
+  bnum        small_bnum(2);
 
 #ifdef JLMDEBUG
   printf("evenrecurrence(%d), n= %d\n", m, n);
@@ -278,7 +307,18 @@ bool evenphirecurrence(int m, polynomial& curve_x_poly) {
     return false;
   // v now has has the product phi2[m]*phi[m-2]*phi^2[m+1]
 
-  if(!PolySub(r, v, *g_phi2[2*m]))
+  // multiply r by 4 y^2 
+  small_bnum.m_pValue[0]= 4ULL;
+  s.ZeroPoly();
+  if(!PolyMult(r, curve_x_poly, s))
+    return false;
+  s.MultiplyByNum(small_bnum);
+  t.ZeroPoly();
+  if(!PolyMult(v, curve_x_poly, t))
+    return false;
+  t.MultiplyByNum(small_bnum);
+
+  if(!PolySub(s, t, *g_phi2[2*m]))
     return false;
   return true;
 }

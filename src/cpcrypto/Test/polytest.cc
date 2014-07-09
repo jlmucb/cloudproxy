@@ -269,7 +269,21 @@ int main(int an, char** av) {
   printNumberToConsole(order);
   printf("\n");
 
+#if 0
   mpZeroNum(order);
+  printf("\nschoof\n");
+  if(!schoof(a, b, ecp, order)) {
+    printf("schoof failed\n");
+    return 1;
+  }
+#endif
+  mpZeroNum(order);
+  a.m_pValue[0]= 2ULL;
+  b.m_pValue[0]= 1ULL;
+  ecp.m_pValue[0]= 19ULL;
+  curve.m_bnM= &ecp;
+  curve.m_bnA= &a;
+  curve.m_bnB= &b;
   printf("\nschoof\n");
   if(!schoof(a, b, ecp, order)) {
     printf("schoof failed\n");

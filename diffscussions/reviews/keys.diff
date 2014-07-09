@@ -1,22 +1,35 @@
-%* 
-%* author: Kevin Walsh
-%* email: kwalsh@holycross.edu
-%* date: 2014-07-08T21:54:40-0400
-%* 
-%- Don't use Keyczar keys
-%- 
-%- Rewrite key handling and crypto so it (mostly) does not depend on
-%- keyczar. Introduce tao::Signer, tao::Verifier, tao::Crypter,
-%- tao::Deriver classes, and complete rewrite of tao::Keys, all using
-%- OpenSSL directly. Introduce new file formats for all keys.
-%- 
-%- Remaining keyczar dependencies include (among other things):
-%-   CryptoFactory sha1, sha256, and rand (these ultimately call OpenSSL)
-%-   Base64w encode and decode
-%-   FilePath
-%-   scoped_ptr
-%- 
-%- 
+#* 
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-08T21:54:40-0400
+#* 
+#- Don't use Keyczar keys
+#- 
+#- Rewrite key handling and crypto so it (mostly) does not depend on
+#- keyczar. Introduce tao::Signer, tao::Verifier, tao::Crypter,
+#- tao::Deriver classes, and complete rewrite of tao::Keys, all using
+#- OpenSSL directly. Introduce new file formats for all keys.
+#- 
+#- Remaining keyczar dependencies include (among other things):
+#-   CryptoFactory sha1, sha256, and rand (these ultimately call OpenSSL)
+#-   Base64w encode and decode
+#-   FilePath
+#-   scoped_ptr
+#- 
+#- 
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-09T10:51:33-0700
+#**
+#-- I vote we replace scoped_ptr with unique_ptr since we're dropping Keyczar.
+#-- 
+#-- Another high-level comment: it looks like the tao/keys.cc code changes one
+#-- of the conventions we've been following across the project: strings to be
+#-- set are passed in as string*, and a bool indicator is given as the return
+#-- value. What was the rationale for this change? Many such functions now
+#-- return a string instead.
+#-- 
 diff --git a/src/apps/soft_tao.cc b/src/apps/soft_tao.cc
 index 7b54d4d..ce82353 100644
 --- a/src/apps/soft_tao.cc
@@ -101,6 +114,15 @@ index d245c80..45bd936 100644
 -           admin->GetPolicyKeys()->SigningPrivateKeyPath().c_str());
 +    printf("    certificate: %s\n", admin->GetPolicyKeys()->X509Path().c_str());
 +    printf("    key: %s\n", admin->GetPolicyKeys()->PBESignerPath().c_str());
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-09T10:37:09-0700
+#*
+#- From this, it looks like we're moving from more generic naming
+#- (SigningPublicKey) to less generic (X509Path). I'm not convinced
+#- this is the right thing to do.
+#- 
      printf("  tao ca: %s:%s\n", admin->GetTaoCAHost().c_str(),
             admin->GetTaoCAPort().c_str());
      printf("  auth type: %s\n", admin->GetAuthType().c_str());
@@ -316,6 +338,14 @@ index 96ace0b..bf0760e 100644
 -    if (!tls_key_->InitTemporaryHosted(host_tao)) {
 -      LOG(ERROR) << "Could not initialize CloudClient keys";
 +    tls_key_.reset(Signer::Generate());
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-09T10:41:08-0700
+#*
+#- How is it that the "CloudClient" string was able to disappear here?
+#- It doesn't look like Signer::Generate includes that kind of info.
+#- 
 +    if (tls_key_.get() == nullptr) {
 +      LOG(ERROR) << "Could not generate temporary TLS key";
        return false;
@@ -432,6 +462,14 @@ index 7847cbb..dc5c666 100644
 +      : tls_key_(tls_key),
 +        tls_self_cert_(tls_cert),
 +        tls_delegation_(tls_delegation) {}
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-09T10:43:43-0700
+#*
+#- Formatting? I think that clang-format --style=Google will pack the
+#- initializers.
+#- 
  
    virtual bool Init();
    virtual ~CloudClient() {}
@@ -1027,6 +1065,15 @@ index 225642f..e039088 100644
  }
  
  #if 0
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-09T10:46:25-0700
+#*
+#- I realize it's not part of this diff, but I'd like to avoid "#if 0"
+#- statements, since I find they make the code hard to read. The nice thing
+#- about source control is we can delete code and still find it later.
+#- 
 -bool SetUpPermissiveSSLServerCtx(const Keys &key, ScopedSSLCtx *ctx) {
 +bool SetUpPermissiveSSLServerCtx(const Signer &key, ScopedSSLCtx *ctx) {
    return SetUpSSLCtx(TLSv1_2_server_method(), key, false, ctx);
@@ -1419,6 +1466,16 @@ index c5dcaa2..05bc2d0 100644
 -  string signer;
 -  if (!key.GetPrincipalName(&signer)) {
 +  string signer = key.ToPrincipalName();
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-09T10:48:59-0700
+#*
+#- I suggest you use initializer syntax here, since it's the initialization of a
+#- signer variable. So, "string signer(key.ToPrincipalName());". Both versions
+#- allow move semantics, but I think initialization should be signaled in the
+#- syntax.
+#- 
 +  if (signer == "") {
      LOG(ERROR) << "Could not get signer principal name";
      return false;
@@ -2351,6 +2408,14 @@ index 4321633..bf9754b 100644
 +
 +typedef scoped_ptr_malloc<BIGNUM, CallUnlessNull<BIGNUM, BN_clear_free> >
 +    ScopedBIGNUM;
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-09T10:52:34-0700
+#*
+#- If we're switching to unique_ptr, then I guess this means we'll need to
+#- implement something like unique_ptr_malloc ourselves.
+#- 
 +
 +typedef scoped_ptr_malloc<BN_CTX, CallUnlessNull<BN_CTX, BN_CTX_free> >
 +    ScopedBN_CTX;
@@ -2406,6 +2471,15 @@ index 4321633..bf9754b 100644
 +  // isn't optimized away, and a commented-out call to openssl's cleanse. What
 +  // to do?
 +  OPENSSL_cleanse(str2uchar(s), s->size());
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-09T10:53:18-0700
+#*
+#- How much of this code is copied from keyczar? We probably need to make that
+#- very clear. Once we've dropped keyczar entirely, we'll have to link to the
+#- source.
+#- 
 +  memset(str2uchar(s), 0, s->size());
 +}
 +
@@ -2629,6 +2703,13 @@ index 4321633..bf9754b 100644
 -  return LoadKey(KeyType::HMAC, path, &password, key);
 +X509 *DeserializeX509(const string &pem) {
 +  // const_cast is safe, we only read from the BIO
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-09T10:55:27-0700
+#*
+#- grammar nit: this is a comma splice; use a semi-colon or rewrite
+#- 
 +  char *data = const_cast<char *>(pem.c_str());
 +  ScopedBio mem(BIO_new_mem_buf(data, -1));
 +  ScopedX509 x509(PEM_read_bio_X509(mem.get(), nullptr /* ptr */,
@@ -2816,11 +2897,25 @@ index 4321633..bf9754b 100644
 +  m->set_curve(PRIME256_V1);
 +  // ec_public.
 +  const EC_POINT *ec_point = EC_KEY_get0_public_key(ec_key);
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-09T10:57:49-0700
+#*
+#- Is it possible for this to return nullptr?
+#- 
 +  ScopedBN_CTX bn_ctx(BN_CTX_new());
 +  int point_len =
 +      EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
 +                         POINT_CONVERSION_COMPRESSED, nullptr, 0, bn_ctx.get());
 +  string *ec_pub = m->mutable_ec_public();
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-09T10:58:23-0700
+#*
+#- Do we need to sanity-check point_len before using it here?
+#- 
 +  ec_pub->resize(point_len);
 +  EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
 +                     POINT_CONVERSION_COMPRESSED, str2uchar(ec_pub), point_len,
@@ -3240,6 +3335,13 @@ index 4321633..bf9754b 100644
 -  return true;
 +  BUF_MEM *buf;
 +  BIO_get_mem_ptr(mem.get(), &buf);
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-09T11:00:52-0700
+#*
+#- Can this fail to set buf?
+#- 
 +  return string(buf->data, buf->length);
  }
  
@@ -3960,6 +4062,14 @@ index 4321633..bf9754b 100644
 +  }
 +  // Fail on buffer overflow.
 +  CHECK_LE(sig_length, EVP_MAX_MD_SIZE);
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-09T11:06:22-0700
+#*
+#- This makes me nervous, though it looks like it can't be triggered by
+#- adversarial input. I'd greatly prefer to return false here, though.
+#- 
 +  mac->resize(mac_length + sig_length);
 +  return true;
 +}
@@ -4083,6 +4193,14 @@ index 4321633..bf9754b 100644
 +
 +Crypter *Crypter::Generate() {
 +  // This only supports AES-256 CBC with HMAC-SHA256.
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-09T11:07:57-0700
+#*
+#- Could we switch this for CTR instead of CBC? We're doing CCA2-secure
+#- encryption, but I'd feel better if we could avoid CBC entirely.
+#- 
 +  // See NIST SP800-57 part1, pages 63-64 for hmac key size recommendations.
 +  size_t aes_size = 256;
 +  size_t hmac_size = 256;
@@ -4168,6 +4286,17 @@ index 4321633..bf9754b 100644
 -  if (!pem_cert) {
 -    LOG(ERROR) << "null pem";
 +bool Crypter::Encrypt(const string &data, string *encrypted) const {
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-09T11:09:47-0700
+#*
+#- This is not urgent, but if we're writing our own mode implementation, then we
+#- should probably implement a streaming version that doesn't require two passes
+#- over the data: it computes the HMAC while it does the encryption. For
+#- security reasons, we can't stream the HMAC with the decryption process, of
+#- course; we have to compute the HMAC first.
+#- 
 +  const EVP_CIPHER *cipher = EVP_aes_256_cbc();
 +  EncryptedData ed;
 +  if (!Header(ed.mutable_header())) {
@@ -5203,6 +5332,14 @@ index bb9a963..c35f3b2 100644
 +/// A smart pointer to an OpenSSL EC_KEY object.
 +typedef scoped_ptr_malloc<EC_KEY, CallUnlessNull<EC_KEY, EC_KEY_free>>
 +    ScopedECKey;
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-09T11:15:57-0700
+#*
+#- It looks like this is a second typedef for the same thing. Why?
+#- See ScopedEc above.
+#- 
  
  /// Serialize an openssl X509 structure in PEM format.
  /// @param x509 The certificate to serialize.
@@ -5667,6 +5804,14 @@ index bb9a963..c35f3b2 100644
 +  tao::Signer *Signer() const { return signer_.get(); }
 +  tao::Deriver *Deriver() const { return deriver_.get(); }
 +  tao::Crypter *Crypter() const { return crypter_.get(); }
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-09T11:20:16-0700
+#*
+#- If these are const methods, then they should return const tao::Verifier *,
+#- right?
+#- 
 +  /// @}
 +
 +  /// Get the tao delegation for the managed signing key. This is only available
@@ -7294,6 +7439,13 @@ index d6a8e52..47ad1ca 100644
 +/// instead borrowed from Chromium, protobufs, or elsewhere. Perhaps we should
 +/// do
 +/// likewise?
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-09T11:22:51-0700
+#*
+#- SGTM
+#- 
  #include <keyczar/base/base64w.h>
  #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
  #include <keyczar/base/file_util.h>

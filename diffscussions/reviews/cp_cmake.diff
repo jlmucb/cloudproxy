@@ -1,0 +1,761 @@
+#* 
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-09T11:32:17-0700
+#* 
+#- This diff adds cmake files for CloudProxy and fixes util.cc to build
+#- under the warning modes added there. Kevin's initial comments were as
+#- follows:
+#- 
+#- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-09T00:03:35-0400
+#**
+#-- Twice you do add_custom_command() to deal with lua files. Why are they so
+#-- different from each other?
+#--
+#-- I don't entirely understand cmake's directory structure. Are all final
+#-- executables put in a single flat output directory, separate from intermediate
+#-- binaries? What is the name of that directory?
+#--
+#-- I don't see gmock being linked anywhere. There also isn't a gmock
+#-- CMakeLists.txt file. Will the sources for gmock be deleted?
+#--
+#-- I only see static specified for the lua library. Yet when it builds, it mentions
+#-- that it is building static libraries for most everything. What's going on here?
+#--
+#-- Why is there no KEYCZAR_HEADERS variable? I don't see any keyczar headers
+#-- listed in the CMakeLists.txt files.
+#--
+#-- We will no longer build protobuf library and protoc tool?
+#--
+#-- When I tried building (using mkdir foo; cd foo; cmake ../src; make) I get a
+#-- bunch of protobuf-related errors. Can't find google/protobuf/stubs/common.h, so
+#-- I added third_party/protobuf/src to the includes, but now I get a bunch of
+#-- protobuf-version errors. I probably have a different protobuf version installed
+#-- elesehere on this system than is installed in third_party.
+#--
+#-- 
+#***
+#*** author: Tom Roeder
+#*** email: tmroeder@google.com
+#*** date: 2014-07-09T11:35:18-0700
+#***
+#--- My quick replies. I'll fix these soon and send an update:
+#--- 
+#--- Yes, I'll merge the add_custom_command and fix the directory structure.
+#--- 
+#--- gmock and gtest already have their own CMakeLists.txt files, so that Just
+#--- Works. I haven't used gmock yet, but I intend to.
+#--- 
+#--- The static annotation is a mistake: I meant to add it to everything. But
+#--- it's the default, which is why I didn't catch this mistake.
+#--- 
+#--- KEYCZAR_HEADERS is another accidental omission. I'll add this.
+#--- 
+#--- I wasn't intending to build protobuf anymore, but we can discuss this.
+#--- CMake has fairly good protobuf support. Make sure you have libprotobuf-dev
+#--- installed.
+#--- 
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+new file mode 100644
+index 0000000..972e131
+--- /dev/null
++++ b/src/CMakeLists.txt
+@@ -0,0 +1,26 @@
++# Copyright 2014 Google Inc. All rights reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++cmake_minimum_required(VERSION 2.8.12)
++project(cloudproxy C CXX ASM)
++
++find_package(Protobuf REQUIRED)
++include_directories(${PROTOBUF_INCLUDE_DIRS})
++
++include(cloudproxy.cmake)
++
++add_subdirectory(apps)
++add_subdirectory(cloudproxy)
++add_subdirectory(tao)
++add_subdirectory(third_party)
+diff --git a/src/apps/CMakeLists.txt b/src/apps/CMakeLists.txt
+new file mode 100644
+index 0000000..c569246
+--- /dev/null
++++ b/src/apps/CMakeLists.txt
+@@ -0,0 +1,44 @@
++# Copyright (c) 2014, Google Inc. All rights reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++include_directories(..)
++include_directories(${CMAKE_BINARY_DIR})
++include_directories(../third_party/keyczar/cpp/src)
++include_directories(../third_party/google-glog/src)
++include_directories(../third_party/gflags/src)
++
++add_executable(tpm_tao tpm_tao.cc)
++target_link_libraries(tpm_tao tao)
++
++add_executable(soft_tao soft_tao.cc)
++target_link_libraries(soft_tao tao)
++
++add_executable(get_pcrs get_pcrs.cc)
++target_link_libraries(get_pcrs tao)
++
++add_executable(linux_host linux_host.cc)
++target_link_libraries(linux_host tao)
++
++add_executable(demo demo.cc)
++target_link_libraries(demo tao)
++
++PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS demo_server.proto)
++add_executable(demo_server demo_server.cc ${PROTO_SRCS} ${PROTO_HDRS})
++target_link_libraries(demo_server cloudproxy)
++
++add_executable(log_net_server log_net_server.cc)
++target_link_libraries(log_net_server tao)
++
++add_executable(tao_admin tao_admin.cc)
++target_link_libraries(tao_admin tao)
+diff --git a/src/cloudproxy.cmake b/src/cloudproxy.cmake
+new file mode 100644
+index 0000000..77023ff
+--- /dev/null
++++ b/src/cloudproxy.cmake
+@@ -0,0 +1,22 @@
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++# Keep a set of common flags and include directories for evmm and bootstrap.
++set(WARNING_FLAGS "-Wall -Werror")
++set(LANG_FLAGS "-std=c++0x")
++set(CMAKE_C_FLAGS "${WARNING_FLAGS}")
++set(CMAKE_CXX_FLAGS "${WARNING_FLAGS} ${LANG_FLAGS}")
++
++set(CMAKE_C_FLAGS_DEBUG "-g -O0")
++set(CMAKE_C_FLAGS_RELEASE "-O2")
++set(CMAKE_CXX_FLAGS_DEBUG ${CMAKE_C_FLAGS_DEBUG})
++set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
+diff --git a/src/cloudproxy/CMakeLists.txt b/src/cloudproxy/CMakeLists.txt
+new file mode 100644
+index 0000000..f8cb27e
+--- /dev/null
++++ b/src/cloudproxy/CMakeLists.txt
+@@ -0,0 +1,54 @@
++# Copyright (c) 2014, Google Inc. All rights reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++set(CLOUDPROXY_SOURCES
++    cloud_channel.cc
++    cloud_client.cc
++    cloud_server.cc
++    tls_message_channel.cc
++    util.cc
++   )
++
++set(CLOUDPROXY_PROTO
++    cloud_channel.proto
++   )
++
++set(CLOUDPROXY_HEADERS
++    cloud_channel.h
++    cloud_client.h
++    cloud_server.h
++    tls_message_channel.h
++    util.h
++   )
++
++PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS ${CLOUDPROXY_PROTO})
++include_directories(..)
++include_directories(${CMAKE_BINARY_DIR})
++include_directories(${CMAKE_SOURCE_DIR}/third_party/keyczar/cpp/src)
++include_directories(${CMAKE_SOURCE_DIR}/third_party/google-glog/src)
++include_directories(${CMAKE_SOURCE_DIR}/third_party/gflags/src)
++
++add_library(cloudproxy
++    ${PROTO_SRCS}
++    ${PROTO_HDRS}
++    ${CLOUDPROXY_SOURCES}
++    ${CLOUDPROXY_HEADERS}
++   )
++
++target_link_libraries(cloudproxy
++    tao
++    crypto
++    ssl
++    pthread
++   )
+diff --git a/src/tao/CMakeLists.txt b/src/tao/CMakeLists.txt
+new file mode 100644
+index 0000000..4bc4347
+--- /dev/null
++++ b/src/tao/CMakeLists.txt
+@@ -0,0 +1,141 @@
++# Copyright 2014 Google Inc. All rights reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++set(TAO_PROTO
++    acl_guard.proto
++    attestation.proto
++    datalog_guard.proto
++    keys.proto
++    linux_admin_rpc.proto
++    linux_host.proto
++    log_net.proto
++    tao_rpc.proto
++   )
++
++PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS ${TAO_PROTO})
++
++set(TAO_SOURCES
++    acl_guard.cc
++    attestation.cc
++    auth.cc
++    datalog_guard.cc
++    fd_message_channel.cc
++    keys.cc
++    linux_admin_rpc.cc
++    linux_host.cc
++    linux_process_factory.cc
++    log_net.cc
++    message_channel.cc
++    pipe_factory.cc
++    soft_tao.cc
++    tao.cc
++    tao_domain.cc
++    tao_guard.cc
++    tao_root_host.cc
++    tao_rpc.cc
++    tao_stacked_host.cc
++    tpm_tao.cc
++    unix_socket_factory.cc
++    util.cc
++   )
++
++set(TAO_HEADERS
++    acl_guard.h
++    attestation.h
++    auth.h
++    datalog_guard.h
++    fd_message_channel.h
++    keys.h
++    linux_admin_rpc.h
++    linux_host.h
++    linux_process_factory.h
++    log_net.h
++    message_channel.h
++    pipe_factory.h
++    soft_tao.h
++    tao.h
++    tao_domain.h
++    tao_guard.h
++    tao_host.h
++    tao_root_host.h
++    tao_rpc.h
++    tao_stacked_host.h
++    tpm_tao.h
++    trivial_guard.h
++    unix_socket_factory.h
++    util.h
++   )
++
++add_custom_command(
++    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/auth_lua.h
++    COMMAND ${CMAKE_BINARY_DIR}/third_party/datalog/bin2c -o ${CMAKE_CURRENT_BINARY_DIR}/auth_lua.h auth.lua
++    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
++    DEPENDS bin2c auth.lua
++   )
++
++
++# This is added to get the right path for the protobuf generated header files.
++include_directories(${CMAKE_BINARY_DIR})
++include_directories(${CMAKE_SOURCE_DIR})
++include_directories(${CMAKE_SOURCE_DIR}/third_party/keyczar/cpp/src)
++include_directories(${CMAKE_SOURCE_DIR}/third_party/google-glog/src)
++include_directories(${CMAKE_SOURCE_DIR}/third_party/gflags/src)
++include_directories(${CMAKE_SOURCE_DIR}/third_party/datalog)
++include_directories(${CMAKE_SOURCE_DIR}/third_party/datalog/lua)
++add_library(tao
++    ${PROTO_SRCS}
++    ${PROTO_HDRS}
++    ${TAO_SOURCES}
++    ${TAO_HEADERS}
++    ${CMAKE_CURRENT_BINARY_DIR}/auth_lua.h
++   )
++
++# TODO(tmroeder): add checks for OpenSSL, libvirt, and libtspi.
++target_link_libraries(tao
++    datalog
++    gflags
++    glog
++    keyczar
++    protobuf
++    crypto
++    ssl
++    virt
++    tspi
++   )
++
++# Test code.
++set(TEST_SOURCES
++    attestation_unittests.cc
++    auth_unittests.cc
++    datalog_guard_unittests.cc
++    keys_unittests.cc
++    linux_host_unittests.cc
++    linux_process_factory_unittests.cc
++    pipe_factory_unittests.cc
++    tao_domain_unittests.cc
++    tao_test.cc
++    tao_unittests.cc
++    unix_socket_factory_unittests.cc
++    util_unittests.cc
++   )
++
++set(TEST_HEADERS
++    tao_test.h
++   )
++
++include_directories(../third_party/googlemock/gtest/include)
++add_executable(tao_test ${TEST_SOURCES} ${TEST_HEADERS})
++target_link_libraries(tao_test gtest_main)
++target_link_libraries(tao_test tao)
++add_test(tao_test tao)
+diff --git a/src/tao/util.cc b/src/tao/util.cc
+index f008004..a5651a1 100644
+--- a/src/tao/util.cc
++++ b/src/tao/util.cc
+@@ -236,41 +236,42 @@ bool InitializeApp(int *argc, char ***argv, bool remove_args) {
+   SetLogHandler(QuietKeyczarLogHandler);
+   LogNet::Init("localhost", "5514", (*argv)[0]);
+   signal(SIGPIPE, SIG_IGN);
+   return InitializeOpenSSL();
+ }
+ 
+ constexpr int MaxSelfPipeSignum = NSIG;
+ struct SelfPipe {
+   bool open;
+   int fd[2];
+   struct sigaction sa;
+ };
+ SelfPipe selfPipe[MaxSelfPipeSignum] = {};
+ static mutex selfPipeMutex;
+ 
+ static void SelfPipeHandler(int signum) {
+   if (signum <= 0 || signum > MaxSelfPipeSignum) return;
+   if (!selfPipe[signum - 1].open) return;
+   int savedErrno = errno;
+   char b = static_cast<char>(signum);
+-  write(selfPipe[signum - 1].fd[1], &b, 1);
++  ssize_t v = write(selfPipe[signum - 1].fd[1], &b, 1);
++  (void)v; // Ignore the result
+   errno = savedErrno;
+ }
+ 
+ static bool SetFdFlags(int fd, int flags) {
+   int f = fcntl(fd, F_GETFL);
+   if (f == -1) {
+     LOG(ERROR) << "Could not get flags for fd " << fd;
+     return false;
+   }
+   if (fcntl(fd, F_SETFL, f | flags) == -1) {
+     LOG(ERROR) << "Could not set flags for fd " << fd;
+     return false;
+   }
+   return true;
+ }
+ 
+ int GetSelfPipeSignalFd(int signum, int sa_flags) {
+   if (signum <= 0 || signum > MaxSelfPipeSignum) {
+     LOG(ERROR) << "Invalid self-pipe signal number " << signum;
+     return -1;
+diff --git a/src/third_party/CMakeLists.txt b/src/third_party/CMakeLists.txt
+new file mode 100644
+index 0000000..6ebe335
+--- /dev/null
++++ b/src/third_party/CMakeLists.txt
+@@ -0,0 +1,19 @@
++# Copyright 2014 Google Inc. All rights reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++add_subdirectory(datalog)
++add_subdirectory(gflags)
++add_subdirectory(google-glog)
++add_subdirectory(googlemock)
++add_subdirectory(keyczar)
+diff --git a/src/third_party/datalog/CMakeLists.txt b/src/third_party/datalog/CMakeLists.txt
+new file mode 100644
+index 0000000..e1031b7
+--- /dev/null
++++ b/src/third_party/datalog/CMakeLists.txt
+@@ -0,0 +1,104 @@
++# Copyright (c) 2014 Google Inc. All rights reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++add_executable(bin2c bin2c.c)
++
++add_custom_command(
++    OUTPUT dl_lua.h
++    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/bin2c -o ${CMAKE_CURRENT_BINARY_DIR}/dl_lua.h datalog.lua
++    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
++    DEPENDS bin2c datalog.lua
++   )
++
++set(LSD lua)
++
++set(LUA_SOURCES
++    ${LSD}/lapi.c
++    ${LSD}/lauxlib.c
++    ${LSD}/lbaselib.c
++    ${LSD}/lcode.c
++    ${LSD}/ldblib.c
++    ${LSD}/ldebug.c
++    ${LSD}/ldo.c
++    ${LSD}/ldump.c
++    ${LSD}/lfunc.c
++    ${LSD}/lgc.c
++    ${LSD}/linit.c
++    ${LSD}/liolib.c
++    ${LSD}/llex.c
++    ${LSD}/lmathlib.c
++    ${LSD}/lmem.c
++    ${LSD}/loadlib.c
++    ${LSD}/lobject.c
++    ${LSD}/lopcodes.c
++    ${LSD}/loslib.c
++    ${LSD}/lparser.c
++    ${LSD}/lstate.c
++    ${LSD}/lstring.c
++    ${LSD}/lstrlib.c
++    ${LSD}/ltable.c
++    ${LSD}/ltablib.c
++    ${LSD}/ltm.c
++    ${LSD}/lua.c
++    ${LSD}/luac.c
++    ${LSD}/lundump.c
++    ${LSD}/lvm.c
++    ${LSD}/lzio.c
++    ${LSD}/print.c
++   )
++
++set(LUA_HEADERS
++    ${LSD}/lapi.h
++    ${LSD}/lauxlib.h
++    ${LSD}/lcode.h
++    ${LSD}/ldebug.h
++    ${LSD}/ldo.h
++    ${LSD}/lfunc.h
++    ${LSD}/lgc.h
++    ${LSD}/llex.h
++    ${LSD}/llimits.h
++    ${LSD}/lmem.h
++    ${LSD}/lobject.h
++    ${LSD}/lopcodes.h
++    ${LSD}/lparser.h
++    ${LSD}/lstate.h
++    ${LSD}/lstring.h
++    ${LSD}/ltable.h
++    ${LSD}/ltm.h
++    ${LSD}/lua.h
++    ${LSD}/luaconf.h
++    ${LSD}/lualib.h
++    ${LSD}/lundump.h
++    ${LSD}/lvm.h
++    ${LSD}/lzio.h
++   )
++
++add_library(lua STATIC ${LUA_SOURCES} ${LUA_HEADERS})
++
++set(SD .)
++
++set(DATALOG_SOURCES
++    ${SD}/datalog.c
++    ${SD}/loader.c
++   )
++
++set(DATALOG_HEADERS
++    ${SD}/datalog.h
++    ${CMAKE_CURRENT_BINARY_DIR}/dl_lua.h
++   )
++
++include_directories(lua)
++include_directories(${CMAKE_CURRENT_BINARY_DIR})
++add_library(datalog STATIC ${DATALOG_SOURCES} ${DATALOG_HEADERS})
++target_link_libraries(datalog lua)
+diff --git a/src/third_party/gflags/CMakeLists.txt b/src/third_party/gflags/CMakeLists.txt
+new file mode 100644
+index 0000000..503455e
+--- /dev/null
++++ b/src/third_party/gflags/CMakeLists.txt
+@@ -0,0 +1,37 @@
++# Copyright 2014 Google Inc. All rights reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++set(SD src)
++set(GSD ${SD}/gflags)
++
++set(GFLAGS_SOURCES
++	${SD}/gflags.cc
++	${SD}/gflags_completions.cc
++	${SD}/gflags_nc.cc
++	${SD}/gflags_reporting.cc
++	${SD}/gflags_strip_flags_test.cc
++   )
++
++set(GFLAGS_HEADERS
++    ${SD}/config.h
++	${SD}/mutex.h
++	${SD}/util.h
++	${GSD}/gflags_completions.h
++	${GSD}/gflags_declare.h
++	${GSD}/gflags.h
++   )
++
++set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-local-typedefs -Wno-sign-compare")
++include_directories(${SD})
++add_library(gflags ${GFLAGS_SOURCES} ${GFLAGS_HEADERS})
+diff --git a/src/third_party/google-glog/CMakeLists.txt b/src/third_party/google-glog/CMakeLists.txt
+new file mode 100644
+index 0000000..933b106
+--- /dev/null
++++ b/src/third_party/google-glog/CMakeLists.txt
+@@ -0,0 +1,59 @@
++# Copyright 2014 Google Inc. All rights reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++set(SD src)
++set(BSD ${SD}/base)
++set(GSD ${SD}/glog)
++
++set(GLOG_SOURCES
++    ${SD}/demangle.cc
++    ${SD}/logging.cc
++    ${SD}/raw_logging.cc
++    ${SD}/signalhandler.cc
++    ${SD}/stacktrace_unittest.cc
++    ${SD}/symbolize.cc
++    ${SD}/utilities.cc
++    ${SD}/vlog_is_on.cc
++   )
++
++set(GLOG_HEADERS
++    ${SD}/config_ia32.h
++    ${SD}/config_x64.h
++    ${SD}/config.h
++    ${SD}/demangle.h
++    ${SD}/googletest.h
++    ${SD}/stacktrace_generic-inl.h
++    ${SD}/stacktrace.h
++    ${SD}/stacktrace_libunwind-inl.h
++    ${SD}/stacktrace_powerpc-inl.h
++    ${SD}/stacktrace_x86_64-inl.h
++    ${SD}/stacktrace_x86-inl.h
++    ${SD}/symbolize.h
++    ${SD}/utilities.h
++    ${BSD}/commandlineflags.h
++    ${BSD}/googleinit.h
++    ${BSD}/mutex.h
++    ${GSD}/logging.h
++    ${GSD}/log_severity.h
++    ${GSD}/raw_logging.h
++    ${GSD}/stl_logging.h
++    ${GSD}/vlog_is_on.h
++   )
++
++include_directories(${SD})
++include_directories(../gflags/src)
++set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-sign-compare")
++add_library(glog ${GLOG_SOURCES} ${GLOG_HEADERS})
++target_link_libraries(glog gflags)
++target_link_libraries(glog pthread)
+diff --git a/src/third_party/keyczar/CMakeLists.txt b/src/third_party/keyczar/CMakeLists.txt
+new file mode 100644
+index 0000000..8c4a352
+--- /dev/null
++++ b/src/third_party/keyczar/CMakeLists.txt
+@@ -0,0 +1,86 @@
++# Copyright 2014 Google Inc. All rights reserved.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++set(SD ${CMAKE_CURRENT_SOURCE_DIR}/cpp/src)
++set(KSD ${SD}/keyczar)
++set(OSD ${KSD}/openssl)
++
++set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function -Wno-unused-variable -Wno-sign-compare")
++include_directories(${SD})
++
++set(KEYCZAR_SOURCES
++    ${KSD}/aes_key.cc
++    ${KSD}/cipher_mode.cc
++    ${KSD}/crypto_factory.cc
++    ${KSD}/dsa_private_key.cc
++    ${KSD}/dsa_public_key.cc
++    ${KSD}/ecdsa_impl.cc
++    ${KSD}/ecdsa_private_key.cc
++    ${KSD}/ecdsa_public_key.cc
++    ${KSD}/hmac_impl.cc
++    ${KSD}/hmac_key.cc
++    ${KSD}/key.cc
++    ${KSD}/keyczar.cc
++    ${KSD}/key_purpose.cc
++    ${KSD}/keyset.cc
++    ${KSD}/keyset_metadata.cc
++    ${KSD}/key_status.cc
++    ${KSD}/key_type.cc
++    ${KSD}/key_util.cc
++    ${KSD}/message_digest_impl.cc
++    ${KSD}/pbe_impl.cc
++    ${KSD}/private_key.cc
++    ${KSD}/public_key.cc
++    ${KSD}/rsa_private_key.cc
++    ${KSD}/rsa_public_key.cc
++    ${KSD}/secret_key.cc
++    ${KSD}/session.cc
++    ${KSD}/util.cc
++    ${KSD}/base/base64w.cc
++    ${KSD}/base/command_line.cc
++    ${KSD}/base/file_path.cc
++    ${KSD}/base/file_util.cc
++    ${KSD}/base/file_util_posix.cc
++    ${KSD}/base/json_reader.cc
++    ${KSD}/base/json_value_serializer.cc
++    ${KSD}/base/json_writer.cc
++    ${KSD}/base/logging.cc
++    ${KSD}/base/ref_counted.cc
++    ${KSD}/base/stl_util-inl.cc
++    ${KSD}/base/string_escape.cc
++    ${KSD}/base/string_util.cc
++    ${KSD}/base/values.cc
++    ${KSD}/base/zlib.cc
++    ${KSD}/base/modp/modp_b64w.cc
++    ${KSD}/rw/keyset_encrypted_file_reader.cc
++    ${KSD}/rw/keyset_encrypted_file_writer.cc
++    ${KSD}/rw/keyset_file_reader.cc
++    ${KSD}/rw/keyset_file_writer.cc
++    ${KSD}/rw/keyset_reader.cc
++    ${KSD}/rw/keyset_writer.cc
++    ${OSD}/aes.cc
++    ${OSD}/dsa.cc
++    ${OSD}/ecdsa.cc
++    ${OSD}/hmac.cc
++    ${OSD}/message_digest.cc
++    ${OSD}/pbe.cc
++    ${OSD}/rand.cc
++    ${OSD}/rsa.cc
++    ${OSD}/util.cc
++   )
++
++add_library(keyczar ${KEYCZAR_SOURCES})
++
++# TODO(tmroeder): there's a way to add an OpenSSL dependency, like FindOpenSSL.
++target_link_libraries(keyczar crypto)

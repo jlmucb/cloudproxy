@@ -119,10 +119,12 @@ void scheduler_init( UINT16 number_of_host_cpus )
 #endif
     g_scheduler_state = (SCHEDULER_CPU_STATE*) vmm_malloc(memory_for_state);
     vmm_memset((void*)g_scheduler_state, 0, sizeof(SCHEDULER_CPU_STATE));
+#ifdef JLMDEBUG
     if(g_scheduler_state ==0) {
         bprint("Cant allocate scheduler state\n");
         LOOP_FOREVER
     }
+#endif
     VMM_ASSERT(g_scheduler_state != 0);
 }
 

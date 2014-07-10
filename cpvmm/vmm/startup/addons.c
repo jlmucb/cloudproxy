@@ -16,7 +16,6 @@
 #include "policy_manager.h"
 #include "vmm_addons.h"
 #include "vmm_dbg.h"
-#include <tscdt_emulator_api.h>
 #ifdef TMSL_HANDLER_DEFINED
 #include <tmsl_handler_external.h>
 #endif
@@ -53,7 +52,6 @@ void start_addons( UINT32 num_of_cpus,
 
     // gdb_stub_addon_initialize(num_of_cpus, &startup_struct->debug_params.aux_port);
 
-    // tscdte_initialize(TSCDTE_MODE_OFF);
     // init_guest_create_addon();
 
 #ifdef XUVMM_DEFINED

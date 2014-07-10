@@ -493,8 +493,6 @@ void local_apic_setup_changed(void)
     LOCAL_APIC_PER_CPU_DATA *lapic_data = GET_CPU_LAPIC();
     BOOLEAN                  result;
 
-    UNUSEDVAR(result);
-
     lapic_data->lapic_base_address_hpa = hw_read_msr(IA32_MSR_APIC_BASE);
     lapic_data->lapic_base_address_hpa =
     ALIGN_BACKWARD(lapic_data->lapic_base_address_hpa, PAGE_4KB_SIZE);

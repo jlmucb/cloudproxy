@@ -258,6 +258,7 @@ static void gcpu_install_flat_memory( GUEST_CPU* gcpu,
         VMM_LOG(mask_anonymous, level_trace,"Unknown Flat Page Tables type: %d\n", pt_type);
         VMM_DEADLOOP();
     }
+    
     VMM_ASSERT( gpm_flat_page_tables_ok );
     gcpu_set_hw_enforcement(gcpu, VMCS_HW_ENFORCE_FLAT_PT);
 }
@@ -313,6 +314,7 @@ void gcpu_physical_memory_modified( GUEST_CPU_HANDLE gcpu )
         VMM_LOG(mask_anonymous, level_trace,"Unknown Flat Page Tables type during FPT update after GPM modification\n");
         VMM_DEADLOOP();
     }
+
     VMM_ASSERT( gpm_flat_page_tables_ok );
 }
 
@@ -417,12 +419,16 @@ void gcpu_raise_proper_events_after_level_change(GUEST_CPU_HANDLE gcpu,
     value = gcpu_get_guest_visible_control_reg_layered(gcpu, IA32_CTRL_CR0, VMCS_MERGED);
     if (optional && optional->visible_cr0 == value) {
         update_event = cr_raise_write_events(gcpu, IA32_CTRL_CR0, value);
-        VMM_ASSERT(update_event != EVENT_NOT_HANDLED); // Mustn't be GPF0
+        if (update_event == EVENT_NOT_HANDLED) {
+            VMM_ASSERT(update_event != EVENT_NOT_HANDLED); // Mustn't be GPF0
+        }
     }
     value = gcpu_get_guest_visible_control_reg_layered(gcpu, IA32_CTRL_CR4, VMCS_MERGED);
     if (optional && optional->visible_cr4 == value) {
         update_event = cr_raise_write_events(gcpu, IA32_CTRL_CR4, value);
-        VMM_ASSERT(update_event != EVENT_NOT_HANDLED); // Mustn't be GPF0
+        if (update_event == EVENT_NOT_HANDLED) {
+            VMM_ASSERT(update_event != EVENT_NOT_HANDLED); // Mustn't be GPF0
+        }
     }
     value = gcpu_get_msr_reg_layered(gcpu, IA32_VMM_MSR_EFER, VMCS_MERGED);
     if (optional && optional->EFER == value) {
@@ -433,7 +439,9 @@ void gcpu_raise_proper_events_after_level_change(GUEST_CPU_HANDLE gcpu,
     if (optional && optional->visible_cr3 == value) {
         value = gcpu_get_guest_visible_control_reg_layered(gcpu, IA32_CTRL_CR3, VMCS_MERGED);
         update_event = cr_raise_write_events(gcpu, IA32_CTRL_CR3, value);
-        VMM_ASSERT(update_event != EVENT_NOT_HANDLED); // Mustn't be GPF0
+        if (update_event == EVENT_NOT_HANDLED) {
+            VMM_ASSERT(update_event != EVENT_NOT_HANDLED); // Mustn't be GPF0
+        }
     }
     // PAT update will be tracked later in resume
 }

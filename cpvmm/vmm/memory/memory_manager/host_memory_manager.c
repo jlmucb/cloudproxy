@@ -1094,10 +1094,13 @@ BOOLEAN hmm_initialize(const VMM_STARTUP_STRUCT* startup_struct) {
                         FALSE, &g_additional_heap_base);
             VMM_LOG(mask_anonymous, level_trace,"HMM: Additional heap is mapped to VA = %p\n", 
                        (void *)g_additional_heap_base);
-            if ((!ret) || (g_additional_heap_base == 0))
+            if ((!ret) || (g_additional_heap_base == 0)) {
                 VMM_DEADLOOP();
-            if (!remove_initial_hva_to_hpa_mapping_for_extended_heap())
+            }
+
+            if (!remove_initial_hva_to_hpa_mapping_for_extended_heap()) {
                 VMM_DEADLOOP();
+            }
         }
     }
     // Make the HVA -> HPA mapping hardware compliant, i.e. create vmm page tables

@@ -232,10 +232,11 @@ GUEST_CPU_HANDLE gcpu_allocate(VIRTUAL_CPU_ID vcpu, GUEST_HANDLE guest)
     gcpu->state_flags = 0;
     gcpu->caching_flags = 0;
     status = vmcs_hierarchy_create(&gcpu->vmcs_hierarchy, gcpu);
-    VMM_ASSERT(VMM_OK == status);
+    if (VMM_OK != status) {
 #ifdef JLMDEBUG
-    bprint("gcpu_allocate, created hierarchy\n");
+        bprint("gcpu_allocate, created hierarchy\n");
 #endif
+    }
     gcpu->emulator_handle = 0;
     gcpu->guest_handle = guest;
     gcpu->active_gpm = NULL;

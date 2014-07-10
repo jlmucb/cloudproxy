@@ -15,7 +15,7 @@
 #include <vmm_defs.h>
 #include <vmm_startup.h>
 #include <vmm_stack_api.h>
-#include <vmm_stack.h>
+#include "vmm_stack.h"
 #include <idt.h>
 #include "vmm_dbg.h"
 #include <libc.h>

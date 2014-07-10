@@ -488,6 +488,7 @@ void vmentry_failure_function(ADDRESS flags)
 
     rflags.Uint64 = flags;
     code = vmcs_last_instruction_error_code( vmcs, &err );
+    VMM_ASSERT(code != 0);
 
     VMM_LOG(mask_uvmm, level_error,"CPU%d: VMENTRY Failed on ", hw_cpu_id());
     PRINT_GCPU_IDENTITY(gcpu);
@@ -745,8 +746,10 @@ void vmexit_common_handler(void)
 #endif 
     gcpu= scheduler_current_gcpu();
     if(gcpu==0) {
+#ifdef JLMDEBUG
         bprint("vm_common_exit assert 1\n");
         LOOP_FOREVER
+#endif
     }
 
     // Disable the VMCS Software Shadow/Cache

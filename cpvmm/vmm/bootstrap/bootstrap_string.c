@@ -35,7 +35,7 @@ char* vmm_strncpy(char *dest, const char *src, int n)
 }
 
 
-#ifndef INVMM
+#ifndef __x86_64__
 char* vmm_strcpy(char *dest, const char *src)
 {
     char* out= dest;
@@ -64,7 +64,7 @@ char* vmm_strchr (const char * str, int character)
 }
 
 
-#ifndef INVMM
+#ifndef __x86_64__
 int vmm_strcmp (const char * str1, const char * str2)
 {
     while(*str1!='\0' && *str2!='\0') {
@@ -94,7 +94,7 @@ int vmm_strncmp (const char * str1, const char * str2, int n)
 }
 
 
-#ifndef INVMM
+#ifndef __x86_64__
 void *vmm_memset(void *dest, int val, uint32_t count)
 {
     uint8_t* p= (uint8_t*) dest;

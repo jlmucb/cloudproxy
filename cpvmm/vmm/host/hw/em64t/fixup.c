@@ -13,13 +13,13 @@
  */
 #include "vmm_defs.h"
 #define VMM_NATIVE_VMCALL_SIGNATURE 0x024694D40
+UINT64   t_vmcs_save_area[512];  // never bigger than 4KB
+extern void vmm_print_vmcs_region(UINT64* pu);
 #ifdef JLMDEBUG
 #include "bootstrap_print.h"
 #include "jlmdebug.h"
 
 extern void** g_guest_regs_save_area;
-UINT64   t_vmcs_save_area[512];  // never bigger than 4KB
-extern void vmm_print_vmcs_region(UINT64* pu);
 extern void vmm_vmcs_guest_state_read(UINT64* area);
 #endif
 
@@ -97,11 +97,15 @@ void fixupvmcs()
 {
     UINT64  value;
     void loop_forever();
-    UINT16* loop= (UINT16*)loop_forever;
 
+#ifdef JLMDEBUG
+    UINT16* loop= (UINT16*)loop_forever;
     bprint("fixupvmcs %04x\n\n", *loop);
+#endif
     vmx_vmread(0x681e, &value);  // guest_rip
+#ifdef JLMDEBUG
     check_boot_parameters();
+#endif
     //bprint("Code at %p\n", value);
     //HexDump((UINT8*)value, (UINT8*)value+32);
      //*(UINT16*) (value+0x8)= *loop;  // feeb

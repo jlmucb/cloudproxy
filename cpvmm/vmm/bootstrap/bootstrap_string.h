@@ -28,7 +28,8 @@ extern char*    vmm_strcpy(char *dest, const char *src);
 extern char*    vmm_strchr (const char * str, int character);
 extern int      vmm_strncmp (const char * str1, const char * str2, int n);
 extern int      vmm_strcmp (const char * str1, const char * str2);
-#ifdef INVMM
+// TODO(tmroeder): check in CMake for this macro.
+#ifdef __x86_64__
 extern unsigned long long   vmm_strlen(const char* p);
 extern void*    vmm_memset(void *dest, int val, unsigned long long count);
 extern void*    vmm_memcpy(void *dest, const void* src, unsigned long long count);

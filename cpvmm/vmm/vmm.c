@@ -467,10 +467,10 @@ void vmm_bsp_proc_main(UINT32 local_apic_id, const VMM_STARTUP_STRUCT* startup_s
     VMM_LOG(mask_uvmm, level_trace,"\theap base address = %P \n", heap_address);
     VMM_LOG(mask_uvmm, level_trace,"\theap last occupied address = %P \n", 
                 heap_last_occupied_address);
+    VMM_ASSERT(heap_last_occupied_address<=(startup_struct->vmm_memory_layout[0].base_address + startup_struct->vmm_memory_layout[0].total_size));
 #if 0   // Debug print
     VMM_LOG(mask_uvmm, level_trace,"\tactual size is %P, when requested size was %P\n", 
             heap_last_occupied_address-heap_address, heap_size);
-    VMM_ASSERT(heap_last_occupied_address<=(startup_struct->vmm_memory_layout[0].base_address + startup_struct->vmm_memory_layout[0].total_size));
 #endif
 
     //  Initialize CLI monitor

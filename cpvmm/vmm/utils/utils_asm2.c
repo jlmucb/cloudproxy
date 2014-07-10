@@ -296,11 +296,10 @@ typedef struct VMCS_SAVED_REGION {
 } PACKED VMCS_SAVED_REGION;
 
 
+#ifdef JLMDEBUG
 void vmm_print_vmcs_region(UINT64* pu)
 {
     VMCS_SAVED_REGION* p= (VMCS_SAVED_REGION*) pu;
-
-#ifdef JLMDEBUG
     bprint("Guest values:\n");
     bprint("rip: %016llx, rflags: %016llx, rsp: %016llx\n",
         p->guest_rip, p->guest_rflags, p->guest_rsp);
@@ -335,8 +334,8 @@ void vmm_print_vmcs_region(UINT64* pu)
            p->vmx_entry_controls, p->vmx_exit_controls);
     bprint("pdpte0: %llx, pdpte1: %llx, pdpte2: %llx, pdpte3: %llx\n",
         p->guest_pdpte0, p->guest_pdpte1, p->guest_pdpte2, p->guest_pdpte3);
-#endif
 }
+#endif
 
 
 void vmm_vmcs_guest_state_read(UINT64* area)

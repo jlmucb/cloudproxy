@@ -696,6 +696,9 @@ void error_processing(UINT64 vmcs, int ret_val,
             error_message = "operation FAILED";
     }
     if (field == VMCS_FIELD_COUNT) {
+        VMM_ASSERT(operation != 0);
+        VMM_ASSERT(vmcs != 0);
+        VMM_ASSERT(error_message != 0);
 #ifdef JLMDEBUG
         bprint("%s ( %llx ) failed with the error: %s\n", operation, vmcs,
                 error_message ? error_message : "unknown error");

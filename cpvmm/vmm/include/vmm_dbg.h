@@ -169,7 +169,8 @@ enum msg_level
 }
 #endif
 #else
-#define VMM_ASSERT_LOG(FILE_CODE, __condition) 
+// TODO(tmroeder): Fix ASSERT to work correct and not just ignore the condition.
+#define VMM_ASSERT_LOG(FILE_CODE, __condition) (void)(__condition);
 
 #endif
 

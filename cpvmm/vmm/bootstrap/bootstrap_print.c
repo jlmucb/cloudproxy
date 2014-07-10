@@ -44,7 +44,10 @@
 typedef unsigned long       size_t;
 #endif
 
-#ifdef INVMM
+// NB. This is a gcc/clang macro; only MSVC doesn't support this, among the
+// major compilers.
+// TODO(tmroeder): Check in CMake for the existence of this macro.
+#ifdef __x86_64__
 #define PRINTMUTEX64
 #endif
 

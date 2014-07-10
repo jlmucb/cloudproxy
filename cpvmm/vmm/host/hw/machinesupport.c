@@ -187,7 +187,7 @@ void hw_write_cr0(UINT64 data)
 {
     __asm__ volatile (
         "\tmovq     %[data], %%cr0\n"
-    ::[data] "g" (data):); 
+    ::[data] "r" (data):); 
     return;
 }
 
@@ -196,7 +196,7 @@ void hw_write_cr3(UINT64 data)
 {
     __asm__ volatile (
         "\tmovq     %[data], %%cr3\n"
-    ::[data] "g" (data):); 
+    ::[data] "r" (data):); 
     return;
 }
 
@@ -205,7 +205,7 @@ void hw_write_cr4(UINT64 data)
 {
     __asm__ volatile (
         "\tmovq     %[data], %%cr4\n"
-    ::[data] "g" (data):); 
+    ::[data] "r" (data):); 
     return;
 }
 
@@ -214,7 +214,7 @@ void hw_write_cr8(UINT64 data)
 {
     __asm__ volatile (
         "\tmovq     %[data], %%cr8\n"
-    ::[data] "g" (data):); 
+    ::[data] "r" (data):); 
     return;
 }
 
@@ -303,7 +303,7 @@ void hw_write_dr0(UINT64 value)
 {
     __asm__ volatile (
         "\tmovq     %[value], %%dr0\n"
-    ::[value] "g" (value):); 
+    ::[value] "r" (value):); 
     return;
 }
 
@@ -312,7 +312,7 @@ void hw_write_dr1(UINT64 value)
 {
     __asm__ volatile (
         "\tmovq     %[value], %%dr1\n"
-    ::[value] "g" (value):); 
+    ::[value] "r" (value):); 
     return;
 }
 
@@ -321,7 +321,7 @@ void hw_write_dr2(UINT64 value)
 {
     __asm__ volatile (
         "\tmovq     %[value], %%dr2\n"
-    ::[value] "g" (value):); 
+    ::[value] "r" (value):); 
     return;
 }
 
@@ -330,7 +330,7 @@ void hw_write_dr3(UINT64 value)
 {
     __asm__ volatile (
         "\tmovq     %[value], %%dr3\n"
-    ::[value] "g" (value):); 
+    ::[value] "r" (value):); 
     return;
 }
 
@@ -339,7 +339,7 @@ void hw_write_dr4(UINT64 value)
 {
     __asm__ volatile (
         "\tmovq     %[value], %%dr4\n"
-    ::[value] "g" (value):); 
+    ::[value] "r" (value):); 
     return;
 }
 
@@ -348,7 +348,7 @@ void hw_write_dr5(UINT64 value)
 {
     __asm__ volatile (
         "\tmovq     %[value], %%dr5\n"
-    ::[value] "g" (value):); 
+    ::[value] "r" (value):); 
     return;
 }
 
@@ -357,7 +357,7 @@ void hw_write_dr6(UINT64 value)
 {
     __asm__ volatile (
         "\tmovq     %[value], %%dr6\n"
-    ::[value] "g" (value):); 
+    ::[value] "r" (value):); 
     return;
 }
 
@@ -366,7 +366,7 @@ void hw_write_dr7(UINT64 value)
 {
     __asm__ volatile (
         "\tmovq     %[value], %%dr7\n"
-    ::[value] "g" (value):); 
+    ::[value] "r" (value):); 
     return;
 }
 

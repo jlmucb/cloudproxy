@@ -286,6 +286,7 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
     return false;
   if(!RationalReduce(outy))
     return false;
+
 #ifdef JLMDEBUG1
   printf("EccSymbolicAdd() result\n"); 
   printf("in1x: "); printrational(in1x); printf("in1y: "); printrational(in1y);
@@ -794,10 +795,20 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl) {
   if(!ReduceModPoly(*s3.denominator, temp_phi, *slope.denominator)) {
     return false;
   }
+#ifdef JLMDEBUG
+    printf("slope: "); smallprintrational(slope); printf("\n");
+#endif
 
-  // is slope.denominator == 0?
-  if(slope.denominator->IsZero()) {
-    printf("slope denominator= 0\n");
+  // is (slope.denominator, temp_phi) != 1?
+  t1.ZeroPoly();
+  t2.ZeroPoly();
+  g.ZeroPoly();
+  if(!PolyExtendedgcd(*s1.denominator, temp_phi, t1, t2, g)) {
+    return false;
+  }
+  if(g.Degree()>0) {
+    printf("(slope.denominator, temp_phi) = 1\n");
+    printf("g: "); smallprintpoly(g); printf("\n");
     // use p_squared as a temp
     mpZeroNum(p_squared);
     mpAdd(*p, g_bnOne, p_squared);
@@ -974,8 +985,6 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl) {
     *tl= 2*small_w;
   *tl %= l;
 #ifdef JLMDEBUG
-  if(l==5)
-    *tl= 3;
   printf("computetmododdprime returning true after testing square roots\n");
 #endif
   return true;
@@ -1105,7 +1114,6 @@ bool schoof(bnum& a, bnum& b, bnum& p, bnum& order)
     return false;
 #ifdef JLMDEBUG
     printf("computed 2*sqrt(p): "); printNumberToConsole(v); printf("\n");
-    printf("computed prod_prime: "); printNumberToConsole(r); printf("\n");
 #endif
   if(mpCompare(t,v)!=s_isLessThan) {
     mpZeroNum(v);

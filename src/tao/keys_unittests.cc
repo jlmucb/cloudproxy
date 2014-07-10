@@ -40,18 +40,14 @@ class TaoKeysTest : public ::testing::Test {
     ASSERT_TRUE(CreateTempDir("keys_test", &temp_dir_));
     keys_.reset(new Keys(Keys::Signing | Keys::Crypting | Keys::Deriving));
     ASSERT_TRUE(keys_->InitTemporary());
+    ASSERT_TRUE(keys_->Verifier() != nullptr);
+    ASSERT_TRUE(keys_->Signer() != nullptr);
+    ASSERT_TRUE(keys_->Crypter() != nullptr);
+    ASSERT_TRUE(keys_->Deriver() != nullptr);
   }
   ScopedTempDir temp_dir_;
   scoped_ptr<Keys> keys_;
 };
-
-TEST_F(TaoKeysTest, GenerateTempKeysTest) {
-  EXPECT_TRUE(keys_->InitTemporary());
-  EXPECT_TRUE(keys_->Verifier() != nullptr);
-  EXPECT_TRUE(keys_->Signer() != nullptr);
-  EXPECT_TRUE(keys_->Crypter() != nullptr);
-  EXPECT_TRUE(keys_->Deriver() != nullptr);
-}
 
 TEST_F(TaoKeysTest, GenerateNonHostedKeysTest) {
   keys_.reset(
@@ -61,6 +57,15 @@ TEST_F(TaoKeysTest, GenerateNonHostedKeysTest) {
   EXPECT_TRUE(keys_->Signer() != nullptr);
   EXPECT_TRUE(keys_->Crypter() != nullptr);
   EXPECT_TRUE(keys_->Deriver() != nullptr);
+}
+
+TEST_F(TaoKeysTest, GenerateNonHostedSignerTest) {
+  keys_.reset(new Keys(*temp_dir_, Keys::Signing));
+  EXPECT_TRUE(keys_->InitWithPassword("unitpass"));
+  EXPECT_TRUE(keys_->Verifier() != nullptr);
+  EXPECT_TRUE(keys_->Signer() != nullptr);
+  EXPECT_TRUE(keys_->Crypter() == nullptr);
+  EXPECT_TRUE(keys_->Deriver() == nullptr);
 }
 
 TEST_F(TaoKeysTest, GenerateHostedKeysTest) {
@@ -86,6 +91,16 @@ TEST_F(TaoKeysTest, SignVerifyDataTest) {
       << "Could not sign the test message";
   EXPECT_TRUE(keys_->Verifier()->Verify(message, context, signature))
       << "The signature did not pass verification";
+}
+
+TEST_F(TaoKeysTest, EncryptDecryptDataTest) {
+  string message("Test message");
+  string encrypted, decrypted;
+  ASSERT_TRUE(keys_->Crypter()->Encrypt(message, &encrypted))
+      << "Could not encrypt the test message";
+  EXPECT_TRUE(keys_->Crypter()->Decrypt(encrypted, &decrypted))
+      << "Could not decrypt the test message";
+  EXPECT_EQ(message, decrypted);
 }
 
 /*

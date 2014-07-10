@@ -34,7 +34,7 @@ message CryptoKey {
   }
   enum CryptoAlgorithm {  // algorithm, mode, etc., all rolled into one
     ECDSA_SHA = 1;
-    AES_CBC_HMAC_SHA = 2;
+    AES_CTR_HMAC_SHA = 2;
     HMAC_SHA = 3;
   }
   required CryptoVersion version = 1;
@@ -55,7 +55,7 @@ message CryptoKeyset {
 
 message PBEData {
   required CryptoVersion version = 1;
-  required string cipher = 2;  // "aes128"
+  required string cipher = 2;  // "aes128-cbc"
   required string hmac = 3;  // "sha256"
   required int32 iterations = 4;  // 4096
   required bytes iv = 5;
@@ -80,10 +80,10 @@ message ECDSA_SHA_SigningKey_v1 {
 }
 
 enum CryptoCipherMode {
-  CIPHER_MODE_CBC = 1;
+  CIPHER_MODE_CTR = 1;
 }
 
-message AES_CBC_HMAC_SHA_CryptingKey_v1 {
+message AES_CTR_HMAC_SHA_CryptingKey_v1 {
   required CryptoCipherMode mode = 1;
   required bytes aes_private = 2;
   required bytes hmac_private = 3;
@@ -128,7 +128,7 @@ message SignedData {
 }
 
 // A PDU to be serialized and signed for integrity-protection when using
-// encryption modes (like AES CBC with HMAC-SHA) that require a separate MAC.
+// encryption modes (like AES CTR with HMAC-SHA) that require a separate MAC.
 // Note: We actually just hmac the partially serialized EncryptedData message
 // with all fields complete except the mac field.
 // message EncryptionIntegrityPDU {

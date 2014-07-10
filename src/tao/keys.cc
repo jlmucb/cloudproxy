@@ -280,6 +280,7 @@ static bool EncodeECDSA_SHA_SigningKey(const EC_KEY *ec_key,
   // Fail on buffer overflow.
   CHECK_LE(n_len, max_n_len);
   if (n_len == 0) {
+    OpenSSLSuccess();
     LOG(ERROR) << "Could not serialize EC private key";
     return false;
   }
@@ -295,6 +296,7 @@ static bool EncodeECDSA_SHA_SigningKey(const EC_KEY *ec_key,
       EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
                          POINT_CONVERSION_COMPRESSED, nullptr, 0, bn_ctx.get());
   if (point_len == 0) {
+    OpenSSLSuccess();
     LOG(ERROR) << "Could not serialize EC public key";
     return false;
   }
@@ -368,6 +370,7 @@ static bool EncodeECDSA_SHA_VerifyingKey(const EC_KEY *ec_key,
       EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
                          POINT_CONVERSION_COMPRESSED, nullptr, 0, bn_ctx.get());
   if (point_len == 0) {
+    OpenSSLSuccess();
     LOG(ERROR) << "Can't serialize EC public half";
     return false;
   }
@@ -407,6 +410,7 @@ static EC_KEY *DecodeECDSA_SHA_VerifyingKey(
     return nullptr;
   }
   if (!EC_KEY_set_public_key(ec_key.get(), ec_point.get())) {
+    OpenSSLSuccess();
     LOG(ERROR) << "Could not set EC public key";
     return nullptr;
   }
@@ -528,12 +532,14 @@ string Signer::SerializeWithPassword(const string &password) const {
   }
   // Serialize EVP_PKEY as PEM-encoded PKCS#8.
   ScopedBio mem(BIO_new(BIO_s_mem()));
+  // Use CBC mode here because CTR mode does not have an ASN.1 OID.
   const EVP_CIPHER *cipher = EVP_aes_128_cbc();
   // const_cast is (maybe?) safe because default password callback only reads
   // pass.
   char *pass = const_cast<char *>(password.c_str());
   if (PEM_write_bio_PKCS8PrivateKey(mem.get(), evp_pkey.get(), cipher, nullptr,
                                     0, nullptr, pass) != 1) {
+    OpenSSLSuccess();
     LOG(ERROR) << "Could not serialize EVP_PKEY";
     return "";
   }
@@ -603,6 +609,7 @@ string Signer::CreateSelfSignedX509(const string &details_text) const {
       !AddX509Extension(x509.get(), NID_authority_key_identifier,
                         "keyid:always") ||
       !X509_sign(x509.get(), evp_pkey.get(), EVP_sha1()) || !OpenSSLSuccess()) {
+    OpenSSLSuccess();
     LOG(ERROR) << "Could not create self-signed X.509 certificate";
     return "";
   }
@@ -630,6 +637,7 @@ string Signer::CreateSignedX509(const string &ca_pem_cert, int cert_serial,
       !X509_set_issuer_name(x509.get(), issuer) ||
       !X509_sign(x509.get(), ca_evp_pkey.get(), EVP_sha1()) ||
       !OpenSSLSuccess()) {
+    OpenSSLSuccess();
     LOG(ERROR) << "Could not create CA-signed X.509 certificate";
     return "";
   }
@@ -727,6 +735,7 @@ EVP_PKEY *Signer::GetEvpPkey() const {
     return nullptr;
   }
   if (!EVP_PKEY_set1_EC_KEY(evp_pkey.get(), key_.get())) {
+    OpenSSLSuccess();
     LOG(ERROR) << "Could not convert EC_KEY to EVP_PKEY";
     return nullptr;
   }
@@ -897,6 +906,7 @@ EVP_PKEY *Verifier::GetEvpPkey() const {
     return nullptr;
   }
   if (!EVP_PKEY_set1_EC_KEY(evp_pkey.get(), key_.get())) {
+    OpenSSLSuccess();
     LOG(ERROR) << "Could not convert EC_KEY to EVP_PKEY";
     return nullptr;
   }
@@ -942,6 +952,7 @@ static bool SHA256_HMAC_Sign(const string &key, const string &data,
                     nullptr /* engine */) ||
       !HMAC_Update(ctx.get(), str2uchar(data), data.size()) ||
       !HMAC_Final(ctx.get(), str2uchar(mac) + mac_length, &sig_length)) {
+    OpenSSLSuccess();
     LOG(ERROR) << "Could not compute HMAC";
     return false;
   }
@@ -1060,7 +1071,7 @@ Deriver *Deriver::DeepCopy() const {
 }
 
 Crypter *Crypter::Generate() {
-  // This only supports AES-256 CBC with HMAC-SHA256.
+  // This only supports AES-256 CTR with HMAC-SHA256.
   // See NIST SP800-57 part1, pages 63-64 for hmac key size recommendations.
   size_t aes_size = 256;
   size_t hmac_size = 256;
@@ -1074,19 +1085,20 @@ Crypter *Crypter::Generate() {
   return new Crypter(*aes_key, *hmac_key);
 }
 
-/// Compute cipher for AES-256 CBC.
+/// Compute cipher for AES-256 CTR.
 /// @param encrypt True for encryption mode.
 /// @param key The aes key.
 /// @param iv The random iv.
 /// @param in The data to be ciphered.
 /// @param[out] out The output after ciphering.
-static bool AES256_CBC_Cipher(bool encrypt, const string &key, const string &iv,
+static bool AES256_CTR_Cipher(bool encrypt, const string &key, const string &iv,
                               const string &in, string *out) {
-  const EVP_CIPHER *cipher = EVP_aes_256_cbc();
+  const EVP_CIPHER *cipher = EVP_aes_256_ctr();
   // Initialize with aesKey and iv.
   ScopedCipherCtx ctx(EVP_CIPHER_CTX_new());
   if (!EVP_CipherInit_ex(ctx.get(), cipher, nullptr /* engine */,
                          str2uchar(key), str2uchar(iv), encrypt ? 1 : 0)) {
+    OpenSSLSuccess();
     LOG(ERROR) << "Can't init cipher";
     return false;
   }
@@ -1096,6 +1108,7 @@ static bool AES256_CBC_Cipher(bool encrypt, const string &key, const string &iv,
   int out_data_length = 0;
   if (!EVP_CipherUpdate(ctx.get(), str2uchar(out), &out_data_length,
                         str2uchar(in), in.size())) {
+    OpenSSLSuccess();
     LOG(ERROR) << "Can't update cipher";
     return false;
   }
@@ -1108,6 +1121,7 @@ static bool AES256_CBC_Cipher(bool encrypt, const string &key, const string &iv,
   int out_finalize_length = 0;
   if (!EVP_CipherFinal_ex(ctx.get(), str2uchar(out) + out_data_length,
                           &out_finalize_length)) {
+    OpenSSLSuccess();
     LOG(ERROR) << "Can't finalize cipher";
     return false;
   }
@@ -1118,7 +1132,7 @@ static bool AES256_CBC_Cipher(bool encrypt, const string &key, const string &iv,
 }
 
 bool Crypter::Encrypt(const string &data, string *encrypted) const {
-  const EVP_CIPHER *cipher = EVP_aes_256_cbc();
+  const EVP_CIPHER *cipher = EVP_aes_256_ctr();
   EncryptedData ed;
   if (!Header(ed.mutable_header())) {
     LOG(ERROR) << "Can't prepare encrypt header";
@@ -1133,7 +1147,7 @@ bool Crypter::Encrypt(const string &data, string *encrypted) const {
     return false;
   }
   // Encrypt with key, iv, and data.
-  if (!AES256_CBC_Cipher(true /* encrypt */, *aesKey_, ed.iv(), data,
+  if (!AES256_CTR_Cipher(true /* encrypt */, *aesKey_, ed.iv(), data,
                          ed.mutable_ciphertext())) {
     LOG(ERROR) << "Can't encrypt";
     return false;
@@ -1174,7 +1188,7 @@ bool Crypter::Decrypt(const string &encrypted, string *data) const {
     return false;
   }
   // Decrypt with key, iv, and ciphertext.
-  if (!AES256_CBC_Cipher(false /* decrypt */, *aesKey_, ed.iv(),
+  if (!AES256_CTR_Cipher(false /* decrypt */, *aesKey_, ed.iv(),
                          ed.ciphertext(), data)) {
     LOG(ERROR) << "Can't decrypt";
     return false;
@@ -1185,9 +1199,9 @@ bool Crypter::Decrypt(const string &encrypted, string *data) const {
 bool Crypter::Encode(CryptoKey *m) const {
   m->set_version(CRYPTO_VERSION_1);
   m->set_purpose(CryptoKey::CRYPTING);
-  m->set_algorithm(CryptoKey::AES_CBC_HMAC_SHA);
-  AES_CBC_HMAC_SHA_CryptingKey_v1 k;
-  k.set_mode(CIPHER_MODE_CBC);
+  m->set_algorithm(CryptoKey::AES_CTR_HMAC_SHA);
+  AES_CTR_HMAC_SHA_CryptingKey_v1 k;
+  k.set_mode(CIPHER_MODE_CTR);
   k.set_aes_private(*aesKey_);
   k.set_hmac_private(*hmacKey_);
   if (!k.SerializeToString(m->mutable_key())) {
@@ -1210,12 +1224,12 @@ Crypter *Crypter::Decode(const CryptoKey &m) {
     LOG(ERROR) << "Bad purpose";
     return nullptr;
   }
-  if (m.algorithm() != CryptoKey::AES_CBC_HMAC_SHA) {
+  if (m.algorithm() != CryptoKey::AES_CTR_HMAC_SHA) {
     LOG(ERROR) << "Bad algorithm";
     return nullptr;
   }
-  AES_CBC_HMAC_SHA_CryptingKey_v1 k;
-  if (!k.ParseFromString(m.key()) || k.mode() != CIPHER_MODE_CBC) {
+  AES_CTR_HMAC_SHA_CryptingKey_v1 k;
+  if (!k.ParseFromString(m.key()) || k.mode() != CIPHER_MODE_CTR) {
     SecureStringErase(k.mutable_aes_private());
     SecureStringErase(k.mutable_hmac_private());
     LOG(ERROR) << "Could not parse key";
@@ -1227,7 +1241,7 @@ Crypter *Crypter::Decode(const CryptoKey &m) {
   hmac_key->assign(k.hmac_private());
   SecureStringErase(k.mutable_aes_private());
   SecureStringErase(k.mutable_hmac_private());
-  // This only supports AES-256 CBC with HMAC-SHA256.
+  // This only supports AES-256 CTR with HMAC-SHA256.
   // See NIST SP800-57 part1, pages 63-64 for hmac key size recommendations.
   size_t aes_size = 256;
   size_t hmac_size = 256;
@@ -1320,14 +1334,14 @@ static bool PBKDF2_SHA256_AES128_CBC_Cipher(bool encrypt,
                                             string *out) {
   /// This code is adapted from Keyczar. It uses seemingly undocument OpenSSL
   /// PBE functions that (presumably) implement PKCS#5 PBKDF2 with HMAC-SHA256
-  /// for
-  /// key derivation and PKCS#12 AES128 encryption. It isn't clear if a MAC is
-  /// added during the encryption step. Perhaps some of this code should be
+  /// for key derivation and PKCS#12 AES128 encryption. It isn't clear if a MAC
+  /// is added during the encryption step. Perhaps some of this code should be
   /// replaced by more explicit calls to PBKDF2, AES, and HMAC.
   if (password.empty()) {
     LOG(ERROR) << "Will not perform PBE with empty password";
     return false;
   }
+  // Use CBC mode here because CTR mode does not have an ASN.1 OID.
   const EVP_CIPHER *cipher = EVP_aes_128_cbc();
   // AES iv size = AES block size = 128 bits = 16 bytes
   if (iterations < PKCS5_DEFAULT_ITER ||
@@ -1342,8 +1356,9 @@ static bool PBKDF2_SHA256_AES128_CBC_Cipher(bool encrypt,
   ScopedX509Algor algo(PKCS5_pbe2_set_iv(cipher, iterations, salt_buf,
                                          salt.size(), iv_buf, prf_nid));
   if (algo.get() == nullptr) {
+    OpenSSLSuccess();
     LOG(ERROR) << "Can't create PBE cipher";
-    return "";
+    return false;
   }
 
   // size_t max_len = in.size() + cipher->block_size;
@@ -1353,10 +1368,12 @@ static bool PBKDF2_SHA256_AES128_CBC_Cipher(bool encrypt,
   int out_len = 0;
   /// const_cast is safe because PKCS12_pbe_crypt doesn't modify in buffer.
   unsigned char *in_buf = const_cast<unsigned char *>(str2uchar(in));
+  // fixme this needs cipher?
   if (!PKCS12_pbe_crypt(algo.get(), password.c_str(), password.size(), in_buf,
                         in.size(),
                         &out_ptr,  // str2uchar(out),
                         &out_len, encrypt ? 1 : 0)) {
+    OpenSSLSuccess();
     LOG(ERROR) << "Can't encrypt with PBE";
     return false;
   }
@@ -1374,10 +1391,11 @@ static bool PBE_Encrypt(const string &plaintext, const string &password,
                         string *ciphertext) {
   PBEData pbe;
   pbe.set_version(CRYPTO_VERSION_1);
-  pbe.set_cipher("aes128");
+  pbe.set_cipher("aes128-cbc");
   pbe.set_hmac("sha256");
   pbe.set_iterations(4096);  // minimum 2048
   size_t salt_size = 16;     // minimum 8
+  // Use CBC mode here because CTR mode does not have an ASN.1 OID.
   const EVP_CIPHER *cipher = EVP_aes_128_cbc();
   size_t iv_size =
       EVP_CIPHER_iv_length(cipher);  // AES iv size = AES block size =
@@ -1391,6 +1409,7 @@ static bool PBE_Encrypt(const string &plaintext, const string &password,
   if (!PBKDF2_SHA256_AES128_CBC_Cipher(encrypt, password, pbe.iterations(),
                                        pbe.salt(), pbe.iv(), plaintext,
                                        pbe.mutable_ciphertext())) {
+    OpenSSLSuccess();
     LOG(ERROR) << "Can't perform PBE";
     return false;
   }
@@ -1410,7 +1429,7 @@ static bool PBE_Decrypt(const string &ciphertext, const string &password,
   PBEData pbe;
   bool encrypt = false;
   if (!pbe.ParseFromString(ciphertext) || pbe.version() != CRYPTO_VERSION_1 ||
-      pbe.cipher() != "aes128" || pbe.hmac() != "sha256" ||
+      pbe.cipher() != "aes128-cbc" || pbe.hmac() != "sha256" ||
       !PBKDF2_SHA256_AES128_CBC_Cipher(encrypt, password, pbe.iterations(),
                                        pbe.salt(), pbe.iv(), pbe.ciphertext(),
                                        plaintext)) {

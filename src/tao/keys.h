@@ -254,7 +254,7 @@ class Deriver {
 };
 
 // A Crypter represents a secret symmetric key to be used for encryption and
-// decryption. Currently this only supports AES256 CBC with HMAC-SHA256.
+// decryption. Currently this only supports AES256 CTR with HMAC-SHA256.
 class Crypter {
  public:
   Crypter(const string &aesKey, const string &hmacKey)

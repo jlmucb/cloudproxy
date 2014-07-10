@@ -102,15 +102,19 @@ int modp_b64w_encode(char* dest, const char* str, int len)
         t1 = s[i];
         *p++ = e0[t1];
         *p++ = e1[(t1 & 0x03) << 4];
+#ifdef DOPAD
         *p++ = CHARPAD;
         *p++ = CHARPAD;
+#endif
         break;
     default: /* case 2 */
         t1 = s[i]; t2 = s[i+1];
         *p++ = e0[t1];
         *p++ = e1[((t1 & 0x03) << 4) | ((t2 >> 4) & 0x0F)];
         *p++ = e2[(t2 & 0x0F) << 2];
+#ifdef DOPAD
         *p++ = CHARPAD;
+#endif
     }
 
     *p = '\0';

@@ -148,6 +148,7 @@
 				'../third_party/google-glog/glog.gyp:glog',
 				'../third_party/keyczar/keyczar.gyp:keyczar',
 				'../third_party/protobuf/protobuf.gyp:protobuf',
+				'../third_party/libb64/libb64.gyp:b64',
 			],
 			'direct_dependent_settings' : {
 				'libraries' : [
@@ -166,6 +167,7 @@
 				'../third_party/google-glog/glog.gyp:glog',
 				'../third_party/keyczar/keyczar.gyp:keyczar',
 				'../third_party/protobuf/protobuf.gyp:protobuf',
+				'../third_party/libb64/libb64.gyp:b64',
 			],
 		},
 	],

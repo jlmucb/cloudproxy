@@ -108,8 +108,8 @@ void SecureStringErase(string *s) {
 /// @param val The value to be set
 static bool SetX509NameDetail(X509_NAME *name, const string &id,
                               const string &val) {
-  // const_cast is (maybe?) safe, X509_NAME_add_entry_by_txt does not modify
-  // buffer.
+  // const_cast is (maybe?) safe because X509_NAME_add_entry_by_txt does not
+  // modify buffer.
   unsigned char *data =
       reinterpret_cast<unsigned char *>(const_cast<char *>(val.c_str()));
   X509_NAME_add_entry_by_txt(name, id.c_str(), MBSTRING_ASC, data, -1, -1, 0);
@@ -174,7 +174,8 @@ static bool AddX509Extension(X509 *x509, int nid, const string &val) {
   X509V3_set_ctx_nodb(&ctx);
   X509V3_set_ctx(&ctx, x509, x509, nullptr, nullptr, 0);
 
-  // const_cast is (maybe?) safe, X509V3_EXT_conf_nid does not modify buffer.
+  // const_cast is (maybe?) safe because X509V3_EXT_conf_nid does not modify
+  // buffer.
   char *data = const_cast<char *>(val.c_str());
   X509_EXTENSION *ex = X509V3_EXT_conf_nid(nullptr, &ctx, nid, data);
   if (!OpenSSLSuccess() || ex == nullptr) {
@@ -219,7 +220,7 @@ static int no_password_callback(char *buf, int size, int rwflag, void *u) {
 }
 
 X509 *DeserializeX509(const string &pem) {
-  // const_cast is safe, we only read from the BIO
+  // const_cast is safe because we only read from the BIO.
   char *data = const_cast<char *>(pem.c_str());
   ScopedBio mem(BIO_new_mem_buf(data, -1));
   ScopedX509 x509(PEM_read_bio_X509(mem.get(), nullptr /* ptr */,
@@ -504,7 +505,8 @@ string Signer::SerializeWithPassword(const string &password) const {
   // Serialize EVP_PKEY as PEM-encoded PKCS#8.
   ScopedBio mem(BIO_new(BIO_s_mem()));
   const EVP_CIPHER *cipher = EVP_aes_128_cbc();
-  // const_cast is (maybe?) safe, default password callback only reads pass
+  // const_cast is (maybe?) safe because default password callback only reads
+  // pass.
   char *pass = const_cast<char *>(password.c_str());
   if (PEM_write_bio_PKCS8PrivateKey(mem.get(), evp_pkey.get(), cipher, nullptr,
                                     0, nullptr, pass) != 1) {
@@ -519,10 +521,11 @@ string Signer::SerializeWithPassword(const string &password) const {
 Signer *Signer::DeserializeWithPassword(const string &serialized,
                                         const string &password) {
   // Deserialize EVP_PKEY
-  // const_cast is safe, we only read from the BIO
+  // const_cast is safe because we only read from the BIO.
   char *data = const_cast<char *>(serialized.c_str());
   ScopedBio mem(BIO_new_mem_buf(data, -1));
-  // const_cast is (maybe?) safe, default password callback only reads pass
+  // const_cast is (maybe?) safe because default password callback only reads
+  // pass.
   char *pass = const_cast<char *>(password.c_str());
   ScopedEvpPkey evp_pkey(
       PEM_read_bio_PrivateKey(mem.get(), nullptr, nullptr, pass));
@@ -1309,7 +1312,7 @@ static bool PBKDF2_SHA256_AES128_CBC_Cipher(bool encrypt,
     return false;
   }
   int prf_nid = NID_hmacWithSHA256;
-  /// const_cast is safe, PKCS5_pbe2_set_iv doesn't modify salt or iv.
+  /// const_cast is safe because PKCS5_pbe2_set_iv doesn't modify salt or iv.
   unsigned char *salt_buf = const_cast<unsigned char *>(str2uchar(salt));
   unsigned char *iv_buf = const_cast<unsigned char *>(str2uchar(iv));
   ScopedX509Algor algo(PKCS5_pbe2_set_iv(cipher, iterations, salt_buf,
@@ -1324,7 +1327,7 @@ static bool PBKDF2_SHA256_AES128_CBC_Cipher(bool encrypt,
 
   unsigned char *out_ptr = nullptr;
   int out_len = 0;
-  /// const_cast is safe, PKCS12_pbe_crypt doesn't modify in buffer.
+  /// const_cast is safe because PKCS12_pbe_crypt doesn't modify in buffer.
   unsigned char *in_buf = const_cast<unsigned char *>(str2uchar(in));
   if (!PKCS12_pbe_crypt(algo.get(), password.c_str(), password.size(), in_buf,
                         in.size(),

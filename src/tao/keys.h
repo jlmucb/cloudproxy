@@ -360,10 +360,10 @@ class Keys {
 
   /// Get managed keys, or nullptr if not available.
   /// @{
-  tao::Verifier *Verifier() const { return verifier_.get(); }
-  tao::Signer *Signer() const { return signer_.get(); }
-  tao::Deriver *Deriver() const { return deriver_.get(); }
-  tao::Crypter *Crypter() const { return crypter_.get(); }
+  const tao::Verifier *Verifier() const { return verifier_.get(); }
+  const tao::Signer *Signer() const { return signer_.get(); }
+  const tao::Deriver *Deriver() const { return deriver_.get(); }
+  const tao::Crypter *Crypter() const { return crypter_.get(); }
   /// @}
 
   /// Get the tao delegation for the managed signing key. This is only available

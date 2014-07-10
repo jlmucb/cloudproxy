@@ -108,13 +108,13 @@ class TaoDomain : public TaoGuard {
   string GetAuthType() const { return GetConfigString(JSONAuthType); }
 
   /// Get the policy key signer. This returns nullptr if the object is locked.
-  Signer *GetPolicySigner() const { return keys_->Signer(); }
+  const Signer *GetPolicySigner() const { return keys_->Signer(); }
 
   /// Get the policy key verifier.
-  Verifier *GetPolicyVerifier() const { return keys_->Verifier(); }
+  const Verifier *GetPolicyVerifier() const { return keys_->Verifier(); }
 
   /// Get the policy keys.
-  Keys *GetPolicyKeys() const { return keys_.get(); }
+  const Keys *GetPolicyKeys() const { return keys_.get(); }
 
   /// Create a key-to-name binding attestation, signed by the policy private
   /// key. If K_policy is the policy key, typical bindings are:

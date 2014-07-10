@@ -69,11 +69,10 @@
 
 /*
  * if we aren't doing padding
- * set the pad character to NULL
+ * the pad character should never be used
  */
 #ifndef DOPAD
 #undef CHARPAD
-#define CHARPAD '\0'
 #endif
 
 int modp_b64w_encode(char* dest, const char* str, int len)

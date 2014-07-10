@@ -251,7 +251,7 @@ static Predicate *AddPolicySays(const Predicate &pred,
   if (pred.Name() == "says" || pred.Name() == "subprin") {
     return pred.DeepCopy();
   } else {
-    scoped_ptr<Predicate> says_pred(new Predicate("says"));
+    unique_ptr<Predicate> says_pred(new Predicate("says"));
     says_pred->AddArgument(policy_term.DeepCopy());
     says_pred->AddArgument(new Term(pred.Name(), Term::STRING));
     for (int i = 0; i < pred.ArgumentCount(); i++)
@@ -262,7 +262,7 @@ static Predicate *AddPolicySays(const Predicate &pred,
 
 bool DatalogGuard::ParseRule(const string &rule, set<string> *vars,
                              list<unique_ptr<Predicate>> *conds,
-                             scoped_ptr<Predicate> *consequent) {
+                             unique_ptr<Predicate> *consequent) {
   stringstream in(rule);
   bool quantified = (in.peek() == '(');
   // Get the variables, if any.
@@ -299,7 +299,7 @@ bool DatalogGuard::ParseRule(const string &rule, set<string> *vars,
   }
   // Check for conditions.
   conds->clear();
-  scoped_ptr<Predicate> pred(Predicate::ParseFromStream(in));
+  unique_ptr<Predicate> pred(Predicate::ParseFromStream(in));
   if (!in) {
     LOG(ERROR) << "Expecting condition or consequent";
     return false;
@@ -362,7 +362,7 @@ bool DatalogGuard::ParseRule(const string &rule, set<string> *vars,
 bool DatalogGuard::ProcessRule(const string &rule, bool retract) {
   set<string> vars;
   list<unique_ptr<Predicate>> conds;
-  scoped_ptr<Predicate> consequent;
+  unique_ptr<Predicate> consequent;
   if (!ParseRule(rule, &vars, &conds, &consequent)) {
     LOG(ERROR) << "Could not parse rule";
     return false;
@@ -424,7 +424,7 @@ bool DatalogGuard::Clear() {
 }
 
 bool DatalogGuard::Query(const string &query) {
-  scoped_ptr<Predicate> pred(Predicate::ParseFromString(query));
+  unique_ptr<Predicate> pred(Predicate::ParseFromString(query));
   if (pred.get() == nullptr) {
     LOG(ERROR) << "Could not parse query";
     return false;

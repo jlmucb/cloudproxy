@@ -55,7 +55,7 @@ bool LinuxHost::InitStacked(Tao *host_tao) {
     LOG(ERROR) << "Could not extend with policy name";
     return false;
   }
-  scoped_ptr<Keys> keys(
+  unique_ptr<Keys> keys(
       new Keys(path_, Keys::Signing | Keys::Crypting | Keys::Deriving));
   if (!keys->InitHosted(host_tao, Tao::SealPolicyDefault)) {
     LOG(ERROR) << "Could not obtain keys";
@@ -69,7 +69,7 @@ bool LinuxHost::InitRoot(const string &pass) {
   // There is no point in extending our own name in root mode -- we have the
   // key so we can do anything, including undoing an extend operation, and no
   // other principal should ever be led to believe otherwise.
-  scoped_ptr<Keys> keys(
+  unique_ptr<Keys> keys(
       new Keys(path_, Keys::Signing | Keys::Crypting | Keys::Deriving));
   if (!keys->InitWithPassword(pass)) {
     LOG(ERROR) << "Could not unlock keys";
@@ -307,7 +307,7 @@ bool LinuxHost::HandleStartHostedProgram(const LinuxAdminRPCRequest &rpc,
   LOG(INFO) << "Hosted program ::" << elideString(*child_subprin)
             << " is authorized to run on this Tao host";
 
-  scoped_ptr<HostedLinuxProcess> child;
+  unique_ptr<HostedLinuxProcess> child;
   if (!child_factory_->StartHostedProgram(*child_channel_factory_, path, args,
                                           *child_subprin, &child)) {
     LOG(ERROR) << "Could not start hosted program ::"
@@ -645,7 +645,7 @@ bool LinuxHost::Listen() {
     // Check for new admin channels.
     if (FD_ISSET(admin_fd, &read_fds)) {
       VLOG(3) << "Admin connection";
-      scoped_ptr<FDMessageChannel> admin(
+      unique_ptr<FDMessageChannel> admin(
           admin_channel_factory_->AcceptConnection());
       if (admin.get() != nullptr) {
         admin_clients_.push_back(
@@ -677,7 +677,7 @@ bool LinuxHost::Listen() {
 
 LinuxAdminRPC *LinuxHost::Connect(const string &path) {
   string sock_path = FilePath(path).Append("admin_socket").value();
-  scoped_ptr<MessageChannel> chan(UnixSocketFactory::Connect(sock_path));
+  unique_ptr<MessageChannel> chan(UnixSocketFactory::Connect(sock_path));
   if (chan.get() == nullptr) {
     LOG(ERROR) << "Could not connect to LinuxHost at " << sock_path;
     return nullptr;

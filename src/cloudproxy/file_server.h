@@ -81,7 +81,7 @@ class FileServer : public CloudServer {
 
  private:
   /// A key for deriving keys for encryption and integrity protection.
-  scoped_ptr<tao::Keys> main_key_;
+  unique_ptr<tao::Keys> main_key_;
 
   /// A key to use for file encryption.
   keyczar::base::ScopedSafeString enc_key_;

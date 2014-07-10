@@ -34,20 +34,20 @@ DEFINE_string(aik_blob_file, "./tpm/aikblob",
 template <typename T>
 class TaoTest : public ::testing::Test {
  protected:
-  virtual void SetUp(scoped_ptr<TPMTao> *tao) {
+  virtual void SetUp(unique_ptr<TPMTao> *tao) {
     string blob;
     ASSERT_TRUE(ReadFileToString(FLAGS_aik_blob_file, &blob));
     tao->reset(new TPMTao(blob, list<int>{17, 18}));
     ASSERT_TRUE(tao->get()->Init());
   }
-  virtual void SetUp(scoped_ptr<SoftTao> *tao) {
+  virtual void SetUp(unique_ptr<SoftTao> *tao) {
     string blob;
     ASSERT_TRUE(ReadFileToString(FLAGS_aik_blob_file, &blob));
     tao->reset(new SoftTao());
     ASSERT_TRUE(tao->get()->Init());
   }
   virtual void SetUp() { SetUp(&tao_); }
-  scoped_ptr<T> tao_;
+  unique_ptr<T> tao_;
 };
 typedef ::testing::Types<TPMTao, SoftTao> TaoTypes;
 TYPED_TEST_CASE(TaoTest, TaoTypes);

@@ -45,7 +45,7 @@ LogNet::LogNet(int sock) : sock_(sock) {
 }
 
 LogNet::~LogNet() {
-  scoped_ptr<thread> t;
+  unique_ptr<thread> t;
   {
     lock_guard<mutex> l(m_);
     if (sock_ != -1) {

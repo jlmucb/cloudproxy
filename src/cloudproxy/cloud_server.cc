@@ -112,7 +112,7 @@ bool CloudServer::Listen() {
       return false;
     }
 
-    scoped_ptr<CloudChannel> conn(new CloudChannel(tls_context_.get(), accept_sock));
+    unique_ptr<CloudChannel> conn(new CloudChannel(tls_context_.get(), accept_sock));
     thread t(&CloudServer::HandleNewConnection, this, conn.release());
     t.detach();
   }
@@ -139,7 +139,7 @@ bool CloudServer::Shutdown() {
 }
 
 void CloudServer::HandleNewConnection(CloudChannel *unscoped_chan) {
-  scoped_ptr<CloudChannel> chan(unscoped_chan);
+  unique_ptr<CloudChannel> chan(unscoped_chan);
   if (!chan->TLSServerHandshake()) {
     LOG(ERROR) << "TLS handshake failed";
     return;

@@ -76,7 +76,7 @@ class CloudClientTest : public ::testing::Test {
     string server_port("11223");
 
     // create a fake tao with new keys, attestation, and a direct channel to it
-    scoped_ptr<FakeTao> fake_tao;
+    unique_ptr<FakeTao> fake_tao;
     fake_tao.reset(new FakeTao());
     ASSERT_TRUE(fake_tao->InitTemporaryTPM(*admin_));
 
@@ -154,16 +154,16 @@ class CloudClientTest : public ::testing::Test {
     }
   }
 
-  scoped_ptr<thread> server_thread_;
-  scoped_ptr<CloudClient> cloud_client_;
-  scoped_ptr<CloudServer> cloud_server_;
+  unique_ptr<thread> server_thread_;
+  unique_ptr<CloudClient> cloud_client_;
+  unique_ptr<CloudServer> cloud_server_;
   ScopedTempDir temp_dir_;
-  scoped_ptr<TaoDomain> admin_;
+  unique_ptr<TaoDomain> admin_;
   ScopedSSL ssl_;
   string tmr_ssf_path_;
   string jlm_ssf_path_;
-  scoped_ptr<Keys> tmr_key_;
-  scoped_ptr<Keys> jlm_key_;
+  unique_ptr<Keys> tmr_key_;
+  unique_ptr<Keys> jlm_key_;
 };
 
 TEST_F(CloudClientTest, UserTest) {

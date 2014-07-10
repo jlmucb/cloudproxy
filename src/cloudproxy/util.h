@@ -34,7 +34,6 @@
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <keyczar/base/file_util.h>
-#include <keyczar/base/scoped_ptr.h>
 #include <keyczar/base/values.h>  // for ScopedSafeString
 // #include <keyczar/base/stl_util-inl.h>
 #include <keyczar/openssl/util.h>
@@ -63,8 +62,8 @@ using std::list;
 using std::set;
 using std::string;
 using std::stringstream;
-using std::unique_ptr;  // TODO(kwalsh) Discuss unique_ptr vs. scoped_ptr.
-// using std::make_unique;  // TODO(kwalsh) Discuss unique_ptr vs. scoped_ptr.
+using std::unique_ptr;
+// using std::make_unique;  // see tao::make_unique()
 
 // using keyczar::base::FilePath;  // Why isn't this in keyczar::base ?
 // using keyczar::base::ReadFileToString; // Define our own version below.
@@ -74,11 +73,11 @@ using keyczar::base::CreateDirectory;    // NOLINT
 using keyczar::base::Delete;             // NOLINT
 using keyczar::base::DirectoryExists;    // NOLINT
 using keyczar::base::PathExists;         // NOLINT
-using keyczar::base::ScopedSafeString;   // NOLINT
 using keyczar::base::WriteStringToFile;  // NOLINT
 
-using tao::make_unique;
-using tao::CallUnlessNull;
+using tao::unique_free_ptr;    // NOLINT
+using tao::make_unique;        // NOLINT
+using tao::ScopedSafeString;   // NOLINT
 
 /// @}
 
@@ -88,11 +87,10 @@ using tao::CallUnlessNull;
 void ssl_cleanup(SSL *ssl);
 
 /// A smart pointer to an OpenSSL SSL_CTX.
-typedef scoped_ptr_malloc<SSL_CTX, CallUnlessNull<SSL_CTX, SSL_CTX_free>>
-    ScopedSSLCtx;
+typedef unique_free_ptr<SSL_CTX, SSL_CTX_free> ScopedSSLCtx;
 
 /// A smart pointer to an SSL object.
-typedef scoped_ptr_malloc<SSL, CallUnlessNull<SSL, ssl_cleanup>> ScopedSSL;
+typedef unique_free_ptr<SSL, ssl_cleanup> ScopedSSL;
 
 /// Prepare an SSL_CTX for a server to accepts connections from clients.
 /// Peer certificates will be required.

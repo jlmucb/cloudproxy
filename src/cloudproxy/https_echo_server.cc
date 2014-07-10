@@ -177,7 +177,7 @@ void HttpsEchoServer::HandleConnection(int accept_sock) {
   CloudServerThreadData cstd(serialized_peer_cert, serialized_self_cert);
 
   size_t buffer_len = READ_BUFFER_LEN;
-  scoped_array<char> buf(new char[buffer_len]);
+  unique_ptr<char[]> buf(new char[buffer_len]);
 
   // read up to, and including, the first "\r\n\r\n"
   size_t filled_len = 0;

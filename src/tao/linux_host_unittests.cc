@@ -267,7 +267,7 @@ class LinuxHostTest : public ::testing::Test {
 
   virtual void SetUp() {
     ASSERT_TRUE(CreateTempDir("linux_host_test", &temp_dir_));
-    scoped_ptr<TaoGuard> policy(new TrivialGuard(TrivialGuard::LiberalPolicy));
+    unique_ptr<TaoGuard> policy(new TrivialGuard(TrivialGuard::LiberalPolicy));
     host_.reset(new LinuxHost(policy.release(), *temp_dir_));
     ASSERT_TRUE(host_->InitRoot("test_password"));
 
@@ -281,9 +281,9 @@ class LinuxHostTest : public ::testing::Test {
     if (listener_.get() != nullptr && listener_->joinable()) listener_->join();
   }
   ScopedTempDir temp_dir_;
-  scoped_ptr<LinuxHost> host_;
-  scoped_ptr<thread> listener_;
-  scoped_ptr<LinuxAdminRPC> admin_;
+  unique_ptr<LinuxHost> host_;
+  unique_ptr<thread> listener_;
+  unique_ptr<LinuxAdminRPC> admin_;
 };
 
 TEST_F(LinuxHostTest, GetTaoHostNameTest) {

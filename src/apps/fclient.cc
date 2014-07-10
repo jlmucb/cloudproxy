@@ -78,10 +78,10 @@ int main(int argc, char** argv) {
   TaoChildChannelRegistry registry;
   tao::RegisterKnownChannels(&registry);
 
-  scoped_ptr<TaoChildChannel> channel(registry.Create(params));
+  unique_ptr<TaoChildChannel> channel(registry.Create(params));
   CHECK(channel->Init()) << "Could not initialize the child channel";
 
-  scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
+  unique_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
   CHECK(admin.get() != nullptr) << "Could not load configuration";
 
   int policy = 0;  // TODO(kwalsh) chose policy here
@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
 
   string name("test");
 
-  scoped_ptr<Keys> key;
+  unique_ptr<Keys> key;
   string user = FLAGS_user;
   string password = FLAGS_user;
   CHECK(CloudUserManager::LoadUser(FLAGS_user_keys, user, password, &key));

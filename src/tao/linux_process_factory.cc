@@ -49,8 +49,8 @@ bool LinuxProcessFactory::MakeHostedProgramSubprin(int id, const string &path,
 bool LinuxProcessFactory::StartHostedProgram(
     const PipeFactory &child_channel_factory, const string &path,
     const list<string> &args, const string &subprin,
-    scoped_ptr<HostedLinuxProcess> *child) const {
-  scoped_ptr<FDMessageChannel> channel_to_parent, channel_to_child;
+    unique_ptr<HostedLinuxProcess> *child) const {
+  unique_ptr<FDMessageChannel> channel_to_parent, channel_to_child;
   if (!child_channel_factory.CreateChannelPair(&channel_to_parent,
                                                &channel_to_child)) {
     LOG(ERROR) << "Could not create channel for hosted program";
@@ -67,7 +67,7 @@ bool LinuxProcessFactory::StartHostedProgram(
   keep_open.push_back(STDOUT_FILENO);
   keep_open.push_back(STDERR_FILENO);
 
-  scoped_ptr<TaoRPC> rpc_to_parent(new TaoRPC(channel_to_parent.release()));
+  unique_ptr<TaoRPC> rpc_to_parent(new TaoRPC(channel_to_parent.release()));
   string child_rpc_params;
   if (!rpc_to_parent->SerializeToString(&child_rpc_params)) {
     LOG(ERROR) << "Could not encode child RPC channel parameters";

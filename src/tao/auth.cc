@@ -75,7 +75,7 @@ Term *Term::ParseFromStream(stringstream &in) {  // NOLINT
     }
     if (in.peek() == '(' && in) {
       in.seekg(pos);
-      scoped_ptr<Principal> prin(Principal::ParseFromStream(in));
+      unique_ptr<Principal> prin(Principal::ParseFromStream(in));
       if (prin.get() == nullptr || !in) {
         LOG(ERROR) << "Expecting principal";
         return nullptr;
@@ -89,7 +89,7 @@ Term *Term::ParseFromStream(stringstream &in) {  // NOLINT
 
 Term *Term::ParseFromString(const string &name) {
   stringstream in(name);
-  scoped_ptr<Term> term(Term::ParseFromStream(in));
+  unique_ptr<Term> term(Term::ParseFromStream(in));
   if (!in || term.get() == nullptr) {
     return nullptr;
   }
@@ -160,7 +160,7 @@ Predicate *Predicate::ParseFromStream(stringstream &in) {  // NOLINT
     LOG(ERROR) << "Expecting parentheses";
     return nullptr;
   }
-  scoped_ptr<Predicate> pred(new Predicate(name));
+  unique_ptr<Predicate> pred(new Predicate(name));
   while (!in.eof() && in.peek() != ')') {
     if (pred->ArgumentCount() > 0) {
       skip(in, ", ");
@@ -169,7 +169,7 @@ Predicate *Predicate::ParseFromStream(stringstream &in) {  // NOLINT
         return nullptr;
       }
     }
-    scoped_ptr<Term> term(Term::ParseFromStream(in));
+    unique_ptr<Term> term(Term::ParseFromStream(in));
     if (term.get() == nullptr || !in) {
       LOG(ERROR) << "Could not parse predicate argument";
       return nullptr;
@@ -185,7 +185,7 @@ Predicate *Predicate::ParseFromStream(stringstream &in) {  // NOLINT
 
 Predicate *Predicate::ParseFromString(const string &name) {
   stringstream in(name);
-  scoped_ptr<Predicate> pred(Predicate::ParseFromStream(in));
+  unique_ptr<Predicate> pred(Predicate::ParseFromStream(in));
   if (!in || pred.get() == nullptr) {
     return nullptr;
   }
@@ -197,7 +197,7 @@ Predicate *Predicate::ParseFromString(const string &name) {
 }
 
 Predicate *Predicate::DeepCopy() const {
-  scoped_ptr<Predicate> other(new Predicate(name_));
+  unique_ptr<Predicate> other(new Predicate(name_));
   for (const auto &arg : args_) other->AddArgument(arg->DeepCopy());
   return other.release();
 }
@@ -215,15 +215,15 @@ string Predicate::SerializeToString() const {
 }
 
 Principal *Principal::ParseFromStream(stringstream &in) {  // NOLINT
-  scoped_ptr<Predicate> base(Predicate::ParseFromStream(in));
+  unique_ptr<Predicate> base(Predicate::ParseFromStream(in));
   if (!in || base.get() == nullptr) {
     LOG(ERROR) << "Could not parse principal name";
     return nullptr;
   }
-  scoped_ptr<Principal> prin(new Principal(nullptr, base.release()));
+  unique_ptr<Principal> prin(new Principal(nullptr, base.release()));
   while (!in.eof() && in.peek() == ':') {
     skip(in, "::");
-    scoped_ptr<Predicate> ext(Predicate::ParseFromStream(in));
+    unique_ptr<Predicate> ext(Predicate::ParseFromStream(in));
     if (!in || ext.get() == nullptr) {
       LOG(ERROR) << "Could not parse principal extension";
       return nullptr;
@@ -235,7 +235,7 @@ Principal *Principal::ParseFromStream(stringstream &in) {  // NOLINT
 
 Principal *Principal::ParseFromString(const string &name) {
   stringstream in(name);
-  scoped_ptr<Principal> prin(Principal::ParseFromStream(in));
+  unique_ptr<Principal> prin(Principal::ParseFromStream(in));
   if (!in || prin.get() == nullptr) {
     return nullptr;
   }

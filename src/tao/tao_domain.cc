@@ -47,7 +47,7 @@ TaoDomain::~TaoDomain() {}
 TaoDomain *TaoDomain::CreateImpl(const string &config, const string &path) {
   // Parse the config string.
   string error;
-  scoped_ptr<Value> value(JSONReader::ReadAndReturnError(config, true, &error));
+  unique_ptr<Value> value(JSONReader::ReadAndReturnError(config, true, &error));
   if (value.get() == nullptr) {
     LOG(ERROR) << path << ": error: " << error;
     return nullptr;
@@ -58,7 +58,7 @@ TaoDomain *TaoDomain::CreateImpl(const string &config, const string &path) {
     LOG(ERROR) << path << ": wrong JSON type, expecting dictionary";
     return nullptr;
   }
-  scoped_ptr<DictionaryValue> dict(
+  unique_ptr<DictionaryValue> dict(
       static_cast<DictionaryValue *>(value.release()));
 
   // Construct an object of the appropriate subclass.
@@ -67,7 +67,7 @@ TaoDomain *TaoDomain::CreateImpl(const string &config, const string &path) {
     LOG(ERROR) << path << ": missing value for " << JSONAuthType;
     return nullptr;
   }
-  scoped_ptr<TaoDomain> admin;
+  unique_ptr<TaoDomain> admin;
   if (guard_type == ACLGuard::GuardType) {
     admin.reset(new ACLGuard(path, dict.release()));
   } else if (guard_type == DatalogGuard::GuardType) {
@@ -89,7 +89,7 @@ TaoDomain *TaoDomain::Create(const string &initial_config, const string &path,
     return nullptr;
   }
 
-  scoped_ptr<TaoDomain> admin(CreateImpl(initial_config, path));
+  unique_ptr<TaoDomain> admin(CreateImpl(initial_config, path));
   if (admin.get() == nullptr) {
     LOG(ERROR) << "Can't create TaoDomain";
     return nullptr;
@@ -128,7 +128,7 @@ TaoDomain *TaoDomain::Load(const string &path, const string &password) {
     LOG(ERROR) << "Can't read configuration from " << path;
     return nullptr;
   }
-  scoped_ptr<TaoDomain> admin(CreateImpl(json, path));
+  unique_ptr<TaoDomain> admin(CreateImpl(json, path));
   if (admin.get() == nullptr) {
     LOG(ERROR) << "Can't create TaoDomain";
     return nullptr;
@@ -160,7 +160,7 @@ bool TaoDomain::GetSubprincipalName(string *subprin) const {
 }
 
 TaoDomain *TaoDomain::DeepCopy() {
-  scoped_ptr<TaoDomain> other(Load(path_));
+  unique_ptr<TaoDomain> other(Load(path_));
   if (other.get() == nullptr) {
     LOG(ERROR) << "Can't reload TaoDomain configuration";
     return nullptr;

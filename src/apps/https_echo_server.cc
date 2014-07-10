@@ -64,10 +64,10 @@ int main(int argc, char **argv) {
   TaoChildChannelRegistry registry;
   tao::RegisterKnownChannels(&registry);
 
-  scoped_ptr<TaoChildChannel> channel(registry.Create(params));
+  unique_ptr<TaoChildChannel> channel(registry.Create(params));
   CHECK(channel->Init()) << "Could not initialize the child channel";
 
-  scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
+  unique_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
   if (admin.get() == nullptr) return 1;
 
   // TODO(kwalsh) chose a good policy here

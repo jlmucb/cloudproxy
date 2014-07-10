@@ -213,10 +213,10 @@ class TaoDomain : public TaoGuard {
   string path_;
 
   /// The dictionary of configuration parameters.
-  scoped_ptr<DictionaryValue> config_;
+  unique_ptr<DictionaryValue> config_;
 
   /// The policy public key. If unlocked, also contains the private key.
-  scoped_ptr<Keys> keys_;
+  unique_ptr<Keys> keys_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TaoDomain);

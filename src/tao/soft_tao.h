@@ -72,7 +72,7 @@ class SoftTao : public Tao {
 
  private:
   /// Crypting and signing keys for sealing and signing.
-  scoped_ptr<tao::Keys> keys_;
+  unique_ptr<tao::Keys> keys_;
 
   /// Base name of this SoftTao, encoded as a principal.
   string key_name_;

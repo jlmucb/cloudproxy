@@ -42,7 +42,7 @@ bool CloudChannel::ValidateDelegation(const string &delegation,
     LOG(ERROR) << "Delegation is invalid";
     return false;
   }
-  scoped_ptr<Verifier> cert_key(Verifier::FromX509(cert));
+  unique_ptr<Verifier> cert_key(Verifier::FromX509(cert));
   if (cert_key.get() == nullptr) {
     LOG(ERROR) << "Could not parse key from x509";
     return false;

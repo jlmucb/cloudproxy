@@ -38,7 +38,6 @@
 #include <keyczar/base/base64w.h>
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <keyczar/base/file_util.h>
-#include <keyczar/base/scoped_ptr.h>
 
 #include "tao/tao.h"
 
@@ -60,8 +59,8 @@ using std::list;
 using std::set;
 using std::string;
 using std::stringstream;
-using std::unique_ptr;  // TODO(kwalsh) Discuss unique_ptr vs. scoped_ptr.
-// using std::make_unique;  // TODO(kwalsh) Discuss unique_ptr vs. scoped_ptr.
+using std::unique_ptr;
+// using std::make_unique;  // implemented below
 
 // using keyczar::base::FilePath;  // Why isn't this in keyczar::base ?
 // using keyczar::base::ReadFileToString; // Define our own version below.
@@ -106,47 +105,45 @@ void temp_file_cleaner(string *dir);
 /// @param fd A pointer to the self-pipe file descriptor.
 void selfpipe_release(int *fd);
 
-/// A version of scoped_ptr::reset() that returns the new pointer. Useful for
+/// A version of unique_ptr::reset() that returns the new pointer. Useful for
 /// putting reset inside of conditionals.
-/// @param t The scoped_ptr to be reset.
+/// @param t The unique_ptr to be reset.
 /// @param p The new pointer to manage.
 template <typename T>
-T *reset(scoped_ptr<T> &t, T *p) {  // NOLINT
+T *reset(unique_ptr<T> &t, T *p) {  // NOLINT
   t.reset(p);
   return p;
 }
 
-/// A functor template for wrapping deallocators that misbehave on nullptr.
+/// A functor template for wrapping unique_ptr deallocator functions.
 template <typename T, void (*F)(T *)>
-struct CallUnlessNull {
-  void operator()(T *ptr) const {
-    if (ptr) F(ptr);
-  }
+struct UniquePointerDeleter {
+  void operator()(T *ptr) const { F(ptr); }
 };
+
+/// A typedef template (aka type alias, alias template) for zero-overhead
+/// unique_ptr with a custom deallocator function.
+template <typename T, void (*F)(T *)>
+using unique_free_ptr = unique_ptr<T, UniquePointerDeleter<T, F>>;
 
 /// Cleanse the contents of a string then free it.
 /// @param s The string to be cleansed and freed.
 void SecureStringFree(string *s);
 
 /// A smart pointer to a string that clears itself.
-// Note(kwalsh) Keyczar's version of scopedSafeString seems anything but safe,
-// so we reimplement it here.
-typedef scoped_ptr_malloc<string, CallUnlessNull<string, SecureStringFree>>
-    ScopedSafeString;
+typedef unique_free_ptr<string, SecureStringFree> ScopedSafeString;
 
 /// A smart pointer to a file descriptor.
-typedef scoped_ptr_malloc<int, CallUnlessNull<int, fd_close>> ScopedFd;
+typedef unique_free_ptr<int, fd_close> ScopedFd;
 
 /// A smart pointer to a FILE.
-typedef scoped_ptr_malloc<FILE, CallUnlessNull<FILE, file_close>> ScopedFile;
+typedef unique_free_ptr<FILE, file_close> ScopedFile;
 
 /// A smart pointer to a temporary directory to be cleaned upon destruction.
-typedef scoped_ptr_malloc<string, CallUnlessNull<string, temp_file_cleaner>>
-    ScopedTempDir;
+typedef unique_free_ptr<string, temp_file_cleaner> ScopedTempDir;
 
 /// A smart pointer to a self-pipe.
-typedef scoped_ptr_malloc<int, CallUnlessNull<int, selfpipe_release>>
-    ScopedSelfPipeFd;
+typedef unique_free_ptr<int, selfpipe_release> ScopedSelfPipeFd;
 
 /// Create a self-pipe for a signal. A signal handler is installed that writes
 /// the signal number (cast to a byte) to the pipe. Callers can use the returned

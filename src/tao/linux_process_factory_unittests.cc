@@ -74,7 +74,7 @@ TEST_F(LinuxProcessFactoryTest, SubprinTest) {
 TEST_F(LinuxProcessFactoryTest, StartTest) {
   PipeFactory pipe_factory;
   string subprin;
-  scoped_ptr<HostedLinuxProcess> child;
+  unique_ptr<HostedLinuxProcess> child;
   ASSERT_TRUE(factory_.MakeHostedProgramSubprin(0, test_argv[0], &subprin));
   ASSERT_TRUE(factory_.StartHostedProgram(
       pipe_factory, test_argv[0], list<string>{"quit"}, subprin, &child));
@@ -90,7 +90,7 @@ TEST_F(LinuxProcessFactoryTest, StartTest) {
 TEST_F(LinuxProcessFactoryTest, StartStopTest) {
   PipeFactory pipe_factory;
   string subprin;
-  scoped_ptr<HostedLinuxProcess> child;
+  unique_ptr<HostedLinuxProcess> child;
   ASSERT_TRUE(factory_.MakeHostedProgramSubprin(0, test_argv[0], &subprin));
   ASSERT_TRUE(factory_.StartHostedProgram(
       pipe_factory, test_argv[0], list<string>{"sleep"}, subprin, &child));

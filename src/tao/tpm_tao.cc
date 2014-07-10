@@ -55,7 +55,7 @@ static bool AIKToPrincipalName(TSS_HCONTEXT tss_ctx, TSS_HKEY aik,
     return false;
   }
   size_t len = BIO_ctrl_pending(mem.get());
-  scoped_array<char> key_bytes(new char[len]);
+  unique_ptr<char[]> key_bytes(new char[len]);
   int bio_len = BIO_read(mem.get(), key_bytes.get(), len);
   if (bio_len <= 0 || size_t(bio_len) != len) {
     LOG(ERROR) << "Could not read serialize public signing key";
@@ -140,7 +140,7 @@ static bool serializePCRs(const list<int> &pcr_indexes,
   buf_len += sizeof(UINT32);  // values len
   buf_len += n * TPMTao::PcrLen;
 
-  scoped_array<BYTE> scoped_pcr_buf(new BYTE[buf_len]);
+  unique_ptr<BYTE[]> scoped_pcr_buf(new BYTE[buf_len]);
   BYTE *pcr_buf = scoped_pcr_buf.get();
 
   // Set mask len.
@@ -799,7 +799,7 @@ TPMTao *TPMTao::DeserializeFromString(const string &params) {
     LOG(ERROR) << "Bad PCR index list in serialized TPMTao";
     return nullptr;
   }
-  scoped_ptr<TPMTao> tao(new TPMTao(aik_blob, pcr_indexes));
+  unique_ptr<TPMTao> tao(new TPMTao(aik_blob, pcr_indexes));
   if (!tao->Init()) {
     LOG(ERROR) << "Could not initialize TPMTao";
     return nullptr;

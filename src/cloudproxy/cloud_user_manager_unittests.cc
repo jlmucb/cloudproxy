@@ -62,12 +62,12 @@ class CloudUserManagerTest : public ::testing::Test {
   }
 
   ScopedTempDir temp_dir_;
-  scoped_ptr<TaoDomain> admin_;
+  unique_ptr<TaoDomain> admin_;
   CloudUserManager manager_;
   SignedSpeaksFor tmr_ssf_;
   string tmr_serialized_key_;
-  scoped_ptr<Keys> tmr_key_;
-  scoped_ptr<Keys> jlm_key_;
+  unique_ptr<Keys> tmr_key_;
+  unique_ptr<Keys> jlm_key_;
 };
 
 TEST_F(CloudUserManagerTest, UserKeyTest) {

@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
   CHECK(tao->GetTaoName(&name));
   printf("TaoName='%s'\n", shorten(name).c_str());
 
-  scoped_ptr<Principal> prin(Principal::ParseFromString(name));
+  std::unique_ptr<Principal> prin(Principal::ParseFromString(name));
   CHECK(prin.get() != nullptr);
   if (prin->HasParent()) {
     printf("# This program is running on top of a Tao host...\n");

@@ -148,7 +148,7 @@ int main(int argc, char **argv) {
   google::SetUsageMessage(usage + argv[0] + " [options]");
   tao::InitializeApp(&argc, &argv, true);
 
-  scoped_ptr<TaoDomain> admin;
+  std::unique_ptr<TaoDomain> admin;
 
   bool did_work = false;
 
@@ -230,7 +230,7 @@ int main(int argc, char **argv) {
   //    string name;
   //    while (getline(names, name, ',')) {  // split on commas
   //      string password = name;            // such security, wow
-  //      scoped_ptr<tao::Keys> key;
+  //      unique_ptr<tao::Keys> key;
   //      CHECK(CloudUserManager::MakeNewUser(FLAGS_user_keys, name, password,
   //                                          *admin->GetPolicySigner(), &key));
   //    }

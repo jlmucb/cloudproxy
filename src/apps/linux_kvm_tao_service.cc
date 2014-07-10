@@ -67,22 +67,22 @@ int main(int argc, char **argv) {
   }
 
   // The TPM to use for the parent Tao
-  scoped_ptr<TPMTaoChildChannel> tpm(
+  unique_ptr<TPMTaoChildChannel> tpm(
       new TPMTaoChildChannel(blob, attestation, list<UINT32>{17, 18}));
   CHECK(tpm->Init()) << "Could not init the TPM";
 
   // The Channels to use for hosted programs and the way to create hosted
   // programs.
-  scoped_ptr<KvmUnixTaoChannel> kvm_channel(
+  unique_ptr<KvmUnixTaoChannel> kvm_channel(
       new KvmUnixTaoChannel(FLAGS_program_socket));
   CHECK(kvm_channel->Init()) << "Could not init the TaoChannel";
-  scoped_ptr<KvmVmFactory> vm_factory(new KvmVmFactory());
+  unique_ptr<KvmVmFactory> vm_factory(new KvmVmFactory());
   CHECK(vm_factory->Init()) << "Could not initialize the VM factory";
 
-  scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
+  unique_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
   CHECK(admin.get() != nullptr) << "Could not load configuration";
 
-  scoped_ptr<LinuxTao> tao;
+  unique_ptr<LinuxTao> tao;
   tao.reset(new LinuxTao(FLAGS_keys_path, tpm.release(), kvm_channel.release(),
                          vm_factory.release(), admin.release()));
   CHECK(tao->Init()) << "Could not initialize the LinuxTao";

@@ -51,7 +51,7 @@ class LogNet : public google::LogSink {
   std::list<LogMessage> q_;
   std::mutex m_;
   std::condition_variable cv_;
-  scoped_ptr<std::thread> t_;
+  unique_ptr<std::thread> t_;
 };
 }  // namespace tao
 #endif  // TAO_LOG_NET_H_

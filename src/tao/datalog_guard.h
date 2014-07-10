@@ -38,9 +38,7 @@ struct DatalogEngine;
 void datalog_close(DatalogEngine *dl);
 
 /// A smart pointer to datalog engine state.
-typedef scoped_ptr_malloc<DatalogEngine,
-                          CallUnlessNull<DatalogEngine, datalog_close>>
-    ScopedDatalogEngine;
+typedef unique_free_ptr<DatalogEngine, datalog_close> ScopedDatalogEngine;
 
 /// An guard that uses policy rules stored in a single file, signed by the
 /// policy key, as the basis of authorization, and a datalog engine for making
@@ -219,7 +217,7 @@ class DatalogGuard : public TaoDomain {
   /// @param[out] consequent The consequent.
   virtual bool ParseRule(const string &rule, set<string> *vars,
                          list<unique_ptr<Predicate>> *conds,
-                         scoped_ptr<Predicate> *consequent);
+                         unique_ptr<Predicate> *consequent);
 
   /// Push a rule to the datalog policy engine stack.
   /// @param rule The rule.
@@ -250,7 +248,7 @@ class DatalogGuard : public TaoDomain {
   string policy_prin_;
 
   // The principal Term for the policy key.
-  scoped_ptr<Term> policy_term_;
+  unique_ptr<Term> policy_term_;
 
   // Transcript of recent datalog API calls (for debugging).
   stringstream dl_transcript_;

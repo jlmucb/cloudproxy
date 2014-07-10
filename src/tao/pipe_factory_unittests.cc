@@ -35,7 +35,7 @@ class PipeFactoryTest : public ::testing::Test {
     s_.set_expiration(234);
   }
   PipeFactory factory_;
-  scoped_ptr<FDMessageChannel> up_, down_;
+  unique_ptr<FDMessageChannel> up_, down_;
   bool eof_;
   Statement s_, r_;
 };

@@ -78,14 +78,14 @@ class CloudServer {
   string port_;
 
   /// A guard for authorization queries.
-  scoped_ptr<tao::TaoGuard> guard_;
+  unique_ptr<tao::TaoGuard> guard_;
   
  private:
   /// A context object that stores TLS parameters.
   ScopedSSLCtx tls_context_;
 
   /// A signing key for TLS.
-  scoped_ptr<tao::Signer> tls_key_;
+  unique_ptr<tao::Signer> tls_key_;
 
   /// A self-signed certificate for the TLS key.
   string tls_self_cert_;

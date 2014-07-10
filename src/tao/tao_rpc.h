@@ -63,7 +63,7 @@ class TaoRPC : public Tao {
 
  protected:
   /// The channel over which to send and receive messages.
-  scoped_ptr<MessageChannel> channel_;
+  unique_ptr<MessageChannel> channel_;
 
   /// Most recent RPC failure message, if any.
   string failure_msg_;

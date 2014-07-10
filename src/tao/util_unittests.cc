@@ -67,7 +67,7 @@ TEST(UtilTest, SocketTest) {
 /*
 TEST(UtilTest, CreateDomainTest) {
   ScopedTempDir temp_dir;
-  scoped_ptr<TaoDomain> admin;
+  unique_ptr<TaoDomain> admin;
   ASSERT_TRUE(CreateTempACLsDomain(&temp_dir, &admin));
 }
 */
@@ -89,27 +89,6 @@ TEST(UtilTest, SealAndUnsealSecretTest) {
 
   EXPECT_EQ(secret, unsealed_secret)
       << "The unsealed secret did not match the original secret";
-}
-
-void shouldNotBeNull(int *x) {
-  ASSERT_NE(x, nullptr);
-  if (x != nullptr) *x += 1;
-}
-typedef scoped_ptr_malloc<int, CallUnlessNull<int, shouldNotBeNull>>
-    ScopedIntPtr;
-
-TEST(UtilTest, CallUnlessNullTest) {
-  int x = 42, y = 123;
-  ScopedIntPtr p(&x);
-  p.release();
-  EXPECT_EQ(42, x);
-  p.reset(&x);
-  EXPECT_EQ(42, x);
-  p.reset(&y);
-  EXPECT_EQ(43, x);
-  p.reset(nullptr);
-  EXPECT_EQ(124, y);
-  p.release();
 }
 
 TEST(UtilTest, SelfPipeTest) {

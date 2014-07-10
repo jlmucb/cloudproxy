@@ -57,7 +57,7 @@ static bool VerifyAttestationSignature(const Attestation &a) {
     return TPMTao::VerifySignature(signer, a.serialized_statement(),
                                    a.signature());
   } else {
-    scoped_ptr<Verifier> v(Verifier::FromPrincipalName(signer));
+    unique_ptr<Verifier> v(Verifier::FromPrincipalName(signer));
     if (v.get() == nullptr) {
       LOG(ERROR) << "Could not deserialize the attestation signer key";
       return false;

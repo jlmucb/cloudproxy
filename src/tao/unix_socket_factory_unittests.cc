@@ -33,7 +33,7 @@ class UnixSocketFactoryTest : public ::testing::Test {
  protected:
   virtual void Listen() {
     for (;;) {
-      scoped_ptr<FDMessageChannel> chan(factory_->AcceptConnection());
+      unique_ptr<FDMessageChannel> chan(factory_->AcceptConnection());
       if (chan.get() == nullptr) break;
       for (;;) {
         Statement r, s;
@@ -66,14 +66,14 @@ class UnixSocketFactoryTest : public ::testing::Test {
     if (factory_.get() != nullptr) factory_->Close();
     if (listener_.get() != nullptr && listener_->joinable()) listener_->join();
   }
-  scoped_ptr<thread> listener_;
-  scoped_ptr<UnixSocketFactory> factory_;
+  unique_ptr<thread> listener_;
+  unique_ptr<UnixSocketFactory> factory_;
   ScopedTempDir temp_dir_;
   string path_;
 };
 
 TEST_F(UnixSocketFactoryTest, ConnectTest) {
-  scoped_ptr<FDMessageChannel> chan(UnixSocketFactory::Connect(path_));
+  unique_ptr<FDMessageChannel> chan(UnixSocketFactory::Connect(path_));
   ASSERT_TRUE(chan.get() != nullptr);
   chan->Close();
 
@@ -86,7 +86,7 @@ TEST_F(UnixSocketFactoryTest, ConnectTest) {
 }
 
 TEST_F(UnixSocketFactoryTest, SendRecvTest) {
-  scoped_ptr<FDMessageChannel> chan(UnixSocketFactory::Connect(path_));
+  unique_ptr<FDMessageChannel> chan(UnixSocketFactory::Connect(path_));
   ASSERT_TRUE(chan.get() != nullptr);
   Statement s, r;
   bool eof;

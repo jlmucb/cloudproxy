@@ -23,7 +23,6 @@
 #include <string>
 
 #include <glog/logging.h>
-#include <keyczar/base/scoped_ptr.h>
 #include <keyczar/crypto_factory.h>
 #include <keyczar/keyczar.h>
 #include <keyczar/openssl/util.h>
@@ -71,7 +70,7 @@ class HttpsEchoServer {
 
  private:
   /// Configuration for this administrative domain
-  scoped_ptr<tao::TaoDomain> admin_;
+  unique_ptr<tao::TaoDomain> admin_;
 
   /// Listen on a bio and handle an incoming message from a client. Spawn a
   /// thread for each connection.
@@ -90,10 +89,10 @@ class HttpsEchoServer {
   ScopedSSLCtx context_;
 
   /// A connection to the host Tao.
-  scoped_ptr<tao::TaoChildChannel> host_channel_;
+  unique_ptr<tao::TaoChildChannel> host_channel_;
 
   /// A signing key.
-  scoped_ptr<tao::Keys> keys_;
+  unique_ptr<tao::Keys> keys_;
 
   bool GetTaoCAX509Chain(const string &details_text);
 

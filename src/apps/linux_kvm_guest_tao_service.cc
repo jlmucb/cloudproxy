@@ -87,20 +87,20 @@ int main(int argc, char **argv) {
   TaoChildChannelRegistry registry;
   tao::RegisterKnownChannels(&registry);
 
-  scoped_ptr<TaoChildChannel> child_channel(registry.Create(params));
+  unique_ptr<TaoChildChannel> child_channel(registry.Create(params));
 
   // The Channels to use for hosted programs and the way to create hosted
   // programs.
-  scoped_ptr<PipeTaoChannel> pipe_channel(
+  unique_ptr<PipeTaoChannel> pipe_channel(
       new PipeTaoChannel(FLAGS_domain_socket));
   CHECK(pipe_channel->Init()) << "Could not init the TaoChannel";
-  scoped_ptr<ProcessFactory> process_factory(new ProcessFactory());
+  unique_ptr<ProcessFactory> process_factory(new ProcessFactory());
   CHECK(process_factory->Init()) << "Could not initialize the process factory";
 
-  scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
+  unique_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
   CHECK(admin.get() != nullptr) << "Could not load configuration";
 
-  scoped_ptr<LinuxTao> tao;
+  unique_ptr<LinuxTao> tao;
   tao.reset(new LinuxTao(FLAGS_keys_path, child_channel.release(),
                          pipe_channel.release(), process_factory.release(),
                          admin.release()));

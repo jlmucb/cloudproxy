@@ -51,7 +51,7 @@ bool SoftTao::Init() {
 }
 
 SoftTao *SoftTao::DeepCopy() const {
-  scoped_ptr<SoftTao> other(new SoftTao());
+  unique_ptr<SoftTao> other(new SoftTao());
   other->keys_.reset(keys_->DeepCopy());
   other->key_name_ = key_name_;
   other->name_extension_ = name_extension_;
@@ -158,13 +158,13 @@ SoftTao *SoftTao::DeserializeFromString(const string &params) {
     LOG(ERROR) << "Could not deserialize SoftTao";
     return nullptr;
   }
-  scoped_ptr<Keys> keys(
+  unique_ptr<Keys> keys(
       new Keys(path, Keys::Signing | Keys::Crypting | Keys::Deriving));
   if (!keys->InitWithPassword(pass)) {
     LOG(ERROR) << "Could not load keys for SoftTao";
     return nullptr;
   }
-  scoped_ptr<SoftTao> tao(new SoftTao(keys.release()));
+  unique_ptr<SoftTao> tao(new SoftTao(keys.release()));
   if (!tao->Init()) {
     LOG(ERROR) << "Could not initialize SoftTao";
     return nullptr;

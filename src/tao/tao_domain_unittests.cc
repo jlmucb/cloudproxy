@@ -42,7 +42,7 @@ class TaoDomainTest : public ::testing::Test {
   ScopedTempDir temp_dir_;
   string config_path_;
   string config_;
-  scoped_ptr<TaoDomain> domain_;
+  unique_ptr<TaoDomain> domain_;
 };
 typedef ::testing::Types<ACLGuard, DatalogGuard> GuardTypes;
 TYPED_TEST_CASE(TaoDomainTest, GuardTypes);
@@ -69,7 +69,7 @@ TYPED_TEST(TaoDomainTest, DeepCopyTest) {
   EXPECT_TRUE(this->domain_.get() != nullptr);
 
   // DeepCopy after Create
-  scoped_ptr<TaoDomain> other_admin(this->domain_->DeepCopy());
+  unique_ptr<TaoDomain> other_admin(this->domain_->DeepCopy());
 
   ASSERT_TRUE(other_admin.get() != nullptr);
   EXPECT_EQ(other_admin->GetName(), this->domain_->GetName());

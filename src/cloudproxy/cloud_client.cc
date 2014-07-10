@@ -79,7 +79,7 @@ bool CloudClient::Connect(const string &server, const string &port) {
                << port;
     return false;
   }
-  scoped_ptr<CloudChannel> chan(new CloudChannel(tls_context_.get(), sock));
+  unique_ptr<CloudChannel> chan(new CloudChannel(tls_context_.get(), sock));
   if (!chan->TLSClientHandshake()) {
     LOG(ERROR) << "TLS handshake failed";
     return false;

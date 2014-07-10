@@ -36,7 +36,7 @@ class AttestationTest : public ::testing::Test {
     key_child_ = key_name_ + "::Test1::Test2";
   }
 
-  scoped_ptr<Keys> key_;
+  unique_ptr<Keys> key_;
   string key_name_;
   string key_child_;
 };
@@ -164,7 +164,7 @@ TEST_F(AttestationTest, DelegatePredicateTest) {
   string a, d, issuer, delegate, predicate;
   list<string> args;
   Statement s, v;
-  scoped_ptr<Keys> key2;
+  unique_ptr<Keys> key2;
   key2.reset(new Keys(Keys::Signing));
   ASSERT_TRUE(key2->InitTemporary());
   string key2_name = key2->Verifier()->ToPrincipalName();

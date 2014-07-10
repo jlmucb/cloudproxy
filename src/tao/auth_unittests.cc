@@ -40,7 +40,7 @@ TEST_F(AuthTest, PrincipalTest) {
   p[i++] = p[1] + "::Test_3(1, 2, 3, \"abc\", \"def\")";
   p[i++] = p[2] + "::Test_4(Nested(NestedMore(3), 2), 1)";
   for (i = 0; i < 4; i++) {
-    scoped_ptr<Principal> prin(Principal::ParseFromString(p[i]));
+    unique_ptr<Principal> prin(Principal::ParseFromString(p[i]));
     EXPECT_NE(nullptr, prin.get());
     if (prin.get() == nullptr) continue;
     EXPECT_EQ(p[i], prin->SerializeToString());
@@ -60,9 +60,9 @@ TEST_F(AuthTest, PrincipalTest) {
     }
   }
   stringstream in(p[0] + ", " + p[1]);
-  scoped_ptr<Principal> p0(Principal::ParseFromStream(in));
+  unique_ptr<Principal> p0(Principal::ParseFromStream(in));
   skip(in, ", ");
-  scoped_ptr<Principal> p1(Principal::ParseFromStream(in));
+  unique_ptr<Principal> p1(Principal::ParseFromStream(in));
   EXPECT_TRUE(in && in.eof());
   EXPECT_NE(nullptr, p0.get());
   EXPECT_NE(nullptr, p1.get());
@@ -79,7 +79,7 @@ TEST_F(AuthTest, PrincipalFailTest) {
   p[i++] = "User::Test(1)";
 
   for (i = 0; i < 4; i++) {
-    scoped_ptr<Principal> prin(Principal::ParseFromString(p[i]));
+    unique_ptr<Principal> prin(Principal::ParseFromString(p[i]));
     EXPECT_EQ(nullptr, prin.get());
   }
 }
@@ -93,7 +93,7 @@ TEST_F(AuthTest, PredicateTest) {
       "Nested(\"test\", 42, One(1), Two(\"two\")::Point(0), Pair(Three(3), "
       "\"four\"), X)";
 
-  scoped_ptr<Predicate> pred;
+  unique_ptr<Predicate> pred;
   for (i = 0; i < 3; i++) {
     pred.reset(Predicate::ParseFromString(p[i]));
     EXPECT_NE(nullptr, pred.get());
@@ -147,7 +147,7 @@ TEST_F(AuthTest, PredicateFailTest) {
   p[i++] = "(\"Test\")";
   p[i++] = "1(\"Test\")";
   p[i++] = "_(\"Test\")";
-  scoped_ptr<Predicate> pred;
+  unique_ptr<Predicate> pred;
   for (i = 0; i < 3; i++) {
     pred.reset(Predicate::ParseFromString(p[i]));
     EXPECT_EQ(nullptr, pred.get());

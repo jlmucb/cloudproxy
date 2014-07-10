@@ -31,8 +31,8 @@ class PipeFactory {
   virtual ~PipeFactory() {}
 
   virtual bool CreateChannelPair(
-      scoped_ptr<FDMessageChannel> *channel_to_parent,
-      scoped_ptr<FDMessageChannel> *channel_to_child) const;
+      unique_ptr<FDMessageChannel> *channel_to_parent,
+      unique_ptr<FDMessageChannel> *channel_to_child) const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(PipeFactory);

@@ -153,7 +153,7 @@ class LinuxHost {
                     string *data, string *policy) const;
 
   /// The tao host.
-  scoped_ptr<TaoHost> tao_host_;
+  unique_ptr<TaoHost> tao_host_;
 
   /// Path to config directory.
   string path_;
@@ -163,20 +163,20 @@ class LinuxHost {
 
   /// The hosted program factory, responsible for starting and stopping hosted
   /// programs and giving them names.
-  scoped_ptr<LinuxProcessFactory> child_factory_;
+  unique_ptr<LinuxProcessFactory> child_factory_;
 
   /// The child channel factory, responsible for setting up and tearing down the
   /// channel between this Tao host and hosted program.
-  scoped_ptr<PipeFactory> child_channel_factory_;
+  unique_ptr<PipeFactory> child_channel_factory_;
 
   /// The admin channel factory, responsible for setting up and tearing down
   /// channels between this Tao host and administrative programs.
-  scoped_ptr<UnixSocketFactory> admin_channel_factory_;
+  unique_ptr<UnixSocketFactory> admin_channel_factory_;
 
   /// The hosted program policy agent, responsible for deciding whether a hosted
   /// program should be allowed to execute.
   /// TODO(kwalsh) Maybe also helps with seal/unseal policy enforcement?
-  scoped_ptr<TaoGuard> child_policy_;
+  unique_ptr<TaoGuard> child_policy_;
 
   list<std::shared_ptr<HostedLinuxProcess>> hosted_processes_;
 

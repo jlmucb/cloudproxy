@@ -46,7 +46,7 @@ class TaoKeysTest : public ::testing::Test {
     ASSERT_TRUE(keys_->Deriver() != nullptr);
   }
   ScopedTempDir temp_dir_;
-  scoped_ptr<Keys> keys_;
+  std::unique_ptr<Keys> keys_;
 };
 
 TEST_F(TaoKeysTest, GenerateNonHostedKeysTest) {
@@ -109,7 +109,7 @@ TEST_F(TaoKeysTest, SerializeKeyTest) {
   ASSERT_TRUE(keys_->SerializePublicKey(&s))  // serializes Signer
       << "Could not serialize the public key";
 
-  scoped_ptr<keyczar::Verifier> public_key;
+  std::unique_ptr<keyczar::Verifier> public_key;
   ASSERT_TRUE(DeserializePublicKey(s, &public_key))
       << "Could not deserialize the public key";
 

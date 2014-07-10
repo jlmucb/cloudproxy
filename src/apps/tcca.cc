@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
     delete a;
   }
 
-  scoped_ptr<TaoDomain> admin(
+  unique_ptr<TaoDomain> admin(
       TaoDomain::Load(FLAGS_config_path, FLAGS_policy_pass));
   CHECK(admin.get() != nullptr) << "Could not load configuration";
 

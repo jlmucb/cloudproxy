@@ -62,7 +62,7 @@ class TaoRootHost : public TaoHost {
 
  private:
   /// Keys for attestation and sealing.
-  scoped_ptr<Keys> keys_;
+  unique_ptr<Keys> keys_;
 
   /// Our own principal name, as derived from the signing key.
   string tao_host_name_;

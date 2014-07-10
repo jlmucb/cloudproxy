@@ -114,8 +114,8 @@ class Term {
   string string_val_;
   int int_val_;
   string var_val_;
-  scoped_ptr<Predicate> pred_val_;
-  scoped_ptr<Principal> prin_val_;
+  unique_ptr<Predicate> pred_val_;
+  unique_ptr<Principal> prin_val_;
   /// @}
 
   DISALLOW_COPY_AND_ASSIGN(Term);
@@ -201,8 +201,8 @@ class Principal {
  private:
   Principal(Principal *parent, Predicate *ext) : parent_(parent), ext_(ext) {}
 
-  scoped_ptr<Principal> parent_;
-  scoped_ptr<Predicate> ext_;
+  unique_ptr<Principal> parent_;
+  unique_ptr<Predicate> ext_;
 
   DISALLOW_COPY_AND_ASSIGN(Principal);
 };

@@ -41,18 +41,13 @@ namespace tao {
 // and hmac keys, serialized ec keys, passwords, etc.) inside std::string.
 // ScopedSafeString is meant to clear such strings implicitly upon freeing them.
 
-typedef scoped_ptr_malloc<BIGNUM, CallUnlessNull<BIGNUM, BN_clear_free> >
-    ScopedBIGNUM;
+typedef unique_free_ptr<BIGNUM, BN_clear_free> ScopedBIGNUM;
 
-typedef scoped_ptr_malloc<BN_CTX, CallUnlessNull<BN_CTX, BN_CTX_free> >
-    ScopedBN_CTX;
+typedef unique_free_ptr<BN_CTX, BN_CTX_free> ScopedBN_CTX;
 
-typedef scoped_ptr_malloc<EC_POINT, CallUnlessNull<EC_POINT, EC_POINT_free> >
-    ScopedEC_POINT;
+typedef unique_free_ptr<EC_POINT, EC_POINT_free> ScopedEC_POINT;
 
-typedef scoped_ptr_malloc<EVP_CIPHER_CTX,
-                          CallUnlessNull<EVP_CIPHER_CTX, EVP_CIPHER_CTX_free> >
-    ScopedCipherCtx;
+typedef unique_free_ptr<EVP_CIPHER_CTX, EVP_CIPHER_CTX_free> ScopedCipherCtx;
 
 /// These two functions should be defined in openssl, but are not.
 /// @{
@@ -68,11 +63,9 @@ static void HMAC_CTX_free(HMAC_CTX *ctx) {
 }
 /// @}
 
-typedef scoped_ptr_malloc<HMAC_CTX, CallUnlessNull<HMAC_CTX, HMAC_CTX_free> >
-    ScopedHmacCtx;
+typedef unique_free_ptr<HMAC_CTX, HMAC_CTX_free> ScopedHmacCtx;
 
-typedef scoped_ptr_malloc<
-    X509_ALGOR, CallUnlessNull<X509_ALGOR, X509_ALGOR_free> > ScopedX509Algor;
+typedef unique_free_ptr<X509_ALGOR, X509_ALGOR_free> ScopedX509Algor;
 
 /// Extract pointer to string data. This is used for the many OpenSSL functions
 /// that require pointers to unsigned chars.
@@ -195,7 +188,7 @@ static bool AddX509Extension(X509 *x509, int nid, const string &val) {
 //   }
 //   unsigned char *serialization = nullptr;
 //   len = i2d_X509(x509, &serialization);
-//   scoped_ptr_malloc<unsigned char> der_x509(serialization);
+//   unique_ptr<unsigned char> der_x509(serialization);
 //   if (!OpenSSLSuccess() || len < 0) {
 //     LOG(ERROR) << "Could not encode an X.509 certificate in DER";
 //     return false;
@@ -744,7 +737,7 @@ EVP_PKEY *Signer::GetEvpPkey() const {
 
 Signer *Signer::DeepCopy() const {
   CryptoKey m;
-  scoped_ptr<Signer> s;
+  unique_ptr<Signer> s;
   if (!Encode(&m) || !reset(s, Decode(m))) {
     LOG(ERROR) << "Could not copy key";
     return nullptr;
@@ -915,7 +908,7 @@ EVP_PKEY *Verifier::GetEvpPkey() const {
 
 Verifier *Verifier::DeepCopy() const {
   CryptoKey m;
-  scoped_ptr<Verifier> s;
+  unique_ptr<Verifier> s;
   if (!Encode(&m) || !reset(s, Decode(m))) {
     LOG(ERROR) << "Could not copy key";
     return nullptr;
@@ -1061,7 +1054,7 @@ Deriver *Deriver::Decode(const CryptoKey &m) {
 
 Deriver *Deriver::DeepCopy() const {
   CryptoKey m;
-  scoped_ptr<Deriver> s;
+  unique_ptr<Deriver> s;
   if (!Encode(&m) || !reset(s, Decode(m))) {
     LOG(ERROR) << "Could not copy key";
     return nullptr;
@@ -1267,7 +1260,7 @@ bool Crypter::Header(CryptoHeader *h) const {
 
 Crypter *Crypter::DeepCopy() const {
   CryptoKey m;
-  scoped_ptr<Crypter> s;
+  unique_ptr<Crypter> s;
   if (!Encode(&m) || !reset(s, Decode(m))) {
     SecureStringErase(m.mutable_key());
     LOG(ERROR) << "Could not copy key";
@@ -1655,7 +1648,7 @@ bool Keys::SetX509(const string &pem_cert) {
 }
 
 Keys *Keys::DeepCopy() const {
-  scoped_ptr<Keys> other(new Keys(key_types_));
+  unique_ptr<Keys> other(new Keys(key_types_));
   other->fresh_ = fresh_;
   other->delegation_ = delegation_;
   other->x509_ = x509_;

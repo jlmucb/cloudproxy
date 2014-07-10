@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
 
   string path = FLAGS_path;
 
-  scoped_ptr<TPMTao> tao;
+  std::unique_ptr<TPMTao> tao;
 
   if (FLAGS_create) {
     CHECK(!DirectoryExists(FilePath(path)));
@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
 
     string tao_name;
     CHECK(tao->GetTaoName(&tao_name));
-    scoped_ptr<Principal> tao_prin(Principal::ParseFromString(tao_name));
+    std::unique_ptr<Principal> tao_prin(Principal::ParseFromString(tao_name));
     CHECK(tao_prin.get() != nullptr);
     printf("export GOOGLE_TAO_TPM='%s'\n",
            tao_prin->Parent()->SerializeToString().c_str());

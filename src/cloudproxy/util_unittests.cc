@@ -48,7 +48,7 @@ TEST(CloudProxyUtilTest, X509SSLTest) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(CreateTempDir("cloud_proxy_util_test", &temp_dir));
 
-  scoped_ptr<Keys> key(new Keys(*temp_dir, Keys::Signing));
+  unique_ptr<Keys> key(new Keys(*temp_dir, Keys::Signing));
   ASSERT_TRUE(key->InitWithPassword("dummy_password"));
   string details =
       "country: \"US\" "
@@ -64,7 +64,7 @@ TEST(CloudProxyUtilTest, X509SSLTest) {
 
 TEST(CloudProxyUtilTest, ExtractACLTest) {
   ScopedTempDir temp_dir;
-  scoped_ptr<TaoDomain> admin;
+  unique_ptr<TaoDomain> admin;
   ASSERT_TRUE(CreateTempACLsDomain(&temp_dir, &admin));
 
   // Set up a simple ACL to query.

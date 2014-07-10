@@ -28,7 +28,6 @@
 #include <string>
 
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
-#include <keyczar/base/scoped_ptr.h>
 
 #include "cloudproxy/cloudproxy.pb.h"
 
@@ -115,7 +114,7 @@ class CloudUserManager {
   static bool MakeNewUser(const string &path, const string &username,
                           const string &password,
                           const keyczar::Signer &policy_key,
-                          scoped_ptr<tao::Keys> *key);
+                          unique_ptr<tao::Keys> *key);
 
   /// Load key for an existing user.
   /// @param path The location to read keys and attestations:
@@ -123,7 +122,7 @@ class CloudUserManager {
   /// @param password A password to unlock the user keys.
   /// @param[out] key The key for the user.
   static bool LoadUser(const string &path, const string &username,
-                       const string &password, scoped_ptr<tao::Keys> *key);
+                       const string &password, unique_ptr<tao::Keys> *key);
 
   constexpr static auto SpeaksForSigningContext =
       "CloudUserManager cloudproxy::SignedSpeaksFor Version 1";

@@ -26,8 +26,8 @@
 namespace tao {
 
 bool PipeFactory::CreateChannelPair(
-    scoped_ptr<FDMessageChannel> *channel_to_parent,
-    scoped_ptr<FDMessageChannel> *channel_to_child) const {
+    unique_ptr<FDMessageChannel> *channel_to_parent,
+    unique_ptr<FDMessageChannel> *channel_to_child) const {
   int down_pipe[2];
   if (pipe(down_pipe)) {
     LOG(ERROR) << "Could not create pipe";

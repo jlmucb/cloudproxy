@@ -68,13 +68,13 @@ class TaoStackedHost : public TaoHost {
 
  private:
   /// Keys for attestations and/or sealing, or nullptr.
-  scoped_ptr<Keys> keys_;
+  unique_ptr<Keys> keys_;
 
   /// A delegation for our signing key (if any) from the host Tao.
   string host_delegation_;
 
   /// The channel to use for host communication.
-  scoped_ptr<Tao> host_tao_;
+  unique_ptr<Tao> host_tao_;
 
   /// Our own principal name, as obtained from the host Tao.
   string tao_host_name_;

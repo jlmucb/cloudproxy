@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
   string pass = FLAGS_pass;
   CHECK(!pass.empty());
 
-  scoped_ptr<Keys> keys;
+  std::unique_ptr<Keys> keys;
 
   if (FLAGS_create) {
     CHECK(!DirectoryExists(FilePath(path)));
@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
   }
 
   if (FLAGS_show) {
-    scoped_ptr<SoftTao> tao;
+    std::unique_ptr<SoftTao> tao;
     tao.reset(new SoftTao(keys.release()));
     CHECK(tao->Init());
 

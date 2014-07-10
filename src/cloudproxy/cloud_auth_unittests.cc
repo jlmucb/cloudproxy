@@ -55,8 +55,8 @@ class CloudAuthTest : public ::testing::Test {
     cloud_auth_.reset(new CloudAuth(acl_sig_path, admin_->GetPolicyVerifier()));
   }
 
-  scoped_ptr<CloudAuth> cloud_auth_;
-  scoped_ptr<TaoDomain> admin_;
+  unique_ptr<CloudAuth> cloud_auth_;
+  unique_ptr<TaoDomain> admin_;
   ScopedTempDir temp_dir_;
 };
 

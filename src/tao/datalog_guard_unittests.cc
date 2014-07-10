@@ -32,7 +32,7 @@ class DatalogGuardTest : public ::testing::Test {
     ASSERT_TRUE(CreateTempDir("admin_domain", &temp_dir_));
     config_path_ = *temp_dir_ + "/tao.config";
     config_ = DatalogGuard::ExampleGuardDomain;
-    scoped_ptr<TaoDomain> domain(
+    unique_ptr<TaoDomain> domain(
         TaoDomain::Create(config_, config_path_, "temppass"));
     ASSERT_NE(nullptr, domain.get());
     domain_.reset(dynamic_cast<DatalogGuard *>(domain.get()));
@@ -42,7 +42,7 @@ class DatalogGuardTest : public ::testing::Test {
   ScopedTempDir temp_dir_;
   string config_path_;
   string config_;
-  scoped_ptr<DatalogGuard> domain_;
+  unique_ptr<DatalogGuard> domain_;
 };
 
 TEST_F(DatalogGuardTest, SimpleRuleTest) {

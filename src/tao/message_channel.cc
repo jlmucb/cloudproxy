@@ -87,7 +87,7 @@ bool MessageChannel::ReceiveString(string *s, bool *eof) {
     Close();
     return false;
   }
-  scoped_array<char> temp_data(new char[len]);
+  unique_ptr<char[]> temp_data(new char[len]);
   if (!ReceiveData(temp_data.get(), static_cast<size_t>(len), eof) || *eof) {
     LOG(ERROR) << "Could not get the data";
     return false;

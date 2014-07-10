@@ -71,7 +71,7 @@ bool CloudUserManager::GetKey(const string &user, keyczar::Verifier **key) {
 
 bool CloudUserManager::AddSigningKey(const string &user,
                                      const keyczar::Signer &key) {
-  scoped_ptr<keyczar::Signer> key_copy;
+  unique_ptr<keyczar::Signer> key_copy;
   if (!tao::CopySigner(key, &key_copy)) {
     LOG(ERROR) << "Could not copy user signing private key";
     return false;
@@ -82,7 +82,7 @@ bool CloudUserManager::AddSigningKey(const string &user,
 }
 
 bool CloudUserManager::AddKey(const string &user, const string &pub_key) {
-  scoped_ptr<keyczar::Verifier> scoped_verifier;
+  unique_ptr<keyczar::Verifier> scoped_verifier;
   if (!tao::DeserializePublicKey(pub_key, &scoped_verifier)) {
     LOG(ERROR) << "Could not deserialize the key";
     return false;
@@ -127,7 +127,7 @@ bool CloudUserManager::IsAuthenticated(const string &user) {
 bool CloudUserManager::MakeNewUser(const string &path, const string &username,
                                    const string &password,
                                    const keyczar::Signer &policy_key,
-                                   scoped_ptr<Keys> *key) {
+                                   unique_ptr<Keys> *key) {
   string keys_path = FilePath(path).Append(username).value();
   key->reset(new Keys(keys_path, username, Keys::Signing));
   if (!(*key)->InitWithPassword(password)) {
@@ -167,7 +167,7 @@ bool CloudUserManager::MakeNewUser(const string &path, const string &username,
 
 bool CloudUserManager::LoadUser(const string &path, const string &username,
                                 const string &password,
-                                scoped_ptr<tao::Keys> *key) {
+                                unique_ptr<tao::Keys> *key) {
   string keys_path = FilePath(path).Append(username).value();
   if (!PathExists(FilePath(keys_path))) {
     LOG(ERROR) << "No such user " << username;

@@ -460,7 +460,7 @@ bool GetSealedSecret(Tao *tao, const string &path, const string &policy,
 bool CreateTempDir(const string &prefix, ScopedTempDir *dir) {
   // Get a temporary directory to use for the files.
   string dir_template = string("/tmp/temp_") + prefix + string("_XXXXXX");
-  scoped_array<char> temp_name(new char[dir_template.size() + 1]);
+  unique_ptr<char[]> temp_name(new char[dir_template.size() + 1]);
   memcpy(temp_name.get(), dir_template.data(), dir_template.size() + 1);
 
   if (!mkdtemp(temp_name.get())) {

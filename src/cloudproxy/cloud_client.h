@@ -77,7 +77,7 @@ class CloudClient {
   ScopedSSLCtx tls_context_;
 
   /// A signing key for TLS.
-  scoped_ptr<tao::Signer> tls_key_;
+  unique_ptr<tao::Signer> tls_key_;
 
   /// A self-signed certificate for the TLS key.
   string tls_self_cert_;
@@ -86,7 +86,7 @@ class CloudClient {
   string tls_delegation_;
 
   /// A TLS connection to a CloudServer.
-  scoped_ptr<CloudChannel> chan_;
+  unique_ptr<CloudChannel> chan_;
 
   DISALLOW_COPY_AND_ASSIGN(CloudClient);
 };

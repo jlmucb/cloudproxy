@@ -88,7 +88,7 @@ class FileClientTest : public ::testing::Test {
     ASSERT_EQ(mkdir(client_file_path_.c_str(), 0700), 0);
 
     // create a fake tao with new keys, attestation, and a direct channel to it
-    scoped_ptr<FakeTao> fake_tao;
+    unique_ptr<FakeTao> fake_tao;
     fake_tao.reset(new FakeTao());
     ASSERT_TRUE(fake_tao->InitTemporaryTPM(*admin_));
 
@@ -173,7 +173,7 @@ class FileClientTest : public ::testing::Test {
 
     // 20 MB file
     int med_len = 20 * 1000 * 1000;
-    scoped_array<unsigned char> med(new unsigned char[med_len]);
+    unique_ptr<unsigned char[]> med(new unsigned char[med_len]);
     ASSERT_EQ(RAND_bytes(med.get(), med_len), 1);
     string medium_data(reinterpret_cast<char *>(med.get()), med_len);
     ASSERT_TRUE(WriteStringToFile(medium_file_, medium_data));
@@ -191,16 +191,16 @@ class FileClientTest : public ::testing::Test {
     }
   }
 
-  scoped_ptr<TaoDomain> admin_;
-  scoped_ptr<thread> server_thread_;
-  scoped_ptr<FileClient> file_client_;
-  scoped_ptr<FileServer> file_server_;
+  unique_ptr<TaoDomain> admin_;
+  unique_ptr<thread> server_thread_;
+  unique_ptr<FileClient> file_client_;
+  unique_ptr<FileServer> file_server_;
   ScopedTempDir temp_dir_;
   ScopedSSL ssl_;
   SignedSpeaksFor ssf;
   SignedSpeaksFor ssf2;
-  scoped_ptr<Keys> tmr_key_;
-  scoped_ptr<Keys> jlm_key_;
+  unique_ptr<Keys> tmr_key_;
+  unique_ptr<Keys> jlm_key_;
   string tmr_ssf_path_;
   string jlm_ssf_path_;
   string small_file_;

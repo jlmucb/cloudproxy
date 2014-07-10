@@ -83,10 +83,10 @@ int main(int argc, char **argv) {
   }
 
   if (FLAGS_create || FLAGS_service || FLAGS_show) {
-    scoped_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
+    std::unique_ptr<TaoDomain> admin(TaoDomain::Load(FLAGS_config_path));
     CHECK(admin.get() != nullptr) << "Could not load configuration";
 
-    scoped_ptr<LinuxHost> host(new LinuxHost(admin.release(), FLAGS_path));
+    std::unique_ptr<LinuxHost> host(new LinuxHost(admin.release(), FLAGS_path));
 
     if (FLAGS_root) {
       if (FLAGS_pass.empty()) {
@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
       CHECK(host->Listen()) << "TaoHost main loop failed";
     }
   } else {
-    scoped_ptr<LinuxAdminRPC> host(LinuxHost::Connect(FLAGS_path));
+    std::unique_ptr<LinuxAdminRPC> host(LinuxHost::Connect(FLAGS_path));
     CHECK(host.get() != nullptr) << "Could not connect to Tao host";
 
     string name;

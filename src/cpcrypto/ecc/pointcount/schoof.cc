@@ -482,7 +482,6 @@ bool EccSymbolicPointMultWithReduction(polynomial& mod_poly, polynomial& curve_x
   rationalpoly  double_rationaly(*p, nn2, size_num, nd2, size_num);
   rationalpoly  resultx(*p, nn1, size_num, nd1, size_num);
   rationalpoly  resulty(*p, nn2, size_num, nd2, size_num);
-  rationalpoly  temp_result(*p, nn2, size_num, nd2, size_num);
 
   double_rationalx.Copyfrom(x);
   double_rationaly.Copyfrom(y);
@@ -513,21 +512,10 @@ bool EccSymbolicPointMultWithReduction(polynomial& mod_poly, polynomial& curve_x
     if (i != n) {
       resultx.ZeroRational();
       resulty.ZeroRational();
-      temp_result.ZeroRational();
       EccSymbolicAdd(curve_x_poly, double_rationalx,  double_rationaly, 
-                     double_rationalx, double_rationaly, resultx, temp_result);
+                     double_rationalx, double_rationaly, resultx, resulty);
       double_rationalx.ZeroRational();
       double_rationaly.ZeroRational();
-      if((i%1)!=0) {
-        // multiply curve_x_poly
-        if(!PolyMult(*temp_result.numerator, curve_x_poly, *resulty.numerator))
-          return false;
-        resulty.denominator->Copyfrom(*temp_result.denominator);
-      }
-      else {
-        resulty.numerator->Copyfrom(*temp_result.numerator);
-        resulty.denominator->Copyfrom(*temp_result.denominator);
-      }
       if(!ReduceModPoly(*resultx.numerator, mod_poly, *double_rationalx.numerator))
         return false;
       if(!ReduceModPoly(*resulty.numerator, mod_poly, *double_rationaly.numerator))

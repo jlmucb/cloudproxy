@@ -238,7 +238,7 @@ Signer *Signer::Generate() {
   // Currently supports only ECDSA-256 with SHA-256 and curve prime256v1 (aka
   // secp256r1). See recommendations in rfc 5480, section 4.
   int curve_nid = NID_X9_62_prime256v1;
-  ScopedECKey ec_key(EC_KEY_new_by_curve_name(curve_nid));
+  ScopedEcKey ec_key(EC_KEY_new_by_curve_name(curve_nid));
   if (!OpenSSLSuccess() || ec_key.get() == nullptr) {
     LOG(ERROR) << "Could not allocate EC_KEY";
     return nullptr;
@@ -318,7 +318,7 @@ static EC_KEY *DecodeECDSA_SHA_SigningKey(const ECDSA_SHA_SigningKey_v1 &m) {
   }
   // Allocate EC_KEY.
   int curve_nid = NID_X9_62_prime256v1;
-  ScopedECKey ec_key(EC_KEY_new_by_curve_name(curve_nid));
+  ScopedEcKey ec_key(EC_KEY_new_by_curve_name(curve_nid));
   if (!OpenSSLSuccess() || ec_key.get() == nullptr) {
     LOG(ERROR) << "Could not allocate EC_KEY";
     return nullptr;
@@ -393,7 +393,7 @@ static EC_KEY *DecodeECDSA_SHA_VerifyingKey(
   }
   // Allocate EC_KEY.
   int curve_nid = NID_X9_62_prime256v1;
-  ScopedECKey ec_key(EC_KEY_new_by_curve_name(curve_nid));
+  ScopedEcKey ec_key(EC_KEY_new_by_curve_name(curve_nid));
   if (!OpenSSLSuccess() || ec_key.get() == nullptr) {
     LOG(ERROR) << "Could not allocate EC_KEY";
     return nullptr;
@@ -424,7 +424,7 @@ Verifier *Signer::GetVerifier() const {
     LOG(ERROR) << "Could not serialize public key";
     return nullptr;
   }
-  ScopedECKey pub_key(DecodeECDSA_SHA_VerifyingKey(m));
+  ScopedEcKey pub_key(DecodeECDSA_SHA_VerifyingKey(m));
   if (pub_key.get() == nullptr) {
     LOG(ERROR) << "could not deserialize public key";
     return nullptr;
@@ -568,7 +568,7 @@ Signer *Signer::DeserializeWithPassword(const string &serialized,
     return nullptr;
   }
   // Move EVP_PKEY into EC_KEY.
-  ScopedECKey ec_key(EVP_PKEY_get1_EC_KEY(evp_pkey.get()));
+  ScopedEcKey ec_key(EVP_PKEY_get1_EC_KEY(evp_pkey.get()));
   if (ec_key.get() == nullptr) {
     OpenSSLSuccess();
     LOG(ERROR) << "Could not extract ECDSA private key";
@@ -704,7 +704,7 @@ Signer *Signer::Decode(const CryptoKey &m) {
     LOG(ERROR) << "Could not parse key";
     return nullptr;
   }
-  ScopedECKey ec_key(DecodeECDSA_SHA_SigningKey(k));
+  ScopedEcKey ec_key(DecodeECDSA_SHA_SigningKey(k));
   SecureStringErase(k.mutable_ec_private());
   if (ec_key.get() == nullptr) {
     LOG(ERROR) << "Could not decode EC private key";
@@ -830,7 +830,7 @@ Verifier *Verifier::FromX509(const string &pem_cert) {
     LOG(ERROR) << "Could not get public key from x509";
     return nullptr;
   }
-  ScopedECKey ec_key(EVP_PKEY_get1_EC_KEY(evp_pkey.get()));
+  ScopedEcKey ec_key(EVP_PKEY_get1_EC_KEY(evp_pkey.get()));
   if (ec_key.get() == nullptr) {
     LOG(ERROR) << "Could not get EC key from x509";
     return nullptr;
@@ -878,7 +878,7 @@ Verifier *Verifier::Decode(const CryptoKey &m) {
     LOG(ERROR) << "Could not parse key";
     return nullptr;
   }
-  ScopedECKey ec_key(DecodeECDSA_SHA_VerifyingKey(k));
+  ScopedEcKey ec_key(DecodeECDSA_SHA_VerifyingKey(k));
   if (ec_key.get() == nullptr) {
     LOG(ERROR) << "Could not decode EC private key";
     return nullptr;

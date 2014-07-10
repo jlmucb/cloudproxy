@@ -51,14 +51,11 @@ typedef scoped_ptr_malloc<EVP_PKEY, CallUnlessNull<EVP_PKEY, EVP_PKEY_free>>
 typedef scoped_ptr_malloc<RSA, CallUnlessNull<RSA, RSA_free>> ScopedRsa;
 
 /// A smart pointer to an OpenSSL EC_KEY object.
-typedef scoped_ptr_malloc<EC_KEY, CallUnlessNull<EC_KEY, EC_KEY_free>> ScopedEc;
+typedef scoped_ptr_malloc<EC_KEY, CallUnlessNull<EC_KEY, EC_KEY_free>>
+    ScopedEcKey;
 
 /// A smart pointer to an OpenSSL BIO object.
 typedef scoped_ptr_malloc<BIO, CallUnlessNull<BIO, BIO_free_all>> ScopedBio;
-
-/// A smart pointer to an OpenSSL EC_KEY object.
-typedef scoped_ptr_malloc<EC_KEY, CallUnlessNull<EC_KEY, EC_KEY_free>>
-    ScopedECKey;
 
 /// Serialize an openssl X509 structure in PEM format.
 /// @param x509 The certificate to serialize.
@@ -152,7 +149,7 @@ class Signer {
  private:
   /// Handle to OpenSSL key.
   /// TODO(kwalsh) Use EVP_KEY here and EVP_DigestSign* functions?
-  const ScopedECKey key_;
+  const ScopedEcKey key_;
 
   DISALLOW_COPY_AND_ASSIGN(Signer);
 };
@@ -205,7 +202,7 @@ class Verifier {
 
  private:
   /// Handle to an OpenSSL ECDSA key.
-  const ScopedECKey key_;
+  const ScopedEcKey key_;
 
   DISALLOW_COPY_AND_ASSIGN(Verifier);
 };

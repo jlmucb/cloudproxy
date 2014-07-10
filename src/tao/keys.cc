@@ -1132,6 +1132,7 @@ static bool AES256_CTR_Cipher(bool encrypt, const string &key, const string &iv,
 }
 
 bool Crypter::Encrypt(const string &data, string *encrypted) const {
+  // TODO(kwalsh) streaming one-pass AES + HMAC instead of two-passes.
   const EVP_CIPHER *cipher = EVP_aes_256_ctr();
   EncryptedData ed;
   if (!Header(ed.mutable_header())) {

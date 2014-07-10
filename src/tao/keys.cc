@@ -269,19 +269,35 @@ static bool EncodeECDSA_SHA_SigningKey(const EC_KEY *ec_key,
   m->set_curve(PRIME256_V1);
   // ec_private.
   const BIGNUM *n = EC_KEY_get0_private_key(ec_key);
+  if (n == nullptr) {
+    LOG(ERROR) << "EC key is missing private half";
+    return false;
+  }
   string *ec_private = m->mutable_ec_private();
   size_t max_n_len = BN_num_bytes(n);
   ec_private->resize(max_n_len);
   size_t n_len = BN_bn2bin(n, str2uchar(ec_private));
   // Fail on buffer overflow.
   CHECK_LE(n_len, max_n_len);
+  if (n_len == 0) {
+    LOG(ERROR) << "Could not serialize EC private key";
+    return false;
+  }
   ec_private->resize(n_len);
   // ec_public.
   const EC_POINT *ec_point = EC_KEY_get0_public_key(ec_key);
+  if (ec_point == nullptr) {
+    LOG(ERROR) << "EC key is missing public half";
+    return false;
+  }
   ScopedBN_CTX bn_ctx(BN_CTX_new());
-  int point_len =
+  size_t point_len =
       EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
                          POINT_CONVERSION_COMPRESSED, nullptr, 0, bn_ctx.get());
+  if (point_len == 0) {
+    LOG(ERROR) << "Could not serialize EC public key";
+    return false;
+  }
   string *ec_public = m->mutable_ec_public();
   ec_public->resize(point_len);
   EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
@@ -343,10 +359,18 @@ static bool EncodeECDSA_SHA_VerifyingKey(const EC_KEY *ec_key,
   m->set_curve(PRIME256_V1);
   // ec_public.
   const EC_POINT *ec_point = EC_KEY_get0_public_key(ec_key);
+  if (ec_point == nullptr) {
+    LOG(ERROR) << "EC key missing public half";
+    return false;
+  }
   ScopedBN_CTX bn_ctx(BN_CTX_new());
-  int point_len =
+  size_t point_len =
       EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
                          POINT_CONVERSION_COMPRESSED, nullptr, 0, bn_ctx.get());
+  if (point_len == 0) {
+    LOG(ERROR) << "Can't serialize EC public half";
+    return false;
+  }
   string *ec_pub = m->mutable_ec_public();
   ec_pub->resize(point_len);
   EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,

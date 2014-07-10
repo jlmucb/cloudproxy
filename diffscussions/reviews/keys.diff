@@ -30,6 +30,19 @@
 #-- value. What was the rationale for this change? Many such functions now
 #-- return a string instead.
 #-- 
+#***
+#*** author: Kevin Walsh
+#*** email: kwalsh@holycross.edu
+#*** date: 2014-07-09T16:09:06-0400
+#***
+#--- Yay on unique_ptr. We can also use (!p) in place of (p.get() == nullptr).
+#---
+#--- Motivation for returning strings is Go's convention of emptystring as zero
+#--- for the string type. I only did this where emptystring is not otherwise
+#--- valid as a return value. Really I was just experimenting with slightly
+#--- different error handling styles. I very much dislike how our error handling
+#--- mindlessly turns n lines into 5n lines, but that is a discussion for
+#--- another day.
 diff --git a/src/apps/soft_tao.cc b/src/apps/soft_tao.cc
 index 7b54d4d..ce82353 100644
 --- a/src/apps/soft_tao.cc
@@ -123,6 +136,27 @@ index d245c80..45bd936 100644
 #- (SigningPublicKey) to less generic (X509Path). I'm not convinced
 #- this is the right thing to do.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-09T16:17:37-0400
+#**
+#-- The method SigningPublicKeyPath(), had to go because the public key isn't
+#-- stored separately on disk any more. In some cases (like this one), there is
+#-- an x509 certificate though, so I chose to display that using X509Path(). I
+#-- could rename that method, say, SigningKeyCertificatePath().
+#--
+#-- THe method SigningPrivateKeyPath() was renamed because there is no longer a
+#-- single place for signing keys to be stored. In this case, it uses PKCS5,
+#-- hence PBESignerPath(). In other cases it uses a tao multiple-key format
+#-- encrypted either using PBE or Tao sealing, hence PBEKeysetPath() and
+#-- SealedKeysetPath().
+#--
+#-- In the case of policy mgr here, I think specific is okay anyway. This little
+#-- helper utility is not fundamental, it isn't hosted on top of Tao, it doesn't
+#-- direclty use or invoke Tao, etc. It has a signing key and cert stored in
+#-- PKCS#5 and PEM files, so I chose to display those names.
+#--
      printf("  tao ca: %s:%s\n", admin->GetTaoCAHost().c_str(),
             admin->GetTaoCAPort().c_str());
      printf("  auth type: %s\n", admin->GetAuthType().c_str());
@@ -346,6 +380,16 @@ index 96ace0b..bf0760e 100644
 #- How is it that the "CloudClient" string was able to disappear here?
 #- It doesn't look like Signer::Generate includes that kind of info.
 #- 
+#- Keyczar key sets have "nicknames" with an unspecified purpose. Previously I
+#- exposed that in the Keys API by allowing each keyset to have a "nickname". It
+#- was rarely ever used, and then only for debug/log messages. In all such
+#- cases, knowing logging call site told which key was being used anyway. Worse,
+#- the names could be misleading because a given class re-used the same name
+#- every time it generated a key. Where semi-unique identifiers for keys are
+#- called for, I do what keyczar does internally: hash the (public or private)
+#- key material and take the first four bytes.  Otherwise, friendly names can be
+#- added at the logging call site, if needed.
+#-
 +    if (tls_key_.get() == nullptr) {
 +      LOG(ERROR) << "Could not generate temporary TLS key";
        return false;
@@ -470,6 +514,13 @@ index 7847cbb..dc5c666 100644
 #- Formatting? I think that clang-format --style=Google will pack the
 #- initializers.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-09T16:35:21-0400
+#**
+#-- Huh. My build setup runs clang-format after every compile, normally.
+#--
  
    virtual bool Init();
    virtual ~CloudClient() {}
@@ -1074,6 +1125,13 @@ index 225642f..e039088 100644
 #- statements, since I find they make the code hard to read. The nice thing
 #- about source control is we can delete code and still find it later.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-09T16:35:59-0400
+#**
+#-- Yes. Will delete.
+#--
 -bool SetUpPermissiveSSLServerCtx(const Keys &key, ScopedSSLCtx *ctx) {
 +bool SetUpPermissiveSSLServerCtx(const Signer &key, ScopedSSLCtx *ctx) {
    return SetUpSSLCtx(TLSv1_2_server_method(), key, false, ctx);
@@ -1476,6 +1534,14 @@ index c5dcaa2..05bc2d0 100644
 #- allow move semantics, but I think initialization should be signaled in the
 #- syntax.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-09T16:47:04-0400
+#**
+#-- Can we please not? Style guide allows for either. I strongly dislike
+#-- initializer syntax, especially for strings.
+#--
 +  if (signer == "") {
      LOG(ERROR) << "Could not get signer principal name";
      return false;
@@ -2416,6 +2482,13 @@ index 4321633..bf9754b 100644
 #- If we're switching to unique_ptr, then I guess this means we'll need to
 #- implement something like unique_ptr_malloc ourselves.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-09T16:59:08-0400
+#**
+#-- Happy day: I believe unique_ptr<T,Deleter> already handles that case.
+#--
 +
 +typedef scoped_ptr_malloc<BN_CTX, CallUnlessNull<BN_CTX, BN_CTX_free> >
 +    ScopedBN_CTX;
@@ -2480,6 +2553,16 @@ index 4321633..bf9754b 100644
 #- very clear. Once we've dropped keyczar entirely, we'll have to link to the
 #- source.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-09T16:59:55-0400
+#**
+#-- Lots of the core crypto call sequences are pulled almost verbatim from
+#-- keyczar (though much is also idiomatic openssl code). The file format is
+#-- motivated directly by a Keyczar paper. Can we just put a substantial
+#-- citation, credits, and their license at the top? 
+#--
 +  memset(str2uchar(s), 0, s->size());
 +}
 +
@@ -2904,6 +2987,14 @@ index 4321633..bf9754b 100644
 #*
 #- Is it possible for this to return nullptr?
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-09T17:05:06-0400
+#**
+#-- Yes, but only if someone calls the constructor with an uninitialized EC_KEY.
+#-- I don't dereference ec_point here in any case.
+#--
 +  ScopedBN_CTX bn_ctx(BN_CTX_new());
 +  int point_len =
 +      EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
@@ -2916,6 +3007,14 @@ index 4321633..bf9754b 100644
 #*
 #- Do we need to sanity-check point_len before using it here?
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-09T18:27:06-0400
+#**
+#-- Should be size_t here. At worst it returns 0, which is harmless. But I
+#-- should add error checks for the case of bad EC_KEY.
+#--
 +  ec_pub->resize(point_len);
 +  EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
 +                     POINT_CONVERSION_COMPRESSED, str2uchar(ec_pub), point_len,
@@ -3342,6 +3441,13 @@ index 4321633..bf9754b 100644
 #*
 #- Can this fail to set buf?
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-09T18:33:37-0400
+#**
+#-- I don't believe it can.
+#--
 +  return string(buf->data, buf->length);
  }
  
@@ -4070,6 +4176,17 @@ index 4321633..bf9754b 100644
 #- This makes me nervous, though it looks like it can't be triggered by
 #- adversarial input. I'd greatly prefer to return false here, though.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-09T18:34:14-0400
+#**
+#-- On this I strongly disagree. If sig_length > EVP_MAX_MD_SIZE, then openssl
+#-- has already written garbage past the end of the allocated buffer,
+#-- potentially destroying the string, the heap, and the known universe. There
+#-- is no possible way to recover from this fault. Fail stop is better than
+#-- byzantine. 
+#--
 +  mac->resize(mac_length + sig_length);
 +  return true;
 +}
@@ -4201,6 +4318,14 @@ index 4321633..bf9754b 100644
 #- Could we switch this for CTR instead of CBC? We're doing CCA2-secure
 #- encryption, but I'd feel better if we could avoid CBC entirely.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-09T21:47:25-0400
+#**
+#-- You are probably right. I only used CBC b/c Keyczar does (a bad justification
+#-- if there ever was one).
+#--
 +  // See NIST SP800-57 part1, pages 63-64 for hmac key size recommendations.
 +  size_t aes_size = 256;
 +  size_t hmac_size = 256;
@@ -4297,6 +4422,13 @@ index 4321633..bf9754b 100644
 #- security reasons, we can't stream the HMAC with the decryption process, of
 #- course; we have to compute the HMAC first.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-09T21:49:56-0400
+#**
+#-- I'd prefer to delay that optimization. Simplicity and correctness first.
+#--
 +  const EVP_CIPHER *cipher = EVP_aes_256_cbc();
 +  EncryptedData ed;
 +  if (!Header(ed.mutable_header())) {
@@ -5340,6 +5472,13 @@ index bb9a963..c35f3b2 100644
 #- It looks like this is a second typedef for the same thing. Why?
 #- See ScopedEc above.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-09T21:50:48-0400
+#**
+#-- Will remove.
+#--
  
  /// Serialize an openssl X509 structure in PEM format.
  /// @param x509 The certificate to serialize.
@@ -5812,6 +5951,13 @@ index bb9a963..c35f3b2 100644
 #- If these are const methods, then they should return const tao::Verifier *,
 #- right?
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-09T21:52:32-0400
+#**
+#-- Indeed. Will fix. (Those four key types are immutable anyway.)
+#--
 +  /// @}
 +
 +  /// Get the tao delegation for the managed signing key. This is only available
@@ -7446,6 +7592,13 @@ index d6a8e52..47ad1ca 100644
 #*
 #- SGTM
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-09T21:53:40-0400
+#**
+#-- Roger
+#--
  #include <keyczar/base/base64w.h>
  #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
  #include <keyczar/base/file_util.h>

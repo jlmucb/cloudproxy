@@ -1,70 +1,42 @@
-#* 
+#*
 #* author: Tom Roeder
 #* email: tmroeder@google.com
-#* date: 2014-07-09T11:32:17-0700
-#* 
-#- This diff adds cmake files for CloudProxy and fixes util.cc to build
-#- under the warning modes added there. Kevin's initial comments were as
-#- follows:
-#- 
-#- 
-#**
-#** author: Kevin Walsh
-#** email: kwalsh@holycross.edu
-#** date: 2014-07-09T00:03:35-0400
-#**
-#-- Twice you do add_custom_command() to deal with lua files. Why are they so
-#-- different from each other?
-#--
-#-- I don't entirely understand cmake's directory structure. Are all final
-#-- executables put in a single flat output directory, separate from intermediate
-#-- binaries? What is the name of that directory?
-#--
-#-- I don't see gmock being linked anywhere. There also isn't a gmock
-#-- CMakeLists.txt file. Will the sources for gmock be deleted?
-#--
-#-- I only see static specified for the lua library. Yet when it builds, it mentions
-#-- that it is building static libraries for most everything. What's going on here?
-#--
-#-- Why is there no KEYCZAR_HEADERS variable? I don't see any keyczar headers
-#-- listed in the CMakeLists.txt files.
-#--
-#-- We will no longer build protobuf library and protoc tool?
-#--
-#-- When I tried building (using mkdir foo; cd foo; cmake ../src; make) I get a
-#-- bunch of protobuf-related errors. Can't find google/protobuf/stubs/common.h, so
-#-- I added third_party/protobuf/src to the includes, but now I get a bunch of
-#-- protobuf-version errors. I probably have a different protobuf version installed
-#-- elesehere on this system than is installed in third_party.
-#--
-#-- 
-#***
-#*** author: Tom Roeder
-#*** email: tmroeder@google.com
-#*** date: 2014-07-09T11:35:18-0700
-#***
-#--- My quick replies. I'll fix these soon and send an update:
-#--- 
-#--- Yes, I'll merge the add_custom_command and fix the directory structure.
-#--- 
-#--- gmock and gtest already have their own CMakeLists.txt files, so that Just
-#--- Works. I haven't used gmock yet, but I intend to.
-#--- 
-#--- The static annotation is a mistake: I meant to add it to everything. But
-#--- it's the default, which is why I didn't catch this mistake.
-#--- 
-#--- KEYCZAR_HEADERS is another accidental omission. I'll add this.
-#--- 
-#--- I wasn't intending to build protobuf anymore, but we can discuss this.
-#--- CMake has fairly good protobuf support. Make sure you have libprotobuf-dev
-#--- installed.
-#--- 
+#* date: 2014-07-10T15:39:59-0700
+#*
+#- cmake for cp
+#-
+#-
+#- Added a macro to fix the lua header custom command duplication
+#-
+#-
+#- Added STATIC annotation to libraries and added the KEYCZAR_HEADERS back in
+#-
+#-
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-10T15:41:26-0700
+#*
+#- This set of changes fixes the concerns from the previous set of
+#- review comments:
+#-
+#- 1. macro-ized add_custom_command for the creation of lua C headers
+#- from lua source
+#-
+#- 2. puts all binaries into a top-level bin/ directory. This should
+#- make it much easier to port the install.sh and unittests.sh
+#- scripts.
+#-
+#- 3. adds STATIC to all the libraries
+#-
+#- 4. adds KEYCZAR_HEADERS
+#-
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
 new file mode 100644
-index 0000000..972e131
+index 0000000..a58cf88
 --- /dev/null
 +++ b/src/CMakeLists.txt
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,39 @@
 +# Copyright 2014 Google Inc. All rights reserved.
 +#
 +# Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,10 +54,23 @@ index 0000000..972e131
 +cmake_minimum_required(VERSION 2.8.12)
 +project(cloudproxy C CXX ASM)
 +
++set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 +find_package(Protobuf REQUIRED)
 +include_directories(${PROTOBUF_INCLUDE_DIRS})
 +
 +include(cloudproxy.cmake)
++
++# This macro assumes that the header_file will go in CMAKE_CURRENT_BINARY_DIR
++# and that the lua_file is located in CMAKE_CURRENT_SOURCE_DIR.
++macro(add_lua_header header_file lua_file)
++add_custom_command(
++    OUTPUT ${header_file}
++    COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/bin2c -o ${CMAKE_CURRENT_BINARY_DIR}/${header_file} ${lua_file}
++    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
++    DEPENDS bin2c ${lua_file}
++   )
++endmacro()
++
 +
 +add_subdirectory(apps)
 +add_subdirectory(cloudproxy)
@@ -171,7 +156,7 @@ index 0000000..77023ff
 +set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
 diff --git a/src/cloudproxy/CMakeLists.txt b/src/cloudproxy/CMakeLists.txt
 new file mode 100644
-index 0000000..f8cb27e
+index 0000000..9f8dfa8
 --- /dev/null
 +++ b/src/cloudproxy/CMakeLists.txt
 @@ -0,0 +1,54 @@
@@ -216,7 +201,7 @@ index 0000000..f8cb27e
 +include_directories(${CMAKE_SOURCE_DIR}/third_party/google-glog/src)
 +include_directories(${CMAKE_SOURCE_DIR}/third_party/gflags/src)
 +
-+add_library(cloudproxy
++add_library(cloudproxy STATIC
 +    ${PROTO_SRCS}
 +    ${PROTO_HDRS}
 +    ${CLOUDPROXY_SOURCES}
@@ -231,10 +216,10 @@ index 0000000..f8cb27e
 +   )
 diff --git a/src/tao/CMakeLists.txt b/src/tao/CMakeLists.txt
 new file mode 100644
-index 0000000..4bc4347
+index 0000000..8224fff
 --- /dev/null
 +++ b/src/tao/CMakeLists.txt
-@@ -0,0 +1,141 @@
+@@ -0,0 +1,135 @@
 +# Copyright 2014 Google Inc. All rights reserved.
 +#
 +# Licensed under the Apache License, Version 2.0 (the "License");
@@ -314,13 +299,7 @@ index 0000000..4bc4347
 +    util.h
 +   )
 +
-+add_custom_command(
-+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/auth_lua.h
-+    COMMAND ${CMAKE_BINARY_DIR}/third_party/datalog/bin2c -o ${CMAKE_CURRENT_BINARY_DIR}/auth_lua.h auth.lua
-+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-+    DEPENDS bin2c auth.lua
-+   )
-+
++add_lua_header(auth_lua.h auth.lua)
 +
 +# This is added to get the right path for the protobuf generated header files.
 +include_directories(${CMAKE_BINARY_DIR})
@@ -330,7 +309,7 @@ index 0000000..4bc4347
 +include_directories(${CMAKE_SOURCE_DIR}/third_party/gflags/src)
 +include_directories(${CMAKE_SOURCE_DIR}/third_party/datalog)
 +include_directories(${CMAKE_SOURCE_DIR}/third_party/datalog/lua)
-+add_library(tao
++add_library(tao STATIC
 +    ${PROTO_SRCS}
 +    ${PROTO_HDRS}
 +    ${TAO_SOURCES}
@@ -451,10 +430,10 @@ index 0000000..6ebe335
 +add_subdirectory(keyczar)
 diff --git a/src/third_party/datalog/CMakeLists.txt b/src/third_party/datalog/CMakeLists.txt
 new file mode 100644
-index 0000000..e1031b7
+index 0000000..6b15da8
 --- /dev/null
 +++ b/src/third_party/datalog/CMakeLists.txt
-@@ -0,0 +1,104 @@
+@@ -0,0 +1,99 @@
 +# Copyright (c) 2014 Google Inc. All rights reserved.
 +#
 +# Licensed under the Apache License, Version 2.0 (the "License");
@@ -471,12 +450,7 @@ index 0000000..e1031b7
 +
 +add_executable(bin2c bin2c.c)
 +
-+add_custom_command(
-+    OUTPUT dl_lua.h
-+    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/bin2c -o ${CMAKE_CURRENT_BINARY_DIR}/dl_lua.h datalog.lua
-+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-+    DEPENDS bin2c datalog.lua
-+   )
++add_lua_header(dl_lua.h datalog.lua)
 +
 +set(LSD lua)
 +
@@ -561,7 +535,7 @@ index 0000000..e1031b7
 +target_link_libraries(datalog lua)
 diff --git a/src/third_party/gflags/CMakeLists.txt b/src/third_party/gflags/CMakeLists.txt
 new file mode 100644
-index 0000000..503455e
+index 0000000..b1f2f2e
 --- /dev/null
 +++ b/src/third_party/gflags/CMakeLists.txt
 @@ -0,0 +1,37 @@
@@ -601,10 +575,10 @@ index 0000000..503455e
 +
 +set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-local-typedefs -Wno-sign-compare")
 +include_directories(${SD})
-+add_library(gflags ${GFLAGS_SOURCES} ${GFLAGS_HEADERS})
++add_library(gflags STATIC ${GFLAGS_SOURCES} ${GFLAGS_HEADERS})
 diff --git a/src/third_party/google-glog/CMakeLists.txt b/src/third_party/google-glog/CMakeLists.txt
 new file mode 100644
-index 0000000..933b106
+index 0000000..612e936
 --- /dev/null
 +++ b/src/third_party/google-glog/CMakeLists.txt
 @@ -0,0 +1,59 @@
@@ -664,15 +638,15 @@ index 0000000..933b106
 +include_directories(${SD})
 +include_directories(../gflags/src)
 +set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-sign-compare")
-+add_library(glog ${GLOG_SOURCES} ${GLOG_HEADERS})
++add_library(glog STATIC ${GLOG_SOURCES} ${GLOG_HEADERS})
 +target_link_libraries(glog gflags)
 +target_link_libraries(glog pthread)
 diff --git a/src/third_party/keyczar/CMakeLists.txt b/src/third_party/keyczar/CMakeLists.txt
 new file mode 100644
-index 0000000..8c4a352
+index 0000000..8af9edd
 --- /dev/null
 +++ b/src/third_party/keyczar/CMakeLists.txt
-@@ -0,0 +1,86 @@
+@@ -0,0 +1,161 @@
 +# Copyright 2014 Google Inc. All rights reserved.
 +#
 +# Licensed under the Apache License, Version 2.0 (the "License");
@@ -755,7 +729,82 @@ index 0000000..8c4a352
 +    ${OSD}/util.cc
 +   )
 +
-+add_library(keyczar ${KEYCZAR_SOURCES})
++set(KEYCZAR_HEADERS
++    ${KSD}/aes_impl.h
++    ${KSD}/aes_key.h
++    ${KSD}/cipher_mode.h
++    ${KSD}/crypto_factory.h
++    ${KSD}/dsa_impl.h
++    ${KSD}/dsa_private_key.h
++    ${KSD}/dsa_public_key.h
++    ${KSD}/ecdsa_impl.h
++    ${KSD}/ecdsa_private_key.h
++    ${KSD}/ecdsa_public_key.h
++    ${KSD}/hmac_impl.h
++    ${KSD}/hmac_key.h
++    ${KSD}/keyczar.h
++    ${KSD}/key.h
++    ${KSD}/key_purpose.h
++    ${KSD}/keyset.h
++    ${KSD}/keyset_metadata.h
++    ${KSD}/key_status.h
++    ${KSD}/key_type.h
++    ${KSD}/key_util.h
++    ${KSD}/message_digest_impl.h
++    ${KSD}/pbe_impl.h
++    ${KSD}/private_key.h
++    ${KSD}/public_key.h
++    ${KSD}/rand_impl.h
++    ${KSD}/rsa_impl.h
++    ${KSD}/rsa_private_key.h
++    ${KSD}/rsa_public_key.h
++    ${KSD}/secret_key.h
++    ${KSD}/session.h
++    ${KSD}/util.h
++    ${KSD}/base/base64w.h
++    ${KSD}/base/basictypes.h
++    ${KSD}/base/build_config.h
++    ${KSD}/base/command_line.h
++    ${KSD}/base/compiler_specific.h
++    ${KSD}/base/file_path.h
++    ${KSD}/base/file_util.h
++    ${KSD}/base/json_reader.h
++    ${KSD}/base/json_value_serializer.h
++    ${KSD}/base/json_writer.h
++    ${KSD}/base/logging.h
++    ${KSD}/base/observer_list.h
++    ${KSD}/base/port.h
++    ${KSD}/base/ref_counted.h
++    ${KSD}/base/scoped_handle.h
++    ${KSD}/base/scoped_handle_win.h
++    ${KSD}/base/scoped_ptr.h
++    ${KSD}/base/stl_util-inl.h
++    ${KSD}/base/string_escape.h
++    ${KSD}/base/string_util.h
++    ${KSD}/base/string_util_posix.h
++    ${KSD}/base/string_util_win.h
++    ${KSD}/base/values.h
++    ${KSD}/base/zlib.h
++    ${KSD}/base/modp/modp_b64w_data.h
++    ${KSD}/base/modp/modp_b64w.h
++    ${KSD}/rw/keyset_encrypted_file_reader.h
++    ${KSD}/rw/keyset_encrypted_file_writer.h
++    ${KSD}/rw/keyset_file_reader.h
++    ${KSD}/rw/keyset_file_writer.h
++    ${KSD}/rw/keyset_reader.h
++    ${KSD}/rw/keyset_writer.h
++    ${OSD}/aes.h
++    ${OSD}/dsa.h
++    ${OSD}/ecdsa.h
++    ${OSD}/hmac.h
++    ${OSD}/message_digest.h
++    ${OSD}/pbe.h
++    ${OSD}/rand.h
++    ${OSD}/rsa.h
++    ${OSD}/util.h
++   )
++
++add_library(keyczar STATIC ${KEYCZAR_SOURCES} ${KEYCZAR_HEADERS})
 +
 +# TODO(tmroeder): there's a way to add an OpenSSL dependency, like FindOpenSSL.
 +target_link_libraries(keyczar crypto)

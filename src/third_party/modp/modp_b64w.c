@@ -146,8 +146,9 @@ int modp_b64w_decode(char* dest, const char* src, int len)
     uint32_t x = 0;
     uint32_t* destInt = (uint32_t*) p;
     uint32_t* srcInt = (uint32_t*) src;
-    uint32_t y = *srcInt++;
+    uint32_t y;
     for (i = 0; i < chunks; ++i) {
+        y = *srcInt++;
         x = d0[y >> 24 & 0xff] | d1[y >> 16 & 0xff] |
             d2[y >> 8 & 0xff] | d3[y & 0xff];
 
@@ -155,11 +156,11 @@ int modp_b64w_decode(char* dest, const char* src, int len)
         *destInt = x << 8;
         p += 3;
         destInt = (uint32_t*)p;
-        y = *srcInt++;
     }
 
     switch (leftover) {
     case 0:
+        y = *srcInt;
         x = d0[y >> 24 & 0xff] | d1[y >> 16 & 0xff] |
             d2[y >>  8 & 0xff] | d3[y & 0xff];
         if (x >= BADCHAR)  return -1;
@@ -167,19 +168,16 @@ int modp_b64w_decode(char* dest, const char* src, int len)
         *p++ = ((uint8_t*)&x)[2];
         *p = ((uint8_t*)&x)[3];
         return (chunks+1)*3;
-#ifndef DOPAD
-    case 1:  /* with padding this is an impossible case */
-        x = d3[y >> 24];
-        *p =  (uint8_t)x;
+    case 1:  /* this is an impossible case */
+        return -1;
         break;
-#endif
     case 2:
-        x = d3[y >> 24] *64 + d3[(y >> 16) & 0xff];
+        x = d3[((uint8_t*)srcInt)[0]] *64 + d3[((uint8_t*)srcInt)[1]];
         *p =  (uint8_t)(x >> 4);
         break;
     default:  /* case 3 */
-        x = (d3[y >> 24] *64 + d3[(y >> 16) & 0xff])*64 +
-            d3[(y >> 8) & 0xff];
+        x = (d3[((uint8_t*)srcInt)[0]] *64 + d3[((uint8_t*)srcInt)[1]])*64 +
+            d3[((uint8_t*)srcInt)[2]];
         *p++ = (uint8_t) (x >> 10);
         *p = (uint8_t) (x >> 2);
         break;
@@ -218,8 +216,9 @@ int modp_b64w_decode(char* dest, const char* src, int len)
     uint32_t x = 0;
     uint32_t* destInt = (uint32_t*) p;
     uint32_t* srcInt = (uint32_t*) src;
-    uint32_t y = *srcInt++;
+    uint32_t y;
     for (i = 0; i < chunks; ++i) {
+        y = *srcInt++;
         x = d0[y & 0xff] |
             d1[(y >> 8) & 0xff] |
             d2[(y >> 16) & 0xff] |
@@ -229,11 +228,12 @@ int modp_b64w_decode(char* dest, const char* src, int len)
         *destInt = x ;
         p += 3;
         destInt = (uint32_t*)p;
-        y = *srcInt++;}
+    }
 
 
     switch (leftover) {
     case 0:
+        y = *srcInt;
         x = d0[y & 0xff] |
             d1[(y >> 8) & 0xff] |
             d2[(y >> 16) & 0xff] |
@@ -245,20 +245,17 @@ int modp_b64w_decode(char* dest, const char* src, int len)
         *p =    ((uint8_t*)(&x))[2];
         return (chunks+1)*3;
         break;
-#ifndef DOPAD
-    case 1:  /* with padding this is an impossible case */
-        x = d0[y & 0xff];
-        *p = *((uint8_t*)(&x)); // i.e. first char/byte in int
+    case 1:  /* this is an impossible case */
+        return -1;
         break;
-#endif
     case 2: // * case 2, 1  output byte */
-        x = d0[y & 0xff] | d1[y >> 8 & 0xff];
+        x = d0[((uint8_t*)srcInt)[0]] | d1[((uint8_t*)srcInt)[1]];
         *p = *((uint8_t*)(&x)); // i.e. first char
         break;
     default: /* case 3, 2 output bytes */
-        x = d0[y & 0xff] |
-            d1[y >> 8 & 0xff ] |
-            d2[y >> 16 & 0xff];  /* 0x3c */
+        x = d0[((uint8_t*)srcInt)[0]] |
+            d1[((uint8_t*)srcInt)[1]] |
+            d2[((uint8_t*)srcInt)[2]];  /* 0x3c */
         *p++ =  ((uint8_t*)(&x))[0];
         *p =  ((uint8_t*)(&x))[1];
         break;

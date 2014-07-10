@@ -621,8 +621,7 @@ bool Reducelargepower(bnum& power, polynomial& in_poly, polynomial& mod_poly, po
   int j;
 
 #ifdef JLMDEBUG1
-  printf("Reducelargepower in_poly-deg %d, mod_poly-deg %d result-size %d\n", in_poly.numc_,
-          mod_poly.numc_, result.numc_);
+  printf("Reducelargepower %lld\n", power.m_pValue[0]);
   printf("in_poly: "); smallprintpoly(in_poly, true); printf("\n");
   printf("mod_poly: "); smallprintpoly(mod_poly, true); printf("\n");
 #endif
@@ -632,15 +631,16 @@ bool Reducelargepower(bnum& power, polynomial& in_poly, polynomial& mod_poly, po
   int n= mpBitsinNum(power.mpSize(), power.m_pValue);
   if(n==0) {  // x^0=1
     g_bnOne.mpCopyNum(*result.c_array_[0]);
+#ifdef JLMDEBUG1
+    printf("Reducelargepower returning: "); smallprintpoly(result, true); printf("\n");
+#endif
     return true;
   }
 
-  polynomial   q(*mod_poly.characteristic_, 2*result.numc_, result.size_num_);
   polynomial   current_poly_power(*mod_poly.characteristic_, 2*result.numc_, result.size_num_);
   polynomial   current_poly_accum(*mod_poly.characteristic_, 2*result.numc_, result.size_num_);
   polynomial   temp_poly(*mod_poly.characteristic_, 2*result.numc_, result.size_num_);
   polynomial   square(*mod_poly.characteristic_, 2*result.numc_, result.size_num_);
-  int          deg_mod_poly= mod_poly.Degree();
 
   in_poly.Copyto(current_poly_power);
   current_poly_accum.OnePoly();
@@ -658,20 +658,10 @@ bool Reducelargepower(bnum& power, polynomial& in_poly, polynomial& mod_poly, po
       printf("Reducelargepower, temp_poly: "); smallprintpoly(temp_poly, true); printf("\n");
 #endif
       current_poly_accum.ZeroPoly();
-      if(temp_poly.Degree()>=deg_mod_poly) {  // reduce mod mod_poly
-        q.ZeroPoly();
-        if(!PolyEuclid(temp_poly, mod_poly, q, current_poly_accum)) {
-          printf("Reducelargepower PolyEuclid(temp_poly, mod_poly, q, current_poly_accum) fails\n");
-          return false;
-        }
-      } else {
-        temp_poly.Copyto(current_poly_accum);
+      if(!ReduceModPoly(temp_poly, mod_poly, current_poly_accum)) {
+        return false;
       }
-#ifdef JLMDEBUG1
-      printf("Reducelargepower, Euclid reduced current_poly_accum: "); smallprintpoly(current_poly_accum, true); printf("\n");
-#endif
     }
-
     if(j==n)
       break;
     // next square
@@ -685,24 +675,18 @@ bool Reducelargepower(bnum& power, polynomial& in_poly, polynomial& mod_poly, po
       printf("Reducelargepower, square: "); smallprintpoly(square, true); printf("\n");
 #endif
     current_poly_power.ZeroPoly();
-    if(square.Degree()>=deg_mod_poly) {  // reduce mod mod_poly
-      if(!PolyEuclid(square, mod_poly, q, current_poly_power)) {
-        printf("Reducelargepower PolyEuclid(square, mod_poly, q, current_poly_power) fails\n");
-        return false;
-      }
-    }
-    else {
-      square.Copyto(current_poly_power);
+    if(!ReduceModPoly(square, mod_poly, current_poly_power)) {
+      return false;
     }
 #ifdef JLMDEBUG1
     printf("Reducelargepower, square after reduce: "); smallprintpoly(current_poly_power, true); printf("\n");
 #endif
   }
-#ifdef JLMDEBUG1
-    printf("Reducelargepower returning\n");
-#endif
   result.ZeroPoly();
   current_poly_accum.Copyto(result);
+#ifdef JLMDEBUG1
+    printf("Reducelargepower returning: "); smallprintpoly(result, true); printf("\n");
+#endif
   return true;
 }
 

@@ -452,6 +452,7 @@ bool EccSymbolicPointMultWithReduction(polynomial& mod_poly, polynomial& curve_x
   rationalpoly  double_rationaly(*p, nn2, size_num, nd2, size_num);
   rationalpoly  resultx(*p, nn1, size_num, nd1, size_num);
   rationalpoly  resulty(*p, nn2, size_num, nd2, size_num);
+  rationalpoly  temp_result(*p, nn2, size_num, nd2, size_num);
 
   double_rationalx.Copyfrom(x);
   double_rationaly.Copyfrom(y);
@@ -482,10 +483,21 @@ bool EccSymbolicPointMultWithReduction(polynomial& mod_poly, polynomial& curve_x
     if (i != n) {
       resultx.ZeroRational();
       resulty.ZeroRational();
+      temp_result.ZeroRational();
       EccSymbolicAdd(curve_x_poly, double_rationalx,  double_rationaly, 
-                     double_rationalx, double_rationaly, resultx, resulty);
+                     double_rationalx, double_rationaly, resultx, temp_result);
       double_rationalx.ZeroRational();
       double_rationaly.ZeroRational();
+      if((i%1)!=0) {
+        // multiply curve_x_poly
+        if(!PolyMult(*temp_result.numerator, curve_x_poly, *resulty.numerator))
+          return false;
+        resulty.denominator->Copyfrom(*temp_result.denominator);
+      }
+      else {
+        resulty.numerator->Copyfrom(*temp_result.numerator);
+        resulty.denominator->Copyfrom(*temp_result.denominator);
+      }
       if(!ReduceModPoly(*resultx.numerator, mod_poly, *double_rationalx.numerator))
         return false;
       if(!ReduceModPoly(*resulty.numerator, mod_poly, *double_rationaly.numerator))
@@ -670,7 +682,7 @@ bool Raisetopower(bnum& p, polynomial& curve_x_poly, polynomial& mod_poly,
   s1.ZeroPoly();
   if(mod_poly.Degree()<s3.Degree()) {
     if(!ReduceModPoly(s3, mod_poly, outy))
-    return false;
+      return false;
   }
   else
     outy.Copyfrom(s3);
@@ -751,9 +763,6 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl) {
 
   x_p_bar.ZeroRational();
   y_p_bar.ZeroRational();
-  x_p_squared.ZeroRational();
-  y_p_squared.ZeroRational();
-
   // Compute (x_p_bar, y_p_bar)
   if(p_bar>=0) {
     if(!EccSymbolicPointMultWithReduction(temp_phi, curve_x_poly, p_bar, 
@@ -771,7 +780,7 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl) {
   x_p_squared.ZeroRational();
   y_p_squared.ZeroRational();
   // Compute (x^(p^2), y^(p^2))
-  if(!Raisetopower(*p, curve_x_poly, temp_phi, x_poly, x_poly, *x_p_squared.numerator, *y_p_squared.numerator)) {
+  if(!Raisetopower(*p, curve_x_poly, temp_phi, x_poly, y_poly, *x_p_squared.numerator, *y_p_squared.numerator)) {
     printf("Raisetopower(*p, curve_x_poly, temp_phi, x_poly, x_poly, x_p_squared, y_p_squared) failed\n");
     return false;
   }
@@ -893,8 +902,8 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl) {
       return false;
 
 #ifdef JLMDEBUG
-    printf("x_j_p"); smallprintrational(x_j_p); printf("\n");
-    printf("y_j_p"); smallprintrational(y_j_p); printf("\n");
+    printf("x_j_p: "); smallprintrational(x_j_p); printf("\n");
+    printf("y_j_p: "); smallprintrational(y_j_p); printf("\n");
 #endif
 
     if(!RationalEqualModPoly(x_j_p, x_prime, temp_phi)) {
@@ -1596,7 +1605,7 @@ void SymbolicTest(u64 test_prime, u64 test_a, u64 test_b)
     printf("Reducelargepower fails\n");
   }
   printf("x^%d= ", test_prime);
-  smallprintrational(r_t7); 
+  smallprintpoly(p_t7); 
   printf("\n");
   printf("\n");
 

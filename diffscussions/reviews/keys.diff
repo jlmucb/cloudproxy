@@ -43,6 +43,20 @@
 #--- different error handling styles. I very much dislike how our error handling
 #--- mindlessly turns n lines into 5n lines, but that is a discussion for
 #--- another day.
+#***
+#*** author: Tom Roeder
+#*** email: tmroeder@google.com
+#*** date: 2014-07-10T12:59:18-0700
+#***
+#--- LGTM, Approval
+#---
+#--- I know what you mean about annoying error handling, but I don't know of a
+#--- good solution other than moving to using exceptions; we're not going to
+#--- change that for now, even though I like the cleanness of exception-safe
+#--- C++11 style. Go helps a bit by sometimes allowing the check and assignment
+#--- in a single line, at least. And it also prefers not printing log statements
+#--- at the error site, IIUC.
+#---
 diff --git a/src/apps/soft_tao.cc b/src/apps/soft_tao.cc
 index 7b54d4d..ce82353 100644
 --- a/src/apps/soft_tao.cc
@@ -157,6 +171,13 @@ index d245c80..45bd936 100644
 #-- direclty use or invoke Tao, etc. It has a signing key and cert stored in
 #-- PKCS#5 and PEM files, so I chose to display those names.
 #--
+#***
+#*** author: Tom Roeder
+#*** email: tmroeder@google.com
+#*** date: 2014-07-10T13:02:16-0700
+#***
+#--- OK
+#---
      printf("  tao ca: %s:%s\n", admin->GetTaoCAHost().c_str(),
             admin->GetTaoCAPort().c_str());
      printf("  auth type: %s\n", admin->GetAuthType().c_str());
@@ -380,6 +401,7 @@ index 96ace0b..bf0760e 100644
 #- How is it that the "CloudClient" string was able to disappear here?
 #- It doesn't look like Signer::Generate includes that kind of info.
 #- 
+#- (the following appears to be from Kevin but is not marked as his)
 #- Keyczar key sets have "nicknames" with an unspecified purpose. Previously I
 #- exposed that in the Keys API by allowing each keyset to have a "nickname". It
 #- was rarely ever used, and then only for debug/log messages. In all such
@@ -390,6 +412,13 @@ index 96ace0b..bf0760e 100644
 #- key material and take the first four bytes.  Otherwise, friendly names can be
 #- added at the logging call site, if needed.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-10T13:02:53-0700
+#**
+#-- OK, fair enough
+#--
 +    if (tls_key_.get() == nullptr) {
 +      LOG(ERROR) << "Could not generate temporary TLS key";
        return false;
@@ -1542,6 +1571,14 @@ index c5dcaa2..05bc2d0 100644
 #-- Can we please not? Style guide allows for either. I strongly dislike
 #-- initializer syntax, especially for strings.
 #--
+#***
+#*** author: Tom Roeder
+#*** email: tmroeder@google.com
+#*** date: 2014-07-10T13:03:44-0700
+#***
+#--- OK, agreed. But I'm curious about why you dislike it. We can hold that
+#--- conversation outside the code review, though.
+#---
 +  if (signer == "") {
      LOG(ERROR) << "Could not get signer principal name";
      return false;
@@ -2563,6 +2600,13 @@ index 4321633..bf9754b 100644
 #-- motivated directly by a Keyczar paper. Can we just put a substantial
 #-- citation, credits, and their license at the top? 
 #--
+#***
+#*** author: Tom Roeder
+#*** email: tmroeder@google.com
+#*** date: 2014-07-10T13:04:28-0700
+#***
+#--- That would be perfect.
+#---
 +  memset(str2uchar(s), 0, s->size());
 +}
 +
@@ -2995,6 +3039,13 @@ index 4321633..bf9754b 100644
 #-- Yes, but only if someone calls the constructor with an uninitialized EC_KEY.
 #-- I don't dereference ec_point here in any case.
 #--
+#***
+#*** author: Tom Roeder
+#*** email: tmroeder@google.com
+#*** date: 2014-07-10T13:04:57-0700
+#***
+#--- OK
+#---
 +  ScopedBN_CTX bn_ctx(BN_CTX_new());
 +  int point_len =
 +      EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
@@ -4187,6 +4238,14 @@ index 4321633..bf9754b 100644
 #-- is no possible way to recover from this fault. Fail stop is better than
 #-- byzantine. 
 #--
+#***
+#*** author: Tom Roeder
+#*** email: tmroeder@google.com
+#*** date: 2014-07-10T13:05:47-0700
+#***
+#--- Hmm, I certainly agree with the last statement. I see now that this would
+#--- just be an indicator of an error in OpenSSL, so I retract my concern.
+#---
 +  mac->resize(mac_length + sig_length);
 +  return true;
 +}
@@ -4326,6 +4385,17 @@ index 4321633..bf9754b 100644
 #-- You are probably right. I only used CBC b/c Keyczar does (a bad justification
 #-- if there ever was one).
 #--
+#***
+#*** author: Tom Roeder
+#*** email: tmroeder@google.com
+#*** date: 2014-07-10T13:07:15-0700
+#***
+#--- You've now pointed out to me by email that CTR doesn't have an OID. You're
+#--- right, of course, and that's unfortunate for our format choices. I guess
+#--- since we're using those formats we have to stick with NIST-supported values
+#--- there. Even though it complicates things, I vote for using CTR + HMAC
+#--- wherever we can and CBC + HMAC only where we must.
+#---
 +  // See NIST SP800-57 part1, pages 63-64 for hmac key size recommendations.
 +  size_t aes_size = 256;
 +  size_t hmac_size = 256;
@@ -4429,6 +4499,13 @@ index 4321633..bf9754b 100644
 #**
 #-- I'd prefer to delay that optimization. Simplicity and correctness first.
 #--
+#***
+#*** author: Tom Roeder
+#*** email: tmroeder@google.com
+#*** date: 2014-07-10T13:08:53-0700
+#***
+#--- Agreed.
+#---
 +  const EVP_CIPHER *cipher = EVP_aes_256_cbc();
 +  EncryptedData ed;
 +  if (!Header(ed.mutable_header())) {

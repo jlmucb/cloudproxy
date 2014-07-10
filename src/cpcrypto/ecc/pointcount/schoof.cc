@@ -174,7 +174,7 @@ int maxterms(rationalpoly& in1, rationalpoly& in2)
 
 //  In the calculation for addition, in1x, in2x, in1y and in2y
 //  are all rationalpolys.  P= (in1x, y in1y) and Q=(in2x, y in2y).
-//  m= y ((in2y-in1y)/(in2x-in1x) and so
+//  m= y ((in2y-in1y)/(in2x-in1x) or (3in1x^2+a)/2in1y.
 //  m^2= y^2 ((in2y-in1y)/(in2x-in1x))^2 = 
 //    curve_x_poly((in2y-in1y)/(in2x-in1x))^2.
 //  P+Q= (outx, y outy), where 
@@ -194,10 +194,15 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
   rationalpoly  slope(*p, m, n, m, n);
   rationalpoly  slope_squared(*p, m, n, m, n);
   rationalpoly  curve_rational(*p, m, n, 1, n);
+  bnum          a(n);
+  bnum          temp_num(n);
+  polynomial    t1(*p, m, n);
+  polynomial    t2(*p, m, n);
   bool          x_equal, y_equal;
 
 #ifdef JLMDEBUG1
   printf("EccSymbolicAdd()\n"); 
+  printf("curve: "); smallprintpoly(curve_x_poly, true); printf("\n");
 #endif
 
   if(IsInfPoint(in1x, in1y)) {
@@ -213,6 +218,8 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
 
   curve_rational.numerator->Copyfrom(curve_x_poly);
   curve_rational.denominator->c_array_[0]->m_pValue[0]= 1ULL;
+  curve_x_poly.c_array_[1]->mpCopyNum(a); // a
+
   x_equal= RationalisEqual(in1x, in2x); 
   y_equal= RationalisEqual(in1y, in2y);
   if(x_equal && !y_equal) {
@@ -220,24 +227,39 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
     return true;
   }
   else if(x_equal && y_equal) {
-    // slope= (3in1x^2+a)/(2curve_x_poly), remember implicit y
-    s1.numerator->c_array_[0]->m_pValue[0]= 3ULL;
-    s1.denominator->c_array_[0]->m_pValue[0]= 2ULL;
+    // slope= (3in1x^2+a)/(2curve_x_poly)= ((3in1x^2+a)/(2y^2))y, remember implicit y
     if(!RationalMult(in1x, in1x, s2))
       return false;
-    if(!RationalMult(s2, s1, s3))
-      return false;
+    // now s2= inx1^2
+    mpZeroNum(temp_num);
+    temp_num.m_pValue[0]= 3ULL;
+    s2.numerator->MultiplyByNum(temp_num);
+    s2.numerator->AddToByNum(a);
+    // now s2= 3(in1^2)+a
+#ifdef JLMDEBUG1
+    printf("a:"); printNumberToConsole(a); printf("\n");
+    printf("EccSymbolicAdd, (3x^2+a): "); smallprintrational(s2); printf("\n");
+#endif
+
     s1.ZeroRational();
-    s2.ZeroRational();
-    // a as a rational function
-    curve_x_poly.c_array_[1]->mpCopyNum(*s1.numerator->c_array_[0]); //a
-    s1.denominator->c_array_[0]->m_pValue[0]= 1ULL;
-    if(!RationalAdd(s3, s1, s2))
+    if(!RationalMult(in1y, in1y, s1))
       return false;
-    s1.ZeroRational();
-    s3.ZeroRational();
-    if(!RationalDiv(s2, curve_rational, slope))
+    t1.ZeroPoly();
+    if(!PolyMult(*s1.numerator, curve_x_poly, t1))
       return false;
+    temp_num.m_pValue[0]= 2ULL;
+    t1.MultiplyByNum(temp_num);
+    s1.numerator->Copyfrom(t1);
+    // now s1= 2y^2= 2*(iny1^2)curve_x_poly, y will be implicit after division
+#ifdef JLMDEBUG1
+    printf("EccSymbolicAdd, (2y^2: "); smallprintrational(s1); printf("\n");
+#endif
+
+    if(!RationalDiv(s2, s1, slope))
+      return false;
+#ifdef JLMDEBUG1
+    printf("EccSymbolicAdd, slope (from 3x^2+a/2y^2: "); smallprintrational(slope, true); printf("\n");
+#endif
   }
   else {
     // slope= (in2y-in1y)/(in2x-in1x), remember implicit y
@@ -249,6 +271,9 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
       printf("EccSymbolicAdd fails at RationalDiv\n");
       return false;
     }
+#ifdef JLMDEBUG1
+    printf("EccSymbolicAdd, slope (from (y2-y1)/x2-x2): "); smallprintrational(slope); printf("\n");
+#endif
   }
   if(!RationalReduce(slope)) {
     printf("RationalReduce fails at RationalDiv\n");
@@ -265,6 +290,9 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
     printf("RationalReduce after slope-squared fails\n");
     return false;
   }
+#ifdef JLMDEBUG1
+    printf("EccSymbolicAdd, slope_squared: "); smallprintrational(slope_squared); printf("\n");
+#endif
 
   //  outx= slope_squared-in1x-in2x
   if(!RationalSub(slope_squared, in1x, s2))
@@ -274,7 +302,7 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
   if(!RationalReduce(outx))
     return false;
   
-  //  outy= m(x[1]-x[3])-y[1]
+  //  outy= slope(x[1]-x[3])-y[1]
   s1.ZeroRational();
   s2.ZeroRational();
   s3.ZeroRational();
@@ -289,10 +317,12 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
 
 #ifdef JLMDEBUG1
   printf("EccSymbolicAdd() result\n"); 
-  printf("in1x: "); printrational(in1x); printf("in1y: "); printrational(in1y);
-  printf("in2x: "); printrational(in2x); printf("in2y: "); printrational(in2y);
-  printf("outx: "); printrational(outx);
-  printf("outy: "); printrational(outy);
+  printf("in1x: "); smallprintrational(in1x); printf("\n");
+  printf("in1y: "); smallprintrational(in1y); printf("\n");
+  printf("in2x: "); smallprintrational(in2x); printf("\n");
+  printf("in2y: "); smallprintrational(in2y); printf("\n");
+  printf("outx: "); smallprintrational(outx); printf("\n");
+  printf("outy: "); smallprintrational(outy); printf("\n");
 #endif
   return true;
 }
@@ -1494,10 +1524,11 @@ void SymbolicTest(u64 test_prime, u64 test_a, u64 test_b)
     smallprintrational(r_t3); printf("\n");
   }
   printf("\n");
+
   MakeInfPoint(r_t1, r_t2);
-  r_t3.OneRational();
+
+  r_t3.ZeroRational();
   r_t4.OneRational();
-  r_t3.numerator->c_array_[0]->m_pValue[0]= 1ULL;
   r_t3.numerator->c_array_[1]->m_pValue[0]= 1ULL;
   if(!EccSymbolicAdd(curve_x_poly, r_t1, r_t2, r_t3, r_t4, r_t5, r_t6)) {
     printf("EccSymbolicAdd fails\n");
@@ -1516,6 +1547,7 @@ void SymbolicTest(u64 test_prime, u64 test_a, u64 test_b)
   printf(", ");
   smallprintrational(r_t6); 
   printf(")\n");
+
   if(!EccSymbolicAdd(curve_x_poly, r_t3, r_t4, r_t3, r_t4, r_t5, r_t6)) {
     printf("EccSymbolicAdd fails\n");
   }
@@ -1534,15 +1566,18 @@ void SymbolicTest(u64 test_prime, u64 test_a, u64 test_b)
   smallprintrational(r_t6); 
   printf(")\n");
 
-  printf("\n");
-  r_t4.OneRational();
-  r_t3.ZeroRational();
-  r_t3.numerator->c_array_[1]->m_pValue[0]= 1ULL;
-  i64   t= 0;
-  if(!EccSymbolicPointMult(curve_x_poly, t, r_t3, r_t4, r_t5, r_t6)) {
-    printf("EccSymbolicPointMult fails\n");
+  r_t7.ZeroRational();
+  r_t7.numerator->c_array_[2]->m_pValue[0]= 1ULL;
+  r_t8.ZeroRational();
+  r_t8.numerator->c_array_[1]->m_pValue[0]= 1ULL;
+  if(!EccSymbolicAdd(curve_x_poly, r_t7, r_t8, r_t3, r_t4, r_t5, r_t6)) {
+    printf("EccSymbolicAdd fails\n");
   }
-  printf("%lld( ", t);
+  printf("( ");
+  smallprintrational(r_t7); 
+  printf(", ");
+  smallprintrational(r_t8); 
+  printf(" + (");
   smallprintrational(r_t3); 
   printf(", ");
   smallprintrational(r_t4); 
@@ -1552,7 +1587,8 @@ void SymbolicTest(u64 test_prime, u64 test_a, u64 test_b)
   printf(", ");
   smallprintrational(r_t6); 
   printf(")\n");
-  t= 1;
+
+  int t= 1; 
   if(!EccSymbolicPointMult(curve_x_poly, t, r_t3, r_t4, r_t5, r_t6)) {
     printf("EccSymbolicPointMult fails\n");
   }

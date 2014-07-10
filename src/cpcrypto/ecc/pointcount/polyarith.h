@@ -44,6 +44,7 @@ public:
   bool IsZero();
   bool IsOne();
   bool MultiplyByNum(bnum& c);
+  bool AddToByNum(bnum& c);
 };
 
 class rationalpoly {

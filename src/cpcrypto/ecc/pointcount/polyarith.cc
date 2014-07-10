@@ -139,6 +139,15 @@ int polynomial::Degree() {
 }
 
 
+bool polynomial::AddToByNum(bnum& c) {
+  bnum  t(characteristic_->mpSize()+1);
+  mpZeroNum(t);
+  mpModAdd(*c_array_[0], c, *characteristic_, t);
+  t.mpCopyNum(*c_array_[0]);
+  return true;
+}
+
+
 bool polynomial::MultiplyByNum(bnum& c) {
   int j, k, n;
 

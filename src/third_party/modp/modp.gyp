@@ -14,39 +14,30 @@
 
 {
   'target_defaults': {
-    'cflags': [
-      '-Wall',
-      '-Werror',
-      '-std=c++0x',
+    'includes': [
+      '../../build/third_party_common.gypi',
     ],
-    'configurations': {
-      'Release': {
-        'cflags': [
-          '-O2',
-        ],
-      },
-      'Debug': {
-        'cflags': [
-          '-g',
-        ],
-      },
-    },
+  },
+  'variables': {
+    'src': 'src',
   },
   'targets': [
     {
-      'target_name': 'All',
-      'type': 'none',
-      'variables': {
-        'src': 'cloudproxy',
-      },
-      'dependencies': [
-        '../apps/apps.gyp:*',
-       '../cloudproxy/cloudproxy.gyp:*',
-        '../tao/tao.gyp:*',
-        '../third_party/keyczar/keyczar.gyp:keyczart',
-        '../third_party/libb64/libb64.gyp:*',
-        '../third_party/modp/modp.gyp:*',
+      'target_name': 'modp',
+      'type': 'static_library',
+      'sources': [
+        'modp_b64w.c',
+        'modp_b64w.h',
+        'modp_b64w_data.h',
       ],
+      'include_dirs': [
+        '.',
+      ],
+      'direct_dependent_settings': {
+        'include_dirs': [
+          '.',
+        ],
+      },
     },
   ]
 }

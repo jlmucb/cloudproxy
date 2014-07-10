@@ -149,6 +149,7 @@
 				'../third_party/keyczar/keyczar.gyp:keyczar',
 				'../third_party/protobuf/protobuf.gyp:protobuf',
 				'../third_party/libb64/libb64.gyp:b64',
+				'../third_party/modp/modp.gyp:modp',
 			],
 			'direct_dependent_settings' : {
 				'libraries' : [
@@ -168,6 +169,7 @@
 				'../third_party/keyczar/keyczar.gyp:keyczar',
 				'../third_party/protobuf/protobuf.gyp:protobuf',
 				'../third_party/libb64/libb64.gyp:b64',
+				'../third_party/modp/modp.gyp:modp',
 			],
 		},
 	],

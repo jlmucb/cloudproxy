@@ -620,31 +620,34 @@ bool computetmod2(polynomial& curve_x_poly, u64* tl)
 }
 
 
-// outx= inx^p, outy= (iny^p) curve_x_poly^(p-1)/2
-bool Raisetopower(bnum& p, polynomial& curve_x_poly, polynomial& mod_poly, 
+// outx= inx^power, outy= (iny^power) curve_x_poly^(p-1)/2
+bool Raisetopower(bnum& power, polynomial& curve_x_poly, polynomial& mod_poly, 
                   polynomial& inx, polynomial& iny, polynomial& outx, polynomial& outy)
 {
-  int           n= 2*p.mpSize()+1;
+  bnum*         p= curve_x_poly.characteristic_;
+  int           n= 2*p->mpSize()+1;
   int           m= 2*outy.numc_;
   bnum          t1(n);
   bnum          t2(n);
-  polynomial    s1(p, m, n);
-  polynomial    s2(p, m, n);
-  polynomial    s3(p, m, n);
+  polynomial    s1(*p, m, n);
+  polynomial    s2(*p, m, n);
+  polynomial    s3(*p, m, n);
 
 #ifdef JLMDEBUG1
-  printf("Raisetopower numc: %d, size_num:  %d\n", m ,n);
-  smallprintpoly(inx); printf("\n");
+  printf("Raisetopower %lld\n", power.m_pValue[0]);
+  smallprintpoly(inx, true); printf(" (inx)\n");
+  smallprintpoly(mod_poly, true); printf(" (mod_poly)\n");
+  smallprintpoly(outy, true); printf(" (outy)\n");
 #endif
   if(mod_poly.Degree()<=0) {
     printf("Raisetopower, mod_poly does not have degree >0\n");
     return false;
   }
-  p.mpCopyNum(t1);
+  power.mpCopyNum(t1);
   mpUSubFrom(t1, g_bnOne);
   mpShift(t1, -1, t2);
-  polynomial    reduced_inx(p, m, n);
-  polynomial    reduced_iny(p, m, n);
+  polynomial    reduced_inx(*p, m, n);
+  polynomial    reduced_iny(*p, m, n);
 
   reduced_inx.ZeroPoly();
   reduced_iny.ZeroPoly();
@@ -654,22 +657,23 @@ bool Raisetopower(bnum& p, polynomial& curve_x_poly, polynomial& mod_poly,
     return false;
 
 #ifdef JLMDEBUG1
-  printf("inx: "); smallprintpoly(inx); printf("\n");
-  printf("reduced_inx: "); smallprintpoly(reduced_inx); printf("\n");
+  printf("inx: "); smallprintpoly(inx, true); printf("\n");
+  printf("reduced_inx: "); smallprintpoly(reduced_inx, true); printf("\n");
 #endif
 
   s1.ZeroPoly();
   s2.ZeroPoly();
-  if(!Reducelargepower(p, reduced_inx, mod_poly, outx)) {
+  if(!Reducelargepower(power, reduced_inx, mod_poly, outx)) {
     printf("Raisetopower Reducelargepower(p, reduced_inx, mod_poly, outx) failed\n");
     return false;
   }
-  if(!Reducelargepower(p, reduced_iny, mod_poly, s1)) {
+  if(!Reducelargepower(power, reduced_iny, mod_poly, s1)) {
     printf("Raisetopower Reducelargepower(p, reduced_iny, mod_poly, outx) failed\n");
     return false;
   }
   if(!Reducelargepower(t2, curve_x_poly, mod_poly, s2)) {
-    printf("Raisetopower Reducelargepower(t2, curve_x_poly, mod_poly, s2)\n");
+    printf("Raisetopower Reducelargepower(t2, curve_x_poly, mod_poly, s2), t2: %lld failed\n",
+            t2.m_pValue[0]);
     return false;
   }
   s3.ZeroPoly();
@@ -679,13 +683,10 @@ bool Raisetopower(bnum& p, polynomial& curve_x_poly, polynomial& mod_poly,
     printf("s2: "); smallprintpoly(s2); printf("\n");
     return false;
   }
-  s1.ZeroPoly();
-  if(mod_poly.Degree()<s3.Degree()) {
-    if(!ReduceModPoly(s3, mod_poly, outy))
-      return false;
+  if(!ReduceModPoly(s3, mod_poly, outy)) {
+    printf("Raisetopower,ReduceModPoly(s3, mod_poly, outy) failed\n");
+    return false;
   }
-  else
-    outy.Copyfrom(s3);
 #ifdef JLMDEBUG1
   printf("Raisetopower returning\n");
 #endif
@@ -701,14 +702,13 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl) {
   int           n= 2*p->mpSize()+1;
   int           m= 2*(int)l+1;
   bnum          p_squared(2*n+1);
-  bnum          p_squared_minus_1_divided_by_2(2*n+1);
   bnum          small_num(2);
   bnum          small_out(2);
   bnum          w(n);  // square root of p
 
 #ifdef JLMDEBUG
   printf("computetmododdprime(%d), p_bar: %lld\n", (int) l, p_bar);
-  printf("curve_x_poly: "); smallprintpoly(curve_x_poly); printf("\n");
+  printf("curve_x_poly: "); smallprintpoly(curve_x_poly, true); printf("\n");
 #endif
 
   // note: check to see if m is an overestimate
@@ -739,10 +739,14 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl) {
   polynomial    g(*p, 100, n);
   polynomial    t1(*p, 100, n);
   polynomial    t2(*p, 100, n);
+  rationalpoly  curve_rational(*p, m, n, 1, n);
 
   // current phi2
   polynomial    temp_phi(*p, (int)l*(int)l+1, n);
   temp_phi.Copyfrom(*g_phi2[(int)l]);
+
+  curve_rational.numerator->Copyfrom(curve_x_poly);
+  curve_rational.denominator->c_array_[0]->m_pValue[0]= 1ULL;
 
   polynomial    x_poly(*p, 2, n);
   x_poly.ZeroPoly();
@@ -756,10 +760,8 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl) {
   rationalpoly  rational_y(*p, 2, n, 2, n);
   rational_y.OneRational();
 
-  // compute p^2 and p^2-1
+  // compute p^2
   mpMult(*p, *p, p_squared);
-  mpSub(p_squared, g_bnOne, p_squared_minus_1_divided_by_2);
-  mpShiftInPlace(p_squared_minus_1_divided_by_2, -1);
 
   x_p_bar.ZeroRational();
   y_p_bar.ZeroRational();
@@ -780,8 +782,9 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl) {
   x_p_squared.ZeroRational();
   y_p_squared.ZeroRational();
   // Compute (x^(p^2), y^(p^2))
-  if(!Raisetopower(*p, curve_x_poly, temp_phi, x_poly, y_poly, *x_p_squared.numerator, *y_p_squared.numerator)) {
-    printf("Raisetopower(*p, curve_x_poly, temp_phi, x_poly, x_poly, x_p_squared, y_p_squared) failed\n");
+  if(!Raisetopower(p_squared, curve_x_poly, temp_phi, x_poly, y_poly, 
+                   *x_p_squared.numerator, *y_p_squared.numerator)) {
+    printf("Raisetopower(p_squared, curve_x_poly, temp_phi, x_poly, x_poly, x_p_squared, y_p_squared) failed\n");
     return false;
   }
 
@@ -804,17 +807,19 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl) {
   if(!ReduceModPoly(*s3.denominator, temp_phi, *slope.denominator)) {
     return false;
   }
-#ifdef JLMDEBUG
-    printf("slope: "); smallprintrational(slope); printf("\n");
-#endif
 
   // is (slope.denominator, temp_phi) != 1?
   t1.ZeroPoly();
   t2.ZeroPoly();
   g.ZeroPoly();
-  if(!PolyExtendedgcd(*s1.denominator, temp_phi, t1, t2, g)) {
+  if(!PolyExtendedgcd(*slope.denominator, temp_phi, t1, t2, g)) {
     return false;
   }
+#ifdef JLMDEBUG
+    printf("slope: "); smallprintrational(slope); printf("\n");
+    printf("slope.denominator: "); smallprintpoly(*slope.denominator); printf("\n");
+    printf("g: "); smallprintpoly(g); printf("\n");
+#endif
   if(g.Degree()>0) {
     printf("(slope.denominator, temp_phi) = 1\n");
     printf("g: "); smallprintpoly(g); printf("\n");
@@ -832,7 +837,9 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl) {
   s1.ZeroRational();
   s2.ZeroRational();
   s3.ZeroRational();
-  if(!RationalMult(slope, slope, s3))
+  if(!RationalMult(slope, slope, s1))
+    return false;
+  if(!RationalMult(s1, curve_rational, s3))
     return false;
   if(!ReduceModPoly(*s3.numerator, temp_phi, *slope.numerator)) {
     return false;
@@ -843,6 +850,7 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl) {
   if(!RationalSub(s3, x_p_squared, s2)) {
     return false;
   }
+  s1.ZeroRational();
   if(!RationalSub(s2, x_p_bar, s1)) {
     return false;
   }
@@ -876,13 +884,12 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl) {
   // (x^p, y^p)
   x_exp_p.ZeroRational();
   y_exp_p.ZeroRational();
-  if(!Raisetopower(*p, curve_x_poly, temp_phi, x_poly, x_poly, *x_exp_p.numerator, *y_exp_p.numerator)) {
+  if(!Raisetopower(*p, curve_x_poly, temp_phi, x_poly, y_poly, *x_exp_p.numerator, *y_exp_p.numerator)) {
     printf("Raisetopower(*p, curve_x_poly, temp_phi, x_poly, x_poly, x_p_exp, y_p_exp) failed\n");
     return false;
   }
 
 #ifdef JLMDEBUG
-    printf("computetmododdprime\n");
     printf("x_p_squared: "); smallprintrational(x_p_squared); printf("\n");
     printf("y_p_squared: "); smallprintrational(y_p_bar); printf("\n");
     printf("x_p_bar: "); smallprintrational(x_p_bar); printf("\n");

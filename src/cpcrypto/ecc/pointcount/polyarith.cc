@@ -625,8 +625,12 @@ bool Reducelargepower(bnum& power, polynomial& in_poly, polynomial& mod_poly, po
   printf("in_poly: "); smallprintpoly(in_poly, true); printf("\n");
   printf("mod_poly: "); smallprintpoly(mod_poly, true); printf("\n");
 #endif
-  if(mpCompare(*mod_poly.characteristic_, *result.characteristic_)!=0)
+  if(mpCompare(*mod_poly.characteristic_, *result.characteristic_)!=0) {
+    printf("Reducelargepower bad characteristic %lld %lld\n", 
+           mod_poly.characteristic_->m_pValue[0], 
+           result.characteristic_->m_pValue[0]);
     return false;
+  }
 
   int n= mpBitsinNum(power.mpSize(), power.m_pValue);
   if(n==0) {  // x^0=1
@@ -659,6 +663,7 @@ bool Reducelargepower(bnum& power, polynomial& in_poly, polynomial& mod_poly, po
 #endif
       current_poly_accum.ZeroPoly();
       if(!ReduceModPoly(temp_poly, mod_poly, current_poly_accum)) {
+        printf("Reducelargepower ReduceModPoly (1) fails\n");
         return false;
       }
     }
@@ -676,6 +681,7 @@ bool Reducelargepower(bnum& power, polynomial& in_poly, polynomial& mod_poly, po
 #endif
     current_poly_power.ZeroPoly();
     if(!ReduceModPoly(square, mod_poly, current_poly_power)) {
+        printf("Reducelargepower ReduceModPoly (2) fails\n");
       return false;
     }
 #ifdef JLMDEBUG1

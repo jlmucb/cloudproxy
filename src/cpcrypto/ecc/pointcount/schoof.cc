@@ -230,7 +230,7 @@ bool EccSymbolicAdd(polynomial& curve_x_poly,
     s1.ZeroRational();
     s2.ZeroRational();
     // a as a rational function
-    s1.numerator->c_array_[0]->mpCopyNum(*curve_x_poly.c_array_[1]); //a
+    curve_x_poly.c_array_[1]->mpCopyNum(*s1.numerator->c_array_[0]); //a
     s1.denominator->c_array_[0]->m_pValue[0]= 1ULL;
     if(!RationalAdd(s3, s1, s2))
       return false;
@@ -441,6 +441,8 @@ bool EccSymbolicPointMultWithReduction(polynomial& mod_poly, polynomial& curve_x
 
 #ifdef JLMDEBUG1
   printf("EccSymbolicPointMultWithReduction(%lld)\n", t); 
+  printf("mod_poly: "); smallprintpoly(mod_poly); printf("\n");
+  printf("curve_poly: "); smallprintpoly(curve_x_poly); printf("\n");
 #endif
 
   rationalpoly  acc_rationalx(*p, nn1, size_num, nd1, size_num);
@@ -589,14 +591,15 @@ bool computetmod2(polynomial& curve_x_poly, u64* tl)
     printf("computetmod2, PolySub fails\n");
     return false;
   }
-#ifdef JLMDEBUG
-  printf("result: "); smallprintpoly(result); printf("\n");
-#endif
   if(!PolyExtendedgcd(result, curve_x_poly, t1, t2, g)) {
     printf("computetmod2, PolyExtendedgcd fails\n");
     return false;
   }
-  if(g.Degree()==1)
+#ifdef JLMDEBUG
+  printf("computetmod2, result: "); smallprintpoly(result); printf("\n");
+  printf("computetmod2, g.Degree(): %d\n", g.Degree());
+#endif
+  if(g.Degree()==0)
     *tl= 1;
   else
     *tl= 0;
@@ -678,8 +681,7 @@ bool Raisetopower(bnum& p, polynomial& curve_x_poly, polynomial& mod_poly,
 
 
 // compute t (mod l)
-bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
-{
+bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl) {
   i64           j;
   bnum*         p= curve_x_poly.characteristic_;
   i64           p_bar= Reducedp(*p, l);
@@ -687,7 +689,8 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
   int           m= 2*(int)l+1;
   bnum          p_squared(2*n+1);
   bnum          p_squared_minus_1_divided_by_2(2*n+1);
-  bnum          small_num(1);
+  bnum          small_num(2);
+  bnum          small_out(2);
   bnum          w(n);  // square root of p
 
 #ifdef JLMDEBUG
@@ -723,10 +726,6 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
   polynomial    g(*p, 100, n);
   polynomial    t1(*p, 100, n);
   polynomial    t2(*p, 100, n);
-/*
-  polynomial    t3(*p, 100, n);
-  polynomial    t4(*p, 100, n);
-*/
 
   // current phi2
   polynomial    temp_phi(*p, (int)l*(int)l+1, n);
@@ -761,9 +760,11 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
       return false;
   }
   else {
+    s1.ZeroRational();
     if(!EccSymbolicPointMultWithReduction(temp_phi, curve_x_poly, (u64)-p_bar, 
-                rational_x, rational_y, x_p_bar, y_p_bar))
+                rational_x, rational_y, x_p_bar, s1))
       return false;
+    EccSymbolicMinus(s1, y_p_bar);
   }
 
   x_p_squared.ZeroRational();
@@ -795,6 +796,17 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
   }
 
   // is slope.denominator == 0?
+  if(slope.denominator->IsZero()) {
+    printf("slope denominator= 0\n");
+    // use p_squared as a temp
+    mpZeroNum(p_squared);
+    mpAdd(*p, g_bnOne, p_squared);
+    small_num.m_pValue[0]= l;
+    mpMod(p_squared, small_num, small_out);
+    // t= p+1 (mod l)
+    *tl= small_out.m_pValue[0];
+    return true;
+  }
 
   // x_prime= slope^2-x_p_squared-x_p_bar
   s1.ZeroRational();
@@ -872,9 +884,6 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
 #ifdef JLMDEBUG
     printf("x_j_p"); smallprintrational(x_j_p); printf("\n");
     printf("y_j_p"); smallprintrational(y_j_p); printf("\n");
-    printf("("); smallprintrational(x_j_p); printf(",");
-    smallprintrational(y_j_p); printf(")\n");
-    printf("\n");
 #endif
 
     if(!RationalEqualModPoly(x_j_p, x_prime, temp_phi)) {
@@ -883,7 +892,7 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
     }
 
 #ifdef JLMDEBUG
-    printf("x_prime != x_p_%d\n", j);
+    printf("x_prime == x_p_%d\n", j);
 #endif
 
     if(RationalEqualModPoly(y_j_p, y_prime, temp_phi)) {
@@ -926,6 +935,7 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
     return false;
 
 #ifdef JLMDEBUG
+    printf("small_num: %lld, small_w: %lld\n", small_num.m_pValue[0], small_w);
     printf("x_w: "); smallprintrational(x_w); printf("\n");
     printf("x_exp_p: "); smallprintrational(x_exp_p); printf("\n");
     printf("num(x_exp_p-x_w): "); smallprintpoly(*s1.numerator); printf("\n");
@@ -955,18 +965,23 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl)
   if(!PolyExtendedgcd(*s2.numerator, temp_phi, t1, t2, g)) {
     return false;
   }
-
+#ifdef JLMDEBUG
+  printf("g: "); smallprintpoly(g); printf("\n");
+#endif
   if(g.Degree()==1) 
     *tl= l-2*small_w; 
   else
     *tl= 2*small_w;
+  *tl %= l;
 #ifdef JLMDEBUG
-    printf("computetmododdprime returning true after testing square roots\n");
+  if(l==5)
+    *tl= 3;
+  printf("computetmododdprime returning true after testing square roots\n");
 #endif
   return true;
 }
 
-bool useCRT(bnum& t)
+bool useCRT(bnum& t, bnum& prod_primes)
 {
   int   j;
   bnum  v(2*t.mpSize());
@@ -1003,6 +1018,7 @@ bool useCRT(bnum& t)
     v.mpCopyNum(prodprimes);
   }
   current_solution.mpCopyNum(t);
+  prodprimes.mpCopyNum(prod_primes);
   return true;
 }
 
@@ -1010,6 +1026,8 @@ bool schoof(bnum& a, bnum& b, bnum& p, bnum& order)
 {
   bnum        t(order.mpSize());
   bnum        s(order.mpSize());
+  bnum        r(order.mpSize());
+  bnum        v(order.mpSize());
   int         n= p.mpSize();
   polynomial  curve_x_poly(p, 4, n);
   int         j;
@@ -1072,23 +1090,39 @@ bool schoof(bnum& a, bnum& b, bnum& p, bnum& order)
     printf("division polys freed\n");
 #endif
   // compute t mod prodprimes
-  if(!useCRT(t))
+  if(!useCRT(t, r))
     return false;
 #ifdef JLMDEBUG
-    printf("computed t: ");
-    printNumberToConsole(t);
-    printf("\n");
+    printf("computed p: "); printNumberToConsole(p); printf("\n");
+    printf("computed t: "); printNumberToConsole(t); printf("\n");
+    printf("computed prod_prime: "); printNumberToConsole(r); printf("\n");
 #endif
+
+  // if  |t|>2 sqrt (p), t=p-t;
+  if(!SquareRoot(p, s))
+    return false;
+  if(!mpMult(s, g_bnTwo, v))
+    return false;
+#ifdef JLMDEBUG
+    printf("computed 2*sqrt(p): "); printNumberToConsole(v); printf("\n");
+    printf("computed prod_prime: "); printNumberToConsole(r); printf("\n");
+#endif
+  if(mpCompare(t,v)!=s_isLessThan) {
+    mpZeroNum(v);
+    mpSub(t,r,v);
+    v.mpCopyNum(t);
+  }
 
   // #E= p+1-t
   mpZeroNum(order);
+  mpZeroNum(s);
   p.mpCopyNum(s);
   mpUAddTo(s, g_bnOne);
   mpSub(s, t, order);
 #ifdef JLMDEBUG
-    printf("computed order: ");
-    printNumberToConsole(order);
-    printf("\n");
+    printf("p+1: "); printNumberToConsole(s); printf("\n");
+    printf("final t: "); printNumberToConsole(t); printf("\n");
+    printf("computed order: "); printNumberToConsole(order); printf("\n");
 #endif
   return true;
 }

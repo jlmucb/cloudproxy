@@ -20,7 +20,6 @@
 #include "cloudproxy/util.h"
 
 #include <glog/logging.h>
-#include <keyczar/crypto_factory.h>
 
 #include "tao/keys.h"
 #include "tao/util.h"
@@ -133,7 +132,7 @@ static bool SetUpSSLCtx(const SSL_METHOD *method, const Signer &key,
   // using client certs. No need to use a strong random -- we could just use a
   // counter instead.
   string sid;
-  if (!keyczar::CryptoFactory::Rand()->RandBytes(SessionIDSize, &sid) ||
+  if (!tao::WeakRandBytes(SessionIDSize, &sid) ||
       !SSL_CTX_set_session_id_context(
           ctx->get(), reinterpret_cast<const unsigned char *>(sid.c_str()),
           sid.length())) {

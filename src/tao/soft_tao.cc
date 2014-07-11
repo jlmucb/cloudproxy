@@ -21,13 +21,10 @@
 #include <string>
 
 #include <glog/logging.h>
-#include <keyczar/crypto_factory.h>
 
 #include "tao/attestation.h"
 #include "tao/keys.h"
 #include "tao/util.h"
-
-using keyczar::CryptoFactory;
 
 namespace tao {
 bool SoftTao::Init() {
@@ -74,7 +71,7 @@ bool SoftTao::ExtendTaoName(const string &subprin) {
 }
 
 bool SoftTao::GetRandomBytes(size_t size, string *bytes) {
-  return CryptoFactory::Rand()->RandBytes(size, bytes);
+  return WeakRandBytes(size, bytes);
 }
 
 bool SoftTao::GetSharedSecret(size_t size, const string &policy,

@@ -23,7 +23,6 @@
 #include <string>
 
 #include <glog/logging.h>
-#include <keyczar/crypto_factory.h>
 #include <keyczar/keyczar.h>
 #include <keyczar/openssl/util.h>
 #include <openssl/ssl.h>
@@ -77,9 +76,6 @@ class HttpsEchoServer {
   /// @param accept_sock A connected to use to establish an SSL connection.
   /// @param t A connection to a host Tao to use in handling requests
   void HandleConnection(int accept_sock);
-
-  // A (static) random number generator for no reason.
-  keyczar::RandImpl *rand_;
 
   // The host and port to serve from.
   string host_;  // currently ignored: we listen on any interface

@@ -28,9 +28,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <keyczar/base/file_util.h>
-#include <keyczar/crypto_factory.h>
 #include <keyczar/keyczar.h>
-#include <openssl/rand.h>
 
 #include "cloudproxy/cloud_auth.h"
 #include "cloudproxy/cloudproxy.pb.h"
@@ -45,8 +43,6 @@
 
 using std::thread;
 
-using keyczar::CryptoFactory;
-using keyczar::RandImpl;
 using keyczar::base::ReadFileToString;
 using keyczar::base::WriteStringToFile;
 
@@ -66,6 +62,7 @@ using tao::Keys;
 using tao::ScopedTempDir;
 using tao::SignData;
 using tao::TaoDomain;
+using tao::WeakRandBytes;
 
 class FileClientTest : public ::testing::Test {
  protected:
@@ -163,19 +160,16 @@ class FileClientTest : public ::testing::Test {
     small_file_obj_name_ = "small";
     small_file_ = client_file_path_ + string("/") + small_file_obj_name_;
     string small_data;
-    RandImpl *rand = CryptoFactory::Rand();
     // 2 KB file
-    ASSERT_TRUE(rand->RandBytes(2 * 1000, &small_data));
+    ASSERT_TRUE(WeakRandBytes(2 * 1000, &small_data));
     ASSERT_TRUE(WriteStringToFile(small_file_, small_data));
 
     medium_file_obj_name_ = "medium";
     medium_file_ = client_file_path_ + string("/") + medium_file_obj_name_;
 
     // 20 MB file
-    int med_len = 20 * 1000 * 1000;
-    unique_ptr<unsigned char[]> med(new unsigned char[med_len]);
-    ASSERT_EQ(RAND_bytes(med.get(), med_len), 1);
-    string medium_data(reinterpret_cast<char *>(med.get()), med_len);
+    string medium_data;
+    ASSERT_EQ(WeakRandBytes(20 * 1000 * 1000, &medium_data));
     ASSERT_TRUE(WriteStringToFile(medium_file_, medium_data));
 
     ASSERT_TRUE(file_client_->Connect(server_addr, server_port, &ssl_));

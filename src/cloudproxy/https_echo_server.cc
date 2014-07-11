@@ -28,7 +28,6 @@
 #include <glog/logging.h>
 #include <google/protobuf/text_format.h>
 #include <keyczar/base/file_util.h>
-#include <keyczar/crypto_factory.h>
 
 #include "cloudproxy/cloud_server_thread_data.h"
 #include "cloudproxy/https_echo_server.h"
@@ -64,7 +63,6 @@ HttpsEchoServer::HttpsEchoServer(const string &server_config_path,
                                  TaoChildChannel *channel, int policy,
                                  TaoDomain *admin)
     : admin_(admin),
-      rand_(keyczar::CryptoFactory::Rand()),
       host_(host),
       port_(port),
       host_channel_(channel),
@@ -89,8 +87,6 @@ HttpsEchoServer::HttpsEchoServer(const string &server_config_path,
   // set up the SSL context and SSLs for getting client connections
   CHECK(SetUpPermissiveSSLServerCtx(*keys_, &context_))
       << "Could not set up server TLS";
-
-  CHECK(rand_->Init()) << "Could not initialize the random-number generator";
 }
 
 bool HttpsEchoServer::Listen(bool single_channel) {

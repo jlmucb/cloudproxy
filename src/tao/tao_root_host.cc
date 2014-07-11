@@ -19,14 +19,11 @@
 #include "tao/tao_root_host.h"
 
 #include <glog/logging.h>
-#include <keyczar/crypto_factory.h>
 
 #include "tao/attestation.h"
 #include "tao/attestation.pb.h"
 #include "tao/keys.h"
 #include "tao/tao.h"
-
-using keyczar::CryptoFactory;
 
 namespace tao {
 
@@ -55,7 +52,7 @@ bool TaoRootHost::Init() {
 
 bool TaoRootHost::GetRandomBytes(const string &child_subprin, size_t size,
                                  string *bytes) const {
-  return CryptoFactory::Rand()->RandBytes(size, bytes);
+  return WeakRandBytes(size, bytes);
 }
 
 bool TaoRootHost::GetSharedSecret(const string &tag, size_t size,

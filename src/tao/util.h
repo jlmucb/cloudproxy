@@ -378,8 +378,12 @@ bool split(const string &s, const string &delim, list<int> *values);
 /// @param path The file path.
 time_t FileModificationTime(const string &path);
 
-/// Get random bytes from host Tao, if available, otherwise from Keyczar or
-/// OpenSSL.
+/// Get random bytes from OpenSSL.
+/// @param size The number of bytes to get.
+/// @param[out] s A string in which to place the bytes.
+bool WeakRandBytes(size_t size, string *s);
+
+/// Get random bytes from host Tao, if available, otherwise from OpenSSL.
 /// @param size The number of bytes to get.
 /// @param[out] s A string in which to place the bytes.
 // TODO(kwalsh) Rethink this function.

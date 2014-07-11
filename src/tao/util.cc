@@ -38,11 +38,11 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <keyczar/crypto_factory.h>
 #include <modp/modp_b64w.h>
 #include <openssl/bio.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
+#include <openssl/rand.h>
 #include <openssl/ssl.h>
 
 #include "tao/attestation.pb.h"
@@ -708,11 +708,16 @@ time_t FileModificationTime(const string &path) {
   return st.st_mtime;
 }
 
+bool WeakRandBytes(size_t size, string *s) {
+  // Use openssl.
+  s->resize(size);
+  return (RAND_bytes(str2uchar(s), size) == 1);
+}
+
 bool RandBytes(size_t size, string *s) {
   Tao *host = Tao::GetHostTao();
   if (host == nullptr) {
-    keyczar::CryptoFactory::Rand()->RandBytes(size, s);
-    return true;
+    return WeakRandBytes(size, s);
   } else {
     return host->GetRandomBytes(size, s);
   }

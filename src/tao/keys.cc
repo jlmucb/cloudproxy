@@ -1696,4 +1696,44 @@ bool Keys::Encode(CryptoKeyset *m) const {
   return true;
 }
 
+// Note: SHA functions are implemented here instead of util.cc simply to keep
+// most openssl implementation together in this file. The declarations are in
+// util.h, however, because they really have nothing to do with keys and they
+// are widely used in tao files that otherwise don't depend on keys.
+
+/// Compute SHA digest.
+/// @param type The digest type.
+/// @param s The string to be digested.
+/// @param[out] hash The string to be overwritten with the digest.
+static bool SHA_digest(const EVP_MD *type, const string &s, string *hash) {
+  if (hash == nullptr) {
+    LOG(ERROR) << "Null param";
+    return false;
+  }
+  unsigned int digest_len = 0;
+  EVP_MD_CTX ctx;
+  EVP_MD_CTX_init(&ctx);
+  hash->resize(EVP_MAX_MD_SIZE);
+  bool ok = EVP_DigestInit_ex(&ctx, type, nullptr /* engine */) &&
+            EVP_DigestUpdate(&ctx, str2uchar(s), s.size()) &&
+            EVP_DigestFinal_ex(&ctx, str2uchar(hash), &digest_len);
+  EVP_MD_CTX_cleanup(&ctx);
+  // Fail on buffer overflow.
+  CHECK_LE(digest_len, EVP_MAX_MD_SIZE);
+  if (!ok) {
+    hash->clear();
+    return false;
+  }
+  hash->resize(digest_len);
+  return true;
+}
+
+bool Sha1(const string &s, string *hash) {
+  return SHA_digest(EVP_sha1(), s, hash);
+}
+
+bool Sha256(const string &s, string *hash) {
+  return SHA_digest(EVP_sha256(), s, hash);
+}
+
 }  // namespace tao

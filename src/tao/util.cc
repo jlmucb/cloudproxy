@@ -145,15 +145,6 @@ static void locking_function(int mode, int n, const char *file, int line) {
   }
 }
 
-bool Sha256(const string &s, string *hash) {
-  if (!keyczar::CryptoFactory::SHA256()->Digest(s, hash)) {
-    // This should be fatal. If it happens, then openssl has died.
-    LOG(ERROR) << "Can't compute hash";
-    return false;
-  }
-  return true;
-}
-
 bool Sha256FileHash(const string &path, string *hash) {
   string contents;
   if (!ReadFileToString(path, &contents)) {
@@ -161,15 +152,6 @@ bool Sha256FileHash(const string &path, string *hash) {
     return false;
   }
   return Sha256(contents, hash);
-}
-
-bool Sha1(const string &s, string *hash) {
-  if (!keyczar::CryptoFactory::SHA1()->Digest(s, hash)) {
-    // This should be fatal. If it happens, then openssl has died.
-    LOG(ERROR) << "Can't compute hash";
-    return false;
-  }
-  return true;
 }
 
 bool Sha1FileHash(const string &path, string *hash) {

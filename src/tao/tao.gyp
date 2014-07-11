@@ -148,7 +148,6 @@
 				'../third_party/google-glog/glog.gyp:glog',
 				'../third_party/keyczar/keyczar.gyp:keyczar',
 				'../third_party/protobuf/protobuf.gyp:protobuf',
-				'../third_party/libb64/libb64.gyp:b64',
 				'../third_party/modp/modp.gyp:modp',
 			],
 			'direct_dependent_settings' : {
@@ -168,7 +167,6 @@
 				'../third_party/google-glog/glog.gyp:glog',
 				'../third_party/keyczar/keyczar.gyp:keyczar',
 				'../third_party/protobuf/protobuf.gyp:protobuf',
-				'../third_party/libb64/libb64.gyp:b64',
 				'../third_party/modp/modp.gyp:modp',
 			],
 		},

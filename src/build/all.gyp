@@ -44,7 +44,6 @@
        '../cloudproxy/cloudproxy.gyp:*',
         '../tao/tao.gyp:*',
         '../third_party/keyczar/keyczar.gyp:keyczart',
-        '../third_party/libb64/libb64.gyp:*',
         '../third_party/modp/modp.gyp:*',
       ],
     },

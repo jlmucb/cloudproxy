@@ -56,9 +56,10 @@ namespace tao {
 /// A macro to disallow the copy constructor and operator= functions
 /// This should be used in the private: declarations for a class.
 /// Taken from Google C++ Style Guide.
+#undef DISALLOW_COPY_AND_ASSIGN
 #define DISALLOW_COPY_AND_ASSIGN(TypeName) \
-  TypeName(const TypeName &);              \
-  void operator=(const TypeName &)
+  TypeName(const TypeName &) = delete;     \
+  void operator=(const TypeName &) = delete;
 
 using std::list;
 using std::set;

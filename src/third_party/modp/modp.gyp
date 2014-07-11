@@ -20,6 +20,7 @@
   },
   'variables': {
     'src': 'src',
+		'inc': 'include'
   },
   'targets': [
     {
@@ -27,8 +28,8 @@
       'type': 'static_library',
       'sources': [
         '<(src)/modp_b64w.c',
-        '<(src)modp_b64w_data.h',
-        'include/modp/modp_b64w.h',
+        '<(src)/modp_b64w_data.h',
+        '<(inc)/modp/modp_b64w.h',
       ],
       'include_dirs': [
         'include/modp',

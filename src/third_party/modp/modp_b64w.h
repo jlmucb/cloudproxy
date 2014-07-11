@@ -46,25 +46,25 @@ BEGIN_C
  *   This will contain the null-terminated b64w encoded result
  * \param[in] src contains the bytes
  * \param[in] len contains the number of bytes in the src
- * \return length of the destination string plus the ending null byte
- *    i.e.  the result will be equal to strlen(dest) + 1
+ * \return length of the destination string not including the ending null byte
+ *    i.e.  the result will be equal to strlen(dest)
+ * Note: This function always succeeds. In-place encoding is not supported,
+ *    i.e. with src == dest, since output is usually larger than input.
+ * Note: The output length, modp_b64w_encode_len(len), can overflow if len is
+ *    large (roughly, when len > 3/4 * max_size_t).
  *
  * Example
  *
  * \code
  * char* src = ...;
- * int srclen = ...; //the length of number of bytes in src
+ * size_t srclen = ...; //the length of number of bytes in src
  * char* dest = (char*) malloc(modp_b64w_encode_len);
- * int len = modp_b64w_encode(dest, src, sourcelen);
- * if (len == -1) {
- *   printf("Error\n");
- * } else {
- *   printf("b64w = %s\n", dest);
- * }
+ * size_t len = modp_b64w_encode(dest, src, sourcelen);
+ * printf("b64w = %s\n", dest);
  * \endcode
  *
  */
-int modp_b64w_encode(char* dest, const char* src, int len);
+size_t modp_b64w_encode(char* dest, const char* src, size_t len);
 
 /**
  * Decode a web-safe base64 encoded string
@@ -78,16 +78,20 @@ int modp_b64w_encode(char* dest, const char* src, int len);
  *
  * \return the length (strlen) of the output, or -1 if unable to
  * decode
+ * Note: In-place decoding is supported, i.e. with src == dest, since the output
+ *       is never longer than the input, and a successful return value can
+ *       safely be cast to size_t.
  *
  * \code
  * char* src = ...;
- * int srclen = ...; // or if you don't know use strlen(src)
+ * size_t srclen = ...; // or if you don't know use strlen(src)
  * char* dest = (char*) malloc(modp_b64w_decode_len(srclen));
- * int len = modp_b64w_decode(dest, src, sourcelen);
- * if (len == -1) { error }
+ * int ret = modp_b64w_decode(dest, src, sourcelen);
+ * if (ret == -1) { error }
+ * else { size_t len = (size_t)ret; ... }
  * \endcode
  */
-int modp_b64w_decode(char* dest, const char* src, int len);
+int modp_b64w_decode(char* dest, const char* src, size_t len);
 
 /**
  * Given a source string of length len, this returns the amount of
@@ -154,8 +158,7 @@ namespace modp {
     inline std::string b64w_encode(const char* s, size_t len)
     {
         std::string x(modp_b64w_encode_len(len), '\0');
-        int d = modp_b64w_encode(const_cast<char*>(x.data()), s,
-                                 static_cast<int>(len));
+        size_t d = modp_b64w_encode(const_cast<char*>(x.data()), s, len);
         x.erase(d, std::string::npos);
         return x;
     }
@@ -167,7 +170,7 @@ namespace modp {
      */
     inline std::string b64w_encode(const char* s)
     {
-        return b64w_encode(s, static_cast<int>(strlen(s)));
+        return b64w_encode(s, strlen(s));
     }
 
     /** \brief b64w encode a const std::string
@@ -198,8 +201,7 @@ namespace modp {
     inline std::string b64w_decode(const char* src, size_t len)
     {
         std::string x(modp_b64w_decode_len(len)+1, '\0');
-        int d = modp_b64w_decode(const_cast<char*>(x.data()), src,
-                                 static_cast<int>(len));
+        int d = modp_b64w_decode(const_cast<char*>(x.data()), src, len);
         if (d < 0) {
             x.clear();
         } else {

@@ -41,6 +41,8 @@
  * </PRE>
  */
 
+#include <stdlib.h>
+
 /* public header */
 #include "modp_b64w.h"
 
@@ -75,9 +77,9 @@
 #undef CHARPAD
 #endif
 
-int modp_b64w_encode(char* dest, const char* str, int len)
+size_t modp_b64w_encode(char* dest, const char* str, size_t len)
 {
-    int i;
+    size_t i;
     const uint8_t* s = (const uint8_t*) str;
     uint8_t* p = (uint8_t*) dest;
 
@@ -86,7 +88,7 @@ int modp_b64w_encode(char* dest, const char* str, int len)
     /* uint32_t is fastest on Intel */
     uint32_t t1, t2, t3;
 
-    for (i = 0; i < len - 2; i += 3) {
+    for (i = 0; len > 2 && i < len - 2; i += 3) {
         t1 = s[i]; t2 = s[i+1]; t3 = s[i+2];
         *p++ = e0[t1];
         *p++ = e1[((t1 & 0x03) << 4) | ((t2 >> 4) & 0x0F)];
@@ -117,13 +119,13 @@ int modp_b64w_encode(char* dest, const char* str, int len)
     }
 
     *p = '\0';
-    return (int)(p - (uint8_t*)dest);
+    return (size_t)(p - (uint8_t*)dest);
 }
 
 #ifdef WORDS_BIGENDIAN   /* BIG ENDIAN -- SUN / IBM / MOTOROLA */
-int modp_b64w_decode(char* dest, const char* src, int len)
+int modp_b64w_decode(char* dest, const char* src, size_t len)
 {
-    int i;
+    size_t i;
     if (len == 0) return 0;
 
 #ifdef DOPAD
@@ -139,8 +141,8 @@ int modp_b64w_decode(char* dest, const char* src, int len)
     }
 #endif  /* DOPAD */
 
-    int leftover = len % 4;
-    int chunks = (leftover == 0) ? len / 4 - 1 : len /4;
+    size_t leftover = len % 4;
+    size_t chunks = (leftover == 0) ? len / 4 - 1 : len /4;
 
     uint8_t* p = (uint8_t*) dest;
     uint32_t x = 0;
@@ -184,14 +186,14 @@ int modp_b64w_decode(char* dest, const char* src, int len)
     }
 
     if (x >= BADCHAR) return -1;
-    return 3*chunks + (6*leftover)/8;
+    return (int)(3*chunks + (6*leftover)/8);
 }
 
 #else /* LITTLE  ENDIAN -- INTEL AND FRIENDS */
 
-int modp_b64w_decode(char* dest, const char* src, int len)
+int modp_b64w_decode(char* dest, const char* src, size_t len)
 {
-    int i;
+    size_t i;
     if (len == 0) return 0;
 
 #ifdef DOPAD
@@ -209,8 +211,8 @@ int modp_b64w_decode(char* dest, const char* src, int len)
     }
 #endif
 
-    int leftover = len % 4;
-    int chunks = (leftover == 0) ? len / 4 - 1 : len /4;
+    size_t leftover = len % 4;
+    size_t chunks = (leftover == 0) ? len / 4 - 1 : len /4;
 
     uint8_t* p = (uint8_t*) dest;
     uint32_t x = 0;
@@ -263,7 +265,7 @@ int modp_b64w_decode(char* dest, const char* src, int len)
 
     if (x >= BADCHAR) return -1;
 
-    return 3*chunks + (6*leftover)/8;
+    return (int)(3*chunks + (6*leftover)/8);
 }
 
 #endif  /* if bigendian / else / endif */

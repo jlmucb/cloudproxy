@@ -26,16 +26,16 @@
       'target_name': 'modp',
       'type': 'static_library',
       'sources': [
-        'modp_b64w.c',
-        'modp_b64w.h',
-        'modp_b64w_data.h',
+        '<(src)/modp_b64w.c',
+        '<(src)modp_b64w_data.h',
+        'include/modp/modp_b64w.h',
       ],
       'include_dirs': [
-        '.',
+        'include/modp',
       ],
       'direct_dependent_settings': {
         'include_dirs': [
-          '.',
+          'include',
         ],
       },
     },

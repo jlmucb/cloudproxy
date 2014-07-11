@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// This code is adapted from Chromium. For the original, see:
+// https://code.google.com/p/chromium/codesearch#chromium/src/
+// The code has been modified to compile as a standalone library
+// and to eliminate some Chromimum dependencies and unneeded functionality.
+
 // FilePath is a container for pathnames stored in a platform's native string
 // type, providing containers for manipulation in according with the
 // platform's conventions for pathnames.  It supports the following path
@@ -99,19 +104,19 @@
 //    paths (sometimes)?", available at:
 //    http://blogs.msdn.com/oldnewthing/archive/2005/11/22/495740.aspx
 
-#ifndef BASE_FILES_FILE_PATH_H_
-#define BASE_FILES_FILE_PATH_H_
+#ifndef CHROMIUM_BASE_FILES_FILE_PATH_H_
+#define CHROMIUM_BASE_FILES_FILE_PATH_H_
 
 #include <stddef.h>
 #include <string>
 #include <vector>
 
-#include "base/base_export.h"
-#include "base/compiler_specific.h"
-#include "base/containers/hash_tables.h"
-#include "base/strings/string16.h"
-#include "base/strings/string_piece.h"  // For implicit conversions.
-#include "build/build_config.h"
+// #include "base/base_export.h"
+// #include "base/compiler_specific.h"
+// #include "base/containers/hash_tables.h"
+// #include "base/strings/string16.h"
+// #include "base/strings/string_piece.h"  // For implicit conversions.
+// #include "build/build_config.h"
 
 // Windows-style drive letter support and pathname separator characters can be
 // enabled and disabled independently, to aid testing.  These #defines are
@@ -122,14 +127,12 @@
 #define FILE_PATH_USES_WIN_SEPARATORS
 #endif  // OS_WIN
 
-class Pickle;
-class PickleIterator;
-
+namespace chromium {
 namespace base {
 
 // An abstraction to isolate users from the differences between native
 // pathnames on different platforms.
-class BASE_EXPORT FilePath {
+class FilePath {
  public:
 #if defined(OS_POSIX)
   // On most platforms, native pathnames are char arrays, and the encoding
@@ -267,8 +270,6 @@ class BASE_EXPORT FilePath {
   // path == "C:\pics.old\jojo" suffix == " (1)", returns "C:\pics.old\jojo (1)"
   FilePath InsertBeforeExtension(
       const StringType& suffix) const WARN_UNUSED_RESULT;
-  FilePath InsertBeforeExtensionASCII(
-      const base::StringPiece& suffix) const WARN_UNUSED_RESULT;
 
   // Adds |extension| to |file_name|. Returns the current FilePath if
   // |extension| is empty. Returns "" if BaseName() == "." or "..".
@@ -295,15 +296,6 @@ class BASE_EXPORT FilePath {
   FilePath Append(const StringType& component) const WARN_UNUSED_RESULT;
   FilePath Append(const FilePath& component) const WARN_UNUSED_RESULT;
 
-  // Although Windows StringType is std::wstring, since the encoding it uses for
-  // paths is well defined, it can handle ASCII path components as well.
-  // Mac uses UTF8, and since ASCII is a subset of that, it works there as well.
-  // On Linux, although it can use any 8-bit encoding for paths, we assume that
-  // ASCII is a valid subset, regardless of the encoding, since many operating
-  // system paths will always be ASCII.
-  FilePath AppendASCII(const base::StringPiece& component)
-      const WARN_UNUSED_RESULT;
-
   // Returns true if this FilePath contains an absolute path.  On Windows, an
   // absolute path begins with either a drive letter specification followed by
   // a separator character, or with two separator characters.  On POSIX
@@ -325,12 +317,6 @@ class BASE_EXPORT FilePath {
   // directory (e.g. has a path component that is "..").
   bool ReferencesParent() const;
 
-  // Return a Unicode human-readable version of this path.
-  // Warning: you can *not*, in general, go from a display name back to a real
-  // path.  Only use this when displaying paths to users, not just when you
-  // want to stuff a string16 into some other API.
-  string16 LossyDisplayName() const;
-
   // Return the path as ASCII, or the empty string if the path is not ASCII.
   // This should only be used for cases where the FilePath is representing a
   // known-ASCII filename.
@@ -351,9 +337,6 @@ class BASE_EXPORT FilePath {
   // with "Unsafe" in the function name.
   std::string AsUTF8Unsafe() const;
 
-  // Similar to AsUTF8Unsafe, but returns UTF-16 instead.
-  string16 AsUTF16Unsafe() const;
-
   // Returns a FilePath object from a path name in UTF-8. This function
   // should only be used for cases where you are sure that the input
   // string is UTF-8.
@@ -363,12 +346,6 @@ class BASE_EXPORT FilePath {
   // and Chrome OS, to mitigate the encoding issue. See the comment at
   // AsUTF8Unsafe() for details.
   static FilePath FromUTF8Unsafe(const std::string& utf8);
-
-  // Similar to FromUTF8Unsafe, but accepts UTF-16 instead.
-  static FilePath FromUTF16Unsafe(const string16& utf16);
-
-  void WriteToPickle(Pickle* pickle) const;
-  bool ReadFromPickle(PickleIterator* iter);
 
   // Normalize all path separators to backslash on Windows
   // (if FILE_PATH_USES_WIN_SEPARATORS is true), or do nothing on POSIX systems.
@@ -436,7 +413,7 @@ class BASE_EXPORT FilePath {
 }  // namespace base
 
 // This is required by googletest to print a readable output on test failures.
-BASE_EXPORT extern void PrintTo(const base::FilePath& path, std::ostream* out);
+extern void PrintTo(const base::FilePath& path, std::ostream* out);
 
 // Macros for string literal initialization of FilePath::CharType[], and for
 // using a FilePath::CharType[] in a printf-style format string.
@@ -471,5 +448,6 @@ inline size_t hash_value(const base::FilePath& f) {
 #endif  // COMPILER
 
 }  // namespace BASE_HASH_NAMESPACE
+}  // namespace chromium
 
 #endif  // BASE_FILES_FILE_PATH_H_

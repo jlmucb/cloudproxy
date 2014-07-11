@@ -84,16 +84,6 @@ bool DeleteFileAfterReboot(const FilePath& path);
 // This function fails if either path contains traversal components ('..').
 bool Move(const FilePath& from_path, const FilePath& to_path);
 
-// Renames file |from_path| to |to_path|. Both paths must be on the same
-// volume, or the function will fail. Destination file will be created
-// if it doesn't exist. Prefer this function over Move when dealing with
-// temporary files. On Windows it preserves attributes of the target file.
-// Returns true on success, leaving *error unchanged.
-// Returns false on failure and sets *error appropriately, if it is non-NULL.
-bool ReplaceFile(const FilePath& from_path,
-                             const FilePath& to_path,
-                             File::Error* error);
-
 // Copies a single file. Use CopyDirectory to copy directories.
 // This function fails if either path contains traversal components ('..').
 //
@@ -255,12 +245,6 @@ bool CreateTemporaryDirInDir(const FilePath& base_dir,
 // Creates a directory, as well as creating any parent directories, if they
 // don't exist. Returns 'true' on successful creation, or if the directory
 // already exists.  The directory is only readable by the current user.
-// Returns true on success, leaving *error unchanged.
-// Returns false on failure and sets *error appropriately, if it is non-NULL.
-bool CreateDirectoryAndGetError(const FilePath& full_path,
-                                            File::Error* error);
-
-// Backward-compatible convenience method for the above.
 bool CreateDirectory(const FilePath& full_path);
 
 // Returns the file size. Returns true on success.
@@ -293,18 +277,11 @@ bool NormalizeToNativeFilePath(const FilePath& path,
 // This function will return if the given file is a symlink or not.
 bool IsLink(const FilePath& file_path);
 
-// Returns information about the given file path.
-bool GetFileInfo(const FilePath& file_path, File::Info* info);
-
 // Wrapper for fopen-like calls. Returns non-NULL FILE* on success.
 FILE* OpenFile(const FilePath& filename, const char* mode);
 
 // Closes file opened by OpenFile. Returns true on success.
 bool CloseFile(FILE* file);
-
-// Associates a standard FILE stream with an existing File. Note that this
-// functions take ownership of the existing File.
-FILE* FileToFILE(File file, const char* mode);
 
 // Truncates an open file to end at the location of the current file pointer.
 // This is a cross-platform analog to Windows' SetEndOfFile() function.

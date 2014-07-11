@@ -260,7 +260,7 @@ static bool EncodeECDSA_SHA_SigningKey(const EC_KEY *ec_key,
   ScopedBN_CTX bn_ctx(BN_CTX_new());
   size_t point_len =
       EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
-                         POINT_CONVERSION_COMPRESSED, nullptr, 0, bn_ctx.get());
+                         POINT_CONVERSION_UNCOMPRESSED, nullptr, 0, bn_ctx.get());
   if (point_len == 0) {
     OpenSSLSuccess();
     LOG(ERROR) << "Could not serialize EC public key";
@@ -269,7 +269,7 @@ static bool EncodeECDSA_SHA_SigningKey(const EC_KEY *ec_key,
   string *ec_public = m->mutable_ec_public();
   ec_public->resize(point_len);
   EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
-                     POINT_CONVERSION_COMPRESSED, str2uchar(ec_public),
+                     POINT_CONVERSION_UNCOMPRESSED, str2uchar(ec_public),
                      point_len, bn_ctx.get());
   return true;
 }
@@ -334,7 +334,7 @@ static bool EncodeECDSA_SHA_VerifyingKey(const EC_KEY *ec_key,
   ScopedBN_CTX bn_ctx(BN_CTX_new());
   size_t point_len =
       EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
-                         POINT_CONVERSION_COMPRESSED, nullptr, 0, bn_ctx.get());
+                         POINT_CONVERSION_UNCOMPRESSED, nullptr, 0, bn_ctx.get());
   if (point_len == 0) {
     OpenSSLSuccess();
     LOG(ERROR) << "Can't serialize EC public half";
@@ -343,7 +343,7 @@ static bool EncodeECDSA_SHA_VerifyingKey(const EC_KEY *ec_key,
   string *ec_pub = m->mutable_ec_public();
   ec_pub->resize(point_len);
   EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
-                     POINT_CONVERSION_COMPRESSED, str2uchar(ec_pub), point_len,
+                     POINT_CONVERSION_UNCOMPRESSED, str2uchar(ec_pub), point_len,
                      bn_ctx.get());
   return true;
 }

@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// This code is adapted from Chromium. For the original, see:
+// https://code.google.com/p/chromium/codesearch#chromium/src/
+// The code has been modified to compile as a standalone library
+// and to eliminate some Chromimum dependencies and unneeded functionality.
+
 #include "base/file_util.h"
 
 #include <dirent.h>

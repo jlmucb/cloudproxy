@@ -7,8 +7,11 @@
 // The code has been modified to compile as a standalone library
 // and to eliminate some Chromimum dependencies and unneeded functionality.
 
-#include "base/files/file_path.h"
+#include "base/file_path.h"
 
+#include "macros.h"
+
+namespace chromium {
 namespace base {
 
 #if defined(FILE_PATH_USES_WIN_SEPARATORS)
@@ -25,3 +28,4 @@ const FilePath::CharType FilePath::kParentDirectory[] = FILE_PATH_LITERAL("..");
 const FilePath::CharType FilePath::kExtensionSeparator = FILE_PATH_LITERAL('.');
 
 }  // namespace base
+}  // namespace chromium

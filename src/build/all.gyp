@@ -43,8 +43,6 @@
         '../apps/apps.gyp:*',
        '../cloudproxy/cloudproxy.gyp:*',
         '../tao/tao.gyp:*',
-        '../third_party/keyczar/keyczar.gyp:keyczart',
-        '../third_party/modp/modp.gyp:*',
         '../third_party/chromium/chromium.gyp:*',
       ],
     },

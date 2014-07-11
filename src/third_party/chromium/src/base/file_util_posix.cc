@@ -12,6 +12,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <fts.h>
 #include <libgen.h>
 #include <limits.h>
 #include <stdio.h>
@@ -34,24 +35,30 @@
 #endif
 
 #include <fstream>
+#include <set>
+#include <stack>
 
-#include "base/basictypes.h"
-#include "base/files/file_enumerator.h"
-#include "base/files/file_path.h"
-#include "base/files/scoped_file.h"
-#include "base/logging.h"
-#include "base/memory/scoped_ptr.h"
-#include "base/memory/singleton.h"
-#include "base/path_service.h"
-#include "base/posix/eintr_wrapper.h"
-#include "base/stl_util.h"
-#include "base/strings/string_util.h"
-#include "base/strings/stringprintf.h"
-#include "base/strings/sys_string_conversions.h"
-#include "base/strings/utf_string_conversions.h"
-#include "base/sys_info.h"
-#include "base/threading/thread_restrictions.h"
-#include "base/time/time.h"
+#include <glog/logging.h>
+#define DPLOG PLOG
+
+// #include "base/basictypes.h"
+// #include "base/files/file_enumerator.h"
+#include "base/file_path.h"
+// #include "base/files/scoped_file.h"
+// #include "base/logging.h"
+// #include "base/memory/scoped_ptr.h"
+// #include "base/memory/singleton.h"
+// #include "base/path_service.h"
+#include "eintr_wrapper.h"
+// #include "base/stl_util.h"
+// #include "base/strings/string_util.h"
+// #include "base/strings/stringprintf.h"
+// #include "base/strings/sys_string_conversions.h"
+// #include "base/strings/utf_string_conversions.h"
+// #include "base/sys_info.h"
+// #include "base/threading/thread_restrictions.h"
+// #include "base/time/time.h"
+#include "macros.h"
 
 #if defined(OS_ANDROID)
 #include "base/android/content_uri_utils.h"
@@ -62,9 +69,23 @@
 #include <grp.h>
 #endif
 
+namespace chromium {
 namespace base {
 
+class ThreadRestrictions {
+ public:
+  static void AssertIOAllowed() {}
+};
+
 namespace {
+
+#if defined(OS_POSIX)
+#if defined(OS_BSD) || defined(OS_MACOSX) || defined(OS_NACL)
+typedef struct stat stat_wrapper_t;
+#else
+typedef struct stat64 stat_wrapper_t;
+#endif
+#endif  // defined(OS_POSIX)
 
 #if defined(OS_BSD) || defined(OS_MACOSX) || defined(OS_NACL)
 static int CallStat(const char *path, stat_wrapper_t *sb) {
@@ -95,6 +116,13 @@ bool RealPath(const FilePath& path, FilePath* real_path) {
 
   *real_path = FilePath(buf);
   return true;
+}
+
+// Test to see if a set, map, hash_set or hash_map contains a particular key.
+// Returns true if the key is in the collection.
+template <typename Collection, typename Key>
+bool ContainsKey(const Collection& collection, const Key& key) {
+  return collection.find(key) != collection.end();
 }
 
 // Helper for VerifyPathControlledByUser.
@@ -161,34 +189,6 @@ int CreateAndOpenFdForTemporaryFile(FilePath directory, FilePath* path) {
   return HANDLE_EINTR(mkstemp(buffer));
 }
 
-#if defined(OS_LINUX)
-// Determine if /dev/shm files can be mapped and then mprotect'd PROT_EXEC.
-// This depends on the mount options used for /dev/shm, which vary among
-// different Linux distributions and possibly local configuration.  It also
-// depends on details of kernel--ChromeOS uses the noexec option for /dev/shm
-// but its kernel allows mprotect with PROT_EXEC anyway.
-bool DetermineDevShmExecutable() {
-  bool result = false;
-  FilePath path;
-
-  ScopedFD fd(CreateAndOpenFdForTemporaryFile(FilePath("/dev/shm"), &path));
-  if (fd.is_valid()) {
-    DeleteFile(path, false);
-    long sysconf_result = sysconf(_SC_PAGESIZE);
-    CHECK_GE(sysconf_result, 0);
-    size_t pagesize = static_cast<size_t>(sysconf_result);
-    CHECK_GE(sizeof(pagesize), sizeof(sysconf_result));
-    void* mapping = mmap(NULL, pagesize, PROT_READ, MAP_SHARED, fd.get(), 0);
-    if (mapping != MAP_FAILED) {
-      if (mprotect(mapping, pagesize, PROT_READ | PROT_EXEC) == 0)
-        result = true;
-      munmap(mapping, pagesize);
-    }
-  }
-  return result;
-}
-#endif  // defined(OS_LINUX)
-
 }  // namespace
 
 FilePath MakeAbsoluteFilePath(const FilePath& input) {
@@ -199,15 +199,35 @@ FilePath MakeAbsoluteFilePath(const FilePath& input) {
   return FilePath(full_path);
 }
 
+template <typename CHAR>
+size_t lcpyT(CHAR* dst, const CHAR* src, size_t dst_size) {
+  for (size_t i = 0; i < dst_size; ++i) {
+    if ((dst[i] = src[i]) == 0)  // We hit and copied the terminating NULL.
+      return i;
+  }
+
+  // We were left off at dst_size.  We over copied 1 byte.  Null terminate.
+  if (dst_size != 0)
+    dst[dst_size - 1] = 0;
+
+  // Count the rest of the |src|, and return it's length in characters.
+  while (src[dst_size]) ++dst_size;
+  return dst_size;
+}
+
+size_t strlcpy(char* dst, const char* src, size_t dst_size) {
+  return lcpyT<char>(dst, src, dst_size);
+}
+
 // TODO(erikkay): The Windows version of this accepts paths like "foo/bar/*"
 // which works both with and without the recursive flag.  I'm not sure we need
 // that functionality. If not, remove from file_util_win.cc, otherwise add it
 // here.
-bool DeleteFile(const FilePath& path, bool recursive) {
-  ThreadRestrictions::AssertIOAllowed();
+/// This function taken from an older version of chromium
+bool Delete(const FilePath& path, bool recursive) {
   const char* path_str = path.value().c_str();
   stat_wrapper_t file_info;
-  int test = CallLstat(path_str, &file_info);
+  int test = CallStat(path_str, &file_info);
   if (test != 0) {
     // The Windows version defines this condition as success.
     bool ret = (errno == ENOENT || errno == ENOTDIR);
@@ -219,135 +239,43 @@ bool DeleteFile(const FilePath& path, bool recursive) {
     return (rmdir(path_str) == 0);
 
   bool success = true;
-  std::stack<std::string> directories;
-  directories.push(path.value());
-  FileEnumerator traversal(path, true,
-      FileEnumerator::FILES | FileEnumerator::DIRECTORIES |
-      FileEnumerator::SHOW_SYM_LINKS);
-  for (FilePath current = traversal.Next(); success && !current.empty();
-       current = traversal.Next()) {
-    if (traversal.GetInfo().IsDirectory())
-      directories.push(current.value());
-    else
-      success = (unlink(current.value().c_str()) == 0);
-  }
-
-  while (success && !directories.empty()) {
-    FilePath dir = FilePath(directories.top());
-    directories.pop();
-    success = (rmdir(dir.value().c_str()) == 0);
-  }
-  return success;
-}
-
-bool ReplaceFile(const FilePath& from_path,
-                 const FilePath& to_path,
-                 File::Error* error) {
-  ThreadRestrictions::AssertIOAllowed();
-  if (rename(from_path.value().c_str(), to_path.value().c_str()) == 0)
-    return true;
-  if (error)
-    *error = File::OSErrorToFileError(errno);
-  return false;
-}
-
-bool CopyDirectory(const FilePath& from_path,
-                   const FilePath& to_path,
-                   bool recursive) {
-  ThreadRestrictions::AssertIOAllowed();
-  // Some old callers of CopyDirectory want it to support wildcards.
-  // After some discussion, we decided to fix those callers.
-  // Break loudly here if anyone tries to do this.
-  DCHECK(to_path.value().find('*') == std::string::npos);
-  DCHECK(from_path.value().find('*') == std::string::npos);
-
-  if (from_path.value().size() >= PATH_MAX) {
+  int ftsflags = FTS_PHYSICAL | FTS_NOSTAT;
+  char top_dir[PATH_MAX];
+  if (strlcpy(top_dir, path_str,
+                             arraysize(top_dir)) >= arraysize(top_dir)) {
     return false;
   }
-
-  // This function does not properly handle destinations within the source
-  FilePath real_to_path = to_path;
-  if (PathExists(real_to_path)) {
-    real_to_path = MakeAbsoluteFilePath(real_to_path);
-    if (real_to_path.empty())
-      return false;
-  } else {
-    real_to_path = MakeAbsoluteFilePath(real_to_path.DirName());
-    if (real_to_path.empty())
-      return false;
-  }
-  FilePath real_from_path = MakeAbsoluteFilePath(from_path);
-  if (real_from_path.empty())
-    return false;
-  if (real_to_path.value().size() >= real_from_path.value().size() &&
-      real_to_path.value().compare(0, real_from_path.value().size(),
-                                   real_from_path.value()) == 0) {
-    return false;
-  }
-
-  int traverse_type = FileEnumerator::FILES | FileEnumerator::SHOW_SYM_LINKS;
-  if (recursive)
-    traverse_type |= FileEnumerator::DIRECTORIES;
-  FileEnumerator traversal(from_path, recursive, traverse_type);
-
-  // We have to mimic windows behavior here. |to_path| may not exist yet,
-  // start the loop with |to_path|.
-  struct stat from_stat;
-  FilePath current = from_path;
-  if (stat(from_path.value().c_str(), &from_stat) < 0) {
-    DLOG(ERROR) << "CopyDirectory() couldn't stat source directory: "
-                << from_path.value() << " errno = " << errno;
-    return false;
-  }
-  struct stat to_path_stat;
-  FilePath from_path_base = from_path;
-  if (recursive && stat(to_path.value().c_str(), &to_path_stat) == 0 &&
-      S_ISDIR(to_path_stat.st_mode)) {
-    // If the destination already exists and is a directory, then the
-    // top level of source needs to be copied.
-    from_path_base = from_path.DirName();
-  }
-
-  // The Windows version of this function assumes that non-recursive calls
-  // will always have a directory for from_path.
-  // TODO(maruel): This is not necessary anymore.
-  DCHECK(recursive || S_ISDIR(from_stat.st_mode));
-
-  bool success = true;
-  while (success && !current.empty()) {
-    // current is the source path, including from_path, so append
-    // the suffix after from_path to to_path to create the target_path.
-    FilePath target_path(to_path);
-    if (from_path_base != current) {
-      if (!from_path_base.AppendRelativePath(current, &target_path)) {
-        success = false;
-        break;
+  char* dir_list[2] = { top_dir, NULL };
+  FTS* fts = fts_open(dir_list, ftsflags, NULL);
+  if (fts) {
+    FTSENT* fts_ent = fts_read(fts);
+    while (success && fts_ent != NULL) {
+      switch (fts_ent->fts_info) {
+        case FTS_DNR:
+        case FTS_ERR:
+          // log error
+          success = false;
+          continue;
+          break;
+        case FTS_DP:
+          success = (rmdir(fts_ent->fts_accpath) == 0);
+          break;
+        case FTS_D:
+          break;
+        case FTS_NSOK:
+        case FTS_F:
+        case FTS_SL:
+        case FTS_SLNONE:
+          success = (unlink(fts_ent->fts_accpath) == 0);
+          break;
+        default:
+          DCHECK(false);
+          break;
       }
+      fts_ent = fts_read(fts);
     }
-
-    if (S_ISDIR(from_stat.st_mode)) {
-      if (mkdir(target_path.value().c_str(), from_stat.st_mode & 01777) != 0 &&
-          errno != EEXIST) {
-        DLOG(ERROR) << "CopyDirectory() couldn't create directory: "
-                    << target_path.value() << " errno = " << errno;
-        success = false;
-      }
-    } else if (S_ISREG(from_stat.st_mode)) {
-      if (!CopyFile(current, target_path)) {
-        DLOG(ERROR) << "CopyDirectory() couldn't create file: "
-                    << target_path.value();
-        success = false;
-      }
-    } else {
-      DLOG(WARNING) << "CopyDirectory() skipping non-regular file: "
-                    << current.value();
-    }
-
-    current = traversal.Next();
-    if (!current.empty())
-      from_stat = traversal.GetInfo().stat();
+    fts_close(fts);
   }
-
   return success;
 }
 
@@ -564,8 +492,7 @@ bool CreateNewTempDirectory(const FilePath::StringType& prefix,
   return CreateTemporaryDirInDirImpl(tmpdir, TempFileName(), new_temp_path);
 }
 
-bool CreateDirectoryAndGetError(const FilePath& full_path,
-                                File::Error* error) {
+bool CreateDirectory(const FilePath& full_path) {
   ThreadRestrictions::AssertIOAllowed();  // For call to mkdir().
   std::vector<FilePath> subpaths;
 
@@ -591,8 +518,6 @@ bool CreateDirectoryAndGetError(const FilePath& full_path,
     // time. Check to see if it exists and make sure it is a directory.
     int saved_errno = errno;
     if (!DirectoryExists(*i)) {
-      if (error)
-        *error = File::OSErrorToFileError(saved_errno);
       return false;
     }
   }
@@ -630,26 +555,6 @@ bool IsLink(const FilePath& file_path) {
     return false;
 }
 
-bool GetFileInfo(const FilePath& file_path, File::Info* results) {
-  stat_wrapper_t file_info;
-#if defined(OS_ANDROID)
-  if (file_path.IsContentUri()) {
-    File file = OpenContentUriForRead(file_path);
-    if (!file.IsValid())
-      return false;
-    return file.GetInfo(results);
-  } else {
-#endif  // defined(OS_ANDROID)
-    if (CallStat(file_path.value().c_str(), &file_info) != 0)
-      return false;
-#if defined(OS_ANDROID)
-  }
-#endif  // defined(OS_ANDROID)
-
-  results->FromStat(file_info);
-  return true;
-}
-
 FILE* OpenFile(const FilePath& filename, const char* mode) {
   ThreadRestrictions::AssertIOAllowed();
   FILE* result = NULL;
@@ -658,16 +563,6 @@ FILE* OpenFile(const FilePath& filename, const char* mode) {
   } while (!result && errno == EINTR);
   return result;
 }
-
-// NaCl doesn't implement system calls to open files directly.
-#if !defined(OS_NACL)
-FILE* FileToFILE(File file, const char* mode) {
-  FILE* stream = fdopen(file.GetPlatformFile(), mode);
-  if (stream)
-    file.TakePlatformFile();
-  return stream;
-}
-#endif  // !defined(OS_NACL)
 
 int ReadFile(const FilePath& filename, char* data, int max_size) {
   ThreadRestrictions::AssertIOAllowed();
@@ -727,7 +622,7 @@ bool GetCurrentDirectory(FilePath* dir) {
 
   char system_buffer[PATH_MAX] = "";
   if (!getcwd(system_buffer, sizeof(system_buffer))) {
-    NOTREACHED();
+    // NOTREACHED();
     return false;
   }
   *dir = FilePath(system_buffer);
@@ -816,24 +711,6 @@ int GetMaximumPathComponentLength(const FilePath& path) {
   return pathconf(path.value().c_str(), _PC_NAME_MAX);
 }
 
-#if !defined(OS_ANDROID)
-// This is implemented in file_util_android.cc for that platform.
-bool GetShmemTempDir(bool executable, FilePath* path) {
-#if defined(OS_LINUX)
-  bool use_dev_shm = true;
-  if (executable) {
-    static const bool s_dev_shm_executable = DetermineDevShmExecutable();
-    use_dev_shm = s_dev_shm_executable;
-  }
-  if (use_dev_shm) {
-    *path = FilePath("/dev/shm");
-    return true;
-  }
-#endif
-  return GetTempDir(path);
-}
-#endif  // !defined(OS_ANDROID)
-
 // -----------------------------------------------------------------------------
 
 namespace internal {
@@ -915,3 +792,4 @@ bool CopyFileUnsafe(const FilePath& from_path, const FilePath& to_path) {
 
 }  // namespace internal
 }  // namespace base
+}  // namespace chromium

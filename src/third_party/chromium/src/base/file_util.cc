@@ -14,17 +14,19 @@
 #endif
 #include <stdio.h>
 
+#include <cstring>
 #include <fstream>
 #include <limits>
 
-#include "base/files/file_enumerator.h"
-#include "base/files/file_path.h"
-#include "base/logging.h"
-#include "base/strings/string_piece.h"
-#include "base/strings/string_util.h"
-#include "base/strings/stringprintf.h"
-#include "base/strings/utf_string_conversions.h"
+//#include "base/files/file_enumerator.h"
+#include "base/file_path.h"
+// #include "base/logging.h"
+// #include "base/strings/string_piece.h"
+// #include "base/strings/string_util.h"
+// #include "base/strings/stringprintf.h"
+// #include "base/strings/utf_string_conversions.h"
 
+namespace chromium {
 namespace base {
 
 namespace {
@@ -37,14 +39,6 @@ namespace {
 static const int kMaxUniqueFiles = 100;
 
 }  // namespace
-
-int64 ComputeDirectorySize(const FilePath& root_path) {
-  int64 running_size = 0;
-  FileEnumerator file_iter(root_path, true, FileEnumerator::FILES);
-  while (!file_iter.Next().empty())
-    running_size += file_iter.GetInfo().GetSize();
-  return running_size;
-}
 
 bool Move(const FilePath& from_path, const FilePath& to_path) {
   if (from_path.ReferencesParent() || to_path.ReferencesParent())
@@ -172,50 +166,12 @@ bool ReadFileToString(const FilePath& path, std::string* contents) {
   return ReadFileToString(path, contents, std::numeric_limits<size_t>::max());
 }
 
-bool IsDirectoryEmpty(const FilePath& dir_path) {
-  FileEnumerator files(dir_path, false,
-      FileEnumerator::FILES | FileEnumerator::DIRECTORIES);
-  if (files.Next().empty())
-    return true;
-  return false;
-}
-
 FILE* CreateAndOpenTemporaryFile(FilePath* path) {
   FilePath directory;
   if (!GetTempDir(&directory))
     return NULL;
 
   return CreateAndOpenTemporaryFileInDir(directory, path);
-}
-
-bool CreateDirectory(const FilePath& full_path) {
-  return CreateDirectoryAndGetError(full_path, NULL);
-}
-
-bool GetFileSize(const FilePath& file_path, int64* file_size) {
-  File::Info info;
-  if (!GetFileInfo(file_path, &info))
-    return false;
-  *file_size = info.size;
-  return true;
-}
-
-bool TouchFile(const FilePath& path,
-               const Time& last_accessed,
-               const Time& last_modified) {
-  int flags = File::FLAG_OPEN | File::FLAG_WRITE_ATTRIBUTES;
-
-#if defined(OS_WIN)
-  // On Windows, FILE_FLAG_BACKUP_SEMANTICS is needed to open a directory.
-  if (DirectoryExists(path))
-    flags |= File::FLAG_BACKUP_SEMANTICS;
-#endif  // OS_WIN
-
-  File file(path, flags);
-  if (!file.IsValid())
-    return false;
-
-  return file.SetTimes(last_accessed, last_modified);
 }
 
 bool CloseFile(FILE* file) {
@@ -242,24 +198,5 @@ bool TruncateFile(FILE* file) {
   return true;
 }
 
-int GetUniquePathNumber(const FilePath& path,
-                        const FilePath::StringType& suffix) {
-  bool have_suffix = !suffix.empty();
-  if (!PathExists(path) &&
-      (!have_suffix || !PathExists(FilePath(path.value() + suffix)))) {
-    return 0;
-  }
-
-  FilePath new_path;
-  for (int count = 1; count <= kMaxUniqueFiles; ++count) {
-    new_path = path.InsertBeforeExtensionASCII(StringPrintf(" (%d)", count));
-    if (!PathExists(new_path) &&
-        (!have_suffix || !PathExists(FilePath(new_path.value() + suffix)))) {
-      return count;
-    }
-  }
-
-  return -1;
-}
-
 }  // namespace base
+}  // namespace chromium

@@ -127,6 +127,16 @@
 #define FILE_PATH_USES_WIN_SEPARATORS
 #endif  // OS_WIN
 
+// Annotate a function indicating the caller must examine the return value.
+// Use like:
+//   int foo() WARN_UNUSED_RESULT;
+// To explicitly ignore a result, see |ignore_result()| in <base/basictypes.h>.
+#if defined(COMPILER_GCC)
+#define WARN_UNUSED_RESULT __attribute__((warn_unused_result))
+#else
+#define WARN_UNUSED_RESULT
+#endif
+
 namespace chromium {
 namespace base {
 
@@ -427,27 +437,6 @@ extern void PrintTo(const base::FilePath& path, std::ostream* out);
 #define PRFilePathLiteral L"%ls"
 #endif  // OS_WIN
 
-// Provide a hash function so that hash_sets and maps can contain FilePath
-// objects.
-namespace BASE_HASH_NAMESPACE {
-#if defined(COMPILER_GCC)
-
-template<>
-struct hash<base::FilePath> {
-  size_t operator()(const base::FilePath& f) const {
-    return hash<base::FilePath::StringType>()(f.value());
-  }
-};
-
-#elif defined(COMPILER_MSVC)
-
-inline size_t hash_value(const base::FilePath& f) {
-  return hash_value(f.value());
-}
-
-#endif  // COMPILER
-
-}  // namespace BASE_HASH_NAMESPACE
 }  // namespace chromium
 
 #endif  // BASE_FILES_FILE_PATH_H_

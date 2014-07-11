@@ -20,6 +20,7 @@
 #include <unistd.h>
 #endif
 
+#include <stdint.h>
 #include <stdio.h>
 
 #include <string>
@@ -27,7 +28,7 @@
 //#include "base/base_export.h"
 //#include "base/basictypes.h"
 //#include "base/files/file.h"
-#include "base/files/file_path.h"
+#include "base/file_path.h"
 //#include "base/strings/string16.h"
 
 #if defined(OS_POSIX)
@@ -38,6 +39,8 @@
 
 namespace chromium {
 namespace base {
+
+typedef int64_t int64;
 
 //-----------------------------------------------------------------------------
 // Functions that involve filesystem access or modification:

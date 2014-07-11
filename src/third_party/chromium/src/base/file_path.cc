@@ -7,34 +7,101 @@
 // The code has been modified to compile as a standalone library
 // and to eliminate some Chromimum dependencies and unneeded functionality.
 
-#include "base/files/file_path.h"
+#include "base/file_path.h"
 
 #include <string.h>
 #include <algorithm>
 
-#include "base/basictypes.h"
-#include "base/logging.h"
-#include "base/pickle.h"
+#include "macros.h"
+
+//#include "base/basictypes.h"
+//#include "base/logging.h"
 
 // These includes are just for the *Hack functions, and should be removed
 // when those functions are removed.
-#include "base/strings/string_piece.h"
-#include "base/strings/string_util.h"
-#include "base/strings/sys_string_conversions.h"
-#include "base/strings/utf_string_conversions.h"
+//#include "base/strings/string_util.h"
+//#include "base/strings/sys_string_conversions.h"
+//#include "base/strings/utf_string_conversions.h"
+// 
+// #if defined(OS_MACOSX)
+// #include "base/mac/scoped_cftyperef.h"
+// #include "base/third_party/icu/icu_utf.h"
+// #endif
+// 
+// #if defined(OS_WIN)
+// #include <windows.h>
+// #elif defined(OS_MACOSX)
+// #include <CoreFoundation/CoreFoundation.h>
+// #endif
 
-#if defined(OS_MACOSX)
-#include "base/mac/scoped_cftyperef.h"
-#include "base/third_party/icu/icu_utf.h"
-#endif
-
-#if defined(OS_WIN)
-#include <windows.h>
-#elif defined(OS_MACOSX)
-#include <CoreFoundation/CoreFoundation.h>
-#endif
-
+namespace chromium {
 namespace base {
+
+// ASCII-specific tolower.  The standard library's tolower is locale sensitive,
+// so we don't want to use it here.
+template <class Char> inline Char ToLowerASCII(Char c) {
+  return (c >= 'A' && c <= 'Z') ? (c + ('a' - 'A')) : c;
+}
+template<typename Iter>
+static inline bool DoLowerCaseEqualsASCII(Iter a_begin,
+                                          Iter a_end,
+                                          const char* b) {
+  for (Iter it = a_begin; it != a_end; ++it, ++b) {
+    if (!*b || base::ToLowerASCII(*it) != *b)
+      return false;
+  }
+  return *b == 0;
+}
+
+// Front-ends for LowerCaseEqualsASCII.
+bool LowerCaseEqualsASCII(const std::string& a, const char* b) {
+  return DoLowerCaseEqualsASCII(a.begin(), a.end(), b);
+}
+
+#define DCHECK(x) do {} while (false)
+
+// Hack to convert any char-like type to its unsigned counterpart.
+// For example, it will convert char, signed char and unsigned char to unsigned
+// char.
+template<typename T>
+struct ToUnsigned {
+  typedef T Unsigned;
+};
+
+template<>
+struct ToUnsigned<char> {
+  typedef unsigned char Unsigned;
+};
+template<>
+struct ToUnsigned<signed char> {
+  typedef unsigned char Unsigned;
+};
+template<>
+struct ToUnsigned<wchar_t> {
+#if defined(WCHAR_T_IS_UTF16)
+  typedef unsigned short Unsigned;
+#elif defined(WCHAR_T_IS_UTF32)
+  typedef uint32 Unsigned;
+#endif
+};
+template<>
+struct ToUnsigned<short> {
+  typedef unsigned short Unsigned;
+};
+
+template<class STR>
+static bool DoIsStringASCII(const STR& str) {
+  for (size_t i = 0; i < str.length(); i++) {
+    typename ToUnsigned<typename STR::value_type>::Unsigned c = str[i];
+    if (c > 0x7F)
+      return false;
+  }
+  return true;
+}
+
+bool IsStringASCII(const std::string& str) {
+  return DoIsStringASCII(str);
+}
 
 typedef FilePath::StringType StringType;
 
@@ -423,16 +490,6 @@ FilePath FilePath::InsertBeforeExtension(const StringType& suffix) const {
   return FilePath(ret);
 }
 
-FilePath FilePath::InsertBeforeExtensionASCII(const StringPiece& suffix)
-    const {
-  DCHECK(IsStringASCII(suffix));
-#if defined(OS_WIN)
-  return InsertBeforeExtension(ASCIIToUTF16(suffix.as_string()));
-#elif defined(OS_POSIX)
-  return InsertBeforeExtension(suffix.as_string());
-#endif
-}
-
 FilePath FilePath::AddExtension(const StringType& extension) const {
   if (IsEmptyOrSpecialCase(BaseName().value()))
     return FilePath();
@@ -525,15 +582,6 @@ FilePath FilePath::Append(const FilePath& component) const {
   return Append(component.value());
 }
 
-FilePath FilePath::AppendASCII(const StringPiece& component) const {
-  DCHECK(base::IsStringASCII(component));
-#if defined(OS_WIN)
-  return Append(ASCIIToUTF16(component.as_string()));
-#elif defined(OS_POSIX)
-  return Append(component.as_string());
-#endif
-}
-
 bool FilePath::IsAbsolute() const {
   return IsPathAbsolute(path_);
 }
@@ -587,102 +635,20 @@ bool FilePath::ReferencesParent() const {
 // See file_path.h for a discussion of the encoding of paths on POSIX
 // platforms.  These encoding conversion functions are not quite correct.
 
-string16 FilePath::LossyDisplayName() const {
-  return WideToUTF16(SysNativeMBToWide(path_));
-}
-
 std::string FilePath::MaybeAsASCII() const {
   if (base::IsStringASCII(path_))
     return path_;
   return std::string();
 }
 
-std::string FilePath::AsUTF8Unsafe() const {
-#if defined(OS_MACOSX) || defined(OS_CHROMEOS)
-  return value();
-#else
-  return WideToUTF8(SysNativeMBToWide(value()));
-#endif
-}
-
-string16 FilePath::AsUTF16Unsafe() const {
-#if defined(OS_MACOSX) || defined(OS_CHROMEOS)
-  return UTF8ToUTF16(value());
-#else
-  return WideToUTF16(SysNativeMBToWide(value()));
-#endif
-}
-
-// static
-FilePath FilePath::FromUTF8Unsafe(const std::string& utf8) {
-#if defined(OS_MACOSX) || defined(OS_CHROMEOS)
-  return FilePath(utf8);
-#else
-  return FilePath(SysWideToNativeMB(UTF8ToWide(utf8)));
-#endif
-}
-
-// static
-FilePath FilePath::FromUTF16Unsafe(const string16& utf16) {
-#if defined(OS_MACOSX) || defined(OS_CHROMEOS)
-  return FilePath(UTF16ToUTF8(utf16));
-#else
-  return FilePath(SysWideToNativeMB(UTF16ToWide(utf16)));
-#endif
-}
-
 #elif defined(OS_WIN)
-string16 FilePath::LossyDisplayName() const {
-  return path_;
-}
-
 std::string FilePath::MaybeAsASCII() const {
   if (base::IsStringASCII(path_))
     return UTF16ToASCII(path_);
   return std::string();
 }
 
-std::string FilePath::AsUTF8Unsafe() const {
-  return WideToUTF8(value());
-}
-
-string16 FilePath::AsUTF16Unsafe() const {
-  return value();
-}
-
-// static
-FilePath FilePath::FromUTF8Unsafe(const std::string& utf8) {
-  return FilePath(UTF8ToWide(utf8));
-}
-
-// static
-FilePath FilePath::FromUTF16Unsafe(const string16& utf16) {
-  return FilePath(utf16);
-}
 #endif
-
-void FilePath::WriteToPickle(Pickle* pickle) const {
-#if defined(OS_WIN)
-  pickle->WriteString16(path_);
-#else
-  pickle->WriteString(path_);
-#endif
-}
-
-bool FilePath::ReadFromPickle(PickleIterator* iter) {
-#if defined(OS_WIN)
-  if (!iter->ReadString16(&path_))
-    return false;
-#else
-  if (!iter->ReadString(&path_))
-    return false;
-#endif
-
-  if (path_.find(kStringTerminator) != StringType::npos)
-    return false;
-
-  return true;
-}
 
 #if defined(OS_WIN)
 // Windows specific implementation of file string comparisons
@@ -1321,7 +1287,8 @@ bool FilePath::IsContentUri() const {
 #endif
 
 }  // namespace base
+}  // namespace chromium
 
-void PrintTo(const base::FilePath& path, std::ostream* out) {
+void PrintTo(const chromium::base::FilePath& path, std::ostream* out) {
   *out << path.value();
 }

@@ -24,14 +24,20 @@
   },
   'targets': [
     {
-      'target_name': 'modp',
+      'target_name': 'chromium',
       'type': 'static_library',
+			'defines': [
+				'OS_POSIX',
+				'OS_LINUX',
+				'COMPILER_GCC',
+			],
       'sources': [
-        '<(src)/base/file_util.cc',
-        '<(src)/base/file_util_posix.cc',
-        '<(src)/base/files/file_path.cc',
-        '<(src)/base/file_util.h',
-        '<(inc)/base/files/file_path.h',
+				'<(inc)/base/file_path.h',
+				'<(src)/base/file_path.cc',
+				'<(src)/base/file_path_constants.cc',
+				'<(src)/base/file_util.cc',
+				'<(src)/base/file_util.h',
+				'<(src)/base/file_util_posix.cc',
       ],
       'include_dirs': [
         'include/chromium',

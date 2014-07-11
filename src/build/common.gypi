@@ -18,6 +18,12 @@
     '-Werror',
     '-std=c++0x',
   ],
+	'defines': [
+		# Three defines are needed for using third_party/chromium headers.
+		'OS_POSIX',
+		'OS_LINUX',
+		'COMPILER_GCC',
+	],
   'product_dir': '<(PRODUCT_DIR)/bin',
   'configurations': {
     'Release': {

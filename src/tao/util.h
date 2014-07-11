@@ -29,13 +29,10 @@
 #include <sstream>
 #include <string>
 
-/// These basic utilities from Keyczar are used extensively throughout the Tao
+/// These basic third-party headers are used extensively throughout the Tao
 /// implementation, so we include them here.
-/// TODO(kwalsh) Most of this is actually not original to Keyczar, but is
-/// instead borrowed from Chromium, protobufs, or elsewhere. Perhaps we should
-/// do
-/// likewise?
-#include <keyczar/base/file_util.h>
+#include <chromium/base/file_path.h>
+#include <chromium/base/file_util.h>
 
 #include "tao/tao.h"
 
@@ -48,9 +45,9 @@ class Message;
 }  // namespace google
 
 namespace tao {
-/// These basic utilities from Keyczar and the standard library are used
-/// extensively throughout the Tao implementation, so we import them into the
-/// tao namespace here.
+/// These third-party and standard library utilities are used extensively
+/// throughout the Tao implementation, so import them into the tao namespace
+/// here.
 /// @{
 
 /// A macro to disallow the copy constructor and operator= functions
@@ -68,11 +65,13 @@ using std::stringstream;
 using std::unique_ptr;
 // using std::make_unique;  // implemented below
 
-using keyczar::base::CreateDirectory;    // NOLINT
-using keyczar::base::Delete;             // NOLINT
-using keyczar::base::DirectoryExists;    // NOLINT
-using keyczar::base::PathExists;         // NOLINT
-using keyczar::base::WriteStringToFile;  // NOLINT
+using chromium::base::CreateDirectory;    // NOLINT
+using chromium::base::DeleteFile;         // NOLINT
+using chromium::base::DirectoryExists;    // NOLINT
+using chromium::base::FilePath;           // NOLINT
+using chromium::base::PathExists;         // NOLINT
+using chromium::base::ReadFileToString;   // NOLINT
+using chromium::base::WriteStringToFile;  // NOLINT
 
 /// @}
 
@@ -204,16 +203,6 @@ bool Sha256(const string &s, string *hash);
 bool Sha1FileHash(const string &path, string *hash);
 bool Sha256FileHash(const string &path, string *hash);
 /// @}
-
-/// Read contents of a file and store (not append) in string. In contrast,
-/// keyczar::base::ReadFileToString() appends the contents to the string.
-/// @param path The path to the file, can be string or FilePath.
-/// @param[out] contents The contents of the file.
-template <class T>
-bool ReadFileToString(const T &path, string *contents) {
-  contents->clear();
-  return keyczar::base::ReadFileToString(path, contents);
-}
 
 /// Register some well-known TaoChannels with the registry. The list of
 /// registered TaoChannels is:

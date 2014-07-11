@@ -166,6 +166,17 @@ bool ReadFileToString(const FilePath& path, std::string* contents) {
   return ReadFileToString(path, contents, std::numeric_limits<size_t>::max());
 }
 
+bool WriteStringToFile(const std::string& path, const std::string& contents) {
+  return WriteStringToFile(FilePath(path), contents);
+}
+
+bool WriteStringToFile(const FilePath& path, const std::string& contents) {
+  int contents_size = contents.size();
+  if (WriteFile(path, contents.data(), contents_size) != contents_size)
+    return false;
+  return true;
+}
+
 FILE* CreateAndOpenTemporaryFile(FilePath* path) {
   FilePath directory;
   if (!GetTempDir(&directory))

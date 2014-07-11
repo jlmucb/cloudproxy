@@ -40,6 +40,7 @@
 				'<(src)/base/file_util_posix.cc',
       ],
       'include_dirs': [
+        'include',
         'include/chromium',
       ],
       'direct_dependent_settings': {

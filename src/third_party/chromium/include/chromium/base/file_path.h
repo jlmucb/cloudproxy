@@ -177,7 +177,9 @@ class FilePath {
 
   FilePath();
   FilePath(const FilePath& that);
-  explicit FilePath(const StringType& path);
+  // Allow implicit conversion from strings to FilePath, since FilePath is a
+  // light-weight mostly-transparent wrapper around std::string.
+  /* explicit */ FilePath(const StringType& path);  // NOLINT
   ~FilePath();
   FilePath& operator=(const FilePath& that);
 

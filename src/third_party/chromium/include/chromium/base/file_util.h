@@ -28,7 +28,7 @@
 //#include "base/base_export.h"
 //#include "base/basictypes.h"
 //#include "base/files/file.h"
-#include "base/file_path.h"
+#include "chromium/base/file_path.h"
 //#include "base/strings/string16.h"
 
 #if defined(OS_POSIX)
@@ -149,6 +149,14 @@ bool ReadFileToString(const FilePath& path, std::string* contents);
 bool ReadFileToString(const FilePath& path,
                                   std::string* contents,
                                   size_t max_size);
+
+// Writes |contents| to the file at |path| and returns true on success and false
+// on error,  overwriting any data that was previously there.  
+bool WriteStringToFile(const std::string& path, const std::string& contents);
+
+// Writes |contents| to the file at |path| and returns true on success and false
+// on error,  overwriting any data that was previously there.  
+bool WriteStringToFile(const FilePath& path, const std::string& contents);
 
 #if defined(OS_POSIX)
 

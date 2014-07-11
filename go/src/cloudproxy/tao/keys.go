@@ -44,11 +44,13 @@ type Signer struct {
 	ec *ecdsa.PrivateKey
 }
 
-// A Verifier is used to verify signatures
+// A Verifier is used to verify signatures.
+// TODO(tmroeder): implement the Verifier over basic Go crypto.
 type Verifier struct {
 	ec *ecdsa.PublicKey
 }
 
+// TODO(tmroeder): implement the Crypter over basic Go crypto.
 type Crypter struct {
 
 }
@@ -141,7 +143,7 @@ func (s *Signer) CreateSelfSignedX509(detailsText string) ([]byte, error) {
 	template.IsCA = true
 	template.Issuer = template.Subject
 
-	return x509.CreateCertificate(rand.Reader, template, template, s.ec.PublicKey, s.ec)
+	return x509.CreateCertificate(rand.Reader, template, template, &s.ec.PublicKey, s.ec)
 }
 
 // CreateSignedX509 creates a signed X.509 certificate for some other subject's

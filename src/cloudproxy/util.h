@@ -32,7 +32,6 @@
 /// These basic utilities from Keyczar and OpenSSL are used extensively
 /// throughout the CloudProxy implementation, so we include them here.
 #include <keyczar/base/base64w.h>
-#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <keyczar/base/file_util.h>
 #include <keyczar/base/values.h>  // for ScopedSafeString
 // #include <keyczar/base/stl_util-inl.h>

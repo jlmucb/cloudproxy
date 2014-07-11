@@ -27,9 +27,8 @@
 #include <set>
 #include <string>
 
-#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
-
 #include "cloudproxy/cloudproxy.pb.h"
+#include "tao/util.h"
 
 using std::map;
 using std::set;

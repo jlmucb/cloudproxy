@@ -35,7 +35,6 @@
 /// instead borrowed from Chromium, protobufs, or elsewhere. Perhaps we should
 /// do
 /// likewise?
-#include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <keyczar/base/file_util.h>
 
 #include "tao/tao.h"
@@ -53,6 +52,13 @@ namespace tao {
 /// extensively throughout the Tao implementation, so we import them into the
 /// tao namespace here.
 /// @{
+
+/// A macro to disallow the copy constructor and operator= functions
+/// This should be used in the private: declarations for a class.
+/// Taken from Google C++ Style Guide.
+#define DISALLOW_COPY_AND_ASSIGN(TypeName) \
+  TypeName(const TypeName &);              \
+  void operator=(const TypeName &)
 
 using std::list;
 using std::set;

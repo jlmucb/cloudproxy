@@ -21,9 +21,6 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <keyczar/base/base64w.h>
-#include <keyczar/base/file_util.h>
-#include <keyczar/keyczar.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -39,13 +36,12 @@
 
 using std::string;
 
-using keyczar::base::Base64WDecode;
-using keyczar::base::ReadFileToString;
-
+using tao::Base64WDecode;
 using tao::InitializeApp;
 using tao::LinuxTao;
 using tao::PipeTaoChannel;
 using tao::ProcessFactory;
+using tao::ReadFileToString;
 using tao::TaoChildChannel;
 using tao::TaoChildChannelRegistry;
 using tao::TaoDomain;

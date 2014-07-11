@@ -18,19 +18,16 @@
 // limitations under the License.
 #include "tao/util.h"
 
+#include <chromium/base/file_util.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <keyczar/base/file_util.h>
-#include <openssl/pem.h>
-#include <openssl/ssl.h>
-#include <openssl/x509.h>
 
 #include "cloudproxy/cloud_auth.h"
 #include "cloudproxy/cloudproxy.pb.h"
 #include "cloudproxy/util.h"
 #include "tao/tao_domain.h"
 
-using keyczar::base::WriteStringToFile;
+using chromium::base::WriteStringToFile;
 
 using cloudproxy::ACL;
 using cloudproxy::CloudAuth;

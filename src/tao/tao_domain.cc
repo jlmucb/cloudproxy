@@ -22,6 +22,7 @@
 #include <string>
 
 #include <glog/logging.h>
+#include <google/protobuf/text_format.h>
 
 #include "tao/acl_guard.h"
 #include "tao/attestation.h"
@@ -29,6 +30,8 @@
 #include "tao/util.h"
 
 namespace tao {
+
+using google::protobuf::TextFormat;
 
 TaoDomain::TaoDomain(const string &path, TaoDomainConfig *config)
     : path_(path), config_(config) {
@@ -38,10 +41,11 @@ TaoDomain::TaoDomain(const string &path, TaoDomainConfig *config)
 
 TaoDomain::~TaoDomain() {}
 
-TaoDomain *TaoDomain::CreateImpl(const string &config_text, const string &path) {
+TaoDomain *TaoDomain::CreateImpl(const string &config_text,
+                                 const string &path) {
   // Parse the config string.
   unique_ptr<TaoDomainConfig> config(new TaoDomainConfig);
-  if (!TextFormat::ParseFromString(confix_text, config)) {
+  if (!TextFormat::ParseFromString(config_text, config.get())) {
     LOG(ERROR) << path << ": error parsing Tao Domain configuration";
     return nullptr;
   }
@@ -79,7 +83,7 @@ TaoDomain *TaoDomain::Create(const string &initial_config, const string &path,
   }
 
   string x509 = admin->keys_->Signer()->CreateSelfSignedX509(
-      admin->GetPolicyX509Details());
+      admin->GetConfig()->policy_x509_details());
   if (x509 == "" || !admin->keys_->SetX509(x509)) {
     LOG(ERROR) << "Could not create self-signed x509 for policy key";
     return nullptr;
@@ -172,6 +176,7 @@ int TaoDomain::GetFreshX509CertificateSerialNumber() {
   int ver = config_->policy_x509_last_serial();
   ver++;
   config_->set_policy_x509_last_serial(ver);
+  string config_text;
   if (!TextFormat::PrintToString(*config_, &config_text) ||
       !WriteStringToFile(path_, config_text)) {
     LOG(ERROR) << "Could not save x509 version number";

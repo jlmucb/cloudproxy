@@ -110,6 +110,7 @@
 				'tao.h', # unit test: tao_unittests.cc, linux_host_unittests.cc
 				'tao_domain.cc', # unit test: tao_domain_unittests.cc
 				'tao_domain.h', # unit test: tao_domain_unittests.cc
+				'tao_domain.proto', # unit test: tao_domain_unittests.cc
 				'tao_guard.cc', # unit test: tao_domain_unittests.cc
 				'tao_guard.h', # unit test: tao_domain_unittests.cc
 				'tao_host.h', # unit test: linux_host_unittests.cc
@@ -146,7 +147,6 @@
 				'../third_party/datalog/datalog.gyp:datalog',
 				'../third_party/gflags/gflags.gyp:gflags',
 				'../third_party/google-glog/glog.gyp:glog',
-				'../third_party/keyczar/keyczar.gyp:keyczar',
 				'../third_party/protobuf/protobuf.gyp:protobuf',
 				'../third_party/modp/modp.gyp:modp',
 				'../third_party/chromium/chromium.gyp:chromium',
@@ -166,7 +166,6 @@
 			'export_dependent_settings' : [
 				'../third_party/gflags/gflags.gyp:gflags',
 				'../third_party/google-glog/glog.gyp:glog',
-				'../third_party/keyczar/keyczar.gyp:keyczar',
 				'../third_party/protobuf/protobuf.gyp:protobuf',
 				'../third_party/modp/modp.gyp:modp',
 				'../third_party/chromium/chromium.gyp:chromium',

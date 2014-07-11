@@ -78,9 +78,10 @@ bool ACLGuard::ParseConfig() {
     LOG(ERROR) << "Configuration for ACL Guard missing";
     return false;
   }
-  const ACLGuardConfig &config = GetConfig->GetExtension(ACLGuardConfig::acl_guard);
+  const ACLGuardConfig &config =
+      GetConfig()->GetExtension(ACLGuardConfig::acl_guard);
   acl_path_ = config.signed_acls_path();
-  
+
   // Load the signed ACL set file.
   acl_mod_time_ = 0;  // force refresh
   return ReloadACLsIfModified();
@@ -162,8 +163,9 @@ bool ACLGuard::SaveConfig() const {
     LOG(ERROR) << "Configuration for ACL Guard missing";
     return false;
   }
-  const ACLGuardConfig &config = GetConfig->GetExtension(ACLGuardConfig::acl_guard);
-  path = config.signed_acls_path();
+  const ACLGuardConfig &config =
+      GetConfig()->GetExtension(ACLGuardConfig::acl_guard);
+  string path = config.signed_acls_path();
   if (!WriteStringToFile(path, serialized)) {
     LOG(ERROR) << "Can't write signed ACL set to " << path;
     return false;

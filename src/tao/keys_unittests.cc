@@ -103,33 +103,6 @@ TEST_F(TaoKeysTest, EncryptDecryptDataTest) {
   EXPECT_EQ(message, decrypted);
 }
 
-/*
-TEST_F(TaoKeysTest, SerializeKeyTest) {
-  string s;
-  ASSERT_TRUE(keys_->SerializePublicKey(&s))  // serializes Signer
-      << "Could not serialize the public key";
-
-  std::unique_ptr<keyczar::Verifier> public_key;
-  ASSERT_TRUE(DeserializePublicKey(s, &public_key))
-      << "Could not deserialize the public key";
-
-  // Make sure this is really the public policy key by signing something with
-  // the original key and verifying it with the deserialized version.
-  string message("Test message");
-  string context("Test context");
-  string signature;
-  ASSERT_TRUE(keys_->Signer()->Sign(message, context, &signature))
-      << "Could not sign the test message";
-  EXPECT_TRUE(tao::VerifySignature(*public_key, message, context, signature))
-      << "Deserialized key could not verify signature";
-
-  // Serialize again to check serialization of Verifier (not Signer)
-  string s2;
-  ASSERT_TRUE(SerializePublicKey(*public_key, &s2));
-  ASSERT_EQ(s, s2);
-}
-*/
-
 TEST_F(TaoKeysTest, WrongContextTest) {
   string message("Test message");
   string context("Test context");

@@ -459,7 +459,8 @@ bool DatalogGuard::ParseConfig() {
     LOG(ERROR) << "Configuration for Datalog Guard missing";
     return false;
   }
-  const DatalogGuardConfig &config = GetConfig->GetExtension(DatalogGuardConfig::datalog_guard);
+  const DatalogGuardConfig &config =
+      GetConfig()->GetExtension(DatalogGuardConfig::datalog_guard);
   rules_path_ = config.signed_rules_path();
   rules_mod_time_ = 0;  // force refresh
   return ReloadRulesIfModified();
@@ -549,8 +550,9 @@ bool DatalogGuard::SaveConfig() const {
     LOG(ERROR) << "Configuration for Datalog Guard missing";
     return false;
   }
-  const DatalogGuardConfig &config = GetConfig->GetExtension(DatalogGuardConfig::datalog_guard);
-  path = config.signed_rules_path();
+  const DatalogGuardConfig &config =
+      GetConfig()->GetExtension(DatalogGuardConfig::datalog_guard);
+  string path = config.signed_rules_path();
   if (!WriteStringToFile(path, serialized)) {
     LOG(ERROR) << "Can't write signed policy rules to " << path;
     return false;

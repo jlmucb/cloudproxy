@@ -108,13 +108,25 @@ class Signer {
   /// @param details Text-format encoded X509Details for the subject.
   string CreateSelfSignedX509(const string &details_text) const;
 
+  /// Create a self-signed X509 certificate for the corresponding public key.
+  /// @param details The x509 details for the subject.
+  string CreateSelfSignedX509(const X509Details &details) const;
+
+  /// Create a signed X509 certificate for some other subject's key.
+  /// @param cert_serial The serial number to use for the new certificate.
+  /// @param subject_key The subject's key.
+  /// @param subject_details Text-format x509Details for the subject.
+  string CreateSignedX509(const string &ca_pem_cert, int cert_serial,
+                          const Verifier &subject_key,
+                          const string &subject_details) const;
+
   /// Create a signed X509 certificate for some other subject's key.
   /// @param cert_serial The serial number to use for the new certificate.
   /// @param subject_key The subject's key.
   /// @param subject_details The x509 details for the subject.
   string CreateSignedX509(const string &ca_pem_cert, int cert_serial,
                           const Verifier &subject_key,
-                          const string &subject_details) const;
+                          const X509Details &subject_details) const;
 
   /// Encode signing key as CryptoKey protobuf message.
   /// @param[out] m A protobuf in which to encode the key.

@@ -19,6 +19,8 @@
 
 package tao;
 
+import "tao_domain.proto";
+
 // A set of rules.
 message DatalogRules { repeated string rules = 1; }
 

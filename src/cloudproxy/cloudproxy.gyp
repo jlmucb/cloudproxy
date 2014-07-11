@@ -58,7 +58,6 @@
 				'tls_message_channel.h',
 				'util.cc',
 				'util.h',
-				#				'cloudproxy.proto',
 				#				'cloud_auth.cc',
 				#				'cloud_auth.h',
 				#				'cloud_user_manager.cc',
@@ -85,14 +84,12 @@
 				'../tao/tao.gyp:tao',
 				'../third_party/gflags/gflags.gyp:gflags',
 				'../third_party/google-glog/glog.gyp:glog',
-				'../third_party/keyczar/keyczar.gyp:keyczar',
 				'../third_party/protobuf/protobuf.gyp:protobuf',
 			],
 			'export_dependent_settings' : [
 				'../tao/tao.gyp:tao',
 				'../third_party/gflags/gflags.gyp:gflags',
 				'../third_party/google-glog/glog.gyp:glog',
-				'../third_party/keyczar/keyczar.gyp:keyczar',
 				'../third_party/protobuf/protobuf.gyp:protobuf',
 			],
 			'includes' : [

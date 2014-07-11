@@ -33,7 +33,6 @@ namespace tao {
 /// policy key.
 class ACLGuard : public TaoDomain {
  public:
-
   /// Example config strings useful for constructing domains for testing.
   constexpr static auto ExampleGuardDomain =
       "{\n"

@@ -19,7 +19,7 @@
 
 package tao;
 
-import "tao/keys.proto"
+import "keys.proto";
 
 // TODO(kwalsh) Move TaoCAConfig elsewhere?
 message TaoCAConfig {

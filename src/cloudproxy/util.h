@@ -28,33 +28,20 @@
 #include <set>
 #include <sstream>
 #include <string>
-
-/// These basic utilities from Keyczar and OpenSSL are used extensively
-/// throughout the CloudProxy implementation, so we include them here.
-#include <keyczar/base/base64w.h>
-#include <keyczar/base/file_util.h>
-#include <keyczar/base/values.h>  // for ScopedSafeString
-// #include <keyczar/base/stl_util-inl.h>
-#include <keyczar/openssl/util.h>
-#include <openssl/crypto.h>
-#include <openssl/evp.h>
 #include <openssl/ssl.h>
 
+/// Tao provides utilities that are used extensively throughout the CloudProxy
+/// implementation, so we include it here.
 #include "tao/util.h"
-
-namespace keyczar {
-class Signer;
-class Verifier;
-}
 
 namespace tao {
 class Signer;
 }
 
 namespace cloudproxy {
-/// These basic utilities from Keyczar and the standard library are used
-/// extensively throughout the CloudProxy implementation, so we import them into
-/// the cloudproxy namespace here.
+/// These Tao, third-party, and standard library utilities are used extensively
+/// throughout the CloudProxy implementation, so import them into the cloudproxy
+/// namespace here.
 /// @{
 
 using std::list;
@@ -64,19 +51,19 @@ using std::stringstream;
 using std::unique_ptr;
 // using std::make_unique;  // see tao::make_unique()
 
-// using keyczar::base::FilePath;  // Why isn't this in keyczar::base ?
-// using keyczar::base::ReadFileToString; // Define our own version below.
-using keyczar::base::Base64WDecode;      // NOLINT
-using keyczar::base::Base64WEncode;      // NOLINT
-using keyczar::base::CreateDirectory;    // NOLINT
-using keyczar::base::Delete;             // NOLINT
-using keyczar::base::DirectoryExists;    // NOLINT
-using keyczar::base::PathExists;         // NOLINT
-using keyczar::base::WriteStringToFile;  // NOLINT
+using chromium::base::CreateDirectory;    // NOLINT
+using chromium::base::FilePath;           // NOLINT
+using chromium::base::ReadFileToString;   // NOLINT
+using chromium::base::DeleteFile;         // NOLINT
+using chromium::base::DirectoryExists;    // NOLINT
+using chromium::base::PathExists;         // NOLINT
+using chromium::base::WriteStringToFile;  // NOLINT
 
-using tao::unique_free_ptr;    // NOLINT
-using tao::make_unique;        // NOLINT
-using tao::ScopedSafeString;   // NOLINT
+using tao::Base64WDecode;     // NOLINT
+using tao::Base64WEncode;     // NOLINT
+using tao::ScopedSafeString;  // NOLINT
+using tao::make_unique;       // NOLINT
+using tao::unique_free_ptr;   // NOLINT
 
 /// @}
 

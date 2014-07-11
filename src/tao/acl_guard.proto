@@ -19,7 +19,7 @@
 
 package tao;
 
-import "tao/tao_domain.proto"
+import "tao_domain.proto";
 
 // A set of ACL entries.
 message ACLSet { repeated string entries = 1; }

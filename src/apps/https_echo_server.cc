@@ -21,7 +21,6 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <keyczar/base/base64w.h>
 
 #include "cloudproxy/https_echo_server.h"
 #include "cloudproxy/util.h"
@@ -32,8 +31,7 @@
 
 using std::string;
 
-using keyczar::base::Base64WDecode;
-
+using tao::Base64WDecode;
 using tao::InitializeApp;
 using tao::TaoChildChannel;
 using tao::TaoChildChannelRegistry;

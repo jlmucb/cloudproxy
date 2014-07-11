@@ -258,9 +258,9 @@ static bool EncodeECDSA_SHA_SigningKey(const EC_KEY *ec_key,
     return false;
   }
   ScopedBN_CTX bn_ctx(BN_CTX_new());
-  size_t point_len =
-      EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
-                         POINT_CONVERSION_UNCOMPRESSED, nullptr, 0, bn_ctx.get());
+  size_t point_len = EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
+                                        POINT_CONVERSION_UNCOMPRESSED, nullptr,
+                                        0, bn_ctx.get());
   if (point_len == 0) {
     OpenSSLSuccess();
     LOG(ERROR) << "Could not serialize EC public key";
@@ -332,9 +332,9 @@ static bool EncodeECDSA_SHA_VerifyingKey(const EC_KEY *ec_key,
     return false;
   }
   ScopedBN_CTX bn_ctx(BN_CTX_new());
-  size_t point_len =
-      EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
-                         POINT_CONVERSION_UNCOMPRESSED, nullptr, 0, bn_ctx.get());
+  size_t point_len = EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
+                                        POINT_CONVERSION_UNCOMPRESSED, nullptr,
+                                        0, bn_ctx.get());
   if (point_len == 0) {
     OpenSSLSuccess();
     LOG(ERROR) << "Can't serialize EC public half";
@@ -343,8 +343,8 @@ static bool EncodeECDSA_SHA_VerifyingKey(const EC_KEY *ec_key,
   string *ec_pub = m->mutable_ec_public();
   ec_pub->resize(point_len);
   EC_POINT_point2oct(EC_KEY_get0_group(ec_key), ec_point,
-                     POINT_CONVERSION_UNCOMPRESSED, str2uchar(ec_pub), point_len,
-                     bn_ctx.get());
+                     POINT_CONVERSION_UNCOMPRESSED, str2uchar(ec_pub),
+                     point_len, bn_ctx.get());
   return true;
 }
 
@@ -560,12 +560,19 @@ Signer *Signer::DeserializeWithPassword(const string &serialized,
 
 string Signer::CreateSelfSignedX509(const string &details_text) const {
   X509Details details;
+  if (!TextFormat::ParseFromString(details_text, &details)) {
+    LOG(ERROR) << "Could not parse X.509 details";
+    return "";
+  }
+  return CreateSelfSignedX509(details);
+}
+
+string Signer::CreateSelfSignedX509(const X509Details &details) const {
   ScopedX509 x509(X509_new());
   int version = 2;  // self sign uses version=2 (which is x509v3)
   int serial = 1;   // self sign can always use serial 1
   ScopedEvpPkey evp_pkey(GetEvpPkey());
   if (evp_pkey.get() == nullptr ||
-      !TextFormat::ParseFromString(details_text, &details) ||
       !PrepareX509(x509.get(), version, serial, evp_pkey.get()) ||
       !SetX509NameDetails(X509_get_subject_name(x509.get()), details) ||
       !SetX509NameDetails(X509_get_issuer_name(x509.get()), details) ||
@@ -586,6 +593,16 @@ string Signer::CreateSignedX509(const string &ca_pem_cert, int cert_serial,
                                 const Verifier &subject_key,
                                 const string &subject_details) const {
   X509Details details;
+  if (!TextFormat::ParseFromString(subject_details, &details)) {
+    LOG(ERROR) << "Could not parse X.509 details";
+    return "";
+  }
+  return CreateSignedX509(ca_pem_cert, cert_serial, subject_key, details);
+}
+
+string Signer::CreateSignedX509(const string &ca_pem_cert, int cert_serial,
+                                const Verifier &subject_key,
+                                const X509Details &subject_details) const {
   ScopedEvpPkey ca_evp_pkey(GetEvpPkey());
   ScopedEvpPkey subject_evp_pkey(subject_key.GetEvpPkey());
   ScopedX509 ca_x509(DeserializeX509(ca_pem_cert));
@@ -597,9 +614,8 @@ string Signer::CreateSignedX509(const string &ca_pem_cert, int cert_serial,
   int version = 0;  // ca-sign uses version=0 (which is x509v1)
   if (ca_evp_pkey.get() == nullptr || subject_evp_pkey.get() == nullptr ||
       ca_x509.get() == nullptr || subject == nullptr || issuer == nullptr ||
-      !TextFormat::ParseFromString(subject_details, &details) ||
       !PrepareX509(x509.get(), version, cert_serial, subject_evp_pkey.get()) ||
-      !SetX509NameDetails(subject, details) ||
+      !SetX509NameDetails(subject, subject_details) ||
       !X509_set_issuer_name(x509.get(), issuer) ||
       !X509_sign(x509.get(), ca_evp_pkey.get(), EVP_sha1()) ||
       !OpenSSLSuccess()) {

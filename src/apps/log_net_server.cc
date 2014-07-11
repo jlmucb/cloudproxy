@@ -35,6 +35,7 @@ using std::map;
 using std::string;
 
 using tao::FDMessageChannel;
+using tao::FilePath;
 using tao::GetSelfPipeSignalFd;
 using tao::LogMessage;
 using tao::OpenTCPSocket;

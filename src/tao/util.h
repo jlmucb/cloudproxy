@@ -21,7 +21,7 @@
 
 #include <sys/socket.h>  // for socklen_t
 
-/// These basic utilities from the standard library are used extensively
+/// These utilities from the standard library are used extensively
 /// throughout the Tao implementation, so we include them here.
 #include <list>
 #include <memory>

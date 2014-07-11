@@ -32,6 +32,7 @@ using std::string;
 
 using tao::CreateDirectory;
 using tao::DirectoryExists;
+using tao::FilePath;
 using tao::Principal;
 using tao::ReadFileToString;
 using tao::TPMTao;

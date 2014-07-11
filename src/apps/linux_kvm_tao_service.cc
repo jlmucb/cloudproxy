@@ -22,7 +22,6 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <keyczar/base/file_util.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -34,12 +33,11 @@
 #include "tao/tpm_tao_child_channel.h"
 #include "tao/util.h"
 
-using keyczar::base::ReadFileToString;
-
 using tao::InitializeApp;
 using tao::KvmUnixTaoChannel;
 using tao::KvmVmFactory;
 using tao::LinuxTao;
+using tao::ReadFileToString;
 using tao::TPMTaoChildChannel;
 using tao::TaoDomain;
 

@@ -38,7 +38,6 @@
 				'../tao/tao.gyp:tao',
 				'../third_party/gflags/gflags.gyp:gflags',
 				'../third_party/google-glog/glog.gyp:glog',
-				'../third_party/keyczar/keyczar.gyp:keyczar',
 			],
 		},
 		{
@@ -57,7 +56,6 @@
 				'../tao/tao.gyp:tao',
 				'../third_party/gflags/gflags.gyp:gflags',
 				'../third_party/google-glog/glog.gyp:glog',
-				'../third_party/keyczar/keyczar.gyp:keyczar',
 			],
 		},
 		{
@@ -76,7 +74,6 @@
 				'../tao/tao.gyp:tao',
 				'../third_party/gflags/gflags.gyp:gflags',
 				'../third_party/google-glog/glog.gyp:glog',
-				'../third_party/keyczar/keyczar.gyp:keyczar'
 			],
 		},
 #		{
@@ -89,7 +86,6 @@
 #				'../tao/tao.gyp:tao',
 #				'../third_party/gflags/gflags.gyp:gflags',
 #				'../third_party/google-glog/glog.gyp:glog',
-#				'../third_party/keyczar/keyczar.gyp:keyczar'
 #			],
 #			'libraries' : [
 #				'-lcrypto',
@@ -106,7 +102,6 @@
 #				'../tao/tao.gyp:tao',
 #				'../third_party/gflags/gflags.gyp:gflags',
 #				'../third_party/google-glog/glog.gyp:glog',
-#				'../third_party/keyczar/keyczar.gyp:keyczar'
 #			],
 #			'libraries' : [
 #				'-lcrypto',
@@ -123,7 +118,6 @@
 #				'../tao/tao.gyp:tao',
 #				'../third_party/gflags/gflags.gyp:gflags',
 #				'../third_party/google-glog/glog.gyp:glog',
-#				'../third_party/keyczar/keyczar.gyp:keyczar'
 #			],
 #			'libraries' : [
 #				'-lcrypto',
@@ -140,7 +134,6 @@
 				'../tao/tao.gyp:tao',
 				'../third_party/gflags/gflags.gyp:gflags',
 				'../third_party/google-glog/glog.gyp:glog',
-				'../third_party/keyczar/keyczar.gyp:keyczar'
 			],
 			#			'libraries' : [
 			#				'-lcrypto',
@@ -267,7 +260,6 @@
 				#'../cloudproxy/cloudproxy.gyp:cloudproxy',
 				'../third_party/gflags/gflags.gyp:gflags',
 				'../third_party/google-glog/glog.gyp:glog',
-				'../third_party/keyczar/keyczar.gyp:keyczar'
 			],
 		},
 	],

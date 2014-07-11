@@ -87,8 +87,7 @@ static bool PrincipalNameToAIKRsa(const string &name, ScopedRsa *rsa_key) {
     LOG(ERROR) << "Could not decode AIK key";
     return false;
   }
-  char *key_data_ptr = const_cast<char *>(key_data.data());
-  ScopedBio mem(BIO_new_mem_buf(key_data_ptr, key_data.size()));
+  ScopedBio mem(BIO_new_mem_buf(str2char(&key_data), key_data.size()));
   RSA *rsa = nullptr;
   if (!PEM_read_bio_RSA_PUBKEY(mem.get(), &rsa, nullptr /* password callback */,
                                nullptr /* callback arg */)) {
@@ -140,8 +139,8 @@ static bool serializePCRs(const list<int> &pcr_indexes,
   buf_len += sizeof(UINT32);  // values len
   buf_len += n * TPMTao::PcrLen;
 
-  unique_ptr<BYTE[]> scoped_pcr_buf(new BYTE[buf_len]);
-  BYTE *pcr_buf = scoped_pcr_buf.get();
+  serialized_pcrs->resize(buf_len);
+  BYTE *pcr_buf = str2uchar(serialized_pcrs);
 
   // Set mask len.
   *(UINT16 *)pcr_buf = htons(pcr_mask_len);
@@ -163,14 +162,13 @@ static bool serializePCRs(const list<int> &pcr_indexes,
     if (!bytesFromHex(pcr_hex, &pcr_data) ||
         pcr_data.size() != TPMTao::PcrLen) {
       LOG(ERROR) << "Bad PCR encoded in TPM quote";
+      serialized_pcrs->clear();
       return false;
     }
     memcpy(pcr_buf, pcr_data.data(), TPMTao::PcrLen);
     pcr_buf += TPMTao::PcrLen;
   }
 
-  const char *pcr_bytes = reinterpret_cast<const char *>(scoped_pcr_buf.get());
-  serialized_pcrs->assign(string(pcr_bytes, buf_len));
   return true;
 }
 
@@ -243,9 +241,8 @@ bool TPMTao::Init() {
 
   // Get the AIK and encode it as a principal name.
   if (!aik_blob_.empty()) {
-    BYTE *blob = reinterpret_cast<BYTE *>(const_cast<char *>(aik_blob_.data()));
-    result = Tspi_Context_LoadKeyByBlob(tss_ctx_, srk_, aik_blob_.size(), blob,
-                                        &aik_);
+    result = Tspi_Context_LoadKeyByBlob(tss_ctx_, srk_, aik_blob_.size(),
+                                        str2uchar(&aik_blob_), &aik_);
     if (result != TSS_SUCCESS) {
       LOG(ERROR) << "Could not load the AIK";
       return false;
@@ -418,8 +415,11 @@ bool TPMTao::VerifySignature(const string &signer, const string &stmt,
   }
 
   // Hash the statement for the external data part of the quote.
-  uint8 stmt_hash[20];
-  SHA1(reinterpret_cast<const uint8 *>(stmt.data()), stmt.size(), stmt_hash);
+  string stmt_hash;
+  if (!Sha1(stmt, &stmt_hash)) {
+    LOG(ERROR) << "Could not hash statement";
+    return false;
+  }
 
   // Try with defaul mask size, then try one byte larger.
   for (int padding = 0; padding < 2; padding++) {
@@ -431,26 +431,30 @@ bool TPMTao::VerifySignature(const string &signer, const string &stmt,
     }
 
     // Hash the pcrbuf for the internal data part of the quote.
-    uint8 pcr_hash[20];
-    SHA1(reinterpret_cast<const unsigned char *>(serialized_pcrs.data()),
-         serialized_pcrs.size(), pcr_hash);
+    string pcr_hash;
+    if (!Sha1(serialized_pcrs, &pcr_hash)) {
+      LOG(ERROR) << "Could not hash pcrs";
+      return false;
+    }
 
     // TPM Quote Info format is:
     // BYTES[8]: header
     // BYTES[20]: hash of serialized PCRs
     // BYTES[20]: hash of statement
 
-    uint8 qinfo[8 + 20 + 20];
+    char qinfo[8 + 20 + 20];
     memcpy(qinfo, "\x1\x1\0\0QUOT", 8);  // 1 1 0 0 Q U O T
-    memcpy(qinfo + 8, pcr_hash, 20);
-    memcpy(qinfo + 8 + 20, stmt_hash, 20);
+    memcpy(qinfo + 8, str2uchar(pcr_hash), 20);
+    memcpy(qinfo + 8 + 20, str2uchar(stmt_hash), 20);
 
-    uint8 quote_hash[20];
-    SHA1(qinfo, sizeof(qinfo), quote_hash);
+    string quote_hash;
+    if (!Sha1(string(qinfo, sizeof(qinfo)), &quote_hash)) {
+      LOG(ERROR) << "Could not hash quote info";
+      return false;
+    }
 
-    const uint8 *sig_bytes = reinterpret_cast<const uint8 *>(sig.data());
-    if (1 == RSA_verify(NID_sha1, quote_hash, 20, sig_bytes, sig.size(),
-                        rsa_key.get())) {
+    if (1 == RSA_verify(NID_sha1, str2uchar(quote_hash), 20, str2uchar(sig),
+                        sig.size(), rsa_key.get())) {
       return true;
     }
     LOG(INFO) << "RSA signature failed with padding size " << padding;
@@ -461,7 +465,7 @@ bool TPMTao::VerifySignature(const string &signer, const string &stmt,
 
 bool TPMTao::GetRandomBytes(size_t size, string *bytes) {
   TSS_RESULT result;
-  BYTE *random;
+  BYTE *random = nullptr;
   result = Tspi_TPM_GetRandom(tpm_, size, &random);
   if (result != TSS_SUCCESS) {
     failure_msg_ = "Could not get random bytes from the TPM";
@@ -496,8 +500,10 @@ bool TPMTao::Seal(const string &data, const string &policy, string *sealed) {
     return false;
   }
 
-  BYTE *bytes = reinterpret_cast<BYTE *>(const_cast<char *>(data.data()));
-  result = Tspi_Data_Seal(enc_data, srk_, data.size(), bytes, tss_pcr_values_);
+  // const_cast is safe because Tspi_Data_Seal does not modify data.
+  unsigned char *data_ptr = const_cast<unsigned char *>(str2uchar(data));
+  result =
+      Tspi_Data_Seal(enc_data, srk_, data.size(), data_ptr, tss_pcr_values_);
   if (result != TSS_SUCCESS) {
     failure_msg_ = "Could not seal the test data";
     LOG(ERROR) << failure_msg_;
@@ -505,8 +511,8 @@ bool TPMTao::Seal(const string &data, const string &policy, string *sealed) {
   }
 
   // Extract the sealed data.
-  BYTE *sealed_data;
-  UINT32 sealed_data_len;
+  BYTE *sealed_data = nullptr;
+  UINT32 sealed_data_len = 0;
   result = Tspi_GetAttribData(enc_data, TSS_TSPATTRIB_ENCDATA_BLOB,
                               TSS_TSPATTRIB_ENCDATABLOB_BLOB, &sealed_data_len,
                               &sealed_data);
@@ -535,10 +541,11 @@ bool TPMTao::Unseal(const string &sealed, string *data, string *policy) {
     return false;
   }
 
-  BYTE *bytes = reinterpret_cast<BYTE *>(const_cast<char *>(sealed.data()));
-  result =
-      Tspi_SetAttribData(enc_data, TSS_TSPATTRIB_ENCDATA_BLOB,
-                         TSS_TSPATTRIB_ENCDATABLOB_BLOB, sealed.size(), bytes);
+  // const_cast is safe because this call does not modify sealed blob.
+  unsigned char *sealed_ptr = const_cast<unsigned char *>(str2uchar(sealed));
+  result = Tspi_SetAttribData(enc_data, TSS_TSPATTRIB_ENCDATA_BLOB,
+                              TSS_TSPATTRIB_ENCDATABLOB_BLOB, sealed.size(),
+                              sealed_ptr);
   if (result != TSS_SUCCESS) {
     failure_msg_ = "Could not set the sealed data for unsealing";
     LOG(ERROR) << failure_msg_;
@@ -591,13 +598,16 @@ bool TPMTao::Attest(const Statement &stmt, string *attestation) {
   }
 
   // Hash the data with SHA1
-  BYTE statement_hash[20];
-  SHA1(reinterpret_cast<const BYTE *>(serialized_statement.data()),
-       serialized_statement.size(), statement_hash);
+  string statement_hash;
+  if (!Sha1(serialized_statement, &statement_hash)) {
+    failure_msg_ = "Could not hash statement";
+    LOG(ERROR) << failure_msg_;
+    return false;
+  }
 
   TSS_VALIDATION valid;
-  valid.ulExternalDataLength = sizeof(statement_hash);
-  valid.rgbExternalData = statement_hash;
+  valid.ulExternalDataLength = statement_hash.size();
+  valid.rgbExternalData = str2uchar(&statement_hash);
 
   TSS_RESULT result;
   result = Tspi_TPM_Quote(tpm_, aik_, tss_pcr_indexes_, &valid);
@@ -609,6 +619,7 @@ bool TPMTao::Attest(const Statement &stmt, string *attestation) {
 
   string signature(reinterpret_cast<char *>(valid.rgbValidationData),
                    valid.ulValidationDataLength);
+  // TODO(kwalsh) free the buffers?
 
   Attestation a;
   a.set_serialized_statement(serialized_statement);
@@ -694,8 +705,7 @@ bool TPMTao::CreateAIK(string *aik_blob) {
     return false;
   }
 
-  const char *blob_bytes = reinterpret_cast<const char *>(blob);
-  aik_blob->assign(blob_bytes, blob_len);
+  aik_blob->assign(reinterpret_cast<char *>(blob), blob_len);
   Tspi_Context_FreeMemory(tss_ctx_, blob);
 
   string aik_name;

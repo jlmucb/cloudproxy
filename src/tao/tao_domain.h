@@ -77,7 +77,7 @@ class TaoDomain : public TaoGuard {
   static TaoDomain *Load(const string &path, const string &password);
 
   /// Get the name of this administrative domain.
-  string GetName() const { return config->name(); }
+  string GetName() const { return config_->name(); }
 
   /// Get the policy key signer. This returns nullptr if the object is locked.
   const Signer *GetPolicySigner() const { return keys_->Signer(); }
@@ -138,7 +138,10 @@ class TaoDomain : public TaoGuard {
   // Get the object representing all saved configuration parameters.
   // Subclasses or other classes can store data here before SaveConfig() is
   // called.
+  // @{
   TaoDomainConfig *GetConfig() { return config_.get(); }
+  const TaoDomainConfig *GetConfig() const { return config_.get(); }
+  /// @}
 
   /// Parse all configuration parameters from the configuration file.
   virtual bool ParseConfig() { return true; }

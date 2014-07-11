@@ -248,9 +248,13 @@ int main(int argc, char **argv) {
     printf("  policy key:\n");
     printf("    certificate: %s\n", admin->GetPolicyKeys()->X509Path().c_str());
     printf("    key: %s\n", admin->GetPolicyKeys()->PBESignerPath().c_str());
-    printf("  tao ca: %s:%s\n", admin->GetTaoCAHost().c_str(),
-           admin->GetTaoCAPort().c_str());
-    printf("  auth type: %s\n", admin->GetAuthType().c_str());
+    if (admin->GetConfig()->has_tao_ca()) {
+      printf("  tao ca: %s:%s\n", admin->GetConfig()->tao_ca().host().c_str(),
+             admin->GetConfig()->tao_ca().port().c_str());
+    } else {
+      printf("  tao ca: -\n");
+    }
+    printf("  auth type: %s\n", admin->GetConfig()->guard_type().c_str());
     printf("%s\n", admin->DebugString().c_str());
   }
 

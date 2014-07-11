@@ -21,7 +21,6 @@
 #include <arpa/inet.h>
 
 #include <glog/logging.h>
-#include <keyczar/keyczar.h>
 #include <openssl/ssl.h>
 
 #include "cloudproxy/util.h"

@@ -21,8 +21,6 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <keyczar/base/base64w.h>
-#include <keyczar/keyczar.h>
 #include <openssl/ssl.h>
 
 #include "cloudproxy/cloud_user_manager.h"
@@ -36,11 +34,10 @@
 
 using std::string;
 
-using keyczar::base::Base64WDecode;
-
 using cloudproxy::CloudUserManager;
 using cloudproxy::FileClient;
 using cloudproxy::ScopedSSL;
+using tao::Base64WDecode;
 using tao::InitializeApp;
 using tao::Keys;
 using tao::TaoChildChannel;

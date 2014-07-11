@@ -40,12 +40,6 @@ static const int kMaxUniqueFiles = 100;
 
 }  // namespace
 
-bool Move(const FilePath& from_path, const FilePath& to_path) {
-  if (from_path.ReferencesParent() || to_path.ReferencesParent())
-    return false;
-  return internal::MoveUnsafe(from_path, to_path);
-}
-
 bool CopyFile(const FilePath& from_path, const FilePath& to_path) {
   if (from_path.ReferencesParent() || to_path.ReferencesParent())
     return false;

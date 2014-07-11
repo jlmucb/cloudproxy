@@ -57,48 +57,6 @@ using std::shared_ptr;
 using std::stringstream;
 using std::vector;
 
-// Workaround for keyczar logging.
-// There is no obvious API to disable keyczar message logging to console. This
-// is particularly annoying for expected-case "errors", e.g. when the user types
-// the wrong password for PBE decryption. Keyczar uses an old google logging
-// implementation borrowed from an old version of google protobuf, and we
-// can hook that to divert all log messages to our own handler.
-
-// Log levels defined in keyczar/base/logging.h
-enum LogLevel {
-  LOGLEVEL_KEYCZAR_INFO = 0,
-  LOGLEVEL_KEYCZAR_WARNING,
-  LOGLEVEL_KEYCZAR_ERROR,
-  LOGLEVEL_KEYCZAR_FATAL
-};
-
-// Handler type defined in keyczar/base/logging.h
-typedef void KeyczarLogHandler(LogLevel level, const char *filename, int line,
-                               const std::string &message);
-
-// Hook defined in keyczar/base/logging.h
-KeyczarLogHandler *SetLogHandler(KeyczarLogHandler *new_func);
-
-// Our log sink
-static void QuietKeyczarLogHandler(LogLevel level, const char *filename,
-                                   int line, const std::string &message) {
-  // ignore filename and line, they are always keyczar/openssl/util.h:33
-  switch (level) {
-    case LOGLEVEL_KEYCZAR_INFO:
-      LOG(INFO) << "Keyczar info: " << message;
-      break;
-    case LOGLEVEL_KEYCZAR_WARNING:
-      LOG(WARNING) << "Keyczar warning: " << message;
-      break;
-    case LOGLEVEL_KEYCZAR_FATAL:
-      LOG(FATAL) << "Keyczar fatal: " << message;
-      break;
-    default:
-      LOG(ERROR) << "Keyczar error: " << message;
-      break;
-  }
-}
-
 namespace tao {
 
 void SecureStringErase(string *s) {
@@ -129,7 +87,7 @@ void file_close(FILE *file) {
 
 void temp_file_cleaner(string *dir) {
   if (dir) {
-    if (!keyczar::base::Delete(FilePath(*dir), true /* recursive */))
+    if (!DeleteFile(*dir, true /* recursive */))
       PLOG(ERROR) << "Could not remove temp directory " << *dir;
     delete dir;
   }
@@ -183,7 +141,7 @@ bool RegisterKnownChannels(TaoChildChannelRegistry *registry) {
 */
 
 bool OpenSSLSuccess() {
-  uint32 last_error = ERR_get_error();
+  uint32_t last_error = ERR_get_error();
   if (last_error) {
     LOG(ERROR) << "OpenSSL errors:";
     while (last_error) {
@@ -224,7 +182,6 @@ bool InitializeApp(int *argc, char ***argv, bool remove_args) {
   google::ParseCommandLineFlags(argc, argv, remove_args);
   google::InitGoogleLogging((*argv)[0]);
   google::InstallFailureSignalHandler();
-  SetLogHandler(QuietKeyczarLogHandler);
   LogNet::Init("localhost", "5514", (*argv)[0]);
   signal(SIGPIPE, SIG_IGN);
   return InitializeOpenSSL();

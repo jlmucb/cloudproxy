@@ -224,7 +224,7 @@ size_t strlcpy(char* dst, const char* src, size_t dst_size) {
 // that functionality. If not, remove from file_util_win.cc, otherwise add it
 // here.
 /// This function taken from an older version of chromium
-bool Delete(const FilePath& path, bool recursive) {
+bool DeleteFile(const FilePath& path, bool recursive) {
   const char* path_str = path.value().c_str();
   stat_wrapper_t file_info;
   int test = CallStat(path_str, &file_info);
@@ -714,31 +714,6 @@ int GetMaximumPathComponentLength(const FilePath& path) {
 // -----------------------------------------------------------------------------
 
 namespace internal {
-
-bool MoveUnsafe(const FilePath& from_path, const FilePath& to_path) {
-  ThreadRestrictions::AssertIOAllowed();
-  // Windows compatibility: if to_path exists, from_path and to_path
-  // must be the same type, either both files, or both directories.
-  stat_wrapper_t to_file_info;
-  if (CallStat(to_path.value().c_str(), &to_file_info) == 0) {
-    stat_wrapper_t from_file_info;
-    if (CallStat(from_path.value().c_str(), &from_file_info) == 0) {
-      if (S_ISDIR(to_file_info.st_mode) != S_ISDIR(from_file_info.st_mode))
-        return false;
-    } else {
-      return false;
-    }
-  }
-
-  if (rename(from_path.value().c_str(), to_path.value().c_str()) == 0)
-    return true;
-
-  if (!CopyDirectory(from_path, to_path, true))
-    return false;
-
-  DeleteFile(from_path, true);
-  return true;
-}
 
 #if !defined(OS_MACOSX)
 // Mac has its own implementation, this is for all other Posix systems.

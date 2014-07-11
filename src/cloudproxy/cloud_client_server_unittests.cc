@@ -22,7 +22,6 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <keyczar/base/file_util.h>
 
 #include "cloudproxy/cloud_auth.h"
 #include "cloudproxy/cloudproxy.pb.h"
@@ -37,7 +36,7 @@
 
 using std::thread;
 
-using keyczar::base::WriteStringToFile;
+using chromium::base::WriteStringToFile;
 
 using cloudproxy::ACL;
 using cloudproxy::Action;

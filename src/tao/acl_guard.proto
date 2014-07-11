@@ -19,6 +19,8 @@
 
 package tao;
 
+import "tao/tao_domain.proto"
+
 // A set of ACL entries.
 message ACLSet { repeated string entries = 1; }
 
@@ -26,4 +28,11 @@ message ACLSet { repeated string entries = 1; }
 message SignedACLSet {
   required bytes serialized_aclset = 1;
   required bytes signature = 2;
+}
+
+message ACLGuardConfig {
+  extend TaoDomainConfig {
+    optional ACLGuardConfig acl_guard = 100;
+  }
+  required string signed_acls_path = 1;
 }

@@ -1,9 +1,9 @@
-//  File: datalog_guard.proto
+//  File: tao_domain.proto
 //  Author: Kevin Walsh <kwalsh@holycross.edu>
 //
-//  Description: Protocol buffers for DatalogGuard rules.
+//  Description: Protocol buffers for TaoDomain.
 //
-//  Copyright (c) 2014, Kevin Walsh.  All rights reserved.
+//  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,18 +19,24 @@
 
 package tao;
 
-// A set of rules.
-message DatalogRules { repeated string rules = 1; }
+import "tao/keys.proto"
 
-// A set of rules signed by a key.
-message SignedDatalogRules {
-  required bytes serialized_rules = 1;
-  required bytes signature = 2;
+// TODO(kwalsh) Move TaoCAConfig elsewhere?
+message TaoCAConfig {
+  required string host = 1;
+  required string port = 2;
 }
 
-message DatalogGuardConfig {
-  extend TaoDomainConfig {
-    optional DatalogGuardConfig datalog_guard = 200;
-  }
-  required string signed_rules_path = 1;
+message TaoDomainConfig {
+  required string name = 1;
+  required string policy_keys_path = 2;
+  required X509Details policy_x509_details = 3;
+  // TODO(kwalsh) store serial number state elsewhere
+  required int32 policy_x509_last_serial = 4; 
+  required string guard_type = 5;
+
+  optional TaoCAConfig tao_ca = 6;
+
+  extensions 100 to 299;
 }
+

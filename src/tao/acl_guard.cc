@@ -25,6 +25,7 @@
 #include <glog/logging.h>
 
 #include "tao/acl_guard.pb.h"
+#include "tao/tao_domain.pb.h"
 #include "tao/util.h"
 
 namespace tao {
@@ -73,8 +74,14 @@ bool ACLGuard::ParseConfig() {
     LOG(ERROR) << "Can't load basic configuration";
     return false;
   }
+  if (!GetConfig()->HasExtension(ACLGuardConfig::acl_guard)) {
+    LOG(ERROR) << "Configuration for ACL Guard missing";
+    return false;
+  }
+  const ACLGuardConfig &config = GetConfig->GetExtension(ACLGuardConfig::acl_guard);
+  acl_path_ = config.signed_acls_path();
+  
   // Load the signed ACL set file.
-  acl_path_ = GetConfigPath(JSONSignedACLsPath);
   acl_mod_time_ = 0;  // force refresh
   return ReloadACLsIfModified();
 }
@@ -151,7 +158,12 @@ bool ACLGuard::SaveConfig() const {
     return false;
   }
   // Save signed ACL set.
-  string path = GetConfigPath(JSONSignedACLsPath);
+  if (!GetConfig()->HasExtension(ACLGuardConfig::acl_guard)) {
+    LOG(ERROR) << "Configuration for ACL Guard missing";
+    return false;
+  }
+  const ACLGuardConfig &config = GetConfig->GetExtension(ACLGuardConfig::acl_guard);
+  path = config.signed_acls_path();
   if (!WriteStringToFile(path, serialized)) {
     LOG(ERROR) << "Can't write signed ACL set to " << path;
     return false;

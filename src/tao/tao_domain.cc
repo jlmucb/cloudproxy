@@ -22,62 +22,40 @@
 #include <string>
 
 #include <glog/logging.h>
-#include <keyczar/base/json_reader.h>
-#include <keyczar/base/json_writer.h>
-#include <keyczar/base/values.h>
 
 #include "tao/acl_guard.h"
 #include "tao/attestation.h"
 #include "tao/datalog_guard.h"
 #include "tao/util.h"
 
-using keyczar::base::JSONReader;
-using keyczar::base::JSONWriter;
-
 namespace tao {
 
-TaoDomain::TaoDomain(const string &path, DictionaryValue *value)
-    : path_(path), config_(value) {
-  string keys_path = GetConfigPath(JSONPolicyKeysPath);
+TaoDomain::TaoDomain(const string &path, TaoDomainConfig *config)
+    : path_(path), config_(config) {
+  string keys_path = config_->policy_keys_path();
   keys_.reset(new Keys(keys_path, Keys::Signing));
 }
 
 TaoDomain::~TaoDomain() {}
 
-TaoDomain *TaoDomain::CreateImpl(const string &config, const string &path) {
+TaoDomain *TaoDomain::CreateImpl(const string &config_text, const string &path) {
   // Parse the config string.
-  string error;
-  unique_ptr<Value> value(JSONReader::ReadAndReturnError(config, true, &error));
-  if (value.get() == nullptr) {
-    LOG(ERROR) << path << ": error: " << error;
+  unique_ptr<TaoDomainConfig> config(new TaoDomainConfig);
+  if (!TextFormat::ParseFromString(confix_text, config)) {
+    LOG(ERROR) << path << ": error parsing Tao Domain configuration";
     return nullptr;
   }
-
-  // Cast it to dictionary.
-  if (!value->IsType(Value::TYPE_DICTIONARY)) {
-    LOG(ERROR) << path << ": wrong JSON type, expecting dictionary";
-    return nullptr;
-  }
-  unique_ptr<DictionaryValue> dict(
-      static_cast<DictionaryValue *>(value.release()));
-
   // Construct an object of the appropriate subclass.
-  string guard_type;
-  if (!dict->GetString(JSONAuthType, &guard_type)) {
-    LOG(ERROR) << path << ": missing value for " << JSONAuthType;
-    return nullptr;
-  }
+  string guard_type = config->guard_type();
   unique_ptr<TaoDomain> admin;
   if (guard_type == ACLGuard::GuardType) {
-    admin.reset(new ACLGuard(path, dict.release()));
+    admin.reset(new ACLGuard(path, config.release()));
   } else if (guard_type == DatalogGuard::GuardType) {
-    admin.reset(new DatalogGuard(path, dict.release()));
+    admin.reset(new DatalogGuard(path, config.release()));
   } else {
-    LOG(ERROR) << path << ": unrecognized " << JSONAuthType << " "
-               << guard_type;
+    LOG(ERROR) << path << ": unrecognized guard type " << guard_type;
     return nullptr;
   }
-
   return admin.release();
 }
 
@@ -123,12 +101,12 @@ TaoDomain *TaoDomain::Create(const string &initial_config, const string &path,
 }
 
 TaoDomain *TaoDomain::Load(const string &path, const string &password) {
-  string json;
-  if (!ReadFileToString(path, &json)) {
+  string config_text;
+  if (!ReadFileToString(path, &config_text)) {
     LOG(ERROR) << "Can't read configuration from " << path;
     return nullptr;
   }
-  unique_ptr<TaoDomain> admin(CreateImpl(json, path));
+  unique_ptr<TaoDomain> admin(CreateImpl(config_text, path));
   if (admin.get() == nullptr) {
     LOG(ERROR) << "Can't create TaoDomain";
     return nullptr;
@@ -180,9 +158,9 @@ string TaoDomain::GetPath(const string &suffix) const {
 }
 
 bool TaoDomain::SaveConfig() const {
-  string json;
-  JSONWriter::Write(config_.get(), true, &json);
-  if (!WriteStringToFile(path_, json)) {
+  string config_text;
+  if (!TextFormat::PrintToString(*config_, &config_text) ||
+      !WriteStringToFile(path_, config_text)) {
     LOG(ERROR) << "Can't write configuration to " << path_;
     return false;
   }
@@ -191,27 +169,15 @@ bool TaoDomain::SaveConfig() const {
 
 int TaoDomain::GetFreshX509CertificateSerialNumber() {
   // TODO(kwalsh) thread safety; also, add integrity and reply protection.
-  int ver = 0;
-  config_->GetInteger(JSONPolicyX509LastSerial, &ver);
+  int ver = config_->policy_x509_last_serial();
   ver++;
-  string json;
-  if (!config_->SetInteger(JSONPolicyX509LastSerial, ver)) {
-    LOG(ERROR) << "Could not save x509 version number";
-    return -1;
-  }
-  JSONWriter::Write(config_.get(), true, &json);
-  if (!WriteStringToFile(path_, json)) {
+  config_->set_policy_x509_last_serial(ver);
+  if (!TextFormat::PrintToString(*config_, &config_text) ||
+      !WriteStringToFile(path_, config_text)) {
     LOG(ERROR) << "Could not save x509 version number";
     return -1;
   }
   return ver;
-}
-
-string TaoDomain::GetConfigString(const string &name) const {
-  string value = "";
-  if (!config_->GetString(name, &value))
-    LOG(WARNING) << "Can't find configuration parameter " << name;
-  return value;
 }
 
 // bool TaoDomain::AttestKeyNameBinding(const string &key_prin,

@@ -22,10 +22,9 @@
 #include <list>
 #include <string>
 
-#include <keyczar/base/values.h>
-
 #include "tao/acl_guard.pb.h"
 #include "tao/tao_domain.h"
+#include "tao/tao_domain.pb.h"
 #include "tao/util.h"
 
 namespace tao {
@@ -34,10 +33,8 @@ namespace tao {
 /// policy key.
 class ACLGuard : public TaoDomain {
  public:
-  /// Name strings for name:value pairs in JSON config.
-  constexpr static auto JSONSignedACLsPath = "signed_acls_path";
 
-  /// Example json strings useful for constructing domains for testing.
+  /// Example config strings useful for constructing domains for testing.
   constexpr static auto ExampleGuardDomain =
       "{\n"
       "   \"name\": \"Tao example ACL-based domain\",\n"
@@ -55,8 +52,8 @@ class ACLGuard : public TaoDomain {
       "   \"tao_ca_port\": \"11238\"\n"
       "}";
 
-  ACLGuard(const string &path, DictionaryValue *value)
-      : TaoDomain(path, value) {}
+  ACLGuard(const string &path, TaoDomainConfig *config)
+      : TaoDomain(path, config) {}
 
   virtual string GuardTypeName() const { return "ACLGuard"; }
 

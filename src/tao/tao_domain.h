@@ -23,10 +23,10 @@
 #include <string>
 
 #include "tao/keys.h"
+#include "tao/keys.pb.h"
+#include "tao/tao_domain.pb.h"
 #include "tao/tao_guard.h"
 #include "tao/util.h"
-
-class DictionaryValue;
 
 namespace tao {
 using std::string;
@@ -42,7 +42,7 @@ class Keys;
 /// purpose, e.g. the location of ACL files.
 ///
 /// Except for a password used to encrypt the policy private key, all
-/// configuration data for TaoDomain is stored in a JSON file, typically named
+/// configuration data for TaoDomain is stored in a text file, typically named
 /// "tao.config". This configuration file contains the locations of all other
 /// files and directories needed by TaoDomain. File and directory paths within
 /// the tao.config file are relative to the location of the tao.config file
@@ -51,23 +51,12 @@ class TaoDomain : public TaoGuard {
  public:
   virtual ~TaoDomain();
 
-  // TODO(kwalsh) use protobuf instead of json?
-
-  /// Name strings for name:value pairs in JSON config.
-  constexpr static auto JSONName = "name";
-  constexpr static auto JSONPolicyKeysPath = "policy_keys_path";
-  constexpr static auto JSONPolicyX509Details = "policy_x509_details";
-  constexpr static auto JSONPolicyX509LastSerial = "policy_x509_last_serial";
-  constexpr static auto JSONTaoCAHost = "tao_ca_host";
-  constexpr static auto JSONTaoCAPort = "tao_ca_port";
-  constexpr static auto JSONAuthType = "guard_type";
-
   /// Initialize a new TaoDomain and write its configuration files to a
   /// directory. This creates the directory if needed, creates a policy key
   /// pair, and initializes default state for authorization, e.g. an empty
   /// set of ACLs.
-  /// @param initial_config A JSON string containing the initial configuration
-  /// for this TaoDomain.
+  /// @param initial_config A string containing the initial configuration
+  /// for this TaoDomain, using protobuf TextFormat for TaoDomainConfig.
   /// @param path The location to store the configuration file.
   /// @param password A password for encrypting the policy private key.
   static TaoDomain *Create(const string &initial_config, const string &path,
@@ -88,24 +77,7 @@ class TaoDomain : public TaoGuard {
   static TaoDomain *Load(const string &path, const string &password);
 
   /// Get the name of this administrative domain.
-  string GetName() const { return GetConfigString(JSONName); }
-
-  /// Get details for x509 policy certificates.
-  string GetPolicyX509Details() const {
-    return GetConfigString(JSONPolicyX509Details);
-  }
-
-  /// Get the host for the Tao CA. This returns emptystring if there is no Tao
-  /// CA for this administrative domain.
-  string GetTaoCAHost() const { return GetConfigString(JSONTaoCAHost); }
-
-  /// Get the port for the Tao CA. This is undefined if there is no Tao CA for
-  /// this administrative domain.
-  string GetTaoCAPort() const { return GetConfigString(JSONTaoCAPort); }
-
-  /// Get a string describing the authorization regime governing this
-  /// administrative domain.
-  string GetAuthType() const { return GetConfigString(JSONAuthType); }
+  string GetName() const { return config->name(); }
 
   /// Get the policy key signer. This returns nullptr if the object is locked.
   const Signer *GetPolicySigner() const { return keys_->Signer(); }
@@ -166,18 +138,7 @@ class TaoDomain : public TaoGuard {
   // Get the object representing all saved configuration parameters.
   // Subclasses or other classes can store data here before SaveConfig() is
   // called.
-  DictionaryValue *GetConfig() { return config_.get(); }
-
-  /// Get a string configuration parameter. If the parameter is not found,
-  /// this returns emptystring.
-  /// @param name The configuration parameter name to look up
-  string GetConfigString(const string &name) const;
-
-  /// Get a path configuration parameter, relative to the config directory.
-  /// @param name The configuration parameter name to look up
-  string GetConfigPath(const string &name) const {
-    return GetPath(GetConfigString(name));
-  }
+  TaoDomainConfig *GetConfig() { return config_.get(); }
 
   /// Parse all configuration parameters from the configuration file.
   virtual bool ParseConfig() { return true; }
@@ -198,22 +159,22 @@ class TaoDomain : public TaoGuard {
   int GetFreshX509CertificateSerialNumber();
 
  protected:
-  TaoDomain(const string &path, DictionaryValue *value);
+  TaoDomain(const string &path, TaoDomainConfig *config);
   virtual bool Init(void) { return true; }
 
  private:
   /// Construct an object of the appropriate TaoDomain subclass. The caller
   /// should call either ParseConfig() to load keys and other date, or should
   /// generate keys and other state then call SaveConfig().
-  /// @param config The json encoded configuration data.
+  /// @param config_text The protobuf TextFormat for TaoConfigDomain.
   /// @param path The location of the configuration file.
-  static TaoDomain *CreateImpl(const string &config, const string &path);
+  static TaoDomain *CreateImpl(const string &config_text, const string &path);
 
   /// The path to the configuration file.
   string path_;
 
-  /// The dictionary of configuration parameters.
-  unique_ptr<DictionaryValue> config_;
+  /// The configuration parameters.
+  unique_ptr<TaoDomainConfig> config_;
 
   /// The policy public key. If unlocked, also contains the private key.
   unique_ptr<Keys> keys_;

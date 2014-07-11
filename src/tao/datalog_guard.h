@@ -23,8 +23,6 @@
 #include <set>
 #include <string>
 
-#include <keyczar/base/values.h>
-
 #include "tao/datalog_guard.pb.h"
 #include "tao/tao_domain.h"
 #include "tao/util.h"
@@ -125,10 +123,7 @@ typedef unique_free_ptr<DatalogEngine, datalog_close> ScopedDatalogEngine;
 ///
 class DatalogGuard : public TaoDomain {
  public:
-  /// Name strings for name:value pairs in JSON config.
-  constexpr static auto JSONSignedDatalogRulesPath = "signed_rules_path";
-
-  /// Example json strings useful for constructing domains for testing.
+  /// Example config strings useful for constructing domains for testing.
   constexpr static auto ExampleGuardDomain =
       "{\n"
       "   \"name\": \"Tao example Datalog-based domain\",\n"
@@ -146,8 +141,8 @@ class DatalogGuard : public TaoDomain {
       "   \"tao_ca_port\": \"11238\"\n"
       "}";
 
-  DatalogGuard(const string &path, DictionaryValue *value)
-      : TaoDomain(path, value) {}
+  DatalogGuard(const string &path, TaoDomainConfig *config)
+      : TaoDomain(path, config) {}
   virtual ~DatalogGuard() {}
 
   virtual string GuardTypeName() const { return "DatalogGuard"; }

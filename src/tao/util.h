@@ -35,7 +35,6 @@
 /// instead borrowed from Chromium, protobufs, or elsewhere. Perhaps we should
 /// do
 /// likewise?
-#include <keyczar/base/base64w.h>
 #include <keyczar/base/basictypes.h>  // DISALLOW_COPY_AND_ASSIGN
 #include <keyczar/base/file_util.h>
 
@@ -62,11 +61,6 @@ using std::stringstream;
 using std::unique_ptr;
 // using std::make_unique;  // implemented below
 
-// using keyczar::base::FilePath;  // Why isn't this in keyczar::base ?
-// using keyczar::base::ReadFileToString; // Define our own version below.
-// using keyczar::base::ScopedSafeString;  // Define our own version below.
-using keyczar::base::Base64WDecode;      // NOLINT
-using keyczar::base::Base64WEncode;      // NOLINT
 using keyczar::base::CreateDirectory;    // NOLINT
 using keyczar::base::Delete;             // NOLINT
 using keyczar::base::DirectoryExists;    // NOLINT
@@ -126,6 +120,10 @@ struct UniquePointerDeleter {
 template <typename T, void (*F)(T *)>
 using unique_free_ptr = unique_ptr<T, UniquePointerDeleter<T, F>>;
 
+/// Cleanse the contents of a string.
+/// @param s The string to be cleansed.
+void SecureStringErase(string *s);
+
 /// Cleanse the contents of a string then free it.
 /// @param s The string to be cleansed and freed.
 void SecureStringFree(string *s);
@@ -144,6 +142,30 @@ typedef unique_free_ptr<string, temp_file_cleaner> ScopedTempDir;
 
 /// A smart pointer to a self-pipe.
 typedef unique_free_ptr<int, selfpipe_release> ScopedSelfPipeFd;
+
+/// Extract pointer to string data. These can be used for library functions
+/// that require raw pointers instead of C++ strings. Returned const pointers
+/// should not be written to. Returned non-const pointers can be written. Any
+/// string operation that invalidates an iterator will also invalidate the
+/// returned pointer.
+/// @param s The string.
+/// @{
+// TODO(kwalsh) See cryptic note about string_as_array vs const_cast in Keyczar
+// and elsewhere saying:
+//    DO NOT USE const_cast<char*>(str->data())! See the unittest for why.
+// This likely has to do with the fact that the buffer returned from data() is
+// not meant to be modified and might in fact be copy-on-write shared.
+inline const char *str2char(const string &s) {
+  return s.empty() ? nullptr : &*s.begin();
+}
+inline const unsigned char *str2uchar(const string &s) {
+  return reinterpret_cast<const unsigned char *>(str2char(s));
+}
+inline char *str2char(string *s) { return s->empty() ? nullptr : &*s->begin(); }
+inline unsigned char *str2uchar(string *s) {
+  return reinterpret_cast<unsigned char *>(str2char(s));
+}
+/// @}
 
 /// Create a self-pipe for a signal. A signal handler is installed that writes
 /// the signal number (cast to a byte) to the pipe. Callers can use the returned
@@ -362,6 +384,24 @@ time_t FileModificationTime(const string &path);
 /// @param[out] s A string in which to place the bytes.
 // TODO(kwalsh) Rethink this function.
 bool RandBytes(size_t size, string *s);
+
+/// Encode string using web-safe base64w. No padding or newlines are added. This
+/// function does not fail.
+/// @param in The string to be encoded. May be emptystring.
+string Base64WEncode(const string &in);
+
+/// Encode string using web-safe base64w. No padding or newlines are added.
+/// @param in The string to be encoded. May be emptystring.
+/// @param[out] out A string to be overwritten with the result.
+/// @return false if and only if out is nullptr.
+bool Base64WEncode(const string &in, string *out);
+
+/// Decode string using web-safe base64w. This function fails if padding,
+/// newlines, or other unexpected characters are found in the input, or if the
+/// input length is not valid.
+/// @param in The string to be encoded. May be emptystring.
+/// @param[out] out A string to be overwritten with the result.
+bool Base64WDecode(const string &in, string *out);
 
 }  // namespace tao
 

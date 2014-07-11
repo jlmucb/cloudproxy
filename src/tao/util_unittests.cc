@@ -20,10 +20,6 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#define BUFFERSIZE 2048
-#include <b64/encode.h>
-#include <b64/decode.h>
-#include <modp_b64w.h>
 
 #include "tao/soft_tao.h"
 
@@ -76,209 +72,20 @@ TEST(UtilTest, CreateDomainTest) {
 }
 */
 
-static const char *str2char(const string &s) {
-  return s.empty() ? nullptr : &*s.begin();
-}
-static char *str2char(string *s) { return s->empty() ? nullptr : &*s->begin(); }
-
-bool libb64_encode(const string &in, string *out) {
-  base64::base64_encodestate ctx;
-  base64::base64_init_encodestate(&ctx);
-  int max_n = in.size() * 2;
-  out->resize(max_n);
-  int n =
-      base64::base64_encode_block(str2char(in), in.size(), str2char(out), &ctx);
-  n += base64::base64_encode_blockend(str2char(out) + n, &ctx);
-  EXPECT_LE(n, max_n);
-  out->resize(n);
-  return true;
-}
-
-bool libb64_decode(const string &in, string *out) {
-  base64::base64_decodestate ctx;
-  base64::base64_init_decodestate(&ctx);
-  int max_n = in.size();
-  out->resize(max_n);
-  int n =
-      base64::base64_decode_block(str2char(in), in.size(), str2char(out), &ctx);
-  EXPECT_LE(n, max_n);
-  out->resize(n);
-  return true;
-}
-
-bool modp_encode(const string &in, string *out) {
-  out->assign(modp::b64w_encode(str2char(in), in.size()));
-  // const char *s = str2char(in);
-  // size_t len = in.size();
-  // std::string x(modp_b64w_encode_len(len), '\0');
-  // int d =
-  //     modp_b64w_encode(const_cast<char *>(x.data()), s,
-  //     static_cast<int>(len));
-  // x.erase(d, std::string::npos);
-  // out->assign(x);
-  // std::cout << "encoded size is " << out->size() << " (d = " << d << ")\n";
-  return true;
-}
-
-bool modp_decode(const string &in, string *out) {
-  out->assign(modp::b64w_decode(str2char(in), in.size()));
-  // std::cout << "decoded size is " << out->size() << "\n";
-  return true;
-}
-
-void quick_rand(int n, string *s) {
-  const long m = 4294967296, a = 1103515245, c = 12345;
-  long x = 0xf00d;
-  std::cout << "Generating " << n << " bytes of data\n";
-  s->resize(n);
-  for (int i = 0; i < n; i++) {
-    x = (a * x + c) % m;
-    (*s)[i++] = (x & 0xff);
-  }
-}
-
-#include <sys/time.h>
-long long current_timestamp() {
-  struct timeval te;
-  gettimeofday(&te, NULL);  // get current time
-  long long milliseconds =
-      te.tv_sec * 1000LL + te.tv_usec / 1000;  // caculate milliseconds
-  // printf("milliseconds: %lld\n", milliseconds);
-  return milliseconds;
-}
-
-void btest(const string &data) {
-  std::cout << "Encoding '" << data << "'\n";
-  string b1, b2, b3, d1, d2, d3;
-
-  EXPECT_TRUE(Base64WEncode(data, &b1));
-  EXPECT_TRUE(Base64WDecode(b1, &d1));
-  EXPECT_EQ(data, d1);
-
-  EXPECT_TRUE(modp_encode(data, &b2));
-  EXPECT_EQ(b1, b2);
-  EXPECT_TRUE(modp_decode(b2, &d2));
-  EXPECT_EQ(data, d2);
-
-  // EXPECT_TRUE(libb64_encode(data, &b3));
-  // EXPECT_EQ(b1, b3);
-  // EXPECT_TRUE(libb64_decode(b3, &d3));
-  // EXPECT_EQ(data, d3);
+void base64test(const string &data, int enc_len) {
+  string b, d;
+  EXPECT_TRUE(Base64WEncode(data, &b));
+  EXPECT_EQ(enc_len, b.size());
+  EXPECT_TRUE(Base64WDecode(b, &d));
+  EXPECT_EQ(data, d);
 }
 
 TEST(UtilTest, Base64Test) {
-  btest("Hello World!");  // 12 -> 16
-  btest("Hello World");   // 11 -> 15
-  btest("Hello Worl");    // 10 -> 14
-  btest("Hello Wor");     // 9 -> 12
-  btest("Hello Wo");      // 8 -> 11
-
-  int test_size = 128 * 1024 * 1024;
-  string data;
-  quick_rand(test_size, &data);
-
-  int n = 10;
-
-  string b;
-  EXPECT_TRUE(Base64WEncode(data, &b));
-
-  long long t_s, t_e;
-
-  // // Try libb64
-  // std::cout << "=== libb64 ===\n";
-  // std::cout << "Encoding " << data.size() << " bytes of data\n";
-  // {
-  //   string b_new;
-  //   EXPECT_TRUE(libb64_encode(data, &b_new));
-  // }
-  // std::cout << "Encoding " << data.size() << " bytes of data (" << n
-  //           << " times)\n";
-  // t_s = current_timestamp();
-  // for (int i = 0; i < n; i++) {
-  //   string b_new;
-  //   EXPECT_TRUE(libb64_encode(data, &b_new));
-  // }
-  // t_e = current_timestamp();
-  // std::cout << "Elapsed: " << (t_e - t_s) << "\n";
-  // std::cout << "Decoding " << b.size() << " bytes of data\n";
-  // {
-  //   string d_new;
-  //   EXPECT_TRUE(libb64_decode(b, &d_new));
-  // }
-  // std::cout << "Decoding " << b.size() << " bytes of data (" << n
-  //           << " times)\n";
-  // t_s = current_timestamp();
-  // for (int i = 0; i < n; i++) {
-  //   string d_new;
-  //   EXPECT_TRUE(libb64_decode(b, &d_new));
-  // }
-  // t_e = current_timestamp();
-  // std::cout << "Elapsed: " << (t_e - t_s) << "\n";
-
-  // Try modp
-  std::cout << "=== modp ===\n";
-  std::cout << "Encoding " << data.size() << " bytes of data\n";
-  {
-    string b_new;
-    EXPECT_TRUE(modp_encode(data, &b_new));
-  }
-  std::cout << "Encoding " << data.size() << " bytes of data (" << n
-            << " times)\n";
-  t_s = current_timestamp();
-  for (int i = 0; i < n; i++) {
-    string b_new;
-    EXPECT_TRUE(modp_encode(data, &b_new));
-  }
-  t_e = current_timestamp();
-  std::cout << "Elapsed: " << (t_e - t_s) << "\n";
-  std::cout << "Decoding " << b.size() << " bytes of data\n";
-  {
-    string d_new;
-    EXPECT_TRUE(modp_decode(b, &d_new));
-  }
-  std::cout << "Decoding " << b.size() << " bytes of data (" << n
-            << " times)\n";
-  t_s = current_timestamp();
-  for (int i = 0; i < n; i++) {
-    string d_new;
-    EXPECT_TRUE(modp_decode(b, &d_new));
-  }
-  t_e = current_timestamp();
-  std::cout << "Elapsed: " << (t_e - t_s) << "\n";
-
-  // Try keyczar
-  std::cout << "=== keyczar ===\n";
-  std::cout << "Encoding " << data.size() << " bytes of data\n";
-  {
-    string b_new;
-    EXPECT_TRUE(Base64WEncode(data, &b_new));
-  }
-  std::cout << "Encoding " << data.size() << " bytes of data (" << n
-            << " times)\n";
-  t_s = current_timestamp();
-  for (int i = 0; i < n; i++) {
-    string b_new;
-    EXPECT_TRUE(Base64WEncode(data, &b_new));
-  }
-  t_e = current_timestamp();
-  std::cout << "Elapsed: " << (t_e - t_s) << "\n";
-  std::cout << "Decoding " << b.size() << " bytes of data\n";
-  {
-    string d_new;
-    EXPECT_TRUE(Base64WDecode(b, &d_new));
-  }
-  std::cout << "Decoding " << b.size() << " bytes of data (" << n
-            << " times)\n";
-  t_s = current_timestamp();
-  for (int i = 0; i < n; i++) {
-    string d_new;
-    EXPECT_TRUE(Base64WDecode(b, &d_new));
-  }
-  t_e = current_timestamp();
-  std::cout << "Elapsed: " << (t_e - t_s) << "\n";
-  std::cout << "Done\n";
-
-  std::cout << "Done\n";
+  base64test("Hello World!", 16);  // 12 -> 16
+  base64test("Hello World", 15);   // 11 -> 15
+  base64test("Hello Worl", 14);    // 10 -> 14
+  base64test("Hello Wor", 12);     // 9 -> 12
+  base64test("Hello Wo", 11);      // 8 -> 11
 }
 
 TEST(UtilTest, SealAndUnsealSecretTest) {

@@ -67,33 +67,6 @@ typedef unique_free_ptr<HMAC_CTX, HMAC_CTX_free> ScopedHmacCtx;
 
 typedef unique_free_ptr<X509_ALGOR, X509_ALGOR_free> ScopedX509Algor;
 
-/// Extract pointer to string data. This is used for the many OpenSSL functions
-/// that require pointers to unsigned chars.
-/// @param s The string.
-/// @{
-// TODO(kwalsh) See cryptic note about string_as_array vs const_cast in Keyczar
-// and elsewhere saying:
-//    DO NOT USE const_cast<char*>(str->data())! See the unittest for why.
-// This likely has to do with the fact that the buffer returned from data() is
-// not meant to be modified and might in fact be copy-on-write shared.
-static const unsigned char *str2uchar(const string &s) {
-  const char *p = s.empty() ? nullptr : &*s.begin();
-  return reinterpret_cast<const unsigned char *>(p);
-}
-static unsigned char *str2uchar(string *s) {
-  char *p = s->empty() ? nullptr : &*s->begin();
-  return reinterpret_cast<unsigned char *>(p);
-}
-/// @}
-
-void SecureStringErase(string *s) {
-  // TODO(kwalsh) Keyczar has a nice 'fixme' note about making sure the memset
-  // isn't optimized away, and a commented-out call to openssl's cleanse. What
-  // to do?
-  OPENSSL_cleanse(str2uchar(s), s->size());
-  memset(str2uchar(s), 0, s->size());
-}
-
 /// Set one detail for an openssl x509 name structure.
 /// @param name The x509 name structure to modify. Must be non-null.
 /// @param key The country code, e.g. "US"

@@ -39,6 +39,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <keyczar/crypto_factory.h>
+#include <modp/modp_b64w.h>
 #include <openssl/bio.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
@@ -99,6 +100,14 @@ static void QuietKeyczarLogHandler(LogLevel level, const char *filename,
 }
 
 namespace tao {
+
+void SecureStringErase(string *s) {
+  // TODO(kwalsh) Keyczar has a nice 'fixme' note about making sure the memset
+  // isn't optimized away, and a commented-out call to openssl's cleanse. What
+  // to do?
+  OPENSSL_cleanse(str2uchar(s), s->size());
+  memset(str2uchar(s), 0, s->size());
+}
 
 void SecureStringFree(string *s) {
   SecureStringErase(s);
@@ -725,6 +734,38 @@ bool RandBytes(size_t size, string *s) {
   } else {
     return host->GetRandomBytes(size, s);
   }
+}
+
+string Base64WEncode(const string &in) {
+  string out;
+  Base64WEncode(in, &out);  // does not fail
+  return out;
+}
+
+bool Base64WEncode(const string &in, string *out) {
+  if (out == nullptr) {
+    return false;
+  }
+  size_t in_len = in.size();
+  out->resize(modp_b64w_encode_len(in_len));
+  size_t out_len = modp_b64w_encode(str2char(out), str2char(in), in_len);
+  out->resize(out_len);
+  return true;
+}
+
+bool Base64WDecode(const string &in, string *out) {
+  if (out == nullptr) {
+    return false;
+  }
+  size_t in_len = in.size();
+  out->resize(modp_b64w_decode_len(in_len));
+  int out_len = modp_b64w_decode(str2char(out), str2char(in), in_len);
+  if (out_len < 0) {
+    out->clear();
+    return false;
+  }
+  out->resize(out_len);
+  return true;
 }
 
 }  // namespace tao

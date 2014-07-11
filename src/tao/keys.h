@@ -36,10 +36,6 @@ using std::string;
 /// A variety of utilities and OpenSSL wrappers.
 /// @{
 
-/// Cleanse the contents of a string.
-/// @param s The string to be cleansed.
-void SecureStringErase(string *s);
-
 /// A smart pointer to an OpenSSL X509 structure.
 typedef unique_free_ptr<X509, X509_free> ScopedX509;
 

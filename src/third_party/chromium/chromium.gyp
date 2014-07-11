@@ -14,39 +14,33 @@
 
 {
   'target_defaults': {
-    'cflags': [
-      '-Wall',
-      '-Werror',
-      '-std=c++0x',
+    'includes': [
+      '../../build/third_party_common.gypi',
     ],
-    'configurations': {
-      'Release': {
-        'cflags': [
-          '-O2',
-        ],
-      },
-      'Debug': {
-        'cflags': [
-          '-g',
-        ],
-      },
-    },
+  },
+  'variables': {
+    'src': 'src',
+    'inc': 'include/chromium',
   },
   'targets': [
     {
-      'target_name': 'All',
-      'type': 'none',
-      'variables': {
-        'src': 'cloudproxy',
-      },
-      'dependencies': [
-        '../apps/apps.gyp:*',
-       '../cloudproxy/cloudproxy.gyp:*',
-        '../tao/tao.gyp:*',
-        '../third_party/keyczar/keyczar.gyp:keyczart',
-        '../third_party/modp/modp.gyp:*',
-        '../third_party/chromium/chromium.gyp:*',
+      'target_name': 'modp',
+      'type': 'static_library',
+      'sources': [
+        '<(src)/base/file_util.cc',
+        '<(src)/base/file_util_posix.cc',
+        '<(src)/base/files/file_path.cc',
+        '<(src)/base/file_util.h',
+        '<(inc)/base/files/file_path.h',
       ],
+      'include_dirs': [
+        'include/chromium',
+      ],
+      'direct_dependent_settings': {
+        'include_dirs': [
+          'include',
+        ],
+      },
     },
   ]
 }

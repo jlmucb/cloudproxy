@@ -931,10 +931,38 @@ bool computetmododdprime(polynomial& curve_x_poly, u64 l, u64* tl) {
 
   for(j=1; j<=(l-1)/2; j++) {
 
+#if 0
     // compute j(x^p,y^p)
     if(!EccSymbolicPointMultWithReduction(temp_phi, curve_x_poly, (u64)j, 
                 x_exp_p, y_exp_p, x_j_p, y_j_p))
       return false;
+#else
+    if(!EccSymbolicPointMultWithReduction(temp_phi, curve_x_poly, (u64)j, 
+                rational_x, rational_y, x_j, y_j))
+      return false;
+    if(!Reducelargepower(*p, *x_j.numerator, temp_phi, *x_j_p.numerator))
+      return false;
+    if(!Reducelargepower(*p, *x_j.denominator, temp_phi, *x_j_p.denominator))
+      return false;
+    t1.ZeroPoly();
+    t2.ZeroPoly();
+    if(!Reducelargepower(*p, *y_j.numerator, temp_phi, t1))
+      return false;
+    small_out.m_pValue[0]= (p->m_pValue[0]-1)/2;
+    if(!Reducelargepower(small_out, curve_x_poly, temp_phi, t2))
+      return false;
+    PolyMult(t1, t2, *y_j_p.numerator);
+    t1.ZeroPoly();
+    t2.ZeroPoly();
+    if(!Reducelargepower(*p, *y_j.denominator, temp_phi, t1))
+      return false;
+    if(!Reducelargepower(small_out, curve_x_poly, temp_phi, t2))
+      return false;
+    if(!PolyMult(t1, t2, *y_j_p.denominator))
+      return false;
+    t1.ZeroPoly();
+    t2.ZeroPoly();
+#endif
 
 #ifdef JLMDEBUG
     printf("x_%lld_p: ", j); smallprintrational(x_j_p); printf("\n");

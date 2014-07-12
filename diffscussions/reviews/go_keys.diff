@@ -318,6 +318,23 @@ index 2151a20..3425015 100644
 -	return nil
 +	return k, nil
  }
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-11T21:23:48-0400
+#*
+#- I'm no go expert, so maybe you can suggest if this is more or less
+#- idiomatic/clean go code than your code above:
+#-   ec, err := ecdsa.GenerateKey(...)
+#-   if err != nil {
+#-	   ...
+#-	 }
+#-	 return &Signer{ec}, nil;
+#- They are about the same LOC, but really I'm wondering about use of & instead
+#- of new, and use of compound "init" style conditionals. Incidentally, I think
+#- you can also omit the  "var err error" line if you change the = to := on the
+#- next line, since at least one of the LHS operands is being declared.
+#-
  
 -// instantiateKey creates a Keyczar key of a given type, with an optional path,
 -// a name, and an optional crypter for encrypting or decrypting the key. It
@@ -398,6 +415,15 @@ index 2151a20..3425015 100644
 +	
 +	return base64.URLEncoding.EncodeToString(data), nil
  }
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-11T21:32:43-0400
+#*
+#- The above code isn't quite right. In the C++, principal names look like this:
+#-    Key("a-bunch-of-base64-w-encoded-stuff")
+#- Your code is missing the first 5 and the last 2 characters. Here, I think
+#- perfect compatability with C++ is important.
  
 -// SignerName returns a user-readable name of the signing key.
 -func (k *Keys) SignerName() string {
@@ -406,6 +432,17 @@ index 2151a20..3425015 100644
 +func MarshalSignerPEM(s *Signer) ([]byte, error) {
 +	return x509.MarshalECPrivateKey(s.ec)
  }
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-11T22:09:41-0400
+#*
+#- In your marshal code, are we aiming for binary compatability with C++, e.g.
+#- for keys stored on disk? I don't think the C++ code uses this DER format for
+#- signing keys anywhere. This may not really be important if keys are owned by
+#- programs, since programs don't suddenly change languages. On the other hand,
+#- there might be keys that are shared between programs.
+#-
  
 -// CrypterPath returns the path to the encryption key, if any.
 -func (k *Keys) CrypterPath() string {
@@ -762,6 +799,16 @@ index 2151a20..3425015 100644
 +	crypter *Crypter
 +	verifer *Verifier
 +	keyDeriver *Signer
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-11T22:27:37-0400
+#*
+#- I've started calling it just Deriver, since it can be used to derive random
+#- numbers too, not just keys.  Also, it has a different interface than Signer.
+#- It has to implement HKDF (or something similar) and it can't use any
+#- non-random structure/tags/headers/etc. in its output.
+#-
 +	delegation *Attestation
 +	cert *x509.Certificate
 +}
@@ -774,6 +821,16 @@ index 2151a20..3425015 100644
 +	} else {
 +		return path.Join(k.dir, "signer")
 +	}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-11T22:29:58-0400
+#*
+#- In the c++ code I changed this: there is now only ever a single "keys" file
+#- storing all the keys. That keys file might be a plain PKCS#8 PBE private
+#- signing key (if that is the only key in the set) or a custom-format PBE list
+#- of keys. In any case, There isn't a separate file for each type of key in C++.
+#-
  }
  
 -// Verify verifies a signature for a message with a given context.
@@ -820,6 +877,14 @@ index 2151a20..3425015 100644
 +	for i := range b {
 +		b[i] = 0
 +	}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-11T22:31:50-0400
+#*
+#- Is zeroBytes() just wishful thinking in a garbage collected language? I
+#- suppose we might as well make the effort.
+#-
  }
 diff --git a/go/src/cloudproxy/tao/keys.pb.go b/go/src/cloudproxy/tao/keys.pb.go
 index c750ca8..9cfef8d 100644

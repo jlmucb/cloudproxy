@@ -1,0 +1,22 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Keep a set of common flags and include directories for evmm and bootstrap.
+set(WARNING_FLAGS "-Wall -Werror")
+set(LANG_FLAGS "-std=c++0x")
+set(CMAKE_C_FLAGS "${WARNING_FLAGS}")
+set(CMAKE_CXX_FLAGS "${WARNING_FLAGS} ${LANG_FLAGS}")
+
+set(CMAKE_C_FLAGS_DEBUG "-g -O0")
+set(CMAKE_C_FLAGS_RELEASE "-O2")
+set(CMAKE_CXX_FLAGS_DEBUG ${CMAKE_C_FLAGS_DEBUG})
+set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})

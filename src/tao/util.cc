@@ -201,7 +201,8 @@ static void SelfPipeHandler(int signum) {
   if (!selfPipe[signum - 1].open) return;
   int savedErrno = errno;
   char b = static_cast<char>(signum);
-  write(selfPipe[signum - 1].fd[1], &b, 1);
+  ssize_t v = write(selfPipe[signum - 1].fd[1], &b, 1);
+  (void)v; // Ignore the result
   errno = savedErrno;
 }
 

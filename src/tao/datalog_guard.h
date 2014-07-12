@@ -125,7 +125,7 @@ class DatalogGuard : public TaoDomain {
  public:
   /// Example config strings useful for constructing domains for testing.
   constexpr static auto ExampleGuardDomain =
-      "name: \"Tao example ACL-based domain name\"\n"
+      "name: \"Tao example Datalog-based domain name\"\n"
       "policy_keys_path: \"policy_keys\"\n"
       "policy_x509_details {\n"
       "  commonname: \"tao example domain\"\n"
@@ -138,8 +138,8 @@ class DatalogGuard : public TaoDomain {
       " port: \"11238\"\n"
       "}\n"
       "policy_x509_last_serial: 0\n"
-      "guard type: \"ACLs\"\n"
-      "[tao.ACLGuardConfig.acl_guard] {\n"
+      "guard type: \"Datalog\"\n"
+      "[tao.DatalogGuardConfig.datalog_guard] {\n"
       "  signed_rules_path: \"domain_rules\"\n"
       "}\n";
 

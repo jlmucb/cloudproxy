@@ -20,6 +20,7 @@ set(TAO_PROTO
     linux_admin_rpc.proto
     linux_host.proto
     log_net.proto
+    tao_domain.proto
     tao_rpc.proto
    )
 
@@ -82,11 +83,16 @@ add_lua_header(auth_lua.h auth.lua)
 # This is added to get the right path for the protobuf generated header files.
 include_directories(${CMAKE_BINARY_DIR})
 include_directories(${CMAKE_SOURCE_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/third_party/keyczar/cpp/src)
 include_directories(${CMAKE_SOURCE_DIR}/third_party/google-glog/src)
 include_directories(${CMAKE_SOURCE_DIR}/third_party/gflags/src)
 include_directories(${CMAKE_SOURCE_DIR}/third_party/datalog)
 include_directories(${CMAKE_SOURCE_DIR}/third_party/datalog/lua)
+
+# for the chromium definitions, we need -DOS_POSIX
+add_definitions(-DOS_POSIX)
+include_directories(${CMAKE_SOURCE_DIR}/third_party/chromium/include)
+
+include_directories(${CMAKE_SOURCE_DIR}/third_party/modp/include)
 add_library(tao STATIC
     ${PROTO_SRCS}
     ${PROTO_HDRS}
@@ -97,10 +103,11 @@ add_library(tao STATIC
 
 # TODO(tmroeder): add checks for OpenSSL, libvirt, and libtspi.
 target_link_libraries(tao
+    chromium
     datalog
     gflags
     glog
-    keyczar
+    modp
     protobuf
     crypto
     ssl

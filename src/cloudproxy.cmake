@@ -12,7 +12,7 @@
 
 # Keep a set of common flags and include directories for evmm and bootstrap.
 set(WARNING_FLAGS "-Wall -Werror")
-set(LANG_FLAGS "-std=c++0x")
+set(LANG_FLAGS "-std=gnu++0x")
 set(CMAKE_C_FLAGS "${WARNING_FLAGS}")
 set(CMAKE_CXX_FLAGS "${WARNING_FLAGS} ${LANG_FLAGS}")
 

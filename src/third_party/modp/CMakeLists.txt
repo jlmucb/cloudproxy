@@ -12,9 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_subdirectory(chromium)
-add_subdirectory(datalog)
-add_subdirectory(gflags)
-add_subdirectory(google-glog)
-add_subdirectory(googlemock)
-add_subdirectory(modp)
+set(SD src)
+set(ISD include)
+
+set(MODP_SOURCES
+    ${SD}/modp_b64w.c
+   )
+
+set(MODP_HEADERS
+    ${SD}/modp_b64w_data.h
+    ${ISD}/modp/modp_b64w.h
+   )
+
+include_directories(${ISD}/modp)
+add_library(modp STATIC ${MODP_SOURCES} ${MODP_HEADERS})

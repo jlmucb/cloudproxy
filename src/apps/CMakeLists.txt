@@ -14,9 +14,12 @@
 
 include_directories(..)
 include_directories(${CMAKE_BINARY_DIR})
-include_directories(../third_party/keyczar/cpp/src)
 include_directories(../third_party/google-glog/src)
 include_directories(../third_party/gflags/src)
+
+# for the chromium definitions, we need -DOS_POSIX
+add_definitions(-DOS_POSIX)
+include_directories(${CMAKE_SOURCE_DIR}/third_party/chromium/include)
 
 add_executable(tpm_tao tpm_tao.cc)
 target_link_libraries(tpm_tao tao)

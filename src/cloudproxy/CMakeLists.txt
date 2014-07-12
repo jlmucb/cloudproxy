@@ -39,6 +39,10 @@ include_directories(${CMAKE_SOURCE_DIR}/third_party/keyczar/cpp/src)
 include_directories(${CMAKE_SOURCE_DIR}/third_party/google-glog/src)
 include_directories(${CMAKE_SOURCE_DIR}/third_party/gflags/src)
 
+# for the chromium definitions, we need -DOS_POSIX
+add_definitions(-DOS_POSIX)
+include_directories(${CMAKE_SOURCE_DIR}/third_party/chromium/include)
+
 add_library(cloudproxy STATIC
     ${PROTO_SRCS}
     ${PROTO_HDRS}

@@ -125,21 +125,23 @@ class DatalogGuard : public TaoDomain {
  public:
   /// Example config strings useful for constructing domains for testing.
   constexpr static auto ExampleGuardDomain =
-      "{\n"
-      "   \"name\": \"Tao example Datalog-based domain\",\n"
-      "\n"
-      "   \"policy_keys_path\":     \"policy_keys\",\n"
-      "   \"policy_x509_details\":  \"country: \\\"US\\\" state: "
-      "\\\"Washington\\\" organization: \\\"Google\\\" commonname: \\\"tao "
-      "example domain\\\"\",\n"
-      "   \"policy_x509_last_serial\": 0,\n"
-      "\n"
-      "   \"guard_type\": \"Datalog\",\n"
-      "   \"signed_rules_path\": \"domain_rules\",\n"
-      "\n"
-      "   \"tao_ca_host\": \"localhost\",\n"
-      "   \"tao_ca_port\": \"11238\"\n"
-      "}";
+      "name: \"Tao example ACL-based domain name\"\n"
+      "policy_keys_path: \"policy_keys\"\n"
+      "policy_x509_details {\n"
+      "  commonname: \"tao example domain\"\n"
+      "  country: \"US\"\n"
+      "  state: \"Washington\"\n"
+      "  organization: \"Google\"\n"
+      "}\n"
+      "tao_ca {\n"
+      "  host: \"localhost\"\n"
+      " port: \"11238\"\n"
+      "}\n"
+      "policy_x509_last_serial: 0\n"
+      "guard type: \"ACLs\"\n"
+      "[tao.ACLGuardConfig.acl_guard] {\n"
+      "  signed_rules_path: \"domain_rules\"\n"
+      "}\n";
 
   DatalogGuard(const string &path, TaoDomainConfig *config)
       : TaoDomain(path, config) {}

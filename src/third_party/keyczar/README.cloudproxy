@@ -1,5 +1,0 @@
-Version 662958e64c8 from the git repository https://code.google.com/p/keyczar
-
-LICENSE: Apache 2.0 (see file cpp/LICENSE)
-
-Removed .git, java, python, site, docs folders, since this is only a C++ build

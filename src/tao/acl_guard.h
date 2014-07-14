@@ -48,7 +48,7 @@ class ACLGuard : public TaoDomain {
       " port: \"11238\"\n"
       "}\n"
       "policy_x509_last_serial: 0\n"
-      "guard type: \"ACLs\"\n"
+      "guard_type: \"ACLs\"\n"
       "[tao.ACLGuardConfig.acl_guard] {\n"
       "  signed_acls_path: \"domain_acls\"\n"
       "}\n";

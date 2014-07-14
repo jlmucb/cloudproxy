@@ -138,7 +138,7 @@ class DatalogGuard : public TaoDomain {
       " port: \"11238\"\n"
       "}\n"
       "policy_x509_last_serial: 0\n"
-      "guard type: \"Datalog\"\n"
+      "guard_type: \"Datalog\"\n"
       "[tao.DatalogGuardConfig.datalog_guard] {\n"
       "  signed_rules_path: \"domain_rules\"\n"
       "}\n";

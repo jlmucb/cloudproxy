@@ -17,9 +17,7 @@
 
 set -e # quit script on first error
 
-root_dir="$(dirname $0)"
-# canonicalize
-root_dir=$(readlink -e "$(dirname $0)/..")
+root_dir=$(readlink -e "$(dirname $0)/../..")
 
 stderrthreshold=3
 verbose=0

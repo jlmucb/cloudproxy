@@ -18,6 +18,7 @@
 // limitations under the License.
 #include "tao/datalog_guard.h"
 
+#include <algorithm>
 #include <cctype>
 #include <list>
 #include <set>

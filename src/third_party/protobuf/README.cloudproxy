@@ -1,7 +1,0 @@
-Version r219890 of protobuf from the *Chromium* source tree using the command
-
-svn co http://src.chromium.org/svn/trunk/src/third_party/protobuf protobuf
-
-License: BSD (see file COPYING.txt)
-
-The file protobuf.gyp was extensively modified and simplified from the Chromium version for the Linux C++ case

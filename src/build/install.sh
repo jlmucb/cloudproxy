@@ -89,9 +89,8 @@ if [ -e "$test_dir" -a ! -d "$test_dir" ]; then
 	exit 1
 fi
 mkdir -p "$test_dir"
-root_dir="$(dirname $0)"
 # canonicalize
-root_dir=$(readlink -e "$(dirname $0)/..")
+root_dir=$(readlink -e "$(dirname $0)/../..")
 test_dir=$(readlink -e "$test_dir")
 if [ "$verbose" == "yes" ]; then
 	echo "Installing tao test scripts into: $test_dir"

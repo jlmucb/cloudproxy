@@ -87,7 +87,7 @@ echo "${green}[----------]${reset} 1 End-to-end Tao unit test"
 for guard in "acls" "datalog"; do
 	echo "${green}[ RUN      ]${reset} Run demo, with guard = $guard"
 	if (
-		${root_dir}/src/install.sh -q -${guard} -${test_ver} .
+		${root_dir}/src/build/install.sh -q -${guard} -${test_ver} .
 		./scripts/setup.sh
 		./scripts/start.sh
 		sleep 0.25

@@ -4,51 +4,49 @@ CloudProxy
 Setup
 -----
 
-This project depends on several third-party libraries, which are
-installed in third_party: keyczar, protobuf, google-glog, gflags,
-ninja, and gyp. The openssl and TSPI development libraries must also be
-installed. On Ubuntu, this can be accomplished with the command
+CloudProxy depends on third-party libraries installed in third_party:
+google-glog, gflags, ninja, and several others. Additionally, OpenSSL, TSPI, and
+Protobuf development libraries must also be installed, along with the CMake
+build system. On Ubuntu, these can be installed with the command:
 
-    sudo apt-get install libssl-dev libtspi-dev
+    sudo apt-get install libssl-dev libtspi-dev libprotoc-dev cmake
+
+Note: CloudProxy relies on newer versions of the protobuf 'protoc' compiler.
+Version of protoc prior to version 2.5.0 that are packaged for some Ubuntu
+systems may not work. 
 
 
 Build Process
 -------------
 
-To build CloudProxy, you must first build ninja and set up ninja build
-files using gyp. Let SRC be the directory that contains this README
-file. Then the build configuration can be accomplished with the
-command:
+Let SRC be the directory that contains this README.md file. 
 
-    cd $SRC
-    ${SRC}/build/bootstrap.sh.
+To build CloudProxy, you must first build ninja and set up ninja build files
+using cmake. This can be accomplished with the command:
 
-To update the build after any change to a .gyp file, call gyp from the src
-directory. To get this to work, you have to have gyp in your path:
+    cd ${SRC} && ${SRC}/build/bootstrap.sh
 
-    cd $SRC
-    export PATH=${PATH}:`pwd`/third_party/gyp
+To update the build after any change to a cmake file, invoke:
 
-Then in the $SRC directory, you can call gyp to fix up the build files
+    cd ${SRC} && ${SRC}/build/config.sh
 
-    GYP_GENERATORS=ninja gyp build/all.gyp --toplevel-dir=`pwd`
+To compile CloudProxy, invoke:
 
-And if you have ninja in your path, then you can build directly from the $SRC
-directory.
-
-    ninja -C out/Release
+    cd ${SRC} && ${SRC}/build/compile.sh 
 
 
 Code Style
 ----------
 
-The C++ sources in $SRC are formatted in accordance with Google style
+The C++ sources in ${SRC} are formatted in accordance with Google style
 guidelines. One easy way to make any changes match this format is to
-use clang-format; a version built for x86-64 linux is checked in to
-${ROOT}/bin/clang-format. The following command will reformat file.cc
-in place:
+use clang-format. On Ubuntu, you can install clang-format using:
 
-    ${ROOT}/bin/clang-format --style=Google -i file.cc
+    sudo apt-get install clang-format-3.4
+
+The following command will then reformat file.cc in place:
+
+    clang-format --style=Google -i file.cc
 
 Note, however, that clang-format does not rename anything to match the naming
 conventions. Please see the files themselves for these conventions.
@@ -61,11 +59,10 @@ This version of CloudProxy has documentation in doxygen format. To build it, you
 must have doxygen installed. It helps to have the dot tool (from graphviz) as
 well. Once these are installed, you can build the documentation as follows:
 
-    cd $SRC
-    doxygen build/Doxyfile
+    cd ${SRC} && doxygen build/Doxyfile
 
-This will produce html documentation in ${ROOT}/doc/html. See the file
-index.html to get started.
+This will produce html documentation in ${SRC}/doc/html. See index.html to get
+started.
 
 
 Testing

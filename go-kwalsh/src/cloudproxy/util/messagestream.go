@@ -8,9 +8,11 @@ import (
 	"math"
 )
 
-// A MessageStream is a bi-direction stream of protobuf messages. A
-// MessageStream can also enforce an upper-limit on the size of received
-// messages.
+// A MessageStream is an io.ReadWriteCloser that can also read and write strings
+// and protobuf messages. Boundaries are preserved for both strings and protobuf
+// messages by using a 32-bit length prefix before the contents of the string or
+// marshalled protobuf message. MessageStream can also enforce an upper-limit on
+// the size of received messages.
 type MessageStream struct {
 	maxMessageSize uint
 	pipe io.ReadWriteCloser

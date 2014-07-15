@@ -10,16 +10,17 @@ type MessageReader interface {
 	ReadMessage(m proto.Message) error
 }
 
-// A MessageWriter is a stream to protobuf messages can be written.
+// A MessageWriter is a stream to which protobuf messages can be written.
 type MessageWriter interface {
 	WriteMessage(m proto.Message) error
 }
 
-// A MessageReadWriteCloser groups the MessageReader, MessageWriter, an
-// io.Closer interfaces.
+// A StringReader is a stream from which strings can be read.
+type StringReader interface {
+	ReadString() error
+}
 
-type MessageReadWriteCloser interface {
-	MessageReader
-	MessageWriter
-	io.Closer
+// A StringWriter is a stream to which strings can be written.
+type StringWriter interface {
+	WriteString() error
 }

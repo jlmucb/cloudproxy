@@ -1,0 +1,14 @@
+package protorpc;
+
+message ProtoRPCHeader {
+  // Protobuf RPC requests and responses should include at least these fields:
+  
+  // The operation to be performed (for a request) or that was performed (for a
+  // response). Tag must be 1. Type can be any varint-encoded type, e.g. enum,
+  // int32, sint64. The name can be anything.
+  required uint64 op = 1;
+
+  // The sequence number for the operation. Tag must be 2. Type can be any
+  // varint-encoded type.The name can be anything.
+  required uint64 seq = 2;
+}

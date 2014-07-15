@@ -32,15 +32,16 @@ enum TaoRPCOperation {
 
 message TaoRPCRequest {
   required TaoRPCOperation rpc = 1;
-  optional bytes data = 2;
-  optional int32 size = 3;
-  optional string policy = 4;
+  required uint64 seq = 2;
+  optional bytes data = 3;
+  optional int32 size = 4;
+  optional string policy = 5;
 }
 
 message TaoRPCResponse {
   required TaoRPCOperation rpc = 1;
-  required bool success = 2;
-  optional bytes data = 3;
-  optional string policy = 4;
-  optional string reason = 5;  // failure message
+  required uint64 seq = 2
+  optional string error = 3;
+  optional bytes data = 4;
+  optional string policy = 5;
 }

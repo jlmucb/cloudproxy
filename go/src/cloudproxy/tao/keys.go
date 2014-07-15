@@ -36,7 +36,7 @@ type KeyType int
 const (
 	Signing     KeyType = 1 << iota
 	Crypting
-	KeyDeriving
+	Deriving
 )
 
 // A Signer is used to sign and verify signatures
@@ -63,14 +63,12 @@ type Deriver struct {
 
 // GenerateSigner creates a new Signer with a fresh key.
 func GenerateSigner() (*Signer, error) {
-	k := new(Signer)
-
-	var err error
-	if k.ec, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader); err != nil {
+	ec, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
 		return nil, err
 	}
 
-	return k, nil
+	return &Signer{ec}, nil
 }
 
 // ToPrincipalName produces a plain-text Tao principal name. This is a
@@ -294,33 +292,6 @@ type Keys struct {
 	deriver *Deriver
 	delegation *Attestation
 	cert *x509.Certificate
-}
-
-// SignerPath returns the path to the signing keys, if any.
-func (k *Keys) SignerPath() string {
-	if k.dir == "" {
-		return ""
-	} else {
-		return path.Join(k.dir, "signer")
-	}
-}
-
-// CrypterPath returns the path to the encryption key, if any.
-func (k *Keys) CrypterPath() string {
-	if k.dir == "" {
-		return ""
-	} else {
-		return path.Join(k.dir, "crypter")
-	}
-}
-
-// KeyDeriverPath returns the path to the key-deriving key, if any.
-func (k *Keys) KeyDeriverPath() string {
-	if k.dir == "" {
-		return ""
-	} else {
-		return path.Join(k.dir, "key_deriver")
-	}
 }
 
 // TaoSecretPath returns the path to a Tao-sealed secret, if any. This secret

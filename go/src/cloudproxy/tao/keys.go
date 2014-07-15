@@ -55,6 +55,12 @@ type Crypter struct {
 
 }
 
+// A Deriver is used to derive key material from a context using PBDKF2.
+// TODO(tmroeder): implement the deriver over basic Go crypto
+type Deriver struct {
+
+}
+
 // GenerateSigner creates a new Signer with a fresh key.
 func GenerateSigner() (*Signer, error) {
 	k := new(Signer)
@@ -81,8 +87,8 @@ func (s *Signer) ToPrincipalName() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
-	return base64.URLEncoding.EncodeToString(data), nil
+
+	return "Key(" + base64.URLEncoding.EncodeToString(data) + ")", nil
 }
 
 // MarshalSigner serializes the signer to PEM.
@@ -285,7 +291,7 @@ type Keys struct {
 	signer *Signer
 	crypter *Crypter
 	verifer *Verifier
-	keyDeriver *Signer
+	deriver *Deriver
 	delegation *Attestation
 	cert *x509.Certificate
 }

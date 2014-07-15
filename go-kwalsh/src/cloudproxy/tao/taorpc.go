@@ -30,7 +30,7 @@ import (
 // hosts and Tao hosted programs.
 
 type TaoRPC struct {
-	mc *MessageChannel
+	mc *MessageStream
 	err string
 }
 

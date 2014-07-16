@@ -7,8 +7,7 @@ import (
 
 // DeserializeMessageStream takes a string description of the form
 // "tao::FDMessageStream(X, Y)" and returns a MessageStream that uses file
-// descriptor X as the underlying reader and file descriptor write as the
-// underlying writer. 
+// descriptor X as the reader and file descriptor Y as the writer.
 func DeserializeMessageStream(s string) *MessageStream {
 	var readfd, writefd uintptr
 	_, err := fmt.Sscanf(s, "tao::FDMessageStream(%d, %d)", &readfd, &writefd)

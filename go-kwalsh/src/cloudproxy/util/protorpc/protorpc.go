@@ -94,8 +94,8 @@ func (c *clientCodec) ReadResponseHeader(r *rpc.Response) error {
 	if err != nil {
 		return err
 	}
-	r.Seq = hdr.seq
-	r.ServiceMethod, err = c.mux.GetServiceMethod(hdr.op)
+	r.Seq = *hdr.Seq
+	r.ServiceMethod, err = c.mux.GetServiceMethod(*hdr.Op)
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func (c *clientCodec) ReadResponseHeader(r *rpc.Response) error {
 }
 
 func (c *clientCodec) ReadResponseBody(x interface{}) error {
-	resp = c.resp
+	resp := c.resp
 	c.resp = nil
 	if x == nil {
 		return nil
@@ -127,8 +127,8 @@ func (c *clientCodec) Close() error {
 
 // NewClient returns a new rpc.Client to handle requests to the set of services
 // at the other end of the connection. 
-func NewClient(conn io.ReadWriteCloser) *rpc.Client {
-	return rpc.NewClientWithCodec(NewClientCodec(conn))
+func NewClient(conn io.ReadWriteCloser, mux ProtoClientMux) *rpc.Client {
+	return rpc.NewClientWithCodec(NewClientCodec(conn, mux))
 }
 
 type ProtoServerMux interface {
@@ -149,8 +149,8 @@ type serverCodec struct {
 // NewServerCodec returns a new rpc.ServerCodec using protobuf messages on conn,
 // where mux is used to match request messages with the appropriate service and
 // method.
-func NewServerCodec(conn io.ReadWriteCloser, mux ProtoMux) rpc.ServerCodec {
-	return &serverCode{util.NewMessageStream(conn), mux, sync.Mutex{}, nil}
+func NewServerCodec(conn io.ReadWriteCloser, mux ProtoServerMux) rpc.ServerCodec {
+	return &serverCodec{util.NewMessageStream(conn), mux, sync.Mutex{}, nil}
 }
 
 func (c *serverCodec) ReadRequestHeader(r *rpc.Request) error {
@@ -165,8 +165,8 @@ func (c *serverCodec) ReadRequestHeader(r *rpc.Request) error {
 	if err != nil {
 		return err
 	}
-	r.Seq = hdr.seq
-	r.ServiceMethod, err = c.mux.GetServiceMethod(hdr.op)
+	r.Seq = *hdr.Seq
+	r.ServiceMethod, err = c.mux.GetServiceMethod(*hdr.Op)
 	if err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func (c *serverCodec) ReadRequestHeader(r *rpc.Request) error {
 
 func (c *serverCodec) ReadRequestBody(x interface{}) error {
 	// This is almost identical to ReadResponseBody(), above.
-	req = c.req
+	req := c.req
 	c.req = nil
 	if x == nil {
 		return nil
@@ -193,9 +193,9 @@ func (c *serverCodec) ReadRequestBody(x interface{}) error {
 	return proto.Unmarshal(req, y)
 }
 
-func (c *serverCode) WriteResponse(r *rpc.Response, x interface{}) error {
-	y, ok = x.(proto.Message)
-	if !ok || req == nil {
+func (c *serverCodec) WriteResponse(r *rpc.Response, x interface{}) error {
+	y, ok := x.(proto.Message)
+	if !ok || y == nil {
 		return BadResponseType
 	}
 	c.mux.SetResponseHeader(y, r.ServiceMethod, r.Seq)
@@ -203,5 +203,9 @@ func (c *serverCode) WriteResponse(r *rpc.Response, x interface{}) error {
 	err := c.m.WriteMessage(y) // writes htonl(length), marshal(req)
 	c.sending.Unlock()
 	return err
+}
+
+func (c *serverCodec) Close() error {
+	return c.m.Close()
 }
 

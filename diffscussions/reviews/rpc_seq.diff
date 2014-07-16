@@ -20,6 +20,19 @@
 #- LGTM, Approval, except for my brief question about concurrency below.
 #- If we're not supported concurrency yet, then I have no concerns about this.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-16T16:51:34-0400
+#**
+#-- Currently, the linux_host is single-threaded, as are all the apps that run
+#-- as hosted programs. I'd be shocked if any of the code functioned under
+#-- multithreading. In the specific case below of allocating sequence numbers
+#-- for rpc: no, it isn't safe for concurrency. But neither is the underlying
+#-- message stream. Nor do we handle out-of-order rpc responses, which is what
+#-- you'd get with concurrency. Supporting concurrency for hosted programs or
+#-- for tao hosts in C++ is going to take a careful audit of all C++ code.
+#--
 diff --git a/src/tao/linux_admin_rpc.cc b/src/tao/linux_admin_rpc.cc
 index eed7f67..ce9a7cd 100644
 --- a/src/tao/linux_admin_rpc.cc

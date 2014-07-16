@@ -49,7 +49,7 @@ type Tao interface {
 	// GetTaoName returns the Tao principal name assigned to the caller.
 	GetTaoName() (name string, err error)
 
-	/// ExtendTaoName irreversibly extends the Tao principal name of the caller.
+	// ExtendTaoName irreversibly extends the Tao principal name of the caller.
 	ExtendTaoName(subprin string) error
 
 	// GetRandomBytes returns a slice of n random bytes.

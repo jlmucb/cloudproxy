@@ -25,6 +25,7 @@
 #include <string>
 
 #include <gflags/gflags.h>
+#include <glog/logging.h>
 
 #include "tao/fd_message_channel.h"
 #include "tao/log_net.pb.h"
@@ -93,6 +94,8 @@ int main(int argc, char **argv) {
   string usage = "Listen for google log messages.\nUsage:\n  ";
   google::SetUsageMessage(usage + argv[0] + " [options]");
   google::ParseCommandLineFlags(&argc, &argv, true /* remove args */);
+  google::InitGoogleLogging(argv[0]);
+  google::InstallFailureSignalHandler();
 
   int sock;
   if (!OpenTCPSocket(FLAGS_host, FLAGS_port, &sock)) {
@@ -160,7 +163,7 @@ int main(int argc, char **argv) {
     if (FD_ISSET(sock, &read_fds)) {
       fd = accept(sock, nullptr, nullptr);
       clients.push_back(
-          std::unique_ptr<FDMessageChannel>(new FDMessageChannel(fd, -1)));
+          std::unique_ptr<FDMessageChannel>(new FDMessageChannel(fd, fd)));
     }
 
     // Check for messages from clients

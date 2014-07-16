@@ -18,6 +18,14 @@
 #- Added Verifier, Crypter, and Deriver, along with tests for each
 #- 
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-16T14:19:13-0400
+#**
+#-- I'm only going to look at keys.go. The other files look fine on cursory
+#-- glance.
+#--
 diff --git a/go/dkeyczar.patch b/go/dkeyczar.patch
 deleted file mode 100644
 index 088f560..0000000
@@ -589,6 +597,20 @@ index 2151a20..78eecf0 100644
 +func MarshalPublicSignerProto(s *Signer) (*CryptoKey, error) {
 +	return marshalPublicKeyProto(&s.ec.PublicKey)
  }
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-16T14:25:39-0400
+#*
+#- Curious: Why isn't the above a member, like this...
+#- func (s *Signer) MarshalPublicProto() (*CryptoKey, error) { ... }
+#-
+#- I could ask the same of many of the single-argument functions here, e.g.
+#- func (k *ecdsa.PublicKey) marshalProto() (*CryptoKey, error) { ... }
+#- (where this takes advantage of go's ability to add methods to existing types)
+#- 
+#- In C++, those things are non-member functions because I didn't want them in
+#- the #- header files.
  
 -// instantiate creates multiple keys as specified by the bits of keyTypes. It
 -// encrypts them with the crypter, if it's non-nil.
@@ -675,6 +697,13 @@ index 2151a20..78eecf0 100644
 +func (s *Signer) getECDSAKey() *ecdsa.PrivateKey {
 +	return s.ec
 +}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-16T14:36:55-0400
+#*
+#- Is getECDSAKey() used anywhere? I don't see where...
+#-
 +
 +// This is copied from the Go crypto/x509 source: it just uses a simple
 +// two-element structure to marshal a DSA signature as ASN.1 in an X.509
@@ -719,6 +748,16 @@ index 2151a20..78eecf0 100644
 +	m, err := asn1.Marshal(ecdsaSignature{R, S})
 +	if err != nil {
 +		return nil, err
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-16T14:37:34-0400
+#*
+#- This asn1 code is pretty amazing. Does it work? Is it compatible with
+#- openssl? From what I recall, marshalling asn.1 correctly requires a lot of
+#- fussing with asn.1 templates because there are so many variations of how
+#- things can get encoded.
+#-
  	}
  
 -	if k.delegation, err = tao.Attest(s); err != nil {
@@ -798,6 +837,14 @@ index 2151a20..78eecf0 100644
 +
 +	ks := strings.TrimPrefix(strings.TrimSuffix(name, ")"), "Key(")
 +
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-16T14:39:45-0400
+#*
+#- Do you need to get rid of the doublquotes too? We add 6+2 chars when
+#- encoding, but you only drop 4+1 chars here.
+#-
 +	b, err := base64.URLEncoding.DecodeString(ks)
 +	if err != nil {
 +		return nil, err
@@ -841,6 +888,14 @@ index 2151a20..78eecf0 100644
  	}
 +
 +	return &Verifier{c.PublicKey.(*ecdsa.PublicKey)}, nil
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-16T14:41:05-0400
+#*
+#- Does this need error checking? What if the x509 has an rsa key... will it
+#- panic?
+#-
  }
  
 -// secretLength is the length of any Tao-sealed secret.
@@ -1180,6 +1235,28 @@ index 2151a20..78eecf0 100644
 -	s, err := proto.Marshal(sd)
 +	return nil
 +}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-16T14:47:06-0400
+#*
+#- Some potential issues with Derive() above. 
+#- (1) go hkdf.New uses 2-stage extract-then-expand. C++ uses only expand since
+#- input secret is already strong random (not a passwd) and of correct size.
+#- (2) The C++ API does not include salt as a parameter. Salt is used only for
+#- the extract stage, so it wasn't needed. Where will go salt come from?
+#- (3) go hkdf uses sweet array packing code to create the buffers that are
+#- signed when generating bytes. My C++ used protobuf for the array packing.
+#- Here, the go code is more conformant with the RFCs.
+#-
+#- All this means is that go code will generate different secrets than C++ code.
+#- However, I think in this case it is probably fine. The one place this is
+#- being used right now is for children to call their host tao to get
+#- deterministic but random bytes. In that case, the host tao will never change
+#- from C++ to go, and no two host Taos will ever have the same key material.
+#- OTOH, if two communicating apps (one in C++, one in go) establish a shared
+#- secret, they might want to be able to use the Deriver interface
+#- to generate secrets.
 +
 +// marshalHMAC_SHA_DerivingKeyV1 encodes a deriving key as a protobuf message.
 +func marshalHMAC_SHA_DerivingKeyV1(d *Deriver) *HMAC_SHA_DerivingKeyV1 {
@@ -1243,6 +1320,16 @@ index 2151a20..78eecf0 100644
 +
 +// A Keys holds a set of Keyczar keys and provides an interface to perform
 +// actions with these keys.
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-16T14:59:01-0400
+#*
+#- "... and provides an interface to perform actions with these keys."
+#- Well, not really, at least not in C++. It is just a container.
+#- If you make the Signer, Crypter, Verifier, and Deriver members of keys be
+#- anonymous, you get free pass-through in go, though, whic might be nice.
+#-
 +type Keys struct {
 +	dir    string
 +	policy string

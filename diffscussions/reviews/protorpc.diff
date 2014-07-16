@@ -17,16 +17,47 @@
 #- client-side RPC stub for go programs to talk to a (C++ or go) host Tao over a
 #- channel.
 #- 
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-16T13:02:05-0700
+#*
+#- High-level comments:
+#- 
+#- First, I'm still learning good Go style, so I'm open to disagreement on the
+#- style-based comments I'll make here.
+#- 
+#- Instead of fmt, I've been using github.com/golang/glog for messages, since
+#- then we can redirect them and use them like we do with google-glog in C++.
+#- 
+#- My best understanding of Go's variable style is to use := whenever possible,
+#- and only to use var statements when necessary. I think many of the var
+#- statements in the following code can be eliminated.
+#- 
+#- From this diff, it looks like these files are missing Apache 2 license
+#- statements.
 diff --git a/go-kwalsh/src/cloudproxy/demo/demo.go b/go-kwalsh/src/cloudproxy/demo/demo.go
 new file mode 100644
 index 0000000..e043f1f
 --- /dev/null
-+++ b/go-kwalsh/src/cloudproxy/demo/demo.go
++++ b/go-kwalsh/src/cloudproxy/demo/demo.go1
 @@ -0,0 +1,85 @@
 +package main
 +
 +import (
 +	"cloudproxy/tao"
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-16T13:09:22-0700
+#*
+#- I think I'm dong this, too, but the style in Go is to put the standard
+#- libraries first, then other sets of libraries. Since cloudproxy/tao is not
+#- a standard library, it should come later, especially because it will
+#- eventually be something like github.com/tmroeder/cloudproxy/tao.
+#- 
+#- I'll make sure I fix this in my code, too.
+#- 
 +	"errors"
 +	"fmt"
 +	"os"
@@ -147,9 +178,25 @@ index 0000000..8832f3e
 +
 +	/// ExtendTaoName irreversibly extends the Tao principal name of the caller.
 +	ExtendTaoName(subprin string) error
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-16T13:12:49-0700
+#*
+#- Only double slash for Go
+#- 
 +
 +	// GetRandomBytes returns a slice of n random bytes.
 +	GetRandomBytes(n int) (bytes []byte, err error)
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-16T13:11:11-0700
+#*
+#- I've been wondering if maybe we should make the Go Tao implement io.Reader by
+#- turning this into Read([]byte) (int, error). Then we could use the Tao in
+#- place of rand.Read when we want to get randomness from the Tao.
+#- 
 +
 +	// GetSharedSecret returns a slice of n secret bytes.
 +	GetSharedSecret(n int, policy string) (bytes []byte, err error)
@@ -166,6 +213,13 @@ index 0000000..8832f3e
 +}
 +
 +// Host is a pointer to host Tao underlying this hosted program.
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-16T13:13:08-0700
+#*
+#- "to host Tao" -> "to the host Tao"
+#- 
 +var Host Tao
 +
 +func init() {
@@ -195,6 +249,14 @@ index 0000000..2e64b00
 +)
 +
 +var op_rpc_name = map[string]string{
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-16T13:14:04-0700
+#*
+#- Naming: Go naming uses mixedCase rather than underscore_names.
+#- See http://golang.org/doc/effective_go.html#names
+#- 
 +		"Tao.GetRandomBytes": "TAO_RPC_GET_RANDOM_BYTES",
 +		"Tao.Seal": "TAO_RPC_SEAL",
 +		"Tao.Unseal": "TAO_RPC_UNSEAL",
@@ -233,6 +295,19 @@ index 0000000..2e64b00
 +type taoMux struct{}
 +
 +func (taoMux) SetRequestHeader(req proto.Message, servicemethod string, seq uint64) error {
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-16T13:16:43-0700
+#*
+#- I've never seen this receiver style before. I would think that if you don't
+#- need to name the receiver, then there shouldn't be a receiver. This might
+#- mean that you need to make the name a little longer to disambiguate it from
+#- other similarly-named functions.
+#- 
+#- I've just come back from later in the code: I think I understand now: is this
+#- needed to make the codecs work with net/rpc?
+#- 
 +	m, ok := req.(*TaoRPCRequest)
 +	if !ok || m == nil {
 +		return protorpc.ErrBadRequestType
@@ -273,6 +348,15 @@ index 0000000..2e64b00
 +	if s == "" {
 +		return nil, errors.New("Missing host Tao spec. " +
 +			"Make sure $" + HostTaoEnvVar +" is set.")
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-16T13:19:03-0700
+#*
+#- Once again, I think I'm doing this in places in my code, but I
+#- shouldn't be. The errors.New string should start with lower case.
+#- See https://code.google.com/p/go-wiki/wiki/CodeReviewComments#Error_Strings
+#- 
 +	}
 +	r := strings.TrimPrefix(s, "tao::TaoRPC+")
 +	if r == s {
@@ -302,6 +386,13 @@ index 0000000..2e64b00
 +  if err != nil {
 +    return
 +  }
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-16T13:23:46-0700
+#*
+#- go fmt
+#- 
 +	if s.Error != nil {
 +		err = errors.New(*s.Error)
 +		return
@@ -535,6 +626,13 @@ index 0000000..955f173
 +
 +// NewMessageStream creates a MessageStream for the given pipe with a reception
 +// limit of DefaultMaxMessageSize..
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-16T13:31:43-0700
+#*
+#- ".." -> "."
+#- 
 +func NewMessageStream(pipe io.ReadWriteCloser) *MessageStream {
 +	return &MessageStream{DefaultMaxMessageSize, pipe}
 +}
@@ -553,6 +651,13 @@ index 0000000..959ad40
 +)
 +
 +// A PairReadWriteCloser groups an io.ReadCloser and an io.WritCloser into a
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-16T13:32:04-0700
+#*
+#- "io.WritCloser" -> "io.WriteCloser"
+#- 
 +// single structure that implements the io.ReadWriteCloser interface. This can
 +// be used to turn a pair of uni-directional streams into a single
 +// bi-directional stream.
@@ -588,6 +693,13 @@ index 0000000..8f12e33
 +	Package protorpc implements a protobuf-based ClientCodec and ServerCodec for the
 +	rpc package. Clients can make concurrent or asynchronous requests, and these
 +	are handled in whatever order the servers choses.
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-16T13:34:03-0700
+#*
+#- "servers choses" -> "server chooses" ?
+#- 
 +
 +	All service methods take two protobuf message pointers: a request and a
 +	response. RPC service method strings and sequence numbers are not sent over
@@ -661,6 +773,13 @@ index 0000000..8f12e33
 +var ErrMissingResponse = errors.New("protorpc: missing response")
 +
 +func (c *clientCodec) WriteRequest(r *rpc.Request, x interface{}) error {
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-16T13:37:16-0700
+#*
+#- Doc string for this (and other methods)?
+#- 
 +	y, ok := x.(proto.Message)
 +	if !ok || y == nil {
 +		return ErrBadRequestType
@@ -818,3 +937,11 @@ index 0000000..645ffc2
 +  // varint-encoded type.The name can be anything.
 +  required uint64 seq = 2;
 +}
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-16T13:43:08-0700
+#*
+#- This is a very nice use of protobuf punning. This is the first time I've
+#- actually be happy that one protobuf can be read as another.
+#- 

@@ -24,7 +24,6 @@ var _ = math.Inf
 type TaoRPCOperation int32
 
 const (
-	TaoRPCOperation_TAO_RPC_UNKNOWN           TaoRPCOperation = 0
 	TaoRPCOperation_TAO_RPC_GET_RANDOM_BYTES  TaoRPCOperation = 1
 	TaoRPCOperation_TAO_RPC_SEAL              TaoRPCOperation = 2
 	TaoRPCOperation_TAO_RPC_UNSEAL            TaoRPCOperation = 3
@@ -35,7 +34,6 @@ const (
 )
 
 var TaoRPCOperation_name = map[int32]string{
-	0: "TAO_RPC_UNKNOWN",
 	1: "TAO_RPC_GET_RANDOM_BYTES",
 	2: "TAO_RPC_SEAL",
 	3: "TAO_RPC_UNSEAL",
@@ -45,7 +43,6 @@ var TaoRPCOperation_name = map[int32]string{
 	7: "TAO_RPC_GET_SHARED_SECRET",
 }
 var TaoRPCOperation_value = map[string]int32{
-	"TAO_RPC_UNKNOWN":           0,
 	"TAO_RPC_GET_RANDOM_BYTES":  1,
 	"TAO_RPC_SEAL":              2,
 	"TAO_RPC_UNSEAL":            3,
@@ -74,9 +71,10 @@ func (x *TaoRPCOperation) UnmarshalJSON(data []byte) error {
 
 type TaoRPCRequest struct {
 	Rpc              *TaoRPCOperation `protobuf:"varint,1,req,name=rpc,enum=tao.TaoRPCOperation" json:"rpc,omitempty"`
-	Data             []byte           `protobuf:"bytes,2,opt,name=data" json:"data,omitempty"`
-	Size             *int32           `protobuf:"varint,3,opt,name=size" json:"size,omitempty"`
-	Policy           *string          `protobuf:"bytes,4,opt,name=policy" json:"policy,omitempty"`
+	Seq              *uint64          `protobuf:"varint,2,req,name=seq" json:"seq,omitempty"`
+	Data             []byte           `protobuf:"bytes,3,opt,name=data" json:"data,omitempty"`
+	Size             *int32           `protobuf:"varint,4,opt,name=size" json:"size,omitempty"`
+	Policy           *string          `protobuf:"bytes,5,opt,name=policy" json:"policy,omitempty"`
 	XXX_unrecognized []byte           `json:"-"`
 }
 
@@ -88,7 +86,14 @@ func (m *TaoRPCRequest) GetRpc() TaoRPCOperation {
 	if m != nil && m.Rpc != nil {
 		return *m.Rpc
 	}
-	return TaoRPCOperation_TAO_RPC_UNKNOWN
+	return TaoRPCOperation_TAO_RPC_GET_RANDOM_BYTES
+}
+
+func (m *TaoRPCRequest) GetSeq() uint64 {
+	if m != nil && m.Seq != nil {
+		return *m.Seq
+	}
+	return 0
 }
 
 func (m *TaoRPCRequest) GetData() []byte {
@@ -114,10 +119,10 @@ func (m *TaoRPCRequest) GetPolicy() string {
 
 type TaoRPCResponse struct {
 	Rpc              *TaoRPCOperation `protobuf:"varint,1,req,name=rpc,enum=tao.TaoRPCOperation" json:"rpc,omitempty"`
-	Success          *bool            `protobuf:"varint,2,req,name=success" json:"success,omitempty"`
-	Data             []byte           `protobuf:"bytes,3,opt,name=data" json:"data,omitempty"`
-	Policy           *string          `protobuf:"bytes,4,opt,name=policy" json:"policy,omitempty"`
-	Reason           *string          `protobuf:"bytes,5,opt,name=reason" json:"reason,omitempty"`
+	Seq              *uint64          `protobuf:"varint,2,req,name=seq" json:"seq,omitempty"`
+	Error            *string          `protobuf:"bytes,3,opt,name=error" json:"error,omitempty"`
+	Data             []byte           `protobuf:"bytes,4,opt,name=data" json:"data,omitempty"`
+	Policy           *string          `protobuf:"bytes,5,opt,name=policy" json:"policy,omitempty"`
 	XXX_unrecognized []byte           `json:"-"`
 }
 
@@ -129,14 +134,21 @@ func (m *TaoRPCResponse) GetRpc() TaoRPCOperation {
 	if m != nil && m.Rpc != nil {
 		return *m.Rpc
 	}
-	return TaoRPCOperation_TAO_RPC_UNKNOWN
+	return TaoRPCOperation_TAO_RPC_GET_RANDOM_BYTES
 }
 
-func (m *TaoRPCResponse) GetSuccess() bool {
-	if m != nil && m.Success != nil {
-		return *m.Success
+func (m *TaoRPCResponse) GetSeq() uint64 {
+	if m != nil && m.Seq != nil {
+		return *m.Seq
 	}
-	return false
+	return 0
+}
+
+func (m *TaoRPCResponse) GetError() string {
+	if m != nil && m.Error != nil {
+		return *m.Error
+	}
+	return ""
 }
 
 func (m *TaoRPCResponse) GetData() []byte {
@@ -149,13 +161,6 @@ func (m *TaoRPCResponse) GetData() []byte {
 func (m *TaoRPCResponse) GetPolicy() string {
 	if m != nil && m.Policy != nil {
 		return *m.Policy
-	}
-	return ""
-}
-
-func (m *TaoRPCResponse) GetReason() string {
-	if m != nil && m.Reason != nil {
-		return *m.Reason
 	}
 	return ""
 }

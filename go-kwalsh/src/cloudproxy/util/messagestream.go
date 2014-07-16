@@ -20,13 +20,13 @@ type MessageStream struct {
 
 const DefaultMaxMessageSize = 20 * 1024 * 1024
 
-var MessageTooLarge = errors.New("messagestream: Message is too large")
+var ErrMessageTooLarge = errors.New("messagestream: Message is too large")
 
 // WriteString writes a 32-bit length followed by the string.
 func (ms *MessageStream) WriteString(s string) (int, error) {
 	n := len(s)
 	if n > math.MaxUint32 {
-		return 0, MessageTooLarge
+		return 0, ErrMessageTooLarge
 	}
 	var sizebytes [4]byte
 	binary.BigEndian.PutUint32(sizebytes[:], uint32(n))
@@ -49,7 +49,7 @@ func (ms *MessageStream) ReadString() (string, error) {
 	max := ms.MaxMessageSize
 	// We also check for int(n) to overflow so allocation below doesn't fail.
 	if int(n) < 0 || (max > 0 && int(n) > max) {
-		return "", MessageTooLarge
+		return "", ErrMessageTooLarge
 	}
 	strbytes := make([]byte, int(n))
 	_, err = io.ReadFull(ms, strbytes)

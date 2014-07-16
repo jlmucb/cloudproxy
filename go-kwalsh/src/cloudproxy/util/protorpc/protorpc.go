@@ -56,23 +56,32 @@ type clientCodec struct {
 // where mux is used to match request messages with the appropriate service and
 // method.
 func NewClientCodec(conn io.ReadWriteCloser, mux ProtoClientMux) rpc.ClientCodec {
-	return &clientCodec{util.NewMessageStream(conn), mux, sync.Mutex{}, nil}
+	if m, ok := conn.(*util.MessageStream); ok {
+		return &clientCodec{m, mux, sync.Mutex{}, nil}
+	} else {
+		return &clientCodec{util.NewMessageStream(conn), mux, sync.Mutex{}, nil}
+	}
 }
 
-var BadRequestType = errors.New("protorpc: Bad request type")
-var MissingRequest = errors.New("protorpc: Missing request")
-var BadResponseType = errors.New("protorpc: Bad response type")
-var BadResponseHeader = errors.New("protorpc: Bad response header")
-var MissingResponse = errors.New("protorpc: Missing response")
+// NewClient returns a new rpc.Client to handle requests to the set of services
+// at the other end of the connection. 
+func NewClient(conn io.ReadWriteCloser, mux ProtoClientMux) *rpc.Client {
+	return rpc.NewClientWithCodec(NewClientCodec(conn, mux))
+}
+
+var ErrBadRequestType = errors.New("protorpc: bad request type")
+var ErrMissingRequest = errors.New("protorpc: missing request")
+var ErrBadResponseType = errors.New("protorpc: bad response type")
+var ErrMissingResponse = errors.New("protorpc: missing response")
 
 func (c *clientCodec) WriteRequest(r *rpc.Request, x interface{}) error {
 	y, ok := x.(proto.Message)
 	if !ok || y == nil {
-		return BadRequestType
+		return ErrBadRequestType
 	}
 	c.mux.SetRequestHeader(y, r.ServiceMethod, r.Seq)
 	c.sending.Lock()
-	err := c.m.WriteMessage(y) // writes htonl(length), marshal(y)
+	_, err := c.m.WriteMessage(y) // writes htonl(length), marshal(y)
 	c.sending.Unlock()
 	return err
 }
@@ -110,25 +119,19 @@ func (c *clientCodec) ReadResponseBody(x interface{}) error {
 		return nil
 	}
 	if resp == nil {
-		return MissingResponse
+		return ErrMissingResponse
 	}
 	// Decode the response bytes again, this time using the correct response
 	// message type.
 	y, ok := x.(proto.Message)
 	if !ok || y == nil {
-		return BadResponseType
+		return ErrBadResponseType
 	}
 	return proto.Unmarshal(resp, y)
 }
 
 func (c *clientCodec) Close() error {
 	return c.m.Close()
-}
-
-// NewClient returns a new rpc.Client to handle requests to the set of services
-// at the other end of the connection. 
-func NewClient(conn io.ReadWriteCloser, mux ProtoClientMux) *rpc.Client {
-	return rpc.NewClientWithCodec(NewClientCodec(conn, mux))
 }
 
 type ProtoServerMux interface {
@@ -182,13 +185,13 @@ func (c *serverCodec) ReadRequestBody(x interface{}) error {
 		return nil
 	}
 	if req == nil {
-		return MissingRequest
+		return ErrMissingRequest
 	}
 	// Decode the request bytes again, this time using the correct request
 	// message type.
 	y, ok := x.(proto.Message)
 	if !ok || y == nil {
-		return BadRequestType
+		return ErrBadRequestType
 	}
 	return proto.Unmarshal(req, y)
 }
@@ -196,11 +199,11 @@ func (c *serverCodec) ReadRequestBody(x interface{}) error {
 func (c *serverCodec) WriteResponse(r *rpc.Response, x interface{}) error {
 	y, ok := x.(proto.Message)
 	if !ok || y == nil {
-		return BadResponseType
+		return ErrBadResponseType
 	}
 	c.mux.SetResponseHeader(y, r.ServiceMethod, r.Seq)
 	c.sending.Lock()
-	err := c.m.WriteMessage(y) // writes htonl(length), marshal(req)
+	_, err := c.m.WriteMessage(y) // writes htonl(length), marshal(req)
 	c.sending.Unlock()
 	return err
 }

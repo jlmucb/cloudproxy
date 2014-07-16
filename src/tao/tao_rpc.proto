@@ -20,7 +20,6 @@
 package tao;
 
 enum TaoRPCOperation {
-  TAO_RPC_UNKNOWN = 0;  // unused
   TAO_RPC_GET_RANDOM_BYTES = 1;
   TAO_RPC_SEAL = 2;
   TAO_RPC_UNSEAL = 3;
@@ -40,7 +39,7 @@ message TaoRPCRequest {
 
 message TaoRPCResponse {
   required TaoRPCOperation rpc = 1;
-  required uint64 seq = 2
+  required uint64 seq = 2;
   optional string error = 3;
   optional bytes data = 4;
   optional string policy = 5;

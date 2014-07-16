@@ -26,6 +26,7 @@ set -e # quit script on first error
 
 # INSTALL BEGIN
 # Note: This section of code is removed by install.sh
+script_path="src/build/install.sh"
 test_dir=""
 test_ver="Debug"
 test_tpm="no"
@@ -96,13 +97,13 @@ if [ "$verbose" == "yes" ]; then
 	echo "Installing tao test scripts into: $test_dir"
 fi
 # sanity checks
-if [ ! -f "$root_dir/src/install.sh" -o ! -d "$test_dir" ]; then
+if [ ! -f "$root_dir/$script_path" -o ! -d "$test_dir" ]; then
 	echo "install failed: could not canonicalize paths"
 	exit 1
 fi
 mkdir -p "$test_dir/scripts"
 rm -f "$test_dir/scripts/tao.sh"
-sed '/^# INSTALL BEGIN/,/^# INSTALL END/ s/^/## /' "$root_dir/src/install.sh" \
+sed '/^# INSTALL BEGIN/,/^# INSTALL END/ s/^/## /' "$root_dir/$script_path" \
 			>"$test_dir/scripts/tao.sh"
 chmod +x "$test_dir/scripts/tao.sh"
 	

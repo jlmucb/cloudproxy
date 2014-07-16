@@ -36,6 +36,22 @@
 #- 
 #- From this diff, it looks like these files are missing Apache 2 license
 #- statements.
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-16T17:00:27-0400
+#**
+#-- fmt - Agree, I think. I haven't yet learned go's log, glog, etc. yet, so fmt
+#-- was a stopgap. Should we keep using fmt in places where we would use
+#-- cout/printf, e.g. in top-level user-facing app code? (that is what "demo"
+#-- was meant to be)
+#--
+#-- := - Agree. You can probably see my style evolving in real time. 
+#--
+#-- licenses - I deleted them all. Do you want the same boilerplate as C++? I'd
+#-- just as soon delete all per-file legal boilerplate, but I know nothing and
+#-- defer to you guys.
+#--
 diff --git a/go-kwalsh/src/cloudproxy/demo/demo.go b/go-kwalsh/src/cloudproxy/demo/demo.go
 new file mode 100644
 index 0000000..e043f1f
@@ -58,6 +74,13 @@ index 0000000..e043f1f
 #- 
 #- I'll make sure I fix this in my code, too.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-16T17:04:40-0400
+#**
+#-- Will do.
+#--
 +	"errors"
 +	"fmt"
 +	"os"
@@ -185,6 +208,13 @@ index 0000000..8832f3e
 #*
 #- Only double slash for Go
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-16T17:05:01-0400
+#**
+#-- Will fix.
+#--
 +
 +	// GetRandomBytes returns a slice of n random bytes.
 +	GetRandomBytes(n int) (bytes []byte, err error)
@@ -197,6 +227,15 @@ index 0000000..8832f3e
 #- turning this into Read([]byte) (int, error). Then we could use the Tao in
 #- place of rand.Read when we want to get randomness from the Tao.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-16T17:06:01-0400
+#**
+#-- That's a good idea. But let's make Read() a method on a member object, like
+#-- tao.Rand.Read() instead. Though if Tao is an interface, I guess it has to be
+#-- tao.Rand().Read(). So tao.Rand() returns an io.Reader, just like variable
+#-- rand.Reader holds an io.Reader.
 +
 +	// GetSharedSecret returns a slice of n secret bytes.
 +	GetSharedSecret(n int, policy string) (bytes []byte, err error)
@@ -220,6 +259,13 @@ index 0000000..8832f3e
 #*
 #- "to host Tao" -> "to the host Tao"
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-16T17:11:37-0400
+#**
+#-- Will fix.
+#--
 +var Host Tao
 +
 +func init() {
@@ -257,6 +303,13 @@ index 0000000..2e64b00
 #- Naming: Go naming uses mixedCase rather than underscore_names.
 #- See http://golang.org/doc/effective_go.html#names
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-16T17:12:07-0400
+#**
+#-- Will fix.
+#--
 +		"Tao.GetRandomBytes": "TAO_RPC_GET_RANDOM_BYTES",
 +		"Tao.Seal": "TAO_RPC_SEAL",
 +		"Tao.Unseal": "TAO_RPC_UNSEAL",
@@ -308,6 +361,16 @@ index 0000000..2e64b00
 #- I've just come back from later in the code: I think I understand now: is this
 #- needed to make the codecs work with net/rpc?
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-16T17:13:05-0400
+#**
+#-- Yup. Elsewhere in the protorpc code it needs an object that satisfies the
+#-- ProtoClientMux interface. Here I'm implementing such an object, which
+#-- happens to not need any state whatsoever. I guess the alternative is to use
+#-- function pointers instead of interfaces?
+#--
 +	m, ok := req.(*TaoRPCRequest)
 +	if !ok || m == nil {
 +		return protorpc.ErrBadRequestType
@@ -357,6 +420,13 @@ index 0000000..2e64b00
 #- shouldn't be. The errors.New string should start with lower case.
 #- See https://code.google.com/p/go-wiki/wiki/CodeReviewComments#Error_Strings
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-16T17:20:34-0400
+#**
+#-- Will fix here and elsewhere.
+#--
 +	}
 +	r := strings.TrimPrefix(s, "tao::TaoRPC+")
 +	if r == s {
@@ -393,6 +463,13 @@ index 0000000..2e64b00
 #*
 #- go fmt
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-16T17:20:53-0400
+#**
+#-- Will fix.
+#--
 +	if s.Error != nil {
 +		err = errors.New(*s.Error)
 +		return
@@ -633,6 +710,13 @@ index 0000000..955f173
 #*
 #- ".." -> "."
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-16T17:21:18-0400
+#**
+#-- Will fix.
+#--
 +func NewMessageStream(pipe io.ReadWriteCloser) *MessageStream {
 +	return &MessageStream{DefaultMaxMessageSize, pipe}
 +}
@@ -658,6 +742,13 @@ index 0000000..959ad40
 #*
 #- "io.WritCloser" -> "io.WriteCloser"
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-16T17:21:33-0400
+#**
+#-- Will fix.
+#--
 +// single structure that implements the io.ReadWriteCloser interface. This can
 +// be used to turn a pair of uni-directional streams into a single
 +// bi-directional stream.
@@ -700,6 +791,13 @@ index 0000000..8f12e33
 #*
 #- "servers choses" -> "server chooses" ?
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-16T17:21:51-0400
+#**
+#-- Will fix.
+#--
 +
 +	All service methods take two protobuf message pointers: a request and a
 +	response. RPC service method strings and sequence numbers are not sent over
@@ -780,6 +878,13 @@ index 0000000..8f12e33
 #*
 #- Doc string for this (and other methods)?
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-16T17:22:11-0400
+#**
+#-- Will fix. These are implementing the rpc.ClientCode interface.
+#--
 +	y, ok := x.(proto.Message)
 +	if !ok || y == nil {
 +		return ErrBadRequestType
@@ -945,3 +1050,12 @@ index 0000000..645ffc2
 #- This is a very nice use of protobuf punning. This is the first time I've
 #- actually be happy that one protobuf can be read as another.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-16T17:23:01-0400
+#**
+#-- I'm glad you like it. It took an unreasonable amount of time for me come up
+#-- with this solution. A lot better than decoding the protobufs by hand, which
+#-- is the approach I started with.
+#--

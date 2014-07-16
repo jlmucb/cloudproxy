@@ -279,10 +279,7 @@ func doServer(stop, ready, done chan<- bool) {
 // Tao Host demo
 
 func hostTaoDemo() error {
-	var err error
-
-	var name string
-	name, err = tao.Host.GetTaoName()
+	name, err := tao.Host.GetTaoName()
 	if err != nil {
 		return err
 	}
@@ -304,8 +301,7 @@ func hostTaoDemo() error {
 	}
 	fmt.Printf("My full name is %s\n", name)
 
-	var random []byte
-	random, err = tao.Host.GetRandomBytes(10)
+	random, err := tao.Host.GetRandomBytes(10)
 	if err != nil {
 		return err
 	}
@@ -317,23 +313,19 @@ func hostTaoDemo() error {
 	}
 	fmt.Printf("%d more bytes : % x\n", n, random)
 
-	var secret []byte
-	secret, err = tao.Host.GetSharedSecret(10, tao.SharedSecretPolicyDefault)
+	secret, err := tao.Host.GetSharedSecret(10, tao.SharedSecretPolicyDefault)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Shared secret : % x\n", secret)
 
-	var sealed []byte
-	sealed, err = tao.Host.Seal(random, tao.SealPolicyDefault)
+	sealed, err := tao.Host.Seal(random, tao.SealPolicyDefault)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Sealed bytes  : % x\n", sealed)
 
-	var unsealed []byte
-	var policy string
-	unsealed, policy, err = tao.Host.Unseal(sealed)
+	unsealed, policy, err := tao.Host.Unseal(sealed)
 	if err != nil {
 		return err
 	}

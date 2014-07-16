@@ -85,16 +85,21 @@ type TaoRPC struct {
 	rpc *rpc.Client
 }
 
-func DeserializeTaoRPC(s string) Tao {
+func DeserializeTaoRPC(s string) (*TaoRPC, error) {
+	if s == "" {
+		return nil, errors.New("Missing host Tao spec. " +
+			"Make sure $" + HostTaoEnvVar +" is set.")
+	}
 	r := strings.TrimPrefix(s, "tao::TaoRPC+")
 	if r == s {
-		return nil
+		return nil, errors.New("Unrecognized $" + HostTaoEnvVar + " string: " + s)
 	}
-	ms := util.DeserializeFDMessageStream(r)
-	if ms == nil {
-		return nil
+	ms, err := util.DeserializeFDMessageStream(r)
+	if err != nil {
+		return nil, errors.New("Unrecognized $" + HostTaoEnvVar + " string: " + s +
+			" (" + err.Error() + ")")
 	}
-	return &TaoRPC{protorpc.NewClient(ms, taoMux{})}
+	return &TaoRPC{protorpc.NewClient(ms, taoMux{})}, nil
 }
 
 type expectedResponse int
@@ -156,7 +161,7 @@ func (t *TaoRPC) GetSharedSecret(n int, policy string) ([]byte, error) {
 	if n > math.MaxUint32 {
 		return nil, errors.New("Request for too many secret bytes")
 	}
-	r := &TaoRPCRequest{Size: proto.Int32(int32(n))}
+	r := &TaoRPCRequest{Size: proto.Int32(int32(n)), Policy: proto.String(policy)}
 	bytes, _, err := t.call("Tao.GetSharedSecret", r, wantData)
 	return bytes, err
 }

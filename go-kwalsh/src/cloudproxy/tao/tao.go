@@ -1,6 +1,7 @@
 package tao
 
 import (
+	"fmt"
 	"os"
 )
 
@@ -49,4 +50,13 @@ type Tao interface {
 }
 
 // Host is a pointer to host Tao underlying this hosted program.
-var Host Tao = DeserializeTaoRPC(os.Getenv(HostTaoEnvVar))
+var Host Tao
+
+func init() {
+	tao, err := DeserializeTaoRPC(os.Getenv(HostTaoEnvVar))
+	if err != nil {
+		fmt.Println(err.Error())
+	} else {
+		Host = tao
+	}
+}

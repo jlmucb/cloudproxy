@@ -348,6 +348,11 @@ func (s *Signer) Sign(data []byte, context string) ([]byte, error) {
 	return proto.Marshal(sd)
 }
 
+// GetVerifier returns a Verifier from Signer.
+func (s *Signer) GetVerifier() *Verifier {
+	return &Verifier{&s.ec.PublicKey}
+}
+
 // Verify checks an ECDSA signature over the contextualized data, using the
 // public key of the verifier.
 func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error) {
@@ -774,15 +779,16 @@ func UnmarshalDeriverProto(ck *CryptoKey) (*Deriver, error) {
 // A Keys holds a set of Keyczar keys and provides an interface to perform
 // actions with these keys.
 type Keys struct {
-	dir    string
-	policy string
+	dir      string
+	policy   string
+	keyTypes KeyType
 
-	signer     *Signer
-	crypter    *Crypter
-	verifer    *Verifier
-	deriver    *Deriver
-	delegation *Attestation
-	cert       *x509.Certificate
+	SigningKey   *Signer
+	CryptingKey  *Crypter
+	VerifyingKey *Verifier
+	DerivingKey  *Deriver
+	Delegation   *Attestation
+	Cert         *x509.Certificate
 }
 
 // TaoSecretPath returns the path to a Tao-sealed secret, if any. This secret
@@ -800,4 +806,57 @@ func zeroBytes(b []byte) {
 	for i := range b {
 		b[i] = 0
 	}
+}
+
+// NewTemporaryKeys creates a new Keys structure with information about the
+// types of keys. One of the Init methods must be called before the keys are
+// used.
+func NewTemporaryKeys(keyTypes KeyType) *Keys {
+	return &Keys{
+		keyTypes: keyTypes,
+	}
+}
+
+// NewOnDiskKeys creates a new Keys structure with information about the types
+// of keys to create and where to store them on disk. One of the Init methods
+// must be called before the keys are used.
+func NewOnDiskKeys(keyTypes KeyType, path string) *Keys {
+	return &Keys{
+		dir:      path,
+		keyTypes: keyTypes,
+	}
+}
+
+// InitTemporary creates keys for a key set that isn't stored on disk. This
+// method is used by the unit tests, mostly.
+func (k *Keys) InitTemporary() error {
+	if k.keyTypes == 0 || (k.keyTypes & ^Signing & ^Crypting & ^Deriving != 0) {
+		return errors.New("Bad key type")
+	}
+
+	var err error
+	if k.keyTypes&Signing == Signing {
+		k.SigningKey, err = GenerateSigner()
+		if err != nil {
+			return err
+		}
+
+		k.VerifyingKey = k.SigningKey.GetVerifier()
+	}
+
+	if k.keyTypes&Crypting == Crypting {
+		k.CryptingKey, err = GenerateCrypter()
+		if err != nil {
+			return err
+		}
+	}
+
+	if k.keyTypes&Deriving == Deriving {
+		k.DerivingKey, err = GenerateDeriver()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

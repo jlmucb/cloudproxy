@@ -343,3 +343,14 @@ func TestMarshalDeriver(t *testing.T) {
 		}
 	}
 }
+
+func TestNewTemporaryKeys(t *testing.T) {
+	k := NewTemporaryKeys(Signing | Crypting | Deriving)
+	if err := k.InitTemporary(); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
+		t.Fatal("Couldn't generate the right keys")
+	}
+}

@@ -27,21 +27,21 @@ namespace tao {
 bool TaoRPC::GetTaoName(string *name) {
   TaoRPCRequest rpc;
   rpc.set_rpc(TAO_RPC_GET_TAO_NAME);
-  return Request(rpc, name, nullptr /* policy */);
+  return Request(&rpc, name, nullptr /* policy */);
 }
 
 bool TaoRPC::ExtendTaoName(const string &subprin) {
   TaoRPCRequest rpc;
   rpc.set_rpc(TAO_RPC_EXTEND_TAO_NAME);
   rpc.set_data(subprin);
-  return Request(rpc, nullptr /* data */, nullptr /* policy */);
+  return Request(&rpc, nullptr /* data */, nullptr /* policy */);
 }
 
 bool TaoRPC::GetRandomBytes(size_t size, string *bytes) {
   TaoRPCRequest rpc;
   rpc.set_rpc(TAO_RPC_GET_RANDOM_BYTES);
   rpc.set_size(size);
-  return Request(rpc, bytes, nullptr /* policy */);
+  return Request(&rpc, bytes, nullptr /* policy */);
 }
 
 bool TaoRPC::GetSharedSecret(size_t size, const string &policy, string *bytes) {
@@ -49,7 +49,7 @@ bool TaoRPC::GetSharedSecret(size_t size, const string &policy, string *bytes) {
   rpc.set_rpc(TAO_RPC_GET_SHARED_SECRET);
   rpc.set_size(size);
   rpc.set_policy(policy);
-  return Request(rpc, bytes, nullptr /* policy */);
+  return Request(&rpc, bytes, nullptr /* policy */);
 }
 
 bool TaoRPC::Attest(const Statement &stmt, string *attestation) {
@@ -61,7 +61,7 @@ bool TaoRPC::Attest(const Statement &stmt, string *attestation) {
   TaoRPCRequest rpc;
   rpc.set_rpc(TAO_RPC_ATTEST);
   rpc.set_data(serialized_stmt);
-  return Request(rpc, attestation, nullptr /* policy */);
+  return Request(&rpc, attestation, nullptr /* policy */);
 }
 
 bool TaoRPC::Seal(const string &data, const string &policy, string *sealed) {
@@ -69,20 +69,21 @@ bool TaoRPC::Seal(const string &data, const string &policy, string *sealed) {
   rpc.set_rpc(TAO_RPC_SEAL);
   rpc.set_data(data);
   rpc.set_policy(policy);
-  return Request(rpc, sealed, nullptr /* policy */);
+  return Request(&rpc, sealed, nullptr /* policy */);
 }
 
 bool TaoRPC::Unseal(const string &sealed, string *data, string *policy) {
   TaoRPCRequest rpc;
   rpc.set_rpc(TAO_RPC_UNSEAL);
   rpc.set_data(sealed);
-  return Request(rpc, data, policy);
+  return Request(&rpc, data, policy);
 }
 
-bool TaoRPC::Request(const TaoRPCRequest &req, string *data, string *policy) {
+bool TaoRPC::Request(TaoRPCRequest *req, string *data, string *policy) {
+  req->set_seq(++last_seq_);
   TaoRPCResponse resp;
   bool eof;
-  if (!channel_->SendMessage(req)) {
+  if (!channel_->SendMessage(*req)) {
     failure_msg_ = "Channel send failed";
     LOG(ERROR) << "RPC to Tao host failed: " << failure_msg_;
     return false;
@@ -97,11 +98,13 @@ bool TaoRPC::Request(const TaoRPCRequest &req, string *data, string *policy) {
     LOG(ERROR) << "RPC to Tao host failed: " << failure_msg_;
     return false;
   }
-  if (!resp.success()) {
-    if (resp.has_reason() && resp.reason().size() > 0)
-      failure_msg_ = resp.reason();
-    else
-      failure_msg_ = "Unknown failure from Tao host";
+  if (resp.has_error()) {
+    failure_msg_ = resp.error();
+    LOG(ERROR) << "RPC to Tao host failed: " << failure_msg_;
+    return false;
+  }
+  if (resp.seq() != req->seq()) {
+    failure_msg_ = "Unexpected sequence number in response";
     LOG(ERROR) << "RPC to Tao host failed: " << failure_msg_;
     return false;
   }

@@ -99,20 +99,25 @@ bool LinuxHost::HandleTaoRPC(HostedLinuxProcess *child,
                              const TaoRPCRequest &rpc,
                              TaoRPCResponse *resp) const {
   resp->set_rpc(rpc.rpc());
-
+  resp->set_seq(rpc.seq());
   string result_data;
   string result_policy;
+  Statement s;
   bool success = false;
+  // TODO(kwalsh) Propagate better error messages
+  string failure_msg = "Operation failed";
   switch (rpc.rpc()) {
     case TAO_RPC_GET_TAO_NAME:
       LOG(INFO) << "GetTaoName() for ::" << elideString(child->subprin);
       result_data = tao_host_->TaoHostName() + "::" + child->subprin;
+      resp->set_data(result_data);
       success = true;
       break;
     case TAO_RPC_EXTEND_TAO_NAME:
       LOG(INFO) << "ExtendTaoName() for ::" << elideString(child->subprin);
       if (!rpc.has_data() && rpc.data() != "") {
-        LOG(ERROR) << "Invalid RPC: must supply data for ExtendName";
+        failure_msg = "Invalid RPC: must supply data for ExtendName";
+        LOG(ERROR) << failure_msg;
         break;
       }
       // TODO(kwalsh) Sanity checking on subprin format.
@@ -127,31 +132,34 @@ bool LinuxHost::HandleTaoRPC(HostedLinuxProcess *child,
       }
       success =
           tao_host_->GetRandomBytes(child->subprin, rpc.size(), &result_data);
+      if (success) resp->set_data(result_data);
       break;
     case TAO_RPC_GET_SHARED_SECRET:
       LOG(INFO) << "GetSharedSecret() for ::" << elideString(child->subprin);
       if (!rpc.has_size() || !rpc.has_policy()) {
-        LOG(ERROR) << "Invalid RPC: must supply arguments for GetSharedSecret";
+        failure_msg = "Invalid RPC: must supply arguments for GetSharedSecret";
+        LOG(ERROR) << failure_msg;
         break;
       }
       success = HandleGetSharedSecret(child->subprin, rpc.size(), rpc.policy(),
                                       &result_data);
+      if (success) resp->set_data(result_data);
       break;
     case TAO_RPC_ATTEST:
       LOG(INFO) << "Attest() for ::" << elideString(child->subprin);
       if (!rpc.has_data()) {
-        LOG(ERROR) << "Invalid RPC: must supply arguments for GetRandomBytes";
+        failure_msg = "Invalid RPC: must supply arguments for GetRandomBytes";
+        LOG(ERROR) << failure_msg;
         break;
-      } else {
-        Statement s;
-        if (!s.ParsePartialFromString(rpc.data()) ||
-            !(s.has_delegate() || s.has_predicate_name())) {
-          LOG(ERROR) << "Invalid RPC: must supply legal partial statement";
-          break;
-        } else {
-          success = tao_host_->Attest(child->subprin, &s, &result_data);
-        }
       }
+      if (!s.ParsePartialFromString(rpc.data()) ||
+          !(s.has_delegate() || s.has_predicate_name())) {
+        failure_msg = "Invalid RPC: must supply legal partial statement";
+        LOG(ERROR) << failure_msg;
+        break;
+      }
+      success = tao_host_->Attest(child->subprin, &s, &result_data);
+      if (success) resp->set_data(result_data);
       break;
     case TAO_RPC_SEAL:
       LOG(INFO) << "Seal() for ::" << elideString(child->subprin);
@@ -161,6 +169,7 @@ bool LinuxHost::HandleTaoRPC(HostedLinuxProcess *child,
       }
       success =
           HandleSeal(child->subprin, rpc.data(), rpc.policy(), &result_data);
+      if (success) resp->set_data(result_data);
       break;
     case TAO_RPC_UNSEAL:
       LOG(INFO) << "Unseal() for ::" << elideString(child->subprin);
@@ -170,20 +179,23 @@ bool LinuxHost::HandleTaoRPC(HostedLinuxProcess *child,
       }
       success = HandleUnseal(child->subprin, rpc.data(), &result_data,
                              &result_policy);
-      if (success) resp->set_policy(result_policy);
+      if (success) {
+        resp->set_data(result_data);
+        resp->set_policy(result_policy);
+      }
       break;
     default:
       LOG(ERROR) << "Unknown Tao RPC " << rpc.rpc();
-      resp->set_reason("Unknown Tao RPC");
+      failure_msg = "Unknown Tao RPC";
       success = false;
       break;
   }
-  LOG(INFO) << "Result: " << (success ? "OK" : "FAIL");
-
-  resp->set_success(success);
-  if (success) resp->set_data(result_data);
-  // TODO(kwalsh) Propagate other error messages?
-
+  if (!success) {
+    resp->set_error(failure_msg);
+    LOG(INFO) << "Result: FAIL (" << failure_msg << ")";
+  } else {
+    LOG(INFO) << "Result: OK";
+  }
   return true;
 }
 
@@ -191,9 +203,10 @@ bool LinuxHost::HandleAdminRPC(const LinuxAdminRPCRequest &rpc,
                                LinuxAdminRPCResponse *resp,
                                bool *shutdown_request) {
   resp->set_rpc(rpc.rpc());
+  resp->set_seq(rpc.seq());
   bool success = false;
   string child_subprin, tao_name;
-  string failure_msg;
+  string failure_msg = "Unknown error";
   switch (rpc.rpc()) {
     case LINUX_ADMIN_RPC_SHUTDOWN:
       LOG(INFO) << "Shutdown()";
@@ -203,15 +216,11 @@ bool LinuxHost::HandleAdminRPC(const LinuxAdminRPCRequest &rpc,
     case LINUX_ADMIN_RPC_START_HOSTED_PROGRAM:
       LOG(INFO) << "StartHostedProgram()";
       success = HandleStartHostedProgram(rpc, &child_subprin, &failure_msg);
-      if (success)
-        resp->set_data(child_subprin);
-      else
-        resp->set_reason(failure_msg);
+      if (success) resp->set_data(child_subprin);
       break;
     case LINUX_ADMIN_RPC_STOP_HOSTED_PROGRAM:
       LOG(INFO) << "StopHostedProgram()";
       success = HandleStopHostedProgram(rpc, SIGTERM, &failure_msg);
-      if (!success) resp->set_reason(failure_msg);
       break;
     case LINUX_ADMIN_RPC_LIST_HOSTED_PROGRAMS:
       LOG(INFO) << "ListHostedPrograms()";
@@ -223,13 +232,15 @@ bool LinuxHost::HandleAdminRPC(const LinuxAdminRPCRequest &rpc,
         }
         string data;
         success = info.SerializeToString(&data);
-        if (success) resp->set_data(data);
+        if (success)
+          resp->set_data(data);
+        else
+          failure_msg = "Could not serialize hosted program list";
       }
       break;
     case LINUX_ADMIN_RPC_KILL_HOSTED_PROGRAM:
       LOG(INFO) << "KillHostedProgram()";
       success = HandleStopHostedProgram(rpc, SIGKILL, &failure_msg);
-      if (!success) resp->set_reason(failure_msg);
       break;
     case LINUX_ADMIN_RPC_GET_TAO_HOST_NAME:
       LOG(INFO) << "GetTaoHostName()";
@@ -238,14 +249,17 @@ bool LinuxHost::HandleAdminRPC(const LinuxAdminRPCRequest &rpc,
       break;
     default:
       LOG(ERROR) << "Unknown Linux Admin RPC " << rpc.rpc();
-      resp->set_reason("Unknown Linux Admin RPC");
+      failure_msg = "Unknown Linux Admin RPC";
       success = false;
       break;
   }
 
-  LOG(INFO) << "Result: " << (success ? "OK" : "FAIL");
-  resp->set_success(success);
-
+  if (!success) {
+    resp->set_error(failure_msg);
+    LOG(INFO) << "Result: FAIL (" << failure_msg << ")";
+  } else {
+    LOG(INFO) << "Result: OK";
+  }
   return true;
 }
 

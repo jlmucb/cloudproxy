@@ -68,12 +68,15 @@ class TaoRPC : public Tao {
   /// Most recent RPC failure message, if any.
   string failure_msg_;
 
+  /// Most recent RPC sequence number.
+  unsigned int last_seq_;
+
  private:
   /// Do an RPC request/response interaction with the host Tao.
-  /// @param req The request to send.
+  /// @param[in,out] req The request to send. The sequence number is set.
   /// @param[out] data The returned data, if not nullptr.
   /// @param[out] policy The returned policy, if not nullptr.
-  bool Request(const TaoRPCRequest &req, string *data, string *policy);
+  bool Request(TaoRPCRequest *req, string *data, string *policy);
 
   DISALLOW_COPY_AND_ASSIGN(TaoRPC);
 };

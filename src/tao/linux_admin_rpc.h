@@ -86,11 +86,14 @@ class LinuxAdminRPC {
   /// Most recent RPC failure message, if any.
   string failure_msg_;
 
+  /// Most recent RPC sequence number.
+  unsigned int last_seq_;
+
  private:
   /// Do an RPC request/response interaction with the LinuxTao host.
-  /// @param req The request to send.
+  /// @param[in,out] req The request to send. The sequence number is set.
   /// @param[out] data The returned data, if not nullptr.
-  bool Request(const LinuxAdminRPCRequest &req, string *data);
+  bool Request(LinuxAdminRPCRequest *req, string *data);
 
   DISALLOW_COPY_AND_ASSIGN(LinuxAdminRPC);
 };

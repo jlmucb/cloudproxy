@@ -31,9 +31,10 @@ enum LinuxAdminRPCRequestType {
 
 message LinuxAdminRPCRequest {
   required LinuxAdminRPCRequestType rpc = 1;
-  optional bytes data = 2;
-  optional string path = 3;
-  repeated string args = 4;
+  required uint64 seq = 2;
+  optional bytes data = 3;
+  optional string path = 4;
+  repeated string args = 5;
 }
 
 message LinuxAdminRPCHostedProgramList {
@@ -43,9 +44,10 @@ message LinuxAdminRPCHostedProgramList {
 
 message LinuxAdminRPCResponse {
   required LinuxAdminRPCRequestType rpc = 1;
-  required bool success = 2;
-  optional bytes data = 3; // either a string or 
-						   // serialized LinuxAdminRPCHostedProgramList
-  optional string reason = 4; // reason in case of failure
+  required uint64 seq = 2;
+  optional string error = 3;
+  optional bytes data = 4;    // either a string or
+                              // serialized LinuxAdminRPCHostedProgramList
+  optional string reason = 5; // reason in case of failure
 }
 

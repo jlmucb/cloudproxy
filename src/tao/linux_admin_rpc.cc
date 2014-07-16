@@ -26,13 +26,13 @@ namespace tao {
 bool LinuxAdminRPC::GetTaoHostName(string *name) {
   LinuxAdminRPCRequest rpc;
   rpc.set_rpc(LINUX_ADMIN_RPC_GET_TAO_HOST_NAME);
-  return Request(rpc, name);
+  return Request(&rpc, name);
 }
 
 bool LinuxAdminRPC::Shutdown() {
   LinuxAdminRPCRequest rpc;
   rpc.set_rpc(LINUX_ADMIN_RPC_SHUTDOWN);
-  return Request(rpc, nullptr /* data */);
+  return Request(&rpc, nullptr /* data */);
 }
 
 bool LinuxAdminRPC::StartHostedProgram(const string &path,
@@ -42,21 +42,21 @@ bool LinuxAdminRPC::StartHostedProgram(const string &path,
   rpc.set_rpc(LINUX_ADMIN_RPC_START_HOSTED_PROGRAM);
   rpc.set_path(path);
   for (const string &arg : args) rpc.add_args(arg);
-  return Request(rpc, child_subprin);
+  return Request(&rpc, child_subprin);
 }
 
 bool LinuxAdminRPC::StopHostedProgram(const string &child_subprin) {
   LinuxAdminRPCRequest rpc;
   rpc.set_rpc(LINUX_ADMIN_RPC_STOP_HOSTED_PROGRAM);
   rpc.set_data(child_subprin);
-  return Request(rpc, nullptr /* data */);
+  return Request(&rpc, nullptr /* data */);
 }
 
 bool LinuxAdminRPC::KillHostedProgram(const string &child_subprin) {
   LinuxAdminRPCRequest rpc;
   rpc.set_rpc(LINUX_ADMIN_RPC_KILL_HOSTED_PROGRAM);
   rpc.set_data(child_subprin);
-  return Request(rpc, nullptr /* data */);
+  return Request(&rpc, nullptr /* data */);
 }
 
 bool LinuxAdminRPC::ListHostedPrograms(list<pair<string, int>> *child_info) {
@@ -64,7 +64,7 @@ bool LinuxAdminRPC::ListHostedPrograms(list<pair<string, int>> *child_info) {
   rpc.set_rpc(LINUX_ADMIN_RPC_LIST_HOSTED_PROGRAMS);
   string data;
   LinuxAdminRPCHostedProgramList info;
-  if (!Request(rpc, &data) || !info.ParseFromString(data) ||
+  if (!Request(&rpc, &data) || !info.ParseFromString(data) ||
       info.name_size() != info.pid_size())
     return false;
   child_info->clear();
@@ -74,11 +74,11 @@ bool LinuxAdminRPC::ListHostedPrograms(list<pair<string, int>> *child_info) {
   return true;
 }
 
-bool LinuxAdminRPC::Request(const LinuxAdminRPCRequest &req, string *data) {
+bool LinuxAdminRPC::Request(LinuxAdminRPCRequest *req, string *data) {
+  req->set_seq(++last_seq_);
   LinuxAdminRPCResponse resp;
   bool eof;
-
-  if (!channel_->SendMessage(req)) {
+  if (!channel_->SendMessage(*req)) {
     failure_msg_ = "Channel send failed";
     LOG(ERROR) << "Admin RPC to LinuxTao host failed: " << failure_msg_;
     return false;
@@ -93,11 +93,13 @@ bool LinuxAdminRPC::Request(const LinuxAdminRPCRequest &req, string *data) {
     LOG(ERROR) << "Admin RPC to LinuxTao host failed: " << failure_msg_;
     return false;
   }
-  if (!resp.success()) {
-    if (resp.has_reason() && resp.reason().size() > 0)
-      failure_msg_ = resp.reason();
-    else
-      failure_msg_ = "Unknown failure from Tao host";
+  if (resp.has_error()) {
+    failure_msg_ = resp.error();
+    LOG(ERROR) << "Admin RPC to LinuxTao host failed: " << failure_msg_;
+    return false;
+  }
+  if (resp.seq() != req->seq()) {
+    failure_msg_ = "Unexpected sequence number in response";
     LOG(ERROR) << "Admin RPC to LinuxTao host failed: " << failure_msg_;
     return false;
   }

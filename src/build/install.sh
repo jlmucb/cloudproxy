@@ -265,10 +265,8 @@ function setup()
 	ln -s ${TAO_BUILD} ${tao_bin}
 	mkdir -p ${TAO_TEST}/logs
 
-	(
-		cd ${tao_bin} 
-		$admin -init ${TAO_ROOT}/run/tao-default-${TAO_GUARD}.config -name testing
-	)
+	echo "Creating TaoDomain keys and settings."
+	$admin -init ${TAO_ROOT}/run/tao-default-${TAO_GUARD}.config -name testing
 
 	# This sets:
 	# $GOOGLE_HOST_TAO # name of underlying host tao, i.e. the TPM (if any)

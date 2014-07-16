@@ -85,7 +85,7 @@ type TaoRPC struct {
 	rpc *rpc.Client
 }
 
-func DeserializeTaoRPC(s string) *TaoRPC {
+func DeserializeTaoRPC(s string) Tao {
 	r := strings.TrimPrefix(s, "tao::TaoRPC+")
 	if r == s {
 		return nil

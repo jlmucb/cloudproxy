@@ -19,13 +19,15 @@
 package tao
 
 import (
-	"cloudproxy/util"
-	"cloudproxy/util/protorpc"
-	"code.google.com/p/goprotobuf/proto"
 	"errors"
 	"math"
 	"net/rpc"
 	"strings"
+
+	"code.google.com/p/goprotobuf/proto"
+
+	"cloudproxy/util"
+	"cloudproxy/util/protorpc"
 )
 
 var op_rpc_name = map[string]string{

@@ -19,11 +19,12 @@
 package util
 
 import (
-	"code.google.com/p/goprotobuf/proto"
 	"encoding/binary"
 	"errors"
 	"io"
 	"math"
+
+	"code.google.com/p/goprotobuf/proto"
 )
 
 // A MessageStream is an io.ReadWriteCloser that can also read and write strings

@@ -19,13 +19,14 @@
 package main
 
 import (
-	"cloudproxy/tao"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
+
+	"cloudproxy/tao"
 )
 
 todo: use :=, not var

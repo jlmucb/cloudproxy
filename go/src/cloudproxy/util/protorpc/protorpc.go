@@ -46,12 +46,14 @@
 package protorpc
 
 import (
-	"cloudproxy/util"
-	"code.google.com/p/goprotobuf/proto"
 	"errors"
 	"io"
 	"net/rpc"
 	"sync"
+
+	"code.google.com/p/goprotobuf/proto"
+
+	"cloudproxy/util"
 )
 
 type ProtoClientMux interface {

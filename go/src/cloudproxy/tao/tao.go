@@ -20,8 +20,9 @@ package tao
 
 import (
 	"fmt"
-	"github.com/golang/glog"
 	"os"
+
+	"github.com/golang/glog"
 )
 
 const (

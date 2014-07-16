@@ -12,6 +12,14 @@
 #-
 #- Propagate a few error messages from linux tao.
 #-
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-16T12:57:22-0700
+#*
+#- LGTM, Approval, except for my brief question about concurrency below.
+#- If we're not supported concurrency yet, then I have no concerns about this.
+#- 
 diff --git a/src/tao/linux_admin_rpc.cc b/src/tao/linux_admin_rpc.cc
 index eed7f67..ce9a7cd 100644
 --- a/src/tao/linux_admin_rpc.cc
@@ -94,6 +102,13 @@ index eed7f67..ce9a7cd 100644
 -bool LinuxAdminRPC::Request(const LinuxAdminRPCRequest &req, string *data) {
 +bool LinuxAdminRPC::Request(LinuxAdminRPCRequest *req, string *data) {
 +  req->set_seq(++last_seq_);
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-16T12:59:34-0700
+#*
+#- Isn't the unprotected ++ a problem for concurrent requests? Or are we not supporting that yet?
+#- 
    LinuxAdminRPCResponse resp;
    bool eof;
 -

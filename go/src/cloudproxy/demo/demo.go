@@ -29,8 +29,6 @@ import (
 	"cloudproxy/tao"
 )
 
-todo: use :=, not var
-
 var server_host = flag.String("host", "localhost", "address for client/server")
 var server_port = flag.Int("port", 8123, "port for client/server")
 var server_addr string // see main()
@@ -312,6 +310,12 @@ func hostTaoDemo() error {
 		return err
 	}
 	fmt.Printf("Random bytes  : % x\n", random)
+
+	n, err := tao.Host.Rand().Read(random)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%d more bytes : % x\n", n, random)
 
 	var secret []byte
 	secret, err = tao.Host.GetSharedSecret(10, tao.SharedSecretPolicyDefault)

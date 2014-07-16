@@ -19,7 +19,7 @@
 package tao
 
 import (
-	"fmt"
+	"io"
 	"os"
 
 	"github.com/golang/glog"
@@ -54,6 +54,9 @@ type Tao interface {
 
 	// GetRandomBytes returns a slice of n random bytes.
 	GetRandomBytes(n int) (bytes []byte, err error)
+
+	// Rand produces an io.Reader for random bytes from this Tao.
+	Rand() io.Reader
 
 	// GetSharedSecret returns a slice of n secret bytes.
 	GetSharedSecret(n int, policy string) (bytes []byte, err error)

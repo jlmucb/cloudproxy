@@ -20,6 +20,7 @@ package tao
 
 import (
 	"errors"
+	"io"
 	"math"
 	"net/rpc"
 	"strings"
@@ -166,6 +167,24 @@ func (t *TaoRPC) ExtendTaoName(subprin string) (error) {
 	r := &TaoRPCRequest{Data: []byte(subprin)}
 	_, _, err := t.call("Tao.ExtendTaoName", r, wantNothing)
 	return err
+}
+
+type taoRandReader TaoRPC
+
+func (t *taoRandReader) Read(p []byte) (n int, err error) {
+	bytes, err := (*TaoRPC)(t).GetRandomBytes(len(p))
+	if err != nil {
+		return 0, err
+	}
+	copy(p, bytes)
+	return len(p), nil
+}
+
+
+// TODO(kwalsh) Can Rand be made generic, or does it need to be defined for the
+// concrete type TaoRPC?
+func (t *TaoRPC) Rand() io.Reader {
+	return (*taoRandReader)(t)
 }
 
 func (t *TaoRPC) GetRandomBytes(n int) ([]byte, error) {

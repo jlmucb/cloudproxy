@@ -32,6 +32,8 @@ type PairReadWriteCloser struct {
 	io.WriteCloser
 }
 
+// Close closes the underying streams, both the io.ReadCloser and the
+// io.WriteCloser. 
 func (pair PairReadWriteCloser) Close() error {
 	err1 := pair.ReadCloser.Close()
 	err2 := pair.WriteCloser.Close()
@@ -42,6 +44,11 @@ func (pair PairReadWriteCloser) Close() error {
 	}
 }
 
+// NewPairReadWriteCloser creates a new io.ReadWriteCloser given separate
+// streams for reading and writing. If both streams refer to the same object,
+// then the read stream will be wrapped in an ioutil.NopCloser() so that Close()
+// on the resulting io.ReadWriteCloser() will only close that underlying stream
+// object once.
 func NewPairReadWriteCloser(r io.ReadCloser, w io.WriteCloser) *PairReadWriteCloser {
 	if rw, _ := w.(io.ReadCloser); r == rw {
 		return &PairReadWriteCloser{ioutil.NopCloser(r), w}

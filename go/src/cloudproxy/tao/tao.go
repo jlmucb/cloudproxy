@@ -75,6 +75,7 @@ type Tao interface {
 // Host is a pointer to the host Tao underlying this hosted program.
 var Host Tao
 
+// Initialize Host using the environment variable.
 func init() {
 	host, err := DeserializeTaoRPC(os.Getenv(HostTaoEnvVar))
 	if err != nil {

@@ -133,6 +133,8 @@ const (
 
 var ErrMalformedResponse = errors.New("taorpc: malformed response")
 
+// call issues an rpc request, obtains the response, checks the response for
+// errors, and checks that the response contains exactly the expected values.
 func (t *TaoRPC) call(method string, r *TaoRPCRequest, e expectedResponse) (data []byte, policy string, err error) {
 	s := new(TaoRPCResponse)
 	err = t.rpc.Call(method, r, s)
@@ -157,12 +159,14 @@ func (t *TaoRPC) call(method string, r *TaoRPCRequest, e expectedResponse) (data
 	return
 }
 
+// GetTaoName implements part of the Tao interface.
 func (t *TaoRPC) GetTaoName() (string, error) {
 	r := &TaoRPCRequest{}
 	data, _, err := t.call("Tao.GetTaoName", r, wantData)
 	return string(data), err
 }
 
+// ExtendTaoName implements part of the Tao interface.
 func (t *TaoRPC) ExtendTaoName(subprin string) error {
 	r := &TaoRPCRequest{Data: []byte(subprin)}
 	_, _, err := t.call("Tao.ExtendTaoName", r, wantNothing)
@@ -171,6 +175,7 @@ func (t *TaoRPC) ExtendTaoName(subprin string) error {
 
 type taoRandReader TaoRPC
 
+// Read implements part of the Tao interface.
 func (t *taoRandReader) Read(p []byte) (n int, err error) {
 	bytes, err := (*TaoRPC)(t).GetRandomBytes(len(p))
 	if err != nil {
@@ -182,10 +187,13 @@ func (t *taoRandReader) Read(p []byte) (n int, err error) {
 
 // TODO(kwalsh) Can Rand be made generic, or does it need to be defined for the
 // concrete type TaoRPC?
+
+// Rand implements part of the Tao interface.
 func (t *TaoRPC) Rand() io.Reader {
 	return (*taoRandReader)(t)
 }
 
+// GetRandomBytes implements part of the Tao interface.
 func (t *TaoRPC) GetRandomBytes(n int) ([]byte, error) {
 	if n > math.MaxUint32 {
 		return nil, errors.New("taorpc: request for too many random bytes")
@@ -195,6 +203,7 @@ func (t *TaoRPC) GetRandomBytes(n int) ([]byte, error) {
 	return bytes, err
 }
 
+// GetSharedSecret implements part of the Tao interface.
 func (t *TaoRPC) GetSharedSecret(n int, policy string) ([]byte, error) {
 	if n > math.MaxUint32 {
 		return nil, errors.New("taorpc: request for too many secret bytes")
@@ -204,6 +213,7 @@ func (t *TaoRPC) GetSharedSecret(n int, policy string) ([]byte, error) {
 	return bytes, err
 }
 
+// Attest implements part of the Tao interface.
 func (t *TaoRPC) Attest(stmt *Statement) (*Attestation, error) {
 	data, err := proto.Marshal(stmt)
 	if _, ok := err.(*proto.RequiredNotSetError); err != nil && !ok {
@@ -222,12 +232,14 @@ func (t *TaoRPC) Attest(stmt *Statement) (*Attestation, error) {
 	return &a, nil
 }
 
+// Seal implements part of the Tao interface.
 func (t *TaoRPC) Seal(data []byte, policy string) (sealed []byte, err error) {
 	r := &TaoRPCRequest{Data: data, Policy: proto.String(policy)}
 	sealed, _, err = t.call("Tao.Seal", r, wantData)
 	return
 }
 
+// Unseal implements part of the Tao interface.
 func (t *TaoRPC) Unseal(sealed []byte) (data []byte, policy string, err error) {
 	r := &TaoRPCRequest{Data: sealed}
 	data, policy, err = t.call("Tao.Unseal", r, wantData|wantPolicy)

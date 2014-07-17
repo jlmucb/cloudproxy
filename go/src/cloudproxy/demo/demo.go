@@ -66,7 +66,7 @@ const (
 func GenerateX509() (*tls.Certificate, error) {
 	priv, err := rsa.GenerateKey(rand.Reader, x509keySize)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	notBefore := time.Now()
@@ -75,7 +75,7 @@ func GenerateX509() (*tls.Certificate, error) {
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	template := x509.Certificate{
@@ -101,16 +101,16 @@ func GenerateX509() (*tls.Certificate, error) {
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	certPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 	keyPem := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
 
-	cert, err = tls.X509KeyPair(certPem, keyPem)
+	cert, err := tls.X509KeyPair(certPem, keyPem)
 	if err != nil {
 		fmt.Printf("can't parse my cert\n")
-		return
+		return nil, err
 	}
 
 	return &cert, nil
@@ -124,7 +124,7 @@ func setupTLSServer() (net.Listener, error) {
 	}
 	return tls.Listen("tcp", serverAddr, &tls.Config{
 		RootCAs:            x509.NewCertPool(),
-		Certificates:       []tls.Certificate{cert},
+		Certificates:       []tls.Certificate{*cert},
 		InsecureSkipVerify: true,
 	})
 }
@@ -137,7 +137,7 @@ func setupTLSClient() (net.Conn, error) {
 	}
 	return tls.Dial("tcp", serverAddr, &tls.Config{
 		RootCAs:            x509.NewCertPool(),
-		Certificates:       []tls.Certificate{cert},
+		Certificates:       []tls.Certificate{*cert},
 		InsecureSkipVerify: true,
 	})
 }
@@ -180,7 +180,7 @@ func doRequest() bool {
 func doClient() {
 	pingGood := 0
 	pingFail := 0
-	for i := 0; i != *pingCount; i++ { // negative means forever
+	for i := 0; i < *pingCount || *pingCount < 0; i++ { // negative means forever
 		if doRequest() {
 			pingGood++
 		} else {
@@ -236,7 +236,7 @@ func doServer(stop chan bool, ready, done chan<- bool) {
 	connCount := 0
 
 	go func() {
-		for connCount = 0; connCount != *pingCount; connCount++ { // negative means forever
+		for connCount = 0; connCount < *pingCount || *pingCount < 0; connCount++ { // negative means forever
 			conn, err := sock.Accept()
 			if err != nil {
 				fmt.Printf("server: can't accept connection: %s\n", err.Error())

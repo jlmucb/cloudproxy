@@ -16,6 +16,8 @@ package tao
 
 import (
 	"crypto/rand"
+	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -25,18 +27,18 @@ func TestGenerateKeys(t *testing.T) {
 	}
 }
 
-func TestSignerPEMSerialization(t *testing.T) {
+func TestSignerDERSerialization(t *testing.T) {
 	s, err := GenerateSigner()
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	b, err := MarshalSignerPEM(s)
+	b, err := MarshalSignerDER(s)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	if _, err := ParseSignerPEM(b); err != nil {
+	if _, err := ParseSignerDER(b); err != nil {
 		t.Fatal(err.Error())
 	}
 }
@@ -352,5 +354,63 @@ func TestNewTemporaryKeys(t *testing.T) {
 
 	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
 		t.Fatal("Couldn't generate the right keys")
+	}
+}
+
+func TestNewOnDiskKeys(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "TestNewOnDiskKeys")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer os.RemoveAll(tempDir)
+
+	k := NewOnDiskKeys(Signing|Crypting|Deriving, tempDir)
+	password := []byte(`don't use this password`)
+	if err = k.InitWithPassword(password); err != nil {
+		t.Fatal("Couldn't set up keys on disk:", err)
+	}
+
+	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
+		t.Fatal("Couldn't generate the right keys")
+	}
+
+	k2 := NewOnDiskKeys(Signing|Crypting|Deriving, tempDir)
+	if err = k2.InitWithPassword(password); err != nil {
+		t.Fatal("Couldn't recover the serialized keys:", err)
+	}
+}
+
+func TestInitTemporaryHosted(t *testing.T) {
+	st := new(SoftTao)
+	if err := st.Init("test", "", nil); err != nil {
+		t.Fatal("Couldn't initialize a SoftTao:", err)
+	}
+
+	k := NewTemporaryKeys(Signing | Crypting | Deriving)
+	if err := k.InitTemporaryHosted(st); err != nil {
+		t.Fatal("Couldn't initialize a temporary hosted keyset:", err)
+	}
+}
+
+func TestInitHosted(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "TestInitHosted")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer os.RemoveAll(tempDir)
+
+	st := new(SoftTao)
+	if err := st.Init("test", "", nil); err != nil {
+		t.Fatal("Couldn't initialize a SoftTao:", err)
+	}
+
+	k := NewOnDiskKeys(Signing|Crypting|Deriving, tempDir)
+	if err := k.InitHosted(st, []byte(SealPolicyDefault)); err != nil {
+		t.Fatal("Couldn't initialize a hosted keyset:", err)
+	}
+
+	k2 := NewOnDiskKeys(Signing|Crypting|Deriving, tempDir)
+	if err := k2.InitHosted(st, []byte(SealPolicyDefault)); err != nil {
+		t.Fatal("Couldn't read back a sealed, hosted keyset:", err)
 	}
 }

@@ -941,9 +941,11 @@ func (k *Keys) InitTemporaryHosted(t Tao) error {
 // the C++ Tao version of the code.
 func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
 	pbed := &PBEData{
-		Version:    CryptoVersion_CRYPTO_VERSION_1.Enum(),
-		Cipher:     proto.String("aes128-ctr"),
-		Hmac:       proto.String("sha256"),
+		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
+		Cipher:  proto.String("aes128-ctr"),
+		Hmac:    proto.String("sha256"),
+		// The IV is required, so we include it, but this algorithm doesn't use it.
+		Iv:         make([]byte, aes.BlockSize),
 		Iterations: proto.Int32(4096),
 		Salt:       make([]byte, aes.BlockSize),
 	}
@@ -1018,7 +1020,7 @@ func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
 // MarshalKeyset encodes the keys into a protobuf message.
 func MarshalKeyset(k *Keys) (*CryptoKeyset, error) {
 	var cks []*CryptoKey
-	if k.keyTypes & ^Signing == Signing {
+	if k.keyTypes&Signing == Signing {
 		ck, err := MarshalSignerProto(k.SigningKey)
 		if err != nil {
 			return nil, err
@@ -1027,7 +1029,7 @@ func MarshalKeyset(k *Keys) (*CryptoKeyset, error) {
 		cks = append(cks, ck)
 	}
 
-	if k.keyTypes & ^Crypting == Crypting {
+	if k.keyTypes&Crypting == Crypting {
 		ck, err := MarshalCrypterProto(k.CryptingKey)
 		if err != nil {
 			return nil, err
@@ -1036,7 +1038,7 @@ func MarshalKeyset(k *Keys) (*CryptoKeyset, error) {
 		cks = append(cks, ck)
 	}
 
-	if k.keyTypes & ^Deriving == Deriving {
+	if k.keyTypes&Deriving == Deriving {
 		ck, err := MarshalDeriverProto(k.DerivingKey)
 		if err != nil {
 			return nil, err

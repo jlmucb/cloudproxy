@@ -32,7 +32,7 @@ func PairHelper(t *testing.T, closeA, closeB bool, msg string) {
 	defer os.Remove(b.Name())
 
 	var p *PairReadWriteCloser
-	var c1,c2 io.Closer
+	var c1, c2 io.Closer
 	if closeA {
 		c1 = a
 	} else {
@@ -55,7 +55,7 @@ func PairHelper(t *testing.T, closeA, closeB bool, msg string) {
 		t.Error(err.Error)
 		return
 	}
-	if p.Close() == nil && (closeA || closeB){
+	if p.Close() == nil && (closeA || closeB) {
 		t.Error("pair did not detect double close for " + msg)
 	}
 	if (a.Close() != nil) != (closeA) {

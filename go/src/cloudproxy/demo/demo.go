@@ -155,8 +155,8 @@ func doRequest() bool {
 		conn, err = setupTCPClient()
 	case "tls":
 		conn, err = setupTLSClient()
-	//case "tao":
-	// conn, err = setupTaoClient()
+		//case "tao":
+		// conn, err = setupTaoClient()
 	}
 	if err != nil {
 		fmt.Printf("client: error connecting to %s: %s\n", server_addr, err.Error())
@@ -182,7 +182,7 @@ func doRequest() bool {
 func doClient() {
 	ping_good := 0
 	ping_fail := 0
-	for i := 0; i != *ping_count; i++ {  // negative means forever
+	for i := 0; i != *ping_count; i++ { // negative means forever
 		if doRequest() {
 			ping_good++
 		} else {
@@ -257,7 +257,7 @@ loop:
 	for {
 		select {
 		case <-stop:
-			break loop;
+			break loop
 		case ok := <-pings:
 			if ok {
 				ping_good++

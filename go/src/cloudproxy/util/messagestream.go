@@ -54,7 +54,7 @@ func (ms *MessageStream) WriteString(s string) (int, error) {
 		return n, err
 	}
 	m, err := ms.Write([]byte(s))
-	return n+m, err
+	return n + m, err
 }
 
 // ReadString reads a 32-bit length followed by a string.
@@ -105,4 +105,3 @@ func (ms *MessageStream) ReadMessage(m proto.Message) error {
 func NewMessageStream(pipe io.ReadWriteCloser) *MessageStream {
 	return &MessageStream{DefaultMaxMessageSize, pipe}
 }
-

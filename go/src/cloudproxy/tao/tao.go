@@ -28,13 +28,13 @@ import (
 const (
 	HostTaoEnvVar = "GOOGLE_HOST_TAO"
 
-	SharedSecretPolicyDefault = "self"
+	SharedSecretPolicyDefault      = "self"
 	SharedSecretPolicyConservative = "few"
-	SharedSecretPolicyLiberal = "any"
+	SharedSecretPolicyLiberal      = "any"
 
-	SealPolicyDefault = "self"
+	SealPolicyDefault      = "self"
 	SealPolicyConservative = "few"
-	SealPolicyLiberal = "any"
+	SealPolicyLiberal      = "any"
 )
 
 // Tao is the fundamental Trustworthy Computing interface provided by a host to

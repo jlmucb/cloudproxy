@@ -37,7 +37,7 @@
 			required uint64 seq = 2;
 			... // additional fields here...
 		}
-	
+
 	Wire format: A request or response is encoded on the wire as a 32-bit length
 	(encoded in network byte order), followed by a marshalled protobuf message.
 	The separate length field is used for framing because the protobuf encoding
@@ -65,10 +65,10 @@ type ProtoClientMux interface {
 }
 
 type clientCodec struct {
-	m *util.MessageStream
-	mux ProtoClientMux
+	m       *util.MessageStream
+	mux     ProtoClientMux
 	sending sync.Mutex
-	resp []byte
+	resp    []byte
 }
 
 // NewClientCodec returns a new rpc.ClientCodec using protobuf messages on conn,
@@ -83,7 +83,7 @@ func NewClientCodec(conn io.ReadWriteCloser, mux ProtoClientMux) rpc.ClientCodec
 }
 
 // NewClient returns a new rpc.Client to handle requests to the set of services
-// at the other end of the connection. 
+// at the other end of the connection.
 func NewClient(conn io.ReadWriteCloser, mux ProtoClientMux) *rpc.Client {
 	return rpc.NewClientWithCodec(NewClientCodec(conn, mux))
 }
@@ -162,10 +162,10 @@ type ProtoServerMux interface {
 }
 
 type serverCodec struct {
-	m *util.MessageStream
-	mux ProtoServerMux
+	m       *util.MessageStream
+	mux     ProtoServerMux
 	sending sync.Mutex
-	req []byte
+	req     []byte
 }
 
 // NewServerCodec returns a new rpc.ServerCodec using protobuf messages on conn,
@@ -230,4 +230,3 @@ func (c *serverCodec) WriteResponse(r *rpc.Response, x interface{}) error {
 func (c *serverCodec) Close() error {
 	return c.m.Close()
 }
-

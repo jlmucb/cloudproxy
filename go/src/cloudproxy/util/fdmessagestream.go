@@ -43,4 +43,3 @@ func DeserializeFDMessageStream(s string) (*MessageStream, error) {
 		return NewMessageStream(rw), nil
 	}
 }
-

@@ -32,20 +32,20 @@ import (
 )
 
 var opRPCName = map[string]string{
-		"Tao.GetRandomBytes": "TAO_RPC_GET_RANDOM_BYTES",
-		"Tao.Seal": "TAO_RPC_SEAL",
-		"Tao.Unseal": "TAO_RPC_UNSEAL",
-		"Tao.Attest": "TAO_RPC_ATTEST",
-		"Tao.GetTaoName": "TAO_RPC_GET_TAO_NAME",
-		"Tao.ExtendTaoName": "TAO_RPC_EXTEND_TAO_NAME",
-		"Tao.GetSharedSecret": "TAO_RPC_GET_SHARED_SECRET",
+	"Tao.GetRandomBytes":  "TAO_RPC_GET_RANDOM_BYTES",
+	"Tao.Seal":            "TAO_RPC_SEAL",
+	"Tao.Unseal":          "TAO_RPC_UNSEAL",
+	"Tao.Attest":          "TAO_RPC_ATTEST",
+	"Tao.GetTaoName":      "TAO_RPC_GET_TAO_NAME",
+	"Tao.ExtendTaoName":   "TAO_RPC_EXTEND_TAO_NAME",
+	"Tao.GetSharedSecret": "TAO_RPC_GET_SHARED_SECRET",
 }
 
 var opGoName = make(map[string]string)
 
 func init() {
 	for goName, rpcName := range opRPCName {
-			opGoName[rpcName] = goName
+		opGoName[rpcName] = goName
 	}
 }
 
@@ -109,7 +109,7 @@ type TaoRPC struct {
 func DeserializeTaoRPC(s string) (*TaoRPC, error) {
 	if s == "" {
 		return nil, errors.New("taorpc: missing host Tao spec" +
-			" (ensure $" + HostTaoEnvVar +" is set)")
+			" (ensure $" + HostTaoEnvVar + " is set)")
 	}
 	r := strings.TrimPrefix(s, "tao::TaoRPC+")
 	if r == s {
@@ -126,25 +126,25 @@ func DeserializeTaoRPC(s string) (*TaoRPC, error) {
 type expectedResponse int
 
 const (
-	wantNothing = 0
-	wantData expectedResponse = 1 << iota
+	wantNothing                  = 0
+	wantData    expectedResponse = 1 << iota
 	wantPolicy
 )
 
 var ErrMalformedResponse = errors.New("taorpc: malformed response")
 
 func (t *TaoRPC) call(method string, r *TaoRPCRequest, e expectedResponse) (data []byte, policy string, err error) {
-  s := new(TaoRPCResponse)
-  err = t.rpc.Call(method, r, s)
-  if err != nil {
-    return
-  }
+	s := new(TaoRPCResponse)
+	err = t.rpc.Call(method, r, s)
+	if err != nil {
+		return
+	}
 	if s.Error != nil {
 		err = errors.New(*s.Error)
 		return
 	}
 	if (s.Data != nil) != (e&wantData != 0) ||
-			(s.Policy != nil) != (e&wantPolicy != 0) {
+		(s.Policy != nil) != (e&wantPolicy != 0) {
 		err = ErrMalformedResponse
 		return
 	}
@@ -158,12 +158,12 @@ func (t *TaoRPC) call(method string, r *TaoRPCRequest, e expectedResponse) (data
 }
 
 func (t *TaoRPC) GetTaoName() (string, error) {
-  r := &TaoRPCRequest{}
+	r := &TaoRPCRequest{}
 	data, _, err := t.call("Tao.GetTaoName", r, wantData)
 	return string(data), err
 }
 
-func (t *TaoRPC) ExtendTaoName(subprin string) (error) {
+func (t *TaoRPC) ExtendTaoName(subprin string) error {
 	r := &TaoRPCRequest{Data: []byte(subprin)}
 	_, _, err := t.call("Tao.ExtendTaoName", r, wantNothing)
 	return err
@@ -179,7 +179,6 @@ func (t *taoRandReader) Read(p []byte) (n int, err error) {
 	copy(p, bytes)
 	return len(p), nil
 }
-
 
 // TODO(kwalsh) Can Rand be made generic, or does it need to be defined for the
 // concrete type TaoRPC?
@@ -231,6 +230,6 @@ func (t *TaoRPC) Seal(data []byte, policy string) (sealed []byte, err error) {
 
 func (t *TaoRPC) Unseal(sealed []byte) (data []byte, policy string, err error) {
 	r := &TaoRPCRequest{Data: sealed}
-	data, policy, err = t.call("Tao.Unseal", r, wantData | wantPolicy)
+	data, policy, err = t.call("Tao.Unseal", r, wantData|wantPolicy)
 	return
 }

@@ -70,15 +70,28 @@ type Tao interface {
 	Unseal(sealed []byte) (data []byte, policy string, err error)
 }
 
-// Host is a pointer to the host Tao underlying this hosted program.
-var Host Tao
+// Cached interface to the host Tao underlying this hosted program.
+var cachedHost Tao
 
-// Initialize Host using the environment variable.
-func init() {
+// Host returns the interface to the underlying host Tao. It depends on a
+// specific environment variable being set. On success it memoizes the result
+// before returning it because there should only ever be a single channel to the
+// host. On failure, it logs a message using glog and returns nil.
+// Note: errors are not returned so that, once it is confirmed that Host
+// returns a non-nil value, callers can use the function result in an
+// expression, e.g.:
+//   name, err := tao.Host().GetTaoName()
+func Host() Tao {
 	host, err := DeserializeTaoRPC(os.Getenv(HostTaoEnvVar))
 	if err != nil {
 		glog.Error(err)
-		return
+		return nil
 	}
-	Host = host
+	cachedHost = host
+	return host
+}
+
+// Hosted returns true iff a host Tao is available via the Host function.
+func HostAvailable() bool {
+		return Host() != nil
 }

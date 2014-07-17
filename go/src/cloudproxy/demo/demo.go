@@ -153,7 +153,9 @@ func doRequest() bool {
 		conn, err = setupTCPClient()
 	case "tls":
 		conn, err = setupTLSClient()
-		//case "tao":
+		// TODO(kwalsh) Tao-level authentication: use TLS, then exchange names and
+		// delegation attestations
+		// case "tao":
 		// conn, err = setupTaoClient()
 	}
 	if err != nil {
@@ -194,10 +196,12 @@ func doClient() {
 func doResponse(conn net.Conn, responseOk chan<- bool) {
 	defer conn.Close()
 
-	// todo tao auth
 	switch *demoAuth {
 	case "tcp", "tls":
+		// authentication already done by lower layers
 	case "tao":
+		// TODO(kwalsh) Tao-level authorization: exchange names and delegation
+		// attestations.
 	}
 
 	msg, err := bufio.NewReader(conn).ReadString('\n')
@@ -275,7 +279,7 @@ loop:
 // Tao Host demo
 
 func hostTaoDemo() error {
-	name, err := tao.Host.GetTaoName()
+	name, err := tao.Host().GetTaoName()
 	if err != nil {
 		return err
 	}
@@ -286,42 +290,42 @@ func hostTaoDemo() error {
 		args[index] = strconv.Quote(arg)
 	}
 	subprin := "Args(" + strings.Join(args, ", ") + ")"
-	err = tao.Host.ExtendTaoName(subprin)
+	err = tao.Host().ExtendTaoName(subprin)
 	if err != nil {
 		return err
 	}
 
-	name, err = tao.Host.GetTaoName()
+	name, err = tao.Host().GetTaoName()
 	if err != nil {
 		return err
 	}
 	fmt.Printf("My full name is %s\n", name)
 
-	random, err := tao.Host.GetRandomBytes(10)
+	random, err := tao.Host().GetRandomBytes(10)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Random bytes  : % x\n", random)
 
-	n, err := tao.Host.Rand().Read(random)
+	n, err := tao.Host().Rand().Read(random)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("%d more bytes : % x\n", n, random)
 
-	secret, err := tao.Host.GetSharedSecret(10, tao.SharedSecretPolicyDefault)
+	secret, err := tao.Host().GetSharedSecret(10, tao.SharedSecretPolicyDefault)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Shared secret : % x\n", secret)
 
-	sealed, err := tao.Host.Seal(random, tao.SealPolicyDefault)
+	sealed, err := tao.Host().Seal(random, tao.SealPolicyDefault)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Sealed bytes  : % x\n", sealed)
 
-	unsealed, policy, err := tao.Host.Unseal(sealed)
+	unsealed, policy, err := tao.Host().Unseal(sealed)
 	if err != nil {
 		return err
 	}
@@ -345,7 +349,7 @@ func main() {
 
 	fmt.Printf("Go Tao Demo\n")
 
-	if tao.Host == nil {
+	if ! tao.HostAvailable() {
 		fmt.Printf("can't continue: No host Tao available")
 		return
 	}

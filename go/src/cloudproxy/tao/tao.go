@@ -72,7 +72,7 @@ type Tao interface {
 	Unseal(sealed []byte) (data []byte, policy string, err error)
 }
 
-// Host is a pointer to host Tao underlying this hosted program.
+// Host is a pointer to the host Tao underlying this hosted program.
 var Host Tao
 
 func init() {

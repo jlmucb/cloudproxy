@@ -31,7 +31,7 @@ import (
 	"cloudproxy/util/protorpc"
 )
 
-var op_rpc_name = map[string]string{
+var opRPCName = map[string]string{
 		"Tao.GetRandomBytes": "TAO_RPC_GET_RANDOM_BYTES",
 		"Tao.Seal": "TAO_RPC_SEAL",
 		"Tao.Unseal": "TAO_RPC_UNSEAL",
@@ -41,17 +41,17 @@ var op_rpc_name = map[string]string{
 		"Tao.GetSharedSecret": "TAO_RPC_GET_SHARED_SECRET",
 }
 
-var op_go_name = make(map[string]string)
+var opGoName = make(map[string]string)
 
 func init() {
-	for go_name, rpc_name := range op_rpc_name{
-			op_go_name[rpc_name] = go_name
+	for goName, rpcName := range opRPCName {
+			opGoName[rpcName] = goName
 	}
 }
 
 // Convert string "Tao.FooBar" into integer TaoRPCOperation_TAO_RPC_FOO_BAR.
 func goToRPC(m string) (TaoRPCOperation, error) {
-	op := TaoRPCOperation(TaoRPCOperation_value[op_rpc_name[m]])
+	op := TaoRPCOperation(TaoRPCOperation_value[opRPCName[m]])
 	if op == TaoRPCOperation(0) {
 		return op, protorpc.ErrBadRequestType
 	}
@@ -60,7 +60,7 @@ func goToRPC(m string) (TaoRPCOperation, error) {
 
 // Convert integer TaoRPCOperation_TAO_RPC_FOO_BAR into string "Tao.FooBar".
 func rpcToGo(op TaoRPCOperation) (string, error) {
-	s := op_go_name[TaoRPCOperation_name[int32(op)]]
+	s := opGoName[TaoRPCOperation_name[int32(op)]]
 	if s == "" {
 		return "", protorpc.ErrBadRequestType
 	}

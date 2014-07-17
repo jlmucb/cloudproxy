@@ -64,6 +64,13 @@
 #- Other than the couple of minor style comments and a question about the init
 #- function in tao.go, this LGTM.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-17T16:40:29-0400
+#**
+#-- Will fix license/copyright.
+#--
 diff --git a/go/src/cloudproxy/demo/demo.go b/go/src/cloudproxy/demo/demo.go
 new file mode 100644
 index 0000000..195bd25
@@ -127,6 +134,13 @@ index 0000000..195bd25
 #- I think even these variables are supposed to be mixedCase. There are some
 #- other places I saw in this diff that need to be changed as well.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-17T16:51:22-0400
+#**
+#-- Fixed.
+#--
 +
 +// TCP mode client/server
 +
@@ -154,6 +168,14 @@ index 0000000..195bd25
 #- Should this be *tls.Certificate? Or is there a good reason to return this by
 #- value? It's a fairly big struct, so I'd go for passing by reference.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-17T16:55:08-0400
+#**
+#-- I was just going by what tls.X509KeyPair returns, which is odd now that you
+#-- point it out. But you are right. Fixed.
+#--
 +	priv, err := rsa.GenerateKey(rand.Reader, x509keySize)
 +	if err != nil {
 +		return
@@ -310,6 +332,13 @@ index 0000000..195bd25
 #- There, "tcp" is alone, and "tls" and "tao" are joined, here it's "tcp" with
 #- "tls", and "tao".
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-17T17:06:35-0400
+#**
+#-- Fixed. Yes, the mismatch is done on purpose. Will add comment explaining.
+#--
 +	switch *demo_auth {
 +	case "tcp", "tls":
 +	case "tao":
@@ -594,6 +623,20 @@ index 0000000..195bd25
 #- I'd like to not insist on there being this environment variable. How does
 #- this work for, e.g., the SoftTao, which doesn't have a Host?
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-17T17:07:31-0400
+#**
+#-- All hosted programs by definition have a host. It is true that some
+#-- non-hosted programs, like a root Tao host implemented with SoftTao, will not
+#-- have a host. In C++ this is done with a function that uses the envvar on the
+#-- first call and caches the result, and only a hosted program would ever all
+#-- that function. Perhaps I should do the same in go? Either have no global
+#-- variable, just a function with caching like in C++. Or have a global
+#-- variable and a function that hosted programs call to initialize the global
+#-- variable. First option is better I think.
+#--
 diff --git a/go/src/cloudproxy/tao/taorpc.go b/go/src/cloudproxy/tao/taorpc.go
 new file mode 100644
 index 0000000..d5caf51

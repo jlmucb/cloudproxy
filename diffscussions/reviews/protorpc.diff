@@ -52,6 +52,18 @@
 #-- just as soon delete all per-file legal boilerplate, but I know nothing and
 #-- defer to you guys.
 #--
+#***
+#*** author: Tom Roeder
+#*** email: tmroeder@google.com
+#*** date: 2014-07-17T10:28:18-0700
+#***
+#--- Yes, I think we should use fmt for places where we really want to
+#--- ensure the user sees something.
+#--- 
+#--- licenses: I really don't know. At least in Google's open-sourced
+#--- code, we always have license headers, and John seems to want
+#--- that, too.
+#--- 
 diff --git a/go-kwalsh/src/cloudproxy/demo/demo.go b/go-kwalsh/src/cloudproxy/demo/demo.go
 new file mode 100644
 index 0000000..e043f1f
@@ -236,6 +248,13 @@ index 0000000..8832f3e
 #-- tao.Rand.Read() instead. Though if Tao is an interface, I guess it has to be
 #-- tao.Rand().Read(). So tao.Rand() returns an io.Reader, just like variable
 #-- rand.Reader holds an io.Reader.
+#***
+#*** author: Tom Roeder
+#*** email: tmroeder@google.com
+#*** date: 2014-07-17T10:29:45-0700
+#***
+#--- SGTM
+#--- 
 +
 +	// GetSharedSecret returns a slice of n secret bytes.
 +	GetSharedSecret(n int, policy string) (bytes []byte, err error)

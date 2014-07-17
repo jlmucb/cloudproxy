@@ -51,6 +51,19 @@
 #- go: add more comments
 #- 
 #- 
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-17T10:33:44-0700
+#*
+#- wrt license headers, I'm fine with dropping the file: and author: tags. It
+#- looks like you copied a Google copyright into it for several files that I'm
+#- fairly sure you wrote. It doesn't matter much, given that it's all licensed
+#- under Apache, but you might change it to copyright Kevin Walsh.
+#- 
+#- Other than the couple of minor style comments and a question about the init
+#- function in tao.go, this LGTM.
+#- 
 diff --git a/go/src/cloudproxy/demo/demo.go b/go/src/cloudproxy/demo/demo.go
 new file mode 100644
 index 0000000..195bd25
@@ -106,6 +119,14 @@ index 0000000..195bd25
 +var server_mode = flag.Bool("server", true, "Run demo server")
 +var ping_count = flag.Int("n", 5, "Number of client/server pings")
 +var demo_auth = flag.String("auth", "tao", "\"tcp\", \"tls\", or \"tao\"")
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-17T10:10:43-0700
+#*
+#- I think even these variables are supposed to be mixedCase. There are some
+#- other places I saw in this diff that need to be changed as well.
+#- 
 +
 +// TCP mode client/server
 +
@@ -125,6 +146,14 @@ index 0000000..195bd25
 +)
 +
 +func GenerateX509() (cert tls.Certificate, err error) {
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-17T10:11:50-0700
+#*
+#- Should this be *tls.Certificate? Or is there a good reason to return this by
+#- value? It's a fairly big struct, so I'd go for passing by reference.
+#- 
 +	priv, err := rsa.GenerateKey(rand.Reader, x509keySize)
 +	if err != nil {
 +		return
@@ -241,7 +270,22 @@ index 0000000..195bd25
 +func doClient() {
 +	ping_good := 0
 +	ping_fail := 0
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-17T10:15:44-0700
+#*
+#- mixedCase
+#- 
 +	for i := 0; i != *ping_count; i++ { // negative means forever
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-17T10:18:27-0700
+#*
+#- I think that i is an int by default, so negative won't go forever; the
+#- loop index will wrap and will eventually reach the negative number.
+#- 
 +		if doRequest() {
 +			ping_good++
 +		} else {
@@ -256,6 +300,16 @@ index 0000000..195bd25
 +	defer conn.Close()
 +
 +	// todo tao auth
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-17T10:21:38-0700
+#*
+#- "todo" -> "TODO(kwalsh)", and maybe more details on what needs to be done?
+#- Also, these cases seem to differ from the cases in doServer. Is that right?
+#- There, "tcp" is alone, and "tls" and "tao" are joined, here it's "tcp" with
+#- "tls", and "tao".
+#- 
 +	switch *demo_auth {
 +	case "tcp", "tls":
 +	case "tao":
@@ -532,6 +586,14 @@ index 0000000..195bd25
 +	}
 +	Host = host
 +}
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-17T10:26:12-0700
+#*
+#- I'd like to not insist on there being this environment variable. How does
+#- this work for, e.g., the SoftTao, which doesn't have a Host?
+#- 
 diff --git a/go/src/cloudproxy/tao/taorpc.go b/go/src/cloudproxy/tao/taorpc.go
 new file mode 100644
 index 0000000..d5caf51

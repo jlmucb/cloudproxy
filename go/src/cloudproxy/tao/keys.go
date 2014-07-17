@@ -27,13 +27,17 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/base64"
+	"encoding/pem"
 	"errors"
+	"io/ioutil"
 	"math/big"
+	"os"
 	"path"
 	"strings"
 	"time"
 
 	"code.google.com/p/go.crypto/hkdf"
+	"code.google.com/p/go.crypto/pbkdf2"
 	"code.google.com/p/goprotobuf/proto"
 )
 
@@ -83,7 +87,7 @@ func GenerateSigner() (*Signer, error) {
 
 // ToPrincipalName produces a plain-text Tao principal name. This is a
 // base64w-encoded version of a serialized CryptoKey for the public half of
-// this signing key.
+// this signing key, wrapped in 'Key("' and '")'.
 func (s *Signer) ToPrincipalName() (string, error) {
 	var ck *CryptoKey
 	var err error
@@ -96,16 +100,16 @@ func (s *Signer) ToPrincipalName() (string, error) {
 		return "", err
 	}
 
-	return "Key(" + base64.URLEncoding.EncodeToString(data) + ")", nil
+	return "Key(\"" + base64.URLEncoding.EncodeToString(data) + "\")", nil
 }
 
-// MarshalSigner serializes the signer to PEM.
-func MarshalSignerPEM(s *Signer) ([]byte, error) {
+// MarshalSigner serializes the signer to DER.
+func MarshalSignerDER(s *Signer) ([]byte, error) {
 	return x509.MarshalECPrivateKey(s.ec)
 }
 
-// ParseSigner deserializes a Signer from PEM.
-func ParseSignerPEM(signer []byte) (*Signer, error) {
+// ParseSigner deserializes a Signer from DER.
+func ParseSignerDER(signer []byte) (*Signer, error) {
 	k := new(Signer)
 	var err error
 	if k.ec, err = x509.ParseECPrivateKey(signer); err != nil {
@@ -379,7 +383,7 @@ func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error)
 
 // ToPrincipalName produces a plain-text Tao principal name. This is a
 // base64w-encoded version of a serialized CryptoKey for the public half of
-// this verifying key.
+// this verifying key, wrapped in 'Key("' and '")'.
 func (v *Verifier) ToPrincipalName() (string, error) {
 	var ck *CryptoKey
 	var err error
@@ -392,18 +396,18 @@ func (v *Verifier) ToPrincipalName() (string, error) {
 		return "", err
 	}
 
-	return "Key(" + base64.URLEncoding.EncodeToString(data) + ")", nil
+	return "Key(\"" + base64.URLEncoding.EncodeToString(data) + "\")", nil
 }
 
 // FromPrincipalName deserializes a Verifier from a plaintext Tao principal
 // name.
 func FromPrincipalName(name string) (*Verifier, error) {
 	// Check to make sure the key starts with "Key(" and ends with ")".
-	if !strings.HasPrefix(name, "Key(") || !strings.HasSuffix(name, ")") {
+	if !strings.HasPrefix(name, "Key(\"") || !strings.HasSuffix(name, "\")") {
 		return nil, errors.New("Invalid prefix or suffix")
 	}
 
-	ks := strings.TrimPrefix(strings.TrimSuffix(name, ")"), "Key(")
+	ks := strings.TrimPrefix(strings.TrimSuffix(name, "\")"), "Key(\"")
 
 	b, err := base64.URLEncoding.DecodeString(ks)
 	if err != nil {
@@ -776,8 +780,8 @@ func UnmarshalDeriverProto(ck *CryptoKey) (*Deriver, error) {
 	return d, nil
 }
 
-// A Keys holds a set of Keyczar keys and provides an interface to perform
-// actions with these keys.
+// A Keys manages a set of signing, verifying, encrypting, and key-deriving
+// keys.
 type Keys struct {
 	dir      string
 	policy   string
@@ -798,6 +802,52 @@ func (k *Keys) TaoSecretPath() string {
 		return ""
 	} else {
 		return path.Join(k.dir, "secret")
+	}
+}
+
+// X509Path returns the path to the verifier key, stored as an X.509
+// certificate.
+func (k *Keys) X509Path() string {
+	if k.dir == "" {
+		return ""
+	} else {
+		return path.Join(k.dir, "cert")
+	}
+}
+
+// PBEKeysetPath returns the path for stored keys.
+func (k *Keys) PBEKeysetPath() string {
+	if k.dir == "" {
+		return ""
+	} else {
+		return path.Join(k.dir, "keys")
+	}
+}
+
+// PBESignerPath returns the path for a stored signing key.
+func (k *Keys) PBESignerPath() string {
+	if k.dir == "" {
+		return ""
+	} else {
+		return path.Join(k.dir, "signer")
+	}
+}
+
+// SealedKeysetPath returns the path for a stored signing key.
+func (k *Keys) SealedKeysetPath() string {
+	if k.dir == "" {
+		return ""
+	} else {
+		return path.Join(k.dir, "sealed_keyset")
+	}
+}
+
+// DelegationPath returns the path for a stored signing key.
+func (k *Keys) DelegationPath() string {
+	if k.dir == "" {
+		return ""
+	} else {
+		return path.Join(k.dir, "delegation")
 	}
 }
 
@@ -855,6 +905,432 @@ func (k *Keys) InitTemporary() error {
 		k.DerivingKey, err = GenerateDeriver()
 		if err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+// InitTemporaryHosted initializes a set of temporary keys under a host Tao,
+// using the Tao to generate a delegation for the signing key
+func (k *Keys) InitTemporaryHosted(t Tao) error {
+	if err := k.InitTemporary(); err != nil {
+		return err
+	}
+
+	if k.SigningKey != nil {
+		n, err := k.SigningKey.ToPrincipalName()
+		if err != nil {
+			return err
+		}
+
+		s := &Statement{
+			Delegate: proto.String(n),
+		}
+
+		if k.Delegation, err = t.Attest(s); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// PBEEncrypt encrypts plaintext using a password to generate a key. Note that
+// since this is for private program data, we don't try for compatibility with
+// the C++ Tao version of the code.
+func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
+	pbed := &PBEData{
+		Version:    CryptoVersion_CRYPTO_VERSION_1.Enum(),
+		Cipher:     proto.String("aes128-ctr"),
+		Hmac:       proto.String("sha256"),
+		Iterations: proto.Int32(4096),
+		Salt:       make([]byte, aes.BlockSize),
+	}
+
+	// We use the first half of the salt for the AES key and the second
+	// half for the HMAC key, since the standard recommends at least 8
+	// bytes of salt.
+	if _, err := rand.Read(pbed.Salt); err != nil {
+		return nil, err
+	}
+
+	// 128-bit AES key.
+	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
+	defer zeroBytes(aesKey)
+
+	// 64-byte HMAC-SHA256 key.
+	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
+	defer zeroBytes(hmacKey)
+	c := &Crypter{aesKey, hmacKey}
+
+	// Note that we're abusing the PBEData format here, since the IV and
+	// the MAC are actually contained in the ciphertext from Encrypt().
+	var err error
+	if pbed.Ciphertext, err = c.Encrypt(plaintext); err != nil {
+		return nil, err
+	}
+
+	return proto.Marshal(pbed)
+}
+
+// PBEDecrypt decrypts ciphertext using a password to generate a key. Note that
+// since this is for private program data, we don't try for compatibility with
+// the C++ Tao version of the code.
+func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
+	var pbed PBEData
+	if err := proto.Unmarshal(ciphertext, &pbed); err != nil {
+		return nil, err
+	}
+
+	// Recover the keys from the password and the PBE header.
+	if *pbed.Version != CryptoVersion_CRYPTO_VERSION_1 {
+		return nil, errors.New("Bad version")
+	}
+
+	if *pbed.Cipher != "aes128-ctr" {
+		return nil, errors.New("Bad cipher")
+	}
+
+	if *pbed.Hmac != "sha256" {
+		return nil, errors.New("Bad hmac")
+	}
+
+	// 128-bit AES key.
+	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
+	defer zeroBytes(aesKey)
+
+	// 64-byte HMAC-SHA256 key.
+	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
+	defer zeroBytes(hmacKey)
+	c := &Crypter{aesKey, hmacKey}
+
+	// Note that we're abusing the PBEData format here, since the IV and
+	// the MAC are actually contained in the ciphertext from Encrypt().
+	data, err := c.Decrypt(pbed.Ciphertext)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+// MarshalKeyset encodes the keys into a protobuf message.
+func MarshalKeyset(k *Keys) (*CryptoKeyset, error) {
+	var cks []*CryptoKey
+	if k.keyTypes & ^Signing == Signing {
+		ck, err := MarshalSignerProto(k.SigningKey)
+		if err != nil {
+			return nil, err
+		}
+
+		cks = append(cks, ck)
+	}
+
+	if k.keyTypes & ^Crypting == Crypting {
+		ck, err := MarshalCrypterProto(k.CryptingKey)
+		if err != nil {
+			return nil, err
+		}
+
+		cks = append(cks, ck)
+	}
+
+	if k.keyTypes & ^Deriving == Deriving {
+		ck, err := MarshalDeriverProto(k.DerivingKey)
+		if err != nil {
+			return nil, err
+		}
+
+		cks = append(cks, ck)
+	}
+
+	ckset := &CryptoKeyset{
+		Keys: cks,
+	}
+
+	return ckset, nil
+}
+
+// UnmarshalKeyset decodes a CryptoKeyset into a Keys structure.
+func UnmarshalKeyset(cks *CryptoKeyset) (*Keys, error) {
+	k := new(Keys)
+	var err error
+	for i := range cks.Keys {
+		if *cks.Keys[i].Purpose == CryptoKey_SIGNING {
+			if k.SigningKey, err = UnmarshalSignerProto(cks.Keys[i]); err != nil {
+				return nil, err
+			}
+
+			k.VerifyingKey = k.SigningKey.GetVerifier()
+		}
+
+		if *cks.Keys[i].Purpose == CryptoKey_CRYPTING {
+			if k.CryptingKey, err = UnmarshalCrypterProto(cks.Keys[i]); err != nil {
+				return nil, err
+			}
+		}
+
+		if *cks.Keys[i].Purpose == CryptoKey_DERIVING {
+			if k.DerivingKey, err = UnmarshalDeriverProto(cks.Keys[i]); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return k, nil
+}
+
+// InitWithPassword either loads a set of PBE-protected keys from disk or
+// creates a set of keys and stores them PBE encrypted to disk.
+func (k *Keys) InitWithPassword(password []byte) error {
+	if k.keyTypes == 0 || (k.keyTypes & ^Signing & ^Crypting & ^Deriving != 0) {
+		return errors.New("Bad key type")
+	}
+
+	if k.dir == "" {
+		return errors.New("Bad init call: no path for keys")
+	}
+
+	if len(password) == 0 {
+		// This means there's no secret information: just load a public
+		// verifying key.
+		if k.keyTypes & ^Signing != 0 {
+			return errors.New("Without a password, only a verifying key can be loaded")
+		}
+
+		f, err := os.Open(k.X509Path())
+		if err != nil {
+			return err
+		}
+
+		xb, err := ioutil.ReadAll(f)
+		if err != nil {
+			return err
+		}
+
+		if k.VerifyingKey, err = FromX509(xb); err != nil {
+			return err
+		}
+	} else {
+		// There are two different types of keysets: in one there's
+		// just a Signer, so we use an encrypted PEM format. In the
+		// other, there are multiple keys, so we use a custom protobuf
+		// format.
+		if k.keyTypes & ^Signing != 0 {
+			// Check to see if there are already keys.
+			f, err := os.Open(k.PBEKeysetPath())
+			if err == nil {
+				ks, err := ioutil.ReadAll(f)
+				if err != nil {
+					return err
+				}
+
+				data, err := PBEDecrypt(ks, password)
+				if err != nil {
+					return err
+				}
+				defer zeroBytes(data)
+
+				var cks CryptoKeyset
+				if err = proto.Unmarshal(data, &cks); err != nil {
+					return err
+				}
+
+				// TODO(tmroeder): defer zeroKeyset(&cks)
+
+				ktemp, err := UnmarshalKeyset(&cks)
+				if err != nil {
+					return err
+				}
+
+				k.SigningKey = ktemp.SigningKey
+				k.VerifyingKey = ktemp.VerifyingKey
+				k.CryptingKey = ktemp.CryptingKey
+				k.DerivingKey = ktemp.DerivingKey
+			} else {
+				// Create and store a new set of keys.
+				if err = k.InitTemporary(); err != nil {
+					return err
+				}
+
+				cks, err := MarshalKeyset(k)
+				if err != nil {
+					return err
+				}
+
+				// TODO(tmroeder): defer zeroKeyset(cks)
+
+				m, err := proto.Marshal(cks)
+				if err != nil {
+					return err
+				}
+				defer zeroBytes(m)
+
+				enc, err := PBEEncrypt(m, password)
+				if err != nil {
+					return err
+				}
+
+				if err = ioutil.WriteFile(k.PBEKeysetPath(), enc, 0600); err != nil {
+					return err
+				}
+			}
+		} else {
+			// There's just a signer, so do PEM encryption of the encoded key.
+			f, err := os.Open(k.PBESignerPath())
+			if err == nil {
+				// Read the signer.
+				ss, err := ioutil.ReadAll(f)
+				if err != nil {
+					return err
+				}
+
+				pb, r := pem.Decode(ss)
+				if r != nil {
+					return errors.New("decoding failure")
+				}
+
+				p, err := x509.DecryptPEMBlock(pb, password)
+				if err != nil {
+					return err
+				}
+				defer zeroBytes(p)
+
+				if k.SigningKey, err = ParseSignerDER(p); err != nil {
+					return err
+				}
+				k.VerifyingKey = k.SigningKey.GetVerifier()
+			} else {
+				// Create a fresh key and store it to the PBESignerPath.
+				if k.SigningKey, err = GenerateSigner(); err != nil {
+					return err
+				}
+
+				k.VerifyingKey = k.SigningKey.GetVerifier()
+				p, err := MarshalSignerDER(k.SigningKey)
+				if err != nil {
+					return err
+				}
+				defer zeroBytes(p)
+
+				pb, err := x509.EncryptPEMBlock(rand.Reader, "EC PRIVATE KEY", p, password, x509.PEMCipherAES128)
+				if err != nil {
+					return err
+				}
+
+				pbes, err := os.Create(k.PBESignerPath())
+				if err != nil {
+					return err
+				}
+
+				if err = pem.Encode(pbes, pb); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// InitHosted sets up the keys sealed under a host Tao or reads sealed keys.
+func (k *Keys) InitHosted(t Tao, policy []byte) error {
+	// Check to see if there are already keys.
+	f, err := os.Open(k.SealedKeysetPath())
+	if err == nil {
+		ks, err := ioutil.ReadAll(f)
+		if err != nil {
+			return err
+		}
+
+		data, _, err := t.Unseal(ks)
+		if err != nil {
+			return err
+		}
+		defer zeroBytes(data)
+		// TODO(tmroeder): what should we do with the policy returned by Unseal?
+
+		var cks CryptoKeyset
+		if err = proto.Unmarshal(data, &cks); err != nil {
+			return err
+		}
+
+		// TODO(tmroeder): defer zeroKeyset(&cks)
+
+		ktemp, err := UnmarshalKeyset(&cks)
+		if err != nil {
+			return err
+		}
+
+		k.SigningKey = ktemp.SigningKey
+		k.VerifyingKey = ktemp.VerifyingKey
+		k.CryptingKey = ktemp.CryptingKey
+		k.DerivingKey = ktemp.DerivingKey
+
+		// Read the delegation.
+		if k.SigningKey != nil {
+			ds, err := ioutil.ReadFile(k.DelegationPath())
+			if err != nil {
+				return err
+			}
+
+			k.Delegation = new(Attestation)
+			if err := proto.Unmarshal(ds, k.Delegation); err != nil {
+				return err
+			}
+		}
+	} else {
+		// Create and store a new set of keys.
+		if err = k.InitTemporary(); err != nil {
+			return err
+		}
+
+		cks, err := MarshalKeyset(k)
+		if err != nil {
+			return err
+		}
+
+		// TODO(tmroeder): defer zeroKeyset(cks)
+
+		m, err := proto.Marshal(cks)
+		if err != nil {
+			return err
+		}
+		defer zeroBytes(m)
+
+		enc, err := t.Seal(m, policy)
+		if err != nil {
+			return err
+		}
+
+		if err = ioutil.WriteFile(k.SealedKeysetPath(), enc, 0600); err != nil {
+			return err
+		}
+
+		// Get and write a delegation.
+		if k.SigningKey != nil {
+			name, err := k.SigningKey.ToPrincipalName()
+			if err != nil {
+				return err
+			}
+
+			s := &Statement{
+				Delegate: proto.String(name),
+			}
+
+			if k.Delegation, err = t.Attest(s); err != nil {
+				return err
+			}
+
+			m, err := proto.Marshal(k.Delegation)
+			if err != nil {
+				return err
+			}
+
+			if err = ioutil.WriteFile(k.DelegationPath(), m, 0600); err != nil {
+				return err
+			}
 		}
 	}
 

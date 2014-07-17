@@ -1,0 +1,1315 @@
+#* 
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-16T23:16:16-0400
+#* 
+#- rename go-kwalsh to go
+#- 
+#- 
+#- use glog, not fmt
+#- 
+#- 
+#- add license boilerplate
+#- 
+#- 
+#- sort imports in go
+#- 
+#- 
+#- fix comment
+#- 
+#- 
+#- provide a Rand() io.Reader for Tao
+#- 
+#- 
+#- go: use :=, not var
+#- 
+#- 
+#- fixed demo
+#- 
+#- 
+#- fix comment
+#- 
+#- 
+#- go: use mixed case, not underscores
+#- 
+#- 
+#- go: better error strings
+#- 
+#- 
+#- go fmt
+#- 
+#- 
+#- taorpc: missing type on const
+#- 
+#- 
+#- go: typos in comments
+#- 
+#- 
+#- go: added missing comments for protorpc
+#- 
+#- 
+#- go: add more comments
+#- 
+#- 
+diff --git a/go/src/cloudproxy/demo/demo.go b/go/src/cloudproxy/demo/demo.go
+new file mode 100644
+index 0000000..195bd25
+--- /dev/null
++++ b/go/src/cloudproxy/demo/demo.go
+@@ -0,0 +1,384 @@
++// File: demo.go
++// Author: Kevin Walsh <kwalsh@holycross.edu>
++// Description: Demo of hosted program written in go.
++//
++// Copyright (c) 2013, Google Inc.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package main
++
++import (
++	"bufio"
++	"crypto/rand"
++	"crypto/rsa"
++	"crypto/tls"
++	"crypto/x509"
++	"crypto/x509/pkix"
++	"encoding/pem"
++	"errors"
++	"flag"
++	"fmt"
++	"math/big"
++	"net"
++	"os"
++	"strconv"
++	"strings"
++	"time"
++
++	"cloudproxy/tao"
++)
++
++var server_host = flag.String("host", "localhost", "address for client/server")
++var server_port = flag.String("port", "8123", "port for client/server")
++var server_addr string // see main()
++var local_mode = flag.Bool("local", true, "Run host demo")
++var client_mode = flag.Bool("client", true, "Run demo client")
++var server_mode = flag.Bool("server", true, "Run demo server")
++var ping_count = flag.Int("n", 5, "Number of client/server pings")
++var demo_auth = flag.String("auth", "tao", "\"tcp\", \"tls\", or \"tao\"")
++
++// TCP mode client/server
++
++func setupTCPServer() (net.Listener, error) {
++	return net.Listen("tcp", server_addr)
++}
++
++func setupTCPClient() (net.Conn, error) {
++	return net.Dial("tcp", server_addr)
++}
++
++// TLS mode client/server
++
++const (
++	x509duration = 24 * time.Hour
++	x509keySize  = 2048
++)
++
++func GenerateX509() (cert tls.Certificate, err error) {
++	priv, err := rsa.GenerateKey(rand.Reader, x509keySize)
++	if err != nil {
++		return
++	}
++
++	notBefore := time.Now()
++	notAfter := notBefore.Add(x509duration)
++
++	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
++	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
++	if err != nil {
++		return
++	}
++
++	template := x509.Certificate{
++		SerialNumber: serialNumber,
++		Subject: pkix.Name{
++			Organization: []string{"Google Tao Demo"},
++		},
++		NotBefore:             notBefore,
++		NotAfter:              notAfter,
++		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
++		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
++		BasicConstraintsValid: true,
++	}
++
++	if ip := net.ParseIP(*server_host); ip != nil {
++		template.IPAddresses = append(template.IPAddresses, ip)
++	} else {
++		template.DNSNames = append(template.DNSNames, *server_host)
++	}
++
++	// template.IsCA = true
++	// template.KeyUsage |= x509.KeyUsageCertSign
++
++	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
++	if err != nil {
++		return
++	}
++
++	certPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
++	keyPem := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
++
++	cert, err = tls.X509KeyPair(certPem, keyPem)
++	if err != nil {
++		fmt.Printf("can't parse my cert\n")
++		return
++	}
++
++	return
++}
++
++func setupTLSServer() (net.Listener, error) {
++	cert, err := GenerateX509()
++	if err != nil {
++		fmt.Printf("server: can't create key and cert: %s\n", err.Error())
++		return nil, err
++	}
++	return tls.Listen("tcp", server_addr, &tls.Config{
++		RootCAs:            x509.NewCertPool(),
++		Certificates:       []tls.Certificate{cert},
++		InsecureSkipVerify: true,
++	})
++}
++
++func setupTLSClient() (net.Conn, error) {
++	cert, err := GenerateX509()
++	if err != nil {
++		fmt.Printf("client: can't create key and cert: %s\n", err.Error())
++		return nil, err
++	}
++	return tls.Dial("tcp", server_addr, &tls.Config{
++		RootCAs:            x509.NewCertPool(),
++		Certificates:       []tls.Certificate{cert},
++		InsecureSkipVerify: true,
++	})
++}
++
++// client/server driver
++
++func doRequest() bool {
++	fmt.Printf("client: connecting to %s using %s authentication.\n", server_addr, *demo_auth)
++	var conn net.Conn
++	var err error
++	switch *demo_auth {
++	case "tcp":
++		conn, err = setupTCPClient()
++	case "tls":
++		conn, err = setupTLSClient()
++		//case "tao":
++		// conn, err = setupTaoClient()
++	}
++	if err != nil {
++		fmt.Printf("client: error connecting to %s: %s\n", server_addr, err.Error())
++		return false
++	}
++	defer conn.Close()
++
++	_, err = fmt.Fprintf(conn, "Hello\n")
++	if err != nil {
++		fmt.Printf("client: can't write: ", err.Error())
++		return false
++	}
++	msg, err := bufio.NewReader(conn).ReadString('\n')
++	if err != nil {
++		fmt.Printf("client can't read: ", err.Error())
++		return false
++	}
++	msg = strings.TrimSpace(msg)
++	fmt.Printf("client: got reply: %s\n", msg)
++	return true
++}
++
++func doClient() {
++	ping_good := 0
++	ping_fail := 0
++	for i := 0; i != *ping_count; i++ { // negative means forever
++		if doRequest() {
++			ping_good++
++		} else {
++			ping_fail++
++		}
++		fmt.Printf("client: made %d connections, finished %d ok, %d bad pings\n",
++			i+1, ping_good, ping_fail)
++	}
++}
++
++func doResponse(conn net.Conn, response_ok chan<- bool) {
++	defer conn.Close()
++
++	// todo tao auth
++	switch *demo_auth {
++	case "tcp", "tls":
++	case "tao":
++	}
++
++	msg, err := bufio.NewReader(conn).ReadString('\n')
++	if err != nil {
++		fmt.Printf("server: can't read: ", err.Error())
++		conn.Close()
++		response_ok <- false
++		return
++	}
++	msg = strings.TrimSpace(msg)
++	fmt.Printf("server: got message: %s\n", msg)
++	fmt.Fprintf(conn, "echo(%s)\n", msg)
++	conn.Close()
++	response_ok <- true
++}
++
++func doServer(stop chan bool, ready, done chan<- bool) {
++	var sock net.Listener
++	var err error
++	switch *demo_auth {
++	case "tcp":
++		sock, err = setupTCPServer()
++	case "tls", "tao":
++		sock, err = setupTLSServer()
++	}
++	if err != nil {
++		fmt.Printf("server: can't listen at %s: %s\n", server_addr, err.Error())
++		ready <- false
++		done <- true
++		return
++	}
++	fmt.Printf("server: listening at %s using %s authentication.\n", server_addr, *demo_auth)
++	ready <- true
++
++	pings := make(chan bool, 10)
++	conn_count := 0
++
++	go func() {
++		for conn_count = 0; conn_count != *ping_count; conn_count++ { // negative means forever
++			conn, err := sock.Accept()
++			if err != nil {
++				fmt.Printf("server: can't accept connection: %s\n", err.Error())
++				stop <- true
++				return
++			}
++			go doResponse(conn, pings)
++		}
++		stop <- true
++	}()
++
++	ping_good := 0
++	ping_fail := 0
++
++loop:
++	for {
++		select {
++		case <-stop:
++			break loop
++		case ok := <-pings:
++			if ok {
++				ping_good++
++			} else {
++				ping_fail++
++			}
++		}
++	}
++
++	sock.Close()
++	fmt.Printf("server: handled %d connections, finished %d ok, %d bad pings\n",
++		conn_count, ping_good, ping_fail)
++
++	done <- true
++}
++
++// Tao Host demo
++
++func hostTaoDemo() error {
++	name, err := tao.Host.GetTaoName()
++	if err != nil {
++		return err
++	}
++	fmt.Printf("My root name is %s\n", name)
++
++	args := make([]string, len(os.Args))
++	for index, arg := range os.Args {
++		args[index] = strconv.Quote(arg)
++	}
++	subprin := "Args(" + strings.Join(args, ", ") + ")"
++	err = tao.Host.ExtendTaoName(subprin)
++	if err != nil {
++		return err
++	}
++
++	name, err = tao.Host.GetTaoName()
++	if err != nil {
++		return err
++	}
++	fmt.Printf("My full name is %s\n", name)
++
++	random, err := tao.Host.GetRandomBytes(10)
++	if err != nil {
++		return err
++	}
++	fmt.Printf("Random bytes  : % x\n", random)
++
++	n, err := tao.Host.Rand().Read(random)
++	if err != nil {
++		return err
++	}
++	fmt.Printf("%d more bytes : % x\n", n, random)
++
++	secret, err := tao.Host.GetSharedSecret(10, tao.SharedSecretPolicyDefault)
++	if err != nil {
++		return err
++	}
++	fmt.Printf("Shared secret : % x\n", secret)
++
++	sealed, err := tao.Host.Seal(random, tao.SealPolicyDefault)
++	if err != nil {
++		return err
++	}
++	fmt.Printf("Sealed bytes  : % x\n", sealed)
++
++	unsealed, policy, err := tao.Host.Unseal(sealed)
++	if err != nil {
++		return err
++	}
++	if policy != tao.SealPolicyDefault {
++		return errors.New("unexpected policy on unseal")
++	}
++	fmt.Printf("Unsealed bytes: % x\n", unsealed)
++
++	return nil
++}
++
++func main() {
++	flag.Parse()
++	server_addr = *server_host + ":" + *server_port
++	switch *demo_auth {
++	case "tcp", "tls", "tao":
++	default:
++		fmt.Printf("unrecognized authentication mode: %s\n", *demo_auth)
++		return
++	}
++
++	fmt.Printf("Go Tao Demo\n")
++
++	if tao.Host == nil {
++		fmt.Printf("can't continue: No host Tao available")
++		return
++	}
++
++	if *local_mode {
++		err := hostTaoDemo()
++		if err != nil {
++			fmt.Printf("error: %s\n", err.Error())
++			return
++		}
++	}
++
++	server_stop := make(chan bool, 1)
++	server_ready := make(chan bool, 1)
++	server_done := make(chan bool, 1)
++
++	if *server_mode {
++		go doServer(server_stop, server_ready, server_done)
++	} else {
++		server_ready <- true
++		server_done <- true
++	}
++
++	if *client_mode {
++		ok := <-server_ready
++		if ok {
++			doClient()
++		}
++		server_stop <- true
++	}
++
++	<-server_done
++	fmt.Printf("Done\n")
++}
+diff --git a/go/src/cloudproxy/tao/tao.go b/go/src/cloudproxy/tao/tao.go
+new file mode 100644
+index 0000000..195bd25
+--- /dev/null
++++ b/go/src/cloudproxy/tao/tao.go
++// File: tao.go
++// Author: Kevin Walsh <kwalsh@holycross.edu>
++// Description: Interface to a host Tao.
++//
++// Copyright (c) 2013, Google Inc.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package tao
++
++import (
++	"io"
++	"os"
++
++	"github.com/golang/glog"
++)
++
++const (
++	HostTaoEnvVar = "GOOGLE_HOST_TAO"
++
++	SharedSecretPolicyDefault      = "self"
++	SharedSecretPolicyConservative = "few"
++	SharedSecretPolicyLiberal      = "any"
++
++	SealPolicyDefault      = "self"
++	SealPolicyConservative = "few"
++	SealPolicyLiberal      = "any"
++)
++
++// Tao is the fundamental Trustworthy Computing interface provided by a host to
++// its hosted programs. Each level of a system can act as a host by exporting
++// the Tao interface and providing Tao services to higher-level hosted programs.
++//
++// In most cases, a hosted program will use a stub Tao that performs RPC over a
++// channel to its host. The details of such RPC depend on the specific
++// implementation of the host: some hosted programs may use pipes to communicate
++// with their host, others may use sockets, etc.
++type Tao interface {
++	// GetTaoName returns the Tao principal name assigned to the caller.
++	GetTaoName() (name string, err error)
++
++	// ExtendTaoName irreversibly extends the Tao principal name of the caller.
++	ExtendTaoName(subprin string) error
++
++	// GetRandomBytes returns a slice of n random bytes.
++	GetRandomBytes(n int) (bytes []byte, err error)
++
++	// Rand produces an io.Reader for random bytes from this Tao.
++	Rand() io.Reader
++
++	// GetSharedSecret returns a slice of n secret bytes.
++	GetSharedSecret(n int, policy string) (bytes []byte, err error)
++
++	// Attest requests the Tao host sign a Statement on behalf of the caller.
++	Attest(stmt *Statement) (*Attestation, error)
++
++	// Seal encrypts data so only certain hosted programs can unseal it.
++	Seal(data []byte, policy string) (sealed []byte, err error)
++
++	// Unseal decrypts data that has been sealed by the Seal() operation, but only
++	// if the policy specified during the Seal() operation is satisfied.
++	Unseal(sealed []byte) (data []byte, policy string, err error)
++}
++
++// Host is a pointer to the host Tao underlying this hosted program.
++var Host Tao
++
++// Initialize Host using the environment variable.
++func init() {
++	host, err := DeserializeTaoRPC(os.Getenv(HostTaoEnvVar))
++	if err != nil {
++		glog.Error(err)
++		return
++	}
++	Host = host
++}
+diff --git a/go/src/cloudproxy/tao/taorpc.go b/go/src/cloudproxy/tao/taorpc.go
+new file mode 100644
+index 0000000..d5caf51
+--- /dev/null
++++ b/go/src/cloudproxy/tao/taorpc.go
+@@ -0,0 +1,247 @@
++// File: taorpc.go
++// Author: Kevin Walsh <kwalsh@holycross.edu>
++// Description: Support for RPC from hosted program to host Tao.
++//
++// Copyright (c) 2013, Google Inc.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package tao
++
++import (
++	"errors"
++	"io"
++	"math"
++	"net/rpc"
++	"strings"
++
++	"code.google.com/p/goprotobuf/proto"
++
++	"cloudproxy/util"
++	"cloudproxy/util/protorpc"
++)
++
++var opRPCName = map[string]string{
++	"Tao.GetRandomBytes":  "TAO_RPC_GET_RANDOM_BYTES",
++	"Tao.Seal":            "TAO_RPC_SEAL",
++	"Tao.Unseal":          "TAO_RPC_UNSEAL",
++	"Tao.Attest":          "TAO_RPC_ATTEST",
++	"Tao.GetTaoName":      "TAO_RPC_GET_TAO_NAME",
++	"Tao.ExtendTaoName":   "TAO_RPC_EXTEND_TAO_NAME",
++	"Tao.GetSharedSecret": "TAO_RPC_GET_SHARED_SECRET",
++}
++
++var opGoName = make(map[string]string)
++
++func init() {
++	for goName, rpcName := range opRPCName {
++		opGoName[rpcName] = goName
++	}
++}
++
++// Convert string "Tao.FooBar" into integer TaoRPCOperation_TAO_RPC_FOO_BAR.
++func goToRPC(m string) (TaoRPCOperation, error) {
++	op := TaoRPCOperation(TaoRPCOperation_value[opRPCName[m]])
++	if op == TaoRPCOperation(0) {
++		return op, protorpc.ErrBadRequestType
++	}
++	return op, nil
++}
++
++// Convert integer TaoRPCOperation_TAO_RPC_FOO_BAR into string "Tao.FooBar".
++func rpcToGo(op TaoRPCOperation) (string, error) {
++	s := opGoName[TaoRPCOperation_name[int32(op)]]
++	if s == "" {
++		return "", protorpc.ErrBadRequestType
++	}
++	return s, nil
++}
++
++type taoMux struct{}
++
++func (taoMux) SetRequestHeader(req proto.Message, servicemethod string, seq uint64) error {
++	m, ok := req.(*TaoRPCRequest)
++	if !ok || m == nil {
++		return protorpc.ErrBadRequestType
++	}
++	rpc, err := goToRPC(servicemethod)
++	if err != nil {
++		return err
++	}
++	m.Rpc = &rpc
++	m.Seq = &seq
++	return nil
++}
++
++func (taoMux) SetResponseHeader(req proto.Message, servicemethod string, seq uint64) error {
++	m, ok := req.(*TaoRPCResponse)
++	if !ok || m == nil {
++		return protorpc.ErrBadResponseType
++	}
++	rpc, err := goToRPC(servicemethod)
++	if err != nil {
++		return err
++	}
++	m.Rpc = &rpc
++	m.Seq = &seq
++	return nil
++}
++
++func (taoMux) GetServiceMethod(number uint64) (string, error) {
++	return rpcToGo(TaoRPCOperation(int32(number)))
++}
++
++// TaoRPC sends requests between this hosted program and the host Tao.
++type TaoRPC struct {
++	rpc *rpc.Client
++}
++
++func DeserializeTaoRPC(s string) (*TaoRPC, error) {
++	if s == "" {
++		return nil, errors.New("taorpc: missing host Tao spec" +
++			" (ensure $" + HostTaoEnvVar + " is set)")
++	}
++	r := strings.TrimPrefix(s, "tao::TaoRPC+")
++	if r == s {
++		return nil, errors.New("taorpc: unrecognized $" + HostTaoEnvVar + " string " + s)
++	}
++	ms, err := util.DeserializeFDMessageStream(r)
++	if err != nil {
++		return nil, errors.New("taorpc: unrecognized $" + HostTaoEnvVar + " string " + s +
++			" (" + err.Error() + ")")
++	}
++	return &TaoRPC{protorpc.NewClient(ms, taoMux{})}, nil
++}
++
++type expectedResponse int
++
++const (
++	wantNothing expectedResponse = 0
++	wantData    expectedResponse = 1 << iota
++	wantPolicy
++)
++
++var ErrMalformedResponse = errors.New("taorpc: malformed response")
++
++// call issues an rpc request, obtains the response, checks the response for
++// errors, and checks that the response contains exactly the expected values.
++func (t *TaoRPC) call(method string, r *TaoRPCRequest, e expectedResponse) (data []byte, policy string, err error) {
++	s := new(TaoRPCResponse)
++	err = t.rpc.Call(method, r, s)
++	if err != nil {
++		return
++	}
++	if s.Error != nil {
++		err = errors.New(*s.Error)
++		return
++	}
++	if (s.Data != nil) != (e&wantData != 0) ||
++		(s.Policy != nil) != (e&wantPolicy != 0) {
++		err = ErrMalformedResponse
++		return
++	}
++	if s.Data != nil {
++		data = s.Data
++	}
++	if s.Policy != nil {
++		policy = *s.Policy
++	}
++	return
++}
++
++// GetTaoName implements part of the Tao interface.
++func (t *TaoRPC) GetTaoName() (string, error) {
++	r := &TaoRPCRequest{}
++	data, _, err := t.call("Tao.GetTaoName", r, wantData)
++	return string(data), err
++}
++
++// ExtendTaoName implements part of the Tao interface.
++func (t *TaoRPC) ExtendTaoName(subprin string) error {
++	r := &TaoRPCRequest{Data: []byte(subprin)}
++	_, _, err := t.call("Tao.ExtendTaoName", r, wantNothing)
++	return err
++}
++
++type taoRandReader TaoRPC
++
++// Read implements part of the Tao interface.
++func (t *taoRandReader) Read(p []byte) (n int, err error) {
++	bytes, err := (*TaoRPC)(t).GetRandomBytes(len(p))
++	if err != nil {
++		return 0, err
++	}
++	copy(p, bytes)
++	return len(p), nil
++}
++
++// TODO(kwalsh) Can Rand be made generic, or does it need to be defined for the
++// concrete type TaoRPC?
++
++// Rand implements part of the Tao interface.
++func (t *TaoRPC) Rand() io.Reader {
++	return (*taoRandReader)(t)
++}
++
++// GetRandomBytes implements part of the Tao interface.
++func (t *TaoRPC) GetRandomBytes(n int) ([]byte, error) {
++	if n > math.MaxUint32 {
++		return nil, errors.New("taorpc: request for too many random bytes")
++	}
++	r := &TaoRPCRequest{Size: proto.Int32(int32(n))}
++	bytes, _, err := t.call("Tao.GetRandomBytes", r, wantData)
++	return bytes, err
++}
++
++// GetSharedSecret implements part of the Tao interface.
++func (t *TaoRPC) GetSharedSecret(n int, policy string) ([]byte, error) {
++	if n > math.MaxUint32 {
++		return nil, errors.New("taorpc: request for too many secret bytes")
++	}
++	r := &TaoRPCRequest{Size: proto.Int32(int32(n)), Policy: proto.String(policy)}
++	bytes, _, err := t.call("Tao.GetSharedSecret", r, wantData)
++	return bytes, err
++}
++
++// Attest implements part of the Tao interface.
++func (t *TaoRPC) Attest(stmt *Statement) (*Attestation, error) {
++	data, err := proto.Marshal(stmt)
++	if _, ok := err.(*proto.RequiredNotSetError); err != nil && !ok {
++		return nil, err
++	}
++	r := &TaoRPCRequest{Data: data}
++	bytes, _, err := t.call("Tao.Attest", r, wantData)
++	if err != nil {
++		return nil, err
++	}
++	var a Attestation
++	err = proto.Unmarshal(bytes, &a)
++	if err != nil {
++		return nil, err
++	}
++	return &a, nil
++}
++
++// Seal implements part of the Tao interface.
++func (t *TaoRPC) Seal(data []byte, policy string) (sealed []byte, err error) {
++	r := &TaoRPCRequest{Data: data, Policy: proto.String(policy)}
++	sealed, _, err = t.call("Tao.Seal", r, wantData)
++	return
++}
++
++// Unseal implements part of the Tao interface.
++func (t *TaoRPC) Unseal(sealed []byte) (data []byte, policy string, err error) {
++	r := &TaoRPCRequest{Data: sealed}
++	data, policy, err = t.call("Tao.Unseal", r, wantData|wantPolicy)
++	return
++}
+diff --git a/go/src/cloudproxy/util/fdmessagestream.go b/go/src/cloudproxy/util/fdmessagestream.go
+new file mode 100644
+index 0000000..c15bc51
+--- /dev/null
++++ b/go/src/cloudproxy/util/fdmessagestream.go
+@@ -0,0 +1,45 @@
++// File: fdmessagestream.go
++// Author: Kevin Walsh <kwalsh@holycross.edu>
++// Description: Helper for making fd-based message streams
++//
++// Copyright (c) 2013, Google Inc.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package util
++
++import (
++	"errors"
++	"fmt"
++	"os"
++)
++
++// DeserializeFDMessageStream takes a string description of the form
++// "tao::FDMessageStream(X, Y)" and returns a MessageStream that uses file
++// descriptor X as the reader and file descriptor Y as the writer.
++func DeserializeFDMessageStream(s string) (*MessageStream, error) {
++	var readfd, writefd uintptr
++	_, err := fmt.Sscanf(s, "tao::FDMessageChannel(%d, %d)", &readfd, &writefd)
++	if err != nil {
++		return nil, errors.New("unrecognized channel spec " + s)
++	}
++	if readfd == writefd {
++		rw := os.NewFile(readfd, "read/write pipe")
++		return NewMessageStream(rw), nil
++	} else {
++		r := os.NewFile(readfd, "read pipe")
++		w := os.NewFile(writefd, "write pipe")
++		rw := NewPairReadWriteCloser(r, w)
++		return NewMessageStream(rw), nil
++	}
++}
+diff --git a/go/src/cloudproxy/util/messages.go b/go/src/cloudproxy/util/messages.go
+new file mode 100644
+index 0000000..5f3f401
+--- /dev/null
++++ b/go/src/cloudproxy/util/messages.go
+@@ -0,0 +1,43 @@
++// File: messages.go
++// Author: Kevin Walsh <kwalsh@holycross.edu>
++// Description: Interfaces for streams of delineated things.
++//
++// Copyright (c) 2013, Google Inc.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package util
++
++import (
++	"code.google.com/p/goprotobuf/proto"
++)
++
++// A MessageReader is a stream from which protobuf messages can be read.
++type MessageReader interface {
++	ReadMessage(m proto.Message) error
++}
++
++// A MessageWriter is a stream to which protobuf messages can be written.
++type MessageWriter interface {
++	WriteMessage(m proto.Message) error
++}
++
++// A StringReader is a stream from which strings can be read.
++type StringReader interface {
++	ReadString() (string, error)
++}
++
++// A StringWriter is a stream to which strings can be written.
++type StringWriter interface {
++	WriteString(s string) (n int, err error)
++}
+diff --git a/go/src/cloudproxy/util/messagestream.go b/go/src/cloudproxy/util/messagestream.go
+new file mode 100644
+index 0000000..55ce0f5
+--- /dev/null
++++ b/go/src/cloudproxy/util/messagestream.go
+@@ -0,0 +1,107 @@
++// File: messagestream.go
++// Author: Kevin Walsh <kwalsh@holycross.edu>
++// Description: Streams for delineated strings and protobuf messages.
++//
++// Copyright (c) 2013, Google Inc.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package util
++
++import (
++	"encoding/binary"
++	"errors"
++	"io"
++	"math"
++
++	"code.google.com/p/goprotobuf/proto"
++)
++
++// A MessageStream is an io.ReadWriteCloser that can also read and write strings
++// and protobuf messages. Boundaries are preserved for strings and protobuf
++// messages using a 32-bit (network byte order) length prefix before the
++// contents of the string or marshalled protobuf message. MessageStream can also
++// enforce an upper-limit on the size of received messages.
++type MessageStream struct {
++	MaxMessageSize int // Negative means unlimited
++	io.ReadWriteCloser
++}
++
++const DefaultMaxMessageSize = 20 * 1024 * 1024
++
++var ErrMessageTooLarge = errors.New("messagestream: message is too large")
++
++// WriteString writes a 32-bit length followed by the string.
++func (ms *MessageStream) WriteString(s string) (int, error) {
++	n := len(s)
++	if n > math.MaxUint32 {
++		return 0, ErrMessageTooLarge
++	}
++	var sizebytes [4]byte
++	binary.BigEndian.PutUint32(sizebytes[:], uint32(n))
++	n, err := ms.Write(sizebytes[:])
++	if err != nil {
++		return n, err
++	}
++	m, err := ms.Write([]byte(s))
++	return n + m, err
++}
++
++// ReadString reads a 32-bit length followed by a string.
++func (ms *MessageStream) ReadString() (string, error) {
++	var sizebytes [4]byte
++	_, err := io.ReadFull(ms, sizebytes[:])
++	if err != nil {
++		return "", err
++	}
++	n := binary.BigEndian.Uint32(sizebytes[:])
++	max := ms.MaxMessageSize
++	// We also check for int(n) to overflow so allocation below doesn't fail.
++	if int(n) < 0 || (max > 0 && int(n) > max) {
++		return "", ErrMessageTooLarge
++	}
++	strbytes := make([]byte, int(n))
++	_, err = io.ReadFull(ms, strbytes)
++	if err != nil {
++		return "", err
++	}
++	return string(strbytes), nil
++}
++
++// WriteMessage writes 32-bit length followed by a protobuf message.
++func (ms *MessageStream) WriteMessage(m proto.Message) (int, error) {
++	bytes, err := proto.Marshal(m)
++	if err != nil {
++		return 0, err
++	}
++	return ms.WriteString(string(bytes))
++}
++
++// ReadMessage reads a 32-bit length followed by a protobuf message.
++func (ms *MessageStream) ReadMessage(m proto.Message) error {
++	s, err := ms.ReadString()
++	if err != nil {
++		return err
++	}
++	err = proto.Unmarshal([]byte(s), m)
++	if err != nil {
++		return err
++	}
++	return nil
++}
++
++// NewMessageStream creates a MessageStream for the given pipe with a reception
++// limit of DefaultMaxMessageSize.
++func NewMessageStream(pipe io.ReadWriteCloser) *MessageStream {
++	return &MessageStream{DefaultMaxMessageSize, pipe}
++}
+diff --git a/go/src/cloudproxy/util/pair.go b/go/src/cloudproxy/util/pair.go
+new file mode 100644
+index 0000000..55ce0f5
+--- /dev/null
++++ b/go/src/cloudproxy/util/pair.go
++// File: pair.go
++// Author: Kevin Walsh <kwalsh@holycross.edu>
++// Description: Streams built from pairs of readers and writers.
++//
++// Copyright (c) 2013, Google Inc.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package util
++
++import (
++	"io"
++	"io/ioutil"
++)
++
++// A PairReadWriteCloser groups an io.ReadCloser and an io.WriteCloser into a
++// single structure that implements the io.ReadWriteCloser interface. This can
++// be used to turn a pair of uni-directional streams into a single
++// bi-directional stream.
++type PairReadWriteCloser struct {
++	io.ReadCloser
++	io.WriteCloser
++}
++
++// Close closes the underying streams, both the io.ReadCloser and the
++// io.WriteCloser. 
++func (pair PairReadWriteCloser) Close() error {
++	err1 := pair.ReadCloser.Close()
++	err2 := pair.WriteCloser.Close()
++	if err1 != nil {
++		return err1
++	} else {
++		return err2
++	}
++}
++
++// NewPairReadWriteCloser creates a new io.ReadWriteCloser given separate
++// streams for reading and writing. If both streams refer to the same object,
++// then the read stream will be wrapped in an ioutil.NopCloser() so that Close()
++// on the resulting io.ReadWriteCloser() will only close that underlying stream
++// object once.
++func NewPairReadWriteCloser(r io.ReadCloser, w io.WriteCloser) *PairReadWriteCloser {
++	if rw, _ := w.(io.ReadCloser); r == rw {
++		return &PairReadWriteCloser{ioutil.NopCloser(r), w}
++	} else {
++		return &PairReadWriteCloser{r, w}
++	}
++}
+diff --git a/go/src/cloudproxy/util/protorpc/protorpc.go b/go/src/cloudproxy/util/protorpc/protorpc.go
+new file mode 100644
+index 0000000..7cbebf1
+--- /dev/null
++++ b/go/src/cloudproxy/util/protorpc/protorpc.go
+@@ -0,0 +1,246 @@
++// File: protorpc.go
++// Author: Kevin Walsh <kwalsh@holycross.edu>
++// Description: Support for RPC over protobufs.
++//
++// Copyright (c) 2013, Google Inc.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++/*
++	Package protorpc implements a protobuf-based ClientCodec and ServerCodec for the
++	rpc package. Clients can make concurrent or asynchronous requests, and these
++	are handled in whatever order the servers chooses.
++
++	All service methods take two protobuf message pointers: a request and a
++	response. RPC service method strings and sequence numbers are not sent over
++	the connection separately from the requests and responses. Instead, the
++	request and response protobuf messages must carry this information. To this
++	end, both types of protobuf messages must begin with two fields: a method
++	number and a sequence number. The method number must have tag 1 and can be any
++	of the protobuf types that encode as a positive varint (uint32, enum, etc.).
++	The sequence number must have tag 2 and be of type uint64. For example, the
++	request (or response) protobuf definition might look like:
++
++	  enum MyOperation { MULTIPLY = 1; DIVIDE = 2; }
++	  message MyRequest {
++			required MyOperation op = 1;
++			required uint64 seq = 2;
++			... // additional fields here...
++		}
++
++	Wire format: A request or response is encoded on the wire as a 32-bit length
++	(encoded in network byte order), followed by a marshalled protobuf message.
++	The separate length field is used for framing because the protobuf encoding
++	does not preserve message boundaries.
++*/
++package protorpc
++
++import (
++	"errors"
++	"io"
++	"net/rpc"
++	"sync"
++
++	"code.google.com/p/goprotobuf/proto"
++
++	"cloudproxy/util"
++)
++
++// ProtoClientMux manages the embedding of net/rpc service method names into
++// protobuf request messages.
++type ProtoClientMux interface {
++	// Set the service method string and sequence number for a request.
++	SetRequestHeader(req proto.Message, servicemethod string, seq uint64) error
++
++	// Get the service method string for a given method number
++	GetServiceMethod(number uint64) (string, error)
++}
++
++// clientCodec is a net/rpc client codec for protobuf messages
++type clientCodec struct {
++	m       *util.MessageStream
++	mux     ProtoClientMux
++	sending sync.Mutex
++	resp    []byte
++}
++
++// NewClientCodec returns a new rpc.ClientCodec using protobuf messages on conn,
++// where mux is used to match request messages with the appropriate service and
++// method.
++func NewClientCodec(conn io.ReadWriteCloser, mux ProtoClientMux) rpc.ClientCodec {
++	if m, ok := conn.(*util.MessageStream); ok {
++		return &clientCodec{m, mux, sync.Mutex{}, nil}
++	} else {
++		return &clientCodec{util.NewMessageStream(conn), mux, sync.Mutex{}, nil}
++	}
++}
++
++// NewClient returns a new rpc.Client to handle requests to the set of services
++// at the other end of the connection.
++func NewClient(conn io.ReadWriteCloser, mux ProtoClientMux) *rpc.Client {
++	return rpc.NewClientWithCodec(NewClientCodec(conn, mux))
++}
++
++var ErrBadRequestType = errors.New("protorpc: bad request type")
++var ErrMissingRequest = errors.New("protorpc: missing request")
++var ErrBadResponseType = errors.New("protorpc: bad response type")
++var ErrMissingResponse = errors.New("protorpc: missing response")
++
++// WriteRequest encodes and sends a net/rpc request header r with body x.
++func (c *clientCodec) WriteRequest(r *rpc.Request, x interface{}) error {
++	y, ok := x.(proto.Message)
++	if !ok || y == nil {
++		return ErrBadRequestType
++	}
++	c.mux.SetRequestHeader(y, r.ServiceMethod, r.Seq)
++	c.sending.Lock()
++	_, err := c.m.WriteMessage(y) // writes htonl(length), marshal(y)
++	c.sending.Unlock()
++	return err
++}
++
++// ReadResponseHeader receives and decodes a net/rpc response header r.
++func (c *clientCodec) ReadResponseHeader(r *rpc.Response) error {
++	// We can't just c.m.ReadMessage(x) because we don't yet know the type of
++	// response message x. Instead, read the still-encoded message as a string,
++	// then decode it (partially) using the ProtoRPCHeader protobuf message type.
++	// Note: It is tempting to instead simply decode the first few fields directly
++	// using proto.DecodeVarint() and friends, but that would rely on the ordering
++	// of encoded fields which is not strictly guaranteed.
++	s, err := c.m.ReadString() // reads htonl(length), string
++	if err != nil {
++		return err
++	}
++	resp := []byte(s)
++	var hdr ProtoRPCHeader
++	err = proto.Unmarshal(resp, &hdr)
++	if err != nil {
++		return err
++	}
++	r.Seq = *hdr.Seq
++	r.ServiceMethod, err = c.mux.GetServiceMethod(*hdr.Op)
++	if err != nil {
++		return err
++	}
++	c.resp = resp
++	return nil
++}
++
++// ReadResponseBody receives and decodes a net/rpc response body x.
++func (c *clientCodec) ReadResponseBody(x interface{}) error {
++	resp := c.resp
++	c.resp = nil
++	if x == nil {
++		return nil
++	}
++	if resp == nil {
++		return ErrMissingResponse
++	}
++	// Decode the response bytes again, this time using the correct response
++	// message type.
++	y, ok := x.(proto.Message)
++	if !ok || y == nil {
++		return ErrBadResponseType
++	}
++	return proto.Unmarshal(resp, y)
++}
++
++// Close closes the channel used by the client codec.
++func (c *clientCodec) Close() error {
++	return c.m.Close()
++}
++
++// ProtoClientMux manages the embedding of net/rpc service method names into
++// protobuf response messages.
++type ProtoServerMux interface {
++	// Set the service method string and sequence number for a response.
++	SetResponseHeader(req proto.Message, servicemethod string, seq uint64) error
++
++	// Get the service method string for a given method number
++	GetServiceMethod(number uint64) (string, error)
++}
++
++// serverCodec is a net/rpc server codec for protobuf messages
++type serverCodec struct {
++	m       *util.MessageStream
++	mux     ProtoServerMux
++	sending sync.Mutex
++	req     []byte
++}
++
++// NewServerCodec returns a new rpc.ServerCodec using protobuf messages on conn,
++// where mux is used to match request messages with the appropriate service and
++// method.
++func NewServerCodec(conn io.ReadWriteCloser, mux ProtoServerMux) rpc.ServerCodec {
++	return &serverCodec{util.NewMessageStream(conn), mux, sync.Mutex{}, nil}
++}
++
++// ReadRequestHeader receives and decodes a net/rpc request header r.
++func (c *serverCodec) ReadRequestHeader(r *rpc.Request) error {
++	// This is almost identical to ReadResponseHeader(), above.
++	s, err := c.m.ReadString() // reads htonl(length), string
++	if err != nil {
++		return err
++	}
++	req := []byte(s)
++	var hdr ProtoRPCHeader
++	err = proto.Unmarshal(req, &hdr)
++	if err != nil {
++		return err
++	}
++	r.Seq = *hdr.Seq
++	r.ServiceMethod, err = c.mux.GetServiceMethod(*hdr.Op)
++	if err != nil {
++		return err
++	}
++	c.req = req
++	return nil
++}
++
++// ReadRequestBody receives and decodes a net/rpc request body x.
++func (c *serverCodec) ReadRequestBody(x interface{}) error {
++	// This is almost identical to ReadResponseBody(), above.
++	req := c.req
++	c.req = nil
++	if x == nil {
++		return nil
++	}
++	if req == nil {
++		return ErrMissingRequest
++	}
++	// Decode the request bytes again, this time using the correct request
++	// message type.
++	y, ok := x.(proto.Message)
++	if !ok || y == nil {
++		return ErrBadRequestType
++	}
++	return proto.Unmarshal(req, y)
++}
++
++// WriteResponse encodes and sends a net/rpc response header r with body x.
++func (c *serverCodec) WriteResponse(r *rpc.Response, x interface{}) error {
++	y, ok := x.(proto.Message)
++	if !ok || y == nil {
++		return ErrBadResponseType
++	}
++	c.mux.SetResponseHeader(y, r.ServiceMethod, r.Seq)
++	c.sending.Lock()
++	_, err := c.m.WriteMessage(y) // writes htonl(length), marshal(req)
++	c.sending.Unlock()
++	return err
++}
++
++// Close closes the channel used by the server codec.
++func (c *serverCodec) Close() error {
++	return c.m.Close()
++}

@@ -17,6 +17,7 @@ package tao
 import (
 	"crypto/rand"
 	"errors"
+	"io"
 	"time"
 
 	"code.google.com/p/goprotobuf/proto"
@@ -27,6 +28,7 @@ import (
 type SoftTao struct {
 	keys *Keys
 	name string
+	nameExtension string
 }
 
 // Init initializes the SoftTao with a crypter and a signer.
@@ -34,12 +36,12 @@ func (s *SoftTao) Init(name, path string, password []byte) error {
 	s.name = name
 
 	if path == "" {
-		s.keys = NewTemporaryKeys(Signing | Crypting)
+		s.keys = NewTemporaryKeys(Signing|Crypting|Deriving)
 		if err := s.keys.InitTemporary(); err != nil {
 			return err
 		}
 	} else {
-		s.keys = NewOnDiskKeys(Signing|Crypting, path)
+		s.keys = NewOnDiskKeys(Signing|Crypting|Deriving, path)
 		if err := s.keys.InitWithPassword(password); err != nil {
 			return err
 		}
@@ -48,33 +50,86 @@ func (s *SoftTao) Init(name, path string, password []byte) error {
 	return nil
 }
 
-// GetRandomBytes fills the slice with random bytes.
-func (s *SoftTao) GetRandomBytes(bytes []byte) error {
-	if _, err := rand.Read(bytes); err != nil {
-		return err
+// GetTaoName returns the Tao principal name assigned to the caller.
+func (s *SoftTao) GetTaoName() (string, error) {
+	return s.name + s.nameExtension, nil
+}
+
+// ExtendTaoName irreversibly extends the Tao principal name of the caller.
+func (s *SoftTao) ExtendTaoName(subprin string) error {
+	if subprin == "" {
+		return errors.New("invalid subprincipal name")
 	}
 
+	s.nameExtension += "::" + subprin
 	return nil
+}
+
+
+// GetRandomBytes fills the slice with random bytes.
+func (s *SoftTao) GetRandomBytes(n int) ([]byte, error) {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+// Read implements io.Reader to read random bytes from the Tao.
+func (s *SoftTao) Read(p []byte) (int, error) {
+	bytes, err := s.GetRandomBytes(len(p))
+	if err != nil {
+		return 0, err
+	}
+
+	copy(p, bytes)
+	return len(p), nil
+}
+
+// Rand returns an io.Reader for the SoftTao's source of randomness.
+func (s *SoftTao) Rand() io.Reader {
+	return s
+}
+
+// GetShareSecret returns a slice of n secret bytes.
+func (s *SoftTao) GetSharedSecret(n int, policy string) ([]byte, error) {
+	if policy != SharedSecretPolicyDefault {
+		return nil, errors.New("SoftTao policies not yet implemented")
+	}
+
+	// TODO(tmroeder): for now, we're using a fixed salt and counting on
+	// the strength of HKDF with a strong key.
+	salt := make([]byte, 8)
+	material := make([]byte, n)
+	if err := s.keys.DerivingKey.Derive(salt, []byte("derive shared secret"), material); err != nil {
+		return nil, err
+	}
+
+	return material, nil
 }
 
 // Seal encrypts the data in a way that can only be opened by the Tao for the
 // program that sealed it.  In the case of the SoftTao, this policy is
 // implicit.
-func (s *SoftTao) Seal(data, policy []byte) ([]byte, error) {
+func (s *SoftTao) Seal(data []byte, policy string) ([]byte, error) {
 	// The SoftTao insists on the trivial policy, since it just encrypts the bytes directly
-	if string(policy) != SealPolicyDefault {
+	if policy != SealPolicyDefault {
 		return nil, errors.New("The SoftTao requires SealPolicyDefault")
 	}
 
 	return s.keys.CryptingKey.Encrypt(data)
 }
 
-func (s *SoftTao) Unseal(sealed []byte) (data, policy []byte, err error) {
+// Unseal decrypts data that has been sealed by the Seal operation, but only if
+// the policy specified during the Seal operation is satisfied.
+func (s *SoftTao) Unseal(sealed []byte) (data []byte, policy string, err error) {
 	data, err = s.keys.CryptingKey.Decrypt(sealed)
-	policy = []byte(SealPolicyDefault)
+	policy = SealPolicyDefault
 	return data, policy, err
 }
 
+// Attest requests that the Tao host sign a Statement on behalf of the caller.
 func (s *SoftTao) Attest(stmt *Statement) (*Attestation, error) {
 	st := new(Statement)
 	proto.Merge(st, stmt)
@@ -90,7 +145,7 @@ func (s *SoftTao) Attest(stmt *Statement) (*Attestation, error) {
 	}
 
 	if st.Expiration == nil {
-		st.Expiration = proto.Int64(st.GetTime() + DefaultAttestTimeout)
+		st.Expiration = proto.Int64(time.Now().Add(365*24*time.Hour).UnixNano())
 	}
 
 	ser, err := proto.Marshal(st)

@@ -19,8 +19,13 @@ func (ts *TaoServer) GetRandomBytes(r *TaoRPCRequest, s *TaoRPCResponse) error {
 		return errors.New("Invalid array size")
 	}
 
-	s.Data = make([]byte, r.GetSize())
-	return ts.T.GetRandomBytes(s.GetData())
+	var err error
+	s.Data, err = ts.T.GetRandomBytes(int(r.GetSize()))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (ts *TaoServer) Seal(r *TaoRPCRequest, s *TaoRPCResponse) error {
@@ -28,7 +33,7 @@ func (ts *TaoServer) Seal(r *TaoRPCRequest, s *TaoRPCResponse) error {
 		return errors.New("wrong RPC type")
 	}
 
-	sealed, err := ts.T.Seal(r.GetData(), []byte(r.GetPolicy()))
+	sealed, err := ts.T.Seal(r.GetData(), r.GetPolicy())
 	if err != nil {
 		return err
 	}

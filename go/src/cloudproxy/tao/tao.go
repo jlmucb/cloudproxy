@@ -32,6 +32,8 @@ const (
 	SealPolicyDefault      = "self"
 	SealPolicyConservative = "few"
 	SealPolicyLiberal      = "any"
+
+	AttestationSigningContext = "Tao Attestation Signing Context V1"
 )
 
 // Tao is the fundamental Trustworthy Computing interface provided by a host to

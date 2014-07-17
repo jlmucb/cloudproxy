@@ -35,8 +35,8 @@ func TestSoftTaoRandom(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-	var b []byte
-	if err := st.GetRandomBytes(b); err != nil {
+
+	if _, err := st.GetRandomBytes(10); err != nil {
 		t.Error(err.Error())
 	}
 }
@@ -53,7 +53,7 @@ func TestSoftTaoSeal(t *testing.T) {
 		b[i] = byte(r.Intn(256))
 	}
 
-	_, err := st.Seal(b, []byte(SealPolicyDefault))
+	_, err := st.Seal(b, SealPolicyDefault)
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -71,7 +71,7 @@ func TestSoftTaoUnseal(t *testing.T) {
 		b[i] = byte(r.Intn(256))
 	}
 
-	s, err := st.Seal(b, []byte(SealPolicyDefault))
+	s, err := st.Seal(b, SealPolicyDefault)
 	if err != nil {
 		t.Error(err.Error())
 	}

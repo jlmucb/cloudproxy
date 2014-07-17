@@ -1237,7 +1237,7 @@ func (k *Keys) InitWithPassword(password []byte) error {
 }
 
 // InitHosted sets up the keys sealed under a host Tao or reads sealed keys.
-func (k *Keys) InitHosted(t Tao, policy []byte) error {
+func (k *Keys) InitHosted(t Tao, policy string) error {
 	// Check to see if there are already keys.
 	f, err := os.Open(k.SealedKeysetPath())
 	if err == nil {

@@ -405,12 +405,12 @@ func TestInitHosted(t *testing.T) {
 	}
 
 	k := NewOnDiskKeys(Signing|Crypting|Deriving, tempDir)
-	if err := k.InitHosted(st, []byte(SealPolicyDefault)); err != nil {
+	if err := k.InitHosted(st, SealPolicyDefault); err != nil {
 		t.Fatal("Couldn't initialize a hosted keyset:", err)
 	}
 
 	k2 := NewOnDiskKeys(Signing|Crypting|Deriving, tempDir)
-	if err := k2.InitHosted(st, []byte(SealPolicyDefault)); err != nil {
+	if err := k2.InitHosted(st, SealPolicyDefault); err != nil {
 		t.Fatal("Couldn't read back a sealed, hosted keyset:", err)
 	}
 }

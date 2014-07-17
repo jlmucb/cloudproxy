@@ -126,7 +126,7 @@ func DeserializeTaoRPC(s string) (*TaoRPC, error) {
 type expectedResponse int
 
 const (
-	wantNothing                  = 0
+	wantNothing expectedResponse = 0
 	wantData    expectedResponse = 1 << iota
 	wantPolicy
 )

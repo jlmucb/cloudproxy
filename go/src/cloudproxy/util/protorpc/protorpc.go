@@ -56,6 +56,8 @@ import (
 	"cloudproxy/util"
 )
 
+// ProtoClientMux manages the embedding of net/rpc service method names into
+// protobuf request messages.
 type ProtoClientMux interface {
 	// Set the service method string and sequence number for a request.
 	SetRequestHeader(req proto.Message, servicemethod string, seq uint64) error
@@ -64,6 +66,7 @@ type ProtoClientMux interface {
 	GetServiceMethod(number uint64) (string, error)
 }
 
+// clientCodec is a net/rpc client codec for protobuf messages
 type clientCodec struct {
 	m       *util.MessageStream
 	mux     ProtoClientMux
@@ -93,6 +96,7 @@ var ErrMissingRequest = errors.New("protorpc: missing request")
 var ErrBadResponseType = errors.New("protorpc: bad response type")
 var ErrMissingResponse = errors.New("protorpc: missing response")
 
+// WriteRequest encodes and sends a net/rpc request header r with body x.
 func (c *clientCodec) WriteRequest(r *rpc.Request, x interface{}) error {
 	y, ok := x.(proto.Message)
 	if !ok || y == nil {
@@ -105,6 +109,7 @@ func (c *clientCodec) WriteRequest(r *rpc.Request, x interface{}) error {
 	return err
 }
 
+// ReadResponseHeader receives and decodes a net/rpc response header r.
 func (c *clientCodec) ReadResponseHeader(r *rpc.Response) error {
 	// We can't just c.m.ReadMessage(x) because we don't yet know the type of
 	// response message x. Instead, read the still-encoded message as a string,
@@ -131,6 +136,7 @@ func (c *clientCodec) ReadResponseHeader(r *rpc.Response) error {
 	return nil
 }
 
+// ReadResponseBody receives and decodes a net/rpc response body x.
 func (c *clientCodec) ReadResponseBody(x interface{}) error {
 	resp := c.resp
 	c.resp = nil
@@ -149,10 +155,13 @@ func (c *clientCodec) ReadResponseBody(x interface{}) error {
 	return proto.Unmarshal(resp, y)
 }
 
+// Close closes the channel used by the client codec.
 func (c *clientCodec) Close() error {
 	return c.m.Close()
 }
 
+// ProtoClientMux manages the embedding of net/rpc service method names into
+// protobuf response messages.
 type ProtoServerMux interface {
 	// Set the service method string and sequence number for a response.
 	SetResponseHeader(req proto.Message, servicemethod string, seq uint64) error
@@ -161,6 +170,7 @@ type ProtoServerMux interface {
 	GetServiceMethod(number uint64) (string, error)
 }
 
+// serverCodec is a net/rpc server codec for protobuf messages
 type serverCodec struct {
 	m       *util.MessageStream
 	mux     ProtoServerMux
@@ -175,6 +185,7 @@ func NewServerCodec(conn io.ReadWriteCloser, mux ProtoServerMux) rpc.ServerCodec
 	return &serverCodec{util.NewMessageStream(conn), mux, sync.Mutex{}, nil}
 }
 
+// ReadRequestHeader receives and decodes a net/rpc request header r.
 func (c *serverCodec) ReadRequestHeader(r *rpc.Request) error {
 	// This is almost identical to ReadResponseHeader(), above.
 	s, err := c.m.ReadString() // reads htonl(length), string
@@ -196,6 +207,7 @@ func (c *serverCodec) ReadRequestHeader(r *rpc.Request) error {
 	return nil
 }
 
+// ReadRequestBody receives and decodes a net/rpc request body x.
 func (c *serverCodec) ReadRequestBody(x interface{}) error {
 	// This is almost identical to ReadResponseBody(), above.
 	req := c.req
@@ -215,6 +227,7 @@ func (c *serverCodec) ReadRequestBody(x interface{}) error {
 	return proto.Unmarshal(req, y)
 }
 
+// WriteResponse encodes and sends a net/rpc response header r with body x.
 func (c *serverCodec) WriteResponse(r *rpc.Response, x interface{}) error {
 	y, ok := x.(proto.Message)
 	if !ok || y == nil {
@@ -227,6 +240,7 @@ func (c *serverCodec) WriteResponse(r *rpc.Response, x interface{}) error {
 	return err
 }
 
+// Close closes the channel used by the server codec.
 func (c *serverCodec) Close() error {
 	return c.m.Close()
 }

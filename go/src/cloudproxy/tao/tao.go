@@ -1,8 +1,6 @@
-// File: tao.go
-// Author: Kevin Walsh <kwalsh@holycross.edu>
 // Description: Interface to a host Tao.
 //
-// Copyright (c) 2013, Google Inc.  All rights reserved.
+// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

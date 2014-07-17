@@ -1,8 +1,6 @@
-// File: demo.go
-// Author: Kevin Walsh <kwalsh@holycross.edu>
 // Description: Demo of hosted program written in go.
 //
-// Copyright (c) 2013, Google Inc.  All rights reserved.
+// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

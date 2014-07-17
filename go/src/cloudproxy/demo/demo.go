@@ -19,19 +19,30 @@
 package main
 
 import (
+	"bufio"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"errors"
 	"flag"
 	"fmt"
+	"math/big"
+	"net"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"cloudproxy/tao"
 )
 
 var server_host = flag.String("host", "localhost", "address for client/server")
-var server_port = flag.Int("port", 8123, "port for client/server")
+var server_port = flag.String("port", "8123", "port for client/server")
 var server_addr string // see main()
+var local_mode = flag.Bool("local", true, "Run host demo")
 var client_mode = flag.Bool("client", true, "Run demo client")
 var server_mode = flag.Bool("server", true, "Run demo server")
 var ping_count = flag.Int("n", 5, "Number of client/server pings")
@@ -100,7 +111,7 @@ func GenerateX509() (cert tls.Certificate, err error) {
 
 	cert, err = tls.X509KeyPair(certPem, keyPem)
 	if err != nil {
-		fmt.Printf("Can't parse my cert\n")
+		fmt.Printf("can't parse my cert\n")
 		return
 	}
 
@@ -110,7 +121,7 @@ func GenerateX509() (cert tls.Certificate, err error) {
 func setupTLSServer() (net.Listener, error) {
 	cert, err := GenerateX509()
 	if err != nil {
-		fmt.Printf("Can't create key and cert: %s\n", err.Error())
+		fmt.Printf("server: can't create key and cert: %s\n", err.Error())
 		return nil, err
 	}
 	return tls.Listen("tcp", server_addr, &tls.Config{
@@ -123,7 +134,7 @@ func setupTLSServer() (net.Listener, error) {
 func setupTLSClient() (net.Conn, error) {
 	cert, err := GenerateX509()
 	if err != nil {
-		fmt.Printf("Can't create key and cert: %s\n", err.Error())
+		fmt.Printf("client: can't create key and cert: %s\n", err.Error())
 		return nil, err
 	}
 	return tls.Dial("tcp", server_addr, &tls.Config{
@@ -136,7 +147,7 @@ func setupTLSClient() (net.Conn, error) {
 // client/server driver
 
 func doRequest() bool {
-	fmt.Printf("Client connecting to %s using %s authentication.\n", server_addr, *demo_auth)
+	fmt.Printf("client: connecting to %s using %s authentication.\n", server_addr, *demo_auth)
 	var conn net.Conn
 	var err error
 	switch *demo_auth {
@@ -148,22 +159,23 @@ func doRequest() bool {
 	// conn, err = setupTaoClient()
 	}
 	if err != nil {
-		fmt.Printf("Error connecting to %s: %s\n", server_addr, err.Error())
+		fmt.Printf("client: error connecting to %s: %s\n", server_addr, err.Error())
 		return false
 	}
 	defer conn.Close()
 
-	n, err := fmt.Fprintf(conn, "Hello\n")
+	_, err = fmt.Fprintf(conn, "Hello\n")
 	if err != nil {
-		fmt.Printf("Can't write: ", err.Error())
+		fmt.Printf("client: can't write: ", err.Error())
 		return false
 	}
 	msg, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
-		fmt.Printf("Can't read: ", err.Error())
+		fmt.Printf("client can't read: ", err.Error())
 		return false
 	}
-	fmt.Printf("Got reply: %s\n", msg)
+	msg = strings.TrimSpace(msg)
+	fmt.Printf("client: got reply: %s\n", msg)
 	return true
 }
 
@@ -176,12 +188,12 @@ func doClient() {
 		} else {
 			ping_fail++
 		}
-		fmt.Printf("Client made %d connections, finished %d ok, %d bad pings\n",
-			*ping_count, ping_good, ping_bad)
+		fmt.Printf("client: made %d connections, finished %d ok, %d bad pings\n",
+			i+1, ping_good, ping_fail)
 	}
 }
 
-func doResponse(conn net.Conn, ok <-chan bool) {
+func doResponse(conn net.Conn, response_ok chan<- bool) {
 	defer conn.Close()
 
 	// todo tao auth
@@ -192,18 +204,19 @@ func doResponse(conn net.Conn, ok <-chan bool) {
 
 	msg, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
-		fmt.Printf("Can't read: ", err.Error())
+		fmt.Printf("server: can't read: ", err.Error())
 		conn.Close()
-		ok <- false
+		response_ok <- false
 		return
 	}
-	fmt.Printf("Got message: %s\n", msg)
-	fmt.Fprintf(conn, "%s\n", response)
+	msg = strings.TrimSpace(msg)
+	fmt.Printf("server: got message: %s\n", msg)
+	fmt.Fprintf(conn, "echo(%s)\n", msg)
 	conn.Close()
-	ok <- true
+	response_ok <- true
 }
 
-func doServer(stop, ready, done chan<- bool) {
+func doServer(stop chan bool, ready, done chan<- bool) {
 	var sock net.Listener
 	var err error
 	switch *demo_auth {
@@ -213,67 +226,52 @@ func doServer(stop, ready, done chan<- bool) {
 		sock, err = setupTLSServer()
 	}
 	if err != nil {
-		fmt.Printf("Server can't listen at %s: %s\n", server_addr, err.Error())
+		fmt.Printf("server: can't listen at %s: %s\n", server_addr, err.Error())
 		ready <- false
 		done <- true
 		return
 	}
-	defer sock.Close()
-	fmt.Printf("Server listening at %s using %s authentication.\n", server_addr, *demo_auth)
+	fmt.Printf("server: listening at %s using %s authentication.\n", server_addr, *demo_auth)
 	ready <- true
 
-	var pings chan bool
+	pings := make(chan bool, 10)
 	conn_count := 0
+
+	go func() {
+		for conn_count = 0; conn_count != *ping_count; conn_count++ { // negative means forever
+			conn, err := sock.Accept()
+			if err != nil {
+				fmt.Printf("server: can't accept connection: %s\n", err.Error())
+				stop <- true
+				return
+			}
+			go doResponse(conn, pings)
+		}
+		stop <- true
+	}()
+
 	ping_good := 0
 	ping_fail := 0
 
-	for conn_count = 0; conn_count != *ping_count; conn_count++ { // negative means forever
-		conn, err := sock.Accept()
-		if err != nil {
-			fmt.Printf("Can't accept connection: %s\n", err.Error())
-			pings <- false
-			return
-		}
-		go doResponse(conn, pings)
-	}
-
-
-	for conn_count < *ping_count {
-		// update stats, otherwise handle new connection
+loop:
+	for {
 		select {
+		case <-stop:
+			break loop;
 		case ok := <-pings:
 			if ok {
 				ping_good++
 			} else {
 				ping_fail++
 			}
-		default:
-			conn, err := sock.Accept()
-			if err != nil {
-				fmt.Printf("Can't accept connection: %s\n", err.Error())
-				break loop
-			}
-			// Handle connections in a new goroutine.
-			conn_count++
-			go doResponse(conn, pings)
 		}
 	}
 
 	sock.Close()
+	fmt.Printf("server: handled %d connections, finished %d ok, %d bad pings\n",
+		conn_count, ping_good, ping_fail)
 
-	for ping_good+ping_fail < conn_count {
-		// update stats
-		ok := <-pings
-		if ok {
-			ping_good++
-		} else {
-			ping_fail++
-		}
-		fmt.Printf("Server handled %d connections, finished %d ok, %d bad pings\n",
-			conn_count, ping_good, ping_bad)
-	}
-
-	server_ok <- (ping_good == *ping_count)
+	done <- true
 }
 
 // Tao Host demo
@@ -343,26 +341,28 @@ func main() {
 	switch *demo_auth {
 	case "tcp", "tls", "tao":
 	default:
-		fmt.Printf("Unrecognized authentication mode: %s\n", *demo_auth)
+		fmt.Printf("unrecognized authentication mode: %s\n", *demo_auth)
 		return
 	}
 
 	fmt.Printf("Go Tao Demo\n")
 
 	if tao.Host == nil {
-		return errors.New("No host Tao available")
+		fmt.Printf("can't continue: No host Tao available")
+		return
 	}
 
-	if *local_mode || (!*client_mode && !*server_mode) {
+	if *local_mode {
 		err := hostTaoDemo()
 		if err != nil {
-			fmt.Printf("Error: %s\n", err.Error())
+			fmt.Printf("error: %s\n", err.Error())
 			return
 		}
 	}
 
-	var server_stop, server_ready, server_done chan bool
-	var client_done chan bool
+	server_stop := make(chan bool, 1)
+	server_ready := make(chan bool, 1)
+	server_done := make(chan bool, 1)
 
 	if *server_mode {
 		go doServer(server_stop, server_ready, server_done)
@@ -380,5 +380,5 @@ func main() {
 	}
 
 	<-server_done
-
+	fmt.Printf("Done\n")
 }

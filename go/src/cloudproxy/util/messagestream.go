@@ -101,7 +101,7 @@ func (ms *MessageStream) ReadMessage(m proto.Message) error {
 }
 
 // NewMessageStream creates a MessageStream for the given pipe with a reception
-// limit of DefaultMaxMessageSize..
+// limit of DefaultMaxMessageSize.
 func NewMessageStream(pipe io.ReadWriteCloser) *MessageStream {
 	return &MessageStream{DefaultMaxMessageSize, pipe}
 }

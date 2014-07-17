@@ -23,7 +23,7 @@ import (
 	"io/ioutil"
 )
 
-// A PairReadWriteCloser groups an io.ReadCloser and an io.WritCloser into a
+// A PairReadWriteCloser groups an io.ReadCloser and an io.WriteCloser into a
 // single structure that implements the io.ReadWriteCloser interface. This can
 // be used to turn a pair of uni-directional streams into a single
 // bi-directional stream.

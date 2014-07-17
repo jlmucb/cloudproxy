@@ -19,7 +19,7 @@
 /*
 	Package protorpc implements a protobuf-based ClientCodec and ServerCodec for the
 	rpc package. Clients can make concurrent or asynchronous requests, and these
-	are handled in whatever order the servers choses.
+	are handled in whatever order the servers chooses.
 
 	All service methods take two protobuf message pointers: a request and a
 	response. RPC service method strings and sequence numbers are not sent over

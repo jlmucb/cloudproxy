@@ -37,23 +37,23 @@ import (
 	"cloudproxy/tao"
 )
 
-var server_host = flag.String("host", "localhost", "address for client/server")
-var server_port = flag.String("port", "8123", "port for client/server")
-var server_addr string // see main()
-var local_mode = flag.Bool("local", true, "Run host demo")
-var client_mode = flag.Bool("client", true, "Run demo client")
-var server_mode = flag.Bool("server", true, "Run demo server")
-var ping_count = flag.Int("n", 5, "Number of client/server pings")
-var demo_auth = flag.String("auth", "tao", "\"tcp\", \"tls\", or \"tao\"")
+var serverHost = flag.String("host", "localhost", "address for client/server")
+var serverPort = flag.String("port", "8123", "port for client/server")
+var serverAddr string // see main()
+var localMode = flag.Bool("local", true, "Run host demo")
+var clientMode = flag.Bool("client", true, "Run demo client")
+var serverMode = flag.Bool("server", true, "Run demo server")
+var pingCount = flag.Int("n", 5, "Number of client/server pings")
+var demoAuth = flag.String("auth", "tao", "\"tcp\", \"tls\", or \"tao\"")
 
 // TCP mode client/server
 
 func setupTCPServer() (net.Listener, error) {
-	return net.Listen("tcp", server_addr)
+	return net.Listen("tcp", serverAddr)
 }
 
 func setupTCPClient() (net.Conn, error) {
-	return net.Dial("tcp", server_addr)
+	return net.Dial("tcp", serverAddr)
 }
 
 // TLS mode client/server
@@ -63,7 +63,7 @@ const (
 	x509keySize  = 2048
 )
 
-func GenerateX509() (cert tls.Certificate, err error) {
+func GenerateX509() (*tls.Certificate, error) {
 	priv, err := rsa.GenerateKey(rand.Reader, x509keySize)
 	if err != nil {
 		return
@@ -90,10 +90,10 @@ func GenerateX509() (cert tls.Certificate, err error) {
 		BasicConstraintsValid: true,
 	}
 
-	if ip := net.ParseIP(*server_host); ip != nil {
+	if ip := net.ParseIP(*serverHost); ip != nil {
 		template.IPAddresses = append(template.IPAddresses, ip)
 	} else {
-		template.DNSNames = append(template.DNSNames, *server_host)
+		template.DNSNames = append(template.DNSNames, *serverHost)
 	}
 
 	// template.IsCA = true
@@ -113,7 +113,7 @@ func GenerateX509() (cert tls.Certificate, err error) {
 		return
 	}
 
-	return
+	return &cert, nil
 }
 
 func setupTLSServer() (net.Listener, error) {
@@ -122,7 +122,7 @@ func setupTLSServer() (net.Listener, error) {
 		fmt.Printf("server: can't create key and cert: %s\n", err.Error())
 		return nil, err
 	}
-	return tls.Listen("tcp", server_addr, &tls.Config{
+	return tls.Listen("tcp", serverAddr, &tls.Config{
 		RootCAs:            x509.NewCertPool(),
 		Certificates:       []tls.Certificate{cert},
 		InsecureSkipVerify: true,
@@ -135,7 +135,7 @@ func setupTLSClient() (net.Conn, error) {
 		fmt.Printf("client: can't create key and cert: %s\n", err.Error())
 		return nil, err
 	}
-	return tls.Dial("tcp", server_addr, &tls.Config{
+	return tls.Dial("tcp", serverAddr, &tls.Config{
 		RootCAs:            x509.NewCertPool(),
 		Certificates:       []tls.Certificate{cert},
 		InsecureSkipVerify: true,
@@ -145,10 +145,10 @@ func setupTLSClient() (net.Conn, error) {
 // client/server driver
 
 func doRequest() bool {
-	fmt.Printf("client: connecting to %s using %s authentication.\n", server_addr, *demo_auth)
+	fmt.Printf("client: connecting to %s using %s authentication.\n", serverAddr, *demoAuth)
 	var conn net.Conn
 	var err error
-	switch *demo_auth {
+	switch *demoAuth {
 	case "tcp":
 		conn, err = setupTCPClient()
 	case "tls":
@@ -157,7 +157,7 @@ func doRequest() bool {
 		// conn, err = setupTaoClient()
 	}
 	if err != nil {
-		fmt.Printf("client: error connecting to %s: %s\n", server_addr, err.Error())
+		fmt.Printf("client: error connecting to %s: %s\n", serverAddr, err.Error())
 		return false
 	}
 	defer conn.Close()
@@ -178,24 +178,24 @@ func doRequest() bool {
 }
 
 func doClient() {
-	ping_good := 0
-	ping_fail := 0
-	for i := 0; i != *ping_count; i++ { // negative means forever
+	pingGood := 0
+	pingFail := 0
+	for i := 0; i != *pingCount; i++ { // negative means forever
 		if doRequest() {
-			ping_good++
+			pingGood++
 		} else {
-			ping_fail++
+			pingFail++
 		}
 		fmt.Printf("client: made %d connections, finished %d ok, %d bad pings\n",
-			i+1, ping_good, ping_fail)
+			i+1, pingGood, pingFail)
 	}
 }
 
-func doResponse(conn net.Conn, response_ok chan<- bool) {
+func doResponse(conn net.Conn, responseOk chan<- bool) {
 	defer conn.Close()
 
 	// todo tao auth
-	switch *demo_auth {
+	switch *demoAuth {
 	case "tcp", "tls":
 	case "tao":
 	}
@@ -204,39 +204,39 @@ func doResponse(conn net.Conn, response_ok chan<- bool) {
 	if err != nil {
 		fmt.Printf("server: can't read: ", err.Error())
 		conn.Close()
-		response_ok <- false
+		responseOk <- false
 		return
 	}
 	msg = strings.TrimSpace(msg)
 	fmt.Printf("server: got message: %s\n", msg)
 	fmt.Fprintf(conn, "echo(%s)\n", msg)
 	conn.Close()
-	response_ok <- true
+	responseOk <- true
 }
 
 func doServer(stop chan bool, ready, done chan<- bool) {
 	var sock net.Listener
 	var err error
-	switch *demo_auth {
+	switch *demoAuth {
 	case "tcp":
 		sock, err = setupTCPServer()
 	case "tls", "tao":
 		sock, err = setupTLSServer()
 	}
 	if err != nil {
-		fmt.Printf("server: can't listen at %s: %s\n", server_addr, err.Error())
+		fmt.Printf("server: can't listen at %s: %s\n", serverAddr, err.Error())
 		ready <- false
 		done <- true
 		return
 	}
-	fmt.Printf("server: listening at %s using %s authentication.\n", server_addr, *demo_auth)
+	fmt.Printf("server: listening at %s using %s authentication.\n", serverAddr, *demoAuth)
 	ready <- true
 
 	pings := make(chan bool, 10)
-	conn_count := 0
+	connCount := 0
 
 	go func() {
-		for conn_count = 0; conn_count != *ping_count; conn_count++ { // negative means forever
+		for connCount = 0; connCount != *pingCount; connCount++ { // negative means forever
 			conn, err := sock.Accept()
 			if err != nil {
 				fmt.Printf("server: can't accept connection: %s\n", err.Error())
@@ -248,8 +248,8 @@ func doServer(stop chan bool, ready, done chan<- bool) {
 		stop <- true
 	}()
 
-	ping_good := 0
-	ping_fail := 0
+	pingGood := 0
+	pingFail := 0
 
 loop:
 	for {
@@ -258,16 +258,16 @@ loop:
 			break loop
 		case ok := <-pings:
 			if ok {
-				ping_good++
+				pingGood++
 			} else {
-				ping_fail++
+				pingFail++
 			}
 		}
 	}
 
 	sock.Close()
 	fmt.Printf("server: handled %d connections, finished %d ok, %d bad pings\n",
-		conn_count, ping_good, ping_fail)
+		connCount, pingGood, pingFail)
 
 	done <- true
 }
@@ -335,11 +335,11 @@ func hostTaoDemo() error {
 
 func main() {
 	flag.Parse()
-	server_addr = *server_host + ":" + *server_port
-	switch *demo_auth {
+	serverAddr = *serverHost + ":" + *serverPort
+	switch *demoAuth {
 	case "tcp", "tls", "tao":
 	default:
-		fmt.Printf("unrecognized authentication mode: %s\n", *demo_auth)
+		fmt.Printf("unrecognized authentication mode: %s\n", *demoAuth)
 		return
 	}
 
@@ -350,7 +350,7 @@ func main() {
 		return
 	}
 
-	if *local_mode {
+	if *localMode {
 		err := hostTaoDemo()
 		if err != nil {
 			fmt.Printf("error: %s\n", err.Error())
@@ -358,25 +358,25 @@ func main() {
 		}
 	}
 
-	server_stop := make(chan bool, 1)
-	server_ready := make(chan bool, 1)
-	server_done := make(chan bool, 1)
+	serverStop := make(chan bool, 1)
+	serverReady := make(chan bool, 1)
+	serverDone := make(chan bool, 1)
 
-	if *server_mode {
-		go doServer(server_stop, server_ready, server_done)
+	if *serverMode {
+		go doServer(serverStop, serverReady, serverDone)
 	} else {
-		server_ready <- true
-		server_done <- true
+		serverReady <- true
+		serverDone <- true
 	}
 
-	if *client_mode {
-		ok := <-server_ready
+	if *clientMode {
+		ok := <-serverReady
 		if ok {
 			doClient()
 		}
-		server_stop <- true
+		serverStop <- true
 	}
 
-	<-server_done
+	<-serverDone
 	fmt.Printf("Done\n")
 }

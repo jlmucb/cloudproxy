@@ -108,16 +108,16 @@ type TaoRPC struct {
 
 func DeserializeTaoRPC(s string) (*TaoRPC, error) {
 	if s == "" {
-		return nil, errors.New("Missing host Tao spec. " +
-			"Make sure $" + HostTaoEnvVar +" is set.")
+		return nil, errors.New("taorpc: missing host Tao spec" +
+			" (ensure $" + HostTaoEnvVar +" is set)")
 	}
 	r := strings.TrimPrefix(s, "tao::TaoRPC+")
 	if r == s {
-		return nil, errors.New("Unrecognized $" + HostTaoEnvVar + " string: " + s)
+		return nil, errors.New("taorpc: unrecognized $" + HostTaoEnvVar + " string " + s)
 	}
 	ms, err := util.DeserializeFDMessageStream(r)
 	if err != nil {
-		return nil, errors.New("Unrecognized $" + HostTaoEnvVar + " string: " + s +
+		return nil, errors.New("taorpc: unrecognized $" + HostTaoEnvVar + " string " + s +
 			" (" + err.Error() + ")")
 	}
 	return &TaoRPC{protorpc.NewClient(ms, taoMux{})}, nil
@@ -131,7 +131,7 @@ const (
 	wantPolicy
 )
 
-var ErrMalformedResponse = errors.New("tao rpc: malformed response")
+var ErrMalformedResponse = errors.New("taorpc: malformed response")
 
 func (t *TaoRPC) call(method string, r *TaoRPCRequest, e expectedResponse) (data []byte, policy string, err error) {
   s := new(TaoRPCResponse)
@@ -189,7 +189,7 @@ func (t *TaoRPC) Rand() io.Reader {
 
 func (t *TaoRPC) GetRandomBytes(n int) ([]byte, error) {
 	if n > math.MaxUint32 {
-		return nil, errors.New("Request for too many random bytes")
+		return nil, errors.New("taorpc: request for too many random bytes")
 	}
 	r := &TaoRPCRequest{Size: proto.Int32(int32(n))}
 	bytes, _, err := t.call("Tao.GetRandomBytes", r, wantData)
@@ -198,7 +198,7 @@ func (t *TaoRPC) GetRandomBytes(n int) ([]byte, error) {
 
 func (t *TaoRPC) GetSharedSecret(n int, policy string) ([]byte, error) {
 	if n > math.MaxUint32 {
-		return nil, errors.New("Request for too many secret bytes")
+		return nil, errors.New("taorpc: request for too many secret bytes")
 	}
 	r := &TaoRPCRequest{Size: proto.Int32(int32(n)), Policy: proto.String(policy)}
 	bytes, _, err := t.call("Tao.GetSharedSecret", r, wantData)

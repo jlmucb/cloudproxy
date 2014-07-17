@@ -328,7 +328,7 @@ func hostTaoDemo() error {
 		return err
 	}
 	if policy != tao.SealPolicyDefault {
-		return errors.New("Unexpected policy on unseal")
+		return errors.New("unexpected policy on unseal")
 	}
 	fmt.Printf("Unsealed bytes: % x\n", unsealed)
 

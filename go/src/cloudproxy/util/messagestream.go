@@ -39,7 +39,7 @@ type MessageStream struct {
 
 const DefaultMaxMessageSize = 20 * 1024 * 1024
 
-var ErrMessageTooLarge = errors.New("messagestream: Message is too large")
+var ErrMessageTooLarge = errors.New("messagestream: message is too large")
 
 // WriteString writes a 32-bit length followed by the string.
 func (ms *MessageStream) WriteString(s string) (int, error) {

@@ -31,7 +31,7 @@ func DeserializeFDMessageStream(s string) (*MessageStream, error) {
 	var readfd, writefd uintptr
 	_, err := fmt.Sscanf(s, "tao::FDMessageChannel(%d, %d)", &readfd, &writefd)
 	if err != nil {
-		return nil, errors.New("Unrecognized channel spec: " + s)
+		return nil, errors.New("unrecognized channel spec " + s)
 	}
 	if readfd == writefd {
 		rw := os.NewFile(readfd, "read/write pipe")

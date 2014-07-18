@@ -1,5 +1,3 @@
-// Description: Helper for making fd-based message streams
-//
 // Copyright (c) 2014, Kevin Walsh.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");

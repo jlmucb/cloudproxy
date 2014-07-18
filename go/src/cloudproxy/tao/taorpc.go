@@ -1,5 +1,3 @@
-// Description: Support for RPC from hosted program to host Tao.
-//
 // Copyright (c) 2014, Kevin Walsh.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");

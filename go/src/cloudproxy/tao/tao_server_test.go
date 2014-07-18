@@ -39,7 +39,7 @@ func TestTaoChanServer(t *testing.T) {
 	server := rpc.NewServer()
 	tao := new(FakeTao)
 	if err := tao.Init("test", "", nil); err != nil {
-		t.Error(err.Error())
+		t.Fatal("Couldn't initialize the FakeTao:", err)
 	}
 
 	t.Log("Initialized the keys")
@@ -50,19 +50,19 @@ func TestTaoChanServer(t *testing.T) {
 
 	err := server.Register(ts)
 	if err != nil {
-		panic(err)
+		t.Fatal("Couldn't register the server:", err)
 	}
 
 	go server.ServeConn(s)
 
-	tc := &TaoClient{
-		Parent: rpc.NewClient(c),
+	tc, err := NewTaoRPC(c, "TaoServer")
+	if err != nil {
+		t.Fatal("Couldn't set up a TaoRPC client to TaoServer:", err)
 	}
-	defer tc.Parent.Close()
 
 	b, err := tc.GetRandomBytes(10)
 	if err != nil {
-		t.Error("Couldn't get random bytes:", err)
+		t.Fatal("Couldn't get random bytes:", err)
 	}
 
 	t.Log("Got 10 random bytes")
@@ -70,25 +70,25 @@ func TestTaoChanServer(t *testing.T) {
 	// Seal, Unseal, and Attest to the bytes
 	sealed, err := tc.Seal(b, SealPolicyDefault)
 	if err != nil {
-		t.Error("Couldn't seal the data:", err)
+		t.Fatal("Couldn't seal the data:", err)
 	}
 
 	unsealed, policy, err := tc.Unseal(sealed)
 	if err != nil {
-		t.Error("Couldn't unseal the data:", err)
+		t.Fatal("Couldn't unseal the data:", err)
 	}
 
 	if string(policy) != SealPolicyDefault {
-		t.Error("Invalid policy returned by the Tao")
+		t.Fatal("Invalid policy returned by the Tao")
 	}
 
 	if len(unsealed) != len(b) {
-		t.Error("Invalid unsealed length")
+		t.Fatal("Invalid unsealed length")
 	}
 
 	for i, v := range unsealed {
 		if v != b[i] {
-			t.Errorf("Incorrect value returned at byte %d\n", i)
+			t.Fatalf("Incorrect value returned at byte %d\n", i)
 		}
 	}
 
@@ -103,7 +103,7 @@ func TestTaoChanServer(t *testing.T) {
 
 	_, err = tc.Attest(stmt)
 	if err != nil {
-		t.Error("Couldn't attest to the bytes:", err)
+		t.Fatal("Couldn't attest to the bytes:", err)
 	}
 
 	t.Log("All actions worked correctly")

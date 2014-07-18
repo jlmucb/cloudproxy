@@ -16,7 +16,6 @@ package tao
 
 import (
 	"errors"
-	"io"
 
 	"code.google.com/p/goprotobuf/proto"
 )
@@ -28,10 +27,6 @@ type TaoServer struct {
 
 // GetTaoName returns the Tao principal name assigned to the caller.
 func (ts *TaoServer) GetTaoName(r *TaoRPCRequest, s *TaoRPCResponse) error {
-	if *r.Rpc != TaoRPCOperation_TAO_RPC_GET_TAO_NAME {
-		return errors.New("wrong RPC type")
-	}
-
 	name, err := ts.T.GetTaoName()
 	if err != nil {
 		return err
@@ -43,10 +38,6 @@ func (ts *TaoServer) GetTaoName(r *TaoRPCRequest, s *TaoRPCResponse) error {
 
 // ExtendTaoName irreversibly extends the Tao principal name of the caller.
 func (ts *TaoServer) ExtendTaoName(r *TaoRPCRequest, s *TaoRPCResponse) error {
-	if *r.Rpc != TaoRPCOperation_TAO_RPC_EXTEND_TAO_NAME {
-		return errors.New("wrong RPC type")
-	}
-
 	if err := ts.T.ExtendTaoName(string(r.Data)); err != nil {
 		return err
 	}
@@ -56,10 +47,6 @@ func (ts *TaoServer) ExtendTaoName(r *TaoRPCRequest, s *TaoRPCResponse) error {
 
 // GetRandomBytes returns a slice of n random bytes.
 func (ts *TaoServer) GetRandomBytes(r *TaoRPCRequest, s *TaoRPCResponse) error {
-	if *r.Rpc != TaoRPCOperation_TAO_RPC_GET_RANDOM_BYTES {
-		return errors.New("wrong RPC type")
-	}
-
 	if r.GetSize() <= 0 {
 		return errors.New("Invalid array size")
 	}
@@ -76,16 +63,12 @@ func (ts *TaoServer) GetRandomBytes(r *TaoRPCRequest, s *TaoRPCResponse) error {
 // Rand produces an io.Reader for random bytes from this Tao.  This should
 // never be called on the TaoServer, since it's handled transparently by
 // TaoClient.
-func (ts *TaoServer) Rand() io.Reader {
+func (ts *TaoServer) Rand(r *TaoRPCRequest, s *TaoRPCResponse) error {
 	return nil
 }
 
 // GetSharedSecret returns a slice of n secret bytes.
 func (ts *TaoServer) GetSharedSecret(r *TaoRPCRequest, s *TaoRPCResponse) error {
-	if *r.Rpc != TaoRPCOperation_TAO_RPC_GET_SHARED_SECRET {
-		return errors.New("wrong RPC type")
-	}
-
 	var err error
 	s.Data, err = ts.T.GetSharedSecret(int(*r.Size), string(r.Data))
 	if err != nil {
@@ -97,10 +80,6 @@ func (ts *TaoServer) GetSharedSecret(r *TaoRPCRequest, s *TaoRPCResponse) error 
 
 // Seal encrypts data so only certain hosted programs can unseal it.
 func (ts *TaoServer) Seal(r *TaoRPCRequest, s *TaoRPCResponse) error {
-	if r.GetRpc() != TaoRPCOperation_TAO_RPC_SEAL {
-		return errors.New("wrong RPC type")
-	}
-
 	var err error
 	s.Data, err = ts.T.Seal(r.Data, *r.Policy)
 	if err != nil {
@@ -113,10 +92,6 @@ func (ts *TaoServer) Seal(r *TaoRPCRequest, s *TaoRPCResponse) error {
 // Unseal decrypts data that has been sealed by the Seal() operation, but only
 // if the policy specified during the Seal() operation is satisfied.
 func (ts *TaoServer) Unseal(r *TaoRPCRequest, s *TaoRPCResponse) error {
-	if r.GetRpc() != TaoRPCOperation_TAO_RPC_UNSEAL {
-		return errors.New("wrong RPC type")
-	}
-
 	var err error
 	var policy string
 	s.Data, policy, err = ts.T.Unseal(r.Data)
@@ -130,10 +105,6 @@ func (ts *TaoServer) Unseal(r *TaoRPCRequest, s *TaoRPCResponse) error {
 
 // Attest requests the Tao host sign a Statement on behalf of the caller.
 func (ts *TaoServer) Attest(r *TaoRPCRequest, s *TaoRPCResponse) error {
-	if r.GetRpc() != TaoRPCOperation_TAO_RPC_ATTEST {
-		return errors.New("wrong RPC type")
-	}
-
 	stmt := new(Statement)
 	err := proto.Unmarshal(r.Data, stmt)
 	if err != nil {

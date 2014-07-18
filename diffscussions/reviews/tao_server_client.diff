@@ -1,0 +1,645 @@
+#* 
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-17T21:58:22-0700
+#* 
+#- Added licenses statements, ran go fmt, and fixed tao_client to implement the new Tao interfaces
+#- 
+#- 
+#- Fixed the TaoServer to implement all the Tao methods for Go RPC
+#- 
+#- 
+diff --git a/go/src/cloudproxy/tao/soft_tao.go b/go/src/cloudproxy/tao/soft_tao.go
+index 383b4e0..47ee89c 100644
+--- a/go/src/cloudproxy/tao/soft_tao.go
++++ b/go/src/cloudproxy/tao/soft_tao.go
+@@ -9,80 +9,79 @@
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+ 	"crypto/rand"
+ 	"errors"
+ 	"io"
+ 	"time"
+ 
+ 	"code.google.com/p/goprotobuf/proto"
+ )
+ 
+ // A SoftTao is an implementation of the Tao that isn't backed by any hardware
+ // mechanisms.
+ type SoftTao struct {
+-	keys *Keys
+-	name string
++	keys          *Keys
++	name          string
+ 	nameExtension string
+ }
+ 
+ // Init initializes the SoftTao with a crypter and a signer.
+ func (s *SoftTao) Init(name, path string, password []byte) error {
+ 	s.name = name
+ 
+ 	if path == "" {
+-		s.keys = NewTemporaryKeys(Signing|Crypting|Deriving)
++		s.keys = NewTemporaryKeys(Signing | Crypting | Deriving)
+ 		if err := s.keys.InitTemporary(); err != nil {
+ 			return err
+ 		}
+ 	} else {
+ 		s.keys = NewOnDiskKeys(Signing|Crypting|Deriving, path)
+ 		if err := s.keys.InitWithPassword(password); err != nil {
+ 			return err
+ 		}
+ 	}
+ 
+ 	return nil
+ }
+ 
+ // GetTaoName returns the Tao principal name assigned to the caller.
+ func (s *SoftTao) GetTaoName() (string, error) {
+ 	return s.name + s.nameExtension, nil
+ }
+ 
+ // ExtendTaoName irreversibly extends the Tao principal name of the caller.
+ func (s *SoftTao) ExtendTaoName(subprin string) error {
+ 	if subprin == "" {
+ 		return errors.New("invalid subprincipal name")
+ 	}
+ 
+ 	s.nameExtension += "::" + subprin
+ 	return nil
+ }
+ 
+-
+ // GetRandomBytes fills the slice with random bytes.
+ func (s *SoftTao) GetRandomBytes(n int) ([]byte, error) {
+ 	b := make([]byte, n)
+ 	if _, err := rand.Read(b); err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	return b, nil
+ }
+ 
+ // Read implements io.Reader to read random bytes from the Tao.
+ func (s *SoftTao) Read(p []byte) (int, error) {
+ 	bytes, err := s.GetRandomBytes(len(p))
+ 	if err != nil {
+ 		return 0, err
+ 	}
+ 
+ 	copy(p, bytes)
+ 	return len(p), nil
+ }
+@@ -128,41 +127,41 @@ func (s *SoftTao) Unseal(sealed []byte) (data []byte, policy string, err error)
+ 	policy = SealPolicyDefault
+ 	return data, policy, err
+ }
+ 
+ // Attest requests that the Tao host sign a Statement on behalf of the caller.
+ func (s *SoftTao) Attest(stmt *Statement) (*Attestation, error) {
+ 	st := new(Statement)
+ 	proto.Merge(st, stmt)
+ 
+ 	if st.Issuer == nil {
+ 		st.Issuer = proto.String(s.name)
+ 	} else if st.GetIssuer() != s.name {
+ 		return nil, errors.New("Invalid issuer in statement")
+ 	}
+ 
+ 	if st.Time == nil {
+ 		st.Time = proto.Int64(time.Now().UnixNano())
+ 	}
+ 
+ 	if st.Expiration == nil {
+-		st.Expiration = proto.Int64(time.Now().Add(365*24*time.Hour).UnixNano())
++		st.Expiration = proto.Int64(time.Now().Add(365 * 24 * time.Hour).UnixNano())
+ 	}
+ 
+ 	ser, err := proto.Marshal(st)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	sig, err := s.keys.SigningKey.Sign(ser, AttestationSigningContext)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	a := &Attestation{
+ 		SerializedStatement: ser,
+ 		Signature:           sig,
+ 		Signer:              proto.String(s.name),
+ 	}
+ 
+ 	if s.keys.Delegation != nil {
+ 		sd, err := proto.Marshal(s.keys.Delegation)
+diff --git a/go/src/cloudproxy/tao/soft_tao_test.go b/go/src/cloudproxy/tao/soft_tao_test.go
+index 52d10af..b51c275 100644
+--- a/go/src/cloudproxy/tao/soft_tao_test.go
++++ b/go/src/cloudproxy/tao/soft_tao_test.go
+@@ -18,41 +18,40 @@ import (
+ 	"math/rand"
+ 	"testing"
+ 	"time"
+ 
+ 	"code.google.com/p/goprotobuf/proto"
+ )
+ 
+ func TestInMemoryInit(t *testing.T) {
+ 	st := new(SoftTao)
+ 	if err := st.Init("test", "", nil); err != nil {
+ 		t.Error(err.Error())
+ 	}
+ }
+ 
+ func TestSoftTaoRandom(t *testing.T) {
+ 	st := new(SoftTao)
+ 	if err := st.Init("test", "", nil); err != nil {
+ 		t.Error(err.Error())
+ 	}
+ 
+-
+ 	if _, err := st.GetRandomBytes(10); err != nil {
+ 		t.Error(err.Error())
+ 	}
+ }
+ 
+ func TestSoftTaoSeal(t *testing.T) {
+ 	st := new(SoftTao)
+ 	if err := st.Init("test", "", nil); err != nil {
+ 		t.Error(err.Error())
+ 	}
+ 
+ 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+ 	b := make([]byte, 33)
+ 	for i := range b {
+ 		b[i] = byte(r.Intn(256))
+ 	}
+ 
+ 	_, err := st.Seal(b, SealPolicyDefault)
+ 	if err != nil {
+ 		t.Error(err.Error())
+diff --git a/go/src/cloudproxy/tao/tao.go b/go/src/cloudproxy/tao/tao.go
+index 3e7eb95..ca611dc 100644
+--- a/go/src/cloudproxy/tao/tao.go
++++ b/go/src/cloudproxy/tao/tao.go
+@@ -78,22 +78,22 @@ var cachedHost Tao
+ // Host returns the interface to the underlying host Tao. It depends on a
+ // specific environment variable being set. On success it memoizes the result
+ // before returning it because there should only ever be a single channel to the
+ // host. On failure, it logs a message using glog and returns nil.
+ // Note: errors are not returned so that, once it is confirmed that Host
+ // returns a non-nil value, callers can use the function result in an
+ // expression, e.g.:
+ //   name, err := tao.Host().GetTaoName()
+ func Host() Tao {
+ 	host, err := DeserializeTaoRPC(os.Getenv(HostTaoEnvVar))
+ 	if err != nil {
+ 		glog.Error(err)
+ 		return nil
+ 	}
+ 	cachedHost = host
+ 	return host
+ }
+ 
+ // Hosted returns true iff a host Tao is available via the Host function.
+ func HostAvailable() bool {
+-		return Host() != nil
++	return Host() != nil
+ }
+diff --git a/go/src/cloudproxy/tao/tao_client.go b/go/src/cloudproxy/tao/tao_client.go
+index 4835969..d98d4fd 100644
+--- a/go/src/cloudproxy/tao/tao_client.go
++++ b/go/src/cloudproxy/tao/tao_client.go
+@@ -1,102 +1,169 @@
++//  Copyright (c) 2014, Google Inc.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
+ package tao
+ 
+ import (
++	"io"
+ 	"net/rpc"
+ 
+ 	"code.google.com/p/goprotobuf/proto"
+ )
+ 
+ // TaoClient implements the Tao and passes on calls to a parent Tao across an
+ // RPC channel.
+ type TaoClient struct {
+-	Parent            *rpc.Client
+-	HostedProgramHash []byte
++	Parent *rpc.Client
+ }
+ 
+-func (t *TaoClient) GetRandomBytes(bytes []byte) (err error) {
++// GetTaoName returns the Tao principal name assigned to the caller.
++func (t *TaoClient) GetTaoName() (string, error) {
+ 	r := &TaoRPCRequest{
+-		Rpc:  new(TaoRPCOperation),
+-		Size: proto.Int32(int32(len(bytes))),
++		Rpc: TaoRPCOperation_TAO_RPC_GET_TAO_NAME.Enum(),
+ 	}
+ 
+-	*r.Rpc = TaoRPCOperation_TAO_RPC_GET_RANDOM_BYTES
+ 	s := new(TaoRPCResponse)
+-	err = t.Parent.Call("TaoServer.GetRandomBytes", r, s)
++	err := t.Parent.Call("TaoServer.GetRandomBytes", r, s)
++	if err != nil {
++		return "", err
++	}
++
++	return string(s.Data), nil
++}
++
++// ExtendTaoName irreversibly extends the Tao principal name of the caller.
++func (t *TaoClient) ExtendTaoName(subprin string) error {
++	r := &TaoRPCRequest{
++		Rpc:  TaoRPCOperation_TAO_RPC_EXTEND_TAO_NAME.Enum(),
++		Data: []byte(subprin),
++	}
++
++	s := new(TaoRPCResponse)
++	err := t.Parent.Call("TaoServer.ExtendTaoName", r, s)
+ 	if err != nil {
+ 		return err
+ 	}
+ 
+-	copy(bytes, s.Data)
+ 	return nil
+ }
+ 
+-func (t *TaoClient) Seal(data, policy []byte) ([]byte, error) {
+-	rpcData := make([]byte, len(data))
+-	copy(rpcData, data)
++// Read reads random bytes from the remote Tao server. This implements
++// io.Reader.
++func (t *TaoClient) Read(p []byte) (int, error) {
++	b, err := t.GetRandomBytes(len(p))
++	if err != nil {
++		return 0, err
++	}
++
++	copy(p, b)
++	return len(p), nil
++}
++
++// Rand produces an io.Reader for random bytes from the remote Tao server.
++func (t *TaoClient) Rand() io.Reader {
++	return t
++}
++
++// GetRandomBytes returns a slice of n random bytes.
++func (t *TaoClient) GetRandomBytes(n int) ([]byte, error) {
+ 	r := &TaoRPCRequest{
+-		Rpc:    new(TaoRPCOperation),
+-		Data:   rpcData,
+-		Policy: proto.String(string(policy)),
++		Rpc:  TaoRPCOperation_TAO_RPC_GET_RANDOM_BYTES.Enum(),
++		Size: proto.Int32(int32(n)),
+ 	}
+ 
+-	*r.Rpc = TaoRPCOperation_TAO_RPC_SEAL
+ 	s := new(TaoRPCResponse)
+-	err := t.Parent.Call("TaoServer.Seal", r, s)
++	err := t.Parent.Call("TaoServer.GetRandomBytes", r, s)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+-	sealed := make([]byte, len(s.Data))
+-	copy(sealed, s.Data)
+-	return sealed, nil
++	return s.Data, nil
+ }
+ 
+-func (t *TaoClient) Unseal(sealed []byte) ([]byte, []byte, error) {
+-	rpcSealed := make([]byte, len(sealed))
+-	copy(rpcSealed, sealed)
++// GetSharedSecret returns a slice of n secret bytes
++func (t *TaoClient) GetSharedSecret(n int, policy string) ([]byte, error) {
+ 	r := &TaoRPCRequest{
+-		Rpc:  new(TaoRPCOperation),
+-		Data: rpcSealed,
++		Rpc:  TaoRPCOperation_TAO_RPC_GET_SHARED_SECRET.Enum(),
++		Size: proto.Int32(int32(n)),
+ 	}
+ 
+-	*r.Rpc = TaoRPCOperation_TAO_RPC_UNSEAL
+-
+ 	s := new(TaoRPCResponse)
+-	err := t.Parent.Call("TaoServer.Unseal", r, s)
++	err := t.Parent.Call("TaoServer.GetSharedSecret", r, s)
+ 	if err != nil {
+-		return nil, nil, err
++		return nil, err
+ 	}
+ 
+-	unsealed := make([]byte, len(s.Data))
+-	copy(unsealed, s.Data)
+-
+-	return unsealed, []byte(*s.Policy), nil
++	return s.Data, nil
+ }
+ 
++// Attest requests the Tao host sign a Statement on behalf of the caller.
+ func (t *TaoClient) Attest(stmt *Statement) (*Attestation, error) {
+ 	stData, err := proto.Marshal(stmt)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	r := &TaoRPCRequest{
+-		Rpc:  new(TaoRPCOperation),
++		Rpc:  TaoRPCOperation_TAO_RPC_ATTEST.Enum(),
+ 		Data: stData,
+ 	}
+ 
+-	*r.Rpc = TaoRPCOperation_TAO_RPC_ATTEST
+-
+ 	s := new(TaoRPCResponse)
+ 	err = t.Parent.Call("TaoServer.Attest", r, s)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	a := new(Attestation)
+ 	err = proto.Unmarshal(s.Data, a)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	return a, nil
+ }
++
++// Seal encrypts data so only certain hosted programs can unseal it.
++func (t *TaoClient) Seal(data []byte, policy string) ([]byte, error) {
++	r := &TaoRPCRequest{
++		Rpc:    TaoRPCOperation_TAO_RPC_SEAL.Enum(),
++		Data:   data,
++		Policy: proto.String(policy),
++	}
++
++	s := new(TaoRPCResponse)
++	err := t.Parent.Call("TaoServer.Seal", r, s)
++	if err != nil {
++		return nil, err
++	}
++
++	return s.Data, nil
++}
++
++// Unseal decrypts data that has been sealed by the Seal() operation, but only
++// if the policy specified during the Seal() operation is satisfied.
++func (t *TaoClient) Unseal(sealed []byte) ([]byte, string, error) {
++	r := &TaoRPCRequest{
++		Rpc:  TaoRPCOperation_TAO_RPC_UNSEAL.Enum(),
++		Data: sealed,
++	}
++
++	s := new(TaoRPCResponse)
++	err := t.Parent.Call("TaoServer.Unseal", r, s)
++	if err != nil {
++		return nil, "", err
++	}
++
++	return s.Data, *s.Policy, nil
++}
+diff --git a/go/src/cloudproxy/tao/tao_server.go b/go/src/cloudproxy/tao/tao_server.go
+index 2810af8..f8903d8 100644
+--- a/go/src/cloudproxy/tao/tao_server.go
++++ b/go/src/cloudproxy/tao/tao_server.go
+@@ -1,78 +1,150 @@
++//  Copyright (c) 2014, Google Inc.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
+ package tao
+ 
+ import (
+ 	"errors"
++	"io"
+ 
+ 	"code.google.com/p/goprotobuf/proto"
+ )
+ 
++// A TaoServer wraps a Tao and serves its methods across a net/rpc connection.
+ type TaoServer struct {
+ 	T Tao
+ }
+ 
++// GetTaoName returns the Tao principal name assigned to the caller.
++func (ts *TaoServer) GetTaoName(r *TaoRPCRequest, s *TaoRPCResponse) error {
++	if *r.Rpc != TaoRPCOperation_TAO_RPC_GET_TAO_NAME {
++		return errors.New("wrong RPC type")
++	}
++
++	name, err := ts.T.GetTaoName()
++	if err != nil {
++		return err
++	}
++
++	s.Data = []byte(name)
++	return nil
++}
++
++// ExtendTaoName irreversibly extends the Tao principal name of the caller.
++func (ts *TaoServer) ExtendTaoName(r *TaoRPCRequest, s *TaoRPCResponse) error {
++	if *r.Rpc != TaoRPCOperation_TAO_RPC_EXTEND_TAO_NAME {
++		return errors.New("wrong RPC type")
++	}
++
++	if err := ts.T.ExtendTaoName(string(r.Data)); err != nil {
++		return err
++	}
++
++	return nil
++}
++
++// GetRandomBytes returns a slice of n random bytes.
+ func (ts *TaoServer) GetRandomBytes(r *TaoRPCRequest, s *TaoRPCResponse) error {
+-	if r.GetRpc() != TaoRPCOperation_TAO_RPC_GET_RANDOM_BYTES {
++	if *r.Rpc != TaoRPCOperation_TAO_RPC_GET_RANDOM_BYTES {
+ 		return errors.New("wrong RPC type")
+ 	}
+ 
+ 	if r.GetSize() <= 0 {
+ 		return errors.New("Invalid array size")
+ 	}
+ 
+ 	var err error
+ 	s.Data, err = ts.T.GetRandomBytes(int(r.GetSize()))
+ 	if err != nil {
+ 		return err
+ 	}
+ 
+ 	return nil
+ }
+ 
++// Rand produces an io.Reader for random bytes from this Tao.  This should
++// never be called on the TaoServer, since it's handled transparently by
++// TaoClient.
++func (ts *TaoServer) Rand() io.Reader {
++	return nil
++}
++
++// GetSharedSecret returns a slice of n secret bytes.
++func (ts *TaoServer) GetSharedSecret(r *TaoRPCRequest, s *TaoRPCResponse) error {
++	if *r.Rpc != TaoRPCOperation_TAO_RPC_GET_SHARED_SECRET {
++		return errors.New("wrong RPC type")
++	}
++
++	var err error
++	s.Data, err = ts.T.GetSharedSecret(int(*r.Size), string(r.Data))
++	if err != nil {
++		return err
++	}
++
++	return nil
++}
++
++// Seal encrypts data so only certain hosted programs can unseal it.
+ func (ts *TaoServer) Seal(r *TaoRPCRequest, s *TaoRPCResponse) error {
+ 	if r.GetRpc() != TaoRPCOperation_TAO_RPC_SEAL {
+ 		return errors.New("wrong RPC type")
+ 	}
+ 
+-	sealed, err := ts.T.Seal(r.GetData(), r.GetPolicy())
++	var err error
++	s.Data, err = ts.T.Seal(r.Data, *r.Policy)
+ 	if err != nil {
+ 		return err
+ 	}
+ 
+-	s.Data = sealed
+ 	return nil
+ }
+ 
++// Unseal decrypts data that has been sealed by the Seal() operation, but only
++// if the policy specified during the Seal() operation is satisfied.
+ func (ts *TaoServer) Unseal(r *TaoRPCRequest, s *TaoRPCResponse) error {
+ 	if r.GetRpc() != TaoRPCOperation_TAO_RPC_UNSEAL {
+ 		return errors.New("wrong RPC type")
+ 	}
+ 
+-	data, policy, err := ts.T.Unseal(r.GetData())
++	var err error
++	var policy string
++	s.Data, policy, err = ts.T.Unseal(r.Data)
+ 	if err != nil {
+ 		return err
+ 	}
+ 
+-	s.Data = data
+-	s.Policy = proto.String(string(policy))
++	s.Policy = proto.String(policy)
+ 	return nil
+ }
+ 
++// Attest requests the Tao host sign a Statement on behalf of the caller.
+ func (ts *TaoServer) Attest(r *TaoRPCRequest, s *TaoRPCResponse) error {
+ 	if r.GetRpc() != TaoRPCOperation_TAO_RPC_ATTEST {
+ 		return errors.New("wrong RPC type")
+ 	}
+ 
+ 	stmt := new(Statement)
+-	err := proto.Unmarshal(r.GetData(), stmt)
++	err := proto.Unmarshal(r.Data, stmt)
+ 	if err != nil {
+ 		return err
+ 	}
+ 
+ 	a, err := ts.T.Attest(stmt)
+ 	if err != nil {
+ 		return err
+ 	}
+ 
+ 	s.Data, err = proto.Marshal(a)
+-	return nil
++	return err
+ }
+diff --git a/go/src/cloudproxy/tao/tao_server_test.go b/go/src/cloudproxy/tao/tao_server_test.go
+index f5252c3..3ae2e90 100644
+--- a/go/src/cloudproxy/tao/tao_server_test.go
++++ b/go/src/cloudproxy/tao/tao_server_test.go
+@@ -43,50 +43,49 @@ func TestTaoChanServer(t *testing.T) {
+ 	}
+ 
+ 	t.Log("Initialized the keys")
+ 
+ 	ts := &TaoServer{
+ 		T: tao,
+ 	}
+ 
+ 	err := server.Register(ts)
+ 	if err != nil {
+ 		panic(err)
+ 	}
+ 
+ 	go server.ServeConn(s)
+ 
+ 	tc := &TaoClient{
+ 		Parent: rpc.NewClient(c),
+ 	}
+ 	defer tc.Parent.Close()
+ 
+-	b := make([]byte, 10)
+-	err = tc.GetRandomBytes(b)
++	b, err := tc.GetRandomBytes(10)
+ 	if err != nil {
+ 		t.Error("Couldn't get random bytes:", err)
+ 	}
+ 
+ 	t.Log("Got 10 random bytes")
+ 
+ 	// Seal, Unseal, and Attest to the bytes
+-	sealed, err := tc.Seal(b, []byte(SealPolicyDefault))
++	sealed, err := tc.Seal(b, SealPolicyDefault)
+ 	if err != nil {
+ 		t.Error("Couldn't seal the data:", err)
+ 	}
+ 
+ 	unsealed, policy, err := tc.Unseal(sealed)
+ 	if err != nil {
+ 		t.Error("Couldn't unseal the data:", err)
+ 	}
+ 
+ 	if string(policy) != SealPolicyDefault {
+ 		t.Error("Invalid policy returned by the Tao")
+ 	}
+ 
+ 	if len(unsealed) != len(b) {
+ 		t.Error("Invalid unsealed length")
+ 	}
+ 
+ 	for i, v := range unsealed {
+ 		if v != b[i] {
+ 			t.Errorf("Incorrect value returned at byte %d\n", i)

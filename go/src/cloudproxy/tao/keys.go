@@ -526,11 +526,6 @@ func contextualizedSHA256(h *CryptoHeader, data []byte, context string, digestLe
 	return hash[:digestLen], nil
 }
 
-// GetECDSAKey returns the public ECDSA key for this verifier.
-func (v *Verifier) getECDSAKey() *ecdsa.PublicKey {
-	return v.ec
-}
-
 // GenerateCrypter instantiates a new Crypter with fresh keys.
 func GenerateCrypter() (*Crypter, error) {
 	c := &Crypter{

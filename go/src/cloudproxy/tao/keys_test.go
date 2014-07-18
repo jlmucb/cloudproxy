@@ -38,7 +38,7 @@ func TestSignerDERSerialization(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	if _, err := ParseSignerDER(b); err != nil {
+	if _, err := UnmarshalSignerDER(b); err != nil {
 		t.Fatal(err.Error())
 	}
 }

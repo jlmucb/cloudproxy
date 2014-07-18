@@ -1073,6 +1073,10 @@ func NewTemporaryTaoDelegatedKeys(keyTypes KeyType, t Tao) (*Keys, error) {
 // since this is for private program data, we don't try for compatibility with
 // the C++ Tao version of the code.
 func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
+	if password == nil || len(password) == 0 {
+		return nil, errors.New("null or empty password")
+	}
+
 	pbed := &PBEData{
 		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
 		Cipher:  proto.String("aes128-ctr"),
@@ -1113,6 +1117,10 @@ func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
 // since this is for private program data, we don't try for compatibility with
 // the C++ Tao version of the code.
 func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
+	if password == nil || len(password) == 0 {
+		return nil, errors.New("null or empty password")
+	}
+
 	var pbed PBEData
 	if err := proto.Unmarshal(ciphertext, &pbed); err != nil {
 		return nil, err

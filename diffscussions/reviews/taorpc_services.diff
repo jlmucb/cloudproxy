@@ -1,0 +1,189 @@
+#* 
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-18T11:09:56-0700
+#* 
+#- Update taorpc.go to support different service names and other rpc clients
+#- 
+#- 
+diff --git a/go/src/cloudproxy/tao/taorpc.go b/go/src/cloudproxy/tao/taorpc.go
+index 2ba3b4c..850948e 100644
+--- a/go/src/cloudproxy/tao/taorpc.go
++++ b/go/src/cloudproxy/tao/taorpc.go
+@@ -85,57 +85,64 @@ func (taoMux) SetResponseHeader(req proto.Message, servicemethod string, seq uin
+ 	m, ok := req.(*TaoRPCResponse)
+ 	if !ok || m == nil {
+ 		return protorpc.ErrBadResponseType
+ 	}
+ 	rpc, err := goToRPC(servicemethod)
+ 	if err != nil {
+ 		return err
+ 	}
+ 	m.Rpc = &rpc
+ 	m.Seq = &seq
+ 	return nil
+ }
+ 
+ func (taoMux) GetServiceMethod(number uint64) (string, error) {
+ 	return rpcToGo(TaoRPCOperation(int32(number)))
+ }
+ 
+ // TaoRPC sends requests between this hosted program and the host Tao.
+ type TaoRPC struct {
+ 	rpc *rpc.Client
++	serviceName string
+ }
+ 
+ func DeserializeTaoRPC(s string) (*TaoRPC, error) {
+ 	if s == "" {
+ 		return nil, errors.New("taorpc: missing host Tao spec" +
+ 			" (ensure $" + HostTaoEnvVar + " is set)")
+ 	}
+ 	r := strings.TrimPrefix(s, "tao::TaoRPC+")
+ 	if r == s {
+ 		return nil, errors.New("taorpc: unrecognized $" + HostTaoEnvVar + " string " + s)
+ 	}
+ 	ms, err := util.DeserializeFDMessageStream(r)
+ 	if err != nil {
+ 		return nil, errors.New("taorpc: unrecognized $" + HostTaoEnvVar + " string " + s +
+ 			" (" + err.Error() + ")")
+ 	}
+-	return &TaoRPC{protorpc.NewClient(ms, taoMux{})}, nil
++	return &TaoRPC{protorpc.NewClient(ms, taoMux{}), "Tao"}, nil
++}
++
++// NewTaoRPC constructs a TaoRPC for the default gob encoding rpc client using
++// an io.ReadWriteCloser.
++func NewTaoRPC(rwc io.ReadWriteCloser, serviceName string) (*TaoRPC, error) {
++	return &TaoRPC{rpc.NewClient(rwc), serviceName}, nil
+ }
+ 
+ type expectedResponse int
+ 
+ const (
+ 	wantNothing expectedResponse = 0
+ 	wantData    expectedResponse = 1 << iota
+ 	wantPolicy
+ )
+ 
+ var ErrMalformedResponse = errors.New("taorpc: malformed response")
+ 
+ // call issues an rpc request, obtains the response, checks the response for
+ // errors, and checks that the response contains exactly the expected values.
+ func (t *TaoRPC) call(method string, r *TaoRPCRequest, e expectedResponse) (data []byte, policy string, err error) {
+ 	s := new(TaoRPCResponse)
+ 	err = t.rpc.Call(method, r, s)
+ 	if err != nil {
+ 		return
+ 	}
+@@ -143,103 +150,103 @@ func (t *TaoRPC) call(method string, r *TaoRPCRequest, e expectedResponse) (data
+ 		err = errors.New(*s.Error)
+ 		return
+ 	}
+ 	if (s.Data != nil) != (e&wantData != 0) ||
+ 		(s.Policy != nil) != (e&wantPolicy != 0) {
+ 		err = ErrMalformedResponse
+ 		return
+ 	}
+ 	if s.Data != nil {
+ 		data = s.Data
+ 	}
+ 	if s.Policy != nil {
+ 		policy = *s.Policy
+ 	}
+ 	return
+ }
+ 
+ // GetTaoName implements part of the Tao interface.
+ func (t *TaoRPC) GetTaoName() (string, error) {
+ 	r := &TaoRPCRequest{}
+-	data, _, err := t.call("Tao.GetTaoName", r, wantData)
++	data, _, err := t.call(t.serviceName + ".GetTaoName", r, wantData)
+ 	return string(data), err
+ }
+ 
+ // ExtendTaoName implements part of the Tao interface.
+ func (t *TaoRPC) ExtendTaoName(subprin string) error {
+ 	r := &TaoRPCRequest{Data: []byte(subprin)}
+-	_, _, err := t.call("Tao.ExtendTaoName", r, wantNothing)
++	_, _, err := t.call(t.serviceName + ".ExtendTaoName", r, wantNothing)
+ 	return err
+ }
+ 
+ type taoRandReader TaoRPC
+ 
+ // Read implements part of the Tao interface.
+ func (t *taoRandReader) Read(p []byte) (n int, err error) {
+ 	bytes, err := (*TaoRPC)(t).GetRandomBytes(len(p))
+ 	if err != nil {
+ 		return 0, err
+ 	}
+ 	copy(p, bytes)
+ 	return len(p), nil
+ }
+ 
+ // TODO(kwalsh) Can Rand be made generic, or does it need to be defined for the
+ // concrete type TaoRPC?
+ 
+ // Rand implements part of the Tao interface.
+ func (t *TaoRPC) Rand() io.Reader {
+ 	return (*taoRandReader)(t)
+ }
+ 
+ // GetRandomBytes implements part of the Tao interface.
+ func (t *TaoRPC) GetRandomBytes(n int) ([]byte, error) {
+ 	if n > math.MaxUint32 {
+ 		return nil, errors.New("taorpc: request for too many random bytes")
+ 	}
+ 	r := &TaoRPCRequest{Size: proto.Int32(int32(n))}
+-	bytes, _, err := t.call("Tao.GetRandomBytes", r, wantData)
++	bytes, _, err := t.call(t.serviceName + ".GetRandomBytes", r, wantData)
+ 	return bytes, err
+ }
+ 
+ // GetSharedSecret implements part of the Tao interface.
+ func (t *TaoRPC) GetSharedSecret(n int, policy string) ([]byte, error) {
+ 	if n > math.MaxUint32 {
+ 		return nil, errors.New("taorpc: request for too many secret bytes")
+ 	}
+ 	r := &TaoRPCRequest{Size: proto.Int32(int32(n)), Policy: proto.String(policy)}
+-	bytes, _, err := t.call("Tao.GetSharedSecret", r, wantData)
++	bytes, _, err := t.call(t.serviceName + ".GetSharedSecret", r, wantData)
+ 	return bytes, err
+ }
+ 
+ // Attest implements part of the Tao interface.
+ func (t *TaoRPC) Attest(stmt *Statement) (*Attestation, error) {
+ 	data, err := proto.Marshal(stmt)
+ 	if _, ok := err.(*proto.RequiredNotSetError); err != nil && !ok {
+ 		return nil, err
+ 	}
+ 	r := &TaoRPCRequest{Data: data}
+-	bytes, _, err := t.call("Tao.Attest", r, wantData)
++	bytes, _, err := t.call(t.serviceName + ".Attest", r, wantData)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	var a Attestation
+ 	err = proto.Unmarshal(bytes, &a)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	return &a, nil
+ }
+ 
+ // Seal implements part of the Tao interface.
+ func (t *TaoRPC) Seal(data []byte, policy string) (sealed []byte, err error) {
+ 	r := &TaoRPCRequest{Data: data, Policy: proto.String(policy)}
+-	sealed, _, err = t.call("Tao.Seal", r, wantData)
++	sealed, _, err = t.call(t.serviceName + ".Seal", r, wantData)
+ 	return
+ }
+ 
+ // Unseal implements part of the Tao interface.
+ func (t *TaoRPC) Unseal(sealed []byte) (data []byte, policy string, err error) {
+ 	r := &TaoRPCRequest{Data: sealed}
+-	data, policy, err = t.call("Tao.Unseal", r, wantData|wantPolicy)
++	data, policy, err = t.call(t.serviceName + ".Unseal", r, wantData|wantPolicy)
+ 	return
+ }

@@ -349,7 +349,7 @@ func main() {
 
 	fmt.Printf("Go Tao Demo\n")
 
-	if ! tao.HostAvailable() {
+	if !tao.HostAvailable() {
 		fmt.Printf("can't continue: No host Tao available")
 		return
 	}

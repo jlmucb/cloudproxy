@@ -93,5 +93,5 @@ func Host() Tao {
 
 // Hosted returns true iff a host Tao is available via the Host function.
 func HostAvailable() bool {
-		return Host() != nil
+	return Host() != nil
 }

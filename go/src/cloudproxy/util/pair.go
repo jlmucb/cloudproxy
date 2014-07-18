@@ -31,7 +31,7 @@ type PairReadWriteCloser struct {
 }
 
 // Close closes the underying streams, both the io.ReadCloser and the
-// io.WriteCloser. 
+// io.WriteCloser.
 func (pair PairReadWriteCloser) Close() error {
 	err1 := pair.ReadCloser.Close()
 	err2 := pair.WriteCloser.Close()

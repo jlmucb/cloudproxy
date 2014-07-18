@@ -1,0 +1,4014 @@
+#* 
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-18T14:19:08-0700
+#* 
+#- This is the latest version of the go_keys.diff code; I've kept the
+#- other version around so I can answer your comments. This version
+#- still doesn't handle the changes to TaoServer; it just makes sure
+#- that code builds and the tests still run. I'd like to check this
+#- version in as it stands with the understanding that the TaoServer
+#- will be fixed as we discussed by phone in a later change: it will
+#- become something like the LinuxHost to handle RPC calls from Go
+#- hosted programs.
+#-
+#- Ported keys to use native crypto for the signer and deleted the dependency on dkeyczar
+#- 
+#- 
+#- Added some basic tests to the new Signer functionality
+#- 
+#- 
+#- Fixed PrincipalName to match the C++ Tao
+#- 
+#- 
+#- Fixed the remaining problems from the code review
+#- 
+#- 
+#- Added Verifier, Crypter, and Deriver, along with tests for each
+#- 
+#- 
+#- Added first Keys New* and Init* functions
+#- 
+#- 
+#- Added support for InitPassword and InitHosted
+#- 
+#- 
+#- Ported SoftTao to use the new Keys object instead of dkeyczar. This completes the removal of the dependency on dkeyczar
+#- 
+#- 
+#- Ported the keys code to merge with the new Tao from kwalsh
+#- 
+#- 
+#- Added licenses statements, ran go fmt, and fixed tao_client to implement the new Tao interfaces
+#- 
+#- 
+#- Fixed the TaoServer to implement all the Tao methods for Go RPC
+#- 
+#- 
+#- Fixing wrt comments from go_keys code review
+#- 
+#- 
+#- Remove getECDSAKey
+#- 
+#- 
+#- Renamed SoftTao to FakeTao and pushed it into *_test
+#- 
+#- 
+#- Fixed TaoServer to work properly with TaoRPC in the test code
+#- 
+#- 
+#- Changed the New/Init style to just New for Keys and for FakeTao
+#- 
+#- 
+#- Added checks for null or empty passwords in PBE
+#- 
+#- 
+diff --git a/diffscussions/reviews/go_keys.diff b/diffscussions/reviews/go_keys.diff
+index ecead97..9978880 100644
+--- a/diffscussions/reviews/go_keys.diff
++++ b/diffscussions/reviews/go_keys.diff
+@@ -21,68 +21,54 @@
+ #- Added first Keys New* and Init* functions
+ #- 
+ #- 
+ #- Added support for InitPassword and InitHosted
+ #- 
+ #- 
+ #- Ported SoftTao to use the new Keys object instead of dkeyczar. This completes the removal of the dependency on dkeyczar
+ #- 
+ #- 
+ #- Ported the keys code to merge with the new Tao from kwalsh
+ #- 
+ #- 
+ #**
+ #** author: Kevin Walsh
+ #** email: kwalsh@holycross.edu
+ #** date: 2014-07-18T09:01:53-0400
+ #**
+ #-- I copied over several of my comments from last round that seem to have been
+ #-- missed. You can tell by the date.
+ #--
+-#***
+-#*** author: Tom Roeder
+-#*** email: tmroeder@google.com
+-#*** date: 2014-07-18T13:56:51-0700
+-#***
+-#--- I'm putting my comments here and my changes in a second review go_keys2.diff
+-#--- 
+ diff --git a/go/src/cloudproxy/tao/keys.go b/go/src/cloudproxy/tao/keys.go
+ new file mode 100644
+ index 0000000..2cd8981
+ --- /dev/null
+ +++ b/go/src/cloudproxy/tao/keys.go
+ @@ -0,0 +1,1340 @@
+ +//  Copyright (c) 2014, Google Inc.  All rights reserved.
+ #*
+ #* author: Kevin Walsh
+ #* email: kwalsh@holycross.edu
+ #* date: 2014-07-18T09:00:27-0400
+ #*
+ #- Are we putting description lines at the top? I'd be glad to delete mine.
+ #-
+-#**
+-#** author: Tom Roeder
+-#** email: tmroeder@google.com
+-#** date: 2014-07-18T13:57:06-0700
+-#**
+-#-- SGTM
+-#-- 
+ +//
+ +// Licensed under the Apache License, Version 2.0 (the "License");
+ +// you may not use this file except in compliance with the License.
+ +// You may obtain a copy of the License at
+ +//
+ +//     http://www.apache.org/licenses/LICENSE-2.0
+ +//
+ +// Unless required by applicable law or agreed to in writing, software
+ +// distributed under the License is distributed on an "AS IS" BASIS,
+ +// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ +// See the License for the specific language governing permissions and
+ +// limitations under the License.
+ +
+ +package tao
+ +
+ +import (
+ +	"crypto/aes"
+ +	"crypto/cipher"
+ +	"crypto/ecdsa"
+ +	"crypto/elliptic"
+@@ -166,49 +152,40 @@ index 0000000..2cd8981
+ +	if err != nil {
+ +		return "", err
+ +	}
+ +
+ +	return "Key(\"" + base64.URLEncoding.EncodeToString(data) + "\")", nil
+ +}
+ #*
+ #* author: Kevin Walsh
+ #* email: kwalsh@holycross.edu
+ #* date: 2014-07-16T14:25:39-0400
+ #*
+ #- Curious: Why isn't the above a member, like this...
+ #- func (s *Signer) MarshalPublicProto() (*CryptoKey, error) { ... }
+ #-
+ #- I could ask the same of many of the single-argument functions here, e.g.
+ #- func (k *ecdsa.PublicKey) marshalProto() (*CryptoKey, error) { ... }
+ #- (where this takes advantage of go's ability to add methods to existing types)
+ #- 
+ #- In C++, those things are non-member functions because I didn't want them in
+ #- the #- header files.
+-#**
+-#** author: Tom Roeder
+-#** email: tmroeder@google.com
+-#** date: 2014-07-18T13:57:12-0700
+-#**
+-#-- I think this is standard Go style. cf. proto.Marshal, proto.Unmarshal and
+-#-- similar, which are member methods in C++ but are just functions with no
+-#-- receivers in Go.
+-#-- 
+ +
+ +// MarshalSigner serializes the signer to DER.
+ +func MarshalSignerDER(s *Signer) ([]byte, error) {
+ +	return x509.MarshalECPrivateKey(s.ec)
+ +}
+ +
+ +// ParseSigner deserializes a Signer from DER.
+ +func ParseSignerDER(signer []byte) (*Signer, error) {
+ +	k := new(Signer)
+ +	var err error
+ +	if k.ec, err = x509.ParseECPrivateKey(signer); err != nil {
+ +		return nil, err
+ +	}
+ +
+ +	return k, nil
+ +}
+ +
+ +// prepareX509Template parses the protobuf containing subject-name details and
+ +// fills out an X.509 template for use in x509.CreateCertificate.
+ +func prepareX509Template(detailsText string) (*x509.Certificate, error) {
+@@ -300,47 +277,40 @@ index 0000000..2cd8981
+ +
+ +// marshalECDSA_SHA_VerifyingKeyV1 encodes a public key as a protobuf message.
+ +func marshalECDSA_SHA_VerifyingKeyV1(k *ecdsa.PublicKey) *ECDSA_SHA_VerifyingKeyV1 {
+ +	return &ECDSA_SHA_VerifyingKeyV1{
+ +		Curve:    NamedEllipticCurve_PRIME256_V1.Enum(),
+ +		EcPublic: elliptic.Marshal(k.Curve, k.X, k.Y),
+ +	}
+ +
+ +}
+ +
+ +func unmarshalECDSA_SHA_VerifyingKeyV1(v *ECDSA_SHA_VerifyingKeyV1) (*ecdsa.PublicKey, error) {
+ +	if *v.Curve != NamedEllipticCurve_PRIME256_V1 {
+ +		return nil, errors.New("Bad Curve")
+ #*
+ #* author: Kevin Walsh
+ #* email: kwalsh@holycross.edu
+ #* date: 2014-07-18T10:19:06-0400
+ #*
+ #- Lowercase errors.
+ #-
+-#**
+-#** author: Tom Roeder
+-#** email: tmroeder@google.com
+-#** date: 2014-07-18T13:58:10-0700
+-#**
+-#-- Fixed in the other review
+-#-- 
+ +	}
+ +
+ +	x, y := elliptic.Unmarshal(elliptic.P256(), v.EcPublic)
+ +	return &ecdsa.PublicKey{elliptic.P256(), x, y}, nil
+ +}
+ +
+ +func marshalPublicKeyProto(k *ecdsa.PublicKey) (*CryptoKey, error) {
+ +	m := marshalECDSA_SHA_VerifyingKeyV1(k)
+ +
+ +	b, err := proto.Marshal(m)
+ +	if err != nil {
+ +		return nil, err
+ +	}
+ +
+ +	ck := &CryptoKey{
+ +		Version:   CryptoVersion_CRYPTO_VERSION_1.Enum(),
+ +		Purpose:   CryptoKey_VERIFYING.Enum(),
+ +		Algorithm: CryptoKey_ECDSA_SHA.Enum(),
+ +		Key:       b,
+ +	}
+@@ -413,47 +383,40 @@ index 0000000..2cd8981
+ +// GetECDSAKey returns the private ECDSA key for this signer.
+ +func (s *Signer) getECDSAKey() *ecdsa.PrivateKey {
+ +	return s.ec
+ +}
+ #*
+ #* author: Kevin Walsh
+ #* email: kwalsh@holycross.edu
+ #* date: 2014-07-16T14:36:55-0400
+ #*
+ #- Is getECDSAKey() used anywhere? I don't see where...
+ #-
+ #**
+ #** author: Kevin Walsh
+ #** email: kwalsh@holycross.edu
+ #** date: 2014-07-18T08:53:01-0400
+ #**
+ #-- To clarify: Let's delete unused and unneded functions. Go doesn't seem to
+ #-- have a getter/setter style like C++ does, and these getter functions are not
+ #-- exported anyway.
+ #--
+-#***
+-#*** author: Tom Roeder
+-#*** email: tmroeder@google.com
+-#*** date: 2014-07-18T13:58:29-0700
+-#***
+-#--- Fixed in the other review
+-#--- 
+ +
+ +// This is copied from the Go crypto/x509 source: it just uses a simple
+ +// two-element structure to marshal a DSA signature as ASN.1 in an X.509
+ +// certificate.
+ +type ecdsaSignature struct {
+ +	R, S *big.Int
+ +}
+ +
+ +// Sign computes an ECDSA sigature over the contextualized data, using the
+ +// private key of the signer.
+ +func (s *Signer) Sign(data []byte, context string) ([]byte, error) {
+ +	ch, err := s.CreateHeader()
+ +	if err != nil {
+ +		return nil, err
+ +	}
+ +
+ +	// TODO(tmroeder): for compatibility with the C++ version, we should
+ +	// compute ECDSA signatures over hashes truncated to fit in the ECDSA
+ +	// signature.
+ +	b, err := contextualizedSHA256(ch, data, context, sha256.Size)
+@@ -571,47 +534,40 @@ index 0000000..2cd8981
+ +	return &Verifier{ec}, nil
+ +}
+ +
+ +// FromX509 creates a Verifier from an X509 certificate.
+ +func FromX509(cert []byte) (*Verifier, error) {
+ +	c, err := x509.ParseCertificate(cert)
+ +	if err != nil {
+ +		return nil, err
+ +	}
+ +
+ +	return &Verifier{c.PublicKey.(*ecdsa.PublicKey)}, nil
+ +}
+ #*
+ #* author: Kevin Walsh
+ #* email: kwalsh@holycross.edu
+ #* date: 2014-07-16T14:41:05-0400
+ #*
+ #- Does this need error checking? What if the x509 has an rsa key... will it
+ #- panic?
+ #-
+-#**
+-#** author: Tom Roeder
+-#** email: tmroeder@google.com
+-#** date: 2014-07-18T13:58:48-0700
+-#**
+-#-- Added the check in the other review
+-#-- 
+ +
+ +// UnmarshalVerifierProto decodes a verifying key from a CryptoKey protobuf
+ +// message.
+ +func UnmarshalVerifierProto(ck *CryptoKey) (*Verifier, error) {
+ +	if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
+ +		return nil, errors.New("Bad version")
+ +	}
+ +
+ +	if *ck.Purpose != CryptoKey_VERIFYING {
+ +		return nil, errors.New("Bad purpose")
+ +	}
+ +
+ +	if *ck.Algorithm != CryptoKey_ECDSA_SHA {
+ +		return nil, errors.New("Bad algorithm")
+ +	}
+ +
+ +	k := new(ECDSA_SHA_VerifyingKeyV1)
+ +	if err := proto.Unmarshal(ck.Key, k); err != nil {
+ +		return nil, err
+ +	}
+@@ -868,48 +824,40 @@ index 0000000..2cd8981
+ #* email: kwalsh@holycross.edu
+ #* date: 2014-07-16T14:47:06-0400
+ #*
+ #- Some potential issues with Derive() above. 
+ #- (1) go hkdf.New uses 2-stage extract-then-expand. C++ uses only expand since
+ #- input secret is already strong random (not a passwd) and of correct size.
+ #- (2) The C++ API does not include salt as a parameter. Salt is used only for
+ #- the extract stage, so it wasn't needed. Where will go salt come from?
+ #- (3) go hkdf uses sweet array packing code to create the buffers that are
+ #- signed when generating bytes. My C++ used protobuf for the array packing.
+ #- Here, the go code is more conformant with the RFCs.
+ #-
+ #- All this means is that go code will generate different secrets than C++ code.
+ #- However, I think in this case it is probably fine. The one place this is
+ #- being used right now is for children to call their host tao to get
+ #- deterministic but random bytes. In that case, the host tao will never change
+ #- from C++ to go, and no two host Taos will ever have the same key material.
+ #- OTOH, if two communicating apps (one in C++, one in go) establish a shared
+ #- secret, they might want to be able to use the Deriver interface
+ #- to generate secrets.
+-#**
+-#** author: Tom Roeder
+-#** email: tmroeder@google.com
+-#** date: 2014-07-18T13:58:54-0700
+-#**
+-#-- As discussed by phone, you're going to change the C++ version to match the
+-#-- Go version, IIUC.
+-#-- 
+ +
+ +// marshalHMAC_SHA_DerivingKeyV1 encodes a deriving key as a protobuf message.
+ +func marshalHMAC_SHA_DerivingKeyV1(d *Deriver) *HMAC_SHA_DerivingKeyV1 {
+ +	return &HMAC_SHA_DerivingKeyV1{
+ +		Mode:        CryptoDerivingMode_DERIVING_MODE_HKDF.Enum(),
+ +		HmacPrivate: d.secret,
+ +	}
+ +}
+ +
+ +// MarshalDeriverProto encodes a Deriver as a CryptoKey protobuf message.
+ +func MarshalDeriverProto(d *Deriver) (*CryptoKey, error) {
+ +	k := marshalHMAC_SHA_DerivingKeyV1(d)
+ +
+ +	// Note that we don't need to call zeroBytes on k.HmacPrivate since
+ +	// it's just a slice reference to the underlying keys.
+ +	m, err := proto.Marshal(k)
+ +	if err != nil {
+ +		return nil, err
+ +	}
+ +
+@@ -961,106 +909,82 @@ index 0000000..2cd8981
+ #*
+ #- "... and provides an interface to perform actions with these keys."
+ #- Well, not really, at least not in C++. It is just a container.
+ #- If you make the Signer, Crypter, Verifier, and Deriver members of keys be
+ #- anonymous, you get free pass-through in go, though, whic might be nice.
+ #-
+ #**
+ #** author: Kevin Walsh
+ #** email: kwalsh@holycross.edu
+ #** date: 2014-07-18T08:56:09-0400
+ #**
+ #-- To clarify a little. Keys is a container in your code. It doesn't provide an
+ #-- interface to perform actions with the keys it contains. It just provides
+ #-- access to the keys it contains. If you add a bunch of methods like the old
+ #-- C++ code did, Keys.Sign(), Keys.Verify(), Keys.Encrypt(), etc., then your
+ #-- comment would be true. I don't like those methods, though, because they fail
+ #-- when the needed key isn't in the container. This means each one is
+ #-- a function that does simple error checking then calls the corresponding key
+ #-- function. But the caller still needs to do error checking, so it doesn't
+ #-- save the caller any code.
+-#**
+-#** author: Tom Roeder
+-#** email: tmroeder@google.com
+-#** date: 2014-07-18T13:59:17-0700
+-#**
+-#-- As discussed on the phone, we're going to leave this as is, and it doesn't
+-#-- look like I can remove the names here, since the members of the struct might
+-#-- be nil.
+-#-- 
+ +type Keys struct {
+ +	dir      string
+ +	policy   string
+ +	keyTypes KeyType
+ +
+ +	SigningKey   *Signer
+ +	CryptingKey  *Crypter
+ +	VerifyingKey *Verifier
+ +	DerivingKey  *Deriver
+ +	Delegation   *Attestation
+ +	Cert         *x509.Certificate
+ +}
+ #*
+ #* author: Kevin Walsh
+ #* email: kwalsh@holycross.edu
+ #* date: 2014-07-18T09:47:05-0400
+ #*
+ #- Glad that Signer et al are exported now. If we are ever going to support
+ #- multiple key types (are we?) the logical thing to do would be to make Signer
+ #- an interface (so no need for pointers here) and have an *ECDSASignerKey
+ #- receiver type that implements the Signer interface. Same with the other key
+ #- types. 
+ #-
+-#**
+-#** author: Tom Roeder
+-#** email: tmroeder@google.com
+-#** date: 2014-07-18T13:59:48-0700
+-#**
+-#-- I'm in favor of only using ECDSA, as we discussed, so I'm not going to
+-#-- change this here.
+-#-- 
+ +
+ +// TaoSecretPath returns the path to a Tao-sealed secret, if any. This secret
+ +// is used to create a PBEEncrypter to encrypt generated keys.
+ +func (k *Keys) TaoSecretPath() string {
+ +	if k.dir == "" {
+ +		return ""
+ +	} else {
+ +		return path.Join(k.dir, "secret")
+ +	}
+ +}
+ #*
+ #* author: Kevin Walsh
+ #* email: kwalsh@holycross.edu
+ #* date: 2014-07-18T09:50:30-0400
+ #*
+ #- Delete TaoSecretPath. It isn't used. Tao sealed secrets with PBE encryption
+ #- is no longer used. Instead, when Tao-sealing is called for, I just Tao-seal
+ #- the whole key bundle and don't use PBE at all.
+ #-
+-#**
+-#** author: Tom Roeder
+-#** email: tmroeder@google.com
+-#** date: 2014-07-18T14:00:13-0700
+-#**
+-#-- Done in the other review.
+-#-- 
+ +
+ +// X509Path returns the path to the verifier key, stored as an X.509
+ +// certificate.
+ +func (k *Keys) X509Path() string {
+ +	if k.dir == "" {
+ +		return ""
+ +	} else {
+ +		return path.Join(k.dir, "cert")
+ +	}
+ +}
+ +
+ +// PBEKeysetPath returns the path for stored keys.
+ +func (k *Keys) PBEKeysetPath() string {
+ +	if k.dir == "" {
+ +		return ""
+ +	} else {
+ +		return path.Join(k.dir, "keys")
+ +	}
+ +}
+ +
+@@ -1105,95 +1029,80 @@ index 0000000..2cd8981
+ +	return &Keys{
+ +		keyTypes: keyTypes,
+ +	}
+ +}
+ #*
+ #* author: Kevin Walsh
+ #* email: kwalsh@holycross.edu
+ #* date: 2014-07-18T09:58:41-0400
+ #*
+ #- I don't really like the "Init methods must be called" style here. Since go
+ #- has multiple returns and no constructors, all of the C++ reasons for this
+ #- style are moot. Instead, there should be:
+ #-   NewTemporaryKeys(keyTypes KeyType) (*Keys, error)
+ #-   NewTemporaryHostedKeys(keyTypes KeyType, t Tao) (*Keys, error)
+ #-   NewOnDiskPasswordKeys(keyTypes KeyType, password string) (*Keys, error)
+ #-   NewOnDiskHostedKeys(keyTypes KeyType, t Tao) (*Keys, error)
+ #- Or some variation on those names and types. Maybe change "Password" to "PBE"
+ #- and "Hosted" to "TaoSealed" or something. I like "OnDisk", we should do that
+ #- for C++ too.
+ #-
+-#**
+-#** author: Tom Roeder
+-#** email: tmroeder@google.com
+-#** date: 2014-07-18T14:00:23-0700
+-#**
+-#-- Changed in the other review. Now there are just New methods that do all the
+-#-- work.
+-#-- 
+ +
+ +// NewOnDiskKeys creates a new Keys structure with information about the types
+ +// of keys to create and where to store them on disk. One of the Init methods
+ +// must be called before the keys are used.
+ +func NewOnDiskKeys(keyTypes KeyType, path string) *Keys {
+ +	return &Keys{
+ +		dir:      path,
+ +		keyTypes: keyTypes,
+ +	}
+ +}
+ +
+ +// InitTemporary creates keys for a key set that isn't stored on disk. This
+ +// method is used by the unit tests, mostly.
+ +func (k *Keys) InitTemporary() error {
+ +	if k.keyTypes == 0 || (k.keyTypes & ^Signing & ^Crypting & ^Deriving != 0) {
+ +		return errors.New("Bad key type")
+ +	}
+ +
+ +	var err error
+ +	if k.keyTypes&Signing == Signing {
+ +		k.SigningKey, err = GenerateSigner()
+ +		if err != nil {
+ +			return err
+ +		}
+ +
+ +		k.VerifyingKey = k.SigningKey.GetVerifier()
+ +	}
+ +
+ +	if k.keyTypes&Crypting == Crypting {
+ +		k.CryptingKey, err = GenerateCrypter()
+ +		if err != nil {
+ +			return err
+ #*
+ #* author: Kevin Walsh
+ #* email: kwalsh@holycross.edu
+ #* date: 2014-07-18T10:03:33-0400
+ #*
+ #- This error will leave Keys object in a partially-initialized state. All the
+ #- more reason to merge the "New" and "Init" functions in go.
+ #-
+-#**
+-#** author: Tom Roeder
+-#** email: tmroeder@google.com
+-#** date: 2014-07-18T14:00:39-0700
+-#**
+-#-- Fixed in the other review by moving from New/Init to just New.
+-#-- 
+ +		}
+ +	}
+ +
+ +	if k.keyTypes&Deriving == Deriving {
+ +		k.DerivingKey, err = GenerateDeriver()
+ +		if err != nil {
+ +			return err
+ +		}
+ +	}
+ +
+ +	return nil
+ +}
+ +
+ +// InitTemporaryHosted initializes a set of temporary keys under a host Tao,
+ +// using the Tao to generate a delegation for the signing key
+ +func (k *Keys) InitTemporaryHosted(t Tao) error {
+ +	if err := k.InitTemporary(); err != nil {
+ +		return err
+ +	}
+ +
+@@ -1214,50 +1123,40 @@ index 0000000..2cd8981
+ +
+ +	return nil
+ +}
+ +
+ +// PBEEncrypt encrypts plaintext using a password to generate a key. Note that
+ +// since this is for private program data, we don't try for compatibility with
+ +// the C++ Tao version of the code.
+ +func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
+ #*
+ #* author: Kevin Walsh
+ #* email: kwalsh@holycross.edu
+ #* date: 2014-07-18T10:07:23-0400
+ #*
+ #- Why password []byte instead of password string? We can do conversion inside
+ #- this function, but caller would more likely have a string (e.g. from user
+ #- input, cmdline, envvar, etc., not a slice. 
+ #-
+ #- Also: I'd check for empty/nil password to keep us honest. (I used to see code
+ #- using blank passwords.)
+ #-
+-#**
+-#** author: Tom Roeder
+-#** email: tmroeder@google.com
+-#** date: 2014-07-18T14:00:55-0700
+-#**
+-#-- Fixed in the other review.
+-#-- 
+-#-- As for the password type, the Go style is to make passwords []byte rather
+-#-- than string. E.g., see x509.EncryptPEMBlock.
+-#-- 
+ +	pbed := &PBEData{
+ +		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
+ +		Cipher:  proto.String("aes128-ctr"),
+ +		Hmac:    proto.String("sha256"),
+ +		// The IV is required, so we include it, but this algorithm doesn't use it.
+ +		Iv:         make([]byte, aes.BlockSize),
+ +		Iterations: proto.Int32(4096),
+ +		Salt:       make([]byte, aes.BlockSize),
+ +	}
+ +
+ +	// We use the first half of the salt for the AES key and the second
+ +	// half for the HMAC key, since the standard recommends at least 8
+ +	// bytes of salt.
+ +	if _, err := rand.Read(pbed.Salt); err != nil {
+ +		return nil, err
+ +	}
+ +
+ +	// 128-bit AES key.
+ +	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
+ +	defer zeroBytes(aesKey)
+@@ -1266,48 +1165,40 @@ index 0000000..2cd8981
+ +	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
+ +	defer zeroBytes(hmacKey)
+ +	c := &Crypter{aesKey, hmacKey}
+ +
+ +	// Note that we're abusing the PBEData format here, since the IV and
+ +	// the MAC are actually contained in the ciphertext from Encrypt().
+ +	var err error
+ +	if pbed.Ciphertext, err = c.Encrypt(plaintext); err != nil {
+ +		return nil, err
+ +	}
+ #*
+ #* author: Kevin Walsh
+ #* email: kwalsh@holycross.edu
+ #* date: 2014-07-18T10:13:36-0400
+ #*
+ #- Your verion here (using pbkdf2 then calling Crypter) is probably more
+ #- sensible than the C++ version. Perhaps I should change the C++ version to
+ #- match, since it would eliminate some code in C++ and eliminate the protobuf
+ #- fields that you don't use here.
+ #-
+-#**
+-#** author: Tom Roeder
+-#** email: tmroeder@google.com
+-#** date: 2014-07-18T14:03:37-0700
+-#**
+-#-- I think that would be good. I felt a little hacky writing it this way, but I
+-#-- was too lazy to port the C++ version :)
+-#-- 
+ +
+ +	return proto.Marshal(pbed)
+ +}
+ +
+ +// PBEDecrypt decrypts ciphertext using a password to generate a key. Note that
+ +// since this is for private program data, we don't try for compatibility with
+ +// the C++ Tao version of the code.
+ +func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
+ +	var pbed PBEData
+ +	if err := proto.Unmarshal(ciphertext, &pbed); err != nil {
+ +		return nil, err
+ +	}
+ +
+ +	// Recover the keys from the password and the PBE header.
+ +	if *pbed.Version != CryptoVersion_CRYPTO_VERSION_1 {
+ +		return nil, errors.New("Bad version")
+ +	}
+ +
+ +	if *pbed.Cipher != "aes128-ctr" {
+ +		return nil, errors.New("Bad cipher")
+@@ -1347,51 +1238,40 @@ index 0000000..2cd8981
+ +
+ +		cks = append(cks, ck)
+ +	}
+ +
+ +	if k.keyTypes&Crypting == Crypting {
+ +		ck, err := MarshalCrypterProto(k.CryptingKey)
+ +		if err != nil {
+ +			return nil, err
+ +		}
+ +
+ +		cks = append(cks, ck)
+ #*
+ #* author: Kevin Walsh
+ #* email: kwalsh@holycross.edu
+ #* date: 2014-07-18T10:16:20-0400
+ #*
+ #- If we are being paranoid about zeroBytes: the possible reallocation within
+ #- append() lets a marshalled private key escape here. If we aren't being
+ #- paranoid, then LGTM.
+ #-
+-#**
+-#** author: Tom Roeder
+-#** email: tmroeder@google.com
+-#** date: 2014-07-18T14:04:28-0700
+-#**
+-#-- I don't think so. The reallocation is a reallocation of a []*CryptoKey, and
+-#-- the pointers are copied over. So this would just leak a pointer to a
+-#-- CryptoKey, right? And that pointer would still be preserved and used and the
+-#-- allocated key would later be cleared. Is there another allocation you're
+-#-- thinking of?
+-#-- 
+ +	}
+ +
+ +	if k.keyTypes&Deriving == Deriving {
+ +		ck, err := MarshalDeriverProto(k.DerivingKey)
+ +		if err != nil {
+ +			return nil, err
+ +		}
+ +
+ +		cks = append(cks, ck)
+ +	}
+ +
+ +	ckset := &CryptoKeyset{
+ +		Keys: cks,
+ +	}
+ +
+ +	return ckset, nil
+ +}
+ +
+ +// UnmarshalKeyset decodes a CryptoKeyset into a Keys structure.
+ +func UnmarshalKeyset(cks *CryptoKeyset) (*Keys, error) {
+@@ -1421,47 +1301,40 @@ index 0000000..2cd8981
+ +
+ +	return k, nil
+ +}
+ +
+ +// InitWithPassword either loads a set of PBE-protected keys from disk or
+ +// creates a set of keys and stores them PBE encrypted to disk.
+ +func (k *Keys) InitWithPassword(password []byte) error {
+ +	if k.keyTypes == 0 || (k.keyTypes & ^Signing & ^Crypting & ^Deriving != 0) {
+ +		return errors.New("Bad key type")
+ +	}
+ +
+ +	if k.dir == "" {
+ +		return errors.New("Bad init call: no path for keys")
+ #*
+ #* author: Kevin Walsh
+ #* email: kwalsh@holycross.edu
+ #* date: 2014-07-18T10:18:55-0400
+ #*
+ #- Lowercase errors here and elsewhere.
+ #-
+-#**
+-#** author: Tom Roeder
+-#** email: tmroeder@google.com
+-#** date: 2014-07-18T14:06:27-0700
+-#**
+-#-- Thanks; I think I caught all of them now.
+-#-- 
+ +	}
+ +
+ +	if len(password) == 0 {
+ +		// This means there's no secret information: just load a public
+ +		// verifying key.
+ +		if k.keyTypes & ^Signing != 0 {
+ +			return errors.New("Without a password, only a verifying key can be loaded")
+ +		}
+ +
+ +		f, err := os.Open(k.X509Path())
+ +		if err != nil {
+ +			return err
+ +		}
+ +
+ +		xb, err := ioutil.ReadAll(f)
+ +		if err != nil {
+ +			return err
+ +		}
+ +
+ +		if k.VerifyingKey, err = FromX509(xb); err != nil {
+@@ -1602,47 +1475,40 @@ index 0000000..2cd8981
+ +		data, _, err := t.Unseal(ks)
+ +		if err != nil {
+ +			return err
+ +		}
+ +		defer zeroBytes(data)
+ +		// TODO(tmroeder): what should we do with the policy returned by Unseal?
+ #*
+ #* author: Kevin Walsh
+ #* email: kwalsh@holycross.edu
+ #* date: 2014-07-18T10:20:59-0400
+ #*
+ #- Seal/Unseal policies are used for provenance checking. So the policy returned
+ #- by Unseal should be compared against the policy passed in by InitHosted. If
+ #- they are different, fail. A mismatch means someone has substituted a keyset
+ #- of unexpected provenance, e.g. caller sealed keyset with only-i-can-unseal
+ #- policy, but attacker has overwritten that keyset with a bogus keyset sealed
+ #- under the anyone-can-unseal policy. (Note: If attacker had used
+ #- only-i-can-unseal policy for the bogus keyset, the caller's Unseal() would
+ #- fail.)
+ #-
+-#**
+-#** author: Tom Roeder
+-#** email: tmroeder@google.com
+-#** date: 2014-07-18T14:06:35-0700
+-#**
+-#-- Fixed in the other review.
+-#-- 
+ +
+ +		var cks CryptoKeyset
+ +		if err = proto.Unmarshal(data, &cks); err != nil {
+ +			return err
+ +		}
+ +
+ +		// TODO(tmroeder): defer zeroKeyset(&cks)
+ +
+ +		ktemp, err := UnmarshalKeyset(&cks)
+ +		if err != nil {
+ +			return err
+ +		}
+ +
+ +		k.SigningKey = ktemp.SigningKey
+ +		k.VerifyingKey = ktemp.VerifyingKey
+ +		k.CryptingKey = ktemp.CryptingKey
+ +		k.DerivingKey = ktemp.DerivingKey
+ +
+ +		// Read the delegation.
+ +		if k.SigningKey != nil {
+@@ -2842,49 +2708,40 @@ index 0000000..383b4e0
+ +}
+ #*
+ #* author: Kevin Walsh
+ #* email: kwalsh@holycross.edu
+ #* date: 2014-07-18T10:31:14-0400
+ #*
+ #- I propose we delete soft-tao entirely, in both go and C++. I now think it was
+ #- a design mistake to invent it. Here's why:
+ #- (1) It isn't used in C++ anywhere except for a single unit test. 
+ #- (2) The LinuxHost code can run in "root" or "hosted" mode. There are only few
+ #- difference between the two modes: hosted mode has a set of keys sealed by the
+ #- host, and in a few places (e.g. GetRandomBytes) it relays calls down to the
+ #- host;l root mode has a set of keys protected by PBE, and it has to implement
+ #- a few calls directly (e.g. GetRandomBytes). In C++ I factored these
+ #- differences into two classes, TaoRootHost and TaoStackedHost, both of which
+ #- implement a TaoHost interface.
+ #- (3) The semantics of SoftTao are unclear and there is no good way to
+ #- implement reasonable semantics. ExtendTaoName, in particular, is completely
+ #- bogus here, since (in the absence of strong type safety) the caller can
+ #- revert their name. Siimilarly the caller can steal the softtao's keys, etc.
+-#**
+-#** author: Tom Roeder
+-#** email: tmroeder@google.com
+-#** date: 2014-07-18T14:06:42-0700
+-#**
+-#-- As we discussed, I've moved SoftTao to FakeTao and put it and its unit tests
+-#-- in fake_tao_test.go, so it's no longer part of the library, just the test
+-#-- code.
+-#-- 
+ +
+ +// Init initializes the SoftTao with a crypter and a signer.
+ +func (s *SoftTao) Init(name, path string, password []byte) error {
+ +	s.name = name
+ +
+ +	if path == "" {
+ +		s.keys = NewTemporaryKeys(Signing|Crypting|Deriving)
+ +		if err := s.keys.InitTemporary(); err != nil {
+ +			return err
+ +		}
+ +	} else {
+ +		s.keys = NewOnDiskKeys(Signing|Crypting|Deriving, path)
+ +		if err := s.keys.InitWithPassword(password); err != nil {
+ +			return err
+ +		}
+ +	}
+ +
+ +	return nil
+ +}
+ +
+diff --git a/diffscussions/reviews/tao_server_client.diff b/diffscussions/reviews/tao_server_client.diff
+index 52b01f7..711975e 100644
+--- a/diffscussions/reviews/tao_server_client.diff
++++ b/diffscussions/reviews/tao_server_client.diff
+@@ -1,52 +1,40 @@
+ #* 
+ #* author: Tom Roeder
+ #* email: tmroeder@google.com
+ #* date: 2014-07-17T21:58:22-0700
+ #* 
+ #- Added licenses statements, ran go fmt, and fixed tao_client to implement the new Tao interfaces
+ #- 
+ #- 
+ #- Fixed the TaoServer to implement all the Tao methods for Go RPC
+ #- 
+ #- 
+ #**
+ #** author: Kevin Walsh
+ #** email: kwalsh@holycross.edu
+ #** date: 2014-07-18T11:00:24-0400
+ #**
+ #-- I messed up. I didn't realize most of tao_client.go and tao_server.go were
+ #-- in go_keys.diff. So I'm copying them here to review them. Sorry for the
+ #-- mess.
+ #--
+-#*
+-#* author: Tom Roeder
+-#* email: tmroeder@google.com
+-#* date: 2014-07-18T14:16:27-0700
+-#*
+-#- We had a long conversation over the phone this morning, and we
+-#- decided that I would remove tao_client and change tao_server to
+-#- become something like the LinuxHost in the C++ version. I'm closing
+-#- this review and will send another review when that's done. My next
+-#- go_keys2.diff removes tao_client, but I haven't yet rewritten
+-#- tao_server, other than to fix it to keep the tests working.
+-#- 
+ diff --git a/go/src/cloudproxy/tao/tao_client.go b/go/src/cloudproxy/tao/tao_client.go
+ new file mode 100644
+ index 0000000..4835969
+ --- /dev/null
+ +++ b/go/src/cloudproxy/tao/tao_client.go
+ @@ -0,0 +1,102 @@
+ +package tao
+ #*
+ #* author: Kevin Walsh
+ #* email: kwalsh@holycross.edu
+ #* date: 2014-07-18T11:05:43-0400
+ #*
+ #- I don't understand this file. I think it does exactly what
+ #- cloudproxy/tao/taorpc.go does. Actually, that file was created during my most
+ #- recent flurry of commits by merging some of my old code with your older
+ #- tao_client.go file. So I think tao_client.go can be deleted. Right now,
+ #- taorpc.go has been tested against the C++ host Tao using nprotobuf-based RPC.
+ #- I haven't tried taorpc.go using gob-based Rpc (and I don't know if we want
+ #- that), but I think it will just work.
+ #-
+diff --git a/diffscussions/users/kwalsh/go_keys.diff b/diffscussions/users/kwalsh/go_keys.diff
+deleted file mode 120000
+index 21ca4b6..0000000
+--- a/diffscussions/users/kwalsh/go_keys.diff
++++ /dev/null
+@@ -1 +0,0 @@
+-../../reviews/go_keys.diff
+\ No newline at end of file
+diff --git a/diffscussions/users/tmroeder/go_keys.diff b/diffscussions/users/tmroeder/go_keys.diff
+new file mode 120000
+index 0000000..21ca4b6
+--- /dev/null
++++ b/diffscussions/users/tmroeder/go_keys.diff
+@@ -0,0 +1 @@
++../../reviews/go_keys.diff
+\ No newline at end of file
+diff --git a/diffscussions/users/tmroeder/protorpc2.diff b/diffscussions/users/tmroeder/protorpc2.diff
+new file mode 120000
+index 0000000..a8445a3
+--- /dev/null
++++ b/diffscussions/users/tmroeder/protorpc2.diff
+@@ -0,0 +1 @@
++../../reviews/protorpc2.diff
+\ No newline at end of file
+diff --git a/diffscussions/users/tmroeder/tao_server_client.diff b/diffscussions/users/tmroeder/tao_server_client.diff
+new file mode 120000
+index 0000000..440e80e
+--- /dev/null
++++ b/diffscussions/users/tmroeder/tao_server_client.diff
+@@ -0,0 +1 @@
++../../reviews/tao_server_client.diff
+\ No newline at end of file
+diff --git a/go/src/cloudproxy/tao/fake_tao_test.go b/go/src/cloudproxy/tao/fake_tao_test.go
+new file mode 100644
+index 0000000..6f291e2
+--- /dev/null
++++ b/go/src/cloudproxy/tao/fake_tao_test.go
+@@ -0,0 +1,264 @@
++//  Copyright (c) 2014, Google Inc.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package tao
++
++import (
++	"crypto/rand"
++	"errors"
++	"io"
++	mrand "math/rand"
++	"testing"
++	"time"
++
++	"code.google.com/p/goprotobuf/proto"
++)
++
++// A FakeTao is an implementation of the Tao that isn't backed by any hardware
++// mechanisms. It's used for testing components that rely on the Tao.
++type FakeTao struct {
++	keys          *Keys
++	name          string
++	nameExtension string
++}
++
++// Init initializes the FakeTao with a crypter and a signer.
++func NewFakeTao(name, path string, password []byte) (Tao, error) {
++	f := &FakeTao{
++		name: name,
++	}
++
++	var err error
++	if path == "" {
++		f.keys, err = NewTemporaryKeys(Signing | Crypting | Deriving)
++	} else {
++		f.keys, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, path)
++	}
++
++	if err != nil {
++		return nil, err
++	}
++
++	return f, nil
++}
++
++// GetTaoName returns the Tao principal name assigned to the caller.
++func (f *FakeTao) GetTaoName() (string, error) {
++	return f.name + f.nameExtension, nil
++}
++
++// ExtendTaoName irreversibly extends the Tao principal name of the caller.
++func (f *FakeTao) ExtendTaoName(subprin string) error {
++	if subprin == "" {
++		return errors.New("invalid subprincipal name")
++	}
++
++	f.nameExtension += "::" + subprin
++	return nil
++}
++
++// GetRandomBytes fills the slice with random bytes.
++func (f *FakeTao) GetRandomBytes(n int) ([]byte, error) {
++	b := make([]byte, n)
++	if _, err := rand.Read(b); err != nil {
++		return nil, err
++	}
++
++	return b, nil
++}
++
++// Read implements io.Reader to read random bytes from the Tao.
++func (f *FakeTao) Read(p []byte) (int, error) {
++	bytes, err := f.GetRandomBytes(len(p))
++	if err != nil {
++		return 0, err
++	}
++
++	copy(p, bytes)
++	return len(p), nil
++}
++
++// Rand returns an io.Reader for the FakeTao's source of randomness.
++func (f *FakeTao) Rand() io.Reader {
++	return f
++}
++
++// GetShareSecret returns a slice of n secret bytes.
++func (f *FakeTao) GetSharedSecret(n int, policy string) ([]byte, error) {
++	if policy != SharedSecretPolicyDefault {
++		return nil, errors.New("FakeTao policies not yet implemented")
++	}
++
++	// TODO(tmroeder): for now, we're using a fixed salt and counting on
++	// the strength of HKDF with a strong key.
++	salt := make([]byte, 8)
++	material := make([]byte, n)
++	if err := f.keys.DerivingKey.Derive(salt, []byte("derive shared secret"), material); err != nil {
++		return nil, err
++	}
++
++	return material, nil
++}
++
++// Seal encrypts the data in a way that can only be opened by the Tao for the
++// program that sealed it.  In the case of the FakeTao, this policy is
++// implicit.
++func (f *FakeTao) Seal(data []byte, policy string) ([]byte, error) {
++	// The FakeTao insists on the trivial policy, since it just encrypts the bytes directly
++	if policy != SealPolicyDefault {
++		return nil, errors.New("The FakeTao requires SealPolicyDefault")
++	}
++
++	return f.keys.CryptingKey.Encrypt(data)
++}
++
++// Unseal decrypts data that has been sealed by the Seal operation, but only if
++// the policy specified during the Seal operation is satisfied.
++func (f *FakeTao) Unseal(sealed []byte) (data []byte, policy string, err error) {
++	data, err = f.keys.CryptingKey.Decrypt(sealed)
++	policy = SealPolicyDefault
++	return data, policy, err
++}
++
++// Attest requests that the Tao host sign a Statement on behalf of the caller.
++func (f *FakeTao) Attest(stmt *Statement) (*Attestation, error) {
++	st := new(Statement)
++	proto.Merge(st, stmt)
++
++	if st.Issuer == nil {
++		st.Issuer = proto.String(f.name)
++	} else if st.GetIssuer() != f.name {
++		return nil, errors.New("Invalid issuer in statement")
++	}
++
++	if st.Time == nil {
++		st.Time = proto.Int64(time.Now().UnixNano())
++	}
++
++	if st.Expiration == nil {
++		st.Expiration = proto.Int64(time.Now().Add(365 * 24 * time.Hour).UnixNano())
++	}
++
++	ser, err := proto.Marshal(st)
++	if err != nil {
++		return nil, err
++	}
++
++	sig, err := f.keys.SigningKey.Sign(ser, AttestationSigningContext)
++	if err != nil {
++		return nil, err
++	}
++
++	a := &Attestation{
++		SerializedStatement: ser,
++		Signature:           sig,
++		Signer:              proto.String(f.name),
++	}
++
++	if f.keys.Delegation != nil {
++		sd, err := proto.Marshal(f.keys.Delegation)
++		if err != nil {
++			return nil, err
++		}
++
++		a.SerializedDelegation = sd
++	}
++
++	return a, nil
++}
++
++func TestInMemoryInit(t *testing.T) {
++	_, err := NewFakeTao("test", "", nil)
++	if err != nil {
++		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
++	}
++}
++
++func TestFakeTaoRandom(t *testing.T) {
++	ft, err := NewFakeTao("test", "", nil)
++	if err != nil {
++		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
++	}
++
++	if _, err := ft.GetRandomBytes(10); err != nil {
++		t.Fatal("Couldn't get 10 random bytes:", err)
++	}
++}
++
++func TestFakeTaoSeal(t *testing.T) {
++	ft, err := NewFakeTao("test", "", nil)
++	if err != nil {
++		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
++	}
++
++	r := mrand.New(mrand.NewSource(time.Now().UnixNano()))
++	b := make([]byte, 33)
++	for i := range b {
++		b[i] = byte(r.Intn(256))
++	}
++
++	_, err = ft.Seal(b, SealPolicyDefault)
++	if err != nil {
++		t.Fatal("Couldn't seal data in the FakeTao under the default policy:", err)
++	}
++}
++
++func TestFakeTaoUnseal(t *testing.T) {
++	ft, err := NewFakeTao("test", "", nil)
++	if err != nil {
++		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
++	}
++
++	r := mrand.New(mrand.NewSource(time.Now().UnixNano()))
++	b := make([]byte, 33)
++	for i := range b {
++		b[i] = byte(r.Intn(256))
++	}
++
++	s, err := ft.Seal(b, SealPolicyDefault)
++	if err != nil {
++		t.Fatal("Couldn't seal data in the FakeTao under the default policyL", err)
++	}
++
++	u, p, err := ft.Unseal(s)
++	if string(p) != SealPolicyDefault {
++		t.Fatal("Invalid policy returned by Unseal")
++	}
++
++	if len(u) != len(b) {
++		t.Fatal("Invalid unsealed length")
++	}
++
++	for i, v := range u {
++		if v != b[i] {
++			t.Fatalf("Incorrect byte at position %d", i)
++		}
++	}
++}
++
++func TestFakeTaoAttest(t *testing.T) {
++	ft, err := NewFakeTao("test", "", nil)
++	if err != nil {
++		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
++	}
++
++	stmt := &Statement{
++		Delegate: proto.String("Test Principal"),
++	}
++
++	_, err = ft.Attest(stmt)
++	if err != nil {
++		t.Fatal("Couldn't attest to a statement in the FakeTao:", err)
++	}
++}
+diff --git a/go/src/cloudproxy/tao/keys.go b/go/src/cloudproxy/tao/keys.go
+new file mode 100644
+index 0000000..c4aaa08
+--- /dev/null
++++ b/go/src/cloudproxy/tao/keys.go
+@@ -0,0 +1,1342 @@
++//  Copyright (c) 2014, Google Inc.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package tao
++
++import (
++	"crypto/aes"
++	"crypto/cipher"
++	"crypto/ecdsa"
++	"crypto/elliptic"
++	"crypto/hmac"
++	"crypto/rand"
++	"crypto/sha1"
++	"crypto/sha256"
++	"crypto/x509"
++	"crypto/x509/pkix"
++	"encoding/asn1"
++	"encoding/base64"
++	"encoding/pem"
++	"errors"
++	"io/ioutil"
++	"math/big"
++	"os"
++	"path"
++	"strings"
++	"time"
++
++	"code.google.com/p/go.crypto/hkdf"
++	"code.google.com/p/go.crypto/pbkdf2"
++	"code.google.com/p/goprotobuf/proto"
++)
++
++// A KeyType represent the type(s) of keys held by a Keys struct.
++type KeyType int
++
++const (
++	Signing KeyType = 1 << iota
++	Crypting
++	Deriving
++)
++
++const aesKeySize = 32 // 256-bit AES
++const deriverSecretSize = 32
++const hmacKeySize = 32 // SHA-256
++
++// A Signer is used to sign and verify signatures
++type Signer struct {
++	ec *ecdsa.PrivateKey
++}
++
++// A Verifier is used to verify signatures.
++type Verifier struct {
++	ec *ecdsa.PublicKey
++}
++
++// A Crypter is used to encrypt and decrypt data.
++type Crypter struct {
++	aesKey  []byte
++	hmacKey []byte
++}
++
++// A Deriver is used to derive key material from a context using HKDF.
++type Deriver struct {
++	secret []byte
++}
++
++// GenerateSigner creates a new Signer with a fresh key.
++func GenerateSigner() (*Signer, error) {
++	ec, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
++	if err != nil {
++		return nil, err
++	}
++
++	return &Signer{ec}, nil
++}
++
++// ToPrincipalName produces a plain-text Tao principal name. This is a
++// base64w-encoded version of a serialized CryptoKey for the public half of
++// this signing key, wrapped in 'Key("' and '")'.
++func (s *Signer) ToPrincipalName() (string, error) {
++	var ck *CryptoKey
++	var err error
++	if ck, err = MarshalPublicSignerProto(s); err != nil {
++		return "", nil
++	}
++
++	data, err := proto.Marshal(ck)
++	if err != nil {
++		return "", err
++	}
++
++	return "Key(\"" + base64.URLEncoding.EncodeToString(data) + "\")", nil
++}
++
++// MarshalSigner serializes the signer to DER.
++func MarshalSignerDER(s *Signer) ([]byte, error) {
++	return x509.MarshalECPrivateKey(s.ec)
++}
++
++// UnmarshalSigner deserializes a Signer from DER.
++func UnmarshalSignerDER(signer []byte) (*Signer, error) {
++	k := new(Signer)
++	var err error
++	if k.ec, err = x509.ParseECPrivateKey(signer); err != nil {
++		return nil, err
++	}
++
++	return k, nil
++}
++
++// prepareX509Template parses the protobuf containing subject-name details and
++// fills out an X.509 template for use in x509.CreateCertificate.
++func prepareX509Template(detailsText string) (*x509.Certificate, error) {
++	details := new(X509Details)
++	if err := proto.UnmarshalText(detailsText, details); err != nil {
++		return nil, err
++	}
++
++	template := &x509.Certificate{
++		SignatureAlgorithm: x509.ECDSAWithSHA256,
++		PublicKeyAlgorithm: x509.ECDSA,
++		Version:            2, // x509v3
++		// It's always allowed for self-signed certs to have serial 1.
++		SerialNumber: new(big.Int).SetInt64(1),
++		Subject: pkix.Name{
++			Country:      []string{string(details.Country)},
++			Organization: []string{string(details.Organization)},
++			Province:     []string{string(details.State)},
++			CommonName:   string(details.Commonname),
++		},
++		NotBefore: time.Now(),
++		NotAfter:  time.Now().AddDate(1 /* years */, 0 /* months */, 0 /* days */),
++		// TODO(tmroeder): I'm not sure which of these I need to make
++		// OpenSSL happy.
++		KeyUsage:    x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,
++		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
++	}
++
++	return template, nil
++}
++
++// CreateSelfSignedX509 creates a self-signed X.509 certificate for the public
++// key of this Signer.
++func (s *Signer) CreateSelfSignedX509(detailsText string) ([]byte, error) {
++	template, err := prepareX509Template(detailsText)
++	if err != nil {
++		return nil, err
++	}
++
++	template.IsCA = true
++	template.Issuer = template.Subject
++
++	return x509.CreateCertificate(rand.Reader, template, template, &s.ec.PublicKey, s.ec)
++}
++
++// CreateSignedX509 creates a signed X.509 certificate for some other subject's
++// key.
++func (s *Signer) CreateSignedX509(CAPEMCert []byte, certSerial int, subjectKey *Verifier, subjectDetails string) ([]byte, error) {
++	signerCert, err := x509.ParseCertificate(CAPEMCert)
++	if err != nil {
++		return nil, err
++	}
++
++	template, err := prepareX509Template(subjectDetails)
++	if err != nil {
++		return nil, err
++	}
++
++	return x509.CreateCertificate(rand.Reader, template, signerCert, subjectKey.ec, s.ec)
++}
++
++// marshalECDSA_SHA_SigningKeyV1 encodes a private key as a protobuf message.
++func marshalECDSA_SHA_SigningKeyV1(k *ecdsa.PrivateKey) *ECDSA_SHA_SigningKeyV1 {
++	return &ECDSA_SHA_SigningKeyV1{
++		Curve:     NamedEllipticCurve_PRIME256_V1.Enum(),
++		EcPrivate: k.D.Bytes(),
++		EcPublic:  elliptic.Marshal(k.Curve, k.X, k.Y),
++	}
++
++}
++
++// MarshalSignerProto encodes a signing key as a CryptoKey protobuf message.
++func MarshalSignerProto(s *Signer) (*CryptoKey, error) {
++	m := marshalECDSA_SHA_SigningKeyV1(s.ec)
++	defer zeroBytes(m.EcPrivate)
++
++	b, err := proto.Marshal(m)
++	if err != nil {
++		return nil, err
++	}
++
++	ck := &CryptoKey{
++		Version:   CryptoVersion_CRYPTO_VERSION_1.Enum(),
++		Purpose:   CryptoKey_SIGNING.Enum(),
++		Algorithm: CryptoKey_ECDSA_SHA.Enum(),
++		Key:       b,
++	}
++	return ck, nil
++}
++
++// marshalECDSA_SHA_VerifyingKeyV1 encodes a public key as a protobuf message.
++func marshalECDSA_SHA_VerifyingKeyV1(k *ecdsa.PublicKey) *ECDSA_SHA_VerifyingKeyV1 {
++	return &ECDSA_SHA_VerifyingKeyV1{
++		Curve:    NamedEllipticCurve_PRIME256_V1.Enum(),
++		EcPublic: elliptic.Marshal(k.Curve, k.X, k.Y),
++	}
++
++}
++
++func unmarshalECDSA_SHA_VerifyingKeyV1(v *ECDSA_SHA_VerifyingKeyV1) (*ecdsa.PublicKey, error) {
++	if *v.Curve != NamedEllipticCurve_PRIME256_V1 {
++		return nil, errors.New("bad curve")
++	}
++
++	x, y := elliptic.Unmarshal(elliptic.P256(), v.EcPublic)
++	return &ecdsa.PublicKey{elliptic.P256(), x, y}, nil
++}
++
++func marshalPublicKeyProto(k *ecdsa.PublicKey) (*CryptoKey, error) {
++	m := marshalECDSA_SHA_VerifyingKeyV1(k)
++
++	b, err := proto.Marshal(m)
++	if err != nil {
++		return nil, err
++	}
++
++	ck := &CryptoKey{
++		Version:   CryptoVersion_CRYPTO_VERSION_1.Enum(),
++		Purpose:   CryptoKey_VERIFYING.Enum(),
++		Algorithm: CryptoKey_ECDSA_SHA.Enum(),
++		Key:       b,
++	}
++
++	return ck, nil
++}
++
++// MarshalPublicSignerProto encodes the public half of a signing key as a
++// CryptoKey protobuf message.
++func MarshalPublicSignerProto(s *Signer) (*CryptoKey, error) {
++	return marshalPublicKeyProto(&s.ec.PublicKey)
++}
++
++// MarshalVerifierProto encodes the public verifier key as a CryptoKey protobuf
++// message.
++func MarshalVerifierProto(v *Verifier) (*CryptoKey, error) {
++	return marshalPublicKeyProto(v.ec)
++}
++
++// UnmarshalSignerProto decodes a signing key from a CryptoKey protobuf
++// message.
++func UnmarshalSignerProto(ck *CryptoKey) (*Signer, error) {
++	if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
++		return nil, errors.New("bad version")
++	}
++
++	if *ck.Purpose != CryptoKey_SIGNING {
++		return nil, errors.New("bad purpose")
++	}
++
++	if *ck.Algorithm != CryptoKey_ECDSA_SHA {
++		return nil, errors.New("bad algorithm")
++	}
++
++	k := new(ECDSA_SHA_SigningKeyV1)
++	defer zeroBytes(k.EcPrivate)
++	if err := proto.Unmarshal(ck.Key, k); err != nil {
++		return nil, err
++	}
++
++	if *k.Curve != NamedEllipticCurve_PRIME256_V1 {
++		return nil, errors.New("bad Curve")
++	}
++
++	s := new(Signer)
++	s.ec = new(ecdsa.PrivateKey)
++	s.ec.D = new(big.Int).SetBytes(k.EcPrivate)
++	s.ec.Curve = elliptic.P256()
++	s.ec.X, s.ec.Y = elliptic.Unmarshal(elliptic.P256(), k.EcPublic)
++	return s, nil
++}
++
++// FillHeader encodes the version and a key hint into a CryptoHeader.
++func (s *Signer) CreateHeader() (*CryptoHeader, error) {
++	k := marshalECDSA_SHA_VerifyingKeyV1(&s.ec.PublicKey)
++	b, err := proto.Marshal(k)
++	if err != nil {
++		return nil, err
++	}
++
++	h := sha1.Sum(b)
++	ch := &CryptoHeader{
++		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
++		KeyHint: h[:4],
++	}
++
++	return ch, nil
++}
++
++// An ecdsaSignature wraps the two components of the signature from an ECDSA
++// private key. This is copied from the Go crypto/x509 source: it just uses a
++// simple two-element structure to marshal a DSA signature as ASN.1 in an X.509
++// certificate.
++type ecdsaSignature struct {
++	R, S *big.Int
++}
++
++// Sign computes an ECDSA sigature over the contextualized data, using the
++// private key of the signer.
++func (s *Signer) Sign(data []byte, context string) ([]byte, error) {
++	ch, err := s.CreateHeader()
++	if err != nil {
++		return nil, err
++	}
++
++	// TODO(tmroeder): for compatibility with the C++ version, we should
++	// compute ECDSA signatures over hashes truncated to fit in the ECDSA
++	// signature.
++	b, err := contextualizedSHA256(ch, data, context, sha256.Size)
++	if err != nil {
++		return nil, err
++	}
++
++	R, S, err := ecdsa.Sign(rand.Reader, s.ec, b)
++	if err != nil {
++		return nil, err
++	}
++
++	m, err := asn1.Marshal(ecdsaSignature{R, S})
++	if err != nil {
++		return nil, err
++	}
++
++	sd := &SignedData{
++		Header:    ch,
++		Signature: m,
++	}
++
++	return proto.Marshal(sd)
++}
++
++// GetVerifier returns a Verifier from Signer.
++func (s *Signer) GetVerifier() *Verifier {
++	return &Verifier{&s.ec.PublicKey}
++}
++
++// Verify checks an ECDSA signature over the contextualized data, using the
++// public key of the verifier.
++func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error) {
++	// Deserialize the data and extract the CryptoHeader.
++	var sd SignedData
++	if err := proto.Unmarshal(sig, &sd); err != nil {
++		return false, err
++	}
++
++	var ecSig ecdsaSignature
++	// We ignore the first parameter, since we don't mind if there's more
++	// data after the signature.
++	if _, err := asn1.Unmarshal(sd.Signature, &ecSig); err != nil {
++		return false, err
++	}
++
++	b, err := contextualizedSHA256(sd.Header, data, context, sha256.Size)
++	if err != nil {
++		return false, err
++	}
++
++	return ecdsa.Verify(v.ec, b, ecSig.R, ecSig.S), nil
++}
++
++// ToPrincipalName produces a plain-text Tao principal name. This is a
++// base64w-encoded version of a serialized CryptoKey for the public half of
++// this verifying key, wrapped in 'Key("' and '")'.
++func (v *Verifier) ToPrincipalName() (string, error) {
++	var ck *CryptoKey
++	var err error
++	if ck, err = MarshalVerifierProto(v); err != nil {
++		return "", nil
++	}
++
++	data, err := proto.Marshal(ck)
++	if err != nil {
++		return "", err
++	}
++
++	return "Key(\"" + base64.URLEncoding.EncodeToString(data) + "\")", nil
++}
++
++// FromPrincipalName deserializes a Verifier from a plaintext Tao principal
++// name.
++func FromPrincipalName(name string) (*Verifier, error) {
++	// Check to make sure the key starts with "Key(" and ends with ")".
++	if !strings.HasPrefix(name, "Key(\"") || !strings.HasSuffix(name, "\")") {
++		return nil, errors.New("invalid prefix or suffix")
++	}
++
++	ks := strings.TrimPrefix(strings.TrimSuffix(name, "\")"), "Key(\"")
++
++	b, err := base64.URLEncoding.DecodeString(ks)
++	if err != nil {
++		return nil, err
++	}
++
++	var ck CryptoKey
++	if err := proto.Unmarshal(b, &ck); err != nil {
++		return nil, err
++	}
++
++	if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
++		return nil, errors.New("bad version")
++	}
++
++	if *ck.Purpose != CryptoKey_VERIFYING {
++		return nil, errors.New("bad purpose")
++	}
++
++	if *ck.Algorithm != CryptoKey_ECDSA_SHA {
++		return nil, errors.New("bad algorithm")
++	}
++
++	var ecvk ECDSA_SHA_VerifyingKeyV1
++	if err := proto.Unmarshal(ck.Key, &ecvk); err != nil {
++		return nil, err
++	}
++
++	ec, err := unmarshalECDSA_SHA_VerifyingKeyV1(&ecvk)
++	if err != nil {
++		return nil, err
++	}
++
++	return &Verifier{ec}, nil
++}
++
++// FromX509 creates a Verifier from an X509 certificate.
++func FromX509(cert []byte) (*Verifier, error) {
++	c, err := x509.ParseCertificate(cert)
++	if err != nil {
++		return nil, err
++	}
++
++	ecpk, ok := c.PublicKey.(*ecdsa.PublicKey)
++	if !ok {
++		return nil, errors.New("invalid key type in certificate: must be ECDSA")
++	}
++
++	return &Verifier{ecpk}, nil
++}
++
++// UnmarshalVerifierProto decodes a verifying key from a CryptoKey protobuf
++// message.
++func UnmarshalVerifierProto(ck *CryptoKey) (*Verifier, error) {
++	if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
++		return nil, errors.New("bad version")
++	}
++
++	if *ck.Purpose != CryptoKey_VERIFYING {
++		return nil, errors.New("bad purpose")
++	}
++
++	if *ck.Algorithm != CryptoKey_ECDSA_SHA {
++		return nil, errors.New("bad algorithm")
++	}
++
++	k := new(ECDSA_SHA_VerifyingKeyV1)
++	if err := proto.Unmarshal(ck.Key, k); err != nil {
++		return nil, err
++	}
++
++	if *k.Curve != NamedEllipticCurve_PRIME256_V1 {
++		return nil, errors.New("bad curve")
++	}
++
++	s := new(Verifier)
++	s.ec = new(ecdsa.PublicKey)
++	s.ec.Curve = elliptic.P256()
++	s.ec.X, s.ec.Y = elliptic.Unmarshal(elliptic.P256(), k.EcPublic)
++	return s, nil
++}
++
++// CreateHeader instantiates and fills in a header for this verifying key.
++func (v *Verifier) CreateHeader() (*CryptoHeader, error) {
++	k := marshalECDSA_SHA_VerifyingKeyV1(v.ec)
++	b, err := proto.Marshal(k)
++	if err != nil {
++		return nil, err
++	}
++
++	h := sha1.Sum(b)
++	ch := &CryptoHeader{
++		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
++		KeyHint: h[:4],
++	}
++
++	return ch, nil
++}
++
++// contextualizeData produces a single string from a header, data, and a context.
++func contextualizeData(h *CryptoHeader, data []byte, context string) ([]byte, error) {
++	s := &SignaturePDU{
++		Header:  h,
++		Context: proto.String(context),
++		Data:    data,
++	}
++
++	return proto.Marshal(s)
++}
++
++// contextualizedSHA256 performs a SHA-256 sum over contextualized data.
++func contextualizedSHA256(h *CryptoHeader, data []byte, context string, digestLen int) ([]byte, error) {
++	b, err := contextualizeData(h, data, context)
++	if err != nil {
++		return nil, err
++	}
++
++	hash := sha256.Sum256(b)
++	return hash[:digestLen], nil
++}
++
++// GenerateCrypter instantiates a new Crypter with fresh keys.
++func GenerateCrypter() (*Crypter, error) {
++	c := &Crypter{
++		aesKey:  make([]byte, aesKeySize),
++		hmacKey: make([]byte, hmacKeySize),
++	}
++
++	if _, err := rand.Read(c.aesKey); err != nil {
++		return nil, err
++	}
++
++	if _, err := rand.Read(c.hmacKey); err != nil {
++		return nil, err
++	}
++
++	return c, nil
++}
++
++// Encrypt encrypts plaintext into ciphertext and protects ciphertext integrity
++// with a MAC.
++func (c *Crypter) Encrypt(data []byte) ([]byte, error) {
++	block, err := aes.NewCipher(c.aesKey)
++	if err != nil {
++		return nil, err
++	}
++
++	ch, err := c.CreateHeader()
++	if err != nil {
++		return nil, err
++	}
++
++	// A ciphertext consists of an IV, encrypted bytes, and the output of
++	// HMAC-SHA256.
++	ciphertext := make([]byte, aes.BlockSize+len(data))
++	iv := ciphertext[:aes.BlockSize]
++	if _, err := rand.Read(iv); err != nil {
++		return nil, err
++	}
++
++	s := cipher.NewCTR(block, iv)
++	s.XORKeyStream(ciphertext[aes.BlockSize:], data)
++
++	mac := hmac.New(sha256.New, c.hmacKey)
++	m := mac.Sum(ciphertext)
++
++	ed := &EncryptedData{
++		Header:     ch,
++		Iv:         iv,
++		Ciphertext: ciphertext[aes.BlockSize:],
++		Mac:        m,
++	}
++
++	return proto.Marshal(ed)
++}
++
++// Decrypt checks the MAC then decrypts ciphertext into plaintext.
++func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
++	var ed EncryptedData
++	if err := proto.Unmarshal(ciphertext, &ed); err != nil {
++		return nil, err
++	}
++
++	// TODO(tmroeder): we're currently mostly ignoring the CryptoHeader,
++	// since we only have one key.
++	if *ed.Header.Version != CryptoVersion_CRYPTO_VERSION_1 {
++		return nil, errors.New("bad version")
++	}
++
++	// Check the HMAC before touching the ciphertext.
++	fullCiphertext := make([]byte, len(ed.Iv)+len(ed.Ciphertext))
++	copy(fullCiphertext, ed.Iv)
++	copy(fullCiphertext[len(ed.Iv):], ed.Ciphertext)
++
++	mac := hmac.New(sha256.New, c.hmacKey)
++	m := mac.Sum(fullCiphertext)
++	if !hmac.Equal(m, ed.Mac) {
++		return nil, errors.New("bad HMAC")
++	}
++
++	block, err := aes.NewCipher(c.aesKey)
++	if err != nil {
++		return nil, err
++	}
++
++	s := cipher.NewCTR(block, ed.Iv)
++	data := make([]byte, len(ed.Ciphertext))
++	s.XORKeyStream(data, ed.Ciphertext)
++	return data, nil
++}
++
++// marshalAES_CTR_HMAC_SHA_CryptingKeyV1 encodes a private AES/HMAC key pair
++// into a protobuf message.
++func marshalAES_CTR_HMAC_SHA_CryptingKeyV1(c *Crypter) *AES_CTR_HMAC_SHA_CryptingKeyV1 {
++	return &AES_CTR_HMAC_SHA_CryptingKeyV1{
++		Mode:        CryptoCipherMode_CIPHER_MODE_CTR.Enum(),
++		AesPrivate:  c.aesKey,
++		HmacPrivate: c.hmacKey,
++	}
++}
++
++// MarshalCrypterProto encodes a Crypter as a CryptoKey protobuf message.
++func MarshalCrypterProto(c *Crypter) (*CryptoKey, error) {
++	k := marshalAES_CTR_HMAC_SHA_CryptingKeyV1(c)
++
++	// Note that we don't need to call zeroBytes on k.AesPrivate or
++	// k.HmacPrivate, since they're just slice references to the underlying
++	// keys.
++	m, err := proto.Marshal(k)
++	if err != nil {
++		return nil, err
++	}
++
++	ck := &CryptoKey{
++		Version:   CryptoVersion_CRYPTO_VERSION_1.Enum(),
++		Purpose:   CryptoKey_CRYPTING.Enum(),
++		Algorithm: CryptoKey_AES_CTR_HMAC_SHA.Enum(),
++		Key:       m,
++	}
++
++	return ck, nil
++}
++
++// UnmarshalCrypterProto decodes a crypting key from a CryptoKey protobuf
++// message.
++func UnmarshalCrypterProto(ck *CryptoKey) (*Crypter, error) {
++	if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
++		return nil, errors.New("bad version")
++	}
++
++	if *ck.Purpose != CryptoKey_CRYPTING {
++		return nil, errors.New("bad purpose")
++	}
++
++	if *ck.Algorithm != CryptoKey_AES_CTR_HMAC_SHA {
++		return nil, errors.New("bad algorithm")
++	}
++
++	var k AES_CTR_HMAC_SHA_CryptingKeyV1
++	if err := proto.Unmarshal(ck.Key, &k); err != nil {
++		return nil, err
++	}
++
++	if *k.Mode != CryptoCipherMode_CIPHER_MODE_CTR {
++		return nil, errors.New("bad cipher mode")
++	}
++
++	c := new(Crypter)
++	c.aesKey = k.AesPrivate
++	c.hmacKey = k.HmacPrivate
++	return c, nil
++}
++
++// CreateHeader instantiates and fills in a header for this crypting key.
++func (c *Crypter) CreateHeader() (*CryptoHeader, error) {
++	k := marshalAES_CTR_HMAC_SHA_CryptingKeyV1(c)
++	b, err := proto.Marshal(k)
++	if err != nil {
++		return nil, err
++	}
++	defer zeroBytes(b)
++
++	h := sha1.Sum(b)
++	ch := &CryptoHeader{
++		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
++		KeyHint: h[:4],
++	}
++
++	return ch, nil
++
++}
++
++// GenerateDeriver generates a deriver with a fresh secret.
++func GenerateDeriver() (*Deriver, error) {
++	d := new(Deriver)
++	d.secret = make([]byte, deriverSecretSize)
++	if _, err := rand.Read(d.secret); err != nil {
++		return nil, err
++	}
++
++	return d, nil
++}
++
++// Derive uses HKDF with HMAC-SHA256 to derive key bytes in its material
++// parameter.
++func (d *Deriver) Derive(salt, context, material []byte) error {
++	f := hkdf.New(sha256.New, d.secret, salt, context)
++	if _, err := f.Read(material); err != nil {
++		return err
++	}
++
++	return nil
++}
++
++// marshalHMAC_SHA_DerivingKeyV1 encodes a deriving key as a protobuf message.
++func marshalHMAC_SHA_DerivingKeyV1(d *Deriver) *HMAC_SHA_DerivingKeyV1 {
++	return &HMAC_SHA_DerivingKeyV1{
++		Mode:        CryptoDerivingMode_DERIVING_MODE_HKDF.Enum(),
++		HmacPrivate: d.secret,
++	}
++}
++
++// MarshalDeriverProto encodes a Deriver as a CryptoKey protobuf message.
++func MarshalDeriverProto(d *Deriver) (*CryptoKey, error) {
++	k := marshalHMAC_SHA_DerivingKeyV1(d)
++
++	// Note that we don't need to call zeroBytes on k.HmacPrivate since
++	// it's just a slice reference to the underlying keys.
++	m, err := proto.Marshal(k)
++	if err != nil {
++		return nil, err
++	}
++
++	ck := &CryptoKey{
++		Version:   CryptoVersion_CRYPTO_VERSION_1.Enum(),
++		Purpose:   CryptoKey_DERIVING.Enum(),
++		Algorithm: CryptoKey_HMAC_SHA.Enum(),
++		Key:       m,
++	}
++
++	return ck, nil
++}
++
++// UnmarshalDeriverProto decodes a deriving key from a CryptoKey protobuf
++// message.
++func UnmarshalDeriverProto(ck *CryptoKey) (*Deriver, error) {
++	if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
++		return nil, errors.New("bad version")
++	}
++
++	if *ck.Purpose != CryptoKey_DERIVING {
++		return nil, errors.New("bad purpose")
++	}
++
++	if *ck.Algorithm != CryptoKey_HMAC_SHA {
++		return nil, errors.New("bad algorithm")
++	}
++
++	var k HMAC_SHA_DerivingKeyV1
++	if err := proto.Unmarshal(ck.Key, &k); err != nil {
++		return nil, err
++	}
++
++	if *k.Mode != CryptoDerivingMode_DERIVING_MODE_HKDF {
++		return nil, errors.New("bad deriving mode")
++	}
++
++	d := new(Deriver)
++	d.secret = k.HmacPrivate
++	return d, nil
++}
++
++// A Keys manages a set of signing, verifying, encrypting, and key-deriving
++// keys.
++type Keys struct {
++	dir      string
++	policy   string
++	keyTypes KeyType
++
++	SigningKey   *Signer
++	CryptingKey  *Crypter
++	VerifyingKey *Verifier
++	DerivingKey  *Deriver
++	Delegation   *Attestation
++	Cert         *x509.Certificate
++}
++
++// X509Path returns the path to the verifier key, stored as an X.509
++// certificate.
++func (k *Keys) X509Path() string {
++	if k.dir == "" {
++		return ""
++	} else {
++		return path.Join(k.dir, "cert")
++	}
++}
++
++// PBEKeysetPath returns the path for stored keys.
++func (k *Keys) PBEKeysetPath() string {
++	if k.dir == "" {
++		return ""
++	} else {
++		return path.Join(k.dir, "keys")
++	}
++}
++
++// PBESignerPath returns the path for a stored signing key.
++func (k *Keys) PBESignerPath() string {
++	if k.dir == "" {
++		return ""
++	} else {
++		return path.Join(k.dir, "signer")
++	}
++}
++
++// SealedKeysetPath returns the path for a stored signing key.
++func (k *Keys) SealedKeysetPath() string {
++	if k.dir == "" {
++		return ""
++	} else {
++		return path.Join(k.dir, "sealed_keyset")
++	}
++}
++
++// DelegationPath returns the path for a stored signing key.
++func (k *Keys) DelegationPath() string {
++	if k.dir == "" {
++		return ""
++	} else {
++		return path.Join(k.dir, "delegation")
++	}
++}
++
++// zeroBytes clears the bytes in a slice.
++func zeroBytes(b []byte) {
++	for i := range b {
++		b[i] = 0
++	}
++}
++
++// NewTemporaryKeys creates a new Keys structure with the specified keys.
++func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
++	k := &Keys{
++		keyTypes: keyTypes,
++	}
++	if k.keyTypes == 0 || (k.keyTypes & ^Signing & ^Crypting & ^Deriving != 0) {
++		return nil, errors.New("bad key type")
++	}
++
++	var err error
++	if k.keyTypes&Signing == Signing {
++		k.SigningKey, err = GenerateSigner()
++		if err != nil {
++			return nil, err
++		}
++
++		k.VerifyingKey = k.SigningKey.GetVerifier()
++	}
++
++	if k.keyTypes&Crypting == Crypting {
++		k.CryptingKey, err = GenerateCrypter()
++		if err != nil {
++			return nil, err
++		}
++	}
++
++	if k.keyTypes&Deriving == Deriving {
++		k.DerivingKey, err = GenerateDeriver()
++		if err != nil {
++			return nil, err
++		}
++	}
++
++	return k, nil
++}
++
++// NewOnDiskKeys creates a new Keys structure with the specified key types
++// store under PBE on disk.
++func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string) (*Keys, error) {
++	if keyTypes == 0 || (keyTypes & ^Signing & ^Crypting & ^Deriving != 0) {
++		return nil, errors.New("bad key type")
++	}
++
++	if path == "" {
++		return nil, errors.New("bad init call: no path for keys")
++	}
++
++	k := &Keys{
++		keyTypes: keyTypes,
++		dir:      path,
++	}
++
++	if len(password) == 0 {
++		// This means there's no secret information: just load a public
++		// verifying key.
++		if k.keyTypes & ^Signing != 0 {
++			return nil, errors.New("without a password, only a verifying key can be loaded")
++		}
++
++		f, err := os.Open(k.X509Path())
++		if err != nil {
++			return nil, err
++		}
++
++		xb, err := ioutil.ReadAll(f)
++		if err != nil {
++			return nil, err
++		}
++
++		if k.VerifyingKey, err = FromX509(xb); err != nil {
++			return nil, err
++		}
++	} else {
++		// There are two different types of keysets: in one there's
++		// just a Signer, so we use an encrypted PEM format. In the
++		// other, there are multiple keys, so we use a custom protobuf
++		// format.
++		if k.keyTypes & ^Signing != 0 {
++			// Check to see if there are already keys.
++			f, err := os.Open(k.PBEKeysetPath())
++			if err == nil {
++				ks, err := ioutil.ReadAll(f)
++				if err != nil {
++					return nil, err
++				}
++
++				data, err := PBEDecrypt(ks, password)
++				if err != nil {
++					return nil, err
++				}
++				defer zeroBytes(data)
++
++				var cks CryptoKeyset
++				if err = proto.Unmarshal(data, &cks); err != nil {
++					return nil, err
++				}
++
++				// TODO(tmroeder): defer zeroKeyset(&cks)
++
++				ktemp, err := UnmarshalKeyset(&cks)
++				if err != nil {
++					return nil, err
++				}
++
++				k.SigningKey = ktemp.SigningKey
++				k.VerifyingKey = ktemp.VerifyingKey
++				k.CryptingKey = ktemp.CryptingKey
++				k.DerivingKey = ktemp.DerivingKey
++			} else {
++				// Create and store a new set of keys.
++				k, err = NewTemporaryKeys(keyTypes)
++				if err != nil {
++					return nil, err
++				}
++
++				k.dir = path
++
++				cks, err := MarshalKeyset(k)
++				if err != nil {
++					return nil, err
++				}
++
++				// TODO(tmroeder): defer zeroKeyset(cks)
++
++				m, err := proto.Marshal(cks)
++				if err != nil {
++					return nil, err
++				}
++				defer zeroBytes(m)
++
++				enc, err := PBEEncrypt(m, password)
++				if err != nil {
++					return nil, err
++				}
++
++				if err = ioutil.WriteFile(k.PBEKeysetPath(), enc, 0600); err != nil {
++					return nil, err
++				}
++			}
++		} else {
++			// There's just a signer, so do PEM encryption of the encoded key.
++			f, err := os.Open(k.PBESignerPath())
++			if err == nil {
++				// Read the signer.
++				ss, err := ioutil.ReadAll(f)
++				if err != nil {
++					return nil, err
++				}
++
++				pb, r := pem.Decode(ss)
++				if r != nil {
++					return nil, errors.New("decoding failure")
++				}
++
++				p, err := x509.DecryptPEMBlock(pb, password)
++				if err != nil {
++					return nil, err
++				}
++				defer zeroBytes(p)
++
++				if k.SigningKey, err = UnmarshalSignerDER(p); err != nil {
++					return nil, err
++				}
++				k.VerifyingKey = k.SigningKey.GetVerifier()
++			} else {
++				// Create a fresh key and store it to the PBESignerPath.
++				if k.SigningKey, err = GenerateSigner(); err != nil {
++					return nil, err
++				}
++
++				k.VerifyingKey = k.SigningKey.GetVerifier()
++				p, err := MarshalSignerDER(k.SigningKey)
++				if err != nil {
++					return nil, err
++				}
++				defer zeroBytes(p)
++
++				pb, err := x509.EncryptPEMBlock(rand.Reader, "EC PRIVATE KEY", p, password, x509.PEMCipherAES128)
++				if err != nil {
++					return nil, err
++				}
++
++				pbes, err := os.Create(k.PBESignerPath())
++				if err != nil {
++					return nil, err
++				}
++
++				if err = pem.Encode(pbes, pb); err != nil {
++					return nil, err
++				}
++			}
++		}
++	}
++
++	return k, nil
++}
++
++// NewTemporaryTaoDelegatedKeys initializes a set of temporary keys under a host
++// Tao, using the Tao to generate a delegation for the signing key. Since these
++// keys are never stored on disk, they are not sealed to the Tao.
++func NewTemporaryTaoDelegatedKeys(keyTypes KeyType, t Tao) (*Keys, error) {
++	k, err := NewTemporaryKeys(keyTypes)
++	if err != nil {
++		return nil, err
++	}
++
++	if k.SigningKey != nil {
++		n, err := k.SigningKey.ToPrincipalName()
++		if err != nil {
++			return nil, err
++		}
++
++		s := &Statement{
++			Delegate: proto.String(n),
++		}
++
++		if k.Delegation, err = t.Attest(s); err != nil {
++			return nil, err
++		}
++	}
++
++	return k, nil
++}
++
++// PBEEncrypt encrypts plaintext using a password to generate a key. Note that
++// since this is for private program data, we don't try for compatibility with
++// the C++ Tao version of the code.
++func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
++	if password == nil || len(password) == 0 {
++		return nil, errors.New("null or empty password")
++	}
++
++	pbed := &PBEData{
++		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
++		Cipher:  proto.String("aes128-ctr"),
++		Hmac:    proto.String("sha256"),
++		// The IV is required, so we include it, but this algorithm doesn't use it.
++		Iv:         make([]byte, aes.BlockSize),
++		Iterations: proto.Int32(4096),
++		Salt:       make([]byte, aes.BlockSize),
++	}
++
++	// We use the first half of the salt for the AES key and the second
++	// half for the HMAC key, since the standard recommends at least 8
++	// bytes of salt.
++	if _, err := rand.Read(pbed.Salt); err != nil {
++		return nil, err
++	}
++
++	// 128-bit AES key.
++	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
++	defer zeroBytes(aesKey)
++
++	// 64-byte HMAC-SHA256 key.
++	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
++	defer zeroBytes(hmacKey)
++	c := &Crypter{aesKey, hmacKey}
++
++	// Note that we're abusing the PBEData format here, since the IV and
++	// the MAC are actually contained in the ciphertext from Encrypt().
++	var err error
++	if pbed.Ciphertext, err = c.Encrypt(plaintext); err != nil {
++		return nil, err
++	}
++
++	return proto.Marshal(pbed)
++}
++
++// PBEDecrypt decrypts ciphertext using a password to generate a key. Note that
++// since this is for private program data, we don't try for compatibility with
++// the C++ Tao version of the code.
++func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
++	if password == nil || len(password) == 0 {
++		return nil, errors.New("null or empty password")
++	}
++
++	var pbed PBEData
++	if err := proto.Unmarshal(ciphertext, &pbed); err != nil {
++		return nil, err
++	}
++
++	// Recover the keys from the password and the PBE header.
++	if *pbed.Version != CryptoVersion_CRYPTO_VERSION_1 {
++		return nil, errors.New("bad version")
++	}
++
++	if *pbed.Cipher != "aes128-ctr" {
++		return nil, errors.New("bad cipher")
++	}
++
++	if *pbed.Hmac != "sha256" {
++		return nil, errors.New("bad hmac")
++	}
++
++	// 128-bit AES key.
++	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
++	defer zeroBytes(aesKey)
++
++	// 64-byte HMAC-SHA256 key.
++	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
++	defer zeroBytes(hmacKey)
++	c := &Crypter{aesKey, hmacKey}
++
++	// Note that we're abusing the PBEData format here, since the IV and
++	// the MAC are actually contained in the ciphertext from Encrypt().
++	data, err := c.Decrypt(pbed.Ciphertext)
++	if err != nil {
++		return nil, err
++	}
++
++	return data, nil
++}
++
++// MarshalKeyset encodes the keys into a protobuf message.
++func MarshalKeyset(k *Keys) (*CryptoKeyset, error) {
++	var cks []*CryptoKey
++	if k.keyTypes&Signing == Signing {
++		ck, err := MarshalSignerProto(k.SigningKey)
++		if err != nil {
++			return nil, err
++		}
++
++		cks = append(cks, ck)
++	}
++
++	if k.keyTypes&Crypting == Crypting {
++		ck, err := MarshalCrypterProto(k.CryptingKey)
++		if err != nil {
++			return nil, err
++		}
++
++		cks = append(cks, ck)
++	}
++
++	if k.keyTypes&Deriving == Deriving {
++		ck, err := MarshalDeriverProto(k.DerivingKey)
++		if err != nil {
++			return nil, err
++		}
++
++		cks = append(cks, ck)
++	}
++
++	ckset := &CryptoKeyset{
++		Keys: cks,
++	}
++
++	return ckset, nil
++}
++
++// UnmarshalKeyset decodes a CryptoKeyset into a temporary Keys structure. Note
++// that this Keys structure doesn't have any of its variables set.
++func UnmarshalKeyset(cks *CryptoKeyset) (*Keys, error) {
++	k := new(Keys)
++	var err error
++	for i := range cks.Keys {
++		if *cks.Keys[i].Purpose == CryptoKey_SIGNING {
++			if k.SigningKey, err = UnmarshalSignerProto(cks.Keys[i]); err != nil {
++				return nil, err
++			}
++
++			k.VerifyingKey = k.SigningKey.GetVerifier()
++		}
++
++		if *cks.Keys[i].Purpose == CryptoKey_CRYPTING {
++			if k.CryptingKey, err = UnmarshalCrypterProto(cks.Keys[i]); err != nil {
++				return nil, err
++			}
++		}
++
++		if *cks.Keys[i].Purpose == CryptoKey_DERIVING {
++			if k.DerivingKey, err = UnmarshalDeriverProto(cks.Keys[i]); err != nil {
++				return nil, err
++			}
++		}
++	}
++
++	return k, nil
++}
++
++// NewOnDiskTaoSealedKeys sets up the keys sealed under a host Tao or reads sealed keys.
++func NewOnDiskTaoSealedKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys, error) {
++	k := &Keys{
++		keyTypes: keyTypes,
++		dir:      path,
++		policy:   policy,
++	}
++
++	// Check to see if there are already keys.
++	f, err := os.Open(k.SealedKeysetPath())
++	if err == nil {
++		ks, err := ioutil.ReadAll(f)
++		if err != nil {
++			return nil, err
++		}
++
++		data, p, err := t.Unseal(ks)
++		if err != nil {
++			return nil, err
++		}
++		defer zeroBytes(data)
++
++		if p != policy {
++			return nil, errors.New("invalid policy from Unseal")
++		}
++
++		var cks CryptoKeyset
++		if err = proto.Unmarshal(data, &cks); err != nil {
++			return nil, err
++		}
++
++		// TODO(tmroeder): defer zeroKeyset(&cks)
++
++		ktemp, err := UnmarshalKeyset(&cks)
++		if err != nil {
++			return nil, err
++		}
++
++		k.SigningKey = ktemp.SigningKey
++		k.VerifyingKey = ktemp.VerifyingKey
++		k.CryptingKey = ktemp.CryptingKey
++		k.DerivingKey = ktemp.DerivingKey
++
++		// Read the delegation.
++		if k.SigningKey != nil {
++			ds, err := ioutil.ReadFile(k.DelegationPath())
++			if err != nil {
++				return nil, err
++			}
++
++			k.Delegation = new(Attestation)
++			if err := proto.Unmarshal(ds, k.Delegation); err != nil {
++				return nil, err
++			}
++		}
++	} else {
++		// Create and store a new set of keys.
++		k, err = NewTemporaryKeys(keyTypes)
++		if err != nil {
++			return nil, err
++		}
++
++		k.dir = path
++		k.policy = policy
++
++		cks, err := MarshalKeyset(k)
++		if err != nil {
++			return nil, err
++		}
++
++		// TODO(tmroeder): defer zeroKeyset(cks)
++
++		m, err := proto.Marshal(cks)
++		if err != nil {
++			return nil, err
++		}
++		defer zeroBytes(m)
++
++		enc, err := t.Seal(m, policy)
++		if err != nil {
++			return nil, err
++		}
++
++		if err = ioutil.WriteFile(k.SealedKeysetPath(), enc, 0600); err != nil {
++			return nil, err
++		}
++
++		// Get and write a delegation.
++		if k.SigningKey != nil {
++			name, err := k.SigningKey.ToPrincipalName()
++			if err != nil {
++				return nil, err
++			}
++
++			s := &Statement{
++				Delegate: proto.String(name),
++			}
++
++			if k.Delegation, err = t.Attest(s); err != nil {
++				return nil, err
++			}
++
++			m, err := proto.Marshal(k.Delegation)
++			if err != nil {
++				return nil, err
++			}
++
++			if err = ioutil.WriteFile(k.DelegationPath(), m, 0600); err != nil {
++				return nil, err
++			}
++		}
++	}
++
++	return k, nil
++}
+diff --git a/go/src/cloudproxy/tao/keys.pb.go b/go/src/cloudproxy/tao/keys.pb.go
+new file mode 100644
+index 0000000..9cfef8d
+--- /dev/null
++++ b/go/src/cloudproxy/tao/keys.pb.go
+@@ -0,0 +1,662 @@
++// Code generated by protoc-gen-go.
++// source: keys.proto
++// DO NOT EDIT!
++
++package tao
++
++import proto "code.google.com/p/goprotobuf/proto"
++import math "math"
++
++// Reference imports to suppress errors if they are not otherwise used.
++var _ = proto.Marshal
++var _ = math.Inf
++
++type CryptoVersion int32
++
++const (
++	CryptoVersion_CRYPTO_VERSION_1 CryptoVersion = 1
++)
++
++var CryptoVersion_name = map[int32]string{
++	1: "CRYPTO_VERSION_1",
++}
++var CryptoVersion_value = map[string]int32{
++	"CRYPTO_VERSION_1": 1,
++}
++
++func (x CryptoVersion) Enum() *CryptoVersion {
++	p := new(CryptoVersion)
++	*p = x
++	return p
++}
++func (x CryptoVersion) String() string {
++	return proto.EnumName(CryptoVersion_name, int32(x))
++}
++func (x *CryptoVersion) UnmarshalJSON(data []byte) error {
++	value, err := proto.UnmarshalJSONEnum(CryptoVersion_value, data, "CryptoVersion")
++	if err != nil {
++		return err
++	}
++	*x = CryptoVersion(value)
++	return nil
++}
++
++type NamedEllipticCurve int32
++
++const (
++	NamedEllipticCurve_PRIME256_V1 NamedEllipticCurve = 1
++)
++
++var NamedEllipticCurve_name = map[int32]string{
++	1: "PRIME256_V1",
++}
++var NamedEllipticCurve_value = map[string]int32{
++	"PRIME256_V1": 1,
++}
++
++func (x NamedEllipticCurve) Enum() *NamedEllipticCurve {
++	p := new(NamedEllipticCurve)
++	*p = x
++	return p
++}
++func (x NamedEllipticCurve) String() string {
++	return proto.EnumName(NamedEllipticCurve_name, int32(x))
++}
++func (x *NamedEllipticCurve) UnmarshalJSON(data []byte) error {
++	value, err := proto.UnmarshalJSONEnum(NamedEllipticCurve_value, data, "NamedEllipticCurve")
++	if err != nil {
++		return err
++	}
++	*x = NamedEllipticCurve(value)
++	return nil
++}
++
++type CryptoCipherMode int32
++
++const (
++	CryptoCipherMode_CIPHER_MODE_CTR CryptoCipherMode = 1
++)
++
++var CryptoCipherMode_name = map[int32]string{
++	1: "CIPHER_MODE_CTR",
++}
++var CryptoCipherMode_value = map[string]int32{
++	"CIPHER_MODE_CTR": 1,
++}
++
++func (x CryptoCipherMode) Enum() *CryptoCipherMode {
++	p := new(CryptoCipherMode)
++	*p = x
++	return p
++}
++func (x CryptoCipherMode) String() string {
++	return proto.EnumName(CryptoCipherMode_name, int32(x))
++}
++func (x *CryptoCipherMode) UnmarshalJSON(data []byte) error {
++	value, err := proto.UnmarshalJSONEnum(CryptoCipherMode_value, data, "CryptoCipherMode")
++	if err != nil {
++		return err
++	}
++	*x = CryptoCipherMode(value)
++	return nil
++}
++
++type CryptoDerivingMode int32
++
++const (
++	CryptoDerivingMode_DERIVING_MODE_HKDF CryptoDerivingMode = 1
++)
++
++var CryptoDerivingMode_name = map[int32]string{
++	1: "DERIVING_MODE_HKDF",
++}
++var CryptoDerivingMode_value = map[string]int32{
++	"DERIVING_MODE_HKDF": 1,
++}
++
++func (x CryptoDerivingMode) Enum() *CryptoDerivingMode {
++	p := new(CryptoDerivingMode)
++	*p = x
++	return p
++}
++func (x CryptoDerivingMode) String() string {
++	return proto.EnumName(CryptoDerivingMode_name, int32(x))
++}
++func (x *CryptoDerivingMode) UnmarshalJSON(data []byte) error {
++	value, err := proto.UnmarshalJSONEnum(CryptoDerivingMode_value, data, "CryptoDerivingMode")
++	if err != nil {
++		return err
++	}
++	*x = CryptoDerivingMode(value)
++	return nil
++}
++
++type CryptoKey_CryptoPurpose int32
++
++const (
++	CryptoKey_VERIFYING CryptoKey_CryptoPurpose = 1
++	CryptoKey_SIGNING   CryptoKey_CryptoPurpose = 2
++	CryptoKey_CRYPTING  CryptoKey_CryptoPurpose = 3
++	CryptoKey_DERIVING  CryptoKey_CryptoPurpose = 4
++)
++
++var CryptoKey_CryptoPurpose_name = map[int32]string{
++	1: "VERIFYING",
++	2: "SIGNING",
++	3: "CRYPTING",
++	4: "DERIVING",
++}
++var CryptoKey_CryptoPurpose_value = map[string]int32{
++	"VERIFYING": 1,
++	"SIGNING":   2,
++	"CRYPTING":  3,
++	"DERIVING":  4,
++}
++
++func (x CryptoKey_CryptoPurpose) Enum() *CryptoKey_CryptoPurpose {
++	p := new(CryptoKey_CryptoPurpose)
++	*p = x
++	return p
++}
++func (x CryptoKey_CryptoPurpose) String() string {
++	return proto.EnumName(CryptoKey_CryptoPurpose_name, int32(x))
++}
++func (x *CryptoKey_CryptoPurpose) UnmarshalJSON(data []byte) error {
++	value, err := proto.UnmarshalJSONEnum(CryptoKey_CryptoPurpose_value, data, "CryptoKey_CryptoPurpose")
++	if err != nil {
++		return err
++	}
++	*x = CryptoKey_CryptoPurpose(value)
++	return nil
++}
++
++type CryptoKey_CryptoAlgorithm int32
++
++const (
++	CryptoKey_ECDSA_SHA        CryptoKey_CryptoAlgorithm = 1
++	CryptoKey_AES_CTR_HMAC_SHA CryptoKey_CryptoAlgorithm = 2
++	CryptoKey_HMAC_SHA         CryptoKey_CryptoAlgorithm = 3
++)
++
++var CryptoKey_CryptoAlgorithm_name = map[int32]string{
++	1: "ECDSA_SHA",
++	2: "AES_CTR_HMAC_SHA",
++	3: "HMAC_SHA",
++}
++var CryptoKey_CryptoAlgorithm_value = map[string]int32{
++	"ECDSA_SHA":        1,
++	"AES_CTR_HMAC_SHA": 2,
++	"HMAC_SHA":         3,
++}
++
++func (x CryptoKey_CryptoAlgorithm) Enum() *CryptoKey_CryptoAlgorithm {
++	p := new(CryptoKey_CryptoAlgorithm)
++	*p = x
++	return p
++}
++func (x CryptoKey_CryptoAlgorithm) String() string {
++	return proto.EnumName(CryptoKey_CryptoAlgorithm_name, int32(x))
++}
++func (x *CryptoKey_CryptoAlgorithm) UnmarshalJSON(data []byte) error {
++	value, err := proto.UnmarshalJSONEnum(CryptoKey_CryptoAlgorithm_value, data, "CryptoKey_CryptoAlgorithm")
++	if err != nil {
++		return err
++	}
++	*x = CryptoKey_CryptoAlgorithm(value)
++	return nil
++}
++
++type CryptoKey struct {
++	Version          *CryptoVersion             `protobuf:"varint,1,req,name=version,enum=tao.CryptoVersion" json:"version,omitempty"`
++	Purpose          *CryptoKey_CryptoPurpose   `protobuf:"varint,2,req,name=purpose,enum=tao.CryptoKey_CryptoPurpose" json:"purpose,omitempty"`
++	Algorithm        *CryptoKey_CryptoAlgorithm `protobuf:"varint,3,req,name=algorithm,enum=tao.CryptoKey_CryptoAlgorithm" json:"algorithm,omitempty"`
++	Key              []byte                     `protobuf:"bytes,4,req,name=key" json:"key,omitempty"`
++	XXX_unrecognized []byte                     `json:"-"`
++}
++
++func (m *CryptoKey) Reset()         { *m = CryptoKey{} }
++func (m *CryptoKey) String() string { return proto.CompactTextString(m) }
++func (*CryptoKey) ProtoMessage()    {}
++
++func (m *CryptoKey) GetVersion() CryptoVersion {
++	if m != nil && m.Version != nil {
++		return *m.Version
++	}
++	return CryptoVersion_CRYPTO_VERSION_1
++}
++
++func (m *CryptoKey) GetPurpose() CryptoKey_CryptoPurpose {
++	if m != nil && m.Purpose != nil {
++		return *m.Purpose
++	}
++	return CryptoKey_VERIFYING
++}
++
++func (m *CryptoKey) GetAlgorithm() CryptoKey_CryptoAlgorithm {
++	if m != nil && m.Algorithm != nil {
++		return *m.Algorithm
++	}
++	return CryptoKey_ECDSA_SHA
++}
++
++func (m *CryptoKey) GetKey() []byte {
++	if m != nil {
++		return m.Key
++	}
++	return nil
++}
++
++type CryptoKeyset struct {
++	Keys             []*CryptoKey `protobuf:"bytes,1,rep,name=keys" json:"keys,omitempty"`
++	XXX_unrecognized []byte       `json:"-"`
++}
++
++func (m *CryptoKeyset) Reset()         { *m = CryptoKeyset{} }
++func (m *CryptoKeyset) String() string { return proto.CompactTextString(m) }
++func (*CryptoKeyset) ProtoMessage()    {}
++
++func (m *CryptoKeyset) GetKeys() []*CryptoKey {
++	if m != nil {
++		return m.Keys
++	}
++	return nil
++}
++
++type PBEData struct {
++	Version    *CryptoVersion `protobuf:"varint,1,req,name=version,enum=tao.CryptoVersion" json:"version,omitempty"`
++	Cipher     *string        `protobuf:"bytes,2,req,name=cipher" json:"cipher,omitempty"`
++	Hmac       *string        `protobuf:"bytes,3,req,name=hmac" json:"hmac,omitempty"`
++	Iterations *int32         `protobuf:"varint,4,req,name=iterations" json:"iterations,omitempty"`
++	Iv         []byte         `protobuf:"bytes,5,req,name=iv" json:"iv,omitempty"`
++	Ciphertext []byte         `protobuf:"bytes,6,req,name=ciphertext" json:"ciphertext,omitempty"`
++	// TODO(kwalsh) Should this not use a mac as well for integrity protection?
++	Salt             []byte `protobuf:"bytes,7,req,name=salt" json:"salt,omitempty"`
++	XXX_unrecognized []byte `json:"-"`
++}
++
++func (m *PBEData) Reset()         { *m = PBEData{} }
++func (m *PBEData) String() string { return proto.CompactTextString(m) }
++func (*PBEData) ProtoMessage()    {}
++
++func (m *PBEData) GetVersion() CryptoVersion {
++	if m != nil && m.Version != nil {
++		return *m.Version
++	}
++	return CryptoVersion_CRYPTO_VERSION_1
++}
++
++func (m *PBEData) GetCipher() string {
++	if m != nil && m.Cipher != nil {
++		return *m.Cipher
++	}
++	return ""
++}
++
++func (m *PBEData) GetHmac() string {
++	if m != nil && m.Hmac != nil {
++		return *m.Hmac
++	}
++	return ""
++}
++
++func (m *PBEData) GetIterations() int32 {
++	if m != nil && m.Iterations != nil {
++		return *m.Iterations
++	}
++	return 0
++}
++
++func (m *PBEData) GetIv() []byte {
++	if m != nil {
++		return m.Iv
++	}
++	return nil
++}
++
++func (m *PBEData) GetCiphertext() []byte {
++	if m != nil {
++		return m.Ciphertext
++	}
++	return nil
++}
++
++func (m *PBEData) GetSalt() []byte {
++	if m != nil {
++		return m.Salt
++	}
++	return nil
++}
++
++type ECDSA_SHA_VerifyingKeyV1 struct {
++	Curve            *NamedEllipticCurve `protobuf:"varint,1,req,name=curve,enum=tao.NamedEllipticCurve" json:"curve,omitempty"`
++	EcPublic         []byte              `protobuf:"bytes,2,req,name=ec_public" json:"ec_public,omitempty"`
++	XXX_unrecognized []byte              `json:"-"`
++}
++
++func (m *ECDSA_SHA_VerifyingKeyV1) Reset()         { *m = ECDSA_SHA_VerifyingKeyV1{} }
++func (m *ECDSA_SHA_VerifyingKeyV1) String() string { return proto.CompactTextString(m) }
++func (*ECDSA_SHA_VerifyingKeyV1) ProtoMessage()    {}
++
++func (m *ECDSA_SHA_VerifyingKeyV1) GetCurve() NamedEllipticCurve {
++	if m != nil && m.Curve != nil {
++		return *m.Curve
++	}
++	return NamedEllipticCurve_PRIME256_V1
++}
++
++func (m *ECDSA_SHA_VerifyingKeyV1) GetEcPublic() []byte {
++	if m != nil {
++		return m.EcPublic
++	}
++	return nil
++}
++
++type ECDSA_SHA_SigningKeyV1 struct {
++	Curve            *NamedEllipticCurve `protobuf:"varint,1,req,name=curve,enum=tao.NamedEllipticCurve" json:"curve,omitempty"`
++	EcPrivate        []byte              `protobuf:"bytes,2,req,name=ec_private" json:"ec_private,omitempty"`
++	EcPublic         []byte              `protobuf:"bytes,3,req,name=ec_public" json:"ec_public,omitempty"`
++	XXX_unrecognized []byte              `json:"-"`
++}
++
++func (m *ECDSA_SHA_SigningKeyV1) Reset()         { *m = ECDSA_SHA_SigningKeyV1{} }
++func (m *ECDSA_SHA_SigningKeyV1) String() string { return proto.CompactTextString(m) }
++func (*ECDSA_SHA_SigningKeyV1) ProtoMessage()    {}
++
++func (m *ECDSA_SHA_SigningKeyV1) GetCurve() NamedEllipticCurve {
++	if m != nil && m.Curve != nil {
++		return *m.Curve
++	}
++	return NamedEllipticCurve_PRIME256_V1
++}
++
++func (m *ECDSA_SHA_SigningKeyV1) GetEcPrivate() []byte {
++	if m != nil {
++		return m.EcPrivate
++	}
++	return nil
++}
++
++func (m *ECDSA_SHA_SigningKeyV1) GetEcPublic() []byte {
++	if m != nil {
++		return m.EcPublic
++	}
++	return nil
++}
++
++type AES_CTR_HMAC_SHA_CryptingKeyV1 struct {
++	Mode             *CryptoCipherMode `protobuf:"varint,1,req,name=mode,enum=tao.CryptoCipherMode" json:"mode,omitempty"`
++	AesPrivate       []byte            `protobuf:"bytes,2,req,name=aes_private" json:"aes_private,omitempty"`
++	HmacPrivate      []byte            `protobuf:"bytes,3,req,name=hmac_private" json:"hmac_private,omitempty"`
++	XXX_unrecognized []byte            `json:"-"`
++}
++
++func (m *AES_CTR_HMAC_SHA_CryptingKeyV1) Reset()         { *m = AES_CTR_HMAC_SHA_CryptingKeyV1{} }
++func (m *AES_CTR_HMAC_SHA_CryptingKeyV1) String() string { return proto.CompactTextString(m) }
++func (*AES_CTR_HMAC_SHA_CryptingKeyV1) ProtoMessage()    {}
++
++func (m *AES_CTR_HMAC_SHA_CryptingKeyV1) GetMode() CryptoCipherMode {
++	if m != nil && m.Mode != nil {
++		return *m.Mode
++	}
++	return CryptoCipherMode_CIPHER_MODE_CTR
++}
++
++func (m *AES_CTR_HMAC_SHA_CryptingKeyV1) GetAesPrivate() []byte {
++	if m != nil {
++		return m.AesPrivate
++	}
++	return nil
++}
++
++func (m *AES_CTR_HMAC_SHA_CryptingKeyV1) GetHmacPrivate() []byte {
++	if m != nil {
++		return m.HmacPrivate
++	}
++	return nil
++}
++
++type HMAC_SHA_DerivingKeyV1 struct {
++	Mode             *CryptoDerivingMode `protobuf:"varint,1,req,name=mode,enum=tao.CryptoDerivingMode" json:"mode,omitempty"`
++	HmacPrivate      []byte              `protobuf:"bytes,2,req,name=hmac_private" json:"hmac_private,omitempty"`
++	XXX_unrecognized []byte              `json:"-"`
++}
++
++func (m *HMAC_SHA_DerivingKeyV1) Reset()         { *m = HMAC_SHA_DerivingKeyV1{} }
++func (m *HMAC_SHA_DerivingKeyV1) String() string { return proto.CompactTextString(m) }
++func (*HMAC_SHA_DerivingKeyV1) ProtoMessage()    {}
++
++func (m *HMAC_SHA_DerivingKeyV1) GetMode() CryptoDerivingMode {
++	if m != nil && m.Mode != nil {
++		return *m.Mode
++	}
++	return CryptoDerivingMode_DERIVING_MODE_HKDF
++}
++
++func (m *HMAC_SHA_DerivingKeyV1) GetHmacPrivate() []byte {
++	if m != nil {
++		return m.HmacPrivate
++	}
++	return nil
++}
++
++type CryptoHeader struct {
++	Version          *CryptoVersion `protobuf:"varint,1,req,name=version,enum=tao.CryptoVersion" json:"version,omitempty"`
++	KeyHint          []byte         `protobuf:"bytes,2,req,name=key_hint" json:"key_hint,omitempty"`
++	XXX_unrecognized []byte         `json:"-"`
++}
++
++func (m *CryptoHeader) Reset()         { *m = CryptoHeader{} }
++func (m *CryptoHeader) String() string { return proto.CompactTextString(m) }
++func (*CryptoHeader) ProtoMessage()    {}
++
++func (m *CryptoHeader) GetVersion() CryptoVersion {
++	if m != nil && m.Version != nil {
++		return *m.Version
++	}
++	return CryptoVersion_CRYPTO_VERSION_1
++}
++
++func (m *CryptoHeader) GetKeyHint() []byte {
++	if m != nil {
++		return m.KeyHint
++	}
++	return nil
++}
++
++// A PDU to be serialized and signed, including a required context to ensure
++// unique deserialization.
++type SignaturePDU struct {
++	Header *CryptoHeader `protobuf:"bytes,1,req,name=header" json:"header,omitempty"`
++	// SECURITY WARNING: Always choose a unique context for each unique type of
++	// message. One easy way to do this is to number the messages in a protocol
++	// and make the context "ProtocolName Message Y: ProtobufName Version X"
++	Context *string `protobuf:"bytes,2,req,name=context" json:"context,omitempty"`
++	// The serialized protobuf representing this message.
++	Data             []byte `protobuf:"bytes,3,req,name=data" json:"data,omitempty"`
++	XXX_unrecognized []byte `json:"-"`
++}
++
++func (m *SignaturePDU) Reset()         { *m = SignaturePDU{} }
++func (m *SignaturePDU) String() string { return proto.CompactTextString(m) }
++func (*SignaturePDU) ProtoMessage()    {}
++
++func (m *SignaturePDU) GetHeader() *CryptoHeader {
++	if m != nil {
++		return m.Header
++	}
++	return nil
++}
++
++func (m *SignaturePDU) GetContext() string {
++	if m != nil && m.Context != nil {
++		return *m.Context
++	}
++	return ""
++}
++
++func (m *SignaturePDU) GetData() []byte {
++	if m != nil {
++		return m.Data
++	}
++	return nil
++}
++
++// The result of signing.
++type SignedData struct {
++	Header           *CryptoHeader `protobuf:"bytes,1,req,name=header" json:"header,omitempty"`
++	Signature        []byte        `protobuf:"bytes,2,req,name=signature" json:"signature,omitempty"`
++	XXX_unrecognized []byte        `json:"-"`
++}
++
++func (m *SignedData) Reset()         { *m = SignedData{} }
++func (m *SignedData) String() string { return proto.CompactTextString(m) }
++func (*SignedData) ProtoMessage()    {}
++
++func (m *SignedData) GetHeader() *CryptoHeader {
++	if m != nil {
++		return m.Header
++	}
++	return nil
++}
++
++func (m *SignedData) GetSignature() []byte {
++	if m != nil {
++		return m.Signature
++	}
++	return nil
++}
++
++// The result of encrypting.
++type EncryptedData struct {
++	Header           *CryptoHeader `protobuf:"bytes,1,req,name=header" json:"header,omitempty"`
++	Iv               []byte        `protobuf:"bytes,2,req,name=iv" json:"iv,omitempty"`
++	Ciphertext       []byte        `protobuf:"bytes,3,req,name=ciphertext" json:"ciphertext,omitempty"`
++	Mac              []byte        `protobuf:"bytes,4,opt,name=mac" json:"mac,omitempty"`
++	XXX_unrecognized []byte        `json:"-"`
++}
++
++func (m *EncryptedData) Reset()         { *m = EncryptedData{} }
++func (m *EncryptedData) String() string { return proto.CompactTextString(m) }
++func (*EncryptedData) ProtoMessage()    {}
++
++func (m *EncryptedData) GetHeader() *CryptoHeader {
++	if m != nil {
++		return m.Header
++	}
++	return nil
++}
++
++func (m *EncryptedData) GetIv() []byte {
++	if m != nil {
++		return m.Iv
++	}
++	return nil
++}
++
++func (m *EncryptedData) GetCiphertext() []byte {
++	if m != nil {
++		return m.Ciphertext
++	}
++	return nil
++}
++
++func (m *EncryptedData) GetMac() []byte {
++	if m != nil {
++		return m.Mac
++	}
++	return nil
++}
++
++// A PDU to be serialized and fed to HKDF for derivation.
++type KeyDerivationPDU struct {
++	PreviousHash     []byte  `protobuf:"bytes,1,req,name=previous_hash" json:"previous_hash,omitempty"`
++	Size             *uint32 `protobuf:"fixed32,2,req,name=size" json:"size,omitempty"`
++	Context          *string `protobuf:"bytes,3,req,name=context" json:"context,omitempty"`
++	Index            *uint32 `protobuf:"fixed32,4,req,name=index" json:"index,omitempty"`
++	XXX_unrecognized []byte  `json:"-"`
++}
++
++func (m *KeyDerivationPDU) Reset()         { *m = KeyDerivationPDU{} }
++func (m *KeyDerivationPDU) String() string { return proto.CompactTextString(m) }
++func (*KeyDerivationPDU) ProtoMessage()    {}
++
++func (m *KeyDerivationPDU) GetPreviousHash() []byte {
++	if m != nil {
++		return m.PreviousHash
++	}
++	return nil
++}
++
++func (m *KeyDerivationPDU) GetSize() uint32 {
++	if m != nil && m.Size != nil {
++		return *m.Size
++	}
++	return 0
++}
++
++func (m *KeyDerivationPDU) GetContext() string {
++	if m != nil && m.Context != nil {
++		return *m.Context
++	}
++	return ""
++}
++
++func (m *KeyDerivationPDU) GetIndex() uint32 {
++	if m != nil && m.Index != nil {
++		return *m.Index
++	}
++	return 0
++}
++
++type X509Details struct {
++	// Requested x509 CommonName detail
++	Commonname []byte `protobuf:"bytes,3,opt,name=commonname" json:"commonname,omitempty"`
++	// Requested x509 Country detail
++	Country []byte `protobuf:"bytes,4,opt,name=country" json:"country,omitempty"`
++	// Requested x509 State detail
++	State []byte `protobuf:"bytes,5,opt,name=state" json:"state,omitempty"`
++	// Requested x509 Organization detail
++	Organization     []byte `protobuf:"bytes,6,opt,name=organization" json:"organization,omitempty"`
++	XXX_unrecognized []byte `json:"-"`
++}
++
++func (m *X509Details) Reset()         { *m = X509Details{} }
++func (m *X509Details) String() string { return proto.CompactTextString(m) }
++func (*X509Details) ProtoMessage()    {}
++
++func (m *X509Details) GetCommonname() []byte {
++	if m != nil {
++		return m.Commonname
++	}
++	return nil
++}
++
++func (m *X509Details) GetCountry() []byte {
++	if m != nil {
++		return m.Country
++	}
++	return nil
++}
++
++func (m *X509Details) GetState() []byte {
++	if m != nil {
++		return m.State
++	}
++	return nil
++}
++
++func (m *X509Details) GetOrganization() []byte {
++	if m != nil {
++		return m.Organization
++	}
++	return nil
++}
++
++func init() {
++	proto.RegisterEnum("tao.CryptoVersion", CryptoVersion_name, CryptoVersion_value)
++	proto.RegisterEnum("tao.NamedEllipticCurve", NamedEllipticCurve_name, NamedEllipticCurve_value)
++	proto.RegisterEnum("tao.CryptoCipherMode", CryptoCipherMode_name, CryptoCipherMode_value)
++	proto.RegisterEnum("tao.CryptoDerivingMode", CryptoDerivingMode_name, CryptoDerivingMode_value)
++	proto.RegisterEnum("tao.CryptoKey_CryptoPurpose", CryptoKey_CryptoPurpose_name, CryptoKey_CryptoPurpose_value)
++	proto.RegisterEnum("tao.CryptoKey_CryptoAlgorithm", CryptoKey_CryptoAlgorithm_name, CryptoKey_CryptoAlgorithm_value)
++}
+diff --git a/go/src/cloudproxy/tao/keys_test.go b/go/src/cloudproxy/tao/keys_test.go
+new file mode 100644
+index 0000000..1c4b442
+--- /dev/null
++++ b/go/src/cloudproxy/tao/keys_test.go
+@@ -0,0 +1,416 @@
++//  Copyright (c) 2014, Google Inc.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package tao
++
++import (
++	"crypto/rand"
++	"io/ioutil"
++	"os"
++	"testing"
++)
++
++func TestGenerateKeys(t *testing.T) {
++	if _, err := GenerateSigner(); err != nil {
++		t.Fatal(err.Error())
++	}
++}
++
++func TestSignerDERSerialization(t *testing.T) {
++	s, err := GenerateSigner()
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	b, err := MarshalSignerDER(s)
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	if _, err := UnmarshalSignerDER(b); err != nil {
++		t.Fatal(err.Error())
++	}
++}
++
++func TestSelfSignedX509(t *testing.T) {
++	s, err := GenerateSigner()
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	d := `
++		commonname: "test",
++		country: "US",
++		state: "WA",
++		organization: "Google",
++	`
++
++	_, err = s.CreateSelfSignedX509(d)
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++}
++
++func TestSignerMarshalProto(t *testing.T) {
++	s, err := GenerateSigner()
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	c, err := MarshalSignerProto(s)
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	if _, err := UnmarshalSignerProto(c); err != nil {
++		t.Fatal(err.Error())
++	}
++}
++
++func TestCreateHeader(t *testing.T) {
++	s, err := GenerateSigner()
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	if _, err := s.CreateHeader(); err != nil {
++		t.Fatal(err.Error())
++	}
++}
++
++func TestPublicSignerMarshalProto(t *testing.T) {
++	s, err := GenerateSigner()
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	ck, err := MarshalPublicSignerProto(s)
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	if _, err := UnmarshalVerifierProto(ck); err != nil {
++		t.Fatal(err.Error())
++	}
++}
++
++func TestVerifierFromX509(t *testing.T) {
++	s, err := GenerateSigner()
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	d := `
++		commonname: "test",
++		country: "US",
++		state: "WA",
++		organization: "Google",
++	`
++
++	x, err := s.CreateSelfSignedX509(d)
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	if _, err := FromX509(x); err != nil {
++		t.Fatal(err.Error())
++	}
++}
++
++func TestFromPrincipalName(t *testing.T) {
++	s, err := GenerateSigner()
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	name, err := s.ToPrincipalName()
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	v, err := FromPrincipalName(name)
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	name2, err := v.ToPrincipalName()
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	if name != name2 {
++		t.Fatal("Verifier Principal name doesn't match the Signer name it was derived from")
++	}
++}
++
++func TestSignAndVerify(t *testing.T) {
++	s, err := GenerateSigner()
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	name, err := s.ToPrincipalName()
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	v, err := FromPrincipalName(name)
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	data := []byte(`Test data to sign`)
++	context := "Context string"
++	sig, err := s.Sign(data, context)
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	if verifies, err := v.Verify(data, context, sig); err != nil || !verifies {
++		if err != nil {
++			t.Fatal(err.Error())
++		} else {
++			t.Fatal("The signature failed verification")
++		}
++	}
++}
++
++func TestNewCrypter(t *testing.T) {
++	if _, err := GenerateCrypter(); err != nil {
++		t.Fatal(err.Error())
++	}
++}
++
++func TestEncryptAndDecrypt(t *testing.T) {
++	c, err := GenerateCrypter()
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	data := []byte("Test data to encrypt")
++	crypted, err := c.Encrypt(data)
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	data2, err := c.Decrypt(crypted)
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	if len(data) != len(data2) {
++		t.Fatal("The decrypted data was not the same length as the original data")
++	}
++
++	for i := range data {
++		if data[i] != data2[i] {
++			t.Fatal("The decrypted data was not the same as the original data")
++		}
++	}
++}
++
++func TestMarshalCrypterProto(t *testing.T) {
++	c, err := GenerateCrypter()
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	ck, err := MarshalCrypterProto(c)
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	c2, err := UnmarshalCrypterProto(ck)
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	// Try encrypting with one and decrypting with the other.
++	data := []byte("Test data to encrypt")
++	crypted, err := c.Encrypt(data)
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	data2, err := c2.Decrypt(crypted)
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	if len(data) != len(data2) {
++		t.Fatal("The decrypted data was not the same length as the original data")
++	}
++
++	for i := range data {
++		if data[i] != data2[i] {
++			t.Fatal("The decrypted data was not the same as the original data")
++		}
++	}
++}
++
++func TestNewDeriver(t *testing.T) {
++	if _, err := GenerateDeriver(); err != nil {
++		t.Fatal(err.Error())
++	}
++}
++
++func TestDeriveSecret(t *testing.T) {
++	d, err := GenerateDeriver()
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	salt := make([]byte, 20)
++	if _, err := rand.Read(salt); err != nil {
++		t.Fatal(err.Error())
++	}
++
++	context := []byte("Test context")
++
++	// Derive an AES-256 key.
++	material := make([]byte, 32)
++	if err := d.Derive(salt, context, material); err != nil {
++		t.Fatal(err.Error())
++	}
++
++	material2 := make([]byte, 32)
++	if err := d.Derive(salt, context, material2); err != nil {
++		t.Fatal(err.Error())
++	}
++
++	if len(material) != len(material2) {
++		t.Fatal("The Deriver generated two different lengths of keys")
++	}
++
++	for i := range material {
++		if material[i] != material2[i] {
++			t.Fatal("The Deriver is not deterministic")
++		}
++	}
++}
++
++func TestMarshalDeriver(t *testing.T) {
++	d, err := GenerateDeriver()
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	ck, err := MarshalDeriverProto(d)
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	d2, err := UnmarshalDeriverProto(ck)
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++
++	// Make sure both derivers derive the same keys given the same input.
++	salt := make([]byte, 20)
++	if _, err := rand.Read(salt); err != nil {
++		t.Fatal(err.Error())
++	}
++
++	context := []byte("Test context")
++
++	// Derive an AES-256 key.
++	material := make([]byte, 32)
++	if err := d.Derive(salt, context, material); err != nil {
++		t.Fatal(err.Error())
++	}
++
++	material2 := make([]byte, 32)
++	if err := d2.Derive(salt, context, material2); err != nil {
++		t.Fatal(err.Error())
++	}
++
++	if len(material) != len(material2) {
++		t.Fatal("The Deriver generated two different lengths of keys")
++	}
++
++	for i := range material {
++		if material[i] != material2[i] {
++			t.Fatal("The Deriver is not deterministic")
++		}
++	}
++}
++
++func TestNewTemporaryKeys(t *testing.T) {
++	k, err := NewTemporaryKeys(Signing | Crypting | Deriving)
++	if err != nil {
++		t.Fatal("Couldn't initialize temporary keys:", err)
++	}
++
++	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
++		t.Fatal("Couldn't generate the right keys")
++	}
++}
++
++func TestNewOnDiskPBEKeys(t *testing.T) {
++	tempDir, err := ioutil.TempDir("", "TestNewOnDiskPBEKeys")
++	if err != nil {
++		t.Fatal("Couldn't create a temporary directory:", err)
++	}
++	defer os.RemoveAll(tempDir)
++
++	password := []byte(`don't use this password`)
++	k, err := NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir)
++	if err != nil {
++		t.Fatal("Couldn't create on-disk PBE keys:", err)
++	}
++
++	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
++		t.Fatal("Couldn't generate the right keys")
++	}
++
++	_, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir)
++	if err != nil {
++		t.Fatal("Couldn't recover the serialized keys:", err)
++	}
++}
++
++func TestNewTemporaryTaoDelegatedKeys(t *testing.T) {
++	ft, err := NewFakeTao("test", "", nil)
++	if err != nil {
++		t.Fatal("Couldn't initialize a FakeTao:", err)
++	}
++
++	_, err = NewTemporaryTaoDelegatedKeys(Signing|Crypting|Deriving, ft)
++	if err != nil {
++		t.Fatal("Couldn't initialize a temporary hosted keyset:", err)
++	}
++}
++
++func TestNewOnDiskTaoSealedKeys(t *testing.T) {
++	tempDir, err := ioutil.TempDir("", "TestInitHosted")
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++	defer os.RemoveAll(tempDir)
++
++	ft, err := NewFakeTao("test", "", nil)
++	if err != nil {
++		t.Fatal("Couldn't initialize a FakeTao:", err)
++	}
++
++	_, err = NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)
++	if err != nil {
++		t.Fatal("Couldn't initialize a hosted keyset:", err)
++	}
++
++	_, err = NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)
++	if err != nil {
++		t.Fatal("Couldn't read back a sealed, hosted keyset:", err)
++	}
++}
+diff --git a/go/src/cloudproxy/tao/tao.go b/go/src/cloudproxy/tao/tao.go
+index 840b455..ca611dc 100644
+--- a/go/src/cloudproxy/tao/tao.go
++++ b/go/src/cloudproxy/tao/tao.go
+@@ -16,40 +16,42 @@
+ 
+ package tao
+ 
+ import (
+ 	"io"
+ 	"os"
+ 
+ 	"github.com/golang/glog"
+ )
+ 
+ const (
+ 	HostTaoEnvVar = "GOOGLE_HOST_TAO"
+ 
+ 	SharedSecretPolicyDefault      = "self"
+ 	SharedSecretPolicyConservative = "few"
+ 	SharedSecretPolicyLiberal      = "any"
+ 
+ 	SealPolicyDefault      = "self"
+ 	SealPolicyConservative = "few"
+ 	SealPolicyLiberal      = "any"
++
++	AttestationSigningContext = "Tao Attestation Signing Context V1"
+ )
+ 
+ // Tao is the fundamental Trustworthy Computing interface provided by a host to
+ // its hosted programs. Each level of a system can act as a host by exporting
+ // the Tao interface and providing Tao services to higher-level hosted programs.
+ //
+ // In most cases, a hosted program will use a stub Tao that performs RPC over a
+ // channel to its host. The details of such RPC depend on the specific
+ // implementation of the host: some hosted programs may use pipes to communicate
+ // with their host, others may use sockets, etc.
+ type Tao interface {
+ 	// GetTaoName returns the Tao principal name assigned to the caller.
+ 	GetTaoName() (name string, err error)
+ 
+ 	// ExtendTaoName irreversibly extends the Tao principal name of the caller.
+ 	ExtendTaoName(subprin string) error
+ 
+ 	// GetRandomBytes returns a slice of n random bytes.
+ 	GetRandomBytes(n int) (bytes []byte, err error)
+ 
+@@ -76,22 +78,22 @@ var cachedHost Tao
+ // Host returns the interface to the underlying host Tao. It depends on a
+ // specific environment variable being set. On success it memoizes the result
+ // before returning it because there should only ever be a single channel to the
+ // host. On failure, it logs a message using glog and returns nil.
+ // Note: errors are not returned so that, once it is confirmed that Host
+ // returns a non-nil value, callers can use the function result in an
+ // expression, e.g.:
+ //   name, err := tao.Host().GetTaoName()
+ func Host() Tao {
+ 	host, err := DeserializeTaoRPC(os.Getenv(HostTaoEnvVar))
+ 	if err != nil {
+ 		glog.Error(err)
+ 		return nil
+ 	}
+ 	cachedHost = host
+ 	return host
+ }
+ 
+ // Hosted returns true iff a host Tao is available via the Host function.
+ func HostAvailable() bool {
+-		return Host() != nil
++	return Host() != nil
+ }
+diff --git a/go/src/cloudproxy/tao/tao_server.go b/go/src/cloudproxy/tao/tao_server.go
+new file mode 100644
+index 0000000..36f7686
+--- /dev/null
++++ b/go/src/cloudproxy/tao/tao_server.go
+@@ -0,0 +1,121 @@
++//  Copyright (c) 2014, Google Inc.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package tao
++
++import (
++	"errors"
++
++	"code.google.com/p/goprotobuf/proto"
++)
++
++// A TaoServer wraps a Tao and serves its methods across a net/rpc connection.
++type TaoServer struct {
++	T Tao
++}
++
++// GetTaoName returns the Tao principal name assigned to the caller.
++func (ts *TaoServer) GetTaoName(r *TaoRPCRequest, s *TaoRPCResponse) error {
++	name, err := ts.T.GetTaoName()
++	if err != nil {
++		return err
++	}
++
++	s.Data = []byte(name)
++	return nil
++}
++
++// ExtendTaoName irreversibly extends the Tao principal name of the caller.
++func (ts *TaoServer) ExtendTaoName(r *TaoRPCRequest, s *TaoRPCResponse) error {
++	if err := ts.T.ExtendTaoName(string(r.Data)); err != nil {
++		return err
++	}
++
++	return nil
++}
++
++// GetRandomBytes returns a slice of n random bytes.
++func (ts *TaoServer) GetRandomBytes(r *TaoRPCRequest, s *TaoRPCResponse) error {
++	if r.GetSize() <= 0 {
++		return errors.New("Invalid array size")
++	}
++
++	var err error
++	s.Data, err = ts.T.GetRandomBytes(int(r.GetSize()))
++	if err != nil {
++		return err
++	}
++
++	return nil
++}
++
++// Rand produces an io.Reader for random bytes from this Tao.  This should
++// never be called on the TaoServer, since it's handled transparently by
++// TaoClient.
++func (ts *TaoServer) Rand(r *TaoRPCRequest, s *TaoRPCResponse) error {
++	return nil
++}
++
++// GetSharedSecret returns a slice of n secret bytes.
++func (ts *TaoServer) GetSharedSecret(r *TaoRPCRequest, s *TaoRPCResponse) error {
++	var err error
++	s.Data, err = ts.T.GetSharedSecret(int(*r.Size), string(r.Data))
++	if err != nil {
++		return err
++	}
++
++	return nil
++}
++
++// Seal encrypts data so only certain hosted programs can unseal it.
++func (ts *TaoServer) Seal(r *TaoRPCRequest, s *TaoRPCResponse) error {
++	var err error
++	s.Data, err = ts.T.Seal(r.Data, *r.Policy)
++	if err != nil {
++		return err
++	}
++
++	return nil
++}
++
++// Unseal decrypts data that has been sealed by the Seal() operation, but only
++// if the policy specified during the Seal() operation is satisfied.
++func (ts *TaoServer) Unseal(r *TaoRPCRequest, s *TaoRPCResponse) error {
++	var err error
++	var policy string
++	s.Data, policy, err = ts.T.Unseal(r.Data)
++	if err != nil {
++		return err
++	}
++
++	s.Policy = proto.String(policy)
++	return nil
++}
++
++// Attest requests the Tao host sign a Statement on behalf of the caller.
++func (ts *TaoServer) Attest(r *TaoRPCRequest, s *TaoRPCResponse) error {
++	stmt := new(Statement)
++	err := proto.Unmarshal(r.Data, stmt)
++	if err != nil {
++		return err
++	}
++
++	a, err := ts.T.Attest(stmt)
++	if err != nil {
++		return err
++	}
++
++	s.Data, err = proto.Marshal(a)
++	return err
++}
+diff --git a/go/src/cloudproxy/tao/tao_server_test.go b/go/src/cloudproxy/tao/tao_server_test.go
+new file mode 100644
+index 0000000..ef70e25
+--- /dev/null
++++ b/go/src/cloudproxy/tao/tao_server_test.go
+@@ -0,0 +1,104 @@
++//  Copyright (c) 2014, Google Inc.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package tao
++
++import (
++	"net/rpc"
++	"testing"
++	"time"
++
++	"cloudproxy/util"
++	"code.google.com/p/goprotobuf/proto"
++)
++
++func TestTaoChanServer(t *testing.T) {
++	serverWrite := make(chan []byte)
++	clientWrite := make(chan []byte)
++	c := &util.ChanReadWriteCloser{
++		R: serverWrite,
++		W: clientWrite,
++	}
++
++	s := &util.ChanReadWriteCloser{
++		R: clientWrite,
++		W: serverWrite,
++	}
++
++	server := rpc.NewServer()
++	tao, err := NewFakeTao("test", "", nil)
++	if err != nil {
++		t.Fatal("Couldn't initialize the FakeTao:", err)
++	}
++
++	ts := &TaoServer{
++		T: tao,
++	}
++
++	err = server.Register(ts)
++	if err != nil {
++		t.Fatal("Couldn't register the server:", err)
++	}
++
++	go server.ServeConn(s)
++
++	tc, err := NewTaoRPC(c, "TaoServer")
++	if err != nil {
++		t.Fatal("Couldn't set up a TaoRPC client to TaoServer:", err)
++	}
++
++	b, err := tc.GetRandomBytes(10)
++	if err != nil {
++		t.Fatal("Couldn't get random bytes:", err)
++	}
++
++	// Seal, Unseal, and Attest to the bytes
++	sealed, err := tc.Seal(b, SealPolicyDefault)
++	if err != nil {
++		t.Fatal("Couldn't seal the data:", err)
++	}
++
++	unsealed, policy, err := tc.Unseal(sealed)
++	if err != nil {
++		t.Fatal("Couldn't unseal the data:", err)
++	}
++
++	if string(policy) != SealPolicyDefault {
++		t.Fatal("Invalid policy returned by the Tao")
++	}
++
++	if len(unsealed) != len(b) {
++		t.Fatal("Invalid unsealed length")
++	}
++
++	for i, v := range unsealed {
++		if v != b[i] {
++			t.Fatalf("Incorrect value returned at byte %d\n", i)
++		}
++	}
++
++	stmt := &Statement{
++		// TODO(tmroeder): Issuer, Time, and Expiration are required, but they
++		// should be optional.
++		Issuer:     proto.String("test"),
++		Time:       proto.Int64(time.Now().UnixNano()),
++		Expiration: proto.Int64(time.Now().UnixNano() + 100),
++		Delegate:   proto.String(string(b)),
++	}
++
++	_, err = tc.Attest(stmt)
++	if err != nil {
++		t.Fatal("Couldn't attest to the bytes:", err)
++	}
++}
+diff --git a/go/src/cloudproxy/util/chanpair.go b/go/src/cloudproxy/util/chanpair.go
+new file mode 100644
+index 0000000..1b7b8c1
+--- /dev/null
++++ b/go/src/cloudproxy/util/chanpair.go
+@@ -0,0 +1,21 @@
++package util
++
++type ChanReadWriteCloser struct {
++       R <-chan []byte
++  W chan []byte
++}
++
++func (crw ChanReadWriteCloser) Read(p []byte) (int, error) {
++  return copy(p, <-crw.R), nil
++}
++
++func (crw ChanReadWriteCloser) Write(p []byte) (int, error) {
++  crw.W <- p
++       return len(p), nil
++}
++
++func (crw ChanReadWriteCloser) Close() error {
++  close(crw.W)
++  return nil
++}
++

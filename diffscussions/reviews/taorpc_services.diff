@@ -6,6 +6,13 @@
 #- Update taorpc.go to support different service names and other rpc clients
 #- 
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-18T14:32:33-0400
+#**
+#-- LGTM
+#--
 diff --git a/go/src/cloudproxy/tao/taorpc.go b/go/src/cloudproxy/tao/taorpc.go
 index 2ba3b4c..850948e 100644
 --- a/go/src/cloudproxy/tao/taorpc.go

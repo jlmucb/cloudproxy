@@ -893,6 +893,13 @@ index 0000000..2cd8981
 #-- As discussed by phone, you're going to change the C++ version to match the
 #-- Go version, IIUC.
 #-- 
+#***
+#*** author: Kevin Walsh
+#*** email: kwalsh@holycross.edu
+#*** date: 2014-07-18T19:44:27-0400
+#***
+#--- Yup, will do. 
+#---
 +
 +// marshalHMAC_SHA_DerivingKeyV1 encodes a deriving key as a protobuf message.
 +func marshalHMAC_SHA_DerivingKeyV1(d *Deriver) *HMAC_SHA_DerivingKeyV1 {
@@ -1241,6 +1248,13 @@ index 0000000..2cd8981
 #-- As for the password type, the Go style is to make passwords []byte rather
 #-- than string. E.g., see x509.EncryptPEMBlock.
 #-- 
+#***
+#*** author: Kevin Walsh
+#*** email: kwalsh@holycross.edu
+#*** date: 2014-07-18T19:45:05-0400
+#***
+#--- I see. String data is immutable, so I guess it makes sense.
+#---
 +	pbed := &PBEData{
 +		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
 +		Cipher:  proto.String("aes128-ctr"),
@@ -1375,6 +1389,13 @@ index 0000000..2cd8981
 #-- allocated key would later be cleared. Is there another allocation you're
 #-- thinking of?
 #-- 
+#***
+#*** author: Kevin Walsh
+#*** email: kwalsh@holycross.edu
+#*** date: 2014-07-18T19:43:52-0400
+#***
+#--- You are right.
+#---
 +	}
 +
 +	if k.keyTypes&Deriving == Deriving {

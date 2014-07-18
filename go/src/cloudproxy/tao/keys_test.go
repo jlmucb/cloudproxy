@@ -381,13 +381,13 @@ func TestNewOnDiskKeys(t *testing.T) {
 }
 
 func TestInitTemporaryHosted(t *testing.T) {
-	st := new(SoftTao)
-	if err := st.Init("test", "", nil); err != nil {
-		t.Fatal("Couldn't initialize a SoftTao:", err)
+	ft := new(FakeTao)
+	if err := ft.Init("test", "", nil); err != nil {
+		t.Fatal("Couldn't initialize a FakeTao:", err)
 	}
 
 	k := NewTemporaryKeys(Signing | Crypting | Deriving)
-	if err := k.InitTemporaryHosted(st); err != nil {
+	if err := k.InitTemporaryHosted(ft); err != nil {
 		t.Fatal("Couldn't initialize a temporary hosted keyset:", err)
 	}
 }
@@ -399,18 +399,18 @@ func TestInitHosted(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	st := new(SoftTao)
-	if err := st.Init("test", "", nil); err != nil {
-		t.Fatal("Couldn't initialize a SoftTao:", err)
+	ft := new(FakeTao)
+	if err := ft.Init("test", "", nil); err != nil {
+		t.Fatal("Couldn't initialize a FakeTao:", err)
 	}
 
 	k := NewOnDiskKeys(Signing|Crypting|Deriving, tempDir)
-	if err := k.InitHosted(st, SealPolicyDefault); err != nil {
+	if err := k.InitHosted(ft, SealPolicyDefault); err != nil {
 		t.Fatal("Couldn't initialize a hosted keyset:", err)
 	}
 
 	k2 := NewOnDiskKeys(Signing|Crypting|Deriving, tempDir)
-	if err := k2.InitHosted(st, SealPolicyDefault); err != nil {
+	if err := k2.InitHosted(ft, SealPolicyDefault); err != nil {
 		t.Fatal("Couldn't read back a sealed, hosted keyset:", err)
 	}
 }

@@ -37,7 +37,7 @@ func TestTaoChanServer(t *testing.T) {
 	}
 
 	server := rpc.NewServer()
-	tao := new(SoftTao)
+	tao := new(FakeTao)
 	if err := tao.Init("test", "", nil); err != nil {
 		t.Error(err.Error())
 	}

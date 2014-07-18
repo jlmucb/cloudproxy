@@ -34,22 +34,23 @@ type FakeTao struct {
 }
 
 // Init initializes the FakeTao with a crypter and a signer.
-func (f *FakeTao) Init(name, path string, password []byte) error {
-	f.name = name
-
-	if path == "" {
-		f.keys = NewTemporaryKeys(Signing | Crypting | Deriving)
-		if err := f.keys.InitTemporary(); err != nil {
-			return err
-		}
-	} else {
-		f.keys = NewOnDiskKeys(Signing|Crypting|Deriving, path)
-		if err := f.keys.InitWithPassword(password); err != nil {
-			return err
-		}
+func NewFakeTao(name, path string, password []byte) (Tao, error) {
+	f := &FakeTao{
+		name: name,
 	}
 
-	return nil
+	var err error
+	if path == "" {
+		f.keys, err = NewTemporaryKeys(Signing | Crypting | Deriving)
+	} else {
+		f.keys, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, path)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return f, nil
 }
 
 // GetTaoName returns the Tao principal name assigned to the caller.
@@ -178,27 +179,27 @@ func (f *FakeTao) Attest(stmt *Statement) (*Attestation, error) {
 }
 
 func TestInMemoryInit(t *testing.T) {
-	ft := new(FakeTao)
-	if err := ft.Init("test", "", nil); err != nil {
-		t.Error(err.Error())
+	_, err := NewFakeTao("test", "", nil)
+	if err != nil {
+		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
 	}
 }
 
 func TestFakeTaoRandom(t *testing.T) {
-	ft := new(FakeTao)
-	if err := ft.Init("test", "", nil); err != nil {
-		t.Error(err.Error())
+	ft, err := NewFakeTao("test", "", nil)
+	if err != nil {
+		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
 	}
 
 	if _, err := ft.GetRandomBytes(10); err != nil {
-		t.Error(err.Error())
+		t.Fatal("Couldn't get 10 random bytes:", err)
 	}
 }
 
 func TestFakeTaoSeal(t *testing.T) {
-	ft := new(FakeTao)
-	if err := ft.Init("test", "", nil); err != nil {
-		t.Error(err.Error())
+	ft, err := NewFakeTao("test", "", nil)
+	if err != nil {
+		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
 	}
 
 	r := mrand.New(mrand.NewSource(time.Now().UnixNano()))
@@ -207,16 +208,16 @@ func TestFakeTaoSeal(t *testing.T) {
 		b[i] = byte(r.Intn(256))
 	}
 
-	_, err := ft.Seal(b, SealPolicyDefault)
+	_, err = ft.Seal(b, SealPolicyDefault)
 	if err != nil {
-		t.Error(err.Error())
+		t.Fatal("Couldn't seal data in the FakeTao under the default policy:", err)
 	}
 }
 
 func TestFakeTaoUnseal(t *testing.T) {
-	ft := new(FakeTao)
-	if err := ft.Init("test", "", nil); err != nil {
-		t.Error(err.Error())
+	ft, err := NewFakeTao("test", "", nil)
+	if err != nil {
+		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
 	}
 
 	r := mrand.New(mrand.NewSource(time.Now().UnixNano()))
@@ -227,37 +228,37 @@ func TestFakeTaoUnseal(t *testing.T) {
 
 	s, err := ft.Seal(b, SealPolicyDefault)
 	if err != nil {
-		t.Error(err.Error())
+		t.Fatal("Couldn't seal data in the FakeTao under the default policyL", err)
 	}
 
 	u, p, err := ft.Unseal(s)
 	if string(p) != SealPolicyDefault {
-		t.Error("Invalid policy returned by Unseal")
+		t.Fatal("Invalid policy returned by Unseal")
 	}
 
 	if len(u) != len(b) {
-		t.Error("Invalid unsealed length")
+		t.Fatal("Invalid unsealed length")
 	}
 
 	for i, v := range u {
 		if v != b[i] {
-			t.Errorf("Incorrect byte at position %d", i)
+			t.Fatalf("Incorrect byte at position %d", i)
 		}
 	}
 }
 
 func TestFakeTaoAttest(t *testing.T) {
-	ft := new(FakeTao)
-	if err := ft.Init("test", "", nil); err != nil {
-		t.Error(err.Error())
+	ft, err := NewFakeTao("test", "", nil)
+	if err != nil {
+		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
 	}
 
 	stmt := &Statement{
 		Delegate: proto.String("Test Principal"),
 	}
 
-	_, err := ft.Attest(stmt)
+	_, err = ft.Attest(stmt)
 	if err != nil {
-		t.Error(err.Error())
+		t.Fatal("Couldn't attest to a statement in the FakeTao:", err)
 	}
 }

@@ -347,9 +347,9 @@ func TestMarshalDeriver(t *testing.T) {
 }
 
 func TestNewTemporaryKeys(t *testing.T) {
-	k := NewTemporaryKeys(Signing | Crypting | Deriving)
-	if err := k.InitTemporary(); err != nil {
-		t.Fatal(err.Error())
+	k, err := NewTemporaryKeys(Signing | Crypting | Deriving)
+	if err != nil {
+		t.Fatal("Couldn't initialize temporary keys:", err)
 	}
 
 	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
@@ -357,60 +357,60 @@ func TestNewTemporaryKeys(t *testing.T) {
 	}
 }
 
-func TestNewOnDiskKeys(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "TestNewOnDiskKeys")
+func TestNewOnDiskPBEKeys(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "TestNewOnDiskPBEKeys")
 	if err != nil {
-		t.Fatal(err.Error())
+		t.Fatal("Couldn't create a temporary directory:", err)
 	}
 	defer os.RemoveAll(tempDir)
 
-	k := NewOnDiskKeys(Signing|Crypting|Deriving, tempDir)
 	password := []byte(`don't use this password`)
-	if err = k.InitWithPassword(password); err != nil {
-		t.Fatal("Couldn't set up keys on disk:", err)
+	k, err := NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir)
+	if err != nil {
+		t.Fatal("Couldn't create on-disk PBE keys:", err)
 	}
 
 	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
 		t.Fatal("Couldn't generate the right keys")
 	}
 
-	k2 := NewOnDiskKeys(Signing|Crypting|Deriving, tempDir)
-	if err = k2.InitWithPassword(password); err != nil {
+	_, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir)
+	if err != nil {
 		t.Fatal("Couldn't recover the serialized keys:", err)
 	}
 }
 
-func TestInitTemporaryHosted(t *testing.T) {
-	ft := new(FakeTao)
-	if err := ft.Init("test", "", nil); err != nil {
+func TestNewTemporaryTaoDelegatedKeys(t *testing.T) {
+	ft, err := NewFakeTao("test", "", nil)
+	if err != nil {
 		t.Fatal("Couldn't initialize a FakeTao:", err)
 	}
 
-	k := NewTemporaryKeys(Signing | Crypting | Deriving)
-	if err := k.InitTemporaryHosted(ft); err != nil {
+	_, err = NewTemporaryTaoDelegatedKeys(Signing|Crypting|Deriving, ft)
+	if err != nil {
 		t.Fatal("Couldn't initialize a temporary hosted keyset:", err)
 	}
 }
 
-func TestInitHosted(t *testing.T) {
+func TestNewOnDiskTaoSealedKeys(t *testing.T) {
 	tempDir, err := ioutil.TempDir("", "TestInitHosted")
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 	defer os.RemoveAll(tempDir)
 
-	ft := new(FakeTao)
-	if err := ft.Init("test", "", nil); err != nil {
+	ft, err := NewFakeTao("test", "", nil)
+	if err != nil {
 		t.Fatal("Couldn't initialize a FakeTao:", err)
 	}
 
-	k := NewOnDiskKeys(Signing|Crypting|Deriving, tempDir)
-	if err := k.InitHosted(ft, SealPolicyDefault); err != nil {
+	_, err = NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)
+	if err != nil {
 		t.Fatal("Couldn't initialize a hosted keyset:", err)
 	}
 
-	k2 := NewOnDiskKeys(Signing|Crypting|Deriving, tempDir)
-	if err := k2.InitHosted(ft, SealPolicyDefault); err != nil {
+	_, err = NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)
+	if err != nil {
 		t.Fatal("Couldn't read back a sealed, hosted keyset:", err)
 	}
 }

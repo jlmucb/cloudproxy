@@ -37,18 +37,16 @@ func TestTaoChanServer(t *testing.T) {
 	}
 
 	server := rpc.NewServer()
-	tao := new(FakeTao)
-	if err := tao.Init("test", "", nil); err != nil {
+	tao, err := NewFakeTao("test", "", nil)
+	if err != nil {
 		t.Fatal("Couldn't initialize the FakeTao:", err)
 	}
-
-	t.Log("Initialized the keys")
 
 	ts := &TaoServer{
 		T: tao,
 	}
 
-	err := server.Register(ts)
+	err = server.Register(ts)
 	if err != nil {
 		t.Fatal("Couldn't register the server:", err)
 	}
@@ -64,8 +62,6 @@ func TestTaoChanServer(t *testing.T) {
 	if err != nil {
 		t.Fatal("Couldn't get random bytes:", err)
 	}
-
-	t.Log("Got 10 random bytes")
 
 	// Seal, Unseal, and Attest to the bytes
 	sealed, err := tc.Seal(b, SealPolicyDefault)
@@ -105,6 +101,4 @@ func TestTaoChanServer(t *testing.T) {
 	if err != nil {
 		t.Fatal("Couldn't attest to the bytes:", err)
 	}
-
-	t.Log("All actions worked correctly")
 }

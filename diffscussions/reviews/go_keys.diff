@@ -38,6 +38,13 @@
 #-- I copied over several of my comments from last round that seem to have been
 #-- missed. You can tell by the date.
 #--
+#***
+#*** author: Tom Roeder
+#*** email: tmroeder@google.com
+#*** date: 2014-07-18T13:56:51-0700
+#***
+#--- I'm putting my comments here and my changes in a second review go_keys2.diff
+#--- 
 diff --git a/go/src/cloudproxy/tao/keys.go b/go/src/cloudproxy/tao/keys.go
 new file mode 100644
 index 0000000..2cd8981
@@ -52,6 +59,13 @@ index 0000000..2cd8981
 #*
 #- Are we putting description lines at the top? I'd be glad to delete mine.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-18T13:57:06-0700
+#**
+#-- SGTM
+#-- 
 +//
 +// Licensed under the Apache License, Version 2.0 (the "License");
 +// you may not use this file except in compliance with the License.
@@ -169,6 +183,15 @@ index 0000000..2cd8981
 #- 
 #- In C++, those things are non-member functions because I didn't want them in
 #- the #- header files.
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-18T13:57:12-0700
+#**
+#-- I think this is standard Go style. cf. proto.Marshal, proto.Unmarshal and
+#-- similar, which are member methods in C++ but are just functions with no
+#-- receivers in Go.
+#-- 
 +
 +// MarshalSigner serializes the signer to DER.
 +func MarshalSignerDER(s *Signer) ([]byte, error) {
@@ -294,6 +317,13 @@ index 0000000..2cd8981
 #*
 #- Lowercase errors.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-18T13:58:10-0700
+#**
+#-- Fixed in the other review
+#-- 
 +	}
 +
 +	x, y := elliptic.Unmarshal(elliptic.P256(), v.EcPublic)
@@ -400,6 +430,13 @@ index 0000000..2cd8981
 #-- have a getter/setter style like C++ does, and these getter functions are not
 #-- exported anyway.
 #--
+#***
+#*** author: Tom Roeder
+#*** email: tmroeder@google.com
+#*** date: 2014-07-18T13:58:29-0700
+#***
+#--- Fixed in the other review
+#--- 
 +
 +// This is copied from the Go crypto/x509 source: it just uses a simple
 +// two-element structure to marshal a DSA signature as ASN.1 in an X.509
@@ -551,6 +588,13 @@ index 0000000..2cd8981
 #- Does this need error checking? What if the x509 has an rsa key... will it
 #- panic?
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-18T13:58:48-0700
+#**
+#-- Added the check in the other review
+#-- 
 +
 +// UnmarshalVerifierProto decodes a verifying key from a CryptoKey protobuf
 +// message.
@@ -841,6 +885,14 @@ index 0000000..2cd8981
 #- OTOH, if two communicating apps (one in C++, one in go) establish a shared
 #- secret, they might want to be able to use the Deriver interface
 #- to generate secrets.
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-18T13:58:54-0700
+#**
+#-- As discussed by phone, you're going to change the C++ version to match the
+#-- Go version, IIUC.
+#-- 
 +
 +// marshalHMAC_SHA_DerivingKeyV1 encodes a deriving key as a protobuf message.
 +func marshalHMAC_SHA_DerivingKeyV1(d *Deriver) *HMAC_SHA_DerivingKeyV1 {
@@ -926,6 +978,15 @@ index 0000000..2cd8981
 #-- a function that does simple error checking then calls the corresponding key
 #-- function. But the caller still needs to do error checking, so it doesn't
 #-- save the caller any code.
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-18T13:59:17-0700
+#**
+#-- As discussed on the phone, we're going to leave this as is, and it doesn't
+#-- look like I can remove the names here, since the members of the struct might
+#-- be nil.
+#-- 
 +type Keys struct {
 +	dir      string
 +	policy   string
@@ -949,6 +1010,14 @@ index 0000000..2cd8981
 #- receiver type that implements the Signer interface. Same with the other key
 #- types. 
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-18T13:59:48-0700
+#**
+#-- I'm in favor of only using ECDSA, as we discussed, so I'm not going to
+#-- change this here.
+#-- 
 +
 +// TaoSecretPath returns the path to a Tao-sealed secret, if any. This secret
 +// is used to create a PBEEncrypter to encrypt generated keys.
@@ -968,6 +1037,13 @@ index 0000000..2cd8981
 #- is no longer used. Instead, when Tao-sealing is called for, I just Tao-seal
 #- the whole key bundle and don't use PBE at all.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-18T14:00:13-0700
+#**
+#-- Done in the other review.
+#-- 
 +
 +// X509Path returns the path to the verifier key, stored as an X.509
 +// certificate.
@@ -1046,6 +1122,14 @@ index 0000000..2cd8981
 #- and "Hosted" to "TaoSealed" or something. I like "OnDisk", we should do that
 #- for C++ too.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-18T14:00:23-0700
+#**
+#-- Changed in the other review. Now there are just New methods that do all the
+#-- work.
+#-- 
 +
 +// NewOnDiskKeys creates a new Keys structure with information about the types
 +// of keys to create and where to store them on disk. One of the Init methods
@@ -1086,6 +1170,13 @@ index 0000000..2cd8981
 #- This error will leave Keys object in a partially-initialized state. All the
 #- more reason to merge the "New" and "Init" functions in go.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-18T14:00:39-0700
+#**
+#-- Fixed in the other review by moving from New/Init to just New.
+#-- 
 +		}
 +	}
 +
@@ -1140,6 +1231,16 @@ index 0000000..2cd8981
 #- Also: I'd check for empty/nil password to keep us honest. (I used to see code
 #- using blank passwords.)
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-18T14:00:55-0700
+#**
+#-- Fixed in the other review.
+#-- 
+#-- As for the password type, the Go style is to make passwords []byte rather
+#-- than string. E.g., see x509.EncryptPEMBlock.
+#-- 
 +	pbed := &PBEData{
 +		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
 +		Cipher:  proto.String("aes128-ctr"),
@@ -1182,6 +1283,14 @@ index 0000000..2cd8981
 #- match, since it would eliminate some code in C++ and eliminate the protobuf
 #- fields that you don't use here.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-18T14:03:37-0700
+#**
+#-- I think that would be good. I felt a little hacky writing it this way, but I
+#-- was too lazy to port the C++ version :)
+#-- 
 +
 +	return proto.Marshal(pbed)
 +}
@@ -1255,6 +1364,17 @@ index 0000000..2cd8981
 #- append() lets a marshalled private key escape here. If we aren't being
 #- paranoid, then LGTM.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-18T14:04:28-0700
+#**
+#-- I don't think so. The reallocation is a reallocation of a []*CryptoKey, and
+#-- the pointers are copied over. So this would just leak a pointer to a
+#-- CryptoKey, right? And that pointer would still be preserved and used and the
+#-- allocated key would later be cleared. Is there another allocation you're
+#-- thinking of?
+#-- 
 +	}
 +
 +	if k.keyTypes&Deriving == Deriving {
@@ -1318,6 +1438,13 @@ index 0000000..2cd8981
 #*
 #- Lowercase errors here and elsewhere.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-18T14:06:27-0700
+#**
+#-- Thanks; I think I caught all of them now.
+#-- 
 +	}
 +
 +	if len(password) == 0 {
@@ -1492,6 +1619,13 @@ index 0000000..2cd8981
 #- only-i-can-unseal policy for the bogus keyset, the caller's Unseal() would
 #- fail.)
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-18T14:06:35-0700
+#**
+#-- Fixed in the other review.
+#-- 
 +
 +		var cks CryptoKeyset
 +		if err = proto.Unmarshal(data, &cks); err != nil {
@@ -2725,6 +2859,15 @@ index 0000000..383b4e0
 #- implement reasonable semantics. ExtendTaoName, in particular, is completely
 #- bogus here, since (in the absence of strong type safety) the caller can
 #- revert their name. Siimilarly the caller can steal the softtao's keys, etc.
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-18T14:06:42-0700
+#**
+#-- As we discussed, I've moved SoftTao to FakeTao and put it and its unit tests
+#-- in fake_tao_test.go, so it's no longer part of the library, just the test
+#-- code.
+#-- 
 +
 +// Init initializes the SoftTao with a crypter and a signer.
 +func (s *SoftTao) Init(name, path string, password []byte) error {

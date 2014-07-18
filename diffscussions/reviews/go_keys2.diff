@@ -63,6 +63,13 @@
 #- Added checks for null or empty passwords in PBE
 #- 
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-18T19:55:03-0400
+#**
+#-- All this LGTM.
+#--
 diff --git a/diffscussions/reviews/go_keys.diff b/diffscussions/reviews/go_keys.diff
 index ecead97..9978880 100644
 --- a/diffscussions/reviews/go_keys.diff

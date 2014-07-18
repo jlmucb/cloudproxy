@@ -18,6 +18,18 @@
 #-- in go_keys.diff. So I'm copying them here to review them. Sorry for the
 #-- mess.
 #--
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-18T14:16:27-0700
+#*
+#- We had a long conversation over the phone this morning, and we
+#- decided that I would remove tao_client and change tao_server to
+#- become something like the LinuxHost in the C++ version. I'm closing
+#- this review and will send another review when that's done. My next
+#- go_keys2.diff removes tao_client, but I haven't yet rewritten
+#- tao_server, other than to fix it to keep the tests working.
+#- 
 diff --git a/go/src/cloudproxy/tao/tao_client.go b/go/src/cloudproxy/tao/tao_client.go
 new file mode 100644
 index 0000000..4835969

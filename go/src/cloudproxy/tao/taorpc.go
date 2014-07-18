@@ -101,7 +101,8 @@ func (taoMux) GetServiceMethod(number uint64) (string, error) {
 
 // TaoRPC sends requests between this hosted program and the host Tao.
 type TaoRPC struct {
-	rpc *rpc.Client
+	rpc         *rpc.Client
+	serviceName string
 }
 
 func DeserializeTaoRPC(s string) (*TaoRPC, error) {
@@ -118,7 +119,13 @@ func DeserializeTaoRPC(s string) (*TaoRPC, error) {
 		return nil, errors.New("taorpc: unrecognized $" + HostTaoEnvVar + " string " + s +
 			" (" + err.Error() + ")")
 	}
-	return &TaoRPC{protorpc.NewClient(ms, taoMux{})}, nil
+	return &TaoRPC{protorpc.NewClient(ms, taoMux{}), "Tao"}, nil
+}
+
+// NewTaoRPC constructs a TaoRPC for the default gob encoding rpc client using
+// an io.ReadWriteCloser.
+func NewTaoRPC(rwc io.ReadWriteCloser, serviceName string) (*TaoRPC, error) {
+	return &TaoRPC{rpc.NewClient(rwc), serviceName}, nil
 }
 
 type expectedResponse int
@@ -160,14 +167,14 @@ func (t *TaoRPC) call(method string, r *TaoRPCRequest, e expectedResponse) (data
 // GetTaoName implements part of the Tao interface.
 func (t *TaoRPC) GetTaoName() (string, error) {
 	r := &TaoRPCRequest{}
-	data, _, err := t.call("Tao.GetTaoName", r, wantData)
+	data, _, err := t.call(t.serviceName+".GetTaoName", r, wantData)
 	return string(data), err
 }
 
 // ExtendTaoName implements part of the Tao interface.
 func (t *TaoRPC) ExtendTaoName(subprin string) error {
 	r := &TaoRPCRequest{Data: []byte(subprin)}
-	_, _, err := t.call("Tao.ExtendTaoName", r, wantNothing)
+	_, _, err := t.call(t.serviceName+".ExtendTaoName", r, wantNothing)
 	return err
 }
 
@@ -197,7 +204,7 @@ func (t *TaoRPC) GetRandomBytes(n int) ([]byte, error) {
 		return nil, errors.New("taorpc: request for too many random bytes")
 	}
 	r := &TaoRPCRequest{Size: proto.Int32(int32(n))}
-	bytes, _, err := t.call("Tao.GetRandomBytes", r, wantData)
+	bytes, _, err := t.call(t.serviceName+".GetRandomBytes", r, wantData)
 	return bytes, err
 }
 
@@ -207,7 +214,7 @@ func (t *TaoRPC) GetSharedSecret(n int, policy string) ([]byte, error) {
 		return nil, errors.New("taorpc: request for too many secret bytes")
 	}
 	r := &TaoRPCRequest{Size: proto.Int32(int32(n)), Policy: proto.String(policy)}
-	bytes, _, err := t.call("Tao.GetSharedSecret", r, wantData)
+	bytes, _, err := t.call(t.serviceName+".GetSharedSecret", r, wantData)
 	return bytes, err
 }
 
@@ -218,7 +225,7 @@ func (t *TaoRPC) Attest(stmt *Statement) (*Attestation, error) {
 		return nil, err
 	}
 	r := &TaoRPCRequest{Data: data}
-	bytes, _, err := t.call("Tao.Attest", r, wantData)
+	bytes, _, err := t.call(t.serviceName+".Attest", r, wantData)
 	if err != nil {
 		return nil, err
 	}
@@ -233,13 +240,13 @@ func (t *TaoRPC) Attest(stmt *Statement) (*Attestation, error) {
 // Seal implements part of the Tao interface.
 func (t *TaoRPC) Seal(data []byte, policy string) (sealed []byte, err error) {
 	r := &TaoRPCRequest{Data: data, Policy: proto.String(policy)}
-	sealed, _, err = t.call("Tao.Seal", r, wantData)
+	sealed, _, err = t.call(t.serviceName+".Seal", r, wantData)
 	return
 }
 
 // Unseal implements part of the Tao interface.
 func (t *TaoRPC) Unseal(sealed []byte) (data []byte, policy string, err error) {
 	r := &TaoRPCRequest{Data: sealed}
-	data, policy, err = t.call("Tao.Unseal", r, wantData|wantPolicy)
+	data, policy, err = t.call(t.serviceName+".Unseal", r, wantData|wantPolicy)
 	return
 }

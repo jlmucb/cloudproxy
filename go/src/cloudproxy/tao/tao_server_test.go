@@ -60,8 +60,7 @@ func TestTaoChanServer(t *testing.T) {
 	}
 	defer tc.Parent.Close()
 
-	b := make([]byte, 10)
-	err = tc.GetRandomBytes(b)
+	b, err := tc.GetRandomBytes(10)
 	if err != nil {
 		t.Error("Couldn't get random bytes:", err)
 	}
@@ -69,7 +68,7 @@ func TestTaoChanServer(t *testing.T) {
 	t.Log("Got 10 random bytes")
 
 	// Seal, Unseal, and Attest to the bytes
-	sealed, err := tc.Seal(b, []byte(SealPolicyDefault))
+	sealed, err := tc.Seal(b, SealPolicyDefault)
 	if err != nil {
 		t.Error("Couldn't seal the data:", err)
 	}

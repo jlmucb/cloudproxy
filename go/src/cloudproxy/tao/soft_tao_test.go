@@ -35,7 +35,6 @@ func TestSoftTaoRandom(t *testing.T) {
 		t.Error(err.Error())
 	}
 
-
 	if _, err := st.GetRandomBytes(10); err != nil {
 		t.Error(err.Error())
 	}

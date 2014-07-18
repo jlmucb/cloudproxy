@@ -26,8 +26,8 @@ import (
 // A SoftTao is an implementation of the Tao that isn't backed by any hardware
 // mechanisms.
 type SoftTao struct {
-	keys *Keys
-	name string
+	keys          *Keys
+	name          string
 	nameExtension string
 }
 
@@ -36,7 +36,7 @@ func (s *SoftTao) Init(name, path string, password []byte) error {
 	s.name = name
 
 	if path == "" {
-		s.keys = NewTemporaryKeys(Signing|Crypting|Deriving)
+		s.keys = NewTemporaryKeys(Signing | Crypting | Deriving)
 		if err := s.keys.InitTemporary(); err != nil {
 			return err
 		}
@@ -64,7 +64,6 @@ func (s *SoftTao) ExtendTaoName(subprin string) error {
 	s.nameExtension += "::" + subprin
 	return nil
 }
-
 
 // GetRandomBytes fills the slice with random bytes.
 func (s *SoftTao) GetRandomBytes(n int) ([]byte, error) {
@@ -145,7 +144,7 @@ func (s *SoftTao) Attest(stmt *Statement) (*Attestation, error) {
 	}
 
 	if st.Expiration == nil {
-		st.Expiration = proto.Int64(time.Now().Add(365*24*time.Hour).UnixNano())
+		st.Expiration = proto.Int64(time.Now().Add(365 * 24 * time.Hour).UnixNano())
 	}
 
 	ser, err := proto.Marshal(st)

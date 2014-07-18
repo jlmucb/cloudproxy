@@ -166,12 +166,12 @@ func doRequest() bool {
 
 	_, err = fmt.Fprintf(conn, "Hello\n")
 	if err != nil {
-		fmt.Printf("client: can't write: ", err.Error())
+		fmt.Printf("client: can't write: %s\n", err.Error())
 		return false
 	}
 	msg, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
-		fmt.Printf("client can't read: ", err.Error())
+		fmt.Printf("client can't read: %s\n", err.Error())
 		return false
 	}
 	msg = strings.TrimSpace(msg)
@@ -206,7 +206,7 @@ func doResponse(conn net.Conn, responseOk chan<- bool) {
 
 	msg, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
-		fmt.Printf("server: can't read: ", err.Error())
+		fmt.Printf("server: can't read: %s\n", err.Error())
 		conn.Close()
 		responseOk <- false
 		return
@@ -350,7 +350,7 @@ func main() {
 	fmt.Printf("Go Tao Demo\n")
 
 	if !tao.HostAvailable() {
-		fmt.Printf("can't continue: No host Tao available")
+		fmt.Printf("can't continue: No host Tao available\n")
 		return
 	}
 

@@ -30,6 +30,14 @@
 #- Ported the keys code to merge with the new Tao from kwalsh
 #- 
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-18T09:01:53-0400
+#**
+#-- I copied over several of my comments from last round that seem to have been
+#-- missed. You can tell by the date.
+#--
 diff --git a/go/src/cloudproxy/tao/keys.go b/go/src/cloudproxy/tao/keys.go
 new file mode 100644
 index 0000000..2cd8981
@@ -37,6 +45,13 @@ index 0000000..2cd8981
 +++ b/go/src/cloudproxy/tao/keys.go
 @@ -0,0 +1,1340 @@
 +//  Copyright (c) 2014, Google Inc.  All rights reserved.
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-18T09:00:27-0400
+#*
+#- Are we putting description lines at the top? I'd be glad to delete mine.
+#-
 +//
 +// Licensed under the Apache License, Version 2.0 (the "License");
 +// you may not use this file except in compliance with the License.
@@ -140,6 +155,20 @@ index 0000000..2cd8981
 +
 +	return "Key(\"" + base64.URLEncoding.EncodeToString(data) + "\")", nil
 +}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-16T14:25:39-0400
+#*
+#- Curious: Why isn't the above a member, like this...
+#- func (s *Signer) MarshalPublicProto() (*CryptoKey, error) { ... }
+#-
+#- I could ask the same of many of the single-argument functions here, e.g.
+#- func (k *ecdsa.PublicKey) marshalProto() (*CryptoKey, error) { ... }
+#- (where this takes advantage of go's ability to add methods to existing types)
+#- 
+#- In C++, those things are non-member functions because I didn't want them in
+#- the #- header files.
 +
 +// MarshalSigner serializes the signer to DER.
 +func MarshalSignerDER(s *Signer) ([]byte, error) {
@@ -258,6 +287,13 @@ index 0000000..2cd8981
 +func unmarshalECDSA_SHA_VerifyingKeyV1(v *ECDSA_SHA_VerifyingKeyV1) (*ecdsa.PublicKey, error) {
 +	if *v.Curve != NamedEllipticCurve_PRIME256_V1 {
 +		return nil, errors.New("Bad Curve")
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-18T10:19:06-0400
+#*
+#- Lowercase errors.
+#-
 +	}
 +
 +	x, y := elliptic.Unmarshal(elliptic.P256(), v.EcPublic)
@@ -348,6 +384,22 @@ index 0000000..2cd8981
 +func (s *Signer) getECDSAKey() *ecdsa.PrivateKey {
 +	return s.ec
 +}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-16T14:36:55-0400
+#*
+#- Is getECDSAKey() used anywhere? I don't see where...
+#-
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-18T08:53:01-0400
+#**
+#-- To clarify: Let's delete unused and unneded functions. Go doesn't seem to
+#-- have a getter/setter style like C++ does, and these getter functions are not
+#-- exported anyway.
+#--
 +
 +// This is copied from the Go crypto/x509 source: it just uses a simple
 +// two-element structure to marshal a DSA signature as ASN.1 in an X.509
@@ -491,6 +543,14 @@ index 0000000..2cd8981
 +
 +	return &Verifier{c.PublicKey.(*ecdsa.PublicKey)}, nil
 +}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-16T14:41:05-0400
+#*
+#- Does this need error checking? What if the x509 has an rsa key... will it
+#- panic?
+#-
 +
 +// UnmarshalVerifierProto decodes a verifying key from a CryptoKey protobuf
 +// message.
@@ -759,6 +819,28 @@ index 0000000..2cd8981
 +
 +	return nil
 +}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-16T14:47:06-0400
+#*
+#- Some potential issues with Derive() above. 
+#- (1) go hkdf.New uses 2-stage extract-then-expand. C++ uses only expand since
+#- input secret is already strong random (not a passwd) and of correct size.
+#- (2) The C++ API does not include salt as a parameter. Salt is used only for
+#- the extract stage, so it wasn't needed. Where will go salt come from?
+#- (3) go hkdf uses sweet array packing code to create the buffers that are
+#- signed when generating bytes. My C++ used protobuf for the array packing.
+#- Here, the go code is more conformant with the RFCs.
+#-
+#- All this means is that go code will generate different secrets than C++ code.
+#- However, I think in this case it is probably fine. The one place this is
+#- being used right now is for children to call their host tao to get
+#- deterministic but random bytes. In that case, the host tao will never change
+#- from C++ to go, and no two host Taos will ever have the same key material.
+#- OTOH, if two communicating apps (one in C++, one in go) establish a shared
+#- secret, they might want to be able to use the Deriver interface
+#- to generate secrets.
 +
 +// marshalHMAC_SHA_DerivingKeyV1 encodes a deriving key as a protobuf message.
 +func marshalHMAC_SHA_DerivingKeyV1(d *Deriver) *HMAC_SHA_DerivingKeyV1 {
@@ -820,6 +902,30 @@ index 0000000..2cd8981
 +
 +// A Keys manages a set of signing, verifying, encrypting, and key-deriving
 +// keys.
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-16T14:59:01-0400
+#*
+#- "... and provides an interface to perform actions with these keys."
+#- Well, not really, at least not in C++. It is just a container.
+#- If you make the Signer, Crypter, Verifier, and Deriver members of keys be
+#- anonymous, you get free pass-through in go, though, whic might be nice.
+#-
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-18T08:56:09-0400
+#**
+#-- To clarify a little. Keys is a container in your code. It doesn't provide an
+#-- interface to perform actions with the keys it contains. It just provides
+#-- access to the keys it contains. If you add a bunch of methods like the old
+#-- C++ code did, Keys.Sign(), Keys.Verify(), Keys.Encrypt(), etc., then your
+#-- comment would be true. I don't like those methods, though, because they fail
+#-- when the needed key isn't in the container. This means each one is
+#-- a function that does simple error checking then calls the corresponding key
+#-- function. But the caller still needs to do error checking, so it doesn't
+#-- save the caller any code.
 +type Keys struct {
 +	dir      string
 +	policy   string
@@ -832,6 +938,17 @@ index 0000000..2cd8981
 +	Delegation   *Attestation
 +	Cert         *x509.Certificate
 +}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-18T09:47:05-0400
+#*
+#- Glad that Signer et al are exported now. If we are ever going to support
+#- multiple key types (are we?) the logical thing to do would be to make Signer
+#- an interface (so no need for pointers here) and have an *ECDSASignerKey
+#- receiver type that implements the Signer interface. Same with the other key
+#- types. 
+#-
 +
 +// TaoSecretPath returns the path to a Tao-sealed secret, if any. This secret
 +// is used to create a PBEEncrypter to encrypt generated keys.
@@ -842,6 +959,15 @@ index 0000000..2cd8981
 +		return path.Join(k.dir, "secret")
 +	}
 +}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-18T09:50:30-0400
+#*
+#- Delete TaoSecretPath. It isn't used. Tao sealed secrets with PBE encryption
+#- is no longer used. Instead, when Tao-sealing is called for, I just Tao-seal
+#- the whole key bundle and don't use PBE at all.
+#-
 +
 +// X509Path returns the path to the verifier key, stored as an X.509
 +// certificate.
@@ -904,6 +1030,22 @@ index 0000000..2cd8981
 +		keyTypes: keyTypes,
 +	}
 +}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-18T09:58:41-0400
+#*
+#- I don't really like the "Init methods must be called" style here. Since go
+#- has multiple returns and no constructors, all of the C++ reasons for this
+#- style are moot. Instead, there should be:
+#-   NewTemporaryKeys(keyTypes KeyType) (*Keys, error)
+#-   NewTemporaryHostedKeys(keyTypes KeyType, t Tao) (*Keys, error)
+#-   NewOnDiskPasswordKeys(keyTypes KeyType, password string) (*Keys, error)
+#-   NewOnDiskHostedKeys(keyTypes KeyType, t Tao) (*Keys, error)
+#- Or some variation on those names and types. Maybe change "Password" to "PBE"
+#- and "Hosted" to "TaoSealed" or something. I like "OnDisk", we should do that
+#- for C++ too.
+#-
 +
 +// NewOnDiskKeys creates a new Keys structure with information about the types
 +// of keys to create and where to store them on disk. One of the Init methods
@@ -936,6 +1078,14 @@ index 0000000..2cd8981
 +		k.CryptingKey, err = GenerateCrypter()
 +		if err != nil {
 +			return err
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-18T10:03:33-0400
+#*
+#- This error will leave Keys object in a partially-initialized state. All the
+#- more reason to merge the "New" and "Init" functions in go.
+#-
 +		}
 +	}
 +
@@ -978,6 +1128,18 @@ index 0000000..2cd8981
 +// since this is for private program data, we don't try for compatibility with
 +// the C++ Tao version of the code.
 +func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-18T10:07:23-0400
+#*
+#- Why password []byte instead of password string? We can do conversion inside
+#- this function, but caller would more likely have a string (e.g. from user
+#- input, cmdline, envvar, etc., not a slice. 
+#-
+#- Also: I'd check for empty/nil password to keep us honest. (I used to see code
+#- using blank passwords.)
+#-
 +	pbed := &PBEData{
 +		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
 +		Cipher:  proto.String("aes128-ctr"),
@@ -1010,6 +1172,16 @@ index 0000000..2cd8981
 +	if pbed.Ciphertext, err = c.Encrypt(plaintext); err != nil {
 +		return nil, err
 +	}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-18T10:13:36-0400
+#*
+#- Your verion here (using pbkdf2 then calling Crypter) is probably more
+#- sensible than the C++ version. Perhaps I should change the C++ version to
+#- match, since it would eliminate some code in C++ and eliminate the protobuf
+#- fields that you don't use here.
+#-
 +
 +	return proto.Marshal(pbed)
 +}
@@ -1074,6 +1246,15 @@ index 0000000..2cd8981
 +		}
 +
 +		cks = append(cks, ck)
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-18T10:16:20-0400
+#*
+#- If we are being paranoid about zeroBytes: the possible reallocation within
+#- append() lets a marshalled private key escape here. If we aren't being
+#- paranoid, then LGTM.
+#-
 +	}
 +
 +	if k.keyTypes&Deriving == Deriving {
@@ -1130,6 +1311,13 @@ index 0000000..2cd8981
 +
 +	if k.dir == "" {
 +		return errors.New("Bad init call: no path for keys")
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-18T10:18:55-0400
+#*
+#- Lowercase errors here and elsewhere.
+#-
 +	}
 +
 +	if len(password) == 0 {
@@ -1290,6 +1478,20 @@ index 0000000..2cd8981
 +		}
 +		defer zeroBytes(data)
 +		// TODO(tmroeder): what should we do with the policy returned by Unseal?
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-18T10:20:59-0400
+#*
+#- Seal/Unseal policies are used for provenance checking. So the policy returned
+#- by Unseal should be compared against the policy passed in by InitHosted. If
+#- they are different, fail. A mismatch means someone has substituted a keyset
+#- of unexpected provenance, e.g. caller sealed keyset with only-i-can-unseal
+#- policy, but attacker has overwritten that keyset with a bogus keyset sealed
+#- under the anyone-can-unseal policy. (Note: If attacker had used
+#- only-i-can-unseal policy for the bogus keyset, the caller's Unseal() would
+#- fail.)
+#-
 +
 +		var cks CryptoKeyset
 +		if err = proto.Unmarshal(data, &cks); err != nil {
@@ -2504,6 +2706,25 @@ index 0000000..383b4e0
 +	name string
 +	nameExtension string
 +}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-18T10:31:14-0400
+#*
+#- I propose we delete soft-tao entirely, in both go and C++. I now think it was
+#- a design mistake to invent it. Here's why:
+#- (1) It isn't used in C++ anywhere except for a single unit test. 
+#- (2) The LinuxHost code can run in "root" or "hosted" mode. There are only few
+#- difference between the two modes: hosted mode has a set of keys sealed by the
+#- host, and in a few places (e.g. GetRandomBytes) it relays calls down to the
+#- host;l root mode has a set of keys protected by PBE, and it has to implement
+#- a few calls directly (e.g. GetRandomBytes). In C++ I factored these
+#- differences into two classes, TaoRootHost and TaoStackedHost, both of which
+#- implement a TaoHost interface.
+#- (3) The semantics of SoftTao are unclear and there is no good way to
+#- implement reasonable semantics. ExtendTaoName, in particular, is completely
+#- bogus here, since (in the absence of strong type safety) the caller can
+#- revert their name. Siimilarly the caller can steal the softtao's keys, etc.
 +
 +// Init initializes the SoftTao with a crypter and a signer.
 +func (s *SoftTao) Init(name, path string, password []byte) error {
@@ -2818,6 +3039,13 @@ index 0000000..4835969
 +++ b/go/src/cloudproxy/tao/tao_client.go
 @@ -0,0 +1,102 @@
 +package tao
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-18T10:42:40-0400
+#*
+#- Ignoring this file and its test, will review in tao_server_client.diff instead.
+#-
 +
 +import (
 +	"net/rpc"
@@ -2926,6 +3154,13 @@ index 0000000..2810af8
 +++ b/go/src/cloudproxy/tao/tao_server.go
 @@ -0,0 +1,78 @@
 +package tao
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-18T10:42:40-0400
+#*
+#- Ignoring this file and its test, will review in tao_server_client.diff instead.
+#-
 +
 +import (
 +	"errors"

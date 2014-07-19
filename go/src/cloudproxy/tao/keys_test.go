@@ -49,12 +49,15 @@ func TestSelfSignedX509(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	d := `
+	d, err := ParseX509SubjectName(`
 		commonname: "test",
 		country: "US",
 		state: "WA",
 		organization: "Google",
-	`
+	`)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 
 	_, err = s.CreateSelfSignedX509(d)
 	if err != nil {
@@ -111,12 +114,15 @@ func TestVerifierFromX509(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	d := `
+	d, err := ParseX509SubjectName(`
 		commonname: "test",
 		country: "US",
 		state: "WA",
 		organization: "Google",
-	`
+	`)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 
 	x, err := s.CreateSelfSignedX509(d)
 	if err != nil {

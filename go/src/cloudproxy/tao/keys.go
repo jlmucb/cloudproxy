@@ -120,26 +120,28 @@ func UnmarshalSignerDER(signer []byte) (*Signer, error) {
 	return k, nil
 }
 
-// prepareX509Template parses the protobuf containing subject-name details and
-// fills out an X.509 template for use in x509.CreateCertificate.
-func prepareX509Template(detailsText string) (*x509.Certificate, error) {
-	details := new(X509Details)
-	if err := proto.UnmarshalText(detailsText, details); err != nil {
+func ParseX509SubjectName(name string) (*pkix.Name, error) {
+	p := new(X509Details)
+	if err := proto.UnmarshalText(name, p); err != nil {
 		return nil, err
 	}
+	return &pkix.Name{
+		Country:      []string{string(p.Country)},
+		Organization: []string{string(p.Organization)},
+		Province:     []string{string(p.State)},
+		CommonName:   string(p.Commonname),
+	}, nil
+}
 
-	template := &x509.Certificate{
+// prepareX509Template fills out an X.509 template for use in x509.CreateCertificate.
+func prepareX509Template(subjectName *pkix.Name) *x509.Certificate {
+	return &x509.Certificate{
 		SignatureAlgorithm: x509.ECDSAWithSHA256,
 		PublicKeyAlgorithm: x509.ECDSA,
 		Version:            2, // x509v3
 		// It's always allowed for self-signed certs to have serial 1.
 		SerialNumber: new(big.Int).SetInt64(1),
-		Subject: pkix.Name{
-			Country:      []string{string(details.Country)},
-			Organization: []string{string(details.Organization)},
-			Province:     []string{string(details.State)},
-			CommonName:   string(details.Commonname),
-		},
+		Subject: *subjectName,
 		NotBefore: time.Now(),
 		NotAfter:  time.Now().AddDate(1 /* years */, 0 /* months */, 0 /* days */),
 		// TODO(tmroeder): I'm not sure which of these I need to make
@@ -147,18 +149,12 @@ func prepareX509Template(detailsText string) (*x509.Certificate, error) {
 		KeyUsage:    x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 	}
-
-	return template, nil
 }
 
 // CreateSelfSignedX509 creates a self-signed X.509 certificate for the public
 // key of this Signer.
-func (s *Signer) CreateSelfSignedX509(detailsText string) ([]byte, error) {
-	template, err := prepareX509Template(detailsText)
-	if err != nil {
-		return nil, err
-	}
-
+func (s *Signer) CreateSelfSignedX509(name *pkix.Name) ([]byte, error) {
+	template := prepareX509Template(name)
 	template.IsCA = true
 	template.Issuer = template.Subject
 
@@ -167,16 +163,13 @@ func (s *Signer) CreateSelfSignedX509(detailsText string) ([]byte, error) {
 
 // CreateSignedX509 creates a signed X.509 certificate for some other subject's
 // key.
-func (s *Signer) CreateSignedX509(CAPEMCert []byte, certSerial int, subjectKey *Verifier, subjectDetails string) ([]byte, error) {
+func (s *Signer) CreateSignedX509(CAPEMCert []byte, certSerial int, subjectKey *Verifier, subjectName *pkix.Name) ([]byte, error) {
 	signerCert, err := x509.ParseCertificate(CAPEMCert)
 	if err != nil {
 		return nil, err
 	}
 
-	template, err := prepareX509Template(subjectDetails)
-	if err != nil {
-		return nil, err
-	}
+	template := prepareX509Template(subjectName)
 
 	return x509.CreateCertificate(rand.Reader, template, signerCert, subjectKey.ec, s.ec)
 }

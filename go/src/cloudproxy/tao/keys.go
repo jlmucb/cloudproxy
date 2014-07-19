@@ -141,9 +141,9 @@ func prepareX509Template(subjectName *pkix.Name) *x509.Certificate {
 		Version:            2, // x509v3
 		// It's always allowed for self-signed certs to have serial 1.
 		SerialNumber: new(big.Int).SetInt64(1),
-		Subject: *subjectName,
-		NotBefore: time.Now(),
-		NotAfter:  time.Now().AddDate(1 /* years */, 0 /* months */, 0 /* days */),
+		Subject:      *subjectName,
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().AddDate(1 /* years */, 0 /* months */, 0 /* days */),
 		// TODO(tmroeder): I'm not sure which of these I need to make
 		// OpenSSL happy.
 		KeyUsage:    x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,

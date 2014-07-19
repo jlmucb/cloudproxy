@@ -211,9 +211,9 @@ func doResponse(conn net.Conn, responseOk chan<- bool) {
 	}
 	msg = strings.TrimSpace(msg)
 	fmt.Printf("server: got message: %s\n", msg)
+	responseOk <- true
 	fmt.Fprintf(conn, "echo(%s)\n", msg)
 	conn.Close()
-	responseOk <- true
 }
 
 func doServer(stop chan bool, ready, done chan<- bool) {
@@ -247,7 +247,6 @@ func doServer(stop chan bool, ready, done chan<- bool) {
 			}
 			go doResponse(conn, pings)
 		}
-		stop <- true
 	}()
 
 	pingGood := 0

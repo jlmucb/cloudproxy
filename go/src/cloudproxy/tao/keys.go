@@ -153,25 +153,29 @@ func prepareX509Template(subjectName *pkix.Name) *x509.Certificate {
 
 // CreateSelfSignedX509 creates a self-signed X.509 certificate for the public
 // key of this Signer.
-func (s *Signer) CreateSelfSignedX509(name *pkix.Name) ([]byte, error) {
+func (s *Signer) CreateSelfSignedX509(name *pkix.Name) (*x509.Certificate, error) {
 	template := prepareX509Template(name)
 	template.IsCA = true
 	template.Issuer = template.Subject
 
-	return x509.CreateCertificate(rand.Reader, template, template, &s.ec.PublicKey, s.ec)
-}
-
-// CreateSignedX509 creates a signed X.509 certificate for some other subject's
-// key.
-func (s *Signer) CreateSignedX509(CAPEMCert []byte, certSerial int, subjectKey *Verifier, subjectName *pkix.Name) ([]byte, error) {
-	signerCert, err := x509.ParseCertificate(CAPEMCert)
+	der, err := x509.CreateCertificate(rand.Reader, template, template, &s.ec.PublicKey, s.ec)
 	if err != nil {
 		return nil, err
 	}
 
+	return x509.ParseCertificate(der)
+}
+
+// CreateSignedX509 creates a signed X.509 certificate for some other subject's
+// key.
+func (s *Signer) CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier, subjectName *pkix.Name) (*x509.Certificate, error) {
 	template := prepareX509Template(subjectName)
 
-	return x509.CreateCertificate(rand.Reader, template, signerCert, subjectKey.ec, s.ec)
+	der, err := x509.CreateCertificate(rand.Reader, template, caCert, subjectKey.ec, s.ec)
+	if err != nil {
+		return nil, err
+	}
+	return x509.ParseCertificate(der)
 }
 
 // marshalECDSA_SHA_SigningKeyV1 encodes a private key as a protobuf message.
@@ -441,13 +445,8 @@ func FromPrincipalName(name string) (*Verifier, error) {
 }
 
 // FromX509 creates a Verifier from an X509 certificate.
-func FromX509(cert []byte) (*Verifier, error) {
-	c, err := x509.ParseCertificate(cert)
-	if err != nil {
-		return nil, err
-	}
-
-	ecpk, ok := c.PublicKey.(*ecdsa.PublicKey)
+func FromX509(cert *x509.Certificate) (*Verifier, error) {
+	ecpk, ok := cert.PublicKey.(*ecdsa.PublicKey)
 	if !ok {
 		return nil, errors.New("invalid key type in certificate: must be ECDSA")
 	}
@@ -908,12 +907,17 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string) (*Keys, er
 			return nil, err
 		}
 
-		xb, err := ioutil.ReadAll(f)
+		der, err := ioutil.ReadAll(f)
 		if err != nil {
 			return nil, err
 		}
 
-		if k.VerifyingKey, err = FromX509(xb); err != nil {
+		cert, err := x509.ParseCertificate(der)
+		if err != nil {
+			return nil, err
+		}
+
+		if k.VerifyingKey, err = FromX509(cert); err != nil {
 			return nil, err
 		}
 	} else {

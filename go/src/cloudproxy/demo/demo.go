@@ -72,26 +72,26 @@ func GenerateX509() (*tls.Certificate, error) {
 		}
 	*/
 
-	derBytes, err := keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
+	cert, err := keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
 		Organization: []string{"Google Tao Demo"}})
 	if err != nil {
 		return nil, err
 	}
 
-	certPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	certPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
 	keyBytes, err := tao.MarshalSignerDER(keys.SigningKey)
 	if err != nil {
 		return nil, err
 	}
 	keyPem := pem.EncodeToMemory(&pem.Block{Type: "ECDSA PRIVATE KEY", Bytes: keyBytes})
 
-	cert, err := tls.X509KeyPair(certPem, keyPem)
+	tlsCert, err := tls.X509KeyPair(certPem, keyPem)
 	if err != nil {
 		fmt.Printf("can't parse my cert\n")
 		return nil, err
 	}
 
-	return &cert, nil
+	return &tlsCert, nil
 }
 
 func setupTLSServer() (net.Listener, error) {

@@ -17,6 +17,7 @@ package tao
 import (
 	"io"
 	"os"
+	"sync"
 
 	"github.com/golang/glog"
 )
@@ -70,6 +71,7 @@ type Tao interface {
 
 // Cached interface to the host Tao underlying this hosted program.
 var cachedHost Tao
+var cacheOnce sync.Once
 
 // Host returns the interface to the underlying host Tao. It depends on a
 // specific environment variable being set. On success it memoizes the result
@@ -80,13 +82,15 @@ var cachedHost Tao
 // expression, e.g.:
 //   name, err := tao.Host().GetTaoName()
 func Host() Tao {
-	host, err := DeserializeTaoRPC(os.Getenv(HostTaoEnvVar))
-	if err != nil {
-		glog.Error(err)
-		return nil
-	}
-	cachedHost = host
-	return host
+	cacheOnce.Do(func() {
+		host, err := DeserializeTaoRPC(os.Getenv(HostTaoEnvVar))
+		if err != nil {
+			glog.Error(err)
+			return
+		}
+		cachedHost = host
+	})
+	return cachedHost
 }
 
 // Hosted returns true iff a host Tao is available via the Host function.

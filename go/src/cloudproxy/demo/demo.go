@@ -16,8 +16,6 @@ package main
 
 import (
 	"bufio"
-	"crypto/rand"
-	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -25,7 +23,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"math/big"
 	"net"
 	"os"
 	"strconv"
@@ -62,48 +59,31 @@ const (
 )
 
 func GenerateX509() (*tls.Certificate, error) {
-	priv, err := rsa.GenerateKey(rand.Reader, x509keySize)
+	keys, err := tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Host())
 	if err != nil {
 		return nil, err
 	}
 
-	notBefore := time.Now()
-	notAfter := notBefore.Add(x509duration)
+	/*
+		if ip := net.ParseIP(*serverHost); ip != nil {
+			template.IPAddresses = append(template.IPAddresses, ip)
+		} else {
+			template.DNSNames = append(template.DNSNames, *serverHost)
+		}
+	*/
 
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
-	if err != nil {
-		return nil, err
-	}
-
-	template := x509.Certificate{
-		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			Organization: []string{"Google Tao Demo"},
-		},
-		NotBefore:             notBefore,
-		NotAfter:              notAfter,
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		BasicConstraintsValid: true,
-	}
-
-	if ip := net.ParseIP(*serverHost); ip != nil {
-		template.IPAddresses = append(template.IPAddresses, ip)
-	} else {
-		template.DNSNames = append(template.DNSNames, *serverHost)
-	}
-
-	// template.IsCA = true
-	// template.KeyUsage |= x509.KeyUsageCertSign
-
-	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
+	derBytes, err := keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
+		Organization: []string{"Google Tao Demo"}})
 	if err != nil {
 		return nil, err
 	}
 
 	certPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	keyPem := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
+	keyBytes, err := tao.MarshalSignerDER(keys.SigningKey)
+	if err != nil {
+		return nil, err
+	}
+	keyPem := pem.EncodeToMemory(&pem.Block{Type: "ECDSA PRIVATE KEY", Bytes: keyBytes})
 
 	cert, err := tls.X509KeyPair(certPem, keyPem)
 	if err != nil {
@@ -127,17 +107,29 @@ func setupTLSServer() (net.Listener, error) {
 	})
 }
 
-func setupTLSClient() (net.Conn, error) {
+func setupTLSClient() (net.Conn, *tls.Certificate, error) {
 	cert, err := GenerateX509()
 	if err != nil {
 		fmt.Printf("client: can't create key and cert: %s\n", err.Error())
-		return nil, err
+		return nil, nil, err
 	}
-	return tls.Dial("tcp", serverAddr, &tls.Config{
+	conn, err := tls.Dial("tcp", serverAddr, &tls.Config{
 		RootCAs:            x509.NewCertPool(),
 		Certificates:       []tls.Certificate{*cert},
 		InsecureSkipVerify: true,
 	})
+	return conn, cert, err
+}
+
+// Tao mode client/server
+
+func setupTaoClient() (net.Conn, error) {
+	conn, cert, err := setupTLSClient()
+	if err != nil {
+		return nil, err
+	}
+	_ = cert
+	return conn, errors.New("not yet implemented")
 }
 
 // client/server driver
@@ -150,11 +142,9 @@ func doRequest() bool {
 	case "tcp":
 		conn, err = setupTCPClient()
 	case "tls":
-		conn, err = setupTLSClient()
-		// TODO(kwalsh) Tao-level authentication: use TLS, then exchange names and
-		// delegation attestations
-		// case "tao":
-		// conn, err = setupTaoClient()
+		conn, _, err = setupTLSClient()
+	case "tao":
+		conn, err = setupTaoClient()
 	}
 	if err != nil {
 		fmt.Printf("client: error connecting to %s: %s\n", serverAddr, err.Error())

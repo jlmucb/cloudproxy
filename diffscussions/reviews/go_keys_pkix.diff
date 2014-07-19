@@ -12,6 +12,13 @@
 #- really would describe the subject name in a string.
 #- 
 #- 
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-19T12:52:33-0700
+#**
+#-- LGTM
+#-- 
 diff --git a/go/src/cloudproxy/tao/keys.go b/go/src/cloudproxy/tao/keys.go
 index c4aaa08..cd95a51 100644
 --- a/go/src/cloudproxy/tao/keys.go

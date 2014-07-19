@@ -6,6 +6,13 @@
 #- go: use x509.Certificate, not []byte, where appropriate
 #- 
 #- 
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-19T12:54:05-0700
+#*
+#- LGTM
+#- 
 diff --git a/go/src/cloudproxy/demo/demo.go b/go/src/cloudproxy/demo/demo.go
 index 39ca6c6..36aed73 100644
 --- a/go/src/cloudproxy/demo/demo.go

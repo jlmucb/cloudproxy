@@ -21,6 +21,7 @@ import (
 	"math"
 
 	"code.google.com/p/goprotobuf/proto"
+	"github.com/golang/glog"
 )
 
 // A MessageStream is an io.ReadWriteCloser that can also read and write strings
@@ -41,16 +42,16 @@ var ErrMessageTooLarge = errors.New("messagestream: message is too large")
 func (ms *MessageStream) WriteString(s string) (int, error) {
 	n := len(s)
 	if n > math.MaxUint32 {
-		return 0, ErrMessageTooLarge
+		return 0, Logged(ErrMessageTooLarge)
 	}
 	var sizebytes [4]byte
 	binary.BigEndian.PutUint32(sizebytes[:], uint32(n))
 	n, err := ms.Write(sizebytes[:])
 	if err != nil {
-		return n, err
+		return n, Logged(err)
 	}
 	m, err := ms.Write([]byte(s))
-	return n + m, err
+	return n + m, Logged(err)
 }
 
 // ReadString reads a 32-bit length followed by a string.
@@ -58,18 +59,19 @@ func (ms *MessageStream) ReadString() (string, error) {
 	var sizebytes [4]byte
 	_, err := io.ReadFull(ms, sizebytes[:])
 	if err != nil {
-		return "", err
+		return "", Logged(err)
 	}
 	n := binary.BigEndian.Uint32(sizebytes[:])
 	max := ms.MaxMessageSize
 	// We also check for int(n) to overflow so allocation below doesn't fail.
 	if int(n) < 0 || (max > 0 && int(n) > max) {
-		return "", ErrMessageTooLarge
+		glog.Errorf("String on wire is too large: %d bytes\n", n)
+		return "", Logged(ErrMessageTooLarge)
 	}
 	strbytes := make([]byte, int(n))
 	_, err = io.ReadFull(ms, strbytes)
 	if err != nil {
-		return "", err
+		return "", Logged(err)
 	}
 	return string(strbytes), nil
 }
@@ -78,7 +80,7 @@ func (ms *MessageStream) ReadString() (string, error) {
 func (ms *MessageStream) WriteMessage(m proto.Message) (int, error) {
 	bytes, err := proto.Marshal(m)
 	if err != nil {
-		return 0, err
+		return 0, Logged(err)
 	}
 	return ms.WriteString(string(bytes))
 }
@@ -87,11 +89,11 @@ func (ms *MessageStream) WriteMessage(m proto.Message) (int, error) {
 func (ms *MessageStream) ReadMessage(m proto.Message) error {
 	s, err := ms.ReadString()
 	if err != nil {
-		return err
+		return Logged(err)
 	}
 	err = proto.Unmarshal([]byte(s), m)
 	if err != nil {
-		return err
+		return Logged(err)
 	}
 	return nil
 }

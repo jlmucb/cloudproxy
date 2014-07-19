@@ -102,7 +102,7 @@ func (c *clientCodec) WriteRequest(r *rpc.Request, x interface{}) error {
 	c.sending.Lock()
 	_, err := c.m.WriteMessage(y) // writes htonl(length), marshal(y)
 	c.sending.Unlock()
-	return err
+	return util.Logged(err)
 }
 
 // ReadResponseHeader receives and decodes a net/rpc response header r.
@@ -115,18 +115,18 @@ func (c *clientCodec) ReadResponseHeader(r *rpc.Response) error {
 	// of encoded fields which is not strictly guaranteed.
 	s, err := c.m.ReadString() // reads htonl(length), string
 	if err != nil {
-		return err
+		return util.Logged(err)
 	}
 	resp := []byte(s)
 	var hdr ProtoRPCHeader
 	err = proto.Unmarshal(resp, &hdr)
 	if err != nil {
-		return err
+		return util.Logged(err)
 	}
 	r.Seq = *hdr.Seq
 	r.ServiceMethod, err = c.mux.GetServiceMethod(*hdr.Op)
 	if err != nil {
-		return err
+		return util.Logged(err)
 	}
 	c.resp = resp
 	return nil
@@ -186,18 +186,18 @@ func (c *serverCodec) ReadRequestHeader(r *rpc.Request) error {
 	// This is almost identical to ReadResponseHeader(), above.
 	s, err := c.m.ReadString() // reads htonl(length), string
 	if err != nil {
-		return err
+		return util.Logged(err)
 	}
 	req := []byte(s)
 	var hdr ProtoRPCHeader
 	err = proto.Unmarshal(req, &hdr)
 	if err != nil {
-		return err
+		return util.Logged(err)
 	}
 	r.Seq = *hdr.Seq
 	r.ServiceMethod, err = c.mux.GetServiceMethod(*hdr.Op)
 	if err != nil {
-		return err
+		return util.Logged(err)
 	}
 	c.req = req
 	return nil
@@ -233,7 +233,7 @@ func (c *serverCodec) WriteResponse(r *rpc.Response, x interface{}) error {
 	c.sending.Lock()
 	_, err := c.m.WriteMessage(y) // writes htonl(length), marshal(req)
 	c.sending.Unlock()
-	return err
+	return util.Logged(err)
 }
 
 // Close closes the channel used by the server codec.

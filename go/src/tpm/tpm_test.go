@@ -1,23 +1,30 @@
 package tpm
 
 import (
-	"encoding/base64"
+	"encoding/hex"
 	"os"
 	"testing"
 )
 
 func TestEncoding(t *testing.T) {
-	in := []interface{}{&CommandHeader{TagRQUCommand, 0, OrdOIAP}}
+	ch := CommandHeader{tagRQUCommand, 0, ordOIAP}
+	var c uint32 = 137
+	in := []interface{}{c}
 
-	b, err := Pack(in)
+	b, err := Pack(ch, in)
 	if err != nil {
 		t.Fatal("Couldn't pack the bytes:", err)
 	}
 
 	var hdr CommandHeader
-	out := []interface{}{&hdr}
+	var size uint32
+	out := []interface{}{&hdr, &size}
 	if err := Unpack(b, out); err != nil {
 		t.Fatal("Couldn't unpack the packed bytes")
+	}
+
+	if size != 137 {
+		t.Fatal("Got the wrong size back")
 	}
 }
 
@@ -34,7 +41,7 @@ func TestReadPCR(t *testing.T) {
 		t.Fatal("Couldn't read PCR 18 from the TPM:", err)
 	}
 
-	resStr := base64.StdEncoding.EncodeToString(res)
+	resStr := hex.EncodeToString(res)
 	t.Logf("Got PCR 18 value %s\n", resStr)
 }
 
@@ -50,6 +57,6 @@ func TestGetRandom(t *testing.T) {
 		t.Fatal("Couldn't get 16 bytes of randomness from the TPM:", err)
 	}
 
-	s := base64.StdEncoding.EncodeToString(b)
+	s := hex.EncodeToString(b)
 	t.Logf("Got random bytes %s\n", s)
 }

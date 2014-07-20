@@ -6,46 +6,25 @@ import (
 	"encoding/binary"
 	"errors"
 	"os"
-	"strconv"
 )
 
-// TPM constants for messages.
+// Supported TPM commands.
 const (
-	TagRQUCommand uint16 = 0x00C1
-	OrdPCRExtend  uint32 = 0x00000014
-	OrdPCRRead    uint32 = 0x00000015
-	OrdOSAP       uint32 = 0x0000000B
-	OrdOIAP       uint32 = 0x0000000A
-	OrdGetRandom  uint32 = 0x00000046
-	PCRSize       int    = 20
+	tagRQUCommand uint16 = 0x00C1
+	tagRSPCommand uint16 = 0x00C4
 )
 
-// A Result is a return value from the TPM.
-type Result uint32
-
+// Supported TPM operations.
 const (
-	Success Result = iota
-	BuffTooSmallError
-	UnauthorizedError
-	FunctionFailedError
+	ordOSAP      uint32 = 0x0000000B
+	ordOIAP      uint32 = 0x0000000A
+	ordPCRExtend uint32 = 0x00000014
+	ordPCRRead   uint32 = 0x00000015
+	ordGetRandom uint32 = 0x00000046
 )
 
-// resultErrors maps Results to their associated error strings.
-var resultErrors = map[Result]string{
-	Success:             "success",
-	BuffTooSmallError:   "buffer too small",
-	UnauthorizedError:   "unauthorized",
-	FunctionFailedError: "function failed",
-}
-
-// Error produces a string for the given TPM Error code
-func (r Result) Error() string {
-	if s, ok := resultErrors[r]; ok {
-		return s
-	}
-
-	return "Unknown error code " + strconv.Itoa(int(r))
-}
+// Each PCR has a fixed size of 20 bytes.
+const PCRSize int = 20
 
 // A CommandHeader is the header for a TPM command.
 type CommandHeader struct {
@@ -73,22 +52,25 @@ func PackedSize(elts []interface{}) int {
 
 // Pack takes a sequence of elements that are either of fixed length or slices
 // of fixed-length types and packs them into a single byte array using
-// binary.Write. The first element of the sequence must be a *CommandHeader.
-func Pack(cmd []interface{}) ([]byte, error) {
-	hdr, ok := cmd[0].(*CommandHeader)
-	if !ok {
-		return nil, errors.New("first packed element must be a CommandHeader")
-	}
-
-	size := PackedSize(cmd)
-	if size <= 0 {
+// binary.Write.
+func Pack(ch CommandHeader, cmd []interface{}) ([]byte, error) {
+	hdrSize := binary.Size(ch)
+	bodySize := PackedSize(cmd)
+	if bodySize <= 0 {
 		return nil, errors.New("can't compute the size of the command")
 	}
 
-	hdr.Size = uint32(size)
+	size := hdrSize + bodySize
+	ch.Size = uint32(size)
 	buf := bytes.NewBuffer(make([]byte, 0, size))
-	for i := range cmd {
-		if err := binary.Write(buf, binary.BigEndian, cmd[i]); err != nil {
+
+	// The header goes first, unsurprisingly.
+	if err := binary.Write(buf, binary.BigEndian, ch); err != nil {
+		return nil, err
+	}
+
+	for _, c := range cmd {
+		if err := binary.Write(buf, binary.BigEndian, c); err != nil {
 			return nil, err
 		}
 	}
@@ -100,30 +82,19 @@ func Pack(cmd []interface{}) ([]byte, error) {
 type ResponseHeader struct {
 	Tag  uint16
 	Size uint32
-	Res  Result
+	Res  uint32
 }
 
 // Unpack decodes from a byte array a sequence of elements that either either
 // pointers to fixed length types or slices of fixed-length types. It uses
-// binary.Read to do the decoding. If the first element of the resp sequence is
-// a *ResponseHeader, then the Result field will be checked for success.
+// binary.Read to do the decoding.
 func Unpack(b []byte, resp []interface{}) error {
-	hdr, ok := resp[0].(*ResponseHeader)
+	// Note that this only makes sense if the elements of resp are either
+	// pointers or slices, since otherwise the decoded values just get thrown
+	// away.
 	buf := bytes.NewBuffer(b)
-	var start int
-	if ok {
-		if err := binary.Read(buf, binary.BigEndian, hdr); err != nil {
-			return err
-		}
-
-		if hdr.Res != Success {
-			return hdr.Res
-		}
-		start = 1
-	}
-
-	for i := start; i < len(resp); i++ {
-		if err := binary.Read(buf, binary.BigEndian, resp[i]); err != nil {
+	for _, r := range resp {
+		if err := binary.Read(buf, binary.BigEndian, r); err != nil {
 			return err
 		}
 	}
@@ -133,8 +104,9 @@ func Unpack(b []byte, resp []interface{}) error {
 
 // submitTPMRequest sends a structure to the TPM device file and gets results
 // back, interpreting them as a new provided structure.
-func submitTPMRequest(f *os.File, in []interface{}, out []interface{}) error {
-	inb, err := Pack(in)
+func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out []interface{}) error {
+	ch := CommandHeader{tag, 0, ord}
+	inb, err := Pack(ch, in)
 	if err != nil {
 		return err
 	}
@@ -143,24 +115,41 @@ func submitTPMRequest(f *os.File, in []interface{}, out []interface{}) error {
 		return err
 	}
 
+	// Try to read the whole thing, but handle the case where it's just a
+	// ResponseHeader and not the body, since that's what happens in the error
+	// case.
+	var rh ResponseHeader
 	outSize := PackedSize(out)
-	if outSize <= 0 {
-		return errors.New("can't compute the size of the response")
+	if outSize < 0 {
+		return errors.New("invalid out arguments")
 	}
 
-	// TODO(tmroeder): this assumes (probably incorrectly) that the TPM will
-	// write the same number of bytes whether the command succeeds or not. It's
-	// more likely that the TPM will return only a response header if the
-	// command fails. In that case, I need to read the response header first,
-	// then decide what action to take. And I should probably separate out the
-	// header from the rest of the output interface.
-	outb := make([]byte, outSize)
+	rhSize := binary.Size(rh)
+	outb := make([]byte, rhSize+outSize)
 	if _, err := f.Read(outb); err != nil {
 		return err
 	}
 
-	if err := Unpack(outb, out); err != nil {
+	rhbuf := bytes.NewBuffer(outb)
+	if err := binary.Read(rhbuf, binary.BigEndian, &rh); err != nil {
 		return err
+	}
+
+	// Check success before trying to read the rest of the result.
+	if rh.Tag != tagRSPCommand {
+		return errors.New("inconsistent tag returned by TPM")
+	}
+
+	if rh.Res != 0 {
+		return opError(rh.Res)
+	}
+
+	if rh.Size > uint32(rhSize) {
+		if err := Unpack(outb[rhSize:], out); err != nil {
+			return err
+		}
+	} else if len(out) > 0 {
+		return errors.New("expected results, but none were returned in a successful response")
 	}
 
 	return nil
@@ -168,14 +157,10 @@ func submitTPMRequest(f *os.File, in []interface{}, out []interface{}) error {
 
 // ReadPCR reads a PCR value from the TPM.
 func ReadPCR(f *os.File, pcr uint32) ([]byte, error) {
-	in := []interface{}{
-		&CommandHeader{TagRQUCommand, 0, OrdPCRRead},
-		pcr,
-	}
-
-	// The TPM is supposed to return the 20-byte PCR value
+	in := []interface{}{pcr}
 	v := make([]byte, PCRSize)
-	if err := submitTPMRequest(f, in, []interface{}{v}); err != nil {
+	out := []interface{}{v}
+	if err := submitTPMRequest(f, tagRQUCommand, ordPCRRead, in, out); err != nil {
 		return nil, err
 	}
 
@@ -191,13 +176,9 @@ type OIAPResponse struct {
 // OIAP sends an OIAP command to the TPM and gets back an auth value and a
 // nonce.
 func OIAP(f *os.File) (*OIAPResponse, error) {
-	in := []interface{}{&CommandHeader{TagRQUCommand, 0, OrdOIAP}}
-
-	var rh ResponseHeader
 	var resp OIAPResponse
-	out := []interface{}{&rh, &resp}
-
-	if err := submitTPMRequest(f, in, out); err != nil {
+	out := []interface{}{&resp}
+	if err := submitTPMRequest(f, tagRQUCommand, ordOIAP, nil, out); err != nil {
 		return nil, err
 	}
 
@@ -206,32 +187,28 @@ func OIAP(f *os.File) (*OIAPResponse, error) {
 
 // GetRandom gets random bytes from the TPM.
 func GetRandom(f *os.File, size uint32) ([]byte, error) {
-	in := []interface{}{
-		&CommandHeader{TagRQUCommand, 0, OrdGetRandom},
-		size,
-	}
+	in := []interface{}{size}
 
-	var rh ResponseHeader
 	var outSize uint32
 	b := make([]byte, int(size))
-	out := []interface{}{&rh, &outSize, b}
+	out := []interface{}{&outSize, b}
 
-	if err := submitTPMRequest(f, in, out); err != nil {
+	if err := submitTPMRequest(f, tagRQUCommand, ordGetRandom, in, out); err != nil {
 		return nil, err
 	}
 
-	if outSize != size {
+	if outSize > size {
 		return nil, errors.New("wrong size from GetRandom")
 	}
 
-	return b, nil
+	return b[:outSize], nil
 }
 
 // An OSAPCommand is a command sent for OSAP authentication.
 type OSAPCommand struct {
-	EntryType  uint16
-	EntryValue uint32
-	OddOSAP    [20]byte
+	EntityType  uint16
+	EntityValue uint32
+	OddOSAP     [20]byte
 }
 
 // An OSAPResponse is a TPM reply to an OSAPCommand.
@@ -243,17 +220,11 @@ type OSAPResponse struct {
 
 // OSAP sends an OSAPCommand to the TPM and gets back authentication
 // information in an OSAPResponse.
-func OSAP(f *os.File, entryType uint16, entryValue uint32, oddOSAP [20]byte) (*OSAPResponse, error) {
-	in := []interface{}{
-		&CommandHeader{TagRQUCommand, 0, OrdOSAP},
-		OSAPCommand{entryType, entryValue, oddOSAP},
-	}
-
-	var rh ResponseHeader
+func OSAP(f *os.File, entityType uint16, entityValue uint32, oddOSAP [20]byte) (*OSAPResponse, error) {
+	in := []interface{}{OSAPCommand{entityType, entityValue, oddOSAP}}
 	var resp OSAPResponse
-	out := []interface{}{&rh, &resp}
-
-	if err := submitTPMRequest(f, in, out); err != nil {
+	out := []interface{}{&resp}
+	if err := submitTPMRequest(f, tagRQUCommand, ordOSAP, in, out); err != nil {
 		return nil, err
 	}
 

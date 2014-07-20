@@ -154,6 +154,31 @@ func submitTPMRequest(f *os.File, in interface{}, out interface{}) error {
 	return nil
 }
 
+// submitTPMHybridRequest sends a structure to the TPM device file and gets results
+// back, interpreting them as a header and slice of bytes.
+func submitTPMHybridRequest(f *os.File, in interface{}, outhdr interface{}, size int) ([]byte, error) {
+	inBytes := make([]byte, binary.Size(in))
+	if _, err := EncodeTPMStruct(inBytes, in); err != nil {
+		return nil, err
+	}
+
+	if _, err := f.Write(inBytes); err != nil {
+		return nil, err
+	}
+
+    hdrlen := binary.Size(outhdr)
+	outBytes := make([]byte, hdrlen + size)
+	if _, err := f.Read(outBytes); err != nil {
+		return nil, err
+	}
+
+    if _, err := DecodeTPMStruct(outhdr, outBytes[:hdrlen]); err != nil {
+		return nil, err
+	}
+
+    return outBytes[hdrlen:], nil
+}
+
 // EncodeTPMStruct encodes a TPM data structure into dest, writing integers in
 // big-endian format, and returns the number
 // of bytes written.
@@ -263,15 +288,8 @@ func GetRandom(f *os.File, size uint32) ([]byte, error) {
 	grc.Hdr.Size = uint32(binary.Size(grc))
 
 	var grr GetRandomResponse
-	grrLen := binary.Size(grr)
-	b := make([]byte, grrLen+int(grc.Size))
-
-	if err := submitTPMRequest(f, grc, b); err != nil {
-		return nil, err
-	}
-
-	// Decode the first part of the reply.
-	if _, err := DecodeTPMStruct(&grr, b[:grrLen]); err != nil {
+	b, err := submitTPMHybridRequest(f, grc, &grr, int(size))
+    if err != nil {
 		return nil, err
 	}
 
@@ -283,5 +301,5 @@ func GetRandom(f *os.File, size uint32) ([]byte, error) {
 		return nil, errors.New("wrong size from GetRandom")
 	}
 
-	return b[grrLen:], nil
+	return b, nil
 }

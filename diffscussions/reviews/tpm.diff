@@ -68,6 +68,18 @@ index 0000000..14e31b3
 +	OrdOIAP       uint32 = 0x0000000A
 +	OrdGetRandom  uint32 = 0x00000046
 +	PCRSize       int    = 20
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T09:34:54-0400
+#*
+#- Style: I'd put PCRSize in a separate block of code. Its different from the
+#- rest.
+#-
+#- Also: Is it necessary to have most of these exported? Except for (perhaps) PCRSize,
+#- these could be unexported. AFAIK, unexported symbols can still be used by
+#- other files in the tpm package.
+#-
 +)
 +
 +// A Result is a return value from the TPM.
@@ -96,6 +108,39 @@ index 0000000..14e31b3
 +
 +	return "Unknown error code " + strconv.Itoa(int(r))
 +}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T09:42:36-0400
+#*
+#- I get that tpm commands don't really have results, they just have status
+#- returns. And the use of type Result uint32, iota, and the Error function for
+#- Result receiver is clever. But Success implements error? And wouldn't it be
+#- easy to accidentally return an integer (e.g. return 5) from some function by
+#- mistake instead of a real Result. I'm also not keen on the need for a map
+#- from Result values to error strings. Finally, putting "Error" at the end of a
+#- name is what is expected for an error type (say, TPMError), not a specific
+#- error. See https://code.google.com/p/go-wiki/wiki/Errors
+#-
+#- I think the style seen in package io (http://golang.org/src/pkg/io/io.go)
+#- might be more idiomatic and avoid the issues above. That is:
+#- * Make functions return type error instead of Result. Or use:
+#-    type Result error
+#- * Functions can return nil for success.
+#- * Use a series of vars for the errors, with prefix Err, like so:
+#- var ErrBuffTooSmall = errors.New("tpm: buffer too small")
+#- var ErrUnauthorized = errors.New("tpm: unauthorized")
+#- var ErrFunctionFailed = errors.New("tpm: function failed")
+#- * Put "tpm:" at the start of the error messages. This doesn't seem to be
+#- consistently used in go packages, but I've seen it here and there and it has
+#- been helpful in my own debugging.
+#-
+#- If these error codes (FunctionFailed = 3) are defined by the tpm/tcg spec or
+#- are returned by the underlying dev driver, then we could have map[int] error
+#- for them somewhere like your code above. But I don't these are those
+#- errors... I think jlm invented these. The TPM_* error codes (TPM_SUCCESS,
+#- TPM_AUTHFAIL, etc.) later are from the tpm/tcg spec though, so having some
+#- kind of map makes sense for those.
 +
 +// A CommandHeader is the header for a TPM command.
 +type CommandHeader struct {
@@ -111,6 +156,15 @@ index 0000000..14e31b3
 +	var size int
 +	for i := range elts {
 +		s := binary.Size(elts[i])
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T10:44:50-0400
+#*
+#- I think go's 2-value range loop works here:
+#-   for i, e := range elts {
+#-     s := binary.Size(e)
+#-
 +		if s == -1 {
 +			return -1
 +		}
@@ -134,6 +188,14 @@ index 0000000..14e31b3
 +	if size <= 0 {
 +		return nil, errors.New("can't compute the size of the command")
 +	}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T10:47:02-0400
+#*
+#- Nit: Check size before checking for CommandHeader to avoid out-of-bounds
+#- error if cmd is zero length?
+#-
 +
 +	hdr.Size = uint32(size)
 +	buf := bytes.NewBuffer(make([]byte, 0, size))
@@ -151,6 +213,13 @@ index 0000000..14e31b3
 +	Tag  uint16
 +	Size uint32
 +	Res  Result
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T11:04:10-0400
+#*
+#- I think this should be Res uint32. See next comment for why.
+#-
 +}
 +
 +// Unpack decodes from a byte array a sequence of elements that either either
@@ -159,6 +228,14 @@ index 0000000..14e31b3
 +// a *ResponseHeader, then the Result field will be checked for success.
 +func Unpack(b []byte, resp []interface{}) error {
 +	hdr, ok := resp[0].(*ResponseHeader)
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T10:55:25-0400
+#*
+#- style: move above line down 2 lines, just before if, and maybe even combine
+#- into a compound-if: if hdr, ok := ...; ok {
+#-
 +	buf := bytes.NewBuffer(b)
 +	var start int
 +	if ok {
@@ -169,6 +246,22 @@ index 0000000..14e31b3
 +		if hdr.Res != Success {
 +			return hdr.Res
 +		}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T10:56:57-0400
+#*
+#- Errors again. Here, I'm not positive but I am pretty sure the error codes
+#- that will appear inside the tpm response headers are not the same as the 
+#- error codes you defined above. It happens that 0 is success for both.
+#- But 1 does not mean BuffTooSmallError, it means TPM_AUTHFAIL.  And the values
+#- go up to something like 39 (TPM_INAPPROPRIATE_SIG). This is where I think you
+#- should use a map to get from uint32 tcg error codes to error values. Or do
+#- your clever trick with 'type TPMError uint32', a map, and an Error()
+#- function. And if Res is a uint32, then line here would then be:
+#-   return TPMError(hdr.Res)
+#- which makes the conversion from tpm codes to go errors very clear, I think.
+#-
 +		start = 1
 +	}
 +
@@ -204,6 +297,20 @@ index 0000000..14e31b3
 +	// command fails. In that case, I need to read the response header first,
 +	// then decide what action to take. And I should probably separate out the
 +	// header from the rest of the output interface.
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T11:12:37-0400
+#*
+#- tpmwg-mainrev62_Part2_TPM_Structures.pdf, page 113: 
+#-   1. When a command fails for ANY reason, the TPM MUST return only the
+#-      following three items:
+#-     a. TPM_TAG_RQU_COMMAND (2 bytes)
+#-     b. ParamLength(4 bytes, fixed at 10)
+#-     c. Return Code (4 bytes, never TPM_SUCCESS)
+#- I also agree about separating the response header from the output slice --
+#- the caller won't need it for anything since you check the error code in
+#- Unpack.
 +	outb := make([]byte, outSize)
 +	if _, err := f.Read(outb); err != nil {
 +		return err
@@ -213,6 +320,20 @@ index 0000000..14e31b3
 +		return err
 +	}
 +
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T11:32:28-0400
+#*
+#- In all cases other than the error case discussed in the above comment, you
+#- might want to sanity check the response. The tag in the response header
+#- should correspond to the request tag, e.g. TagRQUCommand in the request becomes
+#- TagRSPCommand in the response. Also, for every case except the error case
+#- handled above, there should be an ordinal uint32 that follows the response
+#- header and preceeds any command-specific data. That response ordinal should
+#- match the request header Ord. I'm pretty these things are true for every TPM
+#- command and response, so they should be handled here.
+#-
 +	return nil
 +}
 +
@@ -228,6 +349,19 @@ index 0000000..14e31b3
 +	if err := submitTPMRequest(f, in, []interface{}{v}); err != nil {
 +		return nil, err
 +	}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T11:20:13-0400
+#*
+#- See TPM_Main-Part_3_Commands_v1.2_rev116_01032011.pdf, page 173.
+#- I'm pretty sure the TPM_PCRRead command also echos back the OrdPCRRead as
+#- part of the response before the 20 byte pcr value. So your []interface needs
+#- another element. Better yet, I'm pretty sure that every tpm command includes
+#- the command ordinal as part of the response header, so ResponseHeader should
+#- probably include Ord uint32 and submitTPMRequest should check that the
+#- request.Ord == response.Ord.
+#-
 +
 +	return v, nil
 +}
@@ -272,6 +406,13 @@ index 0000000..14e31b3
 +
 +	if outSize != size {
 +		return nil, errors.New("wrong size from GetRandom")
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T11:39:33-0400
+#*
+#- Is 0 < outSize < size an error? Or is it legal, more like Read().
+#-
 +	}
 +
 +	return b, nil
@@ -281,6 +422,13 @@ index 0000000..14e31b3
 +type OSAPCommand struct {
 +	EntryType  uint16
 +	EntryValue uint32
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T11:41:18-0400
+#*
+#- I think it should be 'Entity' here and below, not 'Entry'. See spec part 3.
+#-
 +	OddOSAP    [20]byte
 +}
 +
@@ -316,6 +464,13 @@ index 0000000..bd03b7d
 +++ b/go/src/tpm/tpm_test.go
 @@ -0,0 +1,55 @@
 +package tpm
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T11:43:35-0400
+#*
+#- Didn't look at this file. But did it work?
+#-
 +
 +import (
 +	"encoding/base64"

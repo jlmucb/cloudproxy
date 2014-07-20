@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"cloudproxy/tao"
+	"cloudproxy/util"
 )
 
 var serverHost = flag.String("host", "localhost", "address for client/server")
@@ -58,10 +59,10 @@ const (
 	x509keySize  = 2048
 )
 
-func GenerateX509() (*tls.Certificate, error) {
+func GenerateX509() (*tao.Keys, *tls.Certificate, error) {
 	keys, err := tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Host())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	/*
@@ -75,27 +76,29 @@ func GenerateX509() (*tls.Certificate, error) {
 	cert, err := keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
 		Organization: []string{"Google Tao Demo"}})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	// TODO(kwalsh) keys should save cert on disk if keys are on disk
+	keys.Cert = cert
 
 	certPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
 	keyBytes, err := tao.MarshalSignerDER(keys.SigningKey)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	keyPem := pem.EncodeToMemory(&pem.Block{Type: "ECDSA PRIVATE KEY", Bytes: keyBytes})
 
 	tlsCert, err := tls.X509KeyPair(certPem, keyPem)
 	if err != nil {
 		fmt.Printf("can't parse my cert\n")
-		return nil, err
+		return nil, nil, err
 	}
 
-	return &tlsCert, nil
+	return keys, &tlsCert, nil
 }
 
 func setupTLSServer() (net.Listener, error) {
-	cert, err := GenerateX509()
+	_, cert, err := GenerateX509()
 	if err != nil {
 		fmt.Printf("server: can't create key and cert: %s\n", err.Error())
 		return nil, err
@@ -107,8 +110,8 @@ func setupTLSServer() (net.Listener, error) {
 	})
 }
 
-func setupTLSClient() (net.Conn, *tls.Certificate, error) {
-	cert, err := GenerateX509()
+func setupTLSClient() (net.Conn, *tao.Keys, error) {
+	keys, cert, err := GenerateX509()
 	if err != nil {
 		fmt.Printf("client: can't create key and cert: %s\n", err.Error())
 		return nil, nil, err
@@ -118,17 +121,44 @@ func setupTLSClient() (net.Conn, *tls.Certificate, error) {
 		Certificates:       []tls.Certificate{*cert},
 		InsecureSkipVerify: true,
 	})
-	return conn, cert, err
+	return conn, keys, err
 }
 
 // Tao mode client/server
 
 func setupTaoClient() (net.Conn, error) {
-	conn, cert, err := setupTLSClient()
+	conn, keys, err := setupTLSClient()
 	if err != nil {
 		return nil, err
 	}
-	_ = cert
+
+	// tao handshake: send our delegation
+	ms := util.NewMessageStream(conn)
+	_, err = ms.WriteMessage(keys.Delegation)
+	if err != nil {
+		return nil, err
+	}
+
+	// tao handshake: read peer delegation
+	var a tao.Attestation
+	err = ms.ReadMessage(&a)
+	if err != nil {
+		return nil, err
+	}
+
+	// check if peer delegation matches tls key
+	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
+	// TODO(kwalsh) Verify peer key was checked by tls even though we set tls
+	// config.InsecureSkipVerify. We don't care about the name or other
+	// certificate details ata ll (hence config.InsecureSkipVerify), but we do
+	// care that the key in the certificate is actually held by the peer.
+	_ = peerCert
+
+	// TODO(kwalsh)
+	// * verify delegation is well formed and properly signed
+	// * verify tls key matches the key delegated by this delegation
+	// * get name from delegation, store somewhere (e.g. in conn, eventually)
+
 	return conn, errors.New("not yet implemented")
 }
 

@@ -53,7 +53,6 @@ bool GenerateAttestation(const Signer &key, const string &delegation,
 
 /// Validate a signed attestation.
 /// @param attestation The attestation to be checked.
-/// @param[out] issuer The issuer from the attestation statement.
 /// @param[out] stmt The statement conveyed by this attestation.
 /// Note: The time and expiration in the returned statement will
 /// be adjusted appropriately if there are embedded delegations.

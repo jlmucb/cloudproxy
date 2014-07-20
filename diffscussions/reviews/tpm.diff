@@ -1,0 +1,372 @@
+#* 
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-19T22:34:54-0700
+#* 
+#-
+#- This code adds initial support for the TPM, at first with just a
+#- couple of simple message types (like GetRandom). This is a port
+#- from the C source code in Code/TPMDirect/vTCIDirect.{cpp,h}, which
+#- in turn seems to be a direct port of Code/TPMDirect/tpm.{c,h}.
+#- 
+#- This version uses encoding/binary to abstract the marshalling and
+#- unmarshalling of data structures that makes up most of the work of
+#- communicating with the TPM and tries to turn it into a simple
+#- RPC-like interface as much as possible.
+#- 
+#- Note that the current version of GetRandom doesn't work when it's
+#- run with the other tests, though it does work when run alone under
+#- -test.run=TestGetRandom. The reason seems to be that the testing
+#- framework runs this command too soon after another TPM command has
+#- completed.
+#- 
+#- The following are the commit text from the commits so far:
+#- 
+#- A version of the TPM port that can read PCRs from /dev/tpm0
+#- 
+#- 
+#- Wrote GetRandom and figured out how to handle response headers
+#- 
+#- 
+#- Generalized the hybrid response handling
+#- 
+#- 
+#- Changed encoding to Pack/Unpack with explicit headers and mixed struct/slice support
+#- 
+#- 
+diff --git a/.gitignore b/.gitignore
+index cb9555f..2ff8115 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,2 +1,2 @@
+ *.swp
+-tpm
++/tpm
+diff --git a/go/src/tpm/tpm.go b/go/src/tpm/tpm.go
+new file mode 100644
+index 0000000..14e31b3
+--- /dev/null
++++ b/go/src/tpm/tpm.go
+@@ -0,0 +1,261 @@
++// Package tpm supports direct communication with a tpm device under Linux.
++package tpm
++
++import (
++	"bytes"
++	"encoding/binary"
++	"errors"
++	"os"
++	"strconv"
++)
++
++// TPM constants for messages.
++const (
++	TagRQUCommand uint16 = 0x00C1
++	OrdPCRExtend  uint32 = 0x00000014
++	OrdPCRRead    uint32 = 0x00000015
++	OrdOSAP       uint32 = 0x0000000B
++	OrdOIAP       uint32 = 0x0000000A
++	OrdGetRandom  uint32 = 0x00000046
++	PCRSize       int    = 20
++)
++
++// A Result is a return value from the TPM.
++type Result uint32
++
++const (
++	Success Result = iota
++	BuffTooSmallError
++	UnauthorizedError
++	FunctionFailedError
++)
++
++// resultErrors maps Results to their associated error strings.
++var resultErrors = map[Result]string{
++	Success:             "success",
++	BuffTooSmallError:   "buffer too small",
++	UnauthorizedError:   "unauthorized",
++	FunctionFailedError: "function failed",
++}
++
++// Error produces a string for the given TPM Error code
++func (r Result) Error() string {
++	if s, ok := resultErrors[r]; ok {
++		return s
++	}
++
++	return "Unknown error code " + strconv.Itoa(int(r))
++}
++
++// A CommandHeader is the header for a TPM command.
++type CommandHeader struct {
++	Tag  uint16
++	Size uint32
++	Cmd  uint32
++}
++
++// PackedSize computes the size of a sequence of types that can be passed to
++// binary.Read or binary.Write.
++func PackedSize(elts []interface{}) int {
++	// Add the total size to the header.
++	var size int
++	for i := range elts {
++		s := binary.Size(elts[i])
++		if s == -1 {
++			return -1
++		}
++
++		size += s
++	}
++
++	return size
++}
++
++// Pack takes a sequence of elements that are either of fixed length or slices
++// of fixed-length types and packs them into a single byte array using
++// binary.Write. The first element of the sequence must be a *CommandHeader.
++func Pack(cmd []interface{}) ([]byte, error) {
++	hdr, ok := cmd[0].(*CommandHeader)
++	if !ok {
++		return nil, errors.New("first packed element must be a CommandHeader")
++	}
++
++	size := PackedSize(cmd)
++	if size <= 0 {
++		return nil, errors.New("can't compute the size of the command")
++	}
++
++	hdr.Size = uint32(size)
++	buf := bytes.NewBuffer(make([]byte, 0, size))
++	for i := range cmd {
++		if err := binary.Write(buf, binary.BigEndian, cmd[i]); err != nil {
++			return nil, err
++		}
++	}
++
++	return buf.Bytes(), nil
++}
++
++// A header for TPM responses.
++type ResponseHeader struct {
++	Tag  uint16
++	Size uint32
++	Res  Result
++}
++
++// Unpack decodes from a byte array a sequence of elements that either either
++// pointers to fixed length types or slices of fixed-length types. It uses
++// binary.Read to do the decoding. If the first element of the resp sequence is
++// a *ResponseHeader, then the Result field will be checked for success.
++func Unpack(b []byte, resp []interface{}) error {
++	hdr, ok := resp[0].(*ResponseHeader)
++	buf := bytes.NewBuffer(b)
++	var start int
++	if ok {
++		if err := binary.Read(buf, binary.BigEndian, hdr); err != nil {
++			return err
++		}
++
++		if hdr.Res != Success {
++			return hdr.Res
++		}
++		start = 1
++	}
++
++	for i := start; i < len(resp); i++ {
++		if err := binary.Read(buf, binary.BigEndian, resp[i]); err != nil {
++			return err
++		}
++	}
++
++	return nil
++}
++
++// submitTPMRequest sends a structure to the TPM device file and gets results
++// back, interpreting them as a new provided structure.
++func submitTPMRequest(f *os.File, in []interface{}, out []interface{}) error {
++	inb, err := Pack(in)
++	if err != nil {
++		return err
++	}
++
++	if _, err := f.Write(inb); err != nil {
++		return err
++	}
++
++	outSize := PackedSize(out)
++	if outSize <= 0 {
++		return errors.New("can't compute the size of the response")
++	}
++
++	// TODO(tmroeder): this assumes (probably incorrectly) that the TPM will
++	// write the same number of bytes whether the command succeeds or not. It's
++	// more likely that the TPM will return only a response header if the
++	// command fails. In that case, I need to read the response header first,
++	// then decide what action to take. And I should probably separate out the
++	// header from the rest of the output interface.
++	outb := make([]byte, outSize)
++	if _, err := f.Read(outb); err != nil {
++		return err
++	}
++
++	if err := Unpack(outb, out); err != nil {
++		return err
++	}
++
++	return nil
++}
++
++// ReadPCR reads a PCR value from the TPM.
++func ReadPCR(f *os.File, pcr uint32) ([]byte, error) {
++	in := []interface{}{
++		&CommandHeader{TagRQUCommand, 0, OrdPCRRead},
++		pcr,
++	}
++
++	// The TPM is supposed to return the 20-byte PCR value
++	v := make([]byte, PCRSize)
++	if err := submitTPMRequest(f, in, []interface{}{v}); err != nil {
++		return nil, err
++	}
++
++	return v, nil
++}
++
++// The response to an OIAPCommand.
++type OIAPResponse struct {
++	Auth      uint32
++	NonceEven [20]byte
++}
++
++// OIAP sends an OIAP command to the TPM and gets back an auth value and a
++// nonce.
++func OIAP(f *os.File) (*OIAPResponse, error) {
++	in := []interface{}{&CommandHeader{TagRQUCommand, 0, OrdOIAP}}
++
++	var rh ResponseHeader
++	var resp OIAPResponse
++	out := []interface{}{&rh, &resp}
++
++	if err := submitTPMRequest(f, in, out); err != nil {
++		return nil, err
++	}
++
++	return &resp, nil
++}
++
++// GetRandom gets random bytes from the TPM.
++func GetRandom(f *os.File, size uint32) ([]byte, error) {
++	in := []interface{}{
++		&CommandHeader{TagRQUCommand, 0, OrdGetRandom},
++		size,
++	}
++
++	var rh ResponseHeader
++	var outSize uint32
++	b := make([]byte, int(size))
++	out := []interface{}{&rh, &outSize, b}
++
++	if err := submitTPMRequest(f, in, out); err != nil {
++		return nil, err
++	}
++
++	if outSize != size {
++		return nil, errors.New("wrong size from GetRandom")
++	}
++
++	return b, nil
++}
++
++// An OSAPCommand is a command sent for OSAP authentication.
++type OSAPCommand struct {
++	EntryType  uint16
++	EntryValue uint32
++	OddOSAP    [20]byte
++}
++
++// An OSAPResponse is a TPM reply to an OSAPCommand.
++type OSAPResponse struct {
++	Auth      uint32
++	NonceEven [20]byte
++	EvenOSAP  [20]byte
++}
++
++// OSAP sends an OSAPCommand to the TPM and gets back authentication
++// information in an OSAPResponse.
++func OSAP(f *os.File, entryType uint16, entryValue uint32, oddOSAP [20]byte) (*OSAPResponse, error) {
++	in := []interface{}{
++		&CommandHeader{TagRQUCommand, 0, OrdOSAP},
++		OSAPCommand{entryType, entryValue, oddOSAP},
++	}
++
++	var rh ResponseHeader
++	var resp OSAPResponse
++	out := []interface{}{&rh, &resp}
++
++	if err := submitTPMRequest(f, in, out); err != nil {
++		return nil, err
++	}
++
++	return &resp, nil
++}
+diff --git a/go/src/tpm/tpm_test.go b/go/src/tpm/tpm_test.go
+new file mode 100644
+index 0000000..bd03b7d
+--- /dev/null
++++ b/go/src/tpm/tpm_test.go
+@@ -0,0 +1,55 @@
++package tpm
++
++import (
++	"encoding/base64"
++	"os"
++	"testing"
++)
++
++func TestEncoding(t *testing.T) {
++	in := []interface{}{&CommandHeader{TagRQUCommand, 0, OrdOIAP}}
++
++	b, err := Pack(in)
++	if err != nil {
++		t.Fatal("Couldn't pack the bytes:", err)
++	}
++
++	var hdr CommandHeader
++	out := []interface{}{&hdr}
++	if err := Unpack(b, out); err != nil {
++		t.Fatal("Couldn't unpack the packed bytes")
++	}
++}
++
++func TestReadPCR(t *testing.T) {
++	// Try to read PCR 18. For this to work, you have to have access to
++	// /dev/tpm0, and there has to be a TPM driver to answer requests.
++	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
++	if err != nil {
++		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
++	}
++
++	res, err := ReadPCR(f, 18)
++	if err != nil {
++		t.Fatal("Couldn't read PCR 18 from the TPM:", err)
++	}
++
++	resStr := base64.StdEncoding.EncodeToString(res)
++	t.Logf("Got PCR 18 value %s\n", resStr)
++}
++
++func TestGetRandom(t *testing.T) {
++	// Try to get 16 bytes of randomness from the TPM.
++	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
++	if err != nil {
++		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
++	}
++
++	b, err := GetRandom(f, 16)
++	if err != nil {
++		t.Fatal("Couldn't get 16 bytes of randomness from the TPM:", err)
++	}
++
++	s := base64.StdEncoding.EncodeToString(b)
++	t.Logf("Got random bytes %s\n", s)
++}

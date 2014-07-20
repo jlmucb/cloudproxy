@@ -4,7 +4,9 @@ package tpm
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"os"
+	"strconv"
 )
 
 // TPM constants for messages.
@@ -30,19 +32,46 @@ const (
 	OrdTerminateHandle uint32 = 0x00000096
 	OrdGetPubKey       uint32 = 0x00000021
 
-    ETKeyHandle        uint16 = 0x0001
-    ETSRK              uint16 = 0x0004
-    ETKey              uint16 = 0x0005
-    KHSRK              uint32 = 0x40000000
+	ETKeyHandle uint16 = 0x0001
+	ETSRK       uint16 = 0x0004
+	ETKey       uint16 = 0x0005
+	KHSRK       uint32 = 0x40000000
 
-    KeyTypeSRK         int = 1
-    KeyTypeAIK         int = 2
+	KeyTypeSRK int = 1
+	KeyTypeAIK int = 2
 
-    MaxPCRs            int = 24
-    MaxBuf             int = 4096 // Do I need this?
+	MaxPCRs int = 24
+	MaxBuf  int = 4096 // Do I need this?
 
-    PCRSize            int = 20
+	PCRSize int = 20
 )
+
+// A Result is a return value from the TPM.
+type Result uint32
+
+const (
+	Success Result = iota
+	BuffTooSmallError
+	UnauthorizedError
+	FunctionFailedError
+)
+
+// resultErrors maps Results to their associated error strings.
+var resultErrors = map[Result]string{
+	Success:             "success",
+	BuffTooSmallError:   "buffer too small",
+	UnauthorizedError:   "unauthorized",
+	FunctionFailedError: "function failed",
+}
+
+// Error produces a string for the given TPM Error code
+func (r Result) Error() string {
+	if s, ok := resultErrors[r]; ok {
+		return s
+	}
+
+	return "Unknown error code " + strconv.Itoa(int(r))
+}
 
 // TODO(tmroeder): what is this? Looks like big-endian uint16 then 4 uint32.
 // The format here looks like the standard command format: uint16 command type,
@@ -104,23 +133,23 @@ type PublicKey struct {
 // submitTPMRequest sends a structure to the TPM device file and gets results
 // back, interpreting them as a new provided structure.
 func submitTPMRequest(f *os.File, in interface{}, out interface{}) error {
-    inBytes := make([]byte, binary.Size(in))
-    if _, err := EncodeTPMStruct(inBytes, in); err != nil {
-        return err
-    }
+	inBytes := make([]byte, binary.Size(in))
+	if _, err := EncodeTPMStruct(inBytes, in); err != nil {
+		return err
+	}
 
 	if _, err := f.Write(inBytes); err != nil {
 		return err
 	}
 
-    outBytes := make([]byte, binary.Size(out))
+	outBytes := make([]byte, binary.Size(out))
 	if _, err := f.Read(outBytes); err != nil {
 		return err
 	}
 
-    if _, err := DecodeTPMStruct(out, outBytes); err != nil {
-        return err
-    }
+	if _, err := DecodeTPMStruct(out, outBytes); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -152,32 +181,107 @@ func DecodeTPMStruct(dest interface{}, src []byte) (int, error) {
 
 // A CommandHeader is the header for a TPM command
 type CommandHeader struct {
-    Tag uint16
-    Size uint32
+	Tag  uint16
+	Size uint32
+	Cmd  uint32
 }
 
 // A PCRReadCommand is a command structure for reading a PCR value.
 type PCRReadCommand struct {
-    Hdr CommandHeader
-    Cmd uint32
-    PCR uint32
+	Hdr CommandHeader
+	PCR uint32
 }
 
 // ReadPCR reads a PCR value from the TPM.
 func ReadPCR(f *os.File, pcr int) ([]byte, error) {
-    read := &PCRReadCommand{
-        Hdr: CommandHeader{TagRQUCommand, 0},
-        Cmd: OrdPCRRead,
-        PCR: uint32(pcr),
-    }
+	read := &PCRReadCommand{
+		Hdr: CommandHeader{TagRQUCommand, 0, OrdPCRRead},
+		PCR: uint32(pcr),
+	}
 
-    read.Hdr.Size = uint32(binary.Size(read))
+	read.Hdr.Size = uint32(binary.Size(read))
 
-    // The TPM is supposed to return the 20-byte PCR value
-    v := make([]byte, PCRSize)
-    if err := submitTPMRequest(f, read, v); err != nil {
-        return nil, err
-    }
+	// The TPM is supposed to return the 20-byte PCR value
+	v := make([]byte, PCRSize)
+	if err := submitTPMRequest(f, read, v); err != nil {
+		return nil, err
+	}
 
-    return v, nil
+	return v, nil
+}
+
+// A header for TPM responses.
+type ResponseHeader struct {
+	Tag  uint16
+	Size uint32
+	Res  Result
+}
+
+// The response to an OIAPCommand.
+type OIAPResponse struct {
+	Hdr       ResponseHeader
+	Auth      uint32
+	NonceEven [20]byte
+}
+
+// OIAP sends an OIAP command to the TPM and gets back an auth value and a
+// nonce.
+func OIAP(f *os.File, locality uint32) (*OIAPResponse, error) {
+	oiap := &CommandHeader{TagRQUCommand, 0, OrdOIAP}
+	oiap.Size = uint32(binary.Size(oiap))
+
+	var resp OIAPResponse
+	if err := submitTPMRequest(f, oiap, &resp); err != nil {
+		return nil, err
+	}
+
+	// TODO(tmroeder): is there a way to check the tag?
+	if resp.Hdr.Res != Success {
+		return nil, resp.Hdr.Res
+	}
+
+	return &resp, nil
+}
+
+// A GetRandomCommand is a command sent to get randomness from a TPM.
+type GetRandomCommand struct {
+	Hdr  CommandHeader
+	Size uint32
+}
+
+// A GetRandomResponse is the TPM response to a GetRandomCommand.
+type GetRandomResponse struct {
+	Hdr  ResponseHeader
+	Size uint32
+}
+
+func GetRandom(f *os.File, size uint32) ([]byte, error) {
+	grc := &GetRandomCommand{
+		Hdr:  CommandHeader{TagRQUCommand, 0, OrdGetRandom},
+		Size: size,
+	}
+	grc.Hdr.Size = uint32(binary.Size(grc))
+
+	var grr GetRandomResponse
+	grrLen := binary.Size(grr)
+	b := make([]byte, grrLen+int(grc.Size))
+
+	if err := submitTPMRequest(f, grc, b); err != nil {
+		return nil, err
+	}
+
+	// Decode the first part of the reply.
+	if _, err := DecodeTPMStruct(&grr, b[:grrLen]); err != nil {
+		return nil, err
+	}
+
+	if grr.Hdr.Res != Success {
+		return nil, grr.Hdr.Res
+	}
+
+	if grr.Size != size {
+		return nil, errors.New("wrong size from GetRandom")
+	}
+
+	return b[grrLen:], nil
 }

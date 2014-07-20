@@ -7,32 +7,17 @@ import (
 )
 
 func TestEncoding(t *testing.T) {
-	sel := &PCRSelection{100, [3]byte{1, 2, 3}}
-	d := make([]byte, 5)
-	if _, err := EncodeTPMStruct(d, sel); err != nil {
-		t.Fatal("Couldn't encode the struct:", err)
+	in := []interface{}{&CommandHeader{TagRQUCommand, 0, OrdOIAP}}
+
+	b, err := Pack(in)
+	if err != nil {
+		t.Fatal("Couldn't pack the bytes:", err)
 	}
 
-	res := []byte{0, 100, 1, 2, 3}
-	for i := range res {
-		if res[i] != d[i] {
-			t.Fatal("Invalid encoding")
-		}
-	}
-
-	var s PCRSelection
-	if _, err := DecodeTPMStruct(&s, d); err != nil {
-		t.Fatal("Couldn't decode the struct:", err)
-	}
-
-	if s.Size != sel.Size {
-		t.Fatal("Invalid decoded size")
-	}
-
-	for i := range s.Mask {
-		if s.Mask[i] != sel.Mask[i] {
-			t.Fatal("Invalid decoded mask")
-		}
+	var hdr CommandHeader
+	out := []interface{}{&hdr}
+	if err := Unpack(b, out); err != nil {
+		t.Fatal("Couldn't unpack the packed bytes")
 	}
 }
 

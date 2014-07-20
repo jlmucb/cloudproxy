@@ -80,6 +80,13 @@ index 0000000..14e31b3
 #- these could be unexported. AFAIK, unexported symbols can still be used by
 #- other files in the tpm package.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-20T10:45:48-0700
+#**
+#-- Fixed
+#-- 
 +)
 +
 +// A Result is a return value from the TPM.
@@ -141,6 +148,15 @@ index 0000000..14e31b3
 #- errors... I think jlm invented these. The TPM_* error codes (TPM_SUCCESS,
 #- TPM_AUTHFAIL, etc.) later are from the tpm/tcg spec though, so having some
 #- kind of map makes sense for those.
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-20T15:27:22-0700
+#**
+#-- Fixed. See tpm_errors.go and the code there for opError. I also
+#-- don't export that error type now, since all the caller needs to
+#-- know is that it implements error.
+#-- 
 +
 +// A CommandHeader is the header for a TPM command.
 +type CommandHeader struct {
@@ -165,6 +181,13 @@ index 0000000..14e31b3
 #-   for i, e := range elts {
 #-     s := binary.Size(e)
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-20T15:28:02-0700
+#**
+#-- Fixed. In fact, I can use _, e := range elts, since I don't need the index.
+#-- 
 +		if s == -1 {
 +			return -1
 +		}
@@ -196,6 +219,13 @@ index 0000000..14e31b3
 #- Nit: Check size before checking for CommandHeader to avoid out-of-bounds
 #- error if cmd is zero length?
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-20T15:28:25-0700
+#**
+#-- No longer a problem now that I pass the CommandHeader directly.
+#-- 
 +
 +	hdr.Size = uint32(size)
 +	buf := bytes.NewBuffer(make([]byte, 0, size))
@@ -220,6 +250,13 @@ index 0000000..14e31b3
 #*
 #- I think this should be Res uint32. See next comment for why.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-20T15:28:42-0700
+#**
+#-- Fixed in tpm_errors.go
+#-- 
 +}
 +
 +// Unpack decodes from a byte array a sequence of elements that either either
@@ -236,6 +273,13 @@ index 0000000..14e31b3
 #- style: move above line down 2 lines, just before if, and maybe even combine
 #- into a compound-if: if hdr, ok := ...; ok {
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-20T15:28:51-0700
+#**
+#-- This code now passes the ResponseHeader directly, so this is handled differently.
+#-- 
 +	buf := bytes.NewBuffer(b)
 +	var start int
 +	if ok {
@@ -262,6 +306,13 @@ index 0000000..14e31b3
 #-   return TPMError(hdr.Res)
 #- which makes the conversion from tpm codes to go errors very clear, I think.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-20T15:29:15-0700
+#**
+#-- Fixed in this style in tpm_errors.go
+#-- 
 +		start = 1
 +	}
 +
@@ -311,6 +362,13 @@ index 0000000..14e31b3
 #- I also agree about separating the response header from the output slice --
 #- the caller won't need it for anything since you check the error code in
 #- Unpack.
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-20T15:29:25-0700
+#**
+#-- Thanks. This is now handled specially in submitTPMCommand
+#-- 
 +	outb := make([]byte, outSize)
 +	if _, err := f.Read(outb); err != nil {
 +		return err
@@ -334,6 +392,13 @@ index 0000000..14e31b3
 #- match the request header Ord. I'm pretty these things are true for every TPM
 #- command and response, so they should be handled here.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-20T15:29:46-0700
+#**
+#-- Fixed, at least for the commands I currently support (which are all tagRQUCommand).
+#-- 
 +	return nil
 +}
 +
@@ -362,6 +427,14 @@ index 0000000..14e31b3
 #- probably include Ord uint32 and submitTPMRequest should check that the
 #- request.Ord == response.Ord.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-20T15:30:12-0700
+#**
+#-- As discussed by email, while that Ord is logically part of the
+#-- return value, it's not actually included in the bytes returned by the TPM.
+#-- 
 +
 +	return v, nil
 +}
@@ -413,6 +486,22 @@ index 0000000..14e31b3
 #*
 #- Is 0 < outSize < size an error? Or is it legal, more like Read().
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-20T15:30:39-0700
+#**
+#-- This is the one case I'm not yet satisfied with, though I did fix
+#-- this particular instance of the problem. I need to change my
+#-- Unpack method so that it decodes dynamically into []byte based on
+#-- seeing a special type of integer before it; I'll probably define
+#-- "type SliceLen uint32" then typecheck the []interface{} elements
+#-- for that as I see them and use that information to decide how many
+#-- bytes to decode if the next element is a []byte. This is only
+#-- necessary if a variable-length array occurs in the middle of
+#-- decoding. If it always occurs only at the end, then my current
+#-- scheme will work, I think.
+#--
 +	}
 +
 +	return b, nil
@@ -429,6 +518,13 @@ index 0000000..14e31b3
 #*
 #- I think it should be 'Entity' here and below, not 'Entry'. See spec part 3.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-20T15:31:32-0700
+#**
+#-- Fixed.
+#-- 
 +	OddOSAP    [20]byte
 +}
 +
@@ -471,6 +567,16 @@ index 0000000..bd03b7d
 #*
 #- Didn't look at this file. But did it work?
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-20T15:31:36-0700
+#**
+#-- As discussed by email, yes, this works, though there are still
+#-- some problems with the TPM not always being ready when I send it a
+#-- message too soon after trying another command. I need to figure
+#-- out how to handle that in the future.
+#-- 
 +
 +import (
 +	"encoding/base64"

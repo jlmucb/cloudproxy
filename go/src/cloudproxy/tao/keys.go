@@ -44,6 +44,7 @@ import (
 // A KeyType represent the type(s) of keys held by a Keys struct.
 type KeyType int
 
+// These are the types of supported keys.
 const (
 	Signing KeyType = 1 << iota
 	Crypting
@@ -103,12 +104,12 @@ func (s *Signer) ToPrincipalName() (string, error) {
 	return "Key(\"" + base64.URLEncoding.EncodeToString(data) + "\")", nil
 }
 
-// MarshalSigner serializes the signer to DER.
+// MarshalSignerDER serializes the signer to DER.
 func MarshalSignerDER(s *Signer) ([]byte, error) {
 	return x509.MarshalECPrivateKey(s.ec)
 }
 
-// UnmarshalSigner deserializes a Signer from DER.
+// UnmarshalSignerDER deserializes a Signer from DER.
 func UnmarshalSignerDER(signer []byte) (*Signer, error) {
 	k := new(Signer)
 	var err error
@@ -224,7 +225,12 @@ func unmarshalECDSA_SHA_VerifyingKeyV1(v *ECDSA_SHA_VerifyingKeyV1) (*ecdsa.Publ
 	}
 
 	x, y := elliptic.Unmarshal(elliptic.P256(), v.EcPublic)
-	return &ecdsa.PublicKey{elliptic.P256(), x, y}, nil
+	pk := &ecdsa.PublicKey{
+		Curve: elliptic.P256(),
+		X:     x,
+		Y:     y,
+	}
+	return pk, nil
 }
 
 func marshalPublicKeyProto(k *ecdsa.PublicKey) (*CryptoKey, error) {
@@ -290,7 +296,7 @@ func UnmarshalSignerProto(ck *CryptoKey) (*Signer, error) {
 	return s, nil
 }
 
-// FillHeader encodes the version and a key hint into a CryptoHeader.
+// CreateHeader encodes the version and a key hint into a CryptoHeader.
 func (s *Signer) CreateHeader() (*CryptoHeader, error) {
 	k := marshalECDSA_SHA_VerifyingKeyV1(&s.ec.PublicKey)
 	b, err := proto.Marshal(k)
@@ -797,45 +803,45 @@ type Keys struct {
 func (k *Keys) X509Path() string {
 	if k.dir == "" {
 		return ""
-	} else {
-		return path.Join(k.dir, "cert")
 	}
+
+	return path.Join(k.dir, "cert")
 }
 
 // PBEKeysetPath returns the path for stored keys.
 func (k *Keys) PBEKeysetPath() string {
 	if k.dir == "" {
 		return ""
-	} else {
-		return path.Join(k.dir, "keys")
 	}
+
+	return path.Join(k.dir, "keys")
 }
 
 // PBESignerPath returns the path for a stored signing key.
 func (k *Keys) PBESignerPath() string {
 	if k.dir == "" {
 		return ""
-	} else {
-		return path.Join(k.dir, "signer")
 	}
+
+	return path.Join(k.dir, "signer")
 }
 
 // SealedKeysetPath returns the path for a stored signing key.
 func (k *Keys) SealedKeysetPath() string {
 	if k.dir == "" {
 		return ""
-	} else {
-		return path.Join(k.dir, "sealed_keyset")
 	}
+
+	return path.Join(k.dir, "sealed_keyset")
 }
 
 // DelegationPath returns the path for a stored signing key.
 func (k *Keys) DelegationPath() string {
 	if k.dir == "" {
 		return ""
-	} else {
-		return path.Join(k.dir, "delegation")
 	}
+
+	return path.Join(k.dir, "delegation")
 }
 
 // zeroBytes clears the bytes in a slice.
@@ -881,7 +887,7 @@ func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
 	return k, nil
 }
 
-// NewOnDiskKeys creates a new Keys structure with the specified key types
+// NewOnDiskPBEKeys creates a new Keys structure with the specified key types
 // store under PBE on disk.
 func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string) (*Keys, error) {
 	if keyTypes == 0 || (keyTypes & ^Signing & ^Crypting & ^Deriving != 0) {

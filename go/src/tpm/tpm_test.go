@@ -1,7 +1,6 @@
 package tpm
 
 import (
-	"encoding/hex"
 	"os"
 	"testing"
 )
@@ -41,8 +40,7 @@ func TestReadPCR(t *testing.T) {
 		t.Fatal("Couldn't read PCR 18 from the TPM:", err)
 	}
 
-	resStr := hex.EncodeToString(res)
-	t.Logf("Got PCR 18 value %s\n", resStr)
+	t.Logf("Got PCR 18 value % x\n", res)
 }
 
 func TestGetRandom(t *testing.T) {
@@ -57,6 +55,5 @@ func TestGetRandom(t *testing.T) {
 		t.Fatal("Couldn't get 16 bytes of randomness from the TPM:", err)
 	}
 
-	s := hex.EncodeToString(b)
-	t.Logf("Got random bytes %s\n", s)
+	t.Logf("Got random bytes % x\n", b)
 }

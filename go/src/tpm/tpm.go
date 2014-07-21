@@ -85,18 +85,47 @@ type ResponseHeader struct {
 	Res  uint32
 }
 
-// Unpack decodes from a byte array a sequence of elements that either either
+// A SliceSize is used to detect incoming variable-sized array responses.
+type SliceSize uint32
+
+// Unpack decodes from a byte array a sequence of elements that are either
 // pointers to fixed length types or slices of fixed-length types. It uses
 // binary.Read to do the decoding.
 func Unpack(b []byte, resp []interface{}) error {
-	// Note that this only makes sense if the elements of resp are either
-	// pointers or slices, since otherwise the decoded values just get thrown
-	// away.
 	buf := bytes.NewBuffer(b)
+	var nextSliceSize SliceSize
 	for _, r := range resp {
+		if nextSliceSize > 0 {
+			// This must be a byte slice to resize.
+			bs, ok := r.([]byte)
+			if !ok {
+				return errors.New("a *SliceSize must be followed by a []byte")
+			}
+
+			if int(nextSliceSize) > len(b) {
+				return errors.New("the TPM returned more bytes than can fit in the supplied slice")
+			}
+
+			// Resize the slice to match the number of bytes the TPM says it
+			// returned for this value.
+			r = bs[:nextSliceSize]
+			nextSliceSize = 0
+		}
+
+		// Note that this only makes sense if the elements of resp are either
+		// pointers or slices, since otherwise the decoded values just get
+		// thrown away.
 		if err := binary.Read(buf, binary.BigEndian, r); err != nil {
 			return err
 		}
+
+		if ss, ok := r.(*SliceSize); ok {
+			nextSliceSize = *ss
+		}
+	}
+
+	if buf.Len() > 0 {
+		return errors.New("unread bytes in the TPM response")
 	}
 
 	return nil
@@ -130,8 +159,7 @@ func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out 
 		return err
 	}
 
-	rhbuf := bytes.NewBuffer(outb)
-	if err := binary.Read(rhbuf, binary.BigEndian, &rh); err != nil {
+	if err := Unpack(outb[:rhSize], []interface{}{&rh}); err != nil {
 		return err
 	}
 
@@ -141,15 +169,13 @@ func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out 
 	}
 
 	if rh.Res != 0 {
-		return opError(rh.Res)
+		return tpmError(rh.Res)
 	}
 
 	if rh.Size > uint32(rhSize) {
 		if err := Unpack(outb[rhSize:], out); err != nil {
 			return err
 		}
-	} else if len(out) > 0 {
-		return errors.New("expected results, but none were returned in a successful response")
 	}
 
 	return nil
@@ -189,16 +215,12 @@ func OIAP(f *os.File) (*OIAPResponse, error) {
 func GetRandom(f *os.File, size uint32) ([]byte, error) {
 	in := []interface{}{size}
 
-	var outSize uint32
+	var outSize SliceSize
 	b := make([]byte, int(size))
 	out := []interface{}{&outSize, b}
 
 	if err := submitTPMRequest(f, tagRQUCommand, ordGetRandom, in, out); err != nil {
 		return nil, err
-	}
-
-	if outSize > size {
-		return nil, errors.New("wrong size from GetRandom")
 	}
 
 	return b[:outSize], nil

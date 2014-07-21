@@ -78,7 +78,7 @@ func Pack(ch CommandHeader, cmd []interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// A header for TPM responses.
+// A ResponseHeader is a header for TPM responses.
 type ResponseHeader struct {
 	Tag  uint16
 	Size uint32
@@ -167,7 +167,7 @@ func ReadPCR(f *os.File, pcr uint32) ([]byte, error) {
 	return v, nil
 }
 
-// The response to an OIAPCommand.
+// An OIAPResponse is a response to an OIAPCommand.
 type OIAPResponse struct {
 	Auth      uint32
 	NonceEven [20]byte

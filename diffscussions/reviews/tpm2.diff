@@ -191,6 +191,18 @@ index 14e31b3..5a56c88 100644
 #- Also, you say you think this works if resp has a byte slice (as the last
 #- item) that is larger than available in b. Have you tested that case? The docs
 #- for binary.Read seem to say otherwise.
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-20T22:25:31-0700
+#**
+#-- Added the sanity check.
+#-- 
+#-- And I wrote a quick test case and discovered that you're right: it doesn't
+#-- work if the buffer is too big. So, I added some code and a new SliceSize
+#-- type to handle variable-length array responses from the TPM. Currently, the
+#-- only code that uses this is GetRandom, and it seems to work in my test code.
+#-- 
  
  	return nil
  }
@@ -247,6 +259,13 @@ index 14e31b3..5a56c88 100644
 #- Nit: Why don't you call Unpack here? Eliminates 1 line of code and
 #- a variable and the need for BigEndian here.
 #- if err := Unpack(outb[:rhSize], []interface{}(&rh)); err != nil { ...
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-20T22:25:22-0700
+#**
+#-- Good idea; fixed.
+#-- 
  
 +	// Check success before trying to read the rest of the result.
 +	if rh.Tag != tagRSPCommand {
@@ -353,6 +372,18 @@ index 14e31b3..5a56c88 100644
 #- small, sanity check will fail. If slice is too big (which is legal according
 #- to tpm spec), maybe binary.Read will fail?
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-20T22:28:49-0700
+#**
+#-- I think I agree about dropping the error check given the new code in
+#-- Unpack. There's now no way to decode more bytes than we requested and still
+#-- get to this point in the code. But b[:outSize] is still needed for the case
+#-- where the TPM can't return as much randomness as requested. In that case, b
+#-- will only be filled up to outSize and will have zeroes after that. So, this
+#-- return statement shortens b to its proper length.
+#-- 
  
 -	return b, nil
 +	return b[:outSize], nil
@@ -538,6 +569,13 @@ index 0000000..043ea89
 #- ErrBadHandle, ErrSize, ErrReadOnly, etc. Also avoids ambiguous names like
 #- "Size" or "ReadOnly".
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-20T22:35:28-0700
+#**
+#-- Thanks; fixed.
+#-- 
 +
 +// opErrMsgs maps opError codes to their associated error strings. Normally, Go
 +// error messages must start with a lower-case character. However, in this case,
@@ -647,6 +685,13 @@ index 0000000..043ea89
 #- nearly all code i have seen uses no caps in error messages: even after a
 #- colon. except proper nouns, etc. wierd, but that seems to be the style.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-20T22:41:30-0700
+#**
+#-- Changed.
+#-- 
 diff --git a/go/src/tpm/tpm_test.go b/go/src/tpm/tpm_test.go
 index bd03b7d..fdb8d66 100644
 --- a/go/src/tpm/tpm_test.go
@@ -710,6 +755,13 @@ index bd03b7d..fdb8d66 100644
 #- Seen this neat trick yet?
 #- 	t.Logf("Got PCR 18 value % x\n", res)
 #- (Yes, there is a space: % x)
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-07-20T22:41:35-0700
+#**
+#-- Yes, I've seen it, but I forgot about it. Thanks.
+#-- 
  }
  
  func TestGetRandom(t *testing.T) {

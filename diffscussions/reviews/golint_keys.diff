@@ -1,13 +1,19 @@
 #* 
 #* author: Tom Roeder
 #* email: tmroeder@google.com
-#* date: 2014-07-20T18:57:02-0700
+#* date: 2014-07-20T19:08:45-0700
 #* 
 #- Fix reasonable golint errors
 #- 
 #- 
+#- Fixing go vet error: add field names to handle backwards-compatible changes.
+#- 
+#- 
+#- go fmt
+#- 
+#- 
 diff --git a/go/src/cloudproxy/tao/keys.go b/go/src/cloudproxy/tao/keys.go
-index c4aaa08..a821439 100644
+index c4aaa08..f3d9e58 100644
 --- a/go/src/cloudproxy/tao/keys.go
 +++ b/go/src/cloudproxy/tao/keys.go
 @@ -27,40 +27,41 @@ import (
@@ -101,7 +107,55 @@ index c4aaa08..a821439 100644
  
  	template := &x509.Certificate{
  		SignatureAlgorithm: x509.ECDSAWithSHA256,
-@@ -273,41 +274,41 @@ func UnmarshalSignerProto(ck *CryptoKey) (*Signer, error) {
+@@ -207,41 +208,46 @@ func MarshalSignerProto(s *Signer) (*CryptoKey, error) {
+ 		Key:       b,
+ 	}
+ 	return ck, nil
+ }
+ 
+ // marshalECDSA_SHA_VerifyingKeyV1 encodes a public key as a protobuf message.
+ func marshalECDSA_SHA_VerifyingKeyV1(k *ecdsa.PublicKey) *ECDSA_SHA_VerifyingKeyV1 {
+ 	return &ECDSA_SHA_VerifyingKeyV1{
+ 		Curve:    NamedEllipticCurve_PRIME256_V1.Enum(),
+ 		EcPublic: elliptic.Marshal(k.Curve, k.X, k.Y),
+ 	}
+ 
+ }
+ 
+ func unmarshalECDSA_SHA_VerifyingKeyV1(v *ECDSA_SHA_VerifyingKeyV1) (*ecdsa.PublicKey, error) {
+ 	if *v.Curve != NamedEllipticCurve_PRIME256_V1 {
+ 		return nil, errors.New("bad curve")
+ 	}
+ 
+ 	x, y := elliptic.Unmarshal(elliptic.P256(), v.EcPublic)
+-	return &ecdsa.PublicKey{elliptic.P256(), x, y}, nil
++	pk := &ecdsa.PublicKey{
++		Curve: elliptic.P256(),
++		X:     x,
++		Y:     y,
++	}
++	return pk, nil
+ }
+ 
+ func marshalPublicKeyProto(k *ecdsa.PublicKey) (*CryptoKey, error) {
+ 	m := marshalECDSA_SHA_VerifyingKeyV1(k)
+ 
+ 	b, err := proto.Marshal(m)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	ck := &CryptoKey{
+ 		Version:   CryptoVersion_CRYPTO_VERSION_1.Enum(),
+ 		Purpose:   CryptoKey_VERIFYING.Enum(),
+ 		Algorithm: CryptoKey_ECDSA_SHA.Enum(),
+ 		Key:       b,
+ 	}
+ 
+ 	return ck, nil
+ }
+ 
+@@ -273,41 +279,41 @@ func UnmarshalSignerProto(ck *CryptoKey) (*Signer, error) {
  	}
  
  	k := new(ECDSA_SHA_SigningKeyV1)
@@ -144,7 +198,7 @@ index c4aaa08..a821439 100644
  // private key. This is copied from the Go crypto/x509 source: it just uses a
  // simple two-element structure to marshal a DSA signature as ASN.1 in an X.509
  // certificate.
-@@ -780,79 +781,79 @@ func UnmarshalDeriverProto(ck *CryptoKey) (*Deriver, error) {
+@@ -780,79 +786,79 @@ func UnmarshalDeriverProto(ck *CryptoKey) (*Deriver, error) {
  // A Keys manages a set of signing, verifying, encrypting, and key-deriving
  // keys.
  type Keys struct {
@@ -169,7 +223,7 @@ index c4aaa08..a821439 100644
 -		return path.Join(k.dir, "cert")
  	}
 +
-+    return path.Join(k.dir, "cert")
++	return path.Join(k.dir, "cert")
  }
  
  // PBEKeysetPath returns the path for stored keys.
@@ -180,7 +234,7 @@ index c4aaa08..a821439 100644
 -		return path.Join(k.dir, "keys")
  	}
 +
-+    return path.Join(k.dir, "keys")
++	return path.Join(k.dir, "keys")
  }
  
  // PBESignerPath returns the path for a stored signing key.
@@ -191,7 +245,7 @@ index c4aaa08..a821439 100644
 -		return path.Join(k.dir, "signer")
  	}
 +
-+    return path.Join(k.dir, "signer")
++	return path.Join(k.dir, "signer")
  }
  
  // SealedKeysetPath returns the path for a stored signing key.
@@ -202,7 +256,7 @@ index c4aaa08..a821439 100644
 -		return path.Join(k.dir, "sealed_keyset")
  	}
 +
-+    return path.Join(k.dir, "sealed_keyset")
++	return path.Join(k.dir, "sealed_keyset")
  }
  
  // DelegationPath returns the path for a stored signing key.
@@ -213,7 +267,7 @@ index c4aaa08..a821439 100644
 -		return path.Join(k.dir, "delegation")
  	}
 +
-+    return path.Join(k.dir, "delegation")
++	return path.Join(k.dir, "delegation")
  }
  
  // zeroBytes clears the bytes in a slice.
@@ -234,7 +288,7 @@ index c4aaa08..a821439 100644
  
  	var err error
  	if k.keyTypes&Signing == Signing {
-@@ -864,41 +865,41 @@ func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
+@@ -864,41 +870,41 @@ func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
  		k.VerifyingKey = k.SigningKey.GetVerifier()
  	}
  

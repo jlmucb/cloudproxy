@@ -12,6 +12,13 @@
 #- go fmt
 #- 
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-20T23:08:11-0400
+#**
+#-- LGTM
+#--
 diff --git a/go/src/cloudproxy/tao/keys.go b/go/src/cloudproxy/tao/keys.go
 index c4aaa08..f3d9e58 100644
 --- a/go/src/cloudproxy/tao/keys.go

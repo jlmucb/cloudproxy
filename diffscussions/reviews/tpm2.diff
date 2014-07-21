@@ -6,6 +6,13 @@
 #- Fixed problems exposed in the tpm*.go code review
 #- 
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-20T23:05:29-0400
+#**
+#-- Looks much better, I'm 95% happy.
+#--
 diff --git a/go/src/tpm/tpm.go b/go/src/tpm/tpm.go
 index 14e31b3..5a56c88 100644
 --- a/go/src/tpm/tpm.go
@@ -173,6 +180,17 @@ index 14e31b3..5a56c88 100644
  			return err
  		}
  	}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T22:32:08-0400
+#*
+#- Maybe add sanity check: buf should be fully consumed, else error is
+#- "unexpected response size".
+#-
+#- Also, you say you think this works if resp has a byte slice (as the last
+#- item) that is larger than available in b. Have you tested that case? The docs
+#- for binary.Read seem to say otherwise.
  
  	return nil
  }
@@ -221,6 +239,14 @@ index 14e31b3..5a56c88 100644
 +	if err := binary.Read(rhbuf, binary.BigEndian, &rh); err != nil {
  		return err
  	}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T22:38:09-0400
+#*
+#- Nit: Why don't you call Unpack here? Eliminates 1 line of code and
+#- a variable and the need for BigEndian here.
+#- if err := Unpack(outb[:rhSize], []interface{}(&rh)); err != nil { ...
  
 +	// Check success before trying to read the rest of the result.
 +	if rh.Tag != tagRSPCommand {
@@ -238,6 +264,15 @@ index 14e31b3..5a56c88 100644
 +	} else if len(out) > 0 {
 +		return errors.New("expected results, but none were returned in a successful response")
 +	}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T22:40:48-0400
+#*
+#- This if/else isn't needed if you add the sanity check I proposed above and
+#- just call Unpack. The error here is just a special case of "unexpected
+#- response size".
+#-
 +
  	return nil
  }
@@ -308,6 +343,16 @@ index 14e31b3..5a56c88 100644
 +	if outSize > size {
  		return nil, errors.New("wrong size from GetRandom")
  	}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T22:44:30-0400
+#*
+#- On second thought, depending on how Unpack works and that sanity check, this
+#- error case might never happen, and b[:outSize] below is moot. If slice is too
+#- small, sanity check will fail. If slice is too big (which is legal according
+#- to tpm spec), maybe binary.Read will fail?
+#-
  
 -	return b, nil
 +	return b[:outSize], nil
@@ -366,6 +411,13 @@ index 0000000..043ea89
 +
 +// A TPMError is an error value from the TPM.
 +type opError uint32
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T22:51:53-0400
+#*
+#- declaration/comment mismatch. I vote tpmError.
+#-
 +
 +// Error produces a string for the given TPM Error code
 +func (o opError) Error() string {
@@ -475,6 +527,17 @@ index 0000000..043ea89
 +	MASource
 +	MAAuthority
 +)
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T22:53:59-0400
+#*
+#- Since all of the above are exported values of type error, should they not be
+#- named with prefix Err, like ErrInternal from
+#- http://golang.org/doc/effective_go.html or the various errors in pkg io? So
+#- ErrBadHandle, ErrSize, ErrReadOnly, etc. Also avoids ambiguous names like
+#- "Size" or "ReadOnly".
+#-
 +
 +// opErrMsgs maps opError codes to their associated error strings. Normally, Go
 +// error messages must start with a lower-case character. However, in this case,
@@ -576,6 +639,14 @@ index 0000000..043ea89
 +	MASource:              "Migration source incorrect",
 +	MAAuthority:           "Incorrect migration authority",
 +}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T23:02:00-0400
+#*
+#- nearly all code i have seen uses no caps in error messages: even after a
+#- colon. except proper nouns, etc. wierd, but that seems to be the style.
+#-
 diff --git a/go/src/tpm/tpm_test.go b/go/src/tpm/tpm_test.go
 index bd03b7d..fdb8d66 100644
 --- a/go/src/tpm/tpm_test.go
@@ -631,6 +702,14 @@ index bd03b7d..fdb8d66 100644
 -	resStr := base64.StdEncoding.EncodeToString(res)
 +	resStr := hex.EncodeToString(res)
  	t.Logf("Got PCR 18 value %s\n", resStr)
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-20T23:04:30-0400
+#*
+#- Seen this neat trick yet?
+#- 	t.Logf("Got PCR 18 value % x\n", res)
+#- (Yes, there is a space: % x)
  }
  
  func TestGetRandom(t *testing.T) {

@@ -1,0 +1,279 @@
+#* 
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-07-20T18:57:02-0700
+#* 
+#- Fix reasonable golint errors
+#- 
+#- 
+diff --git a/go/src/cloudproxy/tao/keys.go b/go/src/cloudproxy/tao/keys.go
+index c4aaa08..a821439 100644
+--- a/go/src/cloudproxy/tao/keys.go
++++ b/go/src/cloudproxy/tao/keys.go
+@@ -27,40 +27,41 @@ import (
+ 	"crypto/x509/pkix"
+ 	"encoding/asn1"
+ 	"encoding/base64"
+ 	"encoding/pem"
+ 	"errors"
+ 	"io/ioutil"
+ 	"math/big"
+ 	"os"
+ 	"path"
+ 	"strings"
+ 	"time"
+ 
+ 	"code.google.com/p/go.crypto/hkdf"
+ 	"code.google.com/p/go.crypto/pbkdf2"
+ 	"code.google.com/p/goprotobuf/proto"
+ )
+ 
+ // A KeyType represent the type(s) of keys held by a Keys struct.
+ type KeyType int
+ 
++// These are the types of supported keys.
+ const (
+ 	Signing KeyType = 1 << iota
+ 	Crypting
+ 	Deriving
+ )
+ 
+ const aesKeySize = 32 // 256-bit AES
+ const deriverSecretSize = 32
+ const hmacKeySize = 32 // SHA-256
+ 
+ // A Signer is used to sign and verify signatures
+ type Signer struct {
+ 	ec *ecdsa.PrivateKey
+ }
+ 
+ // A Verifier is used to verify signatures.
+ type Verifier struct {
+ 	ec *ecdsa.PublicKey
+ }
+ 
+@@ -86,46 +87,46 @@ func GenerateSigner() (*Signer, error) {
+ }
+ 
+ // ToPrincipalName produces a plain-text Tao principal name. This is a
+ // base64w-encoded version of a serialized CryptoKey for the public half of
+ // this signing key, wrapped in 'Key("' and '")'.
+ func (s *Signer) ToPrincipalName() (string, error) {
+ 	var ck *CryptoKey
+ 	var err error
+ 	if ck, err = MarshalPublicSignerProto(s); err != nil {
+ 		return "", nil
+ 	}
+ 
+ 	data, err := proto.Marshal(ck)
+ 	if err != nil {
+ 		return "", err
+ 	}
+ 
+ 	return "Key(\"" + base64.URLEncoding.EncodeToString(data) + "\")", nil
+ }
+ 
+-// MarshalSigner serializes the signer to DER.
++// MarshalSignerDER serializes the signer to DER.
+ func MarshalSignerDER(s *Signer) ([]byte, error) {
+ 	return x509.MarshalECPrivateKey(s.ec)
+ }
+ 
+-// UnmarshalSigner deserializes a Signer from DER.
++// UnmarshalSignerDER deserializes a Signer from DER.
+ func UnmarshalSignerDER(signer []byte) (*Signer, error) {
+ 	k := new(Signer)
+ 	var err error
+ 	if k.ec, err = x509.ParseECPrivateKey(signer); err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	return k, nil
+ }
+ 
+ // prepareX509Template parses the protobuf containing subject-name details and
+ // fills out an X.509 template for use in x509.CreateCertificate.
+ func prepareX509Template(detailsText string) (*x509.Certificate, error) {
+ 	details := new(X509Details)
+ 	if err := proto.UnmarshalText(detailsText, details); err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	template := &x509.Certificate{
+ 		SignatureAlgorithm: x509.ECDSAWithSHA256,
+@@ -273,41 +274,41 @@ func UnmarshalSignerProto(ck *CryptoKey) (*Signer, error) {
+ 	}
+ 
+ 	k := new(ECDSA_SHA_SigningKeyV1)
+ 	defer zeroBytes(k.EcPrivate)
+ 	if err := proto.Unmarshal(ck.Key, k); err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	if *k.Curve != NamedEllipticCurve_PRIME256_V1 {
+ 		return nil, errors.New("bad Curve")
+ 	}
+ 
+ 	s := new(Signer)
+ 	s.ec = new(ecdsa.PrivateKey)
+ 	s.ec.D = new(big.Int).SetBytes(k.EcPrivate)
+ 	s.ec.Curve = elliptic.P256()
+ 	s.ec.X, s.ec.Y = elliptic.Unmarshal(elliptic.P256(), k.EcPublic)
+ 	return s, nil
+ }
+ 
+-// FillHeader encodes the version and a key hint into a CryptoHeader.
++// CreateHeader encodes the version and a key hint into a CryptoHeader.
+ func (s *Signer) CreateHeader() (*CryptoHeader, error) {
+ 	k := marshalECDSA_SHA_VerifyingKeyV1(&s.ec.PublicKey)
+ 	b, err := proto.Marshal(k)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	h := sha1.Sum(b)
+ 	ch := &CryptoHeader{
+ 		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
+ 		KeyHint: h[:4],
+ 	}
+ 
+ 	return ch, nil
+ }
+ 
+ // An ecdsaSignature wraps the two components of the signature from an ECDSA
+ // private key. This is copied from the Go crypto/x509 source: it just uses a
+ // simple two-element structure to marshal a DSA signature as ASN.1 in an X.509
+ // certificate.
+@@ -780,79 +781,79 @@ func UnmarshalDeriverProto(ck *CryptoKey) (*Deriver, error) {
+ // A Keys manages a set of signing, verifying, encrypting, and key-deriving
+ // keys.
+ type Keys struct {
+ 	dir      string
+ 	policy   string
+ 	keyTypes KeyType
+ 
+ 	SigningKey   *Signer
+ 	CryptingKey  *Crypter
+ 	VerifyingKey *Verifier
+ 	DerivingKey  *Deriver
+ 	Delegation   *Attestation
+ 	Cert         *x509.Certificate
+ }
+ 
+ // X509Path returns the path to the verifier key, stored as an X.509
+ // certificate.
+ func (k *Keys) X509Path() string {
+ 	if k.dir == "" {
+ 		return ""
+-	} else {
+-		return path.Join(k.dir, "cert")
+ 	}
++
++    return path.Join(k.dir, "cert")
+ }
+ 
+ // PBEKeysetPath returns the path for stored keys.
+ func (k *Keys) PBEKeysetPath() string {
+ 	if k.dir == "" {
+ 		return ""
+-	} else {
+-		return path.Join(k.dir, "keys")
+ 	}
++
++    return path.Join(k.dir, "keys")
+ }
+ 
+ // PBESignerPath returns the path for a stored signing key.
+ func (k *Keys) PBESignerPath() string {
+ 	if k.dir == "" {
+ 		return ""
+-	} else {
+-		return path.Join(k.dir, "signer")
+ 	}
++
++    return path.Join(k.dir, "signer")
+ }
+ 
+ // SealedKeysetPath returns the path for a stored signing key.
+ func (k *Keys) SealedKeysetPath() string {
+ 	if k.dir == "" {
+ 		return ""
+-	} else {
+-		return path.Join(k.dir, "sealed_keyset")
+ 	}
++
++    return path.Join(k.dir, "sealed_keyset")
+ }
+ 
+ // DelegationPath returns the path for a stored signing key.
+ func (k *Keys) DelegationPath() string {
+ 	if k.dir == "" {
+ 		return ""
+-	} else {
+-		return path.Join(k.dir, "delegation")
+ 	}
++
++    return path.Join(k.dir, "delegation")
+ }
+ 
+ // zeroBytes clears the bytes in a slice.
+ func zeroBytes(b []byte) {
+ 	for i := range b {
+ 		b[i] = 0
+ 	}
+ }
+ 
+ // NewTemporaryKeys creates a new Keys structure with the specified keys.
+ func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
+ 	k := &Keys{
+ 		keyTypes: keyTypes,
+ 	}
+ 	if k.keyTypes == 0 || (k.keyTypes & ^Signing & ^Crypting & ^Deriving != 0) {
+ 		return nil, errors.New("bad key type")
+ 	}
+ 
+ 	var err error
+ 	if k.keyTypes&Signing == Signing {
+@@ -864,41 +865,41 @@ func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
+ 		k.VerifyingKey = k.SigningKey.GetVerifier()
+ 	}
+ 
+ 	if k.keyTypes&Crypting == Crypting {
+ 		k.CryptingKey, err = GenerateCrypter()
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 	}
+ 
+ 	if k.keyTypes&Deriving == Deriving {
+ 		k.DerivingKey, err = GenerateDeriver()
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 	}
+ 
+ 	return k, nil
+ }
+ 
+-// NewOnDiskKeys creates a new Keys structure with the specified key types
++// NewOnDiskPBEKeys creates a new Keys structure with the specified key types
+ // store under PBE on disk.
+ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string) (*Keys, error) {
+ 	if keyTypes == 0 || (keyTypes & ^Signing & ^Crypting & ^Deriving != 0) {
+ 		return nil, errors.New("bad key type")
+ 	}
+ 
+ 	if path == "" {
+ 		return nil, errors.New("bad init call: no path for keys")
+ 	}
+ 
+ 	k := &Keys{
+ 		keyTypes: keyTypes,
+ 		dir:      path,
+ 	}
+ 
+ 	if len(password) == 0 {
+ 		// This means there's no secret information: just load a public
+ 		// verifying key.
+ 		if k.keyTypes & ^Signing != 0 {
+ 			return nil, errors.New("without a password, only a verifying key can be loaded")

@@ -85,7 +85,10 @@ type ResponseHeader struct {
 	Res  uint32
 }
 
-// A SliceSize is used to detect incoming variable-sized array responses.
+// A SliceSize is used to detect incoming variable-sized array responses. Note
+// that any time there is a SliceSize followed by a slice in a respones, this
+// slice must be resized to match its preceeding SliceSize after
+// submitTPMRequest, since the Unpack code doesn't resize the underlying slice.
 type SliceSize uint32
 
 // Unpack decodes from a byte array a sequence of elements that are either
@@ -94,8 +97,9 @@ type SliceSize uint32
 func Unpack(b []byte, resp []interface{}) error {
 	buf := bytes.NewBuffer(b)
 	var nextSliceSize SliceSize
+	var resizeNext bool
 	for _, r := range resp {
-		if nextSliceSize > 0 {
+		if resizeNext {
 			// This must be a byte slice to resize.
 			bs, ok := r.([]byte)
 			if !ok {
@@ -110,6 +114,7 @@ func Unpack(b []byte, resp []interface{}) error {
 			// returned for this value.
 			r = bs[:nextSliceSize]
 			nextSliceSize = 0
+			resizeNext = false
 		}
 
 		// Note that this only makes sense if the elements of resp are either
@@ -121,6 +126,7 @@ func Unpack(b []byte, resp []interface{}) error {
 
 		if ss, ok := r.(*SliceSize); ok {
 			nextSliceSize = *ss
+			resizeNext = true
 		}
 	}
 

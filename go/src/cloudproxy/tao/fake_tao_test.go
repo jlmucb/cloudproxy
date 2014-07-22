@@ -133,49 +133,21 @@ func (f *FakeTao) Unseal(sealed []byte) (data []byte, policy string, err error) 
 
 // Attest requests that the Tao host sign a Statement on behalf of the caller.
 func (f *FakeTao) Attest(stmt *Statement) (*Attestation, error) {
-	st := new(Statement)
-	proto.Merge(st, stmt)
-
-	if st.Issuer == nil {
-		st.Issuer = proto.String(f.name)
-	} else if st.GetIssuer() != f.name {
+	if stmt.Issuer == nil {
+		stmt.Issuer = proto.String(f.name)
+	} else if stmt.GetIssuer() != f.name {
 		return nil, errors.New("Invalid issuer in statement")
 	}
 
-	if st.Time == nil {
-		st.Time = proto.Int64(time.Now().UnixNano())
-	}
-
-	if st.Expiration == nil {
-		st.Expiration = proto.Int64(time.Now().Add(365 * 24 * time.Hour).UnixNano())
-	}
-
-	ser, err := proto.Marshal(st)
-	if err != nil {
-		return nil, err
-	}
-
-	sig, err := f.keys.SigningKey.Sign(ser, AttestationSigningContext)
-	if err != nil {
-		return nil, err
-	}
-
-	a := &Attestation{
-		SerializedStatement: ser,
-		Signature:           sig,
-		Signer:              proto.String(f.name),
-	}
-
+	var delegation []byte
 	if f.keys.Delegation != nil {
-		sd, err := proto.Marshal(f.keys.Delegation)
+		delegation, err := proto.Marshal(f.keys.Delegation)
 		if err != nil {
 			return nil, err
 		}
-
-		a.SerializedDelegation = sd
 	}
 
-	return a, nil
+	return GenerateAttestation(f.keys.SigningKey, delegation, stmt)
 }
 
 func TestInMemoryInit(t *testing.T) {

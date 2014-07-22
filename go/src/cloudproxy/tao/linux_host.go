@@ -28,14 +28,14 @@ import (
 // processes, or shutting down the host. A LinuxTao can be run in stacked mode
 // (on top of a host Tao) or in root mode (without an underlying host Tao).
 type LinuxHost struct {
-	path    string
-	guard   TaoGuard
-	taoHost TaoHost
-	childFactory LinuxProcessFactory
+	path           string
+	guard          TaoGuard
+	taoHost        TaoHost
+	childFactory   LinuxProcessFactory
 	hostedPrograms map[string]*LinuxHostServer
-	hpm sync.RWMutex
-	nextChildID uint
-	idm sync.Mutex
+	hpm            sync.RWMutex
+	nextChildID    uint
+	idm            sync.Mutex
 }
 
 // NewStackedLinuxHost creates a new LinuxHost as a hosted program of an existing
@@ -225,7 +225,7 @@ func (lh *LinuxHost) StartHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRP
 
 	// TODO(tmroeder): do we want to support concurrent updates to policy? Then we need a lock here, too.
 	name := lh.taoHost.TaoHostName()
-	if !lh.guard.IsAuthorized(name + "::" + subprin, "Execute", []string{}) {
+	if !lh.guard.IsAuthorized(name+"::"+subprin, "Execute", []string{}) {
 		return errors.New("Hosted program " + subprin + " denied authorization to execute on host " + name)
 	}
 
@@ -285,7 +285,7 @@ func (lh *LinuxHost) ListHostedPrograms(r *LinuxAdminRPCRequest, s *LinuxAdminRP
 
 	info := &LinuxAdminRPCHostedProgramList{
 		Name: subprins,
-		Pid: pids,
+		Pid:  pids,
 	}
 
 	var err error

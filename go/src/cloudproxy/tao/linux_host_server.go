@@ -25,8 +25,8 @@ import (
 // A LinuxHostServer wraps a LinuxHost and serves its methods across a net/rpc
 // connection to a hosted program.
 type LinuxHostServer struct {
-	host           *LinuxHost
-	channel io.ReadWriteCloser
+	host         *LinuxHost
+	channel      io.ReadWriteCloser
 	ChildSubprin string
 	Cmd          *exec.Cmd
 }

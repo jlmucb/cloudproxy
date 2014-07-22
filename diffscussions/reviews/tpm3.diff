@@ -6,6 +6,14 @@
 #- Fixed problems from the tpm2.diff review
 #- 
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-07-22T15:30:42-0400
+#**
+#-- Looks good. Possible minor bug (easy fix) and a clarification (no changes
+#-- needed) below. Unless you make drastic changes, or my clarification below is
+#-- totally off base, I don't need a bounce for this.
 diff --git a/go/src/tpm/tpm.go b/go/src/tpm/tpm.go
 index a8d01ea..28fe9a7 100644
 --- a/go/src/tpm/tpm.go
@@ -46,6 +54,15 @@ index a8d01ea..28fe9a7 100644
 +	var nextSliceSize SliceSize
  	for _, r := range resp {
 +		if nextSliceSize > 0 {
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-22T15:27:09-0400
+#*
+#- Bug if tpm can return zero SliceSize? I realize you can't use negative as
+#- sentinel b/c SliceSize must be uint32. So just use a separate
+#- nextThingIsASliceThatNeedsResizing bool variable. Or resizeNext bool.
+#-
 +			// This must be a byte slice to resize.
 +			bs, ok := r.([]byte)
 +			if !ok {
@@ -60,6 +77,17 @@ index a8d01ea..28fe9a7 100644
 +			// returned for this value.
 +			r = bs[:nextSliceSize]
 +			nextSliceSize = 0
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-07-22T15:22:05-0400
+#*
+#- Clarification about the intended interface here: You reslice into r, but you
+#- don't actually modify the caller's slice, right? So the caller must reslice
+#- the array after a successful call? I see GetRandom does return b[:outSize],
+#- for example, so I'm guessing this is as intended. And the caller can always
+#- do this b/c they have the SliceSize from the preceding argument.
+#-
 +		}
 +
 +		// Note that this only makes sense if the elements of resp are either

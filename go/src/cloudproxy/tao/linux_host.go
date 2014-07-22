@@ -16,6 +16,8 @@ package tao
 
 import (
 	"errors"
+	"sync"
+	"syscall"
 
 	"code.google.com/p/goprotobuf/proto"
 )
@@ -29,6 +31,11 @@ type LinuxHost struct {
 	path    string
 	guard   TaoGuard
 	taoHost TaoHost
+	childFactory LinuxProcessFactory
+	hostedPrograms map[string]*LinuxHostServer
+	hpm sync.RWMutex
+	nextChildID uint
+	idm sync.Mutex
 }
 
 // NewStackedLinuxHost creates a new LinuxHost as a hosted program of an existing
@@ -191,4 +198,136 @@ func (lh *LinuxHost) HandleAttest(childSubprin string, stmt *Statement) (*Attest
 	}
 
 	return lh.taoHost.Attest(childSubprin, stmt)
+}
+
+// StartHostedProgram starts a new program based on an admin RPC request.
+func (lh *LinuxHost) StartHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
+	if r.Path == nil {
+		return errors.New("hosted program creation request is missing path")
+	}
+
+	lh.idm.Lock()
+	id := lh.nextChildID
+	lh.nextChildID++
+	lh.idm.Unlock()
+
+	subprin, temppath, err := lh.childFactory.MakeHostedProgramSubprin(id, *r.Path)
+	if err != nil {
+		return err
+	}
+
+	lh.hpm.RLock()
+	_, ok := lh.hostedPrograms[subprin]
+	lh.hpm.RUnlock()
+	if ok {
+		return errors.New("hosted program " + subprin + " already exists")
+	}
+
+	// TODO(tmroeder): do we want to support concurrent updates to policy? Then we need a lock here, too.
+	name := lh.taoHost.TaoHostName()
+	if !lh.guard.IsAuthorized(name + "::" + subprin, "Execute", []string{}) {
+		return errors.New("Hosted program " + subprin + " denied authorization to execute on host " + name)
+	}
+
+	lhs, err := lh.childFactory.StartHostedProgram(lh, temppath, r.Args, subprin)
+	if err != nil {
+		return err
+	}
+
+	lh.hpm.Lock()
+	lh.hostedPrograms[subprin] = lhs
+	lh.hpm.Unlock()
+
+	s.Data = []byte(subprin)
+	return nil
+}
+
+// StopHostedProgram stops a running hosted program based on an admin RPC
+// request.
+func (lh *LinuxHost) StopHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
+	if r.Data == nil {
+		return errors.New("missing child subprincipal")
+	}
+
+	// TODO(tmroeder): this implementation should be extended to support
+	// multiple clients with the same subprincipal name.
+	subprin := string(r.Data)
+	lh.hpm.Lock()
+	defer lh.hpm.Unlock()
+	lph, ok := lh.hostedPrograms[subprin]
+	if !ok {
+		return errors.New("no subprincipal " + subprin)
+	}
+
+	// Close the channel before sending SIGTERM
+	lph.channel.Close()
+
+	// For Stop, we send SIGTERM
+	var sigterm int = 15
+	if err := syscall.Kill(lph.Cmd.Process.Pid, syscall.Signal(sigterm)); err != nil {
+		return err
+	}
+
+	delete(lh.hostedPrograms, subprin)
+	return nil
+}
+
+// ListHostedPrograms returns a list of hosted programs to the caller.
+func (lh *LinuxHost) ListHostedPrograms(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
+	lh.hpm.RLock()
+	subprins := make([]string, len(lh.hostedPrograms))
+	pids := make([]int32, len(lh.hostedPrograms))
+	for k, v := range lh.hostedPrograms {
+		subprins = append(subprins, k)
+		pids = append(pids, int32(v.Cmd.Process.Pid))
+	}
+	lh.hpm.RUnlock()
+
+	info := &LinuxAdminRPCHostedProgramList{
+		Name: subprins,
+		Pid: pids,
+	}
+
+	var err error
+	s.Data, err = proto.Marshal(info)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// KillHostedProgram kills a running hosted program based on an admin RPC
+// request.
+func (lh *LinuxHost) KillHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
+	if r.Data == nil {
+		return errors.New("missing child subprincipal")
+	}
+
+	// TODO(tmroeder): this implementation should be extended to support
+	// multiple clients with the same subprincipal name.
+	subprin := string(r.Data)
+	lh.hpm.Lock()
+	defer lh.hpm.Unlock()
+	lph, ok := lh.hostedPrograms[subprin]
+	if !ok {
+		return errors.New("no subprincipal " + subprin)
+	}
+
+	// Close the channel before sending SIGTERM
+	lph.channel.Close()
+
+	// For kill, we use the Go call on Process.
+	if err := lph.Cmd.Process.Kill(); err != nil {
+		return err
+	}
+
+	delete(lh.hostedPrograms, subprin)
+	return nil
+}
+
+// GetTaoHostName returns the name of the TaoHost used by the LinuxHost.
+func (lh *LinuxHost) GetTaoHostName(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
+	s.Data = []byte(lh.taoHost.TaoHostName())
+	return nil
 }

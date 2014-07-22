@@ -19,6 +19,7 @@ import (
 	"encoding/hex"
 	"io"
 	"io/ioutil"
+	"net/rpc"
 	"os"
 	"os/exec"
 	"path"
@@ -38,10 +39,10 @@ type LinuxProcessFactory struct{}
 
 // FormatHostedProgramSubprin produces a string that represents a subprincipal
 // with the given ID and hash.
-func FormatHostedProgramSubprin(id int, hash []byte) string {
+func FormatHostedProgramSubprin(id uint, hash []byte) string {
 	var out string
 	if id != 0 {
-		out += "Process(" + strconv.Itoa(id) + ",\""
+		out += "Process(" + strconv.Itoa(int(id)) + ",\""
 	} else {
 		out += "Program(\""
 	}
@@ -58,7 +59,7 @@ func FormatHostedProgramSubprin(id int, hash []byte) string {
 // hosted-program subprincipal. In the process, it copies the program to a
 // temporary file controlled by this code and returns the path to that new
 // binary.
-func (LinuxProcessFactory) MakeHostedProgramSubprin(id int, prog string) (subprin, temppath string, err error) {
+func (LinuxProcessFactory) MakeHostedProgramSubprin(id uint, prog string) (subprin, temppath string, err error) {
 	// To avoid a time-of-check-to-time-of-use error, we copy the file
 	// bytes to a temp file as we read them. This temp-file path is
 	// returned so it can be used to start the program.
@@ -92,19 +93,11 @@ func (LinuxProcessFactory) MakeHostedProgramSubprin(id int, prog string) (subpri
 	return
 }
 
-// A LinuxProcessHandler is information used to handle requests from and
-// respond to a Linux process as a hosted program.
-type LinuxProcessHandler struct {
-	rw      *util.PairReadWriteCloser
-	subprin string
-	cmd     *exec.Cmd
-}
-
-// StartHostedProgram uses a path, arguments, and a subprincipal
-// name to create a LinuxProcessHandler that manages messages to and from
-// hosted processes under Linux.
-func (LinuxProcessFactory) StartHostedProgram(prog string, args []string, subprin string) (*LinuxProcessHandler, error) {
-	// Get a Pipe pair for communication with the child.
+// StartHostedProgram uses a path, arguments, and a subprincipal name to create
+// a LinuxHostServer that manages messages to and from hosted processes under
+// Linux.
+func (LinuxProcessFactory) StartHostedProgram(lh *LinuxHost, prog string, args []string, subprin string) (*LinuxHostServer, error) {
+	// Get a pipe pair for communication with the child.
 	serverRead, clientWrite, err := os.Pipe()
 	if err != nil {
 		return nil, err
@@ -122,15 +115,19 @@ func (LinuxProcessFactory) StartHostedProgram(prog string, args []string, subpri
 		Stdout:     os.Stdout,
 		Stderr:     os.Stderr,
 		ExtraFiles: []*os.File{clientRead, clientWrite},
+		// TODO(tmroeder): change the user of the hosted program here.
 	}
-
-	lph := &LinuxProcessHandler{rw, subprin, c}
 
 	if err := c.Start(); err != nil {
 		return nil, err
 	}
 
-	// TODO(tmroeder): serve messages using something like
-	// go taoServer.ServeConn(lph.rw)
+	lph := &LinuxHostServer{lh, rw, subprin, c}
+	server := rpc.NewServer()
+	if err := server.Register(lph); err != nil {
+		return nil, err
+	}
+
+	go server.ServeConn(rw)
 	return lph, nil
 }

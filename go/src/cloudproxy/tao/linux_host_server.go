@@ -16,28 +16,30 @@ package tao
 
 import (
 	"errors"
+	"io"
 	"os/exec"
 
 	"code.google.com/p/goprotobuf/proto"
 )
 
-// A LinuxHostServer wraps a LinuxHOst and serves its methods across a net/rpc
+// A LinuxHostServer wraps a LinuxHost and serves its methods across a net/rpc
 // connection to a hosted program.
 type LinuxHostServer struct {
-	lh           *LinuxHost
-	childSubprin string
-	cmd          *exec.Cmd
+	host           *LinuxHost
+	channel io.ReadWriteCloser
+	ChildSubprin string
+	Cmd          *exec.Cmd
 }
 
 // GetTaoName returns the Tao principal name assigned to the caller.
 func (lhs *LinuxHostServer) GetTaoName(r *TaoRPCRequest, s *TaoRPCResponse) error {
-	s.Data = []byte(lhs.lh.HandleGetTaoName(lhs.childSubprin))
+	s.Data = []byte(lhs.host.HandleGetTaoName(lhs.ChildSubprin))
 	return nil
 }
 
 // ExtendTaoName irreversibly extends the Tao principal name of the caller.
 func (lhs *LinuxHostServer) ExtendTaoName(r *TaoRPCRequest, s *TaoRPCResponse) error {
-	lhs.childSubprin += "::" + string(r.Data)
+	lhs.ChildSubprin += "::" + string(r.Data)
 	return nil
 }
 
@@ -48,7 +50,7 @@ func (lhs *LinuxHostServer) GetRandomBytes(r *TaoRPCRequest, s *TaoRPCResponse) 
 	}
 
 	var err error
-	s.Data, err = lhs.lh.HandleGetRandomBytes(lhs.childSubprin, int(r.GetSize()))
+	s.Data, err = lhs.host.HandleGetRandomBytes(lhs.ChildSubprin, int(r.GetSize()))
 	if err != nil {
 		return err
 	}
@@ -66,7 +68,7 @@ func (lhs *LinuxHostServer) Rand(r *TaoRPCRequest, s *TaoRPCResponse) error {
 // GetSharedSecret returns a slice of n secret bytes.
 func (lhs *LinuxHostServer) GetSharedSecret(r *TaoRPCRequest, s *TaoRPCResponse) error {
 	var err error
-	s.Data, err = lhs.lh.HandleGetSharedSecret(lhs.childSubprin, int(*r.Size), string(r.Data))
+	s.Data, err = lhs.host.HandleGetSharedSecret(lhs.ChildSubprin, int(*r.Size), string(r.Data))
 	if err != nil {
 		return err
 	}
@@ -77,7 +79,7 @@ func (lhs *LinuxHostServer) GetSharedSecret(r *TaoRPCRequest, s *TaoRPCResponse)
 // Seal encrypts data so only certain hosted programs can unseal it.
 func (lhs *LinuxHostServer) Seal(r *TaoRPCRequest, s *TaoRPCResponse) error {
 	var err error
-	s.Data, err = lhs.lh.HandleSeal(lhs.childSubprin, r.Data, *r.Policy)
+	s.Data, err = lhs.host.HandleSeal(lhs.ChildSubprin, r.Data, *r.Policy)
 	if err != nil {
 		return err
 	}
@@ -90,7 +92,7 @@ func (lhs *LinuxHostServer) Seal(r *TaoRPCRequest, s *TaoRPCResponse) error {
 func (lhs *LinuxHostServer) Unseal(r *TaoRPCRequest, s *TaoRPCResponse) error {
 	var err error
 	var policy string
-	s.Data, policy, err = lhs.lh.HandleUnseal(lhs.childSubprin, r.Data)
+	s.Data, policy, err = lhs.host.HandleUnseal(lhs.ChildSubprin, r.Data)
 	if err != nil {
 		return err
 	}
@@ -107,7 +109,7 @@ func (lhs *LinuxHostServer) Attest(r *TaoRPCRequest, s *TaoRPCResponse) error {
 		return err
 	}
 
-	a, err := lhs.lh.HandleAttest(lhs.childSubprin, stmt)
+	a, err := lhs.host.HandleAttest(lhs.ChildSubprin, stmt)
 	if err != nil {
 		return err
 	}

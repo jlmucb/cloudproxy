@@ -141,7 +141,8 @@ func (f *FakeTao) Attest(stmt *Statement) (*Attestation, error) {
 
 	var delegation []byte
 	if f.keys.Delegation != nil {
-		delegation, err := proto.Marshal(f.keys.Delegation)
+		var err error
+		delegation, err = proto.Marshal(f.keys.Delegation)
 		if err != nil {
 			return nil, err
 		}

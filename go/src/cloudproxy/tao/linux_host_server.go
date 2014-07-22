@@ -45,12 +45,12 @@ func (lhs *LinuxHostServer) ExtendTaoName(r *TaoRPCRequest, s *TaoRPCResponse) e
 
 // GetRandomBytes returns a slice of n random bytes.
 func (lhs *LinuxHostServer) GetRandomBytes(r *TaoRPCRequest, s *TaoRPCResponse) error {
-	if r.GetSize() <= 0 {
+	if r.Size == nil || *r.Size <= 0 {
 		return errors.New("Invalid array size")
 	}
 
 	var err error
-	s.Data, err = lhs.host.HandleGetRandomBytes(lhs.ChildSubprin, int(r.GetSize()))
+	s.Data, err = lhs.host.HandleGetRandomBytes(lhs.ChildSubprin, int(*r.Size))
 	if err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func (lhs *LinuxHostServer) GetRandomBytes(r *TaoRPCRequest, s *TaoRPCResponse) 
 // never be called on the LinuxHostServer, since it's handled transparently by
 // TaoClient.
 func (lhs *LinuxHostServer) Rand(r *TaoRPCRequest, s *TaoRPCResponse) error {
-	return nil
+	return errors.New("not implemented")
 }
 
 // GetSharedSecret returns a slice of n secret bytes.

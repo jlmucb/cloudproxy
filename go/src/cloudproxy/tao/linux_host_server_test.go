@@ -15,91 +15,145 @@
 package tao
 
 import (
-// "net/rpc"
-// "testing"
-// "time"
+	"bytes"
+	"os"
+	"strconv"
+	"testing"
+	"time"
 
-// "cloudproxy/util"
-// "code.google.com/p/goprotobuf/proto"
+	"code.google.com/p/goprotobuf/proto"
 )
 
-// IAH: make a LinuxTaoServer that can communicate over a chan pair rather than a pipe
-// func TestTaoChanServer(t *testing.T) {
-// serverWrite := make(chan []byte)
-// clientWrite := make(chan []byte)
-// c := &util.ChanReadWriteCloser{
-// R: serverWrite,
-// W: clientWrite,
-// }
+func testNewLinuxHostServer(t *testing.T) (*LinuxHostServer, string) {
+	lh, tmpdir := testNewRootLinuxHost(t)
 
-// s := &util.ChanReadWriteCloser{
-// R: clientWrite,
-// W: serverWrite,
-// }
+	// The channel and Cmd are used by admin operations in the Linux host,
+	// so they don't need to be filled here.
+	lhs := &LinuxHostServer{
+		host:         lh,
+		ChildSubprin: "test child",
+	}
+	return lhs, tmpdir
+}
 
-// server := rpc.NewServer()
-// tao, err := NewFakeTao("test", "", nil)
-// if err != nil {
-// t.Fatal("Couldn't initialize the FakeTao:", err)
-// }
+func TestLinuxHostServerGetTaoName(t *testing.T) {
+	r := &TaoRPCRequest{}
+	s := &TaoRPCResponse{}
+	lhs, tmpdir := testNewLinuxHostServer(t)
+	defer os.RemoveAll(tmpdir)
+	if err := lhs.GetTaoName(r, s); err != nil {
+		t.Fatal("Couldn't get the Tao name from the LinuxHostServer:", err)
+	}
 
-// ts := &TaoServer{
-// T: tao,
-// }
+	if s.Data == nil {
+		t.Fatal("Couldn't get a name back from GetTaoName on LinuxHostServer")
+	}
+}
 
-// err = server.Register(ts)
-// if err != nil {
-// t.Fatal("Couldn't register the server:", err)
-// }
+func TestLinuxHostServerExtendTaoName(t *testing.T) {
+	r := &TaoRPCRequest{
+		Data: []byte("extension"),
+	}
+	s := &TaoRPCResponse{}
+	lhs, tmpdir := testNewLinuxHostServer(t)
+	defer os.RemoveAll(tmpdir)
+	if err := lhs.ExtendTaoName(r, s); err != nil {
+		t.Fatal("Couldn't extend the Tao name through LinuxHostServer:", err)
+	}
+}
 
-// go server.ServeConn(s)
+func TestLinuxHostServerGetRandomBytes(t *testing.T) {
+	r := &TaoRPCRequest{
+		Size: proto.Int32(10),
+	}
+	s := &TaoRPCResponse{}
+	lhs, tmpdir := testNewLinuxHostServer(t)
+	defer os.RemoveAll(tmpdir)
+	if err := lhs.GetRandomBytes(r, s); err != nil {
+		t.Fatal("Couldn't get random bytes from LinuxHostServer:", err)
+	}
 
-// tc, err := NewTaoRPC(c, "TaoServer")
-// if err != nil {
-// t.Fatal("Couldn't set up a TaoRPC client to TaoServer:", err)
-// }
+	if len(s.Data) != 10 {
+		t.Fatal("Wrong number of bytes returned from GetRandomBytes on LinuxHostServer. Expected 10 and got " + strconv.Itoa(len(s.Data)))
+	}
+}
 
-// b, err := tc.GetRandomBytes(10)
-// if err != nil {
-// t.Fatal("Couldn't get random bytes:", err)
-// }
+func TestLinuxHostServerRand(t *testing.T) {
+	r := &TaoRPCRequest{}
+	s := &TaoRPCResponse{}
+	lhs, tmpdir := testNewLinuxHostServer(t)
+	defer os.RemoveAll(tmpdir)
+	if err := lhs.Rand(r, s); err == nil {
+		t.Fatal("Incorrect received nil error from Rand on LinuxHostServer")
+	}
+}
 
-// // Seal, Unseal, and Attest to the bytes
-// sealed, err := tc.Seal(b, SealPolicyDefault)
-// if err != nil {
-// t.Fatal("Couldn't seal the data:", err)
-// }
+func TestLinuxHostServerSealUnseal(t *testing.T) {
+	r := &TaoRPCRequest{
+		Data: []byte{1, 2, 3, 4, 5},
+		Policy: proto.String(SealPolicyDefault),
+	}
+	s := &TaoRPCResponse{}
+	lhs, tmpdir := testNewLinuxHostServer(t)
+	defer os.RemoveAll(tmpdir)
+	if err := lhs.Seal(r, s); err != nil {
+		t.Fatal("Couldn't seal the data using LinuxHostServer")
+	}
 
-// unsealed, policy, err := tc.Unseal(sealed)
-// if err != nil {
-// t.Fatal("Couldn't unseal the data:", err)
-// }
+	if len(s.Data) == 0 {
+		t.Fatal("Invalid sealed data from LinuxHostServer")
+	}
 
-// if string(policy) != SealPolicyDefault {
-// t.Fatal("Invalid policy returned by the Tao")
-// }
+	r2 := &TaoRPCRequest{
+		Data: s.Data,
+	}
+	s2 := &TaoRPCResponse{}
+	if err := lhs.Unseal(r2, s2); err != nil {
+		t.Fatal("Couldn't unseal data sealed by LinuxHostServer")
+	}
 
-// if len(unsealed) != len(b) {
-// t.Fatal("Invalid unsealed length")
-// }
+	if !bytes.Equal(s2.Data, r.Data) {
+		t.Fatal("Incorrect data unsealed by Seal/Unseal on LinuxHostServer")
+	}
+}
 
-// for i, v := range unsealed {
-// if v != b[i] {
-// t.Fatalf("Incorrect value returned at byte %d\n", i)
-// }
-// }
+func TestLinuxHostServerAttest(t *testing.T) {
+	rt := &TaoRPCRequest{}
+	st := &TaoRPCResponse{}
+	lhs, tmpdir := testNewLinuxHostServer(t)
+	defer os.RemoveAll(tmpdir)
+	if err := lhs.GetTaoName(rt, st); err != nil {
+		t.Fatal("Couldn't get the Tao name from the LinuxHostServer:", err)
+	}
 
-// stmt := &Statement{
-// // TODO(tmroeder): Issuer, Time, and Expiration are required, but they
-// // should be optional.
-// Issuer:     proto.String("test"),
-// Time:       proto.Int64(time.Now().UnixNano()),
-// Expiration: proto.Int64(time.Now().UnixNano() + 100),
-// Delegate:   proto.String(string(b)),
-// }
+	stmt := &Statement{
+		Issuer: proto.String(string(st.Data)),
+		Time: proto.Int64(time.Now().UnixNano()),
+		Expiration: proto.Int64(time.Now().Add(24*time.Hour).UnixNano()),
+		PredicateName: proto.String("FakePredicate"),
+	}
 
-// _, err = tc.Attest(stmt)
-// if err != nil {
-// t.Fatal("Couldn't attest to the bytes:", err)
-// }
-// }
+	m, err := proto.Marshal(stmt)
+	if err != nil {
+		t.Fatal("Couldn't marshal a statement for a call to Attest on LinuxHostServer:", err)
+	}
+
+	r := &TaoRPCRequest{
+		Data: m,
+	}
+	s := &TaoRPCResponse{}
+	if err := lhs.Attest(r, s); err != nil {
+		t.Fatal("Couldn't attest to data through LinuxHostServer:", err)
+	}
+
+	if len(s.Data) == 0 {
+		t.Fatal("Invalid marshalled Attestation data returned by LinuxHostServer")
+	}
+
+	var a Attestation
+	if err := proto.Unmarshal(s.Data, &a); err != nil {
+		t.Fatal("Couldn't unmarshal into an Attestation the data returned by Attest on LinuxHostServer")
+	}
+
+	// TODO(tmroeder): verify the attestation
+}

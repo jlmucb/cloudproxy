@@ -10,7 +10,7 @@ func TestEncoding(t *testing.T) {
 	var c uint32 = 137
 	in := []interface{}{c}
 
-	b, err := Pack(ch, in)
+	b, err := PackWithHeader(ch, in)
 	if err != nil {
 		t.Fatal("Couldn't pack the bytes:", err)
 	}
@@ -31,6 +31,7 @@ func TestReadPCR(t *testing.T) {
 	// Try to read PCR 18. For this to work, you have to have access to
 	// /dev/tpm0, and there has to be a TPM driver to answer requests.
 	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	defer f.Close()
 	if err != nil {
 		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
 	}
@@ -46,6 +47,7 @@ func TestReadPCR(t *testing.T) {
 func TestGetRandom(t *testing.T) {
 	// Try to get 16 bytes of randomness from the TPM.
 	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	defer f.Close()
 	if err != nil {
 		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
 	}

@@ -1,3 +1,17 @@
+// Copyright (c) 2014, Google Inc. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // Package tpm supports direct communication with a tpm device under Linux.
 package tpm
 
@@ -29,6 +43,18 @@ const (
 	ordSeal      uint32 = 0x00000017
 	ordUnseal    uint32 = 0x00000018
 	ordGetRandom uint32 = 0x00000046
+)
+
+// Entity types
+const (
+	etKeyHandle uint16 = 0x0001
+	etSRK       uint16 = 0x0004
+	etKey       uint16 = 0x0005
+)
+
+// Entity values
+const (
+	khSRK uint32 = 0x40000000
 )
 
 // Each PCR has a fixed size of 20 bytes.
@@ -301,6 +327,8 @@ func CreatePCRComposite(mask PCRMask, pcrs []byte) ([]byte, error) {
 // A Nonce is a 20-byte value.
 type Nonce [20]byte
 
+const NonceSize uint32 = 20
+
 // A TPMHandle is a 32-bit unsigned integer.
 type TPMHandle uint32
 
@@ -366,6 +394,8 @@ func OSAP(f *os.File, osap OSAPCommand) (*OSAPResponse, error) {
 
 // A Digest is a 20-byte SHA1 value.
 type Digest [20]byte
+
+const DigestSize uint32 = 20
 
 // An AuthValue is a 20-byte value used for authentication.
 type AuthValue [20]byte

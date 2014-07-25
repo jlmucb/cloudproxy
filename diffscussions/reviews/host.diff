@@ -227,6 +227,21 @@ index 0000000..eecf915
 #-- I explicitly use goroutines to launch rpc.Server instances, one for each
 #-- child.
 #-- 
+#***
+#*** author: Kevin Walsh
+#*** email: kwalsh@holycross.edu
+#*** date: 2014-07-25T16:10:57-0400
+#***
+#--- I meant "cooperative" in the sense that straight-line code would not get
+#--- preempted unless it uses go concurrency-related primites or functions, like
+#--- chan, runtime.GoSched(), locks/mutexes, etc., since it was my understanding
+#--- that the go scheduler only runs at those points. That's enough to get
+#--- atomicity for arithmetic operations and the like. The 1.2 docs
+#--- (http://golang.org/doc/go1.2#preemption) hint that the scheduler is
+#--- becoming less cooperative, and that the scheduler can get invoked on entry
+#--- to any function. So arithmetic is still safe, technically, but we shouldn't
+#--- rely on it.
+#---
 +
 +// NewStackedLinuxHost creates a new LinuxHost as a hosted program of an existing
 +// host Tao.
@@ -734,6 +749,13 @@ index 0000000..b76c2f3
 #-- and finish splitting from the C++ Tao, since it sounds like we're willing to
 #-- abandon it in favor of the Go Tao.
 #-- 
+#***
+#*** author: Kevin Walsh
+#*** email: kwalsh@holycross.edu
+#*** date: 2014-07-25T16:24:04-0400
+#***
+#--- Agreed. Abandon C++. Copy proto files.
+#---
 +
 +	return nil
 +}
@@ -1388,6 +1410,13 @@ index 0000000..4101032
 #-- 
 #-- We should definitely think about this some more, though.
 #-- 
+#***
+#*** author: Kevin Walsh
+#*** email: kwalsh@holycross.edu
+#*** date: 2014-07-25T16:26:29-0400
+#***
+#--- argv[0] can be patched up in the exec call
+#---
 +	td, err := ioutil.TempDir("/tmp", "cloudproxy_linux_host")
 +	if err != nil {
 +		return
@@ -1471,6 +1500,14 @@ index 0000000..4101032
 #-- stdout, stderr, so these pipes are guaranteed to be fds 3 and 4 in the
 #-- child. The env trick (or a generalization thereof) should work fine.
 #-- 
+#***
+#*** author: Kevin Walsh
+#*** email: kwalsh@holycross.edu
+#*** date: 2014-07-25T16:28:48-0400
+#***
+#--- Wait, what happened to args here? They should be put in exec.Cmd{}.
+#--- Since args comes from original rpc, we don't have to worry about argv[0]
+#--- being broken by the temp file.
 +
 +	if err := c.Start(); err != nil {
 +		return nil, err

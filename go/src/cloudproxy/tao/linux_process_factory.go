@@ -16,14 +16,13 @@ package tao
 
 import (
 	"crypto/sha256"
-	"encoding/hex"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/rpc"
 	"os"
 	"os/exec"
 	"path"
-	"strconv"
 
 	"cloudproxy/util"
 )
@@ -40,19 +39,11 @@ type LinuxProcessFactory struct{}
 // FormatHostedProgramSubprin produces a string that represents a subprincipal
 // with the given ID and hash.
 func FormatHostedProgramSubprin(id uint, hash []byte) string {
-	var out string
-	if id != 0 {
-		out += "Process(" + strconv.Itoa(int(id)) + ",\""
-	} else {
-		out += "Program(\""
+	if id == 0 {
+		return fmt.Sprintf(`Program("%x")`, hash)
 	}
 
-	// The C++ Tao uses a method to escape quotes here, but that's not
-	// necessary in this case, since the hash is getting converted to hex,
-	// which can't include quotes.
-	out += hex.EncodeToString(hash)
-	out += "\")"
-	return out
+	return fmt.Sprintf(`Process(%d, "%x")`, id, hash)
 }
 
 // MakeHostedProgramSubprin computes the hash of a program to get its
@@ -102,11 +93,14 @@ func (LinuxProcessFactory) StartHostedProgram(lh *LinuxHost, prog string, args [
 	if err != nil {
 		return nil, err
 	}
+	defer clientWrite.Close()
 
 	clientRead, serverWrite, err := os.Pipe()
 	if err != nil {
+		serverRead.Close()
 		return nil, err
 	}
+	defer clientRead.Close()
 
 	rw := util.NewPairReadWriteCloser(serverRead, serverWrite)
 	c := &exec.Cmd{
@@ -119,12 +113,14 @@ func (LinuxProcessFactory) StartHostedProgram(lh *LinuxHost, prog string, args [
 	}
 
 	if err := c.Start(); err != nil {
+		rw.Close()
 		return nil, err
 	}
 
 	lph := &LinuxHostServer{lh, rw, subprin, c}
 	server := rpc.NewServer()
 	if err := server.Register(lph); err != nil {
+		rw.Close()
 		return nil, err
 	}
 

@@ -22,6 +22,8 @@ import (
 	"github.com/golang/glog"
 )
 
+// Constants used by the Tao implementations for policy, signing contexts, and
+// environment variables.
 const (
 	HostTaoEnvVar = "GOOGLE_HOST_TAO"
 
@@ -95,7 +97,7 @@ func Host() Tao {
 	return cachedHost
 }
 
-// Hosted returns true iff a host Tao is available via the Host function.
+// HostAvailable returns true iff a host Tao is available via the Host function.
 func HostAvailable() bool {
 	return Host() != nil
 }

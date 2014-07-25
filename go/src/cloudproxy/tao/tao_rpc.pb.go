@@ -120,9 +120,8 @@ func (m *TaoRPCRequest) GetPolicy() string {
 type TaoRPCResponse struct {
 	Rpc              *TaoRPCOperation `protobuf:"varint,1,req,name=rpc,enum=tao.TaoRPCOperation" json:"rpc,omitempty"`
 	Seq              *uint64          `protobuf:"varint,2,req,name=seq" json:"seq,omitempty"`
-	Error            *string          `protobuf:"bytes,3,opt,name=error" json:"error,omitempty"`
-	Data             []byte           `protobuf:"bytes,4,opt,name=data" json:"data,omitempty"`
-	Policy           *string          `protobuf:"bytes,5,opt,name=policy" json:"policy,omitempty"`
+	Data             []byte           `protobuf:"bytes,3,opt,name=data" json:"data,omitempty"`
+	Policy           *string          `protobuf:"bytes,4,opt,name=policy" json:"policy,omitempty"`
 	XXX_unrecognized []byte           `json:"-"`
 }
 
@@ -142,13 +141,6 @@ func (m *TaoRPCResponse) GetSeq() uint64 {
 		return *m.Seq
 	}
 	return 0
-}
-
-func (m *TaoRPCResponse) GetError() string {
-	if m != nil && m.Error != nil {
-		return *m.Error
-	}
-	return ""
 }
 
 func (m *TaoRPCResponse) GetData() []byte {

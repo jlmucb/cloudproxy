@@ -19,7 +19,7 @@ import (
 	"testing"
 )
 
-var testChild string = "test child"
+var testChild = "test child"
 
 func testNewTaoRootHost(t *testing.T) TaoHost {
 	th, err := NewTaoRootHost()

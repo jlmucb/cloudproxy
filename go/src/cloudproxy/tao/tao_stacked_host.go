@@ -30,10 +30,6 @@ type TaoStackedHost struct {
 // NewTaoStackedHostFromKeys takes ownership of an existing set of keys and
 // returns a TaoStackedHost that uses these keys over an existing host Tao.
 func NewTaoStackedHostFromKeys(k *Keys, t Tao) (TaoHost, error) {
-	if k.SigningKey == nil || k.CryptingKey == nil || k.VerifyingKey == nil {
-		return nil, errors.New("missing required key for TaoStackedHost")
-	}
-
 	n, err := t.GetTaoName()
 	if err != nil {
 		return nil, err
@@ -66,12 +62,13 @@ func (t *TaoStackedHost) GetRandomBytes(childSubprin string, n int) (bytes []byt
 
 // GetSharedSecret returns a slice of n secret bytes.
 func (t *TaoStackedHost) GetSharedSecret(tag string, n int) (bytes []byte, err error) {
+	// TODO(tmroeder): this should be implemented using the underlying host
 	if t.keys.DerivingKey == nil {
 		return nil, errors.New("this TaoStackedHost does not implement shared secrets")
 	}
 
 	// For now, all our key deriving with keys.DerivingKey uses a fixed 0-length salt.
-	salt := make([]byte, 0)
+	var salt []byte
 	material := make([]byte, n)
 	if err := t.keys.DerivingKey.Derive(salt, []byte(tag), material); err != nil {
 		return nil, err
@@ -92,9 +89,18 @@ func (t *TaoStackedHost) Attest(childSubprin string, stmt *Statement) (*Attestat
 
 	if t.keys == nil || t.keys.SigningKey == nil {
 		return t.hostTao.Attest(stmt)
-	} else {
-		return GenerateAttestation(t.keys.SigningKey, nil /* delegation */, stmt)
 	}
+
+	var d []byte
+	if t.keys.Delegation != nil {
+		var err error
+		d, err = proto.Marshal(t.keys.Delegation)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return GenerateAttestation(t.keys.SigningKey, d, stmt)
 }
 
 // Encrypt data so that only this host can access it.
@@ -103,45 +109,47 @@ func (t *TaoStackedHost) Encrypt(data []byte) (encrypted []byte, err error) {
 		// TODO(tmroeder) (from TODO(kwalsh) in tao_stacked_host.cc):
 		// where should the policy come from here?
 		return t.hostTao.Seal(data, SealPolicyDefault)
-	} else {
-		return t.keys.CryptingKey.Encrypt(data)
 	}
+	
+	return t.keys.CryptingKey.Encrypt(data)
 }
 
 // Decrypt data that only this host can access.
 func (t *TaoStackedHost) Decrypt(encrypted []byte) (data []byte, err error) {
-	if t.keys == nil || t.keys.CryptingKey == nil {
-		// TODO(tmroeder) (from TODO(kwalsh) in tao_stacked_host.cc):
-		// where should the policy come from here?
-		var policy string
-		data, policy, err = t.hostTao.Unseal(encrypted)
-		if err != nil {
-			return nil, err
-		}
-
-		if policy != SealPolicyDefault {
-			return nil, errors.New("unsealed data with uncertain provenance")
-		}
-
-		return data, nil
-	} else {
+	if t.keys != nil && t.keys.CryptingKey != nil {
 		return t.keys.CryptingKey.Decrypt(encrypted)
 	}
+
+	// TODO(tmroeder) (from TODO(kwalsh) in tao_stacked_host.cc):
+	// where should the policy come from here?
+	var policy string
+	data, policy, err = t.hostTao.Unseal(encrypted)
+	if err != nil {
+		return nil, err
+	}
+
+	if policy != SealPolicyDefault {
+		return nil, errors.New("unsealed data with uncertain provenance")
+	}
+
+	return data, nil
 }
 
-// Notify this TaoHost that a new hosted program has been created.
+// AddedHostedProgram notifies this TaoHost that a new hosted program has been
+// created.
 func (t *TaoStackedHost) AddedHostedProgram(childSubprin string) error {
 	return nil
 }
 
-// Notify this TaoHost that a hosted program has been killed.
+// RemovedHostedProgram notifies this TaoHost that a hosted program has been
+// killed.
 func (t *TaoStackedHost) RemovedHostedProgram(childSubprin string) error {
 	return nil
 }
 
-// Get the Tao principal name assigned to this hosted Tao host. The
-// name encodes the full path from the root Tao, through all
-// intermediary Tao hosts, to this hosted Tao host.
+// TaoHostName gets the Tao principal name assigned to this hosted Tao host.
+// The name encodes the full path from the root Tao, through all intermediary
+// Tao hosts, to this hosted Tao host.
 func (t *TaoStackedHost) TaoHostName() string {
 	return t.taoHostName
 }

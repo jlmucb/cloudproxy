@@ -1,1 +1,45 @@
-../../../../src/tao/tao_rpc.proto
+//  File: tao_rpc.proto
+//  Author: Tom Roeder <tmroeder@google.com>
+//
+//  Description: Protocol buffers for TaoRPC.
+//
+//  Copyright (c) 2013, Google Inc.  All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package tao;
+
+enum TaoRPCOperation {
+  TAO_RPC_GET_RANDOM_BYTES = 1;
+  TAO_RPC_SEAL = 2;
+  TAO_RPC_UNSEAL = 3;
+  TAO_RPC_ATTEST = 4;
+  TAO_RPC_GET_TAO_NAME = 5;
+  TAO_RPC_EXTEND_TAO_NAME = 6;
+  TAO_RPC_GET_SHARED_SECRET = 7;
+}
+
+message TaoRPCRequest {
+  required TaoRPCOperation rpc = 1;
+  required uint64 seq = 2;
+  optional bytes data = 3;
+  optional int32 size = 4;
+  optional string policy = 5;
+}
+
+message TaoRPCResponse {
+  required TaoRPCOperation rpc = 1;
+  required uint64 seq = 2;
+  optional bytes data = 3;
+  optional string policy = 4;
+}

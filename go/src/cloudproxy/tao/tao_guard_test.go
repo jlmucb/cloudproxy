@@ -19,7 +19,7 @@ import (
 )
 
 func testNewTrivialLiberalGuard(t *testing.T) TaoGuard {
-	tg := NewTrivialGuard(LiberalPolicy)
+	tg := LiberalGuard
 	if tg.SubprincipalName() != "TrivialGuard(\"Liberal\")" {
 		t.Fatal("Wrong subprincipal name for trivial liberal guard")
 	}
@@ -32,7 +32,7 @@ func testNewTrivialLiberalGuard(t *testing.T) TaoGuard {
 }
 
 func testNewTrivialConservativeGuard(t *testing.T) TaoGuard {
-	tg := NewTrivialGuard(ConservativePolicy)
+	tg := ConservativeGuard
 	if tg.SubprincipalName() != "TrivialGuard(\"Conservative\")" {
 		t.Fatal("Wrong subprincipal name for trivial conservative guard")
 	}
@@ -106,8 +106,8 @@ func testTrivialGuardRuleDebugString(t *testing.T, tg TaoGuard, expected string)
 }
 
 func testTrivialGuardDebugString(t *testing.T, tg TaoGuard, expected string) {
-	if tg.DebugString() != expected {
-		t.Fatal("Got an unexpected rule from DebugString() on a trivial guard")
+	if tg.String() != expected {
+		t.Fatal("Got an unexpected rule from String() on a trivial guard")
 	}
 }
 

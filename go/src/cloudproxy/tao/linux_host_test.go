@@ -29,13 +29,13 @@ func testNewStackedLinuxHost(t *testing.T) (*LinuxHost, string) {
 		t.Fatal("Couldn't get a temp directory for the new stacked linux host")
 	}
 
-	tg := NewTrivialGuard(LiberalPolicy)
 	ft, err := NewFakeTao("test", "", nil)
 	if err != nil {
 		t.Fatal("Couldn't create a new fake Tao:", err)
 	}
 
-	lh, err := NewStackedLinuxHost(tmpdir, tg, ft)
+	tg := LiberalGuard
+	lh, err := NewStackedLinuxHost(tmpdir, &tg, ft)
 	if err != nil {
 		os.RemoveAll(tmpdir)
 		t.Fatal("Couldn't create a new stacked Linux host")
@@ -50,9 +50,9 @@ func testNewRootLinuxHost(t *testing.T) (*LinuxHost, string) {
 		t.Fatal("Couldn't get a temp directory for the new root linux host")
 	}
 
-	tg := NewTrivialGuard(LiberalPolicy)
+	tg := LiberalGuard
 	password := []byte("bad password")
-	lh, err := NewRootLinuxHost(tmpdir, tg, password)
+	lh, err := NewRootLinuxHost(tmpdir, &tg, password)
 	if err != nil {
 		os.RemoveAll(tmpdir)
 		t.Fatal("Couldn't create a new stacked Linux host")
@@ -73,16 +73,16 @@ func TestNewRootLinuxHost(t *testing.T) {
 
 // Test the methods directly instead of testing them across a channel.
 
-var testChildLH string = "test child"
+var testChildLH = "test child"
 
 func testLinuxHostHandleGetTaoName(t *testing.T, lh *LinuxHost) {
-	if lh.HandleGetTaoName(testChildLH) != lh.taoHost.TaoHostName()+"::"+testChildLH {
+	if lh.handleGetTaoName(testChildLH) != lh.taoHost.TaoHostName()+"::"+testChildLH {
 		t.Fatal("Incorrect construction of Tao name")
 	}
 }
 
 func testLinuxHostHandleGetRandomBytes(t *testing.T, lh *LinuxHost) {
-	b, err := lh.HandleGetRandomBytes(testChildLH, 10)
+	b, err := lh.handleGetRandomBytes(testChildLH, 10)
 	if err != nil {
 		t.Fatal("Failed to get random bytes from the Linux host:", err)
 	}
@@ -93,12 +93,12 @@ func testLinuxHostHandleGetRandomBytes(t *testing.T, lh *LinuxHost) {
 }
 
 func testLinuxHostHandleGetSharedSecret(t *testing.T, lh *LinuxHost) {
-	b, err := lh.HandleGetSharedSecret(testChildLH, 10, SharedSecretPolicyDefault)
+	b, err := lh.handleGetSharedSecret(testChildLH, 10, SharedSecretPolicyDefault)
 	if err != nil {
 		t.Fatal("Couldn't get a shared secret from the Linux host:", err)
 	}
 
-	b2, err := lh.HandleGetSharedSecret(testChildLH, 10, SharedSecretPolicyDefault)
+	b2, err := lh.handleGetSharedSecret(testChildLH, 10, SharedSecretPolicyDefault)
 	if err != nil {
 		t.Fatal("Couldn't get a second shared secret from the Linux host:", err)
 	}
@@ -110,12 +110,12 @@ func testLinuxHostHandleGetSharedSecret(t *testing.T, lh *LinuxHost) {
 
 func testLinuxHostHandleSealUnseal(t *testing.T, lh *LinuxHost) {
 	data := []byte{1, 2, 3, 4, 5, 6, 7}
-	b, err := lh.HandleSeal(testChildLH, data, SharedSecretPolicyDefault)
+	b, err := lh.handleSeal(testChildLH, data, SharedSecretPolicyDefault)
 	if err != nil {
 		t.Fatal("Couldn't seal the data:", err)
 	}
 
-	d, policy, err := lh.HandleUnseal(testChildLH, b)
+	d, policy, err := lh.handleUnseal(testChildLH, b)
 	if err != nil {
 		t.Fatal("Couldn't unseal the sealed data")
 	}
@@ -134,7 +134,7 @@ func testLinuxHostHandleAttest(t *testing.T, lh *LinuxHost) {
 		PredicateName: proto.String("FakePredicate"),
 	}
 
-	a, err := lh.HandleAttest(testChildLH, stmt)
+	a, err := lh.handleAttest(testChildLH, stmt)
 	if err != nil {
 		t.Fatal("Couldn't create Attestation")
 	}

@@ -20,6 +20,7 @@ import (
 	"syscall"
 
 	"code.google.com/p/goprotobuf/proto"
+	"github.com/golang/glog"
 )
 
 // A LinuxHost is a Tao host environment in which hosted programs are Linux
@@ -32,7 +33,7 @@ type LinuxHost struct {
 	guard          TaoGuard
 	taoHost        TaoHost
 	childFactory   LinuxProcessFactory
-	hostedPrograms map[string]*LinuxHostServer
+	hostedPrograms []*LinuxHostServer
 	hpm            sync.RWMutex
 	nextChildID    uint
 	idm            sync.Mutex
@@ -85,19 +86,19 @@ func NewRootLinuxHost(path string, guard TaoGuard, password []byte) (*LinuxHost,
 	return lh, nil
 }
 
-// HandleGetTaoName returns a Tao name for this child subprincipal.
-func (lh *LinuxHost) HandleGetTaoName(childSubprin string) string {
+// handleGetTaoName returns a Tao name for this child subprincipal.
+func (lh *LinuxHost) handleGetTaoName(childSubprin string) string {
 	return lh.taoHost.TaoHostName() + "::" + childSubprin
 }
 
-// HandleGetRandomBytes gets random bytes from the TaoHost.
-func (lh *LinuxHost) HandleGetRandomBytes(childSubprin string, n int) ([]byte, error) {
+// handleGetRandomBytes gets random bytes from the TaoHost.
+func (lh *LinuxHost) handleGetRandomBytes(childSubprin string, n int) ([]byte, error) {
 	return lh.taoHost.GetRandomBytes(childSubprin, n)
 }
 
-// HandleGetSharedSecret derives a tag for the secret and generates one from
+// handleGetSharedSecret derives a tag for the secret and generates one from
 // the TaoHost.
-func (lh *LinuxHost) HandleGetSharedSecret(childSubprin string, n int, policy string) ([]byte, error) {
+func (lh *LinuxHost) handleGetSharedSecret(childSubprin string, n int, policy string) ([]byte, error) {
 	// Compute the tag based on the policy identifier and childSubprin.
 	var tag string
 	switch policy {
@@ -122,8 +123,10 @@ func (lh *LinuxHost) HandleGetSharedSecret(childSubprin string, n int, policy st
 	return lh.taoHost.GetSharedSecret(tag, n)
 }
 
-// HandleSeal seals data for the given policy and child subprincipal.
-func (lh *LinuxHost) HandleSeal(childSubprin string, data []byte, policy string) ([]byte, error) {
+// handleSeal seals data for the given policy and child subprincipal. This call
+// also zeroes the data parameter.
+func (lh *LinuxHost) handleSeal(childSubprin string, data []byte, policy string) ([]byte, error) {
+	defer zeroBytes(data)
 	lhsb := &LinuxHostSealedBundle{
 		Policy: proto.String(policy),
 		Data:   data,
@@ -155,9 +158,9 @@ func (lh *LinuxHost) HandleSeal(childSubprin string, data []byte, policy string)
 	return lh.taoHost.Encrypt(m)
 }
 
-// HandleUnseal unseals data and checks its policy information to see if this
+// handleUnseal unseals data and checks its policy information to see if this
 // Unseal operation is authorized.
-func (lh *LinuxHost) HandleUnseal(childSubprin string, sealed []byte) ([]byte, string, error) {
+func (lh *LinuxHost) handleUnseal(childSubprin string, sealed []byte) ([]byte, string, error) {
 	decrypted, err := lh.taoHost.Decrypt(sealed)
 	if err != nil {
 		return nil, "", err
@@ -190,9 +193,9 @@ func (lh *LinuxHost) HandleUnseal(childSubprin string, sealed []byte) ([]byte, s
 	return lhsb.Data, policy, nil
 }
 
-// HandleAttest performs policy checking and performs attestation for a child
+// handleAttest performs policy checking and performs attestation for a child
 // subprincipal.
-func (lh *LinuxHost) HandleAttest(childSubprin string, stmt *Statement) (*Attestation, error) {
+func (lh *LinuxHost) handleAttest(childSubprin string, stmt *Statement) (*Attestation, error) {
 	if stmt.Delegate == nil && stmt.PredicateName == nil {
 		return nil, errors.New("must supply either delegate or predicate_name in statement for attestation")
 	}
@@ -208,7 +211,11 @@ func (lh *LinuxHost) StartHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRP
 
 	lh.idm.Lock()
 	id := lh.nextChildID
-	lh.nextChildID++
+	if lh.nextChildID != 0 {
+		lh.nextChildID++
+	} else {
+		glog.Warning("Running without unique child IDs")
+	}
 	lh.idm.Unlock()
 
 	subprin, temppath, err := lh.childFactory.MakeHostedProgramSubprin(id, *r.Path)
@@ -216,14 +223,12 @@ func (lh *LinuxHost) StartHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRP
 		return err
 	}
 
-	lh.hpm.RLock()
-	_, ok := lh.hostedPrograms[subprin]
-	lh.hpm.RUnlock()
-	if ok {
-		return errors.New("hosted program " + subprin + " already exists")
-	}
+	// We allow multiple hosted programs with the same subprincipal name,
+	// so we don't check here to make sure that there isn't another program
+	// with the same subprincipal.
 
-	// TODO(tmroeder): do we want to support concurrent updates to policy? Then we need a lock here, too.
+	// TODO(tmroeder): do we want to support concurrent updates to policy?
+	// Then we need a lock here, too.
 	name := lh.taoHost.TaoHostName()
 	if !lh.guard.IsAuthorized(name+"::"+subprin, "Execute", []string{}) {
 		return errors.New("Hosted program " + subprin + " denied authorization to execute on host " + name)
@@ -235,7 +240,7 @@ func (lh *LinuxHost) StartHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRP
 	}
 
 	lh.hpm.Lock()
-	lh.hostedPrograms[subprin] = lhs
+	lh.hostedPrograms = append(lh.hostedPrograms, lhs)
 	lh.hpm.Unlock()
 
 	s.Data = []byte(subprin)
@@ -249,26 +254,38 @@ func (lh *LinuxHost) StopHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPC
 		return errors.New("missing child subprincipal")
 	}
 
-	// TODO(tmroeder): this implementation should be extended to support
-	// multiple clients with the same subprincipal name.
 	subprin := string(r.Data)
 	lh.hpm.Lock()
 	defer lh.hpm.Unlock()
-	lph, ok := lh.hostedPrograms[subprin]
-	if !ok {
-		return errors.New("no subprincipal " + subprin)
-	}
-
-	// Close the channel before sending SIGTERM
-	lph.channel.Close()
 
 	// For Stop, we send SIGTERM
-	var sigterm int = 15
-	if err := syscall.Kill(lph.Cmd.Process.Pid, syscall.Signal(sigterm)); err != nil {
-		return err
+	sigterm := 15
+	var i int
+	for i < len(lh.hostedPrograms) {
+		lph := lh.hostedPrograms[i]
+		n := len(lh.hostedPrograms)
+		if lph.ChildSubprin == subprin {
+			// Close the channel before sending SIGTERM
+			lph.channel.Close()
+
+			if err := syscall.Kill(lph.Cmd.Process.Pid, syscall.Signal(sigterm)); err != nil {
+				glog.Errorf("Couldn't send SIGTERM to process %d, subprincipal %s: %s\n", lph.Cmd.Process.Pid, subprin, err)
+			}
+
+			// The order of this array doesn't matter, and we want
+			// to make sure we remove all references to pointers to
+			// LinuxHostServer instances so that they get garbage
+			// collected. So, we implement delete from the slice by
+			// moving elements around.
+			lh.hostedPrograms[i] = lh.hostedPrograms[n-1]
+			lh.hostedPrograms[n-1] = nil
+			lh.hostedPrograms = lh.hostedPrograms[:n-1]
+			i--
+		}
+
+		i++
 	}
 
-	delete(lh.hostedPrograms, subprin)
 	return nil
 }
 
@@ -277,8 +294,8 @@ func (lh *LinuxHost) ListHostedPrograms(r *LinuxAdminRPCRequest, s *LinuxAdminRP
 	lh.hpm.RLock()
 	subprins := make([]string, len(lh.hostedPrograms))
 	pids := make([]int32, len(lh.hostedPrograms))
-	for k, v := range lh.hostedPrograms {
-		subprins = append(subprins, k)
+	for _, v := range lh.hostedPrograms {
+		subprins = append(subprins, v.ChildSubprin)
 		pids = append(pids, int32(v.Cmd.Process.Pid))
 	}
 	lh.hpm.RUnlock()
@@ -304,25 +321,35 @@ func (lh *LinuxHost) KillHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPC
 		return errors.New("missing child subprincipal")
 	}
 
-	// TODO(tmroeder): this implementation should be extended to support
-	// multiple clients with the same subprincipal name.
 	subprin := string(r.Data)
 	lh.hpm.Lock()
 	defer lh.hpm.Unlock()
-	lph, ok := lh.hostedPrograms[subprin]
-	if !ok {
-		return errors.New("no subprincipal " + subprin)
+	var i int
+	for i < len(lh.hostedPrograms) {
+		lph := lh.hostedPrograms[i]
+		n := len(lh.hostedPrograms)
+		if lph.ChildSubprin == subprin {
+			// Close the channel before sending SIGTERM
+			lph.channel.Close()
+
+			if err := lph.Cmd.Process.Kill(); err != nil {
+				glog.Errorf("Couldn't kill process %d, subprincipal %s: %s\n", lph.Cmd.Process.Pid, subprin, err)
+			}
+
+			// The order of this array doesn't matter, and we want
+			// to make sure we remove all references to pointers to
+			// LinuxHostServer instances so that they get garbage
+			// collected. So, we implement delete from the slice by
+			// moving elements around.
+			lh.hostedPrograms[i] = lh.hostedPrograms[n-1]
+			lh.hostedPrograms[n-1] = nil
+			lh.hostedPrograms = lh.hostedPrograms[:n-1]
+			i--
+		}
+
+		i++
 	}
 
-	// Close the channel before sending SIGTERM
-	lph.channel.Close()
-
-	// For kill, we use the Go call on Process.
-	if err := lph.Cmd.Process.Kill(); err != nil {
-		return err
-	}
-
-	delete(lh.hostedPrograms, subprin)
 	return nil
 }
 

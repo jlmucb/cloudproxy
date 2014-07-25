@@ -29,8 +29,7 @@ type TaoRootHost struct {
 	taoHostName string
 }
 
-// NewTaoRootHostFromKeys takes ownership of an existing set of keys and
-// returns a TaoRootHost that uses these keys.
+// NewTaoRootHostFromKeys returns a TaoRootHost that uses these keys.
 func NewTaoRootHostFromKeys(k *Keys) (TaoHost, error) {
 	if k.SigningKey == nil || k.CryptingKey == nil || k.VerifyingKey == nil {
 		return nil, errors.New("missing required key for TaoRootHost")
@@ -77,7 +76,7 @@ func (t *TaoRootHost) GetSharedSecret(tag string, n int) (bytes []byte, err erro
 	}
 
 	// For now, all our key deriving with keys.DerivingKey uses a fixed 0-length salt.
-	salt := make([]byte, 0)
+	var salt []byte
 	material := make([]byte, n)
 	if err := t.keys.DerivingKey.Derive(salt, []byte(tag), material); err != nil {
 		return nil, err
@@ -158,19 +157,21 @@ func (t *TaoRootHost) Decrypt(encrypted []byte) (data []byte, err error) {
 	return t.keys.CryptingKey.Decrypt(encrypted)
 }
 
-// Notify this TaoHost that a new hosted program has been created.
+// AddedHostedProgram notifies this TaoHost that a new hosted program has been
+// created.
 func (t *TaoRootHost) AddedHostedProgram(childSubprin string) error {
 	return nil
 }
 
-// Notify this TaoHost that a hosted program has been killed.
+// RemovedHostedProgram notifies this TaoHost that a hosted program has been
+// killed.
 func (t *TaoRootHost) RemovedHostedProgram(childSubprin string) error {
 	return nil
 }
 
-// Get the Tao principal name assigned to this hosted Tao host. The
-// name encodes the full path from the root Tao, through all
-// intermediary Tao hosts, to this hosted Tao host.
+// TaoHostName gets the Tao principal name assigned to this hosted Tao host.
+// The name encodes the full path from the root Tao, through all intermediary
+// Tao hosts, to this hosted Tao host.
 func (t *TaoRootHost) TaoHostName() string {
 	return t.taoHostName
 }

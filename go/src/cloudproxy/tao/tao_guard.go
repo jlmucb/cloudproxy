@@ -1,4 +1,4 @@
-// Copyright (c) 2014, Google Inc.  All rights reserved.
+// Copyright (c) 2013, Google Inc.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -81,42 +81,32 @@ type TaoGuard interface {
 	// it exists.
 	RuleDebugString(i int) string
 
-	// DebugString returns a string suitable for showing users
-	// authorization info.
-	DebugString() string
+	// String returns a string suitable for showing users authorization
+	// info.
+	String() string
 }
 
-// A PolicyType specifies the type of policy to use in the TrivialGuard.
-type PolicyType int
+// A TrivialGuard implements a constant policy: either ConservativeGuard ("deny
+// all") or LiberalGuard ("allow all").
+type TrivialGuard int
 
-// The types of TrivialGuard Policy.
+// The types of TrivialGuard
 const (
-	ConservativePolicy PolicyType = 1 << iota
-	LiberalPolicy
+	ConservativeGuard TrivialGuard = 1 << iota
+	LiberalGuard
 )
 
 // errTrivialGuard is the error returned for all non-trivial policy operations
 // on the TrivialGuard.
 var errTrivialGuard = errors.New("can't perform policy operations on the TrivialGuard")
 
-// A TrivialGuard implements either the ConservativePolicy (always Deny) or the
-// LiberalPolicy (always Accept).
-type TrivialGuard struct {
-	policy PolicyType
-}
-
-// NewTrivialGuard returns TrivialGuard with the specified policy.
-func NewTrivialGuard(policy PolicyType) TaoGuard {
-	return &TrivialGuard{policy}
-}
-
 // SubprincipalName returns a subprincipal name for the TrivialGuard as
 // 'TrivialGuard("<type>")' where type is the policy type.
-func (t *TrivialGuard) SubprincipalName() string {
-	switch t.policy {
-	case ConservativePolicy:
+func (t TrivialGuard) SubprincipalName() string {
+	switch t {
+	case ConservativeGuard:
 		return "TrivialGuard(\"Conservative\")"
-	case LiberalPolicy:
+	case LiberalGuard:
 		return "TrivialGuard(\"Liberal\")"
 	default:
 		return "UnknownSubprincipal"
@@ -124,11 +114,11 @@ func (t *TrivialGuard) SubprincipalName() string {
 }
 
 // GuardTypeName returns "TrivialGuard" as the type of this guard.
-func (t *TrivialGuard) GuardTypeName() string {
-	switch t.policy {
-	case ConservativePolicy:
+func (t TrivialGuard) GuardTypeName() string {
+	switch t {
+	case ConservativeGuard:
 		return "TrivialConservativeGuard"
-	case LiberalPolicy:
+	case LiberalGuard:
 		return "TrivialLiberalGuard"
 	default:
 		return "UnknownGuard"
@@ -137,7 +127,7 @@ func (t *TrivialGuard) GuardTypeName() string {
 
 // Authorize adds an authorization for a principal to perform an
 // operation.
-func (t *TrivialGuard) Authorize(name, op string, args []string) error {
+func (t TrivialGuard) Authorize(name, op string, args []string) error {
 	return errTrivialGuard
 }
 
@@ -148,17 +138,17 @@ func (t *TrivialGuard) Authorize(name, op string, args []string) error {
 // AddRule() call. However, particularly when expressive policies are
 // supported (e.g., an "authorize all" rule), other rules may still be
 // in place authorizing the principal to perform the operation.
-func (t *TrivialGuard) Retract(name, op string, args []string) error {
+func (t TrivialGuard) Retract(name, op string, args []string) error {
 	return errTrivialGuard
 }
 
 // IsAuthorized checks whether a principal is authorized to perform an
 // operation.
-func (t *TrivialGuard) IsAuthorized(name, op string, args []string) bool {
-	switch t.policy {
-	case ConservativePolicy:
+func (t TrivialGuard) IsAuthorized(name, op string, args []string) bool {
+	switch t {
+	case ConservativeGuard:
 		return false
-	case LiberalPolicy:
+	case LiberalGuard:
 		return true
 	default:
 		return false
@@ -169,28 +159,28 @@ func (t *TrivialGuard) IsAuthorized(name, op string, args []string) bool {
 // of the form: Authorized(P, op, args...). This is equivalent to
 // calling Authorize(P, op, args...) with each of the arguments
 // converted to either a string or integer.
-func (t *TrivialGuard) AddRule(rule string) error {
+func (t TrivialGuard) AddRule(rule string) error {
 	return errTrivialGuard
 }
 
 // RetractRule removes a rule previously added via AddRule() or the
 // equivalent Authorize() call.
-func (t *TrivialGuard) RetractRule(rule string) error {
+func (t TrivialGuard) RetractRule(rule string) error {
 	return errTrivialGuard
 }
 
 // Clear removes all rules.
-func (t *TrivialGuard) Clear() error {
+func (t TrivialGuard) Clear() error {
 	return errTrivialGuard
 }
 
 // Query the policy. Implementations of this interface should support
 // at least queries of the form: Authorized(P, op, args...).
-func (t *TrivialGuard) Query(query string) bool {
-	switch t.policy {
-	case ConservativePolicy:
+func (t TrivialGuard) Query(query string) bool {
+	switch t {
+	case ConservativeGuard:
 		return false
-	case LiberalPolicy:
+	case LiberalGuard:
 		return true
 	default:
 		return false
@@ -198,16 +188,16 @@ func (t *TrivialGuard) Query(query string) bool {
 }
 
 // RuleCount returns a count of the total number of rules.
-func (t *TrivialGuard) RuleCount() int {
+func (t TrivialGuard) RuleCount() int {
 	return 1
 }
 
 // GetRule returns the ith policy rule, if it exists.
-func (t *TrivialGuard) GetRule(i int) string {
-	switch t.policy {
-	case ConservativePolicy:
+func (t TrivialGuard) GetRule(i int) string {
+	switch t {
+	case ConservativeGuard:
 		return "Deny All"
-	case LiberalPolicy:
+	case LiberalGuard:
 		return "Allow All"
 	default:
 		return "Unknown Policy"
@@ -216,24 +206,24 @@ func (t *TrivialGuard) GetRule(i int) string {
 
 // RuleDebugString returns a debug string for the ith policy rule, if
 // it exists.
-func (t *TrivialGuard) RuleDebugString(i int) string {
-	switch t.policy {
-	case ConservativePolicy:
+// TODO(kwalsh): build this into the auth library.
+func (t TrivialGuard) RuleDebugString(i int) string {
+	switch t {
+	case ConservativeGuard:
 		return "Deny All"
-	case LiberalPolicy:
+	case LiberalGuard:
 		return "Allow All"
 	default:
 		return "Unknown Policy"
 	}
 }
 
-// DebugString returns a string suitable for showing users
-// authorization info.
-func (t *TrivialGuard) DebugString() string {
-	switch t.policy {
-	case ConservativePolicy:
+// String returns a string suitable for showing users authorization info.
+func (t TrivialGuard) String() string {
+	switch t {
+	case ConservativeGuard:
 		return "Trivial Conservative Policy (a.k.a. \"deny all\")"
-	case LiberalPolicy:
+	case LiberalGuard:
 		return "Trivial Liberal Policy (a.k.a. \"allow all\")"
 	default:
 		return "Unknown Policy"

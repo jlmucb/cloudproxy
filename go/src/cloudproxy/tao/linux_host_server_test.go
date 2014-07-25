@@ -78,19 +78,11 @@ func TestLinuxHostServerGetRandomBytes(t *testing.T) {
 	}
 }
 
-func TestLinuxHostServerRand(t *testing.T) {
-	r := &TaoRPCRequest{}
-	s := &TaoRPCResponse{}
-	lhs, tmpdir := testNewLinuxHostServer(t)
-	defer os.RemoveAll(tmpdir)
-	if err := lhs.Rand(r, s); err == nil {
-		t.Fatal("Incorrect received nil error from Rand on LinuxHostServer")
-	}
-}
-
 func TestLinuxHostServerSealUnseal(t *testing.T) {
+	// We keep a separate copy of the data, since seal clears it.
+	orig := []byte{1, 2, 3, 4, 5}
 	r := &TaoRPCRequest{
-		Data: []byte{1, 2, 3, 4, 5},
+		Data:   []byte{1, 2, 3, 4, 5},
 		Policy: proto.String(SealPolicyDefault),
 	}
 	s := &TaoRPCResponse{}
@@ -112,7 +104,7 @@ func TestLinuxHostServerSealUnseal(t *testing.T) {
 		t.Fatal("Couldn't unseal data sealed by LinuxHostServer")
 	}
 
-	if !bytes.Equal(s2.Data, r.Data) {
+	if !bytes.Equal(s2.Data, orig) {
 		t.Fatal("Incorrect data unsealed by Seal/Unseal on LinuxHostServer")
 	}
 }
@@ -127,9 +119,9 @@ func TestLinuxHostServerAttest(t *testing.T) {
 	}
 
 	stmt := &Statement{
-		Issuer: proto.String(string(st.Data)),
-		Time: proto.Int64(time.Now().UnixNano()),
-		Expiration: proto.Int64(time.Now().Add(24*time.Hour).UnixNano()),
+		Issuer:        proto.String(string(st.Data)),
+		Time:          proto.Int64(time.Now().UnixNano()),
+		Expiration:    proto.Int64(time.Now().Add(24 * time.Hour).UnixNano()),
 		PredicateName: proto.String("FakePredicate"),
 	}
 

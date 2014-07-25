@@ -103,6 +103,7 @@ type TaoRPC struct {
 	serviceName string
 }
 
+// DeserializeTaoRPC produces a TaoRPC from a string.
 func DeserializeTaoRPC(s string) (*TaoRPC, error) {
 	if s == "" {
 		return nil, errors.New("taorpc: missing host Tao spec" +
@@ -134,6 +135,7 @@ const (
 	wantPolicy
 )
 
+// An ErrMalformedResponse is returned as an error for an invalid response.
 var ErrMalformedResponse = errors.New("taorpc: malformed response")
 
 // call issues an rpc request, obtains the response, checks the response for
@@ -142,10 +144,6 @@ func (t *TaoRPC) call(method string, r *TaoRPCRequest, e expectedResponse) (data
 	s := new(TaoRPCResponse)
 	err = t.rpc.Call(method, r, s)
 	if err != nil {
-		return
-	}
-	if s.Error != nil {
-		err = errors.New(*s.Error)
 		return
 	}
 	if (s.Data != nil) != (e&wantData != 0) ||

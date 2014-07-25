@@ -1,1 +1,168 @@
-../../../../src/tao/keys.proto
+//  File: keys.proto
+//  Author: Tom Roeder <tmroeder@google.com>
+//
+//  Description: Protocol buffers for keys and x509 certificates.
+//
+//  Copyright (c) 2013, Google Inc.  All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package tao;
+
+// TODO(kwalsh) add finer-granularity version tags?
+
+enum CryptoVersion {
+  CRYPTO_VERSION_1 = 1;
+}
+
+message CryptoKey {
+  enum CryptoPurpose {
+    VERIFYING = 1;  // public
+    SIGNING = 2;    // private
+    CRYPTING = 3;   // private
+    DERIVING = 4;   // private
+  }
+  enum CryptoAlgorithm {  // algorithm, mode, etc., all rolled into one
+    ECDSA_SHA = 1;
+    AES_CTR_HMAC_SHA = 2;
+    HMAC_SHA = 3;
+  }
+  required CryptoVersion version = 1;
+  required CryptoPurpose purpose = 2;
+  required CryptoAlgorithm algorithm = 3;
+  required bytes key = 4;  // serialized <algorithm><purpose>Key<version>
+}
+
+message CryptoKeyset {
+  repeated CryptoKey keys = 1;
+}
+
+// Stacked Tao hosts can invoke their host Tao to seal a serialized CryptoKeyset
+// (or individual CryptoKeys). 
+
+// PBEData is used by root Tao hosts to seal a serialized CryptoKeyset
+// using a user-chosen password.
+
+message PBEData {
+  required CryptoVersion version = 1;
+  required string cipher = 2;  // "aes128-cbc"
+  required string hmac = 3;  // "sha256"
+  required int32 iterations = 4;  // 4096
+  required bytes iv = 5;
+  required bytes ciphertext = 6;
+  // TODO(kwalsh) Should this not use a mac as well for integrity protection?
+  required bytes salt = 7;
+}
+
+enum NamedEllipticCurve {
+  PRIME256_V1 = 1;  // aka secp256r1
+}
+
+message ECDSA_SHA_VerifyingKey_v1 {
+  required NamedEllipticCurve curve = 1;
+  required bytes ec_public = 2;  // = OpenSSL::EC_POINT_point2oct(pub_key)
+}
+
+message ECDSA_SHA_SigningKey_v1 {
+  required NamedEllipticCurve curve = 1;
+  required bytes ec_private = 2;  // = OpenSSL::BN_bn2bin(priv_key)
+  required bytes ec_public = 3;  // = OpenSSL::EC_POINT_point2oct(pub_key)
+}
+
+enum CryptoCipherMode {
+  CIPHER_MODE_CTR = 1;
+}
+
+message AES_CTR_HMAC_SHA_CryptingKey_v1 {
+  required CryptoCipherMode mode = 1;
+  required bytes aes_private = 2;
+  required bytes hmac_private = 3;
+}
+
+enum CryptoDerivingMode {
+ DERIVING_MODE_HKDF = 1;
+}
+
+message HMAC_SHA_DerivingKey_v1 {
+  required CryptoDerivingMode mode = 1;
+  required bytes hmac_private = 2;
+}
+
+// Following Keyczar, signing and encryption use a short header that contains a
+// version number and a four-byte key-hint to distinguish among multiple keys
+// (e.g. if key rotation causes multiple keys to be live simultaneously)
+
+message CryptoHeader {
+  required CryptoVersion version = 1;
+  required bytes key_hint = 2;
+}
+
+// A PDU to be serialized and signed, including a required context to ensure
+// unique deserialization.
+message SignaturePDU {
+  required CryptoHeader header = 1;
+
+  // SECURITY WARNING: Always choose a unique context for each unique type of
+  // message. One easy way to do this is to number the messages in a protocol
+  // and make the context "ProtocolName Message Y: ProtobufName Version X"
+  required string context = 2;
+
+  // The serialized protobuf representing this message.
+  required bytes data = 3;
+}
+
+// The result of signing.
+message SignedData {
+  required CryptoHeader header = 1;
+  required bytes signature = 2;
+}
+
+// A PDU to be serialized and signed for integrity-protection when using
+// encryption modes (like AES CTR with HMAC-SHA) that require a separate MAC.
+// Note: We actually just hmac the partially serialized EncryptedData message
+// with all fields complete except the mac field.
+// message EncryptionIntegrityPDU {
+//   required CryptoHeader header = 1;
+//   required bytes iv = 2;
+//   required bytes ciphertext = 3;
+// }
+
+// The result of encrypting.
+message EncryptedData {
+  required CryptoHeader header = 1;
+  required bytes iv = 2;
+  required bytes ciphertext = 3;
+  optional bytes mac = 4;  // optional for modes that don't require mac
+}
+
+// A PDU to be serialized and fed to HKDF for derivation. 
+message KeyDerivationPDU {
+  required bytes previous_hash = 1;
+  required fixed32 size = 2;
+  required string context = 3;
+  required fixed32 index = 4;
+}
+
+message X509Details {
+  // Requested x509 CommonName detail
+  optional bytes commonname = 3;
+
+  // Requested x509 Country detail
+  optional bytes country = 4;
+
+  // Requested x509 State detail
+  optional bytes state = 5;
+
+  // Requested x509 Organization detail
+  optional bytes organization = 6;
+}

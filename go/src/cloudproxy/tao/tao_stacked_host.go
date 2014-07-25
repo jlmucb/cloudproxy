@@ -110,7 +110,7 @@ func (t *TaoStackedHost) Encrypt(data []byte) (encrypted []byte, err error) {
 		// where should the policy come from here?
 		return t.hostTao.Seal(data, SealPolicyDefault)
 	}
-	
+
 	return t.keys.CryptingKey.Encrypt(data)
 }
 

@@ -105,6 +105,7 @@ func (LinuxProcessFactory) StartHostedProgram(lh *LinuxHost, prog string, args [
 	rw := util.NewPairReadWriteCloser(serverRead, serverWrite)
 	c := &exec.Cmd{
 		Path:       prog,
+		Args:       args,
 		Stdin:      os.Stdin,
 		Stdout:     os.Stdout,
 		Stderr:     os.Stderr,

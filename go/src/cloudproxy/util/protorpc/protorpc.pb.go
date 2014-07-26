@@ -9,7 +9,8 @@ It is generated from these files:
 	protorpc.proto
 
 It has these top-level messages:
-	ProtoRPCHeader
+	ProtoRPCRequestHeader
+	ProtoRPCResponseHeader
 */
 package protorpc
 
@@ -20,33 +21,67 @@ import math "math"
 var _ = proto.Marshal
 var _ = math.Inf
 
-type ProtoRPCHeader struct {
-	// The operation to be performed (for a request) or that was performed (for a
-	// response). Tag must be 1. Type can be any varint-encoded type, e.g. enum,
-	// int32, sint64. The name can be anything.
-	Op *uint64 `protobuf:"varint,1,req,name=op" json:"op,omitempty"`
-	// The sequence number for the operation. Tag must be 2. Type can be any
-	// varint-encoded type.The name can be anything.
+// Protobuf RPC request header.
+type ProtoRPCRequestHeader struct {
+	// The service method.
+	Op *string `protobuf:"bytes,1,req,name=op" json:"op,omitempty"`
+	// The sequence number.
 	Seq              *uint64 `protobuf:"varint,2,req,name=seq" json:"seq,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *ProtoRPCHeader) Reset()         { *m = ProtoRPCHeader{} }
-func (m *ProtoRPCHeader) String() string { return proto.CompactTextString(m) }
-func (*ProtoRPCHeader) ProtoMessage()    {}
+func (m *ProtoRPCRequestHeader) Reset()         { *m = ProtoRPCRequestHeader{} }
+func (m *ProtoRPCRequestHeader) String() string { return proto.CompactTextString(m) }
+func (*ProtoRPCRequestHeader) ProtoMessage()    {}
 
-func (m *ProtoRPCHeader) GetOp() uint64 {
+func (m *ProtoRPCRequestHeader) GetOp() string {
 	if m != nil && m.Op != nil {
 		return *m.Op
 	}
-	return 0
+	return ""
 }
 
-func (m *ProtoRPCHeader) GetSeq() uint64 {
+func (m *ProtoRPCRequestHeader) GetSeq() uint64 {
 	if m != nil && m.Seq != nil {
 		return *m.Seq
 	}
 	return 0
+}
+
+// Protobuf RPC response header.
+type ProtoRPCResponseHeader struct {
+	// The service method (matches request op).
+	Op *string `protobuf:"bytes,1,req,name=op" json:"op,omitempty"`
+	// The sequence number (matches request seq).
+	Seq *uint64 `protobuf:"varint,2,req,name=seq" json:"seq,omitempty"`
+	// The optional error string.
+	Error            *string `protobuf:"bytes,3,opt,name=error" json:"error,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *ProtoRPCResponseHeader) Reset()         { *m = ProtoRPCResponseHeader{} }
+func (m *ProtoRPCResponseHeader) String() string { return proto.CompactTextString(m) }
+func (*ProtoRPCResponseHeader) ProtoMessage()    {}
+
+func (m *ProtoRPCResponseHeader) GetOp() string {
+	if m != nil && m.Op != nil {
+		return *m.Op
+	}
+	return ""
+}
+
+func (m *ProtoRPCResponseHeader) GetSeq() uint64 {
+	if m != nil && m.Seq != nil {
+		return *m.Seq
+	}
+	return 0
+}
+
+func (m *ProtoRPCResponseHeader) GetError() string {
+	if m != nil && m.Error != nil {
+		return *m.Error
+	}
+	return ""
 }
 
 func init() {

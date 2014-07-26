@@ -76,8 +76,12 @@ func (ms *MessageStream) ReadString() (string, error) {
 	return string(strbytes), nil
 }
 
-// WriteMessage writes 32-bit length followed by a protobuf message.
+// WriteMessage writes 32-bit length followed by a protobuf message. If m is
+// nil, a blank message is written instead.
 func (ms *MessageStream) WriteMessage(m proto.Message) (int, error) {
+	if m == nil {
+		return ms.WriteString("")
+	}
 	bytes, err := proto.Marshal(m)
 	if err != nil {
 		return 0, Logged(err)
@@ -85,15 +89,18 @@ func (ms *MessageStream) WriteMessage(m proto.Message) (int, error) {
 	return ms.WriteString(string(bytes))
 }
 
-// ReadMessage reads a 32-bit length followed by a protobuf message.
+// ReadMessage reads a 32-bit length followed by a protobuf message. If m is
+// nil, the incoming message is discarded.
 func (ms *MessageStream) ReadMessage(m proto.Message) error {
 	s, err := ms.ReadString()
 	if err != nil {
 		return Logged(err)
 	}
-	err = proto.Unmarshal([]byte(s), m)
-	if err != nil {
-		return Logged(err)
+	if m != nil {
+		err = proto.Unmarshal([]byte(s), m)
+		if err != nil {
+			return Logged(err)
+		}
 	}
 	return nil
 }

@@ -13,31 +13,20 @@
 // limitations under the License.
 
 /*
-	Package protorpc implements a protobuf-based ClientCodec and ServerCodec for the
-	rpc package. Clients can make concurrent or asynchronous requests, and these
-	are handled in whatever order the servers chooses.
+	Package protorpc implements a protobuf-based ClientCodec and ServerCodec for
+	the rpc package. Clients can make concurrent or asynchronous requests, and
+	these are handled in whatever order the servers chooses.
 
 	All service methods take two protobuf message pointers: a request and a
-	response. RPC service method strings and sequence numbers are not sent over
-	the connection separately from the requests and responses. Instead, the
-	request and response protobuf messages must carry this information. To this
-	end, both types of protobuf messages must begin with two fields: a method
-	number and a sequence number. The method number must have tag 1 and can be any
-	of the protobuf types that encode as a positive varint (uint32, enum, etc.).
-	The sequence number must have tag 2 and be of type uint64. For example, the
-	request (or response) protobuf definition might look like:
-
-	  enum MyOperation { MULTIPLY = 1; DIVIDE = 2; }
-	  message MyRequest {
-			required MyOperation op = 1;
-			required uint64 seq = 2;
-			... // additional fields here...
-		}
+	response. RPC service method strings, sequence numbers, and response errors
+	are sent over the connection separately from the requests and responses.
 
 	Wire format: A request or response is encoded on the wire as a 32-bit length
-	(encoded in network byte order), followed by a marshalled protobuf message.
-	The separate length field is used for framing because the protobuf encoding
-	does not preserve message boundaries.
+	(in network byte order), followed by a marshalled protobuf for the header,
+	followed by another 32-bit length, then a marshaled protobuf for the body.
+	Separate length fields are used for framing because the protobuf encoding does
+	not preserve message boundaries. Except for I/O errors, protobufs are encoded
+	in pairs: first the header, then the request or response body.
 */
 package protorpc
 
@@ -52,39 +41,26 @@ import (
 	"cloudproxy/util"
 )
 
-// ProtoClientMux manages the embedding of net/rpc service method names into
-// protobuf request messages.
-type ProtoClientMux interface {
-	// Set the service method string and sequence number for a request.
-	SetRequestHeader(req proto.Message, servicemethod string, seq uint64) error
-
-	// Get the service method string for a given method number
-	GetServiceMethod(number uint64) (string, error)
-}
-
 // clientCodec is a net/rpc client codec for protobuf messages
 type clientCodec struct {
 	m       *util.MessageStream
-	mux     ProtoClientMux
 	sending sync.Mutex
-	resp    []byte
 }
 
-// NewClientCodec returns a new rpc.ClientCodec using protobuf messages on conn,
-// where mux is used to match request messages with the appropriate service and
-// method.
-func NewClientCodec(conn io.ReadWriteCloser, mux ProtoClientMux) rpc.ClientCodec {
-	if m, ok := conn.(*util.MessageStream); ok {
-		return &clientCodec{m, mux, sync.Mutex{}, nil}
-	} else {
-		return &clientCodec{util.NewMessageStream(conn), mux, sync.Mutex{}, nil}
+// NewClientCodec returns a new rpc.ClientCodec using protobuf messages on conn.
+func NewClientCodec(conn io.ReadWriteCloser) rpc.ClientCodec {
+	m, ok := conn.(*util.MessageStream)
+	if !ok {
+		// The given conn lacks framing, so add some.
+		m = util.NewMessageStream(conn)
 	}
+	return &clientCodec{m, sync.Mutex{}}
 }
 
 // NewClient returns a new rpc.Client to handle requests to the set of services
 // at the other end of the connection.
-func NewClient(conn io.ReadWriteCloser, mux ProtoClientMux) *rpc.Client {
-	return rpc.NewClientWithCodec(NewClientCodec(conn, mux))
+func NewClient(conn io.ReadWriteCloser) *rpc.Client {
+	return rpc.NewClientWithCodec(NewClientCodec(conn))
 }
 
 var ErrBadRequestType = errors.New("protorpc: bad request type")
@@ -94,61 +70,56 @@ var ErrMissingResponse = errors.New("protorpc: missing response")
 
 // WriteRequest encodes and sends a net/rpc request header r with body x.
 func (c *clientCodec) WriteRequest(r *rpc.Request, x interface{}) error {
-	y, ok := x.(proto.Message)
-	if !ok || y == nil {
-		return ErrBadRequestType
+	body, ok := x.(proto.Message)
+	if !ok || body == nil {
+		// TODO(kwalsh) Not clear if this is legal, but I think not.
+		// Don't send anything.
+		return util.Logged(ErrBadRequestType)
 	}
-	c.mux.SetRequestHeader(y, r.ServiceMethod, r.Seq)
+	var hdr ProtoRPCRequestHeader
+	hdr.Op = proto.String(r.ServiceMethod)
+	hdr.Seq = proto.Uint64(r.Seq)
 	c.sending.Lock()
-	_, err := c.m.WriteMessage(y) // writes htonl(length), marshal(y)
+	_, err := c.m.WriteMessage(&hdr) // writes htonl(length), marshal(hdr)
+	if err == nil {
+		_, err = c.m.WriteMessage(body) // writes htonl(length), marshal(body)
+	}
 	c.sending.Unlock()
 	return util.Logged(err)
 }
 
 // ReadResponseHeader receives and decodes a net/rpc response header r.
 func (c *clientCodec) ReadResponseHeader(r *rpc.Response) error {
-	// We can't just c.m.ReadMessage(x) because we don't yet know the type of
-	// response message x. Instead, read the still-encoded message as a string,
-	// then decode it (partially) using the ProtoRPCHeader protobuf message type.
-	// Note: It is tempting to instead simply decode the first few fields directly
-	// using proto.DecodeVarint() and friends, but that would rely on the ordering
-	// of encoded fields which is not strictly guaranteed.
-	s, err := c.m.ReadString() // reads htonl(length), string
-	if err != nil {
-		return util.Logged(err)
-	}
-	resp := []byte(s)
-	var hdr ProtoRPCHeader
-	err = proto.Unmarshal(resp, &hdr)
-	if err != nil {
+	var err error
+	var hdr ProtoRPCResponseHeader
+	if err = c.m.ReadMessage(&hdr); err != nil {
 		return util.Logged(err)
 	}
 	r.Seq = *hdr.Seq
-	r.ServiceMethod, err = c.mux.GetServiceMethod(*hdr.Op)
-	if err != nil {
-		return util.Logged(err)
+	r.ServiceMethod = *hdr.Op
+	if hdr.Error != nil {
+		r.Error = *hdr.Error
 	}
-	c.resp = resp
 	return nil
 }
 
 // ReadResponseBody receives and decodes a net/rpc response body x.
 func (c *clientCodec) ReadResponseBody(x interface{}) error {
-	resp := c.resp
-	c.resp = nil
 	if x == nil {
-		return nil
+		// rpc.Client is telling us to read and discard the response, perhaps
+		// because response header contains an error (in which case the server would
+		// have encoded a blank message body).
+		_, err := c.m.ReadString()
+		return util.Logged(err)
 	}
-	if resp == nil {
-		return ErrMissingResponse
+	body, ok := x.(proto.Message)
+	if !ok || body == nil {
+		// TODO(kwalsh) Not clear if this is legal, but I think not.
+		// Read and discard the response body.
+		c.m.ReadString()
+		return util.Logged(ErrBadResponseType)
 	}
-	// Decode the response bytes again, this time using the correct response
-	// message type.
-	y, ok := x.(proto.Message)
-	if !ok || y == nil {
-		return ErrBadResponseType
-	}
-	return proto.Unmarshal(resp, y)
+	return util.Logged(c.m.ReadMessage(body))
 }
 
 // Close closes the channel used by the client codec.
@@ -156,83 +127,85 @@ func (c *clientCodec) Close() error {
 	return c.m.Close()
 }
 
-// ProtoClientMux manages the embedding of net/rpc service method names into
-// protobuf response messages.
-type ProtoServerMux interface {
-	// Set the service method string and sequence number for a response.
-	SetResponseHeader(req proto.Message, servicemethod string, seq uint64) error
-
-	// Get the service method string for a given method number
-	GetServiceMethod(number uint64) (string, error)
-}
-
 // serverCodec is a net/rpc server codec for protobuf messages
 type serverCodec struct {
 	m       *util.MessageStream
-	mux     ProtoServerMux
 	sending sync.Mutex
-	req     []byte
 }
 
-// NewServerCodec returns a new rpc.ServerCodec using protobuf messages on conn,
-// where mux is used to match request messages with the appropriate service and
-// method.
-func NewServerCodec(conn io.ReadWriteCloser, mux ProtoServerMux) rpc.ServerCodec {
-	return &serverCodec{util.NewMessageStream(conn), mux, sync.Mutex{}, nil}
+// NewServerCodec returns a new rpc.ServerCodec using protobuf messages on conn.
+func NewServerCodec(conn io.ReadWriteCloser) rpc.ServerCodec {
+	m, ok := conn.(*util.MessageStream)
+	if !ok {
+		// The given conn lacks framing, so add some.
+		m = util.NewMessageStream(conn)
+	}
+	return &serverCodec{m, sync.Mutex{}}
 }
 
 // ReadRequestHeader receives and decodes a net/rpc request header r.
 func (c *serverCodec) ReadRequestHeader(r *rpc.Request) error {
 	// This is almost identical to ReadResponseHeader(), above.
-	s, err := c.m.ReadString() // reads htonl(length), string
-	if err != nil {
-		return util.Logged(err)
-	}
-	req := []byte(s)
-	var hdr ProtoRPCHeader
-	err = proto.Unmarshal(req, &hdr)
-	if err != nil {
+	var err error
+	var hdr ProtoRPCRequestHeader
+	if err = c.m.ReadMessage(&hdr); err != nil {
 		return util.Logged(err)
 	}
 	r.Seq = *hdr.Seq
-	r.ServiceMethod, err = c.mux.GetServiceMethod(*hdr.Op)
-	if err != nil {
-		return util.Logged(err)
-	}
-	c.req = req
+	r.ServiceMethod = *hdr.Op
 	return nil
 }
 
 // ReadRequestBody receives and decodes a net/rpc request body x.
 func (c *serverCodec) ReadRequestBody(x interface{}) error {
 	// This is almost identical to ReadResponseBody(), above.
-	req := c.req
-	c.req = nil
 	if x == nil {
-		return nil
+		// rpc.Server is telling us to read and discard the request, perhaps because
+		// response header was read successfully but contained an unexpected service
+		// method string. The client would have encoded an actual message body.
+		_, err := c.m.ReadString()
+		return util.Logged(err)
 	}
-	if req == nil {
-		return ErrMissingRequest
+	body, ok := x.(proto.Message)
+	if !ok || body == nil {
+		// TODO(kwalsh) Not clear if this is legal, but I think not.
+		// Read and discard the request body.
+		c.m.ReadString()
+		return util.Logged(ErrBadRequestType)
 	}
-	// Decode the request bytes again, this time using the correct request
-	// message type.
-	y, ok := x.(proto.Message)
-	if !ok || y == nil {
-		return ErrBadRequestType
-	}
-	return proto.Unmarshal(req, y)
+	return util.Logged(c.m.ReadMessage(body))
 }
 
 // WriteResponse encodes and sends a net/rpc response header r with body x.
 func (c *serverCodec) WriteResponse(r *rpc.Response, x interface{}) error {
-	y, ok := x.(proto.Message)
-	if !ok || y == nil {
-		return ErrBadResponseType
+	// This is similar to WriteRequest(), above.
+	var encodeErr error
+	var hdr ProtoRPCResponseHeader
+	hdr.Op = proto.String(r.ServiceMethod)
+	hdr.Seq = proto.Uint64(r.Seq)
+	var body proto.Message
+	if r.Error != "" {
+		// Error responses have empty body. In this case, x can be an empty struct
+		// from net/rpc.Server, and net/rpc.Client will discard the body in any
+		// case, so leave body == nil.
+		hdr.Error = proto.String(r.Error)
+	} else if body, ok := x.(proto.Message); !ok || body == nil {
+		// If x isn't a protobuf, or is a nil protobuf, turn reply into an error and
+		// leave body == nil.
+		encodeErr = ErrBadResponseType
+		msg := encodeErr.Error()
+		hdr.Error = &msg
 	}
-	c.mux.SetResponseHeader(y, r.ServiceMethod, r.Seq)
+
 	c.sending.Lock()
-	_, err := c.m.WriteMessage(y) // writes htonl(length), marshal(req)
+	_, err := c.m.WriteMessage(&hdr) // writes htonl(length), marshal(hdr)
+	if err != nil {
+		_, err = c.m.WriteMessage(body) // writes htonl(length), marshal(body)
+	}
 	c.sending.Unlock()
+	if encodeErr != nil {
+		err = encodeErr
+	}
 	return util.Logged(err)
 }
 

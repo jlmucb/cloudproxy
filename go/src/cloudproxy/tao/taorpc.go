@@ -27,76 +27,6 @@ import (
 	"cloudproxy/util/protorpc"
 )
 
-var opRPCName = map[string]string{
-	"Tao.GetRandomBytes":  "TAO_RPC_GET_RANDOM_BYTES",
-	"Tao.Seal":            "TAO_RPC_SEAL",
-	"Tao.Unseal":          "TAO_RPC_UNSEAL",
-	"Tao.Attest":          "TAO_RPC_ATTEST",
-	"Tao.GetTaoName":      "TAO_RPC_GET_TAO_NAME",
-	"Tao.ExtendTaoName":   "TAO_RPC_EXTEND_TAO_NAME",
-	"Tao.GetSharedSecret": "TAO_RPC_GET_SHARED_SECRET",
-}
-
-var opGoName = make(map[string]string)
-
-func init() {
-	for goName, rpcName := range opRPCName {
-		opGoName[rpcName] = goName
-	}
-}
-
-// Convert string "Tao.FooBar" into integer TaoRPCOperation_TAO_RPC_FOO_BAR.
-func goToRPC(m string) (TaoRPCOperation, error) {
-	op := TaoRPCOperation(TaoRPCOperation_value[opRPCName[m]])
-	if op == TaoRPCOperation(0) {
-		return op, protorpc.ErrBadRequestType
-	}
-	return op, nil
-}
-
-// Convert integer TaoRPCOperation_TAO_RPC_FOO_BAR into string "Tao.FooBar".
-func rpcToGo(op TaoRPCOperation) (string, error) {
-	s := opGoName[TaoRPCOperation_name[int32(op)]]
-	if s == "" {
-		return "", protorpc.ErrBadRequestType
-	}
-	return s, nil
-}
-
-type taoMux struct{}
-
-func (taoMux) SetRequestHeader(req proto.Message, servicemethod string, seq uint64) error {
-	m, ok := req.(*TaoRPCRequest)
-	if !ok || m == nil {
-		return protorpc.ErrBadRequestType
-	}
-	rpc, err := goToRPC(servicemethod)
-	if err != nil {
-		return err
-	}
-	m.Rpc = &rpc
-	m.Seq = &seq
-	return nil
-}
-
-func (taoMux) SetResponseHeader(req proto.Message, servicemethod string, seq uint64) error {
-	m, ok := req.(*TaoRPCResponse)
-	if !ok || m == nil {
-		return protorpc.ErrBadResponseType
-	}
-	rpc, err := goToRPC(servicemethod)
-	if err != nil {
-		return err
-	}
-	m.Rpc = &rpc
-	m.Seq = &seq
-	return nil
-}
-
-func (taoMux) GetServiceMethod(number uint64) (string, error) {
-	return rpcToGo(TaoRPCOperation(int32(number)))
-}
-
 // TaoRPC sends requests between this hosted program and the host Tao.
 type TaoRPC struct {
 	rpc         *rpc.Client
@@ -118,7 +48,7 @@ func DeserializeTaoRPC(s string) (*TaoRPC, error) {
 		return nil, errors.New("taorpc: unrecognized $" + HostTaoEnvVar + " string " + s +
 			" (" + err.Error() + ")")
 	}
-	return &TaoRPC{protorpc.NewClient(ms, taoMux{}), "Tao"}, nil
+	return &TaoRPC{protorpc.NewClient(ms), "Tao"}, nil
 }
 
 // NewTaoRPC constructs a TaoRPC for the default gob encoding rpc client using

@@ -19,27 +19,13 @@
 
 package tao;
 
-enum TaoRPCOperation {
-  TAO_RPC_GET_RANDOM_BYTES = 1;
-  TAO_RPC_SEAL = 2;
-  TAO_RPC_UNSEAL = 3;
-  TAO_RPC_ATTEST = 4;
-  TAO_RPC_GET_TAO_NAME = 5;
-  TAO_RPC_EXTEND_TAO_NAME = 6;
-  TAO_RPC_GET_SHARED_SECRET = 7;
-}
-
 message TaoRPCRequest {
-  required TaoRPCOperation rpc = 1;
-  required uint64 seq = 2;
-  optional bytes data = 3;
-  optional int32 size = 4;
-  optional string policy = 5;
+  optional bytes data = 1;
+  optional int32 size = 2;
+  optional string policy = 3;
 }
 
 message TaoRPCResponse {
-  required TaoRPCOperation rpc = 1;
-  required uint64 seq = 2;
-  optional bytes data = 3;
-  optional string policy = 4;
+  optional bytes data = 1;
+  optional string policy = 2;
 }

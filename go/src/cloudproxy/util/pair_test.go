@@ -21,26 +21,39 @@ import (
 	"testing"
 )
 
+type NopWriteCloser struct {
+	c io.Writer
+}
+
+func (w *NopWriteCloser) Write(p []byte) (n int, err error) {
+	return w.c.Write(p)
+}
+
+func (w *NopWriteCloser) Close() error {
+	return nil
+}
+
 func PairHelper(t *testing.T, closeA, closeB bool, msg string) {
 	a, _ := ioutil.TempFile(os.TempDir(), "tempA")
 	defer os.Remove(a.Name())
 	b, _ := ioutil.TempFile(os.TempDir(), "tempB")
 	defer os.Remove(b.Name())
 
-	var p *PairReadWriteCloser
-	var c1, c2 io.Closer
+	var rA io.ReadCloser
 	if closeA {
-		c1 = a
+		rA = a
 	} else {
-		c1 = nil
+		rA = ioutil.NopCloser(a)
 	}
+	var rB io.WriteCloser
 	if closeB {
-		c2 = b
+		rB = b
 	} else {
-		c2 = nil
+		// rB = ioutil.NopCloser(b) // argh: doesn't exist?
+		rB = &NopWriteCloser{b}
 	}
 
-	p = NewPairReadWriteCloser(a, b, c1, c2)
+	p := NewPairReadWriteCloser(rA, rB)
 	_, err := io.WriteString(p, "hello")
 	if err != nil {
 		t.Error(err.Error)
@@ -64,7 +77,7 @@ func PairHelper(t *testing.T, closeA, closeB bool, msg string) {
 	a, _ = os.Open(a.Name())
 	b, _ = os.Open(b.Name())
 
-	p = NewPairReadWriteCloser(b, a, b, a)
+	p = NewPairReadWriteCloser(b, a)
 	buf := make([]byte, 100)
 	n, err := io.ReadFull(p, buf)
 	if err != io.ErrUnexpectedEOF {

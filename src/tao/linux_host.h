@@ -93,9 +93,14 @@ class LinuxHost {
   /// @param tao The Tao implementation that handles the message.
   /// @param[in,out] child The hosted program that sent the message.
   /// If the child requests a name extension, this will be modified.
-  /// @param rpc The RPC containing the received message.
+  /// @param reqHdr The received message header.
+  /// @param req The RPC containing the received message body.
+  /// @param[out] respHdr The message header to send if return value is true.
   /// @param[out] resp The response to send if return value is true.
-  virtual bool HandleTaoRPC(HostedLinuxProcess *child, const TaoRPCRequest &rpc,
+  virtual bool HandleTaoRPC(HostedLinuxProcess *child,
+                            const ProtoRPCRequestHeader &reqHdr,
+                            const TaoRPCRequest &req,
+                            ProtoRPCResponseHeader *respHdr,
                             TaoRPCResponse *resp) const;
 
   /// Handle incoming messages from an administrative program.

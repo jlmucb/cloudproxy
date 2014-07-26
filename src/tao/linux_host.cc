@@ -95,103 +95,94 @@ bool LinuxHost::Init() {
   return true;
 }
 
+static bool endsWith(const string &msg, const string &suffix) {
+  return (msg.size() >= suffix.size() &&
+          msg.substr(msg.size() - suffix.size()) == suffix);
+}
+
 bool LinuxHost::HandleTaoRPC(HostedLinuxProcess *child,
+                             const ProtoRPCRequestHeader &rpcHdr,
                              const TaoRPCRequest &rpc,
+                             ProtoRPCResponseHeader *respHdr,
                              TaoRPCResponse *resp) const {
-  resp->set_rpc(rpc.rpc());
-  resp->set_seq(rpc.seq());
+  respHdr->set_op(rpcHdr.op());
+  respHdr->set_seq(rpcHdr.seq());
   string result_data;
   string result_policy;
   Statement s;
   bool success = false;
   // TODO(kwalsh) Propagate better error messages
   string failure_msg = "Operation failed";
-  switch (rpc.rpc()) {
-    case TAO_RPC_GET_TAO_NAME:
-      LOG(INFO) << "GetTaoName() for ::" << elideString(child->subprin);
-      result_data = tao_host_->TaoHostName() + "::" + child->subprin;
-      resp->set_data(result_data);
-      success = true;
-      break;
-    case TAO_RPC_EXTEND_TAO_NAME:
-      LOG(INFO) << "ExtendTaoName() for ::" << elideString(child->subprin);
-      if (!rpc.has_data() && rpc.data() != "") {
-        failure_msg = "Invalid RPC: must supply data for ExtendName";
-        LOG(ERROR) << failure_msg;
-        break;
-      }
+  LOG(INFO) << rpcHdr.op() << " for ::" << elideString(child->subprin);
+  if (endsWith(rpcHdr.op(), ".GetTaoName")) {
+    result_data = tao_host_->TaoHostName() + "::" + child->subprin;
+    resp->set_data(result_data);
+    success = true;
+  } else if (endsWith(rpcHdr.op(), ".ExtendTaoName")) {
+    LOG(INFO) << "ExtendTaoName() for ::" << elideString(child->subprin);
+    if (!rpc.has_data() && rpc.data() != "") {
+      failure_msg = "Invalid RPC: must supply data for ExtendName";
+      LOG(ERROR) << failure_msg;
+    } else {
       // TODO(kwalsh) Sanity checking on subprin format.
       child->subprin += "::" + rpc.data();
       success = true;
-      break;
-    case TAO_RPC_GET_RANDOM_BYTES:
-      LOG(INFO) << "GetRandomBytes() for ::" << elideString(child->subprin);
-      if (!rpc.has_size()) {
-        LOG(ERROR) << "Invalid RPC: must supply arguments for GetRandomBytes";
-        break;
-      }
+    }
+  } else if (endsWith(rpcHdr.op(), ".GetRandomBytes")) {
+    if (!rpc.has_size()) {
+      LOG(ERROR) << "Invalid RPC: must supply arguments for GetRandomBytes";
+    } else {
       success =
           tao_host_->GetRandomBytes(child->subprin, rpc.size(), &result_data);
       if (success) resp->set_data(result_data);
-      break;
-    case TAO_RPC_GET_SHARED_SECRET:
-      LOG(INFO) << "GetSharedSecret() for ::" << elideString(child->subprin);
-      if (!rpc.has_size() || !rpc.has_policy()) {
-        failure_msg = "Invalid RPC: must supply arguments for GetSharedSecret";
-        LOG(ERROR) << failure_msg;
-        break;
-      }
+    }
+  } else if (endsWith(rpcHdr.op(), ".GetSharedSecret")) {
+    if (!rpc.has_size() || !rpc.has_policy()) {
+      failure_msg = "Invalid RPC: must supply arguments for GetSharedSecret";
+      LOG(ERROR) << failure_msg;
+    } else {
       success = HandleGetSharedSecret(child->subprin, rpc.size(), rpc.policy(),
                                       &result_data);
       if (success) resp->set_data(result_data);
-      break;
-    case TAO_RPC_ATTEST:
-      LOG(INFO) << "Attest() for ::" << elideString(child->subprin);
-      if (!rpc.has_data()) {
-        failure_msg = "Invalid RPC: must supply arguments for GetRandomBytes";
-        LOG(ERROR) << failure_msg;
-        break;
-      }
-      if (!s.ParsePartialFromString(rpc.data()) ||
-          !(s.has_delegate() || s.has_predicate_name())) {
-        failure_msg = "Invalid RPC: must supply legal partial statement";
-        LOG(ERROR) << failure_msg;
-        break;
-      }
+    }
+  } else if (endsWith(rpcHdr.op(), ".Attest")) {
+    if (!rpc.has_data()) {
+      failure_msg = "Invalid RPC: must supply arguments for Attest";
+      LOG(ERROR) << failure_msg;
+    } else if (!s.ParsePartialFromString(rpc.data()) ||
+               !(s.has_delegate() || s.has_predicate_name())) {
+      failure_msg = "Invalid RPC: must supply legal partial statement";
+      LOG(ERROR) << failure_msg;
+    } else {
       success = tao_host_->Attest(child->subprin, &s, &result_data);
       if (success) resp->set_data(result_data);
-      break;
-    case TAO_RPC_SEAL:
-      LOG(INFO) << "Seal() for ::" << elideString(child->subprin);
-      if (!rpc.has_data()) {
-        LOG(ERROR) << "Invalid RPC: must supply data for Seal";
-        break;
-      }
+    }
+  } else if (endsWith(rpcHdr.op(), ".Seal")) {
+    if (!rpc.has_data()) {
+      LOG(ERROR) << "Invalid RPC: must supply data for Seal";
+    } else {
       success =
           HandleSeal(child->subprin, rpc.data(), rpc.policy(), &result_data);
       if (success) resp->set_data(result_data);
-      break;
-    case TAO_RPC_UNSEAL:
-      LOG(INFO) << "Unseal() for ::" << elideString(child->subprin);
-      if (!rpc.has_data()) {
-        LOG(ERROR) << "Invalid RPC: must supply sealed data for Unseal";
-        break;
-      }
+    }
+  } else if (endsWith(rpcHdr.op(), ".Unseal")) {
+    if (!rpc.has_data()) {
+      LOG(ERROR) << "Invalid RPC: must supply sealed data for Unseal";
+    } else {
       success = HandleUnseal(child->subprin, rpc.data(), &result_data,
                              &result_policy);
       if (success) {
         resp->set_data(result_data);
         resp->set_policy(result_policy);
       }
-      break;
-    default:
-      LOG(ERROR) << "Unknown Tao RPC " << rpc.rpc();
-      failure_msg = "Unknown Tao RPC";
-      success = false;
-      break;
+    }
+  } else {
+    LOG(ERROR) << "Unknown Tao RPC " << rpcHdr.op();
+    failure_msg = "Unknown Tao RPC";
+    success = false;
   }
   if (!success) {
-    resp->set_error(failure_msg);
+    respHdr->set_error(failure_msg);
     LOG(INFO) << "Result: FAIL (" << failure_msg << ")";
   } else {
     LOG(INFO) << "Result: OK";
@@ -602,6 +593,8 @@ bool LinuxHost::Listen() {
          /**/) {
       HostedLinuxProcess *child = it->get();
       fd = child->rpc_channel->GetReadFileDescriptor();
+      ProtoRPCRequestHeader rpcHdr;
+      ProtoRPCResponseHeader respHdr;
       TaoRPCRequest rpc;
       TaoRPCResponse resp;
       string subprin = child->subprin;
@@ -611,8 +604,10 @@ bool LinuxHost::Listen() {
         continue;
       }
       VLOG(3) << "Host process request";
-      if (!child->rpc_channel->ReceiveMessage(&rpc, &eof) || eof ||
-          !HandleTaoRPC(child, rpc, &resp) ||
+      if (!child->rpc_channel->ReceiveMessage(&rpcHdr, &eof) || eof ||
+          !child->rpc_channel->ReceiveMessage(&rpc, &eof) || eof ||
+          !HandleTaoRPC(child, rpcHdr, rpc, &respHdr, &resp) ||
+          !child->rpc_channel->SendMessage(respHdr) ||
           !child->rpc_channel->SendMessage(resp)) {
         if (eof)
           LOG(INFO) << "Lost connection to ::" << elideString(subprin);

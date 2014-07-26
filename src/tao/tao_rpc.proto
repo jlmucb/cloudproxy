@@ -19,28 +19,38 @@
 
 package tao;
 
-enum TaoRPCOperation {
-  TAO_RPC_GET_RANDOM_BYTES = 1;
-  TAO_RPC_SEAL = 2;
-  TAO_RPC_UNSEAL = 3;
-  TAO_RPC_ATTEST = 4;
-  TAO_RPC_GET_TAO_NAME = 5;
-  TAO_RPC_EXTEND_TAO_NAME = 6;
-  TAO_RPC_GET_SHARED_SECRET = 7;
+// Copied from: go/src/cloudproxy/util/protorpc/protorpc.proto
+
+// Protobuf RPC request header
+message ProtoRPCRequestHeader {
+  // The service method.
+  required string op = 1;
+
+  // The sequence number.
+  required uint64 seq = 2;
 }
 
-message TaoRPCRequest {
-  required TaoRPCOperation rpc = 1;
+// Protobuf RPC response header.
+message ProtoRPCResponseHeader {
+  // The service method (matches request op).
+  required string op = 1;
+
+  // The sequence number (matches request seq).
   required uint64 seq = 2;
-  optional bytes data = 3;
-  optional int32 size = 4;
-  optional string policy = 5;
+
+  // The optional error string.
+  optional string error = 3;
+}
+
+// Copied from: go/src/cloudproxy/tao/tao_rpc.proto
+
+message TaoRPCRequest {
+  optional bytes data = 1;
+  optional int32 size = 2;
+  optional string policy = 3;
 }
 
 message TaoRPCResponse {
-  required TaoRPCOperation rpc = 1;
-  required uint64 seq = 2;
-  optional string error = 3;
-  optional bytes data = 4;
-  optional string policy = 5;
+  optional bytes data = 1;
+  optional string policy = 2;
 }

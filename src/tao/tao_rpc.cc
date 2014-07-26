@@ -26,30 +26,27 @@ namespace tao {
 
 bool TaoRPC::GetTaoName(string *name) {
   TaoRPCRequest rpc;
-  rpc.set_rpc(TAO_RPC_GET_TAO_NAME);
-  return Request(&rpc, name, nullptr /* policy */);
+  return Request("Tao.GetTaoName", rpc, name, nullptr /* policy */);
 }
 
 bool TaoRPC::ExtendTaoName(const string &subprin) {
   TaoRPCRequest rpc;
-  rpc.set_rpc(TAO_RPC_EXTEND_TAO_NAME);
   rpc.set_data(subprin);
-  return Request(&rpc, nullptr /* data */, nullptr /* policy */);
+  return Request("Tao.ExtendTaoName", rpc, nullptr /* data */,
+                 nullptr /* policy */);
 }
 
 bool TaoRPC::GetRandomBytes(size_t size, string *bytes) {
   TaoRPCRequest rpc;
-  rpc.set_rpc(TAO_RPC_GET_RANDOM_BYTES);
   rpc.set_size(size);
-  return Request(&rpc, bytes, nullptr /* policy */);
+  return Request("Tao.GetRandomBytes", rpc, bytes, nullptr /* policy */);
 }
 
 bool TaoRPC::GetSharedSecret(size_t size, const string &policy, string *bytes) {
   TaoRPCRequest rpc;
-  rpc.set_rpc(TAO_RPC_GET_SHARED_SECRET);
   rpc.set_size(size);
   rpc.set_policy(policy);
-  return Request(&rpc, bytes, nullptr /* policy */);
+  return Request("Tao.GetSharedSecret", rpc, bytes, nullptr /* policy */);
 }
 
 bool TaoRPC::Attest(const Statement &stmt, string *attestation) {
@@ -59,33 +56,56 @@ bool TaoRPC::Attest(const Statement &stmt, string *attestation) {
     return false;
   }
   TaoRPCRequest rpc;
-  rpc.set_rpc(TAO_RPC_ATTEST);
   rpc.set_data(serialized_stmt);
-  return Request(&rpc, attestation, nullptr /* policy */);
+  return Request("Tao.Attest", rpc, attestation, nullptr /* policy */);
 }
 
 bool TaoRPC::Seal(const string &data, const string &policy, string *sealed) {
   TaoRPCRequest rpc;
-  rpc.set_rpc(TAO_RPC_SEAL);
   rpc.set_data(data);
   rpc.set_policy(policy);
-  return Request(&rpc, sealed, nullptr /* policy */);
+  return Request("Tao.Seal", rpc, sealed, nullptr /* policy */);
 }
 
 bool TaoRPC::Unseal(const string &sealed, string *data, string *policy) {
   TaoRPCRequest rpc;
-  rpc.set_rpc(TAO_RPC_UNSEAL);
   rpc.set_data(sealed);
-  return Request(&rpc, data, policy);
+  return Request("Tao.Unseal", rpc, data, policy);
 }
 
-bool TaoRPC::Request(TaoRPCRequest *req, string *data, string *policy) {
-  req->set_seq(++last_seq_);
+bool TaoRPC::Request(const string &op, const TaoRPCRequest &req, string *data,
+                     string *policy) {
+  ProtoRPCRequestHeader reqHdr;
+  ProtoRPCResponseHeader respHdr;
+  reqHdr.set_op(op);
+  reqHdr.set_seq(++last_seq_);
   TaoRPCResponse resp;
   bool eof;
-  if (!channel_->SendMessage(*req)) {
+  if (!channel_->SendMessage(reqHdr)) {
+    failure_msg_ = "Channel send header failed";
+    LOG(ERROR) << "RPC to Tao host failed: " << failure_msg_;
+    return false;
+  }
+  if (!channel_->SendMessage(req)) {
     failure_msg_ = "Channel send failed";
     LOG(ERROR) << "RPC to Tao host failed: " << failure_msg_;
+    return false;
+  }
+  if (!channel_->ReceiveMessage(&respHdr, &eof)) {
+    failure_msg_ = "Channel receive header failed";
+    LOG(ERROR) << "RPC to Tao host failed: " << failure_msg_;
+    return false;
+  }
+  if (eof) {
+    failure_msg_ = "Channel is closed";
+    LOG(ERROR) << "RPC to Tao host failed: " << failure_msg_;
+    return false;
+  }
+  if (respHdr.has_error()) {
+    failure_msg_ = respHdr.error();
+    LOG(ERROR) << "RPC to Tao host failed: " << failure_msg_;
+    string discard;
+    channel_->ReceiveString(&discard, &eof);
     return false;
   }
   if (!channel_->ReceiveMessage(&resp, &eof)) {
@@ -98,12 +118,12 @@ bool TaoRPC::Request(TaoRPCRequest *req, string *data, string *policy) {
     LOG(ERROR) << "RPC to Tao host failed: " << failure_msg_;
     return false;
   }
-  if (resp.has_error()) {
-    failure_msg_ = resp.error();
+  if (respHdr.op() != op) {
+    failure_msg_ = "Unexpected operation in response";
     LOG(ERROR) << "RPC to Tao host failed: " << failure_msg_;
     return false;
   }
-  if (resp.seq() != req->seq()) {
+  if (respHdr.seq() != reqHdr.seq()) {
     failure_msg_ = "Unexpected sequence number in response";
     LOG(ERROR) << "RPC to Tao host failed: " << failure_msg_;
     return false;

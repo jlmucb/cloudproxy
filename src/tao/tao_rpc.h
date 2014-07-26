@@ -73,10 +73,12 @@ class TaoRPC : public Tao {
 
  private:
   /// Do an RPC request/response interaction with the host Tao.
-  /// @param[in,out] req The request to send. The sequence number is set.
+  /// @param op The operation.
+  /// @param req The request to send.
   /// @param[out] data The returned data, if not nullptr.
   /// @param[out] policy The returned policy, if not nullptr.
-  bool Request(TaoRPCRequest *req, string *data, string *policy);
+  bool Request(const string &op, const TaoRPCRequest &req, string *data,
+               string *policy);
 
   DISALLOW_COPY_AND_ASSIGN(TaoRPC);
 };

@@ -2,17 +2,6 @@
 // source: linux_admin_rpc.proto
 // DO NOT EDIT!
 
-/*
-Package tao is a generated protocol buffer package.
-
-It is generated from these files:
-	linux_admin_rpc.proto
-
-It has these top-level messages:
-	LinuxAdminRPCRequest
-	LinuxAdminRPCHostedProgramList
-	LinuxAdminRPCResponse
-*/
 package tao
 
 import proto "code.google.com/p/goprotobuf/proto"

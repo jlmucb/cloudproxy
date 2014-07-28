@@ -15,7 +15,6 @@
 package tpm
 
 import (
-	"bytes"
 	"crypto/rand"
 	"os"
 	"testing"
@@ -34,62 +33,12 @@ func TestEncoding(t *testing.T) {
 	var hdr CommandHeader
 	var size uint32
 	out := []interface{}{&hdr, &size}
-	if err := Unpack(b, out); err != nil {
+	if err := SimpleUnpack(b, out); err != nil {
 		t.Fatal("Couldn't unpack the packed bytes")
 	}
 
 	if size != 137 {
 		t.Fatal("Got the wrong size back")
-	}
-}
-
-func TestVariableSmallerSlice(t *testing.T) {
-	ss := SliceSize(10)
-	inb := make([]byte, ss)
-	b, err := Pack([]interface{}{ss, inb})
-	if err != nil {
-		t.Fatal("Couldn't pack a length and a byte slice:", err)
-	}
-
-	var outss SliceSize
-	outb := make([]byte, 16)
-	if err := Unpack(b, []interface{}{&outss, ResizeableSlice(&outb)}); err != nil {
-		t.Fatal("Couldn't unpack a variable slice:", err)
-	}
-
-	if outss != ss {
-		t.Fatal("Got the wrong size back for the variable slice")
-	}
-
-	if !bytes.Equal(outb, inb) {
-		t.Fatal("Got the wrong bytes back for a variable slice")
-	}
-}
-
-func TestVariableLargerSlice(t *testing.T) {
-	ss := SliceSize(100)
-	inb := make([]byte, ss)
-	b, err := Pack([]interface{}{ss, inb})
-	if err != nil {
-		t.Fatal("Couldn't pack a length and a byte slice:", err)
-	}
-
-	var outss SliceSize
-	outb := make([]byte, 16)
-	if err := Unpack(b, []interface{}{&outss, ResizeableSlice(&outb)}); err != nil {
-		t.Fatal("Couldn't unpack a variable slice:", err)
-	}
-
-	if outss != ss {
-		t.Fatal("Got the wrong size back for the variable slice")
-	}
-
-	if !bytes.Equal(outb, inb) {
-		t.Fatal("Got the wrong bytes back for a variable slice")
-	}
-
-	if len(outb) != len(inb) {
-		t.Fatal("wrong size for the variable slice")
 	}
 }
 

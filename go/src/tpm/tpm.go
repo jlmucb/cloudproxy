@@ -140,44 +140,46 @@ type SliceSize uint32
 // beforehand exactly how many bytes the TPM might produce.
 type ResizeableSlice *[]byte
 
+// SimpleUnpack calls Unpack with a nil header and rest as 0. This is used when
+// there is no resizeable slice.
+func SimpleUnpack(b []byte, resp []interface{}) error {
+    return Unpack(b, resp, nil, 0)
+}
+
 // Unpack decodes from a byte array a sequence of elements that are either
 // pointers to fixed length types or slices of fixed-length types. It uses
-// binary.Read to do the decoding.
-func Unpack(b []byte, resp []interface{}) error {
+// binary.Read to do the decoding. If rh is not nil, then the size is used to
+// resize a ResizeableSlice.
+func Unpack(b []byte, resp []interface{}, rh *ResponseHeader, rest uint) error {
 	buf := bytes.NewBuffer(b)
-	var nextSliceSize SliceSize
-	var resizeNext bool
+	var resized bool
 	for _, r := range resp {
-		if resizeNext {
-			// This must be a byte slice to resize.
-			bs, ok := r.(ResizeableSlice)
-			if !ok {
-				return errors.New("a *SliceSize must be followed by a *[]byte")
-			}
+        bs, ok := r.(ResizeableSlice)
+        if ok {
+            if rh == nil {
+                return errors.New("found a ResizeableSlice but no header")
+            }
 
-			// Resize the slice to match the number of bytes the TPM says it
-			// returned for this value.
-			l := len(*bs)
-			if int(nextSliceSize) > l {
-				*bs = append(*bs, make([]byte, int(nextSliceSize)-l)...)
-			} else if int(nextSliceSize) < l {
-				*bs = (*bs)[:nextSliceSize]
-			} // otherwise, don't change the size at all
+            if resized {
+                return errors.New("can't resize two arrays in a single response")
+            }
 
-			nextSliceSize = 0
-			resizeNext = false
-		}
+            size := uint(rh.Size) - rest
+            l := uint(len(*bs))
+            if size > l {
+                *bs = append(*bs, make([]byte, size - l)...)
+            } else if size < l {
+                *bs = (*bs)[:size]
+            }
+
+            resized = true
+        }
 
 		// Note that this only makes sense if the elements of resp are either
 		// pointers or slices, since otherwise the decoded values just get
 		// thrown away.
 		if err := binary.Read(buf, binary.BigEndian, r); err != nil {
 			return err
-		}
-
-		if ss, ok := r.(*SliceSize); ok {
-			nextSliceSize = *ss
-			resizeNext = true
 		}
 	}
 
@@ -216,7 +218,7 @@ func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out 
 		return err
 	}
 
-	if err := Unpack(outb[:rhSize], []interface{}{&rh}); err != nil {
+	if err := SimpleUnpack(outb[:rhSize], []interface{}{&rh}); err != nil {
 		return err
 	}
 
@@ -232,14 +234,24 @@ func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out 
 	}
 
 	if rh.Size > uint32(rhSize) {
-		if err := Unpack(outb[rhSize:], out); err != nil {
+        // Calculate the size of the rest of the structures (the ones that
+        // aren't ResizeableSlice). This cast is safe, since we already know
+        // that the encoding/binary package can compute the size of the response
+        // header, so its return value will be nonnegative.
+        rest := uint(binary.Size(&rh))
+        for _, r := range out {
+            if _, ok := r.(ResizeableSlice); !ok {
+                rest += uint(binary.Size(r))
+            }
+        }
+
+		if err := Unpack(outb[rhSize:], out, &rh, rest); err != nil {
 			return err
 		}
 	}
 
 	return nil
 }
-
 // ReadPCR reads a PCR value from the TPM.
 func ReadPCR(f *os.File, pcr uint32) ([]byte, error) {
 	in := []interface{}{pcr}
@@ -442,11 +454,10 @@ func Seal(f *os.File, sc *SealCommand, pcrs *PCRInfoLong, data []byte, sca *Seal
 
 	in := []interface{}{sc, uint32(pcrsize), pcrs, datasize, data, sca}
 
-	var ss SliceSize
 	// The slice will be resized by Unpack to the size of the sealed value.
 	b := make([]byte, datasize)
 	var resp SealResponse
-	out := []interface{}{&ss, &b, &resp}
+	out := []interface{}{&b, &resp}
 	if err := submitTPMRequest(f, tagRQUAuth1Command, ordSeal, in, out); err != nil {
 		return nil, nil, err
 	}

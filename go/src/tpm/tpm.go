@@ -129,12 +129,6 @@ type ResponseHeader struct {
 	Res  uint32
 }
 
-// A SliceSize is used to detect incoming variable-sized array responses. Note
-// that any time there is a SliceSize followed by a slice in a respones, this
-// slice must be resized to match its preceeding SliceSize after
-// submitTPMRequest, since the Unpack code doesn't resize the underlying slice.
-type SliceSize uint32
-
 // A ResizeableSlice is a pointer to a slice so this slice can be resized
 // dynamically. This is critical for cases like Seal, where we don't know
 // beforehand exactly how many bytes the TPM might produce.
@@ -143,37 +137,38 @@ type ResizeableSlice *[]byte
 // SimpleUnpack calls Unpack with a nil header and rest as 0. This is used when
 // there is no resizeable slice.
 func SimpleUnpack(b []byte, resp []interface{}) error {
-    return Unpack(b, resp, nil, 0)
+	return Unpack(b, resp, nil, 0)
 }
 
 // Unpack decodes from a byte array a sequence of elements that are either
 // pointers to fixed length types or slices of fixed-length types. It uses
 // binary.Read to do the decoding. If rh is not nil, then the size is used to
-// resize a ResizeableSlice.
+// resize a ResizeableSlice. The size of the byte array is taken to be rh.Size -
+// rest.
 func Unpack(b []byte, resp []interface{}, rh *ResponseHeader, rest uint) error {
 	buf := bytes.NewBuffer(b)
 	var resized bool
 	for _, r := range resp {
-        bs, ok := r.(ResizeableSlice)
-        if ok {
-            if rh == nil {
-                return errors.New("found a ResizeableSlice but no header")
-            }
+		bs, ok := r.(ResizeableSlice)
+		if ok {
+			if rh == nil {
+				return errors.New("found a ResizeableSlice but no header")
+			}
 
-            if resized {
-                return errors.New("can't resize two arrays in a single response")
-            }
+			if resized {
+				return errors.New("can't resize two arrays in a single response")
+			}
 
-            size := uint(rh.Size) - rest
-            l := uint(len(*bs))
-            if size > l {
-                *bs = append(*bs, make([]byte, size - l)...)
-            } else if size < l {
-                *bs = (*bs)[:size]
-            }
+			size := uint(rh.Size) - rest
+			l := uint(len(*bs))
+			if size > l {
+				*bs = append(*bs, make([]byte, size-l)...)
+			} else if size < l {
+				*bs = (*bs)[:size]
+			}
 
-            resized = true
-        }
+			resized = true
+		}
 
 		// Note that this only makes sense if the elements of resp are either
 		// pointers or slices, since otherwise the decoded values just get
@@ -234,16 +229,16 @@ func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out 
 	}
 
 	if rh.Size > uint32(rhSize) {
-        // Calculate the size of the rest of the structures (the ones that
-        // aren't ResizeableSlice). This cast is safe, since we already know
-        // that the encoding/binary package can compute the size of the response
-        // header, so its return value will be nonnegative.
-        rest := uint(binary.Size(&rh))
-        for _, r := range out {
-            if _, ok := r.(ResizeableSlice); !ok {
-                rest += uint(binary.Size(r))
-            }
-        }
+		// Calculate the size of the rest of the structures (the ones that
+		// aren't ResizeableSlice). This cast is safe, since we already know
+		// that the encoding/binary package can compute the size of the response
+		// header, so its return value will be nonnegative.
+		rest := uint(binary.Size(&rh))
+		for _, r := range out {
+			if _, ok := r.(ResizeableSlice); !ok {
+				rest += uint(binary.Size(r))
+			}
+		}
 
 		if err := Unpack(outb[rhSize:], out, &rh, rest); err != nil {
 			return err
@@ -252,6 +247,7 @@ func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out 
 
 	return nil
 }
+
 // ReadPCR reads a PCR value from the TPM.
 func ReadPCR(f *os.File, pcr uint32) ([]byte, error) {
 	in := []interface{}{pcr}
@@ -366,7 +362,7 @@ func OIAP(f *os.File) (*OIAPResponse, error) {
 func GetRandom(f *os.File, size uint32) ([]byte, error) {
 	in := []interface{}{size}
 
-	var outSize SliceSize
+	var outSize uint32
 	b := make([]byte, int(size))
 	out := []interface{}{&outSize, ResizeableSlice(&b)}
 

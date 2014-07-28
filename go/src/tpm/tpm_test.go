@@ -15,7 +15,9 @@
 package tpm
 
 import (
+	"bytes"
 	"crypto/rand"
+	"encoding/binary"
 	"os"
 	"testing"
 )
@@ -183,4 +185,58 @@ func TestOSAP(t *testing.T) {
 	}
 
 	t.Logf("From OSAP, go AuthHandle %d and NonceEven % x and EvenOSAP % x\n", resp.AuthHandle, resp.NonceEven, resp.EvenOSAP)
+}
+
+func TestResizeableSliceNoHeader(t *testing.T) {
+	var b []byte
+	var outb []byte
+	out := []interface{}{ResizeableSlice(&outb)}
+	if err := Unpack(b, out, nil, 0); err == nil {
+		t.Fatal("Incorrectly unpacked a ResizeableSlice without using a header")
+	}
+}
+
+func TestResizeableSlice(t *testing.T) {
+	// Set up an encoded slice with a byte array.
+	sr := &SealResponse{
+		NonceEven:   [20]byte{},
+		ContSession: 1,
+		PubAuth:     [20]byte{},
+	}
+
+	b := make([]byte, 322)
+	if _, err := rand.Read(b); err != nil {
+		t.Fatal("Couldn't read random bytes into the byte array")
+	}
+
+	rh := &ResponseHeader{
+		Tag:  tagRSPAuth1Command,
+		Size: 0,
+		Res:  0,
+	}
+
+	rh.Size = uint32(binary.Size(rh) + binary.Size(sr) + binary.Size(b))
+
+	in := []interface{}{rh, sr, b}
+	bb, err := Pack(in)
+	if err != nil {
+		t.Fatal("Couldn't pack the bytes:", err)
+	}
+
+	rest := uint(binary.Size(rh) + binary.Size(sr))
+	var rh2 ResponseHeader
+	var sr2 SealResponse
+	b2 := make([]byte, 20)
+
+	// Normally, the response header is read separately. But this time, we
+	// happen to already have one handy, so we use it instead to simplify the
+	// test.
+	out := []interface{}{&rh2, &sr2, ResizeableSlice(&b2)}
+	if err := Unpack(bb, out, rh, rest); err != nil {
+		t.Fatal("Couldn't unpack the resizeable values:", err)
+	}
+
+	if !bytes.Equal(b2, b) {
+		t.Fatal("ResizeableSlice was not resized or copied correctly")
+	}
 }

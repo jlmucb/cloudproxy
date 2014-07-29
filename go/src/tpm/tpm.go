@@ -60,16 +60,16 @@ const (
 // Each PCR has a fixed size of 20 bytes.
 const PCRSize int = 20
 
-// A CommandHeader is the header for a TPM command.
-type CommandHeader struct {
+// A commandHeader is the header for a TPM command.
+type commandHeader struct {
 	Tag  uint16
 	Size uint32
 	Cmd  uint32
 }
 
-// PackedSize computes the size of a sequence of types that can be passed to
+// packedSize computes the size of a sequence of types that can be passed to
 // binary.Read or binary.Write.
-func PackedSize(elts []interface{}) int {
+func packedSize(elts []interface{}) int {
 	// Add the total size to the header.
 	var size int
 	for i := range elts {
@@ -84,11 +84,11 @@ func PackedSize(elts []interface{}) int {
 	return size
 }
 
-// Pack takes a sequence of elements that are either of fixed length or slices
+// pack takes a sequence of elements that are either of fixed length or slices
 // of fixed-length types and packs them into a single byte array using
 // binary.Write.
-func Pack(elts []interface{}) ([]byte, error) {
-	size := PackedSize(elts)
+func pack(elts []interface{}) ([]byte, error) {
+	size := packedSize(elts)
 	if size <= 0 {
 		return nil, errors.New("can't compute the size of the elements")
 	}
@@ -104,13 +104,13 @@ func Pack(elts []interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// PackWithHeader takes a header and a sequence of elements that are either of
+// packWithHeader takes a header and a sequence of elements that are either of
 // fixed length or slices of fixed-length types and packs them into a single
 // byte array using binary.Write. It updates the CommandHeader to have the right
 // length.
-func PackWithHeader(ch CommandHeader, cmd []interface{}) ([]byte, error) {
+func packWithHeader(ch commandHeader, cmd []interface{}) ([]byte, error) {
 	hdrSize := binary.Size(ch)
-	bodySize := PackedSize(cmd)
+	bodySize := packedSize(cmd)
 	if bodySize < 0 {
 		return nil, errors.New("couldn't compute packed size for message body")
 	}
@@ -119,40 +119,40 @@ func PackWithHeader(ch CommandHeader, cmd []interface{}) ([]byte, error) {
 
 	in := []interface{}{ch}
 	in = append(in, cmd...)
-	return Pack(in)
+	return pack(in)
 }
 
-// A ResponseHeader is a header for TPM responses.
-type ResponseHeader struct {
+// A responseHeader is a header for TPM responses.
+type responseHeader struct {
 	Tag  uint16
 	Size uint32
 	Res  uint32
 }
 
-// A ResizeableSlice is a pointer to a slice so this slice can be resized
+// A resizeableSlice is a pointer to a slice so this slice can be resized
 // dynamically. This is critical for cases like Seal, where we don't know
 // beforehand exactly how many bytes the TPM might produce.
-type ResizeableSlice *[]byte
+type resizeableSlice *[]byte
 
 // SimpleUnpack calls Unpack with a nil header and rest as 0. This is used when
 // there is no resizeable slice.
-func SimpleUnpack(b []byte, resp []interface{}) error {
-	return Unpack(b, resp, nil, 0)
+func simpleUnpack(b []byte, resp []interface{}) error {
+	return unpack(b, resp, nil, 0)
 }
 
-// Unpack decodes from a byte array a sequence of elements that are either
+// unpack decodes from a byte array a sequence of elements that are either
 // pointers to fixed length types or slices of fixed-length types. It uses
 // binary.Read to do the decoding. If rh is not nil, then the size is used to
 // resize a ResizeableSlice. The size of the byte array is taken to be rh.Size -
 // rest.
-func Unpack(b []byte, resp []interface{}, rh *ResponseHeader, rest uint) error {
+func unpack(b []byte, resp []interface{}, rh *responseHeader, rest uint) error {
 	buf := bytes.NewBuffer(b)
 	var resized bool
 	for _, r := range resp {
-		bs, ok := r.(ResizeableSlice)
+		bs, ok := r.(resizeableSlice)
 		if ok {
 			if rh == nil {
-				return errors.New("found a ResizeableSlice but no header")
+				return errors.New("found a resizeableSlice but no header")
 			}
 
 			if resized {
@@ -185,11 +185,17 @@ func Unpack(b []byte, resp []interface{}, rh *ResponseHeader, rest uint) error {
 	return nil
 }
 
+// maxTPMResponse is the largest possible response from the TPM. We need to know
+// this because we don't always know the length of the TPM response, and
+// /dev/tpm insists on giving it all back in a single value rather than
+// returning a header and a body in separate responses.
+const maxTPMResponse = 4096
+
 // submitTPMRequest sends a structure to the TPM device file and gets results
 // back, interpreting them as a new provided structure.
 func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out []interface{}) error {
-	ch := CommandHeader{tag, 0, ord}
-	inb, err := PackWithHeader(ch, in)
+	ch := commandHeader{tag, 0, ord}
+	inb, err := packWithHeader(ch, in)
 	if err != nil {
 		return err
 	}
@@ -201,19 +207,23 @@ func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out 
 	// Try to read the whole thing, but handle the case where it's just a
 	// ResponseHeader and not the body, since that's what happens in the error
 	// case.
-	var rh ResponseHeader
-	outSize := PackedSize(out)
+	var rh responseHeader
+	outSize := packedSize(out)
 	if outSize < 0 {
 		return errors.New("invalid out arguments")
 	}
 
 	rhSize := binary.Size(rh)
-	outb := make([]byte, rhSize+outSize)
-	if _, err := f.Read(outb); err != nil {
+	outb := make([]byte, maxTPMResponse)
+	outlen, err := f.Read(outb)
+	if err != nil {
 		return err
 	}
 
-	if err := SimpleUnpack(outb[:rhSize], []interface{}{&rh}); err != nil {
+	// Resize the buffer to match the amount read from the TPM.
+	outb = outb[:outlen]
+
+	if err := simpleUnpack(outb[:rhSize], []interface{}{&rh}); err != nil {
 		return err
 	}
 
@@ -235,12 +245,12 @@ func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out 
 		// header, so its return value will be nonnegative.
 		rest := uint(binary.Size(&rh))
 		for _, r := range out {
-			if _, ok := r.(ResizeableSlice); !ok {
+			if _, ok := r.(resizeableSlice); !ok {
 				rest += uint(binary.Size(r))
 			}
 		}
 
-		if err := Unpack(outb[rhSize:], out, &rh, rest); err != nil {
+		if err := unpack(outb[rhSize:], out, &rh, rest); err != nil {
 			return err
 		}
 	}
@@ -307,23 +317,23 @@ func FetchPCRValues(f *os.File, mask PCRMask) ([]byte, error) {
 	return pcrs, nil
 }
 
-// A PCRSelection is the first element in the input a PCR composition, which is
-// A PCRSelection, followed by the combined length of the PCR values,
+// A pcrSelection is the first element in the input a PCR composition, which is
+// A pcrSelection, followed by the combined length of the PCR values,
 // followed by the PCR values, all hashed under SHA-1.
-type PCRSelection struct {
+type pcrSelection struct {
 	Size uint16
 	Mask PCRMask
 }
 
-// CreatePCRComposite composes a set of PCRs by prepending a PCRSelection and a
+// createPCRComposite composes a set of PCRs by prepending a pcrSelection and a
 // length, then computing the SHA1 hash and returning its output.
-func CreatePCRComposite(mask PCRMask, pcrs []byte) ([]byte, error) {
+func createPCRComposite(mask PCRMask, pcrs []byte) ([]byte, error) {
 	if len(pcrs)%PCRSize != 0 {
 		return nil, errors.New("pcrs must be a multiple of " + strconv.Itoa(PCRSize))
 	}
 
-	in := []interface{}{PCRSelection{3, mask}, uint32(len(pcrs)), pcrs}
-	b, err := Pack(in)
+	in := []interface{}{pcrSelection{3, mask}, uint32(len(pcrs)), pcrs}
+	b, err := pack(in)
 	if err != nil {
 		return nil, err
 	}
@@ -332,24 +342,24 @@ func CreatePCRComposite(mask PCRMask, pcrs []byte) ([]byte, error) {
 	return h[:], nil
 }
 
-// A Nonce is a 20-byte value.
-type Nonce [20]byte
+// A nonce is a 20-byte value.
+type nonce [20]byte
 
-const NonceSize uint32 = 20
+const nonceSize uint32 = 20
 
-// A TPMHandle is a 32-bit unsigned integer.
-type TPMHandle uint32
+// A tpmHandle is a 32-bit unsigned integer.
+type tpmHandle uint32
 
-// An OIAPResponse is a response to an OIAP command.
-type OIAPResponse struct {
-	AuthHandle TPMHandle
-	NonceEven  Nonce
+// An oiapResponse is a response to an OIAP command.
+type oiapResponse struct {
+	AuthHandle tpmHandle
+	NonceEven  nonce
 }
 
-// OIAP sends an OIAP command to the TPM and gets back an auth value and a
+// oiap sends an OIAP command to the TPM and gets back an auth value and a
 // nonce.
-func OIAP(f *os.File) (*OIAPResponse, error) {
-	var resp OIAPResponse
+func oiap(f *os.File) (*oiapResponse, error) {
+	var resp oiapResponse
 	out := []interface{}{&resp}
 	if err := submitTPMRequest(f, tagRQUCommand, ordOIAP, nil, out); err != nil {
 		return nil, err
@@ -363,8 +373,8 @@ func GetRandom(f *os.File, size uint32) ([]byte, error) {
 	in := []interface{}{size}
 
 	var outSize uint32
-	b := make([]byte, int(size))
-	out := []interface{}{&outSize, ResizeableSlice(&b)}
+	var b []byte
+	out := []interface{}{&outSize, resizeableSlice(&b)}
 
 	if err := submitTPMRequest(f, tagRQUCommand, ordGetRandom, in, out); err != nil {
 		return nil, err
@@ -373,25 +383,25 @@ func GetRandom(f *os.File, size uint32) ([]byte, error) {
 	return b, nil
 }
 
-// An OSAPCommand is a command sent for OSAP authentication.
-type OSAPCommand struct {
+// An osapCommand is a command sent for OSAP authentication.
+type osapCommand struct {
 	EntityType  uint16
 	EntityValue uint32
-	OddOSAP     Nonce
+	OddOSAP     nonce
 }
 
-// An OSAPResponse is a TPM reply to an OSAPCommand.
-type OSAPResponse struct {
-	AuthHandle TPMHandle
-	NonceEven  Nonce
-	EvenOSAP   Nonce
+// An osapResponse is a TPM reply to an osapCommand.
+type osapResponse struct {
+	AuthHandle tpmHandle
+	NonceEven  nonce
+	EvenOSAP   nonce
 }
 
-// OSAP sends an OSAPCommand to the TPM and gets back authentication
+// osap sends an OSAPCommand to the TPM and gets back authentication
 // information in an OSAPResponse.
-func OSAP(f *os.File, osap OSAPCommand) (*OSAPResponse, error) {
+func osap(f *os.File, osap osapCommand) (*osapResponse, error) {
 	in := []interface{}{osap}
-	var resp OSAPResponse
+	var resp osapResponse
 	out := []interface{}{&resp}
 	if err := submitTPMRequest(f, tagRQUCommand, ordOSAP, in, out); err != nil {
 		return nil, err
@@ -401,62 +411,84 @@ func OSAP(f *os.File, osap OSAPCommand) (*OSAPResponse, error) {
 }
 
 // A Digest is a 20-byte SHA1 value.
-type Digest [20]byte
+type digest [20]byte
 
-const DigestSize uint32 = 20
+const digestSize uint32 = 20
 
 // An AuthValue is a 20-byte value used for authentication.
-type AuthValue [20]byte
+type authValue [20]byte
 
 // PCRInfoLong stores detailed information about PCRs.
-type PCRInfoLong struct {
+type pcrInfoLong struct {
 	Tag              uint16
 	LocAtCreation    byte
 	LocAtRelease     byte
-	PCRsAtCreation   PCRSelection
-	PCRsAtRelease    PCRSelection
-	DigestAtCreation Digest
-	DigestAtRelease  Digest
+	PCRsAtCreation   pcrSelection
+	PCRsAtRelease    pcrSelection
+	DigestAtCreation digest
+	DigestAtRelease  digest
 }
 
-// A SealCommand is the command sent to the TPM to seal data.
-type SealCommand struct {
-	KeyHandle TPMHandle
-	EncAuth   AuthValue
+// A sealCommand is the command sent to the TPM to seal data.
+type sealCommand struct {
+	KeyHandle tpmHandle
+	EncAuth   authValue
 }
 
-// SealCommandAuth stores the auth information sent with a SealCommand.
-type SealCommandAuth struct {
-	AuthHandle  TPMHandle
-	NonceOdd    Nonce
+// sealCommandAuth stores the auth information sent with a SealCommand.
+type sealCommandAuth struct {
+	AuthHandle  tpmHandle
+	NonceOdd    nonce
 	ContSession byte
-	PubAuth     AuthValue
+	PubAuth     authValue
 }
 
-// SealResponse contains the auth information returned from a SealCommand.
-type SealResponse struct {
-	NonceEven   Nonce
+// sealResponse contains the auth information returned from a sealCommand.
+type sealResponse struct {
+	NonceEven   nonce
 	ContSession byte
-	PubAuth     AuthValue
+	PubAuth     authValue
 }
 
-// Seal performs a seal operation on the TPM.
-func Seal(f *os.File, sc *SealCommand, pcrs *PCRInfoLong, data []byte, sca *SealCommandAuth) ([]byte, *SealResponse, error) {
+// seal performs a seal operation on the TPM.
+func seal(f *os.File, sc *sealCommand, pcrs *pcrInfoLong, data []byte, sca *sealCommandAuth) ([]byte, *sealResponse, error) {
 	datasize := uint32(len(data))
 	pcrsize := binary.Size(pcrs)
 	if pcrsize < 0 {
-		return nil, nil, errors.New("Couldn't compute the size of a PCRInfoLong")
+		return nil, nil, errors.New("Couldn't compute the size of a pcrInfoLong")
 	}
 
 	in := []interface{}{sc, uint32(pcrsize), pcrs, datasize, data, sca}
 
 	// The slice will be resized by Unpack to the size of the sealed value.
 	b := make([]byte, datasize)
-	var resp SealResponse
+	var resp sealResponse
 	out := []interface{}{&b, &resp}
 	if err := submitTPMRequest(f, tagRQUAuth1Command, ordSeal, in, out); err != nil {
 		return nil, nil, err
 	}
 
 	return b, &resp, nil
+}
+
+// unsealResponse contains the auth information returned from an unsealCommand.
+type unsealResponse struct {
+	NonceEven   nonce
+	ContSession byte
+	ResultAuth  authValue
+}
+
+// unseal data sealed by the TPM.
+func unseal(f *os.File, keyHandle tpmHandle, sealed []byte, auth1 *sealCommandAuth, auth2 *sealCommandAuth) ([]byte, *unsealResponse, *unsealResponse, error) {
+	in := []interface{}{keyHandle, sealed, auth1, auth2}
+	var outb []byte
+	var size uint32
+	var outAuth1 unsealResponse
+	var outAuth2 unsealResponse
+	out := []interface{}{&size, resizeableSlice(&outb), &outAuth1, &outAuth2}
+	if err := submitTPMRequest(f, tagRQUAuth2Command, ordUnseal, in, out); err != nil {
+		return nil, nil, nil, err
+	}
+
+	return outb, &outAuth1, &outAuth2, nil
 }

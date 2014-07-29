@@ -23,19 +23,19 @@ import (
 )
 
 func TestEncoding(t *testing.T) {
-	ch := CommandHeader{tagRQUCommand, 0, ordOIAP}
+	ch := commandHeader{tagRQUCommand, 0, ordOIAP}
 	var c uint32 = 137
 	in := []interface{}{c}
 
-	b, err := PackWithHeader(ch, in)
+	b, err := packWithHeader(ch, in)
 	if err != nil {
 		t.Fatal("Couldn't pack the bytes:", err)
 	}
 
-	var hdr CommandHeader
+	var hdr commandHeader
 	var size uint32
 	out := []interface{}{&hdr, &size}
-	if err := SimpleUnpack(b, out); err != nil {
+	if err := simpleUnpack(b, out); err != nil {
 		t.Fatal("Couldn't unpack the packed bytes")
 	}
 
@@ -120,12 +120,12 @@ func TestFetchPCRValues(t *testing.T) {
 		t.Fatal("Couldn't get PCRs 17 and 18:", err)
 	}
 
-	comp, err := CreatePCRComposite(mask, pcrs)
+	comp, err := createPCRComposite(mask, pcrs)
 	if err != nil {
 		t.Fatal("Couldn't create PCR composite")
 	}
 
-	if len(comp) != int(DigestSize) {
+	if len(comp) != int(digestSize) {
 		t.Fatal("Invalid PCR composite")
 	}
 }
@@ -154,7 +154,7 @@ func TestOIAP(t *testing.T) {
 	}
 
 	// Get auth info from OIAP.
-	resp, err := OIAP(f)
+	resp, err := oiap(f)
 	if err != nil {
 		t.Fatal("Couldn't run OIAP:", err)
 	}
@@ -170,16 +170,16 @@ func TestOSAP(t *testing.T) {
 	}
 
 	// Try to run OSAP for the SRK.
-	osap := OSAPCommand{
+	osapc := osapCommand{
 		EntityType:  etSRK,
 		EntityValue: khSRK,
 	}
 
-	if _, err := rand.Read(osap.OddOSAP[:]); err != nil {
+	if _, err := rand.Read(osapc.OddOSAP[:]); err != nil {
 		t.Fatal("Couldn't get a random odd OSAP nonce")
 	}
 
-	resp, err := OSAP(f, osap)
+	resp, err := osap(f, osapc)
 	if err != nil {
 		t.Fatal("Couldn't run OSAP:", err)
 	}
@@ -190,15 +190,15 @@ func TestOSAP(t *testing.T) {
 func TestResizeableSliceNoHeader(t *testing.T) {
 	var b []byte
 	var outb []byte
-	out := []interface{}{ResizeableSlice(&outb)}
-	if err := Unpack(b, out, nil, 0); err == nil {
-		t.Fatal("Incorrectly unpacked a ResizeableSlice without using a header")
+	out := []interface{}{resizeableSlice(&outb)}
+	if err := unpack(b, out, nil, 0); err == nil {
+		t.Fatal("Incorrectly unpacked a resizeableSlice without using a header")
 	}
 }
 
 func TestResizeableSlice(t *testing.T) {
 	// Set up an encoded slice with a byte array.
-	sr := &SealResponse{
+	sr := &sealResponse{
 		NonceEven:   [20]byte{},
 		ContSession: 1,
 		PubAuth:     [20]byte{},
@@ -209,7 +209,7 @@ func TestResizeableSlice(t *testing.T) {
 		t.Fatal("Couldn't read random bytes into the byte array")
 	}
 
-	rh := &ResponseHeader{
+	rh := &responseHeader{
 		Tag:  tagRSPAuth1Command,
 		Size: 0,
 		Res:  0,
@@ -218,21 +218,21 @@ func TestResizeableSlice(t *testing.T) {
 	rh.Size = uint32(binary.Size(rh) + binary.Size(sr) + binary.Size(b))
 
 	in := []interface{}{rh, sr, b}
-	bb, err := Pack(in)
+	bb, err := pack(in)
 	if err != nil {
 		t.Fatal("Couldn't pack the bytes:", err)
 	}
 
 	rest := uint(binary.Size(rh) + binary.Size(sr))
-	var rh2 ResponseHeader
-	var sr2 SealResponse
+	var rh2 responseHeader
+	var sr2 sealResponse
 	b2 := make([]byte, 20)
 
 	// Normally, the response header is read separately. But this time, we
 	// happen to already have one handy, so we use it instead to simplify the
 	// test.
-	out := []interface{}{&rh2, &sr2, ResizeableSlice(&b2)}
-	if err := Unpack(bb, out, rh, rest); err != nil {
+	out := []interface{}{&rh2, &sr2, resizeableSlice(&b2)}
+	if err := unpack(bb, out, rh, rest); err != nil {
 		t.Fatal("Couldn't unpack the resizeable values:", err)
 	}
 

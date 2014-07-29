@@ -1,0 +1,36 @@
+Let ROOT be the root of the CloudProxy source tree
+
+> cd ${ROOT}/go/src/cloudproxy/tao
+> go build
+> go test
+
+Now, just for extra information about Go style and such: 
+
+- golint will check for obvious style violations. You can get it by running
+
+go get github.com/golang/lint/golint
+
+Then run golint file.go
+
+- go vet will check for correctness issues. You can get it by running
+
+go get code.google.com/p/go.tools/cmd/vet
+
+Then run go vet file.go
+
+- go test -coverprofile=c.out  will generate test coverage stats. You can get the cover tool by running 
+
+go get code.google.com/p/go.tools/cmd/cover
+
+To see a nice HTML representation of test coverage (I don't think ours is great at the moment), run
+
+go tool cover -html=c.out
+
+after running the test command.
+
+- The standard conventions of Go are covered very nicely in the article Effective Go:
+
+http://golang.org/doc/effective_go.html
+
+- standard code review comments/problems are covered in https://code.google.com/p/go-wiki/wiki/CodeReviewComments
+

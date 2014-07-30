@@ -32,5 +32,17 @@ after running the test command.
 
 http://golang.org/doc/effective_go.html
 
-- standard code review comments/problems are covered in https://code.google.com/p/go-wiki/wiki/CodeReviewComments
+Set GOPATH.
+
+Your GOPATH should be the root above your source directory where you want it to find things. For example, in our case, you should have at least
+
+export GOPATH=${ROOT}/go
+
+where ROOT is the root of the cloudproxy source tree. You might want to have other paths, too. I usually have $HOME in my gopath, since then it will install binaries it builds into ${HOME}/bin and will install go source code it downloads into ${HOME}/src. For example, if you execute 
+
+go get github.com/kevinawalsh/datalog
+
+it will add the directory
+
+${HOME}/src/github.com/kevinawalsh/datalog
 

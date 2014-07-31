@@ -179,7 +179,7 @@ var tpmErrMsgs = map[tpmError]string{
 	ErrBadPresence:           "either the physicalPresence or physicalPresenceLock bits have the wrong value",
 	ErrBadVersion:            "the TPM cannot perform this version of the capability",
 	ErrNoWrapTransport:       "the TPM does not allow for wrapped transport sessions",
-	ErrAuditFailUnsuccessful: "TPM audit construction failed and th eunderlying command was returning a failure code also",
+	ErrAuditFailUnsuccessful: "TPM audit construction failed and the underlying command was returning a failure code also",
 	ErrAuditFailSuccessful:   "TPM audit construction failed and the underlying command was returning success",
 	ErrNotResetable:          "attempt to reset a PCR register that does not have the resettable attribute",
 	ErrNotLocal:              "attempt to reset a PCR register that requires locality and locality modifier not part of command transport",

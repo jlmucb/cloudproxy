@@ -18,6 +18,7 @@ package tpm
 import (
 	"bytes"
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha1"
 	"encoding/binary"
 	"errors"
@@ -633,9 +634,9 @@ func Seal(f *os.File, data []byte) ([]byte, error) {
 		EntityValue: khSRK,
 	}
 
-	//    if _, err := rand.Read(osapc.OddOSAP[:]); err != nil {
-	//        return nil, err
-	//    }
+	if _, err := rand.Read(osapc.OddOSAP[:]); err != nil {
+		return nil, err
+	}
 
 	if glog.V(2) {
 		glog.Infof("osapCommand is %s\n", osapc)
@@ -751,9 +752,9 @@ func Seal(f *os.File, data []byte) ([]byte, error) {
 	sca := &sealCommandAuth{
 		AuthHandle: osapr.AuthHandle,
 	}
-	//    if _, err := rand.Read(sca.NonceOdd[:]); err != nil {
-	//        return nil, err
-	//    }
+	if _, err := rand.Read(sca.NonceOdd[:]); err != nil {
+		return nil, err
+	}
 
 	if glog.V(2) {
 		glog.Infof("sealCommandAuth is %s\n", sca)
@@ -794,9 +795,9 @@ func Unseal(f *os.File, sealed []byte) ([]byte, error) {
 		EntityValue: khSRK,
 	}
 
-	//    if _, err := rand.Read(osapc.OddOSAP[:]); err != nil {
-	//        return nil, err
-	//    }
+	if _, err := rand.Read(osapc.OddOSAP[:]); err != nil {
+		return nil, err
+	}
 
 	if glog.V(2) {
 		glog.Infof("osapCommand is %s\n", osapc)
@@ -868,7 +869,10 @@ func Unseal(f *os.File, sealed []byte) ([]byte, error) {
 		AuthHandle: osapr.AuthHandle,
 	}
 
-	// For now, we let NonceOdd be empty.
+	if _, err := rand.Read(sca.NonceOdd[:]); err != nil {
+		return nil, err
+	}
+
 	pubAuthInput, err := pack([]interface{}{digest, osapr.NonceEven, sca.NonceOdd, sca.ContSession})
 	if err != nil {
 		return nil, err
@@ -887,7 +891,10 @@ func Unseal(f *os.File, sealed []byte) ([]byte, error) {
 		AuthHandle: oiapr.AuthHandle,
 	}
 
-	// For now, we let NonceOdd2 be empty.
+	if _, err := rand.Read(sca2.NonceOdd[:]); err != nil {
+		return nil, err
+	}
+
 	pubAuthInput2, err := pack([]interface{}{digest, oiapr.NonceEven, sca2.NonceOdd, sca2.ContSession})
 	if err != nil {
 		return nil, err

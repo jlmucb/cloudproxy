@@ -111,10 +111,6 @@ func TestFetchPCRValues(t *testing.T) {
 		t.Fatal("Couldn't set PCR 17:", err)
 	}
 
-	if err := mask.SetPCR(18); err != nil {
-		t.Fatal("Couldn't set PCR 18:", err)
-	}
-
 	pcrs, err := FetchPCRValues(f, mask)
 	if err != nil {
 		t.Fatal("Couldn't get PCRs 17 and 18:", err)
@@ -127,6 +123,13 @@ func TestFetchPCRValues(t *testing.T) {
 
 	if len(comp) != int(digestSize) {
 		t.Fatal("Invalid PCR composite")
+	}
+
+	// Locality is apparently always set to 0 in vTCIDirect.
+	var locality byte
+	_, err = createPCRInfo(locality, mask, pcrs)
+	if err != nil {
+		t.Fatal("Couldn't create a pcrInfoLong structure for these PCRs")
 	}
 }
 
@@ -238,5 +241,24 @@ func TestResizeableSlice(t *testing.T) {
 
 	if !bytes.Equal(b2, b) {
 		t.Fatal("ResizeableSlice was not resized or copied correctly")
+	}
+}
+
+func TestSeal(t *testing.T) {
+	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
+	defer f.Close()
+	if err != nil {
+		t.Fatal("Can't open /dev/tpm0 for read/write:", err)
+	}
+
+	// Seal the same data as vTCIDirect so we can check the output as exactly as
+	// possible.
+	data := make([]byte, 64)
+	data[0] = 1
+	data[1] = 27
+	data[2] = 52
+
+	if _, err := Seal(f, data); err != nil {
+		t.Fatal("Couldn't seal the data:", err)
 	}
 }

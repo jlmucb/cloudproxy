@@ -17,15 +17,20 @@ package tpm
 
 import (
 	"bytes"
+	"crypto/hmac"
 	"crypto/sha1"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/golang/glog"
 )
 
 // Supported TPM commands.
 const (
+	tagPCRInfoLong     uint16 = 0x06
 	tagRQUCommand      uint16 = 0x00C1
 	tagRQUAuth1Command uint16 = 0x00C2
 	tagRQUAuth2Command uint16 = 0x00C3
@@ -52,9 +57,12 @@ const (
 	etKey       uint16 = 0x0005
 )
 
+// A tpmHandle is a 32-bit unsigned integer.
+type tpmHandle uint32
+
 // Entity values
 const (
-	khSRK uint32 = 0x40000000
+	khSRK tpmHandle = 0x40000000
 )
 
 // Each PCR has a fixed size of 20 bytes.
@@ -65,6 +73,11 @@ type commandHeader struct {
 	Tag  uint16
 	Size uint32
 	Cmd  uint32
+}
+
+// String prints a string version of a commandHeader
+func (ch commandHeader) String() string {
+	return fmt.Sprintf("commandHeader{Tag: %x, Size: %x, Cmd: %x}", ch.Tag, ch.Size, ch.Cmd)
 }
 
 // packedSize computes the size of a sequence of types that can be passed to
@@ -127,6 +140,11 @@ type responseHeader struct {
 	Tag  uint16
 	Size uint32
 	Res  uint32
+}
+
+// String writes out a string representation of a responseHeader.
+func (rh responseHeader) String() string {
+	return fmt.Sprintf("responseHeader{Tag: %x, Size: %x, Res: %x", rh.Tag, rh.Size, rh.Res)
 }
 
 // A resizeableSlice is a pointer to a slice so this slice can be resized
@@ -200,6 +218,9 @@ func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out 
 		return err
 	}
 
+	if glog.V(2) {
+		glog.Infof("TPM request:\n%x\n", inb)
+	}
 	if _, err := f.Write(inb); err != nil {
 		return err
 	}
@@ -222,6 +243,9 @@ func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out 
 
 	// Resize the buffer to match the amount read from the TPM.
 	outb = outb[:outlen]
+	if glog.V(2) {
+		glog.Infof("TPM response:\n%x\n", outb)
+	}
 
 	if err := simpleUnpack(outb[:rhSize], []interface{}{&rh}); err != nil {
 		return err
@@ -230,12 +254,12 @@ func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out 
 	// Check success before trying to read the rest of the result.
 	// Note that the command tag and its associated response tag differ by 3,
 	// e.g., tagRQUCommand == 0x00C1, and tagRSPCommand == 0x00C4.
-	if rh.Tag != ch.Tag+3 {
-		return errors.New("inconsistent tag returned by TPM")
-	}
-
 	if rh.Res != 0 {
 		return tpmError(rh.Res)
+	}
+
+	if rh.Tag != ch.Tag+3 {
+		return errors.New("inconsistent tag returned by TPM. Expected " + strconv.Itoa(int(ch.Tag+3)) + " but got " + strconv.Itoa(int(rh.Tag)))
 	}
 
 	if rh.Size > uint32(rhSize) {
@@ -325,6 +349,11 @@ type pcrSelection struct {
 	Mask PCRMask
 }
 
+// String writes out a string representation of a pcrSelection
+func (p pcrSelection) String() string {
+	return fmt.Sprintf("pcrSelection{Size: %x, Mask: % x}", p.Size, p.Mask)
+}
+
 // createPCRComposite composes a set of PCRs by prepending a pcrSelection and a
 // length, then computing the SHA1 hash and returning its output.
 func createPCRComposite(mask PCRMask, pcrs []byte) ([]byte, error) {
@@ -337,8 +366,15 @@ func createPCRComposite(mask PCRMask, pcrs []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if glog.V(2) {
+		glog.Infof("composite buffer for mask %s is % x\n", mask, b)
+	}
 
 	h := sha1.Sum(b)
+	if glog.V(2) {
+		glog.Infof("SHA1 hash of composite buffer is % x\n", h)
+	}
+
 	return h[:], nil
 }
 
@@ -347,13 +383,15 @@ type nonce [20]byte
 
 const nonceSize uint32 = 20
 
-// A tpmHandle is a 32-bit unsigned integer.
-type tpmHandle uint32
-
 // An oiapResponse is a response to an OIAP command.
 type oiapResponse struct {
 	AuthHandle tpmHandle
 	NonceEven  nonce
+}
+
+// String writes out a string representation of an oiapResponse.
+func (opr oiapResponse) String() string {
+	return fmt.Sprintf("oiapResponse{AuthHandle: %x, NonceEven: % x}", opr.AuthHandle, opr.NonceEven)
 }
 
 // oiap sends an OIAP command to the TPM and gets back an auth value and a
@@ -386,8 +424,13 @@ func GetRandom(f *os.File, size uint32) ([]byte, error) {
 // An osapCommand is a command sent for OSAP authentication.
 type osapCommand struct {
 	EntityType  uint16
-	EntityValue uint32
+	EntityValue tpmHandle
 	OddOSAP     nonce
+}
+
+// String writes out a string representation of an osapCommand.
+func (opc osapCommand) String() string {
+	return fmt.Sprintf("osapCommand{EntityType: %x, EntityValue: %x, OddOSAP: % x}", opc.EntityType, opc.EntityValue, opc.OddOSAP)
 }
 
 // An osapResponse is a TPM reply to an osapCommand.
@@ -395,6 +438,11 @@ type osapResponse struct {
 	AuthHandle tpmHandle
 	NonceEven  nonce
 	EvenOSAP   nonce
+}
+
+// String returns a string representation of an osapResponse.
+func (opr osapResponse) String() string {
+	return fmt.Sprintf("osapResponse{AuthHandle: %x, NonceEven: % x, EvenOSAP: % x}", opr.AuthHandle, opr.NonceEven, opr.EvenOSAP)
 }
 
 // osap sends an OSAPCommand to the TPM and gets back authentication
@@ -418,7 +466,9 @@ const digestSize uint32 = 20
 // An AuthValue is a 20-byte value used for authentication.
 type authValue [20]byte
 
-// PCRInfoLong stores detailed information about PCRs.
+const authSize uint32 = 20
+
+// pcrInfoLong stores detailed information about PCRs.
 type pcrInfoLong struct {
 	Tag              uint16
 	LocAtCreation    byte
@@ -429,10 +479,47 @@ type pcrInfoLong struct {
 	DigestAtRelease  digest
 }
 
+// String returns a string representation of a pcrInfoLong.
+func (pcri pcrInfoLong) String() string {
+	return fmt.Sprintf("pcrInfoLong{Tag: %x, LocAtCreation: %x, LocAtRelease: %x, PCRsAtCreation: %s, PCRsAtRelease: %s, DigestAtCreation: % x, DigestAtRelease: % x}", pcri.Tag, pcri.LocAtCreation, pcri.LocAtRelease, pcri.PCRsAtCreation, pcri.PCRsAtRelease, pcri.DigestAtCreation, pcri.DigestAtRelease)
+}
+
+// createPCRInfo creates a pcrInfoLong structure from a mask and some PCR
+// values that match this mask, along with a TPM locality.
+func createPCRInfo(loc byte, mask PCRMask, pcrVals []byte) (*pcrInfoLong, error) {
+	d, err := createPCRComposite(mask, pcrVals)
+	if err != nil {
+		return nil, err
+	}
+
+	locVal := byte(1 << loc)
+	pcri := &pcrInfoLong{
+		Tag:            tagPCRInfoLong,
+		LocAtCreation:  locVal,
+		LocAtRelease:   locVal,
+		PCRsAtCreation: pcrSelection{3, mask},
+		PCRsAtRelease:  pcrSelection{3, mask},
+	}
+
+	copy(pcri.DigestAtRelease[:], d)
+	copy(pcri.DigestAtCreation[:], d)
+
+	if glog.V(2) {
+		glog.Info("Created pcrInfoLong with serialized form %s\n", pcri)
+	}
+
+	return pcri, nil
+}
+
 // A sealCommand is the command sent to the TPM to seal data.
 type sealCommand struct {
 	KeyHandle tpmHandle
 	EncAuth   authValue
+}
+
+// String returns a string representation of a sealCommand.
+func (sc sealCommand) String() string {
+	return fmt.Sprintf("sealCommand{KeyHandle: %x, EncAuth: % x}", sc.KeyHandle, sc.EncAuth)
 }
 
 // sealCommandAuth stores the auth information sent with a SealCommand.
@@ -443,11 +530,21 @@ type sealCommandAuth struct {
 	PubAuth     authValue
 }
 
+// String returns a string representation of a sealCommandAuth.
+func (sca sealCommandAuth) String() string {
+	return fmt.Sprintf("sealCommandAuth{AuthHandle: %x, NonceOdd: % x, ContSession: %x, PubAuth: % x}", sca.AuthHandle, sca.NonceOdd, sca.ContSession, sca.PubAuth)
+}
+
 // sealResponse contains the auth information returned from a sealCommand.
 type sealResponse struct {
 	NonceEven   nonce
 	ContSession byte
 	PubAuth     authValue
+}
+
+// String returns a string representation of a sealResponse.
+func (sr sealResponse) String() string {
+	return fmt.Sprintf("sealResponse{NonceEven: % x, ContSession: %x, PubAuth: % x}", sr.NonceEven, sr.ContSession, sr.PubAuth)
 }
 
 // seal performs a seal operation on the TPM.
@@ -461,9 +558,9 @@ func seal(f *os.File, sc *sealCommand, pcrs *pcrInfoLong, data []byte, sca *seal
 	in := []interface{}{sc, uint32(pcrsize), pcrs, datasize, data, sca}
 
 	// The slice will be resized by Unpack to the size of the sealed value.
-	b := make([]byte, datasize)
+	var b []byte
 	var resp sealResponse
-	out := []interface{}{&b, &resp}
+	out := []interface{}{resizeableSlice(&b), &resp}
 	if err := submitTPMRequest(f, tagRQUAuth1Command, ordSeal, in, out); err != nil {
 		return nil, nil, err
 	}
@@ -476,6 +573,11 @@ type unsealResponse struct {
 	NonceEven   nonce
 	ContSession byte
 	ResultAuth  authValue
+}
+
+// String returns a string representation of an unsealResponse.
+func (ur unsealResponse) String() string {
+	return fmt.Sprintf("unsealResponse{NonceEven: % x, ContSession: %x, ResultAuth: % x}", ur.NonceEven, ur.ContSession, ur.ResultAuth)
 }
 
 // unseal data sealed by the TPM.
@@ -491,4 +593,194 @@ func unseal(f *os.File, keyHandle tpmHandle, sealed []byte, auth1 *sealCommandAu
 	}
 
 	return outb, &outAuth1, &outAuth2, nil
+}
+
+// Seal encrypts data under PCR 17 and returns the sealed data.
+func Seal(f *os.File, data []byte) ([]byte, error) {
+	var mask PCRMask
+	if err := mask.SetPCR(17); err != nil {
+		return nil, err
+	}
+
+	if glog.V(2) {
+		glog.Infof("mask is % x\n", mask)
+	}
+
+	pcrVals, err := FetchPCRValues(f, mask)
+	if err != nil {
+		return nil, err
+	}
+
+	if glog.V(2) {
+		glog.Infof("pcrVals is % x\n", pcrVals)
+	}
+
+	// Locality is apparently always set to 0 in vTCIDirect.
+	var locality byte
+	pcrInfo, err := createPCRInfo(locality, mask, pcrVals)
+	if err != nil {
+		return nil, err
+	}
+
+	if glog.V(2) {
+		glog.Infof("pcrInfo is %s\n", pcrInfo)
+	}
+
+	// Try to run OSAP for the SRK, reading a random OddOSAP for our initial
+	// command.
+	osapc := osapCommand{
+		EntityType:  etSRK,
+		EntityValue: khSRK,
+	}
+
+	//    if _, err := rand.Read(osapc.OddOSAP[:]); err != nil {
+	//        return nil, err
+	//    }
+
+	if glog.V(2) {
+		glog.Infof("osapCommand is %s\n", osapc)
+	}
+
+	osapr, err := osap(f, osapc)
+	if err != nil {
+		return nil, err
+	}
+
+	if glog.V(2) {
+		glog.Infof("osapResponse is %s\n", osapr)
+	}
+
+	// A shared secret is computed as
+	//
+	// sharedSecret = HMAC-SHA1(srkAuth, evenosap||oddosap)
+	//
+	// where srkAuth is the hash of the SRK authentication (which hash is all 0s
+	// for the well-known SRK auth value, which is what we're using right now),
+	// and even and odd OSAP are the values from the OSAP protocol.
+	osapData, err := pack([]interface{}{osapr.EvenOSAP, osapc.OddOSAP})
+	if err != nil {
+		return nil, err
+	}
+
+	if glog.V(2) {
+		glog.Infof("osapData is % x\n", osapData)
+	}
+
+	// TODO(tmroeder): test this with secrets other than the well-known secret.
+	// Note that this will require setting up the TPM differently.
+	wellKnownAuth := make([]byte, authSize)
+	if glog.V(2) {
+		glog.Infof("wellKnownAuth is % x\n", wellKnownAuth)
+	}
+
+	hm := hmac.New(sha1.New, wellKnownAuth)
+	hm.Write(osapData)
+	sharedSecret := hm.Sum(nil)
+
+	if glog.V(2) {
+		glog.Infof("hmac size is %d\n", hm.Size())
+		glog.Infof("sharedSecret is % x\n", sharedSecret)
+		glog.Infof("length of shared secret is %d\n", len(sharedSecret))
+	}
+
+	// EncAuth is computed as
+	//
+	// encAuth = XOR(srkAuth, SHA1(sharedSecret || <lastEvenNonce>))
+	//
+	// In this case, the last even nonce is NonceEven from OSAP.
+	xorData, err := pack([]interface{}{sharedSecret, osapr.NonceEven})
+	if err != nil {
+		return nil, err
+	}
+
+	if glog.V(2) {
+		glog.Infof("xorData is % x\n", xorData)
+	}
+
+	encAuthData := sha1.Sum(xorData)
+
+	if glog.V(2) {
+		glog.Infof("encAuthData is % x\n", encAuthData)
+	}
+
+	// Zero out the xorData, since it contains the sharedSecret.
+	//    for i := range xorData {
+	//        xorData[i] = 0
+	//    }
+
+	sc := &sealCommand{KeyHandle: khSRK}
+
+	for i := range sc.EncAuth {
+		sc.EncAuth[i] = wellKnownAuth[i] ^ encAuthData[i]
+	}
+
+	if glog.V(2) {
+		glog.Infof("sealCommand is %s\n", sc)
+	}
+
+	// The digest input to pubauth is
+	//
+	// digest = SHA1(ordSeal || encAuth || binary.Size(pcrInfo) || pcrInfo ||
+	//               len(data) || data)
+	//
+	// and the PubAuth value is then
+	//
+	// PubAuth = HMAC-SHA1(sharedSecret, digest || NonceEven || NonceOdd ||
+	//                     ContSession)
+	//
+	// where ContSession is the value chosen for sealCommandAuth
+	digestBytes, err := pack([]interface{}{ordSeal, sc.EncAuth, uint32(binary.Size(pcrInfo)), pcrInfo, uint32(len(data)), data})
+	if err != nil {
+		return nil, err
+	}
+
+	if glog.V(2) {
+		glog.Infof("digestBytes is % x\n", digestBytes)
+	}
+
+	digest := sha1.Sum(digestBytes)
+
+	if glog.V(2) {
+		glog.Infof("digest is % x\n", digest)
+	}
+
+	// Except for the auth handle from OSAP, all the values of the
+	// sealCommandAuth start at 0, including ContSession and NonceOdd. We then
+	// fill NonceOdd with strong random bytes and compute PubAuth according to
+	// the standard TPM algorithm.
+	sca := &sealCommandAuth{
+		AuthHandle: osapr.AuthHandle,
+	}
+	//    if _, err := rand.Read(sca.NonceOdd[:]); err != nil {
+	//        return nil, err
+	//    }
+
+	if glog.V(2) {
+		glog.Infof("sealCommandAuth is %s\n", sca)
+	}
+
+	pubAuthBytes, err := pack([]interface{}{digest, osapr.NonceEven, sca.NonceOdd, sca.ContSession})
+	if err != nil {
+		return nil, err
+	}
+
+	if glog.V(2) {
+		glog.Infof("pubAuthBytes is % x\n", pubAuthBytes)
+	}
+
+	hm2 := hmac.New(sha1.New, sharedSecret)
+	hm2.Write(pubAuthBytes)
+	pubAuth := hm2.Sum(nil)
+	copy(sca.PubAuth[:], pubAuth[:])
+
+	if glog.V(2) {
+		glog.Infof("sealCommandAuth now is %s\n", sca)
+	}
+
+	sealed, _, err := seal(f, sc, pcrInfo, data, sca)
+	if err != nil {
+		return nil, err
+	}
+
+	return sealed, nil
 }

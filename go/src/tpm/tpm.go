@@ -44,7 +44,6 @@ const (
 const (
 	ordOIAP      uint32 = 0x0000000A
 	ordOSAP      uint32 = 0x0000000B
-	ordPCRExtend uint32 = 0x00000014
 	ordPCRRead   uint32 = 0x00000015
 	ordSeal      uint32 = 0x00000017
 	ordUnseal    uint32 = 0x00000018
@@ -53,9 +52,7 @@ const (
 
 // Entity types
 const (
-	etKeyHandle uint16 = 0x0001
-	etSRK       uint16 = 0x0004
-	etKey       uint16 = 0x0005
+	etSRK uint16 = 0x0004
 )
 
 // A tpmHandle is a 32-bit unsigned integer.

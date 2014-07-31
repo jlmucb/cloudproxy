@@ -258,7 +258,17 @@ func TestSeal(t *testing.T) {
 	data[1] = 27
 	data[2] = 52
 
-	if _, err := Seal(f, data); err != nil {
+	sealed, err := Seal(f, data)
+	if err != nil {
 		t.Fatal("Couldn't seal the data:", err)
+	}
+
+	data2, err := Unseal(f, sealed)
+	if err != nil {
+		t.Fatal("Couldn't unseal the data:", err)
+	}
+
+	if !bytes.Equal(data2, data) {
+		t.Fatal("Unsealed data doesn't match original data")
 	}
 }

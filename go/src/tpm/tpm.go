@@ -784,3 +784,124 @@ func Seal(f *os.File, data []byte) ([]byte, error) {
 
 	return sealed, nil
 }
+
+// Unseal decrypts data encrypted by the TPM for PCR 17.
+func Unseal(f *os.File, sealed []byte) ([]byte, error) {
+	// Try to run OSAP for the SRK, reading a random OddOSAP for our initial
+	// command.
+	osapc := osapCommand{
+		EntityType:  etSRK,
+		EntityValue: khSRK,
+	}
+
+	//    if _, err := rand.Read(osapc.OddOSAP[:]); err != nil {
+	//        return nil, err
+	//    }
+
+	if glog.V(2) {
+		glog.Infof("osapCommand is %s\n", osapc)
+	}
+
+	osapr, err := osap(f, osapc)
+	if err != nil {
+		return nil, err
+	}
+
+	if glog.V(2) {
+		glog.Infof("osapResponse is %s\n", osapr)
+	}
+
+	// A shared secret is computed as
+	//
+	// sharedSecret = HMAC-SHA1(srkAuth, evenosap||oddosap)
+	//
+	// where srkAuth is the hash of the SRK authentication (which hash is all 0s
+	// for the well-known SRK auth value, which is what we're using right now),
+	// and even and odd OSAP are the values from the OSAP protocol.
+	osapData, err := pack([]interface{}{osapr.EvenOSAP, osapc.OddOSAP})
+	if err != nil {
+		return nil, err
+	}
+
+	if glog.V(2) {
+		glog.Infof("osapData is % x\n", osapData)
+	}
+
+	// TODO(tmroeder): test this with secrets other than the well-known secret.
+	// Note that this will require setting up the TPM differently.
+	wellKnownAuth := make([]byte, authSize)
+	if glog.V(2) {
+		glog.Infof("wellKnownAuth is % x\n", wellKnownAuth)
+	}
+
+	hm := hmac.New(sha1.New, wellKnownAuth)
+	hm.Write(osapData)
+	sharedSecret := hm.Sum(nil)
+
+	if glog.V(2) {
+		glog.Infof("hmac size is %d\n", hm.Size())
+		glog.Infof("sharedSecret is % x\n", sharedSecret)
+		glog.Infof("length of shared secret is %d\n", len(sharedSecret))
+	}
+
+	// The unseal command needs an OIAP session in addition to the OSAP session.
+	oiapr, err := oiap(f)
+	if err != nil {
+		return nil, err
+	}
+
+	// The digest for the unseal command is computed as
+	//
+	// digest = SHA1(ordUnseal || sealed)
+	digestInput, err := pack([]interface{}{ordUnseal, sealed})
+	if err != nil {
+		return nil, err
+	}
+
+	digest := sha1.Sum(digestInput)
+
+	// The first PubAuth value for unseal is computed as
+	//
+	// PubAuth = HMAC-SHA1(sharedSecret, digest || NonceEven || NonceOdd ||
+	//                     ContSession)
+	sca := &sealCommandAuth{
+		AuthHandle: osapr.AuthHandle,
+	}
+
+	// For now, we let NonceOdd be empty.
+	pubAuthInput, err := pack([]interface{}{digest, osapr.NonceEven, sca.NonceOdd, sca.ContSession})
+	if err != nil {
+		return nil, err
+	}
+
+	h := hmac.New(sha1.New, sharedSecret)
+	h.Write(pubAuthInput)
+	pa := h.Sum(nil)
+	copy(sca.PubAuth[:], pa[:])
+
+	// The second PubAuth value for unseal is computed as
+	//
+	// PubAuth2 = HMAC-SHA1(srkAuth, digest || NonceEven2 || NonceOdd2 ||
+	//                      ContSession2)
+	sca2 := &sealCommandAuth{
+		AuthHandle: oiapr.AuthHandle,
+	}
+
+	// For now, we let NonceOdd2 be empty.
+	pubAuthInput2, err := pack([]interface{}{digest, oiapr.NonceEven, sca2.NonceOdd, sca2.ContSession})
+	if err != nil {
+		return nil, err
+	}
+
+	h2 := hmac.New(sha1.New, wellKnownAuth)
+	h2.Write(pubAuthInput2)
+	pa2 := h2.Sum(nil)
+	copy(sca2.PubAuth[:], pa2[:])
+
+	unsealed, _, _, err := unseal(f, khSRK, sealed, sca, sca2)
+	if err != nil {
+		return nil, err
+	}
+
+	return unsealed, nil
+}

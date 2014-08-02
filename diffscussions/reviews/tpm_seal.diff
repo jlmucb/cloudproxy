@@ -39,6 +39,17 @@
 #- Removed constants that are not currently used by the tpm package
 #- 
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-08-01T16:34:01-0400
+#**
+#-- Might it be a good idea to make this a standalone package as done for datalog?
+#--
+#-- The below comments are extremely nitpicky and verbose. Sorry for that. Feel
+#-- free to completely disregard them, of course. Also, my comments are almost
+#-- entirely about non-exported code, so if you want to push this to master, it
+#-- is fine by me.
 diff --git a/go/src/tpm/tpm.go b/go/src/tpm/tpm.go
 index f4a3bb4..acd9622 100644
 --- a/go/src/tpm/tpm.go
@@ -124,9 +135,27 @@ index f4a3bb4..acd9622 100644
  	Size uint32
  	Cmd  uint32
  }
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-01T16:50:13-0400
+#*
+#- These fields can probably be made unexported. If you ever plan on returning
+#- an (unexported) commandHeader from an exported function, then it might make
+#- sense to keep the fields exported since in that case, as far as I can tell,
+#- things outside this package can still use exported fields from the unexported
+#- type.
+#-
  
 -// PackedSize computes the size of a sequence of types that can be passed to
 +// String prints a string version of a commandHeader
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-01T16:37:43-0400
+#*
+#- "returns" not "prints"
+#-
 +func (ch commandHeader) String() string {
 +	return fmt.Sprintf("commandHeader{Tag: %x, Size: %x, Cmd: %x}", ch.Tag, ch.Size, ch.Cmd)
 +}
@@ -231,6 +260,17 @@ index f4a3bb4..acd9622 100644
 +func simpleUnpack(b []byte, resp []interface{}) error {
 +	return unpack(b, resp, nil, 0)
 +}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-01T17:16:17-0400
+#*
+#- "unpack" not "Unpack"
+#-
+#- Also, I don't like the name simpleUnpack -- could mean anything. How about
+#- unpackWithoutHeader? Or make it unpack and the other one unpackWithHeader?
+#- Better yet, see below for 3rd option.
+#-
  
 -// Unpack decodes from a byte array a sequence of elements that are either
 +// unpack decodes from a byte array a sequence of elements that are either
@@ -298,7 +338,136 @@ index f4a3bb4..acd9622 100644
  
  	return nil
  }
- 
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-01T17:36:32-0400
+#*
+#- I'm not keen on this organization at all. Why is responseHeader being passed
+#- in as a pointer to a struct, when only rh.Size is needed. Why are rest and
+#- rh.Size being passed in separately, when really only l=(rh.Size - rest) is
+#- needed? And why are we passing in lengths anyway, since slices carry size
+#- information? Specifically, I'm pretty sure your l=(rh.Size - rest) value
+#- would be identical to len(b) - unpackSize(resp), if unpackSize() does the
+#- same thing as packedSize but ignores variable-size byteslice output
+#- parameters. And for cases like GetRandom where there is an explicit size
+#- encoded, who is responsible for calculating the size during packing or
+#- checking during unpacking that the encoded size matches what is expected?
+#- Alternatively, does anyone check that the entire buffer is filled at the end
+#- of packing or consumed at the end of unpacking? Lastly, having the sizes
+#- managed by the caller means there is boring size-calculating code and
+#- size-variables scattered in lots of places.
+#-
+#- Looking at the tpm specs, and specifically the commentary in the main part,
+#- it is pretty clear that there are three cases:
+#- (1) fixed-size byte or int32 arrays, e.g. 20-byte digests. These are encoded as just
+#-     the bytes. This is the same path used for non-array non-slice primitive
+#-     objects like int, byte, etc.
+#- (2) variable-sized opaque byte or int32 arrays. In the spec, these are
+#-     labeled as size "<>" and type "BYTE[]". In every case I could find in the
+#-     spec, these are always encoded as a UINT32 length followed by the bytes,
+#-     both for incoming and outgoing buffers.
+#- (3) other variable-sized structures, like TPM_KEY and TPM_STORED_DATA. 
+#-     These have internal structure, and by looking inside you can recursively
+#-     figure out the actual size.
+#-
+#- I think you currently handle (1) using these using arrays, not slices, and I
+#- like that. But your handling of (2) and (3) is not ideal.
+#-
+#- I think you currently handle (2) using slices plus a separate uint32 for a
+#- length. I think it should instead just be a slice -- the semantics seem to
+#- match up just about perfectly. When packing a byteslice, pack it as 4+n
+#- bytes: a 4-byte length, followed by the contents. When unpacking a
+#- pointer-to-byteslice, unpack the 4-byte length first, then alloocate (or
+#- resize) and fill the pointed-to byteslice.
+#-
+#- I think you handle (3) using slices without a separate length, and this is
+#- where the trouble is caused.  In the case of seal, just define the proper
+#- struct:
+#-    type tpmStoredData struct {
+#-      ver uint32
+#-      sealInfo []byte
+#-      encData []byte
+#-    }
+#- There is a similiar case for TPM_KEY and TPM_KEY12, and a few other tpm
+#- structures. It's fine if we continue to return these as opaque byte slices if
+#- we want to hide the internal structure from callers.
+#-
+#- When packing a tpmStoredData, the size is computed exactly as
+#- packedSize() would compute it: case 1 for ver, case 2 for the other two
+#- fields. When unpacking, you'd unpack ver first using case 1, then unpack
+#- sealInfo using case 2, then encData using case 2.
+#-
+#- This could all be done with reflection and recursion in the same way that
+#- binary.Write(), binary.Read(), etc., do it, passing most cases off to the
+#- binary package but handling byte slices specially. I suspect this would be
+#- nearly a 1-liner, able to handle embedded tpmStoredData structs and all other
+#- similar tpm structs. Or you could make a "packable" interface and check for
+#- that at the top level of pack, unpack, etc., and hand-code functions with the
+#- recursive calls for each of those structs.
+#-
+#- Actually, here is I think a nearly complete pack() solution along those
+#- lines:
+#-
+#- // pack encodes a slice of tpm structures into a byte array.
+#- func pack(elts []interface{}) ([]byte, error) {
+#- 	buf := new(bytes.Buffer)
+#- 	if err := packWriter(buf, elts); err != nil {
+#- 		return nil, err
+#- 	}
+#- 	return buf.Bytes(), nil
+#- }
+#-
+#- // packWriter encodes a slice of tpm structures. A tpm structure is either:
+#- // (1) a fixed-size integer type, or an array of them
+#- // (2) a slice of fixed-size integer types
+#- // (3) a struct of tpm structures
+#- func packWriter(buf io.Writer, elts []interface{}) (err error) {
+#- 	for _, e := range elts {
+#- 		v := reflect.ValueOf(e)
+#- 		switch v.Kind() {
+#- 		case reflect.Struct:
+#- 			fmt.Printf("packing %s (struct)\n", v.Type())
+#- 			for i := 0; i < v.NumField() && err == nil; i++ {
+#- 				err = packWriter(buf, []interface{}{v.Field(i).Interface()})
+#- 			}
+#- 		case reflect.Slice:
+#- 			fmt.Printf("packing %s (variable length)\n", v.Type())
+#- 			elemSize, err := sizeof(v.Type().Elem())
+#- 			if err == nil {
+#-				err = binary.Write(buf, binary.BigEndian, uint32(v.Len() * elemSize))
+#-			}
+#- 			if err == nil {
+#- 				err = binary.Write(buf, binary.BigEndian, e)
+#- 			}
+#- 		default:
+#- 			fmt.Printf("packing %s (fixed length)\n", v.Type())
+#- 			err = binary.Write(buf, binary.BigEndian, e)
+#- 		}
+#- 		if err != nil {
+#- 			return
+#- 		}
+#- 	}
+#- 	return
+#- }
+#-
+#- Of course it would be trivial to handle slices of tpm structures by
+#- just recursing instead of calling binary.Write() in the second case, but I'm
+#- don't think that ever happens. And the "default" could be made more strict
+#- for more strict error checking, if desired. The once case I see that isn't
+#- handled here is TPM_PCR_INFO_LONG, which is wierd. It's a struct, so should
+#- have an implicit length like TPM_STORED_DATA or TPM_KEY. But it's also
+#- (sometimes?) optional, so they use an explicit pcrInfoSize that can be 0 to
+#- for that case. But there is an old v1 TPM_PCR_INFO struct which is missing a
+#- versioning tag, so they also seem to use pcrInfoSize to help work around that
+#- oversight. In the code above, I'd probably either (a) handle pcrInfoLong
+#- specially, (b) handle any pointer to a tpm structure during packing as an
+#- "optional" field to be preceded by an explicit length, or (c) generalize the
+#- slice handling so you can pass in a slice of zero or one pcrInfoLong
+#- structures.
+#-
+#- I think the unpack code would just be the mirror image of the above, but
+#- having everything be pointers.
 +// maxTPMResponse is the largest possible response from the TPM. We need to know
 +// this because we don't always know the length of the TPM response, and
 +// /dev/tpm insists on giving it all back in a single value rather than
@@ -330,6 +499,16 @@ index f4a3bb4..acd9622 100644
 -	outSize := PackedSize(out)
 +	var rh responseHeader
 +	outSize := packedSize(out)
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-01T19:33:24-0400
+#*
+#- Other than the error checking here, this value is never used. Implicitly, you
+#- are really just checking to make sure this is "unpackable", you don't care
+#- about the size at all. This check should be moved down to the place where the
+#- check is needed, below.
+#-
  	if outSize < 0 {
  		return errors.New("invalid out arguments")
  	}
@@ -375,6 +554,13 @@ index f4a3bb4..acd9622 100644
 +		// aren't ResizeableSlice). This cast is safe, since we already know
 +		// that the encoding/binary package can compute the size of the response
 +		// header, so its return value will be nonnegative.
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-01T19:35:54-0400
+#*
+#- This is where the above outSize < 0 check should have been.
+#-
 +		rest := uint(binary.Size(&rh))
 +		for _, r := range out {
 +			if _, ok := r.(resizeableSlice); !ok {
@@ -383,6 +569,14 @@ index f4a3bb4..acd9622 100644
 +		}
 +
 +		if err := unpack(outb[rhSize:], out, &rh, rest); err != nil {
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-01T19:35:08-0400
+#*
+#- I view this code as a symptom of the problem outlined above. This is just a
+#- hacked-up version of packedSize() all over again.
+#-
  			return err
  		}
  	}
@@ -409,6 +603,19 @@ index f4a3bb4..acd9622 100644
 +// A PCRMask represents a set of PCR choices, one bit per PCR out of the 24
 +// possible PCR values.
 +type PCRMask [3]byte
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-01T19:40:25-0400
+#*
+#- Technically, there are n>=24 pcrs, and the pcrmask can be 3+ bytes. And
+#- apparently sometimes the tpm passes back 4, 5, or even 6 bytes even though it
+#- knows only the first 24 bits can be filled.
+#-
+#- Internally the limitation in the code doesn't matter for now, but maybe the
+#- fixed 3-byte limitation shouldn't be exported. Or maybe use big.Int
+#- internally to handle the bit-level manipulations, and call big.Int.Bytes()
+#- before putting a mask into a pcrSelection struct.
 +
 +// SetPCR sets a PCR value as selected in a given mask.
 +func (pm *PCRMask) SetPCR(i int) error {
@@ -419,6 +626,14 @@ index f4a3bb4..acd9622 100644
 +	(*pm)[i/8] |= 1 << uint(i%8)
 +	return nil
 +}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-01T19:45:40-0400
+#*
+#- Maybe add a ClearPCR() for completeness? Use go's &^ "bit clear" operator for
+#- that.
+#-
 +
 +// IsPCRSet checks to see if a given PCR is included in this mask.
 +func (pm PCRMask) IsPCRSet(i int) (bool, error) {
@@ -460,6 +675,21 @@ index f4a3bb4..acd9622 100644
 +	Size uint16
 +	Mask PCRMask
 +}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-01T19:47:36-0400
+#*
+#- Under my suggestion above, and if PCRMask were a slice (since it may be 3+
+#- bytes), this would be:
+#-  type PCRMask []byte
+#-  type pcrSelection struct {
+#-    Mask PCRMask
+#-  }
+#- And encoding or decoding a pcrSelection would just mean doing Mask,
+#- which of course is just a case (2) variable-length byteslice encoded as 4+n
+#- bytes with length then contents.
+#-
 +
 +// String writes out a string representation of a pcrSelection
 +func (p pcrSelection) String() string {
@@ -474,6 +704,14 @@ index f4a3bb4..acd9622 100644
 +	}
 +
 +	in := []interface{}{pcrSelection{3, mask}, uint32(len(pcrs)), pcrs}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-01T19:52:55-0400
+#*
+#- Under my suggestion, this would just be
+#-   in := []interface{}{pcrSelection{mask}, pcrs}
+#- since pcrs is a case (2) variable-size byteslice.
 +	b, err := pack(in)
 +	if err != nil {
 +		return nil, err
@@ -494,6 +732,13 @@ index f4a3bb4..acd9622 100644
 +type nonce [20]byte
 +
 +const nonceSize uint32 = 20
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-01T19:57:07-0400
+#*
+#- I like type nonce. You can't eliminate one of those 20's in go, can you?
+#-
 +
 +// An oiapResponse is a response to an OIAP command.
 +type oiapResponse struct {
@@ -531,6 +776,16 @@ index f4a3bb4..acd9622 100644
 +	var outSize uint32
 +	var b []byte
 +	out := []interface{}{&outSize, resizeableSlice(&b)}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-01T19:54:35-0400
+#*
+#- Under my suggestion, this would be
+#-   out := []interface{}{&b}, and unpack would resize b, make sure the entire
+#-   response message size matches up with the explicit size in the response,
+#-   etc.
+#-
  
  	if err := submitTPMRequest(f, tagRQUCommand, ordGetRandom, in, out); err != nil {
  		return nil, err
@@ -688,6 +943,14 @@ index f4a3bb4..acd9622 100644
 +	}
 +
 +	in := []interface{}{sc, uint32(pcrsize), pcrs, datasize, data, sca}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-02T00:38:10-0400
+#*
+#- Under my suggestion, all the above would reduce to:
+#-   in := []interface{sc, pcrs, data, sca}
+#- without any of the size calculations.
 +
 +	// The slice will be resized by Unpack to the size of the sealed value.
 +	var b []byte
@@ -696,6 +959,15 @@ index f4a3bb4..acd9622 100644
 +	if err := submitTPMRequest(f, tagRQUAuth1Command, ordSeal, in, out); err != nil {
 +		return nil, nil, err
 +	}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-02T00:41:40-0400
+#*
+#- Under my suggestion, this would be
+#-   var b tpmStoredData
+#-   out := []interface{}(&b, &resp)
+#- Or just put the tpmStoredData as a field inside resp.
 +
 +	return b, &resp, nil
 +}
@@ -720,6 +992,13 @@ index f4a3bb4..acd9622 100644
 +	var outAuth1 unsealResponse
 +	var outAuth2 unsealResponse
 +	out := []interface{}{&size, resizeableSlice(&outb), &outAuth1, &outAuth2}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-02T00:44:02-0400
+#*
+#- More size calculations that could be eliminated.
+#-
 +	if err := submitTPMRequest(f, tagRQUAuth2Command, ordUnseal, in, out); err != nil {
 +		return nil, nil, nil, err
 +	}
@@ -801,6 +1080,17 @@ index f4a3bb4..acd9622 100644
 +	// TODO(tmroeder): test this with secrets other than the well-known secret.
 +	// Note that this will require setting up the TPM differently.
 +	wellKnownAuth := make([]byte, authSize)
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-02T00:45:27-0400
+#*
+#- Use authValue type here.
+#-   wellKnownAuth := new(AuthValue)
+#- Then below you can use
+#-   wellKnownAuth[:]
+#- if you need a slice.
+#-
 +	if glog.V(2) {
 +		glog.Infof("wellKnownAuth is % x\n", wellKnownAuth)
 +	}
@@ -865,6 +1155,12 @@ index f4a3bb4..acd9622 100644
 +	if err != nil {
 +		return nil, err
 +	}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-02T00:47:51-0400
+#*
+#- A few more size calculations to eliminate.
 +
 +	if glog.V(2) {
 +		glog.Infof("digestBytes is % x\n", digestBytes)

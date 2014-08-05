@@ -50,6 +50,15 @@
 #-- free to completely disregard them, of course. Also, my comments are almost
 #-- entirely about non-exported code, so if you want to push this to master, it
 #-- is fine by me.
+#***
+#*** author: Tom Roeder
+#*** email: tmroeder@google.com
+#*** date: 2014-08-05T15:11:46-0700
+#***
+#--- I'm pushing to master a version that fixes the major complaints and some
+#--- minor ones, but it doesn't fix everything yet. See below for the bits that
+#--- will be coming up in future commits.
+#--- 
 diff --git a/go/src/tpm/tpm.go b/go/src/tpm/tpm.go
 index f4a3bb4..acd9622 100644
 --- a/go/src/tpm/tpm.go
@@ -146,6 +155,14 @@ index f4a3bb4..acd9622 100644
 #- things outside this package can still use exported fields from the unexported
 #- type.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-05T15:12:29-0700
+#**
+#-- As in our email discussion, export is required to get binary/encoding.Read
+#-- to work.
+#-- 
  
 -// PackedSize computes the size of a sequence of types that can be passed to
 +// String prints a string version of a commandHeader
@@ -156,6 +173,13 @@ index f4a3bb4..acd9622 100644
 #*
 #- "returns" not "prints"
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-05T15:13:00-0700
+#**
+#-- fixed
+#-- 
 +func (ch commandHeader) String() string {
 +	return fmt.Sprintf("commandHeader{Tag: %x, Size: %x, Cmd: %x}", ch.Tag, ch.Size, ch.Cmd)
 +}
@@ -271,6 +295,14 @@ index f4a3bb4..acd9622 100644
 #- unpackWithoutHeader? Or make it unpack and the other one unpackWithHeader?
 #- Better yet, see below for 3rd option.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-05T15:13:07-0700
+#**
+#-- This is fixed with a new pack/unpack reflect-based framework along the lines
+#-- discussed below.
+#-- 
  
 -// Unpack decodes from a byte array a sequence of elements that are either
 +// unpack decodes from a byte array a sequence of elements that are either
@@ -468,6 +500,14 @@ index f4a3bb4..acd9622 100644
 #-
 #- I think the unpack code would just be the mirror image of the above, but
 #- having everything be pointers.
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-05T15:13:47-0700
+#**
+#-- Fixed in the committed version with a new pack/unpack framework along these
+#-- lines.
+#-- 
 +// maxTPMResponse is the largest possible response from the TPM. We need to know
 +// this because we don't always know the length of the TPM response, and
 +// /dev/tpm insists on giving it all back in a single value rather than
@@ -509,6 +549,13 @@ index f4a3bb4..acd9622 100644
 #- about the size at all. This check should be moved down to the place where the
 #- check is needed, below.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-05T15:14:21-0700
+#**
+#-- Not yet fixed, but I'll fix it.
+#-- 
  	if outSize < 0 {
  		return errors.New("invalid out arguments")
  	}
@@ -561,6 +608,13 @@ index f4a3bb4..acd9622 100644
 #*
 #- This is where the above outSize < 0 check should have been.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-05T15:14:30-0700
+#**
+#-- Ack
+#-- 
 +		rest := uint(binary.Size(&rh))
 +		for _, r := range out {
 +			if _, ok := r.(resizeableSlice); !ok {
@@ -577,6 +631,13 @@ index f4a3bb4..acd9622 100644
 #- I view this code as a symptom of the problem outlined above. This is just a
 #- hacked-up version of packedSize() all over again.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-05T15:14:41-0700
+#**
+#-- Right. This is much simpler in the committed version.
+#-- 
  			return err
  		}
  	}
@@ -616,6 +677,14 @@ index f4a3bb4..acd9622 100644
 #- fixed 3-byte limitation shouldn't be exported. Or maybe use big.Int
 #- internally to handle the bit-level manipulations, and call big.Int.Bytes()
 #- before putting a mask into a pcrSelection struct.
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-05T15:14:52-0700
+#**
+#-- Won't fix right now. If this breaks on some TPM in the future, then I'll
+#-- generalize it.
+#-- 
 +
 +// SetPCR sets a PCR value as selected in a given mask.
 +func (pm *PCRMask) SetPCR(i int) error {
@@ -634,6 +703,13 @@ index f4a3bb4..acd9622 100644
 #- Maybe add a ClearPCR() for completeness? Use go's &^ "bit clear" operator for
 #- that.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-05T15:15:11-0700
+#**
+#-- I'll add this, yes. It's not in the committed version.
+#-- 
 +
 +// IsPCRSet checks to see if a given PCR is included in this mask.
 +func (pm PCRMask) IsPCRSet(i int) (bool, error) {
@@ -690,6 +766,13 @@ index f4a3bb4..acd9622 100644
 #- which of course is just a case (2) variable-length byteslice encoded as 4+n
 #- bytes with length then contents.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-05T15:15:29-0700
+#**
+#-- Not yet fixed, and it might not get fixed, as per the Won't Fix above.
+#-- 
 +
 +// String writes out a string representation of a pcrSelection
 +func (p pcrSelection) String() string {
@@ -739,6 +822,13 @@ index f4a3bb4..acd9622 100644
 #*
 #- I like type nonce. You can't eliminate one of those 20's in go, can you?
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-05T15:15:48-0700
+#**
+#-- Sadly, no, as far as I know.
+#-- 
 +
 +// An oiapResponse is a response to an OIAP command.
 +type oiapResponse struct {
@@ -786,6 +876,13 @@ index f4a3bb4..acd9622 100644
 #-   response message size matches up with the explicit size in the response,
 #-   etc.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-05T15:15:58-0700
+#**
+#-- Yes, this is much nicer now.
+#-- 
  
  	if err := submitTPMRequest(f, tagRQUCommand, ordGetRandom, in, out); err != nil {
  		return nil, err
@@ -951,6 +1048,13 @@ index f4a3bb4..acd9622 100644
 #- Under my suggestion, all the above would reduce to:
 #-   in := []interface{sc, pcrs, data, sca}
 #- without any of the size calculations.
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-05T15:16:04-0700
+#**
+#-- Ack.
+#-- 
 +
 +	// The slice will be resized by Unpack to the size of the sealed value.
 +	var b []byte
@@ -968,6 +1072,13 @@ index f4a3bb4..acd9622 100644
 #-   var b tpmStoredData
 #-   out := []interface{}(&b, &resp)
 #- Or just put the tpmStoredData as a field inside resp.
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-05T15:16:12-0700
+#**
+#-- Ack.
+#-- 
 +
 +	return b, &resp, nil
 +}
@@ -999,6 +1110,13 @@ index f4a3bb4..acd9622 100644
 #*
 #- More size calculations that could be eliminated.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-05T15:16:16-0700
+#**
+#-- Ack.
+#-- 
 +	if err := submitTPMRequest(f, tagRQUAuth2Command, ordUnseal, in, out); err != nil {
 +		return nil, nil, nil, err
 +	}
@@ -1091,6 +1209,13 @@ index f4a3bb4..acd9622 100644
 #-   wellKnownAuth[:]
 #- if you need a slice.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-05T15:16:21-0700
+#**
+#-- Not yet fixed, but I will fix it.
+#-- 
 +	if glog.V(2) {
 +		glog.Infof("wellKnownAuth is % x\n", wellKnownAuth)
 +	}
@@ -1161,6 +1286,13 @@ index f4a3bb4..acd9622 100644
 #* date: 2014-08-02T00:47:51-0400
 #*
 #- A few more size calculations to eliminate.
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-05T15:16:30-0700
+#**
+#-- Ack.
+#-- 
 +
 +	if glog.V(2) {
 +		glog.Infof("digestBytes is % x\n", digestBytes)

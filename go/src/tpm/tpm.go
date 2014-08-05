@@ -23,7 +23,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"os"
+	"reflect"
 	"strconv"
 
 	"github.com/golang/glog"
@@ -63,6 +65,9 @@ const (
 	khSRK tpmHandle = 0x40000000
 )
 
+// A pcrValue is the fixed-size value of a PCR.
+type pcrValue [20]byte
+
 // Each PCR has a fixed size of 20 bytes.
 const PCRSize int = 20
 
@@ -73,7 +78,7 @@ type commandHeader struct {
 	Cmd  uint32
 }
 
-// String prints a string version of a commandHeader
+// String returns a string version of a commandHeader
 func (ch commandHeader) String() string {
 	return fmt.Sprintf("commandHeader{Tag: %x, Size: %x, Cmd: %x}", ch.Tag, ch.Size, ch.Cmd)
 }
@@ -81,38 +86,37 @@ func (ch commandHeader) String() string {
 // packedSize computes the size of a sequence of types that can be passed to
 // binary.Read or binary.Write.
 func packedSize(elts []interface{}) int {
-	// Add the total size to the header.
 	var size int
-	for i := range elts {
-		s := binary.Size(elts[i])
-		if s == -1 {
-			return -1
-		}
+	for _, e := range elts {
+		v := reflect.ValueOf(e)
+		switch v.Kind() {
+		case reflect.Struct:
+			for i := 0; i < v.NumField(); i++ {
+				s := packedSize([]interface{}{v.Field(i).Interface()})
+				if s < 0 {
+					return s
+				}
 
-		size += s
+				size += s
+			}
+		case reflect.Slice:
+			b, ok := e.([]byte)
+			if !ok {
+				return -1
+			}
+
+			size += 4 + len(b)
+		default:
+			s := binary.Size(e)
+			if s < 0 {
+				return s
+			}
+
+			size += s
+		}
 	}
 
 	return size
-}
-
-// pack takes a sequence of elements that are either of fixed length or slices
-// of fixed-length types and packs them into a single byte array using
-// binary.Write.
-func pack(elts []interface{}) ([]byte, error) {
-	size := packedSize(elts)
-	if size <= 0 {
-		return nil, errors.New("can't compute the size of the elements")
-	}
-
-	buf := bytes.NewBuffer(make([]byte, 0, size))
-
-	for _, e := range elts {
-		if err := binary.Write(buf, binary.BigEndian, e); err != nil {
-			return nil, err
-		}
-	}
-
-	return buf.Bytes(), nil
 }
 
 // packWithHeader takes a header and a sequence of elements that are either of
@@ -140,62 +144,137 @@ type responseHeader struct {
 	Res  uint32
 }
 
-// String writes out a string representation of a responseHeader.
+// String returns a string representation of a responseHeader.
 func (rh responseHeader) String() string {
 	return fmt.Sprintf("responseHeader{Tag: %x, Size: %x, Res: %x", rh.Tag, rh.Size, rh.Res)
 }
 
-// A resizeableSlice is a pointer to a slice so this slice can be resized
-// dynamically. This is critical for cases like Seal, where we don't know
-// beforehand exactly how many bytes the TPM might produce.
-type resizeableSlice *[]byte
-
-// SimpleUnpack calls Unpack with a nil header and rest as 0. This is used when
-// there is no resizeable slice.
-func simpleUnpack(b []byte, resp []interface{}) error {
-	return unpack(b, resp, nil, 0)
-}
-
-// unpack decodes from a byte array a sequence of elements that are either
-// pointers to fixed length types or slices of fixed-length types. It uses
-// binary.Read to do the decoding. If rh is not nil, then the size is used to
-// resize a ResizeableSlice. The size of the byte array is taken to be rh.Size -
-// rest.
-func unpack(b []byte, resp []interface{}, rh *responseHeader, rest uint) error {
-	buf := bytes.NewBuffer(b)
-	var resized bool
-	for _, r := range resp {
-		bs, ok := r.(resizeableSlice)
-		if ok {
-			if rh == nil {
-				return errors.New("found a resizeableSlice but no header")
-			}
-
-			if resized {
-				return errors.New("can't resize two arrays in a single response")
-			}
-
-			size := uint(rh.Size) - rest
-			l := uint(len(*bs))
-			if size > l {
-				*bs = append(*bs, make([]byte, size-l)...)
-			} else if size < l {
-				*bs = (*bs)[:size]
-			}
-
-			resized = true
-		}
-
-		// Note that this only makes sense if the elements of resp are either
-		// pointers or slices, since otherwise the decoded values just get
-		// thrown away.
-		if err := binary.Read(buf, binary.BigEndian, r); err != nil {
-			return err
-		}
+// pack encodes a set of elements into a single byte array, using
+// encoding/binary. This means that all the elements must be encodeable
+// according to the rules of encoding/binary. It has one difference from
+// encoding/binary: it encodes byte slices with a prepended uint32 length, to
+// match how the TPM encodes variable-length arrays.
+// TODO(tmroeder): this should be in a file called encoding.go.
+func pack(elts []interface{}) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	if err := packType(buf, elts); err != nil {
+		return nil, err
 	}
 
-	if buf.Len() > 0 {
-		return errors.New("unread bytes in the TPM response")
+	return buf.Bytes(), nil
+}
+
+// packType recursively packs types the same way that encoding/binary does under
+// binary.BigEndian, but with one difference: it packs a byte slice as a uint32
+// size followed by the bytes. The function unpackType performs the inverse
+// operation of unpacking slices stored in this manner and using encoding/binary
+// for everything else.
+func packType(buf io.Writer, elts []interface{}) error {
+	for _, e := range elts {
+		v := reflect.ValueOf(e)
+		switch v.Kind() {
+		case reflect.Struct:
+			for i := 0; i < v.NumField(); i++ {
+				if err := packType(buf, []interface{}{v.Field(i).Interface()}); err != nil {
+					return err
+				}
+			}
+		case reflect.Slice:
+			b, ok := e.([]byte)
+			if !ok {
+				return errors.New("can't pack slices of non-byte values")
+			}
+
+			if err := binary.Write(buf, binary.BigEndian, uint32(len(b))); err != nil {
+				return err
+			}
+
+			if err := binary.Write(buf, binary.BigEndian, b); err != nil {
+				return err
+			}
+		default:
+			if err := binary.Write(buf, binary.BigEndian, e); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+// unpack performs the inverse operation from pack.
+func unpack(b []byte, elts []interface{}) error {
+	buf := bytes.NewBuffer(b)
+	return unpackType(buf, elts)
+}
+
+// resizeBytes changes the size of the byte slice according to the second param.
+func resizeBytes(b *[]byte, size uint32) {
+	// Append to the slice if it's too small and shrink it if it's too large.
+	l := len(*b)
+	ss := int(size)
+	if l > ss {
+		*b = (*b)[:ss]
+	} else if l < ss {
+		*b = append(*b, make([]byte, ss-l)...)
+	}
+}
+
+// unpackType recursively unpacks types from a reader just as encoding/binary
+// does under binary.BigEndian, but with one difference: it unpacks a byte slice
+// by first reading a uint32, then reading that many bytes. It assumes that
+// incoming values are pointers to values so that, e.g., underlying slices can
+// be resized as needed.
+func unpackType(buf io.Reader, elts []interface{}) error {
+	for _, e := range elts {
+		v := reflect.ValueOf(e)
+		k := v.Kind()
+		if k != reflect.Ptr {
+			return errors.New("all values passed to unpack must be pointers")
+		}
+
+		if v.IsNil() {
+			return errors.New("can't fill a nil pointer")
+		}
+
+		iv := reflect.Indirect(v)
+		switch iv.Kind() {
+		case reflect.Struct:
+			// Decompose the struct and copy over the values.
+			for i := 0; i < iv.NumField(); i++ {
+				if err := unpackType(buf, []interface{}{iv.Field(i).Addr().Interface()}); err != nil {
+					return err
+				}
+			}
+		case reflect.Slice:
+			// Read a uint32 and resize the byte array as needed
+			var size uint32
+			if err := binary.Read(buf, binary.BigEndian, &size); err != nil {
+				return err
+			}
+
+			// A zero size is used by the TPM to signal that certain elements
+			// are not present.
+			if size == 0 {
+				continue
+			}
+
+			b, ok := e.(*[]byte)
+			if !ok {
+				return errors.New("can't fill pointers to slices of non-byte values")
+			}
+
+			resizeBytes(b, size)
+			if err := binary.Read(buf, binary.BigEndian, e); err != nil {
+				return err
+			}
+		default:
+			if err := binary.Read(buf, binary.BigEndian, e); err != nil {
+				return err
+			}
+		}
+
 	}
 
 	return nil
@@ -227,11 +306,6 @@ func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out 
 	// ResponseHeader and not the body, since that's what happens in the error
 	// case.
 	var rh responseHeader
-	outSize := packedSize(out)
-	if outSize < 0 {
-		return errors.New("invalid out arguments")
-	}
-
 	rhSize := binary.Size(rh)
 	outb := make([]byte, maxTPMResponse)
 	outlen, err := f.Read(outb)
@@ -245,7 +319,7 @@ func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out 
 		glog.Infof("TPM response:\n%x\n", outb)
 	}
 
-	if err := simpleUnpack(outb[:rhSize], []interface{}{&rh}); err != nil {
+	if err := unpack(outb[:rhSize], []interface{}{&rh}); err != nil {
 		return err
 	}
 
@@ -261,18 +335,7 @@ func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out 
 	}
 
 	if rh.Size > uint32(rhSize) {
-		// Calculate the size of the rest of the structures (the ones that
-		// aren't ResizeableSlice). This cast is safe, since we already know
-		// that the encoding/binary package can compute the size of the response
-		// header, so its return value will be nonnegative.
-		rest := uint(binary.Size(&rh))
-		for _, r := range out {
-			if _, ok := r.(resizeableSlice); !ok {
-				rest += uint(binary.Size(r))
-			}
-		}
-
-		if err := unpack(outb[rhSize:], out, &rh, rest); err != nil {
+		if err := unpack(outb[rhSize:], out); err != nil {
 			return err
 		}
 	}
@@ -283,13 +346,13 @@ func submitTPMRequest(f *os.File, tag uint16, ord uint32, in []interface{}, out 
 // ReadPCR reads a PCR value from the TPM.
 func ReadPCR(f *os.File, pcr uint32) ([]byte, error) {
 	in := []interface{}{pcr}
-	v := make([]byte, PCRSize)
-	out := []interface{}{v}
+	var v pcrValue
+	out := []interface{}{&v}
 	if err := submitTPMRequest(f, tagRQUCommand, ordPCRRead, in, out); err != nil {
 		return nil, err
 	}
 
-	return v, nil
+	return v[:], nil
 }
 
 // A PCRMask represents a set of PCR choices, one bit per PCR out of the 24
@@ -347,7 +410,7 @@ type pcrSelection struct {
 	Mask PCRMask
 }
 
-// String writes out a string representation of a pcrSelection
+// String returns a string representation of a pcrSelection
 func (p pcrSelection) String() string {
 	return fmt.Sprintf("pcrSelection{Size: %x, Mask: % x}", p.Size, p.Mask)
 }
@@ -359,7 +422,7 @@ func createPCRComposite(mask PCRMask, pcrs []byte) ([]byte, error) {
 		return nil, errors.New("pcrs must be a multiple of " + strconv.Itoa(PCRSize))
 	}
 
-	in := []interface{}{pcrSelection{3, mask}, uint32(len(pcrs)), pcrs}
+	in := []interface{}{pcrSelection{3, mask}, pcrs}
 	b, err := pack(in)
 	if err != nil {
 		return nil, err
@@ -387,7 +450,7 @@ type oiapResponse struct {
 	NonceEven  nonce
 }
 
-// String writes out a string representation of an oiapResponse.
+// String returns a string representation of an oiapResponse.
 func (opr oiapResponse) String() string {
 	return fmt.Sprintf("oiapResponse{AuthHandle: %x, NonceEven: % x}", opr.AuthHandle, opr.NonceEven)
 }
@@ -406,12 +469,9 @@ func oiap(f *os.File) (*oiapResponse, error) {
 
 // GetRandom gets random bytes from the TPM.
 func GetRandom(f *os.File, size uint32) ([]byte, error) {
-	in := []interface{}{size}
-
-	var outSize uint32
 	var b []byte
-	out := []interface{}{&outSize, resizeableSlice(&b)}
-
+	in := []interface{}{size}
+	out := []interface{}{&b}
 	if err := submitTPMRequest(f, tagRQUCommand, ordGetRandom, in, out); err != nil {
 		return nil, err
 	}
@@ -426,7 +486,7 @@ type osapCommand struct {
 	OddOSAP     nonce
 }
 
-// String writes out a string representation of an osapCommand.
+// String returns a string representation of an osapCommand.
 func (opc osapCommand) String() string {
 	return fmt.Sprintf("osapCommand{EntityType: %x, EntityValue: %x, OddOSAP: % x}", opc.EntityType, opc.EntityValue, opc.OddOSAP)
 }
@@ -545,25 +605,37 @@ func (sr sealResponse) String() string {
 	return fmt.Sprintf("sealResponse{NonceEven: % x, ContSession: %x, PubAuth: % x}", sr.NonceEven, sr.ContSession, sr.PubAuth)
 }
 
+// A tpmStoredData holds sealed data from the TPM.
+type tpmStoredData struct {
+	Version uint32
+	Info    []byte
+	Enc     []byte
+}
+
+// String returns a string representation of a tpmStoredData.
+func (tsd tpmStoredData) String() string {
+	return fmt.Sprintf("tpmStoreddata{Version: %x, Info: % x, Enc: % x\n", tsd.Version, tsd.Info, tsd.Enc)
+}
+
 // seal performs a seal operation on the TPM.
-func seal(f *os.File, sc *sealCommand, pcrs *pcrInfoLong, data []byte, sca *sealCommandAuth) ([]byte, *sealResponse, error) {
-	datasize := uint32(len(data))
+func seal(f *os.File, sc *sealCommand, pcrs *pcrInfoLong, data []byte, sca *sealCommandAuth) (*tpmStoredData, *sealResponse, error) {
 	pcrsize := binary.Size(pcrs)
 	if pcrsize < 0 {
-		return nil, nil, errors.New("Couldn't compute the size of a pcrInfoLong")
+		return nil, nil, errors.New("couldn't compute the size of a pcrInfoLong")
 	}
 
-	in := []interface{}{sc, uint32(pcrsize), pcrs, datasize, data, sca}
+	// TODO(tmroeder): special-case pcrInfoLong in pack/unpack so we don't have
+	// to write out the length explicitly here.
+	in := []interface{}{sc, uint32(pcrsize), pcrs, data, sca}
 
-	// The slice will be resized by Unpack to the size of the sealed value.
-	var b []byte
+	var tsd tpmStoredData
 	var resp sealResponse
-	out := []interface{}{resizeableSlice(&b), &resp}
+	out := []interface{}{&tsd, &resp}
 	if err := submitTPMRequest(f, tagRQUAuth1Command, ordSeal, in, out); err != nil {
 		return nil, nil, err
 	}
 
-	return b, &resp, nil
+	return &tsd, &resp, nil
 }
 
 // unsealResponse contains the auth information returned from an unsealCommand.
@@ -579,13 +651,12 @@ func (ur unsealResponse) String() string {
 }
 
 // unseal data sealed by the TPM.
-func unseal(f *os.File, keyHandle tpmHandle, sealed []byte, auth1 *sealCommandAuth, auth2 *sealCommandAuth) ([]byte, *unsealResponse, *unsealResponse, error) {
+func unseal(f *os.File, keyHandle tpmHandle, sealed tpmStoredData, auth1 *sealCommandAuth, auth2 *sealCommandAuth) ([]byte, *unsealResponse, *unsealResponse, error) {
 	in := []interface{}{keyHandle, sealed, auth1, auth2}
 	var outb []byte
-	var size uint32
 	var outAuth1 unsealResponse
 	var outAuth2 unsealResponse
-	out := []interface{}{&size, resizeableSlice(&outb), &outAuth1, &outAuth2}
+	out := []interface{}{&outb, &outAuth1, &outAuth2}
 	if err := submitTPMRequest(f, tagRQUAuth2Command, ordUnseal, in, out); err != nil {
 		return nil, nil, nil, err
 	}
@@ -673,7 +744,12 @@ func Seal(f *os.File, data []byte) ([]byte, error) {
 
 	hm := hmac.New(sha1.New, wellKnownAuth)
 	hm.Write(osapData)
-	sharedSecret := hm.Sum(nil)
+	// Note that crypto/hash.Sum returns a slice rather than an array, so we
+	// have to copy this into an array to make sure that serialization doesn't
+	// preprend a length in pack().
+	sharedSecretBytes := hm.Sum(nil)
+	var sharedSecret [20]byte
+	copy(sharedSecret[:], sharedSecretBytes)
 
 	if glog.V(2) {
 		glog.Infof("hmac size is %d\n", hm.Size())
@@ -727,7 +803,7 @@ func Seal(f *os.File, data []byte) ([]byte, error) {
 	//                     ContSession)
 	//
 	// where ContSession is the value chosen for sealCommandAuth
-	digestBytes, err := pack([]interface{}{ordSeal, sc.EncAuth, uint32(binary.Size(pcrInfo)), pcrInfo, uint32(len(data)), data})
+	digestBytes, err := pack([]interface{}{ordSeal, sc.EncAuth, uint32(binary.Size(pcrInfo)), pcrInfo, data})
 	if err != nil {
 		return nil, err
 	}
@@ -766,7 +842,7 @@ func Seal(f *os.File, data []byte) ([]byte, error) {
 		glog.Infof("pubAuthBytes is % x\n", pubAuthBytes)
 	}
 
-	hm2 := hmac.New(sha1.New, sharedSecret)
+	hm2 := hmac.New(sha1.New, sharedSecret[:])
 	hm2.Write(pubAuthBytes)
 	pubAuth := hm2.Sum(nil)
 	copy(sca.PubAuth[:], pubAuth[:])
@@ -780,7 +856,12 @@ func Seal(f *os.File, data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return sealed, nil
+	sealedBytes, err := pack([]interface{}{*sealed})
+	if err != nil {
+		return nil, err
+	}
+
+	return sealedBytes, nil
 }
 
 // Unseal decrypts data encrypted by the TPM for PCR 17.
@@ -834,7 +915,9 @@ func Unseal(f *os.File, sealed []byte) ([]byte, error) {
 
 	hm := hmac.New(sha1.New, wellKnownAuth)
 	hm.Write(osapData)
-	sharedSecret := hm.Sum(nil)
+	sharedSecretBytes := hm.Sum(nil)
+	var sharedSecret [20]byte
+	copy(sharedSecret[:], sharedSecretBytes)
 
 	if glog.V(2) {
 		glog.Infof("hmac size is %d\n", hm.Size())
@@ -848,15 +931,33 @@ func Unseal(f *os.File, sealed []byte) ([]byte, error) {
 		return nil, err
 	}
 
+	// Convert the sealed value into a tpmStoredData.
+	var tsd tpmStoredData
+	if err := unpack(sealed, []interface{}{&tsd}); err != nil {
+		return nil, errors.New("couldn't convert the sealed data into a tpmStoredData struct")
+	}
+
+	if glog.V(2) {
+		glog.Infof("tpmStoredData is %s\n", tsd)
+	}
+
 	// The digest for the unseal command is computed as
 	//
 	// digest = SHA1(ordUnseal || sealed)
-	digestInput, err := pack([]interface{}{ordUnseal, sealed})
+	digestInput, err := pack([]interface{}{ordUnseal, tsd})
 	if err != nil {
 		return nil, err
 	}
 
+	if glog.V(2) {
+		glog.Infof("digestInput is % x\n", digestInput)
+	}
+
 	digest := sha1.Sum(digestInput)
+
+	if glog.V(2) {
+		glog.Infof("digest is % x\n", digest)
+	}
 
 	// The first PubAuth value for unseal is computed as
 	//
@@ -875,7 +976,11 @@ func Unseal(f *os.File, sealed []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	h := hmac.New(sha1.New, sharedSecret)
+	if glog.V(2) {
+		glog.Infof("pubAuthInput is % x\n", pubAuthInput)
+	}
+
+	h := hmac.New(sha1.New, sharedSecret[:])
 	h.Write(pubAuthInput)
 	pa := h.Sum(nil)
 	copy(sca.PubAuth[:], pa[:])
@@ -897,12 +1002,16 @@ func Unseal(f *os.File, sealed []byte) ([]byte, error) {
 		return nil, err
 	}
 
+	if glog.V(2) {
+		glog.Infof("pubAuthInput2 is % x\n", pubAuthInput)
+	}
+
 	h2 := hmac.New(sha1.New, wellKnownAuth)
 	h2.Write(pubAuthInput2)
 	pa2 := h2.Sum(nil)
 	copy(sca2.PubAuth[:], pa2[:])
 
-	unsealed, _, _, err := unseal(f, khSRK, sealed, sca, sca2)
+	unsealed, _, _, err := unseal(f, khSRK, tsd, sca, sca2)
 	if err != nil {
 		return nil, err
 	}

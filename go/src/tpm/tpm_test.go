@@ -17,7 +17,6 @@ package tpm
 import (
 	"bytes"
 	"crypto/rand"
-	"encoding/binary"
 	"os"
 	"testing"
 )
@@ -35,7 +34,7 @@ func TestEncoding(t *testing.T) {
 	var hdr commandHeader
 	var size uint32
 	out := []interface{}{&hdr, &size}
-	if err := simpleUnpack(b, out); err != nil {
+	if err := unpack(b, out); err != nil {
 		t.Fatal("Couldn't unpack the packed bytes")
 	}
 
@@ -99,7 +98,6 @@ func TestPCRMask(t *testing.T) {
 }
 
 func TestFetchPCRValues(t *testing.T) {
-	// Try to get 16 bytes of randomness from the TPM.
 	f, err := os.OpenFile("/dev/tpm0", os.O_RDWR, 0600)
 	defer f.Close()
 	if err != nil {
@@ -190,15 +188,6 @@ func TestOSAP(t *testing.T) {
 	t.Logf("From OSAP, go AuthHandle %d and NonceEven % x and EvenOSAP % x\n", resp.AuthHandle, resp.NonceEven, resp.EvenOSAP)
 }
 
-func TestResizeableSliceNoHeader(t *testing.T) {
-	var b []byte
-	var outb []byte
-	out := []interface{}{resizeableSlice(&outb)}
-	if err := unpack(b, out, nil, 0); err == nil {
-		t.Fatal("Incorrectly unpacked a resizeableSlice without using a header")
-	}
-}
-
 func TestResizeableSlice(t *testing.T) {
 	// Set up an encoded slice with a byte array.
 	sr := &sealResponse{
@@ -218,24 +207,18 @@ func TestResizeableSlice(t *testing.T) {
 		Res:  0,
 	}
 
-	rh.Size = uint32(binary.Size(rh) + binary.Size(sr) + binary.Size(b))
-
 	in := []interface{}{rh, sr, b}
+	rh.Size = uint32(packedSize(in))
 	bb, err := pack(in)
 	if err != nil {
 		t.Fatal("Couldn't pack the bytes:", err)
 	}
 
-	rest := uint(binary.Size(rh) + binary.Size(sr))
 	var rh2 responseHeader
 	var sr2 sealResponse
-	b2 := make([]byte, 20)
-
-	// Normally, the response header is read separately. But this time, we
-	// happen to already have one handy, so we use it instead to simplify the
-	// test.
-	out := []interface{}{&rh2, &sr2, resizeableSlice(&b2)}
-	if err := unpack(bb, out, rh, rest); err != nil {
+	var b2 []byte
+	out := []interface{}{&rh2, &sr2, &b2}
+	if err := unpack(bb, out); err != nil {
 		t.Fatal("Couldn't unpack the resizeable values:", err)
 	}
 

@@ -130,6 +130,9 @@ const (
 	ErrMAAuthority
 )
 
+// Extra messages the TPM might return.
+const ErrDefendLockRunning tpmError = 2051
+
 // tpmErrMsgs maps tpmError codes to their associated error strings.
 var tpmErrMsgs = map[tpmError]string{
 	ErrAuthFail:              "authentication failed",
@@ -227,4 +230,5 @@ var tpmErrMsgs = map[tpmError]string{
 	ErrMADestination:         "migration destination not authenticated",
 	ErrMASource:              "migration source incorrect",
 	ErrMAAuthority:           "incorrect migration authority",
+	ErrDefendLockRunning:     "the TPM is defending against dictionary attacks and is in some time-out period",
 }

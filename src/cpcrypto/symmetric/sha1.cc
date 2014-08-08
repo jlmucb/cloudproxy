@@ -55,7 +55,7 @@ void Sha1::Init() {
   partial_block_len_ = 0;
 }
 
-void Sha1::Update(const byte* data, const u32 long size) {
+void Sha1::Update(const byte* data, const u32 size) {
   const byte* next_block = data;
   int processed = 0;
   int left = size;

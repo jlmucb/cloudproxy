@@ -17,249 +17,194 @@ package auth
 // This file implements Scan() functions for all elements so they can be used
 // with fmt.Scanf() and friends.
 
-const (
-	precedenceAtomic = -iota  // highest precedence
-	precedenceNot
-	precedenceAnd
-	precedenceOr
-	precedenceImplies
-	precedenceSpeaksfor
-	precedenceSays
+import (
+	"fmt"
 )
 
-func precedence(f Form) int {
-	switch v := f.(type) {
-	case Const, Pred:
-		return precedenceAtomic
-	case Not:
-		return precedenceNot
-	case And:
-		if len(v.Conjunct) == 0 {
-			return precedenceConst
-		} else if len(v.Conjunct) == 1 {
-			return precedence(v.Conjunct[0])
-		}
-		return precedenceAnd
-	case Or:
-		if len(v.Disjunct) == 0 {
-			return precedenceConst
-		} else if len(v.Disjunct) == 1 {
-			return precedence(v.Disjunct[0])
-		}
-		return precedenceOr
-	case Implies:
-		return precedenceImplies
-	case Speaksfor:
-		return precedenceSpeaksfor
-	case Says:
-		return precedenceSays
-	default:
-		panic("not reached")
-	}
-}
-
-func printWithParens(out io.Writer, contextPrecedence int, f Form) {
-	if precedence(f) < contextPrecedence {
-		fmt.Fprintf(out, "(%v)", f)
-	} else {
-		fmt.Fprintf(out, "%v", f)
-	}
-}
-
-func (f *Const) Scan(state fmt.ScanState, verb rune) error {
-	r, _, err := state.ReadRune()
-	if err != nil {
-		return util.Logged(err)
-	}
-	if r == 't' {
-		_, err := fmt.Fscan(state, "rue")
-		return err
-	} else if r == 'f' {
-		_, err := fmt.Fscan(state, "alse")
-		return err
-	} else {
-		return fmt.Errorf("expecting \"true\" or \"false\" in Const: %c", r)
-	}
-}
-
-func (f *Not) Scan(state fmt.ScanState, verb rune) error {
-	var negand Arbitrary
-	_, err := fmt.Fscan(state, "not %v", &negand)
+// Scan parses a Prin, with optional outer parens.
+func (p *Prin) Scan(state fmt.ScanState, verb rune) error {
+	parser := inputParser(state)
+	prin, err := parser.parsePrin()
 	if err != nil {
 		return err
 	}
-	f.Negand = negand.f
+	*p = prin
 	return nil
 }
 
-/*
-func (f *And) Scan(state fmt.ScanState, verb rune) error {
-	var conjunct Arbitrary
-	fmt.Fscan(state, "%v", &conjunct)
+// Scan parses a PrinExt.
+func (e *PrinExt) Scan(state fmt.ScanState, verb rune) error {
+	parser := inputParser(state)
+	name, args, err := parser.expectNameAndArgs()
+	if err != nil {
+		return err
+	}
+	e.Name = name
+	e.Args = args
 	return nil
 }
-*/
 
+// Scan parses a Term, with optional outer parens.
+func (t *Term) Scan(state fmt.ScanState, verb rune) error {
+	parser := inputParser(state)
+	term, err := parser.parseTerm()
+	if err != nil {
+		return err
+	}
+	*t = term
+}
 
+// Scan parses a String, with optional outer parens.
 func (t *String) Scan(state fmt.ScanState, verb rune) error {
-	var s string
-	if _, err := fmt.Fscanf(state, "%q", &s); err != nil {
+	parser := inputParser(state)
+	s, err := parser.parseString()
+	if err != nil {
 		return err
 	}
 	*t = s
 	return nil
 }
 
-
-func scanInt64(state fmt.ScanState) (int64, error) {
-	var i int64
-	if _, err := fmt.Fscanf(state, "%d", &i); err != nil {
-		return 0, err
-	}
-	return i, nil
-}
-
-func scanString(state fmt.ScanState) (string, error) {
-	// For now, accept both back-quoted and double-quoted strings.
-	var s string
-	if _, err := fmt.Fscanf(state, "%q", &s); err != nil {
-		return "", err
-	}
-	return s, nil
-}
-
-func skip(state fmt.ScanState, string token) error {
-	for _, expected := range token {
-		r, err := state.ReadRune()
-		if err != nil {
-			return err
-		}
-		if r != expected {
-			return fmt.Errorf("unexpected rune: %v", r)
-		}
-	}
-	return nil
-}
-
-func peek(state fmt.ScanState) (rune, error) {
-	r, _, err := state.ReadRune()
-	if err != nil {
-		return util.Logged(err)
-	}
-	err := state.UnreadRune(r)
-	if err != nil {
-		return util.Logged(err)
-	}
-	return r, nil
-}
-
-func (p *Prin) Scan(state fmt.ScanState, verb rune) error {
-	if _, err := fmt.Fscanf(state, "Key("); err != nil {
-		return Prin{}, err
-	}
-	state.SkipSpace()
-	var key string
-	if _, err := fmt.Fscanf(state, "%q", &key); err != nil {
-		return Prin{}, err
-	}
-	state.SkipSpace()
-	if _, err := fmt.Fscanf(state, ")"); err != nil {
-		return Prin{}, err
-	}
-	var ext []Pred
-	for {
-		if r, err := peek(state); err != nil || r != ':' {
-			p.Key = key
-			p.ext = ext
-			return nil
-		}
-		var e Pred
-		if _, err := fmt.Fscanf(state, "::%v", &e); err != nil {
-			return err
-		}
-		ext = append(ext, e)
-	}
-}
-
-func (t *Term) Scan(state fmt.ScanState, verb rune) error {
-	r, err := peek(state)
+// Scan parses an Int, with optional outer parens.
+func (t *Int) Scan(state fmt.ScanState, verb rune) error {
+	parser := inputParser(state)
+	i, err := parser.parseInt()
 	if err != nil {
 		return err
 	}
-	var val interface{}
-	if digit(r) || r == '-' {
-		val, err = scanInt64(state)
-	} else if r == '"' || r == '`' {
-		val, err = scanString(state)
-	} else if r == 'K' {
-		var p = new(Prin)
-		err = p.Scan(state, 'v')
-		val = p
-	} else {
-		// TODO(kwalsh) Maybe allow lowercase for (meta-)variables?
-		return fmt.Errorf("unexpected rune: %v", r)
-	}
-	if err != nil {
-		return err
-	}
-	t.val = val
+	*t = i
 	return nil
 }
 
-/*
-func (p *Pred) Scan(state fmt.ScanState, verb rune) error {
-	// first char is A-Z
-	r, _, err := state.ReadRune()
+// Scan parses a Form, with optional outer parens. This function is not greedy:
+// it consumes only as much input as necessary to obtain a valid formula. For
+// example, "(p says a and b ...)" and "p says (a and b ...) will be parsed in
+// their entirety, but given "p says a and b ... ", only "p says a" will be
+// parsed.
+func (f *Form) Scan(state fmt.ScanState, verb rune) error {
+	parser := inputParser(state)
+	form, err := parser.parseShortestForm()
 	if err != nil {
-		return util.Logged(err)
+		return err
 	}
-	if !upper(r) {
-		return fmt.Errorf("unrecognized rune in auth.Pred: %c", r)
-	}
-	// rest of name is a-zA-Z0-9_
-	token, err := state.Token(false, func(r rune) bool {
-		return lower(r) || upper(r) || digit(r) || r == '_'
-	})
-	if err != nil {
-		return util.Logged(err)
-	}
-	name := string(r) + string(token)
-	r, _, err = state.ReadRune()
-	if err != nil {
-		return util.Logged(err)
-	}
-	if r != '(' {
-		return fmt.Errorf("expecting '(' in auth.Pred: %c", r)
-	}
-	var args []Term
-	for {
-		state.SkipSpace()
-		r, _, err = state.ReadRune()
-		if err != nil {
-			return util.Logged(err)
-		}
-		if r == ')' {
-			break
-		}
-		if len(args) == 0 {
-			err = state.UnreadRune()
-			if err != nil {
-				return util.Logged(err)
-			}
-		} else if r == ',' {
-			state.SkipSpace()
-		} else {
-			return fmt.Errorf("expecting ')' or ',' or auth.Term in auth.Pred: %c", r)
-		}
-		var a Term
-		err = (&a).Scan(state, verb)
-		if err != nil {
-			return util.Logged(err)
-		}
-		args = append(args, a)
-	}
-	p.Name = name
-	p.Arg = args
+	*f = form
 	return nil
 }
-*/
+
+// Scan parses a Pred, with optional outer parens.
+func (f *Pred) Scan(state fmt.ScanState, verb rune) error {
+	parser := inputParser(state)
+	pred, err := parser.parsePred()
+	if err != nil {
+		return err
+	}
+	*f = pred
+	return nil
+}
+
+// Scan parses a Const, with optional outer parens. This function is not greedy.
+func (f *Const) Scan(state fmt.ScanState, verb rune) error {
+	parser := inputParser(state)
+	c, err := parser.parseConst()
+	if err != nil {
+		return err
+	}
+	*f = c
+	return nil
+}
+
+// Scan parses a Not, with optional outer parens. This function is not greedy.
+func (f *Not) Scan(state fmt.ScanState, verb rune) error {
+	form, err := parser.parseShortestForm()
+	if err != nil {
+		return err
+	}
+	n, ok := form.(And)
+	if !ok {
+		return fmt.Errorf(`expecting "and": %s`, form)
+	}
+	*f = n
+	return nil
+}
+
+// Scan parses an And, with required outer parens. This function is not greedy.
+// BUG(kwalsh): This won't succeed unless there are outer parens. For
+// consistency, perhaps I need to make non-greedy parse functions for each
+// operator?
+func (f *And) Scan(state fmt.ScanState, verb rune) error {
+	form, err := parser.parseShortestForm()
+	if err != nil {
+		return err
+	}
+	n, ok := form.(And)
+	if !ok {
+		return fmt.Errorf(`expecting "and": %s`, form)
+	}
+	*f = n
+	return nil
+}
+
+// Scan parses an Or, with required outer parens. This function is not greedy.
+// BUG(kwalsh): This won't succeed unless there are outer parens. For
+// consistency, perhaps I need to make non-greedy parse functions for each
+// operator?
+func (f *Or) Scan(state fmt.ScanState, verb rune) error {
+	form, err := parser.parseShortestForm()
+	if err != nil {
+		return err
+	}
+	n, ok := form.(Or)
+	if !ok {
+		return fmt.Errorf(`expecting "or": %s`, form)
+	}
+	*f = n
+	return nil
+}
+
+// Scan parses an Implies, with required outer parens. This function is not
+// greedy.
+// BUG(kwalsh): This won't succeed unless there are outer parens. For
+// consistency, perhaps I need to make non-greedy parse functions for each
+// operator?
+func (f *Implies) Scan(state fmt.ScanState, verb rune) error {
+	form, err := parser.parseShortestForm()
+	if err != nil {
+		return err
+	}
+	n, ok := form.(Implies)
+	if !ok {
+		return fmt.Errorf(`expecting "implies": %s`, form)
+	}
+	*f = n
+	return nil
+}
+
+// Scan parses a Says, with optional outer parens. This function is not greedy.
+func (f *Says) Scan(state fmt.ScanState, verb rune) error {
+	form, err := parser.parseShortestForm()
+	if err != nil {
+		return err
+	}
+	n, ok := form.(Says)
+	if !ok {
+		return fmt.Errorf(`expecting "says": %s`, form)
+	}
+	*f = n
+	return nil
+}
+
+// Scan parses a Speaksfor, with optional outer parens. This function is not
+// greedy.
+func (f *Speaksfor) Scan(state fmt.ScanState, verb rune) error {
+	form, err := parser.parseShortestForm()
+	if err != nil {
+		return err
+	}
+	n, ok := form.(Speaksfor)
+	if !ok {
+		return fmt.Errorf(`expecting "speaksfor": %s`, form)
+	}
+	*f = n
+	return nil
+}
+

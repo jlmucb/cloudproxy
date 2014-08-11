@@ -180,26 +180,7 @@ func (f Says) ShortString() string {
 }
 
 func printFormWithParens(out fmt.Writer, level int, f Form) string {
-	var op int
-	switch f.(type) {
-	case Says:
-		op = precedenceSays
-	case Speaksfor:
-		op = precedenceSpeaksfor
-	case Implies:
-		op = precedenceImplies
-	case Or:
-		op = precedenceOr
-	case And:
-		op = precedenceAnd
-	case Not:
-	case Pred:
-	case Const:
-		op = precedenceHigh
-	default:
-		panic("not reached")
-	}
-	if level > op {
+	if level > precedence(f) {
 		return "(" + f.ShortString() + ")"
 	}
   return f.ShortString()

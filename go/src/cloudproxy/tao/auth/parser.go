@@ -256,6 +256,28 @@ func (parser *parser) parsePred() (Pred, error) {
 	return t, nil
 }
 
+// expectConst expects a Const.
+func (parser *parser) expectConst() (Const, error) {
+	if parser.cur == tokenTrue && parser.cur != tokenFalse {
+		return Const(false), fmt.Errorf("expecting Const: %c", parser.cur)
+	}
+	return Const(parser.cur == tokenTrue)
+}
+
+// parseConst parses a Const with optional outer parens.
+func (parser *parser) parseConst() (Const, error) {
+	n := parser.skipOpenParens()
+	t, err := parser.expectConst()
+	if err != nil {
+		return nil, err
+	}
+	err = parser.expectCloseParens(n)
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
 // expectFrom optionally expects a "(from|until) int" clause for a says formula.
 func (parser *parser) expectOptionalTime(t token) (*int64, error) {
 	if parser.cur != t {
@@ -269,8 +291,10 @@ func (parser *parser) expectOptionalTime(t token) (*int64, error) {
 	return &t.(int64)
 }
 
-// expectSaysOrSpeaksfor expects a says or speaksfor formula.
-func (parser *parser) expectSaysOrSpeaksfor() (Form, error) {
+// expectSaysOrSpeaksfor expects a says or speaksfor formula. If greedy is true,
+// this will parse as much input as possible. Otherwise, it will take only as
+// much input as needed to make a valid formula.
+func (parser *parser) expectSaysOrSpeaksfor(greedy bool) (Form, error) {
 	// Prin [from Time] [until Time] says Form 
 	// Prin speaksfor Prin
 	p, err := parser.parsePrin()
@@ -314,7 +338,11 @@ func (parser *parser) expectSaysOrSpeaksfor() (Form, error) {
 			}
 		}
 		parser.advance()
-		msg, err := parser.parseFormGreedy()
+		if greedy {
+			msg, err := parser.parseForm()
+		} else {
+			msg, err := parser.parseFormAtHigh(true)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -330,12 +358,14 @@ func (parser *parser) expectSaysOrSpeaksfor() (Form, error) {
 // A = H and H and H ... and H | H
 // H = not N | ( L ) | P(x) | true | false | P says L | P speaksfor P
 
-// parseFormAtHigh parses a Form, but stops at any binary Form operator.
-func (parser *parser) parseFormAtHigh() (Form, error) {
+// parseFormAtHigh parses a Form, but stops at any binary Form operator. If
+// greedy is true, this will parse as much input as possible. Otherwise, it will
+// parse only as much input as needed to make a valid formula.
+func (parser *parser) parseFormAtHigh(greedy bool) (Form, error) {
 	switch parser.cur {
 	case tokenLP:
 		parser.advance()
-		f, err := parser.parseFormAtLow()
+		f, err := parser.parseForm()
 		if err != nil {
 			return nil, err
 		}
@@ -347,14 +377,11 @@ func (parser *parser) parseFormAtHigh() (Form, error) {
 	case tokenIdentifier:
 		return parser.expectPred()
 	case tokenTrue:
-		parser.advance()
-		return Const(true), nil
 	case tokenFalse:
-		parser.advance()
-		return Const(false), nil
+		return parser.expectConst()
 	case tokenNot:
 		parser.advance()
-		f, err := parser.parseFormAtHigh()
+		f, err := parser.parseFormAtHigh(greedy)
 		if err != nil {
 			return nil, err
 		}
@@ -369,7 +396,7 @@ func (parser *parser) parseFormAtHigh() (Form, error) {
 // parseFormAtAnd parses a Form, but stops when it reaches a binary Form
 // operator of lower precedence than "and".
 func (parser *parser) parseFormAtAnd() (Form, error) {
-	f, err := parser.parseFormAtHigh()
+	f, err := parser.parseFormAtHigh(true)
 	if err != nil {
 		return nil, err
 	}
@@ -382,7 +409,7 @@ func (parser *parser) parseFormAtAnd() (Form, error) {
 	}
 	for parser.cur == tokenAnd {
 		parser.advance()
-		g, err := parser.parseFormAtHigh()
+		g, err := parser.parseFormAtHigh(true)
 		if err != nil {
 			return nil, err
 		}
@@ -416,7 +443,8 @@ func (parser *parser) parseFormAtOr() (Form, error) {
 	return or
 }
 
-// parseForm parses a Form.
+// parseForm parses a Form. This function is greedy: it consumes as much input
+// as possible until either an error or EOF is encountered.
 func (parser *parser) parseForm() (Form, error) {
 	f, err := parser.parseFormAtOr()
 	if err != nil {
@@ -431,6 +459,15 @@ func (parser *parser) parseForm() (Form, error) {
 		return nil, err
 	}
 	return Implies{f, g}
+}
+
+// parseShortestForm parses the shortest valid Form. This function is not
+// greedy: it consumes only as much input as necessary to obtain a valid
+// formula. For example, "(p says a and b ...)" and "p says (a and b ...) will
+// be parsed in their entirety, but given "p says a and b ... ", only "p says a"
+// will be parsed.
+func (parser *parser) parseShortestForm() (Form, error) {
+	return parser.parseFormAtHigh(false)
 }
 
 func inputParser(input reader) *parser {

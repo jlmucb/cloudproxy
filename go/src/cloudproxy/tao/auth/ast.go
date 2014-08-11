@@ -25,6 +25,27 @@ import (
 	"cloudproxy/util"
 )
 
+// AuthLogicElement is any element of the authorization logic, i.e. a formula, a
+// term, or a principal extension.
+type AuthLogicElement interface {
+	Marshal() []byte
+	isAuthLogicElement() // marker
+}
+
+// isAuthLogicElement ensures only appropriate types can be assigned to an
+// AuthLogicElement.
+func (t Prin) isAuthLogicElement() {}
+func (t String) isAuthLogicElement() {}
+func (t Int) isAuthLogicElement() {}
+func (f Pred) isAuthLogicElement() {}
+func (f Const) isAuthLogicElement() {}
+func (f Not) isAuthLogicElement() {}
+func (f And) isAuthLogicElement() {}
+func (f Or) isAuthLogicElement() {}
+func (f Implies) isAuthLogicElement() {}
+func (f Speaksfor) isAuthLogicElement() {}
+func (f Says) isAuthLogicElement() {}
+
 // Prin uniquely identifies a principal by a public key, used to verify
 // signatures on credentials issued by the principal, and a sequence of zero or
 // more extensions to identify the subprincipal of that key.

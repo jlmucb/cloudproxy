@@ -171,27 +171,41 @@ func (f Says) String() string {
 	}
 }
 
-func printFormWithParens(out fmt.Writer, level int, f Form) string {
-	var op int
-	switch f.(type) {
+func precedence(f Form) int {
+	switch f := f.(type) {
 	case Says:
-		op = precedenceSays
+		return precedenceSays
 	case Speaksfor:
-		op = precedenceSpeaksfor
+		return precedenceSpeaksfor
 	case Implies:
-		op = precedenceImplies
+		return precedenceImplies
 	case Or:
-		op = precedenceOr
+		if len(f.Disjunct) == 0 {
+			return precedenceConst // Or{} == false
+		} else if len(f.Disjunct) == 1 {
+			return precedence(f.Disjunct[0]) // Or{f} == f
+		} else {
+			return precedenceOr
+		}
 	case And:
-		op = precedenceAnd
+		if len(f.Conjunct) == 0 {
+			return precedenceConst // And{} == true
+		} else if len(f.Conjunct) == 1 {
+			return precedence(f.Conjunct[0]) // And{f} == f
+		} else {
+			return precedenceAnd
+		}
 	case Not:
 	case Pred:
 	case Const:
-		op = precedenceHigh
+		return precedenceHigh
 	default:
 		panic("not reached")
 	}
-	if level > op {
+}
+
+func printFormWithParens(out fmt.Writer, level int, f Form) string {
+	if level > precdence(f) {
 		return "(" + f.String() + ")"
 	}
   return f.String()

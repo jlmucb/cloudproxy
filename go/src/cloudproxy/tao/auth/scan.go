@@ -54,10 +54,10 @@ func (t *Term) Scan(state fmt.ScanState, verb rune) error {
 	*t = term
 }
 
-// Scan parses a String, with optional outer parens.
-func (t *String) Scan(state fmt.ScanState, verb rune) error {
+// Scan parses a Str, with optional outer parens.
+func (t *Str) Scan(state fmt.ScanState, verb rune) error {
 	parser := inputParser(state)
-	s, err := parser.parseString()
+	s, err := parser.parseStr()
 	if err != nil {
 		return err
 	}

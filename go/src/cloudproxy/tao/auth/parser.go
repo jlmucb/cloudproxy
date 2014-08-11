@@ -86,7 +86,7 @@ func (parser *parser) expectPrin() (Prin, error) {
 	if err != nil {
 		return nil, err
 	}
-	key, err := parser.parseString()
+	key, err := parser.parseStr()
 	if err != nil {
 		return nil, err
 	}
@@ -157,20 +157,20 @@ func (parser *parser) expectNameAndArgs() (string, []Term, error) {
 	return name, args, nil
 }
 
-// expectString expects a String.
-func (parser *parser) expectString() (String, error) {
-	if parser.cur.typ != itemString {
+// expectStr expects a Str.
+func (parser *parser) expectStr() (Str, error) {
+	if parser.cur.typ != itemStr {
 		return "", fmt.Errorf("expecting string: %v", parser.cur)
 	}
-	t := String(parser.cur.val.(string))
+	t := Str(parser.cur.val.(string))
 	parser.advance()
 	return t, nil
 }
 
-// parseString parses a String with optional outer parens.
-func (parser *parser) parseString() (String, error) {
+// parseStr parses a Str with optional outer parens.
+func (parser *parser) parseStr() (Str, error) {
 	n := parser.skipOpenParens()
-	t, err := parser.expectString()
+	t, err := parser.expectStr()
 	if err != nil {
 		return nil, err
 	}
@@ -208,8 +208,8 @@ func (parser *parser) parseInt() (Int, error) {
 // expectTerm expects a Term.
 func (parser *parser) expectTerm() (Term, error) {
 	switch parser.cur.typ {
-	case itemString:
-		return parser.expectString()
+	case itemStr:
+		return parser.expectStr()
 	case itemInt:
 		return parser.expectInt()
 	case itemKeyword:

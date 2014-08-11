@@ -36,7 +36,7 @@ const (
 	itemEOF                   // value is nil
 	itemKeyword               // value contains the keyword
 	itemIdentifier            // value contains the identifer
-	itemString                // value contains the string
+	itemStr                   // value contains the string
 	itemInt                   // value contains the int64
 	itemLP                    // value contains '('
 	itemRP                    // value contains ')'
@@ -76,8 +76,8 @@ func (i token) String() string {
 		return fmt.Sprintf("Keyword{%q}", i.val)
 	case itemIdentifier:
 		return fmt.Sprintf("Identifier{%q}", i.val)
-	case itemString:
-		return fmt.Sprintf("String{%q}", i.val)
+	case itemStr:
+		return fmt.Sprintf("Str{%q}", i.val)
 	case itemInt:
 		return fmt.Sprintf("Int{%v}", i.val)
 	case itemLP, itemRP, itemComma, itemDot:
@@ -120,7 +120,7 @@ func (l *lexer) lexMain() token {
 			return token{itemDot, r}
 		case r == '"':
 			l.backup()
-			return l.lexString()
+			return l.lexStr()
 		case r == '-' || digit(r):
 			l.backup()
 			return l.lexInt()
@@ -137,13 +137,13 @@ func (l *lexer) lexMain() token {
 	}
 }
 
-func (l *lexer) lexString() token {
+func (l *lexer) lexStr() token {
 	var s string
 	_, err := fmt.Fscanf(l.input, "%q", &s)
 	if err != nil {
 		return token{itemError, err}
 	}
-	return token{itemString, s}
+	return token{itemStr, s}
 }
 
 func (l *lexer) lexInt() token {

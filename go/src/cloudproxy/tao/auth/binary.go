@@ -26,7 +26,7 @@ const (
 
 	// Term tags
 	tagPrin          // string, [](string, []Term)
-	tagString        // string
+	tagStr           // string
 	tagInt           // int
 
 	// Form tags
@@ -61,9 +61,9 @@ func (t Prin) Marshal(buf *Buffer) {
 	}
 }
 
-// Marshal encodes a String. 
-func (t String) Marshal(buf *Buffer) {
-	buf.EncodeVarint(tagString)
+// Marshal encodes a Str. 
+func (t Str) Marshal(buf *Buffer) {
+	buf.EncodeVarint(tagStr)
 	buf.EncodeString(string(t)
 }
 
@@ -142,8 +142,8 @@ func (f Says) Marshal(buf *Buffer) {
 	f.Message.Marshal(buf)
 }
 
-// decodeString decodes a String without the leading tag.
-func decodeString(buf *Buffer) (s String, err error) {
+// decodeStr decodes a Str without the leading tag.
+func decodeString(buf *Buffer) (s Str, err error) {
 	return buf.DecodeString()
 }
 
@@ -209,8 +209,8 @@ func unmarshalTerm(buf *Buffer) (t Term, err error) {
 		return nil, err
 	}
 	switch tag {
-	case tagString:
-		return decodeString(buf)
+	case tagStr:
+		return decodeStr(buf)
 	case tagInt:
 		return decodeInt(buf)
 	case tagPrin:

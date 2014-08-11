@@ -52,7 +52,7 @@ func (t Term) String() string {
 	switch v := t.(type) {
 	case Int:
 		return v.String()
-	case String:
+	case Str:
 		return v.String()
 	case Prin:
 		return v.String()
@@ -66,8 +66,8 @@ func (t Int) String() string {
 	return fmt.Sprintf("%d", t.(int64))
 }
 
-// String returns a pretty-printed String.
-func (t String) String() string {
+// String returns a pretty-printed Str.
+func (t Str) String() string {
 	return fmt.Sprintf("%q", t.(string))
 }
 

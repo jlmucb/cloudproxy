@@ -56,7 +56,7 @@ func (t Term) ShortString() string {
 	switch v := t.(type) {
 	case Int:
 		return v.ShortString()
-	case String:
+	case Str:
 		return v.ShortString()
 	case Prin:
 		return v.ShortString()
@@ -70,8 +70,8 @@ func (t Int) ShortString() string {
 	return fmt.Sprintf("%d", t.(int64))
 }
 
-// ShortString returns an elided pretty-printed String.
-func (t String) ShortString() string {
+// ShortString returns an elided pretty-printed Str.
+func (t Str) ShortString() string {
 	if len(t.(string) > 15 {
 		return fmt.Sprintf("%.10q...", t.(string))
 	} else {

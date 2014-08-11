@@ -35,7 +35,7 @@ type AuthLogicElement interface {
 // isAuthLogicElement ensures only appropriate types can be assigned to an
 // AuthLogicElement.
 func (t Prin) isAuthLogicElement() {}
-func (t String) isAuthLogicElement() {}
+func (t Str) isAuthLogicElement() {}
 func (t Int) isAuthLogicElement() {}
 func (f Pred) isAuthLogicElement() {}
 func (f Const) isAuthLogicElement() {}
@@ -63,16 +63,17 @@ type PrinExt struct {
 // Term is an argument to a predicate or a principal extension.
 type Term interface {
 	String() string
+	Identical(other Term) bool
 	isTerm() // marker
 }
 
 // isTerm ensures only appropriate types can be assigned to a Term.
 func (t Prin) isTerm() {}
-func (t String) isTerm() {}
+func (t Str) isTerm() {}
 func (t Int) isTerm() {}
 
-// String is a string used as a Term.
-type String string
+// Str is a string used as a Term.
+type Str string
 
 // Int is an int used as a Term.
 type Int int
@@ -147,92 +148,59 @@ func (f Says) Expires() bool {
 	return f.Expiration != nil
 }
 
-// TODO(kwalsh) add Copy()
+// TODO(kwalsh) add Copy() functions?
 
-func (t Term) Identical(other Term) bool {
-	switch t := t.val.(type) {
-	case int64:
-		if t2, ok := other.val.(int64); !ok || t2 != t {
-			return false
-		}
-	case string:
-		if t2, ok := other.val.(string); !ok || t2 != t {
-			return false
-		}
-	case Prin:
-		if t2, ok := other.val.(Prin); !ok || !t2.Identical(t) {
+// Identical checks if an Int is identical to another Term.
+func (t Int) Identical(other Term) bool {
+	return t == other
+}
+
+// Identical checks if a Str is identical to another Term.
+func (t Str) Identical(other Term) bool {
+	return t == other
+}
+
+// Identical checks if a Prin is identical to another Prin.
+func (t Prin) Identical(other Term) bool {
+	p, ok := other.(Prin)
+	if !ok {
+		return false
+	}
+	if t.Key != p.Key || len(t.Ext) != len(p.Ext) {
+		return false
+	}
+	for i := 0; i < len(t.Ext); i++ {
+		if !t.Ext[i].Identical(p.Ext[i]) {
 			return false
 		}
 	}
 	return true
 }
 
-func (p Pred) Identical(other Pred) bool {
-	if p.Name != other.Name {
+// Identical checks if one PrinExt is identical to another.
+func (e PrinExt) Identical(other PrinExt) {
+	if e.Name != other.Name || len(e.Arg) != len(other.Arg) {
 		return false
 	}
-	if len(p.Arg) != len(other.Arg) {
-		return false
-	}
-	for i := range p.Arg {
-		if !p.Arg[i].Identical(&other.Arg[i]) {
+	for i := 0; i < len(e.Arg); i++ {
+		if !e.Arg[i].Identical(other.Arg[j]) {
 			return false
 		}
 	}
 	return true
 }
 
-func (p Prin) Identical(other Prin) bool {
-	if len(p.Part) != len(other.Part) {
-		return false
-	}
-	for i, e := range p.Part {
-		if !e.Identical(&other.Part[i]) {
-			return false
-		}
-	}
-	return true
-}
-
-// SubprinOrIdentical checks whether child is a subprincipal of parent or
+// SubprinOrIdentical checks whether child is a subprincipal of parent or is
 // identical to parent.
 func SubprinOrIdentical(child, parent Prin) bool {
-	if len(parent.Part) <= len(child.Part) {
+	if parent.Key != child.Key || len(parent.Ext) > len(child.Ext) {
 		return false
 	}
-	for i, e := range parent.Part {
-		if !e.Identical(&child.Part[i]) {
+	for i := 0; i < len(parent.Ext); i++ {
+		if !parent.Ext[i].Identical(child.Ext[i]) {
 			return false
 		}
 	}
 	return true
 }
 
-/*
-func NewTerm(s string) (*Term, error) {
-	var t Term
-	_, err := fmt.Sscanf(s, "^%v$", &t)
-	if err != nil {
-		return nil, err
-	}
-	return &t, nil
-}
-
-func NewPred(s string) (*Pred, error) {
-	var p Pred
-	_, err := fmt.Sscanf(s, "^%v$", &p)
-	if err != nil {
-		return nil, err
-	}
-	return &p, nil
-}
-
-func NewPrin(s string) (*Prin, error) {
-	var p Prin
-	_, err := fmt.Sscanf(s, "^%v$", &p)
-	if err != nil {
-		return nil, err
-	}
-	return &p, nil
-}
-*/

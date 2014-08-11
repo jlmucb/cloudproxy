@@ -25,7 +25,6 @@ import (
 func (p *Prin) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
 	prin, err := parser.parsePrin()
-	parser.lex.backup()
 	if err != nil {
 		return err
 	}
@@ -37,7 +36,6 @@ func (p *Prin) Scan(state fmt.ScanState, verb rune) error {
 func (e *PrinExt) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
 	name, args, err := parser.expectNameAndArgs()
-	parser.lex.backup()
 	if err != nil {
 		return err
 	}
@@ -56,12 +54,10 @@ type AnyTerm struct {
 func (t *AnyTerm) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
 	term, err := parser.parseTerm()
-	parser.lex.backup()
 	if err != nil {
 		return err
 	}
 	t.Term = term
-	fmt.Printf("got %v\n", term)
 	return nil
 }
 
@@ -69,7 +65,6 @@ func (t *AnyTerm) Scan(state fmt.ScanState, verb rune) error {
 func (t *Str) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
 	s, err := parser.parseStr()
-	parser.lex.backup()
 	if err != nil {
 		return err
 	}
@@ -81,7 +76,6 @@ func (t *Str) Scan(state fmt.ScanState, verb rune) error {
 func (t *Int) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
 	i, err := parser.parseInt()
-	parser.lex.backup()
 	if err != nil {
 		return err
 	}
@@ -103,7 +97,6 @@ type AnyForm struct {
 func (f *AnyForm) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
 	form, err := parser.parseShortestForm()
-	parser.lex.backup()
 	if err != nil {
 		return err
 	}
@@ -115,7 +108,6 @@ func (f *AnyForm) Scan(state fmt.ScanState, verb rune) error {
 func (f *Pred) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
 	pred, err := parser.parsePred()
-	parser.lex.backup()
 	if err != nil {
 		return err
 	}
@@ -127,7 +119,6 @@ func (f *Pred) Scan(state fmt.ScanState, verb rune) error {
 func (f *Const) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
 	c, err := parser.parseConst()
-	parser.lex.backup()
 	if err != nil {
 		return err
 	}
@@ -139,7 +130,6 @@ func (f *Const) Scan(state fmt.ScanState, verb rune) error {
 func (f *Not) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
 	form, err := parser.parseShortestForm()
-	parser.lex.backup()
 	if err != nil {
 		return err
 	}
@@ -158,7 +148,6 @@ func (f *Not) Scan(state fmt.ScanState, verb rune) error {
 func (f *And) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
 	form, err := parser.parseShortestForm()
-	parser.lex.backup()
 	if err != nil {
 		return err
 	}
@@ -177,7 +166,6 @@ func (f *And) Scan(state fmt.ScanState, verb rune) error {
 func (f *Or) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
 	form, err := parser.parseShortestForm()
-	parser.lex.backup()
 	if err != nil {
 		return err
 	}
@@ -197,7 +185,6 @@ func (f *Or) Scan(state fmt.ScanState, verb rune) error {
 func (f *Implies) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
 	form, err := parser.parseShortestForm()
-	parser.lex.backup()
 	if err != nil {
 		return err
 	}
@@ -213,7 +200,6 @@ func (f *Implies) Scan(state fmt.ScanState, verb rune) error {
 func (f *Says) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
 	form, err := parser.parseShortestForm()
-	parser.lex.backup()
 	if err != nil {
 		return err
 	}
@@ -230,7 +216,6 @@ func (f *Says) Scan(state fmt.ScanState, verb rune) error {
 func (f *Speaksfor) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
 	form, err := parser.parseShortestForm()
-	parser.lex.backup()
 	if err != nil {
 		return err
 	}

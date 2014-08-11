@@ -21,7 +21,7 @@ import (
 
 func TestParseTerm(t *testing.T) {
 	var x, y, z AnyTerm
-	n, err := fmt.Sscanf(`42 "Hello World" key("foo")::Bar(3, "Hello", key("Baz")::Boo())`, "%v %v %v", &x, &y, &z)
+	n, err := fmt.Sscanf(`42 "Hello World" key("foo").Bar(3, "Hello", key("Baz").Boo.Foo(3))`, "%v %v %v", &x, &y, &z)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -32,7 +32,7 @@ func TestParseTerm(t *testing.T) {
 
 func TestParsePred(t *testing.T) {
 	var x Pred
-	n, err := fmt.Sscanf(`Foo( "a", 1 )::Bar( )`, "%v", &x)
+	n, err := fmt.Sscanf(`Foo( "a", 1 ).Bar( )`, "%v", &x)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -43,8 +43,8 @@ func TestParsePred(t *testing.T) {
 
 func TestParsePrin(t *testing.T) {
 	var x Prin
-	s := `My name is Key("xxxx")::Prog("foo", 1)::Args("foo", "bar").`
-	n, err := fmt.Sscanf(s, "My name is %v.", &x)
+	s := `My name is key("xxxx").Prog("foo", 1).Args("foo", "bar")`
+	n, err := fmt.Sscanf(s, "My name is %v", &x)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

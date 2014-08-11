@@ -43,6 +43,7 @@ const (
 	itemRP                             // value contains ')'
 	itemComma                          // value contains ','
 	itemDot                            // value contains '.'
+	itemWhitespace                     // value contains ' ', '\t', '\n', etc.
 )
 
 var (
@@ -115,7 +116,7 @@ func (l *lexer) lexMain() token {
 			return token{itemLP, r}
 		case r == ')':
 			return token{itemRP, r}
-		case r == '\'':
+		case r == ',':
 			return token{itemComma, r}
 		case r == '.':
 			return token{itemDot, r}
@@ -140,8 +141,7 @@ func (l *lexer) lexMain() token {
 
 func (l *lexer) lexStr() token {
 	var s string
-	_, err := fmt.Fscanf(l.input, "%q", &s)
-	if err != nil {
+	if _, err := fmt.Fscanf(l.input, "%q", &s); err != nil {
 		return token{itemError, err}
 	}
 	return token{itemStr, s}
@@ -186,7 +186,7 @@ func lower(r rune) bool {
 }
 
 func upper(r rune) bool {
-	return 'a' <= r && r <= 'Z'
+	return 'A' <= r && r <= 'Z'
 }
 
 // next returns the next rune in the input.
@@ -200,15 +200,16 @@ func (l *lexer) next() (r rune) {
 	// 8512 here: https://code.google.com/p/go/issues/detail?id=8512
 	n = utf8.RuneLen(r)
 	l.width = n
-	fmt.Printf("just read %q\n", r)
 	return r
 }
 
 // backup steps back one rune. Can be called only once per call of next.
 func (l *lexer) backup() {
-	l.input.UnreadRune()
-	l.val.Truncate(l.val.Len() - l.width)
-	l.width = 0
+	if l.width > 0 {
+		l.input.UnreadRune()
+		l.val.Truncate(l.val.Len() - l.width)
+		l.width = 0
+	}
 }
 
 // reset consumes accumulated input and resets val and width.
@@ -238,17 +239,9 @@ func (l *lexer) nextToken() token {
 	return token
 }
 
-// peekToken checks if the next token in the input is t. This can discard
-// whitespace, and it only behaves nicely for punctuation since the input
-// stream can only back up one rune.
-func (l *lexer) peek(t rune) bool {
-	for {
-		switch r := l.next(); {
-		case unicode.IsSpace(r):
-			l.reset()
-		default:
-			l.backup()
-			return r == t
-		}
-	}
+// peek gets the next rune in the input without advancing the input.
+func (l *lexer) peek() rune {
+	r := l.next()
+	l.backup()
+	return r
 }

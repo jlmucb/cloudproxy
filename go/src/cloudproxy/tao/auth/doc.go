@@ -40,8 +40,8 @@
 // Principal names specify a key, and zero or more extensions to specify a
 // sub-principal of that key.
 //   Prin ::= key(string)
-//          | key(string).PredExt.PredExt...
-//   PredExt ::= Identifier(Term, Term, ...)
+//          | key(string).PrinExt.PrinExt...
+//   PrinExt ::= Identifier(Term, Term, ...)
 //             | Identifier()
 //             | Identifier
 //
@@ -65,13 +65,15 @@
 //
 // The second representation is textual, which is convenient for humans but
 // isn't canonical and can involve tricky parsing. When parsing elements from
-// text, whitespace is ignored between elements, the above list shows the
-// productions in order of increasing precedence for binary Form operators when
-// parenthesis are omitted, parenthesis can be used for specifying precedence
-// explicitly, and elements of the same precedence are parsed left to right.
-// When pretty-printing elements to text, a single space is used before and
-// after keywords and after commas. Elements can also be pretty-printed with
-// elision, in which case keys and long strings are truncated.
+// text, whitespace is ignored between elements (except around the suprincipal
+// dot operator and before the open paren of a Pred, Prin, or, PrinExt), the
+// above list shows the productions in order of increasing precedence for binary
+// Form operators when parenthesis are omitted, parenthesis can be used for
+// specifying precedence explicitly, and elements of the same precedence are
+// parsed left to right. When pretty-printing elements to text, a single space
+// is used before and after keywords and after commas. Elements can also be
+// pretty-printed with elision, in which case keys and long strings are
+// truncated.
 //
 // The third representation is an encoded sequence of bytes. This is meant to be
 // compact, relatively easy to parse, and suitable for passing over sockets,

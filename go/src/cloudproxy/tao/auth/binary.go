@@ -14,739 +14,363 @@
 
 package auth
 
-// This file implements Marshal() and Unmarshal() functions for elements. The
-// underlying binary format is that of Protobuf. Rather than constructing
-// protobuf definitions to hold all of the AST elements, this implementation
-// directly invokes primitive encoding and decoding functions within the
-// protobuf library.
+// This file implements Marshal() and Unmarshal() functions for elements. 
 
 import (
-	"bytes"
 	"fmt"
-
-	"code.google.com/p/goprotobuf/proto"
+	"io"
 )
 
-// Form is an interface type and so doesn't have a completely natural protobuf
-// definition.  For most other elements, there is a natural protobuf definition,
-// and it is tempting to use such definitions. For example:
-//   message And {
-//     repeated Form Conjunct = 1
-//   }
-//   message Or {
-//     repeated Form Disjunct = 1
-//   }
-// However, this construct would require defining and encoding an extra tag for
-// every element, and this inner tag would that effectively duplicates the tag
-// from any containing element, in this case the Form variant type. Worse, it
-// leads to different encodings for a Form (two tags) and an And (one tag), even
-// they are identical formulas.
-//
-// Instead, we encode all formulas according to the following protobuf
-// definition:
-//   message Form {
-//     optional string pred_name = 1
-//     repeated Term pred_arg = 2
-//     optional bool const = 3
-//     optional Form not = 4
-//     repeated Form and = 5
-//     repeated Form or = 6
-//     optional Form implies_antecedent = 7
-//     optional Form implies_consequent = 8
-//     optional Prin speaksfor_delegate = 9 // actually, Term
-//     optional Prin speaksfor_delegator = 10 // actually, Term
-//     optional Prin says_speaker = 11
-//     optional int64 says_time = 12
-//     optional int64 says_expiration = 13
-//     optional Form says_message = 14
-//   }
-// Alternatively, we can think of Form as a kind of union of the natural
-// encodings for each element, where the tags are all chosen to be distinct:
-//   message And {
-//     repeated Form Conjunct = 5
-//   }
-//   message Or {
-//     repeated Form Disjunct = 6
-//   }
-//   message Says {
-//     required Prin says_speaker = 11 // actually, Term
-//     optional int64 says_time = 12
-//     optional int64 says_expiration = 13
-//     required Form says_message = 14
-//   }
-//
-// Term is encoded as:
-//   message Term {
-//     optional Prin prin_key = 1
-//     repeated PrinExt prin_ext = 2
-//     optional string string = 3
-//     optional int64 int = 4
-//   }
-//   message PrinExt {
-//     required string ext_name = 5
-//     repeated Term ext_arg = 6
-//   }
-
-// Term tags
 const (
-	tagPrinKey = 1 + iota
-	tagPrinExt
-	tagString
-	tagInt
-	tagPrinExtName
-	tagPrinExtArg
+	_ = iota
+
+	// Term tags
+	tagPrin          // string, [](string, []Term)
+	tagString        // string
+	tagInt           // int
+
+	// Form tags
+	tagPred          // string, []Term
+	tagConst         // bool
+	tagNot           // Form
+	tagAnd           // []Form
+	tagOr            // []Form
+	tagImplies       // Form, Form
+	tagSpeaksfor     // tag+Prin, tag+Prin
+	tagSays          // tag+Prin, bool+int, bool+int, Form
 )
 
-// Form tags
-const (
-	tagPredName = 1 + iota
-	tagPredArg
-	tagConst
-	tagNot
-	tagConjunct
-	tagDisjunct
-	tagImpliesAntecedent
-	tagImpliesConsequent
-	tagSpeaksforDelegate
-	tagSpeaksforDelegator
-	tagSaysSpeaker
-	tagSaysTime
-	tagSaysExpiration
-	tagSaysMessage
-)
-
-// Note: Error handling is essentially ignored in all of the Marshal functions.
-// None of our Marshal functions generate errors. None of the proto Marshal
-// functions generate errors either, despite beging declared to return ([]byte,
-// error). Our Marshal functions simply return []byte.
-
-// makeKey combines a protobuf tag and wire type into a single "key" value.
-func makeKey(uint64 tag, uint64 wireType) uint64 {
-	return (tag << 3) | wireType
-}
-
-// embed encodes a Form or Term as a tagged, embeded message.
-func embed(buf *proto.Buffer, tag uint64, e AuthLogicElement) {
-	buf.EncodeVarint(makeKey(tag, proto.WireBytes))
-	buf.EncodeRawBytes(e.Marshal())
-}
-
-// Marshal encodes a Form or Term as a binary byte array. 
+// Marshal encodes a Form or Term. 
 func Marshal(e AuthLogicElement) []byte {
-	return e.Marshal()
+	buf := new(Buffer)
+	e.Marshal(buf)
+	return buf.Bytes()
 }
 
-// Marshal encodes a Prin as a binary byte array. 
-func (t Prin) Marshal() []byte {
-	buf := proto.NewBuffer(nil)
-	buf.EncodeVarint(makeKey(tagPrinKey, proto.WireBytes))
-	buf.EncodeStringBytes(t.Key)
+// Marshal encodes a Prin. 
+func (t Prin) Marshal(buf *Buffer) {
+	buf.EncodeVarint(tagPrin)
+	buf.EncodeBytes([]byte(t.Key))
+	buf.EncodeVarint(len(t.Ext))
 	for _, e :=  range t.Ext {
-		embed(buf, tagPrinExt, e)
+		buf.EncodeBytes([]byte(e.Name))
+		buf.EncodeVarint(len(e.Arg))
+		for _, a :=  range e.Arg {
+			a.Marshal(buf)
+		}
 	}
-	return buf.Bytes()
 }
 
-// Marshal encodes a PrinExt as a binary byte array. 
-func (t PrinExt) Marshal() []byte {
-	buf := proto.NewBuffer(nil)
-	buf.EncodeVarint(makeKey(tagPrinExtName, proto.WireBytes))
-	buf.EncodeStringBytes(t.Name)
-	for _, e :=  range t.Arg {
-		embed(buf, tagPrinExtArg, e)
-	}
-	return buf.Bytes()
+// Marshal encodes a String. 
+func (t String) Marshal(buf *Buffer) {
+	buf.EncodeVarint(tagString)
+	buf.EncodeString(string(t)
 }
 
-// Marshal encodes a String as a binary byte array. 
-func (t String) Marshal() []byte {
-	buf := proto.NewBuffer(nil)
-	buf.EncodeVarint(makeKey(tagString, proto.WireBytes))
-	buf.EncodeStringBytes(t.(string))
-	return buf.Bytes()
+// Marshal encodes an Int. 
+func (t Int) Marshal(buf *Buffer) {
+	buf.EncodeVarint(tagInt)
+	buf.EncodeVarint(int64(t))
 }
 
-// Marshal encodes an Int as a binary byte array. 
-func (t Int) Marshal() []byte {
-	buf := proto.NewBuffer(nil)
-	buf.EncodeVarint(makeKey(tagInt, proto.Varint))
-	buf.EncodeVarint(t.(int64))
-	return buf.Bytes()
-}
-
-// Marshal encodes a Pred as a binary byte array. 
-func (f Pred) Marshal() []byte {
-	buf := proto.NewBuffer(nil)
-	buf.EncodeVarint(makeKey(tagPredName, proto.WireBytes))
-	buf.EncodeStringBytes(f.Name)
+// Marshal encodes a Pred. 
+func (f Pred) Marshal(buf *Buffer) {
+	buf.EncodeVarint(tagPred)
+	buf.EncodeString(f.Name)
+	buf.EncodeVarint(len(f.Arg))
 	for _, e :=  range f.Arg {
-		embed(buf, tagPredArg, e)
+		e.Marshal(buf)
 	}
-	return buf.Bytes()
 }
 
-// Marshal encodes a Const as a binary byte array. 
-func (f Const) Marshal() []byte {
-	buf := proto.NewBuffer(nil)
-	x := 0
-	if f.(bool) {
-		x = 1
-	}
-	buf.EncodeVarint(makeKey(tagConst, proto.WireVarint))
-	buf.EncodeVarint(x)
-	return buf.Bytes()
+// Marshal encodes a Const. 
+func (f Const) Marshal(buf *Buffer) {
+	buf.EncodeVarint(tagConst)
+	buf.EncodeBool(bool(f))
 }
 
-// Marshal encodes a Not as a binary byte array. 
-func (f Not) Marshal() []byte {
-	buf := proto.NewBuffer(nil)
-	embed(buf, tagNot, f.Negand)
-	return buf.Bytes()
+// Marshal encodes a Not. 
+func (f Not) Marshal(buf *Buffer) {
+	buf.EncodeVarint(tagNot)
+	f.Negand.Marshal(buf)
 }
 
-// Marshal encodes an And as a binary byte array. 
-func (f And) Marshal() []byte {
-	// special case: encode empty conjunct as "true"
-	if len(f.Conjunct) == 0) {
-		return Const(true).Marshal()
-	}
-	buf := proto.NewBuffer(nil)
+// Marshal encodes an And. 
+func (f And) Marshal(buf *Buffer) {
+	buf.EncodeVarint(tagAnd)
+	buf.EncodeVarint(len(f.Conjunct))
 	for _, e := range f.Conjunct {
-		embed(buf, tagConjunct, e)
+		e.Marshal(buf)
 	}
-	return buf.Bytes()
 }
 
-// Marshal encodes an Or as a binary byte array. 
-func (f Or) Marshal() []byte {
-	// special case: encode empty disjunct as "false"
-	if len(f.Conjunct) == 0) {
-		return Const(false).Marshal()
+// Marshal encodes an Or. 
+func (f Or) Marshal(buf *Buffer) {
+	buf.EncodeVarint(tagOr)
+	buf.EncodeVarint(len(f.Disjunct))
+	for _, e := range f.Disjunct {
+		e.Marshal(buf)
 	}
-	buf := proto.NewBuffer(nil)
-	for _, e := range f.Conjunct {
-		embed(buf, tagDisjunct, e)
-	}
-	return buf.Bytes()
 }
 
-// Marshal encodes an Implies as a binary byte array. 
-func (f Implies) Marshal() []byte {
-	buf := proto.NewBuffer(nil)
-	embed(buf, tagImpliesAntecedent, f.Antecedent)
-	embed(buf, tagImpliesConsequent, f.Consequent)
-	return buf.Bytes()
+// Marshal encodes an Implies. 
+func (f Implies) Marshal(buf *Buffer) {
+	buf.EncodeVarint(tagImplies)
+	f.Antecedent.Marshal(buf)
+	f.Consequent.Marshal(buf)
 }
 
-// Marshal encodes a Speaksfor as a binary byte array. 
-func (f Speaksfor) Marshal() []byte {
-	buf := proto.NewBuffer(nil)
-	embed(buf, tagSpeaksforDelegate, f.Delegate)
-	embed(buf, tagSpeaksforDelegator, f.Delegator)
-	return buf.Bytes()
+// Marshal encodes a Speaksfor. 
+func (f Speaksfor) Marshal(buf *Buffer) {
+	buf.EncodeVarint(tagSpeaksfor)
+	f.Delegate.Marshal(buf)
+	f.Delegator.Marshal(buf)
 }
 
-// Marshal encodes a Says as a binary byte array. 
-func (f Says) Marshal() []byte {
-	buf := proto.NewBuffer(nil)
-	embed(buf, tagSaysSpeaker, f.Speaker)
+// Marshal encodes a Says. 
+func (f Says) Marshal(buf *Buffer) {
+	buf.EncodeVarint(tagSays)
+	f.Speaker.Marshal(buf)
+	buf.EncodeBool(f.Commences())
 	if f.Commences() {
-		buf.EncodeVarint(makeKey(tagSaysTime, proto.WireVarint))
 		buf.EncodeVarint(*f.Time)
 	}
+	buf.EncodeBool(f.Expires())
 	if f.Expires() {
-		buf.EncodeVarint(makeKey(tagSaysExpiration, proto.WireVarint))
 		buf.EncodeVarint(*f.Expiration)
 	}
-	embed(buf, tagSayMessage, f.Message)
-	return buf.Bytes()
+	f.Message.Marshal(buf)
 }
 
-// varintEOF is a hack to detect EOF in a proto.Buffer.
-const varintEOF = 0
-
-// newBufferWithEOF returns a proto.Buffer for reading with an EOF at the end.
-func newBufferWithEOF(bytes []byte) proto.Buffer {
-	// Hack: append a special EOF mark in the array, using (illegal) tag 0.
-	// Sadly, this means we can't do in-place decoding.
-	copied = append(append([]byte, bytes...), varintEOF)
-	return proto.NewBuffer(copied)
+// decodeString decodes a String without the leading tag.
+func decodeString(buf *Buffer) (s String, err error) {
+	return buf.DecodeString()
 }
 
-// UnmarshalTerm decodes a Term from a binary byte array. 
+// decodeInt decodes an Int without the leading tag.
+func decodeInt(buf *Buffer) (i Int, err error) {
+	return buf.DecodeVarint()
+}
+
+// decodeNameAndArgs decodes a name ad term array without leading tags.
+func decodeNameAndArgs(buf *Buffer) (name string, args []Term, err error) {
+	name, err = buf.DecodeString()
+	if err != nil {
+		return
+	}
+	n, err := buf.DecodeVarint()
+	args := make([]Term, n)
+	for i := 0; i < n; i++ {
+		args[i], err = unmarshalTerm(buf)
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+// unmarshalPrin decodes a Prin.
+func unmarshalPrin(buf *Buffer) (p Prin, err error) {
+	tag, err := buf.DecodeVarint()
+	if err != nil {
+		return
+	}
+	if tag != tagPrin {
+		err = fmt.Errorf("unexpected tag: %d", tag)
+		return
+	}
+	return decodePrin(buf)
+}
+
+// decodePrin decodes a Prin without the leading tag.
+func decodePrin(buf *Buffer) (p Prin, err error) {
+	p.Key, err = buf.DecodeString()
+	if err != nil {
+		return
+	}
+	n, err := buf.DecodeVarint()
+	if err != nil {
+		return
+	}
+	for i := 0; i < n; i++ {
+		name, args, err := decodeNameAndArgs(buf)
+		if err != nil {
+			return
+		}
+		p.Ext = append(p.Ext, PrinExt{name, args})
+	}
+	return
+}
+
+// unmarshalTerm decodes a Term.
+func unmarshalTerm(buf *Buffer) (t Term, err error) {
+	tag, err := buf.DecodeVarint()
+	if err != nil {
+		return nil, err
+	}
+	switch tag {
+	case tagString:
+		return decodeString(buf)
+	case tagInt:
+		return decodeInt(buf)
+	case tagPrin:
+		return decodePrin(buf)
+	default:
+		return nil, fmt.Errorf("unexpected tag: %d", tag)
+	}
+}
+
+// UnmarshalTerm decodes a Term.
 func UnmarshalTerm(bytes []byte) (Term, error) {
-	buf := newBufferWithEOF(bytes)
-	key, err := buf.DecodeVarint()
+	buf := &Buffer{bytes}
+	t, err := unmarshalTerm(buf)
 	if err != nil {
 		return nil, err
 	}
-	switch key {
-	case varintEOF:
-		return nil, io.ErrUnexpectedEOF
-	case makeKey(tagString, proto.WireBytes):
-		s, err := buf.DecodeStringBytes()
-		if err != nil {
-			return nil, err
-		}
-		t = String(s)
-		key, err = buf.DecodeVarint()  // should be EOF
-	case makeKey(tagInt, proto.WireBytes):
-		i, err := buf.DecodeVarint()
-		if err != nil {
-			return nil, err
-		}
-		t = Int(i)
-		key, err = buf.DecodeVarint()  // should be EOF
-	case makeKey(tagPrinKey, proto.WireBytes):
-	case makeKey(tagPrinExt, proto.WireBytes):
-		prin := Prin{}
-		haveKey := false
-		for err != nil && key != int64(varintEOF) {
-			if key == makeKey(tagPrinKey, proto.WireBytes) {
-				if haveKey {
-					return nil, errors.New("duplicate key in marshalled Prin")
-				}
-				haveKey = true
-				prin.Key, err = buf.DecodeStringBytes()
-				if err != nil {
-					return nil, err
-				}
-			} else if key == makeKey(tagPrinExt, proto.WireBytes) {
-				// alloc=false since we copy in unmarshalNameAndArgs()
-				embedded, err := buf.DecodeRawBytes(false)
-				if err {
-					return nil, err
-				}
-				name, args, err := unmarshalNameAndArgs(embedded, tagPrinExtName, tagPrinExtArg)
-				if err {
-					return nil, err
-				}
-				prin.Ext = append(prin.Ext, PrinExt{name, args})
-			} else {
-				return nil, fmt.Errorf("unexpected key in marshalled Prin: %d", key)
-			}
-			key, err = buf.DecodeVarint()
-		}
-		t = prin
-	default:
-		return nil, fmt.Errorf("unexpected key in marshalled Prin: %d", key)
+	if len(buf.Bytes()) != 0 {
+		return nil, fmt.Errorf("unexpected trailing bytes")
 	}
-	if err != nil {
-		return nil, err
-	}
-	if !haveKey {
-		return "", nil, fmt.Errorf("missing key in marshalled Pred or PrinExt")
-	}
-	if key != varintEOF {
-		return nil, fmt.Errorf("extra trailing key in marshalled Prin: %d", key)
-	}
-	return t
+	return t, nil
 }
 
-// unmarshalNameAndArgs decodes a name and zero or more Term args.
-func unmarshalNameAndArgs(bytes []byte, tagName, tagArgs) (name string, args []Term , err error) {
-	buf := newBufferWithEOF(bytes)
-	key, err := buf.DecodeVarint()
-	if err != nil {
-		return "", nil, err
-	}
-	haveName := false
-	for key, err := buf.DecodeVarint(); err != nil && key != varintEOF {
-		switch key {
-		case makeKey(tagName, proto.WireBytes):
-			if haveName {
-				return "", nil, errors.New("duplicate name in marshalled Pred or PrinExt")
-			}
-			haveName = true
-			name, err := buf.DecodeStringBytes()
-			if err != nil {
-				return "", nil, err
-			}
-		case makeKey(tagArg, proto.WireBytes):
-			// alloc=false since we copy in unmarshalNameAndArgs()
-			embedded, err := buf.DecodeRawBytes(false)
-			if err {
-				return "", nil, err
-			}
-			arg, err := UnmarshalTerm(embedded)
-			if err {
-				return "", nil, err
-			}
-			args = append(args, arg)
-		default:
-			return "", nil, fmt.Errorf("unexpected key in marshalled Pred or PrinExt: %d", key)
-		}
-	}
-	if err != nil {
-		return "", nil, err
-	}
-	if !haveName {
-		return "", nil, fmt.Errorf("missing name in marshalled Pred or PrinExt")
-	}
-	if key != varintEOF {
-		return "", nil, fmt.Errorf("extra trailing key in marshalled Prin: %d", key)
-	}
-	return name, args, nil
-}
-
-// UnmarshalForm decodes a Form from a binary byte array. 
-func UnmarshalTerm(bytes []byte) (Form, error) {
-	buf := proto.NewBuffer(bytes)
-	key, err := buf.DecodeVarint()
+// UnmarshalForm decodes a Form.
+func UnmarshalForm(bytes []byte) (Form, error) {
+	buf := &Buffer{bytes}
+	f, err := unmarshalForm(buf)
 	if err != nil {
 		return nil, err
 	}
-	switch key {
-	case tagPredName:
-	case tagPredArg:
-		return unmarshalPred(bytes)
+	if len(buf.Bytes()) != 0 {
+		return nil, fmt.Errorf("unexpected trailing bytes")
+	}
+	return f, nil
+}
+
+// unmarshalForm decodes a Form.
+func unmarshalForm(buf *Buffer) (Form, error) {
+	tag, err := buf.DecodeVarint()
+	if err != nil {
+		return nil, err
+	}
+	switch tag {
+	case tagPred:
+		return decodePred(buf)
 	case tagConst:
-		return unmarshalConst(bytes)
+		return decodeConst(buf)
 	case tagNot:
-		return unmarshalNot(bytes)
-	case tagConjunct:
-		return unmarshalAnd(bytes)
-	case tagDisjunct:
-		return unmarshalOr(bytes)
-	case tagImpliesAntecedent:
-	case tagImpliesConsequent:
-		return unmarshalImplies(bytes)
-	case tagSpeaksforDelegate:
-	case tagSpeaksforDelegator:
-		return unmarshalSpeaksfor(bytes)
-	case tagSaysSpeaker:
-	case tagSaysTime:
-	case tagSaysExpiration:
-	case tagSaysMessage:
-		return unmarshalSays(bytes)
+		return decodeNot(buf)
+	case tagAnd:
+		return decodeAnd(buf)
+	case tagOr:
+		return decodeOr(buf)
+	case tagImplies:
+		return decodeImplies(buf)
+	case tagSpeaksfor:
+		return decodeSpeaksfor(buf)
+	case tagSays:
+		return decodeSays(buf)
 	default:
-		return nil, fmt.Errorf("unexpected key in marshalled Form: %d", key)
+		return nil, fmt.Errorf("unexpected tag: %d", tag)
 	}
 }
 
-// unmarshalPred decodes a Pred from a binary byte array.
-func unmarshalPred(bytes []byte) (Pred, error) {
-	name, args, err := unmarshalNameAndArgs(bytes, tagPredName, tagPredArg)
+// decodePred decodes a Pred without the leading tag.
+func decodePred(buf *Buffer) (Pred, error) {
+	name, args, err := decodeNameAndArgs(buf)
 	return Pred{name, args}, err
 }
 
-// unmarshalConst decodes a Const from a binary byte array.
-func unmarshalConst(bytes []byte) (Const, error) {
-	buf := newBufferWithEOF(bytes)
-	key, err := buf.DecodeVarint()
-	if err != nil {
-		return nil, err
-	}
-	if key != makeKey(tagConst, proto.WireVarint) {
-		return Const(false), fmt.Errorf("unexpected key in marshalled Const: %d", key)
-	}
-	x, err := buf.DecodeVarint()
-	if x != 0 && x != 1 {
-		return Const(false), fmt.Errorf("unexpected value in marshalled Const: %d", x)
-	}
-	eof, err := buf.DecodeVarint()
-	if err != nil {
-		return nil, err
-	}
-	if key != varintEOF {
-		return Const(false), fmt.Errorf("extra trailing key in marshalled Const: %d", key)
-	}
-	return Const(x == 1), nil
+// decodeConst decodes a Const without the leading tag.
+func decodeConst(buf *Buffer) (Const, error) {
+	return buf.DecodeBool()
 }
 
-// unmarshalNot decodes a Not from a binary byte array.
-func unmarshalNot(bytes []byte) (Not, error) {
-	buf := newBufferWithEOF(bytes)
-	key, err := buf.DecodeVarint()
-	if err != nil {
-		return nil, err
-	}
-	if key != makeKey(tagNot, proto.WireBytes) {
-		return Not{}, fmt.Errorf("unexpected key in marshalled Not: %d", key)
-	}
-	embedded, err := buf.DecodeRawBytes(false)
-	if err {
-		return Not{}, err
-	}
-	f, err := UnmarshalForm(embedded)
-	if err {
-		return Not{}, err
-	}
-	eof, err := buf.DecodeVarint()
-	if err != nil {
-		return Not{}, err
-	}
-	if key != varintEOF {
-		return Not{}, fmt.Errorf("extra trailing key in marshalled Not: %d", key)
-	}
-	return Not{f}, nil
+// decodeNot decodes a Not without the leading tag.
+func decodeNot(buf *Buffer) (Not, error) {
+	f, err := decodeForm(buf)
+	return Not{f}, err
 }
 
-// unmarshalAnd decodes an And from a binary byte array.
-func unmarshalAnd(bytes []byte) (And, error) {
-	buf := newBufferWithEOF(bytes)
-	var and And
-	for key, err := buf.DecodeVarint(); err != nil && key != varintEOF {
-		if key != makeKey(tagConjunct, proto.WireBytes) {
-			return And{}, fmt.Errorf("unexpected key in marshalled And: %d", key)
-		}
-		embedded, err := buf.DecodeRawBytes(false)
-		if err {
-			return And{}, err
-		}
-		f, err := UnmarshalForm(embedded)
-		if err {
-			return And{}, err
+// decodeAnd decodes an And without the leading tag.
+func decodeAnd(buf *Buffer) (and And, err error) {
+	n, err := buf.DecodeVarint()
+	if err != nil {
+		return
+	}
+	for i := 0; i < n; i++ {
+		f, err := decodeForm(buf)
+		if err != nil {
+			return
 		}
 		and.Conjunct = append(and.Conjunct, f)
 	}
-	if err != nil {
-		return And{}, err
-	}
-	if key != varintEOF {
-		return And{}, fmt.Errorf("extra trailing key in marshalled And: %d", key)
-	}
-	return and, nil
+	return
 }
 
-// unmarshalOr decodes an Or from a binary byte array.
-func unmarshalOr(bytes []byte) (Or, error) {
-	buf := newBufferWithEOF(bytes)
-	var or Or
-	for key, err := buf.DecodeVarint(); err != nil && key != varintEOF {
-		if key != makeKey(tagDisjunct, proto.WireBytes) {
-			return Or{}, fmt.Errorf("unexpected key in marshalled Or: %d", key)
-		}
-		embedded, err := buf.DecodeRawBytes(false)
-		if err {
-			return Or{}, err
-		}
-		f, err := UnmarshalForm(embedded)
-		if err {
-			return Or{}, err
+// decodeOr decodes an Or without the leading tag.
+func decodeOr(buf *Buffer) (or Or, err error) {
+	n, err := buf.DecodeVarint()
+	if err != nil {
+		return
+	}
+	for i := 0; i < n; i++ {
+		f, err := decodeForm(buf)
+		if err != nil {
+			return
 		}
 		or.Disjunct = append(or.Disjunct, f)
 	}
-	if err != nil {
-		return Or{}, err
-	}
-	if key != varintEOF {
-		return Or{}, fmt.Errorf("extra trailing key in marshalled Or: %d", key)
-	}
-	return or, nil
+	return
 }
 
-// unmarshalImplies decodes an Implies from a binary byte array.
-func unmarshalImplies(bytes []byte) (Implies, error) {
-	buf := newBufferWithEOF(bytes)
-	var implies Implies
-	for key, err := buf.DecodeVarint(); err != nil && key != varintEOF {
-		if key == makeKey(tagImpliesAntecedent, proto.WireBytes) {
-			if implies.Antecedent != nil {
-				return Implies{}, errors.New("duplicate antecedent in marshalled Implies")
-			}
-			embedded, err := buf.DecodeRawBytes(false)
-			if err {
-				return Implies{}, err
-			}
-			f, err := UnmarshalForm(embedded)
-			if err {
-				return Implies{}, err
-			}
-			implies.Antecedent = f
-		} else if key == makeKey(tagImpliesConsequent, proto.WireBytes) {
-			if implies.Consequent != nil {
-				return Implies{}, errors.New("duplicate consequent in marshalled Implies")
-			}
-			embedded, err := buf.DecodeRawBytes(false)
-			if err {
-				return Implies{}, err
-			}
-			f, err := UnmarshalForm(embedded)
-			if err {
-				return Implies{}, err
-			}
-			implies.Consequent = f
-		} else {
-			return Implies{}, fmt.Errorf("unexpected key in marshalled Implies: %d", key)
-		}
-	}
+// decodeImplies decodes an Implies without the leading tag.
+func decodeImplies(buf *Buffer) (implies Implies, err error) {
+	f.Antecedent, err = decodeForm(buf)
 	if err != nil {
-		return Implies{}, err
+		return
 	}
-	if key != varintEOF {
-		return Implies{}, fmt.Errorf("extra trailing key in marshalled Implies: %d", key)
-	}
-	return implies, nil
+	f.Consequent, err = decodeForm(buf)
+	return
 }
 
-// unmarshalImplies decodes an Implies from a binary byte array.
-func unmarshalImplies(bytes []byte) (Implies, error) {
-	buf := newBufferWithEOF(bytes)
-	var implies Implies
-	for key, err := buf.DecodeVarint(); err != nil && key != varintEOF {
-		if key == makeKey(tagImpliesAntecedent, proto.WireBytes) {
-			if implies.Antecedent != nil {
-				return Implies{}, errors.New("duplicate antecedent in marshalled Implies")
-			}
-			embedded, err := buf.DecodeRawBytes(false)
-			if err {
-				return Implies{}, err
-			}
-			f, err := UnmarshalForm(embedded)
-			if err {
-				return Implies{}, err
-			}
-			implies.Antecedent = f
-		} else if key == makeKey(tagImpliesConsequent, proto.WireBytes) {
-			if implies.Consequent != nil {
-				return Implies{}, errors.New("duplicate consequent in marshalled Implies")
-			}
-			embedded, err := buf.DecodeRawBytes(false)
-			if err {
-				return Implies{}, err
-			}
-			f, err := UnmarshalForm(embedded)
-			if err {
-				return Implies{}, err
-			}
-			implies.Consequent = f
-		} else {
-			return Implies{}, fmt.Errorf("unexpected key in marshalled Implies: %d", key)
-		}
-	}
+// decodeSpeaksfor decodes an Speaksfor without the leading tag.
+func decodeSpeaksfor(buf *Buffer) (sfor Speaksfor, err error) {
+	sfor.Delegate, err = unmarshalPrin(buf)
 	if err != nil {
-		return Implies{}, err
+		return
 	}
-	if implies.Antecedent == nil {
-		return Implies{}, fmt.Errorf("missing antecedent in marshalled Implies")
-	}
-	if implies.Consequent == nil {
-		return Implies{}, fmt.Errorf("missing consequent in marshalled Implies")
-	}
-	if key != varintEOF {
-		return Implies{}, fmt.Errorf("extra trailing key in marshalled Implies: %d", key)
-	}
-	return implies, nil
+	sfor.Delegator, err = unmarshalPrin(buf)
+	return
 }
 
-// unmarshalSpeaksfor decodes an Speaksfor from a binary byte array.
-func unmarshalSpeaksfor(bytes []byte) (Speaksfor, error) {
-	buf := newBufferWithEOF(bytes)
-	var sfor Speaksfor
-	haveDelegate := false
-	haveDelegator := false
-	for key, err := buf.DecodeVarint(); err != nil && key != varintEOF {
-		if key == makeKey(tagSpeaksforDelegate, proto.WireBytes) {
-			if haveDelegate {
-				return Speaksfor{}, errors.New("duplicate delegate in marshalled Speaksfor")
-			}
-			embedded, err := buf.DecodeRawBytes(false)
-			if err {
-				return Speaksfor{}, err
-			}
-			t, err := UnmarshalTerm(embedded)
-			if err {
-				return Speaksfor{}, err
-			}
-			sfor.Delegate = t
-		} else if key == makeKey(tagSpeaksforDelegator, proto.WireBytes) {
-			if haveDelegator {
-				return Speaksfor{}, errors.New("duplicate delegator in marshalled Speaksfor")
-			}
-			embedded, err := buf.DecodeRawBytes(false)
-			if err {
-				return Speaksfor{}, err
-			}
-			t, err := UnmarshalTerm(embedded)
-			if err {
-				return Speaksfor{}, err
-			}
-			sfor.Delegator = t
-		} else {
-			return Speaksfor{}, fmt.Errorf("unexpected key in marshalled Speaksfor: %d", key)
-		}
-	}
+// decodeSays decodes an Says without the leading tag.
+func decodeSays(buf *Buffer) (says Says, err error) {
+	says.Speaker, err = unmarshalPrin(buf)
 	if err != nil {
-		return Speaksfor{}, err
+		return
 	}
-	if haveDelegate {
-		return Speaksfor{}, fmt.Errorf("missing delegate in marshalled Speaksfor")
-	}
-	if haveDelegator {
-		return Speaksfor{}, fmt.Errorf("missing delegator in marshalled Speaksfor")
-	}
-	if key != varintEOF {
-		return Speaksfor{}, fmt.Errorf("extra trailing key in marshalled Speaksfor: %d", key)
-	}
-	return sfor, nil
-}
-
-// unmarshalSays decodes an Says from a binary byte array.
-func unmarshalSays(bytes []byte) (Says, error) {
-	buf := newBufferWithEOF(bytes)
-	var says Says
-	haveSpeaker := false
-	for key, err := buf.DecodeVarint(); err != nil && key != varintEOF {
-		if key == makeKey(tagSaysSpeaker, proto.WireBytes) {
-			if haveSpeaker {
-				return Says{}, errors.New("duplicate speaker in marshalled Says")
-			}
-			embedded, err := buf.DecodeRawBytes(false)
-			if err {
-				return Says{}, err
-			}
-			t, err := UnmarshalTerm(embedded)
-			if err {
-				return Says{}, err
-			}
-			says.Speaker = t
-		} else if key == makeKey(tagSaysTime, proto.WireVarint) {
-			if says.Commences() {
-				return Says{}, errors.New("duplicate time in marshalled Says")
-			}
-			t, err := buf.DecodeVarint(false)
-			if err {
-				return Says{}, err
-			}
-			says.Time = &t
-		} else if key == makeKey(tagSaysExpiration, proto.WireVarint) {
-			if says.Expires() {
-				return Says{}, errors.New("duplicate expiration in marshalled Says")
-			}
-			t, err := buf.DecodeVarint(false)
-			if err {
-				return Says{}, err
-			}
-			says.Expiration = &t
-		} else if key == makeKey(tagSaysMessage, proto.WireBytes) {
-			if says.Message != nil {
-				return Says{}, errors.New("duplicate message in marshalled Says")
-			}
-			embedded, err := buf.DecodeRawBytes(false)
-			if err {
-				return Says{}, err
-			}
-			f, err := UnmarshalForm(embedded)
-			if err {
-				return Says{}, err
-			}
-			says.Message = f
-		} else {
-			return Says{}, fmt.Errorf("unexpected key in marshalled Says: %d", key)
-		}
-	}
+	commences, err := buf.DecodeBool()
 	if err != nil {
-		return Says{}, err
+		return
 	}
-	if haveSpeaker {
-		return Says{}, fmt.Errorf("missing speaker in marshalled Says")
+	if commences {
+		t, err := buf.DecodeVarint()
+		if err != nil {
+			return
+		}
+		says.Time = &t
 	}
-	if says.Message == nil {
-		return Says{}, fmt.Errorf("missing message in marshalled Says")
+	expires, err := buf.DecodeBool()
+	if err != nil {
+		return
 	}
-	if key != varintEOF {
-		return Says{}, fmt.Errorf("extra trailing key in marshalled Says: %d", key)
+	if expires {
+		t, err := buf.DecodeVarint()
+		if err != nil {
+			return
+		}
+		says.Expiration = &t
 	}
-	return says, nil
+	says.Message, err = unmarshalForm(buf)
+	return
 }

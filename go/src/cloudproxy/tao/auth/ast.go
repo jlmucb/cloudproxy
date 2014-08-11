@@ -28,7 +28,7 @@ import (
 // AuthLogicElement is any element of the authorization logic, i.e. a formula, a
 // term, or a principal extension.
 type AuthLogicElement interface {
-	Marshal() []byte
+	Marshal(b *Buffer)
 	isAuthLogicElement() // marker
 }
 

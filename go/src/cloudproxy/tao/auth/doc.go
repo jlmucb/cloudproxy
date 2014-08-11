@@ -75,6 +75,71 @@
 //
 // The third representation is an encoded sequence of bytes. This is meant to be
 // compact, relatively easy to parse, and suitable for passing over sockets,
-// network connections, etc. It is roughly similar to the format used by the
-// encoding/binary package.
+// network connections, etc. The encoding format is custom-designed, but is
+// roughly similar to the format used by protobuf.
+//
+// Several alternative encodings were considered:
+//
+//   Protobuf encoding with protobuf definitions: This would require either
+//   duplicating all Forma dn Term types as proto definitions, then writing
+//   conversion and validation code. The encoding would likely not be space
+//   efficient, and it would be essentially Tao's only hard dependency on
+//   protobuf.
+//   
+//   Protobuf encoding with hand-written encoding/decoding: The goprotobuf
+//   library currently lacks good support for this. Also, protobuf allows
+//   encoded data to be shuffled, making decoding much more complicated than
+//   necessary.
+//
+//   encoding/gob: Not language-agnostic. The self-describing datatype encoding
+//   scheme is probably overkill as well.
+//
+//   strings using textual representation of Form and Term elements: This
+//   pulls into all TCB a somewhat complex lexer and parser. The encoding is
+//   also not space efficient.
+//
+// The encoding we use instead is meant to be conceptually simple, reasonably
+// space efficient, and simple to decode. And unlike most of the other schemes
+// agove, strictness rather than flexibility is preferred. For example, when
+// decoding a Form used for authorization, unrecognized fields should not be
+// silently skipped, and unexpected types should not be silently coerced.
+//
+// Each element is encoded as a type tag followed by encodings for one or more
+// values. The tag is encoded as an plain (i.e. not zig-zag encoded) varint, and
+// it determines the meaning, number, and types of the values. Values are
+// encoded according to their type:
+//
+//   An integer or bool is encoded as plain varint.
+//
+//   A string is encoded as a length (plain varint) followed by raw bytes.
+//
+//   A pointer is encoded the same as a boolean optionally followed by a value.
+//  
+//   Variable-length slices (e.g. for conjuncts, disjuncts, predicate arguments)
+//   are encoded as a count (plain varint) followed by the encoding for the each
+//   element.
+//
+//   An embedded struct or interface is encoded as a tag and encoded value.
+//
+// Differences from protobuf:
+// 
+//   Our tags carry implicit type information. In protobuf, the low 3 bits of
+//   each tag carries an explicit type marker. That allows protobuf to skip over
+//   unrecognized fields (not a design goal for us). It also means protobuf can
+//   only handle 15 unique tags before overflowing to 2 byte encodings.
+//
+//   Our tags describe both the meaning and the type of all enclosed values, and
+//   we use tags only when the meaning or type can vary (i.e. for interface
+//   types). Protobuf uses tags for every enclosed value, and those tags also to
+//   carry type information. Protobuf is more efficient when there are many
+//   optional fields. For us, nearly all fields are required. 
+//
+//   Enclosed values in our encoding must appear in order. Protobuf values can
+//   appear in any order. Protobuf encodings can concatenated, truncated, etc.,
+//   all non-features for us.
+//
+// Note: In most cases, a tag appears only when the type would be ambiguous,
+// i.e. when encoding Term or Form. When encoding Says and Speaksfor, however,
+// the enclosed Prin values are not ambiguous, but we include the tag anyway for
+// consistency since all other Prin values have a tag.
 package auth

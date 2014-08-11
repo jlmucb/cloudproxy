@@ -1,6 +1,0 @@
-call_teardown_thunk32/64
-gcpu_save_registers
-gcpu_restore_registers
-hw_exception_post_handler
-setjmp/longjmp
-vmexit_func

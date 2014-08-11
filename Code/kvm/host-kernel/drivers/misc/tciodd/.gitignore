@@ -1,6 +1,0 @@
-*.cmd
-*.o
-tcioDD.ko
-modules.order
-tcioDD.mod.c
-.tmp_versions/

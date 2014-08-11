@@ -1,5 +1,0 @@
-<Test>
-  <IdentityCert>IdentityProviderPrivateKey.xml</IdentityCert>
-  <UserCert>UserPublicKey.xml</UserCert>
-  <Key>PrototypePublicKey.xml</Key>
-</Tests>

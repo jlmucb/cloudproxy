@@ -1,9 +1,0 @@
-<ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#" KeyName="//www.manferdelli.com/Keys/Prototype">
-    <KeyType>RSAKeyType</KeyType>
-    <ds:KeyValue>
-        <ds:RSAKeyValue size="1024">
-            <ds:M>XQUnm5Wz/dR4oFBLW5ZSstTkHkmsoza6N1uapOLVOC1n3Q6BHDof2BUgCfSV+CIGlgcgEdXA5ClKKI/rr+t5WVULLch1mDHIescFQFpHi1OKMQmgnOA8mmSa3eMzDHp0uUJKRWkL7vv1cEDagNZ3mc0CQA01vO45fa5GcfogtbU=</ds:M>
-            <ds:E>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAE=</ds:E>
-        </ds:RSAKeyValue>
-    </ds:KeyValue>
-</ds:KeyInfo>

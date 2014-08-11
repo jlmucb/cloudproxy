@@ -1,2 +1,0 @@
-obj-y := tcioDD.o
-ccflags-y := -I../Code/jlmcrypto -I../Code/tcService -I../Code/commonCode

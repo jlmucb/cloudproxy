@@ -1,4 +1,0 @@
-KDIR ?= /lib/modules/3.2.0-37-generic/build
-
-default:
-	$(MAKE) -C $(KDIR) M=$$PWD

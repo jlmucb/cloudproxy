@@ -5,8 +5,9 @@ This project was started at the Intel Science and Technology Center for Secure
 Computing at University of California at Berkeley.  Google joined the project in
 January 2013 and is a major contributor.
 
-The code is licensed for general use please consult the LICENSE file for details and terms.
-By using this software you agree to those terms.
+The code is licensed for general use under the Apache 2.0 License. Please
+consult the LICENSE file for details and terms.  By using this software you
+agree to those terms.
 
 The directory Doc contains documentation and commentary.  It contains:
     1. A paper by Manferdelli, Roeder and Schneider describing the
@@ -14,7 +15,7 @@ The directory Doc contains documentation and commentary.  It contains:
     2. Extensive documentation on building the FileProxy system on a bare machine.
 
 Please send feedback, comments and suggestions and bug reports to
-    john.l.manferdelli@intel.com, tmroeder@google.com, jlmucbmath@gmail.com
+  jlmucbmath@gmail.com or tmroeder@google.com
 Unless expressly noted in any such submitted material, you agree that any 
 feedback, comments or suggested can be incorporated under the Apache 
 License in this directory.

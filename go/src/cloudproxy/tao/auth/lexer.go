@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"unicode/utf8"
 	"unicode"
 )
 
@@ -159,7 +160,8 @@ func (l *lexer) lexKeyword() token {
 		r := l.next()
 		if !lower(r) {
 			l.backup()
-			return token{itemKeyword, l.reset()}
+			t := token{itemKeyword, l.reset()}
+			return t
 		}
 	}
 }
@@ -194,7 +196,11 @@ func (l *lexer) next() (r rune) {
 		return eof
 	}
 	l.val.WriteRune(r)
+	// BUG(kwalsh) fmt.ScanState.ReadRune() returns incorrect length. See issue
+	// 8512 here: https://code.google.com/p/go/issues/detail?id=8512
+	n = utf8.RuneLen(r)
 	l.width = n
+	fmt.Printf("just read %q\n", r)
 	return r
 }
 

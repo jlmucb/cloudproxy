@@ -181,11 +181,14 @@ func (parser *parser) parseStr() (t Str, err error) {
 
 // expectInt expects an Int.
 func (parser *parser) expectInt() (Int, error) {
+	fmt.Println("expecting int")
 	if parser.cur.typ != itemInt {
 		return 0, fmt.Errorf("expecting int: %v", parser.cur)
 	}
 	t := Int(parser.cur.val.(int64))
+	fmt.Println("done int, advancing")
 	parser.advance()
+	fmt.Println("done int, returning")
 	return t, nil
 }
 

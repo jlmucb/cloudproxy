@@ -20,8 +20,8 @@ import (
 )
 
 func TestParseTerm(t *testing.T) {
-	var x, y, z Term
-	n, err := fmt.Sscanf(`42 "Hello World" Foo()::Bar(3, "Hello", Baz()::Boo())`, "%v %v %v", &x, &y, &z)
+	var x, y, z AnyTerm
+	n, err := fmt.Sscanf(`42 "Hello World" key("foo")::Bar(3, "Hello", key("Baz")::Boo())`, "%v %v %v", &x, &y, &z)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

@@ -23,6 +23,7 @@ package auth
 import (
 	"bytes"
 	"fmt"
+	"io"
 )
 
 // ShortString returns an elided pretty-printed Prin.
@@ -50,38 +51,21 @@ func nameAndArgShortString(name string, arg []Term) string {
 		}
 		fmt.Fprintf(&out, "%s", a.ShortString())
 	}
-}
-
-func (t Term) ShortString() string {
-	switch v := t.(type) {
-	case Int:
-		return v.ShortString()
-	case Str:
-		return v.ShortString()
-	case Prin:
-		return v.ShortString()
-	default:
-		panic("not reached")
-	}
+	return out.String()
 }
 
 // ShortString returns an elided pretty-printed Int.
 func (t Int) ShortString() string {
-	return fmt.Sprintf("%d", t.(int64))
+	return fmt.Sprintf("%d", int64(t))
 }
 
 // ShortString returns an elided pretty-printed Str.
 func (t Str) ShortString() string {
-	if len(t.(string) > 15 {
-		return fmt.Sprintf("%.10q...", t.(string))
+	if len(string(t)) > 15 {
+		return fmt.Sprintf("%.10q...", string(t))
 	} else {
-		return fmt.Sprintf("%q", t.(string))
+		return fmt.Sprintf("%q", string(t))
 	}
-}
-
-// ShortString returns an elided pretty-printed Form, with reasonably few parens.
-func (f Form) ShortString() string {
-
 }
 
 // ShortString returns an elided pretty-printed Pred.
@@ -98,21 +82,11 @@ func (f Const) ShortString() string {
 	}
 }
 
-const (
-	precedenceSays = iota // lowest
-	precedenceSpeaksfor
-	precedenceImplies
-	precedenceOr
-	precedenceAnd
-	precedenceHigh // not, true, false, Pred
-)
-
-
 // ShortString returns an elided pretty-printed Not.
 func (f Not) ShortString() string {
 	var out bytes.Buffer
 	fmt.Fprintf(&out, "not ")
-	printFormWithParens(&out, precedenceHigh, f.Negand)
+	printShortFormWithParens(&out, precedenceHigh, f.Negand)
 	return out.String()
 }
 
@@ -128,7 +102,7 @@ func (f And) ShortString() string {
 			if i > 0 {
 				fmt.Fprintf(&out, " and ")
 			}
-			printFormWithParens(&out, precedenceAnd, e)
+			printShortFormWithParens(&out, precedenceAnd, e)
 		}
 		return out.String()
 	}
@@ -146,7 +120,7 @@ func (f Or) ShortString() string {
 			if i > 0 {
 				fmt.Fprintf(&out, " or ")
 			}
-			printFormWithParens(&out, precedenceOr, e)
+			printShortFormWithParens(&out, precedenceOr, e)
 		}
 		return out.String()
 	}
@@ -155,9 +129,9 @@ func (f Or) ShortString() string {
 // ShortString returns an elided pretty-printed Implies.
 func (f Implies) ShortString() string {
 	var out bytes.Buffer
-	printFormWithParens(&out, precedenceImplies+1, f.Antecedent)
+	printShortFormWithParens(&out, precedenceImplies+1, f.Antecedent)
 	fmt.Fprintf(&out, " implies ")
-	printFormWithParens(&out, precedenceImplies, f.Consequent)
+	printShortFormWithParens(&out, precedenceImplies, f.Consequent)
 	return out.String()
 }
 
@@ -179,9 +153,9 @@ func (f Says) ShortString() string {
 	}
 }
 
-func printFormWithParens(out fmt.Writer, level int, f Form) string {
+func printShortFormWithParens(out io.Writer, level int, f Form) string {
 	if level > precedence(f) {
 		return "(" + f.ShortString() + ")"
 	}
-  return f.ShortString()
+	return f.ShortString()
 }

@@ -19,6 +19,7 @@ package auth
 import (
 	"bytes"
 	"fmt"
+	"io"
 )
 
 // String returns a pretty-printed Prin.
@@ -46,34 +47,17 @@ func nameAndArgString(name string, arg []Term) string {
 		}
 		fmt.Fprintf(&out, "%s", a.String())
 	}
-}
-
-func (t Term) String() string {
-	switch v := t.(type) {
-	case Int:
-		return v.String()
-	case Str:
-		return v.String()
-	case Prin:
-		return v.String()
-	default:
-		panic("not reached")
-	}
+	return out.String()
 }
 
 // String returns a pretty-printed Int.
 func (t Int) String() string {
-	return fmt.Sprintf("%d", t.(int64))
+	return fmt.Sprintf("%d", int64(t))
 }
 
 // String returns a pretty-printed Str.
 func (t Str) String() string {
-	return fmt.Sprintf("%q", t.(string))
-}
-
-// String returns a pretty-printed Form, with reasonably few parens.
-func (f Form) String() string {
-
+	return fmt.Sprintf("%q", string(t))
 }
 
 // String returns a pretty-printed Pred.
@@ -98,7 +82,6 @@ const (
 	precedenceAnd
 	precedenceHigh // not, true, false, Pred
 )
-
 
 // String returns a pretty-printed Not.
 func (f Not) String() string {
@@ -181,7 +164,7 @@ func precedence(f Form) int {
 		return precedenceImplies
 	case Or:
 		if len(f.Disjunct) == 0 {
-			return precedenceConst // Or{} == false
+			return precedenceHigh // Or{} == false
 		} else if len(f.Disjunct) == 1 {
 			return precedence(f.Disjunct[0]) // Or{f} == f
 		} else {
@@ -189,25 +172,22 @@ func precedence(f Form) int {
 		}
 	case And:
 		if len(f.Conjunct) == 0 {
-			return precedenceConst // And{} == true
+			return precedenceHigh // And{} == true
 		} else if len(f.Conjunct) == 1 {
 			return precedence(f.Conjunct[0]) // And{f} == f
 		} else {
 			return precedenceAnd
 		}
-	case Not:
-	case Pred:
-	case Const:
+	case Not, Pred, Const:
 		return precedenceHigh
 	default:
 		panic("not reached")
 	}
 }
 
-func printFormWithParens(out fmt.Writer, level int, f Form) string {
-	if level > precdence(f) {
+func printFormWithParens(out io.Writer, level int, f Form) string {
+	if level > precedence(f) {
 		return "(" + f.String() + ")"
 	}
-  return f.String()
+	return f.String()
 }
-

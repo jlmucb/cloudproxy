@@ -14,17 +14,6 @@
 
 package auth
 
-import (
-	"bytes"
-	"errors"
-	"fmt"
-	"io"
-	"strconv"
-	"strings"
-
-	"cloudproxy/util"
-)
-
 // AuthLogicElement is any element of the authorization logic, i.e. a formula, a
 // term, or a principal extension.
 type AuthLogicElement interface {
@@ -34,23 +23,23 @@ type AuthLogicElement interface {
 
 // isAuthLogicElement ensures only appropriate types can be assigned to an
 // AuthLogicElement.
-func (t Prin) isAuthLogicElement() {}
-func (t Str) isAuthLogicElement() {}
-func (t Int) isAuthLogicElement() {}
-func (f Pred) isAuthLogicElement() {}
-func (f Const) isAuthLogicElement() {}
-func (f Not) isAuthLogicElement() {}
-func (f And) isAuthLogicElement() {}
-func (f Or) isAuthLogicElement() {}
-func (f Implies) isAuthLogicElement() {}
+func (t Prin) isAuthLogicElement()      {}
+func (t Str) isAuthLogicElement()       {}
+func (t Int) isAuthLogicElement()       {}
+func (f Pred) isAuthLogicElement()      {}
+func (f Const) isAuthLogicElement()     {}
+func (f Not) isAuthLogicElement()       {}
+func (f And) isAuthLogicElement()       {}
+func (f Or) isAuthLogicElement()        {}
+func (f Implies) isAuthLogicElement()   {}
 func (f Speaksfor) isAuthLogicElement() {}
-func (f Says) isAuthLogicElement() {}
+func (f Says) isAuthLogicElement()      {}
 
 // Prin uniquely identifies a principal by a public key, used to verify
 // signatures on credentials issued by the principal, and a sequence of zero or
 // more extensions to identify the subprincipal of that key.
 type Prin struct {
-	Key string // a base64w-encoded, marshalled, CryptoKey protobuf structure with purpose CryptoKey.VERIFYING)
+	Key string    // a base64w-encoded, marshalled, CryptoKey protobuf structure with purpose CryptoKey.VERIFYING)
 	Ext []PrinExt // one or more extensions for descendents
 }
 
@@ -63,14 +52,16 @@ type PrinExt struct {
 // Term is an argument to a predicate or a principal extension.
 type Term interface {
 	String() string
+	ShortString() string
+	Marshal(b *Buffer)
 	Identical(other Term) bool
 	isTerm() // marker
 }
 
 // isTerm ensures only appropriate types can be assigned to a Term.
 func (t Prin) isTerm() {}
-func (t Str) isTerm() {}
-func (t Int) isTerm() {}
+func (t Str) isTerm()  {}
+func (t Int) isTerm()  {}
 
 // Str is a string used as a Term.
 type Str string
@@ -81,18 +72,20 @@ type Int int
 // Form is a formula in the Tao authorization logic.
 type Form interface {
 	String() string
+	ShortString() string
+	Marshal(b *Buffer)
 	isForm() // marker
 }
 
 // isForm ensures only appropriate types can be assigned to a Form.
-func (f Pred) isForm() {}
-func (f Const) isForm() {}
-func (f Not) isForm() {}
-func (f And) isForm() {}
-func (f Or) isForm() {}
-func (f Implies) isForm() {}
+func (f Pred) isForm()      {}
+func (f Const) isForm()     {}
+func (f Not) isForm()       {}
+func (f And) isForm()       {}
+func (f Or) isForm()        {}
+func (f Implies) isForm()   {}
 func (f Speaksfor) isForm() {}
-func (f Says) isForm() {}
+func (f Says) isForm()      {}
 
 // Pred is a predicate, i.e. a boolean-valued (pure) function.
 type Pred struct {
@@ -126,16 +119,16 @@ type Implies struct {
 
 // Speaksfor conveys formula "Delegate speaksfor Delegator"
 type Speaksfor struct {
-	Delegate Prin
+	Delegate  Prin
 	Delegator Prin
 }
 
 // Says conveys formula "Speaker from Time until Expiration says Message"
 type Says struct {
-	Speaker Prin
-	Time *int64 // nil to omit
+	Speaker    Prin
+	Time       *int64 // nil to omit
 	Expiration *int64 // nil to omit
-	Message Form
+	Message    Form
 }
 
 // Commences checks if statement f has a commencement time.
@@ -178,12 +171,12 @@ func (t Prin) Identical(other Term) bool {
 }
 
 // Identical checks if one PrinExt is identical to another.
-func (e PrinExt) Identical(other PrinExt) {
+func (e PrinExt) Identical(other PrinExt) bool {
 	if e.Name != other.Name || len(e.Arg) != len(other.Arg) {
 		return false
 	}
 	for i := 0; i < len(e.Arg); i++ {
-		if !e.Arg[i].Identical(other.Arg[j]) {
+		if !e.Arg[i].Identical(other.Arg[i]) {
 			return false
 		}
 	}
@@ -203,4 +196,3 @@ func SubprinOrIdentical(child, parent Prin) bool {
 	}
 	return true
 }
-

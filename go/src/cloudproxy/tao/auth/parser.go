@@ -19,8 +19,6 @@ package auth
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 )
 
 // The functions in this file use one token lookahead. Elsewhere, an attempt is
@@ -53,7 +51,7 @@ func (parser *parser) advance() {
 // expect checks whether cur matches t and, if so, advances to the next token.
 func (parser *parser) expect(t token) error {
 	if parser.cur != t {
-		return fmt.Errorf("expecting %v: %v", t.val, cur)
+		return fmt.Errorf("expecting %v: %v", t.val, parser.cur)
 	}
 	parser.advance()
 	return nil
@@ -71,53 +69,56 @@ func (parser *parser) skipOpenParens() int {
 
 // expectCloseParens expects n close parens.
 func (parser *parser) expectCloseParens(n int) error {
-	for n > 0; n-- {
-		parser.expect(tokenRP)
+	for n > 0 {
+		err := parser.expect(tokenRP)
+		if err != nil {
+			return err
+		}
+		n--
 	}
+	return nil
 }
 
 // expectPrin expects a Prin.
-func (parser *parser) expectPrin() (Prin, error) {
-	err := parser.expect(tokenKey)
+func (parser *parser) expectPrin() (p Prin, err error) {
+	err = parser.expect(tokenKey)
 	if err != nil {
-		return nil, err
+		return
 	}
-	err := parser.expect(tokenLP)
+	err = parser.expect(tokenLP)
 	if err != nil {
-		return nil, err
+		return
 	}
 	key, err := parser.parseStr()
 	if err != nil {
-		return nil, err
+		return
 	}
-	err := parser.expect(tokenRP)
+	err = parser.expect(tokenRP)
 	if err != nil {
-		return nil, err
+		return
 	}
-	p := &Prin{Key: key.(string)}
+	p.Key = string(key)
+	p.Ext = nil
 	if parser.cur == tokenDot {
 		parser.advance()
 		name, args, err := parser.expectNameAndArgs()
 		if err != nil {
-			return nil, err
+			return p, err
 		}
 		p.Ext = append(p.Ext, PrinExt{name, args})
 	}
-	return p, nil
+	return
 }
 
 // parsePrin parses Prin with optional outer parens.
-func (parser *parser) parsePrin() (Prin, error) {
+func (parser *parser) parsePrin() (p Prin, err error) {
 	n := parser.skipOpenParens()
-	p, err := parser.expectPrin()
+	p, err = parser.expectPrin()
 	if err != nil {
-		return nil, err
+		return
 	}
 	err = parser.expectCloseParens(n)
-	if err != nil {
-		return nil, err
-	}
-	return p, nil
+	return
 }
 
 // expectNameAndArgs expects an identifier, optionally followed by
@@ -144,7 +145,7 @@ func (parser *parser) expectNameAndArgs() (string, []Term, error) {
 		if err != nil {
 			return "", nil, err
 		}
-		args := append(args, t)
+		args = append(args, t)
 		if parser.cur != tokenComma {
 			break
 		}
@@ -168,23 +169,20 @@ func (parser *parser) expectStr() (Str, error) {
 }
 
 // parseStr parses a Str with optional outer parens.
-func (parser *parser) parseStr() (Str, error) {
+func (parser *parser) parseStr() (t Str, err error) {
 	n := parser.skipOpenParens()
-	t, err := parser.expectStr()
+	t, err = parser.expectStr()
 	if err != nil {
-		return nil, err
+		return
 	}
 	err = parser.expectCloseParens(n)
-	if err != nil {
-		return nil, err
-	}
-	return t, nil
+	return
 }
 
 // expectInt expects an Int.
 func (parser *parser) expectInt() (Int, error) {
 	if parser.cur.typ != itemInt {
-		return "", fmt.Errorf("expecting int: %v", parser.cur)
+		return 0, fmt.Errorf("expecting int: %v", parser.cur)
 	}
 	t := Int(parser.cur.val.(int64))
 	parser.advance()
@@ -196,11 +194,11 @@ func (parser *parser) parseInt() (Int, error) {
 	n := parser.skipOpenParens()
 	t, err := parser.expectInt()
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	err = parser.expectCloseParens(n)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	return t, nil
 }
@@ -234,26 +232,23 @@ func (parser *parser) parseTerm() (Term, error) {
 }
 
 // expectPred expects a Pred.
-func (parser *parser) expectPred() (Pred, error) {
+func (parser *parser) expectPred() (f Pred, err error) {
 	name, args, err := parser.expectNameAndArgs()
 	if err != nil {
-		return nil, err
+		return
 	}
-	return &Pred{name, args}
+	return Pred{name, args}, nil
 }
 
 // parsePred parses a Pred with optional outer parens.
-func (parser *parser) parsePred() (Pred, error) {
+func (parser *parser) parsePred() (f Pred, err error) {
 	n := parser.skipOpenParens()
-	t, err := parser.expectPred()
+	f, err = parser.expectPred()
 	if err != nil {
-		return nil, err
+		return
 	}
 	err = parser.expectCloseParens(n)
-	if err != nil {
-		return nil, err
-	}
-	return t, nil
+	return
 }
 
 // expectConst expects a Const.
@@ -261,21 +256,18 @@ func (parser *parser) expectConst() (Const, error) {
 	if parser.cur == tokenTrue && parser.cur != tokenFalse {
 		return Const(false), fmt.Errorf("expecting Const: %c", parser.cur)
 	}
-	return Const(parser.cur == tokenTrue)
+	return Const(parser.cur == tokenTrue), nil
 }
 
 // parseConst parses a Const with optional outer parens.
-func (parser *parser) parseConst() (Const, error) {
+func (parser *parser) parseConst() (t Const, err error) {
 	n := parser.skipOpenParens()
-	t, err := parser.expectConst()
+	t, err = parser.expectConst()
 	if err != nil {
-		return nil, err
+		return
 	}
 	err = parser.expectCloseParens(n)
-	if err != nil {
-		return nil, err
-	}
-	return t, nil
+	return
 }
 
 // expectFrom optionally expects a "(from|until) int" clause for a says formula.
@@ -284,18 +276,19 @@ func (parser *parser) expectOptionalTime(t token) (*int64, error) {
 		return nil, nil
 	}
 	parser.advance()
-	t, err := parser.parseInt()
+	i, err := parser.parseInt()
 	if err != nil {
 		return nil, err
 	}
-	return &t.(int64)
+	val := int64(i)
+	return &val, nil
 }
 
 // expectSaysOrSpeaksfor expects a says or speaksfor formula. If greedy is true,
 // this will parse as much input as possible. Otherwise, it will take only as
 // much input as needed to make a valid formula.
 func (parser *parser) expectSaysOrSpeaksfor(greedy bool) (Form, error) {
-	// Prin [from Time] [until Time] says Form 
+	// Prin [from Time] [until Time] says Form
 	// Prin speaksfor Prin
 	p, err := parser.parsePrin()
 	if err != nil {
@@ -309,9 +302,7 @@ func (parser *parser) expectSaysOrSpeaksfor(greedy bool) (Form, error) {
 			return nil, err
 		}
 		return Speaksfor{p, d}, nil
-	case tokenFrom:
-	case tokenUntil:
-	case tokenSays:
+	case tokenFrom, tokenUntil, tokenSays:
 		from, err := parser.expectOptionalTime(tokenFrom)
 		if err != nil {
 			return nil, err
@@ -338,17 +329,18 @@ func (parser *parser) expectSaysOrSpeaksfor(greedy bool) (Form, error) {
 			}
 		}
 		parser.advance()
+		var msg Form
 		if greedy {
-			msg, err := parser.parseForm()
+			msg, err = parser.parseForm()
 		} else {
-			msg, err := parser.parseFormAtHigh(true)
+			msg, err = parser.parseFormAtHigh(true)
 		}
 		if err != nil {
 			return nil, err
 		}
-		return Says{p, from, until, msg}
+		return Says{p, from, until, msg}, nil
 	default:
-			return nil, fmt.Errorf(`expecting "speaksfor", "from", "until", or "says": %v`, parser.cur)
+		return nil, fmt.Errorf(`expecting "speaksfor", "from", "until", or "says": %v`, parser.cur)
 	}
 }
 
@@ -374,10 +366,7 @@ func (parser *parser) parseFormAtHigh(greedy bool) (Form, error) {
 			return nil, err
 		}
 		return f, nil
-	case tokenIdentifier:
-		return parser.expectPred()
-	case tokenTrue:
-	case tokenFalse:
+	case tokenTrue, tokenTrue:
 		return parser.expectConst()
 	case tokenNot:
 		parser.advance()
@@ -387,9 +376,12 @@ func (parser *parser) parseFormAtHigh(greedy bool) (Form, error) {
 		}
 		return Not{f}, nil
 	case tokenKey:
-		return parser.expectSaysOrSpeaksfor()
+		return parser.expectSaysOrSpeaksfor(greedy)
 	default:
-		return nil, fmt.Error("expecting Form: %v", parser.cur)
+		if parser.cur.typ == itemIdentifier {
+			return parser.expectPred()
+		}
+		return nil, fmt.Errorf("expecting Form: %v", parser.cur)
 	}
 }
 
@@ -405,7 +397,7 @@ func (parser *parser) parseFormAtAnd() (Form, error) {
 	}
 	and, ok := f.(And)
 	if !ok {
-		and = And{Conjunct:{f}}
+		and = And{Conjunct: []Form{f}}
 	}
 	for parser.cur == tokenAnd {
 		parser.advance()
@@ -415,7 +407,7 @@ func (parser *parser) parseFormAtAnd() (Form, error) {
 		}
 		and.Conjunct = append(and.Conjunct, g)
 	}
-	return and
+	return and, nil
 }
 
 // parseFormAtOr parses a Form, but stops when it reaches a binary Form operator
@@ -430,7 +422,7 @@ func (parser *parser) parseFormAtOr() (Form, error) {
 	}
 	or, ok := f.(Or)
 	if !ok {
-		or = Or{Disjunct:{f}}
+		or = Or{Disjunct: []Form{f}}
 	}
 	for parser.cur == tokenOr {
 		parser.advance()
@@ -440,7 +432,7 @@ func (parser *parser) parseFormAtOr() (Form, error) {
 		}
 		or.Disjunct = append(or.Disjunct, g)
 	}
-	return or
+	return or, nil
 }
 
 // parseForm parses a Form. This function is greedy: it consumes as much input
@@ -458,7 +450,7 @@ func (parser *parser) parseForm() (Form, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Implies{f, g}
+	return Implies{f, g}, nil
 }
 
 // parseShortestForm parses the shortest valid Form. This function is not
@@ -470,12 +462,7 @@ func (parser *parser) parseShortestForm() (Form, error) {
 	return parser.parseFormAtHigh(false)
 }
 
-func inputParser(input reader) *parser {
+func newParser(input reader) *parser {
 	lex := lex(input)
-	return &parser{lex: lex, token: lex.nextToken() }
+	return &parser{lex: lex, cur: lex.nextToken()}
 }
-
-func stringParser(s string) *string {
-	return inputParser(bytes.NewBufferString(s))
-}
-

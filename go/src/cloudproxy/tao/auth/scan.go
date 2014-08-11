@@ -23,7 +23,7 @@ import (
 
 // Scan parses a Prin, with optional outer parens.
 func (p *Prin) Scan(state fmt.ScanState, verb rune) error {
-	parser := inputParser(state)
+	parser := newParser(state)
 	prin, err := parser.parsePrin()
 	if err != nil {
 		return err
@@ -34,29 +34,36 @@ func (p *Prin) Scan(state fmt.ScanState, verb rune) error {
 
 // Scan parses a PrinExt.
 func (e *PrinExt) Scan(state fmt.ScanState, verb rune) error {
-	parser := inputParser(state)
+	parser := newParser(state)
 	name, args, err := parser.expectNameAndArgs()
 	if err != nil {
 		return err
 	}
 	e.Name = name
-	e.Args = args
+	e.Arg = args
 	return nil
 }
 
+// AnyTerm is a struct that can be used in when scanning for a Term, since Term
+// itself is an interface and interface pointers are not valid receivers.
+type AnyTerm struct {
+	Term Term
+}
+
 // Scan parses a Term, with optional outer parens.
-func (t *Term) Scan(state fmt.ScanState, verb rune) error {
-	parser := inputParser(state)
+func (t *AnyTerm) Scan(state fmt.ScanState, verb rune) error {
+	parser := newParser(state)
 	term, err := parser.parseTerm()
 	if err != nil {
 		return err
 	}
-	*t = term
+	t.Term = term
+	return nil
 }
 
 // Scan parses a Str, with optional outer parens.
 func (t *Str) Scan(state fmt.ScanState, verb rune) error {
-	parser := inputParser(state)
+	parser := newParser(state)
 	s, err := parser.parseStr()
 	if err != nil {
 		return err
@@ -67,7 +74,7 @@ func (t *Str) Scan(state fmt.ScanState, verb rune) error {
 
 // Scan parses an Int, with optional outer parens.
 func (t *Int) Scan(state fmt.ScanState, verb rune) error {
-	parser := inputParser(state)
+	parser := newParser(state)
 	i, err := parser.parseInt()
 	if err != nil {
 		return err
@@ -76,24 +83,30 @@ func (t *Int) Scan(state fmt.ScanState, verb rune) error {
 	return nil
 }
 
+// AnyForm is a struct that can be used in when scanning for a Form, since Form
+// itself is an interface and interface pointers are not valid receivers.
+type AnyForm struct {
+	Form Form
+}
+
 // Scan parses a Form, with optional outer parens. This function is not greedy:
 // it consumes only as much input as necessary to obtain a valid formula. For
 // example, "(p says a and b ...)" and "p says (a and b ...) will be parsed in
 // their entirety, but given "p says a and b ... ", only "p says a" will be
 // parsed.
-func (f *Form) Scan(state fmt.ScanState, verb rune) error {
-	parser := inputParser(state)
+func (f *AnyForm) Scan(state fmt.ScanState, verb rune) error {
+	parser := newParser(state)
 	form, err := parser.parseShortestForm()
 	if err != nil {
 		return err
 	}
-	*f = form
+	f.Form = form
 	return nil
 }
 
 // Scan parses a Pred, with optional outer parens.
 func (f *Pred) Scan(state fmt.ScanState, verb rune) error {
-	parser := inputParser(state)
+	parser := newParser(state)
 	pred, err := parser.parsePred()
 	if err != nil {
 		return err
@@ -104,7 +117,7 @@ func (f *Pred) Scan(state fmt.ScanState, verb rune) error {
 
 // Scan parses a Const, with optional outer parens. This function is not greedy.
 func (f *Const) Scan(state fmt.ScanState, verb rune) error {
-	parser := inputParser(state)
+	parser := newParser(state)
 	c, err := parser.parseConst()
 	if err != nil {
 		return err
@@ -115,13 +128,14 @@ func (f *Const) Scan(state fmt.ScanState, verb rune) error {
 
 // Scan parses a Not, with optional outer parens. This function is not greedy.
 func (f *Not) Scan(state fmt.ScanState, verb rune) error {
+	parser := newParser(state)
 	form, err := parser.parseShortestForm()
 	if err != nil {
 		return err
 	}
-	n, ok := form.(And)
+	n, ok := form.(Not)
 	if !ok {
-		return fmt.Errorf(`expecting "and": %s`, form)
+		return fmt.Errorf(`expecting "not": %s`, form)
 	}
 	*f = n
 	return nil
@@ -132,6 +146,7 @@ func (f *Not) Scan(state fmt.ScanState, verb rune) error {
 // consistency, perhaps I need to make non-greedy parse functions for each
 // operator?
 func (f *And) Scan(state fmt.ScanState, verb rune) error {
+	parser := newParser(state)
 	form, err := parser.parseShortestForm()
 	if err != nil {
 		return err
@@ -149,6 +164,7 @@ func (f *And) Scan(state fmt.ScanState, verb rune) error {
 // consistency, perhaps I need to make non-greedy parse functions for each
 // operator?
 func (f *Or) Scan(state fmt.ScanState, verb rune) error {
+	parser := newParser(state)
 	form, err := parser.parseShortestForm()
 	if err != nil {
 		return err
@@ -167,6 +183,7 @@ func (f *Or) Scan(state fmt.ScanState, verb rune) error {
 // consistency, perhaps I need to make non-greedy parse functions for each
 // operator?
 func (f *Implies) Scan(state fmt.ScanState, verb rune) error {
+	parser := newParser(state)
 	form, err := parser.parseShortestForm()
 	if err != nil {
 		return err
@@ -181,6 +198,7 @@ func (f *Implies) Scan(state fmt.ScanState, verb rune) error {
 
 // Scan parses a Says, with optional outer parens. This function is not greedy.
 func (f *Says) Scan(state fmt.ScanState, verb rune) error {
+	parser := newParser(state)
 	form, err := parser.parseShortestForm()
 	if err != nil {
 		return err
@@ -196,6 +214,7 @@ func (f *Says) Scan(state fmt.ScanState, verb rune) error {
 // Scan parses a Speaksfor, with optional outer parens. This function is not
 // greedy.
 func (f *Speaksfor) Scan(state fmt.ScanState, verb rune) error {
+	parser := newParser(state)
 	form, err := parser.parseShortestForm()
 	if err != nil {
 		return err
@@ -207,4 +226,3 @@ func (f *Speaksfor) Scan(state fmt.ScanState, verb rune) error {
 	*f = n
 	return nil
 }
-

@@ -31,36 +31,36 @@ type token struct {
 type itemType int
 
 const (
-	itemError itemType = iota // value contains error
-	itemUnexpectedRune        // value contains the rune
-	itemEOF                   // value is nil
-	itemKeyword               // value contains the keyword
-	itemIdentifier            // value contains the identifer
-	itemStr                   // value contains the string
-	itemInt                   // value contains the int64
-	itemLP                    // value contains '('
-	itemRP                    // value contains ')'
-	itemComma                 // value contains ','
-	itemDot                   // value contains '.'
+	itemError          itemType = iota // value contains error
+	itemUnexpectedRune                 // value contains the rune
+	itemEOF                            // value is nil
+	itemKeyword                        // value contains the keyword
+	itemIdentifier                     // value contains the identifer
+	itemStr                            // value contains the string
+	itemInt                            // value contains the int64
+	itemLP                             // value contains '('
+	itemRP                             // value contains ')'
+	itemComma                          // value contains ','
+	itemDot                            // value contains '.'
 )
 
-const (
-  tokenFrom = token{itemKeyword, "from"}
-  tokenUntil = token{itemKeyword, "until"}
-  tokenSays = token{itemKeyword, "says"}
-  tokenSpeaskfor = token{itemKeyword, "speaskfor"}
-  tokenImplies = token{itemKeyword, "implies"}
-  tokenOr = token{itemKeyword, "or"}
-  tokenAnd = token{itemKeyword, "and"}
-  tokenNot = token{itemKeyword, "not"}
-  tokenFalse = token{itemKeyword, "false"}
-  tokenTrue = token{itemKeyword, "true"}
-  tokenKey = token{itemKeyword, "key"}
-	tokenLP = token{itemLP, '('}
-	tokenRP = token{itemRP, ')'}
-	tokenComma = token{itemComma, ','}
-	tokenDot = token{itemDot, '.'}
-	tokenEOF = token{itemEOF, nil}
+var (
+	tokenFrom      = token{itemKeyword, "from"}
+	tokenUntil     = token{itemKeyword, "until"}
+	tokenSays      = token{itemKeyword, "says"}
+	tokenSpeaksfor = token{itemKeyword, "speaskfor"}
+	tokenImplies   = token{itemKeyword, "implies"}
+	tokenOr        = token{itemKeyword, "or"}
+	tokenAnd       = token{itemKeyword, "and"}
+	tokenNot       = token{itemKeyword, "not"}
+	tokenFalse     = token{itemKeyword, "false"}
+	tokenTrue      = token{itemKeyword, "true"}
+	tokenKey       = token{itemKeyword, "key"}
+	tokenLP        = token{itemLP, '('}
+	tokenRP        = token{itemRP, ')'}
+	tokenComma     = token{itemComma, ','}
+	tokenDot       = token{itemDot, '.'}
+	tokenEOF       = token{itemEOF, nil}
 )
 
 // String returns pretty-printed token, e.g. for debugging.
@@ -148,7 +148,7 @@ func (l *lexer) lexStr() token {
 
 func (l *lexer) lexInt() token {
 	var i int64
-	_, err := fmt.Fscanf(l.input, "%d", &i)
+	if _, err := fmt.Fscanf(l.input, "%d", &i); err != nil {
 		return token{itemError, err}
 	}
 	return token{itemInt, i}
@@ -164,7 +164,7 @@ func (l *lexer) lexKeyword() token {
 	}
 }
 
-func lexIdentifier(l *lexer) stateFn {
+func (l *lexer) lexIdentifier() token {
 	// precondition: l.next() is [A-Z]
 	for {
 		r := l.next()
@@ -176,15 +176,15 @@ func lexIdentifier(l *lexer) stateFn {
 }
 
 func digit(r rune) bool {
-	return '0' <= r <= '9'
+	return '0' <= r && r <= '9'
 }
 
 func lower(r rune) bool {
-	return 'a' <= r <= 'z'
+	return 'a' <= r && r <= 'z'
 }
 
 func upper(r rune) bool {
-	return 'a' <= r <= 'Z'
+	return 'a' <= r && r <= 'Z'
 }
 
 // next returns the next rune in the input.
@@ -210,6 +210,7 @@ func (l *lexer) reset() string {
 	s := l.val.String()
 	l.val.Reset()
 	l.width = 0
+	return s
 }
 
 // lex creates a new scanner for the input string.
@@ -226,9 +227,9 @@ func (l *lexer) nextToken() token {
 	token := l.lexMain()
 	l.reset()
 	if token == tokenEOF || token.typ == itemError || token.typ == itemUnexpectedRune {
-		 l.done = &token
+		l.done = &token
 	}
-  return token
+	return token
 }
 
 // peekToken checks if the next token in the input is t. This can discard
@@ -245,4 +246,3 @@ func (l *lexer) peek(t rune) bool {
 		}
 	}
 }
-

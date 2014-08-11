@@ -14,120 +14,119 @@
 
 package auth
 
-// This file implements Marshal() and Unmarshal() functions for elements. 
+// This file implements Marshal() and Unmarshal() functions for elements.
 
 import (
 	"fmt"
-	"io"
 )
 
 const (
 	_ = iota
 
 	// Term tags
-	tagPrin          // string, [](string, []Term)
-	tagStr           // string
-	tagInt           // int
+	tagPrin // string, [](string, []Term)
+	tagStr  // string
+	tagInt  // int
 
 	// Form tags
-	tagPred          // string, []Term
-	tagConst         // bool
-	tagNot           // Form
-	tagAnd           // []Form
-	tagOr            // []Form
-	tagImplies       // Form, Form
-	tagSpeaksfor     // tag+Prin, tag+Prin
-	tagSays          // tag+Prin, bool+int, bool+int, Form
+	tagPred      // string, []Term
+	tagConst     // bool
+	tagNot       // Form
+	tagAnd       // []Form
+	tagOr        // []Form
+	tagImplies   // Form, Form
+	tagSpeaksfor // tag+Prin, tag+Prin
+	tagSays      // tag+Prin, bool+int, bool+int, Form
 )
 
-// Marshal encodes a Form or Term. 
+// Marshal encodes a Form or Term.
 func Marshal(e AuthLogicElement) []byte {
 	buf := new(Buffer)
 	e.Marshal(buf)
 	return buf.Bytes()
 }
 
-// Marshal encodes a Prin. 
+// Marshal encodes a Prin.
 func (t Prin) Marshal(buf *Buffer) {
 	buf.EncodeVarint(tagPrin)
-	buf.EncodeBytes([]byte(t.Key))
-	buf.EncodeVarint(len(t.Ext))
-	for _, e :=  range t.Ext {
-		buf.EncodeBytes([]byte(e.Name))
-		buf.EncodeVarint(len(e.Arg))
-		for _, a :=  range e.Arg {
+	buf.EncodeString(t.Key)
+	buf.EncodeVarint(int64(len(t.Ext)))
+	for _, e := range t.Ext {
+		buf.EncodeString(e.Name)
+		buf.EncodeVarint(int64(len(e.Arg)))
+		for _, a := range e.Arg {
 			a.Marshal(buf)
 		}
 	}
 }
 
-// Marshal encodes a Str. 
+// Marshal encodes a Str.
 func (t Str) Marshal(buf *Buffer) {
 	buf.EncodeVarint(tagStr)
-	buf.EncodeString(string(t)
+	buf.EncodeString(string(t))
 }
 
-// Marshal encodes an Int. 
+// Marshal encodes an Int.
 func (t Int) Marshal(buf *Buffer) {
 	buf.EncodeVarint(tagInt)
 	buf.EncodeVarint(int64(t))
 }
 
-// Marshal encodes a Pred. 
+// Marshal encodes a Pred.
 func (f Pred) Marshal(buf *Buffer) {
 	buf.EncodeVarint(tagPred)
 	buf.EncodeString(f.Name)
-	buf.EncodeVarint(len(f.Arg))
-	for _, e :=  range f.Arg {
+	buf.EncodeVarint(int64(len(f.Arg)))
+	for _, e := range f.Arg {
 		e.Marshal(buf)
 	}
 }
 
-// Marshal encodes a Const. 
+// Marshal encodes a Const.
 func (f Const) Marshal(buf *Buffer) {
 	buf.EncodeVarint(tagConst)
 	buf.EncodeBool(bool(f))
 }
 
-// Marshal encodes a Not. 
+// Marshal encodes a Not.
 func (f Not) Marshal(buf *Buffer) {
 	buf.EncodeVarint(tagNot)
 	f.Negand.Marshal(buf)
 }
 
-// Marshal encodes an And. 
+// Marshal encodes an And.
 func (f And) Marshal(buf *Buffer) {
 	buf.EncodeVarint(tagAnd)
-	buf.EncodeVarint(len(f.Conjunct))
+	buf.EncodeVarint(int64(len(f.Conjunct)))
 	for _, e := range f.Conjunct {
 		e.Marshal(buf)
 	}
 }
 
-// Marshal encodes an Or. 
+// Marshal encodes an Or.
 func (f Or) Marshal(buf *Buffer) {
 	buf.EncodeVarint(tagOr)
-	buf.EncodeVarint(len(f.Disjunct))
+	buf.EncodeVarint(int64(len(f.Disjunct)))
 	for _, e := range f.Disjunct {
 		e.Marshal(buf)
 	}
 }
 
-// Marshal encodes an Implies. 
+// Marshal encodes an Implies.
 func (f Implies) Marshal(buf *Buffer) {
 	buf.EncodeVarint(tagImplies)
 	f.Antecedent.Marshal(buf)
 	f.Consequent.Marshal(buf)
 }
 
-// Marshal encodes a Speaksfor. 
+// Marshal encodes a Speaksfor.
 func (f Speaksfor) Marshal(buf *Buffer) {
 	buf.EncodeVarint(tagSpeaksfor)
 	f.Delegate.Marshal(buf)
 	f.Delegator.Marshal(buf)
 }
 
-// Marshal encodes a Says. 
+// Marshal encodes a Says.
 func (f Says) Marshal(buf *Buffer) {
 	buf.EncodeVarint(tagSays)
 	f.Speaker.Marshal(buf)
@@ -143,13 +142,15 @@ func (f Says) Marshal(buf *Buffer) {
 }
 
 // decodeStr decodes a Str without the leading tag.
-func decodeString(buf *Buffer) (s Str, err error) {
-	return buf.DecodeString()
+func decodeStr(buf *Buffer) (Str, error) {
+	s, err := buf.DecodeString()
+	return Str(s), err
 }
 
 // decodeInt decodes an Int without the leading tag.
-func decodeInt(buf *Buffer) (i Int, err error) {
-	return buf.DecodeVarint()
+func decodeInt(buf *Buffer) (Int, error) {
+	i, err := buf.DecodeVarint()
+	return Int(i), err
 }
 
 // decodeNameAndArgs decodes a name ad term array without leading tags.
@@ -159,8 +160,8 @@ func decodeNameAndArgs(buf *Buffer) (name string, args []Term, err error) {
 		return
 	}
 	n, err := buf.DecodeVarint()
-	args := make([]Term, n)
-	for i := 0; i < n; i++ {
+	args = make([]Term, n)
+	for i := int64(0); i < n; i++ {
 		args[i], err = unmarshalTerm(buf)
 		if err != nil {
 			return
@@ -192,10 +193,10 @@ func decodePrin(buf *Buffer) (p Prin, err error) {
 	if err != nil {
 		return
 	}
-	for i := 0; i < n; i++ {
+	for i := int64(0); i < n; i++ {
 		name, args, err := decodeNameAndArgs(buf)
 		if err != nil {
-			return
+			return p, err
 		}
 		p.Ext = append(p.Ext, PrinExt{name, args})
 	}
@@ -282,12 +283,13 @@ func decodePred(buf *Buffer) (Pred, error) {
 
 // decodeConst decodes a Const without the leading tag.
 func decodeConst(buf *Buffer) (Const, error) {
-	return buf.DecodeBool()
+	b, err := buf.DecodeBool()
+	return Const(b), err
 }
 
 // decodeNot decodes a Not without the leading tag.
 func decodeNot(buf *Buffer) (Not, error) {
-	f, err := decodeForm(buf)
+	f, err := unmarshalForm(buf)
 	return Not{f}, err
 }
 
@@ -297,10 +299,10 @@ func decodeAnd(buf *Buffer) (and And, err error) {
 	if err != nil {
 		return
 	}
-	for i := 0; i < n; i++ {
-		f, err := decodeForm(buf)
+	for i := int64(0); i < n; i++ {
+		f, err := unmarshalForm(buf)
 		if err != nil {
-			return
+			return and, err
 		}
 		and.Conjunct = append(and.Conjunct, f)
 	}
@@ -313,10 +315,10 @@ func decodeOr(buf *Buffer) (or Or, err error) {
 	if err != nil {
 		return
 	}
-	for i := 0; i < n; i++ {
-		f, err := decodeForm(buf)
+	for i := int64(0); i < n; i++ {
+		f, err := unmarshalForm(buf)
 		if err != nil {
-			return
+			return or, err
 		}
 		or.Disjunct = append(or.Disjunct, f)
 	}
@@ -325,11 +327,11 @@ func decodeOr(buf *Buffer) (or Or, err error) {
 
 // decodeImplies decodes an Implies without the leading tag.
 func decodeImplies(buf *Buffer) (implies Implies, err error) {
-	f.Antecedent, err = decodeForm(buf)
+	implies.Antecedent, err = unmarshalForm(buf)
 	if err != nil {
 		return
 	}
-	f.Consequent, err = decodeForm(buf)
+	implies.Consequent, err = unmarshalForm(buf)
 	return
 }
 
@@ -356,7 +358,7 @@ func decodeSays(buf *Buffer) (says Says, err error) {
 	if commences {
 		t, err := buf.DecodeVarint()
 		if err != nil {
-			return
+			return says, err
 		}
 		says.Time = &t
 	}
@@ -367,7 +369,7 @@ func decodeSays(buf *Buffer) (says Says, err error) {
 	if expires {
 		t, err := buf.DecodeVarint()
 		if err != nil {
-			return
+			return says, err
 		}
 		says.Expiration = &t
 	}

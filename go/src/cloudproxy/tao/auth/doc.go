@@ -17,7 +17,7 @@
 // relationships, and their beliefs.
 //
 // The grammar for a formula in the logic is roughly:
-//   Form ::= Prin [from Time] [until Time] says Form 
+//   Form ::= Prin [from Time] [until Time] says Form
 //          | Prin speaksfor Prin
 //          | Form implies Form
 //          | Form or Form or ...
@@ -33,7 +33,7 @@
 //   Pred ::= Identifier(Term, Term, ...)
 //          | Identifier()
 //          | Identifier
-// 
+//
 // Terms are concrete values, like strings, integers, or names of principals.
 //   Term ::= string | int | Prin
 //
@@ -85,7 +85,7 @@
 //   conversion and validation code. The encoding would likely not be space
 //   efficient, and it would be essentially Tao's only hard dependency on
 //   protobuf.
-//   
+//
 //   Protobuf encoding with hand-written encoding/decoding: The goprotobuf
 //   library currently lacks good support for this. Also, protobuf allows
 //   encoded data to be shuffled, making decoding much more complicated than
@@ -114,7 +114,7 @@
 //   A string is encoded as a length (plain varint) followed by raw bytes.
 //
 //   A pointer is encoded the same as a boolean optionally followed by a value.
-//  
+//
 //   Variable-length slices (e.g. for conjuncts, disjuncts, predicate arguments)
 //   are encoded as a count (plain varint) followed by the encoding for the each
 //   element.
@@ -122,7 +122,7 @@
 //   An embedded struct or interface is encoded as a tag and encoded value.
 //
 // Differences from protobuf:
-// 
+//
 //   Our tags carry implicit type information. In protobuf, the low 3 bits of
 //   each tag carries an explicit type marker. That allows protobuf to skip over
 //   unrecognized fields (not a design goal for us). It also means protobuf can
@@ -132,7 +132,7 @@
 //   we use tags only when the meaning or type can vary (i.e. for interface
 //   types). Protobuf uses tags for every enclosed value, and those tags also to
 //   carry type information. Protobuf is more efficient when there are many
-//   optional fields. For us, nearly all fields are required. 
+//   optional fields. For us, nearly all fields are required.
 //
 //   Enclosed values in our encoding must appear in order. Protobuf values can
 //   appear in any order. Protobuf encodings can concatenated, truncated, etc.,

@@ -116,22 +116,13 @@ func (parser *parser) expectPrin() (p Prin, err error) {
 	if err != nil {
 		return
 	}
-	p.Ext = nil
 	for parser.lex.peek() == '.' {
-		if parser.cur() != tokenDot {
-			panic("not reached")
-		}
-		parser.advance()
-		name, args, err := parser.expectNameAndArgs()
-		if err != nil {
-			return p, err
-		}
-		p.Ext = append(p.Ext, PrinExt{name, args})
+		p.Ext, err = expectSubPrin()
 	}
 	return
 }
 
-// parsePrin parses Prin with optional outer parens.
+// parsePrin parses a Prin with optional outer parens.
 func (parser *parser) parsePrin() (p Prin, err error) {
 	n := parser.skipOpenParens()
 	p, err = parser.expectPrin()
@@ -139,6 +130,29 @@ func (parser *parser) parsePrin() (p Prin, err error) {
 		return
 	}
 	err = parser.expectCloseParens(n)
+	return
+}
+
+// expectSubPrin expects a SubPrin.
+func (parser *parser) expectSubPrin() (s SubPrin, err error) {
+	if parser.cur() != tokenDot {
+		err = fmt.Errorf(`expected '.', found %v`, parser.cur())
+		return
+	}
+	parser.advance()
+	name, args, err := parser.expectNameAndArgs()
+	if err != nil {
+		return
+	}
+	s = append(s, PrinExt{name, args})
+	for parser.lex.peek() == '.' {
+		parser.advance()
+		name, args, err = parser.expectNameAndArgs()
+		if err != nil {
+			return
+		}
+		s = append(s, PrinExt{name, args})
+	}
 	return
 }
 

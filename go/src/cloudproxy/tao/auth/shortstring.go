@@ -46,6 +46,15 @@ func (e PrinExt) ShortString() string {
 	return nameAndArgShortString(e.Name, e.Arg)
 }
 
+// ShortString returns an elided pretty-printed SubPrin.
+func (s SubPrin) ShortString() string {
+	var out bytes.Buffer
+	for _, e := range s {
+		out.Fprintf(&out, ".%s", e.ShortString())
+	}
+	return out.String()
+}
+
 // nameAndArgShortString returns an elided pretty-printed name and argument list.
 func nameAndArgShortString(name string, arg []Term) string {
 	if len(arg) == 0 {

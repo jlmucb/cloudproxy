@@ -106,7 +106,7 @@ func TestScanTerm(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	p2 := Prin{Key: []byte("abc"), Ext: []PrinExt{
+	p2 := Prin{Key: []byte("abc"), Ext: SubPrin{
 		PrinExt{"A", []Term{Int(1)}},
 		PrinExt{"B", []Term{Str("2"), Str("#")}},
 	}}

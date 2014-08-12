@@ -38,6 +38,15 @@ func (e PrinExt) String() string {
 	return nameAndArgString(e.Name, e.Arg)
 }
 
+// String returns an elided pretty-printed SubPrin.
+func (s SubPrin) String() string {
+	var out bytes.Buffer
+	for _, e := range s {
+		out.Fprintf(&out, ".%s", e.String())
+	}
+	return out.String()
+}
+
 // nameAndArgString returns a pretty-printed name and argument list.
 func nameAndArgString(name string, arg []Term) string {
 	if len(arg) == 0 {

@@ -37,6 +37,11 @@ func (e Prin) Format(out fmt.State, verb rune) {
 	format(out, verb, e)
 }
 
+// Format outputs a pretty-printed SubPrin using short or long formats.
+func (e Says) Format(out fmt.State, verb rune) {
+	format(out, verb, e)
+}
+
 // Format outputs a pretty-printed Str using short or long formats.
 func (e Str) Format(out fmt.State, verb rune) {
 	format(out, verb, e)

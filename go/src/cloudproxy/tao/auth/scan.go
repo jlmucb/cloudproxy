@@ -44,6 +44,16 @@ func (e *PrinExt) Scan(state fmt.ScanState, verb rune) error {
 	return nil
 }
 
+// Scan parses a SubPrin.
+func (e *SubPrin) Scan(state fmt.ScanState, verb rune) error {
+	parser := newParser(state)
+	*e, err := parser.expectSubPrin()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // AnyTerm is a struct that can be used in when scanning for a Term, since Term
 // itself is an interface and interface pointers are not valid receivers.
 type AnyTerm struct {

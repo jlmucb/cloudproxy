@@ -28,6 +28,7 @@ type AuthLogicElement interface {
 // isAuthLogicElement ensures only appropriate types can be assigned to an
 // AuthLogicElement.
 func (t Prin) isAuthLogicElement()      {}
+func (t SubPrin) isAuthLogicElement()   {}
 func (t Str) isAuthLogicElement()       {}
 func (t Int) isAuthLogicElement()       {}
 func (f Pred) isAuthLogicElement()      {}
@@ -43,9 +44,9 @@ func (f Says) isAuthLogicElement()      {}
 // signatures on credentials issued by the principal, and a sequence of zero or
 // more extensions to identify the subprincipal of that key.
 type Prin struct {
-	Type string    // either "key" or "tpm"
-	Key  []byte    // a marshalled CryptoKey protobuf structure with purpose CryptoKey.VERIFYING
-	Ext  []PrinExt // one or more extensions for descendents
+	Type string  // either "key" or "tpm"
+	Key  []byte  // a marshalled CryptoKey protobuf structure with purpose CryptoKey.VERIFYING
+	Ext  SubPrin // one or more extensions for descendents
 }
 
 // PrinExt is an extension of a principal.
@@ -53,6 +54,9 @@ type PrinExt struct {
 	Name string // [A-Z][a-zA-Z0-9_]*
 	Arg  []Term
 }
+
+// SubPrin is a series of extensions of a principal.
+type SubPrin []PrinExt
 
 // Term is an argument to a predicate or a principal extension.
 type Term interface {
@@ -142,8 +146,6 @@ func (f Says) Expires() bool {
 	return f.Expiration != nil
 }
 
-// TODO(kwalsh) add Copy() functions?
-
 // Identical checks if an Int is identical to another Term.
 func (t Int) Identical(other Term) bool {
 	return t == other
@@ -196,4 +198,10 @@ func SubprinOrIdentical(child, parent Prin) bool {
 		}
 	}
 	return true
+}
+
+func (p Prin) MakeSubprincipal(e SubPrin) Prin {
+	other := Prin{Type: p.Type, Key: p.Key, Ext:append(nil, p.Ext...)}
+	other.Ext := append(other.Ext, []PrinExt(e)...)
+	return other
 }

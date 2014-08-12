@@ -24,7 +24,7 @@ const (
 	_ = iota
 
 	// Term tags
-	tagPrin // string, []byte, [](string, []Term)
+	tagPrin // string, []byte, SubPrin
 	tagStr  // string
 	tagInt  // int
 
@@ -37,6 +37,9 @@ const (
 	tagImplies   // Form, Form
 	tagSpeaksfor // Prin, Prin
 	tagSays      // Prin, bool+int, bool+int, Form
+
+	// Other tags
+	tagSubPrin // [](string, []Term)
 )
 
 // Marshal encodes a Form or Term.
@@ -51,8 +54,14 @@ func (t Prin) Marshal(buf *Buffer) {
 	buf.EncodeVarint(tagPrin)
 	buf.EncodeString(t.Type)
 	buf.EncodeString(string(t.Key))
-	buf.EncodeVarint(int64(len(t.Ext)))
-	for _, e := range t.Ext {
+	t.Ext.Marshal(buf)
+}
+
+// Marshal encodes a Prin.
+func (s SubPrin) Marshal(buf *Buffer) {
+	buf.EncodeVarint(tagSubPrin)
+	buf.EncodeVarint(int64(len(s)))
+	for _, e := range s {
 		buf.EncodeString(e.Name)
 		buf.EncodeVarint(int64(len(e.Arg)))
 		for _, a := range e.Arg {
@@ -195,6 +204,25 @@ func decodePrin(buf *Buffer) (p Prin, err error) {
 		return
 	}
 	p.Key = []byte(k)
+	p.Ext, err = decodeSubPrin(buf)
+	return
+}
+
+// unmarshalSubPrin decodes a SubPrin.
+func unmarshalSubPrin(buf *Buffer) (s SubPrin, err error) {
+	tag, err := buf.DecodeVarint()
+	if err != nil {
+		return
+	}
+	if tag != tagSubPrin {
+		err = fmt.Errorf("unexpected tag: %d", tag)
+		return
+	}
+	return decodeSubPrin(buf)
+}
+
+// decodeSubPrin decodes a SubPrin without the leading tag.
+func decodeSubPrin(buf *Buffer) (s SubPrin, err error) {
 	n, err := buf.DecodeVarint()
 	if err != nil {
 		return
@@ -202,9 +230,9 @@ func decodePrin(buf *Buffer) (p Prin, err error) {
 	for i := int64(0); i < n; i++ {
 		name, args, err := decodeNameAndArgs(buf)
 		if err != nil {
-			return p, err
+			return s, err
 		}
-		p.Ext = append(p.Ext, PrinExt{name, args})
+		s= append(s, PrinExt{name, args})
 	}
 	return
 }
@@ -231,6 +259,19 @@ func unmarshalTerm(buf *Buffer) (t Term, err error) {
 func UnmarshalTerm(bytes []byte) (Term, error) {
 	buf := &Buffer{bytes}
 	t, err := unmarshalTerm(buf)
+	if err != nil {
+		return nil, err
+	}
+	if len(buf.Bytes()) != 0 {
+		return nil, fmt.Errorf("unexpected trailing bytes")
+	}
+	return t, nil
+}
+
+// UnmarshalSubPrin decodes a SubPrin.
+func UnmarshalSubPrin(bytes []byte) (SubPrin, error) {
+	buf := &Buffer{bytes}
+	t, err := unmarshalSubPrin(buf)
 	if err != nil {
 		return nil, err
 	}

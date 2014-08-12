@@ -18,6 +18,8 @@ package auth
 // term, or a principal extension.
 type AuthLogicElement interface {
 	Marshal(b *Buffer)
+	String() string
+	ShortString() string
 	isAuthLogicElement() // marker
 }
 
@@ -51,9 +53,7 @@ type PrinExt struct {
 
 // Term is an argument to a predicate or a principal extension.
 type Term interface {
-	String() string
-	ShortString() string
-	Marshal(b *Buffer)
+	AuthLogicElement
 	Identical(other Term) bool
 	isTerm() // marker
 }
@@ -71,9 +71,7 @@ type Int int
 
 // Form is a formula in the Tao authorization logic.
 type Form interface {
-	String() string
-	ShortString() string
-	Marshal(b *Buffer)
+	AuthLogicElement
 	isForm() // marker
 }
 

@@ -32,10 +32,12 @@ func (p Prin) String() string {
 	return out.String()
 }
 
+// String returns a pretty-printed PrinExt.
 func (e PrinExt) String() string {
 	return nameAndArgString(e.Name, e.Arg)
 }
 
+// nameAndArgString returns a pretty-printed name and argument list.
 func nameAndArgString(name string, arg []Term) string {
 	if len(arg) == 0 {
 		return name
@@ -72,18 +74,9 @@ func (f Const) String() string {
 	if f == true {
 		return "true"
 	} else {
-		return "False"
+		return "false"
 	}
 }
-
-const (
-	precedenceSays = iota // lowest
-	precedenceSpeaksfor
-	precedenceImplies
-	precedenceOr
-	precedenceAnd
-	precedenceHigh // not, true, false, Pred
-)
 
 // String returns a pretty-printed Not.
 func (f Not) String() string {
@@ -140,22 +133,34 @@ func (f Implies) String() string {
 
 // String returns a pretty-printed Speaksfor.
 func (f Speaksfor) String() string {
-	return fmt.Sprintf("%v speaksfor %v", f.Delegate, f.Delegator)
+	return fmt.Sprintf("%s speaksfor %s", f.Delegate.String(), f.Delegator.String())
 }
 
 // String returns a pretty-printed Says.
 func (f Says) String() string {
+	speaker := f.Speaker.String()
+	message := f.Message.String()
 	if f.Commences() && f.Expires() {
-		return fmt.Sprintf("%v from %v until %v says %v", f.Speaker, *f.Time, *f.Expiration, f.Message)
+		return fmt.Sprintf("%s from %d until %d says %s", speaker, *f.Time, *f.Expiration, message)
 	} else if f.Commences() {
-		return fmt.Sprintf("%v from %v says %v", f.Speaker, *f.Time, f.Message)
+		return fmt.Sprintf("%s from %d says %s", speaker, *f.Time, message)
 	} else if f.Expires() {
-		return fmt.Sprintf("%v until %v says %v", f.Speaker, *f.Expiration, f.Message)
+		return fmt.Sprintf("%s until %d says %s", speaker, *f.Expiration, message)
 	} else {
-		return fmt.Sprintf("%v says %v", f.Speaker, f.Message)
+		return fmt.Sprintf("%s says %s", speaker, message)
 	}
 }
 
+const (
+	precedenceSays = iota // lowest
+	precedenceSpeaksfor
+	precedenceImplies
+	precedenceOr
+	precedenceAnd
+	precedenceHigh // not, true, false, Pred
+)
+
+// precedence returns an integer indicating the relative precedence of f.
 func precedence(f Form) int {
 	switch f := f.(type) {
 	case Says:
@@ -187,6 +192,8 @@ func precedence(f Form) int {
 	}
 }
 
+// printFormWithParens prints either f or (f), depending on ho level compares to
+// the precedence of f.
 func printFormWithParens(out io.Writer, level int, f Form) {
 	if level > precedence(f) {
 		fmt.Fprintf(out, "(%s)", f.String())

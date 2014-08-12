@@ -387,7 +387,7 @@ func (parser *parser) parseFormAtHigh(greedy bool) (Form, error) {
 			return nil, err
 		}
 		return f, nil
-	case tokenTrue, tokenTrue:
+	case tokenTrue, tokenFalse:
 		return parser.expectConst()
 	case tokenNot:
 		parser.advance()

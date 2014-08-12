@@ -1,4 +1,3 @@
-// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,23 +15,24 @@ package auth
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
-func TestParseTerm(t *testing.T) {
-	tests := []string{
-		"42",
-		"0",
-		"-1",
-		`"Hello World"`,
-		`"Includes \n newlines and \t tabs"`,
-		`key("foo")`,
-		`key("123").Extension(1)`,
-		`key("123").Extension(1).A.B(1).C(1, "Hello").D(key("456").E(key("789").G.H))`,
-		`key("123").E()`,
-	}
+var termtests []string = []string{
+	"42",
+	"0",
+	"-1",
+	`"Hello World"`,
+	`"Includes \n newlines and \t tabs"`,
+	`key("foo")`,
+	`key("123").Extension(1)`,
+	`key("123").Extension(1).A.B(1).C(1, "Hello").D(key("456").E(key("789").G.H))`,
+	`key("123").E()`,
+}
 
-	for _, s := range tests {
+func TestParseTerm(t *testing.T) {
+	for _, s := range termtests {
 		var x AnyTerm
 		n, err := fmt.Sscanf(s, "%v", &x)
 		if err != nil {
@@ -46,7 +46,7 @@ func TestParseTerm(t *testing.T) {
 		}
 	}
 
-	s := tests[0] + " " + tests[3] + " " + tests[4] + " " + tests[6]
+	s := termtests[0] + " " + termtests[3] + " " + termtests[4] + " " + termtests[6]
 	var w, x, y, z AnyTerm
 	n, err := fmt.Sscanf(s, "%v %v %v %v", &w, &x, &y, &z)
 	if err != nil {
@@ -55,9 +55,28 @@ func TestParseTerm(t *testing.T) {
 	if n != 4 {
 		t.Fatal("incomplete parse")
 	}
+}
 
+func TestBinaryTerm(t *testing.T) {
+	for _, s := range termtests {
+		var x AnyTerm
+		fmt.Sscanf("("+s+")", "%v", &x)
+		f := x.Term
+
+		buf := Marshal(f)
+		g, err := UnmarshalTerm(buf)
+		if err != nil {
+			t.Fatalf("can't unmarshal: %s", s)
+		}
+		if f.String() != g.String() {
+			t.Fatalf("bad binary: %s vs %s", f.String(), g.String())
+		}
+	}
+}
+
+func TestScanTerm(t *testing.T) {
 	var i1, i2 Int
-	n, err = fmt.Sscanf("42 -17", "%v %v", &i1, &i2)
+	n, err := fmt.Sscanf("42 -17", "%v %v", &i1, &i2)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -101,7 +120,7 @@ func TestParseSentence(t *testing.T) {
 }
 
 func TestParsePred(t *testing.T) {
-	tests := []string{
+	predtests := []string{
 		`P(42)`,
 		`Foo`,
 		`Pred(1, 2, 3)`,
@@ -109,7 +128,7 @@ func TestParsePred(t *testing.T) {
 		`Foo()`,
 	}
 
-	for _, s := range tests {
+	for _, s := range predtests {
 		var x Pred
 		n, err := fmt.Sscanf(s, "%v", &x)
 		if err != nil {
@@ -123,7 +142,7 @@ func TestParsePred(t *testing.T) {
 		}
 	}
 
-	s := tests[0] + " " + tests[1] + " " + tests[2] + " " + tests[3]
+	s := predtests[0] + " " + predtests[1] + " " + predtests[2] + " " + predtests[3]
 	var w, x, y, z Pred
 	n, err := fmt.Sscanf(s, "%v %v %v %v", &w, &x, &y, &z)
 	if err != nil {
@@ -134,41 +153,45 @@ func TestParsePred(t *testing.T) {
 	}
 }
 
-func TestParseForm(t *testing.T) {
-	tests := []string{
-		`key("a") says true`,
-		`key("a") from 1 says true`,
-		`key("a") until 2 says true`,
-		`key("a") from 1 until 2 says true`,
-		`key("a") speaksfor key("b")`,
-		`P(1)`,
-		`P(1) and P(2)`,
-		`P(1) and P(2) and P(3) and P(4)`,
-		`P(1) or P(2)`,
-		`P(1) or P(2) or P(3) or P(4)`,
-		`P(1) implies P(2)`,
-		`P(1) implies P(2) implies P(3) or P(4)`,
-		`not P(1)`,
-		`not not P(1)`,
-		`not not not not P(1)`,
-		`P(1) and P(2) and P(3) or P(4)`,
-		`P(1) and P(2) and (P(3) or P(4))`,
-		`P(1) and (P(2) or P(3)) and P(4)`,
-		`(P(1) or P(2)) and P(3) and P(4)`,
-		`P(1) and P(2) and P(3) implies P(4)`,
-		`P(1) and P(2) and (P(3) implies P(4))`,
-		`P(1) and (P(2) implies P(3)) and P(4)`,
-		`(P(1) implies P(2)) and P(3) and P(4)`,
-		`P(1) or P(2) or P(3) implies P(4)`,
-		`P(1) or P(2) or (P(3) implies P(4))`,
-		`P(1) or (P(2) implies P(3)) or P(4)`,
-		`(P(1) implies P(2)) or P(3) or P(4)`,
-		`P(1) or (key("a") says P(2) or P(3))`,
-		`P(1) or (key("a") says P(2)) or P(3)`,
-		`(((P(1))))`,
-	}
+var formtests []string = []string{
+	`true`,
+	`false`,
+	`key("a") says true`,
+	`key("a") from 1 says true`,
+	`key("a") until 2 says true`,
+	`key("a") from 1 until 2 says true`,
+	`key("a") speaksfor key("b")`,
+	`key("a").Sub(1).Sub(2) speaksfor key("a").Sub(1).Sub`,
+	`P(1)`,
+	`P(1) and P(2)`,
+	`P(1) and P(2) and P(3) and P(4)`,
+	`P(1) or P(2)`,
+	`P(1) or P(2) or P(3) or P(4)`,
+	`P(1) implies P(2)`,
+	`P(1) implies P(2) implies P(3) or P(4)`,
+	`not P(1)`,
+	`not not P(1)`,
+	`not not not not P(1)`,
+	`P(1) and (key("a") speaksfor key("b"))`,
+	`P(1) and P(2) and P(3) or P(4)`,
+	`P(1) and P(2) and (P(3) or P(4))`,
+	`P(1) and (P(2) or P(3)) and P(4)`,
+	`(P(1) or P(2)) and P(3) and P(4)`,
+	`P(1) and P(2) and P(3) implies P(4)`,
+	`P(1) and P(2) and (P(3) implies P(4))`,
+	`P(1) and (P(2) implies P(3)) and P(4)`,
+	`(P(1) implies P(2)) and P(3) and P(4)`,
+	`P(1) or P(2) or P(3) implies P(4)`,
+	`P(1) or P(2) or (P(3) implies P(4))`,
+	`P(1) or (P(2) implies P(3)) or P(4)`,
+	`(P(1) implies P(2)) or P(3) or P(4)`,
+	`P(1) or (key("a") says P(2) or P(3))`,
+	`P(1) or (key("a") says P(2)) or P(3)`,
+	`(((P(((1)), ("a")))))`,
+}
 
-	for i, s := range tests {
+func TestParseForm(t *testing.T) {
+	for i, s := range formtests {
 		var x AnyForm
 		n, err := fmt.Sscanf("("+s+")", "%v", &x)
 		if err != nil {
@@ -177,11 +200,140 @@ func TestParseForm(t *testing.T) {
 		if n != 1 {
 			t.Fatal("incomplete parse")
 		}
-		if i != len(tests)-1 && x.Form.String() != s && "("+x.Form.String()+")" != s{
+		if i != len(formtests)-1 && x.Form.String() != s && "("+x.Form.String()+")" != s {
+			t.Fatalf("bad print: %v vs %s", x.Form.String(), s)
+		}
+
+		// Try parsing with the specific type
+		switch v := x.Form.(type) {
+		case Says:
+			n, err = fmt.Sscanf("("+s+")", "%v", &v)
+			x.Form = v
+		case Speaksfor:
+			n, err = fmt.Sscanf("("+s+")", "%v", &v)
+			x.Form = v
+		case Implies:
+			n, err = fmt.Sscanf("("+s+")", "%v", &v)
+			x.Form = v
+		case And:
+			n, err = fmt.Sscanf("("+s+")", "%v", &v)
+			x.Form = v
+		case Or:
+			n, err = fmt.Sscanf("("+s+")", "%v", &v)
+			x.Form = v
+		case Not:
+			n, err = fmt.Sscanf("("+s+")", "%v", &v)
+			x.Form = v
+		case Pred:
+			n, err = fmt.Sscanf("("+s+")", "%v", &v)
+			x.Form = v
+		case Const:
+			n, err = fmt.Sscanf("("+s+")", "%v", &v)
+			x.Form = v
+		default:
+			t.Fatalf("not reached")
+		}
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		if n != 1 {
+			t.Fatal("incomplete parse")
+		}
+		if i != len(formtests)-1 && x.Form.String() != s && "("+x.Form.String()+")" != s {
 			t.Fatalf("bad print: %v vs %s", x.Form.String(), s)
 		}
 	}
-
-
 }
 
+func TestParseShortForm(t *testing.T) {
+	for _, s := range formtests {
+		var x, y AnyForm
+		fmt.Sscanf("("+s+")", "%v", &x)
+		if x.Form.String() != x.Form.ShortString() {
+			t.Fatalf("bad short string: %s vs %s", x.Form.String(), x.Form.ShortString())
+		}
+
+		longstr := `"abcdefghijklmnopqrstuvwxyz"`
+		shortstr := `"abcdefghij"...`
+		short := strings.Replace(s, `"a"`, longstr, -1)
+		fmt.Sscanf("("+short+")", "%v", &y)
+		shortened := strings.Replace(x.Form.String(), `"a"`, shortstr, -1)
+		if shortened != y.Form.ShortString() {
+			t.Fatalf("bad short string: %s vs %s", y.Form.ShortString(), shortened)
+		}
+
+		if y.Form.String() != fmt.Sprintf("%v", y.Form) {
+			t.Fatalf("bad long format: %s vs %s", x.Form.String(), fmt.Sprintf("%v", x.Form))
+		}
+		if shortened != fmt.Sprintf("%s", y.Form) {
+			t.Fatalf("bad short format: %s vs %s", shortened, fmt.Sprintf("%s", x.Form))
+		}
+
+	}
+}
+
+func TestBinaryForm(t *testing.T) {
+	for _, s := range formtests {
+		var x AnyForm
+		fmt.Sscanf("("+s+")", "%v", &x)
+		f := x.Form
+
+		buf := Marshal(f)
+		g, err := UnmarshalForm(buf)
+		if err != nil {
+			t.Fatalf("can't unmarshal: %s", s)
+		}
+		if f.String() != g.String() {
+			t.Fatalf("bad binary: %s vs %s", f.String(), g.String())
+		}
+	}
+}
+
+
+func TestPrinIdentical(t *testing.T) {
+	p := make([]Prin, 6)
+	fmt.Sscanf(`key("a")`, "%s", &p[0])
+	fmt.Sscanf(`key("a").Kid(1)`, "%s", &p[1])
+	fmt.Sscanf(`key("a").Kid(1).Kid(2)`, "%s", &p[2])
+	fmt.Sscanf(`key("b").Kid(1).Kid(2)`, "%s", &p[3])
+	fmt.Sscanf(`key("a").Kid(2).Kid(2)`, "%s", &p[4])
+	fmt.Sscanf(`key("a").Kid(1, 2).Kid(2)`, "%s", &p[5])
+
+	for i, prin := range p {
+		for j, other := range p {
+			if (i == j) != prin.Identical(other) || (i == j) != other.Identical(prin) {
+				t.Fatalf("identical failed for %v vs %v", prin, other)
+			}
+			if ((i <= j && j <= 2) || (i == 0 && j >= 4) || (i == j)) !=
+				SubprinOrIdentical(other, prin) {
+				t.Fatalf("subprin failed for %v vs %v", prin, other)
+			}
+		}
+	}
+
+	if p[0].Identical(Str("a")) {
+		t.Fatalf("identical failed against str")
+	}
+}
+
+func TestTrivialConjuncts(t *testing.T) {
+	p := And{}
+	if p.String() != "true" || p.ShortString() != p.String() {
+		t.Fatalf("bad print for empty conjunct ")
+	}
+	q := Or{}
+	if q.String() != "false" || q.ShortString() != q.String() {
+		t.Fatalf("bad print for empty disnjunct ")
+	}
+	var f AnyForm
+	s := "P(1, 2, 3)"
+	fmt.Sscanf(s, "%v", &f)
+	p = And{Conjunct: []Form{f.Form}}
+	if p.String() != s || p.ShortString() != s {
+		t.Fatalf("bad print for unary conjunct ")
+	}
+	q = Or{Disjunct: []Form{f.Form}}
+	if q.String() != s || q.ShortString() != s {
+		t.Fatalf("bad print for unary disnjunct ")
+	}
+}

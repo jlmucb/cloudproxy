@@ -29,28 +29,36 @@ import (
 // ShortString returns an elided pretty-printed Prin.
 func (p Prin) ShortString() string {
 	var out bytes.Buffer
-	fmt.Fprintf(&out, "key(%.10q...)", p.Key)
+	if len(p.Key) > 15 {
+		fmt.Fprintf(&out, "key(%.10q...)", p.Key)
+	} else {
+		fmt.Fprintf(&out, "key(%q)", p.Key)
+	}
 	for _, e := range p.Ext {
 		fmt.Fprintf(&out, ".%s", e.ShortString())
 	}
 	return out.String()
 }
 
+// ShortString returns an elided pretty-printed PrinExt.
 func (e PrinExt) ShortString() string {
 	return nameAndArgShortString(e.Name, e.Arg)
 }
 
+// nameAndArgShortString returns an elided pretty-printed name and argument list.
 func nameAndArgShortString(name string, arg []Term) string {
 	if len(arg) == 0 {
 		return name
 	}
 	var out bytes.Buffer
+	fmt.Fprintf(&out, "%s(", name)
 	for i, a := range arg {
 		if i > 0 {
 			fmt.Fprintf(&out, ", ")
 		}
 		fmt.Fprintf(&out, "%s", a.ShortString())
 	}
+	fmt.Fprintf(&out, ")")
 	return out.String()
 }
 
@@ -78,7 +86,7 @@ func (f Const) ShortString() string {
 	if f == true {
 		return "true"
 	} else {
-		return "False"
+		return "false"
 	}
 }
 
@@ -137,25 +145,30 @@ func (f Implies) ShortString() string {
 
 // ShortString returns an elided pretty-printed Speaksfor.
 func (f Speaksfor) ShortString() string {
-	return fmt.Sprintf("%v speaksfor %v", f.Delegate, f.Delegator)
+	return fmt.Sprintf("%s speaksfor %s", f.Delegate.ShortString(), f.Delegator.ShortString())
 }
 
 // ShortString returns an elided pretty-printed Says.
 func (f Says) ShortString() string {
+	speaker := f.Speaker.ShortString()
+	message := f.Message.ShortString()
 	if f.Commences() && f.Expires() {
-		return fmt.Sprintf("%v from %v until %v says %v", f.Speaker, *f.Time, *f.Expiration, f.Message)
+		return fmt.Sprintf("%s from %d until %d says %s", speaker, *f.Time, *f.Expiration, message)
 	} else if f.Commences() {
-		return fmt.Sprintf("%v from %v says %v", f.Speaker, *f.Time, f.Message)
+		return fmt.Sprintf("%s from %d says %s", speaker, *f.Time, message)
 	} else if f.Expires() {
-		return fmt.Sprintf("%v until %v says %v", f.Speaker, *f.Expiration, f.Message)
+		return fmt.Sprintf("%s until %d says %s", speaker, *f.Expiration, message)
 	} else {
-		return fmt.Sprintf("%v says %v", f.Speaker, f.Message)
+		return fmt.Sprintf("%s says %s", speaker, message)
 	}
 }
 
-func printShortFormWithParens(out io.Writer, level int, f Form) string {
+// printFormWithParens prints either elided f or (f), depending on ho level
+// compares to the precedence of f.
+func printShortFormWithParens(out io.Writer, level int, f Form) {
 	if level > precedence(f) {
-		return "(" + f.ShortString() + ")"
+		fmt.Fprintf(out, "(%s)", f.ShortString())
+	} else {
+		fmt.Fprintf(out, "%s", f.ShortString())
 	}
-	return f.ShortString()
 }

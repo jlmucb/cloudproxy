@@ -29,7 +29,7 @@ import (
 // ShortString returns an elided pretty-printed Prin.
 func (p Prin) ShortString() string {
 	var out bytes.Buffer
-	fmt.Fprintf(&out, "Key(%.10q...)", p.Key)
+	fmt.Fprintf(&out, "key(%.10q...)", p.Key)
 	for _, e := range p.Ext {
 		fmt.Fprintf(&out, ".%s", e.ShortString())
 	}

@@ -25,7 +25,7 @@ import (
 // String returns a pretty-printed Prin.
 func (p Prin) String() string {
 	var out bytes.Buffer
-	fmt.Fprintf(&out, "Key(%q)", p.Key)
+	fmt.Fprintf(&out, "key(%q)", p.Key)
 	for _, e := range p.Ext {
 		fmt.Fprintf(&out, ".%s", e.String())
 	}
@@ -41,12 +41,14 @@ func nameAndArgString(name string, arg []Term) string {
 		return name
 	}
 	var out bytes.Buffer
+	fmt.Fprintf(&out, "%s(", name)
 	for i, a := range arg {
 		if i > 0 {
 			fmt.Fprintf(&out, ", ")
 		}
 		fmt.Fprintf(&out, "%s", a.String())
 	}
+	fmt.Fprintf(&out, ")")
 	return out.String()
 }
 

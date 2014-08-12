@@ -38,8 +38,8 @@ import (
 
 // parser holds the state of the recursive descent parser.
 type parser struct {
-	lex *lexer
-	lookahead token
+	lex           *lexer
+	lookahead     token
 	haveLookahead bool
 }
 
@@ -59,7 +59,7 @@ func (parser *parser) advance() {
 // expect checks whether cur matches t and, if so, advances to the next token.
 func (parser *parser) expect(t token) error {
 	if parser.cur() != t {
-		return fmt.Errorf("expecting %v: %v", t.val, parser.cur())
+		return fmt.Errorf("expected %q, found %v", t.val, parser.cur())
 	}
 	parser.advance()
 	return nil
@@ -94,7 +94,7 @@ func (parser *parser) expectPrin() (p Prin, err error) {
 		return
 	}
 	if r := parser.lex.peek(); r != '(' {
-		err = fmt.Errorf(`expecting '(' directly after "key": %q`, r)
+		err = fmt.Errorf(`expected '(' directly after "key", found %q`, r)
 		return
 	}
 	err = parser.expect(tokenLP)
@@ -140,7 +140,7 @@ func (parser *parser) parsePrin() (p Prin, err error) {
 // a parenthesized list of zero or more comma-separated terms.
 func (parser *parser) expectNameAndArgs() (string, []Term, error) {
 	if parser.cur().typ != itemIdentifier {
-		return "", nil, fmt.Errorf("expecting identifier: %v", parser.cur())
+		return "", nil, fmt.Errorf("expected identifier, found %v", parser.cur())
 	}
 	name := parser.cur().val.(string)
 	parser.advance()
@@ -179,7 +179,7 @@ func (parser *parser) expectNameAndArgs() (string, []Term, error) {
 // expectStr expects a Str.
 func (parser *parser) expectStr() (Str, error) {
 	if parser.cur().typ != itemStr {
-		return "", fmt.Errorf("expecting string: %v", parser.cur())
+		return "", fmt.Errorf("expected string, found %v", parser.cur())
 	}
 	t := Str(parser.cur().val.(string))
 	parser.advance()
@@ -200,7 +200,7 @@ func (parser *parser) parseStr() (t Str, err error) {
 // expectInt expects an Int.
 func (parser *parser) expectInt() (Int, error) {
 	if parser.cur().typ != itemInt {
-		return 0, fmt.Errorf("expecting int: %v", parser.cur())
+		return 0, fmt.Errorf("expected int, found %v", parser.cur())
 	}
 	t := Int(parser.cur().val.(int64))
 	parser.advance()
@@ -231,7 +231,7 @@ func (parser *parser) expectTerm() (Term, error) {
 	case itemKeyword:
 		return parser.expectPrin()
 	default:
-		return nil, fmt.Errorf("expecting term: %v", parser.cur())
+		return nil, fmt.Errorf("expected term, found %v", parser.cur())
 	}
 }
 
@@ -271,8 +271,8 @@ func (parser *parser) parsePred() (f Pred, err error) {
 
 // expectConst expects a Const.
 func (parser *parser) expectConst() (Const, error) {
-	if parser.cur() == tokenTrue && parser.cur() != tokenFalse {
-		return Const(false), fmt.Errorf("expecting Const: %c", parser.cur())
+	if parser.cur() != tokenTrue && parser.cur() != tokenFalse {
+		return Const(false), fmt.Errorf("expected Const, found %v", parser.cur())
 	}
 	return Const(parser.cur() == tokenTrue), nil
 }
@@ -337,13 +337,13 @@ func (parser *parser) expectSaysOrSpeaksfor(greedy bool) (Form, error) {
 		}
 		if parser.cur() != tokenSays {
 			if from == nil && until == nil {
-				return nil, fmt.Errorf(`expecting "from", "until" or "says": %v`, parser.cur())
+				return nil, fmt.Errorf(`expected "from", "until" or "says", found %v`, parser.cur())
 			} else if until == nil {
-				return nil, fmt.Errorf(`expecting "until" or "says": %v`, parser.cur())
+				return nil, fmt.Errorf(`expected "until" or "says", found %v`, parser.cur())
 			} else if from == nil {
-				return nil, fmt.Errorf(`expecting "from" or "says": %v`, parser.cur())
+				return nil, fmt.Errorf(`expected "from" or "says", found %v`, parser.cur())
 			} else {
-				return nil, fmt.Errorf(`expecting "says": %v`, parser.cur())
+				return nil, fmt.Errorf(`expected "says", found %v`, parser.cur())
 			}
 		}
 		parser.advance()
@@ -358,7 +358,7 @@ func (parser *parser) expectSaysOrSpeaksfor(greedy bool) (Form, error) {
 		}
 		return Says{p, from, until, msg}, nil
 	default:
-		return nil, fmt.Errorf(`expecting "speaksfor", "from", "until", or "says": %v`, parser.cur())
+		return nil, fmt.Errorf(`expected "speaksfor", "from", "until", or "says", found %v`, parser.cur())
 	}
 }
 
@@ -399,7 +399,7 @@ func (parser *parser) parseFormAtHigh(greedy bool) (Form, error) {
 		if parser.cur().typ == itemIdentifier {
 			return parser.expectPred()
 		}
-		return nil, fmt.Errorf("expecting Form: %v", parser.cur())
+		return nil, fmt.Errorf("expected Form, found %v", parser.cur())
 	}
 }
 

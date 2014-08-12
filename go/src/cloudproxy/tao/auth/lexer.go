@@ -18,8 +18,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"unicode/utf8"
 	"unicode"
+	"unicode/utf8"
 )
 
 // token is a value returned from the lexer.
@@ -193,6 +193,7 @@ func upper(r rune) bool {
 func (l *lexer) next() (r rune) {
 	r, n, err := l.input.ReadRune()
 	if err == io.EOF {
+		l.width = 0
 		return eof
 	}
 	l.val.WriteRune(r)

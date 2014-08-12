@@ -44,6 +44,16 @@
 #- go fmt
 #- 
 #- 
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-12T12:02:12-0700
+#*
+#- This generally looks good: I had a few concerns about some design
+#- points, but we discussed them by phone. I'll archive those
+#- questions and answers below. My remaining comments should all be
+#- easy to fix.
+#- 
 diff --git a/go/src/cloudproxy/tao/auth/ast.go b/go/src/cloudproxy/tao/auth/ast.go
 new file mode 100644
 index 0000000..497aeb4
@@ -88,12 +98,39 @@ index 0000000..497aeb4
 +func (f Implies) isAuthLogicElement()   {}
 +func (f Speaksfor) isAuthLogicElement() {}
 +func (f Says) isAuthLogicElement()      {}
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-12T10:35:51-0700
+#*
+#- I originally had the comment:
+#- 
+#- This feels awkward and hard to maintain; what property are you trying to
+#- preserve here and is there some way to do it in the type system?
+#- 
+#- For example, can these functions all just implement a private empty
+#- interface, like authLogicElement?
+#- 
+#- We discussed this by phone on 2014-08-12, and we discovered that
+#- this seems to work better than a private interface in go. The trick
+#- in this case is that the private method isAuthLogicElement can't be
+#- implemented by any type outside the module, since it has type
+#- <modulename>.isAuthLogicElement, so it's different than a function
+#- call isAuthLogicElement from another module. So, I retract my
+#- concern.
 +
 +// Prin uniquely identifies a principal by a public key, used to verify
 +// signatures on credentials issued by the principal, and a sequence of zero or
 +// more extensions to identify the subprincipal of that key.
 +type Prin struct {
 +	Key string    // a base64w-encoded, marshalled, CryptoKey protobuf structure with purpose CryptoKey.VERIFYING)
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-12T10:37:05-0700
+#*
+#- In that case, we probably want a function to create this string from such a structure
+#- 
 +	Ext []PrinExt // one or more extensions for descendents
 +}
 +
@@ -193,6 +230,14 @@ index 0000000..497aeb4
 +
 +// TODO(kwalsh) add Copy() functions?
 +
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-12T14:44:47-0700
+#*
+#- From our discussion on 2014-08-12, this is because of slice members
+#- in structs, but it's not currently needed.
+#- 
 +// Identical checks if an Int is identical to another Term.
 +func (t Int) Identical(other Term) bool {
 +	return t == other
@@ -204,6 +249,13 @@ index 0000000..497aeb4
 +}
 +
 +// Identical checks if a Prin is identical to another Prin.
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-12T10:44:48-0700
+#*
+#- "identical to another Prin" -> "identical to another Term"
+#- 
 +func (t Prin) Identical(other Term) bool {
 +	p, ok := other.(Prin)
 +	if !ok {
@@ -213,6 +265,13 @@ index 0000000..497aeb4
 +		return false
 +	}
 +	for i := 0; i < len(t.Ext); i++ {
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-12T10:45:36-0700
+#*
+#- Range-for loop here and below, even if just for indexing.
+#- 
 +		if !t.Ext[i].Identical(p.Ext[i]) {
 +			return false
 +		}
@@ -1511,6 +1570,13 @@ index 0000000..ffe5804
 +//
 +//   Protobuf encoding with protobuf definitions: This would require either
 +//   duplicating all Forma dn Term types as proto definitions, then writing
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-12T14:49:25-0700
+#*
+#- "Forma dn Term" -> "Form and Term"
+#- 
 +//   conversion and validation code. The encoding would likely not be space
 +//   efficient, and it would be essentially Tao's only hard dependency on
 +//   protobuf.
@@ -1560,6 +1626,13 @@ index 0000000..ffe5804
 +//   Our tags describe both the meaning and the type of all enclosed values, and
 +//   we use tags only when the meaning or type can vary (i.e. for interface
 +//   types). Protobuf uses tags for every enclosed value, and those tags also to
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-12T14:52:10-0700
+#*
+#- "also to" -> "also"
+#- 
 +//   carry type information. Protobuf is more efficient when there are many
 +//   optional fields. For us, nearly all fields are required.
 +//
@@ -1942,6 +2015,16 @@ index 0000000..ec76c80
 +
 +// This code borrows heavily from the lexer design and implementation for the
 +// template package. See http://golang.org/src/pkg/text/template/parse/parse.go
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-12T11:38:47-0700
+#*
+#- And from the parser in github.com/kevinawalsh/datalog/dlengine? It looks
+#- like. That's fine in principle, since you wrote that code and can license it
+#- here under Apache 2 and there under LGPL2, IIUC, though IANAL. Probably a few
+#- words about the code similarity would be useful for clarification.
+#- 
 +
 +package auth
 +
@@ -1972,6 +2055,16 @@ index 0000000..ec76c80
 +}
 +
 +func (parser *parser) cur() token {
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-12T11:42:32-0700
+#*
+#- minor style nit: use something like "p *parser" instead of using the type
+#- name as a variable name. This also matches Go style better, which prefers
+#- short names for the receiver variable. See
+#- https://code.google.com/p/go-wiki/wiki/CodeReviewComments#Receiver_Names
+#- 
 +	if !parser.haveLookahead {
 +		parser.lookahead = parser.lex.nextToken()
 +		parser.haveLookahead = true
@@ -2000,6 +2093,16 @@ index 0000000..ec76c80
 +		parser.advance()
 +		n++
 +	}
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-12T11:45:23-0700
+#*
+#- This is a while-like loop, but it seems much more natural as a for loop here:
+#- for n := 0; parser.cur() == tokenLP; n++ {
+#-     parser.advance()
+#- }
+#- 
 +	return n
 +}
 +
@@ -2568,6 +2671,14 @@ index 0000000..6e930a0
 +// BUG(kwalsh): This won't succeed unless there are outer parens. For
 +// consistency, perhaps I need to make non-greedy parse functions for each
 +// operator?
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-12T11:58:39-0700
+#*
+#- Seems like that would be the easiest way to get this property. I
+#- wouldn't block this commit on those grounds, though.
+#- 
 +func (f *And) Scan(state fmt.ScanState, verb rune) error {
 +	parser := newParser(state)
 +	form, err := parser.parseShortestForm()
@@ -3030,6 +3141,13 @@ index 0000000..76a500e
 +}
 +
 +// printFormWithParens prints either f or (f), depending on ho level compares to
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-12T12:01:59-0700
+#*
+#- "ho level" -> "how level"
+#- 
 +// the precedence of f.
 +func printFormWithParens(out io.Writer, level int, f Form) {
 +	if level > precedence(f) {

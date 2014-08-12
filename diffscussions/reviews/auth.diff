@@ -1,0 +1,3040 @@
+#* 
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-12T11:27:27-0400
+#* 
+#- initial auth lexer and parser code
+#- 
+#- 
+#- initial auth marshal code using protobuf format
+#- 
+#- 
+#- initial auth unmarshal code using protobuf format
+#- 
+#- 
+#- binary encode/decode with custom format
+#- 
+#- 
+#- rename String to Str
+#- 
+#- 
+#- compile and fmt errors
+#- 
+#- 
+#- workaround issue 8512
+#- 
+#- 
+#- parser only looks ahead when necessary
+#- 
+#- Unit tests pass
+#- 
+#- 
+#- minor bugs in auth and go/fmt
+#- 
+#- 
+#- minor parsing bugs
+#- 
+#- 
+#- add Format(), increase test coverage
+#- 
+#- 
+#- add missing copyright
+#- 
+#- 
+#- go fmt
+#- 
+#- 
+diff --git a/go/src/cloudproxy/tao/auth/ast.go b/go/src/cloudproxy/tao/auth/ast.go
+new file mode 100644
+index 0000000..497aeb4
+--- /dev/null
++++ b/go/src/cloudproxy/tao/auth/ast.go
+@@ -0,0 +1,196 @@
++// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package auth
++
++// AuthLogicElement is any element of the authorization logic, i.e. a formula, a
++// term, or a principal extension.
++type AuthLogicElement interface {
++	Marshal(b *Buffer)
++	String() string
++	ShortString() string
++	isAuthLogicElement() // marker
++}
++
++// isAuthLogicElement ensures only appropriate types can be assigned to an
++// AuthLogicElement.
++func (t Prin) isAuthLogicElement()      {}
++func (t Str) isAuthLogicElement()       {}
++func (t Int) isAuthLogicElement()       {}
++func (f Pred) isAuthLogicElement()      {}
++func (f Const) isAuthLogicElement()     {}
++func (f Not) isAuthLogicElement()       {}
++func (f And) isAuthLogicElement()       {}
++func (f Or) isAuthLogicElement()        {}
++func (f Implies) isAuthLogicElement()   {}
++func (f Speaksfor) isAuthLogicElement() {}
++func (f Says) isAuthLogicElement()      {}
++
++// Prin uniquely identifies a principal by a public key, used to verify
++// signatures on credentials issued by the principal, and a sequence of zero or
++// more extensions to identify the subprincipal of that key.
++type Prin struct {
++	Key string    // a base64w-encoded, marshalled, CryptoKey protobuf structure with purpose CryptoKey.VERIFYING)
++	Ext []PrinExt // one or more extensions for descendents
++}
++
++// PrinExt is an extension of a principal.
++type PrinExt struct {
++	Name string // [A-Z][a-zA-Z0-9_]*
++	Arg  []Term
++}
++
++// Term is an argument to a predicate or a principal extension.
++type Term interface {
++	AuthLogicElement
++	Identical(other Term) bool
++	isTerm() // marker
++}
++
++// isTerm ensures only appropriate types can be assigned to a Term.
++func (t Prin) isTerm() {}
++func (t Str) isTerm()  {}
++func (t Int) isTerm()  {}
++
++// Str is a string used as a Term.
++type Str string
++
++// Int is an int used as a Term.
++type Int int
++
++// Form is a formula in the Tao authorization logic.
++type Form interface {
++	AuthLogicElement
++	isForm() // marker
++}
++
++// isForm ensures only appropriate types can be assigned to a Form.
++func (f Pred) isForm()      {}
++func (f Const) isForm()     {}
++func (f Not) isForm()       {}
++func (f And) isForm()       {}
++func (f Or) isForm()        {}
++func (f Implies) isForm()   {}
++func (f Speaksfor) isForm() {}
++func (f Says) isForm()      {}
++
++// Pred is a predicate, i.e. a boolean-valued (pure) function.
++type Pred struct {
++	Name string // [A-Z][a-zA-Z0-9_]*
++	Arg  []Term
++}
++
++// Const conveys formula "true" or formula "false"
++type Const bool
++
++// Not conveys formula "not Negand"
++type Not struct {
++	Negand Form
++}
++
++// And conveys formula "Conjunct[0] and Conjunct[1] and ... and Conjunct[n]"
++type And struct {
++	Conjunct []Form
++}
++
++// Or conveys formula "Disjunct[0] or Disjunct[1] or ... or Disjunct[n]"
++type Or struct {
++	Disjunct []Form
++}
++
++// Implies conveys formula "Antecedent implies Consequent"
++type Implies struct {
++	Antecedent Form
++	Consequent Form
++}
++
++// Speaksfor conveys formula "Delegate speaksfor Delegator"
++type Speaksfor struct {
++	Delegate  Prin
++	Delegator Prin
++}
++
++// Says conveys formula "Speaker from Time until Expiration says Message"
++type Says struct {
++	Speaker    Prin
++	Time       *int64 // nil to omit
++	Expiration *int64 // nil to omit
++	Message    Form
++}
++
++// Commences checks if statement f has a commencement time.
++func (f Says) Commences() bool {
++	return f.Time != nil
++}
++
++// Expires checks if statement f has an expiration time.
++func (f Says) Expires() bool {
++	return f.Expiration != nil
++}
++
++// TODO(kwalsh) add Copy() functions?
++
++// Identical checks if an Int is identical to another Term.
++func (t Int) Identical(other Term) bool {
++	return t == other
++}
++
++// Identical checks if a Str is identical to another Term.
++func (t Str) Identical(other Term) bool {
++	return t == other
++}
++
++// Identical checks if a Prin is identical to another Prin.
++func (t Prin) Identical(other Term) bool {
++	p, ok := other.(Prin)
++	if !ok {
++		return false
++	}
++	if t.Key != p.Key || len(t.Ext) != len(p.Ext) {
++		return false
++	}
++	for i := 0; i < len(t.Ext); i++ {
++		if !t.Ext[i].Identical(p.Ext[i]) {
++			return false
++		}
++	}
++	return true
++}
++
++// Identical checks if one PrinExt is identical to another.
++func (e PrinExt) Identical(other PrinExt) bool {
++	if e.Name != other.Name || len(e.Arg) != len(other.Arg) {
++		return false
++	}
++	for i := 0; i < len(e.Arg); i++ {
++		if !e.Arg[i].Identical(other.Arg[i]) {
++			return false
++		}
++	}
++	return true
++}
++
++// SubprinOrIdentical checks whether child is a subprincipal of parent or is
++// identical to parent.
++func SubprinOrIdentical(child, parent Prin) bool {
++	if parent.Key != child.Key || len(parent.Ext) > len(child.Ext) {
++		return false
++	}
++	for i := 0; i < len(parent.Ext); i++ {
++		if !parent.Ext[i].Identical(child.Ext[i]) {
++			return false
++		}
++	}
++	return true
++}
+diff --git a/go/src/cloudproxy/tao/auth/auth.go b/go/src/cloudproxy/tao/auth/auth.go
+deleted file mode 100644
+index da8c81f..0000000
+--- a/go/src/cloudproxy/tao/auth/auth.go
++++ /dev/null
+@@ -1,335 +0,0 @@
+-// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-// Package auth supports Tao authorization and authentication.
+-package auth
+-
+-import (
+-	"errors"
+-	"fmt"
+-	"io"
+-	"strconv"
+-	"strings"
+-
+-	"cloudproxy/util"
+-)
+-
+-// Term represents a string, integer, or Prin value in an auth formula.
+-type Term struct {
+-	val interface {
+-	}
+-}
+-
+-// Pred is a predicate or a component of a Prin.
+-type Pred struct {
+-	Name string
+-	Arg  []Term
+-}
+-
+-// Prin is used to uniquely identify a principal using a series of
+-// predicates.
+-type Prin struct {
+-	Part []Pred
+-}
+-
+-func (t Term) String() string {
+-	switch v := t.val.(type) {
+-	case int64:
+-		return fmt.Sprintf("%d", v)
+-	case string:
+-		return strconv.Quote(v)
+-	case *Prin:
+-		return v.String()
+-	default:
+-		panic("invalid Term type")
+-	}
+-}
+-
+-func (p Pred) String() string {
+-	a := make([]string, len(p.Arg))
+-	for i, e := range p.Arg {
+-		a[i] = e.String()
+-	}
+-	return p.Name + "(" + strings.Join(a, ", ") + ")"
+-}
+-
+-func (n Prin) String() string {
+-	p := make([]string, len(n.Part))
+-	for i, e := range n.Part {
+-		p[i] = e.String()
+-	}
+-	return strings.Join(p, "::")
+-}
+-
+-func ascii(r rune) bool {
+-	return 0 <= r && r <= 127
+-}
+-
+-var ErrNonAscii = errors.New("encountered non-ascii rune")
+-
+-func digit(r rune) bool {
+-	return '0' <= r && r <= '9'
+-}
+-
+-func lower(r rune) bool {
+-	return 'a' <= r && r <= 'z'
+-}
+-
+-func upper(r rune) bool {
+-	return 'A' <= r && r <= 'Z'
+-}
+-
+-func alpha(r rune) bool {
+-	return lower(r) || upper(r)
+-}
+-
+-func (t *Term) Scan(state fmt.ScanState, verb rune) error {
+-	r, _, err := state.ReadRune()
+-	if err != nil {
+-		return util.Logged(err)
+-	}
+-	if digit(r) || r == '-' {
+-		token, err := state.Token(false, digit)
+-		if err != nil {
+-			return util.Logged(err)
+-		}
+-		i, err := strconv.ParseInt(string(r)+string(token), 10, 64)
+-		if err != nil {
+-			return util.Logged(err)
+-		}
+-		t.val = i
+-	} else if r == '"' {
+-		// TODO(kwalsh) This assumes the function will be called once for each rune,
+-		// in sequence. This seems reasonable and it is consistent with fmt/scan.go,
+-		// but it isn't actually specified in the pkg fmt documentation.
+-		escape := false
+-		token, err := state.Token(false, func(r rune) bool {
+-			if escape {
+-				escape = false
+-			} else if r == '\\' {
+-				escape = true
+-			} else if r == '"' {
+-				return false
+-			}
+-			return true
+-		})
+-		if err != nil {
+-			return util.Logged(err)
+-		}
+-		r, _, err = state.ReadRune()
+-		if err != nil {
+-			return util.Logged(err)
+-		}
+-		s, err := strconv.Unquote(`"` + string(token) + `"`)
+-		if err != nil {
+-			return util.Logged(err)
+-		}
+-		t.val = s
+-	} else if upper(r) {
+-		state.UnreadRune()
+-		var p Prin
+-		err = (&p).Scan(state, verb)
+-		if err != nil {
+-			return util.Logged(err)
+-		}
+-		t.val = &p
+-	} else {
+-		// TODO(kwalsh) maybe allow lowercase for (meta-)variables?
+-		return fmt.Errorf("unrecognized rune in auth.Term: %c", r)
+-	}
+-	return nil
+-}
+-
+-func (p *Pred) Scan(state fmt.ScanState, verb rune) error {
+-	// first char is A-Z
+-	r, _, err := state.ReadRune()
+-	if err != nil {
+-		return util.Logged(err)
+-	}
+-	if !upper(r) {
+-		return fmt.Errorf("unrecognized rune in auth.Pred: %c", r)
+-	}
+-	// rest of name is a-zA-Z0-9_
+-	token, err := state.Token(false, func(r rune) bool {
+-		return alpha(r) || digit(r) || r == '_'
+-	})
+-	if err != nil {
+-		return util.Logged(err)
+-	}
+-	name := string(r) + string(token)
+-	r, _, err = state.ReadRune()
+-	if err != nil {
+-		return util.Logged(err)
+-	}
+-	if r != '(' {
+-		return fmt.Errorf("expecting '(' in auth.Pred: %c", r)
+-	}
+-	var args []Term
+-	for {
+-		state.SkipSpace()
+-		r, _, err = state.ReadRune()
+-		if err != nil {
+-			return util.Logged(err)
+-		}
+-		if r == ')' {
+-			break
+-		}
+-		if len(args) == 0 {
+-			err = state.UnreadRune()
+-			if err != nil {
+-				return util.Logged(err)
+-			}
+-		} else if r == ',' {
+-			state.SkipSpace()
+-		} else {
+-			return fmt.Errorf("expecting ')' or ',' or auth.Term in auth.Pred: %c", r)
+-		}
+-		var a Term
+-		err = (&a).Scan(state, verb)
+-		if err != nil {
+-			return util.Logged(err)
+-		}
+-		args = append(args, a)
+-	}
+-	p.Name = name
+-	p.Arg = args
+-	return nil
+-}
+-
+-func (p *Prin) Scan(state fmt.ScanState, verb rune) error {
+-	var part []Pred
+-	var c Pred
+-	err := (&c).Scan(state, verb)
+-	if err != nil {
+-		return util.Logged(err)
+-	}
+-	part = append(part, c)
+-	for {
+-		r, _, err := state.ReadRune()
+-		if err == io.EOF {
+-			break
+-		}
+-		if err != nil {
+-			return util.Logged(err)
+-		}
+-		if r != ':' {
+-			err = state.UnreadRune()
+-			if err != nil {
+-				return util.Logged(err)
+-			}
+-			break
+-		}
+-		r, _, err = state.ReadRune()
+-		if err != nil {
+-			return util.Logged(err)
+-		}
+-		if r != ':' {
+-			return fmt.Errorf("expecting ':' in auth.Pred: %c", r)
+-		}
+-		var sub Pred
+-		err = (&sub).Scan(state, verb)
+-		if err != nil {
+-			return util.Logged(err)
+-		}
+-		part = append(part, sub)
+-	}
+-	p.Part = part
+-	return nil
+-}
+-
+-func (t *Term) Identical(other *Term) bool {
+-	switch t := t.val.(type) {
+-	case int64:
+-		if t2, ok := other.val.(int64); !ok || t2 != t {
+-			return false
+-		}
+-	case string:
+-		if t2, ok := other.val.(string); !ok || t2 != t {
+-			return false
+-		}
+-	case *Prin:
+-		if t2, ok := other.val.(Prin); !ok || !t2.Identical(t) {
+-			return false
+-		}
+-	}
+-	return true
+-}
+-
+-func (p *Pred) Identical(other *Pred) bool {
+-	if p.Name != other.Name {
+-		return false
+-	}
+-	if len(p.Arg) != len(other.Arg) {
+-		return false
+-	}
+-	for i := range p.Arg {
+-		if !p.Arg[i].Identical(&other.Arg[i]) {
+-			return false
+-		}
+-	}
+-	return true
+-}
+-
+-func (p *Prin) Identical(other *Prin) bool {
+-	if len(p.Part) != len(other.Part) {
+-		return false
+-	}
+-	for i, e := range p.Part {
+-		if !e.Identical(&other.Part[i]) {
+-			return false
+-		}
+-	}
+-	return true
+-}
+-
+-// SubprinOrIdentical checks whether child is a subprincipal of parent or
+-// identical to parent.
+-func SubprinOrIdentical(child, parent *Prin) bool {
+-	if len(parent.Part) <= len(child.Part) {
+-		return false
+-	}
+-	for i, e := range parent.Part {
+-		if !e.Identical(&child.Part[i]) {
+-			return false
+-		}
+-	}
+-	return true
+-}
+-
+-func NewTerm(s string) (*Term, error) {
+-	var t Term
+-	_, err := fmt.Sscanf(s, "^%v$", &t)
+-	if err != nil {
+-		return nil, err
+-	}
+-	return &t, nil
+-}
+-
+-func NewPred(s string) (*Pred, error) {
+-	var p Pred
+-	_, err := fmt.Sscanf(s, "^%v$", &p)
+-	if err != nil {
+-		return nil, err
+-	}
+-	return &p, nil
+-}
+-
+-func NewPrin(s string) (*Prin, error) {
+-	var p Prin
+-	_, err := fmt.Sscanf(s, "^%v$", &p)
+-	if err != nil {
+-		return nil, err
+-	}
+-	return &p, nil
+-}
+diff --git a/go/src/cloudproxy/tao/auth/auth_test.go b/go/src/cloudproxy/tao/auth/auth_test.go
+index c69eede..c6bcff7 100644
+--- a/go/src/cloudproxy/tao/auth/auth_test.go
++++ b/go/src/cloudproxy/tao/auth/auth_test.go
+@@ -1,54 +1,339 @@
+ // Copyright (c) 2014, Kevin Walsh.  All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package auth
+ 
+ import (
+ 	"fmt"
++	"strings"
+ 	"testing"
+ )
+ 
++var termtests []string = []string{
++	"42",
++	"0",
++	"-1",
++	`"Hello World"`,
++	`"Includes \n newlines and \t tabs"`,
++	`key("foo")`,
++	`key("123").Extension(1)`,
++	`key("123").Extension(1).A.B(1).C(1, "Hello").D(key("456").E(key("789").G.H))`,
++	`key("123").E()`,
++}
++
+ func TestParseTerm(t *testing.T) {
+-	var x, y, z Term
+-	n, err := fmt.Sscanf(`42 "Hello World" Foo()::Bar(3, "Hello", Baz()::Boo())`, "%v %v %v", &x, &y, &z)
++	for _, s := range termtests {
++		var x AnyTerm
++		n, err := fmt.Sscanf(s, "%v", &x)
++		if err != nil {
++			t.Fatal(err.Error())
++		}
++		if n != 1 {
++			t.Fatal("incomplete parse")
++		}
++		if s != `key("123").E()` && x.Term.String() != s {
++			t.Fatalf("bad print: %v vs %v", x.Term.String(), s)
++		}
++	}
++
++	s := termtests[0] + " " + termtests[3] + " " + termtests[4] + " " + termtests[6]
++	var w, x, y, z AnyTerm
++	n, err := fmt.Sscanf(s, "%v %v %v %v", &w, &x, &y, &z)
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+-	if n != 3 {
++	if n != 4 {
+ 		t.Fatal("incomplete parse")
+ 	}
+ }
+ 
+-func TestParsePred(t *testing.T) {
+-	var x Pred
+-	n, err := fmt.Sscanf(`Foo( "a", 1 )::Bar( )`, "%v", &x)
++func TestBinaryTerm(t *testing.T) {
++	for _, s := range termtests {
++		var x AnyTerm
++		fmt.Sscanf("("+s+")", "%v", &x)
++		f := x.Term
++
++		buf := Marshal(f)
++		g, err := UnmarshalTerm(buf)
++		if err != nil {
++			t.Fatalf("can't unmarshal: %s", s)
++		}
++		if f.String() != g.String() {
++			t.Fatalf("bad binary: %s vs %s", f.String(), g.String())
++		}
++	}
++}
++
++func TestScanTerm(t *testing.T) {
++	var i1, i2 Int
++	n, err := fmt.Sscanf("42 -17", "%v %v", &i1, &i2)
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+-	if n != 1 {
++	if n != 2 || i1 != Int(42) || i2 != Int(-17) {
++		t.Fatal("incomplete parse")
++	}
++
++	var s1, s2 Str
++	n, err = fmt.Sscanf(`"a" "b"`, "%v %v", &s1, &s2)
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++	if n != 2 || s1 != Str("a") || s2 != Str("b") {
++		t.Fatal("incomplete parse")
++	}
++
++	var p Prin
++	n, err = fmt.Sscanf(`key("abc").A(1).B("2", "3")`, "%v", &p)
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++	p2 := Prin{Key: "abc", Ext: []PrinExt{
++		PrinExt{"A", []Term{Int(1)}},
++		PrinExt{"B", []Term{Str("2"), Str("#")}},
++	}}
++	if n != 1 || p2.Identical(p) {
+ 		t.Fatal("incomplete parse")
+ 	}
+ }
+ 
+-func TestParsePrin(t *testing.T) {
++func TestParseSentence(t *testing.T) {
+ 	var x Prin
+-	s := `My name is Key("xxxx")::Prog("foo", 1)::Args("foo", "bar").`
+-	n, err := fmt.Sscanf(s, "My name is %v.", &x)
++	s := `My name is key("xxxx").Prog("foo", 1).Args("foo", "bar")`
++	n, err := fmt.Sscanf(s, "My name is %v", &x)
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 	if n != 1 {
+ 		t.Fatal("incomplete parse")
+ 	}
+ }
++
++func TestParsePred(t *testing.T) {
++	predtests := []string{
++		`P(42)`,
++		`Foo`,
++		`Pred(1, 2, 3)`,
++		`Foo(1, "a", key("k"))`,
++		`Foo()`,
++	}
++
++	for _, s := range predtests {
++		var x Pred
++		n, err := fmt.Sscanf(s, "%v", &x)
++		if err != nil {
++			t.Fatal(err.Error())
++		}
++		if n != 1 {
++			t.Fatal("incomplete parse")
++		}
++		if s != "Foo()" && x.String() != s {
++			t.Fatalf("bad print: %v vs %s", x.String(), s)
++		}
++	}
++
++	s := predtests[0] + " " + predtests[1] + " " + predtests[2] + " " + predtests[3]
++	var w, x, y, z Pred
++	n, err := fmt.Sscanf(s, "%v %v %v %v", &w, &x, &y, &z)
++	if err != nil {
++		t.Fatal(err.Error())
++	}
++	if n != 4 {
++		t.Fatal("incomplete parse")
++	}
++}
++
++var formtests []string = []string{
++	`true`,
++	`false`,
++	`key("a") says true`,
++	`key("a") from 1 says true`,
++	`key("a") until 2 says true`,
++	`key("a") from 1 until 2 says true`,
++	`key("a") speaksfor key("b")`,
++	`key("a").Sub(1).Sub(2) speaksfor key("a").Sub(1).Sub`,
++	`P(1)`,
++	`P(1) and P(2)`,
++	`P(1) and P(2) and P(3) and P(4)`,
++	`P(1) or P(2)`,
++	`P(1) or P(2) or P(3) or P(4)`,
++	`P(1) implies P(2)`,
++	`P(1) implies P(2) implies P(3) or P(4)`,
++	`not P(1)`,
++	`not not P(1)`,
++	`not not not not P(1)`,
++	`P(1) and (key("a") speaksfor key("b"))`,
++	`P(1) and P(2) and P(3) or P(4)`,
++	`P(1) and P(2) and (P(3) or P(4))`,
++	`P(1) and (P(2) or P(3)) and P(4)`,
++	`(P(1) or P(2)) and P(3) and P(4)`,
++	`P(1) and P(2) and P(3) implies P(4)`,
++	`P(1) and P(2) and (P(3) implies P(4))`,
++	`P(1) and (P(2) implies P(3)) and P(4)`,
++	`(P(1) implies P(2)) and P(3) and P(4)`,
++	`P(1) or P(2) or P(3) implies P(4)`,
++	`P(1) or P(2) or (P(3) implies P(4))`,
++	`P(1) or (P(2) implies P(3)) or P(4)`,
++	`(P(1) implies P(2)) or P(3) or P(4)`,
++	`P(1) or (key("a") says P(2) or P(3))`,
++	`P(1) or (key("a") says P(2)) or P(3)`,
++	`(((P(((1)), ("a")))))`,
++}
++
++func TestParseForm(t *testing.T) {
++	for i, s := range formtests {
++		var x AnyForm
++		n, err := fmt.Sscanf("("+s+")", "%v", &x)
++		if err != nil {
++			t.Fatal(err.Error())
++		}
++		if n != 1 {
++			t.Fatal("incomplete parse")
++		}
++		if i != len(formtests)-1 && x.Form.String() != s && "("+x.Form.String()+")" != s {
++			t.Fatalf("bad print: %v vs %s", x.Form.String(), s)
++		}
++
++		// Try parsing with the specific type
++		switch v := x.Form.(type) {
++		case Says:
++			n, err = fmt.Sscanf("("+s+")", "%v", &v)
++			x.Form = v
++		case Speaksfor:
++			n, err = fmt.Sscanf("("+s+")", "%v", &v)
++			x.Form = v
++		case Implies:
++			n, err = fmt.Sscanf("("+s+")", "%v", &v)
++			x.Form = v
++		case And:
++			n, err = fmt.Sscanf("("+s+")", "%v", &v)
++			x.Form = v
++		case Or:
++			n, err = fmt.Sscanf("("+s+")", "%v", &v)
++			x.Form = v
++		case Not:
++			n, err = fmt.Sscanf("("+s+")", "%v", &v)
++			x.Form = v
++		case Pred:
++			n, err = fmt.Sscanf("("+s+")", "%v", &v)
++			x.Form = v
++		case Const:
++			n, err = fmt.Sscanf("("+s+")", "%v", &v)
++			x.Form = v
++		default:
++			t.Fatalf("not reached")
++		}
++		if err != nil {
++			t.Fatal(err.Error())
++		}
++		if n != 1 {
++			t.Fatal("incomplete parse")
++		}
++		if i != len(formtests)-1 && x.Form.String() != s && "("+x.Form.String()+")" != s {
++			t.Fatalf("bad print: %v vs %s", x.Form.String(), s)
++		}
++	}
++}
++
++func TestParseShortForm(t *testing.T) {
++	for _, s := range formtests {
++		var x, y AnyForm
++		fmt.Sscanf("("+s+")", "%v", &x)
++		if x.Form.String() != x.Form.ShortString() {
++			t.Fatalf("bad short string: %s vs %s", x.Form.String(), x.Form.ShortString())
++		}
++
++		longstr := `"abcdefghijklmnopqrstuvwxyz"`
++		shortstr := `"abcdefghij"...`
++		short := strings.Replace(s, `"a"`, longstr, -1)
++		fmt.Sscanf("("+short+")", "%v", &y)
++		shortened := strings.Replace(x.Form.String(), `"a"`, shortstr, -1)
++		if shortened != y.Form.ShortString() {
++			t.Fatalf("bad short string: %s vs %s", y.Form.ShortString(), shortened)
++		}
++
++		if y.Form.String() != fmt.Sprintf("%v", y.Form) {
++			t.Fatalf("bad long format: %s vs %s", x.Form.String(), fmt.Sprintf("%v", x.Form))
++		}
++		if shortened != fmt.Sprintf("%s", y.Form) {
++			t.Fatalf("bad short format: %s vs %s", shortened, fmt.Sprintf("%s", x.Form))
++		}
++
++	}
++}
++
++func TestBinaryForm(t *testing.T) {
++	for _, s := range formtests {
++		var x AnyForm
++		fmt.Sscanf("("+s+")", "%v", &x)
++		f := x.Form
++
++		buf := Marshal(f)
++		g, err := UnmarshalForm(buf)
++		if err != nil {
++			t.Fatalf("can't unmarshal: %s", s)
++		}
++		if f.String() != g.String() {
++			t.Fatalf("bad binary: %s vs %s", f.String(), g.String())
++		}
++	}
++}
++
++func TestPrinIdentical(t *testing.T) {
++	p := make([]Prin, 6)
++	fmt.Sscanf(`key("a")`, "%s", &p[0])
++	fmt.Sscanf(`key("a").Kid(1)`, "%s", &p[1])
++	fmt.Sscanf(`key("a").Kid(1).Kid(2)`, "%s", &p[2])
++	fmt.Sscanf(`key("b").Kid(1).Kid(2)`, "%s", &p[3])
++	fmt.Sscanf(`key("a").Kid(2).Kid(2)`, "%s", &p[4])
++	fmt.Sscanf(`key("a").Kid(1, 2).Kid(2)`, "%s", &p[5])
++
++	for i, prin := range p {
++		for j, other := range p {
++			if (i == j) != prin.Identical(other) || (i == j) != other.Identical(prin) {
++				t.Fatalf("identical failed for %v vs %v", prin, other)
++			}
++			if ((i <= j && j <= 2) || (i == 0 && j >= 4) || (i == j)) !=
++				SubprinOrIdentical(other, prin) {
++				t.Fatalf("subprin failed for %v vs %v", prin, other)
++			}
++		}
++	}
++
++	if p[0].Identical(Str("a")) {
++		t.Fatalf("identical failed against str")
++	}
++}
++
++func TestTrivialConjuncts(t *testing.T) {
++	p := And{}
++	if p.String() != "true" || p.ShortString() != p.String() {
++		t.Fatalf("bad print for empty conjunct ")
++	}
++	q := Or{}
++	if q.String() != "false" || q.ShortString() != q.String() {
++		t.Fatalf("bad print for empty disnjunct ")
++	}
++	var f AnyForm
++	s := "P(1, 2, 3)"
++	fmt.Sscanf(s, "%v", &f)
++	p = And{Conjunct: []Form{f.Form}}
++	if p.String() != s || p.ShortString() != s {
++		t.Fatalf("bad print for unary conjunct ")
++	}
++	q = Or{Disjunct: []Form{f.Form}}
++	if q.String() != s || q.ShortString() != s {
++		t.Fatalf("bad print for unary disnjunct ")
++	}
++}
+diff --git a/go/src/cloudproxy/tao/auth/binary.go b/go/src/cloudproxy/tao/auth/binary.go
+new file mode 100644
+index 0000000..4eb20f5
+--- /dev/null
++++ b/go/src/cloudproxy/tao/auth/binary.go
+@@ -0,0 +1,378 @@
++// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package auth
++
++// This file implements Marshal() and Unmarshal() functions for elements.
++
++import (
++	"fmt"
++)
++
++const (
++	_ = iota
++
++	// Term tags
++	tagPrin // string, [](string, []Term)
++	tagStr  // string
++	tagInt  // int
++
++	// Form tags
++	tagPred      // string, []Term
++	tagConst     // bool
++	tagNot       // Form
++	tagAnd       // []Form
++	tagOr        // []Form
++	tagImplies   // Form, Form
++	tagSpeaksfor // tag+Prin, tag+Prin
++	tagSays      // tag+Prin, bool+int, bool+int, Form
++)
++
++// Marshal encodes a Form or Term.
++func Marshal(e AuthLogicElement) []byte {
++	buf := new(Buffer)
++	e.Marshal(buf)
++	return buf.Bytes()
++}
++
++// Marshal encodes a Prin.
++func (t Prin) Marshal(buf *Buffer) {
++	buf.EncodeVarint(tagPrin)
++	buf.EncodeString(t.Key)
++	buf.EncodeVarint(int64(len(t.Ext)))
++	for _, e := range t.Ext {
++		buf.EncodeString(e.Name)
++		buf.EncodeVarint(int64(len(e.Arg)))
++		for _, a := range e.Arg {
++			a.Marshal(buf)
++		}
++	}
++}
++
++// Marshal encodes a Str.
++func (t Str) Marshal(buf *Buffer) {
++	buf.EncodeVarint(tagStr)
++	buf.EncodeString(string(t))
++}
++
++// Marshal encodes an Int.
++func (t Int) Marshal(buf *Buffer) {
++	buf.EncodeVarint(tagInt)
++	buf.EncodeVarint(int64(t))
++}
++
++// Marshal encodes a Pred.
++func (f Pred) Marshal(buf *Buffer) {
++	buf.EncodeVarint(tagPred)
++	buf.EncodeString(f.Name)
++	buf.EncodeVarint(int64(len(f.Arg)))
++	for _, e := range f.Arg {
++		e.Marshal(buf)
++	}
++}
++
++// Marshal encodes a Const.
++func (f Const) Marshal(buf *Buffer) {
++	buf.EncodeVarint(tagConst)
++	buf.EncodeBool(bool(f))
++}
++
++// Marshal encodes a Not.
++func (f Not) Marshal(buf *Buffer) {
++	buf.EncodeVarint(tagNot)
++	f.Negand.Marshal(buf)
++}
++
++// Marshal encodes an And.
++func (f And) Marshal(buf *Buffer) {
++	buf.EncodeVarint(tagAnd)
++	buf.EncodeVarint(int64(len(f.Conjunct)))
++	for _, e := range f.Conjunct {
++		e.Marshal(buf)
++	}
++}
++
++// Marshal encodes an Or.
++func (f Or) Marshal(buf *Buffer) {
++	buf.EncodeVarint(tagOr)
++	buf.EncodeVarint(int64(len(f.Disjunct)))
++	for _, e := range f.Disjunct {
++		e.Marshal(buf)
++	}
++}
++
++// Marshal encodes an Implies.
++func (f Implies) Marshal(buf *Buffer) {
++	buf.EncodeVarint(tagImplies)
++	f.Antecedent.Marshal(buf)
++	f.Consequent.Marshal(buf)
++}
++
++// Marshal encodes a Speaksfor.
++func (f Speaksfor) Marshal(buf *Buffer) {
++	buf.EncodeVarint(tagSpeaksfor)
++	f.Delegate.Marshal(buf)
++	f.Delegator.Marshal(buf)
++}
++
++// Marshal encodes a Says.
++func (f Says) Marshal(buf *Buffer) {
++	buf.EncodeVarint(tagSays)
++	f.Speaker.Marshal(buf)
++	buf.EncodeBool(f.Commences())
++	if f.Commences() {
++		buf.EncodeVarint(*f.Time)
++	}
++	buf.EncodeBool(f.Expires())
++	if f.Expires() {
++		buf.EncodeVarint(*f.Expiration)
++	}
++	f.Message.Marshal(buf)
++}
++
++// decodeStr decodes a Str without the leading tag.
++func decodeStr(buf *Buffer) (Str, error) {
++	s, err := buf.DecodeString()
++	return Str(s), err
++}
++
++// decodeInt decodes an Int without the leading tag.
++func decodeInt(buf *Buffer) (Int, error) {
++	i, err := buf.DecodeVarint()
++	return Int(i), err
++}
++
++// decodeNameAndArgs decodes a name ad term array without leading tags.
++func decodeNameAndArgs(buf *Buffer) (name string, args []Term, err error) {
++	name, err = buf.DecodeString()
++	if err != nil {
++		return
++	}
++	n, err := buf.DecodeVarint()
++	args = make([]Term, n)
++	for i := int64(0); i < n; i++ {
++		args[i], err = unmarshalTerm(buf)
++		if err != nil {
++			return
++		}
++	}
++	return
++}
++
++// unmarshalPrin decodes a Prin.
++func unmarshalPrin(buf *Buffer) (p Prin, err error) {
++	tag, err := buf.DecodeVarint()
++	if err != nil {
++		return
++	}
++	if tag != tagPrin {
++		err = fmt.Errorf("unexpected tag: %d", tag)
++		return
++	}
++	return decodePrin(buf)
++}
++
++// decodePrin decodes a Prin without the leading tag.
++func decodePrin(buf *Buffer) (p Prin, err error) {
++	p.Key, err = buf.DecodeString()
++	if err != nil {
++		return
++	}
++	n, err := buf.DecodeVarint()
++	if err != nil {
++		return
++	}
++	for i := int64(0); i < n; i++ {
++		name, args, err := decodeNameAndArgs(buf)
++		if err != nil {
++			return p, err
++		}
++		p.Ext = append(p.Ext, PrinExt{name, args})
++	}
++	return
++}
++
++// unmarshalTerm decodes a Term.
++func unmarshalTerm(buf *Buffer) (t Term, err error) {
++	tag, err := buf.DecodeVarint()
++	if err != nil {
++		return nil, err
++	}
++	switch tag {
++	case tagStr:
++		return decodeStr(buf)
++	case tagInt:
++		return decodeInt(buf)
++	case tagPrin:
++		return decodePrin(buf)
++	default:
++		return nil, fmt.Errorf("unexpected tag: %d", tag)
++	}
++}
++
++// UnmarshalTerm decodes a Term.
++func UnmarshalTerm(bytes []byte) (Term, error) {
++	buf := &Buffer{bytes}
++	t, err := unmarshalTerm(buf)
++	if err != nil {
++		return nil, err
++	}
++	if len(buf.Bytes()) != 0 {
++		return nil, fmt.Errorf("unexpected trailing bytes")
++	}
++	return t, nil
++}
++
++// UnmarshalForm decodes a Form.
++func UnmarshalForm(bytes []byte) (Form, error) {
++	buf := &Buffer{bytes}
++	f, err := unmarshalForm(buf)
++	if err != nil {
++		return nil, err
++	}
++	if len(buf.Bytes()) != 0 {
++		return nil, fmt.Errorf("unexpected trailing bytes")
++	}
++	return f, nil
++}
++
++// unmarshalForm decodes a Form.
++func unmarshalForm(buf *Buffer) (Form, error) {
++	tag, err := buf.DecodeVarint()
++	if err != nil {
++		return nil, err
++	}
++	switch tag {
++	case tagPred:
++		return decodePred(buf)
++	case tagConst:
++		return decodeConst(buf)
++	case tagNot:
++		return decodeNot(buf)
++	case tagAnd:
++		return decodeAnd(buf)
++	case tagOr:
++		return decodeOr(buf)
++	case tagImplies:
++		return decodeImplies(buf)
++	case tagSpeaksfor:
++		return decodeSpeaksfor(buf)
++	case tagSays:
++		return decodeSays(buf)
++	default:
++		return nil, fmt.Errorf("unexpected tag: %d", tag)
++	}
++}
++
++// decodePred decodes a Pred without the leading tag.
++func decodePred(buf *Buffer) (Pred, error) {
++	name, args, err := decodeNameAndArgs(buf)
++	return Pred{name, args}, err
++}
++
++// decodeConst decodes a Const without the leading tag.
++func decodeConst(buf *Buffer) (Const, error) {
++	b, err := buf.DecodeBool()
++	return Const(b), err
++}
++
++// decodeNot decodes a Not without the leading tag.
++func decodeNot(buf *Buffer) (Not, error) {
++	f, err := unmarshalForm(buf)
++	return Not{f}, err
++}
++
++// decodeAnd decodes an And without the leading tag.
++func decodeAnd(buf *Buffer) (and And, err error) {
++	n, err := buf.DecodeVarint()
++	if err != nil {
++		return
++	}
++	for i := int64(0); i < n; i++ {
++		f, err := unmarshalForm(buf)
++		if err != nil {
++			return and, err
++		}
++		and.Conjunct = append(and.Conjunct, f)
++	}
++	return
++}
++
++// decodeOr decodes an Or without the leading tag.
++func decodeOr(buf *Buffer) (or Or, err error) {
++	n, err := buf.DecodeVarint()
++	if err != nil {
++		return
++	}
++	for i := int64(0); i < n; i++ {
++		f, err := unmarshalForm(buf)
++		if err != nil {
++			return or, err
++		}
++		or.Disjunct = append(or.Disjunct, f)
++	}
++	return
++}
++
++// decodeImplies decodes an Implies without the leading tag.
++func decodeImplies(buf *Buffer) (implies Implies, err error) {
++	implies.Antecedent, err = unmarshalForm(buf)
++	if err != nil {
++		return
++	}
++	implies.Consequent, err = unmarshalForm(buf)
++	return
++}
++
++// decodeSpeaksfor decodes an Speaksfor without the leading tag.
++func decodeSpeaksfor(buf *Buffer) (sfor Speaksfor, err error) {
++	sfor.Delegate, err = unmarshalPrin(buf)
++	if err != nil {
++		return
++	}
++	sfor.Delegator, err = unmarshalPrin(buf)
++	return
++}
++
++// decodeSays decodes an Says without the leading tag.
++func decodeSays(buf *Buffer) (says Says, err error) {
++	says.Speaker, err = unmarshalPrin(buf)
++	if err != nil {
++		return
++	}
++	commences, err := buf.DecodeBool()
++	if err != nil {
++		return
++	}
++	if commences {
++		t, err := buf.DecodeVarint()
++		if err != nil {
++			return says, err
++		}
++		says.Time = &t
++	}
++	expires, err := buf.DecodeBool()
++	if err != nil {
++		return
++	}
++	if expires {
++		t, err := buf.DecodeVarint()
++		if err != nil {
++			return says, err
++		}
++		says.Expiration = &t
++	}
++	says.Message, err = unmarshalForm(buf)
++	return
++}
+diff --git a/go/src/cloudproxy/tao/auth/buffer.go b/go/src/cloudproxy/tao/auth/buffer.go
+new file mode 100644
+index 0000000..977cc20
+--- /dev/null
++++ b/go/src/cloudproxy/tao/auth/buffer.go
+@@ -0,0 +1,88 @@
++// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package auth
++
++import (
++	"encoding/binary"
++	"errors"
++	"fmt"
++	"io"
++)
++
++// Buffer holds partially encoded or decode auth elemnts.
++// Note: We could do capacity-doubling, etc., but we favor simplicity for now.
++type Buffer struct {
++	buf []byte
++}
++
++// Bytes returns the unconsumed portion of the buffer.
++func (buf *Buffer) Bytes() []byte {
++	return buf.buf
++}
++
++// EncodeVarint encodes an int as a (non zig-zag) varint, growing the buffer.
++func (buf *Buffer) EncodeVarint(i int64) {
++	b := make([]byte, 10) // int64 as varint is max 10 bytes
++	n := binary.PutUvarint(b, uint64(i))
++	buf.buf = append(buf.buf, b[0:n]...)
++}
++
++// DecodeVarint decodes an int, shrinking the buffer.
++func (buf *Buffer) DecodeVarint() (int64, error) {
++	i, n := binary.Uvarint(buf.buf)
++	if n == 0 {
++		return 0, io.ErrUnexpectedEOF
++	} else if n < 0 {
++		return 0, errors.New("varint overflow")
++	}
++	buf.buf = buf.buf[n:]
++	return int64(i), nil
++}
++
++// EncodeBool converts b to an int then calls EncodeVarint.
++func (buf *Buffer) EncodeBool(b bool) {
++	if b {
++		buf.EncodeVarint(1)
++	} else {
++		buf.EncodeVarint(0)
++	}
++}
++
++// DecodeBool calls DecodeVarint then converts the result to a bool.
++func (buf *Buffer) DecodeBool() (bool, error) {
++	i, err := buf.DecodeVarint()
++	return (i == 1), err
++}
++
++// EncodeString encodes a string as a length and byte array, growing the buffer.
++func (buf *Buffer) EncodeString(s string) {
++	bytes := []byte(s)
++	buf.EncodeVarint(int64(len(bytes)))
++	buf.buf = append(buf.buf, bytes...)
++}
++
++// DecodeString decodes a string, shrinking the buffer.
++func (buf *Buffer) DecodeString() (string, error) {
++	n, err := buf.DecodeVarint()
++	if err != nil {
++		return "", err
++	}
++	if n < int64(0) || n > int64(len(buf.buf)) {
++		return "", fmt.Errorf("invalid length: %d", n)
++	}
++	s := string(buf.buf[:n])
++	buf.buf = buf.buf[n:]
++	return s, nil
++}
+diff --git a/go/src/cloudproxy/tao/auth/doc.go b/go/src/cloudproxy/tao/auth/doc.go
+new file mode 100644
+index 0000000..ffe5804
+--- /dev/null
++++ b/go/src/cloudproxy/tao/auth/doc.go
+@@ -0,0 +1,147 @@
++// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++// Package auth supports Tao authorization and authentication, primarily by
++// defining and implementing a logic for describing principals, their trust
++// relationships, and their beliefs.
++//
++// The grammar for a formula in the logic is roughly:
++//   Form ::= Prin [from Time] [until Time] says Form
++//          | Prin speaksfor Prin
++//          | Form implies Form
++//          | Form or Form or ...
++//          | Form and Form and ...
++//          | not Form
++//          | Pred | false | true
++//
++// Times are integers interpreted as 64-bit unix timestamps.
++//   Time ::= int64
++//
++// Predicates are like boolean-valued pure functions, with a name and zero or
++// more terms as arguments.
++//   Pred ::= Identifier(Term, Term, ...)
++//          | Identifier()
++//          | Identifier
++//
++// Terms are concrete values, like strings, integers, or names of principals.
++//   Term ::= string | int | Prin
++//
++// Principal names specify a key, and zero or more extensions to specify a
++// sub-principal of that key.
++//   Prin ::= key(string)
++//          | key(string).PrinExt.PrinExt...
++//   PrinExt ::= Identifier(Term, Term, ...)
++//             | Identifier()
++//             | Identifier
++//
++// Identifiers for predicate and principal extension names are limited to simple
++// ascii printable identifiers, with inital upper-case, and no punctuation
++// except '_':
++//   PredName ::= [A-Z][a-zA-Z0-9_]*
++//   ExtName ::= [A-Z][a-zA-Z0-9_]*
++//
++// The keywords used in the above grammar are:
++//   from, until, says, speaskfor, implies, or, and, not, false, true, key
++// The punctuation used are:
++//   '(', ')', ',', '.'
++//
++// All of the above elements have three distinct representations. The first
++// representation is ast-like, with each element represented by an appropriate
++// Go type, e.g. an int, a string, or a struct containing pointers (or
++// interfaces) for child elements. This representation is meant to be easy to
++// programmatically construct, split apart using type switches, rearrange,
++// traverse, etc.
++//
++// The second representation is textual, which is convenient for humans but
++// isn't canonical and can involve tricky parsing. When parsing elements from
++// text, whitespace is ignored between elements (except around the suprincipal
++// dot operator and before the open paren of a Pred, Prin, or, PrinExt), the
++// above list shows the productions in order of increasing precedence for binary
++// Form operators when parenthesis are omitted, parenthesis can be used for
++// specifying precedence explicitly, and elements of the same precedence are
++// parsed left to right. When pretty-printing elements to text, a single space
++// is used before and after keywords and after commas. Elements can also be
++// pretty-printed with elision, in which case keys and long strings are
++// truncated.
++//
++// The third representation is an encoded sequence of bytes. This is meant to be
++// compact, relatively easy to parse, and suitable for passing over sockets,
++// network connections, etc. The encoding format is custom-designed, but is
++// roughly similar to the format used by protobuf.
++//
++// Several alternative encodings were considered:
++//
++//   Protobuf encoding with protobuf definitions: This would require either
++//   duplicating all Forma dn Term types as proto definitions, then writing
++//   conversion and validation code. The encoding would likely not be space
++//   efficient, and it would be essentially Tao's only hard dependency on
++//   protobuf.
++//
++//   Protobuf encoding with hand-written encoding/decoding: The goprotobuf
++//   library currently lacks good support for this. Also, protobuf allows
++//   encoded data to be shuffled, making decoding much more complicated than
++//   necessary.
++//
++//   encoding/gob: Not language-agnostic. The self-describing datatype encoding
++//   scheme is probably overkill as well.
++//
++//   strings using textual representation of Form and Term elements: This
++//   pulls into all TCB a somewhat complex lexer and parser. The encoding is
++//   also not space efficient.
++//
++// The encoding we use instead is meant to be conceptually simple, reasonably
++// space efficient, and simple to decode. And unlike most of the other schemes
++// agove, strictness rather than flexibility is preferred. For example, when
++// decoding a Form used for authorization, unrecognized fields should not be
++// silently skipped, and unexpected types should not be silently coerced.
++//
++// Each element is encoded as a type tag followed by encodings for one or more
++// values. The tag is encoded as an plain (i.e. not zig-zag encoded) varint, and
++// it determines the meaning, number, and types of the values. Values are
++// encoded according to their type:
++//
++//   An integer or bool is encoded as plain varint.
++//
++//   A string is encoded as a length (plain varint) followed by raw bytes.
++//
++//   A pointer is encoded the same as a boolean optionally followed by a value.
++//
++//   Variable-length slices (e.g. for conjuncts, disjuncts, predicate arguments)
++//   are encoded as a count (plain varint) followed by the encoding for the each
++//   element.
++//
++//   An embedded struct or interface is encoded as a tag and encoded value.
++//
++// Differences from protobuf:
++//
++//   Our tags carry implicit type information. In protobuf, the low 3 bits of
++//   each tag carries an explicit type marker. That allows protobuf to skip over
++//   unrecognized fields (not a design goal for us). It also means protobuf can
++//   only handle 15 unique tags before overflowing to 2 byte encodings.
++//
++//   Our tags describe both the meaning and the type of all enclosed values, and
++//   we use tags only when the meaning or type can vary (i.e. for interface
++//   types). Protobuf uses tags for every enclosed value, and those tags also to
++//   carry type information. Protobuf is more efficient when there are many
++//   optional fields. For us, nearly all fields are required.
++//
++//   Enclosed values in our encoding must appear in order. Protobuf values can
++//   appear in any order. Protobuf encodings can concatenated, truncated, etc.,
++//   all non-features for us.
++//
++// Note: In most cases, a tag appears only when the type would be ambiguous,
++// i.e. when encoding Term or Form. When encoding Says and Speaksfor, however,
++// the enclosed Prin values are not ambiguous, but we include the tag anyway for
++// consistency since all other Prin values have a tag.
++package auth
+diff --git a/go/src/cloudproxy/tao/auth/format.go b/go/src/cloudproxy/tao/auth/format.go
+new file mode 100644
+index 0000000..4efa28c
+--- /dev/null
++++ b/go/src/cloudproxy/tao/auth/format.go
+@@ -0,0 +1,88 @@
++// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package auth
++
++// This file implements Format() functions for pretty-printing elements.
++// When printed with format verb %v, the "verbose" long form is used.
++// When printed with format verb %s, the "short" elided form is used.
++// When printed with other verbs, the output format is unspecified.
++
++import (
++	"fmt"
++)
++
++// Format outputs a pretty-printed Form or Term.
++func format(out fmt.State, verb rune, e AuthLogicElement) {
++	if verb == 's' {
++		fmt.Fprintf(out, "%s", e.ShortString())
++	} else {
++		fmt.Fprintf(out, "%s", e.String())
++	}
++}
++
++// Format outputs a pretty-printed Prin using short or long formats.
++func (e Prin) Format(out fmt.State, verb rune) {
++	format(out, verb, e)
++}
++
++// Format outputs a pretty-printed Str using short or long formats.
++func (e Str) Format(out fmt.State, verb rune) {
++	format(out, verb, e)
++}
++
++// Format outputs a pretty-printed Int using short or long formats.
++func (e Int) Format(out fmt.State, verb rune) {
++	format(out, verb, e)
++}
++
++// Format outputs a pretty-printed Pred using short or long formats.
++func (e Pred) Format(out fmt.State, verb rune) {
++	format(out, verb, e)
++}
++
++// Format outputs a pretty-printed Const using short or long formats.
++func (e Const) Format(out fmt.State, verb rune) {
++	format(out, verb, e)
++}
++
++// Format outputs a pretty-printed Not using short or long formats.
++func (e Not) Format(out fmt.State, verb rune) {
++	format(out, verb, e)
++}
++
++// Format outputs a pretty-printed And using short or long formats.
++func (e And) Format(out fmt.State, verb rune) {
++	format(out, verb, e)
++}
++
++// Format outputs a pretty-printed Or using short or long formats.
++func (e Or) Format(out fmt.State, verb rune) {
++	format(out, verb, e)
++}
++
++// Format outputs a pretty-printed Implies using short or long formats.
++func (e Implies) Format(out fmt.State, verb rune) {
++	format(out, verb, e)
++}
++
++// Format outputs a pretty-printed Speaksfor using short or long formats.
++func (e Speaksfor) Format(out fmt.State, verb rune) {
++	format(out, verb, e)
++}
++
++// Format outputs a pretty-printed Says using short or long formats.
++func (e Says) Format(out fmt.State, verb rune) {
++	format(out, verb, e)
++}
+diff --git a/go/src/cloudproxy/tao/auth/lexer.go b/go/src/cloudproxy/tao/auth/lexer.go
+new file mode 100644
+index 0000000..e953db1
+--- /dev/null
++++ b/go/src/cloudproxy/tao/auth/lexer.go
+@@ -0,0 +1,248 @@
++// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package auth
++
++import (
++	"bytes"
++	"fmt"
++	"io"
++	"unicode"
++	"unicode/utf8"
++)
++
++// token is a value returned from the lexer.
++type token struct {
++	typ itemType
++	val interface{} // string, int64, error, or nil
++}
++
++// itemType identifies the type of lex items.
++type itemType int
++
++const (
++	itemError          itemType = iota // value contains error
++	itemUnexpectedRune                 // value contains the rune
++	itemEOF                            // value is nil
++	itemKeyword                        // value contains the keyword
++	itemIdentifier                     // value contains the identifer
++	itemStr                            // value contains the string
++	itemInt                            // value contains the int64
++	itemLP                             // value contains '('
++	itemRP                             // value contains ')'
++	itemComma                          // value contains ','
++	itemDot                            // value contains '.'
++	itemWhitespace                     // value contains ' ', '\t', '\n', etc.
++)
++
++var (
++	tokenFrom      = token{itemKeyword, "from"}
++	tokenUntil     = token{itemKeyword, "until"}
++	tokenSays      = token{itemKeyword, "says"}
++	tokenSpeaksfor = token{itemKeyword, "speaksfor"}
++	tokenImplies   = token{itemKeyword, "implies"}
++	tokenOr        = token{itemKeyword, "or"}
++	tokenAnd       = token{itemKeyword, "and"}
++	tokenNot       = token{itemKeyword, "not"}
++	tokenFalse     = token{itemKeyword, "false"}
++	tokenTrue      = token{itemKeyword, "true"}
++	tokenKey       = token{itemKeyword, "key"}
++	tokenLP        = token{itemLP, '('}
++	tokenRP        = token{itemRP, ')'}
++	tokenComma     = token{itemComma, ','}
++	tokenDot       = token{itemDot, '.'}
++	tokenEOF       = token{itemEOF, nil}
++)
++
++// String returns pretty-printed token, e.g. for debugging.
++func (i token) String() string {
++	switch i.typ {
++	case itemError:
++		return fmt.Sprintf("Error{%v}", i.val)
++	case itemUnexpectedRune:
++		return fmt.Sprintf("UnexpectedRune{%v}", i.val)
++	case itemEOF:
++		return "EOF{}"
++	case itemKeyword:
++		return fmt.Sprintf("Keyword{%q}", i.val)
++	case itemIdentifier:
++		return fmt.Sprintf("Identifier{%q}", i.val)
++	case itemStr:
++		return fmt.Sprintf("Str{%q}", i.val)
++	case itemInt:
++		return fmt.Sprintf("Int{%v}", i.val)
++	case itemLP, itemRP, itemComma, itemDot:
++		return fmt.Sprintf("Punct{%q}", i.val)
++	default:
++		panic("not reached")
++	}
++}
++
++// reader provides input to the scanner.
++type reader interface {
++	io.RuneScanner // for ReadRune, UnreadRune
++	io.Reader      // for Fscanf
++}
++
++// lexer holds the state of the scanner.
++type lexer struct {
++	input reader       // the input being scanned.
++	val   bytes.Buffer // accumulated runes returned from next().
++	width int          // width of last rune returned from next().
++	done  *token       // token found at end of input.
++}
++
++const eof rune = 0
++
++func (l *lexer) lexMain() token {
++	for {
++		switch r := l.next(); {
++		case r == eof:
++			return tokenEOF
++		case unicode.IsSpace(r):
++			l.reset()
++		case r == '(':
++			return token{itemLP, r}
++		case r == ')':
++			return token{itemRP, r}
++		case r == ',':
++			return token{itemComma, r}
++		case r == '.':
++			return token{itemDot, r}
++		case r == '"':
++			l.backup()
++			return l.lexStr()
++		case r == '-' || digit(r):
++			l.backup()
++			return l.lexInt()
++		case lower(r):
++			l.backup()
++			return l.lexKeyword()
++		case upper(r):
++			l.backup()
++			return l.lexIdentifier()
++		default:
++			l.backup()
++			return token{itemUnexpectedRune, r}
++		}
++	}
++}
++
++func (l *lexer) lexStr() token {
++	var s string
++	if _, err := fmt.Fscanf(l.input, "%q", &s); err != nil {
++		return token{itemError, err}
++	}
++	return token{itemStr, s}
++}
++
++func (l *lexer) lexInt() token {
++	var i int64
++	if _, err := fmt.Fscanf(l.input, "%d", &i); err != nil {
++		return token{itemError, err}
++	}
++	return token{itemInt, i}
++}
++
++func (l *lexer) lexKeyword() token {
++	for {
++		r := l.next()
++		if !lower(r) {
++			l.backup()
++			t := token{itemKeyword, l.reset()}
++			return t
++		}
++	}
++}
++
++func (l *lexer) lexIdentifier() token {
++	// precondition: l.next() is [A-Z]
++	for {
++		r := l.next()
++		if !(lower(r) || upper(r) || digit(r) || r == '_') {
++			l.backup()
++			return token{itemIdentifier, l.reset()}
++		}
++	}
++}
++
++func digit(r rune) bool {
++	return '0' <= r && r <= '9'
++}
++
++func lower(r rune) bool {
++	return 'a' <= r && r <= 'z'
++}
++
++func upper(r rune) bool {
++	return 'A' <= r && r <= 'Z'
++}
++
++// next returns the next rune in the input.
++func (l *lexer) next() (r rune) {
++	r, n, err := l.input.ReadRune()
++	if err == io.EOF {
++		l.width = 0
++		return eof
++	}
++	l.val.WriteRune(r)
++	// BUG(kwalsh) fmt.ScanState.ReadRune() returns incorrect length. See issue
++	// 8512 here: https://code.google.com/p/go/issues/detail?id=8512
++	n = utf8.RuneLen(r)
++	l.width = n
++	return r
++}
++
++// backup steps back one rune. Can be called only once per call of next.
++func (l *lexer) backup() {
++	if l.width > 0 {
++		l.input.UnreadRune()
++		l.val.Truncate(l.val.Len() - l.width)
++		l.width = 0
++	}
++}
++
++// reset consumes accumulated input and resets val and width.
++func (l *lexer) reset() string {
++	s := l.val.String()
++	l.val.Reset()
++	l.width = 0
++	return s
++}
++
++// lex creates a new scanner for the input string.
++func lex(input reader) *lexer {
++	return &lexer{input: input}
++}
++
++// nextToken returns the next token from the input.
++func (l *lexer) nextToken() token {
++	if l.done != nil {
++		// only happens after itemEOF, itemError, or itemUnexpectedRune
++		return *l.done
++	}
++	token := l.lexMain()
++	l.reset()
++	if token == tokenEOF || token.typ == itemError || token.typ == itemUnexpectedRune {
++		l.done = &token
++	}
++	return token
++}
++
++// peek gets the next rune in the input without advancing the input.
++func (l *lexer) peek() rune {
++	r := l.next()
++	l.backup()
++	return r
++}
+diff --git a/go/src/cloudproxy/tao/auth/parser.go b/go/src/cloudproxy/tao/auth/parser.go
+new file mode 100644
+index 0000000..ec76c80
+--- /dev/null
++++ b/go/src/cloudproxy/tao/auth/parser.go
+@@ -0,0 +1,489 @@
++// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++// This code borrows heavily from the lexer design and implementation for the
++// template package. See http://golang.org/src/pkg/text/template/parse/parse.go
++
++package auth
++
++import (
++	"fmt"
++)
++
++// The functions in this file use one token lookahead, but only when more input
++// is actually called for. The lexer may read one rune ahead while getting a
++// token, but will unread that rune when the token is completed. The goal is to
++// allow parsing an element out of a string or input stream that contains other
++// data after the element.
++//
++// The parseX() functions properly handle outer parenthesis. For
++// example, parsePred() will accept "P(1)", "(P(1))", and " ( ((P((1 )) ) ))".
++// The expectX() functions do not allow outer parenthesis. So
++// expectPred() will handle "P(1)" and "P( (( 1) ))", but not "(P(1))".
++//
++// Onless otherwise documented, in all cases the parseX() and expectX()
++// functions are greedy, consuming input until either an error is encountered or
++// the element can't be expanded further.
++
++// parser holds the state of the recursive descent parser.
++type parser struct {
++	lex           *lexer
++	lookahead     token
++	haveLookahead bool
++}
++
++func (parser *parser) cur() token {
++	if !parser.haveLookahead {
++		parser.lookahead = parser.lex.nextToken()
++		parser.haveLookahead = true
++	}
++	return parser.lookahead
++}
++
++// advance discards lookahead; the next call to cur() will get a new token.
++func (parser *parser) advance() {
++	parser.haveLookahead = false
++}
++
++// expect checks whether cur matches t and, if so, advances to the next token.
++func (parser *parser) expect(t token) error {
++	if parser.cur() != t {
++		return fmt.Errorf("expected %q, found %v", t.val, parser.cur())
++	}
++	parser.advance()
++	return nil
++}
++
++// skipOpenParens skips and counts open parens.
++func (parser *parser) skipOpenParens() int {
++	n := 0
++	for parser.cur() == tokenLP {
++		parser.advance()
++		n++
++	}
++	return n
++}
++
++// expectCloseParens expects n close parens.
++func (parser *parser) expectCloseParens(n int) error {
++	for n > 0 {
++		err := parser.expect(tokenRP)
++		if err != nil {
++			return err
++		}
++		n--
++	}
++	return nil
++}
++
++// expectPrin expects a Prin.
++func (parser *parser) expectPrin() (p Prin, err error) {
++	err = parser.expect(tokenKey)
++	if err != nil {
++		return
++	}
++	if r := parser.lex.peek(); r != '(' {
++		err = fmt.Errorf(`expected '(' directly after "key", found %q`, r)
++		return
++	}
++	err = parser.expect(tokenLP)
++	if err != nil {
++		return
++	}
++	key, err := parser.parseStr()
++	if err != nil {
++		return
++	}
++	err = parser.expect(tokenRP)
++	if err != nil {
++		return
++	}
++	p.Key = string(key)
++	p.Ext = nil
++	for parser.lex.peek() == '.' {
++		if parser.cur() != tokenDot {
++			panic("not reached")
++		}
++		parser.advance()
++		name, args, err := parser.expectNameAndArgs()
++		if err != nil {
++			return p, err
++		}
++		p.Ext = append(p.Ext, PrinExt{name, args})
++	}
++	return
++}
++
++// parsePrin parses Prin with optional outer parens.
++func (parser *parser) parsePrin() (p Prin, err error) {
++	n := parser.skipOpenParens()
++	p, err = parser.expectPrin()
++	if err != nil {
++		return
++	}
++	err = parser.expectCloseParens(n)
++	return
++}
++
++// expectNameAndArgs expects an identifier, optionally followed by
++// a parenthesized list of zero or more comma-separated terms.
++func (parser *parser) expectNameAndArgs() (string, []Term, error) {
++	if parser.cur().typ != itemIdentifier {
++		return "", nil, fmt.Errorf("expected identifier, found %v", parser.cur())
++	}
++	name := parser.cur().val.(string)
++	parser.advance()
++	if parser.lex.peek() != '(' {
++		// no parens
++		return name, nil, nil
++	}
++	if parser.cur() != tokenLP {
++		panic("not reached")
++	}
++	parser.advance()
++	if parser.cur() == tokenRP {
++		// empty parens
++		parser.advance()
++		return name, nil, nil
++	}
++	var args []Term
++	for {
++		t, err := parser.parseTerm()
++		if err != nil {
++			return "", nil, err
++		}
++		args = append(args, t)
++		if parser.cur() != tokenComma {
++			break
++		}
++		parser.advance()
++	}
++	err := parser.expect(tokenRP)
++	if err != nil {
++		return "", nil, err
++	}
++	return name, args, nil
++}
++
++// expectStr expects a Str.
++func (parser *parser) expectStr() (Str, error) {
++	if parser.cur().typ != itemStr {
++		return "", fmt.Errorf("expected string, found %v", parser.cur())
++	}
++	t := Str(parser.cur().val.(string))
++	parser.advance()
++	return t, nil
++}
++
++// parseStr parses a Str with optional outer parens.
++func (parser *parser) parseStr() (t Str, err error) {
++	n := parser.skipOpenParens()
++	t, err = parser.expectStr()
++	if err != nil {
++		return
++	}
++	err = parser.expectCloseParens(n)
++	return
++}
++
++// expectInt expects an Int.
++func (parser *parser) expectInt() (Int, error) {
++	if parser.cur().typ != itemInt {
++		return 0, fmt.Errorf("expected int, found %v", parser.cur())
++	}
++	t := Int(parser.cur().val.(int64))
++	parser.advance()
++	return t, nil
++}
++
++// parseInt parses an Int with optional outer parens.
++func (parser *parser) parseInt() (Int, error) {
++	n := parser.skipOpenParens()
++	t, err := parser.expectInt()
++	if err != nil {
++		return 0, err
++	}
++	err = parser.expectCloseParens(n)
++	if err != nil {
++		return 0, err
++	}
++	return t, nil
++}
++
++// expectTerm expects a Term.
++func (parser *parser) expectTerm() (Term, error) {
++	switch parser.cur().typ {
++	case itemStr:
++		return parser.expectStr()
++	case itemInt:
++		return parser.expectInt()
++	case itemKeyword:
++		return parser.expectPrin()
++	default:
++		return nil, fmt.Errorf("expected term, found %v", parser.cur())
++	}
++}
++
++// parseTerm parses a Term with optional outer parens.
++func (parser *parser) parseTerm() (Term, error) {
++	n := parser.skipOpenParens()
++	t, err := parser.expectTerm()
++	if err != nil {
++		return nil, err
++	}
++	err = parser.expectCloseParens(n)
++	if err != nil {
++		return nil, err
++	}
++	return t, nil
++}
++
++// expectPred expects a Pred.
++func (parser *parser) expectPred() (f Pred, err error) {
++	name, args, err := parser.expectNameAndArgs()
++	if err != nil {
++		return
++	}
++	return Pred{name, args}, nil
++}
++
++// parsePred parses a Pred with optional outer parens.
++func (parser *parser) parsePred() (f Pred, err error) {
++	n := parser.skipOpenParens()
++	f, err = parser.expectPred()
++	if err != nil {
++		return
++	}
++	err = parser.expectCloseParens(n)
++	return
++}
++
++// expectConst expects a Const.
++func (parser *parser) expectConst() (f Const, err error) {
++	if parser.cur() != tokenTrue && parser.cur() != tokenFalse {
++		err = fmt.Errorf("expected Const, found %v", parser.cur())
++		return
++	}
++	f = Const(parser.cur() == tokenTrue)
++	parser.advance()
++	return
++}
++
++// parseConst parses a Const with optional outer parens.
++func (parser *parser) parseConst() (f Const, err error) {
++	n := parser.skipOpenParens()
++	f, err = parser.expectConst()
++	if err != nil {
++		return
++	}
++	err = parser.expectCloseParens(n)
++	return
++}
++
++// expectFrom optionally expects a "(from|until) int" clause for a says formula.
++func (parser *parser) expectOptionalTime(t token) (*int64, error) {
++	if parser.cur() != t {
++		return nil, nil
++	}
++	parser.advance()
++	i, err := parser.parseInt()
++	if err != nil {
++		return nil, err
++	}
++	val := int64(i)
++	return &val, nil
++}
++
++// expectSaysOrSpeaksfor expects a says or speaksfor formula. If greedy is true,
++// this will parse as much input as possible. Otherwise, it will take only as
++// much input as needed to make a valid formula.
++func (parser *parser) expectSaysOrSpeaksfor(greedy bool) (Form, error) {
++	// Prin [from Time] [until Time] says Form
++	// Prin speaksfor Prin
++	p, err := parser.parsePrin()
++	if err != nil {
++		return nil, err
++	}
++	switch parser.cur() {
++	case tokenSpeaksfor:
++		parser.advance()
++		d, err := parser.parsePrin()
++		if err != nil {
++			return nil, err
++		}
++		return Speaksfor{p, d}, nil
++	case tokenFrom, tokenUntil, tokenSays:
++		from, err := parser.expectOptionalTime(tokenFrom)
++		if err != nil {
++			return nil, err
++		}
++		until, err := parser.expectOptionalTime(tokenUntil)
++		if err != nil {
++			return nil, err
++		}
++		if from == nil {
++			from, err = parser.expectOptionalTime(tokenFrom)
++			if err != nil {
++				return nil, err
++			}
++		}
++		if parser.cur() != tokenSays {
++			if from == nil && until == nil {
++				return nil, fmt.Errorf(`expected "from", "until" or "says", found %v`, parser.cur())
++			} else if until == nil {
++				return nil, fmt.Errorf(`expected "until" or "says", found %v`, parser.cur())
++			} else if from == nil {
++				return nil, fmt.Errorf(`expected "from" or "says", found %v`, parser.cur())
++			} else {
++				return nil, fmt.Errorf(`expected "says", found %v`, parser.cur())
++			}
++		}
++		parser.advance()
++		var msg Form
++		if greedy {
++			msg, err = parser.parseForm()
++		} else {
++			msg, err = parser.parseFormAtHigh(true)
++		}
++		if err != nil {
++			return nil, err
++		}
++		return Says{p, from, until, msg}, nil
++	default:
++		return nil, fmt.Errorf(`expected "speaksfor", "from", "until", or "says", found %v`, parser.cur())
++	}
++}
++
++// The functions follow normal precedence rules, e.g. roughly:
++// L = O imp I | I
++// O = A or A or A or ... or A | A
++// A = H and H and H ... and H | H
++// H = not N | ( L ) | P(x) | true | false | P says L | P speaksfor P
++
++// parseFormAtHigh parses a Form, but stops at any binary Form operator. If
++// greedy is true, this will parse as much input as possible. Otherwise, it will
++// parse only as much input as needed to make a valid formula.
++func (parser *parser) parseFormAtHigh(greedy bool) (Form, error) {
++	switch parser.cur() {
++	case tokenLP:
++		parser.advance()
++		f, err := parser.parseForm()
++		if err != nil {
++			return nil, err
++		}
++		err = parser.expect(tokenRP)
++		if err != nil {
++			return nil, err
++		}
++		return f, nil
++	case tokenTrue, tokenFalse:
++		return parser.expectConst()
++	case tokenNot:
++		parser.advance()
++		f, err := parser.parseFormAtHigh(greedy)
++		if err != nil {
++			return nil, err
++		}
++		return Not{f}, nil
++	case tokenKey:
++		return parser.expectSaysOrSpeaksfor(greedy)
++	default:
++		if parser.cur().typ == itemIdentifier {
++			return parser.expectPred()
++		}
++		return nil, fmt.Errorf("expected Form, found %v", parser.cur())
++	}
++}
++
++// parseFormAtAnd parses a Form, but stops when it reaches a binary Form
++// operator of lower precedence than "and".
++func (parser *parser) parseFormAtAnd() (Form, error) {
++	f, err := parser.parseFormAtHigh(true)
++	if err != nil {
++		return nil, err
++	}
++	if parser.cur() != tokenAnd {
++		return f, nil
++	}
++	and, ok := f.(And)
++	if !ok {
++		and = And{Conjunct: []Form{f}}
++	}
++	for parser.cur() == tokenAnd {
++		parser.advance()
++		g, err := parser.parseFormAtHigh(true)
++		if err != nil {
++			return nil, err
++		}
++		and.Conjunct = append(and.Conjunct, g)
++	}
++	return and, nil
++}
++
++// parseFormAtOr parses a Form, but stops when it reaches a binary Form operator
++// of lower precedence than "or".
++func (parser *parser) parseFormAtOr() (Form, error) {
++	f, err := parser.parseFormAtAnd()
++	if err != nil {
++		return nil, err
++	}
++	if parser.cur() != tokenOr {
++		return f, nil
++	}
++	or, ok := f.(Or)
++	if !ok {
++		or = Or{Disjunct: []Form{f}}
++	}
++	for parser.cur() == tokenOr {
++		parser.advance()
++		g, err := parser.parseFormAtAnd()
++		if err != nil {
++			return nil, err
++		}
++		or.Disjunct = append(or.Disjunct, g)
++	}
++	return or, nil
++}
++
++// parseForm parses a Form. This function is greedy: it consumes as much input
++// as possible until either an error or EOF is encountered.
++func (parser *parser) parseForm() (Form, error) {
++	f, err := parser.parseFormAtOr()
++	if err != nil {
++		return nil, err
++	}
++	if parser.cur() != tokenImplies {
++		return f, nil
++	}
++	parser.advance()
++	g, err := parser.parseForm()
++	if err != nil {
++		return nil, err
++	}
++	return Implies{f, g}, nil
++}
++
++// parseShortestForm parses the shortest valid Form. This function is not
++// greedy: it consumes only as much input as necessary to obtain a valid
++// formula. For example, "(p says a and b ...)" and "p says (a and b ...) will
++// be parsed in their entirety, but given "p says a and b ... ", only "p says a"
++// will be parsed.
++func (parser *parser) parseShortestForm() (Form, error) {
++	return parser.parseFormAtHigh(false)
++}
++
++func newParser(input reader) *parser {
++	lex := lex(input)
++	return &parser{lex: lex}
++}
+diff --git a/go/src/cloudproxy/tao/auth/scan.go b/go/src/cloudproxy/tao/auth/scan.go
+new file mode 100644
+index 0000000..6e930a0
+--- /dev/null
++++ b/go/src/cloudproxy/tao/auth/scan.go
+@@ -0,0 +1,228 @@
++// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package auth
++
++// This file implements Scan() functions for all elements so they can be used
++// with fmt.Scanf() and friends.
++
++import (
++	"fmt"
++)
++
++// Scan parses a Prin, with optional outer parens.
++func (p *Prin) Scan(state fmt.ScanState, verb rune) error {
++	parser := newParser(state)
++	prin, err := parser.parsePrin()
++	if err != nil {
++		return err
++	}
++	*p = prin
++	return nil
++}
++
++// Scan parses a PrinExt.
++func (e *PrinExt) Scan(state fmt.ScanState, verb rune) error {
++	parser := newParser(state)
++	name, args, err := parser.expectNameAndArgs()
++	if err != nil {
++		return err
++	}
++	e.Name = name
++	e.Arg = args
++	return nil
++}
++
++// AnyTerm is a struct that can be used in when scanning for a Term, since Term
++// itself is an interface and interface pointers are not valid receivers.
++type AnyTerm struct {
++	Term Term
++}
++
++// Scan parses a Term, with optional outer parens.
++func (t *AnyTerm) Scan(state fmt.ScanState, verb rune) error {
++	parser := newParser(state)
++	term, err := parser.parseTerm()
++	if err != nil {
++		return err
++	}
++	t.Term = term
++	return nil
++}
++
++// Scan parses a Str, with optional outer parens.
++func (t *Str) Scan(state fmt.ScanState, verb rune) error {
++	parser := newParser(state)
++	s, err := parser.parseStr()
++	if err != nil {
++		return err
++	}
++	*t = s
++	return nil
++}
++
++// Scan parses an Int, with optional outer parens.
++func (t *Int) Scan(state fmt.ScanState, verb rune) error {
++	parser := newParser(state)
++	i, err := parser.parseInt()
++	if err != nil {
++		return err
++	}
++	*t = i
++	return nil
++}
++
++// AnyForm is a struct that can be used in when scanning for a Form, since Form
++// itself is an interface and interface pointers are not valid receivers.
++type AnyForm struct {
++	Form Form
++}
++
++// Scan parses a Form, with optional outer parens. This function is not greedy:
++// it consumes only as much input as necessary to obtain a valid formula. For
++// example, "(p says a and b ...)" and "p says (a and b ...) will be parsed in
++// their entirety, but given "p says a and b ... ", only "p says a" will be
++// parsed.
++func (f *AnyForm) Scan(state fmt.ScanState, verb rune) error {
++	parser := newParser(state)
++	form, err := parser.parseShortestForm()
++	if err != nil {
++		return err
++	}
++	f.Form = form
++	return nil
++}
++
++// Scan parses a Pred, with optional outer parens.
++func (f *Pred) Scan(state fmt.ScanState, verb rune) error {
++	parser := newParser(state)
++	pred, err := parser.parsePred()
++	if err != nil {
++		return err
++	}
++	*f = pred
++	return nil
++}
++
++// Scan parses a Const, with optional outer parens. This function is not greedy.
++func (f *Const) Scan(state fmt.ScanState, verb rune) error {
++	parser := newParser(state)
++	c, err := parser.parseConst()
++	if err != nil {
++		return err
++	}
++	*f = c
++	return nil
++}
++
++// Scan parses a Not, with optional outer parens. This function is not greedy.
++func (f *Not) Scan(state fmt.ScanState, verb rune) error {
++	parser := newParser(state)
++	form, err := parser.parseShortestForm()
++	if err != nil {
++		return err
++	}
++	n, ok := form.(Not)
++	if !ok {
++		return fmt.Errorf(`expecting "not": %s`, form)
++	}
++	*f = n
++	return nil
++}
++
++// Scan parses an And, with required outer parens. This function is not greedy.
++// BUG(kwalsh): This won't succeed unless there are outer parens. For
++// consistency, perhaps I need to make non-greedy parse functions for each
++// operator?
++func (f *And) Scan(state fmt.ScanState, verb rune) error {
++	parser := newParser(state)
++	form, err := parser.parseShortestForm()
++	if err != nil {
++		return err
++	}
++	n, ok := form.(And)
++	if !ok {
++		return fmt.Errorf(`expecting "and": %s`, form)
++	}
++	*f = n
++	return nil
++}
++
++// Scan parses an Or, with required outer parens. This function is not greedy.
++// BUG(kwalsh): This won't succeed unless there are outer parens. For
++// consistency, perhaps I need to make non-greedy parse functions for each
++// operator?
++func (f *Or) Scan(state fmt.ScanState, verb rune) error {
++	parser := newParser(state)
++	form, err := parser.parseShortestForm()
++	if err != nil {
++		return err
++	}
++	n, ok := form.(Or)
++	if !ok {
++		return fmt.Errorf(`expecting "or": %s`, form)
++	}
++	*f = n
++	return nil
++}
++
++// Scan parses an Implies, with required outer parens. This function is not
++// greedy.
++// BUG(kwalsh): This won't succeed unless there are outer parens. For
++// consistency, perhaps I need to make non-greedy parse functions for each
++// operator?
++func (f *Implies) Scan(state fmt.ScanState, verb rune) error {
++	parser := newParser(state)
++	form, err := parser.parseShortestForm()
++	if err != nil {
++		return err
++	}
++	n, ok := form.(Implies)
++	if !ok {
++		return fmt.Errorf(`expecting "implies": %s`, form)
++	}
++	*f = n
++	return nil
++}
++
++// Scan parses a Says, with optional outer parens. This function is not greedy.
++func (f *Says) Scan(state fmt.ScanState, verb rune) error {
++	parser := newParser(state)
++	form, err := parser.parseShortestForm()
++	if err != nil {
++		return err
++	}
++	n, ok := form.(Says)
++	if !ok {
++		return fmt.Errorf(`expecting "says": %s`, form)
++	}
++	*f = n
++	return nil
++}
++
++// Scan parses a Speaksfor, with optional outer parens. This function is not
++// greedy.
++func (f *Speaksfor) Scan(state fmt.ScanState, verb rune) error {
++	parser := newParser(state)
++	form, err := parser.parseShortestForm()
++	if err != nil {
++		return err
++	}
++	n, ok := form.(Speaksfor)
++	if !ok {
++		return fmt.Errorf(`expecting "speaksfor": %s`, form)
++	}
++	*f = n
++	return nil
++}
+diff --git a/go/src/cloudproxy/tao/auth/shortstring.go b/go/src/cloudproxy/tao/auth/shortstring.go
+new file mode 100644
+index 0000000..3980bfe
+--- /dev/null
++++ b/go/src/cloudproxy/tao/auth/shortstring.go
+@@ -0,0 +1,174 @@
++// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package auth
++
++// This file implements ShortString() functions for pretty-printing elements
++// with elision.
++
++// TODO(kwalsh) Perhaps elision can be supported under fmt.Printf() using verb
++// modifiers, flags, precision, etc.?
++
++import (
++	"bytes"
++	"fmt"
++	"io"
++)
++
++// ShortString returns an elided pretty-printed Prin.
++func (p Prin) ShortString() string {
++	var out bytes.Buffer
++	if len(p.Key) > 15 {
++		fmt.Fprintf(&out, "key(%.10q...)", p.Key)
++	} else {
++		fmt.Fprintf(&out, "key(%q)", p.Key)
++	}
++	for _, e := range p.Ext {
++		fmt.Fprintf(&out, ".%s", e.ShortString())
++	}
++	return out.String()
++}
++
++// ShortString returns an elided pretty-printed PrinExt.
++func (e PrinExt) ShortString() string {
++	return nameAndArgShortString(e.Name, e.Arg)
++}
++
++// nameAndArgShortString returns an elided pretty-printed name and argument list.
++func nameAndArgShortString(name string, arg []Term) string {
++	if len(arg) == 0 {
++		return name
++	}
++	var out bytes.Buffer
++	fmt.Fprintf(&out, "%s(", name)
++	for i, a := range arg {
++		if i > 0 {
++			fmt.Fprintf(&out, ", ")
++		}
++		fmt.Fprintf(&out, "%s", a.ShortString())
++	}
++	fmt.Fprintf(&out, ")")
++	return out.String()
++}
++
++// ShortString returns an elided pretty-printed Int.
++func (t Int) ShortString() string {
++	return fmt.Sprintf("%d", int64(t))
++}
++
++// ShortString returns an elided pretty-printed Str.
++func (t Str) ShortString() string {
++	if len(string(t)) > 15 {
++		return fmt.Sprintf("%.10q...", string(t))
++	} else {
++		return fmt.Sprintf("%q", string(t))
++	}
++}
++
++// ShortString returns an elided pretty-printed Pred.
++func (p Pred) ShortString() string {
++	return nameAndArgShortString(p.Name, p.Arg)
++}
++
++// ShortString returns an elided pretty-printed Const.
++func (f Const) ShortString() string {
++	if f == true {
++		return "true"
++	} else {
++		return "false"
++	}
++}
++
++// ShortString returns an elided pretty-printed Not.
++func (f Not) ShortString() string {
++	var out bytes.Buffer
++	fmt.Fprintf(&out, "not ")
++	printShortFormWithParens(&out, precedenceHigh, f.Negand)
++	return out.String()
++}
++
++// ShortString returns an elided pretty-printed And.
++func (f And) ShortString() string {
++	if len(f.Conjunct) == 0 {
++		return "true"
++	} else if len(f.Conjunct) == 1 {
++		return f.Conjunct[0].ShortString()
++	} else {
++		var out bytes.Buffer
++		for i, e := range f.Conjunct {
++			if i > 0 {
++				fmt.Fprintf(&out, " and ")
++			}
++			printShortFormWithParens(&out, precedenceAnd, e)
++		}
++		return out.String()
++	}
++}
++
++// ShortString returns an elided pretty-printed Or.
++func (f Or) ShortString() string {
++	if len(f.Disjunct) == 0 {
++		return "false"
++	} else if len(f.Disjunct) == 1 {
++		return f.Disjunct[0].ShortString()
++	} else {
++		var out bytes.Buffer
++		for i, e := range f.Disjunct {
++			if i > 0 {
++				fmt.Fprintf(&out, " or ")
++			}
++			printShortFormWithParens(&out, precedenceOr, e)
++		}
++		return out.String()
++	}
++}
++
++// ShortString returns an elided pretty-printed Implies.
++func (f Implies) ShortString() string {
++	var out bytes.Buffer
++	printShortFormWithParens(&out, precedenceImplies+1, f.Antecedent)
++	fmt.Fprintf(&out, " implies ")
++	printShortFormWithParens(&out, precedenceImplies, f.Consequent)
++	return out.String()
++}
++
++// ShortString returns an elided pretty-printed Speaksfor.
++func (f Speaksfor) ShortString() string {
++	return fmt.Sprintf("%s speaksfor %s", f.Delegate.ShortString(), f.Delegator.ShortString())
++}
++
++// ShortString returns an elided pretty-printed Says.
++func (f Says) ShortString() string {
++	speaker := f.Speaker.ShortString()
++	message := f.Message.ShortString()
++	if f.Commences() && f.Expires() {
++		return fmt.Sprintf("%s from %d until %d says %s", speaker, *f.Time, *f.Expiration, message)
++	} else if f.Commences() {
++		return fmt.Sprintf("%s from %d says %s", speaker, *f.Time, message)
++	} else if f.Expires() {
++		return fmt.Sprintf("%s until %d says %s", speaker, *f.Expiration, message)
++	} else {
++		return fmt.Sprintf("%s says %s", speaker, message)
++	}
++}
++
++// printFormWithParens prints either elided f or (f), depending on ho level
++// compares to the precedence of f.
++func printShortFormWithParens(out io.Writer, level int, f Form) {
++	if level > precedence(f) {
++		fmt.Fprintf(out, "(%s)", f.ShortString())
++	} else {
++		fmt.Fprintf(out, "%s", f.ShortString())
++	}
++}
+diff --git a/go/src/cloudproxy/tao/auth/string.go b/go/src/cloudproxy/tao/auth/string.go
+new file mode 100644
+index 0000000..76a500e
+--- /dev/null
++++ b/go/src/cloudproxy/tao/auth/string.go
+@@ -0,0 +1,203 @@
++// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package auth
++
++// This file implements String() functions for pretty-printing elements.
++
++import (
++	"bytes"
++	"fmt"
++	"io"
++)
++
++// String returns a pretty-printed Prin.
++func (p Prin) String() string {
++	var out bytes.Buffer
++	fmt.Fprintf(&out, "key(%q)", p.Key)
++	for _, e := range p.Ext {
++		fmt.Fprintf(&out, ".%s", e.String())
++	}
++	return out.String()
++}
++
++// String returns a pretty-printed PrinExt.
++func (e PrinExt) String() string {
++	return nameAndArgString(e.Name, e.Arg)
++}
++
++// nameAndArgString returns a pretty-printed name and argument list.
++func nameAndArgString(name string, arg []Term) string {
++	if len(arg) == 0 {
++		return name
++	}
++	var out bytes.Buffer
++	fmt.Fprintf(&out, "%s(", name)
++	for i, a := range arg {
++		if i > 0 {
++			fmt.Fprintf(&out, ", ")
++		}
++		fmt.Fprintf(&out, "%s", a.String())
++	}
++	fmt.Fprintf(&out, ")")
++	return out.String()
++}
++
++// String returns a pretty-printed Int.
++func (t Int) String() string {
++	return fmt.Sprintf("%d", int64(t))
++}
++
++// String returns a pretty-printed Str.
++func (t Str) String() string {
++	return fmt.Sprintf("%q", string(t))
++}
++
++// String returns a pretty-printed Pred.
++func (p Pred) String() string {
++	return nameAndArgString(p.Name, p.Arg)
++}
++
++// String returns a pretty-printed Const.
++func (f Const) String() string {
++	if f == true {
++		return "true"
++	} else {
++		return "false"
++	}
++}
++
++// String returns a pretty-printed Not.
++func (f Not) String() string {
++	var out bytes.Buffer
++	fmt.Fprintf(&out, "not ")
++	printFormWithParens(&out, precedenceHigh, f.Negand)
++	return out.String()
++}
++
++// String returns a pretty-printed And.
++func (f And) String() string {
++	if len(f.Conjunct) == 0 {
++		return "true"
++	} else if len(f.Conjunct) == 1 {
++		return f.Conjunct[0].String()
++	} else {
++		var out bytes.Buffer
++		for i, e := range f.Conjunct {
++			if i > 0 {
++				fmt.Fprintf(&out, " and ")
++			}
++			printFormWithParens(&out, precedenceAnd, e)
++		}
++		return out.String()
++	}
++}
++
++// String returns a pretty-printed Or.
++func (f Or) String() string {
++	if len(f.Disjunct) == 0 {
++		return "false"
++	} else if len(f.Disjunct) == 1 {
++		return f.Disjunct[0].String()
++	} else {
++		var out bytes.Buffer
++		for i, e := range f.Disjunct {
++			if i > 0 {
++				fmt.Fprintf(&out, " or ")
++			}
++			printFormWithParens(&out, precedenceOr, e)
++		}
++		return out.String()
++	}
++}
++
++// String returns a pretty-printed Implies.
++func (f Implies) String() string {
++	var out bytes.Buffer
++	printFormWithParens(&out, precedenceImplies+1, f.Antecedent)
++	fmt.Fprintf(&out, " implies ")
++	printFormWithParens(&out, precedenceImplies, f.Consequent)
++	return out.String()
++}
++
++// String returns a pretty-printed Speaksfor.
++func (f Speaksfor) String() string {
++	return fmt.Sprintf("%s speaksfor %s", f.Delegate.String(), f.Delegator.String())
++}
++
++// String returns a pretty-printed Says.
++func (f Says) String() string {
++	speaker := f.Speaker.String()
++	message := f.Message.String()
++	if f.Commences() && f.Expires() {
++		return fmt.Sprintf("%s from %d until %d says %s", speaker, *f.Time, *f.Expiration, message)
++	} else if f.Commences() {
++		return fmt.Sprintf("%s from %d says %s", speaker, *f.Time, message)
++	} else if f.Expires() {
++		return fmt.Sprintf("%s until %d says %s", speaker, *f.Expiration, message)
++	} else {
++		return fmt.Sprintf("%s says %s", speaker, message)
++	}
++}
++
++const (
++	precedenceSays = iota // lowest
++	precedenceSpeaksfor
++	precedenceImplies
++	precedenceOr
++	precedenceAnd
++	precedenceHigh // not, true, false, Pred
++)
++
++// precedence returns an integer indicating the relative precedence of f.
++func precedence(f Form) int {
++	switch f := f.(type) {
++	case Says:
++		return precedenceSays
++	case Speaksfor:
++		return precedenceSpeaksfor
++	case Implies:
++		return precedenceImplies
++	case Or:
++		if len(f.Disjunct) == 0 {
++			return precedenceHigh // Or{} == false
++		} else if len(f.Disjunct) == 1 {
++			return precedence(f.Disjunct[0]) // Or{f} == f
++		} else {
++			return precedenceOr
++		}
++	case And:
++		if len(f.Conjunct) == 0 {
++			return precedenceHigh // And{} == true
++		} else if len(f.Conjunct) == 1 {
++			return precedence(f.Conjunct[0]) // And{f} == f
++		} else {
++			return precedenceAnd
++		}
++	case Not, Pred, Const:
++		return precedenceHigh
++	default:
++		panic("not reached")
++	}
++}
++
++// printFormWithParens prints either f or (f), depending on ho level compares to
++// the precedence of f.
++func printFormWithParens(out io.Writer, level int, f Form) {
++	if level > precedence(f) {
++		fmt.Fprintf(out, "(%s)", f.String())
++	} else {
++		fmt.Fprintf(out, "%s", f.String())
++	}
++}

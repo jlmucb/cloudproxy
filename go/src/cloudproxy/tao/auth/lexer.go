@@ -50,7 +50,7 @@ var (
 	tokenFrom      = token{itemKeyword, "from"}
 	tokenUntil     = token{itemKeyword, "until"}
 	tokenSays      = token{itemKeyword, "says"}
-	tokenSpeaksfor = token{itemKeyword, "speaskfor"}
+	tokenSpeaksfor = token{itemKeyword, "speaksfor"}
 	tokenImplies   = token{itemKeyword, "implies"}
 	tokenOr        = token{itemKeyword, "or"}
 	tokenAnd       = token{itemKeyword, "and"}

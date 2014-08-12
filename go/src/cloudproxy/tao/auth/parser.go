@@ -270,17 +270,20 @@ func (parser *parser) parsePred() (f Pred, err error) {
 }
 
 // expectConst expects a Const.
-func (parser *parser) expectConst() (Const, error) {
+func (parser *parser) expectConst() (f Const, err error) {
 	if parser.cur() != tokenTrue && parser.cur() != tokenFalse {
-		return Const(false), fmt.Errorf("expected Const, found %v", parser.cur())
+		err = fmt.Errorf("expected Const, found %v", parser.cur())
+		return
 	}
-	return Const(parser.cur() == tokenTrue), nil
+	f = Const(parser.cur() == tokenTrue)
+	parser.advance()
+	return
 }
 
 // parseConst parses a Const with optional outer parens.
-func (parser *parser) parseConst() (t Const, err error) {
+func (parser *parser) parseConst() (f Const, err error) {
 	n := parser.skipOpenParens()
-	t, err = parser.expectConst()
+	f, err = parser.expectConst()
 	if err != nil {
 		return
 	}

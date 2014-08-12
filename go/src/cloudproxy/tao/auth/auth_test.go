@@ -42,7 +42,7 @@ func TestParseTerm(t *testing.T) {
 			t.Fatal("incomplete parse")
 		}
 		if s != `key("123").E()` && x.Term.String() != s {
-			t.Fatalf("bad print: %v %v", x.Term.String(), s)
+			t.Fatalf("bad print: %v vs %v", x.Term.String(), s)
 		}
 	}
 
@@ -119,7 +119,7 @@ func TestParsePred(t *testing.T) {
 			t.Fatal("incomplete parse")
 		}
 		if s != "Foo()" && x.String() != s {
-			t.Fatalf("bad print: %v", x.String())
+			t.Fatalf("bad print: %v vs %s", x.String(), s)
 		}
 	}
 
@@ -137,19 +137,48 @@ func TestParsePred(t *testing.T) {
 func TestParseForm(t *testing.T) {
 	tests := []string{
 		`key("a") says true`,
+		`key("a") from 1 says true`,
+		`key("a") until 2 says true`,
+		`key("a") from 1 until 2 says true`,
+		`key("a") speaksfor key("b")`,
+		`P(1)`,
+		`P(1) and P(2)`,
+		`P(1) and P(2) and P(3) and P(4)`,
+		`P(1) or P(2)`,
+		`P(1) or P(2) or P(3) or P(4)`,
+		`P(1) implies P(2)`,
+		`P(1) implies P(2) implies P(3) or P(4)`,
+		`not P(1)`,
+		`not not P(1)`,
+		`not not not not P(1)`,
+		`P(1) and P(2) and P(3) or P(4)`,
+		`P(1) and P(2) and (P(3) or P(4))`,
+		`P(1) and (P(2) or P(3)) and P(4)`,
+		`(P(1) or P(2)) and P(3) and P(4)`,
+		`P(1) and P(2) and P(3) implies P(4)`,
+		`P(1) and P(2) and (P(3) implies P(4))`,
+		`P(1) and (P(2) implies P(3)) and P(4)`,
+		`(P(1) implies P(2)) and P(3) and P(4)`,
+		`P(1) or P(2) or P(3) implies P(4)`,
+		`P(1) or P(2) or (P(3) implies P(4))`,
+		`P(1) or (P(2) implies P(3)) or P(4)`,
+		`(P(1) implies P(2)) or P(3) or P(4)`,
+		`P(1) or (key("a") says P(2) or P(3))`,
+		`P(1) or (key("a") says P(2)) or P(3)`,
+		`(((P(1))))`,
 	}
 
-	for _, s := range tests {
+	for i, s := range tests {
 		var x AnyForm
-		n, err := fmt.Sscanf(s, "%v", &x)
+		n, err := fmt.Sscanf("("+s+")", "%v", &x)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
 		if n != 1 {
 			t.Fatal("incomplete parse")
 		}
-		if x.Form.String() != s {
-			t.Fatal("bad print: %v", x.Form.String())
+		if i != len(tests)-1 && x.Form.String() != s && "("+x.Form.String()+")" != s{
+			t.Fatalf("bad print: %v vs %s", x.Form.String(), s)
 		}
 	}
 

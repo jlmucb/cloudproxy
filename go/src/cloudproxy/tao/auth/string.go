@@ -187,9 +187,10 @@ func precedence(f Form) int {
 	}
 }
 
-func printFormWithParens(out io.Writer, level int, f Form) string {
+func printFormWithParens(out io.Writer, level int, f Form) {
 	if level > precedence(f) {
-		return "(" + f.String() + ")"
+		fmt.Fprintf(out, "(%s)", f.String())
+	} else {
+		fmt.Fprintf(out, "%s", f.String())
 	}
-	return f.String()
 }

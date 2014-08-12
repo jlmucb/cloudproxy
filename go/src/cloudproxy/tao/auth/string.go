@@ -18,6 +18,7 @@ package auth
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io"
 )
@@ -25,7 +26,7 @@ import (
 // String returns a pretty-printed Prin.
 func (p Prin) String() string {
 	var out bytes.Buffer
-	fmt.Fprintf(&out, "key(%q)", p.Key)
+	fmt.Fprintf(&out, "%s(%q)", p.Type, base64.URLEncoding.EncodeToString(p.Key))
 	for _, e := range p.Ext {
 		fmt.Fprintf(&out, ".%s", e.String())
 	}

@@ -14,6 +14,8 @@
 
 package auth
 
+import "bytes"
+
 // AuthLogicElement is any element of the authorization logic, i.e. a formula, a
 // term, or a principal extension.
 type AuthLogicElement interface {
@@ -41,8 +43,9 @@ func (f Says) isAuthLogicElement()      {}
 // signatures on credentials issued by the principal, and a sequence of zero or
 // more extensions to identify the subprincipal of that key.
 type Prin struct {
-	Key string    // a base64w-encoded, marshalled, CryptoKey protobuf structure with purpose CryptoKey.VERIFYING)
-	Ext []PrinExt // one or more extensions for descendents
+	Type string    // either "key" or "tpm"
+	Key  []byte    // a marshalled CryptoKey protobuf structure with purpose CryptoKey.VERIFYING
+	Ext  []PrinExt // one or more extensions for descendents
 }
 
 // PrinExt is an extension of a principal.
@@ -157,7 +160,7 @@ func (t Prin) Identical(other Term) bool {
 	if !ok {
 		return false
 	}
-	if t.Key != p.Key || len(t.Ext) != len(p.Ext) {
+	if t.Type != p.Type || !bytes.Equal(t.Key, p.Key) || len(t.Ext) != len(p.Ext) {
 		return false
 	}
 	for i := 0; i < len(t.Ext); i++ {
@@ -184,7 +187,7 @@ func (e PrinExt) Identical(other PrinExt) bool {
 // SubprinOrIdentical checks whether child is a subprincipal of parent or is
 // identical to parent.
 func SubprinOrIdentical(child, parent Prin) bool {
-	if parent.Key != child.Key || len(parent.Ext) > len(child.Ext) {
+	if parent.Type != child.Type || !bytes.Equal(parent.Key, child.Key) || len(parent.Ext) > len(child.Ext) {
 		return false
 	}
 	for i := 0; i < len(parent.Ext); i++ {

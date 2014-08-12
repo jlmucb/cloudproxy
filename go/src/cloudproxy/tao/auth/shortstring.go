@@ -22,6 +22,7 @@ package auth
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io"
 )
@@ -30,9 +31,9 @@ import (
 func (p Prin) ShortString() string {
 	var out bytes.Buffer
 	if len(p.Key) > 15 {
-		fmt.Fprintf(&out, "key(%.10q...)", p.Key)
+		fmt.Fprintf(&out, "%s(%.10q...)", p.Type, base64.URLEncoding.EncodeToString(p.Key))
 	} else {
-		fmt.Fprintf(&out, "key(%q)", p.Key)
+		fmt.Fprintf(&out, "%s(%q)", p.Type, base64.URLEncoding.EncodeToString(p.Key))
 	}
 	for _, e := range p.Ext {
 		fmt.Fprintf(&out, ".%s", e.ShortString())

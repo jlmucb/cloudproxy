@@ -24,7 +24,7 @@ const (
 	_ = iota
 
 	// Term tags
-	tagPrin // string, [](string, []Term)
+	tagPrin // string, []byte, [](string, []Term)
 	tagStr  // string
 	tagInt  // int
 
@@ -35,8 +35,8 @@ const (
 	tagAnd       // []Form
 	tagOr        // []Form
 	tagImplies   // Form, Form
-	tagSpeaksfor // tag+Prin, tag+Prin
-	tagSays      // tag+Prin, bool+int, bool+int, Form
+	tagSpeaksfor // Prin, Prin
+	tagSays      // Prin, bool+int, bool+int, Form
 )
 
 // Marshal encodes a Form or Term.
@@ -49,7 +49,8 @@ func Marshal(e AuthLogicElement) []byte {
 // Marshal encodes a Prin.
 func (t Prin) Marshal(buf *Buffer) {
 	buf.EncodeVarint(tagPrin)
-	buf.EncodeString(t.Key)
+	buf.EncodeString(t.Type)
+	buf.EncodeString(string(t.Key))
 	buf.EncodeVarint(int64(len(t.Ext)))
 	for _, e := range t.Ext {
 		buf.EncodeString(e.Name)
@@ -185,10 +186,15 @@ func unmarshalPrin(buf *Buffer) (p Prin, err error) {
 
 // decodePrin decodes a Prin without the leading tag.
 func decodePrin(buf *Buffer) (p Prin, err error) {
-	p.Key, err = buf.DecodeString()
+	p.Type, err = buf.DecodeString()
 	if err != nil {
 		return
 	}
+	k, err := buf.DecodeString()
+	if err != nil {
+		return
+	}
+	p.Key = []byte(k)
 	n, err := buf.DecodeVarint()
 	if err != nil {
 		return

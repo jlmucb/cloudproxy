@@ -58,6 +58,7 @@ var (
 	tokenFalse     = token{itemKeyword, "false"}
 	tokenTrue      = token{itemKeyword, "true"}
 	tokenKey       = token{itemKeyword, "key"}
+	tokenTPM       = token{itemKeyword, "tpm"}
 	tokenLP        = token{itemLP, '('}
 	tokenRP        = token{itemRP, ')'}
 	tokenComma     = token{itemComma, ','}

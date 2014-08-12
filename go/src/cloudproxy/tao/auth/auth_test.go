@@ -20,20 +20,27 @@ import (
 	"testing"
 )
 
+var key []string = []string{
+	`key("S2V5MQo=")`, // base64w("Key1")
+	`key("S2V5Mgo=")`, // base64w("Key2")
+	`tpm("S2V5Mwo=")`, // base64w("Key3")
+}
+
 var termtests []string = []string{
 	"42",
 	"0",
 	"-1",
 	`"Hello World"`,
 	`"Includes \n newlines and \t tabs"`,
-	`key("foo")`,
-	`key("123").Extension(1)`,
-	`key("123").Extension(1).A.B(1).C(1, "Hello").D(key("456").E(key("789").G.H))`,
-	`key("123").E()`,
+	key[0],
+	key[1],
+	key[0] + ".Extension(1)",
+	key[0] + `.Extension(1).A.B(1).C(1, "Hello").D(` + key[1] +`.E(`+key[2]+`.G.H))`,
+	key[0] + ".E()",
 }
 
 func TestParseTerm(t *testing.T) {
-	for _, s := range termtests {
+	for i, s := range termtests {
 		var x AnyTerm
 		n, err := fmt.Sscanf(s, "%v", &x)
 		if err != nil {
@@ -42,7 +49,7 @@ func TestParseTerm(t *testing.T) {
 		if n != 1 {
 			t.Fatal("incomplete parse")
 		}
-		if s != `key("123").E()` && x.Term.String() != s {
+		if (i != len(termtests) - 1) != (x.Term.String() == s) {
 			t.Fatalf("bad print: %v vs %v", x.Term.String(), s)
 		}
 	}
@@ -95,11 +102,11 @@ func TestScanTerm(t *testing.T) {
 	}
 
 	var p Prin
-	n, err = fmt.Sscanf(`key("abc").A(1).B("2", "3")`, "%v", &p)
+	n, err = fmt.Sscanf(key[0]+`.A(1).B("2", "3")`, "%v", &p)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	p2 := Prin{Key: "abc", Ext: []PrinExt{
+	p2 := Prin{Key: []byte("abc"), Ext: []PrinExt{
 		PrinExt{"A", []Term{Int(1)}},
 		PrinExt{"B", []Term{Str("2"), Str("#")}},
 	}}
@@ -110,7 +117,7 @@ func TestScanTerm(t *testing.T) {
 
 func TestParseSentence(t *testing.T) {
 	var x Prin
-	s := `My name is key("xxxx").Prog("foo", 1).Args("foo", "bar")`
+	s := `My name is ` + key[0] + `.Prog("foo", 1).Args("foo", "bar")`
 	n, err := fmt.Sscanf(s, "My name is %v", &x)
 	if err != nil {
 		t.Fatal(err.Error())
@@ -125,7 +132,7 @@ func TestParsePred(t *testing.T) {
 		`P(42)`,
 		`Foo`,
 		`Pred(1, 2, 3)`,
-		`Foo(1, "a", key("k"))`,
+		`Foo(1, "a", ` + key[0] + `)`,
 		`Foo()`,
 	}
 
@@ -157,12 +164,12 @@ func TestParsePred(t *testing.T) {
 var formtests []string = []string{
 	`true`,
 	`false`,
-	`key("a") says true`,
-	`key("a") from 1 says true`,
-	`key("a") until 2 says true`,
-	`key("a") from 1 until 2 says true`,
-	`key("a") speaksfor key("b")`,
-	`key("a").Sub(1).Sub(2) speaksfor key("a").Sub(1).Sub`,
+	key[0] + ` says true`,
+	key[0] + ` from 1 says true`,
+	key[0] + ` until 2 says true`,
+	key[0] + ` from 1 until 2 says true`,
+	key[0] + ` speaksfor ` + key[2],
+	key[0] + `.Sub(1).Sub(2) speaksfor ` + key[2] + `.Sub(1).Sub`,
 	`P(1)`,
 	`P(1) and P(2)`,
 	`P(1) and P(2) and P(3) and P(4)`,
@@ -173,7 +180,7 @@ var formtests []string = []string{
 	`not P(1)`,
 	`not not P(1)`,
 	`not not not not P(1)`,
-	`P(1) and (key("a") speaksfor key("b"))`,
+	`P(1) and (` + key[0] + ` speaksfor ` + key[2] + `)`,
 	`P(1) and P(2) and P(3) or P(4)`,
 	`P(1) and P(2) and (P(3) or P(4))`,
 	`P(1) and (P(2) or P(3)) and P(4)`,
@@ -186,8 +193,8 @@ var formtests []string = []string{
 	`P(1) or P(2) or (P(3) implies P(4))`,
 	`P(1) or (P(2) implies P(3)) or P(4)`,
 	`(P(1) implies P(2)) or P(3) or P(4)`,
-	`P(1) or (key("a") says P(2) or P(3))`,
-	`P(1) or (key("a") says P(2)) or P(3)`,
+	`P(1) or (` + key[0] + ` says P(2) or P(3))`,
+	`P(1) or (` + key[0] + ` says P(2)) or P(3)`,
 	`(((P(((1)), ("a")))))`,
 }
 
@@ -292,12 +299,12 @@ func TestBinaryForm(t *testing.T) {
 
 func TestPrinIdentical(t *testing.T) {
 	p := make([]Prin, 6)
-	fmt.Sscanf(`key("a")`, "%s", &p[0])
-	fmt.Sscanf(`key("a").Kid(1)`, "%s", &p[1])
-	fmt.Sscanf(`key("a").Kid(1).Kid(2)`, "%s", &p[2])
-	fmt.Sscanf(`key("b").Kid(1).Kid(2)`, "%s", &p[3])
-	fmt.Sscanf(`key("a").Kid(2).Kid(2)`, "%s", &p[4])
-	fmt.Sscanf(`key("a").Kid(1, 2).Kid(2)`, "%s", &p[5])
+	fmt.Sscanf(key[0], "%s", &p[0])
+	fmt.Sscanf(key[0]+`.Kid(1)`, "%s", &p[1])
+	fmt.Sscanf(key[0]+`.Kid(1).Kid(2)`, "%s", &p[2])
+	fmt.Sscanf(key[1]+`.Kid(1).Kid(2)`, "%s", &p[3])
+	fmt.Sscanf(key[0]+`.Kid(2).Kid(2)`, "%s", &p[4])
+	fmt.Sscanf(key[0]+`.Kid(1, 2).Kid(2)`, "%s", &p[5])
 
 	for i, prin := range p {
 		for j, other := range p {

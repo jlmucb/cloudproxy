@@ -18,6 +18,7 @@
 package auth
 
 import (
+	"encoding/base64"
 	"fmt"
 )
 
@@ -89,10 +90,12 @@ func (parser *parser) expectCloseParens(n int) error {
 
 // expectPrin expects a Prin.
 func (parser *parser) expectPrin() (p Prin, err error) {
-	err = parser.expect(tokenKey)
-	if err != nil {
+	if parser.cur() != tokenTPM && parser.cur() != tokenKey {
+		err = fmt.Errorf(`expected "key" or "tpm", found %v`, parser.cur())
 		return
 	}
+	p.Type = parser.cur().val.(string)
+	parser.advance()
 	if r := parser.lex.peek(); r != '(' {
 		err = fmt.Errorf(`expected '(' directly after "key", found %q`, r)
 		return
@@ -109,7 +112,10 @@ func (parser *parser) expectPrin() (p Prin, err error) {
 	if err != nil {
 		return
 	}
-	p.Key = string(key)
+	p.Key, err = base64.URLEncoding.DecodeString(string(key))
+	if err != nil {
+		return
+	}
 	p.Ext = nil
 	for parser.lex.peek() == '.' {
 		if parser.cur() != tokenDot {
@@ -396,7 +402,7 @@ func (parser *parser) parseFormAtHigh(greedy bool) (Form, error) {
 			return nil, err
 		}
 		return Not{f}, nil
-	case tokenKey:
+	case tokenKey, tokenTPM:
 		return parser.expectSaysOrSpeaksfor(greedy)
 	default:
 		if parser.cur().typ == itemIdentifier {

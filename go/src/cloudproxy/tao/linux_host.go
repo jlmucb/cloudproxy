@@ -195,12 +195,12 @@ func (lh *LinuxHost) handleUnseal(childSubprin string, sealed []byte) ([]byte, s
 
 // handleAttest performs policy checking and performs attestation for a child
 // subprincipal.
-func (lh *LinuxHost) handleAttest(childSubprin string, stmt *Statement) (*Attestation, error) {
+func (lh *LinuxHost) handleAttest(childSubprin string, issuer *auth.Prin, time, expiration *int64, stmt Form) (*Attestation, error) {
 	if stmt.Delegate == nil && stmt.PredicateName == nil {
 		return nil, errors.New("must supply either delegate or predicate_name in statement for attestation")
 	}
 
-	return lh.taoHost.Attest(childSubprin, stmt)
+	return lh.taoHost.Attest(childSubprin, issuer, time, expiration, stmt)
 }
 
 // StartHostedProgram starts a new program based on an admin RPC request.

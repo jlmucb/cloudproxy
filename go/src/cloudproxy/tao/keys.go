@@ -39,6 +39,8 @@ import (
 	"code.google.com/p/go.crypto/hkdf"
 	"code.google.com/p/go.crypto/pbkdf2"
 	"code.google.com/p/goprotobuf/proto"
+
+	"cloudproxy/tao/auth"
 )
 
 // A KeyType represent the type(s) of keys held by a Keys struct.
@@ -86,22 +88,21 @@ func GenerateSigner() (*Signer, error) {
 	return &Signer{ec}, nil
 }
 
-// ToPrincipalName produces a plain-text Tao principal name. This is a
-// base64w-encoded version of a serialized CryptoKey for the public half of
-// this signing key, wrapped in 'Key("' and '")'.
-func (s *Signer) ToPrincipalName() (string, error) {
+// ToPrincipal produces a "key" type Prin for this signer. This contains a
+// serialized CryptoKey for the public half of this signing key.
+func (s *Signer) ToPrincipal() (auth.Prin, error) {
 	var ck *CryptoKey
 	var err error
 	if ck, err = MarshalPublicSignerProto(s); err != nil {
-		return "", nil
+		return auth.Prin{}, nil
 	}
 
 	data, err := proto.Marshal(ck)
 	if err != nil {
-		return "", err
+		return auth.Prin{}, err
 	}
 
-	return "Key(\"" + base64.URLEncoding.EncodeToString(data) + "\")", nil
+	return auth.Prin{Type:"key", Key: data}, nil
 }
 
 // MarshalSignerDER serializes the signer to DER.
@@ -381,41 +382,31 @@ func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error)
 	return ecdsa.Verify(v.ec, b, ecSig.R, ecSig.S), nil
 }
 
-// ToPrincipalName produces a plain-text Tao principal name. This is a
-// base64w-encoded version of a serialized CryptoKey for the public half of
-// this verifying key, wrapped in 'Key("' and '")'.
-func (v *Verifier) ToPrincipalName() (string, error) {
+// ToPrincipal produces a "key" type Prin for this verifier. This contains a
+// serialized CryptoKey for this key.
+func (v *Verifier) ToPrincipal() (auth.Prin, error) {
 	var ck *CryptoKey
 	var err error
 	if ck, err = MarshalVerifierProto(v); err != nil {
-		return "", nil
+		return auth.Prin{}, nil
 	}
 
 	data, err := proto.Marshal(ck)
 	if err != nil {
-		return "", err
+		return auth.Prin{}, err
 	}
 
-	return "Key(\"" + base64.URLEncoding.EncodeToString(data) + "\")", nil
+	return auth.Prin{Type:"key", Key: data}, nil
 }
 
-// FromPrincipalName deserializes a Verifier from a plaintext Tao principal
-// name.
-func FromPrincipalName(name string) (*Verifier, error) {
-	// Check to make sure the key starts with "Key(" and ends with ")".
-	if !strings.HasPrefix(name, "Key(\"") || !strings.HasSuffix(name, "\")") {
-		return nil, errors.New("invalid prefix or suffix")
-	}
-
-	ks := strings.TrimPrefix(strings.TrimSuffix(name, "\")"), "Key(\"")
-
-	b, err := base64.URLEncoding.DecodeString(ks)
-	if err != nil {
-		return nil, err
+// FromPrincipal deserializes a Verifier from a Prin.
+func FromPrincipal(prin auth.Prin) (*Verifier, error) {
+	if prin.Type != "key" {
+		return nil, errors.New("invalid key principal type")
 	}
 
 	var ck CryptoKey
-	if err := proto.Unmarshal(b, &ck); err != nil {
+	if err := proto.Unmarshal(prin.Key, &ck); err != nil {
 		return nil, err
 	}
 
@@ -1055,13 +1046,13 @@ func NewTemporaryTaoDelegatedKeys(keyTypes KeyType, t Tao) (*Keys, error) {
 	}
 
 	if k.SigningKey != nil {
-		n, err := k.SigningKey.ToPrincipalName()
+		prin, err := k.SigningKey.ToPrincipal()
 		if err != nil {
 			return nil, err
 		}
 
-		s := &Statement{
-			Delegate: proto.String(n),
+		s := &auth.Speaksfor{
+			Delegate: prin,
 		}
 
 		if k.Delegation, err = t.Attest(s); err != nil {
@@ -1317,13 +1308,13 @@ func NewOnDiskTaoSealedKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys
 
 		// Get and write a delegation.
 		if k.SigningKey != nil {
-			name, err := k.SigningKey.ToPrincipalName()
+			prin, err := k.SigningKey.ToPrincipal()
 			if err != nil {
 				return nil, err
 			}
 
-			s := &Statement{
-				Delegate: proto.String(name),
+			s := &auth.Speaksfor{
+				Delegate: prin,
 			}
 
 			if k.Delegation, err = t.Attest(s); err != nil {

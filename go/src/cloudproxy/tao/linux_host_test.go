@@ -21,6 +21,8 @@ import (
 	"testing"
 
 	"code.google.com/p/goprotobuf/proto"
+
+	"cloudproxy/tao/auth"
 )
 
 func testNewStackedLinuxHost(t *testing.T) (*LinuxHost, string) {
@@ -130,11 +132,9 @@ func testLinuxHostHandleSealUnseal(t *testing.T, lh *LinuxHost) {
 }
 
 func testLinuxHostHandleAttest(t *testing.T, lh *LinuxHost) {
-	stmt := &Statement{
-		PredicateName: proto.String("FakePredicate"),
-	}
+	stmt := auth.Pred{Name: "FakePredicate"}
 
-	a, err := lh.handleAttest(testChildLH, stmt)
+	a, err := lh.handleAttest(testChildLH, nil, nil, nil, stmt)
 	if err != nil {
 		t.Fatal("Couldn't create Attestation")
 	}

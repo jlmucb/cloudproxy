@@ -17,6 +17,8 @@ package tao
 import (
 	"bytes"
 	"testing"
+
+	"cloudproxy/tao/auth"
 )
 
 var testChild = "test child"
@@ -68,10 +70,9 @@ func testTaoHostSharedSecretFailure(t *testing.T, th TaoHost) {
 }
 
 func testTaoHostAttest(t *testing.T, th TaoHost) {
-	var st Statement
-	a, err := th.Attest(testChild, &st)
+	a, err := th.Attest(testChild, nil, nil, nil, auth.Const(true))
 	if err != nil {
-		t.Fatal("Couldn't attest to an empty Statement:", err)
+		t.Fatal("Couldn't attest to a trival statement:", err)
 	}
 
 	if a == nil {
@@ -98,7 +99,7 @@ func testTaoHostEncryption(t *testing.T, th TaoHost) {
 
 func testTaoHostName(t *testing.T, th TaoHost) {
 	n := th.TaoHostName()
-	if n == "" {
+	if n.Key == nil {
 		t.Fatal("TaoHostName returned an invalid TaoHost name")
 	}
 }

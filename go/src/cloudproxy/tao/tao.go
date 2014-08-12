@@ -20,6 +20,8 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
+
+	"cloudproxy/tao/auth"
 )
 
 // Constants used by the Tao implementations for policy, signing contexts, and
@@ -48,10 +50,10 @@ const (
 // with their host, others may use sockets, etc.
 type Tao interface {
 	// GetTaoName returns the Tao principal name assigned to the caller.
-	GetTaoName() (name string, err error)
+	GetTaoName() (name Prin, err error)
 
 	// ExtendTaoName irreversibly extends the Tao principal name of the caller.
-	ExtendTaoName(subprin string) error
+	ExtendTaoName(subprin auth.SubPrin) error
 
 	// GetRandomBytes returns a slice of n random bytes.
 	GetRandomBytes(n int) (bytes []byte, err error)
@@ -62,8 +64,12 @@ type Tao interface {
 	// GetSharedSecret returns a slice of n secret bytes.
 	GetSharedSecret(n int, policy string) (bytes []byte, err error)
 
-	// Attest requests the Tao host sign a Statement on behalf of the caller.
-	Attest(stmt *Statement) (*Attestation, error)
+	// Attest requests the Tao host sign a statement on behalf of the caller. The
+	// optional issuer, time and expiration will be given default values if nil.
+	// TODO(kwalsh) Maybe create a struct for these optional params? Or use
+	// auth.Says instead (in which time and expiration are optional) with a
+	// bogus Speaker field like key("") or nil("") or self, etc.
+	Attest(issuer *auth.Prin, time, expiration *int64, message auth.Form) (*Attestation, error)
 
 	// Seal encrypts data so only certain hosted programs can unseal it.
 	Seal(data []byte, policy string) (sealed []byte, err error)

@@ -23,6 +23,9 @@ message TaoRPCRequest {
   optional bytes data = 1;
   optional int32 size = 2;
   optional string policy = 3;
+  optional int64 time = 4;
+  optional int64 expiration = 5;
+  optional bytes issuer = 6;
 }
 
 message TaoRPCResponse {

@@ -23,6 +23,8 @@ import (
 	"time"
 
 	"code.google.com/p/goprotobuf/proto"
+
+	"cloudproxy/tao/auth"
 )
 
 // A FakeTao is an implementation of the Tao that isn't backed by any hardware
@@ -131,13 +133,16 @@ func (f *FakeTao) Unseal(sealed []byte) (data []byte, policy string, err error) 
 	return data, policy, err
 }
 
-// Attest requests that the Tao host sign a Statement on behalf of the caller.
-func (f *FakeTao) Attest(stmt *Statement) (*Attestation, error) {
-	if stmt.Issuer == nil {
-		stmt.Issuer = proto.String(f.name)
+// Attest requests that the Tao host sign a statement on behalf of the caller.
+func (f *FakeTao) Attest(issuer *auth.Prin, time, expiration *int64, stmt auth.Form) (*Attestation, error) {
+
+	if issuer == nil {
+		issuer = &f.name
 	} else if stmt.GetIssuer() != f.name {
 		return nil, errors.New("Invalid issuer in statement")
 	}
+
+	stmt := Says{Speaker: *issuer, Time: time, Expiration: expiration, Message: message}
 
 	var delegation []byte
 	if f.keys.Delegation != nil {
@@ -226,8 +231,8 @@ func TestFakeTaoAttest(t *testing.T) {
 		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
 	}
 
-	stmt := &Statement{
-		Delegate: proto.String("Test Principal"),
+	stmt := auth.Speaksfor{
+		Delegate: auth.Prin{Type: "key", Key:[]byte("BogusKeyBytes1")}
 	}
 
 	_, err = ft.Attest(stmt)

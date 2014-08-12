@@ -23,6 +23,7 @@ import (
 
 	"code.google.com/p/goprotobuf/proto"
 
+	"cloudproxy/tao/auth"
 	"cloudproxy/util"
 	"cloudproxy/util/protorpc"
 )
@@ -91,15 +92,26 @@ func (t *TaoRPC) call(method string, r *TaoRPCRequest, e expectedResponse) (data
 }
 
 // GetTaoName implements part of the Tao interface.
-func (t *TaoRPC) GetTaoName() (string, error) {
+func (t *TaoRPC) GetTaoName() (Prin, error) {
 	r := &TaoRPCRequest{}
 	data, _, err := t.call(t.serviceName+".GetTaoName", r, wantData)
-	return string(data), err
+	if err != nil {
+		return Prin{}, err
+	}
+	term, err := auth.UnmarshalTerm(data)
+	if err != nil {
+		return Prin{}, err
+	}
+	prin, ok := term.(Prin)
+	if !ok {
+		return Prin{}, errors.New("taorpc: can't unmarshal principal")
+	}
+	return prin, err
 }
 
 // ExtendTaoName implements part of the Tao interface.
-func (t *TaoRPC) ExtendTaoName(subprin string) error {
-	r := &TaoRPCRequest{Data: []byte(subprin)}
+func (t *TaoRPC) ExtendTaoName(subprin SubPrin) error {
+	r := &TaoRPCRequest{Data: auth.Marshal(subprin)}
 	_, _, err := t.call(t.serviceName+".ExtendTaoName", r, wantNothing)
 	return err
 }
@@ -145,12 +157,15 @@ func (t *TaoRPC) GetSharedSecret(n int, policy string) ([]byte, error) {
 }
 
 // Attest implements part of the Tao interface.
-func (t *TaoRPC) Attest(stmt *Statement) (*Attestation, error) {
-	data, err := proto.Marshal(stmt)
-	if _, ok := err.(*proto.RequiredNotSetError); err != nil && !ok {
-		return nil, err
+func (t *TaoRPC) Attest(prin *issuer, int64 *time, int64 *expiration, message Form) (*Attestation, error)
+	data := auth.Marshal(stmt)
+
+	r := &TaoRPCRequest{
+		Issuer:issuer,
+		Time: time,
+		Expiration: expiration,
+		Data: data,
 	}
-	r := &TaoRPCRequest{Data: data}
 	bytes, _, err := t.call(t.serviceName+".Attest", r, wantData)
 	if err != nil {
 		return nil, err

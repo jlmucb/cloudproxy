@@ -27,7 +27,7 @@ import (
 type LinuxHostServer struct {
 	host         *LinuxHost
 	channel      io.ReadWriteCloser
-	ChildSubprin string
+	ChildSubprin auth.SubPrin
 	Cmd          *exec.Cmd
 }
 
@@ -40,7 +40,11 @@ func (lhs *LinuxHostServer) GetTaoName(r *TaoRPCRequest, s *TaoRPCResponse) erro
 // ExtendTaoName irreversibly extends the Tao principal name of the caller.
 // TODO(kwalsh): do sanity checking on r.Data
 func (lhs *LinuxHostServer) ExtendTaoName(r *TaoRPCRequest, s *TaoRPCResponse) error {
-	lhs.ChildSubprin += "::" + string(r.Data)
+	ext, err := auth.UnmarshalSubPrin(r.Data)
+	if err != nil {
+		return err
+	}
+	lhs.ChildSubprin = append(lhs.ChildSubprin, ext...)
 	return nil
 }
 
@@ -103,15 +107,27 @@ func (lhs *LinuxHostServer) Unseal(r *TaoRPCRequest, s *TaoRPCResponse) error {
 	return nil
 }
 
-// Attest requests the Tao host sign a Statement on behalf of the caller.
+// Attest requests the Tao host sign a statement on behalf of the caller.
 func (lhs *LinuxHostServer) Attest(r *TaoRPCRequest, s *TaoRPCResponse) error {
-	stmt := new(Statement)
-	err := proto.Unmarshal(r.Data, stmt)
+	stmt, err := auth.UnmarshalForm(r.Data)
 	if err != nil {
 		return err
 	}
 
-	a, err := lhs.host.handleAttest(lhs.ChildSubprin, stmt)
+	var issuer *auth.Prin
+	if r.Issuer != nil {
+		t, err := auth.UnmarshalTerm(*r.Issuer)
+		if err != nil {
+			return err
+		}
+		p, ok := t.(Prin)
+		if !ok {
+			return errors.New("issuer must a principal or nil")
+		}
+		issuer = &p
+	}
+
+	a, err := lhs.host.handleAttest(lhs.ChildSubprin, issuer, r.Time, r.Expiration, stmt)
 	if err != nil {
 		return err
 	}

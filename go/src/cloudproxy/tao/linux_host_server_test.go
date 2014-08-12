@@ -118,20 +118,13 @@ func TestLinuxHostServerAttest(t *testing.T) {
 		t.Fatal("Couldn't get the Tao name from the LinuxHostServer:", err)
 	}
 
-	stmt := &Statement{
-		Issuer:        proto.String(string(st.Data)),
-		Time:          proto.Int64(time.Now().UnixNano()),
-		Expiration:    proto.Int64(time.Now().Add(24 * time.Hour).UnixNano()),
-		PredicateName: proto.String("FakePredicate"),
-	}
-
-	m, err := proto.Marshal(stmt)
-	if err != nil {
-		t.Fatal("Couldn't marshal a statement for a call to Attest on LinuxHostServer:", err)
-	}
+	message := auth.Pred{Name: "FakePredicate"}
 
 	r := &TaoRPCRequest{
-		Data: m,
+		Data:          auth.Marshal(message),
+		Time:          proto.Int64(time.Now().UnixNano()),
+		Expiration:    proto.Int64(time.Now().Add(24 * time.Hour).UnixNano()),
+		Issuer:        st.Data
 	}
 	s := &TaoRPCResponse{}
 	if err := lhs.Attest(r, s); err != nil {

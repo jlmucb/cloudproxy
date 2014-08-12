@@ -21,6 +21,8 @@ import (
 	"time"
 
 	"code.google.com/p/goprotobuf/proto"
+
+	"cloudproxy/tao/auth"
 )
 
 // A TaoRootHost is a standalone implementation of TaoHost.
@@ -60,7 +62,7 @@ func NewTaoRootHost() (TaoHost, error) {
 }
 
 // GetRandomBytes returns a slice of n random bytes.
-func (t *TaoRootHost) GetRandomBytes(childSubprin string, n int) (bytes []byte, err error) {
+func (t *TaoRootHost) GetRandomBytes(childSubprin auth.SubPrin, n int) (bytes []byte, err error) {
 	b := make([]byte, n)
 	if _, err := rand.Read(b); err != nil {
 		return nil, err
@@ -87,28 +89,25 @@ func (t *TaoRootHost) GetSharedSecret(tag string, n int) (bytes []byte, err erro
 
 // GenerateAttestation uses the signing key to generate an attestation for this
 // statement.
-func GenerateAttestation(s *Signer, delegation []byte, stmt *Statement) (*Attestation, error) {
-	signerName, err := s.ToPrincipalName()
+// TODO(kwalsh) Move this into attestation.go?
+func GenerateAttestation(s *Signer, delegation []byte, stmt auth.Says) (*Attestation, error) {
+	signer, err := s.ToPrincipal()
 	if err != nil {
 		return nil, err
 	}
-
-	st := new(Statement)
-	proto.Merge(st, stmt)
 
 	t := time.Now()
-	if st.Time == nil {
-		st.Time = proto.Int64(t.UnixNano())
+	if stmt.Time == nil {
+		i := t.UnixNano()
+		stmt.Time = &i
 	}
 
-	if st.Expiration == nil {
-		st.Expiration = proto.Int64(t.Add(365 * 24 * time.Hour).UnixNano())
+	if stmt.Expiration == nil {
+		i := t.Add(365 * 24 * time.Hour).UnixNano()
+		stmt.Expiration = &i
 	}
 
-	ser, err := proto.Marshal(st)
-	if err != nil {
-		return nil, err
-	}
+	ser := auth.Marshal(stmt)
 
 	sig, err := s.Sign(ser, AttestationSigningContext)
 	if err != nil {
@@ -118,7 +117,7 @@ func GenerateAttestation(s *Signer, delegation []byte, stmt *Statement) (*Attest
 	a := &Attestation{
 		SerializedStatement: ser,
 		Signature:           sig,
-		Signer:              proto.String(signerName),
+		Signer:              signer,
 	}
 
 	if len(delegation) > 0 {
@@ -128,21 +127,20 @@ func GenerateAttestation(s *Signer, delegation []byte, stmt *Statement) (*Attest
 	return a, nil
 }
 
-// IsSubprincipalOrIdentical checks that the child name either is identical to
-// to the parent name or starts with "parentName::".
-func IsSubprincipalOrIdentical(childName, parentName string) bool {
-	return (childName == parentName) || strings.HasPrefix(childName, parentName+"::")
-}
+// Attest requests the Tao host sign a statement on behalf of the caller.
+func (t *TaoRootHost) Attest(childSubprin auth.SubPrin, issuer *auth.Prin,
+	time, expiration *int64, message auth.Form) (*Attestation, error) {
 
-// Attest requests the Tao host sign a Statement on behalf of the caller.
-func (t *TaoRootHost) Attest(childSubprin string, stmt *Statement) (*Attestation, error) {
-	if stmt.Issuer != nil {
-		if !IsSubprincipalOrIdentical(*stmt.Issuer, t.taoHostName+"::"+childSubprin) {
+	child := t.taoHostName.MakeSubprincipal(childSubprin)
+	if issuer != nil {
+		if !auth.SubprinOrIdentical(*issuer, child) {
 			return nil, errors.New("invalid issuer in statement")
 		}
 	} else {
-		stmt.Issuer = proto.String(t.taoHostName + "::" + childSubprin)
+		issuer = &child
 	}
+
+	stmt := Says{Speaker: *issuer, Time: time, Expiration: expiration, Message: message}
 
 	return GenerateAttestation(t.keys.SigningKey, nil /* delegation */, stmt)
 }
@@ -159,13 +157,13 @@ func (t *TaoRootHost) Decrypt(encrypted []byte) (data []byte, err error) {
 
 // AddedHostedProgram notifies this TaoHost that a new hosted program has been
 // created.
-func (t *TaoRootHost) AddedHostedProgram(childSubprin string) error {
+func (t *TaoRootHost) AddedHostedProgram(childSubprin auth.SubPrin) error {
 	return nil
 }
 
 // RemovedHostedProgram notifies this TaoHost that a hosted program has been
 // killed.
-func (t *TaoRootHost) RemovedHostedProgram(childSubprin string) error {
+func (t *TaoRootHost) RemovedHostedProgram(childSubprin auth.SubPrin) error {
 	return nil
 }
 

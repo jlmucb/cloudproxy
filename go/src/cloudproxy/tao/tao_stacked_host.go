@@ -18,11 +18,13 @@ import (
 	"errors"
 
 	"code.google.com/p/goprotobuf/proto"
+
+	"cloudproxy/tao/auth"
 )
 
 // A TaoStackedHost implements TaoHost over an existing host Tao.
 type TaoStackedHost struct {
-	taoHostName string
+	taoHostName Prin
 	hostTao     Tao
 	keys        *Keys
 }
@@ -56,7 +58,7 @@ func NewTaoStackedHost(t Tao) (TaoHost, error) {
 }
 
 // GetRandomBytes returns a slice of n random bytes.
-func (t *TaoStackedHost) GetRandomBytes(childSubprin string, n int) (bytes []byte, err error) {
+func (t *TaoStackedHost) GetRandomBytes(childSubprin auth.SubPrin, n int) (bytes []byte, err error) {
 	return t.hostTao.GetRandomBytes(n)
 }
 
@@ -77,15 +79,20 @@ func (t *TaoStackedHost) GetSharedSecret(tag string, n int) (bytes []byte, err e
 	return material, nil
 }
 
-// Attest requests the Tao host sign a Statement on behalf of the caller.
-func (t *TaoStackedHost) Attest(childSubprin string, stmt *Statement) (*Attestation, error) {
-	if stmt.Issuer != nil {
-		if !IsSubprincipalOrIdentical(*stmt.Issuer, t.taoHostName+"::"+childSubprin) {
+// Attest requests the Tao host sign a statement on behalf of the caller.
+func (t *TaoStackedHost) Attest(childSubprin auth.SubPrin, issuer *auth.Prin,
+      time, expiration *int64, message auth.Form) (*Attestation, error) {
+
+	child := t.taoHostName.MakeSubprincipal(childSubprin)
+	if issuer != nil {
+		if !auth.SubprinOrIdentical(*issuer, child) {
 			return nil, errors.New("invalid issuer in statement")
 		}
 	} else {
-		stmt.Issuer = proto.String(t.taoHostName + "::" + childSubprin)
+		issuer = &child
 	}
+
+	stmt := Says{Speaker: *issuer, Time: time, Expiration: expiration, Message: message}
 
 	if t.keys == nil || t.keys.SigningKey == nil {
 		return t.hostTao.Attest(stmt)
@@ -137,13 +144,13 @@ func (t *TaoStackedHost) Decrypt(encrypted []byte) (data []byte, err error) {
 
 // AddedHostedProgram notifies this TaoHost that a new hosted program has been
 // created.
-func (t *TaoStackedHost) AddedHostedProgram(childSubprin string) error {
+func (t *TaoStackedHost) AddedHostedProgram(childSubprin auth.SubPrin) error {
 	return nil
 }
 
 // RemovedHostedProgram notifies this TaoHost that a hosted program has been
 // killed.
-func (t *TaoStackedHost) RemovedHostedProgram(childSubprin string) error {
+func (t *TaoStackedHost) RemovedHostedProgram(childSubprin auth.SubPrin) error {
 	return nil
 }
 

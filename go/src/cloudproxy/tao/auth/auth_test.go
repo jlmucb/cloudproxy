@@ -290,7 +290,6 @@ func TestBinaryForm(t *testing.T) {
 	}
 }
 
-
 func TestPrinIdentical(t *testing.T) {
 	p := make([]Prin, 6)
 	fmt.Sscanf(`key("a")`, "%s", &p[0])

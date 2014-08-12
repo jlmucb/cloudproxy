@@ -34,56 +34,55 @@ func format(out fmt.State, verb rune, e AuthLogicElement) {
 
 // Format outputs a pretty-printed Prin using short or long formats.
 func (e Prin) Format(out fmt.State, verb rune) {
-  format(out, verb, e)
+	format(out, verb, e)
 }
 
 // Format outputs a pretty-printed Str using short or long formats.
 func (e Str) Format(out fmt.State, verb rune) {
-  format(out, verb, e)
+	format(out, verb, e)
 }
 
 // Format outputs a pretty-printed Int using short or long formats.
 func (e Int) Format(out fmt.State, verb rune) {
-  format(out, verb, e)
+	format(out, verb, e)
 }
 
 // Format outputs a pretty-printed Pred using short or long formats.
 func (e Pred) Format(out fmt.State, verb rune) {
-  format(out, verb, e)
+	format(out, verb, e)
 }
 
 // Format outputs a pretty-printed Const using short or long formats.
 func (e Const) Format(out fmt.State, verb rune) {
-  format(out, verb, e)
+	format(out, verb, e)
 }
 
 // Format outputs a pretty-printed Not using short or long formats.
 func (e Not) Format(out fmt.State, verb rune) {
-  format(out, verb, e)
+	format(out, verb, e)
 }
 
 // Format outputs a pretty-printed And using short or long formats.
 func (e And) Format(out fmt.State, verb rune) {
-  format(out, verb, e)
+	format(out, verb, e)
 }
 
 // Format outputs a pretty-printed Or using short or long formats.
 func (e Or) Format(out fmt.State, verb rune) {
-  format(out, verb, e)
+	format(out, verb, e)
 }
 
 // Format outputs a pretty-printed Implies using short or long formats.
 func (e Implies) Format(out fmt.State, verb rune) {
-  format(out, verb, e)
+	format(out, verb, e)
 }
 
 // Format outputs a pretty-printed Speaksfor using short or long formats.
 func (e Speaksfor) Format(out fmt.State, verb rune) {
-  format(out, verb, e)
+	format(out, verb, e)
 }
 
 // Format outputs a pretty-printed Says using short or long formats.
 func (e Says) Format(out fmt.State, verb rune) {
-  format(out, verb, e)
+	format(out, verb, e)
 }
-

@@ -118,3 +118,43 @@ func (a *Attestation) Validate() (stmt auth.Says, err error) {
 	stmt = msg
 	return
 }
+
+// GenerateAttestation uses the signing key to generate an attestation for this
+// statement.
+func GenerateAttestation(s *Signer, delegation []byte, stmt auth.Says) (*Attestation, error) {
+	signer, err := s.ToPrincipal()
+	if err != nil {
+		return nil, err
+	}
+
+	t := time.Now()
+	if stmt.Time == nil {
+		i := t.UnixNano()
+		stmt.Time = &i
+	}
+
+	if stmt.Expiration == nil {
+		i := t.Add(365 * 24 * time.Hour).UnixNano()
+		stmt.Expiration = &i
+	}
+
+	ser := auth.Marshal(stmt)
+
+	sig, err := s.Sign(ser, AttestationSigningContext)
+	if err != nil {
+		return nil, err
+	}
+
+	a := &Attestation{
+		SerializedStatement: ser,
+		Signature:           sig,
+		Signer:              signer,
+	}
+
+	if len(delegation) > 0 {
+		a.SerializedDelegation = delegation
+	}
+
+	return a, nil
+}
+

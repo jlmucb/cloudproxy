@@ -14,14 +14,29 @@
 
 package auth
 
-import "bytes"
+import (
+	"bytes"
+	"fmt"
+)
 
 // AuthLogicElement is any element of the authorization logic, i.e. a formula, a
 // term, or a principal extension.
 type AuthLogicElement interface {
+
+	// Marshal writes a binary encoding of the element into b.
 	Marshal(b *Buffer)
+
+	// String returns verbose pretty-printing text for the element.
 	String() string
+
+	// ShortString returns short debug-printing text for the element.
 	ShortString() string
+
+	// fmt.Formatter is satisfied by all elements. Using format %v will result in
+	// verbose pretty-printing, using format %s will result in short
+	// debug-printing, and other formats will use an unspecified format.
+	fmt.Formatter // Format(out fmt.State, verb rune)
+
 	isAuthLogicElement() // marker
 }
 
@@ -39,6 +54,38 @@ func (f Or) isAuthLogicElement()        {}
 func (f Implies) isAuthLogicElement()   {}
 func (f Speaksfor) isAuthLogicElement() {}
 func (f Says) isAuthLogicElement()      {}
+
+// These declarations ensure all the appropriate types can be assigned to an
+// AuthLogicElement.
+var _ AuthLogicElement = Prin{}
+var _ AuthLogicElement = SubPrin{}
+var _ AuthLogicElement = Str("")
+var _ AuthLogicElement = Int(0)
+var _ AuthLogicElement = Pred{}
+var _ AuthLogicElement = Const(false)
+var _ AuthLogicElement = Not{}
+var _ AuthLogicElement = And{}
+var _ AuthLogicElement = Or{}
+var _ AuthLogicElement = Implies{}
+var _ AuthLogicElement = Speaksfor{}
+var _ AuthLogicElement = Says{}
+
+// These declarations ensure all the appropriate types can be assigned to a
+// fmt.Scanner.
+var _ fmt.Scanner = &Prin{}
+var _ fmt.Scanner = &SubPrin{}
+var _ fmt.Scanner = new(Str)
+var _ fmt.Scanner = new(Int)
+var _ fmt.Scanner = &Pred{}
+var _ fmt.Scanner = new(Const)
+var _ fmt.Scanner = &Not{}
+var _ fmt.Scanner = &And{}
+var _ fmt.Scanner = &Or{}
+var _ fmt.Scanner = &Implies{}
+var _ fmt.Scanner = &Speaksfor{}
+var _ fmt.Scanner = &Says{}
+var _ fmt.Scanner = &AnyForm{}
+var _ fmt.Scanner = &AnyTerm{}
 
 // Prin uniquely identifies a principal by a public key, used to verify
 // signatures on credentials issued by the principal, and a sequence of zero or
@@ -156,7 +203,7 @@ func (t Str) Identical(other Term) bool {
 	return t == other
 }
 
-// Identical checks if a Prin is identical to another Prin.
+// Identical checks if a Prin is identical to another Term.
 func (t Prin) Identical(other Term) bool {
 	p, ok := other.(Prin)
 	if !ok {
@@ -165,8 +212,8 @@ func (t Prin) Identical(other Term) bool {
 	if t.Type != p.Type || !bytes.Equal(t.Key, p.Key) || len(t.Ext) != len(p.Ext) {
 		return false
 	}
-	for i := 0; i < len(t.Ext); i++ {
-		if !t.Ext[i].Identical(p.Ext[i]) {
+	for i, e := range t.Ext {
+		if !e.Identical(p.Ext[i]) {
 			return false
 		}
 	}
@@ -178,8 +225,21 @@ func (e PrinExt) Identical(other PrinExt) bool {
 	if e.Name != other.Name || len(e.Arg) != len(other.Arg) {
 		return false
 	}
-	for i := 0; i < len(e.Arg); i++ {
-		if !e.Arg[i].Identical(other.Arg[i]) {
+	for i, a := range e.Arg {
+		if !a.Identical(other.Arg[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+// Identical checks if one SubPrin is identical to another.
+func (s SubPrin) Identical(other SubPrin) bool {
+	if len(s) != len(other) {
+		return false
+	}
+	for i, e := range(s) {
+		if !e.Identical(other[i]) {
 			return false
 		}
 	}
@@ -192,8 +252,8 @@ func SubprinOrIdentical(child, parent Prin) bool {
 	if parent.Type != child.Type || !bytes.Equal(parent.Key, child.Key) || len(parent.Ext) > len(child.Ext) {
 		return false
 	}
-	for i := 0; i < len(parent.Ext); i++ {
-		if !parent.Ext[i].Identical(child.Ext[i]) {
+	for i, a := range parent.Ext {
+		if !a.Identical(child.Ext[i]) {
 			return false
 		}
 	}
@@ -201,7 +261,7 @@ func SubprinOrIdentical(child, parent Prin) bool {
 }
 
 func (p Prin) MakeSubprincipal(e SubPrin) Prin {
-	other := Prin{Type: p.Type, Key: p.Key, Ext:append(nil, p.Ext...)}
-	other.Ext := append(other.Ext, []PrinExt(e)...)
+	other := Prin{Type: p.Type, Key: p.Key, Ext: append([]PrinExt{}, p.Ext...)}
+	other.Ext = append(other.Ext, []PrinExt(e)...)
 	return other
 }

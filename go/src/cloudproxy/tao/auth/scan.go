@@ -47,15 +47,17 @@ func (e *PrinExt) Scan(state fmt.ScanState, verb rune) error {
 // Scan parses a SubPrin.
 func (e *SubPrin) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
-	*e, err := parser.expectSubPrin()
+	subprin, err := parser.expectSubPrin()
 	if err != nil {
 		return err
 	}
+	*e = subprin
 	return nil
 }
 
 // AnyTerm is a struct that can be used in when scanning for a Term, since Term
 // itself is an interface and interface pointers are not valid receivers.
+// TODO(kwalsh) Can this be accomplished with a pointer to interface?
 type AnyTerm struct {
 	Term Term
 }
@@ -95,6 +97,7 @@ func (t *Int) Scan(state fmt.ScanState, verb rune) error {
 
 // AnyForm is a struct that can be used in when scanning for a Form, since Form
 // itself is an interface and interface pointers are not valid receivers.
+// TODO(kwalsh) Can this be accomplished with a pointer to interface?
 type AnyForm struct {
 	Form Form
 }

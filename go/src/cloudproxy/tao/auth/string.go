@@ -42,7 +42,7 @@ func (e PrinExt) String() string {
 func (s SubPrin) String() string {
 	var out bytes.Buffer
 	for _, e := range s {
-		out.Fprintf(&out, ".%s", e.String())
+		fmt.Fprintf(&out, ".%s", e.String())
 	}
 	return out.String()
 }
@@ -202,8 +202,8 @@ func precedence(f Form) int {
 	}
 }
 
-// printFormWithParens prints either f or (f), depending on ho level compares to
-// the precedence of f.
+// printFormWithParens prints either f or (f), depending on how level compares
+// to the precedence of f.
 func printFormWithParens(out io.Writer, level int, f Form) {
 	if level > precedence(f) {
 		fmt.Fprintf(out, "(%s)", f.String())

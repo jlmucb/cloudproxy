@@ -15,6 +15,9 @@ type TaoRPCRequest struct {
 	Data             []byte  `protobuf:"bytes,1,opt,name=data" json:"data,omitempty"`
 	Size             *int32  `protobuf:"varint,2,opt,name=size" json:"size,omitempty"`
 	Policy           *string `protobuf:"bytes,3,opt,name=policy" json:"policy,omitempty"`
+	Time             *int64  `protobuf:"varint,4,opt,name=time" json:"time,omitempty"`
+	Expiration       *int64  `protobuf:"varint,5,opt,name=expiration" json:"expiration,omitempty"`
+	Issuer           []byte  `protobuf:"bytes,6,opt,name=issuer" json:"issuer,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -41,6 +44,27 @@ func (m *TaoRPCRequest) GetPolicy() string {
 		return *m.Policy
 	}
 	return ""
+}
+
+func (m *TaoRPCRequest) GetTime() int64 {
+	if m != nil && m.Time != nil {
+		return *m.Time
+	}
+	return 0
+}
+
+func (m *TaoRPCRequest) GetExpiration() int64 {
+	if m != nil && m.Expiration != nil {
+		return *m.Expiration
+	}
+	return 0
+}
+
+func (m *TaoRPCRequest) GetIssuer() []byte {
+	if m != nil {
+		return m.Issuer
+	}
+	return nil
 }
 
 type TaoRPCResponse struct {

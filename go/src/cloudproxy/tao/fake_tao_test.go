@@ -31,12 +31,12 @@ import (
 // mechanisms. It's used for testing components that rely on the Tao.
 type FakeTao struct {
 	keys          *Keys
-	name          string
-	nameExtension string
+	name          auth.Prin
+	nameExtension auth.SubPrin
 }
 
 // Init initializes the FakeTao with a crypter and a signer.
-func NewFakeTao(name, path string, password []byte) (Tao, error) {
+func NewFakeTao(name auth.Prin, path string, password []byte) (Tao, error) {
 	f := &FakeTao{
 		name: name,
 	}
@@ -56,17 +56,13 @@ func NewFakeTao(name, path string, password []byte) (Tao, error) {
 }
 
 // GetTaoName returns the Tao principal name assigned to the caller.
-func (f *FakeTao) GetTaoName() (string, error) {
-	return f.name + f.nameExtension, nil
+func (f *FakeTao) GetTaoName() (auth.Prin, error) {
+	return f.name.MakeSubprincipal(f.nameExtension), nil
 }
 
 // ExtendTaoName irreversibly extends the Tao principal name of the caller.
-func (f *FakeTao) ExtendTaoName(subprin string) error {
-	if subprin == "" {
-		return errors.New("invalid subprincipal name")
-	}
-
-	f.nameExtension += "::" + subprin
+func (f *FakeTao) ExtendTaoName(subprin auth.SubPrin) error {
+	f.nameExtension = append(f.nameExtension, subprin...)
 	return nil
 }
 
@@ -134,15 +130,15 @@ func (f *FakeTao) Unseal(sealed []byte) (data []byte, policy string, err error) 
 }
 
 // Attest requests that the Tao host sign a statement on behalf of the caller.
-func (f *FakeTao) Attest(issuer *auth.Prin, time, expiration *int64, stmt auth.Form) (*Attestation, error) {
+func (f *FakeTao) Attest(issuer *auth.Prin, time, expiration *int64, message auth.Form) (*Attestation, error) {
 
 	if issuer == nil {
 		issuer = &f.name
-	} else if stmt.GetIssuer() != f.name {
+	} else if !issuer.Identical(f.name) {
 		return nil, errors.New("Invalid issuer in statement")
 	}
 
-	stmt := Says{Speaker: *issuer, Time: time, Expiration: expiration, Message: message}
+	stmt := auth.Says{Speaker: *issuer, Time: time, Expiration: expiration, Message: message}
 
 	var delegation []byte
 	if f.keys.Delegation != nil {
@@ -157,14 +153,14 @@ func (f *FakeTao) Attest(issuer *auth.Prin, time, expiration *int64, stmt auth.F
 }
 
 func TestInMemoryInit(t *testing.T) {
-	_, err := NewFakeTao("test", "", nil)
+	_, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
 	if err != nil {
 		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
 	}
 }
 
 func TestFakeTaoRandom(t *testing.T) {
-	ft, err := NewFakeTao("test", "", nil)
+	ft, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
 	if err != nil {
 		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
 	}
@@ -175,7 +171,7 @@ func TestFakeTaoRandom(t *testing.T) {
 }
 
 func TestFakeTaoSeal(t *testing.T) {
-	ft, err := NewFakeTao("test", "", nil)
+	ft, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
 	if err != nil {
 		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
 	}
@@ -193,7 +189,7 @@ func TestFakeTaoSeal(t *testing.T) {
 }
 
 func TestFakeTaoUnseal(t *testing.T) {
-	ft, err := NewFakeTao("test", "", nil)
+	ft, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
 	if err != nil {
 		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
 	}
@@ -226,16 +222,16 @@ func TestFakeTaoUnseal(t *testing.T) {
 }
 
 func TestFakeTaoAttest(t *testing.T) {
-	ft, err := NewFakeTao("test", "", nil)
+	ft, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
 	if err != nil {
 		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
 	}
 
 	stmt := auth.Speaksfor{
-		Delegate: auth.Prin{Type: "key", Key:[]byte("BogusKeyBytes1")}
+		Delegate: auth.Prin{Type: "key", Key:[]byte("BogusKeyBytes1")},
 	}
 
-	_, err = ft.Attest(stmt)
+	_, err = ft.Attest(nil, nil, nil, stmt)
 	if err != nil {
 		t.Fatal("Couldn't attest to a statement in the FakeTao:", err)
 	}

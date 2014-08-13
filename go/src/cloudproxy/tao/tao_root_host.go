@@ -17,10 +17,6 @@ package tao
 import (
 	"crypto/rand"
 	"errors"
-	"strings"
-	"time"
-
-	"code.google.com/p/goprotobuf/proto"
 
 	"cloudproxy/tao/auth"
 )
@@ -28,7 +24,7 @@ import (
 // A TaoRootHost is a standalone implementation of TaoHost.
 type TaoRootHost struct {
 	keys        *Keys
-	taoHostName string
+	taoHostName auth.Prin
 }
 
 // NewTaoRootHostFromKeys returns a TaoRootHost that uses these keys.
@@ -37,7 +33,7 @@ func NewTaoRootHostFromKeys(k *Keys) (TaoHost, error) {
 		return nil, errors.New("missing required key for TaoRootHost")
 	}
 
-	n, err := k.SigningKey.ToPrincipalName()
+	n, err := k.SigningKey.ToPrincipal()
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +96,7 @@ func (t *TaoRootHost) Attest(childSubprin auth.SubPrin, issuer *auth.Prin,
 		issuer = &child
 	}
 
-	stmt := Says{Speaker: *issuer, Time: time, Expiration: expiration, Message: message}
+	stmt := auth.Says{Speaker: *issuer, Time: time, Expiration: expiration, Message: message}
 
 	return GenerateAttestation(t.keys.SigningKey, nil /* delegation */, stmt)
 }
@@ -130,6 +126,6 @@ func (t *TaoRootHost) RemovedHostedProgram(childSubprin auth.SubPrin) error {
 // TaoHostName gets the Tao principal name assigned to this hosted Tao host.
 // The name encodes the full path from the root Tao, through all intermediary
 // Tao hosts, to this hosted Tao host.
-func (t *TaoRootHost) TaoHostName() string {
+func (t *TaoRootHost) TaoHostName() auth.Prin {
 	return t.taoHostName
 }

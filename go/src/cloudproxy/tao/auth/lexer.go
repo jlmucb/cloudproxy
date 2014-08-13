@@ -12,6 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// This code borrows from the lexer design and implementation described
+// by Rob Pike, "Lexical Scanning in Go", GTUG Sydney, Aug 30, 2011.
+// See: http://cuddle.googlecode.com/hg/talk/lex.html#slide-40
+//
+// It also borrows from the lexer in package
+// github.com/kevinawalsh/datalog/dlengine.
+
 package auth
 
 import (

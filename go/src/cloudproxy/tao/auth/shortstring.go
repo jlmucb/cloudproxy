@@ -50,7 +50,7 @@ func (e PrinExt) ShortString() string {
 func (s SubPrin) ShortString() string {
 	var out bytes.Buffer
 	for _, e := range s {
-		out.Fprintf(&out, ".%s", e.ShortString())
+		fmt.Fprintf(&out, ".%s", e.ShortString())
 	}
 	return out.String()
 }

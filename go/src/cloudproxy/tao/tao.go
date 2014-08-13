@@ -50,7 +50,7 @@ const (
 // with their host, others may use sockets, etc.
 type Tao interface {
 	// GetTaoName returns the Tao principal name assigned to the caller.
-	GetTaoName() (name Prin, err error)
+	GetTaoName() (name auth.Prin, err error)
 
 	// ExtendTaoName irreversibly extends the Tao principal name of the caller.
 	ExtendTaoName(subprin auth.SubPrin) error

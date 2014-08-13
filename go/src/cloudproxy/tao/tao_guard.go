@@ -18,28 +18,32 @@ package tao
 
 import (
 	"errors"
+
+	"cloudproxy/tao/auth"
 )
 
 // MakePredicate constructs an authorization predicate of the form:
 //   Authorize(name, op, args...).
 // TODO(tmroeder): implement this function.
-func MakePredicate(name, op string, args []string) string {
+func MakePredicate(name auth.Prin, op string, args []string) string {
 	return ""
 }
 
 // A TaoGuard is an interface for evaluating policy decisions.
 type TaoGuard interface {
-	// SubprincipalName returns a unique name for this policy, one that can
-	// be used as a subprincipal name.
-	SubprincipalName() string
+	// Subprincipal returns a unique subprincipal for this policy.
+	Subprincipal() auth.SubPrin
 
 	// GuardTypeName returns a name for this type of guard, one that be
 	// used as a predicate name.
 	GuardTypeName() string
 
+	// SaveConfig writes all presistent policy data to disk, signed by key.
+	SaveConfig(key *Signer) error
+
 	// Authorize adds an authorization for a principal to perform an
 	// operation.
-	Authorize(name, op string, args []string) error
+	Authorize(name auth.Prin, op string, args []string) error
 
 	// Retract removes an authorization for a principal to perform an
 	// operation, essentially reversing the effect of an Authorize() call
@@ -48,11 +52,11 @@ type TaoGuard interface {
 	// AddRule() call. However, particularly when expressive policies are
 	// supported (e.g., an "authorize all" rule), other rules may still be
 	// in place authorizing the principal to perform the operation.
-	Retract(name, op string, args []string) error
+	Retract(name auth.Prin, op string, args []string) error
 
 	// IsAuthorized checks whether a principal is authorized to perform an
 	// operation.
-	IsAuthorized(name, op string, args []string) bool
+	IsAuthorized(name auth.Prin, op string, args []string) bool
 
 	// AddRule adds a policy rule. Subclasses should support at least rules
 	// of the form: Authorized(P, op, args...). This is equivalent to
@@ -88,6 +92,7 @@ type TaoGuard interface {
 
 // A TrivialGuard implements a constant policy: either ConservativeGuard ("deny
 // all") or LiberalGuard ("allow all").
+// TODO(kwalsh) make this a bool
 type TrivialGuard int
 
 // The types of TrivialGuard
@@ -100,20 +105,22 @@ const (
 // on the TrivialGuard.
 var errTrivialGuard = errors.New("can't perform policy operations on the TrivialGuard")
 
-// SubprincipalName returns a subprincipal name for the TrivialGuard as
-// 'TrivialGuard("<type>")' where type is the policy type.
-func (t TrivialGuard) SubprincipalName() string {
+// SubprincipalName returns subprincipal TrivialGuard(<policy>).
+func (t TrivialGuard) Subprincipal() auth.SubPrin {
+	var policy string
 	switch t {
 	case ConservativeGuard:
-		return "TrivialGuard(\"Conservative\")"
+		policy = "Conservative"
 	case LiberalGuard:
-		return "TrivialGuard(\"Liberal\")"
+		policy = "Liberal"
 	default:
-		return "UnknownSubprincipal"
+		policy = "Unspecified"
 	}
+	e := auth.PrinExt{Name: "TrivialGuard", Arg:[]auth.Term{auth.Str(policy)}}
+	return auth.SubPrin{e}
 }
 
-// GuardTypeName returns "TrivialGuard" as the type of this guard.
+// GuardTypeName returns "Trivial<type>Guard" as the type of this guard.
 func (t TrivialGuard) GuardTypeName() string {
 	switch t {
 	case ConservativeGuard:
@@ -121,13 +128,18 @@ func (t TrivialGuard) GuardTypeName() string {
 	case LiberalGuard:
 		return "TrivialLiberalGuard"
 	default:
-		return "UnknownGuard"
+		return "TrivialUnspecifiedGuard"
 	}
+}
+
+// SaveConfig writes all presistent policy data to disk, signed by key.
+func (t TrivialGuard) SaveConfig(key *Signer) error {
+	return nil // nothing to save
 }
 
 // Authorize adds an authorization for a principal to perform an
 // operation.
-func (t TrivialGuard) Authorize(name, op string, args []string) error {
+func (t TrivialGuard) Authorize(name auth.Prin, op string, args []string) error {
 	return errTrivialGuard
 }
 
@@ -138,13 +150,13 @@ func (t TrivialGuard) Authorize(name, op string, args []string) error {
 // AddRule() call. However, particularly when expressive policies are
 // supported (e.g., an "authorize all" rule), other rules may still be
 // in place authorizing the principal to perform the operation.
-func (t TrivialGuard) Retract(name, op string, args []string) error {
+func (t TrivialGuard) Retract(name auth.Prin, op string, args []string) error {
 	return errTrivialGuard
 }
 
 // IsAuthorized checks whether a principal is authorized to perform an
 // operation.
-func (t TrivialGuard) IsAuthorized(name, op string, args []string) bool {
+func (t TrivialGuard) IsAuthorized(name auth.Prin, op string, args []string) bool {
 	switch t {
 	case ConservativeGuard:
 		return false

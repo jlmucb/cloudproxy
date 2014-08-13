@@ -204,7 +204,7 @@ func decodePrin(buf *Buffer) (p Prin, err error) {
 		return
 	}
 	p.Key = []byte(k)
-	p.Ext, err = decodeSubPrin(buf)
+	p.Ext, err = unmarshalSubPrin(buf)
 	return
 }
 
@@ -232,7 +232,7 @@ func decodeSubPrin(buf *Buffer) (s SubPrin, err error) {
 		if err != nil {
 			return s, err
 		}
-		s= append(s, PrinExt{name, args})
+		s = append(s, PrinExt{name, args})
 	}
 	return
 }

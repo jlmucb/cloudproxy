@@ -16,11 +16,13 @@ package tao
 
 import (
 	"testing"
+
+	"cloudproxy/tao/auth"
 )
 
 func testNewTrivialLiberalGuard(t *testing.T) TaoGuard {
 	tg := LiberalGuard
-	if tg.SubprincipalName() != "TrivialGuard(\"Liberal\")" {
+	if tg.Subprincipal().String() != `.TrivialGuard("Liberal")` {
 		t.Fatal("Wrong subprincipal name for trivial liberal guard")
 	}
 
@@ -33,7 +35,7 @@ func testNewTrivialLiberalGuard(t *testing.T) TaoGuard {
 
 func testNewTrivialConservativeGuard(t *testing.T) TaoGuard {
 	tg := ConservativeGuard
-	if tg.SubprincipalName() != "TrivialGuard(\"Conservative\")" {
+	if tg.Subprincipal().String() != `.TrivialGuard("Conservative")` {
 		t.Fatal("Wrong subprincipal name for trivial conservative guard")
 	}
 
@@ -44,20 +46,22 @@ func testNewTrivialConservativeGuard(t *testing.T) TaoGuard {
 	return tg
 }
 
+var testPrin auth.Prin = auth.Prin{Type:"key", Key:[]byte("testkey")}
+
 func testTrivialGuardAuthorize(t *testing.T, tg TaoGuard) {
-	if err := tg.Authorize("testname", "testop", []string{}); err == nil {
+	if err := tg.Authorize(testPrin, "testop", []string{}); err == nil {
 		t.Fatal("Authorize command incorrectly succeeded on trivial guard")
 	}
 }
 
 func testTrivialGuardRetract(t *testing.T, tg TaoGuard) {
-	if err := tg.Retract("testname", "testop", []string{}); err == nil {
+	if err := tg.Retract(testPrin, "testop", []string{}); err == nil {
 		t.Fatal("Retract command incorrectly succeeded on trivial guard")
 	}
 }
 
 func testTrivialGuardIsAuthorized(t *testing.T, tg TaoGuard, expect bool) {
-	b := tg.IsAuthorized("testname", "testop", []string{})
+	b := tg.IsAuthorized(testPrin, "testop", []string{})
 	if b != expect {
 		t.Fatal("Got an unexpected result from IsAuthorized on a trivial guard")
 	}

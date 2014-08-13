@@ -25,6 +25,7 @@ import (
 	"path"
 
 	"cloudproxy/util"
+	"cloudproxy/tao/auth"
 )
 
 // In the C++ Tao, these functions are methods on a stateless class. So, in Go,
@@ -38,19 +39,21 @@ type LinuxProcessFactory struct{}
 
 // FormatHostedProgramSubprin produces a string that represents a subprincipal
 // with the given ID and hash.
-func FormatHostedProgramSubprin(id uint, hash []byte) string {
-	if id == 0 {
-		return fmt.Sprintf(`Program("%x")`, hash)
+func FormatHostedProgramSubprin(id uint, hash []byte) auth.SubPrin {
+	var args []auth.Term
+	if id != 0 {
+		args = append(args, auth.Int(id))
 	}
-
-	return fmt.Sprintf(`Process(%d, "%x")`, id, hash)
+	hashstr := fmt.Sprintf("%x", hash)
+	args = append(args, auth.Str(hashstr))
+	return auth.SubPrin{auth.PrinExt{Name: "Program", Arg: args}}
 }
 
 // MakeHostedProgramSubprin computes the hash of a program to get its
 // hosted-program subprincipal. In the process, it copies the program to a
 // temporary file controlled by this code and returns the path to that new
 // binary.
-func (LinuxProcessFactory) MakeHostedProgramSubprin(id uint, prog string) (subprin, temppath string, err error) {
+func (LinuxProcessFactory) MakeHostedProgramSubprin(id uint, prog string) (subprin auth.SubPrin, temppath string, err error) {
 	// To avoid a time-of-check-to-time-of-use error, we copy the file
 	// bytes to a temp file as we read them. This temp-file path is
 	// returned so it can be used to start the program.
@@ -87,7 +90,7 @@ func (LinuxProcessFactory) MakeHostedProgramSubprin(id uint, prog string) (subpr
 // StartHostedProgram uses a path, arguments, and a subprincipal name to create
 // a LinuxHostServer that manages messages to and from hosted processes under
 // Linux.
-func (LinuxProcessFactory) StartHostedProgram(lh *LinuxHost, prog string, args []string, subprin string) (*LinuxHostServer, error) {
+func (LinuxProcessFactory) StartHostedProgram(lh *LinuxHost, prog string, args []string, subprin auth.SubPrin) (*LinuxHostServer, error) {
 	// Get a pipe pair for communication with the child.
 	serverRead, clientWrite, err := os.Pipe()
 	if err != nil {

@@ -57,5 +57,5 @@ type TaoHost interface {
 	// Get the Tao principal name assigned to this hosted Tao host. The
 	// name encodes the full path from the root Tao, through all
 	// intermediary Tao hosts, to this hosted Tao host.
-	TaoHostName() Prin
+	TaoHostName() auth.Prin
 }

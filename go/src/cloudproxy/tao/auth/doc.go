@@ -83,7 +83,7 @@
 // Several alternative encodings were considered:
 //
 //   Protobuf encoding with protobuf definitions: This would require either
-//   duplicating all Forma dn Term types as proto definitions, then writing
+//   duplicating all Form and Term types as proto definitions, then writing
 //   conversion and validation code. The encoding would likely not be space
 //   efficient, and it would be essentially Tao's only hard dependency on
 //   protobuf.
@@ -132,7 +132,7 @@
 //
 //   Our tags describe both the meaning and the type of all enclosed values, and
 //   we use tags only when the meaning or type can vary (i.e. for interface
-//   types). Protobuf uses tags for every enclosed value, and those tags also to
+//   types). Protobuf uses tags for every enclosed value, and those tags also
 //   carry type information. Protobuf is more efficient when there are many
 //   optional fields. For us, nearly all fields are required.
 //

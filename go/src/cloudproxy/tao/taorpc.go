@@ -92,17 +92,17 @@ func (t *TaoRPC) call(method string, r *TaoRPCRequest, e expectedResponse) (data
 }
 
 // GetTaoName implements part of the Tao interface.
-func (t *TaoRPC) GetTaoName() (Prin, error) {
+func (t *TaoRPC) GetTaoName() (auth.Prin, error) {
 	r := &TaoRPCRequest{}
 	data, _, err := t.call(t.serviceName+".GetTaoName", r, wantData)
 	if err != nil {
-		return Prin{}, err
+		return auth.Prin{}, err
 	}
 	return auth.UnmarshalPrin(data)
 }
 
 // ExtendTaoName implements part of the Tao interface.
-func (t *TaoRPC) ExtendTaoName(subprin SubPrin) error {
+func (t *TaoRPC) ExtendTaoName(subprin auth.SubPrin) error {
 	r := &TaoRPCRequest{Data: auth.Marshal(subprin)}
 	_, _, err := t.call(t.serviceName+".ExtendTaoName", r, wantNothing)
 	return err
@@ -149,14 +149,12 @@ func (t *TaoRPC) GetSharedSecret(n int, policy string) ([]byte, error) {
 }
 
 // Attest implements part of the Tao interface.
-func (t *TaoRPC) Attest(prin *issuer, int64 *time, int64 *expiration, message Form) (*Attestation, error)
-	data := auth.Marshal(stmt)
-
+func (t *TaoRPC) Attest(issuer *auth.Prin, time, expiration *int64, message auth.Form) (*Attestation, error) {
 	r := &TaoRPCRequest{
-		Issuer:issuer,
+		Issuer: auth.Marshal(issuer),
 		Time: time,
 		Expiration: expiration,
-		Data: data,
+		Data: auth.Marshal(message),
 	}
 	bytes, _, err := t.call(t.serviceName+".Attest", r, wantData)
 	if err != nil {

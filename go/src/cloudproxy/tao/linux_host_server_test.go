@@ -22,6 +22,8 @@ import (
 	"time"
 
 	"code.google.com/p/goprotobuf/proto"
+
+	"cloudproxy/tao/auth"
 )
 
 func testNewLinuxHostServer(t *testing.T) (*LinuxHostServer, string) {
@@ -31,7 +33,7 @@ func testNewLinuxHostServer(t *testing.T) (*LinuxHostServer, string) {
 	// so they don't need to be filled here.
 	lhs := &LinuxHostServer{
 		host:         lh,
-		ChildSubprin: "test child",
+		ChildSubprin: auth.SubPrin{auth.PrinExt{Name:"TestChild"}},
 	}
 	return lhs, tmpdir
 }
@@ -52,7 +54,7 @@ func TestLinuxHostServerGetTaoName(t *testing.T) {
 
 func TestLinuxHostServerExtendTaoName(t *testing.T) {
 	r := &TaoRPCRequest{
-		Data: []byte("extension"),
+		Data: auth.Marshal(auth.SubPrin{auth.PrinExt{Name:"Extension"}}),
 	}
 	s := &TaoRPCResponse{}
 	lhs, tmpdir := testNewLinuxHostServer(t)
@@ -124,7 +126,7 @@ func TestLinuxHostServerAttest(t *testing.T) {
 		Data:          auth.Marshal(message),
 		Time:          proto.Int64(time.Now().UnixNano()),
 		Expiration:    proto.Int64(time.Now().Add(24 * time.Hour).UnixNano()),
-		Issuer:        st.Data
+		Issuer:        st.Data,
 	}
 	s := &TaoRPCResponse{}
 	if err := lhs.Attest(r, s); err != nil {

@@ -35,7 +35,7 @@ var termtests []string = []string{
 	key[0],
 	key[1],
 	key[0] + ".Extension(1)",
-	key[0] + `.Extension(1).A.B(1).C(1, "Hello").D(` + key[1] +`.E(`+key[2]+`.G.H))`,
+	key[0] + `.Extension(1).A.B(1).C(1, "Hello").D(` + key[1] + `.E(` + key[2] + `.G.H))`,
 	key[0] + ".E()",
 }
 
@@ -49,7 +49,7 @@ func TestParseTerm(t *testing.T) {
 		if n != 1 {
 			t.Fatal("incomplete parse")
 		}
-		if (i != len(termtests) - 1) != (x.Term.String() == s) {
+		if (i != len(termtests)-1) != (x.Term.String() == s) {
 			t.Fatalf("bad print: %v vs %v", x.Term.String(), s)
 		}
 	}

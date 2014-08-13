@@ -19,6 +19,8 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"cloudproxy/tao/auth"
 )
 
 func TestGenerateKeys(t *testing.T) {
@@ -140,22 +142,22 @@ func TestFromPrincipalName(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	name, err := s.ToPrincipalName()
+	name, err := s.ToPrincipal()
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	v, err := FromPrincipalName(name)
+	v, err := FromPrincipal(name)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	name2, err := v.ToPrincipalName()
+	name2, err := v.ToPrincipal()
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	if name != name2 {
+	if !name.Identical(name2) {
 		t.Fatal("Verifier Principal name doesn't match the Signer name it was derived from")
 	}
 }
@@ -166,12 +168,12 @@ func TestSignAndVerify(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	name, err := s.ToPrincipalName()
+	name, err := s.ToPrincipal()
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	v, err := FromPrincipalName(name)
+	v, err := FromPrincipal(name)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -387,7 +389,7 @@ func TestNewOnDiskPBEKeys(t *testing.T) {
 }
 
 func TestNewTemporaryTaoDelegatedKeys(t *testing.T) {
-	ft, err := NewFakeTao("test", "", nil)
+	ft, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
 	if err != nil {
 		t.Fatal("Couldn't initialize a FakeTao:", err)
 	}
@@ -405,7 +407,7 @@ func TestNewOnDiskTaoSealedKeys(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	ft, err := NewFakeTao("test", "", nil)
+	ft, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
 	if err != nil {
 		t.Fatal("Couldn't initialize a FakeTao:", err)
 	}

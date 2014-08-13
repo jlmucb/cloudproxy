@@ -24,7 +24,7 @@ import (
 
 // A TaoStackedHost implements TaoHost over an existing host Tao.
 type TaoStackedHost struct {
-	taoHostName Prin
+	taoHostName auth.Prin
 	hostTao     Tao
 	keys        *Keys
 }
@@ -92,11 +92,12 @@ func (t *TaoStackedHost) Attest(childSubprin auth.SubPrin, issuer *auth.Prin,
 		issuer = &child
 	}
 
-	stmt := Says{Speaker: *issuer, Time: time, Expiration: expiration, Message: message}
 
 	if t.keys == nil || t.keys.SigningKey == nil {
-		return t.hostTao.Attest(stmt)
+		return t.hostTao.Attest(issuer, time, expiration, message)
 	}
+
+	stmt := auth.Says{Speaker: *issuer, Time: time, Expiration: expiration, Message: message}
 
 	var d []byte
 	if t.keys.Delegation != nil {
@@ -157,6 +158,6 @@ func (t *TaoStackedHost) RemovedHostedProgram(childSubprin auth.SubPrin) error {
 // TaoHostName gets the Tao principal name assigned to this hosted Tao host.
 // The name encodes the full path from the root Tao, through all intermediary
 // Tao hosts, to this hosted Tao host.
-func (t *TaoStackedHost) TaoHostName() string {
+func (t *TaoStackedHost) TaoHostName() auth.Prin {
 	return t.taoHostName
 }

@@ -20,6 +20,8 @@ import (
 	"os/exec"
 
 	"code.google.com/p/goprotobuf/proto"
+
+	"cloudproxy/tao/auth"
 )
 
 // A LinuxHostServer wraps a LinuxHost and serves its methods across a net/rpc
@@ -33,7 +35,7 @@ type LinuxHostServer struct {
 
 // GetTaoName returns the Tao principal name assigned to the caller.
 func (lhs *LinuxHostServer) GetTaoName(r *TaoRPCRequest, s *TaoRPCResponse) error {
-	s.Data = []byte(lhs.host.handleGetTaoName(lhs.ChildSubprin))
+	s.Data = auth.Marshal(lhs.host.handleGetTaoName(lhs.ChildSubprin))
 	return nil
 }
 
@@ -116,7 +118,7 @@ func (lhs *LinuxHostServer) Attest(r *TaoRPCRequest, s *TaoRPCResponse) error {
 
 	var issuer *auth.Prin
 	if r.Issuer != nil {
-		p, err := auth.UnmarshalPrin(*r.Issuer)
+		p, err := auth.UnmarshalPrin(r.Issuer)
 		if err != nil {
 			return err
 		}

@@ -26,14 +26,12 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
-	"encoding/base64"
 	"encoding/pem"
 	"errors"
 	"io/ioutil"
 	"math/big"
 	"os"
 	"path"
-	"strings"
 	"time"
 
 	"code.google.com/p/go.crypto/hkdf"
@@ -1055,7 +1053,7 @@ func NewTemporaryTaoDelegatedKeys(keyTypes KeyType, t Tao) (*Keys, error) {
 			Delegate: prin,
 		}
 
-		if k.Delegation, err = t.Attest(s); err != nil {
+		if k.Delegation, err = t.Attest(nil, nil, nil, s); err != nil {
 			return nil, err
 		}
 	}
@@ -1317,7 +1315,7 @@ func NewOnDiskTaoSealedKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys
 				Delegate: prin,
 			}
 
-			if k.Delegation, err = t.Attest(s); err != nil {
+			if k.Delegation, err = t.Attest(nil, nil, nil, s); err != nil {
 				return nil, err
 			}
 

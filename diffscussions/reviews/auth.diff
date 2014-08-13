@@ -131,6 +131,15 @@ index 0000000..497aeb4
 #*
 #- In that case, we probably want a function to create this string from such a structure
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-08-13T07:45:27-0400
+#**
+#-- I will eliminate the base64w encoding (that can be done during
+#-- parsing/printing instead). And I will change ToPrincipalName() in keys.go to
+#-- be ToPrincipal() returning a Prin.
+#--
 +	Ext []PrinExt // one or more extensions for descendents
 +}
 +
@@ -238,6 +247,15 @@ index 0000000..497aeb4
 #- From our discussion on 2014-08-12, this is because of slice members
 #- in structs, but it's not currently needed.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-08-13T07:47:27-0400
+#**
+#-- My intention is that all of the auth structures should be mostly immutable
+#-- once they are constructed or parsed, hopefully forestalling the need for
+#-- Copy().
+#--
 +// Identical checks if an Int is identical to another Term.
 +func (t Int) Identical(other Term) bool {
 +	return t == other
@@ -256,6 +274,13 @@ index 0000000..497aeb4
 #*
 #- "identical to another Prin" -> "identical to another Term"
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-08-13T08:04:47-0400
+#**
+#-- Fixed.
+#--
 +func (t Prin) Identical(other Term) bool {
 +	p, ok := other.(Prin)
 +	if !ok {
@@ -272,6 +297,13 @@ index 0000000..497aeb4
 #*
 #- Range-for loop here and below, even if just for indexing.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-08-13T08:09:04-0400
+#**
+#-- Fixed.
+#--
 +		if !t.Ext[i].Identical(p.Ext[i]) {
 +			return false
 +		}
@@ -1577,6 +1609,13 @@ index 0000000..ffe5804
 #*
 #- "Forma dn Term" -> "Form and Term"
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-08-13T08:09:36-0400
+#**
+#-- Fixed.
+#--
 +//   conversion and validation code. The encoding would likely not be space
 +//   efficient, and it would be essentially Tao's only hard dependency on
 +//   protobuf.
@@ -1633,6 +1672,13 @@ index 0000000..ffe5804
 #*
 #- "also to" -> "also"
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-08-13T08:09:58-0400
+#**
+#-- Fixed.
+#--
 +//   carry type information. Protobuf is more efficient when there are many
 +//   optional fields. For us, nearly all fields are required.
 +//
@@ -2025,6 +2071,14 @@ index 0000000..ec76c80
 #- here under Apache 2 and there under LGPL2, IIUC, though IANAL. Probably a few
 #- words about the code similarity would be useful for clarification.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-08-13T08:21:29-0400
+#**
+#-- Added note here and in lexer. Though really, there is barely any similarity
+#-- for the parser, just a few comments I copied over. Lexer is closer.
+#--
 +
 +package auth
 +
@@ -2065,6 +2119,13 @@ index 0000000..ec76c80
 #- short names for the receiver variable. See
 #- https://code.google.com/p/go-wiki/wiki/CodeReviewComments#Receiver_Names
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-08-13T08:29:09-0400
+#**
+#-- Fixed.
+#--
 +	if !parser.haveLookahead {
 +		parser.lookahead = parser.lex.nextToken()
 +		parser.haveLookahead = true
@@ -2103,6 +2164,13 @@ index 0000000..ec76c80
 #-     parser.advance()
 #- }
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-08-13T08:30:03-0400
+#**
+#-- Fixed.
+#--
 +	return n
 +}
 +
@@ -3148,6 +3216,13 @@ index 0000000..76a500e
 #*
 #- "ho level" -> "how level"
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-08-13T08:50:14-0400
+#**
+#-- Fixed.
+#--
 +// the precedence of f.
 +func printFormWithParens(out io.Writer, level int, f Form) {
 +	if level > precedence(f) {

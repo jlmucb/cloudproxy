@@ -24,90 +24,97 @@ import (
 )
 
 // ValidSigner checks the signature on an attestation and, if so, returns the signer.
-func (a *Attestation) ValidSigner() (*auth.Prin, error) {
-	signer, err := auth.NewPrin(*a.Signer)
+func (a *Attestation) ValidSigner() (signer auth.Prin, err error) {
+	p, err := auth.UnmarshalPrin(*a.Signer)
 	if err != nil {
-		return nil, err
+		return
 	}
-	if len(signer.Part) != 1 {
-		return nil, fmt.Errorf("tao: attestation signer principal malformed: %s", *a.Signer)
+	if len(signer.Ext) != 0 {
+		err = fmt.Errorf("tao: attestation signer principal malformed: %s", signer)
+		return
 	}
-	if signer.Part[0].Name == "TPM" {
+	switch signer.Type {
+	case "tpm":
 		// Signer is tpm, use tpm-specific signature verification.
-		return nil, errors.New("tpm signature verification not yet implemented")
-	} else if signer.Part[0].Name == "Key" {
+		// TODO(kwalsh) call tpm-specific verification code
+		err = errors.New("tpm signature verification not yet implemented")
+		return
+	case "key":
 		// Signer is ECDSA key, use Tao signature verification.
-		v, err := FromPrincipalName(signer.String())
+		v, err := FromPrincipal(signer)
 		if err != nil {
-			return nil, err
+			return
 		}
-		if ok, err := v.Verify(a.SerializedStatement, AttestationSigningContext, a.Signature); !ok {
-			return nil, err
+		ok, err := v.Verify(a.SerializedStatement, AttestationSigningContext, a.Signature)
+		if !ok {
+			return
 		}
-	} else {
-		return nil, fmt.Errorf("tao: attestation signer principal unrecognized: %s", signer.String())
+		return p, nil
+	default:
+		err = fmt.Errorf("tao: attestation signer principal unrecognized: %s", signer.String())
+		return
 	}
-	return signer, nil
 }
 
 // Validate checks whether an attestation is valid and, if so, it returns the
 // statement conveyed by the attestation.
-func (a *Attestation) Validate() (*Statement, error) {
+func (a *Attestation) Validate() (stmt auth.Says, err error) {
 	signer, err := a.ValidSigner()
 	if err != nil {
-		return nil, err
+		return
 	}
-	var stmt Statement
-	if err = proto.Unmarshal(a.SerializedStatement, &stmt); err != nil {
-		return nil, err
-	}
-	issuer, err := auth.NewPrin(*stmt.Issuer)
+	f, err := auth.UnmarshalForm(a.SerializedStatement)
 	if err != nil {
-		return nil, fmt.Errorf("tao: attestation statement issuer unrecognized: %s", *stmt.Issuer)
+		return
+	}
+	msg, ok := f.(auth.Says)
+	if !ok {
+		err = fmt.Errof("tao: attestation statement has wrong type: %T", f)
+		return
 	}
 	if a.SerializedDelegation == nil {
 		// Case (1), no delegation present.
-		// Require that s.issuer be a subprincipal of (or identical to) a.signer.
-		if !auth.SubprinOrIdentical(issuer, signer) {
-			return nil, fmt.Errorf("tao: attestation statement signer does not evidently speak for issuer")
+		// Require that msg.Speaker be a subprincipal of (or identical to) a.signer.
+		if !auth.SubprinOrIdentical(msg.Speaker, signer) {
+			err = fmt.Errorf("tao: attestation statement signer does not evidently speak for issuer")
+			return
 		}
 	} else {
 		// Case (2), delegation present.
 		// Require that:
-		// - delegation conveys delegate speaksfor issuer0,
+		// - delegation conveys delegator says delegate speaksfor delegator,
 		// - a.signer speaks for delegate
-		// - and issuer0 speaks for s.issuer
+		// - and delegator speaks for s.Speaker
 		var da Attestation
 		if err := proto.Unmarshal(a.SerializedDelegation, &da); err != nil {
-			return nil, err
+			return
 		}
-		delegation, err := da.Validate()
+		delegationStatement, err := da.Validate()
 		if err != nil {
-			return nil, err
+			return
 		}
-		if delegation.Delegate == nil {
-			return nil, fmt.Errorf("tao: attestation delegation invalid")
+		delegation, ok := delegationStatement.Message.(Speaksfor)
+		if !ok || !auth.Identical(delegationStatement.Speaker, delegation.Delegator) {
+			err = fmt.Errorf("tao: attestation delegation is invalid")
+			return
 		}
-		delegate, err := auth.NewPrin(*delegation.Delegate)
-		if err != nil {
-			return nil, fmt.Errorf("tao: attestation delegation delegate invalid: %s", *delegation.Delegate)
-		}
-		issuer0, err := auth.NewPrin(*delegation.Issuer)
-		if err != nil {
-			return nil, fmt.Errorf("tao: attestation delegation issuer invalid: %s", *delegation.Issuer)
-		}
-		if !auth.SubprinOrIdentical(delegate, signer) {
+		if !auth.SubprinOrIdentical(delegation.Delegate, signer) {
 			return nil, fmt.Errorf("tao: attestation delegation irrelevant to signer")
 		}
-		if !auth.SubprinOrIdentical(issuer, issuer0) {
+		if !auth.SubprinOrIdentical(msg.Speaker, delegation.Delegator) {
 			return nil, fmt.Errorf("tao: attestation delegation irrelevant to issuer")
 		}
-		if *stmt.Time < *delegation.Time {
-			*stmt.Time = *delegation.Time
+		if msg.Time == nil {
+			msg.Time = delegationStatement.Time
+		} else if delegationStatement.Time != nil && *msg.Time < *delegationStatement.Time {
+			msg.Time = delegationStatement.Time
 		}
-		if *stmt.Expiration > *delegation.Expiration {
-			*stmt.Expiration = *delegation.Expiration
+		if msg.Expiration == nil {
+			msg.Expiration = delegation.Expiration
+		} else if delegation.Expiration != nil && *msg.Expiration > *delegationStatement.Expiration {
+			msg.Expiration = delegationStatement.Expiration
 		}
 	}
-	return &stmt, nil
+	stmt = msg
+	return
 }

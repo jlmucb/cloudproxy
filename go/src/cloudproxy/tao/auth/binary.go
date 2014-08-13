@@ -255,6 +255,19 @@ func unmarshalTerm(buf *Buffer) (t Term, err error) {
 	}
 }
 
+// UnmarshalPrin decodes a Prin.
+func UnmarshalPrin(bytes []byte) (p Prin, err error) {
+	t, err := UnmarshalTerm(bytes)
+	if err != nil {
+		return
+	}
+	p, ok := t.(Prin)
+	if !ok {
+		err = fmt.Errorf("expected Prin, found %T", t)
+	}
+	return
+}
+
 // UnmarshalTerm decodes a Term.
 func UnmarshalTerm(bytes []byte) (Term, error) {
 	buf := &Buffer{bytes}

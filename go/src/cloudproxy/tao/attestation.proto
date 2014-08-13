@@ -28,7 +28,9 @@ package tao;
 //
 // Delegation Statements:
 //
-// A simple delegation statement is a statement conveying a particular message:
+// Tao uses simple delegation statements internally. This is the only kind of
+// statement that Tao generates or interprets. A simple delegation statement is
+// a statement conveying a particular message:
 //   issuer ... says (delegate speaksfor issuer)
 // Here, delegate is the name of some principal, usually a (non-tpm) Tao key
 // principal, i.e. key("...") where "..." is a base64w-encoded, serialized

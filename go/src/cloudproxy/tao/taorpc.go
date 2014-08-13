@@ -98,15 +98,7 @@ func (t *TaoRPC) GetTaoName() (Prin, error) {
 	if err != nil {
 		return Prin{}, err
 	}
-	term, err := auth.UnmarshalTerm(data)
-	if err != nil {
-		return Prin{}, err
-	}
-	prin, ok := term.(Prin)
-	if !ok {
-		return Prin{}, errors.New("taorpc: can't unmarshal principal")
-	}
-	return prin, err
+	return auth.UnmarshalPrin(data)
 }
 
 // ExtendTaoName implements part of the Tao interface.

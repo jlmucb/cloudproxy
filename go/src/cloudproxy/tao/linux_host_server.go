@@ -116,13 +116,9 @@ func (lhs *LinuxHostServer) Attest(r *TaoRPCRequest, s *TaoRPCResponse) error {
 
 	var issuer *auth.Prin
 	if r.Issuer != nil {
-		t, err := auth.UnmarshalTerm(*r.Issuer)
+		p, err := auth.UnmarshalPrin(*r.Issuer)
 		if err != nil {
 			return err
-		}
-		p, ok := t.(Prin)
-		if !ok {
-			return errors.New("issuer must a principal or nil")
 		}
 		issuer = &p
 	}

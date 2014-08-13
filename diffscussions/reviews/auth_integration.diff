@@ -1,0 +1,5377 @@
+#* 
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-13T15:48:04-0400
+#* 
+#- allow tpm principals, don't use base64w for keys
+#- 
+#- 
+#- add a subprin type
+#- 
+#- 
+#- rewrite most code to use pkg auth
+#- 
+#- 
+#- rewrite remaining code to use pkg auth
+#- 
+#- 
+#- move GenerateAttestation to attestation.go
+#- 
+#- 
+#- fixes from tmroeder's review, integrate with other code
+#- 
+#- all unit tests pass
+#- 
+#- 
+diff --git a/go/src/cloudproxy/tao/attestation.go b/go/src/cloudproxy/tao/attestation.go
+index b11dbcd..1efc489 100644
+--- a/go/src/cloudproxy/tao/attestation.go
++++ b/go/src/cloudproxy/tao/attestation.go
+@@ -1,113 +1,156 @@
+ // Copyright (c) 2014, Kevin Walsh.  All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+-	"errors"
+ 	"fmt"
++	"time"
+ 
+ 	"code.google.com/p/goprotobuf/proto"
+ 
+ 	"cloudproxy/tao/auth"
+ )
+ 
+ // ValidSigner checks the signature on an attestation and, if so, returns the signer.
+-func (a *Attestation) ValidSigner() (*auth.Prin, error) {
+-	signer, err := auth.NewPrin(*a.Signer)
++func (a *Attestation) ValidSigner() (auth.Prin, error) {
++	signer, err := auth.UnmarshalPrin(a.Signer)
+ 	if err != nil {
+-		return nil, err
++		return auth.Prin{}, err
+ 	}
+-	if len(signer.Part) != 1 {
+-		return nil, fmt.Errorf("tao: attestation signer principal malformed: %s", *a.Signer)
++	if len(signer.Ext) != 0 {
++		return auth.Prin{}, fmt.Errorf("tao: attestation signer principal malformed: %s", signer)
+ 	}
+-	if signer.Part[0].Name == "TPM" {
++	switch signer.Type {
++	case "tpm":
+ 		// Signer is tpm, use tpm-specific signature verification.
+-		return nil, errors.New("tpm signature verification not yet implemented")
+-	} else if signer.Part[0].Name == "Key" {
++		// TODO(kwalsh) call tpm-specific verification code
++		return auth.Prin{}, fmt.Errorf("tao: tpm signature verification not yet implemented")
++	case "key":
+ 		// Signer is ECDSA key, use Tao signature verification.
+-		v, err := FromPrincipalName(signer.String())
++		v, err := FromPrincipal(signer)
++		if err != nil {
++			return auth.Prin{}, err
++		}
++		ok, err := v.Verify(a.SerializedStatement, AttestationSigningContext, a.Signature)
+ 		if err != nil {
+-			return nil, err
++			return auth.Prin{}, err
+ 		}
+-		if ok, err := v.Verify(a.SerializedStatement, AttestationSigningContext, a.Signature); !ok {
+-			return nil, err
++		if !ok {
++			return auth.Prin{}, fmt.Errorf("tao: attestation signature invalid")
+ 		}
+-	} else {
+-		return nil, fmt.Errorf("tao: attestation signer principal unrecognized: %s", signer.String())
++		return signer, nil
++	default:
++		return auth.Prin{}, fmt.Errorf("tao: attestation signer principal unrecognized: %s", signer.String())
+ 	}
+-	return signer, nil
+ }
+ 
+ // Validate checks whether an attestation is valid and, if so, it returns the
+ // statement conveyed by the attestation.
+-func (a *Attestation) Validate() (*Statement, error) {
++func (a *Attestation) Validate() (auth.Says, error) {
+ 	signer, err := a.ValidSigner()
+ 	if err != nil {
+-		return nil, err
+-	}
+-	var stmt Statement
+-	if err = proto.Unmarshal(a.SerializedStatement, &stmt); err != nil {
+-		return nil, err
++		return auth.Says{}, err
+ 	}
+-	issuer, err := auth.NewPrin(*stmt.Issuer)
++	f, err := auth.UnmarshalForm(a.SerializedStatement)
+ 	if err != nil {
+-		return nil, fmt.Errorf("tao: attestation statement issuer unrecognized: %s", *stmt.Issuer)
++		return auth.Says{}, err
++	}
++	stmt, ok := f.(auth.Says)
++	if !ok {
++		return auth.Says{}, fmt.Errorf("tao: attestation statement has wrong type: %T", f)
+ 	}
+ 	if a.SerializedDelegation == nil {
+ 		// Case (1), no delegation present.
+-		// Require that s.issuer be a subprincipal of (or identical to) a.signer.
+-		if !auth.SubprinOrIdentical(issuer, signer) {
+-			return nil, fmt.Errorf("tao: attestation statement signer does not evidently speak for issuer")
++		// Require that stmt.Speaker be a subprincipal of (or identical to) a.signer.
++		if !auth.SubprinOrIdentical(stmt.Speaker, signer) {
++			return auth.Says{}, fmt.Errorf("tao: attestation statement signer does not evidently speak for issuer")
+ 		}
+ 	} else {
+ 		// Case (2), delegation present.
+ 		// Require that:
+-		// - delegation conveys delegate speaksfor issuer0,
++		// - delegation conveys delegator says delegate speaksfor delegator,
+ 		// - a.signer speaks for delegate
+-		// - and issuer0 speaks for s.issuer
++		// - and delegator speaks for s.Speaker
+ 		var da Attestation
+ 		if err := proto.Unmarshal(a.SerializedDelegation, &da); err != nil {
+-			return nil, err
++			return auth.Says{}, err
+ 		}
+-		delegation, err := da.Validate()
++		delegationStatement, err := da.Validate()
+ 		if err != nil {
+-			return nil, err
++			return auth.Says{}, err
+ 		}
+-		if delegation.Delegate == nil {
+-			return nil, fmt.Errorf("tao: attestation delegation invalid")
++		delegation, ok := delegationStatement.Message.(auth.Speaksfor)
++		if !ok || !delegationStatement.Speaker.Identical(delegation.Delegator) {
++			return auth.Says{}, fmt.Errorf("tao: attestation delegation is invalid")
+ 		}
+-		delegate, err := auth.NewPrin(*delegation.Delegate)
+-		if err != nil {
+-			return nil, fmt.Errorf("tao: attestation delegation delegate invalid: %s", *delegation.Delegate)
+-		}
+-		issuer0, err := auth.NewPrin(*delegation.Issuer)
+-		if err != nil {
+-			return nil, fmt.Errorf("tao: attestation delegation issuer invalid: %s", *delegation.Issuer)
+-		}
+-		if !auth.SubprinOrIdentical(delegate, signer) {
+-			return nil, fmt.Errorf("tao: attestation delegation irrelevant to signer")
++		if !auth.SubprinOrIdentical(delegation.Delegate, signer) {
++			return auth.Says{}, fmt.Errorf("tao: attestation delegation irrelevant to signer")
+ 		}
+-		if !auth.SubprinOrIdentical(issuer, issuer0) {
+-			return nil, fmt.Errorf("tao: attestation delegation irrelevant to issuer")
++		if !auth.SubprinOrIdentical(stmt.Speaker, delegation.Delegator) {
++			return auth.Says{}, fmt.Errorf("tao: attestation delegation irrelevant to issuer")
+ 		}
+-		if *stmt.Time < *delegation.Time {
+-			*stmt.Time = *delegation.Time
++		if stmt.Time == nil {
++			stmt.Time = delegationStatement.Time
++		} else if delegationStatement.Time != nil && *stmt.Time < *delegationStatement.Time {
++			stmt.Time = delegationStatement.Time
+ 		}
+-		if *stmt.Expiration > *delegation.Expiration {
+-			*stmt.Expiration = *delegation.Expiration
++		if stmt.Expiration == nil {
++			stmt.Expiration = delegationStatement.Expiration
++		} else if delegationStatement.Expiration != nil && *stmt.Expiration > *delegationStatement.Expiration {
++			stmt.Expiration = delegationStatement.Expiration
+ 		}
+ 	}
+-	return &stmt, nil
++	return stmt, nil
++}
++
++// GenerateAttestation uses the signing key to generate an attestation for this
++// statement.
++func GenerateAttestation(s *Signer, delegation []byte, stmt auth.Says) (*Attestation, error) {
++	signer, err := s.ToPrincipal()
++	if err != nil {
++		return nil, err
++	}
++
++	t := time.Now()
++	if stmt.Time == nil {
++		i := t.UnixNano()
++		stmt.Time = &i
++	}
++
++	if stmt.Expiration == nil {
++		i := t.Add(365 * 24 * time.Hour).UnixNano()
++		stmt.Expiration = &i
++	}
++
++	ser := auth.Marshal(stmt)
++
++	sig, err := s.Sign(ser, AttestationSigningContext)
++	if err != nil {
++		return nil, err
++	}
++
++	a := &Attestation{
++		SerializedStatement: ser,
++		Signature:           sig,
++		Signer:              auth.Marshal(signer),
++	}
++
++	if len(delegation) > 0 {
++		a.SerializedDelegation = delegation
++	}
++
++	return a, nil
+ }
++
+diff --git a/go/src/cloudproxy/tao/attestation.proto b/go/src/cloudproxy/tao/attestation.proto
+index 0b4a3bb..64eaf87 100644
+--- a/go/src/cloudproxy/tao/attestation.proto
++++ b/go/src/cloudproxy/tao/attestation.proto
+@@ -2,283 +2,235 @@
+ //  Author: Kevin Walsh <kwalsh@holycross.edu>
+ //
+ //  Description: Protocol buffers for Tao Attestation
+ //
+ //  Copyright (c) 2014, Kevin Walsh.  All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao;
+ 
+-// A Statement conveys:
+-//   issuer says ((time <= now < exp) implies ...)
+-// where "..." is some message conveyed by the remaining fields in the
+-// statement. By itself, a Statement can't be verified as it does not include a
+-// signature.
++// Statements:
+ //
+-// Note: The 'now' predicate here is not properly scoped. For now, whoever is
+-// using or validating a statement, e.g. a guard, fills in their own value of
+-// 'now'.
+-//
+-// Eventually, a statement might convey a variety of information. Currently,
+-// only two interpretations are supported.
++// A statement conveys:
++//   issuer from time until exp says message
++// In Go, a statement is represented in Go using cloudproxy/tao/auth.Says. By
++// itself, a statement can't be verified as it does not include a signature.
+ //
+ // Delegation Statements:
+-//   issuer says (... implies (delegate speaksfor issuer))
++//
++// Tao uses simple delegation statements internally. This is the only kind of
++// statement that Tao generates or interprets. A simple delegation statement is
++// a statement conveying a particular message:
++//   issuer ... says (delegate speaksfor issuer)
+ // Here, delegate is the name of some principal, usually a (non-tpm) Tao key
+-// principal, i.e. Key("...") where "..." is a base64w-encoded, serialized
+-// public key as produced by Keys::GetPrincipalName() or
+-// VerifierToPrincipalName(). If time restrictions are met, from a delegation
++// principal, i.e. key("...") where "..." is a base64w-encoded, serialized
++// public key as produced by Signer.ToPrincipalName() or
++// Verifier.ToPrincipalName(). If time restrictions are met, from a delegation
+ // statement we can derive:
+ //   issuer says (delegate speaksfor issuer)
+ // and further:
+ //   delegate speaksfor issuer
+ // That is to say, a delegation statement conveys a speaks-for relationship.
+ //
+ // Delegation Statement Example:
++//
+ // Suppose some program Prog(...), running on some OS PCRs(...), running on some
+ // TPM K_aik, generates a key and wants to arrange for that key to
+ // speak for itself. It can express as much with this statement:
+-//  Statement {
+-//    issuer = K_aik::PCRs(...)::Prog(...)
+-//    time = today
+-//    expiration = next year
+-//    delegate = K_prog
+-//  }
++//  K_aik.PCRs(...).Prog(...) says (K_prog speaksfor K_aik.PCRs(...).Prog(...))
++//
++// Other Statements:
+ //
+-// Predicate Statements:
+-//   issuer says (... implies pred(arg_1, ..., arg_n))
+-// Here, 'pred' is the name of some predicate that is meaningful to the issuer
++// Statements can convey a variety of other messages beyond just a delegation.
++// For example:
++//   issuer says Pred(arg_1, ..., arg_n)
++// Here, 'Pred' is the name of some predicate that is meaningful to the issuer
+ // (and to other principals that trust the issuer), and the arg_i are values
+-// such as strings, integers, or names of principals or subprincipals. If time
+-// restrictions are met, from a predicate statement we can derive:
+-//   issuer says pred(arg_1, ..., arg_n).
++// such as strings, integers, or names of principals or subprincipals. 
+ //
+-// Predicate Statement Examples:
+-// Following the above example, the policy key might want to express that the
+-// TPM identified by K_aik is a trusted platform, and the OS identified by
+-// PCRs(...) is a trusted OS. It can do so with these statements:
+-//  Statement {
+-//    issuer = K_policy
+-//    ...
+-//    predicate_name = isTrustedPlatform
+-//    predicate_args = [ K_aik ]
+-//  }
+-//  Statement {
+-//    issuer = K_policy
+-//    ...
+-//    predicate_name = isTrustedOS
+-//    predicate_args = [ PCRs(...) ]
+-//  }
+-message Statement {
+-  // The identity of the issuer.
+-  required string issuer = 1;
+-  
+-  // The earliest time this statement is to be used, in 64-bit POSIX time.
+-  // Typically, this is simply the time at which the statement was created.
+-  required int64 time = 2;
+-
+-  // The latest time this statement is to be used, in 64-bit POSIX time.
+-  required int64 expiration = 3;
+-
+-  // The following fields encodes information from the issuer.
+-  // @{
+-
+-  // For a delegation credential, the identity of the delegate principal.
+-  optional string delegate = 4;
+-
+-  // For a predicate credential, the name of the predicate and its arguments.
+-  optional string predicate_name = 5;
+-  repeated string predicate_args = 6;
+-
+-  // @}
+-}
++// Other Statement Examples:
++//
++// Following the above delegation example, the policy key might want to express
++// that the TPM identified by K_aik is a trusted platform, and the OS identified
++// by PCRs(...) is a trusted OS. It can do so with these statements:
++//  K_policy says IsTrustedPlatform(K_aik)
++//  K_policy says IsTrustedOS("PCRs(...)")
+ 
+-// An Attestation conveys:
++// An Attestation is a signature and a statement together, and it conveys:
+ //   signer says statement
+ // i.e.
+-//   signer says (issuer says ((time <= now < exp) implies ...))
++//   signer says (issuer from time until exp says message)
+ // A valid Attestation encodes a public key within the signer name, and it
+ // carries a signature that anyone can verify to (eventually) conclude:
+-//   issuer says ((time' <= now < exp') implies ...)
+-// Note: Because of time restrictions within attached delegations, the time
+-// restriction (time' <= now < exp') here does not necessarily exactly
+-// match the restriction (time <= now < exp) on the serialized statement. 
++//   issuer from time' until exp' says message
++// Note: Because of time restrictions within attached delegations, restrictions
++// time' and exp' here do not necessarily exactly match the restrictions time
++// and exp on the original serialized statement. 
+ // If the modified time restriction is met, then we can derive the same
+-// conclusion as we would for the included statement, i.e.:
++// conclusion as we would for the included statement, e.g.:
+ //   delegate speaksfor issuer               (for a delegation statement)
+ // or:
+-//   issuer says pred(arg_1, ..., arg_n)    (for a predicate statement)
++//   issuer says Pred(arg_1, ..., arg_n)     (for a predicate statement)
+ // That is to say, a valid Attestation that meets its time restriction conveys
+-// exactly the same meaning as the included statement conveys.
++// exactly the same meaning as conveyed by the included statement.
+ // 
+-// There are two categories of Attestations:
++// There are two categories of valid Attestations:
+ //
+ // (1) In cases where issuer is a subprincipal of (or identical to) signer, no
+ // delegation will be present. In these cases, signer speaksfor issuer, so from
+ // the attestation:
+ //   signer says (issuer says ...)
+ // we can derive:
+ //   issuer says (issuer says ...)
+ // and further:
+ //   issuer says ...
+ //
+ // Example of a category (1) attestation:
+ //   Attestation = {
+-//     statement = {
+-//       issuer = K_aik::PCRs(...)
+-//       ...
+-//       delegate = K_os
+-//     }
++//     statement = "K_aik.PCRs(...) says (K_os speaksfor K_aik.PCRs(...))"
+ //     signer = K_aik
+ //     signature = ...
+-//     delegation = null
++//     delegation = nil
+ //   }
+ // Here, an OS has published a delegation statement establishing that key K_os
+ // speaks for the OS, and this statement was signed by the TPM K_aik on behalf
+ // of the OS. Note that the OS is a subprincipal of the TPM, so the TPM speaks
+ // for the OS. 
+ //      
+ // (2) In all other cases, a delegation will be present that, if valid, conveys:
+-//   issuer0 says ((time0 <= now < exp0) implies (delegate speaksfor issuer0))
++//   issuer0 from time0 until exp0 says (delegate speaksfor issuer0)
+ // where issuer is a subprincipal of (or identical to) issuer0 and delegate is a
+ // subprincipal of (or identical to) signer. Such a valid
+ // delegation can be combined with:
+-//   signer says (
+-//      issuer says (
+-//         (time <= now < exp) implies ...))
++//   signer says (issuer from time until exp says ...)
+ // to derive:
+-//   issuer0 says (
+-//     (time0 <= now < exp0) implies (issuer says (
+-//        (time <= now < exp) implies ...)))
++//   issuer0 from time0 until exp0 says (issuer from time until exp says ...)
+ // And because issuer0 speaks for issuer, we can further derive:
+-//   issuer says ((time' <= now < exp') implies ...)
++//   issuer from time' until exp' says ...
+ // where time' = max(time, time0) and exp = min(exp, exp0).
+ //
+ // Example of a category (2) attestation:
+ //   Attestation = {
+-//     statement = {
+-//       issuer = K_aik::PCRs(...)::Prog(...)
+-//       ...
+-//       delegate = K_app
+-//     }
++//     statement = "K_aik.PCRs(...).Prog(...) says K_app speaksfor K_aik.PCRs(...).Prog(...)"
+ //     signer = K_os
+ //     signature = ...
+ //     delegation = {
+-//       statement = {
+-//         issuer = K_aik::PCRs(...)
+-//         ...
+-//         delegate = K_os
+-//       }
++//       statement = K_aik.PCRs(...) says K_os speaksfor K_aik.PCRs(...)
+ //       signer = K_aik
+ //       signature = ...
+-//       delegation = null
++//       delegation = nil
+ //     }
+ //   }
+-// Here, the OS identified by K_aik::PCRs(...) has signed, using a
++// Here, the OS identified by K_aik.PCRs(...) has signed, using a
+ // seemingly unrelated key K_os, a statement on behalf of one of its hosted
+-// programs, K_aik::PCRs(...)::Prog(...). The embedded delegation statement,
++// programs, K_aik.PCRs(...).Prog(...). The embedded delegation statement,
+ // signed by K_aik, binds that seemingly unrelated key K_os to the OS's actual
+-// identity, K_aik::PCRs(...).
++// identity, K_aik.PCRs(...).
+ //
+ // Verifying an attestation signature requires knowing how the signature was
+ // produced. We currently define two signature schemes:
+ //
+ // (a) Some signatures are produced by the TPM, so here we are bound by the
+ // mechanisms implemented by the TPM. In this case, we encode the signer name as
+-//   TPM("..K..") where "..K.." is the serialized, base64w-encoded public half
++//   tpm("..K..") where "..K.." is the serialized, base64w-encoded public half
+ // of the TPM's RSA key K. The TPM only ever signs things on behalf of its
+ // hosted programs, so the issuer used in the serialized statement will always
+ // have the form:
+-//   TPM("..K..")::PCRs("..i..", "..h..")...
++//   tpm("..K..").PCRs("..i..", "..h..")...
+ // where "..i.." is a sorted, comma-separated list of PCR numbers, and "..h.."
+ // is the corresponding, comma-separated list of hex-encoded PCR values. The
+ // signature is computed roughly as:
+-//   sig = rsa_sign(K, H( H(issuer|time|expiration|...) | pcrbuf(i, h) ))
+-// Here, we first hash the statement in a tpm-specific way, then signing the
++//   sig = rsa_sign(K, H( H(message) | pcrbuf(i, h) ))
++// Here, we first hash the statement in a tpm-specific way, then sign the
+ // hash with RSA key K. To obtain the statement hash, first hash the serialized
+-// statement, including  issuer, time, expiration and other information. This
++// statement, including issuer, time, expiration and other information. This
+ // intermediate hash is then re-hashed with a tpm-specific encoding of the PCR
+ // numbers ("..i..") and values ("..h..") extracted from issuer. 
+ //
+-// Note: The PCR values are effectively hashed twice, once as part of issuer, and
+-// separately as part of the pcrbuf datastructure. See optimization note below.
++// Note: The PCR values are effectively hashed twice, once as part of statement,
++// and separately as part of the pcrbuf datastructure. See optimization note
++// below.
+ // 
+ // (b) Other signatures are produced in software, and here we have flexibility
+ // to use simpler signature schemes. In this case, we encode the signer name as
+-//   Key("..K..") where "..K.." is the serialized, base64w-encoded public half
++//   key("..K..") where "..K.." is the serialized, base64w-encoded public half
+ // of a DSA key K. The issuer used in the serialized statement can have any
+ // form. The signature is roughly:
+-//   sig = dsa_sign(K, H(context|issuer|time|expiration|...))
+-// Here, we simply hash the serialized statement, then sign it with the private
+-// DSA key K. The context is defined in Tao::AttestationSigningContext.
++//   sig = dsa_sign(K, H(context|message))
++// Here, we simply hash the serialized statement, along with some context, then
++// sign it with the private DSA key K. The context used for attestations is
++// defined in Tao.AttestationSigningContext.
+ //
+ // Together, this results in four possible combinations:
+ //
+ // (1a) No delegation, Tao signature.
+-//      This is the old "ROOT" attestation type.
++//      Historical note: This is the old "ROOT" attestation type.
+ //      Typically (or maybe always?), signer is the policy key.
+-//      The signer is always Key("..K..").
++//      The signer is always key("..K..").
+ // (1b) No delegation, TPM signature.
+ //      This is produced by TPMTaoChildChannel.
+-//      The signer is always TPM("..K..") and the statement issuer is
+-//      always a TPM("..K..")::PCRs("..i..", "..h..")...
++//      The signer is always tpm("..K..") and the statement issuer is
++//      always a tpm("..K..").PCRs("..i..", "..h..")...
+ // (2a) Delegation, Tao signature.
+-//      This is the old "INTERMEDIATE" attestation type. 
+-//      The signer is always Key("..K..").
++//      Historical note: This is the old "INTERMEDIATE" attestation type. 
++//      The signer is always key("..K..").
+ //      The delegation is the head of a chain that eventually terminates in a
+ //      type (1a) or (1b) attestation.
+ // (2b) Delegation, TPM signature.
+-//      This is the old "TPM_1_2_QUOTE" attestation type, but is no longer used.
+-//      The signer would be TPM("..K..") and the statement issuer would be
+-//      something like K_policy::TrustedPlatform.
+-//      The delegation would be the head of a chain that eventually terminates
+-//      in a type (1a) or (1b) attestation. The issuer at the head of the chain
+-//      would always be TPM("..K..")::PCRs("..i..", "..h..")
++//      Historical note: This is the old "TPM_1_2_QUOTE" attestation type.
++//      This combination is no longer used. If it were, the signer would be
++//      tpm("..K..") and the statement issuer would be something like
++//      K_policy.TrustedPlatform. The delegation would be the head of a chain
++//      that eventually terminates in a type (1a) or (1b) attestation. The
++//      issuer at the head of the chain would always be
++//      tpm("..K..").PCRs("..i..", "..h..")
+ message Attestation {
+-  // A serialized Statement. This is serialized to avoid canonicalization issues
+-  // when signing and verifying signatures.
++  // A serialized statement. This is serialized to avoid canonicalization issues
++  // when signing and verifying signatures. In Go, this is obtained using
++  // cloudproxy/tao/auth.Marshal().
+   required bytes serialized_statement = 1;
+ 
+-  // The signer's public key, encoded as a principal name.
+-  required string signer = 2;
++  // The signer's public key, encoded using clouddproxy/tao/auth.Marshal()
++  required bytes signer = 2;
+ 
+   // Signature over the serialized statement using TPM or Tao signing.
+   required bytes signature = 3;
+ 
+-  // A delegation that conveys (eventually) that signer speaks for the issuer in
+-  // the serialized statement. If this is empty, then it must be self evident
+-  // that signer speaks for the issuer in the serialized statement. This can be
+-  // added, removed, or replaced without changing the attestation signature, but
+-  // verification may fail if a required delegation is missing.
++  // A delegation attestation that conveys (eventually) that signer speaks for
++  // the issuer in the serialized statement. If this is empty, then it must be
++  // self evident that signer speaks for the issuer in the serialized statement.
++  // This can be added, removed, or replaced without changing the attestation
++  // signature, but verification may fail if a required delegation is missing.
+   optional bytes serialized_delegation = 4;
+ 
+   // An optional set of further attestations that may pertain, in some way, to
+   // the the issuer or signer of this attestation. These can be added or removed
+   // without changing the attestation signature. This allows attestations to be
+   // piggy-backed, e.g. when an authorization guard requires multiple
+   // attestations to check a policy.
+   repeated bytes serialized_endorsements = 5;
+ }
+ 
+-// TODO(kwalsh) Consider moving issuer out of Statement and into Attestation.
+-// Non-tpm signature scheme would just hash the issuer separately. This would
+-// eliminate the double-hashing of PCR values, and it would let us do some
+-// trivial space optimizations: if issuer is empty, then issuer = signer, if
+-// issuer starts with "::", then signer gets prepended to issuer, etc.
++// TODO(kwalsh) Consider moving issuer (and expiration times) out of serialized
++// statement and into Attestation. Non-tpm signature scheme would just hash the
++// issuer separately. This would eliminate the double-hashing of PCR values, and
++// it would let us do some trivial space optimizations: if issuer is empty, then
++// issuer = signer, if issuer key is empty (i.e. starts with "."), then signer
++// gets prepended to issuer, etc.
+ 
+ // TODO(kwalsh) Previously, names were not always included in statements and
+ // attestations, nor did names always include serialized public keys. That makes
+ // signed statements more compact. Now, the same public key might appear several
+ // times within a single attestation. The problem arises because each
+ // attestation is really a collection of statements and nested attestations. We
+ // should revisit how to efficiently encode these structures.
+diff --git a/go/src/cloudproxy/tao/auth/ast.go b/go/src/cloudproxy/tao/auth/ast.go
+index 497aeb4..5b0f1a7 100644
+--- a/go/src/cloudproxy/tao/auth/ast.go
++++ b/go/src/cloudproxy/tao/auth/ast.go
+@@ -1,73 +1,127 @@
+ // Copyright (c) 2014, Kevin Walsh.  All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package auth
+ 
++import (
++	"bytes"
++	"fmt"
++)
++
+ // AuthLogicElement is any element of the authorization logic, i.e. a formula, a
+ // term, or a principal extension.
+ type AuthLogicElement interface {
++
++	// Marshal writes a binary encoding of the element into b.
+ 	Marshal(b *Buffer)
++
++	// String returns verbose pretty-printing text for the element.
+ 	String() string
++
++	// ShortString returns short debug-printing text for the element.
+ 	ShortString() string
++
++	// fmt.Formatter is satisfied by all elements. Using format %v will result in
++	// verbose pretty-printing, using format %s will result in short
++	// debug-printing, and other formats will use an unspecified format.
++	fmt.Formatter // Format(out fmt.State, verb rune)
++
+ 	isAuthLogicElement() // marker
+ }
+ 
+ // isAuthLogicElement ensures only appropriate types can be assigned to an
+ // AuthLogicElement.
+ func (t Prin) isAuthLogicElement()      {}
++func (t SubPrin) isAuthLogicElement()   {}
+ func (t Str) isAuthLogicElement()       {}
+ func (t Int) isAuthLogicElement()       {}
+ func (f Pred) isAuthLogicElement()      {}
+ func (f Const) isAuthLogicElement()     {}
+ func (f Not) isAuthLogicElement()       {}
+ func (f And) isAuthLogicElement()       {}
+ func (f Or) isAuthLogicElement()        {}
+ func (f Implies) isAuthLogicElement()   {}
+ func (f Speaksfor) isAuthLogicElement() {}
+ func (f Says) isAuthLogicElement()      {}
+ 
++// These declarations ensure all the appropriate types can be assigned to an
++// AuthLogicElement.
++var _ AuthLogicElement = Prin{}
++var _ AuthLogicElement = SubPrin{}
++var _ AuthLogicElement = Str("")
++var _ AuthLogicElement = Int(0)
++var _ AuthLogicElement = Pred{}
++var _ AuthLogicElement = Const(false)
++var _ AuthLogicElement = Not{}
++var _ AuthLogicElement = And{}
++var _ AuthLogicElement = Or{}
++var _ AuthLogicElement = Implies{}
++var _ AuthLogicElement = Speaksfor{}
++var _ AuthLogicElement = Says{}
++
++// These declarations ensure all the appropriate types can be assigned to a
++// fmt.Scanner.
++var _ fmt.Scanner = &Prin{}
++var _ fmt.Scanner = &SubPrin{}
++var _ fmt.Scanner = new(Str)
++var _ fmt.Scanner = new(Int)
++var _ fmt.Scanner = &Pred{}
++var _ fmt.Scanner = new(Const)
++var _ fmt.Scanner = &Not{}
++var _ fmt.Scanner = &And{}
++var _ fmt.Scanner = &Or{}
++var _ fmt.Scanner = &Implies{}
++var _ fmt.Scanner = &Speaksfor{}
++var _ fmt.Scanner = &Says{}
++var _ fmt.Scanner = &AnyForm{}
++var _ fmt.Scanner = &AnyTerm{}
++
+ // Prin uniquely identifies a principal by a public key, used to verify
+ // signatures on credentials issued by the principal, and a sequence of zero or
+ // more extensions to identify the subprincipal of that key.
+ type Prin struct {
+-	Key string    // a base64w-encoded, marshalled, CryptoKey protobuf structure with purpose CryptoKey.VERIFYING)
+-	Ext []PrinExt // one or more extensions for descendents
++	Type string  // either "key" or "tpm"
++	Key  []byte  // a marshalled CryptoKey protobuf structure with purpose CryptoKey.VERIFYING
++	Ext  SubPrin // one or more extensions for descendents
+ }
+ 
+ // PrinExt is an extension of a principal.
+ type PrinExt struct {
+ 	Name string // [A-Z][a-zA-Z0-9_]*
+ 	Arg  []Term
+ }
+ 
++// SubPrin is a series of extensions of a principal.
++type SubPrin []PrinExt
++
+ // Term is an argument to a predicate or a principal extension.
+ type Term interface {
+ 	AuthLogicElement
+ 	Identical(other Term) bool
+ 	isTerm() // marker
+ }
+ 
+ // isTerm ensures only appropriate types can be assigned to a Term.
+ func (t Prin) isTerm() {}
+ func (t Str) isTerm()  {}
+ func (t Int) isTerm()  {}
+ 
+ // Str is a string used as a Term.
+ type Str string
+ 
+ // Int is an int used as a Term.
+ type Int int
+ 
+ // Form is a formula in the Tao authorization logic.
+ type Form interface {
+@@ -122,75 +176,92 @@ type Speaksfor struct {
+ }
+ 
+ // Says conveys formula "Speaker from Time until Expiration says Message"
+ type Says struct {
+ 	Speaker    Prin
+ 	Time       *int64 // nil to omit
+ 	Expiration *int64 // nil to omit
+ 	Message    Form
+ }
+ 
+ // Commences checks if statement f has a commencement time.
+ func (f Says) Commences() bool {
+ 	return f.Time != nil
+ }
+ 
+ // Expires checks if statement f has an expiration time.
+ func (f Says) Expires() bool {
+ 	return f.Expiration != nil
+ }
+ 
+-// TODO(kwalsh) add Copy() functions?
+-
+ // Identical checks if an Int is identical to another Term.
+ func (t Int) Identical(other Term) bool {
+ 	return t == other
+ }
+ 
+ // Identical checks if a Str is identical to another Term.
+ func (t Str) Identical(other Term) bool {
+ 	return t == other
+ }
+ 
+-// Identical checks if a Prin is identical to another Prin.
++// Identical checks if a Prin is identical to another Term.
+ func (t Prin) Identical(other Term) bool {
+ 	p, ok := other.(Prin)
+ 	if !ok {
+ 		return false
+ 	}
+-	if t.Key != p.Key || len(t.Ext) != len(p.Ext) {
++	if t.Type != p.Type || !bytes.Equal(t.Key, p.Key) || len(t.Ext) != len(p.Ext) {
+ 		return false
+ 	}
+-	for i := 0; i < len(t.Ext); i++ {
+-		if !t.Ext[i].Identical(p.Ext[i]) {
++	for i, e := range t.Ext {
++		if !e.Identical(p.Ext[i]) {
+ 			return false
+ 		}
+ 	}
+ 	return true
+ }
+ 
+ // Identical checks if one PrinExt is identical to another.
+ func (e PrinExt) Identical(other PrinExt) bool {
+ 	if e.Name != other.Name || len(e.Arg) != len(other.Arg) {
+ 		return false
+ 	}
+-	for i := 0; i < len(e.Arg); i++ {
+-		if !e.Arg[i].Identical(other.Arg[i]) {
++	for i, a := range e.Arg {
++		if !a.Identical(other.Arg[i]) {
++			return false
++		}
++	}
++	return true
++}
++
++// Identical checks if one SubPrin is identical to another.
++func (s SubPrin) Identical(other SubPrin) bool {
++	if len(s) != len(other) {
++		return false
++	}
++	for i, e := range(s) {
++		if !e.Identical(other[i]) {
+ 			return false
+ 		}
+ 	}
+ 	return true
+ }
+ 
+ // SubprinOrIdentical checks whether child is a subprincipal of parent or is
+ // identical to parent.
+ func SubprinOrIdentical(child, parent Prin) bool {
+-	if parent.Key != child.Key || len(parent.Ext) > len(child.Ext) {
++	if parent.Type != child.Type || !bytes.Equal(parent.Key, child.Key) || len(parent.Ext) > len(child.Ext) {
+ 		return false
+ 	}
+-	for i := 0; i < len(parent.Ext); i++ {
+-		if !parent.Ext[i].Identical(child.Ext[i]) {
++	for i, a := range parent.Ext {
++		if !a.Identical(child.Ext[i]) {
+ 			return false
+ 		}
+ 	}
+ 	return true
+ }
++
++func (p Prin) MakeSubprincipal(e SubPrin) Prin {
++	other := Prin{Type: p.Type, Key: p.Key, Ext: append([]PrinExt{}, p.Ext...)}
++	other.Ext = append(other.Ext, []PrinExt(e)...)
++	return other
++}
+diff --git a/go/src/cloudproxy/tao/auth/auth_test.go b/go/src/cloudproxy/tao/auth/auth_test.go
+index c6bcff7..72e1921 100644
+--- a/go/src/cloudproxy/tao/auth/auth_test.go
++++ b/go/src/cloudproxy/tao/auth/auth_test.go
+@@ -3,63 +3,70 @@
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package auth
+ 
+ import (
+ 	"fmt"
+ 	"strings"
+ 	"testing"
+ )
+ 
++var key []string = []string{
++	`key("S2V5MQo=")`, // base64w("Key1")
++	`key("S2V5Mgo=")`, // base64w("Key2")
++	`tpm("S2V5Mwo=")`, // base64w("Key3")
++}
++
+ var termtests []string = []string{
+ 	"42",
+ 	"0",
+ 	"-1",
+ 	`"Hello World"`,
+ 	`"Includes \n newlines and \t tabs"`,
+-	`key("foo")`,
+-	`key("123").Extension(1)`,
+-	`key("123").Extension(1).A.B(1).C(1, "Hello").D(key("456").E(key("789").G.H))`,
+-	`key("123").E()`,
++	key[0],
++	key[1],
++	key[0] + ".Extension(1)",
++	key[0] + `.Extension(1).A.B(1).C(1, "Hello").D(` + key[1] + `.E(` + key[2] + `.G.H))`,
++	key[0] + ".E()",
+ }
+ 
+ func TestParseTerm(t *testing.T) {
+-	for _, s := range termtests {
++	for i, s := range termtests {
+ 		var x AnyTerm
+ 		n, err := fmt.Sscanf(s, "%v", &x)
+ 		if err != nil {
+ 			t.Fatal(err.Error())
+ 		}
+ 		if n != 1 {
+ 			t.Fatal("incomplete parse")
+ 		}
+-		if s != `key("123").E()` && x.Term.String() != s {
++		if (i != len(termtests)-1) != (x.Term.String() == s) {
+ 			t.Fatalf("bad print: %v vs %v", x.Term.String(), s)
+ 		}
+ 	}
+ 
+ 	s := termtests[0] + " " + termtests[3] + " " + termtests[4] + " " + termtests[6]
+ 	var w, x, y, z AnyTerm
+ 	n, err := fmt.Sscanf(s, "%v %v %v %v", &w, &x, &y, &z)
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 	if n != 4 {
+ 		t.Fatal("incomplete parse")
+ 	}
+ }
+ 
+ func TestBinaryTerm(t *testing.T) {
+ 	for _, s := range termtests {
+ 		var x AnyTerm
+ 		fmt.Sscanf("("+s+")", "%v", &x)
+ 		f := x.Term
+@@ -78,133 +85,133 @@ func TestBinaryTerm(t *testing.T) {
+ func TestScanTerm(t *testing.T) {
+ 	var i1, i2 Int
+ 	n, err := fmt.Sscanf("42 -17", "%v %v", &i1, &i2)
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 	if n != 2 || i1 != Int(42) || i2 != Int(-17) {
+ 		t.Fatal("incomplete parse")
+ 	}
+ 
+ 	var s1, s2 Str
+ 	n, err = fmt.Sscanf(`"a" "b"`, "%v %v", &s1, &s2)
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 	if n != 2 || s1 != Str("a") || s2 != Str("b") {
+ 		t.Fatal("incomplete parse")
+ 	}
+ 
+ 	var p Prin
+-	n, err = fmt.Sscanf(`key("abc").A(1).B("2", "3")`, "%v", &p)
++	n, err = fmt.Sscanf(key[0]+`.A(1).B("2", "3")`, "%v", &p)
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+-	p2 := Prin{Key: "abc", Ext: []PrinExt{
++	p2 := Prin{Key: []byte("abc"), Ext: SubPrin{
+ 		PrinExt{"A", []Term{Int(1)}},
+ 		PrinExt{"B", []Term{Str("2"), Str("#")}},
+ 	}}
+ 	if n != 1 || p2.Identical(p) {
+ 		t.Fatal("incomplete parse")
+ 	}
+ }
+ 
+ func TestParseSentence(t *testing.T) {
+ 	var x Prin
+-	s := `My name is key("xxxx").Prog("foo", 1).Args("foo", "bar")`
++	s := `My name is ` + key[0] + `.Prog("foo", 1).Args("foo", "bar")`
+ 	n, err := fmt.Sscanf(s, "My name is %v", &x)
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 	if n != 1 {
+ 		t.Fatal("incomplete parse")
+ 	}
+ }
+ 
+ func TestParsePred(t *testing.T) {
+ 	predtests := []string{
+ 		`P(42)`,
+ 		`Foo`,
+ 		`Pred(1, 2, 3)`,
+-		`Foo(1, "a", key("k"))`,
++		`Foo(1, "a", ` + key[0] + `)`,
+ 		`Foo()`,
+ 	}
+ 
+ 	for _, s := range predtests {
+ 		var x Pred
+ 		n, err := fmt.Sscanf(s, "%v", &x)
+ 		if err != nil {
+ 			t.Fatal(err.Error())
+ 		}
+ 		if n != 1 {
+ 			t.Fatal("incomplete parse")
+ 		}
+ 		if s != "Foo()" && x.String() != s {
+ 			t.Fatalf("bad print: %v vs %s", x.String(), s)
+ 		}
+ 	}
+ 
+ 	s := predtests[0] + " " + predtests[1] + " " + predtests[2] + " " + predtests[3]
+ 	var w, x, y, z Pred
+ 	n, err := fmt.Sscanf(s, "%v %v %v %v", &w, &x, &y, &z)
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 	if n != 4 {
+ 		t.Fatal("incomplete parse")
+ 	}
+ }
+ 
+ var formtests []string = []string{
+ 	`true`,
+ 	`false`,
+-	`key("a") says true`,
+-	`key("a") from 1 says true`,
+-	`key("a") until 2 says true`,
+-	`key("a") from 1 until 2 says true`,
+-	`key("a") speaksfor key("b")`,
+-	`key("a").Sub(1).Sub(2) speaksfor key("a").Sub(1).Sub`,
++	key[0] + ` says true`,
++	key[0] + ` from 1 says true`,
++	key[0] + ` until 2 says true`,
++	key[0] + ` from 1 until 2 says true`,
++	key[0] + ` speaksfor ` + key[2],
++	key[0] + `.Sub(1).Sub(2) speaksfor ` + key[2] + `.Sub(1).Sub`,
+ 	`P(1)`,
+ 	`P(1) and P(2)`,
+ 	`P(1) and P(2) and P(3) and P(4)`,
+ 	`P(1) or P(2)`,
+ 	`P(1) or P(2) or P(3) or P(4)`,
+ 	`P(1) implies P(2)`,
+ 	`P(1) implies P(2) implies P(3) or P(4)`,
+ 	`not P(1)`,
+ 	`not not P(1)`,
+ 	`not not not not P(1)`,
+-	`P(1) and (key("a") speaksfor key("b"))`,
++	`P(1) and (` + key[0] + ` speaksfor ` + key[2] + `)`,
+ 	`P(1) and P(2) and P(3) or P(4)`,
+ 	`P(1) and P(2) and (P(3) or P(4))`,
+ 	`P(1) and (P(2) or P(3)) and P(4)`,
+ 	`(P(1) or P(2)) and P(3) and P(4)`,
+ 	`P(1) and P(2) and P(3) implies P(4)`,
+ 	`P(1) and P(2) and (P(3) implies P(4))`,
+ 	`P(1) and (P(2) implies P(3)) and P(4)`,
+ 	`(P(1) implies P(2)) and P(3) and P(4)`,
+ 	`P(1) or P(2) or P(3) implies P(4)`,
+ 	`P(1) or P(2) or (P(3) implies P(4))`,
+ 	`P(1) or (P(2) implies P(3)) or P(4)`,
+ 	`(P(1) implies P(2)) or P(3) or P(4)`,
+-	`P(1) or (key("a") says P(2) or P(3))`,
+-	`P(1) or (key("a") says P(2)) or P(3)`,
++	`P(1) or (` + key[0] + ` says P(2) or P(3))`,
++	`P(1) or (` + key[0] + ` says P(2)) or P(3)`,
+ 	`(((P(((1)), ("a")))))`,
+ }
+ 
+ func TestParseForm(t *testing.T) {
+ 	for i, s := range formtests {
+ 		var x AnyForm
+ 		n, err := fmt.Sscanf("("+s+")", "%v", &x)
+ 		if err != nil {
+ 			t.Fatal(err.Error())
+ 		}
+ 		if n != 1 {
+ 			t.Fatal("incomplete parse")
+ 		}
+ 		if i != len(formtests)-1 && x.Form.String() != s && "("+x.Form.String()+")" != s {
+ 			t.Fatalf("bad print: %v vs %s", x.Form.String(), s)
+ 		}
+ 
+ 		// Try parsing with the specific type
+ 		switch v := x.Form.(type) {
+ 		case Says:
+@@ -275,46 +282,46 @@ func TestParseShortForm(t *testing.T) {
+ 
+ func TestBinaryForm(t *testing.T) {
+ 	for _, s := range formtests {
+ 		var x AnyForm
+ 		fmt.Sscanf("("+s+")", "%v", &x)
+ 		f := x.Form
+ 
+ 		buf := Marshal(f)
+ 		g, err := UnmarshalForm(buf)
+ 		if err != nil {
+ 			t.Fatalf("can't unmarshal: %s", s)
+ 		}
+ 		if f.String() != g.String() {
+ 			t.Fatalf("bad binary: %s vs %s", f.String(), g.String())
+ 		}
+ 	}
+ }
+ 
+ func TestPrinIdentical(t *testing.T) {
+ 	p := make([]Prin, 6)
+-	fmt.Sscanf(`key("a")`, "%s", &p[0])
+-	fmt.Sscanf(`key("a").Kid(1)`, "%s", &p[1])
+-	fmt.Sscanf(`key("a").Kid(1).Kid(2)`, "%s", &p[2])
+-	fmt.Sscanf(`key("b").Kid(1).Kid(2)`, "%s", &p[3])
+-	fmt.Sscanf(`key("a").Kid(2).Kid(2)`, "%s", &p[4])
+-	fmt.Sscanf(`key("a").Kid(1, 2).Kid(2)`, "%s", &p[5])
++	fmt.Sscanf(key[0], "%s", &p[0])
++	fmt.Sscanf(key[0]+`.Kid(1)`, "%s", &p[1])
++	fmt.Sscanf(key[0]+`.Kid(1).Kid(2)`, "%s", &p[2])
++	fmt.Sscanf(key[1]+`.Kid(1).Kid(2)`, "%s", &p[3])
++	fmt.Sscanf(key[0]+`.Kid(2).Kid(2)`, "%s", &p[4])
++	fmt.Sscanf(key[0]+`.Kid(1, 2).Kid(2)`, "%s", &p[5])
+ 
+ 	for i, prin := range p {
+ 		for j, other := range p {
+ 			if (i == j) != prin.Identical(other) || (i == j) != other.Identical(prin) {
+ 				t.Fatalf("identical failed for %v vs %v", prin, other)
+ 			}
+ 			if ((i <= j && j <= 2) || (i == 0 && j >= 4) || (i == j)) !=
+ 				SubprinOrIdentical(other, prin) {
+ 				t.Fatalf("subprin failed for %v vs %v", prin, other)
+ 			}
+ 		}
+ 	}
+ 
+ 	if p[0].Identical(Str("a")) {
+ 		t.Fatalf("identical failed against str")
+ 	}
+ }
+ 
+ func TestTrivialConjuncts(t *testing.T) {
+ 	p := And{}
+diff --git a/go/src/cloudproxy/tao/auth/binary.go b/go/src/cloudproxy/tao/auth/binary.go
+index 4eb20f5..8b6eeb8 100644
+--- a/go/src/cloudproxy/tao/auth/binary.go
++++ b/go/src/cloudproxy/tao/auth/binary.go
+@@ -7,68 +7,78 @@
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package auth
+ 
+ // This file implements Marshal() and Unmarshal() functions for elements.
+ 
+ import (
+ 	"fmt"
+ )
+ 
+ const (
+ 	_ = iota
+ 
+ 	// Term tags
+-	tagPrin // string, [](string, []Term)
++	tagPrin // string, []byte, SubPrin
+ 	tagStr  // string
+ 	tagInt  // int
+ 
+ 	// Form tags
+ 	tagPred      // string, []Term
+ 	tagConst     // bool
+ 	tagNot       // Form
+ 	tagAnd       // []Form
+ 	tagOr        // []Form
+ 	tagImplies   // Form, Form
+-	tagSpeaksfor // tag+Prin, tag+Prin
+-	tagSays      // tag+Prin, bool+int, bool+int, Form
++	tagSpeaksfor // Prin, Prin
++	tagSays      // Prin, bool+int, bool+int, Form
++
++	// Other tags
++	tagSubPrin // [](string, []Term)
+ )
+ 
+ // Marshal encodes a Form or Term.
+ func Marshal(e AuthLogicElement) []byte {
+ 	buf := new(Buffer)
+ 	e.Marshal(buf)
+ 	return buf.Bytes()
+ }
+ 
+ // Marshal encodes a Prin.
+ func (t Prin) Marshal(buf *Buffer) {
+ 	buf.EncodeVarint(tagPrin)
+-	buf.EncodeString(t.Key)
+-	buf.EncodeVarint(int64(len(t.Ext)))
+-	for _, e := range t.Ext {
++	buf.EncodeString(t.Type)
++	buf.EncodeString(string(t.Key))
++	t.Ext.Marshal(buf)
++}
++
++// Marshal encodes a Prin.
++func (s SubPrin) Marshal(buf *Buffer) {
++	buf.EncodeVarint(tagSubPrin)
++	buf.EncodeVarint(int64(len(s)))
++	for _, e := range s {
+ 		buf.EncodeString(e.Name)
+ 		buf.EncodeVarint(int64(len(e.Arg)))
+ 		for _, a := range e.Arg {
+ 			a.Marshal(buf)
+ 		}
+ 	}
+ }
+ 
+ // Marshal encodes a Str.
+ func (t Str) Marshal(buf *Buffer) {
+ 	buf.EncodeVarint(tagStr)
+ 	buf.EncodeString(string(t))
+ }
+ 
+ // Marshal encodes an Int.
+ func (t Int) Marshal(buf *Buffer) {
+ 	buf.EncodeVarint(tagInt)
+ 	buf.EncodeVarint(int64(t))
+ }
+ 
+@@ -168,89 +178,139 @@ func decodeNameAndArgs(buf *Buffer) (name string, args []Term, err error) {
+ 		}
+ 	}
+ 	return
+ }
+ 
+ // unmarshalPrin decodes a Prin.
+ func unmarshalPrin(buf *Buffer) (p Prin, err error) {
+ 	tag, err := buf.DecodeVarint()
+ 	if err != nil {
+ 		return
+ 	}
+ 	if tag != tagPrin {
+ 		err = fmt.Errorf("unexpected tag: %d", tag)
+ 		return
+ 	}
+ 	return decodePrin(buf)
+ }
+ 
+ // decodePrin decodes a Prin without the leading tag.
+ func decodePrin(buf *Buffer) (p Prin, err error) {
+-	p.Key, err = buf.DecodeString()
++	p.Type, err = buf.DecodeString()
++	if err != nil {
++		return
++	}
++	k, err := buf.DecodeString()
++	if err != nil {
++		return
++	}
++	p.Key = []byte(k)
++	p.Ext, err = unmarshalSubPrin(buf)
++	return
++}
++
++// unmarshalSubPrin decodes a SubPrin.
++func unmarshalSubPrin(buf *Buffer) (s SubPrin, err error) {
++	tag, err := buf.DecodeVarint()
+ 	if err != nil {
+ 		return
+ 	}
++	if tag != tagSubPrin {
++		err = fmt.Errorf("unexpected tag: %d", tag)
++		return
++	}
++	return decodeSubPrin(buf)
++}
++
++// decodeSubPrin decodes a SubPrin without the leading tag.
++func decodeSubPrin(buf *Buffer) (s SubPrin, err error) {
+ 	n, err := buf.DecodeVarint()
+ 	if err != nil {
+ 		return
+ 	}
+ 	for i := int64(0); i < n; i++ {
+ 		name, args, err := decodeNameAndArgs(buf)
+ 		if err != nil {
+-			return p, err
++			return s, err
+ 		}
+-		p.Ext = append(p.Ext, PrinExt{name, args})
++		s = append(s, PrinExt{name, args})
+ 	}
+ 	return
+ }
+ 
+ // unmarshalTerm decodes a Term.
+ func unmarshalTerm(buf *Buffer) (t Term, err error) {
+ 	tag, err := buf.DecodeVarint()
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	switch tag {
+ 	case tagStr:
+ 		return decodeStr(buf)
+ 	case tagInt:
+ 		return decodeInt(buf)
+ 	case tagPrin:
+ 		return decodePrin(buf)
+ 	default:
+ 		return nil, fmt.Errorf("unexpected tag: %d", tag)
+ 	}
+ }
+ 
++// UnmarshalPrin decodes a Prin.
++func UnmarshalPrin(bytes []byte) (p Prin, err error) {
++	t, err := UnmarshalTerm(bytes)
++	if err != nil {
++		return
++	}
++	p, ok := t.(Prin)
++	if !ok {
++		err = fmt.Errorf("expected Prin, found %T", t)
++	}
++	return
++}
++
+ // UnmarshalTerm decodes a Term.
+ func UnmarshalTerm(bytes []byte) (Term, error) {
+ 	buf := &Buffer{bytes}
+ 	t, err := unmarshalTerm(buf)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	if len(buf.Bytes()) != 0 {
+ 		return nil, fmt.Errorf("unexpected trailing bytes")
+ 	}
+ 	return t, nil
+ }
+ 
++// UnmarshalSubPrin decodes a SubPrin.
++func UnmarshalSubPrin(bytes []byte) (SubPrin, error) {
++	buf := &Buffer{bytes}
++	t, err := unmarshalSubPrin(buf)
++	if err != nil {
++		return nil, err
++	}
++	if len(buf.Bytes()) != 0 {
++		return nil, fmt.Errorf("unexpected trailing bytes")
++	}
++	return t, nil
++}
++
+ // UnmarshalForm decodes a Form.
+ func UnmarshalForm(bytes []byte) (Form, error) {
+ 	buf := &Buffer{bytes}
+ 	f, err := unmarshalForm(buf)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	if len(buf.Bytes()) != 0 {
+ 		return nil, fmt.Errorf("unexpected trailing bytes")
+ 	}
+ 	return f, nil
+ }
+ 
+ // unmarshalForm decodes a Form.
+ func unmarshalForm(buf *Buffer) (Form, error) {
+ 	tag, err := buf.DecodeVarint()
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	switch tag {
+diff --git a/go/src/cloudproxy/tao/auth/doc.go b/go/src/cloudproxy/tao/auth/doc.go
+index ffe5804..8b4b3e9 100644
+--- a/go/src/cloudproxy/tao/auth/doc.go
++++ b/go/src/cloudproxy/tao/auth/doc.go
+@@ -66,41 +66,41 @@
+ // The second representation is textual, which is convenient for humans but
+ // isn't canonical and can involve tricky parsing. When parsing elements from
+ // text, whitespace is ignored between elements (except around the suprincipal
+ // dot operator and before the open paren of a Pred, Prin, or, PrinExt), the
+ // above list shows the productions in order of increasing precedence for binary
+ // Form operators when parenthesis are omitted, parenthesis can be used for
+ // specifying precedence explicitly, and elements of the same precedence are
+ // parsed left to right. When pretty-printing elements to text, a single space
+ // is used before and after keywords and after commas. Elements can also be
+ // pretty-printed with elision, in which case keys and long strings are
+ // truncated.
+ //
+ // The third representation is an encoded sequence of bytes. This is meant to be
+ // compact, relatively easy to parse, and suitable for passing over sockets,
+ // network connections, etc. The encoding format is custom-designed, but is
+ // roughly similar to the format used by protobuf.
+ //
+ // Several alternative encodings were considered:
+ //
+ //   Protobuf encoding with protobuf definitions: This would require either
+-//   duplicating all Forma dn Term types as proto definitions, then writing
++//   duplicating all Form and Term types as proto definitions, then writing
+ //   conversion and validation code. The encoding would likely not be space
+ //   efficient, and it would be essentially Tao's only hard dependency on
+ //   protobuf.
+ //
+ //   Protobuf encoding with hand-written encoding/decoding: The goprotobuf
+ //   library currently lacks good support for this. Also, protobuf allows
+ //   encoded data to be shuffled, making decoding much more complicated than
+ //   necessary.
+ //
+ //   encoding/gob: Not language-agnostic. The self-describing datatype encoding
+ //   scheme is probably overkill as well.
+ //
+ //   strings using textual representation of Form and Term elements: This
+ //   pulls into all TCB a somewhat complex lexer and parser. The encoding is
+ //   also not space efficient.
+ //
+ // The encoding we use instead is meant to be conceptually simple, reasonably
+ // space efficient, and simple to decode. And unlike most of the other schemes
+ // agove, strictness rather than flexibility is preferred. For example, when
+ // decoding a Form used for authorization, unrecognized fields should not be
+@@ -115,33 +115,33 @@
+ //
+ //   A string is encoded as a length (plain varint) followed by raw bytes.
+ //
+ //   A pointer is encoded the same as a boolean optionally followed by a value.
+ //
+ //   Variable-length slices (e.g. for conjuncts, disjuncts, predicate arguments)
+ //   are encoded as a count (plain varint) followed by the encoding for the each
+ //   element.
+ //
+ //   An embedded struct or interface is encoded as a tag and encoded value.
+ //
+ // Differences from protobuf:
+ //
+ //   Our tags carry implicit type information. In protobuf, the low 3 bits of
+ //   each tag carries an explicit type marker. That allows protobuf to skip over
+ //   unrecognized fields (not a design goal for us). It also means protobuf can
+ //   only handle 15 unique tags before overflowing to 2 byte encodings.
+ //
+ //   Our tags describe both the meaning and the type of all enclosed values, and
+ //   we use tags only when the meaning or type can vary (i.e. for interface
+-//   types). Protobuf uses tags for every enclosed value, and those tags also to
++//   types). Protobuf uses tags for every enclosed value, and those tags also
+ //   carry type information. Protobuf is more efficient when there are many
+ //   optional fields. For us, nearly all fields are required.
+ //
+ //   Enclosed values in our encoding must appear in order. Protobuf values can
+ //   appear in any order. Protobuf encodings can concatenated, truncated, etc.,
+ //   all non-features for us.
+ //
+ // Note: In most cases, a tag appears only when the type would be ambiguous,
+ // i.e. when encoding Term or Form. When encoding Says and Speaksfor, however,
+ // the enclosed Prin values are not ambiguous, but we include the tag anyway for
+ // consistency since all other Prin values have a tag.
+ package auth
+diff --git a/go/src/cloudproxy/tao/auth/format.go b/go/src/cloudproxy/tao/auth/format.go
+index 4efa28c..ac45696 100644
+--- a/go/src/cloudproxy/tao/auth/format.go
++++ b/go/src/cloudproxy/tao/auth/format.go
+@@ -20,40 +20,45 @@ package auth
+ // When printed with other verbs, the output format is unspecified.
+ 
+ import (
+ 	"fmt"
+ )
+ 
+ // Format outputs a pretty-printed Form or Term.
+ func format(out fmt.State, verb rune, e AuthLogicElement) {
+ 	if verb == 's' {
+ 		fmt.Fprintf(out, "%s", e.ShortString())
+ 	} else {
+ 		fmt.Fprintf(out, "%s", e.String())
+ 	}
+ }
+ 
+ // Format outputs a pretty-printed Prin using short or long formats.
+ func (e Prin) Format(out fmt.State, verb rune) {
+ 	format(out, verb, e)
+ }
+ 
++// Format outputs a pretty-printed SubPrin using short or long formats.
++func (e SubPrin) Format(out fmt.State, verb rune) {
++	format(out, verb, e)
++}
++
+ // Format outputs a pretty-printed Str using short or long formats.
+ func (e Str) Format(out fmt.State, verb rune) {
+ 	format(out, verb, e)
+ }
+ 
+ // Format outputs a pretty-printed Int using short or long formats.
+ func (e Int) Format(out fmt.State, verb rune) {
+ 	format(out, verb, e)
+ }
+ 
+ // Format outputs a pretty-printed Pred using short or long formats.
+ func (e Pred) Format(out fmt.State, verb rune) {
+ 	format(out, verb, e)
+ }
+ 
+ // Format outputs a pretty-printed Const using short or long formats.
+ func (e Const) Format(out fmt.State, verb rune) {
+ 	format(out, verb, e)
+ }
+ 
+diff --git a/go/src/cloudproxy/tao/auth/lexer.go b/go/src/cloudproxy/tao/auth/lexer.go
+index e953db1..2acea21 100644
+--- a/go/src/cloudproxy/tao/auth/lexer.go
++++ b/go/src/cloudproxy/tao/auth/lexer.go
+@@ -1,34 +1,41 @@
+ // Copyright (c) 2014, Kevin Walsh.  All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
++// This code borrows from the lexer design and implementation described
++// by Rob Pike, "Lexical Scanning in Go", GTUG Sydney, Aug 30, 2011.
++// See: http://cuddle.googlecode.com/hg/talk/lex.html#slide-40
++//
++// It also borrows from the lexer in package
++// github.com/kevinawalsh/datalog/dlengine.
++
+ package auth
+ 
+ import (
+ 	"bytes"
+ 	"fmt"
+ 	"io"
+ 	"unicode"
+ 	"unicode/utf8"
+ )
+ 
+ // token is a value returned from the lexer.
+ type token struct {
+ 	typ itemType
+ 	val interface{} // string, int64, error, or nil
+ }
+ 
+ // itemType identifies the type of lex items.
+ type itemType int
+ 
+ const (
+@@ -41,40 +48,41 @@ const (
+ 	itemInt                            // value contains the int64
+ 	itemLP                             // value contains '('
+ 	itemRP                             // value contains ')'
+ 	itemComma                          // value contains ','
+ 	itemDot                            // value contains '.'
+ 	itemWhitespace                     // value contains ' ', '\t', '\n', etc.
+ )
+ 
+ var (
+ 	tokenFrom      = token{itemKeyword, "from"}
+ 	tokenUntil     = token{itemKeyword, "until"}
+ 	tokenSays      = token{itemKeyword, "says"}
+ 	tokenSpeaksfor = token{itemKeyword, "speaksfor"}
+ 	tokenImplies   = token{itemKeyword, "implies"}
+ 	tokenOr        = token{itemKeyword, "or"}
+ 	tokenAnd       = token{itemKeyword, "and"}
+ 	tokenNot       = token{itemKeyword, "not"}
+ 	tokenFalse     = token{itemKeyword, "false"}
+ 	tokenTrue      = token{itemKeyword, "true"}
+ 	tokenKey       = token{itemKeyword, "key"}
++	tokenTPM       = token{itemKeyword, "tpm"}
+ 	tokenLP        = token{itemLP, '('}
+ 	tokenRP        = token{itemRP, ')'}
+ 	tokenComma     = token{itemComma, ','}
+ 	tokenDot       = token{itemDot, '.'}
+ 	tokenEOF       = token{itemEOF, nil}
+ )
+ 
+ // String returns pretty-printed token, e.g. for debugging.
+ func (i token) String() string {
+ 	switch i.typ {
+ 	case itemError:
+ 		return fmt.Sprintf("Error{%v}", i.val)
+ 	case itemUnexpectedRune:
+ 		return fmt.Sprintf("UnexpectedRune{%v}", i.val)
+ 	case itemEOF:
+ 		return "EOF{}"
+ 	case itemKeyword:
+ 		return fmt.Sprintf("Keyword{%q}", i.val)
+ 	case itemIdentifier:
+ 		return fmt.Sprintf("Identifier{%q}", i.val)
+diff --git a/go/src/cloudproxy/tao/auth/parser.go b/go/src/cloudproxy/tao/auth/parser.go
+index ec76c80..c53614c 100644
+--- a/go/src/cloudproxy/tao/auth/parser.go
++++ b/go/src/cloudproxy/tao/auth/parser.go
+@@ -1,489 +1,518 @@
+ // Copyright (c) 2014, Kevin Walsh.  All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+-// This code borrows heavily from the lexer design and implementation for the
++// This code borrows heavily from the parser design and implementation for the
+ // template package. See http://golang.org/src/pkg/text/template/parse/parse.go
++//
++// It also borrows from the parser in package
++// github.com/kevinawalsh/datalog/dlengine.
+ 
+ package auth
+ 
+ import (
++	"encoding/base64"
+ 	"fmt"
+ )
+ 
+ // The functions in this file use one token lookahead, but only when more input
+ // is actually called for. The lexer may read one rune ahead while getting a
+ // token, but will unread that rune when the token is completed. The goal is to
+ // allow parsing an element out of a string or input stream that contains other
+ // data after the element.
+ //
+ // The parseX() functions properly handle outer parenthesis. For
+ // example, parsePred() will accept "P(1)", "(P(1))", and " ( ((P((1 )) ) ))".
+ // The expectX() functions do not allow outer parenthesis. So
+ // expectPred() will handle "P(1)" and "P( (( 1) ))", but not "(P(1))".
+ //
+ // Onless otherwise documented, in all cases the parseX() and expectX()
+ // functions are greedy, consuming input until either an error is encountered or
+ // the element can't be expanded further.
+ 
+-// parser holds the state of the recursive descent parser.
++// parser holds the state of the recursive descent p.
+ type parser struct {
+ 	lex           *lexer
+ 	lookahead     token
+ 	haveLookahead bool
+ }
+ 
+-func (parser *parser) cur() token {
+-	if !parser.haveLookahead {
+-		parser.lookahead = parser.lex.nextToken()
+-		parser.haveLookahead = true
++// cur advances the lexer if needed and returns the first unprocessed token.
++func (p *parser) cur() token {
++	if !p.haveLookahead {
++		p.lookahead = p.lex.nextToken()
++		p.haveLookahead = true
+ 	}
+-	return parser.lookahead
++	return p.lookahead
+ }
+ 
+ // advance discards lookahead; the next call to cur() will get a new token.
+-func (parser *parser) advance() {
+-	parser.haveLookahead = false
++func (p *parser) advance() {
++	// if !p.haveLookahead {
++	// 	panic("advance should only be called when there is a current token")
++	// }
++	p.haveLookahead = false
+ }
+ 
+ // expect checks whether cur matches t and, if so, advances to the next token.
+-func (parser *parser) expect(t token) error {
+-	if parser.cur() != t {
+-		return fmt.Errorf("expected %q, found %v", t.val, parser.cur())
++func (p *parser) expect(t token) error {
++	if p.cur() != t {
++		return fmt.Errorf("expected %q, found %v", t.val, p.cur())
+ 	}
+-	parser.advance()
++	p.advance()
+ 	return nil
+ }
+ 
+ // skipOpenParens skips and counts open parens.
+-func (parser *parser) skipOpenParens() int {
+-	n := 0
+-	for parser.cur() == tokenLP {
+-		parser.advance()
+-		n++
++func (p *parser) skipOpenParens() int {
++	var n int
++	for n = 0; p.cur() == tokenLP; n++ {
++		p.advance()
+ 	}
+ 	return n
+ }
+ 
+ // expectCloseParens expects n close parens.
+-func (parser *parser) expectCloseParens(n int) error {
++func (p *parser) expectCloseParens(n int) error {
+ 	for n > 0 {
+-		err := parser.expect(tokenRP)
++		err := p.expect(tokenRP)
+ 		if err != nil {
+ 			return err
+ 		}
+ 		n--
+ 	}
+ 	return nil
+ }
+ 
+ // expectPrin expects a Prin.
+-func (parser *parser) expectPrin() (p Prin, err error) {
+-	err = parser.expect(tokenKey)
+-	if err != nil {
++func (p *parser) expectPrin() (prin Prin, err error) {
++	if p.cur() != tokenTPM && p.cur() != tokenKey {
++		err = fmt.Errorf(`expected "key" or "tpm", found %v`, p.cur())
+ 		return
+ 	}
+-	if r := parser.lex.peek(); r != '(' {
++	prin.Type = p.cur().val.(string)
++	p.advance()
++	if r := p.lex.peek(); r != '(' {
+ 		err = fmt.Errorf(`expected '(' directly after "key", found %q`, r)
+ 		return
+ 	}
+-	err = parser.expect(tokenLP)
++	err = p.expect(tokenLP)
+ 	if err != nil {
+ 		return
+ 	}
+-	key, err := parser.parseStr()
++	key, err := p.parseStr()
+ 	if err != nil {
+ 		return
+ 	}
+-	err = parser.expect(tokenRP)
++	err = p.expect(tokenRP)
+ 	if err != nil {
+ 		return
+ 	}
+-	p.Key = string(key)
+-	p.Ext = nil
+-	for parser.lex.peek() == '.' {
+-		if parser.cur() != tokenDot {
+-			panic("not reached")
+-		}
+-		parser.advance()
+-		name, args, err := parser.expectNameAndArgs()
+-		if err != nil {
+-			return p, err
+-		}
+-		p.Ext = append(p.Ext, PrinExt{name, args})
++	prin.Key, err = base64.URLEncoding.DecodeString(string(key))
++	if err != nil {
++		return
++	}
++	for p.lex.peek() == '.' {
++		prin.Ext, err = p.expectSubPrin()
++	}
++	return
++}
++
++// parsePrin parses a Prin with optional outer parens.
++func (p *parser) parsePrin() (prin Prin, err error) {
++	n := p.skipOpenParens()
++	prin, err = p.expectPrin()
++	if err != nil {
++		return
+ 	}
++	err = p.expectCloseParens(n)
+ 	return
+ }
+ 
+-// parsePrin parses Prin with optional outer parens.
+-func (parser *parser) parsePrin() (p Prin, err error) {
+-	n := parser.skipOpenParens()
+-	p, err = parser.expectPrin()
++// expectSubPrin expects a SubPrin.
++func (p *parser) expectSubPrin() (s SubPrin, err error) {
++	if p.cur() != tokenDot {
++		err = fmt.Errorf(`expected '.', found %v`, p.cur())
++		return
++	}
++	p.advance()
++	name, args, err := p.expectNameAndArgs()
+ 	if err != nil {
+ 		return
+ 	}
+-	err = parser.expectCloseParens(n)
++	s = append(s, PrinExt{name, args})
++	for p.lex.peek() == '.' {
++		if p.cur() != tokenDot {
++			panic("not reached")
++		}
++		p.advance()
++		name, args, err = p.expectNameAndArgs()
++		if err != nil {
++			return
++		}
++		s = append(s, PrinExt{name, args})
++	}
+ 	return
+ }
+ 
+ // expectNameAndArgs expects an identifier, optionally followed by
+ // a parenthesized list of zero or more comma-separated terms.
+-func (parser *parser) expectNameAndArgs() (string, []Term, error) {
+-	if parser.cur().typ != itemIdentifier {
+-		return "", nil, fmt.Errorf("expected identifier, found %v", parser.cur())
++func (p *parser) expectNameAndArgs() (string, []Term, error) {
++	if p.cur().typ != itemIdentifier {
++		return "", nil, fmt.Errorf("expected identifier, found %v", p.cur())
+ 	}
+-	name := parser.cur().val.(string)
+-	parser.advance()
+-	if parser.lex.peek() != '(' {
++	name := p.cur().val.(string)
++	p.advance()
++	if p.lex.peek() != '(' {
+ 		// no parens
+ 		return name, nil, nil
+ 	}
+-	if parser.cur() != tokenLP {
++	if p.cur() != tokenLP {
+ 		panic("not reached")
+ 	}
+-	parser.advance()
+-	if parser.cur() == tokenRP {
++	p.advance()
++	if p.cur() == tokenRP {
+ 		// empty parens
+-		parser.advance()
++		p.advance()
+ 		return name, nil, nil
+ 	}
+ 	var args []Term
+ 	for {
+-		t, err := parser.parseTerm()
++		t, err := p.parseTerm()
+ 		if err != nil {
+ 			return "", nil, err
+ 		}
+ 		args = append(args, t)
+-		if parser.cur() != tokenComma {
++		if p.cur() != tokenComma {
+ 			break
+ 		}
+-		parser.advance()
++		p.advance()
+ 	}
+-	err := parser.expect(tokenRP)
++	err := p.expect(tokenRP)
+ 	if err != nil {
+ 		return "", nil, err
+ 	}
+ 	return name, args, nil
+ }
+ 
+ // expectStr expects a Str.
+-func (parser *parser) expectStr() (Str, error) {
+-	if parser.cur().typ != itemStr {
+-		return "", fmt.Errorf("expected string, found %v", parser.cur())
++func (p *parser) expectStr() (Str, error) {
++	if p.cur().typ != itemStr {
++		return "", fmt.Errorf("expected string, found %v", p.cur())
+ 	}
+-	t := Str(parser.cur().val.(string))
+-	parser.advance()
++	t := Str(p.cur().val.(string))
++	p.advance()
+ 	return t, nil
+ }
+ 
+ // parseStr parses a Str with optional outer parens.
+-func (parser *parser) parseStr() (t Str, err error) {
+-	n := parser.skipOpenParens()
+-	t, err = parser.expectStr()
++func (p *parser) parseStr() (t Str, err error) {
++	n := p.skipOpenParens()
++	t, err = p.expectStr()
+ 	if err != nil {
+ 		return
+ 	}
+-	err = parser.expectCloseParens(n)
++	err = p.expectCloseParens(n)
+ 	return
+ }
+ 
+ // expectInt expects an Int.
+-func (parser *parser) expectInt() (Int, error) {
+-	if parser.cur().typ != itemInt {
+-		return 0, fmt.Errorf("expected int, found %v", parser.cur())
++func (p *parser) expectInt() (Int, error) {
++	if p.cur().typ != itemInt {
++		return 0, fmt.Errorf("expected int, found %v", p.cur())
+ 	}
+-	t := Int(parser.cur().val.(int64))
+-	parser.advance()
++	t := Int(p.cur().val.(int64))
++	p.advance()
+ 	return t, nil
+ }
+ 
+ // parseInt parses an Int with optional outer parens.
+-func (parser *parser) parseInt() (Int, error) {
+-	n := parser.skipOpenParens()
+-	t, err := parser.expectInt()
++func (p *parser) parseInt() (Int, error) {
++	n := p.skipOpenParens()
++	t, err := p.expectInt()
+ 	if err != nil {
+ 		return 0, err
+ 	}
+-	err = parser.expectCloseParens(n)
++	err = p.expectCloseParens(n)
+ 	if err != nil {
+ 		return 0, err
+ 	}
+ 	return t, nil
+ }
+ 
+ // expectTerm expects a Term.
+-func (parser *parser) expectTerm() (Term, error) {
+-	switch parser.cur().typ {
++func (p *parser) expectTerm() (Term, error) {
++	switch p.cur().typ {
+ 	case itemStr:
+-		return parser.expectStr()
++		return p.expectStr()
+ 	case itemInt:
+-		return parser.expectInt()
++		return p.expectInt()
+ 	case itemKeyword:
+-		return parser.expectPrin()
++		return p.expectPrin()
+ 	default:
+-		return nil, fmt.Errorf("expected term, found %v", parser.cur())
++		return nil, fmt.Errorf("expected term, found %v", p.cur())
+ 	}
+ }
+ 
+ // parseTerm parses a Term with optional outer parens.
+-func (parser *parser) parseTerm() (Term, error) {
+-	n := parser.skipOpenParens()
+-	t, err := parser.expectTerm()
++func (p *parser) parseTerm() (Term, error) {
++	n := p.skipOpenParens()
++	t, err := p.expectTerm()
+ 	if err != nil {
+ 		return nil, err
+ 	}
+-	err = parser.expectCloseParens(n)
++	err = p.expectCloseParens(n)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	return t, nil
+ }
+ 
+ // expectPred expects a Pred.
+-func (parser *parser) expectPred() (f Pred, err error) {
+-	name, args, err := parser.expectNameAndArgs()
++func (p *parser) expectPred() (f Pred, err error) {
++	name, args, err := p.expectNameAndArgs()
+ 	if err != nil {
+ 		return
+ 	}
+ 	return Pred{name, args}, nil
+ }
+ 
+ // parsePred parses a Pred with optional outer parens.
+-func (parser *parser) parsePred() (f Pred, err error) {
+-	n := parser.skipOpenParens()
+-	f, err = parser.expectPred()
++func (p *parser) parsePred() (f Pred, err error) {
++	n := p.skipOpenParens()
++	f, err = p.expectPred()
+ 	if err != nil {
+ 		return
+ 	}
+-	err = parser.expectCloseParens(n)
++	err = p.expectCloseParens(n)
+ 	return
+ }
+ 
+ // expectConst expects a Const.
+-func (parser *parser) expectConst() (f Const, err error) {
+-	if parser.cur() != tokenTrue && parser.cur() != tokenFalse {
+-		err = fmt.Errorf("expected Const, found %v", parser.cur())
++func (p *parser) expectConst() (f Const, err error) {
++	if p.cur() != tokenTrue && p.cur() != tokenFalse {
++		err = fmt.Errorf("expected Const, found %v", p.cur())
+ 		return
+ 	}
+-	f = Const(parser.cur() == tokenTrue)
+-	parser.advance()
++	f = Const(p.cur() == tokenTrue)
++	p.advance()
+ 	return
+ }
+ 
+ // parseConst parses a Const with optional outer parens.
+-func (parser *parser) parseConst() (f Const, err error) {
+-	n := parser.skipOpenParens()
+-	f, err = parser.expectConst()
++func (p *parser) parseConst() (f Const, err error) {
++	n := p.skipOpenParens()
++	f, err = p.expectConst()
+ 	if err != nil {
+ 		return
+ 	}
+-	err = parser.expectCloseParens(n)
++	err = p.expectCloseParens(n)
+ 	return
+ }
+ 
+ // expectFrom optionally expects a "(from|until) int" clause for a says formula.
+-func (parser *parser) expectOptionalTime(t token) (*int64, error) {
+-	if parser.cur() != t {
++func (p *parser) expectOptionalTime(t token) (*int64, error) {
++	if p.cur() != t {
+ 		return nil, nil
+ 	}
+-	parser.advance()
+-	i, err := parser.parseInt()
++	p.advance()
++	i, err := p.parseInt()
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	val := int64(i)
+ 	return &val, nil
+ }
+ 
+ // expectSaysOrSpeaksfor expects a says or speaksfor formula. If greedy is true,
+ // this will parse as much input as possible. Otherwise, it will take only as
+ // much input as needed to make a valid formula.
+-func (parser *parser) expectSaysOrSpeaksfor(greedy bool) (Form, error) {
++func (p *parser) expectSaysOrSpeaksfor(greedy bool) (Form, error) {
+ 	// Prin [from Time] [until Time] says Form
+ 	// Prin speaksfor Prin
+-	p, err := parser.parsePrin()
++	prin, err := p.parsePrin()
+ 	if err != nil {
+ 		return nil, err
+ 	}
+-	switch parser.cur() {
++	switch p.cur() {
+ 	case tokenSpeaksfor:
+-		parser.advance()
+-		d, err := parser.parsePrin()
++		p.advance()
++		d, err := p.parsePrin()
+ 		if err != nil {
+ 			return nil, err
+ 		}
+-		return Speaksfor{p, d}, nil
++		return Speaksfor{prin, d}, nil
+ 	case tokenFrom, tokenUntil, tokenSays:
+-		from, err := parser.expectOptionalTime(tokenFrom)
++		from, err := p.expectOptionalTime(tokenFrom)
+ 		if err != nil {
+ 			return nil, err
+ 		}
+-		until, err := parser.expectOptionalTime(tokenUntil)
++		until, err := p.expectOptionalTime(tokenUntil)
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 		if from == nil {
+-			from, err = parser.expectOptionalTime(tokenFrom)
++			from, err = p.expectOptionalTime(tokenFrom)
+ 			if err != nil {
+ 				return nil, err
+ 			}
+ 		}
+-		if parser.cur() != tokenSays {
++		if p.cur() != tokenSays {
+ 			if from == nil && until == nil {
+-				return nil, fmt.Errorf(`expected "from", "until" or "says", found %v`, parser.cur())
++				return nil, fmt.Errorf(`expected "from", "until" or "says", found %v`, p.cur())
+ 			} else if until == nil {
+-				return nil, fmt.Errorf(`expected "until" or "says", found %v`, parser.cur())
++				return nil, fmt.Errorf(`expected "until" or "says", found %v`, p.cur())
+ 			} else if from == nil {
+-				return nil, fmt.Errorf(`expected "from" or "says", found %v`, parser.cur())
++				return nil, fmt.Errorf(`expected "from" or "says", found %v`, p.cur())
+ 			} else {
+-				return nil, fmt.Errorf(`expected "says", found %v`, parser.cur())
++				return nil, fmt.Errorf(`expected "says", found %v`, p.cur())
+ 			}
+ 		}
+-		parser.advance()
++		p.advance()
+ 		var msg Form
+ 		if greedy {
+-			msg, err = parser.parseForm()
++			msg, err = p.parseForm()
+ 		} else {
+-			msg, err = parser.parseFormAtHigh(true)
++			msg, err = p.parseFormAtHigh(true)
+ 		}
+ 		if err != nil {
+ 			return nil, err
+ 		}
+-		return Says{p, from, until, msg}, nil
++		return Says{prin, from, until, msg}, nil
+ 	default:
+-		return nil, fmt.Errorf(`expected "speaksfor", "from", "until", or "says", found %v`, parser.cur())
++		return nil, fmt.Errorf(`expected "speaksfor", "from", "until", or "says", found %v`, p.cur())
+ 	}
+ }
+ 
+ // The functions follow normal precedence rules, e.g. roughly:
+ // L = O imp I | I
+ // O = A or A or A or ... or A | A
+ // A = H and H and H ... and H | H
+ // H = not N | ( L ) | P(x) | true | false | P says L | P speaksfor P
+ 
+ // parseFormAtHigh parses a Form, but stops at any binary Form operator. If
+ // greedy is true, this will parse as much input as possible. Otherwise, it will
+ // parse only as much input as needed to make a valid formula.
+-func (parser *parser) parseFormAtHigh(greedy bool) (Form, error) {
+-	switch parser.cur() {
++func (p *parser) parseFormAtHigh(greedy bool) (Form, error) {
++	switch p.cur() {
+ 	case tokenLP:
+-		parser.advance()
+-		f, err := parser.parseForm()
++		p.advance()
++		f, err := p.parseForm()
+ 		if err != nil {
+ 			return nil, err
+ 		}
+-		err = parser.expect(tokenRP)
++		err = p.expect(tokenRP)
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 		return f, nil
+ 	case tokenTrue, tokenFalse:
+-		return parser.expectConst()
++		return p.expectConst()
+ 	case tokenNot:
+-		parser.advance()
+-		f, err := parser.parseFormAtHigh(greedy)
++		p.advance()
++		f, err := p.parseFormAtHigh(greedy)
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 		return Not{f}, nil
+-	case tokenKey:
+-		return parser.expectSaysOrSpeaksfor(greedy)
++	case tokenKey, tokenTPM:
++		return p.expectSaysOrSpeaksfor(greedy)
+ 	default:
+-		if parser.cur().typ == itemIdentifier {
+-			return parser.expectPred()
++		if p.cur().typ == itemIdentifier {
++			return p.expectPred()
+ 		}
+-		return nil, fmt.Errorf("expected Form, found %v", parser.cur())
++		return nil, fmt.Errorf("expected Form, found %v", p.cur())
+ 	}
+ }
+ 
+ // parseFormAtAnd parses a Form, but stops when it reaches a binary Form
+ // operator of lower precedence than "and".
+-func (parser *parser) parseFormAtAnd() (Form, error) {
+-	f, err := parser.parseFormAtHigh(true)
++func (p *parser) parseFormAtAnd() (Form, error) {
++	f, err := p.parseFormAtHigh(true)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+-	if parser.cur() != tokenAnd {
++	if p.cur() != tokenAnd {
+ 		return f, nil
+ 	}
+ 	and, ok := f.(And)
+ 	if !ok {
+ 		and = And{Conjunct: []Form{f}}
+ 	}
+-	for parser.cur() == tokenAnd {
+-		parser.advance()
+-		g, err := parser.parseFormAtHigh(true)
++	for p.cur() == tokenAnd {
++		p.advance()
++		g, err := p.parseFormAtHigh(true)
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 		and.Conjunct = append(and.Conjunct, g)
+ 	}
+ 	return and, nil
+ }
+ 
+ // parseFormAtOr parses a Form, but stops when it reaches a binary Form operator
+ // of lower precedence than "or".
+-func (parser *parser) parseFormAtOr() (Form, error) {
+-	f, err := parser.parseFormAtAnd()
++func (p *parser) parseFormAtOr() (Form, error) {
++	f, err := p.parseFormAtAnd()
+ 	if err != nil {
+ 		return nil, err
+ 	}
+-	if parser.cur() != tokenOr {
++	if p.cur() != tokenOr {
+ 		return f, nil
+ 	}
+ 	or, ok := f.(Or)
+ 	if !ok {
+ 		or = Or{Disjunct: []Form{f}}
+ 	}
+-	for parser.cur() == tokenOr {
+-		parser.advance()
+-		g, err := parser.parseFormAtAnd()
++	for p.cur() == tokenOr {
++		p.advance()
++		g, err := p.parseFormAtAnd()
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 		or.Disjunct = append(or.Disjunct, g)
+ 	}
+ 	return or, nil
+ }
+ 
+ // parseForm parses a Form. This function is greedy: it consumes as much input
+ // as possible until either an error or EOF is encountered.
+-func (parser *parser) parseForm() (Form, error) {
+-	f, err := parser.parseFormAtOr()
++func (p *parser) parseForm() (Form, error) {
++	f, err := p.parseFormAtOr()
+ 	if err != nil {
+ 		return nil, err
+ 	}
+-	if parser.cur() != tokenImplies {
++	if p.cur() != tokenImplies {
+ 		return f, nil
+ 	}
+-	parser.advance()
+-	g, err := parser.parseForm()
++	p.advance()
++	g, err := p.parseForm()
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	return Implies{f, g}, nil
+ }
+ 
+ // parseShortestForm parses the shortest valid Form. This function is not
+ // greedy: it consumes only as much input as necessary to obtain a valid
+ // formula. For example, "(p says a and b ...)" and "p says (a and b ...) will
+ // be parsed in their entirety, but given "p says a and b ... ", only "p says a"
+ // will be parsed.
+-func (parser *parser) parseShortestForm() (Form, error) {
+-	return parser.parseFormAtHigh(false)
++func (p *parser) parseShortestForm() (Form, error) {
++	return p.parseFormAtHigh(false)
+ }
+ 
+ func newParser(input reader) *parser {
+ 	lex := lex(input)
+ 	return &parser{lex: lex}
+ }
+diff --git a/go/src/cloudproxy/tao/auth/scan.go b/go/src/cloudproxy/tao/auth/scan.go
+index 6e930a0..a825c56 100644
+--- a/go/src/cloudproxy/tao/auth/scan.go
++++ b/go/src/cloudproxy/tao/auth/scan.go
+@@ -27,81 +27,94 @@ func (p *Prin) Scan(state fmt.ScanState, verb rune) error {
+ 	prin, err := parser.parsePrin()
+ 	if err != nil {
+ 		return err
+ 	}
+ 	*p = prin
+ 	return nil
+ }
+ 
+ // Scan parses a PrinExt.
+ func (e *PrinExt) Scan(state fmt.ScanState, verb rune) error {
+ 	parser := newParser(state)
+ 	name, args, err := parser.expectNameAndArgs()
+ 	if err != nil {
+ 		return err
+ 	}
+ 	e.Name = name
+ 	e.Arg = args
+ 	return nil
+ }
+ 
++// Scan parses a SubPrin.
++func (e *SubPrin) Scan(state fmt.ScanState, verb rune) error {
++	parser := newParser(state)
++	subprin, err := parser.expectSubPrin()
++	if err != nil {
++		return err
++	}
++	*e = subprin
++	return nil
++}
++
+ // AnyTerm is a struct that can be used in when scanning for a Term, since Term
+ // itself is an interface and interface pointers are not valid receivers.
++// TODO(kwalsh) Can this be accomplished with a pointer to interface?
+ type AnyTerm struct {
+ 	Term Term
+ }
+ 
+ // Scan parses a Term, with optional outer parens.
+ func (t *AnyTerm) Scan(state fmt.ScanState, verb rune) error {
+ 	parser := newParser(state)
+ 	term, err := parser.parseTerm()
+ 	if err != nil {
+ 		return err
+ 	}
+ 	t.Term = term
+ 	return nil
+ }
+ 
+ // Scan parses a Str, with optional outer parens.
+ func (t *Str) Scan(state fmt.ScanState, verb rune) error {
+ 	parser := newParser(state)
+ 	s, err := parser.parseStr()
+ 	if err != nil {
+ 		return err
+ 	}
+ 	*t = s
+ 	return nil
+ }
+ 
+ // Scan parses an Int, with optional outer parens.
+ func (t *Int) Scan(state fmt.ScanState, verb rune) error {
+ 	parser := newParser(state)
+ 	i, err := parser.parseInt()
+ 	if err != nil {
+ 		return err
+ 	}
+ 	*t = i
+ 	return nil
+ }
+ 
+ // AnyForm is a struct that can be used in when scanning for a Form, since Form
+ // itself is an interface and interface pointers are not valid receivers.
++// TODO(kwalsh) Can this be accomplished with a pointer to interface?
+ type AnyForm struct {
+ 	Form Form
+ }
+ 
+ // Scan parses a Form, with optional outer parens. This function is not greedy:
+ // it consumes only as much input as necessary to obtain a valid formula. For
+ // example, "(p says a and b ...)" and "p says (a and b ...) will be parsed in
+ // their entirety, but given "p says a and b ... ", only "p says a" will be
+ // parsed.
+ func (f *AnyForm) Scan(state fmt.ScanState, verb rune) error {
+ 	parser := newParser(state)
+ 	form, err := parser.parseShortestForm()
+ 	if err != nil {
+ 		return err
+ 	}
+ 	f.Form = form
+ 	return nil
+ }
+ 
+ // Scan parses a Pred, with optional outer parens.
+diff --git a/go/src/cloudproxy/tao/auth/shortstring.go b/go/src/cloudproxy/tao/auth/shortstring.go
+index 3980bfe..8a90a20 100644
+--- a/go/src/cloudproxy/tao/auth/shortstring.go
++++ b/go/src/cloudproxy/tao/auth/shortstring.go
+@@ -5,63 +5,73 @@
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package auth
+ 
+ // This file implements ShortString() functions for pretty-printing elements
+ // with elision.
+ 
+ // TODO(kwalsh) Perhaps elision can be supported under fmt.Printf() using verb
+ // modifiers, flags, precision, etc.?
+ 
+ import (
+ 	"bytes"
++	"encoding/base64"
+ 	"fmt"
+ 	"io"
+ )
+ 
+ // ShortString returns an elided pretty-printed Prin.
+ func (p Prin) ShortString() string {
+ 	var out bytes.Buffer
+ 	if len(p.Key) > 15 {
+-		fmt.Fprintf(&out, "key(%.10q...)", p.Key)
++		fmt.Fprintf(&out, "%s(%.10q...)", p.Type, base64.URLEncoding.EncodeToString(p.Key))
+ 	} else {
+-		fmt.Fprintf(&out, "key(%q)", p.Key)
++		fmt.Fprintf(&out, "%s(%q)", p.Type, base64.URLEncoding.EncodeToString(p.Key))
+ 	}
+ 	for _, e := range p.Ext {
+ 		fmt.Fprintf(&out, ".%s", e.ShortString())
+ 	}
+ 	return out.String()
+ }
+ 
+ // ShortString returns an elided pretty-printed PrinExt.
+ func (e PrinExt) ShortString() string {
+ 	return nameAndArgShortString(e.Name, e.Arg)
+ }
+ 
++// ShortString returns an elided pretty-printed SubPrin.
++func (s SubPrin) ShortString() string {
++	var out bytes.Buffer
++	for _, e := range s {
++		fmt.Fprintf(&out, ".%s", e.ShortString())
++	}
++	return out.String()
++}
++
+ // nameAndArgShortString returns an elided pretty-printed name and argument list.
+ func nameAndArgShortString(name string, arg []Term) string {
+ 	if len(arg) == 0 {
+ 		return name
+ 	}
+ 	var out bytes.Buffer
+ 	fmt.Fprintf(&out, "%s(", name)
+ 	for i, a := range arg {
+ 		if i > 0 {
+ 			fmt.Fprintf(&out, ", ")
+ 		}
+ 		fmt.Fprintf(&out, "%s", a.ShortString())
+ 	}
+ 	fmt.Fprintf(&out, ")")
+ 	return out.String()
+ }
+ 
+ // ShortString returns an elided pretty-printed Int.
+ func (t Int) ShortString() string {
+ 	return fmt.Sprintf("%d", int64(t))
+diff --git a/go/src/cloudproxy/tao/auth/string.go b/go/src/cloudproxy/tao/auth/string.go
+index 76a500e..d7f5a46 100644
+--- a/go/src/cloudproxy/tao/auth/string.go
++++ b/go/src/cloudproxy/tao/auth/string.go
+@@ -1,59 +1,69 @@
+ // Copyright (c) 2014, Kevin Walsh.  All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package auth
+ 
+ // This file implements String() functions for pretty-printing elements.
+ 
+ import (
+ 	"bytes"
++	"encoding/base64"
+ 	"fmt"
+ 	"io"
+ )
+ 
+ // String returns a pretty-printed Prin.
+ func (p Prin) String() string {
+ 	var out bytes.Buffer
+-	fmt.Fprintf(&out, "key(%q)", p.Key)
++	fmt.Fprintf(&out, "%s(%q)", p.Type, base64.URLEncoding.EncodeToString(p.Key))
+ 	for _, e := range p.Ext {
+ 		fmt.Fprintf(&out, ".%s", e.String())
+ 	}
+ 	return out.String()
+ }
+ 
+ // String returns a pretty-printed PrinExt.
+ func (e PrinExt) String() string {
+ 	return nameAndArgString(e.Name, e.Arg)
+ }
+ 
++// String returns an elided pretty-printed SubPrin.
++func (s SubPrin) String() string {
++	var out bytes.Buffer
++	for _, e := range s {
++		fmt.Fprintf(&out, ".%s", e.String())
++	}
++	return out.String()
++}
++
+ // nameAndArgString returns a pretty-printed name and argument list.
+ func nameAndArgString(name string, arg []Term) string {
+ 	if len(arg) == 0 {
+ 		return name
+ 	}
+ 	var out bytes.Buffer
+ 	fmt.Fprintf(&out, "%s(", name)
+ 	for i, a := range arg {
+ 		if i > 0 {
+ 			fmt.Fprintf(&out, ", ")
+ 		}
+ 		fmt.Fprintf(&out, "%s", a.String())
+ 	}
+ 	fmt.Fprintf(&out, ")")
+ 	return out.String()
+ }
+ 
+ // String returns a pretty-printed Int.
+ func (t Int) String() string {
+ 	return fmt.Sprintf("%d", int64(t))
+@@ -175,29 +185,29 @@ func precedence(f Form) int {
+ 		} else if len(f.Disjunct) == 1 {
+ 			return precedence(f.Disjunct[0]) // Or{f} == f
+ 		} else {
+ 			return precedenceOr
+ 		}
+ 	case And:
+ 		if len(f.Conjunct) == 0 {
+ 			return precedenceHigh // And{} == true
+ 		} else if len(f.Conjunct) == 1 {
+ 			return precedence(f.Conjunct[0]) // And{f} == f
+ 		} else {
+ 			return precedenceAnd
+ 		}
+ 	case Not, Pred, Const:
+ 		return precedenceHigh
+ 	default:
+ 		panic("not reached")
+ 	}
+ }
+ 
+-// printFormWithParens prints either f or (f), depending on ho level compares to
+-// the precedence of f.
++// printFormWithParens prints either f or (f), depending on how level compares
++// to the precedence of f.
+ func printFormWithParens(out io.Writer, level int, f Form) {
+ 	if level > precedence(f) {
+ 		fmt.Fprintf(out, "(%s)", f.String())
+ 	} else {
+ 		fmt.Fprintf(out, "%s", f.String())
+ 	}
+ }
+diff --git a/go/src/cloudproxy/tao/fake_tao_test.go b/go/src/cloudproxy/tao/fake_tao_test.go
+index a56e5e2..2a01210 100644
+--- a/go/src/cloudproxy/tao/fake_tao_test.go
++++ b/go/src/cloudproxy/tao/fake_tao_test.go
+@@ -6,82 +6,80 @@
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+ 	"crypto/rand"
+ 	"errors"
+ 	"io"
+ 	mrand "math/rand"
+ 	"testing"
+ 	"time"
+ 
+ 	"code.google.com/p/goprotobuf/proto"
++
++	"cloudproxy/tao/auth"
+ )
+ 
+ // A FakeTao is an implementation of the Tao that isn't backed by any hardware
+ // mechanisms. It's used for testing components that rely on the Tao.
+ type FakeTao struct {
+ 	keys          *Keys
+-	name          string
+-	nameExtension string
++	name          auth.Prin
++	nameExtension auth.SubPrin
+ }
+ 
+ // Init initializes the FakeTao with a crypter and a signer.
+-func NewFakeTao(name, path string, password []byte) (Tao, error) {
++func NewFakeTao(name auth.Prin, path string, password []byte) (Tao, error) {
+ 	f := &FakeTao{
+ 		name: name,
+ 	}
+ 
+ 	var err error
+ 	if path == "" {
+ 		f.keys, err = NewTemporaryKeys(Signing | Crypting | Deriving)
+ 	} else {
+ 		f.keys, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, path)
+ 	}
+ 
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	return f, nil
+ }
+ 
+ // GetTaoName returns the Tao principal name assigned to the caller.
+-func (f *FakeTao) GetTaoName() (string, error) {
+-	return f.name + f.nameExtension, nil
++func (f *FakeTao) GetTaoName() (auth.Prin, error) {
++	return f.name.MakeSubprincipal(f.nameExtension), nil
+ }
+ 
+ // ExtendTaoName irreversibly extends the Tao principal name of the caller.
+-func (f *FakeTao) ExtendTaoName(subprin string) error {
+-	if subprin == "" {
+-		return errors.New("invalid subprincipal name")
+-	}
+-
+-	f.nameExtension += "::" + subprin
++func (f *FakeTao) ExtendTaoName(subprin auth.SubPrin) error {
++	f.nameExtension = append(f.nameExtension, subprin...)
+ 	return nil
+ }
+ 
+ // GetRandomBytes fills the slice with random bytes.
+ func (f *FakeTao) GetRandomBytes(n int) ([]byte, error) {
+ 	b := make([]byte, n)
+ 	if _, err := rand.Read(b); err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	return b, nil
+ }
+ 
+ // Read implements io.Reader to read random bytes from the Tao.
+ func (f *FakeTao) Read(p []byte) (int, error) {
+ 	bytes, err := f.GetRandomBytes(len(p))
+ 	if err != nil {
+ 		return 0, err
+ 	}
+ 
+@@ -114,124 +112,127 @@ func (f *FakeTao) GetSharedSecret(n int, policy string) ([]byte, error) {
+ // Seal encrypts the data in a way that can only be opened by the Tao for the
+ // program that sealed it.  In the case of the FakeTao, this policy is
+ // implicit.
+ func (f *FakeTao) Seal(data []byte, policy string) ([]byte, error) {
+ 	// The FakeTao insists on the trivial policy, since it just encrypts the bytes directly
+ 	if policy != SealPolicyDefault {
+ 		return nil, errors.New("The FakeTao requires SealPolicyDefault")
+ 	}
+ 
+ 	return f.keys.CryptingKey.Encrypt(data)
+ }
+ 
+ // Unseal decrypts data that has been sealed by the Seal operation, but only if
+ // the policy specified during the Seal operation is satisfied.
+ func (f *FakeTao) Unseal(sealed []byte) (data []byte, policy string, err error) {
+ 	data, err = f.keys.CryptingKey.Decrypt(sealed)
+ 	policy = SealPolicyDefault
+ 	return data, policy, err
+ }
+ 
+-// Attest requests that the Tao host sign a Statement on behalf of the caller.
+-func (f *FakeTao) Attest(stmt *Statement) (*Attestation, error) {
+-	if stmt.Issuer == nil {
+-		stmt.Issuer = proto.String(f.name)
+-	} else if stmt.GetIssuer() != f.name {
++// Attest requests that the Tao host sign a statement on behalf of the caller.
++func (f *FakeTao) Attest(issuer *auth.Prin, time, expiration *int64, message auth.Form) (*Attestation, error) {
++
++	if issuer == nil {
++		issuer = &f.name
++	} else if !issuer.Identical(f.name) {
+ 		return nil, errors.New("Invalid issuer in statement")
+ 	}
+ 
++	stmt := auth.Says{Speaker: *issuer, Time: time, Expiration: expiration, Message: message}
++
+ 	var delegation []byte
+ 	if f.keys.Delegation != nil {
+ 		var err error
+ 		delegation, err = proto.Marshal(f.keys.Delegation)
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 	}
+ 
+ 	return GenerateAttestation(f.keys.SigningKey, delegation, stmt)
+ }
+ 
+ func TestInMemoryInit(t *testing.T) {
+-	_, err := NewFakeTao("test", "", nil)
++	_, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
+ 	if err != nil {
+ 		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
+ 	}
+ }
+ 
+ func TestFakeTaoRandom(t *testing.T) {
+-	ft, err := NewFakeTao("test", "", nil)
++	ft, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
+ 	if err != nil {
+ 		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
+ 	}
+ 
+ 	if _, err := ft.GetRandomBytes(10); err != nil {
+ 		t.Fatal("Couldn't get 10 random bytes:", err)
+ 	}
+ }
+ 
+ func TestFakeTaoSeal(t *testing.T) {
+-	ft, err := NewFakeTao("test", "", nil)
++	ft, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
+ 	if err != nil {
+ 		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
+ 	}
+ 
+ 	r := mrand.New(mrand.NewSource(time.Now().UnixNano()))
+ 	b := make([]byte, 33)
+ 	for i := range b {
+ 		b[i] = byte(r.Intn(256))
+ 	}
+ 
+ 	_, err = ft.Seal(b, SealPolicyDefault)
+ 	if err != nil {
+ 		t.Fatal("Couldn't seal data in the FakeTao under the default policy:", err)
+ 	}
+ }
+ 
+ func TestFakeTaoUnseal(t *testing.T) {
+-	ft, err := NewFakeTao("test", "", nil)
++	ft, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
+ 	if err != nil {
+ 		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
+ 	}
+ 
+ 	r := mrand.New(mrand.NewSource(time.Now().UnixNano()))
+ 	b := make([]byte, 33)
+ 	for i := range b {
+ 		b[i] = byte(r.Intn(256))
+ 	}
+ 
+ 	s, err := ft.Seal(b, SealPolicyDefault)
+ 	if err != nil {
+ 		t.Fatal("Couldn't seal data in the FakeTao under the default policyL", err)
+ 	}
+ 
+ 	u, p, err := ft.Unseal(s)
+ 	if string(p) != SealPolicyDefault {
+ 		t.Fatal("Invalid policy returned by Unseal")
+ 	}
+ 
+ 	if len(u) != len(b) {
+ 		t.Fatal("Invalid unsealed length")
+ 	}
+ 
+ 	for i, v := range u {
+ 		if v != b[i] {
+ 			t.Fatalf("Incorrect byte at position %d", i)
+ 		}
+ 	}
+ }
+ 
+ func TestFakeTaoAttest(t *testing.T) {
+-	ft, err := NewFakeTao("test", "", nil)
++	ft, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
+ 	if err != nil {
+ 		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
+ 	}
+ 
+-	stmt := &Statement{
+-		Delegate: proto.String("Test Principal"),
++	stmt := auth.Speaksfor{
++		Delegate: auth.Prin{Type: "key", Key:[]byte("BogusKeyBytes1")},
+ 	}
+ 
+-	_, err = ft.Attest(stmt)
++	_, err = ft.Attest(nil, nil, nil, stmt)
+ 	if err != nil {
+ 		t.Fatal("Couldn't attest to a statement in the FakeTao:", err)
+ 	}
+ }
+diff --git a/go/src/cloudproxy/tao/keys.go b/go/src/cloudproxy/tao/keys.go
+index c8ec981..e00034e 100644
+--- a/go/src/cloudproxy/tao/keys.go
++++ b/go/src/cloudproxy/tao/keys.go
+@@ -9,53 +9,53 @@
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+ 	"crypto/aes"
+ 	"crypto/cipher"
+ 	"crypto/ecdsa"
+ 	"crypto/elliptic"
+ 	"crypto/hmac"
+ 	"crypto/rand"
+ 	"crypto/sha1"
+ 	"crypto/sha256"
+ 	"crypto/x509"
+ 	"crypto/x509/pkix"
+ 	"encoding/asn1"
+-	"encoding/base64"
+ 	"encoding/pem"
+ 	"errors"
+ 	"io/ioutil"
+ 	"math/big"
+ 	"os"
+ 	"path"
+-	"strings"
+ 	"time"
+ 
+ 	"code.google.com/p/go.crypto/hkdf"
+ 	"code.google.com/p/go.crypto/pbkdf2"
+ 	"code.google.com/p/goprotobuf/proto"
++
++	"cloudproxy/tao/auth"
+ )
+ 
+ // A KeyType represent the type(s) of keys held by a Keys struct.
+ type KeyType int
+ 
+ // These are the types of supported keys.
+ const (
+ 	Signing KeyType = 1 << iota
+ 	Crypting
+ 	Deriving
+ )
+ 
+ const aesKeySize = 32 // 256-bit AES
+ const deriverSecretSize = 32
+ const hmacKeySize = 32 // SHA-256
+ 
+ // A Signer is used to sign and verify signatures
+ type Signer struct {
+ 	ec *ecdsa.PrivateKey
+ }
+@@ -69,56 +69,55 @@ type Verifier struct {
+ type Crypter struct {
+ 	aesKey  []byte
+ 	hmacKey []byte
+ }
+ 
+ // A Deriver is used to derive key material from a context using HKDF.
+ type Deriver struct {
+ 	secret []byte
+ }
+ 
+ // GenerateSigner creates a new Signer with a fresh key.
+ func GenerateSigner() (*Signer, error) {
+ 	ec, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	return &Signer{ec}, nil
+ }
+ 
+-// ToPrincipalName produces a plain-text Tao principal name. This is a
+-// base64w-encoded version of a serialized CryptoKey for the public half of
+-// this signing key, wrapped in 'Key("' and '")'.
+-func (s *Signer) ToPrincipalName() (string, error) {
++// ToPrincipal produces a "key" type Prin for this signer. This contains a
++// serialized CryptoKey for the public half of this signing key.
++func (s *Signer) ToPrincipal() (auth.Prin, error) {
+ 	var ck *CryptoKey
+ 	var err error
+ 	if ck, err = MarshalPublicSignerProto(s); err != nil {
+-		return "", nil
++		return auth.Prin{}, nil
+ 	}
+ 
+ 	data, err := proto.Marshal(ck)
+ 	if err != nil {
+-		return "", err
++		return auth.Prin{}, err
+ 	}
+ 
+-	return "Key(\"" + base64.URLEncoding.EncodeToString(data) + "\")", nil
++	return auth.Prin{Type:"key", Key: data}, nil
+ }
+ 
+ // MarshalSignerDER serializes the signer to DER.
+ func MarshalSignerDER(s *Signer) ([]byte, error) {
+ 	return x509.MarshalECPrivateKey(s.ec)
+ }
+ 
+ // UnmarshalSignerDER deserializes a Signer from DER.
+ func UnmarshalSignerDER(signer []byte) (*Signer, error) {
+ 	k := new(Signer)
+ 	var err error
+ 	if k.ec, err = x509.ParseECPrivateKey(signer); err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	return k, nil
+ }
+ 
+ func ParseX509SubjectName(name string) (*pkix.Name, error) {
+ 	p := new(X509Details)
+@@ -364,75 +363,65 @@ func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error)
+ 	var sd SignedData
+ 	if err := proto.Unmarshal(sig, &sd); err != nil {
+ 		return false, err
+ 	}
+ 
+ 	var ecSig ecdsaSignature
+ 	// We ignore the first parameter, since we don't mind if there's more
+ 	// data after the signature.
+ 	if _, err := asn1.Unmarshal(sd.Signature, &ecSig); err != nil {
+ 		return false, err
+ 	}
+ 
+ 	b, err := contextualizedSHA256(sd.Header, data, context, sha256.Size)
+ 	if err != nil {
+ 		return false, err
+ 	}
+ 
+ 	return ecdsa.Verify(v.ec, b, ecSig.R, ecSig.S), nil
+ }
+ 
+-// ToPrincipalName produces a plain-text Tao principal name. This is a
+-// base64w-encoded version of a serialized CryptoKey for the public half of
+-// this verifying key, wrapped in 'Key("' and '")'.
+-func (v *Verifier) ToPrincipalName() (string, error) {
++// ToPrincipal produces a "key" type Prin for this verifier. This contains a
++// serialized CryptoKey for this key.
++func (v *Verifier) ToPrincipal() (auth.Prin, error) {
+ 	var ck *CryptoKey
+ 	var err error
+ 	if ck, err = MarshalVerifierProto(v); err != nil {
+-		return "", nil
++		return auth.Prin{}, nil
+ 	}
+ 
+ 	data, err := proto.Marshal(ck)
+ 	if err != nil {
+-		return "", err
++		return auth.Prin{}, err
+ 	}
+ 
+-	return "Key(\"" + base64.URLEncoding.EncodeToString(data) + "\")", nil
++	return auth.Prin{Type:"key", Key: data}, nil
+ }
+ 
+-// FromPrincipalName deserializes a Verifier from a plaintext Tao principal
+-// name.
+-func FromPrincipalName(name string) (*Verifier, error) {
+-	// Check to make sure the key starts with "Key(" and ends with ")".
+-	if !strings.HasPrefix(name, "Key(\"") || !strings.HasSuffix(name, "\")") {
+-		return nil, errors.New("invalid prefix or suffix")
+-	}
+-
+-	ks := strings.TrimPrefix(strings.TrimSuffix(name, "\")"), "Key(\"")
+-
+-	b, err := base64.URLEncoding.DecodeString(ks)
+-	if err != nil {
+-		return nil, err
++// FromPrincipal deserializes a Verifier from a Prin.
++func FromPrincipal(prin auth.Prin) (*Verifier, error) {
++	if prin.Type != "key" {
++		return nil, errors.New("invalid key principal type")
+ 	}
+ 
+ 	var ck CryptoKey
+-	if err := proto.Unmarshal(b, &ck); err != nil {
++	if err := proto.Unmarshal(prin.Key, &ck); err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
+ 		return nil, errors.New("bad version")
+ 	}
+ 
+ 	if *ck.Purpose != CryptoKey_VERIFYING {
+ 		return nil, errors.New("bad purpose")
+ 	}
+ 
+ 	if *ck.Algorithm != CryptoKey_ECDSA_SHA {
+ 		return nil, errors.New("bad algorithm")
+ 	}
+ 
+ 	var ecvk ECDSA_SHA_VerifyingKeyV1
+ 	if err := proto.Unmarshal(ck.Key, &ecvk); err != nil {
+ 		return nil, err
+ 	}
+ 
+@@ -1038,50 +1027,50 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string) (*Keys, er
+ 				if err = pem.Encode(pbes, pb); err != nil {
+ 					return nil, err
+ 				}
+ 			}
+ 		}
+ 	}
+ 
+ 	return k, nil
+ }
+ 
+ // NewTemporaryTaoDelegatedKeys initializes a set of temporary keys under a host
+ // Tao, using the Tao to generate a delegation for the signing key. Since these
+ // keys are never stored on disk, they are not sealed to the Tao.
+ func NewTemporaryTaoDelegatedKeys(keyTypes KeyType, t Tao) (*Keys, error) {
+ 	k, err := NewTemporaryKeys(keyTypes)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	if k.SigningKey != nil {
+-		n, err := k.SigningKey.ToPrincipalName()
++		prin, err := k.SigningKey.ToPrincipal()
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 
+-		s := &Statement{
+-			Delegate: proto.String(n),
++		s := &auth.Speaksfor{
++			Delegate: prin,
+ 		}
+ 
+-		if k.Delegation, err = t.Attest(s); err != nil {
++		if k.Delegation, err = t.Attest(nil, nil, nil, s); err != nil {
+ 			return nil, err
+ 		}
+ 	}
+ 
+ 	return k, nil
+ }
+ 
+ // PBEEncrypt encrypts plaintext using a password to generate a key. Note that
+ // since this is for private program data, we don't try for compatibility with
+ // the C++ Tao version of the code.
+ func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
+ 	if password == nil || len(password) == 0 {
+ 		return nil, errors.New("null or empty password")
+ 	}
+ 
+ 	pbed := &PBEData{
+ 		Version: CryptoVersion_CRYPTO_VERSION_1.Enum(),
+ 		Cipher:  proto.String("aes128-ctr"),
+ 		Hmac:    proto.String("sha256"),
+ 		// The IV is required, so we include it, but this algorithm doesn't use it.
+@@ -1300,46 +1289,46 @@ func NewOnDiskTaoSealedKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys
+ 
+ 		// TODO(tmroeder): defer zeroKeyset(cks)
+ 
+ 		m, err := proto.Marshal(cks)
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 		defer zeroBytes(m)
+ 
+ 		enc, err := t.Seal(m, policy)
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 
+ 		if err = ioutil.WriteFile(k.SealedKeysetPath(), enc, 0600); err != nil {
+ 			return nil, err
+ 		}
+ 
+ 		// Get and write a delegation.
+ 		if k.SigningKey != nil {
+-			name, err := k.SigningKey.ToPrincipalName()
++			prin, err := k.SigningKey.ToPrincipal()
+ 			if err != nil {
+ 				return nil, err
+ 			}
+ 
+-			s := &Statement{
+-				Delegate: proto.String(name),
++			s := &auth.Speaksfor{
++				Delegate: prin,
+ 			}
+ 
+-			if k.Delegation, err = t.Attest(s); err != nil {
++			if k.Delegation, err = t.Attest(nil, nil, nil, s); err != nil {
+ 				return nil, err
+ 			}
+ 
+ 			m, err := proto.Marshal(k.Delegation)
+ 			if err != nil {
+ 				return nil, err
+ 			}
+ 
+ 			if err = ioutil.WriteFile(k.DelegationPath(), m, 0600); err != nil {
+ 				return nil, err
+ 			}
+ 		}
+ 	}
+ 
+ 	return k, nil
+ }
+diff --git a/go/src/cloudproxy/tao/keys_test.go b/go/src/cloudproxy/tao/keys_test.go
+index d84dde9..c4f6044 100644
+--- a/go/src/cloudproxy/tao/keys_test.go
++++ b/go/src/cloudproxy/tao/keys_test.go
+@@ -2,40 +2,42 @@
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+ 	"crypto/rand"
+ 	"io/ioutil"
+ 	"os"
+ 	"testing"
++
++	"cloudproxy/tao/auth"
+ )
+ 
+ func TestGenerateKeys(t *testing.T) {
+ 	if _, err := GenerateSigner(); err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ }
+ 
+ func TestSignerDERSerialization(t *testing.T) {
+ 	s, err := GenerateSigner()
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 
+ 	b, err := MarshalSignerDER(s)
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 
+ 	if _, err := UnmarshalSignerDER(b); err != nil {
+@@ -123,72 +125,72 @@ func TestVerifierFromX509(t *testing.T) {
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 
+ 	x, err := s.CreateSelfSignedX509(d)
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 
+ 	if _, err := FromX509(x); err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ }
+ 
+ func TestFromPrincipalName(t *testing.T) {
+ 	s, err := GenerateSigner()
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 
+-	name, err := s.ToPrincipalName()
++	name, err := s.ToPrincipal()
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 
+-	v, err := FromPrincipalName(name)
++	v, err := FromPrincipal(name)
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 
+-	name2, err := v.ToPrincipalName()
++	name2, err := v.ToPrincipal()
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 
+-	if name != name2 {
++	if !name.Identical(name2) {
+ 		t.Fatal("Verifier Principal name doesn't match the Signer name it was derived from")
+ 	}
+ }
+ 
+ func TestSignAndVerify(t *testing.T) {
+ 	s, err := GenerateSigner()
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 
+-	name, err := s.ToPrincipalName()
++	name, err := s.ToPrincipal()
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 
+-	v, err := FromPrincipalName(name)
++	v, err := FromPrincipal(name)
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 
+ 	data := []byte(`Test data to sign`)
+ 	context := "Context string"
+ 	sig, err := s.Sign(data, context)
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 
+ 	if verifies, err := v.Verify(data, context, sig); err != nil || !verifies {
+ 		if err != nil {
+ 			t.Fatal(err.Error())
+ 		} else {
+ 			t.Fatal("The signature failed verification")
+ 		}
+ 	}
+ }
+ 
+@@ -370,53 +372,53 @@ func TestNewOnDiskPBEKeys(t *testing.T) {
+ 	}
+ 	defer os.RemoveAll(tempDir)
+ 
+ 	password := []byte(`don't use this password`)
+ 	k, err := NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir)
+ 	if err != nil {
+ 		t.Fatal("Couldn't create on-disk PBE keys:", err)
+ 	}
+ 
+ 	if k.SigningKey == nil || k.CryptingKey == nil || k.DerivingKey == nil {
+ 		t.Fatal("Couldn't generate the right keys")
+ 	}
+ 
+ 	_, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, tempDir)
+ 	if err != nil {
+ 		t.Fatal("Couldn't recover the serialized keys:", err)
+ 	}
+ }
+ 
+ func TestNewTemporaryTaoDelegatedKeys(t *testing.T) {
+-	ft, err := NewFakeTao("test", "", nil)
++	ft, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
+ 	if err != nil {
+ 		t.Fatal("Couldn't initialize a FakeTao:", err)
+ 	}
+ 
+ 	_, err = NewTemporaryTaoDelegatedKeys(Signing|Crypting|Deriving, ft)
+ 	if err != nil {
+ 		t.Fatal("Couldn't initialize a temporary hosted keyset:", err)
+ 	}
+ }
+ 
+ func TestNewOnDiskTaoSealedKeys(t *testing.T) {
+ 	tempDir, err := ioutil.TempDir("", "TestInitHosted")
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 	defer os.RemoveAll(tempDir)
+ 
+-	ft, err := NewFakeTao("test", "", nil)
++	ft, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
+ 	if err != nil {
+ 		t.Fatal("Couldn't initialize a FakeTao:", err)
+ 	}
+ 
+ 	_, err = NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)
+ 	if err != nil {
+ 		t.Fatal("Couldn't initialize a hosted keyset:", err)
+ 	}
+ 
+ 	_, err = NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)
+ 	if err != nil {
+ 		t.Fatal("Couldn't read back a sealed, hosted keyset:", err)
+ 	}
+ }
+diff --git a/go/src/cloudproxy/tao/linux_host.go b/go/src/cloudproxy/tao/linux_host.go
+index 2f4a29d..875cb6a 100644
+--- a/go/src/cloudproxy/tao/linux_host.go
++++ b/go/src/cloudproxy/tao/linux_host.go
+@@ -1,360 +1,358 @@
+ // Copyright (c) 2014, Google Inc.  All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+ 	"errors"
++	"fmt"
+ 	"sync"
+ 	"syscall"
+ 
+ 	"code.google.com/p/goprotobuf/proto"
+ 	"github.com/golang/glog"
++
++	"cloudproxy/tao/auth"
+ )
+ 
+ // A LinuxHost is a Tao host environment in which hosted programs are Linux
+ // processes. A Unix domain socket accepts administrative commands for
+ // controlling the host, e.g., for starting hosted processes, stopping hosted
+ // processes, or shutting down the host. A LinuxTao can be run in stacked mode
+ // (on top of a host Tao) or in root mode (without an underlying host Tao).
+ type LinuxHost struct {
+ 	path           string
+ 	guard          TaoGuard
+ 	taoHost        TaoHost
+ 	childFactory   LinuxProcessFactory
+ 	hostedPrograms []*LinuxHostServer
+ 	hpm            sync.RWMutex
+ 	nextChildID    uint
+ 	idm            sync.Mutex
+ }
+ 
+ // NewStackedLinuxHost creates a new LinuxHost as a hosted program of an existing
+ // host Tao.
+ func NewStackedLinuxHost(path string, guard TaoGuard, hostTao Tao) (*LinuxHost, error) {
+ 	lh := &LinuxHost{
+ 		path:  path,
+ 		guard: guard,
+ 	}
+ 
+-	subprin := guard.SubprincipalName()
++	subprin := guard.Subprincipal()
+ 	if err := hostTao.ExtendTaoName(subprin); err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	if err := hostTao.ExtendTaoName(subprin); err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	k, err := NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, hostTao, path, SealPolicyDefault)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	lh.taoHost, err = NewTaoStackedHostFromKeys(k, hostTao)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	return lh, nil
+ }
+ 
+ // NewRootLinuxHost creates a new LinuxHost as a standalone Host that can
+ // provide the Tao to hosted Linux processes.
+ func NewRootLinuxHost(path string, guard TaoGuard, password []byte) (*LinuxHost, error) {
+ 	lh := &LinuxHost{guard: guard}
+ 	k, err := NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, path)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	lh.taoHost, err = NewTaoRootHostFromKeys(k)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	return lh, nil
+ }
+ 
+ // handleGetTaoName returns a Tao name for this child subprincipal.
+-func (lh *LinuxHost) handleGetTaoName(childSubprin string) string {
+-	return lh.taoHost.TaoHostName() + "::" + childSubprin
++func (lh *LinuxHost) handleGetTaoName(childSubprin auth.SubPrin) auth.Prin {
++	return lh.taoHost.TaoHostName().MakeSubprincipal(childSubprin)
+ }
+ 
+ // handleGetRandomBytes gets random bytes from the TaoHost.
+-func (lh *LinuxHost) handleGetRandomBytes(childSubprin string, n int) ([]byte, error) {
++func (lh *LinuxHost) handleGetRandomBytes(childSubprin auth.SubPrin, n int) ([]byte, error) {
+ 	return lh.taoHost.GetRandomBytes(childSubprin, n)
+ }
+ 
+ // handleGetSharedSecret derives a tag for the secret and generates one from
+ // the TaoHost.
+-func (lh *LinuxHost) handleGetSharedSecret(childSubprin string, n int, policy string) ([]byte, error) {
++func (lh *LinuxHost) handleGetSharedSecret(childSubprin auth.SubPrin, n int, policy string) ([]byte, error) {
+ 	// Compute the tag based on the policy identifier and childSubprin.
+ 	var tag string
+ 	switch policy {
+ 	case SharedSecretPolicyDefault:
+ 	case SharedSecretPolicyConservative:
+ 		// We are using a master key-deriving key shared among all
+ 		// similar LinuxHost instances. For LinuxHost, the default
+ 		// and conservative policies means any process running the same
+ 		// program binary as the caller hosted on a similar
+ 		// LinuxHost.
+ 		// TODO(kwalsh) conservative policy could include PID or other
+ 		// child info.
+-		tag = policy + "|" + childSubprin
++		tag = policy + "|" + childSubprin.String()
+ 	case SharedSecretPolicyLiberal:
+ 		// The most liberal we can do is allow any hosted process
+ 		// running on a similar LinuxHost instance.
+ 		tag = policy
+ 	default:
+ 		return nil, errors.New("policy not supported for GetSharedSecret: " + policy)
+ 	}
+ 
+ 	return lh.taoHost.GetSharedSecret(tag, n)
+ }
+ 
+ // handleSeal seals data for the given policy and child subprincipal. This call
+ // also zeroes the data parameter.
+-func (lh *LinuxHost) handleSeal(childSubprin string, data []byte, policy string) ([]byte, error) {
++func (lh *LinuxHost) handleSeal(childSubprin auth.SubPrin, data []byte, policy string) ([]byte, error) {
+ 	defer zeroBytes(data)
+ 	lhsb := &LinuxHostSealedBundle{
+ 		Policy: proto.String(policy),
+ 		Data:   data,
+ 	}
+ 
+ 	switch policy {
+ 	case SharedSecretPolicyDefault:
+ 	case SharedSecretPolicyConservative:
+ 		// We are using a master key-deriving key shared among all
+ 		// similar LinuxHost instances. For LinuxHost, the default
+ 		// and conservative policies means any process running the same
+ 		// program binary as the caller hosted on a similar
+ 		// LinuxHost.
+-		lhsb.PolicyInfo = proto.String(childSubprin)
++		lhsb.PolicyInfo = proto.String(childSubprin.String())
+ 	case SharedSecretPolicyLiberal:
+ 		// The most liberal we can do is allow any hosted process
+ 		// running on a similar LinuxHost instance. So, we don't set
+ 		// any policy info.
+ 	default:
+ 		return nil, errors.New("policy not supported for Seal: " + policy)
+ 	}
+ 
+ 	m, err := proto.Marshal(lhsb)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	defer zeroBytes(m)
+ 
+ 	return lh.taoHost.Encrypt(m)
+ }
+ 
+ // handleUnseal unseals data and checks its policy information to see if this
+ // Unseal operation is authorized.
+-func (lh *LinuxHost) handleUnseal(childSubprin string, sealed []byte) ([]byte, string, error) {
++func (lh *LinuxHost) handleUnseal(childSubprin auth.SubPrin, sealed []byte) ([]byte, string, error) {
+ 	decrypted, err := lh.taoHost.Decrypt(sealed)
+ 	if err != nil {
+ 		return nil, "", err
+ 	}
+ 	defer zeroBytes(decrypted)
+ 
+ 	var lhsb LinuxHostSealedBundle
+ 	if err := proto.Unmarshal(decrypted, &lhsb); err != nil {
+ 		return nil, "", err
+ 	}
+ 
+ 	if lhsb.Policy == nil {
+ 		return nil, "", errors.New("invalid policy in sealed data")
+ 	}
+ 
+ 	policy := *lhsb.Policy
+ 	switch policy {
+ 	case SharedSecretPolicyDefault:
+ 	case SharedSecretPolicyConservative:
+-		if lhsb.PolicyInfo == nil || childSubprin != *lhsb.PolicyInfo {
++		if lhsb.PolicyInfo == nil || childSubprin.String() != *lhsb.PolicyInfo {
+ 			return nil, "", errors.New("principal not authorized for unseal")
+ 		}
+ 	case SharedSecretPolicyLiberal:
+ 		// Allow all
+ 		break
+ 	default:
+ 		return nil, "", errors.New("policy not supported for Unseal: " + policy)
+ 	}
+ 
+ 	return lhsb.Data, policy, nil
+ }
+ 
+ // handleAttest performs policy checking and performs attestation for a child
+ // subprincipal.
+-func (lh *LinuxHost) handleAttest(childSubprin string, stmt *Statement) (*Attestation, error) {
+-	if stmt.Delegate == nil && stmt.PredicateName == nil {
+-		return nil, errors.New("must supply either delegate or predicate_name in statement for attestation")
+-	}
+-
+-	return lh.taoHost.Attest(childSubprin, stmt)
++func (lh *LinuxHost) handleAttest(childSubprin auth.SubPrin, issuer *auth.Prin, time, expiration *int64, stmt auth.Form) (*Attestation, error) {
++	return lh.taoHost.Attest(childSubprin, issuer, time, expiration, stmt)
+ }
+ 
+ // StartHostedProgram starts a new program based on an admin RPC request.
+ func (lh *LinuxHost) StartHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
+ 	if r.Path == nil {
+ 		return errors.New("hosted program creation request is missing path")
+ 	}
+ 
+ 	lh.idm.Lock()
+ 	id := lh.nextChildID
+ 	if lh.nextChildID != 0 {
+ 		lh.nextChildID++
+ 	} else {
+ 		glog.Warning("Running without unique child IDs")
+ 	}
+ 	lh.idm.Unlock()
+ 
+ 	subprin, temppath, err := lh.childFactory.MakeHostedProgramSubprin(id, *r.Path)
+ 	if err != nil {
+ 		return err
+ 	}
+ 
+ 	// We allow multiple hosted programs with the same subprincipal name,
+ 	// so we don't check here to make sure that there isn't another program
+ 	// with the same subprincipal.
+ 
+ 	// TODO(tmroeder): do we want to support concurrent updates to policy?
+ 	// Then we need a lock here, too.
+-	name := lh.taoHost.TaoHostName()
+-	if !lh.guard.IsAuthorized(name+"::"+subprin, "Execute", []string{}) {
+-		return errors.New("Hosted program " + subprin + " denied authorization to execute on host " + name)
++	hostName := lh.taoHost.TaoHostName()
++	childName := hostName.MakeSubprincipal(subprin)
++	if !lh.guard.IsAuthorized(childName, "Execute", []string{}) {
++		return fmt.Errorf("Hosted program %s denied authorization to execute on host %s", subprin, hostName)
+ 	}
+ 
+ 	lhs, err := lh.childFactory.StartHostedProgram(lh, temppath, r.Args, subprin)
+ 	if err != nil {
+ 		return err
+ 	}
+ 
+ 	lh.hpm.Lock()
+ 	lh.hostedPrograms = append(lh.hostedPrograms, lhs)
+ 	lh.hpm.Unlock()
+ 
+-	s.Data = []byte(subprin)
++	s.Data = auth.Marshal(subprin)
+ 	return nil
+ }
+ 
+ // StopHostedProgram stops a running hosted program based on an admin RPC
+ // request.
+ func (lh *LinuxHost) StopHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
+-	if r.Data == nil {
+-		return errors.New("missing child subprincipal")
++	subprin, err := auth.UnmarshalSubPrin(r.Data)
++	if err != nil {
++		return err
+ 	}
+-
+-	subprin := string(r.Data)
+ 	lh.hpm.Lock()
+ 	defer lh.hpm.Unlock()
+ 
+ 	// For Stop, we send SIGTERM
+ 	sigterm := 15
+ 	var i int
+ 	for i < len(lh.hostedPrograms) {
+ 		lph := lh.hostedPrograms[i]
+ 		n := len(lh.hostedPrograms)
+-		if lph.ChildSubprin == subprin {
++		if lph.ChildSubprin.Identical(subprin) {
+ 			// Close the channel before sending SIGTERM
+ 			lph.channel.Close()
+ 
+ 			if err := syscall.Kill(lph.Cmd.Process.Pid, syscall.Signal(sigterm)); err != nil {
+ 				glog.Errorf("Couldn't send SIGTERM to process %d, subprincipal %s: %s\n", lph.Cmd.Process.Pid, subprin, err)
+ 			}
+ 
+ 			// The order of this array doesn't matter, and we want
+ 			// to make sure we remove all references to pointers to
+ 			// LinuxHostServer instances so that they get garbage
+ 			// collected. So, we implement delete from the slice by
+ 			// moving elements around.
+ 			lh.hostedPrograms[i] = lh.hostedPrograms[n-1]
+ 			lh.hostedPrograms[n-1] = nil
+ 			lh.hostedPrograms = lh.hostedPrograms[:n-1]
+ 			i--
+ 		}
+ 
+ 		i++
+ 	}
+ 
+ 	return nil
+ }
+ 
+ // ListHostedPrograms returns a list of hosted programs to the caller.
+ func (lh *LinuxHost) ListHostedPrograms(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
+ 	lh.hpm.RLock()
+ 	subprins := make([]string, len(lh.hostedPrograms))
+ 	pids := make([]int32, len(lh.hostedPrograms))
+ 	for _, v := range lh.hostedPrograms {
+-		subprins = append(subprins, v.ChildSubprin)
++		subprins = append(subprins, v.ChildSubprin.String())
+ 		pids = append(pids, int32(v.Cmd.Process.Pid))
+ 	}
+ 	lh.hpm.RUnlock()
+ 
+ 	info := &LinuxAdminRPCHostedProgramList{
+ 		Name: subprins,
+ 		Pid:  pids,
+ 	}
+ 
+ 	var err error
+ 	s.Data, err = proto.Marshal(info)
+ 	if err != nil {
+ 		return err
+ 	}
+ 
+ 	return nil
+ }
+ 
+ // KillHostedProgram kills a running hosted program based on an admin RPC
+ // request.
+ func (lh *LinuxHost) KillHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
+-	if r.Data == nil {
+-		return errors.New("missing child subprincipal")
++	subprin, err := auth.UnmarshalSubPrin(r.Data)
++	if err != nil {
++		return err
+ 	}
+-
+-	subprin := string(r.Data)
+ 	lh.hpm.Lock()
+ 	defer lh.hpm.Unlock()
+ 	var i int
+ 	for i < len(lh.hostedPrograms) {
+ 		lph := lh.hostedPrograms[i]
+ 		n := len(lh.hostedPrograms)
+-		if lph.ChildSubprin == subprin {
++		if lph.ChildSubprin.Identical(subprin) {
+ 			// Close the channel before sending SIGTERM
+ 			lph.channel.Close()
+ 
+ 			if err := lph.Cmd.Process.Kill(); err != nil {
+ 				glog.Errorf("Couldn't kill process %d, subprincipal %s: %s\n", lph.Cmd.Process.Pid, subprin, err)
+ 			}
+ 
+ 			// The order of this array doesn't matter, and we want
+ 			// to make sure we remove all references to pointers to
+ 			// LinuxHostServer instances so that they get garbage
+ 			// collected. So, we implement delete from the slice by
+ 			// moving elements around.
+ 			lh.hostedPrograms[i] = lh.hostedPrograms[n-1]
+ 			lh.hostedPrograms[n-1] = nil
+ 			lh.hostedPrograms = lh.hostedPrograms[:n-1]
+ 			i--
+ 		}
+ 
+ 		i++
+ 	}
+ 
+ 	return nil
+ }
+ 
+ // GetTaoHostName returns the name of the TaoHost used by the LinuxHost.
+ func (lh *LinuxHost) GetTaoHostName(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
+-	s.Data = []byte(lh.taoHost.TaoHostName())
++	s.Data = auth.Marshal(lh.taoHost.TaoHostName())
+ 	return nil
+ }
+diff --git a/go/src/cloudproxy/tao/linux_host_server.go b/go/src/cloudproxy/tao/linux_host_server.go
+index a691e92..c396d70 100644
+--- a/go/src/cloudproxy/tao/linux_host_server.go
++++ b/go/src/cloudproxy/tao/linux_host_server.go
+@@ -3,61 +3,67 @@
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+ 	"errors"
+ 	"io"
+ 	"os/exec"
+ 
+ 	"code.google.com/p/goprotobuf/proto"
++
++	"cloudproxy/tao/auth"
+ )
+ 
+ // A LinuxHostServer wraps a LinuxHost and serves its methods across a net/rpc
+ // connection to a hosted program.
+ type LinuxHostServer struct {
+ 	host         *LinuxHost
+ 	channel      io.ReadWriteCloser
+-	ChildSubprin string
++	ChildSubprin auth.SubPrin
+ 	Cmd          *exec.Cmd
+ }
+ 
+ // GetTaoName returns the Tao principal name assigned to the caller.
+ func (lhs *LinuxHostServer) GetTaoName(r *TaoRPCRequest, s *TaoRPCResponse) error {
+-	s.Data = []byte(lhs.host.handleGetTaoName(lhs.ChildSubprin))
++	s.Data = auth.Marshal(lhs.host.handleGetTaoName(lhs.ChildSubprin))
+ 	return nil
+ }
+ 
+ // ExtendTaoName irreversibly extends the Tao principal name of the caller.
+ // TODO(kwalsh): do sanity checking on r.Data
+ func (lhs *LinuxHostServer) ExtendTaoName(r *TaoRPCRequest, s *TaoRPCResponse) error {
+-	lhs.ChildSubprin += "::" + string(r.Data)
++	ext, err := auth.UnmarshalSubPrin(r.Data)
++	if err != nil {
++		return err
++	}
++	lhs.ChildSubprin = append(lhs.ChildSubprin, ext...)
+ 	return nil
+ }
+ 
+ // GetRandomBytes returns a slice of n random bytes.
+ func (lhs *LinuxHostServer) GetRandomBytes(r *TaoRPCRequest, s *TaoRPCResponse) error {
+ 	if r.Size == nil || *r.Size <= 0 {
+ 		return errors.New("Invalid array size")
+ 	}
+ 
+ 	var err error
+ 	s.Data, err = lhs.host.handleGetRandomBytes(lhs.ChildSubprin, int(*r.Size))
+ 	if err != nil {
+ 		return err
+ 	}
+ 
+ 	return nil
+ }
+ 
+ // GetSharedSecret returns a slice of n secret bytes.
+ func (lhs *LinuxHostServer) GetSharedSecret(r *TaoRPCRequest, s *TaoRPCResponse) error {
+@@ -86,36 +92,44 @@ func (lhs *LinuxHostServer) Seal(r *TaoRPCRequest, s *TaoRPCResponse) error {
+ 		return err
+ 	}
+ 
+ 	return nil
+ }
+ 
+ // Unseal decrypts data that has been sealed by the Seal() operation, but only
+ // if the policy specified during the Seal() operation is satisfied.
+ func (lhs *LinuxHostServer) Unseal(r *TaoRPCRequest, s *TaoRPCResponse) error {
+ 	var err error
+ 	var policy string
+ 	s.Data, policy, err = lhs.host.handleUnseal(lhs.ChildSubprin, r.Data)
+ 	if err != nil {
+ 		return err
+ 	}
+ 
+ 	s.Policy = proto.String(policy)
+ 	return nil
+ }
+ 
+-// Attest requests the Tao host sign a Statement on behalf of the caller.
++// Attest requests the Tao host sign a statement on behalf of the caller.
+ func (lhs *LinuxHostServer) Attest(r *TaoRPCRequest, s *TaoRPCResponse) error {
+-	stmt := new(Statement)
+-	err := proto.Unmarshal(r.Data, stmt)
++	stmt, err := auth.UnmarshalForm(r.Data)
+ 	if err != nil {
+ 		return err
+ 	}
+ 
+-	a, err := lhs.host.handleAttest(lhs.ChildSubprin, stmt)
++	var issuer *auth.Prin
++	if r.Issuer != nil {
++		p, err := auth.UnmarshalPrin(r.Issuer)
++		if err != nil {
++			return err
++		}
++		issuer = &p
++	}
++
++	a, err := lhs.host.handleAttest(lhs.ChildSubprin, issuer, r.Time, r.Expiration, stmt)
+ 	if err != nil {
+ 		return err
+ 	}
+ 
+ 	s.Data, err = proto.Marshal(a)
+ 	return err
+ }
+diff --git a/go/src/cloudproxy/tao/linux_host_server_test.go b/go/src/cloudproxy/tao/linux_host_server_test.go
+index d271d47..5784ec2 100644
+--- a/go/src/cloudproxy/tao/linux_host_server_test.go
++++ b/go/src/cloudproxy/tao/linux_host_server_test.go
+@@ -5,71 +5,73 @@
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+ 	"bytes"
+ 	"os"
+ 	"strconv"
+ 	"testing"
+ 	"time"
+ 
+ 	"code.google.com/p/goprotobuf/proto"
++
++	"cloudproxy/tao/auth"
+ )
+ 
+ func testNewLinuxHostServer(t *testing.T) (*LinuxHostServer, string) {
+ 	lh, tmpdir := testNewRootLinuxHost(t)
+ 
+ 	// The channel and Cmd are used by admin operations in the Linux host,
+ 	// so they don't need to be filled here.
+ 	lhs := &LinuxHostServer{
+ 		host:         lh,
+-		ChildSubprin: "test child",
++		ChildSubprin: auth.SubPrin{auth.PrinExt{Name:"TestChild"}},
+ 	}
+ 	return lhs, tmpdir
+ }
+ 
+ func TestLinuxHostServerGetTaoName(t *testing.T) {
+ 	r := &TaoRPCRequest{}
+ 	s := &TaoRPCResponse{}
+ 	lhs, tmpdir := testNewLinuxHostServer(t)
+ 	defer os.RemoveAll(tmpdir)
+ 	if err := lhs.GetTaoName(r, s); err != nil {
+ 		t.Fatal("Couldn't get the Tao name from the LinuxHostServer:", err)
+ 	}
+ 
+ 	if s.Data == nil {
+ 		t.Fatal("Couldn't get a name back from GetTaoName on LinuxHostServer")
+ 	}
+ }
+ 
+ func TestLinuxHostServerExtendTaoName(t *testing.T) {
+ 	r := &TaoRPCRequest{
+-		Data: []byte("extension"),
++		Data: auth.Marshal(auth.SubPrin{auth.PrinExt{Name:"Extension"}}),
+ 	}
+ 	s := &TaoRPCResponse{}
+ 	lhs, tmpdir := testNewLinuxHostServer(t)
+ 	defer os.RemoveAll(tmpdir)
+ 	if err := lhs.ExtendTaoName(r, s); err != nil {
+ 		t.Fatal("Couldn't extend the Tao name through LinuxHostServer:", err)
+ 	}
+ }
+ 
+ func TestLinuxHostServerGetRandomBytes(t *testing.T) {
+ 	r := &TaoRPCRequest{
+ 		Size: proto.Int32(10),
+ 	}
+ 	s := &TaoRPCResponse{}
+ 	lhs, tmpdir := testNewLinuxHostServer(t)
+ 	defer os.RemoveAll(tmpdir)
+ 	if err := lhs.GetRandomBytes(r, s); err != nil {
+ 		t.Fatal("Couldn't get random bytes from LinuxHostServer:", err)
+ 	}
+ 
+@@ -101,51 +103,44 @@ func TestLinuxHostServerSealUnseal(t *testing.T) {
+ 	}
+ 	s2 := &TaoRPCResponse{}
+ 	if err := lhs.Unseal(r2, s2); err != nil {
+ 		t.Fatal("Couldn't unseal data sealed by LinuxHostServer")
+ 	}
+ 
+ 	if !bytes.Equal(s2.Data, orig) {
+ 		t.Fatal("Incorrect data unsealed by Seal/Unseal on LinuxHostServer")
+ 	}
+ }
+ 
+ func TestLinuxHostServerAttest(t *testing.T) {
+ 	rt := &TaoRPCRequest{}
+ 	st := &TaoRPCResponse{}
+ 	lhs, tmpdir := testNewLinuxHostServer(t)
+ 	defer os.RemoveAll(tmpdir)
+ 	if err := lhs.GetTaoName(rt, st); err != nil {
+ 		t.Fatal("Couldn't get the Tao name from the LinuxHostServer:", err)
+ 	}
+ 
+-	stmt := &Statement{
+-		Issuer:        proto.String(string(st.Data)),
+-		Time:          proto.Int64(time.Now().UnixNano()),
+-		Expiration:    proto.Int64(time.Now().Add(24 * time.Hour).UnixNano()),
+-		PredicateName: proto.String("FakePredicate"),
+-	}
+-
+-	m, err := proto.Marshal(stmt)
+-	if err != nil {
+-		t.Fatal("Couldn't marshal a statement for a call to Attest on LinuxHostServer:", err)
+-	}
++	message := auth.Pred{Name: "FakePredicate"}
+ 
+ 	r := &TaoRPCRequest{
+-		Data: m,
++		Data:          auth.Marshal(message),
++		Time:          proto.Int64(time.Now().UnixNano()),
++		Expiration:    proto.Int64(time.Now().Add(24 * time.Hour).UnixNano()),
++		Issuer:        st.Data,
+ 	}
+ 	s := &TaoRPCResponse{}
+ 	if err := lhs.Attest(r, s); err != nil {
+ 		t.Fatal("Couldn't attest to data through LinuxHostServer:", err)
+ 	}
+ 
+ 	if len(s.Data) == 0 {
+ 		t.Fatal("Invalid marshalled Attestation data returned by LinuxHostServer")
+ 	}
+ 
+ 	var a Attestation
+ 	if err := proto.Unmarshal(s.Data, &a); err != nil {
+ 		t.Fatal("Couldn't unmarshal into an Attestation the data returned by Attest on LinuxHostServer")
+ 	}
+ 
+ 	// TODO(tmroeder): verify the attestation
+ }
+diff --git a/go/src/cloudproxy/tao/linux_host_test.go b/go/src/cloudproxy/tao/linux_host_test.go
+index 94f0707..ce0e10b 100644
+--- a/go/src/cloudproxy/tao/linux_host_test.go
++++ b/go/src/cloudproxy/tao/linux_host_test.go
+@@ -3,50 +3,50 @@
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+ 	"bytes"
+ 	"io/ioutil"
+ 	"os"
+ 	"testing"
+ 
+-	"code.google.com/p/goprotobuf/proto"
++	"cloudproxy/tao/auth"
+ )
+ 
+ func testNewStackedLinuxHost(t *testing.T) (*LinuxHost, string) {
+ 	tmpdir, err := ioutil.TempDir("/tmp", "test_new_stacked_linux_host")
+ 	if err != nil {
+ 		t.Fatal("Couldn't get a temp directory for the new stacked linux host")
+ 	}
+ 
+-	ft, err := NewFakeTao("test", "", nil)
++	ft, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
+ 	if err != nil {
+ 		t.Fatal("Couldn't create a new fake Tao:", err)
+ 	}
+ 
+ 	tg := LiberalGuard
+ 	lh, err := NewStackedLinuxHost(tmpdir, &tg, ft)
+ 	if err != nil {
+ 		os.RemoveAll(tmpdir)
+ 		t.Fatal("Couldn't create a new stacked Linux host")
+ 	}
+ 
+ 	return lh, tmpdir
+ }
+ 
+ func testNewRootLinuxHost(t *testing.T) (*LinuxHost, string) {
+ 	tmpdir, err := ioutil.TempDir("/tmp", "test_new_root_linux_host")
+ 	if err != nil {
+ 		t.Fatal("Couldn't get a temp directory for the new root linux host")
+ 	}
+ 
+@@ -56,44 +56,44 @@ func testNewRootLinuxHost(t *testing.T) (*LinuxHost, string) {
+ 	if err != nil {
+ 		os.RemoveAll(tmpdir)
+ 		t.Fatal("Couldn't create a new stacked Linux host")
+ 	}
+ 
+ 	return lh, tmpdir
+ }
+ 
+ func TestNewStackedLinuxHost(t *testing.T) {
+ 	_, td := testNewStackedLinuxHost(t)
+ 	defer os.RemoveAll(td)
+ }
+ 
+ func TestNewRootLinuxHost(t *testing.T) {
+ 	_, td := testNewRootLinuxHost(t)
+ 	defer os.RemoveAll(td)
+ }
+ 
+ // Test the methods directly instead of testing them across a channel.
+ 
+-var testChildLH = "test child"
++var testChildLH = auth.SubPrin{auth.PrinExt{Name:"TestChild"}}
+ 
+ func testLinuxHostHandleGetTaoName(t *testing.T, lh *LinuxHost) {
+-	if lh.handleGetTaoName(testChildLH) != lh.taoHost.TaoHostName()+"::"+testChildLH {
++	if !lh.handleGetTaoName(testChildLH).Identical(lh.taoHost.TaoHostName().MakeSubprincipal(testChildLH)) {
+ 		t.Fatal("Incorrect construction of Tao name")
+ 	}
+ }
+ 
+ func testLinuxHostHandleGetRandomBytes(t *testing.T, lh *LinuxHost) {
+ 	b, err := lh.handleGetRandomBytes(testChildLH, 10)
+ 	if err != nil {
+ 		t.Fatal("Failed to get random bytes from the Linux host:", err)
+ 	}
+ 
+ 	if len(b) != 10 {
+ 		t.Fatal("Linux host returned the incorrect number of random bytes")
+ 	}
+ }
+ 
+ func testLinuxHostHandleGetSharedSecret(t *testing.T, lh *LinuxHost) {
+ 	b, err := lh.handleGetSharedSecret(testChildLH, 10, SharedSecretPolicyDefault)
+ 	if err != nil {
+ 		t.Fatal("Couldn't get a shared secret from the Linux host:", err)
+ 	}
+@@ -113,45 +113,43 @@ func testLinuxHostHandleSealUnseal(t *testing.T, lh *LinuxHost) {
+ 	b, err := lh.handleSeal(testChildLH, data, SharedSecretPolicyDefault)
+ 	if err != nil {
+ 		t.Fatal("Couldn't seal the data:", err)
+ 	}
+ 
+ 	d, policy, err := lh.handleUnseal(testChildLH, b)
+ 	if err != nil {
+ 		t.Fatal("Couldn't unseal the sealed data")
+ 	}
+ 
+ 	if !bytes.Equal(d, data) {
+ 		t.Fatal("Incorrect unsealed data")
+ 	}
+ 
+ 	if policy != SharedSecretPolicyDefault {
+ 		t.Fatal("Wrong policy returned by Unseal")
+ 	}
+ }
+ 
+ func testLinuxHostHandleAttest(t *testing.T, lh *LinuxHost) {
+-	stmt := &Statement{
+-		PredicateName: proto.String("FakePredicate"),
+-	}
++	stmt := auth.Pred{Name: "FakePredicate"}
+ 
+-	a, err := lh.handleAttest(testChildLH, stmt)
++	a, err := lh.handleAttest(testChildLH, nil, nil, nil, stmt)
+ 	if err != nil {
+ 		t.Fatal("Couldn't create Attestation")
+ 	}
+ 
+ 	if a == nil {
+ 		t.Fatal("Returned invalid Attestation from Attest")
+ 	}
+ 
+ 	// TODO(tmroeder): verify this attestation.
+ }
+ 
+ func testRootLinuxHostHandleGetTaoName(t *testing.T) {
+ 	lh, td := testNewRootLinuxHost(t)
+ 	defer os.RemoveAll(td)
+ 	testLinuxHostHandleGetTaoName(t, lh)
+ }
+ 
+ func testRootLinuxHostHandleGetRandomBytes(t *testing.T) {
+ 	lh, td := testNewRootLinuxHost(t)
+ 	defer os.RemoveAll(td)
+diff --git a/go/src/cloudproxy/tao/linux_process_factory.go b/go/src/cloudproxy/tao/linux_process_factory.go
+index 354f0b6..8cc9e12 100644
+--- a/go/src/cloudproxy/tao/linux_process_factory.go
++++ b/go/src/cloudproxy/tao/linux_process_factory.go
+@@ -8,103 +8,106 @@
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+ 	"crypto/sha256"
+ 	"fmt"
+ 	"io"
+ 	"io/ioutil"
+ 	"net/rpc"
+ 	"os"
+ 	"os/exec"
+ 	"path"
+ 
+ 	"cloudproxy/util"
++	"cloudproxy/tao/auth"
+ )
+ 
+ // In the C++ Tao, these functions are methods on a stateless class. So, in Go,
+ // the struct is empty. But we don't make them functions on their own, since we
+ // want to support multiple hosted-program factory implementations against an
+ // interface in the future.
+ 
+ // A LinuxProcessFactory supports methods for creating Linux processes as
+ // hosted programs.
+ type LinuxProcessFactory struct{}
+ 
+ // FormatHostedProgramSubprin produces a string that represents a subprincipal
+ // with the given ID and hash.
+-func FormatHostedProgramSubprin(id uint, hash []byte) string {
+-	if id == 0 {
+-		return fmt.Sprintf(`Program("%x")`, hash)
++func FormatHostedProgramSubprin(id uint, hash []byte) auth.SubPrin {
++	var args []auth.Term
++	if id != 0 {
++		args = append(args, auth.Int(id))
+ 	}
+-
+-	return fmt.Sprintf(`Process(%d, "%x")`, id, hash)
++	hashstr := fmt.Sprintf("%x", hash)
++	args = append(args, auth.Str(hashstr))
++	return auth.SubPrin{auth.PrinExt{Name: "Program", Arg: args}}
+ }
+ 
+ // MakeHostedProgramSubprin computes the hash of a program to get its
+ // hosted-program subprincipal. In the process, it copies the program to a
+ // temporary file controlled by this code and returns the path to that new
+ // binary.
+-func (LinuxProcessFactory) MakeHostedProgramSubprin(id uint, prog string) (subprin, temppath string, err error) {
++func (LinuxProcessFactory) MakeHostedProgramSubprin(id uint, prog string) (subprin auth.SubPrin, temppath string, err error) {
+ 	// To avoid a time-of-check-to-time-of-use error, we copy the file
+ 	// bytes to a temp file as we read them. This temp-file path is
+ 	// returned so it can be used to start the program.
+ 	td, err := ioutil.TempDir("/tmp", "cloudproxy_linux_host")
+ 	if err != nil {
+ 		return
+ 	}
+ 
+ 	temppath = path.Join(td, "hosted_program")
+ 	tf, err := os.OpenFile(temppath, os.O_RDWR, 0700)
+ 	defer tf.Close()
+ 	if err != nil {
+ 		return
+ 	}
+ 
+ 	inf, err := os.Open(prog)
+ 	defer inf.Close()
+ 	if err != nil {
+ 		return
+ 	}
+ 
+ 	// Read from the input file and write to the temp file.
+ 	tr := io.TeeReader(inf, tf)
+ 	b, err := ioutil.ReadAll(tr)
+ 	if err != nil {
+ 		return
+ 	}
+ 
+ 	h := sha256.Sum256(b)
+ 	subprin = FormatHostedProgramSubprin(id, h[:])
+ 	return
+ }
+ 
+ // StartHostedProgram uses a path, arguments, and a subprincipal name to create
+ // a LinuxHostServer that manages messages to and from hosted processes under
+ // Linux.
+-func (LinuxProcessFactory) StartHostedProgram(lh *LinuxHost, prog string, args []string, subprin string) (*LinuxHostServer, error) {
++func (LinuxProcessFactory) StartHostedProgram(lh *LinuxHost, prog string, args []string, subprin auth.SubPrin) (*LinuxHostServer, error) {
+ 	// Get a pipe pair for communication with the child.
+ 	serverRead, clientWrite, err := os.Pipe()
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	defer clientWrite.Close()
+ 
+ 	clientRead, serverWrite, err := os.Pipe()
+ 	if err != nil {
+ 		serverRead.Close()
+ 		return nil, err
+ 	}
+ 	defer clientRead.Close()
+ 
+ 	rw := util.NewPairReadWriteCloser(serverRead, serverWrite)
+ 	c := &exec.Cmd{
+ 		Path:       prog,
+ 		Args:       args,
+ 		Stdin:      os.Stdin,
+ 		Stdout:     os.Stdout,
+diff --git a/go/src/cloudproxy/tao/tao.go b/go/src/cloudproxy/tao/tao.go
+index fd8f38b..b3ebddb 100644
+--- a/go/src/cloudproxy/tao/tao.go
++++ b/go/src/cloudproxy/tao/tao.go
+@@ -3,84 +3,90 @@
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+ 	"io"
+ 	"os"
+ 	"sync"
+ 
+ 	"github.com/golang/glog"
++
++	"cloudproxy/tao/auth"
+ )
+ 
+ // Constants used by the Tao implementations for policy, signing contexts, and
+ // environment variables.
+ const (
+ 	HostTaoEnvVar = "GOOGLE_HOST_TAO"
+ 
+ 	SharedSecretPolicyDefault      = "self"
+ 	SharedSecretPolicyConservative = "few"
+ 	SharedSecretPolicyLiberal      = "any"
+ 
+ 	SealPolicyDefault      = "self"
+ 	SealPolicyConservative = "few"
+ 	SealPolicyLiberal      = "any"
+ 
+ 	AttestationSigningContext = "Tao Attestation Signing Context V1"
+ )
+ 
+ // Tao is the fundamental Trustworthy Computing interface provided by a host to
+ // its hosted programs. Each level of a system can act as a host by exporting
+ // the Tao interface and providing Tao services to higher-level hosted programs.
+ //
+ // In most cases, a hosted program will use a stub Tao that performs RPC over a
+ // channel to its host. The details of such RPC depend on the specific
+ // implementation of the host: some hosted programs may use pipes to communicate
+ // with their host, others may use sockets, etc.
+ type Tao interface {
+ 	// GetTaoName returns the Tao principal name assigned to the caller.
+-	GetTaoName() (name string, err error)
++	GetTaoName() (name auth.Prin, err error)
+ 
+ 	// ExtendTaoName irreversibly extends the Tao principal name of the caller.
+-	ExtendTaoName(subprin string) error
++	ExtendTaoName(subprin auth.SubPrin) error
+ 
+ 	// GetRandomBytes returns a slice of n random bytes.
+ 	GetRandomBytes(n int) (bytes []byte, err error)
+ 
+ 	// Rand produces an io.Reader for random bytes from this Tao.
+ 	Rand() io.Reader
+ 
+ 	// GetSharedSecret returns a slice of n secret bytes.
+ 	GetSharedSecret(n int, policy string) (bytes []byte, err error)
+ 
+-	// Attest requests the Tao host sign a Statement on behalf of the caller.
+-	Attest(stmt *Statement) (*Attestation, error)
++	// Attest requests the Tao host sign a statement on behalf of the caller. The
++	// optional issuer, time and expiration will be given default values if nil.
++	// TODO(kwalsh) Maybe create a struct for these optional params? Or use
++	// auth.Says instead (in which time and expiration are optional) with a
++	// bogus Speaker field like key("") or nil("") or self, etc.
++	Attest(issuer *auth.Prin, time, expiration *int64, message auth.Form) (*Attestation, error)
+ 
+ 	// Seal encrypts data so only certain hosted programs can unseal it.
+ 	Seal(data []byte, policy string) (sealed []byte, err error)
+ 
+ 	// Unseal decrypts data that has been sealed by the Seal() operation, but only
+ 	// if the policy specified during the Seal() operation is satisfied.
+ 	Unseal(sealed []byte) (data []byte, policy string, err error)
+ }
+ 
+ // Cached interface to the host Tao underlying this hosted program.
+ var cachedHost Tao
+ var cacheOnce sync.Once
+ 
+ // Host returns the interface to the underlying host Tao. It depends on a
+ // specific environment variable being set. On success it memoizes the result
+ // before returning it because there should only ever be a single channel to the
+ // host. On failure, it logs a message using glog and returns nil.
+ // Note: errors are not returned so that, once it is confirmed that Host
+ // returns a non-nil value, callers can use the function result in an
+ // expression, e.g.:
+diff --git a/go/src/cloudproxy/tao/tao_guard.go b/go/src/cloudproxy/tao/tao_guard.go
+index 3e23155..1a60367 100644
+--- a/go/src/cloudproxy/tao/tao_guard.go
++++ b/go/src/cloudproxy/tao/tao_guard.go
+@@ -1,167 +1,179 @@
+ // Copyright (c) 2013, Google Inc.  All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ // This interface was derived from the code in src/tao/tao_guard.h.
+ 
+ package tao
+ 
+ import (
+ 	"errors"
++
++	"cloudproxy/tao/auth"
+ )
+ 
+ // MakePredicate constructs an authorization predicate of the form:
+ //   Authorize(name, op, args...).
+ // TODO(tmroeder): implement this function.
+-func MakePredicate(name, op string, args []string) string {
++func MakePredicate(name auth.Prin, op string, args []string) string {
+ 	return ""
+ }
+ 
+ // A TaoGuard is an interface for evaluating policy decisions.
+ type TaoGuard interface {
+-	// SubprincipalName returns a unique name for this policy, one that can
+-	// be used as a subprincipal name.
+-	SubprincipalName() string
++	// Subprincipal returns a unique subprincipal for this policy.
++	Subprincipal() auth.SubPrin
+ 
+ 	// GuardTypeName returns a name for this type of guard, one that be
+ 	// used as a predicate name.
+ 	GuardTypeName() string
+ 
++	// SaveConfig writes all presistent policy data to disk, signed by key.
++	SaveConfig(key *Signer) error
++
+ 	// Authorize adds an authorization for a principal to perform an
+ 	// operation.
+-	Authorize(name, op string, args []string) error
++	Authorize(name auth.Prin, op string, args []string) error
+ 
+ 	// Retract removes an authorization for a principal to perform an
+ 	// operation, essentially reversing the effect of an Authorize() call
+ 	// with identical name, op, and args. Note: this reverses the effect of
+ 	// an Authorize() call with identical parameters of the equivalent
+ 	// AddRule() call. However, particularly when expressive policies are
+ 	// supported (e.g., an "authorize all" rule), other rules may still be
+ 	// in place authorizing the principal to perform the operation.
+-	Retract(name, op string, args []string) error
++	Retract(name auth.Prin, op string, args []string) error
+ 
+ 	// IsAuthorized checks whether a principal is authorized to perform an
+ 	// operation.
+-	IsAuthorized(name, op string, args []string) bool
++	IsAuthorized(name auth.Prin, op string, args []string) bool
+ 
+ 	// AddRule adds a policy rule. Subclasses should support at least rules
+ 	// of the form: Authorized(P, op, args...). This is equivalent to
+ 	// calling Authorize(P, op, args...) with each of the arguments
+ 	// converted to either a string or integer.
+ 	AddRule(rule string) error
+ 
+ 	// RetractRule removes a rule previously added via AddRule() or the
+ 	// equivalent Authorize() call.
+ 	RetractRule(rule string) error
+ 
+ 	// Clear removes all rules.
+ 	Clear() error
+ 
+ 	// Query the policy. Implementations of this interface should support
+ 	// at least queries of the form: Authorized(P, op, args...).
+ 	Query(query string) bool
+ 
+ 	// RuleCount returns a count of the total number of rules.
+ 	RuleCount() int
+ 
+ 	// GetRule returns the ith policy rule, if it exists.
+ 	GetRule(i int) string
+ 
+ 	// RuleDebugString returns a debug string for the ith policy rule, if
+ 	// it exists.
+ 	RuleDebugString(i int) string
+ 
+ 	// String returns a string suitable for showing users authorization
+ 	// info.
+ 	String() string
+ }
+ 
+ // A TrivialGuard implements a constant policy: either ConservativeGuard ("deny
+ // all") or LiberalGuard ("allow all").
++// TODO(kwalsh) make this a bool
+ type TrivialGuard int
+ 
+ // The types of TrivialGuard
+ const (
+ 	ConservativeGuard TrivialGuard = 1 << iota
+ 	LiberalGuard
+ )
+ 
+ // errTrivialGuard is the error returned for all non-trivial policy operations
+ // on the TrivialGuard.
+ var errTrivialGuard = errors.New("can't perform policy operations on the TrivialGuard")
+ 
+-// SubprincipalName returns a subprincipal name for the TrivialGuard as
+-// 'TrivialGuard("<type>")' where type is the policy type.
+-func (t TrivialGuard) SubprincipalName() string {
++// SubprincipalName returns subprincipal TrivialGuard(<policy>).
++func (t TrivialGuard) Subprincipal() auth.SubPrin {
++	var policy string
+ 	switch t {
+ 	case ConservativeGuard:
+-		return "TrivialGuard(\"Conservative\")"
++		policy = "Conservative"
+ 	case LiberalGuard:
+-		return "TrivialGuard(\"Liberal\")"
++		policy = "Liberal"
+ 	default:
+-		return "UnknownSubprincipal"
++		policy = "Unspecified"
+ 	}
++	e := auth.PrinExt{Name: "TrivialGuard", Arg:[]auth.Term{auth.Str(policy)}}
++	return auth.SubPrin{e}
+ }
+ 
+-// GuardTypeName returns "TrivialGuard" as the type of this guard.
++// GuardTypeName returns "Trivial<type>Guard" as the type of this guard.
+ func (t TrivialGuard) GuardTypeName() string {
+ 	switch t {
+ 	case ConservativeGuard:
+ 		return "TrivialConservativeGuard"
+ 	case LiberalGuard:
+ 		return "TrivialLiberalGuard"
+ 	default:
+-		return "UnknownGuard"
++		return "TrivialUnspecifiedGuard"
+ 	}
+ }
+ 
++// SaveConfig writes all presistent policy data to disk, signed by key.
++func (t TrivialGuard) SaveConfig(key *Signer) error {
++	return nil // nothing to save
++}
++
+ // Authorize adds an authorization for a principal to perform an
+ // operation.
+-func (t TrivialGuard) Authorize(name, op string, args []string) error {
++func (t TrivialGuard) Authorize(name auth.Prin, op string, args []string) error {
+ 	return errTrivialGuard
+ }
+ 
+ // Retract removes an authorization for a principal to perform an
+ // operation, essentially reversing the effect of an Authorize() call
+ // with identical name, op, and args. Note: this reverses the effect of
+ // an Authorize() call with identical parameters of the equivalent
+ // AddRule() call. However, particularly when expressive policies are
+ // supported (e.g., an "authorize all" rule), other rules may still be
+ // in place authorizing the principal to perform the operation.
+-func (t TrivialGuard) Retract(name, op string, args []string) error {
++func (t TrivialGuard) Retract(name auth.Prin, op string, args []string) error {
+ 	return errTrivialGuard
+ }
+ 
+ // IsAuthorized checks whether a principal is authorized to perform an
+ // operation.
+-func (t TrivialGuard) IsAuthorized(name, op string, args []string) bool {
++func (t TrivialGuard) IsAuthorized(name auth.Prin, op string, args []string) bool {
+ 	switch t {
+ 	case ConservativeGuard:
+ 		return false
+ 	case LiberalGuard:
+ 		return true
+ 	default:
+ 		return false
+ 	}
+ }
+ 
+ // AddRule adds a policy rule. Subclasses should support at least rules
+ // of the form: Authorized(P, op, args...). This is equivalent to
+ // calling Authorize(P, op, args...) with each of the arguments
+ // converted to either a string or integer.
+ func (t TrivialGuard) AddRule(rule string) error {
+ 	return errTrivialGuard
+ }
+ 
+ // RetractRule removes a rule previously added via AddRule() or the
+ // equivalent Authorize() call.
+diff --git a/go/src/cloudproxy/tao/tao_guard_test.go b/go/src/cloudproxy/tao/tao_guard_test.go
+index cbf62df..3ac023c 100644
+--- a/go/src/cloudproxy/tao/tao_guard_test.go
++++ b/go/src/cloudproxy/tao/tao_guard_test.go
+@@ -1,80 +1,84 @@
+ // Copyright (c) 2014, Google Inc.  All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+ 	"testing"
++
++	"cloudproxy/tao/auth"
+ )
+ 
+ func testNewTrivialLiberalGuard(t *testing.T) TaoGuard {
+ 	tg := LiberalGuard
+-	if tg.SubprincipalName() != "TrivialGuard(\"Liberal\")" {
++	if tg.Subprincipal().String() != `.TrivialGuard("Liberal")` {
+ 		t.Fatal("Wrong subprincipal name for trivial liberal guard")
+ 	}
+ 
+ 	if tg.GuardTypeName() != "TrivialLiberalGuard" {
+ 		t.Fatal("Wrong guard type name from trivial liberal guard")
+ 	}
+ 
+ 	return tg
+ }
+ 
+ func testNewTrivialConservativeGuard(t *testing.T) TaoGuard {
+ 	tg := ConservativeGuard
+-	if tg.SubprincipalName() != "TrivialGuard(\"Conservative\")" {
++	if tg.Subprincipal().String() != `.TrivialGuard("Conservative")` {
+ 		t.Fatal("Wrong subprincipal name for trivial conservative guard")
+ 	}
+ 
+ 	if tg.GuardTypeName() != "TrivialConservativeGuard" {
+ 		t.Fatal("Wrong guard type name from trivial conservative guard")
+ 	}
+ 
+ 	return tg
+ }
+ 
++var testPrin auth.Prin = auth.Prin{Type:"key", Key:[]byte("testkey")}
++
+ func testTrivialGuardAuthorize(t *testing.T, tg TaoGuard) {
+-	if err := tg.Authorize("testname", "testop", []string{}); err == nil {
++	if err := tg.Authorize(testPrin, "testop", []string{}); err == nil {
+ 		t.Fatal("Authorize command incorrectly succeeded on trivial guard")
+ 	}
+ }
+ 
+ func testTrivialGuardRetract(t *testing.T, tg TaoGuard) {
+-	if err := tg.Retract("testname", "testop", []string{}); err == nil {
++	if err := tg.Retract(testPrin, "testop", []string{}); err == nil {
+ 		t.Fatal("Retract command incorrectly succeeded on trivial guard")
+ 	}
+ }
+ 
+ func testTrivialGuardIsAuthorized(t *testing.T, tg TaoGuard, expect bool) {
+-	b := tg.IsAuthorized("testname", "testop", []string{})
++	b := tg.IsAuthorized(testPrin, "testop", []string{})
+ 	if b != expect {
+ 		t.Fatal("Got an unexpected result from IsAuthorized on a trivial guard")
+ 	}
+ }
+ 
+ func testTrivialGuardAddRule(t *testing.T, tg TaoGuard) {
+ 	if err := tg.AddRule("fake rule"); err == nil {
+ 		t.Fatal("AddRule command incorrectly succeeded on trivial guard")
+ 	}
+ }
+ 
+ func testTrivialGuardRetractRule(t *testing.T, tg TaoGuard) {
+ 	if err := tg.RetractRule("fake rule"); err == nil {
+ 		t.Fatal("RetractRule command incorrectly succeeded on trivial guard")
+ 	}
+ }
+ 
+ func testTrivialGuardClear(t *testing.T, tg TaoGuard) {
+ 	if err := tg.Clear(); err == nil {
+ 		t.Fatal("Clear command incorrectly succeeded on trivial guard")
+diff --git a/go/src/cloudproxy/tao/tao_host.go b/go/src/cloudproxy/tao/tao_host.go
+index 156073a..713ec5d 100644
+--- a/go/src/cloudproxy/tao/tao_host.go
++++ b/go/src/cloudproxy/tao/tao_host.go
+@@ -1,56 +1,61 @@
+ // Copyright (c) 2014, Google Inc.  All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
++import (
++	"cloudproxy/tao/auth"
++)
++
+ // TaoHost provides a generic interface  for a Tao host that can be configured
+ // and driven by a variety of host environments. Generally, the host
+ // environment is responsible for enforcing and managing policy, managing
+ // hosted programs (e.g. measuring, naming, starting, stopping), communication
+ // with hosted programs (e.g. channel creation, RPC reception), and other
+ // host-specific details.
+ //
+ // Because the environment calls TaoHost in response to requests from hosted
+ // processes invoking the Tao interface, several TaoHost methods resemble
+ // methods in Tao. Semantics and method signatures differ slightly, however,
+ // since the environment can add context (e.g., the subprincipal name of the
+ // requesting child) or do part of the implementation (e.g., manage policy on
+ // seal/unseal).
+ type TaoHost interface {
+ 	// GetRandomBytes returns a slice of n random bytes.
+-	GetRandomBytes(childSubprin string, n int) (bytes []byte, err error)
++	GetRandomBytes(childSubprin auth.SubPrin, n int) (bytes []byte, err error)
+ 
+ 	// GetSharedSecret returns a slice of n secret bytes.
+ 	GetSharedSecret(tag string, n int) (bytes []byte, err error)
+ 
+-	// Attest requests the Tao host sign a Statement on behalf of the caller.
+-	Attest(childSubprin string, stmt *Statement) (*Attestation, error)
++	// Attest requests the Tao host sign a statement on behalf of the caller.
++	Attest(childSubprin auth.SubPrin, issuer *auth.Prin,
++		time, expiration *int64, message auth.Form) (*Attestation, error)
+ 
+ 	// Encrypt data so that only this host can access it.
+ 	Encrypt(data []byte) (encrypted []byte, err error)
+ 
+ 	// Decrypt data that only this host can access.
+ 	Decrypt(encrypted []byte) (data []byte, err error)
+ 
+ 	// Notify this TaoHost that a new hosted program has been created.
+-	AddedHostedProgram(childSubprin string) error
++	AddedHostedProgram(childSubprin auth.SubPrin) error
+ 
+ 	// Notify this TaoHost that a hosted program has been killed.
+-	RemovedHostedProgram(childSubprin string) error
++	RemovedHostedProgram(childSubprin auth.SubPrin) error
+ 
+ 	// Get the Tao principal name assigned to this hosted Tao host. The
+ 	// name encodes the full path from the root Tao, through all
+ 	// intermediary Tao hosts, to this hosted Tao host.
+-	TaoHostName() string
++	TaoHostName() auth.Prin
+ }
+diff --git a/go/src/cloudproxy/tao/tao_host_test.go b/go/src/cloudproxy/tao/tao_host_test.go
+index 54e1401..a98d40c 100644
+--- a/go/src/cloudproxy/tao/tao_host_test.go
++++ b/go/src/cloudproxy/tao/tao_host_test.go
+@@ -1,121 +1,122 @@
+ // Copyright (c) 2014, Google Inc.  All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+ 	"bytes"
+ 	"testing"
++
++	"cloudproxy/tao/auth"
+ )
+ 
+-var testChild = "test child"
++var testChild = auth.SubPrin{auth.PrinExt{Name:"TestChild"}}
+ 
+ func testNewTaoRootHost(t *testing.T) TaoHost {
+ 	th, err := NewTaoRootHost()
+ 	if err != nil {
+ 		t.Fatal("Couldn't create a new TaoRootHost:", err)
+ 	}
+ 
+ 	if err := th.AddedHostedProgram(testChild); err != nil {
+ 		t.Fatal("Couldn't add a test child program:", err)
+ 	}
+ 
+ 	return th
+ }
+ 
+ func testNewTaoStackedHost(t *testing.T) TaoHost {
+-	ft, err := NewFakeTao("test tao", "", nil)
++	ft, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
+ 	if err != nil {
+ 		t.Fatal("Couldn't set up a FakeTao for the TaoStackedHost")
+ 	}
+ 
+ 	th, err := NewTaoStackedHost(ft)
+ 	if err != nil {
+ 		t.Fatal("Couldn't set up a TaoStackedHost over a FakeTao")
+ 	}
+ 
+ 	return th
+ }
+ 
+ func testTaoHostRandomBytes(t *testing.T, th TaoHost) {
+ 	b, err := th.GetRandomBytes(testChild, 10)
+ 	if err != nil {
+ 		t.Fatal("Couldn't get random bytes from the TaoHost:", err)
+ 	}
+ 
+ 	if len(b) != 10 {
+ 		t.Fatal("The length of the returned random bytes is not 10")
+ 	}
+ }
+ 
+ func testTaoHostSharedSecretFailure(t *testing.T, th TaoHost) {
+ 	tag := "test tag"
+ 	_, err := th.GetSharedSecret(tag, 10)
+ 	if err == nil {
+ 		t.Fatal("A TaoHost that doesn't support shared secrets created one")
+ 	}
+ }
+ 
+ func testTaoHostAttest(t *testing.T, th TaoHost) {
+-	var st Statement
+-	a, err := th.Attest(testChild, &st)
++	a, err := th.Attest(testChild, nil, nil, nil, auth.Const(true))
+ 	if err != nil {
+-		t.Fatal("Couldn't attest to an empty Statement:", err)
++		t.Fatal("Couldn't attest to a trival statement:", err)
+ 	}
+ 
+ 	if a == nil {
+ 		t.Fatal("Incorrectly returned an empty attestation from a successful Attest")
+ 	}
+ }
+ 
+ func testTaoHostEncryption(t *testing.T, th TaoHost) {
+ 	data := []byte{1, 2, 3, 4, 5, 6, 7}
+ 	e, err := th.Encrypt(data)
+ 	if err != nil {
+ 		t.Fatal("Couldn't encrypt data")
+ 	}
+ 
+ 	d, err := th.Decrypt(e)
+ 	if err != nil {
+ 		t.Fatal("Couldn't decrypt encrypted data")
+ 	}
+ 
+ 	if !bytes.Equal(d, data) {
+ 		t.Fatal("Decrypted data didn't match original data")
+ 	}
+ }
+ 
+ func testTaoHostName(t *testing.T, th TaoHost) {
+ 	n := th.TaoHostName()
+-	if n == "" {
++	if n.Key == nil {
+ 		t.Fatal("TaoHostName returned an invalid TaoHost name")
+ 	}
+ }
+ 
+ func testTaoHostRemovedHostedProgram(t *testing.T, th TaoHost) {
+ 	if err := th.RemovedHostedProgram(testChild); err != nil {
+ 		t.Fatal("Couldn't remove an existing hosted program")
+ 	}
+ }
+ 
+ func TestTaoRootHostRandomBytes(t *testing.T) {
+ 	testTaoHostRandomBytes(t, testNewTaoRootHost(t))
+ }
+ 
+ func TestTaoRootHostSharedSecretFailure(t *testing.T) {
+ 	testTaoHostSharedSecretFailure(t, testNewTaoRootHost(t))
+ }
+ 
+ func TestTaoRootHostAttest(t *testing.T) {
+ 	testTaoHostAttest(t, testNewTaoRootHost(t))
+diff --git a/go/src/cloudproxy/tao/tao_root_host.go b/go/src/cloudproxy/tao/tao_root_host.go
+index bc41902..1195d5a 100644
+--- a/go/src/cloudproxy/tao/tao_root_host.go
++++ b/go/src/cloudproxy/tao/tao_root_host.go
+@@ -1,177 +1,131 @@
+ // Copyright (c) 2014, Google Inc.  All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+ 	"crypto/rand"
+ 	"errors"
+-	"strings"
+-	"time"
+ 
+-	"code.google.com/p/goprotobuf/proto"
++	"cloudproxy/tao/auth"
+ )
+ 
+ // A TaoRootHost is a standalone implementation of TaoHost.
+ type TaoRootHost struct {
+ 	keys        *Keys
+-	taoHostName string
++	taoHostName auth.Prin
+ }
+ 
+ // NewTaoRootHostFromKeys returns a TaoRootHost that uses these keys.
+ func NewTaoRootHostFromKeys(k *Keys) (TaoHost, error) {
+ 	if k.SigningKey == nil || k.CryptingKey == nil || k.VerifyingKey == nil {
+ 		return nil, errors.New("missing required key for TaoRootHost")
+ 	}
+ 
+-	n, err := k.SigningKey.ToPrincipalName()
++	n, err := k.SigningKey.ToPrincipal()
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	t := &TaoRootHost{
+ 		keys:        k,
+ 		taoHostName: n,
+ 	}
+ 
+ 	return t, nil
+ }
+ 
+ // NewTaoRootHost generates a new TaoRootHost with a fresh set of temporary
+ // keys.
+ func NewTaoRootHost() (TaoHost, error) {
+ 	k, err := NewTemporaryKeys(Signing | Crypting)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	return NewTaoRootHostFromKeys(k)
+ }
+ 
+ // GetRandomBytes returns a slice of n random bytes.
+-func (t *TaoRootHost) GetRandomBytes(childSubprin string, n int) (bytes []byte, err error) {
++func (t *TaoRootHost) GetRandomBytes(childSubprin auth.SubPrin, n int) (bytes []byte, err error) {
+ 	b := make([]byte, n)
+ 	if _, err := rand.Read(b); err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	return b, nil
+ }
+ 
+ // GetSharedSecret returns a slice of n secret bytes.
+ func (t *TaoRootHost) GetSharedSecret(tag string, n int) (bytes []byte, err error) {
+ 	if t.keys.DerivingKey == nil {
+ 		return nil, errors.New("this TaoRootHost does not implement shared secrets")
+ 	}
+ 
+ 	// For now, all our key deriving with keys.DerivingKey uses a fixed 0-length salt.
+ 	var salt []byte
+ 	material := make([]byte, n)
+ 	if err := t.keys.DerivingKey.Derive(salt, []byte(tag), material); err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	return material, nil
+ }
+ 
+-// GenerateAttestation uses the signing key to generate an attestation for this
+-// statement.
+-func GenerateAttestation(s *Signer, delegation []byte, stmt *Statement) (*Attestation, error) {
+-	signerName, err := s.ToPrincipalName()
+-	if err != nil {
+-		return nil, err
+-	}
+-
+-	st := new(Statement)
+-	proto.Merge(st, stmt)
++// Attest requests the Tao host sign a statement on behalf of the caller.
++func (t *TaoRootHost) Attest(childSubprin auth.SubPrin, issuer *auth.Prin,
++	time, expiration *int64, message auth.Form) (*Attestation, error) {
+ 
+-	t := time.Now()
+-	if st.Time == nil {
+-		st.Time = proto.Int64(t.UnixNano())
+-	}
+-
+-	if st.Expiration == nil {
+-		st.Expiration = proto.Int64(t.Add(365 * 24 * time.Hour).UnixNano())
+-	}
+-
+-	ser, err := proto.Marshal(st)
+-	if err != nil {
+-		return nil, err
+-	}
+-
+-	sig, err := s.Sign(ser, AttestationSigningContext)
+-	if err != nil {
+-		return nil, err
+-	}
+-
+-	a := &Attestation{
+-		SerializedStatement: ser,
+-		Signature:           sig,
+-		Signer:              proto.String(signerName),
+-	}
+-
+-	if len(delegation) > 0 {
+-		a.SerializedDelegation = delegation
+-	}
+-
+-	return a, nil
+-}
+-
+-// IsSubprincipalOrIdentical checks that the child name either is identical to
+-// to the parent name or starts with "parentName::".
+-func IsSubprincipalOrIdentical(childName, parentName string) bool {
+-	return (childName == parentName) || strings.HasPrefix(childName, parentName+"::")
+-}
+-
+-// Attest requests the Tao host sign a Statement on behalf of the caller.
+-func (t *TaoRootHost) Attest(childSubprin string, stmt *Statement) (*Attestation, error) {
+-	if stmt.Issuer != nil {
+-		if !IsSubprincipalOrIdentical(*stmt.Issuer, t.taoHostName+"::"+childSubprin) {
++	child := t.taoHostName.MakeSubprincipal(childSubprin)
++	if issuer != nil {
++		if !auth.SubprinOrIdentical(*issuer, child) {
+ 			return nil, errors.New("invalid issuer in statement")
+ 		}
+ 	} else {
+-		stmt.Issuer = proto.String(t.taoHostName + "::" + childSubprin)
++		issuer = &child
+ 	}
+ 
++	stmt := auth.Says{Speaker: *issuer, Time: time, Expiration: expiration, Message: message}
++
+ 	return GenerateAttestation(t.keys.SigningKey, nil /* delegation */, stmt)
+ }
+ 
+ // Encrypt data so that only this host can access it.
+ func (t *TaoRootHost) Encrypt(data []byte) (encrypted []byte, err error) {
+ 	return t.keys.CryptingKey.Encrypt(data)
+ }
+ 
+ // Decrypt data that only this host can access.
+ func (t *TaoRootHost) Decrypt(encrypted []byte) (data []byte, err error) {
+ 	return t.keys.CryptingKey.Decrypt(encrypted)
+ }
+ 
+ // AddedHostedProgram notifies this TaoHost that a new hosted program has been
+ // created.
+-func (t *TaoRootHost) AddedHostedProgram(childSubprin string) error {
++func (t *TaoRootHost) AddedHostedProgram(childSubprin auth.SubPrin) error {
+ 	return nil
+ }
+ 
+ // RemovedHostedProgram notifies this TaoHost that a hosted program has been
+ // killed.
+-func (t *TaoRootHost) RemovedHostedProgram(childSubprin string) error {
++func (t *TaoRootHost) RemovedHostedProgram(childSubprin auth.SubPrin) error {
+ 	return nil
+ }
+ 
+ // TaoHostName gets the Tao principal name assigned to this hosted Tao host.
+ // The name encodes the full path from the root Tao, through all intermediary
+ // Tao hosts, to this hosted Tao host.
+-func (t *TaoRootHost) TaoHostName() string {
++func (t *TaoRootHost) TaoHostName() auth.Prin {
+ 	return t.taoHostName
+ }
+diff --git a/go/src/cloudproxy/tao/tao_rpc.proto b/go/src/cloudproxy/tao/tao_rpc.proto
+index 52bfd84..2a16887 100644
+--- a/go/src/cloudproxy/tao/tao_rpc.proto
++++ b/go/src/cloudproxy/tao/tao_rpc.proto
+@@ -6,26 +6,29 @@
+ //  Copyright (c) 2013, Google Inc.  All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao;
+ 
+ message TaoRPCRequest {
+   optional bytes data = 1;
+   optional int32 size = 2;
+   optional string policy = 3;
++  optional int64 time = 4;
++  optional int64 expiration = 5;
++  optional bytes issuer = 6;
+ }
+ 
+ message TaoRPCResponse {
+   optional bytes data = 1;
+   optional string policy = 2;
+ }
+diff --git a/go/src/cloudproxy/tao/tao_stacked_host.go b/go/src/cloudproxy/tao/tao_stacked_host.go
+index 5471124..6102bb3 100644
+--- a/go/src/cloudproxy/tao/tao_stacked_host.go
++++ b/go/src/cloudproxy/tao/tao_stacked_host.go
+@@ -1,113 +1,121 @@
+ // Copyright (c) 2014, Google Inc.  All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+ 	"errors"
+ 
+ 	"code.google.com/p/goprotobuf/proto"
++
++	"cloudproxy/tao/auth"
+ )
+ 
+ // A TaoStackedHost implements TaoHost over an existing host Tao.
+ type TaoStackedHost struct {
+-	taoHostName string
++	taoHostName auth.Prin
+ 	hostTao     Tao
+ 	keys        *Keys
+ }
+ 
+ // NewTaoStackedHostFromKeys takes ownership of an existing set of keys and
+ // returns a TaoStackedHost that uses these keys over an existing host Tao.
+ func NewTaoStackedHostFromKeys(k *Keys, t Tao) (TaoHost, error) {
+ 	n, err := t.GetTaoName()
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	tsh := &TaoStackedHost{
+ 		keys:        k,
+ 		taoHostName: n,
+ 		hostTao:     t,
+ 	}
+ 
+ 	return tsh, nil
+ }
+ 
+ // NewTaoStackedHost generates a new TaoStackedHost with a fresh set of temporary
+ // keys.
+ func NewTaoStackedHost(t Tao) (TaoHost, error) {
+ 	k, err := NewTemporaryKeys(Signing | Crypting)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	return NewTaoStackedHostFromKeys(k, t)
+ }
+ 
+ // GetRandomBytes returns a slice of n random bytes.
+-func (t *TaoStackedHost) GetRandomBytes(childSubprin string, n int) (bytes []byte, err error) {
++func (t *TaoStackedHost) GetRandomBytes(childSubprin auth.SubPrin, n int) (bytes []byte, err error) {
+ 	return t.hostTao.GetRandomBytes(n)
+ }
+ 
+ // GetSharedSecret returns a slice of n secret bytes.
+ func (t *TaoStackedHost) GetSharedSecret(tag string, n int) (bytes []byte, err error) {
+ 	// TODO(tmroeder): this should be implemented using the underlying host
+ 	if t.keys.DerivingKey == nil {
+ 		return nil, errors.New("this TaoStackedHost does not implement shared secrets")
+ 	}
+ 
+ 	// For now, all our key deriving with keys.DerivingKey uses a fixed 0-length salt.
+ 	var salt []byte
+ 	material := make([]byte, n)
+ 	if err := t.keys.DerivingKey.Derive(salt, []byte(tag), material); err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	return material, nil
+ }
+ 
+-// Attest requests the Tao host sign a Statement on behalf of the caller.
+-func (t *TaoStackedHost) Attest(childSubprin string, stmt *Statement) (*Attestation, error) {
+-	if stmt.Issuer != nil {
+-		if !IsSubprincipalOrIdentical(*stmt.Issuer, t.taoHostName+"::"+childSubprin) {
++// Attest requests the Tao host sign a statement on behalf of the caller.
++func (t *TaoStackedHost) Attest(childSubprin auth.SubPrin, issuer *auth.Prin,
++      time, expiration *int64, message auth.Form) (*Attestation, error) {
++
++	child := t.taoHostName.MakeSubprincipal(childSubprin)
++	if issuer != nil {
++		if !auth.SubprinOrIdentical(*issuer, child) {
+ 			return nil, errors.New("invalid issuer in statement")
+ 		}
+ 	} else {
+-		stmt.Issuer = proto.String(t.taoHostName + "::" + childSubprin)
++		issuer = &child
+ 	}
+ 
++
+ 	if t.keys == nil || t.keys.SigningKey == nil {
+-		return t.hostTao.Attest(stmt)
++		return t.hostTao.Attest(issuer, time, expiration, message)
+ 	}
+ 
++	stmt := auth.Says{Speaker: *issuer, Time: time, Expiration: expiration, Message: message}
++
+ 	var d []byte
+ 	if t.keys.Delegation != nil {
+ 		var err error
+ 		d, err = proto.Marshal(t.keys.Delegation)
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 	}
+ 
+ 	return GenerateAttestation(t.keys.SigningKey, d, stmt)
+ }
+ 
+ // Encrypt data so that only this host can access it.
+ func (t *TaoStackedHost) Encrypt(data []byte) (encrypted []byte, err error) {
+ 	if t.keys == nil || t.keys.CryptingKey == nil {
+ 		// TODO(tmroeder) (from TODO(kwalsh) in tao_stacked_host.cc):
+ 		// where should the policy come from here?
+ 		return t.hostTao.Seal(data, SealPolicyDefault)
+ 	}
+ 
+@@ -120,36 +128,36 @@ func (t *TaoStackedHost) Decrypt(encrypted []byte) (data []byte, err error) {
+ 		return t.keys.CryptingKey.Decrypt(encrypted)
+ 	}
+ 
+ 	// TODO(tmroeder) (from TODO(kwalsh) in tao_stacked_host.cc):
+ 	// where should the policy come from here?
+ 	var policy string
+ 	data, policy, err = t.hostTao.Unseal(encrypted)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	if policy != SealPolicyDefault {
+ 		return nil, errors.New("unsealed data with uncertain provenance")
+ 	}
+ 
+ 	return data, nil
+ }
+ 
+ // AddedHostedProgram notifies this TaoHost that a new hosted program has been
+ // created.
+-func (t *TaoStackedHost) AddedHostedProgram(childSubprin string) error {
++func (t *TaoStackedHost) AddedHostedProgram(childSubprin auth.SubPrin) error {
+ 	return nil
+ }
+ 
+ // RemovedHostedProgram notifies this TaoHost that a hosted program has been
+ // killed.
+-func (t *TaoStackedHost) RemovedHostedProgram(childSubprin string) error {
++func (t *TaoStackedHost) RemovedHostedProgram(childSubprin auth.SubPrin) error {
+ 	return nil
+ }
+ 
+ // TaoHostName gets the Tao principal name assigned to this hosted Tao host.
+ // The name encodes the full path from the root Tao, through all intermediary
+ // Tao hosts, to this hosted Tao host.
+-func (t *TaoStackedHost) TaoHostName() string {
++func (t *TaoStackedHost) TaoHostName() auth.Prin {
+ 	return t.taoHostName
+ }
+diff --git a/go/src/cloudproxy/tao/taorpc.go b/go/src/cloudproxy/tao/taorpc.go
+index 7fb6d26..94891c9 100644
+--- a/go/src/cloudproxy/tao/taorpc.go
++++ b/go/src/cloudproxy/tao/taorpc.go
+@@ -6,40 +6,41 @@
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+ 	"errors"
+ 	"io"
+ 	"math"
+ 	"net/rpc"
+ 	"strings"
+ 
+ 	"code.google.com/p/goprotobuf/proto"
+ 
++	"cloudproxy/tao/auth"
+ 	"cloudproxy/util"
+ 	"cloudproxy/util/protorpc"
+ )
+ 
+ // TaoRPC sends requests between this hosted program and the host Tao.
+ type TaoRPC struct {
+ 	rpc         *rpc.Client
+ 	serviceName string
+ }
+ 
+ // DeserializeTaoRPC produces a TaoRPC from a string.
+ func DeserializeTaoRPC(s string) (*TaoRPC, error) {
+ 	if s == "" {
+ 		return nil, errors.New("taorpc: missing host Tao spec" +
+ 			" (ensure $" + HostTaoEnvVar + " is set)")
+ 	}
+ 	r := strings.TrimPrefix(s, "tao::TaoRPC+")
+ 	if r == s {
+ 		return nil, errors.New("taorpc: unrecognized $" + HostTaoEnvVar + " string " + s)
+ 	}
+@@ -74,49 +75,52 @@ func (t *TaoRPC) call(method string, r *TaoRPCRequest, e expectedResponse) (data
+ 	s := new(TaoRPCResponse)
+ 	err = t.rpc.Call(method, r, s)
+ 	if err != nil {
+ 		return
+ 	}
+ 	if (s.Data != nil) != (e&wantData != 0) ||
+ 		(s.Policy != nil) != (e&wantPolicy != 0) {
+ 		err = ErrMalformedResponse
+ 		return
+ 	}
+ 	if s.Data != nil {
+ 		data = s.Data
+ 	}
+ 	if s.Policy != nil {
+ 		policy = *s.Policy
+ 	}
+ 	return
+ }
+ 
+ // GetTaoName implements part of the Tao interface.
+-func (t *TaoRPC) GetTaoName() (string, error) {
++func (t *TaoRPC) GetTaoName() (auth.Prin, error) {
+ 	r := &TaoRPCRequest{}
+ 	data, _, err := t.call(t.serviceName+".GetTaoName", r, wantData)
+-	return string(data), err
++	if err != nil {
++		return auth.Prin{}, err
++	}
++	return auth.UnmarshalPrin(data)
+ }
+ 
+ // ExtendTaoName implements part of the Tao interface.
+-func (t *TaoRPC) ExtendTaoName(subprin string) error {
+-	r := &TaoRPCRequest{Data: []byte(subprin)}
++func (t *TaoRPC) ExtendTaoName(subprin auth.SubPrin) error {
++	r := &TaoRPCRequest{Data: auth.Marshal(subprin)}
+ 	_, _, err := t.call(t.serviceName+".ExtendTaoName", r, wantNothing)
+ 	return err
+ }
+ 
+ type taoRandReader TaoRPC
+ 
+ // Read implements part of the Tao interface.
+ func (t *taoRandReader) Read(p []byte) (n int, err error) {
+ 	bytes, err := (*TaoRPC)(t).GetRandomBytes(len(p))
+ 	if err != nil {
+ 		return 0, err
+ 	}
+ 	copy(p, bytes)
+ 	return len(p), nil
+ }
+ 
+ // TODO(kwalsh) Can Rand be made generic, or does it need to be defined for the
+ // concrete type TaoRPC?
+ 
+ // Rand implements part of the Tao interface.
+@@ -128,46 +132,47 @@ func (t *TaoRPC) Rand() io.Reader {
+ func (t *TaoRPC) GetRandomBytes(n int) ([]byte, error) {
+ 	if n > math.MaxUint32 {
+ 		return nil, errors.New("taorpc: request for too many random bytes")
+ 	}
+ 	r := &TaoRPCRequest{Size: proto.Int32(int32(n))}
+ 	bytes, _, err := t.call(t.serviceName+".GetRandomBytes", r, wantData)
+ 	return bytes, err
+ }
+ 
+ // GetSharedSecret implements part of the Tao interface.
+ func (t *TaoRPC) GetSharedSecret(n int, policy string) ([]byte, error) {
+ 	if n > math.MaxUint32 {
+ 		return nil, errors.New("taorpc: request for too many secret bytes")
+ 	}
+ 	r := &TaoRPCRequest{Size: proto.Int32(int32(n)), Policy: proto.String(policy)}
+ 	bytes, _, err := t.call(t.serviceName+".GetSharedSecret", r, wantData)
+ 	return bytes, err
+ }
+ 
+ // Attest implements part of the Tao interface.
+-func (t *TaoRPC) Attest(stmt *Statement) (*Attestation, error) {
+-	data, err := proto.Marshal(stmt)
+-	if _, ok := err.(*proto.RequiredNotSetError); err != nil && !ok {
+-		return nil, err
++func (t *TaoRPC) Attest(issuer *auth.Prin, time, expiration *int64, message auth.Form) (*Attestation, error) {
++	r := &TaoRPCRequest{
++		Issuer: auth.Marshal(issuer),
++		Time: time,
++		Expiration: expiration,
++		Data: auth.Marshal(message),
+ 	}
+-	r := &TaoRPCRequest{Data: data}
+ 	bytes, _, err := t.call(t.serviceName+".Attest", r, wantData)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	var a Attestation
+ 	err = proto.Unmarshal(bytes, &a)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	return &a, nil
+ }
+ 
+ // Seal implements part of the Tao interface.
+ func (t *TaoRPC) Seal(data []byte, policy string) (sealed []byte, err error) {
+ 	r := &TaoRPCRequest{Data: data, Policy: proto.String(policy)}
+ 	sealed, _, err = t.call(t.serviceName+".Seal", r, wantData)
+ 	return
+ }
+ 
+ // Unseal implements part of the Tao interface.

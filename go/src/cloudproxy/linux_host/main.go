@@ -15,22 +15,12 @@
 package main
 
 import (
-	"bufio"
-	"crypto/tls"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/pem"
-	"errors"
 	"flag"
 	"fmt"
-	"net"
+	"log"
 	"os"
-	"strconv"
-	"strings"
-	"time"
 
 	"cloudproxy/tao"
-	"cloudproxy/util"
 )
 
 var configPath = flag.String("config_path", "tao.config", "Location of tao domain configuration")
@@ -50,10 +40,19 @@ var stop = flag.Bool("stop", false, "Stop a hosted program (names follow --).")
 var kill = flag.Bool("kill", false, "Kill a hosted program (names follow --).")
 var name = flag.Bool("name", false, "Show the principal name of running LinuxHost.")
 
-func countBools(b ...bool) {
+func countSet(vars ...interface{}) int {
 	var n int
-	for b := range b {
-		if b {
+	for _, v := range vars {
+		switch v := v.(type) {
+		case string:
+			if v != "" {
+				n++
+			}
+		case bool:
+			if v {
+				n++
+			}
+		default:
 			n++
 		}
 	}
@@ -61,38 +60,46 @@ func countBools(b ...bool) {
 }
 
 func main() {
-	if flag.Parse() == flag.ErrHelp {
-		fmt.Printf(`Administrative utility for LinuxHost.
-Usage:
-%[1]s [options] -create
-%[1]s [options] -show
-%[1]s [options] -service
-%[1]s [options] -shutdown
-%[1]s [options] -run -- program args...
-%[1]s [options] -stop -- progname...
-%[1]s [options] -kill -- progname...
-%[1]s [options] -list
-%[1]s [options] -name`, os.Args[0])
+	help := "Administrative utility for LinuxHost.\n"
+	help += "Usage:\n"
+	help += "%[1]s [options] -create\n"
+	help += "%[1]s [options] -show\n"
+	help += "%[1]s [options] -service\n"
+	help += "%[1]s [options] -shutdown\n"
+	help += "%[1]s [options] -run -- program args...\n"
+	help += "%[1]s [options] -stop -- progname...\n"
+	help += "%[1]s [options] -kill -- progname...\n"
+	help += "%[1]s [options] -list\n"
+	help += "%[1]s [options] -name\n"
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, help, os.Args[0])
+		flag.PrintDefaults()
+	}
+	flag.Parse()
+
+	if countSet(*create, *show, *service, *shutdown, *run, *stop, *kill, *list, *name) > 1 {
+		log.Fatal("specify at most one of the command options")
 	}
 
-	if countBools(create, show, service, shutdown, run, stop, kill, list, name) > 1 {
-		fmt.Printf("error: specify at most one of the command options\n")
-		return
-	}
-
-	if create || service || show {
-		// load config
-		// create host
-		if root {
-			// init
-		} else if stacked {
-			// init
+	if *create || *service || *show {
+		fmt.Printf("Loading configuration from: %s\n", *configPath)
+		domain, err := tao.LoadDomain(*configPath, nil)
+		fatalIf(err)
+		var host *tao.LinuxHost
+		if *root {
+			host, err = tao.NewRootLinuxHost(*path, domain.Guard, []byte(*pass))
+		} else if *stacked {
+			if !tao.HostAvailable() {
+				log.Fatal("error: no host tao available, check $%s\n", tao.HostTaoEnvVar)
+			}
+			host, err = tao.NewStackedLinuxHost(*path, domain.Guard, tao.Host())
 		} else {
 			fmt.Printf("error: must specify either -root or -stacked")
 		}
-		if create {
+		fatalIf(err)
+		if *create {
 			fmt.Printf("LinuxHost Service: %s\n", host.TaoHostName())
-		} else if show {
+		} else if *show {
       fmt.Printf("export GOOGLE_TAO_LINUX='%v'\n", host.TaoHostName())
 		} else /* service */ {
       fmt.Printf("Linux Tao Service started and waiting for requests\n")
@@ -100,18 +107,24 @@ Usage:
 		}
 	} else {
 		// connect
-		if shutdown {
-			// shutdown
-		} else if run {
-			// run
-		} else if kill || stop {
-			// kill or stop
-		} else if list {
-			// list
-		} else if name {
-			fmt.Printf("%v\n", name)
+		if *shutdown {
+			log.Fatal("not yet implemented")
+		} else if *run {
+			log.Fatal("not yet implemented")
+		} else if *kill || *stop {
+			log.Fatal("not yet implemented")
+		} else if *list {
+			log.Fatal("not yet implemented")
+		} else if *name {
+			fmt.Printf("%v\n", "not yet implemented")
 		} else {
-			printf("LinuxHost: %s\n", name)
+			fmt.Printf("LinuxHost: %s\n", "not yet implemented")
 		}
+	}
+}
+
+func fatalIf(err error) {
+	if err != nil {
+		log.Fatal(err)
 	}
 }

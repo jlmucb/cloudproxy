@@ -354,3 +354,8 @@ func (lh *LinuxHost) GetTaoHostName(r *LinuxAdminRPCRequest, s *LinuxAdminRPCRes
 	s.Data = auth.Marshal(lh.taoHost.TaoHostName())
 	return nil
 }
+
+// TaoHostName returns the name of the TaoHost used by the LinuxHost.
+func (lh *LinuxHost) TaoHostName() auth.Prin {
+	return lh.taoHost.TaoHostName()
+}

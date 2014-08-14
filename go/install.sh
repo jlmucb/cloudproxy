@@ -19,7 +19,7 @@
 # have been installed in ./bin (e.g. via `go install`) 
 #
 # If you wish to use the TPM, you must have also followed the directions in
-# $TAO_ROOT/Doc/SetupTPM.txt to take ownership of the TPM.
+# $TAO_ROOTDIR/Doc/SetupTPM.txt to take ownership of the TPM.
 
 set -e # quit script on first error
 
@@ -108,16 +108,29 @@ rm -f bin
 ln -s $root_dir/go/bin bin
 mkdir -p logs
 
+if [ "$test_tpm" == "yes" ]; then
+	test_root=0
+	test_stacked=1
+else
+	test_root=1
+	test_stacked=0
+fi
+
 cat <<END > "$test_dir/tao.env"
 # Tao/CloudProxy environment variables"
 export TAO_TEST="$test_dir" # Also hardcoded into $test_dir/scripts/*.sh
 
-export TAO_ROOT="$root_dir"
+export TAO_ROOTDIR="$root_dir"
 export TAO_USE_TPM="$test_tpm"
 export TAO_GUARD="$test_guard"
-export TAO_BUILD="\${TAO_ROOT}/src/out/\${TAO_VERSION}/bin"
-export TAO_PASS="BogusPass"
-export TAO_TPM_PCRS="17, 18"
+export TAO_pass="BogusPass"
+export TAO_policy_pass="BogusPass"
+export TAO_config_path="${TAO_TEST}/tao.config"
+export TAOHOST_root=$tao_root
+export TAOHOST_stacked=$tao_stacked
+export TAOHOST_path=${TAO_TEST}/linux_tao_host 
+export TAOTPM_path=${TAO_TEST}/tpm 
+export TAOTPM_pcrs="17, 18"
 export GLOG_v=2
 export GLOG_logtostderr="no"
 export GLOG_alsologtostderr="no"
@@ -165,8 +178,6 @@ exit 0
 
 export TAO_TEST=undef # replaced with path to test dir by install.sh
 
-PATH="${TAO_TEST}/bin:$PATH"
-
 tao_env=${TAO_TEST}/tao.env
 if [ ! -f ${tao_env} ]; then
 	echo "Missing ${tao_env}"
@@ -174,20 +185,11 @@ if [ ! -f ${tao_env} ]; then
 fi
 source ${tao_env}
 
-# log to stderr for admin stuff, otherwise it is really quiet
-admin_args="-config_path ${TAO_TEST}/tao.config -policy_pass "$TAO_PASS" -alsologtostderr=1"
-admin="tao_admin $admin_args"
-if [ "$TAO_USE_TPM" == "yes" ]; then
-	linux_host="linux_host -stacked"
-else
-	linux_host="linux_host -root"
-fi
-start_hosted="${linux_host} --run -- "
-tpm_tao="tpm_tao -alsologtostderr=1"
+PATH="${TAO_TEST}/bin:$PATH"
 
 # nb: cat at the end of pipeline hides exit code of grep -v
 all_tao_progs=$(cd ${TAO_TEST}/bin; echo * | grep -v '\.a$' | grep -v 'log_net_server' | cat) # exclude lib*.a
-watchfiles="bin/tcca bin/linux_host domain_acls domain_rules tao.config tao.env"
+watchfiles="bin/linux_host domain_acls domain_rules tao.config tao.env"
 
 function extract_pid()
 {
@@ -226,7 +228,7 @@ function cleanup()
 function stoptests()
 {
 	echo "Attempting graceful shutdown..."
-	(if ${linux_host} --shutdown; then sleep 1; fi ) 2>/dev/null | grep -v "^Aborted$" || true
+	(if linux_host --shutdown; then sleep 1; fi ) 2>/dev/null | grep -v "^Aborted$" || true
 	
 	echo "Checking for remaining Tao services and processes..."
 	# Try to shutdown 
@@ -251,7 +253,7 @@ function setup()
 	mkdir -p ${TAO_TEST}/logs
 
 	echo "Creating TaoDomain keys and settings."
-	$admin -init ${TAO_ROOT}/run/tao-default-${TAO_GUARD}.config -name testing
+	tao_admin -create -name testing
 
 	# This sets:
 	# $GOOGLE_HOST_TAO # name of underlying host tao, i.e. the TPM (if any)
@@ -260,22 +262,19 @@ function setup()
 	sed -i '/^# BEGIN SETUP VARIABLES/,/^# END SETUP VARIABLES/d' ${tao_env} 
 	echo "# BEGIN SETUP VARIABLES" >> ${tao_env}
 	echo "# These variables come from ${TAO_TEST}/scripts/setup.sh" >> ${tao_env}
+
 	if [ "$TAO_USE_TPM" == "yes" ]; then
 		echo "Creating TPMTao AIK and settings."
-		rm -rf ${TAO_TEST}/tpm
-		$tpm_tao --path ${TAO_TEST}/tpm --pcrs "$TAO_TPM_PCRS" --create --noshow
-		$tpm_tao --path ${TAO_TEST}/tpm --show >> ${tao_env}
-	
-		echo "Creating stacked LinuxHost keys and settings."
-		rm -rf ${TAO_TEST}/linux_tao_host
-		$linux_host --path ${TAO_TEST}/linux_tao_host --create --noshow
-		$linux_host --path ${TAO_TEST}/linux_tao_host --show >> ${tao_env}
-	else
-		echo "Creating root LinuxHost keys and settings."
-		rm -rf ${TAO_TEST}/linux_tao_host
-		$linux_host --path ${TAO_TEST}/linux_tao_host --pass "$TAO_PASS" --create --noshow
-		$linux_host --path ${TAO_TEST}/linux_tao_host --pass "$TAO_PASS" --show >> ${tao_env}
+		rm -rf ${TAOTPM_path}
+		tpm_tao --create --noshow
+		tpm_tao --show >> ${tao_env}
 	fi
+
+	echo "Creating LinuxHost keys and settings."
+	rm -rf ${TAOHOST_path}
+	linux_host --create --noshow
+	linux_host --show >> ${tao_env}
+
 	echo "# END SETUP VARIABLES" >> ${tao_env}
 
 	refresh
@@ -286,40 +285,40 @@ function refresh()
 	source ${tao_env}
 
 	# Set up default execution policy.
-	$admin -clear
+	tao_admin -clear
 	if [ "${TAO_GUARD}" == "datalog" ]; then
 		# Rule for TPM and PCRs combinations that make for a good OS
-		$admin -add "(forall S, TPM, PCRs: TrustedPlatform(TPM) and TrustedKernelPCRs(PCRs) and subprin(S, TPM, PCRs) implies TrustedOS(S))"
+		tao_admin -add "(forall S, TPM, PCRs: TrustedPlatform(TPM) and TrustedKernelPCRs(PCRs) and subprin(S, TPM, PCRs) implies TrustedOS(S))"
 		# Rule for OS and program hash that make for a good hosted program
-		$admin -add "(forall P, OS, Hash: TrustedOS(OS) and TrustedProgramHash(Hash) and subprin(P, OS, Hash) implies MemberProgram(P))"
+		tao_admin -add "(forall P, OS, Hash: TrustedOS(OS) and TrustedProgramHash(Hash) and subprin(P, OS, Hash) implies MemberProgram(P))"
 		# Rule for programs that can execute
-		$admin -add "(forall P: MemberProgram(P) implies Authorized(P, \"Execute\"))"
+		tao_admin -add "(forall P: MemberProgram(P) implies Authorized(P, \"Execute\"))"
 		# Add the TPM keys, PCRs, and/or LinuxHost keys
 		if [ "$TAO_USE_TPM" == "yes" ]; then
-			$admin -add 'TrustedPlatform('${GOOGLE_TAO_TPM}')'
-			$admin -add 'TrustedKernelPCRs('${GOOGLE_TAO_PCRS}')'
+			tao_admin -add 'TrustedPlatform('${GOOGLE_TAO_TPM}')'
+			tao_admin -add 'TrustedKernelPCRs('${GOOGLE_TAO_PCRS}')'
 		else
-			$admin -add 'TrustedOS('${GOOGLE_TAO_LINUX}')'
+			tao_admin -add 'TrustedOS('${GOOGLE_TAO_LINUX}')'
 		fi
 		# Add the program hashes, assuming LinuxHost and LinuxProcessFactory.
 		for prog in ${TAO_HOSTED_PROGRAMS}; do
 			if [ -f "$prog" ]; then
-				proghash=`$admin -quiet -getprogramhash "$prog"`
-				$admin -add 'TrustedProgramHash('${proghash}')'
+				proghash=`tao_admin -quiet -getprogramhash "$prog"`
+				tao_admin -add 'TrustedProgramHash('${proghash}')'
 			fi
 		done
 	else
 		for prog in ${TAO_HOSTED_PROGRAMS}; do
 			if [ -f "$prog" ]; then
-				$admin -canexecute "$prog"
+				tao_admin -canexecute "$prog"
 			fi
 		done
 	fi
-	$admin -show
+	tao_admin -show
 
 	# TODO(kwalsh) set up fserver user ACLs here.
-	#$admin -newusers tmroeder,jlm
-	#$admin -signacl ${TAO_ROOT}/run/acls.ascii -acl_sig_path user_acls_sig
+	#tao_admin -newusers tmroeder,jlm
+	#tao_admin -signacl ${TAO_ROOTDIR}/run/acls.ascii -acl_sig_path user_acls_sig
 	#mkdir -p file_client_files
 	#mkdir -p file_server_files
 	#mkdir -p file_server_meta
@@ -329,23 +328,10 @@ function refresh()
 
 function startsvcs()
 {
-	# TODO(kwalsh) tcca
-	# if pgrep -x `shortname tcca` >/dev/null; then
-	# 	echo "TCCA service already running";
-	# else
-	# 	bin/tcca $admin_args &
-	# 	sleep 1
-	# 	echo "TCCA service now running"
-	# fi
-
 	if pgrep -x `shortname linux_host` >/dev/null; then
 		echo "LinuxHost service already running";
 	else
-		if [ "$TAO_USE_TPM" == "yes" ]; then
-			${linux_host} --path ${TAO_TEST}/linux_tao_host --service &
-		else
-			${linux_host} --path ${TAO_TEST}/linux_tao_host -pass "$TAO_PASS" --service &
-		fi
+		linux_host --service &
 		echo "LinuxTao service now running"
 	fi
 }
@@ -395,14 +381,14 @@ function testpgm()
 	case "$1" in
 		client|server)
 			echo "Starting cloudproxy server..."
-			server_id=`$start_hosted server --v=2`
+			server_id=`linux_host -run -- server --v=2`
 			echo "$server_id";
 			server_pid=`extract_pid $server_id`
 			sleep 2
 			tail -f $GLOG_log_dir/server.INFO &
 			server_tail_pid=$!
 			echo "Starting cloudproxy client..."
-			client_id=`$start_hosted client --v=2`
+			client_id=`linux_host -run -- client --v=2`
 			client_pid=`extract_pid $client_id`
 			sleep 2
 			tail -f $GLOG_log_dir/client.INFO &
@@ -419,13 +405,13 @@ function testpgm()
 			# make some test data too
 			echo "test data $RANDOM" >> file_client_files/test
 			echo "Starting cloudproxy file server..."
-			server_id=`$start_hosted fserver --v=2`
+			server_id=`linux_host -run -- fserver --v=2`
 			server_pid=`extract_pid $server_id`
 			sleep 2
 			tail -f $GLOG_log_dir/fserver.INFO &
 			server_tail_pid=$!
 			echo "Starting cloudproxy file client..."
-			client_id=`$start_hosted fclient --v=2`
+			client_id=`linux_host -run -- fclient --v=2`
 			client_pid=`extract_pid $client_id`
 			sleep 2
 			tail -f $GLOG_log_dir/fclient.INFO &
@@ -438,7 +424,7 @@ function testpgm()
 			;;
 		http)
 			echo "Starting cloudproxy http echo server..."
-			server_id=`$start_hosted http_echo_server --v=2`
+			server_id=`linux_host -run -- http_echo_server --v=2`
 			server_pid=`extract_pid $server_id`
 			sleep 2
 			tail -f $GLOG_log_dir/http_echo_server.INFO &
@@ -452,7 +438,7 @@ function testpgm()
 			;;
 		https)
 			echo "Starting cloudproxy https echo server..."
-			server_id=`$start_hosted https_echo_server --v=2`
+			server_id=`linux_host -run -- https_echo_server --v=2`
 			server_pid=`extract_pid $server_id`
 			sleep 2
 			tail -f $GLOG_log_dir/https_echo_server.INFO &
@@ -479,7 +465,7 @@ function hostpgm()
 	prog="$1"
 	shift
 	echo "Starting hosted program $prog ..."
-	prog_id=`$start_hosted "$prog" "$@"`
+	prog_id=`linux_host -run -- "$prog" "$@"`
 	echo "TaoExtension: $prog_id"
 }
 

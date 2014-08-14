@@ -23,6 +23,7 @@ import (
 	"code.google.com/p/gcfg"
 
 	"cloudproxy/tao/auth"
+	"cloudproxy/util"
 )
 
 // TaoDomain manages domain-wide authorization policies and configuration for a
@@ -133,12 +134,13 @@ func CreateDomain(cfg TaoDomainConfig, configPath string, password []byte) (*Tao
 	(&cfg).SetDefaults()
 
 	configDir := path.Dir(configPath)
-	err := os.MkdirAll(configDir, 0700)
+	err := os.MkdirAll(configDir, 0777)
 	if err != nil {
 		return nil, err
 	}
 
-	keys, err := NewOnDiskPBEKeys(Signing, password, cfg.Domain.PolicyKeysPath)
+	keypath := path.Join(configDir, cfg.Domain.PolicyKeysPath)
+	keys, err := NewOnDiskPBEKeys(Signing, password, keypath)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +169,7 @@ func CreateDomain(cfg TaoDomainConfig, configPath string, password []byte) (*Tao
 
 // Save writes all domain configuration and policy data.
 func (d *TaoDomain) Save() error {
-	file, err := os.Create(d.ConfigPath)
+	file, err := util.CreatePath(d.ConfigPath, 0777, 0666)
 	if err != nil {
 		return err
 	}

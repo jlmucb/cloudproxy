@@ -39,6 +39,7 @@ import (
 	"code.google.com/p/goprotobuf/proto"
 
 	"cloudproxy/tao/auth"
+	"cloudproxy/util"
 )
 
 // A KeyType represent the type(s) of keys held by a Keys struct.
@@ -959,7 +960,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string) (*Keys, er
 					return nil, err
 				}
 
-				if err = ioutil.WriteFile(k.PBEKeysetPath(), enc, 0600); err != nil {
+				if err = util.WritePath(k.PBEKeysetPath(), enc, 0700, 0600); err != nil {
 					return nil, err
 				}
 			}
@@ -1006,7 +1007,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string) (*Keys, er
 					return nil, err
 				}
 
-				pbes, err := os.Create(k.PBESignerPath())
+				pbes, err := util.CreatePath(k.PBESignerPath(), 0700, 0600)
 				if err != nil {
 					return nil, err
 				}
@@ -1281,7 +1282,7 @@ func NewOnDiskTaoSealedKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys
 			return nil, err
 		}
 
-		if err = ioutil.WriteFile(k.SealedKeysetPath(), enc, 0600); err != nil {
+		if err = util.WritePath(k.SealedKeysetPath(), enc, 0700, 0600); err != nil {
 			return nil, err
 		}
 
@@ -1299,7 +1300,7 @@ func NewOnDiskTaoSealedKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys
 				return nil, err
 			}
 
-			if err = ioutil.WriteFile(k.DelegationPath(), m, 0600); err != nil {
+			if err = util.WritePath(k.DelegationPath(), m, 0700, 0600); err != nil {
 				return nil, err
 			}
 		}

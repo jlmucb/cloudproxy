@@ -38,8 +38,8 @@ type TaoGuard interface {
 	// used as a predicate name.
 	GuardTypeName() string
 
-	// SaveConfig writes all presistent policy data to disk, signed by key.
-	SaveConfig(key *Signer) error
+	// Save writes all presistent policy data to disk, signed by key.
+	Save(key *Signer) error
 
 	// Authorize adds an authorization for a principal to perform an
 	// operation.
@@ -132,8 +132,8 @@ func (t TrivialGuard) GuardTypeName() string {
 	}
 }
 
-// SaveConfig writes all presistent policy data to disk, signed by key.
-func (t TrivialGuard) SaveConfig(key *Signer) error {
+// Save writes all presistent policy data to disk, signed by key.
+func (t TrivialGuard) Save(key *Signer) error {
 	return nil // nothing to save
 }
 

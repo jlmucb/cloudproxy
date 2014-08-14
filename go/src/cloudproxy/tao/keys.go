@@ -88,19 +88,14 @@ func GenerateSigner() (*Signer, error) {
 
 // ToPrincipal produces a "key" type Prin for this signer. This contains a
 // serialized CryptoKey for the public half of this signing key.
-func (s *Signer) ToPrincipal() (auth.Prin, error) {
-	var ck *CryptoKey
-	var err error
-	if ck, err = MarshalPublicSignerProto(s); err != nil {
-		return auth.Prin{}, nil
-	}
+func (s *Signer) ToPrincipal() auth.Prin {
+	ck := MarshalPublicSignerProto(s)
 
-	data, err := proto.Marshal(ck)
-	if err != nil {
-		return auth.Prin{}, err
-	}
+	// proto.Marshal won't fail here since we fill all required fields of the
+	// message. Propagating impossible errors just leads to clutter later.
+	data, _ := proto.Marshal(ck)
 
-	return auth.Prin{Type:"key", Key: data}, nil
+	return auth.Prin{Type:"key", Key: data}
 }
 
 // MarshalSignerDER serializes the signer to DER.
@@ -229,33 +224,30 @@ func unmarshalECDSA_SHA_VerifyingKeyV1(v *ECDSA_SHA_VerifyingKeyV1) (*ecdsa.Publ
 	return pk, nil
 }
 
-func marshalPublicKeyProto(k *ecdsa.PublicKey) (*CryptoKey, error) {
+func marshalPublicKeyProto(k *ecdsa.PublicKey) *CryptoKey {
 	m := marshalECDSA_SHA_VerifyingKeyV1(k)
 
-	b, err := proto.Marshal(m)
-	if err != nil {
-		return nil, err
-	}
+	// proto.Marshal won't fail here since we fill all required fields of the
+	// message. Propagating impossible errors just leads to clutter later.
+	b, _ := proto.Marshal(m)
 
-	ck := &CryptoKey{
+	return &CryptoKey{
 		Version:   CryptoVersion_CRYPTO_VERSION_1.Enum(),
 		Purpose:   CryptoKey_VERIFYING.Enum(),
 		Algorithm: CryptoKey_ECDSA_SHA.Enum(),
 		Key:       b,
 	}
-
-	return ck, nil
 }
 
 // MarshalPublicSignerProto encodes the public half of a signing key as a
 // CryptoKey protobuf message.
-func MarshalPublicSignerProto(s *Signer) (*CryptoKey, error) {
+func MarshalPublicSignerProto(s *Signer) *CryptoKey {
 	return marshalPublicKeyProto(&s.ec.PublicKey)
 }
 
 // MarshalVerifierProto encodes the public verifier key as a CryptoKey protobuf
 // message.
-func MarshalVerifierProto(v *Verifier) (*CryptoKey, error) {
+func MarshalVerifierProto(v *Verifier) *CryptoKey {
 	return marshalPublicKeyProto(v.ec)
 }
 
@@ -382,19 +374,14 @@ func (v *Verifier) Verify(data []byte, context string, sig []byte) (bool, error)
 
 // ToPrincipal produces a "key" type Prin for this verifier. This contains a
 // serialized CryptoKey for this key.
-func (v *Verifier) ToPrincipal() (auth.Prin, error) {
-	var ck *CryptoKey
-	var err error
-	if ck, err = MarshalVerifierProto(v); err != nil {
-		return auth.Prin{}, nil
-	}
+func (v *Verifier) ToPrincipal() auth.Prin {
+	ck := MarshalVerifierProto(v)
 
-	data, err := proto.Marshal(ck)
-	if err != nil {
-		return auth.Prin{}, err
-	}
+	// proto.Marshal won't fail here since we fill all required fields of the
+	// message. Propagating impossible errors just leads to clutter later.
+	data, _ := proto.Marshal(ck)
 
-	return auth.Prin{Type:"key", Key: data}, nil
+	return auth.Prin{Type:"key", Key: data}
 }
 
 // FromPrincipal deserializes a Verifier from a Prin.
@@ -1044,15 +1031,9 @@ func NewTemporaryTaoDelegatedKeys(keyTypes KeyType, t Tao) (*Keys, error) {
 	}
 
 	if k.SigningKey != nil {
-		prin, err := k.SigningKey.ToPrincipal()
-		if err != nil {
-			return nil, err
-		}
-
 		s := &auth.Speaksfor{
-			Delegate: prin,
+			Delegate: k.SigningKey.ToPrincipal(),
 		}
-
 		if k.Delegation, err = t.Attest(nil, nil, nil, s); err != nil {
 			return nil, err
 		}
@@ -1306,15 +1287,9 @@ func NewOnDiskTaoSealedKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys
 
 		// Get and write a delegation.
 		if k.SigningKey != nil {
-			prin, err := k.SigningKey.ToPrincipal()
-			if err != nil {
-				return nil, err
-			}
-
 			s := &auth.Speaksfor{
-				Delegate: prin,
+				Delegate: k.SigningKey.ToPrincipal(),
 			}
-
 			if k.Delegation, err = t.Attest(nil, nil, nil, s); err != nil {
 				return nil, err
 			}

@@ -118,10 +118,7 @@ func (a *Attestation) Validate() (auth.Says, error) {
 // GenerateAttestation uses the signing key to generate an attestation for this
 // statement.
 func GenerateAttestation(s *Signer, delegation []byte, stmt auth.Says) (*Attestation, error) {
-	signer, err := s.ToPrincipal()
-	if err != nil {
-		return nil, err
-	}
+	signer := s.ToPrincipal()
 
 	t := time.Now()
 	if stmt.Time == nil {

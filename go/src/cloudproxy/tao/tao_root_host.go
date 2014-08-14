@@ -33,14 +33,9 @@ func NewTaoRootHostFromKeys(k *Keys) (TaoHost, error) {
 		return nil, errors.New("missing required key for TaoRootHost")
 	}
 
-	n, err := k.SigningKey.ToPrincipal()
-	if err != nil {
-		return nil, err
-	}
-
 	t := &TaoRootHost{
 		keys:        k,
-		taoHostName: n,
+		taoHostName: k.SigningKey.ToPrincipal(),
 	}
 
 	return t, nil

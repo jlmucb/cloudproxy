@@ -73,7 +73,7 @@ type TaoGuard interface {
 
 	// Query the policy. Implementations of this interface should support
 	// at least queries of the form: Authorized(P, op, args...).
-	Query(query string) bool
+	Query(query string) (bool, error)
 
 	// RuleCount returns a count of the total number of rules.
 	RuleCount() int
@@ -188,14 +188,14 @@ func (t TrivialGuard) Clear() error {
 
 // Query the policy. Implementations of this interface should support
 // at least queries of the form: Authorized(P, op, args...).
-func (t TrivialGuard) Query(query string) bool {
+func (t TrivialGuard) Query(query string) (bool, error) {
 	switch t {
 	case ConservativeGuard:
-		return false
+		return false, nil
 	case LiberalGuard:
-		return true
+		return true, nil
 	default:
-		return false
+		return false, nil
 	}
 }
 

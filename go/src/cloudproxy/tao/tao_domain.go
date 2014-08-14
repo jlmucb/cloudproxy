@@ -153,6 +153,8 @@ func CreateDomain(cfg TaoDomainConfig, configPath string, password []byte) (*Tao
 		guard = LiberalGuard
 	case "TrivialLiberalGuard":
 		guard = ConservativeGuard
+	default:
+		return nil, fmt.Errorf("unrecognized guard type: %s", cfg.Domain.GuardType)
 	}
 
 	d := &TaoDomain{cfg, configPath, keys, guard}

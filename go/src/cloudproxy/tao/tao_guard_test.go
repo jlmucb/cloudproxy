@@ -26,10 +26,6 @@ func testNewTrivialLiberalGuard(t *testing.T) TaoGuard {
 		t.Fatal("Wrong subprincipal name for trivial liberal guard")
 	}
 
-	if tg.GuardTypeName() != "TrivialLiberalGuard" {
-		t.Fatal("Wrong guard type name from trivial liberal guard")
-	}
-
 	return tg
 }
 
@@ -37,10 +33,6 @@ func testNewTrivialConservativeGuard(t *testing.T) TaoGuard {
 	tg := ConservativeGuard
 	if tg.Subprincipal().String() != `.TrivialGuard("Conservative")` {
 		t.Fatal("Wrong subprincipal name for trivial conservative guard")
-	}
-
-	if tg.GuardTypeName() != "TrivialConservativeGuard" {
-		t.Fatal("Wrong guard type name from trivial conservative guard")
 	}
 
 	return tg
@@ -86,7 +78,7 @@ func testTrivialGuardClear(t *testing.T, tg TaoGuard) {
 }
 
 func testTrivialGuardQuery(t *testing.T, tg TaoGuard, expected bool) {
-	if tg.Query("fake query") != expected {
+	if res, err := tg.Query("fake query"); err != nil || res != expected {
 		t.Fatal("Query command incorrectly succeeded on trivial guard")
 	}
 }

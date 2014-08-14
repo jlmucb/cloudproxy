@@ -16,7 +16,6 @@ package tao
 
 import (
 	"crypto/rand"
-	"errors"
 	"io"
 	mrand "math/rand"
 	"testing"

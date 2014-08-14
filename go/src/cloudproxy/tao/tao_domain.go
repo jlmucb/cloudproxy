@@ -98,7 +98,7 @@ func (cfg *TaoDomainConfig) SetDefaults() {
 		cfg.Domain.PolicyKeysPath = "policy_keys"
 	}
 	if cfg.Domain.GuardType == "" {
-		cfg.Domain.GuardType = "TrivialConservativeGuard"
+		cfg.Domain.GuardType = "DenyAll"
 	}
 	switch cfg.Domain.GuardType {
 	case "ACLs":
@@ -151,9 +151,9 @@ func CreateDomain(cfg TaoDomainConfig, configPath string, password []byte) (*Tao
 		return nil, fmt.Errorf("acl guard not yet implemented")
 	case "Datalog":
 		return nil, fmt.Errorf("datalog guard not yet implemented")
-	case "TrivialConservativeGuard":
+	case "AllowAll":
 		guard = LiberalGuard
-	case "TrivialLiberalGuard":
+	case "DenyAll":
 		guard = ConservativeGuard
 	default:
 		return nil, fmt.Errorf("unrecognized guard type: %s", cfg.Domain.GuardType)
@@ -202,9 +202,9 @@ func LoadDomain(configPath string, password []byte) (*TaoDomain, error) {
 		return nil, fmt.Errorf("acl guard not yet implemented")
 	case "Datalog":
 		return nil, fmt.Errorf("datalog guard not yet implemented")
-	case "TrivialConservativeGuard":
+	case "AllowAll":
 		guard = LiberalGuard
-	case "TrivialLiberalGuard":
+	case "DenyAll":
 		guard = ConservativeGuard
 	}
 

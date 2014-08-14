@@ -34,10 +34,6 @@ type TaoGuard interface {
 	// Subprincipal returns a unique subprincipal for this policy.
 	Subprincipal() auth.SubPrin
 
-	// GuardTypeName returns a name for this type of guard, one that be
-	// used as a predicate name.
-	GuardTypeName() string
-
 	// Save writes all presistent policy data to disk, signed by key.
 	Save(key *Signer) error
 
@@ -120,18 +116,6 @@ func (t TrivialGuard) Subprincipal() auth.SubPrin {
 	return auth.SubPrin{e}
 }
 
-// GuardTypeName returns "Trivial<type>Guard" as the type of this guard.
-func (t TrivialGuard) GuardTypeName() string {
-	switch t {
-	case ConservativeGuard:
-		return "TrivialConservativeGuard"
-	case LiberalGuard:
-		return "TrivialLiberalGuard"
-	default:
-		return "TrivialUnspecifiedGuard"
-	}
-}
-
 // Save writes all presistent policy data to disk, signed by key.
 func (t TrivialGuard) Save(key *Signer) error {
 	return nil // nothing to save
@@ -212,7 +196,7 @@ func (t TrivialGuard) GetRule(i int) string {
 	case LiberalGuard:
 		return "Allow All"
 	default:
-		return "Unknown Policy"
+		return "Unspecified Policy"
 	}
 }
 
@@ -226,7 +210,7 @@ func (t TrivialGuard) RuleDebugString(i int) string {
 	case LiberalGuard:
 		return "Allow All"
 	default:
-		return "Unknown Policy"
+		return "Unspecified Policy"
 	}
 }
 
@@ -238,6 +222,6 @@ func (t TrivialGuard) String() string {
 	case LiberalGuard:
 		return "Trivial Liberal Policy (a.k.a. \"allow all\")"
 	default:
-		return "Unknown Policy"
+		return "Unspecified Policy"
 	}
 }

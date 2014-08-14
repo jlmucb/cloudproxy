@@ -21,6 +21,7 @@ import (
 	"os"
 
 	"cloudproxy/tao"
+	"cloudproxy/util"
 )
 
 var configPath = flag.String("config_path", "tao.config", "Location of tao domain configuration")
@@ -75,6 +76,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, help, os.Args[0])
 		flag.PrintDefaults()
 	}
+	util.UseEnvFlags("GLOG", "TAO")
 	flag.Parse()
 
 	if countSet(*create, *show, *service, *shutdown, *run, *stop, *kill, *list, *name) > 1 {

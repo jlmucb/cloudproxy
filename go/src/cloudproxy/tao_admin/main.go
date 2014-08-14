@@ -25,6 +25,7 @@ import (
 
 	"cloudproxy/tao"
 	"cloudproxy/tao/auth"
+	"cloudproxy/util"
 )
 
 // common options
@@ -62,6 +63,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, help, os.Args[0])
 		flag.PrintDefaults()
 	}
+	util.UseEnvFlags("GLOG", "TAO")
 	flag.Parse()
 
 	var noise io.Writer

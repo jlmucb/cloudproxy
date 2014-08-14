@@ -119,24 +119,34 @@ fi
 cat <<END > "$test_dir/tao.env"
 # Tao/CloudProxy environment variables"
 export TAO_TEST="$test_dir" # Also hardcoded into $test_dir/scripts/*.sh
-
 export TAO_ROOTDIR="$root_dir"
 export TAO_USE_TPM="$test_tpm"
-export TAO_GUARD="$test_guard"
-export TAO_pass="BogusPass"
-export TAO_policy_pass="BogusPass"
+
+# Flags for tao programs
 export TAO_config_path="${TAO_TEST}/tao.config"
-export TAOHOST_root=$tao_root
-export TAOHOST_stacked=$tao_stacked
-export TAOHOST_path=${TAO_TEST}/linux_tao_host 
-export TAOTPM_path=${TAO_TEST}/tpm 
-export TAOTPM_pcrs="17, 18"
+export TAO_guard="$test_guard"
+
+# Flags for tao_admin
+export TAO_ADMIN_pass="BogusPass"
+
+# Flags for linux_host
+export TAO_HOST_pass="BogusPass"
+export TAO_HOST_root=$tao_root
+export TAO_HOST_stacked=$tao_stacked
+export TAO_HOST_path=${TAO_TEST}/linux_tao_host 
+
+# Flags for tpm_tao
+export TAO_TPM_path=${TAO_TEST}/tpm 
+export TAO_TPM_pcrs="17, 18"
+
+# Flags for glog
 export GLOG_v=2
 export GLOG_logtostderr="no"
 export GLOG_alsologtostderr="no"
 export GLOG_stderrthreshold=3 # Only log FATAL to stderr.
 export GLOG_log_dir="\${TAO_TEST}/logs"
 
+# Misc.
 export TAO_HOSTED_PROGRAMS="
 \${TAO_TEST}/bin/demo 
 \${TAO_TEST}/bin/demo_server

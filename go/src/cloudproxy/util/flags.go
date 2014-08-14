@@ -27,22 +27,21 @@ import (
 // override those on the command line.
 func UseEnvFlags(prefix ...string) {
 	env := os.Environ()
-	// split {envPrefix}_{envVar}={envVal}
-	var envPrefix, envName, envVal []string
+	// split {envName}={envVal}
+	var envName, envVal []string
 	for _, pair := range env {
 		p := strings.SplitN(pair, "=", 2)
-		k := strings.SplitN(p[0], "_", 2)
-		if len(p) == 2 && len(k) == 2 {
-			envPrefix = append(envPrefix, k[0])
-			envName = append(envName, k[1])
+		if len(p) == 2 {
+			envName = append(envName, p[0])
 			envVal = append(envVal, p[1])
 		}
 	}
 	// look for each prefix
 	for _, prefix := range prefix {
-		for i := range envPrefix {
-			if envPrefix[i] == prefix {
-				if f := flag.Lookup(envName[i]); f != nil {
+		n := len(prefix)+1
+		for i := range envName {
+			if strings.HasPrefix(envName[i], prefix + "_") {
+				if f := flag.Lookup(envName[i][n:]); f != nil {
 					f.Value.Set(envVal[i])
 				}
 			}

@@ -20,6 +20,7 @@ import (
 	"errors"
 
 	"cloudproxy/tao/auth"
+	"cloudproxy/util"
 )
 
 // MakePredicate constructs an authorization predicate of the form:
@@ -124,7 +125,10 @@ func (t TrivialGuard) Save(key *Signer) error {
 // Authorize adds an authorization for a principal to perform an
 // operation.
 func (t TrivialGuard) Authorize(name auth.Prin, op string, args []string) error {
-	return errTrivialGuard
+	if t != LiberalGuard {
+		return util.Logged(errTrivialGuard)
+	}
+	return nil
 }
 
 // Retract removes an authorization for a principal to perform an
@@ -135,7 +139,10 @@ func (t TrivialGuard) Authorize(name auth.Prin, op string, args []string) error 
 // supported (e.g., an "authorize all" rule), other rules may still be
 // in place authorizing the principal to perform the operation.
 func (t TrivialGuard) Retract(name auth.Prin, op string, args []string) error {
-	return errTrivialGuard
+	if t != ConservativeGuard {
+		return util.Logged(errTrivialGuard)
+	}
+	return nil
 }
 
 // IsAuthorized checks whether a principal is authorized to perform an
@@ -156,18 +163,24 @@ func (t TrivialGuard) IsAuthorized(name auth.Prin, op string, args []string) boo
 // calling Authorize(P, op, args...) with each of the arguments
 // converted to either a string or integer.
 func (t TrivialGuard) AddRule(rule string) error {
-	return errTrivialGuard
+	if t != LiberalGuard {
+		return util.Logged(errTrivialGuard)
+	}
+	return nil
 }
 
 // RetractRule removes a rule previously added via AddRule() or the
 // equivalent Authorize() call.
 func (t TrivialGuard) RetractRule(rule string) error {
-	return errTrivialGuard
+	if t != ConservativeGuard {
+		return util.Logged(errTrivialGuard)
+	}
+	return nil
 }
 
 // Clear removes all rules.
 func (t TrivialGuard) Clear() error {
-	return errTrivialGuard
+	return nil
 }
 
 // Query the policy. Implementations of this interface should support

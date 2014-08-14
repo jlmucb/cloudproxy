@@ -114,17 +114,20 @@ func UnmarshalSignerDER(signer []byte) (*Signer, error) {
 	return k, nil
 }
 
-func ParseX509SubjectName(name string) (*pkix.Name, error) {
-	p := new(X509Details)
-	if err := proto.UnmarshalText(name, p); err != nil {
-		return nil, err
-	}
+// X509Details is a simplified version of pkix.Name, suitable for most purposes.
+// All of the fields are optional.
+type X509Details struct {
+	CommonName, Country, State, Organization string
+}
+
+// NewX509Name returns a new pkix.Name.
+func NewX509Name(p X509Details) *pkix.Name {
 	return &pkix.Name{
 		Country:      []string{string(p.Country)},
 		Organization: []string{string(p.Organization)},
 		Province:     []string{string(p.State)},
-		CommonName:   string(p.Commonname),
-	}, nil
+		CommonName:   string(p.CommonName),
+	}
 }
 
 // prepareX509Template fills out an X.509 template for use in x509.CreateCertificate.
@@ -856,8 +859,9 @@ func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
 }
 
 // NewOnDiskPBEKeys creates a new Keys structure with the specified key types
-// store under PBE on disk.
-func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string) (*Keys, error) {
+// store under PBE on disk. If keys are generated and name is not nil, then a
+// self-signed x509 certificate will be generated and saved as well.
+func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix.Name) (*Keys, error) {
 	if keyTypes == 0 || (keyTypes & ^Signing & ^Crypting & ^Deriving != 0) {
 		return nil, newError("bad key type")
 	}
@@ -964,6 +968,13 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string) (*Keys, er
 				if err = util.WritePath(k.PBEKeysetPath(), enc, 0700, 0600); err != nil {
 					return nil, err
 				}
+
+				if k.SigningKey != nil && name != nil {
+					k.Cert, err = k.SigningKey.CreateSelfSignedX509(name)
+					if err != nil {
+						return nil, err
+					}
+				}
 			}
 		} else {
 			// There's just a signer, so do PEM encryption of the encoded key.
@@ -1017,6 +1028,13 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string) (*Keys, er
 
 				if err = pem.Encode(pbes, pb); err != nil {
 					return nil, err
+				}
+
+				if k.SigningKey != nil && name != nil {
+					k.Cert, err = k.SigningKey.CreateSelfSignedX509(name)
+					if err != nil {
+						return nil, err
+					}
 				}
 			}
 		}

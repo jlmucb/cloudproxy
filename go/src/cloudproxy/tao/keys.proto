@@ -152,17 +152,3 @@ message KeyDerivationPDU {
   required string context = 3;
   required fixed32 index = 4;
 }
-
-message X509Details {
-  // Requested x509 CommonName detail
-  optional bytes commonname = 3;
-
-  // Requested x509 Country detail
-  optional bytes country = 4;
-
-  // Requested x509 State detail
-  optional bytes state = 5;
-
-  // Requested x509 Organization detail
-  optional bytes organization = 6;
-}

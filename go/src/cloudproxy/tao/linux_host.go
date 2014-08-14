@@ -74,7 +74,7 @@ func NewStackedLinuxHost(path string, guard TaoGuard, hostTao Tao) (*LinuxHost, 
 // provide the Tao to hosted Linux processes.
 func NewRootLinuxHost(path string, guard TaoGuard, password []byte) (*LinuxHost, error) {
 	lh := &LinuxHost{guard: guard}
-	k, err := NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, path)
+	k, err := NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, path, nil)
 	if err != nil {
 		return nil, err
 	}

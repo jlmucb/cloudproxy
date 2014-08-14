@@ -109,11 +109,11 @@ ln -s $root_dir/go/bin bin
 mkdir -p logs
 
 if [ "$test_tpm" == "yes" ]; then
-	test_root=0
-	test_stacked=1
+	test_root=false
+	test_stacked=true
 else
-	test_root=1
-	test_stacked=0
+	test_root=true
+	test_stacked=false
 fi
 
 cat <<END > "$test_dir/tao.env"
@@ -123,7 +123,7 @@ export TAO_ROOTDIR="$root_dir"
 export TAO_USE_TPM="$test_tpm"
 
 # Flags for tao programs
-export TAO_config_path="${TAO_TEST}/tao.config"
+export TAO_config_path="${test_dir}/tao.config"
 export TAO_guard="$test_guard"
 
 # Flags for tao_admin
@@ -131,12 +131,12 @@ export TAO_ADMIN_pass="BogusPass"
 
 # Flags for linux_host
 export TAO_HOST_pass="BogusPass"
-export TAO_HOST_root=$tao_root
-export TAO_HOST_stacked=$tao_stacked
-export TAO_HOST_path=${TAO_TEST}/linux_tao_host 
+export TAO_HOST_root="$test_root"
+export TAO_HOST_stacked="$test_stacked"
+export TAO_HOST_path="${test_dir}/linux_tao_host "
 
 # Flags for tpm_tao
-export TAO_TPM_path=${TAO_TEST}/tpm 
+export TAO_TPM_path="${test_dir}/tpm "
 export TAO_TPM_pcrs="17, 18"
 
 # Flags for glog
@@ -276,13 +276,13 @@ function setup()
 	if [ "$TAO_USE_TPM" == "yes" ]; then
 		echo "Creating TPMTao AIK and settings."
 		rm -rf ${TAOTPM_path}
-		tpm_tao --create --noshow
+		tpm_tao --create --show=false
 		tpm_tao --show >> ${tao_env}
 	fi
 
 	echo "Creating LinuxHost keys and settings."
 	rm -rf ${TAOHOST_path}
-	linux_host --create --noshow
+	linux_host --create --show=false
 	linux_host --show >> ${tao_env}
 
 	echo "# END SETUP VARIABLES" >> ${tao_env}

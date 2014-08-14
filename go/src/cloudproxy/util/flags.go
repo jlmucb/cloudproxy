@@ -38,9 +38,9 @@ func UseEnvFlags(prefix ...string) {
 	}
 	// look for each prefix
 	for _, prefix := range prefix {
-		n := len(prefix)+1
+		n := len(prefix) + 1
 		for i := range envName {
-			if strings.HasPrefix(envName[i], prefix + "_") {
+			if strings.HasPrefix(envName[i], prefix+"_") {
 				if f := flag.Lookup(envName[i][n:]); f != nil {
 					f.Value.Set(envVal[i])
 				}

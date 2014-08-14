@@ -608,50 +608,6 @@ func (m *KeyDerivationPDU) GetIndex() uint32 {
 	return 0
 }
 
-type X509Details struct {
-	// Requested x509 CommonName detail
-	Commonname []byte `protobuf:"bytes,3,opt,name=commonname" json:"commonname,omitempty"`
-	// Requested x509 Country detail
-	Country []byte `protobuf:"bytes,4,opt,name=country" json:"country,omitempty"`
-	// Requested x509 State detail
-	State []byte `protobuf:"bytes,5,opt,name=state" json:"state,omitempty"`
-	// Requested x509 Organization detail
-	Organization     []byte `protobuf:"bytes,6,opt,name=organization" json:"organization,omitempty"`
-	XXX_unrecognized []byte `json:"-"`
-}
-
-func (m *X509Details) Reset()         { *m = X509Details{} }
-func (m *X509Details) String() string { return proto.CompactTextString(m) }
-func (*X509Details) ProtoMessage()    {}
-
-func (m *X509Details) GetCommonname() []byte {
-	if m != nil {
-		return m.Commonname
-	}
-	return nil
-}
-
-func (m *X509Details) GetCountry() []byte {
-	if m != nil {
-		return m.Country
-	}
-	return nil
-}
-
-func (m *X509Details) GetState() []byte {
-	if m != nil {
-		return m.State
-	}
-	return nil
-}
-
-func (m *X509Details) GetOrganization() []byte {
-	if m != nil {
-		return m.Organization
-	}
-	return nil
-}
-
 func init() {
 	proto.RegisterEnum("tao.CryptoVersion", CryptoVersion_name, CryptoVersion_value)
 	proto.RegisterEnum("tao.NamedEllipticCurve", NamedEllipticCurve_name, NamedEllipticCurve_value)

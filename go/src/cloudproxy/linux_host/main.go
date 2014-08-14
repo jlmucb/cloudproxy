@@ -76,7 +76,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, help, os.Args[0])
 		flag.PrintDefaults()
 	}
-	util.UseEnvFlags("GLOG", "TAO")
+	util.UseEnvFlags("GLOG", "TAO", "TAO_HOST")
 	flag.Parse()
 
 	if countSet(*create, *show, *service, *shutdown, *run, *stop, *kill, *list, *name) > 1 {
@@ -89,6 +89,9 @@ func main() {
 		fatalIf(err)
 		var host *tao.LinuxHost
 		if *root {
+			if len(*pass) == 0 {
+				log.Fatal("password is required")
+			}
 			host, err = tao.NewRootLinuxHost(*path, domain.Guard, []byte(*pass))
 		} else if *stacked {
 			if !tao.HostAvailable() {

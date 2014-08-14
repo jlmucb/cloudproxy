@@ -15,7 +15,6 @@
 package tao
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path"
@@ -65,6 +64,8 @@ type TaoDomainConfig struct {
 		// Type of guard to use for domain-wide policy decisions
 		GuardType string
 	}
+	// Details used for the domain signing key x509 certificate
+	X509Details X509Details
 	// Policy-specific configuration (optional)
 	// ACLGuard ACLGuardConfig
 	// Policy-specific configuration (optional)
@@ -72,21 +73,8 @@ type TaoDomainConfig struct {
 }
 
 // Print prints the configuration to out.
-func (cfg TaoDomainConfig) Print(out io.Writer) {
-	fmt.Fprintf(out, "# Tao Domain Configuration file\n")
-	fmt.Fprintf(out, "\n")
-	fmt.Fprintf(out, "[Domain]\n")
-	fmt.Fprintf(out, "Name = %s\n", cfg.Domain.Name)
-	fmt.Fprintf(out, "PolicyKeysPath = %s\n", cfg.Domain.PolicyKeysPath)
-	fmt.Fprintf(out, "GuardType = %s\n", cfg.Domain.GuardType)
-	switch cfg.Domain.GuardType {
-	case "ACLs":
-		fmt.Fprintf(out, "\n")
-		// cfg.ACLGuard.Print(out)
-	case "Datalog":
-		fmt.Fprintf(out, "\n")
-		// cfg.DatalogGuard.Print(out)
-	}
+func (cfg TaoDomainConfig) Print(out io.Writer) error {
+	return util.PrintAsGitConfig(out, cfg, "Tao Domain Configuration file")
 }
 
 // SetDefaults sets each blank field of cfg to a reasonable default value.
@@ -99,6 +87,9 @@ func (cfg *TaoDomainConfig) SetDefaults() {
 	}
 	if cfg.Domain.GuardType == "" {
 		cfg.Domain.GuardType = "DenyAll"
+	}
+	if cfg.X509Details.CommonName == "" {
+		cfg.X509Details.CommonName = cfg.Domain.Name
 	}
 	switch cfg.Domain.GuardType {
 	case "ACLs":
@@ -140,7 +131,7 @@ func CreateDomain(cfg TaoDomainConfig, configPath string, password []byte) (*Tao
 	}
 
 	keypath := path.Join(configDir, cfg.Domain.PolicyKeysPath)
-	keys, err := NewOnDiskPBEKeys(Signing, password, keypath)
+	keys, err := NewOnDiskPBEKeys(Signing, password, keypath, NewX509Name(cfg.X509Details))
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +181,7 @@ func LoadDomain(configPath string, password []byte) (*TaoDomain, error) {
 		return nil, err
 	}
 
-	keys, err := NewOnDiskPBEKeys(Signing, password, cfg.Domain.PolicyKeysPath)
+	keys, err := NewOnDiskPBEKeys(Signing, password, cfg.Domain.PolicyKeysPath, nil)
 	if err != nil {
 		return nil, err
 	}

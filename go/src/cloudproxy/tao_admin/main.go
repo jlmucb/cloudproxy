@@ -30,7 +30,7 @@ import (
 
 // common options
 var configPath = flag.String("config_path", "tao.config", "Location of tao domain configuration.")
-var pass = flag.String("policy_pass", "", "Password for unlocking policy private key.")
+var pass = flag.String("pass", "", "Password for unlocking policy private key.")
 var quiet = flag.Bool("quiet", false, "Be more quiet.")
 var show = flag.Bool("show", false, "Show info when done.")
 var host = flag.String("host", "", "The principal name of the host where programs will execute.")
@@ -63,7 +63,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, help, os.Args[0])
 		flag.PrintDefaults()
 	}
-	util.UseEnvFlags("GLOG", "TAO")
+	util.UseEnvFlags("GLOG", "TAO", "TAO_ADMIN")
 	flag.Parse()
 
 	var noise io.Writer
@@ -80,10 +80,14 @@ func main() {
 
 	if *create {
 		didWork = true
+		if len(*pass) == 0 {
+			log.Fatal("password is required")
+		}
 		fmt.Fprintf(noise, "Initializing new configuration in: %s\n", *configPath)
 		var cfg tao.TaoDomainConfig
 		if *name != "" {
 			cfg.Domain.Name = *name
+			cfg.X509Details.CommonName = *name
 		}
 		if *guard != "" {
 			cfg.Domain.GuardType = *guard

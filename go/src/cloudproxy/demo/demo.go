@@ -25,11 +25,11 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
 	"cloudproxy/tao"
+	"cloudproxy/tao/auth"
 	"cloudproxy/util"
 )
 
@@ -302,12 +302,13 @@ func hostTaoDemo() error {
 	}
 	fmt.Printf("My root name is %s\n", name)
 
-	args := make([]string, len(os.Args))
-	for index, arg := range os.Args {
-		args[index] = strconv.Quote(arg)
+	// TODO(kwalsh) Make a convenience function for this
+	var args []auth.Term
+	for _, arg := range os.Args {
+		args = append(args, auth.Str(arg))
 	}
-	subprin := "Args(" + strings.Join(args, ", ") + ")"
-	err = tao.Host().ExtendTaoName(subprin)
+	e := auth.PrinExt{Name:"Args", Arg: args}
+	err = tao.Host().ExtendTaoName(auth.SubPrin{e})
 	if err != nil {
 		return err
 	}

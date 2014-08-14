@@ -25,7 +25,7 @@ import (
 )
 
 const stackTraceDepth = 100
-const showFileNames = false
+const showFileNames = true
 
 var previousTrace []uintptr
 var logging sync.Mutex
@@ -61,20 +61,38 @@ func Logged(err error) error {
 		omit = 0
 	}
 
-	var context bytes.Buffer
+	var count, place, call []string
+	placeWidth := 0
+	countWidth := 0
 	for i := 0; i < n-omit; i++ {
 		f := runtime.FuncForPC(stackTrace[i])
-		file, line := f.FileLine(stackTrace[i])
+		thisCount := fmt.Sprintf("[%d]", i+1)
+		thisCall := fmt.Sprintf("%s()", f.Name())
+		thisPlace := ""
 		if showFileNames {
+			file, line := f.FileLine(stackTrace[i])
 			parts := strings.SplitAfter(file, "/")
 			if len(parts) > 2 {
 				file = parts[len(parts)-2] + parts[len(parts)-1]
 			}
-			fmt.Fprintf(&context, "  [%d] %s:%d %s()\n", i+1, file, line, f.Name())
-		} else {
-			fmt.Fprintf(&context, "  [%d] line %4d %s()\n", i+1, line, f.Name())
+			thisPlace = fmt.Sprintf("%s:%-4d", file, line)
+		}
+		count = append(count, thisCount)
+		place = append(place, thisPlace)
+		call = append(call, thisCall)
+		if len(thisPlace) > placeWidth {
+			placeWidth = len(thisPlace)
+		}
+		if len(thisCount) > countWidth {
+			countWidth = len(thisCount)
 		}
 	}
+
+	var context bytes.Buffer
+	for i := 0; i < n-omit; i++ {
+		fmt.Fprintf(&context, "  %-*s %-*s %s\n", countWidth, count[i], placeWidth, place[i], call[i])
+	}
+
 	if omit > 0 {
 		// TODO(kwalsh) maybe more info, e.g.:
 		// fmt.Fprintf(&context, "  ... %d additional omitted\n", omit)

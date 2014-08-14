@@ -976,8 +976,8 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string) (*Keys, er
 					return nil, err
 				}
 
-				pb, r := pem.Decode(ss)
-				if r != nil {
+				pb, rest := pem.Decode(ss)
+				if pb == nil || len(rest) > 0 {
 					return nil, newError("decoding failure")
 				}
 

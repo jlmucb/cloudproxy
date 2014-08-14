@@ -882,23 +882,15 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 			return nil, newError("without a password, only a verifying key can be loaded")
 		}
 
-		f, err := os.Open(k.X509Path())
+		err := k.loadCert()
 		if err != nil {
 			return nil, err
 		}
-		defer f.Close()
-
-		der, err := ioutil.ReadAll(f)
-		if err != nil {
-			return nil, err
+		if k.Cert == nil {
+			return nil, newError("no password and can't load cert: %s", k.X509Path())
 		}
 
-		cert, err := x509.ParseCertificate(der)
-		if err != nil {
-			return nil, err
-		}
-
-		if k.VerifyingKey, err = FromX509(cert); err != nil {
+		if k.VerifyingKey, err = FromX509(k.Cert); err != nil {
 			return nil, err
 		}
 	} else {
@@ -934,6 +926,11 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 					return nil, err
 				}
 
+				err = k.loadCert()
+				if err != nil {
+					return nil, err
+				}
+
 				k.SigningKey = ktemp.SigningKey
 				k.VerifyingKey = ktemp.VerifyingKey
 				k.CryptingKey = ktemp.CryptingKey
@@ -965,12 +962,12 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 					return nil, err
 				}
 
-				if err = util.WritePath(k.PBEKeysetPath(), enc, 0700, 0600); err != nil {
+				if err = util.WritePath(k.PBEKeysetPath(), enc, 0777, 0600); err != nil {
 					return nil, err
 				}
 
 				if k.SigningKey != nil && name != nil {
-					k.Cert, err = k.SigningKey.CreateSelfSignedX509(name)
+					err = k.newCert(name)
 					if err != nil {
 						return nil, err
 					}
@@ -997,6 +994,11 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 					return nil, err
 				}
 				defer zeroBytes(p)
+
+				err = k.loadCert()
+				if err != nil {
+					return nil, err
+				}
 
 				if k.SigningKey, err = UnmarshalSignerDER(p); err != nil {
 					return nil, err
@@ -1031,7 +1033,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 				}
 
 				if k.SigningKey != nil && name != nil {
-					k.Cert, err = k.SigningKey.CreateSelfSignedX509(name)
+					err = k.newCert(name)
 					if err != nil {
 						return nil, err
 					}
@@ -1041,6 +1043,33 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 	}
 
 	return k, nil
+}
+
+func (k *Keys) newCert(name *pkix.Name) (err error) {
+	k.Cert, err = k.SigningKey.CreateSelfSignedX509(name)
+	if err != nil {
+		return err
+	}
+	if err = util.WritePath(k.X509Path(), k.Cert.Raw, 0777, 0666); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (k *Keys) loadCert() error {
+	f, err := os.Open(k.X509Path())
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+
+	der, err := ioutil.ReadAll(f)
+	if err != nil {
+		return err
+	}
+
+	k.Cert, err = x509.ParseCertificate(der)
+	return err
 }
 
 // NewTemporaryTaoDelegatedKeys initializes a set of temporary keys under a host

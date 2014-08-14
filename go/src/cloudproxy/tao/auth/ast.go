@@ -238,7 +238,7 @@ func (s SubPrin) Identical(other SubPrin) bool {
 	if len(s) != len(other) {
 		return false
 	}
-	for i, e := range(s) {
+	for i, e := range s {
 		if !e.Identical(other[i]) {
 			return false
 		}

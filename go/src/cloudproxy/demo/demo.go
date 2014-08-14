@@ -307,7 +307,7 @@ func hostTaoDemo() error {
 	for _, arg := range os.Args {
 		args = append(args, auth.Str(arg))
 	}
-	e := auth.PrinExt{Name:"Args", Arg: args}
+	e := auth.PrinExt{Name: "Args", Arg: args}
 	err = tao.Host().ExtendTaoName(auth.SubPrin{e})
 	if err != nil {
 		return err

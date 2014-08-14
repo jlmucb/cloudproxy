@@ -102,9 +102,9 @@ func main() {
 		if *create {
 			fmt.Printf("LinuxHost Service: %s\n", host.TaoHostName())
 		} else if *show {
-      fmt.Printf("export GOOGLE_TAO_LINUX='%v'\n", host.TaoHostName())
+			fmt.Printf("export GOOGLE_TAO_LINUX='%v'\n", host.TaoHostName())
 		} else /* service */ {
-      fmt.Printf("Linux Tao Service started and waiting for requests\n")
+			fmt.Printf("Linux Tao Service started and waiting for requests\n")
 			// listen
 		}
 	} else {

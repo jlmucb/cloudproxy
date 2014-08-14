@@ -149,4 +149,3 @@ func GenerateAttestation(s *Signer, delegation []byte, stmt auth.Says) (*Attesta
 
 	return a, nil
 }
-

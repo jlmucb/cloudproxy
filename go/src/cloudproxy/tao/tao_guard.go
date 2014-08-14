@@ -112,7 +112,7 @@ func (t TrivialGuard) Subprincipal() auth.SubPrin {
 	default:
 		policy = "Unspecified"
 	}
-	e := auth.PrinExt{Name: "TrivialGuard", Arg:[]auth.Term{auth.Str(policy)}}
+	e := auth.PrinExt{Name: "TrivialGuard", Arg: []auth.Term{auth.Str(policy)}}
 	return auth.SubPrin{e}
 }
 

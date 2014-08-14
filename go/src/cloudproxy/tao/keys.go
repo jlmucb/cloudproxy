@@ -95,7 +95,7 @@ func (s *Signer) ToPrincipal() auth.Prin {
 	// message. Propagating impossible errors just leads to clutter later.
 	data, _ := proto.Marshal(ck)
 
-	return auth.Prin{Type:"key", Key: data}
+	return auth.Prin{Type: "key", Key: data}
 }
 
 // MarshalSignerDER serializes the signer to DER.
@@ -381,7 +381,7 @@ func (v *Verifier) ToPrincipal() auth.Prin {
 	// message. Propagating impossible errors just leads to clutter later.
 	data, _ := proto.Marshal(ck)
 
-	return auth.Prin{Type:"key", Key: data}
+	return auth.Prin{Type: "key", Key: data}
 }
 
 // FromPrincipal deserializes a Verifier from a Prin.

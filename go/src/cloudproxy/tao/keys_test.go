@@ -400,7 +400,7 @@ func TestNewOnDiskPBESigner(t *testing.T) {
 }
 
 func TestNewTemporaryTaoDelegatedKeys(t *testing.T) {
-	ft, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
+	ft, err := NewFakeTao(auth.Prin{Type: "key", Key: []byte("test")}, "", nil)
 	if err != nil {
 		t.Fatal("Couldn't initialize a FakeTao:", err)
 	}
@@ -418,7 +418,7 @@ func TestNewOnDiskTaoSealedKeys(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	ft, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
+	ft, err := NewFakeTao(auth.Prin{Type: "key", Key: []byte("test")}, "", nil)
 	if err != nil {
 		t.Fatal("Couldn't initialize a FakeTao:", err)
 	}

@@ -39,4 +39,3 @@ func CreatePath(filepath string, dirPerm, filePerm os.FileMode) (*os.File, error
 	}
 	return os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, filePerm)
 }
-

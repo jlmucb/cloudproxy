@@ -33,7 +33,7 @@ func testNewLinuxHostServer(t *testing.T) (*LinuxHostServer, string) {
 	// so they don't need to be filled here.
 	lhs := &LinuxHostServer{
 		host:         lh,
-		ChildSubprin: auth.SubPrin{auth.PrinExt{Name:"TestChild"}},
+		ChildSubprin: auth.SubPrin{auth.PrinExt{Name: "TestChild"}},
 	}
 	return lhs, tmpdir
 }
@@ -54,7 +54,7 @@ func TestLinuxHostServerGetTaoName(t *testing.T) {
 
 func TestLinuxHostServerExtendTaoName(t *testing.T) {
 	r := &TaoRPCRequest{
-		Data: auth.Marshal(auth.SubPrin{auth.PrinExt{Name:"Extension"}}),
+		Data: auth.Marshal(auth.SubPrin{auth.PrinExt{Name: "Extension"}}),
 	}
 	s := &TaoRPCResponse{}
 	lhs, tmpdir := testNewLinuxHostServer(t)
@@ -123,10 +123,10 @@ func TestLinuxHostServerAttest(t *testing.T) {
 	message := auth.Pred{Name: "FakePredicate"}
 
 	r := &TaoRPCRequest{
-		Data:          auth.Marshal(message),
-		Time:          proto.Int64(time.Now().UnixNano()),
-		Expiration:    proto.Int64(time.Now().Add(24 * time.Hour).UnixNano()),
-		Issuer:        st.Data,
+		Data:       auth.Marshal(message),
+		Time:       proto.Int64(time.Now().UnixNano()),
+		Expiration: proto.Int64(time.Now().Add(24 * time.Hour).UnixNano()),
+		Issuer:     st.Data,
 	}
 	s := &TaoRPCResponse{}
 	if err := lhs.Attest(r, s); err != nil {

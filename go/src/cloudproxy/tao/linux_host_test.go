@@ -29,7 +29,7 @@ func testNewStackedLinuxHost(t *testing.T) (*LinuxHost, string) {
 		t.Fatal("Couldn't get a temp directory for the new stacked linux host")
 	}
 
-	ft, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
+	ft, err := NewFakeTao(auth.Prin{Type: "key", Key: []byte("test")}, "", nil)
 	if err != nil {
 		t.Fatal("Couldn't create a new fake Tao:", err)
 	}
@@ -73,7 +73,7 @@ func TestNewRootLinuxHost(t *testing.T) {
 
 // Test the methods directly instead of testing them across a channel.
 
-var testChildLH = auth.SubPrin{auth.PrinExt{Name:"TestChild"}}
+var testChildLH = auth.SubPrin{auth.PrinExt{Name: "TestChild"}}
 
 func testLinuxHostHandleGetTaoName(t *testing.T, lh *LinuxHost) {
 	if !lh.handleGetTaoName(testChildLH).Identical(lh.taoHost.TaoHostName().MakeSubprincipal(testChildLH)) {

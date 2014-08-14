@@ -38,10 +38,10 @@ import (
 // and directory paths within the tao.config file are relative to the location
 // of the tao.config file itself.
 type TaoDomain struct {
-	Config TaoDomainConfig
+	Config     TaoDomainConfig
 	ConfigPath string
-	Keys *Keys
-	Guard TaoGuard
+	Keys       *Keys
+	Guard      TaoGuard
 }
 
 // TODO(kwalsh) Move to acl_guard.go when that file exists.
@@ -54,7 +54,7 @@ type DatalogGuard struct {
 	SignedRulesPath string
 }
 
-// TaoDomainConfig holds the presistent configuration data for a domain. 
+// TaoDomainConfig holds the presistent configuration data for a domain.
 type TaoDomainConfig struct {
 	// Policy-agnostic configuration
 	Domain struct {
@@ -178,7 +178,6 @@ func (d *TaoDomain) Save() error {
 	return d.Guard.Save(d.Keys.SigningKey)
 }
 
-
 // LoadDomain initialize a TaoDomain from an existing configuration file. If
 // password is nil, the object will be "locked", meaning that the policy private
 // signing key will not be available, new ACL entries or attestations can not be
@@ -210,4 +209,3 @@ func LoadDomain(configPath string, password []byte) (*TaoDomain, error) {
 
 	return &TaoDomain{cfg, configPath, keys, guard}, nil
 }
-

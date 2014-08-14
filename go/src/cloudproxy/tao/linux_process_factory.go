@@ -24,8 +24,8 @@ import (
 	"os/exec"
 	"path"
 
-	"cloudproxy/util"
 	"cloudproxy/tao/auth"
+	"cloudproxy/util"
 )
 
 // In the C++ Tao, these functions are methods on a stateless class. So, in Go,

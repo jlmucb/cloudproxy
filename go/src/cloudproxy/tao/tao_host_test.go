@@ -21,7 +21,7 @@ import (
 	"cloudproxy/tao/auth"
 )
 
-var testChild = auth.SubPrin{auth.PrinExt{Name:"TestChild"}}
+var testChild = auth.SubPrin{auth.PrinExt{Name: "TestChild"}}
 
 func testNewTaoRootHost(t *testing.T) TaoHost {
 	th, err := NewTaoRootHost()
@@ -37,7 +37,7 @@ func testNewTaoRootHost(t *testing.T) TaoHost {
 }
 
 func testNewTaoStackedHost(t *testing.T) TaoHost {
-	ft, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
+	ft, err := NewFakeTao(auth.Prin{Type: "key", Key: []byte("test")}, "", nil)
 	if err != nil {
 		t.Fatal("Couldn't set up a FakeTao for the TaoStackedHost")
 	}

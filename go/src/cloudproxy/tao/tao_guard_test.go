@@ -38,7 +38,7 @@ func testNewTrivialConservativeGuard(t *testing.T) TaoGuard {
 	return tg
 }
 
-var testPrin auth.Prin = auth.Prin{Type:"key", Key:[]byte("testkey")}
+var testPrin auth.Prin = auth.Prin{Type: "key", Key: []byte("testkey")}
 
 func testTrivialGuardAuthorize(t *testing.T, tg TaoGuard) {
 	if err := tg.Authorize(testPrin, "testop", []string{}); err == nil {

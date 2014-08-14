@@ -882,6 +882,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string) (*Keys, er
 		if err != nil {
 			return nil, err
 		}
+		defer f.Close()
 
 		der, err := ioutil.ReadAll(f)
 		if err != nil {
@@ -905,6 +906,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string) (*Keys, er
 			// Check to see if there are already keys.
 			f, err := os.Open(k.PBEKeysetPath())
 			if err == nil {
+				defer f.Close()
 				ks, err := ioutil.ReadAll(f)
 				if err != nil {
 					return nil, err
@@ -967,6 +969,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string) (*Keys, er
 			// There's just a signer, so do PEM encryption of the encoded key.
 			f, err := os.Open(k.PBESignerPath())
 			if err == nil {
+				defer f.Close()
 				// Read the signer.
 				ss, err := ioutil.ReadAll(f)
 				if err != nil {
@@ -1010,6 +1013,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string) (*Keys, er
 				if err != nil {
 					return nil, err
 				}
+				defer pbes.Close()
 
 				if err = pem.Encode(pbes, pb); err != nil {
 					return nil, err
@@ -1209,6 +1213,7 @@ func NewOnDiskTaoSealedKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys
 	// Check to see if there are already keys.
 	f, err := os.Open(k.SealedKeysetPath())
 	if err == nil {
+		defer f.Close()
 		ks, err := ioutil.ReadAll(f)
 		if err != nil {
 			return nil, err

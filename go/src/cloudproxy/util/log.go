@@ -20,6 +20,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"text/tabwriter"
 
 	"github.com/golang/glog"
 )
@@ -61,43 +62,28 @@ func Logged(err error) error {
 		omit = 0
 	}
 
-	var count, place, call []string
-	placeWidth := 0
-	countWidth := 0
+	var context bytes.Buffer
+	tabs := tabwriter.NewWriter(&context, 0, 8, 0, ' ', 0)
 	for i := 0; i < n-omit; i++ {
 		f := runtime.FuncForPC(stackTrace[i])
-		thisCount := fmt.Sprintf("[%d]", i+1)
-		thisCall := fmt.Sprintf("%s()", f.Name())
-		thisPlace := ""
+		place := ""
 		if showFileNames {
 			file, line := f.FileLine(stackTrace[i])
 			parts := strings.SplitAfter(file, "/")
 			if len(parts) > 2 {
 				file = parts[len(parts)-2] + parts[len(parts)-1]
 			}
-			thisPlace = fmt.Sprintf("%s:%-4d", file, line)
+			place = fmt.Sprintf("%s:%d", file, line)
 		}
-		count = append(count, thisCount)
-		place = append(place, thisPlace)
-		call = append(call, thisCall)
-		if len(thisPlace) > placeWidth {
-			placeWidth = len(thisPlace)
-		}
-		if len(thisCount) > countWidth {
-			countWidth = len(thisCount)
-		}
+		fmt.Fprintf(tabs, "  [%d]\t %s\t   %s()\t\n", i+1, place, f.Name())
 	}
-
-	var context bytes.Buffer
-	for i := 0; i < n-omit; i++ {
-		fmt.Fprintf(&context, "  %-*s %-*s %s\n", countWidth, count[i], placeWidth, place[i], call[i])
-	}
-
 	if omit > 0 {
 		// TODO(kwalsh) maybe more info, e.g.:
 		// fmt.Fprintf(&context, "  ... %d additional omitted\n", omit)
-		fmt.Fprintf(&context, "  ...\n")
+		fmt.Fprintf(tabs, "  ...\t\n")
 	}
+	tabs.Flush()
+
 	previousTrace = stackTrace
 
 	glog.Error(err.Error() + "; context:\n" + context.String())

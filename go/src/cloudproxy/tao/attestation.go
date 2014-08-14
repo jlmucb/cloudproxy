@@ -15,7 +15,6 @@
 package tao
 
 import (
-	"fmt"
 	"time"
 
 	"code.google.com/p/goprotobuf/proto"
@@ -30,13 +29,13 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 		return auth.Prin{}, err
 	}
 	if len(signer.Ext) != 0 {
-		return auth.Prin{}, fmt.Errorf("tao: attestation signer principal malformed: %s", signer)
+		return auth.Prin{}, newError("tao: attestation signer principal malformed: %s", signer)
 	}
 	switch signer.Type {
 	case "tpm":
 		// Signer is tpm, use tpm-specific signature verification.
 		// TODO(kwalsh) call tpm-specific verification code
-		return auth.Prin{}, fmt.Errorf("tao: tpm signature verification not yet implemented")
+		return auth.Prin{}, newError("tao: tpm signature verification not yet implemented")
 	case "key":
 		// Signer is ECDSA key, use Tao signature verification.
 		v, err := FromPrincipal(signer)
@@ -48,11 +47,11 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 			return auth.Prin{}, err
 		}
 		if !ok {
-			return auth.Prin{}, fmt.Errorf("tao: attestation signature invalid")
+			return auth.Prin{}, newError("tao: attestation signature invalid")
 		}
 		return signer, nil
 	default:
-		return auth.Prin{}, fmt.Errorf("tao: attestation signer principal unrecognized: %s", signer.String())
+		return auth.Prin{}, newError("tao: attestation signer principal unrecognized: %s", signer.String())
 	}
 }
 
@@ -69,13 +68,13 @@ func (a *Attestation) Validate() (auth.Says, error) {
 	}
 	stmt, ok := f.(auth.Says)
 	if !ok {
-		return auth.Says{}, fmt.Errorf("tao: attestation statement has wrong type: %T", f)
+		return auth.Says{}, newError("tao: attestation statement has wrong type: %T", f)
 	}
 	if a.SerializedDelegation == nil {
 		// Case (1), no delegation present.
 		// Require that stmt.Speaker be a subprincipal of (or identical to) a.signer.
 		if !auth.SubprinOrIdentical(stmt.Speaker, signer) {
-			return auth.Says{}, fmt.Errorf("tao: attestation statement signer does not evidently speak for issuer")
+			return auth.Says{}, newError("tao: attestation statement signer does not evidently speak for issuer")
 		}
 	} else {
 		// Case (2), delegation present.
@@ -93,13 +92,13 @@ func (a *Attestation) Validate() (auth.Says, error) {
 		}
 		delegation, ok := delegationStatement.Message.(auth.Speaksfor)
 		if !ok || !delegationStatement.Speaker.Identical(delegation.Delegator) {
-			return auth.Says{}, fmt.Errorf("tao: attestation delegation is invalid")
+			return auth.Says{}, newError("tao: attestation delegation is invalid")
 		}
 		if !auth.SubprinOrIdentical(delegation.Delegate, signer) {
-			return auth.Says{}, fmt.Errorf("tao: attestation delegation irrelevant to signer")
+			return auth.Says{}, newError("tao: attestation delegation irrelevant to signer")
 		}
 		if !auth.SubprinOrIdentical(stmt.Speaker, delegation.Delegator) {
-			return auth.Says{}, fmt.Errorf("tao: attestation delegation irrelevant to issuer")
+			return auth.Says{}, newError("tao: attestation delegation irrelevant to issuer")
 		}
 		if stmt.Time == nil {
 			stmt.Time = delegationStatement.Time

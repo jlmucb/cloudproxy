@@ -94,7 +94,7 @@ func (f *FakeTao) Rand() io.Reader {
 // GetShareSecret returns a slice of n secret bytes.
 func (f *FakeTao) GetSharedSecret(n int, policy string) ([]byte, error) {
 	if policy != SharedSecretPolicyDefault {
-		return nil, errors.New("FakeTao policies not yet implemented")
+		return nil, newError("FakeTao policies not yet implemented")
 	}
 
 	// TODO(tmroeder): for now, we're using a fixed salt and counting on
@@ -114,7 +114,7 @@ func (f *FakeTao) GetSharedSecret(n int, policy string) ([]byte, error) {
 func (f *FakeTao) Seal(data []byte, policy string) ([]byte, error) {
 	// The FakeTao insists on the trivial policy, since it just encrypts the bytes directly
 	if policy != SealPolicyDefault {
-		return nil, errors.New("The FakeTao requires SealPolicyDefault")
+		return nil, newError("The FakeTao requires SealPolicyDefault")
 	}
 
 	return f.keys.CryptingKey.Encrypt(data)
@@ -134,7 +134,7 @@ func (f *FakeTao) Attest(issuer *auth.Prin, time, expiration *int64, message aut
 	if issuer == nil {
 		issuer = &f.name
 	} else if !issuer.Identical(f.name) {
-		return nil, errors.New("Invalid issuer in statement")
+		return nil, newError("Invalid issuer in statement")
 	}
 
 	stmt := auth.Says{Speaker: *issuer, Time: time, Expiration: expiration, Message: message}

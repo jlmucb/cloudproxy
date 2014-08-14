@@ -27,7 +27,6 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
-	"errors"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -213,7 +212,7 @@ func marshalECDSA_SHA_VerifyingKeyV1(k *ecdsa.PublicKey) *ECDSA_SHA_VerifyingKey
 
 func unmarshalECDSA_SHA_VerifyingKeyV1(v *ECDSA_SHA_VerifyingKeyV1) (*ecdsa.PublicKey, error) {
 	if *v.Curve != NamedEllipticCurve_PRIME256_V1 {
-		return nil, errors.New("bad curve")
+		return nil, newError("bad curve")
 	}
 
 	x, y := elliptic.Unmarshal(elliptic.P256(), v.EcPublic)
@@ -256,15 +255,15 @@ func MarshalVerifierProto(v *Verifier) *CryptoKey {
 // message.
 func UnmarshalSignerProto(ck *CryptoKey) (*Signer, error) {
 	if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
-		return nil, errors.New("bad version")
+		return nil, newError("bad version")
 	}
 
 	if *ck.Purpose != CryptoKey_SIGNING {
-		return nil, errors.New("bad purpose")
+		return nil, newError("bad purpose")
 	}
 
 	if *ck.Algorithm != CryptoKey_ECDSA_SHA {
-		return nil, errors.New("bad algorithm")
+		return nil, newError("bad algorithm")
 	}
 
 	k := new(ECDSA_SHA_SigningKeyV1)
@@ -274,7 +273,7 @@ func UnmarshalSignerProto(ck *CryptoKey) (*Signer, error) {
 	}
 
 	if *k.Curve != NamedEllipticCurve_PRIME256_V1 {
-		return nil, errors.New("bad Curve")
+		return nil, newError("bad Curve")
 	}
 
 	s := new(Signer)
@@ -388,7 +387,7 @@ func (v *Verifier) ToPrincipal() auth.Prin {
 // FromPrincipal deserializes a Verifier from a Prin.
 func FromPrincipal(prin auth.Prin) (*Verifier, error) {
 	if prin.Type != "key" {
-		return nil, errors.New("invalid key principal type")
+		return nil, newError("invalid key principal type")
 	}
 
 	var ck CryptoKey
@@ -397,15 +396,15 @@ func FromPrincipal(prin auth.Prin) (*Verifier, error) {
 	}
 
 	if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
-		return nil, errors.New("bad version")
+		return nil, newError("bad version")
 	}
 
 	if *ck.Purpose != CryptoKey_VERIFYING {
-		return nil, errors.New("bad purpose")
+		return nil, newError("bad purpose")
 	}
 
 	if *ck.Algorithm != CryptoKey_ECDSA_SHA {
-		return nil, errors.New("bad algorithm")
+		return nil, newError("bad algorithm")
 	}
 
 	var ecvk ECDSA_SHA_VerifyingKeyV1
@@ -425,7 +424,7 @@ func FromPrincipal(prin auth.Prin) (*Verifier, error) {
 func FromX509(cert *x509.Certificate) (*Verifier, error) {
 	ecpk, ok := cert.PublicKey.(*ecdsa.PublicKey)
 	if !ok {
-		return nil, errors.New("invalid key type in certificate: must be ECDSA")
+		return nil, newError("invalid key type in certificate: must be ECDSA")
 	}
 
 	return &Verifier{ecpk}, nil
@@ -435,15 +434,15 @@ func FromX509(cert *x509.Certificate) (*Verifier, error) {
 // message.
 func UnmarshalVerifierProto(ck *CryptoKey) (*Verifier, error) {
 	if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
-		return nil, errors.New("bad version")
+		return nil, newError("bad version")
 	}
 
 	if *ck.Purpose != CryptoKey_VERIFYING {
-		return nil, errors.New("bad purpose")
+		return nil, newError("bad purpose")
 	}
 
 	if *ck.Algorithm != CryptoKey_ECDSA_SHA {
-		return nil, errors.New("bad algorithm")
+		return nil, newError("bad algorithm")
 	}
 
 	k := new(ECDSA_SHA_VerifyingKeyV1)
@@ -452,7 +451,7 @@ func UnmarshalVerifierProto(ck *CryptoKey) (*Verifier, error) {
 	}
 
 	if *k.Curve != NamedEllipticCurve_PRIME256_V1 {
-		return nil, errors.New("bad curve")
+		return nil, newError("bad curve")
 	}
 
 	s := new(Verifier)
@@ -566,7 +565,7 @@ func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
 	// TODO(tmroeder): we're currently mostly ignoring the CryptoHeader,
 	// since we only have one key.
 	if *ed.Header.Version != CryptoVersion_CRYPTO_VERSION_1 {
-		return nil, errors.New("bad version")
+		return nil, newError("bad version")
 	}
 
 	// Check the HMAC before touching the ciphertext.
@@ -577,7 +576,7 @@ func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
 	mac := hmac.New(sha256.New, c.hmacKey)
 	m := mac.Sum(fullCiphertext)
 	if !hmac.Equal(m, ed.Mac) {
-		return nil, errors.New("bad HMAC")
+		return nil, newError("bad HMAC")
 	}
 
 	block, err := aes.NewCipher(c.aesKey)
@@ -627,15 +626,15 @@ func MarshalCrypterProto(c *Crypter) (*CryptoKey, error) {
 // message.
 func UnmarshalCrypterProto(ck *CryptoKey) (*Crypter, error) {
 	if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
-		return nil, errors.New("bad version")
+		return nil, newError("bad version")
 	}
 
 	if *ck.Purpose != CryptoKey_CRYPTING {
-		return nil, errors.New("bad purpose")
+		return nil, newError("bad purpose")
 	}
 
 	if *ck.Algorithm != CryptoKey_AES_CTR_HMAC_SHA {
-		return nil, errors.New("bad algorithm")
+		return nil, newError("bad algorithm")
 	}
 
 	var k AES_CTR_HMAC_SHA_CryptingKeyV1
@@ -644,7 +643,7 @@ func UnmarshalCrypterProto(ck *CryptoKey) (*Crypter, error) {
 	}
 
 	if *k.Mode != CryptoCipherMode_CIPHER_MODE_CTR {
-		return nil, errors.New("bad cipher mode")
+		return nil, newError("bad cipher mode")
 	}
 
 	c := new(Crypter)
@@ -727,15 +726,15 @@ func MarshalDeriverProto(d *Deriver) (*CryptoKey, error) {
 // message.
 func UnmarshalDeriverProto(ck *CryptoKey) (*Deriver, error) {
 	if *ck.Version != CryptoVersion_CRYPTO_VERSION_1 {
-		return nil, errors.New("bad version")
+		return nil, newError("bad version")
 	}
 
 	if *ck.Purpose != CryptoKey_DERIVING {
-		return nil, errors.New("bad purpose")
+		return nil, newError("bad purpose")
 	}
 
 	if *ck.Algorithm != CryptoKey_HMAC_SHA {
-		return nil, errors.New("bad algorithm")
+		return nil, newError("bad algorithm")
 	}
 
 	var k HMAC_SHA_DerivingKeyV1
@@ -744,7 +743,7 @@ func UnmarshalDeriverProto(ck *CryptoKey) (*Deriver, error) {
 	}
 
 	if *k.Mode != CryptoDerivingMode_DERIVING_MODE_HKDF {
-		return nil, errors.New("bad deriving mode")
+		return nil, newError("bad deriving mode")
 	}
 
 	d := new(Deriver)
@@ -826,7 +825,7 @@ func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
 		keyTypes: keyTypes,
 	}
 	if k.keyTypes == 0 || (k.keyTypes & ^Signing & ^Crypting & ^Deriving != 0) {
-		return nil, errors.New("bad key type")
+		return nil, newError("bad key type")
 	}
 
 	var err error
@@ -860,11 +859,11 @@ func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
 // store under PBE on disk.
 func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string) (*Keys, error) {
 	if keyTypes == 0 || (keyTypes & ^Signing & ^Crypting & ^Deriving != 0) {
-		return nil, errors.New("bad key type")
+		return nil, newError("bad key type")
 	}
 
 	if path == "" {
-		return nil, errors.New("bad init call: no path for keys")
+		return nil, newError("bad init call: no path for keys")
 	}
 
 	k := &Keys{
@@ -876,7 +875,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string) (*Keys, er
 		// This means there's no secret information: just load a public
 		// verifying key.
 		if k.keyTypes & ^Signing != 0 {
-			return nil, errors.New("without a password, only a verifying key can be loaded")
+			return nil, newError("without a password, only a verifying key can be loaded")
 		}
 
 		f, err := os.Open(k.X509Path())
@@ -976,7 +975,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string) (*Keys, er
 
 				pb, r := pem.Decode(ss)
 				if r != nil {
-					return nil, errors.New("decoding failure")
+					return nil, newError("decoding failure")
 				}
 
 				p, err := x509.DecryptPEMBlock(pb, password)
@@ -1048,7 +1047,7 @@ func NewTemporaryTaoDelegatedKeys(keyTypes KeyType, t Tao) (*Keys, error) {
 // the C++ Tao version of the code.
 func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
 	if password == nil || len(password) == 0 {
-		return nil, errors.New("null or empty password")
+		return nil, newError("null or empty password")
 	}
 
 	pbed := &PBEData{
@@ -1092,7 +1091,7 @@ func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
 // the C++ Tao version of the code.
 func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
 	if password == nil || len(password) == 0 {
-		return nil, errors.New("null or empty password")
+		return nil, newError("null or empty password")
 	}
 
 	var pbed PBEData
@@ -1102,15 +1101,15 @@ func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
 
 	// Recover the keys from the password and the PBE header.
 	if *pbed.Version != CryptoVersion_CRYPTO_VERSION_1 {
-		return nil, errors.New("bad version")
+		return nil, newError("bad version")
 	}
 
 	if *pbed.Cipher != "aes128-ctr" {
-		return nil, errors.New("bad cipher")
+		return nil, newError("bad cipher")
 	}
 
 	if *pbed.Hmac != "sha256" {
-		return nil, errors.New("bad hmac")
+		return nil, newError("bad hmac")
 	}
 
 	// 128-bit AES key.
@@ -1222,7 +1221,7 @@ func NewOnDiskTaoSealedKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys
 		defer zeroBytes(data)
 
 		if p != policy {
-			return nil, errors.New("invalid policy from Unseal")
+			return nil, newError("invalid policy from Unseal")
 		}
 
 		var cks CryptoKeyset

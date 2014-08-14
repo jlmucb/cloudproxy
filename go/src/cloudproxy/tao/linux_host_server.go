@@ -15,7 +15,6 @@
 package tao
 
 import (
-	"errors"
 	"io"
 	"os/exec"
 
@@ -53,7 +52,7 @@ func (lhs *LinuxHostServer) ExtendTaoName(r *TaoRPCRequest, s *TaoRPCResponse) e
 // GetRandomBytes returns a slice of n random bytes.
 func (lhs *LinuxHostServer) GetRandomBytes(r *TaoRPCRequest, s *TaoRPCResponse) error {
 	if r.Size == nil || *r.Size <= 0 {
-		return errors.New("Invalid array size")
+		return newError("Invalid array size")
 	}
 
 	var err error
@@ -69,7 +68,7 @@ func (lhs *LinuxHostServer) GetRandomBytes(r *TaoRPCRequest, s *TaoRPCResponse) 
 func (lhs *LinuxHostServer) GetSharedSecret(r *TaoRPCRequest, s *TaoRPCResponse) error {
 	var err error
 	if r.Size == nil {
-		return errors.New("must supply a Size to GetSharedSecret")
+		return newError("must supply a Size to GetSharedSecret")
 	}
 
 	s.Data, err = lhs.host.handleGetSharedSecret(lhs.ChildSubprin, int(*r.Size), string(r.Data))
@@ -84,7 +83,7 @@ func (lhs *LinuxHostServer) GetSharedSecret(r *TaoRPCRequest, s *TaoRPCResponse)
 func (lhs *LinuxHostServer) Seal(r *TaoRPCRequest, s *TaoRPCResponse) error {
 	var err error
 	if r.Policy == nil {
-		return errors.New("must supply a Policy to Seal")
+		return newError("must supply a Policy to Seal")
 	}
 
 	s.Data, err = lhs.host.handleSeal(lhs.ChildSubprin, r.Data, *r.Policy)

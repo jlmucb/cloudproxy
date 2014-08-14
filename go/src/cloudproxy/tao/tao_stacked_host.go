@@ -15,8 +15,6 @@
 package tao
 
 import (
-	"errors"
-
 	"code.google.com/p/goprotobuf/proto"
 
 	"cloudproxy/tao/auth"
@@ -66,7 +64,7 @@ func (t *TaoStackedHost) GetRandomBytes(childSubprin auth.SubPrin, n int) (bytes
 func (t *TaoStackedHost) GetSharedSecret(tag string, n int) (bytes []byte, err error) {
 	// TODO(tmroeder): this should be implemented using the underlying host
 	if t.keys.DerivingKey == nil {
-		return nil, errors.New("this TaoStackedHost does not implement shared secrets")
+		return nil, newError("this TaoStackedHost does not implement shared secrets")
 	}
 
 	// For now, all our key deriving with keys.DerivingKey uses a fixed 0-length salt.
@@ -86,7 +84,7 @@ func (t *TaoStackedHost) Attest(childSubprin auth.SubPrin, issuer *auth.Prin,
 	child := t.taoHostName.MakeSubprincipal(childSubprin)
 	if issuer != nil {
 		if !auth.SubprinOrIdentical(*issuer, child) {
-			return nil, errors.New("invalid issuer in statement")
+			return nil, newError("invalid issuer in statement")
 		}
 	} else {
 		issuer = &child
@@ -137,7 +135,7 @@ func (t *TaoStackedHost) Decrypt(encrypted []byte) (data []byte, err error) {
 	}
 
 	if policy != SealPolicyDefault {
-		return nil, errors.New("unsealed data with uncertain provenance")
+		return nil, newError("unsealed data with uncertain provenance")
 	}
 
 	return data, nil

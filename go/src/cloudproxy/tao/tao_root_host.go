@@ -16,7 +16,6 @@ package tao
 
 import (
 	"crypto/rand"
-	"errors"
 
 	"cloudproxy/tao/auth"
 )
@@ -30,7 +29,7 @@ type TaoRootHost struct {
 // NewTaoRootHostFromKeys returns a TaoRootHost that uses these keys.
 func NewTaoRootHostFromKeys(k *Keys) (TaoHost, error) {
 	if k.SigningKey == nil || k.CryptingKey == nil || k.VerifyingKey == nil {
-		return nil, errors.New("missing required key for TaoRootHost")
+		return nil, newError("missing required key for TaoRootHost")
 	}
 
 	t := &TaoRootHost{
@@ -65,7 +64,7 @@ func (t *TaoRootHost) GetRandomBytes(childSubprin auth.SubPrin, n int) (bytes []
 // GetSharedSecret returns a slice of n secret bytes.
 func (t *TaoRootHost) GetSharedSecret(tag string, n int) (bytes []byte, err error) {
 	if t.keys.DerivingKey == nil {
-		return nil, errors.New("this TaoRootHost does not implement shared secrets")
+		return nil, newError("this TaoRootHost does not implement shared secrets")
 	}
 
 	// For now, all our key deriving with keys.DerivingKey uses a fixed 0-length salt.
@@ -85,7 +84,7 @@ func (t *TaoRootHost) Attest(childSubprin auth.SubPrin, issuer *auth.Prin,
 	child := t.taoHostName.MakeSubprincipal(childSubprin)
 	if issuer != nil {
 		if !auth.SubprinOrIdentical(*issuer, child) {
-			return nil, errors.New("invalid issuer in statement")
+			return nil, newError("invalid issuer in statement")
 		}
 	} else {
 		issuer = &child

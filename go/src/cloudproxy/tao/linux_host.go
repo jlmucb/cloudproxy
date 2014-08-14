@@ -15,8 +15,6 @@
 package tao
 
 import (
-	"errors"
-	"fmt"
 	"sync"
 	"syscall"
 
@@ -120,7 +118,7 @@ func (lh *LinuxHost) handleGetSharedSecret(childSubprin auth.SubPrin, n int, pol
 		// running on a similar LinuxHost instance.
 		tag = policy
 	default:
-		return nil, errors.New("policy not supported for GetSharedSecret: " + policy)
+		return nil, newError("policy not supported for GetSharedSecret: " + policy)
 	}
 
 	return lh.taoHost.GetSharedSecret(tag, n)
@@ -149,7 +147,7 @@ func (lh *LinuxHost) handleSeal(childSubprin auth.SubPrin, data []byte, policy s
 		// running on a similar LinuxHost instance. So, we don't set
 		// any policy info.
 	default:
-		return nil, errors.New("policy not supported for Seal: " + policy)
+		return nil, newError("policy not supported for Seal: " + policy)
 	}
 
 	m, err := proto.Marshal(lhsb)
@@ -176,7 +174,7 @@ func (lh *LinuxHost) handleUnseal(childSubprin auth.SubPrin, sealed []byte) ([]b
 	}
 
 	if lhsb.Policy == nil {
-		return nil, "", errors.New("invalid policy in sealed data")
+		return nil, "", newError("invalid policy in sealed data")
 	}
 
 	policy := *lhsb.Policy
@@ -184,13 +182,13 @@ func (lh *LinuxHost) handleUnseal(childSubprin auth.SubPrin, sealed []byte) ([]b
 	case SharedSecretPolicyDefault:
 	case SharedSecretPolicyConservative:
 		if lhsb.PolicyInfo == nil || childSubprin.String() != *lhsb.PolicyInfo {
-			return nil, "", errors.New("principal not authorized for unseal")
+			return nil, "", newError("principal not authorized for unseal")
 		}
 	case SharedSecretPolicyLiberal:
 		// Allow all
 		break
 	default:
-		return nil, "", errors.New("policy not supported for Unseal: " + policy)
+		return nil, "", newError("policy not supported for Unseal: " + policy)
 	}
 
 	return lhsb.Data, policy, nil
@@ -205,7 +203,7 @@ func (lh *LinuxHost) handleAttest(childSubprin auth.SubPrin, issuer *auth.Prin, 
 // StartHostedProgram starts a new program based on an admin RPC request.
 func (lh *LinuxHost) StartHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
 	if r.Path == nil {
-		return errors.New("hosted program creation request is missing path")
+		return newError("hosted program creation request is missing path")
 	}
 
 	lh.idm.Lock()
@@ -231,7 +229,7 @@ func (lh *LinuxHost) StartHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRP
 	hostName := lh.taoHost.TaoHostName()
 	childName := hostName.MakeSubprincipal(subprin)
 	if !lh.guard.IsAuthorized(childName, "Execute", []string{}) {
-		return fmt.Errorf("Hosted program %s denied authorization to execute on host %s", subprin, hostName)
+		return newError("Hosted program %s denied authorization to execute on host %s", subprin, hostName)
 	}
 
 	lhs, err := lh.childFactory.StartHostedProgram(lh, temppath, r.Args, subprin)

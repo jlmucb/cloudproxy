@@ -37,16 +37,16 @@ type TaoRPC struct {
 // DeserializeTaoRPC produces a TaoRPC from a string.
 func DeserializeTaoRPC(s string) (*TaoRPC, error) {
 	if s == "" {
-		return nil, errors.New("taorpc: missing host Tao spec" +
+		return nil, newError("taorpc: missing host Tao spec" +
 			" (ensure $" + HostTaoEnvVar + " is set)")
 	}
 	r := strings.TrimPrefix(s, "tao::TaoRPC+")
 	if r == s {
-		return nil, errors.New("taorpc: unrecognized $" + HostTaoEnvVar + " string " + s)
+		return nil, newError("taorpc: unrecognized $" + HostTaoEnvVar + " string " + s)
 	}
 	ms, err := util.DeserializeFDMessageStream(r)
 	if err != nil {
-		return nil, errors.New("taorpc: unrecognized $" + HostTaoEnvVar + " string " + s +
+		return nil, newError("taorpc: unrecognized $" + HostTaoEnvVar + " string " + s +
 			" (" + err.Error() + ")")
 	}
 	return &TaoRPC{protorpc.NewClient(ms), "Tao"}, nil
@@ -131,7 +131,7 @@ func (t *TaoRPC) Rand() io.Reader {
 // GetRandomBytes implements part of the Tao interface.
 func (t *TaoRPC) GetRandomBytes(n int) ([]byte, error) {
 	if n > math.MaxUint32 {
-		return nil, errors.New("taorpc: request for too many random bytes")
+		return nil, newError("taorpc: request for too many random bytes")
 	}
 	r := &TaoRPCRequest{Size: proto.Int32(int32(n))}
 	bytes, _, err := t.call(t.serviceName+".GetRandomBytes", r, wantData)
@@ -141,7 +141,7 @@ func (t *TaoRPC) GetRandomBytes(n int) ([]byte, error) {
 // GetSharedSecret implements part of the Tao interface.
 func (t *TaoRPC) GetSharedSecret(n int, policy string) ([]byte, error) {
 	if n > math.MaxUint32 {
-		return nil, errors.New("taorpc: request for too many secret bytes")
+		return nil, newError("taorpc: request for too many secret bytes")
 	}
 	r := &TaoRPCRequest{Size: proto.Int32(int32(n)), Policy: proto.String(policy)}
 	bytes, _, err := t.call(t.serviceName+".GetSharedSecret", r, wantData)

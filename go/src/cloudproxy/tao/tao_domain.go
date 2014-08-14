@@ -148,15 +148,15 @@ func CreateDomain(cfg TaoDomainConfig, configPath string, password []byte) (*Tao
 	var guard TaoGuard
 	switch cfg.Domain.GuardType {
 	case "ACLs":
-		return nil, fmt.Errorf("acl guard not yet implemented")
+		return nil, newError("acl guard not yet implemented")
 	case "Datalog":
-		return nil, fmt.Errorf("datalog guard not yet implemented")
+		return nil, newError("datalog guard not yet implemented")
 	case "AllowAll":
 		guard = LiberalGuard
 	case "DenyAll":
 		guard = ConservativeGuard
 	default:
-		return nil, fmt.Errorf("unrecognized guard type: %s", cfg.Domain.GuardType)
+		return nil, newError("unrecognized guard type: %s", cfg.Domain.GuardType)
 	}
 
 	d := &TaoDomain{cfg, configPath, keys, guard}
@@ -199,9 +199,9 @@ func LoadDomain(configPath string, password []byte) (*TaoDomain, error) {
 	var guard TaoGuard
 	switch cfg.Domain.GuardType {
 	case "ACLs":
-		return nil, fmt.Errorf("acl guard not yet implemented")
+		return nil, newError("acl guard not yet implemented")
 	case "Datalog":
-		return nil, fmt.Errorf("datalog guard not yet implemented")
+		return nil, newError("datalog guard not yet implemented")
 	case "AllowAll":
 		guard = LiberalGuard
 	case "DenyAll":

@@ -17,6 +17,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"os"
 
@@ -26,6 +28,7 @@ import (
 
 var configPath = flag.String("config_path", "tao.config", "Location of tao domain configuration")
 var path = flag.String("path", "linux_tao_host", "Location of linux host configuration")
+var quiet = flag.Bool("quiet", false, "Be more quiet.")
 var root = flag.Bool("root", false, "Run in root mode")
 var stacked = flag.Bool("stacked", false, "Run in stacked mode")
 var pass = flag.String("pass", "", "Password for unlocking keys if running in root mode")
@@ -79,12 +82,19 @@ func main() {
 	util.UseEnvFlags("GLOG", "TAO", "TAO_HOST")
 	flag.Parse()
 
+	var noise io.Writer
+	if *quiet {
+		noise = ioutil.Discard
+	} else {
+		noise = os.Stdout
+	}
+
 	if countSet(*create, *show, *service, *shutdown, *run, *stop, *kill, *list, *name) > 1 {
 		log.Fatal("specify at most one of the command options")
 	}
 
 	if *create || *service || *show {
-		fmt.Printf("Loading configuration from: %s\n", *configPath)
+		fmt.Fprintf(noise, "Loading configuration from: %s\n", *configPath)
 		domain, err := tao.LoadDomain(*configPath, nil)
 		fatalIf(err)
 		var host *tao.LinuxHost
@@ -99,7 +109,7 @@ func main() {
 			}
 			host, err = tao.NewStackedLinuxHost(*path, domain.Guard, tao.Host())
 		} else {
-			fmt.Printf("error: must specify either -root or -stacked")
+			log.Fatal("error: must specify either -root or -stacked")
 		}
 		fatalIf(err)
 		if *create {
@@ -121,9 +131,9 @@ func main() {
 		} else if *list {
 			log.Fatal("not yet implemented")
 		} else if *name {
-			fmt.Printf("%v\n", "not yet implemented")
+			log.Fatal("%v\n", "not yet implemented")
 		} else {
-			fmt.Printf("LinuxHost: %s\n", "not yet implemented")
+			log.Fatal("LinuxHost: %s\n", "not yet implemented")
 		}
 	}
 }

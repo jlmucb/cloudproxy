@@ -376,6 +376,29 @@ func TestNewOnDiskPBEKeys(t *testing.T) {
 	}
 }
 
+func TestNewOnDiskPBESigner(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "TestNewOnDiskPBESigner")
+	if err != nil {
+		t.Fatal("Couldn't create a temporary directory:", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	password := []byte(`don't use this password`)
+	k, err := NewOnDiskPBEKeys(Signing, password, tempDir)
+	if err != nil {
+		t.Fatal("Couldn't create on-disk PBE keys:", err)
+	}
+
+	if k.SigningKey == nil || k.CryptingKey != nil || k.DerivingKey != nil {
+		t.Fatal("Couldn't generate the right keys")
+	}
+
+	_, err = NewOnDiskPBEKeys(Signing, password, tempDir)
+	if err != nil {
+		t.Fatal("Couldn't recover the serialized keys:", err)
+	}
+}
+
 func TestNewTemporaryTaoDelegatedKeys(t *testing.T) {
 	ft, err := NewFakeTao(auth.Prin{Type:"key", Key:[]byte("test")}, "", nil)
 	if err != nil {

@@ -256,6 +256,13 @@ index 0b4a3bb..64eaf87 100644
 #*
 #- Let's kill Author: lines.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-08-15T17:26:08-0400
+#**
+#-- Will do, here and everywhere.
+#--
  //  Description: Protocol buffers for Tao Attestation
  //
  //  Copyright (c) 2014, Kevin Walsh.  All rights reserved.
@@ -1633,6 +1640,13 @@ index ec76c80..c53614c 100644
 #*
 #- + "which is by the same author"  or "licensed by the author here under Apache 2" ?
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-08-15T17:24:57-0400
+#**
+#-- Added.
+#--
  
  package auth
  
@@ -1665,6 +1679,13 @@ index ec76c80..c53614c 100644
 #*
 #- auto-replace error. I think "p" should still be "parser" here.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-08-15T17:26:44-0400
+#**
+#-- Fixed.
+#--
  type parser struct {
  	lex           *lexer
  	lookahead     token

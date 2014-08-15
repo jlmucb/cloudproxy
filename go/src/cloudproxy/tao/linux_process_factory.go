@@ -63,7 +63,7 @@ func (LinuxProcessFactory) MakeHostedProgramSubprin(id uint, prog string) (subpr
 	}
 
 	temppath = path.Join(td, "hosted_program")
-	tf, err := os.OpenFile(temppath, os.O_RDWR, 0700)
+	tf, err := os.OpenFile(temppath, os.O_CREATE|os.O_RDWR, 0700)
 	defer tf.Close()
 	if err != nil {
 		return

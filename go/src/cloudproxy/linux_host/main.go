@@ -139,7 +139,7 @@ func main() {
 			if flag.NArg() == 0 {
 				log.Fatal("missing program path")
 			}
-			subprin, pid, err := tao.LinuxHostStart(client, flag.Arg(0), flag.Args()[1:]...)
+			subprin, pid, err := tao.LinuxHostStart(client, flag.Arg(0), flag.Args()...)
 			fatalIf(err)
 			fmt.Printf("%d %v\n", pid, subprin)
 		} else if *stop {

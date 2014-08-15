@@ -23,6 +23,13 @@
 #- all unit tests pass
 #- 
 #- 
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-15T13:53:09-0700
+#**
+#-- LGTM, module a couple of tiny fixes. I really like how the new auth packages cleans up attestation.
+#-- 
 diff --git a/go/src/cloudproxy/tao/attestation.go b/go/src/cloudproxy/tao/attestation.go
 index b11dbcd..1efc489 100644
 --- a/go/src/cloudproxy/tao/attestation.go
@@ -242,6 +249,13 @@ index 0b4a3bb..64eaf87 100644
 @@ -2,283 +2,235 @@
  //  Author: Kevin Walsh <kwalsh@holycross.edu>
  //
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-15T13:33:03-0700
+#*
+#- Let's kill Author: lines.
+#- 
  //  Description: Protocol buffers for Tao Attestation
  //
  //  Copyright (c) 2014, Kevin Walsh.  All rights reserved.
@@ -1462,7 +1476,7 @@ index 4efa28c..ac45696 100644
  
  // Format outputs a pretty-printed Form or Term.
  func format(out fmt.State, verb rune, e AuthLogicElement) {
- 	if verb == 's' {
+  	if verb == 's' {
  		fmt.Fprintf(out, "%s", e.ShortString())
  	} else {
  		fmt.Fprintf(out, "%s", e.String())
@@ -1612,6 +1626,13 @@ index ec76c80..c53614c 100644
 +//
 +// It also borrows from the parser in package
 +// github.com/kevinawalsh/datalog/dlengine.
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-15T13:40:38-0700
+#*
+#- + "which is by the same author"  or "licensed by the author here under Apache 2" ?
+#- 
  
  package auth
  
@@ -1637,6 +1658,13 @@ index ec76c80..c53614c 100644
  
 -// parser holds the state of the recursive descent parser.
 +// parser holds the state of the recursive descent p.
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-15T13:40:10-0700
+#*
+#- auto-replace error. I think "p" should still be "parser" here.
+#- 
  type parser struct {
  	lex           *lexer
  	lookahead     token

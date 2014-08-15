@@ -201,6 +201,7 @@ func (lh *LinuxHost) handleAttest(childSubprin auth.SubPrin, issuer *auth.Prin, 
 }
 
 // StartHostedProgram starts a new program based on an admin RPC request.
+// This function is accessible using net/rpc.
 func (lh *LinuxHost) StartHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
 	if r.Path == nil {
 		return newError("hosted program creation request is missing path")
@@ -247,6 +248,7 @@ func (lh *LinuxHost) StartHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRP
 
 // StopHostedProgram stops a running hosted program based on an admin RPC
 // request.
+// This function is accessible using net/rpc.
 func (lh *LinuxHost) StopHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
 	subprin, err := auth.UnmarshalSubPrin(r.Data)
 	if err != nil {
@@ -287,6 +289,7 @@ func (lh *LinuxHost) StopHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPC
 }
 
 // ListHostedPrograms returns a list of hosted programs to the caller.
+// This function is accessible using net/rpc.
 func (lh *LinuxHost) ListHostedPrograms(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
 	lh.hpm.RLock()
 	subprins := make([]string, len(lh.hostedPrograms))
@@ -313,6 +316,7 @@ func (lh *LinuxHost) ListHostedPrograms(r *LinuxAdminRPCRequest, s *LinuxAdminRP
 
 // KillHostedProgram kills a running hosted program based on an admin RPC
 // request.
+// This function is accessible using net/rpc.
 func (lh *LinuxHost) KillHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
 	subprin, err := auth.UnmarshalSubPrin(r.Data)
 	if err != nil {
@@ -350,6 +354,7 @@ func (lh *LinuxHost) KillHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPC
 }
 
 // GetTaoHostName returns the name of the TaoHost used by the LinuxHost.
+// This function is accessible using net/rpc.
 func (lh *LinuxHost) GetTaoHostName(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
 	s.Data = auth.Marshal(lh.taoHost.TaoHostName())
 	return nil

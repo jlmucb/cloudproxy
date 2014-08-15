@@ -19,22 +19,10 @@
 
 package tao;
 
-enum LinuxAdminRPCRequestType {
-  LINUX_ADMIN_RPC_UNKNOWN = 0;  // unused
-  LINUX_ADMIN_RPC_SHUTDOWN = 1;
-  LINUX_ADMIN_RPC_START_HOSTED_PROGRAM = 2;
-  LINUX_ADMIN_RPC_STOP_HOSTED_PROGRAM = 3;
-  LINUX_ADMIN_RPC_KILL_HOSTED_PROGRAM = 4;
-  LINUX_ADMIN_RPC_GET_TAO_HOST_NAME = 5;
-  LINUX_ADMIN_RPC_LIST_HOSTED_PROGRAMS = 6;
-}
-
 message LinuxAdminRPCRequest {
-  required LinuxAdminRPCRequestType rpc = 1;
-  required uint64 seq = 2;
-  optional bytes data = 3;
-  optional string path = 4;
-  repeated string args = 5;
+  optional bytes data = 1;
+  optional string path = 2;
+  repeated string args = 3;
 }
 
 message LinuxAdminRPCHostedProgramList {
@@ -43,11 +31,7 @@ message LinuxAdminRPCHostedProgramList {
 }
 
 message LinuxAdminRPCResponse {
-  required LinuxAdminRPCRequestType rpc = 1;
-  required uint64 seq = 2;
-  optional string error = 3;
   optional bytes data = 4;    // either a string or
                               // serialized LinuxAdminRPCHostedProgramList
-  optional string reason = 5; // reason in case of failure
 }
 

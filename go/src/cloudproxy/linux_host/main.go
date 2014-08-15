@@ -20,14 +20,18 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
+	"net/rpc"
 	"os"
+	"path"
 
 	"cloudproxy/tao"
 	"cloudproxy/util"
+	"cloudproxy/util/protorpc"
 )
 
 var configPath = flag.String("config_path", "tao.config", "Location of tao domain configuration")
-var path = flag.String("path", "linux_tao_host", "Location of linux host configuration")
+var hostPath = flag.String("path", "linux_tao_host", "Location of linux host configuration")
 var quiet = flag.Bool("quiet", false, "Be more quiet.")
 var root = flag.Bool("root", false, "Run in root mode")
 var stacked = flag.Bool("stacked", false, "Run in stacked mode")
@@ -63,6 +67,8 @@ func countSet(vars ...interface{}) int {
 	return n
 }
 
+var verbose io.Writer
+
 func main() {
 	help := "Administrative utility for LinuxHost.\n"
 	help += "Usage:\n"
@@ -82,19 +88,20 @@ func main() {
 	util.UseEnvFlags("GLOG", "TAO", "TAO_HOST")
 	flag.Parse()
 
-	var noise io.Writer
 	if *quiet {
-		noise = ioutil.Discard
+		verbose = ioutil.Discard
 	} else {
-		noise = os.Stdout
+		verbose = os.Stdout
 	}
 
 	if countSet(*create, *show, *service, *shutdown, *run, *stop, *kill, *list, *name) > 1 {
 		log.Fatal("specify at most one of the command options")
 	}
 
+	hostSocket := path.Join(*hostPath, "admin_socket")
+
 	if *create || *service || *show {
-		fmt.Fprintf(noise, "Loading configuration from: %s\n", *configPath)
+		fmt.Fprintf(verbose, "Loading configuration from: %s\n", *configPath)
 		domain, err := tao.LoadDomain(*configPath, nil)
 		fatalIf(err)
 		var host *tao.LinuxHost
@@ -102,12 +109,12 @@ func main() {
 			if len(*pass) == 0 {
 				log.Fatal("password is required")
 			}
-			host, err = tao.NewRootLinuxHost(*path, domain.Guard, []byte(*pass))
+			host, err = tao.NewRootLinuxHost(*hostPath, domain.Guard, []byte(*pass))
 		} else if *stacked {
 			if !tao.HostAvailable() {
 				log.Fatal("error: no host tao available, check $%s\n", tao.HostTaoEnvVar)
 			}
-			host, err = tao.NewStackedLinuxHost(*path, domain.Guard, tao.Host())
+			host, err = tao.NewStackedLinuxHost(*hostPath, domain.Guard, tao.Host())
 		} else {
 			log.Fatal("error: must specify either -root or -stacked")
 		}
@@ -117,8 +124,8 @@ func main() {
 		} else if *show {
 			fmt.Printf("export GOOGLE_TAO_LINUX='%v'\n", host.TaoHostName())
 		} else /* service */ {
-			fmt.Printf("Linux Tao Service started and waiting for requests\n")
-			// listen
+			err := adminSocketServe(hostSocket, host)
+			fatalIf(err)
 		}
 	} else {
 		// connect
@@ -131,7 +138,13 @@ func main() {
 		} else if *list {
 			log.Fatal("not yet implemented")
 		} else if *name {
-			log.Fatal("%v\n", "not yet implemented")
+			client, err := adminSocketConnect(hostSocket)
+			fatalIf(err)
+			req := &LinuxAdminRPCRequest{}
+			resp := new(LinuxAdminRPCResponse)
+			err = client.Call("LinuxHost.GetTaoHostName", req, resp)
+			fatalIf(err)
+			fmt.Println(string(resp.data))
 		} else {
 			log.Fatal("LinuxHost: %s\n", "not yet implemented")
 		}
@@ -142,4 +155,31 @@ func fatalIf(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func adminSocketServe(sockPath string, host *tao.LinuxHost) error {
+	sock, err := net.Listen("unix", sockPath)
+	if err != nil {
+		return err
+	}
+	defer sock.Close()
+
+	fmt.Fprintf(verbose, "Linux Tao Service started and waiting for requests\n")
+	for {
+		conn, err := sock.Accept()
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(verbose, "Accepted admin connection\n")
+		go rpc.ServeCodec(protorpc.NewServerCodec(conn))
+	}
+}
+
+func adminSocketDial(sockPath string) (*rpc.Client, error) {
+	conn, err := net.Dial("unix","", sockPath)
+	if err != nil {
+		return nil, err
+	}
+	// defer c.Close()
+	return rpc.NewClientWithCodec(protorpc.NewClientCodec(conn))
 }

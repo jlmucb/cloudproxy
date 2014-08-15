@@ -19,6 +19,13 @@
 #- logic cleaner.
 #- 
 #- 
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-15T13:00:00-0700
+#*
+#- LGTM, other than two tiny comments.
+#- 
 diff --git a/go/src/cloudproxy/linux_host/main.go b/go/src/cloudproxy/linux_host/main.go
 index f7c6d72..2d77a9d 100644
 --- a/go/src/cloudproxy/linux_host/main.go
@@ -764,6 +771,13 @@ index 0000000..eb2d89d
 +}
 +
 +// ListHostedPrograms is the server stub for LInuxHost.ListHostedPrograms.
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-15T12:58:30-0700
+#*
+#- Typo "LInux" -> "Linux"
+#- 
 +func (server linuxHostAdminServerStub) ListHostedPrograms(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
 +	names, pids, err := server.lh.ListHostedPrograms()
 +	if err != nil {
@@ -804,6 +818,13 @@ index 0000000..e898eb9
 +++ b/go/src/cloudproxy/tao/linux_host_admin_rpc.proto
 @@ -0,0 +1,34 @@
 +//  Author: Tom Roeder <tmroeder@google.com>
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-15T12:59:36-0700
+#*
+#- Let's kill the Author: header.
+#- 
 +//
 +//  Copyright (c) 2013, Google Inc.  All rights reserved.
 +//

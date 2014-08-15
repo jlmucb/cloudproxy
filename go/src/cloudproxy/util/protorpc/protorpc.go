@@ -184,12 +184,13 @@ func (c *serverCodec) WriteResponse(r *rpc.Response, x interface{}) error {
 	hdr.Op = proto.String(r.ServiceMethod)
 	hdr.Seq = proto.Uint64(r.Seq)
 	var body proto.Message
+	var ok bool
 	if r.Error != "" {
 		// Error responses have empty body. In this case, x can be an empty struct
 		// from net/rpc.Server, and net/rpc.Client will discard the body in any
 		// case, so leave body == nil.
 		hdr.Error = proto.String(r.Error)
-	} else if body, ok := x.(proto.Message); !ok || body == nil {
+	} else if body, ok = x.(proto.Message); !ok || body == nil {
 		// If x isn't a protobuf, or is a nil protobuf, turn reply into an error and
 		// leave body == nil.
 		encodeErr = ErrBadResponseType

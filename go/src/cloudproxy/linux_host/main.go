@@ -23,9 +23,12 @@ import (
 	"net"
 	"net/rpc"
 	"os"
+	"os/signal"
 	"path"
+	"syscall"
 
 	"cloudproxy/tao"
+	"cloudproxy/tao/auth"
 	"cloudproxy/util"
 	"cloudproxy/util/protorpc"
 )
@@ -142,10 +145,11 @@ func main() {
 			fatalIf(err)
 			req := &tao.LinuxAdminRPCRequest{}
 			resp := new(tao.LinuxAdminRPCResponse)
-			fmt.Println("calling")
 			err = client.Call("LinuxHost.GetTaoHostName", req, resp)
 			fatalIf(err)
-			fmt.Println(string(resp.Data))
+			name, err := auth.UnmarshalPrin(resp.Data)
+			fatalIf(err)
+			fmt.Printf("Remote LinuxHost: %s\n", name)
 		} else {
 			log.Fatal("LinuxHost: %s\n", "not yet implemented")
 		}
@@ -172,6 +176,7 @@ func adminSocketServe(sockPath string, host *tao.LinuxHost) error {
 			return err
 		}
 		fmt.Fprintf(verbose, "Accepted admin connection\n")
+		rpc.RegisterName("LinuxHost", host)
 		go rpc.ServeCodec(protorpc.NewServerCodec(conn))
 	}
 }
@@ -183,4 +188,12 @@ func adminSocketDial(sockPath string) (*rpc.Client, error) {
 	}
 	// defer c.Close()
 	return rpc.NewClientWithCodec(protorpc.NewClientCodec(conn)), nil
+}
+
+func panicOnHup() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGQUIT)
+
+	s := <-c
+	panic(s)
 }

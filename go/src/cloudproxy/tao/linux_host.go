@@ -15,7 +15,6 @@
 package tao
 
 import (
-	"fmt"
 	"sync"
 	"syscall"
 
@@ -357,7 +356,6 @@ func (lh *LinuxHost) KillHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPC
 // GetTaoHostName returns the name of the TaoHost used by the LinuxHost.
 // This function is accessible using net/rpc.
 func (lh *LinuxHost) GetTaoHostName(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
-	fmt.Println("got host name request")
 	s.Data = auth.Marshal(lh.taoHost.TaoHostName())
 	return nil
 }

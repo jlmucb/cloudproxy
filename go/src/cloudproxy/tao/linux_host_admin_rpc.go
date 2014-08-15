@@ -170,7 +170,7 @@ func (server linuxHostAdminServerStub) StopHostedProgram(r *LinuxHostAdminRPCReq
 	return server.lh.StopHostedProgram(subprin)
 }
 
-// ListHostedPrograms is the server stub for LInuxHost.ListHostedPrograms.
+// ListHostedPrograms is the server stub for LinuxHost.ListHostedPrograms.
 func (server linuxHostAdminServerStub) ListHostedPrograms(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
 	names, pids, err := server.lh.ListHostedPrograms()
 	if err != nil {

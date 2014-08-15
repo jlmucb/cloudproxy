@@ -54,7 +54,7 @@ var query = flag.String("query", "", "A policy query to be checked.")
 var getProgramHash = flag.String("getprogramhash", "", "Path of program to be hashed.")
 
 func main() {
-	help := "Administrative utility for TaoDomain.\n"
+	help := "Administrative utility for Tao Domain.\n"
 	help += "Usage: %[1]s [options] -create [-name name]\n"
 	help += "%[1]s [options] -(retractcanexecute|canexecute) progpath\n"
 	help += "%[1]s [options] -(add|retract|query) rule\n"
@@ -73,7 +73,7 @@ func main() {
 		noise = os.Stdout
 	}
 
-	var domain *tao.TaoDomain
+	var domain *tao.Domain
 	var err error
 
 	didWork := false
@@ -84,7 +84,7 @@ func main() {
 			log.Fatal("password is required")
 		}
 		fmt.Fprintf(noise, "Initializing new configuration in: %s\n", *configPath)
-		var cfg tao.TaoDomainConfig
+		var cfg tao.DomainConfig
 		if *name != "" {
 			cfg.Domain.Name = *name
 			cfg.X509Details.CommonName = *name

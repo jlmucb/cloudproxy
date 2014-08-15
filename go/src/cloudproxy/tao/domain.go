@@ -25,19 +25,19 @@ import (
 	"cloudproxy/util"
 )
 
-// TaoDomain manages domain-wide authorization policies and configuration for a
+// Domain manages domain-wide authorization policies and configuration for a
 // single Tao administrative domain. Configuration includes a name, domain guard
 // type, ACLs or other guard-specific policy data, and a key pair for signing
 // policy data.
 //
 // Except for a password used to encrypt the policy private key, top-level
-// configuration data for TaoDomain is stored in a text file, typically named
+// configuration data for Domain is stored in a text file, typically named
 // "tao.config". This configuration file contains the locations of all other
 // files and directories, e.g. configuration files for the domain guard. File
 // and directory paths within the tao.config file are relative to the location
 // of the tao.config file itself.
-type TaoDomain struct {
-	Config     TaoDomainConfig
+type Domain struct {
+	Config     DomainConfig
 	ConfigPath string
 	Keys       *Keys
 	Guard      TaoGuard
@@ -53,8 +53,8 @@ type DatalogGuard struct {
 	SignedRulesPath string
 }
 
-// TaoDomainConfig holds the presistent configuration data for a domain.
-type TaoDomainConfig struct {
+// DomainConfig holds the presistent configuration data for a domain.
+type DomainConfig struct {
 	// Policy-agnostic configuration
 	Domain struct {
 		// Name of the domain
@@ -73,12 +73,12 @@ type TaoDomainConfig struct {
 }
 
 // Print prints the configuration to out.
-func (cfg TaoDomainConfig) Print(out io.Writer) error {
+func (cfg DomainConfig) Print(out io.Writer) error {
 	return util.PrintAsGitConfig(out, cfg, "Tao Domain Configuration file")
 }
 
 // SetDefaults sets each blank field of cfg to a reasonable default value.
-func (cfg *TaoDomainConfig) SetDefaults() {
+func (cfg *DomainConfig) SetDefaults() {
 	if cfg.Domain.Name == "" {
 		cfg.Domain.Name = "Tao example domain"
 	}
@@ -100,12 +100,12 @@ func (cfg *TaoDomainConfig) SetDefaults() {
 }
 
 // String returns the name of the domain.
-func (d *TaoDomain) String() string {
+func (d *Domain) String() string {
 	return d.Config.Domain.Name
 }
 
 // Subprincipal returns a subprincipal suitable for contextualizing a program.
-func (d *TaoDomain) Subprincipal() auth.SubPrin {
+func (d *Domain) Subprincipal() auth.SubPrin {
 	e := auth.PrinExt{
 		Name: "Domain",
 		Arg: []auth.Term{
@@ -116,12 +116,12 @@ func (d *TaoDomain) Subprincipal() auth.SubPrin {
 	return auth.SubPrin{e}
 }
 
-// CreateDomain initializes a new TaoDomain, writing its configuration files to
+// CreateDomain initializes a new Domain, writing its configuration files to
 // a directory. This creates the directory if needed, creates a policy key pair
 // (encrypted with the given password when stored on disk), and initializes a
 // default guard of the appropriate type if needed. Any parameters left empty in
 // cfg will be set to reasonable default values.
-func CreateDomain(cfg TaoDomainConfig, configPath string, password []byte) (*TaoDomain, error) {
+func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain, error) {
 	(&cfg).SetDefaults()
 
 	configDir := path.Dir(configPath)
@@ -150,7 +150,7 @@ func CreateDomain(cfg TaoDomainConfig, configPath string, password []byte) (*Tao
 		return nil, newError("unrecognized guard type: %s", cfg.Domain.GuardType)
 	}
 
-	d := &TaoDomain{cfg, configPath, keys, guard}
+	d := &Domain{cfg, configPath, keys, guard}
 	err = d.Save()
 	if err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ func CreateDomain(cfg TaoDomainConfig, configPath string, password []byte) (*Tao
 }
 
 // Save writes all domain configuration and policy data.
-func (d *TaoDomain) Save() error {
+func (d *Domain) Save() error {
 	file, err := util.CreatePath(d.ConfigPath, 0777, 0666)
 	if err != nil {
 		return err
@@ -169,13 +169,13 @@ func (d *TaoDomain) Save() error {
 	return d.Guard.Save(d.Keys.SigningKey)
 }
 
-// LoadDomain initialize a TaoDomain from an existing configuration file. If
+// LoadDomain initialize a Domain from an existing configuration file. If
 // password is nil, the object will be "locked", meaning that the policy private
 // signing key will not be available, new ACL entries or attestations can not be
 // signed, etc. Otherwise, password will be used to unlock the policy private
 // signing key.
-func LoadDomain(configPath string, password []byte) (*TaoDomain, error) {
-	var cfg TaoDomainConfig
+func LoadDomain(configPath string, password []byte) (*Domain, error) {
+	var cfg DomainConfig
 	err := gcfg.ReadFileInto(&cfg, configPath)
 	if err != nil {
 		return nil, err
@@ -198,5 +198,5 @@ func LoadDomain(configPath string, password []byte) (*TaoDomain, error) {
 		guard = ConservativeGuard
 	}
 
-	return &TaoDomain{cfg, configPath, keys, guard}, nil
+	return &Domain{cfg, configPath, keys, guard}, nil
 }

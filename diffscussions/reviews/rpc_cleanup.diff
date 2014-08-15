@@ -1,0 +1,839 @@
+#* 
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-15T15:13:08-0400
+#* 
+#- separate and isolate linux_host admin RPC stubs
+#- 
+#- The client and server stub code for linux_host admin RPC calls is very
+#- boring and repetitive. On the client side, take the real args, pack
+#- them in protobufs, invoke rpc.Call, unpack results and return them. On
+#- the server side, take the packed args, unpack them, call the real
+#- function, then pack the results into a protobuf.
+#- 
+#- This patch moves all such code for linux_host admin RPCs into a
+#- separate file. Ideally, that file could be auto-generated based on,
+#- say, an interface definition (and maybe a mapping to protobuf fields,
+#- or just generate the protobuf automatically). Until then, a separate
+#- file for this boring stuff keeps the actual, interesting linux_host
+#- logic cleaner.
+#- 
+#- 
+diff --git a/go/src/cloudproxy/linux_host/main.go b/go/src/cloudproxy/linux_host/main.go
+index f7c6d72..2d77a9d 100644
+--- a/go/src/cloudproxy/linux_host/main.go
++++ b/go/src/cloudproxy/linux_host/main.go
+@@ -4,50 +4,48 @@
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package main
+ 
+ import (
+ 	"flag"
+ 	"fmt"
+ 	"io"
+ 	"io/ioutil"
+ 	"log"
+ 	"net"
+-	"net/rpc"
+ 	"os"
+ 	"os/signal"
+ 	"path"
+ 	"syscall"
+ 
+ 	"cloudproxy/tao"
+ 	"cloudproxy/tao/auth"
+ 	"cloudproxy/util"
+-	"cloudproxy/util/protorpc"
+ )
+ 
+ var configPath = flag.String("config_path", "tao.config", "Location of tao domain configuration")
+ var hostPath = flag.String("path", "linux_tao_host", "Location of linux host configuration")
+ var quiet = flag.Bool("quiet", false, "Be more quiet.")
+ var root = flag.Bool("root", false, "Run in root mode")
+ var stacked = flag.Bool("stacked", false, "Run in stacked mode")
+ var pass = flag.String("pass", "", "Password for unlocking keys if running in root mode")
+ 
+ var create = flag.Bool("create", false, "Create a new LinuxHost service.")
+ var show = flag.Bool("show", false, "Show principal name for LinuxHost service.")
+ var service = flag.Bool("service", false, "Start the LinuxHost service.")
+ var shutdown = flag.Bool("shutdown", false, "Shut down the LinuxHost service.")
+ 
+ var run = flag.Bool("run", false, "Start a hosted program (path and args follow --).")
+ var list = flag.Bool("list", false, "List hosted programs.")
+ var stop = flag.Bool("stop", false, "Stop a hosted program (names follow --).")
+ var kill = flag.Bool("kill", false, "Kill a hosted program (names follow --).")
+ var name = flag.Bool("name", false, "Show the principal name of running LinuxHost.")
+ 
+@@ -84,136 +82,115 @@ func main() {
+ 	help += "%[1]s [options] -kill -- subprin...\n"
+ 	help += "%[1]s [options] -list\n"
+ 	help += "%[1]s [options] -name\n"
+ 	flag.Usage = func() {
+ 		fmt.Fprintf(os.Stderr, help, os.Args[0])
+ 		flag.PrintDefaults()
+ 	}
+ 	util.UseEnvFlags("GLOG", "TAO", "TAO_HOST")
+ 	flag.Parse()
+ 
+ 	if *quiet {
+ 		verbose = ioutil.Discard
+ 	} else {
+ 		verbose = os.Stdout
+ 	}
+ 
+ 	if countSet(*create, *show, *service, *shutdown, *run, *stop, *kill, *list, *name) > 1 {
+ 		log.Fatal("specify at most one of the command options")
+ 	}
+ 
+-	hostSocket := path.Join(*hostPath, "admin_socket")
++	sockPath := path.Join(*hostPath, "admin_socket")
+ 
+ 	if *create || *service || *show {
+ 		fmt.Fprintf(verbose, "Loading configuration from: %s\n", *configPath)
+ 		domain, err := tao.LoadDomain(*configPath, nil)
+ 		fatalIf(err)
+ 		var host *tao.LinuxHost
+ 		if *root {
+ 			if len(*pass) == 0 {
+ 				log.Fatal("password is required")
+ 			}
+ 			host, err = tao.NewRootLinuxHost(*hostPath, domain.Guard, []byte(*pass))
+ 		} else if *stacked {
+ 			if !tao.Hosted() {
+ 				log.Fatal("error: no host tao available, check $%s\n", tao.HostTaoEnvVar)
+ 			}
+ 			host, err = tao.NewStackedLinuxHost(*hostPath, domain.Guard, tao.Parent())
+ 		} else {
+ 			log.Fatal("error: must specify either -root or -stacked")
+ 		}
+ 		fatalIf(err)
+ 		if *create {
+ 			fmt.Printf("LinuxHost Service: %s\n", host.TaoHostName())
+ 		} else if *show {
+ 			fmt.Printf("export GOOGLE_TAO_LINUX='%v'\n", host.TaoHostName())
+ 		} else /* service */ {
+-			err := adminSocketServe(hostSocket, host)
++			sock, err := net.Listen("unix", sockPath)
+ 			fatalIf(err)
++			defer sock.Close()
++			fmt.Fprintf(verbose, "Linux Tao Service started and waiting for requests\n")
++			fatalIf(err)
++			tao.NewLinuxHostAdminServer(host).Serve(sock)
+ 		}
+ 	} else {
+-		client, err := adminSocketDial(hostSocket)
++		conn, err := net.Dial("unix", sockPath)
+ 		fatalIf(err)
++		defer conn.Close()
++		client := tao.NewLinuxHostAdminClient(conn)
+ 		if *shutdown {
+ 			log.Fatal("not yet implemented")
+ 		} else if *run {
+ 			if flag.NArg() == 0 {
+ 				log.Fatal("missing program path")
+ 			}
+-			subprin, pid, err := tao.LinuxHostStart(client, flag.Arg(0), flag.Args()...)
++			subprin, pid, err := client.StartHostedProgram(flag.Arg(0), flag.Args()...)
+ 			fatalIf(err)
+ 			fmt.Printf("%d %v\n", pid, subprin)
+ 		} else if *stop {
+ 			for _, s := range flag.Args() {
+ 				var subprin auth.SubPrin
+ 				_, err := fmt.Sscanf(s, "%v", &subprin)
+ 				fatalIf(err)
+-				err = tao.LinuxHostStop(client, subprin)
++				err = client.StopHostedProgram(subprin)
+ 				fatalIf(err)
+ 			}
+ 		} else if *kill {
+ 			for _, s := range flag.Args() {
+ 				var subprin auth.SubPrin
+ 				_, err := fmt.Sscanf(s, "%v", &subprin)
+ 				fatalIf(err)
+-				err = tao.LinuxHostKill(client, subprin)
++				err = client.KillHostedProgram(subprin)
+ 				fatalIf(err)
+ 			}
+ 		} else if *list {
+-			name, pid, err := tao.LinuxHostList(client)
++			name, pid, err := client.ListHostedPrograms()
+ 			fatalIf(err)
+ 			for i, p := range pid {
+ 				fmt.Printf("pid=%d %v\n", p, name[i])
+ 			}
+ 			fmt.Printf("%d processes\n", len(pid))
+ 		} else if *name {
+-			name, err := tao.LinuxHostName(client)
++			name, err := client.TaoHostName()
+ 			fatalIf(err)
+ 			fmt.Printf("LinuxHost: %v\n", name)
+ 		} else {
+-			name, err := tao.LinuxHostName(client)
++			name, err := client.TaoHostName()
+ 			fatalIf(err)
+ 			fmt.Printf("LinuxHost: %s\n", name)
+ 		}
+ 	}
+ }
+ 
+ func fatalIf(err error) {
+ 	if err != nil {
+ 		log.Fatal(err)
+ 	}
+ }
+ 
+-func adminSocketServe(sockPath string, host *tao.LinuxHost) error {
+-	sock, err := net.Listen("unix", sockPath)
+-	if err != nil {
+-		return err
+-	}
+-	defer sock.Close()
+-
+-	fmt.Fprintf(verbose, "Linux Tao Service started and waiting for requests\n")
+-	for {
+-		conn, err := sock.Accept()
+-		if err != nil {
+-			return err
+-		}
+-		rpc.RegisterName("LinuxHost", host)
+-		go rpc.ServeCodec(protorpc.NewServerCodec(conn))
+-	}
+-}
+-
+-func adminSocketDial(sockPath string) (*rpc.Client, error) {
+-	conn, err := net.Dial("unix", sockPath)
+-	if err != nil {
+-		return nil, err
+-	}
+-	// defer c.Close()
+-	return rpc.NewClientWithCodec(protorpc.NewClientCodec(conn)), nil
+-}
+-
+ func panicOnHup() {
+ 	c := make(chan os.Signal, 1)
+ 	signal.Notify(c, syscall.SIGQUIT)
+ 
+ 	s := <-c
+ 	panic(s)
+ }
+diff --git a/go/src/cloudproxy/tao/linux_admin_rpc.proto b/go/src/cloudproxy/tao/linux_admin_rpc.proto
+deleted file mode 100644
+index 96b98d4..0000000
+--- a/go/src/cloudproxy/tao/linux_admin_rpc.proto
++++ /dev/null
+@@ -1,37 +0,0 @@
+-//  File: linux_admin_rpc.proto
+-//  Author: Tom Roeder <tmroeder@google.com>
+-//
+-//  Description: Protocol buffers for LinuxAdminRPCPC.
+-//
+-//  Copyright (c) 2013, Google Inc.  All rights reserved.
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package tao;
+-
+-message LinuxAdminRPCRequest {
+-  optional bytes data = 1;
+-  optional string path = 2;
+-  repeated string args = 3;
+-}
+-
+-message LinuxAdminRPCHostedProgram {
+-  required bytes subprin = 1; // = auth.Marshal(SubPrin)
+-  required int32 pid = 2;
+-}
+-
+-message LinuxAdminRPCResponse {
+-  repeated LinuxAdminRPCHostedProgram child = 1;
+-  optional bytes name = 2;
+-}
+-
+diff --git a/go/src/cloudproxy/tao/linux_host.go b/go/src/cloudproxy/tao/linux_host.go
+index 22188c0..ce767f1 100644
+--- a/go/src/cloudproxy/tao/linux_host.go
++++ b/go/src/cloudproxy/tao/linux_host.go
+@@ -1,38 +1,37 @@
+ // Copyright (c) 2014, Google Inc.  All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+-	"net/rpc"
+ 	"sync"
+ 	"syscall"
+ 
+ 	"code.google.com/p/goprotobuf/proto"
+ 	"github.com/golang/glog"
+ 
+ 	"cloudproxy/tao/auth"
+ )
+ 
+ // A LinuxHost is a Tao host environment in which hosted programs are Linux
+ // processes. A Unix domain socket accepts administrative commands for
+ // controlling the host, e.g., for starting hosted processes, stopping hosted
+ // processes, or shutting down the host. A LinuxTao can be run in stacked mode
+ // (on top of a host Tao) or in root mode (without an underlying host Tao).
+ type LinuxHost struct {
+ 	path           string
+ 	guard          Guard
+ 	taoHost        Host
+ 	childFactory   LinuxProcessFactory
+ 	hostedPrograms []*LinuxHostServer
+@@ -184,253 +183,145 @@ func (lh *LinuxHost) handleUnseal(childSubprin auth.SubPrin, sealed []byte) ([]b
+ 	case SharedSecretPolicyConservative:
+ 		if lhsb.PolicyInfo == nil || childSubprin.String() != *lhsb.PolicyInfo {
+ 			return nil, "", newError("principal not authorized for unseal")
+ 		}
+ 	case SharedSecretPolicyLiberal:
+ 		// Allow all
+ 		break
+ 	default:
+ 		return nil, "", newError("policy not supported for Unseal: " + policy)
+ 	}
+ 
+ 	return lhsb.Data, policy, nil
+ }
+ 
+ // handleAttest performs policy checking and performs attestation for a child
+ // subprincipal.
+ func (lh *LinuxHost) handleAttest(childSubprin auth.SubPrin, issuer *auth.Prin, time, expiration *int64, stmt auth.Form) (*Attestation, error) {
+ 	return lh.taoHost.Attest(childSubprin, issuer, time, expiration, stmt)
+ }
+ 
+-// StartHostedProgram starts a new program based on an admin RPC request.
+-// This function is accessible using net/rpc.
+-func (lh *LinuxHost) StartHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
+-	if r.Path == nil {
+-		return newError("hosted program creation request is missing path")
+-	}
+-
++// StartHostedProgram starts a new hosted program.
++func (lh *LinuxHost) StartHostedProgram(path string, args []string) (auth.SubPrin, int, error) {
+ 	lh.idm.Lock()
+ 	id := lh.nextChildID
+ 	if lh.nextChildID != 0 {
+ 		lh.nextChildID++
+ 	} else {
+ 		glog.Warning("Running without unique child IDs")
+ 	}
+ 	lh.idm.Unlock()
+ 
+-	subprin, temppath, err := lh.childFactory.MakeHostedProgramSubprin(id, *r.Path)
++	subprin, temppath, err := lh.childFactory.MakeHostedProgramSubprin(id, path)
+ 	if err != nil {
+-		return err
++		return auth.SubPrin{}, 0, err
+ 	}
+ 
+ 	// We allow multiple hosted programs with the same subprincipal name,
+ 	// so we don't check here to make sure that there isn't another program
+ 	// with the same subprincipal.
+ 
+ 	// TODO(tmroeder): do we want to support concurrent updates to policy?
+ 	// Then we need a lock here, too.
+ 	hostName := lh.taoHost.TaoHostName()
+ 	childName := hostName.MakeSubprincipal(subprin)
+ 	if !lh.guard.IsAuthorized(childName, "Execute", []string{}) {
+-		return newError("Hosted program %s denied authorization to execute on host %s", subprin, hostName)
++		return auth.SubPrin{}, 0, newError("Hosted program %s denied authorization to execute on host %s", subprin, hostName)
+ 	}
+ 
+-	lhs, err := lh.childFactory.StartHostedProgram(lh, temppath, r.Args, subprin)
++	lhs, err := lh.childFactory.StartHostedProgram(lh, temppath, args, subprin)
+ 	if err != nil {
+-		return err
++		return auth.SubPrin{}, 0, err
+ 	}
+ 	pid := lhs.Cmd.Process.Pid
+ 
+ 	lh.hpm.Lock()
+ 	lh.hostedPrograms = append(lh.hostedPrograms, lhs)
+ 	lh.hpm.Unlock()
+ 
+-	s.Child = make([]*LinuxAdminRPCHostedProgram, 1)
+-	s.Child[0] = &LinuxAdminRPCHostedProgram{
+-		Subprin: auth.Marshal(subprin),
+-		Pid:     proto.Int32(int32(pid)),
+-	}
+-	return nil
++	return subprin, pid, nil
+ }
+ 
+-// LinuxHostStart does an RPC to LinuxHost.StartHostedProgram.
+-func LinuxHostStart(client *rpc.Client, path string, args ...string) (auth.SubPrin, int, error) {
+-	req := &LinuxAdminRPCRequest{
+-		Path: proto.String(path),
+-		Args: args,
+-	}
+-	resp := new(LinuxAdminRPCResponse)
+-	err := client.Call("LinuxHost.StartHostedProgram", req, resp)
+-	if err != nil {
+-		return auth.SubPrin{}, 0, err
+-	}
+-	if len(resp.Child) != 1 {
+-		return auth.SubPrin{}, 0, newError("invalid response")
+-	}
+-	subprin, err := auth.UnmarshalSubPrin(resp.Child[0].Subprin)
+-	return subprin, int(*resp.Child[0].Pid), err
+-}
+-
+-// StopHostedProgram stops a running hosted program based on an admin RPC
+-// request.
+-// This function is accessible using net/rpc.
+-func (lh *LinuxHost) StopHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
+-	subprin, err := auth.UnmarshalSubPrin(r.Data)
+-	if err != nil {
+-		return err
+-	}
++// StopHostedProgram stops a running hosted program.
++func (lh *LinuxHost) StopHostedProgram(subprin auth.SubPrin) error {
+ 	lh.hpm.Lock()
+ 	defer lh.hpm.Unlock()
+ 
+ 	// For Stop, we send SIGTERM
+ 	sigterm := 15
+ 	var i int
+ 	for i < len(lh.hostedPrograms) {
+ 		lph := lh.hostedPrograms[i]
+ 		n := len(lh.hostedPrograms)
+ 		if lph.ChildSubprin.Identical(subprin) {
+ 			// Close the channel before sending SIGTERM
+ 			lph.channel.Close()
+ 
+ 			if err := syscall.Kill(lph.Cmd.Process.Pid, syscall.Signal(sigterm)); err != nil {
+ 				glog.Errorf("Couldn't send SIGTERM to process %d, subprincipal %s: %s\n", lph.Cmd.Process.Pid, subprin, err)
+ 			}
+ 
+ 			// The order of this array doesn't matter, and we want
+ 			// to make sure we remove all references to pointers to
+ 			// LinuxHostServer instances so that they get garbage
+ 			// collected. So, we implement delete from the slice by
+ 			// moving elements around.
+ 			lh.hostedPrograms[i] = lh.hostedPrograms[n-1]
+ 			lh.hostedPrograms[n-1] = nil
+ 			lh.hostedPrograms = lh.hostedPrograms[:n-1]
+ 			i--
+ 		}
+ 
+ 		i++
+ 	}
+-
+ 	return nil
+ }
+ 
+-// LinuxHostStop does an RPC to LinuxHost.StopHostedProgram.
+-func LinuxHostStop(client *rpc.Client, subprin auth.SubPrin) error {
+-	req := &LinuxAdminRPCRequest{
+-		Data: auth.Marshal(subprin),
+-	}
+-	resp := new(LinuxAdminRPCResponse)
+-	err := client.Call("LinuxHost.StopHostedProgram", req, resp)
+-	if err != nil {
+-		return err
+-	}
+-	return nil
+-}
+-
+-// ListHostedPrograms returns a list of hosted programs to the caller.
+-// This function is accessible using net/rpc.
+-func (lh *LinuxHost) ListHostedPrograms(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
++// ListHostedPrograms returns a list of running hosted programs.
++func (lh *LinuxHost) ListHostedPrograms() ([]auth.SubPrin, []int, error) {
+ 	lh.hpm.RLock()
+-	s.Child = make([]*LinuxAdminRPCHostedProgram, len(lh.hostedPrograms))
++	subprins := make([]auth.SubPrin, len(lh.hostedPrograms))
++	pids := make([]int, len(lh.hostedPrograms))
+ 	for i, v := range lh.hostedPrograms {
+-		s.Child[i] = &LinuxAdminRPCHostedProgram{
+-			Subprin: auth.Marshal(v.ChildSubprin),
+-			Pid:     proto.Int32(int32(v.Cmd.Process.Pid)),
+-		}
++		subprins[i] = v.ChildSubprin
++		pids[i] = v.Cmd.Process.Pid
+ 	}
+ 	lh.hpm.RUnlock()
+-	return nil
+-}
+-
+-// LinuxHostList does an RPC to LinuxHost.ListHostedPrograms.
+-func LinuxHostList(client *rpc.Client) (name []auth.SubPrin, pid []int, err error) {
+-	req := &LinuxAdminRPCRequest{}
+-	resp := new(LinuxAdminRPCResponse)
+-	err = client.Call("LinuxHost.ListHostedPrograms", req, resp)
+-	if err != nil {
+-		return nil, nil, err
+-	}
+-	name = make([]auth.SubPrin, len(resp.Child))
+-	pid = make([]int, len(resp.Child))
+-	for i, child := range resp.Child {
+-		pid[i] = int(*child.Pid)
+-		name[i], err = auth.UnmarshalSubPrin(child.Subprin)
+-		if err != nil {
+-			return nil, nil, err
+-		}
+-	}
+-	return name, pid, nil
++	return subprins, pids, nil
+ }
+ 
+-// KillHostedProgram kills a running hosted program based on an admin RPC
+-// request.
+-// This function is accessible using net/rpc.
+-func (lh *LinuxHost) KillHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
+-	subprin, err := auth.UnmarshalSubPrin(r.Data)
+-	if err != nil {
+-		return err
+-	}
++// KillHostedProgram kills a running hosted program.
++func (lh *LinuxHost) KillHostedProgram(subprin auth.SubPrin) error {
+ 	lh.hpm.Lock()
+ 	defer lh.hpm.Unlock()
+ 	var i int
+ 	for i < len(lh.hostedPrograms) {
+ 		lph := lh.hostedPrograms[i]
+ 		n := len(lh.hostedPrograms)
+ 		if lph.ChildSubprin.Identical(subprin) {
+ 			// Close the channel before sending SIGTERM
+ 			lph.channel.Close()
+ 
+ 			if err := lph.Cmd.Process.Kill(); err != nil {
+ 				glog.Errorf("Couldn't kill process %d, subprincipal %s: %s\n", lph.Cmd.Process.Pid, subprin, err)
+ 			}
+ 
+ 			// The order of this array doesn't matter, and we want
+ 			// to make sure we remove all references to pointers to
+ 			// LinuxHostServer instances so that they get garbage
+ 			// collected. So, we implement delete from the slice by
+ 			// moving elements around.
+ 			lh.hostedPrograms[i] = lh.hostedPrograms[n-1]
+ 			lh.hostedPrograms[n-1] = nil
+ 			lh.hostedPrograms = lh.hostedPrograms[:n-1]
+ 			i--
+ 		}
+ 
+ 		i++
+ 	}
+-
+ 	return nil
+ }
+ 
+-// LinuxHostKill does an RPC to LinuxHost.KillHostedProgram.
+-func LinuxHostKill(client *rpc.Client, subprin auth.SubPrin) error {
+-	req := &LinuxAdminRPCRequest{
+-		Data: auth.Marshal(subprin),
+-	}
+-	resp := new(LinuxAdminRPCResponse)
+-	err := client.Call("LinuxHost.KillHostedProgram", req, resp)
+-	if err != nil {
+-		return err
+-	}
+-	return nil
+-}
+-
+-// GetTaoHostName returns the name of the Host used by the LinuxHost.
+-// This function is accessible using net/rpc.
+-func (lh *LinuxHost) GetTaoHostName(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
+-	s.Name = auth.Marshal(lh.taoHost.TaoHostName())
+-	return nil
+-}
+-
+-// LinuxHostName does an RPC to LinuxHost.GetTaoHostName
+-func LinuxHostName(client *rpc.Client) (auth.Prin, error) {
+-	req := &LinuxAdminRPCRequest{}
+-	resp := new(LinuxAdminRPCResponse)
+-	err := client.Call("LinuxHost.GetTaoHostName", req, resp)
+-	if err != nil {
+-		return auth.Prin{}, err
+-	}
+-	return auth.UnmarshalPrin(resp.Name)
+-}
+-
+ // TaoHostName returns the name of the Host used by the LinuxHost.
+ func (lh *LinuxHost) TaoHostName() auth.Prin {
+ 	return lh.taoHost.TaoHostName()
+ }
+diff --git a/go/src/cloudproxy/tao/linux_host_admin_rpc.go b/go/src/cloudproxy/tao/linux_host_admin_rpc.go
+new file mode 100644
+index 0000000..eb2d89d
+--- /dev/null
++++ b/go/src/cloudproxy/tao/linux_host_admin_rpc.go
+@@ -0,0 +1,206 @@
++// Copyright (c) 2014, Google Inc.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package tao
++
++// This provides client and server stubs for LinuxHost's admin RPC interface.
++// This code is extremely dull and, ideally, would be generated automatically.
++
++import (
++	"io"
++	"net"
++	"net/rpc"
++
++	"code.google.com/p/goprotobuf/proto"
++
++	"cloudproxy/tao/auth"
++	"cloudproxy/util/protorpc"
++)
++
++// LinuxHostAdminClient is a client stub for LinuxHost's admin RPC interface.
++type LinuxHostAdminClient struct {
++	*rpc.Client
++}
++
++// NewLinuxHostAdminClient returns a new client stub for LinuxHost's admin RPC
++// interface.
++func NewLinuxHostAdminClient(conn io.ReadWriteCloser) LinuxHostAdminClient {
++	c := rpc.NewClientWithCodec(protorpc.NewClientCodec(conn))
++	return LinuxHostAdminClient{c}
++}
++
++// StartHostedProgram is the client stub for LinuxHost.StartHostedProgram.
++func (client LinuxHostAdminClient) StartHostedProgram(path string, args ...string) (auth.SubPrin, int, error) {
++	req := &LinuxHostAdminRPCRequest{
++		Path: proto.String(path),
++		Args: args,
++	}
++	resp := new(LinuxHostAdminRPCResponse)
++	err := client.Call("LinuxHost.StartHostedProgram", req, resp)
++	if err != nil {
++		return auth.SubPrin{}, 0, err
++	}
++	if len(resp.Child) != 1 {
++		return auth.SubPrin{}, 0, newError("invalid response")
++	}
++	subprin, err := auth.UnmarshalSubPrin(resp.Child[0].Subprin)
++	return subprin, int(*resp.Child[0].Pid), err
++}
++
++// StopHostedProgram is the client stub for LinuxHost.StopHostedProgram.
++func (client LinuxHostAdminClient) StopHostedProgram(subprin auth.SubPrin) error {
++	req := &LinuxHostAdminRPCRequest{
++		Subprin: auth.Marshal(subprin),
++	}
++	resp := new(LinuxHostAdminRPCResponse)
++	err := client.Call("LinuxHost.StopHostedProgram", req, resp)
++	if err != nil {
++		return err
++	}
++	return nil
++}
++
++// ListHostedPrograms is the client stub for LinuxHost.ListHostedPrograms.
++func (client LinuxHostAdminClient) ListHostedPrograms() (name []auth.SubPrin, pid []int, err error) {
++	req := &LinuxHostAdminRPCRequest{}
++	resp := new(LinuxHostAdminRPCResponse)
++	err = client.Call("LinuxHost.ListHostedPrograms", req, resp)
++	if err != nil {
++		return nil, nil, err
++	}
++	name = make([]auth.SubPrin, len(resp.Child))
++	pid = make([]int, len(resp.Child))
++	for i, child := range resp.Child {
++		pid[i] = int(*child.Pid)
++		name[i], err = auth.UnmarshalSubPrin(child.Subprin)
++		if err != nil {
++			return nil, nil, err
++		}
++	}
++	return name, pid, nil
++}
++
++// KillHostedProgram is the client stub for LinuxHost.KillHostedProgram.
++func (client LinuxHostAdminClient) KillHostedProgram(subprin auth.SubPrin) error {
++	req := &LinuxHostAdminRPCRequest{
++		Subprin: auth.Marshal(subprin),
++	}
++	resp := new(LinuxHostAdminRPCResponse)
++	err := client.Call("LinuxHost.KillHostedProgram", req, resp)
++	if err != nil {
++		return err
++	}
++	return nil
++}
++
++// TaoHostName is the client stub for LinuxHost.TaoHostName..
++func (client LinuxHostAdminClient) TaoHostName() (auth.Prin, error) {
++	req := &LinuxHostAdminRPCRequest{}
++	resp := new(LinuxHostAdminRPCResponse)
++	err := client.Call("LinuxHost.TaoHostName", req, resp)
++	if err != nil {
++		return auth.Prin{}, err
++	}
++	return auth.UnmarshalPrin(resp.Prin)
++}
++
++// LinuxHostAdminServer is a server stub for LinuxHost's admin RPC interface.
++type LinuxHostAdminServer struct {
++	lh *LinuxHost
++}
++
++type linuxHostAdminServerStub LinuxHostAdminServer
++
++// NewLinuxHostAdminServer returns a new server stub for LinuxHost's admin RPC
++// interface.
++func NewLinuxHostAdminServer(host *LinuxHost) LinuxHostAdminServer {
++	return LinuxHostAdminServer{host}
++}
++
++// Serve listens on sock for new connections and services them.
++func (server LinuxHostAdminServer) Serve(sock net.Listener) error {
++	for {
++		conn, err := sock.Accept()
++		if err != nil {
++			return err
++		}
++		s := rpc.NewServer()
++		err = s.RegisterName("LinuxHost", linuxHostAdminServerStub(server))
++		if err != nil {
++			return err
++		}
++		go s.ServeCodec(protorpc.NewServerCodec(conn))
++	}
++}
++
++// StartHostedProgram is the server stub for LinuxHost.StartHostedProgram.
++func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
++	if r.Path == nil {
++		return newError("missing path")
++	}
++	subprin, pid, err := server.lh.StartHostedProgram(*r.Path, r.Args)
++	if err != nil {
++		return err
++	}
++	s.Child = make([]*LinuxHostAdminRPCHostedProgram, 1)
++	s.Child[0] = &LinuxHostAdminRPCHostedProgram{
++		Subprin: auth.Marshal(subprin),
++		Pid:     proto.Int32(int32(pid)),
++	}
++	return nil
++}
++
++// StopHostedProgram is the server stub for LinuxHost.StopHostedProgram.
++func (server linuxHostAdminServerStub) StopHostedProgram(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
++	subprin, err := auth.UnmarshalSubPrin(r.Subprin)
++	if err != nil {
++		return err
++	}
++	return server.lh.StopHostedProgram(subprin)
++}
++
++// ListHostedPrograms is the server stub for LInuxHost.ListHostedPrograms.
++func (server linuxHostAdminServerStub) ListHostedPrograms(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
++	names, pids, err := server.lh.ListHostedPrograms()
++	if err != nil {
++		return err
++	}
++	if len(names) != len(pids) {
++		return newError("invalid response")
++	}
++	s.Child = make([]*LinuxHostAdminRPCHostedProgram, len(names))
++	for i := range names {
++		s.Child[i] = &LinuxHostAdminRPCHostedProgram{
++			Subprin: auth.Marshal(names[i]),
++			Pid:     proto.Int32(int32(pids[i])),
++		}
++	}
++	return nil
++}
++
++// KillHostedProgram is the server stub for LinuxHost.KillHostedProgram.
++func (server linuxHostAdminServerStub) KillHostedProgram(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
++	subprin, err := auth.UnmarshalSubPrin(r.Subprin)
++	if err != nil {
++		return err
++	}
++	return server.lh.KillHostedProgram(subprin)
++}
++
++// TaoHostName is the server stub for LinuxHost.TaoHostName.
++func (server linuxHostAdminServerStub) TaoHostName(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
++	prin := server.lh.TaoHostName()
++	s.Prin = auth.Marshal(prin)
++	return nil
++}
+diff --git a/go/src/cloudproxy/tao/linux_host_admin_rpc.proto b/go/src/cloudproxy/tao/linux_host_admin_rpc.proto
+new file mode 100644
+index 0000000..e898eb9
+--- /dev/null
++++ b/go/src/cloudproxy/tao/linux_host_admin_rpc.proto
+@@ -0,0 +1,34 @@
++//  Author: Tom Roeder <tmroeder@google.com>
++//
++//  Copyright (c) 2013, Google Inc.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package tao;
++
++message LinuxHostAdminRPCRequest {
++  optional bytes subprin = 1; // = auth.Marshal(auth.SubPrin)
++  optional string path = 2;
++  repeated string args = 3;
++}
++
++message LinuxHostAdminRPCHostedProgram {
++  required bytes subprin = 1; // = auth.Marshal(auth.SubPrin)
++  required int32 pid = 2;
++}
++
++message LinuxHostAdminRPCResponse {
++  repeated LinuxHostAdminRPCHostedProgram child = 1;
++  optional bytes prin = 2; // = auth.Marshal(auth.Prin)
++}
++

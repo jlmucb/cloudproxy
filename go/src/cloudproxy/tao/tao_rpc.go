@@ -14,6 +14,9 @@
 
 package tao
 
+// This provides client stubs for the Tao interface. This code is (mostly)
+// extremely dull and, ideally, would be generated automatically.
+
 import (
 	"errors"
 	"io"

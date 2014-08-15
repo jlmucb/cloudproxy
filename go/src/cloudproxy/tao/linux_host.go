@@ -15,6 +15,8 @@
 package tao
 
 import (
+	"io"
+	"os/exec"
 	"sync"
 	"syscall"
 
@@ -34,7 +36,7 @@ type LinuxHost struct {
 	guard          Guard
 	taoHost        Host
 	childFactory   LinuxProcessFactory
-	hostedPrograms []*LinuxHostServer
+	hostedPrograms []*LinuxHostChild
 	hpm            sync.RWMutex
 	nextChildID    uint
 	idm            sync.Mutex
@@ -87,20 +89,32 @@ func NewRootLinuxHost(path string, guard Guard, password []byte) (*LinuxHost, er
 	return lh, nil
 }
 
-// handleGetTaoName returns a Tao name for this child subprincipal.
-func (lh *LinuxHost) handleGetTaoName(childSubprin auth.SubPrin) auth.Prin {
-	return lh.taoHost.TaoHostName().MakeSubprincipal(childSubprin)
+// LinuxHostChild holds state associated with a running child program.
+type LinuxHostChild struct {
+	channel      io.ReadWriteCloser
+	ChildSubprin auth.SubPrin
+	Cmd          *exec.Cmd
 }
 
-// handleGetRandomBytes gets random bytes from the Host.
-func (lh *LinuxHost) handleGetRandomBytes(childSubprin auth.SubPrin, n int) ([]byte, error) {
-	return lh.taoHost.GetRandomBytes(childSubprin, n)
+// GetTaoName returns the Tao name for the child.
+func (lh *LinuxHost) GetTaoName(child *LinuxHostChild) auth.Prin {
+	return lh.taoHost.TaoHostName().MakeSubprincipal(child.ChildSubprin)
 }
 
-// handleGetSharedSecret derives a tag for the secret and generates one from
-// the Host.
-func (lh *LinuxHost) handleGetSharedSecret(childSubprin auth.SubPrin, n int, policy string) ([]byte, error) {
-	// Compute the tag based on the policy identifier and childSubprin.
+// ExtendTaoName irreversibly extends the Tao principal name of the child.
+func (lh *LinuxHost) ExtendTaoName(child *LinuxHostChild, ext auth.SubPrin) error {
+	child.ChildSubprin = append(child.ChildSubprin, ext...)
+	return nil
+}
+
+// GetRandomBytes returns a slice of n random bytes for the child.
+func (lh *LinuxHost) GetRandomBytes(child *LinuxHostChild, n int) ([]byte, error) {
+	return lh.taoHost.GetRandomBytes(child.ChildSubprin, n)
+}
+
+// GetSharedSecret returns a slice of n secret bytes for the child.
+func (lh *LinuxHost) GetSharedSecret(child *LinuxHostChild, n int, policy string) ([]byte, error) {
+	// Compute a tag based on the policy identifier and the child's subprin.
 	var tag string
 	switch policy {
 	case SharedSecretPolicyDefault:
@@ -112,7 +126,7 @@ func (lh *LinuxHost) handleGetSharedSecret(childSubprin auth.SubPrin, n int, pol
 		// LinuxHost.
 		// TODO(kwalsh) conservative policy could include PID or other
 		// child info.
-		tag = policy + "|" + childSubprin.String()
+		tag = policy + "|" + child.ChildSubprin.String()
 	case SharedSecretPolicyLiberal:
 		// The most liberal we can do is allow any hosted process
 		// running on a similar LinuxHost instance.
@@ -120,13 +134,11 @@ func (lh *LinuxHost) handleGetSharedSecret(childSubprin auth.SubPrin, n int, pol
 	default:
 		return nil, newError("policy not supported for GetSharedSecret: " + policy)
 	}
-
 	return lh.taoHost.GetSharedSecret(tag, n)
 }
 
-// handleSeal seals data for the given policy and child subprincipal. This call
-// also zeroes the data parameter.
-func (lh *LinuxHost) handleSeal(childSubprin auth.SubPrin, data []byte, policy string) ([]byte, error) {
+// Seal encrypts data for the child. This call also zeroes the data parameter.
+func (lh *LinuxHost) Seal(child *LinuxHostChild, data []byte, policy string) ([]byte, error) {
 	defer zeroBytes(data)
 	lhsb := &LinuxHostSealedBundle{
 		Policy: proto.String(policy),
@@ -141,7 +153,7 @@ func (lh *LinuxHost) handleSeal(childSubprin auth.SubPrin, data []byte, policy s
 		// and conservative policies means any process running the same
 		// program binary as the caller hosted on a similar
 		// LinuxHost.
-		lhsb.PolicyInfo = proto.String(childSubprin.String())
+		lhsb.PolicyInfo = proto.String(child.ChildSubprin.String())
 	case SharedSecretPolicyLiberal:
 		// The most liberal we can do is allow any hosted process
 		// running on a similar LinuxHost instance. So, we don't set
@@ -159,9 +171,8 @@ func (lh *LinuxHost) handleSeal(childSubprin auth.SubPrin, data []byte, policy s
 	return lh.taoHost.Encrypt(m)
 }
 
-// handleUnseal unseals data and checks its policy information to see if this
-// Unseal operation is authorized.
-func (lh *LinuxHost) handleUnseal(childSubprin auth.SubPrin, sealed []byte) ([]byte, string, error) {
+// Unseal decrypts data for the child, but only if the policy is satisfied.
+func (lh *LinuxHost) Unseal(child *LinuxHostChild, sealed []byte) ([]byte, string, error) {
 	decrypted, err := lh.taoHost.Decrypt(sealed)
 	if err != nil {
 		return nil, "", err
@@ -181,7 +192,7 @@ func (lh *LinuxHost) handleUnseal(childSubprin auth.SubPrin, sealed []byte) ([]b
 	switch policy {
 	case SharedSecretPolicyDefault:
 	case SharedSecretPolicyConservative:
-		if lhsb.PolicyInfo == nil || childSubprin.String() != *lhsb.PolicyInfo {
+		if lhsb.PolicyInfo == nil || child.ChildSubprin.String() != *lhsb.PolicyInfo {
 			return nil, "", newError("principal not authorized for unseal")
 		}
 	case SharedSecretPolicyLiberal:
@@ -194,10 +205,9 @@ func (lh *LinuxHost) handleUnseal(childSubprin auth.SubPrin, sealed []byte) ([]b
 	return lhsb.Data, policy, nil
 }
 
-// handleAttest performs policy checking and performs attestation for a child
-// subprincipal.
-func (lh *LinuxHost) handleAttest(childSubprin auth.SubPrin, issuer *auth.Prin, time, expiration *int64, stmt auth.Form) (*Attestation, error) {
-	return lh.taoHost.Attest(childSubprin, issuer, time, expiration, stmt)
+// Attest signs a statement on behalf of the child.
+func (lh *LinuxHost) Attest(child *LinuxHostChild, issuer *auth.Prin, time, expiration *int64, stmt auth.Form) (*Attestation, error) {
+	return lh.taoHost.Attest(child.ChildSubprin, issuer, time, expiration, stmt)
 }
 
 // StartHostedProgram starts a new hosted program.
@@ -228,14 +238,16 @@ func (lh *LinuxHost) StartHostedProgram(path string, args []string) (auth.SubPri
 		return auth.SubPrin{}, 0, newError("Hosted program %s denied authorization to execute on host %s", subprin, hostName)
 	}
 
-	lhs, err := lh.childFactory.StartHostedProgram(lh, temppath, args, subprin)
+	channel, cmd, err := lh.childFactory.ForkHostedProgram(temppath, args)
 	if err != nil {
 		return auth.SubPrin{}, 0, err
 	}
-	pid := lhs.Cmd.Process.Pid
+	child := &LinuxHostChild{channel, subprin, cmd}
+	go NewLinuxHostTaoServer(lh, child).Serve(channel)
+	pid := child.Cmd.Process.Pid
 
 	lh.hpm.Lock()
-	lh.hostedPrograms = append(lh.hostedPrograms, lhs)
+	lh.hostedPrograms = append(lh.hostedPrograms, child)
 	lh.hpm.Unlock()
 
 	return subprin, pid, nil

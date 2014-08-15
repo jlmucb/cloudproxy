@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/rpc"
 	"os"
 	"os/exec"
 	"path"
@@ -87,26 +86,24 @@ func (LinuxProcessFactory) MakeHostedProgramSubprin(id uint, prog string) (subpr
 	return
 }
 
-// StartHostedProgram uses a path, arguments, and a subprincipal name to create
-// a LinuxHostServer that manages messages to and from hosted processes under
-// Linux.
-func (LinuxProcessFactory) StartHostedProgram(lh *LinuxHost, prog string, args []string, subprin auth.SubPrin) (*LinuxHostServer, error) {
+// ForkHostedProgram uses a path and arguments to fork a new process.
+func (LinuxProcessFactory) ForkHostedProgram(prog string, args []string) (io.ReadWriteCloser, *exec.Cmd, error) {
 	// Get a pipe pair for communication with the child.
 	serverRead, clientWrite, err := os.Pipe()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer clientWrite.Close()
 
 	clientRead, serverWrite, err := os.Pipe()
 	if err != nil {
 		serverRead.Close()
-		return nil, err
+		return nil, nil, err
 	}
 	defer clientRead.Close()
 
-	rw := util.NewPairReadWriteCloser(serverRead, serverWrite)
-	c := &exec.Cmd{
+	channel := util.NewPairReadWriteCloser(serverRead, serverWrite)
+	cmd := &exec.Cmd{
 		Path:       prog,
 		Args:       args,
 		Stdin:      os.Stdin,
@@ -116,18 +113,10 @@ func (LinuxProcessFactory) StartHostedProgram(lh *LinuxHost, prog string, args [
 		// TODO(tmroeder): change the user of the hosted program here.
 	}
 
-	if err := c.Start(); err != nil {
-		rw.Close()
-		return nil, err
+	if err := cmd.Start(); err != nil {
+		channel.Close()
+		return nil, nil, err
 	}
 
-	lph := &LinuxHostServer{lh, rw, subprin, c}
-	server := rpc.NewServer()
-	if err := server.Register(lph); err != nil {
-		rw.Close()
-		return nil, err
-	}
-
-	go server.ServeConn(rw)
-	return lph, nil
+	return channel, cmd, nil
 }

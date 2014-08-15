@@ -60,7 +60,7 @@ const (
 )
 
 func GenerateX509() (*tao.Keys, *tls.Certificate, error) {
-	keys, err := tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Host())
+	keys, err := tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Parent())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -296,7 +296,7 @@ loop:
 // Tao Host demo
 
 func hostTaoDemo() error {
-	name, err := tao.Host().GetTaoName()
+	name, err := tao.Parent().GetTaoName()
 	if err != nil {
 		return err
 	}
@@ -308,42 +308,42 @@ func hostTaoDemo() error {
 		args = append(args, auth.Str(arg))
 	}
 	e := auth.PrinExt{Name: "Args", Arg: args}
-	err = tao.Host().ExtendTaoName(auth.SubPrin{e})
+	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
 	if err != nil {
 		return err
 	}
 
-	name, err = tao.Host().GetTaoName()
+	name, err = tao.Parent().GetTaoName()
 	if err != nil {
 		return err
 	}
 	fmt.Printf("My full name is %s\n", name)
 
-	random, err := tao.Host().GetRandomBytes(10)
+	random, err := tao.Parent().GetRandomBytes(10)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Random bytes  : % x\n", random)
 
-	n, err := tao.Host().Rand().Read(random)
+	n, err := tao.Parent().Rand().Read(random)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("%d more bytes : % x\n", n, random)
 
-	secret, err := tao.Host().GetSharedSecret(10, tao.SharedSecretPolicyDefault)
+	secret, err := tao.Parent().GetSharedSecret(10, tao.SharedSecretPolicyDefault)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Shared secret : % x\n", secret)
 
-	sealed, err := tao.Host().Seal(random, tao.SealPolicyDefault)
+	sealed, err := tao.Parent().Seal(random, tao.SealPolicyDefault)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Sealed bytes  : % x\n", sealed)
 
-	unsealed, policy, err := tao.Host().Unseal(sealed)
+	unsealed, policy, err := tao.Parent().Unseal(sealed)
 	if err != nil {
 		return err
 	}
@@ -367,7 +367,7 @@ func main() {
 
 	fmt.Printf("Go Tao Demo\n")
 
-	if !tao.HostAvailable() {
+	if !tao.Hosted() {
 		fmt.Printf("can't continue: No host Tao available\n")
 		return
 	}

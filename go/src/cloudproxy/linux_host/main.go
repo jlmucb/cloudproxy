@@ -114,10 +114,10 @@ func main() {
 			}
 			host, err = tao.NewRootLinuxHost(*hostPath, domain.Guard, []byte(*pass))
 		} else if *stacked {
-			if !tao.HostAvailable() {
+			if !tao.Hosted() {
 				log.Fatal("error: no host tao available, check $%s\n", tao.HostTaoEnvVar)
 			}
-			host, err = tao.NewStackedLinuxHost(*hostPath, domain.Guard, tao.Host())
+			host, err = tao.NewStackedLinuxHost(*hostPath, domain.Guard, tao.Parent())
 		} else {
 			log.Fatal("error: must specify either -root or -stacked")
 		}

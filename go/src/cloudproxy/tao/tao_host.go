@@ -18,7 +18,7 @@ import (
 	"cloudproxy/tao/auth"
 )
 
-// TaoHost provides a generic interface  for a Tao host that can be configured
+// TaoHost provides a generic interface for a Tao host that can be configured
 // and driven by a variety of host environments. Generally, the host
 // environment is responsible for enforcing and managing policy, managing
 // hosted programs (e.g. measuring, naming, starting, stopping), communication

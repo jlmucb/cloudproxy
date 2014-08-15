@@ -83,15 +83,15 @@ type Tao interface {
 var cachedHost Tao
 var cacheOnce sync.Once
 
-// Host returns the interface to the underlying host Tao. It depends on a
+// Parent returns the interface to the underlying host Tao. It depends on a
 // specific environment variable being set. On success it memoizes the result
 // before returning it because there should only ever be a single channel to the
 // host. On failure, it logs a message using glog and returns nil.
-// Note: errors are not returned so that, once it is confirmed that Host
+// Note: errors are not returned so that, once it is confirmed that Parent
 // returns a non-nil value, callers can use the function result in an
 // expression, e.g.:
-//   name, err := tao.Host().GetTaoName()
-func Host() Tao {
+//   name, err := tao.Parent().GetTaoName()
+func Parent() Tao {
 	cacheOnce.Do(func() {
 		host, err := DeserializeTaoRPC(os.Getenv(HostTaoEnvVar))
 		if err != nil {
@@ -103,7 +103,7 @@ func Host() Tao {
 	return cachedHost
 }
 
-// HostAvailable returns true iff a host Tao is available via the Host function.
-func HostAvailable() bool {
-	return Host() != nil
+// Hosted returns true iff a host Tao is available via the Parent function.
+func Hosted() bool {
+	return Parent() != nil
 }

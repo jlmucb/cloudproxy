@@ -44,7 +44,7 @@ func NewFakeTao(name auth.Prin, path string, password []byte) (Tao, error) {
 	if path == "" {
 		f.keys, err = NewTemporaryKeys(Signing | Crypting | Deriving)
 	} else {
-		f.keys, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, path)
+		f.keys, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, path, nil)
 	}
 
 	if err != nil {

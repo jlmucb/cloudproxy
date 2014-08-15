@@ -133,7 +133,7 @@ export TAO_ADMIN_pass="BogusPass"
 export TAO_HOST_pass="BogusPass"
 export TAO_HOST_root="$test_root"
 export TAO_HOST_stacked="$test_stacked"
-export TAO_HOST_path="${test_dir}/linux_tao_host "
+export TAO_HOST_path="${test_dir}/linux_tao_host"
 
 # Flags for tpm_tao
 export TAO_TPM_path="${test_dir}/tpm "

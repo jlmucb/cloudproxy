@@ -138,13 +138,14 @@ func main() {
 		} else if *list {
 			log.Fatal("not yet implemented")
 		} else if *name {
-			client, err := adminSocketConnect(hostSocket)
+			client, err := adminSocketDial(hostSocket)
 			fatalIf(err)
-			req := &LinuxAdminRPCRequest{}
-			resp := new(LinuxAdminRPCResponse)
+			req := &tao.LinuxAdminRPCRequest{}
+			resp := new(tao.LinuxAdminRPCResponse)
+			fmt.Println("calling")
 			err = client.Call("LinuxHost.GetTaoHostName", req, resp)
 			fatalIf(err)
-			fmt.Println(string(resp.data))
+			fmt.Println(string(resp.Data))
 		} else {
 			log.Fatal("LinuxHost: %s\n", "not yet implemented")
 		}
@@ -176,10 +177,10 @@ func adminSocketServe(sockPath string, host *tao.LinuxHost) error {
 }
 
 func adminSocketDial(sockPath string) (*rpc.Client, error) {
-	conn, err := net.Dial("unix","", sockPath)
+	conn, err := net.Dial("unix", sockPath)
 	if err != nil {
 		return nil, err
 	}
 	// defer c.Close()
-	return rpc.NewClientWithCodec(protorpc.NewClientCodec(conn))
+	return rpc.NewClientWithCodec(protorpc.NewClientCodec(conn)), nil
 }

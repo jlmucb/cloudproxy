@@ -199,7 +199,7 @@ func (c *serverCodec) WriteResponse(r *rpc.Response, x interface{}) error {
 
 	c.sending.Lock()
 	_, err := c.m.WriteMessage(&hdr) // writes htonl(length), marshal(hdr)
-	if err != nil {
+	if err == nil {
 		_, err = c.m.WriteMessage(body) // writes htonl(length), marshal(body)
 	}
 	c.sending.Unlock()

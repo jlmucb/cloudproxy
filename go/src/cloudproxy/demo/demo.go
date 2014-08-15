@@ -40,7 +40,7 @@ var localMode = flag.Bool("local", true, "Run host demo")
 var clientMode = flag.Bool("client", true, "Run demo client")
 var serverMode = flag.Bool("server", true, "Run demo server")
 var pingCount = flag.Int("n", 5, "Number of client/server pings")
-var demoAuth = flag.String("auth", "tao", "\"tcp\", \"tls\", or \"tao\"")
+var demoAuth = flag.String("auth", "tls", "\"tcp\", \"tls\", or \"tao\"")
 
 // TCP mode client/server
 

@@ -32,7 +32,7 @@ import (
 // (on top of a host Tao) or in root mode (without an underlying host Tao).
 type LinuxHost struct {
 	path           string
-	guard          TaoGuard
+	guard          Guard
 	taoHost        TaoHost
 	childFactory   LinuxProcessFactory
 	hostedPrograms []*LinuxHostServer
@@ -43,7 +43,7 @@ type LinuxHost struct {
 
 // NewStackedLinuxHost creates a new LinuxHost as a hosted program of an existing
 // host Tao.
-func NewStackedLinuxHost(path string, guard TaoGuard, hostTao Tao) (*LinuxHost, error) {
+func NewStackedLinuxHost(path string, guard Guard, hostTao Tao) (*LinuxHost, error) {
 	lh := &LinuxHost{
 		path:  path,
 		guard: guard,
@@ -73,7 +73,7 @@ func NewStackedLinuxHost(path string, guard TaoGuard, hostTao Tao) (*LinuxHost, 
 
 // NewRootLinuxHost creates a new LinuxHost as a standalone Host that can
 // provide the Tao to hosted Linux processes.
-func NewRootLinuxHost(path string, guard TaoGuard, password []byte) (*LinuxHost, error) {
+func NewRootLinuxHost(path string, guard Guard, password []byte) (*LinuxHost, error) {
 	lh := &LinuxHost{guard: guard}
 	k, err := NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, path, nil)
 	if err != nil {

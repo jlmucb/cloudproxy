@@ -20,7 +20,7 @@ import (
 	"cloudproxy/tao/auth"
 )
 
-func testNewTrivialLiberalGuard(t *testing.T) TaoGuard {
+func testNewTrivialLiberalGuard(t *testing.T) Guard {
 	tg := LiberalGuard
 	if tg.Subprincipal().String() != `.TrivialGuard("Liberal")` {
 		t.Fatal("Wrong subprincipal name for trivial liberal guard")
@@ -29,7 +29,7 @@ func testNewTrivialLiberalGuard(t *testing.T) TaoGuard {
 	return tg
 }
 
-func testNewTrivialConservativeGuard(t *testing.T) TaoGuard {
+func testNewTrivialConservativeGuard(t *testing.T) Guard {
 	tg := ConservativeGuard
 	if tg.Subprincipal().String() != `.TrivialGuard("Conservative")` {
 		t.Fatal("Wrong subprincipal name for trivial conservative guard")
@@ -40,68 +40,68 @@ func testNewTrivialConservativeGuard(t *testing.T) TaoGuard {
 
 var testPrin auth.Prin = auth.Prin{Type: "key", Key: []byte("testkey")}
 
-func testTrivialGuardAuthorize(t *testing.T, tg TaoGuard) {
+func testTrivialGuardAuthorize(t *testing.T, tg Guard) {
 	if err := tg.Authorize(testPrin, "testop", []string{}); err == nil {
 		t.Fatal("Authorize command incorrectly succeeded on trivial guard")
 	}
 }
 
-func testTrivialGuardRetract(t *testing.T, tg TaoGuard) {
+func testTrivialGuardRetract(t *testing.T, tg Guard) {
 	if err := tg.Retract(testPrin, "testop", []string{}); err == nil {
 		t.Fatal("Retract command incorrectly succeeded on trivial guard")
 	}
 }
 
-func testTrivialGuardIsAuthorized(t *testing.T, tg TaoGuard, expect bool) {
+func testTrivialGuardIsAuthorized(t *testing.T, tg Guard, expect bool) {
 	b := tg.IsAuthorized(testPrin, "testop", []string{})
 	if b != expect {
 		t.Fatal("Got an unexpected result from IsAuthorized on a trivial guard")
 	}
 }
 
-func testTrivialGuardAddRule(t *testing.T, tg TaoGuard) {
+func testTrivialGuardAddRule(t *testing.T, tg Guard) {
 	if err := tg.AddRule("fake rule"); err == nil {
 		t.Fatal("AddRule command incorrectly succeeded on trivial guard")
 	}
 }
 
-func testTrivialGuardRetractRule(t *testing.T, tg TaoGuard) {
+func testTrivialGuardRetractRule(t *testing.T, tg Guard) {
 	if err := tg.RetractRule("fake rule"); err == nil {
 		t.Fatal("RetractRule command incorrectly succeeded on trivial guard")
 	}
 }
 
-func testTrivialGuardClear(t *testing.T, tg TaoGuard) {
+func testTrivialGuardClear(t *testing.T, tg Guard) {
 	if err := tg.Clear(); err == nil {
 		t.Fatal("Clear command incorrectly succeeded on trivial guard")
 	}
 }
 
-func testTrivialGuardQuery(t *testing.T, tg TaoGuard, expected bool) {
+func testTrivialGuardQuery(t *testing.T, tg Guard, expected bool) {
 	if res, err := tg.Query("fake query"); err != nil || res != expected {
 		t.Fatal("Query command incorrectly succeeded on trivial guard")
 	}
 }
 
-func testTrivialGuardRuleCount(t *testing.T, tg TaoGuard) {
+func testTrivialGuardRuleCount(t *testing.T, tg Guard) {
 	if tg.RuleCount() != 1 {
 		t.Fatal("The rule count for a trivial guard was not exactly 1")
 	}
 }
 
-func testTrivialGuardGetRule(t *testing.T, tg TaoGuard, expected string) {
+func testTrivialGuardGetRule(t *testing.T, tg Guard, expected string) {
 	if tg.GetRule(0) != expected {
 		t.Fatal("Got an unexpected rule from GetRule(0) on a trivial guard")
 	}
 }
 
-func testTrivialGuardRuleDebugString(t *testing.T, tg TaoGuard, expected string) {
+func testTrivialGuardRuleDebugString(t *testing.T, tg Guard, expected string) {
 	if tg.RuleDebugString(0) != expected {
 		t.Fatal("Got an unexpected rule from RuleDebugString(0) on a trivial guard")
 	}
 }
 
-func testTrivialGuardDebugString(t *testing.T, tg TaoGuard, expected string) {
+func testTrivialGuardDebugString(t *testing.T, tg Guard, expected string) {
 	if tg.String() != expected {
 		t.Fatal("Got an unexpected rule from String() on a trivial guard")
 	}

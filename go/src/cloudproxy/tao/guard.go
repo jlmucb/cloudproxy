@@ -30,8 +30,8 @@ func MakePredicate(name auth.Prin, op string, args []string) string {
 	return ""
 }
 
-// A TaoGuard is an interface for evaluating policy decisions.
-type TaoGuard interface {
+// Guard is an interface for evaluating policy decisions.
+type Guard interface {
 	// Subprincipal returns a unique subprincipal for this policy.
 	Subprincipal() auth.SubPrin
 

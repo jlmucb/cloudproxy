@@ -40,7 +40,7 @@ type Domain struct {
 	Config     DomainConfig
 	ConfigPath string
 	Keys       *Keys
-	Guard      TaoGuard
+	Guard      Guard
 }
 
 // TODO(kwalsh) Move to acl_guard.go when that file exists.
@@ -136,7 +136,7 @@ func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain
 		return nil, err
 	}
 
-	var guard TaoGuard
+	var guard Guard
 	switch cfg.Domain.GuardType {
 	case "ACLs":
 		return nil, newError("acl guard not yet implemented")
@@ -186,7 +186,7 @@ func LoadDomain(configPath string, password []byte) (*Domain, error) {
 		return nil, err
 	}
 
-	var guard TaoGuard
+	var guard Guard
 	switch cfg.Domain.GuardType {
 	case "ACLs":
 		return nil, newError("acl guard not yet implemented")

@@ -20,19 +20,19 @@ import (
 	"cloudproxy/tao/auth"
 )
 
-// A TaoRootHost is a standalone implementation of Host.
-type TaoRootHost struct {
+// A RootHost is a standalone implementation of Host.
+type RootHost struct {
 	keys        *Keys
 	taoHostName auth.Prin
 }
 
-// NewTaoRootHostFromKeys returns a TaoRootHost that uses these keys.
+// NewTaoRootHostFromKeys returns a RootHost that uses these keys.
 func NewTaoRootHostFromKeys(k *Keys) (Host, error) {
 	if k.SigningKey == nil || k.CryptingKey == nil || k.VerifyingKey == nil {
-		return nil, newError("missing required key for TaoRootHost")
+		return nil, newError("missing required key for RootHost")
 	}
 
-	t := &TaoRootHost{
+	t := &RootHost{
 		keys:        k,
 		taoHostName: k.SigningKey.ToPrincipal(),
 	}
@@ -40,7 +40,7 @@ func NewTaoRootHostFromKeys(k *Keys) (Host, error) {
 	return t, nil
 }
 
-// NewTaoRootHost generates a new TaoRootHost with a fresh set of temporary
+// NewTaoRootHost generates a new RootHost with a fresh set of temporary
 // keys.
 func NewTaoRootHost() (Host, error) {
 	k, err := NewTemporaryKeys(Signing | Crypting)
@@ -52,7 +52,7 @@ func NewTaoRootHost() (Host, error) {
 }
 
 // GetRandomBytes returns a slice of n random bytes.
-func (t *TaoRootHost) GetRandomBytes(childSubprin auth.SubPrin, n int) (bytes []byte, err error) {
+func (t *RootHost) GetRandomBytes(childSubprin auth.SubPrin, n int) (bytes []byte, err error) {
 	b := make([]byte, n)
 	if _, err := rand.Read(b); err != nil {
 		return nil, err
@@ -62,9 +62,9 @@ func (t *TaoRootHost) GetRandomBytes(childSubprin auth.SubPrin, n int) (bytes []
 }
 
 // GetSharedSecret returns a slice of n secret bytes.
-func (t *TaoRootHost) GetSharedSecret(tag string, n int) (bytes []byte, err error) {
+func (t *RootHost) GetSharedSecret(tag string, n int) (bytes []byte, err error) {
 	if t.keys.DerivingKey == nil {
-		return nil, newError("this TaoRootHost does not implement shared secrets")
+		return nil, newError("this RootHost does not implement shared secrets")
 	}
 
 	// For now, all our key deriving with keys.DerivingKey uses a fixed 0-length salt.
@@ -78,7 +78,7 @@ func (t *TaoRootHost) GetSharedSecret(tag string, n int) (bytes []byte, err erro
 }
 
 // Attest requests the Tao host sign a statement on behalf of the caller.
-func (t *TaoRootHost) Attest(childSubprin auth.SubPrin, issuer *auth.Prin,
+func (t *RootHost) Attest(childSubprin auth.SubPrin, issuer *auth.Prin,
 	time, expiration *int64, message auth.Form) (*Attestation, error) {
 
 	child := t.taoHostName.MakeSubprincipal(childSubprin)
@@ -96,30 +96,30 @@ func (t *TaoRootHost) Attest(childSubprin auth.SubPrin, issuer *auth.Prin,
 }
 
 // Encrypt data so that only this host can access it.
-func (t *TaoRootHost) Encrypt(data []byte) (encrypted []byte, err error) {
+func (t *RootHost) Encrypt(data []byte) (encrypted []byte, err error) {
 	return t.keys.CryptingKey.Encrypt(data)
 }
 
 // Decrypt data that only this host can access.
-func (t *TaoRootHost) Decrypt(encrypted []byte) (data []byte, err error) {
+func (t *RootHost) Decrypt(encrypted []byte) (data []byte, err error) {
 	return t.keys.CryptingKey.Decrypt(encrypted)
 }
 
 // AddedHostedProgram notifies this Host that a new hosted program has been
 // created.
-func (t *TaoRootHost) AddedHostedProgram(childSubprin auth.SubPrin) error {
+func (t *RootHost) AddedHostedProgram(childSubprin auth.SubPrin) error {
 	return nil
 }
 
 // RemovedHostedProgram notifies this Host that a hosted program has been
 // killed.
-func (t *TaoRootHost) RemovedHostedProgram(childSubprin auth.SubPrin) error {
+func (t *RootHost) RemovedHostedProgram(childSubprin auth.SubPrin) error {
 	return nil
 }
 
 // TaoHostName gets the Tao principal name assigned to this hosted Tao host.
 // The name encodes the full path from the root Tao, through all intermediary
 // Tao hosts, to this hosted Tao host.
-func (t *TaoRootHost) TaoHostName() auth.Prin {
+func (t *RootHost) TaoHostName() auth.Prin {
 	return t.taoHostName
 }

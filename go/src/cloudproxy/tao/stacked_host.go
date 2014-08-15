@@ -20,22 +20,22 @@ import (
 	"cloudproxy/tao/auth"
 )
 
-// A TaoStackedHost implements Host over an existing host Tao.
-type TaoStackedHost struct {
+// A StackedHost implements Host over an existing host Tao.
+type StackedHost struct {
 	taoHostName auth.Prin
 	hostTao     Tao
 	keys        *Keys
 }
 
 // NewTaoStackedHostFromKeys takes ownership of an existing set of keys and
-// returns a TaoStackedHost that uses these keys over an existing host Tao.
+// returns a StackedHost that uses these keys over an existing host Tao.
 func NewTaoStackedHostFromKeys(k *Keys, t Tao) (Host, error) {
 	n, err := t.GetTaoName()
 	if err != nil {
 		return nil, err
 	}
 
-	tsh := &TaoStackedHost{
+	tsh := &StackedHost{
 		keys:        k,
 		taoHostName: n,
 		hostTao:     t,
@@ -44,7 +44,7 @@ func NewTaoStackedHostFromKeys(k *Keys, t Tao) (Host, error) {
 	return tsh, nil
 }
 
-// NewTaoStackedHost generates a new TaoStackedHost with a fresh set of temporary
+// NewTaoStackedHost generates a new StackedHost with a fresh set of temporary
 // keys.
 func NewTaoStackedHost(t Tao) (Host, error) {
 	k, err := NewTemporaryKeys(Signing | Crypting)
@@ -56,15 +56,15 @@ func NewTaoStackedHost(t Tao) (Host, error) {
 }
 
 // GetRandomBytes returns a slice of n random bytes.
-func (t *TaoStackedHost) GetRandomBytes(childSubprin auth.SubPrin, n int) (bytes []byte, err error) {
+func (t *StackedHost) GetRandomBytes(childSubprin auth.SubPrin, n int) (bytes []byte, err error) {
 	return t.hostTao.GetRandomBytes(n)
 }
 
 // GetSharedSecret returns a slice of n secret bytes.
-func (t *TaoStackedHost) GetSharedSecret(tag string, n int) (bytes []byte, err error) {
+func (t *StackedHost) GetSharedSecret(tag string, n int) (bytes []byte, err error) {
 	// TODO(tmroeder): this should be implemented using the underlying host
 	if t.keys.DerivingKey == nil {
-		return nil, newError("this TaoStackedHost does not implement shared secrets")
+		return nil, newError("this StackedHost does not implement shared secrets")
 	}
 
 	// For now, all our key deriving with keys.DerivingKey uses a fixed 0-length salt.
@@ -78,7 +78,7 @@ func (t *TaoStackedHost) GetSharedSecret(tag string, n int) (bytes []byte, err e
 }
 
 // Attest requests the Tao host sign a statement on behalf of the caller.
-func (t *TaoStackedHost) Attest(childSubprin auth.SubPrin, issuer *auth.Prin,
+func (t *StackedHost) Attest(childSubprin auth.SubPrin, issuer *auth.Prin,
 	time, expiration *int64, message auth.Form) (*Attestation, error) {
 
 	child := t.taoHostName.MakeSubprincipal(childSubprin)
@@ -109,7 +109,7 @@ func (t *TaoStackedHost) Attest(childSubprin auth.SubPrin, issuer *auth.Prin,
 }
 
 // Encrypt data so that only this host can access it.
-func (t *TaoStackedHost) Encrypt(data []byte) (encrypted []byte, err error) {
+func (t *StackedHost) Encrypt(data []byte) (encrypted []byte, err error) {
 	if t.keys == nil || t.keys.CryptingKey == nil {
 		// TODO(tmroeder) (from TODO(kwalsh) in tao_stacked_host.cc):
 		// where should the policy come from here?
@@ -120,7 +120,7 @@ func (t *TaoStackedHost) Encrypt(data []byte) (encrypted []byte, err error) {
 }
 
 // Decrypt data that only this host can access.
-func (t *TaoStackedHost) Decrypt(encrypted []byte) (data []byte, err error) {
+func (t *StackedHost) Decrypt(encrypted []byte) (data []byte, err error) {
 	if t.keys != nil && t.keys.CryptingKey != nil {
 		return t.keys.CryptingKey.Decrypt(encrypted)
 	}
@@ -142,19 +142,19 @@ func (t *TaoStackedHost) Decrypt(encrypted []byte) (data []byte, err error) {
 
 // AddedHostedProgram notifies this Host that a new hosted program has been
 // created.
-func (t *TaoStackedHost) AddedHostedProgram(childSubprin auth.SubPrin) error {
+func (t *StackedHost) AddedHostedProgram(childSubprin auth.SubPrin) error {
 	return nil
 }
 
 // RemovedHostedProgram notifies this Host that a hosted program has been
 // killed.
-func (t *TaoStackedHost) RemovedHostedProgram(childSubprin auth.SubPrin) error {
+func (t *StackedHost) RemovedHostedProgram(childSubprin auth.SubPrin) error {
 	return nil
 }
 
 // TaoHostName gets the Tao principal name assigned to this hosted Tao host.
 // The name encodes the full path from the root Tao, through all intermediary
 // Tao hosts, to this hosted Tao host.
-func (t *TaoStackedHost) TaoHostName() auth.Prin {
+func (t *StackedHost) TaoHostName() auth.Prin {
 	return t.taoHostName
 }

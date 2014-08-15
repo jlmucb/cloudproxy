@@ -26,7 +26,7 @@ var testChild = auth.SubPrin{auth.PrinExt{Name: "TestChild"}}
 func testNewTaoRootHost(t *testing.T) Host {
 	th, err := NewTaoRootHost()
 	if err != nil {
-		t.Fatal("Couldn't create a new TaoRootHost:", err)
+		t.Fatal("Couldn't create a new RootHost:", err)
 	}
 
 	if err := th.AddedHostedProgram(testChild); err != nil {
@@ -39,12 +39,12 @@ func testNewTaoRootHost(t *testing.T) Host {
 func testNewTaoStackedHost(t *testing.T) Host {
 	ft, err := NewFakeTao(auth.Prin{Type: "key", Key: []byte("test")}, "", nil)
 	if err != nil {
-		t.Fatal("Couldn't set up a FakeTao for the TaoStackedHost")
+		t.Fatal("Couldn't set up a FakeTao for the StackedHost")
 	}
 
 	th, err := NewTaoStackedHost(ft)
 	if err != nil {
-		t.Fatal("Couldn't set up a TaoStackedHost over a FakeTao")
+		t.Fatal("Couldn't set up a StackedHost over a FakeTao")
 	}
 
 	return th

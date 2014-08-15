@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 
 	"cloudproxy/tao/auth"
 	"cloudproxy/util"
@@ -102,6 +103,20 @@ func (LinuxProcessFactory) ForkHostedProgram(prog string, args []string) (io.Rea
 	}
 	defer clientRead.Close()
 
+	env := os.Environ()
+	// Note: ExtraFiles below ensures readfd=3, writefd=4 in child
+	evar := HostTaoEnvVar + "=tao::TaoRPC+tao::FDMessageChannel(3, 4)"
+	replaced := false
+	for i, pair := range env {
+		if strings.HasPrefix(pair, HostTaoEnvVar+"=") {
+			env[i] = evar
+			replaced = true
+		}
+	}
+	if !replaced {
+		env = append(env, evar)
+	}
+
 	channel := util.NewPairReadWriteCloser(serverRead, serverWrite)
 	cmd := &exec.Cmd{
 		Path:       prog,
@@ -109,7 +124,8 @@ func (LinuxProcessFactory) ForkHostedProgram(prog string, args []string) (io.Rea
 		Stdin:      os.Stdin,
 		Stdout:     os.Stdout,
 		Stderr:     os.Stderr,
-		ExtraFiles: []*os.File{clientRead, clientWrite},
+		Env:        env,
+		ExtraFiles: []*os.File{clientRead, clientWrite}, // fd 3, fd 4
 		// TODO(tmroeder): change the user of the hosted program here.
 	}
 

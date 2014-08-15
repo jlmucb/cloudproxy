@@ -49,9 +49,9 @@ func testNewLinuxHostTaoServer(t *testing.T) (Tao, string) {
 	childChannel := util.NewPairReadWriteCloser(childRead, childWrite)
 
 	child := &LinuxHostChild{
-		channel: hostChannel,
+		channel:      hostChannel,
 		ChildSubprin: auth.SubPrin{auth.PrinExt{Name: "TestChild"}},
-		Cmd: nil, // The Cmd field is not used in this test.
+		Cmd:          nil, // The Cmd field is not used in this test.
 	}
 
 	go NewLinuxHostTaoServer(lh, child).Serve(hostChannel)

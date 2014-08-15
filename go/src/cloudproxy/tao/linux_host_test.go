@@ -73,9 +73,9 @@ func TestNewRootLinuxHost(t *testing.T) {
 
 // Test the methods directly instead of testing them across a channel.
 
-var testChildLH = &LinuxHostChild {
-	channel: nil,
-	Cmd: nil,
+var testChildLH = &LinuxHostChild{
+	channel:      nil,
+	Cmd:          nil,
 	ChildSubprin: auth.SubPrin{auth.PrinExt{Name: "TestChild"}},
 }
 

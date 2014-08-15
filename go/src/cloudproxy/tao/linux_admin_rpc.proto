@@ -25,13 +25,13 @@ message LinuxAdminRPCRequest {
   repeated string args = 3;
 }
 
-message LinuxAdminRPCHostedProgramList {
-  repeated string name = 1;
-  repeated int32 pid = 2;
+message LinuxAdminRPCHostedProgram {
+  required bytes subprin = 1; // = auth.Marshal(SubPrin)
+  required int32 pid = 2;
 }
 
 message LinuxAdminRPCResponse {
-  optional bytes data = 4;    // either a string or
-                              // serialized LinuxAdminRPCHostedProgramList
+  repeated LinuxAdminRPCHostedProgram child = 1;
+  optional bytes name = 2;
 }
 

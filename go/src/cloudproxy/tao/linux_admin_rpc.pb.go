@@ -43,42 +43,50 @@ func (m *LinuxAdminRPCRequest) GetArgs() []string {
 	return nil
 }
 
-type LinuxAdminRPCHostedProgramList struct {
-	Name             []string `protobuf:"bytes,1,rep,name=name" json:"name,omitempty"`
-	Pid              []int32  `protobuf:"varint,2,rep,name=pid" json:"pid,omitempty"`
-	XXX_unrecognized []byte   `json:"-"`
+type LinuxAdminRPCHostedProgram struct {
+	Subprin          []byte `protobuf:"bytes,1,req,name=subprin" json:"subprin,omitempty"`
+	Pid              *int32 `protobuf:"varint,2,req,name=pid" json:"pid,omitempty"`
+	XXX_unrecognized []byte `json:"-"`
 }
 
-func (m *LinuxAdminRPCHostedProgramList) Reset()         { *m = LinuxAdminRPCHostedProgramList{} }
-func (m *LinuxAdminRPCHostedProgramList) String() string { return proto.CompactTextString(m) }
-func (*LinuxAdminRPCHostedProgramList) ProtoMessage()    {}
+func (m *LinuxAdminRPCHostedProgram) Reset()         { *m = LinuxAdminRPCHostedProgram{} }
+func (m *LinuxAdminRPCHostedProgram) String() string { return proto.CompactTextString(m) }
+func (*LinuxAdminRPCHostedProgram) ProtoMessage()    {}
 
-func (m *LinuxAdminRPCHostedProgramList) GetName() []string {
+func (m *LinuxAdminRPCHostedProgram) GetSubprin() []byte {
 	if m != nil {
-		return m.Name
+		return m.Subprin
 	}
 	return nil
 }
 
-func (m *LinuxAdminRPCHostedProgramList) GetPid() []int32 {
-	if m != nil {
-		return m.Pid
+func (m *LinuxAdminRPCHostedProgram) GetPid() int32 {
+	if m != nil && m.Pid != nil {
+		return *m.Pid
 	}
-	return nil
+	return 0
 }
 
 type LinuxAdminRPCResponse struct {
-	Data             []byte `protobuf:"bytes,4,opt,name=data" json:"data,omitempty"`
-	XXX_unrecognized []byte `json:"-"`
+	Child            []*LinuxAdminRPCHostedProgram `protobuf:"bytes,1,rep,name=child" json:"child,omitempty"`
+	Name             []byte                        `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
+	XXX_unrecognized []byte                        `json:"-"`
 }
 
 func (m *LinuxAdminRPCResponse) Reset()         { *m = LinuxAdminRPCResponse{} }
 func (m *LinuxAdminRPCResponse) String() string { return proto.CompactTextString(m) }
 func (*LinuxAdminRPCResponse) ProtoMessage()    {}
 
-func (m *LinuxAdminRPCResponse) GetData() []byte {
+func (m *LinuxAdminRPCResponse) GetChild() []*LinuxAdminRPCHostedProgram {
 	if m != nil {
-		return m.Data
+		return m.Child
+	}
+	return nil
+}
+
+func (m *LinuxAdminRPCResponse) GetName() []byte {
+	if m != nil {
+		return m.Name
 	}
 	return nil
 }

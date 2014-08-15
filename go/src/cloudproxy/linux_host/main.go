@@ -80,8 +80,8 @@ func main() {
 	help += "%[1]s [options] -service\n"
 	help += "%[1]s [options] -shutdown\n"
 	help += "%[1]s [options] -run -- program args...\n"
-	help += "%[1]s [options] -stop -- progname...\n"
-	help += "%[1]s [options] -kill -- progname...\n"
+	help += "%[1]s [options] -stop -- subprin...\n"
+	help += "%[1]s [options] -kill -- subprin...\n"
 	help += "%[1]s [options] -list\n"
 	help += "%[1]s [options] -name\n"
 	flag.Usage = func() {
@@ -131,27 +131,48 @@ func main() {
 			fatalIf(err)
 		}
 	} else {
-		// connect
+		client, err := adminSocketDial(hostSocket)
+		fatalIf(err)
 		if *shutdown {
 			log.Fatal("not yet implemented")
 		} else if *run {
-			log.Fatal("not yet implemented")
-		} else if *kill || *stop {
-			log.Fatal("not yet implemented")
+			if flag.NArg() == 0 {
+				log.Fatal("missing program path")
+			}
+			subprin, pid, err := tao.LinuxHostStart(client, flag.Arg(0), flag.Args()[1:]...)
+			fatalIf(err)
+			fmt.Printf("%d %v\n", pid, subprin)
+		} else if *stop {
+			for _, s := range flag.Args() {
+				var subprin auth.SubPrin
+				_, err := fmt.Sscanf(s, "%v", &subprin)
+				fatalIf(err)
+				err = tao.LinuxHostStop(client, subprin)
+				fatalIf(err)
+			}
+		} else if *kill {
+			for _, s := range flag.Args() {
+				var subprin auth.SubPrin
+				_, err := fmt.Sscanf(s, "%v", &subprin)
+				fatalIf(err)
+				err = tao.LinuxHostKill(client, subprin)
+				fatalIf(err)
+			}
 		} else if *list {
-			log.Fatal("not yet implemented")
+			name, pid, err := tao.LinuxHostList(client)
+			fatalIf(err)
+			for i, p := range pid {
+				fmt.Printf("pid=%d %v\n", p, name[i])
+			}
+			fmt.Printf("%d processes\n", len(pid))
 		} else if *name {
-			client, err := adminSocketDial(hostSocket)
+			name, err := tao.LinuxHostName(client)
 			fatalIf(err)
-			req := &tao.LinuxAdminRPCRequest{}
-			resp := new(tao.LinuxAdminRPCResponse)
-			err = client.Call("LinuxHost.GetTaoHostName", req, resp)
-			fatalIf(err)
-			name, err := auth.UnmarshalPrin(resp.Data)
-			fatalIf(err)
-			fmt.Printf("Remote LinuxHost: %s\n", name)
+			fmt.Printf("LinuxHost: %v\n", name)
 		} else {
-			log.Fatal("LinuxHost: %s\n", "not yet implemented")
+			name, err := tao.LinuxHostName(client)
+			fatalIf(err)
+			fmt.Printf("LinuxHost: %s\n", name)
 		}
 	}
 }
@@ -175,7 +196,6 @@ func adminSocketServe(sockPath string, host *tao.LinuxHost) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(verbose, "Accepted admin connection\n")
 		rpc.RegisterName("LinuxHost", host)
 		go rpc.ServeCodec(protorpc.NewServerCodec(conn))
 	}

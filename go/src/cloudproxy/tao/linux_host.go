@@ -15,6 +15,7 @@
 package tao
 
 import (
+	"net/rpc"
 	"sync"
 	"syscall"
 
@@ -237,13 +238,36 @@ func (lh *LinuxHost) StartHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRP
 	if err != nil {
 		return err
 	}
+	pid := lhs.Cmd.Process.Pid
 
 	lh.hpm.Lock()
 	lh.hostedPrograms = append(lh.hostedPrograms, lhs)
 	lh.hpm.Unlock()
 
-	s.Data = auth.Marshal(subprin)
+	s.Child = make([]*LinuxAdminRPCHostedProgram, 1)
+	s.Child[0] = &LinuxAdminRPCHostedProgram{
+		Subprin: auth.Marshal(subprin),
+		Pid:     proto.Int32(int32(pid)),
+	}
 	return nil
+}
+
+// LinuxHostStart does an RPC to LinuxHost.StartHostedProgram.
+func LinuxHostStart(client *rpc.Client, path string, args ...string) (auth.SubPrin, int, error) {
+	req := &LinuxAdminRPCRequest{
+		Path: proto.String(path),
+		Args: args,
+	}
+	resp := new(LinuxAdminRPCResponse)
+	err := client.Call("LinuxHost.StartHostedProgram", req, resp)
+	if err != nil {
+		return auth.SubPrin{}, 0, err
+	}
+	if len(resp.Child) != 1 {
+		return auth.SubPrin{}, 0, newError("invalid response")
+	}
+	subprin, err := auth.UnmarshalSubPrin(resp.Child[0].Subprin)
+	return subprin, int(*resp.Child[0].Pid), err
 }
 
 // StopHostedProgram stops a running hosted program based on an admin RPC
@@ -288,30 +312,52 @@ func (lh *LinuxHost) StopHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPC
 	return nil
 }
 
+// LinuxHostStop does an RPC to LinuxHost.StopHostedProgram.
+func LinuxHostStop(client *rpc.Client, subprin auth.SubPrin) error {
+	req := &LinuxAdminRPCRequest{
+		Data: auth.Marshal(subprin),
+	}
+	resp := new(LinuxAdminRPCResponse)
+	err := client.Call("LinuxHost.StopHostedProgram", req, resp)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // ListHostedPrograms returns a list of hosted programs to the caller.
 // This function is accessible using net/rpc.
 func (lh *LinuxHost) ListHostedPrograms(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
 	lh.hpm.RLock()
-	subprins := make([]string, len(lh.hostedPrograms))
-	pids := make([]int32, len(lh.hostedPrograms))
-	for _, v := range lh.hostedPrograms {
-		subprins = append(subprins, v.ChildSubprin.String())
-		pids = append(pids, int32(v.Cmd.Process.Pid))
+	s.Child = make([]*LinuxAdminRPCHostedProgram, len(lh.hostedPrograms))
+	for i, v := range lh.hostedPrograms {
+		s.Child[i] = &LinuxAdminRPCHostedProgram{
+			Subprin: auth.Marshal(v.ChildSubprin),
+			Pid:     proto.Int32(int32(v.Cmd.Process.Pid)),
+		}
 	}
 	lh.hpm.RUnlock()
-
-	info := &LinuxAdminRPCHostedProgramList{
-		Name: subprins,
-		Pid:  pids,
-	}
-
-	var err error
-	s.Data, err = proto.Marshal(info)
-	if err != nil {
-		return err
-	}
-
 	return nil
+}
+
+// LinuxHostList does an RPC to LinuxHost.ListHostedPrograms.
+func LinuxHostList(client *rpc.Client) (name []auth.SubPrin, pid []int, err error) {
+	req := &LinuxAdminRPCRequest{}
+	resp := new(LinuxAdminRPCResponse)
+	err = client.Call("LinuxHost.ListHostedPrograms", req, resp)
+	if err != nil {
+		return nil, nil, err
+	}
+	name = make([]auth.SubPrin, len(resp.Child))
+	pid = make([]int, len(resp.Child))
+	for i, child := range resp.Child {
+		pid[i] = int(*child.Pid)
+		name[i], err = auth.UnmarshalSubPrin(child.Subprin)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	return name, pid, nil
 }
 
 // KillHostedProgram kills a running hosted program based on an admin RPC
@@ -353,11 +399,35 @@ func (lh *LinuxHost) KillHostedProgram(r *LinuxAdminRPCRequest, s *LinuxAdminRPC
 	return nil
 }
 
+// LinuxHostKill does an RPC to LinuxHost.KillHostedProgram.
+func LinuxHostKill(client *rpc.Client, subprin auth.SubPrin) error {
+	req := &LinuxAdminRPCRequest{
+		Data: auth.Marshal(subprin),
+	}
+	resp := new(LinuxAdminRPCResponse)
+	err := client.Call("LinuxHost.KillHostedProgram", req, resp)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // GetTaoHostName returns the name of the TaoHost used by the LinuxHost.
 // This function is accessible using net/rpc.
 func (lh *LinuxHost) GetTaoHostName(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
-	s.Data = auth.Marshal(lh.taoHost.TaoHostName())
+	s.Name = auth.Marshal(lh.taoHost.TaoHostName())
 	return nil
+}
+
+// LinuxHostName does an RPC to LinuxHost.GetTaoHostName
+func LinuxHostName(client *rpc.Client) (auth.Prin, error) {
+	req := &LinuxAdminRPCRequest{}
+	resp := new(LinuxAdminRPCResponse)
+	err := client.Call("LinuxHost.GetTaoHostName", req, resp)
+	if err != nil {
+		return auth.Prin{}, err
+	}
+	return auth.UnmarshalPrin(resp.Name)
 }
 
 // TaoHostName returns the name of the TaoHost used by the LinuxHost.

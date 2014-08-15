@@ -778,6 +778,13 @@ index 0000000..eb2d89d
 #*
 #- Typo "LInux" -> "Linux"
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-08-15T17:18:49-0400
+#**
+#-- Fixed.
+#--
 +func (server linuxHostAdminServerStub) ListHostedPrograms(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
 +	names, pids, err := server.lh.ListHostedPrograms()
 +	if err != nil {
@@ -825,6 +832,13 @@ index 0000000..e898eb9
 #*
 #- Let's kill the Author: header.
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-08-15T17:19:24-0400
+#**
+#- Sounds good.
+#--
 +//
 +//  Copyright (c) 2013, Google Inc.  All rights reserved.
 +//

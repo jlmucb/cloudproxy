@@ -33,7 +33,7 @@ import (
 type LinuxHost struct {
 	path           string
 	guard          Guard
-	taoHost        TaoHost
+	taoHost        Host
 	childFactory   LinuxProcessFactory
 	hostedPrograms []*LinuxHostServer
 	hpm            sync.RWMutex
@@ -93,13 +93,13 @@ func (lh *LinuxHost) handleGetTaoName(childSubprin auth.SubPrin) auth.Prin {
 	return lh.taoHost.TaoHostName().MakeSubprincipal(childSubprin)
 }
 
-// handleGetRandomBytes gets random bytes from the TaoHost.
+// handleGetRandomBytes gets random bytes from the Host.
 func (lh *LinuxHost) handleGetRandomBytes(childSubprin auth.SubPrin, n int) ([]byte, error) {
 	return lh.taoHost.GetRandomBytes(childSubprin, n)
 }
 
 // handleGetSharedSecret derives a tag for the secret and generates one from
-// the TaoHost.
+// the Host.
 func (lh *LinuxHost) handleGetSharedSecret(childSubprin auth.SubPrin, n int, policy string) ([]byte, error) {
 	// Compute the tag based on the policy identifier and childSubprin.
 	var tag string
@@ -412,7 +412,7 @@ func LinuxHostKill(client *rpc.Client, subprin auth.SubPrin) error {
 	return nil
 }
 
-// GetTaoHostName returns the name of the TaoHost used by the LinuxHost.
+// GetTaoHostName returns the name of the Host used by the LinuxHost.
 // This function is accessible using net/rpc.
 func (lh *LinuxHost) GetTaoHostName(r *LinuxAdminRPCRequest, s *LinuxAdminRPCResponse) error {
 	s.Name = auth.Marshal(lh.taoHost.TaoHostName())
@@ -430,7 +430,7 @@ func LinuxHostName(client *rpc.Client) (auth.Prin, error) {
 	return auth.UnmarshalPrin(resp.Name)
 }
 
-// TaoHostName returns the name of the TaoHost used by the LinuxHost.
+// TaoHostName returns the name of the Host used by the LinuxHost.
 func (lh *LinuxHost) TaoHostName() auth.Prin {
 	return lh.taoHost.TaoHostName()
 }

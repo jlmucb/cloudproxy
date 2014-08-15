@@ -23,7 +23,7 @@ import (
 
 var testChild = auth.SubPrin{auth.PrinExt{Name: "TestChild"}}
 
-func testNewTaoRootHost(t *testing.T) TaoHost {
+func testNewTaoRootHost(t *testing.T) Host {
 	th, err := NewTaoRootHost()
 	if err != nil {
 		t.Fatal("Couldn't create a new TaoRootHost:", err)
@@ -36,7 +36,7 @@ func testNewTaoRootHost(t *testing.T) TaoHost {
 	return th
 }
 
-func testNewTaoStackedHost(t *testing.T) TaoHost {
+func testNewTaoStackedHost(t *testing.T) Host {
 	ft, err := NewFakeTao(auth.Prin{Type: "key", Key: []byte("test")}, "", nil)
 	if err != nil {
 		t.Fatal("Couldn't set up a FakeTao for the TaoStackedHost")
@@ -50,10 +50,10 @@ func testNewTaoStackedHost(t *testing.T) TaoHost {
 	return th
 }
 
-func testTaoHostRandomBytes(t *testing.T, th TaoHost) {
+func testTaoHostRandomBytes(t *testing.T, th Host) {
 	b, err := th.GetRandomBytes(testChild, 10)
 	if err != nil {
-		t.Fatal("Couldn't get random bytes from the TaoHost:", err)
+		t.Fatal("Couldn't get random bytes from the Host:", err)
 	}
 
 	if len(b) != 10 {
@@ -61,15 +61,15 @@ func testTaoHostRandomBytes(t *testing.T, th TaoHost) {
 	}
 }
 
-func testTaoHostSharedSecretFailure(t *testing.T, th TaoHost) {
+func testTaoHostSharedSecretFailure(t *testing.T, th Host) {
 	tag := "test tag"
 	_, err := th.GetSharedSecret(tag, 10)
 	if err == nil {
-		t.Fatal("A TaoHost that doesn't support shared secrets created one")
+		t.Fatal("A Host that doesn't support shared secrets created one")
 	}
 }
 
-func testTaoHostAttest(t *testing.T, th TaoHost) {
+func testTaoHostAttest(t *testing.T, th Host) {
 	a, err := th.Attest(testChild, nil, nil, nil, auth.Const(true))
 	if err != nil {
 		t.Fatal("Couldn't attest to a trival statement:", err)
@@ -80,7 +80,7 @@ func testTaoHostAttest(t *testing.T, th TaoHost) {
 	}
 }
 
-func testTaoHostEncryption(t *testing.T, th TaoHost) {
+func testTaoHostEncryption(t *testing.T, th Host) {
 	data := []byte{1, 2, 3, 4, 5, 6, 7}
 	e, err := th.Encrypt(data)
 	if err != nil {
@@ -97,14 +97,14 @@ func testTaoHostEncryption(t *testing.T, th TaoHost) {
 	}
 }
 
-func testTaoHostName(t *testing.T, th TaoHost) {
+func testTaoHostName(t *testing.T, th Host) {
 	n := th.TaoHostName()
 	if n.Key == nil {
-		t.Fatal("TaoHostName returned an invalid TaoHost name")
+		t.Fatal("TaoHostName returned an invalid Host name")
 	}
 }
 
-func testTaoHostRemovedHostedProgram(t *testing.T, th TaoHost) {
+func testTaoHostRemovedHostedProgram(t *testing.T, th Host) {
 	if err := th.RemovedHostedProgram(testChild); err != nil {
 		t.Fatal("Couldn't remove an existing hosted program")
 	}

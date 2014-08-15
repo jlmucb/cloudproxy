@@ -20,7 +20,7 @@ import (
 	"cloudproxy/tao/auth"
 )
 
-// A TaoStackedHost implements TaoHost over an existing host Tao.
+// A TaoStackedHost implements Host over an existing host Tao.
 type TaoStackedHost struct {
 	taoHostName auth.Prin
 	hostTao     Tao
@@ -29,7 +29,7 @@ type TaoStackedHost struct {
 
 // NewTaoStackedHostFromKeys takes ownership of an existing set of keys and
 // returns a TaoStackedHost that uses these keys over an existing host Tao.
-func NewTaoStackedHostFromKeys(k *Keys, t Tao) (TaoHost, error) {
+func NewTaoStackedHostFromKeys(k *Keys, t Tao) (Host, error) {
 	n, err := t.GetTaoName()
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func NewTaoStackedHostFromKeys(k *Keys, t Tao) (TaoHost, error) {
 
 // NewTaoStackedHost generates a new TaoStackedHost with a fresh set of temporary
 // keys.
-func NewTaoStackedHost(t Tao) (TaoHost, error) {
+func NewTaoStackedHost(t Tao) (Host, error) {
 	k, err := NewTemporaryKeys(Signing | Crypting)
 	if err != nil {
 		return nil, err
@@ -140,13 +140,13 @@ func (t *TaoStackedHost) Decrypt(encrypted []byte) (data []byte, err error) {
 	return data, nil
 }
 
-// AddedHostedProgram notifies this TaoHost that a new hosted program has been
+// AddedHostedProgram notifies this Host that a new hosted program has been
 // created.
 func (t *TaoStackedHost) AddedHostedProgram(childSubprin auth.SubPrin) error {
 	return nil
 }
 
-// RemovedHostedProgram notifies this TaoHost that a hosted program has been
+// RemovedHostedProgram notifies this Host that a hosted program has been
 // killed.
 func (t *TaoStackedHost) RemovedHostedProgram(childSubprin auth.SubPrin) error {
 	return nil

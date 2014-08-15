@@ -20,14 +20,14 @@ import (
 	"cloudproxy/tao/auth"
 )
 
-// A TaoRootHost is a standalone implementation of TaoHost.
+// A TaoRootHost is a standalone implementation of Host.
 type TaoRootHost struct {
 	keys        *Keys
 	taoHostName auth.Prin
 }
 
 // NewTaoRootHostFromKeys returns a TaoRootHost that uses these keys.
-func NewTaoRootHostFromKeys(k *Keys) (TaoHost, error) {
+func NewTaoRootHostFromKeys(k *Keys) (Host, error) {
 	if k.SigningKey == nil || k.CryptingKey == nil || k.VerifyingKey == nil {
 		return nil, newError("missing required key for TaoRootHost")
 	}
@@ -42,7 +42,7 @@ func NewTaoRootHostFromKeys(k *Keys) (TaoHost, error) {
 
 // NewTaoRootHost generates a new TaoRootHost with a fresh set of temporary
 // keys.
-func NewTaoRootHost() (TaoHost, error) {
+func NewTaoRootHost() (Host, error) {
 	k, err := NewTemporaryKeys(Signing | Crypting)
 	if err != nil {
 		return nil, err
@@ -105,13 +105,13 @@ func (t *TaoRootHost) Decrypt(encrypted []byte) (data []byte, err error) {
 	return t.keys.CryptingKey.Decrypt(encrypted)
 }
 
-// AddedHostedProgram notifies this TaoHost that a new hosted program has been
+// AddedHostedProgram notifies this Host that a new hosted program has been
 // created.
 func (t *TaoRootHost) AddedHostedProgram(childSubprin auth.SubPrin) error {
 	return nil
 }
 
-// RemovedHostedProgram notifies this TaoHost that a hosted program has been
+// RemovedHostedProgram notifies this Host that a hosted program has been
 // killed.
 func (t *TaoRootHost) RemovedHostedProgram(childSubprin auth.SubPrin) error {
 	return nil

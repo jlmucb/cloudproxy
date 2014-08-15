@@ -18,20 +18,18 @@ import (
 	"cloudproxy/tao/auth"
 )
 
-// TaoHost provides a generic interface for a Tao host that can be configured
-// and driven by a variety of host environments. Generally, the host
-// environment is responsible for enforcing and managing policy, managing
-// hosted programs (e.g. measuring, naming, starting, stopping), communication
-// with hosted programs (e.g. channel creation, RPC reception), and other
-// host-specific details.
+// Host is a generic interface for a Tao host that can be configured and driven
+// by a variety of host environments. Generally, the host environment is
+// responsible for enforcing and managing policy, managing hosted programs (e.g.
+// measuring, naming, starting, stopping), communication with hosted programs
+// (e.g. channel creation, RPC reception), and other host-specific details.
 //
-// Because the environment calls TaoHost in response to requests from hosted
-// processes invoking the Tao interface, several TaoHost methods resemble
-// methods in Tao. Semantics and method signatures differ slightly, however,
-// since the environment can add context (e.g., the subprincipal name of the
-// requesting child) or do part of the implementation (e.g., manage policy on
-// seal/unseal).
-type TaoHost interface {
+// Because the environment calls Host in response to requests from hosted
+// processes invoking the Tao interface, several Host methods resemble methods
+// in Tao. Semantics and method signatures differ slightly, however, since the
+// environment can add context (e.g., the subprincipal name of the requesting
+// child) or do part of the implementation (e.g., manage policy on seal/unseal).
+type Host interface {
 	// GetRandomBytes returns a slice of n random bytes.
 	GetRandomBytes(childSubprin auth.SubPrin, n int) (bytes []byte, err error)
 
@@ -48,10 +46,10 @@ type TaoHost interface {
 	// Decrypt data that only this host can access.
 	Decrypt(encrypted []byte) (data []byte, err error)
 
-	// Notify this TaoHost that a new hosted program has been created.
+	// Notify this Host that a new hosted program has been created.
 	AddedHostedProgram(childSubprin auth.SubPrin) error
 
-	// Notify this TaoHost that a hosted program has been killed.
+	// Notify this Host that a hosted program has been killed.
 	RemovedHostedProgram(childSubprin auth.SubPrin) error
 
 	// Get the Tao principal name assigned to this hosted Tao host. The

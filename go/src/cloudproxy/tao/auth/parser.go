@@ -16,7 +16,8 @@
 // template package. See http://golang.org/src/pkg/text/template/parse/parse.go
 //
 // It also borrows from the parser in package
-// github.com/kevinawalsh/datalog/dlengine.
+// github.com/kevinawalsh/datalog/dlengine
+// licensed by the author here under the above Apache License, Version 2.0.
 
 package auth
 
@@ -40,7 +41,7 @@ import (
 // functions are greedy, consuming input until either an error is encountered or
 // the element can't be expanded further.
 
-// parser holds the state of the recursive descent p.
+// parser holds the state of the recursive descent parser.
 type parser struct {
 	lex           *lexer
 	lookahead     token

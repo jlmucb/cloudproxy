@@ -153,8 +153,12 @@ func (t *TaoRPC) GetSharedSecret(n int, policy string) ([]byte, error) {
 
 // Attest implements part of the Tao interface.
 func (t *TaoRPC) Attest(issuer *auth.Prin, time, expiration *int64, message auth.Form) (*Attestation, error) {
+	var issuerBytes []byte
+	if issuer != nil {
+		issuerBytes = auth.Marshal(*issuer)
+	}
 	r := &TaoRPCRequest{
-		Issuer:     auth.Marshal(issuer),
+		Issuer:     issuerBytes,
 		Time:       time,
 		Expiration: expiration,
 		Data:       auth.Marshal(message),

@@ -73,16 +73,20 @@ func TestNewRootLinuxHost(t *testing.T) {
 
 // Test the methods directly instead of testing them across a channel.
 
-var testChildLH = auth.SubPrin{auth.PrinExt{Name: "TestChild"}}
+var testChildLH = &LinuxHostChild {
+	channel: nil,
+	Cmd: nil,
+	ChildSubprin: auth.SubPrin{auth.PrinExt{Name: "TestChild"}},
+}
 
 func testLinuxHostHandleGetTaoName(t *testing.T, lh *LinuxHost) {
-	if !lh.handleGetTaoName(testChildLH).Identical(lh.taoHost.TaoHostName().MakeSubprincipal(testChildLH)) {
+	if !lh.GetTaoName(testChildLH).Identical(lh.taoHost.TaoHostName().MakeSubprincipal(testChildLH.ChildSubprin)) {
 		t.Fatal("Incorrect construction of Tao name")
 	}
 }
 
 func testLinuxHostHandleGetRandomBytes(t *testing.T, lh *LinuxHost) {
-	b, err := lh.handleGetRandomBytes(testChildLH, 10)
+	b, err := lh.GetRandomBytes(testChildLH, 10)
 	if err != nil {
 		t.Fatal("Failed to get random bytes from the Linux host:", err)
 	}
@@ -93,12 +97,12 @@ func testLinuxHostHandleGetRandomBytes(t *testing.T, lh *LinuxHost) {
 }
 
 func testLinuxHostHandleGetSharedSecret(t *testing.T, lh *LinuxHost) {
-	b, err := lh.handleGetSharedSecret(testChildLH, 10, SharedSecretPolicyDefault)
+	b, err := lh.GetSharedSecret(testChildLH, 10, SharedSecretPolicyDefault)
 	if err != nil {
 		t.Fatal("Couldn't get a shared secret from the Linux host:", err)
 	}
 
-	b2, err := lh.handleGetSharedSecret(testChildLH, 10, SharedSecretPolicyDefault)
+	b2, err := lh.GetSharedSecret(testChildLH, 10, SharedSecretPolicyDefault)
 	if err != nil {
 		t.Fatal("Couldn't get a second shared secret from the Linux host:", err)
 	}
@@ -110,12 +114,12 @@ func testLinuxHostHandleGetSharedSecret(t *testing.T, lh *LinuxHost) {
 
 func testLinuxHostHandleSealUnseal(t *testing.T, lh *LinuxHost) {
 	data := []byte{1, 2, 3, 4, 5, 6, 7}
-	b, err := lh.handleSeal(testChildLH, data, SharedSecretPolicyDefault)
+	b, err := lh.Seal(testChildLH, data, SharedSecretPolicyDefault)
 	if err != nil {
 		t.Fatal("Couldn't seal the data:", err)
 	}
 
-	d, policy, err := lh.handleUnseal(testChildLH, b)
+	d, policy, err := lh.Unseal(testChildLH, b)
 	if err != nil {
 		t.Fatal("Couldn't unseal the sealed data")
 	}
@@ -132,7 +136,7 @@ func testLinuxHostHandleSealUnseal(t *testing.T, lh *LinuxHost) {
 func testLinuxHostHandleAttest(t *testing.T, lh *LinuxHost) {
 	stmt := auth.Pred{Name: "FakePredicate"}
 
-	a, err := lh.handleAttest(testChildLH, nil, nil, nil, stmt)
+	a, err := lh.Attest(testChildLH, nil, nil, nil, stmt)
 	if err != nil {
 		t.Fatal("Couldn't create Attestation")
 	}

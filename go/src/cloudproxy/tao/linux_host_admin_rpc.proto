@@ -1,7 +1,4 @@
-//  File: linux_admin_rpc.proto
 //  Author: Tom Roeder <tmroeder@google.com>
-//
-//  Description: Protocol buffers for LinuxAdminRPCPC.
 //
 //  Copyright (c) 2013, Google Inc.  All rights reserved.
 //
@@ -19,19 +16,19 @@
 
 package tao;
 
-message LinuxAdminRPCRequest {
-  optional bytes data = 1;
+message LinuxHostAdminRPCRequest {
+  optional bytes subprin = 1; // = auth.Marshal(auth.SubPrin)
   optional string path = 2;
   repeated string args = 3;
 }
 
-message LinuxAdminRPCHostedProgram {
-  required bytes subprin = 1; // = auth.Marshal(SubPrin)
+message LinuxHostAdminRPCHostedProgram {
+  required bytes subprin = 1; // = auth.Marshal(auth.SubPrin)
   required int32 pid = 2;
 }
 
-message LinuxAdminRPCResponse {
-  repeated LinuxAdminRPCHostedProgram child = 1;
-  optional bytes name = 2;
+message LinuxHostAdminRPCResponse {
+  repeated LinuxHostAdminRPCHostedProgram child = 1;
+  optional bytes prin = 2; // = auth.Marshal(auth.Prin)
 }
 

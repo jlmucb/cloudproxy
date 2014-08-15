@@ -51,10 +51,10 @@ func TestSelfSignedX509(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	details := X509Details {
-		CommonName: "test",
-		Country: "US",
-		State: "WA",
+	details := X509Details{
+		CommonName:   "test",
+		Country:      "US",
+		State:        "WA",
 		Organization: "Google",
 	}
 
@@ -110,10 +110,10 @@ func TestVerifierFromX509(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	details := X509Details {
-		CommonName: "test",
-		Country: "US",
-		State: "WA",
+	details := X509Details{
+		CommonName:   "test",
+		Country:      "US",
+		State:        "WA",
 		Organization: "Google",
 	}
 

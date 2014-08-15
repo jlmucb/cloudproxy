@@ -21,7 +21,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
-	"net/rpc"
 	"os"
 	"os/signal"
 	"path"
@@ -30,7 +29,6 @@ import (
 	"cloudproxy/tao"
 	"cloudproxy/tao/auth"
 	"cloudproxy/util"
-	"cloudproxy/util/protorpc"
 )
 
 var configPath = flag.String("config_path", "tao.config", "Location of tao domain configuration")
@@ -101,7 +99,7 @@ func main() {
 		log.Fatal("specify at most one of the command options")
 	}
 
-	hostSocket := path.Join(*hostPath, "admin_socket")
+	sockPath := path.Join(*hostPath, "admin_socket")
 
 	if *create || *service || *show {
 		fmt.Fprintf(verbose, "Loading configuration from: %s\n", *configPath)
@@ -127,19 +125,25 @@ func main() {
 		} else if *show {
 			fmt.Printf("export GOOGLE_TAO_LINUX='%v'\n", host.TaoHostName())
 		} else /* service */ {
-			err := adminSocketServe(hostSocket, host)
+			sock, err := net.Listen("unix", sockPath)
 			fatalIf(err)
+			defer sock.Close()
+			fmt.Fprintf(verbose, "Linux Tao Service started and waiting for requests\n")
+			fatalIf(err)
+			tao.NewLinuxHostAdminServer(host).Serve(sock)
 		}
 	} else {
-		client, err := adminSocketDial(hostSocket)
+		conn, err := net.Dial("unix", sockPath)
 		fatalIf(err)
+		defer conn.Close()
+		client := tao.NewLinuxHostAdminClient(conn)
 		if *shutdown {
 			log.Fatal("not yet implemented")
 		} else if *run {
 			if flag.NArg() == 0 {
 				log.Fatal("missing program path")
 			}
-			subprin, pid, err := tao.LinuxHostStart(client, flag.Arg(0), flag.Args()...)
+			subprin, pid, err := client.StartHostedProgram(flag.Arg(0), flag.Args()...)
 			fatalIf(err)
 			fmt.Printf("%d %v\n", pid, subprin)
 		} else if *stop {
@@ -147,7 +151,7 @@ func main() {
 				var subprin auth.SubPrin
 				_, err := fmt.Sscanf(s, "%v", &subprin)
 				fatalIf(err)
-				err = tao.LinuxHostStop(client, subprin)
+				err = client.StopHostedProgram(subprin)
 				fatalIf(err)
 			}
 		} else if *kill {
@@ -155,22 +159,22 @@ func main() {
 				var subprin auth.SubPrin
 				_, err := fmt.Sscanf(s, "%v", &subprin)
 				fatalIf(err)
-				err = tao.LinuxHostKill(client, subprin)
+				err = client.KillHostedProgram(subprin)
 				fatalIf(err)
 			}
 		} else if *list {
-			name, pid, err := tao.LinuxHostList(client)
+			name, pid, err := client.ListHostedPrograms()
 			fatalIf(err)
 			for i, p := range pid {
 				fmt.Printf("pid=%d %v\n", p, name[i])
 			}
 			fmt.Printf("%d processes\n", len(pid))
 		} else if *name {
-			name, err := tao.LinuxHostName(client)
+			name, err := client.TaoHostName()
 			fatalIf(err)
 			fmt.Printf("LinuxHost: %v\n", name)
 		} else {
-			name, err := tao.LinuxHostName(client)
+			name, err := client.TaoHostName()
 			fatalIf(err)
 			fmt.Printf("LinuxHost: %s\n", name)
 		}
@@ -181,33 +185,6 @@ func fatalIf(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-func adminSocketServe(sockPath string, host *tao.LinuxHost) error {
-	sock, err := net.Listen("unix", sockPath)
-	if err != nil {
-		return err
-	}
-	defer sock.Close()
-
-	fmt.Fprintf(verbose, "Linux Tao Service started and waiting for requests\n")
-	for {
-		conn, err := sock.Accept()
-		if err != nil {
-			return err
-		}
-		rpc.RegisterName("LinuxHost", host)
-		go rpc.ServeCodec(protorpc.NewServerCodec(conn))
-	}
-}
-
-func adminSocketDial(sockPath string) (*rpc.Client, error) {
-	conn, err := net.Dial("unix", sockPath)
-	if err != nil {
-		return nil, err
-	}
-	// defer c.Close()
-	return rpc.NewClientWithCodec(protorpc.NewClientCodec(conn)), nil
 }
 
 func panicOnHup() {

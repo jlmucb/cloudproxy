@@ -84,7 +84,10 @@ func (server linuxHostTaoServerStub) GetSharedSecret(r *TaoRPCRequest, s *TaoRPC
 	if r.Size == nil || *r.Size <= 0 {
 		return newError("invalid size")
 	}
-	data, err := server.lh.GetSharedSecret(server.child, int(*r.Size), string(r.Data))
+	if r.Policy == nil {
+		return newError("missing policy")
+	}
+	data, err := server.lh.GetSharedSecret(server.child, int(*r.Size), *r.Policy)
 	s.Data = data
 	return err
 }

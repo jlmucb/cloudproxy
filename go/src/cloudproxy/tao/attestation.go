@@ -17,9 +17,11 @@ package tao
 import (
 	"time"
 
+	"cloudproxy/tao/auth"
+
 	"code.google.com/p/goprotobuf/proto"
 
-	"cloudproxy/tao/auth"
+	"github.com/google/go-tpm/tpm"
 )
 
 // ValidSigner checks the signature on an attestation and, if so, returns the signer.
@@ -33,9 +35,36 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 	}
 	switch signer.Type {
 	case "tpm":
-		// Signer is tpm, use tpm-specific signature verification.
-		// TODO(kwalsh) call tpm-specific verification code
-		return auth.Prin{}, newError("tao: tpm signature verification not yet implemented")
+		// The PCRs are contained in the Speaker of an auth.Says statement that
+		// makes up the a.SerializedStatement.
+		f, err := auth.UnmarshalForm(a.SerializedStatement)
+		if err != nil {
+			return auth.Prin{}, newError("tao: couldn't unmarshal the statement:", err.Error())
+		}
+
+		// A TPM attestation must be an auth.Says.
+		says, ok := f.(auth.Says)
+		if !ok {
+			return auth.Prin{}, newError("tao: the attestation statement was not an auth.Says statement")
+		}
+
+		// Signer is tpm; use tpm-specific signature verification. Extract the
+		// PCRs from the issuer name, unmarshal the key as an RSA key, and call
+		// tpm.VerifyQuote().
+		pcrNums, pcrVals, err := extractPCRs(says.Speaker)
+		if err != nil {
+			return auth.Prin{}, newError("tao: couldn't extract PCRs from the signer:", err.Error())
+		}
+
+		pk, err := extractAIK(says.Speaker)
+		if err != nil {
+			return auth.Prin{}, newError("tao: couldn't extract the AIK from the signer:", err.Error())
+		}
+		if err := tpm.VerifyQuote(pk, a.SerializedStatement, a.Signature, pcrNums, pcrVals); err != nil {
+			return auth.Prin{}, newError("tao: TPM quote failed verification:", err)
+		}
+
+		return signer, nil
 	case "key":
 		// Signer is ECDSA key, use Tao signature verification.
 		v, err := FromPrincipal(signer)

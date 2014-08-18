@@ -68,6 +68,16 @@ index 6e4c93d..4c2e9a2 100644
 +		f, err := auth.UnmarshalForm(a.SerializedStatement)
 +		if err != nil {
 +			return auth.Prin{}, newError("tao: couldn't unmarshal the statement:", err.Error())
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-18T15:27:17-0400
+#*
+#- newError should have been named newErrorf, since it uses fmt.Errorf
+#- internally and expects a format string + args. You are missing "%s" here and
+#- below. Also: the ".Error()" is not necessary since fmt will do the right
+#- thing with an error value.
+#-
 +		}
 +
 +		// A TPM attestation must be an auth.Says.
@@ -106,6 +116,15 @@ index 6e4c93d..4c2e9a2 100644
  		if !ok {
  			return auth.Prin{}, newError("tao: attestation signature invalid")
  		}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-18T15:29:47-0400
+#*
+#- I was wondering earlier why key.Verify() returns a bool and an error, since
+#- we can just use err=nil in place of the bool. You take that approach for
+#- tpm.VerifyQuote, so maybe we should change key.Verify() to match. Sometime.
+#-
  		return signer, nil
  	default:
  		return auth.Prin{}, newError("tao: attestation signer principal unrecognized: %s", signer.String())
@@ -182,6 +201,18 @@ index 0000000..dd3ddac
 +	// the PCRs that is preprended to exts.
 +	name auth.Prin
 +	exts auth.SubPrin
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-18T15:38:01-0400
+#*
+#- This comment doesn't quite parse for me: extensions aren't added to name,
+#- they are added to exts in the code blow, and the PCRs aren't prepended, they
+#- are part of it. So: name is tpm(...K...). The caller's name is
+#- tpm(...K...).exts, where exts includes at least the PCRs, exts maybe also
+#- eventually will include the locality, and exts can be (sort of) extended
+#- further by calls to ExtendTaoName. More on this below.
+#-
 +
 +	// The current TPMTao code uses only locality 0, so this value is never set.
 +	locality byte
@@ -189,9 +220,23 @@ index 0000000..dd3ddac
 +
 +// NewTPMTao creates a new TPMTao and returns it under the Tao interface.
 +func NewTPMTao(tpmPath, aikblobPath string, pcrNums []int) (Tao, error) {
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-18T15:45:06-0400
+#*
+#- Maybe aikblobPath should just be aikblob []byte instead?
+#-
 +	var err error
 +	tt := &TPMTao{pcrCount: 24}
 +	tt.tpmfile, err = os.OpenFile(tpmPath, os.O_RDWR, 0600)
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-18T15:43:01-0400
+#*
+#- What is the 0600 here? Can it just use 0 since no O_CREATE?
+#-
 +	if err != nil {
 +		return nil, err
 +	}
@@ -216,6 +261,16 @@ index 0000000..dd3ddac
 +	tt.verifier, err = tpm.UnmarshalRSAPublicKey(blob)
 +	if err != nil {
 +		return nil, err
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-18T15:51:45-0400
+#*
+#- I think this error path (and those below in this function) are going to leak
+#- the tpm key since the caller gets nil and can never call tt.Close(). To be
+#- super pedantic, perhaps put tt.Close() in every exit path except the success
+#- one? Or figure out a way to do it with defer? Or use runtime.SetFinalizer()?
+#-
 +	}
 +
 +	// Get the pcr values for the PCR nums.
@@ -248,6 +303,14 @@ index 0000000..dd3ddac
 +
 +	// Release the file handle.
 +	tt.tpmfile.Close()
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-18T15:50:42-0400
+#*
+#- Since tpm resources are so precious, it might be worth using
+#- runtime.SetFinalizer() for TPMTao.
+#-
 +}
 +
 +// GetTaoName returns the Tao principal name assigned to the caller.
@@ -259,6 +322,16 @@ index 0000000..dd3ddac
 +func (tt *TPMTao) ExtendTaoName(subprin auth.SubPrin) error {
 +	tt.exts = append(tt.exts, subprin...)
 +	return nil
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-18T15:54:55-0400
+#*
+#- This is not irreversable. Caller can do any number of things to reverse it,
+#- including unsafe, making a new TPMTao object, etc. This should either fail
+#- until we properly implement PCR extensions, or have a nice big TODO. I have
+#- ideas on how to do PCR extension + subprins, but never had the code to do it.
+#-
 +}
 +
 +// GetRandomBytes returns a slice of n random bytes.
@@ -331,6 +404,18 @@ index 0000000..dd3ddac
 +	// Prepend the PCRs after doing a shallow copy of the issuer so that this
 +	// operation doesn't change the issuer at all.
 +	stmt.Speaker.Ext = append([]auth.PrinExt{asp}, issuer.Ext...)
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-18T16:01:48-0400
+#*
+#- Elsewhere, the issuer param is either nil or expected to be the *child's*
+#- name. You seem to be expecting either nil or the *tpm's* name. Also, you
+#- write but never use tt.exts. Instead, I think you should:
+#-    1. Check against name.exts at the top of this func
+#-    2. Elsewhere you should have already put the PCRs into exts, e.g. in New.
+#-    3. Don't prepend anything here, since PCRs are already in exts and issuer
+#-       is either assigned or identical to name.exts.
 +
 +	// This is done in GenerateAttestation, but the TPM attestation is signed
 +	// differently, so we do the time calculations here.

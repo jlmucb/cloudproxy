@@ -78,6 +78,13 @@ index 6e4c93d..4c2e9a2 100644
 #- below. Also: the ".Error()" is not necessary since fmt will do the right
 #- thing with an error value.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-18T20:40:53-0700
+#**
+#-- Fixed
+#-- 
 +		}
 +
 +		// A TPM attestation must be an auth.Says.
@@ -125,6 +132,13 @@ index 6e4c93d..4c2e9a2 100644
 #- we can just use err=nil in place of the bool. You take that approach for
 #- tpm.VerifyQuote, so maybe we should change key.Verify() to match. Sometime.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-18T20:40:58-0700
+#**
+#-- 
+#-- 
  		return signer, nil
  	default:
  		return auth.Prin{}, newError("tao: attestation signer principal unrecognized: %s", signer.String())
@@ -213,6 +227,16 @@ index 0000000..dd3ddac
 #- eventually will include the locality, and exts can be (sort of) extended
 #- further by calls to ExtendTaoName. More on this below.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-18T20:41:12-0700
+#**
+#-- I've now changed this so the PCRs are are part of TPMTao.name in the Exts
+#-- field. This makes the code in Attest much cleaner, but it means I have to
+#-- create a simpler name for the signer, since the signer is expected by
+#-- ValidateSigner to have no extensions.
+#-- 
 +
 +	// The current TPMTao code uses only locality 0, so this value is never set.
 +	locality byte
@@ -227,6 +251,13 @@ index 0000000..dd3ddac
 #*
 #- Maybe aikblobPath should just be aikblob []byte instead?
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-18T20:42:44-0700
+#**
+#-- Fixed.
+#-- 
 +	var err error
 +	tt := &TPMTao{pcrCount: 24}
 +	tt.tpmfile, err = os.OpenFile(tpmPath, os.O_RDWR, 0600)
@@ -237,6 +268,13 @@ index 0000000..dd3ddac
 #*
 #- What is the 0600 here? Can it just use 0 since no O_CREATE?
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-18T20:42:49-0700
+#**
+#-- Fixed.
+#-- 
 +	if err != nil {
 +		return nil, err
 +	}
@@ -271,6 +309,13 @@ index 0000000..dd3ddac
 #- super pedantic, perhaps put tt.Close() in every exit path except the success
 #- one? Or figure out a way to do it with defer? Or use runtime.SetFinalizer()?
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-18T20:42:55-0700
+#**
+#-- Added a finalizer and calles to SetFinalizer in the runtime package.
+#-- 
 +	}
 +
 +	// Get the pcr values for the PCR nums.
@@ -311,6 +356,13 @@ index 0000000..dd3ddac
 #- Since tpm resources are so precious, it might be worth using
 #- runtime.SetFinalizer() for TPMTao.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-18T20:43:22-0700
+#**
+#-- Done
+#-- 
 +}
 +
 +// GetTaoName returns the Tao principal name assigned to the caller.
@@ -332,6 +384,13 @@ index 0000000..dd3ddac
 #- until we properly implement PCR extensions, or have a nice big TODO. I have
 #- ideas on how to do PCR extension + subprins, but never had the code to do it.
 #-
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-18T20:43:26-0700
+#**
+#-- This is now set to be an error case
+#-- 
 +}
 +
 +// GetRandomBytes returns a slice of n random bytes.
@@ -416,6 +475,15 @@ index 0000000..dd3ddac
 #-    2. Elsewhere you should have already put the PCRs into exts, e.g. in New.
 #-    3. Don't prepend anything here, since PCRs are already in exts and issuer
 #-       is either assigned or identical to name.exts.
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-18T20:43:35-0700
+#**
+#-- I've pushed PCRs into Ext under tt.name, so most of this code has moved into
+#-- the New case. I don't prepend anything here anymore, but I do have to create
+#-- a special signer auth.Prin that doesn't have any extensions.
+#-- 
 +
 +	// This is done in GenerateAttestation, but the TPM attestation is signed
 +	// differently, so we do the time calculations here.

@@ -1,0 +1,592 @@
+#* 
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-18T20:52:37-0700
+#* 
+#- A mostly empty version of the TPMTao that implements the Tao
+#- 
+#- 
+#- Add support for TPM Tao implementation and Quote verification.
+#- 
+#- This commit adds implementations of the Tao interface over the TPM, using
+#- github.com/google/go-tpm/tpm. It also uses that package to add support for
+#- verifying TPM Quote values in attestations using the cloudproxy/tao/auth
+#- framework.
+#- 
+#- This commit also adds some basic tests that use TPMTao as a Tao object to do
+#- Seal, Unseal, Attest, and verification of a simple auth.Says.
+#- 
+#- 
+#- Fixes for TPMTao along the lines suggested by kwalsh
+#- 
+#- 
+diff --git a/go/src/cloudproxy/tao/attestation.go b/go/src/cloudproxy/tao/attestation.go
+index 6e4c93d..f6c8740 100644
+--- a/go/src/cloudproxy/tao/attestation.go
++++ b/go/src/cloudproxy/tao/attestation.go
+@@ -1,58 +1,87 @@
+ // Copyright (c) 2014, Kevin Walsh.  All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+ 	"time"
+ 
++	"cloudproxy/tao/auth"
++
+ 	"code.google.com/p/goprotobuf/proto"
+ 
+-	"cloudproxy/tao/auth"
++	"github.com/google/go-tpm/tpm"
+ )
+ 
+ // ValidSigner checks the signature on an attestation and, if so, returns the signer.
+ func (a *Attestation) ValidSigner() (auth.Prin, error) {
+ 	signer, err := auth.UnmarshalPrin(a.Signer)
+ 	if err != nil {
+ 		return auth.Prin{}, err
+ 	}
+ 	if len(signer.Ext) != 0 {
+ 		return auth.Prin{}, newError("tao: attestation signer principal malformed: %s", signer)
+ 	}
+ 	switch signer.Type {
+ 	case "tpm":
+-		// Signer is tpm, use tpm-specific signature verification.
+-		// TODO(kwalsh) call tpm-specific verification code
+-		return auth.Prin{}, newError("tao: tpm signature verification not yet implemented")
++		// The PCRs are contained in the Speaker of an auth.Says statement that
++		// makes up the a.SerializedStatement.
++		f, err := auth.UnmarshalForm(a.SerializedStatement)
++		if err != nil {
++			return auth.Prin{}, newError("tao: couldn't unmarshal the statement: %s", err)
++		}
++
++		// A TPM attestation must be an auth.Says.
++		says, ok := f.(auth.Says)
++		if !ok {
++			return auth.Prin{}, newError("tao: the attestation statement was not an auth.Says statement")
++		}
++
++		// Signer is tpm; use tpm-specific signature verification. Extract the
++		// PCRs from the issuer name, unmarshal the key as an RSA key, and call
++		// tpm.VerifyQuote().
++		pcrNums, pcrVals, err := extractPCRs(says.Speaker)
++		if err != nil {
++			return auth.Prin{}, newError("tao: couldn't extract PCRs from the signer: %s", err)
++		}
++
++		pk, err := extractAIK(says.Speaker)
++		if err != nil {
++			return auth.Prin{}, newError("tao: couldn't extract the AIK from the signer: %s", err)
++		}
++		if err := tpm.VerifyQuote(pk, a.SerializedStatement, a.Signature, pcrNums, pcrVals); err != nil {
++			return auth.Prin{}, newError("tao: TPM quote failed verification: %s", err)
++		}
++
++		return signer, nil
+ 	case "key":
+ 		// Signer is ECDSA key, use Tao signature verification.
+ 		v, err := FromPrincipal(signer)
+ 		if err != nil {
+ 			return auth.Prin{}, err
+ 		}
+ 		ok, err := v.Verify(a.SerializedStatement, AttestationSigningContext, a.Signature)
+ 		if err != nil {
+ 			return auth.Prin{}, err
+ 		}
+ 		if !ok {
+ 			return auth.Prin{}, newError("tao: attestation signature invalid")
+ 		}
+ 		return signer, nil
+ 	default:
+ 		return auth.Prin{}, newError("tao: attestation signer principal unrecognized: %s", signer.String())
+ 	}
+ }
+ 
+ // Validate checks whether an attestation is valid and, if so, it returns the
+diff --git a/go/src/cloudproxy/tao/tpm_tao.go b/go/src/cloudproxy/tao/tpm_tao.go
+new file mode 100644
+index 0000000..eec1308
+--- /dev/null
++++ b/go/src/cloudproxy/tao/tpm_tao.go
+@@ -0,0 +1,332 @@
++// Copyright (c) 2014, Google Inc. All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package tao
++
++import (
++	"crypto/rsa"
++	"crypto/x509"
++	"encoding/hex"
++	"errors"
++	"io"
++	"os"
++	"runtime"
++	"strconv"
++	"strings"
++	"time"
++
++	"cloudproxy/tao/auth"
++
++	"github.com/google/go-tpm/tpm"
++)
++
++// A TPMTao implements the Tao using a hardware TPM device.
++type TPMTao struct {
++	// tpmfile is the file through which TPMTao communicates with the TPM. E.g.,
++	// on Linux, this is usually /dev/tpm0.
++	tpmfile *os.File
++
++	// srkAuth is the authenticator for the SRK. In most simple cases, it's 20
++	// bytes of zeros. That value is called the "well-known authentictor"
++	srkAuth [20]byte
++
++	// aikHandle is an integer handle for an AIK held by the TPM. This key is
++	// used for creating Quote values from the TPM.
++	aikHandle tpm.Handle
++
++	// verifier is a representation of the AIK that can be used to verify Quote
++	// and Quote2 attestations.
++	verifier *rsa.PublicKey
++
++	// pcrCount is the number of PCRs in the TPM. The current go-tpm
++	// implementation fixes this at 24.
++	pcrCount uint32
++	pcrNums  []int
++	pcrVals  [][]byte
++
++	// The name of the TPMTao is tpm(...K...) with extensions that represent the
++	// PCR values (and maybe someday the locality).
++	name auth.Prin
++
++	// The current TPMTao code uses only locality 0, so this value is never set.
++	locality byte
++}
++
++// NewTPMTao creates a new TPMTao and returns it under the Tao interface.
++func NewTPMTao(tpmPath string, aikblob []byte, pcrNums []int) (Tao, error) {
++	var err error
++	tt := &TPMTao{pcrCount: 24}
++	tt.tpmfile, err = os.OpenFile(tpmPath, os.O_RDWR, 0)
++	if err != nil {
++		return nil, err
++	}
++
++	// Make sure the TPMTao releases all its resources
++	runtime.SetFinalizer(tt, FinalizeTPMTao)
++
++	// For now, the SRK Auth value is all zero, which is the well-known value.
++	// So, we don't set it here.
++	// TODO(tmroeder): add support for general SRK auth values.
++
++	// TODO(tmroeder): the current tpm implementation in go-tpm assumes 24 PCRs.
++	// This is not true in general, and it should be generalized there then
++	// changed here.
++	tt.aikHandle, err = tpm.LoadKey2(tt.tpmfile, aikblob, tt.srkAuth[:])
++	if err != nil {
++		return nil, err
++	}
++
++	tt.verifier, err = tpm.UnmarshalRSAPublicKey(aikblob)
++	if err != nil {
++		return nil, err
++	}
++
++	aik, err := x509.MarshalPKIXPublicKey(tt.verifier)
++	if err != nil {
++		return nil, err
++	}
++	tt.name = auth.Prin{
++		Type: "tpm",
++		Key:  aik,
++	}
++
++	// Get the pcr values for the PCR nums.
++	tt.pcrNums = make([]int, len(pcrNums))
++	tt.pcrVals = make([][]byte, len(pcrNums))
++	for i, v := range pcrNums {
++		tt.pcrNums[i] = v
++		pv, err := tpm.ReadPCR(tt.tpmfile, uint32(v))
++		if err != nil {
++			return nil, err
++		}
++		tt.pcrVals[i] = pv
++	}
++
++	asp := auth.PrinExt{
++		Name: "PCRs",
++		Arg:  make([]auth.Term, 2),
++	}
++	var pcrNumStrs []string
++	for _, v := range tt.pcrNums {
++		pcrNumStrs = append(pcrNumStrs, strconv.Itoa(v))
++	}
++	asp.Arg[0] = auth.Str(strings.Join(pcrNumStrs, ","))
++
++	var pcrValStrs []string
++	for _, p := range tt.pcrVals {
++		pcrValStrs = append(pcrValStrs, hex.EncodeToString(p))
++	}
++	asp.Arg[1] = auth.Str(strings.Join(pcrValStrs, ","))
++
++	// The PCRs are the first extension of the name.
++	tt.name.Ext = []auth.PrinExt{asp}
++
++	return tt, nil
++}
++
++// FinalizeTPMTao releases the resources for the TPMTao.
++func FinalizeTPMTao(tt *TPMTao) {
++	// Flush the AIK.
++	tt.aikHandle.CloseKey(tt.tpmfile)
++
++	// Release the file handle.
++	tt.tpmfile.Close()
++}
++
++// GetTaoName returns the Tao principal name assigned to the caller.
++func (tt *TPMTao) GetTaoName() (name auth.Prin, err error) {
++	return tt.name, nil
++}
++
++// ExtendTaoName irreversibly extends the Tao principal name of the caller.
++func (tt *TPMTao) ExtendTaoName(subprin auth.SubPrin) error {
++	return errors.New("name extensions are not supported for TPMTao")
++}
++
++// GetRandomBytes returns a slice of n random bytes.
++func (tt *TPMTao) GetRandomBytes(n int) ([]byte, error) {
++	if n <= 0 {
++		return nil, errors.New("invalid number of requested random bytes")
++	}
++	return tpm.GetRandom(tt.tpmfile, uint32(n))
++}
++
++// Read implements io.Reader to read random bytes from the TPMTao.
++func (tt *TPMTao) Read(p []byte) (int, error) {
++	bytes, err := tt.GetRandomBytes(len(p))
++	if err != nil {
++		return 0, err
++	}
++
++	copy(p, bytes)
++	return len(p), nil
++}
++
++// Rand produces an io.Reader for random bytes from this Tao.
++func (tt *TPMTao) Rand() io.Reader {
++	return tt
++}
++
++// GetSharedSecret returns a slice of n secret bytes.
++func (tt *TPMTao) GetSharedSecret(n int, policy string) (bytes []byte, err error) {
++	return nil, errors.New("the TPMTao does not implement GetSharedSecret")
++}
++
++// Attest requests the Tao host sign a statement on behalf of the caller. The
++// optional issuer, time and expiration will be given default values if nil.
++func (tt *TPMTao) Attest(issuer *auth.Prin, start, expiration *int64, message auth.Form) (*Attestation, error) {
++	if issuer == nil {
++		issuer = &tt.name
++	} else if !auth.SubprinOrIdentical(*issuer, tt.name) {
++		return nil, errors.New("invalid issuer in statement")
++	}
++
++	// TODO(tmroeder): we assume here that the PCRs haven't changed (e.g., been
++	// extended) since this TPMTao was created. If they have, then the PCRs will
++	// be wrong when we extend the principal here with them as the first
++	// component. This doesn't matter at the moment, since we don't currently
++	// support extending the PCRs or clearing them, but it will need to be
++	// changed when we do.
++	stmt := auth.Says{
++		Speaker:    *issuer,
++		Time:       start,
++		Expiration: expiration,
++		Message:    message,
++	}
++
++	// This is done in GenerateAttestation, but the TPM attestation is signed
++	// differently, so we do the time calculations here.
++	t := time.Now()
++	if stmt.Time == nil {
++		i := t.UnixNano()
++		stmt.Time = &i
++	}
++
++	if stmt.Expiration == nil {
++		i := t.Add(365 * 24 * time.Hour).UnixNano()
++		stmt.Expiration = &i
++	}
++
++	ser := auth.Marshal(stmt)
++	// TODO(tmroeder): check the pcrVals for sanity once we support extending or
++	// clearing the PCRs.
++	sig, _, err := tpm.Quote(tt.tpmfile, tt.aikHandle, ser, tt.pcrNums, tt.srkAuth[:])
++	if err != nil {
++		return nil, err
++	}
++
++	// Pull off the extensions from the name to get the bare TPM key for the
++	// signer.
++	signer := auth.Prin{
++		Type: tt.name.Type,
++		Key:  tt.name.Key,
++	}
++	a := &Attestation{
++		SerializedStatement: ser,
++		Signature:           sig,
++		Signer:              auth.Marshal(signer),
++	}
++	return a, nil
++}
++
++// Seal encrypts data so only certain hosted programs can unseal it.
++func (tt *TPMTao) Seal(data []byte, policy string) (sealed []byte, err error) {
++	if policy != SealPolicyDefault {
++		return nil, errors.New("tpm-specific policies are not yet implemented")
++	}
++
++	return tpm.Seal(tt.tpmfile, tt.locality, tt.pcrNums, data, tt.srkAuth[:])
++}
++
++// Unseal decrypts data that has been sealed by the Seal() operation, but only
++// if the policy specified during the Seal() operation is satisfied.
++func (tt *TPMTao) Unseal(sealed []byte) (data []byte, policy string, err error) {
++	unsealed, err := tpm.Unseal(tt.tpmfile, sealed, tt.srkAuth[:])
++	if err != nil {
++		return nil, "", err
++	}
++
++	return unsealed, SealPolicyDefault, nil
++}
++
++// extractPCRs gets the PCRs from a tpm principal.
++func extractPCRs(p auth.Prin) ([]int, []byte, error) {
++	if p.Type != "tpm" {
++		return nil, nil, errors.New("can only extract PCRs from a TPM principal")
++	}
++
++	// The PCRs are stored as the first subprincipal value, with name "PCRs".
++	if len(p.Ext) == 0 {
++		return nil, nil, errors.New("no subprincipals available for PCR extraction")
++	}
++
++	if p.Ext[0].Name != "PCRs" {
++		return nil, nil, errors.New("the first subprincipal must have Name 'PCRs' for PCR extraction to work")
++	}
++
++	sp := p.Ext[0]
++	if len(sp.Arg) != 2 {
++		return nil, nil, errors.New("the PCRs subprincipal must have exactly two arguments")
++	}
++
++	// auth.Str is exactly a string.
++	arg0, ok0 := sp.Arg[0].(auth.Str)
++	arg1, ok1 := sp.Arg[1].(auth.Str)
++	if !ok0 || !ok1 {
++		return nil, nil, errors.New("both Terms in the PCRs subprincipal must be strings")
++	}
++
++	nums := strings.Split(string(arg0), ",")
++	vals := strings.Split(string(arg1), ",")
++	if len(nums) != len(vals) {
++		return nil, nil, errors.New("mismatched count between PCR nums and vals")
++	}
++
++	pcrNums := make([]int, len(nums))
++	var pcrVals []byte
++	for i, v := range nums {
++		n, err := strconv.ParseInt(v, 10, 16)
++		if err != nil {
++			return nil, nil, err
++		}
++		pcrNums[i] = int(n)
++
++		b, err := hex.DecodeString(vals[i])
++		if err != nil {
++			return nil, nil, err
++		}
++		pcrVals = append(pcrVals, b...)
++	}
++	return pcrNums, pcrVals, nil
++}
++
++// extractAIK gets an RSA public key from the TPM principal name.
++func extractAIK(p auth.Prin) (*rsa.PublicKey, error) {
++	// The principal's Key should be a binary SubjectPublicKeyInfo.
++	if p.Type != "tpm" {
++		return nil, errors.New("wrong type of principal: should be 'tpm'")
++	}
++
++	pk, err := x509.ParsePKIXPublicKey(p.Key)
++	if err != nil {
++		return nil, err
++	}
++
++	aik, ok := pk.(*rsa.PublicKey)
++	if !ok {
++		return nil, errors.New("wrong type of public key: only RSA is supported for AIKs")
++	}
++
++	return aik, nil
++}
+diff --git a/go/src/cloudproxy/tao/tpm_tao_test.go b/go/src/cloudproxy/tao/tpm_tao_test.go
+new file mode 100644
+index 0000000..9bb1b0a
+--- /dev/null
++++ b/go/src/cloudproxy/tao/tpm_tao_test.go
+@@ -0,0 +1,130 @@
++// Copyright (c) 2014, Google Inc. All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package tao
++
++import (
++	"bytes"
++	"io/ioutil"
++	"runtime"
++	"testing"
++
++	"cloudproxy/tao/auth"
++)
++
++// cleanUpTPMTao runs the finalizer for TPMTao early then unsets it so it
++// doesn't run later. Normal code will only create one instance of TPMTao, so
++// the finalizer will work correctly. But this test code creates multiple such
++// instances, so it needs to call the finalizer early.
++func cleanUpTPMTao(tt *TPMTao) {
++	FinalizeTPMTao(tt)
++	runtime.SetFinalizer(tt, nil)
++}
++
++func TestTPMTao(t *testing.T) {
++	aikblob, err := ioutil.ReadFile("./aikblob")
++	if err != nil {
++		t.Skip("Skipping tests, since there's no ./aikblob file")
++	}
++
++	// Set up a TPM Tao that seals and attests against PCRs 17 and 18 and uses
++	// the AIK stored in aikblob. It communicates with the TPM directly through
++	// /dev/tpm0.
++	tt, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
++	if err != nil {
++		t.Fatal("Couldn't create a new TPM Tao:", err)
++	}
++	tpmtao, ok := tt.(*TPMTao)
++	if !ok {
++		t.Fatal("Failed to create the right kind of Tao object from NewTPMTao")
++	}
++	cleanUpTPMTao(tpmtao)
++}
++
++func TestTPMTaoSeal(t *testing.T) {
++	aikblob, err := ioutil.ReadFile("./aikblob")
++	if err != nil {
++		t.Skip("Skipping tests, since there's no ./aikblob file")
++	}
++
++	tpmtao, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
++	if err != nil {
++		t.Fatal("Couldn't create a new TPM Tao:", err)
++	}
++	tt, ok := tpmtao.(*TPMTao)
++	if !ok {
++		t.Fatal("Failed to create the right kind of Tao object from NewTPMTao")
++	}
++	defer cleanUpTPMTao(tt)
++
++	data := []byte(`test data to seal`)
++	sealed, err := tpmtao.Seal(data, SealPolicyDefault)
++	if err != nil {
++		t.Fatal("Couldn't seal data in the TPM Tao:", err)
++	}
++
++	unsealed, policy, err := tpmtao.Unseal(sealed)
++	if err != nil {
++		t.Fatal("Couldn't unseal data sealed by the TPM Tao:", err)
++	}
++
++	if policy != SealPolicyDefault {
++		t.Fatal("Got the wrong policy back from TPMTao.Unseal")
++	}
++
++	if !bytes.Equal(unsealed, data) {
++		t.Fatal("The data returned from TPMTao.Unseal didn't match the original data")
++	}
++
++}
++
++func TestTPMTaoAttest(t *testing.T) {
++	aikblob, err := ioutil.ReadFile("./aikblob")
++	if err != nil {
++		t.Skip("Skipping tests, since there's no ./aikblob file")
++	}
++
++	tpmtao, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
++	if err != nil {
++		t.Fatal("Couldn't create a new TPM Tao:", err)
++	}
++	tt, ok := tpmtao.(*TPMTao)
++	if !ok {
++		t.Fatal("Failed to create the right kind of Tao object from NewTPMTao")
++	}
++	defer cleanUpTPMTao(tt)
++
++	// Set up a fake key delegation.
++	taoname, err := tpmtao.GetTaoName()
++	if err != nil {
++		t.Fatal("Couldn't get the name of the tao:", err)
++	}
++	stmt := auth.Speaksfor{
++		Delegate:  auth.Prin{Type: "key", Key: []byte(`FakeKeyBytes`)},
++		Delegator: taoname,
++	}
++
++	// Let the TPMTao set up the issuer and time and expiration.
++	a, err := tpmtao.Attest(nil, nil, nil, stmt)
++	if err != nil {
++		t.Fatal("Couldn't attest to a key delegation:", err)
++	}
++
++	says, err := a.Validate()
++	if err != nil {
++		t.Fatal("The attestation didn't pass validation:", err)
++	}
++
++	t.Logf("Got valid statement %s\n", says)
++}

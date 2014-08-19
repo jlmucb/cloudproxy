@@ -39,7 +39,7 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 		// makes up the a.SerializedStatement.
 		f, err := auth.UnmarshalForm(a.SerializedStatement)
 		if err != nil {
-			return auth.Prin{}, newError("tao: couldn't unmarshal the statement:", err.Error())
+			return auth.Prin{}, newError("tao: couldn't unmarshal the statement: %s", err)
 		}
 
 		// A TPM attestation must be an auth.Says.
@@ -53,15 +53,15 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 		// tpm.VerifyQuote().
 		pcrNums, pcrVals, err := extractPCRs(says.Speaker)
 		if err != nil {
-			return auth.Prin{}, newError("tao: couldn't extract PCRs from the signer:", err.Error())
+			return auth.Prin{}, newError("tao: couldn't extract PCRs from the signer: %s", err)
 		}
 
 		pk, err := extractAIK(says.Speaker)
 		if err != nil {
-			return auth.Prin{}, newError("tao: couldn't extract the AIK from the signer:", err.Error())
+			return auth.Prin{}, newError("tao: couldn't extract the AIK from the signer: %s", err)
 		}
 		if err := tpm.VerifyQuote(pk, a.SerializedStatement, a.Signature, pcrNums, pcrVals); err != nil {
-			return auth.Prin{}, newError("tao: TPM quote failed verification:", err)
+			return auth.Prin{}, newError("tao: TPM quote failed verification: %s", err)
 		}
 
 		return signer, nil

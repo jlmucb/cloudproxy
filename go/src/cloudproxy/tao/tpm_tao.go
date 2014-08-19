@@ -20,8 +20,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
-	"io/ioutil"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -55,25 +55,25 @@ type TPMTao struct {
 	pcrNums  []int
 	pcrVals  [][]byte
 
-	// The name of the TPMTao is tpm(...K...), and its extensions are added by
-	// calls to ExtendTaoName. When the TPMTao creates an attestation, however,
-	// it prepends the PCRs as part of its name by making an auth.SubPrin for
-	// the PCRs that is preprended to exts.
+	// The name of the TPMTao is tpm(...K...) with extensions that represent the
+	// PCR values (and maybe someday the locality).
 	name auth.Prin
-	exts auth.SubPrin
 
 	// The current TPMTao code uses only locality 0, so this value is never set.
 	locality byte
 }
 
 // NewTPMTao creates a new TPMTao and returns it under the Tao interface.
-func NewTPMTao(tpmPath, aikblobPath string, pcrNums []int) (Tao, error) {
+func NewTPMTao(tpmPath string, aikblob []byte, pcrNums []int) (Tao, error) {
 	var err error
 	tt := &TPMTao{pcrCount: 24}
-	tt.tpmfile, err = os.OpenFile(tpmPath, os.O_RDWR, 0600)
+	tt.tpmfile, err = os.OpenFile(tpmPath, os.O_RDWR, 0)
 	if err != nil {
 		return nil, err
 	}
+
+	// Make sure the TPMTao releases all its resources
+	runtime.SetFinalizer(tt, FinalizeTPMTao)
 
 	// For now, the SRK Auth value is all zero, which is the well-known value.
 	// So, we don't set it here.
@@ -82,19 +82,23 @@ func NewTPMTao(tpmPath, aikblobPath string, pcrNums []int) (Tao, error) {
 	// TODO(tmroeder): the current tpm implementation in go-tpm assumes 24 PCRs.
 	// This is not true in general, and it should be generalized there then
 	// changed here.
-	blob, err := ioutil.ReadFile(aikblobPath)
+	tt.aikHandle, err = tpm.LoadKey2(tt.tpmfile, aikblob, tt.srkAuth[:])
 	if err != nil {
 		return nil, err
 	}
 
-	tt.aikHandle, err = tpm.LoadKey2(tt.tpmfile, blob, tt.srkAuth[:])
+	tt.verifier, err = tpm.UnmarshalRSAPublicKey(aikblob)
 	if err != nil {
 		return nil, err
 	}
 
-	tt.verifier, err = tpm.UnmarshalRSAPublicKey(blob)
+	aik, err := x509.MarshalPKIXPublicKey(tt.verifier)
 	if err != nil {
 		return nil, err
+	}
+	tt.name = auth.Prin{
+		Type: "tpm",
+		Key:  aik,
 	}
 
 	// Get the pcr values for the PCR nums.
@@ -109,19 +113,30 @@ func NewTPMTao(tpmPath, aikblobPath string, pcrNums []int) (Tao, error) {
 		tt.pcrVals[i] = pv
 	}
 
-	aik, err := x509.MarshalPKIXPublicKey(tt.verifier)
-	if err != nil {
-		return nil, err
+	asp := auth.PrinExt{
+		Name: "PCRs",
+		Arg:  make([]auth.Term, 2),
 	}
-	tt.name = auth.Prin{
-		Type: "tpm",
-		Key:  aik,
+	var pcrNumStrs []string
+	for _, v := range tt.pcrNums {
+		pcrNumStrs = append(pcrNumStrs, strconv.Itoa(v))
 	}
+	asp.Arg[0] = auth.Str(strings.Join(pcrNumStrs, ","))
+
+	var pcrValStrs []string
+	for _, p := range tt.pcrVals {
+		pcrValStrs = append(pcrValStrs, hex.EncodeToString(p))
+	}
+	asp.Arg[1] = auth.Str(strings.Join(pcrValStrs, ","))
+
+	// The PCRs are the first extension of the name.
+	tt.name.Ext = []auth.PrinExt{asp}
 
 	return tt, nil
 }
 
-func (tt *TPMTao) Close() {
+// FinalizeTPMTao releases the resources for the TPMTao.
+func FinalizeTPMTao(tt *TPMTao) {
 	// Flush the AIK.
 	tt.aikHandle.CloseKey(tt.tpmfile)
 
@@ -131,18 +146,17 @@ func (tt *TPMTao) Close() {
 
 // GetTaoName returns the Tao principal name assigned to the caller.
 func (tt *TPMTao) GetTaoName() (name auth.Prin, err error) {
-	return tt.name.MakeSubprincipal(tt.exts), nil
+	return tt.name, nil
 }
 
 // ExtendTaoName irreversibly extends the Tao principal name of the caller.
 func (tt *TPMTao) ExtendTaoName(subprin auth.SubPrin) error {
-	tt.exts = append(tt.exts, subprin...)
-	return nil
+	return errors.New("name extensions are not supported for TPMTao")
 }
 
 // GetRandomBytes returns a slice of n random bytes.
 func (tt *TPMTao) GetRandomBytes(n int) ([]byte, error) {
-	if n < 0 {
+	if n <= 0 {
 		return nil, errors.New("invalid number of requested random bytes")
 	}
 	return tpm.GetRandom(tt.tpmfile, uint32(n))
@@ -174,7 +188,7 @@ func (tt *TPMTao) GetSharedSecret(n int, policy string) (bytes []byte, err error
 func (tt *TPMTao) Attest(issuer *auth.Prin, start, expiration *int64, message auth.Form) (*Attestation, error) {
 	if issuer == nil {
 		issuer = &tt.name
-	} else if !issuer.Identical(tt.name) {
+	} else if !auth.SubprinOrIdentical(*issuer, tt.name) {
 		return nil, errors.New("invalid issuer in statement")
 	}
 
@@ -184,32 +198,12 @@ func (tt *TPMTao) Attest(issuer *auth.Prin, start, expiration *int64, message au
 	// component. This doesn't matter at the moment, since we don't currently
 	// support extending the PCRs or clearing them, but it will need to be
 	// changed when we do.
-	asp := auth.PrinExt{
-		Name: "PCRs",
-		Arg:  make([]auth.Term, 2),
-	}
-	var pcrNums []string
-	for _, v := range tt.pcrNums {
-		pcrNums = append(pcrNums, strconv.Itoa(v))
-	}
-	asp.Arg[0] = auth.Str(strings.Join(pcrNums, ","))
-
-	var pcrVals []string
-	for _, p := range tt.pcrVals {
-		pcrVals = append(pcrVals, hex.EncodeToString(p))
-	}
-	asp.Arg[1] = auth.Str(strings.Join(pcrVals, ","))
-
-	// Prepend the PCRs to the issuer subprincipal extensions.
 	stmt := auth.Says{
 		Speaker:    *issuer,
 		Time:       start,
 		Expiration: expiration,
 		Message:    message,
 	}
-	// Prepend the PCRs after doing a shallow copy of the issuer so that this
-	// operation doesn't change the issuer at all.
-	stmt.Speaker.Ext = append([]auth.PrinExt{asp}, issuer.Ext...)
 
 	// This is done in GenerateAttestation, but the TPM attestation is signed
 	// differently, so we do the time calculations here.
@@ -225,16 +219,23 @@ func (tt *TPMTao) Attest(issuer *auth.Prin, start, expiration *int64, message au
 	}
 
 	ser := auth.Marshal(stmt)
-	// TODO(tmroeder): check the pcrVals for sanity.
+	// TODO(tmroeder): check the pcrVals for sanity once we support extending or
+	// clearing the PCRs.
 	sig, _, err := tpm.Quote(tt.tpmfile, tt.aikHandle, ser, tt.pcrNums, tt.srkAuth[:])
 	if err != nil {
 		return nil, err
 	}
 
+	// Pull off the extensions from the name to get the bare TPM key for the
+	// signer.
+	signer := auth.Prin{
+		Type: tt.name.Type,
+		Key:  tt.name.Key,
+	}
 	a := &Attestation{
 		SerializedStatement: ser,
 		Signature:           sig,
-		Signer:              auth.Marshal(tt.name),
+		Signer:              auth.Marshal(signer),
 	}
 	return a, nil
 }

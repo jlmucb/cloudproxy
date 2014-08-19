@@ -43,11 +43,6 @@ type Domain struct {
 	Guard      Guard
 }
 
-// TODO(kwalsh) Move to acl_guard.go when that file exists.
-type ACLGuardConfig struct {
-	SignedACLsPath string
-}
-
 // TODO(kwalsh) Move to datalog_guard.go when that file exists.
 type DatalogGuard struct {
 	SignedRulesPath string

@@ -10,6 +10,15 @@
 #- than Save and Load, coverage is 100% for the functions in ACLGuard.
 #- 
 #- 
+#**
+#** author: Kevin Walsh
+#** email: kwalsh@holycross.edu
+#** date: 2014-08-19T14:17:32-0400
+#**
+#-- This is all fine. Comments below are just fyi, no changes needed. You will
+#-- need a little more code in domain.go to fully integrate this... just search
+#-- for "acl" and replace my pseudo-code comments with actual code.
+#--
 diff --git a/go/src/cloudproxy/tao/acl_guard.go b/go/src/cloudproxy/tao/acl_guard.go
 new file mode 100644
 index 0000000..337b872
@@ -75,6 +84,16 @@ index 0000000..337b872
 +	}
 +	return []auth.PrinExt{pe}
 +}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-19T14:06:18-0400
+#*
+#- For now, ACLGuard(path, path) is fine. But really it should probably be
+#- ACLGuard(key) since, aside from the actual list of rules, the key is the only
+#- important distinguishing feature of this guard. I have this in datalog guard
+#- already, and when I merge I will fix both.
+#-
 +
 +// Save writes all presistent policy data to disk, signed by key.
 +func (a *ACLGuard) Save(key *Signer) error {
@@ -135,6 +154,16 @@ index 0000000..337b872
 +
 +	return p.String()
 +}
+#*
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2014-08-19T14:09:55-0400
+#*
+#- I have a patch elsewhere that will turn the above function into just:
+#- auth.MakePredicate("Authorized", name, args...).String()
+#- I'll fix this when I merge. Also, it is fortunate here though somewhat
+#- accidental that String() is actually canonical.
+#-
 +
 +// Authorize adds an authorization for a principal to perform an
 +// operation.

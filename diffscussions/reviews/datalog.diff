@@ -6,6 +6,13 @@
 #- Datalog guard (works, but still in progress)
 #- 
 #- 
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-19T23:38:08-0700
+#*
+#- Other than some minor comments, this LGTM.
+#- 
 diff --git a/go/src/cloudproxy/tao/attestation.pb.go b/go/src/cloudproxy/tao/attestation.pb.go
 index 8492392..dce4b18 100644
 --- a/go/src/cloudproxy/tao/attestation.pb.go
@@ -82,6 +89,13 @@ index 0000000..6ee09f4
 +const (
 +	DatalogRulesSigningContext = "Datalog Rules Signing Context V1"
 +)
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-19T23:25:16-0700
+#*
+#- Minor style nit: golint will probably complain that this needs a comment.
+#- 
 +
 +// DatalogGuardConfig holds persistent configuration data for a DatalogGuard.
 +type DatalogGuardConfig struct {
@@ -100,6 +114,7 @@ index 0000000..6ee09f4
 +// quantification can be omitted. The implication and its antecedent F can be
 +// omitted (in which case there can be no variables so the quantification must
 +// be omitted as well).
+
 +//
 +// TODO(kwalsh) We could easily support a slightly broader class of formulas,
 +// e.g. by allowing G to be a conjunct of predicates, or by allowing a
@@ -137,6 +152,17 @@ index 0000000..6ee09f4
 +// NewTemporaryDatalogGuard returns a new datalog guard with a fresh, unsigned,
 +// non-persistent rule set.
 +func NewTemporaryDatalogGuard() *DatalogGuard {
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-19T23:28:53-0700
+#*
+#- I think that we've usually returned the interface type from the
+#- New* methods, and I think we should do the same here. So the return
+#- type on this method and the next New method should be Guard rather
+#- than *DatalogGuard. That also obviates the check
+#- var _ Guard = new(DatalogGuard)
+#- 
 +	return &DatalogGuard{ dl: dlengine.NewEngine() }
 +}
 +
@@ -204,6 +230,13 @@ index 0000000..6ee09f4
 +	if !info.ModTime().After(g.modTime) {
 +		return nil
 +	}
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-19T23:31:48-0700
+#*
+#- Duplicate check?
+#- 
 +	g.Clear()
 +	g.modTime = info.ModTime()
 +	g.db = db
@@ -279,6 +312,14 @@ index 0000000..6ee09f4
 +		case *auth.Forall:
 +			v = f.Var
 +			q = f.Body
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-19T23:33:32-0700
+#*
+#- As in the auth_quant review, I think these cases can be collapsed with a
+#- comma.
+#- 
 +		default:
 +			return q, vars
 +		}

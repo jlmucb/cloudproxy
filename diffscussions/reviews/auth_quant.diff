@@ -43,6 +43,14 @@
 #- test for ptr satisfying interface
 #- 
 #- 
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-19T23:15:56-0700
+#*
+#- This looks generally good. I have a few comments about some things I think
+#- could be simplified a little.
+#- 
 diff --git a/go/install.sh b/go/install.sh
 index 4320da7..208983f 100755
 --- a/go/install.sh
@@ -285,6 +293,14 @@ index 9a9abf6..11ad7b7 100644
  	Type string  // either "key" or "tpm"
 -	Key  []byte  // a marshalled CryptoKey protobuf structure with purpose CryptoKey.VERIFYING
 +	Key  Term    // TermVar or Bytes with marshalled CryptoKey protobuf structure with purpose CryptoKey.VERIFYING
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-19T13:00:41-0700
+#*
+#- TPMTao makes Key from MarshalPKIXPublicKey, so we should probably note that
+#- in this comment; it's not always a CryptoKey
+#- 
  	Ext  SubPrin // one or more extensions for descendents
  }
  
@@ -507,6 +523,17 @@ index 9a9abf6..11ad7b7 100644
 +	} else {
 +		return false
 +	}
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-19T13:04:45-0700
+#*
+#- After seeing this pattern several times, I think it might be useful to
+#- refactor it into a function call that returns a *Prin. You could do similar
+#- things for other types that need this functionality. This is one case where
+#- it would be nice to have generics in Go. Maybe you could implement this with
+#- reflection?
+#- 
 +	if ptr, ok := parent.(*Prin); ok {
 +		p = ptr
 +	} else if val, ok := parent.(Prin); ok {
@@ -557,6 +584,15 @@ index 9a9abf6..11ad7b7 100644
 +			terms[i] = a
 +		case *Prin:
 +			terms[i] = a
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-19T13:18:05-0700
+#*
+#- You can use commas here to collapse many of these cases, like so:
+#- case Int, Str, Bytes, Prin, *Int, *Str, *Bytes, *Prin:
+#-   terms[i] = a
+#- 
 +		case int:
 +			terms[i] = Int(a)
 +		case int32:
@@ -782,6 +818,13 @@ index 72e1921..c1ebb2b 100644
 +	`forall X: P(X)`,
 +	`forall X: forall Y: P(X, Y)`,
 +	`forall X: forall Y: P(X, Y)`,
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-19T13:27:56-0700
+#*
+#- duplicate
+#- 
 +	`exists X: P(X)`,
 +	`exists X: exists Y: P(X, Y)`,
 +	`forall X: P(X) implies exists Y: Q(X, Y) and R(X)`,
@@ -836,6 +879,14 @@ index 72e1921..c1ebb2b 100644
 +		case Exists:
 +			n, err = fmt.Sscanf("("+s+")", "%v", &v)
 +			x.Form = v
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-19T13:28:31-0700
+#*
+#- I realize that much of this is old code, but I think you can collapse it into
+#- cases that use commas.
+#- 
  		default:
  			t.Fatalf("not reached")
  		}
@@ -991,6 +1042,15 @@ index 8b6eeb8..7ca4f45 100644
 +// }
 +//
 +// (c *Context) deBruijn(q *string) int {
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-19T13:32:08-0700
+#*
+#- I know it's not exported, so it doesn't technically need a doc comment, but
+#- I'd really like to have one here, since I don't know why this function is
+#- named with someone's name.
+#- 
 +// 	n := len(c)
 +// 	for i := n-1; i >= 0; i-- {
 +// 		if c[i] == q {
@@ -1852,6 +1912,13 @@ index ac45696..a39e9dd 100644
 +		} else {
 +			return precedenceOr
 +		}
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-19T13:41:27-0700
+#*
+#- case Or, *Or should work, right?
+#- 
 +	case And:
 +		if len(f.Conjunct) == 0 {
 +			return precedenceHigh // And{} == true
@@ -2093,6 +2160,14 @@ index 2acea21..545650f 100644
 +			switch {
 +			case lower(r) || upper(r) || digit(r) || r == '+' || r == '/' || r == '=' || r == '\r' || r == '\n':
 +				s += string(r)
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-19T13:43:41-0700
+#*
+#- If you're using URLEncoding, shouldn't this have '_' and '-' rather than '+'
+#- and '/'?
+#- 
 +			case r == '}':
 +				b, err := base64.URLEncoding.DecodeString(s)
 +				if err != nil {

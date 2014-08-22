@@ -72,6 +72,35 @@ func TestACLGuardSaveACLs(t *testing.T) {
 	}
 }
 
+func TestACLGuardEmptySave(t *testing.T) {
+	s, err := GenerateSigner()
+	if err != nil {
+		t.Fatal("Couldn't generate a signer")
+	}
+
+	tg, tmpdir := testNewACLGuard(t)
+	defer os.RemoveAll(tmpdir)
+
+	if err := tg.Save(s); err != nil {
+		t.Fatal("Couldn't save the file")
+	}
+
+	config := ACLGuardConfig{SignedACLsPath: path.Join(tmpdir, "acls")}
+	v := s.GetVerifier()
+	aclg, err := LoadACLGuard(v, config)
+	if err != nil {
+		t.Fatal("Couldn't load the ACLs:", err)
+	}
+
+	if aclg.RuleCount() != tg.RuleCount() {
+		t.Fatal("Wrong number of rules in loaded ACLGuard")
+	}
+
+	if aclg.String() != tg.String() {
+		t.Fatal("Wrong string representation of loaded ACLGuard")
+	}
+}
+
 func TestACLGuardAuthorize(t *testing.T) {
 	tg, tmpdir := testNewACLGuard(t)
 	defer os.RemoveAll(tmpdir)

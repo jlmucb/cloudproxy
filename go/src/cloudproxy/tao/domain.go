@@ -176,7 +176,9 @@ func LoadDomain(configPath string, password []byte) (*Domain, error) {
 		return nil, err
 	}
 
-	keys, err := NewOnDiskPBEKeys(Signing, password, cfg.Domain.PolicyKeysPath, nil)
+	configDir := path.Dir(configPath)
+	keypath := path.Join(configDir, cfg.Domain.PolicyKeysPath)
+	keys, err := NewOnDiskPBEKeys(Signing, password, keypath, nil)
 	if err != nil {
 		return nil, err
 	}

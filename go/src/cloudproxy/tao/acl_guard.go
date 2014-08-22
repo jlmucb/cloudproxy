@@ -21,14 +21,12 @@ import (
 	"strings"
 
 	"cloudproxy/tao/auth"
+	"code.google.com/p/goprotobuf/proto"
 )
 
 // ACLGuardConfig stores the configuration for an ACLGuard.
-// TODO(tmroeder): these two paths should really be a single file that contains
-// the list and the signed data, either gob-encoded or protobuf-encoded.
 type ACLGuardConfig struct {
 	SignedACLsPath string
-	SignaturePath  string
 }
 
 // An ACLGuard is an implementation of tao.Guard that uses an ACL to make
@@ -60,16 +58,26 @@ func (a *ACLGuard) Subprincipal() auth.SubPrin {
 
 // Save writes all presistent policy data to disk, signed by key.
 func (a *ACLGuard) Save(key *Signer) error {
-	rules := strings.Join(a.ACL, "\n")
-	sig, err := key.Sign([]byte(rules), ACLGuardSigningContext)
+	acls := &ACLSet{Entries: a.ACL}
+	ser, err := proto.Marshal(acls)
 	if err != nil {
 		return err
 	}
 
-	if err := ioutil.WriteFile(a.Config.SignaturePath, sig, aclGuardFileMode); err != nil {
+	sig, err := key.Sign(ser, ACLGuardSigningContext)
+	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(a.Config.SignedACLsPath, []byte(rules), aclGuardFileMode); err != nil {
+	signedACL := &SignedACLSet{
+		SerializedAclset: ser,
+		Signature:        sig,
+	}
+
+	b, err := proto.Marshal(signedACL)
+	if err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(a.Config.SignedACLsPath, b, aclGuardFileMode); err != nil {
 		return err
 	}
 
@@ -80,17 +88,17 @@ func (a *ACLGuard) Save(key *Signer) error {
 // ACLGuard with the rules it loaded. In the process, it also checks the
 // signature created during the Save process.
 func LoadACLGuard(key *Verifier, config ACLGuardConfig) (Guard, error) {
-	rules, err := ioutil.ReadFile(config.SignedACLsPath)
+	b, err := ioutil.ReadFile(config.SignedACLsPath)
 	if err != nil {
 		return nil, err
 	}
 
-	sig, err := ioutil.ReadFile(config.SignaturePath)
-	if err != nil {
+	var sigACL SignedACLSet
+	if err := proto.Unmarshal(b, &sigACL); err != nil {
 		return nil, err
 	}
 
-	ok, err := key.Verify(rules, ACLGuardSigningContext, sig)
+	ok, err := key.Verify(sigACL.SerializedAclset, ACLGuardSigningContext, sigACL.Signature)
 	if err != nil {
 		return nil, err
 	}
@@ -99,8 +107,12 @@ func LoadACLGuard(key *Verifier, config ACLGuardConfig) (Guard, error) {
 		return nil, errors.New("the signature on the file didn't pass verification")
 	}
 
+	var acls ACLSet
+	if err := proto.Unmarshal(sigACL.SerializedAclset, &acls); err != nil {
+		return nil, err
+	}
 	a := &ACLGuard{Config: config}
-	a.ACL = strings.Split(string(rules), "\n")
+	a.ACL = acls.Entries
 	return a, nil
 }
 

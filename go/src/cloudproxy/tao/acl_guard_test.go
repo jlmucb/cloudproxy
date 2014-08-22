@@ -30,12 +30,7 @@ func testNewACLGuard(t *testing.T) (Guard, string) {
 		t.Fatal("Couldn't get a temp directory for the new ACL guard:", err)
 	}
 
-	aclsPath := path.Join(tmpdir, "acls")
-	sigPath := path.Join(tmpdir, "sig")
-	config := ACLGuardConfig{
-		SignedACLsPath: aclsPath,
-		SignaturePath:  sigPath,
-	}
+	config := ACLGuardConfig{SignedACLsPath: path.Join(tmpdir, "acls")}
 	tg := NewACLGuard(config)
 	return tg, tmpdir
 }
@@ -61,13 +56,7 @@ func TestACLGuardSaveACLs(t *testing.T) {
 		t.Fatal("Couldn't save the file")
 	}
 
-	aclsPath := path.Join(tmpdir, "acls")
-	sigPath := path.Join(tmpdir, "sig")
-	config := ACLGuardConfig{
-		SignedACLsPath: aclsPath,
-		SignaturePath:  sigPath,
-	}
-
+	config := ACLGuardConfig{SignedACLsPath: path.Join(tmpdir, "acls")}
 	v := s.GetVerifier()
 	aclg, err := LoadACLGuard(v, config)
 	if err != nil {

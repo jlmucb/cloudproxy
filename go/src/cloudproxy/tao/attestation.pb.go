@@ -2,20 +2,6 @@
 // source: attestation.proto
 // DO NOT EDIT!
 
-/*
-Package tao is a generated protocol buffer package.
-
-It is generated from these files:
-	attestation.proto
-	datalog_guard.proto
-	keys.proto
-	linux_host_admin_rpc.proto
-	linux_host.proto
-	tao_rpc.proto
-
-It has these top-level messages:
-	Attestation
-*/
 package tao
 
 import proto "code.google.com/p/goprotobuf/proto"

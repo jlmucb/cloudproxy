@@ -1,0 +1,204 @@
+#* 
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-22T16:27:24-0700
+#* 
+#- Add a test for an empty ACL, and add simple Domain tests.
+#- 
+#- This change adds tests for the Domain Save/Load methods and fixes a bug that was
+#- getting the wrong path for the domain keys; it was inconsistent between two
+#- locations in the code. This made the ACLGuard fail its verification check.
+#- 
+#- 
+diff --git a/go/src/cloudproxy/tao/acl_guard_test.go b/go/src/cloudproxy/tao/acl_guard_test.go
+index 3ec129c..1e7e49c 100644
+--- a/go/src/cloudproxy/tao/acl_guard_test.go
++++ b/go/src/cloudproxy/tao/acl_guard_test.go
+@@ -55,40 +55,69 @@ func TestACLGuardSaveACLs(t *testing.T) {
+ 	if err := tg.Save(s); err != nil {
+ 		t.Fatal("Couldn't save the file")
+ 	}
+ 
+ 	config := ACLGuardConfig{SignedACLsPath: path.Join(tmpdir, "acls")}
+ 	v := s.GetVerifier()
+ 	aclg, err := LoadACLGuard(v, config)
+ 	if err != nil {
+ 		t.Fatal("Couldn't load the ACLs:", err)
+ 	}
+ 
+ 	if aclg.RuleCount() != tg.RuleCount() {
+ 		t.Fatal("Wrong number of rules in loaded ACLGuard")
+ 	}
+ 
+ 	if aclg.String() != tg.String() {
+ 		t.Fatal("Wrong string representation of loaded ACLGuard")
+ 	}
+ }
+ 
++func TestACLGuardEmptySave(t *testing.T) {
++	s, err := GenerateSigner()
++	if err != nil {
++		t.Fatal("Couldn't generate a signer")
++	}
++
++	tg, tmpdir := testNewACLGuard(t)
++	defer os.RemoveAll(tmpdir)
++
++	if err := tg.Save(s); err != nil {
++		t.Fatal("Couldn't save the file")
++	}
++
++	config := ACLGuardConfig{SignedACLsPath: path.Join(tmpdir, "acls")}
++	v := s.GetVerifier()
++	aclg, err := LoadACLGuard(v, config)
++	if err != nil {
++		t.Fatal("Couldn't load the ACLs:", err)
++	}
++
++	if aclg.RuleCount() != tg.RuleCount() {
++		t.Fatal("Wrong number of rules in loaded ACLGuard")
++	}
++
++	if aclg.String() != tg.String() {
++		t.Fatal("Wrong string representation of loaded ACLGuard")
++	}
++}
++
+ func TestACLGuardAuthorize(t *testing.T) {
+ 	tg, tmpdir := testNewACLGuard(t)
+ 	defer os.RemoveAll(tmpdir)
+ 
+ 	p := auth.Prin{
+ 		Type: "key",
+ 		Key:  []byte(`Fake key`),
+ 	}
+ 	if err := tg.Authorize(p, "Write", []string{"filename"}); err != nil {
+ 		t.Fatal("Couldn't authorize a simple operation:", err)
+ 	}
+ 
+ 	if !tg.IsAuthorized(p, "Write", []string{"filename"}) {
+ 		t.Fatal("A rule that was added to the ACL was not present")
+ 	}
+ 
+ 	if tg.IsAuthorized(p, "Write", []string{"file"}) {
+ 		t.Fatal("A rule was authorized even though it has the wrong file name")
+ 	}
+ 
+diff --git a/go/src/cloudproxy/tao/domain.go b/go/src/cloudproxy/tao/domain.go
+index b8c72bf..bb826d2 100644
+--- a/go/src/cloudproxy/tao/domain.go
++++ b/go/src/cloudproxy/tao/domain.go
+@@ -160,41 +160,43 @@ func (d *Domain) Save() error {
+ 	if err != nil {
+ 		return err
+ 	}
+ 	d.Config.Print(file)
+ 	file.Close()
+ 	return d.Guard.Save(d.Keys.SigningKey)
+ }
+ 
+ // LoadDomain initialize a Domain from an existing configuration file. If
+ // password is nil, the object will be "locked", meaning that the policy private
+ // signing key will not be available, new ACL entries or attestations can not be
+ // signed, etc. Otherwise, password will be used to unlock the policy private
+ // signing key.
+ func LoadDomain(configPath string, password []byte) (*Domain, error) {
+ 	var cfg DomainConfig
+ 	err := gcfg.ReadFileInto(&cfg, configPath)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+-	keys, err := NewOnDiskPBEKeys(Signing, password, cfg.Domain.PolicyKeysPath, nil)
++	configDir := path.Dir(configPath)
++	keypath := path.Join(configDir, cfg.Domain.PolicyKeysPath)
++	keys, err := NewOnDiskPBEKeys(Signing, password, keypath, nil)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	var guard Guard
+ 	switch cfg.Domain.GuardType {
+ 	case "ACLs":
+ 		var err error
+ 		guard, err = LoadACLGuard(keys.VerifyingKey, cfg.ACLGuard)
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 	case "Datalog":
+ 		return nil, newError("datalog guard not yet implemented")
+ 	case "AllowAll":
+ 		guard = LiberalGuard
+ 	case "DenyAll":
+ 		guard = ConservativeGuard
+ 	}
+ 
+diff --git a/go/src/cloudproxy/tao/domain_test.go b/go/src/cloudproxy/tao/domain_test.go
+new file mode 100644
+index 0000000..9e37a17
+--- /dev/null
++++ b/go/src/cloudproxy/tao/domain_test.go
+@@ -0,0 +1,63 @@
++// Copyright (c) 2014, Google Inc.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package tao
++
++import (
++	"io/ioutil"
++	"os"
++	"path"
++	"testing"
++)
++
++var testDomainPassword = []byte(`insecure dummy password`)
++
++func testNewDomain(t *testing.T) (*Domain, string) {
++	tmpdir, err := ioutil.TempDir("/tmp", "acl_guard_test")
++	if err != nil {
++		t.Fatal("Couldn't get a temp directory for the new ACL guard:", err)
++	}
++
++	var dcfg DomainConfig
++	dcfg.Domain.Name = "Test"
++	dcfg.Domain.PolicyKeysPath = "keys"
++	dcfg.Domain.GuardType = "ACLs"
++	dcfg.SetDefaults()
++	dcfg.ACLGuard = ACLGuardConfig{SignedACLsPath: path.Join(tmpdir, "acls")}
++	d, err := CreateDomain(dcfg, path.Join(tmpdir, "tao.config"), testDomainPassword)
++	if err != nil {
++		os.RemoveAll(tmpdir)
++		t.Fatal("Couldn't create a domain:", err)
++	}
++
++	return d, tmpdir
++}
++
++func TestDomainSaveAndLoad(t *testing.T) {
++	d, tmpdir := testNewDomain(t)
++	defer os.RemoveAll(tmpdir)
++
++	d2, err := LoadDomain(path.Join(tmpdir, "tao.config"), testDomainPassword)
++	if err != nil {
++		t.Fatal("Couldn't load the domain:", err)
++	}
++
++	if !d.Subprincipal().Identical(d2.Subprincipal()) {
++		t.Fatal("The subprincipal of the loaded domain was not the same as the original:", err)
++	}
++
++	if d.String() != d2.String() {
++		t.Fatal("The name of the loaded domain is not the same as the original:", err)
++	}
++}

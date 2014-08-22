@@ -1,0 +1,310 @@
+#* 
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-22T16:27:55-0700
+#* 
+#- Refactor the tao net code out of demo, and fix the install to set up an AIK properly
+#- 
+#- 
+diff --git a/go/install.sh b/go/install.sh
+index 4320da7..cd981ee 100755
+--- a/go/install.sh
++++ b/go/install.sh
+@@ -260,47 +260,47 @@ function stoptests()
+ 
+ function setup()
+ {
+ 	mkdir -p ${TAO_TEST}/logs
+ 
+ 	echo "Creating TaoDomain keys and settings."
+ 	tao_admin -create -name testing
+ 
+ 	# This sets:
+ 	# $GOOGLE_HOST_TAO # name of underlying host tao, i.e. the TPM (if any)
+ 	# GOOGLE_TAO_TPM, GOOGLE_TAO_PCRS, # more details about TPM (if any)
+ 	# and GOOGLE_TAO_LINUX # name of the LinuxHost
+ 	sed -i '/^# BEGIN SETUP VARIABLES/,/^# END SETUP VARIABLES/d' ${tao_env} 
+ 	echo "# BEGIN SETUP VARIABLES" >> ${tao_env}
+ 	echo "# These variables come from ${TAO_TEST}/scripts/setup.sh" >> ${tao_env}
+ 
+ 	if [ "$TAO_USE_TPM" == "yes" ]; then
+ 		echo "Creating TPMTao AIK and settings."
+ 		rm -rf ${TAOTPM_path}
+ 		tpm_tao --create --show=false
+-		tpm_tao --quiet --show >> ${tao_env}
++		tpm_tao --show >> ${tao_env}
+ 	fi
+ 
+ 	echo "Creating LinuxHost keys and settings."
+ 	rm -rf ${TAOHOST_path}
+ 	linux_host --create --show=false
+-	linux_host --quiet --show >> ${tao_env}
++	linux_host --show >> ${tao_env}
+ 
+ 	echo "# END SETUP VARIABLES" >> ${tao_env}
+ 
+ 	refresh
+ }
+ 
+ function refresh()
+ {
+ 	source ${tao_env}
+ 
+ 	# Set up default execution policy.
+ 	tao_admin -clear
+ 	if [ "${TAO_GUARD}" == "datalog" ]; then
+ 		# Rule for TPM and PCRs combinations that make for a good OS
+ 		tao_admin -add "(forall S, TPM, PCRs: TrustedPlatform(TPM) and TrustedKernelPCRs(PCRs) and subprin(S, TPM, PCRs) implies TrustedOS(S))"
+ 		# Rule for OS and program hash that make for a good hosted program
+ 		tao_admin -add "(forall P, OS, Hash: TrustedOS(OS) and TrustedProgramHash(Hash) and subprin(P, OS, Hash) implies MemberProgram(P))"
+ 		# Rule for programs that can execute
+ 		tao_admin -add "(forall P: MemberProgram(P) implies Authorized(P, \"Execute\"))"
+ 		# Add the TPM keys, PCRs, and/or LinuxHost keys
+diff --git a/go/src/cloudproxy/demo/demo.go b/go/src/cloudproxy/demo/demo.go
+index 039ab58..d9c5795 100644
+--- a/go/src/cloudproxy/demo/demo.go
++++ b/go/src/cloudproxy/demo/demo.go
+@@ -1,197 +1,82 @@
+ // Copyright (c) 2014, Kevin Walsh.  All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package main
+ 
+ import (
+ 	"bufio"
+-	"crypto/tls"
+-	"crypto/x509"
+-	"crypto/x509/pkix"
+-	"encoding/pem"
+ 	"errors"
+ 	"flag"
+ 	"fmt"
+ 	"net"
+ 	"os"
+ 	"strings"
+-	"time"
+ 
+ 	"cloudproxy/tao"
+ 	"cloudproxy/tao/auth"
+-	"cloudproxy/util"
++	tnet "cloudproxy/tao/net"
+ )
+ 
+ var serverHost = flag.String("host", "localhost", "address for client/server")
+ var serverPort = flag.String("port", "8123", "port for client/server")
+ var serverAddr string // see main()
+ var localMode = flag.Bool("local", true, "Run host demo")
+ var clientMode = flag.Bool("client", true, "Run demo client")
+ var serverMode = flag.Bool("server", true, "Run demo server")
+ var pingCount = flag.Int("n", 5, "Number of client/server pings")
+ var demoAuth = flag.String("auth", "tls", "\"tcp\", \"tls\", or \"tao\"")
+ 
+ // TCP mode client/server
+ 
+ func setupTCPServer() (net.Listener, error) {
+ 	return net.Listen("tcp", serverAddr)
+ }
+ 
+ func setupTCPClient() (net.Conn, error) {
+ 	return net.Dial("tcp", serverAddr)
+ }
+ 
+-// TLS mode client/server
+-
+-const (
+-	x509duration = 24 * time.Hour
+-	x509keySize  = 2048
+-)
+-
+-func GenerateX509() (*tao.Keys, *tls.Certificate, error) {
+-	keys, err := tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Parent())
+-	if err != nil {
+-		return nil, nil, err
+-	}
+-
+-	/*
+-		if ip := net.ParseIP(*serverHost); ip != nil {
+-			template.IPAddresses = append(template.IPAddresses, ip)
+-		} else {
+-			template.DNSNames = append(template.DNSNames, *serverHost)
+-		}
+-	*/
+-
+-	cert, err := keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
+-		Organization: []string{"Google Tao Demo"}})
+-	if err != nil {
+-		return nil, nil, err
+-	}
+-	// TODO(kwalsh) keys should save cert on disk if keys are on disk
+-	keys.Cert = cert
+-
+-	certPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
+-	keyBytes, err := tao.MarshalSignerDER(keys.SigningKey)
+-	if err != nil {
+-		return nil, nil, err
+-	}
+-	keyPem := pem.EncodeToMemory(&pem.Block{Type: "ECDSA PRIVATE KEY", Bytes: keyBytes})
+-
+-	tlsCert, err := tls.X509KeyPair(certPem, keyPem)
+-	if err != nil {
+-		fmt.Printf("can't parse my cert\n")
+-		return nil, nil, err
+-	}
+-
+-	return keys, &tlsCert, nil
+-}
+-
+-func setupTLSServer() (net.Listener, error) {
+-	_, cert, err := GenerateX509()
+-	if err != nil {
+-		fmt.Printf("server: can't create key and cert: %s\n", err.Error())
+-		return nil, err
+-	}
+-	return tls.Listen("tcp", serverAddr, &tls.Config{
+-		RootCAs:            x509.NewCertPool(),
+-		Certificates:       []tls.Certificate{*cert},
+-		InsecureSkipVerify: true,
+-	})
+-}
+-
+-func setupTLSClient() (net.Conn, *tao.Keys, error) {
+-	keys, cert, err := GenerateX509()
+-	if err != nil {
+-		fmt.Printf("client: can't create key and cert: %s\n", err.Error())
+-		return nil, nil, err
+-	}
+-	conn, err := tls.Dial("tcp", serverAddr, &tls.Config{
+-		RootCAs:            x509.NewCertPool(),
+-		Certificates:       []tls.Certificate{*cert},
+-		InsecureSkipVerify: true,
+-	})
+-	return conn, keys, err
+-}
+-
+-// Tao mode client/server
+-
+-func setupTaoClient() (net.Conn, error) {
+-	conn, keys, err := setupTLSClient()
+-	if err != nil {
+-		return nil, err
+-	}
+-
+-	// tao handshake: send our delegation
+-	ms := util.NewMessageStream(conn)
+-	_, err = ms.WriteMessage(keys.Delegation)
+-	if err != nil {
+-		return nil, err
+-	}
+-
+-	// tao handshake: read peer delegation
+-	var a tao.Attestation
+-	err = ms.ReadMessage(&a)
+-	if err != nil {
+-		return nil, err
+-	}
+-
+-	// check if peer delegation matches tls key
+-	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
+-	// TODO(kwalsh) Verify peer key was checked by tls even though we set tls
+-	// config.InsecureSkipVerify. We don't care about the name or other
+-	// certificate details ata ll (hence config.InsecureSkipVerify), but we do
+-	// care that the key in the certificate is actually held by the peer.
+-	_ = peerCert
+-
+-	// TODO(kwalsh)
+-	// * verify delegation is well formed and properly signed
+-	// * verify tls key matches the key delegated by this delegation
+-	// * get name from delegation, store somewhere (e.g. in conn, eventually)
+-
+-	return conn, errors.New("not yet implemented")
+-}
+-
+ // client/server driver
+ 
+ func doRequest() bool {
+ 	fmt.Printf("client: connecting to %s using %s authentication.\n", serverAddr, *demoAuth)
+ 	var conn net.Conn
+ 	var err error
+ 	switch *demoAuth {
+ 	case "tcp":
+ 		conn, err = setupTCPClient()
+ 	case "tls":
+-		conn, _, err = setupTLSClient()
++		conn, _, err = tnet.SetupTLSClient(serverAddr)
+ 	case "tao":
+-		conn, err = setupTaoClient()
++		conn, err = tnet.SetupTaoClient(serverAddr)
+ 	}
+ 	if err != nil {
+ 		fmt.Printf("client: error connecting to %s: %s\n", serverAddr, err.Error())
+ 		return false
+ 	}
+ 	defer conn.Close()
+ 
+ 	_, err = fmt.Fprintf(conn, "Hello\n")
+ 	if err != nil {
+ 		fmt.Printf("client: can't write: %s\n", err.Error())
+ 		return false
+ 	}
+ 	msg, err := bufio.NewReader(conn).ReadString('\n')
+ 	if err != nil {
+ 		fmt.Printf("client can't read: %s\n", err.Error())
+ 		return false
+ 	}
+ 	msg = strings.TrimSpace(msg)
+ 	fmt.Printf("client: got reply: %s\n", msg)
+ 	return true
+@@ -226,41 +111,41 @@ func doResponse(conn net.Conn, responseOk chan<- bool) {
+ 	if err != nil {
+ 		fmt.Printf("server: can't read: %s\n", err.Error())
+ 		conn.Close()
+ 		responseOk <- false
+ 		return
+ 	}
+ 	msg = strings.TrimSpace(msg)
+ 	fmt.Printf("server: got message: %s\n", msg)
+ 	responseOk <- true
+ 	fmt.Fprintf(conn, "echo(%s)\n", msg)
+ 	conn.Close()
+ }
+ 
+ func doServer(stop chan bool, ready, done chan<- bool) {
+ 	var sock net.Listener
+ 	var err error
+ 	switch *demoAuth {
+ 	case "tcp":
+ 		sock, err = setupTCPServer()
+ 	case "tls", "tao":
+-		sock, err = setupTLSServer()
++		sock, err = tnet.SetupTLSServer(serverAddr)
+ 	}
+ 	if err != nil {
+ 		fmt.Printf("server: can't listen at %s: %s\n", serverAddr, err.Error())
+ 		ready <- false
+ 		done <- true
+ 		return
+ 	}
+ 	fmt.Printf("server: listening at %s using %s authentication.\n", serverAddr, *demoAuth)
+ 	ready <- true
+ 
+ 	pings := make(chan bool, 10)
+ 	connCount := 0
+ 
+ 	go func() {
+ 		for connCount = 0; connCount < *pingCount || *pingCount < 0; connCount++ { // negative means forever
+ 			conn, err := sock.Accept()
+ 			if err != nil {
+ 				fmt.Printf("server: can't accept connection: %s\n", err.Error())
+ 				stop <- true
+ 				return

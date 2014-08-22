@@ -1,0 +1,555 @@
+#* 
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-08-22T16:26:26-0700
+#* 
+#- Convert ACLGuard to use a single-file protobuf instead of two files.
+#- 
+#- This commit adds back in the protobuf-serialization format used for ACLGuard in
+#- the C++ Tao. It converts ACLGuard to use this format for its signed data, and it
+#- fixes the tests to conform to this style, as well.
+#- 
+#- 
+#- Add ACLGuard support to Domain
+#- 
+#- 
+diff --git a/go/src/cloudproxy/tao/acl_guard.go b/go/src/cloudproxy/tao/acl_guard.go
+index 337b872..5a2d7ee 100644
+--- a/go/src/cloudproxy/tao/acl_guard.go
++++ b/go/src/cloudproxy/tao/acl_guard.go
+@@ -4,120 +4,132 @@
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+ 	"errors"
+ 	"io/ioutil"
+ 	"os"
+ 	"strings"
+ 
+ 	"cloudproxy/tao/auth"
++	"code.google.com/p/goprotobuf/proto"
+ )
+ 
+ // ACLGuardConfig stores the configuration for an ACLGuard.
+-// TODO(tmroeder): these two paths should really be a single file that contains
+-// the list and the signed data, either gob-encoded or protobuf-encoded.
+ type ACLGuardConfig struct {
+ 	SignedACLsPath string
+-	SignaturePath  string
+ }
+ 
+ // An ACLGuard is an implementation of tao.Guard that uses an ACL to make
+ // authorization decisions. All rules are immediately converted to strings when
+ // they are added, and they are never converted back to auth.ast form. Any
+ // policy that requires more than string comparison should use DatalogGuard.
+ type ACLGuard struct {
+ 	Config ACLGuardConfig
+ 	ACL    []string
+ }
+ 
+ // ACLGuardSigningContext is the context used for ACL-file signatures.
+ const ACLGuardSigningContext = "tao.ACLGuard Version 1"
+ const aclGuardFileMode os.FileMode = 0600
+ 
+ // NewACLGuard produces a Guard implementation that implements ACLGuard.
+ func NewACLGuard(config ACLGuardConfig) Guard {
+ 	return &ACLGuard{Config: config}
+ }
+ 
+ // Subprincipal returns a unique subprincipal for this policy.
+ func (a *ACLGuard) Subprincipal() auth.SubPrin {
+ 	pe := auth.PrinExt{Name: "ACLGuard"}
+ 	for _, p := range a.ACL {
+ 		pe.Arg = append(pe.Arg, auth.Str(p))
+ 	}
+ 	return []auth.PrinExt{pe}
+ }
+ 
+ // Save writes all presistent policy data to disk, signed by key.
+ func (a *ACLGuard) Save(key *Signer) error {
+-	rules := strings.Join(a.ACL, "\n")
+-	sig, err := key.Sign([]byte(rules), ACLGuardSigningContext)
++	acls := &ACLSet{Entries: a.ACL}
++	ser, err := proto.Marshal(acls)
+ 	if err != nil {
+ 		return err
+ 	}
+ 
+-	if err := ioutil.WriteFile(a.Config.SignaturePath, sig, aclGuardFileMode); err != nil {
++	sig, err := key.Sign(ser, ACLGuardSigningContext)
++	if err != nil {
+ 		return err
+ 	}
+-	if err := ioutil.WriteFile(a.Config.SignedACLsPath, []byte(rules), aclGuardFileMode); err != nil {
++	signedACL := &SignedACLSet{
++		SerializedAclset: ser,
++		Signature:        sig,
++	}
++
++	b, err := proto.Marshal(signedACL)
++	if err != nil {
++		return err
++	}
++	if err := ioutil.WriteFile(a.Config.SignedACLsPath, b, aclGuardFileMode); err != nil {
+ 		return err
+ 	}
+ 
+ 	return nil
+ }
+ 
+ // Load restores a set of rules saved with Save. It replaces any rules in the
+ // ACLGuard with the rules it loaded. In the process, it also checks the
+ // signature created during the Save process.
+ func LoadACLGuard(key *Verifier, config ACLGuardConfig) (Guard, error) {
+-	rules, err := ioutil.ReadFile(config.SignedACLsPath)
++	b, err := ioutil.ReadFile(config.SignedACLsPath)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+-	sig, err := ioutil.ReadFile(config.SignaturePath)
+-	if err != nil {
++	var sigACL SignedACLSet
++	if err := proto.Unmarshal(b, &sigACL); err != nil {
+ 		return nil, err
+ 	}
+ 
+-	ok, err := key.Verify(rules, ACLGuardSigningContext, sig)
++	ok, err := key.Verify(sigACL.SerializedAclset, ACLGuardSigningContext, sigACL.Signature)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	if !ok {
+ 		return nil, errors.New("the signature on the file didn't pass verification")
+ 	}
+ 
++	var acls ACLSet
++	if err := proto.Unmarshal(sigACL.SerializedAclset, &acls); err != nil {
++		return nil, err
++	}
+ 	a := &ACLGuard{Config: config}
+-	a.ACL = strings.Split(string(rules), "\n")
++	a.ACL = acls.Entries
+ 	return a, nil
+ }
+ 
+ func createPredicateString(name auth.Prin, op string, args []string) string {
+ 	p := auth.Pred{
+ 		Name: "Authorized",
+ 		Arg:  make([]auth.Term, len(args)+2),
+ 	}
+ 	p.Arg[0] = name
+ 	p.Arg[1] = auth.Str(op)
+ 	for i, s := range args {
+ 		p.Arg[i+2] = auth.Str(s)
+ 	}
+ 
+ 	return p.String()
+ }
+ 
+ // Authorize adds an authorization for a principal to perform an
+ // operation.
+ func (a *ACLGuard) Authorize(name auth.Prin, op string, args []string) error {
+diff --git a/go/src/cloudproxy/tao/acl_guard.pb.go b/go/src/cloudproxy/tao/acl_guard.pb.go
+new file mode 100644
+index 0000000..9830ea6
+--- /dev/null
++++ b/go/src/cloudproxy/tao/acl_guard.pb.go
+@@ -0,0 +1,72 @@
++// Code generated by protoc-gen-go.
++// source: acl_guard.proto
++// DO NOT EDIT!
++
++/*
++Package tao is a generated protocol buffer package.
++
++It is generated from these files:
++	acl_guard.proto
++	attestation.proto
++	keys.proto
++	linux_host_admin_rpc.proto
++	linux_host.proto
++	tao_rpc.proto
++
++It has these top-level messages:
++	ACLSet
++	SignedACLSet
++*/
++package tao
++
++import proto "code.google.com/p/goprotobuf/proto"
++import math "math"
++
++// Reference imports to suppress errors if they are not otherwise used.
++var _ = proto.Marshal
++var _ = math.Inf
++
++// A set of ACL entries.
++type ACLSet struct {
++	Entries          []string `protobuf:"bytes,1,rep,name=entries" json:"entries,omitempty"`
++	XXX_unrecognized []byte   `json:"-"`
++}
++
++func (m *ACLSet) Reset()         { *m = ACLSet{} }
++func (m *ACLSet) String() string { return proto.CompactTextString(m) }
++func (*ACLSet) ProtoMessage()    {}
++
++func (m *ACLSet) GetEntries() []string {
++	if m != nil {
++		return m.Entries
++	}
++	return nil
++}
++
++// A set of ACL entries signed by a key.
++type SignedACLSet struct {
++	SerializedAclset []byte `protobuf:"bytes,1,req,name=serialized_aclset" json:"serialized_aclset,omitempty"`
++	Signature        []byte `protobuf:"bytes,2,req,name=signature" json:"signature,omitempty"`
++	XXX_unrecognized []byte `json:"-"`
++}
++
++func (m *SignedACLSet) Reset()         { *m = SignedACLSet{} }
++func (m *SignedACLSet) String() string { return proto.CompactTextString(m) }
++func (*SignedACLSet) ProtoMessage()    {}
++
++func (m *SignedACLSet) GetSerializedAclset() []byte {
++	if m != nil {
++		return m.SerializedAclset
++	}
++	return nil
++}
++
++func (m *SignedACLSet) GetSignature() []byte {
++	if m != nil {
++		return m.Signature
++	}
++	return nil
++}
++
++func init() {
++}
+diff --git a/go/src/cloudproxy/tao/acl_guard.proto b/go/src/cloudproxy/tao/acl_guard.proto
+new file mode 100644
+index 0000000..2c01d24
+--- /dev/null
++++ b/go/src/cloudproxy/tao/acl_guard.proto
+@@ -0,0 +1,24 @@
++//  Copyright (c) 2014, Kevin Walsh.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package tao;
++
++// A set of ACL entries.
++message ACLSet { repeated string entries = 1; }
++
++// A set of ACL entries signed by a key.
++message SignedACLSet {
++  required bytes serialized_aclset = 1;
++  required bytes signature = 2;
++}
+diff --git a/go/src/cloudproxy/tao/acl_guard_test.go b/go/src/cloudproxy/tao/acl_guard_test.go
+index 8a954fb..3ec129c 100644
+--- a/go/src/cloudproxy/tao/acl_guard_test.go
++++ b/go/src/cloudproxy/tao/acl_guard_test.go
+@@ -13,78 +13,67 @@
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+ 	"io/ioutil"
+ 	"os"
+ 	"path"
+ 	"strconv"
+ 	"testing"
+ 
+ 	"cloudproxy/tao/auth"
+ )
+ 
+ func testNewACLGuard(t *testing.T) (Guard, string) {
+ 	tmpdir, err := ioutil.TempDir("/tmp", "acl_guard_test")
+ 	if err != nil {
+ 		t.Fatal("Couldn't get a temp directory for the new ACL guard:", err)
+ 	}
+ 
+-	aclsPath := path.Join(tmpdir, "acls")
+-	sigPath := path.Join(tmpdir, "sig")
+-	config := ACLGuardConfig{
+-		SignedACLsPath: aclsPath,
+-		SignaturePath:  sigPath,
+-	}
++	config := ACLGuardConfig{SignedACLsPath: path.Join(tmpdir, "acls")}
+ 	tg := NewACLGuard(config)
+ 	return tg, tmpdir
+ }
+ 
+ func TestACLGuardSaveACLs(t *testing.T) {
+ 	s, err := GenerateSigner()
+ 	if err != nil {
+ 		t.Fatal("Couldn't generate a signer")
+ 	}
+ 
+ 	tg, tmpdir := testNewACLGuard(t)
+ 	defer os.RemoveAll(tmpdir)
+ 
+ 	p := auth.Prin{
+ 		Type: "key",
+ 		Key:  []byte(`Fake key`),
+ 	}
+ 	if err := tg.Authorize(p, "Write", []string{"filename"}); err != nil {
+ 		t.Fatal("Couldn't authorize a simple operation:", err)
+ 	}
+ 
+ 	if err := tg.Save(s); err != nil {
+ 		t.Fatal("Couldn't save the file")
+ 	}
+ 
+-	aclsPath := path.Join(tmpdir, "acls")
+-	sigPath := path.Join(tmpdir, "sig")
+-	config := ACLGuardConfig{
+-		SignedACLsPath: aclsPath,
+-		SignaturePath:  sigPath,
+-	}
+-
++	config := ACLGuardConfig{SignedACLsPath: path.Join(tmpdir, "acls")}
+ 	v := s.GetVerifier()
+ 	aclg, err := LoadACLGuard(v, config)
+ 	if err != nil {
+ 		t.Fatal("Couldn't load the ACLs:", err)
+ 	}
+ 
+ 	if aclg.RuleCount() != tg.RuleCount() {
+ 		t.Fatal("Wrong number of rules in loaded ACLGuard")
+ 	}
+ 
+ 	if aclg.String() != tg.String() {
+ 		t.Fatal("Wrong string representation of loaded ACLGuard")
+ 	}
+ }
+ 
+ func TestACLGuardAuthorize(t *testing.T) {
+ 	tg, tmpdir := testNewACLGuard(t)
+ 	defer os.RemoveAll(tmpdir)
+ 
+ 	p := auth.Prin{
+diff --git a/go/src/cloudproxy/tao/attestation.pb.go b/go/src/cloudproxy/tao/attestation.pb.go
+index 8492392..d1ae9fe 100644
+--- a/go/src/cloudproxy/tao/attestation.pb.go
++++ b/go/src/cloudproxy/tao/attestation.pb.go
+@@ -1,37 +1,24 @@
+ // Code generated by protoc-gen-go.
+ // source: attestation.proto
+ // DO NOT EDIT!
+ 
+-/*
+-Package tao is a generated protocol buffer package.
+-
+-It is generated from these files:
+-	attestation.proto
+-	keys.proto
+-	linux_host_admin_rpc.proto
+-	linux_host.proto
+-	tao_rpc.proto
+-
+-It has these top-level messages:
+-	Attestation
+-*/
+ package tao
+ 
+ import proto "code.google.com/p/goprotobuf/proto"
+ import math "math"
+ 
+ // Reference imports to suppress errors if they are not otherwise used.
+ var _ = proto.Marshal
+ var _ = math.Inf
+ 
+ // An Attestation is a signature and a statement together, and it conveys:
+ //   signer says statement
+ // i.e.
+ //   signer says (issuer from time until exp says message)
+ // A valid Attestation encodes a public key within the signer name, and it
+ // carries a signature that anyone can verify to (eventually) conclude:
+ //   issuer from time' until exp' says message
+ // Note: Because of time restrictions within attached delegations, restrictions
+ // time' and exp' here do not necessarily exactly match the restrictions time
+ // and exp on the original serialized statement.
+ // If the modified time restriction is met, then we can derive the same
+diff --git a/go/src/cloudproxy/tao/domain.go b/go/src/cloudproxy/tao/domain.go
+index 8406b72..b8c72bf 100644
+--- a/go/src/cloudproxy/tao/domain.go
++++ b/go/src/cloudproxy/tao/domain.go
+@@ -45,67 +45,68 @@ type Domain struct {
+ 
+ // TODO(kwalsh) Move to datalog_guard.go when that file exists.
+ type DatalogGuard struct {
+ 	SignedRulesPath string
+ }
+ 
+ // DomainConfig holds the presistent configuration data for a domain.
+ type DomainConfig struct {
+ 	// Policy-agnostic configuration
+ 	Domain struct {
+ 		// Name of the domain
+ 		Name string
+ 		// Path to the password-protected signing key
+ 		PolicyKeysPath string
+ 		// Type of guard to use for domain-wide policy decisions
+ 		GuardType string
+ 	}
+ 	// Details used for the domain signing key x509 certificate
+ 	X509Details X509Details
+ 	// Policy-specific configuration (optional)
+-	// ACLGuard ACLGuardConfig
++	ACLGuard ACLGuardConfig
+ 	// Policy-specific configuration (optional)
+ 	// DatalogGuard DatalogGuardConfig
+ }
+ 
+ // Print prints the configuration to out.
+ func (cfg DomainConfig) Print(out io.Writer) error {
+ 	return util.PrintAsGitConfig(out, cfg, "Tao Domain Configuration file")
+ }
+ 
+ // SetDefaults sets each blank field of cfg to a reasonable default value.
+ func (cfg *DomainConfig) SetDefaults() {
+ 	if cfg.Domain.Name == "" {
+ 		cfg.Domain.Name = "Tao example domain"
+ 	}
+ 	if cfg.Domain.PolicyKeysPath == "" {
+ 		cfg.Domain.PolicyKeysPath = "policy_keys"
+ 	}
+ 	if cfg.Domain.GuardType == "" {
+ 		cfg.Domain.GuardType = "DenyAll"
+ 	}
+ 	if cfg.X509Details.CommonName == "" {
+ 		cfg.X509Details.CommonName = cfg.Domain.Name
+ 	}
++	// TODO(tmroeder): should this be here? There are currently no reasonable
++	// defaults for ACLGuardConfig, since it consists solely of the path to the
++	// signed rules file.
+ 	switch cfg.Domain.GuardType {
+-	case "ACLs":
+-		//(&cfg.ACLGuard).SetDefaults()
+ 	case "Datalog":
+ 		//(&cfg.DatalogGuard).SetDefaults()
+ 	}
+ }
+ 
+ // String returns the name of the domain.
+ func (d *Domain) String() string {
+ 	return d.Config.Domain.Name
+ }
+ 
+ // Subprincipal returns a subprincipal suitable for contextualizing a program.
+ func (d *Domain) Subprincipal() auth.SubPrin {
+ 	e := auth.PrinExt{
+ 		Name: "Domain",
+ 		Arg: []auth.Term{
+ 			d.Keys.VerifyingKey.ToPrincipal(),
+ 			auth.Str(d.Config.Domain.GuardType),
+ 		},
+ 	}
+ 	return auth.SubPrin{e}
+@@ -117,41 +118,41 @@ func (d *Domain) Subprincipal() auth.SubPrin {
+ // default guard of the appropriate type if needed. Any parameters left empty in
+ // cfg will be set to reasonable default values.
+ func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain, error) {
+ 	(&cfg).SetDefaults()
+ 
+ 	configDir := path.Dir(configPath)
+ 	err := os.MkdirAll(configDir, 0777)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	keypath := path.Join(configDir, cfg.Domain.PolicyKeysPath)
+ 	keys, err := NewOnDiskPBEKeys(Signing, password, keypath, NewX509Name(cfg.X509Details))
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	var guard Guard
+ 	switch cfg.Domain.GuardType {
+ 	case "ACLs":
+-		return nil, newError("acl guard not yet implemented")
++		guard = NewACLGuard(cfg.ACLGuard)
+ 	case "Datalog":
+ 		return nil, newError("datalog guard not yet implemented")
+ 	case "AllowAll":
+ 		guard = LiberalGuard
+ 	case "DenyAll":
+ 		guard = ConservativeGuard
+ 	default:
+ 		return nil, newError("unrecognized guard type: %s", cfg.Domain.GuardType)
+ 	}
+ 
+ 	d := &Domain{cfg, configPath, keys, guard}
+ 	err = d.Save()
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	return d, nil
+ }
+ 
+ // Save writes all domain configuration and policy data.
+ func (d *Domain) Save() error {
+@@ -167,31 +168,35 @@ func (d *Domain) Save() error {
+ // LoadDomain initialize a Domain from an existing configuration file. If
+ // password is nil, the object will be "locked", meaning that the policy private
+ // signing key will not be available, new ACL entries or attestations can not be
+ // signed, etc. Otherwise, password will be used to unlock the policy private
+ // signing key.
+ func LoadDomain(configPath string, password []byte) (*Domain, error) {
+ 	var cfg DomainConfig
+ 	err := gcfg.ReadFileInto(&cfg, configPath)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	keys, err := NewOnDiskPBEKeys(Signing, password, cfg.Domain.PolicyKeysPath, nil)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	var guard Guard
+ 	switch cfg.Domain.GuardType {
+ 	case "ACLs":
+-		return nil, newError("acl guard not yet implemented")
++		var err error
++		guard, err = LoadACLGuard(keys.VerifyingKey, cfg.ACLGuard)
++		if err != nil {
++			return nil, err
++		}
+ 	case "Datalog":
+ 		return nil, newError("datalog guard not yet implemented")
+ 	case "AllowAll":
+ 		guard = LiberalGuard
+ 	case "DenyAll":
+ 		guard = ConservativeGuard
+ 	}
+ 
+ 	return &Domain{cfg, configPath, keys, guard}, nil
+ }

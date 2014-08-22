@@ -60,7 +60,7 @@ type DomainConfig struct {
 	X509Details X509Details
 
 	// Policy-specific configuration (optional)
-	// ACLGuard ACLGuardConfig
+	ACLGuard ACLGuardConfig
 
 	// Policy-specific configuration (optional)
 	DatalogGuard DatalogGuardConfig
@@ -85,9 +85,10 @@ func (cfg *DomainConfig) SetDefaults() {
 	if cfg.X509Details.CommonName == "" {
 		cfg.X509Details.CommonName = cfg.Domain.Name
 	}
+	// TODO(tmroeder): should this be here? There are currently no reasonable
+	// defaults for ACLGuardConfig, since it consists solely of the path to the
+	// signed rules file.
 	switch cfg.Domain.GuardType {
-	case "ACLs":
-		//(&cfg.ACLGuard).SetDefaults()
 	case "Datalog":
 		//(&cfg.DatalogGuard).SetDefaults()
 	}
@@ -133,7 +134,7 @@ func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain
 	var guard Guard
 	switch cfg.Domain.GuardType {
 	case "ACLs":
-		return nil, newError("acl guard not yet implemented")
+		guard = NewACLGuard(cfg.ACLGuard)
 	case "Datalog":
 		return nil, newError("datalog guard not yet implemented")
 	case "AllowAll":
@@ -183,7 +184,11 @@ func LoadDomain(configPath string, password []byte) (*Domain, error) {
 	var guard Guard
 	switch cfg.Domain.GuardType {
 	case "ACLs":
-		return nil, newError("acl guard not yet implemented")
+		var err error
+		guard, err = LoadACLGuard(keys.VerifyingKey, cfg.ACLGuard)
+		if err != nil {
+			return nil, err
+		}
 	case "Datalog":
 		return nil, newError("datalog guard not yet implemented")
 	case "AllowAll":

@@ -277,13 +277,13 @@ function setup()
 		echo "Creating TPMTao AIK and settings."
 		rm -rf ${TAOTPM_path}
 		tpm_tao --create --show=false
-		tpm_tao --quiet --show >> ${tao_env}
+		tpm_tao --show >> ${tao_env}
 	fi
 
 	echo "Creating LinuxHost keys and settings."
 	rm -rf ${TAOHOST_path}
 	linux_host --create --show=false
-	linux_host --quiet --show >> ${tao_env}
+	linux_host --show >> ${tao_env}
 
 	echo "# END SETUP VARIABLES" >> ${tao_env}
 

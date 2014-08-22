@@ -16,21 +16,16 @@ package main
 
 import (
 	"bufio"
-	"crypto/tls"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/pem"
 	"errors"
 	"flag"
 	"fmt"
 	"net"
 	"os"
 	"strings"
-	"time"
 
 	"cloudproxy/tao"
 	"cloudproxy/tao/auth"
-	"cloudproxy/util"
+	tnet "cloudproxy/tao/net"
 )
 
 var serverHost = flag.String("host", "localhost", "address for client/server")
@@ -52,116 +47,6 @@ func setupTCPClient() (net.Conn, error) {
 	return net.Dial("tcp", serverAddr)
 }
 
-// TLS mode client/server
-
-const (
-	x509duration = 24 * time.Hour
-	x509keySize  = 2048
-)
-
-func GenerateX509() (*tao.Keys, *tls.Certificate, error) {
-	keys, err := tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Parent())
-	if err != nil {
-		return nil, nil, err
-	}
-
-	/*
-		if ip := net.ParseIP(*serverHost); ip != nil {
-			template.IPAddresses = append(template.IPAddresses, ip)
-		} else {
-			template.DNSNames = append(template.DNSNames, *serverHost)
-		}
-	*/
-
-	cert, err := keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
-		Organization: []string{"Google Tao Demo"}})
-	if err != nil {
-		return nil, nil, err
-	}
-	// TODO(kwalsh) keys should save cert on disk if keys are on disk
-	keys.Cert = cert
-
-	certPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
-	keyBytes, err := tao.MarshalSignerDER(keys.SigningKey)
-	if err != nil {
-		return nil, nil, err
-	}
-	keyPem := pem.EncodeToMemory(&pem.Block{Type: "ECDSA PRIVATE KEY", Bytes: keyBytes})
-
-	tlsCert, err := tls.X509KeyPair(certPem, keyPem)
-	if err != nil {
-		fmt.Printf("can't parse my cert\n")
-		return nil, nil, err
-	}
-
-	return keys, &tlsCert, nil
-}
-
-func setupTLSServer() (net.Listener, error) {
-	_, cert, err := GenerateX509()
-	if err != nil {
-		fmt.Printf("server: can't create key and cert: %s\n", err.Error())
-		return nil, err
-	}
-	return tls.Listen("tcp", serverAddr, &tls.Config{
-		RootCAs:            x509.NewCertPool(),
-		Certificates:       []tls.Certificate{*cert},
-		InsecureSkipVerify: true,
-	})
-}
-
-func setupTLSClient() (net.Conn, *tao.Keys, error) {
-	keys, cert, err := GenerateX509()
-	if err != nil {
-		fmt.Printf("client: can't create key and cert: %s\n", err.Error())
-		return nil, nil, err
-	}
-	conn, err := tls.Dial("tcp", serverAddr, &tls.Config{
-		RootCAs:            x509.NewCertPool(),
-		Certificates:       []tls.Certificate{*cert},
-		InsecureSkipVerify: true,
-	})
-	return conn, keys, err
-}
-
-// Tao mode client/server
-
-func setupTaoClient() (net.Conn, error) {
-	conn, keys, err := setupTLSClient()
-	if err != nil {
-		return nil, err
-	}
-
-	// tao handshake: send our delegation
-	ms := util.NewMessageStream(conn)
-	_, err = ms.WriteMessage(keys.Delegation)
-	if err != nil {
-		return nil, err
-	}
-
-	// tao handshake: read peer delegation
-	var a tao.Attestation
-	err = ms.ReadMessage(&a)
-	if err != nil {
-		return nil, err
-	}
-
-	// check if peer delegation matches tls key
-	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
-	// TODO(kwalsh) Verify peer key was checked by tls even though we set tls
-	// config.InsecureSkipVerify. We don't care about the name or other
-	// certificate details ata ll (hence config.InsecureSkipVerify), but we do
-	// care that the key in the certificate is actually held by the peer.
-	_ = peerCert
-
-	// TODO(kwalsh)
-	// * verify delegation is well formed and properly signed
-	// * verify tls key matches the key delegated by this delegation
-	// * get name from delegation, store somewhere (e.g. in conn, eventually)
-
-	return conn, errors.New("not yet implemented")
-}
-
 // client/server driver
 
 func doRequest() bool {
@@ -172,9 +57,9 @@ func doRequest() bool {
 	case "tcp":
 		conn, err = setupTCPClient()
 	case "tls":
-		conn, _, err = setupTLSClient()
+		conn, _, err = tnet.SetupTLSClient(serverAddr)
 	case "tao":
-		conn, err = setupTaoClient()
+		conn, err = tnet.SetupTaoClient(serverAddr)
 	}
 	if err != nil {
 		fmt.Printf("client: error connecting to %s: %s\n", serverAddr, err.Error())
@@ -243,7 +128,7 @@ func doServer(stop chan bool, ready, done chan<- bool) {
 	case "tcp":
 		sock, err = setupTCPServer()
 	case "tls", "tao":
-		sock, err = setupTLSServer()
+		sock, err = tnet.SetupTLSServer(serverAddr)
 	}
 	if err != nil {
 		fmt.Printf("server: can't listen at %s: %s\n", serverAddr, err.Error())

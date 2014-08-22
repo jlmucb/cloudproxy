@@ -1,10 +1,9 @@
-The cpvmm source is moving to CMake for its build system. All the makefiles have
-been removed and replaced with CMakeLists.txt. This allows you to build
+The cpvmm source uses CMake for its build system. This allows you to build
 out-of-tree and to have multiple simultaneous build configurations in different
-directories. It also allows you to use Ninja or Makefiles or other build
+directories.  It also allows you to use Ninja or Makefiles or other build
 systems, as needed. The current configuration has only been tested with gcc, and
 it only seems to work in the Release configuration, though this seems to be a
-problem with the original Makefile version, as well.
+problem with the original Makefile version of the hypervisor, as well.
 
 To build cpvmm, start in directory above cpvmm: 
 
@@ -12,6 +11,3 @@ To build cpvmm, start in directory above cpvmm:
 > cd cpvmm_build
 > cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ../cpvmm
 > ninja
-> sudo cp vmm/evmm.bin /boot
-> sudo cp vmm/bootstrap/bootstrap.bin /boot
-> sudo reboot

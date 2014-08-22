@@ -1,5 +1,0 @@
-Instructions for configuring deployable FileClient and FileServer Linux images
-==============================================================================
-
-
-

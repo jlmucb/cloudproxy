@@ -1,54 +1,10 @@
 Using the Git Repository
 ========================
 
-
-The repository access paths are:
-    https://repo.eecs.berkeley.edu/git/users/manfer/fileProxyPapers.git
-    https://repo.eecs.berkeley.edu/git/users/manfer/fileProxy.git
-
-git push -u origin master
-
-
-Getting the certificates
-
-Linux:
-
-The repository server (like many other departmental servers) uses an InCommon 
-derived certificate and some machines do not include the InCommon root certificate 
-in the default ca-certificates file. You may be able to add the missing certificate 
-to your ca-certificates file, as follows:
- wget http://cert.incommon.org/InCommonServerCA.crt
- openssl x509 -inform DER -in InCommonServerCA.crt -out InCommonServerCA.pem
- cat /etc/ssl/certs/ca-certificates.crt InCommonServerCA.pem > ca-certs2.crt
- sudo cp /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt.bak
- sudo cp ca-certs2.crt /etc/ssl/certs/ca-certificates.crt
-
-If the above does not work for you, then try these steps below:
-1. Go to https://iris.eecs.berkeley.edu/news/6499-new-ssl-certificate-for-wireless 
-and download the Root and Intermediate certificates
-https://support.comodo.com/index.php?_m=downloads&_a=viewdownload&downloaditemid=9
-https://support.comodo.com/index.php?_m=downloads&_a=viewdownload&downloaditemid=101
-2. Create a director and copy the two certificate files into it
-  sudo mkdir –p /usr/share/ca-certificates/repo
-  sudo cp <location_of_downloaded_certs>/*.crt /usr/share/ca-certificates/repo/
-3. Edit /etc/ca-certificates.conf as root (or sudo), at the end, add
-  repo/AddTrustExternalCARoot.crt
-  repo/COMODOHigh-AssuranceSecureServerCA.crt
-  repo/InCommonServerCA.pem
-4. Run
-  sudo update-ca-certificates
-
-
-However, this means that you need to enter your username and password
-each time you want to do a remote operation, so I prefer the SSH
-version, since I can use ssh-agent to keep track of my key.
-
-
 Repository creation
-git clone repoman@repo.eecs.berkeley.edu:users/manfer/fileProxyPapers.git
+git clone https://github.com/jlmucb/cloudproxy
 git branch working
 git checkout working
-
 
 Adding and removing files
 git add filename	; puts it in staging area
@@ -67,8 +23,3 @@ ssh
     cp $HOME/.ssh/id_rsa* /Volumes/JLM1
     ssh-agent
     ssh-add
-
-https://repo.eecs.berkeley.edu/svnadmin/ldaplogin.php to get to login
-https://repo.eecs.berkeley.edu/svnadmin/upload_ssh.php
-
-

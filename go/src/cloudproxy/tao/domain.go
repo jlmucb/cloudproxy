@@ -43,13 +43,9 @@ type Domain struct {
 	Guard      Guard
 }
 
-// TODO(kwalsh) Move to datalog_guard.go when that file exists.
-type DatalogGuard struct {
-	SignedRulesPath string
-}
-
 // DomainConfig holds the presistent configuration data for a domain.
 type DomainConfig struct {
+
 	// Policy-agnostic configuration
 	Domain struct {
 		// Name of the domain
@@ -59,12 +55,15 @@ type DomainConfig struct {
 		// Type of guard to use for domain-wide policy decisions
 		GuardType string
 	}
+
 	// Details used for the domain signing key x509 certificate
 	X509Details X509Details
+
 	// Policy-specific configuration (optional)
 	// ACLGuard ACLGuardConfig
+
 	// Policy-specific configuration (optional)
-	// DatalogGuard DatalogGuardConfig
+	DatalogGuard DatalogGuardConfig
 }
 
 // Print prints the configuration to out.

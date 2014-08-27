@@ -318,10 +318,10 @@ func extractAIK(p auth.Prin) (*rsa.PublicKey, error) {
 		return nil, errors.New("wrong type of principal: should be 'tpm'")
 	}
 
-    k, ok := p.Key.(auth.Bytes)
-    if !ok {
-        return nil, errors.New("the AIK key must be an auth.Bytes values")
-    }
+	k, ok := p.Key.(auth.Bytes)
+	if !ok {
+		return nil, errors.New("the AIK key must be an auth.Bytes values")
+	}
 	pk, err := x509.ParsePKIXPublicKey([]byte(k))
 	if err != nil {
 		return nil, err

@@ -51,10 +51,10 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 		// Signer is tpm; use tpm-specific signature verification. Extract the
 		// PCRs from the issuer name, unmarshal the key as an RSA key, and call
 		// tpm.VerifyQuote().
-        speaker, ok := says.Speaker.(auth.Prin)
-        if !ok {
-            return auth.Prin{}, newError("tao: the speaker of an attestation must be an auth.Prin")
-        }
+		speaker, ok := says.Speaker.(auth.Prin)
+		if !ok {
+			return auth.Prin{}, newError("tao: the speaker of an attestation must be an auth.Prin")
+		}
 		pcrNums, pcrVals, err := extractPCRs(speaker)
 		if err != nil {
 			return auth.Prin{}, newError("tao: couldn't extract PCRs from the signer: %s", err)

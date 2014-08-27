@@ -30,6 +30,7 @@ import (
 	"cloudproxy/util"
 )
 
+// Signing context for signatures on a set of Tao datalog rules.
 const (
 	DatalogRulesSigningContext = "Datalog Rules Signing Context V1"
 )
@@ -82,12 +83,9 @@ type DatalogGuard struct {
 	dl      *dlengine.Engine
 }
 
-// This declaration ensures *DatalogGuard can be assigned to a Guard.
-var _ Guard = new(DatalogGuard)
-
 // NewTemporaryDatalogGuard returns a new datalog guard with a fresh, unsigned,
 // non-persistent rule set.
-func NewTemporaryDatalogGuard() *DatalogGuard {
+func NewTemporaryDatalogGuard() Guard {
 	return &DatalogGuard{dl: dlengine.NewEngine()}
 }
 
@@ -151,9 +149,6 @@ func (g *DatalogGuard) ReloadIfModified() error {
 	var db DatalogRules
 	if err := proto.Unmarshal(sdb.SerializedRules, &db); err != nil {
 		return err
-	}
-	if !info.ModTime().After(g.modTime) {
-		return nil
 	}
 	g.Clear()
 	g.modTime = info.ModTime()

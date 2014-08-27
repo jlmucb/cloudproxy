@@ -23,13 +23,6 @@ import (
 	"cloudproxy/util"
 )
 
-// MakePredicate constructs an authorization predicate of the form:
-//   Authorize(name, op, args...).
-// TODO(tmroeder): implement this function.
-func MakePredicate(name auth.Prin, op string, args []string) string {
-	return ""
-}
-
 // Guard is an interface for evaluating policy decisions.
 type Guard interface {
 	// Subprincipal returns a unique subprincipal for this policy.
@@ -117,7 +110,7 @@ func (t TrivialGuard) Subprincipal() auth.SubPrin {
 	return auth.SubPrin{e}
 }
 
-// Save writes all presistent policy data to disk, signed by key.
+// Save writes all persistent policy data to disk, signed by key.
 func (t TrivialGuard) Save(key *Signer) error {
 	return nil // nothing to save
 }

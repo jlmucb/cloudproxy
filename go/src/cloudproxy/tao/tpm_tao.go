@@ -98,7 +98,7 @@ func NewTPMTao(tpmPath string, aikblob []byte, pcrNums []int) (Tao, error) {
 	}
 	tt.name = auth.Prin{
 		Type: "tpm",
-		Key:  aik,
+		Key:  auth.Bytes(aik),
 	}
 
 	// Get the pcr values for the PCR nums.
@@ -318,7 +318,11 @@ func extractAIK(p auth.Prin) (*rsa.PublicKey, error) {
 		return nil, errors.New("wrong type of principal: should be 'tpm'")
 	}
 
-	pk, err := x509.ParsePKIXPublicKey(p.Key)
+    k, ok := p.Key.(auth.Bytes)
+    if !ok {
+        return nil, errors.New("the AIK key must be an auth.Bytes values")
+    }
+	pk, err := x509.ParsePKIXPublicKey([]byte(k))
 	if err != nil {
 		return nil, err
 	}

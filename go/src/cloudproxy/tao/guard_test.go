@@ -38,7 +38,7 @@ func testNewTrivialConservativeGuard(t *testing.T) Guard {
 	return tg
 }
 
-var testPrin auth.Prin = auth.Prin{Type: "key", Key: []byte("testkey")}
+var testPrin auth.Prin = auth.NewKeyPrin([]byte("testkey"))
 
 func testTrivialGuardAuthorize(t *testing.T, tg Guard, expect bool) {
 	if err := tg.Authorize(testPrin, "testop", []string{}); (err == nil) != expect {

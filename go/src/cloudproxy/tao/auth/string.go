@@ -14,200 +14,94 @@
 
 package auth
 
-// This file implements String() functions for pretty-printing elements.
-
 import (
-	"bytes"
-	"encoding/base64"
 	"fmt"
-	"io"
 )
 
+// Note: Yes, all of these functions are identical, but I don't see a way of
+// making this shorter in Go.
+
 // String returns a pretty-printed Prin.
-func (p Prin) String() string {
-	var out bytes.Buffer
-	fmt.Fprintf(&out, "%s(%q)", p.Type, base64.URLEncoding.EncodeToString(p.Key))
-	for _, e := range p.Ext {
-		fmt.Fprintf(&out, ".%s", e.String())
-	}
-	return out.String()
+func (e Prin) String() string {
+	return fmt.Sprintf("%v", e)
 }
 
 // String returns a pretty-printed PrinExt.
 func (e PrinExt) String() string {
-	return nameAndArgString(e.Name, e.Arg)
+	return fmt.Sprintf("%v", e)
 }
 
-// String returns an elided pretty-printed SubPrin.
-func (s SubPrin) String() string {
-	var out bytes.Buffer
-	for _, e := range s {
-		fmt.Fprintf(&out, ".%s", e.String())
-	}
-	return out.String()
-}
-
-// nameAndArgString returns a pretty-printed name and argument list.
-func nameAndArgString(name string, arg []Term) string {
-	if len(arg) == 0 {
-		return name
-	}
-	var out bytes.Buffer
-	fmt.Fprintf(&out, "%s(", name)
-	for i, a := range arg {
-		if i > 0 {
-			fmt.Fprintf(&out, ", ")
-		}
-		fmt.Fprintf(&out, "%s", a.String())
-	}
-	fmt.Fprintf(&out, ")")
-	return out.String()
+// String returns a pretty-printed SubPrin.
+func (e SubPrin) String() string {
+	return fmt.Sprintf("%v", e)
 }
 
 // String returns a pretty-printed Int.
-func (t Int) String() string {
-	return fmt.Sprintf("%d", int64(t))
+func (e Int) String() string {
+	return fmt.Sprintf("%v", e)
 }
 
 // String returns a pretty-printed Str.
-func (t Str) String() string {
-	return fmt.Sprintf("%q", string(t))
+func (e Str) String() string {
+	return fmt.Sprintf("%v", e)
+}
+
+// String returns a pretty-printed Bytes.
+func (e Bytes) String() string {
+	return fmt.Sprintf("%v", e)
+}
+
+// String returns a pretty-printed TermVar.
+func (e TermVar) String() string {
+	return fmt.Sprintf("%v", e)
 }
 
 // String returns a pretty-printed Pred.
-func (p Pred) String() string {
-	return nameAndArgString(p.Name, p.Arg)
+func (e Pred) String() string {
+	return fmt.Sprintf("%v", e)
 }
 
 // String returns a pretty-printed Const.
-func (f Const) String() string {
-	if f == true {
-		return "true"
-	} else {
-		return "false"
-	}
+func (e Const) String() string {
+	return fmt.Sprintf("%v", e)
 }
 
 // String returns a pretty-printed Not.
-func (f Not) String() string {
-	var out bytes.Buffer
-	fmt.Fprintf(&out, "not ")
-	printFormWithParens(&out, precedenceHigh, f.Negand)
-	return out.String()
+func (e Not) String() string {
+	return fmt.Sprintf("%v", e)
 }
 
 // String returns a pretty-printed And.
-func (f And) String() string {
-	if len(f.Conjunct) == 0 {
-		return "true"
-	} else if len(f.Conjunct) == 1 {
-		return f.Conjunct[0].String()
-	} else {
-		var out bytes.Buffer
-		for i, e := range f.Conjunct {
-			if i > 0 {
-				fmt.Fprintf(&out, " and ")
-			}
-			printFormWithParens(&out, precedenceAnd, e)
-		}
-		return out.String()
-	}
+func (e And) String() string {
+	return fmt.Sprintf("%v", e)
 }
 
 // String returns a pretty-printed Or.
-func (f Or) String() string {
-	if len(f.Disjunct) == 0 {
-		return "false"
-	} else if len(f.Disjunct) == 1 {
-		return f.Disjunct[0].String()
-	} else {
-		var out bytes.Buffer
-		for i, e := range f.Disjunct {
-			if i > 0 {
-				fmt.Fprintf(&out, " or ")
-			}
-			printFormWithParens(&out, precedenceOr, e)
-		}
-		return out.String()
-	}
+func (e Or) String() string {
+	return fmt.Sprintf("%v", e)
 }
 
 // String returns a pretty-printed Implies.
-func (f Implies) String() string {
-	var out bytes.Buffer
-	printFormWithParens(&out, precedenceImplies+1, f.Antecedent)
-	fmt.Fprintf(&out, " implies ")
-	printFormWithParens(&out, precedenceImplies, f.Consequent)
-	return out.String()
+func (e Implies) String() string {
+	return fmt.Sprintf("%v", e)
 }
 
 // String returns a pretty-printed Speaksfor.
-func (f Speaksfor) String() string {
-	return fmt.Sprintf("%s speaksfor %s", f.Delegate.String(), f.Delegator.String())
+func (e Speaksfor) String() string {
+	return fmt.Sprintf("%v", e)
 }
 
 // String returns a pretty-printed Says.
-func (f Says) String() string {
-	speaker := f.Speaker.String()
-	message := f.Message.String()
-	if f.Commences() && f.Expires() {
-		return fmt.Sprintf("%s from %d until %d says %s", speaker, *f.Time, *f.Expiration, message)
-	} else if f.Commences() {
-		return fmt.Sprintf("%s from %d says %s", speaker, *f.Time, message)
-	} else if f.Expires() {
-		return fmt.Sprintf("%s until %d says %s", speaker, *f.Expiration, message)
-	} else {
-		return fmt.Sprintf("%s says %s", speaker, message)
-	}
+func (e Says) String() string {
+	return fmt.Sprintf("%v", e)
 }
 
-const (
-	precedenceSays = iota // lowest
-	precedenceSpeaksfor
-	precedenceImplies
-	precedenceOr
-	precedenceAnd
-	precedenceHigh // not, true, false, Pred
-)
-
-// precedence returns an integer indicating the relative precedence of f.
-func precedence(f Form) int {
-	switch f := f.(type) {
-	case Says:
-		return precedenceSays
-	case Speaksfor:
-		return precedenceSpeaksfor
-	case Implies:
-		return precedenceImplies
-	case Or:
-		if len(f.Disjunct) == 0 {
-			return precedenceHigh // Or{} == false
-		} else if len(f.Disjunct) == 1 {
-			return precedence(f.Disjunct[0]) // Or{f} == f
-		} else {
-			return precedenceOr
-		}
-	case And:
-		if len(f.Conjunct) == 0 {
-			return precedenceHigh // And{} == true
-		} else if len(f.Conjunct) == 1 {
-			return precedence(f.Conjunct[0]) // And{f} == f
-		} else {
-			return precedenceAnd
-		}
-	case Not, Pred, Const:
-		return precedenceHigh
-	default:
-		panic("not reached")
-	}
+// String returns a pretty-printed Forall.
+func (e Forall) String() string {
+	return fmt.Sprintf("%v", e)
 }
 
-// printFormWithParens prints either f or (f), depending on how level compares
-// to the precedence of f.
-func printFormWithParens(out io.Writer, level int, f Form) {
-	if level > precedence(f) {
-		fmt.Fprintf(out, "(%s)", f.String())
-	} else {
-		fmt.Fprintf(out, "%s", f.String())
-	}
+// String returns a pretty-printed Exists.
+func (e Exists) String() string {
+	return fmt.Sprintf("%v", e)
 }

@@ -20,74 +20,242 @@ package auth
 // When printed with other verbs, the output format is unspecified.
 
 import (
+	"encoding/base64"
 	"fmt"
 )
 
-// Format outputs a pretty-printed Form or Term.
-func format(out fmt.State, verb rune, e AuthLogicElement) {
-	if verb == 's' {
-		fmt.Fprintf(out, "%s", e.ShortString())
-	} else {
-		fmt.Fprintf(out, "%s", e.String())
+// Format outputs a pretty-printed Prin.
+func (p Prin) Format(out fmt.State, verb rune) {
+	fmt.Fprintf(out, "%s(", p.Type)
+	p.Key.Format(out, verb)
+	fmt.Fprint(out, ")")
+	p.Ext.Format(out, verb)
+}
+
+// Format outputs a pretty-printed PrinExt.
+func (e PrinExt) Format(out fmt.State, verb rune) {
+	formatNameAndArg(out, e.Name, e.Arg, verb)
+}
+
+// formatNameAndArg outputs a pretty-printed name and argument list using short
+// or long formats.
+func formatNameAndArg(out fmt.State, name string, arg []Term, verb rune) {
+	fmt.Fprintf(out, "%s(", name)
+	for i, a := range arg {
+		if i > 0 {
+			fmt.Fprint(out, ", ")
+		}
+		a.Format(out, verb)
+	}
+	fmt.Fprint(out, ")")
+}
+
+// Format outputs a pretty-printed SubPrin.
+func (p SubPrin) Format(out fmt.State, verb rune) {
+	for _, e := range p {
+		fmt.Fprint(out, ".")
+		e.Format(out, verb)
 	}
 }
 
-// Format outputs a pretty-printed Prin using short or long formats.
-func (e Prin) Format(out fmt.State, verb rune) {
-	format(out, verb, e)
+// Format outputs a pretty-printed Str.
+func (t Str) Format(out fmt.State, verb rune) {
+	if verb == 's' && len(string(t)) > 15 {
+		fmt.Fprintf(out, "%.10q...", string(t))
+	} else {
+		fmt.Fprintf(out, "%q", string(t))
+	}
 }
 
-// Format outputs a pretty-printed SubPrin using short or long formats.
-func (e SubPrin) Format(out fmt.State, verb rune) {
-	format(out, verb, e)
+// Format outputs a pretty-printed Bytes.
+func (t Bytes) Format(out fmt.State, verb rune) {
+	if out.Flag('#') {
+		// use alternate format: base64w
+		s := base64.URLEncoding.EncodeToString([]byte(t))
+		if verb == 's' && len(string(t)) > 25 {
+			fmt.Fprintf(out, "{%s...}", s[:20])
+		} else {
+			fmt.Fprintf(out, "{%s}", s)
+		}
+	} else {
+		// use default format: hex
+		if verb == 's' && len(string(t)) > 25 {
+			fmt.Fprintf(out, "[%02x...]", []byte(t)[:20])
+		} else {
+			fmt.Fprintf(out, "[%02x]", []byte(t))
+		}
+	}
 }
 
-// Format outputs a pretty-printed Str using short or long formats.
-func (e Str) Format(out fmt.State, verb rune) {
-	format(out, verb, e)
+// Format outputs a pretty-printed Int.
+func (t Int) Format(out fmt.State, verb rune) {
+	fmt.Fprintf(out, "%d", int64(t))
 }
 
-// Format outputs a pretty-printed Int using short or long formats.
-func (e Int) Format(out fmt.State, verb rune) {
-	format(out, verb, e)
+// Format outputs a pretty-printed TermVar.
+func (t TermVar) Format(out fmt.State, verb rune) {
+	fmt.Fprint(out, string(t))
 }
 
-// Format outputs a pretty-printed Pred using short or long formats.
-func (e Pred) Format(out fmt.State, verb rune) {
-	format(out, verb, e)
+// Format outputs a pretty-printed Pred.
+func (f Pred) Format(out fmt.State, verb rune) {
+	formatNameAndArg(out, f.Name, f.Arg, verb)
 }
 
-// Format outputs a pretty-printed Const using short or long formats.
-func (e Const) Format(out fmt.State, verb rune) {
-	format(out, verb, e)
+// Format outputs a pretty-printed Const.
+func (f Const) Format(out fmt.State, verb rune) {
+	if f == true {
+		fmt.Fprint(out, "true")
+	} else {
+		fmt.Fprint(out, "false")
+	}
 }
 
-// Format outputs a pretty-printed Not using short or long formats.
-func (e Not) Format(out fmt.State, verb rune) {
-	format(out, verb, e)
+// Format outputs a pretty-printed Not.
+func (f Not) Format(out fmt.State, verb rune) {
+	fmt.Fprint(out, "not ")
+	formatFormWithParens(out, precedenceHigh, true, f.Negand, verb)
 }
 
-// Format outputs a pretty-printed And using short or long formats.
-func (e And) Format(out fmt.State, verb rune) {
-	format(out, verb, e)
+// Format outputs a pretty-printed And.
+func (f And) Format(out fmt.State, verb rune) {
+	if len(f.Conjunct) == 0 {
+		fmt.Fprint(out, "true")
+	} else if len(f.Conjunct) == 1 {
+		f.Conjunct[0].Format(out, verb)
+	} else {
+		n := len(f.Conjunct)
+		for i, e := range f.Conjunct {
+			if i > 0 {
+				fmt.Fprint(out, " and ")
+			}
+			formatFormWithParens(out, precedenceAnd, i == n-1, e, verb)
+		}
+	}
 }
 
-// Format outputs a pretty-printed Or using short or long formats.
-func (e Or) Format(out fmt.State, verb rune) {
-	format(out, verb, e)
+// Format outputs a pretty-printed Or.
+func (f Or) Format(out fmt.State, verb rune) {
+	if len(f.Disjunct) == 0 {
+		fmt.Fprint(out, "false")
+	} else if len(f.Disjunct) == 1 {
+		f.Disjunct[0].Format(out, verb)
+	} else {
+		n := len(f.Disjunct)
+		for i, e := range f.Disjunct {
+			if i > 0 {
+				fmt.Fprint(out, " or ")
+			}
+			formatFormWithParens(out, precedenceOr, i == n-1, e, verb)
+		}
+	}
 }
 
-// Format outputs a pretty-printed Implies using short or long formats.
-func (e Implies) Format(out fmt.State, verb rune) {
-	format(out, verb, e)
+// Format outputs a pretty-printed Implies.
+func (f Implies) Format(out fmt.State, verb rune) {
+	formatFormWithParens(out, precedenceLow+1, false, f.Antecedent, verb)
+	fmt.Fprint(out, " implies ")
+	formatFormWithParens(out, precedenceLow, true, f.Consequent, verb)
 }
 
-// Format outputs a pretty-printed Speaksfor using short or long formats.
-func (e Speaksfor) Format(out fmt.State, verb rune) {
-	format(out, verb, e)
+// Format outputs a pretty-printed Speaksfor.
+func (f Speaksfor) Format(out fmt.State, verb rune) {
+	f.Delegate.Format(out, verb)
+	fmt.Fprint(out, " speaksfor ")
+	f.Delegator.Format(out, verb)
 }
 
-// Format outputs a pretty-printed Says using short or long formats.
-func (e Says) Format(out fmt.State, verb rune) {
-	format(out, verb, e)
+// Format outputs a pretty-printed Says.
+func (f Says) Format(out fmt.State, verb rune) {
+	f.Speaker.Format(out, verb)
+	if f.Commences() {
+		fmt.Fprintf(out, " from %d", *f.Time)
+	}
+	if f.Expires() {
+		fmt.Fprintf(out, " until %d", *f.Expiration)
+	}
+	fmt.Fprint(out, " says ")
+	f.Message.Format(out, verb)
+}
+
+// Format outputs a pretty-printed Forall.
+func (f Forall) Format(out fmt.State, verb rune) {
+	fmt.Fprintf(out, "forall %s: ", f.Var)
+	f.Body.Format(out, verb)
+}
+
+// Exists outputs a pretty-printed Exists.
+func (f Exists) Format(out fmt.State, verb rune) {
+	fmt.Fprintf(out, "exists %s: ", f.Var)
+	f.Body.Format(out, verb)
+}
+
+const (
+	precedenceLow = iota // lowest: implies, says, right speaksfor, right forall, right exists
+	precedenceOr
+	precedenceAnd
+	precedenceHigh // not, true, false, Pred, left speaksfor, left forall, left exists
+)
+
+// precedence returns an integer indicating the relative precedence of f.
+func precedence(f Form, right bool) int {
+	switch f := f.(type) {
+	case Says, Speaksfor, Forall, Exists, *Says, *Speaksfor, *Forall, *Exists:
+		if right {
+			return precedenceHigh
+		} else {
+			return precedenceLow
+		}
+	case Implies, *Implies:
+		return precedenceLow
+	case Or:
+		if len(f.Disjunct) == 0 {
+			return precedenceHigh // Or{} == false
+		} else if len(f.Disjunct) == 1 {
+			return precedence(f.Disjunct[0], right) // Or{f} == f
+		} else {
+			return precedenceOr
+		}
+	case *Or:
+		if len(f.Disjunct) == 0 {
+			return precedenceHigh // Or{} == false
+		} else if len(f.Disjunct) == 1 {
+			return precedence(f.Disjunct[0], right) // Or{f} == f
+		} else {
+			return precedenceOr
+		}
+	case And:
+		if len(f.Conjunct) == 0 {
+			return precedenceHigh // And{} == true
+		} else if len(f.Conjunct) == 1 {
+			return precedence(f.Conjunct[0], right) // And{f} == f
+		} else {
+			return precedenceAnd
+		}
+	case *And:
+		if len(f.Conjunct) == 0 {
+			return precedenceHigh // And{} == true
+		} else if len(f.Conjunct) == 1 {
+			return precedence(f.Conjunct[0], right) // And{f} == f
+		} else {
+			return precedenceAnd
+		}
+	case Not, Pred, Const, *Not, *Pred, *Const:
+		return precedenceHigh
+	default:
+		panic("not reached")
+	}
+}
+
+// formatFormWithParens outputs either f or (f), depending on how level compares
+// to the precedence of f and whether f appears on the right side of a binary
+// operator.
+func formatFormWithParens(out fmt.State, level int, right bool, f Form, verb rune) {
+	if level > precedence(f, right) {
+		fmt.Fprint(out, "(")
+		f.Format(out, verb)
+		fmt.Fprint(out, ")")
+	} else {
+		f.Format(out, verb)
+	}
 }

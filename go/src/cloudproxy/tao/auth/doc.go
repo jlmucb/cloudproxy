@@ -17,13 +17,18 @@
 // relationships, and their beliefs.
 //
 // The grammar for a formula in the logic is roughly:
-//   Form ::= Prin [from Time] [until Time] says Form
-//          | Prin speaksfor Prin
+//   Form ::= Term [from Time] [until Time] says Form
+//          | Term speaksfor Term
+//          | forall TermVar : Form
+//          | exists TermVar : Form
 //          | Form implies Form
 //          | Form or Form or ...
 //          | Form and Form and ...
 //          | not Form
 //          | Pred | false | true
+//
+// Quantification variables range over Terms.
+//  TermVar : Identifier
 //
 // Times are integers interpreted as 64-bit unix timestamps.
 //   Time ::= int64
@@ -32,29 +37,45 @@
 // more terms as arguments.
 //   Pred ::= Identifier(Term, Term, ...)
 //          | Identifier()
-//          | Identifier
 //
 // Terms are concrete values, like strings, integers, or names of principals.
-//   Term ::= string | int | Prin
+//   Term ::= Str | Bytes | Int | Prin | TermVar
+//
+// Int can be any Go int. Str is a double-quoted Go string. Bytes is written as
+// pairs of hex digits, optionally separated by whitespace, between square
+// brackets. Bytes can also be written as base64w without whitespace between
+// curly braces.
 //
 // Principal names specify a key, and zero or more extensions to specify a
 // sub-principal of that key.
-//   Prin ::= key(string)
-//          | key(string).PrinExt.PrinExt...
+//   Prin ::= key(Term)
+//          | key(Term).PrinExt.PrinExt...
 //   PrinExt ::= Identifier(Term, Term, ...)
 //             | Identifier()
-//             | Identifier
 //
-// Identifiers for predicate and principal extension names are limited to simple
-// ascii printable identifiers, with inital upper-case, and no punctuation
-// except '_':
+// Identifiers for predicate and principal extension names and quantification
+// variables are limited to simple ascii printable identifiers, with inital
+// upper-case, and no punctuation except '_':
 //   PredName ::= [A-Z][a-zA-Z0-9_]*
 //   ExtName ::= [A-Z][a-zA-Z0-9_]*
 //
 // The keywords used in the above grammar are:
-//   from, until, says, speaskfor, implies, or, and, not, false, true, key
-// The punctuation used are:
-//   '(', ')', ',', '.'
+//   from, until, says, speaskfor, forall, exists, implies, or, and, not, false,
+//   true, key
+// The punctuation used are those for strings and byte slices, plus:
+//   '(', ')', ',', '.', ':'
+//
+// It is possible to represent nonsensical formulas, so some sanity checking may
+// be called for. For example, in general:
+//   1. The left operand of Says should be Prin or TermVar, as should both
+//   operands of Speaksfor.
+//   2. All TermVar variables should be bound.
+//   3. Conjunctions should have at least one conjunct.
+//   4. Disjunctions should have at least one disjunct.
+//   5. Identifiers should be legal using the above rules.
+//   6. The parameter for key() should be TermVar or Bytes.
+// Specific applications may impose additional restrictions on the structure of
+// formulas they accept.
 //
 // All of the above elements have three distinct representations. The first
 // representation is ast-like, with each element represented by an appropriate
@@ -65,15 +86,16 @@
 //
 // The second representation is textual, which is convenient for humans but
 // isn't canonical and can involve tricky parsing. When parsing elements from
-// text, whitespace is ignored between elements (except around the suprincipal
-// dot operator and before the open paren of a Pred, Prin, or, PrinExt), the
-// above list shows the productions in order of increasing precedence for binary
-// Form operators when parenthesis are omitted, parenthesis can be used for
-// specifying precedence explicitly, and elements of the same precedence are
-// parsed left to right. When pretty-printing elements to text, a single space
-// is used before and after keywords and after commas. Elements can also be
-// pretty-printed with elision, in which case keys and long strings are
-// truncated.
+// text:
+//   Whitespace is ignored between elements (except around the suprincipal dot
+//     operator, and before the open paren of a Pred, Prin, or, PrinExt);
+//   For binary operators taking two Forms, the above list shows the productions
+//     in order of increasing precedence;
+//   In all other cases, operations are parsed left to right;
+//   Parenthesis can be used for specifying precedence explicitly.
+// When pretty-printing elements to text, a single space is used before and
+// after keywords, commas, and colons. Elements can also be pretty-printed with
+// elision, in which case keys and long strings are truncated.
 //
 // The third representation is an encoded sequence of bytes. This is meant to be
 // compact, relatively easy to parse, and suitable for passing over sockets,
@@ -107,7 +129,7 @@
 // silently skipped, and unexpected types should not be silently coerced.
 //
 // Each element is encoded as a type tag followed by encodings for one or more
-// values. The tag is encoded as an plain (i.e. not zig-zag encoded) varint, and
+// values. The tag is encoded as a plain (i.e. not zig-zag encoded) varint, and
 // it determines the meaning, number, and types of the values. Values are
 // encoded according to their type:
 //
@@ -141,7 +163,5 @@
 //   all non-features for us.
 //
 // Note: In most cases, a tag appears only when the type would be ambiguous,
-// i.e. when encoding Term or Form. When encoding Says and Speaksfor, however,
-// the enclosed Prin values are not ambiguous, but we include the tag anyway for
-// consistency since all other Prin values have a tag.
+// i.e. when encoding Term or Form.
 package auth

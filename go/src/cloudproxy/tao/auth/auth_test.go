@@ -21,9 +21,9 @@ import (
 )
 
 var key []string = []string{
-	`key("S2V5MQo=")`, // base64w("Key1")
-	`key("S2V5Mgo=")`, // base64w("Key2")
-	`tpm("S2V5Mwo=")`, // base64w("Key3")
+	`key([4b657930])`, // hex("Key1")
+	`key([4b657931])`, // hex("Key2")
+	`tpm({S2V5Mw==})`, // base64w("Key3")
 }
 
 var termtests []string = []string{
@@ -32,11 +32,13 @@ var termtests []string = []string{
 	"-1",
 	`"Hello World"`,
 	`"Includes \n newlines and \t tabs"`,
+	"[010203abcdef]",
 	key[0],
 	key[1],
 	key[0] + ".Extension(1)",
-	key[0] + `.Extension(1).A.B(1).C(1, "Hello").D(` + key[1] + `.E(` + key[2] + `.G.H))`,
-	key[0] + ".E()",
+	key[0] + `.Extension(1).A().B(1).C(1, "Hello").D(` + key[1] + `.E(` + key[1] + `.G().H()))`,
+	key[0] + ".E(" + key[2] + ")",
+	"[01 02 03abcd ef]",
 }
 
 func TestParseTerm(t *testing.T) {
@@ -49,7 +51,7 @@ func TestParseTerm(t *testing.T) {
 		if n != 1 {
 			t.Fatal("incomplete parse")
 		}
-		if (i != len(termtests)-1) != (x.Term.String() == s) {
+		if (i < len(termtests)-2) != (x.Term.String() == s) {
 			t.Fatalf("bad print: %v vs %v", x.Term.String(), s)
 		}
 	}
@@ -106,7 +108,7 @@ func TestScanTerm(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	p2 := Prin{Key: []byte("abc"), Ext: SubPrin{
+	p2 := Prin{Type: "key", Key: Bytes([]byte("abc")), Ext: SubPrin{
 		PrinExt{"A", []Term{Int(1)}},
 		PrinExt{"B", []Term{Str("2"), Str("#")}},
 	}}
@@ -130,7 +132,7 @@ func TestParseSentence(t *testing.T) {
 func TestParsePred(t *testing.T) {
 	predtests := []string{
 		`P(42)`,
-		`Foo`,
+		`Foo()`,
 		`Pred(1, 2, 3)`,
 		`Foo(1, "a", ` + key[0] + `)`,
 		`Foo()`,
@@ -168,8 +170,8 @@ var formtests []string = []string{
 	key[0] + ` from 1 says true`,
 	key[0] + ` until 2 says true`,
 	key[0] + ` from 1 until 2 says true`,
-	key[0] + ` speaksfor ` + key[2],
-	key[0] + `.Sub(1).Sub(2) speaksfor ` + key[2] + `.Sub(1).Sub`,
+	key[0] + ` speaksfor ` + key[1],
+	key[0] + `.Sub(1).Sub(2) speaksfor ` + key[1] + `.Sub(1).Sub(2)`,
 	`P(1)`,
 	`P(1) and P(2)`,
 	`P(1) and P(2) and P(3) and P(4)`,
@@ -180,7 +182,7 @@ var formtests []string = []string{
 	`not P(1)`,
 	`not not P(1)`,
 	`not not not not P(1)`,
-	`P(1) and (` + key[0] + ` speaksfor ` + key[2] + `)`,
+	`P(1) and ` + key[0] + ` speaksfor ` + key[1],
 	`P(1) and P(2) and P(3) or P(4)`,
 	`P(1) and P(2) and (P(3) or P(4))`,
 	`P(1) and (P(2) or P(3)) and P(4)`,
@@ -193,9 +195,17 @@ var formtests []string = []string{
 	`P(1) or P(2) or (P(3) implies P(4))`,
 	`P(1) or (P(2) implies P(3)) or P(4)`,
 	`(P(1) implies P(2)) or P(3) or P(4)`,
-	`P(1) or (` + key[0] + ` says P(2) or P(3))`,
-	`P(1) or (` + key[0] + ` says P(2)) or P(3)`,
-	`(((P(((1)), ("a")))))`,
+	`P(1) or ` + key[0] + ` says P(2) or P(3)`,
+	`forall X: P(X)`,
+	`forall X: forall Y: P(X, Y)`,
+	`forall X: forall Y: P(X, Y)`,
+	`exists X: P(X)`,
+	`exists X: exists Y: P(X, Y)`,
+	`forall X: P(X) implies exists Y: Q(X, Y) and R(X)`,
+	`P(1) and forall X: Q(X)`,
+	`(forall X: Q(X)) and P(1)`,
+	`forall X: forall Y: X says P(1) implies Y says P(1)`,
+	`(((P(((1)), (` + key[2] + `)))))`,
 }
 
 func TestParseForm(t *testing.T) {
@@ -238,6 +248,12 @@ func TestParseForm(t *testing.T) {
 		case Const:
 			n, err = fmt.Sscanf("("+s+")", "%v", &v)
 			x.Form = v
+		case Forall:
+			n, err = fmt.Sscanf("("+s+")", "%v", &v)
+			x.Form = v
+		case Exists:
+			n, err = fmt.Sscanf("("+s+")", "%v", &v)
+			x.Form = v
 		default:
 			t.Fatalf("not reached")
 		}
@@ -256,7 +272,10 @@ func TestParseForm(t *testing.T) {
 func TestParseShortForm(t *testing.T) {
 	for _, s := range formtests {
 		var x, y AnyForm
-		fmt.Sscanf("("+s+")", "%v", &x)
+		_, err := fmt.Sscanf("("+s+")", "%v", &x)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if x.Form.String() != x.Form.ShortString() {
 			t.Fatalf("bad short string: %s vs %s", x.Form.String(), x.Form.ShortString())
 		}
@@ -342,5 +361,34 @@ func TestTrivialConjuncts(t *testing.T) {
 	q = Or{Disjunct: []Form{f.Form}}
 	if q.String() != s || q.ShortString() != s {
 		t.Fatalf("bad print for unary disnjunct ")
+	}
+}
+
+type ptest struct {
+	name string
+	args []interface{}
+	s    string
+}
+
+type testStringer bool
+
+func (t testStringer) String() string {
+	return "test"
+}
+
+func TestMakePredicate(t *testing.T) {
+	tests := []ptest{
+		ptest{"Foo", nil, "Foo()"},
+		ptest{"Foo", []interface{}{}, "Foo()"},
+		ptest{"Foo", []interface{}{1, 2, 3}, "Foo(1, 2, 3)"},
+		ptest{"Foo", []interface{}{"a", 2, Prin{Type: "key", Key: Bytes([]byte("abc"))}}, `Foo("a", 2, key([616263]))`},
+		ptest{"Foo", []interface{}{3.14, testStringer(false), true}, `Foo("3.14", "test", "true")`},
+	}
+
+	for _, test := range tests {
+		pred := MakePredicate(test.name, test.args...)
+		if pred.String() != test.s {
+			t.Fatalf("MakePredicate failed for %v vs. %v", test.s, pred)
+		}
 	}
 }

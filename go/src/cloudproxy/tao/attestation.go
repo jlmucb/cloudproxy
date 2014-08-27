@@ -51,12 +51,16 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 		// Signer is tpm; use tpm-specific signature verification. Extract the
 		// PCRs from the issuer name, unmarshal the key as an RSA key, and call
 		// tpm.VerifyQuote().
-		pcrNums, pcrVals, err := extractPCRs(says.Speaker)
+        speaker, ok := says.Speaker.(auth.Prin)
+        if !ok {
+            return auth.Prin{}, newError("tao: the speaker of an attestation must be an auth.Prin")
+        }
+		pcrNums, pcrVals, err := extractPCRs(speaker)
 		if err != nil {
 			return auth.Prin{}, newError("tao: couldn't extract PCRs from the signer: %s", err)
 		}
 
-		pk, err := extractAIK(says.Speaker)
+		pk, err := extractAIK(speaker)
 		if err != nil {
 			return auth.Prin{}, newError("tao: couldn't extract the AIK from the signer: %s", err)
 		}
@@ -95,8 +99,12 @@ func (a *Attestation) Validate() (auth.Says, error) {
 	if err != nil {
 		return auth.Says{}, err
 	}
-	stmt, ok := f.(auth.Says)
-	if !ok {
+	var stmt *auth.Says
+	if ptr, ok := f.(*auth.Says); ok {
+		stmt = ptr
+	} else if val, ok := f.(auth.Says); ok {
+		stmt = &val
+	} else {
 		return auth.Says{}, newError("tao: attestation statement has wrong type: %T", f)
 	}
 	if a.SerializedDelegation == nil {
@@ -119,8 +127,15 @@ func (a *Attestation) Validate() (auth.Says, error) {
 		if err != nil {
 			return auth.Says{}, err
 		}
-		delegation, ok := delegationStatement.Message.(auth.Speaksfor)
-		if !ok || !delegationStatement.Speaker.Identical(delegation.Delegator) {
+		var delegation *auth.Speaksfor
+		if ptr, ok := delegationStatement.Message.(*auth.Speaksfor); ok {
+			delegation = ptr
+		} else if val, ok := delegationStatement.Message.(auth.Speaksfor); ok {
+			delegation = &val
+		} else {
+			return auth.Says{}, newError("tao: attestation delegation is wrong type")
+		}
+		if !delegationStatement.Speaker.Identical(delegation.Delegator) {
 			return auth.Says{}, newError("tao: attestation delegation is invalid")
 		}
 		if !auth.SubprinOrIdentical(delegation.Delegate, signer) {
@@ -140,7 +155,7 @@ func (a *Attestation) Validate() (auth.Says, error) {
 			stmt.Expiration = delegationStatement.Expiration
 		}
 	}
-	return stmt, nil
+	return *stmt, nil
 }
 
 // GenerateAttestation uses the signing key to generate an attestation for this

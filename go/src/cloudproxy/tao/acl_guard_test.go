@@ -51,7 +51,7 @@ func TestACLGuardSaveACLs(t *testing.T) {
 
 	p := auth.Prin{
 		Type: "key",
-		Key:  []byte(`Fake key`),
+		Key:  auth.Bytes([]byte(`Fake key`)),
 	}
 	if err := tg.Authorize(p, "Write", []string{"filename"}); err != nil {
 		t.Fatal("Couldn't authorize a simple operation:", err)
@@ -89,7 +89,7 @@ func TestACLGuardAuthorize(t *testing.T) {
 
 	p := auth.Prin{
 		Type: "key",
-		Key:  []byte(`Fake key`),
+		Key:  auth.Bytes([]byte(`Fake key`)),
 	}
 	if err := tg.Authorize(p, "Write", []string{"filename"}); err != nil {
 		t.Fatal("Couldn't authorize a simple operation:", err)
@@ -126,7 +126,7 @@ func TestACLGuardDoubleAuthorize(t *testing.T) {
 
 	p := auth.Prin{
 		Type: "key",
-		Key:  []byte(`Fake key`),
+		Key:  auth.Bytes([]byte(`Fake key`)),
 	}
 	if err := tg.Authorize(p, "Write", []string{"filename"}); err != nil {
 		t.Fatal("Couldn't authorize a simple operation:", err)

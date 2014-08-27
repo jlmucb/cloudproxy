@@ -45,7 +45,9 @@ type AuthLogicElement interface {
 func (t Prin) isAuthLogicElement()      {}
 func (t SubPrin) isAuthLogicElement()   {}
 func (t Str) isAuthLogicElement()       {}
+func (t Bytes) isAuthLogicElement()     {}
 func (t Int) isAuthLogicElement()       {}
+func (t TermVar) isAuthLogicElement()   {}
 func (f Pred) isAuthLogicElement()      {}
 func (f Const) isAuthLogicElement()     {}
 func (f Not) isAuthLogicElement()       {}
@@ -54,13 +56,17 @@ func (f Or) isAuthLogicElement()        {}
 func (f Implies) isAuthLogicElement()   {}
 func (f Speaksfor) isAuthLogicElement() {}
 func (f Says) isAuthLogicElement()      {}
+func (f Forall) isAuthLogicElement()    {}
+func (f Exists) isAuthLogicElement()    {}
 
 // These declarations ensure all the appropriate types can be assigned to an
 // AuthLogicElement.
 var _ AuthLogicElement = Prin{}
 var _ AuthLogicElement = SubPrin{}
 var _ AuthLogicElement = Str("")
+var _ AuthLogicElement = Bytes(nil)
 var _ AuthLogicElement = Int(0)
+var _ AuthLogicElement = TermVar("X")
 var _ AuthLogicElement = Pred{}
 var _ AuthLogicElement = Const(false)
 var _ AuthLogicElement = Not{}
@@ -69,13 +75,17 @@ var _ AuthLogicElement = Or{}
 var _ AuthLogicElement = Implies{}
 var _ AuthLogicElement = Speaksfor{}
 var _ AuthLogicElement = Says{}
+var _ AuthLogicElement = Forall{}
+var _ AuthLogicElement = Exists{}
 
 // These declarations ensure all the appropriate types can be assigned to a
 // fmt.Scanner.
 var _ fmt.Scanner = &Prin{}
 var _ fmt.Scanner = &SubPrin{}
 var _ fmt.Scanner = new(Str)
+var _ fmt.Scanner = new(Bytes)
 var _ fmt.Scanner = new(Int)
+var _ fmt.Scanner = new(TermVar)
 var _ fmt.Scanner = &Pred{}
 var _ fmt.Scanner = new(Const)
 var _ fmt.Scanner = &Not{}
@@ -84,6 +94,8 @@ var _ fmt.Scanner = &Or{}
 var _ fmt.Scanner = &Implies{}
 var _ fmt.Scanner = &Speaksfor{}
 var _ fmt.Scanner = &Says{}
+var _ fmt.Scanner = &Forall{}
+var _ fmt.Scanner = &Exists{}
 var _ fmt.Scanner = &AnyForm{}
 var _ fmt.Scanner = &AnyTerm{}
 
@@ -92,7 +104,7 @@ var _ fmt.Scanner = &AnyTerm{}
 // more extensions to identify the subprincipal of that key.
 type Prin struct {
 	Type string  // either "key" or "tpm"
-	Key  []byte  // a marshalled CryptoKey protobuf structure with purpose CryptoKey.VERIFYING
+	Key  Term    // TermVar or Bytes with marshalled CryptoKey protobuf structure with purpose CryptoKey.VERIFYING
 	Ext  SubPrin // one or more extensions for descendents
 }
 
@@ -113,15 +125,23 @@ type Term interface {
 }
 
 // isTerm ensures only appropriate types can be assigned to a Term.
-func (t Prin) isTerm() {}
-func (t Str) isTerm()  {}
-func (t Int) isTerm()  {}
+func (t Prin) isTerm()    {}
+func (t Str) isTerm()     {}
+func (t Bytes) isTerm()   {}
+func (t Int) isTerm()     {}
+func (t TermVar) isTerm() {}
 
 // Str is a string used as a Term.
 type Str string
 
+// Bytes is a byte slice used as a Term.
+type Bytes []byte
+
 // Int is an int used as a Term.
 type Int int
+
+// TermVar is a term-valued variable.
+type TermVar string
 
 // Form is a formula in the Tao authorization logic.
 type Form interface {
@@ -138,6 +158,8 @@ func (f Or) isForm()        {}
 func (f Implies) isForm()   {}
 func (f Speaksfor) isForm() {}
 func (f Says) isForm()      {}
+func (f Forall) isForm()    {}
+func (f Exists) isForm()    {}
 
 // Pred is a predicate, i.e. a boolean-valued (pure) function.
 type Pred struct {
@@ -171,13 +193,13 @@ type Implies struct {
 
 // Speaksfor conveys formula "Delegate speaksfor Delegator"
 type Speaksfor struct {
-	Delegate  Prin
-	Delegator Prin
+	Delegate  Term
+	Delegator Term
 }
 
 // Says conveys formula "Speaker from Time until Expiration says Message"
 type Says struct {
-	Speaker    Prin
+	Speaker    Term
 	Time       *int64 // nil to omit
 	Expiration *int64 // nil to omit
 	Message    Form
@@ -193,6 +215,18 @@ func (f Says) Expires() bool {
 	return f.Expiration != nil
 }
 
+// Forall conveys formula "(forall Var : Body)" where Var ranges over Terms.
+type Forall struct {
+	Var  string
+	Body Form
+}
+
+// Exists conveys formula "(exists Var : Body)" where Var ranges over Terms.
+type Exists struct {
+	Var  string
+	Body Form
+}
+
 // Identical checks if an Int is identical to another Term.
 func (t Int) Identical(other Term) bool {
 	return t == other
@@ -203,21 +237,37 @@ func (t Str) Identical(other Term) bool {
 	return t == other
 }
 
+// Identical checks if a Bytes is identical to another Term.
+func (t Bytes) Identical(other Term) bool {
+	// other must be type Bytes or *Bytes
+	var b *Bytes
+	if ptr, ok := other.(*Bytes); ok {
+		b = ptr
+	} else if val, ok := other.(Bytes); ok {
+		b = &val
+	} else {
+		return false
+	}
+	return bytes.Equal([]byte(t), []byte(*b))
+}
+
 // Identical checks if a Prin is identical to another Term.
 func (t Prin) Identical(other Term) bool {
-	p, ok := other.(Prin)
-	if !ok {
+	// other must be type Prin or *Prin
+	var p *Prin
+	if ptr, ok := other.(*Prin); ok {
+		p = ptr
+	} else if val, ok := other.(Prin); ok {
+		p = &val
+	} else {
 		return false
 	}
-	if t.Type != p.Type || !bytes.Equal(t.Key, p.Key) || len(t.Ext) != len(p.Ext) {
-		return false
-	}
-	for i, e := range t.Ext {
-		if !e.Identical(p.Ext[i]) {
-			return false
-		}
-	}
-	return true
+	return t.Type == p.Type && t.Key.Identical(p.Key) && t.Ext.Identical(p.Ext)
+}
+
+// Identical checks if a TermVar is identical to another Term.
+func (t TermVar) Identical(other Term) bool {
+	return t == other
 }
 
 // Identical checks if one PrinExt is identical to another.
@@ -248,20 +298,84 @@ func (s SubPrin) Identical(other SubPrin) bool {
 
 // SubprinOrIdentical checks whether child is a subprincipal of parent or is
 // identical to parent.
-func SubprinOrIdentical(child, parent Prin) bool {
-	if parent.Type != child.Type || !bytes.Equal(parent.Key, child.Key) || len(parent.Ext) > len(child.Ext) {
+func SubprinOrIdentical(child, parent Term) bool {
+	// Both must be type Prin or *Prin
+	var c, p *Prin
+	if ptr, ok := child.(*Prin); ok {
+		c = ptr
+	} else if val, ok := child.(Prin); ok {
+		c = &val
+	} else {
 		return false
 	}
-	for i, a := range parent.Ext {
-		if !a.Identical(child.Ext[i]) {
+	if ptr, ok := parent.(*Prin); ok {
+		p = ptr
+	} else if val, ok := parent.(Prin); ok {
+		p = &val
+	} else {
+		return false
+	}
+	if p.Type != c.Type || !p.Key.Identical(c.Key) || len(p.Ext) > len(c.Ext) {
+		return false
+	}
+	for i, a := range p.Ext {
+		if !a.Identical(c.Ext[i]) {
 			return false
 		}
 	}
 	return true
 }
 
+// MakeSubprincipal creates principal p.e... given principal p and extensions e.
 func (p Prin) MakeSubprincipal(e SubPrin) Prin {
 	other := Prin{Type: p.Type, Key: p.Key, Ext: append([]PrinExt{}, p.Ext...)}
 	other.Ext = append(other.Ext, []PrinExt(e)...)
 	return other
+}
+
+// MakePredicate creates a predicate with the given name and arguments.
+// Arguments can be Prin, Int (or integer types that be coerced to it), Str (or
+// string), or Prin. Anything else is coerced to Str.
+func MakePredicate(name string, arg ...interface{}) Pred {
+	terms := make([]Term, len(arg))
+	for i, a := range arg {
+		switch a := a.(type) {
+		case Int:
+			terms[i] = a
+		case Str:
+			terms[i] = a
+		case Bytes:
+			terms[i] = a
+		case Prin:
+			terms[i] = a
+		case *Int:
+			terms[i] = a
+		case *Str:
+			terms[i] = a
+		case *Bytes:
+			terms[i] = a
+		case *Prin:
+			terms[i] = a
+		case int:
+			terms[i] = Int(a)
+		case int32:
+			terms[i] = Int(int(a))
+		case int16:
+			terms[i] = Int(int(a))
+		case byte:
+			terms[i] = Int(int(a))
+		case string:
+			terms[i] = Str(a)
+		case []byte:
+			terms[i] = Bytes(a)
+		default:
+			terms[i] = Str(fmt.Sprintf("%v", a))
+		}
+	}
+	return Pred{name, terms}
+}
+
+// NewKeyPrin returns a new Prin of type "key" with the given key material.
+func NewKeyPrin(material []byte) Prin {
+	return Prin{Type: "key", Key: Bytes(material)}
 }

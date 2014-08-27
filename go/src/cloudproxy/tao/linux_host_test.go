@@ -29,7 +29,7 @@ func testNewStackedLinuxHost(t *testing.T) (*LinuxHost, string) {
 		t.Fatal("Couldn't get a temp directory for the new stacked linux host")
 	}
 
-	ft, err := NewFakeTao(auth.Prin{Type: "key", Key: []byte("test")}, "", nil)
+	ft, err := NewFakeTao(auth.NewKeyPrin([]byte("test")), "", nil)
 	if err != nil {
 		t.Fatal("Couldn't create a new fake Tao:", err)
 	}

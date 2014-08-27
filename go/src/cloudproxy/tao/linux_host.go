@@ -55,10 +55,6 @@ func NewStackedLinuxHost(path string, guard Guard, hostTao Tao) (*LinuxHost, err
 		return nil, err
 	}
 
-	if err := hostTao.ExtendTaoName(subprin); err != nil {
-		return nil, err
-	}
-
 	k, err := NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, hostTao, path, SealPolicyDefault)
 	if err != nil {
 		return nil, err

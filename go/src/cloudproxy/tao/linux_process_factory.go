@@ -16,7 +16,6 @@ package tao
 
 import (
 	"crypto/sha256"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -44,8 +43,7 @@ func FormatHostedProgramSubprin(id uint, hash []byte) auth.SubPrin {
 	if id != 0 {
 		args = append(args, auth.Int(id))
 	}
-	hashstr := fmt.Sprintf("%x", hash)
-	args = append(args, auth.Str(hashstr))
+	args = append(args, auth.Bytes(hash))
 	return auth.SubPrin{auth.PrinExt{Name: "Program", Arg: args}}
 }
 

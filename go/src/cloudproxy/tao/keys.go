@@ -95,7 +95,7 @@ func (s *Signer) ToPrincipal() auth.Prin {
 	// message. Propagating impossible errors just leads to clutter later.
 	data, _ := proto.Marshal(ck)
 
-	return auth.Prin{Type: "key", Key: data}
+	return auth.NewKeyPrin(data)
 }
 
 // MarshalSignerDER serializes the signer to DER.
@@ -384,17 +384,25 @@ func (v *Verifier) ToPrincipal() auth.Prin {
 	// message. Propagating impossible errors just leads to clutter later.
 	data, _ := proto.Marshal(ck)
 
-	return auth.Prin{Type: "key", Key: data}
+	return auth.NewKeyPrin(data)
 }
 
 // FromPrincipal deserializes a Verifier from a Prin.
 func FromPrincipal(prin auth.Prin) (*Verifier, error) {
 	if prin.Type != "key" {
-		return nil, newError("invalid key principal type")
+		return nil, newError("invalid key principal")
+	}
+	var b auth.Bytes
+	if ptr, ok := prin.Key.(*auth.Bytes); ok {
+		b = *ptr
+	} else if val, ok := prin.Key.(auth.Bytes); ok {
+		b = val
+	} else {
+		return nil, newError("invalid key material")
 	}
 
 	var ck CryptoKey
-	if err := proto.Unmarshal(prin.Key, &ck); err != nil {
+	if err := proto.Unmarshal(b, &ck); err != nil {
 		return nil, err
 	}
 
@@ -1080,12 +1088,17 @@ func NewTemporaryTaoDelegatedKeys(keyTypes KeyType, t Tao) (*Keys, error) {
 	if err != nil {
 		return nil, err
 	}
+	self, err := t.GetTaoName()
+	if err != nil {
+		return nil, err
+	}
 
 	if k.SigningKey != nil {
 		s := &auth.Speaksfor{
-			Delegate: k.SigningKey.ToPrincipal(),
+			Delegate:  k.SigningKey.ToPrincipal(),
+			Delegator: self,
 		}
-		if k.Delegation, err = t.Attest(nil, nil, nil, s); err != nil {
+		if k.Delegation, err = t.Attest(&self, nil, nil, s); err != nil {
 			return nil, err
 		}
 	}
@@ -1339,10 +1352,15 @@ func NewOnDiskTaoSealedKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys
 
 		// Get and write a delegation.
 		if k.SigningKey != nil {
-			s := &auth.Speaksfor{
-				Delegate: k.SigningKey.ToPrincipal(),
+			self, err := t.GetTaoName()
+			if err != nil {
+				return nil, err
 			}
-			if k.Delegation, err = t.Attest(nil, nil, nil, s); err != nil {
+			s := &auth.Speaksfor{
+				Delegate:  k.SigningKey.ToPrincipal(),
+				Delegator: self,
+			}
+			if k.Delegation, err = t.Attest(&self, nil, nil, s); err != nil {
 				return nil, err
 			}
 

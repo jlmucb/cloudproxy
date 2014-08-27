@@ -22,7 +22,6 @@
 package auth
 
 import (
-	"encoding/base64"
 	"fmt"
 )
 
@@ -111,15 +110,11 @@ func (p *parser) expectPrin() (prin Prin, err error) {
 	if err != nil {
 		return
 	}
-	key, err := p.parseStr()
+	prin.Key, err = p.expectTerm()
 	if err != nil {
 		return
 	}
 	err = p.expect(tokenRP)
-	if err != nil {
-		return
-	}
-	prin.Key, err = base64.URLEncoding.DecodeString(string(key))
 	if err != nil {
 		return
 	}
@@ -166,32 +161,44 @@ func (p *parser) expectSubPrin() (s SubPrin, err error) {
 	return
 }
 
-// expectNameAndArgs expects an identifier, optionally followed by
-// a parenthesized list of zero or more comma-separated terms.
-func (p *parser) expectNameAndArgs() (string, []Term, error) {
-	if p.cur().typ != itemIdentifier {
-		return "", nil, fmt.Errorf("expected identifier, found %v", p.cur())
+// expectNameAndArgs expects an identifier followed by a parenthesized list of
+// zero or more comma-separated terms.
+func (p *parser) expectNameAndArgs() (name string, args []Term, err error) {
+	name, hadParen, args, err := p.expectIdentifierOrNameAndArgs()
+	if !hadParen {
+		err = fmt.Errorf("expected '(', found %v", p.cur())
 	}
-	name := p.cur().val.(string)
+	return
+}
+
+// expectIdentifierOrNameAndArgs expects an identifier, optionally followed by a
+// parenthesized list of zero or more comma-separated terms.
+func (p *parser) expectIdentifierOrNameAndArgs() (name string, hadParen bool, args []Term, err error) {
+	if p.cur().typ != itemIdentifier {
+		err = fmt.Errorf("expected identifier, found %v", p.cur())
+		return
+	}
+	name = p.cur().val.(string)
 	p.advance()
 	if p.lex.peek() != '(' {
 		// no parens
-		return name, nil, nil
+		return
 	}
 	if p.cur() != tokenLP {
 		panic("not reached")
 	}
+	hadParen = true
 	p.advance()
 	if p.cur() == tokenRP {
 		// empty parens
 		p.advance()
-		return name, nil, nil
+		return
 	}
-	var args []Term
 	for {
-		t, err := p.parseTerm()
+		var t Term
+		t, err = p.parseTerm()
 		if err != nil {
-			return "", nil, err
+			return
 		}
 		args = append(args, t)
 		if p.cur() != tokenComma {
@@ -199,11 +206,8 @@ func (p *parser) expectNameAndArgs() (string, []Term, error) {
 		}
 		p.advance()
 	}
-	err := p.expect(tokenRP)
-	if err != nil {
-		return "", nil, err
-	}
-	return name, args, nil
+	err = p.expect(tokenRP)
+	return
 }
 
 // expectStr expects a Str.
@@ -220,6 +224,27 @@ func (p *parser) expectStr() (Str, error) {
 func (p *parser) parseStr() (t Str, err error) {
 	n := p.skipOpenParens()
 	t, err = p.expectStr()
+	if err != nil {
+		return
+	}
+	err = p.expectCloseParens(n)
+	return
+}
+
+// expectBytes expects a Bytes.
+func (p *parser) expectBytes() (Bytes, error) {
+	if p.cur().typ != itemBytes {
+		return nil, fmt.Errorf("expected bytes, found %v", p.cur())
+	}
+	t := Bytes(p.cur().val.([]byte))
+	p.advance()
+	return t, nil
+}
+
+// parseBytes parses a Bytes with optional outer parens.
+func (p *parser) parseBytes() (t Bytes, err error) {
+	n := p.skipOpenParens()
+	t, err = p.expectBytes()
 	if err != nil {
 		return
 	}
@@ -251,15 +276,43 @@ func (p *parser) parseInt() (Int, error) {
 	return t, nil
 }
 
+// expectTermVar expects a TermVar.
+func (p *parser) expectTermVar() (TermVar, error) {
+	if p.cur().typ != itemIdentifier {
+		return "", fmt.Errorf("expected identifier, found %v", p.cur())
+	}
+	t := TermVar(p.cur().val.(string))
+	p.advance()
+	return t, nil
+}
+
+// parseTermVar parses a TermVar with optional outer parens.
+func (p *parser) parseTermVar() (TermVar, error) {
+	n := p.skipOpenParens()
+	t, err := p.expectTermVar()
+	if err != nil {
+		return "", err
+	}
+	err = p.expectCloseParens(n)
+	if err != nil {
+		return "", err
+	}
+	return t, nil
+}
+
 // expectTerm expects a Term.
 func (p *parser) expectTerm() (Term, error) {
 	switch p.cur().typ {
 	case itemStr:
 		return p.expectStr()
+	case itemBytes:
+		return p.expectBytes()
 	case itemInt:
 		return p.expectInt()
 	case itemKeyword:
 		return p.expectPrin()
+	case itemIdentifier:
+		return p.expectTermVar()
 	default:
 		return nil, fmt.Errorf("expected term, found %v", p.cur())
 	}
@@ -321,7 +374,35 @@ func (p *parser) parseConst() (f Const, err error) {
 	return
 }
 
-// expectFrom optionally expects a "(from|until) int" clause for a says formula.
+// expectQuantification expects a Forall or an Exists.
+func (p *parser) expectQuantification(greedy bool) (f Form, err error) {
+	typ := p.cur()
+	if typ != tokenForall && typ != tokenExists {
+		err = fmt.Errorf(`expected "forall" or "exists", found %v`, p.cur())
+		return
+	}
+	p.advance()
+	if p.cur().typ != itemIdentifier {
+		return nil, fmt.Errorf("expected identifier, found %v", p.cur())
+	}
+	name := p.cur().val.(string)
+	p.advance()
+	err = p.expect(tokenColon)
+	if err != nil {
+		return
+	}
+	body, err := p.parseForm(greedy)
+	if err != nil {
+		return
+	}
+	if typ == tokenForall {
+		return Forall{name, body}, nil
+	} else {
+		return Exists{name, body}, nil
+	}
+}
+
+// expectOptionalTime optionally expects a "(from|until) int" clause for a says formula.
 func (p *parser) expectOptionalTime(t token) (*int64, error) {
 	if p.cur() != t {
 		return nil, nil
@@ -335,24 +416,40 @@ func (p *parser) expectOptionalTime(t token) (*int64, error) {
 	return &val, nil
 }
 
-// expectSaysOrSpeaksfor expects a says or speaksfor formula. If greedy is true,
-// this will parse as much input as possible. Otherwise, it will take only as
-// much input as needed to make a valid formula.
-func (p *parser) expectSaysOrSpeaksfor(greedy bool) (Form, error) {
-	// Prin [from Time] [until Time] says Form
-	// Prin speaksfor Prin
-	prin, err := p.parsePrin()
-	if err != nil {
-		return nil, err
+// expectTermOperation expects a formula involving a term, i.e. a predicate, a
+// says, or a speaksfor formula. If greedy is true, this will parse as much
+// input as possible. Otherwise, it will take only as much input as needed to
+// make a valid formula.
+func (p *parser) expectTermOperation(greedy bool) (Form, error) {
+	// Identifier(Term...)
+	// Term [from Time] [until Time] says Form
+	// Term speaksfor Term
+	var t Term
+	var err error
+	switch p.cur().typ {
+	case itemStr, itemBytes, itemInt, itemKeyword:
+		t, err = p.expectTerm()
+		if err != nil {
+			return nil, err
+		}
+	case itemIdentifier:
+		name, hadParen, args, err := p.expectIdentifierOrNameAndArgs()
+		if err != nil {
+			return nil, err
+		}
+		if hadParen {
+			return Pred{name, args}, nil
+		}
+		t = TermVar(name)
 	}
 	switch p.cur() {
 	case tokenSpeaksfor:
 		p.advance()
-		d, err := p.parsePrin()
+		d, err := p.parseTerm()
 		if err != nil {
 			return nil, err
 		}
-		return Speaksfor{prin, d}, nil
+		return Speaksfor{t, d}, nil
 	case tokenFrom, tokenUntil, tokenSays:
 		from, err := p.expectOptionalTime(tokenFrom)
 		if err != nil {
@@ -380,26 +477,22 @@ func (p *parser) expectSaysOrSpeaksfor(greedy bool) (Form, error) {
 			}
 		}
 		p.advance()
-		var msg Form
-		if greedy {
-			msg, err = p.parseForm()
-		} else {
-			msg, err = p.parseFormAtHigh(true)
-		}
+		msg, err := p.parseForm(greedy)
 		if err != nil {
 			return nil, err
 		}
-		return Says{prin, from, until, msg}, nil
+		return Says{t, from, until, msg}, nil
 	default:
 		return nil, fmt.Errorf(`expected "speaksfor", "from", "until", or "says", found %v`, p.cur())
 	}
 }
 
 // The functions follow normal precedence rules, e.g. roughly:
-// L = O imp I | I
+// L = quant V : L | I
+// I = O imp I | I
 // O = A or A or A or ... or A | A
 // A = H and H and H ... and H | H
-// H = not N | ( L ) | P(x) | true | false | P says L | P speaksfor P
+// H = not N | ( L ) | P(x) | true | false | T says L | T speaksfor T
 
 // parseFormAtHigh parses a Form, but stops at any binary Form operator. If
 // greedy is true, this will parse as much input as possible. Otherwise, it will
@@ -408,7 +501,7 @@ func (p *parser) parseFormAtHigh(greedy bool) (Form, error) {
 	switch p.cur() {
 	case tokenLP:
 		p.advance()
-		f, err := p.parseForm()
+		f, err := p.parseForm(true)
 		if err != nil {
 			return nil, err
 		}
@@ -426,14 +519,16 @@ func (p *parser) parseFormAtHigh(greedy bool) (Form, error) {
 			return nil, err
 		}
 		return Not{f}, nil
+	case tokenForall, tokenExists:
+		return p.expectQuantification(greedy)
 	case tokenKey, tokenTPM:
-		return p.expectSaysOrSpeaksfor(greedy)
-	default:
-		if p.cur().typ == itemIdentifier {
-			return p.expectPred()
-		}
-		return nil, fmt.Errorf("expected Form, found %v", p.cur())
+		return p.expectTermOperation(greedy)
 	}
+	switch p.cur().typ {
+	case itemStr, itemBytes, itemInt, itemIdentifier:
+		return p.expectTermOperation(greedy)
+	}
+	return nil, fmt.Errorf("expected Form, found %v", p.cur())
 }
 
 // parseFormAtAnd parses a Form, but stops when it reaches a binary Form
@@ -486,9 +581,19 @@ func (p *parser) parseFormAtOr() (Form, error) {
 	return or, nil
 }
 
-// parseForm parses a Form. This function is greedy: it consumes as much input
-// as possible until either an error or EOF is encountered.
-func (p *parser) parseForm() (Form, error) {
+// parseForm parses a Form. If greedy=true, this consumes as much input as
+// possible until either an error or EOF is encountered. Otherwise, this
+// consumes only as much input as necessary to obtain a valid formula. For
+// example, "(p says a and b ...)" and "p says (a and b ...) will always be
+// parsed in their entirety, but given "p says a and b ... " and greedy=false,
+// only "p says a" will be parsed.
+func (p *parser) parseForm(greedy bool) (Form, error) {
+	if !greedy {
+		return p.parseFormAtHigh(false)
+	}
+	if p.cur() == tokenForall || p.cur() == tokenExists {
+		return p.expectQuantification(true)
+	}
 	f, err := p.parseFormAtOr()
 	if err != nil {
 		return nil, err
@@ -497,20 +602,11 @@ func (p *parser) parseForm() (Form, error) {
 		return f, nil
 	}
 	p.advance()
-	g, err := p.parseForm()
+	g, err := p.parseForm(greedy)
 	if err != nil {
 		return nil, err
 	}
 	return Implies{f, g}, nil
-}
-
-// parseShortestForm parses the shortest valid Form. This function is not
-// greedy: it consumes only as much input as necessary to obtain a valid
-// formula. For example, "(p says a and b ...)" and "p says (a and b ...) will
-// be parsed in their entirety, but given "p says a and b ... ", only "p says a"
-// will be parsed.
-func (p *parser) parseShortestForm() (Form, error) {
-	return p.parseFormAtHigh(false)
 }
 
 func newParser(input reader) *parser {

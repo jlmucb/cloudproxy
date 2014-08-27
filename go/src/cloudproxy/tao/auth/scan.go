@@ -84,6 +84,17 @@ func (t *Str) Scan(state fmt.ScanState, verb rune) error {
 	return nil
 }
 
+// Scan parses a Bytes, with optional outer parens.
+func (t *Bytes) Scan(state fmt.ScanState, verb rune) error {
+	parser := newParser(state)
+	b, err := parser.parseBytes()
+	if err != nil {
+		return err
+	}
+	*t = b
+	return nil
+}
+
 // Scan parses an Int, with optional outer parens.
 func (t *Int) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
@@ -92,6 +103,17 @@ func (t *Int) Scan(state fmt.ScanState, verb rune) error {
 		return err
 	}
 	*t = i
+	return nil
+}
+
+// Scan parses a TermVar, with optional outer parens.
+func (t *TermVar) Scan(state fmt.ScanState, verb rune) error {
+	parser := newParser(state)
+	v, err := parser.parseTermVar()
+	if err != nil {
+		return err
+	}
+	*t = v
 	return nil
 }
 
@@ -109,7 +131,7 @@ type AnyForm struct {
 // parsed.
 func (f *AnyForm) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
-	form, err := parser.parseShortestForm()
+	form, err := parser.parseForm(false)
 	if err != nil {
 		return err
 	}
@@ -142,7 +164,7 @@ func (f *Const) Scan(state fmt.ScanState, verb rune) error {
 // Scan parses a Not, with optional outer parens. This function is not greedy.
 func (f *Not) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
-	form, err := parser.parseShortestForm()
+	form, err := parser.parseForm(false)
 	if err != nil {
 		return err
 	}
@@ -155,64 +177,73 @@ func (f *Not) Scan(state fmt.ScanState, verb rune) error {
 }
 
 // Scan parses an And, with required outer parens. This function is not greedy.
-// BUG(kwalsh): This won't succeed unless there are outer parens. For
-// consistency, perhaps I need to make non-greedy parse functions for each
-// operator?
 func (f *And) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
-	form, err := parser.parseShortestForm()
+	form, err := parser.parseForm(false)
 	if err != nil {
 		return err
 	}
 	n, ok := form.(And)
-	if !ok {
-		return fmt.Errorf(`expecting "and": %s`, form)
+	if ok {
+		*f = n
+		return nil
 	}
-	*f = n
+	err = parser.expect(tokenAnd)
+	if err != nil {
+		return err
+	}
+	m, err := parser.parseForm(false)
+	*f = And{Conjunct: []Form{n, m}}
 	return nil
 }
 
 // Scan parses an Or, with required outer parens. This function is not greedy.
-// BUG(kwalsh): This won't succeed unless there are outer parens. For
-// consistency, perhaps I need to make non-greedy parse functions for each
-// operator?
 func (f *Or) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
-	form, err := parser.parseShortestForm()
+	form, err := parser.parseForm(false)
 	if err != nil {
 		return err
 	}
 	n, ok := form.(Or)
-	if !ok {
-		return fmt.Errorf(`expecting "or": %s`, form)
+	if ok {
+		*f = n
+		return nil
 	}
-	*f = n
+	err = parser.expect(tokenOr)
+	if err != nil {
+		return err
+	}
+	m, err := parser.parseForm(false)
+	*f = Or{Disjunct: []Form{n, m}}
 	return nil
 }
 
 // Scan parses an Implies, with required outer parens. This function is not
 // greedy.
-// BUG(kwalsh): This won't succeed unless there are outer parens. For
-// consistency, perhaps I need to make non-greedy parse functions for each
-// operator?
 func (f *Implies) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
-	form, err := parser.parseShortestForm()
+	form, err := parser.parseForm(false)
 	if err != nil {
 		return err
 	}
 	n, ok := form.(Implies)
-	if !ok {
-		return fmt.Errorf(`expecting "implies": %s`, form)
+	if ok {
+		*f = n
+		return nil
 	}
-	*f = n
+	err = parser.expect(tokenImplies)
+	if err != nil {
+		return err
+	}
+	m, err := parser.parseForm(false)
+	*f = Implies{n, m}
 	return nil
 }
 
 // Scan parses a Says, with optional outer parens. This function is not greedy.
 func (f *Says) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
-	form, err := parser.parseShortestForm()
+	form, err := parser.parseForm(false)
 	if err != nil {
 		return err
 	}
@@ -228,13 +259,43 @@ func (f *Says) Scan(state fmt.ScanState, verb rune) error {
 // greedy.
 func (f *Speaksfor) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)
-	form, err := parser.parseShortestForm()
+	form, err := parser.parseForm(false)
 	if err != nil {
 		return err
 	}
 	n, ok := form.(Speaksfor)
 	if !ok {
 		return fmt.Errorf(`expecting "speaksfor": %s`, form)
+	}
+	*f = n
+	return nil
+}
+
+// Scan parses a Forall, with optional outer parens. This function is not greedy.
+func (f *Forall) Scan(state fmt.ScanState, verb rune) error {
+	parser := newParser(state)
+	form, err := parser.parseForm(false)
+	if err != nil {
+		return err
+	}
+	n, ok := form.(Forall)
+	if !ok {
+		return fmt.Errorf(`expecting "forall": %s`, form)
+	}
+	*f = n
+	return nil
+}
+
+// Scan parses an Exists, with optional outer parens. This function is not greedy.
+func (f *Exists) Scan(state fmt.ScanState, verb rune) error {
+	parser := newParser(state)
+	form, err := parser.parseForm(false)
+	if err != nil {
+		return err
+	}
+	n, ok := form.(Exists)
+	if !ok {
+		return fmt.Errorf(`expecting "exists": %s`, form)
 	}
 	*f = n
 	return nil

@@ -24,9 +24,11 @@ const (
 	_ = iota
 
 	// Term tags
-	tagPrin // string, []byte, SubPrin
-	tagStr  // string
-	tagInt  // int
+	tagPrin    // string, Term, SubPrin
+	tagStr     // string
+	tagBytes   // string
+	tagInt     // int
+	tagTermVar // string
 
 	// Form tags
 	tagPred      // string, []Term
@@ -37,10 +39,33 @@ const (
 	tagImplies   // Form, Form
 	tagSpeaksfor // Prin, Prin
 	tagSays      // Prin, bool+int, bool+int, Form
+	tagForall    // string, Form
+	tagExists    // string, Form
 
 	// Other tags
 	tagSubPrin // [](string, []Term)
 )
+
+// Context holds outer variable bindings in the order they appear.
+// Context []string
+//
+// (c *Context) push(q *string) {
+// 	c = append(c, q)
+// }
+//
+// (c *Context) pop() {
+// 	c = c[:len(c)-1]
+// }
+//
+// (c *Context) deBruijn(q *string) int {
+// 	n := len(c)
+// 	for i := n-1; i >= 0; i-- {
+// 		if c[i] == q {
+// 			return n-i
+// 		}
+// 	}
+// 	return 0
+// }
 
 // Marshal encodes a Form or Term.
 func Marshal(e AuthLogicElement) []byte {
@@ -53,7 +78,7 @@ func Marshal(e AuthLogicElement) []byte {
 func (t Prin) Marshal(buf *Buffer) {
 	buf.EncodeVarint(tagPrin)
 	buf.EncodeString(t.Type)
-	buf.EncodeString(string(t.Key))
+	t.Key.Marshal(buf)
 	t.Ext.Marshal(buf)
 }
 
@@ -76,10 +101,22 @@ func (t Str) Marshal(buf *Buffer) {
 	buf.EncodeString(string(t))
 }
 
+// Marshal encodes a Bytes.
+func (t Bytes) Marshal(buf *Buffer) {
+	buf.EncodeVarint(tagBytes)
+	buf.EncodeString(string(t))
+}
+
 // Marshal encodes an Int.
 func (t Int) Marshal(buf *Buffer) {
 	buf.EncodeVarint(tagInt)
 	buf.EncodeVarint(int64(t))
+}
+
+// Marshal encodes a TermVar.
+func (t TermVar) Marshal(buf *Buffer) {
+	buf.EncodeVarint(tagTermVar)
+	buf.EncodeString(string(t))
 }
 
 // Marshal encodes a Pred.
@@ -151,16 +188,42 @@ func (f Says) Marshal(buf *Buffer) {
 	f.Message.Marshal(buf)
 }
 
+// Marshal encodes a Forall.
+func (f Forall) Marshal(buf *Buffer) {
+	buf.EncodeVarint(tagForall)
+	buf.EncodeString(f.Var)
+	f.Body.Marshal(buf)
+}
+
+// Marshal encodes an Exists.
+func (f Exists) Marshal(buf *Buffer) {
+	buf.EncodeVarint(tagExists)
+	buf.EncodeString(f.Var)
+	f.Body.Marshal(buf)
+}
+
 // decodeStr decodes a Str without the leading tag.
 func decodeStr(buf *Buffer) (Str, error) {
 	s, err := buf.DecodeString()
 	return Str(s), err
 }
 
+// decodeBytes decodes a Bytes without the leading tag.
+func decodeBytes(buf *Buffer) (Bytes, error) {
+	s, err := buf.DecodeString()
+	return Bytes([]byte(s)), err
+}
+
 // decodeInt decodes an Int without the leading tag.
 func decodeInt(buf *Buffer) (Int, error) {
 	i, err := buf.DecodeVarint()
 	return Int(i), err
+}
+
+// decodeTermVar decodes a TermVar without the leading tag.
+func decodeTermVar(buf *Buffer) (TermVar, error) {
+	v, err := buf.DecodeString()
+	return TermVar(v), err
 }
 
 // decodeNameAndArgs decodes a name ad term array without leading tags.
@@ -180,30 +243,16 @@ func decodeNameAndArgs(buf *Buffer) (name string, args []Term, err error) {
 	return
 }
 
-// unmarshalPrin decodes a Prin.
-func unmarshalPrin(buf *Buffer) (p Prin, err error) {
-	tag, err := buf.DecodeVarint()
-	if err != nil {
-		return
-	}
-	if tag != tagPrin {
-		err = fmt.Errorf("unexpected tag: %d", tag)
-		return
-	}
-	return decodePrin(buf)
-}
-
 // decodePrin decodes a Prin without the leading tag.
 func decodePrin(buf *Buffer) (p Prin, err error) {
 	p.Type, err = buf.DecodeString()
 	if err != nil {
 		return
 	}
-	k, err := buf.DecodeString()
+	p.Key, err = unmarshalTerm(buf)
 	if err != nil {
 		return
 	}
-	p.Key = []byte(k)
 	p.Ext, err = unmarshalSubPrin(buf)
 	return
 }
@@ -246,10 +295,14 @@ func unmarshalTerm(buf *Buffer) (t Term, err error) {
 	switch tag {
 	case tagStr:
 		return decodeStr(buf)
+	case tagBytes:
+		return decodeBytes(buf)
 	case tagInt:
 		return decodeInt(buf)
 	case tagPrin:
 		return decodePrin(buf)
+	case tagTermVar:
+		return decodeTermVar(buf)
 	default:
 		return nil, fmt.Errorf("unexpected tag: %d", tag)
 	}
@@ -261,7 +314,7 @@ func UnmarshalPrin(bytes []byte) (p Prin, err error) {
 	if err != nil {
 		return
 	}
-	p, ok := t.(Prin)
+	p, ok := t.(Prin) // will always be value type here
 	if !ok {
 		err = fmt.Errorf("expected Prin, found %T", t)
 	}
@@ -330,6 +383,10 @@ func unmarshalForm(buf *Buffer) (Form, error) {
 		return decodeSpeaksfor(buf)
 	case tagSays:
 		return decodeSays(buf)
+	case tagForall:
+		return decodeForall(buf)
+	case tagExists:
+		return decodeExists(buf)
 	default:
 		return nil, fmt.Errorf("unexpected tag: %d", tag)
 	}
@@ -397,17 +454,17 @@ func decodeImplies(buf *Buffer) (implies Implies, err error) {
 
 // decodeSpeaksfor decodes an Speaksfor without the leading tag.
 func decodeSpeaksfor(buf *Buffer) (sfor Speaksfor, err error) {
-	sfor.Delegate, err = unmarshalPrin(buf)
+	sfor.Delegate, err = unmarshalTerm(buf)
 	if err != nil {
 		return
 	}
-	sfor.Delegator, err = unmarshalPrin(buf)
+	sfor.Delegator, err = unmarshalTerm(buf)
 	return
 }
 
 // decodeSays decodes an Says without the leading tag.
 func decodeSays(buf *Buffer) (says Says, err error) {
-	says.Speaker, err = unmarshalPrin(buf)
+	says.Speaker, err = unmarshalTerm(buf)
 	if err != nil {
 		return
 	}
@@ -434,5 +491,25 @@ func decodeSays(buf *Buffer) (says Says, err error) {
 		says.Expiration = &t
 	}
 	says.Message, err = unmarshalForm(buf)
+	return
+}
+
+// decodeForall decodes a Forall without the leading tag.
+func decodeForall(buf *Buffer) (forall Forall, err error) {
+	forall.Var, err = buf.DecodeString()
+	if err != nil {
+		return
+	}
+	forall.Body, err = unmarshalForm(buf)
+	return
+}
+
+// decodeExists decodes an Exists without the leading tag.
+func decodeExists(buf *Buffer) (exists Exists, err error) {
+	exists.Var, err = buf.DecodeString()
+	if err != nil {
+		return
+	}
+	exists.Body, err = unmarshalForm(buf)
 	return
 }

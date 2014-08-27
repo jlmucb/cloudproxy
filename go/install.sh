@@ -341,8 +341,8 @@ function startsvcs()
 	if pgrep -x `shortname linux_host` >/dev/null; then
 		echo "LinuxHost service already running";
 	else
-		linux_host --service &
-		echo "LinuxTao service now running"
+		rm -f ${TAO_TEST}/linux_tao_host/admin_socket
+		linux_host --service
 	fi
 }
 

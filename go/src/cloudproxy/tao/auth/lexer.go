@@ -23,6 +23,8 @@ package auth
 
 import (
 	"bytes"
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"unicode"
@@ -45,11 +47,13 @@ const (
 	itemKeyword                        // value contains the keyword
 	itemIdentifier                     // value contains the identifer
 	itemStr                            // value contains the string
+	itemBytes                          // value contains the []byte slice
 	itemInt                            // value contains the int64
 	itemLP                             // value contains '('
 	itemRP                             // value contains ')'
 	itemComma                          // value contains ','
 	itemDot                            // value contains '.'
+	itemColon                          // value contains ':'
 	itemWhitespace                     // value contains ' ', '\t', '\n', etc.
 )
 
@@ -58,6 +62,8 @@ var (
 	tokenUntil     = token{itemKeyword, "until"}
 	tokenSays      = token{itemKeyword, "says"}
 	tokenSpeaksfor = token{itemKeyword, "speaksfor"}
+	tokenForall    = token{itemKeyword, "forall"}
+	tokenExists    = token{itemKeyword, "exists"}
 	tokenImplies   = token{itemKeyword, "implies"}
 	tokenOr        = token{itemKeyword, "or"}
 	tokenAnd       = token{itemKeyword, "and"}
@@ -70,6 +76,7 @@ var (
 	tokenRP        = token{itemRP, ')'}
 	tokenComma     = token{itemComma, ','}
 	tokenDot       = token{itemDot, '.'}
+	tokenColon     = token{itemColon, ':'}
 	tokenEOF       = token{itemEOF, nil}
 )
 
@@ -88,9 +95,11 @@ func (i token) String() string {
 		return fmt.Sprintf("Identifier{%q}", i.val)
 	case itemStr:
 		return fmt.Sprintf("Str{%q}", i.val)
+	case itemBytes:
+		return fmt.Sprintf("Bytes{%02x}", i.val)
 	case itemInt:
 		return fmt.Sprintf("Int{%v}", i.val)
-	case itemLP, itemRP, itemComma, itemDot:
+	case itemLP, itemRP, itemComma, itemDot, itemColon:
 		return fmt.Sprintf("Punct{%q}", i.val)
 	default:
 		panic("not reached")
@@ -121,16 +130,21 @@ func (l *lexer) lexMain() token {
 		case unicode.IsSpace(r):
 			l.reset()
 		case r == '(':
-			return token{itemLP, r}
+			return tokenLP
 		case r == ')':
-			return token{itemRP, r}
+			return tokenRP
 		case r == ',':
-			return token{itemComma, r}
+			return tokenComma
 		case r == '.':
-			return token{itemDot, r}
+			return tokenDot
+		case r == ':':
+			return tokenColon
 		case r == '"':
 			l.backup()
 			return l.lexStr()
+		case r == '[' || r == '{':
+			l.backup()
+			return l.lexBytes()
 		case r == '-' || digit(r):
 			l.backup()
 			return l.lexInt()
@@ -153,6 +167,51 @@ func (l *lexer) lexStr() token {
 		return token{itemError, err}
 	}
 	return token{itemStr, s}
+}
+
+func (l *lexer) lexBytes() token {
+	r := l.next()
+	if r == '[' {
+		var b []byte
+		s := ""
+		for {
+			r = l.next()
+			switch {
+			case hexChar(r):
+				s += string(r)
+			case unicode.IsSpace(r) || r == ']':
+				x, err := hex.DecodeString(s)
+				if err != nil {
+					return token{itemError, err}
+				}
+				b = append(b, x...)
+				if r == ']' {
+					return token{itemBytes, b}
+				}
+			default:
+				return token{itemError, fmt.Errorf("expected bytes, found %q", s)}
+			}
+		}
+	} else if r == '{' {
+		s := ""
+		for {
+			r = l.next()
+			switch {
+			case lower(r) || upper(r) || digit(r) || r == '+' || r == '/' || r == '=' || r == '\r' || r == '\n':
+				s += string(r)
+			case r == '}':
+				b, err := base64.URLEncoding.DecodeString(s)
+				if err != nil {
+					return token{itemError, err}
+				}
+				return token{itemBytes, b}
+			default:
+				return token{itemError, fmt.Errorf("expected base64w, found %q", s)}
+			}
+		}
+	} else {
+		return token{itemError, fmt.Errorf("expected '[' or '{', found %q", r)}
+	}
 }
 
 func (l *lexer) lexInt() token {
@@ -195,6 +254,10 @@ func lower(r rune) bool {
 
 func upper(r rune) bool {
 	return 'A' <= r && r <= 'Z'
+}
+
+func hexChar(r rune) bool {
+	return ('0' <= r && r <= '9') || ('a' <= r && r <= 'f') || ('A' <= r && r <= 'F')
 }
 
 // next returns the next rune in the input.

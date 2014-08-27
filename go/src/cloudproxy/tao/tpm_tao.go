@@ -28,6 +28,8 @@ import (
 
 	"cloudproxy/tao/auth"
 
+	"code.google.com/p/goprotobuf/proto"
+
 	"github.com/google/go-tpm/tpm"
 )
 
@@ -240,24 +242,87 @@ func (tt *TPMTao) Attest(issuer *auth.Prin, start, expiration *int64, message au
 	return a, nil
 }
 
-// Seal encrypts data so only certain hosted programs can unseal it.
+// Seal encrypts data so only certain hosted programs can unseal it. Note that
+// at least some TPMs can only seal up to 149 bytes of data. So, we employ a
+// hybrid encryption scheme that seals a key and uses the key to encrypt the
+// data separately. We use the keys infrastructure to perform secure and
+// flexible encryption.
 func (tt *TPMTao) Seal(data []byte, policy string) (sealed []byte, err error) {
 	if policy != SealPolicyDefault {
 		return nil, errors.New("tpm-specific policies are not yet implemented")
 	}
 
-	return tpm.Seal(tt.tpmfile, tt.locality, tt.pcrNums, data, tt.srkAuth[:])
+	crypter, err := GenerateCrypter()
+	if err != nil {
+		return nil, err
+	}
+	defer zeroBytes(crypter.aesKey)
+	defer zeroBytes(crypter.hmacKey)
+
+	c, err := crypter.Encrypt(data)
+	if err != nil {
+		return nil, err
+	}
+
+	ck, err := MarshalCrypterProto(crypter)
+	if err != nil {
+		return nil, err
+	}
+	defer zeroBytes(ck.Key)
+
+	ckb, err := proto.Marshal(ck)
+	if err != nil {
+		return nil, err
+	}
+	defer zeroBytes(ckb)
+
+	s, err := tpm.Seal(tt.tpmfile, tt.locality, tt.pcrNums, ckb, tt.srkAuth[:])
+	if err != nil {
+		return nil, err
+	}
+
+	h := &HybridSealedData{
+		SealedKey:     s,
+		EncryptedData: c,
+	}
+
+	return proto.Marshal(h)
 }
 
 // Unseal decrypts data that has been sealed by the Seal() operation, but only
 // if the policy specified during the Seal() operation is satisfied.
 func (tt *TPMTao) Unseal(sealed []byte) (data []byte, policy string, err error) {
-	unsealed, err := tpm.Unseal(tt.tpmfile, sealed, tt.srkAuth[:])
+	// The sealed data is a HybridSealedData.
+	var h HybridSealedData
+	if err := proto.Unmarshal(sealed, &h); err != nil {
+		return nil, "", err
+	}
+
+	unsealed, err := tpm.Unseal(tt.tpmfile, h.SealedKey, tt.srkAuth[:])
+	if err != nil {
+		return nil, "", err
+	}
+	defer zeroBytes(unsealed)
+
+	var ck CryptoKey
+	if err := proto.Unmarshal(unsealed, &ck); err != nil {
+		return nil, "", err
+	}
+	defer zeroBytes(ck.Key)
+
+	crypter, err := UnmarshalCrypterProto(&ck)
+	if err != nil {
+		return nil, "", err
+	}
+	defer zeroBytes(crypter.aesKey)
+	defer zeroBytes(crypter.hmacKey)
+
+	m, err := crypter.Decrypt(h.EncryptedData)
 	if err != nil {
 		return nil, "", err
 	}
 
-	return unsealed, SealPolicyDefault, nil
+	return m, SealPolicyDefault, nil
 }
 
 // extractPCRs gets the PCRs from a tpm principal.

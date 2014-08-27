@@ -50,9 +50,12 @@ func NewStackedLinuxHost(path string, guard Guard, hostTao Tao) (*LinuxHost, err
 		guard: guard,
 	}
 
-	subprin := guard.Subprincipal()
-	if err := hostTao.ExtendTaoName(subprin); err != nil {
-		return nil, err
+	// TODO(tmroeder): the TPM Tao currently doesn't support name extensions.
+	if _, ok := hostTao.(*TPMTao); !ok {
+		subprin := guard.Subprincipal()
+		if err := hostTao.ExtendTaoName(subprin); err != nil {
+			return nil, err
+		}
 	}
 
 	k, err := NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, hostTao, path, SealPolicyDefault)

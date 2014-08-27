@@ -16,7 +16,11 @@ package tao
 
 import (
 	"io"
+	"io/ioutil"
 	"os"
+	"path"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/golang/glog"
@@ -28,6 +32,8 @@ import (
 // environment variables.
 const (
 	HostTaoEnvVar = "GOOGLE_HOST_TAO"
+	TaoTPMEnvVar  = "GOOGLE_TAO_TPM"
+	TaoPCRsEnvVar = "GOOGLE_TAO_PCRS"
 
 	SharedSecretPolicyDefault      = "self"
 	SharedSecretPolicyConservative = "few"
@@ -93,12 +99,53 @@ var cacheOnce sync.Once
 //   name, err := tao.Parent().GetTaoName()
 func Parent() Tao {
 	cacheOnce.Do(func() {
-		host, err := DeserializeTaoRPC(os.Getenv(HostTaoEnvVar))
-		if err != nil {
-			glog.Error(err)
-			return
+		hostVar := os.Getenv(HostTaoEnvVar)
+		r := strings.TrimPrefix(hostVar, "tao::TPMTao(\"dir:")
+		if r == hostVar {
+			host, err := DeserializeTaoRPC(os.Getenv(HostTaoEnvVar))
+			if err != nil {
+				glog.Error(err)
+				return
+			}
+			cachedHost = host
+		} else {
+			// TODO(tmroeder): this version assumes that the AIK blob is under
+			// the TPMTao directory as aikblob. This should be specified more
+			// clearly in the environment variables.
+
+			dir := strings.TrimSuffix(r, "\")")
+			aikblob, err := ioutil.ReadFile(path.Join(dir, "aikblob"))
+			if err != nil {
+				glog.Error(err)
+				return
+			}
+
+			taoPCRs := os.Getenv(TaoPCRsEnvVar)
+			pcrStr := strings.TrimPrefix(taoPCRs, "PCRs(\"")
+
+			// This index operation will never panic, since strings.Split always
+			// returns at least one entry in the resulting slice.
+			pcrIntList := strings.Split(pcrStr, "\", \"")[0]
+			pcrInts := strings.Split(pcrIntList, ", ")
+			pcrs := make([]int, len(pcrInts))
+			for i, s := range pcrInts {
+				var err error
+				pcrs[i], err = strconv.Atoi(s)
+				if err != nil {
+					glog.Error(err)
+					return
+				}
+			}
+
+			// TODO(tmroeder): add the tpm device path to the configuration.
+			host, err := NewTPMTao("/dev/tpm0", aikblob, pcrs)
+			if err != nil {
+				glog.Error(err)
+				return
+			}
+
+			cachedHost = host
 		}
-		cachedHost = host
 	})
 	return cachedHost
 }

@@ -89,6 +89,43 @@ func TestTPMTaoSeal(t *testing.T) {
 
 }
 
+func TestTPMTaoLargeSeal(t *testing.T) {
+	aikblob, err := ioutil.ReadFile("./aikblob")
+	if err != nil {
+		t.Skip("Skipping tests, since there's no ./aikblob file")
+	}
+
+	tpmtao, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
+	if err != nil {
+		t.Fatal("Couldn't create a new TPM Tao:", err)
+	}
+	tt, ok := tpmtao.(*TPMTao)
+	if !ok {
+		t.Fatal("Failed to create the right kind of Tao object from NewTPMTao")
+	}
+	defer cleanUpTPMTao(tt)
+
+	data := make([]byte, 10000)
+	sealed, err := tpmtao.Seal(data, SealPolicyDefault)
+	if err != nil {
+		t.Fatal("Couldn't seal data in the TPM Tao:", err)
+	}
+
+	unsealed, policy, err := tpmtao.Unseal(sealed)
+	if err != nil {
+		t.Fatal("Couldn't unseal data sealed by the TPM Tao:", err)
+	}
+
+	if policy != SealPolicyDefault {
+		t.Fatal("Got the wrong policy back from TPMTao.Unseal")
+	}
+
+	if !bytes.Equal(unsealed, data) {
+		t.Fatal("The data returned from TPMTao.Unseal didn't match the original data")
+	}
+
+}
+
 func TestTPMTaoAttest(t *testing.T) {
 	aikblob, err := ioutil.ReadFile("./aikblob")
 	if err != nil {

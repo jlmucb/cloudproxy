@@ -92,7 +92,7 @@ func main() {
 	if *quiet {
 		verbose = ioutil.Discard
 	} else {
-		verbose = os.Stdout
+		verbose = os.Stderr
 	}
 
 	if countSet(*create, *show, *service, *shutdown, *run, *stop, *kill, *list, *name) > 1 {
@@ -113,7 +113,7 @@ func main() {
 			host, err = tao.NewRootLinuxHost(*hostPath, domain.Guard, []byte(*pass))
 		} else if *stacked {
 			if !tao.Hosted() {
-				log.Fatal("error: no host tao available, check $%s\n", tao.HostTaoEnvVar)
+				log.Fatalf("error: no host tao available, check $%s\n", tao.HostTaoEnvVar)
 			}
 			host, err = tao.NewStackedLinuxHost(*hostPath, domain.Guard, tao.Parent())
 		} else {

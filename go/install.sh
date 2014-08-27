@@ -136,7 +136,7 @@ export TAO_HOST_stacked="$test_stacked"
 export TAO_HOST_path="${test_dir}/linux_tao_host"
 
 # Flags for tpm_tao
-export TAO_TPM_path="${test_dir}/tpm "
+export TAO_TPM_path="${test_dir}/tpm"
 export TAO_TPM_pcrs="17, 18"
 
 # Flags for glog
@@ -225,7 +225,7 @@ function showenv()
 function cleanup()
 {
 	rm -f ${TAO_TEST}/logs/*
-	rm -rf ${TAO_TEST}/{*keys,tpm,linux_tao_host,domain_acls,domain_rules,tao.config,user_acls_sig}
+	rm -rf ${TAO_TEST}/{*keys,linux_tao_host,domain_acls,domain_rules,tao.config,user_acls_sig}
 	sed -i '/^# BEGIN SETUP VARIABLES/,/^# END SETUP VARIABLES/d' ${tao_env}
 	echo "# BEGIN SETUP VARIABLES" >> ${tao_env}
 	echo "# These variables come from ${TAO_TEST}/scripts/setup.sh" >> ${tao_env}
@@ -274,10 +274,22 @@ function setup()
 	echo "# These variables come from ${TAO_TEST}/scripts/setup.sh" >> ${tao_env}
 
 	if [ "$TAO_USE_TPM" == "yes" ]; then
-		echo "Creating TPMTao AIK and settings."
-		rm -rf ${TAOTPM_path}
-		tpm_tao --create --show=false
-		tpm_tao --show >> ${tao_env}
+        # Don't create a new AIK if one is already present.
+        echo "Checking ${TAO_TEST}/tpm/aikblob"
+        if [ ! -f ${TAO_TEST}/tpm/aikblob ]; then
+            echo "Creating TPMTao AIK and settings."
+            rm -rf ${TAO_TEST}/tpm
+            tpm_tao --create --show=false
+        else
+            echo "Reusing existing TPMTao AIK."
+            export GOOGLE_HOST_TAO='tao::TPMTao("dir:tpm")'
+            export GOOGLE_TAO_PCRS='PCRs("17, 18", "0, 0")'
+        fi
+
+        # TODO(tmroeder): do this correctly in the Go version once we support
+        # AIK creation.
+        echo "export GOOGLE_HOST_TAO='tao::TPMTao(\"dir:tpm\")'" >> ${tao_env}
+        echo "export GOOGLE_TAO_PCRS='PCRs(\"17, 18\", \"0, 0\")'" >> ${tao_env}
 	fi
 
 	echo "Creating LinuxHost keys and settings."

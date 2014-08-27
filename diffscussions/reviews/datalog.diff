@@ -320,6 +320,14 @@ index 0000000..6ee09f4
 #- As in the auth_quant review, I think these cases can be collapsed with a
 #- comma.
 #- 
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-27T10:36:43-0700
+#**
+#-- And as in the auth_quant review, that doesn't work very well, so this isn't
+#-- necessary.
+#--
 +		default:
 +			return q, vars
 +		}

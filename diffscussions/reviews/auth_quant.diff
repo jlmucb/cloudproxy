@@ -51,6 +51,15 @@
 #- This looks generally good. I have a few comments about some things I think
 #- could be simplified a little.
 #- 
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-27T10:32:32-0700
+#**
+#-- After a little investigation, I realized that these comments don't need to
+#-- be address. LGTM. Since Kevin is busy teaching at the moment, I've committed
+#-- this for him.
+#--
 diff --git a/go/install.sh b/go/install.sh
 index 4320da7..208983f 100755
 --- a/go/install.sh
@@ -534,6 +543,13 @@ index 9a9abf6..11ad7b7 100644
 #- it would be nice to have generics in Go. Maybe you could implement this with
 #- reflection?
 #- 
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-27T10:33:42-0700
+#**
+#-- To be fixed in a later commit.
+#--
 +	if ptr, ok := parent.(*Prin); ok {
 +		p = ptr
 +	} else if val, ok := parent.(Prin); ok {
@@ -593,6 +609,15 @@ index 9a9abf6..11ad7b7 100644
 #- case Int, Str, Bytes, Prin, *Int, *Str, *Bytes, *Prin:
 #-   terms[i] = a
 #- 
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-27T10:34:02-0700
+#**
+#-- Actually, this doesn't work, since it make Go treat the value a as an
+#-- interface{}. Then this requires a type assertion to get the right type. So,
+#-- I retract my comment.
+#--
 +		case int:
 +			terms[i] = Int(a)
 +		case int32:
@@ -887,6 +912,14 @@ index 72e1921..c1ebb2b 100644
 #- I realize that much of this is old code, but I think you can collapse it into
 #- cases that use commas.
 #- 
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-27T10:34:42-0700
+#**
+#-- As noted above, this doesn't work as well as it should. So, I retract this
+#-- comment, too.
+#--
  		default:
  			t.Fatalf("not reached")
  		}
@@ -1919,6 +1952,13 @@ index ac45696..a39e9dd 100644
 #*
 #- case Or, *Or should work, right?
 #- 
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-08-27T10:35:48-0700
+#**
+#-- no, for the same reason as above.
+#--
 +	case And:
 +		if len(f.Conjunct) == 0 {
 +			return precedenceHigh // And{} == true

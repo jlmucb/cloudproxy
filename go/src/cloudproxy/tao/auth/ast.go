@@ -104,7 +104,7 @@ var _ fmt.Scanner = &AnyTerm{}
 // more extensions to identify the subprincipal of that key.
 type Prin struct {
 	Type string  // either "key" or "tpm"
-	Key  Term    // TermVar or Bytes with marshalled CryptoKey protobuf structure with purpose CryptoKey.VERIFYING
+	Key  Term    // TermVar or Bytes with marshalled CryptoKey protobuf structure with purpose CryptoKey.VERIFYING. Or this can be a marshalled TPM AIK.
 	Ext  SubPrin // one or more extensions for descendents
 }
 

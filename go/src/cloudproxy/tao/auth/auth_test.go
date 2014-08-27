@@ -21,9 +21,11 @@ import (
 )
 
 var key []string = []string{
-	`key([4b657930])`, // hex("Key1")
-	`key([4b657931])`, // hex("Key2")
-	`tpm({S2V5Mw==})`, // base64w("Key3")
+	`key([4b657930])`,                 // hex("Key1")
+	`key([4b657931])`,                 // hex("Key2")
+	`tpm({S2V5Mw==})`,                 // base64w("Key3")
+	`tpm({BgWWala-pkV7l_Yg043wLQ==})`, // base64w(some random bytes)
+	`tpm({BgWWala+pkV7l/Yg043wLQ==})`, // base64(some other random bytes)
 }
 
 var termtests []string = []string{
@@ -37,8 +39,25 @@ var termtests []string = []string{
 	key[1],
 	key[0] + ".Extension(1)",
 	key[0] + `.Extension(1).A().B(1).C(1, "Hello").D(` + key[1] + `.E(` + key[1] + `.G().H()))`,
-	key[0] + ".E(" + key[2] + ")",
+	key[0] + ".E(" + key[3] + ")",
 	"[01 02 03abcd ef]",
+}
+
+func TestParseBase64W(t *testing.T) {
+	var x AnyTerm
+	n, err := fmt.Sscanf(key[0]+".E("+key[3]+")", "%v", &x)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if n != 1 {
+		t.Fatal("incomplete parse")
+	}
+
+	// Base64 data (as opposed to Base64w data) shouldn't work.
+	n, err = fmt.Sscanf(key[0]+".E("+key[4]+")", "%v", &x)
+	if err == nil {
+		t.Fatalf("Incorrectly parsed Base64 data: %s", err.Error())
+	}
 }
 
 func TestParseTerm(t *testing.T) {
@@ -197,7 +216,6 @@ var formtests []string = []string{
 	`(P(1) implies P(2)) or P(3) or P(4)`,
 	`P(1) or ` + key[0] + ` says P(2) or P(3)`,
 	`forall X: P(X)`,
-	`forall X: forall Y: P(X, Y)`,
 	`forall X: forall Y: P(X, Y)`,
 	`exists X: P(X)`,
 	`exists X: exists Y: P(X, Y)`,

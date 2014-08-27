@@ -197,7 +197,7 @@ func (l *lexer) lexBytes() token {
 		for {
 			r = l.next()
 			switch {
-			case lower(r) || upper(r) || digit(r) || r == '+' || r == '/' || r == '=' || r == '\r' || r == '\n':
+			case lower(r) || upper(r) || digit(r) || r == '_' || r == '-' || r == '=' || r == '\r' || r == '\n':
 				s += string(r)
 			case r == '}':
 				b, err := base64.URLEncoding.DecodeString(s)

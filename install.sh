@@ -25,7 +25,7 @@ set -e # quit script on first error
 
 # INSTALL BEGIN
 # Note: This section of code is removed by install.sh
-script_path="go/install.sh"
+script_path="install.sh"
 test_dir=""
 test_tpm="no"
 verbose="yes"
@@ -79,12 +79,16 @@ if [ -e "$test_dir" -a ! -d "$test_dir" ]; then
 fi
 mkdir -p "$test_dir"
 # canonicalize
-root_dir=$(readlink -e "$(dirname $0)/..")
+root_dir=$(readlink -e "$(dirname $0)")
 test_dir=$(readlink -e "$test_dir")
 if [ "$verbose" == "yes" ]; then
 	echo "Installing tao test scripts into: $test_dir"
 fi
 # sanity checks
+if [ ! -d "$GOPATH/bin" ]; then
+    echo "install failed: could not find GOPATH bin directory"
+    exit 1
+fi
 if [ ! -f "$root_dir/$script_path" -o ! -d "$test_dir" ]; then
 	echo "install failed: could not canonicalize paths"
 	exit 1
@@ -105,7 +109,7 @@ for script in "setup.sh" "start.sh" "restart.sh" "monitor.sh" \
 done
 cd "$test_dir"
 rm -f bin
-ln -s $root_dir/go/bin bin
+ln -s ${GOPATH}/bin bin
 mkdir -p logs
 
 if [ "$test_tpm" == "yes" ]; then
@@ -167,7 +171,7 @@ END
 if [ "$verbose" == "yes" ]; then
 	cat <<END
 Done installing. 
-  $test_dir/bin               # Link to ${root_dir}/go/bin.
+  $test_dir/bin               # Link to ${GOPATH}/bin.
   $test_dir/logs              # Log files.
   $test_dir/scripts           # Useful scripts.
   $test_dir/tao.env           # Environment variables.

@@ -16,6 +16,9 @@ package main
 
 import (
 	"bufio"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"errors"
 	"flag"
 	"fmt"
@@ -25,7 +28,7 @@ import (
 
 	"github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
-	tnet "github.com/jlmucb/cloudproxy/tao/net"
+	taonet "github.com/jlmucb/cloudproxy/tao/net"
 )
 
 var serverHost = flag.String("host", "localhost", "address for client/server")
@@ -35,17 +38,7 @@ var localMode = flag.Bool("local", true, "Run host demo")
 var clientMode = flag.Bool("client", true, "Run demo client")
 var serverMode = flag.Bool("server", true, "Run demo server")
 var pingCount = flag.Int("n", 5, "Number of client/server pings")
-var demoAuth = flag.String("auth", "tls", "\"tcp\", \"tls\", or \"tao\"")
-
-// TCP mode client/server
-
-func setupTCPServer() (net.Listener, error) {
-	return net.Listen("tcp", serverAddr)
-}
-
-func setupTCPClient() (net.Conn, error) {
-	return net.Dial("tcp", serverAddr)
-}
+var demoAuth = flag.String("auth", "tao", "\"tcp\", \"tls\", or \"tao\"")
 
 // client/server driver
 
@@ -53,13 +46,15 @@ func doRequest() bool {
 	fmt.Printf("client: connecting to %s using %s authentication.\n", serverAddr, *demoAuth)
 	var conn net.Conn
 	var err error
+	network := "tcp"
+
 	switch *demoAuth {
 	case "tcp":
-		conn, err = setupTCPClient()
+		conn, err = net.Dial(network, serverAddr)
 	case "tls":
-		conn, _, err = tnet.SetupTLSClient(serverAddr)
+		conn, _, err = taonet.DialTLS(network, serverAddr)
 	case "tao":
-		conn, err = tnet.SetupTaoClient(serverAddr)
+		conn, err = taonet.Dial(network, serverAddr, tao.LiberalGuard)
 	}
 	if err != nil {
 		fmt.Printf("client: error connecting to %s: %s\n", serverAddr, err.Error())
@@ -99,14 +94,9 @@ func doClient() {
 func doResponse(conn net.Conn, responseOk chan<- bool) {
 	defer conn.Close()
 
-	switch *demoAuth {
-	case "tcp", "tls":
-		// authentication already done by lower layers
-	case "tao":
-		// TODO(kwalsh) Tao-level authorization: exchange names and delegation
-		// attestations.
-	}
-
+	// Both the TLS and the Tao/TLS connections and listeners handle
+	// authorization during the Accept operation. So, no extra authorization is
+	// needed here.
 	msg, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
 		fmt.Printf("server: can't read: %s\n", err.Error())
@@ -124,11 +114,44 @@ func doResponse(conn net.Conn, responseOk chan<- bool) {
 func doServer(stop chan bool, ready, done chan<- bool) {
 	var sock net.Listener
 	var err error
+	var keys *tao.Keys
+	network := "tcp"
+
 	switch *demoAuth {
 	case "tcp":
-		sock, err = setupTCPServer()
+		sock, err = net.Listen(network, serverAddr)
 	case "tls", "tao":
-		sock, err = tnet.SetupTLSServer(serverAddr)
+		keys, err = tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Parent())
+		if err != nil {
+			ready <- false
+			done <- true
+			return
+		}
+		keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
+			Organization: []string{"Google Tao Demo"}})
+		if err != nil {
+			ready <- false
+			done <- true
+			return
+		}
+
+		tlsc, err := taonet.EncodeTLSCert(keys)
+		if err != nil {
+			ready <- false
+			done <- true
+			return
+		}
+		conf := &tls.Config{
+			RootCAs:            x509.NewCertPool(),
+			Certificates:       []tls.Certificate{*tlsc},
+			InsecureSkipVerify: true,
+			ClientAuth:         tls.RequireAnyClientCert,
+		}
+		if *demoAuth == "tao" {
+			sock, err = taonet.Listen(network, serverAddr, conf, tao.LiberalGuard, keys.Delegation)
+		} else {
+			sock, err = tls.Listen(network, serverAddr, conf)
+		}
 	}
 	if err != nil {
 		fmt.Printf("server: can't listen at %s: %s\n", serverAddr, err.Error())
@@ -269,6 +292,10 @@ func main() {
 	serverReady := make(chan bool, 1)
 	serverDone := make(chan bool, 1)
 
+	// TODO(tmroeder): use the Domain and the tao parent to set up the keys and
+	// the guard. Also need to hook the datalog guard into the domain and get
+	// the basic tests working with this guard, especially execution
+	// authorization.
 	if *serverMode {
 		go doServer(serverStop, serverReady, serverDone)
 	} else {

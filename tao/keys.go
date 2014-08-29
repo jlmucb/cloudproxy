@@ -441,6 +441,19 @@ func FromX509(cert *x509.Certificate) (*Verifier, error) {
 	return &Verifier{ecpk}, nil
 }
 
+// CompareKey checks to see if the public key in the X.509 certificate matches
+// the public key in the verifier.
+func (v *Verifier) Equals(cert *x509.Certificate) bool {
+	v2, err := FromX509(cert)
+	if err != nil {
+		return false
+	}
+
+	p := v.ToPrincipal()
+	p2 := v2.ToPrincipal()
+	return p.Identical(p2)
+}
+
 // UnmarshalVerifierProto decodes a verifying key from a CryptoKey protobuf
 // message.
 func UnmarshalVerifierProto(ck *CryptoKey) (*Verifier, error) {

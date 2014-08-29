@@ -16,10 +16,9 @@
 # Multi-purpose script for setting up and running tao and cloudproxy tests.
 #
 # This script works with the Go implementation of Tao. It assumes all binaries
-# have been installed in ./bin (e.g. via `go install`) 
+# have been installed in ${GOPATH}/bin (e.g. via `go install`)
 #
-# If you wish to use the TPM, you must have also followed the directions in
-# $TAO_ROOTDIR/Doc/SetupTPM.txt to take ownership of the TPM.
+# If you wish to use the TPM, you must have taken ownership of the TPM.
 
 set -e # quit script on first error
 

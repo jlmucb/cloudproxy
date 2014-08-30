@@ -85,13 +85,6 @@ func (cfg *DomainConfig) SetDefaults() {
 	if cfg.X509Details.CommonName == "" {
 		cfg.X509Details.CommonName = cfg.Domain.Name
 	}
-	// TODO(tmroeder): should this be here? There are currently no reasonable
-	// defaults for ACLGuardConfig, since it consists solely of the path to the
-	// signed rules file.
-	switch cfg.Domain.GuardType {
-	case "Datalog":
-		//(&cfg.DatalogGuard).SetDefaults()
-	}
 }
 
 // String returns the name of the domain.
@@ -136,7 +129,10 @@ func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain
 	case "ACLs":
 		guard = NewACLGuard(cfg.ACLGuard)
 	case "Datalog":
-		return nil, newError("datalog guard not yet implemented")
+		guard, err = NewDatalogGuard(keys.VerifyingKey, cfg.DatalogGuard)
+		if err != nil {
+			return nil, err
+		}
 	case "AllowAll":
 		guard = LiberalGuard
 	case "DenyAll":
@@ -192,7 +188,15 @@ func LoadDomain(configPath string, password []byte) (*Domain, error) {
 			return nil, err
 		}
 	case "Datalog":
-		return nil, newError("datalog guard not yet implemented")
+		var err error
+		datalogGuard, err := NewDatalogGuard(keys.VerifyingKey, cfg.DatalogGuard)
+		if err != nil {
+			return nil, err
+		}
+		if err := datalogGuard.ReloadIfModified(); err != nil {
+			return nil, err
+		}
+		guard = datalogGuard
 	case "AllowAll":
 		guard = LiberalGuard
 	case "DenyAll":

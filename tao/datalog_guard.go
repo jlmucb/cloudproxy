@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,6 +28,7 @@ import (
 
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	"github.com/jlmucb/cloudproxy/util"
+	"github.com/kevinawalsh/datalog"
 	"github.com/kevinawalsh/datalog/dlengine"
 )
 
@@ -83,10 +85,97 @@ type DatalogGuard struct {
 	dl      *dlengine.Engine
 }
 
+// subprinPrim is a custom datalog primitive that implements subprincipal
+// detection.
+type subprinPrim struct {
+	datalog.DistinctPred
+}
+
+// String returns a string representation of the subprin custom datalog
+// predicate.
+func (sp *subprinPrim) String() string {
+	return "Subprin"
+}
+
+func (sp *subprinPrim) Assert(c *datalog.Clause) error {
+	return newError("datalog: can't assert for custom predicates")
+}
+
+func (sp *subprinPrim) Retract(c *datalog.Clause) error {
+	return newError("datalog: can't retract for custom predicates")
+}
+
+func (sp *subprinPrim) Search(target *datalog.Literal, discovered func(c *datalog.Clause)) {
+	p := target.Arg[0]
+	fmt.Println("In search for custom pred")
+	o := target.Arg[1]
+	e := target.Arg[2]
+	if p.Constant() && o.Variable() && e.Variable() {
+		// Parse p as Parent.Ext and report subprin(Parent.Ext, Parent, Ext).
+		pstringer, ok := p.(fmt.Stringer)
+		if !ok {
+			return
+		}
+
+		var prin auth.Prin
+		if _, err := fmt.Sscanf(pstringer.String(), "%v", prin); err != nil {
+			return
+		}
+		if len(prin.Ext) < 1 {
+			return
+		}
+		trimmedPrin := auth.Prin{
+			Type: prin.Type,
+			Key:  prin.Key,
+			Ext:  prin.Ext[:len(prin.Ext)-1],
+		}
+		ext := prin.Ext[len(prin.Ext)-1]
+		parentIdent := dlengine.NewIdent(trimmedPrin.String())
+		extIdent := dlengine.NewIdent(ext.String())
+
+		discovered(datalog.NewClause(datalog.NewLiteral(sp, p, parentIdent, extIdent)))
+	} else if p.Variable() && o.Constant() && e.Constant() {
+		// Report subprin(O.E, O, E) as discovered.
+		ostringer, ok1 := o.(fmt.Stringer)
+		estringer, ok2 := e.(fmt.Stringer)
+		if !ok1 || !ok2 {
+			return
+		}
+
+		ostr := ostringer.String()
+		estr := estringer.String()
+		oeIdent := dlengine.NewIdent(ostr + "." + estr)
+		discovered(datalog.NewClause(datalog.NewLiteral(sp, oeIdent, o, e)))
+	} else if p.Constant() && o.Constant() && e.Constant() {
+		// Check that the constraint holds and report it as discovered.
+		pstringer, ok := p.(fmt.Stringer)
+		if !ok {
+			return
+		}
+
+		ostringer, ok1 := o.(fmt.Stringer)
+		estringer, ok2 := e.(fmt.Stringer)
+		if !ok1 || !ok2 {
+			return
+		}
+
+		ostr := ostringer.String()
+		estr := estringer.String()
+		if pstringer.String() == (ostr + "." + estr) {
+			discovered(datalog.NewClause(datalog.NewLiteral(sp, p, o, e)))
+		}
+	}
+}
+
 // NewTemporaryDatalogGuard returns a new datalog guard with a fresh, unsigned,
-// non-persistent rule set.
+// non-persistent rule set. It adds a custom predicate subprin(P, O, E) to check
+// if a principal P is a subprincipal O.E.
 func NewTemporaryDatalogGuard() Guard {
-	return &DatalogGuard{dl: dlengine.NewEngine()}
+	sp := new(subprinPrim)
+	sp.SetArity(3)
+	eng := dlengine.NewEngine()
+	eng.AddPred(sp)
+	return &DatalogGuard{dl: eng}
 }
 
 // NewDatalogGuard returns a new datalog guard that uses a signed, persistent
@@ -95,7 +184,14 @@ func NewDatalogGuard(key *Verifier, config DatalogGuardConfig) (*DatalogGuard, e
 	if key == nil || config.SignedRulesPath == "" {
 		return nil, newError("datalog guard missing key or path")
 	}
-	g := &DatalogGuard{Config: config, Key: key, dl: dlengine.NewEngine()}
+	sp := new(subprinPrim)
+	sp.SetArity(3)
+	eng := dlengine.NewEngine()
+	eng.AddPred(sp)
+	fmt.Printf("%+v\n", eng)
+	fmt.Println("Added subprin primitive")
+	fmt.Println(fmt.Sprintf("%v", sp) + "/" + strconv.Itoa(sp.Arity()))
+	g := &DatalogGuard{Config: config, Key: key, dl: eng}
 	return g, nil
 }
 
@@ -422,6 +518,7 @@ func (g *DatalogGuard) assert(f auth.Form) error {
 	if idx >= 0 {
 		return nil
 	}
+	fmt.Println(rule)
 	err = g.dl.Assert(rule)
 	if err != nil {
 		return err
@@ -448,6 +545,7 @@ func (g *DatalogGuard) retract(f auth.Form) error {
 
 func (g *DatalogGuard) query(f auth.Form) (bool, error) {
 	q, err := g.stmtToDatalog(f, nil, nil)
+	fmt.Println("Got datalog statement", q)
 	if err != nil {
 		return false, err
 	}

@@ -95,8 +95,12 @@ func main() {
 		}
 
 		rulesPath := path.Join(path.Dir(*configPath), "rules")
-		cfg.ACLGuard.SignedACLsPath = rulesPath
-		cfg.DatalogGuard.SignedRulesPath = rulesPath
+		switch *guard {
+		case "ACLs":
+			cfg.ACLGuard.SignedACLsPath = rulesPath
+		case "Datalog":
+			cfg.DatalogGuard.SignedRulesPath = rulesPath
+		}
 
 		domain, err = tao.CreateDomain(cfg, *configPath, []byte(*pass))
 		fatalIf(err)

@@ -33,7 +33,7 @@ func makeDatalogGuard(t *testing.T) (*DatalogGuard, *Signer, string) {
 		t.Fatal(err.Error())
 	}
 	g, err := NewDatalogGuard(signer.GetVerifier(), DatalogGuardConfig{
-		SignedRulesPath: tmpdir + "/signed_rules",
+		SignedRulesPath: tmpdir + "/rules",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -142,5 +142,26 @@ func TestDatalogRules(t *testing.T) {
 	ok = g.IsAuthorized(subj2, "read", []string{"somefile"})
 	if ok {
 		t.Fatal("authorized, should have been denied")
+	}
+}
+
+func TestDatalogSubprin(t *testing.T) {
+	g, key, tmpdir := makeDatalogGuard(t)
+	defer os.RemoveAll(tmpdir)
+	err := g.AddRule(`(forall S: Subprin(S, "X", "Y") implies P(S))`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = g.Save(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ok, err := g.Query(`P("X.Y")`)
+	if err != nil {
+		t.Fatal("Couldn't query the DatalogGuard:", err)
+	}
+	if !ok {
+		t.Fatal("Couldn't confirm that P('X.Y') is satisfied")
 	}
 }

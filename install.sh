@@ -202,7 +202,7 @@ PATH="${TAO_TEST}/bin:$PATH"
 
 # nb: cat at the end of pipeline hides exit code of grep -v
 all_tao_progs=$(cd ${TAO_TEST}/bin; echo * | grep -v '\.a$' | grep -v 'log_net_server' | cat) # exclude lib*.a
-watchfiles="bin/linux_host domain_acls domain_rules tao.config tao.env"
+watchfiles="bin/linux_host acls rules tao.config tao.env"
 
 function extract_pid()
 {
@@ -228,7 +228,7 @@ function showenv()
 function cleanup()
 {
 	rm -f ${TAO_TEST}/logs/*
-	rm -rf ${TAO_TEST}/{*keys,linux_tao_host,domain_acls,domain_rules,tao.config,user_acls_sig}
+	rm -rf ${TAO_TEST}/{*keys,linux_tao_host,acls,rules,tao.config}
 	sed -i '/^# BEGIN SETUP VARIABLES/,/^# END SETUP VARIABLES/d' ${tao_env}
 	echo "# BEGIN SETUP VARIABLES" >> ${tao_env}
 	echo "# These variables come from ${TAO_TEST}/scripts/setup.sh" >> ${tao_env}
@@ -302,6 +302,7 @@ function setup()
 
 	echo "# END SETUP VARIABLES" >> ${tao_env}
 
+    echo "Refreshing"
 	refresh
 }
 
@@ -313,9 +314,9 @@ function refresh()
 	tao_admin -clear
 	if [ "${TAO_guard}" == "Datalog" ]; then
 		# Rule for TPM and PCRs combinations that make for a good OS
-		tao_admin -add "(forall S, TPM, PCRs: TrustedPlatform(TPM) and TrustedKernelPCRs(PCRs) and subprin(S, TPM, PCRs) implies TrustedOS(S))"
+		tao_admin -add "(forall S: forall TPM: forall PCRs: ((TrustedPlatform(TPM) and TrustedKernelPCRs(PCRs) and subprin(S, TPM, PCRs)) implies TrustedOS(S)))"
 		# Rule for OS and program hash that make for a good hosted program
-		tao_admin -add "(forall P, OS, Hash: TrustedOS(OS) and TrustedProgramHash(Hash) and subprin(P, OS, Hash) implies MemberProgram(P))"
+        tao_admin -add "(forall P: forall OS: forall Hash: ((TrustedOS(OS) and TrustedProgramHash(Hash) and subprin(P, OS, Hash)) implies MemberProgram(P)))"
 		# Rule for programs that can execute
 		tao_admin -add "(forall P: MemberProgram(P) implies Authorized(P, \"Execute\"))"
 		# Add the TPM keys, PCRs, and/or LinuxHost keys
@@ -333,6 +334,7 @@ function refresh()
 			fi
 		done
 	else
+        echo "Calling can execute"
 		for prog in ${TAO_HOSTED_PROGRAMS}; do
 			if [ -f "$prog" ]; then
 				tao_admin -canexecute "$prog"

@@ -311,7 +311,7 @@ function refresh()
 
 	# Set up default execution policy.
 	tao_admin -clear
-	if [ "${TAO_GUARD}" == "datalog" ]; then
+	if [ "${TAO_guard}" == "Datalog" ]; then
 		# Rule for TPM and PCRs combinations that make for a good OS
 		tao_admin -add "(forall S, TPM, PCRs: TrustedPlatform(TPM) and TrustedKernelPCRs(PCRs) and subprin(S, TPM, PCRs) implies TrustedOS(S))"
 		# Rule for OS and program hash that make for a good hosted program

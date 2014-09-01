@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path"
 
 	"github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
@@ -93,6 +94,10 @@ func main() {
 			cfg.Domain.GuardType = *guard
 		}
 
+		rulesPath := path.Join(path.Dir(*configPath), "rules")
+		cfg.ACLGuard.SignedACLsPath = rulesPath
+		cfg.DatalogGuard.SignedRulesPath = rulesPath
+
 		domain, err = tao.CreateDomain(cfg, *configPath, []byte(*pass))
 		fatalIf(err)
 	} else {
@@ -117,6 +122,8 @@ func main() {
 			"  host: %s\n"+
 			"  name: %s\n", path, prin, subprin)
 		err := domain.Guard.Authorize(prog, "Execute", nil)
+		fatalIf(err)
+		err = domain.Save()
 		fatalIf(err)
 		didWork = true
 	}

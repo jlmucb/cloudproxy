@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -86,7 +85,8 @@ type DatalogGuard struct {
 }
 
 // subprinPrim is a custom datalog primitive that implements subprincipal
-// detection.
+// detection. The predicate Subprin(S, P, E) in auth is special-cased in
+// DatalogGuard to write in datalog to subprin/3 with arguments S, P, E.
 type subprinPrim struct {
 	datalog.DistinctPred
 }
@@ -94,7 +94,7 @@ type subprinPrim struct {
 // String returns a string representation of the subprin custom datalog
 // predicate.
 func (sp *subprinPrim) String() string {
-	return "Subprin"
+	return "subprin"
 }
 
 func (sp *subprinPrim) Assert(c *datalog.Clause) error {
@@ -107,7 +107,6 @@ func (sp *subprinPrim) Retract(c *datalog.Clause) error {
 
 func (sp *subprinPrim) Search(target *datalog.Literal, discovered func(c *datalog.Clause)) {
 	p := target.Arg[0]
-	fmt.Println("In search for custom pred")
 	o := target.Arg[1]
 	e := target.Arg[2]
 	if p.Constant() && o.Variable() && e.Variable() {
@@ -161,7 +160,7 @@ func (sp *subprinPrim) Search(target *datalog.Literal, discovered func(c *datalo
 
 		ostr := ostringer.String()
 		estr := estringer.String()
-		if pstringer.String() == (ostr + "." + estr) {
+		if pstringer.String() == ("\"" + ostr + "." + estr + "\"") {
 			discovered(datalog.NewClause(datalog.NewLiteral(sp, p, o, e)))
 		}
 	}
@@ -188,9 +187,6 @@ func NewDatalogGuard(key *Verifier, config DatalogGuardConfig) (*DatalogGuard, e
 	sp.SetArity(3)
 	eng := dlengine.NewEngine()
 	eng.AddPred(sp)
-	fmt.Printf("%+v\n", eng)
-	fmt.Println("Added subprin primitive")
-	fmt.Println(fmt.Sprintf("%v", sp) + "/" + strconv.Itoa(sp.Arity()))
 	g := &DatalogGuard{Config: config, Key: key, dl: eng}
 	return g, nil
 }
@@ -246,7 +242,9 @@ func (g *DatalogGuard) ReloadIfModified() error {
 	if err := proto.Unmarshal(sdb.SerializedRules, &db); err != nil {
 		return err
 	}
-	g.Clear()
+	// Only clear the rules set, since g.assert already skips datalog rules that
+	// are already present in the engine.
+	g.db.Rules = nil
 	g.modTime = info.ModTime()
 	g.db = db
 	for _, rule := range db.Rules {
@@ -449,7 +447,13 @@ func (g *DatalogGuard) stmtToDatalog(f auth.Form, vars []string, unusedVars *[]s
 	}
 	args := []string{fmt.Sprintf("%q", speaker), fmt.Sprintf("%q", pred.Name)}
 	for _, arg := range pred.Arg {
-		args = append(args, fmt.Sprintf("%q", arg.String()))
+		if _, ok := arg.(auth.TermVar); ok {
+			// Don't quote variables, since otherwise they won't work as
+			// variables in the datalog representation.
+			args = append(args, fmt.Sprintf("%s", arg.String()))
+		} else {
+			args = append(args, fmt.Sprintf("%q", arg.String()))
+		}
 	}
 	return "says(" + strings.Join(args, ", ") + ")", nil
 }
@@ -518,7 +522,6 @@ func (g *DatalogGuard) assert(f auth.Form) error {
 	if idx >= 0 {
 		return nil
 	}
-	fmt.Println(rule)
 	err = g.dl.Assert(rule)
 	if err != nil {
 		return err
@@ -545,7 +548,6 @@ func (g *DatalogGuard) retract(f auth.Form) error {
 
 func (g *DatalogGuard) query(f auth.Form) (bool, error) {
 	q, err := g.stmtToDatalog(f, nil, nil)
-	fmt.Println("Got datalog statement", q)
 	if err != nil {
 		return false, err
 	}
@@ -576,7 +578,8 @@ func (g *DatalogGuard) Retract(p auth.Prin, op string, args []string) error {
 
 // IsAuthorized checks whether p is authorized to perform op(args).
 func (g *DatalogGuard) IsAuthorized(p auth.Prin, op string, args []string) bool {
-	ok, _ := g.query(makeDatalogPredicate(p, op, args))
+	pred := makeDatalogPredicate(p, op, args)
+	ok, _ := g.query(pred)
 	return ok
 }
 

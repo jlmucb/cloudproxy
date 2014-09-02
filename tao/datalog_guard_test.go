@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/kevinawalsh/datalog/dlengine"
 )
 
 func makeDatalogGuard(t *testing.T) (*DatalogGuard, *Signer, string) {
@@ -146,22 +147,59 @@ func TestDatalogRules(t *testing.T) {
 }
 
 func TestDatalogSubprin(t *testing.T) {
-	g, key, tmpdir := makeDatalogGuard(t)
-	defer os.RemoveAll(tmpdir)
-	err := g.AddRule(`(forall S: Subprin(S, "X", "Y") implies P(S))`)
+	eng := dlengine.NewEngine()
+	sp := new(subprinPrim)
+	sp.SetArity(3)
+	eng.AddPred(sp)
+	ans, err := eng.Query(`subprin("x.y", x, y)`)
 	if err != nil {
-		t.Fatal(err)
-	}
-	err = g.Save(key)
-	if err != nil {
-		t.Fatal(err)
+		t.Fatal("Couldn't query the subprin custom primitive:", err)
 	}
 
-	ok, err := g.Query(`P("X.Y")`)
+	t.Log(ans)
+}
+
+// datalogProg contains simple test rules for authorization.
+var datalogProg = []string{
+	"(forall P: MemberProgram(P) implies Authorized(P, \"Execute\"))",
+	"(MemberProgram(key([70])))",
+}
+
+func TestDatalogSimpleTranslation(t *testing.T) {
+	g, s, tmpdir := makeDatalogGuard(t)
+	defer os.RemoveAll(tmpdir)
+
+	for _, s := range datalogProg {
+		if err := g.AddRule(s); err != nil {
+			t.Fatal("Couldn't add rule '", s, "':", err)
+		}
+	}
+
+	kprin := auth.Prin{
+		Type: "key",
+		Key:  auth.Bytes([]byte{0x70}),
+	}
+	if !g.IsAuthorized(kprin, "Execute", nil) {
+		t.Fatal("Simple authorization check failed")
+	}
+
+	if err := g.Save(s); err != nil {
+		t.Fatal("Couldn't save the guard:", err)
+	}
+
+	ok, err := g.Query("MemberProgram(key([70]))")
 	if err != nil {
-		t.Fatal("Couldn't query the DatalogGuard:", err)
+		t.Fatal("Couldn't query the guard:", err)
 	}
 	if !ok {
-		t.Fatal("Couldn't confirm that P('X.Y') is satisfied")
+		t.Fatal("A simple sanity-check query failed")
+	}
+
+	ok, err = g.Query("Authorized(key([70]), \"Execute\")")
+	if err != nil {
+		t.Fatal("Couldn't query the guard:", err)
+	}
+	if !ok {
+		t.Fatal("A simple authorized query didn't succeed")
 	}
 }

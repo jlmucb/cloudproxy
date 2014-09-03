@@ -301,7 +301,6 @@ func (g *DatalogGuard) ReloadIfModified() error {
 	// are already present in the engine.
 	g.db.Rules = nil
 	g.modTime = info.ModTime()
-	g.db = db
 	for _, rule := range db.Rules {
 		r, err := auth.UnmarshalForm(rule)
 		if err != nil {

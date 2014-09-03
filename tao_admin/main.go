@@ -105,7 +105,6 @@ func main() {
 		domain, err = tao.CreateDomain(cfg, *configPath, []byte(*pass))
 		fatalIf(err)
 	} else {
-		fmt.Fprintf(noise, "Loading configuration from: %s\n", *configPath)
 		domain, err = tao.LoadDomain(*configPath, []byte(*pass))
 		fatalIf(err)
 	}

@@ -16,6 +16,7 @@ package tao
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -134,6 +135,9 @@ func createPredicateString(name auth.Prin, op string, args []string) string {
 // Authorize adds an authorization for a principal to perform an
 // operation.
 func (a *ACLGuard) Authorize(name auth.Prin, op string, args []string) error {
+	if name.Type == "ext" {
+		return fmt.Errorf(`can't authorize for an "ext" principal`)
+	}
 	a.ACL = append(a.ACL, createPredicateString(name, op, args))
 	return nil
 }
@@ -146,6 +150,9 @@ func (a *ACLGuard) Authorize(name auth.Prin, op string, args []string) error {
 // supported (e.g., an "authorize all" rule), other rules may still be
 // in place authorizing the principal to perform the operation.
 func (a *ACLGuard) Retract(name auth.Prin, op string, args []string) error {
+	if name.Type == "ext" {
+		return fmt.Errorf(`can't retract for an "ext" principal`)
+	}
 	ps := createPredicateString(name, op, args)
 	i := 0
 	for i < len(a.ACL) {
@@ -161,6 +168,10 @@ func (a *ACLGuard) Retract(name auth.Prin, op string, args []string) error {
 // IsAuthorized checks whether a principal is authorized to perform an
 // operation.
 func (a *ACLGuard) IsAuthorized(name auth.Prin, op string, args []string) bool {
+	// An "ext" principal is never authorized for anything.
+	if name.Type == "ext" {
+		return false
+	}
 	ps := createPredicateString(name, op, args)
 	for _, s := range a.ACL {
 		if s == ps {

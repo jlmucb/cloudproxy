@@ -633,16 +633,26 @@ func makeDatalogPredicate(p auth.Prin, op string, args []string) auth.Pred {
 
 // Authorize adds an authorization for p to perform op(args).
 func (g *DatalogGuard) Authorize(p auth.Prin, op string, args []string) error {
+	if p.Type == "ext" {
+		return fmt.Errorf(`can't authorize an "ext" principal`)
+	}
 	return g.assert(makeDatalogPredicate(p, op, args))
 }
 
 // Retract removes an authorization for p to perform op(args).
 func (g *DatalogGuard) Retract(p auth.Prin, op string, args []string) error {
+	if p.Type == "ext" {
+		return fmt.Errorf(`can't retract authorization for an "ext" principal`)
+	}
 	return g.retract(makeDatalogPredicate(p, op, args))
 }
 
 // IsAuthorized checks whether p is authorized to perform op(args).
 func (g *DatalogGuard) IsAuthorized(p auth.Prin, op string, args []string) bool {
+	// An "ext" principal is never authorized for anything.
+	if p.Type == "ext" {
+		return false
+	}
 	pred := makeDatalogPredicate(p, op, args)
 	ok, _ := g.query(pred)
 	return ok

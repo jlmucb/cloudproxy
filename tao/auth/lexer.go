@@ -70,6 +70,7 @@ var (
 	tokenNot       = token{itemKeyword, "not"}
 	tokenFalse     = token{itemKeyword, "false"}
 	tokenTrue      = token{itemKeyword, "true"}
+	tokenExt       = token{itemKeyword, "ext"}
 	tokenKey       = token{itemKeyword, "key"}
 	tokenTPM       = token{itemKeyword, "tpm"}
 	tokenLP        = token{itemLP, '('}

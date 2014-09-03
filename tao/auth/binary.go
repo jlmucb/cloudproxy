@@ -24,7 +24,7 @@ const (
 	_ = iota
 
 	// Term tags
-	tagPrin    // string, Term, SubPrin
+	tagPrin    // string, bool+Term, SubPrin
 	tagStr     // string
 	tagBytes   // string
 	tagInt     // int
@@ -78,7 +78,10 @@ func Marshal(e AuthLogicElement) []byte {
 func (t Prin) Marshal(buf *Buffer) {
 	buf.EncodeVarint(tagPrin)
 	buf.EncodeString(t.Type)
-	t.Key.Marshal(buf)
+	buf.EncodeBool(t.Key != nil)
+	if t.Key != nil {
+		t.Key.Marshal(buf)
+	}
 	t.Ext.Marshal(buf)
 }
 
@@ -249,9 +252,15 @@ func decodePrin(buf *Buffer) (p Prin, err error) {
 	if err != nil {
 		return
 	}
-	p.Key, err = unmarshalTerm(buf)
+	b, err := buf.DecodeBool()
 	if err != nil {
 		return
+	}
+	if b {
+		p.Key, err = unmarshalTerm(buf)
+		if err != nil {
+			return
+		}
 	}
 	p.Ext, err = unmarshalSubPrin(buf)
 	return

@@ -101,9 +101,11 @@ var _ fmt.Scanner = &AnyTerm{}
 
 // Prin uniquely identifies a principal by a public key, used to verify
 // signatures on credentials issued by the principal, and a sequence of zero or
-// more extensions to identify the subprincipal of that key.
+// more extensions to identify the subprincipal of that key. The special value
+// "ext" represents a principal that is only a series of extensions. In this
+// case, the Key must be empty, and there must be at least one SubPrin.
 type Prin struct {
-	Type string  // either "key" or "tpm"
+	Type string  // either "key", "tpm", or "ext".
 	Key  Term    // TermVar or Bytes with marshalled CryptoKey protobuf structure with purpose CryptoKey.VERIFYING. Or this can be a marshalled TPM AIK, or a X.509 certificate, marshalled as ASN.1 DER.
 	Ext  SubPrin // one or more extensions for descendents
 }

@@ -96,8 +96,8 @@ func (p *parser) expectCloseParens(n int) error {
 
 // expectPrin expects a Prin.
 func (p *parser) expectPrin() (prin Prin, err error) {
-	if p.cur() != tokenTPM && p.cur() != tokenKey {
-		err = fmt.Errorf(`expected "key" or "tpm", found %v`, p.cur())
+	if p.cur() != tokenTPM && p.cur() != tokenKey && p.cur() != tokenExt {
+		err = fmt.Errorf(`expected "key", "tpm", or "ext", found %v`, p.cur())
 		return
 	}
 	prin.Type = p.cur().val.(string)
@@ -110,8 +110,17 @@ func (p *parser) expectPrin() (prin Prin, err error) {
 	if err != nil {
 		return
 	}
-	prin.Key, err = p.expectTerm()
-	if err != nil {
+	if r := p.lex.peek(); r != ')' {
+		if prin.Type == "ext" {
+			err = fmt.Errorf(`expected ')' after "ext("`)
+			return
+		}
+		prin.Key, err = p.expectTerm()
+		if err != nil {
+			return
+		}
+	} else if prin.Type != "ext" {
+		err = fmt.Errorf(`only "ext" supports empty keys`)
 		return
 	}
 	err = p.expect(tokenRP)
@@ -120,6 +129,11 @@ func (p *parser) expectPrin() (prin Prin, err error) {
 	}
 	for p.lex.peek() == '.' {
 		prin.Ext, err = p.expectSubPrin()
+	}
+
+	if len(prin.Ext) == 0 && prin.Type == "ext" {
+		err = fmt.Errorf(`an "ext" principal must have extensions`)
+		return
 	}
 	return
 }
@@ -521,7 +535,7 @@ func (p *parser) parseFormAtHigh(greedy bool) (Form, error) {
 		return Not{f}, nil
 	case tokenForall, tokenExists:
 		return p.expectQuantification(greedy)
-	case tokenKey, tokenTPM:
+	case tokenKey, tokenTPM, tokenExt:
 		return p.expectTermOperation(greedy)
 	}
 	switch p.cur().typ {

@@ -27,7 +27,9 @@ import (
 // Format outputs a pretty-printed Prin.
 func (p Prin) Format(out fmt.State, verb rune) {
 	fmt.Fprintf(out, "%s(", p.Type)
-	p.Key.Format(out, verb)
+	if p.Key != nil {
+		p.Key.Format(out, verb)
+	}
 	fmt.Fprint(out, ")")
 	p.Ext.Format(out, verb)
 }

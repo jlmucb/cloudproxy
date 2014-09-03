@@ -105,62 +105,117 @@ func (sp *subprinPrim) Retract(c *datalog.Clause) error {
 	return newError("datalog: can't retract for custom predicates")
 }
 
+// parseRootExtPrins parses a pair of terms as a key/tpm principal and an
+// extension principal. Both Terms must implement fmt.Stringer.
+func parseRootExtPrins(o datalog.Term, e datalog.Term) (oprin auth.Prin, eprin auth.Prin, err error) {
+	// Report subprin(O.E, O, E) as discovered.
+	ostringer, ok1 := o.(fmt.Stringer)
+	estringer, ok2 := e.(fmt.Stringer)
+	if !ok1 || !ok2 {
+		err = fmt.Errorf("arguments 2 and 3 must implement fmt.Stringer in subprin/3")
+		return
+	}
+
+	// Due to the way the translation works between DatalogGuard and the Datalog
+	// engine, these are quoted strings. So, trim the quotes at the beginning
+	// and the end of the string before parsing it.
+	ostr := strings.Trim(ostringer.String(), "\"")
+	estr := strings.Trim(estringer.String(), "\"")
+
+	// The first must be a regular rooted principal, and the second must be
+	// an ext principal.
+	if _, err = fmt.Sscanf(ostr, "%v", &oprin); err != nil {
+		return
+	}
+	if _, err = fmt.Sscanf(estr, "%v", &eprin); err != nil {
+		return
+	}
+	if eprin.Type != "ext" {
+		err = fmt.Errorf(`an extension subprin principal must be "ext"`)
+		return
+	}
+	if oprin.Type == "ext" {
+		err = fmt.Errorf(`a root subprin principal must not be "ext"`)
+		return
+	}
+
+	return
+}
+
+// parseCompositePrin parses a Term (which must implement fmt.Stringer) as a
+// principal with at least one extension.
+func parseCompositePrin(p datalog.Term) (prin auth.Prin, err error) {
+	// Parse p as Parent.Ext and report subprin(Parent.Ext, Parent, Ext).
+	pstringer, ok := p.(fmt.Stringer)
+	if !ok {
+		err = fmt.Errorf("A composite principal must be a Stringer")
+		return
+	}
+
+	// Due to the way the translation works between DatalogGuard and the Datalog
+	// engine, this is a quoted string. So, trim the quotes at the beginning and
+	// the end of the string before parsing it.
+	s := strings.Trim(pstringer.String(), "\"")
+	if _, err = fmt.Sscanf(s, "%v", &prin); err != nil {
+		return
+	}
+	if len(prin.Ext) < 1 {
+		err = fmt.Errorf("A composite principal must have extensions")
+		return
+	}
+
+	return
+}
+
+// Search implements the subprinPrim custom datalog primitive by parsing
+// constant arguments of subprin/3 as principals and reporting any clauses it
+// discovers.
 func (sp *subprinPrim) Search(target *datalog.Literal, discovered func(c *datalog.Clause)) {
 	p := target.Arg[0]
 	o := target.Arg[1]
 	e := target.Arg[2]
 	if p.Constant() && o.Variable() && e.Variable() {
-		// Parse p as Parent.Ext and report subprin(Parent.Ext, Parent, Ext).
-		pstringer, ok := p.(fmt.Stringer)
-		if !ok {
+		prin, err := parseCompositePrin(p)
+		if err != nil {
 			return
 		}
-
-		var prin auth.Prin
-		if _, err := fmt.Sscanf(pstringer.String(), "%v", prin); err != nil {
-			return
-		}
-		if len(prin.Ext) < 1 {
-			return
-		}
+		extIndex := len(prin.Ext) - 1
 		trimmedPrin := auth.Prin{
 			Type: prin.Type,
 			Key:  prin.Key,
-			Ext:  prin.Ext[:len(prin.Ext)-1],
+			Ext:  prin.Ext[:extIndex],
 		}
-		ext := prin.Ext[len(prin.Ext)-1]
-		parentIdent := dlengine.NewIdent(trimmedPrin.String())
-		extIdent := dlengine.NewIdent(ext.String())
+		extPrin := auth.Prin{
+			Type: "ext",
+			Ext:  []auth.PrinExt{prin.Ext[extIndex]},
+		}
 
+		parentIdent := dlengine.NewIdent(trimmedPrin.String())
+		extIdent := dlengine.NewIdent(extPrin.String())
 		discovered(datalog.NewClause(datalog.NewLiteral(sp, p, parentIdent, extIdent)))
 	} else if p.Variable() && o.Constant() && e.Constant() {
-		// Report subprin(O.E, O, E) as discovered.
-		ostringer, ok1 := o.(fmt.Stringer)
-		estringer, ok2 := e.(fmt.Stringer)
-		if !ok1 || !ok2 {
+		oprin, eprin, err := parseRootExtPrins(o, e)
+		if err != nil {
 			return
 		}
-
-		ostr := ostringer.String()
-		estr := estringer.String()
-		oeIdent := dlengine.NewIdent(ostr + "." + estr)
+		oprin.Ext = append(oprin.Ext, eprin.Ext...)
+		oeIdent := dlengine.NewIdent(oprin.String())
 		discovered(datalog.NewClause(datalog.NewLiteral(sp, oeIdent, o, e)))
 	} else if p.Constant() && o.Constant() && e.Constant() {
 		// Check that the constraint holds and report it as discovered.
-		pstringer, ok := p.(fmt.Stringer)
-		if !ok {
+		prin, err := parseCompositePrin(p)
+		if err != nil {
+			return
+		}
+		oprin, eprin, err := parseRootExtPrins(o, e)
+		if err != nil {
 			return
 		}
 
-		ostringer, ok1 := o.(fmt.Stringer)
-		estringer, ok2 := e.(fmt.Stringer)
-		if !ok1 || !ok2 {
-			return
-		}
-
-		ostr := ostringer.String()
-		estr := estringer.String()
-		if pstringer.String() == ("\"" + ostr + "." + estr + "\"") {
+		// Extend the root principal with the extension from the ext principal
+		// and check identity.
+		oprin.Ext = append(oprin.Ext, eprin.Ext...)
+		if prin.Identical(oprin) {
 			discovered(datalog.NewClause(datalog.NewLiteral(sp, p, o, e)))
 		}
 	}
@@ -445,7 +500,12 @@ func (g *DatalogGuard) stmtToDatalog(f auth.Form, vars []string, unusedVars *[]s
 	if !ok {
 		return "", fmt.Errorf("unsupported datalog statement: %v", f)
 	}
-	args := []string{fmt.Sprintf("%q", speaker), fmt.Sprintf("%q", pred.Name)}
+	// Special-case: the principal named "Subprin" maps directly to subprinPrim.
+	var args []string
+	if pred.Name != "Subprin" {
+		args = []string{fmt.Sprintf("%q", speaker), fmt.Sprintf("%q", pred.Name)}
+	}
+
 	for _, arg := range pred.Arg {
 		if _, ok := arg.(auth.TermVar); ok {
 			// Don't quote variables, since otherwise they won't work as
@@ -454,6 +514,11 @@ func (g *DatalogGuard) stmtToDatalog(f auth.Form, vars []string, unusedVars *[]s
 		} else {
 			args = append(args, fmt.Sprintf("%q", arg.String()))
 		}
+	}
+	if pred.Name == "Subprin" {
+		s := "subprin(" + strings.Join(args, ", ") + ")"
+		return s, nil
+
 	}
 	return "says(" + strings.Join(args, ", ") + ")", nil
 }

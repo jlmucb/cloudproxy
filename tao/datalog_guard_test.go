@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/jlmucb/cloudproxy/tao/auth"
-	"github.com/kevinawalsh/datalog/dlengine"
 )
 
 func makeDatalogGuard(t *testing.T) (*DatalogGuard, *Signer, string) {
@@ -126,12 +125,12 @@ func TestDatalogRules(t *testing.T) {
 	}
 
 	ok := g.IsAuthorized(subj, "read", []string{"somefile"})
-	if ok {
+	if !ok {
 		t.Fatal("denied, should have been authorized")
 	}
 
 	ok = g.IsAuthorized(subj, "read", []string{"otherfile"})
-	if ok {
+	if !ok {
 		t.Fatal("denied, should have been authorized")
 	}
 
@@ -144,19 +143,6 @@ func TestDatalogRules(t *testing.T) {
 	if ok {
 		t.Fatal("authorized, should have been denied")
 	}
-}
-
-func TestDatalogSubprin(t *testing.T) {
-	eng := dlengine.NewEngine()
-	sp := new(subprinPrim)
-	sp.SetArity(3)
-	eng.AddPred(sp)
-	ans, err := eng.Query(`subprin("x.y", x, y)`)
-	if err != nil {
-		t.Fatal("Couldn't query the subprin custom primitive:", err)
-	}
-
-	t.Log(ans)
 }
 
 // datalogProg contains simple test rules for authorization.
@@ -201,5 +187,37 @@ func TestDatalogSimpleTranslation(t *testing.T) {
 	}
 	if !ok {
 		t.Fatal("A simple authorized query didn't succeed")
+	}
+}
+
+// datalogSubprinProg contains rules that use the custom primitive subprin.
+var datalogSubprinProg = []string{
+	"(forall Y: forall P: forall Q: TrustedOS(P) and TrustedProgramHash(Q) and Subprin(Y, P, Q) implies Authorized(Y, \"Execute\"))",
+	"(TrustedOS(key([70])))",
+	"(TrustedProgramHash(ext().Hash([71])))",
+}
+
+func TestDatalogSubprin(t *testing.T) {
+	g, _, tmpdir := makeDatalogGuard(t)
+	defer os.RemoveAll(tmpdir)
+
+	for _, s := range datalogSubprinProg {
+		if err := g.AddRule(s); err != nil {
+			t.Fatal("Couldn't add rule '", s, "':", err)
+		}
+	}
+
+	pprin := auth.Prin{
+		Type: "key",
+		Key:  auth.Bytes([]byte{0x70}),
+		Ext: []auth.PrinExt{
+			auth.PrinExt{
+				Name: "Hash",
+				Arg:  []auth.Term{auth.Bytes([]byte{0x71})},
+			},
+		},
+	}
+	if !g.IsAuthorized(pprin, "Execute", nil) {
+		t.Fatal("Subprin authorization check failed")
 	}
 }

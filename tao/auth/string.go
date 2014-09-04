@@ -26,6 +26,11 @@ func (e Prin) String() string {
 	return fmt.Sprintf("%v", e)
 }
 
+// String returns a pretty-printed PrinTail.
+func (e PrinTail) String() string {
+	return fmt.Sprintf("%v", e)
+}
+
 // String returns a pretty-printed PrinExt.
 func (e PrinExt) String() string {
 	return fmt.Sprintf("%v", e)

@@ -39,19 +39,27 @@
 //          | Identifier()
 //
 // Terms are concrete values, like strings, integers, or names of principals.
-//   Term ::= Str | Bytes | Int | Prin | TermVar
+//   Term ::= Str | Bytes | Int | Prin | PrinTail | TermVar
 //
 // Int can be any Go int. Str is a double-quoted Go string. Bytes is written as
 // pairs of hex digits, optionally separated by whitespace, between square
 // brackets. Bytes can also be written as base64w without whitespace between
 // curly braces.
 //
-// Principal names specify a key, and zero or more extensions to specify a
-// sub-principal of that key.
-//   Prin ::= key(Term)
-//          | key(Term).PrinExt.PrinExt...
+// Principal names specify a key or a tpm, and zero or more extensions to
+// specify a sub-principal of that key.
+//   PrinType ::= key | tpm
+//   Prin ::= PrinType(Term)
+//          | PrinType(Term).PrinExt.PrinExt...
 //   PrinExt ::= Identifier(Term, Term, ...)
 //             | Identifier()
+//
+// Principal tails represent a sequence of extensions that are not rooted in a
+// principal. They are used to make statements about authorized extensions
+// independent of the root principal. For example, they are used to specify that
+// a given program is authorized to execute on any platform. A PrinTail must be
+// followed by at least one extension.
+//   PrinTail ::= ext.PrinExt.PrinExt...
 //
 // Identifiers for predicate and principal extension names and quantification
 // variables are limited to simple ascii printable identifiers, with inital

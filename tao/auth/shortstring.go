@@ -26,6 +26,11 @@ func (e Prin) ShortString() string {
 	return fmt.Sprintf("%s", e)
 }
 
+// ShortString returns an elided pretty-printed PrinTail.
+func (e PrinTail) ShortString() string {
+	return fmt.Sprintf("%s", e)
+}
+
 // ShortString returns an elided pretty-printed PrinExt.
 func (e PrinExt) ShortString() string {
 	return fmt.Sprintf("%s", e)

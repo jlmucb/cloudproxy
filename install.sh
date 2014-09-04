@@ -321,18 +321,18 @@ function refresh()
 	tao_admin -clear
 	if [ "${TAO_guard}" == "Datalog" ]; then
 		# Rule for TPM and PCRs combinations that make for a good OS
-		tao_admin -add "(forall S: forall TPM: forall PCRs: ((TrustedPlatform(TPM) and TrustedKernelPCRs(PCRs) and Subprin(S, TPM, PCRs)) implies TrustedOS(S)))"
+		tao_admin -add "(forall S: forall TPM: forall PCRs: TrustedPlatform(TPM) and TrustedKernelPCRs(PCRs) and Subprin(S, TPM, PCRs) implies TrustedOS(S))"
 		# Rule for OS and program hash that make for a good hosted program
-		tao_admin -add "(forall P: forall OS: forall Hash: ((TrustedOS(OS) and TrustedProgramHash(Hash) and Subprin(P, OS, Hash)) implies MemberProgram(P)))"
+		tao_admin -add "(forall P: forall OS: forall Hash: TrustedOS(OS) and TrustedProgramHash(Hash) and Subprin(P, OS, Hash) implies MemberProgram(P))"
 		# Rule for programs that can execute
 		tao_admin -add "(forall P: MemberProgram(P) implies Authorized(P, \"Execute\"))"
 		# Add the TPM keys, PCRs, and/or LinuxHost keys
 		if [ "$TAO_USE_TPM" == "yes" ]; then
 			tao_admin -add 'TrustedPlatform('${GOOGLE_TAO_TPM}')'
-            # Escape the spaces and quotes in the string so it can be passed as
-            # a single argument to tao_admin
-            ttt=`echo 'TrustedKernelPCRs(ext().'${GOOGLE_TAO_PCRS}')' | sed 's/ /\\ /g' | sed 's/"/\\"/g'`
-			tao_admin -add "$ttt"
+			# Escape the spaces and quotes in the string so it can be passed as
+			# a single argument to tao_admin
+			trustedpcrs=`echo 'TrustedKernelPCRs(ext.'${GOOGLE_TAO_PCRS}')' | sed 's/ /\\ /g' | sed 's/"/\\"/g'`
+			tao_admin -add "$trustedpcrs"
 		else
 			tao_admin -add 'TrustedOS('${GOOGLE_TAO_LINUX}')'
 		fi
@@ -340,7 +340,7 @@ function refresh()
 		for prog in ${TAO_HOSTED_PROGRAMS}; do
 			if [ -f "$prog" ]; then
 				proghash=`tao_admin -quiet -getprogramhash "$prog"`
-				tao_admin -add 'TrustedProgramHash(ext()'${proghash}')'
+				tao_admin -add 'TrustedProgramHash(ext'${proghash}')'
 			fi
 		done
 	else

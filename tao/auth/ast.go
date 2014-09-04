@@ -43,6 +43,7 @@ type AuthLogicElement interface {
 // isAuthLogicElement ensures only appropriate types can be assigned to an
 // AuthLogicElement.
 func (t Prin) isAuthLogicElement()      {}
+func (t PrinTail) isAuthLogicElement()  {}
 func (t SubPrin) isAuthLogicElement()   {}
 func (t Str) isAuthLogicElement()       {}
 func (t Bytes) isAuthLogicElement()     {}
@@ -62,6 +63,7 @@ func (f Exists) isAuthLogicElement()    {}
 // These declarations ensure all the appropriate types can be assigned to an
 // AuthLogicElement.
 var _ AuthLogicElement = Prin{}
+var _ AuthLogicElement = PrinTail{}
 var _ AuthLogicElement = SubPrin{}
 var _ AuthLogicElement = Str("")
 var _ AuthLogicElement = Bytes(nil)
@@ -81,6 +83,7 @@ var _ AuthLogicElement = Exists{}
 // These declarations ensure all the appropriate types can be assigned to a
 // fmt.Scanner.
 var _ fmt.Scanner = &Prin{}
+var _ fmt.Scanner = &PrinTail{}
 var _ fmt.Scanner = &SubPrin{}
 var _ fmt.Scanner = new(Str)
 var _ fmt.Scanner = new(Bytes)
@@ -101,13 +104,11 @@ var _ fmt.Scanner = &AnyTerm{}
 
 // Prin uniquely identifies a principal by a public key, used to verify
 // signatures on credentials issued by the principal, and a sequence of zero or
-// more extensions to identify the subprincipal of that key. The special value
-// "ext" represents a principal that is only a series of extensions. In this
-// case, the Key must be empty, and there must be at least one SubPrin.
+// more extensions to identify the subprincipal of that key.
 type Prin struct {
-	Type string  // either "key", "tpm", or "ext".
+	Type string  // either "key" or "tpm".
 	Key  Term    // TermVar or Bytes with marshalled CryptoKey protobuf structure with purpose CryptoKey.VERIFYING. Or this can be a marshalled TPM AIK, or a X.509 certificate, marshalled as ASN.1 DER.
-	Ext  SubPrin // one or more extensions for descendents
+	Ext  SubPrin // zero or more extensions for descendents
 }
 
 // PrinExt is an extension of a principal.
@@ -119,6 +120,13 @@ type PrinExt struct {
 // SubPrin is a series of extensions of a principal.
 type SubPrin []PrinExt
 
+// A PrinTail is a Term that represents a free-floating sequence of PrinExt
+// values. It represents the tail of a list of Prin extensions. Its textual
+// representation always starts with the keyword "ext".
+type PrinTail struct {
+	Ext SubPrin // one or more extensions
+}
+
 // Term is an argument to a predicate or a principal extension.
 type Term interface {
 	AuthLogicElement
@@ -127,11 +135,12 @@ type Term interface {
 }
 
 // isTerm ensures only appropriate types can be assigned to a Term.
-func (t Prin) isTerm()    {}
-func (t Str) isTerm()     {}
-func (t Bytes) isTerm()   {}
-func (t Int) isTerm()     {}
-func (t TermVar) isTerm() {}
+func (t Prin) isTerm()     {}
+func (t PrinTail) isTerm() {}
+func (t Str) isTerm()      {}
+func (t Bytes) isTerm()    {}
+func (t Int) isTerm()      {}
+func (t TermVar) isTerm()  {}
 
 // Str is a string used as a Term.
 type Str string
@@ -267,6 +276,20 @@ func (t Prin) Identical(other Term) bool {
 	return t.Type == p.Type && t.Key.Identical(p.Key) && t.Ext.Identical(p.Ext)
 }
 
+// Identical checks if a PrinTail is identical to another Term.
+func (t PrinTail) Identical(other Term) bool {
+	// other must be type PrinTail or *PrinTail
+	var p *PrinTail
+	if ptr, ok := other.(*PrinTail); ok {
+		p = ptr
+	} else if val, ok := other.(PrinTail); ok {
+		p = &val
+	} else {
+		return false
+	}
+	return t.Ext.Identical(p.Ext)
+}
+
 // Identical checks if a TermVar is identical to another Term.
 func (t TermVar) Identical(other Term) bool {
 	return t == other
@@ -337,7 +360,7 @@ func (p Prin) MakeSubprincipal(e SubPrin) Prin {
 
 // MakePredicate creates a predicate with the given name and arguments.
 // Arguments can be Prin, Int (or integer types that be coerced to it), Str (or
-// string), or Prin. Anything else is coerced to Str.
+// string), or PrinTail. Anything else is coerced to Str.
 func MakePredicate(name string, arg ...interface{}) Pred {
 	terms := make([]Term, len(arg))
 	for i, a := range arg {
@@ -350,6 +373,8 @@ func MakePredicate(name string, arg ...interface{}) Pred {
 			terms[i] = a
 		case Prin:
 			terms[i] = a
+		case PrinTail:
+			terms[i] = a
 		case *Int:
 			terms[i] = a
 		case *Str:
@@ -357,6 +382,8 @@ func MakePredicate(name string, arg ...interface{}) Pred {
 		case *Bytes:
 			terms[i] = a
 		case *Prin:
+			terms[i] = a
+		case *PrinTail:
 			terms[i] = a
 		case int:
 			terms[i] = Int(a)

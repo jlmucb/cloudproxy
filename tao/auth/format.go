@@ -27,10 +27,14 @@ import (
 // Format outputs a pretty-printed Prin.
 func (p Prin) Format(out fmt.State, verb rune) {
 	fmt.Fprintf(out, "%s(", p.Type)
-	if p.Key != nil {
-		p.Key.Format(out, verb)
-	}
+	p.Key.Format(out, verb)
 	fmt.Fprint(out, ")")
+	p.Ext.Format(out, verb)
+}
+
+// Format outputs a pretty-printed PrinTail.
+func (p PrinTail) Format(out fmt.State, verb rune) {
+	fmt.Fprintf(out, "ext")
 	p.Ext.Format(out, verb)
 }
 

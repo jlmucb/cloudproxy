@@ -39,6 +39,8 @@ var termtests []string = []string{
 	key[1],
 	key[0] + ".Extension(1)",
 	key[0] + `.Extension(1).A().B(1).C(1, "Hello").D(` + key[1] + `.E(` + key[1] + `.G().H()))`,
+	"ext.Extension(1)",
+	`ext.Extension(1).A().B(1).C(1, "Hello").D(` + key[1] + `.E(` + key[1] + `.G().H()))`,
 	key[0] + ".E(" + key[3] + ")",
 	"[01 02 03abcd ef]",
 }
@@ -412,36 +414,33 @@ func TestMakePredicate(t *testing.T) {
 }
 
 var extprins = []string{
-	`ext().PCRs("17, 18", "0a877e9010800b0c0d98, b7c5820097262978e8a7")`,
-	`ext().PCRs("17, 18", "0a877e9010800b0c0d98, b7c5820097262978e8a7").Hash([71])`,
-	`ext().Kid(1).Kid(2)`,
+	`ext.PCRs("17, 18", "0a877e9010800b0c0d98, b7c5820097262978e8a7")`,
+	`ext.PCRs("17, 18", "0a877e9010800b0c0d98, b7c5820097262978e8a7").Hash([71])`,
+	`ext.Kid(1).Kid(2)`,
 }
 
 func TestExtPrin(t *testing.T) {
 	for _, e := range extprins {
-		var p Prin
-		if _, err := fmt.Sscanf(e, "%s", &p); err != nil {
+		var pt PrinTail
+		if _, err := fmt.Sscanf(e, "%s", &pt); err != nil {
 			t.Fatal("Couldn't scan the ext principal:", err)
-		}
-		if p.Type != "ext" {
-			t.Fatal("Invalid ext principal type", p.Type)
 		}
 	}
 }
 
 var badprins = []string{
 	`ext([704569])`,
-	`ext()`,
+	`ext`,
 	`key()`,
 	`tpm()`,
 }
 
 func TestBadExtPrin(t *testing.T) {
 	for _, e := range badprins {
-		var p Prin
-		if _, err := fmt.Sscanf(e, "%s", &p); err == nil {
-			t.Log(p)
-			t.Fatal("Incorrectly successfully scanned an invalid principal")
+		var at AnyTerm
+		if _, err := fmt.Sscanf(e, "%s", &at); err == nil {
+			t.Log(at)
+			t.Fatal("Incorrectly successfully scanned an invalid Term")
 		}
 	}
 }

@@ -106,8 +106,8 @@ func (sp *subprinPrim) Retract(c *datalog.Clause) error {
 }
 
 // parseRootExtPrins parses a pair of terms as a key/tpm principal and an
-// extension principal. Both Terms must implement fmt.Stringer.
-func parseRootExtPrins(o datalog.Term, e datalog.Term) (oprin auth.Prin, eprin auth.Prin, err error) {
+// extension principal tail. Both Terms must implement fmt.Stringer.
+func parseRootExtPrins(o datalog.Term, e datalog.Term) (oprin auth.Prin, eprin auth.PrinTail, err error) {
 	// Report subprin(O.E, O, E) as discovered.
 	ostringer, ok1 := o.(fmt.Stringer)
 	estringer, ok2 := e.(fmt.Stringer)
@@ -117,7 +117,7 @@ func parseRootExtPrins(o datalog.Term, e datalog.Term) (oprin auth.Prin, eprin a
 	}
 
 	// The first must be a regular rooted principal, and the second must be
-	// an ext principal.
+	// an ext principal tail.
 	var ostr string
 	if _, err = fmt.Sscanf(ostringer.String(), "%q", &ostr); err != nil {
 		return
@@ -134,16 +134,6 @@ func parseRootExtPrins(o datalog.Term, e datalog.Term) (oprin auth.Prin, eprin a
 	if _, err = fmt.Sscanf(estr, "%v", &eprin); err != nil {
 		return
 	}
-
-	if eprin.Type != "ext" {
-		err = fmt.Errorf(`an extension subprin principal must be "ext"`)
-		return
-	}
-	if oprin.Type == "ext" {
-		err = fmt.Errorf(`a root subprin principal must not be "ext"`)
-		return
-	}
-
 	return
 }
 
@@ -193,9 +183,8 @@ func (sp *subprinPrim) Search(target *datalog.Literal, discovered func(c *datalo
 			Key:  prin.Key,
 			Ext:  prin.Ext[:extIndex],
 		}
-		extPrin := auth.Prin{
-			Type: "ext",
-			Ext:  []auth.PrinExt{prin.Ext[extIndex]},
+		extPrin := auth.PrinTail{
+			Ext: []auth.PrinExt{prin.Ext[extIndex]},
 		}
 
 		parentIdent := dlengine.NewIdent(fmt.Sprintf("%q", trimmedPrin.String()))
@@ -638,28 +627,17 @@ func makeDatalogPredicate(p auth.Prin, op string, args []string) auth.Pred {
 
 // Authorize adds an authorization for p to perform op(args).
 func (g *DatalogGuard) Authorize(p auth.Prin, op string, args []string) error {
-	if p.Type == "ext" {
-		return fmt.Errorf(`can't authorize an "ext" principal`)
-	}
 	return g.assert(makeDatalogPredicate(p, op, args))
 }
 
 // Retract removes an authorization for p to perform op(args).
 func (g *DatalogGuard) Retract(p auth.Prin, op string, args []string) error {
-	if p.Type == "ext" {
-		return fmt.Errorf(`can't retract authorization for an "ext" principal`)
-	}
 	return g.retract(makeDatalogPredicate(p, op, args))
 }
 
 // IsAuthorized checks whether p is authorized to perform op(args).
 func (g *DatalogGuard) IsAuthorized(p auth.Prin, op string, args []string) bool {
-	// An "ext" principal is never authorized for anything.
-	if p.Type == "ext" {
-		return false
-	}
-	pred := makeDatalogPredicate(p, op, args)
-	ok, _ := g.query(pred)
+	ok, _ := g.query(makeDatalogPredicate(p, op, args))
 	return ok
 }
 

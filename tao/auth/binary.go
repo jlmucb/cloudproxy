@@ -24,11 +24,12 @@ const (
 	_ = iota
 
 	// Term tags
-	tagPrin    // string, bool+Term, SubPrin
-	tagStr     // string
-	tagBytes   // string
-	tagInt     // int
-	tagTermVar // string
+	tagPrin     // string, Term, SubPrin
+	tagPrinTail // SubPrin
+	tagStr      // string
+	tagBytes    // string
+	tagInt      // int
+	tagTermVar  // string
 
 	// Form tags
 	tagPred      // string, []Term
@@ -78,14 +79,17 @@ func Marshal(e AuthLogicElement) []byte {
 func (t Prin) Marshal(buf *Buffer) {
 	buf.EncodeVarint(tagPrin)
 	buf.EncodeString(t.Type)
-	buf.EncodeBool(t.Key != nil)
-	if t.Key != nil {
-		t.Key.Marshal(buf)
-	}
+	t.Key.Marshal(buf)
 	t.Ext.Marshal(buf)
 }
 
-// Marshal encodes a Prin.
+// Marshal encodes a PrinTail.
+func (t PrinTail) Marshal(buf *Buffer) {
+	buf.EncodeVarint(tagPrinTail)
+	t.Ext.Marshal(buf)
+}
+
+// Marshal encodes a SubPrin.
 func (s SubPrin) Marshal(buf *Buffer) {
 	buf.EncodeVarint(tagSubPrin)
 	buf.EncodeVarint(int64(len(s)))
@@ -252,16 +256,16 @@ func decodePrin(buf *Buffer) (p Prin, err error) {
 	if err != nil {
 		return
 	}
-	b, err := buf.DecodeBool()
+	p.Key, err = unmarshalTerm(buf)
 	if err != nil {
 		return
 	}
-	if b {
-		p.Key, err = unmarshalTerm(buf)
-		if err != nil {
-			return
-		}
-	}
+	p.Ext, err = unmarshalSubPrin(buf)
+	return
+}
+
+// decodePrinTail decodes a PrinTail without the leading tag.
+func decodePrinTail(buf *Buffer) (p PrinTail, err error) {
 	p.Ext, err = unmarshalSubPrin(buf)
 	return
 }
@@ -310,6 +314,8 @@ func unmarshalTerm(buf *Buffer) (t Term, err error) {
 		return decodeInt(buf)
 	case tagPrin:
 		return decodePrin(buf)
+	case tagPrinTail:
+		return decodePrinTail(buf)
 	case tagTermVar:
 		return decodeTermVar(buf)
 	default:
@@ -326,6 +332,19 @@ func UnmarshalPrin(bytes []byte) (p Prin, err error) {
 	p, ok := t.(Prin) // will always be value type here
 	if !ok {
 		err = fmt.Errorf("expected Prin, found %T", t)
+	}
+	return
+}
+
+// UnmarshalPrinTail decodes a PrinTail.
+func UnmarshalPrinTail(bytes []byte) (p PrinTail, err error) {
+	t, err := UnmarshalTerm(bytes)
+	if err != nil {
+		return
+	}
+	p, ok := t.(PrinTail) // will always be value type here
+	if !ok {
+		err = fmt.Errorf("expected PrinTail, found %T", t)
 	}
 	return
 }

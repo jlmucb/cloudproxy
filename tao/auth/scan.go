@@ -32,6 +32,17 @@ func (p *Prin) Scan(state fmt.ScanState, verb rune) error {
 	return nil
 }
 
+// Scan parses a PrinTail, with optional outer parens.
+func (pt *PrinTail) Scan(state fmt.ScanState, verb rune) error {
+	parser := newParser(state)
+	prinTail, err := parser.parsePrinTail()
+	if err != nil {
+		return err
+	}
+	*pt = prinTail
+	return nil
+}
+
 // Scan parses a PrinExt.
 func (e *PrinExt) Scan(state fmt.ScanState, verb rune) error {
 	parser := newParser(state)

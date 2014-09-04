@@ -194,7 +194,7 @@ func TestDatalogSimpleTranslation(t *testing.T) {
 var datalogSubprinProg = []string{
 	"(forall Y: forall P: forall Q: TrustedOS(P) and TrustedProgramHash(Q) and Subprin(Y, P, Q) implies Authorized(Y, \"Execute\"))",
 	"(TrustedOS(key([70])))",
-	"(TrustedProgramHash(ext().Hash([71])))",
+	"(TrustedProgramHash(ext.Hash([71])))",
 }
 
 func TestDatalogSubprin(t *testing.T) {

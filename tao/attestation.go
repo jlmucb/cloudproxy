@@ -33,8 +33,6 @@ func (a *Attestation) ValidSigner() (auth.Prin, error) {
 		return auth.Prin{}, newError("tao: attestation signer principal malformed: %s", signer)
 	}
 	switch signer.Type {
-	case "ext":
-		return auth.Prin{}, newError(`tao: can't sign attestation with an "ext" principal`)
 	case "tpm":
 		// The PCRs are contained in the Speaker of an auth.Says statement that
 		// makes up the a.SerializedStatement.

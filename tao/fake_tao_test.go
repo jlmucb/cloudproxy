@@ -16,7 +16,6 @@ package tao
 
 import (
 	"crypto/rand"
-	"fmt"
 	"io"
 	mrand "math/rand"
 	"testing"
@@ -37,9 +36,6 @@ type FakeTao struct {
 
 // Init initializes the FakeTao with a crypter and a signer.
 func NewFakeTao(name auth.Prin, path string, password []byte) (Tao, error) {
-	if name.Type == "ext" {
-		return nil, fmt.Errorf(`fake tao can't use an "ext" principal as its name`)
-	}
 	f := &FakeTao{
 		name: name,
 	}

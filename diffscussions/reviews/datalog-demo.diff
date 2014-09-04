@@ -1,0 +1,2475 @@
+#* 
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-09-04T12:20:46-0700
+#* 
+#- This set of commits finishes the datalog guard implementation and integrates
+#- it with the install/test framework. This diff gives all the changes but
+#- doesn't include files that have been moved, since they show up as added in
+#- full and deleted in full.
+#-
+#- The key change here is the addition of a subprin/3 custom datalog predicate,
+#- and a new auth type PrinTail that allows auth statements to refer to
+#- principal extensions without reference to a key/tpm principal.
+#-
+#-
+#- Integrate DatalogGuard with Domain.
+#- 
+#- This commit adds support for DatalogGuards in a Domain. It also adds a simple
+#- Save/Load test to make sure the domain loads the guard properly.
+#- 
+#- 
+#- Add partial support for datalog authorization.
+#- 
+#- This commit is a WIP fix to get datalog support working in the Tao install
+#- scripts. It still doesn't work, due to translation between auth statements and
+#- datalog.
+#- 
+#- 
+#- Fix basic datalog translation in DatalogGuard.
+#- 
+#- This commit fixes a bug in ReloadIfModified: the datalog engine was getting
+#- cleared, but the assert method was skipping rules that already existed in the
+#- database. So, after a ReloadIfModified, the rule set was right, but the datalog
+#- engine was out of sync. This also adds a regression test for this case.
+#- 
+#- 
+#- Add support for an "ext" type of auth principal.
+#- 
+#- An "ext" auth principal represents a set of free-floating extensions. It is used
+#- to make statements like TrustedProgramHash(ext().Hash([9879a99bea0])), where the
+#- initial part of the principal is not yet known.
+#- 
+#- 
+#- Implement subprin/3 custom datalog primitive.
+#- 
+#- This commits gets subprin/3 to work with the new ext() auth.Prin type and adds a
+#- test that uses subprin/3 to check authorization of a simple program running on a
+#- trusted OS.
+#- 
+#- 
+#- Add extra checks to catch invalid "ext" principals.
+#- 
+#- This commit adds checks to the core tao code to catch cases where "ext"
+#- principals might appear. The goal is to prevent the code from panicking by
+#- trying to operate on a nil Key value in the auth.Prin structure.
+#- 
+#- 
+#- Fix the install script to work with DatalogGuard.
+#- 
+#- This commit fixes Datalog support in install.sh. It changes the auth statements
+#- in install.sh to match the new Subprin custom datalog predicate subprin/3, and
+#- it adds "ext()" prefixes to datalog statements that refer directly to principal
+#- extensions.
+#- 
+#- 
+#- Get datalog to work over the TPM.
+#- 
+#- This commit adds support for datalog authorization policies over the TPM and
+#- gets the basic policy in install.sh to work. The problem with the version of the
+#- subprin/3 principal before this commit was that it wasn't handling the quoted
+#- strings correctly. This version outputs quoted strings as well as parsing
+#- quoted-string principals in subprin/3.
+#- 
+#- 
+#- Move utilities to tao_admin.
+#- 
+#- This commit moves getpcr and tpmprin into tao_admin and changes the install.sh
+#- script to use tao_admin to get PCR values and the name of the TPM principal.
+#- This also removes some superfluous debugging statements.
+#- 
+#- 
+#- Clean up the top-level directory.
+#- 
+#- This commit moves the apps into an apps/ directory to clean up the top-level
+#- directory.
+#- 
+#- 
+#- Clean up the install.sh documentation.
+#- 
+#- This commit updates the documentation in install.sh to accurately describe the
+#- current state of the Go implementation of CloudProxy.
+#- 
+#- 
+#- Replace the "ext" principal type with PrinTail.
+#- 
+#- This commit removes the "ext" principal type and replaces it with a new Term
+#- type called PrinTail. PrinTail represents a non-rooted sequence of extensions.
+#- However, since it is not an auth.Prin, this commit removes all the now
+#- superfluous checks about invalid "ext" principals where real principals are
+#- required. This simplifies the code significantly while maintaining relatively
+#- simple lexing/parsing behavior.
+#- 
+#- This commit also ports install.sh and the tests to the new "ext" PrinTail type.
+#- 
+#- 
+diff --git a/install.sh b/install.sh
+index ccd2195..6a0c67b 100755
+--- a/install.sh
++++ b/install.sh
+@@ -46,41 +46,42 @@ for arg in "$@"; do
+ 		-datalog)
+ 			test_guard="Datalog"
+ 			shift
+ 			;;
+ 		-q)
+ 			verbose="no"
+ 			shift
+ 			;;
+ 		-*)
+ 			echo "Huh? $arg"
+ 			exit 1
+ 			;;
+ 	esac
+ done
+ if [ $# -eq 1 ]; then
+ 	test_dir="$1"
+ fi
+ if [ ! "$test_dir" ]; then
+ 	echo "Usage: $0 [options] <dir>"
+ 	echo "  Installs tao testing scripts into <dir>, which will be created"
+-	echo "  if it does not yet exist."
++	echo "  if it does not yet exist. If neither -acls nor -datalog is"
++	echo "  specified, then the authorization policy is AllowAll."
+ 	echo "Options:"
+ 	echo "  -notpm       Use a fake TPM (the default)."
+ 	echo "  -tpm         Use the TPM."
+ 	echo "  -acls        Use ACL-based guards for Tao domain policy."
+ 	echo "  -datalog     Use Datalog-based guards for Tao domain policy."
+ 	echo "  -q           Be more quiet."
+ 	exit 1
+ fi
+ if [ -e "$test_dir" -a ! -d "$test_dir" ]; then
+ 	echo "$test_dir: path exists but is not a directory"
+ 	exit 1
+ fi
+ mkdir -p "$test_dir"
+ # canonicalize
+ root_dir=$(readlink -e "$(dirname $0)")
+ test_dir=$(readlink -e "$test_dir")
+ if [ "$verbose" == "yes" ]; then
+ 	echo "Installing tao test scripts into: $test_dir"
+ fi
+ # sanity checks
+@@ -123,129 +124,129 @@ cat <<END > "$test_dir/tao.env"
+ # Tao/CloudProxy environment variables"
+ export TAO_TEST="$test_dir" # Also hardcoded into $test_dir/scripts/*.sh
+ export TAO_ROOTDIR="$root_dir"
+ export TAO_USE_TPM="$test_tpm"
+ 
+ # Flags for tao programs
+ export TAO_config_path="${test_dir}/tao.config"
+ export TAO_guard="$test_guard"
+ 
+ # Flags for tao_admin
+ export TAO_ADMIN_pass="BogusPass"
+ 
+ # Flags for linux_host
+ export TAO_HOST_pass="BogusPass"
+ export TAO_HOST_root="$test_root"
+ export TAO_HOST_stacked="$test_stacked"
+ export TAO_HOST_path="${test_dir}/linux_tao_host"
+ 
+ # Flags for tpm_tao
+ export TAO_TPM_path="${test_dir}/tpm"
+-export TAO_TPM_pcrs="17, 18"
++export TAO_TPM_pcrs="17,18"
+ 
+ # Flags for glog
+ export GLOG_v=2
+ export GLOG_logtostderr="no"
+ export GLOG_alsologtostderr="no"
+ export GLOG_stderrthreshold=3 # Only log FATAL to stderr.
+ export GLOG_log_dir="\${TAO_TEST}/logs"
+ 
+ # Misc.
+ export TAO_HOSTED_PROGRAMS="
+ \${TAO_TEST}/bin/demo 
+ \${TAO_TEST}/bin/demo_server
+ \${TAO_TEST}/bin/client 
+ \${TAO_TEST}/bin/server 
+ \${TAO_TEST}/bin/fclient 
+ \${TAO_TEST}/bin/fserver 
+ \${TAO_TEST}/bin/http_echo_server 
+ \${TAO_TEST}/bin/https_echo_server 
+ "
+ 
+ # BEGIN SETUP VARIABLES
+ # These variables come from $test_dir/scripts/setup.sh
+ export GOOGLE_HOST_TAO=""
+ # END SETUP VARIABLES
+ END
+ 
+ if [ "$verbose" == "yes" ]; then
+ 	cat <<END
+ Done installing. 
+   $test_dir/bin               # Link to ${GOPATH}/bin.
+   $test_dir/logs              # Log files.
+   $test_dir/scripts           # Useful scripts.
+   $test_dir/tao.env           # Environment variables.
+ Typical next steps:
+   cd $test_dir/
+   ./scripts/setup.sh          # Create keys, hashes, ACLs, etc.
+   ./scripts/start.sh          # Run Tao CA and Linux Tao server.
+-  ./scripts/test.sh fserver   # Run fserver test.
++  ./scripts/host.sh demo      # Run a client/server demo test.
+   ./scripts/stop.sh           # Kill all Tao programs.
+   ./scripts/refresh.sh        # Refresh hashes, ACLs, etc.
+ Run $test_dir/scripts/help.sh for more info.
+ END
+ fi
+ 
+ exit 0
+ 
+ # INSTALL END
+ 
+ export TAO_TEST=undef # replaced with path to test dir by install.sh
+ 
+ tao_env=${TAO_TEST}/tao.env
+ if [ ! -f ${tao_env} ]; then
+ 	echo "Missing ${tao_env}"
+ 	exit 1
+ fi
+ source ${tao_env}
+ 
+ PATH="${TAO_TEST}/bin:$PATH"
+ 
+ # nb: cat at the end of pipeline hides exit code of grep -v
+ all_tao_progs=$(cd ${TAO_TEST}/bin; echo * | grep -v '\.a$' | grep -v 'log_net_server' | cat) # exclude lib*.a
+-watchfiles="bin/linux_host domain_acls domain_rules tao.config tao.env"
++watchfiles="bin/linux_host acls rules tao.config tao.env"
+ 
+ function extract_pid()
+ {
+ 	childname="$1"
+ 	pid=`echo "$childname" | sed 's/^Success: Program([0-9]\+, ".*", ".*", ".*")::PID(\([0-9]\+\))$/\1/'`
+ 	echo "$pid"
+ }
+ 
+ # return at most the first 15 chars of argument
+ # suitable for pgrep -x or pkill -x
+ # e.g. shortname long_binary_filename ==> long_binary_fil
+ function shortname()
+ {
+ 	name="$1"
+ 	echo "\<${name:0:15}\>"
+ }
+ 
+ function showenv()
+ {
+ 	cat ${tao_env}
+ }
+ 
+ function cleanup()
+ {
+ 	rm -f ${TAO_TEST}/logs/*
+-	rm -rf ${TAO_TEST}/{*keys,linux_tao_host,domain_acls,domain_rules,tao.config,user_acls_sig}
++	rm -rf ${TAO_TEST}/{*keys,linux_tao_host,acls,rules,tao.config}
+ 	sed -i '/^# BEGIN SETUP VARIABLES/,/^# END SETUP VARIABLES/d' ${tao_env}
+ 	echo "# BEGIN SETUP VARIABLES" >> ${tao_env}
+ 	echo "# These variables come from ${TAO_TEST}/scripts/setup.sh" >> ${tao_env}
+ 	echo 'export GOOGLE_HOST_TAO=""' >> ${tao_env}
+ 	echo "# END SETUP VARIABLES" >> ${tao_env}
+ 
+ 	echo "Cleared all Tao configuration data"
+ }
+ 
+ function stoptests()
+ {
+ 	echo "Attempting graceful shutdown..."
+ 	(if linux_host --shutdown; then sleep 1; fi ) 2>/dev/null | grep -v "^Aborted$" || true
+ 	
+ 	echo "Checking for remaining Tao services and processes..."
+ 	# Try to shutdown 
+ 	killed=0
+ 	for prog in $all_tao_progs; do
+ 		if pgrep -lx `shortname "$prog"`; then
+ 			pkill -x `shortname "$prog"`
+@@ -262,119 +263,129 @@ function stoptests()
+ }
+ 
+ function setup()
+ {
+ 	mkdir -p ${TAO_TEST}/logs
+ 
+ 	echo "Creating TaoDomain keys and settings."
+ 	tao_admin -create -name testing
+ 
+ 	# This sets:
+ 	# $GOOGLE_HOST_TAO # name of underlying host tao, i.e. the TPM (if any)
+ 	# GOOGLE_TAO_TPM, GOOGLE_TAO_PCRS, # more details about TPM (if any)
+ 	# and GOOGLE_TAO_LINUX # name of the LinuxHost
+ 	sed -i '/^# BEGIN SETUP VARIABLES/,/^# END SETUP VARIABLES/d' ${tao_env} 
+ 	echo "# BEGIN SETUP VARIABLES" >> ${tao_env}
+ 	echo "# These variables come from ${TAO_TEST}/scripts/setup.sh" >> ${tao_env}
+ 
+ 	if [ "$TAO_USE_TPM" == "yes" ]; then
+         # Don't create a new AIK if one is already present.
+         echo "Checking ${TAO_TEST}/tpm/aikblob"
++        pcr17=`tao_admin -getpcr 17`
++        pcr18=`tao_admin -getpcr 18`
+         if [ ! -f ${TAO_TEST}/tpm/aikblob ]; then
+             echo "Creating TPMTao AIK and settings."
+             rm -rf ${TAO_TEST}/tpm
+             tpm_tao --create --show=false
+         else
+             echo "Reusing existing TPMTao AIK."
+             export GOOGLE_HOST_TAO='tao::TPMTao("dir:tpm")'
+-            export GOOGLE_TAO_PCRS='PCRs("17, 18", "0, 0")'
++            export GOOGLE_TAO_PCRS='PCRs("17,18", "'${pcr17}','${pcr18}'")'
+         fi
+ 
++        tprin=`tao_admin -aikblob ${TAO_TEST}/tpm/aikblob`
++        export GOOGLE_TAO_TPM=$tprin
++
+         # TODO(tmroeder): do this correctly in the Go version once we support
+         # AIK creation.
+         echo "export GOOGLE_HOST_TAO='tao::TPMTao(\"dir:tpm\")'" >> ${tao_env}
+-        echo "export GOOGLE_TAO_PCRS='PCRs(\"17, 18\", \"0, 0\")'" >> ${tao_env}
++        echo "export GOOGLE_TAO_PCRS='PCRs(\"17,18\", \"${pcr17},${pcr18}\")'" >> ${tao_env}
++        echo "export GOOGLE_TAO_TPM='$tprin'" >> ${tao_env}
+ 	fi
+ 
+ 	echo "Creating LinuxHost keys and settings."
+ 	rm -rf ${TAOHOST_path}
+ 	linux_host --create --show=false
+ 	linux_host --show >> ${tao_env}
+ 
+ 	echo "# END SETUP VARIABLES" >> ${tao_env}
+ 
++    echo "Refreshing"
+ 	refresh
+ }
+ 
+ function refresh()
+ {
+ 	source ${tao_env}
+ 
+ 	# Set up default execution policy.
+ 	tao_admin -clear
+ 	if [ "${TAO_guard}" == "Datalog" ]; then
+ 		# Rule for TPM and PCRs combinations that make for a good OS
+-		tao_admin -add "(forall S, TPM, PCRs: TrustedPlatform(TPM) and TrustedKernelPCRs(PCRs) and subprin(S, TPM, PCRs) implies TrustedOS(S))"
++		tao_admin -add "(forall S: forall TPM: forall PCRs: TrustedPlatform(TPM) and TrustedKernelPCRs(PCRs) and Subprin(S, TPM, PCRs) implies TrustedOS(S))"
+ 		# Rule for OS and program hash that make for a good hosted program
+-		tao_admin -add "(forall P, OS, Hash: TrustedOS(OS) and TrustedProgramHash(Hash) and subprin(P, OS, Hash) implies MemberProgram(P))"
++		tao_admin -add "(forall P: forall OS: forall Hash: TrustedOS(OS) and TrustedProgramHash(Hash) and Subprin(P, OS, Hash) implies MemberProgram(P))"
+ 		# Rule for programs that can execute
+ 		tao_admin -add "(forall P: MemberProgram(P) implies Authorized(P, \"Execute\"))"
+ 		# Add the TPM keys, PCRs, and/or LinuxHost keys
+ 		if [ "$TAO_USE_TPM" == "yes" ]; then
+ 			tao_admin -add 'TrustedPlatform('${GOOGLE_TAO_TPM}')'
+-			tao_admin -add 'TrustedKernelPCRs('${GOOGLE_TAO_PCRS}')'
++			# Escape the spaces and quotes in the string so it can be passed as
++			# a single argument to tao_admin
++			trustedpcrs=`echo 'TrustedKernelPCRs(ext.'${GOOGLE_TAO_PCRS}')' | sed 's/ /\\ /g' | sed 's/"/\\"/g'`
++			tao_admin -add "$trustedpcrs"
+ 		else
+ 			tao_admin -add 'TrustedOS('${GOOGLE_TAO_LINUX}')'
+ 		fi
+ 		# Add the program hashes, assuming LinuxHost and LinuxProcessFactory.
+ 		for prog in ${TAO_HOSTED_PROGRAMS}; do
+ 			if [ -f "$prog" ]; then
+ 				proghash=`tao_admin -quiet -getprogramhash "$prog"`
+-				tao_admin -add 'TrustedProgramHash('${proghash}')'
++				tao_admin -add 'TrustedProgramHash(ext'${proghash}')'
+ 			fi
+ 		done
+ 	else
+ 		for prog in ${TAO_HOSTED_PROGRAMS}; do
+ 			if [ -f "$prog" ]; then
+ 				tao_admin -canexecute "$prog"
+ 			fi
+ 		done
+ 	fi
+ 	tao_admin -show
+ 
+ 	# TODO(kwalsh) set up fserver user ACLs here.
+ 	#tao_admin -newusers tmroeder,jlm
+ 	#tao_admin -signacl ${TAO_ROOTDIR}/run/acls.ascii -acl_sig_path user_acls_sig
+ 	#mkdir -p file_client_files
+ 	#mkdir -p file_server_files
+ 	#mkdir -p file_server_meta
+ 
+ 	echo "Tao configuration is ready"
+ }
+ 
+ function startsvcs()
+ {
+ 	if pgrep -x `shortname linux_host` >/dev/null; then
+ 		echo "LinuxHost service already running";
+ 	else
+ 		rm -f ${TAO_TEST}/linux_tao_host/admin_socket
+-		linux_host --service
++		linux_host --service &
+ 	fi
+ }
+ 
+ function monitor()
+ {
+ 	echo "Monitoring Tao files..."
+ 	(
+ 		cd ${TAO_TEST}
+ 		while true; do
+ 			inotifywait -e modify -e delete -e attrib $watchfiles >/dev/null 2>&1
+ 			echo "Files have changed, waiting for quiet..."
+ 			sleep 1
+ 			while inotifywait -t 3 -e modify -e delete -e attrib $watchfiles >/dev/null 2>&1; do
+ 				echo "Still waiting for quiet..."
+ 				sleep 1
+ 			done
+ 			echo "Restarting Tao services..."
+ 			refresh
+ 			stoptests
+ 			startsvcs
+@@ -460,44 +471,45 @@ function testpgm()
+ 			kill $server_pid 2>/dev/null
+ 			sleep 2
+ 			kill $tail_pid 2>/dev/null
+ 			;;
+ 		https)
+ 			echo "Starting cloudproxy https echo server..."
+ 			server_id=`linux_host -run -- https_echo_server --v=2`
+ 			server_pid=`extract_pid $server_id`
+ 			sleep 2
+ 			tail -f $GLOG_log_dir/https_echo_server.INFO &
+ 			tail_pid=$!
+ 			sleep 1
+ 			read -p "Press enter to kill https echo server..."
+ 			echo "Killing cloudproxy https echo server..."
+ 			kill $server_pid 2>/dev/null
+ 			sleep 2
+ 			kill $tail_pid 2>/dev/null
+ 			;;
+ 		help|*)
+ 			echo "Available test programs:"
+-			echo "  server      # cloud client/server test"
+-			echo "  fserver     # file client/server test"
+-			echo "  http        # http echo test"
+-			echo "  https       # https echo test"
++			echo "  demo        # a simple demo (run with host.sh)"
++			echo "  server      # cloud client/server test (not ported yet)"
++			echo "  fserver     # file client/server test (not ported yet)"
++			echo "  http        # http echo test (not ported yet)"
++			echo "  https       # https echo test (not ported yet)"
+ 			;;
+ 	esac
+ }
+ 
+ function hostpgm()
+ {
+ 	prog="$1"
+ 	shift
+ 	echo "Starting hosted program $prog ..."
+ 	prog_id=`linux_host -run -- "$prog" "$@"`
+ 	echo "TaoExtension: $prog_id"
+ }
+ 
+ case "$(basename $0)" in
+ 	setup.sh)
+ 		stoptests
+ 		cleanup
+ 		setup
+ 		;;
+ 	start.sh)
+diff --git a/tao/auth/ast.go b/tao/auth/ast.go
+index e368875..5d2cd82 100644
+--- a/tao/auth/ast.go
++++ b/tao/auth/ast.go
+@@ -26,127 +26,138 @@ type AuthLogicElement interface {
+ 	// Marshal writes a binary encoding of the element into b.
+ 	Marshal(b *Buffer)
+ 
+ 	// String returns verbose pretty-printing text for the element.
+ 	String() string
+ 
+ 	// ShortString returns short debug-printing text for the element.
+ 	ShortString() string
+ 
+ 	// fmt.Formatter is satisfied by all elements. Using format %v will result in
+ 	// verbose pretty-printing, using format %s will result in short
+ 	// debug-printing, and other formats will use an unspecified format.
+ 	fmt.Formatter // Format(out fmt.State, verb rune)
+ 
+ 	isAuthLogicElement() // marker
+ }
+ 
+ // isAuthLogicElement ensures only appropriate types can be assigned to an
+ // AuthLogicElement.
+ func (t Prin) isAuthLogicElement()      {}
++func (t PrinTail) isAuthLogicElement()  {}
+ func (t SubPrin) isAuthLogicElement()   {}
+ func (t Str) isAuthLogicElement()       {}
+ func (t Bytes) isAuthLogicElement()     {}
+ func (t Int) isAuthLogicElement()       {}
+ func (t TermVar) isAuthLogicElement()   {}
+ func (f Pred) isAuthLogicElement()      {}
+ func (f Const) isAuthLogicElement()     {}
+ func (f Not) isAuthLogicElement()       {}
+ func (f And) isAuthLogicElement()       {}
+ func (f Or) isAuthLogicElement()        {}
+ func (f Implies) isAuthLogicElement()   {}
+ func (f Speaksfor) isAuthLogicElement() {}
+ func (f Says) isAuthLogicElement()      {}
+ func (f Forall) isAuthLogicElement()    {}
+ func (f Exists) isAuthLogicElement()    {}
+ 
+ // These declarations ensure all the appropriate types can be assigned to an
+ // AuthLogicElement.
+ var _ AuthLogicElement = Prin{}
++var _ AuthLogicElement = PrinTail{}
+ var _ AuthLogicElement = SubPrin{}
+ var _ AuthLogicElement = Str("")
+ var _ AuthLogicElement = Bytes(nil)
+ var _ AuthLogicElement = Int(0)
+ var _ AuthLogicElement = TermVar("X")
+ var _ AuthLogicElement = Pred{}
+ var _ AuthLogicElement = Const(false)
+ var _ AuthLogicElement = Not{}
+ var _ AuthLogicElement = And{}
+ var _ AuthLogicElement = Or{}
+ var _ AuthLogicElement = Implies{}
+ var _ AuthLogicElement = Speaksfor{}
+ var _ AuthLogicElement = Says{}
+ var _ AuthLogicElement = Forall{}
+ var _ AuthLogicElement = Exists{}
+ 
+ // These declarations ensure all the appropriate types can be assigned to a
+ // fmt.Scanner.
+ var _ fmt.Scanner = &Prin{}
++var _ fmt.Scanner = &PrinTail{}
+ var _ fmt.Scanner = &SubPrin{}
+ var _ fmt.Scanner = new(Str)
+ var _ fmt.Scanner = new(Bytes)
+ var _ fmt.Scanner = new(Int)
+ var _ fmt.Scanner = new(TermVar)
+ var _ fmt.Scanner = &Pred{}
+ var _ fmt.Scanner = new(Const)
+ var _ fmt.Scanner = &Not{}
+ var _ fmt.Scanner = &And{}
+ var _ fmt.Scanner = &Or{}
+ var _ fmt.Scanner = &Implies{}
+ var _ fmt.Scanner = &Speaksfor{}
+ var _ fmt.Scanner = &Says{}
+ var _ fmt.Scanner = &Forall{}
+ var _ fmt.Scanner = &Exists{}
+ var _ fmt.Scanner = &AnyForm{}
+ var _ fmt.Scanner = &AnyTerm{}
+ 
+ // Prin uniquely identifies a principal by a public key, used to verify
+ // signatures on credentials issued by the principal, and a sequence of zero or
+ // more extensions to identify the subprincipal of that key.
+ type Prin struct {
+-	Type string  // either "key" or "tpm"
++	Type string  // either "key" or "tpm".
+ 	Key  Term    // TermVar or Bytes with marshalled CryptoKey protobuf structure with purpose CryptoKey.VERIFYING. Or this can be a marshalled TPM AIK, or a X.509 certificate, marshalled as ASN.1 DER.
+-	Ext  SubPrin // one or more extensions for descendents
++	Ext  SubPrin // zero or more extensions for descendents
+ }
+ 
+ // PrinExt is an extension of a principal.
+ type PrinExt struct {
+ 	Name string // [A-Z][a-zA-Z0-9_]*
+ 	Arg  []Term
+ }
+ 
+ // SubPrin is a series of extensions of a principal.
+ type SubPrin []PrinExt
+ 
++// A PrinTail is a Term that represents a free-floating sequence of PrinExt
++// values. It represents the tail of a list of Prin extensions. Its textual
++// representation always starts with the keyword "ext".
++type PrinTail struct {
++	Ext SubPrin // one or more extensions
++}
++
+ // Term is an argument to a predicate or a principal extension.
+ type Term interface {
+ 	AuthLogicElement
+ 	Identical(other Term) bool
+ 	isTerm() // marker
+ }
+ 
+ // isTerm ensures only appropriate types can be assigned to a Term.
+-func (t Prin) isTerm()    {}
+-func (t Str) isTerm()     {}
+-func (t Bytes) isTerm()   {}
+-func (t Int) isTerm()     {}
+-func (t TermVar) isTerm() {}
++func (t Prin) isTerm()     {}
++func (t PrinTail) isTerm() {}
++func (t Str) isTerm()      {}
++func (t Bytes) isTerm()    {}
++func (t Int) isTerm()      {}
++func (t TermVar) isTerm()  {}
+ 
+ // Str is a string used as a Term.
+ type Str string
+ 
+ // Bytes is a byte slice used as a Term.
+ type Bytes []byte
+ 
+ // Int is an int used as a Term.
+ type Int int
+ 
+ // TermVar is a term-valued variable.
+ type TermVar string
+ 
+ // Form is a formula in the Tao authorization logic.
+ type Form interface {
+ 	AuthLogicElement
+ 	isForm() // marker
+ }
+ 
+ // isForm ensures only appropriate types can be assigned to a Form.
+@@ -248,40 +259,54 @@ func (t Bytes) Identical(other Term) bool {
+ 	} else {
+ 		return false
+ 	}
+ 	return bytes.Equal([]byte(t), []byte(*b))
+ }
+ 
+ // Identical checks if a Prin is identical to another Term.
+ func (t Prin) Identical(other Term) bool {
+ 	// other must be type Prin or *Prin
+ 	var p *Prin
+ 	if ptr, ok := other.(*Prin); ok {
+ 		p = ptr
+ 	} else if val, ok := other.(Prin); ok {
+ 		p = &val
+ 	} else {
+ 		return false
+ 	}
+ 	return t.Type == p.Type && t.Key.Identical(p.Key) && t.Ext.Identical(p.Ext)
+ }
+ 
++// Identical checks if a PrinTail is identical to another Term.
++func (t PrinTail) Identical(other Term) bool {
++	// other must be type PrinTail or *PrinTail
++	var p *PrinTail
++	if ptr, ok := other.(*PrinTail); ok {
++		p = ptr
++	} else if val, ok := other.(PrinTail); ok {
++		p = &val
++	} else {
++		return false
++	}
++	return t.Ext.Identical(p.Ext)
++}
++
+ // Identical checks if a TermVar is identical to another Term.
+ func (t TermVar) Identical(other Term) bool {
+ 	return t == other
+ }
+ 
+ // Identical checks if one PrinExt is identical to another.
+ func (e PrinExt) Identical(other PrinExt) bool {
+ 	if e.Name != other.Name || len(e.Arg) != len(other.Arg) {
+ 		return false
+ 	}
+ 	for i, a := range e.Arg {
+ 		if !a.Identical(other.Arg[i]) {
+ 			return false
+ 		}
+ 	}
+ 	return true
+ }
+ 
+ // Identical checks if one SubPrin is identical to another.
+ func (s SubPrin) Identical(other SubPrin) bool {
+@@ -318,61 +343,65 @@ func SubprinOrIdentical(child, parent Term) bool {
+ 	if p.Type != c.Type || !p.Key.Identical(c.Key) || len(p.Ext) > len(c.Ext) {
+ 		return false
+ 	}
+ 	for i, a := range p.Ext {
+ 		if !a.Identical(c.Ext[i]) {
+ 			return false
+ 		}
+ 	}
+ 	return true
+ }
+ 
+ // MakeSubprincipal creates principal p.e... given principal p and extensions e.
+ func (p Prin) MakeSubprincipal(e SubPrin) Prin {
+ 	other := Prin{Type: p.Type, Key: p.Key, Ext: append([]PrinExt{}, p.Ext...)}
+ 	other.Ext = append(other.Ext, []PrinExt(e)...)
+ 	return other
+ }
+ 
+ // MakePredicate creates a predicate with the given name and arguments.
+ // Arguments can be Prin, Int (or integer types that be coerced to it), Str (or
+-// string), or Prin. Anything else is coerced to Str.
++// string), or PrinTail. Anything else is coerced to Str.
+ func MakePredicate(name string, arg ...interface{}) Pred {
+ 	terms := make([]Term, len(arg))
+ 	for i, a := range arg {
+ 		switch a := a.(type) {
+ 		case Int:
+ 			terms[i] = a
+ 		case Str:
+ 			terms[i] = a
+ 		case Bytes:
+ 			terms[i] = a
+ 		case Prin:
+ 			terms[i] = a
++		case PrinTail:
++			terms[i] = a
+ 		case *Int:
+ 			terms[i] = a
+ 		case *Str:
+ 			terms[i] = a
+ 		case *Bytes:
+ 			terms[i] = a
+ 		case *Prin:
+ 			terms[i] = a
++		case *PrinTail:
++			terms[i] = a
+ 		case int:
+ 			terms[i] = Int(a)
+ 		case int32:
+ 			terms[i] = Int(int(a))
+ 		case int16:
+ 			terms[i] = Int(int(a))
+ 		case byte:
+ 			terms[i] = Int(int(a))
+ 		case string:
+ 			terms[i] = Str(a)
+ 		case []byte:
+ 			terms[i] = Bytes(a)
+ 		default:
+ 			terms[i] = Str(fmt.Sprintf("%v", a))
+ 		}
+ 	}
+ 	return Pred{name, terms}
+ }
+ 
+ // NewKeyPrin returns a new Prin of type "key" with the given key material.
+diff --git a/tao/auth/auth_test.go b/tao/auth/auth_test.go
+index 0a032a2..eee9fcd 100644
+--- a/tao/auth/auth_test.go
++++ b/tao/auth/auth_test.go
+@@ -22,40 +22,42 @@ import (
+ 
+ var key []string = []string{
+ 	`key([4b657930])`,                 // hex("Key1")
+ 	`key([4b657931])`,                 // hex("Key2")
+ 	`tpm({S2V5Mw==})`,                 // base64w("Key3")
+ 	`tpm({BgWWala-pkV7l_Yg043wLQ==})`, // base64w(some random bytes)
+ 	`tpm({BgWWala+pkV7l/Yg043wLQ==})`, // base64(some other random bytes)
+ }
+ 
+ var termtests []string = []string{
+ 	"42",
+ 	"0",
+ 	"-1",
+ 	`"Hello World"`,
+ 	`"Includes \n newlines and \t tabs"`,
+ 	"[010203abcdef]",
+ 	key[0],
+ 	key[1],
+ 	key[0] + ".Extension(1)",
+ 	key[0] + `.Extension(1).A().B(1).C(1, "Hello").D(` + key[1] + `.E(` + key[1] + `.G().H()))`,
++	"ext.Extension(1)",
++	`ext.Extension(1).A().B(1).C(1, "Hello").D(` + key[1] + `.E(` + key[1] + `.G().H()))`,
+ 	key[0] + ".E(" + key[3] + ")",
+ 	"[01 02 03abcd ef]",
+ }
+ 
+ func TestParseBase64W(t *testing.T) {
+ 	var x AnyTerm
+ 	n, err := fmt.Sscanf(key[0]+".E("+key[3]+")", "%v", &x)
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 	if n != 1 {
+ 		t.Fatal("incomplete parse")
+ 	}
+ 
+ 	// Base64 data (as opposed to Base64w data) shouldn't work.
+ 	n, err = fmt.Sscanf(key[0]+".E("+key[4]+")", "%v", &x)
+ 	if err == nil {
+ 		t.Fatalf("Incorrectly parsed Base64 data: %s", err.Error())
+ 	}
+ }
+@@ -393,20 +395,52 @@ type testStringer bool
+ func (t testStringer) String() string {
+ 	return "test"
+ }
+ 
+ func TestMakePredicate(t *testing.T) {
+ 	tests := []ptest{
+ 		ptest{"Foo", nil, "Foo()"},
+ 		ptest{"Foo", []interface{}{}, "Foo()"},
+ 		ptest{"Foo", []interface{}{1, 2, 3}, "Foo(1, 2, 3)"},
+ 		ptest{"Foo", []interface{}{"a", 2, Prin{Type: "key", Key: Bytes([]byte("abc"))}}, `Foo("a", 2, key([616263]))`},
+ 		ptest{"Foo", []interface{}{3.14, testStringer(false), true}, `Foo("3.14", "test", "true")`},
+ 	}
+ 
+ 	for _, test := range tests {
+ 		pred := MakePredicate(test.name, test.args...)
+ 		if pred.String() != test.s {
+ 			t.Fatalf("MakePredicate failed for %v vs. %v", test.s, pred)
+ 		}
+ 	}
+ }
++
++var extprins = []string{
++	`ext.PCRs("17, 18", "0a877e9010800b0c0d98, b7c5820097262978e8a7")`,
++	`ext.PCRs("17, 18", "0a877e9010800b0c0d98, b7c5820097262978e8a7").Hash([71])`,
++	`ext.Kid(1).Kid(2)`,
++}
++
++func TestExtPrin(t *testing.T) {
++	for _, e := range extprins {
++		var pt PrinTail
++		if _, err := fmt.Sscanf(e, "%s", &pt); err != nil {
++			t.Fatal("Couldn't scan the ext principal:", err)
++		}
++	}
++}
++
++var badprins = []string{
++	`ext([704569])`,
++	`ext`,
++	`key()`,
++	`tpm()`,
++}
++
++func TestBadExtPrin(t *testing.T) {
++	for _, e := range badprins {
++		var at AnyTerm
++		if _, err := fmt.Sscanf(e, "%s", &at); err == nil {
++			t.Log(at)
++			t.Fatal("Incorrectly successfully scanned an invalid Term")
++		}
++	}
++}
+diff --git a/tao/auth/binary.go b/tao/auth/binary.go
+index 7ca4f45..695be64 100644
+--- a/tao/auth/binary.go
++++ b/tao/auth/binary.go
+@@ -7,45 +7,46 @@
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package auth
+ 
+ // This file implements Marshal() and Unmarshal() functions for elements.
+ 
+ import (
+ 	"fmt"
+ )
+ 
+ const (
+ 	_ = iota
+ 
+ 	// Term tags
+-	tagPrin    // string, Term, SubPrin
+-	tagStr     // string
+-	tagBytes   // string
+-	tagInt     // int
+-	tagTermVar // string
++	tagPrin     // string, Term, SubPrin
++	tagPrinTail // SubPrin
++	tagStr      // string
++	tagBytes    // string
++	tagInt      // int
++	tagTermVar  // string
+ 
+ 	// Form tags
+ 	tagPred      // string, []Term
+ 	tagConst     // bool
+ 	tagNot       // Form
+ 	tagAnd       // []Form
+ 	tagOr        // []Form
+ 	tagImplies   // Form, Form
+ 	tagSpeaksfor // Prin, Prin
+ 	tagSays      // Prin, bool+int, bool+int, Form
+ 	tagForall    // string, Form
+ 	tagExists    // string, Form
+ 
+ 	// Other tags
+ 	tagSubPrin // [](string, []Term)
+ )
+ 
+ // Context holds outer variable bindings in the order they appear.
+ // Context []string
+ //
+@@ -65,41 +66,47 @@ const (
+ // 		}
+ // 	}
+ // 	return 0
+ // }
+ 
+ // Marshal encodes a Form or Term.
+ func Marshal(e AuthLogicElement) []byte {
+ 	buf := new(Buffer)
+ 	e.Marshal(buf)
+ 	return buf.Bytes()
+ }
+ 
+ // Marshal encodes a Prin.
+ func (t Prin) Marshal(buf *Buffer) {
+ 	buf.EncodeVarint(tagPrin)
+ 	buf.EncodeString(t.Type)
+ 	t.Key.Marshal(buf)
+ 	t.Ext.Marshal(buf)
+ }
+ 
+-// Marshal encodes a Prin.
++// Marshal encodes a PrinTail.
++func (t PrinTail) Marshal(buf *Buffer) {
++	buf.EncodeVarint(tagPrinTail)
++	t.Ext.Marshal(buf)
++}
++
++// Marshal encodes a SubPrin.
+ func (s SubPrin) Marshal(buf *Buffer) {
+ 	buf.EncodeVarint(tagSubPrin)
+ 	buf.EncodeVarint(int64(len(s)))
+ 	for _, e := range s {
+ 		buf.EncodeString(e.Name)
+ 		buf.EncodeVarint(int64(len(e.Arg)))
+ 		for _, a := range e.Arg {
+ 			a.Marshal(buf)
+ 		}
+ 	}
+ }
+ 
+ // Marshal encodes a Str.
+ func (t Str) Marshal(buf *Buffer) {
+ 	buf.EncodeVarint(tagStr)
+ 	buf.EncodeString(string(t))
+ }
+ 
+ // Marshal encodes a Bytes.
+ func (t Bytes) Marshal(buf *Buffer) {
+@@ -240,40 +247,46 @@ func decodeNameAndArgs(buf *Buffer) (name string, args []Term, err error) {
+ 			return
+ 		}
+ 	}
+ 	return
+ }
+ 
+ // decodePrin decodes a Prin without the leading tag.
+ func decodePrin(buf *Buffer) (p Prin, err error) {
+ 	p.Type, err = buf.DecodeString()
+ 	if err != nil {
+ 		return
+ 	}
+ 	p.Key, err = unmarshalTerm(buf)
+ 	if err != nil {
+ 		return
+ 	}
+ 	p.Ext, err = unmarshalSubPrin(buf)
+ 	return
+ }
+ 
++// decodePrinTail decodes a PrinTail without the leading tag.
++func decodePrinTail(buf *Buffer) (p PrinTail, err error) {
++	p.Ext, err = unmarshalSubPrin(buf)
++	return
++}
++
+ // unmarshalSubPrin decodes a SubPrin.
+ func unmarshalSubPrin(buf *Buffer) (s SubPrin, err error) {
+ 	tag, err := buf.DecodeVarint()
+ 	if err != nil {
+ 		return
+ 	}
+ 	if tag != tagSubPrin {
+ 		err = fmt.Errorf("unexpected tag: %d", tag)
+ 		return
+ 	}
+ 	return decodeSubPrin(buf)
+ }
+ 
+ // decodeSubPrin decodes a SubPrin without the leading tag.
+ func decodeSubPrin(buf *Buffer) (s SubPrin, err error) {
+ 	n, err := buf.DecodeVarint()
+ 	if err != nil {
+ 		return
+ 	}
+ 	for i := int64(0); i < n; i++ {
+@@ -284,60 +297,75 @@ func decodeSubPrin(buf *Buffer) (s SubPrin, err error) {
+ 		s = append(s, PrinExt{name, args})
+ 	}
+ 	return
+ }
+ 
+ // unmarshalTerm decodes a Term.
+ func unmarshalTerm(buf *Buffer) (t Term, err error) {
+ 	tag, err := buf.DecodeVarint()
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	switch tag {
+ 	case tagStr:
+ 		return decodeStr(buf)
+ 	case tagBytes:
+ 		return decodeBytes(buf)
+ 	case tagInt:
+ 		return decodeInt(buf)
+ 	case tagPrin:
+ 		return decodePrin(buf)
++	case tagPrinTail:
++		return decodePrinTail(buf)
+ 	case tagTermVar:
+ 		return decodeTermVar(buf)
+ 	default:
+ 		return nil, fmt.Errorf("unexpected tag: %d", tag)
+ 	}
+ }
+ 
+ // UnmarshalPrin decodes a Prin.
+ func UnmarshalPrin(bytes []byte) (p Prin, err error) {
+ 	t, err := UnmarshalTerm(bytes)
+ 	if err != nil {
+ 		return
+ 	}
+ 	p, ok := t.(Prin) // will always be value type here
+ 	if !ok {
+ 		err = fmt.Errorf("expected Prin, found %T", t)
+ 	}
+ 	return
+ }
+ 
++// UnmarshalPrinTail decodes a PrinTail.
++func UnmarshalPrinTail(bytes []byte) (p PrinTail, err error) {
++	t, err := UnmarshalTerm(bytes)
++	if err != nil {
++		return
++	}
++	p, ok := t.(PrinTail) // will always be value type here
++	if !ok {
++		err = fmt.Errorf("expected PrinTail, found %T", t)
++	}
++	return
++}
++
+ // UnmarshalTerm decodes a Term.
+ func UnmarshalTerm(bytes []byte) (Term, error) {
+ 	buf := &Buffer{bytes}
+ 	t, err := unmarshalTerm(buf)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	if len(buf.Bytes()) != 0 {
+ 		return nil, fmt.Errorf("unexpected trailing bytes")
+ 	}
+ 	return t, nil
+ }
+ 
+ // UnmarshalSubPrin decodes a SubPrin.
+ func UnmarshalSubPrin(bytes []byte) (SubPrin, error) {
+ 	buf := &Buffer{bytes}
+ 	t, err := unmarshalSubPrin(buf)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+diff --git a/tao/auth/doc.go b/tao/auth/doc.go
+index 5422d33..9995427 100644
+--- a/tao/auth/doc.go
++++ b/tao/auth/doc.go
+@@ -22,54 +22,62 @@
+ //          | forall TermVar : Form
+ //          | exists TermVar : Form
+ //          | Form implies Form
+ //          | Form or Form or ...
+ //          | Form and Form and ...
+ //          | not Form
+ //          | Pred | false | true
+ //
+ // Quantification variables range over Terms.
+ //  TermVar : Identifier
+ //
+ // Times are integers interpreted as 64-bit unix timestamps.
+ //   Time ::= int64
+ //
+ // Predicates are like boolean-valued pure functions, with a name and zero or
+ // more terms as arguments.
+ //   Pred ::= Identifier(Term, Term, ...)
+ //          | Identifier()
+ //
+ // Terms are concrete values, like strings, integers, or names of principals.
+-//   Term ::= Str | Bytes | Int | Prin | TermVar
++//   Term ::= Str | Bytes | Int | Prin | PrinTail | TermVar
+ //
+ // Int can be any Go int. Str is a double-quoted Go string. Bytes is written as
+ // pairs of hex digits, optionally separated by whitespace, between square
+ // brackets. Bytes can also be written as base64w without whitespace between
+ // curly braces.
+ //
+-// Principal names specify a key, and zero or more extensions to specify a
+-// sub-principal of that key.
+-//   Prin ::= key(Term)
+-//          | key(Term).PrinExt.PrinExt...
++// Principal names specify a key or a tpm, and zero or more extensions to
++// specify a sub-principal of that key.
++//   PrinType ::= key | tpm
++//   Prin ::= PrinType(Term)
++//          | PrinType(Term).PrinExt.PrinExt...
+ //   PrinExt ::= Identifier(Term, Term, ...)
+ //             | Identifier()
+ //
++// Principal tails represent a sequence of extensions that are not rooted in a
++// principal. They are used to make statements about authorized extensions
++// independent of the root principal. For example, they are used to specify that
++// a given program is authorized to execute on any platform. A PrinTail must be
++// followed by at least one extension.
++//   PrinTail ::= ext.PrinExt.PrinExt...
++//
+ // Identifiers for predicate and principal extension names and quantification
+ // variables are limited to simple ascii printable identifiers, with inital
+ // upper-case, and no punctuation except '_':
+ //   PredName ::= [A-Z][a-zA-Z0-9_]*
+ //   ExtName ::= [A-Z][a-zA-Z0-9_]*
+ //
+ // The keywords used in the above grammar are:
+ //   from, until, says, speaskfor, forall, exists, implies, or, and, not, false,
+ //   true, key
+ // The punctuation used are those for strings and byte slices, plus:
+ //   '(', ')', ',', '.', ':'
+ //
+ // It is possible to represent nonsensical formulas, so some sanity checking may
+ // be called for. For example, in general:
+ //   1. The left operand of Says should be Prin or TermVar, as should both
+ //   operands of Speaksfor.
+ //   2. All TermVar variables should be bound.
+ //   3. Conjunctions should have at least one conjunct.
+ //   4. Disjunctions should have at least one disjunct.
+ //   5. Identifiers should be legal using the above rules.
+diff --git a/tao/auth/format.go b/tao/auth/format.go
+index a39e9dd..060c21f 100644
+--- a/tao/auth/format.go
++++ b/tao/auth/format.go
+@@ -15,40 +15,46 @@
+ package auth
+ 
+ // This file implements Format() functions for pretty-printing elements.
+ // When printed with format verb %v, the "verbose" long form is used.
+ // When printed with format verb %s, the "short" elided form is used.
+ // When printed with other verbs, the output format is unspecified.
+ 
+ import (
+ 	"encoding/base64"
+ 	"fmt"
+ )
+ 
+ // Format outputs a pretty-printed Prin.
+ func (p Prin) Format(out fmt.State, verb rune) {
+ 	fmt.Fprintf(out, "%s(", p.Type)
+ 	p.Key.Format(out, verb)
+ 	fmt.Fprint(out, ")")
+ 	p.Ext.Format(out, verb)
+ }
+ 
++// Format outputs a pretty-printed PrinTail.
++func (p PrinTail) Format(out fmt.State, verb rune) {
++	fmt.Fprintf(out, "ext")
++	p.Ext.Format(out, verb)
++}
++
+ // Format outputs a pretty-printed PrinExt.
+ func (e PrinExt) Format(out fmt.State, verb rune) {
+ 	formatNameAndArg(out, e.Name, e.Arg, verb)
+ }
+ 
+ // formatNameAndArg outputs a pretty-printed name and argument list using short
+ // or long formats.
+ func formatNameAndArg(out fmt.State, name string, arg []Term, verb rune) {
+ 	fmt.Fprintf(out, "%s(", name)
+ 	for i, a := range arg {
+ 		if i > 0 {
+ 			fmt.Fprint(out, ", ")
+ 		}
+ 		a.Format(out, verb)
+ 	}
+ 	fmt.Fprint(out, ")")
+ }
+ 
+ // Format outputs a pretty-printed SubPrin.
+ func (p SubPrin) Format(out fmt.State, verb rune) {
+diff --git a/tao/auth/lexer.go b/tao/auth/lexer.go
+index 5b2ef32..bae7ed3 100644
+--- a/tao/auth/lexer.go
++++ b/tao/auth/lexer.go
+@@ -53,40 +53,41 @@ const (
+ 	itemRP                             // value contains ')'
+ 	itemComma                          // value contains ','
+ 	itemDot                            // value contains '.'
+ 	itemColon                          // value contains ':'
+ 	itemWhitespace                     // value contains ' ', '\t', '\n', etc.
+ )
+ 
+ var (
+ 	tokenFrom      = token{itemKeyword, "from"}
+ 	tokenUntil     = token{itemKeyword, "until"}
+ 	tokenSays      = token{itemKeyword, "says"}
+ 	tokenSpeaksfor = token{itemKeyword, "speaksfor"}
+ 	tokenForall    = token{itemKeyword, "forall"}
+ 	tokenExists    = token{itemKeyword, "exists"}
+ 	tokenImplies   = token{itemKeyword, "implies"}
+ 	tokenOr        = token{itemKeyword, "or"}
+ 	tokenAnd       = token{itemKeyword, "and"}
+ 	tokenNot       = token{itemKeyword, "not"}
+ 	tokenFalse     = token{itemKeyword, "false"}
+ 	tokenTrue      = token{itemKeyword, "true"}
++	tokenExt       = token{itemKeyword, "ext"}
+ 	tokenKey       = token{itemKeyword, "key"}
+ 	tokenTPM       = token{itemKeyword, "tpm"}
+ 	tokenLP        = token{itemLP, '('}
+ 	tokenRP        = token{itemRP, ')'}
+ 	tokenComma     = token{itemComma, ','}
+ 	tokenDot       = token{itemDot, '.'}
+ 	tokenColon     = token{itemColon, ':'}
+ 	tokenEOF       = token{itemEOF, nil}
+ )
+ 
+ // String returns pretty-printed token, e.g. for debugging.
+ func (i token) String() string {
+ 	switch i.typ {
+ 	case itemError:
+ 		return fmt.Sprintf("Error{%v}", i.val)
+ 	case itemUnexpectedRune:
+ 		return fmt.Sprintf("UnexpectedRune{%v}", i.val)
+ 	case itemEOF:
+ 		return "EOF{}"
+ 	case itemKeyword:
+diff --git a/tao/auth/parser.go b/tao/auth/parser.go
+index 79d7499..20a46cb 100644
+--- a/tao/auth/parser.go
++++ b/tao/auth/parser.go
+@@ -77,40 +77,59 @@ func (p *parser) expect(t token) error {
+ func (p *parser) skipOpenParens() int {
+ 	var n int
+ 	for n = 0; p.cur() == tokenLP; n++ {
+ 		p.advance()
+ 	}
+ 	return n
+ }
+ 
+ // expectCloseParens expects n close parens.
+ func (p *parser) expectCloseParens(n int) error {
+ 	for n > 0 {
+ 		err := p.expect(tokenRP)
+ 		if err != nil {
+ 			return err
+ 		}
+ 		n--
+ 	}
+ 	return nil
+ }
+ 
++// expectPrinTail expects a PrinTail.
++func (p *parser) expectPrinTail() (pt PrinTail, err error) {
++	if p.cur() != tokenExt {
++		err = fmt.Errorf(`expected "ext", found %v`, p.cur())
++		return
++	}
++	p.advance()
++	for p.lex.peek() == '.' {
++		pt.Ext, err = p.expectSubPrin()
++		if err != nil {
++			return
++		}
++	}
++	if len(pt.Ext) == 0 {
++		err = fmt.Errorf(`an "ext" PrinTail must have at least one extension`)
++	}
++	return
++}
++
+ // expectPrin expects a Prin.
+ func (p *parser) expectPrin() (prin Prin, err error) {
+ 	if p.cur() != tokenTPM && p.cur() != tokenKey {
+ 		err = fmt.Errorf(`expected "key" or "tpm", found %v`, p.cur())
+ 		return
+ 	}
+ 	prin.Type = p.cur().val.(string)
+ 	p.advance()
+ 	if r := p.lex.peek(); r != '(' {
+ 		err = fmt.Errorf(`expected '(' directly after "key", found %q`, r)
+ 		return
+ 	}
+ 	err = p.expect(tokenLP)
+ 	if err != nil {
+ 		return
+ 	}
+ 	prin.Key, err = p.expectTerm()
+ 	if err != nil {
+ 		return
+ 	}
+@@ -118,40 +137,51 @@ func (p *parser) expectPrin() (prin Prin, err error) {
+ 	if err != nil {
+ 		return
+ 	}
+ 	for p.lex.peek() == '.' {
+ 		prin.Ext, err = p.expectSubPrin()
+ 	}
+ 	return
+ }
+ 
+ // parsePrin parses a Prin with optional outer parens.
+ func (p *parser) parsePrin() (prin Prin, err error) {
+ 	n := p.skipOpenParens()
+ 	prin, err = p.expectPrin()
+ 	if err != nil {
+ 		return
+ 	}
+ 	err = p.expectCloseParens(n)
+ 	return
+ }
+ 
++// parsePrinTail parses a PrinTail with optional outer parens.
++func (p *parser) parsePrinTail() (pt PrinTail, err error) {
++	n := p.skipOpenParens()
++	pt, err = p.expectPrinTail()
++	if err != nil {
++		return
++	}
++	err = p.expectCloseParens(n)
++	return
++}
++
+ // expectSubPrin expects a SubPrin.
+ func (p *parser) expectSubPrin() (s SubPrin, err error) {
+ 	if p.cur() != tokenDot {
+ 		err = fmt.Errorf(`expected '.', found %v`, p.cur())
+ 		return
+ 	}
+ 	p.advance()
+ 	name, args, err := p.expectNameAndArgs()
+ 	if err != nil {
+ 		return
+ 	}
+ 	s = append(s, PrinExt{name, args})
+ 	for p.lex.peek() == '.' {
+ 		if p.cur() != tokenDot {
+ 			panic("not reached")
+ 		}
+ 		p.advance()
+ 		name, args, err = p.expectNameAndArgs()
+ 		if err != nil {
+ 			return
+@@ -293,41 +323,53 @@ func (p *parser) parseTermVar() (TermVar, error) {
+ 	if err != nil {
+ 		return "", err
+ 	}
+ 	err = p.expectCloseParens(n)
+ 	if err != nil {
+ 		return "", err
+ 	}
+ 	return t, nil
+ }
+ 
+ // expectTerm expects a Term.
+ func (p *parser) expectTerm() (Term, error) {
+ 	switch p.cur().typ {
+ 	case itemStr:
+ 		return p.expectStr()
+ 	case itemBytes:
+ 		return p.expectBytes()
+ 	case itemInt:
+ 		return p.expectInt()
+ 	case itemKeyword:
+-		return p.expectPrin()
++		// All keywords have a string value.
++		s, ok := p.cur().val.(string)
++		if !ok {
++			return nil, fmt.Errorf("a keyword must be a string")
++		}
++		switch s {
++		case "ext":
++			return p.expectPrinTail()
++		case "key", "tpm":
++			return p.expectPrin()
++		default:
++			return nil, fmt.Errorf(`expected "key", "tpm", or "ext", found %s`, s)
++		}
+ 	case itemIdentifier:
+ 		return p.expectTermVar()
+ 	default:
+ 		return nil, fmt.Errorf("expected term, found %v", p.cur())
+ 	}
+ }
+ 
+ // parseTerm parses a Term with optional outer parens.
+ func (p *parser) parseTerm() (Term, error) {
+ 	n := p.skipOpenParens()
+ 	t, err := p.expectTerm()
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	err = p.expectCloseParens(n)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	return t, nil
+ }
+@@ -504,41 +546,41 @@ func (p *parser) parseFormAtHigh(greedy bool) (Form, error) {
+ 		f, err := p.parseForm(true)
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 		err = p.expect(tokenRP)
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 		return f, nil
+ 	case tokenTrue, tokenFalse:
+ 		return p.expectConst()
+ 	case tokenNot:
+ 		p.advance()
+ 		f, err := p.parseFormAtHigh(greedy)
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 		return Not{f}, nil
+ 	case tokenForall, tokenExists:
+ 		return p.expectQuantification(greedy)
+-	case tokenKey, tokenTPM:
++	case tokenKey, tokenTPM, tokenExt:
+ 		return p.expectTermOperation(greedy)
+ 	}
+ 	switch p.cur().typ {
+ 	case itemStr, itemBytes, itemInt, itemIdentifier:
+ 		return p.expectTermOperation(greedy)
+ 	}
+ 	return nil, fmt.Errorf("expected Form, found %v", p.cur())
+ }
+ 
+ // parseFormAtAnd parses a Form, but stops when it reaches a binary Form
+ // operator of lower precedence than "and".
+ func (p *parser) parseFormAtAnd() (Form, error) {
+ 	f, err := p.parseFormAtHigh(true)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	if p.cur() != tokenAnd {
+ 		return f, nil
+ 	}
+ 	and, ok := f.(And)
+diff --git a/tao/auth/scan.go b/tao/auth/scan.go
+index 4960a0a..d93fdbe 100644
+--- a/tao/auth/scan.go
++++ b/tao/auth/scan.go
+@@ -15,40 +15,51 @@
+ package auth
+ 
+ // This file implements Scan() functions for all elements so they can be used
+ // with fmt.Scanf() and friends.
+ 
+ import (
+ 	"fmt"
+ )
+ 
+ // Scan parses a Prin, with optional outer parens.
+ func (p *Prin) Scan(state fmt.ScanState, verb rune) error {
+ 	parser := newParser(state)
+ 	prin, err := parser.parsePrin()
+ 	if err != nil {
+ 		return err
+ 	}
+ 	*p = prin
+ 	return nil
+ }
+ 
++// Scan parses a PrinTail, with optional outer parens.
++func (pt *PrinTail) Scan(state fmt.ScanState, verb rune) error {
++	parser := newParser(state)
++	prinTail, err := parser.parsePrinTail()
++	if err != nil {
++		return err
++	}
++	*pt = prinTail
++	return nil
++}
++
+ // Scan parses a PrinExt.
+ func (e *PrinExt) Scan(state fmt.ScanState, verb rune) error {
+ 	parser := newParser(state)
+ 	name, args, err := parser.expectNameAndArgs()
+ 	if err != nil {
+ 		return err
+ 	}
+ 	e.Name = name
+ 	e.Arg = args
+ 	return nil
+ }
+ 
+ // Scan parses a SubPrin.
+ func (e *SubPrin) Scan(state fmt.ScanState, verb rune) error {
+ 	parser := newParser(state)
+ 	subprin, err := parser.expectSubPrin()
+ 	if err != nil {
+ 		return err
+ 	}
+ 	*e = subprin
+diff --git a/tao/auth/shortstring.go b/tao/auth/shortstring.go
+index 443471c..2e5153c 100644
+--- a/tao/auth/shortstring.go
++++ b/tao/auth/shortstring.go
+@@ -9,40 +9,45 @@
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package auth
+ 
+ import (
+ 	"fmt"
+ )
+ 
+ // Note: Yes, all of these functions are identical, but I don't see a way of
+ // making this shorter in Go.
+ 
+ // ShortString returns an elided pretty-printed Prin.
+ func (e Prin) ShortString() string {
+ 	return fmt.Sprintf("%s", e)
+ }
+ 
++// ShortString returns an elided pretty-printed PrinTail.
++func (e PrinTail) ShortString() string {
++	return fmt.Sprintf("%s", e)
++}
++
+ // ShortString returns an elided pretty-printed PrinExt.
+ func (e PrinExt) ShortString() string {
+ 	return fmt.Sprintf("%s", e)
+ }
+ 
+ // ShortString returns an elided pretty-printed SubPrin.
+ func (e SubPrin) ShortString() string {
+ 	return fmt.Sprintf("%s", e)
+ }
+ 
+ // ShortString returns an elided pretty-printed Int.
+ func (e Int) ShortString() string {
+ 	return fmt.Sprintf("%s", e)
+ }
+ 
+ // ShortString returns an elided pretty-printed Str.
+ func (e Str) ShortString() string {
+ 	return fmt.Sprintf("%s", e)
+ }
+ 
+diff --git a/tao/auth/string.go b/tao/auth/string.go
+index 138e48d..20af4ee 100644
+--- a/tao/auth/string.go
++++ b/tao/auth/string.go
+@@ -9,40 +9,45 @@
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package auth
+ 
+ import (
+ 	"fmt"
+ )
+ 
+ // Note: Yes, all of these functions are identical, but I don't see a way of
+ // making this shorter in Go.
+ 
+ // String returns a pretty-printed Prin.
+ func (e Prin) String() string {
+ 	return fmt.Sprintf("%v", e)
+ }
+ 
++// String returns a pretty-printed PrinTail.
++func (e PrinTail) String() string {
++	return fmt.Sprintf("%v", e)
++}
++
+ // String returns a pretty-printed PrinExt.
+ func (e PrinExt) String() string {
+ 	return fmt.Sprintf("%v", e)
+ }
+ 
+ // String returns a pretty-printed SubPrin.
+ func (e SubPrin) String() string {
+ 	return fmt.Sprintf("%v", e)
+ }
+ 
+ // String returns a pretty-printed Int.
+ func (e Int) String() string {
+ 	return fmt.Sprintf("%v", e)
+ }
+ 
+ // String returns a pretty-printed Str.
+ func (e Str) String() string {
+ 	return fmt.Sprintf("%v", e)
+ }
+ 
+diff --git a/tao/datalog_guard.go b/tao/datalog_guard.go
+index e6f8acb..cef0741 100644
+--- a/tao/datalog_guard.go
++++ b/tao/datalog_guard.go
+@@ -10,40 +10,41 @@
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ // This interface was derived from the code in src/tao/tao_guard.h.
+ 
+ package tao
+ 
+ import (
+ 	"fmt"
+ 	"io/ioutil"
+ 	"os"
+ 	"strings"
+ 	"time"
+ 
+ 	"code.google.com/p/goprotobuf/proto"
+ 
+ 	"github.com/jlmucb/cloudproxy/tao/auth"
+ 	"github.com/jlmucb/cloudproxy/util"
++	"github.com/kevinawalsh/datalog"
+ 	"github.com/kevinawalsh/datalog/dlengine"
+ )
+ 
+ // Signing context for signatures on a set of Tao datalog rules.
+ const (
+ 	DatalogRulesSigningContext = "Datalog Rules Signing Context V1"
+ )
+ 
+ // DatalogGuardConfig holds persistent configuration data for a DatalogGuard.
+ type DatalogGuardConfig struct {
+ 	SignedRulesPath string
+ }
+ 
+ // DatalogGuard implements a datalog-based policy engine. Rules in this engine
+ // have the form:
+ //   (forall X, Y, Z... : F implies G)
+ // where
+ //   F is a predicate or a conjunction of predicates
+ //   G is a predicate
+ // All predicate arguments must be either concrete terms (Int, Str, Prin, etc.)
+@@ -66,53 +67,196 @@ type DatalogGuardConfig struct {
+ // and speaksfor logic within datalog.
+ //
+ // Term objects are usually translated to datalog by just printing them. In this
+ // case, a Prin object must not contain any TermVar objects. TermVar objects
+ // must be uppercase.
+ //
+ // "Term says Pred(...)" is translated to "says(Term, \"Pred\", ...)".
+ //
+ // "Pred(...)" alone is translated to "says(K, \"Pred\", ...)".
+ //
+ // "forall ... F1 and F2 and ... imp G" is translated to "G :- F1, F2, ...".
+ type DatalogGuard struct {
+ 	Config DatalogGuardConfig
+ 	Key    *Verifier
+ 	// TODO(kwalsh) maybe use a version number or timestamp inside the file?
+ 	modTime time.Time // Modification time of signed rules file at time of reading.
+ 	db      DatalogRules
+ 	dl      *dlengine.Engine
+ }
+ 
++// subprinPrim is a custom datalog primitive that implements subprincipal
++// detection. The predicate Subprin(S, P, E) in auth is special-cased in
++// DatalogGuard to write in datalog to subprin/3 with arguments S, P, E.
++type subprinPrim struct {
++	datalog.DistinctPred
++}
++
++// String returns a string representation of the subprin custom datalog
++// predicate.
++func (sp *subprinPrim) String() string {
++	return "subprin"
++}
++
++func (sp *subprinPrim) Assert(c *datalog.Clause) error {
++	return newError("datalog: can't assert for custom predicates")
++}
++
++func (sp *subprinPrim) Retract(c *datalog.Clause) error {
++	return newError("datalog: can't retract for custom predicates")
++}
++
++// parseRootExtPrins parses a pair of terms as a key/tpm principal and an
++// extension principal tail. Both Terms must implement fmt.Stringer.
++func parseRootExtPrins(o datalog.Term, e datalog.Term) (oprin auth.Prin, eprin auth.PrinTail, err error) {
++	// Report subprin(O.E, O, E) as discovered.
++	ostringer, ok1 := o.(fmt.Stringer)
++	estringer, ok2 := e.(fmt.Stringer)
++	if !ok1 || !ok2 {
++		err = fmt.Errorf("arguments 2 and 3 must implement fmt.Stringer in subprin/3")
++		return
++	}
++
++	// The first must be a regular rooted principal, and the second must be
++	// an ext principal tail.
++	var ostr string
++	if _, err = fmt.Sscanf(ostringer.String(), "%q", &ostr); err != nil {
++		return
++	}
++
++	var estr string
++	if _, err = fmt.Sscanf(estringer.String(), "%q", &estr); err != nil {
++		return
++	}
++
++	if _, err = fmt.Sscanf(ostr, "%v", &oprin); err != nil {
++		return
++	}
++	if _, err = fmt.Sscanf(estr, "%v", &eprin); err != nil {
++		return
++	}
++	return
++}
++
++// parseCompositePrin parses a Term (which must implement fmt.Stringer) as a
++// principal with at least one extension.
++func parseCompositePrin(p datalog.Term) (prin auth.Prin, err error) {
++	// Parse p as Parent.Ext and report subprin(Parent.Ext, Parent, Ext).
++	pstringer, ok := p.(fmt.Stringer)
++	if !ok {
++		err = fmt.Errorf("A composite principal must be a Stringer")
++		return
++	}
++
++	// Due to the way the translation works between DatalogGuard and the Datalog
++	// engine, this is a quoted string. So, trim the quotes at the beginning and
++	// the end of the string before parsing it.
++	var pstr string
++	if _, err = fmt.Sscanf(pstringer.String(), "%q", &pstr); err != nil {
++		return
++	}
++	if _, err = fmt.Sscanf(pstr, "%v", &prin); err != nil {
++		return
++	}
++	if len(prin.Ext) < 1 {
++		err = fmt.Errorf("A composite principal must have extensions")
++		return
++	}
++
++	return
++}
++
++// Search implements the subprinPrim custom datalog primitive by parsing
++// constant arguments of subprin/3 as principals and reporting any clauses it
++// discovers.
++func (sp *subprinPrim) Search(target *datalog.Literal, discovered func(c *datalog.Clause)) {
++	p := target.Arg[0]
++	o := target.Arg[1]
++	e := target.Arg[2]
++	if p.Constant() && o.Variable() && e.Variable() {
++		prin, err := parseCompositePrin(p)
++		if err != nil {
++			return
++		}
++		extIndex := len(prin.Ext) - 1
++		trimmedPrin := auth.Prin{
++			Type: prin.Type,
++			Key:  prin.Key,
++			Ext:  prin.Ext[:extIndex],
++		}
++		extPrin := auth.PrinTail{
++			Ext: []auth.PrinExt{prin.Ext[extIndex]},
++		}
++
++		parentIdent := dlengine.NewIdent(fmt.Sprintf("%q", trimmedPrin.String()))
++		extIdent := dlengine.NewIdent(fmt.Sprintf("%q", extPrin.String()))
++		discovered(datalog.NewClause(datalog.NewLiteral(sp, p, parentIdent, extIdent)))
++	} else if p.Variable() && o.Constant() && e.Constant() {
++		oprin, eprin, err := parseRootExtPrins(o, e)
++		if err != nil {
++			return
++		}
++		oprin.Ext = append(oprin.Ext, eprin.Ext...)
++		oeIdent := dlengine.NewIdent(fmt.Sprintf("%q", oprin.String()))
++		discovered(datalog.NewClause(datalog.NewLiteral(sp, oeIdent, o, e)))
++	} else if p.Constant() && o.Constant() && e.Constant() {
++		// Check that the constraint holds and report it as discovered.
++		prin, err := parseCompositePrin(p)
++		if err != nil {
++			return
++		}
++		oprin, eprin, err := parseRootExtPrins(o, e)
++		if err != nil {
++			return
++		}
++
++		// Extend the root principal with the extension from the ext principal
++		// and check identity.
++		oprin.Ext = append(oprin.Ext, eprin.Ext...)
++		if prin.Identical(oprin) {
++			discovered(datalog.NewClause(datalog.NewLiteral(sp, p, o, e)))
++		}
++	}
++}
++
+ // NewTemporaryDatalogGuard returns a new datalog guard with a fresh, unsigned,
+-// non-persistent rule set.
++// non-persistent rule set. It adds a custom predicate subprin(P, O, E) to check
++// if a principal P is a subprincipal O.E.
+ func NewTemporaryDatalogGuard() Guard {
+-	return &DatalogGuard{dl: dlengine.NewEngine()}
++	sp := new(subprinPrim)
++	sp.SetArity(3)
++	eng := dlengine.NewEngine()
++	eng.AddPred(sp)
++	return &DatalogGuard{dl: eng}
+ }
+ 
+ // NewDatalogGuard returns a new datalog guard that uses a signed, persistent
+ // signed rule set. ReloadIfModified() should be called to load the rule set.
+ func NewDatalogGuard(key *Verifier, config DatalogGuardConfig) (*DatalogGuard, error) {
+ 	if key == nil || config.SignedRulesPath == "" {
+ 		return nil, newError("datalog guard missing key or path")
+ 	}
+-	g := &DatalogGuard{Config: config, Key: key, dl: dlengine.NewEngine()}
++	sp := new(subprinPrim)
++	sp.SetArity(3)
++	eng := dlengine.NewEngine()
++	eng.AddPred(sp)
++	g := &DatalogGuard{Config: config, Key: key, dl: eng}
+ 	return g, nil
+ }
+ 
+ // SubprincipalName returns subprincipal DatalogGuard, for temporary guards, or
+ // DatalogGuard(<key>) for persistent guards.
+ func (g *DatalogGuard) Subprincipal() auth.SubPrin {
+ 	if g.Key == nil {
+ 		e := auth.PrinExt{Name: "DatalogGuard"}
+ 		return auth.SubPrin{e}
+ 	} else {
+ 		e := auth.PrinExt{Name: "DatalogGuard", Arg: []auth.Term{g.Key.ToPrincipal()}}
+ 		return auth.SubPrin{e}
+ 	}
+ }
+ 
+ // ReloadIfModified reads all persistent policy data from disk if the file
+ // timestamp is more recent than the last time it was read.
+ func (g *DatalogGuard) ReloadIfModified() error {
+ 	if g.Key == nil {
+ 		return nil
+@@ -133,43 +277,44 @@ func (g *DatalogGuard) ReloadIfModified() error {
+ 	}
+ 
+ 	serialized, err := ioutil.ReadAll(file)
+ 	if err != nil {
+ 		return err
+ 	}
+ 	var sdb SignedDatalogRules
+ 	if err := proto.Unmarshal(serialized, &sdb); err != nil {
+ 		return err
+ 	}
+ 	if ok, err := g.Key.Verify(sdb.SerializedRules, DatalogRulesSigningContext, sdb.Signature); !ok {
+ 		if err != nil {
+ 			return err
+ 		}
+ 		return newError("datalog rule signature did not verify")
+ 	}
+ 	var db DatalogRules
+ 	if err := proto.Unmarshal(sdb.SerializedRules, &db); err != nil {
+ 		return err
+ 	}
+-	g.Clear()
++	// Only clear the rules set, since g.assert already skips datalog rules that
++	// are already present in the engine.
++	g.db.Rules = nil
+ 	g.modTime = info.ModTime()
+-	g.db = db
+ 	for _, rule := range db.Rules {
+ 		r, err := auth.UnmarshalForm(rule)
+ 		if err != nil {
+ 			return err
+ 		}
+ 		err = g.assert(r)
+ 		if err != nil {
+ 			return err
+ 		}
+ 	}
+ 	return nil
+ }
+ 
+ // Save writes all persistent policy data to disk, signed by key.
+ func (g *DatalogGuard) Save(key *Signer) error {
+ 	if key == nil {
+ 		return newError("datalog temporary ruleset can't be saved")
+ 	}
+ 	rules, err := proto.Marshal(&g.db)
+ 	if err != nil {
+@@ -316,61 +461,75 @@ func checkFormVarUsage(vars []string, unusedVars *[]string, e ...auth.Form) erro
+ }
+ 
+ func (g *DatalogGuard) stmtToDatalog(f auth.Form, vars []string, unusedVars *[]string) (string, error) {
+ 	speaker := "guard"
+ 	if g.Key != nil {
+ 		speaker = g.Key.ToPrincipal().String()
+ 	}
+ 	stmt, ok := f.(*auth.Says)
+ 	if !ok {
+ 		var val auth.Says
+ 		val, ok = (f).(auth.Says)
+ 		if ok {
+ 			stmt = &val
+ 		}
+ 	}
+ 	if ok {
+ 		err := checkTermVarUsage(vars, unusedVars, stmt.Speaker)
+ 		if err != nil {
+ 			return "", err
+ 		}
+-		speaker = stmt.Speaker.String()
+-		f = stmt.Message
+ 	}
+ 	err := checkFormVarUsage(vars, unusedVars, f)
+ 	if err != nil {
+ 		return "", err
+ 	}
+ 	pred, ok := f.(*auth.Pred)
+ 	if !ok {
+ 		var val auth.Pred
+ 		val, ok = f.(auth.Pred)
+ 		if ok {
+ 			pred = &val
+ 		}
+ 	}
+ 	if !ok {
+ 		return "", fmt.Errorf("unsupported datalog statement: %v", f)
+ 	}
+-	args := []string{fmt.Sprintf("%q", speaker), fmt.Sprintf("%q", pred.Name)}
++	// Special-case: the principal named "Subprin" maps directly to subprinPrim.
++	var args []string
++	if pred.Name != "Subprin" {
++		args = []string{fmt.Sprintf("%q", speaker), fmt.Sprintf("%q", pred.Name)}
++	}
++
+ 	for _, arg := range pred.Arg {
+-		args = append(args, fmt.Sprintf("%q", arg.String()))
++		if _, ok := arg.(auth.TermVar); ok {
++			// Don't quote variables, since otherwise they won't work as
++			// variables in the datalog representation.
++			args = append(args, fmt.Sprintf("%s", arg.String()))
++		} else {
++			args = append(args, fmt.Sprintf("%q", arg.String()))
++		}
++	}
++	if pred.Name == "Subprin" {
++		s := "subprin(" + strings.Join(args, ", ") + ")"
++		return s, nil
++
+ 	}
+ 	return "says(" + strings.Join(args, ", ") + ")", nil
+ }
+ 
+ // formToDatalogRule converts (a subset of) auth.Form to datalog syntax.
+ func (g *DatalogGuard) formToDatalogRule(f auth.Form) (string, error) {
+ 	f, vars := stripQuantifiers(f)
+ 	conditions, consequent := stripConditions(f)
+ 	// vars must be upper-case
+ 	for _, v := range vars {
+ 		if len(v) == 0 || v[0] < 'A' || v[0] > 'Z' {
+ 			return "", fmt.Errorf("illegal quantification variable")
+ 		}
+ 	}
+ 	// convert the conditions
+ 	dcond := make([]string, len(conditions))
+ 	unusedVars := append([]string{}, vars...)
+ 	for i, cond := range conditions {
+ 		var err error
+ 		dcond[i], err = g.stmtToDatalog(cond, vars, &unusedVars)
+diff --git a/tao/datalog_guard_test.go b/tao/datalog_guard_test.go
+index 4d238af..3ff0b80 100644
+--- a/tao/datalog_guard_test.go
++++ b/tao/datalog_guard_test.go
+@@ -16,41 +16,41 @@ package tao
+ 
+ import (
+ 	"fmt"
+ 	"io/ioutil"
+ 	"os"
+ 	"testing"
+ 
+ 	"github.com/jlmucb/cloudproxy/tao/auth"
+ )
+ 
+ func makeDatalogGuard(t *testing.T) (*DatalogGuard, *Signer, string) {
+ 	tmpdir, err := ioutil.TempDir("/tmp", "test_datalog_guard")
+ 	if err != nil {
+ 		t.Fatal("Couldn't get a temp directory for the datalog guard test")
+ 	}
+ 	signer, err := GenerateSigner()
+ 	if err != nil {
+ 		t.Fatal(err.Error())
+ 	}
+ 	g, err := NewDatalogGuard(signer.GetVerifier(), DatalogGuardConfig{
+-		SignedRulesPath: tmpdir + "/signed_rules",
++		SignedRulesPath: tmpdir + "/rules",
+ 	})
+ 	if err != nil {
+ 		t.Fatal(err)
+ 	}
+ 	return g, signer, tmpdir
+ }
+ 
+ var subj = auth.NewKeyPrin([]byte("test1"))
+ var subj2 = auth.NewKeyPrin([]byte("test2"))
+ 
+ func TestDatalogSaveReload(t *testing.T) {
+ 	g, key, tmpdir := makeDatalogGuard(t)
+ 	defer os.RemoveAll(tmpdir)
+ 	err := g.Save(key)
+ 	if err != nil {
+ 		t.Fatal(err)
+ 	}
+ 	err = g.ReloadIfModified()
+ 	if err != nil {
+ 		t.Fatal(err)
+@@ -108,39 +108,116 @@ func TestDatalogAuthorizeRetract(t *testing.T) {
+ func TestDatalogRules(t *testing.T) {
+ 	g, _, tmpdir := makeDatalogGuard(t)
+ 	defer os.RemoveAll(tmpdir)
+ 
+ 	err := g.AddRule(fmt.Sprintf(`(forall F: IsFile(F) implies Authorized(%s, "read", F))`, subj))
+ 	if err != nil {
+ 		t.Fatal(err)
+ 	}
+ 
+ 	err = g.AddRule(fmt.Sprintf(`IsFile("somefile")`))
+ 	if err != nil {
+ 		t.Fatal(err)
+ 	}
+ 
+ 	err = g.AddRule(fmt.Sprintf(`IsFile("otherfile")`))
+ 	if err != nil {
+ 		t.Fatal(err)
+ 	}
+ 
+ 	ok := g.IsAuthorized(subj, "read", []string{"somefile"})
+-	if ok {
++	if !ok {
+ 		t.Fatal("denied, should have been authorized")
+ 	}
+ 
+ 	ok = g.IsAuthorized(subj, "read", []string{"otherfile"})
+-	if ok {
++	if !ok {
+ 		t.Fatal("denied, should have been authorized")
+ 	}
+ 
+ 	ok = g.IsAuthorized(subj, "write", []string{"somefile"})
+ 	if ok {
+ 		t.Fatal("authorized, should have been denied")
+ 	}
+ 
+ 	ok = g.IsAuthorized(subj2, "read", []string{"somefile"})
+ 	if ok {
+ 		t.Fatal("authorized, should have been denied")
+ 	}
+ }
++
++// datalogProg contains simple test rules for authorization.
++var datalogProg = []string{
++	"(forall P: MemberProgram(P) implies Authorized(P, \"Execute\"))",
++	"(MemberProgram(key([70])))",
++}
++
++func TestDatalogSimpleTranslation(t *testing.T) {
++	g, s, tmpdir := makeDatalogGuard(t)
++	defer os.RemoveAll(tmpdir)
++
++	for _, s := range datalogProg {
++		if err := g.AddRule(s); err != nil {
++			t.Fatal("Couldn't add rule '", s, "':", err)
++		}
++	}
++
++	kprin := auth.Prin{
++		Type: "key",
++		Key:  auth.Bytes([]byte{0x70}),
++	}
++	if !g.IsAuthorized(kprin, "Execute", nil) {
++		t.Fatal("Simple authorization check failed")
++	}
++
++	if err := g.Save(s); err != nil {
++		t.Fatal("Couldn't save the guard:", err)
++	}
++
++	ok, err := g.Query("MemberProgram(key([70]))")
++	if err != nil {
++		t.Fatal("Couldn't query the guard:", err)
++	}
++	if !ok {
++		t.Fatal("A simple sanity-check query failed")
++	}
++
++	ok, err = g.Query("Authorized(key([70]), \"Execute\")")
++	if err != nil {
++		t.Fatal("Couldn't query the guard:", err)
++	}
++	if !ok {
++		t.Fatal("A simple authorized query didn't succeed")
++	}
++}
++
++// datalogSubprinProg contains rules that use the custom primitive subprin.
++var datalogSubprinProg = []string{
++	"(forall Y: forall P: forall Q: TrustedOS(P) and TrustedProgramHash(Q) and Subprin(Y, P, Q) implies Authorized(Y, \"Execute\"))",
++	"(TrustedOS(key([70])))",
++	"(TrustedProgramHash(ext.Hash([71])))",
++}
++
++func TestDatalogSubprin(t *testing.T) {
++	g, _, tmpdir := makeDatalogGuard(t)
++	defer os.RemoveAll(tmpdir)
++
++	for _, s := range datalogSubprinProg {
++		if err := g.AddRule(s); err != nil {
++			t.Fatal("Couldn't add rule '", s, "':", err)
++		}
++	}
++
++	pprin := auth.Prin{
++		Type: "key",
++		Key:  auth.Bytes([]byte{0x70}),
++		Ext: []auth.PrinExt{
++			auth.PrinExt{
++				Name: "Hash",
++				Arg:  []auth.Term{auth.Bytes([]byte{0x71})},
++			},
++		},
++	}
++	if !g.IsAuthorized(pprin, "Execute", nil) {
++		t.Fatal("Subprin authorization check failed")
++	}
++}
+diff --git a/tao/domain.go b/tao/domain.go
+index a29057c..8e6d203 100644
+--- a/tao/domain.go
++++ b/tao/domain.go
+@@ -68,47 +68,40 @@ type DomainConfig struct {
+ 
+ // Print prints the configuration to out.
+ func (cfg DomainConfig) Print(out io.Writer) error {
+ 	return util.PrintAsGitConfig(out, cfg, "Tao Domain Configuration file")
+ }
+ 
+ // SetDefaults sets each blank field of cfg to a reasonable default value.
+ func (cfg *DomainConfig) SetDefaults() {
+ 	if cfg.Domain.Name == "" {
+ 		cfg.Domain.Name = "Tao example domain"
+ 	}
+ 	if cfg.Domain.PolicyKeysPath == "" {
+ 		cfg.Domain.PolicyKeysPath = "policy_keys"
+ 	}
+ 	if cfg.Domain.GuardType == "" {
+ 		cfg.Domain.GuardType = "DenyAll"
+ 	}
+ 	if cfg.X509Details.CommonName == "" {
+ 		cfg.X509Details.CommonName = cfg.Domain.Name
+ 	}
+-	// TODO(tmroeder): should this be here? There are currently no reasonable
+-	// defaults for ACLGuardConfig, since it consists solely of the path to the
+-	// signed rules file.
+-	switch cfg.Domain.GuardType {
+-	case "Datalog":
+-		//(&cfg.DatalogGuard).SetDefaults()
+-	}
+ }
+ 
+ // String returns the name of the domain.
+ func (d *Domain) String() string {
+ 	return d.Config.Domain.Name
+ }
+ 
+ // Subprincipal returns a subprincipal suitable for contextualizing a program.
+ func (d *Domain) Subprincipal() auth.SubPrin {
+ 	e := auth.PrinExt{
+ 		Name: "Domain",
+ 		Arg: []auth.Term{
+ 			d.Keys.VerifyingKey.ToPrincipal(),
+ 			auth.Str(d.Config.Domain.GuardType),
+ 		},
+ 	}
+ 	return auth.SubPrin{e}
+ }
+ 
+ // CreateDomain initializes a new Domain, writing its configuration files to
+@@ -119,41 +112,44 @@ func (d *Domain) Subprincipal() auth.SubPrin {
+ func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain, error) {
+ 	(&cfg).SetDefaults()
+ 
+ 	configDir := path.Dir(configPath)
+ 	err := os.MkdirAll(configDir, 0777)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	keypath := path.Join(configDir, cfg.Domain.PolicyKeysPath)
+ 	keys, err := NewOnDiskPBEKeys(Signing, password, keypath, NewX509Name(cfg.X509Details))
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	var guard Guard
+ 	switch cfg.Domain.GuardType {
+ 	case "ACLs":
+ 		guard = NewACLGuard(cfg.ACLGuard)
+ 	case "Datalog":
+-		return nil, newError("datalog guard not yet implemented")
++		guard, err = NewDatalogGuard(keys.VerifyingKey, cfg.DatalogGuard)
++		if err != nil {
++			return nil, err
++		}
+ 	case "AllowAll":
+ 		guard = LiberalGuard
+ 	case "DenyAll":
+ 		guard = ConservativeGuard
+ 	default:
+ 		return nil, newError("unrecognized guard type: %s", cfg.Domain.GuardType)
+ 	}
+ 
+ 	d := &Domain{cfg, configPath, keys, guard}
+ 	err = d.Save()
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	return d, nil
+ }
+ 
+ // Save writes all domain configuration and policy data.
+ func (d *Domain) Save() error {
+ 	file, err := util.CreatePath(d.ConfigPath, 0777, 0666)
+ 	if err != nil {
+@@ -175,29 +171,37 @@ func LoadDomain(configPath string, password []byte) (*Domain, error) {
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	configDir := path.Dir(configPath)
+ 	keypath := path.Join(configDir, cfg.Domain.PolicyKeysPath)
+ 	keys, err := NewOnDiskPBEKeys(Signing, password, keypath, nil)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+ 	var guard Guard
+ 	switch cfg.Domain.GuardType {
+ 	case "ACLs":
+ 		var err error
+ 		guard, err = LoadACLGuard(keys.VerifyingKey, cfg.ACLGuard)
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 	case "Datalog":
+-		return nil, newError("datalog guard not yet implemented")
++		var err error
++		datalogGuard, err := NewDatalogGuard(keys.VerifyingKey, cfg.DatalogGuard)
++		if err != nil {
++			return nil, err
++		}
++		if err := datalogGuard.ReloadIfModified(); err != nil {
++			return nil, err
++		}
++		guard = datalogGuard
+ 	case "AllowAll":
+ 		guard = LiberalGuard
+ 	case "DenyAll":
+ 		guard = ConservativeGuard
+ 	}
+ 
+ 	return &Domain{cfg, configPath, keys, guard}, nil
+ }
+diff --git a/tao/domain_test.go b/tao/domain_test.go
+index 9e37a17..bd53377 100644
+--- a/tao/domain_test.go
++++ b/tao/domain_test.go
+@@ -2,62 +2,127 @@
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ //
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
+ package tao
+ 
+ import (
+ 	"io/ioutil"
+ 	"os"
+ 	"path"
+ 	"testing"
++
++	"github.com/jlmucb/cloudproxy/tao/auth"
+ )
+ 
+ var testDomainPassword = []byte(`insecure dummy password`)
++var authPrin = auth.Prin{
++	Type: "key",
++	Key:  auth.Bytes([]byte(`fake key`)),
++}
+ 
+-func testNewDomain(t *testing.T) (*Domain, string) {
+-	tmpdir, err := ioutil.TempDir("/tmp", "acl_guard_test")
++func testNewACLDomain(t *testing.T) (*Domain, string) {
++	tmpdir, err := ioutil.TempDir("/tmp", "acl_domain_test")
+ 	if err != nil {
+ 		t.Fatal("Couldn't get a temp directory for the new ACL guard:", err)
+ 	}
+ 
+ 	var dcfg DomainConfig
+ 	dcfg.Domain.Name = "Test"
+ 	dcfg.Domain.PolicyKeysPath = "keys"
+ 	dcfg.Domain.GuardType = "ACLs"
+ 	dcfg.SetDefaults()
+ 	dcfg.ACLGuard = ACLGuardConfig{SignedACLsPath: path.Join(tmpdir, "acls")}
+ 	d, err := CreateDomain(dcfg, path.Join(tmpdir, "tao.config"), testDomainPassword)
+ 	if err != nil {
+ 		os.RemoveAll(tmpdir)
+ 		t.Fatal("Couldn't create a domain:", err)
+ 	}
+ 
+ 	return d, tmpdir
+ }
+ 
+-func TestDomainSaveAndLoad(t *testing.T) {
+-	d, tmpdir := testNewDomain(t)
++func TestDomainACLSaveAndLoad(t *testing.T) {
++	d, tmpdir := testNewACLDomain(t)
+ 	defer os.RemoveAll(tmpdir)
+ 
++	d.Guard.Authorize(authPrin, "Execute", nil)
++	if err := d.Save(); err != nil {
++		t.Fatal("Couldn't save the ACL-based domain:", err)
++	}
++
+ 	d2, err := LoadDomain(path.Join(tmpdir, "tao.config"), testDomainPassword)
+ 	if err != nil {
+-		t.Fatal("Couldn't load the domain:", err)
++		t.Fatal("Couldn't load the ACL domain:", err)
+ 	}
+ 
+ 	if !d.Subprincipal().Identical(d2.Subprincipal()) {
+-		t.Fatal("The subprincipal of the loaded domain was not the same as the original:", err)
++		t.Fatal("The subprincipal of the loaded domain was not the same as the original")
+ 	}
+ 
+ 	if d.String() != d2.String() {
+-		t.Fatal("The name of the loaded domain is not the same as the original:", err)
++		t.Fatal("The name of the loaded ACL domain is not the same as the original")
++	}
++
++	if d.Guard.String() != d2.Guard.String() {
++		t.Fatal("The string representation of the loaded guard didn't match the original")
++	}
++}
++
++func testNewDatalogDomain(t *testing.T) (*Domain, string) {
++	tmpdir, err := ioutil.TempDir("/tmp", "datalog_domain_test")
++	if err != nil {
++		t.Fatal("Couldn't get a temp directory for the new ACL guard:", err)
++	}
++
++	var dcfg DomainConfig
++	dcfg.Domain.Name = "Test"
++	dcfg.Domain.PolicyKeysPath = "keys"
++	dcfg.Domain.GuardType = "Datalog"
++	dcfg.SetDefaults()
++	dcfg.DatalogGuard = DatalogGuardConfig{SignedRulesPath: path.Join(tmpdir, "policy_rules")}
++	d, err := CreateDomain(dcfg, path.Join(tmpdir, "tao.config"), testDomainPassword)
++	if err != nil {
++		os.RemoveAll(tmpdir)
++		t.Fatal("Couldn't create a domain:", err)
++	}
++
++	return d, tmpdir
++}
++
++func TestDomainDatalogSaveAndLoad(t *testing.T) {
++	d, tmpdir := testNewDatalogDomain(t)
++	defer os.RemoveAll(tmpdir)
++
++	if err := d.Guard.Authorize(authPrin, "Execute", nil); err != nil {
++		t.Fatal("Couldn't authorize a simple key principal to Execute:", err)
++	}
++	if err := d.Save(); err != nil {
++		t.Fatal("Couldn't save the original domain after authorization:", err)
++	}
++
++	d2, err := LoadDomain(path.Join(tmpdir, "tao.config"), testDomainPassword)
++	if err != nil {
++		t.Fatal("Couldn't load the datalog domain:", err)
++	}
++
++	if !d.Subprincipal().Identical(d2.Subprincipal()) {
++		t.Fatal("The subprincipal of the loaded domain was not the same as the original")
++	}
++
++	if d.String() != d2.String() {
++		t.Fatal("The string representation of the loaded datalog domain is not the same as the original")
++	}
++
++	if d.Guard.String() != d2.Guard.String() {
++		t.Fatal("The string representation of the loaded datalog guard didn't match the original")
+ 	}
+ }
+diff --git a/tao/tao.go b/tao/tao.go
+index fc6b6b5..7dd66fc 100644
+--- a/tao/tao.go
++++ b/tao/tao.go
+@@ -108,41 +108,41 @@ func Parent() Tao {
+ 			}
+ 			cachedHost = host
+ 		} else {
+ 			// TODO(tmroeder): this version assumes that the AIK blob is under
+ 			// the TPMTao directory as aikblob. This should be specified more
+ 			// clearly in the environment variables.
+ 
+ 			dir := strings.TrimSuffix(r, "\")")
+ 			aikblob, err := ioutil.ReadFile(path.Join(dir, "aikblob"))
+ 			if err != nil {
+ 				glog.Error(err)
+ 				return
+ 			}
+ 
+ 			taoPCRs := os.Getenv(TaoPCRsEnvVar)
+ 			pcrStr := strings.TrimPrefix(taoPCRs, "PCRs(\"")
+ 
+ 			// This index operation will never panic, since strings.Split always
+ 			// returns at least one entry in the resulting slice.
+ 			pcrIntList := strings.Split(pcrStr, "\", \"")[0]
+-			pcrInts := strings.Split(pcrIntList, ", ")
++			pcrInts := strings.Split(pcrIntList, ",")
+ 			pcrs := make([]int, len(pcrInts))
+ 			for i, s := range pcrInts {
+ 				var err error
+ 				pcrs[i], err = strconv.Atoi(s)
+ 				if err != nil {
+ 					glog.Error(err)
+ 					return
+ 				}
+ 			}
+ 
+ 			// TODO(tmroeder): add the tpm device path to the configuration.
+ 			host, err := NewTPMTao("/dev/tpm0", aikblob, pcrs)
+ 			if err != nil {
+ 				glog.Error(err)
+ 				return
+ 			}
+ 
+ 			cachedHost = host
+ 		}
+ 	})

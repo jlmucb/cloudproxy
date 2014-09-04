@@ -16,6 +16,7 @@ package main
 
 import (
 	"crypto/sha256"
+	"crypto/x509"
 	"flag"
 	"fmt"
 	"io"
@@ -24,6 +25,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/google/go-tpm/tpm"
 	"github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	"github.com/jlmucb/cloudproxy/util"
@@ -53,6 +55,9 @@ var query = flag.String("query", "", "A policy query to be checked.")
 
 // misc. utilities
 var getProgramHash = flag.String("getprogramhash", "", "Path of program to be hashed.")
+var getPCR = flag.Int("getpcr", -1, "Index of a PCR to return.")
+var tpmPath = flag.String("tpm", "/dev/tpm0", "Path to a TPM device.")
+var aikFile = flag.String("aikblob", "", "A file containing a TPM AIK.")
 
 func main() {
 	help := "Administrative utility for Tao Domain.\n"
@@ -174,6 +179,30 @@ func main() {
 		path := *getProgramHash
 		subprin := makeProgramSubPrin(path)
 		fmt.Println(subprin)
+		didWork = true
+	}
+	if *getPCR > 0 {
+		f, err := os.OpenFile(*tpmPath, os.O_RDWR, 0600)
+		fatalIf(err)
+		defer f.Close()
+		res, err := tpm.ReadPCR(f, uint32(*getPCR))
+		fatalIf(err)
+		fmt.Printf("%x", res)
+		didWork = true
+	}
+	if *aikFile != "" {
+		aikblob, err := ioutil.ReadFile(*aikFile)
+		fatalIf(err)
+		v, err := tpm.UnmarshalRSAPublicKey(aikblob)
+		fatalIf(err)
+		aik, err := x509.MarshalPKIXPublicKey(v)
+		fatalIf(err)
+
+		name := auth.Prin{
+			Type: "tpm",
+			Key:  auth.Bytes(aik),
+		}
+		fmt.Printf("%v", name)
 		didWork = true
 	}
 	if *show || !didWork {

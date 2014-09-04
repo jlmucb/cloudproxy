@@ -279,8 +279,8 @@ function setup()
 	if [ "$TAO_USE_TPM" == "yes" ]; then
         # Don't create a new AIK if one is already present.
         echo "Checking ${TAO_TEST}/tpm/aikblob"
-        pcr17=`getpcr -pcr 17`
-        pcr18=`getpcr -pcr 18`
+        pcr17=`tao_admin -getpcr 17`
+        pcr18=`tao_admin -getpcr 18`
         if [ ! -f ${TAO_TEST}/tpm/aikblob ]; then
             echo "Creating TPMTao AIK and settings."
             rm -rf ${TAO_TEST}/tpm
@@ -291,7 +291,7 @@ function setup()
             export GOOGLE_TAO_PCRS='PCRs("17,18", "'${pcr17}','${pcr18}'")'
         fi
 
-        tprin=`tpmprin -aikblob ${TAO_TEST}/tpm/aikblob`
+        tprin=`tao_admin -aikblob ${TAO_TEST}/tpm/aikblob`
         export GOOGLE_TAO_TPM=$tprin
 
         # TODO(tmroeder): do this correctly in the Go version once we support
@@ -328,8 +328,9 @@ function refresh()
 		# Add the TPM keys, PCRs, and/or LinuxHost keys
 		if [ "$TAO_USE_TPM" == "yes" ]; then
 			tao_admin -add 'TrustedPlatform('${GOOGLE_TAO_TPM}')'
+            # Escape the spaces and quotes in the string so it can be passed as
+            # a single argument to tao_admin
             ttt=`echo 'TrustedKernelPCRs(ext().'${GOOGLE_TAO_PCRS}')' | sed 's/ /\\ /g' | sed 's/"/\\"/g'`
-            echo "Adding problematic principal"
 			tao_admin -add "$ttt"
 		else
 			tao_admin -add 'TrustedOS('${GOOGLE_TAO_LINUX}')'
@@ -342,7 +343,6 @@ function refresh()
 			fi
 		done
 	else
-        echo "Calling can execute"
 		for prog in ${TAO_HOSTED_PROGRAMS}; do
 			if [ -f "$prog" ]; then
 				tao_admin -canexecute "$prog"

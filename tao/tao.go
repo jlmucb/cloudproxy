@@ -125,7 +125,7 @@ func Parent() Tao {
 			// This index operation will never panic, since strings.Split always
 			// returns at least one entry in the resulting slice.
 			pcrIntList := strings.Split(pcrStr, "\", \"")[0]
-			pcrInts := strings.Split(pcrIntList, ", ")
+			pcrInts := strings.Split(pcrIntList, ",")
 			pcrs := make([]int, len(pcrInts))
 			for i, s := range pcrInts {
 				var err error

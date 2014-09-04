@@ -116,20 +116,25 @@ func parseRootExtPrins(o datalog.Term, e datalog.Term) (oprin auth.Prin, eprin a
 		return
 	}
 
-	// Due to the way the translation works between DatalogGuard and the Datalog
-	// engine, these are quoted strings. So, trim the quotes at the beginning
-	// and the end of the string before parsing it.
-	ostr := strings.Trim(ostringer.String(), "\"")
-	estr := strings.Trim(estringer.String(), "\"")
-
 	// The first must be a regular rooted principal, and the second must be
 	// an ext principal.
+	var ostr string
+	if _, err = fmt.Sscanf(ostringer.String(), "%q", &ostr); err != nil {
+		return
+	}
+
+	var estr string
+	if _, err = fmt.Sscanf(estringer.String(), "%q", &estr); err != nil {
+		return
+	}
+
 	if _, err = fmt.Sscanf(ostr, "%v", &oprin); err != nil {
 		return
 	}
 	if _, err = fmt.Sscanf(estr, "%v", &eprin); err != nil {
 		return
 	}
+
 	if eprin.Type != "ext" {
 		err = fmt.Errorf(`an extension subprin principal must be "ext"`)
 		return
@@ -155,8 +160,11 @@ func parseCompositePrin(p datalog.Term) (prin auth.Prin, err error) {
 	// Due to the way the translation works between DatalogGuard and the Datalog
 	// engine, this is a quoted string. So, trim the quotes at the beginning and
 	// the end of the string before parsing it.
-	s := strings.Trim(pstringer.String(), "\"")
-	if _, err = fmt.Sscanf(s, "%v", &prin); err != nil {
+	var pstr string
+	if _, err = fmt.Sscanf(pstringer.String(), "%q", &pstr); err != nil {
+		return
+	}
+	if _, err = fmt.Sscanf(pstr, "%v", &prin); err != nil {
 		return
 	}
 	if len(prin.Ext) < 1 {
@@ -190,8 +198,8 @@ func (sp *subprinPrim) Search(target *datalog.Literal, discovered func(c *datalo
 			Ext:  []auth.PrinExt{prin.Ext[extIndex]},
 		}
 
-		parentIdent := dlengine.NewIdent(trimmedPrin.String())
-		extIdent := dlengine.NewIdent(extPrin.String())
+		parentIdent := dlengine.NewIdent(fmt.Sprintf("%q", trimmedPrin.String()))
+		extIdent := dlengine.NewIdent(fmt.Sprintf("%q", extPrin.String()))
 		discovered(datalog.NewClause(datalog.NewLiteral(sp, p, parentIdent, extIdent)))
 	} else if p.Variable() && o.Constant() && e.Constant() {
 		oprin, eprin, err := parseRootExtPrins(o, e)
@@ -199,7 +207,7 @@ func (sp *subprinPrim) Search(target *datalog.Literal, discovered func(c *datalo
 			return
 		}
 		oprin.Ext = append(oprin.Ext, eprin.Ext...)
-		oeIdent := dlengine.NewIdent(oprin.String())
+		oeIdent := dlengine.NewIdent(fmt.Sprintf("%q", oprin.String()))
 		discovered(datalog.NewClause(datalog.NewLiteral(sp, oeIdent, o, e)))
 	} else if p.Constant() && o.Constant() && e.Constant() {
 		// Check that the constraint holds and report it as discovered.
@@ -481,8 +489,6 @@ func (g *DatalogGuard) stmtToDatalog(f auth.Form, vars []string, unusedVars *[]s
 		if err != nil {
 			return "", err
 		}
-		speaker = stmt.Speaker.String()
-		f = stmt.Message
 	}
 	err := checkFormVarUsage(vars, unusedVars, f)
 	if err != nil {

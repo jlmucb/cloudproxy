@@ -63,7 +63,8 @@ fi
 if [ ! "$test_dir" ]; then
 	echo "Usage: $0 [options] <dir>"
 	echo "  Installs tao testing scripts into <dir>, which will be created"
-	echo "  if it does not yet exist."
+	echo "  if it does not yet exist. If neither -acls nor -datalog is"
+	echo "  specified, then the authorization policy is AllowAll."
 	echo "Options:"
 	echo "  -notpm       Use a fake TPM (the default)."
 	echo "  -tpm         Use the TPM."
@@ -178,7 +179,7 @@ Typical next steps:
   cd $test_dir/
   ./scripts/setup.sh          # Create keys, hashes, ACLs, etc.
   ./scripts/start.sh          # Run Tao CA and Linux Tao server.
-  ./scripts/test.sh fserver   # Run fserver test.
+  ./scripts/host.sh demo      # Run a client/server demo test.
   ./scripts/stop.sh           # Kill all Tao programs.
   ./scripts/refresh.sh        # Refresh hashes, ACLs, etc.
 Run $test_dir/scripts/help.sh for more info.
@@ -487,10 +488,11 @@ function testpgm()
 			;;
 		help|*)
 			echo "Available test programs:"
-			echo "  server      # cloud client/server test"
-			echo "  fserver     # file client/server test"
-			echo "  http        # http echo test"
-			echo "  https       # https echo test"
+			echo "  demo        # a simple demo (run with host.sh)"
+			echo "  server      # cloud client/server test (not ported yet)"
+			echo "  fserver     # file client/server test (not ported yet)"
+			echo "  http        # http echo test (not ported yet)"
+			echo "  https       # https echo test (not ported yet)"
 			;;
 	esac
 }

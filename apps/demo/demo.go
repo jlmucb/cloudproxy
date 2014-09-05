@@ -39,10 +39,11 @@ var clientMode = flag.Bool("client", true, "Run demo client")
 var serverMode = flag.Bool("server", true, "Run demo server")
 var pingCount = flag.Int("n", 5, "Number of client/server pings")
 var demoAuth = flag.String("auth", "tao", "\"tcp\", \"tls\", or \"tao\"")
+var configPath = flag.String("config", "tao.config", "The Tao domain config")
 
 // client/server driver
 
-func doRequest() bool {
+func doRequest(domain *tao.Domain) bool {
 	fmt.Printf("client: connecting to %s using %s authentication.\n", serverAddr, *demoAuth)
 	var conn net.Conn
 	var err error
@@ -54,7 +55,7 @@ func doRequest() bool {
 	case "tls":
 		conn, _, err = taonet.DialTLS(network, serverAddr)
 	case "tao":
-		conn, err = taonet.Dial(network, serverAddr, tao.LiberalGuard)
+		conn, err = taonet.Dial(network, serverAddr, domain.Guard)
 	}
 	if err != nil {
 		fmt.Printf("client: error connecting to %s: %s\n", serverAddr, err.Error())
@@ -77,11 +78,11 @@ func doRequest() bool {
 	return true
 }
 
-func doClient() {
+func doClient(domain *tao.Domain) {
 	pingGood := 0
 	pingFail := 0
 	for i := 0; i < *pingCount || *pingCount < 0; i++ { // negative means forever
-		if doRequest() {
+		if doRequest(domain) {
 			pingGood++
 		} else {
 			pingFail++
@@ -116,6 +117,12 @@ func doServer(stop chan bool, ready, done chan<- bool) {
 	var err error
 	var keys *tao.Keys
 	network := "tcp"
+	domain, err := tao.LoadDomain(*configPath, nil)
+	if err != nil {
+		ready <- false
+		done <- true
+		return
+	}
 
 	switch *demoAuth {
 	case "tcp":
@@ -148,7 +155,7 @@ func doServer(stop chan bool, ready, done chan<- bool) {
 			ClientAuth:         tls.RequireAnyClientCert,
 		}
 		if *demoAuth == "tao" {
-			sock, err = taonet.Listen(network, serverAddr, conf, tao.LiberalGuard, keys.Delegation)
+			sock, err = taonet.Listen(network, serverAddr, conf, domain.Guard, keys.Delegation)
 		} else {
 			sock, err = tls.Listen(network, serverAddr, conf)
 		}
@@ -303,10 +310,16 @@ func main() {
 		serverDone <- true
 	}
 
+	domain, err := tao.LoadDomain(*configPath, nil)
+	if err != nil {
+		fmt.Printf("error: couldn't load the tao domain from %s\n", *configPath)
+		return
+	}
+
 	if *clientMode {
 		ok := <-serverReady
 		if ok {
-			doClient()
+			doClient(domain)
 		}
 		serverStop <- true
 	}

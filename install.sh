@@ -326,6 +326,8 @@ function refresh()
 		tao_admin -add "(forall P: forall OS: forall Hash: TrustedOS(OS) and TrustedProgramHash(Hash) and Subprin(P, OS, Hash) implies MemberProgram(P))"
 		# Rule for programs that can execute
 		tao_admin -add "(forall P: MemberProgram(P) implies Authorized(P, \"Execute\"))"
+		# Rule for programs with Args subprincipals
+		tao_admin -add "(forall Y: forall P: forall S: MemberProgram(P) and TrustedArgs(S) and Subprin(Y, P, S) implies Authorized(Y, \"Execute\"))"
 		# Add the TPM keys, PCRs, and/or LinuxHost keys
 		if [ "$TAO_USE_TPM" == "yes" ]; then
 			tao_admin -add 'TrustedPlatform('${GOOGLE_TAO_TPM}')'
@@ -341,6 +343,7 @@ function refresh()
 			if [ -f "$prog" ]; then
 				proghash=`tao_admin -quiet -getprogramhash "$prog"`
 				tao_admin -add 'TrustedProgramHash(ext'${proghash}')'
+				tao_admin -add 'TrustedArgs(ext.Args("'$prog'"))'
 			fi
 		done
 	else

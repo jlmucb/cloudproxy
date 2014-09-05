@@ -26,6 +26,8 @@ Ignoring C++isms, the Tao layer provides this interface to its hosted children:
   numbers (i.e. the presumed special hardware in the TPM). And a hosted Tao can
   either us use its own special technique or just pass the call down to its
   parent Tao.
+JLM: Or, more likely, seed a psuedo random nubmer generator using hardware entropy or
+random numbers collected from it's host Tao.
 - blob = Seal(data)
   Seal the data into a blob that can be unsealed later.
 - data = Unseal(blob)
@@ -48,6 +50,12 @@ Ignoring C++isms, the Tao layer provides this interface to its hosted children:
 Observation: GetRandomBytes seems out of place. Presumably, the TPM is a "good"
 source of strong randomness (maybe?), so we want to provide a way for hosted
 programs, regardless of how deep in the Tao stack, to access this randomness.
+JLM:  The TPM is an OK source of RNG's but its quite slow.  Always asking for fresh
+random numbers from your host is very expensive and more likely you'd use a PRNG
+seeded occasionally by host entropy.  Some Tao layers have direct access to very
+fast hardware RNG's like RDRAND in the new Haswell chip.  GetRandomBytes is not
+out of place though since, absent special knowledge, the host is the only GUARANTEED
+RNG source.
 
 Observation: There is no uniform semantics or mechanism for "starting' a hosted
 child. And why is there a remove operation but no kill? Every Tao is embedded in
@@ -62,9 +70,14 @@ beyond whatever Linux (or KVM or hypervisor) already provides.
 There are 5 essential Tao operations.
 - The TPM implements 2 (Seal and Unseal) operations with normal semantics.
 - The TPM does not implement 2 (StartHostedProgram, RemoveHostedProgram) at all.
+JLM: Yes it does, in conjuction with the chipset it boots the trusted hypervisor
+or OS and, in fact, a TPM owner can set policy on which initial programs it is
+willint to boot.  So it does do this.  It only has one hosted system however and
+in that way it may differ from Tao's higher in the stack.
 - The TPM implements 1 (Attest) with basically the right semantics, but in a way
   such that causes anyone that uses the result to have special TPM-specific
   code.
+JLM: Yes, this is unfortunate.  It will be better with TPM2.0.
   
 This is because the format of the resulting attestation is completely different
 than the format of attestations produced by all other Taos. For the TPM, "child"
@@ -102,6 +115,10 @@ process has a lot of direct control over a hosted process.
 
 To summarize: in practice, a hosted process necessarily and fully trusts its
 host Tao, and this trust extends all the way down the stack of Tao hosts.
+JLM: Yes,  in fact this is VERY explicit which is why the policy key owner
+may need to know the entire hosted path to make a signing decision over
+Tao Keys.  The most difficult job of the Tao Host is provide isolation between
+its hosted programs.  Hoe is does this varies depending on the Tao level.
 
 == Trust for the TaoCA ==
 
@@ -113,6 +130,9 @@ This clearly doesn't include the root Taos, i.e. the TPMs, since they don't have
 a policy key. And it may or may not include the FakeTaos (actually, at one point
 I had code that could configure FakeTao to run as a pseudo-TPM, i.e. without an
 attestation, or as a pseudo-hosted-Tao with an attestation but no parent).
+JLM: The sort of do have an implicit policy key, namely the EK which must be 
+certified by a "trusted provider".  Absent even the "key" paradigm, TPMs
+have owner set policy which corresponds to the policy generally delegated by a key.
 
 Do hosted programs actually fully trust the policy key? It is not clear that
 this is necessary or even desirable.
@@ -130,6 +150,11 @@ hosted program merely "speaks for" the principals named by those identities. And
 if anything, this is the opposite of trusting the policy server -- the policy
 server is trusting the hosted program to not abuse the privileges associated
 with that identity.
+JLM:  This idea of code identity is that it is immutable (i.e.-represents
+ultimately the exact same code (and possibly critical data).  You should NOT
+have multiple code identities although you certainly could participate in multiple
+security domains either by explicity having multiple policy keys or letting the
+master policy key delegate to others.
 
 Here is a concrete example: Suppose we build a secure write-only logging
 service, and the policy server (TaoCA) wants to use this service. The TaoCA can
@@ -140,9 +165,26 @@ to ensure the write-only property of the logs, and there is no reason that the
 logging program should trust the policy server on these matters. In fact, the
 point is that we explicitly do not trust the policy server to do its own
 logging, but we do trust the logging server to do it.
+JLM:  This is an example of limited delegate trust to perform a service but it
+is not the same kind of "trust" you have to have in your hosts (and their hosts)
+which is basically unrestricted at least on a designated stack.
 
 Are there compelling examples of hosted programs that should necessarily and
 fully trust the policy server?
+JLM:  Yes in practice, I think there is.  Ultimately this becomes a 
+"policy distribution" problem analogous to a "symmetric key distribution" problem 
+without asymmetric ciphers and an n^2 policy problem is probably unmanageable for n>2.  
+As you point out, we may have constrained trust in a program operating elsewhere, written
+by another entity with a different policy key (or no policy key) but this is always constrained.
+Further, absent a "central" policy key, each program must maintain a list of things they trust,
+which is stateful and presents distribution problems (just like CRLs).  It becomes worse as
+some Tao element underneath get compromised.  For example, how does the program know
+other programs have been determined to be flawed?  Basically, the authority tells them and
+they recover.  I'm convinced that the notion of a policy key representing a well defined policy
+domain is basic.  Without it, I really have no overall sense of end-to-end security for an
+"activity" as a practical matter.  Finally, there is an (implicit) single root of policy in
+practice anyway for the program: the person who wrote the final version of the program (and embedded
+the key); whether he embedded a key or not we trust the program in this model.
 
 == Key Rotation ==
 
@@ -201,6 +243,10 @@ If symmetric keys are not ever rotated, and private keys are sealed using the
 symmetric keys, is there a reason to rotate the asymmetric keys? Presumably yes:
 the symmetric keys are used only (or mostly?) locally, but the asymmetric keys
 are used on the network.
+JLM:  You're right with respect to the "hardware" key.  To rotate it, you throw away
+the hardware (or in some cases, you solder something to the board).  In practice,
+at every other lever keys can rotate; if only by distributing new versions of the
+program with new policy keys.
 
 == Alternative designs ==
 
@@ -211,6 +257,7 @@ API can be implemented on top of the TPM API, then nothing is lost in
 implementation "elegance". There is some extra conceptual overhead for those
 trying to understand the internals of how Tao is implemented, but users of Tao
 need only understand the Tao API, not the TPM API.
+JLM: yes, I agree.
 
 With that in mind, here are some API suggestions.
 
@@ -219,6 +266,7 @@ With that in mind, here are some API suggestions.
 On balance, this is probably not worth implementing.
 
 Currently, every hosted program needs a symmetric key pair, attested to by its
+JLM: DO you mean asymmetric key pair?
 parent Tao. This is done in three steps: call GetRandomBytes() from the parent
 Tao, then generate the key locally in the hosted program, followed by calling
 Attest() from the parent Tao. We could condense this into a single Tao call:
@@ -232,6 +280,14 @@ eliminate getRandomBytes.
 
 Currently, Attest() is used only for attesting to keys. If that remains the
 case, then GetAuthenticationKey would obviate the need for Attest(). On the
+
+JLM: GetAuthenticationKey has to have a mechanism to verify the identity of
+the thing (program) it is giving its key to.  I think this is morally equivalent
+to Attest.  Of course, for some hosts, you could have a different mechanism
+to do this but since the bottom layer in a distributed system is stuck with a
+public key based attest and since there are no performance or flexibility problems
+with this, I don't know that we want another mechanism to worry about.
+
 other hand, we can't eliminate Attest() if it evolves into a general-purpose
 "says" operation that allows, for example, a hosted program without its own key
 to get a signed credential to the effect of "Tao says child says stmt" for some
@@ -240,9 +296,15 @@ arbitrary statement.
 Pros: 
 - Slightly more efficient.
 - Maybe eliminate the Attest operation, whose semantics are currently hazy.
+JLM: I'm not quite sure what you mean by hazy.  Attest means "The signed data (usually
+a key as you point out) came from the program with the following identity (the hash) which
+was isolated by me (the host)."  This seems like a very clear (and useful) assertion.
 
 Cons:
 - If we don't eliminate Attest(), then it makes the Tao API larger.
+JLM: Why does it become larger?   You argue above that we need Attest somewhere
+(maybe only in HW) so it seems an alternate mechanism adds surface area.  I'm not
+sure I understand this comment.
 - Functionality easily implemented in the hosted program using the existing API.
 
 == A minimalist API (idea #1) ==
@@ -256,6 +318,9 @@ this is the first execution and keys need to be generated, or it does a single
 Unseal() to recover its previously-generated keys. From then on it has its own
 set of keys, which it uses to implement Seal(), Unseal(), and Attest() for
 hosted child processes. 
+JLM: There is continued interaction for StartHostedPrograms as new hosted systems
+start and, of course, the hosted program can use the Generate/Attest/Seal/Unseal
+dance to rotate keys (although this presumably doesn't happen too often.
 
 If this is the case, why not simplify the API and eliminate the channels between
 layers entirely? When a hosted program is about to be started, the host Tao
@@ -277,8 +342,20 @@ TPM's missing StartHostedProgram() call.
 
 Pros:
 - Simpler (trivial) API and implementation.
+JLM: Again, to my mind this seems more complicated.  Since you need the Tao at the lowest level
+adding additional mechanism just adds to surface area.  Of course, you could package the basic
+dance so that layers that don't care about it make simpler calls but you've added complication
+(as measured by mechanisms and code).  Packaging the mechanisms is fine and represents a saving
+in terms of how many people implement what but it doesn't save, and in fact increases, the "minimal"
+implmentation footprint.
 - Efficiency: no need to keep secure channels (pipes) open.
 - Hosted programs don't need generate or rotate their own keys.
+JLM: They still may need to rotate their keys.  The hosts are not necessarily in the same
+trust domain as the children.  Policy only requires that host adhere with their contract not
+that they be able to carry out all security related domain actions.  In fact, the idea is to
+let lower Tao levels be as simple as possible to avoid security issues that will necessarily affect
+their hosted programs.  By contrast, two hosted programs in the same security domain can
+actually segregate duties, thus preventing a single program from causing universal damage.
 
 Cons:
 - Hosted programs don't control their own key generation or rotation.
@@ -413,6 +490,11 @@ ancestor Taos have multiple parent Taos. So some Tao operations may require
 extra parameters to specify which line of ancestry to follow for that call. For
 example, Attest() would need to specify a complete path from some root Tao,
 among all the possible root ancestor Taos, all the way down to itself.
+
+JLM:  While I don't think of the TaoCA as a Tao, it could and probably should
+be able to negotiate and shared keys within a domain.  For me, multiple Tao hosts
+makes end-to-end evaluation of hosted programs too complicated and error prone
+and given the distributed policy, I just don't see the need.
 
 Pros:
 - Formalizes the role of the TaoCA and its (trust) relationship with hosted

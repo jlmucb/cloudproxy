@@ -344,6 +344,7 @@ function refresh()
 				proghash=`tao_admin -quiet -getprogramhash "$prog"`
 				tao_admin -add 'TrustedProgramHash(ext'${proghash}')'
 				tao_admin -add 'TrustedArgs(ext.Args("'$prog'"))'
+				tao_admin -add 'TrustedArgs(ext.Args("'$prog'", "-ca=localhost:8124"))'
 			fi
 		done
 	else

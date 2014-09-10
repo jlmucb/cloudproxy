@@ -33,24 +33,25 @@ import (
 type listener struct {
 	gl         net.Listener
 	guard      tao.Guard
+	verifier   *tao.Verifier
 	delegation *tao.Attestation
 }
 
 // NewTaoListener returns a new Tao-based net.Listener that uses the underlying
 // crypto/tls net.Listener and a tao.Guard to check whether or not connections
 // are authorized.
-func Listen(network, laddr string, config *tls.Config, g tao.Guard, del *tao.Attestation) (net.Listener, error) {
+func Listen(network, laddr string, config *tls.Config, g tao.Guard, v *tao.Verifier, del *tao.Attestation) (net.Listener, error) {
 	config.ClientAuth = tls.RequireAnyClientCert
 	inner, err := tls.Listen(network, laddr, config)
 	if err != nil {
 		return nil, err
 	}
-	return &listener{inner, g, del}, nil
+	return &listener{inner, g, v, del}, nil
 }
 
-// validatePeerAttestation checks a tao.Attestation for a given Listener against
+// ValidatePeerAttestation checks a tao.Attestation for a given Listener against
 // an X.509 certificate from a TLS channel.
-func validatePeerAttestation(a *tao.Attestation, cert *x509.Certificate, guard tao.Guard) error {
+func ValidatePeerAttestation(a *tao.Attestation, cert *x509.Certificate, guard tao.Guard) error {
 	stmt, err := a.Validate()
 	if err != nil {
 		return err
@@ -127,8 +128,12 @@ func (l *listener) Accept() (net.Conn, error) {
 		return nil, err
 	}
 
+	if err := AddEndorsements(l.guard, &a, l.verifier); err != nil {
+		return nil, err
+	}
+
 	peerCert := c.(*tls.Conn).ConnectionState().PeerCertificates[0]
-	if err := validatePeerAttestation(&a, peerCert, l.guard); err != nil {
+	if err := ValidatePeerAttestation(&a, peerCert, l.guard); err != nil {
 		c.Close()
 		return nil, err
 	}

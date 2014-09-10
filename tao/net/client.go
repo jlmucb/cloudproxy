@@ -24,7 +24,9 @@ import (
 	"net"
 	"time"
 
+	"code.google.com/p/goprotobuf/proto"
 	"github.com/jlmucb/cloudproxy/tao"
+	"github.com/jlmucb/cloudproxy/tao/auth"
 	"github.com/jlmucb/cloudproxy/util"
 )
 
@@ -93,33 +95,40 @@ func ListenTLS(network, addr string) (net.Listener, error) {
 
 // DialTLS creates a new X.509 certs from fresh keys and dials a given TLS
 // address.
-func DialTLS(network, addr string) (net.Conn, *tao.Keys, error) {
-	keys, cert, err := generateX509()
-	if err != nil {
-		return nil, nil, fmt.Errorf("client: can't create key and cert: %s\n", err.Error())
-	}
-	conn, err := tls.Dial(network, addr, &tls.Config{
-		RootCAs:            x509.NewCertPool(),
-		Certificates:       []tls.Certificate{*cert},
-		InsecureSkipVerify: true,
-	})
-	return conn, keys, err
-}
-
-// Dial connects to a Tao TLS server, performs a TLS handshake, and exchanges
-// tao.Attestation values with the server, checking that this is a Tao server
-// that is authorized to Execute. It uses a Tao Guard to perform this check.
-func Dial(network, addr string, guard tao.Guard) (net.Conn, error) {
+func DialTLS(network, addr string) (net.Conn, error) {
 	keys, _, err := generateX509()
 	if err != nil {
 		return nil, fmt.Errorf("client: can't create key and cert: %s\n", err.Error())
 	}
 
-	return DialWithKeys(network, addr, guard, keys)
+	return DialTLSWithKeys(network, addr, keys)
+}
+
+// DialTLSWithKeys connects to a TLS server using an existing set of keys.
+func DialTLSWithKeys(network, addr string, keys *tao.Keys) (net.Conn, error) {
+	tlsCert, err := EncodeTLSCert(keys)
+	conn, err := tls.Dial(network, addr, &tls.Config{
+		RootCAs:            x509.NewCertPool(),
+		Certificates:       []tls.Certificate{*tlsCert},
+		InsecureSkipVerify: true,
+	})
+	return conn, err
+}
+
+// Dial connects to a Tao TLS server, performs a TLS handshake, and exchanges
+// tao.Attestation values with the server, checking that this is a Tao server
+// that is authorized to Execute. It uses a Tao Guard to perform this check.
+func Dial(network, addr string, guard tao.Guard, v *tao.Verifier) (net.Conn, error) {
+	keys, _, err := generateX509()
+	if err != nil {
+		return nil, fmt.Errorf("client: can't create key and cert: %s\n", err.Error())
+	}
+
+	return DialWithKeys(network, addr, guard, v, keys)
 }
 
 // DialWithKeys connects to a Tao TLS server using an existing set of keys.
-func DialWithKeys(network, addr string, guard tao.Guard, keys *tao.Keys) (net.Conn, error) {
+func DialWithKeys(network, addr string, guard tao.Guard, v *tao.Verifier, keys *tao.Keys) (net.Conn, error) {
 	if keys.Cert == nil {
 		return nil, fmt.Errorf("client: can't dial with an empty client certificate\n")
 	}
@@ -150,12 +159,175 @@ func DialWithKeys(network, addr string, guard tao.Guard, keys *tao.Keys) (net.Co
 		return nil, err
 	}
 
+	if err := AddEndorsements(guard, &a, v); err != nil {
+		conn.Close()
+		return nil, err
+	}
+
 	// Validate the peer certificate according to the guard.
 	peerCert := conn.ConnectionState().PeerCertificates[0]
-	if err := validatePeerAttestation(&a, peerCert, guard); err != nil {
+	if err := ValidatePeerAttestation(&a, peerCert, guard); err != nil {
 		conn.Close()
 		return nil, err
 	}
 
 	return conn, nil
+}
+
+// AddEndorsements reads the SerializedEndorsements in an attestation and adds
+// the ones that are predicates signed by the policy key.
+func AddEndorsements(guard tao.Guard, a *tao.Attestation, v *tao.Verifier) error {
+	// Before validating against the guard, check to see if there are any
+	// predicates endorsed by the policy key. This allows truncated principals
+	// to get the Tao CA to sign a statement of the form
+	// TrustedHash(ext.Program(...)).
+	for _, e := range a.SerializedEndorsements {
+		var ea tao.Attestation
+		if err := proto.Unmarshal(e, &ea); err != nil {
+			return err
+		}
+
+		f, err := auth.UnmarshalForm(ea.SerializedStatement)
+		if err != nil {
+			return err
+		}
+
+		says, ok := f.(auth.Says)
+		if !ok {
+			return fmt.Errorf("a serialized endorsement must be an auth.Says")
+		}
+
+		// TODO(tmroeder): check that this endorsement hasn't expired.
+		pred, ok := says.Message.(auth.Pred)
+		if !ok {
+			return fmt.Errorf("the message in an endorsement must be a predicate")
+		}
+
+		signerPrin, err := auth.UnmarshalPrin(ea.Signer)
+		if err != nil {
+			return err
+		}
+
+		if !signerPrin.Identical(says.Speaker) {
+			return fmt.Errorf("the speaker of an endorsement must be the signer")
+		}
+		if !v.ToPrincipal().Identical(signerPrin) {
+			return fmt.Errorf("the signer of an endorsement must be the policy key")
+		}
+		if ok, err := v.Verify(ea.SerializedStatement, tao.AttestationSigningContext, ea.Signature); (err != nil) || !ok {
+			return fmt.Errorf("the signature on an endorsement didn't pass verification")
+		}
+
+		guard.AddRule(pred.String())
+	}
+
+	return nil
+}
+
+// TruncateAttestation cuts off a delegation chain at its "Program" subprincipal
+// extension and replaces its prefix with the given key principal. It also
+// returns the PrinExt that represents exactly the program hash.
+func TruncateAttestation(kprin auth.Prin, a *tao.Attestation) (auth.Says, auth.PrinExt, error) {
+	// This attestation must have a top-level delegation to a key. Return an
+	// authorization for this program rooted in the policy key. I don't like
+	// this, since it seems like it's much riskier, since this doesn't say
+	// anything about the context in which the program is running. Fortunately,
+	// local policy rules: if a peer won't accept this cert, then the other
+	// program will have to fall back on the longer attestation.
+	stmt, err := auth.UnmarshalForm(a.SerializedStatement)
+	if err != nil {
+		return auth.Says{}, auth.PrinExt{}, err
+	}
+
+	says, ok := stmt.(auth.Says)
+	if !ok {
+		return auth.Says{}, auth.PrinExt{}, fmt.Errorf("the serialized statement must be a says")
+	}
+	// Replace the message with one that uses the new principal, taking the last
+	// Program subprinicpal, and all its following elements. It should say:
+	// policyKey.Program(...)... says key(...) speaksfor
+	// policyKey.Program(...)..., signed policyKey.
+	sf, ok := says.Message.(auth.Speaksfor)
+	if !ok {
+		return auth.Says{}, auth.PrinExt{}, fmt.Errorf("the message in the statement must be a speaksfor")
+	}
+
+	delegator, ok := sf.Delegator.(auth.Prin)
+	if !ok {
+		return auth.Says{}, auth.PrinExt{}, fmt.Errorf("the delegator must be a principal")
+	}
+
+	var prog auth.PrinExt
+	found := false
+	for _, sprin := range delegator.Ext {
+		if !found && (sprin.Name == "Program") {
+			found = true
+			prog = sprin
+		}
+
+		if found {
+			kprin.Ext = append(kprin.Ext, sprin)
+		}
+	}
+
+	// TODO(tmroeder): make sure that the delegate is a key and is not, e.g.,
+	// the policy key.
+	truncSpeaksfor := auth.Speaksfor{
+		Delegate:  sf.Delegate,
+		Delegator: kprin,
+	}
+	truncSays := auth.Says{
+		Speaker:    kprin,
+		Time:       says.Time,
+		Expiration: says.Expiration,
+		Message:    truncSpeaksfor,
+	}
+
+	return truncSays, prog, nil
+}
+
+// IdenticalDelegations checks to see if two Form values are Says and are
+// identical delegations (i.e., the Message must be an auth.Speaksfor).  This
+// function is not in the auth package, since it's specific to a particular
+// pattern.
+func IdenticalDelegations(s, t auth.Form) bool {
+	ss, ok := s.(auth.Says)
+	if !ok {
+		return false
+	}
+	st, ok := t.(auth.Says)
+	if !ok {
+		return false
+	}
+	if !ss.Speaker.Identical(st.Speaker) {
+		return false
+	}
+
+	if (ss.Time == nil) != (st.Time == nil) {
+		return false
+	}
+	if (ss.Time != nil) && (*ss.Time != *st.Time) {
+		return false
+	}
+	if (ss.Expiration == nil) != (st.Expiration == nil) {
+		return false
+	}
+	if (ss.Expiration != nil) && (*ss.Expiration != *st.Expiration) {
+		return false
+	}
+
+	sfs, ok := ss.Message.(auth.Speaksfor)
+	if !ok {
+		return false
+	}
+	sft, ok := ss.Message.(auth.Speaksfor)
+	if !ok {
+		return false
+	}
+
+	if !sfs.Delegate.Identical(sft.Delegate) || !sfs.Delegator.Identical(sft.Delegator) {
+		return false
+	}
+
+	return true
 }

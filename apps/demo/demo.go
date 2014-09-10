@@ -40,10 +40,15 @@ var serverMode = flag.Bool("server", true, "Run demo server")
 var pingCount = flag.Int("n", 5, "Number of client/server pings")
 var demoAuth = flag.String("auth", "tao", "\"tcp\", \"tls\", or \"tao\"")
 var configPath = flag.String("config", "tao.config", "The Tao domain config")
+var ca = flag.String("ca", "", "address for Tao CA, if any")
+
+var subprinRule = "(forall P: forall Hash: TrustedProgramHash(Hash) and Subprin(P, %v, Hash) implies MemberProgram(P))"
+var argsRule = "(forall Y: forall P: forall S: MemberProgram(P) and TrustedArgs(S) and Subprin(Y, P, S) implies Authorized(Y, \"Execute\"))"
+var demoRule = "TrustedArgs(ext.Args(%s))"
 
 // client/server driver
 
-func doRequest(domain *tao.Domain) bool {
+func doRequest(guard tao.Guard, domain *tao.Domain, keys *tao.Keys) bool {
 	fmt.Printf("client: connecting to %s using %s authentication.\n", serverAddr, *demoAuth)
 	var conn net.Conn
 	var err error
@@ -53,9 +58,9 @@ func doRequest(domain *tao.Domain) bool {
 	case "tcp":
 		conn, err = net.Dial(network, serverAddr)
 	case "tls":
-		conn, _, err = taonet.DialTLS(network, serverAddr)
+		conn, err = taonet.DialTLSWithKeys(network, serverAddr, keys)
 	case "tao":
-		conn, err = taonet.Dial(network, serverAddr, domain.Guard)
+		conn, err = taonet.DialWithKeys(network, serverAddr, guard, domain.Keys.VerifyingKey, keys)
 	}
 	if err != nil {
 		fmt.Printf("client: error connecting to %s: %s\n", serverAddr, err.Error())
@@ -78,11 +83,74 @@ func doRequest(domain *tao.Domain) bool {
 	return true
 }
 
+func newTempCAGuard(v *tao.Verifier) (tao.Guard, error) {
+	g := tao.NewTemporaryDatalogGuard()
+	vprin := v.ToPrincipal()
+	rule := fmt.Sprintf(subprinRule, vprin)
+
+	// Add a rule that says that valid args are the ones we were called with.
+	args := ""
+	for i, a := range os.Args {
+		if i > 0 {
+			args += ", "
+		}
+		args += "\"" + a + "\""
+	}
+	authRule := fmt.Sprintf(demoRule, args)
+
+	if err := g.AddRule(rule); err != nil {
+		return nil, err
+	}
+	if err := g.AddRule(argsRule); err != nil {
+		return nil, err
+	}
+	if err := g.AddRule(authRule); err != nil {
+		return nil, err
+	}
+	return g, nil
+}
+
 func doClient(domain *tao.Domain) {
+	network := "tcp"
+	keys, err := tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Parent())
+	if err != nil {
+		fmt.Printf("client: couldn't generate temporary Tao keys: %s\n", err)
+		return
+	}
+
+	// TODO(tmroeder): fix the name
+	cert, err := keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
+		Organization: []string{"Google Tao Demo"}})
+	if err != nil {
+		fmt.Printf("client: couldn't create a self-signed X.509 cert: %s\n", err)
+		return
+	}
+	// TODO(kwalsh) keys should save cert on disk if keys are on disk
+	keys.Cert = cert
+
+	g := domain.Guard
+	if *ca != "" {
+		na, err := taonet.RequestTruncatedAttestation(network, *ca, keys, domain.Keys.VerifyingKey)
+		if err != nil {
+			fmt.Printf("client: couldn't get a truncated attestation from %s: %s\n", *ca, err)
+			return
+		}
+
+		keys.Delegation = na
+
+		// If we're using a CA, then use a custom guard that accepts only
+		// programs that have talked to the CA.
+		g, err = newTempCAGuard(domain.Keys.VerifyingKey)
+		if err != nil {
+			fmt.Printf("client: couldn't set up a new guard: %s\n", err)
+			return
+		}
+	}
+
 	pingGood := 0
 	pingFail := 0
 	for i := 0; i < *pingCount || *pingCount < 0; i++ { // negative means forever
-		if doRequest(domain) {
+		if doRequest(g, domain, keys) {
 			pingGood++
 		} else {
 			pingFail++
@@ -142,6 +210,23 @@ func doServer(stop chan bool, ready, done chan<- bool) {
 			return
 		}
 
+		g := domain.Guard
+		if *ca != "" {
+			na, err := taonet.RequestTruncatedAttestation(network, *ca, keys, domain.Keys.VerifyingKey)
+			if err != nil {
+				ready <- false
+				done <- true
+				return
+			}
+
+			keys.Delegation = na
+			g, err = newTempCAGuard(domain.Keys.VerifyingKey)
+			if err != nil {
+				fmt.Printf("server: couldn't set up a new guard: %s\n", err)
+				return
+			}
+		}
+
 		tlsc, err := taonet.EncodeTLSCert(keys)
 		if err != nil {
 			ready <- false
@@ -155,7 +240,7 @@ func doServer(stop chan bool, ready, done chan<- bool) {
 			ClientAuth:         tls.RequireAnyClientCert,
 		}
 		if *demoAuth == "tao" {
-			sock, err = taonet.Listen(network, serverAddr, conf, domain.Guard, keys.Delegation)
+			sock, err = taonet.Listen(network, serverAddr, conf, g, domain.Keys.VerifyingKey, keys.Delegation)
 		} else {
 			sock, err = tls.Listen(network, serverAddr, conf)
 		}

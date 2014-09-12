@@ -6,3 +6,9 @@
 - go get github.com/golang/glog
 - go get github.com/golang/glog
 - go get github.com/golang/lint/golint
+- go code.google.com/p/gcfg
+- go github.com/google/go-tpm/tpm
+- go github.com/jlmucb/cloudproxy/tao/auth
+- go github.com/jlmucb/cloudproxy/util
+- go github.com/jlmucb/cloudproxy/util/protorpc
+- go github.com/kevinawalsh/datalog/dlengine

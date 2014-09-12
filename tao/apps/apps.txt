@@ -1,0 +1,59 @@
+FileProxy, three programs
+  KeyNegoServer
+    server class
+      accept request for program cert
+      verify hash
+      construct cert
+      sign cert
+      return
+  FileServer
+    Init phase
+      make public/private key pair
+      construct certificate request and send it to KeyNegoServer
+      ask host to sign cert
+      seal private key
+      accept signed cert and store it
+      Optional: negotiate shared key for file encryption?
+      quit
+    Operational
+      Listen for clients
+      Accept requests
+      if client is in domain
+        open secure connection
+        repeat
+          read request
+          is request authorized?
+            read/write file  (encrypt/decrypt)
+            update metadata
+            reply to request (and send data if applicable)
+  FileClient
+    Init phase
+      make public/private key pair
+      construct certificate request and send it to KeyNegoServer
+      ask host to sign cert
+      seal private key
+      accept signed cert and store it
+      quit
+    Operational
+      open secure connection with server
+      create a file on server
+      write to new file on server
+      read a file from server
+      
+Other scenarios
+  Reinitialized keys
+  CRL
+  archive files
+
+
+BidProxy, three programs
+  BidClient
+    make bids
+  BidServer
+    collect bids
+  BidJudge
+    determine bid winner
+
+      
+
+

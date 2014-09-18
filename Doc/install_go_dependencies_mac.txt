@@ -1,14 +1,18 @@
 - Download mercurial source from mercurial.selenic.com
 - build mercurial as make install-local
 - this installs to ~/bin/hg
-- go get code.google.com/p/goprotobuf/{proto,protoc-gen-go}
-- go get code.google.com/p/go.crypto/...
-- go get github.com/golang/glog
-- go get github.com/golang/glog
-- go get github.com/golang/lint/golint
-- go code.google.com/p/gcfg
-- go github.com/google/go-tpm/tpm
-- go github.com/jlmucb/cloudproxy/tao/auth
-- go github.com/jlmucb/cloudproxy/util
-- go github.com/jlmucb/cloudproxy/util/protorpc
-- go github.com/kevinawalsh/datalog/dlengine
+go get code.google.com/p/goprotobuf/{proto,protoc-gen-go}
+go get code.google.com/p/go.crypto/...
+go get github.com/golang/glog
+go get github.com/golang/glog
+go get github.com/golang/lint/golint
+go get code.google.com/p/gcfg
+go get github.com/google/go-tpm/tpm
+go get github.com/jlmucb/cloudproxy/tao/auth
+go get github.com/jlmucb/cloudproxy/util
+go get github.com/jlmucb/cloudproxy/util/protorpc
+go get github.com/kevinawalsh/datalog/dlengine
+go get code.google.com/p/go.text/encoding
+go get code.google.com/p/google-api-go-client/compute/v1
+
+

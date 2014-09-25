@@ -18,7 +18,8 @@
 # This script works with the Go implementation of Tao. It assumes all binaries
 # have been installed in ${GOPATH}/bin (e.g. via `go install`)
 #
-# If you wish to use the TPM, you must have taken ownership of the TPM.
+# If you wish to use the TPM, you must have taken ownership of the TPM. For
+# example, see github.com/google/go-tpm/examples/tpm-takeownership.
 
 set -e # quit script on first error
 
@@ -138,10 +139,6 @@ export TAO_HOST_pass="BogusPass"
 export TAO_HOST_root="$test_root"
 export TAO_HOST_stacked="$test_stacked"
 export TAO_HOST_path="${test_dir}/linux_tao_host"
-
-# Flags for tpm_tao
-export TAO_TPM_path="${test_dir}/tpm"
-export TAO_TPM_pcrs="17,18"
 
 # Flags for glog
 export GLOG_v=2
@@ -285,12 +282,17 @@ function setup()
         if [ ! -f ${TAO_TEST}/tpm/aikblob ]; then
             echo "Creating TPMTao AIK and settings."
             rm -rf ${TAO_TEST}/tpm
-            tpm_tao --create --show=false
+            # The genaik program comes from
+            # github.com/google/go-tpm/examples/genaik and must be in
+            # $GOPATH/bin.
+            mkdir -p ${TAO_TEST}/tpm
+            genaik --blob ${TAO_TEST}/tpm/aikblob
         else
             echo "Reusing existing TPMTao AIK."
-            export GOOGLE_HOST_TAO='tao::TPMTao("dir:tpm")'
-            export GOOGLE_TAO_PCRS='PCRs("17,18", "'${pcr17}','${pcr18}'")'
         fi
+
+        export GOOGLE_HOST_TAO='tao::TPMTao("dir:tpm")'
+        export GOOGLE_TAO_PCRS='PCRs("17,18", "'${pcr17}','${pcr18}'")'
 
         tprin=`tao_admin -aikblob ${TAO_TEST}/tpm/aikblob`
         export GOOGLE_TAO_TPM=$tprin

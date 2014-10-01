@@ -800,12 +800,21 @@ func (k *Keys) X509Path() string {
 	return path.Join(k.dir, "cert")
 }
 
+// SetMyKeyPath sets path for stored keys.
+func (k *Keys) SetMyKeyPath(dir_name string) {
+	k.dir= dir_name;
+}
+
+// SetKeyType sets key type
+func (k *Keys) SetKeyType(types KeyType) {
+	k.keyTypes= types;
+}
+
 // PBEKeysetPath returns the path for stored keys.
 func (k *Keys) PBEKeysetPath() string {
 	if k.dir == "" {
 		return ""
 	}
-
 	return path.Join(k.dir, "keys")
 }
 
@@ -814,7 +823,6 @@ func (k *Keys) PBESignerPath() string {
 	if k.dir == "" {
 		return ""
 	}
-
 	return path.Join(k.dir, "signer")
 }
 
@@ -1091,6 +1099,11 @@ func (k *Keys) loadCert() error {
 
 	k.Cert, err = x509.ParseCertificate(der)
 	return err
+}
+
+// LoadCert loads cert
+func (k *Keys) LoadCert() error {
+	return k.loadCert()
 }
 
 // NewTemporaryTaoDelegatedKeys initializes a set of temporary keys under a host

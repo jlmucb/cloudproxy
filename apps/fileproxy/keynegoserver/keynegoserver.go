@@ -24,16 +24,14 @@ import (
 	// "path"
 	// "time"
 	"flag"
+	"net"
 
-	// "code.google.com/p/go.crypto/hkdf"
-	// "code.google.com/p/go.crypto/pbkdf2"
 	"code.google.com/p/goprotobuf/proto"
 
-	tao "../../../tao"
+	"github.com/jlmucb/cloudproxy/tao"
 	taonet "github.com/jlmucb/cloudproxy/tao/net"
-	auth "github.com/jlmucb/cloudproxy/tao/auth"
-	util "github.com/jlmucb/cloudproxy/util"
-	"net"
+	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/jlmucb/cloudproxy/util"
 )
 
 var network = flag.String("network", "tcp", "The network to use for connections")
@@ -52,10 +50,10 @@ func zeroBytes(b []byte) {
 func GetOnDiskPBEKeys(keyTypes tao.KeyType, password []byte, path string, name *pkix.Name) (*tao.Keys, error) {
 	k := &tao.Keys{}
 	//{
-//		tao.keyTypes: keyTypes,
-//		tao.dir:      path,
+	//	tao.keyTypes: keyTypes,
+	//	tao.dir:      path,
 	//}
-	k.SetKeysetPath(path)
+	k.SetMyKeyPath(path)
 	k.SetKeyType(keyTypes)
 	f, err := os.Open(k.PBEKeysetPath())
 	if err == nil {
@@ -107,10 +105,10 @@ func HandleKeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard) {
 	}
 
 	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
-// 	if err := taonet.ValidatePeerAttestation(&a, peerCert, guard); err != nil {
-// 		fmt.Fprintln(os.Stderr, "Couldn't validate peer attestation:", err)
-// 		return
-// 	}
+ 	if err := taonet.ValidatePeerAttestation(&a, peerCert, guard); err != nil {
+ 		fmt.Fprintln(os.Stderr, "Couldn't validate peer attestation:", err)
+ 		return
+ 	}
 
   	truncSays, pe, err := taonet.TruncateAttestation(s.ToPrincipal(), &a)
 //	if err != nil {

@@ -1,0 +1,22 @@
+C++ to Go --- cgo
+Go Test
+diffs/CL's
+shared secrets
+interface implementation
+
+commit changes on branch
+diffscuss generate HEAD^..HEAD -o 
+
+
+tao.generatesigner
+string key.ToPrincipal()
+tao,err= NewFakeTao(name, "", nil)
+NewStackedLinuxHost(path, tao.LiberalGuard, tao)
+LinuxHostServer
+
+LinuxHostProgram()
+
+tao.Parent();
+
+
+

@@ -55,6 +55,21 @@ func DeserializeTaoRPC(s string) (*TaoRPC, error) {
 	return &TaoRPC{protorpc.NewClient(ms), "Tao"}, nil
 }
 
+// DeserializeUnixSocketTaoRPC produces a TaoRPC from a path string.
+func DeserializeUnixSocketTaoRPC(p string) (*TaoRPC, error) {
+	if p == "" {
+		return nil, newError("taorpc: missing host Tao spec" +
+			" (ensure $" + HostTaoEnvVar + " is set)")
+	}
+
+	ms, err := util.DeserializeUnixSocketMessageStream(p)
+	if err != nil {
+		return nil, err
+	}
+
+	return &TaoRPC{protorpc.NewClient(ms), "Tao"}, nil
+}
+
 // NewTaoRPC constructs a TaoRPC for the default gob encoding rpc client using
 // an io.ReadWriteCloser.
 func NewTaoRPC(rwc io.ReadWriteCloser, serviceName string) (*TaoRPC, error) {

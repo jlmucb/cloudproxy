@@ -104,15 +104,27 @@ func (LinuxProcessFactory) ForkHostedProgram(prog string, args []string) (io.Rea
 	env := os.Environ()
 	// Note: ExtraFiles below ensures readfd=3, writefd=4 in child
 	evar := HostTaoEnvVar + "=tao::TaoRPC+tao::FDMessageChannel(3, 4)"
+	// Make sure that the child knows to use a pipe variable.
+	etvar := HostTaoTypeEnvVar + "=pipe"
 	replaced := false
+	replacedType := false
 	for i, pair := range env {
 		if strings.HasPrefix(pair, HostTaoEnvVar+"=") {
 			env[i] = evar
 			replaced = true
 		}
+
+		if strings.HasPrefix(pair, HostTaoTypeEnvVar+"=") {
+			env[i] = etvar
+			replacedType = true
+		}
 	}
 	if !replaced {
 		env = append(env, evar)
+	}
+
+	if !replacedType {
+		env = append(env, etvar)
 	}
 
 	channel := util.NewPairReadWriteCloser(serverRead, serverWrite)

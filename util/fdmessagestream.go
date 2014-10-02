@@ -17,6 +17,7 @@ package util
 import (
 	"errors"
 	"fmt"
+	"net"
 	"os"
 )
 
@@ -38,4 +39,15 @@ func DeserializeFDMessageStream(s string) (*MessageStream, error) {
 		rw := NewPairReadWriteCloser(r, w)
 		return NewMessageStream(rw), nil
 	}
+}
+
+// DeserializeUnixSocketMessageStream takes a string filename and returns a
+// MessageStream that is based on the Unix socket for this file.
+func DeserializeUnixSocketMessageStream(f string) (*MessageStream, error) {
+	conn, err := net.Dial("unix", f)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewMessageStream(conn), nil
 }

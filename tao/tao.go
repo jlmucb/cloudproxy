@@ -15,6 +15,7 @@
 package tao
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -30,9 +31,10 @@ import (
 // Constants used by the Tao implementations for policy, signing contexts, and
 // environment variables.
 const (
-	HostTaoEnvVar = "GOOGLE_HOST_TAO"
-	TaoTPMEnvVar  = "GOOGLE_TAO_TPM"
-	TaoPCRsEnvVar = "GOOGLE_TAO_PCRS"
+	HostTaoEnvVar     = "GOOGLE_HOST_TAO"
+	HostTaoTypeEnvVar = "GOOGLE_HOST_TAO_TYPE"
+	TaoPCRsEnvVar     = "GOOGLE_TAO_PCRS"
+	TaoTPMEnvVar      = "GOOGLE_TAO_TPM"
 
 	SharedSecretPolicyDefault      = "self"
 	SharedSecretPolicyConservative = "few"
@@ -98,23 +100,16 @@ var cacheOnce sync.Once
 //   name, err := tao.Parent().GetTaoName()
 func Parent() Tao {
 	cacheOnce.Do(func() {
+		hostTypeVar := os.Getenv(HostTaoTypeEnvVar)
 		hostVar := os.Getenv(HostTaoEnvVar)
-		r := strings.TrimPrefix(hostVar, "tao::TPMTao(\"dir:")
-		if r == hostVar {
-			host, err := DeserializeTaoRPC(os.Getenv(HostTaoEnvVar))
-			if err != nil {
-				glog.Error(err)
-				return
-			}
-			cachedHost = host
-		} else {
+		switch hostTypeVar {
+		case "tpm":
 			// TODO(tmroeder): this version assumes that the AIK blob is under
 			// the TPMTao directory as aikblob. This should be specified more
 			// clearly in the environment variables.
-
-			dir := strings.TrimSuffix(r, "\")")
-			aikblob, err := ioutil.ReadFile(path.Join(dir, "aikblob"))
+			aikblob, err := ioutil.ReadFile(path.Join(hostVar, "aikblob"))
 			if err != nil {
+				fmt.Fprintf(os.Stderr, "Couldn't read the aikblob: %s\n", err)
 				glog.Error(err)
 				return
 			}
@@ -131,6 +126,7 @@ func Parent() Tao {
 				var err error
 				pcrs[i], err = strconv.Atoi(s)
 				if err != nil {
+					fmt.Fprintf(os.Stderr, "Couldn't split the PCRs: %s\n", err)
 					glog.Error(err)
 					return
 				}
@@ -139,11 +135,28 @@ func Parent() Tao {
 			// TODO(tmroeder): add the tpm device path to the configuration.
 			host, err := NewTPMTao("/dev/tpm0", aikblob, pcrs)
 			if err != nil {
+				fmt.Fprintf(os.Stderr, "Couldn't create a new TPMTao: %s\n", err)
 				glog.Error(err)
 				return
 			}
 
 			cachedHost = host
+		case "pipe":
+			host, err := DeserializeTaoRPC(os.Getenv(HostTaoEnvVar))
+			if err != nil {
+				glog.Error(err)
+				return
+			}
+			cachedHost = host
+		case "unix":
+			//			host, err := DeserializeUnixSocketTaoRPC(os.Getenv(HostTaoEnvVar))
+			//			if err != nil {
+			//				glog.Error(err)
+			//				return
+			//			}
+			//			cachedHost = host
+		default:
+			glog.Errorf("unknown host tao channel type '%s'\n", hostTypeVar)
 		}
 	})
 	return cachedHost

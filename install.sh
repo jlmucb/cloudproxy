@@ -30,6 +30,7 @@ test_dir=""
 test_tpm="no"
 verbose="yes"
 test_guard="AllowAll"
+channel_type="pipe"
 for arg in "$@"; do
 	case "$arg" in
 		-notpm)
@@ -38,6 +39,7 @@ for arg in "$@"; do
 			;;
 		-tpm)
 			test_tpm="yes"
+			channel_type="tpm"
 			shift
 			;;
 		-acls)
@@ -46,6 +48,10 @@ for arg in "$@"; do
 			;;
 		-datalog)
 			test_guard="Datalog"
+			shift
+			;;
+		-unix)
+			channel_type="unix"
 			shift
 			;;
 		-q)
@@ -71,6 +77,7 @@ if [ ! "$test_dir" ]; then
 	echo "  -tpm         Use the TPM."
 	echo "  -acls        Use ACL-based guards for Tao domain policy."
 	echo "  -datalog     Use Datalog-based guards for Tao domain policy."
+	echo "  -unix        Use Unix domain sockets instead of pipes for channels."
 	echo "  -q           Be more quiet."
 	exit 1
 fi
@@ -126,6 +133,7 @@ cat <<END > "$test_dir/tao.env"
 export TAO_TEST="$test_dir" # Also hardcoded into $test_dir/scripts/*.sh
 export TAO_ROOTDIR="$root_dir"
 export TAO_USE_TPM="$test_tpm"
+export TAO_CHANNEL_TYPE="$channel_type"
 
 # Flags for tao programs
 export TAO_config_path="${test_dir}/tao.config"
@@ -162,6 +170,7 @@ export TAO_HOSTED_PROGRAMS="
 # BEGIN SETUP VARIABLES
 # These variables come from $test_dir/scripts/setup.sh
 export GOOGLE_HOST_TAO=""
+export GOOGLE_HOST_TAO_TYPE="$channel_type"
 # END SETUP VARIABLES
 END
 
@@ -231,6 +240,7 @@ function cleanup()
 	echo "# BEGIN SETUP VARIABLES" >> ${tao_env}
 	echo "# These variables come from ${TAO_TEST}/scripts/setup.sh" >> ${tao_env}
 	echo 'export GOOGLE_HOST_TAO=""' >> ${tao_env}
+	echo 'export GOOGLE_HOST_TAO_TYPE=""' >> ${tao_env}
 	echo "# END SETUP VARIABLES" >> ${tao_env}
 
 	echo "Cleared all Tao configuration data"
@@ -273,35 +283,38 @@ function setup()
 	sed -i '/^# BEGIN SETUP VARIABLES/,/^# END SETUP VARIABLES/d' ${tao_env} 
 	echo "# BEGIN SETUP VARIABLES" >> ${tao_env}
 	echo "# These variables come from ${TAO_TEST}/scripts/setup.sh" >> ${tao_env}
+	echo "export GOOGLE_HOST_TAO_TYPE='${TAO_CHANNEL_TYPE}'" >> ${tao_env}
 
 	if [ "$TAO_USE_TPM" == "yes" ]; then
-        # Don't create a new AIK if one is already present.
-        echo "Checking ${TAO_TEST}/tpm/aikblob"
-        pcr17=`tao_admin -getpcr 17`
-        pcr18=`tao_admin -getpcr 18`
-        if [ ! -f ${TAO_TEST}/tpm/aikblob ]; then
-            echo "Creating TPMTao AIK and settings."
-            rm -rf ${TAO_TEST}/tpm
-            # The genaik program comes from
-            # github.com/google/go-tpm/examples/genaik and must be in
-            # $GOPATH/bin.
-            mkdir -p ${TAO_TEST}/tpm
-            genaik --blob ${TAO_TEST}/tpm/aikblob
-        else
-            echo "Reusing existing TPMTao AIK."
-        fi
+		# Don't create a new AIK if one is already present.
+		echo "Checking ${TAO_TEST}/tpm/aikblob"
+		pcr17=`tao_admin -getpcr 17`
+		pcr18=`tao_admin -getpcr 18`
+		if [ ! -f ${TAO_TEST}/tpm/aikblob ]; then
+			echo "Creating TPMTao AIK and settings."
+			rm -rf ${TAO_TEST}/tpm
+			# The genaik program comes from
+			# github.com/google/go-tpm/examples/genaik and must be in
+			# $GOPATH/bin.
+			mkdir -p ${TAO_TEST}/tpm
+			genaik --blob ${TAO_TEST}/tpm/aikblob
+		else
+			echo "Reusing existing TPMTao AIK."
+			export GOOGLE_HOST_TAO="${TAO_TEST}/tpm"
+			export GOOGLE_TAO_PCRS='PCRs("17,18", "'${pcr17}','${pcr18}'")'
+		fi
 
-        export GOOGLE_HOST_TAO='tao::TPMTao("dir:tpm")'
-        export GOOGLE_TAO_PCRS='PCRs("17,18", "'${pcr17}','${pcr18}'")'
+		export GOOGLE_HOST_TAO='tao::TPMTao("dir:tpm")'
+		export GOOGLE_TAO_PCRS='PCRs("17,18", "'${pcr17}','${pcr18}'")'
 
-        tprin=`tao_admin -aikblob ${TAO_TEST}/tpm/aikblob`
-        export GOOGLE_TAO_TPM=$tprin
+		tprin=`tao_admin -aikblob ${TAO_TEST}/tpm/aikblob`
+		export GOOGLE_TAO_TPM=$tprin
 
-        # TODO(tmroeder): do this correctly in the Go version once we support
-        # AIK creation.
-        echo "export GOOGLE_HOST_TAO='tao::TPMTao(\"dir:tpm\")'" >> ${tao_env}
-        echo "export GOOGLE_TAO_PCRS='PCRs(\"17,18\", \"${pcr17},${pcr18}\")'" >> ${tao_env}
-        echo "export GOOGLE_TAO_TPM='$tprin'" >> ${tao_env}
+		# TODO(tmroeder): do this in the Go version once we support AIK
+		# creation.
+		echo "export GOOGLE_HOST_TAO='${TAO_TEST}/tpm'" >> ${tao_env}
+		echo "export GOOGLE_TAO_PCRS='PCRs(\"17,18\", \"${pcr17},${pcr18}\")'" >> ${tao_env}
+		echo "export GOOGLE_TAO_TPM='$tprin'" >> ${tao_env}
 	fi
 
 	echo "Creating LinuxHost keys and settings."
@@ -311,7 +324,7 @@ function setup()
 
 	echo "# END SETUP VARIABLES" >> ${tao_env}
 
-    echo "Refreshing"
+	echo "Refreshing"
 	refresh
 }
 

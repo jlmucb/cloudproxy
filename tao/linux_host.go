@@ -16,9 +16,7 @@ package tao
 
 import (
 	"io"
-	"os/exec"
 	"sync"
-	"syscall"
 
 	"code.google.com/p/goprotobuf/proto"
 
@@ -35,7 +33,7 @@ type LinuxHost struct {
 	path           string
 	guard          Guard
 	taoHost        Host
-	childFactory   LinuxProcessFactory
+	childFactory   HostedProgramFactory
 	hostedPrograms []*LinuxHostChild
 	hpm            sync.RWMutex
 	nextChildID    uint
@@ -46,8 +44,9 @@ type LinuxHost struct {
 // host Tao.
 func NewStackedLinuxHost(path string, guard Guard, hostTao Tao) (*LinuxHost, error) {
 	lh := &LinuxHost{
-		path:  path,
-		guard: guard,
+		path:         path,
+		guard:        guard,
+		childFactory: new(LinuxProcessFactory),
 	}
 
 	// TODO(tmroeder): the TPM Tao currently doesn't support name extensions.
@@ -74,7 +73,10 @@ func NewStackedLinuxHost(path string, guard Guard, hostTao Tao) (*LinuxHost, err
 // NewRootLinuxHost creates a new LinuxHost as a standalone Host that can
 // provide the Tao to hosted Linux processes.
 func NewRootLinuxHost(path string, guard Guard, password []byte) (*LinuxHost, error) {
-	lh := &LinuxHost{guard: guard}
+	lh := &LinuxHost{
+		guard:        guard,
+		childFactory: new(LinuxProcessFactory),
+	}
 	k, err := NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, path, nil)
 	if err != nil {
 		return nil, err
@@ -92,7 +94,7 @@ func NewRootLinuxHost(path string, guard Guard, password []byte) (*LinuxHost, er
 type LinuxHostChild struct {
 	channel      io.ReadWriteCloser
 	ChildSubprin auth.SubPrin
-	Cmd          *exec.Cmd
+	Cmd          HostedProgram
 }
 
 // GetTaoName returns the Tao name for the child.
@@ -220,7 +222,7 @@ func (lh *LinuxHost) StartHostedProgram(path string, args []string) (auth.SubPri
 	}
 	lh.idm.Unlock()
 
-	subprin, temppath, err := lh.childFactory.MakeHostedProgramSubprin(id, path)
+	subprin, temppath, err := lh.childFactory.MakeSubprin(id, path)
 	if err != nil {
 		return auth.SubPrin{}, 0, err
 	}
@@ -237,13 +239,13 @@ func (lh *LinuxHost) StartHostedProgram(path string, args []string) (auth.SubPri
 		return auth.SubPrin{}, 0, newError("Hosted program %s denied authorization to execute on host %s", subprin, hostName)
 	}
 
-	channel, cmd, err := lh.childFactory.ForkHostedProgram(temppath, args)
+	channel, cmd, err := lh.childFactory.Launch(temppath, args)
 	if err != nil {
 		return auth.SubPrin{}, 0, err
 	}
 	child := &LinuxHostChild{channel, subprin, cmd}
 	go NewLinuxHostTaoServer(lh, child).Serve(channel)
-	pid := child.Cmd.Process.Pid
+	pid := child.Cmd.ID()
 
 	lh.hpm.Lock()
 	lh.hostedPrograms = append(lh.hostedPrograms, child)
@@ -257,8 +259,6 @@ func (lh *LinuxHost) StopHostedProgram(subprin auth.SubPrin) error {
 	lh.hpm.Lock()
 	defer lh.hpm.Unlock()
 
-	// For Stop, we send SIGTERM
-	sigterm := 15
 	var i int
 	for i < len(lh.hostedPrograms) {
 		lph := lh.hostedPrograms[i]
@@ -267,8 +267,8 @@ func (lh *LinuxHost) StopHostedProgram(subprin auth.SubPrin) error {
 			// Close the channel before sending SIGTERM
 			lph.channel.Close()
 
-			if err := syscall.Kill(lph.Cmd.Process.Pid, syscall.Signal(sigterm)); err != nil {
-				glog.Errorf("Couldn't send SIGTERM to process %d, subprincipal %s: %s\n", lph.Cmd.Process.Pid, subprin, err)
+			if err := lph.Cmd.Stop(); err != nil {
+				glog.Errorf("Couldn't stop hosted program %d, subprincipal %s: %s\n", lph.Cmd.ID(), subprin, err)
 			}
 
 			// The order of this array doesn't matter, and we want
@@ -294,7 +294,7 @@ func (lh *LinuxHost) ListHostedPrograms() ([]auth.SubPrin, []int, error) {
 	pids := make([]int, len(lh.hostedPrograms))
 	for i, v := range lh.hostedPrograms {
 		subprins[i] = v.ChildSubprin
-		pids[i] = v.Cmd.Process.Pid
+		pids[i] = v.Cmd.ID()
 	}
 	lh.hpm.RUnlock()
 	return subprins, pids, nil
@@ -309,11 +309,11 @@ func (lh *LinuxHost) KillHostedProgram(subprin auth.SubPrin) error {
 		lph := lh.hostedPrograms[i]
 		n := len(lh.hostedPrograms)
 		if lph.ChildSubprin.Identical(subprin) {
-			// Close the channel before sending SIGTERM
+			// Close the channel before killing the hosted program.
 			lph.channel.Close()
 
-			if err := lph.Cmd.Process.Kill(); err != nil {
-				glog.Errorf("Couldn't kill process %d, subprincipal %s: %s\n", lph.Cmd.Process.Pid, subprin, err)
+			if err := lph.Cmd.Kill(); err != nil {
+				glog.Errorf("Couldn't kill hosted program %d, subprincipal %s: %s\n", lph.Cmd.ID(), subprin, err)
 			}
 
 			// The order of this array doesn't matter, and we want

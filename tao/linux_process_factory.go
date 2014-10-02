@@ -22,23 +22,42 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"syscall"
 
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	"github.com/jlmucb/cloudproxy/util"
 )
 
-// In the C++ Tao, these functions are methods on a stateless class. So, in Go,
-// the struct is empty. But we don't make them functions on their own, since we
-// want to support multiple hosted-program factory implementations against an
-// interface in the future.
+// A Process wraps os/exec.Cmd and adds a Kill method to match the HostedProgram
+// interface.
+type Process struct {
+	*exec.Cmd
+}
+
+// Kill kills an os/exec.Cmd process.
+func (p *Process) Kill() error {
+	return p.Process.Kill()
+}
+
+const sigterm = 15
+
+// Stop tries to send SIGTERM to a process.
+func (p *Process) Stop() error {
+	return syscall.Kill(p.Process.Pid, syscall.Signal(sigterm))
+}
+
+// ID returns the PID of the underlying os/exec.Cmd instance.
+func (p *Process) ID() int {
+	return p.Process.Pid
+}
 
 // A LinuxProcessFactory supports methods for creating Linux processes as
-// hosted programs.
+// hosted programs. LinuxProcessFactory implements HostedProgramFactory.
 type LinuxProcessFactory struct{}
 
-// FormatHostedProgramSubprin produces a string that represents a subprincipal
-// with the given ID and hash.
-func FormatHostedProgramSubprin(id uint, hash []byte) auth.SubPrin {
+// FormatSubprin produces a string that represents a subprincipal with the given
+// ID and hash.
+func FormatSubprin(id uint, hash []byte) auth.SubPrin {
 	var args []auth.Term
 	if id != 0 {
 		args = append(args, auth.Int(id))
@@ -51,7 +70,7 @@ func FormatHostedProgramSubprin(id uint, hash []byte) auth.SubPrin {
 // hosted-program subprincipal. In the process, it copies the program to a
 // temporary file controlled by this code and returns the path to that new
 // binary.
-func (LinuxProcessFactory) MakeHostedProgramSubprin(id uint, prog string) (subprin auth.SubPrin, temppath string, err error) {
+func (lpf *LinuxProcessFactory) MakeSubprin(id uint, prog string) (subprin auth.SubPrin, temppath string, err error) {
 	// To avoid a time-of-check-to-time-of-use error, we copy the file
 	// bytes to a temp file as we read them. This temp-file path is
 	// returned so it can be used to start the program.
@@ -81,12 +100,12 @@ func (LinuxProcessFactory) MakeHostedProgramSubprin(id uint, prog string) (subpr
 	}
 
 	h := sha256.Sum256(b)
-	subprin = FormatHostedProgramSubprin(id, h[:])
+	subprin = FormatSubprin(id, h[:])
 	return
 }
 
-// ForkHostedProgram uses a path and arguments to fork a new process.
-func (LinuxProcessFactory) ForkHostedProgram(prog string, args []string) (io.ReadWriteCloser, *exec.Cmd, error) {
+// LaunchHostedProgram uses a path and arguments to fork a new process.
+func (lpf *LinuxProcessFactory) Launch(prog string, args []string) (io.ReadWriteCloser, HostedProgram, error) {
 	// Get a pipe pair for communication with the child.
 	serverRead, clientWrite, err := os.Pipe()
 	if err != nil {
@@ -128,15 +147,17 @@ func (LinuxProcessFactory) ForkHostedProgram(prog string, args []string) (io.Rea
 	}
 
 	channel := util.NewPairReadWriteCloser(serverRead, serverWrite)
-	cmd := &exec.Cmd{
-		Path:       prog,
-		Args:       args,
-		Stdin:      os.Stdin,
-		Stdout:     os.Stdout,
-		Stderr:     os.Stderr,
-		Env:        env,
-		ExtraFiles: []*os.File{clientRead, clientWrite}, // fd 3, fd 4
-		// TODO(tmroeder): change the user of the hosted program here.
+	cmd := &Process{
+		&exec.Cmd{
+			Path:       prog,
+			Args:       args,
+			Stdin:      os.Stdin,
+			Stdout:     os.Stdout,
+			Stderr:     os.Stderr,
+			Env:        env,
+			ExtraFiles: []*os.File{clientRead, clientWrite}, // fd 3, fd 4
+			// TODO(tmroeder): change the user of the hosted program here.
+		},
 	}
 
 	if err := cmd.Start(); err != nil {

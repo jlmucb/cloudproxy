@@ -149,12 +149,12 @@ func Parent() Tao {
 			}
 			cachedHost = host
 		case "unix":
-			//			host, err := DeserializeUnixSocketTaoRPC(os.Getenv(HostTaoEnvVar))
-			//			if err != nil {
-			//				glog.Error(err)
-			//				return
-			//			}
-			//			cachedHost = host
+			host, err := DeserializeUnixSocketTaoRPC(os.Getenv(HostTaoEnvVar))
+			if err != nil {
+				glog.Error(err)
+				return
+			}
+			cachedHost = host
 		default:
 			glog.Errorf("unknown host tao channel type '%s'\n", hostTypeVar)
 		}

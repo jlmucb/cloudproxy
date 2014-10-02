@@ -239,7 +239,7 @@ func makeProgramSubPrin(prog string) auth.SubPrin {
 	// BUG(kwalsh) This assumes no IDs, and it assumes linux hosts.
 	id := uint(0)
 	h := hash(prog)
-	return tao.FormatHostedProgramSubprin(id, h)
+	return tao.FormatSubprin(id, h)
 }
 
 func fatalIf(err error) {

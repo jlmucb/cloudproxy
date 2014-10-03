@@ -15,20 +15,24 @@
 package main
 
 import (
-	"bufio"
-	"crypto/tls"
-	"crypto/x509"
-	"crypto/x509/pkix"
+	//"bufio"
+	//"crypto/tls"
+	// "crypto/x509"
+	// "crypto/rand"
+	// "crypto/x509/pkix"
 	"errors"
 	"flag"
 	"fmt"
-	"net"
+	"time"
+	"io/ioutil"
+	"code.google.com/p/goprotobuf/proto"
+	//"net"
 	"os"
-	"strings"
+	//"strings"
 
-	"github.com/jlmucb/cloudproxy/tao"
+	tao "github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
-	taonet "github.com/jlmucb/cloudproxy/tao/net"
+	// taonet "github.com/jlmucb/cloudproxy/tao/net"
 )
 
 var serverHost = flag.String("host", "localhost", "address for client/server")
@@ -42,11 +46,13 @@ var demoAuth = flag.String("auth", "tao", "\"tcp\", \"tls\", or \"tao\"")
 var configPath = flag.String("config", "tao.config", "The Tao domain config")
 var ca = flag.String("ca", "", "address for Tao CA, if any")
 
+var fileclientKeypath= flag.String("fileclient/path", "keys/",  "path to keys")
+
 var subprinRule = "(forall P: forall Hash: TrustedProgramHash(Hash) and Subprin(P, %v, Hash) implies MemberProgram(P))"
 var argsRule = "(forall Y: forall P: forall S: MemberProgram(P) and TrustedArgs(S) and Subprin(Y, P, S) implies Authorized(Y, \"Execute\"))"
 var demoRule = "TrustedArgs(ext.Args(%s))"
 
-
+/*
 func doClient(domain *tao.Domain) {
 	network := "tcp"
 	keys, err := tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Parent())
@@ -96,58 +102,101 @@ func doClient(domain *tao.Domain) {
 			i+1, pingGood, pingFail)
 	}
 }
+*/
 
 
-// Tao Host demo
-
-func hostTaoDemo() error {
-	name, err := tao.Parent().GetTaoName()
-	if err != nil {
+func InitKeys() error {
+	initialTaoPrin, err := tao.Parent().GetTaoName()
+	if(err!=nil) {
 		return err
 	}
-	fmt.Printf("My root name is %s\n", name)
+	fmt.Printf("My root name is %s\n", initialTaoPrin)
 
-	// TODO(kwalsh) Make a convenience function for this
-	var args []auth.Term
-	for _, arg := range os.Args {
-		args = append(args, auth.Str(arg))
-	}
-	e := auth.PrinExt{Name: "Args", Arg: args}
+	e := auth.PrinExt{Name: "fileclient.version.1",}
 	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
 	if err != nil {
 		return err
 	}
 
-	name, err = tao.Parent().GetTaoName()
+	myTaoPrin, err := tao.Parent().GetTaoName()
 	if err != nil {
 		return err
 	}
-	fmt.Printf("My full name is %s\n", name)
+	fmt.Printf("My full name is %s\n", myTaoPrin)
 
-	random, err := tao.Parent().GetRandomBytes(10)
+	// TODO: fix
+	k:= &tao.Keys{};
+	var keyTypes tao.KeyType
+	keyTypes=  tao.Signing
+	k.SetMyKeyPath(*fileclientKeypath)
+	k.SetKeyType(keyTypes)
+	k.SigningKey, err = tao.GenerateSigner()
+
+	// generate a self signed cert for keynegoserver
+	details := tao.X509Details {
+		Country: "US",
+		Organization: "Google",
+		CommonName: myTaoPrin.String(), }
+	subjectname:= tao.NewX509Name(details)
+
+	der, err := k.SigningKey.CreateSelfSignedDER(subjectname)
+	if(err!=nil) {
+		fmt.Printf("cant create der\n")
+	}
+	fmt.Printf("der: % x\n", der);
+	fmt.Printf("\n")
+	ioutil.WriteFile(*fileclientKeypath+"certreq", der, os.ModePerm)
+
+	// generate my symmetric keys
+	random, err := tao.Parent().GetRandomBytes(128)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Random bytes  : % x\n", random)
-
-	n, err := tao.Parent().Rand().Read(random)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("%d more bytes : % x\n", n, random)
-
-	secret, err := tao.Parent().GetSharedSecret(10, tao.SharedSecretPolicyDefault)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("Shared secret : % x\n", secret)
-
 	sealed, err := tao.Parent().Seal(random, tao.SealPolicyDefault)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Sealed bytes  : % x\n", sealed)
+	ioutil.WriteFile(*fileclientKeypath+"sealedKeys", sealed, os.ModePerm)
 
+	subject:= k.SigningKey.ToPrincipal()
+	keySpeaksfor := auth.Speaksfor{
+		Delegate:  subject,
+		Delegator: myTaoPrin,
+	}
+	startTime:= time.Now()
+	endTime:= startTime.Add(365 * 24 * time.Hour)
+	intStart:= startTime.UnixNano()
+	intEnd:= endTime.UnixNano()
+	attest, err:= tao.Parent().Attest(nil, &intStart, &intEnd, keySpeaksfor)
+	if (err==nil) {
+		statement:= proto.CompactTextString(attest)
+		fmt.Printf("Attest worked\n%s\n", statement)
+	} else {
+		fmt.Printf("Attest failed\n")
+	}
+
+	// get it signed by keynegoserver
+
+
+	// store the keys and certs
+
+	// for now, we don't init tao in this layer and just use the keys
+
+	return nil
+}
+
+func GetBlob() ([]byte, error) {
+	// read key blobs and cert.  If not there, return nil
+	err:= InitKeys()
+	return nil,err 
+}
+
+func GetMyKeys() error {
+	// fetch sealed blob
+	sealed, err := GetBlob()
+	return err
 	unsealed, policy, err := tao.Parent().Unseal(sealed)
 	if err != nil {
 		return err
@@ -156,53 +205,28 @@ func hostTaoDemo() error {
 		return errors.New("unexpected policy on unseal")
 	}
 	fmt.Printf("Unsealed bytes: % x\n", unsealed)
-
 	return nil
 }
 
 func main() {
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
-	switch *demoAuth {
-	case "tcp", "tls", "tao":
-	default:
-		fmt.Printf("unrecognized authentication mode: %s\n", *demoAuth)
-		return
-	}
 
-	fmt.Printf("Go Tao Demo\n")
-
-	if !tao.Hosted() {
-		fmt.Printf("can't continue: No host Tao available\n")
-		return
-	}
-
-	if *localMode {
-		err := hostTaoDemo()
-		if err != nil {
-			fmt.Printf("error: %s\n", err.Error())
-			return
-		}
-	}
-
-	// TODO(tmroeder): use the Domain and the tao parent to set up the keys and
-	// the guard. Also need to hook the datalog guard into the domain and get
-	// the basic tests working with this guard, especially execution
-	// authorization.
-	serverReady <- true
-	serverDone <- true
-
-	domain, err := tao.LoadDomain(*configPath, nil)
+	// it I can't get my keys, init
+	err:= GetMyKeys();
 	if err != nil {
-		fmt.Printf("error: couldn't load the tao domain from %s\n", *configPath)
+		fmt.Printf("error: couldn't GetMyKeys\n")
 		return
 	}
+	return
 
+/*
 	ok := <-serverReady
 	if ok {
 		doClient(domain)
 	}
 	serverStop <- true
 	<-serverDone
+ */
 	fmt.Printf("Done\n")
 }

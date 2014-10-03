@@ -1,6 +1,4 @@
-#
-export TAO_TEST=/Users/manferdelli/cloudproxy/apps/testcode/test
-export TAO_ROOTDIR=/Users/manferdelli/cloudproxy
+#	
 cd $TAO_TEST
 mkdir linux_tao_host
 mkdir policy_keys

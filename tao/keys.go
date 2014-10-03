@@ -149,6 +149,17 @@ func prepareX509Template(subjectName *pkix.Name) *x509.Certificate {
 	}
 }
 
+func (s *Signer) CreateSelfSignedDER(name *pkix.Name) ([]byte, error) {
+	template := prepareX509Template(name)
+	template.IsCA = true
+	template.Issuer = template.Subject
+	der, err := x509.CreateCertificate(rand.Reader, template, template, &s.ec.PublicKey, s.ec)
+	if err != nil {
+		return nil, err
+	}
+	return der, nil
+}
+
 // CreateSelfSignedX509 creates a self-signed X.509 certificate for the public
 // key of this Signer.
 func (s *Signer) CreateSelfSignedX509(name *pkix.Name) (*x509.Certificate, error) {

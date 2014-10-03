@@ -16,11 +16,11 @@ package main
 import (
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"io/ioutil"
+	// "io/ioutil"
 	"crypto/tls"
 	"fmt"
 	"os"
-	"errors"
+	// "errors"
 	// "path"
 	// "time"
 	"flag"
@@ -36,7 +36,7 @@ import (
 
 var network = flag.String("network", "tcp", "The network to use for connections")
 var addr = flag.String("addr", "localhost:8124", "The address to listen on")
-var domainPass = flag.String("password", "BogusPass", "The domain password for the policy key")
+var domainPass = flag.String("password", "nopassword", "The domain password for the policy key")
 var configPath = flag.String("config", "tao.config", "The Tao domain config")
 
 
@@ -47,29 +47,21 @@ func zeroBytes(b []byte) {
 	}
 }
 
-func GetOnDiskPBEKeys(keyTypes tao.KeyType, password []byte, path string, name *pkix.Name) (*tao.Keys, error) {
-	k := &tao.Keys{}
-	//{
-	//	tao.keyTypes: keyTypes,
-	//	tao.dir:      path,
-	//}
+func GetOnDiskPolicyKeys(keyTypes tao.KeyType, password []byte, path string, name *pkix.Name) (*tao.Keys, error) {
+	k, err := tao.NewOnDiskPBEKeys(keyTypes, password, path, nil)
+	if err != nil {
+		fmt.Printf("Cant get signing keys\n");
+		return nil, err
+	}
+	fmt.Printf("Got signing keys\n");
 	k.SetMyKeyPath(path)
 	k.SetKeyType(keyTypes)
-	f, err := os.Open(k.PBEKeysetPath())
-	if err == nil {
-		return nil, errors.New("Cant get policy keys\n");
-	}
-	defer f.Close()
-	ks, err := ioutil.ReadAll(f)
+	err= k.LoadCert()
 	if err != nil {
 		return nil, err
 	}
-
-	data, err := tao.PBEDecrypt(ks, password)
-	if err != nil {
-		return nil, err
-	}
-	defer zeroBytes(data)
+	fmt.Printf("got Cert\n");
+/*
 	var cks tao.CryptoKeyset
 	if err = proto.Unmarshal(data, &cks); err != nil {
 		return nil, err
@@ -78,14 +70,11 @@ func GetOnDiskPBEKeys(keyTypes tao.KeyType, password []byte, path string, name *
 	if err != nil {
 		return nil, err
 	}
-	err = k.LoadCert()
-	if err != nil {
-		return nil, err
-	}
 	k.SigningKey = ktemp.SigningKey
 	k.VerifyingKey = ktemp.VerifyingKey
 	k.CryptingKey = ktemp.CryptingKey
 	k.DerivingKey = ktemp.DerivingKey
+ */
 
 	return k, nil
 }
@@ -105,12 +94,12 @@ func HandleKeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard) {
 	}
 
 	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
- 	if err := taonet.ValidatePeerAttestation(&a, peerCert, guard); err != nil {
- 		fmt.Fprintln(os.Stderr, "Couldn't validate peer attestation:", err)
- 		return
- 	}
+	if err := taonet.ValidatePeerAttestation(&a, peerCert, guard); err != nil {
+		fmt.Fprintln(os.Stderr, "Couldn't validate peer attestation:", err)
+		return
+	}
 
-  	truncSays, pe, err := taonet.TruncateAttestation(s.ToPrincipal(), &a)
+	truncSays, pe, err := taonet.TruncateAttestation(s.ToPrincipal(), &a)
 //	if err != nil {
 //		fmt.Fprintln(os.Stderr, "Couldn't truncate the attestation:", err)
 //		return
@@ -130,7 +119,7 @@ func HandleKeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard) {
 		Speaker: s.ToPrincipal(),
 		Message: auth.Pred{
 			Name: "TrustedProgramHash",
-			Arg:  []auth.Term{auth.PrinTail{Ext: []auth.PrinExt{pe}}},
+			Arg:  []auth.Term{auth.PrinTail{Ext: []auth.PrinExt{pe}}}, // used to be pe
 		},
 	}
 //	if truncSays.Time != nil {
@@ -221,49 +210,62 @@ func KeyNegoRequestTruncatedAttestation(network, addr string, keys *tao.Keys, v 
 
 func main() {
 	flag.Parse()
+	fmt.Printf("keynegoserver started, config: %s\n", *configPath)
 	domain, err := tao.LoadDomain(*configPath, []byte(*domainPass))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Couldn't load the config path %s: %s\n", *configPath, err)
+		fmt.Printf("Couldn't load the config path %s: %s\n", *configPath, err)
 		return
 	}
+	fmt.Printf("loaded domain from: %s\n", *configPath)
+	fmt.Printf("", domain)
+	fmt.Printf("\n")
 
-	// Set up temporary keys for the connection, since the only thing that
-	// matters to the remote client is that they receive a correctly-signed new
-	// attestation from the policy key.
-	keys, err := tao.NewTemporaryKeys(tao.Signing)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't set up temporary keys for the connection:", err)
-		return
-	}
-	keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
-		Organization: []string{"Google Tao Demo"}})
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't set up a self-signed cert:", err)
-		return
-	}
+	var keyTypes  tao.KeyType
+	var pkix_name pkix.Name
+	keyTypes= tao.Signing
+	var pass []byte
+	pass= []byte(*domainPass)
 
-	tlsc, err := taonet.EncodeTLSCert(keys)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't encode a TLS cert:", err)
-		return
-	}
-	conf := &tls.Config{
-		RootCAs:            x509.NewCertPool(),
-		Certificates:       []tls.Certificate{*tlsc},
-		InsecureSkipVerify: true,
-		ClientAuth:         tls.RequireAnyClientCert,
-	}
-	sock, err := tls.Listen(*network, *addr, conf)
+	keypath :=  "/Users/manferdelli/src/github.com/jlmucb/cloudproxy/apps/fileproxy/keynegoserver/test/policy_keys/"
+	fmt.Printf("keypath: %s\n", keypath)
 
-	fmt.Println("KeyNegoServer: accepting connections")
-	for {
-		conn, err := sock.Accept()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Couldn't accept a connection on %s: %s\n", *addr, err)
-			return
-		}
-
-		go HandleKeyNegoRequest(conn, domain.Keys.SigningKey, domain.Guard)
+	keys, err:= GetOnDiskPolicyKeys(keyTypes, pass, keypath, &pkix_name)
+	if(err==nil) {
+		fmt.Printf("GetOnDiskPolicyKeys succeeded\n")
+	} else {
+		fmt.Printf("GetOnDiskPolicyKeys failed\n", err)
 	}
-	// zeroKeyset(&cks)
+	fmt.Printf("keys: %s\n", keys);
+
+	endorsement := auth.Says{
+		Speaker: keys.SigningKey.ToPrincipal(),
+		Message: auth.Pred{
+			Name: "TrustedProgramHash",
+			Arg:  []auth.Term{auth.PrinTail{Ext: []auth.PrinExt{}}}, //used to be pe
+		},
+	}
+	fmt.Printf("endorsement: ", endorsement)
+	fmt.Printf("\n")
+
+	details := tao.X509Details {
+		Country: "US",
+		Organization: "Google",
+		State: "California",
+		CommonName: "fileClient Program",}
+	subjectname:= tao.NewX509Name(details)
+	cert, err := keys.SigningKey.CreateSelfSignedX509(subjectname)
+	fmt.Printf("\n")
+	fmt.Printf("\n")
+	if(err==nil) {
+		fmt.Printf("generated cert\n", cert);
+		fmt.Printf("\n")
+	} else {
+		fmt.Printf("failed to generate cert\n");
+	}
+	// cert := CreateSignedX509(k.Cert, 000, subjectKey *Verifier, subjectName)
+	fmt.Printf("\n")
+	fmt.Printf("\n")
+
+	return
+
 }

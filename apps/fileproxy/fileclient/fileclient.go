@@ -15,19 +15,19 @@
 package main
 
 import (
-	//"bufio"
-	//"crypto/tls"
-	// "crypto/x509"
-	// "crypto/rand"
-	// "crypto/x509/pkix"
 	"errors"
 	"flag"
 	"fmt"
 	"time"
 	"io/ioutil"
 	"code.google.com/p/goprotobuf/proto"
-	//"net"
 	"os"
+	//"bufio"
+	//"crypto/tls"
+	// "crypto/x509"
+	// "crypto/x509/pkix"
+	// "crypto/rand"
+	//"net"
 	//"strings"
 
 	tao "github.com/jlmucb/cloudproxy/tao"
@@ -105,7 +105,7 @@ func doClient(domain *tao.Domain) {
 */
 
 
-func InitKeys() error {
+func InitKeys(path string) ([]byte, tao.Key, error) {
 	initialTaoPrin, err := tao.Parent().GetTaoName()
 	if(err!=nil) {
 		return err
@@ -124,15 +124,27 @@ func InitKeys() error {
 	}
 	fmt.Printf("My full name is %s\n", myTaoPrin)
 
-	// TODO: fix
+	// generate my symmetric keys
+	unsealed, err := tao.Parent().GetRandomBytes(128)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Symmetric key: % x\n", unsealed)
+	sealed, err := tao.Parent().Seal(unsealed, tao.SealPolicyDefault)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Sealed bytes  : % x\n", sealed)
+	ioutil.WriteFile(path+"sealedKeys", sealed, os.ModePerm)
+
+	// generate signing key
 	k:= &tao.Keys{};
 	var keyTypes tao.KeyType
 	keyTypes=  tao.Signing
-	k.SetMyKeyPath(*fileclientKeypath)
+	k.SetMyKeyPath(path)
 	k.SetKeyType(keyTypes)
 	k.SigningKey, err = tao.GenerateSigner()
 
-	// generate a self signed cert for keynegoserver
 	details := tao.X509Details {
 		Country: "US",
 		Organization: "Google",
@@ -145,20 +157,6 @@ func InitKeys() error {
 	}
 	fmt.Printf("der: % x\n", der);
 	fmt.Printf("\n")
-	ioutil.WriteFile(*fileclientKeypath+"certreq", der, os.ModePerm)
-
-	// generate my symmetric keys
-	random, err := tao.Parent().GetRandomBytes(128)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("Random bytes  : % x\n", random)
-	sealed, err := tao.Parent().Seal(random, tao.SealPolicyDefault)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("Sealed bytes  : % x\n", sealed)
-	ioutil.WriteFile(*fileclientKeypath+"sealedKeys", sealed, os.ModePerm)
 
 	subject:= k.SigningKey.ToPrincipal()
 	keySpeaksfor := auth.Speaksfor{
@@ -179,24 +177,31 @@ func InitKeys() error {
 
 	// get it signed by keynegoserver
 
+	// Save signing key and cert
+	ioutil.WriteFile(path+"signer", serSigner, os.ModePerm)
+	ioutil.WriteFile(path+"cert", serCert, os.ModePerm)
 
-	// store the keys and certs
-
-	// for now, we don't init tao in this layer and just use the keys
-
-	return nil
+	return  unsealed, k, nil
 }
 
-func GetBlob() ([]byte, error) {
-	// read key blobs and cert.  If not there, return nil
-	err:= InitKeys()
-	return nil,err 
+func GetBlobs(path string) ([]byte, []byte, []byte, error) {
+	var sealed []byte
+	var serializedSealedSigning []byte
+	var serializedCert []byte
+
+	ioutil.ReadFile(path+"sealedKeys", sealed, os.ModePerm)
+	ioutil.ReadFile(path+"signer", serSigner, os.ModePerm)
+	ioutil.ReadFile(path+"cert", serCert, os.ModePerm)
+	return  sealed, serializedCert, serializedSealedSigning, nil
 }
 
-func GetMyKeys() error {
-	// fetch sealed blob
-	sealed, err := GetBlob()
-	return err
+
+func GetMyKeys(path string) ([]byte, tao.Key, error) {
+	// fetch sealed sym key blob
+	sealed, cert, sealedSigning, err := GetBlob(fileclientKeypath)
+	if(err!=nil) {
+		return (InitKeys(path))
+	}
 	unsealed, policy, err := tao.Parent().Unseal(sealed)
 	if err != nil {
 		return err
@@ -204,8 +209,17 @@ func GetMyKeys() error {
 	if policy != tao.SealPolicyDefault {
 		return errors.New("unexpected policy on unseal")
 	}
-	fmt.Printf("Unsealed bytes: % x\n", unsealed)
-	return nil
+	fmt.Printf("got unsealed symmetric keys: % x\n", unsealed)
+	signing, policy, err := tao.Parent().Unseal(sealed)
+	if err != nil {
+		return err
+	}
+	if policy != tao.SealPolicyDefault {
+		return errors.New("unexpected policy on unseal")
+	}
+	fmt.Printf("got unsealed signing key: % x\n", )
+	signingKey:= &Key{}
+	return unsealed, signingKey, nil
 }
 
 func main() {
@@ -213,7 +227,7 @@ func main() {
 	serverAddr = *serverHost + ":" + *serverPort
 
 	// it I can't get my keys, init
-	err:= GetMyKeys();
+	symkeys, sigkey, err:= GetMyKeys(fileclientKeypath);
 	if err != nil {
 		fmt.Printf("error: couldn't GetMyKeys\n")
 		return

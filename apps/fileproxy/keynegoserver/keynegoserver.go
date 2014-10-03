@@ -16,7 +16,7 @@ package main
 import (
 	"crypto/x509"
 	"crypto/x509/pkix"
-	// "io/ioutil"
+	"io/ioutil"
 	"crypto/tls"
 	"fmt"
 	"os"
@@ -48,20 +48,32 @@ func zeroBytes(b []byte) {
 }
 
 func GetOnDiskPolicyKeys(keyTypes tao.KeyType, password []byte, path string, name *pkix.Name) (*tao.Keys, error) {
-	k, err := tao.NewOnDiskPBEKeys(keyTypes, password, path, nil)
-	if err != nil {
-		fmt.Printf("Cant get signing keys\n");
-		return nil, err
-	}
-	fmt.Printf("Got signing keys\n");
+	k := &tao.Keys{}
 	k.SetMyKeyPath(path)
 	k.SetKeyType(keyTypes)
-	err= k.LoadCert()
+	err:= k.LoadCert()
 	if err != nil {
 		return nil, err
 	}
 	fmt.Printf("got Cert\n");
-/*
+
+	f, err := os.Open(path+"/signer")
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	ks, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("Got key buffer\n");
+	data, err := tao.PBEDecrypt(ks, password)
+	if err != nil {
+		return nil, err
+	}
+	defer zeroBytes(data)
+	fmt.Printf("Got decrypted signing key\n");
+
 	var cks tao.CryptoKeyset
 	if err = proto.Unmarshal(data, &cks); err != nil {
 		return nil, err
@@ -74,7 +86,6 @@ func GetOnDiskPolicyKeys(keyTypes tao.KeyType, password []byte, path string, nam
 	k.VerifyingKey = ktemp.VerifyingKey
 	k.CryptingKey = ktemp.CryptingKey
 	k.DerivingKey = ktemp.DerivingKey
- */
 
 	return k, nil
 }
@@ -82,39 +93,41 @@ func GetOnDiskPolicyKeys(keyTypes tao.KeyType, password []byte, path string, nam
 
 // HandleKeyNegoRequest checks a request from a program and responds with a truncated
 // delegation signed by the policy key.
-func HandleKeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard) {
+func HandleKeyNegoRequest(conn net.Conn, k *tao.Keys, guard tao.Guard) {
+	fmt.Printf("HandleKeyNegoRequest\n")
 	defer conn.Close()
 
+	s:= k.SigningKey
 	// Expect an attestation from the client.
 	ms := util.NewMessageStream(conn)
 	var a tao.Attestation
 	if err := ms.ReadMessage(&a); err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't read attestation from channel:", err)
+		fmt.Printf("Couldn't read attestation from channel:", err)
 		return
 	}
+	fmt.Printf("HandleKeyNegoRequest: read message\n")
 
 	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
 	if err := taonet.ValidatePeerAttestation(&a, peerCert, guard); err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't validate peer attestation:", err)
+		fmt.Printf("Couldn't validate peer attestation:", err)
 		return
 	}
+	fmt.Printf("HandleKeyNegoRequest: peer attest verified\n")
 
 	truncSays, pe, err := taonet.TruncateAttestation(s.ToPrincipal(), &a)
-//	if err != nil {
-//		fmt.Fprintln(os.Stderr, "Couldn't truncate the attestation:", err)
-//		return
-//	}
-
-	// TODO(tmroeder): fix this to check the time and make sure we're not
-	// signing an unbounded attestation to this program.
-	ra, err := tao.GenerateAttestation(s, nil, truncSays)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't attest to the new says statement:", err)
+		fmt.Printf("Couldn't truncate the attestation:", err)
 		return
 	}
+	fmt.Printf("HandleKeyNegoRequest: got taonet.TruncateAttestation\n")
 
-	// Add an endorsement to this PrinExt Program hash so the receiver can check
-	// it successfully against policy.
+	ra, err := tao.GenerateAttestation(s, nil, truncSays)
+	if err != nil {
+		fmt.Printf("Couldn't attest to the new says statement:", err)
+		return
+	}
+	fmt.Printf("HandleKeyNegoRequest: did first tao.GenerateAttestation\n")
+
 	endorsement := auth.Says{
 		Speaker: s.ToPrincipal(),
 		Message: auth.Pred{
@@ -122,90 +135,34 @@ func HandleKeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard) {
 			Arg:  []auth.Term{auth.PrinTail{Ext: []auth.PrinExt{pe}}}, // used to be pe
 		},
 	}
-//	if truncSays.Time != nil {
-//		i := *truncSays.Time
-//		endorsement.Time = &i
-//	}
-//	if truncSays.Expiration != nil {
-//		i := *truncSays.Expiration
-//		endorsement.Expiration = &i
-//	}
+	if truncSays.Time != nil {
+		i := *truncSays.Time
+		endorsement.Time = &i
+	}
+	if truncSays.Expiration != nil {
+		i := *truncSays.Expiration
+		endorsement.Expiration = &i
+	}
 	ea, err := tao.GenerateAttestation(s, nil, endorsement)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't generate an endorsement for this program:", err)
+		fmt.Printf("Couldn't generate an endorsement for this program:", err)
 		return
 	}
+	fmt.Printf("HandleKeyNegoRequest: did endorsement\n")
+
 	eab, err := proto.Marshal(ea)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't marshal an endorsement:", err)
+		fmt.Printf("Couldn't marshal an endorsement:", err)
 		return
 	}
 	ra.SerializedEndorsements = [][]byte{eab}
 
 	if _, err := ms.WriteMessage(ra); err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't return the attestation on the channel:", err)
+		fmt.Printf("Couldn't return the attestation on the channel:", err)
 		return
 	}
-
+	fmt.Printf("HandleKeyNegoRequest: sent endorsements\n")
 	return
-}
-
-// RequestTruncatedAttestation connects to a CA instance, sends the attestation
-// for an X.509 certificate, and gets back a truncated attestation with a new
-// principal name based on the policy key.
-func KeyNegoRequestTruncatedAttestation(network, addr string, keys *tao.Keys, v *tao.Verifier) (*tao.Attestation, error) {
-	if keys.Cert == nil {
-		return nil, fmt.Errorf("client: can't dial with an empty client certificate\n")
-	}
-	tlsCert, err := taonet.EncodeTLSCert(keys)
-	if err != nil {
-		return nil, err
-	}
-	conn, err := tls.Dial(network, addr, &tls.Config{
-		RootCAs:            x509.NewCertPool(),
-		Certificates:       []tls.Certificate{*tlsCert},
-		InsecureSkipVerify: true,
-	})
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
-	// Tao handshake: send client delegation.
-	ms := util.NewMessageStream(conn)
-	if _, err = ms.WriteMessage(keys.Delegation); err != nil {
-		return nil, err
-	}
-
-	// Read the truncated attestation and check it.
-	var a tao.Attestation
-	if err := ms.ReadMessage(&a); err != nil {
-		return nil, err
-	}
-
-	truncStmt, err := auth.UnmarshalForm(a.SerializedStatement)
-	if err != nil {
-		return nil, err
-	}
-
-	says, _, err := taonet.TruncateAttestation(v.ToPrincipal(), keys.Delegation)
-	if err != nil {
-		return nil, err
-	}
-
-	if !taonet.IdenticalDelegations(says, truncStmt) {
-		return nil, fmt.Errorf("the statement returned by the TaoCA was different than what we expected")
-	}
-
-	ok, err := v.Verify(a.SerializedStatement, tao.AttestationSigningContext, a.Signature)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, fmt.Errorf("invalid attestation signature from Tao CA")
-	}
-
-	return &a, nil
 }
 
 func main() {
@@ -235,37 +192,27 @@ func main() {
 	} else {
 		fmt.Printf("GetOnDiskPolicyKeys failed\n", err)
 	}
-	fmt.Printf("keys: %s\n", keys);
-
-	endorsement := auth.Says{
-		Speaker: keys.SigningKey.ToPrincipal(),
-		Message: auth.Pred{
-			Name: "TrustedProgramHash",
-			Arg:  []auth.Term{auth.PrinTail{Ext: []auth.PrinExt{}}}, //used to be pe
-		},
+	fmt.Printf("got keys: %s\n", keys);
+	tlsc, err := taonet.EncodeTLSCert(keys)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Couldn't encode a TLS cert:", err)
+		return
 	}
-	fmt.Printf("endorsement: ", endorsement)
-	fmt.Printf("\n")
-
-	details := tao.X509Details {
-		Country: "US",
-		Organization: "Google",
-		State: "California",
-		CommonName: "fileClient Program",}
-	subjectname:= tao.NewX509Name(details)
-	cert, err := keys.SigningKey.CreateSelfSignedX509(subjectname)
-	fmt.Printf("\n")
-	fmt.Printf("\n")
-	if(err==nil) {
-		fmt.Printf("generated cert\n", cert);
-		fmt.Printf("\n")
-	} else {
-		fmt.Printf("failed to generate cert\n");
+	conf := &tls.Config{
+		RootCAs:            x509.NewCertPool(),
+		Certificates:       []tls.Certificate{*tlsc},
+		InsecureSkipVerify: true,
+		ClientAuth:         tls.RequireAnyClientCert,
 	}
-	// cert := CreateSignedX509(k.Cert, 000, subjectKey *Verifier, subjectName)
-	fmt.Printf("\n")
-	fmt.Printf("\n")
-
+	sock, err := tls.Listen(*network, *addr, conf)
+	fmt.Printf("keynegoserver: accepting connections\n")
+	for {
+		conn, err := sock.Accept()
+		if err != nil {
+			fmt.Printf("Couldn't accept a connection on %s: %s\n", *addr, err)
+			return
+		}
+		go HandleKeyNegoRequest(conn, keys, domain.Guard)
+	}
 	return
-
 }

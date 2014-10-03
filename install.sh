@@ -147,6 +147,8 @@ export TAO_HOST_pass="BogusPass"
 export TAO_HOST_root="$test_root"
 export TAO_HOST_stacked="$test_stacked"
 export TAO_HOST_path="${test_dir}/linux_tao_host"
+export TAO_HOST_channel_type="$channel_type"
+export TAO_HOST_channel_socket_path="${test_dir}/linux_tao_host"
 
 # Flags for glog
 export GLOG_v=2

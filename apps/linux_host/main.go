@@ -37,6 +37,8 @@ var quiet = flag.Bool("quiet", false, "Be more quiet.")
 var root = flag.Bool("root", false, "Run in root mode")
 var stacked = flag.Bool("stacked", false, "Run in stacked mode")
 var pass = flag.String("pass", "", "Password for unlocking keys if running in root mode")
+var channelType = flag.String("channel_type", "pipe", "The type of channel for hosted-program communication ('pipe', or 'unix').")
+var channelSocketPath = flag.String("channel_socket_path", "", "The directory in which to create unix sockets for hosted-program communication")
 
 var create = flag.Bool("create", false, "Create a new LinuxHost service.")
 var show = flag.Bool("show", false, "Show principal name for LinuxHost service.")
@@ -110,12 +112,12 @@ func main() {
 			if len(*pass) == 0 {
 				log.Fatal("password is required")
 			}
-			host, err = tao.NewRootLinuxHost(*hostPath, domain.Guard, []byte(*pass))
+			host, err = tao.NewRootLinuxHost(*hostPath, domain.Guard, []byte(*pass), *channelType, *channelSocketPath)
 		} else if *stacked {
 			if !tao.Hosted() {
 				log.Fatalf("error: no host tao available, check $%s\n", tao.HostTaoEnvVar)
 			}
-			host, err = tao.NewStackedLinuxHost(*hostPath, domain.Guard, tao.Parent())
+			host, err = tao.NewStackedLinuxHost(*hostPath, domain.Guard, tao.Parent(), *channelType, *channelSocketPath)
 		} else {
 			log.Fatal("error: must specify either -root or -stacked")
 		}

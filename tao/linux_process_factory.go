@@ -15,7 +15,10 @@
 package tao
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -53,7 +56,19 @@ func (p *Process) ID() int {
 
 // A LinuxProcessFactory supports methods for creating Linux processes as
 // hosted programs. LinuxProcessFactory implements HostedProgramFactory.
-type LinuxProcessFactory struct{}
+type LinuxProcessFactory struct {
+	channelType string
+	socketPath  string
+}
+
+// NewLinuxProcessFactory creates a LinuxProcessFactory as a
+// HostedProgramFactory.
+func NewLinuxProcessFactory(channelType, socketPath string) HostedProgramFactory {
+	return &LinuxProcessFactory{
+		channelType: channelType,
+		socketPath:  socketPath,
+	}
+}
 
 // FormatSubprin produces a string that represents a subprincipal with the given
 // ID and hash.
@@ -104,27 +119,55 @@ func (lpf *LinuxProcessFactory) MakeSubprin(id uint, prog string) (subprin auth.
 	return
 }
 
-// LaunchHostedProgram uses a path and arguments to fork a new process.
-func (lpf *LinuxProcessFactory) Launch(prog string, args []string) (io.ReadWriteCloser, HostedProgram, error) {
-	// Get a pipe pair for communication with the child.
-	serverRead, clientWrite, err := os.Pipe()
-	if err != nil {
-		return nil, nil, err
-	}
-	defer clientWrite.Close()
+// Use 24 bytes for the socket name.
+const sockNameLen = 24
 
-	clientRead, serverWrite, err := os.Pipe()
-	if err != nil {
-		serverRead.Close()
-		return nil, nil, err
+// Launch uses a path and arguments to fork a new process.
+func (lpf *LinuxProcessFactory) Launch(prog string, args []string) (io.ReadWriteCloser, HostedProgram, error) {
+	var channel io.ReadWriteCloser
+	var extraFiles []*os.File
+	var evar string
+	switch lpf.channelType {
+	case "pipe":
+		// Get a pipe pair for communication with the child.
+		serverRead, clientWrite, err := os.Pipe()
+		if err != nil {
+			return nil, nil, err
+		}
+		defer clientWrite.Close()
+
+		clientRead, serverWrite, err := os.Pipe()
+		if err != nil {
+			serverRead.Close()
+			return nil, nil, err
+		}
+		defer clientRead.Close()
+
+		channel = util.NewPairReadWriteCloser(serverRead, serverWrite)
+		extraFiles = []*os.File{clientRead, clientWrite} // fd 3, fd 4
+
+		// Note: ExtraFiles below ensures readfd=3, writefd=4 in child
+		evar = HostTaoEnvVar + "=tao::TaoRPC+tao::FDMessageChannel(3, 4)"
+	case "unix":
+		// Get a random name for the socket.
+		nameBytes := make([]byte, sockNameLen)
+		if _, err := rand.Read(nameBytes); err != nil {
+			return nil, nil, err
+		}
+		sockName := base64.URLEncoding.EncodeToString(nameBytes)
+		sockPath := path.Join(lpf.socketPath, sockName)
+		channel = util.NewUnixSingleReadWriteCloser(sockPath)
+		if channel == nil {
+			return nil, nil, fmt.Errorf("Couldn't create a new Unix channel\n")
+		}
+		evar = HostTaoEnvVar + "=" + sockPath
+	default:
+		return nil, nil, fmt.Errorf("invalid channel type '%s'\n", lpf.channelType)
 	}
-	defer clientRead.Close()
 
 	env := os.Environ()
-	// Note: ExtraFiles below ensures readfd=3, writefd=4 in child
-	evar := HostTaoEnvVar + "=tao::TaoRPC+tao::FDMessageChannel(3, 4)"
-	// Make sure that the child knows to use a pipe variable.
-	etvar := HostTaoTypeEnvVar + "=pipe"
+	// Make sure that the child knows to use the right kind of channel.
+	etvar := HostTaoTypeEnvVar + "=" + lpf.channelType
 	replaced := false
 	replacedType := false
 	for i, pair := range env {
@@ -146,7 +189,6 @@ func (lpf *LinuxProcessFactory) Launch(prog string, args []string) (io.ReadWrite
 		env = append(env, etvar)
 	}
 
-	channel := util.NewPairReadWriteCloser(serverRead, serverWrite)
 	cmd := &Process{
 		&exec.Cmd{
 			Path:       prog,
@@ -155,7 +197,7 @@ func (lpf *LinuxProcessFactory) Launch(prog string, args []string) (io.ReadWrite
 			Stdout:     os.Stdout,
 			Stderr:     os.Stderr,
 			Env:        env,
-			ExtraFiles: []*os.File{clientRead, clientWrite}, // fd 3, fd 4
+			ExtraFiles: extraFiles,
 			// TODO(tmroeder): change the user of the hosted program here.
 		},
 	}

@@ -24,7 +24,7 @@ import (
 	"os"
 	//"bufio"
 	//"crypto/tls"
-	// "crypto/x509"
+	"crypto/x509"
 	// "crypto/x509/pkix"
 	// "crypto/rand"
 	//"net"
@@ -52,87 +52,35 @@ var subprinRule = "(forall P: forall Hash: TrustedProgramHash(Hash) and Subprin(
 var argsRule = "(forall Y: forall P: forall S: MemberProgram(P) and TrustedArgs(S) and Subprin(Y, P, S) implies Authorized(Y, \"Execute\"))"
 var demoRule = "TrustedArgs(ext.Args(%s))"
 
-/*
-func doClient(domain *tao.Domain) {
-	network := "tcp"
-	keys, err := tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Parent())
-	if err != nil {
-		fmt.Printf("client: couldn't generate temporary Tao keys: %s\n", err)
-		return
-	}
 
-	// TODO(tmroeder): fix the name
-	cert, err := keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
-		Organization: []string{"Google Tao Demo"}})
-	if err != nil {
-		fmt.Printf("client: couldn't create a self-signed X.509 cert: %s\n", err)
-		return
-	}
-	// TODO(kwalsh) keys should save cert on disk if keys are on disk
-	keys.Cert = cert
-
-	g := domain.Guard
-	if *ca != "" {
-		na, err := taonet.RequestTruncatedAttestation(network, *ca, keys, domain.Keys.VerifyingKey)
-		if err != nil {
-			fmt.Printf("client: couldn't get a truncated attestation from %s: %s\n", *ca, err)
-			return
-		}
-
-		keys.Delegation = na
-
-		// If we're using a CA, then use a custom guard that accepts only
-		// programs that have talked to the CA.
-		g, err = newTempCAGuard(domain.Keys.VerifyingKey)
-		if err != nil {
-			fmt.Printf("client: couldn't set up a new guard: %s\n", err)
-			return
-		}
-	}
-
-	pingGood := 0
-	pingFail := 0
-	for i := 0; i < *pingCount || *pingCount < 0; i++ { // negative means forever
-		if doRequest(g, domain, keys) {
-			pingGood++
-		} else {
-			pingFail++
-		}
-		fmt.Printf("client: made %d connections, finished %d ok, %d bad pings\n",
-			i+1, pingGood, pingFail)
-	}
-}
-*/
-
-
-func InitKeys(path string) ([]byte, tao.Key, error) {
+func InitKeys(path string) ([]byte, *tao.Keys, error) {
 	initialTaoPrin, err := tao.Parent().GetTaoName()
 	if(err!=nil) {
-		return err
+		return nil, nil, err
 	}
 	fmt.Printf("My root name is %s\n", initialTaoPrin)
 
 	e := auth.PrinExt{Name: "fileclient.version.1",}
 	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	myTaoPrin, err := tao.Parent().GetTaoName()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	fmt.Printf("My full name is %s\n", myTaoPrin)
 
 	// generate my symmetric keys
 	unsealed, err := tao.Parent().GetRandomBytes(128)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	fmt.Printf("Symmetric key: % x\n", unsealed)
 	sealed, err := tao.Parent().Seal(unsealed, tao.SealPolicyDefault)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	fmt.Printf("Sealed bytes  : % x\n", sealed)
 	ioutil.WriteFile(path+"sealedKeys", sealed, os.ModePerm)
@@ -154,9 +102,11 @@ func InitKeys(path string) ([]byte, tao.Key, error) {
 	der, err := k.SigningKey.CreateSelfSignedDER(subjectname)
 	if(err!=nil) {
 		fmt.Printf("cant create der\n")
+		return nil, nil, err
 	}
 	fmt.Printf("der: % x\n", der);
 	fmt.Printf("\n")
+	cert, err := x509.ParseCertificate(der)
 
 	subject:= k.SigningKey.ToPrincipal()
 	keySpeaksfor := auth.Speaksfor{
@@ -175,50 +125,71 @@ func InitKeys(path string) ([]byte, tao.Key, error) {
 		fmt.Printf("Attest failed\n")
 	}
 
+	k.Cert= cert
+
 	// get it signed by keynegoserver
+	// keyNegoAttest, err:= RequestTruncatedAttestation(network, *ca, keys, domain.Keys.VerifyingKey)
 
 	// Save signing key and cert
-	ioutil.WriteFile(path+"signer", serSigner, os.ModePerm)
-	ioutil.WriteFile(path+"cert", serCert, os.ModePerm)
+	// SignedkeyNegoSignedDER:=
+	// serSigner:= k.SigningKey.MarshalSignerDER()
+	// MarshalSignerProto(s *Signer)
+	//ioutil.WriteFile(path+"signer", serSigner, os.ModePerm)
+	//ioutil.WriteFile(path+"cert", serCert, os.ModePerm)
 
 	return  unsealed, k, nil
 }
 
-func GetBlobs(path string) ([]byte, []byte, []byte, error) {
-	var sealed []byte
-	var serializedSealedSigning []byte
-	var serializedCert []byte
-
-	ioutil.ReadFile(path+"sealedKeys", sealed, os.ModePerm)
-	ioutil.ReadFile(path+"signer", serSigner, os.ModePerm)
-	ioutil.ReadFile(path+"cert", serCert, os.ModePerm)
-	return  sealed, serializedCert, serializedSealedSigning, nil
+func GetBlobs(path string) ([]byte, *x509.Certificate, []byte, error) {
+	sealed, err := ioutil.ReadFile(path+"sealedKeys")
+	if(err!=nil) {
+		return nil, nil, nil, err
+	}
+	serializedSealedSigning, err := ioutil.ReadFile(path+"signer")
+	if(err!=nil) {
+		return nil, nil, nil, err
+	}
+	serializedCert, err := ioutil.ReadFile(path+"cert")
+	if(err!=nil) {
+		return nil, nil, nil, err
+	}
+	cert, err := x509.ParseCertificate(serializedCert)
+	if(err!=nil) {
+		return nil, nil, nil, err
+	}
+	return  sealed, cert, serializedSealedSigning, nil
 }
 
 
-func GetMyKeys(path string) ([]byte, tao.Key, error) {
+func GetMyKeys(path string) ([]byte, *tao.Keys, error) {
 	// fetch sealed sym key blob
-	sealed, cert, sealedSigning, err := GetBlob(fileclientKeypath)
+	sealed, cert, sealedSigning, err := GetBlobs(*fileclientKeypath)
 	if(err!=nil) {
 		return (InitKeys(path))
 	}
 	unsealed, policy, err := tao.Parent().Unseal(sealed)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	if policy != tao.SealPolicyDefault {
-		return errors.New("unexpected policy on unseal")
+		return nil, nil, errors.New("unexpected policy on unseal")
 	}
 	fmt.Printf("got unsealed symmetric keys: % x\n", unsealed)
-	signing, policy, err := tao.Parent().Unseal(sealed)
+	signing, policy, err := tao.Parent().Unseal(sealedSigning)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	if policy != tao.SealPolicyDefault {
-		return errors.New("unexpected policy on unseal")
+		return nil, nil, errors.New("unexpected policy on unseal")
 	}
 	fmt.Printf("got unsealed signing key: % x\n", )
-	signingKey:= &Key{}
+
+	signingKey:= &tao.Keys{}
+	signingKey.Cert= cert
+	signingKey.SigningKey, err= tao.UnmarshalSignerDER(signing)
+	if err != nil {
+		return nil, nil, err
+	}
 	return unsealed, signingKey, nil
 }
 
@@ -227,12 +198,20 @@ func main() {
 	serverAddr = *serverHost + ":" + *serverPort
 
 	// it I can't get my keys, init
-	symkeys, sigkey, err:= GetMyKeys(fileclientKeypath);
+	symkeys, sigkey, err:= GetMyKeys(*fileclientKeypath);
 	if err != nil {
 		fmt.Printf("error: couldn't GetMyKeys\n")
 		return
 	}
 	return
+	if(symkeys== nil) {
+		// placeholder
+		return
+	}
+	if(sigkey== nil) {
+		// placeholder
+		return
+	}
 
 /*
 	ok := <-serverReady

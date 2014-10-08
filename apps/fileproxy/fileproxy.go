@@ -38,6 +38,13 @@ var subprinRule = "(forall P: forall Hash: TrustedProgramHash(Hash) and Subprin(
 var argsRule = "(forall Y: forall P: forall S: MemberProgram(P) and TrustedArgs(S) and Subprin(Y, P, S) implies Authorized(Y, \"Execute\"))"
 var demoRule = "TrustedArgs(ext.Args(%s))"
 
+func ZeroBytes(buf []byte) {
+	n:= len(buf)
+	for i:=0;i<n;i++ {
+		buf[i]= 0
+	}
+}
+
 // returns sealed symmetric key, sealed signing key, DER encoded cert
 func GetMyCryptoMaterial(path string) ([]byte, []byte,  []byte, []byte, error) {
 	// stat domain.config

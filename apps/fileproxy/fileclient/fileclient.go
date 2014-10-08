@@ -48,6 +48,7 @@ var testFile= flag.String("stored_files/originalTestFile", "stored_files/origina
 
 var SigningKey tao.Keys
 var SymKeys  []byte
+var ProgramCert []byte
 
 
 func main() {
@@ -72,13 +73,13 @@ func main() {
 	}
 	fmt.Printf("fileclient: my name is %s\n", myTaoName)
 
-	var derCert []byte
 	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err:= fileproxy.GetMyCryptoMaterial(*fileclientPath) 
 	if(sealedSymmetricKey==nil || sealedSigningKey==nil ||delegation== nil || derCert==nil || err==nil) {
 		fmt.Printf("No key material present\n")
 	}
+	ProgramCert= derCert
 
-	// defer zeroBytes(symKeys)
+	defer fileproxy.ZeroBytes(SymKeys)
 	if(sealedSymmetricKey!=nil) {
 		SymKeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
 		if err != nil {
@@ -96,7 +97,6 @@ func main() {
 		fmt.Printf("InitilizedsymKeys: % x\n", SymKeys)
 	}
 
-	// defer zeroBytes(signingKeyBlob)
 	if(sealedSigningKey!=nil) {
 		SigningKey, err:= fileproxy.SigningKeyFromBlob(tao.Parent(), 
 		sealedSigningKey, derCert, delegation)
@@ -111,9 +111,6 @@ func main() {
 			fmt.Printf("fileclient: InitializeSealedSigningKey error: %s\n", err)
 		}
 		fmt.Printf("Initilized signingKey: % x\n", SigningKey)
-	}
-	if err != nil {
-		fmt.Printf("fileclient: cant get signing key from blob")
 	}
 	// establish channel
 	var conn net.Conn

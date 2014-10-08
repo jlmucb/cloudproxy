@@ -15,9 +15,10 @@
 package main
 
 import (
-	//"errors"
 	"flag"
 	"fmt"
+	"net"
+	//"errors"
 	//"time"
 	//"io/ioutil"
 	//"code.google.com/p/goprotobuf/proto"
@@ -41,6 +42,7 @@ var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
 var fileclientPath= flag.String("./fileclient_files/", "./fileclient_files/", "fileclient directory")
 var serverAddr string
+var testFile= flag.String("stored_files/originalTestFile", "stored_files/originalTestFile", "test file")
 
 var SigningKey tao.Keys
 var SymKeys  []byte
@@ -110,6 +112,28 @@ func main() {
 	}
 	if err != nil {
 		fmt.Printf("fileclient: cant get signing key from blob")
+	}
+	// establish channel
+	var conn net.Conn
+	var  creds []byte
+	creds= nil
+	conn, err= fileproxy.EstablishPeerChannel(tao.Parent(), SigningKey)
+	// create a file
+	sentFileName:= *fileclientPath+*testFile
+	fmt.Printf("Creating: %s\n", sentFileName)
+	err= fileproxy.CreateFile(conn, creds, sentFileName);
+	if err != nil {
+		fmt.Printf("fileclient: cant create file")
+	}
+	fmt.Printf("Sending: %s\n", sentFileName)
+	err= fileproxy.SendFile(conn, creds, sentFileName);
+	if err != nil {
+		fmt.Printf("fileclient: cant send file")
+	}
+	fmt.Printf("Getting: %s\n", sentFileName+".received")
+	err= fileproxy.GetFile(conn, creds, sentFileName);
+	if err != nil {
+		fmt.Printf("fileclient: cant send file")
 	}
 	fmt.Printf("fileclient: Done\n")
 }

@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"code.google.com/p/goprotobuf/proto"
 	"github.com/jlmucb/cloudproxy/tao"
@@ -184,5 +185,29 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, delegateBlob []byte, ce
 	fmt.Printf("Unsealed Signing Key blob: % x\n", signingKeyBlob)
 	k.SigningKey, err= tao.UnmarshalSignerDER(signingKeyBlob)
 	return k, err
+}
+
+func EstablishPeerChannel(t tao.Tao, keys tao.Keys) (net.Conn, error) {
+	return nil, errors.New("Channel Establishment fails")
+}
+
+func SendFile(conn net.Conn, creds []byte, filename string) error {
+	return errors.New("SendFile request not implemented")
+}
+
+func GetFile(conn net.Conn, creds []byte, filename string) error {
+	return errors.New("GetFile request not implemented")
+}
+
+func CreateFile(conn net.Conn, creds []byte, filename string) error {
+	return errors.New("CreateFile request not implemented")
+}
+
+func DeleteFile(conn net.Conn, creds []byte, filename string) error {
+	return errors.New("CreateFile request not implemented")
+}
+
+func AddFilePermissions(conn net.Conn, creds []byte, filename string) error {
+	return errors.New("AddFilePermissions request not implemented")
 }
 

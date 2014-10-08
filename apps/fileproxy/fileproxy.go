@@ -191,11 +191,11 @@ func EstablishPeerChannel(t tao.Tao, keys tao.Keys) (net.Conn, error) {
 	return nil, errors.New("Channel Establishment fails")
 }
 
-func SendFile(conn net.Conn, creds []byte, filename string) error {
+func SendFile(conn net.Conn, creds []byte, filename string, keys []byte) error {
 	return errors.New("SendFile request not implemented")
 }
 
-func GetFile(conn net.Conn, creds []byte, filename string) error {
+func GetFile(conn net.Conn, creds []byte, filename string, keys []byte) error {
 	return errors.New("GetFile request not implemented")
 }
 

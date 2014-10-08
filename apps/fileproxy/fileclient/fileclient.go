@@ -126,12 +126,12 @@ func main() {
 		fmt.Printf("fileclient: cant create file")
 	}
 	fmt.Printf("Sending: %s\n", sentFileName)
-	err= fileproxy.SendFile(conn, creds, sentFileName);
+	err= fileproxy.SendFile(conn, creds, sentFileName, nil);
 	if err != nil {
 		fmt.Printf("fileclient: cant send file")
 	}
 	fmt.Printf("Getting: %s\n", sentFileName+".received")
-	err= fileproxy.GetFile(conn, creds, sentFileName);
+	err= fileproxy.GetFile(conn, creds, sentFileName, nil);
 	if err != nil {
 		fmt.Printf("fileclient: cant send file")
 	}

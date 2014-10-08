@@ -19,23 +19,22 @@ package main
 import (
 	"flag"
 	"fmt"
-	//"net"
 	//"errors"
 	//"time"
 	//"io/ioutil"
 	//"code.google.com/p/goprotobuf/proto"
-	//"os"
+	// "os"
 	//"bufio"
-	//"crypto/tls"
-	//"crypto/x509"
+	"crypto/tls"
+	"crypto/x509"
 	// "crypto/x509/pkix"
 	// "crypto/rand"
-	//"net"
+	"net"
 	//"strings"
 
 	tao "github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
-	// taonet "github.com/jlmucb/cloudproxy/tao/net"
+	taonet "github.com/jlmucb/cloudproxy/tao/net"
 	"github.com/jlmucb/cloudproxy/apps/fileproxy"
 )
 
@@ -48,7 +47,76 @@ var testFile= flag.String("stored_files/originalTestFile", "stored_files/origina
 
 var SigningKey tao.Keys
 var SymKeys  []byte
+var ProgramCert []byte
 
+func newTempCAGuard(v tao.Verifier) (tao.Guard, error) {
+	g := tao.NewTemporaryDatalogGuard()
+	/*
+	vprin := v.ToPrincipal()
+	rule := fmt.Sprintf(subprinRule, vprin)
+	// Add a rule that says that valid args are the ones we were called with.
+	args := ""
+	for i, a := range os.Args {
+		if i > 0 {
+			args += ", "
+		}
+		args += "\"" + a + "\""
+	}
+	authRule := fmt.Sprintf(demoRule, args)
+	if err := g.AddRule(rule); err != nil {
+		return nil, err
+	}
+	if err := g.AddRule(argsRule); err != nil {
+		return nil, err
+	}
+	if err := g.AddRule(authRule); err != nil {
+		return nil, err
+	}
+	*/
+	return g, nil
+}
+
+
+func clientServiceThead(conn net.Conn, verifier tao.Keys, fileGuard *tao.Guard) {
+	// How do I know if the connection terminates?
+	for {
+		// read request from channel
+		// is it authorized?
+		// perform operation
+	}
+}
+
+func server(serverAddr string, verifier tao.Keys, rootCert []byte) error {
+	var sock net.Listener
+
+	// construct nego guard
+	connectionGuard, err:= newTempCAGuard(*verifier.VerifyingKey)
+	if(err!=nil) {
+		fmt.Printf("server: can't create connection guard\n")
+		return nil
+	}
+
+	// construct file guard
+	fileGuard := tao.NewTemporaryDatalogGuard()
+	// add rules
+
+	// how do I make the program cert a root?
+	conf := &tls.Config{
+		RootCAs:            x509.NewCertPool(),
+		//Certificates:       []tls.Certificate{ProgramCert},
+		InsecureSkipVerify: false,
+		ClientAuth:         tls.RequireAnyClientCert,
+	}
+	sock, err = taonet.Listen("tls", serverAddr, conf, connectionGuard, verifier.VerifyingKey, SigningKey.Delegation)
+	for {
+		conn, err := sock.Accept()
+		 if err != nil {
+			fmt.Printf("server: can't accept connection: %s\n", err.Error())
+			return nil
+		}
+		go clientServiceThead(conn, verifier, &fileGuard)
+	}
+}
 
 func main() {
 	flag.Parse()
@@ -72,13 +140,13 @@ func main() {
 	}
 	fmt.Printf("fileserver: my name is %s\n", myTaoName)
 
-	var derCert []byte
 	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err:= fileproxy.GetMyCryptoMaterial(*fileserverPath) 
 	if(sealedSymmetricKey==nil || sealedSigningKey==nil ||delegation== nil || derCert==nil || err==nil) {
 		fmt.Printf("No key material present\n")
 	}
+	ProgramCert= derCert
 
-	// defer zeroBytes(symKeys)
+	defer fileproxy.ZeroBytes(SymKeys)
 	if(sealedSymmetricKey!=nil) {
 		SymKeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
 		if err != nil {
@@ -115,6 +183,12 @@ func main() {
 	if err != nil {
 		fmt.Printf("fileserver: cant get signing key from blob")
 	}
-	// accept connections
+	var rootCert []byte
+	rootCert= nil
+	// fix rootcert
+	err= server(serverAddr, *hostDomain.Keys, rootCert)
+	if(err!=nil) {
+		fmt.Printf("fileserver: server error")
+	}
 	fmt.Printf("fileserver: done\n")
 }

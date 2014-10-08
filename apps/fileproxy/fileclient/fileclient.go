@@ -42,16 +42,19 @@ var serverPort = flag.String("port", "8123", "port for client/server")
 var fileclientPath= flag.String("./fileclient_files/", "./fileclient_files/", "fileclient directory")
 var serverAddr string
 
+var SigningKey tao.Keys
+var SymKeys  []byte
+
 
 func main() {
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
 
-	host_domain, err := tao.LoadDomain(*hostcfg, nil)
+	hostDomain, err := tao.LoadDomain(*hostcfg, nil)
 	if err != nil {
 		return
 	}
-	fmt.Printf("Domain name: %s\n", host_domain.ConfigPath)
+	fmt.Printf("Domain name: %s\n", hostDomain.ConfigPath)
 
 	e := auth.PrinExt{Name: "fileclient.version.1",}
 	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
@@ -65,50 +68,48 @@ func main() {
 	}
 	fmt.Printf("fileclient: my name is %s\n", myTaoName)
 
-	var der_cert []byte
-	sealedSymmetricKey, sealedSigningKey, der_cert, err:= fileproxy.GetMyCryptoMaterial(*fileclientPath) 
-	if(sealedSymmetricKey==nil || sealedSigningKey==nil || der_cert==nil || err==nil) {
+	var derCert []byte
+	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err:= fileproxy.GetMyCryptoMaterial(*fileclientPath) 
+	if(sealedSymmetricKey==nil || sealedSigningKey==nil ||delegation== nil || derCert==nil || err==nil) {
 		fmt.Printf("No key material present\n")
 	}
 
-	var symKeys []byte;
 	// defer zeroBytes(symKeys)
 	if(sealedSymmetricKey!=nil) {
-		symKeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
+		SymKeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
 		if err != nil {
 			return
 		}
 		if policy != tao.SealPolicyDefault {
 			fmt.Printf("fileclient: unexpected policy on unseal\n")
 		}
-		fmt.Printf("Unsealed symKeys: % x\n", symKeys)
+		fmt.Printf("Unsealed symKeys: % x\n", SymKeys)
 	} else {
-		symKeys, err= fileproxy.InitializeSealedSymmetricKeys(*fileclientPath, tao.Parent(), 64)
+		SymKeys, err= fileproxy.InitializeSealedSymmetricKeys(*fileclientPath, tao.Parent(), 64)
 		if err != nil {
 			fmt.Printf("fileclient: InitializeSealedSymmetricKeys error: %s\n", err)
 		}
-		fmt.Printf("InitilizedsymKeys: % x\n", symKeys)
+		fmt.Printf("InitilizedsymKeys: % x\n", SymKeys)
 	}
 
-	var  signingKeyBlob []byte
 	// defer zeroBytes(signingKeyBlob)
 	if(sealedSigningKey!=nil) {
-		signingKeyBlob, policy, err := tao.Parent().Unseal(sealedSigningKey)
+		SigningKey, err:= fileproxy.SigningKeyFromBlob(tao.Parent(), 
+		sealedSigningKey, derCert, delegation)
 		if err != nil {
-			fmt.Printf("fileclient: symkey unsealing error: %s\n")
+			fmt.Printf("fileclient: SigningKeyFromBlob error: %s\n", err)
 		}
-		if policy != tao.SealPolicyDefault {
-			fmt.Printf("fileclient: unexpected policy on unseal\n")
-		}
-		fmt.Printf("Unsealed Signing Key blob: % x\n", signingKeyBlob)
+		fmt.Printf("Retrieved Signing key: % x\n", SigningKey)
 	} else {
-		signingKeyBlob, der_cert,err=  fileproxy.InitializeSealedSigningKey(*fileclientPath, tao.Parent())
+		SigningKey, err:=  fileproxy.InitializeSealedSigningKey(*fileclientPath, 
+					tao.Parent(), *hostDomain)
 		if err != nil {
 			fmt.Printf("fileclient: InitializeSealedSigningKey error: %s\n", err)
 		}
-		fmt.Printf("Initilized signingKey: % x\n", signingKeyBlob)
+		fmt.Printf("Initilized signingKey: % x\n", SigningKey)
 	}
-	fmt.Printf("Signing cert: % x\n",  der_cert)
-
+	if err != nil {
+		fmt.Printf("fileclient: cant get signing key from blob")
+	}
 	fmt.Printf("fileclient: Done\n")
 }

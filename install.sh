@@ -30,7 +30,9 @@ test_dir=""
 test_tpm="no"
 verbose="yes"
 test_guard="AllowAll"
-channel_type="pipe"
+child_channel_type="pipe"
+tao_channel_type=""
+build_docker="no"
 for arg in "$@"; do
 	case "$arg" in
 		-notpm)
@@ -39,7 +41,7 @@ for arg in "$@"; do
 			;;
 		-tpm)
 			test_tpm="yes"
-			channel_type="tpm"
+			tao_channel_type="tpm"
 			shift
 			;;
 		-acls)
@@ -51,7 +53,11 @@ for arg in "$@"; do
 			shift
 			;;
 		-unix)
-			channel_type="unix"
+			child_channel_type="unix"
+			shift
+			;;
+		-docker)
+			build_docker="yes"
 			shift
 			;;
 		-q)
@@ -133,7 +139,8 @@ cat <<END > "$test_dir/tao.env"
 export TAO_TEST="$test_dir" # Also hardcoded into $test_dir/scripts/*.sh
 export TAO_ROOTDIR="$root_dir"
 export TAO_USE_TPM="$test_tpm"
-export TAO_CHANNEL_TYPE="$channel_type"
+export TAO_CHANNEL_TYPE="$tao_channel_type"
+export TAO_USE_DOCKER="$build_docker"
 
 # Flags for tao programs
 export TAO_config_path="${test_dir}/tao.config"
@@ -147,7 +154,7 @@ export TAO_HOST_pass="BogusPass"
 export TAO_HOST_root="$test_root"
 export TAO_HOST_stacked="$test_stacked"
 export TAO_HOST_path="${test_dir}/linux_tao_host"
-export TAO_HOST_channel_type="$channel_type"
+export TAO_HOST_channel_type="$child_channel_type"
 export TAO_HOST_channel_socket_path="${test_dir}/linux_tao_host"
 
 # Flags for glog
@@ -160,19 +167,12 @@ export GLOG_log_dir="\${TAO_TEST}/logs"
 # Misc.
 export TAO_HOSTED_PROGRAMS="
 \${TAO_TEST}/bin/demo 
-\${TAO_TEST}/bin/demo_server
-\${TAO_TEST}/bin/client 
-\${TAO_TEST}/bin/server 
-\${TAO_TEST}/bin/fclient 
-\${TAO_TEST}/bin/fserver 
-\${TAO_TEST}/bin/http_echo_server 
-\${TAO_TEST}/bin/https_echo_server 
 "
 
 # BEGIN SETUP VARIABLES
 # These variables come from $test_dir/scripts/setup.sh
 export GOOGLE_HOST_TAO=""
-export GOOGLE_HOST_TAO_TYPE="$channel_type"
+export GOOGLE_HOST_TAO_TYPE="$tao_channel_type"
 # END SETUP VARIABLES
 END
 
@@ -306,7 +306,7 @@ function setup()
 			export GOOGLE_TAO_PCRS='PCRs("17,18", "'${pcr17}','${pcr18}'")'
 		fi
 
-		export GOOGLE_HOST_TAO='tao::TPMTao("dir:tpm")'
+		export GOOGLE_HOST_TAO=${TAO_TEST}'/tpm'
 		export GOOGLE_TAO_PCRS='PCRs("17,18", "'${pcr17}','${pcr18}'")'
 
 		tprin=`tao_admin -aikblob ${TAO_TEST}/tpm/aikblob`
@@ -321,13 +321,25 @@ function setup()
 
 	echo "Creating LinuxHost keys and settings."
 	rm -rf ${TAOHOST_path}
-	linux_host --create --show=false
+	docker_flag=""
+	if [ "${TAO_USE_DOCKER}" == "yes" ]; then
+		docker_flag="--use_docker"
+	fi
+	linux_host --create --show=false ${docker_flag}
 	linux_host --show >> ${tao_env}
 
 	echo "# END SETUP VARIABLES" >> ${tao_env}
 
+	# In Docker mode, set up Docker containers for each hosted program.
+	if [ "${TAO_USE_DOCKER}" == "yes" ]; then
+		for prog in ${TAO_HOSTED_PROGRAMS}; do
+			builddocker $prog
+		done
+	fi
+
 	echo "Refreshing"
 	refresh
+
 }
 
 function refresh()
@@ -339,12 +351,16 @@ function refresh()
 	if [ "${TAO_guard}" == "Datalog" ]; then
 		# Rule for TPM and PCRs combinations that make for a good OS
 		tao_admin -add "(forall S: forall TPM: forall PCRs: TrustedPlatform(TPM) and TrustedKernelPCRs(PCRs) and Subprin(S, TPM, PCRs) implies TrustedOS(S))"
-		# Rule for OS and program hash that make for a good hosted program
+		# Rule for OS and program hash that make for a good hosted
+		# program
 		tao_admin -add "(forall P: forall OS: forall Hash: TrustedOS(OS) and TrustedProgramHash(Hash) and Subprin(P, OS, Hash) implies MemberProgram(P))"
 		# Rule for programs that can execute
 		tao_admin -add "(forall P: MemberProgram(P) implies Authorized(P, \"Execute\"))"
 		# Rule for programs with Args subprincipals
 		tao_admin -add "(forall Y: forall P: forall S: MemberProgram(P) and TrustedArgs(S) and Subprin(Y, P, S) implies Authorized(Y, \"Execute\"))"
+		# Rule for Docker containers: trusted containers can be swapped
+		# in for trusted programs they contain.
+		tao_admin -add "(forall C: forall P: TrustedProgramHash(P) and TrustedContainer(C) and Contains(C, P) implies TrustedProgramHash(C))"
 		# Add the TPM keys, PCRs, and/or LinuxHost keys
 		if [ "$TAO_USE_TPM" == "yes" ]; then
 			tao_admin -add 'TrustedPlatform('${GOOGLE_TAO_TPM}')'
@@ -362,6 +378,14 @@ function refresh()
 				tao_admin -add 'TrustedProgramHash(ext'${proghash}')'
 				tao_admin -add 'TrustedArgs(ext.Args("'$prog'"))'
 				tao_admin -add 'TrustedArgs(ext.Args("'$prog'", "-ca=localhost:8124"))'
+
+				if [ "${TAO_USE_DOCKER}" == "yes" ]; then
+					base_prog=`basename $prog`
+					imghash=`tao_admin -quiet -getcontainerhash "${base_prog}.img.tgz"`
+					tao_admin -add 'TrustedContainer(ext'${imghash}')'
+					tao_admin -add 'Contains(ext'${imghash}', ext'${proghash}')'
+					tao_admin -add 'TrustedArgs(ext.Args("/'${base_prog}'"))'
+				fi
 			fi
 		done
 	else
@@ -370,6 +394,11 @@ function refresh()
 				tao_admin -canexecute "$prog"
 			fi
 		done
+	fi
+
+	# Always have a rules file, even if it's empty.
+	if [ ! -f "${TAO_TEST}/rules" ]; then
+		touch ${TAO_TEST}/rules
 	fi
 	tao_admin -show
 
@@ -389,7 +418,11 @@ function startsvcs()
 		echo "LinuxHost service already running";
 	else
 		rm -f ${TAO_TEST}/linux_tao_host/admin_socket
-		linux_host --service &
+		docker_flag=""
+		if [ "${TAO_USE_DOCKER}" == "yes" ]; then
+			docker_flag="--use_docker"
+		fi
+		linux_host ${docker_flag} --service &
 	fi
 }
 
@@ -518,12 +551,45 @@ function testpgm()
 	esac
 }
 
+function builddocker()
+{
+	prog="$1"
+	shift
+	base_prog=`basename $prog`
+	# Build an image for the program.
+	# TODO(tmroeder): this is very specific to our current config.
+	tmpd=`mktemp -d`
+	mkdir -p ${tmpd}/bin
+	cp $prog ${tmpd}/bin/$base_prog
+	mkdir ${tmpd}/policy_keys
+	cp ${TAO_TEST}/policy_keys/cert ${tmpd}/policy_keys/cert
+	cp ${TAO_TEST}/tao.* ${tmpd}
+	cat >${tmpd}/Dockerfile <<EOF
+FROM scratch
+COPY . ${TAO_TEST}
+ENV GOOGLE_HOST_TAO_TYPE unix
+ENV GOOGLE_HOST_TAO /tao
+WORKDIR ${TAO_TEST}
+EOF
+	tar -C $tmpd -czf ${TAO_TEST}/${base_prog}.img.tgz `ls $tmpd`
+	rm -fr $tmpd
+}
+
 function hostpgm()
 {
 	prog="$1"
 	shift
+
+	docker_config=""
+	if [ "$TAO_USE_DOCKER" == "yes" ]; then
+		base_prog=`basename $prog`
+		# In Docker mode, pass the image created at setup time for this
+		# program.
+		docker_config="-docker ${TAO_TEST}/${base_prog}.img.tgz"
+	fi
+
 	echo "Starting hosted program $prog ..."
-	prog_id=`linux_host -run -- "$prog" "$@"`
+	prog_id=`linux_host ${docker_config} -run -- "$prog" "$@"`
 	echo "TaoExtension: $prog_id"
 }
 

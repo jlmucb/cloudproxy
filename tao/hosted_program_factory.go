@@ -24,8 +24,6 @@ import (
 // os/exec.Cmd and github.com/docker/docker/daemon.Container.
 type HostedProgram interface {
 	Start() error
-	Run() error
-	Output() ([]byte, error)
 	Kill() error
 	Stop() error
 	ID() int

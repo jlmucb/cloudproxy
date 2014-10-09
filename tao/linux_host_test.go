@@ -35,7 +35,7 @@ func testNewStackedLinuxHost(t *testing.T) (*LinuxHost, string) {
 	}
 
 	tg := LiberalGuard
-	lh, err := NewStackedLinuxHost(tmpdir, &tg, ft)
+	lh, err := NewStackedLinuxHost(tmpdir, &tg, ft, nil)
 	if err != nil {
 		os.RemoveAll(tmpdir)
 		t.Fatal("Couldn't create a new stacked Linux host")
@@ -52,7 +52,7 @@ func testNewRootLinuxHost(t *testing.T) (*LinuxHost, string) {
 
 	tg := LiberalGuard
 	password := []byte("bad password")
-	lh, err := NewRootLinuxHost(tmpdir, &tg, password)
+	lh, err := NewRootLinuxHost(tmpdir, &tg, password, nil)
 	if err != nil {
 		os.RemoveAll(tmpdir)
 		t.Fatal("Couldn't create a new stacked Linux host")

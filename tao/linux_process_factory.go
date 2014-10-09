@@ -81,10 +81,9 @@ func FormatSubprin(id uint, hash []byte) auth.SubPrin {
 	return auth.SubPrin{auth.PrinExt{Name: "Program", Arg: args}}
 }
 
-// MakeHostedProgramSubprin computes the hash of a program to get its
-// hosted-program subprincipal. In the process, it copies the program to a
-// temporary file controlled by this code and returns the path to that new
-// binary.
+// MakeSubprin computes the hash of a program to get its hosted-program
+// subprincipal. In the process, it copies the program to a temporary file
+// controlled by this code and returns the path to that new binary.
 func (lpf *LinuxProcessFactory) MakeSubprin(id uint, prog string) (subprin auth.SubPrin, temppath string, err error) {
 	// To avoid a time-of-check-to-time-of-use error, we copy the file
 	// bytes to a temp file as we read them. This temp-file path is

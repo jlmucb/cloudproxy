@@ -33,12 +33,15 @@ import (
 
 var configPath = flag.String("config_path", "tao.config", "Location of tao domain configuration")
 var hostPath = flag.String("path", "linux_tao_host", "Location of linux host configuration")
+var rules = flag.String("rules", "rules", "Name of the rules file for auth")
 var quiet = flag.Bool("quiet", false, "Be more quiet.")
 var root = flag.Bool("root", false, "Run in root mode")
 var stacked = flag.Bool("stacked", false, "Run in stacked mode")
 var pass = flag.String("pass", "", "Password for unlocking keys if running in root mode")
 var channelType = flag.String("channel_type", "pipe", "The type of channel for hosted-program communication ('pipe', or 'unix').")
 var channelSocketPath = flag.String("channel_socket_path", "", "The directory in which to create unix sockets for hosted-program communication")
+var useDocker = flag.Bool("use_docker", false, "Use Docker containers instead of processes")
+var docker = flag.String("docker", "", "The path to a tarball to use to create a docker image")
 
 var create = flag.Bool("create", false, "Create a new LinuxHost service.")
 var show = flag.Bool("show", false, "Show principal name for LinuxHost service.")
@@ -107,17 +110,29 @@ func main() {
 		fmt.Fprintf(verbose, "Loading configuration from: %s\n", *configPath)
 		domain, err := tao.LoadDomain(*configPath, nil)
 		fatalIf(err)
+
+		wd, err := os.Getwd()
+		fatalIf(err)
+		rulesPath := path.Join(wd, *rules)
+
+		var childFactory tao.HostedProgramFactory
+		if *useDocker {
+			childFactory = tao.NewLinuxDockerContainerFactory(*channelSocketPath, rulesPath)
+		} else {
+			childFactory = tao.NewLinuxProcessFactory(*channelType, *channelSocketPath)
+		}
+
 		var host *tao.LinuxHost
 		if *root {
 			if len(*pass) == 0 {
 				log.Fatal("password is required")
 			}
-			host, err = tao.NewRootLinuxHost(*hostPath, domain.Guard, []byte(*pass), *channelType, *channelSocketPath)
+			host, err = tao.NewRootLinuxHost(*hostPath, domain.Guard, []byte(*pass), childFactory)
 		} else if *stacked {
 			if !tao.Hosted() {
 				log.Fatalf("error: no host tao available, check $%s\n", tao.HostTaoEnvVar)
 			}
-			host, err = tao.NewStackedLinuxHost(*hostPath, domain.Guard, tao.Parent(), *channelType, *channelSocketPath)
+			host, err = tao.NewStackedLinuxHost(*hostPath, domain.Guard, tao.Parent(), childFactory)
 		} else {
 			log.Fatal("error: must specify either -root or -stacked")
 		}
@@ -145,9 +160,18 @@ func main() {
 			if flag.NArg() == 0 {
 				log.Fatal("missing program path")
 			}
-			subprin, pid, err := client.StartHostedProgram(flag.Arg(0), flag.Args()...)
-			fatalIf(err)
-			fmt.Printf("%d %v\n", pid, subprin)
+			if *docker == "" {
+				subprin, pid, err := client.StartHostedProgram(flag.Arg(0), flag.Args()...)
+				fatalIf(err)
+				fmt.Printf("%d %v\n", pid, subprin)
+			} else {
+				// flag.Arg(0) is not necessary here, since it
+				// will be pulled off the list by the child
+				// factory when it starts the Docker container.
+				subprin, pid, err := client.StartHostedProgram(*docker, flag.Args()...)
+				fatalIf(err)
+				fmt.Printf("%d %v\n", pid, subprin)
+			}
 		} else if *stop {
 			for _, s := range flag.Args() {
 				var subprin auth.SubPrin

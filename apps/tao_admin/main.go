@@ -55,6 +55,7 @@ var query = flag.String("query", "", "A policy query to be checked.")
 
 // misc. utilities
 var getProgramHash = flag.String("getprogramhash", "", "Path of program to be hashed.")
+var getContainerHash = flag.String("getcontainerhash", "", "Path of container to be hashed.")
 var getPCR = flag.Int("getpcr", -1, "Index of a PCR to return.")
 var tpmPath = flag.String("tpm", "/dev/tpm0", "Path to a TPM device.")
 var aikFile = flag.String("aikblob", "", "A file containing a TPM AIK.")
@@ -181,6 +182,12 @@ func main() {
 		fmt.Println(subprin)
 		didWork = true
 	}
+	if *getContainerHash != "" {
+		path := *getContainerHash
+		subprin := makeContainerSubPrin(path)
+		fmt.Println(subprin)
+		didWork = true
+	}
 	if *getPCR > 0 {
 		f, err := os.OpenFile(*tpmPath, os.O_RDWR, 0600)
 		fatalIf(err)
@@ -240,6 +247,13 @@ func makeProgramSubPrin(prog string) auth.SubPrin {
 	id := uint(0)
 	h := hash(prog)
 	return tao.FormatSubprin(id, h)
+}
+
+func makeContainerSubPrin(prog string) auth.SubPrin {
+	// TODO(tmroeder): This assumes no IDs
+	id := uint(0)
+	h := hash(prog)
+	return tao.FormatDockerSubprin(id, h)
 }
 
 func fatalIf(err error) {

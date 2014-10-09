@@ -42,11 +42,11 @@ type LinuxHost struct {
 
 // NewStackedLinuxHost creates a new LinuxHost as a hosted program of an existing
 // host Tao.
-func NewStackedLinuxHost(path string, guard Guard, hostTao Tao, channelType, socketPath string) (*LinuxHost, error) {
+func NewStackedLinuxHost(path string, guard Guard, hostTao Tao, childFactory HostedProgramFactory) (*LinuxHost, error) {
 	lh := &LinuxHost{
 		path:         path,
 		guard:        guard,
-		childFactory: NewLinuxProcessFactory(channelType, socketPath),
+		childFactory: childFactory,
 	}
 
 	// TODO(tmroeder): the TPM Tao currently doesn't support name extensions.
@@ -72,10 +72,10 @@ func NewStackedLinuxHost(path string, guard Guard, hostTao Tao, channelType, soc
 
 // NewRootLinuxHost creates a new LinuxHost as a standalone Host that can
 // provide the Tao to hosted Linux processes.
-func NewRootLinuxHost(path string, guard Guard, password []byte, channelType, socketPath string) (*LinuxHost, error) {
+func NewRootLinuxHost(path string, guard Guard, password []byte, childFactory HostedProgramFactory) (*LinuxHost, error) {
 	lh := &LinuxHost{
 		guard:        guard,
-		childFactory: NewLinuxProcessFactory(channelType, socketPath),
+		childFactory: childFactory,
 	}
 	k, err := NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, path, nil)
 	if err != nil {

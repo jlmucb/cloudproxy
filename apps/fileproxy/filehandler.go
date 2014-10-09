@@ -258,36 +258,57 @@ func (m *ResourceMaster) SaveResourceData(masterInfoFile string,  resourceInfoAr
 	// write rules
 }
 
-// return values: subject, action, resourcename, action-data error
-func decodeRequest(request string) (*string, *string, *string, *string, error) {
-	return nil,nil,nil,nil, errors.New("Cant decode request")
+func getFile(conn net.Conn, filename string, size, int, key []byte) {
 }
 
-func encodeResponse(status string, message string, size int) {
+func sendFile(conn net.Conn, filename string, size int, key []byte) {
 }
 
-func sendResponse(conn net.Conn, status string, message string, size int) {
+// return values: subject, action, resourcename, size, error
+func decodeRequest(request *FPMessage) (*string, *string, *string, *int, error) {
+	theType, subject, action, resource, size, error:= decodeMessage(request)
+	if(theType!=REQUEST)
+		return nil,nil,nil,nil, errors.New("Cant decode request")
+	return subject, action, resource, size, nil
 }
 
-func readRequest(conn net.Conn, resourcename string) {
+func sendResponse(conn net.Conn, status string, message string, size int) error {
+	protoMessage:= encodeMessage(RESPONSE, nil,  nil, nil, status, message,  size,  nil )
+	// send response
+	return nil
 }
 
-func writeRequest(conn net.Conn, resourcename string) {
+func readRequest(conn net.Conn, resourcename string) error {
+	// is it here?
+	// get size and file name
+	status:= "succeeded"
+	sendResponse(conn, status, nil, size)
+	sendFile(conn, filename, size, SymKeys)
+	return nil
 }
 
-func createRequest(conn net.Conn, subject string, resourcename string) {
+func writeRequest(conn net.Conn, resourcename string) error {
+	// is it here?
+	// get size and file name
+	status:= "succeeded"
+	sendResponse(conn, status, nil, size)
+	getFile(conn, filename, size, SymKeys)
+	return nil
 }
 
-func deleteRequest(conn net.Conn, resourcename string) {
+func createRequest(conn net.Conn, subject string, resourcename string) error {
 }
 
-func addRuleRequest(conn net.Conn, resourcename string) {
+func deleteRequest(conn net.Conn, resourcename string) error {
 }
 
-func addOwnerRequest(conn net.Conn, resourcename string) {
+func addRuleRequest(conn net.Conn, resourcename string) error {
 }
 
-func deleteOwnerRequest(conn net.Conn, resourcename string) {
+func addOwnerRequest(conn net.Conn, resourcename string) error {
+}
+
+func deleteOwnerRequest(conn net.Conn, resourcename string) error {
 }
 
 // first return value is terminate flag
@@ -296,13 +317,35 @@ func (m *ResourceMaster) HandleServiceRequest(conn net.Conn, request string) (bo
 	subject, action, resourcename, data, err:= decodeRequest(request)
 
 	// is it authorized?
-	var status string
-	var message string
 	ok:= m.guard.IsAuthorized(subject, action, resourcename)
 	if ok == nil {
 		status= "failed"
-		message= "unauthorize"
+		message= "unauthorized"
 		sendErrorResponse(status, message);
+		return  false, errors.New("unauthorized")
+	}
+
+	var status string
+	var message string
+	if(action=="create") {
+		err:= createRequest(conn, subject, resourcename)
+		return false, err
+	} else if(action=="delete") {
+		err:= deleteRequest(conn, subject, resourcename)
+		return false, err
+	} else if(action=="read") {
+		err:= readRequest(conn, subject, resourcename)
+		return false, err
+	} else if(action=="write") {
+		err:= writeRequest(conn, subject, resourcename)
+		return false, err
+	} else if(action=="terminate") {
+		return  true, nil
+	} else {
+		status= "failed"
+		message= "unsupported action"
+		sendErrorResponse(status, message);
+		return  false, errors.New("unsupported action")
 	}
 }
 
@@ -318,5 +361,12 @@ func (m *ResourceMaster) SaveMaster(masterInfoDir string)  error {
 		return err
 	}
 	return m.SaveRules(m.guard, masterInfoDir+"rules")
+}
+
+// return: status, message, size, error
+func getResponse(conn net.Conn) (string*, string*, int*, error) {
+	// read
+	// decode message
+	// theType, subject, action, resource, status, message, size, buf, err:= decodeMessage(in) 
 }
 

@@ -62,6 +62,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Couldn't encode a TLS cert:", err)
 		return
 	}
+	// func (s *Signer) CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier, subjectName *pkix.Name) (*x509.Certificate, error)
 	conf := &tls.Config{
 		RootCAs:            x509.NewCertPool(),
 		Certificates:       []tls.Certificate{*tlsc},

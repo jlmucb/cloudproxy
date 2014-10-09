@@ -97,45 +97,68 @@ func decodeMessage(in *FPMessage) (*int, *string,  *string, *string,
 	}
 }
 
-func encodeMessage(type int, subject *string,  action *string, resourcename *string,
+func encodeMessage(theType int, subject *string,  action *string, resourcename *string,
 		   status *string, message *string,  size int,  buf []byte) (*FPMessage, error) {
 	protoMessage:=  new(FPMessage)
-	protoMessage.message_type= proto.Int(type)
-	if(type==REQUEST) {
+	protoMessage.message_type= proto.Int(theType)
+	if(theType==REQUEST) {
 		protoMessage.subject_name= proto.String(*subject)
 		protoMessage.action_name= proto.String(*action)
 		protoMessage.resource_name= proto.String(*resourcename)
-	else if (type==RESPONSE) {
+	else if (theType==RESPONSE) {
 		protoMessage.status_of_request= proto.String(*status)
 		protoMessage.message_from_request= proto.String(*message)
 	}
-	else if (type==FILE_NEXT) {
+	else if (theType==FILE_NEXT) {
 		protoMessage.size_buffer= proto.Int(size)
 		protoMessage.the_buffer= proto.Bytes(*buf)
 	}
-	else if (type==FILE_LAST) {
+	else if (theType==FILE_LAST) {
 		protoMessage.size_buffer= proto.Int(size)
 		protoMessage.the_buffer= proto.Bytes(*buf)
 	}
 	else {
-		return errors.New("unknown message type\n")
+		return nil, errors.New("unknown message type\n")
 	}
+	return protoMesage, nil
 }
 
 func (m *ResourceMaster) Delete(resourceName string) error {
 	return nil // not implemented
 }
 
-func (m *ResourceMaster) encodeMaster() (string, error){
+func (m *ResourceMaster) encodeMaster() (*FPResourceMaster, error){
+	protoMessage:=  new(FPResourceMaster)
+	protoMessage.prin_name= proto.String(m.program);
+	protoMessage.baseDirectory_name= proto.String(m.baseDirectory);
+	protoMessage.num_fileinfos= proto.Int(m.resourceArray.len())
+	return protoMessage, nil
 }
 
-func (m *ResourceMaster) decodeMaster(record string) error {
+func (m *ResourceMaster) decodeMaster(int*, record *FPResourceMaster) error {
+	 m.program= *record.prin_name
+	 m.baseDirectory= *record.baseDirectory_name
+	 size:=  *record.num_fileinfos
+	 return &size, nil
 }
 
-func (m *ResourceInfo) encodeResourceInfo() (string, error){
+func (r *ResourceInfo) encodeResourceInfo() (*FPResourceInfo, error){
+	protoMessage:=  new(FPResourceInfo)
+	protoMessage.resource_name= proto.String(r.resourceName);
+	protoMessage.resource_type= proto.String(r.resourceType);
+	protoMessage.resource_location= proto.String(r.resourceLocation);
+	protoMessage.resource_size= proto.Int(r.resourceSize);
+	protoMessage.resource_owner= proto.Bytes(r.resourceOwner);
+	return protoMessage, nil
 }
 
-func (m *ResourceInfo) decodeResourceInfo(record string) error {
+func (m *ResourceInfo) decodeResourceInfo(record *FPResourceInfo) error {
+	r.resourceName= *record.resource_name
+	r.resourceType= *record.resource_type
+	r.resourceLocation= *record.resource_location
+	r.resourceSize= *record.resource_size
+	r.resourceOwner= *record.resource_owner
+	return nil
 }
 
 func (r *ResourceInfo) PrintResourceInfo() {

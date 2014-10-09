@@ -39,11 +39,11 @@ message FPResourceMaster {
 }
 
 message FPResourceInfo {
-  required string resourceName = 1;
-  required string resourceType = 2;
-  required string resourceLocation= 3;
-  optional int    resourceSize= 4;
-  optional bytes  resourceOwner= 5;
+  required string resource_name = 1;
+  required string resource_type = 2;
+  required string resource_location= 3;
+  optional int    resource_size= 4;
+  optional bytes  resource_owner= 5;
 }
 
 

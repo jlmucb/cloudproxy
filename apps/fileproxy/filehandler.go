@@ -68,6 +68,60 @@ func (m *ResourceMaster) Insert(resourcename string) (*ResourceInfo, error){
 	return nil, errors.New("Resource exists")
 }
 
+// return: type, subject, action, resource, status, message, size, buf, error
+func decodeMessage(in *FPMessage) (*int, *string,  *string, *string,
+		      *string, *string,  *int,  *[]byte, error) {
+	theType:= *in.message_type
+	if(theType==REQUEST) {
+		subject:= *in.subject_name
+		action:= *in.action_name
+		resourcename:= *in.resource_name
+		return &theType, &subject, &action, &resourcename, nil,nil,nil,nil,nil
+	else if (theType==RESPONSE) {
+		status:= *in.status_of_request
+		message:= *in.message_from_request
+		return &theType, nil,nil,nil, &status, &message, nil,nil,nil
+	}
+	else if (theType==FILE_NEXT) {
+		size:= *in.size_buffer
+		out:= *in.the_buffer
+		return &theType, nil,nil,nil, nil,nil, &size, &out, nil
+	}
+	else if (theType==FILE_LAST) {
+		size:= *in.size_buffer
+		out:= *in.the_buffer
+		return &theType, nil,nil,nil, nil,nil, &size, &out, nil
+	}
+	else {
+		return nil,nil,nil,nil,nil,nil,nil,nil errors.New("unknown message type\n")
+	}
+}
+
+func encodeMessage(type int, subject *string,  action *string, resourcename *string,
+		   status *string, message *string,  size int,  buf []byte) (*FPMessage, error) {
+	protoMessage:=  new(FPMessage)
+	protoMessage.message_type= proto.Int(type)
+	if(type==REQUEST) {
+		protoMessage.subject_name= proto.String(*subject)
+		protoMessage.action_name= proto.String(*action)
+		protoMessage.resource_name= proto.String(*resourcename)
+	else if (type==RESPONSE) {
+		protoMessage.status_of_request= proto.String(*status)
+		protoMessage.message_from_request= proto.String(*message)
+	}
+	else if (type==FILE_NEXT) {
+		protoMessage.size_buffer= proto.Int(size)
+		protoMessage.the_buffer= proto.Bytes(*buf)
+	}
+	else if (type==FILE_LAST) {
+		protoMessage.size_buffer= proto.Int(size)
+		protoMessage.the_buffer= proto.Bytes(*buf)
+	}
+	else {
+		return errors.New("unknown message type\n")
+	}
+}
+
 func (m *ResourceMaster) Delete(resourceName string) error {
 	return nil // not implemented
 }

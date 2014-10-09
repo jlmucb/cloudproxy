@@ -48,6 +48,7 @@ var testFile= flag.String("stored_files/originalTestFile", "stored_files/origina
 var SigningKey tao.Keys
 var SymKeys  []byte
 var ProgramCert []byte
+var fileserverResourceMaster *fileproxy.ResourceMaster
 
 func newTempCAGuard(v tao.Verifier) (tao.Guard, error) {
 	g := tao.NewTemporaryDatalogGuard()
@@ -81,9 +82,12 @@ func clientServiceThead(conn net.Conn, verifier tao.Keys, fileGuard *tao.Guard) 
 	// How do I know if the connection terminates?
 	for {
 		// read request from channel
-		// is it authorized?
-		// perform operation
+		// terminate, err:= fileserverResourceMaster.HandleServiceRequest(request)
+		if terminate {
+			break;
+		}
 	}
+	fmt.Printf("client thread terminating\n")
 }
 
 func server(serverAddr string, verifier tao.Keys, rootCert []byte) error {
@@ -96,9 +100,9 @@ func server(serverAddr string, verifier tao.Keys, rootCert []byte) error {
 		return nil
 	}
 
-	// construct file guard
-	fileGuard := tao.NewTemporaryDatalogGuard()
-	// add rules
+	// init fileserver data
+	fileserverResourceMaster= new  ResourceMaster()
+	err:= fileserverResourceMaster.InitMaster(*fileserverPath)
 
 	// how do I make the program cert a root?
 	conf := &tls.Config{

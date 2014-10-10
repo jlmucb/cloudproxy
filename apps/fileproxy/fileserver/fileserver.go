@@ -51,8 +51,8 @@ var ProgramCert []byte
 var fileserverResourceMaster *fileproxy.ResourceMaster
 
 func newTempCAGuard(v tao.Verifier) (tao.Guard, error) {
-	g := tao.NewTemporaryDatalogGuard()
 	/*
+	g := tao.NewTemporaryDatalogGuard()
 	vprin := v.ToPrincipal()
 	rule := fmt.Sprintf(subprinRule, vprin)
 	// Add a rule that says that valid args are the ones we were called with.
@@ -74,6 +74,7 @@ func newTempCAGuard(v tao.Verifier) (tao.Guard, error) {
 		return nil, err
 	}
 	*/
+	g:= LiberalGuard
 	return g, nil
 }
 
@@ -112,8 +113,8 @@ func server(serverAddr string, verifier tao.Keys, rootCert []byte) error {
 	// how do I make the program cert a root?
 	conf := &tls.Config{
 		RootCAs:            x509.NewCertPool(),
-		//Certificates:       []tls.Certificate{ProgramCert},
-		InsecureSkipVerify: false,
+		Certificates:       []tls.Certificate{ProgramCert},
+		InsecureSkipVerify: true,
 		ClientAuth:         tls.RequireAnyClientCert,
 	}
 	sock, err = taonet.Listen("tls", serverAddr, conf, connectionGuard, verifier.VerifyingKey, SigningKey.Delegation)
@@ -173,7 +174,6 @@ func main() {
 		fmt.Printf("InitilizedsymKeys: % x\n", SymKeys)
 	}
 
-	// defer zeroBytes(signingKeyBlob)
 	if(sealedSigningKey!=nil) {
 		SigningKey, err:= fileproxy.SigningKeyFromBlob(tao.Parent(), 
 		sealedSigningKey, derCert, delegation)

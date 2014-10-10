@@ -21,7 +21,7 @@ import (
 	"fmt"
 	//"errors"
 	//"time"
-	//"io/ioutil"
+	"io/ioutil"
 	//"code.google.com/p/goprotobuf/proto"
 	// "os"
 	//"bufio"
@@ -80,9 +80,14 @@ func newTempCAGuard(v tao.Verifier) (tao.Guard, error) {
 
 func clientServiceThead(conn net.Conn, verifier tao.Keys, fileGuard *tao.Guard) {
 	// How do I know if the connection terminates?
+	var  buf []byte
+	ms, err:= util.NewMessageStream(conn)
+	if(err!=nil) {
+	}
+
 	for {
-		// read request from channel
-		// terminate, err:= fileserverResourceMaster.HandleServiceRequest(request)
+		ms.ReadeMessage(&buf)
+		terminate, err:= fileserverResourceMaster.HandleServiceRequest(buf)
 		if terminate {
 			break;
 		}

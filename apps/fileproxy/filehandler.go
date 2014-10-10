@@ -273,13 +273,13 @@ func encodeRequest(subject string, action string, resourcename string, owner []b
 	return  out, err
 }
 
-// return values: subject, action, resourcename, size, owner, error
-func decodeRequest(in []byte) (*string, *string, *string, *int, *[]byte, error) {
+// return values: subject, action, resourcename, owner, error
+func decodeRequest(in []byte) (*string, *string, *string, *[]byte, error) {
 	theType, subject, action, resource, owner, status, message, size, buf, err:= decodeMessage(in)
 	if(*theType!=int(MessageType_REQUEST)) {
-		return nil,nil,nil,nil,nil, errors.New("Cant decode request")
+		return nil,nil,nil,nil, errors.New("Cant decode request")
 	}
-	return subject, action, resource, size, owner, nil
+	return subject, action, resource, owner, nil
 }
 
 // return: status, message, size, error
@@ -379,7 +379,7 @@ func deleteOwnerRequest(conn net.Conn, resourcename string) error {
 
 // first return value is terminate flag
 func (m *ResourceMaster) HandleServiceRequest(conn net.Conn, request []byte) (bool, error) {
-	subject, action, resourcename, owner, size, err:= decodeRequest(request)
+	subject, action, resourcename, owner, err:= decodeRequest(request)
 
 	// is it authorized?
 	ok:= true; // TODO: m.guard.IsAuthorized(subject, action, resourcename) 

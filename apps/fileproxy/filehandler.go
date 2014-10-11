@@ -19,15 +19,15 @@ package fileproxy
 import (
 	//"crypto/x509"
 	"errors"
-	"io/ioutil"
 	//"flag"
 	//"os"
 	"fmt"
 	"net"
 	"code.google.com/p/goprotobuf/proto"
 	 tao "github.com/jlmucb/cloudproxy/tao"
-	 "github.com/jlmucb/cloudproxy/tao/auth"
-	// taonet "github.com/jlmucb/cloudproxy/tao/net"
+	 // "github.com/jlmucb/cloudproxy/tao/auth"
+	 // taonet "github.com/jlmucb/cloudproxy/tao/net"
+	"github.com/jlmucb/cloudproxy/util"
 )
 
 // Resource types: files, channels
@@ -47,8 +47,8 @@ type ResourceInfo struct {
 
 
 type ResourceMaster struct {
-	program		auth.Prin
-	guard		*tao.Guard
+	program		string
+	Guard		*tao.Guard
 	baseDirectory	string
 	resourceArray	[100]ResourceInfo
 	// Rules
@@ -65,6 +65,9 @@ func (m *ResourceMaster) Find(resourcename string) (*ResourceInfo, error) {
 
 func (m *ResourceMaster) Insert(path, string, resourcename string, owner []byte) (*ResourceInfo, error) {
 	found, err:=  m.Find(resourcename)
+	if(err!=nil) {
+		return nil, err
+	}
 	if(found!=nil) {
 		return found, nil
 	}
@@ -90,6 +93,9 @@ func decodeMessage(in []byte) (*int, *string,  *string, *string, *[]byte,
 		      *string, *string,  *int,  *[]byte, error) {
 	fpMessage:= new(FPMessage)
 	err:= proto.Unmarshal(in, fpMessage)
+	if(err!=nil) {
+		return nil, nil,nil,nil,nil,nil,nil,nil,nil, err
+	}
 	theType:= int(*fpMessage.MessageType)
 	if(theType==int(MessageType_REQUEST)) {
 		subject:= *fpMessage.SubjectName
@@ -139,7 +145,7 @@ func (m *ResourceMaster) Delete(resourceName string) error {
 
 func (m *ResourceMaster) encodeMaster() ([]byte, error){
 	protoMessage:=  new(FPResourceMaster)
-	protoMessage.PrinName= proto.String(m.program.String());
+	protoMessage.PrinName= proto.String(m.program);
 	protoMessage.BaseDirectoryName= proto.String(m.baseDirectory);
 	protoMessage.NumFileinfos= proto.Int(len(m.resourceArray))
 	out, err:= proto.Marshal(protoMessage)
@@ -149,7 +155,7 @@ func (m *ResourceMaster) encodeMaster() ([]byte, error){
 func (m *ResourceMaster) decodeMaster(in []byte) (*int, error) {
 	rMessage:= new(FPResourceMaster)
 	_= proto.Unmarshal(in, rMessage)
-	//TODO: m.program= rMessage.PrinName
+	m.program= *rMessage.PrinName
 	m.baseDirectory= *rMessage.BaseDirectoryName
 	size:=  *rMessage.NumFileinfos
 	isize:= int(size)  //TODO: Fix
@@ -165,7 +171,7 @@ func (r *ResourceInfo) encodeResourceInfo() ([]byte, error){
 	protoMessage.ResourceSize= proto.Int(r.resourceSize);
 	//Fix: protoMessage.ResourceOwner= proto.Bytes(r.resourceOwner);
 	out, err:= proto.Marshal(protoMessage)
-	return out, nil
+	return out,err 
 }
 
 func (r *ResourceInfo) decodeResourceInfo(in []byte) error {
@@ -235,7 +241,7 @@ func (m *ResourceMaster) PrintMaster(printResources bool) {
 func (m *ResourceMaster) InitGuard(g *tao.Guard, rulefile string) error {
 	//fileGuard := tao.NewTemporaryDatalogGuard()
 	// for now, liberal guard
-	*m.guard=  tao.LiberalGuard
+	*m.Guard=  tao.LiberalGuard
 	// no need for rules
 	return nil
 }
@@ -279,31 +285,39 @@ func decodeRequest(in []byte) (*string, *string, *string, *[]byte, error) {
 	if(*theType!=int(MessageType_REQUEST)) {
 		return nil,nil,nil,nil, errors.New("Cant decode request")
 	}
+	if (err!=nil) {
+		return  nil, nil, nil, nil, err
+	}
+	if(status!=nil || message!=nil || size!=nil  || buf!=nil) {
+		return  nil, nil, nil, nil, errors.New("malformed request")
+	}
 	return subject, action, resource, owner, nil
 }
 
 // return: status, message, size, error
 func getResponse(conn net.Conn) (*string, *string, *int, error) {
-	ms:= ioutil.NewMessageStream(conn)
-	var  buf []byte
-	ms.ReadMessage(buf)
-	theType, subject, action, resource, owner, status, message, size, out, err:= decodeMessage(buf)
+	ms:= util.NewMessageStream(conn)
+	strbytes,err:= ms.ReadString()
+	if(err!=nil) {
+		return nil, nil, nil, err
+	}
+	theType, subject, action, resource, owner, status, message, size, out, err:= decodeMessage([]byte(strbytes))
+	if (err!=nil) {
+		return  nil, nil, nil, err
+	}
+	if(subject!=nil || action!=nil || resource!=nil || owner!=nil || size!=nil  || out!=nil) {
+		return  nil, nil, nil, errors.New("malformed request")
+	}
 	if(*theType!=int(MessageType_RESPONSE)) {
-		return nil, nil, nil, errors.New("Malformed message")
+		return nil, nil, nil, errors.New("Wrong message type")
 	}
 	return status, message, size, nil
 }
 
 func sendResponse(conn net.Conn, status string, message string, size int) error {
-	ms, err:= ioutil.NewMessageStream(conn)
-	if(err!=nil) {
-		return err
-	}
+	ms:= util.NewMessageStream(conn)
 	out,_:= encodeMessage(int(MessageType_RESPONSE), nil, nil,  nil, nil, &status, &message,  &size,  nil)
-	ms.WriteMessage(out)
-	if(err!=nil) {
-		return err
-	}
+	ms.WriteString(string(out))
 	return nil
 }
 
@@ -379,7 +393,10 @@ func deleteOwnerRequest(conn net.Conn, resourcename string) error {
 
 // first return value is terminate flag
 func (m *ResourceMaster) HandleServiceRequest(conn net.Conn, request []byte) (bool, error) {
-	subject, action, resourcename, owner, err:= decodeRequest(request)
+	_, action, resourcename, owner, err:= decodeRequest(request)
+	if(err!=nil) {
+		return false, err
+	}
 
 	// is it authorized?
 	ok:= true; // TODO: m.guard.IsAuthorized(subject, action, resourcename) 
@@ -391,8 +408,6 @@ func (m *ResourceMaster) HandleServiceRequest(conn net.Conn, request []byte) (bo
 		return  false, errors.New("unauthorized")
 	}
 
-	var status string
-	var message string
 	if(*action=="create") {
 		err:= createRequest(conn, *resourcename, *owner)
 		return false, err
@@ -415,9 +430,9 @@ func (m *ResourceMaster) HandleServiceRequest(conn net.Conn, request []byte) (bo
 	}
 }
 
-func (m *ResourceMaster) InitMaster(masterInfoDir string, prin auth.Prin)  error {
+func (m *ResourceMaster) InitMaster(masterInfoDir string, prin string)  error {
 	m.GetResourceData(masterInfoDir+"masterinfo",  masterInfoDir+"resources")
-	m.InitGuard(m.guard, masterInfoDir+"rules")
+	m.InitGuard(m.Guard, masterInfoDir+"rules")
 	return nil
 }
 
@@ -427,5 +442,5 @@ func (m *ResourceMaster) SaveMaster(masterInfoDir string)  error {
 		fmt.Printf("cant m.SaveResourceData\n")
 		return err
 	}
-	return m.SaveRules(m.guard, masterInfoDir+"rules")
+	return m.SaveRules(m.Guard, masterInfoDir+"rules")
 }

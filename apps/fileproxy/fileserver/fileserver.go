@@ -19,23 +19,15 @@ package main
 import (
 	"flag"
 	"fmt"
-	//"errors"
-	//"time"
-	"io/ioutil"
-	//"code.google.com/p/goprotobuf/proto"
-	// "os"
-	//"bufio"
 	"crypto/tls"
 	"crypto/x509"
-	// "crypto/x509/pkix"
-	// "crypto/rand"
 	"net"
-	//"strings"
 
 	tao "github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	taonet "github.com/jlmucb/cloudproxy/tao/net"
 	"github.com/jlmucb/cloudproxy/apps/fileproxy"
+	"github.com/jlmucb/cloudproxy/util"
 )
 
 var hostcfg= flag.String("../hostdomain/tao.config", "../hostdomain/tao.config",  "path to host tao configuration")
@@ -74,21 +66,20 @@ func newTempCAGuard(v tao.Verifier) (tao.Guard, error) {
 		return nil, err
 	}
 	*/
-	g:= LiberalGuard
+	g:= tao.LiberalGuard
 	return g, nil
 }
 
 
 func clientServiceThead(conn net.Conn, verifier tao.Keys, fileGuard *tao.Guard) {
 	// How do I know if the connection terminates?
-	var  buf []byte
-	ms, err:= util.NewMessageStream(conn)
-	if(err!=nil) {
-	}
-
+	ms:= util.NewMessageStream(conn)
 	for {
-		ms.ReadeMessage(&buf)
-		terminate, err:= fileserverResourceMaster.HandleServiceRequest(buf)
+		strbytes,err:= ms.ReadString()
+		if(err!=nil) {
+			return
+		}
+		terminate, err:= fileserverResourceMaster.HandleServiceRequest(conn, []byte(strbytes))
 		if terminate {
 			break;
 		}
@@ -96,7 +87,7 @@ func clientServiceThead(conn net.Conn, verifier tao.Keys, fileGuard *tao.Guard) 
 	fmt.Printf("client thread terminating\n")
 }
 
-func server(serverAddr string, verifier tao.Keys, rootCert []byte) error {
+func server(serverAddr string, prin string, verifier tao.Keys, rootCert []byte) error {
 	var sock net.Listener
 
 	// construct nego guard
@@ -107,13 +98,14 @@ func server(serverAddr string, verifier tao.Keys, rootCert []byte) error {
 	}
 
 	// init fileserver data
-	fileserverResourceMaster= new  ResourceMaster()
-	err:= fileserverResourceMaster.InitMaster(*fileserverPath)
+	fileserverResourceMaster= new(fileproxy.ResourceMaster)
+	err= fileserverResourceMaster.InitMaster(*fileserverPath, prin)
 
 	// how do I make the program cert a root?
+	// cert, err := x509.ParseCertificate(ProgramCert)
 	conf := &tls.Config{
 		RootCAs:            x509.NewCertPool(),
-		Certificates:       []tls.Certificate{ProgramCert},
+		// TODO: Certificates:       []tls.Certificate{cert},
 		InsecureSkipVerify: true,
 		ClientAuth:         tls.RequireAnyClientCert,
 	}
@@ -124,7 +116,7 @@ func server(serverAddr string, verifier tao.Keys, rootCert []byte) error {
 			fmt.Printf("server: can't accept connection: %s\n", err.Error())
 			return nil
 		}
-		go clientServiceThead(conn, verifier, &fileGuard)
+		go clientServiceThead(conn, verifier, fileserverResourceMaster.Guard)
 	}
 }
 
@@ -195,7 +187,7 @@ func main() {
 	var rootCert []byte
 	rootCert= nil
 	// fix rootcert
-	err= server(serverAddr, *hostDomain.Keys, rootCert)
+	err= server(serverAddr, myTaoName.String(), *hostDomain.Keys, rootCert)
 	if(err!=nil) {
 		fmt.Printf("fileserver: server error")
 	}

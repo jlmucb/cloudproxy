@@ -38,6 +38,17 @@ var subprinRule = "(forall P: forall Hash: TrustedProgramHash(Hash) and Subprin(
 var argsRule = "(forall Y: forall P: forall S: MemberProgram(P) and TrustedArgs(S) and Subprin(Y, P, S) implies Authorized(Y, \"Execute\"))"
 var demoRule = "TrustedArgs(ext.Args(%s))"
 
+/*
+n := binary.BigEndian.Uint32(sizebytes[:])
+max := ms.MaxMessageSize
+// We also check for int(n) to overflow so allocation below doesn't fail.
+if int(n) < 0 || (max > 0 && int(n) > max) {
+glog.Errorf("String on wire is too large: %d bytes\n", n)
+return "", Logged(ErrMessageTooLarge)
+}
+strbytes := make([]byte, int(n))
+*/
+
 func ZeroBytes(buf []byte) {
 	n:= len(buf)
 	for i:=0;i<n;i++ {

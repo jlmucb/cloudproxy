@@ -29,25 +29,23 @@ import (
 
 var network = flag.String("network", "tcp", "The network to use for connections")
 var addr = flag.String("addr", "localhost:8124", "The address to listen on")
-var domainPass = flag.String("password", "BogusPass", "The domain password for the policy key")
+var domainPass = flag.String("password", "nopassword", "The domain password for the policy key")
 var configPath = flag.String("config", "tao.config", "The Tao domain config")
 
-
-func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifier) {
-	defer conn.Close()
-
+// return is terminate, error
+func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifier) (bool, error){
 	// Expect an attestation from the client.
 	ms := util.NewMessageStream(conn)
 	var a tao.Attestation
 	if err := ms.ReadMessage(&a); err != nil {
 		fmt.Fprintln(os.Stderr, "Couldn't read attestation from channel:", err)
-		return
+		return false, err
 	}
 
 	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
 	if err := taonet.ValidatePeerAttestation(&a, peerCert, guard); err != nil {
 		fmt.Fprintln(os.Stderr, "Couldn't validate peer attestation:", err)
-		return
+		return false, err
 	}
 
 	// sign cert and put it in attestation statement
@@ -58,7 +56,7 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 	f, err := auth.UnmarshalForm(a.SerializedStatement)
 	if err != nil {
 		fmt.Printf("cant unmarshal a.SerializedStatement\n")
-		return
+		return false, err
 	}
 
 	var saysStatement *auth.Says
@@ -70,24 +68,24 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 	sf, ok := saysStatement.Message.(auth.Speaksfor)
 	if(ok!=true) {
 		fmt.Printf("says doesnt have speaksfor message\n")
-		return
+		return false, err
 	}
 	kprin, ok := sf.Delegate.(auth.Prin)
 	if(ok!=true) {
 		fmt.Printf("speaksfor Delegate is not auth.Prin\n")
-		return
+		return false, err
 	}
 	keyTerm, ok:=  kprin.Key.(auth.Term)
 	if(ok!=true) {
 		fmt.Printf("kprin.Term is not a Bytes\n")
-		return
+		return false, err
 	}
 	derCert:= keyTerm.(auth.Bytes)
 	fmt.Printf("Cert has %d bytes\n", len(derCert))
 	subjCert, err := x509.ParseCertificate(derCert)
 	if subjCert == nil || err != nil {
 		fmt.Printf("cant parse certificate\n")
-		return
+		return false, err
 	}
 
 	// get new cert signed by me
@@ -95,7 +93,7 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 	signedCert, err:= s.CreateSignedX509(subjCert, 01, v, &subject)
 	if signedCert == nil || err != nil {
 		fmt.Printf("cant sign certificate\n")
-		return
+		return false, err
 	}
 
 	// replace self signed cert in attest request
@@ -111,7 +109,7 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 	delegator, ok := sf.Delegator.(auth.Prin)
 	if !ok {
 		fmt.Printf("the delegator must be a principal")
-		return;
+		return false, err
 	}
 	var prog auth.PrinExt
 	found := false
@@ -127,7 +125,7 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 	ra, err := tao.GenerateAttestation(s, nil, *truncSays)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Couldn't attest to the new says statement:", err)
-		return
+		return false, err
 	}
 
 	// Add an endorsement to this PrinExt Program hash so the receiver can check
@@ -150,23 +148,44 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 	ea, err := tao.GenerateAttestation(s, nil, endorsement)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Couldn't generate an endorsement for this program:", err)
-		return
+		return false, err
 	}
 	eab, err := proto.Marshal(ea)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Couldn't marshal an endorsement:", err)
-		return
+		return false, err
 	}
 	ra.SerializedEndorsements = [][]byte{eab}
 
 	if _, err := ms.WriteMessage(ra); err != nil {
 		fmt.Fprintln(os.Stderr, "Couldn't return the attestation on the channel:", err)
-		return
+		return false, err
 	}
 
-	return
+	return false, nil
 }
 
+func  RequestLoop(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifier) {
+	defer conn.Close()
+
+	var terminate bool
+	var err error
+	for {
+		terminate, err= KeyNegoRequest(conn, s, guard, v)
+		if(terminate==true) {
+			break;
+		}
+		if(err==nil) {
+			fmt.Printf("KeyNegoRequest returns no error\n")
+		} else {
+			fmt.Printf("KeyNegoRequest returns error\n")
+		}
+		if(terminate==true) {
+			break;
+		}
+	}
+	return
+}
 
 func main() {
 	flag.Parse()

@@ -146,7 +146,6 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 	if (err!=nil || derCert==nil) {
 		fmt.Printf("CreateSigningKey failed\n")
 	}
-	// I need the signed cert as well as the delegation
 	na, err := taonet.RequestTruncatedAttestation("tcp", *ca, k, domain.Keys.VerifyingKey)
 	if(err!=nil || na==nil) {
 		return nil, errors.New("keynegoserver attestation failed")

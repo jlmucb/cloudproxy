@@ -19,15 +19,154 @@ import (
 	"flag"
 	"fmt"
 	"os"
-
+	"net"
+	"code.google.com/p/goprotobuf/proto"
 	"github.com/jlmucb/cloudproxy/tao"
-	"github.com/jlmucb/cloudproxy/tao/net"
+	taonet "github.com/jlmucb/cloudproxy/tao/net"
+	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/jlmucb/cloudproxy/util"
 )
 
 var network = flag.String("network", "tcp", "The network to use for connections")
 var addr = flag.String("addr", "localhost:8124", "The address to listen on")
 var domainPass = flag.String("password", "BogusPass", "The domain password for the policy key")
 var configPath = flag.String("config", "tao.config", "The Tao domain config")
+
+
+func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifier) {
+	defer conn.Close()
+
+	// Expect an attestation from the client.
+	ms := util.NewMessageStream(conn)
+	var a tao.Attestation
+	if err := ms.ReadMessage(&a); err != nil {
+		fmt.Fprintln(os.Stderr, "Couldn't read attestation from channel:", err)
+		return
+	}
+
+	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
+	if err := taonet.ValidatePeerAttestation(&a, peerCert, guard); err != nil {
+		fmt.Fprintln(os.Stderr, "Couldn't validate peer attestation:", err)
+		return
+	}
+
+	// sign cert and put it in attestation statement
+	// a consists of serialized statement, sig and SignerInfo
+	// a is a says speaksfor, Delegate of speaksfor is cert and should be DER encoded
+
+	// get underlying says
+	f, err := auth.UnmarshalForm(a.SerializedStatement)
+	if err != nil {
+		fmt.Printf("cant unmarshal a.SerializedStatement\n")
+		return
+	}
+
+	var saysStatement *auth.Says
+	if ptr, ok := f.(*auth.Says); ok {
+		saysStatement = ptr
+	} else if val, ok := f.(auth.Says); ok {
+		saysStatement = &val
+	}
+	sf, ok := saysStatement.Message.(auth.Speaksfor)
+	if(ok!=true) {
+		fmt.Printf("says doesnt have speaksfor message\n")
+		return
+	}
+	kprin, ok := sf.Delegate.(auth.Prin)
+	if(ok!=true) {
+		fmt.Printf("speaksfor Delegate is not auth.Prin\n")
+		return
+	}
+	keyTerm, ok:=  kprin.Key.(auth.Term)
+	if(ok!=true) {
+		fmt.Printf("kprin.Term is not a Bytes\n")
+		return
+	}
+	derCert:= keyTerm.(auth.Bytes)
+	fmt.Printf("Cert has %d bytes\n", len(derCert))
+	subjCert, err := x509.ParseCertificate(derCert)
+	if subjCert == nil || err != nil {
+		fmt.Printf("cant parse certificate\n")
+		return
+	}
+
+	// get new cert signed by me
+	subject:= subjCert.Subject
+	signedCert, err:= s.CreateSignedX509(subjCert, 01, v, &subject)
+	if signedCert == nil || err != nil {
+		fmt.Printf("cant sign certificate\n")
+		return
+	}
+
+	// replace self signed cert in attest request
+	newspeaksFor:= &auth.Speaksfor{
+		Delegate:   auth.Bytes(signedCert.Raw),
+		Delegator:  sf.Delegator,}
+	truncSays:= &auth.Says{
+		Speaker:  saysStatement.Speaker,
+		// Time: ,
+		// Expiration: ,
+		Message: newspeaksFor,}
+
+	delegator, ok := sf.Delegator.(auth.Prin)
+	if !ok {
+		fmt.Printf("the delegator must be a principal")
+		return;
+	}
+	var prog auth.PrinExt
+	found := false
+	for _, sprin := range delegator.Ext {
+		if !found && (sprin.Name == "Program") {
+			found = true
+			prog = sprin
+		}
+		if found {
+			kprin.Ext = append(kprin.Ext, sprin)
+		}
+	}
+	ra, err := tao.GenerateAttestation(s, nil, *truncSays)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Couldn't attest to the new says statement:", err)
+		return
+	}
+
+	// Add an endorsement to this PrinExt Program hash so the receiver can check
+	// it successfully against policy.
+	endorsement := auth.Says{
+		Speaker: s.ToPrincipal(),
+		Message: auth.Pred{
+			Name: "TrustedProgramHash",
+			Arg:  []auth.Term{auth.PrinTail{Ext: []auth.PrinExt{prog}}},
+		},
+	}
+	if truncSays.Time != nil {
+		i := *truncSays.Time
+		endorsement.Time = &i
+	}
+	if truncSays.Expiration != nil {
+		i := *truncSays.Expiration
+		endorsement.Expiration = &i
+	}
+	ea, err := tao.GenerateAttestation(s, nil, endorsement)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Couldn't generate an endorsement for this program:", err)
+		return
+	}
+	eab, err := proto.Marshal(ea)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Couldn't marshal an endorsement:", err)
+		return
+	}
+	ra.SerializedEndorsements = [][]byte{eab}
+
+	if _, err := ms.WriteMessage(ra); err != nil {
+		fmt.Fprintln(os.Stderr, "Couldn't return the attestation on the channel:", err)
+		return
+	}
+
+	return
+}
+
 
 func main() {
 	flag.Parse()
@@ -57,12 +196,11 @@ func main() {
 	return
 	}
 
-	tlsc, err := net.EncodeTLSCert(keys)
+	tlsc, err := taonet.EncodeTLSCert(keys)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Couldn't encode a TLS cert:", err)
 		return
 	}
-	// func (s *Signer) CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier, subjectName *pkix.Name) (*x509.Certificate, error)
 	conf := &tls.Config{
 		RootCAs:            x509.NewCertPool(),
 		Certificates:       []tls.Certificate{*tlsc},
@@ -79,6 +217,6 @@ func main() {
 			return
 		}
 
-		go net.HandleCARequest(conn, domain.Keys.SigningKey, domain.Guard)
+		go KeyNegoRequest(conn, domain.Keys.SigningKey, domain.Guard, domain.Keys.VerifyingKey)
 	}
 }

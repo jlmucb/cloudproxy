@@ -1,0 +1,5 @@
+#
+ps aux | fgrep keynegoserver
+ps aux | fgrep fileclient
+ps aux | fgrep fileserver
+

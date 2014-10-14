@@ -33,8 +33,8 @@ import (
 var caAddr = flag.String("caAddr", "localhost:8124", "The address to listen on")
 var taoChannelAddr = flag.String("taoChannelAddr", "localhost:8124", "The address to listen on")
 var configPath = flag.String("config", "tao.config", "The Tao domain config")
-// var ca = flag.String("ca", "", "address for Tao CA, if any")
 /*
+var ca = flag.String("ca", "", "address for Tao CA, if any")
 var subprinRule = "(forall P: forall Hash: TrustedProgramHash(Hash) and Subprin(P, %v, Hash) implies MemberProgram(P))"
 var argsRule = "(forall Y: forall P: forall S: MemberProgram(P) and TrustedArgs(S) and Subprin(Y, P, S) implies Authorized(Y, \"Execute\"))"
 var demoRule = "TrustedArgs(ext.Args(%s))"
@@ -88,7 +88,7 @@ func GetMyCryptoMaterial(path string) ([]byte, []byte,  []byte, []byte, error) {
 func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte,  error) {
 	self, err := t.GetTaoName()
 	k, err:=  tao.NewTemporaryKeys(tao.Signing)
-	if k==nil || k.SigningKey != nil || err!= nil {
+	if k==nil || err!= nil {
 		return nil, nil, errors.New("Cant generate signing key")
 	}
 	s := &auth.Speaksfor{
@@ -134,8 +134,13 @@ func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) ([]byte,
 
 func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao.Keys, error) {
 	k, derCert, err:= CreateSigningKey(t)
-	if (err!=nil || derCert==nil) {
-		fmt.Printf("CreateSigningKey failed\n")
+	if (err!=nil ) {
+		fmt.Printf("CreateSigningKey failed with error %s\n", err)
+		return nil, err
+	}
+	if (derCert==nil) {
+		fmt.Printf("CreateSigningKey failed, no dercert\n")
+		return nil, errors.New("No DER cert")
 	}
 	na, err := taonet.RequestTruncatedAttestation("tcp", *caAddr, k, domain.Keys.VerifyingKey)
 	if(err!=nil || na==nil) {

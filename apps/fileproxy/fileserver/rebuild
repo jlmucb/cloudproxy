@@ -1,0 +1,8 @@
+#
+echo "rebuilding fileproxy"
+cd ..
+go build fileproxy.go
+cd fileserver
+echo "rebuilding fileserver"
+go build fileserver.go
+echo "done"

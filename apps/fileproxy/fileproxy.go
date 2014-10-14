@@ -91,15 +91,7 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte,  error) {
 	if k==nil || err!= nil {
 		return nil, nil, errors.New("Cant generate signing key")
 	}
-	s := &auth.Speaksfor{
-		Delegate:  k.SigningKey.ToPrincipal(),
-		Delegator: self,}
-	if(s==nil) {
-		return nil, nil, errors.New("Cant produce speaksfor")
-	}
-	if k.Delegation, err = t.Attest(&self, nil, nil, s); err != nil {
-		return nil, nil, err
-	}
+
 	details := tao.X509Details {
 		Country: "US",
 		Organization: "Google",
@@ -109,13 +101,26 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte,  error) {
 	if(err!=nil) {
 		return nil, nil,errors.New("Can't self sign cert\n")
 	}
-	fmt.Printf("fileproxy: derCert: % x\n", derCert);
+	fmt.Printf("fileproxy: derCert: %x\n", derCert);
 	fmt.Printf("\n")
 	cert, err := x509.ParseCertificate(derCert)
 	if(err!=nil) {
 		return nil, nil, err
 	}
 	k.Cert= cert
+	s := &auth.Speaksfor{
+		Delegate:  k.SigningKey.ToPrincipal(),
+		Delegator: self,}
+	if(s==nil) {
+		return nil, nil, errors.New("Cant produce speaksfor")
+	}
+	if k.Delegation, err = t.Attest(&self, nil, nil, s); err != nil {
+		return nil, nil, err
+	}
+	if(err==nil) {
+		temp, _:=  auth.UnmarshalForm(k.Delegation.SerializedStatement)
+		fmt.Printf("fileproxy: deserialized statement: %s\n", temp.String())
+	}
 	return k, derCert, nil
 }
 
@@ -147,7 +152,7 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 		return nil, err
 	 }
 	if(na==nil) {
-		return nil, errors.New("keynegoserver returned nil attestationreturned nil attestation")
+		return nil, errors.New("tao returned nil attestation")
 	}
 	k.Delegation= na
 	signingKeyBlob, err:= tao.MarshalSignerDER(k.SigningKey)
@@ -200,7 +205,7 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, delegateBlob []byte, ce
 	if policy != tao.SealPolicyDefault {
 		fmt.Printf("fileproxy: unexpected policy on unseal\n")
 	}
-	fmt.Printf("fileproxy: Unsealed Signing Key blob: % x\n", signingKeyBlob)
+	fmt.Printf("fileproxy: Unsealed Signing Key blob: %x\n", signingKeyBlob)
 	k.SigningKey, err= tao.UnmarshalSignerDER(signingKeyBlob)
 	return k, err
 }

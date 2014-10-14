@@ -239,6 +239,7 @@ func main() {
 		fmt.Printf("keynegoserver: Empty socket, terminating\n")
 		return
 	}
+	defer sock.Close();
 
 	fmt.Printf("keynegoserver: accepting connections\n")
 	for {

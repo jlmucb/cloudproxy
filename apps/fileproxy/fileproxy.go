@@ -30,23 +30,14 @@ import (
 	taonet "github.com/jlmucb/cloudproxy/tao/net"
 )
 
-var caAddr = flag.String("ca", "localhost:8124", "The address to listen on")
-var taoChannelAddr = flag.String("ca", "localhost:8124", "The address to listen on")
+var caAddr = flag.String("caAddr", "localhost:8124", "The address to listen on")
+var taoChannelAddr = flag.String("taoChannelAddr", "localhost:8124", "The address to listen on")
 var configPath = flag.String("config", "tao.config", "The Tao domain config")
-var ca = flag.String("ca", "", "address for Tao CA, if any")
+// var ca = flag.String("ca", "", "address for Tao CA, if any")
+/*
 var subprinRule = "(forall P: forall Hash: TrustedProgramHash(Hash) and Subprin(P, %v, Hash) implies MemberProgram(P))"
 var argsRule = "(forall Y: forall P: forall S: MemberProgram(P) and TrustedArgs(S) and Subprin(Y, P, S) implies Authorized(Y, \"Execute\"))"
 var demoRule = "TrustedArgs(ext.Args(%s))"
-
-/*
-n := binary.BigEndian.Uint32(sizebytes[:])
-max := ms.MaxMessageSize
-// We also check for int(n) to overflow so allocation below doesn't fail.
-if int(n) < 0 || (max > 0 && int(n) > max) {
-glog.Errorf("String on wire is too large: %d bytes\n", n)
-return "", Logged(ErrMessageTooLarge)
-}
-strbytes := make([]byte, int(n))
 */
 
 func ZeroBytes(buf []byte) {
@@ -146,7 +137,7 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 	if (err!=nil || derCert==nil) {
 		fmt.Printf("CreateSigningKey failed\n")
 	}
-	na, err := taonet.RequestTruncatedAttestation("tcp", *ca, k, domain.Keys.VerifyingKey)
+	na, err := taonet.RequestTruncatedAttestation("tcp", *caAddr, k, domain.Keys.VerifyingKey)
 	if(err!=nil || na==nil) {
 		return nil, errors.New("keynegoserver attestation failed")
 	}

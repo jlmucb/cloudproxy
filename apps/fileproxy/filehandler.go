@@ -91,6 +91,7 @@ func (m *ResourceMaster) Insert(path, string, resourcename string, owner []byte)
 // return: type, subject, action, resource, owner, status, message, size_buf, buf, error
 func decodeMessage(in []byte) (*int, *string,  *string, *string, *[]byte,
 		      *string, *string,  *int,  *[]byte, error) {
+fmt.Printf("decodeMessage\n")
 	fpMessage:= new(FPMessage)
 	err:= proto.Unmarshal(in, fpMessage)
 	if(err!=nil) {
@@ -119,6 +120,7 @@ func decodeMessage(in []byte) (*int, *string,  *string, *string, *[]byte,
 
 func encodeMessage(theType int, subject *string,  action *string, resourcename *string, owner *[]byte,
 		   status *string, message *string,  size *int,  buf []byte) ([]byte, error) {
+fmt.Printf("encodeMessage\n")
 	protoMessage:=  new(FPMessage)
 	protoMessage.MessageType= proto.Int(theType)
 	if(theType==int(MessageType_REQUEST)) {
@@ -144,6 +146,7 @@ func (m *ResourceMaster) Delete(resourceName string) error {
 }
 
 func (m *ResourceMaster) encodeMaster() ([]byte, error){
+fmt.Printf("encodeMaster\n")
 	protoMessage:=  new(FPResourceMaster)
 	protoMessage.PrinName= proto.String(m.program);
 	protoMessage.BaseDirectoryName= proto.String(m.baseDirectory);
@@ -153,6 +156,7 @@ func (m *ResourceMaster) encodeMaster() ([]byte, error){
 }
 
 func (m *ResourceMaster) decodeMaster(in []byte) (*int, error) {
+fmt.Printf("decodeMaster\n")
 	rMessage:= new(FPResourceMaster)
 	_= proto.Unmarshal(in, rMessage)
 	m.program= *rMessage.PrinName
@@ -163,6 +167,7 @@ func (m *ResourceMaster) decodeMaster(in []byte) (*int, error) {
 }
 
 func (r *ResourceInfo) encodeResourceInfo() ([]byte, error){
+fmt.Printf("encodeResourceInfo\n")
 	protoMessage:=  new(FPResourceInfo)
 	protoMessage.ResourceName= proto.String(r.resourceName);
 	protoMessage.ResourceType= proto.String(r.resourceType);
@@ -175,6 +180,7 @@ func (r *ResourceInfo) encodeResourceInfo() ([]byte, error){
 }
 
 func (r *ResourceInfo) decodeResourceInfo(in []byte) error {
+fmt.Printf("decodeResourceInfo\n")
 	rMessage:= new(FPResourceInfo)
 	_= proto.Unmarshal(in, rMessage)
 	r.resourceName= *rMessage.ResourceName
@@ -239,6 +245,7 @@ func (m *ResourceMaster) PrintMaster(printResources bool) {
 // The "Can" predicate is represented in the Guard terminology by Authorized(name, op, args).
 
 func (m *ResourceMaster) InitGuard(g *tao.Guard, rulefile string) error {
+fmt.Printf("InitGuard\n")
 	//fileGuard := tao.NewTemporaryDatalogGuard()
 	// for now, liberal guard
 	*m.Guard=  tao.LiberalGuard
@@ -247,11 +254,13 @@ func (m *ResourceMaster) InitGuard(g *tao.Guard, rulefile string) error {
 }
 
 func (m *ResourceMaster) SaveRules(g *tao.Guard, rulefile string) error {
+fmt.Printf("SaveRules\n")
 	// no need for rules
 	return nil
 }
 
 func (m *ResourceMaster) GetResourceData(masterInfoFile string,  resourceInfoArrayFile string) error {
+fmt.Printf("GetResourceData\n")
 	// read master info
 	// decrypt it
 	// read resourceinfos
@@ -263,6 +272,7 @@ func (m *ResourceMaster) GetResourceData(masterInfoFile string,  resourceInfoArr
 }
 
 func (m *ResourceMaster) SaveResourceData(masterInfoFile string,  resourceInfoArrayFile string) error {
+fmt.Printf("SaveResourceData\n")
 	// encrypt master info
 	// write master info
 	// encrypt fileinfos
@@ -274,6 +284,7 @@ func (m *ResourceMaster) SaveResourceData(masterInfoFile string,  resourceInfoAr
 
 // return values: subject, action, resourcename, size, error
 func encodeRequest(subject string, action string, resourcename string, owner []byte) ([]byte, error) {
+fmt.Printf("encodeRequest\n")
 	out,err:= encodeMessage(int(MessageType_REQUEST), &subject,  &action, &resourcename, &owner,
 	                   nil, nil,  nil,  nil)
 	return  out, err
@@ -281,6 +292,7 @@ func encodeRequest(subject string, action string, resourcename string, owner []b
 
 // return values: subject, action, resourcename, owner, error
 func decodeRequest(in []byte) (*string, *string, *string, *[]byte, error) {
+fmt.Printf("decodeRequest\n")
 	theType, subject, action, resource, owner, status, message, size, buf, err:= decodeMessage(in)
 	if(*theType!=int(MessageType_REQUEST)) {
 		return nil,nil,nil,nil, errors.New("Cant decode request")
@@ -296,6 +308,7 @@ func decodeRequest(in []byte) (*string, *string, *string, *[]byte, error) {
 
 // return: status, message, size, error
 func getResponse(conn net.Conn) (*string, *string, *int, error) {
+fmt.Printf("getResponse\n")
 	ms:= util.NewMessageStream(conn)
 	strbytes,err:= ms.ReadString()
 	if(err!=nil) {
@@ -315,6 +328,7 @@ func getResponse(conn net.Conn) (*string, *string, *int, error) {
 }
 
 func sendResponse(conn net.Conn, status string, message string, size int) error {
+fmt.Printf("sendResponse\n")
 	ms:= util.NewMessageStream(conn)
 	out,_:= encodeMessage(int(MessageType_RESPONSE), nil, nil,  nil, nil, &status, &message,  &size,  nil)
 	ms.WriteString(string(out))
@@ -322,6 +336,7 @@ func sendResponse(conn net.Conn, status string, message string, size int) error 
 }
 
 func getFile(conn net.Conn, filename string, size, int, key []byte) {
+fmt.Printf("getFile\n")
 	// open the file
 	// for each block {
 	// 	read block from file
@@ -335,6 +350,7 @@ func getFile(conn net.Conn, filename string, size, int, key []byte) {
 }
 
 func sendFile(conn net.Conn, filename string, size int, key []byte) {
+fmt.Printf("sendFile\n")
 	// creat the file
 	// for each block {
 	//	read block
@@ -347,6 +363,7 @@ func sendFile(conn net.Conn, filename string, size int, key []byte) {
 }
 
 func readRequest(conn net.Conn, resourcename string) error {
+fmt.Printf("readRequest\n")
 	// is it here?
 	// get size and file name
 	status:= "succeeded"
@@ -357,6 +374,7 @@ func readRequest(conn net.Conn, resourcename string) error {
 }
 
 func writeRequest(conn net.Conn, resourcename string) error {
+fmt.Printf("writeRequest\n")
 	// is it here?
 	// get size and file name
 	status:= "succeeded"
@@ -367,6 +385,7 @@ func writeRequest(conn net.Conn, resourcename string) error {
 }
 
 func createRequest(conn net.Conn, resourcename string, owner []byte) error {
+fmt.Printf("createRequest\n")
 	// is it here?
 	status:= "succeeded"
 	size:= 10 //TODO: what size
@@ -393,6 +412,7 @@ func deleteOwnerRequest(conn net.Conn, resourcename string) error {
 
 // first return value is terminate flag
 func (m *ResourceMaster) HandleServiceRequest(conn net.Conn, request []byte) (bool, error) {
+fmt.Printf("HandleServiceRequest\n")
 	_, action, resourcename, owner, err:= decodeRequest(request)
 	if(err!=nil) {
 		return false, err
@@ -431,12 +451,14 @@ func (m *ResourceMaster) HandleServiceRequest(conn net.Conn, request []byte) (bo
 }
 
 func (m *ResourceMaster) InitMaster(masterInfoDir string, prin string)  error {
+fmt.Printf("InitMaster\n")
 	m.GetResourceData(masterInfoDir+"masterinfo",  masterInfoDir+"resources")
 	m.InitGuard(m.Guard, masterInfoDir+"rules")
 	return nil
 }
 
 func (m *ResourceMaster) SaveMaster(masterInfoDir string)  error {
+fmt.Printf("SaveMaster\n")
 	err:= m.SaveResourceData(masterInfoDir+"masterinfo",  masterInfoDir+"resources")
 	if err!=nil {
 		fmt.Printf("cant m.SaveResourceData\n")

@@ -43,6 +43,7 @@ var ProgramCert []byte
 var fileserverResourceMaster *fileproxy.ResourceMaster
 
 func newTempCAGuard(v tao.Verifier) (tao.Guard, error) {
+fmt.Printf("newTempCAGuard\n")
 	/*
 	g := tao.NewTemporaryDatalogGuard()
 	vprin := v.ToPrincipal()
@@ -72,6 +73,7 @@ func newTempCAGuard(v tao.Verifier) (tao.Guard, error) {
 
 
 func clientServiceThead(conn net.Conn, verifier tao.Keys, fileGuard *tao.Guard) {
+fmt.Printf("clientServiceThead\n")
 	// How do I know if the connection terminates?
 	ms:= util.NewMessageStream(conn)
 	for {
@@ -90,6 +92,7 @@ func clientServiceThead(conn net.Conn, verifier tao.Keys, fileGuard *tao.Guard) 
 func server(serverAddr string, prin string, verifier tao.Keys, rootCert []byte) error {
 	var sock net.Listener
 
+fmt.Printf("server\n")
 	// construct nego guard
 	connectionGuard, err:= newTempCAGuard(*verifier.VerifyingKey)
 	if(err!=nil) {

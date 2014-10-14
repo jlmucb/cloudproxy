@@ -20,6 +20,10 @@ import (
 	"flag"
 	"fmt"
 	"net"
+
+	tao "github.com/jlmucb/cloudproxy/tao"
+	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/jlmucb/cloudproxy/apps/fileproxy"
 	//"errors"
 	//"time"
 	//"io/ioutil"
@@ -32,10 +36,6 @@ import (
 	// "crypto/rand"
 	//"net"
 	//"strings"
-
-	tao "github.com/jlmucb/cloudproxy/tao"
-	"github.com/jlmucb/cloudproxy/tao/auth"
-	"github.com/jlmucb/cloudproxy/apps/fileproxy"
 	// taonet "github.com/jlmucb/cloudproxy/tao/net"
 )
 

@@ -77,6 +77,10 @@ type Deriver struct {
 	secret []byte
 }
 
+func (v *Verifier) GetVerifierEc() (*ecdsa.PublicKey) {
+	return v.ec
+}
+
 // GenerateSigner creates a new Signer with a fresh key.
 func GenerateSigner() (*Signer, error) {
 	ec, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

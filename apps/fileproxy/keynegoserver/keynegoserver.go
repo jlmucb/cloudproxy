@@ -20,6 +20,11 @@ import (
 	"fmt"
 	"os"
 	"net"
+	"errors"
+	"time"
+	"io/ioutil"
+	"crypto/rand"
+	"math/big"
 	"code.google.com/p/goprotobuf/proto"
 	"github.com/jlmucb/cloudproxy/tao"
 	taonet "github.com/jlmucb/cloudproxy/tao/net"
@@ -33,8 +38,8 @@ var domainPass = flag.String("password", "nopassword", "The domain password for 
 var configPath = flag.String("config", "tao.config", "The Tao domain config")
 
 // return is terminate, error
-func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifier) (bool, error){
-	fmt.Printf("keynegoserver: KeyNegoRequest\n")
+func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys,guard tao.Guard) (bool, error){
+	fmt.Printf("keynegoerver: KeyNegoRequest\n")
 	// Expect an attestation from the client.
 	ms := util.NewMessageStream(conn)
 	var a tao.Attestation
@@ -61,7 +66,7 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 		fmt.Printf("\nkeynegoserver: cant unmarshal a.SerializedStatement\n")
 		return false, err
 	}
-	fmt.Print("\nkeynegoserver, unmarshaled serialized: ",  f)
+	fmt.Print("\nkeynegoserver, unmarshaled serialized: %s\n",  f.String())
 	fmt.Print("\n")
 
 	var saysStatement *auth.Says
@@ -82,40 +87,42 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 		fmt.Printf("keynegoserver: speaksfor Delegate is not auth.Prin\n")
 		return false, err
 	}
-	keyTerm, ok:=  kprin.Key.(auth.Term)
-	if(ok!=true) {
-		fmt.Printf("keynegoserver: kprin.Term is not a Bytes\n")
+	subjectPrin, ok:= sf.Delegator.(auth.Prin)
+	if(ok!=true ) {
+		fmt.Printf("keynegoserver: cant get subject principal\n")
+		return false,errors.New("Cant get principal name from verifier") 
+	}
+	subjectnamestr:= subjectPrin.String()
+	fmt.Printf("keynegoserver: subject principal name: %s\n", subjectnamestr)
+	details:= tao.X509Details {
+		Country: "US",
+		Organization: "Google",
+		CommonName: subjectnamestr, }
+	subjectname:= tao.NewX509Name(details)
+	template := &x509.Certificate{
+		SignatureAlgorithm: x509.ECDSAWithSHA256,
+		PublicKeyAlgorithm: x509.ECDSA,
+		Version:            2, // x509v3
+		// It's always allowed for self-signed certs to have serial 1.
+		SerialNumber: new(big.Int).SetInt64(1),
+		Subject:      *subjectname,
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().AddDate(1 /* years */, 0 /* months */, 0 /* days */),
+		KeyUsage:    x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		}
+	verifier,err:= tao.FromPrincipal(kprin)
+	clientDerCert, err := x509.CreateCertificate(rand.Reader, template, policyKey.Cert, verifier.GetVerifierEc(),
+	                                   policyKey.SigningKey)
+	if(err!=nil) {
+		fmt.Printf("keynegoserver: cant create client certificate: %s\n", err)
 		return false, err
 	}
-	fmt.Print("keynegoserver, kprin: \n",  kprin.Key.String())
-	fmt.Print("\n")
-	derCert:= keyTerm.(auth.Bytes)
-	fmt.Printf("\nkeynegoserver: Cert has %d bytes\n", len(derCert))
-	fmt.Printf("derCert: ", derCert)
-	fmt.Print("\n")
-	subjCert, err := x509.ParseCertificate(derCert)
-	if  err != nil {
-		fmt.Printf("keynegoserver: %s\n", err)
-		fmt.Printf("Cert: ", derCert)
-		fmt.Print("\n")
-		return false, err
-	}
-	if subjCert == nil {
-		fmt.Printf("keynegoserver: subjCert is nil\n")
-		return false, err
-	}
-
-	// get new cert signed by me
-	subject:= subjCert.Subject
-	signedCert, err:= s.CreateSignedX509(subjCert, 01, v, &subject)
-	if signedCert == nil || err != nil {
-		fmt.Printf("keynegoserver: cant sign certificate\n")
-		return false, err
-	}
+	err= ioutil.WriteFile("ClientCert", clientDerCert, os.ModePerm)
 
 	// replace self signed cert in attest request
 	newspeaksFor:= &auth.Speaksfor{
-		Delegate:   auth.Bytes(signedCert.Raw),
+		Delegate:   auth.Bytes(clientDerCert),
 		Delegator:  sf.Delegator,}
 	truncSays:= &auth.Says{
 		Speaker:  saysStatement.Speaker,
@@ -139,7 +146,7 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 			kprin.Ext = append(kprin.Ext, sprin)
 		}
 	}
-	ra, err := tao.GenerateAttestation(s, nil, *truncSays)
+	ra, err := tao.GenerateAttestation(policyKey.SigningKey, nil, *truncSays)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Couldn't attest to the new says statement:", err)
 		return false, err
@@ -148,7 +155,7 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 	// Add an endorsement to this PrinExt Program hash so the receiver can check
 	// it successfully against policy.
 	endorsement := auth.Says{
-		Speaker: s.ToPrincipal(),
+		Speaker: policyKey.SigningKey.ToPrincipal(),
 		Message: auth.Pred{
 			Name: "TrustedProgramHash",
 			Arg:  []auth.Term{auth.PrinTail{Ext: []auth.PrinExt{prog}}},
@@ -162,7 +169,7 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 		i := *truncSays.Expiration
 		endorsement.Expiration = &i
 	}
-	ea, err := tao.GenerateAttestation(s, nil, endorsement)
+	ea, err := tao.GenerateAttestation(policyKey.SigningKey, nil, endorsement)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Couldn't generate an endorsement for this program:", err)
 		return false, err
@@ -182,7 +189,7 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 	return false, nil
 }
 
-func  RequestLoop(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifier) {
+func  RequestLoop(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) {
 	fmt.Printf("keynegoserver: RequestLoop\n")
 
 	defer conn.Close()
@@ -190,7 +197,7 @@ func  RequestLoop(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifier
 	var err error
 	for {
 		fmt.Printf("keynegoserver: about to call KeyNegoRequest\n")
-		terminate, err= KeyNegoRequest(conn, s, guard, v)
+		terminate, err= KeyNegoRequest(conn, policyKey, guard)
 		if(terminate==true) {
 			break;
 		}
@@ -269,7 +276,7 @@ func main() {
 			return
 		}
 		fmt.Printf("keynegoserver: calling RequestLoop\n")
-		go RequestLoop(conn, domain.Keys.SigningKey, domain.Guard, domain.Keys.VerifyingKey)
+		go RequestLoop(conn, domain.Keys, domain.Guard)
 	}
 	fmt.Printf("keynegoserver: finishing\n")
 }

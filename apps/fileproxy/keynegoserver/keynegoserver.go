@@ -54,12 +54,15 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 	// a is a says speaksfor, Delegate of speaksfor is cert and should be DER encoded
 
 	// get underlying says
-	fmt.Print("keynegoserver, attest: % x\n",  a)
+	fmt.Print("keynegoserver, attest: ",  a)
+	fmt.Print("\n")
 	f, err := auth.UnmarshalForm(a.SerializedStatement)
 	if err != nil {
-		fmt.Printf("keynegoserver: cant unmarshal a.SerializedStatement\n")
+		fmt.Printf("\nkeynegoserver: cant unmarshal a.SerializedStatement\n")
 		return false, err
 	}
+	fmt.Print("\nkeynegoserver, unmarshaled serialized: ",  f)
+	fmt.Print("\n")
 
 	var saysStatement *auth.Says
 	if ptr, ok := f.(*auth.Says); ok {
@@ -72,6 +75,8 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 		fmt.Printf("keynegoserver: says doesnt have speaksfor message\n")
 		return false, err
 	}
+	fmt.Print("keynegoserver, speaksfor: ",  sf)
+	fmt.Print("\n")
 	kprin, ok := sf.Delegate.(auth.Prin)
 	if(ok!=true) {
 		fmt.Printf("keynegoserver: speaksfor Delegate is not auth.Prin\n")
@@ -82,12 +87,17 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 		fmt.Printf("keynegoserver: kprin.Term is not a Bytes\n")
 		return false, err
 	}
+	fmt.Print("keynegoserver, kprin: \n",  kprin.Key.String())
+	fmt.Print("\n")
 	derCert:= keyTerm.(auth.Bytes)
-	fmt.Printf("keynegoserver: Cert has %d bytes\n", len(derCert))
+	fmt.Printf("\nkeynegoserver: Cert has %d bytes\n", len(derCert))
+	fmt.Printf("derCert: ", derCert)
+	fmt.Print("\n")
 	subjCert, err := x509.ParseCertificate(derCert)
 	if  err != nil {
 		fmt.Printf("keynegoserver: %s\n", err)
-		fmt.Printf("Cert: % x\n", derCert)
+		fmt.Printf("Cert: ", derCert)
+		fmt.Print("\n")
 		return false, err
 	}
 	if subjCert == nil {

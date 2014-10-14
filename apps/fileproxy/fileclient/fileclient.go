@@ -35,8 +35,8 @@ import (
 
 	tao "github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
-	// taonet "github.com/jlmucb/cloudproxy/tao/net"
 	"github.com/jlmucb/cloudproxy/apps/fileproxy"
+	// taonet "github.com/jlmucb/cloudproxy/tao/net"
 )
 
 var hostcfg= flag.String("../hostdomain/tao.config", "../hostdomain/tao.config",  "path to host tao configuration")
@@ -59,7 +59,7 @@ func main() {
 	if err != nil {
 		return
 	}
-	fmt.Printf("Domain name: %s\n", hostDomain.ConfigPath)
+	fmt.Printf("fileclient: Domain name: %s\n", hostDomain.ConfigPath)
 
 	e := auth.PrinExt{Name: "fileclient.version.1",}
 	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
@@ -75,7 +75,7 @@ func main() {
 
 	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err:= fileproxy.GetMyCryptoMaterial(*fileclientPath) 
 	if(sealedSymmetricKey==nil || sealedSigningKey==nil ||delegation== nil || derCert==nil || err==nil) {
-		fmt.Printf("No key material present\n")
+		fmt.Printf("fileclient: No key material present\n")
 	}
 	ProgramCert= derCert
 
@@ -88,13 +88,13 @@ func main() {
 		if policy != tao.SealPolicyDefault {
 			fmt.Printf("fileclient: unexpected policy on unseal\n")
 		}
-		fmt.Printf("Unsealed symKeys: % x\n", SymKeys)
+		fmt.Printf("fileclient: Unsealed symKeys: % x\n", SymKeys)
 	} else {
 		SymKeys, err= fileproxy.InitializeSealedSymmetricKeys(*fileclientPath, tao.Parent(), 64)
 		if err != nil {
 			fmt.Printf("fileclient: InitializeSealedSymmetricKeys error: %s\n", err)
 		}
-		fmt.Printf("InitilizedsymKeys: % x\n", SymKeys)
+		fmt.Printf("fileclient: InitilizedsymKeys: % x\n", SymKeys)
 	}
 
 	if(sealedSigningKey!=nil) {
@@ -103,14 +103,14 @@ func main() {
 		if err != nil {
 			fmt.Printf("fileclient: SigningKeyFromBlob error: %s\n", err)
 		}
-		fmt.Printf("Retrieved Signing key: % x\n", SigningKey)
+		fmt.Printf("fileclient: Retrieved Signing key: % x\n", SigningKey)
 	} else {
 		SigningKey, err:=  fileproxy.InitializeSealedSigningKey(*fileclientPath, 
 					tao.Parent(), *hostDomain)
 		if err != nil {
 			fmt.Printf("fileclient: InitializeSealedSigningKey error: %s\n", err)
 		}
-		fmt.Printf("Initilized signingKey: % x\n", SigningKey)
+		fmt.Printf("fileclient: Initilized signingKey: % x\n", SigningKey)
 	}
 	// establish channel
 	var conn net.Conn
@@ -119,17 +119,17 @@ func main() {
 	conn, err= fileproxy.EstablishPeerChannel(tao.Parent(), SigningKey)
 	// create a file
 	sentFileName:= *fileclientPath+*testFile
-	fmt.Printf("Creating: %s\n", sentFileName)
+	fmt.Printf("fileclient: Creating: %s\n", sentFileName)
 	err= fileproxy.CreateFile(conn, creds, sentFileName);
 	if err != nil {
 		fmt.Printf("fileclient: cant create file")
 	}
-	fmt.Printf("Sending: %s\n", sentFileName)
+	fmt.Printf("fileclient: Sending: %s\n", sentFileName)
 	err= fileproxy.SendFile(conn, creds, sentFileName, nil);
 	if err != nil {
 		fmt.Printf("fileclient: cant send file")
 	}
-	fmt.Printf("Getting: %s\n", sentFileName+".received")
+	fmt.Printf("fileclient: Getting: %s\n", sentFileName+".received")
 	err= fileproxy.GetFile(conn, creds, sentFileName, nil);
 	if err != nil {
 		fmt.Printf("fileclient: cant send file")

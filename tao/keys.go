@@ -76,6 +76,10 @@ type Deriver struct {
 	secret []byte
 }
 
+func (s *Signer) GetSignerEc() (*ecdsa.PrivateKey) {
+	return s.ec
+}
+
 func (v *Verifier) GetVerifierEc() (*ecdsa.PublicKey) {
 	return v.ec
 }

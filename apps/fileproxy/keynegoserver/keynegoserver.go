@@ -112,8 +112,9 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys,guard tao.Guard) (bool, e
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		}
 	verifier,err:= tao.FromPrincipal(kprin)
-	clientDerCert, err := x509.CreateCertificate(rand.Reader, template, policyKey.Cert, verifier.GetVerifierEc(),
-	                                   policyKey.SigningKey)
+	clientDerCert, err := x509.CreateCertificate(rand.Reader, template, policyKey.Cert, 
+					verifier.GetVerifierEc(),
+	                                policyKey.SigningKey.GetSignerEc())
 	if(err!=nil) {
 		fmt.Printf("keynegoserver: cant create client certificate: %s\n", err)
 		return false, err

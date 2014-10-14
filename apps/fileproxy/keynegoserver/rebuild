@@ -1,0 +1,8 @@
+#
+echo "rebuilding fileproxy"
+cd ..
+go build fileproxy.go
+cd keynegoserver
+echo "rebuilding keynegoserver"
+go build keynegoserver.go
+echo "done"

@@ -34,7 +34,7 @@ var configPath = flag.String("config", "tao.config", "The Tao domain config")
 
 // return is terminate, error
 func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifier) (bool, error){
-	fmt.Printf("KeyNegoRequest\n")
+	fmt.Printf("keynegoserver: KeyNegoRequest\n")
 	// Expect an attestation from the client.
 	ms := util.NewMessageStream(conn)
 	var a tao.Attestation
@@ -54,9 +54,10 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 	// a is a says speaksfor, Delegate of speaksfor is cert and should be DER encoded
 
 	// get underlying says
+	fmt.Print("keynegoserver, attest: % x\n",  a)
 	f, err := auth.UnmarshalForm(a.SerializedStatement)
 	if err != nil {
-		fmt.Printf("cant unmarshal a.SerializedStatement\n")
+		fmt.Printf("keynegoserver: cant unmarshal a.SerializedStatement\n")
 		return false, err
 	}
 
@@ -68,24 +69,29 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 	}
 	sf, ok := saysStatement.Message.(auth.Speaksfor)
 	if(ok!=true) {
-		fmt.Printf("says doesnt have speaksfor message\n")
+		fmt.Printf("keynegoserver: says doesnt have speaksfor message\n")
 		return false, err
 	}
 	kprin, ok := sf.Delegate.(auth.Prin)
 	if(ok!=true) {
-		fmt.Printf("speaksfor Delegate is not auth.Prin\n")
+		fmt.Printf("keynegoserver: speaksfor Delegate is not auth.Prin\n")
 		return false, err
 	}
 	keyTerm, ok:=  kprin.Key.(auth.Term)
 	if(ok!=true) {
-		fmt.Printf("kprin.Term is not a Bytes\n")
+		fmt.Printf("keynegoserver: kprin.Term is not a Bytes\n")
 		return false, err
 	}
 	derCert:= keyTerm.(auth.Bytes)
-	fmt.Printf("Cert has %d bytes\n", len(derCert))
+	fmt.Printf("keynegoserver: Cert has %d bytes\n", len(derCert))
 	subjCert, err := x509.ParseCertificate(derCert)
-	if subjCert == nil || err != nil {
-		fmt.Printf("cant parse certificate\n")
+	if  err != nil {
+		fmt.Printf("keynegoserver: %s\n", err)
+		fmt.Printf("Cert: % x\n", derCert)
+		return false, err
+	}
+	if subjCert == nil {
+		fmt.Printf("keynegoserver: subjCert is nil\n")
 		return false, err
 	}
 
@@ -93,7 +99,7 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 	subject:= subjCert.Subject
 	signedCert, err:= s.CreateSignedX509(subjCert, 01, v, &subject)
 	if signedCert == nil || err != nil {
-		fmt.Printf("cant sign certificate\n")
+		fmt.Printf("keynegoserver: cant sign certificate\n")
 		return false, err
 	}
 
@@ -109,7 +115,7 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 
 	delegator, ok := sf.Delegator.(auth.Prin)
 	if !ok {
-		fmt.Printf("the delegator must be a principal")
+		fmt.Printf("keynegoserver: the delegator must be a principal")
 		return false, err
 	}
 	var prog auth.PrinExt
@@ -167,20 +173,21 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 }
 
 func  RequestLoop(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifier) {
-	fmt.Printf("RequestLoop\n")
+	fmt.Printf("keynegoserver: RequestLoop\n")
 
-	// defer conn.Close()
+	defer conn.Close()
 	var terminate bool
 	var err error
 	for {
+		fmt.Printf("keynegoserver: about to call KeyNegoRequest\n")
 		terminate, err= KeyNegoRequest(conn, s, guard, v)
 		if(terminate==true) {
 			break;
 		}
 		if(err==nil) {
-			fmt.Printf("KeyNegoRequest returns no error\n")
+			fmt.Printf("keynegoserver: KeyNegoRequest returns no error\n")
 		} else {
-			fmt.Printf("KeyNegoRequest returns error\n")
+			fmt.Printf("keynegoserver: KeyNegoRequest returns error\n")
 		}
 		if(terminate==true) {
 			break;
@@ -233,7 +240,7 @@ func main() {
 	}
 	sock, err := tls.Listen(*network, *addr, conf)
 	if(err!=nil) {
-		fmt.Printf("error: %s\n", err)
+		fmt.Printf("keynegoserver: error: %s\n", err)
 	}
 	if(sock==nil) {
 		fmt.Printf("keynegoserver: Empty socket, terminating\n")
@@ -248,13 +255,11 @@ func main() {
 			fmt.Printf("keynegoserver: Empty connection\n")
 			return
 		} else if err != nil {
-			fmt.Printf("keynegoserver: Couldn't accept a connection\n")
-			// fmt.Printf("keynegoserver: Couldn't accept a connection on %s: %s\n", *addr, err)
+			fmt.Printf("keynegoserver: Couldn't accept a connection on %s: %s\n", *addr, err)
 			return
 		}
 		fmt.Printf("keynegoserver: calling RequestLoop\n")
 		go RequestLoop(conn, domain.Keys.SigningKey, domain.Guard, domain.Keys.VerifyingKey)
-		break;
 	}
 	fmt.Printf("keynegoserver: finishing\n")
 }

@@ -54,17 +54,17 @@ func GetMyCryptoMaterial(path string) ([]byte, []byte,  []byte, []byte, error) {
 	if(err!=nil) {
 		return nil, nil, nil, nil, err
 	}
-	fmt.Printf("Size of %s is %d\n", path+"sealedsymmetrickey", fileinfo.Size())
+	fmt.Printf("fileproxy: Size of %s is %d\n", path+"sealedsymmetrickey", fileinfo.Size())
 	fileinfo, err= os.Stat(path+"sealedsigning")
 	if(err!=nil) {
 		return nil, nil, nil, nil, err
 	}
-	fmt.Printf("Size of %s is %d\n", path+"sealedsigningkey", fileinfo.Size())
+	fmt.Printf("fileproxy: Size of %s is %d\n", path+"sealedsigningkey", fileinfo.Size())
 	fileinfo, err= os.Stat(path+"cert")
 	if(err!=nil) {
 		return nil, nil, nil, nil, err
 	}
-	fmt.Printf("Size of %s is %d\n", path+"cert", fileinfo.Size())
+	fmt.Printf("fileproxy: Size of %s is %d\n", path+"cert", fileinfo.Size())
 
 	sealedSymmetricKey, err := ioutil.ReadFile(path+"sealedsymmetrickey")
 	if(err!=nil) {
@@ -109,7 +109,7 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte,  error) {
 	if(err!=nil) {
 		return nil, nil,errors.New("Can't self sign cert\n")
 	}
-	fmt.Printf("derCert: % x\n", derCert);
+	fmt.Printf("fileproxy: derCert: % x\n", derCert);
 	fmt.Printf("\n")
 	cert, err := x509.ParseCertificate(derCert)
 	if(err!=nil) {
@@ -135,16 +135,19 @@ func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) ([]byte,
 func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao.Keys, error) {
 	k, derCert, err:= CreateSigningKey(t)
 	if (err!=nil ) {
-		fmt.Printf("CreateSigningKey failed with error %s\n", err)
+		fmt.Printf("fileproxy: CreateSigningKey failed with error %s\n", err)
 		return nil, err
 	}
 	if (derCert==nil) {
-		fmt.Printf("CreateSigningKey failed, no dercert\n")
+		fmt.Printf("fileproxy: CreateSigningKey failed, no dercert\n")
 		return nil, errors.New("No DER cert")
 	}
 	na, err := taonet.RequestTruncatedAttestation("tcp", *caAddr, k, domain.Keys.VerifyingKey)
-	if(err!=nil || na==nil) {
-		return nil, errors.New("keynegoserver attestation failed")
+	if(err!=nil) {
+		return nil, err
+	 }
+	if(na==nil) {
+		return nil, errors.New("keynegoserver returned nil attestationreturned nil attestation")
 	}
 	k.Delegation= na
 	signingKeyBlob, err:= tao.MarshalSignerDER(k.SigningKey)
@@ -192,25 +195,44 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, delegateBlob []byte, ce
 	}
 	signingKeyBlob, policy, err := tao.Parent().Unseal(sealedKeyBlob)
 	if err != nil {
-		fmt.Printf("fileclient: symkey unsealing error: %s\n")
+		fmt.Printf("fileproxy: symkey unsealing error: %s\n")
 	}
 	if policy != tao.SealPolicyDefault {
-		fmt.Printf("fileclient: unexpected policy on unseal\n")
+		fmt.Printf("fileproxy: unexpected policy on unseal\n")
 	}
-	fmt.Printf("Unsealed Signing Key blob: % x\n", signingKeyBlob)
+	fmt.Printf("fileproxy: Unsealed Signing Key blob: % x\n", signingKeyBlob)
 	k.SigningKey, err= tao.UnmarshalSignerDER(signingKeyBlob)
 	return k, err
+}
+
+func SendFile(conn net.Conn, creds []byte, filename string, keys []byte) error {
+	// creat the file
+	// for each block {
+	//	read block
+	// 	decode message block
+	//	encrypt block
+	// 	send block
+	// 	if last block
+	//		break
+	// }
+	return errors.New("fileproxy: SendFile request not implemented")
 }
 
 func EstablishPeerChannel(t tao.Tao, keys tao.Keys) (net.Conn, error) {
 	return nil, errors.New("Channel Establishment fails")
 }
 
-func SendFile(conn net.Conn, creds []byte, filename string, keys []byte) error {
-	return errors.New("SendFile request not implemented")
-}
-
 func GetFile(conn net.Conn, creds []byte, filename string, keys []byte) error {
+	// open the file
+	// for each block {
+	// 	read block from file
+	//	decrypt block
+	//	if last-block
+	// 		encode block in message, file-end message
+	//	else
+	//		encode block in message, next_block
+	// 	send block
+	// }
 	return errors.New("GetFile request not implemented")
 }
 

@@ -34,6 +34,7 @@ var configPath = flag.String("config", "tao.config", "The Tao domain config")
 
 // return is terminate, error
 func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifier) (bool, error){
+	fmt.Printf("KeyNegoRequest\n")
 	// Expect an attestation from the client.
 	ms := util.NewMessageStream(conn)
 	var a tao.Attestation
@@ -166,8 +167,9 @@ func KeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifi
 }
 
 func  RequestLoop(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifier) {
-	defer conn.Close()
+	fmt.Printf("RequestLoop\n")
 
+	// defer conn.Close()
 	var terminate bool
 	var err error
 	for {
@@ -190,8 +192,11 @@ func  RequestLoop(conn net.Conn, s *tao.Signer, guard tao.Guard, v *tao.Verifier
 func main() {
 	flag.Parse()
 	domain, err := tao.LoadDomain(*configPath, []byte(*domainPass))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Couldn't load the config path %s: %s\n", *configPath, err)
+	if domain == nil {
+		fmt.Printf("keynegoserver: no domain\n")
+		return
+	} else if err != nil {
+		fmt.Printf("keynegoserver: Couldn't load the config path %s: %s\n", *configPath, err)
 		return
 	}
 
@@ -204,20 +209,20 @@ func main() {
 	//   if we do ever distribute a signed keynegoserver cert for this TLS channel, it would
 	//   be good.
 	keys, err := tao.NewTemporaryKeys(tao.Signing)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't set up temporary keys for the connection:", err)
+	if keys == nil || err != nil {
+		fmt.Printf("keynegoserver: Couldn't set up temporary keys for the connection:", err)
 		return
 	}
 	keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
 		Organization: []string{"Google Tao Demo"}})
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't set up a self-signed cert:", err)
+		fmt.Printf("keynegoserver: Couldn't set up a self-signed cert:", err)
 	return
 	}
 
 	tlsc, err := taonet.EncodeTLSCert(keys)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't encode a TLS cert:", err)
+		fmt.Printf("keynegoserver: Couldn't encode a TLS cert:", err)
 		return
 	}
 	conf := &tls.Config{
@@ -227,15 +232,28 @@ func main() {
 		ClientAuth:         tls.RequireAnyClientCert,
 	}
 	sock, err := tls.Listen(*network, *addr, conf)
+	if(err!=nil) {
+		fmt.Printf("error: %s\n", err)
+	}
+	if(sock==nil) {
+		fmt.Printf("keynegoserver: Empty socket, terminating\n")
+		return
+	}
 
-	fmt.Println("keynegoserver: accepting connections")
+	fmt.Printf("keynegoserver: accepting connections\n")
 	for {
 		conn, err := sock.Accept()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Couldn't accept a connection on %s: %s\n", *addr, err)
+		if conn == nil  {
+			fmt.Printf("keynegoserver: Empty connection\n")
+			return
+		} else if err != nil {
+			fmt.Printf("keynegoserver: Couldn't accept a connection\n")
+			// fmt.Printf("keynegoserver: Couldn't accept a connection on %s: %s\n", *addr, err)
 			return
 		}
-
-		go KeyNegoRequest(conn, domain.Keys.SigningKey, domain.Guard, domain.Keys.VerifyingKey)
+		fmt.Printf("keynegoserver: calling RequestLoop\n")
+		go RequestLoop(conn, domain.Keys.SigningKey, domain.Guard, domain.Keys.VerifyingKey)
+		break;
 	}
+	fmt.Printf("keynegoserver: finishing\n")
 }

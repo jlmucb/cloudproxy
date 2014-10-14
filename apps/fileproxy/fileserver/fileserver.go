@@ -43,7 +43,7 @@ var ProgramCert []byte
 var fileserverResourceMaster *fileproxy.ResourceMaster
 
 func newTempCAGuard(v tao.Verifier) (tao.Guard, error) {
-fmt.Printf("newTempCAGuard\n")
+	fmt.Printf("fileserver: newTempCAGuard\n")
 	/*
 	g := tao.NewTemporaryDatalogGuard()
 	vprin := v.ToPrincipal()
@@ -73,7 +73,7 @@ fmt.Printf("newTempCAGuard\n")
 
 
 func clientServiceThead(conn net.Conn, verifier tao.Keys, fileGuard *tao.Guard) {
-fmt.Printf("clientServiceThead\n")
+	fmt.Printf("fileserver: clientServiceThead\n")
 	// How do I know if the connection terminates?
 	ms:= util.NewMessageStream(conn)
 	for {
@@ -86,7 +86,7 @@ fmt.Printf("clientServiceThead\n")
 			break;
 		}
 	}
-	fmt.Printf("client thread terminating\n")
+	fmt.Printf("fileserver: client thread terminating\n")
 }
 
 func server(serverAddr string, prin string, verifier tao.Keys, rootCert []byte) error {
@@ -131,7 +131,7 @@ func main() {
 	if err != nil {
 		return
 	}
-	fmt.Printf("Domain name: %s\n", hostDomain.ConfigPath)
+	fmt.Printf("fileserver: Domain name: %s\n", hostDomain.ConfigPath)
 
 	e := auth.PrinExt{Name: "fileserver.version.1",}
 	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
@@ -147,7 +147,7 @@ func main() {
 
 	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err:= fileproxy.GetMyCryptoMaterial(*fileserverPath) 
 	if(sealedSymmetricKey==nil || sealedSigningKey==nil ||delegation== nil || derCert==nil || err==nil) {
-		fmt.Printf("No key material present\n")
+		fmt.Printf("fileserver: No key material present\n")
 	}
 	ProgramCert= derCert
 
@@ -160,13 +160,13 @@ func main() {
 		if policy != tao.SealPolicyDefault {
 			fmt.Printf("fileserver: unexpected policy on unseal\n")
 		}
-		fmt.Printf("Unsealed symKeys: % x\n", SymKeys)
+		fmt.Printf("fileserver: Unsealed symKeys: % x\n", SymKeys)
 	} else {
 		SymKeys, err= fileproxy.InitializeSealedSymmetricKeys(*fileserverPath, tao.Parent(), 64)
 		if err != nil {
 			fmt.Printf("fileserver: InitializeSealedSymmetricKeys error: %s\n", err)
 		}
-		fmt.Printf("InitilizedsymKeys: % x\n", SymKeys)
+		fmt.Printf("fileserver: InitilizedsymKeys: % x\n", SymKeys)
 	}
 
 	if(sealedSigningKey!=nil) {
@@ -175,14 +175,14 @@ func main() {
 		if err != nil {
 			fmt.Printf("fileserver: SigningKeyFromBlob error: %s\n", err)
 		}
-		fmt.Printf("Retrieved Signing key: % x\n", SigningKey)
+		fmt.Printf("fileserver: Retrieved Signing key: % x\n", SigningKey)
 	} else {
 		SigningKey, err:=  fileproxy.InitializeSealedSigningKey(*fileserverPath, 
 					tao.Parent(), *hostDomain)
 		if err != nil {
 			fmt.Printf("fileserver: InitializeSealedSigningKey error: %s\n", err)
 		}
-		fmt.Printf("Initilized signingKey: % x\n", SigningKey)
+		fmt.Printf("fileserver: Initilized signingKey: % x\n", SigningKey)
 	}
 	if err != nil {
 		fmt.Printf("fileserver: cant get signing key from blob")

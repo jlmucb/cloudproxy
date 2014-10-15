@@ -47,7 +47,7 @@ type ResourceInfo struct {
 
 type ResourceMaster struct {
 	program		string
-	Guard		*tao.Guard
+	Guard		tao.Guard
 	baseDirectory	string
 	resourceArray	[100]ResourceInfo
 	// Rules
@@ -243,16 +243,18 @@ func (m *ResourceMaster) PrintMaster(printResources bool) {
 // It has a says type and it has a speaksfor.  
 // The "Can" predicate is represented in the Guard terminology by Authorized(name, op, args).
 
-func (m *ResourceMaster) InitGuard(g *tao.Guard, rulefile string) error {
+func (m *ResourceMaster) InitGuard(rulefile string) error {
 	fmt.Printf("filehandler: InitGuard\n")
 	//fileGuard := tao.NewTemporaryDatalogGuard()
 	// for now, liberal guard
-	*m.Guard=  tao.LiberalGuard
+	g:= tao.LiberalGuard
+	m.Guard=  g
+		fmt.Printf("filehandler exiting InitGuard\n")
 	// no need for rules
 	return nil
 }
 
-func (m *ResourceMaster) SaveRules(g *tao.Guard, rulefile string) error {
+func (m *ResourceMaster) SaveRules(g tao.Guard, rulefile string) error {
 	fmt.Printf("filehandler: SaveRules\n")
 	// no need for rules
 	return nil
@@ -425,7 +427,7 @@ func (m *ResourceMaster) HandleServiceRequest(conn net.Conn, request []byte) (bo
 func (m *ResourceMaster) InitMaster(masterInfoDir string, prin string)  error {
 	fmt.Printf("filehandler: InitMaster\n")
 	m.GetResourceData(masterInfoDir+"masterinfo",  masterInfoDir+"resources")
-	m.InitGuard(m.Guard, masterInfoDir+"rules")
+	m.InitGuard(masterInfoDir+"rules")
 	return nil
 }
 

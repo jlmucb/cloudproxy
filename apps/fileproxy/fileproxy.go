@@ -316,8 +316,12 @@ func SendFile(conn net.Conn, creds []byte, filename string, keys []byte) error {
 	return errors.New("fileproxy: SendFile request not implemented")
 }
 
-func EstablishPeerChannel(t tao.Tao, keys tao.Keys) (net.Conn, error) {
-	return nil, errors.New("Channel Establishment fails")
+func EstablishPeerChannel(t tao.Tao, address string, guard *tao.Guard, verifier *tao.Verifier, signingKey *tao.Keys) (net.Conn, error) {
+	conn, err:= taonet.DialWithKeys("tcp", address, *guard, verifier, signingKey)
+	if(err!=nil) {
+		return nil, err
+	}
+	return conn, nil
 }
 
 func GetFile(conn net.Conn, creds []byte, filename string, keys []byte) error {

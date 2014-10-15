@@ -234,6 +234,10 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 		return nil, errors.New("tao returned nil attestation")
 	}
 	k.Delegation= na
+	fmt.Printf("\n")
+	pa,_:= auth.UnmarshalForm(na.SerializedStatement)
+	fmt.Printf("returned attestation: %s", pa.String())
+	fmt.Printf("\n")
 
 	// get cert from attestation and save attestation
 	k.Cert, err= x509.ParseCertificate(derCert)

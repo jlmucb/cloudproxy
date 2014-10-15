@@ -131,7 +131,8 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys,guard tao.Guard) (bool, e
 		Delegate:   auth.Bytes(clientDerCert),
 		Delegator:  sf.Delegator,}
 	keynegoSays:= &auth.Says{
-		Speaker:  saysStatement.Speaker,
+		// Speaker:  saysStatement.Speaker,
+		Speaker:  policyKey.SigningKey.ToPrincipal(),
 		Time: &nowTime,
 		Expiration: &expireTime,
 		Message: newspeaksFor,}
@@ -223,9 +224,16 @@ func main() {
 		Organization: []string{"Google Tao Demo"}})
 	if err != nil {
 		fmt.Printf("keynegoserver: Couldn't set up a self-signed cert:", err)
-	return
+		return
 	}
 	SerialNumber=  int64(time.Now().UnixNano())/(1000000)
+	policyKey, err:= tao.NewOnDiskPBEKeys(tao.Signing, []byte(*domainPass), "policy_keys", nil)
+	if(err!=nil) {
+		fmt.Printf("keynegoserver: Couldn't get policy key\n", err)
+		return
+	}
+	fmt.Printf("Policy key: " , policyKey)
+	fmt.Printf("\n")
 
 	tlsc, err := taonet.EncodeTLSCert(keys)
 	if err != nil {
@@ -259,7 +267,7 @@ func main() {
 			return
 		}
 		fmt.Printf("keynegoserver: calling RequestLoop\n")
-		go KeyNegoRequest(conn, domain.Keys, domain.Guard)
+		go KeyNegoRequest(conn, policyKey, domain.Guard)
 	}
 	fmt.Printf("keynegoserver: finishing\n")
 }

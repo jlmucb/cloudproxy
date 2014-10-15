@@ -133,7 +133,7 @@ func main() {
 	}
 	fmt.Printf("fileserver: Domain name: %s\n", hostDomain.ConfigPath)
 
-	e := auth.PrinExt{Name: "fileserver.version.1",}
+	e := auth.PrinExt{Name: "fileserver_version_1",}
 	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
 	if err != nil {
 		return

@@ -175,7 +175,7 @@ func (r *ResourceInfo) encodeResourceInfo() ([]byte, error){
 	protoMessage.ResourceSize= proto.Int(r.resourceSize);
 	//Fix: protoMessage.ResourceOwner= proto.Bytes(r.resourceOwner);
 	out, err:= proto.Marshal(protoMessage)
-	return out,err 
+	return out,err
 }
 
 func (r *ResourceInfo) decodeResourceInfo(in []byte) error {
@@ -206,7 +206,7 @@ func (m *ResourceMaster) PrintMaster(printResources bool) {
 	fmt.Printf("%d resources\n", len(m.resourceArray))
 	if(printResources) {
 		for i:=0; i< len(m.resourceArray);i++ {
-			 m.resourceArray[i].PrintResourceInfo() 
+			 m.resourceArray[i].PrintResourceInfo()
 		}
 	}
 }

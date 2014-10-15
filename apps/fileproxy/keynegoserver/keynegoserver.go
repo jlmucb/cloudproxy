@@ -115,6 +115,9 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys,guard tao.Guard) (bool, e
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		}
 	verifier,err:= tao.FromPrincipal(kprin)
+	if(err!=nil) {
+		return false, errors.New("cant get principal from kprin")
+	}
 	clientDerCert, err := x509.CreateCertificate(rand.Reader, template, policyKey.Cert, 
 					verifier.GetVerifierEc(),
 	                                policyKey.SigningKey.GetSignerEc())
@@ -131,7 +134,6 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys,guard tao.Guard) (bool, e
 		Delegate:   auth.Bytes(clientDerCert),
 		Delegator:  sf.Delegator,}
 	keynegoSays:= &auth.Says{
-		// Speaker:  saysStatement.Speaker,
 		Speaker:  policyKey.SigningKey.ToPrincipal(),
 		Time: &nowTime,
 		Expiration: &expireTime,

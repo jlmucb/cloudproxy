@@ -238,10 +238,30 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 	pa,_:= auth.UnmarshalForm(na.SerializedStatement)
 	fmt.Printf("returned attestation: %s", pa.String())
 	fmt.Printf("\n")
-
+	var saysStatement *auth.Says
+	if ptr, ok := pa.(*auth.Says); ok {
+		saysStatement = ptr
+	} else if val, ok := pa.(auth.Says); ok {
+		saysStatement = &val
+	}
+	sf, ok := saysStatement.Message.(auth.Speaksfor)
+	if(ok!=true) {
+		return nil, errors.New("says doesnt have speaksfor message")
+	}
+	kprin, ok := sf.Delegate.(auth.Term)
+	if(ok!=true) {
+		return nil, errors.New("speaksfor message doesnt have Delegate")
+	}
+	// newCert:= kprin.Key.(auth.Bytes)
+	newCert:= auth.Bytes(kprin.(auth.Bytes))
 	// get cert from attestation and save attestation
-	k.Cert, err= x509.ParseCertificate(derCert)
-	err= ioutil.WriteFile(path+"signerCert", derCert, os.ModePerm)
+	k.Cert, err= x509.ParseCertificate(newCert)
+	if(err!=nil) {
+		fmt.Printf("cant parse returned certificate", err)
+		fmt.Printf("\n")
+		return nil,err
+	}
+	err= ioutil.WriteFile(path+"signerCert", newCert, os.ModePerm)
 	if(err!=nil) {
 		return nil, err
 	}

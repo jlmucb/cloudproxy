@@ -37,6 +37,8 @@ var addr = flag.String("addr", "localhost:8124", "The address to listen on")
 var domainPass = flag.String("password", "nopassword", "The domain password for the policy key")
 var configPath = flag.String("config", "tao.config", "The Tao domain config")
 
+var	SerialNumber int64
+
 // return is terminate, error
 func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys,guard tao.Guard) (bool, error){
 	fmt.Printf("keynegoerver: KeyNegoRequest\n")
@@ -66,7 +68,7 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys,guard tao.Guard) (bool, e
 		fmt.Printf("\nkeynegoserver: cant unmarshal a.SerializedStatement\n")
 		return false, err
 	}
-	fmt.Print("\nkeynegoserver, unmarshaled serialized: %s\n",  f.String())
+	fmt.Print("\nkeynegoserver, unmarshaled serialized: ",  f.String())
 	fmt.Print("\n")
 
 	var saysStatement *auth.Says
@@ -99,12 +101,13 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys,guard tao.Guard) (bool, e
 		Organization: "Google",
 		CommonName: subjectnamestr, }
 	subjectname:= tao.NewX509Name(details)
+	SerialNumber= SerialNumber+1
 	template := &x509.Certificate{
 		SignatureAlgorithm: x509.ECDSAWithSHA256,
 		PublicKeyAlgorithm: x509.ECDSA,
 		Version:            2, // x509v3
 		// It's always allowed for self-signed certs to have serial 1.
-		SerialNumber: new(big.Int).SetInt64(1),
+		SerialNumber: new(big.Int).SetInt64(SerialNumber),
 		Subject:      *subjectname,
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(1 /* years */, 0 /* months */, 0 /* days */),
@@ -121,14 +124,16 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys,guard tao.Guard) (bool, e
 	}
 	err= ioutil.WriteFile("ClientCert", clientDerCert, os.ModePerm)
 
+	nowTime:= time.Now().UnixNano()
+	expireTime:= time.Now().AddDate(1, 0, 0).UnixNano()
 	// replace self signed cert in attest request
 	newspeaksFor:= &auth.Speaksfor{
 		Delegate:   auth.Bytes(clientDerCert),
 		Delegator:  sf.Delegator,}
-	truncSays:= &auth.Says{
+	keynegoSays:= &auth.Says{
 		Speaker:  saysStatement.Speaker,
-		// Time: ,
-		// Expiration: ,
+		Time: &nowTime,
+		Expiration: &expireTime,
 		Message: newspeaksFor,}
 
 	delegator, ok := sf.Delegator.(auth.Prin)
@@ -147,7 +152,7 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys,guard tao.Guard) (bool, e
 			kprin.Ext = append(kprin.Ext, sprin)
 		}
 	}
-	ra, err := tao.GenerateAttestation(policyKey.SigningKey, nil, *truncSays)
+	ra, err := tao.GenerateAttestation(policyKey.SigningKey, nil, *keynegoSays)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Couldn't attest to the new says statement:", err)
 		return false, err
@@ -162,12 +167,12 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys,guard tao.Guard) (bool, e
 			Arg:  []auth.Term{auth.PrinTail{Ext: []auth.PrinExt{prog}}},
 		},
 	}
-	if truncSays.Time != nil {
-		i := *truncSays.Time
+	if keynegoSays.Time != nil {
+		i := *keynegoSays.Time
 		endorsement.Time = &i
 	}
-	if truncSays.Expiration != nil {
-		i := *truncSays.Expiration
+	if keynegoSays.Expiration != nil {
+		i := *keynegoSays.Expiration
 		endorsement.Expiration = &i
 	}
 	ea, err := tao.GenerateAttestation(policyKey.SigningKey, nil, endorsement)
@@ -188,30 +193,6 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys,guard tao.Guard) (bool, e
 	}
 
 	return false, nil
-}
-
-func  RequestLoop(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) {
-	fmt.Printf("keynegoserver: RequestLoop\n")
-
-	defer conn.Close()
-	var terminate bool
-	var err error
-	for {
-		fmt.Printf("keynegoserver: about to call KeyNegoRequest\n")
-		terminate, err= KeyNegoRequest(conn, policyKey, guard)
-		if(terminate==true) {
-			break;
-		}
-		if(err==nil) {
-			fmt.Printf("keynegoserver: KeyNegoRequest returns no error\n")
-		} else {
-			fmt.Printf("keynegoserver: KeyNegoRequest returns error\n")
-		}
-		if(terminate==true) {
-			break;
-		}
-	}
-	return
 }
 
 func main() {
@@ -244,6 +225,7 @@ func main() {
 		fmt.Printf("keynegoserver: Couldn't set up a self-signed cert:", err)
 	return
 	}
+	SerialNumber=  int64(time.Now().UnixNano())/(1000000)
 
 	tlsc, err := taonet.EncodeTLSCert(keys)
 	if err != nil {
@@ -277,7 +259,7 @@ func main() {
 			return
 		}
 		fmt.Printf("keynegoserver: calling RequestLoop\n")
-		go RequestLoop(conn, domain.Keys, domain.Guard)
+		go KeyNegoRequest(conn, domain.Keys, domain.Guard)
 	}
 	fmt.Printf("keynegoserver: finishing\n")
 }

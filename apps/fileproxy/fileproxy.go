@@ -18,13 +18,16 @@ package fileproxy
 
 import (
 	"crypto/x509"
+	"crypto/tls"
 	"errors"
 	"io/ioutil"
 	"flag"
 	"fmt"
 	"net"
+	"strings"
 	"os"
 	"code.google.com/p/goprotobuf/proto"
+	"github.com/jlmucb/cloudproxy/util"
 	"github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	taonet "github.com/jlmucb/cloudproxy/tao/net"
@@ -39,6 +42,67 @@ var subprinRule = "(forall P: forall Hash: TrustedProgramHash(Hash) and Subprin(
 var argsRule = "(forall Y: forall P: forall S: MemberProgram(P) and TrustedArgs(S) and Subprin(Y, P, S) implies Authorized(Y, \"Execute\"))"
 var demoRule = "TrustedArgs(ext.Args(%s))"
 */
+
+// RequestTruncatedAttestation connects to a CA instance, sends the attestation
+// for an X.509 certificate, and gets back a truncated attestation with a new
+// principal name based on the policy key.
+func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys, v *tao.Verifier) (*tao.Attestation, error) {
+	if keys.Cert == nil {
+		return nil, fmt.Errorf("client: can't dial with an empty client certificate\n")
+	}
+	tlsCert, err := taonet.EncodeTLSCert(keys)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := tls.Dial(network, addr, &tls.Config{
+		RootCAs:            x509.NewCertPool(),
+		Certificates:       []tls.Certificate{*tlsCert},
+		InsecureSkipVerify: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	// Tao handshake: send client delegation.
+	ms := util.NewMessageStream(conn)
+	if _, err = ms.WriteMessage(keys.Delegation); err != nil {
+		return nil, err
+	}
+
+	// Read the truncated attestation and check it.
+	var a tao.Attestation
+	if err := ms.ReadMessage(&a); err != nil {
+		return nil, err
+	}
+	/*
+	 * Attestations are no longer identical
+	truncStmt, err := auth.UnmarshalForm(a.SerializedStatement)
+	if err != nil {
+		return nil, err
+	}
+
+	says, _, err := taonet.TruncateAttestation(v.ToPrincipal(), keys.Delegation)
+	if err != nil {
+		return nil, err
+	}
+
+	/*
+	if !taonet.IdenticalDelegations(says, truncStmt) {
+		return nil, fmt.Errorf("the statement returned by the TaoCA was different than what we expected")
+	}
+	 */
+
+	ok, err := v.Verify(a.SerializedStatement, tao.AttestationSigningContext, a.Signature)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("invalid attestation signature from Tao CA")
+	}
+
+	return &a, nil
+}
 
 func ZeroBytes(buf []byte) {
 	n:= len(buf)
@@ -64,13 +128,13 @@ func GetMyCryptoMaterial(path string) ([]byte, []byte,  []byte, []byte, error) {
 	if(err!=nil) {
 		return nil, nil, nil, nil, err
 	}
-	fmt.Printf("fileproxy: Size of %s is %d\n", path+"cert", fileinfo.Size())
+	fmt.Printf("fileproxy: Size of %s is %d\n", path+"signerCert", fileinfo.Size())
 
 	sealedSymmetricKey, err := ioutil.ReadFile(path+"sealedsymmetrickey")
 	if(err!=nil) {
 		return nil, nil, nil, nil, err
 	}
-	sealedSigningKey, err := ioutil.ReadFile(path+"signer")
+	sealedSigningKey, err := ioutil.ReadFile(path+"sealedsigningKey")
 	if(err!=nil) {
 		return nil, nil, nil, nil, err
 	}
@@ -91,11 +155,13 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte,  error) {
 	if k==nil || err!= nil {
 		return nil, nil, errors.New("Cant generate signing key")
 	}
-
+	publicString:= strings.Replace(self.String(), "(", "", -1)
+	publicString= strings.Replace(publicString, ")", "", -1)
+	fmt.Printf("fileclient, publicString: %s\n", publicString)
 	details := tao.X509Details {
 		Country: "US",
 		Organization: "Google",
-		CommonName: self.String(), }
+		CommonName: publicString, }
 	subjectname:= tao.NewX509Name(details)
 	derCert, err := k.SigningKey.CreateSelfSignedDER(subjectname)
 	if(err!=nil) {
@@ -147,14 +213,6 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 		fmt.Printf("fileproxy: CreateSigningKey failed, no dercert\n")
 		return nil, errors.New("No DER cert")
 	}
-	na, err := taonet.RequestTruncatedAttestation("tcp", *caAddr, k, domain.Keys.VerifyingKey)
-	if(err!=nil) {
-		return nil, err
-	 }
-	if(na==nil) {
-		return nil, errors.New("tao returned nil attestation")
-	}
-	k.Delegation= na
 	signingKeyBlob, err:= tao.MarshalSignerDER(k.SigningKey)
 	if(err!=nil) {
 		return nil, errors.New("Cant produce signing key blob")
@@ -163,12 +221,23 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 	if err != nil {
 		return nil, errors.New("Cant seal signing ken")
 	}
-	err= ioutil.WriteFile(path+"signer", sealedSigningKey, os.ModePerm)
+	err= ioutil.WriteFile(path+"sealedsigningKey", sealedSigningKey, os.ModePerm)
 	if(err!=nil) {
 		return nil, err
 	}
+	na, err := RequestKeyNegoAttestation("tcp", *caAddr, k, domain.Keys.VerifyingKey)
+	if(err!=nil) {
+		fmt.Printf("fileproxy: error from taonet.RequestTruncatedAttestation\n")
+		return nil, err
+	 }
+	if(na==nil) {
+		return nil, errors.New("tao returned nil attestation")
+	}
+	k.Delegation= na
+
+	// get cert from attestation and save attestation
 	k.Cert, err= x509.ParseCertificate(derCert)
-	err= ioutil.WriteFile(path+"cert", derCert, os.ModePerm)
+	err= ioutil.WriteFile(path+"signerCert", derCert, os.ModePerm)
 	if(err!=nil) {
 		return nil, err
 	}
@@ -176,7 +245,7 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 	if err != nil {
 		return nil, errors.New("Cant seal random bytes")
 	}
-	err= ioutil.WriteFile(path+"delegation", delegateBlob, os.ModePerm)
+	err= ioutil.WriteFile(path+"delegationBlob", delegateBlob, os.ModePerm)
 	if(err!=nil) {
 		return nil, err
 	}

@@ -50,7 +50,7 @@ var SigningKey tao.Keys
 var SymKeys  []byte
 var ProgramCert []byte
 
-func newTempCAGuard(v tao.Verifier) (tao.Guard, error) {
+func newTempCAGuard() (tao.Guard, error) {
 	fmt.Printf("fileserver: newTempCAGuard\n")
 	/*
 	g := tao.NewTemporaryDatalogGuard()
@@ -144,19 +144,25 @@ func main() {
 		SigningKey= *signingkey
 		fmt.Printf("fileclient: Initilized signingKey: % x\n", SigningKey)
 	}
-	
+
 	var  creds []byte
 	creds= nil
-	guard, err:= newTempCAGuard(*hostDomain.Keys.VerifyingKey)
+	guard, err:= newTempCAGuard()
 	if(err!=nil) {
 		fmt.Printf("fileclient:cant construct channel guard\n")
 		return;
 	}
-	conn, err:= taonet.DialWithKeys("tcp", serverAddr, guard, hostDomain.Keys.VerifyingKey, &SigningKey)
+	if(guard==nil) {
+		fmt.Printf("fileclient: guard is nil\n");
+	}
+	conn, err:= taonet.DialTLSWithKeys("tcp", serverAddr, &SigningKey)
 	if(err!=nil) {
-		fmt.Printf("fileclient:cant establish channel\n")
+		fmt.Printf("fileclient:cant establish channel\n", err)
+		fmt.Printf("\n")
 		return;
 	}
+	fmt.Printf("Established channel\n")
+	return
 	// create a file
 	sentFileName:= *fileclientPath+*testFile
 	fmt.Printf("fileclient, Creating: %s\n", sentFileName)

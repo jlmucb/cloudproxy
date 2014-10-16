@@ -111,42 +111,48 @@ func ZeroBytes(buf []byte) {
 	}
 }
 
-// returns sealed symmetric key, sealed signing key, DER encoded cert
+// returns sealed symmetric key, sealed signing key, DER encoded cert, delegation, error
 func GetMyCryptoMaterial(path string) ([]byte, []byte,  []byte, []byte, error) {
 	// stat domain.config
 	fileinfo, err:= os.Stat(path+"sealedsymmetrickey")
 	if(err!=nil) {
 		return nil, nil, nil, nil, err
 	}
-	fmt.Printf("fileproxy: Size of %s is %d\n", path+"sealedsymmetrickey", fileinfo.Size())
-	fileinfo, err= os.Stat(path+"sealedsigning")
+	fmt.Printf("fileproxy: Size of %s is %d\n", path+"sealedsymmetricKey", fileinfo.Size())
+	fileinfo, err= os.Stat(path+"sealedsigningKey")
 	if(err!=nil) {
 		return nil, nil, nil, nil, err
 	}
-	fmt.Printf("fileproxy: Size of %s is %d\n", path+"sealedsigningkey", fileinfo.Size())
-	fileinfo, err= os.Stat(path+"cert")
+	fmt.Printf("fileproxy: Size of %s is %d\n", path+"sealedsigningKey", fileinfo.Size())
+	fileinfo, err= os.Stat(path+"signerCert")
 	if(err!=nil) {
 		return nil, nil, nil, nil, err
 	}
 	fmt.Printf("fileproxy: Size of %s is %d\n", path+"signerCert", fileinfo.Size())
 
-	sealedSymmetricKey, err := ioutil.ReadFile(path+"sealedsymmetrickey")
+	sealedSymmetricKey, err := ioutil.ReadFile(path+"sealedsymmetricKey")
 	if(err!=nil) {
 		return nil, nil, nil, nil, err
 	}
+	fmt.Printf("fileproxy: Got sealedSymmetricKey\n")
 	sealedSigningKey, err := ioutil.ReadFile(path+"sealedsigningKey")
+	fmt.Printf("sealedSigningKey: ", sealedSigningKey);
+	fmt.Printf("\n");
 	if(err!=nil) {
 		return nil, nil, nil, nil, err
 	}
-	derCert, err := ioutil.ReadFile(path+"cert")
+	fmt.Printf("fileproxy: Got sealedSigningKey\n")
+	derCert, err := ioutil.ReadFile(path+"signerCert")
 	if(err!=nil) {
 		return nil, nil, nil, nil, err
 	}
-	ds, err := ioutil.ReadFile(path+"delegation")
-	if ds!=nil || err != nil {
+	fmt.Printf("fileproxy: Got signerCert\n")
+	ds, err := ioutil.ReadFile(path+"delegationBlob")
+	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	return   sealedSymmetricKey, sealedSigningKey, ds, derCert, nil
+	fmt.Printf(" GetMyCryptoMaterial succeeded\n")
+	return sealedSymmetricKey, sealedSigningKey, derCert, ds, nil
 }
 
 func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte,  error) {
@@ -276,24 +282,26 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 	return k, nil
 }
 
-func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, delegateBlob []byte, certBlob []byte) (*tao.Keys, error) {
+func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte, delegateBlob []byte) (*tao.Keys, error) {
 	k:= &tao.Keys{};
 
-	// k.SetMyKeyPath(path)
-	k.SetKeyType(tao.Signing)
+	fmt.Printf("SigningKeyFromBlob, certBlob % x\n", certBlob)
+	fmt.Printf("\n")
 	cert, err:= x509.ParseCertificate(certBlob)
 	if(err!=nil) {
-		return nil,err
+		return nil, err
 	}
+	fmt.Printf("SigningKeyFromBlob: got cert\n")
 	k.Cert= cert
 	k.Delegation = new(tao.Attestation)
 	err= proto.Unmarshal(delegateBlob, k.Delegation)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("SigningKeyFromBlob: unmarshaled\n")
 	signingKeyBlob, policy, err := tao.Parent().Unseal(sealedKeyBlob)
 	if err != nil {
-		fmt.Printf("fileproxy: symkey unsealing error: %s\n")
+		fmt.Printf("fileproxy: signingkey unsealing error: %s\n", err)
 	}
 	if policy != tao.SealPolicyDefault {
 		fmt.Printf("fileproxy: unexpected policy on unseal\n")

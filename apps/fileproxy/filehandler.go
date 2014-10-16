@@ -249,7 +249,6 @@ func (m *ResourceMaster) InitGuard(rulefile string) error {
 	// for now, liberal guard
 	g:= tao.LiberalGuard
 	m.Guard=  g
-		fmt.Printf("filehandler exiting InitGuard\n")
 	// no need for rules
 	return nil
 }

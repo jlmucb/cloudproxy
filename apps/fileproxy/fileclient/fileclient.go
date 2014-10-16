@@ -102,7 +102,7 @@ func main() {
 	fmt.Printf("fileclient: my name is %s\n", myTaoName)
 
 	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err:= fileproxy.GetMyCryptoMaterial(*fileclientPath) 
-	if(sealedSymmetricKey==nil || sealedSigningKey==nil ||delegation== nil || derCert==nil || err==nil) {
+	if(sealedSymmetricKey==nil || sealedSigningKey==nil || delegation== nil || derCert==nil) {
 		fmt.Printf("fileclient: No key material present\n")
 	}
 	ProgramCert= derCert

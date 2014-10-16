@@ -107,10 +107,6 @@ func server(serverAddr string, prin string, verifier tao.Keys, rootCert []byte) 
 		return err
 	}
 
-	fmt.Printf("fileserver, Signing key: % x\n", SigningKey)
-	fmt.Printf("\n")
-	fmt.Printf("fileserver, Signing key cert: % x", SigningKey.Cert)
-	fmt.Printf("\n")
 	tlsc, err := taonet.EncodeTLSCert(&SigningKey)
 	if err != nil {
 		fmt.Printf("fileserver, encode error: ", err)
@@ -123,7 +119,8 @@ func server(serverAddr string, prin string, verifier tao.Keys, rootCert []byte) 
 		InsecureSkipVerify: true,
 		ClientAuth:         tls.RequireAnyClientCert,
 	}
-	sock, err = taonet.Listen("tls", serverAddr, conf, connectionGuard, verifier.VerifyingKey, SigningKey.Delegation)
+	fmt.Printf("Listenting\n")
+	sock, err = taonet.Listen("tcp", serverAddr, conf, connectionGuard, verifier.VerifyingKey, SigningKey.Delegation)
 	if(err!=nil) {
 		fmt.Printf("fileserver, listen error: ", err)
 		fmt.Printf("\n")
@@ -162,7 +159,7 @@ func main() {
 	fmt.Printf("fileserver: my name is %s\n", myTaoName)
 
 	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err:= fileproxy.GetMyCryptoMaterial(*fileserverPath)
-	if(sealedSymmetricKey==nil || sealedSigningKey==nil ||delegation== nil || derCert==nil || err==nil) {
+	if(sealedSymmetricKey==nil || sealedSigningKey==nil ||delegation== nil || derCert==nil) {
 		fmt.Printf("fileserver: No key material present\n")
 	}
 	ProgramCert= derCert
@@ -188,15 +185,16 @@ func main() {
 	}
 
 	if(sealedSigningKey!=nil) {
+		fmt.Printf("retrieving signing key\n")
 		signingkey, err:= fileproxy.SigningKeyFromBlob(tao.Parent(),
 		sealedSigningKey, derCert, delegation)
 		if err != nil {
 			fmt.Printf("fileserver: SigningKeyFromBlob error: %s\n", err)
 		}
 		SigningKey=  *signingkey;
-		ProgramCert= SigningKey.Cert.Raw
 		fmt.Printf("fileserver: Retrieved Signing key: % x\n", SigningKey)
 	} else {
+		fmt.Printf("initializing signing key\n")
 		signingkey, err:=  fileproxy.InitializeSealedSigningKey(*fileserverPath,
 					tao.Parent(), *hostDomain)
 		if err != nil {
@@ -206,7 +204,6 @@ func main() {
 		fmt.Printf("fileserver: Initialized signingKey: % x\n", SigningKey)
 		ProgramCert= SigningKey.Cert.Raw
 	}
-	// fix rootcert
 	err= server(serverAddr, myTaoName.String(), *hostDomain.Keys, ProgramCert)
 	if(err!=nil) {
 		fmt.Printf("fileserver: server error\n")

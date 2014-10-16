@@ -54,7 +54,6 @@ func EncodeTLSCert(keys *tao.Keys) (*tls.Certificate, error) {
 	if err != nil {
 		return nil, fmt.Errorf("can't parse cert: %s\n", err.Error())
 	}
-
 	return &tlsCert, nil
 }
 

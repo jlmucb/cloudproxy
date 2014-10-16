@@ -42,7 +42,7 @@ var SymKeys  []byte
 var ProgramCert []byte
 var fileserverResourceMaster *fileproxy.ResourceMaster
 
-func newTempCAGuard(v tao.Verifier) (tao.Guard, error) {
+func newTempCAGuard() (tao.Guard, error) {
 	fmt.Printf("fileserver: newTempCAGuard\n")
 	/*
 	g := tao.NewTemporaryDatalogGuard()
@@ -72,7 +72,7 @@ func newTempCAGuard(v tao.Verifier) (tao.Guard, error) {
 }
 
 
-func clientServiceThead(conn net.Conn, verifier tao.Keys, fileGuard tao.Guard) {
+func clientServiceThead(conn net.Conn, fileGuard tao.Guard) {
 	fmt.Printf("fileserver: clientServiceThead\n")
 	// How do I know if the connection terminates?
 	ms:= util.NewMessageStream(conn)
@@ -89,29 +89,29 @@ func clientServiceThead(conn net.Conn, verifier tao.Keys, fileGuard tao.Guard) {
 	fmt.Printf("fileserver: client thread terminating\n")
 }
 
-func server(serverAddr string, prin string, verifier tao.Keys, rootCert []byte) error {
+func server(serverAddr string, prin string) {
 	var sock net.Listener
 	fmt.Printf("fileserver: server\n")
 	// construct nego guard
-	connectionGuard, err:= newTempCAGuard(*verifier.VerifyingKey)
+	connectionGuard, err:= newTempCAGuard()
 	if(err!=nil) {
 		fmt.Printf("server: can't create connection guard\n")
-		return  err
+		return
 	}
 
-	// init fileserver data
+
 	fileserverResourceMaster= new(fileproxy.ResourceMaster)
 	err= fileserverResourceMaster.InitMaster(*fileserverPath, prin)
 	if(err!=nil) {
 		fmt.Printf("fileserver: can't InitMaster\n")
-		return err
+		return
 	}
 
 	tlsc, err := taonet.EncodeTLSCert(&SigningKey)
 	if err != nil {
 		fmt.Printf("fileserver, encode error: ", err)
 		fmt.Printf("\n")
-		return err
+		return
 	}
 	conf := &tls.Config{
 		RootCAs:            x509.NewCertPool(),
@@ -119,20 +119,21 @@ func server(serverAddr string, prin string, verifier tao.Keys, rootCert []byte) 
 		InsecureSkipVerify: true,
 		ClientAuth:         tls.RequireAnyClientCert,
 	}
+	v:= SigningKey.VerifyingKey
 	fmt.Printf("Listenting\n")
-	sock, err = taonet.Listen("tcp", serverAddr, conf, connectionGuard, verifier.VerifyingKey, SigningKey.Delegation)
+	sock, err = taonet.Listen("tcp", serverAddr, conf, connectionGuard, v, SigningKey.Delegation)
 	if(err!=nil) {
 		fmt.Printf("fileserver, listen error: ", err)
 		fmt.Printf("\n")
-		return err
+		return
 	}
 	for {
 		conn, err := sock.Accept()
 		 if err != nil {
 			fmt.Printf("server: can't accept connection: %s\n", err.Error())
-			return  err
+		} else {
+			go clientServiceThead(conn, fileserverResourceMaster.Guard)
 		}
-		go clientServiceThead(conn, verifier, fileserverResourceMaster.Guard)
 	}
 }
 
@@ -204,7 +205,8 @@ func main() {
 		fmt.Printf("fileserver: Initialized signingKey: % x\n", SigningKey)
 		ProgramCert= SigningKey.Cert.Raw
 	}
-	err= server(serverAddr, myTaoName.String(), *hostDomain.Keys, ProgramCert)
+	taoName:= myTaoName.String()
+	server(serverAddr, taoName)
 	if(err!=nil) {
 		fmt.Printf("fileserver: server error\n")
 	}

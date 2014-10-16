@@ -219,18 +219,6 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 		fmt.Printf("fileproxy: CreateSigningKey failed, no dercert\n")
 		return nil, errors.New("No DER cert")
 	}
-	signingKeyBlob, err:= tao.MarshalSignerDER(k.SigningKey)
-	if(err!=nil) {
-		return nil, errors.New("Cant produce signing key blob")
-	}
-	sealedSigningKey, err := t.Seal(signingKeyBlob, tao.SealPolicyDefault)
-	if err != nil {
-		return nil, errors.New("Cant seal signing ken")
-	}
-	err= ioutil.WriteFile(path+"sealedsigningKey", sealedSigningKey, os.ModePerm)
-	if(err!=nil) {
-		return nil, err
-	}
 	na, err := RequestKeyNegoAttestation("tcp", *caAddr, k, domain.Keys.VerifyingKey)
 	if(err!=nil) {
 		fmt.Printf("fileproxy: error from taonet.RequestTruncatedAttestation\n")
@@ -266,6 +254,18 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 		fmt.Printf("cant parse returned certificate", err)
 		fmt.Printf("\n")
 		return nil,err
+	}
+	signingKeyBlob, err:= tao.MarshalSignerDER(k.SigningKey)
+	if(err!=nil) {
+		return nil, errors.New("Cant produce signing key blob")
+	}
+	sealedSigningKey, err := t.Seal(signingKeyBlob, tao.SealPolicyDefault)
+	if err != nil {
+		return nil, errors.New("Cant seal signing key")
+	}
+	err= ioutil.WriteFile(path+"sealedsigningKey", sealedSigningKey, os.ModePerm)
+	if(err!=nil) {
+		return nil, err
 	}
 	err= ioutil.WriteFile(path+"signerCert", newCert, os.ModePerm)
 	if(err!=nil) {
@@ -308,6 +308,7 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte, delega
 	}
 	fmt.Printf("fileproxy: Unsealed Signing Key blob: %x\n", signingKeyBlob)
 	k.SigningKey, err= tao.UnmarshalSignerDER(signingKeyBlob)
+	k.Cert=  cert
 	return k, err
 }
 

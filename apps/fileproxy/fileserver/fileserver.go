@@ -76,7 +76,7 @@ func clientServiceThead(ms *util.MessageStream, fileGuard tao.Guard) {
 	fmt.Printf("fileserver: clientServiceThead\n")
 	// How do I know if the connection terminates?
 	for {
-		fmt.Printf("clientServiceThead: ReadString")
+		fmt.Printf("clientServiceThead: ReadString\n")
 		strbytes,err:= ms.ReadString()
 		if(err!=nil) {
 			return

@@ -347,15 +347,29 @@ func GetFile(conn net.Conn, creds []byte, filename string, keys []byte) error {
 	return errors.New("GetFile request not implemented")
 }
 
-func CreateFile(conn net.Conn, creds []byte, filename string) error {
+func SendCreateFile(conn net.Conn, creds []byte, filename string) error {
+	fmt.Printf("SendCreateFile, filename: %s\n",  filename)
+	subject:= "jlm"
+	action:= "jlm"
+	owner:= []byte("jlm")
+	message, err:= EncodeMessage(1, &subject,  &action, &filename, &owner,
+	                   nil, nil, nil, nil)
+	if(err!=nil)  {
+		fmt.Printf("SendCreateFile couldnt build request\n")
+		return errors.New("SendCreateFile can't build request")
+	}
+	fmt.Printf("SendCreateFile request", message)
+	fmt.Printf("\n")
+	conn.Write(message)
+	// get response
+	return nil
+}
+
+func SendDeleteFile(conn net.Conn, creds []byte, filename string) error {
 	return errors.New("CreateFile request not implemented")
 }
 
-func DeleteFile(conn net.Conn, creds []byte, filename string) error {
-	return errors.New("CreateFile request not implemented")
-}
-
-func AddFilePermissions(conn net.Conn, creds []byte, filename string) error {
+func SendAddFilePermissions(conn net.Conn, creds []byte, filename string) error {
 	return errors.New("AddFilePermissions request not implemented")
 }
 

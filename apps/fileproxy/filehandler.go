@@ -88,9 +88,9 @@ func (m *ResourceMaster) Insert(path, string, resourcename string, owner []byte)
 }
 
 // return: type, subject, action, resource, owner, status, message, size_buf, buf, error
-func decodeMessage(in []byte) (*int, *string,  *string, *string, *[]byte,
+func DecodeMessage(in []byte) (*int, *string,  *string, *string, *[]byte,
 		      *string, *string,  *int,  *[]byte, error) {
-			      fmt.Printf("filehandler: decodeMessage\n")
+			      fmt.Printf("filehandler: DecodeMessage\n")
 	fpMessage:= new(FPMessage)
 	err:= proto.Unmarshal(in, fpMessage)
 	if(err!=nil) {
@@ -117,9 +117,10 @@ func decodeMessage(in []byte) (*int, *string,  *string, *string, *[]byte,
 	return nil, nil,nil,nil,nil,nil,nil,nil,nil, errors.New("unknown message type")
 }
 
-func encodeMessage(theType int, subject *string,  action *string, resourcename *string, owner *[]byte,
-		   status *string, message *string,  size *int,  buf []byte) ([]byte, error) {
+func EncodeMessage(theType int, subject *string,  action *string, resourcename *string, owner *[]byte,
+		   status *string, reqMessage *string, size *int,  buf []byte) ([]byte, error) {
 			   fmt.Printf("filehandler: encodeMessage\n")
+	fmt.Printf("EncodeMessage\n")
 	protoMessage:=  new(FPMessage)
 	protoMessage.MessageType= proto.Int(theType)
 	if(theType==int(MessageType_REQUEST)) {
@@ -129,7 +130,7 @@ func encodeMessage(theType int, subject *string,  action *string, resourcename *
 		// TODO: protoMessage.ResourceOwner= proto.Bytes(*owner)
 	} else if (theType==int(MessageType_RESPONSE)) {
 		protoMessage.StatusOfRequest= proto.String(*status)
-		protoMessage.MessageFromRequest= proto.String(*message)
+		protoMessage.MessageFromRequest= proto.String(*reqMessage)
 	} else if ( theType==int(MessageType_FILE_NEXT) || theType==int(MessageType_FILE_LAST)) {
 		protoMessage.BufferSize= proto.Int(*size)
 		//Fix: protoMessage.TheBuffer= proto.Bytes(buf)
@@ -137,6 +138,7 @@ func encodeMessage(theType int, subject *string,  action *string, resourcename *
 		return nil, errors.New("unknown message type\n")
 	}
 	out, err:=proto.Marshal(protoMessage)
+	fmt.Printf("Marshaled %d\n", len(out))
 	return out, err
 }
 
@@ -144,7 +146,7 @@ func (m *ResourceMaster) Delete(resourceName string) error {
 	return nil // not implemented
 }
 
-func (m *ResourceMaster) encodeMaster() ([]byte, error){
+func (m *ResourceMaster) EncodeMaster() ([]byte, error){
 	fmt.Printf("filehandler: encodeMaster\n")
 	protoMessage:=  new(FPResourceMaster)
 	protoMessage.PrinName= proto.String(m.program);
@@ -154,8 +156,8 @@ func (m *ResourceMaster) encodeMaster() ([]byte, error){
 	return out, err
 }
 
-func (m *ResourceMaster) decodeMaster(in []byte) (*int, error) {
-	fmt.Printf("filehandler: decodeMaster\n")
+func (m *ResourceMaster) DecodeMaster(in []byte) (*int, error) {
+	fmt.Printf("filehandler: DecodeMaster\n")
 	rMessage:= new(FPResourceMaster)
 	_= proto.Unmarshal(in, rMessage)
 	m.program= *rMessage.PrinName
@@ -165,7 +167,7 @@ func (m *ResourceMaster) decodeMaster(in []byte) (*int, error) {
 	return &isize, nil
 }
 
-func (r *ResourceInfo) encodeResourceInfo() ([]byte, error){
+func (r *ResourceInfo) EncodeResourceInfo() ([]byte, error){
 	fmt.Printf("filehandler: encodeResourceInfo\n")
 	protoMessage:=  new(FPResourceInfo)
 	protoMessage.ResourceName= proto.String(r.resourceName);
@@ -178,8 +180,8 @@ func (r *ResourceInfo) encodeResourceInfo() ([]byte, error){
 	return out,err
 }
 
-func (r *ResourceInfo) decodeResourceInfo(in []byte) error {
-	fmt.Printf("filehandler: decodeResourceInfo\n")
+func (r *ResourceInfo) DecodeResourceInfo(in []byte) error {
+	fmt.Printf("filehandler: DecodeResourceInfo\n")
 	rMessage:= new(FPResourceInfo)
 	_= proto.Unmarshal(in, rMessage)
 	r.resourceName= *rMessage.ResourceName
@@ -283,19 +285,19 @@ func (m *ResourceMaster) SaveResourceData(masterInfoFile string,  resourceInfoAr
 }
 
 // return values: subject, action, resourcename, size, error
-func encodeRequest(subject string, action string, resourcename string, owner []byte) ([]byte, error) {
+func EncodeRequest(subject string, action string, resourcename string, owner []byte) ([]byte, error) {
 	fmt.Printf("filehandler: encodeRequest\n")
-	out,err:= encodeMessage(int(MessageType_REQUEST), &subject,  &action, &resourcename, &owner,
+	out,err:= EncodeMessage(int(MessageType_REQUEST), &subject,  &action, &resourcename, &owner,
 	                   nil, nil,  nil,  nil)
 	return  out, err
 }
 
 // return values: subject, action, resourcename, owner, error
-func decodeRequest(in []byte) (*string, *string, *string, *[]byte, error) {
-	fmt.Printf("filehandler: decodeRequest\n")
-	theType, subject, action, resource, owner, status, message, size, buf, err:= decodeMessage(in)
+func DecodeRequest(in []byte) (*string, *string, *string, *[]byte, error) {
+	fmt.Printf("filehandler: DecodeRequest\n")
+	theType, subject, action, resource, owner, status, message, size, buf, err:= DecodeMessage(in)
 	if(*theType!=int(MessageType_REQUEST)) {
-		return nil,nil,nil,nil, errors.New("Cant decode request")
+		return nil,nil,nil,nil, errors.New("Cant Decode request")
 	}
 	if (err!=nil) {
 		return  nil, nil, nil, nil, err
@@ -314,7 +316,7 @@ func getResponse(conn net.Conn) (*string, *string, *int, error) {
 	if(err!=nil) {
 		return nil, nil, nil, err
 	}
-	theType, subject, action, resource, owner, status, message, size, out, err:= decodeMessage([]byte(strbytes))
+	theType, subject, action, resource, owner, status, message, size, out, err:= DecodeMessage([]byte(strbytes))
 	if (err!=nil) {
 		return  nil, nil, nil, err
 	}
@@ -330,7 +332,7 @@ func getResponse(conn net.Conn) (*string, *string, *int, error) {
 func sendResponse(conn net.Conn, status string, message string, size int) error {
 	fmt.Printf("filehandler: sendResponse\n")
 	ms:= util.NewMessageStream(conn)
-	out,_:= encodeMessage(int(MessageType_RESPONSE), nil, nil,  nil, nil, &status, &message,  &size,  nil)
+	out,_:= EncodeMessage(int(MessageType_RESPONSE), nil, nil,  nil, nil, &status, &message,  &size,  nil)
 	ms.WriteString(string(out))
 	return nil
 }
@@ -386,10 +388,12 @@ func deleteOwnerRequest(conn net.Conn, resourcename string) error {
 // first return value is terminate flag
 func (m *ResourceMaster) HandleServiceRequest(conn net.Conn, request []byte) (bool, error) {
 	fmt.Printf("filehandler: HandleServiceRequest\n")
-	_, action, resourcename, owner, err:= decodeRequest(request)
+	subject, action, resourcename, owner, err:= DecodeRequest(request)
 	if(err!=nil) {
 		return false, err
 	}
+	fmt.Printf("HandleServiceRequest: subject: %d, action: %s, resource: %s\n",
+		subject, action, resourcename)
 
 	// is it authorized?
 	ok:= true; // TODO: m.guard.IsAuthorized(subject, action, resourcename) 

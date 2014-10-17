@@ -44,6 +44,7 @@ var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
 var fileclientPath= flag.String("./fileclient_files/", "./fileclient_files/", "fileclient directory")
 var serverAddr string
+var testFilePath= flag.String("stored_files/", "stored_files/", "file path")
 var testFile= flag.String("stored_files/originalTestFile", "stored_files/originalTestFile", "test file")
 
 var SigningKey tao.Keys
@@ -146,7 +147,7 @@ func main() {
 	}
 
 	var  creds []byte
-	creds= nil
+	creds= []byte("I am a fake cred")
 	guard, err:= newTempCAGuard()
 	if(err!=nil) {
 		fmt.Printf("fileclient:cant construct channel guard\n")
@@ -162,15 +163,15 @@ func main() {
 		return;
 	}
 	fmt.Printf("Established channel\n")
-	return
 	// create a file
 	sentFileName:= *fileclientPath+*testFile
 	fmt.Printf("fileclient, Creating: %s\n", sentFileName)
-	err= fileproxy.CreateFile(conn, creds, sentFileName);
+	err= fileproxy.SendCreateFile(conn, creds, sentFileName);
 	if err != nil {
 		fmt.Printf("fileclient: cant create file\n")
 		return
 	}
+	return
 	fmt.Printf("fileclient: Sending: %s\n", sentFileName)
 	err= fileproxy.SendFile(conn, creds, sentFileName, nil);
 	if err != nil {

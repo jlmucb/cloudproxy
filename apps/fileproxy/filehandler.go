@@ -128,7 +128,7 @@ func DecodeMessage(in []byte) (*int, *string,  *string, *string, *string,
 		return &the_type, subject, action, resource, owner, status, message, size_buf, buf, err
 	} else if (the_type==int(MessageType_RESPONSE)) {
 		if(fpMessage.StatusOfRequest!=nil) {
-			message= fpMessage.StatusOfRequest
+			status= fpMessage.StatusOfRequest
 		}
 		if(fpMessage.MessageFromRequest!=nil) {
 			message= fpMessage.MessageFromRequest
@@ -150,7 +150,7 @@ func DecodeMessage(in []byte) (*int, *string,  *string, *string, *string,
 func EncodeMessage(theType int, subject *string,  action *string, resourcename *string, owner *string,
 		   status *string, reqMessage *string, size *int,  buf []byte) ([]byte, error) {
 			   fmt.Printf("filehandler: encodeMessage\n")
-	fmt.Printf("EncodeMessage\n")
+	fmt.Printf("EncodeMessage %d\n", theType)
 	protoMessage:=  new(FPMessage)
 	protoMessage.MessageType= proto.Int(theType)
 	if(theType==int(MessageType_REQUEST)) {
@@ -368,13 +368,18 @@ func GetResponse(ms *util.MessageStream) (*string, *string, *int, error) {
 	if(err!=nil) {
 		return nil, nil, nil, err
 	}
-	theType, subject, action, resource, owner, status, message, size, out, err:= DecodeMessage([]byte(strbytes))
+	fmt.Printf("GetResponse read %d bytes\n", len(strbytes))
+	theType, _, _, _, _, status, message, size, _, err:= DecodeMessage([]byte(strbytes))
 	if (err!=nil) {
+		fmt.Printf("DecodeMessage error in GetResponse\n")
 		return  nil, nil, nil, err
 	}
-	if(subject!=nil || action!=nil || resource!=nil || owner!=nil || size!=nil  || out!=nil) {
-		return  nil, nil, nil, errors.New("malformed request")
+	if(status==nil) {
+		fmt.Printf("DecodeMessage in getresponse returned nil status")
+	} else{
+		fmt.Printf("DecodeMessage in getresponse returned %s (status)\n", *status)
 	}
+	fmt.Printf("GetResponse \n", len(strbytes))
 	if(*theType!=int(MessageType_RESPONSE)) {
 		return nil, nil, nil, errors.New("Wrong message type")
 	}
@@ -385,19 +390,30 @@ func PrintResponse (status *string, message *string, size *int) {
 	fmt.Printf("PrintResponse\n")
 	if(status!=nil) {
 		fmt.Printf("\tstatus: %s\n", *status)
+	} else {
+		fmt.Printf("\tstatus: empty\n")
 	}
 	if(message!=nil) {
 		fmt.Printf("\tmessage: %s\n", *message)
 	}
 	if(size!=nil) {
-		fmt.Printf("\tsize: %s\n", *size)
+		fmt.Printf("\tsize: %d\n", *size)
 	}
 }
 
 func SendResponse(ms *util.MessageStream, status string, message string, size int) error {
-	fmt.Printf("filehandler: sendResponse\n")
-	out,_:= EncodeMessage(int(MessageType_RESPONSE), nil, nil,  nil, nil, &status, &message,  &size,  nil)
-	ms.WriteString(string(out))
+	out,err:= EncodeMessage(int(MessageType_RESPONSE), nil, nil, nil, nil, &status, &message,  &size,  nil)
+	if (err!=nil) {
+		fmt.Printf("EncodeMessage fails in SendResponse\n")
+		return err
+	}
+	send:= string(out)
+	fmt.Printf("filehandler: SendResponse sending %s %s %d\n", status, message, len(send))
+	n, err:= ms.WriteString(send)
+	if(err!=nil) {
+		fmt.Printf("filehandler: SendResponse Writestring error %d\n", n, err)
+		return err
+	}
 	return nil
 }
 
@@ -406,8 +422,7 @@ func readRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string)
 	// is it here?
 	// get size and file name
 	status:= "succeeded"
-	size:= 10  // what size?
-	SendResponse(ms, status, "", size)
+	SendResponse(ms, status, "", 0)
 	//TODO: SendFile(ms, resourcename, size, SymKeys)
 	return nil
 }
@@ -417,8 +432,7 @@ func writeRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string
 	// is it here?
 	// get size and file name
 	status:= "succeeded"
-	size:= 10 // TODO: fix
-	SendResponse(ms, status, "", size)
+	SendResponse(ms, status, "", 0)
 	// TODO: GetFile(ms, resourcename, size, SymKeys)
 	return nil
 }

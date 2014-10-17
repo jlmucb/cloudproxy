@@ -48,12 +48,13 @@ type ResourceMaster struct {
 	program		string
 	Guard		tao.Guard
 	baseDirectory	string
+	NumResources	int;
 	resourceArray	[100]ResourceInfo
 	// Rules
 };
 
 func (m *ResourceMaster) Find(resourcename string) (*ResourceInfo, error) {
-	for i:=0; i< len(m.resourceArray);i++ {
+	for i:=0; i<m.NumResources; i++ {
 		 if(m.resourceArray[i].resourceName==resourcename) {
 			 return &m.resourceArray[i], nil
 		 }
@@ -69,21 +70,16 @@ func (m *ResourceMaster) Insert(path string, resourcename string, owner string) 
 	if(found!=nil) {
 		return found, nil
 	}
-	n:=  len(m.resourceArray)
-	if((n+1)>cap(m.resourceArray)) {
-		fmt.Printf("filehandler: increase resourceArray size\n")
-		return nil,  errors.New("resourceArray too small")
-	}
-	// m.resourceArray= m.resourceArray[0:n+1]
-	// m.resourceArray= m.resourceArray[0:n+1]
-	resInfo:=   new(ResourceInfo)
-	m.resourceArray[n]=  *resInfo
+	n:= m.NumResources;
+	m.NumResources= m.NumResources+1
+	// resInfo:=   new(ResourceInfo)
+	// m.resourceArray[n]=  *resInfo
 	m.resourceArray[n].resourceName= resourcename
 	m.resourceArray[n].resourceType= "file"
 	m.resourceArray[n].resourceStatus= "created"
 	m.resourceArray[n].resourceLocation=  path+resourcename
 	m.resourceArray[n].resourceOwner=  owner
-	return resInfo, nil
+	return &m.resourceArray[n], nil
 }
 
 // return: type, subject, action, resource, owner, status, message, size_buf, buf, error
@@ -226,6 +222,7 @@ func (r *ResourceInfo) DecodeResourceInfo(in []byte) error {
 func (r *ResourceInfo) PrintResourceInfo() {
 	fmt.Printf("Resource name: %s\n", r.resourceName)
 	fmt.Printf("Resource type: %s\n" , r.resourceType)
+	fmt.Printf("Resource status: %s\n" , r.resourceStatus)
 	fmt.Printf("Resource location: %s\n" , r.resourceLocation)
 	fmt.Printf("Resource size: %d\n" , r.resourceSize)
 	fmt.Printf("Resource creation date: %s\n" , r.dateCreated)
@@ -446,10 +443,11 @@ func createRequest(m *ResourceMaster, ms *util.MessageStream,
 		return nil
 	}
 	rInfo, _= m.Insert(m.baseDirectory, resourcename, owner)
-	if(rInfo!=nil) {
+	if(rInfo==nil) {
 		SendResponse(ms, "failed", "cant insert resource", 0)
 		return nil
 	}
+	rInfo.PrintResourceInfo()
 	status:= "succeeded"
 	SendResponse(ms, status, "", 0)
 	// TODO: GetFile(ms, resourcename, size, SymKeys)
@@ -520,6 +518,7 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []
 func (m *ResourceMaster) InitMaster(masterInfoDir string, prin string)  error {
 	fmt.Printf("filehandler: InitMaster\n")
 	m.GetResourceData(masterInfoDir+"masterinfo",  masterInfoDir+"resources")
+	m.NumResources= 0;
 	m.InitGuard(masterInfoDir+"rules")
 	return nil
 }

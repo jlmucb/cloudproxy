@@ -23,7 +23,6 @@ import (
 	"io/ioutil"
 	"flag"
 	"fmt"
-	"net"
 	"strings"
 	"os"
 	"code.google.com/p/goprotobuf/proto"
@@ -312,7 +311,7 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte, delega
 	return k, err
 }
 
-func SendFile(conn net.Conn, creds []byte, filename string, keys []byte) error {
+func SendFile(ms *util.MessageStream, creds []byte, filename string, keys []byte) error {
 	// creat the file
 	// for each block {
 	//	read block
@@ -325,6 +324,7 @@ func SendFile(conn net.Conn, creds []byte, filename string, keys []byte) error {
 	return errors.New("fileproxy: SendFile request not implemented")
 }
 
+/*
 func EstablishPeerChannel(t tao.Tao, address string, guard *tao.Guard, verifier *tao.Verifier, signingKey *tao.Keys) (net.Conn, error) {
 	conn, err:= taonet.DialWithKeys("tcp", address, *guard, verifier, signingKey)
 	if(err!=nil) {
@@ -332,8 +332,9 @@ func EstablishPeerChannel(t tao.Tao, address string, guard *tao.Guard, verifier 
 	}
 	return conn, nil
 }
+*/
 
-func GetFile(conn net.Conn, creds []byte, filename string, keys []byte) error {
+func GetFile(ms *util.MessageStream, creds []byte, filename string, keys []byte) error {
 	// open the file
 	// for each block {
 	// 	read block from file
@@ -347,29 +348,29 @@ func GetFile(conn net.Conn, creds []byte, filename string, keys []byte) error {
 	return errors.New("GetFile request not implemented")
 }
 
-func SendCreateFile(conn net.Conn, creds []byte, filename string) error {
+func SendCreateFile(ms *util.MessageStream, creds []byte, filename string) error {
 	fmt.Printf("SendCreateFile, filename: %s\n",  filename)
 	subject:= "jlm"
-	action:= "jlm"
-	owner:= []byte("jlm")
+	action:= "create"
+	owner:= "jlm"
 	message, err:= EncodeMessage(1, &subject,  &action, &filename, &owner,
 	                   nil, nil, nil, nil)
 	if(err!=nil)  {
 		fmt.Printf("SendCreateFile couldnt build request\n")
 		return errors.New("SendCreateFile can't build request")
 	}
-	fmt.Printf("SendCreateFile request", message)
+	fmt.Printf("SendCreateFile request %d, ", len(message))
 	fmt.Printf("\n")
-	conn.Write(message)
-	// get response
+	written,_:= ms.WriteString(string(message))
+	fmt.Printf("Bytes written %d\n", written)
 	return nil
 }
 
-func SendDeleteFile(conn net.Conn, creds []byte, filename string) error {
+func SendDeleteFile(ms *util.MessageStream, creds []byte, filename string) error {
 	return errors.New("CreateFile request not implemented")
 }
 
-func SendAddFilePermissions(conn net.Conn, creds []byte, filename string) error {
+func SendAddFilePermissions(ms *util.MessageStream, creds []byte, filename string) error {
 	return errors.New("AddFilePermissions request not implemented")
 }
 

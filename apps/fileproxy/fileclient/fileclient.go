@@ -19,20 +19,22 @@ package main
 import (
 	"flag"
 	"fmt"
-	// "net"
+	"net"
 
 	tao "github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	"github.com/jlmucb/cloudproxy/apps/fileproxy"
-	taonet "github.com/jlmucb/cloudproxy/tao/net"
+	"github.com/jlmucb/cloudproxy/util"
+
+	// taonet "github.com/jlmucb/cloudproxy/tao/net"
+	// "crypto/x509"
+	// "crypto/tls"
 	//"errors"
 	//"time"
 	//"io/ioutil"
 	//"code.google.com/p/goprotobuf/proto"
 	//"os"
 	//"bufio"
-	//"crypto/tls"
-	//"crypto/x509"
 	// "crypto/x509/pkix"
 	// "crypto/rand"
 	//"net"
@@ -148,6 +150,7 @@ func main() {
 
 	var  creds []byte
 	creds= []byte("I am a fake cred")
+	/*
 	guard, err:= newTempCAGuard()
 	if(err!=nil) {
 		fmt.Printf("fileclient:cant construct channel guard\n")
@@ -157,29 +160,56 @@ func main() {
 		fmt.Printf("fileclient: guard is nil\n");
 	}
 	conn, err:= taonet.DialTLSWithKeys("tcp", serverAddr, &SigningKey)
+	tlsc, err := taonet.EncodeTLSCert(&SigningKey)
+	if err != nil {
+		fmt.Printf("fileserver, encode error: ", err)
+		fmt.Printf("\n")
+		return
+	}
+	conn, err := tls.Dial("tcp", serverAddr, &tls.Config{
+		RootCAs:            x509.NewCertPool(),
+		Certificates:       []tls.Certificate{*tlsc},
+		InsecureSkipVerify: true,
+	})
 	if(err!=nil) {
 		fmt.Printf("fileclient:cant establish channel\n", err)
 		fmt.Printf("\n")
 		return;
 	}
+	*/
+	conn, err := net.Dial("tcp", serverAddr)
+	if(err!=nil) {
+		fmt.Printf("fileclient:cant establish channel\n", err)
+		fmt.Printf("\n")
+		return;
+	}
+	ms := util.NewMessageStream(conn);
 	fmt.Printf("Established channel\n")
 	// create a file
 	sentFileName:= *fileclientPath+*testFile
 	fmt.Printf("fileclient, Creating: %s\n", sentFileName)
-	err= fileproxy.SendCreateFile(conn, creds, sentFileName);
+	err= fileproxy.SendCreateFile(ms, creds, sentFileName);
 	if err != nil {
 		fmt.Printf("fileclient: cant create file\n")
 		return
 	}
+	// return: status, message, size, error
+	status, message, size, err:= fileproxy.GetResponse(ms);
+	if(err!=nil) {
+		fmt.Printf("Error in response to SendCreate\n")
+		return
+	}
+	fmt.Printf("Response to SendCreate\n")
+	fileproxy.PrintResponse(status, message, size)
 	return
 	fmt.Printf("fileclient: Sending: %s\n", sentFileName)
-	err= fileproxy.SendFile(conn, creds, sentFileName, nil);
+	err= fileproxy.SendFile(ms, creds, sentFileName, nil);
 	if err != nil {
 		fmt.Printf("fileclient: cant send file\n")
 		return
 	}
 	fmt.Printf("fileclient: Getting: %s\n", sentFileName+".received")
-	err= fileproxy.GetFile(conn, creds, sentFileName, nil);
+	err= fileproxy.GetFile(ms, creds, sentFileName, nil);
 	if err != nil {
 		fmt.Printf("fileclient: cant send file\n")
 		return

@@ -19,15 +19,15 @@ package main
 import (
 	"flag"
 	"fmt"
-	"crypto/tls"
-	"crypto/x509"
+	// "crypto/tls"
+	// "crypto/x509"
 	"net"
 
 	tao "github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
-	taonet "github.com/jlmucb/cloudproxy/tao/net"
 	"github.com/jlmucb/cloudproxy/apps/fileproxy"
 	"github.com/jlmucb/cloudproxy/util"
+	// taonet "github.com/jlmucb/cloudproxy/tao/net"
 )
 
 var hostcfg= flag.String("../hostdomain/tao.config", "../hostdomain/tao.config",  "path to host tao configuration")
@@ -72,16 +72,16 @@ func newTempCAGuard() (tao.Guard, error) {
 }
 
 
-func clientServiceThead(conn net.Conn, fileGuard tao.Guard) {
+func clientServiceThead(ms *util.MessageStream, fileGuard tao.Guard) {
 	fmt.Printf("fileserver: clientServiceThead\n")
 	// How do I know if the connection terminates?
-	ms:= util.NewMessageStream(conn)
 	for {
+		fmt.Printf("clientServiceThead: ReadString")
 		strbytes,err:= ms.ReadString()
 		if(err!=nil) {
 			return
 		}
-		terminate, err:= fileserverResourceMaster.HandleServiceRequest(conn, []byte(strbytes))
+		terminate, err:= fileserverResourceMaster.HandleServiceRequest(ms, []byte(strbytes))
 		if terminate {
 			break;
 		}
@@ -93,20 +93,23 @@ func server(serverAddr string, prin string) {
 	var sock net.Listener
 	fmt.Printf("fileserver: server\n")
 	// construct nego guard
+	/*
 	connectionGuard, err:= newTempCAGuard()
 	if(err!=nil) {
 		fmt.Printf("server: can't create connection guard\n")
 		return
 	}
+	*/
 
 
 	fileserverResourceMaster= new(fileproxy.ResourceMaster)
-	err= fileserverResourceMaster.InitMaster(*fileserverPath, prin)
+	err:= fileserverResourceMaster.InitMaster(*fileserverPath, prin)
 	if(err!=nil) {
 		fmt.Printf("fileserver: can't InitMaster\n")
 		return
 	}
 
+	/*
 	tlsc, err := taonet.EncodeTLSCert(&SigningKey)
 	if err != nil {
 		fmt.Printf("fileserver, encode error: ", err)
@@ -120,19 +123,24 @@ func server(serverAddr string, prin string) {
 		ClientAuth:         tls.RequireAnyClientCert,
 	}
 	v:= SigningKey.VerifyingKey
+	 */
 	fmt.Printf("Listenting\n")
-	sock, err = taonet.Listen("tcp", serverAddr, conf, connectionGuard, v, SigningKey.Delegation)
+	// sock, err = taonet.Listen("tcp", serverAddr, conf, connectionGuard, v, SigningKey.Delegation)
+	// sock, err = tls.Listen("tcp", serverAddr, conf)
+	sock, err = net.Listen("tcp", serverAddr)
 	if(err!=nil) {
 		fmt.Printf("fileserver, listen error: ", err)
 		fmt.Printf("\n")
 		return
 	}
 	for {
+		fmt.Printf("server: at Accept\n")
 		conn, err := sock.Accept()
 		 if err != nil {
 			fmt.Printf("server: can't accept connection: %s\n", err.Error())
 		} else {
-			go clientServiceThead(conn, fileserverResourceMaster.Guard)
+			ms := util.NewMessageStream(conn);
+			go clientServiceThead(ms, fileserverResourceMaster.Guard)
 		}
 	}
 }

@@ -19,7 +19,6 @@ package fileproxy
 import (
 	"errors"
 	"fmt"
-	"net"
 	"code.google.com/p/goprotobuf/proto"
 	 tao "github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/util"
@@ -37,7 +36,7 @@ type ResourceInfo struct {
 	resourceStatus		string
 	resourceLocation	string
 	resourceSize		int
-	resourceOwner		[]byte   // x509 cert
+	resourceOwner		string // x509 cert
 	dateCreated		string
 	dateModified		string
 	authenticatorType	string	 // sha hash usually
@@ -62,7 +61,7 @@ func (m *ResourceMaster) Find(resourcename string) (*ResourceInfo, error) {
 	return nil, nil
 }
 
-func (m *ResourceMaster) Insert(path, string, resourcename string, owner []byte) (*ResourceInfo, error) {
+func (m *ResourceMaster) Insert(path string, resourcename string, owner string) (*ResourceInfo, error) {
 	found, err:=  m.Find(resourcename)
 	if(err!=nil) {
 		return nil, err
@@ -88,36 +87,67 @@ func (m *ResourceMaster) Insert(path, string, resourcename string, owner []byte)
 }
 
 // return: type, subject, action, resource, owner, status, message, size_buf, buf, error
-func DecodeMessage(in []byte) (*int, *string,  *string, *string, *[]byte,
+func DecodeMessage(in []byte) (*int, *string,  *string, *string, *string,
 		      *string, *string,  *int,  *[]byte, error) {
 			      fmt.Printf("filehandler: DecodeMessage\n")
+	var the_type32 *int32
+	var the_type int
+	var subject *string
+	var action *string
+	var resource *string
+	var owner *string
+	var status *string
+	var message *string
+	var size_buf *int
+	var buf *[]byte
+
+	the_type= -1
+	the_type32= nil
+	subject= nil
+	action= nil
+	resource= nil
+	owner= nil
+	status= nil
+	message= nil
+	size_buf= nil
+	buf= nil
+
 	fpMessage:= new(FPMessage)
 	err:= proto.Unmarshal(in, fpMessage)
-	if(err!=nil) {
-		return nil, nil,nil,nil,nil,nil,nil,nil,nil, err
+	the_type32= fpMessage.MessageType
+	if(the_type32==nil) {
+		return &the_type, subject, action, resource, owner, status, message, size_buf, buf,
+		       errors.New("No type")
 	}
-	theType:= int(*fpMessage.MessageType)
-	if(theType==int(MessageType_REQUEST)) {
-		subject:= *fpMessage.SubjectName
-		action:= *fpMessage.ActionName
-		resourcename:= *fpMessage.ResourceName
-		// TODO: check to see if its nil
-		owner:=  fpMessage.ResourceOwner
-		return &theType, &subject, &action, &resourcename, &owner, nil,nil,nil,nil,nil
-	} else if (theType==int(MessageType_RESPONSE)) {
-		status:= *fpMessage.StatusOfRequest
-		message:= *fpMessage.MessageFromRequest
-		return &theType, nil,nil,nil, nil, &status, &message, nil,nil,nil
-	} else if (theType==int(MessageType_FILE_NEXT) || theType==int(MessageType_FILE_LAST)) {
-		size:= int(*fpMessage.BufferSize)
-		out:= fpMessage.TheBuffer
-		return &theType, nil, nil,nil,nil, nil,nil, &size, &out, nil
+	the_type= int(*the_type32)
+	if(the_type==int(MessageType_REQUEST)) {
+		subject= fpMessage.SubjectName
+		action= fpMessage.ActionName
+		resource= fpMessage.ResourceName
+		owner=  fpMessage.ResourceOwner
+		return &the_type, subject, action, resource, owner, status, message, size_buf, buf, err
+	} else if (the_type==int(MessageType_RESPONSE)) {
+		if(fpMessage.StatusOfRequest!=nil) {
+			message= fpMessage.StatusOfRequest
+		}
+		if(fpMessage.MessageFromRequest!=nil) {
+			message= fpMessage.MessageFromRequest
+		}
+		return &the_type, subject, action, resource, owner, status, message, size_buf, buf, err
+	} else if (the_type==int(MessageType_FILE_NEXT) || the_type==int(MessageType_FILE_LAST)) {
+		size32:= *fpMessage.BufferSize
+		size1:= int(size32)
+		buffer:= fpMessage.TheBuffer
+		buf:= &buffer
+		return &the_type, subject, action, resource, owner, status, message, &size1, buf,
+			errors.New("No type")
 	}
-
-	return nil, nil,nil,nil,nil,nil,nil,nil,nil, errors.New("unknown message type")
+	fmt.Printf("Decode message bad message type %d\n", the_type)
+	return &the_type, subject, action, resource, owner, status, message, size_buf, buf,
+		errors.New("Unknown message type")
 }
 
-func EncodeMessage(theType int, subject *string,  action *string, resourcename *string, owner *[]byte,
+func EncodeMessage(theType int, subject *string,  action *string, resourcename *string, owner *string,
 		   status *string, reqMessage *string, size *int,  buf []byte) ([]byte, error) {
 			   fmt.Printf("filehandler: encodeMessage\n")
 	fmt.Printf("EncodeMessage\n")
@@ -127,7 +157,7 @@ func EncodeMessage(theType int, subject *string,  action *string, resourcename *
 		protoMessage.SubjectName= proto.String(*subject)
 		protoMessage.ActionName= proto.String(*action)
 		protoMessage.ResourceName= proto.String(*resourcename)
-		// TODO: protoMessage.ResourceOwner= proto.Bytes(*owner)
+		protoMessage.ResourceOwner= proto.String(*owner)
 	} else if (theType==int(MessageType_RESPONSE)) {
 		protoMessage.StatusOfRequest= proto.String(*status)
 		protoMessage.MessageFromRequest= proto.String(*reqMessage)
@@ -135,7 +165,8 @@ func EncodeMessage(theType int, subject *string,  action *string, resourcename *
 		protoMessage.BufferSize= proto.Int(*size)
 		//Fix: protoMessage.TheBuffer= proto.Bytes(buf)
 	} else {
-		return nil, errors.New("unknown message type\n")
+		fmt.Print("EncodeMessage, Bad message type: %d\n", theType);
+		return nil, errors.New("encodemessage, unknown message type\n")
 	}
 	out, err:=proto.Marshal(protoMessage)
 	fmt.Printf("Marshaled %d\n", len(out))
@@ -188,7 +219,7 @@ func (r *ResourceInfo) DecodeResourceInfo(in []byte) error {
 	r.resourceType= *rMessage.ResourceType
 	r.resourceLocation= *rMessage.ResourceLocation
 	r.resourceSize= int(*rMessage.ResourceSize)
-	r.resourceOwner= rMessage.ResourceOwner
+	r.resourceOwner= *rMessage.ResourceOwner
 	return nil
 }
 
@@ -285,7 +316,7 @@ func (m *ResourceMaster) SaveResourceData(masterInfoFile string,  resourceInfoAr
 }
 
 // return values: subject, action, resourcename, size, error
-func EncodeRequest(subject string, action string, resourcename string, owner []byte) ([]byte, error) {
+func EncodeRequest(subject string, action string, resourcename string, owner string) ([]byte, error) {
 	fmt.Printf("filehandler: encodeRequest\n")
 	out,err:= EncodeMessage(int(MessageType_REQUEST), &subject,  &action, &resourcename, &owner,
 	                   nil, nil,  nil,  nil)
@@ -293,9 +324,15 @@ func EncodeRequest(subject string, action string, resourcename string, owner []b
 }
 
 // return values: subject, action, resourcename, owner, error
-func DecodeRequest(in []byte) (*string, *string, *string, *[]byte, error) {
+func DecodeRequest(in []byte) (*string, *string, *string, *string, error) {
 	fmt.Printf("filehandler: DecodeRequest\n")
 	theType, subject, action, resource, owner, status, message, size, buf, err:= DecodeMessage(in)
+	if(err!=nil) {
+		fmt.Printf("DecodeRequest error: ", err)
+		fmt.Printf("\n")
+		return  nil, nil, nil, nil, err
+	}
+	PrintRequest(subject,  action, resource, owner)
 	if(*theType!=int(MessageType_REQUEST)) {
 		return nil,nil,nil,nil, errors.New("Cant Decode request")
 	}
@@ -308,10 +345,25 @@ func DecodeRequest(in []byte) (*string, *string, *string, *[]byte, error) {
 	return subject, action, resource, owner, nil
 }
 
+func PrintRequest(subject *string,  action *string, resource *string, owner* string) {
+	fmt.Printf("PrintRequest\n")
+	if(subject!=nil) {
+		fmt.Printf("\tsubject: %s\n", *subject)
+	}
+	if(action!=nil) {
+		fmt.Printf("\taction: %s\n", *action)
+	}
+	if(resource!=nil) {
+		fmt.Printf("\tresource: %s\n", *resource)
+	}
+	if(owner!=nil) {
+		fmt.Printf("\towner: %s\n", *owner)
+	}
+}
+
 // return: status, message, size, error
-func getResponse(conn net.Conn) (*string, *string, *int, error) {
-	fmt.Printf("filehandler: getResponse\n")
-	ms:= util.NewMessageStream(conn)
+func GetResponse(ms *util.MessageStream) (*string, *string, *int, error) {
+	fmt.Printf("filehandler: GetResponse\n")
 	strbytes,err:= ms.ReadString()
 	if(err!=nil) {
 		return nil, nil, nil, err
@@ -329,71 +381,92 @@ func getResponse(conn net.Conn) (*string, *string, *int, error) {
 	return status, message, size, nil
 }
 
-func sendResponse(conn net.Conn, status string, message string, size int) error {
+func PrintResponse (status *string, message *string, size *int) {
+	fmt.Printf("PrintResponse\n")
+	if(status!=nil) {
+		fmt.Printf("\tstatus: %s\n", *status)
+	}
+	if(message!=nil) {
+		fmt.Printf("\tmessage: %s\n", *message)
+	}
+	if(size!=nil) {
+		fmt.Printf("\tsize: %s\n", *size)
+	}
+}
+
+func SendResponse(ms *util.MessageStream, status string, message string, size int) error {
 	fmt.Printf("filehandler: sendResponse\n")
-	ms:= util.NewMessageStream(conn)
 	out,_:= EncodeMessage(int(MessageType_RESPONSE), nil, nil,  nil, nil, &status, &message,  &size,  nil)
 	ms.WriteString(string(out))
 	return nil
 }
 
-func readRequest(conn net.Conn, resourcename string) error {
+func readRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string) error {
 	fmt.Printf("filehandler: readRequest\n")
 	// is it here?
 	// get size and file name
 	status:= "succeeded"
 	size:= 10  // what size?
-	sendResponse(conn, status, "", size)
-	//TODO: SendFile(conn, resourcename, size, SymKeys)
+	SendResponse(ms, status, "", size)
+	//TODO: SendFile(ms, resourcename, size, SymKeys)
 	return nil
 }
 
-func writeRequest(conn net.Conn, resourcename string) error {
+func writeRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string) error {
 	fmt.Printf("filehandler: writeRequest\n")
 	// is it here?
 	// get size and file name
 	status:= "succeeded"
 	size:= 10 // TODO: fix
-	sendResponse(conn, status, "", size)
-	// TODO: GetFile(conn, resourcename, size, SymKeys)
+	SendResponse(ms, status, "", size)
+	// TODO: GetFile(ms, resourcename, size, SymKeys)
 	return nil
 }
 
-func createRequest(conn net.Conn, resourcename string, owner []byte) error {
+func createRequest(m *ResourceMaster, ms *util.MessageStream,
+		   resourcename string, owner string) error {
 	fmt.Printf("filehandler: createRequest\n")
-	// is it here?
+	rInfo, _:= m.Find(resourcename)
+	if(rInfo!=nil) {
+		SendResponse(ms, "failed", "resource exists", 0)
+		return nil
+	}
+	rInfo, _= m.Insert(m.baseDirectory, resourcename, owner)
+	if(rInfo!=nil) {
+		SendResponse(ms, "failed", "cant insert resource", 0)
+		return nil
+	}
 	status:= "succeeded"
-	size:= 10 //TODO: what size
-	sendResponse(conn, status, "", size)
-	// TODO: GetFile(conn, resourcename, size, SymKeys)
+	SendResponse(ms, status, "", 0)
+	// TODO: GetFile(ms, resourcename, size, SymKeys)
 	return nil
 }
 
-func deleteRequest(conn net.Conn, resourcename string) error {
+func deleteRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string) error {
 	return errors.New("deleteRequest not implemented")
 }
 
-func addRuleRequest(conn net.Conn, resourcename string) error {
+func addRuleRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string) error {
 	return errors.New("addRuleRequest not implemented")
 }
 
-func addOwnerRequest(conn net.Conn, resourcename string) error {
+func addOwnerRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string) error {
 	return errors.New("addOwnerRequest not implemented")
 }
 
-func deleteOwnerRequest(conn net.Conn, resourcename string) error {
+func deleteOwnerRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string) error {
 	return errors.New("deleteOwnerRequest not implemented")
 }
 
 // first return value is terminate flag
-func (m *ResourceMaster) HandleServiceRequest(conn net.Conn, request []byte) (bool, error) {
+func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []byte) (bool, error) {
 	fmt.Printf("filehandler: HandleServiceRequest\n")
 	subject, action, resourcename, owner, err:= DecodeRequest(request)
 	if(err!=nil) {
 		return false, err
 	}
-	fmt.Printf("HandleServiceRequest: subject: %d, action: %s, resource: %s\n",
-		subject, action, resourcename)
+	fmt.Printf("HandleServiceRequest\n")
+	PrintRequest(subject, action, resourcename, owner)
 
 	// is it authorized?
 	ok:= true; // TODO: m.guard.IsAuthorized(subject, action, resourcename) 
@@ -401,28 +474,31 @@ func (m *ResourceMaster) HandleServiceRequest(conn net.Conn, request []byte) (bo
 		status:= "failed"
 		message:= "unauthorized"
 		size:= 10  // TODO: fix
-		sendResponse(conn, status, message, size);
+		SendResponse(ms, status, message, size);
 		return  false, errors.New("unauthorized")
 	}
 
 	if(*action=="create") {
-		err:= createRequest(conn, *resourcename, *owner)
+		if(resourcename==nil || owner==nil) {
+			return false, errors.New("Nil parameters for createRequest")
+		}
+		err:= createRequest(m, ms, *resourcename, *owner)
 		return false, err
 	} else if(*action=="delete") {
-		err:= deleteRequest(conn, *resourcename)
+		err:= deleteRequest(m, ms, *resourcename)
 		return false, err
 	} else if(*action=="read") {
-		err:= readRequest(conn, *resourcename)
+		err:= readRequest(m, ms, *resourcename)
 		return false, err
 	} else if(*action=="write") {
-		err:= writeRequest(conn, *resourcename)
+		err:= writeRequest(m, ms, *resourcename)
 		return false, err
 	} else if(*action=="terminate") {
 		return  true, nil
 	} else {
 		status:= "failed"
 		message:= "unsupported action"
-		sendResponse(conn, status, message, 0);
+		SendResponse(ms, status, message, 0);
 		return  false, errors.New("unsupported action")
 	}
 }

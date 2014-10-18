@@ -82,9 +82,9 @@ func (m *ResourceMaster) Insert(path string, resourcename string, owner string) 
 	return &m.resourceArray[n], nil
 }
 
-// return: type, subject, action, resource, owner, status, message, size_buf, buf, error
+// return: type, subject, action, resource, owner, status, message, size, buf, error
 func DecodeMessage(in []byte) (*int, *string,  *string, *string, *string,
-		      *string, *string,  *int,  *[]byte, error) {
+		      *string, *string,  *int,  []byte, error) {
 			      fmt.Printf("filehandler: DecodeMessage\n")
 	var the_type32 *int32
 	var the_type int
@@ -94,8 +94,8 @@ func DecodeMessage(in []byte) (*int, *string,  *string, *string, *string,
 	var owner *string
 	var status *string
 	var message *string
-	var size_buf *int
-	var buf *[]byte
+	var size *int
+	var buf []byte
 
 	the_type= -1
 	the_type32= nil
@@ -105,14 +105,14 @@ func DecodeMessage(in []byte) (*int, *string,  *string, *string, *string,
 	owner= nil
 	status= nil
 	message= nil
-	size_buf= nil
+	size= nil
 	buf= nil
 
 	fpMessage:= new(FPMessage)
 	err:= proto.Unmarshal(in, fpMessage)
 	the_type32= fpMessage.MessageType
 	if(the_type32==nil) {
-		return &the_type, subject, action, resource, owner, status, message, size_buf, buf,
+		return &the_type, subject, action, resource, owner, status, message, size, buf,
 		       errors.New("No type")
 	}
 	the_type= int(*the_type32)
@@ -121,7 +121,7 @@ func DecodeMessage(in []byte) (*int, *string,  *string, *string, *string,
 		action= fpMessage.ActionName
 		resource= fpMessage.ResourceName
 		owner=  fpMessage.ResourceOwner
-		return &the_type, subject, action, resource, owner, status, message, size_buf, buf, err
+		return &the_type, subject, action, resource, owner, status, message, size, buf, err
 	} else if (the_type==int(MessageType_RESPONSE)) {
 		if(fpMessage.StatusOfRequest!=nil) {
 			status= fpMessage.StatusOfRequest
@@ -129,17 +129,19 @@ func DecodeMessage(in []byte) (*int, *string,  *string, *string, *string,
 		if(fpMessage.MessageFromRequest!=nil) {
 			message= fpMessage.MessageFromRequest
 		}
-		return &the_type, subject, action, resource, owner, status, message, size_buf, buf, err
+		return &the_type, subject, action, resource, owner, status, message, size, buf, err
 	} else if (the_type==int(MessageType_FILE_NEXT) || the_type==int(MessageType_FILE_LAST)) {
 		size32:= *fpMessage.BufferSize
 		size1:= int(size32)
-		buffer:= fpMessage.TheBuffer
-		buf:= &buffer
-		return &the_type, subject, action, resource, owner, status, message, &size1, buf, nil
+		size= &size1
+		str:= fpMessage.TheBuffer
+		buf= []byte(*str)
+	return &the_type, subject, action, resource, owner, status, message, size, buf, nil
+	} else {
+		fmt.Printf("Decode message bad message type %d\n", the_type)
+		return &the_type, subject, action, resource, owner, status, message, size, buf,
+			errors.New("Unknown message type")
 	}
-	fmt.Printf("Decode message bad message type %d\n", the_type)
-	return &the_type, subject, action, resource, owner, status, message, size_buf, buf,
-		errors.New("Unknown message type")
 }
 
 func EncodeMessage(theType int, subject *string,  action *string, resourcename *string, owner *string,
@@ -156,9 +158,9 @@ func EncodeMessage(theType int, subject *string,  action *string, resourcename *
 	} else if (theType==int(MessageType_RESPONSE)) {
 		protoMessage.StatusOfRequest= proto.String(*status)
 		protoMessage.MessageFromRequest= proto.String(*reqMessage)
-	} else if ( theType==int(MessageType_FILE_NEXT) || theType==int(MessageType_FILE_LAST)) {
+	} else if (theType==int(MessageType_FILE_NEXT) || theType==int(MessageType_FILE_LAST)) {
 		protoMessage.BufferSize= proto.Int(*size)
-		//Fix: protoMessage.TheBuffer= proto.Bytes(buf)
+		protoMessage.TheBuffer= proto.String(string(buf))
 	} else {
 		fmt.Print("EncodeMessage, Bad message type: %d\n", theType);
 		return nil, errors.New("encodemessage, unknown message type\n")

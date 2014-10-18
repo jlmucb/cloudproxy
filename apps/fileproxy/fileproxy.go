@@ -344,6 +344,7 @@ func GetFile(ms *util.MessageStream, path string, filename string, keys []byte) 
 	theType, _, _, _, _, _, _, size_buf, buf, 
 			err:= DecodeMessage([]byte(in))
 	fmt.Printf("GetFile buffer size: %d\n",  *size_buf)
+	fmt.Printf("GetFile buffer size 2: %d\n",  len(buf))
 	if(err!=nil) {
 		fmt.Printf("GetFile cant decode message ", err)
 		fmt.Printf("\n")
@@ -357,7 +358,7 @@ func GetFile(ms *util.MessageStream, path string, filename string, keys []byte) 
 		fmt.Printf("GetFile expecting message last\n")
 		return errors.New("reception error")
 	}
-	return ioutil.WriteFile(path+filename, *buf, os.ModePerm)
+	return ioutil.WriteFile(path+filename, buf, os.ModePerm)
 }
 
 func SendSendFile(ms *util.MessageStream, creds []byte, filename string) error {

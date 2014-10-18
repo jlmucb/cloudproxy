@@ -135,8 +135,7 @@ func DecodeMessage(in []byte) (*int, *string,  *string, *string, *string,
 		size1:= int(size32)
 		buffer:= fpMessage.TheBuffer
 		buf:= &buffer
-		return &the_type, subject, action, resource, owner, status, message, &size1, buf,
-			errors.New("No type")
+		return &the_type, subject, action, resource, owner, status, message, &size1, buf, nil
 	}
 	fmt.Printf("Decode message bad message type %d\n", the_type)
 	return &the_type, subject, action, resource, owner, status, message, size_buf, buf,

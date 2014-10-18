@@ -311,41 +311,87 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte, delega
 	return k, err
 }
 
-func SendFile(ms *util.MessageStream, creds []byte, filename string, keys []byte) error {
-	// creat the file
-	// for each block {
-	//	read block
-	// 	decode message block
-	//	encrypt block
-	// 	send block
-	// 	if last block
-	//		break
-	// }
-	return errors.New("fileproxy: SendFile request not implemented")
-}
-
-/*
-func EstablishPeerChannel(t tao.Tao, address string, guard *tao.Guard, verifier *tao.Verifier, signingKey *tao.Keys) (net.Conn, error) {
-	conn, err:= taonet.DialWithKeys("tcp", address, *guard, verifier, signingKey)
+func SendFile(ms *util.MessageStream, path string, filename string, keys []byte) error {
+	fmt.Printf("SendFile %s%s\n", path, filename)
+	// TODO: later read incrementally and send multiple blocks
+	contents, err:= ioutil.ReadFile(path+filename)
 	if(err!=nil) {
-		return nil, err
+		fmt.Printf("SendFile error reading file %s, ", path+filename, err)
+		fmt.Printf("\n")
+		return errors.New("fileproxy: SendFile no such file")
 	}
-	return conn, nil
+	n:= len(contents)
+	size:= n
+	out,err:= EncodeMessage(int(MessageType_FILE_LAST), nil,  nil, &filename, nil,
+	                   nil, nil, &size, contents)
+	if(err!=nil) {
+		fmt.Printf("SendFile cant encode message\n")
+		return errors.New("transmission error")
+	}
+	_,_= ms.WriteString(string(out))
+	return nil
 }
-*/
 
-func GetFile(ms *util.MessageStream, creds []byte, filename string, keys []byte) error {
-	// open the file
-	// for each block {
-	// 	read block from file
-	//	decrypt block
-	//	if last-block
-	// 		encode block in message, file-end message
-	//	else
-	//		encode block in message, next_block
-	// 	send block
-	// }
-	return errors.New("GetFile request not implemented")
+func GetFile(ms *util.MessageStream, path string, filename string, keys []byte) error {
+	fmt.Printf("GetFile %s%s\n", path, filename)
+	in,err:= ms.ReadString();
+	if(err!=nil) {
+		fmt.Printf("GetFile cant readstring ", err)
+		fmt.Printf("\n")
+		return errors.New("reception error")
+	}
+	theType, _, _, _, _, _, _, size_buf, buf, 
+			err:= DecodeMessage([]byte(in))
+	fmt.Printf("GetFile buffer size: %d\n",  *size_buf)
+	if(err!=nil) {
+		fmt.Printf("GetFile cant decode message\n")
+		return errors.New("reception error")
+	}
+	if(theType==nil) {
+		fmt.Printf("GetFile bad type\n")
+		return errors.New("reception error")
+	}
+	if(*theType!=int(MessageType_FILE_LAST)) {
+		fmt.Printf("GetFile expecting message last\n")
+		return errors.New("reception error")
+	}
+	return ioutil.WriteFile(path+filename, *buf, os.ModePerm)
+}
+
+func SendSendFile(ms *util.MessageStream, creds []byte, filename string) error {
+	fmt.Printf("SendSendFile, filename: %s\n",  filename)
+	subject:= "jlm"
+	action:= "sendfile"
+	owner:= "jlm"
+	message, err:= EncodeMessage(1, &subject,  &action, &filename, &owner,
+	                   nil, nil, nil, nil)
+	if(err!=nil)  {
+		fmt.Printf("SendSendFile couldnt build request\n")
+		return errors.New("SendSendFile can't build request")
+	}
+	fmt.Printf("SendSendrequest %d, ", len(message))
+	fmt.Printf("\n")
+	written,_:= ms.WriteString(string(message))
+	fmt.Printf("Bytes written %d\n", written)
+	return nil
+}
+
+func SendGetFile(ms *util.MessageStream, creds []byte, filename string) error {
+	fmt.Printf("SendGetFile, filename: %s\n",  filename)
+	subject:= "jlm"
+	action:= "getfile"
+	owner:= "jlm"
+	message, err:= EncodeMessage(1, &subject,  &action, &filename, &owner,
+	                   nil, nil, nil, nil)
+	if(err!=nil)  {
+		fmt.Printf("SendGetFile couldnt build request\n")
+		return errors.New("SendGetFile can't build request")
+	}
+	fmt.Printf("SendGetrequest %d, ", len(message))
+	fmt.Printf("\n")
+	written,_:= ms.WriteString(string(message))
+	fmt.Printf("Bytes written %d\n", written)
+	return nil
 }
 
 func SendCreateFile(ms *util.MessageStream, creds []byte, filename string) error {

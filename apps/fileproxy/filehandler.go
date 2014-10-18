@@ -376,7 +376,7 @@ func GetResponse(ms *util.MessageStream) (*string, *string, *int, error) {
 	} else{
 		fmt.Printf("DecodeMessage in getresponse returned %s (status)\n", *status)
 	}
-	fmt.Printf("GetResponse \n", len(strbytes))
+	fmt.Printf("GetResponse %d\n", len(strbytes))
 	if(*theType!=int(MessageType_RESPONSE)) {
 		return nil, nil, nil, errors.New("Wrong message type")
 	}
@@ -416,22 +416,26 @@ func SendResponse(ms *util.MessageStream, status string, message string, size in
 
 func readRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string) error {
 	fmt.Printf("filehandler: readRequest\n")
-	// is it here?
-	// get size and file name
+	rInfo, _:= m.Find(resourcename)
+	if(rInfo==nil) {
+		SendResponse(ms, "failed", "resource does not exist", 0)
+		return nil
+	}
 	status:= "succeeded"
 	SendResponse(ms, status, "", 0)
-	//TODO: SendFile(ms, resourcename, size, SymKeys)
-	return nil
+	return SendFile(ms, m.baseDirectory, resourcename, nil)
 }
 
 func writeRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string) error {
 	fmt.Printf("filehandler: writeRequest\n")
-	// is it here?
-	// get size and file name
+	rInfo, _:= m.Find(resourcename)
+	if(rInfo==nil) {
+		SendResponse(ms, "failed", "resource does not exist", 0)
+		return nil
+	}
 	status:= "succeeded"
 	SendResponse(ms, status, "", 0)
-	// TODO: GetFile(ms, resourcename, size, SymKeys)
-	return nil
+	return GetFile(ms, m.baseDirectory, resourcename, nil)
 }
 
 func createRequest(m *ResourceMaster, ms *util.MessageStream,
@@ -499,10 +503,10 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []
 	} else if(*action=="delete") {
 		err:= deleteRequest(m, ms, *resourcename)
 		return false, err
-	} else if(*action=="read") {
+	} else if(*action=="getfile") {
 		err:= readRequest(m, ms, *resourcename)
 		return false, err
-	} else if(*action=="write") {
+	} else if(*action=="sendfile") {
 		err:= writeRequest(m, ms, *resourcename)
 		return false, err
 	} else if(*action=="terminate") {
@@ -515,10 +519,11 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []
 	}
 }
 
-func (m *ResourceMaster) InitMaster(masterInfoDir string, prin string)  error {
+func (m *ResourceMaster) InitMaster(filepath string, masterInfoDir string, prin string)  error {
 	fmt.Printf("filehandler: InitMaster\n")
 	m.GetResourceData(masterInfoDir+"masterinfo",  masterInfoDir+"resources")
 	m.NumResources= 0;
+	m.baseDirectory= filepath
 	m.InitGuard(masterInfoDir+"rules")
 	return nil
 }

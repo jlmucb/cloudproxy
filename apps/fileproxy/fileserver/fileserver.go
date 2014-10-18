@@ -34,8 +34,10 @@ var hostcfg= flag.String("../hostdomain/tao.config", "../hostdomain/tao.config",
 var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
 var fileserverPath= flag.String("./fileserver_files/", "./fileserver_files/", "fileserver directory")
+var fileserverFilePath= flag.String("./fileserver_files/stored_files/", "./fileserver_files/stored_files/", 
+				"fileserver directory")
 var serverAddr string
-var testFile= flag.String("stored_files/originalTestFile", "stored_files/originalTestFile", "test file")
+var testFile= flag.String("originalTestFile", "originalTestFile", "test file")
 
 var SigningKey tao.Keys
 var SymKeys  []byte
@@ -103,7 +105,7 @@ func server(serverAddr string, prin string) {
 
 
 	fileserverResourceMaster= new(fileproxy.ResourceMaster)
-	err:= fileserverResourceMaster.InitMaster(*fileserverPath, prin)
+	err:= fileserverResourceMaster.InitMaster(*fileserverFilePath ,*fileserverPath, prin)
 	if(err!=nil) {
 		fmt.Printf("fileserver: can't InitMaster\n")
 		return

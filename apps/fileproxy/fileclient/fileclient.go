@@ -46,8 +46,9 @@ var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
 var fileclientPath= flag.String("./fileclient_files/", "./fileclient_files/", "fileclient directory")
 var serverAddr string
-var testFilePath= flag.String("stored_files/", "stored_files/", "file path")
-var testFile= flag.String("stored_files/originalTestFile", "stored_files/originalTestFile", "test file")
+var fileclientFilePath= flag.String("./fileclient_files/stored_files/", "./fileclient_files/stored_files/", 
+				"fileclient file directory")
+var testFile= flag.String("originalTestFile", "originalTestFile", "test file")
 
 var SigningKey tao.Keys
 var SymKeys  []byte
@@ -186,7 +187,7 @@ func main() {
 	ms := util.NewMessageStream(conn);
 	fmt.Printf("Established channel\n")
 	// create a file
-	sentFileName:= *fileclientPath+*testFile
+	sentFileName:= *testFile
 	fmt.Printf("fileclient, Creating: %s\n", sentFileName)
 	err= fileproxy.SendCreateFile(ms, creds, sentFileName);
 	if err != nil {
@@ -201,17 +202,59 @@ func main() {
 	}
 	fmt.Printf("Response to SendCreate\n")
 	fileproxy.PrintResponse(status, message, size)
-	return
-	fmt.Printf("fileclient: Sending: %s\n", sentFileName)
-	err= fileproxy.SendFile(ms, creds, sentFileName, nil);
-	if err != nil {
-		fmt.Printf("fileclient: cant send file\n")
+	if(*status!="succeeded") {
 		return
 	}
-	fmt.Printf("fileclient: Getting: %s\n", sentFileName+".received")
-	err= fileproxy.GetFile(ms, creds, sentFileName, nil);
+
+	// Send File
+	fmt.Printf("\nfileclient sending file %s\n", sentFileName)
+	err= fileproxy.SendSendFile(ms, nil, sentFileName)
+	if(err!=nil) {
+		fmt.Printf("fileclient: SendSendFile has error\n")
+		return
+	}
+
+	status, message, size, err= fileproxy.GetResponse(ms);
+	if(err!=nil) {
+		fmt.Printf("Error in response to SendSend\n")
+		return
+	}
+	fmt.Printf("Response to SendSend\n")
+	fileproxy.PrintResponse(status, message, size)
+	if(*status!="succeeded") {
+		return
+	}
+
+	err= fileproxy.SendFile(ms, *fileclientFilePath, sentFileName, nil)
+	if(err!=nil) {
+		fmt.Printf("Error in response to SendFile ", err)
+		fmt.Printf("\n")
+		return
+	}
+
+	// Get file
+	fmt.Printf("\nfileclient getting file %s\n", sentFileName)
+	err= fileproxy.SendGetFile(ms, nil, sentFileName)
+	if(err!=nil) {
+		fmt.Printf("fileclient: SendGetFile has error\n")
+		return
+	}
+
+	status, message, size, err= fileproxy.GetResponse(ms);
+	if(err!=nil) {
+		fmt.Printf("Error in response to GetFile\n")
+		return
+	}
+	fmt.Printf("Response to SendGet\n")
+	fileproxy.PrintResponse(status, message, size)
+	if(*status!="succeeded") {
+		return
+	}
+
+	err= fileproxy.GetFile(ms, *fileclientFilePath, sentFileName+".received", nil);
 	if err != nil {
-		fmt.Printf("fileclient: cant send file\n")
+		fmt.Printf("fileclient: cant get file ", err)
+		fmt.Printf("\n")
 		return
 	}
 	fmt.Printf("fileclient: Done\n")

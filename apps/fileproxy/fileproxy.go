@@ -322,6 +322,7 @@ func SendFile(ms *util.MessageStream, path string, filename string, keys []byte)
 	}
 	n:= len(contents)
 	size:= n
+	fmt.Printf("SendFile contents % x\n", contents)
 	out,err:= EncodeMessage(int(MessageType_FILE_LAST), nil,  nil, &filename, nil,
 	                   nil, nil, &size, contents)
 	if(err!=nil) {
@@ -344,7 +345,8 @@ func GetFile(ms *util.MessageStream, path string, filename string, keys []byte) 
 			err:= DecodeMessage([]byte(in))
 	fmt.Printf("GetFile buffer size: %d\n",  *size_buf)
 	if(err!=nil) {
-		fmt.Printf("GetFile cant decode message\n")
+		fmt.Printf("GetFile cant decode message ", err)
+		fmt.Printf("\n")
 		return errors.New("reception error")
 	}
 	if(theType==nil) {

@@ -19,15 +19,16 @@ package main
 import (
 	"flag"
 	"fmt"
-	// "crypto/tls"
-	// "crypto/x509"
+	"crypto/tls"
+	"crypto/x509"
 	"net"
 
+	"io/ioutil"
 	tao "github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	"github.com/jlmucb/cloudproxy/apps/fileproxy"
 	"github.com/jlmucb/cloudproxy/util"
-	// taonet "github.com/jlmucb/cloudproxy/tao/net"
+	taonet "github.com/jlmucb/cloudproxy/tao/net"
 )
 
 var hostcfg= flag.String("../hostdomain/tao.config", "../hostdomain/tao.config",  "path to host tao configuration")
@@ -91,27 +92,24 @@ func clientServiceThead(ms *util.MessageStream, fileGuard tao.Guard) {
 	fmt.Printf("fileserver: client thread terminating\n")
 }
 
-func server(serverAddr string, prin string) {
+func server(serverAddr string, prin string, derPolicyCert []byte) {
 	var sock net.Listener
 	fmt.Printf("fileserver: server\n")
-	// construct nego guard
-	/*
-	connectionGuard, err:= newTempCAGuard()
-	if(err!=nil) {
-		fmt.Printf("server: can't create connection guard\n")
-		return
-	}
-	*/
-
 
 	fileserverResourceMaster= new(fileproxy.ResourceMaster)
-	err:= fileserverResourceMaster.InitMaster(*fileserverFilePath ,*fileserverPath, prin)
+	err:= fileserverResourceMaster.InitMaster(*fileserverFilePath, *fileserverPath, prin)
 	if(err!=nil) {
 		fmt.Printf("fileserver: can't InitMaster\n")
 		return
 	}
 
-	/*
+	policyCert, err:= x509.ParseCertificate(derPolicyCert)
+	if(err!=nil) {
+		fmt.Printf("fileserver: can't ParseCertificate\n")
+		return
+	}
+	pool:=  x509.NewCertPool()
+	pool.AddCert(policyCert)
 	tlsc, err := taonet.EncodeTLSCert(&SigningKey)
 	if err != nil {
 		fmt.Printf("fileserver, encode error: ", err)
@@ -119,17 +117,14 @@ func server(serverAddr string, prin string) {
 		return
 	}
 	conf := &tls.Config{
-		RootCAs:            x509.NewCertPool(),
+		RootCAs:            pool,
 		Certificates:       []tls.Certificate{*tlsc},
-		InsecureSkipVerify: true,
+		InsecureSkipVerify: false, //true,
 		ClientAuth:         tls.RequireAnyClientCert,
 	}
-	v:= SigningKey.VerifyingKey
-	 */
 	fmt.Printf("Listenting\n")
-	// sock, err = taonet.Listen("tcp", serverAddr, conf, connectionGuard, v, SigningKey.Delegation)
-	// sock, err = tls.Listen("tcp", serverAddr, conf)
-	sock, err = net.Listen("tcp", serverAddr)
+	sock, err = tls.Listen("tcp", serverAddr, conf)
+	// sock, err = net.Listen("tcp", serverAddr)
 	if(err!=nil) {
 		fmt.Printf("fileserver, listen error: ", err)
 		fmt.Printf("\n")
@@ -216,7 +211,15 @@ func main() {
 		ProgramCert= SigningKey.Cert.Raw
 	}
 	taoName:= myTaoName.String()
-	server(serverAddr, taoName)
+	// TODO: check against name?
+	derPolicyPath:= hostDomain.Config.Domain.PolicyKeysPath
+	derPolicyCert,err:= ioutil.ReadFile(derPolicyPath+"/cert")
+	if err != nil {
+		fmt.Printf("can't read policy cert\n")
+		return
+	}
+
+	server(serverAddr, taoName, derPolicyCert)
 	if(err!=nil) {
 		fmt.Printf("fileserver: server error\n")
 	}

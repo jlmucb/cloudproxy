@@ -145,8 +145,7 @@ func (lh *LinuxHost) Seal(child *LinuxHostChild, data []byte, policy string) ([]
 	}
 
 	switch policy {
-	case SharedSecretPolicyDefault:
-	case SharedSecretPolicyConservative:
+	case SharedSecretPolicyDefault, SharedSecretPolicyConservative:
 		// We are using a master key-deriving key shared among all
 		// similar LinuxHost instances. For LinuxHost, the default
 		// and conservative policies means any process running the same
@@ -189,8 +188,7 @@ func (lh *LinuxHost) Unseal(child *LinuxHostChild, sealed []byte) ([]byte, strin
 
 	policy := *lhsb.Policy
 	switch policy {
-	case SharedSecretPolicyDefault:
-	case SharedSecretPolicyConservative:
+	case SharedSecretPolicyConservative, SharedSecretPolicyDefault:
 		if lhsb.PolicyInfo == nil || child.ChildSubprin.String() != *lhsb.PolicyInfo {
 			return nil, "", newError("principal not authorized for unseal")
 		}
@@ -200,7 +198,6 @@ func (lh *LinuxHost) Unseal(child *LinuxHostChild, sealed []byte) ([]byte, strin
 	default:
 		return nil, "", newError("policy not supported for Unseal: " + policy)
 	}
-
 	return lhsb.Data, policy, nil
 }
 

@@ -116,6 +116,7 @@ func main() {
 		fmt.Printf("fileclient: No key material present\n")
 	}
 	ProgramCert= derCert
+	fmt.Printf("Finished fileproxy.GetMyCryptoMaterial\n");
 
 	defer fileproxy.ZeroBytes(SymKeys)
 	if(sealedSymmetricKey!=nil) {

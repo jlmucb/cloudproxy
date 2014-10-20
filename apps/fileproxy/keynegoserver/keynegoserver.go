@@ -99,7 +99,8 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys,guard tao.Guard) (bool, e
 	details:= tao.X509Details {
 		Country: "US",
 		Organization: "Google",
-		CommonName: subjectnamestr, }
+		OrganizationalUnit: subjectnamestr,
+		CommonName: "localhost", }
 	subjectname:= tao.NewX509Name(details)
 	SerialNumber= SerialNumber+1
 	template := &x509.Certificate{
@@ -111,7 +112,7 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys,guard tao.Guard) (bool, e
 		Subject:      *subjectname,
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(1 /* years */, 0 /* months */, 0 /* days */),
-		KeyUsage:    x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,
+		KeyUsage:    x509.KeyUsageKeyAgreement,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		}
 	verifier,err:= tao.FromPrincipal(kprin)

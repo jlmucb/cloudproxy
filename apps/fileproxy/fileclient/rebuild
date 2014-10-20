@@ -2,4 +2,6 @@
 echo "rebuilding fileproxy"
 cd ..
 go build ...
+cd fileclient
+go build fileclient.go
 echo "done"

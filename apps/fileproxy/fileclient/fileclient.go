@@ -19,19 +19,19 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net"
+	//"net"
 
 	tao "github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	"github.com/jlmucb/cloudproxy/apps/fileproxy"
 	"github.com/jlmucb/cloudproxy/util"
 
-	// taonet "github.com/jlmucb/cloudproxy/tao/net"
-	// "crypto/x509"
-	// "crypto/tls"
+	taonet "github.com/jlmucb/cloudproxy/tao/net"
+	"crypto/x509"
+	"crypto/tls"
 	//"errors"
 	//"time"
-	//"io/ioutil"
+	"io/ioutil"
 	//"code.google.com/p/goprotobuf/proto"
 	//"os"
 	//"bufio"
@@ -91,7 +91,13 @@ func main() {
 	if err != nil {
 		return
 	}
-	fmt.Printf("fileclient: Domain name: %s\n", hostDomain.ConfigPath)
+	derPolicyPath:= hostDomain.Config.Domain.PolicyKeysPath
+	// TODO: check against name?
+	derPolicyCert,err:= ioutil.ReadFile(derPolicyPath+"/cert")
+	if err != nil {
+		fmt.Printf("can't read policy cert\n")
+		return
+	}
 
 	e := auth.PrinExt{Name: "fileclient_version_1",}
 	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
@@ -151,6 +157,14 @@ func main() {
 
 	var  creds []byte
 	creds= []byte("I am a fake cred")
+	policyCert, err:= x509.ParseCertificate(derPolicyCert)
+	if(err!=nil) {
+		fmt.Printf("fileclient:cant ParseCertificate\n")
+		return;
+	}
+	pool:=  x509.NewCertPool()
+	pool.AddCert(policyCert)
+
 	/*
 	guard, err:= newTempCAGuard()
 	if(err!=nil) {
@@ -161,6 +175,7 @@ func main() {
 		fmt.Printf("fileclient: guard is nil\n");
 	}
 	conn, err:= taonet.DialTLSWithKeys("tcp", serverAddr, &SigningKey)
+	 */
 	tlsc, err := taonet.EncodeTLSCert(&SigningKey)
 	if err != nil {
 		fmt.Printf("fileserver, encode error: ", err)
@@ -168,22 +183,23 @@ func main() {
 		return
 	}
 	conn, err := tls.Dial("tcp", serverAddr, &tls.Config{
-		RootCAs:            x509.NewCertPool(),
+		RootCAs:            pool,
 		Certificates:       []tls.Certificate{*tlsc},
-		InsecureSkipVerify: true,
+		InsecureSkipVerify: false, // true,
 	})
 	if(err!=nil) {
 		fmt.Printf("fileclient:cant establish channel\n", err)
 		fmt.Printf("\n")
 		return;
 	}
-	*/
+	/*
 	conn, err := net.Dial("tcp", serverAddr)
 	if(err!=nil) {
 		fmt.Printf("fileclient:cant establish channel\n", err)
 		fmt.Printf("\n")
 		return;
 	}
+	*/
 	ms := util.NewMessageStream(conn);
 	fmt.Printf("Established channel\n")
 	// create a file

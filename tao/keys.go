@@ -126,7 +126,7 @@ func UnmarshalSignerDER(signer []byte) (*Signer, error) {
 // X509Details is a simplified version of pkix.Name, suitable for most purposes.
 // All of the fields are optional.
 type X509Details struct {
-	CommonName, Country, State, Organization string
+	CommonName, Country, State, Organization, OrganizationalUnit string
 }
 
 // NewX509Name returns a new pkix.Name.
@@ -134,6 +134,7 @@ func NewX509Name(p X509Details) *pkix.Name {
 	return &pkix.Name{
 		Country:      []string{string(p.Country)},
 		Organization: []string{string(p.Organization)},
+		OrganizationalUnit:[]string{string(p.OrganizationalUnit)},
 		Province:     []string{string(p.State)},
 		CommonName:   string(p.CommonName),
 	}
@@ -159,6 +160,7 @@ func prepareX509Template(subjectName *pkix.Name) *x509.Certificate {
 
 func (s *Signer) CreateSelfSignedDER(name *pkix.Name) ([]byte, error) {
 	template := prepareX509Template(name)
+	template.BasicConstraintsValid= true
 	template.IsCA = true
 	template.Issuer = template.Subject
 	der, err := x509.CreateCertificate(rand.Reader, template, template, &s.ec.PublicKey, s.ec)
@@ -173,6 +175,7 @@ func (s *Signer) CreateSelfSignedDER(name *pkix.Name) ([]byte, error) {
 func (s *Signer) CreateSelfSignedX509(name *pkix.Name) (*x509.Certificate, error) {
 	template := prepareX509Template(name)
 	template.IsCA = true
+	template.BasicConstraintsValid= true
 	template.Issuer = template.Subject
 
 	der, err := x509.CreateCertificate(rand.Reader, template, template, &s.ec.PublicKey, s.ec)

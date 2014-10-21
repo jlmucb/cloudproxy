@@ -384,7 +384,7 @@ func SendGetFile(ms *util.MessageStream, creds []byte, filename string) error {
 	subject:= "jlm"
 	action:= "getfile"
 	owner:= "jlm"
-	message, err:= EncodeMessage(1, &subject,  &action, &filename, &owner,
+	message, err:= EncodeMessage(int(MessageType_REQUEST), &subject,  &action, &filename, &owner,
 	                   nil, nil, nil, nil)
 	if(err!=nil)  {
 		fmt.Printf("SendGetFile couldnt build request\n")
@@ -402,7 +402,7 @@ func SendCreateFile(ms *util.MessageStream, creds []byte, filename string) error
 	subject:= "jlm"
 	action:= "create"
 	owner:= "jlm"
-	message, err:= EncodeMessage(1, &subject,  &action, &filename, &owner,
+	message, err:= EncodeMessage(int(MessageType_REQUEST), &subject,  &action, &filename, &owner,
 	                   nil, nil, nil, nil)
 	if(err!=nil)  {
 		fmt.Printf("SendCreateFile couldnt build request\n")

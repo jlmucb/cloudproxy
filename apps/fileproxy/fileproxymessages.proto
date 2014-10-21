@@ -19,6 +19,7 @@ enum MessageType {
    RESPONSE = 2;
    FILE_NEXT = 3;
    FILE_LAST = 4;
+   PROTOCOL_RESPONSE= 5;
  }
 
 message FPMessage {

@@ -22,6 +22,7 @@ import (
 	"code.google.com/p/goprotobuf/proto"
 	 tao "github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/util"
+	"crypto/x509"
 	//"flag"
 	//"os"
 	// "github.com/jlmucb/cloudproxy/tao/auth"
@@ -29,7 +30,6 @@ import (
 )
 
 // Resource types: files, channels
-
 type ResourceInfo struct {
 	resourceName		string
 	resourceType		string
@@ -43,6 +43,11 @@ type ResourceInfo struct {
 	authenticator		[][]byte
 }
 
+type Principal struct {
+	name	string;
+	der	[]byte;
+}
+
 
 type ResourceMaster struct {
 	program		string
@@ -50,8 +55,114 @@ type ResourceMaster struct {
 	baseDirectory	string
 	NumResources	int;
 	resourceArray	[100]ResourceInfo
+	NumPrincipals	int;
+	principalArray	[100]Principal
 	// Rules
 };
+
+// Policy for managing files in the fileserver.
+var policy = []string{
+	// Fileserver owns everything.
+	"forall FS: forall R: FileServer(FS) and Resource(R) implies Owner(FS, R)",
+	// Creators are owners.
+	"forall C: forall R: Creator(C, R) implies Owner(C, R)",
+	// Owners can perform all actions and make all delegations.
+	"forall O: forall A: forall R: Owner(O, R) and Resource(R) and Action(A) implies Authorized(O, \"delegate\", A, R)",
+	"forall O: forall A: forall R: Owner(O, R) and Resource(R) and Action(A) implies Authorized(O, A, R)",
+	// Principals have namespaces where they can create things.
+	// The guard needs to understand that Authorized(P, "create-subdir",
+	// path) means that P can create a path with its name underneath (or
+	// something like the hash of its name).
+	"forall P: Authorized(P, \"execute\") implies Authorized(P, \"create-subdir\", \"/principals\")",
+	// Basic Delegation.
+	"forall U1: forall U2: forall R: forall A: Authorized(U1, \"delegate\", A, R) and Delegate(U1, U2, A, R) implies Authorized(U2, A, R)",
+	// Redelegation.
+	"forall U1: forall U2: forall R: forall A: Authorized(U1, \"delegate\", A, R) and Delegate(U1, U2, \"delegate\", A, R) implies Authorized(U2, \"delegate\", A, R)",
+}
+
+// Some fake additional statements for the purpose of testing the guard.
+var additional_policy = []string{
+	"FileServer(\"fileserver\")",
+	"Action(\"create\")",
+	"Action(\"read\")",
+	"Action(\"write\")",
+	"Action(\"delete\")",
+}
+
+/*
+func try(query, msg string, shouldPass bool, g tao.Guard) {
+	b, err := g.Query(query)
+	if err != nil {
+		log.Fatalf("Couldn't query '%s': %s\n", query, err)
+	}
+
+	if b != shouldPass {
+		log.Fatalln(msg)
+	}
+}
+
+func delegateResource(owner, delegate, op, res string, g tao.Guard) {
+	if err := g.AddRule("Delegate(\"" + owner + "\", \"" + delegate + "\", \"" + op + "\", \"" + res + "\")"); err != nil {
+		log.Fatalf("Couldn't delegate operation '%s' on '%s' from '%s' to '%s': %s\n", op, res, owner, delegate, err)
+	}
+}
+
+func redelegateResource(owner, delegate, op, res string, g tao.Guard) {
+	if err := g.AddRule("Delegate(\"" + owner + "\", \"" + delegate + "\", \"delegate\", \"" + op + "\", \"" + res + "\")"); err != nil {
+		log.Fatalf("Couldn't redelegate operation '%s' on '%s' from '%s' to '%s': %s\n", op, res, owner, delegate, err)
+	}
+}
+*/
+
+func addResource(creator string, resource string, g tao.Guard) error {
+	if err := g.AddRule("Resource(\"" + resource + "\")"); err != nil {
+		return errors.New("Cant add resource in rules\n")
+	}
+	if err := g.AddRule("Creator(\"" + creator + "\", \"" + resource + "\")"); err != nil {
+		return errors.New("Cant add creator in rules\n")
+	}
+	return nil
+}
+
+func PrincipalNameFromDERCert(derCert []byte) *string {
+	cert, err:= x509.ParseCertificate(derCert)
+	if(err!=nil) {
+		fmt.Printf("Cant get name from certificate\n")
+		return nil
+	}
+	cn:= cert.Subject.CommonName
+	return &cn
+}
+
+func makeQuery(subject string,  action string, resource string, owner  string) (*string) {
+	var out string;
+	if(action=="create") {
+		out= "Authorized(\""+subject+"\", \""+action+"\",  \"" + resource +"\")"
+	} else if(action=="read") {
+		out= "Authorized(\""+subject+"\", \""+action+"\", \"" + resource +"\")"
+	} else if(action=="write") {
+		out= "Authorized(\""+subject+"\", \""+action+"\", \"" + resource +"\")"
+	} else {
+		fmt.Printf("makeQuery: unknown action\n");
+		return nil
+	}
+	fmt.Printf("makeQuery: %s\n",  out)
+	return &out 
+}
+
+func (m *ResourceMaster) Query(query string) bool {
+	b, err := m.Guard.Query(query)
+	if err != nil {
+		fmt.Printf("Query: %s generates error %s\n", query, err)
+		return false
+	}
+	if(b) {
+		fmt.Printf("%s succeeds\n", query)
+	} else {
+		fmt.Printf("%s failed\n", query)
+	}
+	return b
+}
 
 func (m *ResourceMaster) Find(resourcename string) (*ResourceInfo, error) {
 	for i:=0; i<m.NumResources; i++ {
@@ -80,6 +191,30 @@ func (m *ResourceMaster) Insert(path string, resourcename string, owner string) 
 	m.resourceArray[n].resourceLocation=  path+resourcename
 	m.resourceArray[n].resourceOwner=  owner
 	return &m.resourceArray[n], nil
+}
+
+func (m *ResourceMaster) FindPrincipal(name string) (*Principal, error) {
+	for i:=0; i<m.NumPrincipals; i++ {
+		 if(m.principalArray[i].name==name) {
+			 return &m.principalArray[i], nil
+		 }
+	}
+	return nil, nil
+}
+
+func (m *ResourceMaster) InsertPrincipal(name string, cert []byte) (*Principal, error) {
+	found, err:=  m.FindPrincipal(name)
+	if(err!=nil) {
+		return nil, err
+	}
+	if(found!=nil) {
+		return found, nil
+	}
+	n:= m.NumPrincipals;
+	m.NumPrincipals= m.NumPrincipals+1
+	m.principalArray[n].name= name
+	m.principalArray[n].der= cert
+	return &m.principalArray[n], nil
 }
 
 // return: type, subject, action, resource, owner, status, message, size, buf, error
@@ -136,7 +271,14 @@ func DecodeMessage(in []byte) (*int, *string,  *string, *string, *string,
 		size= &size1
 		str:= fpMessage.TheBuffer
 		buf= []byte(*str)
-	return &the_type, subject, action, resource, owner, status, message, size, buf, nil
+		return &the_type, subject, action, resource, owner, status, message, size, buf, nil
+	} else if (the_type==int(MessageType_PROTOCOL_RESPONSE)) {
+		size32:= *fpMessage.BufferSize
+		size1:= int(size32)
+		size= &size1
+		str:= fpMessage.TheBuffer
+		buf= []byte(*str)
+		return &the_type, subject, action, resource, owner, status, message, size, buf, nil
 	} else {
 		fmt.Printf("Decode message bad message type %d\n", the_type)
 		return &the_type, subject, action, resource, owner, status, message, size, buf,
@@ -159,6 +301,9 @@ func EncodeMessage(theType int, subject *string,  action *string, resourcename *
 		protoMessage.StatusOfRequest= proto.String(*status)
 		protoMessage.MessageFromRequest= proto.String(*reqMessage)
 	} else if (theType==int(MessageType_FILE_NEXT) || theType==int(MessageType_FILE_LAST)) {
+		protoMessage.BufferSize= proto.Int(*size)
+		protoMessage.TheBuffer= proto.String(string(buf))
+	} else if(theType==int(MessageType_PROTOCOL_RESPONSE)) {
 		protoMessage.BufferSize= proto.Int(*size)
 		protoMessage.TheBuffer= proto.String(string(buf))
 	} else {
@@ -242,45 +387,31 @@ func (m *ResourceMaster) PrintMaster(printResources bool) {
 	}
 }
 
-// Policy
-//	actions are: read, write, create, delete, add-own, delete-own, delegate-read, delegate-write, 
-//		     delegate-create, delegate-delete, delegate-add-own, delegate-delete-own
-//
-//	fileserver owns everything and can add any rule
-//		forall resource: IsPrincipal(fileserver) --> IsOwner(fileserver, resource)
-//		forall rule: IsPrincipal(fileserver) --> CanAddRule(rule)
-//	Creators are owners
-//		forall user, resource: IsCreator(user, resource) --> IsOwner(user, resource)
-//	Owners can perform all actions
-//		forall owner, action, resource: IsOwner(owner, resource) and IsAction(action) -->
-//			Can(action, owner, resource)
-//	Principals have namespace where they can create things
-//		forall name, resourcename: IsPrincipal(name) --> Can(create, /resourcepath/NAME/resourcename)
-//	Basic Delegation
-//		forall user, delegate, resourcename: Can(user, delegate-ACTION, resource) and 
-//			Says(user, delegate, ACTION, resourcename) --> Can(ACTION, delegate, resource)
-//	Redelegation
-//		forall user, delegate, resourcename: Can(user, delegate-ACTION, resource) and 
-//			Says(user, delegate, delegate-ACTION, resourcename) --> 
-//			Can(delegate-ACTION, delegate, resource)
-//	Adding rules:
-//		forall user, delegate-ACTION,resource: Can(user, delegate-ACTION, delegate, resource) --> 
-//			CanAddRule("user says delegate Can(ACTION,user,resource)") and
-//			CanAddRule("user says delegate Can(delegate-ACTION,user,resource)")
-//
-// It might be cleaner to write if you add some custom predicates in datalog to handle the connection between 
-// ACTION and delegate-ACTION, but I believe it can be made to work without that.
-// the auth language already understands delegation, so you shouldn't need to encode it directly in your rules. 
-// It has a says type and it has a speaksfor.  
-// The "Can" predicate is represented in the Guard terminology by Authorized(name, op, args).
-
 func (m *ResourceMaster) InitGuard(rulefile string) error {
 	fmt.Printf("filehandler: InitGuard\n")
-	//fileGuard := tao.NewTemporaryDatalogGuard()
-	// for now, liberal guard
-	g:= tao.LiberalGuard
-	m.Guard=  g
-	// no need for rules
+	m.Guard= tao.NewTemporaryDatalogGuard()
+	for _, r := range policy {
+		if err := m.Guard.AddRule(r); err != nil {
+			return errors.New("Couldn't add rule in InitGuard")
+		}
+	}
+
+	for _, r := range additional_policy {
+		if err := m.Guard.AddRule(r); err != nil {
+			return errors.New("Couldn't add rule in InitGuard")
+		}
+	}
+
+	/*
+	// The FileServer owns the test resource.
+	try("Owner(\"FServer\", \"test\")",
+	    "The FileServer doesn't own the test resource, but it should",
+	    true,
+	    td)
+	   */
+	// Remove this
+	m.Guard= tao.LiberalGuard
+
 	return nil
 }
 
@@ -415,6 +546,49 @@ func SendResponse(ms *util.MessageStream, status string, message string, size in
 	return nil
 }
 
+func SendProtocolMessage(ms *util.MessageStream, size int, buf []byte) error {
+	fmt.Printf("filehandler: SendProtocolMessage\n")
+	out,err:= EncodeMessage(int(MessageType_PROTOCOL_RESPONSE), nil, nil, nil, nil, nil, nil,  &size,  buf)
+	if (err!=nil) {
+		fmt.Printf("EncodeMessage fails in SendProtocolMessage\n")
+		return err
+	}
+	send:= string(out)
+	n, err:= ms.WriteString(send)
+	if(err!=nil) {
+		fmt.Printf("filehandler: SendProtocolMessage Writestring error %d\n", n, err)
+		return err
+	}
+	return nil
+}
+
+func GetProtocolMessage(ms *util.MessageStream) ([]byte, error) {
+	fmt.Printf("filehandler: GetProtocolMessage\n")
+	strbytes,err:= ms.ReadString()
+	if(err!=nil) {
+		return nil, err
+	}
+	fmt.Printf("GetProtocolMessage read %d bytes\n", len(strbytes))
+	theType, _, _, _, _, _, _, _, out, err:= DecodeMessage([]byte(strbytes))
+	if (err!=nil) {
+		fmt.Printf("DecodeMessage error in GetProtocolMessage\n")
+		return  nil, err
+	}
+	if(*theType!=int(MessageType_PROTOCOL_RESPONSE)) {
+		return nil, errors.New("Wrong message type")
+	}
+	return out, nil
+}
+
+func AuthenticatePrincipal(m *ResourceMaster, ms *util.MessageStream, owner string) bool {
+	// send nonce
+	// SendProtocolMessage(ms *util.MessageStream, size int, buf []byte)
+	// decrypt nonce
+	// GetProtocolMessage(ms *util.MessageStream)
+	// remove: for now, just add string
+	return true;
+}
+
 func readRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string) error {
 	fmt.Printf("filehandler: readRequest\n")
 	rInfo, _:= m.Find(resourcename)
@@ -447,6 +621,7 @@ func createRequest(m *ResourceMaster, ms *util.MessageStream,
 		SendResponse(ms, "failed", "resource exists", 0)
 		return nil
 	}
+	// Is it authorized
 	rInfo, _= m.Insert(m.baseDirectory, resourcename, owner)
 	if(rInfo==nil) {
 		SendResponse(ms, "failed", "cant insert resource", 0)
@@ -455,7 +630,7 @@ func createRequest(m *ResourceMaster, ms *util.MessageStream,
 	rInfo.PrintResourceInfo()
 	status:= "succeeded"
 	SendResponse(ms, status, "", 0)
-	// TODO: GetFile(ms, resourcename, size, SymKeys)
+	addResource(owner, resourcename, m.Guard)
 	return nil
 }
 
@@ -485,21 +660,64 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []
 	fmt.Printf("HandleServiceRequest\n")
 	PrintRequest(subject, action, resourcename, owner)
 
+	if(*action=="authenticateprincipal") {
+		if(AuthenticatePrincipal(m, ms, *owner)) {
+			ownerName:= PrincipalNameFromDERCert([]byte(*owner))
+			_, err= m.InsertPrincipal(*ownerName, []byte(*owner))
+			if(err!=nil) {
+				fmt.Printf("cant insert principal name in file\n")
+				return false, errors.New("cant insert principal name in file")
+			}
+			status:= "succeeded"
+			message:= ""
+			SendResponse(ms, status, message, 0);
+			return false, nil
+		} else {
+			return false, errors.New("AuthenticatePrincipal failed") 
+		}
+	}
+
+	// replace owner with name
+	var ownerName *string
+	ownerName= nil
+	if(owner!=nil) {
+		// enable the following as soon as we send certs
+		/*
+		ownerName= PrincipalNameFromDERCert(*owner)
+		if(ownerName==nil) {
+			status:= "failed"
+			message:= "unknown owner specified"
+			SendResponse(ms, status, message, 0);
+		}
+		return false, errors.New("unknown owner")
+		*/
+		ownerName= owner
+	}
+
 	// is it authorized?
-	ok:= true; // TODO: m.guard.IsAuthorized(subject, action, resourcename) 
+	var ok bool
+	if(*action=="create") {
+		fileserverSubject:= "fileserver"
+		query:= makeQuery(fileserverSubject, *action, *resourcename, *ownerName)
+		if(query==nil) {
+			fmt.Printf("bad query")
+		}
+		ok= m.Query(*query)
+	} else {
+		ok= true;
+	}
 	if ok == false {
 		status:= "failed"
 		message:= "unauthorized"
-		size:= 10  // TODO: fix
-		SendResponse(ms, status, message, size);
-		return  false, errors.New("unauthorized")
+		SendResponse(ms, status, message, 0);
+		return  false, nil
 	}
 
 	if(*action=="create") {
-		if(resourcename==nil || owner==nil) {
+		if(resourcename==nil || ownerName==nil) {
 			return false, errors.New("Nil parameters for createRequest")
 		}
-		err:= createRequest(m, ms, *resourcename, *owner)
+		err:= createRequest(m, ms, *resourcename, *ownerName)
 		return false, err
 	} else if(*action=="delete") {
 		err:= deleteRequest(m, ms, *resourcename)
@@ -524,6 +742,7 @@ func (m *ResourceMaster) InitMaster(filepath string, masterInfoDir string, prin 
 	fmt.Printf("filehandler: InitMaster\n")
 	m.GetResourceData(masterInfoDir+"masterinfo",  masterInfoDir+"resources")
 	m.NumResources= 0;
+	m.NumPrincipals= 0;
 	m.baseDirectory= filepath
 	m.InitGuard(masterInfoDir+"rules")
 	return nil

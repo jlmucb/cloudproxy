@@ -84,8 +84,8 @@ var policy = []string{
 var additional_policy = []string{
 	"FileServer(\"fileserver\")",
 	"Action(\"create\")",
-	"Action(\"read\")",
-	"Action(\"write\")",
+	"Action(\"getfile\")",
+	"Action(\"sendfile\")",
 	"Action(\"delete\")",
 }
 
@@ -138,9 +138,9 @@ func makeQuery(subject string, action string, resource string, owner string) *st
 	var out string
 	if action == "create" {
 		out = "Authorized(\"" + subject + "\", \"" + action + "\",  \"" + resource + "\")"
-	} else if action == "read" {
+	} else if action == "getfile" {
 		out = "Authorized(\"" + subject + "\", \"" + action + "\", \"" + resource + "\")"
-	} else if action == "write" {
+	} else if action == "sendfile" {
 		out = "Authorized(\"" + subject + "\", \"" + action + "\", \"" + resource + "\")"
 	} else {
 		fmt.Printf("makeQuery: unknown action\n")
@@ -779,8 +779,20 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []
 			fmt.Printf("bad query")
 		}
 		ok = m.Query(*query)
+	} else if *action == "getfile" {
+		query := makeQuery(*subject, *action, *resourcename, *ownerName)
+		if query == nil {
+			fmt.Printf("bad query")
+		}
+		ok = m.Query(*query)
+	} else if *action == "sendfile" {
+		query := makeQuery(*subject, *action, *resourcename, *ownerName)
+		if query == nil {
+			fmt.Printf("bad query")
+		}
+		ok = m.Query(*query)
 	} else {
-		ok = true
+		ok = false
 	}
 	if ok == false {
 		status := "failed"

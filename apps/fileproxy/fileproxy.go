@@ -36,13 +36,6 @@ var caAddr = flag.String("caAddr", "localhost:8124", "The address to listen on")
 var taoChannelAddr = flag.String("taoChannelAddr", "localhost:8124", "The address to listen on")
 var configPath = flag.String("config", "tao.config", "The Tao domain config")
 
-/*
-var ca = flag.String("ca", "", "address for Tao CA, if any")
-var subprinRule = "(forall P: forall Hash: TrustedProgramHash(Hash) and Subprin(P, %v, Hash) implies MemberProgram(P))"
-var argsRule = "(forall Y: forall P: forall S: MemberProgram(P) and TrustedArgs(S) and Subprin(Y, P, S) implies Authorized(Y, \"Execute\"))"
-var demoRule = "TrustedArgs(ext.Args(%s))"
-*/
-
 // RequestTruncatedAttestation connects to a CA instance, sends the attestation
 // for an X.509 certificate, and gets back a truncated attestation with a new
 // principal name based on the policy key.
@@ -75,23 +68,6 @@ func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys, v *tao.Veri
 	if err := ms.ReadMessage(&a); err != nil {
 		return nil, err
 	}
-	/*
-		 * Attestations are no longer identical
-		truncStmt, err := auth.UnmarshalForm(a.SerializedStatement)
-		if err != nil {
-			return nil, err
-		}
-
-		says, _, err := taonet.TruncateAttestation(v.ToPrincipal(), keys.Delegation)
-		if err != nil {
-			return nil, err
-		}
-
-		/*
-		if !taonet.IdenticalDelegations(says, truncStmt) {
-			return nil, fmt.Errorf("the statement returned by the TaoCA was different than what we expected")
-		}
-	*/
 
 	ok, err := v.Verify(a.SerializedStatement, tao.AttestationSigningContext, a.Signature)
 	if err != nil {

@@ -202,6 +202,7 @@ func LoadDomain(configPath string, password []byte) (*Domain, error) {
 	case "DenyAll":
 		guard = ConservativeGuard
 	}
+	//TODO (important!): Need to modify tao name to reflect policy key
 
 	return &Domain{cfg, configPath, keys, guard}, nil
 }

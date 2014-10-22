@@ -19,26 +19,17 @@ package main
 import (
 	"flag"
 	"fmt"
-	//"net"
 
 	"github.com/jlmucb/cloudproxy/apps/fileproxy"
 	tao "github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	"github.com/jlmucb/cloudproxy/util"
 
+	"code.google.com/p/goprotobuf/proto"
 	"crypto/tls"
 	"crypto/x509"
 	taonet "github.com/jlmucb/cloudproxy/tao/net"
-	//"errors"
-	//"time"
-	"code.google.com/p/goprotobuf/proto"
 	"io/ioutil"
-	//"os"
-	//"bufio"
-	// "crypto/x509/pkix"
-	// "crypto/rand"
-	//"net"
-	//"strings"
 )
 
 var hostcfg = flag.String("../hostdomain/tao.config", "../hostdomain/tao.config", "path to host tao configuration")
@@ -51,38 +42,10 @@ var fileclientFilePath = flag.String("./fileclient_files/stored_files/", "./file
 var testFile = flag.String("originalTestFile", "originalTestFile", "test file")
 var fileclientKeyPath = flag.String("usercreds/", "usercreds/", "user keys and certs")
 
+var DerPolicyCert []byte
 var SigningKey tao.Keys
 var SymKeys []byte
 var ProgramCert []byte
-
-func newTempCAGuard() (tao.Guard, error) {
-	fmt.Printf("fileserver: newTempCAGuard\n")
-	/*
-		g := tao.NewTemporaryDatalogGuard()
-		vprin := v.ToPrincipal()
-		rule := fmt.Sprintf(subprinRule, vprin)
-		// Add a rule that says that valid args are the ones we were called with.
-		args := ""
-		for i, a := range os.Args {
-			if i > 0 {
-				args += ", "
-			}
-			args += "\"" + a + "\""
-		}
-		authRule := fmt.Sprintf(demoRule, args)
-		if err := g.AddRule(rule); err != nil {
-			return nil, err
-		}
-		if err := g.AddRule(argsRule); err != nil {
-			return nil, err
-		}
-		if err := g.AddRule(authRule); err != nil {
-			return nil, err
-		}
-	*/
-	g := tao.LiberalGuard
-	return g, nil
-}
 
 func main() {
 	flag.Parse()
@@ -92,11 +55,12 @@ func main() {
 	if err != nil {
 		return
 	}
-	derPolicyPath := hostDomain.Config.Domain.PolicyKeysPath
-	// TODO: check against name?
-	derPolicyCert, err := ioutil.ReadFile(derPolicyPath + "/cert")
-	if err != nil {
-		fmt.Printf("can't read policy cert\n")
+	DerPolicyCert = nil
+	if hostDomain.Keys.Cert != nil {
+		DerPolicyCert = hostDomain.Keys.Cert.Raw
+	}
+	if DerPolicyCert == nil {
+		fmt.Printf("can't retrieve policy cert\n")
 		return
 	}
 
@@ -159,7 +123,7 @@ func main() {
 
 	var creds []byte
 	creds = []byte("I am a fake cred")
-	policyCert, err := x509.ParseCertificate(derPolicyCert)
+	policyCert, err := x509.ParseCertificate(DerPolicyCert)
 	if err != nil {
 		fmt.Printf("fileclient:cant ParseCertificate\n")
 		return

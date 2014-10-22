@@ -461,7 +461,6 @@ func DecodeRequest(in []byte) (*string, *string, *string, *string, error) {
 		fmt.Printf("\n")
 		return nil, nil, nil, nil, err
 	}
-	PrintRequest(subject, action, resource, owner)
 	if *theType != int(MessageType_REQUEST) {
 		return nil, nil, nil, nil, errors.New("Cant Decode request")
 	}

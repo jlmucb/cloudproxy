@@ -31,7 +31,7 @@ import (
 	taonet "github.com/jlmucb/cloudproxy/tao/net"
 	//"errors"
 	//"time"
-	// "code.google.com/p/goprotobuf/proto"
+	"code.google.com/p/goprotobuf/proto"
 	"io/ioutil"
 	//"os"
 	//"bufio"
@@ -205,29 +205,31 @@ func main() {
 		fmt.Printf("fileclient: nil pks\n")
 	}
 	fmt.Printf("fileclient: read key blob\n")
-	/*
-			var cks *tao.CryptoKeyset
-			err = proto.Unmarshal(pks, cks)
-			if err != nil {
-				fmt.Printf("fileclient: cant proto unmarshal key set\n")
-				return
-			}
-			fmt.Printf("fileclient: unmarshaled proto key\n")
-			userKey, err := tao.UnmarshalKeyset(cks)
-			if err != nil {
-				fmt.Printf("fileclient: cant unmarshal key set\n")
-				return
-			}
-		userKey := nil
-		fmt.Printf("fileclient: unmarshaled key\n")
-		fmt.Printf("user key: ", userKey)
-		fmt.Printf("\n")
-		ok := fileproxy.AuthenticatePrincipalRequest(ms, userKey, userCert)
-		if !ok {
-			fmt.Printf("fileclient: cant authenticate principal\n")
-			return
-		}
-	*/
+	var cks tao.CryptoKeyset
+	err = proto.Unmarshal(pks, &cks)
+	if err != nil {
+		fmt.Printf("fileclient: cant proto unmarshal key set\n")
+		return
+	}
+	if pks == nil {
+		fmt.Printf("fileclient: cant proto unmarshaled is nil \n")
+		return
+	}
+	fmt.Printf("fileclient: unmarshaled proto key\n")
+	userKey, err := tao.UnmarshalKeyset(&cks)
+	if err != nil {
+		fmt.Printf("fileclient: cant unmarshal key set\n")
+		return
+	}
+	fmt.Printf("fileclient: unmarshaled key\n")
+	fmt.Printf("user key: ", userKey)
+	fmt.Printf("\n")
+	ok := fileproxy.AuthenticatePrincipalRequest(ms, userKey, userCert)
+	if !ok {
+		fmt.Printf("fileclient: cant authenticate principal\n")
+		return
+	}
+	fmt.Printf("AuthenticatedPrincipalRequest\n")
 
 	// create a file
 	sentFileName := *testFile

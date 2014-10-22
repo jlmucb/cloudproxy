@@ -18,6 +18,7 @@ package fileproxy
 
 import (
 	"code.google.com/p/goprotobuf/proto"
+	"crypto/rand"
 	"crypto/x509"
 	"errors"
 	"fmt"
@@ -579,21 +580,67 @@ func GetProtocolMessage(ms *util.MessageStream) ([]byte, error) {
 	return out, nil
 }
 
-func AuthenticatePrincipal(m *ResourceMaster, ms *util.MessageStream, owner string) bool {
-	// send nonce
-	// SendProtocolMessage(ms *util.MessageStream, size int, buf []byte)
+func AuthenticatePrincipal(m *ResourceMaster, ms *util.MessageStream) (bool, []byte) {
+	fmt.Printf("AuthenticatePrincipal\n")
+	offeredCert, err := GetProtocolMessage(ms)
+	if err != nil {
+		fmt.Printf("cant GetProtocolMessage in AuthenticatePrincipal % x\n", offeredCert)
+	}
+	fmt.Printf("AuthenticatePrincipal: got offered cert\n")
+	c := 32
+	b := make([]byte, c)
+	_, err = rand.Read(b)
+	if err != nil {
+		fmt.Printf("Rand error in AuthenticatePrincipal\n")
+	}
+	fmt.Printf("nonce: % x\n", b)
+	SendProtocolMessage(ms, len(b), b)
+	fmt.Printf("AuthenticatePrincipal: sent nonce\n")
+	signedRand, err := GetProtocolMessage(ms)
+	if err != nil {
+		fmt.Printf("cant GetProtocolMessage in AuthenticatePrincipal\n")
+	}
+	fmt.Printf("AuthenticatePrincipal: got signed nonce % x\n", signedRand)
 	// decrypt nonce
-	// GetProtocolMessage(ms *util.MessageStream)
-	// remove: for now, just add string
-	return true
+	status := "succeeded"
+	msg := ""
+	SendResponse(ms, status, msg, 0)
+	return true, offeredCert
 }
 
 func AuthenticatePrincipalRequest(ms *util.MessageStream, key *tao.Keys, derCert []byte) bool {
-	// formate request
-	// GetProtocolMessage(ms *util.MessageStream)
+	fmt.Printf("AuthenticatePrincipalRequest\n")
+	// format request
+	subject := "jlm"
+	action := "authenticateprincipal"
+	owner := "jlm"
+	message, err := EncodeMessage(int(MessageType_REQUEST), &subject, &action, &subject, &owner,
+		nil, nil, nil, nil)
+	if err != nil {
+		fmt.Printf("AuthenticatePrincipalRequest couldnt build request\n")
+		return false
+	}
+	fmt.Printf("AuthenticatePrincipalRequest request %d, ", len(message))
+	fmt.Printf("\n")
+	_, _ = ms.WriteString(string(message))
+	fmt.Printf("AuthenticatePrincipalRequest: sent request\n")
+	SendProtocolMessage(ms, len(derCert), derCert)
+	fmt.Printf("AuthenticatePrincipalRequest: sent cert\n")
+	nonce, err := GetProtocolMessage(ms)
+	if err != nil {
+		fmt.Printf("cant GetProtocolMessage in AuthenticatePrincipalRequest\n")
+		return false
+	}
+	fmt.Printf("AuthenticatePrincipalRequest: got nonce\n")
 	// encrypt nonce
-	// SendProtocolMessage(ms *util.MessageStream, size int, buf []byte)
-	// GetResponse
+	SendProtocolMessage(ms, len(nonce), nonce)
+	fmt.Printf("AuthenticatePrincipalRequest: sent signed\n")
+	status, _, _, err := GetResponse(ms)
+	if err != nil {
+		fmt.Printf("cant GetResponse in AuthenticatePrincipalRequest\n")
+		return false
+	}
+	fmt.Printf("AuthenticatePrincipalRequest: status of response: %s\n", *status)
 	return true
 }
 
@@ -669,9 +716,10 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []
 	PrintRequest(subject, action, resourcename, owner)
 
 	if *action == "authenticateprincipal" {
-		if AuthenticatePrincipal(m, ms, *owner) {
-			ownerName := PrincipalNameFromDERCert([]byte(*owner))
-			_, err = m.InsertPrincipal(*ownerName, []byte(*owner))
+		ok, ownerCert := AuthenticatePrincipal(m, ms)
+		if !ok {
+			ownerName := PrincipalNameFromDERCert([]byte(ownerCert))
+			_, err = m.InsertPrincipal(*ownerName, []byte(ownerCert))
 			if err != nil {
 				fmt.Printf("cant insert principal name in file\n")
 				return false, errors.New("cant insert principal name in file")

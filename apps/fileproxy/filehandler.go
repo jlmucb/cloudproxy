@@ -588,13 +588,13 @@ func AuthenticatePrincipal(m *ResourceMaster, ms *util.MessageStream) (bool, []b
 	}
 	fmt.Printf("AuthenticatePrincipal: got offered cert\n")
 	c := 32
-	b := make([]byte, c)
-	_, err = rand.Read(b)
+	nonce := make([]byte, c)
+	_, err = rand.Read(nonce)
 	if err != nil {
 		fmt.Printf("Rand error in AuthenticatePrincipal\n")
 	}
-	fmt.Printf("nonce: % x\n", b)
-	SendProtocolMessage(ms, len(b), b)
+	fmt.Printf("nonce: % x\n", nonce)
+	SendProtocolMessage(ms, len(nonce), nonce)
 	fmt.Printf("AuthenticatePrincipal: sent nonce\n")
 	signedRand, err := GetProtocolMessage(ms)
 	if err != nil {
@@ -602,10 +602,29 @@ func AuthenticatePrincipal(m *ResourceMaster, ms *util.MessageStream) (bool, []b
 	}
 	fmt.Printf("AuthenticatePrincipal: got signed nonce % x\n", signedRand)
 	// decrypt nonce
-	status := "succeeded"
+	cert, err := x509.ParseCertificate(offeredCert)
+	if err != nil {
+		fmt.Printf("cant Parse Certificate in AuthenticatePrincipal\n")
+	}
+	v, err := tao.FromX509(cert)
+	if err != nil {
+		fmt.Printf("cant get verifier from x509 AuthenticatePrincipal\n")
+	}
+	ok, _ := v.Verify(nonce, "fileproxy-challenge", signedRand)
+	if ok {
+		fmt.Printf("nonce verified\n")
+	} else {
+		fmt.Printf("nonce did not verified\n")
+	}
+	var status string
+	if ok {
+		status = "succeeded"
+	} else {
+		status = "failed"
+	}
 	msg := ""
 	SendResponse(ms, status, msg, 0)
-	return true, offeredCert
+	return ok, offeredCert
 }
 
 func AuthenticatePrincipalRequest(ms *util.MessageStream, key *tao.Keys, derCert []byte) bool {
@@ -633,7 +652,11 @@ func AuthenticatePrincipalRequest(ms *util.MessageStream, key *tao.Keys, derCert
 	}
 	fmt.Printf("AuthenticatePrincipalRequest: got nonce\n")
 	// encrypt nonce
-	SendProtocolMessage(ms, len(nonce), nonce)
+	signedBlob, err := key.SigningKey.Sign(nonce, "fileproxy-challenge")
+	if err != nil {
+		fmt.Printf("AuthenticatePrincipalRequest: cant sign\n")
+	}
+	SendProtocolMessage(ms, len(signedBlob), signedBlob)
 	fmt.Printf("AuthenticatePrincipalRequest: sent signed\n")
 	status, _, _, err := GetResponse(ms)
 	if err != nil {
@@ -724,9 +747,7 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []
 				fmt.Printf("cant insert principal name in file\n")
 				return false, errors.New("cant insert principal name in file")
 			}
-			status := "succeeded"
-			message := ""
-			SendResponse(ms, status, message, 0)
+			fmt.Printf("HandleServiceRequest: Added %s to Principal table\n")
 			return false, nil
 		} else {
 			return false, errors.New("AuthenticatePrincipal failed")

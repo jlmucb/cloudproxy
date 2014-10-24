@@ -193,6 +193,26 @@ func main() {
 	}
 	fmt.Printf("AuthenticatedPrincipalRequest\n")
 
+	// send a rule
+	rule := "Delegate(\"jlm\", \"tom\", \"getfile\",\"myfile\")"
+	fmt.Printf("fileclient, sending rule: %s\n", rule)
+	err = fileproxy.SendRule(ms, rule, userCert)
+	if err != nil {
+		fmt.Printf("fileclient: cant create file\n")
+		return
+	}
+	// return: status, message, size, error
+	status, message, size, err := fileproxy.GetResponse(ms)
+	if err != nil {
+		fmt.Printf("Error in response to SendCreate\n")
+		return
+	}
+	fmt.Printf("Response to SendCreate\n")
+	fileproxy.PrintResponse(status, message, size)
+	if *status != "succeeded" {
+		return
+	}
+
 	// create a file
 	sentFileName := *testFile
 	fmt.Printf("fileclient, Creating: %s\n", sentFileName)
@@ -202,7 +222,7 @@ func main() {
 		return
 	}
 	// return: status, message, size, error
-	status, message, size, err := fileproxy.GetResponse(ms)
+	status, message, size, err = fileproxy.GetResponse(ms)
 	if err != nil {
 		fmt.Printf("Error in response to SendCreate\n")
 		return

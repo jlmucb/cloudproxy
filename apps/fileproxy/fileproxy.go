@@ -391,20 +391,18 @@ func SendCreateFile(ms *util.MessageStream, subjectCert []byte, filename string)
 
 func SendRule(ms *util.MessageStream, rule string, signerCert []byte) error {
 	fmt.Printf("SendRule, rule: %s\n", rule)
-	/*
-		subject := string(subjectCert)
-		action := "create"
-		message, err := EncodeMessage(int(MessageType_REQUEST), &subject, &action, &filename, &subject,
-			nil, nil, nil, nil)
-		if err != nil {
-			fmt.Printf("SendCreateFile couldnt build request\n")
-			return errors.New("SendCreateFile can't build request")
-		}
-		fmt.Printf("SendCreateFile request %d, ", len(message))
-		fmt.Printf("\n")
-		written, _ := ms.WriteString(string(message))
-		fmt.Printf("Bytes written %d\n", written)
-	*/
+	subject := string(signerCert)
+	action := "sendrule"
+	message, err := EncodeMessage(int(MessageType_REQUEST), &subject, &action, &rule, &subject,
+		nil, nil, nil, nil)
+	if err != nil {
+		fmt.Printf("SendRule couldnt build request\n")
+		return errors.New("SendRule can't build request")
+	}
+	fmt.Printf("SendRule request %d, ", len(message))
+	fmt.Printf("\n")
+	written, _ := ms.WriteString(string(message))
+	fmt.Printf("Bytes written %d\n", written)
 	return nil
 }
 

@@ -121,8 +121,6 @@ func main() {
 		fmt.Printf("fileclient: Initilized signingKey: % x\n", SigningKey)
 	}
 
-	var creds []byte
-	creds = []byte("I am a fake cred")
 	policyCert, err := x509.ParseCertificate(DerPolicyCert)
 	if err != nil {
 		fmt.Printf("fileclient:cant ParseCertificate\n")
@@ -198,7 +196,7 @@ func main() {
 	// create a file
 	sentFileName := *testFile
 	fmt.Printf("fileclient, Creating: %s\n", sentFileName)
-	err = fileproxy.SendCreateFile(ms, creds, sentFileName)
+	err = fileproxy.SendCreateFile(ms, userCert, sentFileName)
 	if err != nil {
 		fmt.Printf("fileclient: cant create file\n")
 		return
@@ -217,7 +215,7 @@ func main() {
 
 	// Send File
 	fmt.Printf("\nfileclient sending file %s\n", sentFileName)
-	err = fileproxy.SendSendFile(ms, nil, sentFileName)
+	err = fileproxy.SendSendFile(ms, userCert, sentFileName)
 	if err != nil {
 		fmt.Printf("fileclient: SendSendFile has error\n")
 		return
@@ -243,7 +241,7 @@ func main() {
 
 	// Get file
 	fmt.Printf("\nfileclient getting file %s\n", sentFileName)
-	err = fileproxy.SendGetFile(ms, nil, sentFileName)
+	err = fileproxy.SendGetFile(ms, userCert, sentFileName)
 	if err != nil {
 		fmt.Printf("fileclient: SendGetFile has error\n")
 		return

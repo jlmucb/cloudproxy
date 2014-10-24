@@ -17,6 +17,7 @@
 package fileproxy
 
 import (
+	"bytes"
 	"code.google.com/p/goprotobuf/proto"
 	"crypto/rand"
 	"crypto/x509"
@@ -24,10 +25,7 @@ import (
 	"fmt"
 	tao "github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/util"
-	//"flag"
 	//"os"
-	// "github.com/jlmucb/cloudproxy/tao/auth"
-	// taonet "github.com/jlmucb/cloudproxy/tao/net"
 )
 
 // Resource types: files, channels
@@ -45,8 +43,9 @@ type ResourceInfo struct {
 }
 
 type Principal struct {
-	name string
-	der  []byte
+	name   string
+	der    []byte
+	status string // authenticate, not
 }
 
 type ResourceMaster struct {
@@ -127,14 +126,14 @@ func addResource(creator string, resource string, g tao.Guard) error {
 func PrincipalNameFromDERCert(derCert []byte) *string {
 	cert, err := x509.ParseCertificate(derCert)
 	if err != nil {
-		fmt.Printf("Cant get name from certificate\n")
+		fmt.Printf("filehandler: Cant get name from certificate\n")
 		return nil
 	}
 	cn := cert.Subject.CommonName
 	return &cn
 }
 
-func makeQuery(subject string, action string, resource string, owner string) *string {
+func makeQuery(subject string, action string, resource string) *string {
 	var out string
 	if action == "create" {
 		out = "Authorized(\"" + subject + "\", \"" + action + "\",  \"" + resource + "\")"
@@ -202,7 +201,7 @@ func (m *ResourceMaster) FindPrincipal(name string) (*Principal, error) {
 	return nil, nil
 }
 
-func (m *ResourceMaster) InsertPrincipal(name string, cert []byte) (*Principal, error) {
+func (m *ResourceMaster) InsertPrincipal(name string, cert []byte, authStatus string) (*Principal, error) {
 	found, err := m.FindPrincipal(name)
 	if err != nil {
 		return nil, err
@@ -214,6 +213,7 @@ func (m *ResourceMaster) InsertPrincipal(name string, cert []byte) (*Principal, 
 	m.NumPrincipals = m.NumPrincipals + 1
 	m.principalArray[n].name = name
 	m.principalArray[n].der = cert
+	m.principalArray[n].status = authStatus
 	return &m.principalArray[n], nil
 }
 
@@ -296,7 +296,9 @@ func EncodeMessage(theType int, subject *string, action *string, resourcename *s
 		protoMessage.SubjectName = proto.String(*subject)
 		protoMessage.ActionName = proto.String(*action)
 		protoMessage.ResourceName = proto.String(*resourcename)
-		protoMessage.ResourceOwner = proto.String(*owner)
+		if owner != nil {
+			protoMessage.ResourceOwner = proto.String(*owner)
+		}
 	} else if theType == int(MessageType_RESPONSE) {
 		protoMessage.StatusOfRequest = proto.String(*status)
 		protoMessage.MessageFromRequest = proto.String(*reqMessage)
@@ -401,21 +403,15 @@ func (m *ResourceMaster) InitGuard(rulefile string) error {
 			return errors.New("Couldn't add rule in InitGuard")
 		}
 	}
-
-	/*
-		// The FileServer owns the test resource.
-		try("Owner(\"FServer\", \"test\")",
-		    "The FileServer doesn't own the test resource, but it should",
-		    true,
-		    td)
-	*/
-	// Remove this
 	m.Guard = tao.LiberalGuard
-
 	return nil
 }
 
-func (m *ResourceMaster) SaveRules(g tao.Guard, rulefile string) error {
+func (m *ResourceMaster) SaveFileServerData() error {
+	return nil
+}
+
+func (m *ResourceMaster) SaveRules(rulefile string) error {
 	fmt.Printf("filehandler: SaveRules\n")
 	// no need for rules
 	return nil
@@ -473,10 +469,14 @@ func DecodeRequest(in []byte) (*string, *string, *string, *string, error) {
 	return subject, action, resource, owner, nil
 }
 
-func PrintRequest(subject *string, action *string, resource *string, owner *string) {
+func PrintRequest(subject []byte, action *string, resource *string, owner []byte) {
 	fmt.Printf("PrintRequest\n")
 	if subject != nil {
-		fmt.Printf("\tsubject: %s\n", *subject)
+		fmt.Printf("\tsubject: % x\n", subject)
+		subjectName := PrincipalNameFromDERCert(subject)
+		if subjectName != nil {
+			fmt.Printf("\tsubject: %s\n", *subjectName)
+		}
 	}
 	if action != nil {
 		fmt.Printf("\taction: %s\n", *action)
@@ -485,7 +485,11 @@ func PrintRequest(subject *string, action *string, resource *string, owner *stri
 		fmt.Printf("\tresource: %s\n", *resource)
 	}
 	if owner != nil {
-		fmt.Printf("\towner: %s\n", *owner)
+		fmt.Printf("\towner: % x\n", owner)
+		ownerName := PrincipalNameFromDERCert(owner)
+		if ownerName != nil {
+			fmt.Printf("\towner: %s\n", *ownerName)
+		}
 	}
 }
 
@@ -711,6 +715,19 @@ func createRequest(m *ResourceMaster, ms *util.MessageStream,
 	return nil
 }
 
+func newruleRequest(m *ResourceMaster, ms *util.MessageStream,
+	rule string, signerCert []byte) error {
+
+	fmt.Printf("filehandler, newruleRequest, rule: %s\n", rule)
+	// ownerName := PrincipalNameFromDERCert(signerCert)
+	// signer in table?
+	// same Cert?
+	m.Guard.AddRule(rule)
+	status := "succeeded"
+	SendResponse(ms, status, "", 0)
+	return nil
+}
+
 func deleteRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string) error {
 	return errors.New("deleteRequest not implemented")
 }
@@ -727,6 +744,28 @@ func deleteOwnerRequest(m *ResourceMaster, ms *util.MessageStream, resourcename 
 	return errors.New("deleteOwnerRequest not implemented")
 }
 
+func (m *ResourceMaster) certToAuthenticatedName(subjectCert []byte) *string {
+	if subjectCert == nil {
+		return nil
+	}
+	var subjectName *string
+	subjectName = nil
+	subjectName = PrincipalNameFromDERCert([]byte(subjectCert))
+	if subjectName == nil {
+		fmt.Printf("filehanadler, certToAuthenticatedName: cant get name from cert\n")
+		return nil
+	}
+	fmt.Printf("filehandler, certToAuthenticatedName: %s\n", *subjectName)
+	prin, err := m.FindPrincipal(*subjectName)
+	if prin != nil {
+		fmt.Printf("filehanadler, certToAuthenticatedName: found principal, %s %s\n", prin.name, prin.status)
+	}
+	if err != nil || prin == nil || bytes.Equal(prin.der, []byte(*subjectName)) {
+		return nil
+	}
+	return subjectName
+}
+
 // first return value is terminate flag
 func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []byte) (bool, error) {
 	fmt.Printf("filehandler: HandleServiceRequest\n")
@@ -735,13 +774,22 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []
 		return false, err
 	}
 	fmt.Printf("HandleServiceRequest\n")
-	PrintRequest(subject, action, resourcename, owner)
+	if owner != nil {
+		PrintRequest([]byte(*subject), action, resourcename, []byte(*owner))
+	} else {
+		PrintRequest([]byte(*subject), action, resourcename, nil)
+	}
 
 	if *action == "authenticateprincipal" {
 		ok, ownerCert := AuthenticatePrincipal(m, ms)
-		if !ok {
+		if ok {
 			ownerName := PrincipalNameFromDERCert([]byte(ownerCert))
-			_, err = m.InsertPrincipal(*ownerName, []byte(ownerCert))
+			if ownerName == nil {
+				fmt.Printf("can't get ownername after AuthenticatePrincipal\n")
+				return false, nil
+			}
+			fmt.Printf("filehandler inserting %s %s\n", *ownerName, "authenticated")
+			_, err = m.InsertPrincipal(*ownerName, []byte(ownerCert), "authenticated")
 			if err != nil {
 				fmt.Printf("cant insert principal name in file\n")
 				return false, errors.New("cant insert principal name in file")
@@ -751,42 +799,61 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []
 		} else {
 			return false, errors.New("AuthenticatePrincipal failed")
 		}
+	} else if *action == "sendrule" {
+		err = newruleRequest(m, ms, *resourcename /* rule */, []byte(*owner))
+		if err != nil {
+			return false, errors.New("Cant construct newrulequest")
+		}
+		return false, nil
 	}
 
-	// replace owner with name
+	// replace owner and subject with name
 	var ownerName *string
 	ownerName = nil
 	if owner != nil {
-		// enable the following as soon as we send certs
-		/*
-			ownerName= PrincipalNameFromDERCert(*owner)
-			if(ownerName==nil) {
-				status:= "failed"
-				message:= "unknown owner specified"
-				SendResponse(ms, status, message, 0);
-			}
-			return false, errors.New("unknown owner")
-		*/
-		ownerName = owner
+		ownerName = m.certToAuthenticatedName([]byte(*owner))
+		if ownerName == nil {
+			status := "failed"
+			message := "unknown owner specified"
+			SendResponse(ms, status, message, 0)
+			return false, errors.New("unauthenticated principal")
+		}
+	}
+	var subjectName *string
+	subjectName = nil
+	if subject != nil {
+		subjectName = m.certToAuthenticatedName([]byte(*subject))
+		if subjectName == nil {
+			status := "failed"
+			message := "unknown owner specified"
+			SendResponse(ms, status, message, 0)
+			return false, errors.New("unauthenticated principal")
+		}
+	}
+	if subjectName != nil {
+		fmt.Printf("filehandler, HandleRequest, Subjectname: %s\n", *subjectName)
+	}
+	if ownerName != nil {
+		fmt.Printf("filehandler, HandleRequest, Ownername: %s\n", *ownerName)
 	}
 
 	// is it authorized?
 	var ok bool
 	if *action == "create" {
 		fileserverSubject := "fileserver"
-		query := makeQuery(fileserverSubject, *action, *resourcename, *ownerName)
+		query := makeQuery(fileserverSubject, *action, *resourcename)
 		if query == nil {
 			fmt.Printf("bad query")
 		}
 		ok = m.Query(*query)
 	} else if *action == "getfile" {
-		query := makeQuery(*subject, *action, *resourcename, *ownerName)
+		query := makeQuery(*subjectName, *action, *resourcename)
 		if query == nil {
 			fmt.Printf("bad query")
 		}
 		ok = m.Query(*query)
 	} else if *action == "sendfile" {
-		query := makeQuery(*subject, *action, *resourcename, *ownerName)
+		query := makeQuery(*subjectName, *action, *resourcename)
 		if query == nil {
 			fmt.Printf("bad query")
 		}
@@ -843,5 +910,5 @@ func (m *ResourceMaster) SaveMaster(masterInfoDir string) error {
 		fmt.Printf("filehandler: cant m.SaveResourceData\n")
 		return err
 	}
-	return m.SaveRules(m.Guard, masterInfoDir+"rules")
+	return m.SaveRules(masterInfoDir + "rules")
 }

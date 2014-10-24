@@ -338,12 +338,11 @@ func GetFile(ms *util.MessageStream, path string, filename string, keys []byte) 
 	return ioutil.WriteFile(path+filename, buf, os.ModePerm)
 }
 
-func SendSendFile(ms *util.MessageStream, creds []byte, filename string) error {
+func SendSendFile(ms *util.MessageStream, subjectCert []byte, filename string) error {
 	fmt.Printf("SendSendFile, filename: %s\n", filename)
-	subject := "jlm"
+	subjectName := string(subjectCert)
 	action := "sendfile"
-	owner := "jlm"
-	message, err := EncodeMessage(1, &subject, &action, &filename, &owner,
+	message, err := EncodeMessage(1, &subjectName, &action, &filename, nil,
 		nil, nil, nil, nil)
 	if err != nil {
 		fmt.Printf("SendSendFile couldnt build request\n")
@@ -356,12 +355,11 @@ func SendSendFile(ms *util.MessageStream, creds []byte, filename string) error {
 	return nil
 }
 
-func SendGetFile(ms *util.MessageStream, creds []byte, filename string) error {
+func SendGetFile(ms *util.MessageStream, subjectCert []byte, filename string) error {
 	fmt.Printf("SendGetFile, filename: %s\n", filename)
-	subject := "jlm"
+	subjectName := string(subjectCert)
 	action := "getfile"
-	owner := "jlm"
-	message, err := EncodeMessage(int(MessageType_REQUEST), &subject, &action, &filename, &owner,
+	message, err := EncodeMessage(int(MessageType_REQUEST), &subjectName, &action, &filename, nil,
 		nil, nil, nil, nil)
 	if err != nil {
 		fmt.Printf("SendGetFile couldnt build request\n")
@@ -376,10 +374,9 @@ func SendGetFile(ms *util.MessageStream, creds []byte, filename string) error {
 
 func SendCreateFile(ms *util.MessageStream, subjectCert []byte, filename string) error {
 	fmt.Printf("SendCreateFile, filename: %s\n", filename)
-	subject := "jlm"
+	subject := string(subjectCert)
 	action := "create"
-	owner := "jlm"
-	message, err := EncodeMessage(int(MessageType_REQUEST), &subject, &action, &filename, &owner,
+	message, err := EncodeMessage(int(MessageType_REQUEST), &subject, &action, &filename, &subject,
 		nil, nil, nil, nil)
 	if err != nil {
 		fmt.Printf("SendCreateFile couldnt build request\n")
@@ -389,6 +386,25 @@ func SendCreateFile(ms *util.MessageStream, subjectCert []byte, filename string)
 	fmt.Printf("\n")
 	written, _ := ms.WriteString(string(message))
 	fmt.Printf("Bytes written %d\n", written)
+	return nil
+}
+
+func SendRule(ms *util.MessageStream, rule string, signerCert []byte) error {
+	fmt.Printf("SendRule, rule: %s\n", rule)
+	/*
+		subject := string(subjectCert)
+		action := "create"
+		message, err := EncodeMessage(int(MessageType_REQUEST), &subject, &action, &filename, &subject,
+			nil, nil, nil, nil)
+		if err != nil {
+			fmt.Printf("SendCreateFile couldnt build request\n")
+			return errors.New("SendCreateFile can't build request")
+		}
+		fmt.Printf("SendCreateFile request %d, ", len(message))
+		fmt.Printf("\n")
+		written, _ := ms.WriteString(string(message))
+		fmt.Printf("Bytes written %d\n", written)
+	*/
 	return nil
 }
 

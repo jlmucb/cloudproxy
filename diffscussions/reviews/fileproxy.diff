@@ -159,6 +159,18 @@
 #- get policy key from domain
 #- 
 #- 
+#**
+#** author: Tom Roeder
+#** email: tmroeder@google.com
+#** date: 2014-10-24T11:52:58-0700
+#**
+#-- My high-level comment is that this looks too much like C and not enough like
+#-- Go. The code is doing too much work to do things that are already supported
+#-- by the Go runtime: e.g., it's keeping track of lengths of arrays
+#-- unnecessarily, and it's encoding and decoding explicitly when protobufs
+#-- already do that. See the detailed comments below for more information on how
+#-- to rewrite this in idiomatic Go.
+#--
 diff --git a/apps/fileproxy/Go-cloudproxy.pdf b/apps/fileproxy/Go-cloudproxy.pdf
 new file mode 100644
 index 0000000..59c2218
@@ -169,7 +181,23 @@ index 0000000..6f4f089
 --- /dev/null
 +++ b/apps/fileproxy/fileclient/fileclient.go
 @@ -0,0 +1,270 @@
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-22T15:39:28-0700
+#*
+#- The file Go-cloudproxy.pdf should be moved to Doc, and the parts of it that
+#- are just copies of the code with its documentation should be removed, since
+#- that's already checked in to source control.
+#-
 +// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-22T15:35:06-0700
+#*
+#- This should be either your copyright or Google, Inc, and probably the latter.
+#-
 +//
 +// Licensed under the Apache License, Version 2.0 (the "License");
 +// you may not use this file except in compliance with the License.
@@ -184,6 +212,20 @@ index 0000000..6f4f089
 +// limitations under the License.
 +//
 +// File: fileclient.go
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-22T15:35:27-0700
+#*
+#- We have stopped adding these "File:" annotations, and I'd like to propose
+#- that you drop them as well. We didn't do them in the second C++ version,
+#- either.
+#-
+#- In a related note, I'd like to consider moving to something like the Chromium
+#- project does: Copyright The Chromium Authors, and then having an AUTHORS
+#- file. That fixes the problem where the file changes significantly, leaving
+#- the author line ridiculously wrong.
+#-
 +
 +package main
 +
@@ -192,6 +234,20 @@ index 0000000..6f4f089
 +	"fmt"
 +
 +	"github.com/jlmucb/cloudproxy/apps/fileproxy"
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-22T15:36:59-0700
+#*
+#- All standard libraries should come before all external libraries, and the
+#- external libraries are separated by space from the standard libraries. E.g.,
+#-
+#- "flag"
+#- "fmt"
+#-
+#- "code.google.com/p/goprotobuf/proto"
+#- "github.com/jlmucb/cloudproxy/tao"
+#-
 +	tao "github.com/jlmucb/cloudproxy/tao"
 +	"github.com/jlmucb/cloudproxy/tao/auth"
 +	"github.com/jlmucb/cloudproxy/util"
@@ -204,6 +260,16 @@ index 0000000..6f4f089
 +)
 +
 +var hostcfg = flag.String("../hostdomain/tao.config", "../hostdomain/tao.config", "path to host tao configuration")
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-22T15:38:30-0700
+#*
+#- These don't look to me like good defaults for these flags. Preferably, they'd
+#- be something more generic, or something that would work with the top-level
+#- install.sh script. Some of the other variables in this list have the same
+#- problem, though I think serverHost and serverPort are fine.
+#-
 +var serverHost = flag.String("host", "localhost", "address for client/server")
 +var serverPort = flag.String("port", "8123", "port for client/server")
 +var fileclientPath = flag.String("./fileclient_files/", "./fileclient_files/", "fileclient directory")
@@ -217,6 +283,17 @@ index 0000000..6f4f089
 +var SigningKey tao.Keys
 +var SymKeys []byte
 +var ProgramCert []byte
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-22T15:40:01-0700
+#*
+#- Global variables should not be set, even in a standalone program like this.
+#- Instead, these variables should be moved into the main function and handled
+#- there. In general, global variables should be used only like constants, even
+#- if some global variables can only be declared with "var" in Go rather than
+#- something like "const".
+#-
 +
 +func main() {
 +	flag.Parse()
@@ -224,14 +301,53 @@ index 0000000..6f4f089
 +
 +	hostDomain, err := tao.LoadDomain(*hostcfg, nil)
 +	if err != nil {
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-22T15:41:33-0700
+#*
+#- Print the error here rather than printing down in the depths of the code.
+#- E.g., something like
+#-
+#- if err != nil {
+#-   log.Fatalf("Couldn't load the Tao Domain: %s\n", err)
+#- }
+#-
+#- Note that log.Fatal{,f,ln} kills the program after printing the log entry.
+#- Import the "log" package to use it.
+#-
+#- Also, don't litter the code with fmt.Printf. Use log for debugging so that
+#- it's easy to turn on and off.
 +		return
 +	}
 +	DerPolicyCert = nil
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-22T15:43:53-0700
+#*
+#- Under the standard Go naming conventions, initial caps are reserved for
+#- exported values. Instead, this should be derPolicyCert. Also, abbreviations
+#- like DER are supposed to be consistent in their caps: either ALL CAPS or all
+#- lowercase. Fortunately, derPolicyCert already satisfies that constraint.
+#-
+#- Also, note that DerPolicyCert is nil by default, so it doesn't need to be set
+#- to nil explicitly.
+#-
 +	if hostDomain.Keys.Cert != nil {
 +		DerPolicyCert = hostDomain.Keys.Cert.Raw
 +	}
 +	if DerPolicyCert == nil {
 +		fmt.Printf("can't retrieve policy cert\n")
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-22T15:46:32-0700
+#*
+#- Use log.Fatalln and drop the explicit newline. And if you're printing a
+#- single string with a newline, use one of the functions that ends in "ln"
+#- rather than using a formatting one and adding a newline manually.
+#-
 +		return
 +	}
 +
@@ -246,8 +362,29 @@ index 0000000..6f4f089
 +		return
 +	}
 +	fmt.Printf("fileclient: my name is %s\n", myTaoName)
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-22T15:47:57-0700
+#*
+#- Remove personal pronoun "my" from the variable and the print statement. And
+#- turn this into a log statement or remove it. Ditto for other debugging print
+#- statements.
+#-
 +
 +	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err := fileproxy.GetMyCryptoMaterial(*fileclientPath)
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-22T15:51:06-0700
+#*
+#- Don't ignore the error here; it needs to be checked.
+#-
+#- Also, drop the personal pronoun. The name GetMyCryptoMaterial should be
+#- something more like LoadKeys, though I suspect it should also be folded into
+#- the existing Keys infrastructure rather than being implemented separately,
+#- but I'll examine that when I get there.
+#-
 +	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || derCert == nil {
 +		fmt.Printf("fileclient: No key material present\n")
 +	}
@@ -255,8 +392,25 @@ index 0000000..6f4f089
 +	fmt.Printf("Finished fileproxy.GetMyCryptoMaterial\n")
 +
 +	defer fileproxy.ZeroBytes(SymKeys)
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-22T15:52:39-0700
+#*
+#- There is already another implementation of zeroBytes. It looks like it should
+#- be promoted to a utility in github.com/jlmucb/cloudproxy/util so it can be
+#- used in code like this.
+#-
 +	if sealedSymmetricKey != nil {
 +		symkeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-22T15:53:42-0700
+#*
+#- Don't have one variable named symkeys and another named SymKeys, since that
+#- can be confusing.
+#-
 +		if err != nil {
 +			return
 +		}
@@ -267,6 +421,14 @@ index 0000000..6f4f089
 +		fmt.Printf("fileclient: Unsealed symKeys: % x\n", SymKeys)
 +	} else {
 +		symkeys, err := fileproxy.InitializeSealedSymmetricKeys(*fileclientPath, tao.Parent(), 64)
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:24:19-0700
+#*
+#- What does 64 mean here? Make this a constant with a name or add a comment
+#- explaining it.
+#-
 +		if err != nil {
 +			fmt.Printf("fileclient: InitializeSealedSymmetricKeys error: %s\n", err)
 +		}
@@ -281,6 +443,14 @@ index 0000000..6f4f089
 +			fmt.Printf("fileclient: SigningKeyFromBlob error: %s\n", err)
 +		}
 +		SigningKey = *signingkey
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:27:43-0700
+#*
+#- SigningKey should be *tao.Keys, and you can assign directly to it, since Go
+#- will manage the memory for you. The copy in this line is unnecessary.
+#-
 +		fmt.Printf("fileclient: Retrieved Signing key: % x\n", SigningKey)
 +	} else {
 +		signingkey, err := fileproxy.InitializeSealedSigningKey(*fileclientPath,
@@ -291,6 +461,14 @@ index 0000000..6f4f089
 +		SigningKey = *signingkey
 +		fmt.Printf("fileclient: Initilized signingKey: % x\n", SigningKey)
 +	}
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:25:27-0700
+#*
+#- I think these methods duplicate methods that already exist in keys.go. If
+#- not, then these should be ported into keys.go rather than being in fileproxy.
+#-
 +
 +	var creds []byte
 +	creds = []byte("I am a fake cred")
@@ -303,6 +481,13 @@ index 0000000..6f4f089
 +	pool.AddCert(policyCert)
 +
 +	tlsc, err := taonet.EncodeTLSCert(&SigningKey)
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:28:38-0700
+#*
+#- Once you change SigningKey to be *tao.Keys, you can drop the reference here.
+#-
 +	if err != nil {
 +		fmt.Printf("fileserver, encode error: ", err)
 +		fmt.Printf("\n")
@@ -312,6 +497,13 @@ index 0000000..6f4f089
 +		RootCAs:            pool,
 +		Certificates:       []tls.Certificate{*tlsc},
 +		InsecureSkipVerify: false, // true,
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:29:13-0700
+#*
+#- "true"? What does this comment mean?
+#-
 +	})
 +	if err != nil {
 +		fmt.Printf("fileclient:cant establish channel\n", err)
@@ -322,13 +514,37 @@ index 0000000..6f4f089
 +	fmt.Printf("fileclient: Established channel\n")
 +
 +	// authenticate user principal(s)
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:30:07-0700
+#*
+#- Comments should start with a capital and end with a period.
+#-
 +	userCert, err := ioutil.ReadFile(*fileclientPath + *fileclientKeyPath + "cert")
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:30:35-0700
+#*
+#- Use path.Join instead of concatenating paths with string concatenation.
+#-
 +	if err != nil {
 +		fmt.Printf("fileclient: cant read cert %s\n", *fileclientPath+*fileclientKeyPath+"cert")
 +		return
 +	}
 +	fmt.Printf("fileclient: read cert\n")
 +	if userCert == nil {
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:31:17-0700
+#*
+#- Can this happen if err == nil above? It might be the empty string, but it
+#- can't be nil. Ditto for later lines.
+#-
+#- Also, this should be folded into keys.go and not done manually here.
+#-
 +		fmt.Printf("fileclient: nil user cert\n")
 +	}
 +	pks, err := ioutil.ReadFile(*fileclientPath + *fileclientKeyPath + "keys")
@@ -344,9 +560,26 @@ index 0000000..6f4f089
 +	err = proto.Unmarshal(pks, &cks)
 +	if err != nil {
 +		fmt.Printf("fileclient: cant proto unmarshal key set\n")
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:32:45-0700
+#*
+#- Spelling: "can't". Ditto for future instances of "cant". And when there is an
+#- error, it should be logged, e.g.,
+#-
+#- log.Fatalf("fileclient: can't unmarshal keyset: %s\n", err)
+#-
 +		return
 +	}
 +	if pks == nil {
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:34:14-0700
+#*
+#- Already checked above.
+#-
 +		fmt.Printf("fileclient: cant proto unmarshaled is nil \n")
 +		return
 +	}
@@ -360,6 +593,15 @@ index 0000000..6f4f089
 +	fmt.Printf("user key: ", userKey)
 +	fmt.Printf("\n")
 +	ok := fileproxy.AuthenticatePrincipalRequest(ms, userKey, userCert)
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:42:03-0700
+#*
+#- I'll comment more on this below, but I believe that much of the code could be
+#- removed and replaced with calls that simply use the Go RPC mechanism over the
+#- established channel.
+#-
 +	if !ok {
 +		fmt.Printf("fileclient: cant authenticate principal\n")
 +		return
@@ -376,6 +618,15 @@ index 0000000..6f4f089
 +	}
 +	// return: status, message, size, error
 +	status, message, size, err := fileproxy.GetResponse(ms)
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:43:05-0700
+#*
+#- "size" is not needed here, since protobuf and Go always keep the size
+#- information around. Ditto for all uses of size-like arguments below and in
+#- the protobufs.
+#-
 +	if err != nil {
 +		fmt.Printf("Error in response to SendCreate\n")
 +		return
@@ -383,12 +634,26 @@ index 0000000..6f4f089
 +	fmt.Printf("Response to SendCreate\n")
 +	fileproxy.PrintResponse(status, message, size)
 +	if *status != "succeeded" {
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:43:59-0700
+#*
+#- This is already encoded by the error message, right?
+#-
 +		return
 +	}
 +
 +	// Send File
 +	fmt.Printf("\nfileclient sending file %s\n", sentFileName)
 +	err = fileproxy.SendSendFile(ms, nil, sentFileName)
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:44:19-0700
+#*
+#- What is nil here? Add a comment to specify what it is.
+#-
 +	if err != nil {
 +		fmt.Printf("fileclient: SendSendFile has error\n")
 +		return
@@ -449,8 +714,24 @@ index 0000000..5e3c928
 +echo "rebuilding fileproxy"
 +cd ..
 +go build ...
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:45:47-0700
+#*
+#- Don't use "go build ...". If we need a build script (and we shouldn't), then
+#- let's write one in a standard build language.
+#-
 +cd fileclient
 +go build fileclient.go
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:46:26-0700
+#*
+#- Normally, applications like this are kept in their own directories so that
+#- you don't have to explicitly name them to build.
+#-
 +echo "done"
 diff --git a/apps/fileproxy/filehandler.go b/apps/fileproxy/filehandler.go
 new file mode 100644
@@ -491,6 +772,14 @@ index 0000000..4e8def7
 +)
 +
 +// Resource types: files, channels
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:48:37-0700
+#*
+#- It looks like some of these should be enums rather than strings, since, e.g.,
+#- resourceStatus probably only has a small number of valid values.
+#-
 +type ResourceInfo struct {
 +	resourceName      string
 +	resourceType      string
@@ -498,10 +787,38 @@ index 0000000..4e8def7
 +	resourceLocation  string
 +	resourceSize      int
 +	resourceOwner     string // x509 cert
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:49:13-0700
+#*
+#- Then this should be a []byte, right? Or it should be *x509.Certificate
+#-
 +	dateCreated       string
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:49:30-0700
+#*
+#- import "time" and have a real date value. Same for modified date.
+#-
 +	dateModified      string
 +	authenticatorType string // sha hash usually
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:49:53-0700
+#*
+#- enum, then.
+#-
 +	authenticator     [][]byte
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:50:07-0700
+#*
+#- Why is this [][]byte? A comment would be helpful here.
+#-
 +}
 +
 +type Principal struct {
@@ -514,10 +831,33 @@ index 0000000..4e8def7
 +	Guard          tao.Guard
 +	baseDirectory  string
 +	NumResources   int
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:48:00-0700
+#*
+#- Why is this exported while others aren't?
+#-
 +	resourceArray  [100]ResourceInfo
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:47:43-0700
+#*
+#- No magic numbers. Why 100? And isn't NumPrincipals tied to principalArray?
+#- Why have the size at all? Just have principalArray with type []Principal,
+#- since the length is already part of the slice []Principal type.
+#-
 +	NumPrincipals  int
 +	principalArray [100]Principal
 +	// Rules
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:51:23-0700
+#*
+#- Missing?
+#-
 +}
 +
 +// Policy for managing files in the fileserver.
@@ -543,6 +883,15 @@ index 0000000..4e8def7
 +// Some fake additional statements for the purpose of testing the guard.
 +var additional_policy = []string{
 +	"FileServer(\"fileserver\")",
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:51:40-0700
+#*
+#- I wonder if this is needed at all. Is this (and its related policy) ever used
+#- in the current implementation? Are there plans to use it? Or is it just users
+#- that are checked using the auth policy?
+#-
 +	"Action(\"create\")",
 +	"Action(\"getfile\")",
 +	"Action(\"sendfile\")",
@@ -550,6 +899,13 @@ index 0000000..4e8def7
 +}
 +
 +/*
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:52:30-0700
+#*
+#- Remove commented code.
+#-
 +func try(query, msg string, shouldPass bool, g tao.Guard) {
 +	b, err := g.Query(query)
 +	if err != nil {
@@ -575,8 +931,22 @@ index 0000000..4e8def7
 +*/
 +
 +func addResource(creator string, resource string, g tao.Guard) error {
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:52:47-0700
+#*
+#- Standard Go style is "creator, resource string"
+#-
 +	if err := g.AddRule("Resource(\"" + resource + "\")"); err != nil {
 +		return errors.New("Cant add resource in rules\n")
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:53:09-0700
+#*
+#- Also return the err as part of it so we don't lose context.
+#-
 +	}
 +	if err := g.AddRule("Creator(\"" + creator + "\", \"" + resource + "\")"); err != nil {
 +		return errors.New("Cant add creator in rules\n")
@@ -585,10 +955,29 @@ index 0000000..4e8def7
 +}
 +
 +func PrincipalNameFromDERCert(derCert []byte) *string {
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:53:45-0700
+#*
+#- Why *string?
+#-
 +	cert, err := x509.ParseCertificate(derCert)
 +	if err != nil {
 +		fmt.Printf("Cant get name from certificate\n")
 +		return nil
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:54:01-0700
+#*
+#- This shows that you also need to return an error, not just a string. And you
+#- should return "" for the error case. Don't use pointer types to overload a
+#- return value with error handling. That's one reason Go has multiple return
+#- values.
+#-
+#- Ditto for the other functions in this file.
+#-
 +	}
 +	cn := cert.Subject.CommonName
 +	return &cn
@@ -626,6 +1015,21 @@ index 0000000..4e8def7
 +
 +func (m *ResourceMaster) Find(resourcename string) (*ResourceInfo, error) {
 +	for i := 0; i < m.NumResources; i++ {
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:55:58-0700
+#*
+#- Use a range for instead:
+#-
+#- for _, r := range m.resourceArray {
+#-   if r.resourceName == resourceName {
+#-     return &r, nil
+#-   }
+#- }
+#-
+#- Then you don't need NumResources at all.
+#-
 +		if m.resourceArray[i].resourceName == resourcename {
 +			return &m.resourceArray[i], nil
 +		}
@@ -634,6 +1038,13 @@ index 0000000..4e8def7
 +}
 +
 +func (m *ResourceMaster) Insert(path string, resourcename string, owner string) (*ResourceInfo, error) {
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:57:18-0700
+#*
+#- path, resourceName, owner string
+#-
 +	found, err := m.Find(resourcename)
 +	if err != nil {
 +		return nil, err
@@ -642,6 +1053,20 @@ index 0000000..4e8def7
 +		return found, nil
 +	}
 +	n := m.NumResources
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:58:02-0700
+#*
+#- This will panic once you reach 100 resources. Instead, use slices as I
+#- suggested above. This code then becomes:
+#-
+#- r := &ResourceInfo{
+#- /* ... fill it out ... */
+#- }
+#-
+#- m.resourceArray = append(m.resourceArray, *r)
+#-
 +	m.NumResources = m.NumResources + 1
 +	// resInfo:=   new(ResourceInfo)
 +	// m.resourceArray[n]=  *resInfo
@@ -655,6 +1080,13 @@ index 0000000..4e8def7
 +
 +func (m *ResourceMaster) FindPrincipal(name string) (*Principal, error) {
 +	for i := 0; i < m.NumPrincipals; i++ {
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T11:59:54-0700
+#*
+#- Use a range for loop, as I suggest above.
+#-
 +		if m.principalArray[i].name == name {
 +			return &m.principalArray[i], nil
 +		}
@@ -671,6 +1103,14 @@ index 0000000..4e8def7
 +		return found, nil
 +	}
 +	n := m.NumPrincipals
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-23T12:00:21-0700
+#*
+#- See the comment for resourceArray above and do the same thing here.
+#- Otherwise, this will be arbitrarily limited and will panic unnecessarily.
+#-
 +	m.NumPrincipals = m.NumPrincipals + 1
 +	m.principalArray[n].name = name
 +	m.principalArray[n].der = cert
@@ -682,6 +1122,16 @@ index 0000000..4e8def7
 +	*string, *string, *int, []byte, error) {
 +	fmt.Printf("filehandler: DecodeMessage\n")
 +	var the_type32 *int32
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-24T11:43:57-0700
+#*
+#- This isn't C89: you don't declare your variables at the top of the file.
+#-
+#- Also, this method is unnecessary: do proto.Unmarshal and access the values
+#- directly.
+#-
 +	var the_type int
 +	var subject *string
 +	var action *string
@@ -712,6 +1162,20 @@ index 0000000..4e8def7
 +	}
 +	the_type = int(*the_type32)
 +	if the_type == int(MessageType_REQUEST) {
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-24T11:46:06-0700
+#*
+#- Don't cast to int: use the type declared by the protobuf.
+#-
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-24T11:45:27-0700
+#*
+#- Use a case statement so you can make sure you handle all the types.
+#-
 +		subject = fpMessage.SubjectName
 +		action = fpMessage.ActionName
 +		resource = fpMessage.ResourceName
@@ -747,6 +1211,13 @@ index 0000000..4e8def7
 +}
 +
 +func EncodeMessage(theType int, subject *string, action *string, resourcename *string, owner *string,
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-24T11:46:52-0700
+#*
+#- This method is also unnecessary: construct the protobuf directly as a struct.
+#-
 +	status *string, reqMessage *string, size *int, buf []byte) ([]byte, error) {
 +	fmt.Printf("filehandler: encodeMessage\n")
 +	fmt.Printf("EncodeMessage %d\n", theType)
@@ -777,6 +1248,13 @@ index 0000000..4e8def7
 +
 +func (m *ResourceMaster) Delete(resourceName string) error {
 +	return nil // not implemented
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-24T11:47:27-0700
+#*
+#- Implement?
+#-
 +}
 +
 +func (m *ResourceMaster) EncodeMaster() ([]byte, error) {
@@ -787,16 +1265,52 @@ index 0000000..4e8def7
 +	protoMessage.NumFileinfos = proto.Int(len(m.resourceArray))
 +	out, err := proto.Marshal(protoMessage)
 +	return out, err
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-24T11:47:49-0700
+#*
+#- These two lines should be one:
+#-
+#- return proto.Marshal(protoMessage)
+#-
+#- And, in fact, this method should probably be something like
+#-
+#- fpr := &FPResourceMaster{
+#-   PrinName: proto.String(m.program),
+#-   BaseDirectoryName: proto.String(m.baseDirectory),
+#-   NumFileinfos: proto.Int(len(m.resourceArray)), // not needed?
+#- }
+#- return proto.Marshal(fpr)
+#-
+#- And this should be inlined into the code unless it's used more than once. I
+#- don't currently see it being used at all.
+#-
+#- This same comment applies to all the Encode/Decode method pairs here.
 +}
 +
 +func (m *ResourceMaster) DecodeMaster(in []byte) (*int, error) {
 +	fmt.Printf("filehandler: DecodeMaster\n")
 +	rMessage := new(FPResourceMaster)
 +	_ = proto.Unmarshal(in, rMessage)
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-24T11:47:39-0700
+#*
+#- Don't ignore errors
+#-
 +	m.program = *rMessage.PrinName
 +	m.baseDirectory = *rMessage.BaseDirectoryName
 +	size := *rMessage.NumFileinfos
 +	isize := int(size) //TODO: Fix
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-24T11:50:47-0700
+#*
+#- No size field needed.
+#-
 +	return &isize, nil
 +}
 +
@@ -842,6 +1356,13 @@ index 0000000..4e8def7
 +	fmt.Printf("%d resources\n", len(m.resourceArray))
 +	if printResources {
 +		for i := 0; i < len(m.resourceArray); i++ {
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-24T11:51:34-0700
+#*
+#- convert to a range for loop
+#-
 +			m.resourceArray[i].PrintResourceInfo()
 +		}
 +	}
@@ -871,6 +1392,13 @@ index 0000000..4e8def7
 +	*/
 +	// Remove this
 +	m.Guard = tao.LiberalGuard
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-24T11:52:07-0700
+#*
+#- Indeed, this needs to be removed
+#-
 +
 +	return nil
 +}
@@ -878,6 +1406,13 @@ index 0000000..4e8def7
 +func (m *ResourceMaster) SaveRules(g tao.Guard, rulefile string) error {
 +	fmt.Printf("filehandler: SaveRules\n")
 +	// no need for rules
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-24T11:52:37-0700
+#*
+#- These do need to be saved, right?
+#-
 +	return nil
 +}
 +
@@ -958,6 +1493,19 @@ index 0000000..4e8def7
 +	}
 +	fmt.Printf("GetResponse read %d bytes\n", len(strbytes))
 +	theType, _, _, _, _, status, message, size, _, err := DecodeMessage([]byte(strbytes))
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-24T11:54:46-0700
+#*
+#- The fact that this is ignoring parts of the message strongly suggest that
+#- DecodeMessage needs to be refactored. I suspect, as I said above, that it can
+#- be dropped entirely and can be replaced by simple protobuf + struct
+#- manipulation and examination.
+#-
+#- Same comment for all the places that have Encode with lots of nil values.
+#- That's a strong signal that this code is not factored right.
+#-
 +	if err != nil {
 +		fmt.Printf("DecodeMessage error in GetResponse\n")
 +		return nil, nil, nil, err
@@ -1047,6 +1595,13 @@ index 0000000..4e8def7
 +	}
 +	fmt.Printf("AuthenticatePrincipal: got offered cert\n")
 +	c := 32
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-24T11:56:23-0700
+#*
+#- What is 32? Make a constant for this length.
+#-
 +	nonce := make([]byte, c)
 +	_, err = rand.Read(nonce)
 +	if err != nil {
@@ -1070,6 +1625,13 @@ index 0000000..4e8def7
 +		fmt.Printf("cant get verifier from x509 AuthenticatePrincipal\n")
 +	}
 +	ok, _ := v.Verify(nonce, "fileproxy-challenge", signedRand)
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-24T11:57:19-0700
+#*
+#- Check error
+#-
 +	if ok {
 +		fmt.Printf("nonce verified\n")
 +	} else {
@@ -1090,6 +1652,14 @@ index 0000000..4e8def7
 +	fmt.Printf("AuthenticatePrincipalRequest\n")
 +	// format request
 +	subject := "jlm"
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-24T11:57:41-0700
+#*
+#- Don't hard-code the principal name here. This should be an argument to the
+#- function.
+#-
 +	action := "authenticateprincipal"
 +	owner := "jlm"
 +	message, err := EncodeMessage(int(MessageType_REQUEST), &subject, &action, &subject, &owner,
@@ -1101,8 +1671,22 @@ index 0000000..4e8def7
 +	fmt.Printf("AuthenticatePrincipalRequest request %d, ", len(message))
 +	fmt.Printf("\n")
 +	_, _ = ms.WriteString(string(message))
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-24T11:58:01-0700
+#*
+#- Check the error
+#-
 +	fmt.Printf("AuthenticatePrincipalRequest: sent request\n")
 +	SendProtocolMessage(ms, len(derCert), derCert)
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-24T11:58:20-0700
+#*
+#- Length not needed.
+#-
 +	fmt.Printf("AuthenticatePrincipalRequest: sent cert\n")
 +	nonce, err := GetProtocolMessage(ms)
 +	if err != nil {
@@ -1112,6 +1696,14 @@ index 0000000..4e8def7
 +	fmt.Printf("AuthenticatePrincipalRequest: got nonce\n")
 +	// encrypt nonce
 +	signedBlob, err := key.SigningKey.Sign(nonce, "fileproxy-challenge")
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-24T11:58:32-0700
+#*
+#- This context should be a constant in the file so we can make sure it's used
+#- consistently.
+#-
 +	if err != nil {
 +		fmt.Printf("AuthenticatePrincipalRequest: cant sign\n")
 +	}

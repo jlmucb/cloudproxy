@@ -49,4 +49,10 @@ message FPResourceInfo {
   optional string resource_owner= 6;
 }
 
+message FPPrincipalInfo {
+  required string principal_name = 1;
+  required string principal_cert= 2;
+  required string principal_status = 3;
+}
+
 

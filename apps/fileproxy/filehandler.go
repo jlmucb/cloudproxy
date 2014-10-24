@@ -25,7 +25,8 @@ import (
 	"fmt"
 	tao "github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/util"
-	//"os"
+	"io/ioutil"
+	"os"
 )
 
 // Resource types: files, channels
@@ -43,9 +44,9 @@ type ResourceInfo struct {
 }
 
 type Principal struct {
-	name   string
-	der    []byte
-	status string // authenticate, not
+	Name   string
+	Der    []byte
+	Status string // authenticate, not
 }
 
 type ResourceMaster struct {
@@ -194,7 +195,7 @@ func (m *ResourceMaster) Insert(path string, resourcename string, owner string) 
 
 func (m *ResourceMaster) FindPrincipal(name string) (*Principal, error) {
 	for i := 0; i < m.NumPrincipals; i++ {
-		if m.principalArray[i].name == name {
+		if m.principalArray[i].Name == name {
 			return &m.principalArray[i], nil
 		}
 	}
@@ -211,9 +212,9 @@ func (m *ResourceMaster) InsertPrincipal(name string, cert []byte, authStatus st
 	}
 	n := m.NumPrincipals
 	m.NumPrincipals = m.NumPrincipals + 1
-	m.principalArray[n].name = name
-	m.principalArray[n].der = cert
-	m.principalArray[n].status = authStatus
+	m.principalArray[n].Name = name
+	m.principalArray[n].Der = cert
+	m.principalArray[n].Status = authStatus
 	return &m.principalArray[n], nil
 }
 
@@ -342,6 +343,17 @@ func (m *ResourceMaster) DecodeMaster(in []byte) (*int, error) {
 	return &isize, nil
 }
 
+func (m *ResourceMaster) PrintMaster(printResources bool) {
+	fmt.Printf("Program principal: %s\n", m.program)
+	fmt.Printf("Base Directory: %s\n", m.baseDirectory)
+	fmt.Printf("%d resources\n", len(m.resourceArray))
+	if printResources {
+		for i := 0; i < len(m.resourceArray); i++ {
+			m.resourceArray[i].PrintResourceInfo()
+		}
+	}
+}
+
 func (r *ResourceInfo) EncodeResourceInfo() ([]byte, error) {
 	fmt.Printf("filehandler: encodeResourceInfo\n")
 	protoMessage := new(FPResourceInfo)
@@ -378,15 +390,31 @@ func (r *ResourceInfo) PrintResourceInfo() {
 	fmt.Printf("\n")
 }
 
-func (m *ResourceMaster) PrintMaster(printResources bool) {
-	fmt.Printf("Program principal: %s\n", m.program)
-	fmt.Printf("Base Directory: %s\n", m.baseDirectory)
-	fmt.Printf("%d resources\n", len(m.resourceArray))
-	if printResources {
-		for i := 0; i < len(m.resourceArray); i++ {
-			m.resourceArray[i].PrintResourceInfo()
-		}
-	}
+func (p *Principal) EncodePrincipal() ([]byte, error) {
+	fmt.Printf("filehandler: encodePrincipalInfo\n")
+	protoMessage := new(FPPrincipalInfo)
+	protoMessage.PrincipalName = proto.String(p.Name)
+	protoMessage.PrincipalStatus = proto.String(p.Status)
+	protoMessage.PrincipalCert = proto.String(string(p.Der))
+	out, err := proto.Marshal(protoMessage)
+	return out, err
+}
+
+func (p *Principal) DecodePrincipal(in []byte) error {
+	fmt.Printf("filehandler: DecodePrincipalInfo\n")
+	rMessage := new(FPPrincipalInfo)
+	_ = proto.Unmarshal(in, rMessage)
+	p.Name = *rMessage.PrincipalName
+	p.Status = *rMessage.PrincipalStatus
+	p.Der = []byte(*rMessage.PrincipalCert)
+	return nil
+}
+
+func (p *Principal) PrintPrincipal() {
+	fmt.Printf("Principal name: %s\n", p.Name)
+	fmt.Printf("Principal status: %s\n", p.Status)
+	fmt.Printf("Principal cert: %s\n", p.Der)
+	fmt.Printf("\n")
 }
 
 func (m *ResourceMaster) InitGuard(rulefile string) error {
@@ -407,7 +435,9 @@ func (m *ResourceMaster) InitGuard(rulefile string) error {
 	return nil
 }
 
-func (m *ResourceMaster) SaveFileServerData() error {
+func (m *ResourceMaster) ReadRules(rulefile string) error {
+	fmt.Printf("filehandler: ReadRules\n")
+	// no need for rules
 	return nil
 }
 
@@ -417,26 +447,75 @@ func (m *ResourceMaster) SaveRules(rulefile string) error {
 	return nil
 }
 
-func (m *ResourceMaster) GetResourceData(masterInfoFile string, resourceInfoArrayFile string) error {
+func (m *ResourceMaster) GetResourceData(masterFile string, resourceFile string, principalFile string, ruleFile string) error {
 	fmt.Printf("filehandler: GetResourceData\n")
-	// read master info
-	// decrypt it
-	// read resourceinfos
-	// decrypt it
+	// TODO: decrypt the files
+	// read master
+	masterRecord, _ := ioutil.ReadFile(masterFile)
+	_, _ = m.DecodeMaster([]byte(masterRecord))
+	fmt.Printf("masterRecord size: %d\n", len(masterRecord))
 
-	// read rule file
-	// decrypt it
+	// save resources
+	fo, _ := os.Open(resourceFile)
+	rs := util.NewMessageStream(fo)
+	var resource *ResourceInfo
+	for i := 0; i < m.NumResources; i++ {
+		resourceRecord, _ := rs.ReadString()
+		resource = &m.resourceArray[i]
+		_ = resource.DecodeResourceInfo([]byte(resourceRecord))
+		fmt.Printf("resourceRecord size: %d\n", len(resourceRecord))
+	}
+	fo.Close()
+
+	// read principals
+	fo, _ = os.Open(principalFile)
+	ps := util.NewMessageStream(fo)
+	var principal *Principal
+	for i := 0; i < m.NumPrincipals; i++ {
+		principalRecord, _ := ps.ReadString()
+		principal = &m.principalArray[i]
+		_ = principal.DecodePrincipal([]byte(principalRecord))
+		fmt.Printf("principalRecord size: %d\n", len(principalRecord))
+	}
+	fo.Close()
+
+	// read rules
+	_ = m.ReadRules(ruleFile)
 	return nil
 }
 
-func (m *ResourceMaster) SaveResourceData(masterInfoFile string, resourceInfoArrayFile string) error {
+func (m *ResourceMaster) SaveResourceData(masterFile string, resourceFile string, principalFile string, ruleFile string) error {
 	fmt.Printf("filehandler: SaveResourceData\n")
-	// encrypt master info
-	// write master info
-	// encrypt fileinfos
-	// write fileinfos
-	// encrypt rules
-	// write rules
+	// TODO: encrypt the files
+	// save master
+	masterRecord, _ := m.EncodeMaster()
+	fmt.Printf("masterRecord size: %d\n", len(masterRecord))
+	ioutil.WriteFile(masterFile, masterRecord, os.ModePerm)
+	// save resources
+	fo, _ := os.Create(resourceFile)
+	rs := util.NewMessageStream(fo)
+	var resource *ResourceInfo
+	for i := 0; i < m.NumResources; i++ {
+		resource = &m.resourceArray[i]
+		resourceRecord, _ := resource.EncodeResourceInfo()
+		fmt.Printf("resourceRecord size: %d\n", len(resourceRecord))
+		_, _ = rs.WriteString(string(resourceRecord))
+	}
+	fo.Close()
+	// save principals
+	fo, _ = os.Create(principalFile)
+	ps := util.NewMessageStream(fo)
+	var principal *Principal
+	for i := 0; i < m.NumPrincipals; i++ {
+		principal = &m.principalArray[i]
+		principalRecord, _ := principal.EncodePrincipal()
+		fmt.Printf("principalRecord size: %d\n", len(principalRecord))
+		_, _ = ps.WriteString(string(principalRecord))
+	}
+	fo.Close()
+
+	// save rules
+	_ = m.SaveRules(ruleFile)
 	return nil
 }
 
@@ -758,9 +837,9 @@ func (m *ResourceMaster) certToAuthenticatedName(subjectCert []byte) *string {
 	fmt.Printf("filehandler, certToAuthenticatedName: %s\n", *subjectName)
 	prin, err := m.FindPrincipal(*subjectName)
 	if prin != nil {
-		fmt.Printf("filehanadler, certToAuthenticatedName: found principal, %s %s\n", prin.name, prin.status)
+		fmt.Printf("filehanadler, certToAuthenticatedName: found principal, %s %s\n", prin.Name, prin.Status)
 	}
-	if err != nil || prin == nil || bytes.Equal(prin.der, []byte(*subjectName)) {
+	if err != nil || prin == nil || bytes.Equal(prin.Der, []byte(*subjectName)) {
 		return nil
 	}
 	return subjectName
@@ -895,7 +974,8 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []
 
 func (m *ResourceMaster) InitMaster(filepath string, masterInfoDir string, prin string) error {
 	fmt.Printf("filehandler: InitMaster\n")
-	m.GetResourceData(masterInfoDir+"masterinfo", masterInfoDir+"resources")
+	// m.GetResourceData(masterInfoDir+"masterFile", masterInfoDir+"resourceFile",
+	// masterInfoDir+"resourceFile", masterInfoDir+"ruleFile")
 	m.NumResources = 0
 	m.NumPrincipals = 0
 	m.baseDirectory = filepath
@@ -905,7 +985,8 @@ func (m *ResourceMaster) InitMaster(filepath string, masterInfoDir string, prin 
 
 func (m *ResourceMaster) SaveMaster(masterInfoDir string) error {
 	fmt.Printf("filehandler: SaveMaster\n")
-	err := m.SaveResourceData(masterInfoDir+"masterinfo", masterInfoDir+"resources")
+	err := m.SaveResourceData(masterInfoDir+"masterFile", masterInfoDir+"resourceFile",
+		masterInfoDir+"resourceFile", masterInfoDir+"ruleFile")
 	if err != nil {
 		fmt.Printf("filehandler: cant m.SaveResourceData\n")
 		return err

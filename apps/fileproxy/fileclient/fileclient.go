@@ -126,6 +126,7 @@ func main() {
 		fmt.Printf("fileclient:cant ParseCertificate\n")
 		return
 	}
+	_ = fileproxy.InitProgramPolicy(DerPolicyCert, SigningKey, SymKeys, ProgramCert)
 	pool := x509.NewCertPool()
 	pool.AddCert(policyCert)
 

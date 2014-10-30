@@ -1,0 +1,16 @@
+#
+cd fileclient_files
+rm delegationBlob
+rm sealedsigningKey
+rm sealedsymmetricKey
+rm signerCert
+cd stored_files
+rm originalTestFile.received
+cd ../../fileserver_files
+rm delegationBlob
+rm sealedsigningKey
+rm sealedsymmetricKey
+rm signerCert
+cd stored_files
+rm originalTestFile
+

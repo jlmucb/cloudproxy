@@ -190,6 +190,7 @@ func main() {
 		ProgramCert = SigningKey.Cert.Raw
 	}
 	taoName := myTaoName.String()
+	_ = fileproxy.InitProgramPolicy(DerPolicyCert, SigningKey, SymKeys, ProgramCert)
 
 	server(serverAddr, taoName)
 	if err != nil {

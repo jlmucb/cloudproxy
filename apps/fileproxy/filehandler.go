@@ -29,6 +29,25 @@ import (
 	"os"
 )
 
+type ProgramPolicy struct {
+	Initialized   bool
+	ThePolicyCert []byte
+	MySigningKey  tao.Keys
+	MySymKeys     []byte
+	MyProgramCert []byte
+}
+
+var MyProgramPolicy ProgramPolicy
+
+func InitProgramPolicy(policyCert []byte, signingKey tao.Keys, symKeys []byte, programCert []byte) bool {
+	MyProgramPolicy.ThePolicyCert = policyCert
+	MyProgramPolicy.MySigningKey = signingKey
+	MyProgramPolicy.MySymKeys = symKeys
+	MyProgramPolicy.MyProgramCert = programCert
+	MyProgramPolicy.Initialized = true
+	return true
+}
+
 // Resource types: files, channels
 type ResourceInfo struct {
 	resourceName      string
@@ -694,6 +713,29 @@ func AuthenticatePrincipal(m *ResourceMaster, ms *util.MessageStream) (bool, []b
 	}
 	ok, _ := v.Verify(nonce, "fileproxy-challenge", signedRand)
 	if ok {
+		var opts x509.VerifyOptions
+		roots := x509.NewCertPool()
+		if !MyProgramPolicy.Initialized {
+			fmt.Printf("MyProgramPolicy not initialized")
+			return false, nil
+		}
+		policyCert, err := x509.ParseCertificate(MyProgramPolicy.ThePolicyCert)
+		if err != nil || policyCert == nil {
+			fmt.Printf("Can't parse policy cert")
+			return false, nil
+		}
+		roots.AddCert(policyCert)
+		opts.Roots = roots
+		// now check cert chain
+		// for now, only the root
+		chains, err := cert.Verify(opts)
+		if chains == nil || err != nil {
+			fmt.Printf("Can't validate cert chain to policy")
+			return false, nil
+		}
+		fmt.Printf("Cert chain for challenge verified\n")
+	}
+	if ok {
 		fmt.Printf("nonce verified\n")
 	} else {
 		fmt.Printf("nonce did not verified\n")
@@ -873,7 +915,7 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []
 				fmt.Printf("cant insert principal name in file\n")
 				return false, errors.New("cant insert principal name in file")
 			}
-			fmt.Printf("HandleServiceRequest: Added %s to Principal table\n")
+			fmt.Printf("HandleServiceRequest: Added %s to Principal table\n", *ownerName)
 			return false, nil
 		} else {
 			return false, errors.New("AuthenticatePrincipal failed")

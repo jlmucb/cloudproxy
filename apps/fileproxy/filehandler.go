@@ -436,6 +436,15 @@ func (p *Principal) PrintPrincipal() {
 	fmt.Printf("\n")
 }
 
+func PrintAllPolicy() {
+	for _, r := range policy {
+		fmt.Printf("Rule: %s\n", r)
+	}
+	for _, r := range additional_policy {
+		fmt.Printf("Rule: %s\n", r)
+	}
+}
+
 func (m *ResourceMaster) InitGuard(rulefile string) error {
 	fmt.Printf("filehandler: InitGuard\n")
 	m.Guard = tao.NewTemporaryDatalogGuard()
@@ -450,7 +459,7 @@ func (m *ResourceMaster) InitGuard(rulefile string) error {
 			return errors.New("Couldn't add rule in InitGuard")
 		}
 	}
-	m.Guard = tao.LiberalGuard
+	// REMOVED m.Guard = tao.LiberalGuard
 	return nil
 }
 
@@ -832,7 +841,6 @@ func createRequest(m *ResourceMaster, ms *util.MessageStream,
 	rInfo.PrintResourceInfo()
 	status := "succeeded"
 	SendResponse(ms, status, "", 0)
-	addResource(owner, resourcename, m.Guard)
 	return nil
 }
 
@@ -961,12 +969,16 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []
 	// is it authorized?
 	var ok bool
 	if *action == "create" {
+		addResource(*ownerName, *resourcename, m.Guard)
 		fileserverSubject := "fileserver"
 		query := makeQuery(fileserverSubject, *action, *resourcename)
 		if query == nil {
 			fmt.Printf("bad query")
 		}
 		ok = m.Query(*query)
+		if !ok {
+			PrintAllPolicy()
+		}
 	} else if *action == "getfile" {
 		query := makeQuery(*subjectName, *action, *resourcename)
 		if query == nil {
@@ -1022,6 +1034,7 @@ func (m *ResourceMaster) InitMaster(filepath string, masterInfoDir string, prin 
 	m.NumPrincipals = 0
 	m.baseDirectory = filepath
 	m.InitGuard(masterInfoDir + "rules")
+	PrintAllPolicy()
 	return nil
 }
 

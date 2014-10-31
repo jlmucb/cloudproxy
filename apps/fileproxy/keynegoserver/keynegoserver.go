@@ -13,23 +13,25 @@
 package main
 
 import (
-	"code.google.com/p/goprotobuf/proto"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"errors"
 	"flag"
-	"fmt"
-	"github.com/jlmucb/cloudproxy/tao"
-	"github.com/jlmucb/cloudproxy/tao/auth"
-	taonet "github.com/jlmucb/cloudproxy/tao/net"
-	"github.com/jlmucb/cloudproxy/util"
 	"io/ioutil"
+	"log"
 	"math/big"
 	"net"
 	"os"
 	"time"
+
+	"code.google.com/p/goprotobuf/proto"
+
+	"github.com/jlmucb/cloudproxy/tao"
+	"github.com/jlmucb/cloudproxy/tao/auth"
+	taonet "github.com/jlmucb/cloudproxy/tao/net"
+	"github.com/jlmucb/cloudproxy/util"
 )
 
 var network = flag.String("network", "tcp", "The network to use for connections")
@@ -40,28 +42,29 @@ var configPath = flag.String("config", "tao.config", "The Tao domain config")
 var SerialNumber int64
 
 func IsAuthenticationValid(name *string) bool {
-	fmt.Printf("keynegoserver, IsAuthenticationValid name is %s\n", *name)
+	log.Printf("keynegoserver, IsAuthenticationValid name is %s\n", *name)
 	if name == nil {
 		return false
 	}
-	fmt.Printf("keynegoserver, IsAuthenticationValid returning true\n")
+	log.Printf("keynegoserver, IsAuthenticationValid returning true\n")
 	return true
 }
 
 // return is terminate, error
 func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, error) {
-	fmt.Printf("keynegoerver: KeyNegoRequest\n")
+	log.Printf("keynegoerver: KeyNegoRequest\n")
 	// Expect an attestation from the client.
 	ms := util.NewMessageStream(conn)
 	var a tao.Attestation
 	if err := ms.ReadMessage(&a); err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't read attestation from channel:", err)
+		log.Printf("Couldn't read attestation from channel:", err)
+		log.Printf("\n")
 		return false, err
 	}
 
 	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
 	if err := taonet.ValidatePeerAttestation(&a, peerCert, guard); err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't validate peer attestation:", err)
+		log.Printf("Couldn't validate peer attestation:", err)
 		return false, err
 	}
 
@@ -70,15 +73,15 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, 
 	// a is a says speaksfor, Delegate of speaksfor is cert and should be DER encoded
 
 	// get underlying says
-	fmt.Print("keynegoserver, attest: ", a)
-	fmt.Print("\n")
+	log.Print("keynegoserver, attest: ", a)
+	log.Print("\n")
 	f, err := auth.UnmarshalForm(a.SerializedStatement)
 	if err != nil {
-		fmt.Printf("\nkeynegoserver: cant unmarshal a.SerializedStatement\n")
+		log.Printf("\nkeynegoserver: cant unmarshal a.SerializedStatement\n")
 		return false, err
 	}
-	fmt.Print("\nkeynegoserver, unmarshaled serialized: ", f.String())
-	fmt.Print("\n")
+	log.Print("\nkeynegoserver, unmarshaled serialized: ", f.String())
+	log.Print("\n")
 
 	var saysStatement *auth.Says
 	if ptr, ok := f.(*auth.Says); ok {
@@ -88,28 +91,28 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, 
 	}
 	sf, ok := saysStatement.Message.(auth.Speaksfor)
 	if ok != true {
-		fmt.Printf("keynegoserver: says doesnt have speaksfor message\n")
+		log.Printf("keynegoserver: says doesnt have speaksfor message\n")
 		return false, err
 	}
-	fmt.Print("keynegoserver, speaksfor: ", sf)
-	fmt.Print("\n")
+	log.Print("keynegoserver, speaksfor: ", sf)
+	log.Print("\n")
 	kprin, ok := sf.Delegate.(auth.Prin)
 	if ok != true {
-		fmt.Printf("keynegoserver: speaksfor Delegate is not auth.Prin\n")
+		log.Printf("keynegoserver: speaksfor Delegate is not auth.Prin\n")
 		return false, err
 	}
 	subjectPrin, ok := sf.Delegator.(auth.Prin)
 	if ok != true {
-		fmt.Printf("keynegoserver: cant get subject principal\n")
+		log.Printf("keynegoserver: cant get subject principal\n")
 		return false, errors.New("Cant get principal name from verifier")
 	}
 	subjectnamestr := subjectPrin.String()
 	verified := IsAuthenticationValid(&subjectnamestr)
 	if !verified {
-		fmt.Printf("keynegoserver: name verification failed\n")
+		log.Printf("keynegoserver: name verification failed\n")
 		return false, err
 	}
-	fmt.Printf("keynegoserver, IsAuthenticationValid succeeded: subject principal name: %s\n", subjectnamestr)
+	log.Printf("keynegoserver, IsAuthenticationValid succeeded: subject principal name: %s\n", subjectnamestr)
 	details := tao.X509Details{
 		Country:            "US",
 		Organization:       "Google",
@@ -137,7 +140,7 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, 
 		verifier.GetVerifierEc(),
 		policyKey.SigningKey.GetSignerEc())
 	if err != nil {
-		fmt.Printf("keynegoserver: cant create client certificate: %s\n", err)
+		log.Printf("keynegoserver: cant create client certificate: %s\n", err)
 		return false, err
 	}
 	err = ioutil.WriteFile("ClientCert", clientDerCert, os.ModePerm)
@@ -156,7 +159,7 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, 
 
 	delegator, ok := sf.Delegator.(auth.Prin)
 	if !ok {
-		fmt.Printf("keynegoserver: the delegator must be a principal")
+		log.Printf("keynegoserver: the delegator must be a principal")
 		return false, err
 	}
 	var prog auth.PrinExt
@@ -172,7 +175,7 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, 
 	}
 	ra, err := tao.GenerateAttestation(policyKey.SigningKey, nil, *keynegoSays)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't attest to the new says statement:", err)
+		log.Printf("Couldn't attest to the new says statement:", err)
 		return false, err
 	}
 
@@ -195,18 +198,19 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, 
 	}
 	ea, err := tao.GenerateAttestation(policyKey.SigningKey, nil, endorsement)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't generate an endorsement for this program:", err)
+		log.Printf("Couldn't generate an endorsement for this program:", err)
 		return false, err
 	}
 	eab, err := proto.Marshal(ea)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't marshal an endorsement:", err)
+		log.Printf("Couldn't marshal an endorsement:", err)
 		return false, err
 	}
 	ra.SerializedEndorsements = [][]byte{eab}
 
 	if _, err := ms.WriteMessage(ra); err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't return the attestation on the channel:", err)
+		log.Printf("Couldn't return the attestation on the channel:", err)
+		log.Printf("\n")
 		return false, err
 	}
 
@@ -217,10 +221,10 @@ func main() {
 	flag.Parse()
 	domain, err := tao.LoadDomain(*configPath, []byte(*domainPass))
 	if domain == nil {
-		fmt.Printf("keynegoserver: no domain\n")
+		log.Printf("keynegoserver: no domain\n")
 		return
 	} else if err != nil {
-		fmt.Printf("keynegoserver: Couldn't load the config path %s: %s\n", *configPath, err)
+		log.Printf("keynegoserver: Couldn't load the config path %s: %s\n", *configPath, err)
 		return
 	}
 
@@ -234,27 +238,27 @@ func main() {
 	//   be good.
 	keys, err := tao.NewTemporaryKeys(tao.Signing)
 	if keys == nil || err != nil {
-		fmt.Printf("keynegoserver: Couldn't set up temporary keys for the connection:", err)
+		log.Printf("keynegoserver: Couldn't set up temporary keys for the connection:", err)
 		return
 	}
 	keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
 		Organization: []string{"Google Tao Demo"}})
 	if err != nil {
-		fmt.Printf("keynegoserver: Couldn't set up a self-signed cert:", err)
+		log.Printf("keynegoserver: Couldn't set up a self-signed cert:", err)
 		return
 	}
 	SerialNumber = int64(time.Now().UnixNano()) / (1000000)
 	policyKey, err := tao.NewOnDiskPBEKeys(tao.Signing, []byte(*domainPass), "policy_keys", nil)
 	if err != nil {
-		fmt.Printf("keynegoserver: Couldn't get policy key\n", err)
+		log.Printf("keynegoserver: Couldn't get policy key\n", err)
 		return
 	}
-	fmt.Printf("Policy key: ", policyKey)
-	fmt.Printf("\n")
+	log.Printf("Policy key: ", policyKey)
+	log.Printf("\n")
 
 	tlsc, err := taonet.EncodeTLSCert(keys)
 	if err != nil {
-		fmt.Printf("keynegoserver: Couldn't encode a TLS cert:", err)
+		log.Printf("keynegoserver: Couldn't encode a TLS cert:", err)
 		return
 	}
 	conf := &tls.Config{
@@ -265,26 +269,26 @@ func main() {
 	}
 	sock, err := tls.Listen(*network, *addr, conf)
 	if err != nil {
-		fmt.Printf("keynegoserver: error: %s\n", err)
+		log.Printf("keynegoserver: error: %s\n", err)
 	}
 	if sock == nil {
-		fmt.Printf("keynegoserver: Empty socket, terminating\n")
+		log.Printf("keynegoserver: Empty socket, terminating\n")
 		return
 	}
 	defer sock.Close()
 
-	fmt.Printf("keynegoserver: accepting connections\n")
+	log.Printf("keynegoserver: accepting connections\n")
 	for {
 		conn, err := sock.Accept()
 		if conn == nil {
-			fmt.Printf("keynegoserver: Empty connection\n")
+			log.Printf("keynegoserver: Empty connection\n")
 			return
 		} else if err != nil {
-			fmt.Printf("keynegoserver: Couldn't accept a connection on %s: %s\n", *addr, err)
+			log.Printf("keynegoserver: Couldn't accept a connection on %s: %s\n", *addr, err)
 			return
 		}
-		fmt.Printf("keynegoserver: calling RequestLoop\n")
+		log.Printf("keynegoserver: calling RequestLoop\n")
 		go KeyNegoRequest(conn, policyKey, domain.Guard)
 	}
-	fmt.Printf("keynegoserver: finishing\n")
+	log.Printf("keynegoserver: finishing\n")
 }

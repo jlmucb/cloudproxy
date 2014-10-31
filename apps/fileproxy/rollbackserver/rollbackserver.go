@@ -1,4 +1,4 @@
-// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
+// Copyright (c) 2014, Google Corporation.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
-	"fmt"
+	"log"
 	"net"
 
 	"github.com/jlmucb/cloudproxy/apps/fileproxy"
@@ -26,13 +26,12 @@ import (
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	taonet "github.com/jlmucb/cloudproxy/tao/net"
 	"github.com/jlmucb/cloudproxy/util"
-	// "io/ioutil"
 )
 
 var hostcfg = flag.String("../hostdomain/tao.config", "../hostdomain/tao.config", "path to host tao configuration")
 var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8129", "port for client/server")
-var rollbackserverPath = flag.String("./rollbackserver_files/", "./rollbackserver_files/", "rollbackserver directory")
+var rollbackserverPath = flag.String("rollbackserver_files/", "rollbackserver_files/", "rollbackserver directory")
 var serverAddr string
 
 var DerPolicyCert []byte
@@ -41,33 +40,33 @@ var SymKeys []byte
 var ProgramCert []byte
 
 func clientServiceThead(ms *util.MessageStream, fileGuard tao.Guard) {
-	fmt.Printf("rollbackserver: clientServiceThead\n")
+	log.Printf("rollbackserver: clientServiceThead\n")
 }
 
 func server(serverAddr string, prin string) {
 	var sock net.Listener
-	fmt.Printf("fileserver: server\n")
+	log.Printf("fileserver: server\n")
 
 	/*
 		rollbackserverMaster = new(fileproxy.RollbackMaster)
 		err := fileserverResourceMaster.InitMaster(*fileserverFilePath, *fileserverPath, prin)
 		if err != nil {
-			fmt.Printf("fileserver: can't InitMaster\n")
+			log.Printf("fileserver: can't InitMaster\n")
 			return
 		}
 	*/
 
 	policyCert, err := x509.ParseCertificate(DerPolicyCert)
 	if err != nil {
-		fmt.Printf("fileserver: can't ParseCertificate\n")
+		log.Printf("fileserver: can't ParseCertificate\n")
 		return
 	}
 	pool := x509.NewCertPool()
 	pool.AddCert(policyCert)
 	tlsc, err := taonet.EncodeTLSCert(&SigningKey)
 	if err != nil {
-		fmt.Printf("fileserver, encode error: ", err)
-		fmt.Printf("\n")
+		log.Printf("fileserver, encode error: ", err)
+		log.Printf("\n")
 		return
 	}
 	conf := &tls.Config{
@@ -76,19 +75,19 @@ func server(serverAddr string, prin string) {
 		InsecureSkipVerify: false, //true,
 		ClientAuth:         tls.RequireAnyClientCert,
 	}
-	fmt.Printf("Listenting\n")
+	log.Printf("Listenting\n")
 	sock, err = tls.Listen("tcp", serverAddr, conf)
 	// sock, err = net.Listen("tcp", serverAddr)
 	if err != nil {
-		fmt.Printf("rollbackserver, listen error: ", err)
-		fmt.Printf("\n")
+		log.Printf("rollbackserver, listen error: ", err)
+		log.Printf("\n")
 		return
 	}
 	for {
-		fmt.Printf("rollbackserver: at Accept\n")
+		log.Printf("rollbackserver: at Accept\n")
 		conn, err := sock.Accept()
 		if err != nil {
-			fmt.Printf("rollbackserver: can't accept connection: %s\n", err.Error())
+			log.Printf("rollbackserver: can't accept connection: %s\n", err.Error())
 		} else {
 			ms := util.NewMessageStream(conn)
 			go clientServiceThead(ms, nil)
@@ -104,13 +103,13 @@ func main() {
 	if err != nil {
 		return
 	}
-	fmt.Printf("rollbackserver: Domain name: %s\n", hostDomain.ConfigPath)
+	log.Printf("rollbackserver: Domain name: %s\n", hostDomain.ConfigPath)
 	DerPolicyCert = nil
 	if hostDomain.Keys.Cert != nil {
 		DerPolicyCert = hostDomain.Keys.Cert.Raw
 	}
 	if DerPolicyCert == nil {
-		fmt.Printf("rollbackserver: can't retrieve policy cert\n")
+		log.Printf("rollbackserver: can't retrieve policy cert\n")
 		return
 	}
 
@@ -124,11 +123,11 @@ func main() {
 	if err != nil {
 		return
 	}
-	fmt.Printf("rollbackserver: my name is %s\n", myTaoName)
+	log.Printf("rollbackserver: my name is %s\n", myTaoName)
 
 	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err := fileproxy.GetMyCryptoMaterial(*rollbackserverPath)
 	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || derCert == nil {
-		fmt.Printf("rollbackserver: No key material present\n")
+		log.Printf("rollbackserver: No key material present\n")
 	}
 	ProgramCert = derCert
 
@@ -139,37 +138,37 @@ func main() {
 			return
 		}
 		if policy != tao.SealPolicyDefault {
-			fmt.Printf("rollbackserver: unexpected policy on unseal\n")
+			log.Printf("rollbackserver: unexpected policy on unseal\n")
 		}
 		SymKeys = symkeys
-		fmt.Printf("rollbackserver: Unsealed symKeys: % x\n", SymKeys)
+		log.Printf("rollbackserver: Unsealed symKeys: % x\n", SymKeys)
 	} else {
 		symkeys, err := fileproxy.InitializeSealedSymmetricKeys(*rollbackserverPath, tao.Parent(), 64)
 		if err != nil {
-			fmt.Printf("rollbackserver: InitializeSealedSymmetricKeys error: %s\n", err)
+			log.Printf("rollbackserver: InitializeSealedSymmetricKeys error: %s\n", err)
 		}
 		SymKeys = symkeys
-		fmt.Printf("rollbackserver: InitilizedsymKeys: % x\n", SymKeys)
+		log.Printf("rollbackserver: InitilizedsymKeys: % x\n", SymKeys)
 	}
 
 	if sealedSigningKey != nil {
-		fmt.Printf("rollbackserver: retrieving signing key\n")
+		log.Printf("rollbackserver: retrieving signing key\n")
 		signingkey, err := fileproxy.SigningKeyFromBlob(tao.Parent(),
 			sealedSigningKey, derCert, delegation)
 		if err != nil {
-			fmt.Printf("rollbackserver: SigningKeyFromBlob error: %s\n", err)
+			log.Printf("rollbackserver: SigningKeyFromBlob error: %s\n", err)
 		}
 		SigningKey = *signingkey
-		fmt.Printf("rollbackserver: Retrieved Signing key: % x\n", SigningKey)
+		log.Printf("rollbackserver: Retrieved Signing key: % x\n", SigningKey)
 	} else {
-		fmt.Printf("rollbackserver: initializing signing key\n")
+		log.Printf("rollbackserver: initializing signing key\n")
 		signingkey, err := fileproxy.InitializeSealedSigningKey(*rollbackserverPath,
 			tao.Parent(), *hostDomain)
 		if err != nil {
-			fmt.Printf("rollbackserver: InitializeSealedSigningKey error: %s\n", err)
+			log.Printf("rollbackserver: InitializeSealedSigningKey error: %s\n", err)
 		}
 		SigningKey = *signingkey
-		fmt.Printf("rollbackserver: Initialized signingKey: % x\n", SigningKey)
+		log.Printf("rollbackserver: Initialized signingKey: % x\n", SigningKey)
 		ProgramCert = SigningKey.Cert.Raw
 	}
 	taoName := myTaoName.String()
@@ -177,7 +176,7 @@ func main() {
 
 	server(serverAddr, taoName)
 	if err != nil {
-		fmt.Printf("rollbackserver: server error\n")
+		log.Printf("rollbackserver: server error\n")
 	}
-	fmt.Printf("rollbackserver: done\n")
+	log.Printf("rollbackserver: done\n")
 }

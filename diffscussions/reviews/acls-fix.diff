@@ -1,0 +1,84 @@
+#* 
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-10-02T10:57:27-0700
+#* 
+#- Fix ACLs to support Args subprincipals.
+#- 
+#- This commit fixes the ACLs Guard support to work with Tao channel auth between
+#- the client and server sides of the demo app. It adds authorization to the ACLs
+#- for the Args() subprincipal in addition to the Program hash.
+#- 
+#- 
+diff --git a/apps/tao_admin/main.go b/apps/tao_admin/main.go
+index 7c89844..3b5b5fc 100644
+--- a/apps/tao_admin/main.go
++++ b/apps/tao_admin/main.go
+@@ -114,55 +114,67 @@ func main() {
+ 		fatalIf(err)
+ 	}
+ 
+ 	if *clear {
+ 		didWork = true
+ 		domain.Guard.Clear()
+ 		err := domain.Save()
+ 		fatalIf(err)
+ 	}
+ 	if *canExecute != "" {
+ 		path := *canExecute
+ 		prin := makeHostPrin(*host)
+ 		subprin := makeProgramSubPrin(path)
+ 		prog := prin.MakeSubprincipal(subprin)
+ 		fmt.Fprintf(noise, "Authorizing program to execute:\n"+
+ 			"  path: %s\n"+
+ 			"  host: %s\n"+
+ 			"  name: %s\n", path, prin, subprin)
+ 		err := domain.Guard.Authorize(prog, "Execute", nil)
+ 		fatalIf(err)
++
++		// Also authorize a version with the path as an argument.
++		argsSubprin := auth.SubPrin{auth.PrinExt{Name: "Args", Arg: []auth.Term{auth.Str(path)}}}
++		progArgs := prog.MakeSubprincipal(argsSubprin)
++		err = domain.Guard.Authorize(progArgs, "Execute", nil)
++		fatalIf(err)
+ 		err = domain.Save()
+ 		fatalIf(err)
+ 		didWork = true
+ 	}
+ 	if *retractCanExecute != "" {
+ 		path := *retractCanExecute
+ 		prin := makeHostPrin(*host)
+ 		subprin := makeProgramSubPrin(path)
+ 		prog := prin.MakeSubprincipal(subprin)
+ 		fmt.Fprintf(noise, "Retracting program authorization to execute:\n"+
+ 			"  path: %s\n"+
+ 			"  host: %s\n"+
+ 			"  name: %s\n", path, prin, subprin)
+ 		err := domain.Guard.Retract(prog, "Execute", nil)
+ 		fatalIf(err)
++
++		// Also retract a version with the path as an argument.
++		argsSubprin := auth.SubPrin{auth.PrinExt{Name: "Args", Arg: []auth.Term{auth.Str(path)}}}
++		progArgs := prog.MakeSubprincipal(argsSubprin)
++		err = domain.Guard.Retract(progArgs, "Execute", nil)
++		fatalIf(err)
+ 		didWork = true
+ 	}
+ 	if *add != "" {
+ 		fmt.Fprintf(noise, "Adding policy rule: %s\n", *add)
+ 		err := domain.Guard.AddRule(*add)
+ 		fatalIf(err)
+ 		err = domain.Save()
+ 		fatalIf(err)
+ 		didWork = true
+ 	}
+ 	if *retract != "" {
+ 		fmt.Fprintf(noise, "Retracting policy rule: %s\n", *retract)
+ 		err := domain.Guard.RetractRule(*retract)
+ 		fatalIf(err)
+ 		err = domain.Save()
+ 		fatalIf(err)
+ 		didWork = true
+ 	}
+ 	if *query != "" {
+ 		fmt.Fprintf(noise, "Querying policy guard: %s\n", *query)

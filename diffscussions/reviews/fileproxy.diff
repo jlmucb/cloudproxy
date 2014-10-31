@@ -171,6 +171,13 @@
 #-- already do that. See the detailed comments below for more information on how
 #-- to rewrite this in idiomatic Go.
 #--
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-10-31T11:56:28-0700
+#*
+#- Ill fix the byte array stuff.
+#-
 diff --git a/apps/fileproxy/Go-cloudproxy.pdf b/apps/fileproxy/Go-cloudproxy.pdf
 new file mode 100644
 index 0000000..59c2218
@@ -190,6 +197,13 @@ index 0000000..6f4f089
 #- are just copies of the code with its documentation should be removed, since
 #- that's already checked in to source control.
 #-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-10-31T11:56:57-0700
+#*
+#- I'll update the doc (removing most of it) and move it to Doc
+#-
 +// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
 #*
 #* author: Tom Roeder
@@ -197,6 +211,13 @@ index 0000000..6f4f089
 #* date: 2014-10-22T15:35:06-0700
 #*
 #- This should be either your copyright or Google, Inc, and probably the latter.
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-10-31T11:57:56-0700
+#*
+#- yep, I'll do that
 #-
 +//
 +// Licensed under the Apache License, Version 2.0 (the "License");
@@ -226,6 +247,14 @@ index 0000000..6f4f089
 #- file. That fixes the problem where the file changes significantly, leaving
 #- the author line ridiculously wrong.
 #-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-10-31T11:58:30-0700
+#*
+#- I actually find the File annotation useful when I print files.  I'd be happy to use 
+#- Copyright The Cloudproxy Authors.  Should I just do that?
+#-
 +
 +package main
 +
@@ -247,6 +276,13 @@ index 0000000..6f4f089
 #-
 #- "code.google.com/p/goprotobuf/proto"
 #- "github.com/jlmucb/cloudproxy/tao"
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-10-31T12:00:21-0700
+#*
+#- OK
 #-
 +	tao "github.com/jlmucb/cloudproxy/tao"
 +	"github.com/jlmucb/cloudproxy/tao/auth"
@@ -294,6 +330,13 @@ index 0000000..6f4f089
 #- if some global variables can only be declared with "var" in Go rather than
 #- something like "const".
 #-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-10-31T12:01:14-0700
+#*
+#- Do you mean all variable should be specifically supplied to other routines or just set in main?
+#-
 +
 +func main() {
 +	flag.Parse()
@@ -318,6 +361,13 @@ index 0000000..6f4f089
 #-
 #- Also, don't litter the code with fmt.Printf. Use log for debugging so that
 #- it's easy to turn on and off.
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-10-31T12:03:49-0700
+#*
+#- Yes the formats are a crutch for debugging initially.  I'll change them to logs
+#-
 +		return
 +	}
 +	DerPolicyCert = nil
@@ -333,6 +383,13 @@ index 0000000..6f4f089
 #-
 #- Also, note that DerPolicyCert is nil by default, so it doesn't need to be set
 #- to nil explicitly.
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-10-31T12:05:08-0700
+#*
+#- DerPolicyCert is a global and was exported.  When we talm
 #-
 +	if hostDomain.Keys.Cert != nil {
 +		DerPolicyCert = hostDomain.Keys.Cert.Raw
@@ -384,6 +441,13 @@ index 0000000..6f4f089
 #- something more like LoadKeys, though I suspect it should also be folded into
 #- the existing Keys infrastructure rather than being implemented separately,
 #- but I'll examine that when I get there.
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-10-31T12:07:42-0700
+#*
+#- OK
 #-
 +	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || derCert == nil {
 +		fmt.Printf("fileclient: No key material present\n")

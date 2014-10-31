@@ -50,7 +50,7 @@ func IsAuthenticationValid(name *string) bool {
 	return true
 }
 
-// return is terminate, error
+// First return is terminate flag.
 func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, error) {
 	log.Printf("keynegoerver: KeyNegoRequest\n")
 	// Expect an attestation from the client.
@@ -68,11 +68,11 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, 
 		return false, err
 	}
 
-	// sign cert and put it in attestation statement
+	// Sign cert and put it in attestation statement
 	// a consists of serialized statement, sig and SignerInfo
 	// a is a says speaksfor, Delegate of speaksfor is cert and should be DER encoded
 
-	// get underlying says
+	// Get underlying says
 	log.Print("keynegoserver, attest: ", a)
 	log.Print("\n")
 	f, err := auth.UnmarshalForm(a.SerializedStatement)
@@ -123,14 +123,13 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, 
 	template := &x509.Certificate{
 		SignatureAlgorithm: x509.ECDSAWithSHA256,
 		PublicKeyAlgorithm: x509.ECDSA,
-		Version:            2, // x509v3
-		// It's always allowed for self-signed certs to have serial 1.
-		SerialNumber: new(big.Int).SetInt64(SerialNumber),
-		Subject:      *subjectname,
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().AddDate(1 /* years */, 0 /* months */, 0 /* days */),
-		KeyUsage:     x509.KeyUsageKeyAgreement,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		Version:            2,
+		SerialNumber:       new(big.Int).SetInt64(SerialNumber),
+		Subject:            *subjectname,
+		NotBefore:          time.Now(),
+		NotAfter:           time.Now().AddDate(1 /* years */, 0 /* months */, 0 /* days */),
+		KeyUsage:           x509.KeyUsageKeyAgreement,
+		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 	}
 	verifier, err := tao.FromPrincipal(kprin)
 	if err != nil {
@@ -147,7 +146,7 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, 
 
 	nowTime := time.Now().UnixNano()
 	expireTime := time.Now().AddDate(1, 0, 0).UnixNano()
-	// replace self signed cert in attest request
+	// Replace self signed cert in attest request
 	newspeaksFor := &auth.Speaksfor{
 		Delegate:  auth.Bytes(clientDerCert),
 		Delegator: sf.Delegator}

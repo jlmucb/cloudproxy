@@ -36,6 +36,8 @@ var caAddr = flag.String("caAddr", "localhost:8124", "The address to listen on")
 var taoChannelAddr = flag.String("taoChannelAddr", "localhost:8124", "The address to listen on")
 var configPath = flag.String("config", "tao.config", "The Tao domain config")
 
+const SizeofSymmetricKeys = 64
+
 // RequestTruncatedAttestation connects to a CA instance, sends the attestation
 // for an X.509 certificate, and gets back a truncated attestation with a new
 // principal name based on the policy key.
@@ -88,8 +90,7 @@ func ZeroBytes(buf []byte) {
 }
 
 // returns sealed symmetric key, sealed signing key, DER encoded cert, delegation, error
-func GetMyCryptoMaterial(path string) ([]byte, []byte, []byte, []byte, error) {
-	// stat domain.config
+func LoadProgramKeys(path string) ([]byte, []byte, []byte, []byte, error) {
 	fileinfo, err := os.Stat(path + "sealedsymmetrickey")
 	if err != nil {
 		return nil, nil, nil, nil, err
@@ -127,7 +128,7 @@ func GetMyCryptoMaterial(path string) ([]byte, []byte, []byte, []byte, error) {
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	log.Printf(" GetMyCryptoMaterial succeeded\n")
+	log.Printf(" LoadProgramKeys succeeded\n")
 	return sealedSymmetricKey, sealedSigningKey, derCert, ds, nil
 }
 
@@ -222,9 +223,7 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 	if ok != true {
 		return nil, errors.New("speaksfor message doesnt have Delegate")
 	}
-	// newCert:= kprin.Key.(auth.Bytes)
 	newCert := auth.Bytes(kprin.(auth.Bytes))
-	// get cert from attestation and save attestation
 	k.Cert, err = x509.ParseCertificate(newCert)
 	if err != nil {
 		log.Printf("cant parse returned certificate", err)

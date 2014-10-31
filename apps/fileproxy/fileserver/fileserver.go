@@ -87,12 +87,11 @@ func server(serverAddr string, prin string) {
 	conf := &tls.Config{
 		RootCAs:            pool,
 		Certificates:       []tls.Certificate{*tlsc},
-		InsecureSkipVerify: false, //true,
+		InsecureSkipVerify: false,
 		ClientAuth:         tls.RequireAnyClientCert,
 	}
 	log.Printf("Listenting\n")
 	sock, err = tls.Listen("tcp", serverAddr, conf)
-	// sock, err = net.Listen("tcp", serverAddr)
 	if err != nil {
 		log.Printf("fileserver, listen error: ", err)
 		log.Printf("\n")
@@ -134,13 +133,17 @@ func main() {
 		return
 	}
 
-	myTaoName, err := tao.Parent().GetTaoName()
+	taoName, err := tao.Parent().GetTaoName()
 	if err != nil {
+		log.Printf("fileserver: cant get tao name\n")
 		return
 	}
-	log.Printf("fileserver: my name is %s\n", myTaoName)
+	log.Printf("fileserver: my name is %s\n", taoName)
 
-	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err := fileproxy.GetMyCryptoMaterial(*fileserverPath)
+	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err := fileproxy.LoadProgramKeys(*fileserverPath)
+	if err != nil {
+		log.Printf("fileserver: cant retrieve key material\n")
+	}
 	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || derCert == nil {
 		log.Printf("fileserver: No key material present\n")
 	}
@@ -158,7 +161,7 @@ func main() {
 		SymKeys = symkeys
 		log.Printf("fileserver: Unsealed symKeys: % x\n", SymKeys)
 	} else {
-		symkeys, err := fileproxy.InitializeSealedSymmetricKeys(*fileserverPath, tao.Parent(), 64)
+		symkeys, err := fileproxy.InitializeSealedSymmetricKeys(*fileserverPath, tao.Parent(), fileproxy.SizeofSymmetricKeys)
 		if err != nil {
 			log.Printf("fileserver: InitializeSealedSymmetricKeys error: %s\n", err)
 		}
@@ -186,10 +189,10 @@ func main() {
 		log.Printf("fileserver: Initialized signingKey: % x\n", SigningKey)
 		ProgramCert = SigningKey.Cert.Raw
 	}
-	taoName := myTaoName.String()
+	taoNameStr := taoName.String()
 	_ = fileproxy.InitProgramPolicy(DerPolicyCert, SigningKey, SymKeys, ProgramCert)
 
-	server(serverAddr, taoName)
+	server(serverAddr, taoNameStr)
 	if err != nil {
 		log.Printf("fileserver: server error\n")
 	}

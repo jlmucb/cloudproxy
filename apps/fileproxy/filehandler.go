@@ -48,6 +48,17 @@ func InitProgramPolicy(policyCert []byte, signingKey tao.Keys, symKeys []byte, p
 	return true
 }
 
+type NameandHash struct {
+	ItemName string
+	Hash     []byte
+}
+
+type RollbackMaster struct {
+	ProgramName      string
+	Counter          int64
+	NameandHashArray [100]NameandHash
+}
+
 // Resource types: files, channels
 type ResourceInfo struct {
 	resourceName      string
@@ -109,17 +120,6 @@ var additional_policy = []string{
 }
 
 /*
-func try(query, msg string, shouldPass bool, g tao.Guard) {
-	b, err := g.Query(query)
-	if err != nil {
-		log.Fatalf("Couldn't query '%s': %s\n", query, err)
-	}
-
-	if b != shouldPass {
-		log.Fatalln(msg)
-	}
-}
-
 func delegateResource(owner, delegate, op, res string, g tao.Guard) {
 	if err := g.AddRule("Delegate(\"" + owner + "\", \"" + delegate + "\", \"" + op + "\", \"" + res + "\")"); err != nil {
 		log.Fatalf("Couldn't delegate operation '%s' on '%s' from '%s' to '%s': %s\n", op, res, owner, delegate, err)
@@ -848,12 +848,23 @@ func newruleRequest(m *ResourceMaster, ms *util.MessageStream,
 	rule string, signerCert []byte) error {
 
 	fmt.Printf("filehandler, newruleRequest, rule: %s\n", rule)
-	// ownerName := PrincipalNameFromDERCert(signerCert)
-	// signer in table?
-	// same Cert?
+	signerName := PrincipalNameFromDERCert(signerCert)
+	if signerName == nil {
+		fmt.Printf("filehanadler, newruleRequest: cant get name from cert\n")
+		return nil
+	}
+	fmt.Printf("filehandler, newRuleRequest: %s\n", *signerName)
+	prin, err := m.FindPrincipal(*signerName)
+	if prin != nil {
+		fmt.Printf("filehanadler, newRuleRequest: found principal, %s %s\n", prin.Name, prin.Status)
+	}
+	if err != nil || prin == nil || !bytes.Equal(prin.Der, signerCert) {
+		SendResponse(ms, "failed", "cert doesn't match", 0)
+		return nil
+	}
+	// check a signature?
 	m.Guard.AddRule(rule)
-	status := "succeeded"
-	SendResponse(ms, status, "", 0)
+	SendResponse(ms, "succeeded", "", 0)
 	return nil
 }
 

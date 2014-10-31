@@ -72,12 +72,11 @@ func server(serverAddr string, prin string) {
 	conf := &tls.Config{
 		RootCAs:            pool,
 		Certificates:       []tls.Certificate{*tlsc},
-		InsecureSkipVerify: false, //true,
+		InsecureSkipVerify: false,
 		ClientAuth:         tls.RequireAnyClientCert,
 	}
 	log.Printf("Listenting\n")
 	sock, err = tls.Listen("tcp", serverAddr, conf)
-	// sock, err = net.Listen("tcp", serverAddr)
 	if err != nil {
 		log.Printf("rollbackserver, listen error: ", err)
 		log.Printf("\n")
@@ -116,16 +115,21 @@ func main() {
 	e := auth.PrinExt{Name: "rollbackserver_version_1"}
 	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
 	if err != nil {
+		log.Printf("rollbackserver: cant get tao name\n")
 		return
 	}
 
-	myTaoName, err := tao.Parent().GetTaoName()
+	taoName, err := tao.Parent().GetTaoName()
 	if err != nil {
 		return
 	}
-	log.Printf("rollbackserver: my name is %s\n", myTaoName)
+	log.Printf("rollbackserver: my name is %s\n", taoName)
 
-	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err := fileproxy.GetMyCryptoMaterial(*rollbackserverPath)
+	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err := fileproxy.LoadProgramKeys(*rollbackserverPath)
+	if err != nil {
+		log.Printf("rollbackserver: cant retrieve key material\n")
+		return
+	}
 	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || derCert == nil {
 		log.Printf("rollbackserver: No key material present\n")
 	}
@@ -143,7 +147,7 @@ func main() {
 		SymKeys = symkeys
 		log.Printf("rollbackserver: Unsealed symKeys: % x\n", SymKeys)
 	} else {
-		symkeys, err := fileproxy.InitializeSealedSymmetricKeys(*rollbackserverPath, tao.Parent(), 64)
+		symkeys, err := fileproxy.InitializeSealedSymmetricKeys(*rollbackserverPath, tao.Parent(), fileproxy.SizeofSymmetricKeys)
 		if err != nil {
 			log.Printf("rollbackserver: InitializeSealedSymmetricKeys error: %s\n", err)
 		}
@@ -171,10 +175,10 @@ func main() {
 		log.Printf("rollbackserver: Initialized signingKey: % x\n", SigningKey)
 		ProgramCert = SigningKey.Cert.Raw
 	}
-	taoName := myTaoName.String()
+	taoNameStr := taoName.String()
 	_ = fileproxy.InitProgramPolicy(DerPolicyCert, SigningKey, SymKeys, ProgramCert)
 
-	server(serverAddr, taoName)
+	server(serverAddr, taoNameStr)
 	if err != nil {
 		log.Printf("rollbackserver: server error\n")
 	}

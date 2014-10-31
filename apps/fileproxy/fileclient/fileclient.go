@@ -60,7 +60,7 @@ func main() {
 		DerPolicyCert = hostDomain.Keys.Cert.Raw
 	}
 	if DerPolicyCert == nil {
-		fmt.Printf("can't retrieve policy cert\n")
+		fmt.Printf("fileclient: can't retrieve policy cert\n")
 		return
 	}
 
@@ -132,7 +132,7 @@ func main() {
 
 	tlsc, err := taonet.EncodeTLSCert(&SigningKey)
 	if err != nil {
-		fmt.Printf("fileserver, encode error: ", err)
+		fmt.Printf("fileclient, encode error: ", err)
 		fmt.Printf("\n")
 		return
 	}
@@ -142,7 +142,7 @@ func main() {
 		InsecureSkipVerify: false, // true,
 	})
 	if err != nil {
-		fmt.Printf("fileclient:cant establish channel\n", err)
+		fmt.Printf("fileclient: cant establish channel\n", err)
 		fmt.Printf("\n")
 		return
 	}
@@ -205,7 +205,7 @@ func main() {
 	// return: status, message, size, error
 	status, message, size, err := fileproxy.GetResponse(ms)
 	if err != nil {
-		fmt.Printf("Error in response to SendCreate\n")
+		fmt.Printf("fileclient: Error in response to SendCreate\n")
 		return
 	}
 	fmt.Printf("Response to SendCreate\n")
@@ -225,7 +225,7 @@ func main() {
 	// return: status, message, size, error
 	status, message, size, err = fileproxy.GetResponse(ms)
 	if err != nil {
-		fmt.Printf("Error in response to SendCreate\n")
+		fmt.Printf("fileclient: Error in response to SendCreate\n")
 		return
 	}
 	fmt.Printf("Response to SendCreate\n")
@@ -244,7 +244,7 @@ func main() {
 
 	status, message, size, err = fileproxy.GetResponse(ms)
 	if err != nil {
-		fmt.Printf("Error in response to SendSend\n")
+		fmt.Printf("fileclient: Error in response to SendSend\n")
 		return
 	}
 	fmt.Printf("Response to SendSend\n")
@@ -255,7 +255,7 @@ func main() {
 
 	err = fileproxy.SendFile(ms, *fileclientFilePath, sentFileName, nil)
 	if err != nil {
-		fmt.Printf("Error in response to SendFile ", err)
+		fmt.Printf("fileclient: Error in response to SendFile ", err)
 		fmt.Printf("\n")
 		return
 	}
@@ -270,10 +270,10 @@ func main() {
 
 	status, message, size, err = fileproxy.GetResponse(ms)
 	if err != nil {
-		fmt.Printf("Error in response to GetFile\n")
+		fmt.Printf("fileclient: Error in response to GetFile\n")
 		return
 	}
-	fmt.Printf("Response to SendGet\n")
+	fmt.Printf("fileclient: Response to SendGet\n")
 	fileproxy.PrintResponse(status, message, size)
 	if *status != "succeeded" {
 		return

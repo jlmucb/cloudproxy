@@ -89,10 +89,11 @@ type ResourceMaster struct {
 	BaseDirectory string
 	NumResources  int
 	// TODO: change magic allocation sizes
-	ResourceArray  [100]ResourceInfo
-	NumPrincipals  int
-	PrincipalArray [100]Principal
-	// TODO: Rules should be here
+	ResourceArray    [100]ResourceInfo
+	NumPrincipals    int
+	PrincipalArray   [100]Principal
+	Policy           []string
+	AdditionalPolicy []string
 }
 
 // Policy for managing files in the fileserver.
@@ -440,11 +441,11 @@ func (p *Principal) PrintPrincipal() {
 	log.Printf("\n")
 }
 
-func PrintAllPolicy() {
-	for _, r := range policy {
+func (m *ResourceMaster) PrintAllPolicy() {
+	for _, r := range m.Policy {
 		log.Printf("Rule: %s\n", r)
 	}
-	for _, r := range additional_policy {
+	for _, r := range m.AdditionalPolicy {
 		log.Printf("Rule: %s\n", r)
 	}
 }
@@ -452,13 +453,13 @@ func PrintAllPolicy() {
 func (m *ResourceMaster) InitGuard(rulefile string) error {
 	log.Printf("filehandler: InitGuard\n")
 	m.Guard = tao.NewTemporaryDatalogGuard()
-	for _, r := range policy {
+	for _, r := range m.Policy {
 		if err := m.Guard.AddRule(r); err != nil {
 			return errors.New("Couldn't add rule in InitGuard")
 		}
 	}
 
-	for _, r := range additional_policy {
+	for _, r := range m.AdditionalPolicy {
 		if err := m.Guard.AddRule(r); err != nil {
 			return errors.New("Couldn't add rule in InitGuard")
 		}
@@ -985,7 +986,7 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []
 		}
 		ok = m.Query(*query)
 		if !ok {
-			PrintAllPolicy()
+			m.PrintAllPolicy()
 		}
 	} else if *action == "getfile" {
 		query := makeQuery(*subjectName, *action, *resourcename)
@@ -1036,11 +1037,13 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []
 
 func (m *ResourceMaster) InitMaster(filepath string, masterInfoDir string, prin string) error {
 	log.Printf("filehandler: InitMaster\n")
+	m.Policy = policy
+	m.AdditionalPolicy = additional_policy
 	m.NumResources = 0
 	m.NumPrincipals = 0
 	m.BaseDirectory = filepath
 	m.InitGuard(masterInfoDir + "rules")
-	PrintAllPolicy()
+	m.PrintAllPolicy()
 	return nil
 }
 

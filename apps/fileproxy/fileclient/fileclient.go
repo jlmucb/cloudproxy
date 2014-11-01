@@ -40,11 +40,6 @@ var fileclientFilePath = flag.String("fileclient_files/stored_files/", "fileclie
 var testFile = flag.String("originalTestFile", "originalTestFile", "test file")
 var fileclientKeyPath = flag.String("usercreds/", "usercreds/", "user keys and certs")
 
-var DerPolicyCert []byte
-var SigningKey tao.Keys
-var SymKeys []byte
-var ProgramCert []byte
-
 func main() {
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
@@ -53,11 +48,11 @@ func main() {
 	if err != nil {
 		return
 	}
-	DerPolicyCert = nil
+	var derPolicyCert []byte
 	if hostDomain.Keys.Cert != nil {
-		DerPolicyCert = hostDomain.Keys.Cert.Raw
+		derPolicyCert = hostDomain.Keys.Cert.Raw
 	}
-	if DerPolicyCert == nil {
+	if derPolicyCert == nil {
 		log.Printf("fileclient: can't retrieve policy cert\n")
 		return
 	}
@@ -75,64 +70,61 @@ func main() {
 	}
 	log.Printf("fileclient: my name is %s\n", taoName)
 
-	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err := fileproxy.LoadProgramKeys(*fileclientPath)
+	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*fileclientPath)
 	if err != nil {
 		log.Printf("fileclient: cant retrieve key material\n")
 	}
-	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || derCert == nil {
+	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || programCert == nil {
 		log.Printf("fileclient: No key material present\n")
 	}
-	ProgramCert = derCert
 	log.Printf("Finished fileproxy.LoadProgramKeys\n")
 
-	defer fileproxy.ZeroBytes(SymKeys)
+	var symKeys []byte
 	if sealedSymmetricKey != nil {
-		symkeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
+		symKeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
 		if err != nil {
 			return
 		}
 		if policy != tao.SealPolicyDefault {
 			log.Printf("fileclient: unexpected policy on unseal\n")
 		}
-		SymKeys = symkeys
-		log.Printf("fileclient: Unsealed symKeys: % x\n", SymKeys)
+		log.Printf("fileclient: Unsealed symKeys: % x\n", symKeys)
 	} else {
-		symkeys, err := fileproxy.InitializeSealedSymmetricKeys(*fileclientPath, tao.Parent(), fileproxy.SizeofSymmetricKeys)
+		symKeys, err := fileproxy.InitializeSealedSymmetricKeys(*fileclientPath, tao.Parent(), fileproxy.SizeofSymmetricKeys)
 		if err != nil {
 			log.Printf("fileclient: InitializeSealedSymmetricKeys error: %s\n", err)
 		}
-		SymKeys = symkeys
-		log.Printf("fileclient: InitilizedsymKeys: % x\n", SymKeys)
+		log.Printf("fileclient: InitilizedsymKeys: % x\n", symKeys)
 	}
+	defer fileproxy.ZeroBytes(symKeys)
 
+	var signingKey *tao.Keys
 	if sealedSigningKey != nil {
-		signingkey, err := fileproxy.SigningKeyFromBlob(tao.Parent(),
-			sealedSigningKey, derCert, delegation)
+		signingKey, err = fileproxy.SigningKeyFromBlob(tao.Parent(),
+			sealedSigningKey, programCert, delegation)
 		if err != nil {
 			log.Printf("fileclient: SigningKeyFromBlob error: %s\n", err)
 		}
-		SigningKey = *signingkey
-		log.Printf("fileclient: Retrieved Signing key: % x\n", SigningKey)
+		log.Printf("fileclient: Retrieved Signing key: % x\n", *signingKey)
 	} else {
-		signingkey, err := fileproxy.InitializeSealedSigningKey(*fileclientPath,
+		signingKey, err = fileproxy.InitializeSealedSigningKey(*fileclientPath,
 			tao.Parent(), *hostDomain)
 		if err != nil {
 			log.Printf("fileclient: InitializeSealedSigningKey error: %s\n", err)
 		}
-		SigningKey = *signingkey
-		log.Printf("fileclient: Initilized signingKey: % x\n", SigningKey)
+		log.Printf("fileclient: Initilized signingKey: % x\n", *signingKey)
 	}
 
-	policyCert, err := x509.ParseCertificate(DerPolicyCert)
+	policyCert, err := x509.ParseCertificate(derPolicyCert)
 	if err != nil {
 		log.Printf("fileclient:cant ParseCertificate\n")
 		return
 	}
-	_ = fileproxy.InitProgramPolicy(DerPolicyCert, SigningKey, SymKeys, ProgramCert)
+	_ = fileproxy.InitProgramPolicy(derPolicyCert, taoName.String(), *signingKey, symKeys, programCert)
 	pool := x509.NewCertPool()
 	pool.AddCert(policyCert)
 
-	tlsc, err := taonet.EncodeTLSCert(&SigningKey)
+	tlsc, err := taonet.EncodeTLSCert(signingKey)
 	if err != nil {
 		log.Printf("fileclient, encode error: ", err)
 		log.Printf("\n")

@@ -128,7 +128,7 @@ func LoadProgramKeys(path string) ([]byte, []byte, []byte, []byte, error) {
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	log.Printf(" LoadProgramKeys succeeded\n")
+	log.Printf("LoadProgramKeys succeeded\n")
 	return sealedSymmetricKey, sealedSigningKey, derCert, ds, nil
 }
 

@@ -37,10 +37,6 @@ var fileserverFilePath = flag.String("fileserver_files/stored_files/", "fileserv
 var serverAddr string
 var testFile = flag.String("originalTestFile", "originalTestFile", "test file")
 
-var DerPolicyCert []byte
-var SigningKey tao.Keys
-var SymKeys []byte
-var ProgramCert []byte
 var fileserverResourceMaster *fileproxy.ResourceMaster
 
 func clientServiceThead(ms *util.MessageStream, fileGuard tao.Guard) {
@@ -60,7 +56,7 @@ func clientServiceThead(ms *util.MessageStream, fileGuard tao.Guard) {
 	log.Printf("fileserver: client thread terminating\n")
 }
 
-func server(serverAddr string, prin string) {
+func server(serverAddr string, prin string, derPolicyCert []byte, signingKey *tao.Keys) {
 	var sock net.Listener
 	log.Printf("fileserver: server\n")
 
@@ -71,14 +67,14 @@ func server(serverAddr string, prin string) {
 		return
 	}
 
-	policyCert, err := x509.ParseCertificate(DerPolicyCert)
+	policyCert, err := x509.ParseCertificate(derPolicyCert)
 	if err != nil {
 		log.Printf("fileserver: can't ParseCertificate\n")
 		return
 	}
 	pool := x509.NewCertPool()
 	pool.AddCert(policyCert)
-	tlsc, err := taonet.EncodeTLSCert(&SigningKey)
+	tlsc, err := taonet.EncodeTLSCert(signingKey)
 	if err != nil {
 		log.Printf("fileserver, encode error: ", err)
 		log.Printf("\n")
@@ -118,11 +114,11 @@ func main() {
 		return
 	}
 	log.Printf("fileserver: Domain name: %s\n", hostDomain.ConfigPath)
-	DerPolicyCert = nil
+	var derPolicyCert []byte
 	if hostDomain.Keys.Cert != nil {
-		DerPolicyCert = hostDomain.Keys.Cert.Raw
+		derPolicyCert = hostDomain.Keys.Cert.Raw
 	}
-	if DerPolicyCert == nil {
+	if derPolicyCert == nil {
 		log.Printf("fileserver: can't retrieve policy cert\n")
 		return
 	}
@@ -140,59 +136,57 @@ func main() {
 	}
 	log.Printf("fileserver: my name is %s\n", taoName)
 
-	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err := fileproxy.LoadProgramKeys(*fileserverPath)
+	var programCert []byte
+	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*fileserverPath)
 	if err != nil {
 		log.Printf("fileserver: cant retrieve key material\n")
 	}
-	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || derCert == nil {
+	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || programCert == nil {
 		log.Printf("fileserver: No key material present\n")
 	}
-	ProgramCert = derCert
 
-	defer fileproxy.ZeroBytes(SymKeys)
+	var symKeys []byte
+	defer fileproxy.ZeroBytes(symKeys)
 	if sealedSymmetricKey != nil {
-		symkeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
+		symKeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
 		if err != nil {
 			return
 		}
 		if policy != tao.SealPolicyDefault {
 			log.Printf("fileserver: unexpected policy on unseal\n")
 		}
-		SymKeys = symkeys
-		log.Printf("fileserver: Unsealed symKeys: % x\n", SymKeys)
+		log.Printf("fileserver: Unsealed symKeys: % x\n", symKeys)
 	} else {
-		symkeys, err := fileproxy.InitializeSealedSymmetricKeys(*fileserverPath, tao.Parent(), fileproxy.SizeofSymmetricKeys)
+		symKeys, err = fileproxy.InitializeSealedSymmetricKeys(*fileserverPath, tao.Parent(), fileproxy.SizeofSymmetricKeys)
 		if err != nil {
 			log.Printf("fileserver: InitializeSealedSymmetricKeys error: %s\n", err)
 		}
-		SymKeys = symkeys
-		log.Printf("fileserver: InitilizedsymKeys: % x\n", SymKeys)
+		log.Printf("fileserver: InitilizedsymKeys: % x\n", symKeys)
 	}
 
+	var signingKey *tao.Keys
 	if sealedSigningKey != nil {
 		log.Printf("retrieving signing key\n")
-		signingkey, err := fileproxy.SigningKeyFromBlob(tao.Parent(),
-			sealedSigningKey, derCert, delegation)
+		signingKey, err = fileproxy.SigningKeyFromBlob(tao.Parent(),
+			sealedSigningKey, programCert, delegation)
 		if err != nil {
 			log.Printf("fileserver: SigningKeyFromBlob error: %s\n", err)
 		}
-		SigningKey = *signingkey
-		log.Printf("fileserver: Retrieved Signing key: % x\n", SigningKey)
+		log.Printf("fileserver: Retrieved Signing key: % x\n", *signingKey)
 	} else {
 		log.Printf("fileserver: initializing signing key\n")
-		signingkey, err := fileproxy.InitializeSealedSigningKey(*fileserverPath,
+		signingKey, err = fileproxy.InitializeSealedSigningKey(*fileserverPath,
 			tao.Parent(), *hostDomain)
 		if err != nil {
 			log.Printf("fileserver: InitializeSealedSigningKey error: %s\n", err)
 		}
-		SigningKey = *signingkey
-		log.Printf("fileserver: Initialized signingKey: % x\n", SigningKey)
-		ProgramCert = SigningKey.Cert.Raw
+		log.Printf("fileserver: Initialized signingKey: % x\n", *signingKey)
+		programCert = signingKey.Cert.Raw
 	}
 	taoNameStr := taoName.String()
-	_ = fileproxy.InitProgramPolicy(DerPolicyCert, SigningKey, SymKeys, ProgramCert)
+	_ = fileproxy.InitProgramPolicy(derPolicyCert, taoNameStr, *signingKey, symKeys, programCert)
 
-	server(serverAddr, taoNameStr)
+	server(serverAddr, taoNameStr, derPolicyCert, signingKey)
 	if err != nil {
 		log.Printf("fileserver: server error\n")
 	}

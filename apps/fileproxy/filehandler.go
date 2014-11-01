@@ -34,6 +34,7 @@ const ChallengeContext = "fileproxy-challenge"
 
 type ProgramPolicy struct {
 	Initialized   bool
+	TaoName       string
 	ThePolicyCert []byte
 	MySigningKey  tao.Keys
 	MySymKeys     []byte
@@ -42,8 +43,9 @@ type ProgramPolicy struct {
 
 var MyProgramPolicy ProgramPolicy
 
-func InitProgramPolicy(policyCert []byte, signingKey tao.Keys, symKeys []byte, programCert []byte) bool {
+func InitProgramPolicy(policyCert []byte, taoName string, signingKey tao.Keys, symKeys []byte, programCert []byte) bool {
 	MyProgramPolicy.ThePolicyCert = policyCert
+	MyProgramPolicy.TaoName = taoName
 	MyProgramPolicy.MySigningKey = signingKey
 	MyProgramPolicy.MySymKeys = symKeys
 	MyProgramPolicy.MyProgramCert = programCert

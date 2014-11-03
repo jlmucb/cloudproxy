@@ -342,26 +342,38 @@ func PrintRequest(subject []byte, action *string, resource *string, owner []byte
 
 func GetResponse(ms *util.MessageStream) (*string, *string, *int, error) {
 	log.Printf("filehandler: GetResponse\n")
+
 	strbytes, err := ms.ReadString()
-	if err != nil {
-		return nil, nil, nil, err
-	}
 	log.Printf("GetResponse read %d bytes\n", len(strbytes))
-	theType, _, _, _, _, status, message, size, _, err := DecodeMessage([]byte(strbytes))
+
+	fpMessage := new(FPMessage)
+	err = proto.Unmarshal([]byte(strbytes), fpMessage)
 	if err != nil {
-		log.Printf("DecodeMessage error in GetResponse\n")
-		return nil, nil, nil, err
+		return nil, nil, nil, errors.New("GetResponse can't unmarshal message")
 	}
-	if status == nil {
-		log.Printf("DecodeMessage in getresponse returned nil status")
+	if fpMessage.MessageType == nil {
+		return nil, nil, nil, errors.New("GetResponse: no message type")
+	}
+	if *fpMessage.MessageType != int32(MessageType_RESPONSE) {
+		log.Printf("GetResponse bad type\n")
+		return nil, nil, nil, errors.New("reception error")
+	}
+	var status *string
+	var errMessage *string
+	var size int
+
+	if fpMessage.StatusOfRequest == nil {
+		log.Printf("GetResponse no status\n")
+		return nil, nil, nil, errors.New("reception error")
+	}
+	status = fpMessage.StatusOfRequest
+	errMessage = fpMessage.MessageFromRequest
+	if fpMessage.BufferSize == nil {
+		return status, errMessage, nil, nil
 	} else {
-		log.Printf("DecodeMessage in getresponse returned %s (status)\n", *status)
+		size = int(*fpMessage.BufferSize)
+		return status, errMessage, &size, nil
 	}
-	log.Printf("GetResponse %d\n", len(strbytes))
-	if *theType != int(MessageType_RESPONSE) {
-		return nil, nil, nil, errors.New("Wrong message type")
-	}
-	return status, message, size, nil
 }
 
 func PrintResponse(status *string, message *string, size *int) {
@@ -379,14 +391,18 @@ func PrintResponse(status *string, message *string, size *int) {
 	}
 }
 
-func SendResponse(ms *util.MessageStream, status string, message string, size int) error {
-	out, err := EncodeMessage(int(MessageType_RESPONSE), nil, nil, nil, nil, &status, &message, &size, nil)
+func SendResponse(ms *util.MessageStream, status string, errMessage string, size int) error {
+	fpMessage := new(FPMessage)
+	fpMessage.MessageType = proto.Int32(int32(MessageType_RESPONSE))
+	fpMessage.StatusOfRequest = proto.String(status)
+	fpMessage.MessageFromRequest = proto.String(errMessage)
+	out, err := proto.Marshal(fpMessage)
 	if err != nil {
-		log.Printf("EncodeMessage fails in SendResponse\n")
+		log.Printf("SendResponse can't encode response\n")
 		return err
 	}
 	send := string(out)
-	log.Printf("filehandler: SendResponse sending %s %s %d\n", status, message, len(send))
+	log.Printf("filehandler: SendResponse sending %s %s %d\n", status, errMessage, len(send))
 	n, err := ms.WriteString(send)
 	if err != nil {
 		log.Printf("filehandler: SendResponse Writestring error %d\n", n, err)
@@ -396,37 +412,47 @@ func SendResponse(ms *util.MessageStream, status string, message string, size in
 }
 
 func SendProtocolMessage(ms *util.MessageStream, size int, buf []byte) error {
-	log.Printf("filehandler: SendProtocolMessage\n")
-	out, err := EncodeMessage(int(MessageType_PROTOCOL_RESPONSE), nil, nil, nil, nil, nil, nil, &size, buf)
+	log.Printf("SendProtocolMessage\n")
+	fpMessage := new(FPMessage)
+	fpMessage.MessageType = proto.Int32(int32(MessageType_PROTOCOL_RESPONSE))
+	fpMessage.BufferSize = proto.Int32(int32(size))
+	fpMessage.TheBuffer = proto.String(string(buf))
+	out, err := proto.Marshal(fpMessage)
 	if err != nil {
-		log.Printf("EncodeMessage fails in SendProtocolMessage\n")
+		log.Printf("SendResponse can't encode response\n")
 		return err
 	}
-	send := string(out)
-	n, err := ms.WriteString(send)
+	n, err := ms.WriteString(string(out))
 	if err != nil {
-		log.Printf("filehandler: SendProtocolMessage Writestring error %d\n", n, err)
+		log.Printf("SendProtocolMessage Writestring error %d\n", n, err)
 		return err
 	}
 	return nil
 }
 
 func GetProtocolMessage(ms *util.MessageStream) ([]byte, error) {
-	log.Printf("filehandler: GetProtocolMessage\n")
+	log.Printf("GetProtocolMessage\n")
 	strbytes, err := ms.ReadString()
 	if err != nil {
 		return nil, err
 	}
 	log.Printf("GetProtocolMessage read %d bytes\n", len(strbytes))
-	theType, _, _, _, _, _, _, _, out, err := DecodeMessage([]byte(strbytes))
+	fpMessage := new(FPMessage)
+	err = proto.Unmarshal([]byte(strbytes), fpMessage)
 	if err != nil {
-		log.Printf("DecodeMessage error in GetProtocolMessage\n")
-		return nil, err
+		return nil, errors.New("GetProtocolMessage can't unmarshal message")
 	}
-	if *theType != int(MessageType_PROTOCOL_RESPONSE) {
-		return nil, errors.New("Wrong message type")
+	if fpMessage.MessageType == nil {
+		return nil, errors.New("GetProtocolMessage: no message type")
 	}
-	return out, nil
+	if *fpMessage.MessageType != int32(MessageType_PROTOCOL_RESPONSE) {
+		return nil, errors.New("GetProtocolMessage: Wrong message type")
+	}
+	out := fpMessage.TheBuffer
+	if out == nil {
+		return nil, errors.New("GetProtocolMessage: empty buffer")
+	}
+	return []byte(*out), nil
 }
 
 func SendFile(ms *util.MessageStream, path string, filename string, keys []byte) error {
@@ -436,13 +462,15 @@ func SendFile(ms *util.MessageStream, path string, filename string, keys []byte)
 	if err != nil {
 		log.Printf("SendFile error reading file %s, ", path+filename, err)
 		log.Printf("\n")
-		return errors.New("fileproxy: SendFile no such file")
+		return errors.New("SendFile no such file")
 	}
 	n := len(contents)
-	size := n
 	log.Printf("SendFile contents % x\n", contents)
-	out, err := EncodeMessage(int(MessageType_FILE_LAST), nil, nil, &filename, nil,
-		nil, nil, &size, contents)
+	fpMessage := new(FPMessage)
+	fpMessage.MessageType = proto.Int32(int32(MessageType_FILE_LAST))
+	fpMessage.BufferSize = proto.Int32(int32(n))
+	fpMessage.TheBuffer = proto.String(string(contents))
+	out, err := proto.Marshal(fpMessage)
 	if err != nil {
 		log.Printf("SendFile cant encode message\n")
 		return errors.New("transmission error")
@@ -459,92 +487,96 @@ func GetFile(ms *util.MessageStream, path string, filename string, keys []byte) 
 		log.Printf("\n")
 		return errors.New("reception error")
 	}
-	theType, _, _, _, _, _, _, size_buf, buf,
-		err := DecodeMessage([]byte(in))
-	log.Printf("GetFile buffer size: %d\n", *size_buf)
+	fpMessage := new(FPMessage)
+	err = proto.Unmarshal([]byte(in), fpMessage)
 	if err != nil {
-		log.Printf("GetFile cant decode message ", err)
-		log.Printf("\n")
-		return errors.New("reception error")
+		return errors.New("GetFile can't unmarshal message")
 	}
-	if theType == nil {
+	if fpMessage.MessageType == nil {
+		return errors.New("GetFile: no message type")
+	}
+	if *fpMessage.MessageType != int32(MessageType_FILE_LAST) {
 		log.Printf("GetFile bad type\n")
 		return errors.New("reception error")
 	}
-	if *theType != int(MessageType_FILE_LAST) {
-		log.Printf("GetFile expecting message last\n")
-		return errors.New("reception error")
+	if fpMessage.BufferSize == nil {
+		log.Printf("GetFile no buffer size\n")
+		return errors.New("expected buffer size")
 	}
-	log.Printf("GetFile writing %d bytes to %s\n", len(buf), path+filename)
-	return ioutil.WriteFile(path+filename, buf, os.ModePerm)
+	if fpMessage.TheBuffer == nil {
+		return errors.New("GetFile: empty buffer")
+	}
+	out := []byte(*fpMessage.TheBuffer)
+	return ioutil.WriteFile(path+filename, out, os.ModePerm)
 }
 
 func SendSendFile(ms *util.MessageStream, subjectCert []byte, filename string) error {
 	log.Printf("SendSendFile, filename: %s\n", filename)
-	subjectName := string(subjectCert)
-	action := "sendfile"
-	message, err := EncodeMessage(1, &subjectName, &action, &filename, nil,
-		nil, nil, nil, nil)
+	fpMessage := new(FPMessage)
+	fpMessage.MessageType = proto.Int32(int32(MessageType_REQUEST))
+	fpMessage.SubjectName = proto.String(string(subjectCert))
+	fpMessage.ActionName = proto.String("sendfile")
+	fpMessage.ResourceName = proto.String("filename")
+	out, err := proto.Marshal(fpMessage)
 	if err != nil {
-		log.Printf("SendSendFile couldnt build request\n")
-		return errors.New("SendSendFile can't build request")
+		log.Printf("SendSendFile cant marshal message\n")
+		return errors.New("transmission error")
 	}
-	log.Printf("SendSendrequest %d, ", len(message))
-	log.Printf("\n")
-	written, _ := ms.WriteString(string(message))
+
+	written, _ := ms.WriteString(string(out))
 	log.Printf("Bytes written %d\n", written)
 	return nil
 }
 
 func SendGetFile(ms *util.MessageStream, subjectCert []byte, filename string) error {
 	log.Printf("SendGetFile, filename: %s\n", filename)
-	subjectName := string(subjectCert)
-	action := "getfile"
-	message, err := EncodeMessage(int(MessageType_REQUEST), &subjectName, &action, &filename, nil,
-		nil, nil, nil, nil)
+	fpMessage := new(FPMessage)
+	fpMessage.MessageType = proto.Int32(int32(MessageType_REQUEST))
+	fpMessage.SubjectName = proto.String(string(subjectCert))
+	fpMessage.ActionName = proto.String("getfile")
+	fpMessage.ResourceName = proto.String("filename")
+	out, err := proto.Marshal(fpMessage)
 	if err != nil {
-		log.Printf("SendGetFile couldnt build request\n")
-		return errors.New("SendGetFile can't build request")
+		log.Printf("SendFile cant marshal message\n")
+		return errors.New("transmission error")
 	}
-	log.Printf("SendGetrequest %d, ", len(message))
-	log.Printf("\n")
-	written, _ := ms.WriteString(string(message))
+	written, _ := ms.WriteString(string(out))
 	log.Printf("Bytes written %d\n", written)
 	return nil
 }
 
 func SendCreateFile(ms *util.MessageStream, subjectCert []byte, filename string) error {
 	log.Printf("SendCreateFile, filename: %s\n", filename)
-	subject := string(subjectCert)
-	action := "create"
-	message, err := EncodeMessage(int(MessageType_REQUEST), &subject, &action, &filename, &subject,
-		nil, nil, nil, nil)
+	fpMessage := new(FPMessage)
+	fpMessage.MessageType = proto.Int32(int32(MessageType_REQUEST))
+	fpMessage.SubjectName = proto.String(string(subjectCert))
+	fpMessage.ActionName = proto.String("create")
+	fpMessage.ResourceName = proto.String("filename")
+	out, err := proto.Marshal(fpMessage)
 	if err != nil {
-		log.Printf("SendCreateFile couldnt build request\n")
-		return errors.New("SendCreateFile can't build request")
+		log.Printf("SendCreateFile cant marshal message\n")
+		return errors.New("transmission error")
 	}
-	log.Printf("SendCreateFile request %d, ", len(message))
-	log.Printf("\n")
-	written, _ := ms.WriteString(string(message))
+	written, _ := ms.WriteString(string(out))
 	log.Printf("Bytes written %d\n", written)
 	return nil
 }
 
 func SendRule(ms *util.MessageStream, rule string, signerCert []byte) error {
 	log.Printf("SendRule, rule: %s\n", rule)
-	subject := string(signerCert)
-	action := "sendrule"
-	message, err := EncodeMessage(int(MessageType_REQUEST), &subject, &action, &rule, &subject,
-		nil, nil, nil, nil)
+	fpMessage := new(FPMessage)
+	fpMessage.MessageType = proto.Int32(int32(MessageType_REQUEST))
+	fpMessage.SubjectName = proto.String(string(signerCert))
+	fpMessage.ActionName = proto.String("sendrule")
+	fpMessage.ResourceName = proto.String("filename")
+	fpMessage.ResourceOwner = proto.String(string(signerCert))
+	out, err := proto.Marshal(fpMessage)
 	if err != nil {
-		log.Printf("SendRule couldnt build request\n")
-		return errors.New("SendRule can't build request")
+		log.Printf("SendRule can't marshal message\n")
+		return errors.New("transmission error")
 	}
-	log.Printf("SendRule request %d, ", len(message))
-	log.Printf("\n")
-	written, _ := ms.WriteString(string(message))
-	log.Printf("Bytes written %d\n", written)
-	return nil
+	_, err = ms.WriteString(string(out))
+	return err
 }
 
 func SendDeleteFile(ms *util.MessageStream, creds []byte, filename string) error {

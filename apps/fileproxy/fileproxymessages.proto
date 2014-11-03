@@ -30,8 +30,9 @@ message FPMessage {
   optional  string  resource_owner= 5;
   optional  string  status_of_request = 6;
   optional  string  message_from_request = 7;
-  optional  int32   buffer_size = 8;
-  optional  string  the_buffer = 9;
+  optional  int64   monotonic_counter= 8;
+  optional  int32   buffer_size = 9;
+  optional  string  the_buffer = 10;
 }
 
 message FPResourceMaster {

@@ -38,6 +38,25 @@ var configPath = flag.String("config", "tao.config", "The Tao domain config")
 
 const SizeofSymmetricKeys = 64
 
+type ProgramPolicy struct {
+	Initialized   bool
+	TaoName       string
+	ThePolicyCert []byte
+	MySigningKey  tao.Keys
+	MySymKeys     []byte
+	MyProgramCert []byte
+}
+
+func (pp *ProgramPolicy) InitProgramPolicy(policyCert []byte, taoName string, signingKey tao.Keys, symKeys []byte, programCert []byte) bool {
+	pp.ThePolicyCert = policyCert
+	pp.TaoName = taoName
+	pp.MySigningKey = signingKey
+	pp.MySymKeys = symKeys
+	pp.MyProgramCert = programCert
+	pp.Initialized = true
+	return true
+}
+
 // RequestTruncatedAttestation connects to a CA instance, sends the attestation
 // for an X.509 certificate, and gets back a truncated attestation with a new
 // principal name based on the policy key.
@@ -89,6 +108,16 @@ func ZeroBytes(buf []byte) {
 	}
 }
 
+func PrincipalNameFromDERCert(derCert []byte) *string {
+	cert, err := x509.ParseCertificate(derCert)
+	if err != nil {
+		log.Printf("PrincipalNameFromDERCert: Can't get name from certificate\n")
+		return nil
+	}
+	cn := cert.Subject.CommonName
+	return &cn
+}
+
 // returns sealed symmetric key, sealed signing key, DER encoded cert, delegation, error
 func LoadProgramKeys(path string) ([]byte, []byte, []byte, []byte, error) {
 	fileinfo, err := os.Stat(path + "sealedsymmetrickey")
@@ -136,7 +165,7 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 	self, err := t.GetTaoName()
 	k, err := tao.NewTemporaryKeys(tao.Signing)
 	if k == nil || err != nil {
-		return nil, nil, errors.New("Cant generate signing key")
+		return nil, nil, errors.New("Can't generate signing key")
 	}
 	publicString := strings.Replace(self.String(), "(", "", -1)
 	publicString = strings.Replace(publicString, ")", "", -1)
@@ -161,7 +190,7 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 		Delegate:  k.SigningKey.ToPrincipal(),
 		Delegator: self}
 	if s == nil {
-		return nil, nil, errors.New("Cant produce speaksfor")
+		return nil, nil, errors.New("Can't produce speaksfor")
 	}
 	if k.Delegation, err = t.Attest(&self, nil, nil, s); err != nil {
 		return nil, nil, err
@@ -176,11 +205,11 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) ([]byte, error) {
 	unsealed, err := tao.Parent().GetRandomBytes(keysize)
 	if err != nil {
-		return nil, errors.New("Cant get random bytes")
+		return nil, errors.New("Can't get random bytes")
 	}
 	sealed, err := tao.Parent().Seal(unsealed, tao.SealPolicyDefault)
 	if err != nil {
-		return nil, errors.New("Cant seal random bytes")
+		return nil, errors.New("Can't seal random bytes")
 	}
 	ioutil.WriteFile(path+"sealedsymmetrickey", sealed, os.ModePerm)
 	return unsealed, nil
@@ -232,11 +261,11 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 	}
 	signingKeyBlob, err := tao.MarshalSignerDER(k.SigningKey)
 	if err != nil {
-		return nil, errors.New("Cant produce signing key blob")
+		return nil, errors.New("Can't produce signing key blob")
 	}
 	sealedSigningKey, err := t.Seal(signingKeyBlob, tao.SealPolicyDefault)
 	if err != nil {
-		return nil, errors.New("Cant seal signing key")
+		return nil, errors.New("Can't seal signing key")
 	}
 	err = ioutil.WriteFile(path+"sealedsigningKey", sealedSigningKey, os.ModePerm)
 	if err != nil {
@@ -248,7 +277,7 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 	}
 	delegateBlob, err := proto.Marshal(k.Delegation)
 	if err != nil {
-		return nil, errors.New("Cant seal random bytes")
+		return nil, errors.New("Can't seal random bytes")
 	}
 	err = ioutil.WriteFile(path+"delegationBlob", delegateBlob, os.ModePerm)
 	if err != nil {
@@ -285,6 +314,119 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte, delega
 	k.SigningKey, err = tao.UnmarshalSignerDER(signingKeyBlob)
 	k.Cert = cert
 	return k, err
+}
+
+func PrintRequest(subject []byte, action *string, resource *string, owner []byte) {
+	log.Printf("PrintRequest\n")
+	if subject != nil {
+		log.Printf("\tsubject: % x\n", subject)
+		subjectName := PrincipalNameFromDERCert(subject)
+		if subjectName != nil {
+			log.Printf("\tsubject: %s\n", *subjectName)
+		}
+	}
+	if action != nil {
+		log.Printf("\taction: %s\n", *action)
+	}
+	if resource != nil {
+		log.Printf("\tresource: %s\n", *resource)
+	}
+	if owner != nil {
+		log.Printf("\towner: % x\n", owner)
+		ownerName := PrincipalNameFromDERCert(owner)
+		if ownerName != nil {
+			log.Printf("\towner: %s\n", *ownerName)
+		}
+	}
+}
+
+func GetResponse(ms *util.MessageStream) (*string, *string, *int, error) {
+	log.Printf("filehandler: GetResponse\n")
+	strbytes, err := ms.ReadString()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	log.Printf("GetResponse read %d bytes\n", len(strbytes))
+	theType, _, _, _, _, status, message, size, _, err := DecodeMessage([]byte(strbytes))
+	if err != nil {
+		log.Printf("DecodeMessage error in GetResponse\n")
+		return nil, nil, nil, err
+	}
+	if status == nil {
+		log.Printf("DecodeMessage in getresponse returned nil status")
+	} else {
+		log.Printf("DecodeMessage in getresponse returned %s (status)\n", *status)
+	}
+	log.Printf("GetResponse %d\n", len(strbytes))
+	if *theType != int(MessageType_RESPONSE) {
+		return nil, nil, nil, errors.New("Wrong message type")
+	}
+	return status, message, size, nil
+}
+
+func PrintResponse(status *string, message *string, size *int) {
+	log.Printf("PrintResponse\n")
+	if status != nil {
+		log.Printf("\tstatus: %s\n", *status)
+	} else {
+		log.Printf("\tstatus: empty\n")
+	}
+	if message != nil {
+		log.Printf("\tmessage: %s\n", *message)
+	}
+	if size != nil {
+		log.Printf("\tsize: %d\n", *size)
+	}
+}
+
+func SendResponse(ms *util.MessageStream, status string, message string, size int) error {
+	out, err := EncodeMessage(int(MessageType_RESPONSE), nil, nil, nil, nil, &status, &message, &size, nil)
+	if err != nil {
+		log.Printf("EncodeMessage fails in SendResponse\n")
+		return err
+	}
+	send := string(out)
+	log.Printf("filehandler: SendResponse sending %s %s %d\n", status, message, len(send))
+	n, err := ms.WriteString(send)
+	if err != nil {
+		log.Printf("filehandler: SendResponse Writestring error %d\n", n, err)
+		return err
+	}
+	return nil
+}
+
+func SendProtocolMessage(ms *util.MessageStream, size int, buf []byte) error {
+	log.Printf("filehandler: SendProtocolMessage\n")
+	out, err := EncodeMessage(int(MessageType_PROTOCOL_RESPONSE), nil, nil, nil, nil, nil, nil, &size, buf)
+	if err != nil {
+		log.Printf("EncodeMessage fails in SendProtocolMessage\n")
+		return err
+	}
+	send := string(out)
+	n, err := ms.WriteString(send)
+	if err != nil {
+		log.Printf("filehandler: SendProtocolMessage Writestring error %d\n", n, err)
+		return err
+	}
+	return nil
+}
+
+func GetProtocolMessage(ms *util.MessageStream) ([]byte, error) {
+	log.Printf("filehandler: GetProtocolMessage\n")
+	strbytes, err := ms.ReadString()
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("GetProtocolMessage read %d bytes\n", len(strbytes))
+	theType, _, _, _, _, _, _, _, out, err := DecodeMessage([]byte(strbytes))
+	if err != nil {
+		log.Printf("DecodeMessage error in GetProtocolMessage\n")
+		return nil, err
+	}
+	if *theType != int(MessageType_PROTOCOL_RESPONSE) {
+		return nil, errors.New("Wrong message type")
+	}
+	return out, nil
 }
 
 func SendFile(ms *util.MessageStream, path string, filename string, keys []byte) error {

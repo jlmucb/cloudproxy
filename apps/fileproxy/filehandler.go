@@ -32,39 +32,6 @@ import (
 const SizeofNonce = 32
 const ChallengeContext = "fileproxy-challenge"
 
-type ProgramPolicy struct {
-	Initialized   bool
-	TaoName       string
-	ThePolicyCert []byte
-	MySigningKey  tao.Keys
-	MySymKeys     []byte
-	MyProgramCert []byte
-}
-
-var MyProgramPolicy ProgramPolicy
-
-func InitProgramPolicy(policyCert []byte, taoName string, signingKey tao.Keys, symKeys []byte, programCert []byte) bool {
-	MyProgramPolicy.ThePolicyCert = policyCert
-	MyProgramPolicy.TaoName = taoName
-	MyProgramPolicy.MySigningKey = signingKey
-	MyProgramPolicy.MySymKeys = symKeys
-	MyProgramPolicy.MyProgramCert = programCert
-	MyProgramPolicy.Initialized = true
-	return true
-}
-
-type NameandHash struct {
-	ItemName string
-	Hash     []byte
-}
-
-type RollbackMaster struct {
-	ProgramName string
-	Counter     int64
-	// TODO: change magic allocation sizes
-	NameandHashArray [100]NameandHash
-}
-
 // Resource types: files, channels
 type ResourceInfo struct {
 	ResourceName      string
@@ -141,22 +108,12 @@ func redelegateResource(owner, delegate, op, res string, g tao.Guard) {
 
 func addResource(creator, resource string, g tao.Guard) error {
 	if err := g.AddRule("Resource(\"" + resource + "\")"); err != nil {
-		return errors.New("Cant add resource in rules\n")
+		return errors.New("Can't add resource in rules\n")
 	}
 	if err := g.AddRule("Creator(\"" + creator + "\", \"" + resource + "\")"); err != nil {
-		return errors.New("Cant add creator in rules\n")
+		return errors.New("Can't add creator in rules\n")
 	}
 	return nil
-}
-
-func PrincipalNameFromDERCert(derCert []byte) *string {
-	cert, err := x509.ParseCertificate(derCert)
-	if err != nil {
-		log.Printf("filehandler: Cant get name from certificate\n")
-		return nil
-	}
-	cn := cert.Subject.CommonName
-	return &cn
 }
 
 func makeQuery(subject string, action string, resource string) *string {
@@ -189,7 +146,7 @@ func (m *ResourceMaster) Query(query string) bool {
 	return b
 }
 
-func (m *ResourceMaster) Find(resourcename string) (*ResourceInfo, error) {
+func (m *ResourceMaster) FindResource(resourcename string) (*ResourceInfo, error) {
 	for _, r := range m.ResourceArray {
 		if r.ResourceName == resourcename {
 			return &r, nil
@@ -198,8 +155,8 @@ func (m *ResourceMaster) Find(resourcename string) (*ResourceInfo, error) {
 	return nil, nil
 }
 
-func (m *ResourceMaster) Insert(path string, resourcename string, owner string) (*ResourceInfo, error) {
-	found, err := m.Find(resourcename)
+func (m *ResourceMaster) InsertResource(path string, resourcename string, owner string) (*ResourceInfo, error) {
+	found, err := m.FindResource(resourcename)
 	if err != nil {
 		return nil, err
 	}
@@ -561,7 +518,7 @@ func DecodeRequest(in []byte) (*string, *string, *string, *string, error) {
 		return nil, nil, nil, nil, err
 	}
 	if *theType != int(MessageType_REQUEST) {
-		return nil, nil, nil, nil, errors.New("Cant Decode request")
+		return nil, nil, nil, nil, errors.New("Can't Decode request")
 	}
 	if err != nil {
 		return nil, nil, nil, nil, err
@@ -572,120 +529,7 @@ func DecodeRequest(in []byte) (*string, *string, *string, *string, error) {
 	return subject, action, resource, owner, nil
 }
 
-func PrintRequest(subject []byte, action *string, resource *string, owner []byte) {
-	log.Printf("PrintRequest\n")
-	if subject != nil {
-		log.Printf("\tsubject: % x\n", subject)
-		subjectName := PrincipalNameFromDERCert(subject)
-		if subjectName != nil {
-			log.Printf("\tsubject: %s\n", *subjectName)
-		}
-	}
-	if action != nil {
-		log.Printf("\taction: %s\n", *action)
-	}
-	if resource != nil {
-		log.Printf("\tresource: %s\n", *resource)
-	}
-	if owner != nil {
-		log.Printf("\towner: % x\n", owner)
-		ownerName := PrincipalNameFromDERCert(owner)
-		if ownerName != nil {
-			log.Printf("\towner: %s\n", *ownerName)
-		}
-	}
-}
-
-func GetResponse(ms *util.MessageStream) (*string, *string, *int, error) {
-	log.Printf("filehandler: GetResponse\n")
-	strbytes, err := ms.ReadString()
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	log.Printf("GetResponse read %d bytes\n", len(strbytes))
-	theType, _, _, _, _, status, message, size, _, err := DecodeMessage([]byte(strbytes))
-	if err != nil {
-		log.Printf("DecodeMessage error in GetResponse\n")
-		return nil, nil, nil, err
-	}
-	if status == nil {
-		log.Printf("DecodeMessage in getresponse returned nil status")
-	} else {
-		log.Printf("DecodeMessage in getresponse returned %s (status)\n", *status)
-	}
-	log.Printf("GetResponse %d\n", len(strbytes))
-	if *theType != int(MessageType_RESPONSE) {
-		return nil, nil, nil, errors.New("Wrong message type")
-	}
-	return status, message, size, nil
-}
-
-func PrintResponse(status *string, message *string, size *int) {
-	log.Printf("PrintResponse\n")
-	if status != nil {
-		log.Printf("\tstatus: %s\n", *status)
-	} else {
-		log.Printf("\tstatus: empty\n")
-	}
-	if message != nil {
-		log.Printf("\tmessage: %s\n", *message)
-	}
-	if size != nil {
-		log.Printf("\tsize: %d\n", *size)
-	}
-}
-
-func SendResponse(ms *util.MessageStream, status string, message string, size int) error {
-	out, err := EncodeMessage(int(MessageType_RESPONSE), nil, nil, nil, nil, &status, &message, &size, nil)
-	if err != nil {
-		log.Printf("EncodeMessage fails in SendResponse\n")
-		return err
-	}
-	send := string(out)
-	log.Printf("filehandler: SendResponse sending %s %s %d\n", status, message, len(send))
-	n, err := ms.WriteString(send)
-	if err != nil {
-		log.Printf("filehandler: SendResponse Writestring error %d\n", n, err)
-		return err
-	}
-	return nil
-}
-
-func SendProtocolMessage(ms *util.MessageStream, size int, buf []byte) error {
-	log.Printf("filehandler: SendProtocolMessage\n")
-	out, err := EncodeMessage(int(MessageType_PROTOCOL_RESPONSE), nil, nil, nil, nil, nil, nil, &size, buf)
-	if err != nil {
-		log.Printf("EncodeMessage fails in SendProtocolMessage\n")
-		return err
-	}
-	send := string(out)
-	n, err := ms.WriteString(send)
-	if err != nil {
-		log.Printf("filehandler: SendProtocolMessage Writestring error %d\n", n, err)
-		return err
-	}
-	return nil
-}
-
-func GetProtocolMessage(ms *util.MessageStream) ([]byte, error) {
-	log.Printf("filehandler: GetProtocolMessage\n")
-	strbytes, err := ms.ReadString()
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("GetProtocolMessage read %d bytes\n", len(strbytes))
-	theType, _, _, _, _, _, _, _, out, err := DecodeMessage([]byte(strbytes))
-	if err != nil {
-		log.Printf("DecodeMessage error in GetProtocolMessage\n")
-		return nil, err
-	}
-	if *theType != int(MessageType_PROTOCOL_RESPONSE) {
-		return nil, errors.New("Wrong message type")
-	}
-	return out, nil
-}
-
-func AuthenticatePrincipal(m *ResourceMaster, ms *util.MessageStream) (bool, []byte) {
+func AuthenticatePrincipal(m *ResourceMaster, ms *util.MessageStream, programPolicyObject ProgramPolicy) (bool, []byte) {
 	log.Printf("AuthenticatePrincipal\n")
 	offeredCert, err := GetProtocolMessage(ms)
 	if err != nil {
@@ -721,11 +565,11 @@ func AuthenticatePrincipal(m *ResourceMaster, ms *util.MessageStream) (bool, []b
 	if ok {
 		var opts x509.VerifyOptions
 		roots := x509.NewCertPool()
-		if !MyProgramPolicy.Initialized {
+		if !programPolicyObject.Initialized {
 			log.Printf("MyProgramPolicy not initialized")
 			return false, nil
 		}
-		policyCert, err := x509.ParseCertificate(MyProgramPolicy.ThePolicyCert)
+		policyCert, err := x509.ParseCertificate(programPolicyObject.ThePolicyCert)
 		if err != nil || policyCert == nil {
 			log.Printf("Can't parse policy cert")
 			return false, nil
@@ -759,10 +603,9 @@ func AuthenticatePrincipal(m *ResourceMaster, ms *util.MessageStream) (bool, []b
 func AuthenticatePrincipalRequest(ms *util.MessageStream, key *tao.Keys, derCert []byte) bool {
 	log.Printf("AuthenticatePrincipalRequest\n")
 	// Format request
-	subject := "jlm"
+	subject := string(derCert)
 	action := "authenticateprincipal"
-	owner := "jlm"
-	message, err := EncodeMessage(int(MessageType_REQUEST), &subject, &action, &subject, &owner,
+	message, err := EncodeMessage(int(MessageType_REQUEST), &subject, &action, &subject, nil,
 		nil, nil, nil, nil)
 	if err != nil {
 		log.Printf("AuthenticatePrincipalRequest couldnt build request\n")
@@ -802,7 +645,7 @@ func AuthenticatePrincipalRequest(ms *util.MessageStream, key *tao.Keys, derCert
 
 func readRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string) error {
 	log.Printf("filehandler: readRequest\n")
-	rInfo, _ := m.Find(resourcename)
+	rInfo, _ := m.FindResource(resourcename)
 	if rInfo == nil {
 		SendResponse(ms, "failed", "resource does not exist", 0)
 		return nil
@@ -814,7 +657,7 @@ func readRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string)
 
 func writeRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string) error {
 	log.Printf("filehandler: writeRequest\n")
-	rInfo, _ := m.Find(resourcename)
+	rInfo, _ := m.FindResource(resourcename)
 	if rInfo == nil {
 		SendResponse(ms, "failed", "resource does not exist", 0)
 		return nil
@@ -827,13 +670,12 @@ func writeRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string
 func createRequest(m *ResourceMaster, ms *util.MessageStream,
 	resourcename string, owner string) error {
 	log.Printf("filehandler: createRequest\n")
-	rInfo, _ := m.Find(resourcename)
+	rInfo, _ := m.FindResource(resourcename)
 	if rInfo != nil {
 		SendResponse(ms, "failed", "resource exists", 0)
 		return nil
 	}
-	// Is it authorized
-	rInfo, _ = m.Insert(m.BaseDirectory, resourcename, owner)
+	rInfo, _ = m.InsertResource(m.BaseDirectory, resourcename, owner)
 	if rInfo == nil {
 		SendResponse(ms, "failed", "cant insert resource", 0)
 		return nil
@@ -907,7 +749,7 @@ func (m *ResourceMaster) certToAuthenticatedName(subjectCert []byte) *string {
 }
 
 // First return value is terminate flag
-func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []byte) (bool, error) {
+func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, programPolicyObject ProgramPolicy, clientProgramName string, request []byte) (bool, error) {
 	log.Printf("filehandler: HandleServiceRequest\n")
 	subject, action, resourcename, owner, err := DecodeRequest(request)
 	if err != nil {
@@ -921,7 +763,7 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []
 	}
 
 	if *action == "authenticateprincipal" {
-		ok, ownerCert := AuthenticatePrincipal(m, ms)
+		ok, ownerCert := AuthenticatePrincipal(m, ms, programPolicyObject)
 		if ok {
 			ownerName := PrincipalNameFromDERCert([]byte(ownerCert))
 			if ownerName == nil {
@@ -942,7 +784,7 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []
 	} else if *action == "sendrule" {
 		err = newruleRequest(m, ms, *resourcename /* rule */, []byte(*owner))
 		if err != nil {
-			return false, errors.New("Cant construct newrulequest")
+			return false, errors.New("Can't construct newrulequest")
 		}
 		return false, nil
 	}

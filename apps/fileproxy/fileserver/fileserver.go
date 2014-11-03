@@ -37,10 +37,17 @@ var fileserverFilePath = flag.String("fileserver_files/stored_files/", "fileserv
 var serverAddr string
 var testFile = flag.String("originalTestFile", "originalTestFile", "test file")
 
-var fileserverResourceMaster *fileproxy.ResourceMaster
+var fileServerResourceMaster fileproxy.ResourceMaster
+var FileServerResourceMaster *fileproxy.ResourceMaster
+var fileServerProgramPolicy fileproxy.ProgramPolicy
+var FileServerProgramPolicy *fileproxy.ProgramPolicy
 
 func clientServiceThead(ms *util.MessageStream, fileGuard tao.Guard) {
 	log.Printf("fileserver: clientServiceThead\n")
+	var clientProgramName string
+
+	// TODO: get program name of principal that established channel
+
 	// How do I know if the connection terminates?
 	for {
 		log.Printf("clientServiceThead: ReadString\n")
@@ -48,7 +55,7 @@ func clientServiceThead(ms *util.MessageStream, fileGuard tao.Guard) {
 		if err != nil {
 			return
 		}
-		terminate, err := fileserverResourceMaster.HandleServiceRequest(ms, []byte(strbytes))
+		terminate, err := FileServerResourceMaster.HandleServiceRequest(ms, *FileServerProgramPolicy, clientProgramName, []byte(strbytes))
 		if terminate {
 			break
 		}
@@ -60,8 +67,8 @@ func server(serverAddr string, prin string, derPolicyCert []byte, signingKey *ta
 	var sock net.Listener
 	log.Printf("fileserver: server\n")
 
-	fileserverResourceMaster = new(fileproxy.ResourceMaster)
-	err := fileserverResourceMaster.InitMaster(*fileserverFilePath, *fileserverPath, prin)
+	FileServerResourceMaster = new(fileproxy.ResourceMaster)
+	err := FileServerResourceMaster.InitMaster(*fileserverFilePath, *fileserverPath, prin)
 	if err != nil {
 		log.Printf("fileserver: can't InitMaster\n")
 		return
@@ -86,7 +93,7 @@ func server(serverAddr string, prin string, derPolicyCert []byte, signingKey *ta
 		InsecureSkipVerify: false,
 		ClientAuth:         tls.RequireAnyClientCert,
 	}
-	log.Printf("Listenting\n")
+	log.Printf("Listening\n")
 	sock, err = tls.Listen("tcp", serverAddr, conf)
 	if err != nil {
 		log.Printf("fileserver, listen error: ", err)
@@ -100,7 +107,7 @@ func server(serverAddr string, prin string, derPolicyCert []byte, signingKey *ta
 			log.Printf("fileserver: can't accept connection: %s\n", err.Error())
 		} else {
 			ms := util.NewMessageStream(conn)
-			go clientServiceThead(ms, fileserverResourceMaster.Guard)
+			go clientServiceThead(ms, FileServerResourceMaster.Guard)
 		}
 	}
 }
@@ -135,6 +142,9 @@ func main() {
 		return
 	}
 	log.Printf("fileserver: my name is %s\n", taoName)
+
+	FileServerResourceMaster = &fileServerResourceMaster
+	FileServerProgramPolicy = &fileServerProgramPolicy
 
 	var programCert []byte
 	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*fileserverPath)
@@ -184,7 +194,7 @@ func main() {
 		programCert = signingKey.Cert.Raw
 	}
 	taoNameStr := taoName.String()
-	_ = fileproxy.InitProgramPolicy(derPolicyCert, taoNameStr, *signingKey, symKeys, programCert)
+	_ = FileServerProgramPolicy.InitProgramPolicy(derPolicyCert, taoNameStr, *signingKey, symKeys, programCert)
 
 	server(serverAddr, taoNameStr, derPolicyCert, signingKey)
 	if err != nil {

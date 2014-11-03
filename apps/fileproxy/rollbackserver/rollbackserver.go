@@ -39,7 +39,12 @@ var SigningKey tao.Keys
 var SymKeys []byte
 var ProgramCert []byte
 
-func clientServiceThead(ms *util.MessageStream, fileGuard tao.Guard) {
+var rollbackMaster fileproxy.RollbackMaster
+var RollbackMaster *fileproxy.RollbackMaster
+var rollbackProgramPolicyObject fileproxy.ProgramPolicy
+var RollbackProgramPolicyObject *fileproxy.ProgramPolicy
+
+func clientServiceThead(ms *util.MessageStream, clientProgramName *string) {
 	log.Printf("rollbackserver: clientServiceThead\n")
 }
 
@@ -125,6 +130,9 @@ func main() {
 	}
 	log.Printf("rollbackserver: my name is %s\n", taoName)
 
+	RollbackMaster = &rollbackMaster
+	RollbackProgramPolicyObject = &rollbackProgramPolicyObject
+
 	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err := fileproxy.LoadProgramKeys(*rollbackserverPath)
 	if err != nil {
 		log.Printf("rollbackserver: cant retrieve key material\n")
@@ -176,7 +184,7 @@ func main() {
 		ProgramCert = SigningKey.Cert.Raw
 	}
 	taoNameStr := taoName.String()
-	_ = fileproxy.InitProgramPolicy(DerPolicyCert, taoNameStr, SigningKey, SymKeys, ProgramCert)
+	_ = RollbackProgramPolicyObject.InitProgramPolicy(DerPolicyCert, taoNameStr, SigningKey, SymKeys, ProgramCert)
 
 	server(serverAddr, taoNameStr)
 	if err != nil {

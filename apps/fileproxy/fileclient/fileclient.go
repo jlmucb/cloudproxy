@@ -40,6 +40,9 @@ var fileclientFilePath = flag.String("fileclient_files/stored_files/", "fileclie
 var testFile = flag.String("originalTestFile", "originalTestFile", "test file")
 var fileclientKeyPath = flag.String("usercreds/", "usercreds/", "user keys and certs")
 
+var fileClientProgramObject fileproxy.ProgramPolicy
+var FileClientProgramObject *fileproxy.ProgramPolicy
+
 func main() {
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
@@ -69,6 +72,8 @@ func main() {
 		return
 	}
 	log.Printf("fileclient: my name is %s\n", taoName)
+
+	FileClientProgramObject = &fileClientProgramObject
 
 	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*fileclientPath)
 	if err != nil {
@@ -120,7 +125,7 @@ func main() {
 		log.Printf("fileclient:cant ParseCertificate\n")
 		return
 	}
-	_ = fileproxy.InitProgramPolicy(derPolicyCert, taoName.String(), *signingKey, symKeys, programCert)
+	_ = FileClientProgramObject.InitProgramPolicy(derPolicyCert, taoName.String(), *signingKey, symKeys, programCert)
 	pool := x509.NewCertPool()
 	pool.AddCert(policyCert)
 

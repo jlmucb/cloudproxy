@@ -39,27 +39,31 @@ var SigningKey tao.Keys
 var SymKeys []byte
 var ProgramCert []byte
 
-var rollbackMaster fileproxy.RollbackMaster
-var RollbackMaster *fileproxy.RollbackMaster
-var rollbackProgramPolicyObject fileproxy.ProgramPolicy
-var RollbackProgramPolicyObject *fileproxy.ProgramPolicy
-
-func clientServiceThead(ms *util.MessageStream, clientProgramName *string) {
+func clientServiceThead(ms *util.MessageStream, clientName string, rollbackPolicy *fileproxy.ProgramPolicy, rollbackMasterTable *fileproxy.RollbackMaster) {
 	log.Printf("rollbackserver: clientServiceThead\n")
-}
-
-func server(serverAddr string, prin string) {
-	var sock net.Listener
-	log.Printf("fileserver: server\n")
-
-	/*
-		rollbackserverMaster = new(fileproxy.RollbackMaster)
-		err := fileserverResourceMaster.InitMaster(*fileserverFilePath, *fileserverPath, prin)
+	pi := rollbackMasterTable.AddRollbackProgramTable(clientName)
+	if pi == nil {
+		log.Printf("rollbackserver cannot rollbackMasterTable.AddRollbackProgramTable\n")
+		return
+	}
+	// How do I know if the connection terminates?
+	for {
+		log.Printf("clientServiceThead: ReadString\n")
+		strbytes, err := ms.ReadString()
 		if err != nil {
-			log.Printf("fileserver: can't InitMaster\n")
 			return
 		}
-	*/
+		terminate, err := rollbackMasterTable.HandleServiceRequest(ms, rollbackPolicy, clientName, []byte(strbytes))
+		if terminate {
+			break
+		}
+	}
+	log.Printf("fileserver: client thread terminating\n")
+}
+
+func server(serverAddr string, prin string, rollbackPolicy *fileproxy.ProgramPolicy, rollbackMasterTable *fileproxy.RollbackMaster) {
+	var sock net.Listener
+	log.Printf("fileserver: server\n")
 
 	policyCert, err := x509.ParseCertificate(DerPolicyCert)
 	if err != nil {
@@ -87,19 +91,30 @@ func server(serverAddr string, prin string) {
 		log.Printf("\n")
 		return
 	}
+	var clientName string
 	for {
 		log.Printf("rollbackserver: at Accept\n")
 		conn, err := sock.Accept()
 		if err != nil {
 			log.Printf("rollbackserver: can't accept connection: %s\n", err.Error())
 		} else {
+			// TODO: get the name of this client
+			clientName = "XXZZY"
 			ms := util.NewMessageStream(conn)
-			go clientServiceThead(ms, nil)
+			go clientServiceThead(ms, clientName, rollbackPolicy, rollbackMasterTable)
 		}
 	}
 }
 
 func main() {
+
+	var rollbackMaster fileproxy.RollbackMaster
+	var RollbackMaster *fileproxy.RollbackMaster
+	var rollbackProgramPolicyObject fileproxy.ProgramPolicy
+	var RollbackProgramPolicyObject *fileproxy.ProgramPolicy
+	RollbackMaster = &rollbackMaster
+	RollbackProgramPolicyObject = &rollbackProgramPolicyObject
+
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
 
@@ -129,9 +144,6 @@ func main() {
 		return
 	}
 	log.Printf("rollbackserver: my name is %s\n", taoName)
-
-	RollbackMaster = &rollbackMaster
-	RollbackProgramPolicyObject = &rollbackProgramPolicyObject
 
 	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err := fileproxy.LoadProgramKeys(*rollbackserverPath)
 	if err != nil {
@@ -185,8 +197,9 @@ func main() {
 	}
 	taoNameStr := taoName.String()
 	_ = RollbackProgramPolicyObject.InitProgramPolicy(DerPolicyCert, taoNameStr, SigningKey, SymKeys, ProgramCert)
+	RollbackMaster.InitRollbackMaster(taoNameStr)
 
-	server(serverAddr, taoNameStr)
+	server(serverAddr, taoNameStr, RollbackProgramPolicyObject, RollbackMaster)
 	if err != nil {
 		log.Printf("rollbackserver: server error\n")
 	}

@@ -37,11 +37,6 @@ var fileserverFilePath = flag.String("fileserver_files/stored_files/", "fileserv
 var serverAddr string
 var testFile = flag.String("originalTestFile", "originalTestFile", "test file")
 
-var fileServerResourceMaster fileproxy.ResourceMaster
-var FileServerResourceMaster *fileproxy.ResourceMaster
-var fileServerProgramPolicy fileproxy.ProgramPolicy
-var FileServerProgramPolicy *fileproxy.ProgramPolicy
-
 func clientServiceThead(ms *util.MessageStream, fileServerProgramPolicy *fileproxy.ProgramPolicy, resourceMaster *fileproxy.ResourceMaster) {
 	log.Printf("fileserver: clientServiceThead\n")
 	var clientProgramName string
@@ -112,6 +107,12 @@ func server(serverAddr string, prin string, derPolicyCert []byte, signingKey *ta
 }
 
 func main() {
+
+	var fileServerResourceMaster fileproxy.ResourceMaster
+	var FileServerResourceMaster *fileproxy.ResourceMaster
+	var fileServerProgramPolicy fileproxy.ProgramPolicy
+	var FileServerProgramPolicy *fileproxy.ProgramPolicy
+
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
 

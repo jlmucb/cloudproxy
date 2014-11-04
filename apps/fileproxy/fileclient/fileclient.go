@@ -73,8 +73,6 @@ func main() {
 	}
 	log.Printf("fileclient: my name is %s\n", taoName)
 
-	FileClientProgramObject = &fileClientProgramObject
-
 	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*fileclientPath)
 	if err != nil {
 		log.Printf("fileclient: cant retrieve key material\n")
@@ -120,21 +118,26 @@ func main() {
 		log.Printf("fileclient: Initilized signingKey: % x\n", *signingKey)
 	}
 
+	FileClientProgramObject = &fileClientProgramObject
+	_ = FileClientProgramObject.InitProgramPolicy(derPolicyCert, taoName.String(), *signingKey, symKeys, programCert)
+
 	policyCert, err := x509.ParseCertificate(derPolicyCert)
 	if err != nil {
 		log.Printf("fileclient:cant ParseCertificate\n")
 		return
 	}
-	_ = FileClientProgramObject.InitProgramPolicy(derPolicyCert, taoName.String(), *signingKey, symKeys, programCert)
+	log.Printf("fileclient: place 0\n")
 	pool := x509.NewCertPool()
 	pool.AddCert(policyCert)
 
+	log.Printf("fileclient: place 1\n")
 	tlsc, err := taonet.EncodeTLSCert(signingKey)
 	if err != nil {
 		log.Printf("fileclient, encode error: ", err)
 		log.Printf("\n")
 		return
 	}
+	log.Printf("fileclient: place 2.5\n")
 	conn, err := tls.Dial("tcp", serverAddr, &tls.Config{
 		RootCAs:            pool,
 		Certificates:       []tls.Certificate{*tlsc},
@@ -145,6 +148,7 @@ func main() {
 		log.Printf("\n")
 		return
 	}
+	log.Printf("fileclient: place 2\n")
 	ms := util.NewMessageStream(conn)
 	log.Printf("fileclient: Established channel\n")
 

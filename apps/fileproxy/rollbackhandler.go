@@ -58,8 +58,14 @@ func (r *RollbackMaster) FindRollbackProgramTable(programName string) (pi *Rollb
 	return nil
 }
 
-func (r *RollbackMaster) AddRollbackProgramTable(programName string) (pi *RollbackProgramInfo) {
-	return nil
+func (r *RollbackMaster) AddRollbackProgramTable(programName string) *RollbackProgramInfo {
+	pi := r.FindRollbackProgramTable(programName)
+	if pi != nil {
+		return pi
+	}
+	// r.ProgramInfo[0 : len(r.ProgramInfo)+1]
+	pi = &r.ProgramInfo[len(r.ProgramInfo)-1]
+	return pi
 }
 
 func (r *RollbackMaster) ReadMasterRollbackInfo(masterFile string, hashFile string) bool {
@@ -87,7 +93,7 @@ func (pi *RollbackProgramInfo) FindRollbackHashEntry(itemName string) (hi *Namea
 	return nil
 }
 
-func (pi *RollbackProgramInfo) AddHashEntry(itemName string, hash string) *NameandHash {
+func (pi *RollbackProgramInfo) AddHashEntry(itemName string, hash []byte) *NameandHash {
 	return nil
 }
 
@@ -109,24 +115,104 @@ func (r *RollbackMaster) InitRollbackMaster(masterprogramName string) bool {
 	return false
 }
 
-func (r *RollbackMaster) SetRollbackCounter(programName string, counter int64) bool {
-	return false
+func (r *RollbackMaster) SetRollbackCounter(ms *util.MessageStream, programName string, counter int64) bool {
+	pi := r.FindRollbackProgramTable(programName)
+	if pi == nil {
+		log.Printf("SetRollbackCounter: program has no program info table")
+		SendResponse(ms, "failed", "Rollback doesn't exist", 0)
+		return false
+	}
+	if pi.Counter > counter {
+		log.Printf("SetRollbackCounter: can't set counter backwards")
+		SendResponse(ms, "failed", "Rollback counter can't decrease", 0)
+		return false
+	}
+	pi.Counter = counter
+	SendResponse(ms, "succeeded", "", 0)
+	return true
 }
 
-func (r *RollbackMaster) SetRollbackResourceHash(programName string, resourceName string, hash string) bool {
-	return false
+func (r *RollbackMaster) SetRollbackResourceHash(ms *util.MessageStream, programName string, itemName string) bool {
+	pi := r.FindRollbackProgramTable(programName)
+	if pi == nil {
+		log.Printf("SetRollbackResourceHash: program has no program info table")
+		SendResponse(ms, "failed", "Rollback doesn't exist", 0)
+		return false
+	}
+	// get hash
+	hash, err := GetProtocolMessage(ms)
+	if err != nil {
+		log.Printf("SetRollbackResourceHash: program has no program info table")
+		SendResponse(ms, "failed", "Rollback doesn't exist", 0)
+		return false
+	}
+	hi := pi.FindRollbackHashEntry(itemName)
+	if hi == nil {
+		hi = pi.AddHashEntry(itemName, hash)
+		if hi == nil {
+			log.Printf("SetRollbackResourceHash: program has no program info table")
+			SendResponse(ms, "failed", "can't insert entry", 0)
+			return false
+		}
+	} else {
+		hi.Hash = hash
+	}
+	SendResponse(ms, "succeeded", "", 0)
+	return true
 }
 
-func (r *RollbackMaster) GetRollbackHashedVerifier(programName string, resourceName string) bool {
+func (r *RollbackMaster) GetRollbackHashedVerifier(ms *util.MessageStream, programName string, itemName string) bool {
+	pi := r.FindRollbackProgramTable(programName)
+	if pi == nil {
+		log.Printf("SetRollbackResourceHash: program has no program info table")
+		SendResponse(ms, "failed", "Rollback doesn't exist", 0)
+		return false
+	}
+	hi := pi.FindRollbackHashEntry(itemName)
+	if hi == nil {
+		log.Printf("SetRollbackResourceHash: program has no program info table")
+		SendResponse(ms, "failed", "can't insert entry", 0)
+		return false
+	}
+	hash := hi.Hash
+	SendResponse(ms, "succeeded", "", 0)
+	SendProtocolMessage(ms, len(hash), hash)
+	return true
+}
+
+// Update hash for resouce named resource
+func setRollbackCounter(ms *util.MessageStream, counter int64) bool {
+	SendCounterRequest(ms, counter)
+	status, _, _, err := GetResponse(ms)
+	if status == nil || *status != "succeeded" || err != nil {
+		return false
+	}
+	return true
+}
+
+// Update hash for resouce named resource
+func setResourceHashRequest(ms *util.MessageStream, clientProgramName string, item string, hash []byte) bool {
+	action := "setrollbackhash"
+	SendRequest(ms, nil, &action, nil, nil)
+	status, _, _, err := GetResponse(ms)
+	if status == nil || *status != "succeeded" || err != nil {
+		return false
+	}
+	err = SendProtocolMessage(ms, len(hash), hash)
 	return false
 }
 
 // Update hash for resouce named resource
-func setresourcehashRequest(ms *util.MessageStream, resource string, hash string) bool {
-	return false
+func getRollbackHashedVerifierRequest(ms *util.MessageStream, clientProgramName string, item string) (bool, []byte) {
+	action := "getrollbackcounter"
+	SendRequest(ms, nil, &action, nil, nil)
+	hash, err := GetProtocolMessage(ms)
+	status, _, _, err := GetResponse(ms)
+	if status == nil || *status != "succeeded" || err != nil {
+		return false, nil
+	}
+	return true, hash
 }
-
-// Gets success/fail.
 
 // First return value is terminate flag
 func (r *RollbackMaster) HandleServiceRequest(ms *util.MessageStream, programPolicyObject ProgramPolicy, clientProgramName string, request []byte) (bool, error) {
@@ -153,10 +239,25 @@ func (r *RollbackMaster) HandleServiceRequest(ms *util.MessageStream, programPol
 
 	switch *action {
 	case "setrollbackcounter":
+		if fpMessage.MonotonicCounter == nil {
+			log.Printf("HandleServiceRequest: no counter in setrollbackcounter message")
+			SendResponse(ms, "failed", "no counter", 0)
+		}
+		_ = r.SetRollbackCounter(ms, clientProgramName, *fpMessage.MonotonicCounter)
 		return false, nil
 	case "setrollbackhash":
+		if fpMessage.ResourceName == nil {
+			log.Printf("HandleServiceRequest: no resource name in setrollbackhash message")
+			SendResponse(ms, "failed", "no counter", 0)
+		}
+		_ = r.SetRollbackResourceHash(ms, clientProgramName, *fpMessage.ResourceName)
 		return false, nil
 	case "getrollbackcounter":
+		if fpMessage.ResourceName == nil {
+			log.Printf("HandleServiceRequest: no resource name in setrollbackhash message")
+			SendResponse(ms, "failed", "no counter", 0)
+		}
+		r.GetRollbackHashedVerifier(ms, clientProgramName, *fpMessage.ResourceName)
 		return false, nil
 	default:
 		SendResponse(ms, "failed", "", 0)

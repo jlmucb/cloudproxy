@@ -48,12 +48,14 @@ type ProgramPolicy struct {
 }
 
 func (pp *ProgramPolicy) InitProgramPolicy(policyCert []byte, taoName string, signingKey tao.Keys, symKeys []byte, programCert []byte) bool {
+	log.Printf("InitProgramPolicy\n")
 	pp.ThePolicyCert = policyCert
 	pp.TaoName = taoName
 	pp.MySigningKey = signingKey
 	pp.MySymKeys = symKeys
 	pp.MyProgramCert = programCert
 	pp.Initialized = true
+	log.Printf("InitProgramPolicy done\n")
 	return true
 }
 
@@ -335,6 +337,23 @@ func SendRequest(ms *util.MessageStream, subject *string, action *string, item *
 	out, err := proto.Marshal(fpMessage)
 	if err != nil {
 		log.Printf("SendRequest: cant marshal message\n")
+		return errors.New("transmission error")
+	}
+
+	written, _ := ms.WriteString(string(out))
+	log.Printf("Bytes written %d\n", written)
+	return nil
+}
+
+func SendCounterRequest(ms *util.MessageStream, counter int64) error {
+	log.Printf("SendCounterRequest")
+	fpMessage := new(FPMessage)
+	fpMessage.MessageType = proto.Int32(int32(MessageType_REQUEST))
+	fpMessage.ActionName = proto.String("setrollbackcounter")
+	fpMessage.MonotonicCounter = proto.Int64(counter)
+	out, err := proto.Marshal(fpMessage)
+	if err != nil {
+		log.Printf("SendCounterRequest: cant marshal message\n")
 		return errors.New("transmission error")
 	}
 

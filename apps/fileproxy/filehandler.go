@@ -401,7 +401,7 @@ func (m *ResourceMaster) SaveResourceData(masterFile string, resourceFile string
 	return nil
 }
 
-func AuthenticatePrincipal(m *ResourceMaster, ms *util.MessageStream, programPolicyObject ProgramPolicy) (bool, []byte) {
+func AuthenticatePrincipal(m *ResourceMaster, ms *util.MessageStream, programPolicyObject *ProgramPolicy) (bool, []byte) {
 	log.Printf("AuthenticatePrincipal\n")
 	offeredCert, err := GetProtocolMessage(ms)
 	if err != nil {
@@ -612,7 +612,7 @@ func (m *ResourceMaster) certToAuthenticatedName(subjectCert []byte) *string {
 }
 
 // First return value is terminate flag
-func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, programPolicyObject ProgramPolicy, clientProgramName string, request []byte) (bool, error) {
+func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, programPolicyObject *ProgramPolicy, clientProgramName string, request []byte) (bool, error) {
 	log.Printf("filehandler: HandleServiceRequest\n")
 
 	fpMessage := new(FPMessage)

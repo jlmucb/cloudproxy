@@ -42,7 +42,7 @@ var FileServerResourceMaster *fileproxy.ResourceMaster
 var fileServerProgramPolicy fileproxy.ProgramPolicy
 var FileServerProgramPolicy *fileproxy.ProgramPolicy
 
-func clientServiceThead(ms *util.MessageStream, fileGuard tao.Guard) {
+func clientServiceThead(ms *util.MessageStream, fileServerProgramPolicy *fileproxy.ProgramPolicy, resourceMaster *fileproxy.ResourceMaster) {
 	log.Printf("fileserver: clientServiceThead\n")
 	var clientProgramName string
 
@@ -55,7 +55,7 @@ func clientServiceThead(ms *util.MessageStream, fileGuard tao.Guard) {
 		if err != nil {
 			return
 		}
-		terminate, err := FileServerResourceMaster.HandleServiceRequest(ms, *FileServerProgramPolicy, clientProgramName, []byte(strbytes))
+		terminate, err := resourceMaster.HandleServiceRequest(ms, fileServerProgramPolicy, clientProgramName, []byte(strbytes))
 		if terminate {
 			break
 		}
@@ -63,12 +63,11 @@ func clientServiceThead(ms *util.MessageStream, fileGuard tao.Guard) {
 	log.Printf("fileserver: client thread terminating\n")
 }
 
-func server(serverAddr string, prin string, derPolicyCert []byte, signingKey *tao.Keys) {
+func server(serverAddr string, prin string, derPolicyCert []byte, signingKey *tao.Keys, fileServerProgramPolicy *fileproxy.ProgramPolicy, fileServerResourceMaster *fileproxy.ResourceMaster) {
 	var sock net.Listener
 	log.Printf("fileserver: server\n")
 
-	FileServerResourceMaster = new(fileproxy.ResourceMaster)
-	err := FileServerResourceMaster.InitMaster(*fileserverFilePath, *fileserverPath, prin)
+	err := fileServerResourceMaster.InitMaster(*fileserverFilePath, *fileserverPath, prin)
 	if err != nil {
 		log.Printf("fileserver: can't InitMaster\n")
 		return
@@ -107,7 +106,7 @@ func server(serverAddr string, prin string, derPolicyCert []byte, signingKey *ta
 			log.Printf("fileserver: can't accept connection: %s\n", err.Error())
 		} else {
 			ms := util.NewMessageStream(conn)
-			go clientServiceThead(ms, FileServerResourceMaster.Guard)
+			go clientServiceThead(ms, fileServerProgramPolicy, fileServerResourceMaster)
 		}
 	}
 }
@@ -142,9 +141,6 @@ func main() {
 		return
 	}
 	log.Printf("fileserver: my name is %s\n", taoName)
-
-	FileServerResourceMaster = &fileServerResourceMaster
-	FileServerProgramPolicy = &fileServerProgramPolicy
 
 	var programCert []byte
 	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*fileserverPath)
@@ -194,9 +190,12 @@ func main() {
 		programCert = signingKey.Cert.Raw
 	}
 	taoNameStr := taoName.String()
+
+	FileServerProgramPolicy = &fileServerProgramPolicy
+	FileServerResourceMaster = &fileServerResourceMaster
 	_ = FileServerProgramPolicy.InitProgramPolicy(derPolicyCert, taoNameStr, *signingKey, symKeys, programCert)
 
-	server(serverAddr, taoNameStr, derPolicyCert, signingKey)
+	server(serverAddr, taoNameStr, derPolicyCert, signingKey, FileServerProgramPolicy, FileServerResourceMaster)
 	if err != nil {
 		log.Printf("fileserver: server error\n")
 	}

@@ -316,6 +316,33 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte, delega
 	return k, err
 }
 
+func SendRequest(ms *util.MessageStream, subject *string, action *string, item *string, owner *string) error {
+	log.Printf("SendRequest")
+	fpMessage := new(FPMessage)
+	fpMessage.MessageType = proto.Int32(int32(MessageType_REQUEST))
+	if subject != nil {
+		fpMessage.SubjectName = proto.String(string(*subject))
+	}
+	if action != nil {
+		fpMessage.ActionName = proto.String(*action)
+	}
+	if item != nil {
+		fpMessage.ResourceName = proto.String(*item)
+	}
+	if owner != nil {
+		fpMessage.ResourceOwner = proto.String(*owner)
+	}
+	out, err := proto.Marshal(fpMessage)
+	if err != nil {
+		log.Printf("SendRequest: cant marshal message\n")
+		return errors.New("transmission error")
+	}
+
+	written, _ := ms.WriteString(string(out))
+	log.Printf("Bytes written %d\n", written)
+	return nil
+}
+
 func PrintRequest(subject []byte, action *string, resource *string, owner []byte) {
 	log.Printf("PrintRequest\n")
 	if subject != nil {
@@ -512,71 +539,30 @@ func GetFile(ms *util.MessageStream, path string, filename string, keys []byte) 
 
 func SendSendFile(ms *util.MessageStream, subjectCert []byte, filename string) error {
 	log.Printf("SendSendFile, filename: %s\n", filename)
-	fpMessage := new(FPMessage)
-	fpMessage.MessageType = proto.Int32(int32(MessageType_REQUEST))
-	fpMessage.SubjectName = proto.String(string(subjectCert))
-	fpMessage.ActionName = proto.String("sendfile")
-	fpMessage.ResourceName = proto.String("filename")
-	out, err := proto.Marshal(fpMessage)
-	if err != nil {
-		log.Printf("SendSendFile cant marshal message\n")
-		return errors.New("transmission error")
-	}
-
-	written, _ := ms.WriteString(string(out))
-	log.Printf("Bytes written %d\n", written)
-	return nil
+	subject := string(subjectCert)
+	action := "sendfile"
+	return SendRequest(ms, &subject, &action, &filename, nil)
 }
 
 func SendGetFile(ms *util.MessageStream, subjectCert []byte, filename string) error {
 	log.Printf("SendGetFile, filename: %s\n", filename)
-	fpMessage := new(FPMessage)
-	fpMessage.MessageType = proto.Int32(int32(MessageType_REQUEST))
-	fpMessage.SubjectName = proto.String(string(subjectCert))
-	fpMessage.ActionName = proto.String("getfile")
-	fpMessage.ResourceName = proto.String("filename")
-	out, err := proto.Marshal(fpMessage)
-	if err != nil {
-		log.Printf("SendFile cant marshal message\n")
-		return errors.New("transmission error")
-	}
-	written, _ := ms.WriteString(string(out))
-	log.Printf("Bytes written %d\n", written)
-	return nil
+	subject := string(subjectCert)
+	action := "getfile"
+	return SendRequest(ms, &subject, &action, &filename, nil)
 }
 
 func SendCreateFile(ms *util.MessageStream, subjectCert []byte, filename string) error {
 	log.Printf("SendCreateFile, filename: %s\n", filename)
-	fpMessage := new(FPMessage)
-	fpMessage.MessageType = proto.Int32(int32(MessageType_REQUEST))
-	fpMessage.SubjectName = proto.String(string(subjectCert))
-	fpMessage.ActionName = proto.String("create")
-	fpMessage.ResourceName = proto.String("filename")
-	out, err := proto.Marshal(fpMessage)
-	if err != nil {
-		log.Printf("SendCreateFile cant marshal message\n")
-		return errors.New("transmission error")
-	}
-	written, _ := ms.WriteString(string(out))
-	log.Printf("Bytes written %d\n", written)
-	return nil
+	subject := string(subjectCert)
+	action := "create"
+	return SendRequest(ms, &subject, &action, &filename, &subject)
 }
 
 func SendRule(ms *util.MessageStream, rule string, signerCert []byte) error {
 	log.Printf("SendRule, rule: %s\n", rule)
-	fpMessage := new(FPMessage)
-	fpMessage.MessageType = proto.Int32(int32(MessageType_REQUEST))
-	fpMessage.SubjectName = proto.String(string(signerCert))
-	fpMessage.ActionName = proto.String("sendrule")
-	fpMessage.ResourceName = proto.String("filename")
-	fpMessage.ResourceOwner = proto.String(string(signerCert))
-	out, err := proto.Marshal(fpMessage)
-	if err != nil {
-		log.Printf("SendRule can't marshal message\n")
-		return errors.New("transmission error")
-	}
-	_, err = ms.WriteString(string(out))
-	return err
+	subject := string(signerCert)
+	action := "sendrule"
+	return SendRequest(ms, &subject, &action, &rule, &subject)
 }
 
 func SendDeleteFile(ms *util.MessageStream, creds []byte, filename string) error {

@@ -198,107 +198,6 @@ func (m *ResourceMaster) InsertPrincipal(name string, cert []byte, authStatus st
 	return &m.PrincipalArray[n], nil
 }
 
-func DecodeMessage(in []byte) (*int, *string, *string, *string, *string,
-	*string, *string, *int, []byte, error) {
-
-	log.Printf("filehandler: DecodeMessage\n")
-
-	var the_type32 *int32
-	var the_type int
-	var subject *string
-	var action *string
-	var resource *string
-	var owner *string
-	var status *string
-	var message *string
-	var size *int
-	var buf []byte
-
-	the_type = -1
-	the_type32 = nil
-	subject = nil
-	action = nil
-	resource = nil
-	owner = nil
-	status = nil
-	message = nil
-	size = nil
-	buf = nil
-
-	fpMessage := new(FPMessage)
-	err := proto.Unmarshal(in, fpMessage)
-	the_type32 = fpMessage.MessageType
-	if the_type32 == nil {
-		return &the_type, subject, action, resource, owner, status, message, size, buf,
-			errors.New("No type")
-	}
-	the_type = int(*the_type32)
-	if the_type == int(MessageType_REQUEST) {
-		subject = fpMessage.SubjectName
-		action = fpMessage.ActionName
-		resource = fpMessage.ResourceName
-		owner = fpMessage.ResourceOwner
-		return &the_type, subject, action, resource, owner, status, message, size, buf, err
-	} else if the_type == int(MessageType_RESPONSE) {
-		if fpMessage.StatusOfRequest != nil {
-			status = fpMessage.StatusOfRequest
-		}
-		if fpMessage.MessageFromRequest != nil {
-			message = fpMessage.MessageFromRequest
-		}
-		return &the_type, subject, action, resource, owner, status, message, size, buf, err
-	} else if the_type == int(MessageType_FILE_NEXT) || the_type == int(MessageType_FILE_LAST) {
-		size32 := *fpMessage.BufferSize
-		size1 := int(size32)
-		size = &size1
-		str := fpMessage.TheBuffer
-		buf = []byte(*str)
-		return &the_type, subject, action, resource, owner, status, message, size, buf, nil
-	} else if the_type == int(MessageType_PROTOCOL_RESPONSE) {
-		size32 := *fpMessage.BufferSize
-		size1 := int(size32)
-		size = &size1
-		str := fpMessage.TheBuffer
-		buf = []byte(*str)
-		return &the_type, subject, action, resource, owner, status, message, size, buf, nil
-	} else {
-		log.Printf("Decode message bad message type %d\n", the_type)
-		return &the_type, subject, action, resource, owner, status, message, size, buf,
-			errors.New("Unknown message type")
-	}
-}
-
-func EncodeMessage(theType int, subject *string, action *string, resourcename *string, owner *string,
-	status *string, reqMessage *string, size *int, buf []byte) ([]byte, error) {
-	log.Printf("filehandler: encodeMessage\n")
-	log.Printf("EncodeMessage %d\n", theType)
-	protoMessage := new(FPMessage)
-	protoMessage.MessageType = proto.Int(theType)
-	if theType == int(MessageType_REQUEST) {
-		protoMessage.SubjectName = proto.String(*subject)
-		protoMessage.ActionName = proto.String(*action)
-		protoMessage.ResourceName = proto.String(*resourcename)
-		if owner != nil {
-			protoMessage.ResourceOwner = proto.String(*owner)
-		}
-	} else if theType == int(MessageType_RESPONSE) {
-		protoMessage.StatusOfRequest = proto.String(*status)
-		protoMessage.MessageFromRequest = proto.String(*reqMessage)
-	} else if theType == int(MessageType_FILE_NEXT) || theType == int(MessageType_FILE_LAST) {
-		protoMessage.BufferSize = proto.Int(*size)
-		protoMessage.TheBuffer = proto.String(string(buf))
-	} else if theType == int(MessageType_PROTOCOL_RESPONSE) {
-		protoMessage.BufferSize = proto.Int(*size)
-		protoMessage.TheBuffer = proto.String(string(buf))
-	} else {
-		log.Print("EncodeMessage, Bad message type: %d\n", theType)
-		return nil, errors.New("encodemessage, unknown message type\n")
-	}
-	out, err := proto.Marshal(protoMessage)
-	log.Printf("Marshaled %d\n", len(out))
-	return out, err
-}
-
 func (m *ResourceMaster) Delete(resourceName string) error {
 	return nil // not implemented
 }
@@ -502,33 +401,6 @@ func (m *ResourceMaster) SaveResourceData(masterFile string, resourceFile string
 	return nil
 }
 
-func EncodeRequest(subject string, action string, resourcename string, owner string) ([]byte, error) {
-	log.Printf("filehandler: encodeRequest\n")
-	out, err := EncodeMessage(int(MessageType_REQUEST), &subject, &action, &resourcename, &owner,
-		nil, nil, nil, nil)
-	return out, err
-}
-
-func DecodeRequest(in []byte) (*string, *string, *string, *string, error) {
-	log.Printf("filehandler: DecodeRequest\n")
-	theType, subject, action, resource, owner, status, message, size, buf, err := DecodeMessage(in)
-	if err != nil {
-		log.Printf("DecodeRequest error: ", err)
-		log.Printf("\n")
-		return nil, nil, nil, nil, err
-	}
-	if *theType != int(MessageType_REQUEST) {
-		return nil, nil, nil, nil, errors.New("Can't Decode request")
-	}
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	if status != nil || message != nil || size != nil || buf != nil {
-		return nil, nil, nil, nil, errors.New("malformed request")
-	}
-	return subject, action, resource, owner, nil
-}
-
 func AuthenticatePrincipal(m *ResourceMaster, ms *util.MessageStream, programPolicyObject ProgramPolicy) (bool, []byte) {
 	log.Printf("AuthenticatePrincipal\n")
 	offeredCert, err := GetProtocolMessage(ms)
@@ -605,18 +477,9 @@ func AuthenticatePrincipalRequest(ms *util.MessageStream, key *tao.Keys, derCert
 	// Format request
 	subject := string(derCert)
 	action := "authenticateprincipal"
-	message, err := EncodeMessage(int(MessageType_REQUEST), &subject, &action, &subject, nil,
-		nil, nil, nil, nil)
+	err := SendRequest(ms, &subject, &action, &subject, nil)
 	if err != nil {
-		log.Printf("AuthenticatePrincipalRequest couldnt build request\n")
-		return false
-	}
-	log.Printf("AuthenticatePrincipalRequest request %d, ", len(message))
-	log.Printf("\n")
-	_, err = ms.WriteString(string(message))
-	if err != nil {
-		log.Printf("AuthenticatePrincipalRequest couldnt write challenge\n")
-		return false
+		log.Printf("AuthenticatePrincipalRequest: couldn't send request\n")
 	}
 	log.Printf("AuthenticatePrincipalRequest: sent request\n")
 	SendProtocolMessage(ms, len(derCert), derCert)
@@ -751,18 +614,33 @@ func (m *ResourceMaster) certToAuthenticatedName(subjectCert []byte) *string {
 // First return value is terminate flag
 func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, programPolicyObject ProgramPolicy, clientProgramName string, request []byte) (bool, error) {
 	log.Printf("filehandler: HandleServiceRequest\n")
-	subject, action, resourcename, owner, err := DecodeRequest(request)
-	if err != nil {
-		return false, err
-	}
-	log.Printf("HandleServiceRequest\n")
-	if owner != nil {
-		PrintRequest([]byte(*subject), action, resourcename, []byte(*owner))
-	} else {
-		PrintRequest([]byte(*subject), action, resourcename, nil)
-	}
 
-	if *action == "authenticateprincipal" {
+	fpMessage := new(FPMessage)
+	err := proto.Unmarshal(request, fpMessage)
+	if err != nil {
+		return false, errors.New("HandleService can't unmarshal request")
+	}
+	if fpMessage.MessageType == nil {
+		return false, errors.New("HandleService: no message type")
+	}
+	switch MessageType(*fpMessage.MessageType) {
+	default:
+		return false, errors.New("HandleService does not get MessageType_REQUEST")
+	case MessageType_REQUEST:
+	}
+	action := fpMessage.ActionName
+	if action == nil {
+		SendResponse(ms, "failed", "", 0)
+		return false, errors.New("no action")
+	}
+	subject := fpMessage.SubjectName
+	resourceName := fpMessage.ResourceName
+	owner := fpMessage.ResourceOwner
+
+	log.Printf("HandleServiceRequest %s\n", *action)
+
+	switch *action {
+	case "authenticateprincipal":
 		ok, ownerCert := AuthenticatePrincipal(m, ms, programPolicyObject)
 		if ok {
 			ownerName := PrincipalNameFromDERCert([]byte(ownerCert))
@@ -781,12 +659,20 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, programPol
 		} else {
 			return false, errors.New("AuthenticatePrincipal failed")
 		}
-	} else if *action == "sendrule" {
-		err = newruleRequest(m, ms, *resourcename /* rule */, []byte(*owner))
+	case "sendrule":
+		log.Printf("filehandler sendrule %s\n", *resourceName)
+		if resourceName == nil || owner == nil {
+			SendResponse(ms, "failed", "no ownername or resourcename", 0)
+			return false, nil
+		}
+		log.Printf("filehandler owner x\n", *resourceName, []byte(*owner))
+		log.Printf("\n")
+		err = newruleRequest(m, ms, *resourceName /* rule */, []byte(*owner))
 		if err != nil {
 			return false, errors.New("Can't construct newrulequest")
 		}
 		return false, nil
+	default:
 	}
 
 	// Replace owner and subject with name
@@ -821,60 +707,68 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, programPol
 
 	// Is it authorized?
 	var ok bool
-	if *action == "create" {
-		addResource(*ownerName, *resourcename, m.Guard)
+	switch *action {
+	case "create":
+		if ownerName == nil {
+			SendResponse(ms, "failed", "no owner name", 0)
+			return false, nil
+		}
+		addResource(*ownerName, *resourceName, m.Guard)
 		fileserverSubject := "fileserver"
-		query := makeQuery(fileserverSubject, *action, *resourcename)
+		query := makeQuery(fileserverSubject, *action, *resourceName)
 		if query == nil {
 			log.Printf("bad query")
 		}
 		ok = m.Query(*query)
-		if !ok {
-			m.PrintAllPolicy()
+
+	case "getfile":
+		if subjectName == nil || resourceName == nil {
+			SendResponse(ms, "failed", "no subjectname or resourcename", 0)
+			return false, nil
 		}
-	} else if *action == "getfile" {
-		query := makeQuery(*subjectName, *action, *resourcename)
+		query := makeQuery(*subjectName, *action, *resourceName)
 		if query == nil {
 			log.Printf("bad query")
 		}
 		ok = m.Query(*query)
-	} else if *action == "sendfile" {
-		query := makeQuery(*subjectName, *action, *resourcename)
+	case "sendfile":
+		if subjectName == nil || resourceName == nil {
+			SendResponse(ms, "failed", "no subjectname or resourcename", 0)
+			return false, nil
+		}
+		query := makeQuery(*subjectName, *action, *resourceName)
 		if query == nil {
 			log.Printf("bad query")
 		}
 		ok = m.Query(*query)
-	} else {
+	default:
 		ok = false
 	}
 	if ok == false {
-		status := "failed"
-		message := "unauthorized"
-		SendResponse(ms, status, message, 0)
+		SendResponse(ms, "failed", "unauthorized", 0)
 		return false, nil
 	}
 
-	if *action == "create" {
-		if resourcename == nil || ownerName == nil {
+	switch *action {
+	case "create":
+		if resourceName == nil || ownerName == nil {
 			return false, errors.New("Nil parameters for createRequest")
 		}
-		err := createRequest(m, ms, *resourcename, *ownerName)
+		err := createRequest(m, ms, *resourceName, *ownerName)
 		return false, err
-	} else if *action == "delete" {
-		err := deleteRequest(m, ms, *resourcename)
+	case "delete":
+		err := deleteRequest(m, ms, *resourceName)
 		return false, err
-	} else if *action == "getfile" {
-		err := readRequest(m, ms, *resourcename)
+	case "getfile":
+		err := readRequest(m, ms, *resourceName)
 		return false, err
-	} else if *action == "sendfile" {
-		err := writeRequest(m, ms, *resourcename)
+	case "sendfile":
+		err := writeRequest(m, ms, *resourceName)
 		return false, err
-	} else if *action == "terminate" {
+	case "terminate":
 		return true, nil
-	} else {
-		status := "failed"
-		message := "unsupported action"
-		SendResponse(ms, status, message, 0)
+	default:
+		SendResponse(ms, "failed", "unsupported action", 0)
 		return false, errors.New("unsupported action")
 	}
 }

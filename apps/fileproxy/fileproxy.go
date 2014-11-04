@@ -362,6 +362,22 @@ func SendCounterRequest(ms *util.MessageStream, counter int64) error {
 	return nil
 }
 
+func SendCounterResponse(ms *util.MessageStream, counter int64) error {
+	log.Printf("SendCounterResponse")
+	fpMessage := new(FPMessage)
+	fpMessage.MessageType = proto.Int32(int32(MessageType_RESPONSE))
+	fpMessage.MonotonicCounter = proto.Int64(counter)
+	out, err := proto.Marshal(fpMessage)
+	if err != nil {
+		log.Printf("SendCounterResponse: cant marshal message\n")
+		return errors.New("transmission error")
+	}
+
+	written, _ := ms.WriteString(string(out))
+	log.Printf("Bytes written %d\n", written)
+	return nil
+}
+
 func PrintRequest(subject []byte, action *string, resource *string, owner []byte) {
 	log.Printf("PrintRequest\n")
 	if subject != nil {
@@ -419,6 +435,42 @@ func GetResponse(ms *util.MessageStream) (*string, *string, *int, error) {
 	} else {
 		size = int(*fpMessage.BufferSize)
 		return status, errMessage, &size, nil
+	}
+}
+
+func GetCounterResponse(ms *util.MessageStream) (*string, *string, *int64, error) {
+	log.Printf("filehandler: GetCounterResponse\n")
+
+	strbytes, err := ms.ReadString()
+	log.Printf("GetCounterResponse read %d bytes\n", len(strbytes))
+
+	fpMessage := new(FPMessage)
+	err = proto.Unmarshal([]byte(strbytes), fpMessage)
+	if err != nil {
+		return nil, nil, nil, errors.New("GetCounterResponse can't unmarshal message")
+	}
+	if fpMessage.MessageType == nil {
+		return nil, nil, nil, errors.New("GetCounterResponse: no message type")
+	}
+	if *fpMessage.MessageType != int32(MessageType_RESPONSE) {
+		log.Printf("GetCounterResponse bad type\n")
+		return nil, nil, nil, errors.New("reception error")
+	}
+	var status *string
+	var errMessage *string
+
+	if fpMessage.StatusOfRequest == nil {
+		log.Printf("GetResponse no status\n")
+		return nil, nil, nil, errors.New("reception error")
+	}
+	status = fpMessage.StatusOfRequest
+	errMessage = fpMessage.MessageFromRequest
+	if fpMessage.MonotonicCounter == nil {
+		*status = "failed"
+		return status, errMessage, nil, nil
+	} else {
+		counter := *fpMessage.MonotonicCounter
+		return status, errMessage, &counter, nil
 	}
 }
 

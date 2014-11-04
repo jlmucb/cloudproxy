@@ -37,11 +37,8 @@ var fileserverFilePath = flag.String("fileserver_files/stored_files/", "fileserv
 var serverAddr string
 var testFile = flag.String("originalTestFile", "originalTestFile", "test file")
 
-func clientServiceThead(ms *util.MessageStream, fileServerProgramPolicy *fileproxy.ProgramPolicy, resourceMaster *fileproxy.ResourceMaster) {
+func clientServiceThead(ms *util.MessageStream, clientProgramName string, fileServerProgramPolicy *fileproxy.ProgramPolicy, resourceMaster *fileproxy.ResourceMaster) {
 	log.Printf("fileserver: clientServiceThead\n")
-	var clientProgramName string
-
-	// TODO: get program name of principal that established channel
 
 	// How do I know if the connection terminates?
 	for {
@@ -100,8 +97,10 @@ func server(serverAddr string, prin string, derPolicyCert []byte, signingKey *ta
 		if err != nil {
 			log.Printf("fileserver: can't accept connection: %s\n", err.Error())
 		} else {
+			// TODO: get clientname
+			clientName := ""
 			ms := util.NewMessageStream(conn)
-			go clientServiceThead(ms, fileServerProgramPolicy, fileServerResourceMaster)
+			go clientServiceThead(ms, clientName, fileServerProgramPolicy, fileServerResourceMaster)
 		}
 	}
 }

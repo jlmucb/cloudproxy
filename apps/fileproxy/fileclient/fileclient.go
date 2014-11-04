@@ -40,10 +40,11 @@ var fileclientFilePath = flag.String("fileclient_files/stored_files/", "fileclie
 var testFile = flag.String("originalTestFile", "originalTestFile", "test file")
 var fileclientKeyPath = flag.String("usercreds/", "usercreds/", "user keys and certs")
 
-var fileClientProgramObject fileproxy.ProgramPolicy
-var FileClientProgramObject *fileproxy.ProgramPolicy
-
 func main() {
+
+	var fileClientProgramObject fileproxy.ProgramPolicy
+	var FileClientProgramObject *fileproxy.ProgramPolicy
+
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
 

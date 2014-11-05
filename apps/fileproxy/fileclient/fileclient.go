@@ -316,7 +316,7 @@ func main() {
 		log.Printf("fileclient: fileproxy.ClientSetResourceHashRequest failed")
 		return
 	}
-	log.Printf("fileclient: set fileproxy.ClientSetResourceHashRequest\n")
+	log.Printf("fileclient: set fileproxy.ClientSetResourceHashRequest succeeded\n")
 	// set counter
 	fileproxy.ClientSetRollbackCounter(newms, int64(10))
 	log.Printf("fileclient: set fileproxy.ClientSetRollbackCounter\n")

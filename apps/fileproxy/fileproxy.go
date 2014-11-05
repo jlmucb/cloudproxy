@@ -319,7 +319,11 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte, delega
 }
 
 func SendRequest(ms *util.MessageStream, subject *string, action *string, item *string, owner *string) error {
-	log.Printf("SendRequest")
+	if action == nil {
+		log.Printf("SendRequest\n")
+	} else {
+		log.Printf("SendRequest %s\n", *action)
+	}
 	fpMessage := new(FPMessage)
 	fpMessage.MessageType = proto.Int32(int32(MessageType_REQUEST))
 	if subject != nil {
@@ -351,6 +355,7 @@ func SendCounterRequest(ms *util.MessageStream, counter int64) error {
 	fpMessage.MessageType = proto.Int32(int32(MessageType_REQUEST))
 	fpMessage.ActionName = proto.String("setrollbackcounter")
 	fpMessage.MonotonicCounter = proto.Int64(counter)
+	log.Printf("SendCounterRequest, counter: %d\n", counter)
 	out, err := proto.Marshal(fpMessage)
 	if err != nil {
 		log.Printf("SendCounterRequest: cant marshal message\n")
@@ -362,11 +367,13 @@ func SendCounterRequest(ms *util.MessageStream, counter int64) error {
 	return nil
 }
 
-func SendCounterResponse(ms *util.MessageStream, counter int64) error {
-	log.Printf("SendCounterResponse")
+func SendCounterResponse(ms *util.MessageStream, status string, errMessage string, counter int64) error {
+	log.Printf("SendCounterResponse %d\n", counter)
 	fpMessage := new(FPMessage)
 	fpMessage.MessageType = proto.Int32(int32(MessageType_RESPONSE))
 	fpMessage.MonotonicCounter = proto.Int64(counter)
+	fpMessage.StatusOfRequest = proto.String(status)
+	fpMessage.MessageFromRequest = proto.String(errMessage)
 	out, err := proto.Marshal(fpMessage)
 	if err != nil {
 		log.Printf("SendCounterResponse: cant marshal message\n")
@@ -403,7 +410,7 @@ func PrintRequest(subject []byte, action *string, resource *string, owner []byte
 }
 
 func GetResponse(ms *util.MessageStream) (*string, *string, *int, error) {
-	log.Printf("filehandler: GetResponse\n")
+	log.Printf("GetResponse\n")
 
 	strbytes, err := ms.ReadString()
 	log.Printf("GetResponse read %d bytes\n", len(strbytes))
@@ -439,8 +446,6 @@ func GetResponse(ms *util.MessageStream) (*string, *string, *int, error) {
 }
 
 func GetCounterResponse(ms *util.MessageStream) (*string, *string, *int64, error) {
-	log.Printf("filehandler: GetCounterResponse\n")
-
 	strbytes, err := ms.ReadString()
 	log.Printf("GetCounterResponse read %d bytes\n", len(strbytes))
 
@@ -464,13 +469,18 @@ func GetCounterResponse(ms *util.MessageStream) (*string, *string, *int64, error
 		return nil, nil, nil, errors.New("reception error")
 	}
 	status = fpMessage.StatusOfRequest
+	if status == nil {
+		log.Printf("GetCounterResponse status is nil\n")
+	} else {
+		log.Printf("GetCounterResponse status: %s\n", *status)
+	}
 	errMessage = fpMessage.MessageFromRequest
 	if fpMessage.MonotonicCounter == nil {
-		*status = "failed"
+		log.Printf("GetCounterResponse fpMessage.MonotonicCounter is nil\n")
 		return status, errMessage, nil, nil
 	} else {
-		*status = "succeeded"
 		counter := *fpMessage.MonotonicCounter
+		log.Printf("GetCounterResponse counter: %d\n", counter)
 		return status, errMessage, &counter, nil
 	}
 }
@@ -501,10 +511,10 @@ func SendResponse(ms *util.MessageStream, status string, errMessage string, size
 		return err
 	}
 	send := string(out)
-	log.Printf("filehandler: SendResponse sending %s %s %d\n", status, errMessage, len(send))
+	log.Printf("SendResponse sending %s %s %d\n", status, errMessage, len(send))
 	n, err := ms.WriteString(send)
 	if err != nil {
-		log.Printf("filehandler: SendResponse Writestring error %d\n", n, err)
+		log.Printf("SendResponse Writestring error %d\n", n, err)
 		return err
 	}
 	return nil

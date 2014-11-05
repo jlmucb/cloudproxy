@@ -555,13 +555,13 @@ func newruleRequest(m *ResourceMaster, ms *util.MessageStream,
 	log.Printf("filehandler, newruleRequest, rule: %s\n", rule)
 	signerName := PrincipalNameFromDERCert(signerCert)
 	if signerName == nil {
-		log.Printf("filehanadler, newruleRequest: cant get name from cert\n")
+		log.Printf("filehandler, newruleRequest: cant get name from cert\n")
 		return nil
 	}
 	log.Printf("filehandler, newRuleRequest: %s\n", *signerName)
 	prin, err := m.FindPrincipal(*signerName)
 	if prin != nil {
-		log.Printf("filehanadler, newRuleRequest: found principal, %s %s\n", prin.Name, prin.Status)
+		log.Printf("filehandler, newRuleRequest: found principal, %s %s\n", prin.Name, prin.Status)
 	}
 	if err != nil || prin == nil || !bytes.Equal(prin.Der, signerCert) {
 		SendResponse(ms, "failed", "cert doesn't match", 0)
@@ -597,13 +597,13 @@ func (m *ResourceMaster) certToAuthenticatedName(subjectCert []byte) *string {
 	subjectName = nil
 	subjectName = PrincipalNameFromDERCert([]byte(subjectCert))
 	if subjectName == nil {
-		log.Printf("filehanadler, certToAuthenticatedName: cant get name from cert\n")
+		log.Printf("filehandler, certToAuthenticatedName: cant get name from cert\n")
 		return nil
 	}
 	log.Printf("filehandler, certToAuthenticatedName: %s\n", *subjectName)
 	prin, err := m.FindPrincipal(*subjectName)
 	if prin != nil {
-		log.Printf("filehanadler, certToAuthenticatedName: found principal, %s %s\n", prin.Name, prin.Status)
+		log.Printf("filehandler, certToAuthenticatedName: found principal, %s %s\n", prin.Name, prin.Status)
 	}
 	if err != nil || prin == nil || bytes.Equal(prin.Der, []byte(*subjectName)) {
 		return nil

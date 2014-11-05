@@ -97,8 +97,29 @@ func server(serverAddr string, prin string, derPolicyCert []byte, signingKey *ta
 		if err != nil {
 			log.Printf("fileserver: can't accept connection: %s\n", err.Error())
 		} else {
-			// TODO: get clientname
-			clientName := ""
+			var clientName string
+			clientName = "XYZZY"
+			cs := conn.(*tls.Conn).ConnectionState()
+			log.Printf("connectionstate: % x\n", cs)
+			/*
+				peerCerts := conn.(*tls.Conn).ConnectionState().PeerCertificates
+				if peerCerts == nil {
+					log.Printf("fileserver: can't get peer list\n")
+				} else {
+					log.Printf("len(peerCerts)= %d\n", len(conn.(*tls.Conn).ConnectionState().PeerCertificates))
+				} else {
+					if peerCert.Raw == nil {
+						log.Printf("fileserver: can't get peer name\n")
+					} else {
+						if peerCert.Subject.OrganizationalUnit != nil {
+							log.Printf("Got to orgunit\n")
+							log.Printf("raw cert %x\n", peerCert.Raw)
+							log.Printf("len(peerCert.Subject.OrganizationalUnit): %d\n", len(peerCert.Subject.OrganizationalUnit))
+						}
+					}
+				}
+			*/
+			log.Printf("fileserver, peer name: %s\n", clientName)
 			ms := util.NewMessageStream(conn)
 			go clientServiceThead(ms, clientName, fileServerProgramPolicy, fileServerResourceMaster)
 		}

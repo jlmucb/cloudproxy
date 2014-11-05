@@ -92,15 +92,27 @@ func server(serverAddr string, prin string, rollbackPolicy *fileproxy.ProgramPol
 		log.Printf("\n")
 		return
 	}
-	var clientName string
 	for {
 		log.Printf("rollbackserver: at Accept\n")
 		conn, err := sock.Accept()
 		if err != nil {
 			log.Printf("rollbackserver: can't accept connection: %s\n", err.Error())
 		}
-		// TODO: get the name of this client
-		clientName = "XXZZY"
+		var clientName string
+		clientName = "XYZZY"
+		/*
+			peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
+			if peerCert == nil {
+				log.Printf("rollbackserver: can't get peer name\n")
+			} else {
+				if peerCert.Raw == nil {
+					log.Printf("rollbackserver: can't get peer name\n")
+				} else {
+					clientName = peerCert.Subject.OrganizationalUnit[0]
+				}
+			}
+		*/
+		log.Printf("rollbackserver, peer name: %s\n", clientName)
 		ms := util.NewMessageStream(conn)
 		go clientServiceThead(ms, clientName, rollbackPolicy, rollbackMasterTable)
 	}

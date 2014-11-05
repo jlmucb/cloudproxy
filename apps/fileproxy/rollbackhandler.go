@@ -46,9 +46,9 @@ type RollbackMaster struct {
 }
 
 func (r *RollbackMaster) FindRollbackProgramTable(programName string) *RollbackProgramInfo {
-	for _, pi := range r.ProgramInfo {
-		if pi.ProgramName == programName {
-			return &pi
+	for i := range r.ProgramInfo {
+		if r.ProgramInfo[i].ProgramName == programName {
+			return &r.ProgramInfo[i]
 		}
 	}
 	return nil
@@ -89,10 +89,10 @@ func (pi *RollbackProgramInfo) SaveProgramRollbackInfo(programName string, maste
 }
 
 func (pi *RollbackProgramInfo) FindRollbackHashEntry(itemName string) *NameandHash {
-	for _, hi := range pi.NameandHashArray {
-		log.Printf("FindRollbackHashEntry %s %s\n", itemName, hi.ItemName)
-		if hi.ItemName == itemName {
-			return &hi
+	for i := range pi.NameandHashArray {
+		log.Printf("FindRollbackHashEntry %s %s\n", itemName, pi.NameandHashArray[i].ItemName)
+		if pi.NameandHashArray[i].ItemName == itemName {
+			return &pi.NameandHashArray[i]
 		}
 	}
 	return nil
@@ -287,11 +287,11 @@ func ClientGetRollbackCounter(ms *util.MessageStream, clientProgramName string) 
 func ClientGetRollbackHashedVerifierRequest(ms *util.MessageStream, clientProgramName string, item string) (bool, []byte) {
 	action := "getrollbackcounterverifier"
 	SendRequest(ms, nil, &action, &item, nil)
-	hash, err := GetProtocolMessage(ms)
 	status, _, _, err := GetResponse(ms)
 	if status == nil || *status != "succeeded" || err != nil {
 		return false, nil
 	}
+	hash, err := GetProtocolMessage(ms)
 	return true, hash
 }
 

@@ -469,6 +469,7 @@ func GetCounterResponse(ms *util.MessageStream) (*string, *string, *int64, error
 		*status = "failed"
 		return status, errMessage, nil, nil
 	} else {
+		*status = "succeeded"
 		counter := *fpMessage.MonotonicCounter
 		return status, errMessage, &counter, nil
 	}

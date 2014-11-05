@@ -97,16 +97,16 @@ func server(serverAddr string, prin string, rollbackPolicy *fileproxy.ProgramPol
 		conn, err := sock.Accept()
 		if err != nil {
 			log.Printf("rollbackserver: can't accept connection: %s\n", err.Error())
-		} else {
-			// TODO: get the name of this client
-			clientName = "XXZZY"
-			ms := util.NewMessageStream(conn)
-			go clientServiceThead(ms, clientName, rollbackPolicy, rollbackMasterTable)
 		}
+		// TODO: get the name of this client
+		clientName = "XXZZY"
+		ms := util.NewMessageStream(conn)
+		go clientServiceThead(ms, clientName, rollbackPolicy, rollbackMasterTable)
 	}
 }
 
 func main() {
+	log.Printf("rollback server\n")
 
 	var rollbackMaster fileproxy.RollbackMaster
 	var RollbackMaster *fileproxy.RollbackMaster
@@ -135,7 +135,7 @@ func main() {
 	e := auth.PrinExt{Name: "rollbackserver_version_1"}
 	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
 	if err != nil {
-		log.Printf("rollbackserver: cant get tao name\n")
+		log.Printf("rollbackserver: can't get tao name\n")
 		return
 	}
 
@@ -147,8 +147,7 @@ func main() {
 
 	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err := fileproxy.LoadProgramKeys(*rollbackserverPath)
 	if err != nil {
-		log.Printf("rollbackserver: cant retrieve key material\n")
-		return
+		log.Printf("rollbackserver: can't retrieve key material\n")
 	}
 	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || derCert == nil {
 		log.Printf("rollbackserver: No key material present\n")

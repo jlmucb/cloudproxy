@@ -13,4 +13,9 @@ rm sealedsymmetricKey
 rm signerCert
 cd stored_files
 rm originalTestFile
+cd ../../rollbackserver_files
+rm delegationBlob
+rm sealedsigningKey
+rm sealedsymmetricKey
+rm signerCert
 

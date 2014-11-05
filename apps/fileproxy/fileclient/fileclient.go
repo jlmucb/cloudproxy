@@ -33,8 +33,11 @@ import (
 var hostcfg = flag.String("../hostdomain/tao.config", "../hostdomain/tao.config", "path to host tao configuration")
 var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
+var rollbackserverHost = flag.String("rollbackhost", "localhost", "address for rollback client/server")
+var rollbackserverPort = flag.String("rollbackport", "8129", "port for client/server")
 var fileclientPath = flag.String("fileclient_files/", "fileclient_files/", "fileclient directory")
 var serverAddr string
+var rollbackserverAddr string
 var fileclientFilePath = flag.String("fileclient_files/stored_files/", "fileclient_files/stored_files/",
 	"fileclient file directory")
 var testFile = flag.String("originalTestFile", "originalTestFile", "test file")
@@ -131,14 +134,12 @@ func main() {
 	pool := x509.NewCertPool()
 	pool.AddCert(policyCert)
 
-	log.Printf("fileclient: place 1\n")
 	tlsc, err := taonet.EncodeTLSCert(signingKey)
 	if err != nil {
 		log.Printf("fileclient, encode error: ", err)
 		log.Printf("\n")
 		return
 	}
-	log.Printf("fileclient: place 2.5\n")
 	conn, err := tls.Dial("tcp", serverAddr, &tls.Config{
 		RootCAs:            pool,
 		Certificates:       []tls.Certificate{*tlsc},
@@ -149,7 +150,6 @@ func main() {
 		log.Printf("\n")
 		return
 	}
-	log.Printf("fileclient: place 2\n")
 	ms := util.NewMessageStream(conn)
 	log.Printf("fileclient: Established channel\n")
 
@@ -287,5 +287,53 @@ func main() {
 		log.Printf("\n")
 		return
 	}
+
+	// rollback test
+	rollbackserverAddr = *serverHost + ":" + *rollbackserverPort
+	rbconn, err := tls.Dial("tcp", rollbackserverAddr, &tls.Config{
+		RootCAs:            pool,
+		Certificates:       []tls.Certificate{*tlsc},
+		InsecureSkipVerify: false,
+	})
+	if err != nil {
+		log.Printf("fileclient: cant establish rollback channel\n", err)
+		log.Printf("\n")
+		return
+	}
+	newms := util.NewMessageStream(rbconn)
+	if newms == nil {
+		log.Printf("cant get newms\n")
+	}
+	log.Printf("fileclient: Established rollback channel\n")
+	// set hash
+	hash := make([]byte, 128)
+	for i := 0; i < 32; i++ {
+		hash[i] = byte(i)
+	}
+	clientProgramName := taoName.String()
+	ok2 := fileproxy.ClientSetResourceHashRequest(newms, clientProgramName, "test_resource", []byte(hash))
+	if !ok2 {
+		log.Printf("fileclient: fileproxy.ClientSetResourceHashRequest failed")
+		return
+	}
+	log.Printf("fileclient: set fileproxy.ClientSetResourceHashRequest\n")
+	// set counter
+	fileproxy.ClientSetRollbackCounter(newms, int64(10))
+	log.Printf("fileclient: set fileproxy.ClientSetRollbackCounter\n")
+	// get counter
+	ok2, counter := fileproxy.ClientGetRollbackCounter(newms, clientProgramName)
+	if !ok2 {
+		log.Printf("fileclient: fileproxy.ClientGetRollbackCounter failed")
+		return
+	}
+	log.Printf("counter is %d\n", counter)
+	// get verify
+	ok2, newhash := fileproxy.ClientGetRollbackHashedVerifierRequest(newms, clientProgramName, "test_resource")
+	if !ok2 {
+		log.Printf("fileclient: fileproxy.ClientGetRollbackHashedVerifierRequest failed")
+		return
+	}
+	log.Printf("fileclient: newhash is %x\n", newhash)
+
 	log.Printf("fileclient: Done\n")
 }

@@ -99,26 +99,23 @@ func server(serverAddr string, prin string, derPolicyCert []byte, signingKey *ta
 		} else {
 			var clientName string
 			clientName = "XYZZY"
-			cs := conn.(*tls.Conn).ConnectionState()
-			log.Printf("connectionstate: % x\n", cs)
-			/*
-				peerCerts := conn.(*tls.Conn).ConnectionState().PeerCertificates
-				if peerCerts == nil {
-					log.Printf("fileserver: can't get peer list\n")
+			err = conn.(*tls.Conn).Handshake()
+			if err != nil {
+				log.Printf("TLS handshake failed\n")
+			}
+			peerCerts := conn.(*tls.Conn).ConnectionState().PeerCertificates
+			if peerCerts == nil {
+				log.Printf("fileserver: can't get peer list\n")
+			} else {
+				peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
+				if peerCert.Raw == nil {
+					log.Printf("fileserver: can't get peer name\n")
 				} else {
-					log.Printf("len(peerCerts)= %d\n", len(conn.(*tls.Conn).ConnectionState().PeerCertificates))
-				} else {
-					if peerCert.Raw == nil {
-						log.Printf("fileserver: can't get peer name\n")
-					} else {
-						if peerCert.Subject.OrganizationalUnit != nil {
-							log.Printf("Got to orgunit\n")
-							log.Printf("raw cert %x\n", peerCert.Raw)
-							log.Printf("len(peerCert.Subject.OrganizationalUnit): %d\n", len(peerCert.Subject.OrganizationalUnit))
-						}
+					if peerCert.Subject.OrganizationalUnit != nil {
+						clientName = peerCert.Subject.OrganizationalUnit[0]
 					}
 				}
-			*/
+			}
 			log.Printf("fileserver, peer name: %s\n", clientName)
 			ms := util.NewMessageStream(conn)
 			go clientServiceThead(ms, clientName, fileServerProgramPolicy, fileServerResourceMaster)
@@ -207,7 +204,7 @@ func main() {
 		if err != nil {
 			log.Printf("fileserver: InitializeSealedSigningKey error: %s\n", err)
 		}
-		log.Printf("fileserver: Initialized signingKey: % x\n", *signingKey)
+		log.Printf("fileserver: Initialized signingKey\n")
 		programCert = signingKey.Cert.Raw
 	}
 	taoNameStr := taoName.String()

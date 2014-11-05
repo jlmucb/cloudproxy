@@ -41,7 +41,6 @@ var ProgramCert []byte
 
 func clientServiceThead(ms *util.MessageStream, clientName string, rollbackPolicy *fileproxy.ProgramPolicy, rollbackMasterTable *fileproxy.RollbackMaster) {
 	log.Printf("rollbackserver: clientServiceThead\n")
-	clientName = "XYZZY" // CHANGE
 	pi := rollbackMasterTable.AddRollbackProgramTable(clientName)
 	if pi == nil {
 		log.Printf("rollbackserver cannot rollbackMasterTable.AddRollbackProgramTable\n")
@@ -100,18 +99,23 @@ func server(serverAddr string, prin string, rollbackPolicy *fileproxy.ProgramPol
 		}
 		var clientName string
 		clientName = "XYZZY"
-		/*
+		err = conn.(*tls.Conn).Handshake()
+		if err != nil {
+			log.Printf("TLS handshake failed\n")
+		}
+		peerCerts := conn.(*tls.Conn).ConnectionState().PeerCertificates
+		if peerCerts == nil {
+			log.Printf("rollbackserver: can't get peer list\n")
+		} else {
 			peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
-			if peerCert == nil {
+			if peerCert.Raw == nil {
 				log.Printf("rollbackserver: can't get peer name\n")
 			} else {
-				if peerCert.Raw == nil {
-					log.Printf("rollbackserver: can't get peer name\n")
-				} else {
+				if peerCert.Subject.OrganizationalUnit != nil {
 					clientName = peerCert.Subject.OrganizationalUnit[0]
 				}
 			}
-		*/
+		}
 		log.Printf("rollbackserver, peer name: %s\n", clientName)
 		ms := util.NewMessageStream(conn)
 		go clientServiceThead(ms, clientName, rollbackPolicy, rollbackMasterTable)
@@ -204,7 +208,7 @@ func main() {
 			log.Printf("rollbackserver: InitializeSealedSigningKey error: %s\n", err)
 		}
 		SigningKey = *signingkey
-		log.Printf("rollbackserver: Initialized signingKey: % x\n", SigningKey)
+		log.Printf("rollbackserver: Initialized signingKey\n")
 		ProgramCert = SigningKey.Cert.Raw
 	}
 	taoNameStr := taoName.String()

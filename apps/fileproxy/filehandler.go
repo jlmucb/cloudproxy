@@ -46,7 +46,7 @@ type ResourceInfo struct {
 	Authenticator     [][]byte
 }
 
-type Principal struct {
+type PrincipalInfo struct {
 	Name   string
 	Der    []byte
 	Status string
@@ -58,9 +58,9 @@ type ResourceMaster struct {
 	BaseDirectory string
 	NumResources  int
 	// TODO: change magic allocation sizes
-	ResourceArray    [100]ResourceInfo
+	ResourceArray    []ResourceInfo
 	NumPrincipals    int
-	PrincipalArray   [100]Principal
+	PrincipalArray   []PrincipalInfo
 	Policy           []string
 	AdditionalPolicy []string
 }
@@ -96,13 +96,13 @@ var additional_policy = []string{
 
 func delegateResource(owner, delegate, op, res string, g tao.Guard) {
 	if err := g.AddRule("Delegate(\"" + owner + "\", \"" + delegate + "\", \"" + op + "\", \"" + res + "\")"); err != nil {
-		log.Fatalf("Couldn't delegate operation '%s' on '%s' from '%s' to '%s': %s\n", op, res, owner, delegate, err)
+		log.Printf("Couldn't delegate operation '%s' on '%s' from '%s' to '%s': %s\n", op, res, owner, delegate, err)
 	}
 }
 
 func redelegateResource(owner, delegate, op, res string, g tao.Guard) {
 	if err := g.AddRule("Delegate(\"" + owner + "\", \"" + delegate + "\", \"delegate\", \"" + op + "\", \"" + res + "\")"); err != nil {
-		log.Fatalf("Couldn't redelegate operation '%s' on '%s' from '%s' to '%s': %s\n", op, res, owner, delegate, err)
+		log.Printf("Couldn't redelegate operation '%s' on '%s' from '%s' to '%s': %s\n", op, res, owner, delegate, err)
 	}
 }
 
@@ -147,9 +147,9 @@ func (m *ResourceMaster) Query(query string) bool {
 }
 
 func (m *ResourceMaster) FindResource(resourcename string) (*ResourceInfo, error) {
-	for _, r := range m.ResourceArray {
-		if r.ResourceName == resourcename {
-			return &r, nil
+	for i := range m.ResourceArray {
+		if m.ResourceArray[i].ResourceName == resourcename {
+			return &m.ResourceArray[i], nil
 		}
 	}
 	return nil, nil
@@ -163,8 +163,8 @@ func (m *ResourceMaster) InsertResource(path string, resourcename string, owner 
 	if found != nil {
 		return found, nil
 	}
-	n := m.NumResources
-	m.NumResources = m.NumResources + 1
+	m.ResourceArray = m.ResourceArray[0 : len(m.ResourceArray)+1]
+	n := len(m.ResourceArray) - 1
 	m.ResourceArray[n].ResourceName = resourcename
 	m.ResourceArray[n].ResourceType = "file"
 	m.ResourceArray[n].ResourceStatus = "created"
@@ -173,16 +173,16 @@ func (m *ResourceMaster) InsertResource(path string, resourcename string, owner 
 	return &m.ResourceArray[n], nil
 }
 
-func (m *ResourceMaster) FindPrincipal(name string) (*Principal, error) {
-	for _, r := range m.PrincipalArray {
-		if r.Name == name {
-			return &r, nil
+func (m *ResourceMaster) FindPrincipal(name string) (*PrincipalInfo, error) {
+	for i := range m.PrincipalArray {
+		if m.PrincipalArray[i].Name == name {
+			return &m.PrincipalArray[i], nil
 		}
 	}
 	return nil, nil
 }
 
-func (m *ResourceMaster) InsertPrincipal(name string, cert []byte, authStatus string) (*Principal, error) {
+func (m *ResourceMaster) InsertPrincipal(name string, cert []byte, authStatus string) (*PrincipalInfo, error) {
 	found, err := m.FindPrincipal(name)
 	if err != nil {
 		return nil, err
@@ -190,8 +190,8 @@ func (m *ResourceMaster) InsertPrincipal(name string, cert []byte, authStatus st
 	if found != nil {
 		return found, nil
 	}
-	n := m.NumPrincipals
-	m.NumPrincipals = m.NumPrincipals + 1
+	m.PrincipalArray = m.PrincipalArray[0 : len(m.PrincipalArray)+1]
+	n := len(m.PrincipalArray) - 1
 	m.PrincipalArray[n].Name = name
 	m.PrincipalArray[n].Der = cert
 	m.PrincipalArray[n].Status = authStatus
@@ -230,8 +230,8 @@ func (m *ResourceMaster) PrintMaster(printResources bool) {
 	log.Printf("Base Directory: %s\n", m.BaseDirectory)
 	log.Printf("%d resources\n", len(m.ResourceArray))
 	if printResources {
-		for _, r := range m.ResourceArray {
-			r.PrintResourceInfo()
+		for i := range m.ResourceArray {
+			m.ResourceArray[i].PrintResourceInfo()
 		}
 	}
 }
@@ -272,7 +272,7 @@ func (r *ResourceInfo) PrintResourceInfo() {
 	log.Printf("\n")
 }
 
-func (p *Principal) EncodePrincipal() ([]byte, error) {
+func (p *PrincipalInfo) EncodePrincipal() ([]byte, error) {
 	log.Printf("filehandler: encodePrincipalInfo\n")
 	protoMessage := new(FPPrincipalInfo)
 	protoMessage.PrincipalName = proto.String(p.Name)
@@ -282,7 +282,7 @@ func (p *Principal) EncodePrincipal() ([]byte, error) {
 	return out, err
 }
 
-func (p *Principal) DecodePrincipal(in []byte) error {
+func (p *PrincipalInfo) DecodePrincipal(in []byte) error {
 	log.Printf("filehandler: DecodePrincipalInfo\n")
 	rMessage := new(FPPrincipalInfo)
 	_ = proto.Unmarshal(in, rMessage)
@@ -292,7 +292,7 @@ func (p *Principal) DecodePrincipal(in []byte) error {
 	return nil
 }
 
-func (p *Principal) PrintPrincipal() {
+func (p *PrincipalInfo) PrintPrincipal() {
 	log.Printf("Principal name: %s\n", p.Name)
 	log.Printf("Principal status: %s\n", p.Status)
 	log.Printf("Principal cert: %s\n", p.Der)
@@ -300,25 +300,25 @@ func (p *Principal) PrintPrincipal() {
 }
 
 func (m *ResourceMaster) PrintAllPolicy() {
-	for _, r := range m.Policy {
-		log.Printf("Rule: %s\n", r)
+	for i := range m.Policy {
+		log.Printf("Rule: %s\n", m.Policy[i])
 	}
-	for _, r := range m.AdditionalPolicy {
-		log.Printf("Rule: %s\n", r)
+	for i := range m.AdditionalPolicy {
+		log.Printf("Rule: %s\n", m.AdditionalPolicy[i])
 	}
 }
 
 func (m *ResourceMaster) InitGuard(rulefile string) error {
 	log.Printf("filehandler: InitGuard\n")
 	m.Guard = tao.NewTemporaryDatalogGuard()
-	for _, r := range m.Policy {
-		if err := m.Guard.AddRule(r); err != nil {
+	for i := range m.Policy {
+		if err := m.Guard.AddRule(m.Policy[i]); err != nil {
 			return errors.New("Couldn't add rule in InitGuard")
 		}
 	}
 
-	for _, r := range m.AdditionalPolicy {
-		if err := m.Guard.AddRule(r); err != nil {
+	for i := range m.AdditionalPolicy {
+		if err := m.Guard.AddRule(m.AdditionalPolicy[i]); err != nil {
 			return errors.New("Couldn't add rule in InitGuard")
 		}
 	}
@@ -380,8 +380,8 @@ func (m *ResourceMaster) SaveResourceData(masterFile string, resourceFile string
 	// Save resources
 	fo, _ := os.Create(resourceFile)
 	rs := util.NewMessageStream(fo)
-	for _, r := range m.ResourceArray {
-		resourceRecord, _ := r.EncodeResourceInfo()
+	for i := range m.ResourceArray {
+		resourceRecord, _ := m.ResourceArray[i].EncodeResourceInfo()
 		log.Printf("resourceRecord size: %d\n", len(resourceRecord))
 		_, _ = rs.WriteString(string(resourceRecord))
 	}
@@ -389,8 +389,8 @@ func (m *ResourceMaster) SaveResourceData(masterFile string, resourceFile string
 	// Save principals
 	fo, _ = os.Create(principalFile)
 	ps := util.NewMessageStream(fo)
-	for _, p := range m.PrincipalArray {
-		principalRecord, _ := p.EncodePrincipal()
+	for i := range m.PrincipalArray {
+		principalRecord, _ := m.PrincipalArray[i].EncodePrincipal()
 		log.Printf("principalRecord size: %d\n", len(principalRecord))
 		_, _ = ps.WriteString(string(principalRecord))
 	}
@@ -407,15 +407,12 @@ func AuthenticatePrincipal(m *ResourceMaster, ms *util.MessageStream, programPol
 	if err != nil {
 		log.Printf("cant GetProtocolMessage in AuthenticatePrincipal % x\n", offeredCert)
 	}
-	log.Printf("AuthenticatePrincipal: got offered cert\n")
 	nonce := make([]byte, SizeofNonce)
 	_, err = rand.Read(nonce)
 	if err != nil {
 		log.Printf("Rand error in AuthenticatePrincipal\n")
 	}
-	log.Printf("nonce: % x\n", nonce)
 	SendProtocolMessage(ms, len(nonce), nonce)
-	log.Printf("AuthenticatePrincipal: sent nonce\n")
 	signedRand, err := GetProtocolMessage(ms)
 	if err != nil {
 		log.Printf("cant GetProtocolMessage in AuthenticatePrincipal\n")
@@ -481,9 +478,7 @@ func AuthenticatePrincipalRequest(ms *util.MessageStream, key *tao.Keys, derCert
 	if err != nil {
 		log.Printf("AuthenticatePrincipalRequest: couldn't send request\n")
 	}
-	log.Printf("AuthenticatePrincipalRequest: sent request\n")
 	SendProtocolMessage(ms, len(derCert), derCert)
-	log.Printf("AuthenticatePrincipalRequest: sent cert\n")
 	nonce, err := GetProtocolMessage(ms)
 	if err != nil {
 		log.Printf("cant GetProtocolMessage in AuthenticatePrincipalRequest\n")
@@ -558,7 +553,6 @@ func newruleRequest(m *ResourceMaster, ms *util.MessageStream,
 		log.Printf("filehandler, newruleRequest: cant get name from cert\n")
 		return nil
 	}
-	log.Printf("filehandler, newRuleRequest: %s\n", *signerName)
 	prin, err := m.FindPrincipal(*signerName)
 	if prin != nil {
 		log.Printf("filehandler, newRuleRequest: found principal, %s %s\n", prin.Name, prin.Status)
@@ -600,7 +594,6 @@ func (m *ResourceMaster) certToAuthenticatedName(subjectCert []byte) *string {
 		log.Printf("filehandler, certToAuthenticatedName: cant get name from cert\n")
 		return nil
 	}
-	log.Printf("filehandler, certToAuthenticatedName: %s\n", *subjectName)
 	prin, err := m.FindPrincipal(*subjectName)
 	if prin != nil {
 		log.Printf("filehandler, certToAuthenticatedName: found principal, %s %s\n", prin.Name, prin.Status)
@@ -665,8 +658,6 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, programPol
 			SendResponse(ms, "failed", "no ownername or resourcename", 0)
 			return false, nil
 		}
-		log.Printf("filehandler owner x\n", *resourceName, []byte(*owner))
-		log.Printf("\n")
 		err = newruleRequest(m, ms, *resourceName /* rule */, []byte(*owner))
 		if err != nil {
 			return false, errors.New("Can't construct newrulequest")
@@ -777,8 +768,10 @@ func (m *ResourceMaster) InitMaster(filepath string, masterInfoDir string, prin 
 	log.Printf("filehandler: InitMaster\n")
 	m.Policy = policy
 	m.AdditionalPolicy = additional_policy
-	m.NumResources = 0
-	m.NumPrincipals = 0
+	m.ResourceArray = make([]ResourceInfo, 100)
+	m.ResourceArray = m.ResourceArray[0:0]
+	m.PrincipalArray = make([]PrincipalInfo, 100)
+	m.PrincipalArray = m.PrincipalArray[0:0]
 	m.BaseDirectory = filepath
 	m.InitGuard(masterInfoDir + "rules")
 	m.PrintAllPolicy()

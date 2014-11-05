@@ -109,7 +109,6 @@ func (pi *RollbackProgramInfo) AddHashEntry(itemName string, hash []byte) *Namea
 	he = &pi.NameandHashArray[len(pi.NameandHashArray)-1]
 	he.ItemName = itemName
 	he.Hash = hash
-	log.Printf("AddHashEntry len(pi.NameandHashArray)= %d, cap(pi.NameandHashArray)= %d\n", len(pi.NameandHashArray), cap(pi.NameandHashArray))
 	log.Printf("item: %s, hash %x\n", itemName, hash)
 	return he
 }
@@ -142,7 +141,6 @@ func (r *RollbackMaster) InitRollbackMaster(masterprogramName string) bool {
 }
 
 func (r *RollbackMaster) SetRollbackCounter(ms *util.MessageStream, programName string, counter int64) bool {
-	log.Printf("SetRollbackCounter %d\n", counter)
 	pi := r.FindRollbackProgramTable(programName)
 	if pi == nil {
 		log.Printf("SetRollbackCounter: program has no program info table 1")
@@ -154,20 +152,13 @@ func (r *RollbackMaster) SetRollbackCounter(ms *util.MessageStream, programName 
 		SendResponse(ms, "failed", "Rollback counter can't decrease", 0)
 		return false
 	}
-	pi.MonotonicCounter = 10 // counter
-	log.Printf("\t----Program: %s, Counter: %d\n", pi.ProgramName, pi.MonotonicCounter)
-	log.Printf("***\n")
-	for _, t := range r.ProgramInfo {
-		log.Printf("\tProgram: %s, Counter: %d\n", t.ProgramName, t.MonotonicCounter)
-	}
-	log.Printf("***\n")
+	pi.MonotonicCounter = counter
 	log.Printf("SetRollbackCounter (%s) table counter: %d\n", pi.ProgramName, pi.MonotonicCounter)
 	SendResponse(ms, "succeeded", "", 0)
 	return true
 }
 
 func (r *RollbackMaster) SetRollbackResourceHash(ms *util.MessageStream, programName string, itemName string) bool {
-	log.Printf("SetRollbackResourceHash %s, %s\n", programName, itemName)
 	pi := r.FindRollbackProgramTable(programName)
 	if pi == nil {
 		log.Printf("SetRollbackResourceHash: program has no program info table 2")
@@ -198,10 +189,6 @@ func (r *RollbackMaster) SetRollbackResourceHash(ms *util.MessageStream, program
 }
 
 func (r *RollbackMaster) GetRollbackCounter(ms *util.MessageStream, programName string) bool {
-	log.Printf("GetRollbackCounter\n")
-	for _, t := range r.ProgramInfo {
-		log.Printf("\tProgram: %s, Counter: %d\n", t.ProgramName, t.MonotonicCounter)
-	}
 	pi := r.FindRollbackProgramTable(programName)
 	if pi == nil {
 		log.Printf("GetRollbackCounter: program has no program info table\n")
@@ -264,6 +251,7 @@ func ClientSetResourceHashRequest(ms *util.MessageStream, clientProgramName stri
 }
 
 func ClientGetRollbackCounter(ms *util.MessageStream, clientProgramName string) (bool, int64) {
+	log.Printf("ClientGetRollbackCounter%s, %s\n", clientProgramName)
 	action := "getrollbackcounter"
 	SendRequest(ms, &clientProgramName, &action, nil, nil)
 	status, _, counter, err := GetCounterResponse(ms)
@@ -278,13 +266,13 @@ func ClientGetRollbackCounter(ms *util.MessageStream, clientProgramName string) 
 		if counter == nil {
 			log.Printf("ClientGetRollbackCounter, counter is nil\n")
 		}
-		log.Printf("ClientGetRollbackCounter returns false\n")
 		return false, 0
 	}
 	return true, *counter
 }
 
 func ClientGetRollbackHashedVerifierRequest(ms *util.MessageStream, clientProgramName string, item string) (bool, []byte) {
+	log.Printf("ClientGetRollbackHashedVerifierRequest: %s, %s\n", clientProgramName, item)
 	action := "getrollbackcounterverifier"
 	SendRequest(ms, nil, &action, &item, nil)
 	status, _, _, err := GetResponse(ms)

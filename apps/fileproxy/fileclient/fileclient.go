@@ -119,7 +119,7 @@ func main() {
 		if err != nil {
 			log.Printf("fileclient: InitializeSealedSigningKey error: %s\n", err)
 		}
-		log.Printf("fileclient: Initilized signingKey: % x\n", *signingKey)
+		log.Printf("fileclient: Initilized signingKey\n")
 	}
 
 	FileClientProgramObject = &fileClientProgramObject

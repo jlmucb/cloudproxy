@@ -122,21 +122,18 @@ func PrincipalNameFromDERCert(derCert []byte) *string {
 
 // returns sealed symmetric key, sealed signing key, DER encoded cert, delegation, error
 func LoadProgramKeys(path string) ([]byte, []byte, []byte, []byte, error) {
-	fileinfo, err := os.Stat(path + "sealedsymmetrickey")
+	_, err := os.Stat(path + "sealedsymmetrickey")
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	log.Printf("fileproxy: Size of %s is %d\n", path+"sealedsymmetricKey", fileinfo.Size())
-	fileinfo, err = os.Stat(path + "sealedsigningKey")
+	_, err = os.Stat(path + "sealedsigningKey")
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	log.Printf("fileproxy: Size of %s is %d\n", path+"sealedsigningKey", fileinfo.Size())
-	fileinfo, err = os.Stat(path + "signerCert")
+	_, err = os.Stat(path + "signerCert")
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	log.Printf("fileproxy: Size of %s is %d\n", path+"signerCert", fileinfo.Size())
 
 	sealedSymmetricKey, err := ioutil.ReadFile(path + "sealedsymmetricKey")
 	if err != nil {
@@ -144,8 +141,6 @@ func LoadProgramKeys(path string) ([]byte, []byte, []byte, []byte, error) {
 	}
 	log.Printf("fileproxy: Got sealedSymmetricKey\n")
 	sealedSigningKey, err := ioutil.ReadFile(path + "sealedsigningKey")
-	log.Printf("sealedSigningKey: ", sealedSigningKey)
-	log.Printf("\n")
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -164,6 +159,7 @@ func LoadProgramKeys(path string) ([]byte, []byte, []byte, []byte, error) {
 }
 
 func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
+	log.Printf("CreateSigningKey\n")
 	self, err := t.GetTaoName()
 	k, err := tao.NewTemporaryKeys(tao.Signing)
 	if k == nil || err != nil {
@@ -171,7 +167,6 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 	}
 	publicString := strings.Replace(self.String(), "(", "", -1)
 	publicString = strings.Replace(publicString, ")", "", -1)
-	log.Printf("fileclient, publicString: %s\n", publicString)
 	details := tao.X509Details{
 		Country:      "US",
 		Organization: "Google",
@@ -181,8 +176,6 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 	if err != nil {
 		return nil, nil, errors.New("Can't self sign cert\n")
 	}
-	log.Printf("fileproxy: derCert: %x\n", derCert)
-	log.Printf("\n")
 	cert, err := x509.ParseCertificate(derCert)
 	if err != nil {
 		return nil, nil, err
@@ -198,13 +191,13 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 		return nil, nil, err
 	}
 	if err == nil {
-		temp, _ := auth.UnmarshalForm(k.Delegation.SerializedStatement)
-		log.Printf("fileproxy: deserialized statement: %s\n", temp.String())
+		_, _ = auth.UnmarshalForm(k.Delegation.SerializedStatement)
 	}
 	return k, derCert, nil
 }
 
 func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) ([]byte, error) {
+	log.Printf("InitializeSealedSymmetricKeys\n")
 	unsealed, err := tao.Parent().GetRandomBytes(keysize)
 	if err != nil {
 		return nil, errors.New("Can't get random bytes")
@@ -218,6 +211,7 @@ func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) ([]byte,
 }
 
 func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao.Keys, error) {
+	log.Printf("InitializeSealedSigningKey\n")
 	k, derCert, err := CreateSigningKey(t)
 	if err != nil {
 		log.Printf("fileproxy: CreateSigningKey failed with error %s\n", err)
@@ -236,10 +230,7 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 		return nil, errors.New("tao returned nil attestation")
 	}
 	k.Delegation = na
-	log.Printf("\n")
 	pa, _ := auth.UnmarshalForm(na.SerializedStatement)
-	log.Printf("returned attestation: %s", pa.String())
-	log.Printf("\n")
 	var saysStatement *auth.Says
 	if ptr, ok := pa.(*auth.Says); ok {
 		saysStatement = ptr
@@ -257,7 +248,7 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 	newCert := auth.Bytes(kprin.(auth.Bytes))
 	k.Cert, err = x509.ParseCertificate(newCert)
 	if err != nil {
-		log.Printf("cant parse returned certificate", err)
+		log.Printf("can't parse returned certificate", err)
 		log.Printf("\n")
 		return nil, err
 	}
@@ -289,15 +280,12 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 }
 
 func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte, delegateBlob []byte) (*tao.Keys, error) {
+	log.Printf("SigningKeyFromBlob\n")
 	k := &tao.Keys{}
-
-	log.Printf("SigningKeyFromBlob, certBlob % x\n", certBlob)
-	log.Printf("\n")
 	cert, err := x509.ParseCertificate(certBlob)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("SigningKeyFromBlob: got cert\n")
 	k.Cert = cert
 	k.Delegation = new(tao.Attestation)
 	err = proto.Unmarshal(delegateBlob, k.Delegation)
@@ -340,13 +328,11 @@ func SendRequest(ms *util.MessageStream, subject *string, action *string, item *
 	}
 	out, err := proto.Marshal(fpMessage)
 	if err != nil {
-		log.Printf("SendRequest: cant marshal message\n")
+		log.Printf("SendRequest: can't marshal message\n")
 		return errors.New("transmission error")
 	}
-
-	written, _ := ms.WriteString(string(out))
-	log.Printf("Bytes written %d\n", written)
-	return nil
+	_, err = ms.WriteString(string(out))
+	return err
 }
 
 func SendCounterRequest(ms *util.MessageStream, counter int64) error {
@@ -358,13 +344,12 @@ func SendCounterRequest(ms *util.MessageStream, counter int64) error {
 	log.Printf("SendCounterRequest, counter: %d\n", counter)
 	out, err := proto.Marshal(fpMessage)
 	if err != nil {
-		log.Printf("SendCounterRequest: cant marshal message\n")
+		log.Printf("SendCounterRequest: can't marshal message\n")
 		return errors.New("transmission error")
 	}
 
-	written, _ := ms.WriteString(string(out))
-	log.Printf("Bytes written %d\n", written)
-	return nil
+	_, err = ms.WriteString(string(out))
+	return err
 }
 
 func SendCounterResponse(ms *util.MessageStream, status string, errMessage string, counter int64) error {
@@ -376,13 +361,12 @@ func SendCounterResponse(ms *util.MessageStream, status string, errMessage strin
 	fpMessage.MessageFromRequest = proto.String(errMessage)
 	out, err := proto.Marshal(fpMessage)
 	if err != nil {
-		log.Printf("SendCounterResponse: cant marshal message\n")
+		log.Printf("SendCounterResponse: can't marshal message\n")
 		return errors.New("transmission error")
 	}
 
-	written, _ := ms.WriteString(string(out))
-	log.Printf("Bytes written %d\n", written)
-	return nil
+	_, err = ms.WriteString(string(out))
+	return err
 }
 
 func PrintRequest(subject []byte, action *string, resource *string, owner []byte) {
@@ -413,7 +397,6 @@ func GetResponse(ms *util.MessageStream) (*string, *string, *int, error) {
 	log.Printf("GetResponse\n")
 
 	strbytes, err := ms.ReadString()
-	log.Printf("GetResponse read %d bytes\n", len(strbytes))
 
 	fpMessage := new(FPMessage)
 	err = proto.Unmarshal([]byte(strbytes), fpMessage)
@@ -545,7 +528,6 @@ func GetProtocolMessage(ms *util.MessageStream) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("GetProtocolMessage read %d bytes\n", len(strbytes))
 	fpMessage := new(FPMessage)
 	err = proto.Unmarshal([]byte(strbytes), fpMessage)
 	if err != nil {
@@ -569,19 +551,17 @@ func SendFile(ms *util.MessageStream, path string, filename string, keys []byte)
 	// TODO: later read incrementally and send multiple blocks
 	contents, err := ioutil.ReadFile(path + filename)
 	if err != nil {
-		log.Printf("SendFile error reading file %s, ", path+filename, err)
-		log.Printf("\n")
+		log.Printf("SendFile error reading file %s\n", path+filename)
 		return errors.New("SendFile no such file")
 	}
 	n := len(contents)
-	log.Printf("SendFile contents % x\n", contents)
 	fpMessage := new(FPMessage)
 	fpMessage.MessageType = proto.Int32(int32(MessageType_FILE_LAST))
 	fpMessage.BufferSize = proto.Int32(int32(n))
 	fpMessage.TheBuffer = proto.String(string(contents))
 	out, err := proto.Marshal(fpMessage)
 	if err != nil {
-		log.Printf("SendFile cant encode message\n")
+		log.Printf("SendFile can't encode message\n")
 		return errors.New("transmission error")
 	}
 	_, _ = ms.WriteString(string(out))
@@ -592,8 +572,7 @@ func GetFile(ms *util.MessageStream, path string, filename string, keys []byte) 
 	log.Printf("GetFile %s%s\n", path, filename)
 	in, err := ms.ReadString()
 	if err != nil {
-		log.Printf("GetFile cant readstring ", err)
-		log.Printf("\n")
+		log.Printf("GetFile can't readstring\n")
 		return errors.New("reception error")
 	}
 	fpMessage := new(FPMessage)

@@ -73,15 +73,15 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, 
 	// a is a says speaksfor, Delegate of speaksfor is cert and should be DER encoded
 
 	// Get underlying says
-	log.Print("keynegoserver, attest: ", a)
-	log.Print("\n")
+	// log.Print("keynegoserver, attest: ", a)
+	// log.Print("\n")
 	f, err := auth.UnmarshalForm(a.SerializedStatement)
 	if err != nil {
-		log.Printf("\nkeynegoserver: cant unmarshal a.SerializedStatement\n")
+		log.Printf("\nkeynegoserver: can't unmarshal a.SerializedStatement\n")
 		return false, err
 	}
-	log.Print("\nkeynegoserver, unmarshaled serialized: ", f.String())
-	log.Print("\n")
+	// log.Print("\nkeynegoserver, unmarshaled serialized: ", f.String())
+	// log.Print("\n")
 
 	var saysStatement *auth.Says
 	if ptr, ok := f.(*auth.Says); ok {
@@ -94,8 +94,8 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, 
 		log.Printf("keynegoserver: says doesnt have speaksfor message\n")
 		return false, err
 	}
-	log.Print("keynegoserver, speaksfor: ", sf)
-	log.Print("\n")
+	// log.Print("keynegoserver, speaksfor: ", sf)
+	// log.Print("\n")
 	kprin, ok := sf.Delegate.(auth.Prin)
 	if ok != true {
 		log.Printf("keynegoserver: speaksfor Delegate is not auth.Prin\n")
@@ -103,7 +103,7 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, 
 	}
 	subjectPrin, ok := sf.Delegator.(auth.Prin)
 	if ok != true {
-		log.Printf("keynegoserver: cant get subject principal\n")
+		log.Printf("keynegoserver: can't get subject principal\n")
 		return false, errors.New("Cant get principal name from verifier")
 	}
 	subjectnamestr := subjectPrin.String()
@@ -133,13 +133,13 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, 
 	}
 	verifier, err := tao.FromPrincipal(kprin)
 	if err != nil {
-		return false, errors.New("cant get principal from kprin")
+		return false, errors.New("can't get principal from kprin")
 	}
 	clientDerCert, err := x509.CreateCertificate(rand.Reader, template, policyKey.Cert,
 		verifier.GetVerifierEc(),
 		policyKey.SigningKey.GetSignerEc())
 	if err != nil {
-		log.Printf("keynegoserver: cant create client certificate: %s\n", err)
+		log.Printf("keynegoserver: can't create client certificate: %s\n", err)
 		return false, err
 	}
 	err = ioutil.WriteFile("ClientCert", clientDerCert, os.ModePerm)
@@ -252,8 +252,7 @@ func main() {
 		log.Printf("keynegoserver: Couldn't get policy key\n", err)
 		return
 	}
-	log.Printf("Policy key: ", policyKey)
-	log.Printf("\n")
+	log.Printf("Policy key %x\n: ", policyKey)
 
 	tlsc, err := taonet.EncodeTLSCert(keys)
 	if err != nil {

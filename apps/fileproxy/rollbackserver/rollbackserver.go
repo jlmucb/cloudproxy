@@ -41,6 +41,7 @@ var ProgramCert []byte
 
 func clientServiceThead(ms *util.MessageStream, clientName string, rollbackPolicy *fileproxy.ProgramPolicy, rollbackMasterTable *fileproxy.RollbackMaster) {
 	log.Printf("rollbackserver: clientServiceThead\n")
+	clientName = "XYZZY" // CHANGE
 	pi := rollbackMasterTable.AddRollbackProgramTable(clientName)
 	if pi == nil {
 		log.Printf("rollbackserver cannot rollbackMasterTable.AddRollbackProgramTable\n")

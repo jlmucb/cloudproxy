@@ -15,8 +15,10 @@
 package main
 
 import (
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"flag"
 	"log"
 	"net"
@@ -146,8 +148,17 @@ func main() {
 		log.Printf("fileserver: can't retrieve policy cert\n")
 		return
 	}
+	sha256Hash := sha256.New()
+	sha256Hash.Write(derPolicyCert)
+	policyCertHash := sha256Hash.Sum(nil)
+	base64CertHash := base64.StdEncoding.EncodeToString(policyCertHash)
+	e := auth.PrinExt{Name: base64CertHash}
+	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
+	if err != nil {
+		return
+	}
 
-	e := auth.PrinExt{Name: "fileserver_version_1"}
+	e = auth.PrinExt{Name: "fileserver_version_1"}
 	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
 	if err != nil {
 		return

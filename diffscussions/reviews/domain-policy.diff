@@ -1,0 +1,110 @@
+#* 
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-11-06T09:12:16-0800
+#* 
+#- 
+#- Add support for Tao name extension by Domain.
+#- 
+#- This commit adds a function to extend the name of a domain with a policy key.
+#- 
+#- 
+diff --git a/tao/domain.go b/tao/domain.go
+index 8e6d203..52aef3a 100644
+--- a/tao/domain.go
++++ b/tao/domain.go
+@@ -188,20 +188,44 @@ func LoadDomain(configPath string, password []byte) (*Domain, error) {
+ 			return nil, err
+ 		}
+ 	case "Datalog":
+ 		var err error
+ 		datalogGuard, err := NewDatalogGuard(keys.VerifyingKey, cfg.DatalogGuard)
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 		if err := datalogGuard.ReloadIfModified(); err != nil {
+ 			return nil, err
+ 		}
+ 		guard = datalogGuard
+ 	case "AllowAll":
+ 		guard = LiberalGuard
+ 	case "DenyAll":
+ 		guard = ConservativeGuard
+ 	}
+ 
+ 	return &Domain{cfg, configPath, keys, guard}, nil
+ }
++
++// ExtendTaoDomain uses a Domain's Verifying key to extend the Tao with a
++// subprincipal PolicyKey([...]).
++func (d *Domain) ExtendTaoName(tao Tao) error {
++	if d.Keys == nil || d.Keys.VerifyingKey == nil {
++		return newError("no verifying key to use for name extension")
++	}
++
++	// This is a key Prin with type "key" and auth.Bytes as its Term
++	p := d.Keys.VerifyingKey.ToPrincipal()
++	b, ok := p.Key.(auth.Bytes)
++	if !ok {
++		return newError("couldn't get an auth.Bytes value from the key")
++	}
++
++	sp := auth.SubPrin{
++		auth.PrinExt{
++			Name: "PolicyKey",
++			Arg:  []auth.Term{b},
++		},
++	}
++
++	return tao.ExtendTaoName(sp)
++}
+diff --git a/tao/domain_test.go b/tao/domain_test.go
+index bd53377..a98d882 100644
+--- a/tao/domain_test.go
++++ b/tao/domain_test.go
+@@ -109,20 +109,45 @@ func TestDomainDatalogSaveAndLoad(t *testing.T) {
+ 		t.Fatal("Couldn't save the original domain after authorization:", err)
+ 	}
+ 
+ 	d2, err := LoadDomain(path.Join(tmpdir, "tao.config"), testDomainPassword)
+ 	if err != nil {
+ 		t.Fatal("Couldn't load the datalog domain:", err)
+ 	}
+ 
+ 	if !d.Subprincipal().Identical(d2.Subprincipal()) {
+ 		t.Fatal("The subprincipal of the loaded domain was not the same as the original")
+ 	}
+ 
+ 	if d.String() != d2.String() {
+ 		t.Fatal("The string representation of the loaded datalog domain is not the same as the original")
+ 	}
+ 
+ 	if d.Guard.String() != d2.Guard.String() {
+ 		t.Fatal("The string representation of the loaded datalog guard didn't match the original")
+ 	}
+ }
++
++func TestDomainNameExtension(t *testing.T) {
++	_, tmpdir := testNewACLDomain(t)
++	defer os.RemoveAll(tmpdir)
++
++	d2, err := LoadDomain(path.Join(tmpdir, "tao.config"), nil)
++	if err != nil {
++		t.Fatal("Couldn't load just the signing key from a domain")
++	}
++
++	ft, err := NewFakeTao(auth.NewKeyPrin([]byte("test")), "", nil)
++	if err != nil {
++		t.Fatal("Couldn't initialize a FakeTao in memory:", err)
++	}
++
++	if err := d2.ExtendTaoName(ft); err != nil {
++		t.Fatal("Couldn't extend the tao name")
++	}
++
++	n, err := ft.GetTaoName()
++	if err != nil {
++		t.Fatal("Couldn't get the tao name after extension")
++	}
++	t.Log(n)
++}

@@ -18,7 +18,8 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
+	"encoding/binary"
+	"encoding/hex"
 	"flag"
 	"io/ioutil"
 	"log"
@@ -66,11 +67,14 @@ func main() {
 		return
 	}
 
+	/*
+	 Replace with: hostDomai.ExtendTaoDomain(tao)
+	*/
 	sha256Hash := sha256.New()
 	sha256Hash.Write(derPolicyCert)
 	policyCertHash := sha256Hash.Sum(nil)
-	base64CertHash := base64.StdEncoding.EncodeToString(policyCertHash)
-	e := auth.PrinExt{Name: base64CertHash}
+	hexCertHash := hex.EncodeToString(policyCertHash)
+	e := auth.PrinExt{Name: hexCertHash}
 	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
 	if err != nil {
 		return
@@ -346,6 +350,14 @@ func main() {
 		return
 	}
 	log.Printf("fileclient: newhash is %x\n", newhash)
+	sha256HashCtr := sha256.New()
+	bc := make([]byte, 8)
+	binary.PutVarint(bc, counter)
+	sha256HashCtr.Write(bc)
+	sha256HashCtr.Write(hash)
+	sha256HashCtr.Write(bc)
+	computed_hash := sha256HashCtr.Sum(nil)
+	log.Printf("fileclient: computed_hash is %x\n", computed_hash)
 
 	log.Printf("fileclient: Done\n")
 }

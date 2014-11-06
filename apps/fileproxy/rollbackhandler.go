@@ -60,6 +60,11 @@ func (r *RollbackMaster) AddRollbackProgramTable(programName string) *RollbackPr
 	if pi != nil {
 		return pi
 	}
+	if len(r.ProgramInfo) >= cap(r.ProgramInfo) {
+		t := make([]RollbackProgramInfo, 2*cap(r.ProgramInfo))
+		copy(t, r.ProgramInfo)
+		r.ProgramInfo = t
+	}
 	r.ProgramInfo = r.ProgramInfo[0 : len(r.ProgramInfo)+1]
 	log.Printf("len(r.ProgramInfo)= %d, cap(r.ProgramInfo)= %d\n", len(r.ProgramInfo), cap(r.ProgramInfo))
 	pi = &r.ProgramInfo[len(r.ProgramInfo)-1]
@@ -105,6 +110,11 @@ func (pi *RollbackProgramInfo) AddHashEntry(itemName string, hash []byte) *Namea
 		he.Hash = hash
 		return he
 	}
+	if len(pi.NameandHashArray) >= cap(pi.NameandHashArray) {
+		t := make([]NameandHash, 2*cap(pi.NameandHashArray))
+		copy(t, pi.NameandHashArray)
+		pi.NameandHashArray = t
+	}
 	pi.NameandHashArray = pi.NameandHashArray[0 : len(pi.NameandHashArray)+1]
 	he = &pi.NameandHashArray[len(pi.NameandHashArray)-1]
 	he.ItemName = itemName
@@ -112,16 +122,6 @@ func (pi *RollbackProgramInfo) AddHashEntry(itemName string, hash []byte) *Namea
 	log.Printf("item: %s, hash %x\n", itemName, hash)
 	return he
 }
-
-/*
-func (pi *RollbackProgramInfo) InitRollbackProgramInfo(subjectprogramName string) bool {
-	pi.ProgramName = subjectprogramName
-	pi.Counter = 0
-	pi.Initialized = true
-	pi.NameandHashArray = make([]NameandHash, 100)
-	return true
-}
-*/
 
 func (r *RollbackMaster) InitRollbackMaster(masterprogramName string) bool {
 	log.Printf("InitRollbackMaster\n")

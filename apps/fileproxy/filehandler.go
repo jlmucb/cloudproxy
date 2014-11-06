@@ -53,11 +53,10 @@ type PrincipalInfo struct {
 }
 
 type ResourceMaster struct {
-	ProgramName   string
-	Guard         tao.Guard
-	BaseDirectory string
-	NumResources  int
-	// TODO: change magic allocation sizes
+	ProgramName      string
+	Guard            tao.Guard
+	BaseDirectory    string
+	NumResources     int
 	ResourceArray    []ResourceInfo
 	NumPrincipals    int
 	PrincipalArray   []PrincipalInfo
@@ -163,6 +162,11 @@ func (m *ResourceMaster) InsertResource(path string, resourcename string, owner 
 	if found != nil {
 		return found, nil
 	}
+	if len(m.ResourceArray) >= cap(m.ResourceArray) {
+		t := make([]ResourceInfo, 2*cap(m.ResourceArray))
+		copy(t, m.ResourceArray)
+		m.ResourceArray = t
+	}
 	m.ResourceArray = m.ResourceArray[0 : len(m.ResourceArray)+1]
 	n := len(m.ResourceArray) - 1
 	m.ResourceArray[n].ResourceName = resourcename
@@ -189,6 +193,11 @@ func (m *ResourceMaster) InsertPrincipal(name string, cert []byte, authStatus st
 	}
 	if found != nil {
 		return found, nil
+	}
+	if len(m.PrincipalArray) >= cap(m.PrincipalArray) {
+		t := make([]PrincipalInfo, 2*cap(m.PrincipalArray))
+		copy(t, m.PrincipalArray)
+		m.PrincipalArray = t
 	}
 	m.PrincipalArray = m.PrincipalArray[0 : len(m.PrincipalArray)+1]
 	n := len(m.PrincipalArray) - 1
@@ -348,9 +357,9 @@ func (m *ResourceMaster) GetResourceData(masterFile string, resourceFile string,
 	// Save resources
 	fo, _ := os.Open(resourceFile)
 	rs := util.NewMessageStream(fo)
-	for _, r := range m.ResourceArray {
+	for i := range m.ResourceArray {
 		resourceRecord, _ := rs.ReadString()
-		_ = r.DecodeResourceInfo([]byte(resourceRecord))
+		_ = m.ResourceArray[i].DecodeResourceInfo([]byte(resourceRecord))
 		log.Printf("resourceRecord size: %d\n", len(resourceRecord))
 	}
 	fo.Close()
@@ -358,9 +367,9 @@ func (m *ResourceMaster) GetResourceData(masterFile string, resourceFile string,
 	// Read principals
 	fo, _ = os.Open(principalFile)
 	ps := util.NewMessageStream(fo)
-	for _, p := range m.PrincipalArray {
+	for i := range m.PrincipalArray {
 		principalRecord, _ := ps.ReadString()
-		_ = p.DecodePrincipal([]byte(principalRecord))
+		_ = m.PrincipalArray[i].DecodePrincipal([]byte(principalRecord))
 		log.Printf("principalRecord size: %d\n", len(principalRecord))
 	}
 	fo.Close()

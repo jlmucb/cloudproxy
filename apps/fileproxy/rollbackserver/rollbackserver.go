@@ -18,7 +18,7 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
+	"encoding/hex"
 	"flag"
 	"log"
 	"net"
@@ -151,11 +151,14 @@ func main() {
 		return
 	}
 
+	/*
+	 Replace with: hostDomai.ExtendTaoDomain(tao)
+	*/
 	sha256Hash := sha256.New()
 	sha256Hash.Write(DerPolicyCert)
 	policyCertHash := sha256Hash.Sum(nil)
-	base64CertHash := base64.StdEncoding.EncodeToString(policyCertHash)
-	e := auth.PrinExt{Name: base64CertHash}
+	hexCertHash := hex.EncodeToString(policyCertHash)
+	e := auth.PrinExt{Name: hexCertHash}
 	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
 	if err != nil {
 		return

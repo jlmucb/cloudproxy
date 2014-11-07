@@ -519,7 +519,7 @@ func readRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string,
 	}
 	status := "succeeded"
 	SendResponse(ms, status, "", 0)
-	return SendFile(ms, m.BaseDirectory, resourcename, nil)
+	return SendFile(ms, m.BaseDirectory, resourcename, symKey)
 }
 
 func writeRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string, symKey []byte) error {
@@ -531,7 +531,7 @@ func writeRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string
 	}
 	status := "succeeded"
 	SendResponse(ms, status, "", 0)
-	return GetFile(ms, m.BaseDirectory, resourcename, nil)
+	return GetFile(ms, m.BaseDirectory, resourcename, symKey)
 }
 
 func createRequest(m *ResourceMaster, ms *util.MessageStream,
@@ -760,10 +760,20 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, programPol
 		err := deleteRequest(m, ms, *resourceName)
 		return false, err
 	case "getfile":
-		err := readRequest(m, ms, *resourceName, nil) //programPolicyObject.MySymKeys)
+		if programPolicyObject.MySymKeys == nil {
+			log.Printf("HandleFileRequest, getfile keys nil\n")
+		} else {
+			log.Printf("HandleFileRequest, getfile keys NOT nil\n")
+		}
+		err := readRequest(m, ms, *resourceName, programPolicyObject.MySymKeys)
 		return false, err
 	case "sendfile":
-		err := writeRequest(m, ms, *resourceName, nil) //programPolicyObject.MySymKeys)
+		if programPolicyObject.MySymKeys == nil {
+			log.Printf("HandleFileRequest, sendfile keys nil\n")
+		} else {
+			log.Printf("HandleFileRequest, sendfile keys NOT nil\n")
+		}
+		err := writeRequest(m, ms, *resourceName, programPolicyObject.MySymKeys)
 		return false, err
 	case "terminate":
 		return true, nil

@@ -510,7 +510,7 @@ func AuthenticatePrincipalRequest(ms *util.MessageStream, key *tao.Keys, derCert
 	return true
 }
 
-func readRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string) error {
+func readRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string, symKey []byte) error {
 	log.Printf("filehandler: readRequest\n")
 	rInfo, _ := m.FindResource(resourcename)
 	if rInfo == nil {
@@ -522,7 +522,7 @@ func readRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string)
 	return SendFile(ms, m.BaseDirectory, resourcename, nil)
 }
 
-func writeRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string) error {
+func writeRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string, symKey []byte) error {
 	log.Printf("filehandler: writeRequest\n")
 	rInfo, _ := m.FindResource(resourcename)
 	if rInfo == nil {
@@ -760,10 +760,10 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, programPol
 		err := deleteRequest(m, ms, *resourceName)
 		return false, err
 	case "getfile":
-		err := readRequest(m, ms, *resourceName)
+		err := readRequest(m, ms, *resourceName, nil) //programPolicyObject.MySymKeys)
 		return false, err
 	case "sendfile":
-		err := writeRequest(m, ms, *resourceName)
+		err := writeRequest(m, ms, *resourceName, nil) //programPolicyObject.MySymKeys)
 		return false, err
 	case "terminate":
 		return true, nil

@@ -15,13 +15,17 @@
 package fileproxy
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"flag"
+	"hash"
 	"io"
 	"io/ioutil"
 	"log"
@@ -569,32 +573,37 @@ func SendFile(ms *util.MessageStream, path string, filename string, keys []byte)
 	var aesObj cipher.Block
 	var iv [16]byte
 	var ctrCipher cipher.Stream
-	// var hash sha256
-	// var hmac hmacsha256
 
 	bytesLeft := int(fileInfo.Size())
 	var final bool
 	final = false
 	var toRead int
-	var ciphertext []byte
-	ciphertext = make([]byte, 2048)
+	var plaintext []byte
+	var hmacObj hash.Hash
+	plaintext = make([]byte, 2048)
 	if keys != nil {
 		aesObj, err = aes.NewCipher(keys[0:16])
 		if err != nil || aesObj == nil {
 			log.Printf("SendFile can't create aes object")
 		}
-		// hmacObj, err := hmac256
 		// read iv
 		_, err := file.Read(iv[0:16])
 		if err != nil {
 			return err
 		}
+		hmacObj = hmac.New(sha256.New, keys[16:32])
+		log.Printf("SendFile initialized hmac keys %x", keys[16:32])
+		hmacObj.Write(iv[0:16])
+		log.Printf("SendFile wrote iv to hmac %x", iv)
 		ctrCipher = cipher.NewCTR(aesObj, iv[0:16])
 		if ctrCipher == nil {
 			log.Printf("SendFile can't create counter cipher object")
 		}
 		bytesLeft = bytesLeft - 16
 		log.Printf("sent iv message\n")
+	}
+	if keys != nil {
+		bytesLeft = bytesLeft - 32
 	}
 	for {
 		if bytesLeft <= 2048 {
@@ -615,8 +624,10 @@ func SendFile(ms *util.MessageStream, path string, filename string, keys []byte)
 		bytesLeft = bytesLeft - n
 		fpMessage.BufferSize = proto.Int32(int32(n))
 		if keys != nil {
-			ctrCipher.XORKeyStream(ciphertext[0:n], buf[0:n])
-			fpMessage.TheBuffer = proto.String(string(ciphertext[0:n]))
+			hmacObj.Write(buf[0:n])
+			log.Printf("SendFile wrote to hmac %x", buf[0:n])
+			ctrCipher.XORKeyStream(plaintext[0:n], buf[0:n])
+			fpMessage.TheBuffer = proto.String(string(plaintext[0:n]))
 			log.Printf("sent cipher block %d\n", n)
 		} else {
 			fpMessage.TheBuffer = proto.String(string(buf[0:n]))
@@ -629,6 +640,21 @@ func SendFile(ms *util.MessageStream, path string, filename string, keys []byte)
 		_, _ = ms.WriteString(string(out))
 		if final {
 			break
+		}
+	}
+	if keys != nil {
+		// read mac and check it
+		_, err := file.Read(buf[0:32])
+		if err != nil {
+			return err
+		}
+		mac := hmacObj.Sum(nil)
+		if bytes.Equal(mac, buf[0:32]) {
+			log.Printf("SendFile: hmac matches\n")
+		} else {
+			log.Printf("SendFile: hmac does not match\n")
+			log.Printf("expected: %x\n", mac)
+			log.Printf("received: %x\n", buf[0:32])
 		}
 	}
 	return nil
@@ -648,20 +674,24 @@ func GetFile(ms *util.MessageStream, path string, filename string, keys []byte) 
 	var aesObj cipher.Block
 	var iv [16]byte
 	var ctrCipher cipher.Stream
-	var plaintext []byte
-	plaintext = make([]byte, 2048)
+	var ciphertext []byte
+	var hmacObj hash.Hash
+	ciphertext = make([]byte, 2048)
 	if keys != nil {
 		aesObj, err = aes.NewCipher(keys[0:16])
 		if err != nil || aesObj == nil {
-			log.Printf("SendFile can't create aes object")
+			log.Printf("GetFile can't create aes object")
 		}
-		// hmacObj, err := hmac256
+		hmacObj = hmac.New(sha256.New, keys[16:32])
+		log.Printf("GetFile initialized keys for hmac %x", keys[16:32])
 		if _, err := io.ReadFull(rand.Reader, iv[0:16]); err != nil {
 			panic(err)
 		}
+		hmacObj.Write(iv[0:16])
+		log.Printf("GetFile wrote iv to hmac %x", iv[0:16])
 		ctrCipher = cipher.NewCTR(aesObj, iv[0:16])
 		if ctrCipher == nil {
-			log.Printf("SendFile can't create counter cipher object")
+			log.Printf("GetFile can't create counter cipher object")
 		}
 		_, err = file.Write(iv[0:16])
 	}
@@ -696,14 +726,21 @@ func GetFile(ms *util.MessageStream, path string, filename string, keys []byte) 
 		}
 		out := []byte(*fpMessage.TheBuffer)
 		if keys != nil {
-			ctrCipher.XORKeyStream(plaintext, out[0:int(*fpMessage.BufferSize)])
-			_, err = file.Write(plaintext[0:int(*fpMessage.BufferSize)])
+			ctrCipher.XORKeyStream(ciphertext, out[0:int(*fpMessage.BufferSize)])
+			hmacObj.Write(ciphertext[0:int(*fpMessage.BufferSize)])
+			log.Printf("GetFile wrote hmac %x", ciphertext[0:int(*fpMessage.BufferSize)])
+			_, err = file.Write(ciphertext[0:int(*fpMessage.BufferSize)])
 		} else {
 			_, err = file.Write(out[0:int(*fpMessage.BufferSize)])
 		}
 		if final {
 			break
 		}
+	}
+	if keys != nil {
+		// write Mac
+		hmacBytes := hmacObj.Sum(nil)
+		_, err = file.Write(hmacBytes[0:32])
 	}
 	return nil
 }

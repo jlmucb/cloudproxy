@@ -567,7 +567,7 @@ func SendFile(ms *util.MessageStream, path string, filename string, keys []byte)
 	defer file.Close()
 
 	var aesObj cipher.Block
-	var iv []byte
+	var iv [16]byte
 	var ctrCipher cipher.Stream
 	// var hash sha256
 	// var hmac hmacsha256
@@ -584,24 +584,17 @@ func SendFile(ms *util.MessageStream, path string, filename string, keys []byte)
 			log.Printf("SendFile can't create aes object")
 		}
 		// hmacObj, err := hmac256
-		if _, err := io.ReadFull(rand.Reader, iv[0:16]); err != nil {
-			panic(err)
+		// read iv
+		_, err := file.Read(iv[0:16])
+		if err != nil {
+			return err
 		}
-		ctrCipher = cipher.NewCTR(aesObj, iv)
+		ctrCipher = cipher.NewCTR(aesObj, iv[0:16])
 		if ctrCipher == nil {
 			log.Printf("SendFile can't create counter cipher object")
 		}
-
-		// write iv
-		fpMessage.MessageType = proto.Int32(int32(MessageType_FILE_NEXT))
-		fpMessage.BufferSize = proto.Int32(16)
-		fpMessage.TheBuffer = proto.String(string(iv[0:16]))
-		out, err := proto.Marshal(fpMessage)
-		if err != nil {
-			log.Printf("SendFile can't send iv message\n")
-			return errors.New("transmission error")
-		}
-		_, _ = ms.WriteString(string(out))
+		bytesLeft = bytesLeft - 16
+		log.Printf("sent iv message\n")
 	}
 	for {
 		if bytesLeft <= 2048 {
@@ -624,6 +617,7 @@ func SendFile(ms *util.MessageStream, path string, filename string, keys []byte)
 		if keys != nil {
 			ctrCipher.XORKeyStream(ciphertext[0:n], buf[0:n])
 			fpMessage.TheBuffer = proto.String(string(ciphertext[0:n]))
+			log.Printf("sent cipher block %d\n", n)
 		} else {
 			fpMessage.TheBuffer = proto.String(string(buf[0:n]))
 		}
@@ -652,7 +646,7 @@ func GetFile(ms *util.MessageStream, path string, filename string, keys []byte) 
 	defer file.Close()
 
 	var aesObj cipher.Block
-	var iv []byte
+	var iv [16]byte
 	var ctrCipher cipher.Stream
 	var plaintext []byte
 	plaintext = make([]byte, 2048)
@@ -662,35 +656,14 @@ func GetFile(ms *util.MessageStream, path string, filename string, keys []byte) 
 			log.Printf("SendFile can't create aes object")
 		}
 		// hmacObj, err := hmac256
-		// read iv
-		in, err := ms.ReadString()
-		if err != nil {
-			log.Printf("GetFile can't iv\n")
-			return errors.New("reception error")
+		if _, err := io.ReadFull(rand.Reader, iv[0:16]); err != nil {
+			panic(err)
 		}
-		err = proto.Unmarshal([]byte(in), fpMessage)
-		if err != nil {
-			return errors.New("GetFile can't unmarshal iv message")
-		}
-		if fpMessage.MessageType == nil {
-			return errors.New("GetFile no message type")
-		}
-		if *fpMessage.MessageType != int32(MessageType_FILE_NEXT) {
-			log.Printf("GetFile bad iv message type\n")
-			return errors.New("reception error")
-		}
-		if fpMessage.BufferSize == nil {
-			log.Printf("GetFile no buffer size\n")
-			return errors.New("expected buffer size")
-		}
-		if fpMessage.TheBuffer == nil {
-			return errors.New("GetFile: empty buffer")
-		}
-		iv = []byte(*fpMessage.TheBuffer)
 		ctrCipher = cipher.NewCTR(aesObj, iv[0:16])
 		if ctrCipher == nil {
 			log.Printf("SendFile can't create counter cipher object")
 		}
+		_, err = file.Write(iv[0:16])
 	}
 
 	for {

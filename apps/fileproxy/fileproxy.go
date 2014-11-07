@@ -15,10 +15,14 @@
 package fileproxy
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"flag"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -548,6 +552,7 @@ func GetProtocolMessage(ms *util.MessageStream) ([]byte, error) {
 
 func SendFile(ms *util.MessageStream, path string, filename string, keys []byte) error {
 	log.Printf("SendFile %s%s\n", path, filename)
+
 	fpMessage := new(FPMessage)
 	var buf []byte
 	buf = make([]byte, 2048)
@@ -560,10 +565,44 @@ func SendFile(ms *util.MessageStream, path string, filename string, keys []byte)
 		return errors.New("SendFile: can't open file ")
 	}
 	defer file.Close()
+
+	var aesObj cipher.Block
+	var iv []byte
+	var ctrCipher cipher.Stream
+	// var hash sha256
+	// var hmac hmacsha256
+
 	bytesLeft := int(fileInfo.Size())
 	var final bool
 	final = false
 	var toRead int
+	var ciphertext []byte
+	ciphertext = make([]byte, 2048)
+	if keys != nil {
+		aesObj, err = aes.NewCipher(keys[0:16])
+		if err != nil || aesObj == nil {
+			log.Printf("SendFile can't create aes object")
+		}
+		// hmacObj, err := hmac256
+		if _, err := io.ReadFull(rand.Reader, iv[0:16]); err != nil {
+			panic(err)
+		}
+		ctrCipher = cipher.NewCTR(aesObj, iv)
+		if ctrCipher == nil {
+			log.Printf("SendFile can't create counter cipher object")
+		}
+
+		// write iv
+		fpMessage.MessageType = proto.Int32(int32(MessageType_FILE_NEXT))
+		fpMessage.BufferSize = proto.Int32(16)
+		fpMessage.TheBuffer = proto.String(string(iv[0:16]))
+		out, err := proto.Marshal(fpMessage)
+		if err != nil {
+			log.Printf("SendFile can't send iv message\n")
+			return errors.New("transmission error")
+		}
+		_, _ = ms.WriteString(string(out))
+	}
 	for {
 		if bytesLeft <= 2048 {
 			toRead = bytesLeft
@@ -582,7 +621,12 @@ func SendFile(ms *util.MessageStream, path string, filename string, keys []byte)
 		}
 		bytesLeft = bytesLeft - n
 		fpMessage.BufferSize = proto.Int32(int32(n))
-		fpMessage.TheBuffer = proto.String(string(buf[0:n]))
+		if keys != nil {
+			ctrCipher.XORKeyStream(ciphertext[0:n], buf[0:n])
+			fpMessage.TheBuffer = proto.String(string(ciphertext[0:n]))
+		} else {
+			fpMessage.TheBuffer = proto.String(string(buf[0:n]))
+		}
 		out, err := proto.Marshal(fpMessage)
 		if err != nil {
 			log.Printf("SendFile can't file contents message\n")
@@ -606,6 +650,48 @@ func GetFile(ms *util.MessageStream, path string, filename string, keys []byte) 
 		return errors.New("GetFile can't creat file")
 	}
 	defer file.Close()
+
+	var aesObj cipher.Block
+	var iv []byte
+	var ctrCipher cipher.Stream
+	var plaintext []byte
+	plaintext = make([]byte, 2048)
+	if keys != nil {
+		aesObj, err = aes.NewCipher(keys[0:16])
+		if err != nil || aesObj == nil {
+			log.Printf("SendFile can't create aes object")
+		}
+		// hmacObj, err := hmac256
+		// read iv
+		in, err := ms.ReadString()
+		if err != nil {
+			log.Printf("GetFile can't iv\n")
+			return errors.New("reception error")
+		}
+		err = proto.Unmarshal([]byte(in), fpMessage)
+		if err != nil {
+			return errors.New("GetFile can't unmarshal iv message")
+		}
+		if fpMessage.MessageType == nil {
+			return errors.New("GetFile no message type")
+		}
+		if *fpMessage.MessageType != int32(MessageType_FILE_NEXT) {
+			log.Printf("GetFile bad iv message type\n")
+			return errors.New("reception error")
+		}
+		if fpMessage.BufferSize == nil {
+			log.Printf("GetFile no buffer size\n")
+			return errors.New("expected buffer size")
+		}
+		if fpMessage.TheBuffer == nil {
+			return errors.New("GetFile: empty buffer")
+		}
+		iv = []byte(*fpMessage.TheBuffer)
+		ctrCipher = cipher.NewCTR(aesObj, iv[0:16])
+		if ctrCipher == nil {
+			log.Printf("SendFile can't create counter cipher object")
+		}
+	}
 
 	for {
 		in, err := ms.ReadString()
@@ -636,7 +722,12 @@ func GetFile(ms *util.MessageStream, path string, filename string, keys []byte) 
 			return errors.New("GetFile: empty buffer")
 		}
 		out := []byte(*fpMessage.TheBuffer)
-		_, err = file.Write(out[0:int(*fpMessage.BufferSize)])
+		if keys != nil {
+			ctrCipher.XORKeyStream(plaintext, out[0:int(*fpMessage.BufferSize)])
+			_, err = file.Write(plaintext[0:int(*fpMessage.BufferSize)])
+		} else {
+			_, err = file.Write(out[0:int(*fpMessage.BufferSize)])
+		}
 		if final {
 			break
 		}

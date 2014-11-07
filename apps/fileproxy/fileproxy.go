@@ -548,54 +548,100 @@ func GetProtocolMessage(ms *util.MessageStream) ([]byte, error) {
 
 func SendFile(ms *util.MessageStream, path string, filename string, keys []byte) error {
 	log.Printf("SendFile %s%s\n", path, filename)
-	// TODO: later read incrementally and send multiple blocks
-	contents, err := ioutil.ReadFile(path + filename)
+	fpMessage := new(FPMessage)
+	var buf []byte
+	buf = make([]byte, 2048)
+	fileInfo, err := os.Stat(path + filename)
 	if err != nil {
-		log.Printf("SendFile error reading file %s\n", path+filename)
 		return errors.New("SendFile no such file")
 	}
-	n := len(contents)
-	fpMessage := new(FPMessage)
-	fpMessage.MessageType = proto.Int32(int32(MessageType_FILE_LAST))
-	fpMessage.BufferSize = proto.Int32(int32(n))
-	fpMessage.TheBuffer = proto.String(string(contents))
-	out, err := proto.Marshal(fpMessage)
+	file, err := os.Open(path + filename)
 	if err != nil {
-		log.Printf("SendFile can't encode message\n")
-		return errors.New("transmission error")
+		return errors.New("SendFile: can't open file ")
 	}
-	_, _ = ms.WriteString(string(out))
+	defer file.Close()
+	bytesLeft := int(fileInfo.Size())
+	var final bool
+	final = false
+	var toRead int
+	for {
+		if bytesLeft <= 2048 {
+			toRead = bytesLeft
+			final = true
+		} else {
+			toRead = 2048
+		}
+		n, err := file.Read(buf[0:toRead])
+		if err != nil {
+			return err
+		}
+		if final {
+			fpMessage.MessageType = proto.Int32(int32(MessageType_FILE_LAST))
+		} else {
+			fpMessage.MessageType = proto.Int32(int32(MessageType_FILE_NEXT))
+		}
+		bytesLeft = bytesLeft - n
+		fpMessage.BufferSize = proto.Int32(int32(n))
+		fpMessage.TheBuffer = proto.String(string(buf[0:n]))
+		out, err := proto.Marshal(fpMessage)
+		if err != nil {
+			log.Printf("SendFile can't file contents message\n")
+			return errors.New("transmission error")
+		}
+		_, _ = ms.WriteString(string(out))
+		if final {
+			break
+		}
+	}
 	return nil
 }
 
 func GetFile(ms *util.MessageStream, path string, filename string, keys []byte) error {
 	log.Printf("GetFile %s%s\n", path, filename)
-	in, err := ms.ReadString()
-	if err != nil {
-		log.Printf("GetFile can't readstring\n")
-		return errors.New("reception error")
-	}
 	fpMessage := new(FPMessage)
-	err = proto.Unmarshal([]byte(in), fpMessage)
+	var final bool
+	final = false
+	file, err := os.Create(path + filename)
 	if err != nil {
-		return errors.New("GetFile can't unmarshal message")
+		return errors.New("GetFile can't creat file")
 	}
-	if fpMessage.MessageType == nil {
-		return errors.New("GetFile: no message type")
+	defer file.Close()
+
+	for {
+		in, err := ms.ReadString()
+		if err != nil {
+			log.Printf("GetFile can't readstring\n")
+			return errors.New("reception error")
+		}
+		err = proto.Unmarshal([]byte(in), fpMessage)
+		if err != nil {
+			return errors.New("GetFile can't unmarshal message")
+		}
+		if fpMessage.MessageType == nil {
+			return errors.New("GetFile no message type")
+		}
+		if *fpMessage.MessageType == int32(MessageType_FILE_LAST) {
+			final = true
+		} else if *fpMessage.MessageType == int32(MessageType_FILE_NEXT) {
+			final = false
+		} else {
+			log.Printf("GetFile bad message type\n")
+			return errors.New("reception error")
+		}
+		if fpMessage.BufferSize == nil {
+			log.Printf("GetFile no buffer size\n")
+			return errors.New("expected buffer size")
+		}
+		if fpMessage.TheBuffer == nil {
+			return errors.New("GetFile: empty buffer")
+		}
+		out := []byte(*fpMessage.TheBuffer)
+		_, err = file.Write(out[0:int(*fpMessage.BufferSize)])
+		if final {
+			break
+		}
 	}
-	if *fpMessage.MessageType != int32(MessageType_FILE_LAST) {
-		log.Printf("GetFile bad type\n")
-		return errors.New("reception error")
-	}
-	if fpMessage.BufferSize == nil {
-		log.Printf("GetFile no buffer size\n")
-		return errors.New("expected buffer size")
-	}
-	if fpMessage.TheBuffer == nil {
-		return errors.New("GetFile: empty buffer")
-	}
-	out := []byte(*fpMessage.TheBuffer)
-	return ioutil.WriteFile(path+filename, out, os.ModePerm)
+	return nil
 }
 
 func SendSendFile(ms *util.MessageStream, subjectCert []byte, filename string) error {

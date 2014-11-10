@@ -1,11 +1,8 @@
 #* 
 #* author: John Manferdelli
 #* email: jlmucbmath@gmail.com
-#* date: 2014-10-22T12:50:42-0700
+#* date: 2014-11-10T12:13:19-0800
 #* 
-#- readded fileproxy
-#- 
-#- 
 #- changes
 #- 
 #- 
@@ -159,615 +156,689 @@
 #- get policy key from domain
 #- 
 #- 
+#- subjects and owners are now certs instead of strings
+#- 
+#- 
+#- sendRule and check name
+#- 
+#- 
+#- most of the file save and restore stuff
+#- 
+#- 
+#- cert chain for challenge verified
+#- 
+#- 
+#- Auth working again
+#- 
+#- 
+#- finished addrule, started rollback
+#- 
+#- 
+#- first batch of changes from code review
+#- 
+#- 
+#- second batch of fixes from code review
+#- 
+#- 
+#- mover rules to MasterInfo
+#- 
+#- 
+#- got rid of global program variables
+#- 
+#- 
+#- rearranged code, rollback started
+#- 
+#- 
+#- got rid of EncodeMessage and DecodeMessage in fileproxy.go
+#- 
+#- 
+#- got rid of encodemessage everywhere
+#- 
+#- 
+#- more rollback
+#- 
+#- 
+#- got rid of globals
+#- 
+#- 
+#- rollback service loop
+#- 
+#- 
+#- more of rollback checked in
+#- 
+#- 
+#- more rollback
+#- 
+#- 
+#- everything but client name
+#- 
+#- 
+#- client name works, cleaned up allocations, etc
+#- 
+#- 
+#- extended name with hash of policy cert
+#- 
+#- 
+#- fixed reallocation and hex names
+#- 
+#- 
+#- got rid of file size limitation
+#- 
+#- 
+#- encryption stub for files
+#- 
+#- 
+#- file encryption works, still have to hmac
+#- 
+#- 
+#- hmac working
+#- 
+#- 
 #**
 #** author: Tom Roeder
 #** email: tmroeder@google.com
-#** date: 2014-10-24T11:52:58-0700
+#** date: 2014-11-10T12:44:23-0800
 #**
-#-- My high-level comment is that this looks too much like C and not enough like
-#-- Go. The code is doing too much work to do things that are already supported
-#-- by the Go runtime: e.g., it's keeping track of lengths of arrays
-#-- unnecessarily, and it's encoding and decoding explicitly when protobufs
-#-- already do that. See the detailed comments below for more information on how
-#-- to rewrite this in idiomatic Go.
+#-- In general, this is already looking much more like Go, though there are
+#-- still a bunch of changes that need to be made before it can roll over.
+#-- Fortunately, it's close enough that I can probably make those changes myself
+#-- pretty easily.
 #--
-#*
-#* author: John Manferdelli
-#* email: johnmanferdelli@hotmail.com
-#* date: 2014-10-31T11:56:28-0700
-#*
-#- Ill fix the byte array stuff.
-#-
-diff --git a/apps/fileproxy/Go-cloudproxy.pdf b/apps/fileproxy/Go-cloudproxy.pdf
+diff --git a/Doc/Go-cloudproxy.pdf b/Doc/Go-cloudproxy.pdf
 new file mode 100644
 index 0000000..59c2218
-Binary files /dev/null and b/apps/fileproxy/Go-cloudproxy.pdf differ
+Binary files /dev/null and b/Doc/Go-cloudproxy.pdf differ
+diff --git a/apps/fileproxy/Go-cloudproxy.pdf b/apps/fileproxy/Go-cloudproxy.pdf
+deleted file mode 100644
+index 59c2218..0000000
+Binary files a/apps/fileproxy/Go-cloudproxy.pdf and /dev/null differ
 diff --git a/apps/fileproxy/fileclient/fileclient.go b/apps/fileproxy/fileclient/fileclient.go
-new file mode 100644
-index 0000000..6f4f089
---- /dev/null
+index 821cf46..c491772 100644
+--- a/apps/fileproxy/fileclient/fileclient.go
 +++ b/apps/fileproxy/fileclient/fileclient.go
-@@ -0,0 +1,270 @@
+@@ -1,208 +1,363 @@
+-// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
++// Copyright (c) 2014, Google Corporation.  All rights reserved.
 #*
 #* author: Tom Roeder
 #* email: tmroeder@google.com
-#* date: 2014-10-22T15:39:28-0700
+#* date: 2014-11-10T12:13:36-0800
 #*
-#- The file Go-cloudproxy.pdf should be moved to Doc, and the parts of it that
-#- are just copies of the code with its documentation should be removed, since
-#- that's already checked in to source control.
+#- There's no such thing as "Google Corporation". It's "Google, Inc.".
 #-
-#*
-#* author: John Manferdelli
-#* email: johnmanferdelli@hotmail.com
-#* date: 2014-10-31T11:56:57-0700
-#*
-#- I'll update the doc (removing most of it) and move it to Doc
-#-
-+// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-22T15:35:06-0700
-#*
-#- This should be either your copyright or Google, Inc, and probably the latter.
-#-
-#*
-#* author: John Manferdelli
-#* email: johnmanferdelli@hotmail.com
-#* date: 2014-10-31T11:57:56-0700
-#*
-#- yep, I'll do that
-#-
-+//
-+// Licensed under the Apache License, Version 2.0 (the "License");
-+// you may not use this file except in compliance with the License.
-+// You may obtain a copy of the License at
-+//
-+//     http://www.apache.org/licenses/LICENSE-2.0
-+//
-+// Unless required by applicable law or agreed to in writing, software
-+// distributed under the License is distributed on an "AS IS" BASIS,
-+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-+// See the License for the specific language governing permissions and
-+// limitations under the License.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+-//
+ //     http://www.apache.org/licenses/LICENSE-2.0
+-//
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
 +//
 +// File: fileclient.go
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-22T15:35:27-0700
-#*
-#- We have stopped adding these "File:" annotations, and I'd like to propose
-#- that you drop them as well. We didn't do them in the second C++ version,
-#- either.
-#-
-#- In a related note, I'd like to consider moving to something like the Chromium
-#- project does: Copyright The Chromium Authors, and then having an AUTHORS
-#- file. That fixes the problem where the file changes significantly, leaving
-#- the author line ridiculously wrong.
-#-
-#*
-#* author: John Manferdelli
-#* email: johnmanferdelli@hotmail.com
-#* date: 2014-10-31T11:58:30-0700
-#*
-#- I actually find the File annotation useful when I print files.  I'd be happy to use 
-#- Copyright The Cloudproxy Authors.  Should I just do that?
-#-
-+
-+package main
-+
-+import (
-+	"flag"
-+	"fmt"
+ 
+ package main
+ 
+ import (
+-	"bufio"
++	"crypto/sha256"
+ 	"crypto/tls"
+ 	"crypto/x509"
+-	"crypto/x509/pkix"
+-	"errors"
++	"encoding/binary"
++	"encoding/hex"
+ 	"flag"
+-	"fmt"
+-	"net"
+-	"os"
+-	"strings"
++	"io/ioutil"
++	"log"
+ 
+-	"github.com/jlmucb/cloudproxy/tao"
++	"code.google.com/p/goprotobuf/proto"
 +
 +	"github.com/jlmucb/cloudproxy/apps/fileproxy"
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-22T15:36:59-0700
-#*
-#- All standard libraries should come before all external libraries, and the
-#- external libraries are separated by space from the standard libraries. E.g.,
-#-
-#- "flag"
-#- "fmt"
-#-
-#- "code.google.com/p/goprotobuf/proto"
-#- "github.com/jlmucb/cloudproxy/tao"
-#-
-#*
-#* author: John Manferdelli
-#* email: johnmanferdelli@hotmail.com
-#* date: 2014-10-31T12:00:21-0700
-#*
-#- OK
-#-
 +	tao "github.com/jlmucb/cloudproxy/tao"
-+	"github.com/jlmucb/cloudproxy/tao/auth"
+ 	"github.com/jlmucb/cloudproxy/tao/auth"
+ 	taonet "github.com/jlmucb/cloudproxy/tao/net"
 +	"github.com/jlmucb/cloudproxy/util"
-+
-+	"code.google.com/p/goprotobuf/proto"
-+	"crypto/tls"
-+	"crypto/x509"
-+	taonet "github.com/jlmucb/cloudproxy/tao/net"
-+	"io/ioutil"
-+)
-+
+ )
+ 
 +var hostcfg = flag.String("../hostdomain/tao.config", "../hostdomain/tao.config", "path to host tao configuration")
 #*
 #* author: Tom Roeder
 #* email: tmroeder@google.com
-#* date: 2014-10-22T15:38:30-0700
+#* date: 2014-11-10T12:14:30-0800
 #*
-#- These don't look to me like good defaults for these flags. Preferably, they'd
-#- be something more generic, or something that would work with the top-level
-#- install.sh script. Some of the other variables in this list have the same
-#- problem, though I think serverHost and serverPort are fine.
+#- Most of these are good now, but this "hostcfg" variable has a relative path
+#- that needs to be removed.
 #-
-+var serverHost = flag.String("host", "localhost", "address for client/server")
-+var serverPort = flag.String("port", "8123", "port for client/server")
-+var fileclientPath = flag.String("./fileclient_files/", "./fileclient_files/", "fileclient directory")
+ var serverHost = flag.String("host", "localhost", "address for client/server")
+ var serverPort = flag.String("port", "8123", "port for client/server")
+-var serverAddr string // see main()
+-var localMode = flag.Bool("local", true, "Run fileclient")
+-var clientMode = flag.Bool("client", true, "Run fileclient")
+-var serverMode = flag.Bool("server", true, "Run demo server")
+-var pingCount = flag.Int("n", 5, "Number of client/server pings")
+-var demoAuth = flag.String("auth", "tao", "\"tcp\", \"tls\", or \"tao\"")
+-var configPath = flag.String("config", "tao.config", "The Tao domain config")
+-var ca = flag.String("ca", "", "address for Tao CA, if any")
++var rollbackserverHost = flag.String("rollbackhost", "localhost", "address for rollback client/server")
++var rollbackserverPort = flag.String("rollbackport", "8129", "port for client/server")
++var fileclientPath = flag.String("fileclient_files/", "fileclient_files/", "fileclient directory")
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-11-10T12:15:15-0800
+#*
+#- Do you need the "/"? If you use path.Join, then it will be added correctly
+#- automatically when needed.
+#-
+#- Also, this means that there's a slash in the flag name, which seems odd in
+#- terms of standard Unix flag naming.
+#-
 +var serverAddr string
-+var fileclientFilePath = flag.String("./fileclient_files/stored_files/", "./fileclient_files/stored_files/",
++var rollbackserverAddr string
++var fileclientFilePath = flag.String("fileclient_files/stored_files/", "fileclient_files/stored_files/",
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-11-10T12:18:03-0800
+#*
+#- I don't know if this is going to work well, since this means that there's a
+#- slash in the flag name. That's probably not the right choice. Maybe just
+#- stored_files?
+#-
+#- Also, this should be "fileClientFilePath" to match standard Go naming
+#- conventions.
+#-
 +	"fileclient file directory")
 +var testFile = flag.String("originalTestFile", "originalTestFile", "test file")
 +var fileclientKeyPath = flag.String("usercreds/", "usercreds/", "user keys and certs")
 +
-+var DerPolicyCert []byte
-+var SigningKey tao.Keys
-+var SymKeys []byte
-+var ProgramCert []byte
++func main() {
+ 
+-var subprinRule = "(forall P: forall Hash: TrustedProgramHash(Hash) and Subprin(P, %v, Hash) implies MemberProgram(P))"
+-var argsRule = "(forall Y: forall P: forall S: MemberProgram(P) and TrustedArgs(S) and Subprin(Y, P, S) implies Authorized(Y, \"Execute\"))"
+-var demoRule = "TrustedArgs(ext.Args(%s))"
++	var fileClientProgramObject fileproxy.ProgramPolicy
++	var FileClientProgramObject *fileproxy.ProgramPolicy
 #*
 #* author: Tom Roeder
 #* email: tmroeder@google.com
-#* date: 2014-10-22T15:40:01-0700
+#* date: 2014-11-10T12:16:09-0800
 #*
-#- Global variables should not be set, even in a standalone program like this.
-#- Instead, these variables should be moved into the main function and handled
-#- there. In general, global variables should be used only like constants, even
-#- if some global variables can only be declared with "var" in Go rather than
-#- something like "const".
+#- It's confusing to me to have two similarly named variables like this. Also,
+#- this violates the naming conventions, since a variable shouldn't start with a
+#- capital letter like this. You might try running "go vet" and "golint" on your
+#- code and following their advice as well.
 #-
-#*
-#* author: John Manferdelli
-#* email: johnmanferdelli@hotmail.com
-#* date: 2014-10-31T12:01:14-0700
-#*
-#- Do you mean all variable should be specifically supplied to other routines or just set in main?
-#-
-+
-+func main() {
+ 
 +	flag.Parse()
 +	serverAddr = *serverHost + ":" + *serverPort
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-11-10T12:19:35-0800
+#*
+#- Use net.JoinHostPort for generality. You might think that this is trivial,
+#- but there are cases where the host can contain characters (colon or
+#- percent) that require "[host]:port" rather than "host:port".
+#-
 +
 +	hostDomain, err := tao.LoadDomain(*hostcfg, nil)
 +	if err != nil {
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-22T15:41:33-0700
-#*
-#- Print the error here rather than printing down in the depths of the code.
-#- E.g., something like
-#-
-#- if err != nil {
-#-   log.Fatalf("Couldn't load the Tao Domain: %s\n", err)
-#- }
-#-
-#- Note that log.Fatal{,f,ln} kills the program after printing the log entry.
-#- Import the "log" package to use it.
-#-
-#- Also, don't litter the code with fmt.Printf. Use log for debugging so that
-#- it's easy to turn on and off.
-#*
-#* author: John Manferdelli
-#* email: johnmanferdelli@hotmail.com
-#* date: 2014-10-31T12:03:49-0700
-#*
-#- Yes the formats are a crutch for debugging initially.  I'll change them to logs
-#-
 +		return
-+	}
-+	DerPolicyCert = nil
 #*
 #* author: Tom Roeder
 #* email: tmroeder@google.com
-#* date: 2014-10-22T15:43:53-0700
+#* date: 2014-11-10T12:25:25-0800
 #*
-#- Under the standard Go naming conventions, initial caps are reserved for
-#- exported values. Instead, this should be derPolicyCert. Also, abbreviations
-#- like DER are supposed to be consistent in their caps: either ALL CAPS or all
-#- lowercase. Fortunately, derPolicyCert already satisfies that constraint.
+#- Log all errors, especially those that halt the program. In main, one easy way
+#- to do this is to use log.Fatal{f}, since that does Print followed by os.Exit.
 #-
-#- Also, note that DerPolicyCert is nil by default, so it doesn't need to be set
-#- to nil explicitly.
-#-
-#*
-#* author: John Manferdelli
-#* email: johnmanferdelli@hotmail.com
-#* date: 2014-10-31T12:05:08-0700
-#*
-#- DerPolicyCert is a global and was exported.  When we talm
-#-
++	}
++	var derPolicyCert []byte
 +	if hostDomain.Keys.Cert != nil {
-+		DerPolicyCert = hostDomain.Keys.Cert.Raw
++		derPolicyCert = hostDomain.Keys.Cert.Raw
 +	}
-+	if DerPolicyCert == nil {
-+		fmt.Printf("can't retrieve policy cert\n")
++	if derPolicyCert == nil {
++		log.Printf("fileclient: can't retrieve policy cert\n")
++		return
++	}
 #*
 #* author: Tom Roeder
 #* email: tmroeder@google.com
-#* date: 2014-10-22T15:46:32-0700
+#* date: 2014-11-10T12:28:17-0800
 #*
-#- Use log.Fatalln and drop the explicit newline. And if you're printing a
-#- single string with a newline, use one of the functions that ends in "ln"
-#- rather than using a formatting one and adding a newline manually.
+#- In general, early termination is easier to read, and many projects (e.g.,
+#- LLVM) strongly recommend it as a matter of style. So, in this case:
 #-
-+		return
-+	}
-+
-+	e := auth.PrinExt{Name: "fileclient_version_1"}
+#- if hostDomain.Keys.Cert == nil {
+#- 	log.Fatalln("fileclient: can't retrieve policy cert")
+#- }
+#- derPolicyCert := hostDomain.Keys.Cert.Raw
+#-
+#- It's shorter, and it uses fewer conditionals, but it has exactly the same
+#- effect.
+#-
+ 
+-func doClient(domain *tao.Domain) {
+-	network := "tcp"
+-	keys, err := tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Parent())
++	/*
++	 Replace with: hostDomai.ExtendTaoDomain(tao)
++	*/
++	sha256Hash := sha256.New()
++	sha256Hash.Write(derPolicyCert)
++	policyCertHash := sha256Hash.Sum(nil)
++	hexCertHash := hex.EncodeToString(policyCertHash)
++	e := auth.PrinExt{Name: hexCertHash}
 +	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
+ 	if err != nil {
+-		fmt.Printf("client: couldn't generate temporary Tao keys: %s\n", err)
+ 		return
+ 	}
+ 
+-	// TODO(tmroeder): fix the name
+-	cert, err := keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
+-		Organization: []string{"Google Tao Demo"}})
++	e = auth.PrinExt{Name: "fileclient_version_1"}
++	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
+ 	if err != nil {
+-		fmt.Printf("client: couldn't create a self-signed X.509 cert: %s\n", err)
+ 		return
+ 	}
+-	// TODO(kwalsh) keys should save cert on disk if keys are on disk
+-	keys.Cert = cert
+ 
+-	g := domain.Guard
+-	if *ca != "" {
+-		na, err := taonet.RequestTruncatedAttestation(network, *ca, keys, domain.Keys.VerifyingKey)
+-		if err != nil {
+-			fmt.Printf("client: couldn't get a truncated attestation from %s: %s\n", *ca, err)
+-			return
+-		}
++	taoName, err := tao.Parent().GetTaoName()
 +	if err != nil {
++		log.Printf("fileserver: cant get tao name\n")
 +		return
 +	}
-+
-+	myTaoName, err := tao.Parent().GetTaoName()
++	log.Printf("fileclient: my name is %s\n", taoName)
+ 
+-		keys.Delegation = na
++	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*fileclientPath)
 +	if err != nil {
-+		return
++		log.Printf("fileclient: cant retrieve key material\n")
 +	}
-+	fmt.Printf("fileclient: my name is %s\n", myTaoName)
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-22T15:47:57-0700
-#*
-#- Remove personal pronoun "my" from the variable and the print statement. And
-#- turn this into a log statement or remove it. Ditto for other debugging print
-#- statements.
-#-
-+
-+	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err := fileproxy.GetMyCryptoMaterial(*fileclientPath)
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-22T15:51:06-0700
-#*
-#- Don't ignore the error here; it needs to be checked.
-#-
-#- Also, drop the personal pronoun. The name GetMyCryptoMaterial should be
-#- something more like LoadKeys, though I suspect it should also be folded into
-#- the existing Keys infrastructure rather than being implemented separately,
-#- but I'll examine that when I get there.
-#-
-#*
-#* author: John Manferdelli
-#* email: johnmanferdelli@hotmail.com
-#* date: 2014-10-31T12:07:42-0700
-#*
-#- OK
-#-
-+	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || derCert == nil {
-+		fmt.Printf("fileclient: No key material present\n")
++	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || programCert == nil {
++		log.Printf("fileclient: No key material present\n")
 +	}
-+	ProgramCert = derCert
-+	fmt.Printf("Finished fileproxy.GetMyCryptoMaterial\n")
-+
-+	defer fileproxy.ZeroBytes(SymKeys)
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-22T15:52:39-0700
-#*
-#- There is already another implementation of zeroBytes. It looks like it should
-#- be promoted to a utility in github.com/jlmucb/cloudproxy/util so it can be
-#- used in code like this.
-#-
++	log.Printf("Finished fileproxy.LoadProgramKeys\n")
+ 
+-		// If we're using a CA, then use a custom guard that accepts only
+-		// programs that have talked to the CA.
+-		g, err = newTempCAGuard(domain.Keys.VerifyingKey)
++	var symKeys []byte
 +	if sealedSymmetricKey != nil {
-+		symkeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-22T15:53:42-0700
-#*
-#- Don't have one variable named symkeys and another named SymKeys, since that
-#- can be confusing.
-#-
-+		if err != nil {
-+			return
-+		}
++		symKeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
+ 		if err != nil {
+-			fmt.Printf("client: couldn't set up a new guard: %s\n", err)
+ 			return
+ 		}
 +		if policy != tao.SealPolicyDefault {
-+			fmt.Printf("fileclient: unexpected policy on unseal\n")
++			log.Printf("fileclient: unexpected policy on unseal\n")
 +		}
-+		SymKeys = symkeys
-+		fmt.Printf("fileclient: Unsealed symKeys: % x\n", SymKeys)
++		log.Printf("fileclient: Unsealed symKeys: % x\n", symKeys)
 +	} else {
-+		symkeys, err := fileproxy.InitializeSealedSymmetricKeys(*fileclientPath, tao.Parent(), 64)
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:24:19-0700
-#*
-#- What does 64 mean here? Make this a constant with a name or add a comment
-#- explaining it.
-#-
++		symKeys, err := fileproxy.InitializeSealedSymmetricKeys(*fileclientPath, tao.Parent(), fileproxy.SizeofSymmetricKeys)
 +		if err != nil {
-+			fmt.Printf("fileclient: InitializeSealedSymmetricKeys error: %s\n", err)
++			log.Printf("fileclient: InitializeSealedSymmetricKeys error: %s\n", err)
 +		}
-+		SymKeys = symkeys
-+		fmt.Printf("fileclient: InitilizedsymKeys: % x\n", SymKeys)
-+	}
-+
++		log.Printf("fileclient: InitilizedsymKeys: % x\n", symKeys)
+ 	}
++	defer fileproxy.ZeroBytes(symKeys)
+ 
+-	pingGood := 0
+-	pingFail := 0
+-	for i := 0; i < *pingCount || *pingCount < 0; i++ { // negative means forever
+-		if doRequest(g, domain, keys) {
+-			pingGood++
+-		} else {
+-			pingFail++
++	var signingKey *tao.Keys
 +	if sealedSigningKey != nil {
-+		signingkey, err := fileproxy.SigningKeyFromBlob(tao.Parent(),
-+			sealedSigningKey, derCert, delegation)
++		signingKey, err = fileproxy.SigningKeyFromBlob(tao.Parent(),
++			sealedSigningKey, programCert, delegation)
 +		if err != nil {
-+			fmt.Printf("fileclient: SigningKeyFromBlob error: %s\n", err)
-+		}
-+		SigningKey = *signingkey
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:27:43-0700
-#*
-#- SigningKey should be *tao.Keys, and you can assign directly to it, since Go
-#- will manage the memory for you. The copy in this line is unnecessary.
-#-
-+		fmt.Printf("fileclient: Retrieved Signing key: % x\n", SigningKey)
++			log.Printf("fileclient: SigningKeyFromBlob error: %s\n", err)
+ 		}
+-		fmt.Printf("client: made %d connections, finished %d ok, %d bad pings\n",
+-			i+1, pingGood, pingFail)
++		log.Printf("fileclient: Retrieved Signing key: % x\n", *signingKey)
 +	} else {
-+		signingkey, err := fileproxy.InitializeSealedSigningKey(*fileclientPath,
++		signingKey, err = fileproxy.InitializeSealedSigningKey(*fileclientPath,
 +			tao.Parent(), *hostDomain)
 +		if err != nil {
-+			fmt.Printf("fileclient: InitializeSealedSigningKey error: %s\n", err)
++			log.Printf("fileclient: InitializeSealedSigningKey error: %s\n", err)
 +		}
-+		SigningKey = *signingkey
-+		fmt.Printf("fileclient: Initilized signingKey: % x\n", SigningKey)
-+	}
++		log.Printf("fileclient: Initilized signingKey\n")
+ 	}
+-}
+ 
++	FileClientProgramObject = &fileClientProgramObject
++	_ = FileClientProgramObject.InitProgramPolicy(derPolicyCert, taoName.String(), *signingKey, symKeys, programCert)
 #*
 #* author: Tom Roeder
 #* email: tmroeder@google.com
-#* date: 2014-10-23T11:25:27-0700
+#* date: 2014-11-10T12:33:59-0800
 #*
-#- I think these methods duplicate methods that already exist in keys.go. If
-#- not, then these should be ported into keys.go rather than being in fileproxy.
+#- Why the reference here?
 #-
-+
-+	var creds []byte
-+	creds = []byte("I am a fake cred")
-+	policyCert, err := x509.ParseCertificate(DerPolicyCert)
-+	if err != nil {
-+		fmt.Printf("fileclient:cant ParseCertificate\n")
+ 
+-// Tao Host demo
+-
+-func hostTaoDemo() error {
+-	name, err := tao.Parent().GetTaoName()
++	policyCert, err := x509.ParseCertificate(derPolicyCert)
+ 	if err != nil {
+-		return err
++		log.Printf("fileclient:cant ParseCertificate\n")
 +		return
-+	}
+ 	}
+-	fmt.Printf("My root name is %s\n", name)
++	log.Printf("fileclient: place 0\n")
 +	pool := x509.NewCertPool()
 +	pool.AddCert(policyCert)
-+
-+	tlsc, err := taonet.EncodeTLSCert(&SigningKey)
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:28:38-0700
-#*
-#- Once you change SigningKey to be *tao.Keys, you can drop the reference here.
-#-
+ 
+-	// TODO(kwalsh) Make a convenience function for this
+-	var args []auth.Term
+-	for _, arg := range os.Args {
+-		args = append(args, auth.Str(arg))
++	tlsc, err := taonet.EncodeTLSCert(signingKey)
 +	if err != nil {
-+		fmt.Printf("fileserver, encode error: ", err)
-+		fmt.Printf("\n")
++		log.Printf("fileclient, encode error: ", err)
++		log.Printf("\n")
 +		return
-+	}
+ 	}
+-	e := auth.PrinExt{Name: "Args", Arg: args}
+-	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
 +	conn, err := tls.Dial("tcp", serverAddr, &tls.Config{
 +		RootCAs:            pool,
 +		Certificates:       []tls.Certificate{*tlsc},
-+		InsecureSkipVerify: false, // true,
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:29:13-0700
-#*
-#- "true"? What does this comment mean?
-#-
++		InsecureSkipVerify: false,
 +	})
-+	if err != nil {
-+		fmt.Printf("fileclient:cant establish channel\n", err)
-+		fmt.Printf("\n")
+ 	if err != nil {
+-		return err
++		log.Printf("fileclient: cant establish channel\n", err)
++		log.Printf("\n")
 +		return
-+	}
+ 	}
 +	ms := util.NewMessageStream(conn)
-+	fmt.Printf("fileclient: Established channel\n")
-+
-+	// authenticate user principal(s)
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:30:07-0700
-#*
-#- Comments should start with a capital and end with a period.
-#-
++	log.Printf("fileclient: Established channel\n")
+ 
+-	name, err = tao.Parent().GetTaoName()
++	// Authenticate user principal(s).
 +	userCert, err := ioutil.ReadFile(*fileclientPath + *fileclientKeyPath + "cert")
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:30:35-0700
-#*
-#- Use path.Join instead of concatenating paths with string concatenation.
-#-
-+	if err != nil {
-+		fmt.Printf("fileclient: cant read cert %s\n", *fileclientPath+*fileclientKeyPath+"cert")
+ 	if err != nil {
+-		return err
++		log.Printf("fileclient: cant read cert %s\n", *fileclientPath+*fileclientKeyPath+"cert")
 +		return
-+	}
-+	fmt.Printf("fileclient: read cert\n")
+ 	}
+-	fmt.Printf("My full name is %s\n", name)
+-
+-	random, err := tao.Parent().GetRandomBytes(10)
++	log.Printf("fileclient: read cert\n")
 +	if userCert == nil {
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:31:17-0700
-#*
-#- Can this happen if err == nil above? It might be the empty string, but it
-#- can't be nil. Ditto for later lines.
-#-
-#- Also, this should be folded into keys.go and not done manually here.
-#-
-+		fmt.Printf("fileclient: nil user cert\n")
++		log.Printf("fileclient: nil user cert\n")
 +	}
 +	pks, err := ioutil.ReadFile(*fileclientPath + *fileclientKeyPath + "keys")
-+	if err != nil {
-+		fmt.Printf("fileclient: cant read key blob\n")
+ 	if err != nil {
+-		return err
++		log.Printf("fileclient: cant read key blob\n")
 +		return
-+	}
+ 	}
+-	fmt.Printf("Random bytes  : % x\n", random)
+-
+-	n, err := tao.Parent().Rand().Read(random)
 +	if pks == nil {
-+		fmt.Printf("fileclient: nil pks\n")
++		log.Printf("fileclient: nil pks\n")
 +	}
-+	fmt.Printf("fileclient: read key blob\n")
++	log.Printf("fileclient: read key blob\n")
 +	var cks tao.CryptoKeyset
 +	err = proto.Unmarshal(pks, &cks)
-+	if err != nil {
-+		fmt.Printf("fileclient: cant proto unmarshal key set\n")
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:32:45-0700
-#*
-#- Spelling: "can't". Ditto for future instances of "cant". And when there is an
-#- error, it should be logged, e.g.,
-#-
-#- log.Fatalf("fileclient: can't unmarshal keyset: %s\n", err)
-#-
+ 	if err != nil {
+-		return err
++		log.Printf("fileclient: cant proto unmarshal key set\n")
 +		return
-+	}
+ 	}
+-	fmt.Printf("%d more bytes : % x\n", n, random)
+-
+-	secret, err := tao.Parent().GetSharedSecret(10, tao.SharedSecretPolicyDefault)
 +	if pks == nil {
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:34:14-0700
-#*
-#- Already checked above.
-#-
-+		fmt.Printf("fileclient: cant proto unmarshaled is nil \n")
++		log.Printf("fileclient: cant proto unmarshaled is nil \n")
 +		return
 +	}
-+	fmt.Printf("fileclient: unmarshaled proto key\n")
++	log.Printf("fileclient: unmarshaled proto key\n")
 +	userKey, err := tao.UnmarshalKeyset(&cks)
-+	if err != nil {
-+		fmt.Printf("fileclient: cant unmarshal key set\n")
+ 	if err != nil {
+-		return err
++		log.Printf("fileclient: cant unmarshal key set\n")
 +		return
 +	}
-+	fmt.Printf("fileclient: unmarshaled key\n")
-+	fmt.Printf("user key: ", userKey)
-+	fmt.Printf("\n")
++	log.Printf("fileclient: unmarshaled key\n")
++	log.Printf("user key: ", userKey)
++	log.Printf("\n")
 +	ok := fileproxy.AuthenticatePrincipalRequest(ms, userKey, userCert)
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:42:03-0700
-#*
-#- I'll comment more on this below, but I believe that much of the code could be
-#- removed and replaced with calls that simply use the Go RPC mechanism over the
-#- established channel.
-#-
 +	if !ok {
-+		fmt.Printf("fileclient: cant authenticate principal\n")
++		log.Printf("fileclient: cant authenticate principal\n")
 +		return
-+	}
-+	fmt.Printf("AuthenticatedPrincipalRequest\n")
-+
-+	// create a file
-+	sentFileName := *testFile
-+	fmt.Printf("fileclient, Creating: %s\n", sentFileName)
-+	err = fileproxy.SendCreateFile(ms, creds, sentFileName)
-+	if err != nil {
-+		fmt.Printf("fileclient: cant create file\n")
+ 	}
+-	fmt.Printf("Shared secret : % x\n", secret)
++	log.Printf("fileclient: AuthenticatedPrincipalRequest\n")
+ 
+-	sealed, err := tao.Parent().Seal(random, tao.SealPolicyDefault)
++	// Send a rule.
++	rule := "Delegate(\"jlm\", \"tom\", \"getfile\",\"myfile\")"
++	log.Printf("fileclient, sending rule: %s\n", rule)
++	err = fileproxy.SendRule(ms, rule, userCert)
+ 	if err != nil {
+-		return err
++		log.Printf("fileclient: cant create file\n")
 +		return
-+	}
-+	// return: status, message, size, error
+ 	}
+-	fmt.Printf("Sealed bytes  : % x\n", sealed)
+-
+-	unsealed, policy, err := tao.Parent().Unseal(sealed)
 +	status, message, size, err := fileproxy.GetResponse(ms)
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:43:05-0700
-#*
-#- "size" is not needed here, since protobuf and Go always keep the size
-#- information around. Ditto for all uses of size-like arguments below and in
-#- the protobufs.
-#-
-+	if err != nil {
-+		fmt.Printf("Error in response to SendCreate\n")
+ 	if err != nil {
+-		return err
++		log.Printf("fileclient: Error in response to SendCreate\n")
 +		return
-+	}
-+	fmt.Printf("Response to SendCreate\n")
+ 	}
+-	if policy != tao.SealPolicyDefault {
+-		return errors.New("unexpected policy on unseal")
++	log.Printf("Response to SendCreate\n")
 +	fileproxy.PrintResponse(status, message, size)
 +	if *status != "succeeded" {
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:43:59-0700
-#*
-#- This is already encoded by the error message, right?
-#-
 +		return
-+	}
-+
-+	// Send File
-+	fmt.Printf("\nfileclient sending file %s\n", sentFileName)
-+	err = fileproxy.SendSendFile(ms, nil, sentFileName)
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:44:19-0700
-#*
-#- What is nil here? Add a comment to specify what it is.
-#-
+ 	}
+-	fmt.Printf("Unsealed bytes: % x\n", unsealed)
+ 
+-	return nil
+-}
++	// Create a file.
++	sentFileName := *testFile
++	log.Printf("fileclient, Creating: %s\n", sentFileName)
++	err = fileproxy.SendCreateFile(ms, userCert, sentFileName)
 +	if err != nil {
-+		fmt.Printf("fileclient: SendSendFile has error\n")
++		log.Printf("fileclient: cant create file\n")
 +		return
 +	}
-+
 +	status, message, size, err = fileproxy.GetResponse(ms)
 +	if err != nil {
-+		fmt.Printf("Error in response to SendSend\n")
++		log.Printf("fileclient: Error in response to SendCreate\n")
 +		return
 +	}
-+	fmt.Printf("Response to SendSend\n")
++	log.Printf("fileclient: Response to SendCreate\n")
 +	fileproxy.PrintResponse(status, message, size)
 +	if *status != "succeeded" {
 +		return
 +	}
-+
+ 
+-func main() {
+-	flag.Parse()
+-	serverAddr = *serverHost + ":" + *serverPort
+-	switch *demoAuth {
+-	case "tcp", "tls", "tao":
+-	default:
+-		fmt.Printf("unrecognized authentication mode: %s\n", *demoAuth)
++	// Send File.
++	log.Printf("\nfileclient sending file %s\n", sentFileName)
++	err = fileproxy.SendSendFile(ms, userCert, sentFileName)
++	if err != nil {
++		log.Printf("fileclient: SendSendFile has error\n")
+ 		return
+ 	}
+ 
+-	fmt.Printf("Go Tao Demo\n")
++	status, message, size, err = fileproxy.GetResponse(ms)
++	if err != nil {
++		log.Printf("fileclient: Error in response to SendSend\n")
++		return
++	}
++	log.Printf("fileclient: Response to SendSend\n")
++	fileproxy.PrintResponse(status, message, size)
++	if *status != "succeeded" {
++		return
++	}
+ 
+-	if !tao.Hosted() {
+-		fmt.Printf("can't continue: No host Tao available\n")
 +	err = fileproxy.SendFile(ms, *fileclientFilePath, sentFileName, nil)
 +	if err != nil {
-+		fmt.Printf("Error in response to SendFile ", err)
-+		fmt.Printf("\n")
-+		return
-+	}
-+
++		log.Printf("fileclient: Error in response to SendFile ", err)
++		log.Printf("\n")
+ 		return
+ 	}
+ 
+-	if *localMode {
+-		err := hostTaoDemo()
+-		if err != nil {
+-			fmt.Printf("error: %s\n", err.Error())
+-			return
+-		}
 +	// Get file
-+	fmt.Printf("\nfileclient getting file %s\n", sentFileName)
-+	err = fileproxy.SendGetFile(ms, nil, sentFileName)
++	log.Printf("\nfileclient getting file %s\n", sentFileName)
++	err = fileproxy.SendGetFile(ms, userCert, sentFileName)
 +	if err != nil {
-+		fmt.Printf("fileclient: SendGetFile has error\n")
++		log.Printf("fileclient: SendGetFile has error\n")
 +		return
-+	}
-+
+ 	}
+ 
+-	// TODO(tmroeder): use the Domain and the tao parent to set up the keys and
+-	// the guard. Also need to hook the datalog guard into the domain and get
+-	// the basic tests working with this guard, especially execution
+-	// authorization.
+-	serverReady <- true
+-	serverDone <- true
 +	status, message, size, err = fileproxy.GetResponse(ms)
 +	if err != nil {
-+		fmt.Printf("Error in response to GetFile\n")
++		log.Printf("fileclient: Error in response to GetFile\n")
 +		return
 +	}
-+	fmt.Printf("Response to SendGet\n")
++	log.Printf("fileclient: Response to SendGet\n")
 +	fileproxy.PrintResponse(status, message, size)
 +	if *status != "succeeded" {
 +		return
 +	}
-+
+ 
+-	domain, err := tao.LoadDomain(*configPath, nil)
 +	err = fileproxy.GetFile(ms, *fileclientFilePath, sentFileName+".received", nil)
+ 	if err != nil {
+-		fmt.Printf("error: couldn't load the tao domain from %s\n", *configPath)
++		log.Printf("fileclient: cant get file ", err)
++		log.Printf("\n")
+ 		return
+ 	}
+ 
+-	ok := <-serverReady
+-	if ok {
+-		doClient(domain)
++	// rollback test
++	rollbackserverAddr = *serverHost + ":" + *rollbackserverPort
++	rbconn, err := tls.Dial("tcp", rollbackserverAddr, &tls.Config{
++		RootCAs:            pool,
++		Certificates:       []tls.Certificate{*tlsc},
++		InsecureSkipVerify: false,
++	})
 +	if err != nil {
-+		fmt.Printf("fileclient: cant get file ", err)
-+		fmt.Printf("\n")
++		log.Printf("fileclient: cant establish rollback channel\n", err)
++		log.Printf("\n")
 +		return
 +	}
-+	fmt.Printf("fileclient: Done\n")
-+}
++	newms := util.NewMessageStream(rbconn)
++	if newms == nil {
++		log.Printf("cant get newms\n")
++	}
++	log.Printf("fileclient: Established rollback channel\n")
++	// set hash
++	hash := make([]byte, 128)
+#*
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-11-10T12:36:12-0800
+#*
+#- This should probably be a constant in the rollback library that can be
+#- accessed by clients.
+#-
++	for i := 0; i < 32; i++ {
++		hash[i] = byte(i)
++	}
++	clientProgramName := taoName.String()
++	ok2 := fileproxy.ClientSetResourceHashRequest(newms, clientProgramName, "test_resource", []byte(hash))
++	if !ok2 {
++		log.Printf("fileclient: fileproxy.ClientSetResourceHashRequest failed")
++		return
++	}
++	log.Printf("fileclient: set fileproxy.ClientSetResourceHashRequest succeeded\n")
++	// set counter
++	fileproxy.ClientSetRollbackCounter(newms, int64(10))
++	log.Printf("fileclient: set fileproxy.ClientSetRollbackCounter\n")
++	// get counter
++	ok2, counter := fileproxy.ClientGetRollbackCounter(newms, clientProgramName)
++	if !ok2 {
++		log.Printf("fileclient: fileproxy.ClientGetRollbackCounter failed")
++		return
+ 	}
+-	serverStop <- true
+-	<-serverDone
+-	fmt.Printf("Done\n")
++	log.Printf("counter is %d\n", counter)
++	// get verify
++	ok2, newhash := fileproxy.ClientGetRollbackHashedVerifierRequest(newms, clientProgramName, "test_resource")
++	if !ok2 {
++		log.Printf("fileclient: fileproxy.ClientGetRollbackHashedVerifierRequest failed")
++		return
++	}
++	log.Printf("fileclient: newhash is %x\n", newhash)
++	sha256HashCtr := sha256.New()
++	bc := make([]byte, 8)
++	binary.PutVarint(bc, counter)
++	sha256HashCtr.Write(bc)
++	sha256HashCtr.Write(hash)
++	sha256HashCtr.Write(bc)
++	computed_hash := sha256HashCtr.Sum(nil)
++	log.Printf("fileclient: computed_hash is %x\n", computed_hash)
++
++	log.Printf("fileclient: Done\n")
+ }
 diff --git a/apps/fileproxy/fileclient/rebuild b/apps/fileproxy/fileclient/rebuild
 new file mode 100755
 index 0000000..5e3c928
@@ -778,39 +849,21 @@ index 0000000..5e3c928
 +echo "rebuilding fileproxy"
 +cd ..
 +go build ...
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:45:47-0700
-#*
-#- Don't use "go build ...". If we need a build script (and we shouldn't), then
-#- let's write one in a standard build language.
-#-
 +cd fileclient
 +go build fileclient.go
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:46:26-0700
-#*
-#- Normally, applications like this are kept in their own directories so that
-#- you don't have to explicitly name them to build.
-#-
 +echo "done"
 diff --git a/apps/fileproxy/filehandler.go b/apps/fileproxy/filehandler.go
 new file mode 100644
-index 0000000..4e8def7
+index 0000000..313a062
 --- /dev/null
 +++ b/apps/fileproxy/filehandler.go
-@@ -0,0 +1,847 @@
-+// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
+@@ -0,0 +1,809 @@
++// Copyright (c) 2014, Google Corporation.  All rights reserved.
 +//
 +// Licensed under the Apache License, Version 2.0 (the "License");
 +// you may not use this file except in compliance with the License.
 +// You may obtain a copy of the License at
-+//
 +//     http://www.apache.org/licenses/LICENSE-2.0
-+//
 +// Unless required by applicable law or agreed to in writing, software
 +// distributed under the License is distributed on an "AS IS" BASIS,
 +// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -822,106 +875,53 @@ index 0000000..4e8def7
 +package fileproxy
 +
 +import (
-+	"code.google.com/p/goprotobuf/proto"
++	"bytes"
 +	"crypto/rand"
 +	"crypto/x509"
 +	"errors"
-+	"fmt"
++	"io/ioutil"
++	"log"
++	"os"
++
++	"code.google.com/p/goprotobuf/proto"
++
 +	tao "github.com/jlmucb/cloudproxy/tao"
 +	"github.com/jlmucb/cloudproxy/util"
-+	//"flag"
-+	//"os"
-+	// "github.com/jlmucb/cloudproxy/tao/auth"
-+	// taonet "github.com/jlmucb/cloudproxy/tao/net"
 +)
 +
++const SizeofNonce = 32
++const ChallengeContext = "fileproxy-challenge"
++
 +// Resource types: files, channels
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:48:37-0700
-#*
-#- It looks like some of these should be enums rather than strings, since, e.g.,
-#- resourceStatus probably only has a small number of valid values.
-#-
 +type ResourceInfo struct {
-+	resourceName      string
-+	resourceType      string
-+	resourceStatus    string
-+	resourceLocation  string
-+	resourceSize      int
-+	resourceOwner     string // x509 cert
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:49:13-0700
-#*
-#- Then this should be a []byte, right? Or it should be *x509.Certificate
-#-
-+	dateCreated       string
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:49:30-0700
-#*
-#- import "time" and have a real date value. Same for modified date.
-#-
-+	dateModified      string
-+	authenticatorType string // sha hash usually
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:49:53-0700
-#*
-#- enum, then.
-#-
-+	authenticator     [][]byte
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:50:07-0700
-#*
-#- Why is this [][]byte? A comment would be helpful here.
-#-
++	ResourceName      string
++	ResourceType      string
++	ResourceStatus    string
++	ResourceLocation  string
++	ResourceSize      int
++	ResourceOwner     string
++	DateCreated       string
++	DateModified      string
++	AuthenticatorType string
++	Authenticator     [][]byte
 +}
 +
-+type Principal struct {
-+	name string
-+	der  []byte
++type PrincipalInfo struct {
++	Name   string
++	Der    []byte
++	Status string
 +}
 +
 +type ResourceMaster struct {
-+	program        string
-+	Guard          tao.Guard
-+	baseDirectory  string
-+	NumResources   int
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:48:00-0700
-#*
-#- Why is this exported while others aren't?
-#-
-+	resourceArray  [100]ResourceInfo
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:47:43-0700
-#*
-#- No magic numbers. Why 100? And isn't NumPrincipals tied to principalArray?
-#- Why have the size at all? Just have principalArray with type []Principal,
-#- since the length is already part of the slice []Principal type.
-#-
-+	NumPrincipals  int
-+	principalArray [100]Principal
-+	// Rules
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:51:23-0700
-#*
-#- Missing?
-#-
++	ProgramName      string
++	Guard            tao.Guard
++	BaseDirectory    string
++	NumResources     int
++	ResourceArray    []ResourceInfo
++	NumPrincipals    int
++	PrincipalArray   []PrincipalInfo
++	Policy           []string
++	AdditionalPolicy []string
 +}
 +
 +// Policy for managing files in the fileserver.
@@ -947,107 +947,35 @@ index 0000000..4e8def7
 +// Some fake additional statements for the purpose of testing the guard.
 +var additional_policy = []string{
 +	"FileServer(\"fileserver\")",
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:51:40-0700
-#*
-#- I wonder if this is needed at all. Is this (and its related policy) ever used
-#- in the current implementation? Are there plans to use it? Or is it just users
-#- that are checked using the auth policy?
-#-
 +	"Action(\"create\")",
 +	"Action(\"getfile\")",
 +	"Action(\"sendfile\")",
 +	"Action(\"delete\")",
 +}
 +
-+/*
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:52:30-0700
-#*
-#- Remove commented code.
-#-
-+func try(query, msg string, shouldPass bool, g tao.Guard) {
-+	b, err := g.Query(query)
-+	if err != nil {
-+		log.Fatalf("Couldn't query '%s': %s\n", query, err)
-+	}
-+
-+	if b != shouldPass {
-+		log.Fatalln(msg)
-+	}
-+}
-+
 +func delegateResource(owner, delegate, op, res string, g tao.Guard) {
 +	if err := g.AddRule("Delegate(\"" + owner + "\", \"" + delegate + "\", \"" + op + "\", \"" + res + "\")"); err != nil {
-+		log.Fatalf("Couldn't delegate operation '%s' on '%s' from '%s' to '%s': %s\n", op, res, owner, delegate, err)
++		log.Printf("Couldn't delegate operation '%s' on '%s' from '%s' to '%s': %s\n", op, res, owner, delegate, err)
 +	}
 +}
 +
 +func redelegateResource(owner, delegate, op, res string, g tao.Guard) {
 +	if err := g.AddRule("Delegate(\"" + owner + "\", \"" + delegate + "\", \"delegate\", \"" + op + "\", \"" + res + "\")"); err != nil {
-+		log.Fatalf("Couldn't redelegate operation '%s' on '%s' from '%s' to '%s': %s\n", op, res, owner, delegate, err)
++		log.Printf("Couldn't redelegate operation '%s' on '%s' from '%s' to '%s': %s\n", op, res, owner, delegate, err)
 +	}
 +}
-+*/
 +
-+func addResource(creator string, resource string, g tao.Guard) error {
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:52:47-0700
-#*
-#- Standard Go style is "creator, resource string"
-#-
++func addResource(creator, resource string, g tao.Guard) error {
 +	if err := g.AddRule("Resource(\"" + resource + "\")"); err != nil {
-+		return errors.New("Cant add resource in rules\n")
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:53:09-0700
-#*
-#- Also return the err as part of it so we don't lose context.
-#-
++		return errors.New("Can't add resource in rules\n")
 +	}
 +	if err := g.AddRule("Creator(\"" + creator + "\", \"" + resource + "\")"); err != nil {
-+		return errors.New("Cant add creator in rules\n")
++		return errors.New("Can't add creator in rules\n")
 +	}
 +	return nil
 +}
 +
-+func PrincipalNameFromDERCert(derCert []byte) *string {
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:53:45-0700
-#*
-#- Why *string?
-#-
-+	cert, err := x509.ParseCertificate(derCert)
-+	if err != nil {
-+		fmt.Printf("Cant get name from certificate\n")
-+		return nil
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:54:01-0700
-#*
-#- This shows that you also need to return an error, not just a string. And you
-#- should return "" for the error case. Don't use pointer types to overload a
-#- return value with error handling. That's one reason Go has multiple return
-#- values.
-#-
-#- Ditto for the other functions in this file.
-#-
-+	}
-+	cn := cert.Subject.CommonName
-+	return &cn
-+}
-+
-+func makeQuery(subject string, action string, resource string, owner string) *string {
++func makeQuery(subject string, action string, resource string) *string {
 +	var out string
 +	if action == "create" {
 +		out = "Authorized(\"" + subject + "\", \"" + action + "\",  \"" + resource + "\")"
@@ -1056,109 +984,69 @@ index 0000000..4e8def7
 +	} else if action == "sendfile" {
 +		out = "Authorized(\"" + subject + "\", \"" + action + "\", \"" + resource + "\")"
 +	} else {
-+		fmt.Printf("makeQuery: unknown action\n")
++		log.Printf("makeQuery: unknown action\n")
 +		return nil
 +	}
-+	fmt.Printf("makeQuery: %s\n", out)
++	log.Printf("makeQuery: %s\n", out)
 +	return &out
 +}
 +
 +func (m *ResourceMaster) Query(query string) bool {
 +	b, err := m.Guard.Query(query)
 +	if err != nil {
-+		fmt.Printf("Query: %s generates error %s\n", query, err)
++		log.Printf("Query: %s generates error %s\n", query, err)
 +		return false
 +	}
 +	if b {
-+		fmt.Printf("%s succeeds\n", query)
++		log.Printf("%s succeeds\n", query)
 +	} else {
-+		fmt.Printf("%s failed\n", query)
++		log.Printf("%s failed\n", query)
 +	}
 +	return b
 +}
 +
-+func (m *ResourceMaster) Find(resourcename string) (*ResourceInfo, error) {
-+	for i := 0; i < m.NumResources; i++ {
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:55:58-0700
-#*
-#- Use a range for instead:
-#-
-#- for _, r := range m.resourceArray {
-#-   if r.resourceName == resourceName {
-#-     return &r, nil
-#-   }
-#- }
-#-
-#- Then you don't need NumResources at all.
-#-
-+		if m.resourceArray[i].resourceName == resourcename {
-+			return &m.resourceArray[i], nil
++func (m *ResourceMaster) FindResource(resourcename string) (*ResourceInfo, error) {
++	for i := range m.ResourceArray {
++		if m.ResourceArray[i].ResourceName == resourcename {
++			return &m.ResourceArray[i], nil
 +		}
 +	}
 +	return nil, nil
 +}
 +
-+func (m *ResourceMaster) Insert(path string, resourcename string, owner string) (*ResourceInfo, error) {
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:57:18-0700
-#*
-#- path, resourceName, owner string
-#-
-+	found, err := m.Find(resourcename)
++func (m *ResourceMaster) InsertResource(path string, resourcename string, owner string) (*ResourceInfo, error) {
++	found, err := m.FindResource(resourcename)
 +	if err != nil {
 +		return nil, err
 +	}
 +	if found != nil {
 +		return found, nil
 +	}
-+	n := m.NumResources
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:58:02-0700
-#*
-#- This will panic once you reach 100 resources. Instead, use slices as I
-#- suggested above. This code then becomes:
-#-
-#- r := &ResourceInfo{
-#- /* ... fill it out ... */
-#- }
-#-
-#- m.resourceArray = append(m.resourceArray, *r)
-#-
-+	m.NumResources = m.NumResources + 1
-+	// resInfo:=   new(ResourceInfo)
-+	// m.resourceArray[n]=  *resInfo
-+	m.resourceArray[n].resourceName = resourcename
-+	m.resourceArray[n].resourceType = "file"
-+	m.resourceArray[n].resourceStatus = "created"
-+	m.resourceArray[n].resourceLocation = path + resourcename
-+	m.resourceArray[n].resourceOwner = owner
-+	return &m.resourceArray[n], nil
++	if len(m.ResourceArray) >= cap(m.ResourceArray) {
++		t := make([]ResourceInfo, 2*cap(m.ResourceArray))
++		copy(t, m.ResourceArray)
++		m.ResourceArray = t
++	}
++	m.ResourceArray = m.ResourceArray[0 : len(m.ResourceArray)+1]
++	n := len(m.ResourceArray) - 1
++	m.ResourceArray[n].ResourceName = resourcename
++	m.ResourceArray[n].ResourceType = "file"
++	m.ResourceArray[n].ResourceStatus = "created"
++	m.ResourceArray[n].ResourceLocation = path + resourcename
++	m.ResourceArray[n].ResourceOwner = owner
++	return &m.ResourceArray[n], nil
 +}
 +
-+func (m *ResourceMaster) FindPrincipal(name string) (*Principal, error) {
-+	for i := 0; i < m.NumPrincipals; i++ {
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T11:59:54-0700
-#*
-#- Use a range for loop, as I suggest above.
-#-
-+		if m.principalArray[i].name == name {
-+			return &m.principalArray[i], nil
++func (m *ResourceMaster) FindPrincipal(name string) (*PrincipalInfo, error) {
++	for i := range m.PrincipalArray {
++		if m.PrincipalArray[i].Name == name {
++			return &m.PrincipalArray[i], nil
 +		}
 +	}
 +	return nil, nil
 +}
 +
-+func (m *ResourceMaster) InsertPrincipal(name string, cert []byte) (*Principal, error) {
++func (m *ResourceMaster) InsertPrincipal(name string, cert []byte, authStatus string) (*PrincipalInfo, error) {
 +	found, err := m.FindPrincipal(name)
 +	if err != nil {
 +		return nil, err
@@ -1166,540 +1054,285 @@ index 0000000..4e8def7
 +	if found != nil {
 +		return found, nil
 +	}
-+	n := m.NumPrincipals
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-23T12:00:21-0700
-#*
-#- See the comment for resourceArray above and do the same thing here.
-#- Otherwise, this will be arbitrarily limited and will panic unnecessarily.
-#-
-+	m.NumPrincipals = m.NumPrincipals + 1
-+	m.principalArray[n].name = name
-+	m.principalArray[n].der = cert
-+	return &m.principalArray[n], nil
-+}
-+
-+// return: type, subject, action, resource, owner, status, message, size, buf, error
-+func DecodeMessage(in []byte) (*int, *string, *string, *string, *string,
-+	*string, *string, *int, []byte, error) {
-+	fmt.Printf("filehandler: DecodeMessage\n")
-+	var the_type32 *int32
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-24T11:43:57-0700
-#*
-#- This isn't C89: you don't declare your variables at the top of the file.
-#-
-#- Also, this method is unnecessary: do proto.Unmarshal and access the values
-#- directly.
-#-
-+	var the_type int
-+	var subject *string
-+	var action *string
-+	var resource *string
-+	var owner *string
-+	var status *string
-+	var message *string
-+	var size *int
-+	var buf []byte
-+
-+	the_type = -1
-+	the_type32 = nil
-+	subject = nil
-+	action = nil
-+	resource = nil
-+	owner = nil
-+	status = nil
-+	message = nil
-+	size = nil
-+	buf = nil
-+
-+	fpMessage := new(FPMessage)
-+	err := proto.Unmarshal(in, fpMessage)
-+	the_type32 = fpMessage.MessageType
-+	if the_type32 == nil {
-+		return &the_type, subject, action, resource, owner, status, message, size, buf,
-+			errors.New("No type")
++	if len(m.PrincipalArray) >= cap(m.PrincipalArray) {
++		t := make([]PrincipalInfo, 2*cap(m.PrincipalArray))
++		copy(t, m.PrincipalArray)
++		m.PrincipalArray = t
 +	}
-+	the_type = int(*the_type32)
-+	if the_type == int(MessageType_REQUEST) {
++	m.PrincipalArray = m.PrincipalArray[0 : len(m.PrincipalArray)+1]
++	n := len(m.PrincipalArray) - 1
 #*
 #* author: Tom Roeder
 #* email: tmroeder@google.com
-#* date: 2014-10-24T11:46:06-0700
+#* date: 2014-11-10T12:37:57-0800
 #*
-#- Don't cast to int: use the type declared by the protobuf.
+#- There's an easier way than this: check out the built-in function append().
 #-
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-24T11:45:27-0700
-#*
-#- Use a case statement so you can make sure you handle all the types.
-#-
-+		subject = fpMessage.SubjectName
-+		action = fpMessage.ActionName
-+		resource = fpMessage.ResourceName
-+		owner = fpMessage.ResourceOwner
-+		return &the_type, subject, action, resource, owner, status, message, size, buf, err
-+	} else if the_type == int(MessageType_RESPONSE) {
-+		if fpMessage.StatusOfRequest != nil {
-+			status = fpMessage.StatusOfRequest
-+		}
-+		if fpMessage.MessageFromRequest != nil {
-+			message = fpMessage.MessageFromRequest
-+		}
-+		return &the_type, subject, action, resource, owner, status, message, size, buf, err
-+	} else if the_type == int(MessageType_FILE_NEXT) || the_type == int(MessageType_FILE_LAST) {
-+		size32 := *fpMessage.BufferSize
-+		size1 := int(size32)
-+		size = &size1
-+		str := fpMessage.TheBuffer
-+		buf = []byte(*str)
-+		return &the_type, subject, action, resource, owner, status, message, size, buf, nil
-+	} else if the_type == int(MessageType_PROTOCOL_RESPONSE) {
-+		size32 := *fpMessage.BufferSize
-+		size1 := int(size32)
-+		size = &size1
-+		str := fpMessage.TheBuffer
-+		buf = []byte(*str)
-+		return &the_type, subject, action, resource, owner, status, message, size, buf, nil
-+	} else {
-+		fmt.Printf("Decode message bad message type %d\n", the_type)
-+		return &the_type, subject, action, resource, owner, status, message, size, buf,
-+			errors.New("Unknown message type")
-+	}
-+}
-+
-+func EncodeMessage(theType int, subject *string, action *string, resourcename *string, owner *string,
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-24T11:46:52-0700
-#*
-#- This method is also unnecessary: construct the protobuf directly as a struct.
-#-
-+	status *string, reqMessage *string, size *int, buf []byte) ([]byte, error) {
-+	fmt.Printf("filehandler: encodeMessage\n")
-+	fmt.Printf("EncodeMessage %d\n", theType)
-+	protoMessage := new(FPMessage)
-+	protoMessage.MessageType = proto.Int(theType)
-+	if theType == int(MessageType_REQUEST) {
-+		protoMessage.SubjectName = proto.String(*subject)
-+		protoMessage.ActionName = proto.String(*action)
-+		protoMessage.ResourceName = proto.String(*resourcename)
-+		protoMessage.ResourceOwner = proto.String(*owner)
-+	} else if theType == int(MessageType_RESPONSE) {
-+		protoMessage.StatusOfRequest = proto.String(*status)
-+		protoMessage.MessageFromRequest = proto.String(*reqMessage)
-+	} else if theType == int(MessageType_FILE_NEXT) || theType == int(MessageType_FILE_LAST) {
-+		protoMessage.BufferSize = proto.Int(*size)
-+		protoMessage.TheBuffer = proto.String(string(buf))
-+	} else if theType == int(MessageType_PROTOCOL_RESPONSE) {
-+		protoMessage.BufferSize = proto.Int(*size)
-+		protoMessage.TheBuffer = proto.String(string(buf))
-+	} else {
-+		fmt.Print("EncodeMessage, Bad message type: %d\n", theType)
-+		return nil, errors.New("encodemessage, unknown message type\n")
-+	}
-+	out, err := proto.Marshal(protoMessage)
-+	fmt.Printf("Marshaled %d\n", len(out))
-+	return out, err
++	m.PrincipalArray[n].Name = name
++	m.PrincipalArray[n].Der = cert
++	m.PrincipalArray[n].Status = authStatus
++	return &m.PrincipalArray[n], nil
 +}
 +
 +func (m *ResourceMaster) Delete(resourceName string) error {
 +	return nil // not implemented
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-24T11:47:27-0700
-#*
-#- Implement?
-#-
 +}
 +
 +func (m *ResourceMaster) EncodeMaster() ([]byte, error) {
-+	fmt.Printf("filehandler: encodeMaster\n")
++	log.Printf("filehandler: encodeMaster\n")
 +	protoMessage := new(FPResourceMaster)
-+	protoMessage.PrinName = proto.String(m.program)
-+	protoMessage.BaseDirectoryName = proto.String(m.baseDirectory)
-+	protoMessage.NumFileinfos = proto.Int(len(m.resourceArray))
-+	out, err := proto.Marshal(protoMessage)
-+	return out, err
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-24T11:47:49-0700
-#*
-#- These two lines should be one:
-#-
-#- return proto.Marshal(protoMessage)
-#-
-#- And, in fact, this method should probably be something like
-#-
-#- fpr := &FPResourceMaster{
-#-   PrinName: proto.String(m.program),
-#-   BaseDirectoryName: proto.String(m.baseDirectory),
-#-   NumFileinfos: proto.Int(len(m.resourceArray)), // not needed?
-#- }
-#- return proto.Marshal(fpr)
-#-
-#- And this should be inlined into the code unless it's used more than once. I
-#- don't currently see it being used at all.
-#-
-#- This same comment applies to all the Encode/Decode method pairs here.
++	protoMessage.PrinName = proto.String(m.ProgramName)
++	protoMessage.BaseDirectoryName = proto.String(m.BaseDirectory)
++	protoMessage.NumFileinfos = proto.Int(len(m.ResourceArray))
++	return proto.Marshal(protoMessage)
 +}
 +
 +func (m *ResourceMaster) DecodeMaster(in []byte) (*int, error) {
-+	fmt.Printf("filehandler: DecodeMaster\n")
++	log.Printf("filehandler: DecodeMaster\n")
 +	rMessage := new(FPResourceMaster)
-+	_ = proto.Unmarshal(in, rMessage)
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-24T11:47:39-0700
-#*
-#- Don't ignore errors
-#-
-+	m.program = *rMessage.PrinName
-+	m.baseDirectory = *rMessage.BaseDirectoryName
++	err := proto.Unmarshal(in, rMessage)
++	if err != nil {
++		return nil, err
++	}
++	m.ProgramName = *rMessage.PrinName
++	m.BaseDirectory = *rMessage.BaseDirectoryName
 +	size := *rMessage.NumFileinfos
 +	isize := int(size) //TODO: Fix
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-24T11:50:47-0700
-#*
-#- No size field needed.
-#-
 +	return &isize, nil
 +}
 +
++func (m *ResourceMaster) PrintMaster(printResources bool) {
++	log.Printf("Program principal: %s\n", m.ProgramName)
++	log.Printf("Base Directory: %s\n", m.BaseDirectory)
++	log.Printf("%d resources\n", len(m.ResourceArray))
++	if printResources {
++		for i := range m.ResourceArray {
++			m.ResourceArray[i].PrintResourceInfo()
++		}
++	}
++}
++
 +func (r *ResourceInfo) EncodeResourceInfo() ([]byte, error) {
-+	fmt.Printf("filehandler: encodeResourceInfo\n")
++	log.Printf("filehandler: encodeResourceInfo\n")
 +	protoMessage := new(FPResourceInfo)
-+	protoMessage.ResourceName = proto.String(r.resourceName)
-+	protoMessage.ResourceType = proto.String(r.resourceType)
-+	protoMessage.ResourceStatus = proto.String(r.resourceStatus)
-+	protoMessage.ResourceLocation = proto.String(r.resourceLocation)
-+	protoMessage.ResourceSize = proto.Int(r.resourceSize)
-+	//Fix: protoMessage.ResourceOwner= proto.Bytes(r.resourceOwner);
++	protoMessage.ResourceName = proto.String(r.ResourceName)
++	protoMessage.ResourceType = proto.String(r.ResourceType)
++	protoMessage.ResourceStatus = proto.String(r.ResourceStatus)
++	protoMessage.ResourceLocation = proto.String(r.ResourceLocation)
++	protoMessage.ResourceSize = proto.Int(r.ResourceSize)
++	//Fix: protoMessage.ResourceOwner= proto.Bytes(r.ResourceOwner);
 +	out, err := proto.Marshal(protoMessage)
 +	return out, err
 +}
 +
 +func (r *ResourceInfo) DecodeResourceInfo(in []byte) error {
-+	fmt.Printf("filehandler: DecodeResourceInfo\n")
++	log.Printf("filehandler: DecodeResourceInfo\n")
 +	rMessage := new(FPResourceInfo)
 +	_ = proto.Unmarshal(in, rMessage)
-+	r.resourceName = *rMessage.ResourceName
-+	r.resourceType = *rMessage.ResourceType
-+	r.resourceLocation = *rMessage.ResourceLocation
-+	r.resourceSize = int(*rMessage.ResourceSize)
-+	r.resourceOwner = *rMessage.ResourceOwner
++	r.ResourceName = *rMessage.ResourceName
++	r.ResourceType = *rMessage.ResourceType
++	r.ResourceLocation = *rMessage.ResourceLocation
++	r.ResourceSize = int(*rMessage.ResourceSize)
++	r.ResourceOwner = *rMessage.ResourceOwner
 +	return nil
 +}
 +
 +func (r *ResourceInfo) PrintResourceInfo() {
-+	fmt.Printf("Resource name: %s\n", r.resourceName)
-+	fmt.Printf("Resource type: %s\n", r.resourceType)
-+	fmt.Printf("Resource status: %s\n", r.resourceStatus)
-+	fmt.Printf("Resource location: %s\n", r.resourceLocation)
-+	fmt.Printf("Resource size: %d\n", r.resourceSize)
-+	fmt.Printf("Resource creation date: %s\n", r.dateCreated)
-+	fmt.Printf("Resource modified date: %s\n", r.dateModified)
-+	fmt.Printf("\n")
++	log.Printf("Resource name: %s\n", r.ResourceName)
++	log.Printf("Resource type: %s\n", r.ResourceType)
++	log.Printf("Resource status: %s\n", r.ResourceStatus)
++	log.Printf("Resource location: %s\n", r.ResourceLocation)
++	log.Printf("Resource size: %d\n", r.ResourceSize)
++	log.Printf("Resource creation date: %s\n", r.DateCreated)
++	log.Printf("Resource modified date: %s\n", r.DateModified)
++	log.Printf("\n")
 +}
 +
-+func (m *ResourceMaster) PrintMaster(printResources bool) {
-+	fmt.Printf("Program principal: %s\n", m.program)
-+	fmt.Printf("Base Directory: %s\n", m.baseDirectory)
-+	fmt.Printf("%d resources\n", len(m.resourceArray))
-+	if printResources {
-+		for i := 0; i < len(m.resourceArray); i++ {
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-24T11:51:34-0700
-#*
-#- convert to a range for loop
-#-
-+			m.resourceArray[i].PrintResourceInfo()
-+		}
++func (p *PrincipalInfo) EncodePrincipal() ([]byte, error) {
++	log.Printf("filehandler: encodePrincipalInfo\n")
++	protoMessage := new(FPPrincipalInfo)
++	protoMessage.PrincipalName = proto.String(p.Name)
++	protoMessage.PrincipalStatus = proto.String(p.Status)
++	protoMessage.PrincipalCert = proto.String(string(p.Der))
++	out, err := proto.Marshal(protoMessage)
++	return out, err
++}
++
++func (p *PrincipalInfo) DecodePrincipal(in []byte) error {
++	log.Printf("filehandler: DecodePrincipalInfo\n")
++	rMessage := new(FPPrincipalInfo)
++	_ = proto.Unmarshal(in, rMessage)
++	p.Name = *rMessage.PrincipalName
++	p.Status = *rMessage.PrincipalStatus
++	p.Der = []byte(*rMessage.PrincipalCert)
++	return nil
++}
++
++func (p *PrincipalInfo) PrintPrincipal() {
++	log.Printf("Principal name: %s\n", p.Name)
++	log.Printf("Principal status: %s\n", p.Status)
++	log.Printf("Principal cert: %s\n", p.Der)
++	log.Printf("\n")
++}
++
++func (m *ResourceMaster) PrintAllPolicy() {
++	for i := range m.Policy {
++		log.Printf("Rule: %s\n", m.Policy[i])
++	}
++	for i := range m.AdditionalPolicy {
++		log.Printf("Rule: %s\n", m.AdditionalPolicy[i])
 +	}
 +}
 +
 +func (m *ResourceMaster) InitGuard(rulefile string) error {
-+	fmt.Printf("filehandler: InitGuard\n")
++	log.Printf("filehandler: InitGuard\n")
 +	m.Guard = tao.NewTemporaryDatalogGuard()
-+	for _, r := range policy {
-+		if err := m.Guard.AddRule(r); err != nil {
++	for i := range m.Policy {
++		if err := m.Guard.AddRule(m.Policy[i]); err != nil {
 +			return errors.New("Couldn't add rule in InitGuard")
 +		}
 +	}
 +
-+	for _, r := range additional_policy {
-+		if err := m.Guard.AddRule(r); err != nil {
++	for i := range m.AdditionalPolicy {
++		if err := m.Guard.AddRule(m.AdditionalPolicy[i]); err != nil {
 +			return errors.New("Couldn't add rule in InitGuard")
 +		}
 +	}
-+
-+	/*
-+		// The FileServer owns the test resource.
-+		try("Owner(\"FServer\", \"test\")",
-+		    "The FileServer doesn't own the test resource, but it should",
-+		    true,
-+		    td)
-+	*/
-+	// Remove this
-+	m.Guard = tao.LiberalGuard
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-24T11:52:07-0700
-#*
-#- Indeed, this needs to be removed
-#-
-+
 +	return nil
 +}
 +
-+func (m *ResourceMaster) SaveRules(g tao.Guard, rulefile string) error {
-+	fmt.Printf("filehandler: SaveRules\n")
++func (m *ResourceMaster) ReadRules(rulefile string) error {
++	log.Printf("filehandler: ReadRules\n")
 +	// no need for rules
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-24T11:52:37-0700
-#*
-#- These do need to be saved, right?
-#-
 +	return nil
 +}
 +
-+func (m *ResourceMaster) GetResourceData(masterInfoFile string, resourceInfoArrayFile string) error {
-+	fmt.Printf("filehandler: GetResourceData\n")
-+	// read master info
-+	// decrypt it
-+	// read resourceinfos
-+	// decrypt it
-+
-+	// read rule file
-+	// decrypt it
++func (m *ResourceMaster) SaveRules(rulefile string) error {
++	log.Printf("filehandler: SaveRules\n")
++	// no need for rules
 +	return nil
 +}
 +
-+func (m *ResourceMaster) SaveResourceData(masterInfoFile string, resourceInfoArrayFile string) error {
-+	fmt.Printf("filehandler: SaveResourceData\n")
-+	// encrypt master info
-+	// write master info
-+	// encrypt fileinfos
-+	// write fileinfos
-+	// encrypt rules
-+	// write rules
++func (m *ResourceMaster) GetResourceData(masterFile string, resourceFile string, principalFile string, ruleFile string) error {
++	log.Printf("filehandler: GetResourceData\n")
++	// TODO: decrypt the files
++	// Read master
++	masterRecord, _ := ioutil.ReadFile(masterFile)
++	_, _ = m.DecodeMaster([]byte(masterRecord))
++	log.Printf("masterRecord size: %d\n", len(masterRecord))
++
++	// Save resources
++	fo, _ := os.Open(resourceFile)
++	rs := util.NewMessageStream(fo)
++	for i := range m.ResourceArray {
++		resourceRecord, _ := rs.ReadString()
++		_ = m.ResourceArray[i].DecodeResourceInfo([]byte(resourceRecord))
++		log.Printf("resourceRecord size: %d\n", len(resourceRecord))
++	}
++	fo.Close()
++
++	// Read principals
++	fo, _ = os.Open(principalFile)
++	ps := util.NewMessageStream(fo)
++	for i := range m.PrincipalArray {
++		principalRecord, _ := ps.ReadString()
++		_ = m.PrincipalArray[i].DecodePrincipal([]byte(principalRecord))
++		log.Printf("principalRecord size: %d\n", len(principalRecord))
++	}
++	fo.Close()
++
++	// Read rules
++	_ = m.ReadRules(ruleFile)
 +	return nil
 +}
 +
-+// return values: subject, action, resourcename, size, error
-+func EncodeRequest(subject string, action string, resourcename string, owner string) ([]byte, error) {
-+	fmt.Printf("filehandler: encodeRequest\n")
-+	out, err := EncodeMessage(int(MessageType_REQUEST), &subject, &action, &resourcename, &owner,
-+		nil, nil, nil, nil)
-+	return out, err
-+}
++func (m *ResourceMaster) SaveResourceData(masterFile string, resourceFile string, principalFile string, ruleFile string) error {
++	log.Printf("filehandler: SaveResourceData\n")
++	// TODO: encrypt the files
++	// Save master
++	masterRecord, _ := m.EncodeMaster()
++	log.Printf("masterRecord size: %d\n", len(masterRecord))
++	ioutil.WriteFile(masterFile, masterRecord, os.ModePerm)
++	// Save resources
++	fo, _ := os.Create(resourceFile)
++	rs := util.NewMessageStream(fo)
++	for i := range m.ResourceArray {
++		resourceRecord, _ := m.ResourceArray[i].EncodeResourceInfo()
++		log.Printf("resourceRecord size: %d\n", len(resourceRecord))
++		_, _ = rs.WriteString(string(resourceRecord))
++	}
++	fo.Close()
++	// Save principals
++	fo, _ = os.Create(principalFile)
++	ps := util.NewMessageStream(fo)
++	for i := range m.PrincipalArray {
++		principalRecord, _ := m.PrincipalArray[i].EncodePrincipal()
++		log.Printf("principalRecord size: %d\n", len(principalRecord))
++		_, _ = ps.WriteString(string(principalRecord))
++	}
++	fo.Close()
 +
-+// return values: subject, action, resourcename, owner, error
-+func DecodeRequest(in []byte) (*string, *string, *string, *string, error) {
-+	fmt.Printf("filehandler: DecodeRequest\n")
-+	theType, subject, action, resource, owner, status, message, size, buf, err := DecodeMessage(in)
-+	if err != nil {
-+		fmt.Printf("DecodeRequest error: ", err)
-+		fmt.Printf("\n")
-+		return nil, nil, nil, nil, err
-+	}
-+	if *theType != int(MessageType_REQUEST) {
-+		return nil, nil, nil, nil, errors.New("Cant Decode request")
-+	}
-+	if err != nil {
-+		return nil, nil, nil, nil, err
-+	}
-+	if status != nil || message != nil || size != nil || buf != nil {
-+		return nil, nil, nil, nil, errors.New("malformed request")
-+	}
-+	return subject, action, resource, owner, nil
-+}
-+
-+func PrintRequest(subject *string, action *string, resource *string, owner *string) {
-+	fmt.Printf("PrintRequest\n")
-+	if subject != nil {
-+		fmt.Printf("\tsubject: %s\n", *subject)
-+	}
-+	if action != nil {
-+		fmt.Printf("\taction: %s\n", *action)
-+	}
-+	if resource != nil {
-+		fmt.Printf("\tresource: %s\n", *resource)
-+	}
-+	if owner != nil {
-+		fmt.Printf("\towner: %s\n", *owner)
-+	}
-+}
-+
-+// return: status, message, size, error
-+func GetResponse(ms *util.MessageStream) (*string, *string, *int, error) {
-+	fmt.Printf("filehandler: GetResponse\n")
-+	strbytes, err := ms.ReadString()
-+	if err != nil {
-+		return nil, nil, nil, err
-+	}
-+	fmt.Printf("GetResponse read %d bytes\n", len(strbytes))
-+	theType, _, _, _, _, status, message, size, _, err := DecodeMessage([]byte(strbytes))
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-24T11:54:46-0700
-#*
-#- The fact that this is ignoring parts of the message strongly suggest that
-#- DecodeMessage needs to be refactored. I suspect, as I said above, that it can
-#- be dropped entirely and can be replaced by simple protobuf + struct
-#- manipulation and examination.
-#-
-#- Same comment for all the places that have Encode with lots of nil values.
-#- That's a strong signal that this code is not factored right.
-#-
-+	if err != nil {
-+		fmt.Printf("DecodeMessage error in GetResponse\n")
-+		return nil, nil, nil, err
-+	}
-+	if status == nil {
-+		fmt.Printf("DecodeMessage in getresponse returned nil status")
-+	} else {
-+		fmt.Printf("DecodeMessage in getresponse returned %s (status)\n", *status)
-+	}
-+	fmt.Printf("GetResponse %d\n", len(strbytes))
-+	if *theType != int(MessageType_RESPONSE) {
-+		return nil, nil, nil, errors.New("Wrong message type")
-+	}
-+	return status, message, size, nil
-+}
-+
-+func PrintResponse(status *string, message *string, size *int) {
-+	fmt.Printf("PrintResponse\n")
-+	if status != nil {
-+		fmt.Printf("\tstatus: %s\n", *status)
-+	} else {
-+		fmt.Printf("\tstatus: empty\n")
-+	}
-+	if message != nil {
-+		fmt.Printf("\tmessage: %s\n", *message)
-+	}
-+	if size != nil {
-+		fmt.Printf("\tsize: %d\n", *size)
-+	}
-+}
-+
-+func SendResponse(ms *util.MessageStream, status string, message string, size int) error {
-+	out, err := EncodeMessage(int(MessageType_RESPONSE), nil, nil, nil, nil, &status, &message, &size, nil)
-+	if err != nil {
-+		fmt.Printf("EncodeMessage fails in SendResponse\n")
-+		return err
-+	}
-+	send := string(out)
-+	fmt.Printf("filehandler: SendResponse sending %s %s %d\n", status, message, len(send))
-+	n, err := ms.WriteString(send)
-+	if err != nil {
-+		fmt.Printf("filehandler: SendResponse Writestring error %d\n", n, err)
-+		return err
-+	}
++	// Save rules
++	_ = m.SaveRules(ruleFile)
 +	return nil
 +}
 +
-+func SendProtocolMessage(ms *util.MessageStream, size int, buf []byte) error {
-+	fmt.Printf("filehandler: SendProtocolMessage\n")
-+	out, err := EncodeMessage(int(MessageType_PROTOCOL_RESPONSE), nil, nil, nil, nil, nil, nil, &size, buf)
-+	if err != nil {
-+		fmt.Printf("EncodeMessage fails in SendProtocolMessage\n")
-+		return err
-+	}
-+	send := string(out)
-+	n, err := ms.WriteString(send)
-+	if err != nil {
-+		fmt.Printf("filehandler: SendProtocolMessage Writestring error %d\n", n, err)
-+		return err
-+	}
-+	return nil
-+}
-+
-+func GetProtocolMessage(ms *util.MessageStream) ([]byte, error) {
-+	fmt.Printf("filehandler: GetProtocolMessage\n")
-+	strbytes, err := ms.ReadString()
-+	if err != nil {
-+		return nil, err
-+	}
-+	fmt.Printf("GetProtocolMessage read %d bytes\n", len(strbytes))
-+	theType, _, _, _, _, _, _, _, out, err := DecodeMessage([]byte(strbytes))
-+	if err != nil {
-+		fmt.Printf("DecodeMessage error in GetProtocolMessage\n")
-+		return nil, err
-+	}
-+	if *theType != int(MessageType_PROTOCOL_RESPONSE) {
-+		return nil, errors.New("Wrong message type")
-+	}
-+	return out, nil
-+}
-+
-+func AuthenticatePrincipal(m *ResourceMaster, ms *util.MessageStream) (bool, []byte) {
-+	fmt.Printf("AuthenticatePrincipal\n")
++func AuthenticatePrincipal(m *ResourceMaster, ms *util.MessageStream, programPolicyObject *ProgramPolicy) (bool, []byte) {
++	log.Printf("AuthenticatePrincipal\n")
 +	offeredCert, err := GetProtocolMessage(ms)
 +	if err != nil {
-+		fmt.Printf("cant GetProtocolMessage in AuthenticatePrincipal % x\n", offeredCert)
++		log.Printf("cant GetProtocolMessage in AuthenticatePrincipal % x\n", offeredCert)
 +	}
-+	fmt.Printf("AuthenticatePrincipal: got offered cert\n")
-+	c := 32
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-24T11:56:23-0700
-#*
-#- What is 32? Make a constant for this length.
-#-
-+	nonce := make([]byte, c)
++	nonce := make([]byte, SizeofNonce)
 +	_, err = rand.Read(nonce)
 +	if err != nil {
-+		fmt.Printf("Rand error in AuthenticatePrincipal\n")
++		log.Printf("Rand error in AuthenticatePrincipal\n")
 +	}
-+	fmt.Printf("nonce: % x\n", nonce)
 +	SendProtocolMessage(ms, len(nonce), nonce)
-+	fmt.Printf("AuthenticatePrincipal: sent nonce\n")
 +	signedRand, err := GetProtocolMessage(ms)
 +	if err != nil {
-+		fmt.Printf("cant GetProtocolMessage in AuthenticatePrincipal\n")
++		log.Printf("cant GetProtocolMessage in AuthenticatePrincipal\n")
 +	}
-+	fmt.Printf("AuthenticatePrincipal: got signed nonce % x\n", signedRand)
-+	// decrypt nonce
++	log.Printf("AuthenticatePrincipal: got signed nonce % x\n", signedRand)
++	// Decrypt nonce
 +	cert, err := x509.ParseCertificate(offeredCert)
 +	if err != nil {
-+		fmt.Printf("cant Parse Certificate in AuthenticatePrincipal\n")
++		log.Printf("cant Parse Certificate in AuthenticatePrincipal\n")
 +	}
 +	v, err := tao.FromX509(cert)
 +	if err != nil {
-+		fmt.Printf("cant get verifier from x509 AuthenticatePrincipal\n")
++		log.Printf("cant get verifier from x509 AuthenticatePrincipal\n")
 +	}
-+	ok, _ := v.Verify(nonce, "fileproxy-challenge", signedRand)
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-24T11:57:19-0700
-#*
-#- Check error
-#-
++	ok, err := v.Verify(nonce, ChallengeContext, signedRand)
++	if err != nil {
++		return false, nil
++	}
 +	if ok {
-+		fmt.Printf("nonce verified\n")
++		var opts x509.VerifyOptions
++		roots := x509.NewCertPool()
++		if !programPolicyObject.Initialized {
++			log.Printf("MyProgramPolicy not initialized")
++			return false, nil
++		}
++		policyCert, err := x509.ParseCertificate(programPolicyObject.ThePolicyCert)
++		if err != nil || policyCert == nil {
++			log.Printf("Can't parse policy cert")
++			return false, nil
++		}
++		roots.AddCert(policyCert)
++		opts.Roots = roots
++		// Now check cert chain
++		chains, err := cert.Verify(opts)
++		if chains == nil || err != nil {
++			log.Printf("Can't validate cert chain to policy")
++			return false, nil
++		}
++		log.Printf("Cert chain for challenge verified\n")
++	}
++	if ok {
++		log.Printf("nonce verified\n")
 +	} else {
-+		fmt.Printf("nonce did not verified\n")
++		log.Printf("nonce did not verified\n")
 +	}
 +	var status string
 +	if ok {
@@ -1713,109 +1346,70 @@ index 0000000..4e8def7
 +}
 +
 +func AuthenticatePrincipalRequest(ms *util.MessageStream, key *tao.Keys, derCert []byte) bool {
-+	fmt.Printf("AuthenticatePrincipalRequest\n")
-+	// format request
-+	subject := "jlm"
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-24T11:57:41-0700
-#*
-#- Don't hard-code the principal name here. This should be an argument to the
-#- function.
-#-
++	log.Printf("AuthenticatePrincipalRequest\n")
++	// Format request
++	subject := string(derCert)
 +	action := "authenticateprincipal"
-+	owner := "jlm"
-+	message, err := EncodeMessage(int(MessageType_REQUEST), &subject, &action, &subject, &owner,
-+		nil, nil, nil, nil)
++	err := SendRequest(ms, &subject, &action, &subject, nil)
 +	if err != nil {
-+		fmt.Printf("AuthenticatePrincipalRequest couldnt build request\n")
-+		return false
++		log.Printf("AuthenticatePrincipalRequest: couldn't send request\n")
 +	}
-+	fmt.Printf("AuthenticatePrincipalRequest request %d, ", len(message))
-+	fmt.Printf("\n")
-+	_, _ = ms.WriteString(string(message))
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-24T11:58:01-0700
-#*
-#- Check the error
-#-
-+	fmt.Printf("AuthenticatePrincipalRequest: sent request\n")
 +	SendProtocolMessage(ms, len(derCert), derCert)
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-24T11:58:20-0700
-#*
-#- Length not needed.
-#-
-+	fmt.Printf("AuthenticatePrincipalRequest: sent cert\n")
 +	nonce, err := GetProtocolMessage(ms)
 +	if err != nil {
-+		fmt.Printf("cant GetProtocolMessage in AuthenticatePrincipalRequest\n")
++		log.Printf("cant GetProtocolMessage in AuthenticatePrincipalRequest\n")
 +		return false
 +	}
-+	fmt.Printf("AuthenticatePrincipalRequest: got nonce\n")
-+	// encrypt nonce
++	log.Printf("AuthenticatePrincipalRequest: got nonce\n")
++	// Encrypt nonce
 +	signedBlob, err := key.SigningKey.Sign(nonce, "fileproxy-challenge")
-#*
-#* author: Tom Roeder
-#* email: tmroeder@google.com
-#* date: 2014-10-24T11:58:32-0700
-#*
-#- This context should be a constant in the file so we can make sure it's used
-#- consistently.
-#-
 +	if err != nil {
-+		fmt.Printf("AuthenticatePrincipalRequest: cant sign\n")
++		log.Printf("AuthenticatePrincipalRequest: cant sign\n")
 +	}
 +	SendProtocolMessage(ms, len(signedBlob), signedBlob)
-+	fmt.Printf("AuthenticatePrincipalRequest: sent signed\n")
++	log.Printf("AuthenticatePrincipalRequest: sent signed\n")
 +	status, _, _, err := GetResponse(ms)
 +	if err != nil {
-+		fmt.Printf("cant GetResponse in AuthenticatePrincipalRequest\n")
++		log.Printf("cant GetResponse in AuthenticatePrincipalRequest\n")
 +		return false
 +	}
-+	fmt.Printf("AuthenticatePrincipalRequest: status of response: %s\n", *status)
++	log.Printf("AuthenticatePrincipalRequest: status of response: %s\n", *status)
 +	return true
 +}
 +
-+func readRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string) error {
-+	fmt.Printf("filehandler: readRequest\n")
-+	rInfo, _ := m.Find(resourcename)
++func readRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string, symKey []byte) error {
++	log.Printf("filehandler: readRequest\n")
++	rInfo, _ := m.FindResource(resourcename)
 +	if rInfo == nil {
 +		SendResponse(ms, "failed", "resource does not exist", 0)
 +		return nil
 +	}
 +	status := "succeeded"
 +	SendResponse(ms, status, "", 0)
-+	return SendFile(ms, m.baseDirectory, resourcename, nil)
++	return SendFile(ms, m.BaseDirectory, resourcename, symKey)
 +}
 +
-+func writeRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string) error {
-+	fmt.Printf("filehandler: writeRequest\n")
-+	rInfo, _ := m.Find(resourcename)
++func writeRequest(m *ResourceMaster, ms *util.MessageStream, resourcename string, symKey []byte) error {
++	log.Printf("filehandler: writeRequest\n")
++	rInfo, _ := m.FindResource(resourcename)
 +	if rInfo == nil {
 +		SendResponse(ms, "failed", "resource does not exist", 0)
 +		return nil
 +	}
 +	status := "succeeded"
 +	SendResponse(ms, status, "", 0)
-+	return GetFile(ms, m.baseDirectory, resourcename, nil)
++	return GetFile(ms, m.BaseDirectory, resourcename, symKey)
 +}
 +
 +func createRequest(m *ResourceMaster, ms *util.MessageStream,
 +	resourcename string, owner string) error {
-+	fmt.Printf("filehandler: createRequest\n")
-+	rInfo, _ := m.Find(resourcename)
++	log.Printf("filehandler: createRequest\n")
++	rInfo, _ := m.FindResource(resourcename)
 +	if rInfo != nil {
 +		SendResponse(ms, "failed", "resource exists", 0)
 +		return nil
 +	}
-+	// Is it authorized
-+	rInfo, _ = m.Insert(m.baseDirectory, resourcename, owner)
++	rInfo, _ = m.InsertResource(m.BaseDirectory, resourcename, owner)
 +	if rInfo == nil {
 +		SendResponse(ms, "failed", "cant insert resource", 0)
 +		return nil
@@ -1823,7 +1417,29 @@ index 0000000..4e8def7
 +	rInfo.PrintResourceInfo()
 +	status := "succeeded"
 +	SendResponse(ms, status, "", 0)
-+	addResource(owner, resourcename, m.Guard)
++	return nil
++}
++
++func newruleRequest(m *ResourceMaster, ms *util.MessageStream,
++	rule string, signerCert []byte) error {
++
++	log.Printf("filehandler, newruleRequest, rule: %s\n", rule)
++	signerName := PrincipalNameFromDERCert(signerCert)
++	if signerName == nil {
++		log.Printf("filehandler, newruleRequest: cant get name from cert\n")
++		return nil
++	}
++	prin, err := m.FindPrincipal(*signerName)
++	if prin != nil {
++		log.Printf("filehandler, newRuleRequest: found principal, %s %s\n", prin.Name, prin.Status)
++	}
++	if err != nil || prin == nil || !bytes.Equal(prin.Der, signerCert) {
++		SendResponse(ms, "failed", "cert doesn't match", 0)
++		return nil
++	}
++	// Check a signature?
++	m.Guard.AddRule(rule)
++	SendResponse(ms, "succeeded", "", 0)
 +	return nil
 +}
 +
@@ -1843,138 +1459,233 @@ index 0000000..4e8def7
 +	return errors.New("deleteOwnerRequest not implemented")
 +}
 +
-+// first return value is terminate flag
-+func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, request []byte) (bool, error) {
-+	fmt.Printf("filehandler: HandleServiceRequest\n")
-+	subject, action, resourcename, owner, err := DecodeRequest(request)
-+	if err != nil {
-+		return false, err
++func (m *ResourceMaster) certToAuthenticatedName(subjectCert []byte) *string {
++	if subjectCert == nil {
++		return nil
 +	}
-+	fmt.Printf("HandleServiceRequest\n")
-+	PrintRequest(subject, action, resourcename, owner)
++	var subjectName *string
++	subjectName = nil
++	subjectName = PrincipalNameFromDERCert([]byte(subjectCert))
++	if subjectName == nil {
++		log.Printf("filehandler, certToAuthenticatedName: cant get name from cert\n")
++		return nil
++	}
++	prin, err := m.FindPrincipal(*subjectName)
++	if prin != nil {
++		log.Printf("filehandler, certToAuthenticatedName: found principal, %s %s\n", prin.Name, prin.Status)
++	}
++	if err != nil || prin == nil || bytes.Equal(prin.Der, []byte(*subjectName)) {
++		return nil
++	}
++	return subjectName
++}
 +
-+	if *action == "authenticateprincipal" {
-+		ok, ownerCert := AuthenticatePrincipal(m, ms)
-+		if !ok {
++// First return value is terminate flag
++func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, programPolicyObject *ProgramPolicy, clientProgramName string, request []byte) (bool, error) {
++	log.Printf("filehandler: HandleServiceRequest\n")
++
++	fpMessage := new(FPMessage)
++	err := proto.Unmarshal(request, fpMessage)
++	if err != nil {
++		return false, errors.New("HandleService can't unmarshal request")
++	}
++	if fpMessage.MessageType == nil {
++		return false, errors.New("HandleService: no message type")
++	}
++	switch MessageType(*fpMessage.MessageType) {
++	default:
++		return false, errors.New("HandleService does not get MessageType_REQUEST")
++	case MessageType_REQUEST:
++	}
++	action := fpMessage.ActionName
++	if action == nil {
++		SendResponse(ms, "failed", "", 0)
++		return false, errors.New("no action")
++	}
++	subject := fpMessage.SubjectName
++	resourceName := fpMessage.ResourceName
++	owner := fpMessage.ResourceOwner
++
++	log.Printf("HandleServiceRequest %s\n", *action)
++
++	switch *action {
++	case "authenticateprincipal":
++		ok, ownerCert := AuthenticatePrincipal(m, ms, programPolicyObject)
++		if ok {
 +			ownerName := PrincipalNameFromDERCert([]byte(ownerCert))
-+			_, err = m.InsertPrincipal(*ownerName, []byte(ownerCert))
++			if ownerName == nil {
++				log.Printf("can't get ownername after AuthenticatePrincipal\n")
++				return false, nil
++			}
++			log.Printf("filehandler inserting %s %s\n", *ownerName, "authenticated")
++			_, err = m.InsertPrincipal(*ownerName, []byte(ownerCert), "authenticated")
 +			if err != nil {
-+				fmt.Printf("cant insert principal name in file\n")
++				log.Printf("cant insert principal name in file\n")
 +				return false, errors.New("cant insert principal name in file")
 +			}
-+			fmt.Printf("HandleServiceRequest: Added %s to Principal table\n")
++			log.Printf("HandleServiceRequest: Added %s to Principal table\n", *ownerName)
 +			return false, nil
 +		} else {
 +			return false, errors.New("AuthenticatePrincipal failed")
 +		}
++	case "sendrule":
++		log.Printf("filehandler sendrule %s\n", *resourceName)
++		if resourceName == nil || owner == nil {
++			SendResponse(ms, "failed", "no ownername or resourcename", 0)
++			return false, nil
++		}
++		err = newruleRequest(m, ms, *resourceName /* rule */, []byte(*owner))
++		if err != nil {
++			return false, errors.New("Can't construct newrulequest")
++		}
++		return false, nil
++	default:
 +	}
 +
-+	// replace owner with name
++	// Replace owner and subject with name
 +	var ownerName *string
 +	ownerName = nil
 +	if owner != nil {
-+		// enable the following as soon as we send certs
-+		/*
-+			ownerName= PrincipalNameFromDERCert(*owner)
-+			if(ownerName==nil) {
-+				status:= "failed"
-+				message:= "unknown owner specified"
-+				SendResponse(ms, status, message, 0);
-+			}
-+			return false, errors.New("unknown owner")
-+		*/
-+		ownerName = owner
++		ownerName = m.certToAuthenticatedName([]byte(*owner))
++		if ownerName == nil {
++			status := "failed"
++			message := "unknown owner specified"
++			SendResponse(ms, status, message, 0)
++			return false, errors.New("unauthenticated principal")
++		}
++	}
++	var subjectName *string
++	subjectName = nil
++	if subject != nil {
++		subjectName = m.certToAuthenticatedName([]byte(*subject))
++		if subjectName == nil {
++			status := "failed"
++			message := "unknown owner specified"
++			SendResponse(ms, status, message, 0)
++			return false, errors.New("unauthenticated principal")
++		}
++	}
++	if subjectName != nil {
++		log.Printf("filehandler, HandleRequest, Subjectname: %s\n", *subjectName)
++	}
++	if ownerName != nil {
++		log.Printf("filehandler, HandleRequest, Ownername: %s\n", *ownerName)
 +	}
 +
-+	// is it authorized?
++	// Is it authorized?
 +	var ok bool
-+	if *action == "create" {
++	switch *action {
++	case "create":
++		if ownerName == nil {
++			SendResponse(ms, "failed", "no owner name", 0)
++			return false, nil
++		}
++		addResource(*ownerName, *resourceName, m.Guard)
 +		fileserverSubject := "fileserver"
-+		query := makeQuery(fileserverSubject, *action, *resourcename, *ownerName)
++		query := makeQuery(fileserverSubject, *action, *resourceName)
 +		if query == nil {
-+			fmt.Printf("bad query")
++			log.Printf("bad query")
 +		}
 +		ok = m.Query(*query)
-+	} else if *action == "getfile" {
-+		query := makeQuery(*subject, *action, *resourcename, *ownerName)
++
++	case "getfile":
++		if subjectName == nil || resourceName == nil {
++			SendResponse(ms, "failed", "no subjectname or resourcename", 0)
++			return false, nil
++		}
++		query := makeQuery(*subjectName, *action, *resourceName)
 +		if query == nil {
-+			fmt.Printf("bad query")
++			log.Printf("bad query")
 +		}
 +		ok = m.Query(*query)
-+	} else if *action == "sendfile" {
-+		query := makeQuery(*subject, *action, *resourcename, *ownerName)
++	case "sendfile":
++		if subjectName == nil || resourceName == nil {
++			SendResponse(ms, "failed", "no subjectname or resourcename", 0)
++			return false, nil
++		}
++		query := makeQuery(*subjectName, *action, *resourceName)
 +		if query == nil {
-+			fmt.Printf("bad query")
++			log.Printf("bad query")
 +		}
 +		ok = m.Query(*query)
-+	} else {
++	default:
 +		ok = false
 +	}
 +	if ok == false {
-+		status := "failed"
-+		message := "unauthorized"
-+		SendResponse(ms, status, message, 0)
++		SendResponse(ms, "failed", "unauthorized", 0)
 +		return false, nil
 +	}
 +
-+	if *action == "create" {
-+		if resourcename == nil || ownerName == nil {
++	switch *action {
++	case "create":
++		if resourceName == nil || ownerName == nil {
 +			return false, errors.New("Nil parameters for createRequest")
 +		}
-+		err := createRequest(m, ms, *resourcename, *ownerName)
++		err := createRequest(m, ms, *resourceName, *ownerName)
 +		return false, err
-+	} else if *action == "delete" {
-+		err := deleteRequest(m, ms, *resourcename)
++	case "delete":
++		err := deleteRequest(m, ms, *resourceName)
 +		return false, err
-+	} else if *action == "getfile" {
-+		err := readRequest(m, ms, *resourcename)
++	case "getfile":
++		if programPolicyObject.MySymKeys == nil {
++			log.Printf("HandleFileRequest, getfile keys nil\n")
++		} else {
++			log.Printf("HandleFileRequest, getfile keys NOT nil\n")
++		}
++		err := readRequest(m, ms, *resourceName, programPolicyObject.MySymKeys)
 +		return false, err
-+	} else if *action == "sendfile" {
-+		err := writeRequest(m, ms, *resourcename)
++	case "sendfile":
++		if programPolicyObject.MySymKeys == nil {
++			log.Printf("HandleFileRequest, sendfile keys nil\n")
++		} else {
++			log.Printf("HandleFileRequest, sendfile keys NOT nil\n")
++		}
++		err := writeRequest(m, ms, *resourceName, programPolicyObject.MySymKeys)
 +		return false, err
-+	} else if *action == "terminate" {
++	case "terminate":
 +		return true, nil
-+	} else {
-+		status := "failed"
-+		message := "unsupported action"
-+		SendResponse(ms, status, message, 0)
++	default:
++		SendResponse(ms, "failed", "unsupported action", 0)
 +		return false, errors.New("unsupported action")
 +	}
 +}
 +
 +func (m *ResourceMaster) InitMaster(filepath string, masterInfoDir string, prin string) error {
-+	fmt.Printf("filehandler: InitMaster\n")
-+	m.GetResourceData(masterInfoDir+"masterinfo", masterInfoDir+"resources")
-+	m.NumResources = 0
-+	m.NumPrincipals = 0
-+	m.baseDirectory = filepath
++	log.Printf("filehandler: InitMaster\n")
++	m.Policy = policy
++	m.AdditionalPolicy = additional_policy
++	m.ResourceArray = make([]ResourceInfo, 100)
++	m.ResourceArray = m.ResourceArray[0:0]
++	m.PrincipalArray = make([]PrincipalInfo, 100)
++	m.PrincipalArray = m.PrincipalArray[0:0]
++	m.BaseDirectory = filepath
 +	m.InitGuard(masterInfoDir + "rules")
++	m.PrintAllPolicy()
 +	return nil
 +}
 +
 +func (m *ResourceMaster) SaveMaster(masterInfoDir string) error {
-+	fmt.Printf("filehandler: SaveMaster\n")
-+	err := m.SaveResourceData(masterInfoDir+"masterinfo", masterInfoDir+"resources")
++	log.Printf("filehandler: SaveMaster\n")
++	err := m.SaveResourceData(masterInfoDir+"masterFile", masterInfoDir+"resourceFile",
++		masterInfoDir+"resourceFile", masterInfoDir+"ruleFile")
 +	if err != nil {
-+		fmt.Printf("filehandler: cant m.SaveResourceData\n")
++		log.Printf("filehandler: cant m.SaveResourceData\n")
 +		return err
 +	}
-+	return m.SaveRules(m.Guard, masterInfoDir+"rules")
++	return m.SaveRules(masterInfoDir + "rules")
 +}
 diff --git a/apps/fileproxy/fileproxy.go b/apps/fileproxy/fileproxy.go
 new file mode 100644
-index 0000000..fbb4162
+index 0000000..58ec4fb
 --- /dev/null
 +++ b/apps/fileproxy/fileproxy.go
-@@ -0,0 +1,401 @@
-+// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
+@@ -0,0 +1,782 @@
++// Copyright (c) 2014, Google Corporation.  All rights reserved.
 +//
 +// Licensed under the Apache License, Version 2.0 (the "License");
 +// you may not use this file except in compliance with the License.
 +// You may obtain a copy of the License at
-+//
 +//     http://www.apache.org/licenses/LICENSE-2.0
-+//
 +// Unless required by applicable law or agreed to in writing, software
 +// distributed under the License is distributed on an "AS IS" BASIS,
 +// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -1986,31 +1697,64 @@ index 0000000..fbb4162
 +package fileproxy
 +
 +import (
-+	"code.google.com/p/goprotobuf/proto"
++	"bytes"
++	"crypto/aes"
++	"crypto/cipher"
++	"crypto/hmac"
++	"crypto/rand"
++	"crypto/sha256"
 +	"crypto/tls"
 +	"crypto/x509"
 +	"errors"
 +	"flag"
-+	"fmt"
++	"hash"
++	"io"
++	"io/ioutil"
++	"log"
++	"os"
++	"strings"
++
++	"code.google.com/p/goprotobuf/proto"
++
 +	"github.com/jlmucb/cloudproxy/tao"
 +	"github.com/jlmucb/cloudproxy/tao/auth"
 +	taonet "github.com/jlmucb/cloudproxy/tao/net"
 +	"github.com/jlmucb/cloudproxy/util"
-+	"io/ioutil"
-+	"os"
-+	"strings"
 +)
 +
 +var caAddr = flag.String("caAddr", "localhost:8124", "The address to listen on")
 +var taoChannelAddr = flag.String("taoChannelAddr", "localhost:8124", "The address to listen on")
 +var configPath = flag.String("config", "tao.config", "The Tao domain config")
 +
++const SizeofSymmetricKeys = 64
++
++type ProgramPolicy struct {
++	Initialized   bool
++	TaoName       string
++	ThePolicyCert []byte
++	MySigningKey  tao.Keys
++	MySymKeys     []byte
++	MyProgramCert []byte
++}
++
++func (pp *ProgramPolicy) InitProgramPolicy(policyCert []byte, taoName string, signingKey tao.Keys, symKeys []byte, programCert []byte) bool {
++	log.Printf("InitProgramPolicy\n")
++	pp.ThePolicyCert = policyCert
++	pp.TaoName = taoName
++	pp.MySigningKey = signingKey
++	pp.MySymKeys = symKeys
++	pp.MyProgramCert = programCert
++	pp.Initialized = true
++	log.Printf("InitProgramPolicy done\n")
++	return true
++}
++
 +// RequestTruncatedAttestation connects to a CA instance, sends the attestation
 +// for an X.509 certificate, and gets back a truncated attestation with a new
 +// principal name based on the policy key.
 +func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys, v *tao.Verifier) (*tao.Attestation, error) {
 +	if keys.Cert == nil {
-+		return nil, fmt.Errorf("client: can't dial with an empty client certificate\n")
++		return nil, errors.New("client: can't dial with an empty client certificate\n")
 +	}
 +	tlsCert, err := taonet.EncodeTLSCert(keys)
 +	if err != nil {
@@ -2043,7 +1787,7 @@ index 0000000..fbb4162
 +		return nil, err
 +	}
 +	if !ok {
-+		return nil, fmt.Errorf("invalid attestation signature from Tao CA")
++		return nil, errors.New("invalid attestation signature from Tao CA")
 +	}
 +
 +	return &a, nil
@@ -2056,59 +1800,63 @@ index 0000000..fbb4162
 +	}
 +}
 +
++func PrincipalNameFromDERCert(derCert []byte) *string {
++	cert, err := x509.ParseCertificate(derCert)
++	if err != nil {
++		log.Printf("PrincipalNameFromDERCert: Can't get name from certificate\n")
++		return nil
++	}
++	cn := cert.Subject.CommonName
++	return &cn
++}
++
 +// returns sealed symmetric key, sealed signing key, DER encoded cert, delegation, error
-+func GetMyCryptoMaterial(path string) ([]byte, []byte, []byte, []byte, error) {
-+	// stat domain.config
-+	fileinfo, err := os.Stat(path + "sealedsymmetrickey")
++func LoadProgramKeys(path string) ([]byte, []byte, []byte, []byte, error) {
++	_, err := os.Stat(path + "sealedsymmetrickey")
 +	if err != nil {
 +		return nil, nil, nil, nil, err
 +	}
-+	fmt.Printf("fileproxy: Size of %s is %d\n", path+"sealedsymmetricKey", fileinfo.Size())
-+	fileinfo, err = os.Stat(path + "sealedsigningKey")
++	_, err = os.Stat(path + "sealedsigningKey")
 +	if err != nil {
 +		return nil, nil, nil, nil, err
 +	}
-+	fmt.Printf("fileproxy: Size of %s is %d\n", path+"sealedsigningKey", fileinfo.Size())
-+	fileinfo, err = os.Stat(path + "signerCert")
++	_, err = os.Stat(path + "signerCert")
 +	if err != nil {
 +		return nil, nil, nil, nil, err
 +	}
-+	fmt.Printf("fileproxy: Size of %s is %d\n", path+"signerCert", fileinfo.Size())
 +
 +	sealedSymmetricKey, err := ioutil.ReadFile(path + "sealedsymmetricKey")
 +	if err != nil {
 +		return nil, nil, nil, nil, err
 +	}
-+	fmt.Printf("fileproxy: Got sealedSymmetricKey\n")
++	log.Printf("fileproxy: Got sealedSymmetricKey\n")
 +	sealedSigningKey, err := ioutil.ReadFile(path + "sealedsigningKey")
-+	fmt.Printf("sealedSigningKey: ", sealedSigningKey)
-+	fmt.Printf("\n")
 +	if err != nil {
 +		return nil, nil, nil, nil, err
 +	}
-+	fmt.Printf("fileproxy: Got sealedSigningKey\n")
++	log.Printf("fileproxy: Got sealedSigningKey\n")
 +	derCert, err := ioutil.ReadFile(path + "signerCert")
 +	if err != nil {
 +		return nil, nil, nil, nil, err
 +	}
-+	fmt.Printf("fileproxy: Got signerCert\n")
++	log.Printf("fileproxy: Got signerCert\n")
 +	ds, err := ioutil.ReadFile(path + "delegationBlob")
 +	if err != nil {
 +		return nil, nil, nil, nil, err
 +	}
-+	fmt.Printf(" GetMyCryptoMaterial succeeded\n")
++	log.Printf("LoadProgramKeys succeeded\n")
 +	return sealedSymmetricKey, sealedSigningKey, derCert, ds, nil
 +}
 +
 +func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
++	log.Printf("CreateSigningKey\n")
 +	self, err := t.GetTaoName()
 +	k, err := tao.NewTemporaryKeys(tao.Signing)
 +	if k == nil || err != nil {
-+		return nil, nil, errors.New("Cant generate signing key")
++		return nil, nil, errors.New("Can't generate signing key")
 +	}
 +	publicString := strings.Replace(self.String(), "(", "", -1)
 +	publicString = strings.Replace(publicString, ")", "", -1)
-+	fmt.Printf("fileclient, publicString: %s\n", publicString)
 +	details := tao.X509Details{
 +		Country:      "US",
 +		Organization: "Google",
@@ -2118,8 +1866,6 @@ index 0000000..fbb4162
 +	if err != nil {
 +		return nil, nil, errors.New("Can't self sign cert\n")
 +	}
-+	fmt.Printf("fileproxy: derCert: %x\n", derCert)
-+	fmt.Printf("\n")
 +	cert, err := x509.ParseCertificate(derCert)
 +	if err != nil {
 +		return nil, nil, err
@@ -2129,54 +1875,52 @@ index 0000000..fbb4162
 +		Delegate:  k.SigningKey.ToPrincipal(),
 +		Delegator: self}
 +	if s == nil {
-+		return nil, nil, errors.New("Cant produce speaksfor")
++		return nil, nil, errors.New("Can't produce speaksfor")
 +	}
 +	if k.Delegation, err = t.Attest(&self, nil, nil, s); err != nil {
 +		return nil, nil, err
 +	}
 +	if err == nil {
-+		temp, _ := auth.UnmarshalForm(k.Delegation.SerializedStatement)
-+		fmt.Printf("fileproxy: deserialized statement: %s\n", temp.String())
++		_, _ = auth.UnmarshalForm(k.Delegation.SerializedStatement)
 +	}
 +	return k, derCert, nil
 +}
 +
 +func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) ([]byte, error) {
++	log.Printf("InitializeSealedSymmetricKeys\n")
 +	unsealed, err := tao.Parent().GetRandomBytes(keysize)
 +	if err != nil {
-+		return nil, errors.New("Cant get random bytes")
++		return nil, errors.New("Can't get random bytes")
 +	}
 +	sealed, err := tao.Parent().Seal(unsealed, tao.SealPolicyDefault)
 +	if err != nil {
-+		return nil, errors.New("Cant seal random bytes")
++		return nil, errors.New("Can't seal random bytes")
 +	}
 +	ioutil.WriteFile(path+"sealedsymmetrickey", sealed, os.ModePerm)
 +	return unsealed, nil
 +}
 +
 +func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao.Keys, error) {
++	log.Printf("InitializeSealedSigningKey\n")
 +	k, derCert, err := CreateSigningKey(t)
 +	if err != nil {
-+		fmt.Printf("fileproxy: CreateSigningKey failed with error %s\n", err)
++		log.Printf("fileproxy: CreateSigningKey failed with error %s\n", err)
 +		return nil, err
 +	}
 +	if derCert == nil {
-+		fmt.Printf("fileproxy: CreateSigningKey failed, no dercert\n")
++		log.Printf("fileproxy: CreateSigningKey failed, no dercert\n")
 +		return nil, errors.New("No DER cert")
 +	}
 +	na, err := RequestKeyNegoAttestation("tcp", *caAddr, k, domain.Keys.VerifyingKey)
 +	if err != nil {
-+		fmt.Printf("fileproxy: error from taonet.RequestTruncatedAttestation\n")
++		log.Printf("fileproxy: error from taonet.RequestTruncatedAttestation\n")
 +		return nil, err
 +	}
 +	if na == nil {
 +		return nil, errors.New("tao returned nil attestation")
 +	}
 +	k.Delegation = na
-+	fmt.Printf("\n")
 +	pa, _ := auth.UnmarshalForm(na.SerializedStatement)
-+	fmt.Printf("returned attestation: %s", pa.String())
-+	fmt.Printf("\n")
 +	var saysStatement *auth.Says
 +	if ptr, ok := pa.(*auth.Says); ok {
 +		saysStatement = ptr
@@ -2191,22 +1935,20 @@ index 0000000..fbb4162
 +	if ok != true {
 +		return nil, errors.New("speaksfor message doesnt have Delegate")
 +	}
-+	// newCert:= kprin.Key.(auth.Bytes)
 +	newCert := auth.Bytes(kprin.(auth.Bytes))
-+	// get cert from attestation and save attestation
 +	k.Cert, err = x509.ParseCertificate(newCert)
 +	if err != nil {
-+		fmt.Printf("cant parse returned certificate", err)
-+		fmt.Printf("\n")
++		log.Printf("can't parse returned certificate", err)
++		log.Printf("\n")
 +		return nil, err
 +	}
 +	signingKeyBlob, err := tao.MarshalSignerDER(k.SigningKey)
 +	if err != nil {
-+		return nil, errors.New("Cant produce signing key blob")
++		return nil, errors.New("Can't produce signing key blob")
 +	}
 +	sealedSigningKey, err := t.Seal(signingKeyBlob, tao.SealPolicyDefault)
 +	if err != nil {
-+		return nil, errors.New("Cant seal signing key")
++		return nil, errors.New("Can't seal signing key")
 +	}
 +	err = ioutil.WriteFile(path+"sealedsigningKey", sealedSigningKey, os.ModePerm)
 +	if err != nil {
@@ -2218,7 +1960,7 @@ index 0000000..fbb4162
 +	}
 +	delegateBlob, err := proto.Marshal(k.Delegation)
 +	if err != nil {
-+		return nil, errors.New("Cant seal random bytes")
++		return nil, errors.New("Can't seal random bytes")
 +	}
 +	err = ioutil.WriteFile(path+"delegationBlob", delegateBlob, os.ModePerm)
 +	if err != nil {
@@ -2228,137 +1970,489 @@ index 0000000..fbb4162
 +}
 +
 +func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte, delegateBlob []byte) (*tao.Keys, error) {
++	log.Printf("SigningKeyFromBlob\n")
 +	k := &tao.Keys{}
-+
-+	fmt.Printf("SigningKeyFromBlob, certBlob % x\n", certBlob)
-+	fmt.Printf("\n")
 +	cert, err := x509.ParseCertificate(certBlob)
 +	if err != nil {
 +		return nil, err
 +	}
-+	fmt.Printf("SigningKeyFromBlob: got cert\n")
 +	k.Cert = cert
 +	k.Delegation = new(tao.Attestation)
 +	err = proto.Unmarshal(delegateBlob, k.Delegation)
 +	if err != nil {
 +		return nil, err
 +	}
-+	fmt.Printf("SigningKeyFromBlob: unmarshaled\n")
++	log.Printf("SigningKeyFromBlob: unmarshaled\n")
 +	signingKeyBlob, policy, err := tao.Parent().Unseal(sealedKeyBlob)
 +	if err != nil {
-+		fmt.Printf("fileproxy: signingkey unsealing error: %s\n", err)
++		log.Printf("fileproxy: signingkey unsealing error: %s\n", err)
 +	}
 +	if policy != tao.SealPolicyDefault {
-+		fmt.Printf("fileproxy: unexpected policy on unseal\n")
++		log.Printf("fileproxy: unexpected policy on unseal\n")
 +	}
-+	fmt.Printf("fileproxy: Unsealed Signing Key blob: %x\n", signingKeyBlob)
++	log.Printf("fileproxy: Unsealed Signing Key blob: %x\n", signingKeyBlob)
 +	k.SigningKey, err = tao.UnmarshalSignerDER(signingKeyBlob)
 +	k.Cert = cert
 +	return k, err
 +}
 +
-+func SendFile(ms *util.MessageStream, path string, filename string, keys []byte) error {
-+	fmt.Printf("SendFile %s%s\n", path, filename)
-+	// TODO: later read incrementally and send multiple blocks
-+	contents, err := ioutil.ReadFile(path + filename)
-+	if err != nil {
-+		fmt.Printf("SendFile error reading file %s, ", path+filename, err)
-+		fmt.Printf("\n")
-+		return errors.New("fileproxy: SendFile no such file")
++func SendRequest(ms *util.MessageStream, subject *string, action *string, item *string, owner *string) error {
++	if action == nil {
++		log.Printf("SendRequest\n")
++	} else {
++		log.Printf("SendRequest %s\n", *action)
 +	}
-+	n := len(contents)
-+	size := n
-+	fmt.Printf("SendFile contents % x\n", contents)
-+	out, err := EncodeMessage(int(MessageType_FILE_LAST), nil, nil, &filename, nil,
-+		nil, nil, &size, contents)
++	fpMessage := new(FPMessage)
++	fpMessage.MessageType = proto.Int32(int32(MessageType_REQUEST))
++	if subject != nil {
++		fpMessage.SubjectName = proto.String(string(*subject))
++	}
++	if action != nil {
++		fpMessage.ActionName = proto.String(*action)
++	}
++	if item != nil {
++		fpMessage.ResourceName = proto.String(*item)
++	}
++	if owner != nil {
++		fpMessage.ResourceOwner = proto.String(*owner)
++	}
++	out, err := proto.Marshal(fpMessage)
 +	if err != nil {
-+		fmt.Printf("SendFile cant encode message\n")
++		log.Printf("SendRequest: can't marshal message\n")
 +		return errors.New("transmission error")
 +	}
-+	_, _ = ms.WriteString(string(out))
++	_, err = ms.WriteString(string(out))
++	return err
++}
++
++func SendCounterRequest(ms *util.MessageStream, counter int64) error {
++	log.Printf("SendCounterRequest")
++	fpMessage := new(FPMessage)
++	fpMessage.MessageType = proto.Int32(int32(MessageType_REQUEST))
++	fpMessage.ActionName = proto.String("setrollbackcounter")
++	fpMessage.MonotonicCounter = proto.Int64(counter)
++	log.Printf("SendCounterRequest, counter: %d\n", counter)
++	out, err := proto.Marshal(fpMessage)
++	if err != nil {
++		log.Printf("SendCounterRequest: can't marshal message\n")
++		return errors.New("transmission error")
++	}
++
++	_, err = ms.WriteString(string(out))
++	return err
++}
++
++func SendCounterResponse(ms *util.MessageStream, status string, errMessage string, counter int64) error {
++	log.Printf("SendCounterResponse %d\n", counter)
++	fpMessage := new(FPMessage)
++	fpMessage.MessageType = proto.Int32(int32(MessageType_RESPONSE))
++	fpMessage.MonotonicCounter = proto.Int64(counter)
++	fpMessage.StatusOfRequest = proto.String(status)
++	fpMessage.MessageFromRequest = proto.String(errMessage)
++	out, err := proto.Marshal(fpMessage)
++	if err != nil {
++		log.Printf("SendCounterResponse: can't marshal message\n")
++		return errors.New("transmission error")
++	}
++
++	_, err = ms.WriteString(string(out))
++	return err
++}
++
++func PrintRequest(subject []byte, action *string, resource *string, owner []byte) {
++	log.Printf("PrintRequest\n")
++	if subject != nil {
++		log.Printf("\tsubject: % x\n", subject)
++		subjectName := PrincipalNameFromDERCert(subject)
++		if subjectName != nil {
++			log.Printf("\tsubject: %s\n", *subjectName)
++		}
++	}
++	if action != nil {
++		log.Printf("\taction: %s\n", *action)
++	}
++	if resource != nil {
++		log.Printf("\tresource: %s\n", *resource)
++	}
++	if owner != nil {
++		log.Printf("\towner: % x\n", owner)
++		ownerName := PrincipalNameFromDERCert(owner)
++		if ownerName != nil {
++			log.Printf("\towner: %s\n", *ownerName)
++		}
++	}
++}
++
++func GetResponse(ms *util.MessageStream) (*string, *string, *int, error) {
++	log.Printf("GetResponse\n")
++
++	strbytes, err := ms.ReadString()
++
++	fpMessage := new(FPMessage)
++	err = proto.Unmarshal([]byte(strbytes), fpMessage)
++	if err != nil {
++		return nil, nil, nil, errors.New("GetResponse can't unmarshal message")
++	}
++	if fpMessage.MessageType == nil {
++		return nil, nil, nil, errors.New("GetResponse: no message type")
++	}
++	if *fpMessage.MessageType != int32(MessageType_RESPONSE) {
++		log.Printf("GetResponse bad type\n")
++		return nil, nil, nil, errors.New("reception error")
++	}
++	var status *string
++	var errMessage *string
++	var size int
++
++	if fpMessage.StatusOfRequest == nil {
++		log.Printf("GetResponse no status\n")
++		return nil, nil, nil, errors.New("reception error")
++	}
++	status = fpMessage.StatusOfRequest
++	errMessage = fpMessage.MessageFromRequest
++	if fpMessage.BufferSize == nil {
++		return status, errMessage, nil, nil
++	} else {
++		size = int(*fpMessage.BufferSize)
++		return status, errMessage, &size, nil
++	}
++}
++
++func GetCounterResponse(ms *util.MessageStream) (*string, *string, *int64, error) {
++	strbytes, err := ms.ReadString()
++	log.Printf("GetCounterResponse read %d bytes\n", len(strbytes))
++
++	fpMessage := new(FPMessage)
++	err = proto.Unmarshal([]byte(strbytes), fpMessage)
++	if err != nil {
++		return nil, nil, nil, errors.New("GetCounterResponse can't unmarshal message")
++	}
++	if fpMessage.MessageType == nil {
++		return nil, nil, nil, errors.New("GetCounterResponse: no message type")
++	}
++	if *fpMessage.MessageType != int32(MessageType_RESPONSE) {
++		log.Printf("GetCounterResponse bad type\n")
++		return nil, nil, nil, errors.New("reception error")
++	}
++	var status *string
++	var errMessage *string
++
++	if fpMessage.StatusOfRequest == nil {
++		log.Printf("GetResponse no status\n")
++		return nil, nil, nil, errors.New("reception error")
++	}
++	status = fpMessage.StatusOfRequest
++	if status == nil {
++		log.Printf("GetCounterResponse status is nil\n")
++	} else {
++		log.Printf("GetCounterResponse status: %s\n", *status)
++	}
++	errMessage = fpMessage.MessageFromRequest
++	if fpMessage.MonotonicCounter == nil {
++		log.Printf("GetCounterResponse fpMessage.MonotonicCounter is nil\n")
++		return status, errMessage, nil, nil
++	} else {
++		counter := *fpMessage.MonotonicCounter
++		log.Printf("GetCounterResponse counter: %d\n", counter)
++		return status, errMessage, &counter, nil
++	}
++}
++
++func PrintResponse(status *string, message *string, size *int) {
++	log.Printf("PrintResponse\n")
++	if status != nil {
++		log.Printf("\tstatus: %s\n", *status)
++	} else {
++		log.Printf("\tstatus: empty\n")
++	}
++	if message != nil {
++		log.Printf("\tmessage: %s\n", *message)
++	}
++	if size != nil {
++		log.Printf("\tsize: %d\n", *size)
++	}
++}
++
++func SendResponse(ms *util.MessageStream, status string, errMessage string, size int) error {
++	fpMessage := new(FPMessage)
++	fpMessage.MessageType = proto.Int32(int32(MessageType_RESPONSE))
++	fpMessage.StatusOfRequest = proto.String(status)
++	fpMessage.MessageFromRequest = proto.String(errMessage)
++	out, err := proto.Marshal(fpMessage)
++	if err != nil {
++		log.Printf("SendResponse can't encode response\n")
++		return err
++	}
++	send := string(out)
++	log.Printf("SendResponse sending %s %s %d\n", status, errMessage, len(send))
++	n, err := ms.WriteString(send)
++	if err != nil {
++		log.Printf("SendResponse Writestring error %d\n", n, err)
++		return err
++	}
++	return nil
++}
++
++func SendProtocolMessage(ms *util.MessageStream, size int, buf []byte) error {
++	log.Printf("SendProtocolMessage\n")
++	fpMessage := new(FPMessage)
++	fpMessage.MessageType = proto.Int32(int32(MessageType_PROTOCOL_RESPONSE))
++	fpMessage.BufferSize = proto.Int32(int32(size))
++	fpMessage.TheBuffer = proto.String(string(buf))
++	out, err := proto.Marshal(fpMessage)
++	if err != nil {
++		log.Printf("SendResponse can't encode response\n")
++		return err
++	}
++	n, err := ms.WriteString(string(out))
++	if err != nil {
++		log.Printf("SendProtocolMessage Writestring error %d\n", n, err)
++		return err
++	}
++	return nil
++}
++
++func GetProtocolMessage(ms *util.MessageStream) ([]byte, error) {
++	log.Printf("GetProtocolMessage\n")
++	strbytes, err := ms.ReadString()
++	if err != nil {
++		return nil, err
++	}
++	fpMessage := new(FPMessage)
++	err = proto.Unmarshal([]byte(strbytes), fpMessage)
++	if err != nil {
++		return nil, errors.New("GetProtocolMessage can't unmarshal message")
++	}
++	if fpMessage.MessageType == nil {
++		return nil, errors.New("GetProtocolMessage: no message type")
++	}
++	if *fpMessage.MessageType != int32(MessageType_PROTOCOL_RESPONSE) {
++		return nil, errors.New("GetProtocolMessage: Wrong message type")
++	}
++	out := fpMessage.TheBuffer
++	if out == nil {
++		return nil, errors.New("GetProtocolMessage: empty buffer")
++	}
++	return []byte(*out), nil
++}
++
++func SendFile(ms *util.MessageStream, path string, filename string, keys []byte) error {
++	log.Printf("SendFile %s%s\n", path, filename)
++
++	fpMessage := new(FPMessage)
++	var buf []byte
++	buf = make([]byte, 2048)
++	fileInfo, err := os.Stat(path + filename)
++	if err != nil {
++		return errors.New("SendFile no such file")
++	}
++	file, err := os.Open(path + filename)
++	if err != nil {
++		return errors.New("SendFile: can't open file ")
++	}
++	defer file.Close()
++
++	var aesObj cipher.Block
++	var iv [16]byte
++	var ctrCipher cipher.Stream
++
++	bytesLeft := int(fileInfo.Size())
++	var final bool
++	final = false
++	var toRead int
++	var plaintext []byte
++	var hmacObj hash.Hash
++	plaintext = make([]byte, 2048)
++	if keys != nil {
++		aesObj, err = aes.NewCipher(keys[0:16])
++		if err != nil || aesObj == nil {
++			log.Printf("SendFile can't create aes object")
++		}
++		// read iv
++		_, err := file.Read(iv[0:16])
++		if err != nil {
++			return err
++		}
++		hmacObj = hmac.New(sha256.New, keys[16:32])
++		log.Printf("SendFile initialized hmac keys %x", keys[16:32])
++		hmacObj.Write(iv[0:16])
++		log.Printf("SendFile wrote iv to hmac %x", iv)
++		ctrCipher = cipher.NewCTR(aesObj, iv[0:16])
++		if ctrCipher == nil {
++			log.Printf("SendFile can't create counter cipher object")
++		}
++		bytesLeft = bytesLeft - 16
++		log.Printf("sent iv message\n")
++	}
++	if keys != nil {
++		bytesLeft = bytesLeft - 32
++	}
++	for {
++		if bytesLeft <= 2048 {
++			toRead = bytesLeft
++			final = true
++		} else {
++			toRead = 2048
++		}
++		n, err := file.Read(buf[0:toRead])
++		if err != nil {
++			return err
++		}
++		if final {
++			fpMessage.MessageType = proto.Int32(int32(MessageType_FILE_LAST))
++		} else {
++			fpMessage.MessageType = proto.Int32(int32(MessageType_FILE_NEXT))
++		}
++		bytesLeft = bytesLeft - n
++		fpMessage.BufferSize = proto.Int32(int32(n))
++		if keys != nil {
++			hmacObj.Write(buf[0:n])
++			log.Printf("SendFile wrote to hmac %x", buf[0:n])
++			ctrCipher.XORKeyStream(plaintext[0:n], buf[0:n])
++			fpMessage.TheBuffer = proto.String(string(plaintext[0:n]))
++			log.Printf("sent cipher block %d\n", n)
++		} else {
++			fpMessage.TheBuffer = proto.String(string(buf[0:n]))
++		}
++		out, err := proto.Marshal(fpMessage)
++		if err != nil {
++			log.Printf("SendFile can't file contents message\n")
++			return errors.New("transmission error")
++		}
++		_, _ = ms.WriteString(string(out))
++		if final {
++			break
++		}
++	}
++	if keys != nil {
++		// read mac and check it
++		_, err := file.Read(buf[0:32])
++		if err != nil {
++			return err
++		}
++		mac := hmacObj.Sum(nil)
++		if bytes.Equal(mac, buf[0:32]) {
++			log.Printf("SendFile: hmac matches\n")
++		} else {
++			log.Printf("SendFile: hmac does not match\n")
++			log.Printf("expected: %x\n", mac)
++			log.Printf("received: %x\n", buf[0:32])
++		}
++	}
 +	return nil
 +}
 +
 +func GetFile(ms *util.MessageStream, path string, filename string, keys []byte) error {
-+	fmt.Printf("GetFile %s%s\n", path, filename)
-+	in, err := ms.ReadString()
++	log.Printf("GetFile %s%s\n", path, filename)
++	fpMessage := new(FPMessage)
++	var final bool
++	final = false
++	file, err := os.Create(path + filename)
 +	if err != nil {
-+		fmt.Printf("GetFile cant readstring ", err)
-+		fmt.Printf("\n")
-+		return errors.New("reception error")
++		return errors.New("GetFile can't creat file")
 +	}
-+	theType, _, _, _, _, _, _, size_buf, buf,
-+		err := DecodeMessage([]byte(in))
-+	fmt.Printf("GetFile buffer size: %d\n", *size_buf)
-+	if err != nil {
-+		fmt.Printf("GetFile cant decode message ", err)
-+		fmt.Printf("\n")
-+		return errors.New("reception error")
++	defer file.Close()
++
++	var aesObj cipher.Block
++	var iv [16]byte
++	var ctrCipher cipher.Stream
++	var ciphertext []byte
++	var hmacObj hash.Hash
++	ciphertext = make([]byte, 2048)
++	if keys != nil {
++		aesObj, err = aes.NewCipher(keys[0:16])
++		if err != nil || aesObj == nil {
++			log.Printf("GetFile can't create aes object")
++		}
++		hmacObj = hmac.New(sha256.New, keys[16:32])
++		log.Printf("GetFile initialized keys for hmac %x", keys[16:32])
++		if _, err := io.ReadFull(rand.Reader, iv[0:16]); err != nil {
++			panic(err)
++		}
++		hmacObj.Write(iv[0:16])
++		log.Printf("GetFile wrote iv to hmac %x", iv[0:16])
++		ctrCipher = cipher.NewCTR(aesObj, iv[0:16])
++		if ctrCipher == nil {
++			log.Printf("GetFile can't create counter cipher object")
++		}
++		_, err = file.Write(iv[0:16])
 +	}
-+	if theType == nil {
-+		fmt.Printf("GetFile bad type\n")
-+		return errors.New("reception error")
++
++	for {
++		in, err := ms.ReadString()
++		if err != nil {
++			log.Printf("GetFile can't readstring\n")
++			return errors.New("reception error")
++		}
++		err = proto.Unmarshal([]byte(in), fpMessage)
++		if err != nil {
++			return errors.New("GetFile can't unmarshal message")
++		}
++		if fpMessage.MessageType == nil {
++			return errors.New("GetFile no message type")
++		}
++		if *fpMessage.MessageType == int32(MessageType_FILE_LAST) {
++			final = true
++		} else if *fpMessage.MessageType == int32(MessageType_FILE_NEXT) {
++			final = false
++		} else {
++			log.Printf("GetFile bad message type\n")
++			return errors.New("reception error")
++		}
++		if fpMessage.BufferSize == nil {
++			log.Printf("GetFile no buffer size\n")
++			return errors.New("expected buffer size")
++		}
++		if fpMessage.TheBuffer == nil {
++			return errors.New("GetFile: empty buffer")
++		}
++		out := []byte(*fpMessage.TheBuffer)
++		if keys != nil {
++			ctrCipher.XORKeyStream(ciphertext, out[0:int(*fpMessage.BufferSize)])
++			hmacObj.Write(ciphertext[0:int(*fpMessage.BufferSize)])
++			log.Printf("GetFile wrote hmac %x", ciphertext[0:int(*fpMessage.BufferSize)])
++			_, err = file.Write(ciphertext[0:int(*fpMessage.BufferSize)])
++		} else {
++			_, err = file.Write(out[0:int(*fpMessage.BufferSize)])
++		}
++		if final {
++			break
++		}
 +	}
-+	if *theType != int(MessageType_FILE_LAST) {
-+		fmt.Printf("GetFile expecting message last\n")
-+		return errors.New("reception error")
++	if keys != nil {
++		// write Mac
++		hmacBytes := hmacObj.Sum(nil)
++		_, err = file.Write(hmacBytes[0:32])
 +	}
-+	fmt.Printf("GetFile writing %d bytes to %s\n", len(buf), path+filename)
-+	return ioutil.WriteFile(path+filename, buf, os.ModePerm)
++	return nil
 +}
 +
-+func SendSendFile(ms *util.MessageStream, creds []byte, filename string) error {
-+	fmt.Printf("SendSendFile, filename: %s\n", filename)
-+	subject := "jlm"
++func SendSendFile(ms *util.MessageStream, subjectCert []byte, filename string) error {
++	log.Printf("SendSendFile, filename: %s\n", filename)
++	subject := string(subjectCert)
 +	action := "sendfile"
-+	owner := "jlm"
-+	message, err := EncodeMessage(1, &subject, &action, &filename, &owner,
-+		nil, nil, nil, nil)
-+	if err != nil {
-+		fmt.Printf("SendSendFile couldnt build request\n")
-+		return errors.New("SendSendFile can't build request")
-+	}
-+	fmt.Printf("SendSendrequest %d, ", len(message))
-+	fmt.Printf("\n")
-+	written, _ := ms.WriteString(string(message))
-+	fmt.Printf("Bytes written %d\n", written)
-+	return nil
++	return SendRequest(ms, &subject, &action, &filename, nil)
 +}
 +
-+func SendGetFile(ms *util.MessageStream, creds []byte, filename string) error {
-+	fmt.Printf("SendGetFile, filename: %s\n", filename)
-+	subject := "jlm"
++func SendGetFile(ms *util.MessageStream, subjectCert []byte, filename string) error {
++	log.Printf("SendGetFile, filename: %s\n", filename)
++	subject := string(subjectCert)
 +	action := "getfile"
-+	owner := "jlm"
-+	message, err := EncodeMessage(int(MessageType_REQUEST), &subject, &action, &filename, &owner,
-+		nil, nil, nil, nil)
-+	if err != nil {
-+		fmt.Printf("SendGetFile couldnt build request\n")
-+		return errors.New("SendGetFile can't build request")
-+	}
-+	fmt.Printf("SendGetrequest %d, ", len(message))
-+	fmt.Printf("\n")
-+	written, _ := ms.WriteString(string(message))
-+	fmt.Printf("Bytes written %d\n", written)
-+	return nil
++	return SendRequest(ms, &subject, &action, &filename, nil)
 +}
 +
 +func SendCreateFile(ms *util.MessageStream, subjectCert []byte, filename string) error {
-+	fmt.Printf("SendCreateFile, filename: %s\n", filename)
-+	subject := "jlm"
++	log.Printf("SendCreateFile, filename: %s\n", filename)
++	subject := string(subjectCert)
 +	action := "create"
-+	owner := "jlm"
-+	message, err := EncodeMessage(int(MessageType_REQUEST), &subject, &action, &filename, &owner,
-+		nil, nil, nil, nil)
-+	if err != nil {
-+		fmt.Printf("SendCreateFile couldnt build request\n")
-+		return errors.New("SendCreateFile can't build request")
-+	}
-+	fmt.Printf("SendCreateFile request %d, ", len(message))
-+	fmt.Printf("\n")
-+	written, _ := ms.WriteString(string(message))
-+	fmt.Printf("Bytes written %d\n", written)
-+	return nil
++	return SendRequest(ms, &subject, &action, &filename, &subject)
++}
++
++func SendRule(ms *util.MessageStream, rule string, signerCert []byte) error {
++	log.Printf("SendRule, rule: %s\n", rule)
++	subject := string(signerCert)
++	action := "sendrule"
++	return SendRequest(ms, &subject, &action, &rule, &subject)
 +}
 +
 +func SendDeleteFile(ms *util.MessageStream, creds []byte, filename string) error {
@@ -2370,10 +2464,10 @@ index 0000000..fbb4162
 +}
 diff --git a/apps/fileproxy/fileproxymessages.proto b/apps/fileproxy/fileproxymessages.proto
 new file mode 100644
-index 0000000..ba0aaa6
+index 0000000..be1c6ab
 --- /dev/null
 +++ b/apps/fileproxy/fileproxymessages.proto
-@@ -0,0 +1,52 @@
+@@ -0,0 +1,59 @@
 +//  Copyright (c) 2013, Google Inc.  All rights reserved.
 +//
 +// Licensed under the Apache License, Version 2.0 (the "License");
@@ -2406,8 +2500,9 @@ index 0000000..ba0aaa6
 +  optional  string  resource_owner= 5;
 +  optional  string  status_of_request = 6;
 +  optional  string  message_from_request = 7;
-+  optional  int32   buffer_size = 8;
-+  optional  string  the_buffer = 9;
++  optional  int64   monotonic_counter= 8;
++  optional  int32   buffer_size = 9;
++  optional  string  the_buffer = 10;
 +}
 +
 +message FPResourceMaster {
@@ -2425,212 +2520,524 @@ index 0000000..ba0aaa6
 +  optional string resource_owner= 6;
 +}
 +
++message FPPrincipalInfo {
++  required string principal_name = 1;
++  required string principal_cert= 2;
++  required string principal_status = 3;
++}
++
 +
 diff --git a/apps/fileproxy/fileserver/fileserver.go b/apps/fileproxy/fileserver/fileserver.go
-new file mode 100644
-index 0000000..db93629
---- /dev/null
+index 0fb9819..d779d71 100644
+--- a/apps/fileproxy/fileserver/fileserver.go
 +++ b/apps/fileproxy/fileserver/fileserver.go
-@@ -0,0 +1,199 @@
-+// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
-+//
-+// Licensed under the Apache License, Version 2.0 (the "License");
-+// you may not use this file except in compliance with the License.
-+// You may obtain a copy of the License at
-+//
-+//     http://www.apache.org/licenses/LICENSE-2.0
-+//
-+// Unless required by applicable law or agreed to in writing, software
-+// distributed under the License is distributed on an "AS IS" BASIS,
-+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-+// See the License for the specific language governing permissions and
-+// limitations under the License.
+@@ -1,350 +1,236 @@
+-// Copyright (c) 2014, Kevin Walsh.  All rights reserved.
++// Copyright (c) 2014, Google Corporation.  All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+-//
+ //     http://www.apache.org/licenses/LICENSE-2.0
+-//
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+-// FIle: fileserver.go
 +//
 +// File: fileserver.go
-+
-+package main
-+
-+import (
-+	"crypto/tls"
-+	"crypto/x509"
-+	"flag"
-+	"fmt"
-+	"net"
+ 
+ package main
+ 
+ import (
+-	"bufio"
++	"crypto/sha256"
+ 	"crypto/tls"
+ 	"crypto/x509"
+-	"crypto/x509/pkix"
+-	"errors"
++	"encoding/hex"
+ 	"flag"
+-	"fmt"
++	"log"
+ 	"net"
+-	"os"
+-	"strings"
+-	"github.com/jlmucb/cloudproxy/tao"
 +
 +	"github.com/jlmucb/cloudproxy/apps/fileproxy"
 +	tao "github.com/jlmucb/cloudproxy/tao"
-+	"github.com/jlmucb/cloudproxy/tao/auth"
-+	taonet "github.com/jlmucb/cloudproxy/tao/net"
+ 	"github.com/jlmucb/cloudproxy/tao/auth"
+ 	taonet "github.com/jlmucb/cloudproxy/tao/net"
 +	"github.com/jlmucb/cloudproxy/util"
-+	// "io/ioutil"
-+)
-+
+ )
+ 
 +var hostcfg = flag.String("../hostdomain/tao.config", "../hostdomain/tao.config", "path to host tao configuration")
-+var serverHost = flag.String("host", "localhost", "address for client/server")
-+var serverPort = flag.String("port", "8123", "port for client/server")
-+var fileserverPath = flag.String("./fileserver_files/", "./fileserver_files/", "fileserver directory")
-+var fileserverFilePath = flag.String("./fileserver_files/stored_files/", "./fileserver_files/stored_files/",
+ var serverHost = flag.String("host", "localhost", "address for client/server")
+ var serverPort = flag.String("port", "8123", "port for client/server")
+-var serverAddr string // see main()
+-var localMode = flag.Bool("local", true, "Run host demo")
+-var clientMode = flag.Bool("client", true, "Run demo client")
+-var serverMode = flag.Bool("server", true, "Run demo server")
+-var pingCount = flag.Int("n", 5, "Number of client/server pings")
+-var demoAuth = flag.String("auth", "tao", "\"tcp\", \"tls\", or \"tao\"")
+-var configPath = flag.String("config", "tao.config", "The Tao domain config")
+-var ca = flag.String("ca", "", "address for Tao CA, if any")
+-
+-var subprinRule = "(forall P: forall Hash: TrustedProgramHash(Hash) and Subprin(P, %v, Hash) implies MemberProgram(P))"
+-var argsRule = "(forall Y: forall P: forall S: MemberProgram(P) and TrustedArgs(S) and Subprin(Y, P, S) implies Authorized(Y, \"Execute\"))"
+-var demoRule = "TrustedArgs(ext.Args(%s))"
+-
+-// client/server driver
+-
+-func doRequest(guard tao.Guard, domain *tao.Domain, keys *tao.Keys) bool {
+-	fmt.Printf("client: connecting to %s using %s authentication.\n", serverAddr, *demoAuth)
+-	var conn net.Conn
+-	var err error
+-	network := "tcp"
+-
+-	switch *demoAuth {
+-	case "tcp":
+-		conn, err = net.Dial(network, serverAddr)
+-	case "tls":
+-		conn, err = taonet.DialTLSWithKeys(network, serverAddr, keys)
+-	case "tao":
+-		conn, err = taonet.DialWithKeys(network, serverAddr, guard, domain.Keys.VerifyingKey, keys)
+-	}
+-	if err != nil {
+-		fmt.Printf("client: error connecting to %s: %s\n", serverAddr, err.Error())
+-		return false
+-	}
+-	defer conn.Close()
+-
+-	_, err = fmt.Fprintf(conn, "Hello\n")
+-	if err != nil {
+-		fmt.Printf("client: can't write: %s\n", err.Error())
+-		return false
+-	}
+-	msg, err := bufio.NewReader(conn).ReadString('\n')
+-	if err != nil {
+-		fmt.Printf("client can't read: %s\n", err.Error())
+-		return false
+-	}
+-	msg = strings.TrimSpace(msg)
+-	fmt.Printf("client: got reply: %s\n", msg)
+-	return true
+-}
++var fileserverPath = flag.String("fileserver_files/", "fileserver_files/", "fileserver directory")
++var fileserverFilePath = flag.String("fileserver_files/stored_files/", "fileserver_files/stored_files/",
 +	"fileserver directory")
 +var serverAddr string
 +var testFile = flag.String("originalTestFile", "originalTestFile", "test file")
-+
-+var DerPolicyCert []byte
-+var SigningKey tao.Keys
-+var SymKeys []byte
-+var ProgramCert []byte
-+var fileserverResourceMaster *fileproxy.ResourceMaster
-+
-+func clientServiceThead(ms *util.MessageStream, fileGuard tao.Guard) {
-+	fmt.Printf("fileserver: clientServiceThead\n")
+ 
+-func newTempCAGuard(v *tao.Verifier) (tao.Guard, error) {
+-	g := tao.NewTemporaryDatalogGuard()
+-	vprin := v.ToPrincipal()
+-	rule := fmt.Sprintf(subprinRule, vprin)
++func clientServiceThead(ms *util.MessageStream, clientProgramName string, fileServerProgramPolicy *fileproxy.ProgramPolicy, resourceMaster *fileproxy.ResourceMaster) {
++	log.Printf("fileserver: clientServiceThead\n")
+ 
+-	// Add a rule that says that valid args are the ones we were called with.
+-	args := ""
+-	for i, a := range os.Args {
+-		if i > 0 {
+-			args += ", "
 +	// How do I know if the connection terminates?
 +	for {
-+		fmt.Printf("clientServiceThead: ReadString\n")
++		log.Printf("clientServiceThead: ReadString\n")
 +		strbytes, err := ms.ReadString()
 +		if err != nil {
 +			return
 +		}
-+		terminate, err := fileserverResourceMaster.HandleServiceRequest(ms, []byte(strbytes))
++		terminate, err := resourceMaster.HandleServiceRequest(ms, fileServerProgramPolicy, clientProgramName, []byte(strbytes))
 +		if terminate {
 +			break
-+		}
-+	}
-+	fmt.Printf("fileserver: client thread terminating\n")
-+}
-+
-+func server(serverAddr string, prin string) {
+ 		}
+-		args += "\"" + a + "\""
+-	}
+-	authRule := fmt.Sprintf(demoRule, args)
+-
+-	if err := g.AddRule(rule); err != nil {
+-		return nil, err
+-	}
+-	if err := g.AddRule(argsRule); err != nil {
+-		return nil, err
+-	}
+-	if err := g.AddRule(authRule); err != nil {
+-		return nil, err
+ 	}
+-	return g, nil
++	log.Printf("fileserver: client thread terminating\n")
+ }
+ 
+-func doResponse(conn net.Conn, responseOk chan<- bool) {
+-	defer conn.Close()
++func server(serverAddr string, prin string, derPolicyCert []byte, signingKey *tao.Keys, fileServerProgramPolicy *fileproxy.ProgramPolicy, fileServerResourceMaster *fileproxy.ResourceMaster) {
 +	var sock net.Listener
-+	fmt.Printf("fileserver: server\n")
-+
-+	fileserverResourceMaster = new(fileproxy.ResourceMaster)
-+	err := fileserverResourceMaster.InitMaster(*fileserverFilePath, *fileserverPath, prin)
-+	if err != nil {
-+		fmt.Printf("fileserver: can't InitMaster\n")
-+		return
-+	}
-+
-+	policyCert, err := x509.ParseCertificate(DerPolicyCert)
-+	if err != nil {
-+		fmt.Printf("fileserver: can't ParseCertificate\n")
-+		return
-+	}
++	log.Printf("fileserver: server\n")
+ 
+-	// Both the TLS and the Tao/TLS connections and listeners handle
+-	// authorization during the Accept operation. So, no extra authorization is
+-	// needed here.
+-	msg, err := bufio.NewReader(conn).ReadString('\n')
++	err := fileServerResourceMaster.InitMaster(*fileserverFilePath, *fileserverPath, prin)
+ 	if err != nil {
+-		fmt.Printf("server: can't read: %s\n", err.Error())
+-		conn.Close()
+-		responseOk <- false
++		log.Printf("fileserver: can't InitMaster\n")
+ 		return
+ 	}
+-	msg = strings.TrimSpace(msg)
+-	fmt.Printf("server: got message: %s\n", msg)
+-	responseOk <- true
+-	fmt.Fprintf(conn, "echo(%s)\n", msg)
+-	conn.Close()
+-}
+ 
+-func doServer(stop chan bool, ready, done chan<- bool) {
+-	var sock net.Listener
+-	var err error
+-	var keys *tao.Keys
+-	network := "tcp"
+-	domain, err := tao.LoadDomain(*configPath, nil)
++	policyCert, err := x509.ParseCertificate(derPolicyCert)
+ 	if err != nil {
+-		ready <- false
+-		done <- true
++		log.Printf("fileserver: can't ParseCertificate\n")
+ 		return
+ 	}
+-
+-	switch *demoAuth {
+-	case "tcp":
+-		sock, err = net.Listen(network, serverAddr)
+-	case "tls", "tao":
+-		keys, err = tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Parent())
+-		if err != nil {
+-			ready <- false
+-			done <- true
+-			return
+-		}
+-		keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
+-			Organization: []string{"Google Tao Demo"}})
+-		if err != nil {
+-			ready <- false
+-			done <- true
+-			return
+-		}
+-
+-		g := domain.Guard
+-		if *ca != "" {
+-			na, err := taonet.RequestTruncatedAttestation(network, *ca, keys, domain.Keys.VerifyingKey)
+-			if err != nil {
+-				ready <- false
+-				done <- true
+-				return
+-			}
+-
+-			keys.Delegation = na
+-			g, err = newTempCAGuard(domain.Keys.VerifyingKey)
+-			if err != nil {
+-				fmt.Printf("server: couldn't set up a new guard: %s\n", err)
+-				return
+-			}
+-		}
+-
+-		tlsc, err := taonet.EncodeTLSCert(keys)
+-		if err != nil {
+-			ready <- false
+-			done <- true
+-			return
+-		}
+-		conf := &tls.Config{
+-			RootCAs:            x509.NewCertPool(),
+-			Certificates:       []tls.Certificate{*tlsc},
+-			InsecureSkipVerify: true,
+-			ClientAuth:         tls.RequireAnyClientCert,
+-		}
+-		if *demoAuth == "tao" {
+-			sock, err = taonet.Listen(network, serverAddr, conf, g, domain.Keys.VerifyingKey, keys.Delegation)
+-		} else {
+-			sock, err = tls.Listen(network, serverAddr, conf)
+-		}
 +	pool := x509.NewCertPool()
 +	pool.AddCert(policyCert)
-+	tlsc, err := taonet.EncodeTLSCert(&SigningKey)
++	tlsc, err := taonet.EncodeTLSCert(signingKey)
 +	if err != nil {
-+		fmt.Printf("fileserver, encode error: ", err)
-+		fmt.Printf("\n")
++		log.Printf("fileserver, encode error: ", err)
++		log.Printf("\n")
 +		return
 +	}
 +	conf := &tls.Config{
 +		RootCAs:            pool,
 +		Certificates:       []tls.Certificate{*tlsc},
-+		InsecureSkipVerify: false, //true,
++		InsecureSkipVerify: false,
 +		ClientAuth:         tls.RequireAnyClientCert,
-+	}
-+	fmt.Printf("Listenting\n")
+ 	}
++	log.Printf("Listening\n")
 +	sock, err = tls.Listen("tcp", serverAddr, conf)
-+	// sock, err = net.Listen("tcp", serverAddr)
-+	if err != nil {
-+		fmt.Printf("fileserver, listen error: ", err)
-+		fmt.Printf("\n")
-+		return
-+	}
+ 	if err != nil {
+-		fmt.Printf("server: can't listen at %s: %s\n", serverAddr, err.Error())
+-		ready <- false
+-		done <- true
++		log.Printf("fileserver, listen error: ", err)
++		log.Printf("\n")
+ 		return
+ 	}
+-	fmt.Printf("server: listening at %s using %s authentication.\n", serverAddr, *demoAuth)
+-	ready <- true
+-
+-	pings := make(chan bool, 10)
+-	connCount := 0
+-
+-	go func() {
+-		for connCount = 0; connCount < *pingCount || *pingCount < 0; connCount++ { // negative means forever
+-			conn, err := sock.Accept()
 +	for {
-+		fmt.Printf("server: at Accept\n")
++		log.Printf("fileserver: at Accept\n")
 +		conn, err := sock.Accept()
 +		if err != nil {
-+			fmt.Printf("server: can't accept connection: %s\n", err.Error())
++			log.Printf("fileserver: can't accept connection: %s\n", err.Error())
 +		} else {
++			var clientName string
++			clientName = "XYZZY"
++			err = conn.(*tls.Conn).Handshake()
+ 			if err != nil {
+-				fmt.Printf("server: can't accept connection: %s\n", err.Error())
+-				stop <- true
+-				return
++				log.Printf("TLS handshake failed\n")
+ 			}
+-			go doResponse(conn, pings)
+-		}
+-	}()
+-
+-	pingGood := 0
+-	pingFail := 0
+-
+-loop:
+-	for {
+-		select {
+-		case <-stop:
+-			break loop
+-		case ok := <-pings:
+-			if ok {
+-				pingGood++
++			peerCerts := conn.(*tls.Conn).ConnectionState().PeerCertificates
++			if peerCerts == nil {
++				log.Printf("fileserver: can't get peer list\n")
+ 			} else {
+-				pingFail++
++				peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
++				if peerCert.Raw == nil {
++					log.Printf("fileserver: can't get peer name\n")
++				} else {
++					if peerCert.Subject.OrganizationalUnit != nil {
++						clientName = peerCert.Subject.OrganizationalUnit[0]
++					}
++				}
+ 			}
++			log.Printf("fileserver, peer name: %s\n", clientName)
 +			ms := util.NewMessageStream(conn)
-+			go clientServiceThead(ms, fileserverResourceMaster.Guard)
-+		}
-+	}
-+}
-+
++			go clientServiceThead(ms, clientName, fileServerProgramPolicy, fileServerResourceMaster)
+ 		}
+ 	}
+-
+-	sock.Close()
+-	fmt.Printf("server: handled %d connections, finished %d ok, %d bad pings\n",
+-		connCount, pingGood, pingFail)
+-
+-	done <- true
+ }
+ 
+-// Tao Host demo
 +func main() {
+ 
+-func hostTaoDemo() error {
+-	name, err := tao.Parent().GetTaoName()
+-	if err != nil {
+-		return err
+-	}
+-	fmt.Printf("My root name is %s\n", name)
++	var fileServerResourceMaster fileproxy.ResourceMaster
++	var FileServerResourceMaster *fileproxy.ResourceMaster
++	var fileServerProgramPolicy fileproxy.ProgramPolicy
++	var FileServerProgramPolicy *fileproxy.ProgramPolicy
+ 
+-	// TODO(kwalsh) Make a convenience function for this
+-	var args []auth.Term
+-	for _, arg := range os.Args {
+-		args = append(args, auth.Str(arg))
+-	}
+-	e := auth.PrinExt{Name: "Args", Arg: args}
+-	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
+-	if err != nil {
+-		return err
+-	}
 +	flag.Parse()
 +	serverAddr = *serverHost + ":" + *serverPort
-+
+ 
+-	name, err = tao.Parent().GetTaoName()
 +	hostDomain, err := tao.LoadDomain(*hostcfg, nil)
-+	if err != nil {
+ 	if err != nil {
+-		return err
 +		return
-+	}
-+	fmt.Printf("fileserver: Domain name: %s\n", hostDomain.ConfigPath)
-+	DerPolicyCert = nil
+ 	}
+-	fmt.Printf("My full name is %s\n", name)
+-
+-	random, err := tao.Parent().GetRandomBytes(10)
+-	if err != nil {
+-		return err
++	log.Printf("fileserver: Domain name: %s\n", hostDomain.ConfigPath)
++	var derPolicyCert []byte
 +	if hostDomain.Keys.Cert != nil {
-+		DerPolicyCert = hostDomain.Keys.Cert.Raw
-+	}
-+	if DerPolicyCert == nil {
-+		fmt.Printf("can't retrieve policy cert\n")
++		derPolicyCert = hostDomain.Keys.Cert.Raw
+ 	}
+-	fmt.Printf("Random bytes  : % x\n", random)
+-
+-	n, err := tao.Parent().Rand().Read(random)
+-	if err != nil {
+-		return err
++	if derPolicyCert == nil {
++		log.Printf("fileserver: can't retrieve policy cert\n")
 +		return
-+	}
-+
-+	e := auth.PrinExt{Name: "fileserver_version_1"}
+ 	}
+-	fmt.Printf("%d more bytes : % x\n", n, random)
+ 
+-	secret, err := tao.Parent().GetSharedSecret(10, tao.SharedSecretPolicyDefault)
++	/*
++	 Replace with: hostDomai.ExtendTaoDomain(tao)
++	*/
++	sha256Hash := sha256.New()
++	sha256Hash.Write(derPolicyCert)
++	policyCertHash := sha256Hash.Sum(nil)
++	hexCertHash := hex.EncodeToString(policyCertHash)
++	e := auth.PrinExt{Name: hexCertHash}
 +	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
-+	if err != nil {
+ 	if err != nil {
+-		return err
 +		return
-+	}
-+
-+	myTaoName, err := tao.Parent().GetTaoName()
-+	if err != nil {
+ 	}
+-	fmt.Printf("Shared secret : % x\n", secret)
+ 
+-	sealed, err := tao.Parent().Seal(random, tao.SealPolicyDefault)
++	e = auth.PrinExt{Name: "fileserver_version_1"}
++	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
+ 	if err != nil {
+-		return err
 +		return
+ 	}
+-	fmt.Printf("Sealed bytes  : % x\n", sealed)
+ 
+-	unsealed, policy, err := tao.Parent().Unseal(sealed)
++	taoName, err := tao.Parent().GetTaoName()
+ 	if err != nil {
+-		return err
+-	}
+-	if policy != tao.SealPolicyDefault {
+-		return errors.New("unexpected policy on unseal")
+-	}
+-	fmt.Printf("Unsealed bytes: % x\n", unsealed)
+-
+-	return nil
+-}
+-
+-func main() {
+-	flag.Parse()
+-	serverAddr = *serverHost + ":" + *serverPort
+-	switch *demoAuth {
+-	case "tcp", "tls", "tao":
+-	default:
+-		fmt.Printf("unrecognized authentication mode: %s\n", *demoAuth)
++		log.Printf("fileserver: cant get tao name\n")
+ 		return
+ 	}
++	log.Printf("fileserver: my name is %s\n", taoName)
+ 
+-	fmt.Printf("Go Tao Demo\n")
+-
+-	if !tao.Hosted() {
+-		fmt.Printf("can't continue: No host Tao available\n")
+-		return
++	var programCert []byte
++	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*fileserverPath)
++	if err != nil {
++		log.Printf("fileserver: cant retrieve key material\n")
 +	}
-+	fmt.Printf("fileserver: my name is %s\n", myTaoName)
-+
-+	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err := fileproxy.GetMyCryptoMaterial(*fileserverPath)
-+	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || derCert == nil {
-+		fmt.Printf("fileserver: No key material present\n")
-+	}
-+	ProgramCert = derCert
-+
-+	defer fileproxy.ZeroBytes(SymKeys)
++	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || programCert == nil {
++		log.Printf("fileserver: No key material present\n")
+ 	}
+ 
+-	if *localMode {
+-		err := hostTaoDemo()
++	var symKeys []byte
++	defer fileproxy.ZeroBytes(symKeys)
 +	if sealedSymmetricKey != nil {
-+		symkeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
-+		if err != nil {
-+			return
-+		}
++		symKeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
+ 		if err != nil {
+-			fmt.Printf("error: %s\n", err.Error())
+ 			return
+ 		}
 +		if policy != tao.SealPolicyDefault {
-+			fmt.Printf("fileserver: unexpected policy on unseal\n")
++			log.Printf("fileserver: unexpected policy on unseal\n")
 +		}
-+		SymKeys = symkeys
-+		fmt.Printf("fileserver: Unsealed symKeys: % x\n", SymKeys)
++		log.Printf("fileserver: Unsealed symKeys: % x\n", symKeys)
 +	} else {
-+		symkeys, err := fileproxy.InitializeSealedSymmetricKeys(*fileserverPath, tao.Parent(), 64)
++		symKeys, err = fileproxy.InitializeSealedSymmetricKeys(*fileserverPath, tao.Parent(), fileproxy.SizeofSymmetricKeys)
 +		if err != nil {
-+			fmt.Printf("fileserver: InitializeSealedSymmetricKeys error: %s\n", err)
++			log.Printf("fileserver: InitializeSealedSymmetricKeys error: %s\n", err)
 +		}
-+		SymKeys = symkeys
-+		fmt.Printf("fileserver: InitilizedsymKeys: % x\n", SymKeys)
-+	}
-+
++		log.Printf("fileserver: InitilizedsymKeys: % x\n", symKeys)
+ 	}
+ 
+-	serverStop := make(chan bool, 1)
+-	serverReady := make(chan bool, 1)
+-	serverDone := make(chan bool, 1)
++	var signingKey *tao.Keys
 +	if sealedSigningKey != nil {
-+		fmt.Printf("retrieving signing key\n")
-+		signingkey, err := fileproxy.SigningKeyFromBlob(tao.Parent(),
-+			sealedSigningKey, derCert, delegation)
++		log.Printf("retrieving signing key\n")
++		signingKey, err = fileproxy.SigningKeyFromBlob(tao.Parent(),
++			sealedSigningKey, programCert, delegation)
 +		if err != nil {
-+			fmt.Printf("fileserver: SigningKeyFromBlob error: %s\n", err)
++			log.Printf("fileserver: SigningKeyFromBlob error: %s\n", err)
 +		}
-+		SigningKey = *signingkey
-+		fmt.Printf("fileserver: Retrieved Signing key: % x\n", SigningKey)
++		log.Printf("fileserver: Retrieved Signing key: % x\n", *signingKey)
 +	} else {
-+		fmt.Printf("initializing signing key\n")
-+		signingkey, err := fileproxy.InitializeSealedSigningKey(*fileserverPath,
++		log.Printf("fileserver: initializing signing key\n")
++		signingKey, err = fileproxy.InitializeSealedSigningKey(*fileserverPath,
 +			tao.Parent(), *hostDomain)
 +		if err != nil {
-+			fmt.Printf("fileserver: InitializeSealedSigningKey error: %s\n", err)
++			log.Printf("fileserver: InitializeSealedSigningKey error: %s\n", err)
 +		}
-+		SigningKey = *signingkey
-+		fmt.Printf("fileserver: Initialized signingKey: % x\n", SigningKey)
-+		ProgramCert = SigningKey.Cert.Raw
++		log.Printf("fileserver: Initialized signingKey\n")
++		programCert = signingKey.Cert.Raw
 +	}
-+	taoName := myTaoName.String()
-+
-+	server(serverAddr, taoName)
-+	if err != nil {
-+		fmt.Printf("fileserver: server error\n")
-+	}
-+	fmt.Printf("fileserver: done\n")
-+}
++	taoNameStr := taoName.String()
+ 
+-	// TODO(tmroeder): use the Domain and the tao parent to set up the keys and
+-	// the guard. Also need to hook the datalog guard into the domain and get
+-	// the basic tests working with this guard, especially execution
+-	// authorization.
+-	go doServer(serverStop, serverReady, serverDone)
++	FileServerProgramPolicy = &fileServerProgramPolicy
++	FileServerResourceMaster = &fileServerResourceMaster
++	_ = FileServerProgramPolicy.InitProgramPolicy(derPolicyCert, taoNameStr, *signingKey, symKeys, programCert)
+ 
+-	domain, err := tao.LoadDomain(*configPath, nil)
++	server(serverAddr, taoNameStr, derPolicyCert, signingKey, FileServerProgramPolicy, FileServerResourceMaster)
+ 	if err != nil {
+-		fmt.Printf("error: couldn't load the tao domain from %s\n", *configPath)
+-		return
++		log.Printf("fileserver: server error\n")
+ 	}
+-	<-serverDone
+-	fmt.Printf("Done\n")
++	log.Printf("fileserver: done\n")
+ }
 diff --git a/apps/fileproxy/fileserver/rebuild b/apps/fileproxy/fileserver/rebuild
 new file mode 100755
 index 0000000..caaff89
@@ -2656,15 +3063,16 @@ index 0000000..6602182
 +linux_host -path="../hostdomain/linux_tao_host" -run -- $PROG_DIR/fileserver 
 diff --git a/apps/fileproxy/hostdomain/checkprog b/apps/fileproxy/hostdomain/checkprog
 new file mode 100755
-index 0000000..e56c538
+index 0000000..c5261e2
 --- /dev/null
 +++ b/apps/fileproxy/hostdomain/checkprog
-@@ -0,0 +1,6 @@
+@@ -0,0 +1,7 @@
 +#
 +ps aux | fgrep linux_host
 +ps aux | fgrep keynegoserver
 +ps aux | fgrep fileclient
 +ps aux | fgrep fileserver
++ps aux | fgrep rollbackserver
 +
 diff --git a/apps/fileproxy/hostdomain/inithost b/apps/fileproxy/hostdomain/inithost
 new file mode 100755
@@ -2682,6 +3090,33 @@ index 0000000..73a2aea
 +export TAO_config_path=$TAO_HOST_DIR/tao.config
 +export TAO_guard=AllowAll
 +tao_admin -create -name fileproxy -pass nopassword
+diff --git a/apps/fileproxy/hostdomain/reinit b/apps/fileproxy/hostdomain/reinit
+new file mode 100755
+index 0000000..b7086c5
+--- /dev/null
++++ b/apps/fileproxy/hostdomain/reinit
+@@ -0,0 +1,21 @@
++#
++cd fileclient_files
++rm delegationBlob
++rm sealedsigningKey
++rm sealedsymmetricKey
++rm signerCert
++cd stored_files
++rm originalTestFile.received
++cd ../../fileserver_files
++rm delegationBlob
++rm sealedsigningKey
++rm sealedsymmetricKey
++rm signerCert
++cd stored_files
++rm originalTestFile
++cd ../../rollbackserver_files
++rm delegationBlob
++rm sealedsigningKey
++rm sealedsymmetricKey
++rm signerCert
++
 diff --git a/apps/fileproxy/hostdomain/runfc b/apps/fileproxy/hostdomain/runfc
 new file mode 100755
 index 0000000..4488f93
@@ -2721,159 +3156,325 @@ index 0000000..d11a440
 +#
 +PROG_DIR=/Users/manferdelli/src/github.com/jlmucb/cloudproxy/apps/fileproxy/keynegoserver
 +linux_host -path="../hostdomain/linux_tao_host" -run -- $PROG_DIR/keynegoserver 
-diff --git a/apps/fileproxy/keynegoserver/keynegoserver.go b/apps/fileproxy/keynegoserver/keynegoserver.go
-new file mode 100644
-index 0000000..cf282b2
+diff --git a/apps/fileproxy/hostdomain/runrb b/apps/fileproxy/hostdomain/runrb
+new file mode 100755
+index 0000000..de556a4
 --- /dev/null
++++ b/apps/fileproxy/hostdomain/runrb
+@@ -0,0 +1,3 @@
++#
++PROG_DIR=/Users/manferdelli/src/github.com/jlmucb/cloudproxy/apps/fileproxy/rollbackserver
++linux_host -path="../hostdomain/linux_tao_host" -run -- $PROG_DIR/rollbackserver
+diff --git a/apps/fileproxy/keynegoserver/keynegoserver.go b/apps/fileproxy/keynegoserver/keynegoserver.go
+index c6f50b7..771b5f1 100644
+--- a/apps/fileproxy/keynegoserver/keynegoserver.go
 +++ b/apps/fileproxy/keynegoserver/keynegoserver.go
-@@ -0,0 +1,276 @@
-+// Copyright (c) 2014, Google Inc. All rights reserved.
-+//
-+// Licensed under the Apache License, Version 2.0 (the "License");
-+// you may not use this file except in compliance with the License.
-+// You may obtain a copy of the License at
-+//     http://www.apache.org/licenses/LICENSE-2.0
-+// Unless required by applicable law or agreed to in writing, software
-+// distributed under the License is distributed on an "AS IS" BASIS,
-+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-+// See the License for the specific language governing permissions and
-+// limitations under the License.
-+
-+package main
-+
-+import (
-+	"crypto/tls"
-+	"crypto/x509"
-+	"crypto/x509/pkix"
-+	"flag"
-+	"fmt"
-+	"os"
-+	"net"
-+	"errors"
-+	"time"
-+	"io/ioutil"
+@@ -1,271 +1,292 @@
+ // Copyright (c) 2014, Google Inc. All rights reserved.
+ //
+ // Licensed under the Apache License, Version 2.0 (the "License");
+ // you may not use this file except in compliance with the License.
+ // You may obtain a copy of the License at
+ //     http://www.apache.org/licenses/LICENSE-2.0
+ // Unless required by applicable law or agreed to in writing, software
+ // distributed under the License is distributed on an "AS IS" BASIS,
+ // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+-// File: keynegoserver.go
+ 
+ package main
+ 
+ import (
 +	"crypto/rand"
++	"crypto/tls"
+ 	"crypto/x509"
+ 	"crypto/x509/pkix"
+-	"io/ioutil"
+-	"crypto/tls"
+-	"fmt"
+-	"os"
+ 	"errors"
+-	// "path"
+-	// "time"
+ 	"flag"
++	"io/ioutil"
++	"log"
 +	"math/big"
-+	"code.google.com/p/goprotobuf/proto"
++	"net"
++	"os"
++	"time"
+ 
+-	// "code.google.com/p/go.crypto/hkdf"
+-	// "code.google.com/p/go.crypto/pbkdf2"
+ 	"code.google.com/p/goprotobuf/proto"
+ 
+-	tao "../../../tao"
 +	"github.com/jlmucb/cloudproxy/tao"
-+	taonet "github.com/jlmucb/cloudproxy/tao/net"
 +	"github.com/jlmucb/cloudproxy/tao/auth"
+ 	taonet "github.com/jlmucb/cloudproxy/tao/net"
+-	auth "github.com/jlmucb/cloudproxy/tao/auth"
+-	util "github.com/jlmucb/cloudproxy/util"
+-	"net"
 +	"github.com/jlmucb/cloudproxy/util"
-+)
-+
-+var network = flag.String("network", "tcp", "The network to use for connections")
-+var addr = flag.String("addr", "localhost:8124", "The address to listen on")
+ )
+ 
+ var network = flag.String("network", "tcp", "The network to use for connections")
+ var addr = flag.String("addr", "localhost:8124", "The address to listen on")
+-var domainPass = flag.String("password", "BogusPass", "The domain password for the policy key")
 +var domainPass = flag.String("password", "nopassword", "The domain password for the policy key")
-+var configPath = flag.String("config", "tao.config", "The Tao domain config")
-+
-+var	SerialNumber int64
-+
-+// return is terminate, error
-+func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys,guard tao.Guard) (bool, error){
-+	fmt.Printf("keynegoerver: KeyNegoRequest\n")
-+	// Expect an attestation from the client.
-+	ms := util.NewMessageStream(conn)
-+	var a tao.Attestation
-+	if err := ms.ReadMessage(&a); err != nil {
-+		fmt.Fprintln(os.Stderr, "Couldn't read attestation from channel:", err)
+ var configPath = flag.String("config", "tao.config", "The Tao domain config")
+ 
++var SerialNumber int64
+ 
+-// zeroBytes clears the bytes in a slice.
+-func zeroBytes(b []byte) {
+-	for i := range b {
+-		b[i] = 0
+-	}
+-}
+-
+-func GetOnDiskPBEKeys(keyTypes tao.KeyType, password []byte, path string, name *pkix.Name) (*tao.Keys, error) {
+-	k := &tao.Keys{}
+-	//{
+-//		tao.keyTypes: keyTypes,
+-//		tao.dir:      path,
+-	//}
+-	k.SetKeysetPath(path)
+-	k.SetKeyType(keyTypes)
+-	f, err := os.Open(k.PBEKeysetPath())
+-	if err == nil {
+-		return nil, errors.New("Cant get policy keys\n");
+-	}
+-	defer f.Close()
+-	ks, err := ioutil.ReadAll(f)
+-	if err != nil {
+-		return nil, err
+-	}
+-
+-	data, err := tao.PBEDecrypt(ks, password)
+-	if err != nil {
+-		return nil, err
+-	}
+-	defer zeroBytes(data)
+-	var cks tao.CryptoKeyset
+-	if err = proto.Unmarshal(data, &cks); err != nil {
+-		return nil, err
++func IsAuthenticationValid(name *string) bool {
++	log.Printf("keynegoserver, IsAuthenticationValid name is %s\n", *name)
++	if name == nil {
++		return false
+ 	}
+-	ktemp, err := tao.UnmarshalKeyset(&cks)
+-	if err != nil {
+-		return nil, err
+-	}
+-	err = k.LoadCert()
+-	if err != nil {
+-		return nil, err
+-	}
+-	k.SigningKey = ktemp.SigningKey
+-	k.VerifyingKey = ktemp.VerifyingKey
+-	k.CryptingKey = ktemp.CryptingKey
+-	k.DerivingKey = ktemp.DerivingKey
+-
+-	return k, nil
++	log.Printf("keynegoserver, IsAuthenticationValid returning true\n")
++	return true
+ }
+ 
+-
+-// HandleKeyNegoRequest checks a request from a program and responds with a truncated
+-// delegation signed by the policy key.
+-func HandleKeyNegoRequest(conn net.Conn, s *tao.Signer, guard tao.Guard) {
+-	defer conn.Close()
+-
++// First return is terminate flag.
++func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, error) {
++	log.Printf("keynegoerver: KeyNegoRequest\n")
+ 	// Expect an attestation from the client.
+ 	ms := util.NewMessageStream(conn)
+ 	var a tao.Attestation
+ 	if err := ms.ReadMessage(&a); err != nil {
+-		fmt.Fprintln(os.Stderr, "Couldn't read attestation from channel:", err)
+-		return
++		log.Printf("Couldn't read attestation from channel:", err)
++		log.Printf("\n")
 +		return false, err
-+	}
-+
-+	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
+ 	}
+ 
+ 	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
+-// 	if err := taonet.ValidatePeerAttestation(&a, peerCert, guard); err != nil {
+-// 		fmt.Fprintln(os.Stderr, "Couldn't validate peer attestation:", err)
+-// 		return
+-// 	}
 +	if err := taonet.ValidatePeerAttestation(&a, peerCert, guard); err != nil {
-+		fmt.Fprintln(os.Stderr, "Couldn't validate peer attestation:", err)
++		log.Printf("Couldn't validate peer attestation:", err)
 +		return false, err
 +	}
-+
-+	// sign cert and put it in attestation statement
+ 
+-  	truncSays, pe, err := taonet.TruncateAttestation(s.ToPrincipal(), &a)
+-//	if err != nil {
+-//		fmt.Fprintln(os.Stderr, "Couldn't truncate the attestation:", err)
+-//		return
+-//	}
++	// Sign cert and put it in attestation statement
 +	// a consists of serialized statement, sig and SignerInfo
 +	// a is a says speaksfor, Delegate of speaksfor is cert and should be DER encoded
-+
-+	// get underlying says
-+	fmt.Print("keynegoserver, attest: ",  a)
-+	fmt.Print("\n")
+ 
+-	// TODO(tmroeder): fix this to check the time and make sure we're not
+-	// signing an unbounded attestation to this program.
+-	ra, err := tao.GenerateAttestation(s, nil, truncSays)
++	// Get underlying says
++	// log.Print("keynegoserver, attest: ", a)
++	// log.Print("\n")
 +	f, err := auth.UnmarshalForm(a.SerializedStatement)
-+	if err != nil {
-+		fmt.Printf("\nkeynegoserver: cant unmarshal a.SerializedStatement\n")
+ 	if err != nil {
+-		fmt.Fprintln(os.Stderr, "Couldn't attest to the new says statement:", err)
+-		return
++		log.Printf("\nkeynegoserver: can't unmarshal a.SerializedStatement\n")
 +		return false, err
-+	}
-+	fmt.Print("\nkeynegoserver, unmarshaled serialized: ",  f.String())
-+	fmt.Print("\n")
+ 	}
+-
+-	// Add an endorsement to this PrinExt Program hash so the receiver can check
+-	// it successfully against policy.
+-	endorsement := auth.Says{
+-		Speaker: s.ToPrincipal(),
+-		Message: auth.Pred{
+-			Name: "TrustedProgramHash",
+-			Arg:  []auth.Term{auth.PrinTail{Ext: []auth.PrinExt{pe}}},
+-		},
++	// log.Print("\nkeynegoserver, unmarshaled serialized: ", f.String())
++	// log.Print("\n")
 +
 +	var saysStatement *auth.Says
 +	if ptr, ok := f.(*auth.Says); ok {
 +		saysStatement = ptr
 +	} else if val, ok := f.(auth.Says); ok {
 +		saysStatement = &val
-+	}
+ 	}
+-//	if truncSays.Time != nil {
+-//		i := *truncSays.Time
+-//		endorsement.Time = &i
+-//	}
+-//	if truncSays.Expiration != nil {
+-//		i := *truncSays.Expiration
+-//		endorsement.Expiration = &i
+-//	}
+-	ea, err := tao.GenerateAttestation(s, nil, endorsement)
+-	if err != nil {
+-		fmt.Fprintln(os.Stderr, "Couldn't generate an endorsement for this program:", err)
+-		return
 +	sf, ok := saysStatement.Message.(auth.Speaksfor)
-+	if(ok!=true) {
-+		fmt.Printf("keynegoserver: says doesnt have speaksfor message\n")
++	if ok != true {
++		log.Printf("keynegoserver: says doesnt have speaksfor message\n")
 +		return false, err
-+	}
-+	fmt.Print("keynegoserver, speaksfor: ",  sf)
-+	fmt.Print("\n")
+ 	}
+-	eab, err := proto.Marshal(ea)
+-	if err != nil {
+-		fmt.Fprintln(os.Stderr, "Couldn't marshal an endorsement:", err)
+-		return
++	// log.Print("keynegoserver, speaksfor: ", sf)
++	// log.Print("\n")
 +	kprin, ok := sf.Delegate.(auth.Prin)
-+	if(ok!=true) {
-+		fmt.Printf("keynegoserver: speaksfor Delegate is not auth.Prin\n")
++	if ok != true {
++		log.Printf("keynegoserver: speaksfor Delegate is not auth.Prin\n")
++		return false, err
+ 	}
+-	ra.SerializedEndorsements = [][]byte{eab}
+-
+-	if _, err := ms.WriteMessage(ra); err != nil {
+-		fmt.Fprintln(os.Stderr, "Couldn't return the attestation on the channel:", err)
+-		return
++	subjectPrin, ok := sf.Delegator.(auth.Prin)
++	if ok != true {
++		log.Printf("keynegoserver: can't get subject principal\n")
++		return false, errors.New("Cant get principal name from verifier")
+ 	}
+-
+-	return
+-}
+-
+-// RequestTruncatedAttestation connects to a CA instance, sends the attestation
+-// for an X.509 certificate, and gets back a truncated attestation with a new
+-// principal name based on the policy key.
+-func KeyNegoRequestTruncatedAttestation(network, addr string, keys *tao.Keys, v *tao.Verifier) (*tao.Attestation, error) {
+-	if keys.Cert == nil {
+-		return nil, fmt.Errorf("client: can't dial with an empty client certificate\n")
++	subjectnamestr := subjectPrin.String()
++	verified := IsAuthenticationValid(&subjectnamestr)
++	if !verified {
++		log.Printf("keynegoserver: name verification failed\n")
 +		return false, err
 +	}
-+	subjectPrin, ok:= sf.Delegator.(auth.Prin)
-+	if(ok!=true ) {
-+		fmt.Printf("keynegoserver: cant get subject principal\n")
-+		return false,errors.New("Cant get principal name from verifier") 
-+	}
-+	subjectnamestr:= subjectPrin.String()
-+	fmt.Printf("keynegoserver: subject principal name: %s\n", subjectnamestr)
-+	details:= tao.X509Details {
-+		Country: "US",
-+		Organization: "Google",
++	log.Printf("keynegoserver, IsAuthenticationValid succeeded: subject principal name: %s\n", subjectnamestr)
++	details := tao.X509Details{
++		Country:            "US",
++		Organization:       "Google",
 +		OrganizationalUnit: subjectnamestr,
-+		CommonName: "localhost", }
-+	subjectname:= tao.NewX509Name(details)
-+	SerialNumber= SerialNumber+1
++		CommonName:         "localhost"}
++	subjectname := tao.NewX509Name(details)
++	SerialNumber = SerialNumber + 1
 +	template := &x509.Certificate{
 +		SignatureAlgorithm: x509.ECDSAWithSHA256,
 +		PublicKeyAlgorithm: x509.ECDSA,
-+		Version:            2, // x509v3
-+		// It's always allowed for self-signed certs to have serial 1.
-+		SerialNumber: new(big.Int).SetInt64(SerialNumber),
-+		Subject:      *subjectname,
-+		NotBefore:    time.Now(),
-+		NotAfter:     time.Now().AddDate(1 /* years */, 0 /* months */, 0 /* days */),
-+		KeyUsage:    x509.KeyUsageKeyAgreement,
-+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-+		}
-+	verifier,err:= tao.FromPrincipal(kprin)
-+	if(err!=nil) {
-+		return false, errors.New("cant get principal from kprin")
-+	}
-+	clientDerCert, err := x509.CreateCertificate(rand.Reader, template, policyKey.Cert, 
-+					verifier.GetVerifierEc(),
-+	                                policyKey.SigningKey.GetSignerEc())
-+	if(err!=nil) {
-+		fmt.Printf("keynegoserver: cant create client certificate: %s\n", err)
++		Version:            2,
++		SerialNumber:       new(big.Int).SetInt64(SerialNumber),
++		Subject:            *subjectname,
++		NotBefore:          time.Now(),
++		NotAfter:           time.Now().AddDate(1 /* years */, 0 /* months */, 0 /* days */),
++		KeyUsage:           x509.KeyUsageKeyAgreement,
++		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+ 	}
+-	tlsCert, err := taonet.EncodeTLSCert(keys)
++	verifier, err := tao.FromPrincipal(kprin)
+ 	if err != nil {
+-		return nil, err
++		return false, errors.New("can't get principal from kprin")
+ 	}
+-	conn, err := tls.Dial(network, addr, &tls.Config{
+-		RootCAs:            x509.NewCertPool(),
+-		Certificates:       []tls.Certificate{*tlsCert},
+-		InsecureSkipVerify: true,
+-	})
++	clientDerCert, err := x509.CreateCertificate(rand.Reader, template, policyKey.Cert,
++		verifier.GetVerifierEc(),
++		policyKey.SigningKey.GetSignerEc())
+ 	if err != nil {
+-		return nil, err
++		log.Printf("keynegoserver: can't create client certificate: %s\n", err)
 +		return false, err
-+	}
-+	err= ioutil.WriteFile("ClientCert", clientDerCert, os.ModePerm)
+ 	}
+-	defer conn.Close()
+-
+-	// Tao handshake: send client delegation.
+-	ms := util.NewMessageStream(conn)
+-	if _, err = ms.WriteMessage(keys.Delegation); err != nil {
+-		return nil, err
++	err = ioutil.WriteFile("ClientCert", clientDerCert, os.ModePerm)
 +
-+	nowTime:= time.Now().UnixNano()
-+	expireTime:= time.Now().AddDate(1, 0, 0).UnixNano()
-+	// replace self signed cert in attest request
-+	newspeaksFor:= &auth.Speaksfor{
-+		Delegate:   auth.Bytes(clientDerCert),
-+		Delegator:  sf.Delegator,}
-+	keynegoSays:= &auth.Says{
-+		Speaker:  policyKey.SigningKey.ToPrincipal(),
-+		Time: &nowTime,
++	nowTime := time.Now().UnixNano()
++	expireTime := time.Now().AddDate(1, 0, 0).UnixNano()
++	// Replace self signed cert in attest request
++	newspeaksFor := &auth.Speaksfor{
++		Delegate:  auth.Bytes(clientDerCert),
++		Delegator: sf.Delegator}
++	keynegoSays := &auth.Says{
++		Speaker:    policyKey.SigningKey.ToPrincipal(),
++		Time:       &nowTime,
 +		Expiration: &expireTime,
-+		Message: newspeaksFor,}
++		Message:    newspeaksFor}
 +
 +	delegator, ok := sf.Delegator.(auth.Prin)
 +	if !ok {
-+		fmt.Printf("keynegoserver: the delegator must be a principal")
++		log.Printf("keynegoserver: the delegator must be a principal")
 +		return false, err
-+	}
+ 	}
+-
+-	// Read the truncated attestation and check it.
+-	var a tao.Attestation
+-	if err := ms.ReadMessage(&a); err != nil {
+-		return nil, err
 +	var prog auth.PrinExt
 +	found := false
 +	for _, sprin := range delegator.Ext {
@@ -2884,13 +3485,19 @@ index 0000000..cf282b2
 +		if found {
 +			kprin.Ext = append(kprin.Ext, sprin)
 +		}
-+	}
+ 	}
+-
+-	truncStmt, err := auth.UnmarshalForm(a.SerializedStatement)
 +	ra, err := tao.GenerateAttestation(policyKey.SigningKey, nil, *keynegoSays)
-+	if err != nil {
-+		fmt.Fprintln(os.Stderr, "Couldn't attest to the new says statement:", err)
+ 	if err != nil {
+-		return nil, err
++		log.Printf("Couldn't attest to the new says statement:", err)
 +		return false, err
-+	}
-+
+ 	}
+ 
+-	says, _, err := taonet.TruncateAttestation(v.ToPrincipal(), keys.Delegation)
+-	if err != nil {
+-		return nil, err
 +	// Add an endorsement to this PrinExt Program hash so the receiver can check
 +	// it successfully against policy.
 +	endorsement := auth.Says{
@@ -2899,110 +3506,131 @@ index 0000000..cf282b2
 +			Name: "TrustedProgramHash",
 +			Arg:  []auth.Term{auth.PrinTail{Ext: []auth.PrinExt{prog}}},
 +		},
-+	}
+ 	}
+-
+-	if !taonet.IdenticalDelegations(says, truncStmt) {
+-		return nil, fmt.Errorf("the statement returned by the TaoCA was different than what we expected")
 +	if keynegoSays.Time != nil {
 +		i := *keynegoSays.Time
 +		endorsement.Time = &i
-+	}
+ 	}
+-
+-	ok, err := v.Verify(a.SerializedStatement, tao.AttestationSigningContext, a.Signature)
 +	if keynegoSays.Expiration != nil {
 +		i := *keynegoSays.Expiration
 +		endorsement.Expiration = &i
 +	}
 +	ea, err := tao.GenerateAttestation(policyKey.SigningKey, nil, endorsement)
-+	if err != nil {
-+		fmt.Fprintln(os.Stderr, "Couldn't generate an endorsement for this program:", err)
+ 	if err != nil {
+-		return nil, err
++		log.Printf("Couldn't generate an endorsement for this program:", err)
 +		return false, err
-+	}
+ 	}
+-	if !ok {
+-		return nil, fmt.Errorf("invalid attestation signature from Tao CA")
 +	eab, err := proto.Marshal(ea)
 +	if err != nil {
-+		fmt.Fprintln(os.Stderr, "Couldn't marshal an endorsement:", err)
++		log.Printf("Couldn't marshal an endorsement:", err)
 +		return false, err
-+	}
+ 	}
 +	ra.SerializedEndorsements = [][]byte{eab}
-+
+ 
+-	return &a, nil
 +	if _, err := ms.WriteMessage(ra); err != nil {
-+		fmt.Fprintln(os.Stderr, "Couldn't return the attestation on the channel:", err)
++		log.Printf("Couldn't return the attestation on the channel:", err)
++		log.Printf("\n")
 +		return false, err
 +	}
 +
 +	return false, nil
-+}
-+
-+func main() {
-+	flag.Parse()
-+	domain, err := tao.LoadDomain(*configPath, []byte(*domainPass))
+ }
+ 
+ func main() {
+ 	flag.Parse()
+ 	domain, err := tao.LoadDomain(*configPath, []byte(*domainPass))
+-	if err != nil {
+-		fmt.Fprintf(os.Stderr, "Couldn't load the config path %s: %s\n", *configPath, err)
 +	if domain == nil {
-+		fmt.Printf("keynegoserver: no domain\n")
++		log.Printf("keynegoserver: no domain\n")
 +		return
 +	} else if err != nil {
-+		fmt.Printf("keynegoserver: Couldn't load the config path %s: %s\n", *configPath, err)
-+		return
-+	}
-+
-+	// Set up temporary keys for the connection, since the only thing that
-+	// matters to the remote client is that they receive a correctly-signed new
-+	// attestation from the policy key.
-+	// JLM:  I left this in place but I'm not sure what a TLS connection with a 
++		log.Printf("keynegoserver: Couldn't load the config path %s: %s\n", *configPath, err)
+ 		return
+ 	}
+ 
+ 	// Set up temporary keys for the connection, since the only thing that
+ 	// matters to the remote client is that they receive a correctly-signed new
+ 	// attestation from the policy key.
++	// JLM:  I left this in place but I'm not sure what a TLS connection with a
 +	//   self signed Cert buys in terms of security.  The security of this protocol should
 +	//   not depend on the confidentiality or intergity of the channel.  All that said,
 +	//   if we do ever distribute a signed keynegoserver cert for this TLS channel, it would
 +	//   be good.
-+	keys, err := tao.NewTemporaryKeys(tao.Signing)
+ 	keys, err := tao.NewTemporaryKeys(tao.Signing)
+-	if err != nil {
+-		fmt.Fprintln(os.Stderr, "Couldn't set up temporary keys for the connection:", err)
 +	if keys == nil || err != nil {
-+		fmt.Printf("keynegoserver: Couldn't set up temporary keys for the connection:", err)
-+		return
-+	}
-+	keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
-+		Organization: []string{"Google Tao Demo"}})
++		log.Printf("keynegoserver: Couldn't set up temporary keys for the connection:", err)
+ 		return
+ 	}
+ 	keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
+ 		Organization: []string{"Google Tao Demo"}})
+ 	if err != nil {
+-		fmt.Fprintln(os.Stderr, "Couldn't set up a self-signed cert:", err)
++		log.Printf("keynegoserver: Couldn't set up a self-signed cert:", err)
+ 		return
+ 	}
++	SerialNumber = int64(time.Now().UnixNano()) / (1000000)
++	policyKey, err := tao.NewOnDiskPBEKeys(tao.Signing, []byte(*domainPass), "policy_keys", nil)
 +	if err != nil {
-+		fmt.Printf("keynegoserver: Couldn't set up a self-signed cert:", err)
++		log.Printf("keynegoserver: Couldn't get policy key\n", err)
 +		return
 +	}
-+	SerialNumber=  int64(time.Now().UnixNano())/(1000000)
-+	policyKey, err:= tao.NewOnDiskPBEKeys(tao.Signing, []byte(*domainPass), "policy_keys", nil)
-+	if(err!=nil) {
-+		fmt.Printf("keynegoserver: Couldn't get policy key\n", err)
-+		return
-+	}
-+	fmt.Printf("Policy key: " , policyKey)
-+	fmt.Printf("\n")
-+
-+	tlsc, err := taonet.EncodeTLSCert(keys)
++	log.Printf("Policy key %x\n: ", policyKey)
+ 
+ 	tlsc, err := taonet.EncodeTLSCert(keys)
+ 	if err != nil {
+-		fmt.Fprintln(os.Stderr, "Couldn't encode a TLS cert:", err)
++		log.Printf("keynegoserver: Couldn't encode a TLS cert:", err)
+ 		return
+ 	}
+ 	conf := &tls.Config{
+ 		RootCAs:            x509.NewCertPool(),
+ 		Certificates:       []tls.Certificate{*tlsc},
+ 		InsecureSkipVerify: true,
+ 		ClientAuth:         tls.RequireAnyClientCert,
+ 	}
+ 	sock, err := tls.Listen(*network, *addr, conf)
 +	if err != nil {
-+		fmt.Printf("keynegoserver: Couldn't encode a TLS cert:", err)
++		log.Printf("keynegoserver: error: %s\n", err)
++	}
++	if sock == nil {
++		log.Printf("keynegoserver: Empty socket, terminating\n")
 +		return
 +	}
-+	conf := &tls.Config{
-+		RootCAs:            x509.NewCertPool(),
-+		Certificates:       []tls.Certificate{*tlsc},
-+		InsecureSkipVerify: true,
-+		ClientAuth:         tls.RequireAnyClientCert,
-+	}
-+	sock, err := tls.Listen(*network, *addr, conf)
-+	if(err!=nil) {
-+		fmt.Printf("keynegoserver: error: %s\n", err)
-+	}
-+	if(sock==nil) {
-+		fmt.Printf("keynegoserver: Empty socket, terminating\n")
-+		return
-+	}
-+	defer sock.Close();
-+
-+	fmt.Printf("keynegoserver: accepting connections\n")
-+	for {
-+		conn, err := sock.Accept()
-+		if conn == nil  {
-+			fmt.Printf("keynegoserver: Empty connection\n")
++	defer sock.Close()
+ 
+-	fmt.Println("KeyNegoServer: accepting connections")
++	log.Printf("keynegoserver: accepting connections\n")
+ 	for {
+ 		conn, err := sock.Accept()
+-		if err != nil {
+-			fmt.Fprintf(os.Stderr, "Couldn't accept a connection on %s: %s\n", *addr, err)
++		if conn == nil {
++			log.Printf("keynegoserver: Empty connection\n")
 +			return
 +		} else if err != nil {
-+			fmt.Printf("keynegoserver: Couldn't accept a connection on %s: %s\n", *addr, err)
-+			return
-+		}
-+		fmt.Printf("keynegoserver: calling RequestLoop\n")
++			log.Printf("keynegoserver: Couldn't accept a connection on %s: %s\n", *addr, err)
+ 			return
+ 		}
+-
+-		go HandleKeyNegoRequest(conn, domain.Keys.SigningKey, domain.Guard)
++		log.Printf("keynegoserver: calling RequestLoop\n")
 +		go KeyNegoRequest(conn, policyKey, domain.Guard)
-+	}
-+	fmt.Printf("keynegoserver: finishing\n")
-+}
+ 	}
+-	// zeroKeyset(&cks)
++	log.Printf("keynegoserver: finishing\n")
+ }
 diff --git a/apps/fileproxy/keynegoserver/rebuild b/apps/fileproxy/keynegoserver/rebuild
 new file mode 100755
 index 0000000..561d2d0
@@ -3017,34 +3645,608 @@ index 0000000..561d2d0
 +echo "rebuilding keynegoserver"
 +go build keynegoserver.go
 +echo "done"
-diff --git a/apps/fileproxy/notes.txt b/apps/fileproxy/notes.txt
+diff --git a/apps/fileproxy/rollbackhandler.go b/apps/fileproxy/rollbackhandler.go
 new file mode 100644
-index 0000000..2de97c9
+index 0000000..bb47b1d
 --- /dev/null
-+++ b/apps/fileproxy/notes.txt
-@@ -0,0 +1,22 @@
-+C++ to Go --- cgo
-+Go Test
-+diffs/CL's
-+shared secrets
-+interface implementation
++++ b/apps/fileproxy/rollbackhandler.go
+@@ -0,0 +1,338 @@
++// Copyright (c) 2014, Google Corporation.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//     http://www.apache.org/licenses/LICENSE-2.0
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++//
++// File: rollbackhandler.go
 +
-+commit changes on branch
-+diffscuss generate HEAD^..HEAD -o 
++package fileproxy
 +
++import (
++	"crypto/sha256"
++	"encoding/binary"
++	"errors"
++	"log"
 +
-+tao.generatesigner
-+string key.ToPrincipal()
-+tao,err= NewFakeTao(name, "", nil)
-+NewStackedLinuxHost(path, tao.LiberalGuard, tao)
-+LinuxHostServer
++	"code.google.com/p/goprotobuf/proto"
 +
-+LinuxHostProgram()
++	"github.com/jlmucb/cloudproxy/util"
++)
 +
-+tao.Parent();
++type NameandHash struct {
++	ItemName string
++	Hash     []byte
++}
 +
++type RollbackProgramInfo struct {
++	MasterInfoSaveFile string
++	HashSaveFile       string
++	ProgramName        string
++	MonotonicCounter   int64
++	Initialized        bool
++	NameandHashArray   []NameandHash
++}
 +
++type RollbackMaster struct {
++	ProgramName string
++	Initialized bool
++	ProgramInfo []RollbackProgramInfo
++}
 +
++func (r *RollbackMaster) FindRollbackProgramTable(programName string) *RollbackProgramInfo {
++	for i := range r.ProgramInfo {
++		if r.ProgramInfo[i].ProgramName == programName {
++			return &r.ProgramInfo[i]
++		}
++	}
++	return nil
++}
++
++func (r *RollbackMaster) AddRollbackProgramTable(programName string) *RollbackProgramInfo {
++	log.Printf("AddRollbackProgramTable: %s\n", programName)
++	pi := r.FindRollbackProgramTable(programName)
++	if pi != nil {
++		return pi
++	}
++	if len(r.ProgramInfo) >= cap(r.ProgramInfo) {
++		t := make([]RollbackProgramInfo, 2*cap(r.ProgramInfo))
++		copy(t, r.ProgramInfo)
++		r.ProgramInfo = t
++	}
++	r.ProgramInfo = r.ProgramInfo[0 : len(r.ProgramInfo)+1]
++	log.Printf("len(r.ProgramInfo)= %d, cap(r.ProgramInfo)= %d\n", len(r.ProgramInfo), cap(r.ProgramInfo))
++	pi = &r.ProgramInfo[len(r.ProgramInfo)-1]
++	pi.ProgramName = programName
++	pi.MonotonicCounter = 3
++	pi.NameandHashArray = make([]NameandHash, 100)
++	pi.NameandHashArray = pi.NameandHashArray[0:0]
++	log.Printf("len(pi.pi.NameandHashArray)= %d, cap(pi.pi.NameandHashArray)= %d\n", len(pi.NameandHashArray), cap(pi.NameandHashArray))
++	pi.Initialized = true
++	return pi
++}
++
++func (r *RollbackMaster) ReadMasterRollbackInfo(masterFile string, hashFile string) bool {
++	return false
++}
++
++func (r *RollbackMaster) SaveMasterRollbackInfo(masterFile string, hashFile string) bool {
++	return false
++}
++
++func (pi *RollbackProgramInfo) ReadProgramRollbackInfo(programName string, masterFile string, hashFile string) bool {
++	return false
++}
++
++func (pi *RollbackProgramInfo) SaveProgramRollbackInfo(programName string, masterFile string, hashFile string) bool {
++	return false
++}
++
++func (pi *RollbackProgramInfo) FindRollbackHashEntry(itemName string) *NameandHash {
++	for i := range pi.NameandHashArray {
++		log.Printf("FindRollbackHashEntry %s %s\n", itemName, pi.NameandHashArray[i].ItemName)
++		if pi.NameandHashArray[i].ItemName == itemName {
++			return &pi.NameandHashArray[i]
++		}
++	}
++	return nil
++}
++
++func (pi *RollbackProgramInfo) AddHashEntry(itemName string, hash []byte) *NameandHash {
++	log.Printf("AddHashEntry %s\n", itemName)
++	he := pi.FindRollbackHashEntry(itemName)
++	if he != nil {
++		he.Hash = hash
++		return he
++	}
++	if len(pi.NameandHashArray) >= cap(pi.NameandHashArray) {
++		t := make([]NameandHash, 2*cap(pi.NameandHashArray))
++		copy(t, pi.NameandHashArray)
++		pi.NameandHashArray = t
++	}
++	pi.NameandHashArray = pi.NameandHashArray[0 : len(pi.NameandHashArray)+1]
++	he = &pi.NameandHashArray[len(pi.NameandHashArray)-1]
++	he.ItemName = itemName
++	he.Hash = hash
++	log.Printf("item: %s, hash %x\n", itemName, hash)
++	return he
++}
++
++func (r *RollbackMaster) InitRollbackMaster(masterprogramName string) bool {
++	log.Printf("InitRollbackMaster\n")
++	r.Initialized = true
++	r.ProgramName = masterprogramName
++	r.ProgramInfo = make([]RollbackProgramInfo, 100)
++	r.ProgramInfo = r.ProgramInfo[0:0]
++	log.Printf("len(r.ProgramInfo)= %d, cap(r.ProgramInfo)= %d\n", len(r.ProgramInfo), cap(r.ProgramInfo))
++	// read master
++	// decrypt
++	// update
++
++	// read hash table
++	// decrypt
++	// update
++	return true
++}
++
++func (r *RollbackMaster) SetRollbackCounter(ms *util.MessageStream, programName string, counter int64) bool {
++	pi := r.FindRollbackProgramTable(programName)
++	if pi == nil {
++		log.Printf("SetRollbackCounter: program has no program info table 1")
++		SendResponse(ms, "failed", "Rollback doesn't exist", 0)
++		return false
++	}
++	if pi.MonotonicCounter > counter {
++		log.Printf("SetRollbackCounter: can't set counter backwards")
++		SendResponse(ms, "failed", "Rollback counter can't decrease", 0)
++		return false
++	}
++	pi.MonotonicCounter = counter
++	log.Printf("SetRollbackCounter (%s) table counter: %d\n", pi.ProgramName, pi.MonotonicCounter)
++	SendResponse(ms, "succeeded", "", 0)
++	return true
++}
++
++func (r *RollbackMaster) SetRollbackResourceHash(ms *util.MessageStream, programName string, itemName string) bool {
++	pi := r.FindRollbackProgramTable(programName)
++	if pi == nil {
++		log.Printf("SetRollbackResourceHash: program has no program info table 2")
++		SendResponse(ms, "failed", "Rollback doesn't exist", 0)
++		return false
++	}
++	SendResponse(ms, "succeeded", "", 0)
++	// get hash
++	hash, err := GetProtocolMessage(ms)
++	if err != nil {
++		log.Printf("SetRollbackResourceHash: GetProtocolMessage failed\n")
++		SendResponse(ms, "failed", "Rollback doesn't exist", 0)
++		return false
++	}
++	hi := pi.FindRollbackHashEntry(itemName)
++	if hi == nil {
++		hi = pi.AddHashEntry(itemName, hash)
++		if hi == nil {
++			log.Printf("SetRollbackResourceHash: no hash entry\n")
++			SendResponse(ms, "failed", "can't insert entry", 0)
++			return false
++		}
++	} else {
++		log.Printf("SetRollbackResourceHash, found %s entry\n", hi.ItemName)
++		hi.Hash = hash
++	}
++	return true
++}
++
++func (r *RollbackMaster) GetRollbackCounter(ms *util.MessageStream, programName string) bool {
++	pi := r.FindRollbackProgramTable(programName)
++	if pi == nil {
++		log.Printf("GetRollbackCounter: program has no program info table\n")
++		SendResponse(ms, "failed", "Rollback doesn't exist", 0)
++		return false
++	}
++	log.Printf("GetRollbackCounter(%s), counter: %d\n", pi.ProgramName, pi.MonotonicCounter)
++	SendCounterResponse(ms, "succeeded", "", pi.MonotonicCounter)
++	return true
++}
++
++func (r *RollbackMaster) GetRollbackHashedVerifier(ms *util.MessageStream, programName string, itemName string) bool {
++	log.Printf("GetRollbackHashedVerifier\n")
++	pi := r.FindRollbackProgramTable(programName)
++	if pi == nil {
++		log.Printf("GetRollbackHashedVerifier: program has no program info table")
++		SendResponse(ms, "failed", "Rollback doesn't exist", 0)
++		return false
++	}
++	hi := pi.FindRollbackHashEntry(itemName)
++	if hi == nil {
++		log.Printf("GetRollbackResourceHash: program has no hash entry for %s\n", itemName)
++		SendResponse(ms, "failed", "can't insert entry", 0)
++		return false
++	}
++	// now has the epoch and the hash and return thatkk
++	sha256Hash := sha256.New()
++	b := make([]byte, 8)
++	binary.PutVarint(b, pi.MonotonicCounter)
++	sha256Hash.Write(b)
++	sha256Hash.Write(hi.Hash)
++	sha256Hash.Write(b)
++	hash := sha256Hash.Sum(nil)
++	SendResponse(ms, "succeeded", "", 0)
++	SendProtocolMessage(ms, len(hash), hash)
++	return true
++}
++
++// Update hash for resouce named resource
++func ClientSetRollbackCounter(ms *util.MessageStream, counter int64) bool {
++	SendCounterRequest(ms, counter)
++	status, _, _, err := GetResponse(ms)
++	if err != nil || status == nil || *status != "succeeded" {
++		return false
++	}
++	return true
++}
++
++func ClientSetResourceHashRequest(ms *util.MessageStream, clientProgramName string, item string, hash []byte) bool {
++	log.Printf("ClientSetResourceHashRequest %s, %s\n", clientProgramName, item)
++	action := "setrollbackhash"
++	SendRequest(ms, nil, &action, &item, nil)
++	status, _, _, err := GetResponse(ms)
++	if err != nil || status == nil || *status != "succeeded" {
++		log.Printf("ClientSetResourceHashRequest failed\n")
++		return false
++	}
++	err = SendProtocolMessage(ms, len(hash), hash)
++	return true
++}
++
++func ClientGetRollbackCounter(ms *util.MessageStream, clientProgramName string) (bool, int64) {
++	log.Printf("ClientGetRollbackCounter%s, %s\n", clientProgramName)
++	action := "getrollbackcounter"
++	SendRequest(ms, &clientProgramName, &action, nil, nil)
++	status, _, counter, err := GetCounterResponse(ms)
++	if err != nil || status == nil || *status != "succeeded" || counter == nil {
++		if err != nil {
++			log.Printf("ClientGetRollbackCounter, err is not nil\n")
++		}
++		if status == nil {
++			log.Printf("ClientGetRollbackCounter, status is nil\n")
++		}
++		log.Printf("ClientGetRollbackCounter: %s\n", *status)
++		if counter == nil {
++			log.Printf("ClientGetRollbackCounter, counter is nil\n")
++		}
++		return false, 0
++	}
++	return true, *counter
++}
++
++func ClientGetRollbackHashedVerifierRequest(ms *util.MessageStream, clientProgramName string, item string) (bool, []byte) {
++	log.Printf("ClientGetRollbackHashedVerifierRequest: %s, %s\n", clientProgramName, item)
++	action := "getrollbackcounterverifier"
++	SendRequest(ms, nil, &action, &item, nil)
++	status, _, _, err := GetResponse(ms)
++	if status == nil || *status != "succeeded" || err != nil {
++		return false, nil
++	}
++	hash, err := GetProtocolMessage(ms)
++	return true, hash
++}
++
++// First return value is terminate flag
++func (r *RollbackMaster) HandleServiceRequest(ms *util.MessageStream, programPolicyObject *ProgramPolicy, clientProgramName string, request []byte) (bool, error) {
++	log.Printf("rollbackhandler: HandleServiceRequest for %s\n", clientProgramName)
++
++	fpMessage := new(FPMessage)
++	err := proto.Unmarshal(request, fpMessage)
++	if err != nil {
++		return false, errors.New("HandleService can't unmarshal request")
++	}
++	if fpMessage.MessageType == nil {
++		return false, errors.New("HandleService: no message type")
++	}
++	switch MessageType(*fpMessage.MessageType) {
++	case MessageType_REQUEST:
++	default:
++		return false, errors.New("HandleService does not get MessageType_REQUEST")
++	}
++	action := fpMessage.ActionName
++	if action == nil {
++		SendResponse(ms, "failed", "", 0)
++		return false, errors.New("no action")
++	}
++
++	switch *action {
++	case "setrollbackcounter":
++		if fpMessage.MonotonicCounter == nil {
++			log.Printf("HandleServiceRequest: no counter in setrollbackcounter message")
++			SendResponse(ms, "failed", "no counter", 0)
++		}
++		_ = r.SetRollbackCounter(ms, clientProgramName, *fpMessage.MonotonicCounter)
++		return false, nil
++	case "getrollbackcounter":
++		_ = r.GetRollbackCounter(ms, clientProgramName)
++		return false, nil
++	case "setrollbackhash":
++		if fpMessage.ResourceName == nil {
++			log.Printf("HandleServiceRequest: no resource name in setrollbackhash message")
++			SendResponse(ms, "failed", "no counter", 0)
++		}
++		_ = r.SetRollbackResourceHash(ms, clientProgramName, *fpMessage.ResourceName)
++		return false, nil
++	case "getrollbackcounterverifier":
++		if fpMessage.ResourceName == nil {
++			log.Printf("HandleServiceRequest: no resource name in getrollbackcounterverifier message")
++			SendResponse(ms, "failed", "no counter", 0)
++		}
++		r.GetRollbackHashedVerifier(ms, clientProgramName, *fpMessage.ResourceName)
++		return false, nil
++	default:
++		SendResponse(ms, "failed", "", 0)
++		return false, errors.New("unsupported action")
++	}
++}
+diff --git a/apps/fileproxy/rollbackserver/rebuild b/apps/fileproxy/rollbackserver/rebuild
+new file mode 100755
+index 0000000..928d2a7
+--- /dev/null
++++ b/apps/fileproxy/rollbackserver/rebuild
+@@ -0,0 +1,8 @@
++#
++echo "rebuilding rollbackproxy"
++cd ..
++go build ...
++cd rollbackserver
++echo "rebuilding rollbackserver"
++go build rollbackserver.go
++echo "done"
+diff --git a/apps/fileproxy/rollbackserver/rollbackserver.go b/apps/fileproxy/rollbackserver/rollbackserver.go
+new file mode 100644
+index 0000000..70deb11
+--- /dev/null
++++ b/apps/fileproxy/rollbackserver/rollbackserver.go
+@@ -0,0 +1,238 @@
++// Copyright (c) 2014, Google Corporation.  All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//     http://www.apache.org/licenses/LICENSE-2.0
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++//
++// File: rollbackserver.go
++
++package main
++
++import (
++	"crypto/sha256"
++	"crypto/tls"
++	"crypto/x509"
++	"encoding/hex"
++	"flag"
++	"log"
++	"net"
++
++	"github.com/jlmucb/cloudproxy/apps/fileproxy"
++	tao "github.com/jlmucb/cloudproxy/tao"
++	"github.com/jlmucb/cloudproxy/tao/auth"
++	taonet "github.com/jlmucb/cloudproxy/tao/net"
++	"github.com/jlmucb/cloudproxy/util"
++)
++
++var hostcfg = flag.String("../hostdomain/tao.config", "../hostdomain/tao.config", "path to host tao configuration")
++var serverHost = flag.String("host", "localhost", "address for client/server")
++var serverPort = flag.String("port", "8129", "port for client/server")
++var rollbackserverPath = flag.String("rollbackserver_files/", "rollbackserver_files/", "rollbackserver directory")
++var serverAddr string
++
++var DerPolicyCert []byte
++var SigningKey tao.Keys
++var SymKeys []byte
++var ProgramCert []byte
++
++func clientServiceThead(ms *util.MessageStream, clientName string, rollbackPolicy *fileproxy.ProgramPolicy, rollbackMasterTable *fileproxy.RollbackMaster) {
++	log.Printf("rollbackserver: clientServiceThead\n")
++	pi := rollbackMasterTable.AddRollbackProgramTable(clientName)
++	if pi == nil {
++		log.Printf("rollbackserver cannot rollbackMasterTable.AddRollbackProgramTable\n")
++		return
++	}
++	// How do I know if the connection terminates?
++	for {
++		log.Printf("clientServiceThead: ReadString\n")
++		strbytes, err := ms.ReadString()
++		if err != nil {
++			return
++		}
++		terminate, err := rollbackMasterTable.HandleServiceRequest(ms, rollbackPolicy, clientName, []byte(strbytes))
++		if terminate {
++			break
++		}
++	}
++	log.Printf("fileserver: client thread terminating\n")
++}
++
++func server(serverAddr string, prin string, rollbackPolicy *fileproxy.ProgramPolicy, rollbackMasterTable *fileproxy.RollbackMaster) {
++	var sock net.Listener
++	log.Printf("fileserver: server\n")
++
++	policyCert, err := x509.ParseCertificate(DerPolicyCert)
++	if err != nil {
++		log.Printf("fileserver: can't ParseCertificate\n")
++		return
++	}
++	pool := x509.NewCertPool()
++	pool.AddCert(policyCert)
++	tlsc, err := taonet.EncodeTLSCert(&SigningKey)
++	if err != nil {
++		log.Printf("fileserver, encode error: ", err)
++		log.Printf("\n")
++		return
++	}
++	conf := &tls.Config{
++		RootCAs:            pool,
++		Certificates:       []tls.Certificate{*tlsc},
++		InsecureSkipVerify: false,
++		ClientAuth:         tls.RequireAnyClientCert,
++	}
++	log.Printf("Listenting\n")
++	sock, err = tls.Listen("tcp", serverAddr, conf)
++	if err != nil {
++		log.Printf("rollbackserver, listen error: ", err)
++		log.Printf("\n")
++		return
++	}
++	for {
++		log.Printf("rollbackserver: at Accept\n")
++		conn, err := sock.Accept()
++		if err != nil {
++			log.Printf("rollbackserver: can't accept connection: %s\n", err.Error())
++		}
++		var clientName string
++		clientName = "XYZZY"
++		err = conn.(*tls.Conn).Handshake()
++		if err != nil {
++			log.Printf("TLS handshake failed\n")
++		}
++		peerCerts := conn.(*tls.Conn).ConnectionState().PeerCertificates
++		if peerCerts == nil {
++			log.Printf("rollbackserver: can't get peer list\n")
++		} else {
++			peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
++			if peerCert.Raw == nil {
++				log.Printf("rollbackserver: can't get peer name\n")
++			} else {
++				if peerCert.Subject.OrganizationalUnit != nil {
++					clientName = peerCert.Subject.OrganizationalUnit[0]
++				}
++			}
++		}
++		log.Printf("rollbackserver, peer name: %s\n", clientName)
++		ms := util.NewMessageStream(conn)
++		go clientServiceThead(ms, clientName, rollbackPolicy, rollbackMasterTable)
++	}
++}
++
++func main() {
++	log.Printf("rollback server\n")
++
++	var rollbackMaster fileproxy.RollbackMaster
++	var RollbackMaster *fileproxy.RollbackMaster
++	var rollbackProgramPolicyObject fileproxy.ProgramPolicy
++	var RollbackProgramPolicyObject *fileproxy.ProgramPolicy
++	RollbackMaster = &rollbackMaster
++	RollbackProgramPolicyObject = &rollbackProgramPolicyObject
++
++	flag.Parse()
++	serverAddr = *serverHost + ":" + *serverPort
++
++	hostDomain, err := tao.LoadDomain(*hostcfg, nil)
++	if err != nil {
++		return
++	}
++	log.Printf("rollbackserver: Domain name: %s\n", hostDomain.ConfigPath)
++	DerPolicyCert = nil
++	if hostDomain.Keys.Cert != nil {
++		DerPolicyCert = hostDomain.Keys.Cert.Raw
++	}
++	if DerPolicyCert == nil {
++		log.Printf("rollbackserver: can't retrieve policy cert\n")
++		return
++	}
++
++	/*
++	 Replace with: hostDomai.ExtendTaoDomain(tao)
++	*/
++	sha256Hash := sha256.New()
++	sha256Hash.Write(DerPolicyCert)
++	policyCertHash := sha256Hash.Sum(nil)
++	hexCertHash := hex.EncodeToString(policyCertHash)
++	e := auth.PrinExt{Name: hexCertHash}
++	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
++	if err != nil {
++		return
++	}
++
++	e = auth.PrinExt{Name: "rollbackserver_version_1"}
++	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
++	if err != nil {
++		log.Printf("rollbackserver: can't get tao name\n")
++		return
++	}
++
++	taoName, err := tao.Parent().GetTaoName()
++	if err != nil {
++		return
++	}
++	log.Printf("rollbackserver: my name is %s\n", taoName)
++
++	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err := fileproxy.LoadProgramKeys(*rollbackserverPath)
++	if err != nil {
++		log.Printf("rollbackserver: can't retrieve key material\n")
++	}
++	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || derCert == nil {
++		log.Printf("rollbackserver: No key material present\n")
++	}
++	ProgramCert = derCert
++
++	defer fileproxy.ZeroBytes(SymKeys)
++	if sealedSymmetricKey != nil {
++		symkeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
++		if err != nil {
++			return
++		}
++		if policy != tao.SealPolicyDefault {
++			log.Printf("rollbackserver: unexpected policy on unseal\n")
++		}
++		SymKeys = symkeys
++		log.Printf("rollbackserver: Unsealed symKeys: % x\n", SymKeys)
++	} else {
++		symkeys, err := fileproxy.InitializeSealedSymmetricKeys(*rollbackserverPath, tao.Parent(), fileproxy.SizeofSymmetricKeys)
++		if err != nil {
++			log.Printf("rollbackserver: InitializeSealedSymmetricKeys error: %s\n", err)
++		}
++		SymKeys = symkeys
++		log.Printf("rollbackserver: InitilizedsymKeys: % x\n", SymKeys)
++	}
++
++	if sealedSigningKey != nil {
++		log.Printf("rollbackserver: retrieving signing key\n")
++		signingkey, err := fileproxy.SigningKeyFromBlob(tao.Parent(),
++			sealedSigningKey, derCert, delegation)
++		if err != nil {
++			log.Printf("rollbackserver: SigningKeyFromBlob error: %s\n", err)
++		}
++		SigningKey = *signingkey
++		log.Printf("rollbackserver: Retrieved Signing key: % x\n", SigningKey)
++	} else {
++		log.Printf("rollbackserver: initializing signing key\n")
++		signingkey, err := fileproxy.InitializeSealedSigningKey(*rollbackserverPath,
++			tao.Parent(), *hostDomain)
++		if err != nil {
++			log.Printf("rollbackserver: InitializeSealedSigningKey error: %s\n", err)
++		}
++		SigningKey = *signingkey
++		log.Printf("rollbackserver: Initialized signingKey\n")
++		ProgramCert = SigningKey.Cert.Raw
++	}
++	taoNameStr := taoName.String()
++	_ = RollbackProgramPolicyObject.InitProgramPolicy(DerPolicyCert, taoNameStr, SigningKey, SymKeys, ProgramCert)
++	RollbackMaster.InitRollbackMaster(taoNameStr)
++
++	server(serverAddr, taoNameStr, RollbackProgramPolicyObject, RollbackMaster)
++	if err != nil {
++		log.Printf("rollbackserver: server error\n")
++	}
++	log.Printf("rollbackserver: done\n")
++}
 diff --git a/apps/tao_admin/main.go b/apps/tao_admin/main.go
 index 7c89844..96eb492 100644
 --- a/apps/tao_admin/main.go

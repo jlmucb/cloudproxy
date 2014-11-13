@@ -32,7 +32,9 @@ verbose="yes"
 test_guard="AllowAll"
 child_channel_type="pipe"
 tao_channel_type=""
-build_docker="no"
+tao_factory_type="process"
+coreos_img=""
+ssh_keys=""
 for arg in "$@"; do
 	case "$arg" in
 		-notpm)
@@ -57,7 +59,11 @@ for arg in "$@"; do
 			shift
 			;;
 		-docker)
-			build_docker="yes"
+			tao_factory_type="docker"
+			shift
+			;;
+		-coreos)
+			tao_factory_type="coreos"
 			shift
 			;;
 		-q)
@@ -84,6 +90,8 @@ if [ ! "$test_dir" ]; then
 	echo "  -acls        Use ACL-based guards for Tao domain policy."
 	echo "  -datalog     Use Datalog-based guards for Tao domain policy."
 	echo "  -unix        Use Unix domain sockets instead of pipes for channels."
+	echo "  -docker      Use Docker containers for hosted programs."
+	echo "  -coreos      Use QEMU/KVM-hosted CoreOS for hosted programs."
 	echo "  -q           Be more quiet."
 	exit 1
 fi
@@ -140,7 +148,7 @@ export TAO_TEST="$test_dir" # Also hardcoded into $test_dir/scripts/*.sh
 export TAO_ROOTDIR="$root_dir"
 export TAO_USE_TPM="$test_tpm"
 export TAO_CHANNEL_TYPE="$tao_channel_type"
-export TAO_USE_DOCKER="$build_docker"
+export TAO_FACTORY_TYPE="$tao_factory_type"
 
 # Flags for tao programs
 export TAO_config_path="${test_dir}/tao.config"
@@ -167,6 +175,7 @@ export GLOG_log_dir="\${TAO_TEST}/logs"
 # Misc.
 export TAO_HOSTED_PROGRAMS="
 \${TAO_TEST}/bin/demo 
+\${TAO_TEST}/bin/linux_host
 "
 
 # BEGIN SETUP VARIABLES
@@ -321,17 +330,13 @@ function setup()
 
 	echo "Creating LinuxHost keys and settings."
 	rm -rf ${TAOHOST_path}
-	docker_flag=""
-	if [ "${TAO_USE_DOCKER}" == "yes" ]; then
-		docker_flag="--use_docker"
-	fi
-	linux_host --create --show=false ${docker_flag}
+	linux_host --create --show=false --factory_type=${TAO_FACTORY_TYPE}
 	linux_host --show >> ${tao_env}
 
 	echo "# END SETUP VARIABLES" >> ${tao_env}
 
 	# In Docker mode, set up Docker containers for each hosted program.
-	if [ "${TAO_USE_DOCKER}" == "yes" ]; then
+	if [ "${TAO_FACTORY_TYPE}" != "process" ]; then
 		for prog in ${TAO_HOSTED_PROGRAMS}; do
 			builddocker $prog
 		done
@@ -418,11 +423,7 @@ function startsvcs()
 		echo "LinuxHost service already running";
 	else
 		rm -f ${TAO_TEST}/linux_tao_host/admin_socket
-		docker_flag=""
-		if [ "${TAO_USE_DOCKER}" == "yes" ]; then
-			docker_flag="--use_docker"
-		fi
-		linux_host ${docker_flag} --service &
+		linux_host --factory_type=${TAO_FACTORY_TYPE} --service &
 	fi
 }
 
@@ -580,12 +581,12 @@ function hostpgm()
 	prog="$1"
 	shift
 
-	docker_config=""
-	if [ "$TAO_USE_DOCKER" == "yes" ]; then
+	config=""
+	if [ "$TAO_FACTORY_TYPE" == "docker" ]; then
 		base_prog=`basename $prog`
 		# In Docker mode, pass the image created at setup time for this
 		# program.
-		docker_config="-docker ${TAO_TEST}/${base_prog}.img.tgz"
+		config="-docker ${TAO_TEST}/${base_prog}.img.tgz"
 	fi
 
 	echo "Starting hosted program $prog ..."

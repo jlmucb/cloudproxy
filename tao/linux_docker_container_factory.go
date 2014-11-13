@@ -15,9 +15,7 @@
 package tao
 
 import (
-	"crypto/rand"
 	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -150,17 +148,6 @@ func FormatDockerSubprin(id uint, hash []byte) auth.SubPrin {
 	args = append(args, auth.Bytes(hash))
 	return auth.SubPrin{auth.PrinExt{Name: "Container", Arg: args}}
 }
-
-func getRandomFileName(n int) string {
-	// Get a random name for the socket.
-	nameBytes := make([]byte, n)
-	if _, err := rand.Read(nameBytes); err != nil {
-		return ""
-	}
-	return hex.EncodeToString(nameBytes)
-}
-
-var nameLen = 10
 
 // Launch builds a docker container from a tar file and launches it with the
 // given arguments.

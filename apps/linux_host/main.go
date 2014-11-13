@@ -31,6 +31,7 @@ import (
 	"github.com/jlmucb/cloudproxy/util"
 )
 
+// General configuration options.
 var configPath = flag.String("config_path", "tao.config", "Location of tao domain configuration")
 var hostPath = flag.String("path", "linux_tao_host", "Location of linux host configuration")
 var rules = flag.String("rules", "rules", "Name of the rules file for auth")
@@ -40,9 +41,9 @@ var stacked = flag.Bool("stacked", false, "Run in stacked mode")
 var pass = flag.String("pass", "", "Password for unlocking keys if running in root mode")
 var channelType = flag.String("channel_type", "pipe", "The type of channel for hosted-program communication ('pipe', or 'unix').")
 var channelSocketPath = flag.String("channel_socket_path", "", "The directory in which to create unix sockets for hosted-program communication")
-var useDocker = flag.Bool("use_docker", false, "Use Docker containers instead of processes")
-var docker = flag.String("docker", "", "The path to a tarball to use to create a docker image")
+var factoryType = flag.String("factory_type", "process", "The type of hosted program factory to use ('process', 'docker', or 'coreos')")
 
+// Actions to take.
 var create = flag.Bool("create", false, "Create a new LinuxHost service.")
 var show = flag.Bool("show", false, "Show principal name for LinuxHost service.")
 var service = flag.Bool("service", false, "Start the LinuxHost service.")
@@ -53,6 +54,16 @@ var list = flag.Bool("list", false, "List hosted programs.")
 var stop = flag.Bool("stop", false, "Stop a hosted program (names follow --).")
 var kill = flag.Bool("kill", false, "Kill a hosted program (names follow --).")
 var name = flag.Bool("name", false, "Show the principal name of running LinuxHost.")
+
+// Docker configuration.
+var docker = flag.String("docker_img", "", "The path to a tarball to use to create a docker image")
+
+// QEMU/KVM CoreOS configuration with some reasonable defaults.
+var coreOSImage = flag.String("coreos_img", "coreos.img", "The path to a CoreOS image")
+var sshStartPort = flag.Int("coreos_ssh_port", 2222, "The starting port for SSH connections to CoreOS VMs")
+var vmMemory = flag.Int("vm_memory", 1024, "The amount of RAM to give the VM")
+var sshFile = flag.String("ssh_auth_keys", "auth_ssh_coreos", "A path to the authorized keys file for SSH connections to the CoreOS guest")
+var hostImage = flag.String("host_img", "linux_host.img.tgz", "The path to the Docker image for the Linux host to run under CoreOS")
 
 func countSet(vars ...interface{}) int {
 	var n int
@@ -116,10 +127,35 @@ func main() {
 		rulesPath := path.Join(wd, *rules)
 
 		var childFactory tao.HostedProgramFactory
-		if *useDocker {
-			childFactory = tao.NewLinuxDockerContainerFactory(*channelSocketPath, rulesPath)
-		} else {
+		switch *factoryType {
+		case "process":
 			childFactory = tao.NewLinuxProcessFactory(*channelType, *channelSocketPath)
+		case "docker":
+			childFactory = tao.NewLinuxDockerContainerFactory(*channelSocketPath, rulesPath)
+		case "coreos":
+			if *sshFile == "" {
+				log.Fatal("Must specify an SSH authorized_key file for CoreOS")
+			}
+			sshKeysCfg, err := tao.CloudConfigFromSSHKeys(*sshFile)
+			if err != nil {
+				log.Fatalf("Couldn't load the ssh files file '%s': %s\n", *sshFile, err)
+			}
+
+			if *coreOSImage == "" {
+				log.Fatal("Must specify a CoreOS image file for the CoreOS hosted-program factory")
+			}
+
+			// Construct the CoreOS configuration from the flags.
+			cfg := &tao.CoreOSConfig{
+				ImageFile:  *coreOSImage,
+				SSHPort:    *sshStartPort,
+				Memory:     *vmMemory,
+				RulesPath:  rulesPath,
+				SSHKeysCfg: sshKeysCfg,
+			}
+			childFactory = tao.NewLinuxKvmCoreOSContainerFactory(*channelSocketPath, *hostImage, cfg)
+		default:
+			log.Fatalf("Unknown hosted-program factory '%s'\n", *factoryType)
 		}
 
 		var host *tao.LinuxHost

@@ -15,10 +15,8 @@
 package main
 
 import (
-	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/hex"
 	"flag"
 	"log"
 	"net"
@@ -149,25 +147,14 @@ func main() {
 		return
 	}
 
-	/*
-	 Replace with: hostDomai.ExtendTaoDomain(tao)
-	*/
-	sha256Hash := sha256.New()
-	sha256Hash.Write(derPolicyCert)
-	policyCertHash := sha256Hash.Sum(nil)
-	hexCertHash := hex.EncodeToString(policyCertHash)
-	e := auth.PrinExt{Name: hexCertHash}
+	if err := hostDomain.ExtendTaoName(tao.Parent()); err != nil {
+		log.Fatalln("fileserver: can't extend the Tao with the policy key")
+	}
+	e := auth.PrinExt{Name: "fileserver_version_1"}
 	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
 	if err != nil {
 		return
 	}
-
-	e = auth.PrinExt{Name: "fileserver_version_1"}
-	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
-	if err != nil {
-		return
-	}
-
 	taoName, err := tao.Parent().GetTaoName()
 	if err != nil {
 		log.Printf("fileserver: cant get tao name\n")

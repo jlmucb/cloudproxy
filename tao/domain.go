@@ -206,3 +206,27 @@ func LoadDomain(configPath string, password []byte) (*Domain, error) {
 
 	return &Domain{cfg, configPath, keys, guard}, nil
 }
+
+// ExtendTaoDomain uses a Domain's Verifying key to extend the Tao with a
+// subprincipal PolicyKey([...]).
+func (d *Domain) ExtendTaoName(tao Tao) error {
+	if d.Keys == nil || d.Keys.VerifyingKey == nil {
+		return newError("no verifying key to use for name extension")
+	}
+
+	// This is a key Prin with type "key" and auth.Bytes as its Term
+	p := d.Keys.VerifyingKey.ToPrincipal()
+	b, ok := p.Key.(auth.Bytes)
+	if !ok {
+		return newError("couldn't get an auth.Bytes value from the key")
+	}
+
+	sp := auth.SubPrin{
+		auth.PrinExt{
+			Name: "PolicyKey",
+			Arg:  []auth.Term{b},
+		},
+	}
+
+	return tao.ExtendTaoName(sp)
+}

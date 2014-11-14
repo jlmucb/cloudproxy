@@ -101,7 +101,7 @@ func server(serverAddr string, prin string, derPolicyCert []byte, signingKey *ta
 			clientName = "XYZZY"
 			err = conn.(*tls.Conn).Handshake()
 			if err != nil {
-				log.Printf("TLS handshake failed\n")
+				log.Printf("fileserver: TLS handshake failed\n")
 			}
 			peerCerts := conn.(*tls.Conn).ConnectionState().PeerCertificates
 			if peerCerts == nil {
@@ -135,7 +135,7 @@ func main() {
 
 	hostDomain, err := tao.LoadDomain(*hostcfg, nil)
 	if err != nil {
-		return
+		log.Fatalln("fileserver: can't LoadDomain")
 	}
 	log.Printf("fileserver: Domain name: %s\n", hostDomain.ConfigPath)
 	var derPolicyCert []byte
@@ -143,8 +143,7 @@ func main() {
 		derPolicyCert = hostDomain.Keys.Cert.Raw
 	}
 	if derPolicyCert == nil {
-		log.Printf("fileserver: can't retrieve policy cert\n")
-		return
+		log.Fatalln("fileserver: can't retrieve policy cert")
 	}
 
 	if err := hostDomain.ExtendTaoName(tao.Parent()); err != nil {

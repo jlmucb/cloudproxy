@@ -104,7 +104,7 @@ func KeyNegoRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, 
 	subjectPrin, ok := sf.Delegator.(auth.Prin)
 	if ok != true {
 		log.Printf("keynegoserver: can't get subject principal\n")
-		return false, errors.New("Cant get principal name from verifier")
+		return false, errors.New("Can't get principal name from verifier")
 	}
 	subjectnamestr := subjectPrin.String()
 	verified := IsAuthenticationValid(&subjectnamestr)
@@ -237,27 +237,25 @@ func main() {
 	//   be good.
 	keys, err := tao.NewTemporaryKeys(tao.Signing)
 	if keys == nil || err != nil {
-		log.Printf("keynegoserver: Couldn't set up temporary keys for the connection:", err)
+		log.Fatalln("keynegoserver: Couldn't set up temporary keys for the connection:", err)
 		return
 	}
 	keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
 		Organization: []string{"Google Tao Demo"}})
 	if err != nil {
-		log.Printf("keynegoserver: Couldn't set up a self-signed cert:", err)
+		log.Fatalln("keynegoserver: Couldn't set up a self-signed cert:", err)
 		return
 	}
 	SerialNumber = int64(time.Now().UnixNano()) / (1000000)
 	policyKey, err := tao.NewOnDiskPBEKeys(tao.Signing, []byte(*domainPass), "policy_keys", nil)
 	if err != nil {
-		log.Printf("keynegoserver: Couldn't get policy key\n", err)
-		return
+		log.Fatalln("keynegoserver: Couldn't get policy key\n", err)
 	}
-	log.Printf("Policy key %x\n: ", policyKey)
+	log.Printf("keynegoserver: Policy key %x\n: ", policyKey)
 
 	tlsc, err := taonet.EncodeTLSCert(keys)
 	if err != nil {
-		log.Printf("keynegoserver: Couldn't encode a TLS cert:", err)
-		return
+		log.Fatalln("keynegoserver: Couldn't encode a TLS cert:", err)
 	}
 	conf := &tls.Config{
 		RootCAs:            x509.NewCertPool(),

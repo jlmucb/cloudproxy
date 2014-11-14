@@ -213,24 +213,35 @@ func (m *ResourceMaster) Delete(resourceName string) error {
 
 func (m *ResourceMaster) EncodeMaster() ([]byte, error) {
 	log.Printf("filehandler: encodeMaster\n")
-	protoMessage := new(FPResourceMaster)
-	protoMessage.PrinName = proto.String(m.ProgramName)
-	protoMessage.BaseDirectoryName = proto.String(m.BaseDirectory)
-	protoMessage.NumFileinfos = proto.Int(len(m.ResourceArray))
-	return proto.Marshal(protoMessage)
+	p := &FPResourceMaster{
+		PrinName:          proto.String(m.ProgramName),
+		BaseDirectoryName: proto.String(m.BaseDirectory),
+		NumFileinfos:      proto.Int(len(m.ResourceArray)),
+	}
+	return proto.Marshal(p)
 }
 
 func (m *ResourceMaster) DecodeMaster(in []byte) (*int, error) {
 	log.Printf("filehandler: DecodeMaster\n")
-	rMessage := new(FPResourceMaster)
-	err := proto.Unmarshal(in, rMessage)
-	if err != nil {
+	var message FPResourceMaster
+	if err := proto.Unmarshal(in, &message); err != nil {
 		return nil, err
 	}
-	m.ProgramName = *rMessage.PrinName
-	m.BaseDirectory = *rMessage.BaseDirectoryName
-	size := *rMessage.NumFileinfos
-	isize := int(size) //TODO: Fix
+	/*
+		rMessage := new(FPResourceMaster)
+		err := proto.Unmarshal(in, rMessage)
+		if err != nil {
+		return nil, err
+		}
+		m.ProgramName = *rMessage.PrinName
+		m.BaseDirectory = *rMessage.BaseDirectoryName
+		size := *rMessage.NumFileinfos
+		isize := int(size) //TODO: Fix
+		return &isize, nil
+	*/
+	m.ProgramName = *message.PrinName
+	m.BaseDirectory = *message.BaseDirectoryName
+	isize := int(*message.NumFileinfos)
 	return &isize, nil
 }
 
@@ -253,7 +264,7 @@ func (r *ResourceInfo) EncodeResourceInfo() ([]byte, error) {
 	protoMessage.ResourceStatus = proto.String(r.ResourceStatus)
 	protoMessage.ResourceLocation = proto.String(r.ResourceLocation)
 	protoMessage.ResourceSize = proto.Int(r.ResourceSize)
-	//Fix: protoMessage.ResourceOwner= proto.Bytes(r.ResourceOwner);
+	protoMessage.ResourceOwner = proto.String(r.ResourceOwner)
 	out, err := proto.Marshal(protoMessage)
 	return out, err
 }
@@ -336,19 +347,24 @@ func (m *ResourceMaster) InitGuard(rulefile string) error {
 
 func (m *ResourceMaster) ReadRules(rulefile string) error {
 	log.Printf("filehandler: ReadRules\n")
-	// no need for rules
+	// Read/Save is not implemented since it is not especially instructive in this prototype
+	// but should be in a real system.
 	return nil
 }
 
 func (m *ResourceMaster) SaveRules(rulefile string) error {
 	log.Printf("filehandler: SaveRules\n")
-	// no need for rules
+	// Read/Save is not implemented since it is not especially instructive in this prototype
+	// but should be in a real system.
 	return nil
 }
 
 func (m *ResourceMaster) GetResourceData(masterFile string, resourceFile string, principalFile string, ruleFile string) error {
 	log.Printf("filehandler: GetResourceData\n")
-	// TODO: decrypt the files
+	// Read/Save is not implemented since it is not especially instructive in this prototype
+	// but should be in a real system.
+	// Alson in a real system, this data should be encrypted.
+
 	// Read master
 	masterRecord, _ := ioutil.ReadFile(masterFile)
 	_, _ = m.DecodeMaster([]byte(masterRecord))
@@ -381,7 +397,7 @@ func (m *ResourceMaster) GetResourceData(masterFile string, resourceFile string,
 
 func (m *ResourceMaster) SaveResourceData(masterFile string, resourceFile string, principalFile string, ruleFile string) error {
 	log.Printf("filehandler: SaveResourceData\n")
-	// TODO: encrypt the files
+	// This has never been tested (see above); also, in a real system, it should be encrypted.
 	// Save master
 	masterRecord, _ := m.EncodeMaster()
 	log.Printf("masterRecord size: %d\n", len(masterRecord))
@@ -405,7 +421,7 @@ func (m *ResourceMaster) SaveResourceData(masterFile string, resourceFile string
 	}
 	fo.Close()
 
-	// Save rules
+	// Save rules (see above)
 	_ = m.SaveRules(ruleFile)
 	return nil
 }
@@ -415,26 +431,31 @@ func AuthenticatePrincipal(m *ResourceMaster, ms *util.MessageStream, programPol
 	offeredCert, err := GetProtocolMessage(ms)
 	if err != nil {
 		log.Printf("cant GetProtocolMessage in AuthenticatePrincipal % x\n", offeredCert)
+		return false, nil
 	}
 	nonce := make([]byte, SizeofNonce)
 	_, err = rand.Read(nonce)
 	if err != nil {
 		log.Printf("Rand error in AuthenticatePrincipal\n")
+		return false, nil
 	}
 	SendProtocolMessage(ms, len(nonce), nonce)
 	signedRand, err := GetProtocolMessage(ms)
 	if err != nil {
 		log.Printf("cant GetProtocolMessage in AuthenticatePrincipal\n")
+		return false, nil
 	}
 	log.Printf("AuthenticatePrincipal: got signed nonce % x\n", signedRand)
 	// Decrypt nonce
 	cert, err := x509.ParseCertificate(offeredCert)
 	if err != nil {
 		log.Printf("cant Parse Certificate in AuthenticatePrincipal\n")
+		return false, nil
 	}
 	v, err := tao.FromX509(cert)
 	if err != nil {
 		log.Printf("cant get verifier from x509 AuthenticatePrincipal\n")
+		return false, nil
 	}
 	ok, err := v.Verify(nonce, ChallengeContext, signedRand)
 	if err != nil {

@@ -25,7 +25,7 @@ import (
 	"github.com/jlmucb/cloudproxy/util"
 )
 
-type NameandHash struct {
+type NameAndHash struct {
 	ItemName string
 	Hash     []byte
 }
@@ -36,7 +36,7 @@ type RollbackProgramInfo struct {
 	ProgramName        string
 	MonotonicCounter   int64
 	Initialized        bool
-	NameandHashArray   []NameandHash
+	NameAndHashArray   []NameAndHash
 }
 
 type RollbackMaster struct {
@@ -69,10 +69,10 @@ func (r *RollbackMaster) AddRollbackProgramTable(programName string) *RollbackPr
 	log.Printf("len(r.ProgramInfo)= %d, cap(r.ProgramInfo)= %d\n", len(r.ProgramInfo), cap(r.ProgramInfo))
 	pi = &r.ProgramInfo[len(r.ProgramInfo)-1]
 	pi.ProgramName = programName
-	pi.MonotonicCounter = 3
-	pi.NameandHashArray = make([]NameandHash, 100)
-	pi.NameandHashArray = pi.NameandHashArray[0:0]
-	log.Printf("len(pi.pi.NameandHashArray)= %d, cap(pi.pi.NameandHashArray)= %d\n", len(pi.NameandHashArray), cap(pi.NameandHashArray))
+	pi.MonotonicCounter = 0
+	pi.NameAndHashArray = make([]NameAndHash, 100)
+	pi.NameAndHashArray = pi.NameAndHashArray[0:0]
+	log.Printf("len(pi.pi.NameAndHashArray)= %d, cap(pi.pi.NameAndHashArray)= %d\n", len(pi.NameAndHashArray), cap(pi.NameAndHashArray))
 	pi.Initialized = true
 	return pi
 }
@@ -93,30 +93,30 @@ func (pi *RollbackProgramInfo) SaveProgramRollbackInfo(programName string, maste
 	return false
 }
 
-func (pi *RollbackProgramInfo) FindRollbackHashEntry(itemName string) *NameandHash {
-	for i := range pi.NameandHashArray {
-		log.Printf("FindRollbackHashEntry %s %s\n", itemName, pi.NameandHashArray[i].ItemName)
-		if pi.NameandHashArray[i].ItemName == itemName {
-			return &pi.NameandHashArray[i]
+func (pi *RollbackProgramInfo) FindRollbackHashEntry(itemName string) *NameAndHash {
+	for i := range pi.NameAndHashArray {
+		log.Printf("FindRollbackHashEntry %s %s\n", itemName, pi.NameAndHashArray[i].ItemName)
+		if pi.NameAndHashArray[i].ItemName == itemName {
+			return &pi.NameAndHashArray[i]
 		}
 	}
 	return nil
 }
 
-func (pi *RollbackProgramInfo) AddHashEntry(itemName string, hash []byte) *NameandHash {
+func (pi *RollbackProgramInfo) AddHashEntry(itemName string, hash []byte) *NameAndHash {
 	log.Printf("AddHashEntry %s\n", itemName)
 	he := pi.FindRollbackHashEntry(itemName)
 	if he != nil {
 		he.Hash = hash
 		return he
 	}
-	if len(pi.NameandHashArray) >= cap(pi.NameandHashArray) {
-		t := make([]NameandHash, 2*cap(pi.NameandHashArray))
-		copy(t, pi.NameandHashArray)
-		pi.NameandHashArray = t
+	if len(pi.NameAndHashArray) >= cap(pi.NameAndHashArray) {
+		t := make([]NameAndHash, 2*cap(pi.NameAndHashArray))
+		copy(t, pi.NameAndHashArray)
+		pi.NameAndHashArray = t
 	}
-	pi.NameandHashArray = pi.NameandHashArray[0 : len(pi.NameandHashArray)+1]
-	he = &pi.NameandHashArray[len(pi.NameandHashArray)-1]
+	pi.NameAndHashArray = pi.NameAndHashArray[0 : len(pi.NameAndHashArray)+1]
+	he = &pi.NameAndHashArray[len(pi.NameAndHashArray)-1]
 	he.ItemName = itemName
 	he.Hash = hash
 	log.Printf("item: %s, hash %x\n", itemName, hash)

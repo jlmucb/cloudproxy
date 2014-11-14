@@ -170,9 +170,9 @@ func (kcc *KvmCoreOSContainer) ID() int {
 	return 0
 }
 
-// A LinuxKvmCoreOSContainerFactory manages hosted programs started as QEMU/KVM
+// A LinuxKVMCoreOSFactory manages hosted programs started as QEMU/KVM
 // instances over a given CoreOS image.
-type LinuxKvmCoreOSContainerFactory struct {
+type LinuxKVMCoreOSFactory struct {
 	Cfg            *CoreOSConfig
 	SocketPath     string
 	DockerHostFile string
@@ -180,10 +180,10 @@ type LinuxKvmCoreOSContainerFactory struct {
 	Mutex          sync.Mutex
 }
 
-// NewLinuxKvmCoreOSContainerFactory returns a new HostedProgramFactory that can
+// NewLinuxKVMCoreOSFactory returns a new HostedProgramFactory that can
 // create docker containers to wrap programs.
-func NewLinuxKvmCoreOSContainerFactory(sockPath, dockerPath string, cfg *CoreOSConfig) HostedProgramFactory {
-	return &LinuxKvmCoreOSContainerFactory{
+func NewLinuxKVMCoreOSFactory(sockPath, dockerPath string, cfg *CoreOSConfig) HostedProgramFactory {
+	return &LinuxKVMCoreOSFactory{
 		Cfg:            cfg,
 		SocketPath:     sockPath,
 		DockerHostFile: dockerPath,
@@ -211,7 +211,7 @@ func CloudConfigFromSSHKeys(keysFile string) (string, error) {
 
 // MakeSubprin computes the hash of a QEMU/KVM CoreOS image to get a
 // subprincipal for authorization purposes.
-func (ldcf *LinuxKvmCoreOSContainerFactory) MakeSubprin(id uint, image string) (auth.SubPrin, string, error) {
+func (ldcf *LinuxKVMCoreOSFactory) MakeSubprin(id uint, image string) (auth.SubPrin, string, error) {
 	var empty auth.SubPrin
 	// TODO(tmroeder): the combination of TeeReader and ReadAll doesn't seem
 	// to copy the entire image, so we're going to hash in place for now.
@@ -251,26 +251,26 @@ var nameLen = 10
 
 // Launch launches a QEMU/KVM CoreOS instance, connects to it with SSH to start
 // the LinuxHost on it, and returns the socket connection to that host.
-func (ldkcf *LinuxKvmCoreOSContainerFactory) Launch(imagePath string, args []string) (io.ReadWriteCloser, HostedProgram, error) {
+func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string) (io.ReadWriteCloser, HostedProgram, error) {
 	// Build the new Config and start it. Make sure it has a random name so
 	// it doesn't conflict with other virtual machines. Note that we need to
 	// assign fresh local SSH ports for each new virtual machine, hence the
 	// mutex and increment operation.
 	sockName := getRandomFileName(nameLen)
-	sockPath := path.Join(ldkcf.SocketPath, sockName)
+	sockPath := path.Join(lkcf.SocketPath, sockName)
 
-	ldkcf.Mutex.Lock()
-	sshPort := ldkcf.NextSSHPort
-	ldkcf.NextSSHPort += 1
-	ldkcf.Mutex.Unlock()
+	lkcf.Mutex.Lock()
+	sshPort := lkcf.NextSSHPort
+	lkcf.NextSSHPort += 1
+	lkcf.Mutex.Unlock()
 
 	cfg := &CoreOSConfig{
 		Name:       getRandomFileName(nameLen),
 		ImageFile:  imagePath,
 		SSHPort:    sshPort,
-		Memory:     ldkcf.Cfg.Memory,
-		RulesPath:  ldkcf.Cfg.RulesPath,
-		SSHKeysCfg: ldkcf.Cfg.SSHKeysCfg,
+		Memory:     lkcf.Cfg.Memory,
+		RulesPath:  lkcf.Cfg.RulesPath,
+		SSHKeysCfg: lkcf.Cfg.SSHKeysCfg,
 		SocketPath: sockPath,
 	}
 
@@ -278,7 +278,7 @@ func (ldkcf *LinuxKvmCoreOSContainerFactory) Launch(imagePath string, args []str
 	// build a container and launch it.
 	kcc := &KvmCoreOSContainer{
 		Cfg:            cfg,
-		DockerHostFile: ldkcf.DockerHostFile,
+		DockerHostFile: lkcf.DockerHostFile,
 		Args:           args,
 	}
 

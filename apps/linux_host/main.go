@@ -153,7 +153,7 @@ func main() {
 				RulesPath:  rulesPath,
 				SSHKeysCfg: sshKeysCfg,
 			}
-			childFactory = tao.NewLinuxKvmCoreOSContainerFactory(*channelSocketPath, *hostImage, cfg)
+			childFactory = tao.NewLinuxKVMCoreOSFactory(*channelSocketPath, *hostImage, cfg)
 		default:
 			log.Fatalf("Unknown hosted-program factory '%s'\n", *factoryType)
 		}

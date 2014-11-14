@@ -68,6 +68,16 @@ for arg in "$@"; do
 			child_channel_type="unix"
 			shift
 			;;
+		-coreos_img)
+			coreos_img=$2
+			shift
+			shift
+			;;
+		-ssh_keys)
+			ssh_keys=$2
+			shift
+			shift
+			;;
 		-q)
 			verbose="no"
 			shift
@@ -117,6 +127,14 @@ if [ ! -f "$root_dir/$script_path" -o ! -d "$test_dir" ]; then
 	echo "install failed: could not canonicalize paths"
 	exit 1
 fi
+if [ "${tao_factory_type}" == "coreos" -a ! -f "${coreos_img}" ]; then
+	echo "install failed: must supply a valid image file for CoreOS"
+	exit 1
+fi
+if [ "${tao_factory_type}" == "coreos" -a ! -f "${ssh_keys}" ]; then
+	echo "install failed: must supply a valid SSH keys file for CoreOS"
+	exit 1
+fi
 mkdir -p "$test_dir/scripts"
 rm -f "$test_dir/scripts/tao.sh"
 sed '/^# INSTALL BEGIN/,/^# INSTALL END/ s/^/## /' "$root_dir/$script_path" \
@@ -151,6 +169,8 @@ export TAO_ROOTDIR="$root_dir"
 export TAO_USE_TPM="$test_tpm"
 export TAO_CHANNEL_TYPE="$tao_channel_type"
 export TAO_FACTORY_TYPE="$tao_factory_type"
+export TAO_COREOS_IMAGE="$coreos_img"
+export TAO_SSH_KEYS="$ssh_keys"
 
 # Flags for tao programs
 export TAO_config_path="${test_dir}/tao.config"
@@ -332,10 +352,20 @@ function setup()
 
 	echo "Creating LinuxHost keys and settings."
 	rm -rf ${TAOHOST_path}
+
+	# Set up the CoreOS image and the SSH keys, if any.
+	echo "factory ${TAO_FACTORY_TYPE}"
+	if [ "${TAO_FACTORY_TYPE}" == "coreos" ]; then
+		echo "Copying values '${TAO_COREOS_IMAGE}' and '${TAO_SSH_KEYS}'"
+		cp ${TAO_COREOS_IMAGE} ${TAO_TEST}/coreos.img
+		cp ${TAO_SSH_KEYS} ${TAO_TEST}/auth_ssh_coreos
+	fi
+
 	linux_host --create --show=false --factory_type=${TAO_FACTORY_TYPE}
 	linux_host --show >> ${tao_env}
 
 	echo "# END SETUP VARIABLES" >> ${tao_env}
+
 
 	# In Docker mode, set up Docker containers for each hosted program.
 	if [ "${TAO_FACTORY_TYPE}" != "process" ]; then

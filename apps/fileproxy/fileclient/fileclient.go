@@ -55,15 +55,14 @@ func main() {
 
 	hostDomain, err := tao.LoadDomain(*hostcfg, nil)
 	if err != nil {
-		return
+		log.Fatalln("fileclient: Can't load domain")
 	}
 	var derPolicyCert []byte
 	if hostDomain.Keys.Cert != nil {
 		derPolicyCert = hostDomain.Keys.Cert.Raw
 	}
 	if derPolicyCert == nil {
-		log.Printf("fileclient: can't retrieve policy cert\n")
-		return
+		log.Fatalln("fileclient: Can't retrieve policy cert")
 	}
 
 	if err := hostDomain.ExtendTaoName(tao.Parent()); err != nil {
@@ -77,19 +76,19 @@ func main() {
 
 	taoName, err := tao.Parent().GetTaoName()
 	if err != nil {
-		log.Printf("fileserver: cant get tao name\n")
+		log.Fatalln("fileclient: Can't get tao name")
 		return
 	}
 	log.Printf("fileclient: my name is %s\n", taoName)
 
 	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*fileclientPath)
 	if err != nil {
-		log.Printf("fileclient: cant retrieve key material\n")
+		log.Printf("fileclient: can't retrieve key material\n")
 	}
 	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || programCert == nil {
 		log.Printf("fileclient: No key material present\n")
 	}
-	log.Printf("Finished fileproxy.LoadProgramKeys\n")
+	log.Printf("fileclient: Finished fileproxy.LoadProgramKeys\n")
 
 	var symKeys []byte
 	if sealedSymmetricKey != nil {
@@ -132,7 +131,7 @@ func main() {
 
 	policyCert, err := x509.ParseCertificate(derPolicyCert)
 	if err != nil {
-		log.Printf("fileclient:cant ParseCertificate\n")
+		log.Fatalln("fileclient:can't ParseCertificate")
 		return
 	}
 	log.Printf("fileclient: place 0\n")
@@ -151,7 +150,7 @@ func main() {
 		InsecureSkipVerify: false,
 	})
 	if err != nil {
-		log.Printf("fileclient: cant establish channel\n", err)
+		log.Printf("fileclient: can't establish channel\n", err)
 		log.Printf("\n")
 		return
 	}
@@ -161,7 +160,7 @@ func main() {
 	// Authenticate user principal(s).
 	userCert, err := ioutil.ReadFile(*fileclientPath + *fileclientKeyPath + "cert")
 	if err != nil {
-		log.Printf("fileclient: cant read cert %s\n", *fileclientPath+*fileclientKeyPath+"cert")
+		log.Printf("fileclient: can't read cert %s\n", *fileclientPath+*fileclientKeyPath+"cert")
 		return
 	}
 	log.Printf("fileclient: read cert\n")
@@ -170,7 +169,7 @@ func main() {
 	}
 	pks, err := ioutil.ReadFile(*fileclientPath + *fileclientKeyPath + "keys")
 	if err != nil {
-		log.Printf("fileclient: cant read key blob\n")
+		log.Printf("fileclient: can't read key blob\n")
 		return
 	}
 	if pks == nil {
@@ -180,25 +179,23 @@ func main() {
 	var cks tao.CryptoKeyset
 	err = proto.Unmarshal(pks, &cks)
 	if err != nil {
-		log.Printf("fileclient: cant proto unmarshal key set\n")
+		log.Printf("fileclient: can't proto unmarshal key set\n")
 		return
 	}
 	if pks == nil {
-		log.Printf("fileclient: cant proto unmarshaled is nil \n")
+		log.Printf("fileclient: can't proto unmarshaled is nil \n")
 		return
 	}
 	log.Printf("fileclient: unmarshaled proto key\n")
 	userKey, err := tao.UnmarshalKeyset(&cks)
 	if err != nil {
-		log.Printf("fileclient: cant unmarshal key set\n")
+		log.Printf("fileclient: can't unmarshal key set\n")
 		return
 	}
 	log.Printf("fileclient: unmarshaled key\n")
-	log.Printf("user key: ", userKey)
-	log.Printf("\n")
 	ok := fileproxy.AuthenticatePrincipalRequest(ms, userKey, userCert)
 	if !ok {
-		log.Printf("fileclient: cant authenticate principal\n")
+		log.Printf("fileclient: can't authenticate principal\n")
 		return
 	}
 	log.Printf("fileclient: AuthenticatedPrincipalRequest\n")
@@ -208,7 +205,7 @@ func main() {
 	log.Printf("fileclient, sending rule: %s\n", rule)
 	err = fileproxy.SendRule(ms, rule, userCert)
 	if err != nil {
-		log.Printf("fileclient: cant create file\n")
+		log.Printf("fileclient: can't create file\n")
 		return
 	}
 	status, message, size, err := fileproxy.GetResponse(ms)
@@ -227,7 +224,7 @@ func main() {
 	log.Printf("fileclient, Creating: %s\n", sentFileName)
 	err = fileproxy.SendCreateFile(ms, userCert, sentFileName)
 	if err != nil {
-		log.Printf("fileclient: cant create file\n")
+		log.Printf("fileclient: can't create file\n")
 		return
 	}
 	status, message, size, err = fileproxy.GetResponse(ms)
@@ -288,7 +285,7 @@ func main() {
 
 	err = fileproxy.GetFile(ms, *fileclientFilePath, sentFileName+".received", nil)
 	if err != nil {
-		log.Printf("fileclient: cant get file ", err)
+		log.Printf("fileclient: can't get file ", err)
 		log.Printf("\n")
 		return
 	}
@@ -301,13 +298,13 @@ func main() {
 		InsecureSkipVerify: false,
 	})
 	if err != nil {
-		log.Printf("fileclient: cant establish rollback channel\n", err)
+		log.Printf("fileclient: can't establish rollback channel\n", err)
 		log.Printf("\n")
 		return
 	}
 	newms := util.NewMessageStream(rbconn)
 	if newms == nil {
-		log.Printf("cant get newms\n")
+		log.Printf("can't get newms\n")
 	}
 	log.Printf("fileclient: Established rollback channel\n")
 	// set hash

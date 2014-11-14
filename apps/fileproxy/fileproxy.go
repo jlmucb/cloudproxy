@@ -587,15 +587,15 @@ func SendFile(ms *util.MessageStream, path string, filename string, keys []byte)
 			log.Printf("SendFile can't create aes object")
 		}
 		// read iv
-		_, err := file.Read(iv[0:16])
+		_, err := file.Read(iv[:])
 		if err != nil {
 			return err
 		}
 		hmacObj = hmac.New(sha256.New, keys[16:32])
 		log.Printf("SendFile initialized hmac keys %x", keys[16:32])
-		hmacObj.Write(iv[0:16])
+		hmacObj.Write(iv[:])
 		log.Printf("SendFile wrote iv to hmac %x", iv)
-		ctrCipher = cipher.NewCTR(aesObj, iv[0:16])
+		ctrCipher = cipher.NewCTR(aesObj, iv[:])
 		if ctrCipher == nil {
 			log.Printf("SendFile can't create counter cipher object")
 		}
@@ -684,16 +684,16 @@ func GetFile(ms *util.MessageStream, path string, filename string, keys []byte) 
 		}
 		hmacObj = hmac.New(sha256.New, keys[16:32])
 		log.Printf("GetFile initialized keys for hmac %x", keys[16:32])
-		if _, err := io.ReadFull(rand.Reader, iv[0:16]); err != nil {
+		if _, err := io.ReadFull(rand.Reader, iv[:]); err != nil {
 			panic(err)
 		}
-		hmacObj.Write(iv[0:16])
-		log.Printf("GetFile wrote iv to hmac %x", iv[0:16])
-		ctrCipher = cipher.NewCTR(aesObj, iv[0:16])
+		hmacObj.Write(iv[:])
+		log.Printf("GetFile wrote iv to hmac %x", iv[:])
+		ctrCipher = cipher.NewCTR(aesObj, iv[:])
 		if ctrCipher == nil {
 			log.Printf("GetFile can't create counter cipher object")
 		}
-		_, err = file.Write(iv[0:16])
+		_, err = file.Write(iv[:])
 	}
 
 	for {

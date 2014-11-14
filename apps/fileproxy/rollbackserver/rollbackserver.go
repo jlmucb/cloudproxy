@@ -137,7 +137,7 @@ func main() {
 
 	hostDomain, err := tao.LoadDomain(*hostcfg, nil)
 	if err != nil {
-		return
+		log.Fatalln("rollbackserver: can't LoadDomain\n")
 	}
 	log.Printf("rollbackserver: Domain name: %s\n", hostDomain.ConfigPath)
 	DerPolicyCert = nil
@@ -145,8 +145,7 @@ func main() {
 		DerPolicyCert = hostDomain.Keys.Cert.Raw
 	}
 	if DerPolicyCert == nil {
-		log.Printf("rollbackserver: can't retrieve policy cert\n")
-		return
+		log.Fatalln("rollbackserver: can't retrieve policy cert")
 	}
 
 	if err := hostDomain.ExtendTaoName(tao.Parent()); err != nil {
@@ -155,7 +154,7 @@ func main() {
 	e := auth.PrinExt{Name: "rollbackserver_version_1"}
 	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
 	if err != nil {
-		return
+		log.Fatalln("rollbackserver: can't extend name")
 	}
 
 	taoName, err := tao.Parent().GetTaoName()

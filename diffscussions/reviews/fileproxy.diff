@@ -245,6 +245,13 @@
 #-- pretty easily.
 #--
 diff --git a/Doc/Go-cloudproxy.pdf b/Doc/Go-cloudproxy.pdf
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:01:15-0800
+#*
+#- Thanks, you should feel free to edit.
+#-
 new file mode 100644
 index 0000000..59c2218
 Binary files /dev/null and b/Doc/Go-cloudproxy.pdf differ
@@ -320,6 +327,13 @@ index 821cf46..c491772 100644
 #- that needs to be removed.
 #-
  var serverHost = flag.String("host", "localhost", "address for client/server")
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:01:56-0800
+#*
+#- OK
+#-
  var serverPort = flag.String("port", "8123", "port for client/server")
 -var serverAddr string // see main()
 -var localMode = flag.Bool("local", true, "Run fileclient")
@@ -344,6 +358,13 @@ index 821cf46..c491772 100644
 #- terms of standard Unix flag naming.
 #-
 +var serverAddr string
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:02:19-0800
+#*
+#- Ah ha!  This is a reason to prefer Join over +.  OK.
+#-
 +var rollbackserverAddr string
 +var fileclientFilePath = flag.String("fileclient_files/stored_files/", "fileclient_files/stored_files/",
 #*
@@ -357,6 +378,13 @@ index 821cf46..c491772 100644
 #-
 #- Also, this should be "fileClientFilePath" to match standard Go naming
 #- conventions.
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:00:26-0800
+#*
+#- It seems to wotk in the tests but maybe you mean something different
 #-
 +	"fileclient file directory")
 +var testFile = flag.String("originalTestFile", "originalTestFile", "test file")
@@ -391,7 +419,14 @@ index 821cf46..c491772 100644
 #- but there are cases where the host can contain characters (colon or
 #- percent) that require "[host]:port" rather than "host:port".
 #-
-+
+#-+
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:03:36-0800
+#*
+#- Yes,  I just figured this out from your earlier comment.
+#-
 +	hostDomain, err := tao.LoadDomain(*hostcfg, nil)
 +	if err != nil {
 +		return
@@ -427,6 +462,14 @@ index 821cf46..c491772 100644
 #-
 #- It's shorter, and it uses fewer conditionals, but it has exactly the same
 #- effect.
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:04:17-0800
+#*
+#- SUre.  I'm happy to change this.  It was mainly for intial debugging.  I need to go through this
+#- and remove/change a bunch of the log prints.
 #-
  
 -func doClient(domain *tao.Domain) {
@@ -540,6 +583,14 @@ index 821cf46..c491772 100644
 #* date: 2014-11-10T12:33:59-0800
 #*
 #- Why the reference here?
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:06:00-0800
+#*
+#- This is interesting.  INitiallly It was not a reference and go complained that it was too big
+#- to pass.  In general, does passing references make things faster because of copies?
 #-
  
 -// Tao Host demo
@@ -797,6 +848,13 @@ index 821cf46..c491772 100644
 #*
 #- This should probably be a constant in the rollback library that can be
 #- accessed by clients.
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:07:16-0800
+#*
+#- Yes, it certainly should.  I'll change it.
 #-
 +	for i := 0; i < 32; i++ {
 +		hash[i] = byte(i)
@@ -1068,6 +1126,13 @@ index 0000000..313a062
 #*
 #- There's an easier way than this: check out the built-in function append().
 #-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:07:46-0800
+#*
+#- Ok. Thanks.
+#-
 +	m.PrincipalArray[n].Name = name
 +	m.PrincipalArray[n].Der = cert
 +	m.PrincipalArray[n].Status = authStatus
@@ -1085,6 +1150,13 @@ index 0000000..313a062
 #-
 #- By convention, the nil error means that it has been implemented and that
 #- there's no error
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:08:13-0800
+#*
+#- OK
 #-
 +}
 +
@@ -1107,6 +1179,13 @@ index 0000000..313a062
 #- 	NumFileInfos: proto.Int(len(m.ResourceArray)),
 #- }
 #- return proto.Marshal(p)
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:08:19-0800
+#*
+#- ok
 #-
 +	return proto.Marshal(protoMessage)
 +}
@@ -1131,6 +1210,13 @@ index 0000000..313a062
 #- }
 #-
 #-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:08:29-0800
+#*
+#- great.
+#-
 +	m.ProgramName = *rMessage.PrinName
 +	m.BaseDirectory = *rMessage.BaseDirectoryName
 +	size := *rMessage.NumFileinfos
@@ -1142,6 +1228,13 @@ index 0000000..313a062
 #* date: 2014-11-13T10:19:48-0800
 #*
 #- As the TODO notes, this is unnecessary
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:08:42-0800
+#*
+#-  yep
 #-
 +}
 +
@@ -1173,6 +1266,13 @@ index 0000000..313a062
 #* date: 2014-11-13T10:20:15-0800
 #*
 #- Fold these two lines into a single return statement
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:09:18-0800
+#*
+#- ok
 #-
 +}
 +
@@ -1210,6 +1310,13 @@ index 0000000..313a062
 #- var ri ResourceInfo
 #- // ... set up ri ...
 #- log.Println(ri)
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:09:31-0800
+#*
+#- ok
 #-
 +
 +func (p *PrincipalInfo) EncodePrincipal() ([]byte, error) {
@@ -1275,6 +1382,14 @@ index 0000000..313a062
 #*
 #- I'm not sure what this comment means. Can you be more explicit?
 #-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:09:43-0800
+#*
+#- Yes.  I'll add.  I meant that I wasn't going to implement the persist/restore functionality but
+#- I'll add it.
+#-
 +	return nil
 +}
 +
@@ -1291,6 +1406,13 @@ index 0000000..313a062
 #* date: 2014-11-13T10:23:23-0800
 #*
 #- This function needs error handling added throughout.
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:10:36-0800
+#*
+#-  yes
 #-
 +	log.Printf("filehandler: GetResourceData\n")
 +	// TODO: decrypt the files
@@ -2280,6 +2402,13 @@ index 0000000..58ec4fb
 #- MessageStream already does all this framing for you. You can use WriteMessage
 #- and ReadMessage on the MessageStream directly.
 #-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:11:02-0800
+#*
+#- Yes.  I did that initially, I forget why I changed.  I'll try to remember.
+#-
 +	log.Printf("SendProtocolMessage\n")
 +	fpMessage := new(FPMessage)
 +	fpMessage.MessageType = proto.Int32(int32(MessageType_PROTOCOL_RESPONSE))
@@ -2362,6 +2491,13 @@ index 0000000..58ec4fb
 #* date: 2014-11-13T10:26:11-0800
 #*
 #- Can use iv[:] instead, since iv is exactly 16 bytes long.
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:11:41-0800
+#*
+#- yep.
 #-
 +		if err != nil {
 +			return err
@@ -2594,6 +2730,13 @@ index 0000000..be1c6ab
 #- Go style point: don't stutter. There is already a package name here called
 #- fileproxy, so this can simply be Message, ResourceMaster, ResourceInfo, and
 #- PrincipalInfo.
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:12:03-0800
+#*
+#- okkkkk!
 #-
 +  required  int32   message_type = 1;
 +  optional  string  subject_name = 2;
@@ -2947,6 +3090,13 @@ index 0fb9819..d779d71 100644
 #- After thinking about this some more, I think the right place to put the name
 #- is probably actually in the extensions, since that's the official place for
 #- extensions like ours.
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:12:27-0800
+#*
+#- Maybe.  I won't do that right away but I really don't have any objection.
 #-
 +						clientName = peerCert.Subject.OrganizationalUnit[0]
 +					}
@@ -3808,6 +3958,13 @@ index 0000000..bb47b1d
 #*
 #- Go naming conventions require "and" to be "And" here and above.
 #-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:13:21-0800
+#*
+#- OK
+#-
 +}
 +
 +type RollbackMaster struct {
@@ -3817,6 +3974,13 @@ index 0000000..bb47b1d
 #* date: 2014-11-13T10:32:11-0800
 #*
 #- Exported types and functions need comments.
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:13:31-0800
+#*
+#- Ok
 #-
 +	ProgramName string
 +	Initialized bool
@@ -3846,6 +4010,13 @@ index 0000000..bb47b1d
 #*
 #- Use builtin append() function.
 #-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:13:43-0800
+#*
+#- ok
+#-
 +		t := make([]RollbackProgramInfo, 2*cap(r.ProgramInfo))
 +		copy(t, r.ProgramInfo)
 +		r.ProgramInfo = t
@@ -3862,6 +4033,13 @@ index 0000000..bb47b1d
 #*
 #- Why 3?
 #-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:13:53-0800
+#*
+#- arg.  It is a test remnant.  It should be 0.
+#-
 +	pi.NameandHashArray = make([]NameandHash, 100)
 +	pi.NameandHashArray = pi.NameandHashArray[0:0]
 #*
@@ -3870,6 +4048,13 @@ index 0000000..bb47b1d
 #* date: 2014-11-13T10:34:18-0800
 #*
 #- Why?
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:14:22-0800
+#*
+#- good question.  I don't remember.
 #-
 +	log.Printf("len(pi.pi.NameandHashArray)= %d, cap(pi.pi.NameandHashArray)= %d\n", len(pi.NameandHashArray), cap(pi.NameandHashArray))
 +	pi.Initialized = true
@@ -3884,6 +4069,13 @@ index 0000000..bb47b1d
 #* date: 2014-11-13T10:34:31-0800
 #*
 #- Use errors instead of bool to return error conditions like "not implemented"
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:14:49-0800
+#*
+#- OK
 #-
 +}
 +
@@ -3907,6 +4099,13 @@ index 0000000..bb47b1d
 #* date: 2014-11-13T10:34:59-0800
 #*
 #- Use a map instead of an array for this. Then you get lookup.
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:14:57-0800
+#*
+#- OK
 #-
 +		log.Printf("FindRollbackHashEntry %s %s\n", itemName, pi.NameandHashArray[i].ItemName)
 +		if pi.NameandHashArray[i].ItemName == itemName {
@@ -4038,6 +4237,13 @@ index 0000000..bb47b1d
 #*
 #- Don't use a variable-length integer if you're going to insist on 8 bytes.
 #-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:15:19-0800
+#*
+#- OK.
+#-
 +	sha256Hash.Write(b)
 +	sha256Hash.Write(hi.Hash)
 +	sha256Hash.Write(b)
@@ -4055,6 +4261,13 @@ index 0000000..bb47b1d
 #* date: 2014-11-13T10:38:04-0800
 #*
 #- Are negative counters valid? If not, then use uint64.
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:15:44-0800
+#*
+#- OK
 #-
 +	SendCounterRequest(ms, counter)
 +	status, _, _, err := GetResponse(ms)
@@ -4142,6 +4355,13 @@ index 0000000..bb47b1d
 #*
 #- This needs either separators or capitalization to be readable. Same comment
 #- for the other string constants.
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:15:53-0800
+#*
+#- OK
 #-
 +		if fpMessage.MonotonicCounter == nil {
 +			log.Printf("HandleServiceRequest: no counter in setrollbackcounter message")
@@ -4249,6 +4469,13 @@ index 0000000..70deb11
 #*
 #- Look at MessageStream; it gives you errors on connection termination.
 #-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:16:11-0800
+#*
+#- OK.  
+#-
 +	for {
 +		log.Printf("clientServiceThead: ReadString\n")
 +		strbytes, err := ms.ReadString()
@@ -4264,6 +4491,13 @@ index 0000000..70deb11
 #- Maybe do this in a go routine so it can handle more than one simultaneous
 #- connection? Then you need to add locking using the sync package, probably
 #- just with a simple sync.RWMutex (Reader/Writer lock).
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:16:38-0800
+#*
+#- Sounds right.  I'll look.
 #-
 +		if terminate {
 +			break
@@ -4311,6 +4545,13 @@ index 0000000..70deb11
 #- There's a lot of duplication here. Can this be encapsulated and put into
 #- github.com/jlmucb/cloudproxy/tao/net?
 #-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:16:57-0800
+#*
+#- Yes.  I'd planned to do that.  I might not do it right away though.
+#-
 +		log.Printf("rollbackserver: at Accept\n")
 +		conn, err := sock.Accept()
 +		if err != nil {
@@ -4353,6 +4594,14 @@ index 0000000..70deb11
 #*
 #- Following Go naming conventions requires not having variables that start with
 #- a capital letter like this.
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:17:38-0800
+#*
+#- Yes.  Originally this was referenced from outside the file before I got rid of globals.
+#- I'll fix it.
 #-
 +	var rollbackProgramPolicyObject fileproxy.ProgramPolicy
 +	var RollbackProgramPolicyObject *fileproxy.ProgramPolicy
@@ -4526,6 +4775,13 @@ index 7c89844..96eb492 100644
 #*
 #- No "." or "/" in flag names.
 #-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:18:28-0800
+#*
+#- Yep.  see earlier comment.
+#-
 +var keyFileName= flag.String("key", "key", "key file")
 +var certFileName= flag.String("cert", "cert", "cert file")
 +
@@ -4619,6 +4875,13 @@ index 7c89844..96eb492 100644
 #* date: 2014-11-13T10:41:39-0800
 #*
 #- Spelling. "Cant" (and elsewhere)
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:18:48-0800
+#*
+#- yep
 #-
 +			}
 +			// TODO?: defer zeroKeyset(cks)
@@ -4735,6 +4998,13 @@ index 0000000..2fe66b3
 #- Instead of naming the test for yourself, name it for its functionality, or
 #- drop it. In this, I think this test duplicates the functionality of other
 #- tests, so it doesn't belong here.
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:19:06-0800
+#*
+#- This code is dead.  I was using it to learn go.
 #-
 +	if(tao.Hosted()) {
 +		fmt.Printf("I have a host\n")
@@ -4914,6 +5184,13 @@ index 8e6d203..f777d2f 100644
 #*
 #- This is done now, right?
 #-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:19:35-0800
+#*
+#- yes!
+#-
  
  	return &Domain{cfg, configPath, keys, guard}, nil
  }
@@ -4958,6 +5235,14 @@ index 6d7f3ee..79d1259 100644
 #- These functions violate encapsulation. If this is needed to create an X.509
 #- cert, then we need to add that to the keys.go file rather than violating the
 #- encapsulation property.
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:20:08-0800
+#*
+#- Yes.  I couldn't do this any other way originally and I was timid about changing keys.go
+#- but I agree it should be in keys.go.
 #-
  // GenerateSigner creates a new Signer with a fresh key.
  func GenerateSigner() (*Signer, error) {
@@ -5102,6 +5387,13 @@ index 6d7f3ee..79d1259 100644
 #- on this file. And it looks like these functions aren't used anywhere anymore,
 #- so they should be removed.
 #-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:21:18-0800
+#*
+#- OK.
+#-
 +func (k *Keys) SetMyKeyPath(dir_name string) {
 +	k.dir= dir_name;
 +}
@@ -5174,6 +5466,13 @@ index 6d7f3ee..79d1259 100644
 #* date: 2014-11-13T10:45:52-0800
 #*
 #- More descriptive comment, please. Why does it do this?
+#-
+#*
+#* author: John Manferdelli
+#* email: johnmanferdelli@hotmail.com
+#* date: 2014-11-14T14:21:36-0800
+#*
+#- yep.
 #-
 +func (k *Keys) LoadCert() error {
 +	return k.loadCert()

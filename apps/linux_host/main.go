@@ -181,7 +181,7 @@ func main() {
 			sock, err := net.Listen("unix", sockPath)
 			fatalIf(err)
 			defer sock.Close()
-			fmt.Fprintf(verbose, "Linux Tao Service started and waiting for requests\n")
+			fmt.Fprintf(verbose, "Linux Tao Service (%s) started and waiting for requests\n", host.TaoHostName())
 			fatalIf(err)
 			tao.NewLinuxHostAdminServer(host).Serve(sock)
 		}

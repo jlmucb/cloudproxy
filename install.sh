@@ -60,10 +60,12 @@ for arg in "$@"; do
 			;;
 		-docker)
 			tao_factory_type="docker"
+			child_channel_type="unix"
 			shift
 			;;
 		-coreos)
 			tao_factory_type="coreos"
+			child_channel_type="unix"
 			shift
 			;;
 		-q)
@@ -338,7 +340,11 @@ function setup()
 	# In Docker mode, set up Docker containers for each hosted program.
 	if [ "${TAO_FACTORY_TYPE}" != "process" ]; then
 		for prog in ${TAO_HOSTED_PROGRAMS}; do
-			builddocker $prog
+			if [ "$prog" == "${TAO_TEST}/bin/linux_host" -a "${TAO_FACTORY_TYPE}" == "coreos" ]; then
+				builddocker $prog file
+			else
+				builddocker $prog unix
+			fi
 		done
 	fi
 
@@ -555,21 +561,29 @@ function testpgm()
 function builddocker()
 {
 	prog="$1"
+	channel_type="$2"
 	shift
 	base_prog=`basename $prog`
+	channel_name="/tao"
+	if [ "$channel_type" == "file" ]; then
+		channel_name="tao::TaoRPC+tao::FileMessageChannel(/tao)"
+	fi
+
 	# Build an image for the program.
 	# TODO(tmroeder): this is very specific to our current config.
 	tmpd=`mktemp -d`
 	mkdir -p ${tmpd}/bin
 	cp $prog ${tmpd}/bin/$base_prog
 	mkdir ${tmpd}/policy_keys
+	mkdir ${tmpd}/tmp
 	cp ${TAO_TEST}/policy_keys/cert ${tmpd}/policy_keys/cert
 	cp ${TAO_TEST}/tao.* ${tmpd}
 	cat >${tmpd}/Dockerfile <<EOF
 FROM scratch
 COPY . ${TAO_TEST}
-ENV GOOGLE_HOST_TAO_TYPE unix
-ENV GOOGLE_HOST_TAO /tao
+ADD tmp /tmp
+ENV GOOGLE_HOST_TAO_TYPE $channel_type
+ENV GOOGLE_HOST_TAO $channel_name
 WORKDIR ${TAO_TEST}
 EOF
 	tar -C $tmpd -czf ${TAO_TEST}/${base_prog}.img.tgz `ls $tmpd`

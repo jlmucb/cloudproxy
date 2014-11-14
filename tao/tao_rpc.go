@@ -55,6 +55,24 @@ func DeserializeTaoRPC(s string) (*TaoRPC, error) {
 	return &TaoRPC{protorpc.NewClient(ms), "Tao"}, nil
 }
 
+// DeserializeFileTaoRPC produces a TaoRPC from a string representing a file.
+func DeserializeFileTaoRPC(s string) (*TaoRPC, error) {
+	if s == "" {
+		return nil, newError("taorpc: missing host Tao spec" +
+			" (ensure $" + HostTaoEnvVar + " is set)")
+	}
+	r := strings.TrimPrefix(s, "tao::TaoRPC+")
+	if r == s {
+		return nil, newError("taorpc: unrecognized $" + HostTaoEnvVar + " string " + s)
+	}
+	ms, err := util.DeserializeFileMessageStream(r)
+	if err != nil {
+		return nil, newError("taorpc: unrecognized $" + HostTaoEnvVar + " string " + s +
+			" (" + err.Error() + ")")
+	}
+	return &TaoRPC{protorpc.NewClient(ms), "Tao"}, nil
+}
+
 // DeserializeUnixSocketTaoRPC produces a TaoRPC from a path string.
 func DeserializeUnixSocketTaoRPC(p string) (*TaoRPC, error) {
 	if p == "" {

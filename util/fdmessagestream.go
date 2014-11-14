@@ -19,7 +19,28 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 )
+
+// DeserializeFileMessageStream takes a string description of the form
+// "tao::FileMessageChannel(X)" and returns a MessageStream that uses file
+// X to communicate.
+func DeserializeFileMessageStream(s string) (*MessageStream, error) {
+	r := strings.TrimPrefix(s, "tao::FileMessageChannel(")
+	if r == s {
+		return nil, errors.New("unrecognized channel spec " + s)
+	}
+	filename := strings.TrimSuffix(r, ")")
+	if filename == r {
+		return nil, errors.New("unrecognized channel spec " + s)
+	}
+
+	rw, err := os.OpenFile(filename, os.O_RDWR, 0700)
+	if err != nil {
+		return nil, err
+	}
+	return NewMessageStream(rw), nil
+}
 
 // DeserializeFDMessageStream takes a string description of the form
 // "tao::FDMessageStream(X, Y)" and returns a MessageStream that uses file

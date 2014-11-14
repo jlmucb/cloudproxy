@@ -148,6 +148,13 @@ func Parent() Tao {
 				return
 			}
 			cachedHost = host
+		case "file":
+			host, err := DeserializeFileTaoRPC(os.Getenv(HostTaoEnvVar))
+			if err != nil {
+				glog.Error(err)
+				return
+			}
+			cachedHost = host
 		case "unix":
 			host, err := DeserializeUnixSocketTaoRPC(os.Getenv(HostTaoEnvVar))
 			if err != nil {

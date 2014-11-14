@@ -16,7 +16,6 @@ package tao
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -37,6 +36,7 @@ import (
 	"code.google.com/p/go.crypto/ssh/agent"
 
 	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/jlmucb/cloudproxy/util"
 )
 
 // A CoreOSConfig contains the details needed to start a new CoreOS VM.
@@ -126,8 +126,10 @@ func (kcc *KvmCoreOSContainer) Start() error {
 		// Networking.
 		"-net", "nic,vlan=0,model=virtio",
 		"-net", "user,vlan=0,hostfwd=tcp::" + strconv.Itoa(cfg.SSHPort) + "-:22,hostname=" + cfg.Name,
-		// Tao communications through virtio-serial.
-		"-chardev", "socket,path=" + cfg.SocketPath + ",server,nowait,id=port0-char",
+		// Tao communications through virtio-serial. With this
+		// configuration, QEMU waits for a server on cfg.SocketPath,
+		// then connects to it.
+		"-chardev", "socket,path=" + cfg.SocketPath + ",id=port0-char",
 		"-device", "virtio-serial",
 		"-device", "virtserialport,id=port1,name=tao,chardev=port0-char",
 		// The CoreOS image to boot from.
@@ -280,6 +282,10 @@ func (ldkcf *LinuxKvmCoreOSContainerFactory) Launch(imagePath string, args []str
 		Args:           args,
 	}
 
+	// Create the listening server before starting the connection. This lets
+	// QEMU start right away. See the comments in Start, above, for why this
+	// is.
+	rwc := util.NewUnixSingleReadWriteCloser(cfg.SocketPath)
 	if err := kcc.Start(); err != nil {
 		return nil, nil, err
 	}
@@ -288,7 +294,7 @@ func (ldkcf *LinuxKvmCoreOSContainerFactory) Launch(imagePath string, args []str
 	// to it and return the ReadWriteCloser for communication. Also we need
 	// to connect by SSH to the instance once it comes up properly. For now,
 	// we just wait for a timeout before trying to connect and listen.
-	tc := time.After(30 * time.Second)
+	tc := time.After(10 * time.Second)
 
 	// TODO(tmroeder): for now, this program expects to find SSH_AUTH_SOCK
 	// in its environment so it can connect to the local ssh-agent for ssh
@@ -318,7 +324,7 @@ func (ldkcf *LinuxKvmCoreOSContainerFactory) Launch(imagePath string, args []str
 		Auth: []ssh.AuthMethod{ssh.PublicKeysCallback(ag.Signers)},
 	}
 
-	log.Println("Waiting for at most 30 seconds before trying to connect")
+	log.Println("Waiting for at most 10 seconds before trying to connect")
 	<-tc
 
 	hostPort := net.JoinHostPort("localhost", strconv.Itoa(sshPort))
@@ -327,17 +333,55 @@ func (ldkcf *LinuxKvmCoreOSContainerFactory) Launch(imagePath string, args []str
 		return nil, nil, fmt.Errorf("couldn't dial '%s'\n", hostPort)
 	}
 
-	session, err := client.NewSession()
+	// We need to run a set of commands to set up the LinuxHost as a docker
+	// container on the remote system.
+	// Mount the filesystem.
+	mount, err := client.NewSession()
+	mount.Stdout = os.Stdout
+	mount.Stderr = os.Stderr
 	if err != nil {
-		log.Fatalf("Couldn't establish a new session on SSH: %s\n", err)
+		return nil, nil, fmt.Errorf("couldn't establish a mount session on SSH: %s\n", err)
 	}
+	if err := mount.Run("sudo mkdir /media/tao && sudo mount -t 9p -o trans=virtio,version=9p2000.L tao /media/tao"); err != nil {
+		return nil, nil, fmt.Errorf("couldn't mount the tao filesystem on the guest: %s\n", err)
+	}
+	mount.Close()
 
-	var b bytes.Buffer
-	session.Stdout = &b
-	// Make sure core can run commands as root on the guest machine.
-	if err := session.Run("/usr/bin/sudo -u root /usr/bin/whoami"); err != nil {
-		log.Fatalf("Couldn't run a simple 'whoami' on the remote host: %s\n", err)
+	// Build the container.
+	build, err := client.NewSession()
+	build.Stdout = os.Stdout
+	build.Stderr = os.Stderr
+	if err != nil {
+		return nil, nil, fmt.Errorf("couldn't establish a build session on SSH: %s\n", err)
 	}
-	log.Println(b.String())
-	return nil, kcc, fmt.Errorf("the QEMU/KVM CoreOS launch is not completely implemented yet")
+	if err := build.Run("sudo cat /media/tao/img | sudo docker build -t tao -"); err != nil {
+		return nil, nil, fmt.Errorf("couldn't build the tao linux_host docker image on the guest: %s\n", err)
+	}
+	build.Close()
+
+	// Create the linux_host on the container.
+	//	create, err := client.NewSession()
+	//	create.Stdout = os.Stdout
+	//	create.Stderr = os.Stderr
+	//	if err != nil {
+	//		return nil, nil, fmt.Errorf("couldn't establish a create session on SSH: %s\n", err)
+	//	}
+	//	if err := create.Run("sudo docker run --privileged=true -v /dev/virtio-ports/tao:/tao -v /media/configvirtfs/openstack/latest/rules:/home/tmroeder/src/github.com/jlmucb/cloudproxy/test/rules tao ./bin/linux_host --create --stacked"); err != nil {
+	//		return nil, nil, fmt.Errorf("couldn't start linux_host on the guest: %s\n", err)
+	//	}
+	//	create.Close()
+
+	// Start the linux_host on the container.
+	start, err := client.NewSession()
+	start.Stdout = os.Stdout
+	start.Stderr = os.Stderr
+	if err != nil {
+		return nil, nil, fmt.Errorf("couldn't establish a start session on SSH: %s\n", err)
+	}
+	if err := start.Run("sudo docker run -d --name=\"linux_host\" --privileged=true -v /dev/virtio-ports/tao:/tao -v /media/configvirtfs/openstack/latest/rules:/home/tmroeder/src/github.com/jlmucb/cloudproxy/test/rules tao ./bin/linux_host --service --stacked"); err != nil {
+		return nil, nil, fmt.Errorf("couldn't start linux_host on the guest: %s\n", err)
+	}
+	start.Close()
+
+	return rwc, kcc, nil
 }

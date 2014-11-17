@@ -48,7 +48,6 @@ var fileclientKeyPath = flag.String("usercreds/", "usercreds/", "user keys and c
 func main() {
 
 	var fileClientProgramObject fileproxy.ProgramPolicy
-	var FileClientProgramObject *fileproxy.ProgramPolicy
 
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
@@ -126,8 +125,7 @@ func main() {
 		log.Printf("fileclient: Initilized signingKey\n")
 	}
 
-	FileClientProgramObject = &fileClientProgramObject
-	_ = FileClientProgramObject.InitProgramPolicy(derPolicyCert, taoName.String(), *signingKey, symKeys, programCert)
+	_ = fileClientProgramObject.InitProgramPolicy(derPolicyCert, taoName.String(), *signingKey, symKeys, programCert)
 
 	policyCert, err := x509.ParseCertificate(derPolicyCert)
 	if err != nil {

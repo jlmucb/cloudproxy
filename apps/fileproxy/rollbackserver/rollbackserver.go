@@ -126,11 +126,7 @@ func main() {
 	log.Printf("rollback server\n")
 
 	var rollbackMaster fileproxy.RollbackMaster
-	var RollbackMaster *fileproxy.RollbackMaster
 	var rollbackProgramPolicyObject fileproxy.ProgramPolicy
-	var RollbackProgramPolicyObject *fileproxy.ProgramPolicy
-	RollbackMaster = &rollbackMaster
-	RollbackProgramPolicyObject = &rollbackProgramPolicyObject
 
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
@@ -213,10 +209,10 @@ func main() {
 		ProgramCert = SigningKey.Cert.Raw
 	}
 	taoNameStr := taoName.String()
-	_ = RollbackProgramPolicyObject.InitProgramPolicy(DerPolicyCert, taoNameStr, SigningKey, SymKeys, ProgramCert)
-	RollbackMaster.InitRollbackMaster(taoNameStr)
+	_ = rollbackProgramPolicyObject.InitProgramPolicy(DerPolicyCert, taoNameStr, SigningKey, SymKeys, ProgramCert)
+	rollbackMaster.InitRollbackMaster(taoNameStr)
 
-	server(serverAddr, taoNameStr, RollbackProgramPolicyObject, RollbackMaster)
+	server(serverAddr, taoNameStr, &rollbackProgramPolicyObject, &rollbackMaster)
 	if err != nil {
 		log.Printf("rollbackserver: server error\n")
 	}

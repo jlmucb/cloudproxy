@@ -126,9 +126,7 @@ func server(serverAddr string, prin string, derPolicyCert []byte, signingKey *ta
 func main() {
 
 	var fileServerResourceMaster fileproxy.ResourceMaster
-	var FileServerResourceMaster *fileproxy.ResourceMaster
 	var fileServerProgramPolicy fileproxy.ProgramPolicy
-	var FileServerProgramPolicy *fileproxy.ProgramPolicy
 
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
@@ -210,11 +208,9 @@ func main() {
 	}
 	taoNameStr := taoName.String()
 
-	FileServerProgramPolicy = &fileServerProgramPolicy
-	FileServerResourceMaster = &fileServerResourceMaster
-	_ = FileServerProgramPolicy.InitProgramPolicy(derPolicyCert, taoNameStr, *signingKey, symKeys, programCert)
+	_ = fileServerProgramPolicy.InitProgramPolicy(derPolicyCert, taoNameStr, *signingKey, symKeys, programCert)
 
-	server(serverAddr, taoNameStr, derPolicyCert, signingKey, FileServerProgramPolicy, FileServerResourceMaster)
+	server(serverAddr, taoNameStr, derPolicyCert, signingKey, &fileServerProgramPolicy, &fileServerResourceMaster)
 	if err != nil {
 		log.Printf("fileserver: server error\n")
 	}

@@ -76,11 +76,11 @@ type Deriver struct {
 	secret []byte
 }
 
-func (s *Signer) GetSignerEc() (*ecdsa.PrivateKey) {
+func (s *Signer) GetSignerEc() *ecdsa.PrivateKey {
 	return s.ec
 }
 
-func (v *Verifier) GetVerifierEc() (*ecdsa.PublicKey) {
+func (v *Verifier) GetVerifierEc() *ecdsa.PublicKey {
 	return v.ec
 }
 
@@ -131,11 +131,11 @@ type X509Details struct {
 // NewX509Name returns a new pkix.Name.
 func NewX509Name(p X509Details) *pkix.Name {
 	return &pkix.Name{
-		Country:      []string{string(p.Country)},
-		Organization: []string{string(p.Organization)},
-		OrganizationalUnit:[]string{string(p.OrganizationalUnit)},
-		Province:     []string{string(p.State)},
-		CommonName:   string(p.CommonName),
+		Country:            []string{string(p.Country)},
+		Organization:       []string{string(p.Organization)},
+		OrganizationalUnit: []string{string(p.OrganizationalUnit)},
+		Province:           []string{string(p.State)},
+		CommonName:         string(p.CommonName),
 	}
 }
 
@@ -159,7 +159,7 @@ func prepareX509Template(subjectName *pkix.Name) *x509.Certificate {
 
 func (s *Signer) CreateSelfSignedDER(name *pkix.Name) ([]byte, error) {
 	template := prepareX509Template(name)
-	template.BasicConstraintsValid= true
+	template.BasicConstraintsValid = true
 	template.IsCA = true
 	template.Issuer = template.Subject
 	der, err := x509.CreateCertificate(rand.Reader, template, template, &s.ec.PublicKey, s.ec)
@@ -174,7 +174,7 @@ func (s *Signer) CreateSelfSignedDER(name *pkix.Name) ([]byte, error) {
 func (s *Signer) CreateSelfSignedX509(name *pkix.Name) (*x509.Certificate, error) {
 	template := prepareX509Template(name)
 	template.IsCA = true
-	template.BasicConstraintsValid= true
+	template.BasicConstraintsValid = true
 	template.Issuer = template.Subject
 
 	der, err := x509.CreateCertificate(rand.Reader, template, template, &s.ec.PublicKey, s.ec)
@@ -824,12 +824,12 @@ func (k *Keys) X509Path() string {
 
 // SetMyKeyPath sets path for stored keys.
 func (k *Keys) SetMyKeyPath(dir_name string) {
-	k.dir= dir_name;
+	k.dir = dir_name
 }
 
 // SetKeyType sets key type
 func (k *Keys) SetKeyType(types KeyType) {
-	k.keyTypes= types;
+	k.keyTypes = types
 }
 
 // PBEKeysetPath returns the path for stored keys.
@@ -1121,11 +1121,6 @@ func (k *Keys) loadCert() error {
 
 	k.Cert, err = x509.ParseCertificate(der)
 	return err
-}
-
-// LoadCert loads cert
-func (k *Keys) LoadCert() error {
-	return k.loadCert()
 }
 
 // NewTemporaryTaoDelegatedKeys initializes a set of temporary keys under a host

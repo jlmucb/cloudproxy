@@ -201,12 +201,17 @@ func main() {
 				fatalIf(err)
 				fmt.Printf("%d %v\n", pid, subprin)
 			} else {
-				// flag.Arg(0) is not necessary here, since it
-				// will be pulled off the list by the child
-				// factory when it starts the Docker container.
-				subprin, pid, err := client.StartHostedProgram(*docker, flag.Args()...)
-				fatalIf(err)
-				fmt.Printf("%d %v\n", pid, subprin)
+				// Drop the first arg for Docker, since it will
+				// be handled by the Dockerfile directly.
+				if flag.NArg() == 1 {
+					subprin, pid, err := client.StartHostedProgram(*docker)
+					fatalIf(err)
+					fmt.Printf("%d %v\n", pid, subprin)
+				} else {
+					subprin, pid, err := client.StartHostedProgram(*docker, flag.Args()[1:]...)
+					fatalIf(err)
+					fmt.Printf("%d %v\n", pid, subprin)
+				}
 			}
 		} else if *stop {
 			for _, s := range flag.Args() {

@@ -196,7 +196,8 @@ export GLOG_log_dir="\${TAO_TEST}/logs"
 
 # Misc.
 export TAO_HOSTED_PROGRAMS="
-\${TAO_TEST}/bin/demo 
+\${TAO_TEST}/bin/demo_client
+\${TAO_TEST}/bin/demo_server
 \${TAO_TEST}/bin/linux_host
 "
 
@@ -608,7 +609,13 @@ function builddocker()
 	mkdir ${tmpd}/tmp
 	cp ${TAO_TEST}/policy_keys/cert ${tmpd}/policy_keys/cert
 	cp ${TAO_TEST}/tao.* ${tmpd}
-	cat >${tmpd}/Dockerfile <<EOF
+	# If there is already a Dockerfile for this application, then use it.
+	# Otherwise, generate a basic Dockerfile that sets up the necessary
+	# files.
+	if [ -f "${prog}.Dockerfile" ]; then
+		cp ${prog}.Dockerfile ${tmpd}/Dockerfile
+	else
+		cat >${tmpd}/Dockerfile <<EOF
 FROM scratch
 COPY . ${TAO_TEST}
 ADD tmp /tmp
@@ -616,6 +623,7 @@ ENV GOOGLE_HOST_TAO_TYPE $channel_type
 ENV GOOGLE_HOST_TAO $channel_name
 WORKDIR ${TAO_TEST}
 EOF
+	fi
 	tar -C $tmpd -czf ${TAO_TEST}/${base_prog}.img.tgz `ls $tmpd`
 	rm -fr $tmpd
 }
@@ -630,11 +638,11 @@ function hostpgm()
 		base_prog=`basename $prog`
 		# In Docker mode, pass the image created at setup time for this
 		# program.
-		config="-docker ${TAO_TEST}/${base_prog}.img.tgz"
+		config="-docker_img ${TAO_TEST}/${base_prog}.img.tgz"
 	fi
 
 	echo "Starting hosted program $prog ..."
-	prog_id=`linux_host ${docker_config} -run -- "$prog" "$@"`
+	prog_id=`linux_host ${config} -run -- "$prog" "$@"`
 	echo "TaoExtension: $prog_id"
 }
 

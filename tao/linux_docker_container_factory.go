@@ -16,9 +16,9 @@ package tao
 
 import (
 	"crypto/sha256"
-	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -49,9 +49,12 @@ func (dc *DockerContainer) Kill() error {
 func (dc *DockerContainer) Start() error {
 	cmdArgs := []string{"run", "--rm=true",
 		"-v", dc.RulesPath + ":" + dc.RulesPath,
-		"-v", dc.SocketPath + ":/tao",
-		dc.ImageName}
+		"-v", dc.SocketPath + ":/tao"}
+	// The arguments for Docker are arguments directly to Docker. To add
+	// arguments to an application, set up a Dockerfile for this
+	// application.
 	cmdArgs = append(cmdArgs, dc.Args...)
+	cmdArgs = append(cmdArgs, dc.ImageName)
 	c := exec.Command("docker", cmdArgs...)
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
@@ -152,10 +155,6 @@ func FormatDockerSubprin(id uint, hash []byte) auth.SubPrin {
 // Launch builds a docker container from a tar file and launches it with the
 // given arguments.
 func (ldcf *LinuxDockerContainerFactory) Launch(tarPath string, args []string) (io.ReadWriteCloser, HostedProgram, error) {
-	if len(args) == 0 {
-		return nil, nil, fmt.Errorf("invalid args to Launch docker container")
-	}
-
 	sockName := getRandomFileName(nameLen)
 	sockPath := path.Join(ldcf.SocketPath, sockName)
 
@@ -168,15 +167,18 @@ func (ldcf *LinuxDockerContainerFactory) Launch(tarPath string, args []string) (
 		Args:       args,
 	}
 	rwc := util.NewUnixSingleReadWriteCloser(sockPath)
+	log.Printf("Building image from path %s\n", tarPath)
 	if err := dc.Build(tarPath); err != nil {
 		rwc.Close()
 		return nil, nil, err
 	}
 
+	log.Printf("Starting docker container\n")
 	if err := dc.Start(); err != nil {
 		rwc.Close()
 		return nil, nil, err
 	}
+	log.Println("Succeeded!")
 
 	return rwc, dc, nil
 }

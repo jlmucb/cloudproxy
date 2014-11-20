@@ -465,7 +465,7 @@ func AuthenticatePrincipal(m *ResourceMaster, ms *util.MessageStream, programPol
 		var opts x509.VerifyOptions
 		roots := x509.NewCertPool()
 		if !programPolicyObject.Initialized {
-			log.Printf("MyProgramPolicy not initialized")
+			log.Printf("ProgramPolicy not initialized")
 			return false, nil
 		}
 		policyCert, err := x509.ParseCertificate(programPolicyObject.ThePolicyCert)
@@ -781,20 +781,20 @@ func (m *ResourceMaster) HandleServiceRequest(ms *util.MessageStream, programPol
 		err := deleteRequest(m, ms, *resourceName)
 		return false, err
 	case "getfile":
-		if programPolicyObject.MySymKeys == nil {
+		if programPolicyObject.ProgramSymKeys == nil {
 			log.Printf("HandleFileRequest, getfile keys nil\n")
 		} else {
 			log.Printf("HandleFileRequest, getfile keys NOT nil\n")
 		}
-		err := readRequest(m, ms, *resourceName, programPolicyObject.MySymKeys)
+		err := readRequest(m, ms, *resourceName, programPolicyObject.ProgramSymKeys)
 		return false, err
 	case "sendfile":
-		if programPolicyObject.MySymKeys == nil {
+		if programPolicyObject.ProgramSymKeys == nil {
 			log.Printf("HandleFileRequest, sendfile keys nil\n")
 		} else {
 			log.Printf("HandleFileRequest, sendfile keys NOT nil\n")
 		}
-		err := writeRequest(m, ms, *resourceName, programPolicyObject.MySymKeys)
+		err := writeRequest(m, ms, *resourceName, programPolicyObject.ProgramSymKeys)
 		return false, err
 	case "terminate":
 		return true, nil

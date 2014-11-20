@@ -47,21 +47,21 @@ var configPath = flag.String("config", "tao.config", "The Tao domain config")
 const SizeofSymmetricKeys = 64
 
 type ProgramPolicy struct {
-	Initialized   bool
-	TaoName       string
-	ThePolicyCert []byte
-	MySigningKey  tao.Keys
-	MySymKeys     []byte
-	MyProgramCert []byte
+	Initialized       bool
+	TaoName           string
+	ThePolicyCert     []byte
+	ProgramSigningKey tao.Keys
+	ProgramSymKeys    []byte
+	ProgramCert       []byte
 }
 
 func (pp *ProgramPolicy) InitProgramPolicy(policyCert []byte, taoName string, signingKey tao.Keys, symKeys []byte, programCert []byte) bool {
 	log.Printf("InitProgramPolicy\n")
 	pp.ThePolicyCert = policyCert
 	pp.TaoName = taoName
-	pp.MySigningKey = signingKey
-	pp.MySymKeys = symKeys
-	pp.MyProgramCert = programCert
+	pp.ProgramSigningKey = signingKey
+	pp.ProgramSymKeys = symKeys
+	pp.ProgramCert = programCert
 	pp.Initialized = true
 	log.Printf("InitProgramPolicy done\n")
 	return true

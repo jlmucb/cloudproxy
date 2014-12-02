@@ -46,6 +46,7 @@ func Listen(network, laddr string, config *tls.Config, g tao.Guard, v *tao.Verif
 	if err != nil {
 		return nil, err
 	}
+
 	return &listener{inner, g, v, del}, nil
 }
 

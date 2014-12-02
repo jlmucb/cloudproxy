@@ -103,6 +103,9 @@ func doServer(done chan<- bool) {
 	switch *demoAuth {
 	case "tcp":
 		sock, err = net.Listen(network, serverAddr)
+		if err != nil {
+			log.Fatalf("Couldn't listen to the network: %s\n", err)
+		}
 	case "tls", "tao":
 		keys, err = tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Parent())
 		if err != nil {
@@ -145,18 +148,19 @@ func doServer(done chan<- bool) {
 		}
 		if *demoAuth == "tao" {
 			sock, err = taonet.Listen(network, serverAddr, conf, g, domain.Keys.VerifyingKey, keys.Delegation)
+			if err != nil {
+				log.Fatalf("Couldn't create a taonet listener: %s\n", err)
+			}
 		} else {
 			sock, err = tls.Listen(network, serverAddr, conf)
+			if err != nil {
+				log.Fatalf("Couldn't create a tls listener: %s\n", err)
+			}
 		}
-	}
-	if err != nil {
-		fmt.Printf("server: can't listen at %s: %s\n", serverAddr, err.Error())
-		done <- true
-		return
 	}
 	fmt.Printf("server: listening at %s using %s authentication.\n", serverAddr, *demoAuth)
 
-	pings := make(chan bool, 10)
+	pings := make(chan bool, 5)
 	connCount := 0
 
 	go func() {
@@ -207,14 +211,6 @@ func main() {
 		fmt.Printf("can't continue: No host Tao available\n")
 		return
 	}
-
-	// Try to get random bytes from the Tao.
-	b, err := tao.Parent().GetRandomBytes(10)
-	if err != nil {
-		log.Fatal("Couldn't get random bytes from the Tao")
-	}
-
-	log.Printf("Got random bytes % x\n", b)
 
 	serverDone := make(chan bool, 1)
 

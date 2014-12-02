@@ -149,7 +149,10 @@ func (c *serverCodec) ReadRequestHeader(r *rpc.Request) error {
 	var err error
 	var hdr ProtoRPCRequestHeader
 	if err = c.m.ReadMessage(&hdr); err != nil {
-		return util.Logged(err)
+		// Don't log an error here, since this is where normal EOF
+		// happens over net/rpc channels, e.g., if a client finishes and
+		// disconnects.
+		return err
 	}
 	r.Seq = *hdr.Seq
 	r.ServiceMethod = *hdr.Op

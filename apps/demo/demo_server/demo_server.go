@@ -21,6 +21,7 @@ import (
 	"crypto/x509/pkix"
 	"flag"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"strings"
@@ -206,6 +207,14 @@ func main() {
 		fmt.Printf("can't continue: No host Tao available\n")
 		return
 	}
+
+	// Try to get random bytes from the Tao.
+	b, err := tao.Parent().GetRandomBytes(10)
+	if err != nil {
+		log.Fatal("Couldn't get random bytes from the Tao")
+	}
+
+	log.Printf("Got random bytes % x\n", b)
 
 	serverDone := make(chan bool, 1)
 

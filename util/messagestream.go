@@ -42,7 +42,7 @@ var ErrMessageTooLarge = errors.New("messagestream: message is too large")
 func (ms *MessageStream) WriteString(s string) (int, error) {
 	n := len(s)
 	if n > math.MaxUint32 {
-		return 0, Logged(ErrMessageTooLarge)
+		return 0, ErrMessageTooLarge
 	}
 	var sizebytes [4]byte
 	binary.BigEndian.PutUint32(sizebytes[:], uint32(n))
@@ -59,7 +59,7 @@ func (ms *MessageStream) ReadString() (string, error) {
 	var sizebytes [4]byte
 	_, err := io.ReadFull(ms, sizebytes[:])
 	if err != nil {
-		return "", Logged(err)
+		return "", err
 	}
 	n := binary.BigEndian.Uint32(sizebytes[:])
 	max := ms.MaxMessageSize
@@ -94,7 +94,7 @@ func (ms *MessageStream) WriteMessage(m proto.Message) (int, error) {
 func (ms *MessageStream) ReadMessage(m proto.Message) error {
 	s, err := ms.ReadString()
 	if err != nil {
-		return Logged(err)
+		return err
 	}
 	if m != nil {
 		err = proto.Unmarshal([]byte(s), m)

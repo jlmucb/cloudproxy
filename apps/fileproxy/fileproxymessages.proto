@@ -1,4 +1,4 @@
-//  Copyright (c) 2013, Google Inc.  All rights reserved.
+// Copyright (c) 2014, Google Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,45 +15,63 @@
 package fileproxy;
 
 enum MessageType {
-   REQUEST = 1;
-   RESPONSE = 2;
-   FILE_NEXT = 3;
-   FILE_LAST = 4;
-   PROTOCOL_RESPONSE= 5;
- }
+   AUTH_CERT = 1;
+   NONCE_CHALL = 2;
+   SIGNED_NONCE = 3;
+   OP_RES = 4;
+   CREATE = 5;
+   DELETE = 6;
+   READ = 7;
+   WRITE = 8;
+   FILE_NEXT = 9;
+   FILE_LAST = 10;
+}  
 
-message FPMessage {
-  required  int32   message_type = 1;
-  optional  string  subject_name = 2;
-  optional  string  action_name = 3;
-  optional  string  resource_name = 4;
-  optional  string  resource_owner= 5;
-  optional  string  status_of_request = 6;
-  optional  string  message_from_request = 7;
-  optional  int64   monotonic_counter= 8;
-  optional  int32   buffer_size = 9;
-  optional  string  the_buffer = 10;
+// A Message is a message sent like an RPC between fileproxy hosts. The
+// data is sometimes simply data and is sometimes a serialized protobuf,
+// depending on the message type.
+message Message {
+  required MessageType type = 1;
+  required bytes data = 2;
 }
 
-message FPResourceMaster {
+// A FileOperation contains the information needed to perform a file operation
+// (CREATE, DELETE, READ, WRITE).
+message FileOperation {
+  // The subject is the public key (in certificate form) of the principal taking
+  // the action.
+  required bytes subject = 1;
+
+  // The name is the name of the file. The action is already specified by the
+  // message type in the containing protobuf.
+  required string name = 2;
+}
+
+// An OperationResult is the final return value from a sequence of operations,
+// like the authentication of a principal.
+message OperationResult {
+  required bool result = 1;
+}
+
+message ResourceMasterInfo {
   optional  string  prin_name = 1;
-  optional  string  baseDirectory_name = 2;
-  required  int32   num_fileinfos = 3;
+  optional  string  base_directory_name = 2;
+  required  int32   num_file_infos = 3;
 }
 
-message FPResourceInfo {
-  required string resource_name = 1;
-  required string resource_type = 2;
-  required string resource_status = 3;
-  required string resource_location= 4;
-  optional int32  resource_size= 5;
-  optional string resource_owner= 6;
+message ResourceInfo {
+  required string name = 1;
+  required int32  type = 2;
+  required int32  status = 3;
+  required string location = 4;
+  optional int32  size = 5;
+  optional string owner = 6;
 }
 
-message FPPrincipalInfo {
-  required string principal_name = 1;
-  required string principal_cert= 2;
-  required string principal_status = 3;
+message PrincipalInfo {
+  required string name = 1;
+  required bytes cert = 2;
+  required int32 status = 3;
 }
 
 

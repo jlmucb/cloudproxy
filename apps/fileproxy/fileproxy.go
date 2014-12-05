@@ -15,7 +15,6 @@
 package fileproxy
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
@@ -25,11 +24,12 @@ import (
 	"crypto/x509"
 	"errors"
 	"flag"
+	"fmt"
 	"hash"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"strings"
 
 	"code.google.com/p/goprotobuf/proto"
@@ -44,32 +44,34 @@ var caAddr = flag.String("caAddr", "localhost:8124", "The address to listen on")
 var taoChannelAddr = flag.String("taoChannelAddr", "localhost:8124", "The address to listen on")
 var configPath = flag.String("config", "tao.config", "The Tao domain config")
 
-const SizeofSymmetricKeys = 64
+// The size of a symmetric key is the size of an AES key plus the size of an
+// HMAC key.
+const SymmetricKeySize = 64
 
+// A ProgramPolicy object represents the current domain policy of a program.
 type ProgramPolicy struct {
-	Initialized       bool
-	TaoName           string
-	ThePolicyCert     []byte
-	ProgramSigningKey tao.Keys
-	ProgramSymKeys    []byte
-	ProgramCert       []byte
+	TaoName     string
+	PolicyCert  []byte
+	SigningKey  tao.Keys
+	SymKeys     []byte
+	ProgramCert []byte
 }
 
-func (pp *ProgramPolicy) InitProgramPolicy(policyCert []byte, taoName string, signingKey tao.Keys, symKeys []byte, programCert []byte) bool {
-	log.Printf("InitProgramPolicy\n")
-	pp.ThePolicyCert = policyCert
-	pp.TaoName = taoName
-	pp.ProgramSigningKey = signingKey
-	pp.ProgramSymKeys = symKeys
-	pp.ProgramCert = programCert
-	pp.Initialized = true
-	log.Printf("InitProgramPolicy done\n")
-	return true
+// NewProgramPolicy creates a new ProgramPolicy for a given set of keys.
+func NewProgramPolicy(policyCert []byte, taoName string, signingKey tao.Keys, symKeys []byte, programCert []byte) *ProgramPolicy {
+	pp := &ProgramPolicy{
+		PolicyCert:  policyCert,
+		TaoName:     taoName,
+		SigningKey:  signingKey,
+		SymKeys:     symKeys,
+		ProgramCert: programCert,
+	}
+	return pp
 }
 
-// RequestTruncatedAttestation connects to a CA instance, sends the attestation
-// for an X.509 certificate, and gets back a truncated attestation with a new
-// principal name based on the policy key.
+// RequestKeyNegoAttestation connects to a CA instance, sends the attestation
+// for an X.509 certificate, and gets back a certificate with a new principal
+// name based on the policy key. This certificate is rooted in the policy key.
 func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys, v *tao.Verifier) (*tao.Attestation, error) {
 	if keys.Cert == nil {
 		return nil, errors.New("client: can't dial with an empty client certificate\n")
@@ -118,14 +120,13 @@ func ZeroBytes(buf []byte) {
 	}
 }
 
-func PrincipalNameFromDERCert(derCert []byte) *string {
+func PrincipalNameFromDERCert(derCert []byte) (string, error) {
 	cert, err := x509.ParseCertificate(derCert)
 	if err != nil {
-		log.Printf("PrincipalNameFromDERCert: Can't get name from certificate\n")
-		return nil
+		return "", err
 	}
 	cn := cert.Subject.CommonName
-	return &cn
+	return cn, nil
 }
 
 // returns sealed symmetric key, sealed signing key, DER encoded cert, delegation, error
@@ -314,469 +315,238 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte, delega
 	return k, err
 }
 
-func SendRequest(ms *util.MessageStream, subject *string, action *string, item *string, owner *string) error {
-	if action == nil {
-		log.Printf("SendRequest\n")
-	} else {
-		log.Printf("SendRequest %s\n", *action)
-	}
-	fpMessage := new(FPMessage)
-	fpMessage.MessageType = proto.Int32(int32(MessageType_REQUEST))
-	if subject != nil {
-		fpMessage.SubjectName = proto.String(string(*subject))
-	}
-	if action != nil {
-		fpMessage.ActionName = proto.String(*action)
-	}
-	if item != nil {
-		fpMessage.ResourceName = proto.String(*item)
-	}
-	if owner != nil {
-		fpMessage.ResourceOwner = proto.String(*owner)
-	}
-	out, err := proto.Marshal(fpMessage)
+const bufferSize = 2048
+const ivSize = 16
+const hmacKeySize = 16
+const aesKeySize = 16
+const minKeySize = hmacKeySize + aesKeySize
+
+// SendFile reads a file from disk and streams it to a receiver across a
+// MessageStream. If there are sufficient bytes in the keys (at least
+// hmacKeySize+aesKeySize), then it will attempt to check the integrity of the
+// file with HMAC-SHA256 and decrypt it with AES-CTR-128.
+func SendFile(ms *util.MessageStream, dir string, filename string, keys []byte) error {
+	fullpath := path.Join(dir, filename)
+	fileInfo, err := os.Stat(fullpath)
 	if err != nil {
-		log.Printf("SendRequest: can't marshal message\n")
-		return errors.New("transmission error")
+		return fmt.Errorf("in SendFile: no file '%s' found: %s", fullpath, err)
 	}
-	_, err = ms.WriteString(string(out))
-	return err
-}
-
-func SendCounterRequest(ms *util.MessageStream, counter int64) error {
-	log.Printf("SendCounterRequest")
-	fpMessage := new(FPMessage)
-	fpMessage.MessageType = proto.Int32(int32(MessageType_REQUEST))
-	fpMessage.ActionName = proto.String("setrollbackcounter")
-	fpMessage.MonotonicCounter = proto.Int64(counter)
-	log.Printf("SendCounterRequest, counter: %d\n", counter)
-	out, err := proto.Marshal(fpMessage)
+	file, err := os.Open(fullpath)
 	if err != nil {
-		log.Printf("SendCounterRequest: can't marshal message\n")
-		return errors.New("transmission error")
-	}
-
-	_, err = ms.WriteString(string(out))
-	return err
-}
-
-func SendCounterResponse(ms *util.MessageStream, status string, errMessage string, counter int64) error {
-	log.Printf("SendCounterResponse %d\n", counter)
-	fpMessage := new(FPMessage)
-	fpMessage.MessageType = proto.Int32(int32(MessageType_RESPONSE))
-	fpMessage.MonotonicCounter = proto.Int64(counter)
-	fpMessage.StatusOfRequest = proto.String(status)
-	fpMessage.MessageFromRequest = proto.String(errMessage)
-	out, err := proto.Marshal(fpMessage)
-	if err != nil {
-		log.Printf("SendCounterResponse: can't marshal message\n")
-		return errors.New("transmission error")
-	}
-
-	_, err = ms.WriteString(string(out))
-	return err
-}
-
-func PrintRequest(subject []byte, action *string, resource *string, owner []byte) {
-	log.Printf("PrintRequest\n")
-	if subject != nil {
-		log.Printf("\tsubject: % x\n", subject)
-		subjectName := PrincipalNameFromDERCert(subject)
-		if subjectName != nil {
-			log.Printf("\tsubject: %s\n", *subjectName)
-		}
-	}
-	if action != nil {
-		log.Printf("\taction: %s\n", *action)
-	}
-	if resource != nil {
-		log.Printf("\tresource: %s\n", *resource)
-	}
-	if owner != nil {
-		log.Printf("\towner: % x\n", owner)
-		ownerName := PrincipalNameFromDERCert(owner)
-		if ownerName != nil {
-			log.Printf("\towner: %s\n", *ownerName)
-		}
-	}
-}
-
-func GetResponse(ms *util.MessageStream) (*string, *string, *int, error) {
-	log.Printf("GetResponse\n")
-
-	strbytes, err := ms.ReadString()
-
-	fpMessage := new(FPMessage)
-	err = proto.Unmarshal([]byte(strbytes), fpMessage)
-	if err != nil {
-		return nil, nil, nil, errors.New("GetResponse can't unmarshal message")
-	}
-	if fpMessage.MessageType == nil {
-		return nil, nil, nil, errors.New("GetResponse: no message type")
-	}
-	if *fpMessage.MessageType != int32(MessageType_RESPONSE) {
-		log.Printf("GetResponse bad type\n")
-		return nil, nil, nil, errors.New("reception error")
-	}
-	var status *string
-	var errMessage *string
-	var size int
-
-	if fpMessage.StatusOfRequest == nil {
-		log.Printf("GetResponse no status\n")
-		return nil, nil, nil, errors.New("reception error")
-	}
-	status = fpMessage.StatusOfRequest
-	errMessage = fpMessage.MessageFromRequest
-	if fpMessage.BufferSize == nil {
-		return status, errMessage, nil, nil
-	} else {
-		size = int(*fpMessage.BufferSize)
-		return status, errMessage, &size, nil
-	}
-}
-
-func GetCounterResponse(ms *util.MessageStream) (*string, *string, *int64, error) {
-	strbytes, err := ms.ReadString()
-	log.Printf("GetCounterResponse read %d bytes\n", len(strbytes))
-
-	fpMessage := new(FPMessage)
-	err = proto.Unmarshal([]byte(strbytes), fpMessage)
-	if err != nil {
-		return nil, nil, nil, errors.New("GetCounterResponse can't unmarshal message")
-	}
-	if fpMessage.MessageType == nil {
-		return nil, nil, nil, errors.New("GetCounterResponse: no message type")
-	}
-	if *fpMessage.MessageType != int32(MessageType_RESPONSE) {
-		log.Printf("GetCounterResponse bad type\n")
-		return nil, nil, nil, errors.New("reception error")
-	}
-	var status *string
-	var errMessage *string
-
-	if fpMessage.StatusOfRequest == nil {
-		log.Printf("GetResponse no status\n")
-		return nil, nil, nil, errors.New("reception error")
-	}
-	status = fpMessage.StatusOfRequest
-	if status == nil {
-		log.Printf("GetCounterResponse status is nil\n")
-	} else {
-		log.Printf("GetCounterResponse status: %s\n", *status)
-	}
-	errMessage = fpMessage.MessageFromRequest
-	if fpMessage.MonotonicCounter == nil {
-		log.Printf("GetCounterResponse fpMessage.MonotonicCounter is nil\n")
-		return status, errMessage, nil, nil
-	} else {
-		counter := *fpMessage.MonotonicCounter
-		log.Printf("GetCounterResponse counter: %d\n", counter)
-		return status, errMessage, &counter, nil
-	}
-}
-
-func PrintResponse(status *string, message *string, size *int) {
-	log.Printf("PrintResponse\n")
-	if status != nil {
-		log.Printf("\tstatus: %s\n", *status)
-	} else {
-		log.Printf("\tstatus: empty\n")
-	}
-	if message != nil {
-		log.Printf("\tmessage: %s\n", *message)
-	}
-	if size != nil {
-		log.Printf("\tsize: %d\n", *size)
-	}
-}
-
-func SendResponse(ms *util.MessageStream, status string, errMessage string, size int) error {
-	fpMessage := new(FPMessage)
-	fpMessage.MessageType = proto.Int32(int32(MessageType_RESPONSE))
-	fpMessage.StatusOfRequest = proto.String(status)
-	fpMessage.MessageFromRequest = proto.String(errMessage)
-	out, err := proto.Marshal(fpMessage)
-	if err != nil {
-		log.Printf("SendResponse can't encode response\n")
-		return err
-	}
-	send := string(out)
-	log.Printf("SendResponse sending %s %s %d\n", status, errMessage, len(send))
-	n, err := ms.WriteString(send)
-	if err != nil {
-		log.Printf("SendResponse Writestring error %d\n", n, err)
-		return err
-	}
-	return nil
-}
-
-func SendProtocolMessage(ms *util.MessageStream, size int, buf []byte) error {
-	log.Printf("SendProtocolMessage\n")
-	fpMessage := new(FPMessage)
-	fpMessage.MessageType = proto.Int32(int32(MessageType_PROTOCOL_RESPONSE))
-	fpMessage.BufferSize = proto.Int32(int32(size))
-	fpMessage.TheBuffer = proto.String(string(buf))
-	out, err := proto.Marshal(fpMessage)
-	if err != nil {
-		log.Printf("SendResponse can't encode response\n")
-		return err
-	}
-	n, err := ms.WriteString(string(out))
-	if err != nil {
-		log.Printf("SendProtocolMessage Writestring error %d\n", n, err)
-		return err
-	}
-	return nil
-}
-
-func GetProtocolMessage(ms *util.MessageStream) ([]byte, error) {
-	log.Printf("GetProtocolMessage\n")
-	strbytes, err := ms.ReadString()
-	if err != nil {
-		return nil, err
-	}
-	fpMessage := new(FPMessage)
-	err = proto.Unmarshal([]byte(strbytes), fpMessage)
-	if err != nil {
-		return nil, errors.New("GetProtocolMessage can't unmarshal message")
-	}
-	if fpMessage.MessageType == nil {
-		return nil, errors.New("GetProtocolMessage: no message type")
-	}
-	if *fpMessage.MessageType != int32(MessageType_PROTOCOL_RESPONSE) {
-		return nil, errors.New("GetProtocolMessage: Wrong message type")
-	}
-	out := fpMessage.TheBuffer
-	if out == nil {
-		return nil, errors.New("GetProtocolMessage: empty buffer")
-	}
-	return []byte(*out), nil
-}
-
-func SendFile(ms *util.MessageStream, path string, filename string, keys []byte) error {
-	log.Printf("SendFile %s%s\n", path, filename)
-
-	fpMessage := new(FPMessage)
-	var buf []byte
-	buf = make([]byte, 2048)
-	fileInfo, err := os.Stat(path + filename)
-	if err != nil {
-		return errors.New("SendFile no such file")
-	}
-	file, err := os.Open(path + filename)
-	if err != nil {
-		return errors.New("SendFile: can't open file ")
+		return fmt.Errorf("in SendFile: can't open file '%s': %s", fullpath, err)
 	}
 	defer file.Close()
 
-	var aesObj cipher.Block
-	var iv [16]byte
-	var ctrCipher cipher.Stream
+	// This encryption scheme uses AES-CTR with HMAC-SHA256 for integrity
+	// protection.
+	var hm hash.Hash
+	var ctr cipher.Stream
+	iv := make([]byte, ivSize)
+	hasKeys := len(keys) >= minKeySize
 
-	bytesLeft := int(fileInfo.Size())
-	var final bool
-	final = false
-	var toRead int
-	var plaintext []byte
-	var hmacObj hash.Hash
-	plaintext = make([]byte, 2048)
-	if keys != nil {
-		aesObj, err = aes.NewCipher(keys[0:16])
-		if err != nil || aesObj == nil {
-			log.Printf("SendFile can't create aes object")
+	// The variable "left" gives the total number of bytes left to read from
+	// the (maybe encrypted) file.
+	left := fileInfo.Size()
+	buf := make([]byte, bufferSize)
+	if hasKeys {
+		dec, err := aes.NewCipher(keys[:aesKeySize])
+		if err != nil || dec == nil {
+			return fmt.Errorf("can't create AES cipher in SendFile: %s", err)
 		}
-		// read iv
-		_, err := file.Read(iv[:])
-		if err != nil {
+		if _, err := file.Read(iv); err != nil {
 			return err
 		}
-		hmacObj = hmac.New(sha256.New, keys[16:32])
-		log.Printf("SendFile initialized hmac keys %x", keys[16:32])
-		hmacObj.Write(iv[:])
-		log.Printf("SendFile wrote iv to hmac %x", iv)
-		ctrCipher = cipher.NewCTR(aesObj, iv[:])
-		if ctrCipher == nil {
-			log.Printf("SendFile can't create counter cipher object")
+		// Remove the IV from the number of remaining bytes to decrypt.
+		left = left - ivSize
+
+		// Take all the remaining key bytes for the HMAC key.
+		hm = hmac.New(sha256.New, keys[aesKeySize:])
+		hmacSize := hm.Size()
+
+		// The HMAC input starts with the IV.
+		hm.Write(iv)
+
+		ctr = cipher.NewCTR(dec, iv)
+		if ctr == nil {
+			return fmt.Errorf("can't create AES-CTR encryption")
 		}
-		bytesLeft = bytesLeft - 16
-		log.Printf("sent iv message\n")
+
+		// Remove the HMAC-SHA256 output from the bytes to check.
+		left = left - int64(hmacSize)
+
+		// Secure decryption in this case requires reading the file
+		// twice: once to check the MAC, and once to decrypt the bytes.
+		// The MAC must be checked before *any* decryption occurs and
+		// before *any* decrypted bytes are sent to the receiver.
+		for {
+			// Figure out how many bytes to read on this iteration.
+			var readSize int64 = bufferSize
+			final := false
+			if left <= bufferSize {
+				readSize = left
+				final = true
+			}
+
+			// Read the (maybe encrypted) bytes from the file.
+			n, err := file.Read(buf[:readSize])
+			if err != nil {
+				return err
+			}
+			left = left - int64(n)
+			hm.Write(buf[:n])
+			if final {
+				break
+			}
+		}
+		computed := hm.Sum(nil)
+		original := buf[:hmacSize]
+
+		// Read the file's version of the HMAC and check it securely
+		// against the computed version.
+		if _, err := file.Read(original); err != nil {
+			return err
+		}
+		if !hmac.Equal(computed, original) {
+			return fmt.Errorf("invalid file HMAC on decryption for file '%s'", fullpath)
+		}
+
+		// Go back to the beginning of the file (minus the IV) for
+		// decryption.
+		if _, err := file.Seek(ivSize, 0); err != nil {
+			return fmt.Errorf("couldn't seek back to the beginning of file '%s': %s", fullpath, err)
+		}
+
+		// Reset the number of bytes so it only includes the encrypted
+		// bytes.
+		left = fileInfo.Size() - int64(ivSize+hmacSize)
 	}
-	if keys != nil {
-		bytesLeft = bytesLeft - 32
+
+	// The input buffer, and a temporary buffer for holding decrypted
+	// plaintext.
+	temp := make([]byte, bufferSize)
+
+	// Set up a framing message to use to send the data.
+	m := &Message{
+		Type: MessageType_FILE_NEXT.Enum(),
 	}
+
+	// Now that the integrity of the data has been verified, if needed, send
+	// the data (after decryption, if necessary) to the receiver.
 	for {
-		if bytesLeft <= 2048 {
-			toRead = bytesLeft
+		// Figure out how many bytes to read on this iteration.
+		var readSize int64 = bufferSize
+		final := false
+		if left <= bufferSize {
+			readSize = left
 			final = true
-		} else {
-			toRead = 2048
+			m.Type = MessageType_FILE_LAST.Enum()
 		}
-		n, err := file.Read(buf[0:toRead])
+
+		// Read the (maybe encrypted) bytes from the file.
+		n, err := file.Read(buf[:readSize])
 		if err != nil {
 			return err
 		}
-		if final {
-			fpMessage.MessageType = proto.Int32(int32(MessageType_FILE_LAST))
+		left = left - int64(n)
+
+		if hasKeys {
+			ctr.XORKeyStream(temp[:n], buf[:n])
+			m.Data = temp[:n]
 		} else {
-			fpMessage.MessageType = proto.Int32(int32(MessageType_FILE_NEXT))
+			m.Data = buf[:n]
 		}
-		bytesLeft = bytesLeft - n
-		fpMessage.BufferSize = proto.Int32(int32(n))
-		if keys != nil {
-			hmacObj.Write(buf[0:n])
-			log.Printf("SendFile wrote to hmac %x", buf[0:n])
-			ctrCipher.XORKeyStream(plaintext[0:n], buf[0:n])
-			fpMessage.TheBuffer = proto.String(string(plaintext[0:n]))
-			log.Printf("sent cipher block %d\n", n)
-		} else {
-			fpMessage.TheBuffer = proto.String(string(buf[0:n]))
-		}
-		out, err := proto.Marshal(fpMessage)
-		if err != nil {
-			log.Printf("SendFile can't file contents message\n")
-			return errors.New("transmission error")
-		}
-		_, _ = ms.WriteString(string(out))
-		if final {
-			break
-		}
-	}
-	if keys != nil {
-		// read mac and check it
-		_, err := file.Read(buf[0:32])
-		if err != nil {
+
+		// Send the decrypted data to the receiver.
+		if _, err := ms.WriteMessage(m); err != nil {
 			return err
-		}
-		mac := hmacObj.Sum(nil)
-		if bytes.Equal(mac, buf[0:32]) {
-			log.Printf("SendFile: hmac matches\n")
-		} else {
-			log.Printf("SendFile: hmac does not match\n")
-			log.Printf("expected: %x\n", mac)
-			log.Printf("received: %x\n", buf[0:32])
-		}
-	}
-	return nil
-}
-
-func GetFile(ms *util.MessageStream, path string, filename string, keys []byte) error {
-	log.Printf("GetFile %s%s\n", path, filename)
-	fpMessage := new(FPMessage)
-	var final bool
-	final = false
-	file, err := os.Create(path + filename)
-	if err != nil {
-		return errors.New("GetFile can't creat file")
-	}
-	defer file.Close()
-
-	var aesObj cipher.Block
-	var iv [16]byte
-	var ctrCipher cipher.Stream
-	var ciphertext []byte
-	var hmacObj hash.Hash
-	ciphertext = make([]byte, 2048)
-	if keys != nil {
-		aesObj, err = aes.NewCipher(keys[0:16])
-		if err != nil || aesObj == nil {
-			log.Printf("GetFile can't create aes object")
-		}
-		hmacObj = hmac.New(sha256.New, keys[16:32])
-		log.Printf("GetFile initialized keys for hmac %x", keys[16:32])
-		if _, err := io.ReadFull(rand.Reader, iv[:]); err != nil {
-			panic(err)
-		}
-		hmacObj.Write(iv[:])
-		log.Printf("GetFile wrote iv to hmac %x", iv[:])
-		ctrCipher = cipher.NewCTR(aesObj, iv[:])
-		if ctrCipher == nil {
-			log.Printf("GetFile can't create counter cipher object")
-		}
-		_, err = file.Write(iv[:])
-	}
-
-	for {
-		in, err := ms.ReadString()
-		if err != nil {
-			log.Printf("GetFile can't readstring\n")
-			return errors.New("reception error")
-		}
-		err = proto.Unmarshal([]byte(in), fpMessage)
-		if err != nil {
-			return errors.New("GetFile can't unmarshal message")
-		}
-		if fpMessage.MessageType == nil {
-			return errors.New("GetFile no message type")
-		}
-		if *fpMessage.MessageType == int32(MessageType_FILE_LAST) {
-			final = true
-		} else if *fpMessage.MessageType == int32(MessageType_FILE_NEXT) {
-			final = false
-		} else {
-			log.Printf("GetFile bad message type\n")
-			return errors.New("reception error")
-		}
-		if fpMessage.BufferSize == nil {
-			log.Printf("GetFile no buffer size\n")
-			return errors.New("expected buffer size")
-		}
-		if fpMessage.TheBuffer == nil {
-			return errors.New("GetFile: empty buffer")
-		}
-		out := []byte(*fpMessage.TheBuffer)
-		if keys != nil {
-			ctrCipher.XORKeyStream(ciphertext, out[0:int(*fpMessage.BufferSize)])
-			hmacObj.Write(ciphertext[0:int(*fpMessage.BufferSize)])
-			log.Printf("GetFile wrote hmac %x", ciphertext[0:int(*fpMessage.BufferSize)])
-			_, err = file.Write(ciphertext[0:int(*fpMessage.BufferSize)])
-		} else {
-			_, err = file.Write(out[0:int(*fpMessage.BufferSize)])
 		}
 		if final {
 			break
 		}
 	}
-	if keys != nil {
-		// write Mac
-		hmacBytes := hmacObj.Sum(nil)
-		_, err = file.Write(hmacBytes[0:32])
-	}
 	return nil
 }
 
-func SendSendFile(ms *util.MessageStream, subjectCert []byte, filename string) error {
-	log.Printf("SendSendFile, filename: %s\n", filename)
-	subject := string(subjectCert)
-	action := "sendfile"
-	return SendRequest(ms, &subject, &action, &filename, nil)
-}
+// GetFile receives bytes from a sender and optionally encrypts them, adds
+// integrity protection, and writes them to disk.
+func GetFile(ms *util.MessageStream, dir string, filename string, keys []byte) error {
+	fullpath := path.Join(dir, filename)
+	file, err := os.Create(fullpath)
+	if err != nil {
+		return fmt.Errorf("can't create file '%s' in GetFile", fullpath)
+	}
+	defer file.Close()
 
-func SendGetFile(ms *util.MessageStream, subjectCert []byte, filename string) error {
-	log.Printf("SendGetFile, filename: %s\n", filename)
-	subject := string(subjectCert)
-	action := "getfile"
-	return SendRequest(ms, &subject, &action, &filename, nil)
-}
+	var ctr cipher.Stream
+	var hm hash.Hash
+	iv := make([]byte, ivSize)
 
-func SendCreateFile(ms *util.MessageStream, subjectCert []byte, filename string) error {
-	log.Printf("SendCreateFile, filename: %s\n", filename)
-	subject := string(subjectCert)
-	action := "create"
-	return SendRequest(ms, &subject, &action, &filename, &subject)
-}
+	hasKeys := len(keys) >= minKeySize
+	if hasKeys {
+		enc, err := aes.NewCipher(keys[:aesKeySize])
+		if err != nil || enc == nil {
+			return fmt.Errorf("couldn't create an AES cipher: %s", err)
+		}
 
-func SendRule(ms *util.MessageStream, rule string, signerCert []byte) error {
-	log.Printf("SendRule, rule: %s\n", rule)
-	subject := string(signerCert)
-	action := "sendrule"
-	return SendRequest(ms, &subject, &action, &rule, &subject)
-}
+		// Use the remaining bytes of the key slice for the HMAC key.
+		hm = hmac.New(sha256.New, keys[aesKeySize:])
+		if _, err := rand.Read(iv); err != nil {
+			return fmt.Errorf("couldn't read random bytes for a fresh IV: %s", err)
+		}
 
-func SendDeleteFile(ms *util.MessageStream, creds []byte, filename string) error {
-	return errors.New("CreateFile request not implemented")
-}
+		// The first bytes of the HMAC input are the IV.
+		hm.Write(iv)
+		ctr = cipher.NewCTR(enc, iv)
+		if ctr == nil {
+			return fmt.Errorf("couldn't create a new instance of AES-CTR-128")
+		}
+		if _, err = file.Write(iv); err != nil {
+			return err
+		}
+	}
 
-func SendAddFilePermissions(ms *util.MessageStream, creds []byte, filename string) error {
-	return errors.New("AddFilePermissions request not implemented")
+	// temp holds temporary encrypted ciphertext before it's written to
+	// disk.
+	temp := make([]byte, bufferSize)
+	for {
+		var m Message
+		if err := ms.ReadMessage(&m); err != nil {
+			return nil
+		}
+
+		// Sanity check: this must be FILE_LAST or FILE_NEXT.
+		t := *m.Type
+		if !(t == MessageType_FILE_LAST || t == MessageType_FILE_NEXT) {
+			return fmt.Errorf("received invalid message type %d during file streaming in GetFile", t)
+		}
+
+		if hasKeys {
+			l := len(m.Data)
+			ctr.XORKeyStream(temp, m.Data)
+			hm.Write(temp[:l])
+			if _, err = file.Write(temp[:l]); err != nil {
+				return err
+			}
+		} else {
+			if _, err = file.Write(m.Data); err != nil {
+				return err
+			}
+		}
+
+		// FILE_LAST corresponds to receiving the final bytes of the
+		// file.
+		if *m.Type == MessageType_FILE_LAST {
+			break
+		}
+	}
+
+	// Write the MAC at the end of the file.
+	if hasKeys {
+		hmacBytes := hm.Sum(nil)
+		if _, err = file.Write(hmacBytes[:]); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

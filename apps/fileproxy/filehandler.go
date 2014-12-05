@@ -479,53 +479,6 @@ func (m *ResourceMaster) AuthenticatePrincipal(ms *util.MessageStream, msg *Mess
 	return msg.Data, nil
 }
 
-// AuthenticatePrincipalRequest is a client method used to send a request to a
-// ResourceMaster to authenticate a principal with a given certificate and a
-// given set of keys.
-func AuthenticatePrincipalRequest(ms *util.MessageStream, key *tao.Keys, derCert []byte) error {
-	// Send the authentication request, which supposes that a server is
-	// waiting to receive this request.
-	c := &Message{
-		Type: MessageType_AUTH_CERT.Enum(),
-		Data: derCert,
-	}
-	if _, err := ms.WriteMessage(c); err != nil {
-		return err
-	}
-
-	// Receive a challenge nonce from the server.
-	var nc Message
-	if err := ms.ReadMessage(&nc); err != nil {
-		return err
-	}
-	if *nc.Type != MessageType_NONCE_CHALL {
-		return fmt.Errorf("didn't receive NONCE_CHALL from the server")
-	}
-
-	// Sign the nonce.
-	sn := &Message{
-		Type: MessageType_SIGNED_NONCE.Enum(),
-	}
-	var err error
-	if sn.Data, err = key.SigningKey.Sign(nc.Data, ChallengeContext); err != nil {
-		return err
-	}
-	if _, err := ms.WriteMessage(sn); err != nil {
-		return err
-	}
-
-	// Get the result from the server after verificaton.
-	res, err := readResult(ms)
-	if err != nil {
-		return err
-	}
-
-	if !res {
-		return fmt.Errorf("the signed nonce failed verification")
-	}
-	return nil
-}
-
 // Read causes the bytes of the file to be decrypted and read to the message
 // stream. By the time this function is called, the remote principal has already
 // been authenticated and the operation has already been authorized.
@@ -687,4 +640,143 @@ func NewResourceMaster(filepath string) *ResourceMaster {
 		}
 	}
 	return m
+}
+
+// The following are client methods that can be used to access the
+// ResourceMaster.
+
+// recvResult waits for a OperationResult on a MessageStream
+func recvResult(ms *util.MessageStream) (bool, error) {
+	var m Message
+	if err := ms.ReadMessage(&m); err != nil {
+		return false, err
+	}
+	var res OperationResult
+	if err := proto.Unmarshal(m.Data, &res); err != nil {
+		return false, err
+	}
+
+	return *res.Result, nil
+}
+
+// wrapResult takes a bool and an error and returns an error if the error is
+// non-nil or if the bool is false.
+func wrapResult(ok bool, err error) error {
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("the operation failed")
+	}
+	return nil
+}
+
+// sendOperation is a helper method that sets up the data structures needed for
+// a FileOperation message like CREATE, WRITE, or READ, and sends this message
+// on the MessageStream.
+func sendOperation(ms *util.MessageStream, mt MessageType, cert []byte, name string) error {
+	fop := &FileOperation{
+		Subject: cert,
+		Name:    proto.String(name),
+	}
+
+	fopb, err := proto.Marshal(fop)
+	if err != nil {
+		return err
+	}
+	m := &Message{
+		Type: mt.Enum(),
+		Data: fopb,
+	}
+
+	if _, err := ms.WriteMessage(m); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// CreateFile creates a file with a given creator and name.
+func CreateFile(ms *util.MessageStream, ownerCert []byte, name string) error {
+	if err := sendOperation(ms, MessageType_CREATE, ownerCert, name); err != nil {
+		return err
+	}
+
+	return wrapResult(recvResult(ms))
+}
+
+// WriteFile writes a local file, using SendFile without any keys to read the
+// file from disk and send it on the MessageStream.
+func WriteFile(ms *util.MessageStream, userCert []byte, dir, name string) error {
+	if err := sendOperation(ms, MessageType_WRITE, userCert, name); err != nil {
+		return err
+	}
+
+	if err := wrapResult(recvResult(ms)); err != nil {
+		return err
+	}
+
+	return SendFile(ms, dir, name, nil)
+}
+
+// ReadFile reads a file from the server and writes it to a local file, using
+// GetFile without any keys to read the file from the network and write it to
+// the disk.
+func ReadFile(ms *util.MessageStream, userCert []byte, dir, name, output string) error {
+	if err := sendOperation(ms, MessageType_READ, userCert, name); err != nil {
+		return err
+	}
+
+	if err := wrapResult(recvResult(ms)); err != nil {
+		return err
+	}
+
+	return GetFile(ms, dir, output, nil)
+}
+
+// AuthenticatePrincipal is a client method used to send a request to a
+// ResourceMaster to authenticate a principal with a given certificate and a
+// given set of keys.
+func AuthenticatePrincipal(ms *util.MessageStream, key *tao.Keys, derCert []byte) error {
+	// Send the authentication request, which supposes that a server is
+	// waiting to receive this request.
+	c := &Message{
+		Type: MessageType_AUTH_CERT.Enum(),
+		Data: derCert,
+	}
+	if _, err := ms.WriteMessage(c); err != nil {
+		return err
+	}
+
+	// Receive a challenge nonce from the server.
+	var nc Message
+	if err := ms.ReadMessage(&nc); err != nil {
+		return err
+	}
+	if *nc.Type != MessageType_NONCE_CHALL {
+		return fmt.Errorf("didn't receive NONCE_CHALL from the server")
+	}
+
+	// Sign the nonce.
+	sn := &Message{
+		Type: MessageType_SIGNED_NONCE.Enum(),
+	}
+	var err error
+	if sn.Data, err = key.SigningKey.Sign(nc.Data, ChallengeContext); err != nil {
+		return err
+	}
+	if _, err := ms.WriteMessage(sn); err != nil {
+		return err
+	}
+
+	// Get the result from the server after verificaton.
+	res, err := readResult(ms)
+	if err != nil {
+		return err
+	}
+
+	if !res {
+		return fmt.Errorf("the signed nonce failed verification")
+	}
+	return nil
 }

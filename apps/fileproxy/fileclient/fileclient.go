@@ -1,9 +1,11 @@
-// Copyright (c) 2014, Google, Inc.,  All rights reserved.
+// Copyright (c) 2014, Google, Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,43 +17,42 @@
 package main
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/binary"
 	"flag"
 	"io/ioutil"
 	"log"
+	"net"
+	"path"
 
 	"code.google.com/p/goprotobuf/proto"
 
 	"github.com/jlmucb/cloudproxy/apps/fileproxy"
-	tao "github.com/jlmucb/cloudproxy/tao"
+	"github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	taonet "github.com/jlmucb/cloudproxy/tao/net"
 	"github.com/jlmucb/cloudproxy/util"
 )
 
-var hostcfg = flag.String("../hostdomain/tao.config", "../hostdomain/tao.config", "path to host tao configuration")
-var serverHost = flag.String("host", "localhost", "address for client/server")
-var serverPort = flag.String("port", "8123", "port for client/server")
-var rollbackserverHost = flag.String("rollbackhost", "localhost", "address for rollback client/server")
-var rollbackserverPort = flag.String("rollbackport", "8129", "port for client/server")
-var fileclientPath = flag.String("fileclient_files/", "fileclient_files/", "fileclient directory")
-var serverAddr string
-var rollbackserverAddr string
-var fileclientFilePath = flag.String("fileclient_files/stored_files/", "fileclient_files/stored_files/",
-	"fileclient file directory")
-var testFile = flag.String("originalTestFile", "originalTestFile", "test file")
-var fileclientKeyPath = flag.String("usercreds/", "usercreds/", "user keys and certs")
-
 func main() {
 
-	var fileClientProgramObject fileproxy.ProgramPolicy
+	// TODO(tmroeder): remove the relative path.
+	hostcfg := flag.String("hostconfig", "../hostdomain/tao.config", "path to host tao configuration")
+	serverHost := flag.String("host", "localhost", "address for client/server")
+	serverPort := flag.String("port", "8123", "port for client/server")
+	rollbackServerHost := flag.String("rollbackhost", "localhost", "address for rollback client/server")
+	rollbackServerPort := flag.String("rollbackport", "8129", "port for client/server")
+	fileClientPath := flag.String("fileclient_files", "fileclient_files", "fileclient directory")
+	fileClientFilePath := flag.String("stored_files", "fileclient_files/stored_files", "fileclient file directory")
+	testFile := flag.String("test_file", "originalTestFile", "test file")
+	fileClientKeyPath := flag.String("usercreds", "usercreds", "user keys and certs")
 
 	flag.Parse()
-	serverAddr = *serverHost + ":" + *serverPort
 
+	serverAddr := net.JoinHostPort(*serverHost, *serverPort)
 	hostDomain, err := tao.LoadDomain(*hostcfg, nil)
 	if err != nil {
 		log.Fatalln("fileclient: Can't load domain")
@@ -78,69 +79,60 @@ func main() {
 		log.Fatalln("fileclient: Can't get tao name")
 		return
 	}
-	log.Printf("fileclient: my name is %s\n", taoName)
 
-	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*fileclientPath)
+	// Load the keys from disk or create a new set of keys and write them to
+	// disk.
+	// TODO(tmroeder): this should be refactored.
+	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*fileClientPath)
 	if err != nil {
 		log.Printf("fileclient: can't retrieve key material\n")
 	}
 	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || programCert == nil {
 		log.Printf("fileclient: No key material present\n")
 	}
-	log.Printf("fileclient: Finished fileproxy.LoadProgramKeys\n")
 
 	var symKeys []byte
 	if sealedSymmetricKey != nil {
-		symKeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
+		var policy string
+		symKeys, policy, err = tao.Parent().Unseal(sealedSymmetricKey)
 		if err != nil {
 			return
 		}
 		if policy != tao.SealPolicyDefault {
-			log.Printf("fileclient: unexpected policy on unseal\n")
+			log.Fatalln("fileclient: unexpected policy on unseal")
 		}
-		log.Printf("fileclient: Unsealed symKeys: % x\n", symKeys)
 	} else {
-		symKeys, err := fileproxy.InitializeSealedSymmetricKeys(*fileclientPath, tao.Parent(), fileproxy.SizeofSymmetricKeys)
+		symKeys, err = fileproxy.InitializeSealedSymmetricKeys(*fileClientPath, tao.Parent(), fileproxy.SymmetricKeySize)
 		if err != nil {
-			log.Printf("fileclient: InitializeSealedSymmetricKeys error: %s\n", err)
+			log.Fatalln("fileclient: InitializeSealedSymmetricKeys error: %s", err)
 		}
-		log.Printf("fileclient: InitilizedsymKeys: % x\n", symKeys)
 	}
 	defer fileproxy.ZeroBytes(symKeys)
 
 	var signingKey *tao.Keys
 	if sealedSigningKey != nil {
-		signingKey, err = fileproxy.SigningKeyFromBlob(tao.Parent(),
-			sealedSigningKey, programCert, delegation)
+		signingKey, err = fileproxy.SigningKeyFromBlob(tao.Parent(), sealedSigningKey, programCert, delegation)
 		if err != nil {
-			log.Printf("fileclient: SigningKeyFromBlob error: %s\n", err)
+			log.Fatalln("fileclient: SigningKeyFromBlob error: %s", err)
 		}
-		log.Printf("fileclient: Retrieved Signing key: % x\n", *signingKey)
 	} else {
-		signingKey, err = fileproxy.InitializeSealedSigningKey(*fileclientPath,
-			tao.Parent(), *hostDomain)
+		signingKey, err = fileproxy.InitializeSealedSigningKey(*fileClientPath, tao.Parent(), *hostDomain)
 		if err != nil {
-			log.Printf("fileclient: InitializeSealedSigningKey error: %s\n", err)
+			log.Fatalln("fileclient: InitializeSealedSigningKey error: %s", err)
 		}
-		log.Printf("fileclient: Initilized signingKey\n")
 	}
 
-	_ = fileClientProgramObject.InitProgramPolicy(derPolicyCert, taoName.String(), *signingKey, symKeys, programCert)
-
+	// Get the policy cert and set up TLS.
 	policyCert, err := x509.ParseCertificate(derPolicyCert)
 	if err != nil {
 		log.Fatalln("fileclient:can't ParseCertificate")
-		return
 	}
-	log.Printf("fileclient: place 0\n")
 	pool := x509.NewCertPool()
 	pool.AddCert(policyCert)
 
 	tlsc, err := taonet.EncodeTLSCert(signingKey)
 	if err != nil {
-		log.Printf("fileclient, encode error: ", err)
-		log.Printf("\n")
-		return
+		log.Fatalln("fileclient, encode error: ", err)
 	}
 	conn, err := tls.Dial("tcp", serverAddr, &tls.Config{
 		RootCAs:            pool,
@@ -148,200 +140,112 @@ func main() {
 		InsecureSkipVerify: false,
 	})
 	if err != nil {
-		log.Printf("fileclient: can't establish channel\n", err)
-		log.Printf("\n")
-		return
+		log.Fatalln("fileclient: can't establish channel: ", err)
 	}
 	ms := util.NewMessageStream(conn)
-	log.Printf("fileclient: Established channel\n")
 
 	// Authenticate user principal(s).
-	userCert, err := ioutil.ReadFile(*fileclientPath + *fileclientKeyPath + "cert")
+	keyDir := path.Join(*fileClientPath, *fileClientKeyPath)
+
+	// Get the cert.
+	certPath := path.Join(keyDir, "cert")
+	userCert, err := ioutil.ReadFile(certPath)
 	if err != nil {
-		log.Printf("fileclient: can't read cert %s\n", *fileclientPath+*fileclientKeyPath+"cert")
-		return
+		log.Fatalln("fileclient: can't read cert from ", certPath)
 	}
-	log.Printf("fileclient: read cert\n")
-	if userCert == nil {
-		log.Printf("fileclient: nil user cert\n")
-	}
-	pks, err := ioutil.ReadFile(*fileclientPath + *fileclientKeyPath + "keys")
+
+	// Get the keys.
+	keyPath := path.Join(keyDir, "keys")
+	pks, err := ioutil.ReadFile(keyPath)
 	if err != nil {
-		log.Printf("fileclient: can't read key blob\n")
-		return
+		log.Fatalln("fileclient: can't read key blob")
 	}
-	if pks == nil {
-		log.Printf("fileclient: nil pks\n")
-	}
-	log.Printf("fileclient: read key blob\n")
 	var cks tao.CryptoKeyset
 	err = proto.Unmarshal(pks, &cks)
 	if err != nil {
-		log.Printf("fileclient: can't proto unmarshal key set\n")
-		return
+		log.Fatalln("fileclient: can't proto unmarshal key set")
 	}
-	if pks == nil {
-		log.Printf("fileclient: can't proto unmarshaled is nil \n")
-		return
-	}
-	log.Printf("fileclient: unmarshaled proto key\n")
 	userKey, err := tao.UnmarshalKeyset(&cks)
 	if err != nil {
-		log.Printf("fileclient: can't unmarshal key set\n")
-		return
+		log.Fatalln("fileclient: can't unmarshal key set")
 	}
-	log.Printf("fileclient: unmarshaled key\n")
-	ok := fileproxy.AuthenticatePrincipalRequest(ms, userKey, userCert)
-	if !ok {
-		log.Printf("fileclient: can't authenticate principal\n")
-		return
-	}
-	log.Printf("fileclient: AuthenticatedPrincipalRequest\n")
 
-	// Send a rule.
-	rule := "Delegate(\"jlm\", \"tom\", \"getfile\",\"myfile\")"
-	log.Printf("fileclient, sending rule: %s\n", rule)
-	err = fileproxy.SendRule(ms, rule, userCert)
-	if err != nil {
-		log.Printf("fileclient: can't create file\n")
-		return
-	}
-	status, message, size, err := fileproxy.GetResponse(ms)
-	if err != nil {
-		log.Printf("fileclient: Error in response to SendCreate\n")
-		return
-	}
-	log.Printf("Response to SendCreate\n")
-	fileproxy.PrintResponse(status, message, size)
-	if *status != "succeeded" {
-		return
+	// Authenticate a key to use for requests to the server.
+	if err = fileproxy.AuthenticatePrincipal(ms, userKey, userCert); err != nil {
+		log.Fatalf("fileclient: can't authenticate principal: %s", err)
 	}
 
 	// Create a file.
 	sentFileName := *testFile
-	log.Printf("fileclient, Creating: %s\n", sentFileName)
-	err = fileproxy.SendCreateFile(ms, userCert, sentFileName)
-	if err != nil {
-		log.Printf("fileclient: can't create file\n")
-		return
-	}
-	status, message, size, err = fileproxy.GetResponse(ms)
-	if err != nil {
-		log.Printf("fileclient: Error in response to SendCreate\n")
-		return
-	}
-	log.Printf("fileclient: Response to SendCreate\n")
-	fileproxy.PrintResponse(status, message, size)
-	if *status != "succeeded" {
-		return
+	if err = fileproxy.CreateFile(ms, userCert, sentFileName); err != nil {
+		log.Fatalln("fileclient: can't create file")
 	}
 
 	// Send File.
-	log.Printf("\nfileclient sending file %s\n", sentFileName)
-	err = fileproxy.SendSendFile(ms, userCert, sentFileName)
-	if err != nil {
-		log.Printf("fileclient: SendSendFile has error\n")
-		return
+	if err = fileproxy.WriteFile(ms, userCert, *fileClientFilePath, sentFileName); err != nil {
+		log.Fatalf("fileclient: couldn't write the file %s to the server: %s", sentFileName, err)
 	}
 
-	status, message, size, err = fileproxy.GetResponse(ms)
-	if err != nil {
-		log.Printf("fileclient: Error in response to SendSend\n")
-		return
-	}
-	log.Printf("fileclient: Response to SendSend\n")
-	fileproxy.PrintResponse(status, message, size)
-	if *status != "succeeded" {
-		return
+	// Get file.
+	outputFileName := sentFileName + ".out"
+	if err = fileproxy.ReadFile(ms, userCert, *fileClientFilePath, sentFileName, outputFileName); err != nil {
+		log.Fatalf("fileclient: couldn't get file %s to output file %s: %s", sentFileName, outputFileName, err)
 	}
 
-	err = fileproxy.SendFile(ms, *fileclientFilePath, sentFileName, nil)
-	if err != nil {
-		log.Printf("fileclient: Error in response to SendFile ", err)
-		log.Printf("\n")
-		return
-	}
+	// TODO(tmroeder): compare the received file against the sent file.
 
-	// Get file
-	log.Printf("\nfileclient getting file %s\n", sentFileName)
-	err = fileproxy.SendGetFile(ms, userCert, sentFileName)
-	if err != nil {
-		log.Printf("fileclient: SendGetFile has error\n")
-		return
-	}
-
-	status, message, size, err = fileproxy.GetResponse(ms)
-	if err != nil {
-		log.Printf("fileclient: Error in response to GetFile\n")
-		return
-	}
-	log.Printf("fileclient: Response to SendGet\n")
-	fileproxy.PrintResponse(status, message, size)
-	if *status != "succeeded" {
-		return
-	}
-
-	err = fileproxy.GetFile(ms, *fileclientFilePath, sentFileName+".received", nil)
-	if err != nil {
-		log.Printf("fileclient: can't get file ", err)
-		log.Printf("\n")
-		return
-	}
-
-	// rollback test
-	rollbackserverAddr = *serverHost + ":" + *rollbackserverPort
-	rbconn, err := tls.Dial("tcp", rollbackserverAddr, &tls.Config{
+	// Set up a TLS connection to the rollback server, just like the one to
+	// the file server.
+	rollbackServerAddr := net.JoinHostPort(*rollbackServerHost, *rollbackServerPort)
+	rbconn, err := tls.Dial("tcp", rollbackServerAddr, &tls.Config{
 		RootCAs:            pool,
 		Certificates:       []tls.Certificate{*tlsc},
 		InsecureSkipVerify: false,
 	})
 	if err != nil {
-		log.Printf("fileclient: can't establish rollback channel\n", err)
-		log.Printf("\n")
-		return
+		log.Fatalf("fileclient: can't establish rollback channel: %s", err)
 	}
 	newms := util.NewMessageStream(rbconn)
-	if newms == nil {
-		log.Printf("can't get newms\n")
-	}
-	log.Printf("fileclient: Established rollback channel\n")
-	// set hash
-	hash := make([]byte, 128)
-	for i := 0; i < 32; i++ {
-		hash[i] = byte(i)
-	}
-	clientProgramName := taoName.String()
-	ok2 := fileproxy.ClientSetResourceHashRequest(newms, clientProgramName, "test_resource", []byte(hash))
-	if !ok2 {
-		log.Printf("fileclient: fileproxy.ClientSetResourceHashRequest failed")
-		return
-	}
-	log.Printf("fileclient: set fileproxy.ClientSetResourceHashRequest succeeded\n")
-	// set counter
-	fileproxy.ClientSetRollbackCounter(newms, int64(10))
-	log.Printf("fileclient: set fileproxy.ClientSetRollbackCounter\n")
-	// get counter
-	ok2, counter := fileproxy.ClientGetRollbackCounter(newms, clientProgramName)
-	if !ok2 {
-		log.Printf("fileclient: fileproxy.ClientGetRollbackCounter failed")
-		return
-	}
-	log.Printf("counter is %d\n", counter)
-	// get verify
-	ok2, newhash := fileproxy.ClientGetRollbackHashedVerifierRequest(newms, clientProgramName, "test_resource")
-	if !ok2 {
-		log.Printf("fileclient: fileproxy.ClientGetRollbackHashedVerifierRequest failed")
-		return
-	}
-	log.Printf("fileclient: newhash is %x\n", newhash)
-	sha256HashCtr := sha256.New()
-	bc := make([]byte, 8)
-	binary.PutVarint(bc, counter)
-	sha256HashCtr.Write(bc)
-	sha256HashCtr.Write(hash)
-	sha256HashCtr.Write(bc)
-	computed_hash := sha256HashCtr.Sum(nil)
-	log.Printf("fileclient: computed_hash is %x\n", computed_hash)
 
-	log.Printf("fileclient: Done\n")
+	// Create a fake hash value, and set this value for an item.
+	hashLen := 32
+	hash := make([]byte, hashLen)
+	if _, err := rand.Read(hash); err != nil {
+		log.Fatalf("fileclient: failed to read a random value for the hash")
+	}
+
+	progName := taoName.String()
+	resName := "test_resource"
+	if err := fileproxy.SetHash(newms, resName, hash); err != nil {
+		log.Fatalf("Couldn't set the hash for program '%s', resource '%s', hash % x on the remote server: %s", progName, resName, hash, err)
+	}
+
+	// Set the counter to 10 and check that we get the same value back.
+	if err := fileproxy.SetCounter(newms, uint64(10)); err != nil {
+		log.Fatalf("fileclient: couldn't set the counter in the file client")
+	}
+
+	c, err := fileproxy.GetCounter(newms)
+	if err != nil {
+		log.Fatalf("fileclient: couldn't get the value of the counter from the rollback server")
+	}
+
+	// Get the hash verification value.
+	newHash, err := fileproxy.GetHashedVerifier(newms, resName)
+	if err != nil {
+		log.Fatalf("fileclient: couldn't get the hashed verifier from the rollback server")
+	}
+
+	// Try to recompute the hashed verifier directly to see if it matches.
+	sh := sha256.New()
+	vi := fileproxy.EncodeCounter(c)
+	sh.Write(vi)
+	sh.Write(hash)
+	sh.Write(vi)
+	computed := sh.Sum(nil)
+	if subtle.ConstantTimeCompare(newHash, computed) != 1 {
+		log.Fatalf("fileclient: the hashed verifier % x returned by the server didn't match the value % x computed locally", newHash, computed)
+	}
+
+	log.Println("All fileclient tests pass")
 }

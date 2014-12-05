@@ -467,7 +467,7 @@ func SendFile(ms *util.MessageStream, dir string, filename string, keys []byte) 
 	return nil
 }
 
-// GetFile receives bytes from a sender and optionally encrypts them, adds
+// GetFile receives bytes from a sender and optionally encrypts them and adds
 // integrity protection, and writes them to disk.
 func GetFile(ms *util.MessageStream, dir string, filename string, keys []byte) error {
 	fullpath := path.Join(dir, filename)

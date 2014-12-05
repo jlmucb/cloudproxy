@@ -88,9 +88,9 @@ func NewRollbackMaster(name string) *RollbackMaster {
 	return r
 }
 
-// encodeCounter takes in a counter and returns a slice that exactly encodes a
+// EncodeCounter takes in a counter and returns a slice that exactly encodes a
 // varint representation of this counter.
-func encodeCounter(counter uint64) []byte {
+func EncodeCounter(counter uint64) []byte {
 	b := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutUvarint(b, counter)
 	return b[:n]
@@ -130,7 +130,7 @@ func (r *RollbackMaster) SetCounter(ms *util.MessageStream, name string, counter
 	// TODO(tmroeder): this needs synchronization for any real application.
 	p.MonotonicCounter = counter
 	rr.Type = RollbackMessageType_SET_COUNTER.Enum()
-	rr.Data = encodeCounter(p.MonotonicCounter)
+	rr.Data = EncodeCounter(p.MonotonicCounter)
 	if _, err := ms.WriteMessage(rr); err != nil {
 		return err
 	}
@@ -197,7 +197,7 @@ func (r *RollbackMaster) GetCounter(ms *util.MessageStream, name string) error {
 	}
 
 	rr.Type = RollbackMessageType_GET_COUNTER.Enum()
-	rr.Data = encodeCounter(p.MonotonicCounter)
+	rr.Data = EncodeCounter(p.MonotonicCounter)
 	_, err := ms.WriteMessage(rr)
 	return err
 }
@@ -227,7 +227,7 @@ func (r *RollbackMaster) GetHashedVerifier(ms *util.MessageStream, name string, 
 	// Return SHA-256(Counter || Hash || Counter).
 	// TODO(tmroeder): what is the justification for this protocol?
 	sha256Hash := sha256.New()
-	b := encodeCounter(p.MonotonicCounter)
+	b := EncodeCounter(p.MonotonicCounter)
 	sha256Hash.Write(b)
 	sha256Hash.Write(h)
 	sha256Hash.Write(b)
@@ -259,7 +259,7 @@ func checkResponse(ms *util.MessageStream) error {
 func SetCounter(ms *util.MessageStream, counter uint64) error {
 	rm := &RollbackMessage{
 		Type: RollbackMessageType_SET_COUNTER.Enum(),
-		Data: encodeCounter(counter),
+		Data: EncodeCounter(counter),
 	}
 	if _, err := ms.WriteMessage(rm); err != nil {
 		return err
@@ -293,10 +293,12 @@ func SetHash(ms *util.MessageStream, item string, hash []byte) error {
 
 // GetCounter gets the current value of the monotonic counter for a given
 // program name.
-func GetCounter(ms *util.MessageStream, name string) (uint64, error) {
+func GetCounter(ms *util.MessageStream) (uint64, error) {
+	// The name of the program is managed by the rollback server, not the
+	// client, so it doesn't need to be passed in the message.
 	rm := &RollbackMessage{
 		Type: RollbackMessageType_GET_COUNTER.Enum(),
-		Data: []byte(name),
+		Data: make([]byte, 0),
 	}
 	if _, err := ms.WriteMessage(rm); err != nil {
 		return 0, err

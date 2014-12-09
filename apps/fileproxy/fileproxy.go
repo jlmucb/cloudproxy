@@ -52,13 +52,13 @@ const SymmetricKeySize = 64
 type ProgramPolicy struct {
 	TaoName     string
 	PolicyCert  []byte
-	SigningKey  tao.Keys
+	SigningKey  *tao.Keys
 	SymKeys     []byte
 	ProgramCert []byte
 }
 
 // NewProgramPolicy creates a new ProgramPolicy for a given set of keys.
-func NewProgramPolicy(policyCert []byte, taoName string, signingKey tao.Keys, symKeys []byte, programCert []byte) *ProgramPolicy {
+func NewProgramPolicy(policyCert []byte, taoName string, signingKey *tao.Keys, symKeys []byte, programCert []byte) *ProgramPolicy {
 	pp := &ProgramPolicy{
 		PolicyCert:  policyCert,
 		TaoName:     taoName,

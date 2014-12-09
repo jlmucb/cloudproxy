@@ -560,7 +560,7 @@ func (m *ResourceMaster) certToAuthenticatedName(cert []byte) (string, error) {
 
 // RunMessageLoop handles messages from a client on a given message stream until
 // it gets an error trying to read a message.
-func (m *ResourceMaster) RunMessageLoop(ms *util.MessageStream, programPolicy *ProgramPolicy, key []byte) error {
+func (m *ResourceMaster) RunMessageLoop(ms *util.MessageStream, programPolicy *ProgramPolicy) error {
 	for {
 		var msg Message
 		if err := ms.ReadMessage(&msg); err != nil {
@@ -604,11 +604,11 @@ func (m *ResourceMaster) RunMessageLoop(ms *util.MessageStream, programPolicy *P
 				log.Printf("Couldn't create the file %s: %s\n", *fop.Name)
 			}
 		case MessageType_READ:
-			if err := m.Read(ms, fop, key); err != nil {
+			if err := m.Read(ms, fop, programPolicy.SymKeys); err != nil {
 				log.Printf("Couldn't create the file %s: %s\n", *fop.Name)
 			}
 		case MessageType_WRITE:
-			if err := m.Write(ms, fop, key); err != nil {
+			if err := m.Write(ms, fop, programPolicy.SymKeys); err != nil {
 				log.Printf("Couldn't create the file %s: %s\n", *fop.Name)
 			}
 		default:

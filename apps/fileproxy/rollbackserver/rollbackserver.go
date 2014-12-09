@@ -22,61 +22,22 @@ import (
 	"net"
 
 	"github.com/jlmucb/cloudproxy/apps/fileproxy"
-	tao "github.com/jlmucb/cloudproxy/tao"
+	"github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	taonet "github.com/jlmucb/cloudproxy/tao/net"
 	"github.com/jlmucb/cloudproxy/util"
 )
 
-var hostcfg = flag.String("../hostdomain/tao.config", "../hostdomain/tao.config", "path to host tao configuration")
-var serverHost = flag.String("host", "localhost", "address for client/server")
-var serverPort = flag.String("port", "8129", "port for client/server")
-var rollbackserverPath = flag.String("rollbackserver_files/", "rollbackserver_files/", "rollbackserver directory")
-var serverAddr string
-
-var DerPolicyCert []byte
-var SigningKey tao.Keys
-var SymKeys []byte
-var ProgramCert []byte
-
-func clientServiceThead(ms *util.MessageStream, clientName string, rollbackPolicy *fileproxy.ProgramPolicy, rollbackMasterTable *fileproxy.RollbackMaster) {
-	log.Printf("rollbackserver: clientServiceThead\n")
-	pi := rollbackMasterTable.AddRollbackProgramTable(clientName)
-	if pi == nil {
-		log.Printf("rollbackserver cannot rollbackMasterTable.AddRollbackProgramTable\n")
-		return
-	}
-	// How do I know if the connection terminates?
-	for {
-		log.Printf("clientServiceThead: ReadString\n")
-		strbytes, err := ms.ReadString()
-		if err != nil {
-			return
-		}
-		terminate, err := rollbackMasterTable.HandleServiceRequest(ms, rollbackPolicy, clientName, []byte(strbytes))
-		if terminate {
-			break
-		}
-	}
-	log.Printf("fileserver: client thread terminating\n")
-}
-
-func server(serverAddr string, prin string, rollbackPolicy *fileproxy.ProgramPolicy, rollbackMasterTable *fileproxy.RollbackMaster) {
-	var sock net.Listener
-	log.Printf("fileserver: server\n")
-
-	policyCert, err := x509.ParseCertificate(DerPolicyCert)
+func serve(serverAddr string, prin string, policyCert []byte, signingKey *tao.Keys, policy *fileproxy.ProgramPolicy, m *fileproxy.RollbackMaster) error {
+	pc, err := x509.ParseCertificate(policyCert)
 	if err != nil {
-		log.Printf("fileserver: can't ParseCertificate\n")
-		return
+		return err
 	}
 	pool := x509.NewCertPool()
-	pool.AddCert(policyCert)
-	tlsc, err := taonet.EncodeTLSCert(&SigningKey)
+	pool.AddCert(pc)
+	tlsc, err := taonet.EncodeTLSCert(signingKey)
 	if err != nil {
-		log.Printf("fileserver, encode error: ", err)
-		log.Printf("\n")
-		return
+		return err
 	}
 	conf := &tls.Config{
 		RootCAs:            pool,
@@ -84,63 +45,64 @@ func server(serverAddr string, prin string, rollbackPolicy *fileproxy.ProgramPol
 		InsecureSkipVerify: false,
 		ClientAuth:         tls.RequireAnyClientCert,
 	}
-	log.Printf("Listenting\n")
-	sock, err = tls.Listen("tcp", serverAddr, conf)
+	log.Println("Rollback server listening")
+	sock, err := tls.Listen("tcp", serverAddr, conf)
 	if err != nil {
-		log.Printf("rollbackserver, listen error: ", err)
-		log.Printf("\n")
-		return
+		return err
 	}
+
 	for {
-		log.Printf("rollbackserver: at Accept\n")
 		conn, err := sock.Accept()
 		if err != nil {
-			log.Printf("rollbackserver: can't accept connection: %s\n", err.Error())
+			return err
 		}
 		var clientName string
-		clientName = "XYZZY"
-		err = conn.(*tls.Conn).Handshake()
-		if err != nil {
-			log.Printf("TLS handshake failed\n")
+		if err = conn.(*tls.Conn).Handshake(); err != nil {
+			log.Println("TLS handshake failed")
+			continue
 		}
+
 		peerCerts := conn.(*tls.Conn).ConnectionState().PeerCertificates
 		if peerCerts == nil {
-			log.Printf("rollbackserver: can't get peer list\n")
-		} else {
-			peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
-			if peerCert.Raw == nil {
-				log.Printf("rollbackserver: can't get peer name\n")
-			} else {
-				if peerCert.Subject.OrganizationalUnit != nil {
-					clientName = peerCert.Subject.OrganizationalUnit[0]
-				}
-			}
+			log.Println("rollbackserver: can't get peer list")
+			continue
 		}
-		log.Printf("rollbackserver, peer name: %s\n", clientName)
+
+		peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
+		if peerCert.Raw == nil {
+			log.Println("rollbackserver: can't get peer name")
+			continue
+		}
+
+		if peerCert.Subject.OrganizationalUnit != nil {
+			clientName = peerCert.Subject.OrganizationalUnit[0]
+		}
 		ms := util.NewMessageStream(conn)
-		go clientServiceThead(ms, clientName, rollbackPolicy, rollbackMasterTable)
+		// TODO(tmroeder): support multiple simultaneous clients.
+		if err := m.RunMessageLoop(ms, policy, clientName); err != nil {
+			log.Printf("rollbackserver: failed to run message loop: %s\n", err)
+		}
 	}
 }
 
 func main() {
-	log.Printf("rollback server\n")
-
-	var rollbackMaster fileproxy.RollbackMaster
-	var rollbackProgramPolicyObject fileproxy.ProgramPolicy
+	hostcfg := flag.String("hostconfig", "../hostdomain/tao.config", "path to host tao configuration")
+	serverHost := flag.String("host", "localhost", "address for client/server")
+	serverPort := flag.String("port", "8129", "port for client/server")
+	rollbackserverPath := flag.String("rollbackserver_files", "rollbackserver_files/", "rollbackserver directory")
 
 	flag.Parse()
-	serverAddr = *serverHost + ":" + *serverPort
+	serverAddr := net.JoinHostPort(*serverHost, *serverPort)
 
 	hostDomain, err := tao.LoadDomain(*hostcfg, nil)
 	if err != nil {
-		log.Fatalln("rollbackserver: can't LoadDomain\n")
+		log.Fatalln("rollbackserver: can't load domain")
 	}
-	log.Printf("rollbackserver: Domain name: %s\n", hostDomain.ConfigPath)
-	DerPolicyCert = nil
+	var policyCert []byte
 	if hostDomain.Keys.Cert != nil {
-		DerPolicyCert = hostDomain.Keys.Cert.Raw
+		policyCert = hostDomain.Keys.Cert.Raw
 	}
-	if DerPolicyCert == nil {
+	if policyCert == nil {
 		log.Fatalln("rollbackserver: can't retrieve policy cert")
 	}
 
@@ -148,8 +110,7 @@ func main() {
 		log.Fatalln("fileserver: can't extend the Tao with the policy key")
 	}
 	e := auth.PrinExt{Name: "rollbackserver_version_1"}
-	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
-	if err != nil {
+	if err = tao.Parent().ExtendTaoName(auth.SubPrin{e}); err != nil {
 		log.Fatalln("rollbackserver: can't extend name")
 	}
 
@@ -157,64 +118,48 @@ func main() {
 	if err != nil {
 		return
 	}
-	log.Printf("rollbackserver: my name is %s\n", taoName)
 
-	sealedSymmetricKey, sealedSigningKey, derCert, delegation, err := fileproxy.LoadProgramKeys(*rollbackserverPath)
+	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*rollbackserverPath)
 	if err != nil {
-		log.Printf("rollbackserver: can't retrieve key material\n")
+		log.Fatalln("rollbackserver: can't retrieve key material")
 	}
-	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || derCert == nil {
-		log.Printf("rollbackserver: No key material present\n")
+	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || programCert == nil {
+		log.Fatalln("rollbackserver: No key material present")
 	}
-	ProgramCert = derCert
 
-	defer fileproxy.ZeroBytes(SymKeys)
+	var symKeys []byte
+	defer fileproxy.ZeroBytes(symKeys)
 	if sealedSymmetricKey != nil {
-		symkeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
-		if err != nil {
-			return
+		var policy string
+		if symKeys, policy, err = tao.Parent().Unseal(sealedSymmetricKey); err != nil {
+			log.Fatalln("rollbackserver: couldn't unseal the symmetric key")
 		}
 		if policy != tao.SealPolicyDefault {
-			log.Printf("rollbackserver: unexpected policy on unseal\n")
+			log.Fatalln("rollbackserver: unexpected policy on unseal")
 		}
-		SymKeys = symkeys
-		log.Printf("rollbackserver: Unsealed symKeys: % x\n", SymKeys)
 	} else {
-		symkeys, err := fileproxy.InitializeSealedSymmetricKeys(*rollbackserverPath, tao.Parent(), fileproxy.SizeofSymmetricKeys)
-		if err != nil {
-			log.Printf("rollbackserver: InitializeSealedSymmetricKeys error: %s\n", err)
+		if symKeys, err = fileproxy.InitializeSealedSymmetricKeys(*rollbackserverPath, tao.Parent(), fileproxy.SymmetricKeySize); err != nil {
+			log.Fatalf("rollbackserver: InitializeSealedSymmetricKeys error: %s\n", err)
 		}
-		SymKeys = symkeys
-		log.Printf("rollbackserver: InitilizedsymKeys: % x\n", SymKeys)
 	}
 
+	var signingKey *tao.Keys
 	if sealedSigningKey != nil {
-		log.Printf("rollbackserver: retrieving signing key\n")
-		signingkey, err := fileproxy.SigningKeyFromBlob(tao.Parent(),
-			sealedSigningKey, derCert, delegation)
-		if err != nil {
-			log.Printf("rollbackserver: SigningKeyFromBlob error: %s\n", err)
+		if signingKey, err = fileproxy.SigningKeyFromBlob(tao.Parent(), sealedSigningKey, programCert, delegation); err != nil {
+			log.Fatalf("rollbackserver: SigningKeyFromBlob error: %s\n", err)
 		}
-		SigningKey = *signingkey
-		log.Printf("rollbackserver: Retrieved Signing key: % x\n", SigningKey)
 	} else {
-		log.Printf("rollbackserver: initializing signing key\n")
-		signingkey, err := fileproxy.InitializeSealedSigningKey(*rollbackserverPath,
-			tao.Parent(), *hostDomain)
-		if err != nil {
-			log.Printf("rollbackserver: InitializeSealedSigningKey error: %s\n", err)
+		if signingKey, err = fileproxy.InitializeSealedSigningKey(*rollbackserverPath, tao.Parent(), *hostDomain); err != nil {
+			log.Fatalf("rollbackserver: InitializeSealedSigningKey error: %s\n", err)
 		}
-		SigningKey = *signingkey
-		log.Printf("rollbackserver: Initialized signingKey\n")
-		ProgramCert = SigningKey.Cert.Raw
+		programCert = signingKey.Cert.Raw
 	}
-	taoNameStr := taoName.String()
-	_ = rollbackProgramPolicyObject.InitProgramPolicy(DerPolicyCert, taoNameStr, SigningKey, SymKeys, ProgramCert)
-	rollbackMaster.InitRollbackMaster(taoNameStr)
 
-	server(serverAddr, taoNameStr, &rollbackProgramPolicyObject, &rollbackMaster)
-	if err != nil {
-		log.Printf("rollbackserver: server error\n")
+	progPolicy := fileproxy.NewProgramPolicy(policyCert, taoName.String(), signingKey, symKeys, programCert)
+	m := fileproxy.NewRollbackMaster(taoName.String())
+
+	if err := serve(serverAddr, taoName.String(), policyCert, signingKey, progPolicy, m); err != nil {
+		log.Fatalf("rollbackserver: server error: %s\n", err)
 	}
-	log.Printf("rollbackserver: done\n")
+	log.Println("rollbackserver: done")
 }

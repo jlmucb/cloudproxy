@@ -22,61 +22,24 @@ import (
 	"net"
 
 	"github.com/jlmucb/cloudproxy/apps/fileproxy"
-	tao "github.com/jlmucb/cloudproxy/tao"
+	"github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	taonet "github.com/jlmucb/cloudproxy/tao/net"
 	"github.com/jlmucb/cloudproxy/util"
 )
 
-var hostcfg = flag.String("../hostdomain/tao.config", "../hostdomain/tao.config", "path to host tao configuration")
-var serverHost = flag.String("host", "localhost", "address for client/server")
-var serverPort = flag.String("port", "8123", "port for client/server")
-var fileserverPath = flag.String("fileserver_files/", "fileserver_files/", "fileserver directory")
-var fileserverFilePath = flag.String("fileserver_files/stored_files/", "fileserver_files/stored_files/",
-	"fileserver directory")
-var serverAddr string
-var testFile = flag.String("originalTestFile", "originalTestFile", "test file")
+func serve(addr, fp string, cert []byte, signingKey *tao.Keys, policy *fileproxy.ProgramPolicy) error {
+	m := fileproxy.NewResourceMaster(fp)
 
-func clientServiceThead(ms *util.MessageStream, clientProgramName string, fileServerProgramPolicy *fileproxy.ProgramPolicy, resourceMaster *fileproxy.ResourceMaster) {
-	log.Printf("fileserver: clientServiceThead\n")
-
-	// How do I know if the connection terminates?
-	for {
-		log.Printf("clientServiceThead: ReadString\n")
-		strbytes, err := ms.ReadString()
-		if err != nil {
-			return
-		}
-		terminate, err := resourceMaster.HandleServiceRequest(ms, fileServerProgramPolicy, clientProgramName, []byte(strbytes))
-		if terminate {
-			break
-		}
-	}
-	log.Printf("fileserver: client thread terminating\n")
-}
-
-func server(serverAddr string, prin string, derPolicyCert []byte, signingKey *tao.Keys, fileServerProgramPolicy *fileproxy.ProgramPolicy, fileServerResourceMaster *fileproxy.ResourceMaster) {
-	var sock net.Listener
-	log.Printf("fileserver: server\n")
-
-	err := fileServerResourceMaster.InitMaster(*fileserverFilePath, *fileserverPath, prin)
+	policyCert, err := x509.ParseCertificate(cert)
 	if err != nil {
-		log.Printf("fileserver: can't InitMaster\n")
-		return
-	}
-
-	policyCert, err := x509.ParseCertificate(derPolicyCert)
-	if err != nil {
-		log.Printf("fileserver: can't ParseCertificate\n")
-		return
+		return err
 	}
 	pool := x509.NewCertPool()
 	pool.AddCert(policyCert)
 	tlsc, err := taonet.EncodeTLSCert(signingKey)
 	if err != nil {
-		log.Printf("fileserver, encode error: ", err)
-		log.Printf("\n")
-		return
+		return err
 	}
 	conf := &tls.Config{
 		RootCAs:            pool,
@@ -84,63 +47,76 @@ func server(serverAddr string, prin string, derPolicyCert []byte, signingKey *ta
 		InsecureSkipVerify: false,
 		ClientAuth:         tls.RequireAnyClientCert,
 	}
-	log.Printf("Listening\n")
-	sock, err = tls.Listen("tcp", serverAddr, conf)
+	log.Println("fileserver listening")
+	sock, err := tls.Listen("tcp", addr, conf)
 	if err != nil {
-		log.Printf("fileserver, listen error: ", err)
-		log.Printf("\n")
-		return
+		return err
 	}
+
 	for {
-		log.Printf("fileserver: at Accept\n")
+		// Accept and handle client connections one at a time.
 		conn, err := sock.Accept()
 		if err != nil {
-			log.Printf("fileserver: can't accept connection: %s\n", err.Error())
-		} else {
-			var clientName string
-			clientName = "XYZZY"
-			err = conn.(*tls.Conn).Handshake()
-			if err != nil {
-				log.Printf("fileserver: TLS handshake failed\n")
-			}
-			peerCerts := conn.(*tls.Conn).ConnectionState().PeerCertificates
-			if peerCerts == nil {
-				log.Printf("fileserver: can't get peer list\n")
-			} else {
-				peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
-				if peerCert.Raw == nil {
-					log.Printf("fileserver: can't get peer name\n")
-				} else {
-					if peerCert.Subject.OrganizationalUnit != nil {
-						clientName = peerCert.Subject.OrganizationalUnit[0]
-					}
-				}
-			}
-			log.Printf("fileserver, peer name: %s\n", clientName)
-			ms := util.NewMessageStream(conn)
-			go clientServiceThead(ms, clientName, fileServerProgramPolicy, fileServerResourceMaster)
+			return err
 		}
+
+		var clientName string
+		if err = conn.(*tls.Conn).Handshake(); err != nil {
+			log.Printf("fileserver: couldn't perform handshake: %s\n", err)
+			continue
+		}
+
+		peerCerts := conn.(*tls.Conn).ConnectionState().PeerCertificates
+		if peerCerts == nil {
+			log.Println("fileserver: couldn't get peer list")
+			continue
+		}
+
+		peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
+		if peerCert.Raw == nil {
+			log.Println("fileserver: couldn't get peer name")
+			continue
+		}
+
+		if peerCert.Subject.OrganizationalUnit != nil {
+			clientName = peerCert.Subject.OrganizationalUnit[0]
+		}
+		log.Printf("fileserver: peer name: '%s'\n", clientName)
+		ms := util.NewMessageStream(conn)
+
+		// TODO(tmroeder): support multiple simultaneous clients. This
+		// requires, e.g., adding locking to the ResourceMaster.
+		if err := m.RunMessageLoop(ms, policy); err != nil {
+			log.Printf("fileserver: failed to run message loop: %s\n", err)
+			continue
+		}
+
+		log.Println("Finished handling the client messages")
 	}
 }
 
 func main() {
 
-	var fileServerResourceMaster fileproxy.ResourceMaster
-	var fileServerProgramPolicy fileproxy.ProgramPolicy
+	// TODO(tmroeder): remove the relative path.
+	hostcfg := flag.String("hostconfig", "../hostdomain/tao.config", "path to host tao configuration")
+	serverHost := flag.String("host", "localhost", "address for client/server")
+	serverPort := flag.String("port", "8123", "port for client/server")
+	fileServerPath := flag.String("fileserver_files", "fileserver_files/", "fileserver directory")
+	fileServerFilePath := flag.String("stored_files", "fileserver_files/stored_files/", "fileserver directory")
 
 	flag.Parse()
-	serverAddr = *serverHost + ":" + *serverPort
 
+	serverAddr := net.JoinHostPort(*serverHost, *serverPort)
 	hostDomain, err := tao.LoadDomain(*hostcfg, nil)
 	if err != nil {
 		log.Fatalln("fileserver: can't LoadDomain")
 	}
-	log.Printf("fileserver: Domain name: %s\n", hostDomain.ConfigPath)
-	var derPolicyCert []byte
+
+	var policyCert []byte
 	if hostDomain.Keys.Cert != nil {
-		derPolicyCert = hostDomain.Keys.Cert.Raw
+		policyCert = hostDomain.Keys.Cert.Raw
 	}
-	if derPolicyCert == nil {
+	if policyCert == nil {
 		log.Fatalln("fileserver: can't retrieve policy cert")
 	}
 
@@ -148,69 +124,60 @@ func main() {
 		log.Fatalln("fileserver: can't extend the Tao with the policy key")
 	}
 	e := auth.PrinExt{Name: "fileserver_version_1"}
-	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
-	if err != nil {
-		return
+	if err = tao.Parent().ExtendTaoName(auth.SubPrin{e}); err != nil {
+		log.Fatalln("fileserver: couldn't extend the Tao name")
 	}
+
 	taoName, err := tao.Parent().GetTaoName()
 	if err != nil {
-		log.Printf("fileserver: cant get tao name\n")
-		return
+		log.Fatalln("fileserver: couldn't get tao name")
 	}
-	log.Printf("fileserver: my name is %s\n", taoName)
 
 	var programCert []byte
-	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*fileserverPath)
+	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*fileServerPath)
 	if err != nil {
-		log.Printf("fileserver: cant retrieve key material\n")
+		log.Fatalln("fileserver: couldn't retrieve key material")
 	}
 	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || programCert == nil {
-		log.Printf("fileserver: No key material present\n")
+		log.Fatalln("fileserver: no key material present")
 	}
 
 	var symKeys []byte
 	defer fileproxy.ZeroBytes(symKeys)
 	if sealedSymmetricKey != nil {
-		symKeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
-		if err != nil {
-			return
+		var policy string
+		if symKeys, policy, err = tao.Parent().Unseal(sealedSymmetricKey); err != nil {
+			log.Fatalln("fileserver: couldn't unseal the symmetric key")
 		}
 		if policy != tao.SealPolicyDefault {
-			log.Printf("fileserver: unexpected policy on unseal\n")
+			log.Fatalln("fileserver: unexpected policy on unseal")
 		}
-		log.Printf("fileserver: Unsealed symKeys: % x\n", symKeys)
 	} else {
-		symKeys, err = fileproxy.InitializeSealedSymmetricKeys(*fileserverPath, tao.Parent(), fileproxy.SizeofSymmetricKeys)
+		symKeys, err = fileproxy.InitializeSealedSymmetricKeys(*fileServerPath, tao.Parent(), fileproxy.SymmetricKeySize)
 		if err != nil {
-			log.Printf("fileserver: InitializeSealedSymmetricKeys error: %s\n", err)
+			log.Fatalf("fileserver: InitializeSealedSymmetricKeys error: %s\n", err)
 		}
-		log.Printf("fileserver: InitilizedsymKeys: % x\n", symKeys)
 	}
 
 	var signingKey *tao.Keys
 	if sealedSigningKey != nil {
-		log.Printf("retrieving signing key\n")
 		signingKey, err = fileproxy.SigningKeyFromBlob(tao.Parent(),
 			sealedSigningKey, programCert, delegation)
 		if err != nil {
-			log.Printf("fileserver: SigningKeyFromBlob error: %s\n", err)
+			log.Fatalf("fileserver: SigningKeyFromBlob error: %s\n", err)
 		}
-		log.Printf("fileserver: Retrieved Signing key: % x\n", *signingKey)
 	} else {
-		log.Printf("fileserver: initializing signing key\n")
-		signingKey, err = fileproxy.InitializeSealedSigningKey(*fileserverPath,
+		signingKey, err = fileproxy.InitializeSealedSigningKey(*fileServerPath,
 			tao.Parent(), *hostDomain)
 		if err != nil {
-			log.Printf("fileserver: InitializeSealedSigningKey error: %s\n", err)
+			log.Fatalf("fileserver: InitializeSealedSigningKey error: %s\n", err)
 		}
-		log.Printf("fileserver: Initialized signingKey\n")
 		programCert = signingKey.Cert.Raw
 	}
-	taoNameStr := taoName.String()
 
-	_ = fileServerProgramPolicy.InitProgramPolicy(derPolicyCert, taoNameStr, *signingKey, symKeys, programCert)
+	progPolicy := fileproxy.NewProgramPolicy(policyCert, taoName.String(), signingKey, symKeys, programCert)
 
-	server(serverAddr, taoNameStr, derPolicyCert, signingKey, &fileServerProgramPolicy, &fileServerResourceMaster)
+	serve(serverAddr, *fileServerFilePath, policyCert, signingKey, progPolicy)
 	if err != nil {
 		log.Printf("fileserver: server error\n")
 	}

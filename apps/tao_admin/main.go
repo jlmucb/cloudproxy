@@ -24,10 +24,7 @@ import (
 	"log"
 	"os"
 	"path"
-	"time"
-	"math/big"
-	"crypto/rand"
-	"code.google.com/p/goprotobuf/proto"
+
 	"github.com/google/go-tpm/tpm"
 	"github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
@@ -51,15 +48,14 @@ var canExecute = flag.String("canexecute", "", "Path of a program to be authoriz
 var retractCanExecute = flag.String("retractcanexecute", "", "Path of a program to retract authorization to execute.")
 
 // Sign a user cert
-var newUserKey= flag.Bool("newuserkey", false, "Create key and cert.")
-var commonName= flag.String("commonname", "", "Mandatory user name")
-var ouName= flag.String("fileproxyUser", "fileproxy-user", "OU")
-var serialNumber= flag.Int("serial number", 43, "serial number")
-var keyPath= flag.String("./keys/", "./keys/", "key path")
-var keyFileName= flag.String("key", "key", "key file")
-var certFileName= flag.String("cert", "cert", "cert file")
-
-var readKey=flag.Bool("readkey", false, "Read key and cert.")
+var newUserKey = flag.Bool("newuserkey", false, "Create key and cert.")
+var commonName = flag.String("common_name", "", "Mandatory user name")
+var country = flag.String("country", "US", "Country for the cert")
+var org = flag.String("organization", "Google", "Organization for the cert")
+var ouName = flag.String("user", "fileproxy-user", "OU")
+var serialNumber = flag.Int("serial_number", 43, "serial number")
+var keyPath = flag.String("key_path", "keys", "key path")
+var userKeyPass = flag.String("key_pass", "BogusPass", "password for the user credential")
 
 // arbitrary policy changes
 var add = flag.String("add", "", "A policy rule to be added.")
@@ -136,71 +132,24 @@ func main() {
 		fatalIf(err)
 	}
 	if *newUserKey {
-		if(*commonName=="") {
-			log.Fatal("commonName is required.")
-		} else {
-			domain, err = tao.LoadDomain(*configPath, []byte(*pass))
-			if(err!=nil) {
-				fatalIf(err)
-			}
-			policyKey:= domain.Keys
-			fmt.Fprintf(noise, "Creating key for user: %s\n", *commonName)
-			userKey, err:=  tao.NewTemporaryKeys(tao.Signing)
-			if userKey==nil || err!= nil {
-				log.Fatal("Can't create key.")
-			}
-			details:= tao.X509Details {
-			Country: "US",
-			Organization: "Google",
+		if *commonName == "" {
+			log.Fatalln("commonName is required")
+		}
+
+		if domain, err = tao.LoadDomain(*configPath, []byte(*pass)); err != nil {
+			fatalIf(err)
+		}
+		policyKey := domain.Keys
+		fmt.Fprintf(noise, "Creating key for user: %s\n", *commonName)
+
+		subjectName := tao.NewX509Name(tao.X509Details{
+			Country:            *country,
+			Organization:       *org,
 			OrganizationalUnit: *ouName,
-			CommonName: *commonName, }
-			subjectname:= tao.NewX509Name(details)
-			*serialNumber= *serialNumber+1
-			template := &x509.Certificate {
-				SignatureAlgorithm: x509.ECDSAWithSHA256,
-				PublicKeyAlgorithm: x509.ECDSA,
-				// It's always allowed for self-signed certs to have serial 1.
-				SerialNumber: new(big.Int).SetInt64(int64(*serialNumber)),
-				Subject:      *subjectname,
-				NotBefore:    time.Now(),
-				NotAfter:     time.Now().AddDate(1 /* years */, 0 /* months */, 0 /* days */),
-				KeyUsage:    x509.KeyUsageKeyAgreement,
-				ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-			}
-			userDerCert, err := x509.CreateCertificate(rand.Reader, template, policyKey.Cert,
-				userKey.VerifyingKey.GetVerifierEc(), policyKey.SigningKey.GetSignerEc())
-			if(err!=nil) {
-				log.Fatal("Cant create cert\n")
-			}
-			err= ioutil.WriteFile(*keyPath+*certFileName, userDerCert, os.ModePerm)
-			cks, err := tao.MarshalKeyset(userKey)
-			if err != nil {
-				log.Fatal("Cant marshal user key.")
-			}
-			// TODO?: defer zeroKeyset(cks)
-			pks, err := proto.Marshal(cks)
-			if err != nil {
-				log.Fatal("Cant marshal CryptoKey.")
-			}
-			ioutil.WriteFile(*keyPath+*keyFileName, pks, os.ModePerm)
-		}
-	}
-	if *readKey {
-		pks, err:= ioutil.ReadFile(*keyPath+*keyFileName)
-		if err != nil {
-			log.Fatal("Cant read key file.")
-		}
-		var cks *tao.CryptoKeyset
-		err= proto.Unmarshal(pks, cks)
-		if err != nil {
-			log.Fatal("Cant key protobuf.")
-		}
-		userKey, err:= tao.UnmarshalKeyset(cks)
-		if err != nil {
-			log.Fatal("Cant Unmarshal keyset.")
-		}
-		fmt.Printf("user key: ", userKey)
-		fmt.Printf("\n");
+			CommonName:         *commonName,
+		})
+		_, err := tao.NewSignedOnDiskPBEKeys(tao.Signing, []byte(*userKeyPass), *keyPath, subjectName, *serialNumber, policyKey)
+		fatalIf(err)
 	}
 	if *canExecute != "" {
 		path := *canExecute

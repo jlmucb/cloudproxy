@@ -112,6 +112,10 @@ var policy = []string{
 	"Action(\"getfile\")",
 	"Action(\"sendfile\")",
 	"Action(\"delete\")",
+	// Some simple test rules for fileclient
+	"Authorized(\"jlm\", \"create\", \"originalTestFile\")",
+	"Authorized(\"jlm\", \"write\", \"originalTestFile\")",
+	"Authorized(\"jlm\", \"read\", \"originalTestFile\")",
 }
 
 // delegateResource adds a delegation statement to the policy for a given
@@ -567,16 +571,15 @@ func (m *ResourceMaster) RunMessageLoop(ms *util.MessageStream, programPolicy *P
 			return err
 		}
 
-		var fop *FileOperation
+		var fop FileOperation
 		t := *msg.Type
 		if t == MessageType_CREATE || t == MessageType_DELETE || t == MessageType_READ || t == MessageType_WRITE {
-			fop := new(FileOperation)
-			if err := proto.Unmarshal(msg.Data, fop); err != nil {
+			if err := proto.Unmarshal(msg.Data, &fop); err != nil {
 				log.Printf("Couldn't unmarshal FileOperation for operation %d\n", t)
 				continue
 			}
 
-			if err := m.checkFileAuth(&msg, fop); err != nil {
+			if err := m.checkFileAuth(&msg, &fop); err != nil {
 				log.Printf("The file operation %d didn't pass authorization: %s\n", t, err)
 				continue
 			}
@@ -586,7 +589,7 @@ func (m *ResourceMaster) RunMessageLoop(ms *util.MessageStream, programPolicy *P
 		case MessageType_AUTH_CERT:
 			cert, err := m.AuthenticatePrincipal(ms, &msg, programPolicy)
 			if err != nil {
-				log.Printf("Failed to authenticate a principal")
+				log.Printf("Failed to authenticate a principal: %s\n", err)
 				continue
 			}
 
@@ -600,20 +603,20 @@ func (m *ResourceMaster) RunMessageLoop(ms *util.MessageStream, programPolicy *P
 				log.Printf("Couldn't set the principal as authenticated")
 			}
 		case MessageType_CREATE:
-			if err := m.Create(ms, fop); err != nil {
-				log.Printf("Couldn't create the file %s: %s\n", *fop.Name)
+			if err := m.Create(ms, &fop); err != nil {
+				log.Printf("Couldn't create the file %s: %s\n", *fop.Name, err)
 			}
 		case MessageType_READ:
-			if err := m.Read(ms, fop, programPolicy.SymKeys); err != nil {
-				log.Printf("Couldn't create the file %s: %s\n", *fop.Name)
+			if err := m.Read(ms, &fop, programPolicy.SymKeys); err != nil {
+				log.Printf("Couldn't create the file %s: %s\n", *fop.Name, err)
 			}
 		case MessageType_WRITE:
-			if err := m.Write(ms, fop, programPolicy.SymKeys); err != nil {
-				log.Printf("Couldn't create the file %s: %s\n", *fop.Name)
+			if err := m.Write(ms, &fop, programPolicy.SymKeys); err != nil {
+				log.Printf("Couldn't create the file %s: %s\n", *fop.Name, err)
 			}
 		default:
 			if err := sendResult(ms, false); err != nil {
-				log.Printf("Couldn't signal failure for the invalid operation")
+				log.Printf("Couldn't signal failure for the invalid operation: %s", err)
 			}
 			log.Printf("Invalid initial message type %d\n", *msg.Type)
 		}

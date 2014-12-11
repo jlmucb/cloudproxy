@@ -130,36 +130,41 @@ func PrincipalNameFromDERCert(derCert []byte) (string, error) {
 }
 
 // returns sealed symmetric key, sealed signing key, DER encoded cert, delegation, error
-func LoadProgramKeys(path string) ([]byte, []byte, []byte, []byte, error) {
-	_, err := os.Stat(path + "sealedsymmetrickey")
+func LoadProgramKeys(dir string) ([]byte, []byte, []byte, []byte, error) {
+	ssymk := path.Join(dir, "sealedsymmetrickey")
+	ssignk := path.Join(dir, "sealedsymmetrickey")
+	scert := path.Join(dir, "signerCert")
+	sealsymk := path.Join(dir, "sealedsymmetricKey")
+	dblob := path.Join(dir, "delegationBlob")
+	_, err := os.Stat(ssymk)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	_, err = os.Stat(path + "sealedsigningKey")
+	_, err = os.Stat(ssignk)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	_, err = os.Stat(path + "signerCert")
+	_, err = os.Stat(scert)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
 
-	sealedSymmetricKey, err := ioutil.ReadFile(path + "sealedsymmetricKey")
+	sealedSymmetricKey, err := ioutil.ReadFile(sealsymk)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
 	log.Printf("fileproxy: Got sealedSymmetricKey\n")
-	sealedSigningKey, err := ioutil.ReadFile(path + "sealedsigningKey")
+	sealedSigningKey, err := ioutil.ReadFile(ssignk)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
 	log.Printf("fileproxy: Got sealedSigningKey\n")
-	derCert, err := ioutil.ReadFile(path + "signerCert")
+	derCert, err := ioutil.ReadFile(scert)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
 	log.Printf("fileproxy: Got signerCert\n")
-	ds, err := ioutil.ReadFile(path + "delegationBlob")
+	ds, err := ioutil.ReadFile(dblob)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -205,7 +210,7 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 	return k, derCert, nil
 }
 
-func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) ([]byte, error) {
+func InitializeSealedSymmetricKeys(dir string, t tao.Tao, keysize int) ([]byte, error) {
 	log.Printf("InitializeSealedSymmetricKeys\n")
 	unsealed, err := tao.Parent().GetRandomBytes(keysize)
 	if err != nil {
@@ -215,11 +220,11 @@ func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) ([]byte,
 	if err != nil {
 		return nil, errors.New("Can't seal random bytes")
 	}
-	ioutil.WriteFile(path+"sealedsymmetrickey", sealed, os.ModePerm)
+	ioutil.WriteFile(path.Join(dir, "sealedsymmetrickey"), sealed, os.ModePerm)
 	return unsealed, nil
 }
 
-func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao.Keys, error) {
+func InitializeSealedSigningKey(dir string, t tao.Tao, domain tao.Domain) (*tao.Keys, error) {
 	log.Printf("InitializeSealedSigningKey\n")
 	k, derCert, err := CreateSigningKey(t)
 	if err != nil {
@@ -269,11 +274,14 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 	if err != nil {
 		return nil, errors.New("Can't seal signing key")
 	}
-	err = ioutil.WriteFile(path+"sealedsigningKey", sealedSigningKey, os.ModePerm)
+	ssignk := path.Join(dir, "sealedsigningKey")
+	scert := path.Join(dir, "signerCert")
+	dblob := path.Join(dir, "delegationBlob")
+	err = ioutil.WriteFile(ssignk, sealedSigningKey, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}
-	err = ioutil.WriteFile(path+"signerCert", newCert, os.ModePerm)
+	err = ioutil.WriteFile(scert, newCert, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}
@@ -281,7 +289,7 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 	if err != nil {
 		return nil, errors.New("Can't seal random bytes")
 	}
-	err = ioutil.WriteFile(path+"delegationBlob", delegateBlob, os.ModePerm)
+	err = ioutil.WriteFile(dblob, delegateBlob, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}

@@ -74,11 +74,17 @@ func serve(serverAddr string, prin string, policyCert []byte, signingKey *tao.Ke
 			continue
 		}
 
-		if peerCert.Subject.OrganizationalUnit != nil {
-			clientName = peerCert.Subject.OrganizationalUnit[0]
+		if peerCert.Subject.OrganizationalUnit == nil {
+			log.Println("No OrganizationalUnit name in the peer certificate. Refusing the connection")
+			continue
 		}
+
+		clientName = peerCert.Subject.OrganizationalUnit[0]
 		ms := util.NewMessageStream(conn)
 		// TODO(tmroeder): support multiple simultaneous clients.
+		// Add this program as a rollback program.
+		log.Printf("Adding a program with name '%s'\n", clientName)
+		_ = m.AddRollbackProgram(clientName)
 		if err := m.RunMessageLoop(ms, policy, clientName); err != nil {
 			log.Printf("rollbackserver: failed to run message loop: %s\n", err)
 		}
@@ -121,10 +127,10 @@ func main() {
 
 	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*rollbackserverPath)
 	if err != nil {
-		log.Fatalln("rollbackserver: can't retrieve key material")
+		log.Println("rollbackserver: can't retrieve key material")
 	}
 	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || programCert == nil {
-		log.Fatalln("rollbackserver: No key material present")
+		log.Println("rollbackserver: No key material present")
 	}
 
 	var symKeys []byte

@@ -96,9 +96,7 @@ func serve(addr, fp string, cert []byte, signingKey *tao.Keys, policy *fileproxy
 }
 
 func main() {
-
-	// TODO(tmroeder): remove the relative path.
-	hostcfg := flag.String("hostconfig", "../hostdomain/tao.config", "path to host tao configuration")
+	hostcfg := flag.String("hostconfig", "tao.config", "path to host tao configuration")
 	serverHost := flag.String("host", "localhost", "address for client/server")
 	serverPort := flag.String("port", "8123", "port for client/server")
 	fileServerPath := flag.String("fileserver_files", "fileserver_files/", "fileserver directory")
@@ -136,10 +134,10 @@ func main() {
 	var programCert []byte
 	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*fileServerPath)
 	if err != nil {
-		log.Fatalln("fileserver: couldn't retrieve key material")
+		log.Println("fileserver: couldn't retrieve key material")
 	}
 	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || programCert == nil {
-		log.Fatalln("fileserver: no key material present")
+		log.Println("fileserver: no key material present")
 	}
 
 	var symKeys []byte

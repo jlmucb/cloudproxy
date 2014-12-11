@@ -23,12 +23,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
-	"io/ioutil"
 	"log"
 	"net"
+	"os"
 	"path"
-
-	"code.google.com/p/goprotobuf/proto"
 
 	"github.com/jlmucb/cloudproxy/apps/fileproxy"
 	"github.com/jlmucb/cloudproxy/tao"
@@ -39,12 +37,12 @@ import (
 
 func main() {
 
-	// TODO(tmroeder): remove the relative path.
-	hostcfg := flag.String("hostconfig", "../hostdomain/tao.config", "path to host tao configuration")
+	hostcfg := flag.String("hostconfig", "tao.config", "path to host tao configuration")
 	serverHost := flag.String("host", "localhost", "address for client/server")
 	serverPort := flag.String("port", "8123", "port for client/server")
 	rollbackServerHost := flag.String("rollbackhost", "localhost", "address for rollback client/server")
 	rollbackServerPort := flag.String("rollbackport", "8129", "port for client/server")
+	fileClientPassword := flag.String("password", "BogusPass", "A password for unlocking the user certificates")
 	fileClientPath := flag.String("fileclient_files", "fileclient_files", "fileclient directory")
 	fileClientFilePath := flag.String("stored_files", "fileclient_files/stored_files", "fileclient file directory")
 	testFile := flag.String("test_file", "originalTestFile", "test file")
@@ -146,39 +144,29 @@ func main() {
 
 	// Authenticate user principal(s).
 	keyDir := path.Join(*fileClientPath, *fileClientKeyPath)
-
-	// Get the cert.
-	certPath := path.Join(keyDir, "cert")
-	userCert, err := ioutil.ReadFile(certPath)
-	if err != nil {
-		log.Fatalln("fileclient: can't read cert from ", certPath)
+	if _, err := os.Stat(keyDir); err != nil {
+		log.Fatalf("fileclient: couldn't get user credentials from %s: %s\n", keyDir, err)
 	}
 
-	// Get the keys.
-	keyPath := path.Join(keyDir, "keys")
-	pks, err := ioutil.ReadFile(keyPath)
+	// This method won't generate the right certificate in general for
+	// signing, which is why we check first to make sure the right directory
+	// already exists. But it will successfully read the signer and the
+	// certificate.
+	userKeys, err := tao.NewOnDiskPBEKeys(tao.Signing, []byte(*fileClientPassword), keyDir, nil)
 	if err != nil {
-		log.Fatalln("fileclient: can't read key blob")
+		log.Fatalf("Couldn't read the keys from %s: %s\n", keyDir, err)
 	}
-	var cks tao.CryptoKeyset
-	err = proto.Unmarshal(pks, &cks)
-	if err != nil {
-		log.Fatalln("fileclient: can't proto unmarshal key set")
-	}
-	userKey, err := tao.UnmarshalKeyset(&cks)
-	if err != nil {
-		log.Fatalln("fileclient: can't unmarshal key set")
-	}
+	userCert := userKeys.Cert.Raw
 
 	// Authenticate a key to use for requests to the server.
-	if err = fileproxy.AuthenticatePrincipal(ms, userKey, userCert); err != nil {
+	if err = fileproxy.AuthenticatePrincipal(ms, userKeys, userCert); err != nil {
 		log.Fatalf("fileclient: can't authenticate principal: %s", err)
 	}
 
 	// Create a file.
 	sentFileName := *testFile
 	if err = fileproxy.CreateFile(ms, userCert, sentFileName); err != nil {
-		log.Fatalln("fileclient: can't create file")
+		log.Fatalln("fileclient: can't create file:", err)
 	}
 
 	// Send File.

@@ -62,6 +62,7 @@ func (r *RollbackMaster) AddRollbackProgram(name string) *RollbackProgram {
 		MonotonicCounter: 0,
 		Hashes:           make(map[string][]byte),
 	}
+	r.Programs[name] = pi
 	return pi
 }
 
@@ -109,8 +110,10 @@ func decodeCounter(b []byte) (uint64, error) {
 // value. It returns an error if the program doesn't exist or if the new value
 // of the counter is less than the current value of the counter.
 func (r *RollbackMaster) SetCounter(ms *util.MessageStream, name string, counter uint64) error {
+	emptyData := make([]byte, 0)
 	rr := &RollbackResponse{
 		Type: RollbackMessageType_ERROR.Enum(),
+		Data: emptyData,
 	}
 
 	p := r.FindRollbackProgram(name)
@@ -141,8 +144,10 @@ func (r *RollbackMaster) SetCounter(ms *util.MessageStream, name string, counter
 // SetHash implements RollbackMessageType_SET_HASH by setting the value of the
 // hash for a given item to a given hash value.
 func (r *RollbackMaster) SetHash(ms *util.MessageStream, name string, item string, h []byte) error {
+	emptyData := make([]byte, 0)
 	rr := &RollbackResponse{
 		Type: RollbackMessageType_ERROR.Enum(),
+		Data: emptyData,
 	}
 
 	p := r.FindRollbackProgram(name)
@@ -184,8 +189,10 @@ func (r *RollbackMaster) SetHash(ms *util.MessageStream, name string, item strin
 // GetCounter implements RollbackMessageType_GET_COUNTER and returns the current
 // value of a counter to the requestor.
 func (r *RollbackMaster) GetCounter(ms *util.MessageStream, name string) error {
+	emptyData := make([]byte, 0)
 	rr := &RollbackResponse{
 		Type: RollbackMessageType_ERROR.Enum(),
+		Data: emptyData,
 	}
 
 	p := r.FindRollbackProgram(name)
@@ -205,8 +212,10 @@ func (r *RollbackMaster) GetCounter(ms *util.MessageStream, name string) error {
 // GetHashedVerifier gets a version of the hash for a given item along with the
 // current monotonic counter.
 func (r *RollbackMaster) GetHashedVerifier(ms *util.MessageStream, name string, item string) error {
+	emptyData := make([]byte, 0)
 	rr := &RollbackResponse{
 		Type: RollbackMessageType_ERROR.Enum(),
+		Data: emptyData,
 	}
 
 	p := r.FindRollbackProgram(name)

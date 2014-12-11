@@ -909,6 +909,43 @@ func NewTemporaryKeys(keyTypes KeyType) (*Keys, error) {
 	return k, nil
 }
 
+// NewSignedOnDiskPBEKeys creates the same type of keys as NewOnDiskPBEKeys but
+// signs a certificate for the signer with the provided Keys, which must have
+// both a SigningKey and a Certificate.
+func NewSignedOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix.Name, serial int, signer *Keys) (*Keys, error) {
+	if signer == nil || name == nil {
+		return nil, newError("must supply a signer and a name")
+	}
+
+	if signer.Cert == nil || signer.SigningKey == nil {
+		return nil, newError("the signing key must have a SigningKey and a Cert")
+	}
+
+	if keyTypes & ^Signing != 0 {
+		return nil, newError("can't sign a key that has no signer")
+	}
+
+	k, err := NewOnDiskPBEKeys(keyTypes, password, path, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// If there's already a cert, then this means that there was already a
+	// keyset on disk, so don't create a new signed certificate.
+	if k.Cert == nil {
+		k.Cert, err = signer.SigningKey.CreateSignedX509(signer.Cert, serial, k.VerifyingKey, name)
+		if err != nil {
+			return nil, err
+		}
+
+		if err = util.WritePath(k.X509Path(), k.Cert.Raw, 0777, 0666); err != nil {
+			return nil, err
+		}
+	}
+
+	return k, nil
+}
+
 // NewOnDiskPBEKeys creates a new Keys structure with the specified key types
 // store under PBE on disk. If keys are generated and name is not nil, then a
 // self-signed x509 certificate will be generated and saved as well.
@@ -977,6 +1014,8 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 					return nil, err
 				}
 
+				// Note that this loads the certificate if it's
+				// present, and it returns nil otherwise.
 				err = k.loadCert()
 				if err != nil {
 					return nil, err
@@ -1109,6 +1148,8 @@ func (k *Keys) newCert(name *pkix.Name) (err error) {
 
 func (k *Keys) loadCert() error {
 	f, err := os.Open(k.X509Path())
+	// Allow this operation to fail silently, since there isn't always a
+	// certificate available.
 	if err != nil {
 		return nil
 	}

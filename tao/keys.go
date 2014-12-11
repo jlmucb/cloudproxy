@@ -77,14 +77,6 @@ type Deriver struct {
 	secret []byte
 }
 
-func (s *Signer) GetSignerEc() *ecdsa.PrivateKey {
-	return s.ec
-}
-
-func (v *Verifier) GetVerifierEc() *ecdsa.PublicKey {
-	return v.ec
-}
-
 // GenerateSigner creates a new Signer with a fresh key.
 func GenerateSigner() (*Signer, error) {
 	ec, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -190,6 +182,7 @@ func (s *Signer) CreateSelfSignedX509(name *pkix.Name) (*x509.Certificate, error
 // key.
 func (s *Signer) CreateSignedX509(caCert *x509.Certificate, certSerial int, subjectKey *Verifier, subjectName *pkix.Name) (*x509.Certificate, error) {
 	template := prepareX509Template(subjectName)
+	template.SerialNumber = new(big.Int).SetInt64(int64(certSerial))
 
 	der, err := x509.CreateCertificate(rand.Reader, template, caCert, subjectKey.ec, s.ec)
 	if err != nil {

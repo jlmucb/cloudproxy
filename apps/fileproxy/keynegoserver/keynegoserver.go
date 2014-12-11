@@ -13,7 +13,6 @@
 package main
 
 import (
-	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -22,7 +21,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/big"
 	"net"
 	"os"
 	"time"
@@ -86,27 +84,15 @@ func handleRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) error {
 		CommonName:         "localhost"}
 	subjectname := tao.NewX509Name(details)
 	SerialNumber = SerialNumber + 1
-	template := &x509.Certificate{
-		SignatureAlgorithm: x509.ECDSAWithSHA256,
-		PublicKeyAlgorithm: x509.ECDSA,
-		Version:            2,
-		SerialNumber:       new(big.Int).SetInt64(SerialNumber),
-		Subject:            *subjectname,
-		NotBefore:          time.Now(),
-		NotAfter:           time.Now().AddDate(1 /* years */, 0 /* months */, 0 /* days */),
-		KeyUsage:           x509.KeyUsageKeyAgreement,
-		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-	}
 	verifier, err := tao.FromPrincipal(kprin)
 	if err != nil {
 		return errors.New("can't get principal from kprin")
 	}
-	clientDERCert, err := x509.CreateCertificate(rand.Reader, template, policyKey.Cert,
-		verifier.GetVerifierEc(),
-		policyKey.SigningKey.GetSignerEc())
+	clientCert, err := policyKey.SigningKey.CreateSignedX509(policyKey.Cert, int(SerialNumber), verifier, subjectname)
 	if err != nil {
 		return fmt.Errorf("keynegoserver: can't create client certificate: %s\n", err)
 	}
+	clientDERCert := clientCert.Raw
 	err = ioutil.WriteFile("ClientCert", clientDERCert, os.ModePerm)
 
 	nowTime := time.Now().UnixNano()

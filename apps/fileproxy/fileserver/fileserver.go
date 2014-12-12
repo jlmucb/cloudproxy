@@ -96,6 +96,7 @@ func serve(addr, fp string, cert []byte, signingKey *tao.Keys, policy *fileproxy
 }
 
 func main() {
+	caAddr := flag.String("caAddr", "localhost:8124", "The address of the CA for setting up a certificate signed by the policy key")
 	hostcfg := flag.String("hostconfig", "tao.config", "path to host tao configuration")
 	serverHost := flag.String("host", "localhost", "address for client/server")
 	serverPort := flag.String("port", "8123", "port for client/server")
@@ -165,8 +166,7 @@ func main() {
 			log.Fatalf("fileserver: SigningKeyFromBlob error: %s\n", err)
 		}
 	} else {
-		signingKey, err = fileproxy.InitializeSealedSigningKey(*fileServerPath,
-			tao.Parent(), *hostDomain)
+		signingKey, err = fileproxy.InitializeSealedSigningKey(*caAddr, *fileServerPath, tao.Parent(), *hostDomain)
 		if err != nil {
 			log.Fatalf("fileserver: InitializeSealedSigningKey error: %s\n", err)
 		}

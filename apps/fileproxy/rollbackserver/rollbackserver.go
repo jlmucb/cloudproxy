@@ -92,6 +92,7 @@ func serve(serverAddr string, prin string, policyCert []byte, signingKey *tao.Ke
 }
 
 func main() {
+	caAddr := flag.String("caAddr", "localhost:8124", "The address of the CA for setting up a certificate signed by the policy key")
 	hostcfg := flag.String("hostconfig", "../hostdomain/tao.config", "path to host tao configuration")
 	serverHost := flag.String("host", "localhost", "address for client/server")
 	serverPort := flag.String("port", "8129", "port for client/server")
@@ -155,7 +156,7 @@ func main() {
 			log.Fatalf("rollbackserver: SigningKeyFromBlob error: %s\n", err)
 		}
 	} else {
-		if signingKey, err = fileproxy.InitializeSealedSigningKey(*rollbackserverPath, tao.Parent(), *hostDomain); err != nil {
+		if signingKey, err = fileproxy.InitializeSealedSigningKey(*caAddr, *rollbackserverPath, tao.Parent(), *hostDomain); err != nil {
 			log.Fatalf("rollbackserver: InitializeSealedSigningKey error: %s\n", err)
 		}
 		programCert = signingKey.Cert.Raw

@@ -93,17 +93,19 @@ func serve(serverAddr string, prin string, policyCert []byte, signingKey *tao.Ke
 
 func main() {
 	caAddr := flag.String("caAddr", "localhost:8124", "The address of the CA for setting up a certificate signed by the policy key")
-	hostcfg := flag.String("hostconfig", "../hostdomain/tao.config", "path to host tao configuration")
+	hostcfg := flag.String("hostconfig", "tao.config", "path to host tao configuration")
 	serverHost := flag.String("host", "localhost", "address for client/server")
 	serverPort := flag.String("port", "8129", "port for client/server")
-	rollbackserverPath := flag.String("rollbackserver_files", "rollbackserver_files/", "rollbackserver directory")
+	rollbackServerPath := flag.String("rollbackserver_files", "rollbackserver_files", "rollbackserver directory")
+	country := flag.String("country", "US", "The country for the fileclient certificate")
+	org := flag.String("organization", "Google", "The organization for the fileclient certificate")
 
 	flag.Parse()
 	serverAddr := net.JoinHostPort(*serverHost, *serverPort)
 
 	hostDomain, err := tao.LoadDomain(*hostcfg, nil)
 	if err != nil {
-		log.Fatalln("rollbackserver: can't load domain")
+		log.Fatalln("rollbackserver: can't load domain:", err)
 	}
 	var policyCert []byte
 	if hostDomain.Keys.Cert != nil {
@@ -113,59 +115,46 @@ func main() {
 		log.Fatalln("rollbackserver: can't retrieve policy cert")
 	}
 
-	if err := hostDomain.ExtendTaoName(tao.Parent()); err != nil {
+	parentTao := tao.Parent()
+	if err := hostDomain.ExtendTaoName(parentTao); err != nil {
 		log.Fatalln("fileserver: can't extend the Tao with the policy key")
 	}
 	e := auth.PrinExt{Name: "rollbackserver_version_1"}
-	if err = tao.Parent().ExtendTaoName(auth.SubPrin{e}); err != nil {
+	if err = parentTao.ExtendTaoName(auth.SubPrin{e}); err != nil {
 		log.Fatalln("rollbackserver: can't extend name")
 	}
 
-	taoName, err := tao.Parent().GetTaoName()
+	taoName, err := parentTao.GetTaoName()
 	if err != nil {
 		return
 	}
 
-	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*rollbackserverPath)
+	// Create or read the keys for rollbackserver.
+	rbKeys, err := tao.NewOnDiskTaoSealedKeys(tao.Signing|tao.Crypting, parentTao, *rollbackServerPath, tao.SealPolicyDefault)
 	if err != nil {
-		log.Println("rollbackserver: can't retrieve key material")
-	}
-	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || programCert == nil {
-		log.Println("rollbackserver: No key material present")
+		log.Fatalln("rollbackserver: couldn't set up the Tao-sealed keys:", err)
 	}
 
-	var symKeys []byte
-	defer fileproxy.ZeroBytes(symKeys)
-	if sealedSymmetricKey != nil {
-		var policy string
-		if symKeys, policy, err = tao.Parent().Unseal(sealedSymmetricKey); err != nil {
-			log.Fatalln("rollbackserver: couldn't unseal the symmetric key")
-		}
-		if policy != tao.SealPolicyDefault {
-			log.Fatalln("rollbackserver: unexpected policy on unseal")
-		}
-	} else {
-		if symKeys, err = fileproxy.InitializeSealedSymmetricKeys(*rollbackserverPath, tao.Parent(), fileproxy.SymmetricKeySize); err != nil {
-			log.Fatalf("rollbackserver: InitializeSealedSymmetricKeys error: %s\n", err)
-		}
+	// Set up a temporary cert for communication with keyNegoServer.
+	rbKeys.Cert, err = rbKeys.SigningKey.CreateSelfSignedX509(tao.NewX509Name(tao.X509Details{
+		Country:      *country,
+		Organization: *org,
+		CommonName:   taoName.String(),
+	}))
+	if err != nil {
+		log.Fatalln("rollbackserver: couldn't create a self-signed cert for rollbackserver keys:", err)
 	}
 
-	var signingKey *tao.Keys
-	if sealedSigningKey != nil {
-		if signingKey, err = fileproxy.SigningKeyFromBlob(tao.Parent(), sealedSigningKey, programCert, delegation); err != nil {
-			log.Fatalf("rollbackserver: SigningKeyFromBlob error: %s\n", err)
-		}
-	} else {
-		if signingKey, err = fileproxy.InitializeSealedSigningKey(*caAddr, *rollbackserverPath, tao.Parent(), *hostDomain); err != nil {
-			log.Fatalf("rollbackserver: InitializeSealedSigningKey error: %s\n", err)
-		}
-		programCert = signingKey.Cert.Raw
+	// Contact keyNegoServer for the certificate.
+	if err := fileproxy.EstablishCert("tcp", *caAddr, rbKeys, hostDomain.Keys.VerifyingKey); err != nil {
+		log.Fatalf("rollbackserver: couldn't establish a cert signed by the policy key: %s", err)
 	}
 
-	progPolicy := fileproxy.NewProgramPolicy(policyCert, taoName.String(), signingKey, symKeys, programCert)
+	// The symmetric keys aren't used by the rollback server.
+	progPolicy := fileproxy.NewProgramPolicy(policyCert, taoName.String(), rbKeys, nil, rbKeys.Cert.Raw)
 	m := fileproxy.NewRollbackMaster(taoName.String())
 
-	if err := serve(serverAddr, taoName.String(), policyCert, signingKey, progPolicy, m); err != nil {
+	if err := serve(serverAddr, taoName.String(), policyCert, rbKeys, progPolicy, m); err != nil {
 		log.Fatalf("rollbackserver: server error: %s\n", err)
 	}
 	log.Println("rollbackserver: done")

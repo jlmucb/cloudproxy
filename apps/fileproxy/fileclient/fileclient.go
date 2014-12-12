@@ -37,6 +37,7 @@ import (
 
 func main() {
 
+	caAddr := flag.String("caAddr", "localhost:8124", "The address of the CA for setting up a certificate signed by the policy key")
 	hostcfg := flag.String("hostconfig", "tao.config", "path to host tao configuration")
 	serverHost := flag.String("host", "localhost", "address for client/server")
 	serverPort := flag.String("port", "8123", "port for client/server")
@@ -47,6 +48,8 @@ func main() {
 	fileClientFilePath := flag.String("stored_files", "fileclient_files/stored_files", "fileclient file directory")
 	testFile := flag.String("test_file", "originalTestFile", "test file")
 	fileClientKeyPath := flag.String("usercreds", "usercreds", "user keys and certs")
+	country := flag.String("country", "US", "The country for the fileclient certificate")
+	org := flag.String("organization", "Google", "The organization for the fileclient certificate")
 
 	flag.Parse()
 
@@ -63,72 +66,46 @@ func main() {
 		log.Fatalln("fileclient: Can't retrieve policy cert")
 	}
 
-	if err := hostDomain.ExtendTaoName(tao.Parent()); err != nil {
+	parentTao := tao.Parent()
+	if err := hostDomain.ExtendTaoName(parentTao); err != nil {
 		log.Fatalln("fileclient: can't extend the Tao with the policy key")
 	}
 	e := auth.PrinExt{Name: "fileclient_version_1"}
-	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
-	if err != nil {
-		return
+	if err = parentTao.ExtendTaoName(auth.SubPrin{e}); err != nil {
+		log.Fatalln("fileclient: couldn't extend the tao name with the policy key")
 	}
 
-	taoName, err := tao.Parent().GetTaoName()
+	taoName, err := parentTao.GetTaoName()
 	if err != nil {
 		log.Fatalln("fileclient: Can't get tao name")
-		return
 	}
 
-	// Load the keys from disk or create a new set of keys and write them to
-	// disk.
-	// TODO(tmroeder): this should be refactored.
-	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*fileClientPath)
+	// Create or read the keys for fileclient.
+	fcKeys, err := tao.NewOnDiskTaoSealedKeys(tao.Signing|tao.Crypting, parentTao, *fileClientPath, tao.SealPolicyDefault)
 	if err != nil {
-		log.Printf("fileclient: can't retrieve key material\n")
-	}
-	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || programCert == nil {
-		log.Printf("fileclient: No key material present\n")
+		log.Fatalln("fileclient: couldn't set up the Tao-sealed keys:", err)
 	}
 
-	var symKeys []byte
-	if sealedSymmetricKey != nil {
-		var policy string
-		symKeys, policy, err = tao.Parent().Unseal(sealedSymmetricKey)
-		if err != nil {
-			return
-		}
-		if policy != tao.SealPolicyDefault {
-			log.Fatalln("fileclient: unexpected policy on unseal")
-		}
-	} else {
-		symKeys, err = fileproxy.InitializeSealedSymmetricKeys(*fileClientPath, tao.Parent(), fileproxy.SymmetricKeySize)
-		if err != nil {
-			log.Fatalln("fileclient: InitializeSealedSymmetricKeys error: %s", err)
-		}
+	// Set up a temporary cert for communication with keyNegoServer.
+	fcKeys.Cert, err = fcKeys.SigningKey.CreateSelfSignedX509(tao.NewX509Name(tao.X509Details{
+		Country:      *country,
+		Organization: *org,
+		CommonName:   taoName.String(),
+	}))
+	if err != nil {
+		log.Fatalln("fileclient: couldn't create a self-signed cert for fileclient keys:", err)
 	}
-	defer fileproxy.ZeroBytes(symKeys)
 
-	var signingKey *tao.Keys
-	if sealedSigningKey != nil {
-		signingKey, err = fileproxy.SigningKeyFromBlob(tao.Parent(), sealedSigningKey, programCert, delegation)
-		if err != nil {
-			log.Fatalln("fileclient: SigningKeyFromBlob error: %s", err)
-		}
-	} else {
-		signingKey, err = fileproxy.InitializeSealedSigningKey(*fileClientPath, tao.Parent(), *hostDomain)
-		if err != nil {
-			log.Fatalln("fileclient: InitializeSealedSigningKey error: %s", err)
-		}
+	// Contact keyNegoServer for the certificate.
+	if err := fileproxy.EstablishCert("tcp", *caAddr, fcKeys, hostDomain.Keys.VerifyingKey); err != nil {
+		log.Fatalf("fileclient: couldn't establish a cert signed by the policy key: %s", err)
 	}
 
 	// Get the policy cert and set up TLS.
-	policyCert, err := x509.ParseCertificate(derPolicyCert)
-	if err != nil {
-		log.Fatalln("fileclient:can't ParseCertificate")
-	}
 	pool := x509.NewCertPool()
-	pool.AddCert(policyCert)
+	pool.AddCert(hostDomain.Keys.Cert)
 
-	tlsc, err := taonet.EncodeTLSCert(signingKey)
+	tlsc, err := taonet.EncodeTLSCert(fcKeys)
 	if err != nil {
 		log.Fatalln("fileclient, encode error: ", err)
 	}

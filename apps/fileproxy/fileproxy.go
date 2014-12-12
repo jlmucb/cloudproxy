@@ -1,4 +1,4 @@
-// Copyright (c) 2014, Google, Inc..  All rights reserved.
+// Copyright (c) 2014, Google, Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
-	"flag"
 	"fmt"
 	"hash"
 	"io/ioutil"
@@ -39,10 +38,6 @@ import (
 	taonet "github.com/jlmucb/cloudproxy/tao/net"
 	"github.com/jlmucb/cloudproxy/util"
 )
-
-var caAddr = flag.String("caAddr", "localhost:8124", "The address to listen on")
-var taoChannelAddr = flag.String("taoChannelAddr", "localhost:8124", "The address to listen on")
-var configPath = flag.String("config", "tao.config", "The Tao domain config")
 
 // The size of a symmetric key is the size of an AES key plus the size of an
 // HMAC key.
@@ -67,6 +62,46 @@ func NewProgramPolicy(policyCert []byte, taoName string, signingKey *tao.Keys, s
 		ProgramCert: programCert,
 	}
 	return pp
+}
+
+// EstablishCert contacts a CA to get a certificate signed by the policy key. It
+// replaces the current delegation and cert on k with the new delegation and
+// cert from the response.
+func EstablishCert(network, addr string, k *tao.Keys, v *tao.Verifier) error {
+	na, err := RequestKeyNegoAttestation(network, addr, k, v)
+	if err != nil {
+		return err
+	}
+
+	k.Delegation = na
+	pa, err := auth.UnmarshalForm(na.SerializedStatement)
+	if err != nil {
+		return err
+	}
+
+	// Parse the received statement.
+	var saysStatement *auth.Says
+	if ptr, ok := pa.(*auth.Says); ok {
+		saysStatement = ptr
+	} else if val, ok := pa.(auth.Says); ok {
+		saysStatement = &val
+	}
+	sf, ok := saysStatement.Message.(auth.Speaksfor)
+	if ok != true {
+		return errors.New("says doesn't have speaksfor message")
+	}
+
+	kprin, ok := sf.Delegate.(auth.Term)
+	if ok != true {
+		return errors.New("speaksfor message doesn't have Delegate")
+	}
+	newCert := auth.Bytes(kprin.(auth.Bytes))
+	k.Cert, err = x509.ParseCertificate(newCert)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // RequestKeyNegoAttestation connects to a CA instance, sends the attestation
@@ -132,7 +167,7 @@ func PrincipalNameFromDERCert(derCert []byte) (string, error) {
 // returns sealed symmetric key, sealed signing key, DER encoded cert, delegation, error
 func LoadProgramKeys(dir string) ([]byte, []byte, []byte, []byte, error) {
 	ssymk := path.Join(dir, "sealedsymmetrickey")
-	ssignk := path.Join(dir, "sealedsymmetrickey")
+	ssignk := path.Join(dir, "sealedsigningkey")
 	scert := path.Join(dir, "signerCert")
 	sealsymk := path.Join(dir, "sealedsymmetricKey")
 	dblob := path.Join(dir, "delegationBlob")
@@ -224,7 +259,7 @@ func InitializeSealedSymmetricKeys(dir string, t tao.Tao, keysize int) ([]byte, 
 	return unsealed, nil
 }
 
-func InitializeSealedSigningKey(dir string, t tao.Tao, domain tao.Domain) (*tao.Keys, error) {
+func InitializeSealedSigningKey(caAddr, dir string, t tao.Tao, domain tao.Domain) (*tao.Keys, error) {
 	log.Printf("InitializeSealedSigningKey\n")
 	k, derCert, err := CreateSigningKey(t)
 	if err != nil {
@@ -235,7 +270,7 @@ func InitializeSealedSigningKey(dir string, t tao.Tao, domain tao.Domain) (*tao.
 		log.Printf("fileproxy: CreateSigningKey failed, no dercert\n")
 		return nil, errors.New("No DER cert")
 	}
-	na, err := RequestKeyNegoAttestation("tcp", *caAddr, k, domain.Keys.VerifyingKey)
+	na, err := RequestKeyNegoAttestation("tcp", caAddr, k, domain.Keys.VerifyingKey)
 	if err != nil {
 		log.Printf("fileproxy: error from taonet.RequestTruncatedAttestation\n")
 		return nil, err

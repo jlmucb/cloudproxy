@@ -20,6 +20,7 @@ import (
 	"flag"
 	"log"
 	"net"
+	"path"
 
 	"github.com/jlmucb/cloudproxy/apps/fileproxy"
 	"github.com/jlmucb/cloudproxy/tao"
@@ -102,6 +103,8 @@ func main() {
 	serverPort := flag.String("port", "8123", "port for client/server")
 	fileServerPath := flag.String("fileserver_files", "fileserver_files/", "fileserver directory")
 	fileServerFilePath := flag.String("stored_files", "fileserver_files/stored_files/", "fileserver directory")
+	country := flag.String("country", "US", "The country for the fileclient certificate")
+	org := flag.String("organization", "Google", "The organization for the fileclient certificate")
 
 	flag.Parse()
 
@@ -119,65 +122,53 @@ func main() {
 		log.Fatalln("fileserver: can't retrieve policy cert")
 	}
 
-	if err := hostDomain.ExtendTaoName(tao.Parent()); err != nil {
+	parentTao := tao.Parent()
+	if err := hostDomain.ExtendTaoName(parentTao); err != nil {
 		log.Fatalln("fileserver: can't extend the Tao with the policy key")
 	}
 	e := auth.PrinExt{Name: "fileserver_version_1"}
-	if err = tao.Parent().ExtendTaoName(auth.SubPrin{e}); err != nil {
+	if err = parentTao.ExtendTaoName(auth.SubPrin{e}); err != nil {
 		log.Fatalln("fileserver: couldn't extend the Tao name")
 	}
 
-	taoName, err := tao.Parent().GetTaoName()
+	taoName, err := parentTao.GetTaoName()
 	if err != nil {
 		log.Fatalln("fileserver: couldn't get tao name")
 	}
 
-	var programCert []byte
-	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*fileServerPath)
+	// Create or read the keys for fileclient.
+	fsKeys, err := tao.NewOnDiskTaoSealedKeys(tao.Signing|tao.Crypting, parentTao, *fileServerPath, tao.SealPolicyDefault)
 	if err != nil {
-		log.Println("fileserver: couldn't retrieve key material")
-	}
-	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || programCert == nil {
-		log.Println("fileserver: no key material present")
+		log.Fatalln("fileserver: couldn't set up the Tao-sealed keys:", err)
 	}
 
-	var symKeys []byte
-	defer fileproxy.ZeroBytes(symKeys)
-	if sealedSymmetricKey != nil {
-		var policy string
-		if symKeys, policy, err = tao.Parent().Unseal(sealedSymmetricKey); err != nil {
-			log.Fatalln("fileserver: couldn't unseal the symmetric key")
-		}
-		if policy != tao.SealPolicyDefault {
-			log.Fatalln("fileserver: unexpected policy on unseal")
-		}
-	} else {
-		symKeys, err = fileproxy.InitializeSealedSymmetricKeys(*fileServerPath, tao.Parent(), fileproxy.SymmetricKeySize)
-		if err != nil {
-			log.Fatalf("fileserver: InitializeSealedSymmetricKeys error: %s\n", err)
-		}
-	}
-
-	var signingKey *tao.Keys
-	if sealedSigningKey != nil {
-		signingKey, err = fileproxy.SigningKeyFromBlob(tao.Parent(),
-			sealedSigningKey, programCert, delegation)
-		if err != nil {
-			log.Fatalf("fileserver: SigningKeyFromBlob error: %s\n", err)
-		}
-	} else {
-		signingKey, err = fileproxy.InitializeSealedSigningKey(*caAddr, *fileServerPath, tao.Parent(), *hostDomain)
-		if err != nil {
-			log.Fatalf("fileserver: InitializeSealedSigningKey error: %s\n", err)
-		}
-		programCert = signingKey.Cert.Raw
-	}
-
-	progPolicy := fileproxy.NewProgramPolicy(policyCert, taoName.String(), signingKey, symKeys, programCert)
-
-	serve(serverAddr, *fileServerFilePath, policyCert, signingKey, progPolicy)
+	// Set up a temporary cert for communication with keyNegoServer.
+	fsKeys.Cert, err = fsKeys.SigningKey.CreateSelfSignedX509(tao.NewX509Name(tao.X509Details{
+		Country:      *country,
+		Organization: *org,
+		CommonName:   taoName.String(),
+	}))
 	if err != nil {
-		log.Printf("fileserver: server error\n")
+		log.Fatalln("fileserver: couldn't create a self-signed cert for fileclient keys:", err)
 	}
+
+	// Contact keyNegoServer for the certificate.
+	if err := fileproxy.EstablishCert("tcp", *caAddr, fsKeys, hostDomain.Keys.VerifyingKey); err != nil {
+		log.Fatalf("fileserver: couldn't establish a cert signed by the policy key: %s", err)
+	}
+
+	symKeysPath := path.Join(*fileServerPath, "sealedEncKeys")
+	symKeys, err := fsKeys.NewSecret(symKeysPath, fileproxy.SymmetricKeySize)
+	if err != nil {
+		log.Fatalln("fileserver: couldn't get the file encryption keys")
+	}
+	fileproxy.ZeroBytes(symKeys)
+
+	progPolicy := fileproxy.NewProgramPolicy(policyCert, taoName.String(), fsKeys, symKeys, fsKeys.Cert.Raw)
+
+	if err := serve(serverAddr, *fileServerFilePath, policyCert, fsKeys, progPolicy); err != nil {
+		log.Fatalln("fileserver: couldn't serve connections:", err)
+	}
+
 	log.Printf("fileserver: done\n")
 }

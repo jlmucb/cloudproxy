@@ -840,7 +840,7 @@ func (k *Keys) SealedKeysetPath() string {
 	return path.Join(k.dir, "sealed_keyset")
 }
 
-// DelegationPath returns the path for a stored signing key.
+// DelegationPath returns the path for a stored delegation.
 func (k *Keys) DelegationPath() string {
 	if k.dir == "" {
 		return ""
@@ -1443,4 +1443,50 @@ func NewOnDiskTaoSealedKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys
 	}
 
 	return k, nil
+}
+
+// NewSecret creates and encrypts a new secret value of the given length, or it
+// reads and decrypts the value and checks that it's the right length. It
+// creates the file and its parent directories if these directories do not
+// exist.
+func (k *Keys) NewSecret(file string, length int) ([]byte, error) {
+	if _, err := os.Stat(file); err != nil {
+		// Create the parent directories and the file.
+		if err := os.MkdirAll(path.Dir(file), 0700); err != nil {
+			return nil, err
+		}
+
+		secret := make([]byte, length)
+		if _, err := rand.Read(secret); err != nil {
+			return nil, err
+		}
+
+		enc, err := k.CryptingKey.Encrypt(secret)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := ioutil.WriteFile(file, enc, 0700); err != nil {
+			return nil, err
+		}
+
+		return secret, nil
+	}
+
+	enc, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	dec, err := k.CryptingKey.Decrypt(enc)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(dec) != length {
+		zeroBytes(dec)
+		return nil, newError("The decrypted value had length %d, but it should have had length %d", len(dec), length)
+	}
+
+	return dec, nil
 }

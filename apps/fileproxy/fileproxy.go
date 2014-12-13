@@ -3,7 +3,9 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,18 +22,12 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"fmt"
 	"hash"
-	"io/ioutil"
-	"log"
 	"os"
 	"path"
-	"strings"
-
-	"code.google.com/p/goprotobuf/proto"
 
 	"github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
@@ -68,7 +64,7 @@ func NewProgramPolicy(policyCert []byte, taoName string, signingKey *tao.Keys, s
 // replaces the current delegation and cert on k with the new delegation and
 // cert from the response.
 func EstablishCert(network, addr string, k *tao.Keys, v *tao.Verifier) error {
-	na, err := RequestKeyNegoAttestation(network, addr, k, v)
+	na, err := taonet.RequestAttestation(network, addr, k, v)
 	if err != nil {
 		return err
 	}
@@ -102,260 +98,6 @@ func EstablishCert(network, addr string, k *tao.Keys, v *tao.Verifier) error {
 	}
 
 	return nil
-}
-
-// RequestKeyNegoAttestation connects to a CA instance, sends the attestation
-// for an X.509 certificate, and gets back a certificate with a new principal
-// name based on the policy key. This certificate is rooted in the policy key.
-func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys, v *tao.Verifier) (*tao.Attestation, error) {
-	if keys.Cert == nil {
-		return nil, errors.New("client: can't dial with an empty client certificate\n")
-	}
-	tlsCert, err := taonet.EncodeTLSCert(keys)
-	if err != nil {
-		return nil, err
-	}
-	conn, err := tls.Dial(network, addr, &tls.Config{
-		RootCAs:            x509.NewCertPool(),
-		Certificates:       []tls.Certificate{*tlsCert},
-		InsecureSkipVerify: true,
-	})
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
-	// Tao handshake: send client delegation.
-	ms := util.NewMessageStream(conn)
-	if _, err = ms.WriteMessage(keys.Delegation); err != nil {
-		return nil, err
-	}
-
-	// Read the truncated attestation and check it.
-	var a tao.Attestation
-	if err := ms.ReadMessage(&a); err != nil {
-		return nil, err
-	}
-
-	ok, err := v.Verify(a.SerializedStatement, tao.AttestationSigningContext, a.Signature)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, errors.New("invalid attestation signature from Tao CA")
-	}
-
-	return &a, nil
-}
-
-func ZeroBytes(buf []byte) {
-	n := len(buf)
-	for i := 0; i < n; i++ {
-		buf[i] = 0
-	}
-}
-
-func PrincipalNameFromDERCert(derCert []byte) (string, error) {
-	cert, err := x509.ParseCertificate(derCert)
-	if err != nil {
-		return "", err
-	}
-	cn := cert.Subject.CommonName
-	return cn, nil
-}
-
-// returns sealed symmetric key, sealed signing key, DER encoded cert, delegation, error
-func LoadProgramKeys(dir string) ([]byte, []byte, []byte, []byte, error) {
-	ssymk := path.Join(dir, "sealedsymmetrickey")
-	ssignk := path.Join(dir, "sealedsigningkey")
-	scert := path.Join(dir, "signerCert")
-	sealsymk := path.Join(dir, "sealedsymmetricKey")
-	dblob := path.Join(dir, "delegationBlob")
-	_, err := os.Stat(ssymk)
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	_, err = os.Stat(ssignk)
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	_, err = os.Stat(scert)
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-
-	sealedSymmetricKey, err := ioutil.ReadFile(sealsymk)
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	log.Printf("fileproxy: Got sealedSymmetricKey\n")
-	sealedSigningKey, err := ioutil.ReadFile(ssignk)
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	log.Printf("fileproxy: Got sealedSigningKey\n")
-	derCert, err := ioutil.ReadFile(scert)
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	log.Printf("fileproxy: Got signerCert\n")
-	ds, err := ioutil.ReadFile(dblob)
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	log.Printf("LoadProgramKeys succeeded\n")
-	return sealedSymmetricKey, sealedSigningKey, derCert, ds, nil
-}
-
-func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
-	log.Printf("CreateSigningKey\n")
-	self, err := t.GetTaoName()
-	k, err := tao.NewTemporaryKeys(tao.Signing)
-	if k == nil || err != nil {
-		return nil, nil, errors.New("Can't generate signing key")
-	}
-	publicString := strings.Replace(self.String(), "(", "", -1)
-	publicString = strings.Replace(publicString, ")", "", -1)
-	details := tao.X509Details{
-		Country:      "US",
-		Organization: "Google",
-		CommonName:   publicString}
-	subjectname := tao.NewX509Name(details)
-	derCert, err := k.SigningKey.CreateSelfSignedDER(subjectname)
-	if err != nil {
-		return nil, nil, errors.New("Can't self sign cert\n")
-	}
-	cert, err := x509.ParseCertificate(derCert)
-	if err != nil {
-		return nil, nil, err
-	}
-	k.Cert = cert
-	s := &auth.Speaksfor{
-		Delegate:  k.SigningKey.ToPrincipal(),
-		Delegator: self}
-	if s == nil {
-		return nil, nil, errors.New("Can't produce speaksfor")
-	}
-	if k.Delegation, err = t.Attest(&self, nil, nil, s); err != nil {
-		return nil, nil, err
-	}
-	if err == nil {
-		_, _ = auth.UnmarshalForm(k.Delegation.SerializedStatement)
-	}
-	return k, derCert, nil
-}
-
-func InitializeSealedSymmetricKeys(dir string, t tao.Tao, keysize int) ([]byte, error) {
-	log.Printf("InitializeSealedSymmetricKeys\n")
-	unsealed, err := tao.Parent().GetRandomBytes(keysize)
-	if err != nil {
-		return nil, errors.New("Can't get random bytes")
-	}
-	sealed, err := tao.Parent().Seal(unsealed, tao.SealPolicyDefault)
-	if err != nil {
-		return nil, errors.New("Can't seal random bytes")
-	}
-	ioutil.WriteFile(path.Join(dir, "sealedsymmetrickey"), sealed, os.ModePerm)
-	return unsealed, nil
-}
-
-func InitializeSealedSigningKey(caAddr, dir string, t tao.Tao, domain tao.Domain) (*tao.Keys, error) {
-	log.Printf("InitializeSealedSigningKey\n")
-	k, derCert, err := CreateSigningKey(t)
-	if err != nil {
-		log.Printf("fileproxy: CreateSigningKey failed with error %s\n", err)
-		return nil, err
-	}
-	if derCert == nil {
-		log.Printf("fileproxy: CreateSigningKey failed, no dercert\n")
-		return nil, errors.New("No DER cert")
-	}
-	na, err := RequestKeyNegoAttestation("tcp", caAddr, k, domain.Keys.VerifyingKey)
-	if err != nil {
-		log.Printf("fileproxy: error from taonet.RequestTruncatedAttestation\n")
-		return nil, err
-	}
-	if na == nil {
-		return nil, errors.New("tao returned nil attestation")
-	}
-	k.Delegation = na
-	pa, _ := auth.UnmarshalForm(na.SerializedStatement)
-	var saysStatement *auth.Says
-	if ptr, ok := pa.(*auth.Says); ok {
-		saysStatement = ptr
-	} else if val, ok := pa.(auth.Says); ok {
-		saysStatement = &val
-	}
-	sf, ok := saysStatement.Message.(auth.Speaksfor)
-	if ok != true {
-		return nil, errors.New("says doesnt have speaksfor message")
-	}
-	kprin, ok := sf.Delegate.(auth.Term)
-	if ok != true {
-		return nil, errors.New("speaksfor message doesnt have Delegate")
-	}
-	newCert := auth.Bytes(kprin.(auth.Bytes))
-	k.Cert, err = x509.ParseCertificate(newCert)
-	if err != nil {
-		log.Printf("can't parse returned certificate", err)
-		log.Printf("\n")
-		return nil, err
-	}
-	signingKeyBlob, err := tao.MarshalSignerDER(k.SigningKey)
-	if err != nil {
-		return nil, errors.New("Can't produce signing key blob")
-	}
-	sealedSigningKey, err := t.Seal(signingKeyBlob, tao.SealPolicyDefault)
-	if err != nil {
-		return nil, errors.New("Can't seal signing key")
-	}
-	ssignk := path.Join(dir, "sealedsigningKey")
-	scert := path.Join(dir, "signerCert")
-	dblob := path.Join(dir, "delegationBlob")
-	err = ioutil.WriteFile(ssignk, sealedSigningKey, os.ModePerm)
-	if err != nil {
-		return nil, err
-	}
-	err = ioutil.WriteFile(scert, newCert, os.ModePerm)
-	if err != nil {
-		return nil, err
-	}
-	delegateBlob, err := proto.Marshal(k.Delegation)
-	if err != nil {
-		return nil, errors.New("Can't seal random bytes")
-	}
-	err = ioutil.WriteFile(dblob, delegateBlob, os.ModePerm)
-	if err != nil {
-		return nil, err
-	}
-	return k, nil
-}
-
-func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte, delegateBlob []byte) (*tao.Keys, error) {
-	log.Printf("SigningKeyFromBlob\n")
-	k := &tao.Keys{}
-	cert, err := x509.ParseCertificate(certBlob)
-	if err != nil {
-		return nil, err
-	}
-	k.Cert = cert
-	k.Delegation = new(tao.Attestation)
-	err = proto.Unmarshal(delegateBlob, k.Delegation)
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("SigningKeyFromBlob: unmarshaled\n")
-	signingKeyBlob, policy, err := tao.Parent().Unseal(sealedKeyBlob)
-	if err != nil {
-		log.Printf("fileproxy: signingkey unsealing error: %s\n", err)
-	}
-	if policy != tao.SealPolicyDefault {
-		log.Printf("fileproxy: unexpected policy on unseal\n")
-	}
-	log.Printf("fileproxy: Unsealed Signing Key blob: %x\n", signingKeyBlob)
-	k.SigningKey, err = tao.UnmarshalSignerDER(signingKeyBlob)
-	k.Cert = cert
-	return k, err
 }
 
 const bufferSize = 2048

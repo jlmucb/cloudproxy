@@ -162,7 +162,7 @@ func main() {
 	if err != nil {
 		log.Fatalln("fileserver: couldn't get the file encryption keys")
 	}
-	fileproxy.ZeroBytes(symKeys)
+	tao.ZeroBytes(symKeys)
 
 	progPolicy := fileproxy.NewProgramPolicy(policyCert, taoName.String(), fsKeys, symKeys, fsKeys.Cert.Raw)
 

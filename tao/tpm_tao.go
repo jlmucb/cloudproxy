@@ -255,8 +255,8 @@ func (tt *TPMTao) Seal(data []byte, policy string) (sealed []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	defer zeroBytes(crypter.aesKey)
-	defer zeroBytes(crypter.hmacKey)
+	defer ZeroBytes(crypter.aesKey)
+	defer ZeroBytes(crypter.hmacKey)
 
 	c, err := crypter.Encrypt(data)
 	if err != nil {
@@ -267,13 +267,13 @@ func (tt *TPMTao) Seal(data []byte, policy string) (sealed []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	defer zeroBytes(ck.Key)
+	defer ZeroBytes(ck.Key)
 
 	ckb, err := proto.Marshal(ck)
 	if err != nil {
 		return nil, err
 	}
-	defer zeroBytes(ckb)
+	defer ZeroBytes(ckb)
 
 	s, err := tpm.Seal(tt.tpmfile, tt.locality, tt.pcrNums, ckb, tt.srkAuth[:])
 	if err != nil {
@@ -301,20 +301,20 @@ func (tt *TPMTao) Unseal(sealed []byte) (data []byte, policy string, err error) 
 	if err != nil {
 		return nil, "", err
 	}
-	defer zeroBytes(unsealed)
+	defer ZeroBytes(unsealed)
 
 	var ck CryptoKey
 	if err := proto.Unmarshal(unsealed, &ck); err != nil {
 		return nil, "", err
 	}
-	defer zeroBytes(ck.Key)
+	defer ZeroBytes(ck.Key)
 
 	crypter, err := UnmarshalCrypterProto(&ck)
 	if err != nil {
 		return nil, "", err
 	}
-	defer zeroBytes(crypter.aesKey)
-	defer zeroBytes(crypter.hmacKey)
+	defer ZeroBytes(crypter.aesKey)
+	defer ZeroBytes(crypter.hmacKey)
 
 	m, err := crypter.Decrypt(h.EncryptedData)
 	if err != nil {

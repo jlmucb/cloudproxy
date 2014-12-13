@@ -97,10 +97,13 @@ func HandleCARequest(conn net.Conn, s *tao.Signer, guard tao.Guard) {
 	return
 }
 
-// RequestTruncatedAttestation connects to a CA instance, sends the attestation
-// for an X.509 certificate, and gets back a truncated attestation with a new
-// principal name based on the policy key.
-func RequestTruncatedAttestation(network, addr string, keys *tao.Keys, v *tao.Verifier) (*tao.Attestation, error) {
+// RequestAttestation connects to a CA and gets an attestation back from it.
+// This might be a truncated attestation (in which case, the right next step is
+// to verify the truncated attesation, as in RequestTruncatedAttestation), or it
+// might be some other kind of attestation (like a KeyNegoServer attestation,
+// which provides a policy-key-signed X.509 certificate for the auth name of
+// this program).
+func RequestAttestation(network, addr string, keys *tao.Keys, v *tao.Verifier) (*tao.Attestation, error) {
 	if keys.Cert == nil {
 		return nil, fmt.Errorf("client: can't dial with an empty client certificate\n")
 	}
@@ -130,6 +133,27 @@ func RequestTruncatedAttestation(network, addr string, keys *tao.Keys, v *tao.Ve
 		return nil, err
 	}
 
+	ok, err := v.Verify(a.SerializedStatement, tao.AttestationSigningContext, a.Signature)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("invalid attestation signature from Tao CA")
+	}
+
+	return &a, nil
+
+}
+
+// RequestTruncatedAttestation connects to a CA instance, sends the attestation
+// for an X.509 certificate, and gets back a truncated attestation with a new
+// principal name based on the policy key.
+func RequestTruncatedAttestation(network, addr string, keys *tao.Keys, v *tao.Verifier) (*tao.Attestation, error) {
+	a, err := RequestAttestation(network, addr, keys, v)
+	if err != nil {
+		return nil, err
+	}
+
 	truncStmt, err := auth.UnmarshalForm(a.SerializedStatement)
 	if err != nil {
 		return nil, err
@@ -144,13 +168,5 @@ func RequestTruncatedAttestation(network, addr string, keys *tao.Keys, v *tao.Ve
 		return nil, fmt.Errorf("the statement returned by the TaoCA was different than what we expected")
 	}
 
-	ok, err := v.Verify(a.SerializedStatement, tao.AttestationSigningContext, a.Signature)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, fmt.Errorf("invalid attestation signature from Tao CA")
-	}
-
-	return &a, nil
+	return a, nil
 }

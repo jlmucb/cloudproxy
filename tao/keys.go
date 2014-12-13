@@ -203,7 +203,7 @@ func marshalECDSA_SHA_SigningKeyV1(k *ecdsa.PrivateKey) *ECDSA_SHA_SigningKeyV1 
 // MarshalSignerProto encodes a signing key as a CryptoKey protobuf message.
 func MarshalSignerProto(s *Signer) (*CryptoKey, error) {
 	m := marshalECDSA_SHA_SigningKeyV1(s.ec)
-	defer zeroBytes(m.EcPrivate)
+	defer ZeroBytes(m.EcPrivate)
 
 	b, err := proto.Marshal(m)
 	if err != nil {
@@ -285,7 +285,7 @@ func UnmarshalSignerProto(ck *CryptoKey) (*Signer, error) {
 	}
 
 	k := new(ECDSA_SHA_SigningKeyV1)
-	defer zeroBytes(k.EcPrivate)
+	defer ZeroBytes(k.EcPrivate)
 	if err := proto.Unmarshal(ck.Key, k); err != nil {
 		return nil, err
 	}
@@ -643,7 +643,7 @@ func marshalAES_CTR_HMAC_SHA_CryptingKeyV1(c *Crypter) *AES_CTR_HMAC_SHA_Cryptin
 func MarshalCrypterProto(c *Crypter) (*CryptoKey, error) {
 	k := marshalAES_CTR_HMAC_SHA_CryptingKeyV1(c)
 
-	// Note that we don't need to call zeroBytes on k.AesPrivate or
+	// Note that we don't need to call ZeroBytes on k.AesPrivate or
 	// k.HmacPrivate, since they're just slice references to the underlying
 	// keys.
 	m, err := proto.Marshal(k)
@@ -698,7 +698,7 @@ func (c *Crypter) CreateHeader() (*CryptoHeader, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer zeroBytes(b)
+	defer ZeroBytes(b)
 
 	h := sha1.Sum(b)
 	ch := &CryptoHeader{
@@ -744,7 +744,7 @@ func marshalHMAC_SHA_DerivingKeyV1(d *Deriver) *HMAC_SHA_DerivingKeyV1 {
 func MarshalDeriverProto(d *Deriver) (*CryptoKey, error) {
 	k := marshalHMAC_SHA_DerivingKeyV1(d)
 
-	// Note that we don't need to call zeroBytes on k.HmacPrivate since
+	// Note that we don't need to call ZeroBytes on k.HmacPrivate since
 	// it's just a slice reference to the underlying keys.
 	m, err := proto.Marshal(k)
 	if err != nil {
@@ -849,8 +849,8 @@ func (k *Keys) DelegationPath() string {
 	return path.Join(k.dir, "delegation")
 }
 
-// zeroBytes clears the bytes in a slice.
-func zeroBytes(b []byte) {
+// ZeroBytes clears the bytes in a slice.
+func ZeroBytes(b []byte) {
 	for i := range b {
 		b[i] = 0
 	}
@@ -983,7 +983,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 				if err != nil {
 					return nil, err
 				}
-				defer zeroBytes(data)
+				defer ZeroBytes(data)
 
 				var cks CryptoKeyset
 				if err = proto.Unmarshal(data, &cks); err != nil {
@@ -1028,7 +1028,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 				if err != nil {
 					return nil, err
 				}
-				defer zeroBytes(m)
+				defer ZeroBytes(m)
 
 				enc, err := PBEEncrypt(m, password)
 				if err != nil {
@@ -1066,7 +1066,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 				if err != nil {
 					return nil, err
 				}
-				defer zeroBytes(p)
+				defer ZeroBytes(p)
 
 				err = k.loadCert()
 				if err != nil {
@@ -1088,7 +1088,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 				if err != nil {
 					return nil, err
 				}
-				defer zeroBytes(p)
+				defer ZeroBytes(p)
 
 				pb, err := x509.EncryptPEMBlock(rand.Reader, "EC PRIVATE KEY", p, password, x509.PEMCipherAES128)
 				if err != nil {
@@ -1200,11 +1200,11 @@ func PBEEncrypt(plaintext, password []byte) ([]byte, error) {
 
 	// 128-bit AES key.
 	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
-	defer zeroBytes(aesKey)
+	defer ZeroBytes(aesKey)
 
 	// 64-byte HMAC-SHA256 key.
 	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
-	defer zeroBytes(hmacKey)
+	defer ZeroBytes(hmacKey)
 	c := &Crypter{aesKey, hmacKey}
 
 	// Note that we're abusing the PBEData format here, since the IV and
@@ -1245,11 +1245,11 @@ func PBEDecrypt(ciphertext, password []byte) ([]byte, error) {
 
 	// 128-bit AES key.
 	aesKey := pbkdf2.Key(password, pbed.Salt[:8], int(*pbed.Iterations), 16, sha256.New)
-	defer zeroBytes(aesKey)
+	defer ZeroBytes(aesKey)
 
 	// 64-byte HMAC-SHA256 key.
 	hmacKey := pbkdf2.Key(password, pbed.Salt[8:], int(*pbed.Iterations), 64, sha256.New)
-	defer zeroBytes(hmacKey)
+	defer ZeroBytes(hmacKey)
 	c := &Crypter{aesKey, hmacKey}
 
 	// Note that we're abusing the PBEData format here, since the IV and
@@ -1350,7 +1350,7 @@ func NewOnDiskTaoSealedKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys
 		if err != nil {
 			return nil, err
 		}
-		defer zeroBytes(data)
+		defer ZeroBytes(data)
 
 		if p != policy {
 			return nil, newError("invalid policy from Unseal")
@@ -1406,7 +1406,7 @@ func NewOnDiskTaoSealedKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys
 		if err != nil {
 			return nil, err
 		}
-		defer zeroBytes(m)
+		defer ZeroBytes(m)
 
 		enc, err := t.Seal(m, policy)
 		if err != nil {
@@ -1484,7 +1484,7 @@ func (k *Keys) NewSecret(file string, length int) ([]byte, error) {
 	}
 
 	if len(dec) != length {
-		zeroBytes(dec)
+		ZeroBytes(dec)
 		return nil, newError("The decrypted value had length %d, but it should have had length %d", len(dec), length)
 	}
 

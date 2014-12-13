@@ -138,7 +138,7 @@ func (lh *LinuxHost) GetSharedSecret(child *LinuxHostChild, n int, policy string
 
 // Seal encrypts data for the child. This call also zeroes the data parameter.
 func (lh *LinuxHost) Seal(child *LinuxHostChild, data []byte, policy string) ([]byte, error) {
-	defer zeroBytes(data)
+	defer ZeroBytes(data)
 	lhsb := &LinuxHostSealedBundle{
 		Policy: proto.String(policy),
 		Data:   data,
@@ -164,7 +164,7 @@ func (lh *LinuxHost) Seal(child *LinuxHostChild, data []byte, policy string) ([]
 	if err != nil {
 		return nil, err
 	}
-	defer zeroBytes(m)
+	defer ZeroBytes(m)
 
 	return lh.taoHost.Encrypt(m)
 }
@@ -175,7 +175,7 @@ func (lh *LinuxHost) Unseal(child *LinuxHostChild, sealed []byte) ([]byte, strin
 	if err != nil {
 		return nil, "", err
 	}
-	defer zeroBytes(decrypted)
+	defer ZeroBytes(decrypted)
 
 	var lhsb LinuxHostSealedBundle
 	if err := proto.Unmarshal(decrypted, &lhsb); err != nil {

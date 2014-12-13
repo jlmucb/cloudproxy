@@ -548,7 +548,7 @@ func (m *ResourceMaster) certToAuthenticatedName(cert []byte) (string, error) {
 	if len(cert) == 0 {
 		return "", fmt.Errorf("couldn't parse a null cert")
 	}
-	name, err := PrincipalNameFromDERCert(cert)
+	name, err := principalNameFromDERCert(cert)
 	if err != nil {
 		return "", err
 	}
@@ -593,7 +593,7 @@ func (m *ResourceMaster) RunMessageLoop(ms *util.MessageStream, programPolicy *P
 				continue
 			}
 
-			owner, err := PrincipalNameFromDERCert(cert)
+			owner, err := principalNameFromDERCert(cert)
 			if err != nil {
 				log.Printf("Couldn't get the owner name from the cert: %s\n", err)
 				continue
@@ -782,4 +782,13 @@ func AuthenticatePrincipal(ms *util.MessageStream, key *tao.Keys, derCert []byte
 		return fmt.Errorf("the signed nonce failed verification")
 	}
 	return nil
+}
+
+func principalNameFromDERCert(derCert []byte) (string, error) {
+	cert, err := x509.ParseCertificate(derCert)
+	if err != nil {
+		return "", err
+	}
+	cn := cert.Subject.CommonName
+	return cn, nil
 }

@@ -1,3 +1,0 @@
-#
-PROG_DIR=/Users/manferdelli/src/github.com/jlmucb/cloudproxy/apps/fileproxy/keynegoserver
-linux_host -path="../hostdomain/linux_tao_host" -run -- $PROG_DIR/keynegoserver 

@@ -26,7 +26,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"path"
 
 	"github.com/jlmucb/cloudproxy/apps/fileproxy"
 	"github.com/jlmucb/cloudproxy/tao"
@@ -120,18 +119,17 @@ func main() {
 	ms := util.NewMessageStream(conn)
 
 	// Authenticate user principal(s).
-	keyDir := path.Join(*fileClientPath, *fileClientKeyPath)
-	if _, err := os.Stat(keyDir); err != nil {
-		log.Fatalf("fileclient: couldn't get user credentials from %s: %s\n", keyDir, err)
+	if _, err := os.Stat(*fileClientKeyPath); err != nil {
+		log.Fatalf("fileclient: couldn't get user credentials from %s: %s\n", *fileClientKeyPath, err)
 	}
 
 	// This method won't generate the right certificate in general for
 	// signing, which is why we check first to make sure the right directory
 	// already exists. But it will successfully read the signer and the
 	// certificate.
-	userKeys, err := tao.NewOnDiskPBEKeys(tao.Signing, []byte(*fileClientPassword), keyDir, nil)
+	userKeys, err := tao.NewOnDiskPBEKeys(tao.Signing, []byte(*fileClientPassword), *fileClientKeyPath, nil)
 	if err != nil {
-		log.Fatalf("Couldn't read the keys from %s: %s\n", keyDir, err)
+		log.Fatalf("Couldn't read the keys from %s: %s\n", *fileClientKeyPath, err)
 	}
 	userCert := userKeys.Cert.Raw
 

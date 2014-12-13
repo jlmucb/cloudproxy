@@ -54,7 +54,7 @@ var country = flag.String("country", "US", "Country for the cert")
 var org = flag.String("organization", "Google", "Organization for the cert")
 var ouName = flag.String("user", "fileproxy-user", "OU")
 var serialNumber = flag.Int("serial_number", 43, "serial number")
-var keyPath = flag.String("key_path", "keys", "key path")
+var keyPath = flag.String("key_path", "usercreds", "key path")
 var userKeyPass = flag.String("key_pass", "BogusPass", "password for the user credential")
 
 // arbitrary policy changes

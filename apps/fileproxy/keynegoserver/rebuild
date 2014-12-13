@@ -1,8 +1,0 @@
-#
-echo "rebuilding fileproxy"
-cd ..
-go build ...
-cd keynegoserver
-echo "rebuilding keynegoserver"
-go build keynegoserver.go
-echo "done"

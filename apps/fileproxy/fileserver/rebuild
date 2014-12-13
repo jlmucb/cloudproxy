@@ -1,8 +1,0 @@
-#
-echo "rebuilding fileproxy"
-cd ..
-go build ...
-cd fileserver
-echo "rebuilding fileserver"
-go build fileserver.go
-echo "done"

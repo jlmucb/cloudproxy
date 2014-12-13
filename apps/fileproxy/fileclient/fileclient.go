@@ -23,9 +23,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
+	"path"
 
 	"github.com/jlmucb/cloudproxy/apps/fileproxy"
 	"github.com/jlmucb/cloudproxy/tao"
@@ -35,7 +37,6 @@ import (
 )
 
 func main() {
-
 	caAddr := flag.String("caAddr", "localhost:8124", "The address of the CA for setting up a certificate signed by the policy key")
 	hostcfg := flag.String("hostconfig", "tao.config", "path to host tao configuration")
 	serverHost := flag.String("host", "localhost", "address for client/server")
@@ -118,6 +119,25 @@ func main() {
 	}
 	ms := util.NewMessageStream(conn)
 
+	// Before doing any tests, create a simple file to send to the server.
+	testContents := `
+This is a simple file to test
+It has some new lines
+And it doesn't have very much content.
+	`
+
+	if _, err := os.Stat(*fileClientFilePath); err != nil {
+		if err := os.MkdirAll(*fileClientFilePath, 0700); err != nil {
+			log.Fatalf("fileclient: couldn't create the file storage path %s: %s", *fileClientFilePath, err)
+		}
+	}
+
+	sentFileName := *testFile
+	sentFilePath := path.Join(*fileClientFilePath, sentFileName)
+	if err := ioutil.WriteFile(sentFilePath, []byte(testContents), 0600); err != nil {
+		log.Fatalf("fileclient: couldn't create a test file at %s: %s", sentFilePath, err)
+	}
+
 	// Authenticate user principal(s).
 	if _, err := os.Stat(*fileClientKeyPath); err != nil {
 		log.Fatalf("fileclient: couldn't get user credentials from %s: %s\n", *fileClientKeyPath, err)
@@ -139,7 +159,6 @@ func main() {
 	}
 
 	// Create a file.
-	sentFileName := *testFile
 	if err = fileproxy.CreateFile(ms, userCert, sentFileName); err != nil {
 		log.Fatalln("fileclient: can't create file:", err)
 	}

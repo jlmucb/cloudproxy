@@ -33,12 +33,13 @@ import (
 	"path"
 	"time"
 
-	"code.google.com/p/go.crypto/hkdf"
-	"code.google.com/p/go.crypto/pbkdf2"
 	"code.google.com/p/goprotobuf/proto"
 
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	"github.com/jlmucb/cloudproxy/util"
+
+	"golang.org/x/crypto/hkdf"
+	"golang.org/x/crypto/pbkdf2"
 )
 
 // A KeyType represent the type(s) of keys held by a Keys struct.

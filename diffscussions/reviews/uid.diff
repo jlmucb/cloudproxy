@@ -1,0 +1,432 @@
+#* 
+#* author: Tom Roeder
+#* email: tmroeder@google.com
+#* date: 2014-11-07T14:27:18-0800
+#* 
+#- Support changing UID.
+#- 
+#- This changes the UID, but the program can't exec yet, since it doesn't have
+#- permissions on the file to exec. So, the next step is to change the permissions
+#- in the temp directory.
+#- 
+#- 
+#- Add a new ServerCodec that injects UIDs.  #- 
+#- This commit adds a new ServerCodec that uses reflection to inject UID values
+#- that can be picked up using SO_PEERCRED over Unix domain sockets. It is
+#- compatible with clients using the protorpc client codec over unix domain
+#- sockets. This commit also adds a simple test client and server that use this
+#- codec.
+#- 
+#- 
+#- Change the LinuxHostAdmin code to get the UID.
+#- 
+#- This commit changes the admin RPC code to use the new ServerCodec to pick up the
+#- UID from clients. It also changes the code to insist on using stream-oriented
+#- unix domain sockets, since these are the only kind of net.Listeners that support
+#- getting peer credentials. The admin code doesn't yet use the UID; it just prints
+#- it out.
+#- 
+#- 
+#- Add support for GID.
+#- 
+#- This commit adds support for injecting GID as well as UID in the new protorpc
+#- ServerCodec and fixes the demo and LinuxHostAdmin to use it.
+#- 
+#- 
+#- Use the UID/GID pair to start a hosted programs.
+#- 
+#- This commit adds the UID/GID support to LinuxProcessFactory. Now the start.sh
+#- script (and LinuxHost) needs to be run as root so it can change UID/GID when it
+#- starts the Process. Otherwise, it will give an error when it tries to start a
+#- hosted program.
+#- 
+#- 
+#- Remove superfluous code.
+#- 
+#- 
+diff --git a/apps/demo/demo.go b/apps/demo/demo.go
+index a260305..f2ecf7a 100644
+--- a/apps/demo/demo.go
++++ b/apps/demo/demo.go
+@@ -357,6 +357,8 @@ func hostTaoDemo() error {
+ 
+ func main() {
+ 	flag.Parse()
++	r := bufio.NewReader(os.Stdin)
++	r.ReadLine()
+ 	serverAddr = *serverHost + ":" + *serverPort
+ 	switch *demoAuth {
+ 	case "tcp", "tls", "tao":
+diff --git a/apps/linux_host/main.go b/apps/linux_host/main.go
+index 660a780..9d4756f 100644
+--- a/apps/linux_host/main.go
++++ b/apps/linux_host/main.go
+@@ -125,10 +125,13 @@ func main() {
+ 		} else if *show {
+ 			fmt.Printf("export GOOGLE_TAO_LINUX='%v'\n", host.TaoHostName())
+ 		} else /* service */ {
+-			sock, err := net.Listen("unix", sockPath)
++			uaddr, err := net.ResolveUnixAddr("unix", sockPath)
++			fatalIf(err)
++			sock, err := net.ListenUnix("unix", uaddr)
+ 			fatalIf(err)
+ 			defer sock.Close()
+ 			fmt.Fprintf(verbose, "Linux Tao Service started and waiting for requests\n")
++			err = os.Chmod(sockPath, 0777)
+ 			fatalIf(err)
+ 			tao.NewLinuxHostAdminServer(host).Serve(sock)
+ 		}
+diff --git a/tao/linux_host.go b/tao/linux_host.go
+index 42919cc..74ddd03 100644
+--- a/tao/linux_host.go
++++ b/tao/linux_host.go
+@@ -210,7 +210,7 @@ func (lh *LinuxHost) Attest(child *LinuxHostChild, issuer *auth.Prin, time, expi
+ }
+ 
+ // StartHostedProgram starts a new hosted program.
+-func (lh *LinuxHost) StartHostedProgram(path string, args []string) (auth.SubPrin, int, error) {
++func (lh *LinuxHost) StartHostedProgram(path string, args []string, uid, gid int) (auth.SubPrin, int, error) {
+ 	lh.idm.Lock()
+ 	id := lh.nextChildID
+ 	if lh.nextChildID != 0 {
+@@ -220,7 +220,7 @@ func (lh *LinuxHost) StartHostedProgram(path string, args []string) (auth.SubPri
+ 	}
+ 	lh.idm.Unlock()
+ 
+-	subprin, temppath, err := lh.childFactory.MakeHostedProgramSubprin(id, path)
++	subprin, temppath, err := lh.childFactory.MakeHostedProgramSubprin(id, path, uid, gid)
+ 	if err != nil {
+ 		return auth.SubPrin{}, 0, err
+ 	}
+@@ -237,7 +237,7 @@ func (lh *LinuxHost) StartHostedProgram(path string, args []string) (auth.SubPri
+ 		return auth.SubPrin{}, 0, newError("Hosted program %s denied authorization to execute on host %s", subprin, hostName)
+ 	}
+ 
+-	channel, cmd, err := lh.childFactory.ForkHostedProgram(temppath, args)
++	channel, cmd, err := lh.childFactory.ForkHostedProgram(temppath, args, uid, gid)
+ 	if err != nil {
+ 		return auth.SubPrin{}, 0, err
+ 	}
+diff --git a/tao/linux_host_admin_rpc.go b/tao/linux_host_admin_rpc.go
+index 3b95249..aaa02d0 100644
+--- a/tao/linux_host_admin_rpc.go
++++ b/tao/linux_host_admin_rpc.go
+@@ -19,8 +19,10 @@ package tao
+ 
+ import (
+ 	"io"
++	"log"
+ 	"net"
+ 	"net/rpc"
++	"syscall"
+ 
+ 	"code.google.com/p/goprotobuf/proto"
+ 
+@@ -129,27 +131,60 @@ func NewLinuxHostAdminServer(host *LinuxHost) LinuxHostAdminServer {
+ }
+ 
+ // Serve listens on sock for new connections and services them.
+-func (server LinuxHostAdminServer) Serve(sock net.Listener) error {
++func (server LinuxHostAdminServer) Serve(sock *net.UnixListener) error {
++	// Set the socket to allow peer credentials to be passed
++	sockFile, err := sock.File()
++	if err != nil {
++		return err
++	}
++	err = syscall.SetsockoptInt(int(sockFile.Fd()), syscall.SOL_SOCKET, syscall.SO_PASSCRED, 1 /* true */)
++	if err != nil {
++		sockFile.Close()
++		return err
++	}
++	sockFile.Close()
++
+ 	for {
+-		conn, err := sock.Accept()
++		conn, err := sock.AcceptUnix()
++		if err != nil {
++			return err
++		}
++		connFile, err := conn.File()
++		if err != nil {
++			return err
++		}
++		ucred, err := syscall.GetsockoptUcred(int(connFile.Fd()), syscall.SOL_SOCKET, syscall.SO_PEERCRED)
+ 		if err != nil {
++			connFile.Close()
+ 			return err
+ 		}
++		connFile.Close()
++
+ 		s := rpc.NewServer()
+ 		err = s.RegisterName("LinuxHost", linuxHostAdminServerStub(server))
+ 		if err != nil {
+ 			return err
+ 		}
+-		go s.ServeCodec(protorpc.NewServerCodec(conn))
++		go s.ServeCodec(protorpc.NewUidServerCodec(conn, int(ucred.Uid), int(ucred.Gid)))
+ 	}
+ }
+ 
++// LinuxHostAdminRequest is the type used to get the UID,GID of a caller sending
++// a LinuxHostAdminRPCRequest. A server must use this type if it uses
++// NewServerUidCodec to create its ServerCodec for net/rpc.
++type LinuxHostAdminRequest struct {
++	Uid     int
++	Gid     int
++	Request *LinuxHostAdminRPCRequest
++}
++
+ // StartHostedProgram is the server stub for LinuxHost.StartHostedProgram.
+-func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
+-	if r.Path == nil {
++func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminRequest, s *LinuxHostAdminRPCResponse) error {
++	log.Printf("Starting hosted program with uid %d, gid %d\n", r.Uid, r.Gid)
++	if r.Request.Path == nil {
+ 		return newError("missing path")
+ 	}
+-	subprin, pid, err := server.lh.StartHostedProgram(*r.Path, r.Args)
++	subprin, pid, err := server.lh.StartHostedProgram(*r.Request.Path, r.Request.Args, r.Uid, r.Gid)
+ 	if err != nil {
+ 		return err
+ 	}
+@@ -162,8 +197,8 @@ func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminRPCRe
+ }
+ 
+ // StopHostedProgram is the server stub for LinuxHost.StopHostedProgram.
+-func (server linuxHostAdminServerStub) StopHostedProgram(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
+-	subprin, err := auth.UnmarshalSubPrin(r.Subprin)
++func (server linuxHostAdminServerStub) StopHostedProgram(r *LinuxHostAdminRequest, s *LinuxHostAdminRPCResponse) error {
++	subprin, err := auth.UnmarshalSubPrin(r.Request.Subprin)
+ 	if err != nil {
+ 		return err
+ 	}
+@@ -171,7 +206,7 @@ func (server linuxHostAdminServerStub) StopHostedProgram(r *LinuxHostAdminRPCReq
+ }
+ 
+ // ListHostedPrograms is the server stub for LinuxHost.ListHostedPrograms.
+-func (server linuxHostAdminServerStub) ListHostedPrograms(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
++func (server linuxHostAdminServerStub) ListHostedPrograms(r *LinuxHostAdminRequest, s *LinuxHostAdminRPCResponse) error {
+ 	names, pids, err := server.lh.ListHostedPrograms()
+ 	if err != nil {
+ 		return err
+@@ -190,8 +225,8 @@ func (server linuxHostAdminServerStub) ListHostedPrograms(r *LinuxHostAdminRPCRe
+ }
+ 
+ // KillHostedProgram is the server stub for LinuxHost.KillHostedProgram.
+-func (server linuxHostAdminServerStub) KillHostedProgram(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
+-	subprin, err := auth.UnmarshalSubPrin(r.Subprin)
++func (server linuxHostAdminServerStub) KillHostedProgram(r *LinuxHostAdminRequest, s *LinuxHostAdminRPCResponse) error {
++	subprin, err := auth.UnmarshalSubPrin(r.Request.Subprin)
+ 	if err != nil {
+ 		return err
+ 	}
+@@ -199,7 +234,7 @@ func (server linuxHostAdminServerStub) KillHostedProgram(r *LinuxHostAdminRPCReq
+ }
+ 
+ // TaoHostName is the server stub for LinuxHost.TaoHostName.
+-func (server linuxHostAdminServerStub) TaoHostName(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
++func (server linuxHostAdminServerStub) TaoHostName(r *LinuxHostAdminRequest, s *LinuxHostAdminRPCResponse) error {
+ 	prin := server.lh.TaoHostName()
+ 	s.Prin = auth.Marshal(prin)
+ 	return nil
+diff --git a/tao/linux_process_factory.go b/tao/linux_process_factory.go
+index 00bbe19..9d2361c 100644
+--- a/tao/linux_process_factory.go
++++ b/tao/linux_process_factory.go
+@@ -22,6 +22,7 @@ import (
+ 	"os/exec"
+ 	"path"
+ 	"strings"
++	"syscall"
+ 
+ 	"github.com/jlmucb/cloudproxy/tao/auth"
+ 	"github.com/jlmucb/cloudproxy/util"
+@@ -50,8 +51,9 @@ func FormatHostedProgramSubprin(id uint, hash []byte) auth.SubPrin {
+ // MakeHostedProgramSubprin computes the hash of a program to get its
+ // hosted-program subprincipal. In the process, it copies the program to a
+ // temporary file controlled by this code and returns the path to that new
+-// binary.
+-func (LinuxProcessFactory) MakeHostedProgramSubprin(id uint, prog string) (subprin auth.SubPrin, temppath string, err error) {
++// binary. We currently don't add the UID and GID information to the name, since
++// existing policies don't make use of it.
++func (LinuxProcessFactory) MakeHostedProgramSubprin(id uint, prog string, uid, gid int) (subprin auth.SubPrin, temppath string, err error) {
+ 	// To avoid a time-of-check-to-time-of-use error, we copy the file
+ 	// bytes to a temp file as we read them. This temp-file path is
+ 	// returned so it can be used to start the program.
+@@ -59,6 +61,9 @@ func (LinuxProcessFactory) MakeHostedProgramSubprin(id uint, prog string) (subpr
+ 	if err != nil {
+ 		return
+ 	}
++	if err = os.Chmod(td, 0755); err != nil {
++		return
++	}
+ 
+ 	temppath = path.Join(td, "hosted_program")
+ 	tf, err := os.OpenFile(temppath, os.O_CREATE|os.O_RDWR, 0700)
+@@ -67,6 +72,10 @@ func (LinuxProcessFactory) MakeHostedProgramSubprin(id uint, prog string) (subpr
+ 		return
+ 	}
+ 
++	if err = tf.Chmod(0755); err != nil {
++		return
++	}
++
+ 	inf, err := os.Open(prog)
+ 	defer inf.Close()
+ 	if err != nil {
+@@ -86,7 +95,7 @@ func (LinuxProcessFactory) MakeHostedProgramSubprin(id uint, prog string) (subpr
+ }
+ 
+ // ForkHostedProgram uses a path and arguments to fork a new process.
+-func (LinuxProcessFactory) ForkHostedProgram(prog string, args []string) (io.ReadWriteCloser, *exec.Cmd, error) {
++func (LinuxProcessFactory) ForkHostedProgram(prog string, args []string, uid, gid int) (io.ReadWriteCloser, *exec.Cmd, error) {
+ 	// Get a pipe pair for communication with the child.
+ 	serverRead, clientWrite, err := os.Pipe()
+ 	if err != nil {
+@@ -116,15 +125,21 @@ func (LinuxProcessFactory) ForkHostedProgram(prog string, args []string) (io.Rea
+ 	}
+ 
+ 	channel := util.NewPairReadWriteCloser(serverRead, serverWrite)
++	spa := &syscall.SysProcAttr{
++		Credential: &syscall.Credential{
++			Uid: uint32(uid),
++			Gid: uint32(gid),
++		},
++	}
+ 	cmd := &exec.Cmd{
+-		Path:       prog,
+-		Args:       args,
+-		Stdin:      os.Stdin,
+-		Stdout:     os.Stdout,
+-		Stderr:     os.Stderr,
+-		Env:        env,
+-		ExtraFiles: []*os.File{clientRead, clientWrite}, // fd 3, fd 4
+-		// TODO(tmroeder): change the user of the hosted program here.
++		Path:        prog,
++		Args:        args,
++		Stdin:       os.Stdin,
++		Stdout:      os.Stdout,
++		Stderr:      os.Stderr,
++		Env:         env,
++		ExtraFiles:  []*os.File{clientRead, clientWrite}, // fd 3, fd 4
++		SysProcAttr: spa,
+ 	}
+ 
+ 	if err := cmd.Start(); err != nil {
+diff --git a/util/protorpc/protouidrpc.go b/util/protorpc/protouidrpc.go
+new file mode 100644
+index 0000000..7fa3107
+--- /dev/null
++++ b/util/protorpc/protouidrpc.go
+@@ -0,0 +1,111 @@
++// Copyright (c) 2014, Google, Inc. All rights reserved.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package protorpc
++
++import (
++	"errors"
++	"io"
++	"net/rpc"
++	"reflect"
++	"sync"
++
++	"code.google.com/p/goprotobuf/proto"
++
++	"github.com/jlmucb/cloudproxy/util"
++)
++
++// serverUidCodec is a net/rpc server codec for protobuf messages. It holds a
++// uid and a gid that it inserts in request messages. So, valid receivers must
++// have a receiving type of the form
++//
++// type Example struct {
++//   uid     int
++//   gid     int
++//   message *RPCMessage
++// }
++//
++// Due to embedding, all the methods on serverUidCodec are the same as
++// serverCodec, except for ReadRequestBody, which is modified to reflect on the
++// type and inject the uid.
++type serverUidCodec struct {
++	uid int
++	gid int
++	*serverCodec
++}
++
++// NewUidServerCodec returns a new rpc.ServerCodec using protobuf messages on
++// conn and injecting the given uid and gid as the user and group ids for each
++// request on the connection.
++func NewUidServerCodec(conn io.ReadWriteCloser, uid, gid int) rpc.ServerCodec {
++	m, ok := conn.(*util.MessageStream)
++	if !ok {
++		m = util.NewMessageStream(conn)
++	}
++	return &serverUidCodec{uid, gid, &serverCodec{m, sync.Mutex{}}}
++}
++
++// ErrBadServerStruct specifies that the receiving struct didn't match
++// expectations. See serverUidCodec for those expectations.
++var ErrBadServerStruct = errors.New("protouidrpc: bad struct receiver")
++
++// ReadRequestBody receives and decodes a net/rpc request body x.
++func (c *serverUidCodec) ReadRequestBody(x interface{}) (err error) {
++	// As in serverCodec, fail if x is nil.
++	if x == nil {
++		// rpc.Server is telling us to read and discard the request, perhaps because
++		// response header was read successfully but contained an unexpected service
++		// method string. The client would have encoded an actual message body.
++		_, err = c.serverCodec.m.ReadString()
++		return
++	}
++
++	// Normally, panic/recover shouldn't be used for error handling like
++	// this. But some error cases out of our control can cause reflection to
++	// panic, like a struct that has unexported fields. Since we have to
++	// recover and not panic in that case, we simply walk the reflected data
++	// structures and let the panics happen if the struct format doesn't
++	// match our expectations.
++	defer func() {
++		if r := recover(); r != nil {
++			if e, ok := r.(error); ok {
++				err = e
++			} else if s, ok := r.(string); ok {
++				err = errors.New(s)
++			} else {
++				err = ErrBadServerStruct
++			}
++		}
++	}()
++
++	v := reflect.ValueOf(x)
++	vi := reflect.Indirect(v)
++	// Inject the uid
++	uidAddr, _ := vi.Field(0).Addr().Interface().(*int)
++	*uidAddr = c.uid
++
++	// Inject the gid
++	gidAddr, _ := vi.Field(1).Addr().Interface().(*int)
++	*gidAddr = c.gid
++
++	// Deserialize the protobuf into its field.
++	// We need a new value of this type, since pointer elements of structs
++	// are always nil by default.
++	allocated := reflect.New(vi.Field(2).Type().Elem()).Interface().(proto.Message)
++	if err = c.serverCodec.m.ReadMessage(allocated); err != nil {
++		return
++	}
++	vi.Field(2).Set(reflect.ValueOf(allocated))
++	return
++}

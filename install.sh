@@ -79,8 +79,8 @@ if [ -e "$test_dir" -a ! -d "$test_dir" ]; then
 fi
 mkdir -p "$test_dir"
 # canonicalize
-root_dir=$(readlink -e "$(dirname $0)")
-test_dir=$(readlink -e "$test_dir")
+root_dir="$(dirname $0)"
+test_dir="$test_dir"
 if [ "$verbose" == "yes" ]; then
 	echo "Installing tao test scripts into: $test_dir"
 fi
@@ -230,7 +230,7 @@ function cleanup()
 {
 	rm -f ${TAO_TEST}/logs/*
 	rm -rf ${TAO_TEST}/{*keys,linux_tao_host,acls,rules,tao.config}
-	sed -i '/^# BEGIN SETUP VARIABLES/,/^# END SETUP VARIABLES/d' ${tao_env}
+	sed -i.bak '/^# BEGIN SETUP VARIABLES/,/^# END SETUP VARIABLES/d' ${tao_env}
 	echo "# BEGIN SETUP VARIABLES" >> ${tao_env}
 	echo "# These variables come from ${TAO_TEST}/scripts/setup.sh" >> ${tao_env}
 	echo 'export GOOGLE_HOST_TAO=""' >> ${tao_env}
@@ -273,7 +273,7 @@ function setup()
 	# $GOOGLE_HOST_TAO # name of underlying host tao, i.e. the TPM (if any)
 	# GOOGLE_TAO_TPM, GOOGLE_TAO_PCRS, # more details about TPM (if any)
 	# and GOOGLE_TAO_LINUX # name of the LinuxHost
-	sed -i '/^# BEGIN SETUP VARIABLES/,/^# END SETUP VARIABLES/d' ${tao_env} 
+	sed -i.bak '/^# BEGIN SETUP VARIABLES/,/^# END SETUP VARIABLES/d' ${tao_env} 
 	echo "# BEGIN SETUP VARIABLES" >> ${tao_env}
 	echo "# These variables come from ${TAO_TEST}/scripts/setup.sh" >> ${tao_env}
 

@@ -1,5 +1,5 @@
 FROM scratch
-ADD tmp /tmp
+COPY . /
 ENV GOOGLE_HOST_TAO_TYPE unix
 ENV GOOGLE_HOST_TAO /tao
 WORKDIR .

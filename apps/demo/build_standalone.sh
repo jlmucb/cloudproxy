@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "Building standalone version of cloudproxy"
+CGO_ENABLED=0 go install -a -ldflags '-s' github.com/jlmucb/cloudproxy/...

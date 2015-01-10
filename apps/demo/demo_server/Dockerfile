@@ -1,5 +1,5 @@
 FROM scratch
-ADD tmp /tmp
+COPY . /
 EXPOSE 8123
 ENV GOOGLE_HOST_TAO_TYPE unix
 ENV GOOGLE_HOST_TAO /tao

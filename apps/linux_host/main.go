@@ -35,6 +35,7 @@ func main() {
 	hostPath := flag.String("path", "linux_tao_host", "Name of relative path to the location of linux host configuration")
 	rules := flag.String("rules", "rules", "Name of the rules file for auth")
 	quiet := flag.Bool("quiet", false, "Be more quiet.")
+	pathFile := flag.String("tmppath", "", "Write the path to the tmp configuration directory to this file if a filename is provided")
 
 	// Absent any flags indicating other options, the default configuration of
 	// linux_host runs in root mode with a fresh key (so with a soft Tao), and with
@@ -104,7 +105,6 @@ CommonName = testing`
 			log.Fatalf("Must provide a password for temporary keys")
 		}
 
-		fmt.Fprintf(verbose, "Initializing new configuration in: %s\n", absConfigPath)
 		var cfg tao.DomainConfig
 		cfg.Domain.Name = "testing"
 		cfg.X509Details.CommonName = "testing"
@@ -117,20 +117,28 @@ CommonName = testing`
 		if err != nil {
 			log.Fatalf("Couldn't get an absolute version of the config path %s: %s\n", *configPath, err)
 		}
-		fmt.Printf("absConfigPath = %s\n", absConfigPath)
 		dir = path.Dir(absConfigPath)
-		fmt.Printf("dir = %s\n", dir)
 	}
 
 	absHostPath := path.Join(dir, *hostPath)
 	sockPath := path.Join(absHostPath, "admin_socket")
-	fmt.Fprintf(verbose, "Admin socket: %s\n", sockPath)
+
+	// Check to see if this directory information should be written to a
+	// file.
+	if *pathFile != "" {
+		pf, err := os.OpenFile(*pathFile, os.O_RDWR, 0600)
+		if err != nil {
+			log.Fatalf("Couldn't open the provided temporary path file %s: %s\n", *pathFile, err)
+		}
+
+		fmt.Fprintf(pf, dir)
+		pf.Close()
+	}
 
 	absChannelSocketPath := path.Join(dir, *channelSocketPath)
 
 	switch *action {
 	case "init", "show", "start":
-		fmt.Fprintf(verbose, "Loading configuration from: %s\n", absConfigPath)
 		domain, err := tao.LoadDomain(absConfigPath, nil)
 		fatalIf(err)
 

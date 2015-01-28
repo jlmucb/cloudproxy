@@ -23,8 +23,8 @@ import (
 	"flag"
 	"fmt"
 	//"net"
-	"os"
 	"code.google.com/p/goprotobuf/proto"
+	"os"
 	//"strings"
 
 	"github.com/jlmucb/cloudproxy/tao"
@@ -37,7 +37,6 @@ var subprinRule = "(forall P: forall Hash: TrustedProgramHash(Hash) and Subprin(
 var argsRule = "(forall Y: forall P: forall S: MemberProgram(P) and TrustedArgs(S) and Subprin(Y, P, S) implies Authorized(Y, \"Execute\"))"
 var demoRule = "TrustedArgs(ext.Args(%s))"
 
-
 func doClient(domain *tao.Domain) {
 	// keys, err := tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Parent())
 	// cert, err := keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
@@ -49,7 +48,7 @@ func doClient(domain *tao.Domain) {
 // jlmtest
 
 func JlmTest() error {
-	if(tao.Hosted()) {
+	if tao.Parent() != nil {
 		fmt.Printf("I have a host\n")
 	} else {
 		fmt.Printf("I have no host\n")
@@ -112,27 +111,26 @@ func JlmTest() error {
 
 	// var childSubprin auth.Prin
 	// childSubprin= auth.SubPrin{auth.PrinExt{Name: "TestChild"}}
-	attest, err:= tao.Parent().Attest(nil, nil, nil, auth.Const(true))
-	if (err==nil) {
-		statement:= proto.CompactTextString(attest)
+	attest, err := tao.Parent().Attest(nil, nil, nil, auth.Const(true))
+	if err == nil {
+		statement := proto.CompactTextString(attest)
 		fmt.Printf("Attest worked\n%s\n", statement)
 	} else {
 		fmt.Printf("Attest failed\n")
 	}
-
 
 	return nil
 }
 
 func main() {
 	flag.Parse()
-	if !tao.Hosted() {
+	if tao.Parent() == nil {
 		fmt.Printf("can't continue: No host Tao available\n")
 		return
 	}
 
 	err := JlmTest()
-	if (err!=nil) {
+	if err != nil {
 		fmt.Printf("error from Jlmtest: %s\n", err.Error())
 	}
 	fmt.Printf("Done\n")

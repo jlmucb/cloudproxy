@@ -146,7 +146,7 @@ func (lpf *LinuxProcessFactory) Launch(prog string, args []string) (io.ReadWrite
 		extraFiles = []*os.File{clientRead, clientWrite} // fd 3, fd 4
 
 		// Note: ExtraFiles below ensures readfd=3, writefd=4 in child
-		evar = HostTaoEnvVar + "=tao::TaoRPC+tao::FDMessageChannel(3, 4)"
+		evar = HostSpecEnvVar + "=tao::TaoRPC+tao::FDMessageChannel(3, 4)"
 	case "unix":
 		// Get a random name for the socket.
 		nameBytes := make([]byte, sockNameLen)
@@ -159,23 +159,23 @@ func (lpf *LinuxProcessFactory) Launch(prog string, args []string) (io.ReadWrite
 		if channel == nil {
 			return nil, nil, fmt.Errorf("Couldn't create a new Unix channel\n")
 		}
-		evar = HostTaoEnvVar + "=" + sockPath
+		evar = HostSpecEnvVar + "=" + sockPath
 	default:
 		return nil, nil, fmt.Errorf("invalid channel type '%s'\n", lpf.channelType)
 	}
 
 	env := os.Environ()
 	// Make sure that the child knows to use the right kind of channel.
-	etvar := HostTaoTypeEnvVar + "=" + lpf.channelType
+	etvar := HostChannelTypeEnvVar + "=" + lpf.channelType
 	replaced := false
 	replacedType := false
 	for i, pair := range env {
-		if strings.HasPrefix(pair, HostTaoEnvVar+"=") {
+		if strings.HasPrefix(pair, HostSpecEnvVar+"=") {
 			env[i] = evar
 			replaced = true
 		}
 
-		if strings.HasPrefix(pair, HostTaoTypeEnvVar+"=") {
+		if strings.HasPrefix(pair, HostChannelTypeEnvVar+"=") {
 			env[i] = etvar
 			replacedType = true
 		}

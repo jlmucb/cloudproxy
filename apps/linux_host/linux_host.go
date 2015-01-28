@@ -26,7 +26,6 @@ import (
 	"path/filepath"
 
 	"github.com/jlmucb/cloudproxy/tao"
-	"github.com/jlmucb/cloudproxy/util"
 )
 
 func main() {
@@ -42,22 +41,28 @@ func main() {
 	// its configuration stored in a fresh temporary directory, and with a liberal
 	// guard policy. Its default method of creating hosted programs is as processes
 	// with pipe communication.
-	mode := flag.String("mode", "root", "Tao mode to run ('root' or 'stacked').")
-	pass := flag.String("pass", "BogusPass", "Password for unlocking keys if running in root mode")
-	channelType := flag.String("channel_type", "pipe", "The type of channel for hosted-program communication ('pipe', or 'unix').")
-	channelSocketPath := flag.String("channel_socket_path", "linux_tao_host", "The directory in which to create unix sockets for hosted-program communication")
-	factoryType := flag.String("factory_type", "process", "The type of hosted program factory to use ('process', 'docker', or 'coreos')")
+	hostType := flag.String("host_type", "root", "The type of Tao host to implement ('root' or 'stacked').")
+	pass := flag.String("pass", "BogusPass", "Password for unlocking keys if running in root host mode")
+	hostSpec := flag.String("host_spec", "", "The spec to use for communicating with the parent (e.g., '/dev/tpm0')")
+	hostChannelType := flag.String("host_channel_type", "", "The type of the host channel (e.g., 'tpm', 'file', or 'unix')")
+	hostedProgramType := flag.String("hosted_program_type", "process", "The type of hosted program to create ('process', 'docker', or 'kvm_coreos')")
+	hostedProgramSocketPath := flag.String("hosted_program_socket_path", "linux_tao_host", "The directory in which to create unix sockets for hosted-program communication")
+
+	// TPM configuration for the case where we are communicating with a TPM
+	// host Tao.
+	tpmAIKPath := flag.String("tpm_aik_path", "tpm/aikblob", "The path to the TPM AIK blob file, relative to the location of the tao domain configuration")
+	tpmPCRs := flag.String("tpm_pcrs", "", "The PCR values, in the format PCRs(\"<PCR num>,<PCR num>,...,<PCR num>\", \"<PCR value>,<PCR value>,...,<PCR value>\")")
+	tpmDevice := flag.String("tpm_device", "/dev/tpm0", "The absolute path to the TPM device")
 
 	// QEMU/KVM CoreOS configuration with some reasonable defaults.
-	coreOSImage := flag.String("coreos_img", "coreos.img", "The path to a CoreOS image")
-	sshStartPort := flag.Int("coreos_ssh_port", 2222, "The starting port for SSH connections to CoreOS VMs")
-	vmMemory := flag.Int("vm_memory", 1024, "The amount of RAM to give the VM")
-	sshFile := flag.String("ssh_auth_keys", "auth_ssh_coreos", "A path to the authorized keys file for SSH connections to the CoreOS guest")
-	hostImage := flag.String("host_img", "linux_host.img.tgz", "The path to the Docker image for the Linux host to run under CoreOS")
+	coreOSImage := flag.String("kvm_coreos_img", "coreos.img", "The path to a CoreOS image")
+	sshStartPort := flag.Int("kvm_coreos_ssh_port", 2222, "The starting port for SSH connections to CoreOS VMs")
+	vmMemory := flag.Int("kvm_coreos_vm_memory", 1024, "The amount of RAM to give the VM")
+	sshFile := flag.String("kvm_coreos_ssh_auth_keys", "auth_ssh_coreos", "A path to the authorized keys file for SSH connections to the CoreOS guest")
+	hostImage := flag.String("kvm_coreos_host_docker_img", "linux_host.img.tgz", "The path to the Docker image for the Linux host to run under CoreOS")
 
 	// An action for the service to take.
 	action := flag.String("action", "start", "The action to take ('init', 'show', 'start', or 'stop')")
-	util.UseEnvFlags("GLOG", "TAO", "TAO_HOST")
 	flag.Parse()
 
 	var verbose io.Writer
@@ -65,6 +70,19 @@ func main() {
 		verbose = ioutil.Discard
 	} else {
 		verbose = os.Stderr
+	}
+
+	tc := tao.TaoConfig{
+		HostType:        tao.HostTaoTypeMap[*hostType],
+		HostChannelType: tao.HostTaoChannelMap[*hostChannelType],
+		HostSpec:        *hostSpec,
+		HostedType:      tao.HostedProgramTypeMap[*hostedProgramType],
+	}
+
+	if tc.HostChannelType == tao.TPM {
+		tc.TPMAIKPath = *tpmAIKPath
+		tc.TPMPCRs = *tpmPCRs
+		tc.TPMDevice = *tpmDevice
 	}
 
 	var dir string
@@ -135,7 +153,7 @@ CommonName = testing`
 		pf.Close()
 	}
 
-	absChannelSocketPath := path.Join(dir, *channelSocketPath)
+	absChannelSocketPath := path.Join(dir, *hostedProgramSocketPath)
 
 	switch *action {
 	case "init", "show", "start":
@@ -145,12 +163,12 @@ CommonName = testing`
 		rulesPath := path.Join(dir, *rules)
 
 		var childFactory tao.HostedProgramFactory
-		switch *factoryType {
-		case "process":
-			childFactory = tao.NewLinuxProcessFactory(*channelType, absChannelSocketPath)
-		case "docker":
+		switch tc.HostedType {
+		case tao.ProcessPipe:
+			childFactory = tao.NewLinuxProcessFactory("pipe", absChannelSocketPath)
+		case tao.DockerUnix:
 			childFactory = tao.NewLinuxDockerContainerFactory(absChannelSocketPath, rulesPath)
-		case "coreos":
+		case tao.KVMCoreOSFile:
 			if *sshFile == "" {
 				log.Fatal("Must specify an SSH authorized_key file for CoreOS")
 			}
@@ -173,32 +191,33 @@ CommonName = testing`
 			}
 			childFactory = tao.NewLinuxKVMCoreOSFactory(absChannelSocketPath, *hostImage, cfg)
 		default:
-			log.Fatalf("Unknown hosted-program factory '%s'\n", *factoryType)
+			log.Fatalf("Unknown hosted-program factory '%d'\n", tc.HostedType)
 		}
 
 		var host *tao.LinuxHost
-		switch *mode {
-		case "root":
+		switch tc.HostType {
+		case tao.Root:
 			if len(*pass) == 0 {
 				log.Fatal("password is required")
 			}
 			host, err = tao.NewRootLinuxHost(absHostPath, domain.Guard, []byte(*pass), childFactory)
 			fatalIf(err)
-		case "stacked":
-			if !tao.Hosted() {
-				log.Fatalf("error: no host tao available, check $%s\n", tao.HostTaoEnvVar)
+		case tao.Stacked:
+
+			if tao.ParentFromConfig(tc) == nil {
+				log.Fatalf("error: no host tao available, check $%s or set --host_channel_type\n", tao.HostChannelTypeEnvVar)
 			}
-			host, err = tao.NewStackedLinuxHost(absHostPath, domain.Guard, tao.Parent(), childFactory)
+			host, err = tao.NewStackedLinuxHost(absHostPath, domain.Guard, tao.ParentFromConfig(tc), childFactory)
 			fatalIf(err)
 		default:
-			log.Fatal("error: must specify either -root or -stacked")
+			log.Fatal("error: must specify either --host_type as either 'root' or 'stacked'")
 		}
 
 		switch *action {
 		case "create":
 			fmt.Printf("LinuxHost Service: %s\n", host.TaoHostName())
 		case "show":
-			fmt.Printf("export GOOGLE_TAO_LINUX='%v'\n", host.TaoHostName())
+			fmt.Printf("%v\n", host.TaoHostName())
 		case "start":
 			sock, err := net.Listen("unix", sockPath)
 			fatalIf(err)

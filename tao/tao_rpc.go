@@ -41,15 +41,15 @@ type TaoRPC struct {
 func DeserializeTaoRPC(s string) (*TaoRPC, error) {
 	if s == "" {
 		return nil, newError("taorpc: missing host Tao spec" +
-			" (ensure $" + HostTaoEnvVar + " is set)")
+			" (ensure $" + HostSpecEnvVar + " is set)")
 	}
 	r := strings.TrimPrefix(s, "tao::TaoRPC+")
 	if r == s {
-		return nil, newError("taorpc: unrecognized $" + HostTaoEnvVar + " string " + s)
+		return nil, newError("taorpc: unrecognized $" + HostSpecEnvVar + " string " + s)
 	}
 	ms, err := util.DeserializeFDMessageStream(r)
 	if err != nil {
-		return nil, newError("taorpc: unrecognized $" + HostTaoEnvVar + " string " + s +
+		return nil, newError("taorpc: unrecognized $" + HostSpecEnvVar + " string " + s +
 			" (" + err.Error() + ")")
 	}
 	return &TaoRPC{protorpc.NewClient(ms), "Tao"}, nil
@@ -59,15 +59,15 @@ func DeserializeTaoRPC(s string) (*TaoRPC, error) {
 func DeserializeFileTaoRPC(s string) (*TaoRPC, error) {
 	if s == "" {
 		return nil, newError("taorpc: missing host Tao spec" +
-			" (ensure $" + HostTaoEnvVar + " is set)")
+			" (ensure $" + HostSpecEnvVar + " is set)")
 	}
 	r := strings.TrimPrefix(s, "tao::TaoRPC+")
 	if r == s {
-		return nil, newError("taorpc: unrecognized $" + HostTaoEnvVar + " string " + s)
+		return nil, newError("taorpc: unrecognized $" + HostSpecEnvVar + " string " + s)
 	}
 	ms, err := util.DeserializeFileMessageStream(r)
 	if err != nil {
-		return nil, newError("taorpc: unrecognized $" + HostTaoEnvVar + " string " + s +
+		return nil, newError("taorpc: unrecognized $" + HostSpecEnvVar + " string " + s +
 			" (" + err.Error() + ")")
 	}
 	return &TaoRPC{protorpc.NewClient(ms), "Tao"}, nil
@@ -77,7 +77,7 @@ func DeserializeFileTaoRPC(s string) (*TaoRPC, error) {
 func DeserializeUnixSocketTaoRPC(p string) (*TaoRPC, error) {
 	if p == "" {
 		return nil, newError("taorpc: missing host Tao spec" +
-			" (ensure $" + HostTaoEnvVar + " is set)")
+			" (ensure $" + HostSpecEnvVar + " is set)")
 	}
 
 	ms, err := util.DeserializeUnixSocketMessageStream(p)

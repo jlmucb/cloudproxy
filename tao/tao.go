@@ -19,7 +19,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -31,10 +30,14 @@ import (
 // Constants used by the Tao implementations for policy, signing contexts, and
 // environment variables.
 const (
-	HostTaoEnvVar     = "GOOGLE_HOST_TAO"
-	HostTaoTypeEnvVar = "GOOGLE_HOST_TAO_TYPE"
-	TaoPCRsEnvVar     = "GOOGLE_TAO_PCRS"
-	TaoTPMEnvVar      = "GOOGLE_TAO_TPM"
+	HostTypeEnvVar        = "CLOUDPROXY_TAO_HOST_TYPE"
+	HostSpecEnvVar        = "CLOUDPROXY_TAO_HOST_SPEC"
+	HostChannelTypeEnvVar = "CLOUDPROXY_TAO_HOST_CHANNEL_TYPE"
+	HostedTypeEnvVar      = "CLOUDPROXY_TAO_HOSTED_TYPE"
+
+	TaoTPMPCRsEnvVar   = "CLOUDPROXY_TAO_TPM_PCRS"
+	TaoTPMAIKEnvVar    = "CLOUDPROXY_TAO_TPM_AIK"
+	TaoTPMDeviceEnvVar = "CLOUDPROXY_TAO_TPM_DEVICE"
 
 	SharedSecretPolicyDefault      = "self"
 	SharedSecretPolicyConservative = "few"
@@ -90,31 +93,24 @@ type Tao interface {
 var cachedHost Tao
 var cacheOnce sync.Once
 
-// Parent returns the interface to the underlying host Tao. It depends on a
-// specific environment variable being set. On success it memoizes the result
-// before returning it because there should only ever be a single channel to the
-// host. On failure, it logs a message using glog and returns nil.
-// Note: errors are not returned so that, once it is confirmed that Parent
-// returns a non-nil value, callers can use the function result in an
-// expression, e.g.:
-//   name, err := tao.Parent().GetTaoName()
-func Parent() Tao {
+func ParentFromConfig(tc TaoConfig) Tao {
 	cacheOnce.Do(func() {
-		hostTypeVar := os.Getenv(HostTaoTypeEnvVar)
-		hostVar := os.Getenv(HostTaoEnvVar)
-		switch hostTypeVar {
-		case "tpm":
-			// TODO(tmroeder): this version assumes that the AIK blob is under
-			// the TPMTao directory as aikblob. This should be specified more
-			// clearly in the environment variables.
-			aikblob, err := ioutil.ReadFile(path.Join(hostVar, "aikblob"))
+		// Get a default config from the environment.
+		tcEnv := NewTaoConfigFromEnv()
+
+		// The incoming config overrides the environment variables for
+		// any values that are set in it.
+		tcEnv.Merge(tc)
+		switch tcEnv.HostChannelType {
+		case TPM:
+			aikblob, err := ioutil.ReadFile(tcEnv.TPMAIKPath)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Couldn't read the aikblob: %s\n", err)
 				glog.Error(err)
 				return
 			}
 
-			taoPCRs := os.Getenv(TaoPCRsEnvVar)
+			taoPCRs := tcEnv.TPMPCRs
 			pcrStr := strings.TrimPrefix(taoPCRs, "PCRs(\"")
 
 			// This index operation will never panic, since strings.Split always
@@ -132,8 +128,7 @@ func Parent() Tao {
 				}
 			}
 
-			// TODO(tmroeder): add the tpm device path to the configuration.
-			host, err := NewTPMTao("/dev/tpm0", aikblob, pcrs)
+			host, err := NewTPMTao(tcEnv.TPMDevice, aikblob, pcrs)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Couldn't create a new TPMTao: %s\n", err)
 				glog.Error(err)
@@ -141,35 +136,45 @@ func Parent() Tao {
 			}
 
 			cachedHost = host
-		case "pipe":
-			host, err := DeserializeTaoRPC(os.Getenv(HostTaoEnvVar))
+		case Pipe:
+			host, err := DeserializeTaoRPC(tcEnv.HostSpec)
 			if err != nil {
 				glog.Error(err)
 				return
 			}
 			cachedHost = host
-		case "file":
-			host, err := DeserializeFileTaoRPC(os.Getenv(HostTaoEnvVar))
+		case File:
+			host, err := DeserializeFileTaoRPC(tcEnv.HostSpec)
 			if err != nil {
 				glog.Error(err)
 				return
 			}
 			cachedHost = host
-		case "unix":
-			host, err := DeserializeUnixSocketTaoRPC(os.Getenv(HostTaoEnvVar))
+		case Unix:
+			host, err := DeserializeUnixSocketTaoRPC(tcEnv.HostSpec)
 			if err != nil {
 				glog.Error(err)
 				return
 			}
 			cachedHost = host
 		default:
-			glog.Errorf("unknown host tao channel type '%s'\n", hostTypeVar)
+			glog.Errorf("unknown host tao channel type '%d'\n", tcEnv.HostChannelType)
 		}
+
 	})
+
 	return cachedHost
 }
 
-// Hosted returns true iff a host Tao is available via the Parent function.
-func Hosted() bool {
-	return Parent() != nil
+// Parent returns the interface to the underlying host Tao. It depends on a
+// specific environment variable being set. On success it memoizes the result
+// before returning it because there should only ever be a single channel to the
+// host. On failure, it logs a message using glog and returns nil.
+// Note: errors are not returned so that, once it is confirmed that Parent
+// returns a non-nil value, callers can use the function result in an
+// expression, e.g.:
+//   name, err := tao.Parent().GetTaoName()
+func Parent() Tao {
+	ParentFromConfig(TaoConfig{})
+	return cachedHost
 }

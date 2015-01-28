@@ -207,7 +207,7 @@ func main() {
 
 	fmt.Printf("Go Tao Demo Server\n")
 
-	if !tao.Hosted() {
+	if tao.Parent() == nil {
 		fmt.Printf("can't continue: No host Tao available\n")
 		return
 	}

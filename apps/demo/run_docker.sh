@@ -1,7 +1,7 @@
 #!/bin/sh
 
 t=`mktemp /tmp/loc.XXXXXXXX`
-linux_host -factory_type=docker -tmppath=$t &
+linux_host -hosted_program_type=docker -tmppath=$t &
 status=$?
 hostpid=$!
 if [ "$status" != "0" ]; then

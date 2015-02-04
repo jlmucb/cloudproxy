@@ -59,7 +59,6 @@ func main() {
 	sshStartPort := flag.Int("kvm_coreos_ssh_port", 2222, "The starting port for SSH connections to CoreOS VMs")
 	vmMemory := flag.Int("kvm_coreos_vm_memory", 1024, "The amount of RAM to give the VM")
 	sshFile := flag.String("kvm_coreos_ssh_auth_keys", "auth_ssh_coreos", "A path to the authorized keys file for SSH connections to the CoreOS guest")
-	hostImage := flag.String("kvm_coreos_host_docker_img", "linux_host.img.tgz", "The path to the Docker image for the Linux host to run under CoreOS")
 
 	// An action for the service to take.
 	action := flag.String("action", "start", "The action to take ('init', 'show', 'start', or 'stop')")
@@ -155,6 +154,13 @@ CommonName = testing`
 
 	absChannelSocketPath := path.Join(dir, *hostedProgramSocketPath)
 
+	// Get the Tao parent from the config information if possible.
+	if tc.HostType == tao.Stacked {
+		if tao.ParentFromConfig(tc) == nil {
+			log.Fatalf("error: no host tao available, check $%s or set --host_channel_type\n", tao.HostChannelTypeEnvVar)
+		}
+	}
+
 	switch *action {
 	case "init", "show", "start":
 		domain, err := tao.LoadDomain(absConfigPath, nil)
@@ -189,7 +195,7 @@ CommonName = testing`
 				RulesPath:  rulesPath,
 				SSHKeysCfg: sshKeysCfg,
 			}
-			childFactory = tao.NewLinuxKVMCoreOSFactory(absChannelSocketPath, *hostImage, cfg)
+			childFactory = tao.NewLinuxKVMCoreOSFactory(absChannelSocketPath, cfg)
 		default:
 			log.Fatalf("Unknown hosted-program factory '%d'\n", tc.HostedType)
 		}

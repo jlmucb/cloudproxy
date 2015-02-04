@@ -15,7 +15,10 @@
 package tao
 
 import (
+	"archive/tar"
 	"bufio"
+	"bytes"
+	"compress/gzip"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -57,10 +60,10 @@ type CoreOSConfig struct {
 // This use of os/exec is to avoid having to rewrite or hook into libvirt for
 // now.
 type KvmCoreOSContainer struct {
-	Cfg            *CoreOSConfig
-	DockerHostFile string
-	Args           []string
-	QCmd           *exec.Cmd
+	Cfg      *CoreOSConfig
+	HostFile string
+	Args     []string
+	QCmd     *exec.Cmd
 }
 
 // Kill sends a SIGKILL signal to a QEMU instance.
@@ -81,20 +84,61 @@ func (kcc *KvmCoreOSContainer) Start() error {
 	// TODO(tmroeder): save this path and remove it on Stop/Kill.
 	// defer os.RemoveAll(td)
 
-	// Create a temporary directory for the LinuxHost Docker image.
+	// Create a temporary directory for the linux_host image.
 	td_docker, err := ioutil.TempDir("", "coreos_docker")
 	if err != nil {
 		return err
 	}
+
+	// Expand the host file into the directory.
 	// TODO(tmroeder): save this path and remove it on Stop/Kill.
 	// defer os.RemoveAll(td_docker)
-	linuxHostImage, err := ioutil.ReadFile(kcc.DockerHostFile)
+	linuxHostFile, err := os.Open(kcc.HostFile)
 	if err != nil {
 		return err
 	}
-	linuxHostPath := path.Join(td_docker, "img")
-	if err := ioutil.WriteFile(linuxHostPath, linuxHostImage, 0700); err != nil {
+
+	zipReader, err := gzip.NewReader(linuxHostFile)
+	if err != nil {
 		return err
+	}
+	defer zipReader.Close()
+
+	unzippedImage, err := ioutil.ReadAll(zipReader)
+	if err != nil {
+		return err
+	}
+	unzippedReader := bytes.NewReader(unzippedImage)
+	tarReader := tar.NewReader(unzippedReader)
+	for {
+		hdr, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		fi := hdr.FileInfo()
+		outputName := path.Join(td_docker, hdr.Name)
+		if fi.IsDir() {
+			if err := os.Mkdir(outputName, fi.Mode()); err != nil {
+				return err
+			}
+		} else {
+
+			fmt.Printf("About to create %s\n", outputName)
+			outputFile, err := os.OpenFile(outputName, os.O_CREATE|os.O_TRUNC|os.O_RDWR, fi.Mode())
+			if err != nil {
+				return err
+			}
+
+			if _, err := io.Copy(outputFile, tarReader); err != nil {
+				outputFile.Close()
+				return err
+			}
+			outputFile.Close()
+		}
 	}
 
 	latestDir := path.Join(td, "openstack/latest")
@@ -137,8 +181,8 @@ func (kcc *KvmCoreOSContainer) Start() error {
 		// A Plan9P filesystem for SSH configuration (and our rules).
 		"-fsdev", "local,id=conf,security_model=none,readonly,path=" + td,
 		"-device", "virtio-9p-pci,fsdev=conf,mount_tag=config-2",
-		// Another Plan9P filesystem for the Docker files.
-		"-fsdev", "local,id=tao,security_model=none,readonly,path=" + td_docker,
+		// Another Plan9P filesystem for the linux_host files.
+		"-fsdev", "local,id=tao,security_model=none,path=" + td_docker,
 		"-device", "virtio-9p-pci,fsdev=tao,mount_tag=tao",
 		// Machine config.
 		"-cpu", "host",
@@ -173,20 +217,19 @@ func (kcc *KvmCoreOSContainer) ID() int {
 // A LinuxKVMCoreOSFactory manages hosted programs started as QEMU/KVM
 // instances over a given CoreOS image.
 type LinuxKVMCoreOSFactory struct {
-	Cfg            *CoreOSConfig
-	SocketPath     string
-	DockerHostFile string
-	NextSSHPort    int
-	Mutex          sync.Mutex
+	Cfg         *CoreOSConfig
+	SocketPath  string
+	HostFile    string
+	NextSSHPort int
+	Mutex       sync.Mutex
 }
 
 // NewLinuxKVMCoreOSFactory returns a new HostedProgramFactory that can
 // create docker containers to wrap programs.
-func NewLinuxKVMCoreOSFactory(sockPath, dockerPath string, cfg *CoreOSConfig) HostedProgramFactory {
+func NewLinuxKVMCoreOSFactory(sockPath string, cfg *CoreOSConfig) HostedProgramFactory {
 	return &LinuxKVMCoreOSFactory{
-		Cfg:            cfg,
-		SocketPath:     sockPath,
-		DockerHostFile: dockerPath,
+		Cfg:        cfg,
+		SocketPath: sockPath,
 		// The first SSH port is the port from the incoming config.
 		NextSSHPort: cfg.SSHPort,
 	}
@@ -211,19 +254,27 @@ func CloudConfigFromSSHKeys(keysFile string) (string, error) {
 
 // MakeSubprin computes the hash of a QEMU/KVM CoreOS image to get a
 // subprincipal for authorization purposes.
-func (ldcf *LinuxKVMCoreOSFactory) MakeSubprin(id uint, image string) (auth.SubPrin, string, error) {
+func (lkcf *LinuxKVMCoreOSFactory) MakeSubprin(id uint, image string) (auth.SubPrin, string, error) {
 	var empty auth.SubPrin
 	// TODO(tmroeder): the combination of TeeReader and ReadAll doesn't seem
 	// to copy the entire image, so we're going to hash in place for now.
 	// This needs to be fixed to copy the image so we can avoid a TOCTTOU
 	// attack.
-	b, err := ioutil.ReadFile(image)
+	b, err := ioutil.ReadFile(lkcf.Cfg.ImageFile)
 	if err != nil {
 		return empty, "", err
 	}
 
 	h := sha256.Sum256(b)
 	subprin := FormatCoreOSSubprin(id, h[:])
+
+	bb, err := ioutil.ReadFile(image)
+	if err != nil {
+		return empty, "", err
+	}
+	hh := sha256.Sum256(bb)
+
+	subprin = append(subprin, auth.PrinExt{Name: "LinuxHost", Arg: []auth.Term{auth.Bytes(hh[:])}})
 	return subprin, image, nil
 }
 
@@ -266,7 +317,7 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string) (io.R
 
 	cfg := &CoreOSConfig{
 		Name:       getRandomFileName(nameLen),
-		ImageFile:  imagePath,
+		ImageFile:  lkcf.Cfg.ImageFile, // the VM image
 		SSHPort:    sshPort,
 		Memory:     lkcf.Cfg.Memory,
 		RulesPath:  lkcf.Cfg.RulesPath,
@@ -277,9 +328,9 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string) (io.R
 	// Create a new docker image from the filesystem tarball, and use it to
 	// build a container and launch it.
 	kcc := &KvmCoreOSContainer{
-		Cfg:            cfg,
-		DockerHostFile: lkcf.DockerHostFile,
-		Args:           args,
+		Cfg:      cfg,
+		HostFile: imagePath, // The linux_host image
+		Args:     args,
 	}
 
 	// Create the listening server before starting the connection. This lets
@@ -333,8 +384,8 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string) (io.R
 		return nil, nil, fmt.Errorf("couldn't dial '%s'\n", hostPort)
 	}
 
-	// We need to run a set of commands to set up the LinuxHost as a docker
-	// container on the remote system.
+	// We need to run a set of commands to set up the LinuxHost on the
+	// remote system.
 	// Mount the filesystem.
 	mount, err := client.NewSession()
 	mount.Stdout = os.Stdout
@@ -347,30 +398,6 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string) (io.R
 	}
 	mount.Close()
 
-	// Build the container.
-	build, err := client.NewSession()
-	build.Stdout = os.Stdout
-	build.Stderr = os.Stderr
-	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't establish a build session on SSH: %s\n", err)
-	}
-	if err := build.Run("sudo cat /media/tao/img | sudo docker build -t tao -"); err != nil {
-		return nil, nil, fmt.Errorf("couldn't build the tao linux_host docker image on the guest: %s\n", err)
-	}
-	build.Close()
-
-	// Create the linux_host on the container.
-	//	create, err := client.NewSession()
-	//	create.Stdout = os.Stdout
-	//	create.Stderr = os.Stderr
-	//	if err != nil {
-	//		return nil, nil, fmt.Errorf("couldn't establish a create session on SSH: %s\n", err)
-	//	}
-	//	if err := create.Run("sudo docker run --privileged=true -v /dev/virtio-ports/tao:/tao -v /media/configvirtfs/openstack/latest/rules:/home/tmroeder/src/github.com/jlmucb/cloudproxy/test/rules tao ./bin/linux_host --create --stacked"); err != nil {
-	//		return nil, nil, fmt.Errorf("couldn't start linux_host on the guest: %s\n", err)
-	//	}
-	//	create.Close()
-
 	// Start the linux_host on the container.
 	start, err := client.NewSession()
 	start.Stdout = os.Stdout
@@ -378,7 +405,7 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string) (io.R
 	if err != nil {
 		return nil, nil, fmt.Errorf("couldn't establish a start session on SSH: %s\n", err)
 	}
-	if err := start.Run("sudo docker run -d --name=\"linux_host\" --privileged=true -v /dev/virtio-ports/tao:/tao -v /media/configvirtfs/openstack/latest/rules:/home/tmroeder/src/github.com/jlmucb/cloudproxy/test/rules tao ./bin/linux_host --service --stacked"); err != nil {
+	if err := start.Start("sudo /media/tao/linux_host --rules /media/configvirtfs/openstack/latest/rules --host_type stacked --host_spec 'tao::TaoRPC+tao::FileMessageChannel(/dev/virtio-ports/tao)' --host_channel_type file --config_path /media/tao/tao.config"); err != nil {
 		return nil, nil, fmt.Errorf("couldn't start linux_host on the guest: %s\n", err)
 	}
 	start.Close()

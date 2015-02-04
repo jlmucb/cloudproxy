@@ -189,7 +189,7 @@ func NewTaoConfigFromEnv() TaoConfig {
 // NoChannel, or NoHostedPrograms. This is used to merge a config taken from the
 // environment with a config specified explicitly on the command line. The
 // latter takes precedence where it is explicitly given.
-func (tc TaoConfig) Merge(c TaoConfig) {
+func (tc *TaoConfig) Merge(c TaoConfig) {
 	if tc.HostType == NoHost || c.HostType != NoHost {
 		tc.HostType = c.HostType
 	}

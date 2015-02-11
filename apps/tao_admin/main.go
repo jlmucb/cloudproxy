@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 
+	"github.com/golang/glog"
 	"github.com/google/go-tpm/tpm"
 	"github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
@@ -98,7 +98,7 @@ func main() {
 	if *create {
 		didWork = true
 		if len(*pass) == 0 {
-			log.Fatal("password is required")
+			glog.Exit("password is required")
 		}
 		fmt.Fprintf(noise, "Initializing new configuration in: %s\n", *configPath)
 		var cfg tao.DomainConfig
@@ -133,7 +133,7 @@ func main() {
 	}
 	if *newUserKey {
 		if *commonName == "" {
-			log.Fatalln("commonName is required")
+			glog.Exit("commonName is required")
 		}
 
 		if domain, err = tao.LoadDomain(*configPath, []byte(*pass)); err != nil {
@@ -200,9 +200,9 @@ func main() {
 		ok, err := domain.Guard.Query(*query)
 		fatalIf(err)
 		if ok {
-			fmt.Printf("Policy supports query.\n")
+			glog.Info("Policy supports query.")
 		} else {
-			fmt.Printf("Policy rejects query.\n")
+			glog.Info("Policy rejects query.")
 		}
 		didWork = true
 	}
@@ -264,7 +264,7 @@ func makeHostPrin(host string) auth.Prin {
 		host = os.Getenv("GOOGLE_TAO_LINUX")
 	}
 	if host == "" {
-		log.Fatal("No tao host: set $GOOGLE_TAO_LINUX or use -host option")
+		glog.Exit("No tao host: set $GOOGLE_TAO_LINUX or use -host option")
 	}
 	var prin auth.Prin
 	_, err := fmt.Sscanf(host, "%v", &prin)
@@ -288,6 +288,6 @@ func makeContainerSubPrin(prog string) auth.SubPrin {
 
 func fatalIf(err error) {
 	if err != nil {
-		log.Fatal(err)
+		glog.Exit(err)
 	}
 }

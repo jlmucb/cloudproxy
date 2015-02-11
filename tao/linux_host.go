@@ -16,7 +16,6 @@ package tao
 
 import (
 	"io"
-	"log"
 	"sync"
 
 	"code.google.com/p/goprotobuf/proto"
@@ -111,7 +110,6 @@ func (lh *LinuxHost) ExtendTaoName(child *LinuxHostChild, ext auth.SubPrin) erro
 
 // GetRandomBytes returns a slice of n random bytes for the child.
 func (lh *LinuxHost) GetRandomBytes(child *LinuxHostChild, n int) ([]byte, error) {
-	log.Print("Getting random bytes in the linux host")
 	return lh.taoHost.GetRandomBytes(child.ChildSubprin, n)
 }
 

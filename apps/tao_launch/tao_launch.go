@@ -17,9 +17,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net"
 
+	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 )
@@ -30,82 +30,82 @@ func main() {
 	docker := flag.String("docker_img", "", "The path to a tarball to use to create a docker image")
 
 	if *sockPath == "" {
-		log.Fatalf("Must supply a socket patch for the linux host")
+		glog.Fatalf("Must supply a socket patch for the linux host")
 	}
 
 	flag.Parse()
 
 	conn, err := net.Dial("unix", *sockPath)
 	if err != nil {
-		log.Fatal(err)
+		glog.Fatal(err)
 	}
 	defer conn.Close()
 	client := tao.NewLinuxHostAdminClient(conn)
 	switch *operation {
 	case "run":
 		if flag.NArg() == 0 {
-			log.Fatal("missing program path")
+			glog.Fatal("missing program path")
 		}
 		if *docker == "" {
 			subprin, pid, err := client.StartHostedProgram(flag.Arg(0), flag.Args()...)
 			if err != nil {
-				log.Fatal(err)
+				glog.Exit(err)
 			}
-			fmt.Printf("%d %v\n", pid, subprin)
+			glog.Infof("%d %v\n", pid, subprin)
 		} else {
 			// Drop the first arg for Docker, since it will
 			// be handled by the Dockerfile directly.
 			if flag.NArg() == 1 {
 				subprin, pid, err := client.StartHostedProgram(*docker)
 				if err != nil {
-					log.Fatal(err)
+					glog.Exit(err)
 				}
-				fmt.Printf("%d %v\n", pid, subprin)
+				glog.Infof("%d %v\n", pid, subprin)
 			} else {
 				subprin, pid, err := client.StartHostedProgram(*docker, flag.Args()[1:]...)
 				if err != nil {
-					log.Fatal(err)
+					glog.Exit(err)
 				}
-				fmt.Printf("%d %v\n", pid, subprin)
+				glog.Infof("%d %v\n", pid, subprin)
 			}
 		}
 	case "stop":
 		for _, s := range flag.Args() {
 			var subprin auth.SubPrin
 			if _, err := fmt.Sscanf(s, "%v", &subprin); err != nil {
-				log.Fatal(err)
+				glog.Exit(err)
 			}
 			if err = client.StopHostedProgram(subprin); err != nil {
-				log.Fatal(err)
+				glog.Exit(err)
 			}
 		}
 	case "kill":
 		for _, s := range flag.Args() {
 			var subprin auth.SubPrin
 			if _, err := fmt.Sscanf(s, "%v", &subprin); err != nil {
-				log.Fatal(err)
+				glog.Exit(err)
 			}
 			if err = client.KillHostedProgram(subprin); err != nil {
-				log.Fatal(err)
+				glog.Exit(err)
 			}
 		}
 	case "list":
 		name, pid, err := client.ListHostedPrograms()
 		if err != nil {
-			log.Fatal(err)
+			glog.Exit(err)
 		}
 		for i, p := range pid {
-			fmt.Printf("pid=%d %v\n", p, name[i])
+			glog.Infof("pid=%d %v\n", p, name[i])
 		}
-		fmt.Printf("%d processes\n", len(pid))
+		glog.Infof("%d processes\n", len(pid))
 	case "name":
 		name, err := client.TaoHostName()
 		if err != nil {
-			log.Fatal(err)
+			glog.Exit(err)
 		}
-		fmt.Printf("LinuxHost: %v\n", name)
+		glog.Infof("LinuxHost: %v\n", name)
 	default:
-		log.Fatalf("Unknown operation '%s'", *operation)
+		glog.Fatalf("Unknown operation '%s'", *operation)
 	}
 
 	return

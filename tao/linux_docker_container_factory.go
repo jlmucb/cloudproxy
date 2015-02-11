@@ -18,11 +18,11 @@ import (
 	"crypto/sha256"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path"
 
+	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	"github.com/jlmucb/cloudproxy/util"
 )
@@ -167,18 +167,18 @@ func (ldcf *LinuxDockerContainerFactory) Launch(tarPath string, args []string) (
 		Args:       args,
 	}
 	rwc := util.NewUnixSingleReadWriteCloser(sockPath)
-	log.Printf("Building image from path %s\n", tarPath)
+	glog.Infof("Building image from path %s\n", tarPath)
 	if err := dc.Build(tarPath); err != nil {
 		rwc.Close()
 		return nil, nil, err
 	}
 
-	log.Printf("Starting docker container\n")
+	glog.Info("Starting docker container")
 	if err := dc.Start(); err != nil {
 		rwc.Close()
 		return nil, nil, err
 	}
-	log.Println("Succeeded!")
+	glog.Info("Succeeded!")
 
 	return rwc, dc, nil
 }

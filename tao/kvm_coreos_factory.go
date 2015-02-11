@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -38,6 +37,7 @@ import (
 	"code.google.com/p/go.crypto/ssh"
 	"code.google.com/p/go.crypto/ssh/agent"
 
+	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	"github.com/jlmucb/cloudproxy/util"
 )
@@ -127,7 +127,6 @@ func (kcc *KvmCoreOSContainer) Start() error {
 			}
 		} else {
 
-			fmt.Printf("About to create %s\n", outputName)
 			outputFile, err := os.OpenFile(outputName, os.O_CREATE|os.O_TRUNC|os.O_RDWR, fi.Mode())
 			if err != nil {
 				return err
@@ -361,7 +360,7 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string) (io.R
 	// with a docker command and hook up /dev/tao directly to it. For
 	// initial testing, though, we'll try to set up the virtual machine and
 	// run a simple command on it, then fail.
-	log.Printf("Found agent socket path '%s'\n", agentPath)
+	glog.Infof("Found agent socket path '%s'\n", agentPath)
 	agentSock, err := net.Dial("unix", agentPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Couldn't connect to agent socket '%s': %s\n", agentPath, err)
@@ -375,7 +374,7 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string) (io.R
 		Auth: []ssh.AuthMethod{ssh.PublicKeysCallback(ag.Signers)},
 	}
 
-	log.Println("Waiting for at most 10 seconds before trying to connect")
+	glog.Info("Waiting for at most 10 seconds before trying to connect")
 	<-tc
 
 	hostPort := net.JoinHostPort("localhost", strconv.Itoa(sshPort))

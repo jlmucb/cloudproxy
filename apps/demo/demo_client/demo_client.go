@@ -23,6 +23,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/tao"
 	taonet "github.com/jlmucb/cloudproxy/tao/net"
 )
@@ -40,7 +41,7 @@ var argsRule = "(forall Y: forall P: forall S: MemberProgram(P) and TrustedArgs(
 var demoRule = "TrustedArgs(ext.Args(%s))"
 
 func doRequest(guard tao.Guard, domain *tao.Domain, keys *tao.Keys) bool {
-	fmt.Printf("client: connecting to %s using %s authentication.\n", serverAddr, *demoAuth)
+	glog.Infof("client: connecting to %s using %s authentication.\n", serverAddr, *demoAuth)
 	var conn net.Conn
 	var err error
 	network := "tcp"
@@ -54,23 +55,20 @@ func doRequest(guard tao.Guard, domain *tao.Domain, keys *tao.Keys) bool {
 		conn, err = taonet.DialWithKeys(network, serverAddr, guard, domain.Keys.VerifyingKey, keys)
 	}
 	if err != nil {
-		fmt.Printf("client: error connecting to %s: %s\n", serverAddr, err.Error())
-		return false
+		glog.Fatalf("client: error connecting to %s: %s\n", serverAddr, err.Error())
 	}
 	defer conn.Close()
 
 	_, err = fmt.Fprintf(conn, "Hello\n")
 	if err != nil {
-		fmt.Printf("client: can't write: %s\n", err.Error())
-		return false
+		glog.Fatalf("client: can't write: %s\n", err.Error())
 	}
 	msg, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
-		fmt.Printf("client can't read: %s\n", err.Error())
-		return false
+		glog.Fatalf("client can't read: %s\n", err.Error())
 	}
 	msg = strings.TrimSpace(msg)
-	fmt.Printf("client: got reply: %s\n", msg)
+	glog.Infof("client: got reply: %s\n", msg)
 	return true
 }
 
@@ -105,16 +103,14 @@ func doClient(domain *tao.Domain) {
 	network := "tcp"
 	keys, err := tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Parent())
 	if err != nil {
-		fmt.Printf("client: couldn't generate temporary Tao keys: %s\n", err)
-		return
+		glog.Fatalf("client: couldn't generate temporary Tao keys: %s\n", err)
 	}
 
 	// TODO(tmroeder): fix the name
 	cert, err := keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
 		Organization: []string{"Google Tao Demo"}})
 	if err != nil {
-		fmt.Printf("client: couldn't create a self-signed X.509 cert: %s\n", err)
-		return
+		glog.Fatalf("client: couldn't create a self-signed X.509 cert: %s\n", err)
 	}
 	// TODO(kwalsh) keys should save cert on disk if keys are on disk
 	keys.Cert = cert
@@ -123,8 +119,7 @@ func doClient(domain *tao.Domain) {
 	if *ca != "" {
 		na, err := taonet.RequestTruncatedAttestation(network, *ca, keys, domain.Keys.VerifyingKey)
 		if err != nil {
-			fmt.Printf("client: couldn't get a truncated attestation from %s: %s\n", *ca, err)
-			return
+			glog.Fatalf("client: couldn't get a truncated attestation from %s: %s\n", *ca, err)
 		}
 
 		keys.Delegation = na
@@ -133,8 +128,7 @@ func doClient(domain *tao.Domain) {
 		// programs that have talked to the CA.
 		g, err = newTempCAGuard(domain.Keys.VerifyingKey)
 		if err != nil {
-			fmt.Printf("client: couldn't set up a new guard: %s\n", err)
-			return
+			glog.Fatalf("client: couldn't set up a new guard: %s\n", err)
 		}
 	}
 
@@ -146,13 +140,13 @@ func doClient(domain *tao.Domain) {
 		} else {
 			pingFail++
 		}
-		fmt.Printf("client: made %d connections, finished %d ok, %d bad pings\n",
-			i+1, pingGood, pingFail)
+		glog.Infof("client: made %d connections, finished %d ok, %d bad pings\n", i+1, pingGood, pingFail)
 	}
 }
 
 func main() {
 	flag.Parse()
+	glog.Info("In demo_client")
 
 	// Check to see if we are running in Docker mode with linked containers.
 	// If so, then there will be an environment variable SERVER_PORT that
@@ -163,31 +157,28 @@ func main() {
 	} else {
 		serverAddr = strings.TrimPrefix(serverEnvVar, "tcp://")
 		if serverAddr == serverEnvVar {
-			fmt.Printf("client: invalid SERVER_PORT environment variable value '%s'\n", serverEnvVar)
-			return
+			glog.Fatalf("client: invalid SERVER_PORT environment variable value '%s'\n", serverEnvVar)
 		}
 	}
 
 	switch *demoAuth {
 	case "tcp", "tls", "tao":
 	default:
-		fmt.Printf("unrecognized authentication mode: %s\n", *demoAuth)
-		return
+		glog.Fatalf("unrecognized authentication mode: %s\n", *demoAuth)
 	}
 
-	fmt.Printf("Go Tao Demo\n")
+	glog.Info("Go Tao Demo")
 
 	if tao.Parent() == nil {
-		fmt.Printf("can't continue: No host Tao available\n")
-		return
+		glog.Fatal("can't continue: No host Tao available")
 	}
 
 	domain, err := tao.LoadDomain(*configPath, nil)
 	if err != nil {
-		fmt.Printf("error: couldn't load the tao domain from %s\n", *configPath)
-		return
+		glog.Fatalf("error: couldn't load the tao domain from %s\n", *configPath)
 	}
 
 	doClient(domain)
-	fmt.Printf("Client Done\n")
+	glog.Info("Client Done")
+	glog.Flush()
 }

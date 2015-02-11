@@ -21,11 +21,11 @@ import (
 	"crypto/x509/pkix"
 	"flag"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"strings"
 
+	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/tao"
 	taonet "github.com/jlmucb/cloudproxy/tao/net"
 )
@@ -77,13 +77,13 @@ func doResponse(conn net.Conn, responseOk chan<- bool) {
 	// needed here.
 	msg, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
-		fmt.Printf("server: can't read: %s\n", err.Error())
+		glog.Fatalf("server: can't read: %s\n", err.Error())
 		conn.Close()
 		responseOk <- false
 		return
 	}
 	msg = strings.TrimSpace(msg)
-	fmt.Printf("server: got message: %s\n", msg)
+	glog.Infof("server: got message: %s\n", msg)
 	responseOk <- true
 	fmt.Fprintf(conn, "echo(%s)\n", msg)
 	conn.Close()
@@ -104,7 +104,7 @@ func doServer(done chan<- bool) {
 	case "tcp":
 		sock, err = net.Listen(network, serverAddr)
 		if err != nil {
-			log.Fatalf("Couldn't listen to the network: %s\n", err)
+			glog.Fatalf("Couldn't listen to the network: %s\n", err)
 		}
 	case "tls", "tao":
 		keys, err = tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Parent())
@@ -130,7 +130,7 @@ func doServer(done chan<- bool) {
 			keys.Delegation = na
 			g, err = newTempCAGuard(domain.Keys.VerifyingKey)
 			if err != nil {
-				fmt.Printf("server: couldn't set up a new guard: %s\n", err)
+				glog.Infof("server: couldn't set up a new guard: %s\n", err)
 				return
 			}
 		}
@@ -149,16 +149,16 @@ func doServer(done chan<- bool) {
 		if *demoAuth == "tao" {
 			sock, err = taonet.Listen(network, serverAddr, conf, g, domain.Keys.VerifyingKey, keys.Delegation)
 			if err != nil {
-				log.Fatalf("Couldn't create a taonet listener: %s\n", err)
+				glog.Fatalf("Couldn't create a taonet listener: %s\n", err)
 			}
 		} else {
 			sock, err = tls.Listen(network, serverAddr, conf)
 			if err != nil {
-				log.Fatalf("Couldn't create a tls listener: %s\n", err)
+				glog.Fatalf("Couldn't create a tls listener: %s\n", err)
 			}
 		}
 	}
-	fmt.Printf("server: listening at %s using %s authentication.\n", serverAddr, *demoAuth)
+	glog.Infof("server: listening at %s using %s authentication.\n", serverAddr, *demoAuth)
 
 	pings := make(chan bool, 5)
 	connCount := 0
@@ -167,7 +167,7 @@ func doServer(done chan<- bool) {
 		for connCount = 0; connCount < *pingCount || *pingCount < 0; connCount++ { // negative means forever
 			conn, err := sock.Accept()
 			if err != nil {
-				fmt.Printf("server: can't accept connection: %s\n", err.Error())
+				glog.Infof("server: can't accept connection: %s\n", err.Error())
 				return
 			}
 			go doResponse(conn, pings)
@@ -189,7 +189,7 @@ func doServer(done chan<- bool) {
 	}
 
 	sock.Close()
-	fmt.Printf("server: handled %d connections, finished %d ok, %d bad pings\n",
+	glog.Infof("server: handled %d connections, finished %d ok, %d bad pings\n",
 		connCount, pingGood, pingFail)
 
 	done <- true
@@ -201,14 +201,14 @@ func main() {
 	switch *demoAuth {
 	case "tcp", "tls", "tao":
 	default:
-		fmt.Printf("unrecognized authentication mode: %s\n", *demoAuth)
+		glog.Fatalf("unrecognized authentication mode: %s\n", *demoAuth)
 		return
 	}
 
-	fmt.Printf("Go Tao Demo Server\n")
+	glog.Info("Go Tao Demo Server")
 
 	if tao.Parent() == nil {
-		fmt.Printf("can't continue: No host Tao available\n")
+		glog.Fatal("can't continue: No host Tao available")
 		return
 	}
 
@@ -216,5 +216,6 @@ func main() {
 
 	go doServer(serverDone)
 	<-serverDone
-	fmt.Printf("Server Done\n")
+	glog.Info("Server Done")
+	glog.Flush()
 }

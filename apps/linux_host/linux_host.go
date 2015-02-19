@@ -223,7 +223,14 @@ CommonName = testing`
 		case "show":
 			fmt.Printf("%v\n", host.TaoHostName())
 		case "start":
-			sock, err := net.Listen("unix", sockPath)
+			// The Serve method on the linux host admin server
+			// requires a UnixListener, since it uses this listener
+			// to get the UID and GID of callers. So, we have to use
+			// the Unix-based net functions rather than the generic
+			// ones.
+			uaddr, err := net.ResolveUnixAddr("unix", sockPath)
+			fatalIf(err)
+			sock, err := net.ListenUnix("unix", uaddr)
 			fatalIf(err)
 			defer sock.Close()
 			err = os.Chmod(sockPath, 0777)

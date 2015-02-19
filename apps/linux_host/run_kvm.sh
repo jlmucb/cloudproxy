@@ -55,7 +55,7 @@ cat /tmp/demo_client.INFO
 echo -e "\n\nServer output:"
 cat /tmp/demo_server.INFO
 
-echo -e "\n\nCleaning up"
-ssh -l core -p ${SSHPORT} localhost sudo shutdown -h now
-kill $hostpid
-rm -fr $t ${LHTEMP}
+#echo -e "\n\nCleaning up"
+#ssh -l core -p ${SSHPORT} localhost sudo shutdown -h now
+#kill $hostpid
+#rm -fr $t ${LHTEMP} /tmp/demo_server.INFO /tmp/demo_client.INFO

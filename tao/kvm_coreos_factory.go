@@ -250,7 +250,7 @@ func CloudConfigFromSSHKeys(keysFile string) (string, error) {
 
 // MakeSubprin computes the hash of a QEMU/KVM CoreOS image to get a
 // subprincipal for authorization purposes.
-func (lkcf *LinuxKVMCoreOSFactory) MakeSubprin(id uint, image string) (auth.SubPrin, string, error) {
+func (lkcf *LinuxKVMCoreOSFactory) MakeSubprin(id uint, image string, uid, gid int) (auth.SubPrin, string, error) {
 	var empty auth.SubPrin
 	// TODO(tmroeder): the combination of TeeReader and ReadAll doesn't seem
 	// to copy the entire image, so we're going to hash in place for now.
@@ -298,7 +298,7 @@ var nameLen = 10
 
 // Launch launches a QEMU/KVM CoreOS instance, connects to it with SSH to start
 // the LinuxHost on it, and returns the socket connection to that host.
-func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string) (io.ReadWriteCloser, HostedProgram, error) {
+func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string, uid, gid int) (io.ReadWriteCloser, HostedProgram, error) {
 	// The args must contain the directory to write the linux_host into, as
 	// well as the port to use for SSH.
 	if len(args) != 3 {

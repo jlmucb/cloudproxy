@@ -84,7 +84,7 @@ func FormatSubprin(id uint, hash []byte) auth.SubPrin {
 // MakeSubprin computes the hash of a program to get its hosted-program
 // subprincipal. In the process, it copies the program to a temporary file
 // controlled by this code and returns the path to that new binary.
-func (lpf *LinuxProcessFactory) MakeSubprin(id uint, prog string) (subprin auth.SubPrin, temppath string, err error) {
+func (lpf *LinuxProcessFactory) MakeSubprin(id uint, prog string, uid, gid int) (subprin auth.SubPrin, temppath string, err error) {
 	// To avoid a time-of-check-to-time-of-use error, we copy the file
 	// bytes to a temp file as we read them. This temp-file path is
 	// returned so it can be used to start the program.
@@ -92,11 +92,18 @@ func (lpf *LinuxProcessFactory) MakeSubprin(id uint, prog string) (subprin auth.
 	if err != nil {
 		return
 	}
+	if err = os.Chmod(td, 0755); err != nil {
+		return
+	}
 
 	temppath = path.Join(td, "hosted_program")
 	tf, err := os.OpenFile(temppath, os.O_CREATE|os.O_RDWR, 0700)
 	defer tf.Close()
 	if err != nil {
+		return
+	}
+
+	if err = tf.Chmod(0755); err != nil {
 		return
 	}
 
@@ -122,7 +129,7 @@ func (lpf *LinuxProcessFactory) MakeSubprin(id uint, prog string) (subprin auth.
 const sockNameLen = 24
 
 // Launch uses a path and arguments to fork a new process.
-func (lpf *LinuxProcessFactory) Launch(prog string, args []string) (io.ReadWriteCloser, HostedProgram, error) {
+func (lpf *LinuxProcessFactory) Launch(prog string, args []string, uid, gid int) (io.ReadWriteCloser, HostedProgram, error) {
 	var channel io.ReadWriteCloser
 	var extraFiles []*os.File
 	var evar string
@@ -188,16 +195,22 @@ func (lpf *LinuxProcessFactory) Launch(prog string, args []string) (io.ReadWrite
 		env = append(env, etvar)
 	}
 
+	spa := &syscall.SysProcAttr{
+		Credential: &syscall.Credential{
+			Uid: uint32(uid),
+			Gid: uint32(gid),
+		},
+	}
 	cmd := &Process{
 		&exec.Cmd{
-			Path:       prog,
-			Args:       args,
-			Stdin:      os.Stdin,
-			Stdout:     os.Stdout,
-			Stderr:     os.Stderr,
-			Env:        env,
-			ExtraFiles: extraFiles,
-			// TODO(tmroeder): change the user of the hosted program here.
+			Path:        prog,
+			Args:        args,
+			Stdin:       os.Stdin,
+			Stdout:      os.Stdout,
+			Stderr:      os.Stderr,
+			Env:         env,
+			ExtraFiles:  extraFiles,
+			SysProcAttr: spa,
 		},
 	}
 

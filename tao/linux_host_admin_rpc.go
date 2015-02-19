@@ -19,8 +19,10 @@ package tao
 
 import (
 	"io"
+	"log"
 	"net"
 	"net/rpc"
+	"syscall"
 
 	"code.google.com/p/goprotobuf/proto"
 
@@ -129,27 +131,60 @@ func NewLinuxHostAdminServer(host *LinuxHost) LinuxHostAdminServer {
 }
 
 // Serve listens on sock for new connections and services them.
-func (server LinuxHostAdminServer) Serve(sock net.Listener) error {
+func (server LinuxHostAdminServer) Serve(sock *net.UnixListener) error {
+	// Set the socket to allow peer credentials to be passed
+	sockFile, err := sock.File()
+	if err != nil {
+		return err
+	}
+	err = syscall.SetsockoptInt(int(sockFile.Fd()), syscall.SOL_SOCKET, syscall.SO_PASSCRED, 1 /* true */)
+	if err != nil {
+		sockFile.Close()
+		return err
+	}
+	sockFile.Close()
+
 	for {
-		conn, err := sock.Accept()
+		conn, err := sock.AcceptUnix()
 		if err != nil {
 			return err
 		}
+		connFile, err := conn.File()
+		if err != nil {
+			return err
+		}
+		ucred, err := syscall.GetsockoptUcred(int(connFile.Fd()), syscall.SOL_SOCKET, syscall.SO_PEERCRED)
+		if err != nil {
+			connFile.Close()
+			return err
+		}
+		connFile.Close()
+
 		s := rpc.NewServer()
 		err = s.RegisterName("LinuxHost", linuxHostAdminServerStub(server))
 		if err != nil {
 			return err
 		}
-		go s.ServeCodec(protorpc.NewServerCodec(conn))
+		go s.ServeCodec(protorpc.NewUidServerCodec(conn, int(ucred.Uid), int(ucred.Gid)))
 	}
 }
 
+// LinuxHostAdminRequest is the type used to get the UID,GID of a caller sending
+// a LinuxHostAdminRPCRequest. A server must use this type if it uses
+// NewServerUidCodec to create its ServerCodec for net/rpc.
+type LinuxHostAdminRequest struct {
+	Uid     int
+	Gid     int
+	Request *LinuxHostAdminRPCRequest
+}
+
 // StartHostedProgram is the server stub for LinuxHost.StartHostedProgram.
-func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
-	if r.Path == nil {
+func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminRequest, s *LinuxHostAdminRPCResponse) error {
+	log.Printf("Starting hosted program with uid %d, gid %d\n", r.Uid, r.Gid)
+	if r.Request.Path == nil {
 		return newError("missing path")
 	}
-	subprin, pid, err := server.lh.StartHostedProgram(*r.Path, r.Args)
+	subprin, pid, err := server.lh.StartHostedProgram(*r.Request.Path, r.Request.Args, r.Uid, r.Gid)
 	if err != nil {
 		return err
 	}
@@ -162,8 +197,8 @@ func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminRPCRe
 }
 
 // StopHostedProgram is the server stub for LinuxHost.StopHostedProgram.
-func (server linuxHostAdminServerStub) StopHostedProgram(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
-	subprin, err := auth.UnmarshalSubPrin(r.Subprin)
+func (server linuxHostAdminServerStub) StopHostedProgram(r *LinuxHostAdminRequest, s *LinuxHostAdminRPCResponse) error {
+	subprin, err := auth.UnmarshalSubPrin(r.Request.Subprin)
 	if err != nil {
 		return err
 	}
@@ -171,7 +206,7 @@ func (server linuxHostAdminServerStub) StopHostedProgram(r *LinuxHostAdminRPCReq
 }
 
 // ListHostedPrograms is the server stub for LinuxHost.ListHostedPrograms.
-func (server linuxHostAdminServerStub) ListHostedPrograms(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
+func (server linuxHostAdminServerStub) ListHostedPrograms(r *LinuxHostAdminRequest, s *LinuxHostAdminRPCResponse) error {
 	names, pids, err := server.lh.ListHostedPrograms()
 	if err != nil {
 		return err
@@ -190,8 +225,8 @@ func (server linuxHostAdminServerStub) ListHostedPrograms(r *LinuxHostAdminRPCRe
 }
 
 // KillHostedProgram is the server stub for LinuxHost.KillHostedProgram.
-func (server linuxHostAdminServerStub) KillHostedProgram(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
-	subprin, err := auth.UnmarshalSubPrin(r.Subprin)
+func (server linuxHostAdminServerStub) KillHostedProgram(r *LinuxHostAdminRequest, s *LinuxHostAdminRPCResponse) error {
+	subprin, err := auth.UnmarshalSubPrin(r.Request.Subprin)
 	if err != nil {
 		return err
 	}
@@ -199,7 +234,7 @@ func (server linuxHostAdminServerStub) KillHostedProgram(r *LinuxHostAdminRPCReq
 }
 
 // TaoHostName is the server stub for LinuxHost.TaoHostName.
-func (server linuxHostAdminServerStub) TaoHostName(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
+func (server linuxHostAdminServerStub) TaoHostName(r *LinuxHostAdminRequest, s *LinuxHostAdminRPCResponse) error {
 	prin := server.lh.TaoHostName()
 	s.Prin = auth.Marshal(prin)
 	return nil

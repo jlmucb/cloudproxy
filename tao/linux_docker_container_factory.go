@@ -106,7 +106,7 @@ func NewLinuxDockerContainerFactory(sockPath, rulesPath string) HostedProgramFac
 }
 
 // MakeSubprin computes the hash of a docker container to get a subprincipal for
-func (ldcf *LinuxDockerContainerFactory) MakeSubprin(id uint, image string) (auth.SubPrin, string, error) {
+func (ldcf *LinuxDockerContainerFactory) MakeSubprin(id uint, image string, uid, gid int) (auth.SubPrin, string, error) {
 	var empty auth.SubPrin
 	// To avoid a time-of-check-to-time-of-use error, we copy the file
 	// bytes to a temp file as we read them. This temp-file path is
@@ -154,7 +154,7 @@ func FormatDockerSubprin(id uint, hash []byte) auth.SubPrin {
 
 // Launch builds a docker container from a tar file and launches it with the
 // given arguments.
-func (ldcf *LinuxDockerContainerFactory) Launch(tarPath string, args []string) (io.ReadWriteCloser, HostedProgram, error) {
+func (ldcf *LinuxDockerContainerFactory) Launch(tarPath string, args []string, uid, gid int) (io.ReadWriteCloser, HostedProgram, error) {
 	sockName := getRandomFileName(nameLen)
 	sockPath := path.Join(ldcf.SocketPath, sockName)
 

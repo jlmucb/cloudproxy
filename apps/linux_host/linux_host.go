@@ -92,7 +92,10 @@ func main() {
 	if _, err = os.Stat(*configPath); err != nil {
 		dir, err = ioutil.TempDir("", "linux_host")
 		if err != nil {
-			glog.Fatalf("Couldn't create a temporary directory for linux host: %s\n", err)
+			glog.Fatalf("Couldn't create a temporary directory for linux host: %s", err)
+		}
+		if err := os.Chmod(dir, 0755); err != nil {
+			glog.Fatalf("Couldn't change permissions on %s to 755: %s", err)
 		}
 
 		trivialConfig := `
@@ -107,12 +110,12 @@ GuardType = AllowAll
 CommonName = testing`
 		absConfigPath = path.Join(dir, "tao.config")
 		if err = ioutil.WriteFile(absConfigPath, []byte(trivialConfig), 0700); err != nil {
-			glog.Fatalf("Couldn't write a trivial Tao config to %s: %s\n", absConfigPath, err)
+			glog.Fatalf("Couldn't write a trivial Tao config to %s: %s", absConfigPath, err)
 		}
 
 		emptyRules := make([]byte, 0)
 		if err = ioutil.WriteFile(path.Join(dir, "rules"), emptyRules, 0700); err != nil {
-			glog.Fatalf("Couldn't write an empty rules file: %s\n", err)
+			glog.Fatalf("Couldn't write an empty rules file: %s", err)
 		}
 
 		// If we're creating a temporary directory, then create a set of
@@ -131,7 +134,7 @@ CommonName = testing`
 	} else {
 		absConfigPath, err = filepath.Abs(*configPath)
 		if err != nil {
-			glog.Fatalf("Couldn't get an absolute version of the config path %s: %s\n", *configPath, err)
+			glog.Fatalf("Couldn't get an absolute version of the config path %s: %s", *configPath, err)
 		}
 		dir = path.Dir(absConfigPath)
 	}
@@ -144,7 +147,7 @@ CommonName = testing`
 	if *pathFile != "" {
 		pf, err := os.OpenFile(*pathFile, os.O_RDWR, 0600)
 		if err != nil {
-			glog.Fatalf("Couldn't open the provided temporary path file %s: %s\n", *pathFile, err)
+			glog.Fatalf("Couldn't open the provided temporary path file %s: %s", *pathFile, err)
 		}
 
 		fmt.Fprintf(pf, dir)
@@ -156,7 +159,7 @@ CommonName = testing`
 	// Get the Tao parent from the config information if possible.
 	if tc.HostType == tao.Stacked {
 		if tao.ParentFromConfig(tc) == nil {
-			glog.Fatalf("error: no host tao available, check $%s or set --host_channel_type\n", tao.HostChannelTypeEnvVar)
+			glog.Fatalf("error: no host tao available, check $%s or set --host_channel_type", tao.HostChannelTypeEnvVar)
 		}
 	}
 
@@ -179,7 +182,7 @@ CommonName = testing`
 			}
 			sshKeysCfg, err := tao.CloudConfigFromSSHKeys(*sshFile)
 			if err != nil {
-				glog.Fatalf("Couldn't load the ssh files file '%s': %s\n", *sshFile, err)
+				glog.Fatalf("Couldn't load the ssh files file '%s': %s", *sshFile, err)
 			}
 
 			if *coreOSImage == "" {
@@ -195,7 +198,7 @@ CommonName = testing`
 			}
 			childFactory = tao.NewLinuxKVMCoreOSFactory(absChannelSocketPath, cfg)
 		default:
-			glog.Fatalf("Unknown hosted-program factory '%d'\n", tc.HostedType)
+			glog.Fatalf("Unknown hosted-program factory '%d'", tc.HostedType)
 		}
 
 		var host *tao.LinuxHost
@@ -209,7 +212,7 @@ CommonName = testing`
 		case tao.Stacked:
 
 			if tao.ParentFromConfig(tc) == nil {
-				glog.Fatalf("error: no host tao available, check $%s or set --host_channel_type\n", tao.HostChannelTypeEnvVar)
+				glog.Fatalf("error: no host tao available, check $%s or set --host_channel_type", tao.HostChannelTypeEnvVar)
 			}
 			host, err = tao.NewStackedLinuxHost(absHostPath, domain.Guard, tao.ParentFromConfig(tc), childFactory)
 			fatalIf(err)
@@ -219,10 +222,15 @@ CommonName = testing`
 
 		switch *action {
 		case "create":
-			fmt.Printf("LinuxHost Service: %s\n", host.TaoHostName())
+			fmt.Printf("LinuxHost Service: %s", host.TaoHostName())
 		case "show":
-			fmt.Printf("%v\n", host.TaoHostName())
+			fmt.Printf("%v", host.TaoHostName())
 		case "start":
+			// Make sure callers can read the directory that
+			// contains the socket.
+			err := os.Chmod(path.Dir(sockPath), 0755)
+			fatalIf(err)
+
 			// The Serve method on the linux host admin server
 			// requires a UnixListener, since it uses this listener
 			// to get the UID and GID of callers. So, we have to use
@@ -236,7 +244,7 @@ CommonName = testing`
 			err = os.Chmod(sockPath, 0777)
 			fatalIf(err)
 
-			fmt.Fprintf(verbose, "Linux Tao Service (%s) started and waiting for requests\n", host.TaoHostName())
+			fmt.Fprintf(verbose, "Linux Tao Service (%s) started and waiting for requests", host.TaoHostName())
 			tao.NewLinuxHostAdminServer(host).Serve(sock)
 		}
 	case "shutdown":

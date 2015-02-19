@@ -14,6 +14,8 @@ LINUX_HOST_DIR=$(readlink -e $(dirname $0))
 TEMP_DIR=`mktemp -d`
 cp ${GOPATH}/bin/linux_host ${TEMP_DIR}/linux_host
 mkdir ${TEMP_DIR}/policy_keys
+mkdir ${TEMP_DIR}/linux_tao_host
+chmod 755 ${TEMP_DIR}/linux_tao_host
 cp $1 ${TEMP_DIR}/policy_keys/cert
 cat >${TEMP_DIR}/tao.config <<EOF
 # Tao Domain Configuration file

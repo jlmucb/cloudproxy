@@ -56,7 +56,6 @@ func main() {
 
 	// QEMU/KVM CoreOS configuration with some reasonable defaults.
 	coreOSImage := flag.String("kvm_coreos_img", "coreos.img", "The path to a CoreOS image")
-	sshStartPort := flag.Int("kvm_coreos_ssh_port", 2222, "The starting port for SSH connections to CoreOS VMs")
 	vmMemory := flag.Int("kvm_coreos_vm_memory", 1024, "The amount of RAM to give the VM")
 	sshFile := flag.String("kvm_coreos_ssh_auth_keys", "auth_ssh_coreos", "A path to the authorized keys file for SSH connections to the CoreOS guest")
 
@@ -190,7 +189,6 @@ CommonName = testing`
 			// Construct the CoreOS configuration from the flags.
 			cfg := &tao.CoreOSConfig{
 				ImageFile:  *coreOSImage,
-				SSHPort:    *sshStartPort,
 				Memory:     *vmMemory,
 				RulesPath:  rulesPath,
 				SSHKeysCfg: sshKeysCfg,
@@ -228,8 +226,10 @@ CommonName = testing`
 			sock, err := net.Listen("unix", sockPath)
 			fatalIf(err)
 			defer sock.Close()
-			fmt.Fprintf(verbose, "Linux Tao Service (%s) started and waiting for requests\n", host.TaoHostName())
+			err = os.Chmod(sockPath, 0777)
 			fatalIf(err)
+
+			fmt.Fprintf(verbose, "Linux Tao Service (%s) started and waiting for requests\n", host.TaoHostName())
 			tao.NewLinuxHostAdminServer(host).Serve(sock)
 		}
 	case "shutdown":

@@ -118,8 +118,7 @@ func (lh *LinuxHost) GetSharedSecret(child *LinuxHostChild, n int, policy string
 	// Compute a tag based on the policy identifier and the child's subprin.
 	var tag string
 	switch policy {
-	case SharedSecretPolicyDefault:
-	case SharedSecretPolicyConservative:
+	case SharedSecretPolicyDefault, SharedSecretPolicyConservative:
 		// We are using a master key-deriving key shared among all
 		// similar LinuxHost instances. For LinuxHost, the default
 		// and conservative policies means any process running the same

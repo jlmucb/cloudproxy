@@ -22,6 +22,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -46,7 +47,6 @@ import (
 type CoreOSConfig struct {
 	Name       string
 	ImageFile  string
-	SSHPort    int
 	Memory     int
 	RulesPath  string
 	SSHKeysCfg string
@@ -64,6 +64,7 @@ type KvmCoreOSContainer struct {
 	HostFile string
 	Args     []string
 	QCmd     *exec.Cmd
+	LHPath   string
 }
 
 // Kill sends a SIGKILL signal to a QEMU instance.
@@ -84,11 +85,9 @@ func (kcc *KvmCoreOSContainer) Start() error {
 	// TODO(tmroeder): save this path and remove it on Stop/Kill.
 	// defer os.RemoveAll(td)
 
-	// Create a temporary directory for the linux_host image.
-	td_docker, err := ioutil.TempDir("", "coreos_docker")
-	if err != nil {
-		return err
-	}
+	// Create a temporary directory for the linux_host image. Note that the
+	// args were validated in Launch before this call.
+	td_docker := kcc.Args[1]
 
 	// Expand the host file into the directory.
 	// TODO(tmroeder): save this path and remove it on Stop/Kill.
@@ -168,7 +167,7 @@ func (kcc *KvmCoreOSContainer) Start() error {
 		"-machine", "accel=kvm:tcg",
 		// Networking.
 		"-net", "nic,vlan=0,model=virtio",
-		"-net", "user,vlan=0,hostfwd=tcp::" + strconv.Itoa(cfg.SSHPort) + "-:22,hostname=" + cfg.Name,
+		"-net", "user,vlan=0,hostfwd=tcp::" + kcc.Args[2] + "-:22,hostname=" + cfg.Name,
 		// Tao communications through virtio-serial. With this
 		// configuration, QEMU waits for a server on cfg.SocketPath,
 		// then connects to it.
@@ -197,6 +196,7 @@ func (kcc *KvmCoreOSContainer) Start() error {
 	//qemuCmd.Stdout = os.Stdout
 	//qemuCmd.Stderr = os.Stderr
 	kcc.QCmd = qemuCmd
+	kcc.LHPath = td_docker
 	return kcc.QCmd.Start()
 }
 
@@ -216,11 +216,10 @@ func (kcc *KvmCoreOSContainer) ID() int {
 // A LinuxKVMCoreOSFactory manages hosted programs started as QEMU/KVM
 // instances over a given CoreOS image.
 type LinuxKVMCoreOSFactory struct {
-	Cfg         *CoreOSConfig
-	SocketPath  string
-	HostFile    string
-	NextSSHPort int
-	Mutex       sync.Mutex
+	Cfg        *CoreOSConfig
+	SocketPath string
+	HostFile   string
+	Mutex      sync.Mutex
 }
 
 // NewLinuxKVMCoreOSFactory returns a new HostedProgramFactory that can
@@ -229,8 +228,6 @@ func NewLinuxKVMCoreOSFactory(sockPath string, cfg *CoreOSConfig) HostedProgramF
 	return &LinuxKVMCoreOSFactory{
 		Cfg:        cfg,
 		SocketPath: sockPath,
-		// The first SSH port is the port from the incoming config.
-		NextSSHPort: cfg.SSHPort,
 	}
 }
 
@@ -302,6 +299,15 @@ var nameLen = 10
 // Launch launches a QEMU/KVM CoreOS instance, connects to it with SSH to start
 // the LinuxHost on it, and returns the socket connection to that host.
 func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string) (io.ReadWriteCloser, HostedProgram, error) {
+	// The args must contain the directory to write the linux_host into, as
+	// well as the port to use for SSH.
+	if len(args) != 3 {
+		glog.Errorf("Expected %d args, but got %d", 3, len(args))
+		for i, a := range args {
+			glog.Errorf("Arg %d: %s", i, a)
+		}
+		return nil, nil, errors.New("KVM/CoreOS guest Tao requires args: <linux_host image> <temp directory for linux_host> <SSH port>")
+	}
 	// Build the new Config and start it. Make sure it has a random name so
 	// it doesn't conflict with other virtual machines. Note that we need to
 	// assign fresh local SSH ports for each new virtual machine, hence the
@@ -309,15 +315,9 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string) (io.R
 	sockName := getRandomFileName(nameLen)
 	sockPath := path.Join(lkcf.SocketPath, sockName)
 
-	lkcf.Mutex.Lock()
-	sshPort := lkcf.NextSSHPort
-	lkcf.NextSSHPort += 1
-	lkcf.Mutex.Unlock()
-
 	cfg := &CoreOSConfig{
 		Name:       getRandomFileName(nameLen),
 		ImageFile:  lkcf.Cfg.ImageFile, // the VM image
-		SSHPort:    sshPort,
 		Memory:     lkcf.Cfg.Memory,
 		RulesPath:  lkcf.Cfg.RulesPath,
 		SSHKeysCfg: lkcf.Cfg.SSHKeysCfg,
@@ -351,7 +351,7 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string) (io.R
 	// keys. In the future, this will need to be configured better.
 	agentPath := os.ExpandEnv("$SSH_AUTH_SOCK")
 	if agentPath == "" {
-		return nil, nil, fmt.Errorf("couldn't find agent socket in the environment.\n")
+		return nil, nil, fmt.Errorf("couldn't find agent socket in the environment.")
 	}
 
 	// TODO(tmroeder): the right way to do this is to first set up a docker
@@ -363,7 +363,7 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string) (io.R
 	glog.Infof("Found agent socket path '%s'\n", agentPath)
 	agentSock, err := net.Dial("unix", agentPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Couldn't connect to agent socket '%s': %s\n", agentPath, err)
+		return nil, nil, fmt.Errorf("Couldn't connect to agent socket '%s': %s", agentPath, err)
 	}
 	ag := agent.NewClient(agentSock)
 
@@ -377,10 +377,10 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string) (io.R
 	glog.Info("Waiting for at most 10 seconds before trying to connect")
 	<-tc
 
-	hostPort := net.JoinHostPort("localhost", strconv.Itoa(sshPort))
+	hostPort := net.JoinHostPort("localhost", args[2])
 	client, err := ssh.Dial("tcp", hostPort, conf)
 	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't dial '%s'\n", hostPort)
+		return nil, nil, fmt.Errorf("couldn't dial '%s'", hostPort)
 	}
 
 	// We need to run a set of commands to set up the LinuxHost on the
@@ -390,10 +390,10 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string) (io.R
 	mount.Stdout = os.Stdout
 	mount.Stderr = os.Stderr
 	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't establish a mount session on SSH: %s\n", err)
+		return nil, nil, fmt.Errorf("couldn't establish a mount session on SSH: %s", err)
 	}
-	if err := mount.Run("sudo mkdir /media/tao && sudo mount -t 9p -o trans=virtio,version=9p2000.L tao /media/tao"); err != nil {
-		return nil, nil, fmt.Errorf("couldn't mount the tao filesystem on the guest: %s\n", err)
+	if err := mount.Run("sudo mkdir /media/tao && sudo mount -t 9p -o trans=virtio,version=9p2000.L tao /media/tao && sudo chmod -R 755 /media/tao"); err != nil {
+		return nil, nil, fmt.Errorf("couldn't mount the tao filesystem on the guest: %s", err)
 	}
 	mount.Close()
 
@@ -402,10 +402,10 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string) (io.R
 	start.Stdout = os.Stdout
 	start.Stderr = os.Stderr
 	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't establish a start session on SSH: %s\n", err)
+		return nil, nil, fmt.Errorf("couldn't establish a start session on SSH: %s", err)
 	}
 	if err := start.Start("sudo /media/tao/linux_host --rules /media/configvirtfs/openstack/latest/rules --host_type stacked --host_spec 'tao::TaoRPC+tao::FileMessageChannel(/dev/virtio-ports/tao)' --host_channel_type file --config_path /media/tao/tao.config"); err != nil {
-		return nil, nil, fmt.Errorf("couldn't start linux_host on the guest: %s\n", err)
+		return nil, nil, fmt.Errorf("couldn't start linux_host on the guest: %s", err)
 	}
 	start.Close()
 

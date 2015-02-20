@@ -109,12 +109,12 @@ GuardType = AllowAll
 [X509Details]
 CommonName = testing`
 		absConfigPath = path.Join(dir, "tao.config")
-		if err = ioutil.WriteFile(absConfigPath, []byte(trivialConfig), 0700); err != nil {
+		if err = ioutil.WriteFile(absConfigPath, []byte(trivialConfig), 0644); err != nil {
 			glog.Fatalf("Couldn't write a trivial Tao config to %s: %s", absConfigPath, err)
 		}
 
 		emptyRules := make([]byte, 0)
-		if err = ioutil.WriteFile(path.Join(dir, "rules"), emptyRules, 0700); err != nil {
+		if err = ioutil.WriteFile(path.Join(dir, "rules"), emptyRules, 0644); err != nil {
 			glog.Fatalf("Couldn't write an empty rules file: %s", err)
 		}
 
@@ -241,7 +241,7 @@ CommonName = testing`
 			sock, err := net.ListenUnix("unix", uaddr)
 			fatalIf(err)
 			defer sock.Close()
-			err = os.Chmod(sockPath, 0777)
+			err = os.Chmod(sockPath, 0666)
 			fatalIf(err)
 
 			fmt.Fprintf(verbose, "Linux Tao Service (%s) started and waiting for requests", host.TaoHostName())

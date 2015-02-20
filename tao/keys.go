@@ -1096,7 +1096,7 @@ func NewOnDiskPBEKeys(keyTypes KeyType, password []byte, path string, name *pkix
 					return nil, err
 				}
 
-				pbes, err := util.CreatePath(k.PBESignerPath(), 0700, 0600)
+				pbes, err := util.CreatePath(k.PBESignerPath(), 0777, 0600)
 				if err != nil {
 					return nil, err
 				}

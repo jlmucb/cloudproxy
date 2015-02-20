@@ -1,9 +1,9 @@
 #!/bin/sh
 
-t=`mktemp /tmp/loc.XXXXXXXX`
-linux_host -tmppath=$t &
+TEMP_FILE=`mktemp /tmp/loc.XXXXXXXX`
+sudo ${GOPATH}/bin/linux_host -tmppath=$TEMP_FILE &
 status=$?
-hostpid=$!
+HOSTPID=$!
 if [ "$status" != "0" ]; then
 	echo "Couldn't start the linux_host in a temporary directory"
 	exit 1
@@ -12,19 +12,22 @@ fi
 echo "Waiting for linux_host to start"
 sleep 5
 
-DIR=`cat $t`
+DIR=`cat $TEMP_FILE`
 DEMO_DIR=$(readlink -e $(dirname $0))
-tao_launch -sock ${DIR}/linux_tao_host/admin_socket -- ${GOPATH}/bin/demo_server -config=${DIR}/tao.config
-tao_launch -sock ${DIR}/linux_tao_host/admin_socket -- ${GOPATH}/bin/demo_client -config=${DIR}/tao.config
+DSPID=$(${GOPATH}/bin/tao_launch -sock ${DIR}/linux_tao_host/admin_socket ${GOPATH}/bin/demo_server -config=${DIR}/tao.config)
+${GOPATH}/bin/tao_launch -sock ${DIR}/linux_tao_host/admin_socket ${GOPATH}/bin/demo_client -config=${DIR}/tao.config > /dev/null
 
 
 echo "Waiting for the tests to finish"
 sleep 5
 
-echo "Cleaning up remaining programs"
-pids=`tao_launch -sock ${DIR}/linux_tao_host/admin_socket -operation=list | cut -d' ' -f1 | head -n -1 | sed 's/^pid=//g'`
-for p in $pids; do
-	kill $p
-done
+echo "\n\nClient output:"
+cat /tmp/demo_client.INFO
 
-kill $hostpid
+echo "\n\nServer output:"
+cat /tmp/demo_server.INFO
+
+echo "Cleaning up remaining programs"
+kill $DSPID
+sudo kill $HOSTPID
+rm -f $TEMP_FILE

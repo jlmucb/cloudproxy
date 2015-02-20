@@ -87,6 +87,7 @@ func doResponse(conn net.Conn, responseOk chan<- bool) {
 	responseOk <- true
 	fmt.Fprintf(conn, "echo(%s)\n", msg)
 	conn.Close()
+	glog.Flush()
 }
 
 func doServer(done chan<- bool) {

@@ -1,6 +1,7 @@
 #!/bin/sh
 
 TEMP_FILE=`mktemp /tmp/loc.XXXXXXXX`
+echo "About to start linux_host. This requires super-user privileges"
 sudo ${GOPATH}/bin/linux_host -tmppath=$TEMP_FILE &
 status=$?
 HOSTPID=$!

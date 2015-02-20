@@ -43,7 +43,7 @@ func TestTPMTao(t *testing.T) {
 	// /dev/tpm0.
 	tt, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
 	if err != nil {
-		t.Fatal("Couldn't create a new TPM Tao:", err)
+		t.Skip("Couldn't create a new TPM Tao:", err)
 	}
 	tpmtao, ok := tt.(*TPMTao)
 	if !ok {
@@ -60,7 +60,7 @@ func TestTPMTaoSeal(t *testing.T) {
 
 	tpmtao, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
 	if err != nil {
-		t.Fatal("Couldn't create a new TPM Tao:", err)
+		t.Skip("Couldn't create a new TPM Tao:", err)
 	}
 	tt, ok := tpmtao.(*TPMTao)
 	if !ok {
@@ -97,7 +97,7 @@ func TestTPMTaoLargeSeal(t *testing.T) {
 
 	tpmtao, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
 	if err != nil {
-		t.Fatal("Couldn't create a new TPM Tao:", err)
+		t.Skip("Couldn't create a new TPM Tao:", err)
 	}
 	tt, ok := tpmtao.(*TPMTao)
 	if !ok {
@@ -134,7 +134,7 @@ func TestTPMTaoAttest(t *testing.T) {
 
 	tpmtao, err := NewTPMTao("/dev/tpm0", aikblob, []int{17, 18})
 	if err != nil {
-		t.Fatal("Couldn't create a new TPM Tao:", err)
+		t.Skip("Couldn't create a new TPM Tao:", err)
 	}
 	tt, ok := tpmtao.(*TPMTao)
 	if !ok {

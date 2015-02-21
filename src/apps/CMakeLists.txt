@@ -21,27 +21,8 @@ include_directories(../third_party/gflags/src)
 add_definitions(-DOS_POSIX)
 include_directories(${CMAKE_SOURCE_DIR}/third_party/chromium/include)
 
-add_executable(tpm_tao tpm_tao.cc)
-target_link_libraries(tpm_tao tao)
+add_executable(encode_auth encode_auth.cc)
+target_link_libraries(encode_auth tao)
 
-add_executable(soft_tao soft_tao.cc)
-target_link_libraries(soft_tao tao)
-
-add_executable(get_pcrs get_pcrs.cc)
-target_link_libraries(get_pcrs tao)
-
-add_executable(linux_host linux_host.cc)
-target_link_libraries(linux_host tao)
-
-add_executable(demo demo.cc)
-target_link_libraries(demo tao)
-
-PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS demo_server.proto)
-add_executable(demo_server demo_server.cc ${PROTO_SRCS} ${PROTO_HDRS})
-target_link_libraries(demo_server cloudproxy)
-
-add_executable(log_net_server log_net_server.cc)
-target_link_libraries(log_net_server tao)
-
-add_executable(tao_admin tao_admin.cc)
-target_link_libraries(tao_admin tao)
+add_executable(go_child go_child.cc)
+target_link_libraries(go_child tao)

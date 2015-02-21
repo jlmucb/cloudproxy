@@ -15,6 +15,7 @@
 package auth
 
 import (
+	"encoding/base64"
 	"fmt"
 	"strings"
 	"testing"
@@ -442,5 +443,26 @@ func TestBadExtPrin(t *testing.T) {
 			t.Log(at)
 			t.Fatal("Incorrectly successfully scanned an invalid Term")
 		}
+	}
+}
+
+var binaryEncodings = []string{
+	`DQEDa2V5BAh0ZXN0IGtleREAAQNrZXkEDHRlc3QgdGFvIGtleREA`,
+}
+
+func TestBinaryEncodings(t *testing.T) {
+	for _, b := range binaryEncodings {
+		e, err := base64.URLEncoding.DecodeString(b)
+		if err != nil {
+			t.Log(b)
+			t.Fatal("Couldn't decode a binary encoding")
+		}
+
+		f, err := UnmarshalForm(e)
+		if err != nil {
+			t.Log(b)
+			t.Fatal("Couldn't unmarshal a binary encoding")
+		}
+		t.Logf("%v\n", f)
 	}
 }

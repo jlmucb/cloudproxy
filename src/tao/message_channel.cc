@@ -25,6 +25,7 @@
 #include <string>
 
 #include <glog/logging.h>
+#include <google/protobuf/message.h>
 
 #include "tao/util.h"
 

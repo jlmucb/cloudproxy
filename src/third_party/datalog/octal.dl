@@ -1,9 +1,0 @@
-octal(1, "\5").
-octal(2, "\7a").
-octal(3, "\79").
-octal(4, "\7531").
-octal(5, "a\7\n").
-octal(6, "a\3\3").
-octal(7, "\377").
-octal(8, "\200").
-octal(X, Y)?

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 add_subdirectory(chromium)
-add_subdirectory(datalog)
 add_subdirectory(gflags)
 add_subdirectory(google-glog)
 add_subdirectory(googlemock)

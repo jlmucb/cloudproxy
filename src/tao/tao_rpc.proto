@@ -19,7 +19,7 @@
 
 package tao;
 
-// Copied from: go/src/cloudproxy/util/protorpc/protorpc.proto
+// Copied from: util/protorpc/protorpc.proto
 
 // Protobuf RPC request header
 message ProtoRPCRequestHeader {
@@ -42,12 +42,15 @@ message ProtoRPCResponseHeader {
   optional string error = 3;
 }
 
-// Copied from: go/src/cloudproxy/tao/tao_rpc.proto
+// Copied from: tao/tao_rpc.proto
 
 message TaoRPCRequest {
   optional bytes data = 1;
   optional int32 size = 2;
   optional string policy = 3;
+  optional int64 time = 4;
+  optional int64 expiration = 5;
+  optional bytes issuer = 6;
 }
 
 message TaoRPCResponse {

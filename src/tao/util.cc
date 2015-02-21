@@ -38,6 +38,8 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <google/protobuf/io/coded_stream.h>
+#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 #include <modp/modp_b64w.h>
 #include <openssl/bio.h>
 #include <openssl/crypto.h>
@@ -45,17 +47,16 @@
 #include <openssl/rand.h>
 #include <openssl/ssl.h>
 
-#include "tao/attestation.pb.h"
-#include "tao/keys.h"
-#include "tao/log_net.h"
 #include "tao/tao.h"
-#include "tao/tao_domain.h"
 
 using std::lock_guard;
 using std::mutex;
 using std::shared_ptr;
 using std::stringstream;
 using std::vector;
+
+using google::protobuf::io::StringOutputStream;
+using google::protobuf::io::CodedOutputStream;
 
 namespace tao {
 
@@ -103,43 +104,6 @@ static void locking_function(int mode, int n, const char *file, int line) {
   }
 }
 
-bool Sha256FileHash(const string &path, string *hash) {
-  string contents;
-  if (!ReadFileToString(path, &contents)) {
-    LOG(ERROR) << "Can't read " << path;
-    return false;
-  }
-  return Sha256(contents, hash);
-}
-
-bool Sha1FileHash(const string &path, string *hash) {
-  string contents;
-  if (!ReadFileToString(path, &contents)) {
-    LOG(ERROR) << "Can't read " << path;
-    return false;
-  }
-  return Sha1(contents, hash);
-}
-
-/*
-bool RegisterKnownChannels(TaoChildChannelRegistry *registry) {
-  if (registry == nullptr) {
-    LOG(ERROR) << "Could not register channels with a null registry";
-    return false;
-  }
-
-  registry->Register(
-      KvmUnixTaoChildChannel::ChannelType(),
-      TaoChildChannelRegistry::CallConstructor<KvmUnixTaoChildChannel>);
-
-  registry->Register(
-      PipeTaoChildChannel::ChannelType(),
-      TaoChildChannelRegistry::CallConstructor<PipeTaoChildChannel>);
-
-  return true;
-}
-*/
-
 bool OpenSSLSuccess() {
   uint32_t last_error = ERR_get_error();
   if (last_error) {
@@ -182,177 +146,8 @@ bool InitializeApp(int *argc, char ***argv, bool remove_args) {
   google::ParseCommandLineFlags(argc, argv, remove_args);
   google::InitGoogleLogging((*argv)[0]);
   google::InstallFailureSignalHandler();
-  LogNet::Init("localhost", "5514", (*argv)[0]);
   signal(SIGPIPE, SIG_IGN);
   return InitializeOpenSSL();
-}
-
-constexpr int MaxSelfPipeSignum = NSIG;
-struct SelfPipe {
-  bool open;
-  int fd[2];
-  struct sigaction sa;
-};
-SelfPipe selfPipe[MaxSelfPipeSignum] = {};
-static mutex selfPipeMutex;
-
-static void SelfPipeHandler(int signum) {
-  if (signum <= 0 || signum > MaxSelfPipeSignum) return;
-  if (!selfPipe[signum - 1].open) return;
-  int savedErrno = errno;
-  char b = static_cast<char>(signum);
-  ssize_t v = write(selfPipe[signum - 1].fd[1], &b, 1);
-  (void) v;  // Ignore the result
-  errno = savedErrno;
-}
-
-static bool SetFdFlags(int fd, int flags) {
-  int f = fcntl(fd, F_GETFL);
-  if (f == -1) {
-    LOG(ERROR) << "Could not get flags for fd " << fd;
-    return false;
-  }
-  if (fcntl(fd, F_SETFL, f | flags) == -1) {
-    LOG(ERROR) << "Could not set flags for fd " << fd;
-    return false;
-  }
-  return true;
-}
-
-int GetSelfPipeSignalFd(int signum, int sa_flags) {
-  if (signum <= 0 || signum > MaxSelfPipeSignum) {
-    LOG(ERROR) << "Invalid self-pipe signal number " << signum;
-    return -1;
-  }
-  lock_guard<mutex> l(selfPipeMutex);
-  if (selfPipe[signum - 1].open) {
-    LOG(ERROR) << "Self-pipe already opened";
-    // We could instead return the existing fd here if callers can share it.
-    return -1;
-  }
-  if (pipe(selfPipe[signum - 1].fd) == -1) {
-    LOG(ERROR) << "Could not create self-pipe";
-    return -1;
-  }
-  if (!SetFdFlags(selfPipe[signum - 1].fd[0], O_NONBLOCK) ||
-      !SetFdFlags(selfPipe[signum - 1].fd[1], O_NONBLOCK)) {
-    PLOG(ERROR) << "Could not set self-pipe disposition";
-    close(selfPipe[signum - 1].fd[0]);
-    close(selfPipe[signum - 1].fd[1]);
-    selfPipe[signum - 1].fd[0] = selfPipe[signum - 1].fd[1] = -1;
-    return -1;
-  }
-  struct sigaction act;
-  memset(&act, 0, sizeof(struct sigaction));
-  act.sa_handler = SelfPipeHandler;
-  act.sa_flags = sa_flags;
-  if (sigaction(signum, &act, &selfPipe[signum - 1].sa) < 0) {
-    PLOG(ERROR) << "Could not set self-pipe handler";
-    close(selfPipe[signum - 1].fd[0]);
-    close(selfPipe[signum - 1].fd[1]);
-    selfPipe[signum - 1].fd[0] = selfPipe[signum - 1].fd[1] = -1;
-    return -1;
-  }
-  selfPipe[signum - 1].open = true;
-  return selfPipe[signum - 1].fd[0];
-}
-
-bool ReleaseSelfPipeSignalFd(int fd) {
-  if (fd < 0) {
-    LOG(ERROR) << "Invalid self-pipe fd " << fd;
-    return false;
-  }
-  lock_guard<mutex> l(selfPipeMutex);
-  for (int signum = 1; signum <= MaxSelfPipeSignum; signum++) {
-    if (!selfPipe[signum - 1].open || selfPipe[signum - 1].fd[0] != fd)
-      continue;
-    selfPipe[signum - 1].open = false;
-    bool success = true;
-    if (sigaction(signum, &selfPipe[signum - 1].sa, nullptr) < 0) {
-      PLOG(ERROR) << "Could not restore old handler for signal " << signum;
-      success = false;
-    }
-    close(selfPipe[signum - 1].fd[0]);
-    close(selfPipe[signum - 1].fd[1]);
-    selfPipe[signum - 1].fd[0] = selfPipe[signum - 1].fd[1] = -1;
-    return success;
-  }
-  LOG(ERROR) << "No such self-pipe fd " << fd;
-  return false;
-}
-
-void selfpipe_release(int *fd) {
-  if (fd && *fd >= 0) {
-    if (!ReleaseSelfPipeSignalFd(*fd)) {
-      PLOG(ERROR) << "Could not close self-pipe fd " << *fd;
-    }
-    delete fd;
-  }
-}
-
-bool OpenTCPSocket(const string &host, const string &port, int *sock) {
-  if (sock == nullptr) {
-    LOG(ERROR) << "null socket parameter";
-    return false;
-  }
-
-  *sock = socket(AF_INET, SOCK_STREAM, 0);
-  if (*sock == -1) {
-    PLOG(ERROR) << "Could not create a socket to listen on";
-    return false;
-  }
-
-  // Don't allow TIME_WAIT sockets from interfering with bind() below. The
-  // socket option SO_REUSEADDR allows this socket to bind even when there is
-  // another bound socket in TIME_WAIT.
-  int val = 1;
-  if (setsockopt(*sock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)) != 0) {
-    PLOG(ERROR) << "Could not set SO_REUSEADDR on the socket for " << host
-                << ":" << port;
-    return false;
-  }
-
-  struct addrinfo hints;
-  memset(&hints, 0, sizeof(struct addrinfo));
-  hints.ai_family = AF_INET;
-  hints.ai_socktype = SOCK_STREAM;
-
-  struct addrinfo *addrs = nullptr;
-  int info_err = getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs);
-  if (info_err != 0) {
-    LOG(ERROR) << "Could not get address information for " << host << ":"
-               << port;
-    return false;
-  }
-
-  int bind_err = bind(*sock, addrs->ai_addr, addrs->ai_addrlen);
-  if (bind_err == -1) {
-    PLOG(ERROR) << "Could not bind the socket";
-    return false;
-  }
-
-  int listen_err = listen(*sock, 128 /* max completed connections */);
-  if (listen_err == -1) {
-    PLOG(ERROR) << "Could not set the socket up for listening";
-    return false;
-  }
-
-  return true;
-}
-
-bool GetTCPSocketInfo(int sock, string *host, string *port) {
-  struct sockaddr_in addr;
-  unsigned int len = sizeof(addr);
-  if (getsockname(sock, (struct sockaddr *)&addr, &len) == -1) {
-    PLOG(ERROR) << "Could not get socket name";
-    return false;
-  }
-  char buf[INET_ADDRSTRLEN];
-  host->assign(inet_ntop(AF_INET, &addr.sin_addr, buf, sizeof(buf)));
-  stringstream out;
-  out << (unsigned)ntohs(addr.sin_port);
-  port->assign(out.str());
-  return true;
 }
 
 bool MakeSealedSecret(Tao *tao, const string &path, const string &policy,
@@ -672,15 +467,6 @@ bool WeakRandBytes(size_t size, string *s) {
   return (RAND_bytes(str2uchar(s), size) == 1);
 }
 
-bool RandBytes(size_t size, string *s) {
-  Tao *host = Tao::GetHostTao();
-  if (host == nullptr) {
-    return WeakRandBytes(size, s);
-  } else {
-    return host->GetRandomBytes(size, s);
-  }
-}
-
 string Base64WEncode(const string &in) {
   string out;
   Base64WEncode(in, &out);  // does not fail
@@ -713,4 +499,62 @@ bool Base64WDecode(const string &in, string *out) {
   return true;
 }
 
+// These constants give the tags needed to encode a key auth.Prin in binary form
+// in a Speaksfor statement.
+static int tagPrin = 0x1;
+static int tagBytes = 0x4;
+static int tagSpeaksfor = 0xd;
+static int tagSubPrin = 0x11;
+bool MarshalSpeaksfor(const string &key, const string &binaryTaoName,
+                      string *out) {
+
+  StringOutputStream *sos = new StringOutputStream(out);
+  CodedOutputStream *cos = new CodedOutputStream(sos);
+  // Tag this as a Speaksfor object.
+  cos->WriteVarint32(tagSpeaksfor);
+
+  string delegate;
+  if (!MarshalKeyPrin(key, &delegate)) {
+    delete cos;
+    delete sos;
+    return false;
+  }
+
+  cos->WriteRaw(delegate.data(), delegate.size());
+
+  // The delegator is written directly, since it's already a binary-encoded
+  // Term.
+  cos->WriteRaw(binaryTaoName.data(), binaryTaoName.size());
+
+  delete cos;
+  delete sos;
+  return true;
+}
+
+bool MarshalKeyPrin(const string &key, string *out) {
+  StringOutputStream *sos = new StringOutputStream(out);
+  CodedOutputStream *cos = new CodedOutputStream(sos);
+
+  // auth.Prin is tagPrin, then a string type "key", then a Key buffer, and no
+  // extensions (this is marshaled as tagSubPrin, 0).
+  cos->WriteVarint32(tagPrin);
+
+  // Type: "key"
+  string keyType("key");
+  cos->WriteVarint32(keyType.size());
+  cos->WriteRaw(keyType.data(), keyType.size());
+
+  // Key: auth.Bytes[...]
+  cos->WriteVarint32(tagBytes);
+  cos->WriteVarint32(key.size());
+  cos->WriteRaw(key.data(), key.size());
+
+  // Ext: auth.SubPrin of length 0
+  cos->WriteVarint32(tagSubPrin);
+  cos->WriteVarint32(0);
+
+  delete cos;
+  delete sos;
+  return true;
+}
 }  // namespace tao

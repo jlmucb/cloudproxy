@@ -1,6 +1,0 @@
-ancestor(bob, douglas).
-ancestor(bob, john).
-ancestor(ebbon, bob).
-ancestor(ebbon, douglas).
-ancestor(ebbon, john).
-ancestor(john, douglas).

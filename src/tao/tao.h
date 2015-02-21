@@ -21,8 +21,6 @@
 
 #include <string>
 
-#include "tao/attestation.pb.h"
-
 namespace tao {
 using std::string;
 
@@ -38,21 +36,13 @@ using std::string;
 class Tao {
  public:
   Tao() {}
-  virtual ~Tao() {
-    if (host_tao_ == this) host_tao_ = nullptr;
-  }
+  virtual ~Tao() {}
 
   /// Serialize Tao parameters for passing across fork/exec or between
   /// processes, if possible. Not all Tao implementations must necessarily be
   /// serializable.
   /// @param params[out] The serialized parameters.
   virtual bool SerializeToString(string *params) const { return false; }
-
-  /// Get the interface to the host Tao for this hosted program.
-  /// Every hosted program is provided with one such interface.
-  /// Ownership is of the returned pointer retained by this (static) class,
-  /// though the caller can do a Close() if desired.
-  static Tao *GetHostTao();
 
   /// Get the Tao principal name assigned to this hosted program. The name
   /// encodes the full path from the root Tao, through all intermediary Tao
@@ -108,10 +98,11 @@ class Tao {
   /// @}
 
   /// Request the Tao host sign a Statement on behalf of this hosted program.
-  /// @param stmt A Statement to be signed. The issuer, time, and expiration
-  /// fields will be filled in with appropriate defaults if they are left empty.
+  /// @param message A delegation statement to be signed. This statement is a
+  /// serialized binary auth statement and can be created using MarshalSpeaksfor
+  /// in util.h.
   /// @param[out] attestation The resulting signed attestation.
-  virtual bool Attest(const Statement &stmt, string *attestation) = 0;
+  virtual bool Attest(const string &message, string *attestation) = 0;
 
   /// Encrypt data so only certain hosted programs can unseal it.
   /// @param data The data to seal.
@@ -171,13 +162,6 @@ class Tao {
 
   /// Default timeout for Attestation (= 1 year in seconds).
   static const int DefaultAttestationTimeout = 31556926;
-
-  /// Environment variable for passing parent/child channel parameters from a
-  /// parent to a hosted process.
-  constexpr static auto HostTaoEnvVar = "GOOGLE_HOST_TAO";
-
- private:
-  static Tao *host_tao_;
 };
 }  // namespace tao
 

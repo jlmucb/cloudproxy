@@ -36,8 +36,6 @@
 
 #include "tao/tao.h"
 
-struct sockaddr;
-
 namespace google {
 namespace protobuf {
 class Message;
@@ -82,9 +80,6 @@ std::unique_ptr<T> make_unique(Args &&... args) {
   return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
 
-// class TaoChildChannelRegistry;
-class TaoDomain;
-
 /// Close a file descriptor and ignore the return value. This is used by the
 /// definition of ScopedFd.
 /// @param fd A pointer to the file descriptor to close and free.
@@ -99,11 +94,6 @@ void file_close(FILE *file);
 /// the definition of ScopedTempDir.
 /// @param dir The path to the directory.
 void temp_file_cleaner(string *dir);
-
-/// Close a self-pipe and ignore the return value. This is used by
-/// the definition of ScopedSelfPipeFd.
-/// @param fd A pointer to the self-pipe file descriptor.
-void selfpipe_release(int *fd);
 
 /// A version of unique_ptr::reset() that returns the new pointer. Useful for
 /// putting reset inside of conditionals.
@@ -146,9 +136,6 @@ typedef unique_free_ptr<FILE, file_close> ScopedFile;
 /// A smart pointer to a temporary directory to be cleaned upon destruction.
 typedef unique_free_ptr<string, temp_file_cleaner> ScopedTempDir;
 
-/// A smart pointer to a self-pipe.
-typedef unique_free_ptr<int, selfpipe_release> ScopedSelfPipeFd;
-
 /// Extract pointer to string data. These can be used for library functions
 /// that require raw pointers instead of C++ strings. Returned const pointers
 /// should not be written to. Returned non-const pointers can be written. Any
@@ -172,44 +159,6 @@ inline unsigned char *str2uchar(string *s) {
   return reinterpret_cast<unsigned char *>(str2char(s));
 }
 /// @}
-
-/// Create a self-pipe for a signal. A signal handler is installed that writes
-/// the signal number (cast to a byte) to the pipe. Callers can use the returned
-/// file descriptor as part of a select() call. When a byte is available on the
-/// file descriptor, it means that that signal has been received. An error is
-/// returned if another self-pipe already exists (this limitation stems from the
-/// need for global variables).
-/// @param signum The signal to catch.
-/// @param sa_flags Flags to modify the signal behavior. See sigaction(2).
-/// @return A file descriptor suitable for select() and read(), or -1 on error.
-int GetSelfPipeSignalFd(int signum, int sa_flags);
-
-/// Destroy a self-pipe, restoring any previous signal handler.
-/// @param fd The file descriptor returned from GetSelfPipeSignalFd().
-bool ReleaseSelfPipeSignalFd(int fd);
-
-/// Hash a string using SHA1 or SHA256.
-/// @param s The string to hash.
-/// @param[out] hash The resulting hash.
-/// @{
-bool Sha1(const string &s, string *hash);
-bool Sha256(const string &s, string *hash);
-/// @}
-
-/// Hash a file using SHA1 or SHA256.
-/// @param path The path of the file to hash.
-/// @param[out] hash The resulting hash.
-/// @{
-bool Sha1FileHash(const string &path, string *hash);
-bool Sha256FileHash(const string &path, string *hash);
-/// @}
-
-/// Register some well-known TaoChannels with the registry. The list of
-/// registered TaoChannels is:
-/// - KvmUnixTaoChannel
-/// - PipeTaoChannel
-/// @param registry The registry to fill with the channels
-// bool RegisterKnownChannels(TaoChildChannelRegistry *registry);
 
 /// Call the OpenSSL initialization routines and set up locking for
 /// multi-threaded access.
@@ -244,24 +193,6 @@ bool InitializeApp(int *argc, char ***argv, bool remove_args);
 ///    CHECK(cert != null) << "Could not find a required certificate, exiting
 /// program";
 bool OpenSSLSuccess();
-
-/// Open a listening TCP socket on the given port.
-/// @param host The host to listen on.
-/// @param port The port to listen on.
-/// @param[out] sock The socket opened for this port.
-bool OpenTCPSocket(const string &host, const string &port, int *sock);
-
-/// Get local address information about an open TCP socket.
-/// @param sock The socket.
-/// @param[out] host The local host address.
-/// @param[out] port The local port.
-bool GetTCPSocketInfo(int sock, string *host, string *port);
-
-/// Connect to a remote server.
-/// @param host The name of the remote host.
-/// @param port The port to connect to.
-/// @param[out] sock The connected client socket.
-bool ConnectToTCPServer(const string &host, const string &port, int *sock);
 
 /// Generate and save a random secret, sealed against the host Tao.
 /// @param tao The interface to access the host Tao.
@@ -379,12 +310,6 @@ time_t FileModificationTime(const string &path);
 /// @param[out] s A string in which to place the bytes.
 bool WeakRandBytes(size_t size, string *s);
 
-/// Get random bytes from host Tao, if available, otherwise from OpenSSL.
-/// @param size The number of bytes to get.
-/// @param[out] s A string in which to place the bytes.
-// TODO(kwalsh) Rethink this function.
-bool RandBytes(size_t size, string *s);
-
 /// Encode string using web-safe base64w. No padding or newlines are added. This
 /// function does not fail.
 /// @param in The string to be encoded. May be emptystring.
@@ -403,6 +328,21 @@ bool Base64WEncode(const string &in, string *out);
 /// @param[out] out A string to be overwritten with the result.
 bool Base64WDecode(const string &in, string *out);
 
+/// Encode a key as a binary auth statement that can be parsed by the Go Tao
+/// binary package in github.com/jlmucb/cloudproxy/tao/auth. Note that there is
+/// no corresponding ParseSpeaksfor function, since this code exists only to
+/// pass well-formed messages down to the Tao.
+/// @param key The bytes of the key to authorize.
+/// @param binaryTaoName The binary-marshaled principal name of the delegator.
+/// @param[out] out The resulting binary-serialized auth.Speaksfor statement.
+bool MarshalSpeaksfor(const string &key, const string &binaryTaoName,
+			string *out);
+
+/// Encode a key as an auth.Prin of type "key". This uses the binary encoding
+/// from the Go package github.com/jlmucb/cloudproxy/tao/auth
+/// @param key The bytes of the key to write as an auth.Prin
+/// @param[out] out The resulting binary-encoded auth.Prin.
+bool MarshalKeyPrin(const string &key, string *out);
 }  // namespace tao
 
 #endif  // TAO_UTIL_H_

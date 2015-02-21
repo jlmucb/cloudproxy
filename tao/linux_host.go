@@ -158,6 +158,8 @@ func (lh *LinuxHost) Seal(child *LinuxHostChild, data []byte, policy string) ([]
 		// running on a similar LinuxHost instance. So, we don't set
 		// any policy info.
 	default:
+		// Try to parse this statement as a tao/auth policy. If it
+		// parses, then use it as the policy statement.
 		return nil, newError("policy not supported for Seal: " + policy)
 	}
 

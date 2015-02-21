@@ -49,14 +49,9 @@ bool TaoRPC::GetSharedSecret(size_t size, const string &policy, string *bytes) {
   return Request("Tao.GetSharedSecret", rpc, bytes, nullptr /* policy */);
 }
 
-bool TaoRPC::Attest(const Statement &stmt, string *attestation) {
-  string serialized_stmt;
-  if (!stmt.SerializePartialToString(&serialized_stmt)) {
-    LOG(ERROR) << "Could not serialize partial statement";
-    return false;
-  }
+bool TaoRPC::Attest(const string &message, string *attestation) {
   TaoRPCRequest rpc;
-  rpc.set_data(serialized_stmt);
+  rpc.set_data(message);
   return Request("Tao.Attest", rpc, attestation, nullptr /* policy */);
 }
 

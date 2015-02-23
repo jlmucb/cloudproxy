@@ -394,9 +394,9 @@ func TestNewOnDiskPBESigner(t *testing.T) {
 }
 
 func TestNewTemporaryTaoDelegatedKeys(t *testing.T) {
-	ft, err := NewFakeTao(auth.NewKeyPrin([]byte("test")), "", nil)
+	ft, err := NewSoftTao(auth.NewKeyPrin([]byte("test")), "", nil)
 	if err != nil {
-		t.Fatal("Couldn't initialize a FakeTao:", err)
+		t.Fatal("Couldn't initialize a SoftTao:", err)
 	}
 
 	_, err = NewTemporaryTaoDelegatedKeys(Signing|Crypting|Deriving, ft)
@@ -412,9 +412,9 @@ func TestNewOnDiskTaoSealedKeys(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	ft, err := NewFakeTao(auth.NewKeyPrin([]byte("test")), "", nil)
+	ft, err := NewSoftTao(auth.NewKeyPrin([]byte("test")), "", nil)
 	if err != nil {
-		t.Fatal("Couldn't initialize a FakeTao:", err)
+		t.Fatal("Couldn't initialize a SoftTao:", err)
 	}
 
 	_, err = NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)

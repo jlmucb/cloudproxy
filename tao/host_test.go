@@ -37,14 +37,14 @@ func testNewTaoRootHost(t *testing.T) Host {
 }
 
 func testNewTaoStackedHost(t *testing.T) Host {
-	ft, err := NewFakeTao(auth.NewKeyPrin([]byte("test")), "", nil)
+	ft, err := NewSoftTao(auth.NewKeyPrin([]byte("test")), "", nil)
 	if err != nil {
-		t.Fatal("Couldn't set up a FakeTao for the StackedHost")
+		t.Fatal("Couldn't set up a SoftTao for the StackedHost")
 	}
 
 	th, err := NewTaoStackedHost(ft)
 	if err != nil {
-		t.Fatal("Couldn't set up a StackedHost over a FakeTao")
+		t.Fatal("Couldn't set up a StackedHost over a SoftTao")
 	}
 
 	return th

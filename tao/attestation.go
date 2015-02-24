@@ -110,7 +110,7 @@ func (a *Attestation) Validate() (auth.Says, error) {
 		// Case (1), no delegation present.
 		// Require that stmt.Speaker be a subprincipal of (or identical to) a.signer.
 		if !auth.SubprinOrIdentical(stmt.Speaker, signer) {
-			return auth.Says{}, newError("tao: attestation statement signer does not evidently speak for issuer")
+			return auth.Says{}, newError("tao: attestation statement signer (%v) does not evidently speak for issuer (%v)", signer, stmt.Speaker)
 		}
 	} else {
 		// Case (2), delegation present.

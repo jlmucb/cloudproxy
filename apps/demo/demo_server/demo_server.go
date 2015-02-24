@@ -78,7 +78,6 @@ func doResponse(conn net.Conn, responseOk chan<- bool) {
 	msg, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
 		glog.Fatalf("server: can't read: %s\n", err.Error())
-		conn.Close()
 		responseOk <- false
 		return
 	}
@@ -86,7 +85,6 @@ func doResponse(conn net.Conn, responseOk chan<- bool) {
 	glog.Infof("server: got message: %s\n", msg)
 	responseOk <- true
 	fmt.Fprintf(conn, "echo(%s)\n", msg)
-	conn.Close()
 	glog.Flush()
 }
 

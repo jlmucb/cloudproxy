@@ -19,8 +19,6 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
-
-	"github.com/jlmucb/cloudproxy/tao/auth"
 )
 
 func TestGenerateKeys(t *testing.T) {
@@ -394,7 +392,7 @@ func TestNewOnDiskPBESigner(t *testing.T) {
 }
 
 func TestNewTemporaryTaoDelegatedKeys(t *testing.T) {
-	ft, err := NewSoftTao(auth.NewKeyPrin([]byte("test")), "", nil)
+	ft, err := NewSoftTao("", nil)
 	if err != nil {
 		t.Fatal("Couldn't initialize a SoftTao:", err)
 	}
@@ -412,7 +410,7 @@ func TestNewOnDiskTaoSealedKeys(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	ft, err := NewSoftTao(auth.NewKeyPrin([]byte("test")), "", nil)
+	ft, err := NewSoftTao("", nil)
 	if err != nil {
 		t.Fatal("Couldn't initialize a SoftTao:", err)
 	}

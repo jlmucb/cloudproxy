@@ -23,14 +23,14 @@ import (
 )
 
 func TestInMemoryInit(t *testing.T) {
-	_, err := NewSoftTao(auth.NewKeyPrin([]byte("test")), "", nil)
+	_, err := NewSoftTao("", nil)
 	if err != nil {
 		t.Fatal("Couldn't initialize a SoftTao in memory:", err)
 	}
 }
 
 func TestSoftTaoRandom(t *testing.T) {
-	ft, err := NewSoftTao(auth.NewKeyPrin([]byte("test")), "", nil)
+	ft, err := NewSoftTao("", nil)
 	if err != nil {
 		t.Fatal("Couldn't initialize a SoftTao in memory:", err)
 	}
@@ -41,7 +41,7 @@ func TestSoftTaoRandom(t *testing.T) {
 }
 
 func TestSoftTaoSeal(t *testing.T) {
-	ft, err := NewSoftTao(auth.NewKeyPrin([]byte("test")), "", nil)
+	ft, err := NewSoftTao("", nil)
 	if err != nil {
 		t.Fatal("Couldn't initialize a SoftTao in memory:", err)
 	}
@@ -59,7 +59,7 @@ func TestSoftTaoSeal(t *testing.T) {
 }
 
 func TestSoftTaoUnseal(t *testing.T) {
-	ft, err := NewSoftTao(auth.NewKeyPrin([]byte("test")), "", nil)
+	ft, err := NewSoftTao("", nil)
 	if err != nil {
 		t.Fatal("Couldn't initialize a SoftTao in memory:", err)
 	}
@@ -92,7 +92,7 @@ func TestSoftTaoUnseal(t *testing.T) {
 }
 
 func TestSoftTaoAttest(t *testing.T) {
-	ft, err := NewSoftTao(auth.NewKeyPrin([]byte("test")), "", nil)
+	ft, err := NewSoftTao("", nil)
 	if err != nil {
 		t.Fatal("Couldn't initialize a SoftTao in memory:", err)
 	}
@@ -107,8 +107,14 @@ func TestSoftTaoAttest(t *testing.T) {
 		Delegator: self,
 	}
 
-	_, err = ft.Attest(nil, nil, nil, stmt)
+	a, err := ft.Attest(nil, nil, nil, stmt)
 	if err != nil {
-		t.Fatal("Couldn't attest to a statement in the SoftTao:", err)
+		t.Fatalf("Couldn't attest to a statement in the SoftTao:", err)
+	}
+
+	// Make sure the attestation passes basic sanity checks.
+	_, err = a.Validate()
+	if err != nil {
+		t.Fatalf("The attestation produced by the SoftTao didn't pass validation: %s", err)
 	}
 }

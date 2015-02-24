@@ -1,4 +1,4 @@
-//  Copyright (c) 2015, Google Inc.  All rights reserved.
+//  Copyright (c 2015, Google Inc.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,38 +32,38 @@ type SoftTao struct {
 }
 
 // Init initializes the SoftTao with a crypter and a signer.
-func NewSoftTao(name auth.Prin, path string, password []byte) (Tao, error) {
-	f := &SoftTao{
-		name: name,
-	}
+func NewSoftTao(path string, password []byte) (Tao, error) {
+	s := &SoftTao{}
 
 	var err error
 	if path == "" {
-		f.keys, err = NewTemporaryKeys(Signing | Crypting | Deriving)
+		s.keys, err = NewTemporaryKeys(Signing | Crypting | Deriving)
 	} else {
-		f.keys, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, path, nil)
+		s.keys, err = NewOnDiskPBEKeys(Signing|Crypting|Deriving, password, path, nil)
 	}
+
+	s.name = s.keys.VerifyingKey.ToPrincipal()
 
 	if err != nil {
 		return nil, err
 	}
 
-	return f, nil
+	return s, nil
 }
 
 // GetTaoName returns the Tao principal name assigned to the caller.
-func (f *SoftTao) GetTaoName() (auth.Prin, error) {
-	return f.name.MakeSubprincipal(f.nameExtension), nil
+func (s *SoftTao) GetTaoName() (auth.Prin, error) {
+	return s.name.MakeSubprincipal(s.nameExtension), nil
 }
 
 // ExtendTaoName irreversibly extends the Tao principal name of the caller.
-func (f *SoftTao) ExtendTaoName(subprin auth.SubPrin) error {
-	f.nameExtension = append(f.nameExtension, subprin...)
+func (s *SoftTao) ExtendTaoName(subprin auth.SubPrin) error {
+	s.nameExtension = append(s.nameExtension, subprin...)
 	return nil
 }
 
 // GetRandomBytes fills the slice with random bytes.
-func (f *SoftTao) GetRandomBytes(n int) ([]byte, error) {
+func (s *SoftTao) GetRandomBytes(n int) ([]byte, error) {
 	b := make([]byte, n)
 	if _, err := rand.Read(b); err != nil {
 		return nil, err
@@ -73,8 +73,8 @@ func (f *SoftTao) GetRandomBytes(n int) ([]byte, error) {
 }
 
 // Read implements io.Reader to read random bytes from the Tao.
-func (f *SoftTao) Read(p []byte) (int, error) {
-	bytes, err := f.GetRandomBytes(len(p))
+func (s *SoftTao) Read(p []byte) (int, error) {
+	bytes, err := s.GetRandomBytes(len(p))
 	if err != nil {
 		return 0, err
 	}
@@ -84,12 +84,12 @@ func (f *SoftTao) Read(p []byte) (int, error) {
 }
 
 // Rand returns an io.Reader for the SoftTao's source of randomness.
-func (f *SoftTao) Rand() io.Reader {
-	return f
+func (s *SoftTao) Rand() io.Reader {
+	return s
 }
 
 // GetShareSecret returns a slice of n secret bytes.
-func (f *SoftTao) GetSharedSecret(n int, policy string) ([]byte, error) {
+func (s *SoftTao) GetSharedSecret(n int, policy string) ([]byte, error) {
 	if policy != SharedSecretPolicyDefault {
 		return nil, newError("SoftTao policies not yet implemented")
 	}
@@ -98,7 +98,7 @@ func (f *SoftTao) GetSharedSecret(n int, policy string) ([]byte, error) {
 	// the strength of HKDF with a strong key.
 	salt := make([]byte, 8)
 	material := make([]byte, n)
-	if err := f.keys.DerivingKey.Derive(salt, []byte("derive shared secret"), material); err != nil {
+	if err := s.keys.DerivingKey.Derive(salt, []byte("derive shared secret"), material); err != nil {
 		return nil, err
 	}
 
@@ -108,26 +108,26 @@ func (f *SoftTao) GetSharedSecret(n int, policy string) ([]byte, error) {
 // Seal encrypts the data in a way that can only be opened by the Tao for the
 // program that sealed it.  In the case of the SoftTao, this policy is
 // implicit.
-func (f *SoftTao) Seal(data []byte, policy string) ([]byte, error) {
+func (s *SoftTao) Seal(data []byte, policy string) ([]byte, error) {
 	// The SoftTao insists on the trivial policy, since it just encrypts the bytes directly
 	if policy != SealPolicyDefault {
 		return nil, newError("The SoftTao requires SealPolicyDefault")
 	}
 
-	return f.keys.CryptingKey.Encrypt(data)
+	return s.keys.CryptingKey.Encrypt(data)
 }
 
 // Unseal decrypts data that has been sealed by the Seal operation, but only if
 // the policy specified during the Seal operation is satisfied.
-func (f *SoftTao) Unseal(sealed []byte) (data []byte, policy string, err error) {
-	data, err = f.keys.CryptingKey.Decrypt(sealed)
+func (s *SoftTao) Unseal(sealed []byte) (data []byte, policy string, err error) {
+	data, err = s.keys.CryptingKey.Decrypt(sealed)
 	policy = SealPolicyDefault
 	return data, policy, err
 }
 
 // Attest requests that the Tao host sign a statement on behalf of the caller.
-func (f *SoftTao) Attest(issuer *auth.Prin, time, expiration *int64, message auth.Form) (*Attestation, error) {
-	child := f.name.MakeSubprincipal(f.nameExtension)
+func (s *SoftTao) Attest(issuer *auth.Prin, time, expiration *int64, message auth.Form) (*Attestation, error) {
+	child := s.name.MakeSubprincipal(s.nameExtension)
 	if issuer == nil {
 		issuer = &child
 	} else if !auth.SubprinOrIdentical(issuer, child) {
@@ -137,13 +137,18 @@ func (f *SoftTao) Attest(issuer *auth.Prin, time, expiration *int64, message aut
 	stmt := auth.Says{Speaker: *issuer, Time: time, Expiration: expiration, Message: message}
 
 	var delegation []byte
-	if f.keys.Delegation != nil {
+	if s.keys.Delegation != nil {
 		var err error
-		delegation, err = proto.Marshal(f.keys.Delegation)
+		delegation, err = proto.Marshal(s.keys.Delegation)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return GenerateAttestation(f.keys.SigningKey, delegation, stmt)
+	return GenerateAttestation(s.keys.SigningKey, delegation, stmt)
+}
+
+// GetVerifier returns the verifying key for this Tao.
+func (s *SoftTao) GetVerifier() *Verifier {
+	return s.keys.VerifyingKey
 }

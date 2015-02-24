@@ -26,7 +26,13 @@ import (
 )
 
 func newNetKeys(t *testing.T, ta tao.Tao, org string) (*tao.Keys, *tls.Config) {
-	keys, err := tao.NewTemporaryTaoDelegatedKeys(tao.Signing, ta)
+	var keys *tao.Keys
+	var err error
+	if ta != nil {
+		keys, err = tao.NewTemporaryTaoDelegatedKeys(tao.Signing, ta)
+	} else {
+		keys, err = tao.NewTemporaryKeys(tao.Signing)
+	}
 	if err != nil {
 		t.Fatalf("couldn't create new temporary delegated keys: %s", err)
 	}
@@ -146,5 +152,81 @@ func TestClientServer(t *testing.T) {
 	}
 
 	// Wait for the server to finish.
+	<-ch
+}
+
+func runTCCA(t *testing.T, l net.Listener, pk *tao.Keys, g tao.Guard, ch chan<- bool) {
+	conn, err := l.Accept()
+	if err != nil {
+		t.Fatalf("couldn't accept a connection for tcca: %s", err)
+	}
+
+	HandleCARequest(conn, pk.SigningKey, g)
+	ch <- true
+}
+
+func TestCARequestAttestation(t *testing.T) {
+	// Create a temporary key as the policy key.
+	pk, err := tao.NewTemporaryKeys(tao.Signing)
+	if err != nil {
+		t.Fatalf("couldn't set up a temporary policy key: %s", err)
+	}
+
+	_, caconf := newNetKeys(t, nil, "Net Test")
+
+	cal, err := tls.Listen("tcp", "127.0.0.1:0", caconf)
+	caAddr := cal.Addr()
+
+	// For the simple test, use a LiberalGuard in the CA.
+	ch := make(chan bool)
+	go runTCCA(t, cal, pk, tao.LiberalGuard, ch)
+
+	// Set up some keys to be attested.
+	st, err := tao.NewSoftTao("", nil)
+	if err != nil {
+		t.Fatalf("couldn't create a new SoftTao: %s", err)
+	}
+
+	keys, _ := newNetKeys(t, st, "Net Test")
+
+	_, err = RequestAttestation("tcp", caAddr.String(), keys, pk.VerifyingKey)
+	if err != nil {
+		t.Fatalf("failed to get an attestation from the CA: %s", err)
+	}
+
+	// Wait for the CA to finish
+	<-ch
+}
+
+func TestCARequestTruncatedAttestation(t *testing.T) {
+	// Create a temporary key as the policy key.
+	pk, err := tao.NewTemporaryKeys(tao.Signing)
+	if err != nil {
+		t.Fatalf("couldn't set up a temporary policy key: %s", err)
+	}
+
+	_, caconf := newNetKeys(t, nil, "Net Test")
+
+	cal, err := tls.Listen("tcp", "127.0.0.1:0", caconf)
+	caAddr := cal.Addr()
+
+	// For the simple test, use a LiberalGuard in the CA.
+	ch := make(chan bool)
+	go runTCCA(t, cal, pk, tao.LiberalGuard, ch)
+
+	// Set up some keys to be attested.
+	st, err := tao.NewSoftTao("", nil)
+	if err != nil {
+		t.Fatalf("couldn't create a new SoftTao: %s", err)
+	}
+
+	keys, _ := newNetKeys(t, st, "Net Test")
+
+	_, err = RequestTruncatedAttestation("tcp", caAddr.String(), keys, pk.VerifyingKey)
+	if err != nil {
+		t.Fatalf("failed to get a truncated attestation from the CA: %s", err)
+	}
+
+	// Wait for the CA to finish
 	<-ch
 }

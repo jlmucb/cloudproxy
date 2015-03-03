@@ -1,5 +1,9 @@
 #!/bin/sh
 
+# Make sure we have sudo privileges before using them to try to start linux_host
+# below.
+sudo test true
+
 TEMP_FILE=`mktemp /tmp/loc.XXXXXXXX`
 echo "About to start linux_host. This requires super-user privileges"
 sudo ${GOPATH}/bin/linux_host -tmppath=$TEMP_FILE &

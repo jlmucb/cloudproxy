@@ -1,5 +1,9 @@
 #!/bin/sh
 
+# Make sure we have sudo privileges before trying to use them to start
+# linux_host below.
+sudo test true
+
 TEMP_FILE=`mktemp /tmp/loc.XXXXXXXX`
 sudo ${GOPATH}/bin/linux_host -hosted_program_type=docker -tmppath=$TEMP_FILE &
 status=$?

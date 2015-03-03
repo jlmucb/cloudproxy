@@ -31,4 +31,4 @@ sleep 5
 echo "Cleaning up docker containers"
 docker stop $container_name
 sudo kill $HOSTPID
-rm -f
+rm -f $TEMP_FILE

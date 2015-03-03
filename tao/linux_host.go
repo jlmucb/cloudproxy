@@ -18,9 +18,8 @@ import (
 	"io"
 	"sync"
 
-	"code.google.com/p/goprotobuf/proto"
-
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 )
 

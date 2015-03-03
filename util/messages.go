@@ -15,7 +15,7 @@
 package util
 
 import (
-	"code.google.com/p/goprotobuf/proto"
+	"github.com/golang/protobuf/proto"
 )
 
 // A MessageReader is a stream from which protobuf messages can be read.

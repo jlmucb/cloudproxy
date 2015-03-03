@@ -2,20 +2,9 @@
 // source: rollback.proto
 // DO NOT EDIT!
 
-/*
-Package fileproxy is a generated protocol buffer package.
-
-It is generated from these files:
-	rollback.proto
-
-It has these top-level messages:
-	RollbackMessage
-	RollbackHash
-	RollbackResponse
-*/
 package fileproxy
 
-import proto "code.google.com/p/goprotobuf/proto"
+import proto "github.com/golang/protobuf/proto"
 import math "math"
 
 // Reference imports to suppress errors if they are not otherwise used.

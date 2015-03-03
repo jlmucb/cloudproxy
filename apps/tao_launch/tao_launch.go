@@ -52,7 +52,7 @@ func main() {
 				glog.Exit(err)
 			}
 			glog.Infof("%d %v\n", pid, subprin)
-			fmt.Print(pid)
+			fmt.Printf("Launched hosted program with identifier %d\n", pid)
 		} else {
 			// Drop the first arg for Docker, since it will
 			// be handled by the Dockerfile directly.

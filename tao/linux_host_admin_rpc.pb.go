@@ -4,7 +4,7 @@
 
 package tao
 
-import proto "code.google.com/p/goprotobuf/proto"
+import proto "github.com/golang/protobuf/proto"
 import math "math"
 
 // Reference imports to suppress errors if they are not otherwise used.

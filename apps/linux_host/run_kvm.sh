@@ -8,16 +8,19 @@ fi
 IMG=$1
 KEYS=$2
 
+# Make sure we have sudo privileges before running anything.
+sudo test true
+
 # Start linux_host in KVM mode and get its directory.
-t=`mktemp /tmp/loc.XXXXXXXX`
-${GOPATH}/bin/linux_host -hosted_program_type=kvm_coreos -kvm_coreos_img=$IMG -kvm_coreos_ssh_auth_keys=$KEYS -tmppath=$t &
+TEMP_FILE=`mktemp /tmp/loc.XXXXXXXX`
+sudo ${GOPATH}/bin/linux_host -hosted_program_type=kvm_coreos -kvm_coreos_img=$IMG -kvm_coreos_ssh_auth_keys=$KEYS -tmppath=$TEMP_FILE &
 status=$?
-hostpid=$!
+HOSTPID=$!
 
 echo "Waiting for the hypervisor Linux Host to start"
 sleep 2
 
-DIR=`cat $t`
+DIR=`cat $TEMP_FILE`
 
 # Set up the linux_host bundle for the VM.
 LHDIR=$(readlink -e $(dirname $0))
@@ -55,7 +58,7 @@ cat /tmp/demo_client.INFO
 echo -e "\n\nServer output:"
 cat /tmp/demo_server.INFO
 
-#echo -e "\n\nCleaning up"
-#ssh -l core -p ${SSHPORT} localhost sudo shutdown -h now
-#kill $hostpid
-#rm -fr $t ${LHTEMP} /tmp/demo_server.INFO /tmp/demo_client.INFO
+echo -e "\n\nCleaning up"
+ssh -l core -p ${SSHPORT} localhost sudo shutdown -h now
+sudo kill $HOSTPID
+sudo rm -fr $TEMP_FILE $LHTEMP /tmp/demo_server.INFO /tmp/demo_client.INFO

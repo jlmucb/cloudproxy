@@ -20,7 +20,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -35,8 +37,7 @@ import (
 	"syscall"
 	"time"
 
-	"code.google.com/p/go.crypto/ssh"
-	"code.google.com/p/go.crypto/ssh/agent"
+	"golang.org/x/crypto/ssh"
 
 	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/tao/auth"
@@ -220,20 +221,44 @@ type LinuxKVMCoreOSFactory struct {
 	SocketPath string
 	HostFile   string
 	Mutex      sync.Mutex
+	PublicKey  string
+	PrivateKey ssh.Signer
 }
 
 // NewLinuxKVMCoreOSFactory returns a new HostedProgramFactory that can
 // create docker containers to wrap programs.
 func NewLinuxKVMCoreOSFactory(sockPath string, cfg *CoreOSConfig) HostedProgramFactory {
+
+	// Create a key to use to connect to the instance and set up LinuxHost
+	// there.
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		glog.Fatalf("couldn't create a 2048-bit RSA key: %s", err)
+	}
+	sshpk, err := ssh.NewPublicKey(priv.Public())
+	if err != nil {
+		glog.Fatalf("couldn't create a SSH public key from the RSA key: %s", err)
+	}
+	pkstr := "ssh-rsa " + base64.StdEncoding.EncodeToString(sshpk.Marshal()) + " linux_host"
+	glog.Infof("Got public string '%s'", pkstr)
+
+	sshpriv, err := ssh.NewSignerFromKey(priv)
+	if err != nil {
+		glog.Fatalf("couldn't create an SSH private key from the RSA key: %s", err)
+	}
+
 	return &LinuxKVMCoreOSFactory{
 		Cfg:        cfg,
 		SocketPath: sockPath,
+		PublicKey:  pkstr,
+		PrivateKey: sshpriv,
 	}
 }
 
 // CloudConfigFromSSHKeys converts an ssh authorized-keys file into a format
 // that can be used by CoreOS to authorize incoming SSH connections over the
-// Plan9P-mounted filesystem it uses.
+// Plan9P-mounted filesystem it uses. This also adds the SSH key used by the
+// factory to configure the virtual machine.
 func CloudConfigFromSSHKeys(keysFile string) (string, error) {
 	sshKeys := "#cloud-config\nssh_authorized_keys:"
 	sshFile, err := os.Open(keysFile)
@@ -314,13 +339,15 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string, uid, 
 	// mutex and increment operation.
 	sockName := getRandomFileName(nameLen)
 	sockPath := path.Join(lkcf.SocketPath, sockName)
+	sshCfg := lkcf.Cfg.SSHKeysCfg + "\n - " + string(lkcf.PublicKey)
 
+	glog.Infof("New SSH keys is '%s'", sshCfg)
 	cfg := &CoreOSConfig{
 		Name:       getRandomFileName(nameLen),
 		ImageFile:  lkcf.Cfg.ImageFile, // the VM image
 		Memory:     lkcf.Cfg.Memory,
 		RulesPath:  lkcf.Cfg.RulesPath,
-		SSHKeysCfg: lkcf.Cfg.SSHKeysCfg,
+		SSHKeysCfg: sshCfg,
 		SocketPath: sockPath,
 	}
 
@@ -346,32 +373,12 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string, uid, 
 	// we just wait for a timeout before trying to connect and listen.
 	tc := time.After(10 * time.Second)
 
-	// TODO(tmroeder): for now, this program expects to find SSH_AUTH_SOCK
-	// in its environment so it can connect to the local ssh-agent for ssh
-	// keys. In the future, this will need to be configured better.
-	agentPath := os.ExpandEnv("$SSH_AUTH_SOCK")
-	if agentPath == "" {
-		return nil, nil, fmt.Errorf("couldn't find agent socket in the environment.")
-	}
-
-	// TODO(tmroeder): the right way to do this is to first set up a docker
-	// container for LinuxHost so it can run directly on CoreOS. Then add it
-	// to the config directory and make it part of the name. Then start it
-	// with a docker command and hook up /dev/tao directly to it. For
-	// initial testing, though, we'll try to set up the virtual machine and
-	// run a simple command on it, then fail.
-	glog.Infof("Found agent socket path '%s'\n", agentPath)
-	agentSock, err := net.Dial("unix", agentPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Couldn't connect to agent socket '%s': %s", agentPath, err)
-	}
-	ag := agent.NewClient(agentSock)
-
 	// Set up an ssh client config to use to connect to CoreOS.
 	conf := &ssh.ClientConfig{
-		// The CoreOS user for the SSH keys is currently always 'core'.
+		// The CoreOS user for the SSH keys is currently always 'core'
+		// on the virtual machine.
 		User: "core",
-		Auth: []ssh.AuthMethod{ssh.PublicKeysCallback(ag.Signers)},
+		Auth: []ssh.AuthMethod{ssh.PublicKeys(lkcf.PrivateKey)},
 	}
 
 	glog.Info("Waiting for at most 10 seconds before trying to connect")
@@ -380,7 +387,7 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string, uid, 
 	hostPort := net.JoinHostPort("localhost", args[2])
 	client, err := ssh.Dial("tcp", hostPort, conf)
 	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't dial '%s'", hostPort)
+		return nil, nil, fmt.Errorf("couldn't dial '%s': %s", hostPort, err)
 	}
 
 	// We need to run a set of commands to set up the LinuxHost on the

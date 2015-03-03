@@ -8,6 +8,7 @@ Package tao is a generated protocol buffer package.
 It is generated from these files:
 	acl_guard.proto
 	attestation.proto
+	datalog_guard.proto
 	keys.proto
 	linux_host_admin_rpc.proto
 	linux_host.proto
@@ -20,7 +21,7 @@ It has these top-level messages:
 */
 package tao
 
-import proto "code.google.com/p/goprotobuf/proto"
+import proto "github.com/golang/protobuf/proto"
 import math "math"
 
 // Reference imports to suppress errors if they are not otherwise used.

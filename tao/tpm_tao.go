@@ -26,8 +26,7 @@ import (
 	"strings"
 	"time"
 
-	"code.google.com/p/goprotobuf/proto"
-
+	"github.com/golang/protobuf/proto"
 	"github.com/google/go-tpm/tpm"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 )

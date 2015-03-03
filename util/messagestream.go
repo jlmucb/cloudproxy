@@ -20,8 +20,8 @@ import (
 	"io"
 	"math"
 
-	"code.google.com/p/goprotobuf/proto"
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
 )
 
 // A MessageStream is an io.ReadWriteCloser that can also read and write strings

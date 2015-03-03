@@ -22,8 +22,7 @@ import (
 	"fmt"
 	"log"
 
-	"code.google.com/p/goprotobuf/proto"
-
+	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/util"
 )
 

@@ -7,6 +7,7 @@ Package fileproxy is a generated protocol buffer package.
 
 It is generated from these files:
 	fileproxy.proto
+	rollback.proto
 
 It has these top-level messages:
 	Message
@@ -18,7 +19,7 @@ It has these top-level messages:
 */
 package fileproxy
 
-import proto "code.google.com/p/goprotobuf/proto"
+import proto "github.com/golang/protobuf/proto"
 import math "math"
 
 // Reference imports to suppress errors if they are not otherwise used.

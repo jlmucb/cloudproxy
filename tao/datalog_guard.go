@@ -23,8 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"code.google.com/p/goprotobuf/proto"
-
+	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	"github.com/jlmucb/cloudproxy/util"
 	"github.com/kevinawalsh/datalog"

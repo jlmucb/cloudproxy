@@ -244,7 +244,7 @@ CommonName = testing`
 			err = os.Chmod(sockPath, 0666)
 			fatalIf(err)
 
-			fmt.Fprintf(verbose, "Linux Tao Service (%s) started and waiting for requests", host.TaoHostName())
+			fmt.Fprintf(verbose, "Linux Tao Service (%s) started and waiting for requests\n", host.TaoHostName())
 			tao.NewLinuxHostAdminServer(host).Serve(sock)
 		}
 	case "shutdown":

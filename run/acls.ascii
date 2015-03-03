@@ -1,9 +1,0 @@
-permissions {
-  subject: "tmroeder"
-  verb: ADMIN
-}
-permissions {
-  subject: "jlm"
-  verb: READ
-  object: "test"
-}

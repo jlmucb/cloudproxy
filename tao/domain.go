@@ -15,12 +15,12 @@
 package tao
 
 import (
-	"io"
+	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 
-	"code.google.com/p/gcfg"
-
+	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	"github.com/jlmucb/cloudproxy/util"
 )
@@ -43,53 +43,33 @@ type Domain struct {
 	Guard      Guard
 }
 
-// DomainConfig holds the presistent configuration data for a domain.
-type DomainConfig struct {
-
-	// Policy-agnostic configuration
-	Domain struct {
-		// Name of the domain
-		Name string
-		// Path to the password-protected signing key
-		PolicyKeysPath string
-		// Type of guard to use for domain-wide policy decisions
-		GuardType string
-	}
-
-	// Details used for the domain signing key x509 certificate
-	X509Details X509Details
-
-	// Policy-specific configuration (optional)
-	ACLGuard ACLGuardConfig
-
-	// Policy-specific configuration (optional)
-	DatalogGuard DatalogGuardConfig
-}
-
-// Print prints the configuration to out.
-func (cfg DomainConfig) Print(out io.Writer) error {
-	return util.PrintAsGitConfig(out, cfg, "Tao Domain Configuration file")
-}
-
 // SetDefaults sets each blank field of cfg to a reasonable default value.
 func (cfg *DomainConfig) SetDefaults() {
-	if cfg.Domain.Name == "" {
-		cfg.Domain.Name = "Tao example domain"
+	if cfg.DomainInfo == nil {
+		cfg.DomainInfo = &DomainDetails{}
 	}
-	if cfg.Domain.PolicyKeysPath == "" {
-		cfg.Domain.PolicyKeysPath = "policy_keys"
+
+	if cfg.DomainInfo.Name == nil {
+		cfg.DomainInfo.Name = proto.String("Tao example domain")
 	}
-	if cfg.Domain.GuardType == "" {
-		cfg.Domain.GuardType = "DenyAll"
+	if cfg.DomainInfo.PolicyKeysPath == nil {
+		cfg.DomainInfo.PolicyKeysPath = proto.String("policy_keys")
 	}
-	if cfg.X509Details.CommonName == "" {
-		cfg.X509Details.CommonName = cfg.Domain.Name
+	if cfg.DomainInfo.GuardType == nil {
+		cfg.DomainInfo.GuardType = proto.String("DenyAll")
+	}
+
+	if cfg.X509Info == nil {
+		cfg.X509Info = &X509Details{}
+	}
+	if cfg.X509Info.CommonName == nil {
+		cfg.X509Info.CommonName = cfg.DomainInfo.Name
 	}
 }
 
 // String returns the name of the domain.
 func (d *Domain) String() string {
-	return d.Config.Domain.Name
+	return d.Config.DomainInfo.GetName()
 }
 
 // Subprincipal returns a subprincipal suitable for contextualizing a program.
@@ -98,7 +78,7 @@ func (d *Domain) Subprincipal() auth.SubPrin {
 		Name: "Domain",
 		Arg: []auth.Term{
 			d.Keys.VerifyingKey.ToPrincipal(),
-			auth.Str(d.Config.Domain.GuardType),
+			auth.Str(d.Config.DomainInfo.GetGuardType()),
 		},
 	}
 	return auth.SubPrin{e}
@@ -110,7 +90,7 @@ func (d *Domain) Subprincipal() auth.SubPrin {
 // default guard of the appropriate type if needed. Any parameters left empty in
 // cfg will be set to reasonable default values.
 func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain, error) {
-	(&cfg).SetDefaults()
+	cfg.SetDefaults()
 
 	configDir := path.Dir(configPath)
 	err := os.MkdirAll(configDir, 0777)
@@ -118,18 +98,36 @@ func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain
 		return nil, err
 	}
 
-	keypath := path.Join(configDir, cfg.Domain.PolicyKeysPath)
-	keys, err := NewOnDiskPBEKeys(Signing, password, keypath, NewX509Name(cfg.X509Details))
+	keypath := path.Join(configDir, cfg.DomainInfo.GetPolicyKeysPath())
+	// This creates a keyset if it doesn't exist, and it reads the keyset
+	// otherwise.
+	keys, err := NewOnDiskPBEKeys(Signing, password, keypath, NewX509Name(cfg.X509Info))
 	if err != nil {
 		return nil, err
 	}
 
 	var guard Guard
-	switch cfg.Domain.GuardType {
+	switch cfg.DomainInfo.GetGuardType() {
 	case "ACLs":
-		guard = NewACLGuard(cfg.ACLGuard)
+		if cfg.AclGuardInfo == nil {
+			return nil, fmt.Errorf("must supply ACL info for the ACL guard")
+		}
+		aclsPath := cfg.AclGuardInfo.GetSignedAclsPath()
+		if aclsPath == "" {
+			aclsPath = "acls"
+		}
+		cfg.AclGuardInfo.SignedAclsPath = proto.String(path.Join(configDir, aclsPath))
+		guard = NewACLGuard(*cfg.AclGuardInfo)
 	case "Datalog":
-		guard, err = NewDatalogGuard(keys.VerifyingKey, cfg.DatalogGuard)
+		if cfg.DatalogGuardInfo == nil {
+			return nil, fmt.Errorf("must supply Datalog info for the Datalog guard")
+		}
+		rulesPath := cfg.DatalogGuardInfo.GetSignedRulesPath()
+		if rulesPath == "" {
+			rulesPath = "rules"
+		}
+		cfg.DatalogGuardInfo.SignedRulesPath = proto.String(path.Join(configDir, rulesPath))
+		guard, err = NewDatalogGuard(keys.VerifyingKey, *cfg.DatalogGuardInfo)
 		if err != nil {
 			return nil, err
 		}
@@ -138,7 +136,7 @@ func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain
 	case "DenyAll":
 		guard = ConservativeGuard
 	default:
-		return nil, newError("unrecognized guard type: %s", cfg.Domain.GuardType)
+		return nil, newError("unrecognized guard type: %s", cfg.DomainInfo.GetGuardType())
 	}
 
 	d := &Domain{cfg, configPath, keys, guard}
@@ -155,7 +153,8 @@ func (d *Domain) Save() error {
 	if err != nil {
 		return err
 	}
-	d.Config.Print(file)
+	ds := proto.MarshalTextString(&d.Config)
+	fmt.Fprint(file, ds)
 	file.Close()
 	return d.Guard.Save(d.Keys.SigningKey)
 }
@@ -167,29 +166,39 @@ func (d *Domain) Save() error {
 // signing key.
 func LoadDomain(configPath string, password []byte) (*Domain, error) {
 	var cfg DomainConfig
-	err := gcfg.ReadFileInto(&cfg, configPath)
+	d, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		return nil, err
 	}
 
+	if err := proto.UnmarshalText(string(d), &cfg); err != nil {
+		return nil, err
+	}
+
 	configDir := path.Dir(configPath)
-	keypath := path.Join(configDir, cfg.Domain.PolicyKeysPath)
+	keypath := path.Join(configDir, cfg.DomainInfo.GetPolicyKeysPath())
 	keys, err := NewOnDiskPBEKeys(Signing, password, keypath, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	var guard Guard
-	switch cfg.Domain.GuardType {
+	switch cfg.DomainInfo.GetGuardType() {
 	case "ACLs":
 		var err error
-		guard, err = LoadACLGuard(keys.VerifyingKey, cfg.ACLGuard)
+		if cfg.AclGuardInfo == nil {
+			return nil, fmt.Errorf("must supply ACL info for the ACL guard")
+		}
+		guard, err = LoadACLGuard(keys.VerifyingKey, *cfg.GetAclGuardInfo())
 		if err != nil {
 			return nil, err
 		}
 	case "Datalog":
 		var err error
-		datalogGuard, err := NewDatalogGuard(keys.VerifyingKey, cfg.DatalogGuard)
+		if cfg.DatalogGuardInfo == nil {
+			return nil, fmt.Errorf("must supply Datalog info for the Datalog guard")
+		}
+		datalogGuard, err := NewDatalogGuard(keys.VerifyingKey, *cfg.GetDatalogGuardInfo())
 		if err != nil {
 			return nil, err
 		}

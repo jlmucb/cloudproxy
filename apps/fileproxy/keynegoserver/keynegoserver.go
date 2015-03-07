@@ -25,6 +25,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	taonet "github.com/jlmucb/cloudproxy/tao/net"
@@ -77,11 +78,12 @@ func handleRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) error {
 		return fmt.Errorf("keynegoserver: can't get subject principal\n")
 	}
 	subjectName := subjectPrin.String()
-	details := tao.X509Details{
-		Country:            "US",
-		Organization:       "Google",
-		OrganizationalUnit: subjectName,
-		CommonName:         "localhost"}
+	details := &tao.X509Details{
+		Country:            proto.String("US"),
+		Organization:       proto.String("Google"),
+		OrganizationalUnit: proto.String(subjectName),
+		CommonName:         proto.String("localhost"),
+	}
 	subjectname := tao.NewX509Name(details)
 	SerialNumber = SerialNumber + 1
 	verifier, err := tao.FromPrincipal(kprin)

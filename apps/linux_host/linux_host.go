@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/tao"
 )
 
@@ -124,10 +125,15 @@ CommonName = testing`
 			glog.Fatalf("Must provide a password for temporary keys")
 		}
 
-		var cfg tao.DomainConfig
-		cfg.Domain.Name = "testing"
-		cfg.X509Details.CommonName = "testing"
-		cfg.Domain.GuardType = "AllowAll"
+		cfg := tao.DomainConfig{
+			DomainInfo: &tao.DomainDetails{
+				Name:      proto.String("testing"),
+				GuardType: proto.String("AllowAll"),
+			},
+			X509Info: &tao.X509Details{
+				CommonName: proto.String("testing"),
+			},
+		}
 
 		_, err = tao.CreateDomain(cfg, absConfigPath, []byte(*pass))
 		fatalIf(err)
@@ -221,8 +227,6 @@ CommonName = testing`
 		}
 
 		switch *action {
-		case "create":
-			fmt.Printf("LinuxHost Service: %s", host.TaoHostName())
 		case "show":
 			fmt.Printf("%v", host.TaoHostName())
 		case "start":

@@ -35,11 +35,6 @@ const (
 	DatalogRulesSigningContext = "Datalog Rules Signing Context V1"
 )
 
-// DatalogGuardConfig holds persistent configuration data for a DatalogGuard.
-type DatalogGuardConfig struct {
-	SignedRulesPath string
-}
-
 // DatalogGuard implements a datalog-based policy engine. Rules in this engine
 // have the form:
 //   (forall X, Y, Z... : F implies G)
@@ -75,7 +70,7 @@ type DatalogGuardConfig struct {
 //
 // "forall ... F1 and F2 and ... imp G" is translated to "G :- F1, F2, ...".
 type DatalogGuard struct {
-	Config DatalogGuardConfig
+	Config DatalogGuardDetails
 	Key    *Verifier
 	// TODO(kwalsh) maybe use a version number or timestamp inside the file?
 	modTime time.Time // Modification time of signed rules file at time of reading.
@@ -230,8 +225,8 @@ func NewTemporaryDatalogGuard() Guard {
 
 // NewDatalogGuard returns a new datalog guard that uses a signed, persistent
 // signed rule set. ReloadIfModified() should be called to load the rule set.
-func NewDatalogGuard(key *Verifier, config DatalogGuardConfig) (*DatalogGuard, error) {
-	if key == nil || config.SignedRulesPath == "" {
+func NewDatalogGuard(key *Verifier, config DatalogGuardDetails) (*DatalogGuard, error) {
+	if key == nil || config.GetSignedRulesPath() == "" {
 		return nil, newError("datalog guard missing key or path")
 	}
 	sp := new(subprinPrim)
@@ -260,7 +255,7 @@ func (g *DatalogGuard) ReloadIfModified() error {
 	if g.Key == nil {
 		return nil
 	}
-	file, err := os.Open(g.Config.SignedRulesPath)
+	file, err := os.Open(g.Config.GetSignedRulesPath())
 	if err != nil {
 		return err
 	}
@@ -331,7 +326,7 @@ func (g *DatalogGuard) Save(key *Signer) error {
 	if err != nil {
 		return err
 	}
-	if err := util.WritePath(g.Config.SignedRulesPath, serialized, 0777, 0666); err != nil {
+	if err := util.WritePath(g.Config.GetSignedRulesPath(), serialized, 0777, 0666); err != nil {
 		return err
 	}
 	return nil

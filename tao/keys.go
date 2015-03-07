@@ -114,20 +114,14 @@ func UnmarshalSignerDER(signer []byte) (*Signer, error) {
 	return k, nil
 }
 
-// X509Details is a simplified version of pkix.Name, suitable for most purposes.
-// All of the fields are optional.
-type X509Details struct {
-	CommonName, Country, State, Organization, OrganizationalUnit string
-}
-
 // NewX509Name returns a new pkix.Name.
-func NewX509Name(p X509Details) *pkix.Name {
+func NewX509Name(p *X509Details) *pkix.Name {
 	return &pkix.Name{
-		Country:            []string{string(p.Country)},
-		Organization:       []string{string(p.Organization)},
-		OrganizationalUnit: []string{string(p.OrganizationalUnit)},
-		Province:           []string{string(p.State)},
-		CommonName:         string(p.CommonName),
+		Country:            []string{p.GetCountry()},
+		Organization:       []string{p.GetOrganization()},
+		OrganizationalUnit: []string{p.GetOrganizationalUnit()},
+		Province:           []string{p.GetState()},
+		CommonName:         string(p.GetCommonName()),
 	}
 }
 

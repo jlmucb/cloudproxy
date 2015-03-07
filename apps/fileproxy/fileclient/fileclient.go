@@ -29,6 +29,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/apps/fileproxy"
 	"github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
@@ -87,10 +88,10 @@ func main() {
 	}
 
 	// Set up a temporary cert for communication with keyNegoServer.
-	fcKeys.Cert, err = fcKeys.SigningKey.CreateSelfSignedX509(tao.NewX509Name(tao.X509Details{
-		Country:      *country,
-		Organization: *org,
-		CommonName:   taoName.String(),
+	fcKeys.Cert, err = fcKeys.SigningKey.CreateSelfSignedX509(tao.NewX509Name(&tao.X509Details{
+		Country:      proto.String(*country),
+		Organization: proto.String(*org),
+		CommonName:   proto.String(taoName.String()),
 	}))
 	if err != nil {
 		log.Fatalln("fileclient: couldn't create a self-signed cert for fileclient keys:", err)

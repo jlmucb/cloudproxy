@@ -21,6 +21,7 @@ import (
 	"log"
 	"net"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/apps/fileproxy"
 	"github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
@@ -136,10 +137,10 @@ func main() {
 	}
 
 	// Set up a temporary cert for communication with keyNegoServer.
-	rbKeys.Cert, err = rbKeys.SigningKey.CreateSelfSignedX509(tao.NewX509Name(tao.X509Details{
-		Country:      *country,
-		Organization: *org,
-		CommonName:   taoName.String(),
+	rbKeys.Cert, err = rbKeys.SigningKey.CreateSelfSignedX509(tao.NewX509Name(&tao.X509Details{
+		Country:      proto.String(*country),
+		Organization: proto.String(*org),
+		CommonName:   proto.String(taoName.String()),
 	}))
 	if err != nil {
 		log.Fatalln("rollbackserver: couldn't create a self-signed cert for rollbackserver keys:", err)

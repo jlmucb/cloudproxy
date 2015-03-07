@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 )
 
@@ -30,7 +31,7 @@ func testNewACLGuard(t *testing.T) (Guard, string) {
 		t.Fatal("Couldn't get a temp directory for the new ACL guard:", err)
 	}
 
-	config := ACLGuardConfig{SignedACLsPath: path.Join(tmpdir, "acls")}
+	config := ACLGuardDetails{SignedAclsPath: proto.String(path.Join(tmpdir, "acls"))}
 	tg := NewACLGuard(config)
 	return tg, tmpdir
 }
@@ -56,7 +57,7 @@ func TestACLGuardSaveACLs(t *testing.T) {
 		t.Fatal("Couldn't save the file")
 	}
 
-	config := ACLGuardConfig{SignedACLsPath: path.Join(tmpdir, "acls")}
+	config := ACLGuardDetails{SignedAclsPath: proto.String(path.Join(tmpdir, "acls"))}
 	v := s.GetVerifier()
 	aclg, err := LoadACLGuard(v, config)
 	if err != nil {
@@ -85,7 +86,7 @@ func TestACLGuardEmptySave(t *testing.T) {
 		t.Fatal("Couldn't save the file")
 	}
 
-	config := ACLGuardConfig{SignedACLsPath: path.Join(tmpdir, "acls")}
+	config := ACLGuardDetails{SignedAclsPath: proto.String(path.Join(tmpdir, "acls"))}
 	v := s.GetVerifier()
 	aclg, err := LoadACLGuard(v, config)
 	if err != nil {

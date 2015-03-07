@@ -24,17 +24,12 @@ import (
 	"github.com/jlmucb/cloudproxy/tao/auth"
 )
 
-// ACLGuardConfig stores the configuration for an ACLGuard.
-type ACLGuardConfig struct {
-	SignedACLsPath string
-}
-
 // An ACLGuard is an implementation of tao.Guard that uses an ACL to make
 // authorization decisions. All rules are immediately converted to strings when
 // they are added, and they are never converted back to auth.ast form. Any
 // policy that requires more than string comparison should use DatalogGuard.
 type ACLGuard struct {
-	Config ACLGuardConfig
+	Config ACLGuardDetails
 	ACL    []string
 }
 
@@ -43,7 +38,7 @@ const ACLGuardSigningContext = "tao.ACLGuard Version 1"
 const aclGuardFileMode os.FileMode = 0600
 
 // NewACLGuard produces a Guard implementation that implements ACLGuard.
-func NewACLGuard(config ACLGuardConfig) Guard {
+func NewACLGuard(config ACLGuardDetails) Guard {
 	return &ACLGuard{Config: config}
 }
 
@@ -77,7 +72,7 @@ func (a *ACLGuard) Save(key *Signer) error {
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(a.Config.SignedACLsPath, b, aclGuardFileMode); err != nil {
+	if err := ioutil.WriteFile(a.Config.GetSignedAclsPath(), b, aclGuardFileMode); err != nil {
 		return err
 	}
 
@@ -87,8 +82,8 @@ func (a *ACLGuard) Save(key *Signer) error {
 // Load restores a set of rules saved with Save. It replaces any rules in the
 // ACLGuard with the rules it loaded. In the process, it also checks the
 // signature created during the Save process.
-func LoadACLGuard(key *Verifier, config ACLGuardConfig) (Guard, error) {
-	b, err := ioutil.ReadFile(config.SignedACLsPath)
+func LoadACLGuard(key *Verifier, config ACLGuardDetails) (Guard, error) {
+	b, err := ioutil.ReadFile(config.GetSignedAclsPath())
 	if err != nil {
 		return nil, err
 	}

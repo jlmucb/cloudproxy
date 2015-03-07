@@ -20,6 +20,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 )
 
@@ -32,8 +33,8 @@ func makeDatalogGuard(t *testing.T) (*DatalogGuard, *Signer, string) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	g, err := NewDatalogGuard(signer.GetVerifier(), DatalogGuardConfig{
-		SignedRulesPath: tmpdir + "/rules",
+	g, err := NewDatalogGuard(signer.GetVerifier(), DatalogGuardDetails{
+		SignedRulesPath: proto.String(tmpdir + "/rules"),
 	})
 	if err != nil {
 		t.Fatal(err)

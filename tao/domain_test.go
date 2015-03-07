@@ -20,6 +20,7 @@ import (
 	"path"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 )
 
@@ -36,11 +37,13 @@ func testNewACLDomain(t *testing.T) (*Domain, string) {
 	}
 
 	var dcfg DomainConfig
-	dcfg.Domain.Name = "Test"
-	dcfg.Domain.PolicyKeysPath = "keys"
-	dcfg.Domain.GuardType = "ACLs"
+	dcfg.DomainInfo = &DomainDetails{
+		Name:           proto.String("Test"),
+		PolicyKeysPath: proto.String("keys"),
+		GuardType:      proto.String("ACLs"),
+	}
 	dcfg.SetDefaults()
-	dcfg.ACLGuard = ACLGuardConfig{SignedACLsPath: path.Join(tmpdir, "acls")}
+	dcfg.AclGuardInfo = &ACLGuardDetails{SignedAclsPath: proto.String(path.Join(tmpdir, "acls"))}
 	d, err := CreateDomain(dcfg, path.Join(tmpdir, "tao.config"), testDomainPassword)
 	if err != nil {
 		os.RemoveAll(tmpdir)
@@ -84,11 +87,13 @@ func testNewDatalogDomain(t *testing.T) (*Domain, string) {
 	}
 
 	var dcfg DomainConfig
-	dcfg.Domain.Name = "Test"
-	dcfg.Domain.PolicyKeysPath = "keys"
-	dcfg.Domain.GuardType = "Datalog"
+	dcfg.DomainInfo = &DomainDetails{
+		Name:           proto.String("Test"),
+		PolicyKeysPath: proto.String("keys"),
+		GuardType:      proto.String("Datalog"),
+	}
 	dcfg.SetDefaults()
-	dcfg.DatalogGuard = DatalogGuardConfig{SignedRulesPath: path.Join(tmpdir, "policy_rules")}
+	dcfg.DatalogGuardInfo = &DatalogGuardDetails{SignedRulesPath: proto.String(path.Join(tmpdir, "policy_rules"))}
 	d, err := CreateDomain(dcfg, path.Join(tmpdir, "tao.config"), testDomainPassword)
 	if err != nil {
 		os.RemoveAll(tmpdir)

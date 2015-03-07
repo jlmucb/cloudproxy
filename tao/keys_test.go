@@ -19,6 +19,8 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/golang/protobuf/proto"
 )
 
 func TestGenerateKeys(t *testing.T) {
@@ -49,11 +51,11 @@ func TestSelfSignedX509(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	details := X509Details{
-		CommonName:   "test",
-		Country:      "US",
-		State:        "WA",
-		Organization: "Google",
+	details := &X509Details{
+		CommonName:   proto.String("test"),
+		Country:      proto.String("US"),
+		State:        proto.String("WA"),
+		Organization: proto.String("Google"),
 	}
 
 	_, err = s.CreateSelfSignedX509(NewX509Name(details))
@@ -108,11 +110,11 @@ func TestVerifierFromX509(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	details := X509Details{
-		CommonName:   "test",
-		Country:      "US",
-		State:        "WA",
-		Organization: "Google",
+	details := &X509Details{
+		CommonName:   proto.String("test"),
+		Country:      proto.String("US"),
+		State:        proto.String("WA"),
+		Organization: proto.String("Google"),
 	}
 
 	x, err := s.CreateSelfSignedX509(NewX509Name(details))

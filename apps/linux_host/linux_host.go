@@ -33,7 +33,6 @@ func main() {
 	// General configuration options.
 	configPath := flag.String("config_path", "", "Location of tao domain configuration")
 	hostPath := flag.String("path", "linux_tao_host", "Name of relative path to the location of linux host configuration")
-	rules := flag.String("rules", "rules", "Name of the rules file for auth")
 	quiet := flag.Bool("quiet", false, "Be more quiet.")
 	pathFile := flag.String("tmppath", "", "Write the path to the tmp configuration directory to this file if a filename is provided")
 
@@ -163,7 +162,11 @@ func main() {
 		domain, err := tao.LoadDomain(absConfigPath, nil)
 		fatalIf(err)
 
-		rulesPath := path.Join(dir, *rules)
+		rules := domain.RulesPath()
+		var rulesPath string
+		if rules != "" {
+			rulesPath = path.Join(dir, rules)
+		}
 
 		var childFactory tao.HostedProgramFactory
 		switch tc.HostedType {

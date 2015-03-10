@@ -153,13 +153,15 @@ func (kcc *KvmCoreOSContainer) Start() error {
 
 	// Copy the rules into the mirrored filesystem for use by the Linux host
 	// on CoreOS.
-	rules, err := ioutil.ReadFile(cfg.RulesPath)
-	if err != nil {
-		return err
-	}
-	rulesFile := path.Join(latestDir, "rules")
-	if err := ioutil.WriteFile(rulesFile, []byte(rules), 0700); err != nil {
-		return err
+	if cfg.RulesPath != "" {
+		rules, err := ioutil.ReadFile(cfg.RulesPath)
+		if err != nil {
+			return err
+		}
+		rulesFile := path.Join(latestDir, path.Base(cfg.RulesPath))
+		if err := ioutil.WriteFile(rulesFile, []byte(rules), 0700); err != nil {
+			return err
+		}
 	}
 
 	qemuProg := "qemu-system-x86_64"
@@ -411,7 +413,7 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string, uid, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("couldn't establish a start session on SSH: %s", err)
 	}
-	if err := start.Start("sudo /media/tao/linux_host --rules /media/configvirtfs/openstack/latest/rules --host_type stacked --host_spec 'tao::TaoRPC+tao::FileMessageChannel(/dev/virtio-ports/tao)' --host_channel_type file --config_path /media/tao/tao.config"); err != nil {
+	if err := start.Start("sudo /media/tao/linux_host --host_type stacked --host_spec 'tao::TaoRPC+tao::FileMessageChannel(/dev/virtio-ports/tao)' --host_channel_type file --config_path /media/tao/tao.config"); err != nil {
 		return nil, nil, fmt.Errorf("couldn't start linux_host on the guest: %s", err)
 	}
 	start.Close()

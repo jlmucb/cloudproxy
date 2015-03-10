@@ -243,3 +243,24 @@ func (d *Domain) ExtendTaoName(tao Tao) error {
 
 	return tao.ExtendTaoName(sp)
 }
+
+// RulesPath returns the path that should be used for the rules/acls for a given
+// domain. If the guard is not Datalog or ACLs, then it returns the empty
+// string.
+func (d *Domain) RulesPath() string {
+	switch d.Config.DomainInfo.GetGuardType() {
+	case "Datalog":
+		if d.Config.DatalogGuardInfo == nil {
+			return ""
+		}
+		return d.Config.DatalogGuardInfo.GetSignedRulesPath()
+	case "ACLs":
+		if d.Config.AclGuardInfo == nil {
+			return ""
+		}
+		return d.Config.AclGuardInfo.GetSignedAclsPath()
+	default:
+		return ""
+	}
+	return ""
+}

@@ -51,7 +51,11 @@ message DomainTemplate {
 
   // The name of the host (used for policy statements)
   optional string host_name = 4;
+  optional string host_predicate_name = 5;
   // Program names (as paths to binaries)
-  repeated string program_paths = 5;
-  optional string program_predicate_name = 6;
+  repeated string program_paths = 6;
+  optional string program_predicate_name = 7;
+  // Container names (as paths to images)
+  repeated string container_paths = 8;
+  optional string container_predicate_name = 9;
 }

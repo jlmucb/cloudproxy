@@ -9,6 +9,7 @@ It is generated from these files:
 	acl_guard.proto
 	attestation.proto
 	datalog_guard.proto
+	domain.proto
 	keys.proto
 	linux_host_admin_rpc.proto
 	linux_host.proto

@@ -47,14 +47,16 @@ func (dc *DockerContainer) Kill() error {
 
 // Start starts a docker container using the docker run subcommand.
 func (dc *DockerContainer) Start() error {
-	cmdArgs := []string{"run", "--rm=true",
-		"-v", dc.RulesPath + ":" + dc.RulesPath,
+	cmdArgs := []string{"run", //"--rm=true",
+		"-v", dc.RulesPath + ":/rules",
 		"-v", dc.SocketPath + ":/tao"}
 	// The arguments for Docker are arguments directly to Docker. To add
 	// arguments to an application, set up a Dockerfile for this
 	// application.
 	cmdArgs = append(cmdArgs, dc.Args...)
 	cmdArgs = append(cmdArgs, dc.ImageName)
+	glog.Info("About to run docker with args ", cmdArgs)
+	glog.Flush()
 	c := exec.Command("docker", cmdArgs...)
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr

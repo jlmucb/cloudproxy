@@ -82,6 +82,9 @@ func main() {
 	retract := flag.String("retract", "", "A policy rule to be retracted.")
 	clear := flag.Bool("clear", false, "Clear all policy rules before other changes.")
 	query := flag.String("query", "", "A policy query to be checked.")
+	addPrograms := flag.Bool("add_programs", false, "Add the program hashes to the policy")
+	addContainers := flag.Bool("add_containers", false, "Add the container hashes to the policy")
+	addHost := flag.Bool("add_host", false, "Add the host to the policy")
 
 	// Flags for the 'user' option, used to create new user keys.
 	userKeyDetails := flag.String("user_key_details", "", "Path to a file that contains an X509Details proto")
@@ -134,6 +137,10 @@ func main() {
 		}
 	}
 
+	if dt.Config == nil && (*operation == "key" || *operation == "domain" || *operation == "policy") {
+		glog.Exit("must supply a template for 'key', 'domain', or 'policy' operations")
+	}
+
 	configPath := path.Join(*domainPath, *configName)
 	switch *operation {
 	case "key", "domain":
@@ -170,35 +177,11 @@ func main() {
 						glog.Exit(err)
 					}
 				}
-				// Add the hashes of any programs given in the template.
-				for _, p := range dt.ProgramPaths {
-					prin := makeProgramSubPrin(p)
-					pt := auth.PrinTail{Ext: prin}
-					pred := auth.MakePredicate(dt.GetProgramPredicateName(), pt)
-					pstr := fmt.Sprint(pred)
-					glog.Infof("Adding program rule '%s'", pstr)
-					if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
-						glog.Exit(err)
-					}
-				}
 			} else if dt.Config.DomainInfo.GetGuardType() == "ACLs" {
 				for _, rule := range dt.AclRules {
 					glog.Infof("Adding ACL '%s'", rule)
 					if err := domain.Guard.AddRule(rule); err != nil {
 						glog.Exit(err)
-					}
-				}
-
-				// Add the hashes of any programs given in the template.
-				host := dt.GetHostName()
-				if host != "" {
-					prin := makeHostPrin(host)
-					for _, p := range dt.ProgramPaths {
-						subprin := makeProgramSubPrin(p)
-						prog := prin.MakeSubprincipal(subprin)
-						if err := domain.Guard.Authorize(prog, "Execute", nil); err != nil {
-							glog.Exit(err)
-						}
 					}
 				}
 			}
@@ -247,30 +230,34 @@ func main() {
 		if *canExecute != "" {
 			path := *canExecute
 			prin := makeHostPrin(host)
-			subprin := makeProgramSubPrin(path)
-			prog := prin.MakeSubprincipal(subprin)
-			fmt.Fprintf(noise, "Authorizing program to execute:\n"+
-				"  path: %s\n"+
-				"  host: %s\n"+
-				"  name: %s\n", path, prin, subprin)
-			if err := domain.Guard.Authorize(prog, "Execute", nil); err != nil {
-				glog.Exit(err)
-			}
-			if err = domain.Save(); err != nil {
-				glog.Exit(err)
+			subprin, err := makeProgramSubPrin(path)
+			if err == nil {
+				prog := prin.MakeSubprincipal(subprin)
+				fmt.Fprintf(noise, "Authorizing program to execute:\n"+
+					"  path: %s\n"+
+					"  host: %s\n"+
+					"  name: %s\n", path, prin, subprin)
+				if err := domain.Guard.Authorize(prog, "Execute", nil); err != nil {
+					glog.Exit(err)
+				}
+				if err = domain.Save(); err != nil {
+					glog.Exit(err)
+				}
 			}
 		}
 		if *retractCanExecute != "" {
 			path := *retractCanExecute
 			prin := makeHostPrin(host)
-			subprin := makeProgramSubPrin(path)
-			prog := prin.MakeSubprincipal(subprin)
-			fmt.Fprintf(noise, "Retracting program authorization to execute:\n"+
-				"  path: %s\n"+
-				"  host: %s\n"+
-				"  name: %s\n", path, prin, subprin)
-			if err := domain.Guard.Retract(prog, "Execute", nil); err != nil {
-				glog.Exit(err)
+			subprin, err := makeProgramSubPrin(path)
+			if err == nil {
+				prog := prin.MakeSubprincipal(subprin)
+				fmt.Fprintf(noise, "Retracting program authorization to execute:\n"+
+					"  path: %s\n"+
+					"  host: %s\n"+
+					"  name: %s\n", path, prin, subprin)
+				if err := domain.Guard.Retract(prog, "Execute", nil); err != nil {
+					glog.Exit(err)
+				}
 			}
 		}
 		if *add != "" {
@@ -291,7 +278,81 @@ func main() {
 				glog.Exit(err)
 			}
 		}
-		if *query != "" {
+		if *addPrograms {
+			if dt.Config.DomainInfo.GetGuardType() == "Datalog" {
+				// Add the hashes of any programs given in the template.
+				for _, p := range dt.ProgramPaths {
+					prin, err := makeProgramSubPrin(p)
+					if err == nil {
+						pt := auth.PrinTail{Ext: prin}
+						pred := auth.MakePredicate(dt.GetProgramPredicateName(), pt)
+						if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
+							glog.Exit(err)
+						}
+					}
+				}
+			} else if dt.Config.DomainInfo.GetGuardType() == "ACLs" {
+				if host != "" {
+					prin := makeHostPrin(host)
+					for _, p := range dt.ProgramPaths {
+						subprin, err := makeProgramSubPrin(p)
+						if err == nil {
+							prog := prin.MakeSubprincipal(subprin)
+							if err := domain.Guard.Authorize(prog, "Execute", nil); err != nil {
+								glog.Exit(err)
+							}
+						}
+					}
+				}
+			}
+			if err := domain.Save(); err != nil {
+				glog.Exit(err)
+			}
+		}
+		if *addContainers {
+			if dt.Config.DomainInfo.GetGuardType() == "Datalog" {
+				for _, c := range dt.ContainerPaths {
+					prin, err := makeContainerSubPrin(c)
+					if err == nil {
+						pt := auth.PrinTail{Ext: prin}
+						pred := auth.MakePredicate(dt.GetContainerPredicateName(), pt)
+						if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
+							glog.Exit(err)
+						}
+					}
+				}
+			} else if dt.Config.DomainInfo.GetGuardType() == "ACLs" {
+				if host != "" {
+					prin := makeHostPrin(host)
+					for _, p := range dt.ContainerPaths {
+						subprin, err := makeContainerSubPrin(p)
+						if err == nil {
+							prog := prin.MakeSubprincipal(subprin)
+							if err := domain.Guard.Authorize(prog, "Execute", nil); err != nil {
+								glog.Exit(err)
+							}
+						}
+					}
+				}
+			}
+			if err := domain.Save(); err != nil {
+				glog.Exit(err)
+			}
+		}
+		if *addHost {
+			if dt.Config.DomainInfo.GetGuardType() == "Datalog" {
+				if host != "" {
+					prin := makeHostPrin(host)
+					pred := auth.MakePredicate(dt.GetHostPredicateName(), prin)
+					if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
+						glog.Exit(err)
+					}
+				}
+
+			}
+			if err := domain.Save(); err != nil {
+				glog.Exit(err)
+			}
 		}
 	case "user":
 		upwd := getKey("user password", *userPass)
@@ -328,18 +389,22 @@ func main() {
 			}
 
 			path := args[0]
-			subprin := makeProgramSubPrin(path)
-			pt := auth.PrinTail{Ext: subprin}
-			fmt.Println(pt)
+			subprin, err := makeProgramSubPrin(path)
+			if err == nil {
+				pt := auth.PrinTail{Ext: subprin}
+				fmt.Println(pt)
+			}
 		case "container":
 			if len(args) != 1 {
 				glog.Exit("must supply a path to the program")
 			}
 
 			path := args[0]
-			subprin := makeContainerSubPrin(path)
-			pt := auth.PrinTail{Ext: subprin}
-			fmt.Println(pt)
+			subprin, err := makeContainerSubPrin(path)
+			if err == nil {
+				pt := auth.PrinTail{Ext: subprin}
+				fmt.Println(pt)
+			}
 		case "tpm":
 			f, err := os.OpenFile(*tpmPath, os.O_RDWR, 0600)
 			if err != nil {
@@ -402,7 +467,7 @@ func main() {
 	}
 }
 
-func hash(p string) []byte {
+func hash(p string) ([]byte, error) {
 	// If the path is not absolute, then try $GOPATH/bin/path if it exists.
 	realPath := p
 	if !path.IsAbs(p) {
@@ -413,13 +478,13 @@ func hash(p string) []byte {
 	}
 	file, err := os.Open(realPath)
 	if err != nil {
-		glog.Exit(err)
+		return nil, err
 	}
 	hasher := sha256.New()
 	if _, err = io.Copy(hasher, file); err != nil {
 		glog.Exit(err)
 	}
-	return hasher.Sum(nil)
+	return hasher.Sum(nil), nil
 }
 
 func makeHostPrin(host string) auth.Prin {
@@ -433,18 +498,24 @@ func makeHostPrin(host string) auth.Prin {
 	return prin
 }
 
-func makeProgramSubPrin(prog string) auth.SubPrin {
+func makeProgramSubPrin(prog string) (auth.SubPrin, error) {
 	// BUG(kwalsh) This assumes no IDs, and it assumes linux hosts.
 	id := uint(0)
-	h := hash(prog)
-	return tao.FormatSubprin(id, h)
+	h, err := hash(prog)
+	if err != nil {
+		return auth.SubPrin{}, err
+	}
+	return tao.FormatSubprin(id, h), nil
 }
 
-func makeContainerSubPrin(prog string) auth.SubPrin {
+func makeContainerSubPrin(prog string) (auth.SubPrin, error) {
 	// TODO(tmroeder): This assumes no IDs
 	id := uint(0)
-	h := hash(prog)
-	return tao.FormatDockerSubprin(id, h)
+	h, err := hash(prog)
+	if err != nil {
+		return auth.SubPrin{}, err
+	}
+	return tao.FormatDockerSubprin(id, h), nil
 }
 
 func getKey(prompt, input string) []byte {

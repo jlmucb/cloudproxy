@@ -99,40 +99,29 @@ func main() {
 			glog.Fatalf("Couldn't change permissions on %s to 755: %s", err)
 		}
 
-		trivialConfig := `
-# Tao Domain Configuration file
-
-[Domain]
-Name = testing
-PolicyKeysPath = policy_keys
-GuardType = AllowAll
-
-[X509Details]
-CommonName = testing`
+		cfg := tao.DomainConfig{
+			DomainInfo: &tao.DomainDetails{
+				Name:           proto.String("testing"),
+				PolicyKeysPath: proto.String("policy_keys"),
+				GuardType:      proto.String("AllowAll"),
+			},
+			X509Info: &tao.X509Details{
+				CommonName:   proto.String("testing"),
+				Country:      proto.String("US"),
+				State:        proto.String("WA"),
+				Organization: proto.String("CloudProxy"),
+			},
+		}
+		trivialConfig := proto.MarshalTextString(&cfg)
 		absConfigPath = path.Join(dir, "tao.config")
 		if err = ioutil.WriteFile(absConfigPath, []byte(trivialConfig), 0644); err != nil {
 			glog.Fatalf("Couldn't write a trivial Tao config to %s: %s", absConfigPath, err)
-		}
-
-		emptyRules := make([]byte, 0)
-		if err = ioutil.WriteFile(path.Join(dir, "rules"), emptyRules, 0644); err != nil {
-			glog.Fatalf("Couldn't write an empty rules file: %s", err)
 		}
 
 		// If we're creating a temporary directory, then create a set of
 		// fake policy keys as well, using the password provided.
 		if len(*pass) == 0 {
 			glog.Fatalf("Must provide a password for temporary keys")
-		}
-
-		cfg := tao.DomainConfig{
-			DomainInfo: &tao.DomainDetails{
-				Name:      proto.String("testing"),
-				GuardType: proto.String("AllowAll"),
-			},
-			X509Info: &tao.X509Details{
-				CommonName: proto.String("testing"),
-			},
 		}
 
 		_, err = tao.CreateDomain(cfg, absConfigPath, []byte(*pass))

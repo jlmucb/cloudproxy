@@ -113,21 +113,19 @@ func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain
 			return nil, fmt.Errorf("must supply ACL info for the ACL guard")
 		}
 		aclsPath := cfg.AclGuardInfo.GetSignedAclsPath()
-		if aclsPath == "" {
-			aclsPath = "acls"
+		agi := ACLGuardDetails{
+			SignedAclsPath: proto.String(path.Join(configDir, aclsPath)),
 		}
-		cfg.AclGuardInfo.SignedAclsPath = proto.String(path.Join(configDir, aclsPath))
-		guard = NewACLGuard(*cfg.AclGuardInfo)
+		guard = NewACLGuard(agi)
 	case "Datalog":
 		if cfg.DatalogGuardInfo == nil {
 			return nil, fmt.Errorf("must supply Datalog info for the Datalog guard")
 		}
 		rulesPath := cfg.DatalogGuardInfo.GetSignedRulesPath()
-		if rulesPath == "" {
-			rulesPath = "rules"
+		dgi := DatalogGuardDetails{
+			SignedRulesPath: proto.String(path.Join(configDir, rulesPath)),
 		}
-		cfg.DatalogGuardInfo.SignedRulesPath = proto.String(path.Join(configDir, rulesPath))
-		guard, err = NewDatalogGuard(keys.VerifyingKey, *cfg.DatalogGuardInfo)
+		guard, err = NewDatalogGuard(keys.VerifyingKey, dgi)
 		if err != nil {
 			return nil, err
 		}
@@ -189,7 +187,10 @@ func LoadDomain(configPath string, password []byte) (*Domain, error) {
 		if cfg.AclGuardInfo == nil {
 			return nil, fmt.Errorf("must supply ACL info for the ACL guard")
 		}
-		guard, err = LoadACLGuard(keys.VerifyingKey, *cfg.GetAclGuardInfo())
+		agi := ACLGuardDetails{
+			SignedAclsPath: proto.String(path.Join(configDir, cfg.AclGuardInfo.GetSignedAclsPath())),
+		}
+		guard, err = LoadACLGuard(keys.VerifyingKey, agi)
 		if err != nil {
 			return nil, err
 		}
@@ -198,7 +199,10 @@ func LoadDomain(configPath string, password []byte) (*Domain, error) {
 		if cfg.DatalogGuardInfo == nil {
 			return nil, fmt.Errorf("must supply Datalog info for the Datalog guard")
 		}
-		datalogGuard, err := NewDatalogGuard(keys.VerifyingKey, *cfg.GetDatalogGuardInfo())
+		dgi := DatalogGuardDetails{
+			SignedRulesPath: proto.String(path.Join(configDir, cfg.DatalogGuardInfo.GetSignedRulesPath())),
+		}
+		datalogGuard, err := NewDatalogGuard(keys.VerifyingKey, dgi)
 		if err != nil {
 			return nil, err
 		}

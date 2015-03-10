@@ -2,20 +2,6 @@
 // source: domain.proto
 // DO NOT EDIT!
 
-/*
-Package tao is a generated protocol buffer package.
-
-It is generated from these files:
-	domain.proto
-
-It has these top-level messages:
-	DomainDetails
-	X509Details
-	ACLGuardDetails
-	DatalogGuardDetails
-	DomainConfig
-	DomainTemplate
-*/
 package tao
 
 import proto "github.com/golang/protobuf/proto"
@@ -190,11 +176,15 @@ type DomainTemplate struct {
 	DatalogRules []string      `protobuf:"bytes,2,rep,name=datalog_rules" json:"datalog_rules,omitempty"`
 	AclRules     []string      `protobuf:"bytes,3,rep,name=acl_rules" json:"acl_rules,omitempty"`
 	// The name of the host (used for policy statements)
-	HostName *string `protobuf:"bytes,4,opt,name=host_name" json:"host_name,omitempty"`
+	HostName          *string `protobuf:"bytes,4,opt,name=host_name" json:"host_name,omitempty"`
+	HostPredicateName *string `protobuf:"bytes,5,opt,name=host_predicate_name" json:"host_predicate_name,omitempty"`
 	// Program names (as paths to binaries)
-	ProgramPaths         []string `protobuf:"bytes,5,rep,name=program_paths" json:"program_paths,omitempty"`
-	ProgramPredicateName *string  `protobuf:"bytes,6,opt,name=program_predicate_name" json:"program_predicate_name,omitempty"`
-	XXX_unrecognized     []byte   `json:"-"`
+	ProgramPaths         []string `protobuf:"bytes,6,rep,name=program_paths" json:"program_paths,omitempty"`
+	ProgramPredicateName *string  `protobuf:"bytes,7,opt,name=program_predicate_name" json:"program_predicate_name,omitempty"`
+	// Container names (as paths to images)
+	ContainerPaths         []string `protobuf:"bytes,8,rep,name=container_paths" json:"container_paths,omitempty"`
+	ContainerPredicateName *string  `protobuf:"bytes,9,opt,name=container_predicate_name" json:"container_predicate_name,omitempty"`
+	XXX_unrecognized       []byte   `json:"-"`
 }
 
 func (m *DomainTemplate) Reset()         { *m = DomainTemplate{} }
@@ -229,6 +219,13 @@ func (m *DomainTemplate) GetHostName() string {
 	return ""
 }
 
+func (m *DomainTemplate) GetHostPredicateName() string {
+	if m != nil && m.HostPredicateName != nil {
+		return *m.HostPredicateName
+	}
+	return ""
+}
+
 func (m *DomainTemplate) GetProgramPaths() []string {
 	if m != nil {
 		return m.ProgramPaths
@@ -239,6 +236,20 @@ func (m *DomainTemplate) GetProgramPaths() []string {
 func (m *DomainTemplate) GetProgramPredicateName() string {
 	if m != nil && m.ProgramPredicateName != nil {
 		return *m.ProgramPredicateName
+	}
+	return ""
+}
+
+func (m *DomainTemplate) GetContainerPaths() []string {
+	if m != nil {
+		return m.ContainerPaths
+	}
+	return nil
+}
+
+func (m *DomainTemplate) GetContainerPredicateName() string {
+	if m != nil && m.ContainerPredicateName != nil {
+		return *m.ContainerPredicateName
 	}
 	return ""
 }

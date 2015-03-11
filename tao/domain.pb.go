@@ -190,7 +190,9 @@ type DomainTemplate struct {
 	// LinuxHost names (as paths to images)
 	LinuxHostPaths         []string `protobuf:"bytes,12,rep,name=linux_host_paths" json:"linux_host_paths,omitempty"`
 	LinuxHostPredicateName *string  `protobuf:"bytes,13,opt,name=linux_host_predicate_name" json:"linux_host_predicate_name,omitempty"`
-	XXX_unrecognized       []byte   `json:"-"`
+	// The name of the predicate to use for trusted guards.
+	GuardPredicateName *string `protobuf:"bytes,14,opt,name=guard_predicate_name" json:"guard_predicate_name,omitempty"`
+	XXX_unrecognized   []byte  `json:"-"`
 }
 
 func (m *DomainTemplate) Reset()         { *m = DomainTemplate{} }
@@ -284,6 +286,13 @@ func (m *DomainTemplate) GetLinuxHostPaths() []string {
 func (m *DomainTemplate) GetLinuxHostPredicateName() string {
 	if m != nil && m.LinuxHostPredicateName != nil {
 		return *m.LinuxHostPredicateName
+	}
+	return ""
+}
+
+func (m *DomainTemplate) GetGuardPredicateName() string {
+	if m != nil && m.GuardPredicateName != nil {
+		return *m.GuardPredicateName
 	}
 	return ""
 }

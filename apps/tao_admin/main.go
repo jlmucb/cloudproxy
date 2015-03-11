@@ -87,6 +87,7 @@ func main() {
 	addHost := flag.Bool("add_host", false, "Add the host to the policy")
 	addVMs := flag.Bool("add_vms", false, "Add VMs to the policy")
 	addLinuxHost := flag.Bool("add_linux_host", false, "Add LinuxHost to the policy")
+	addGuard := flag.Bool("add_guard", false, "Add a trusted guard to the policy")
 
 	// Flags for the 'user' option, used to create new user keys.
 	userKeyDetails := flag.String("user_key_details", "", "Path to a file that contains an X509Details proto")
@@ -174,14 +175,12 @@ func main() {
 			if dt.Config.DomainInfo.GetGuardType() == "Datalog" {
 				// Add any rules specified in the domain template.
 				for _, rule := range dt.DatalogRules {
-					glog.Infof("Adding rule '%s'", rule)
 					if err := domain.Guard.AddRule(rule); err != nil {
 						glog.Exit(err)
 					}
 				}
 			} else if dt.Config.DomainInfo.GetGuardType() == "ACLs" {
 				for _, rule := range dt.AclRules {
-					glog.Infof("Adding ACL '%s'", rule)
 					if err := domain.Guard.AddRule(rule); err != nil {
 						glog.Exit(err)
 					}
@@ -396,10 +395,10 @@ func main() {
 						}
 					}
 				}
-			}
-			// The ACLs need the full name, so that only happens for containers and programs.
-			if err := domain.Save(); err != nil {
-				glog.Exit(err)
+				// The ACLs need the full name, so that only happens for containers and programs.
+				if err := domain.Save(); err != nil {
+					glog.Exit(err)
+				}
 			}
 		}
 		if *addHost {
@@ -411,9 +410,25 @@ func main() {
 						glog.Exit(err)
 					}
 				}
+				if err := domain.Save(); err != nil {
+					glog.Exit(err)
+				}
 			}
-			if err := domain.Save(); err != nil {
-				glog.Exit(err)
+		}
+		if *addGuard {
+			if dt.Config.DomainInfo.GetGuardType() == "Datalog" {
+				subprin := domain.Guard.Subprincipal()
+				pt := auth.PrinTail{Ext: subprin}
+				pred := auth.Pred{
+					Name: dt.GetGuardPredicateName(),
+					Arg:  []auth.Term{pt},
+				}
+				if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
+					glog.Exit(err)
+				}
+				if err := domain.Save(); err != nil {
+					glog.Exit(err)
+				}
 			}
 		}
 	case "user":

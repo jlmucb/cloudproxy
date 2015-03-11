@@ -25,11 +25,6 @@ HOSTPID=$!
 echo "Waiting for the hypervisor Linux Host to start"
 sleep 2
 
-# Set up the linux_host bundle for the VM.
-SCRIPT_DIR=$(readlink -e $(dirname $0))
-${SCRIPT_DIR}/build_linux_host.sh ${DOMAIN}/policy_keys/cert \
-	${DOMAIN}/tao.config
-
 echo "About to start a virtual machine as a hosted program"
 # Start the VM with linux_host.
 LHTEMP=`mktemp -d /tmp/kvm_linux_host.XXXXXXXX`

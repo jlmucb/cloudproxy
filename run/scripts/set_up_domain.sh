@@ -43,7 +43,7 @@ ${SCRIPT_PATH}/build_linux_host.sh ${DOMAIN_PATH}/policy_keys/cert \
 
 # Add domain-specific hashes to the policy.
 $ADMIN -operation policy -add_host -add_programs -add_containers -add_vms \
-	-add_linux_host -domain_path $DOMAIN_PATH -pass $FAKE_PASS \
+	-add_linux_host -add_guard -domain_path $DOMAIN_PATH -pass $FAKE_PASS \
 	-config_template $TEMP_FILE -logtostderr
 
 rm $TEMP_FILE

@@ -158,7 +158,7 @@ func (kcc *KvmCoreOSContainer) Start() error {
 		if err != nil {
 			return err
 		}
-		rulesFile := path.Join(latestDir, path.Base(cfg.RulesPath))
+		rulesFile := path.Join(td_docker, path.Base(cfg.RulesPath))
 		if err := ioutil.WriteFile(rulesFile, []byte(rules), 0700); err != nil {
 			return err
 		}

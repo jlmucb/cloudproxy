@@ -184,6 +184,12 @@ type DomainTemplate struct {
 	// Container names (as paths to images)
 	ContainerPaths         []string `protobuf:"bytes,8,rep,name=container_paths" json:"container_paths,omitempty"`
 	ContainerPredicateName *string  `protobuf:"bytes,9,opt,name=container_predicate_name" json:"container_predicate_name,omitempty"`
+	// VM names (as paths to images)
+	VmPaths         []string `protobuf:"bytes,10,rep,name=vm_paths" json:"vm_paths,omitempty"`
+	VmPredicateName *string  `protobuf:"bytes,11,opt,name=vm_predicate_name" json:"vm_predicate_name,omitempty"`
+	// LinuxHost names (as paths to images)
+	LinuxHostPaths         []string `protobuf:"bytes,12,rep,name=linux_host_paths" json:"linux_host_paths,omitempty"`
+	LinuxHostPredicateName *string  `protobuf:"bytes,13,opt,name=linux_host_predicate_name" json:"linux_host_predicate_name,omitempty"`
 	XXX_unrecognized       []byte   `json:"-"`
 }
 
@@ -250,6 +256,34 @@ func (m *DomainTemplate) GetContainerPaths() []string {
 func (m *DomainTemplate) GetContainerPredicateName() string {
 	if m != nil && m.ContainerPredicateName != nil {
 		return *m.ContainerPredicateName
+	}
+	return ""
+}
+
+func (m *DomainTemplate) GetVmPaths() []string {
+	if m != nil {
+		return m.VmPaths
+	}
+	return nil
+}
+
+func (m *DomainTemplate) GetVmPredicateName() string {
+	if m != nil && m.VmPredicateName != nil {
+		return *m.VmPredicateName
+	}
+	return ""
+}
+
+func (m *DomainTemplate) GetLinuxHostPaths() []string {
+	if m != nil {
+		return m.LinuxHostPaths
+	}
+	return nil
+}
+
+func (m *DomainTemplate) GetLinuxHostPredicateName() string {
+	if m != nil && m.LinuxHostPredicateName != nil {
+		return *m.LinuxHostPredicateName
 	}
 	return ""
 }

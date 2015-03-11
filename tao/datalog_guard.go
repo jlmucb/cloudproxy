@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	"github.com/jlmucb/cloudproxy/util"
@@ -637,6 +638,7 @@ func (g *DatalogGuard) IsAuthorized(p auth.Prin, op string, args []string) bool 
 
 // AddRule adds a policy rule.
 func (g *DatalogGuard) AddRule(rule string) error {
+	glog.Infof("Adding rule '%s'", rule)
 	var r auth.AnyForm
 	_, err := fmt.Sscanf("("+rule+")", "%v", &r)
 	if err != nil {

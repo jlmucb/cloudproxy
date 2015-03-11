@@ -37,10 +37,14 @@ $ADMIN -operation domain -domain_path $DOMAIN_PATH -config_template $TEMP_FILE \
 ${SCRIPT_PATH}/build_docker.sh ${DOMAIN_PATH}/policy_keys/cert \
 	${DOMAIN_PATH}/tao.config
 
+# Create the linux_host image for use in a VM.
+${SCRIPT_PATH}/build_linux_host.sh ${DOMAIN_PATH}/policy_keys/cert \
+	${DOMAIN_PATH}/tao.config
+
 # Add domain-specific hashes to the policy.
-$ADMIN -operation policy -add_host -add_programs -add_containers \
-	-domain_path $DOMAIN_PATH -pass $FAKE_PASS -config_template $TEMP_FILE \
-	-logtostderr
+$ADMIN -operation policy -add_host -add_programs -add_containers -add_vms \
+	-add_linux_host -domain_path $DOMAIN_PATH -pass $FAKE_PASS \
+	-config_template $TEMP_FILE -logtostderr
 
 rm $TEMP_FILE
 echo "Temp domain directory: $DOMAIN_PATH"

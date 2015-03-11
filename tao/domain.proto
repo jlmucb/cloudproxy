@@ -58,4 +58,10 @@ message DomainTemplate {
   // Container names (as paths to images)
   repeated string container_paths = 8;
   optional string container_predicate_name = 9;
+  // VM names (as paths to images)
+  repeated string vm_paths = 10;
+  optional string vm_predicate_name = 11;
+  // LinuxHost names (as paths to images)
+  repeated string linux_host_paths = 12;
+  optional string linux_host_predicate_name = 13;
 }

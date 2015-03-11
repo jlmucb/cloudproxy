@@ -296,9 +296,21 @@ func (lkcf *LinuxKVMCoreOSFactory) MakeSubprin(id uint, image string, uid, gid i
 		return empty, "", err
 	}
 	hh := sha256.Sum256(bb)
+	lhSubprin := FormatLinuxHostSubprin(id, hh[:])
 
-	subprin = append(subprin, auth.PrinExt{Name: "LinuxHost", Arg: []auth.Term{auth.Bytes(hh[:])}})
+	subprin = append(subprin, lhSubprin...)
 	return subprin, image, nil
+}
+
+// FormatLinuxHostSubprin produces a string that represents a subprincipal with
+// the given ID and hash.
+func FormatLinuxHostSubprin(id uint, hash []byte) auth.SubPrin {
+	var args []auth.Term
+	if id != 0 {
+		args = append(args, auth.Int(id))
+	}
+	args = append(args, auth.Bytes(hash))
+	return auth.SubPrin{auth.PrinExt{Name: "LinuxHost", Arg: args}}
 }
 
 // FormatCoreOSSubprin produces a string that represents a subprincipal with the

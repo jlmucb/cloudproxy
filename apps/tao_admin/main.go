@@ -85,6 +85,8 @@ func main() {
 	addPrograms := flag.Bool("add_programs", false, "Add the program hashes to the policy")
 	addContainers := flag.Bool("add_containers", false, "Add the container hashes to the policy")
 	addHost := flag.Bool("add_host", false, "Add the host to the policy")
+	addVMs := flag.Bool("add_vms", false, "Add VMs to the policy")
+	addLinuxHost := flag.Bool("add_linux_host", false, "Add LinuxHost to the policy")
 
 	// Flags for the 'user' option, used to create new user keys.
 	userKeyDetails := flag.String("user_key_details", "", "Path to a file that contains an X509Details proto")
@@ -303,6 +305,31 @@ func main() {
 							}
 						}
 					}
+					if dt.VmPaths != nil && dt.LinuxHostPaths != nil {
+						for _, vm := range dt.VmPaths {
+							vmPrin, err := makeVMSubPrin(vm)
+							if err == nil {
+								for _, lh := range dt.LinuxHostPaths {
+									lhPrin, err := makeLinuxHostSubPrin(lh)
+									if err == nil {
+										for _, p := range dt.ProgramPaths {
+											subprin, err := makeProgramSubPrin(p)
+											var sp auth.SubPrin
+											sp = append(sp, vmPrin...)
+											sp = append(sp, lhPrin...)
+											sp = append(sp, subprin...)
+											if err == nil {
+												prog := prin.MakeSubprincipal(sp)
+												if err := domain.Guard.Authorize(prog, "Execute", nil); err != nil {
+													glog.Exit(err)
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
 				}
 			}
 			if err := domain.Save(); err != nil {
@@ -339,6 +366,42 @@ func main() {
 				glog.Exit(err)
 			}
 		}
+		if *addVMs {
+			if dt.Config.DomainInfo.GetGuardType() == "Datalog" {
+				for _, c := range dt.VmPaths {
+					prin, err := makeVMSubPrin(c)
+					if err == nil {
+						pt := auth.PrinTail{Ext: prin}
+						pred := auth.MakePredicate(dt.GetVmPredicateName(), pt)
+						if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
+							glog.Exit(err)
+						}
+					}
+				}
+			}
+			// The ACLs need the full name, so that only happens for containers and programs.
+			if err := domain.Save(); err != nil {
+				glog.Exit(err)
+			}
+		}
+		if *addLinuxHost {
+			if dt.Config.DomainInfo.GetGuardType() == "Datalog" {
+				for _, c := range dt.LinuxHostPaths {
+					prin, err := makeLinuxHostSubPrin(c)
+					if err == nil {
+						pt := auth.PrinTail{Ext: prin}
+						pred := auth.MakePredicate(dt.GetLinuxHostPredicateName(), pt)
+						if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
+							glog.Exit(err)
+						}
+					}
+				}
+			}
+			// The ACLs need the full name, so that only happens for containers and programs.
+			if err := domain.Save(); err != nil {
+				glog.Exit(err)
+			}
+		}
 		if *addHost {
 			if dt.Config.DomainInfo.GetGuardType() == "Datalog" {
 				if host != "" {
@@ -348,7 +411,6 @@ func main() {
 						glog.Exit(err)
 					}
 				}
-
 			}
 			if err := domain.Save(); err != nil {
 				glog.Exit(err)
@@ -499,13 +561,33 @@ func makeHostPrin(host string) auth.Prin {
 }
 
 func makeProgramSubPrin(prog string) (auth.SubPrin, error) {
-	// BUG(kwalsh) This assumes no IDs, and it assumes linux hosts.
+	// TODO(tmroeder): This assumes no IDs, and it assumes linux hosts.
 	id := uint(0)
 	h, err := hash(prog)
 	if err != nil {
 		return auth.SubPrin{}, err
 	}
 	return tao.FormatSubprin(id, h), nil
+}
+
+func makeVMSubPrin(prog string) (auth.SubPrin, error) {
+	// TODO(tmroeder): This assumes no IDs, and it assumes linux hosts.
+	id := uint(0)
+	h, err := hash(prog)
+	if err != nil {
+		return auth.SubPrin{}, err
+	}
+	return tao.FormatCoreOSSubprin(id, h), nil
+}
+
+func makeLinuxHostSubPrin(prog string) (auth.SubPrin, error) {
+	// TODO(tmroeder): This assumes no IDs, and it assumes linux hosts.
+	id := uint(0)
+	h, err := hash(prog)
+	if err != nil {
+		return auth.SubPrin{}, err
+	}
+	return tao.FormatLinuxHostSubprin(id, h), nil
 }
 
 func makeContainerSubPrin(prog string) (auth.SubPrin, error) {

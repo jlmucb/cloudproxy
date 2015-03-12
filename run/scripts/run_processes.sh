@@ -39,3 +39,4 @@ cat /tmp/demo_server.INFO
 echo "Cleaning up remaining programs"
 kill $DSPID
 sudo kill $HOSTPID
+sudo rm -f ${DOMAIN}/linux_tao_host/admin_socket

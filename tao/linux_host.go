@@ -15,7 +15,6 @@
 package tao
 
 import (
-	"fmt"
 	"io"
 	"sync"
 
@@ -211,7 +210,6 @@ func (lh *LinuxHost) Attest(child *LinuxHostChild, issuer *auth.Prin, time, expi
 
 // StartHostedProgram starts a new hosted program.
 func (lh *LinuxHost) StartHostedProgram(path string, args []string, uid, gid int) (auth.SubPrin, int, error) {
-	fmt.Println("In StartHostedProgram, got args ", args)
 	lh.idm.Lock()
 	id := lh.nextChildID
 	if lh.nextChildID != 0 {

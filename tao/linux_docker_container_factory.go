@@ -1,4 +1,4 @@
-// Copyright (c) 2014, Google Inc.  All rights reserved.
+// Copyright (c) 2014, Google, Inc.  All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,9 +47,11 @@ func (dc *DockerContainer) Kill() error {
 
 // Start starts a docker container using the docker run subcommand.
 func (dc *DockerContainer) Start() error {
-	cmdArgs := []string{"run", //"--rm=true",
-		"-v", dc.RulesPath + ":/" + path.Base(dc.RulesPath),
+	cmdArgs := []string{"run", "--rm=true",
 		"-v", dc.SocketPath + ":/tao"}
+	if dc.RulesPath != "" {
+		cmdArgs = append(cmdArgs, "-v", dc.RulesPath+":/"+path.Base(dc.RulesPath))
+	}
 	// The arguments for Docker are arguments directly to Docker. To add
 	// arguments to an application, set up a Dockerfile for this
 	// application.
@@ -169,18 +171,15 @@ func (ldcf *LinuxDockerContainerFactory) Launch(tarPath string, args []string, u
 		Args:       args,
 	}
 	rwc := util.NewUnixSingleReadWriteCloser(sockPath)
-	glog.Infof("Building image from path %s\n", tarPath)
 	if err := dc.Build(tarPath); err != nil {
 		rwc.Close()
 		return nil, nil, err
 	}
 
-	glog.Info("Starting docker container")
 	if err := dc.Start(); err != nil {
 		rwc.Close()
 		return nil, nil, err
 	}
-	glog.Info("Succeeded!")
 
 	return rwc, dc, nil
 }

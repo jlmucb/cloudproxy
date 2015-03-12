@@ -66,3 +66,4 @@ echo -e "\n\nCleaning up"
 ssh -l core -p ${SSHPORT} localhost sudo shutdown -h now
 sudo kill $HOSTPID
 sudo rm -fr $LHTEMP /tmp/demo_server.INFO /tmp/demo_client.INFO
+sudo rm -f ${DOMAIN}/linux_tao_host/admin_socket

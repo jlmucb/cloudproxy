@@ -93,13 +93,11 @@ func doServer(done chan<- bool) {
 	var err error
 	var keys *tao.Keys
 	network := "tcp"
-	fmt.Printf("Trying to load the domain at %s\n", *configPath)
 	domain, err := tao.LoadDomain(*configPath, nil)
 	if err != nil {
 		done <- true
 		return
 	}
-	fmt.Println("Loaded the domain")
 
 	switch *demoAuth {
 	case "tcp":
@@ -207,7 +205,6 @@ func main() {
 	}
 
 	glog.Info("Go Tao Demo Server")
-	fmt.Println("Starting the server")
 
 	if tao.Parent() == nil {
 		glog.Fatal("can't continue: No host Tao available")

@@ -147,68 +147,10 @@ func main() {
 	configPath := path.Join(*domainPath, *configName)
 	switch *operation {
 	case "key", "domain":
-		pwd := getKey("password", *pass)
-		if *domainPath == "" {
-			glog.Exit("must supply a domain path for key and domain creation")
-		}
-		if dt.Config.DomainInfo.GetPolicyKeysPath() == "" {
-			glog.Exit("must supply a policy_keys_path in the domain configuration")
-		}
-
-		if *operation == "key" {
-			args := flag.Args()
-			if len(args) != 1 {
-				glog.Exit("must supply a path (relative to the domain) for the new key set")
-			}
-			keypath := path.Join(*domainPath, args[0])
-			k, err := tao.NewOnDiskPBEKeys(tao.Signing|tao.Crypting|tao.Deriving, pwd, keypath, tao.NewX509Name(dt.Config.X509Info))
-			if err != nil {
-				glog.Exit(err)
-			}
-			fmt.Print(k.VerifyingKey.ToPrincipal())
-		} else { // *operation == "domain"
-			domain, err := tao.CreateDomain(*dt.Config, configPath, pwd)
-			if err != nil {
-				glog.Exit(err)
-			}
-
-			if dt.Config.DomainInfo.GetGuardType() == "Datalog" {
-				// Add any rules specified in the domain template.
-				for _, rule := range dt.DatalogRules {
-					if err := domain.Guard.AddRule(rule); err != nil {
-						glog.Exit(err)
-					}
-				}
-			} else if dt.Config.DomainInfo.GetGuardType() == "ACLs" {
-				for _, rule := range dt.AclRules {
-					if err := domain.Guard.AddRule(rule); err != nil {
-						glog.Exit(err)
-					}
-				}
-			}
-
-			if err := domain.Save(); err != nil {
-				glog.Exit(err)
-			}
-		}
+		createKeyOrDomain(*pass, *domainPath, configPath, *operation, &dt)
 	case "policy":
 		if *query != "" {
-			domain, err := tao.LoadDomain(configPath, nil)
-			if err != nil {
-				glog.Exit(err)
-			}
-
-			fmt.Fprintf(noise, "Querying policy guard with statement: %s\n", *query)
-			ok, err := domain.Guard.Query(*query)
-			if err != nil {
-				glog.Exit(err)
-			}
-			if ok {
-				fmt.Println("The policy implies the statement.")
-			} else {
-				fmt.Println("The policy does not imply the statement")
-			}
-
+			queryGuard(configPath, *query)
 			return
 		}
 
@@ -229,37 +171,10 @@ func main() {
 		host := dt.GetHostName()
 		// Add execution permission for a program.
 		if *canExecute != "" {
-			path := *canExecute
-			prin := makeHostPrin(host)
-			subprin, err := makeProgramSubPrin(path)
-			if err == nil {
-				prog := prin.MakeSubprincipal(subprin)
-				fmt.Fprintf(noise, "Authorizing program to execute:\n"+
-					"  path: %s\n"+
-					"  host: %s\n"+
-					"  name: %s\n", path, prin, subprin)
-				if err := domain.Guard.Authorize(prog, "Execute", nil); err != nil {
-					glog.Exit(err)
-				}
-				if err = domain.Save(); err != nil {
-					glog.Exit(err)
-				}
-			}
+			addExecute(*canExecute, host, noise, domain)
 		}
 		if *retractCanExecute != "" {
-			path := *retractCanExecute
-			prin := makeHostPrin(host)
-			subprin, err := makeProgramSubPrin(path)
-			if err == nil {
-				prog := prin.MakeSubprincipal(subprin)
-				fmt.Fprintf(noise, "Retracting program authorization to execute:\n"+
-					"  path: %s\n"+
-					"  host: %s\n"+
-					"  name: %s\n", path, prin, subprin)
-				if err := domain.Guard.Retract(prog, "Execute", nil); err != nil {
-					glog.Exit(err)
-				}
-			}
+			retractExecute(*retractCanExecute, host, noise, domain)
 		}
 		if *add != "" {
 			fmt.Fprintf(noise, "Adding policy rule: %s\n", *add)
@@ -280,283 +195,29 @@ func main() {
 			}
 		}
 		if *addPrograms {
-			if dt.Config.DomainInfo.GetGuardType() == "Datalog" {
-				// Add the hashes of any programs given in the template.
-				for _, p := range dt.ProgramPaths {
-					prin, err := makeProgramSubPrin(p)
-					if err == nil {
-						pt := auth.PrinTail{Ext: prin}
-						pred := auth.MakePredicate(dt.GetProgramPredicateName(), pt)
-						if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
-							glog.Exit(err)
-						}
-					}
-				}
-			} else if dt.Config.DomainInfo.GetGuardType() == "ACLs" {
-				if host != "" {
-					prin := makeHostPrin(host)
-					for _, p := range dt.ProgramPaths {
-						subprin, err := makeProgramSubPrin(p)
-						if err == nil {
-							prog := prin.MakeSubprincipal(subprin)
-							if err := domain.Guard.Authorize(prog, "Execute", nil); err != nil {
-								glog.Exit(err)
-							}
-						}
-					}
-					if dt.VmPaths != nil && dt.LinuxHostPaths != nil {
-						for _, vm := range dt.VmPaths {
-							vmPrin, err := makeVMSubPrin(vm)
-							if err == nil {
-								for _, lh := range dt.LinuxHostPaths {
-									lhPrin, err := makeLinuxHostSubPrin(lh)
-									if err == nil {
-										var lsp auth.SubPrin
-										lsp = append(lsp, vmPrin...)
-										lsp = append(lsp, lhPrin...)
-										lprog := prin.MakeSubprincipal(lsp)
-										if err := domain.Guard.Authorize(lprog, "Execute", nil); err != nil {
-											glog.Exit(err)
-										}
-
-										for _, p := range dt.ProgramPaths {
-											subprin, err := makeProgramSubPrin(p)
-											if err == nil {
-												var sp auth.SubPrin
-												sp = append(sp, vmPrin...)
-												sp = append(sp, lhPrin...)
-												sp = append(sp, subprin...)
-												prog := prin.MakeSubprincipal(sp)
-												if err := domain.Guard.Authorize(prog, "Execute", nil); err != nil {
-													glog.Exit(err)
-												}
-
-												var gsp auth.SubPrin
-												gsp = append(gsp, vmPrin...)
-												gsp = append(gsp, lhPrin...)
-												gsp = append(gsp, domain.Guard.Subprincipal()...)
-												gsp = append(gsp, subprin...)
-												gprog := prin.MakeSubprincipal(gsp)
-												if err := domain.Guard.Authorize(gprog, "Execute", nil); err != nil {
-													glog.Exit(err)
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-			if err := domain.Save(); err != nil {
-				glog.Exit(err)
-			}
+			addProgramRules(host, &dt, domain)
 		}
 		if *addContainers {
-			if dt.Config.DomainInfo.GetGuardType() == "Datalog" {
-				for _, c := range dt.ContainerPaths {
-					prin, err := makeContainerSubPrin(c)
-					if err == nil {
-						pt := auth.PrinTail{Ext: prin}
-						pred := auth.MakePredicate(dt.GetContainerPredicateName(), pt)
-						if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
-							glog.Exit(err)
-						}
-					}
-				}
-			} else if dt.Config.DomainInfo.GetGuardType() == "ACLs" {
-				if host != "" {
-					prin := makeHostPrin(host)
-					for _, p := range dt.ContainerPaths {
-						subprin, err := makeContainerSubPrin(p)
-						if err == nil {
-							prog := prin.MakeSubprincipal(subprin)
-							if err := domain.Guard.Authorize(prog, "Execute", nil); err != nil {
-								glog.Exit(err)
-							}
-						}
-					}
-				}
-			}
-			if err := domain.Save(); err != nil {
-				glog.Exit(err)
-			}
+			addContainerRules(host, &dt, domain)
 		}
-		if *addVMs {
-			if dt.Config.DomainInfo.GetGuardType() == "Datalog" {
-				for _, c := range dt.VmPaths {
-					prin, err := makeVMSubPrin(c)
-					if err == nil {
-						pt := auth.PrinTail{Ext: prin}
-						pred := auth.MakePredicate(dt.GetVmPredicateName(), pt)
-						if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
-							glog.Exit(err)
-						}
-					}
-				}
+		if dt.Config.DomainInfo.GetGuardType() == "Datalog" {
+			if *addVMs {
+				addVMRules(&dt, domain)
 			}
-			// The ACLs need the full name, so that only happens for containers and programs.
-			if err := domain.Save(); err != nil {
-				glog.Exit(err)
+			if *addLinuxHost {
+				addLinuxHostRules(&dt, domain)
 			}
-		}
-		if *addLinuxHost {
-			if dt.Config.DomainInfo.GetGuardType() == "Datalog" {
-				for _, c := range dt.LinuxHostPaths {
-					prin, err := makeLinuxHostSubPrin(c)
-					if err == nil {
-						pt := auth.PrinTail{Ext: prin}
-						pred := auth.MakePredicate(dt.GetLinuxHostPredicateName(), pt)
-						if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
-							glog.Exit(err)
-						}
-					}
-				}
-				// The ACLs need the full name, so that only happens for containers and programs.
-				if err := domain.Save(); err != nil {
-					glog.Exit(err)
-				}
+			if *addHost {
+				addHostRules(host, &dt, domain)
 			}
-		}
-		if *addHost {
-			if dt.Config.DomainInfo.GetGuardType() == "Datalog" {
-				if host != "" {
-					prin := makeHostPrin(host)
-					pred := auth.MakePredicate(dt.GetHostPredicateName(), prin)
-					if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
-						glog.Exit(err)
-					}
-				}
-				if err := domain.Save(); err != nil {
-					glog.Exit(err)
-				}
-			}
-		}
-		if *addGuard {
-			if dt.Config.DomainInfo.GetGuardType() == "Datalog" {
-				subprin := domain.Guard.Subprincipal()
-				pt := auth.PrinTail{Ext: subprin}
-				pred := auth.Pred{
-					Name: dt.GetGuardPredicateName(),
-					Arg:  []auth.Term{pt},
-				}
-				if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
-					glog.Exit(err)
-				}
-				if err := domain.Save(); err != nil {
-					glog.Exit(err)
-				}
+			if *addGuard {
+				addGuardRules(&dt, domain)
 			}
 		}
 	case "user":
-		upwd := getKey("user password", *userPass)
-		pwd := getKey("policy key password", *pass)
-
-		// Read the X509Details for this user from a text protobuf file.
-		xdb, err := ioutil.ReadFile(*userKeyDetails)
-		if err != nil {
-			glog.Exit(err)
-		}
-		var xd tao.X509Details
-		if err := proto.UnmarshalText(string(xdb), &xd); err != nil {
-			glog.Exit(err)
-		}
-
-		domain, err := tao.LoadDomain(configPath, pwd)
-		if err != nil {
-			glog.Exit(err)
-		}
-		policyKey := domain.Keys
-		fmt.Fprintf(noise, "Creating key for user: %s\n", xd.GetCommonName())
-
-		subjectName := tao.NewX509Name(&xd)
-		_, err = tao.NewSignedOnDiskPBEKeys(tao.Signing, upwd, *userKeyPath, subjectName, int(xd.GetSerialNumber()), policyKey)
-		if err != nil {
-			glog.Exit(err)
-		}
+		createUserKeys(*userPass, *pass, *userKeyDetails, *userKeyPath, configPath)
 	case "principal":
-		args := flag.Args()
-		switch *principal {
-		case "program":
-			if len(args) != 1 {
-				glog.Exit("must supply a path to the program")
-			}
-
-			path := args[0]
-			subprin, err := makeProgramSubPrin(path)
-			if err == nil {
-				pt := auth.PrinTail{Ext: subprin}
-				fmt.Println(pt)
-			}
-		case "container":
-			if len(args) != 1 {
-				glog.Exit("must supply a path to the program")
-			}
-
-			path := args[0]
-			subprin, err := makeContainerSubPrin(path)
-			if err == nil {
-				pt := auth.PrinTail{Ext: subprin}
-				fmt.Println(pt)
-			}
-		case "tpm":
-			f, err := os.OpenFile(*tpmPath, os.O_RDWR, 0600)
-			if err != nil {
-				glog.Exit(err)
-			}
-			defer f.Close()
-
-			pcrpe := auth.PrinExt{
-				Name: "PCRs",
-				Arg:  make([]auth.Term, len(pcrVals)),
-			}
-			for i, pcr := range pcrVals {
-				res, err := tpm.ReadPCR(f, uint32(pcr))
-				if err != nil {
-					glog.Exit(err)
-				}
-
-				pcrpe.Arg[i] = auth.Bytes(res)
-			}
-
-			aikblob, err := ioutil.ReadFile(*aikFile)
-			if err != nil {
-				glog.Exit(err)
-			}
-			v, err := tpm.UnmarshalRSAPublicKey(aikblob)
-			if err != nil {
-				glog.Exit(err)
-			}
-			aik, err := x509.MarshalPKIXPublicKey(v)
-			if err != nil {
-				glog.Exit(err)
-			}
-
-			name := auth.Prin{
-				Type: "tpm",
-				Key:  auth.Bytes(aik),
-				Ext:  []auth.PrinExt{pcrpe},
-			}
-			fmt.Println(name)
-		case "key":
-			lhpwd := getKey("key password", *keyPass)
-			args := flag.Args()
-			if len(args) != 1 {
-				glog.Exit("must supply a path for the linux host directory")
-			}
-
-			lhpath := path.Join(*domainPath, args[0])
-			// Get or create the keys.
-			k, err := tao.NewOnDiskPBEKeys(tao.Signing|tao.Crypting|tao.Deriving, lhpwd, lhpath, nil)
-			if err != nil {
-				glog.Exit(err)
-			}
-
-			fmt.Println(k.SigningKey.ToPrincipal())
-		default:
-			glog.Exitf("Unknown principal type '%s'", *principal)
-		}
+		outputPrincipal(*principal, *tpmPath, *aikFile, *domainPath, *keyPass, pcrVals)
 	default:
 		glog.Exitf("Unknown operation '%s'", *operation)
 	}
@@ -650,4 +311,395 @@ func getKey(prompt, input string) []byte {
 	}
 
 	return pwd
+}
+
+func createKeyOrDomain(pass, domainPath, configPath, operation string, dt *tao.DomainTemplate) {
+	pwd := getKey("password", pass)
+	if domainPath == "" {
+		glog.Exit("must supply a domain path for key and domain creation")
+	}
+	if dt.Config.DomainInfo.GetPolicyKeysPath() == "" {
+		glog.Exit("must supply a policy_keys_path in the domain configuration")
+	}
+
+	if operation == "key" {
+		args := flag.Args()
+		if len(args) != 1 {
+			glog.Exit("must supply a path (relative to the domain) for the new key set")
+		}
+		keypath := path.Join(domainPath, args[0])
+		k, err := tao.NewOnDiskPBEKeys(tao.Signing|tao.Crypting|tao.Deriving, pwd, keypath, tao.NewX509Name(dt.Config.X509Info))
+		if err != nil {
+			glog.Exit(err)
+		}
+		fmt.Print(k.VerifyingKey.ToPrincipal())
+	} else { // operation == "domain"
+		domain, err := tao.CreateDomain(*dt.Config, configPath, pwd)
+		if err != nil {
+			glog.Exit(err)
+		}
+
+		if dt.Config.DomainInfo.GetGuardType() == "Datalog" {
+			// Add any rules specified in the domain template.
+			for _, rule := range dt.DatalogRules {
+				if err := domain.Guard.AddRule(rule); err != nil {
+					glog.Exit(err)
+				}
+			}
+		} else if dt.Config.DomainInfo.GetGuardType() == "ACLs" {
+			for _, rule := range dt.AclRules {
+				if err := domain.Guard.AddRule(rule); err != nil {
+					glog.Exit(err)
+				}
+			}
+		}
+
+		if err := domain.Save(); err != nil {
+			glog.Exit(err)
+		}
+	}
+}
+
+func queryGuard(configPath, query string) {
+	domain, err := tao.LoadDomain(configPath, nil)
+	if err != nil {
+		glog.Exit(err)
+	}
+
+	ok, err := domain.Guard.Query(query)
+	if err != nil {
+		glog.Exit(err)
+	}
+	if ok {
+		fmt.Println("The policy implies the statement.")
+	} else {
+		fmt.Println("The policy does not imply the statement")
+	}
+}
+
+func addExecute(path, host string, noise io.Writer, domain *tao.Domain) {
+	prin := makeHostPrin(host)
+	subprin, err := makeProgramSubPrin(path)
+	if err == nil {
+		prog := prin.MakeSubprincipal(subprin)
+		fmt.Fprintf(noise, "Authorizing program to execute:\n"+
+			"  path: %s\n"+
+			"  host: %s\n"+
+			"  name: %s\n", path, prin, subprin)
+		if err := domain.Guard.Authorize(prog, "Execute", nil); err != nil {
+			glog.Exit(err)
+		}
+		if err = domain.Save(); err != nil {
+			glog.Exit(err)
+		}
+	}
+}
+
+func retractExecute(path, host string, noise io.Writer, domain *tao.Domain) {
+	prin := makeHostPrin(host)
+	subprin, err := makeProgramSubPrin(path)
+	if err == nil {
+		prog := prin.MakeSubprincipal(subprin)
+		fmt.Fprintf(noise, "Retracting program authorization to execute:\n"+
+			"  path: %s\n"+
+			"  host: %s\n"+
+			"  name: %s\n", path, prin, subprin)
+		if err := domain.Guard.Retract(prog, "Execute", nil); err != nil {
+			glog.Exit(err)
+		}
+	}
+}
+
+func addACLPrograms(host string, dt *tao.DomainTemplate, domain *tao.Domain) {
+	if host == "" {
+		return
+	}
+	prin := makeHostPrin(host)
+	for _, p := range dt.ProgramPaths {
+		subprin, err := makeProgramSubPrin(p)
+		if err != nil {
+			continue
+		}
+		prog := prin.MakeSubprincipal(subprin)
+		if err := domain.Guard.Authorize(prog, "Execute", nil); err != nil {
+			glog.Exit(err)
+		}
+	}
+	for _, vm := range dt.VmPaths {
+		vmPrin, err := makeVMSubPrin(vm)
+		if err != nil {
+			continue
+		}
+		for _, lh := range dt.LinuxHostPaths {
+			lhPrin, err := makeLinuxHostSubPrin(lh)
+			if err != nil {
+				continue
+			}
+			var lsp auth.SubPrin
+			lsp = append(lsp, vmPrin...)
+			lsp = append(lsp, lhPrin...)
+			lprog := prin.MakeSubprincipal(lsp)
+			if err := domain.Guard.Authorize(lprog, "Execute", nil); err != nil {
+				glog.Exit(err)
+			}
+
+			for _, p := range dt.ProgramPaths {
+				subprin, err := makeProgramSubPrin(p)
+				if err != nil {
+					continue
+				}
+				var sp auth.SubPrin
+				sp = append(sp, vmPrin...)
+				sp = append(sp, lhPrin...)
+				sp = append(sp, subprin...)
+				prog := prin.MakeSubprincipal(sp)
+				if err := domain.Guard.Authorize(prog, "Execute", nil); err != nil {
+					glog.Exit(err)
+				}
+
+				var gsp auth.SubPrin
+				gsp = append(gsp, vmPrin...)
+				gsp = append(gsp, lhPrin...)
+				gsp = append(gsp, domain.Guard.Subprincipal()...)
+				gsp = append(gsp, subprin...)
+				gprog := prin.MakeSubprincipal(gsp)
+				if err := domain.Guard.Authorize(gprog, "Execute", nil); err != nil {
+					glog.Exit(err)
+				}
+			}
+		}
+	}
+}
+
+func addProgramRules(host string, dt *tao.DomainTemplate, domain *tao.Domain) {
+	if dt.Config.DomainInfo.GetGuardType() == "Datalog" {
+		// Add the hashes of any programs given in the template.
+		for _, p := range dt.ProgramPaths {
+			prin, err := makeProgramSubPrin(p)
+			if err != nil {
+				continue
+			}
+			pt := auth.PrinTail{Ext: prin}
+			pred := auth.MakePredicate(dt.GetProgramPredicateName(), pt)
+			if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
+				glog.Exit(err)
+			}
+		}
+	} else if dt.Config.DomainInfo.GetGuardType() == "ACLs" {
+		addACLPrograms(host, dt, domain)
+	}
+	if err := domain.Save(); err != nil {
+		glog.Exit(err)
+	}
+}
+
+func addContainerRules(host string, dt *tao.DomainTemplate, domain *tao.Domain) {
+	if dt.Config.DomainInfo.GetGuardType() == "Datalog" {
+		for _, c := range dt.ContainerPaths {
+			prin, err := makeContainerSubPrin(c)
+			if err != nil {
+				continue
+			}
+			pt := auth.PrinTail{Ext: prin}
+			pred := auth.MakePredicate(dt.GetContainerPredicateName(), pt)
+			if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
+				glog.Exit(err)
+			}
+		}
+	} else if dt.Config.DomainInfo.GetGuardType() == "ACLs" && host != "" {
+		prin := makeHostPrin(host)
+		for _, p := range dt.ContainerPaths {
+			subprin, err := makeContainerSubPrin(p)
+			if err != nil {
+				continue
+			}
+			prog := prin.MakeSubprincipal(subprin)
+			if err := domain.Guard.Authorize(prog, "Execute", nil); err != nil {
+				glog.Exit(err)
+			}
+		}
+	}
+	if err := domain.Save(); err != nil {
+		glog.Exit(err)
+	}
+}
+
+func addVMRules(dt *tao.DomainTemplate, domain *tao.Domain) {
+	for _, c := range dt.VmPaths {
+		prin, err := makeVMSubPrin(c)
+		if err != nil {
+			continue
+		}
+		pt := auth.PrinTail{Ext: prin}
+		pred := auth.MakePredicate(dt.GetVmPredicateName(), pt)
+		if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
+			glog.Exit(err)
+		}
+	}
+	// The ACLs need the full name, so that only happens for containers and
+	// programs.
+	if err := domain.Save(); err != nil {
+		glog.Exit(err)
+	}
+}
+
+func addLinuxHostRules(dt *tao.DomainTemplate, domain *tao.Domain) {
+	for _, c := range dt.LinuxHostPaths {
+		prin, err := makeLinuxHostSubPrin(c)
+		if err != nil {
+			continue
+		}
+		pt := auth.PrinTail{Ext: prin}
+		pred := auth.MakePredicate(dt.GetLinuxHostPredicateName(), pt)
+		if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
+			glog.Exit(err)
+		}
+	}
+	// The ACLs need the full name, so that only happens for containers and
+	// programs.
+	if err := domain.Save(); err != nil {
+		glog.Exit(err)
+	}
+}
+
+func addHostRules(host string, dt *tao.DomainTemplate, domain *tao.Domain) {
+	if host == "" {
+		return
+	}
+	prin := makeHostPrin(host)
+	pred := auth.MakePredicate(dt.GetHostPredicateName(), prin)
+	if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
+		glog.Exit(err)
+	}
+	if err := domain.Save(); err != nil {
+		glog.Exit(err)
+	}
+}
+
+func addGuardRules(dt *tao.DomainTemplate, domain *tao.Domain) {
+	subprin := domain.Guard.Subprincipal()
+	pt := auth.PrinTail{Ext: subprin}
+	pred := auth.Pred{
+		Name: dt.GetGuardPredicateName(),
+		Arg:  []auth.Term{pt},
+	}
+	if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
+		glog.Exit(err)
+	}
+	if err := domain.Save(); err != nil {
+		glog.Exit(err)
+	}
+}
+
+func createUserKeys(userPass, pass, userKeyDetails, userKeyPath, configPath string) {
+	upwd := getKey("user password", userPass)
+	pwd := getKey("policy key password", pass)
+
+	// Read the X509Details for this user from a text protobuf file.
+	xdb, err := ioutil.ReadFile(userKeyDetails)
+	if err != nil {
+		glog.Exit(err)
+	}
+	var xd tao.X509Details
+	if err := proto.UnmarshalText(string(xdb), &xd); err != nil {
+		glog.Exit(err)
+	}
+
+	domain, err := tao.LoadDomain(configPath, pwd)
+	if err != nil {
+		glog.Exit(err)
+	}
+	policyKey := domain.Keys
+
+	subjectName := tao.NewX509Name(&xd)
+	_, err = tao.NewSignedOnDiskPBEKeys(tao.Signing, upwd, userKeyPath, subjectName, int(xd.GetSerialNumber()), policyKey)
+	if err != nil {
+		glog.Exit(err)
+	}
+}
+
+func outputPrincipal(principal, tpmPath, aikFile, domainPath, keyPass string, pcrVals []int) {
+	args := flag.Args()
+	switch principal {
+	case "program":
+		if len(args) != 1 {
+			glog.Exit("must supply a path to the program")
+		}
+
+		path := args[0]
+		subprin, err := makeProgramSubPrin(path)
+		if err != nil {
+			glog.Exit(err)
+		}
+		pt := auth.PrinTail{Ext: subprin}
+		fmt.Println(pt)
+	case "container":
+		if len(args) != 1 {
+			glog.Exit("must supply a path to the program")
+		}
+
+		path := args[0]
+		subprin, err := makeContainerSubPrin(path)
+		if err != nil {
+			glog.Exit(err)
+		}
+		pt := auth.PrinTail{Ext: subprin}
+		fmt.Println(pt)
+	case "tpm":
+		f, err := os.OpenFile(tpmPath, os.O_RDWR, 0600)
+		if err != nil {
+			glog.Exit(err)
+		}
+		defer f.Close()
+
+		pcrpe := auth.PrinExt{
+			Name: "PCRs",
+			Arg:  make([]auth.Term, len(pcrVals)),
+		}
+		for i, pcr := range pcrVals {
+			res, err := tpm.ReadPCR(f, uint32(pcr))
+			if err != nil {
+				glog.Exit(err)
+			}
+
+			pcrpe.Arg[i] = auth.Bytes(res)
+		}
+
+		aikblob, err := ioutil.ReadFile(aikFile)
+		if err != nil {
+			glog.Exit(err)
+		}
+		v, err := tpm.UnmarshalRSAPublicKey(aikblob)
+		if err != nil {
+			glog.Exit(err)
+		}
+		aik, err := x509.MarshalPKIXPublicKey(v)
+		if err != nil {
+			glog.Exit(err)
+		}
+
+		name := auth.Prin{
+			Type: "tpm",
+			Key:  auth.Bytes(aik),
+			Ext:  []auth.PrinExt{pcrpe},
+		}
+		fmt.Println(name)
+	case "key":
+		lhpwd := getKey("key password", keyPass)
+		args := flag.Args()
+		if len(args) != 1 {
+			glog.Exit("must supply a path for the linux host directory")
+		}
+
+		lhpath := path.Join(domainPath, args[0])
+		// Get or create the keys.
+		k, err := tao.NewOnDiskPBEKeys(tao.Signing|tao.Crypting|tao.Deriving, lhpwd, lhpath, nil)
+		if err != nil {
+			glog.Exit(err)
+		}
+
+		fmt.Println(k.SigningKey.ToPrincipal())
+	default:
+		glog.Exitf("Unknown principal type '%s'", principal)
+	}
 }

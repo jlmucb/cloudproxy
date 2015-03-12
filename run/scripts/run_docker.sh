@@ -38,3 +38,4 @@ sleep 5
 echo "Cleaning up docker containers"
 docker stop $container_name
 sudo kill $HOSTPID
+sudo rm -f ${DOMAIN}/linux_tao_host/admin_socket

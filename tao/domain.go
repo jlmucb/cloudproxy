@@ -116,7 +116,7 @@ func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain
 		agi := ACLGuardDetails{
 			SignedAclsPath: proto.String(path.Join(configDir, aclsPath)),
 		}
-		guard = NewACLGuard(agi)
+		guard = NewACLGuard(keys.VerifyingKey, agi)
 	case "Datalog":
 		if cfg.DatalogGuardInfo == nil {
 			return nil, fmt.Errorf("must supply Datalog info for the Datalog guard")

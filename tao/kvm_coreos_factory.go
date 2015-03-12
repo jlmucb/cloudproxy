@@ -242,7 +242,6 @@ func NewLinuxKVMCoreOSFactory(sockPath string, cfg *CoreOSConfig) HostedProgramF
 		glog.Fatalf("couldn't create a SSH public key from the RSA key: %s", err)
 	}
 	pkstr := "ssh-rsa " + base64.StdEncoding.EncodeToString(sshpk.Marshal()) + " linux_host"
-	glog.Infof("Got public string '%s'", pkstr)
 
 	sshpriv, err := ssh.NewSignerFromKey(priv)
 	if err != nil {
@@ -355,7 +354,6 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string, uid, 
 	sockPath := path.Join(lkcf.SocketPath, sockName)
 	sshCfg := lkcf.Cfg.SSHKeysCfg + "\n - " + string(lkcf.PublicKey)
 
-	glog.Infof("New SSH keys is '%s'", sshCfg)
 	cfg := &CoreOSConfig{
 		Name:       getRandomFileName(nameLen),
 		ImageFile:  lkcf.Cfg.ImageFile, // the VM image

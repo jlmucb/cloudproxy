@@ -311,15 +311,33 @@ func main() {
 								for _, lh := range dt.LinuxHostPaths {
 									lhPrin, err := makeLinuxHostSubPrin(lh)
 									if err == nil {
+										var lsp auth.SubPrin
+										lsp = append(lsp, vmPrin...)
+										lsp = append(lsp, lhPrin...)
+										lprog := prin.MakeSubprincipal(lsp)
+										if err := domain.Guard.Authorize(lprog, "Execute", nil); err != nil {
+											glog.Exit(err)
+										}
+
 										for _, p := range dt.ProgramPaths {
 											subprin, err := makeProgramSubPrin(p)
-											var sp auth.SubPrin
-											sp = append(sp, vmPrin...)
-											sp = append(sp, lhPrin...)
-											sp = append(sp, subprin...)
 											if err == nil {
+												var sp auth.SubPrin
+												sp = append(sp, vmPrin...)
+												sp = append(sp, lhPrin...)
+												sp = append(sp, subprin...)
 												prog := prin.MakeSubprincipal(sp)
 												if err := domain.Guard.Authorize(prog, "Execute", nil); err != nil {
+													glog.Exit(err)
+												}
+
+												var gsp auth.SubPrin
+												gsp = append(gsp, vmPrin...)
+												gsp = append(gsp, lhPrin...)
+												gsp = append(gsp, domain.Guard.Subprincipal()...)
+												gsp = append(gsp, subprin...)
+												gprog := prin.MakeSubprincipal(gsp)
+												if err := domain.Guard.Authorize(gprog, "Execute", nil); err != nil {
 													glog.Exit(err)
 												}
 											}

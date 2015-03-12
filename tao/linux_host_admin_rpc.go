@@ -19,7 +19,6 @@ package tao
 
 import (
 	"io"
-	"log"
 	"net"
 	"net/rpc"
 	"syscall"
@@ -179,7 +178,6 @@ type LinuxHostAdminRequest struct {
 
 // StartHostedProgram is the server stub for LinuxHost.StartHostedProgram.
 func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminRequest, s *LinuxHostAdminRPCResponse) error {
-	log.Printf("Starting hosted program with uid %d, gid %d\n", r.Uid, r.Gid)
 	if r.Request.Path == nil {
 		return newError("missing path")
 	}

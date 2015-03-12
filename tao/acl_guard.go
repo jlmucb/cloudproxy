@@ -20,6 +20,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 )
@@ -31,6 +32,7 @@ import (
 type ACLGuard struct {
 	Config ACLGuardDetails
 	ACL    []string
+	Key    *Verifier
 }
 
 // ACLGuardSigningContext is the context used for ACL-file signatures.
@@ -38,17 +40,19 @@ const ACLGuardSigningContext = "tao.ACLGuard Version 1"
 const aclGuardFileMode os.FileMode = 0600
 
 // NewACLGuard produces a Guard implementation that implements ACLGuard.
-func NewACLGuard(config ACLGuardDetails) Guard {
-	return &ACLGuard{Config: config}
+func NewACLGuard(key *Verifier, config ACLGuardDetails) Guard {
+	return &ACLGuard{Config: config, Key: key}
 }
 
 // Subprincipal returns a unique subprincipal for this policy.
 func (a *ACLGuard) Subprincipal() auth.SubPrin {
-	pe := auth.PrinExt{Name: "ACLGuard"}
-	for _, p := range a.ACL {
-		pe.Arg = append(pe.Arg, auth.Str(p))
+	if a.Key == nil {
+		e := auth.PrinExt{Name: "ACLGuard"}
+		return auth.SubPrin{e}
+	} else {
+		e := auth.PrinExt{Name: "ACLGuard", Arg: []auth.Term{a.Key.ToPrincipal()}}
+		return auth.SubPrin{e}
 	}
-	return []auth.PrinExt{pe}
 }
 
 // Save writes all presistent policy data to disk, signed by key.
@@ -106,7 +110,7 @@ func LoadACLGuard(key *Verifier, config ACLGuardDetails) (Guard, error) {
 	if err := proto.Unmarshal(sigACL.SerializedAclset, &acls); err != nil {
 		return nil, err
 	}
-	a := &ACLGuard{Config: config}
+	a := &ACLGuard{Config: config, Key: key}
 	a.ACL = acls.Entries
 	return a, nil
 }
@@ -169,6 +173,7 @@ func (a *ACLGuard) IsAuthorized(name auth.Prin, op string, args []string) bool {
 // calling Authorize(P, op, args...) with each of the arguments
 // converted to either a string or integer.
 func (a *ACLGuard) AddRule(rule string) error {
+	glog.Infof("Adding rule '%s'", rule)
 	a.ACL = append(a.ACL, rule)
 	return nil
 }

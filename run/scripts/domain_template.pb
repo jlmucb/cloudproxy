@@ -44,7 +44,7 @@ container_paths: "demo_server.img.tgz"
 container_paths: "demo_client.img.tgz"
 container_predicate_name: "TrustedContainerHash"
 
-vm_paths: "coreos.img"
+vm_paths: "c.img"
 vm_predicate_name: "TrustedVMImage"
 
 linux_host_paths: "linux_host.img.tgz"

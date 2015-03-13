@@ -25,14 +25,14 @@ import (
 	"github.com/jlmucb/cloudproxy/tao/auth"
 )
 
-func testNewACLGuard(t *testing.T) (Guard, string) {
+func testNewACLGuard(t *testing.T, v *Verifier) (Guard, string) {
 	tmpdir, err := ioutil.TempDir("/tmp", "acl_guard_test")
 	if err != nil {
 		t.Fatal("Couldn't get a temp directory for the new ACL guard:", err)
 	}
 
 	config := ACLGuardDetails{SignedAclsPath: proto.String(path.Join(tmpdir, "acls"))}
-	tg := NewACLGuard(config)
+	tg := NewACLGuard(v, config)
 	return tg, tmpdir
 }
 
@@ -42,7 +42,7 @@ func TestACLGuardSaveACLs(t *testing.T) {
 		t.Fatal("Couldn't generate a signer")
 	}
 
-	tg, tmpdir := testNewACLGuard(t)
+	tg, tmpdir := testNewACLGuard(t, s.GetVerifier())
 	defer os.RemoveAll(tmpdir)
 
 	p := auth.Prin{
@@ -79,7 +79,7 @@ func TestACLGuardEmptySave(t *testing.T) {
 		t.Fatal("Couldn't generate a signer")
 	}
 
-	tg, tmpdir := testNewACLGuard(t)
+	tg, tmpdir := testNewACLGuard(t, s.GetVerifier())
 	defer os.RemoveAll(tmpdir)
 
 	if err := tg.Save(s); err != nil {
@@ -103,7 +103,12 @@ func TestACLGuardEmptySave(t *testing.T) {
 }
 
 func TestACLGuardAuthorize(t *testing.T) {
-	tg, tmpdir := testNewACLGuard(t)
+	s, err := GenerateSigner()
+	if err != nil {
+		t.Fatal("Couldn't generate a signer")
+	}
+
+	tg, tmpdir := testNewACLGuard(t, s.GetVerifier())
 	defer os.RemoveAll(tmpdir)
 
 	p := auth.Prin{
@@ -140,7 +145,12 @@ func TestACLGuardAuthorize(t *testing.T) {
 }
 
 func TestACLGuardDoubleAuthorize(t *testing.T) {
-	tg, tmpdir := testNewACLGuard(t)
+	s, err := GenerateSigner()
+	if err != nil {
+		t.Fatal("Couldn't generate a signer")
+	}
+
+	tg, tmpdir := testNewACLGuard(t, s.GetVerifier())
 	defer os.RemoveAll(tmpdir)
 
 	p := auth.Prin{
@@ -170,7 +180,12 @@ func TestACLGuardDoubleAuthorize(t *testing.T) {
 }
 
 func TestACLGuardAddRule(t *testing.T) {
-	tg, tmpdir := testNewACLGuard(t)
+	s, err := GenerateSigner()
+	if err != nil {
+		t.Fatal("Couldn't generate a signer")
+	}
+
+	tg, tmpdir := testNewACLGuard(t, s.GetVerifier())
 	defer os.RemoveAll(tmpdir)
 
 	if err := tg.AddRule("Fake rule"); err != nil {
@@ -201,7 +216,12 @@ func TestACLGuardAddRule(t *testing.T) {
 }
 
 func TestACLGuardRetractRule(t *testing.T) {
-	tg, tmpdir := testNewACLGuard(t)
+	s, err := GenerateSigner()
+	if err != nil {
+		t.Fatal("Couldn't generate a signer")
+	}
+
+	tg, tmpdir := testNewACLGuard(t, s.GetVerifier())
 	defer os.RemoveAll(tmpdir)
 
 	if err := tg.AddRule("Fake rule"); err != nil {
@@ -232,7 +252,12 @@ func TestACLGuardRetractRule(t *testing.T) {
 }
 
 func TestACLGuardRuleCount(t *testing.T) {
-	tg, tmpdir := testNewACLGuard(t)
+	s, err := GenerateSigner()
+	if err != nil {
+		t.Fatal("Couldn't generate a signer")
+	}
+
+	tg, tmpdir := testNewACLGuard(t, s.GetVerifier())
 	defer os.RemoveAll(tmpdir)
 
 	count := 20
@@ -265,7 +290,12 @@ func TestACLGuardRuleCount(t *testing.T) {
 }
 
 func TestACLGuardGetRule(t *testing.T) {
-	tg, tmpdir := testNewACLGuard(t)
+	s, err := GenerateSigner()
+	if err != nil {
+		t.Fatal("Couldn't generate a signer")
+	}
+
+	tg, tmpdir := testNewACLGuard(t, s.GetVerifier())
 	defer os.RemoveAll(tmpdir)
 
 	count := 20
@@ -289,7 +319,12 @@ func TestACLGuardGetRule(t *testing.T) {
 }
 
 func TestACLGuardRuleDebugString(t *testing.T) {
-	tg, tmpdir := testNewACLGuard(t)
+	s, err := GenerateSigner()
+	if err != nil {
+		t.Fatal("Couldn't generate a signer")
+	}
+
+	tg, tmpdir := testNewACLGuard(t, s.GetVerifier())
 	defer os.RemoveAll(tmpdir)
 
 	count := 20
@@ -313,15 +348,20 @@ func TestACLGuardRuleDebugString(t *testing.T) {
 }
 
 func TestACLGuardString(t *testing.T) {
-	tg, tmpdir := testNewACLGuard(t)
+	s, err := GenerateSigner()
+	if err != nil {
+		t.Fatal("Couldn't generate a signer")
+	}
+
+	tg, tmpdir := testNewACLGuard(t, s.GetVerifier())
 	defer os.RemoveAll(tmpdir)
 
 	if err := tg.AddRule("0"); err != nil {
 		t.Fatal("Couldn't add a rule that was a single integer as a string:", err)
 	}
 
-	s := "ACLGuard{\n0\n}"
-	if tg.String() != s {
-		t.Fatal("Got the wrong string representation of the ACLGuard")
+	ss := "ACLGuard{\n0\n}"
+	if tg.String() != ss {
+		t.Fatalf("Got the wrong string representation of the ACLGuard: expected '%s', but got '%s'", tg.String(), ss)
 	}
 }

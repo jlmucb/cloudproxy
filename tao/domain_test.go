@@ -43,7 +43,7 @@ func testNewACLDomain(t *testing.T) (*Domain, string) {
 		GuardType:      proto.String("ACLs"),
 	}
 	dcfg.SetDefaults()
-	dcfg.AclGuardInfo = &ACLGuardDetails{SignedAclsPath: proto.String(path.Join(tmpdir, "acls"))}
+	dcfg.AclGuardInfo = &ACLGuardDetails{SignedAclsPath: proto.String("acls")}
 	d, err := CreateDomain(dcfg, path.Join(tmpdir, "tao.config"), testDomainPassword)
 	if err != nil {
 		os.RemoveAll(tmpdir)

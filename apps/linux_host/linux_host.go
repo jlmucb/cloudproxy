@@ -94,8 +94,8 @@ func main() {
 		if err != nil {
 			glog.Fatalf("Couldn't create a temporary directory for linux host: %s", err)
 		}
-		if err := os.Chmod(dir, 0755); err != nil {
-			glog.Fatalf("Couldn't change permissions on %s to 755: %s", err)
+		if err := os.Chmod(dir, 0777); err != nil {
+			glog.Fatalf("Couldn't change permissions on %s to 777: %s", err)
 		}
 
 		cfg := tao.DomainConfig{

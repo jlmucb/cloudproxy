@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
 func TestInMemoryInit(t *testing.T) {

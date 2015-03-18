@@ -29,10 +29,10 @@ import (
 	"os"
 	"path"
 
-	"github.com/jlmucb/cloudproxy/tao"
-	"github.com/jlmucb/cloudproxy/tao/auth"
-	taonet "github.com/jlmucb/cloudproxy/tao/net"
-	"github.com/jlmucb/cloudproxy/util"
+	"github.com/jlmucb/cloudproxy/go/tao"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
+	taonet "github.com/jlmucb/cloudproxy/go/tao/net"
+	"github.com/jlmucb/cloudproxy/go/util"
 )
 
 // The size of a symmetric key is the size of an AES key plus the size of an

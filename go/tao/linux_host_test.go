@@ -20,7 +20,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
 func testNewStackedLinuxHost(t *testing.T) (*LinuxHost, string) {

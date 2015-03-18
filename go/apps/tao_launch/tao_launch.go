@@ -20,8 +20,8 @@ import (
 	"net"
 
 	"github.com/golang/glog"
-	"github.com/jlmucb/cloudproxy/tao"
-	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/tao"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
 func main() {

@@ -19,7 +19,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-tpm/tpm"
-	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
 // ValidSigner checks the signature on an attestation and, if so, returns the signer.

@@ -30,8 +30,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-tpm/tpm"
-	"github.com/jlmucb/cloudproxy/tao"
-	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/tao"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"golang.org/x/crypto/ssh/terminal"
 )
 

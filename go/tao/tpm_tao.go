@@ -28,7 +28,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-tpm/tpm"
-	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
 // A TPMTao implements the Tao using a hardware TPM device.

@@ -19,7 +19,7 @@ import (
 	"io"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
 // A SoftTao is an implementation of the Tao that isn't backed by any hardware

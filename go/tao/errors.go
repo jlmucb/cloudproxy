@@ -17,7 +17,7 @@ package tao
 import (
 	"fmt"
 
-	"github.com/jlmucb/cloudproxy/util"
+	"github.com/jlmucb/cloudproxy/go/util"
 )
 
 // newError formats an error, logs it to glog, then returs it.

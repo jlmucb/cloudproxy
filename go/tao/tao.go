@@ -24,7 +24,7 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
-	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
 // Constants used by the Tao implementations for policy, signing contexts, and

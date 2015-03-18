@@ -19,8 +19,8 @@ package tao
 import (
 	"errors"
 
-	"github.com/jlmucb/cloudproxy/tao/auth"
-	"github.com/jlmucb/cloudproxy/util"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/util"
 )
 
 // Guard is an interface for evaluating policy decisions.

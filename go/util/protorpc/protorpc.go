@@ -37,7 +37,7 @@ import (
 	"sync"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/util"
+	"github.com/jlmucb/cloudproxy/go/util"
 )
 
 // clientCodec is a net/rpc client codec for protobuf messages

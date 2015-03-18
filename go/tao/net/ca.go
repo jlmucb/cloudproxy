@@ -22,9 +22,9 @@ import (
 	"os"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/tao"
-	"github.com/jlmucb/cloudproxy/tao/auth"
-	"github.com/jlmucb/cloudproxy/util"
+	"github.com/jlmucb/cloudproxy/go/tao"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/util"
 )
 
 // HandleCARequest checks a request from a program and responds with a truncated

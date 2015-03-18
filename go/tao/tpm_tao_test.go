@@ -20,7 +20,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
 // cleanUpTPMTao runs the finalizer for TPMTao early then unsets it so it

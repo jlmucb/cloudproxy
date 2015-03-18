@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jlmucb/cloudproxy/tao"
-	"github.com/jlmucb/cloudproxy/tao/net"
+	"github.com/jlmucb/cloudproxy/go/tao"
+	"github.com/jlmucb/cloudproxy/go/tao/net"
 )
 
 var network = flag.String("network", "tcp", "The network to use for connections")

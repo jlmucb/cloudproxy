@@ -17,7 +17,7 @@ package tao
 import (
 	"crypto/rand"
 
-	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
 // A RootHost is a standalone implementation of Host.

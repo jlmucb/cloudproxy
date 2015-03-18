@@ -26,8 +26,8 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/jlmucb/cloudproxy/tao"
-	taonet "github.com/jlmucb/cloudproxy/tao/net"
+	"github.com/jlmucb/cloudproxy/go/tao"
+	taonet "github.com/jlmucb/cloudproxy/go/tao/net"
 )
 
 var serverHost = flag.String("host", "0.0.0.0", "address for client/server")

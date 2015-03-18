@@ -17,7 +17,7 @@ package tao
 import (
 	"io"
 
-	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
 // A HostedProgram is an abstraction of a process, and it is closely related to

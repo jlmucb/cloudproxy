@@ -16,7 +16,7 @@ package tao
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
 // A StackedHost implements Host over an existing host Tao.

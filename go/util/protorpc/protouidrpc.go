@@ -22,7 +22,7 @@ import (
 	"sync"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/util"
+	"github.com/jlmucb/cloudproxy/go/util"
 )
 
 // serverUidCodec is a net/rpc server codec for protobuf messages. It holds a

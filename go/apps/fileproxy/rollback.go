@@ -23,7 +23,7 @@ import (
 	"log"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/util"
+	"github.com/jlmucb/cloudproxy/go/util"
 )
 
 // A RollbackProgram stores the rollback information for a given program.

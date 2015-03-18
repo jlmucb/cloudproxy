@@ -27,8 +27,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/jlmucb/cloudproxy/tao/auth"
-	"github.com/jlmucb/cloudproxy/util"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/util"
 )
 
 // A Process wraps os/exec.Cmd and adds a Kill method to match the HostedProgram

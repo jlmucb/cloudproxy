@@ -26,7 +26,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/tao"
+	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
 func main() {

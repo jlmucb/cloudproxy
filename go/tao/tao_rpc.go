@@ -25,9 +25,9 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/tao/auth"
-	"github.com/jlmucb/cloudproxy/util"
-	"github.com/jlmucb/cloudproxy/util/protorpc"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/util"
+	"github.com/jlmucb/cloudproxy/go/util/protorpc"
 )
 
 // TaoRPC sends requests between this hosted program and the host Tao.

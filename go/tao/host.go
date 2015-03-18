@@ -15,7 +15,7 @@
 package tao
 
 import (
-	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
 // Host is a generic interface for a Tao host that can be configured and driven

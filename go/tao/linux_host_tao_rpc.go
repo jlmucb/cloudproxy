@@ -24,8 +24,8 @@ import (
 	"net/rpc"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/tao/auth"
-	"github.com/jlmucb/cloudproxy/util/protorpc"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/util/protorpc"
 )
 
 // LinuxHostTaoServer is a server stub for LinuxHost's Tao RPC interface.

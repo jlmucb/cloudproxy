@@ -25,9 +25,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jlmucb/cloudproxy/tao/auth"
-	"github.com/jlmucb/cloudproxy/util"
-	"github.com/jlmucb/cloudproxy/util/protorpc"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/util"
+	"github.com/jlmucb/cloudproxy/go/util/protorpc"
 )
 
 func testNewLinuxHostTaoServer(t *testing.T) (Tao, string) {

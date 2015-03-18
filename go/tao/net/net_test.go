@@ -22,7 +22,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/jlmucb/cloudproxy/tao"
+	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
 func newNetKeys(t *testing.T, ta tao.Tao, org string) (*tao.Keys, *tls.Config) {

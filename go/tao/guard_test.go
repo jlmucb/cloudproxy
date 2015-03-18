@@ -17,7 +17,7 @@ package tao
 import (
 	"testing"
 
-	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
 func testNewTrivialLiberalGuard(t *testing.T) Guard {

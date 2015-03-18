@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/jlmucb/cloudproxy/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
 var testChild = auth.SubPrin{auth.PrinExt{Name: "TestChild"}}

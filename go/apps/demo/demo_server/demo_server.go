@@ -158,6 +158,7 @@ func doServer(done chan<- bool) {
 		}
 	}
 	glog.Infof("server: listening at %s using %s authentication.\n", serverAddr, *demoAuth)
+	defer sock.Close()
 
 	pings := make(chan bool, 5)
 	connCount := 0
@@ -186,12 +187,6 @@ func doServer(done chan<- bool) {
 			}
 		}
 	}
-
-	sock.Close()
-	glog.Infof("server: handled %d connections, finished %d ok, %d bad pings\n",
-		connCount, pingGood, pingFail)
-
-	done <- true
 }
 
 func main() {

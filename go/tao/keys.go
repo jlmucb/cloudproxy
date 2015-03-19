@@ -143,6 +143,8 @@ func prepareX509Template(subjectName *pkix.Name) *x509.Certificate {
 	}
 }
 
+// CreateSelfSignedDER creates a DER representation of a new self-signed
+// certificate for the given name.
 func (s *Signer) CreateSelfSignedDER(name *pkix.Name) ([]byte, error) {
 	template := prepareX509Template(name)
 	template.BasicConstraintsValid = true
@@ -184,8 +186,8 @@ func (s *Signer) CreateSignedX509(caCert *x509.Certificate, certSerial int, subj
 	return x509.ParseCertificate(der)
 }
 
-// marshalECDSA_SHA_SigningKeyV1 encodes a private key as a protobuf message.
-func marshalECDSA_SHA_SigningKeyV1(k *ecdsa.PrivateKey) *ECDSA_SHA_SigningKeyV1 {
+// marshalECDSASHASigningKeyV1 encodes a private key as a protobuf message.
+func marshalECDSASHASigningKeyV1(k *ecdsa.PrivateKey) *ECDSA_SHA_SigningKeyV1 {
 	return &ECDSA_SHA_SigningKeyV1{
 		Curve:     NamedEllipticCurve_PRIME256_V1.Enum(),
 		EcPrivate: k.D.Bytes(),
@@ -196,7 +198,7 @@ func marshalECDSA_SHA_SigningKeyV1(k *ecdsa.PrivateKey) *ECDSA_SHA_SigningKeyV1 
 
 // MarshalSignerProto encodes a signing key as a CryptoKey protobuf message.
 func MarshalSignerProto(s *Signer) (*CryptoKey, error) {
-	m := marshalECDSA_SHA_SigningKeyV1(s.ec)
+	m := marshalECDSASHASigningKeyV1(s.ec)
 	defer ZeroBytes(m.EcPrivate)
 
 	b, err := proto.Marshal(m)
@@ -213,8 +215,8 @@ func MarshalSignerProto(s *Signer) (*CryptoKey, error) {
 	return ck, nil
 }
 
-// marshalECDSA_SHA_VerifyingKeyV1 encodes a public key as a protobuf message.
-func marshalECDSA_SHA_VerifyingKeyV1(k *ecdsa.PublicKey) *ECDSA_SHA_VerifyingKeyV1 {
+// marshalECDSASHAVerifyingKeyV1 encodes a public key as a protobuf message.
+func marshalECDSASHAVerifyingKeyV1(k *ecdsa.PublicKey) *ECDSA_SHA_VerifyingKeyV1 {
 	return &ECDSA_SHA_VerifyingKeyV1{
 		Curve:    NamedEllipticCurve_PRIME256_V1.Enum(),
 		EcPublic: elliptic.Marshal(k.Curve, k.X, k.Y),
@@ -222,7 +224,7 @@ func marshalECDSA_SHA_VerifyingKeyV1(k *ecdsa.PublicKey) *ECDSA_SHA_VerifyingKey
 
 }
 
-func unmarshalECDSA_SHA_VerifyingKeyV1(v *ECDSA_SHA_VerifyingKeyV1) (*ecdsa.PublicKey, error) {
+func unmarshalECDSASHAVerifyingKeyV1(v *ECDSA_SHA_VerifyingKeyV1) (*ecdsa.PublicKey, error) {
 	if *v.Curve != NamedEllipticCurve_PRIME256_V1 {
 		return nil, newError("bad curve")
 	}
@@ -237,7 +239,7 @@ func unmarshalECDSA_SHA_VerifyingKeyV1(v *ECDSA_SHA_VerifyingKeyV1) (*ecdsa.Publ
 }
 
 func marshalPublicKeyProto(k *ecdsa.PublicKey) *CryptoKey {
-	m := marshalECDSA_SHA_VerifyingKeyV1(k)
+	m := marshalECDSASHAVerifyingKeyV1(k)
 
 	// proto.Marshal won't fail here since we fill all required fields of the
 	// message. Propagating impossible errors just leads to clutter later.
@@ -298,7 +300,7 @@ func UnmarshalSignerProto(ck *CryptoKey) (*Signer, error) {
 
 // CreateHeader encodes the version and a key hint into a CryptoHeader.
 func (s *Signer) CreateHeader() (*CryptoHeader, error) {
-	k := marshalECDSA_SHA_VerifyingKeyV1(&s.ec.PublicKey)
+	k := marshalECDSASHAVerifyingKeyV1(&s.ec.PublicKey)
 	b, err := proto.Marshal(k)
 	if err != nil {
 		return nil, err
@@ -432,7 +434,7 @@ func FromPrincipal(prin auth.Prin) (*Verifier, error) {
 		return nil, err
 	}
 
-	ec, err := unmarshalECDSA_SHA_VerifyingKeyV1(&ecvk)
+	ec, err := unmarshalECDSASHAVerifyingKeyV1(&ecvk)
 	if err != nil {
 		return nil, err
 	}
@@ -450,8 +452,8 @@ func FromX509(cert *x509.Certificate) (*Verifier, error) {
 	return &Verifier{ecpk}, nil
 }
 
-// CompareKey checks to see if the public key in the X.509 certificate matches
-// the public key in the verifier.
+// Equals checks to see if the public key in the X.509 certificate matches the
+// public key in the verifier.
 func (v *Verifier) Equals(cert *x509.Certificate) bool {
 	v2, err := FromX509(cert)
 	if err != nil {
@@ -496,7 +498,7 @@ func UnmarshalVerifierProto(ck *CryptoKey) (*Verifier, error) {
 
 // CreateHeader instantiates and fills in a header for this verifying key.
 func (v *Verifier) CreateHeader() (*CryptoHeader, error) {
-	k := marshalECDSA_SHA_VerifyingKeyV1(v.ec)
+	k := marshalECDSASHAVerifyingKeyV1(v.ec)
 	b, err := proto.Marshal(k)
 	if err != nil {
 		return nil, err
@@ -623,9 +625,9 @@ func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
 	return data, nil
 }
 
-// marshalAES_CTR_HMAC_SHA_CryptingKeyV1 encodes a private AES/HMAC key pair
+// marshalAESCTRHMACSHACryptingKeyV1 encodes a private AES/HMAC key pair
 // into a protobuf message.
-func marshalAES_CTR_HMAC_SHA_CryptingKeyV1(c *Crypter) *AES_CTR_HMAC_SHA_CryptingKeyV1 {
+func marshalAESCTRHMACSHACryptingKeyV1(c *Crypter) *AES_CTR_HMAC_SHA_CryptingKeyV1 {
 	return &AES_CTR_HMAC_SHA_CryptingKeyV1{
 		Mode:        CryptoCipherMode_CIPHER_MODE_CTR.Enum(),
 		AesPrivate:  c.aesKey,
@@ -635,7 +637,7 @@ func marshalAES_CTR_HMAC_SHA_CryptingKeyV1(c *Crypter) *AES_CTR_HMAC_SHA_Cryptin
 
 // MarshalCrypterProto encodes a Crypter as a CryptoKey protobuf message.
 func MarshalCrypterProto(c *Crypter) (*CryptoKey, error) {
-	k := marshalAES_CTR_HMAC_SHA_CryptingKeyV1(c)
+	k := marshalAESCTRHMACSHACryptingKeyV1(c)
 
 	// Note that we don't need to call ZeroBytes on k.AesPrivate or
 	// k.HmacPrivate, since they're just slice references to the underlying
@@ -687,7 +689,7 @@ func UnmarshalCrypterProto(ck *CryptoKey) (*Crypter, error) {
 
 // CreateHeader instantiates and fills in a header for this crypting key.
 func (c *Crypter) CreateHeader() (*CryptoHeader, error) {
-	k := marshalAES_CTR_HMAC_SHA_CryptingKeyV1(c)
+	k := marshalAESCTRHMACSHACryptingKeyV1(c)
 	b, err := proto.Marshal(k)
 	if err != nil {
 		return nil, err
@@ -726,8 +728,8 @@ func (d *Deriver) Derive(salt, context, material []byte) error {
 	return nil
 }
 
-// marshalHMAC_SHA_DerivingKeyV1 encodes a deriving key as a protobuf message.
-func marshalHMAC_SHA_DerivingKeyV1(d *Deriver) *HMAC_SHA_DerivingKeyV1 {
+// marshalHMACSHADerivingKeyV1 encodes a deriving key as a protobuf message.
+func marshalHMACSHADerivingKeyV1(d *Deriver) *HMAC_SHA_DerivingKeyV1 {
 	return &HMAC_SHA_DerivingKeyV1{
 		Mode:        CryptoDerivingMode_DERIVING_MODE_HKDF.Enum(),
 		HmacPrivate: d.secret,
@@ -736,7 +738,7 @@ func marshalHMAC_SHA_DerivingKeyV1(d *Deriver) *HMAC_SHA_DerivingKeyV1 {
 
 // MarshalDeriverProto encodes a Deriver as a CryptoKey protobuf message.
 func MarshalDeriverProto(d *Deriver) (*CryptoKey, error) {
-	k := marshalHMAC_SHA_DerivingKeyV1(d)
+	k := marshalHMACSHADerivingKeyV1(d)
 
 	// Note that we don't need to call ZeroBytes on k.HmacPrivate since
 	// it's just a slice reference to the underlying keys.

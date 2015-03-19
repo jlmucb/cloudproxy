@@ -12,22 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/*
-	Package protorpc implements a protobuf-based ClientCodec and ServerCodec for
-	the rpc package. Clients can make concurrent or asynchronous requests, and
-	these are handled in whatever order the servers chooses.
-
-	All service methods take two protobuf message pointers: a request and a
-	response. RPC service method strings, sequence numbers, and response errors
-	are sent over the connection separately from the requests and responses.
-
-	Wire format: A request or response is encoded on the wire as a 32-bit length
-	(in network byte order), followed by a marshalled protobuf for the header,
-	followed by another 32-bit length, then a marshaled protobuf for the body.
-	Separate length fields are used for framing because the protobuf encoding does
-	not preserve message boundaries. Except for I/O errors, protobufs are encoded
-	in pairs: first the header, then the request or response body.
-*/
+// Package protorpc implements a protobuf-based ClientCodec and ServerCodec for
+// the rpc package. Clients can make concurrent or asynchronous requests, and
+// these are handled in whatever order the servers chooses.
+//
+// All service methods take two protobuf message pointers: a request and a
+// response. RPC service method strings, sequence numbers, and response errors
+// are sent over the connection separately from the requests and responses.
+//
+// Wire format: A request or response is encoded on the wire as a 32-bit length
+// (in network byte order), followed by a marshalled protobuf for the header,
+// followed by another 32-bit length, then a marshaled protobuf for the body.
+// Separate length fields are used for framing because the protobuf encoding does
+// not preserve message boundaries. Except for I/O errors, protobufs are encoded
+// in pairs: first the header, then the request or response body.
 package protorpc
 
 import (
@@ -62,10 +60,13 @@ func NewClient(conn io.ReadWriteCloser) *rpc.Client {
 	return rpc.NewClientWithCodec(NewClientCodec(conn))
 }
 
-var ErrBadRequestType = errors.New("protorpc: bad request type")
-var ErrMissingRequest = errors.New("protorpc: missing request")
-var ErrBadResponseType = errors.New("protorpc: bad response type")
-var ErrMissingResponse = errors.New("protorpc: missing response")
+// Error types for the protorpc package.
+var (
+	ErrBadRequestType  = errors.New("protorpc: bad request type")
+	ErrMissingRequest  = errors.New("protorpc: missing request")
+	ErrBadResponseType = errors.New("protorpc: bad response type")
+	ErrMissingResponse = errors.New("protorpc: missing response")
+)
 
 // WriteRequest encodes and sends a net/rpc request header r with body x.
 func (c *clientCodec) WriteRequest(r *rpc.Request, x interface{}) error {

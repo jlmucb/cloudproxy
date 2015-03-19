@@ -29,6 +29,7 @@ const (
 	Stacked
 )
 
+// HostTaoTypeMap maps strings to the type of a host Tao.
 var HostTaoTypeMap = map[string]HostTaoType{
 	"none":    NoHost,
 	"root":    Root,
@@ -47,6 +48,7 @@ const (
 	Unix
 )
 
+// HostTaoChannelMap maps strings to the type of a host Tao channel.
 var HostTaoChannelMap = map[string]HostTaoChannelType{
 	"none": NoChannel,
 	"tpm":  TPM,
@@ -68,6 +70,7 @@ const (
 	KVMCoreOSFile
 )
 
+// HostedProgramTypeMap maps strings to the type of a hosted program.
 var HostedProgramTypeMap = map[string]HostedProgramType{
 	"none":       NoHostedPrograms,
 	"process":    ProcessPipe,

@@ -54,12 +54,11 @@ func DeserializeFDMessageStream(s string) (*MessageStream, error) {
 	if readfd == writefd {
 		rw := os.NewFile(readfd, "read/write pipe")
 		return NewMessageStream(rw), nil
-	} else {
-		r := os.NewFile(readfd, "read pipe")
-		w := os.NewFile(writefd, "write pipe")
-		rw := NewPairReadWriteCloser(r, w)
-		return NewMessageStream(rw), nil
 	}
+	r := os.NewFile(readfd, "read pipe")
+	w := os.NewFile(writefd, "write pipe")
+	rw := NewPairReadWriteCloser(r, w)
+	return NewMessageStream(rw), nil
 }
 
 // DeserializeUnixSocketMessageStream takes a string filename and returns a

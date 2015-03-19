@@ -37,7 +37,7 @@ type listener struct {
 	delegation *tao.Attestation
 }
 
-// NewTaoListener returns a new Tao-based net.Listener that uses the underlying
+// Listen returns a new Tao-based net.Listener that uses the underlying
 // crypto/tls net.Listener and a tao.Guard to check whether or not connections
 // are authorized.
 func Listen(network, laddr string, config *tls.Config, g tao.Guard, v *tao.Verifier, del *tao.Attestation) (net.Listener, error) {
@@ -102,7 +102,7 @@ func ValidatePeerAttestation(a *tao.Attestation, cert *x509.Certificate, guard t
 		return err
 	}
 	if !verifier.Equals(cert) {
-		return errors.New("a peer attestation must have an auth.Prin.Key of type auth.Bytes where the bytes match the auth.Prin representation of the X.509 certificate.")
+		return errors.New("a peer attestation must have an auth.Prin.Key of type auth.Bytes where the bytes match the auth.Prin representation of the X.509 certificate")
 	}
 
 	return nil

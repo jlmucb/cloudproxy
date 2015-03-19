@@ -32,6 +32,7 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
+// A SerialNumber is the current serial number for the certificates.
 var SerialNumber int64
 
 // First return is terminate flag.
@@ -126,11 +127,11 @@ func handleRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) error {
 	}
 	ra, err := tao.GenerateAttestation(policyKey.SigningKey, nil, keyNegoSays)
 	if err != nil {
-		return fmt.Errorf("Couldn't attest to the new says statement:", err)
+		return fmt.Errorf("Couldn't attest to the new says statement: %s", err)
 	}
 
 	if _, err := ms.WriteMessage(ra); err != nil {
-		return fmt.Errorf("Couldn't return the attestation on the channel:", err)
+		return fmt.Errorf("Couldn't return the attestation on the channel: %s", err)
 	}
 
 	return nil
@@ -195,6 +196,4 @@ func main() {
 
 		go handleRequest(conn, policyKey, domain.Guard)
 	}
-
-	log.Println("keynegoserver: shutting down")
 }

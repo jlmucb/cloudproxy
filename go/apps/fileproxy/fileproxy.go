@@ -165,7 +165,7 @@ func SendFile(ms *util.MessageStream, dir string, filename string, keys []byte) 
 		// before *any* decrypted bytes are sent to the receiver.
 		for {
 			// Figure out how many bytes to read on this iteration.
-			var readSize int64 = bufferSize
+			readSize := int64(bufferSize)
 			final := false
 			if left <= bufferSize {
 				readSize = left
@@ -219,7 +219,7 @@ func SendFile(ms *util.MessageStream, dir string, filename string, keys []byte) 
 	// the data (after decryption, if necessary) to the receiver.
 	for {
 		// Figure out how many bytes to read on this iteration.
-		var readSize int64 = bufferSize
+		readSize := int64(bufferSize)
 		final := false
 		if left <= bufferSize {
 			readSize = left

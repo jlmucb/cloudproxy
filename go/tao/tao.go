@@ -93,6 +93,8 @@ type Tao interface {
 var cachedHost Tao
 var cacheOnce sync.Once
 
+// ParentFromConfig gets a parent Tao given a TaoConfig that specifies the Tao
+// type.
 func ParentFromConfig(tc TaoConfig) Tao {
 	cacheOnce.Do(func() {
 		// Get a default config from the environment.

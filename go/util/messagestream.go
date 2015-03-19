@@ -34,8 +34,12 @@ type MessageStream struct {
 	io.ReadWriteCloser
 }
 
+// DefaultMaxMessageSize gives the default max for messages sent on a
+// MessageStream.
 const DefaultMaxMessageSize = 20 * 1024 * 1024
 
+// ErrMessageTooLarge is the error message returned when a message larger than
+// DefaultMaxMessageSize is sent on a MessageStream.
 var ErrMessageTooLarge = errors.New("messagestream: message is too large")
 
 // WriteString writes a 32-bit length followed by the string.

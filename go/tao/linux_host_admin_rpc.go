@@ -163,16 +163,16 @@ func (server LinuxHostAdminServer) Serve(sock *net.UnixListener) error {
 		if err != nil {
 			return err
 		}
-		go s.ServeCodec(protorpc.NewUidServerCodec(conn, int(ucred.Uid), int(ucred.Gid)))
+		go s.ServeCodec(protorpc.NewUIDServerCodec(conn, int(ucred.Uid), int(ucred.Gid)))
 	}
 }
 
 // LinuxHostAdminRequest is the type used to get the UID,GID of a caller sending
 // a LinuxHostAdminRPCRequest. A server must use this type if it uses
-// NewServerUidCodec to create its ServerCodec for net/rpc.
+// NewServerUIDCodec to create its ServerCodec for net/rpc.
 type LinuxHostAdminRequest struct {
-	Uid     int
-	Gid     int
+	UID     int
+	GID     int
 	Request *LinuxHostAdminRPCRequest
 }
 
@@ -181,7 +181,7 @@ func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminReque
 	if r.Request.Path == nil {
 		return newError("missing path")
 	}
-	subprin, pid, err := server.lh.StartHostedProgram(*r.Request.Path, r.Request.Args, r.Uid, r.Gid)
+	subprin, pid, err := server.lh.StartHostedProgram(*r.Request.Path, r.Request.Args, r.UID, r.GID)
 	if err != nil {
 		return err
 	}

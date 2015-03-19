@@ -238,16 +238,15 @@ func NewDatalogGuard(key *Verifier, config DatalogGuardDetails) (*DatalogGuard, 
 	return g, nil
 }
 
-// SubprincipalName returns subprincipal DatalogGuard, for temporary guards, or
+// Subprincipal returns subprincipal DatalogGuard, for temporary guards, or
 // DatalogGuard(<key>) for persistent guards.
 func (g *DatalogGuard) Subprincipal() auth.SubPrin {
 	if g.Key == nil {
 		e := auth.PrinExt{Name: "DatalogGuard"}
 		return auth.SubPrin{e}
-	} else {
-		e := auth.PrinExt{Name: "DatalogGuard", Arg: []auth.Term{g.Key.ToPrincipal()}}
-		return auth.SubPrin{e}
 	}
+	e := auth.PrinExt{Name: "DatalogGuard", Arg: []auth.Term{g.Key.ToPrincipal()}}
+	return auth.SubPrin{e}
 }
 
 // ReloadIfModified reads all persistent policy data from disk if the file
@@ -542,9 +541,8 @@ func (g *DatalogGuard) formToDatalogRule(f auth.Form) (string, error) {
 	}
 	if len(dcond) > 0 {
 		return goal + " :- " + strings.Join(dcond, ", "), nil
-	} else {
-		return goal, nil
 	}
+	return goal, nil
 }
 
 func (g *DatalogGuard) findRule(f auth.Form) (string, int, error) {

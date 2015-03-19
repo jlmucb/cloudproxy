@@ -49,10 +49,9 @@ func (a *ACLGuard) Subprincipal() auth.SubPrin {
 	if a.Key == nil {
 		e := auth.PrinExt{Name: "ACLGuard"}
 		return auth.SubPrin{e}
-	} else {
-		e := auth.PrinExt{Name: "ACLGuard", Arg: []auth.Term{a.Key.ToPrincipal()}}
-		return auth.SubPrin{e}
 	}
+	e := auth.PrinExt{Name: "ACLGuard", Arg: []auth.Term{a.Key.ToPrincipal()}}
+	return auth.SubPrin{e}
 }
 
 // Save writes all presistent policy data to disk, signed by key.
@@ -83,8 +82,8 @@ func (a *ACLGuard) Save(key *Signer) error {
 	return nil
 }
 
-// Load restores a set of rules saved with Save. It replaces any rules in the
-// ACLGuard with the rules it loaded. In the process, it also checks the
+// LoadACLGuard restores a set of rules saved with Save. It replaces any rules
+// in the ACLGuard with the rules it loaded. In the process, it also checks the
 // signature created during the Save process.
 func LoadACLGuard(key *Verifier, config ACLGuardDetails) (Guard, error) {
 	b, err := ioutil.ReadFile(config.GetSignedAclsPath())

@@ -28,7 +28,11 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
+// NonceSize is the length in bytes of a nonce.
 const NonceSize = 32
+
+// ChallengeContext gives a string for the signing context for challenges in
+// fileproxy.
 const ChallengeContext = "fileproxy-challenge"
 
 // A ResourceType is the type of resource managed by the handler.
@@ -315,8 +319,8 @@ func (r *Resource) DecodeResource(in []byte) error {
 // PrintResource prints a resource to the log.
 func (r *Resource) PrintResource() {
 	log.Printf("Resource name: %s\n", r.Name)
-	log.Printf("Resource type: %s\n", r.Type)
-	log.Printf("Resource status: %s\n", r.Status)
+	log.Printf("Resource type: %d\n", r.Type)
+	log.Printf("Resource status: %d\n", r.Status)
 	log.Printf("Resource location: %s\n", r.Location)
 	log.Printf("Resource size: %d\n", r.Size)
 	log.Printf("Resource creation date: %s\n", r.DateCreated)
@@ -355,7 +359,7 @@ func (p *Principal) DecodePrincipal(in []byte) error {
 // PrintPrincipal prints information about a principal to the log.
 func (p *Principal) PrintPrincipal() {
 	log.Printf("Principal name: %s\n", p.Name)
-	log.Printf("Principal status: %s\n", p.Status)
+	log.Printf("Principal status: %d\n", p.Status)
 	log.Printf("Principal cert: % x\n", p.CertDER)
 	log.Printf("\n")
 }
@@ -620,8 +624,6 @@ func (m *ResourceMaster) RunMessageLoop(ms *util.MessageStream, programPolicy *P
 			log.Printf("Invalid initial message type %d\n", *msg.Type)
 		}
 	}
-
-	return nil
 }
 
 // NewResourceMaster creates a ResourceMaster from the static ruleset and

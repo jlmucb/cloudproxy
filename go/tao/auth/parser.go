@@ -439,9 +439,8 @@ func (p *parser) expectQuantification(greedy bool) (f Form, err error) {
 	}
 	if typ == tokenForall {
 		return Forall{name, body}, nil
-	} else {
-		return Exists{name, body}, nil
 	}
+	return Exists{name, body}, nil
 }
 
 // expectOptionalTime optionally expects a "(from|until) int" clause for a says formula.
@@ -514,9 +513,8 @@ func (p *parser) expectTermOperation(greedy bool) (Form, error) {
 				return nil, fmt.Errorf(`expected "until" or "says", found %v`, p.cur())
 			} else if from == nil {
 				return nil, fmt.Errorf(`expected "from" or "says", found %v`, p.cur())
-			} else {
-				return nil, fmt.Errorf(`expected "says", found %v`, p.cur())
 			}
+			return nil, fmt.Errorf(`expected "says", found %v`, p.cur())
 		}
 		p.advance()
 		msg, err := p.parseForm(greedy)

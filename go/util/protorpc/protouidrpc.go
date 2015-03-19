@@ -25,7 +25,7 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
-// serverUidCodec is a net/rpc server codec for protobuf messages. It holds a
+// serverUIDCodec is a net/rpc server codec for protobuf messages. It holds a
 // uid and a gid that it inserts in request messages. So, valid receivers must
 // have a receiving type of the form
 //
@@ -35,32 +35,32 @@ import (
 //   message *RPCMessage
 // }
 //
-// Due to embedding, all the methods on serverUidCodec are the same as
+// Due to embedding, all the methods on serverUIDCodec are the same as
 // serverCodec, except for ReadRequestBody, which is modified to reflect on the
 // type and inject the uid.
-type serverUidCodec struct {
+type serverUIDCodec struct {
 	uid int
 	gid int
 	*serverCodec
 }
 
-// NewUidServerCodec returns a new rpc.ServerCodec using protobuf messages on
+// NewUIDServerCodec returns a new rpc.ServerCodec using protobuf messages on
 // conn and injecting the given uid and gid as the user and group ids for each
 // request on the connection.
-func NewUidServerCodec(conn io.ReadWriteCloser, uid, gid int) rpc.ServerCodec {
+func NewUIDServerCodec(conn io.ReadWriteCloser, uid, gid int) rpc.ServerCodec {
 	m, ok := conn.(*util.MessageStream)
 	if !ok {
 		m = util.NewMessageStream(conn)
 	}
-	return &serverUidCodec{uid, gid, &serverCodec{m, sync.Mutex{}}}
+	return &serverUIDCodec{uid, gid, &serverCodec{m, sync.Mutex{}}}
 }
 
 // ErrBadServerStruct specifies that the receiving struct didn't match
-// expectations. See serverUidCodec for those expectations.
+// expectations. See serverUIDCodec for those expectations.
 var ErrBadServerStruct = errors.New("protouidrpc: bad struct receiver")
 
 // ReadRequestBody receives and decodes a net/rpc request body x.
-func (c *serverUidCodec) ReadRequestBody(x interface{}) (err error) {
+func (c *serverUIDCodec) ReadRequestBody(x interface{}) (err error) {
 	// As in serverCodec, fail if x is nil.
 	if x == nil {
 		// rpc.Server is telling us to read and discard the request, perhaps because

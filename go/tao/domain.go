@@ -220,7 +220,7 @@ func LoadDomain(configPath string, password []byte) (*Domain, error) {
 	return &Domain{cfg, configPath, keys, guard}, nil
 }
 
-// ExtendTaoDomain uses a Domain's Verifying key to extend the Tao with a
+// ExtendTaoName uses a Domain's Verifying key to extend the Tao with a
 // subprincipal PolicyKey([...]).
 func (d *Domain) ExtendTaoName(tao Tao) error {
 	if d.Keys == nil || d.Keys.VerifyingKey == nil {
@@ -262,5 +262,4 @@ func (d *Domain) RulesPath() string {
 	default:
 		return ""
 	}
-	return ""
 }

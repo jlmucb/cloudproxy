@@ -190,7 +190,7 @@ func (f Forall) Format(out fmt.State, verb rune) {
 	f.Body.Format(out, verb)
 }
 
-// Exists outputs a pretty-printed Exists.
+// Format outputs a pretty-printed Exists.
 func (f Exists) Format(out fmt.State, verb rune) {
 	fmt.Fprintf(out, "exists %s: ", f.Var)
 	f.Body.Format(out, verb)
@@ -209,9 +209,8 @@ func precedence(f Form, right bool) int {
 	case Says, Speaksfor, Forall, Exists, *Says, *Speaksfor, *Forall, *Exists:
 		if right {
 			return precedenceHigh
-		} else {
-			return precedenceLow
 		}
+		return precedenceLow
 	case Implies, *Implies:
 		return precedenceLow
 	case Or:

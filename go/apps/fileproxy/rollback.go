@@ -105,11 +105,11 @@ func decodeCounter(b []byte) (uint64, error) {
 	return i, nil
 }
 
-// SetRollbackCounter sets the monotonic counter for a given program to a higher
-// value. It returns an error if the program doesn't exist or if the new value
-// of the counter is less than the current value of the counter.
+// SetCounter sets the monotonic counter for a given program to a higher value.
+// It returns an error if the program doesn't exist or if the new value of the
+// counter is less than the current value of the counter.
 func (r *RollbackMaster) SetCounter(ms *util.MessageStream, name string, counter uint64) error {
-	emptyData := make([]byte, 0)
+	var emptyData []byte
 	rr := &RollbackResponse{
 		Type: RollbackMessageType_ERROR.Enum(),
 		Data: emptyData,
@@ -143,7 +143,7 @@ func (r *RollbackMaster) SetCounter(ms *util.MessageStream, name string, counter
 // SetHash implements RollbackMessageType_SET_HASH by setting the value of the
 // hash for a given item to a given hash value.
 func (r *RollbackMaster) SetHash(ms *util.MessageStream, name string, item string, h []byte) error {
-	emptyData := make([]byte, 0)
+	var emptyData []byte
 	rr := &RollbackResponse{
 		Type: RollbackMessageType_ERROR.Enum(),
 		Data: emptyData,
@@ -188,7 +188,7 @@ func (r *RollbackMaster) SetHash(ms *util.MessageStream, name string, item strin
 // GetCounter implements RollbackMessageType_GET_COUNTER and returns the current
 // value of a counter to the requestor.
 func (r *RollbackMaster) GetCounter(ms *util.MessageStream, name string) error {
-	emptyData := make([]byte, 0)
+	var emptyData []byte
 	rr := &RollbackResponse{
 		Type: RollbackMessageType_ERROR.Enum(),
 		Data: emptyData,
@@ -211,7 +211,7 @@ func (r *RollbackMaster) GetCounter(ms *util.MessageStream, name string) error {
 // GetHashedVerifier gets a version of the hash for a given item along with the
 // current monotonic counter.
 func (r *RollbackMaster) GetHashedVerifier(ms *util.MessageStream, name string, item string) error {
-	emptyData := make([]byte, 0)
+	var emptyData []byte
 	rr := &RollbackResponse{
 		Type: RollbackMessageType_ERROR.Enum(),
 		Data: emptyData,
@@ -351,7 +351,7 @@ func GetHashedVerifier(ms *util.MessageStream, item string) ([]byte, error) {
 
 // RunMessageLoop handles incoming messages for the RollbackMaster and passes
 // them to the appropriate functions.
-func (m *RollbackMaster) RunMessageLoop(ms *util.MessageStream, programPolicy *ProgramPolicy, name string) error {
+func (r *RollbackMaster) RunMessageLoop(ms *util.MessageStream, programPolicy *ProgramPolicy, name string) error {
 	for {
 		var msg RollbackMessage
 		if err := ms.ReadMessage(&msg); err != nil {
@@ -366,12 +366,12 @@ func (m *RollbackMaster) RunMessageLoop(ms *util.MessageStream, programPolicy *P
 				continue
 			}
 
-			if err = m.SetCounter(ms, name, i); err != nil {
+			if err = r.SetCounter(ms, name, i); err != nil {
 				log.Printf("failed to set the counter on the RollbackMaster: %s", err)
 				continue
 			}
 		case RollbackMessageType_GET_COUNTER:
-			if err := m.GetCounter(ms, name); err != nil {
+			if err := r.GetCounter(ms, name); err != nil {
 				log.Printf("failed to get the counter for program %s", name)
 				continue
 			}
@@ -381,12 +381,12 @@ func (m *RollbackMaster) RunMessageLoop(ms *util.MessageStream, programPolicy *P
 				log.Printf("failed to unmarshal the parameters for SET_HASH: %s", err)
 				continue
 			}
-			if err := m.SetHash(ms, name, *rh.Item, rh.Hash); err != nil {
+			if err := r.SetHash(ms, name, *rh.Item, rh.Hash); err != nil {
 				log.Printf("failed to set the hash for item %s on program %s: %s", *rh.Item, name, err)
 				continue
 			}
 		case RollbackMessageType_GET_HASHED_VERIFIER:
-			if err := m.GetHashedVerifier(ms, name, string(msg.Data)); err != nil {
+			if err := r.GetHashedVerifier(ms, name, string(msg.Data)); err != nil {
 				log.Printf("failed to get the hashed verifier for program %s: %s", name, err)
 				continue
 			}
@@ -394,6 +394,4 @@ func (m *RollbackMaster) RunMessageLoop(ms *util.MessageStream, programPolicy *P
 			log.Printf("unknown rollback message %d", *msg.Type)
 		}
 	}
-
-	return nil
 }

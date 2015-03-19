@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-var key []string = []string{
+var key = []string{
 	`key([4b657930])`,                 // hex("Key1")
 	`key([4b657931])`,                 // hex("Key2")
 	`tpm({S2V5Mw==})`,                 // base64w("Key3")
@@ -29,7 +29,7 @@ var key []string = []string{
 	`tpm({BgWWala+pkV7l/Yg043wLQ==})`, // base64(some other random bytes)
 }
 
-var termtests []string = []string{
+var termtests = []string{
 	"42",
 	"0",
 	"-1",
@@ -185,7 +185,7 @@ func TestParsePred(t *testing.T) {
 	}
 }
 
-var formtests []string = []string{
+var formtests = []string{
 	`true`,
 	`false`,
 	key[0] + ` says true`,

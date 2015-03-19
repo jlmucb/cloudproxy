@@ -30,7 +30,7 @@ type SoftTao struct {
 	nameExtension auth.SubPrin
 }
 
-// Init initializes the SoftTao with a crypter and a signer.
+// NewSoftTao initializes the SoftTao with a crypter and a signer.
 func NewSoftTao(path string, password []byte) (Tao, error) {
 	s := &SoftTao{}
 
@@ -87,7 +87,7 @@ func (s *SoftTao) Rand() io.Reader {
 	return s
 }
 
-// GetShareSecret returns a slice of n secret bytes.
+// GetSharedSecret returns a slice of n secret bytes.
 func (s *SoftTao) GetSharedSecret(n int, policy string) ([]byte, error) {
 	if policy != SharedSecretPolicyDefault {
 		return nil, newError("SoftTao policies not yet implemented")

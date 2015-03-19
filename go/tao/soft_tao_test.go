@@ -109,7 +109,7 @@ func TestSoftTaoAttest(t *testing.T) {
 
 	a, err := ft.Attest(nil, nil, nil, stmt)
 	if err != nil {
-		t.Fatalf("Couldn't attest to a statement in the SoftTao:", err)
+		t.Fatal("Couldn't attest to a statement in the SoftTao:", err)
 	}
 
 	// Make sure the attestation passes basic sanity checks.

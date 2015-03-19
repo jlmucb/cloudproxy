@@ -95,7 +95,7 @@ const (
 // on the TrivialGuard.
 var errTrivialGuard = errors.New("can't perform policy operations on TrivialGuard")
 
-// SubprincipalName returns subprincipal TrivialGuard(<policy>).
+// Subprincipal returns subprincipal TrivialGuard(<policy>).
 func (t TrivialGuard) Subprincipal() auth.SubPrin {
 	var policy string
 	switch t {

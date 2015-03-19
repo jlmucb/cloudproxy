@@ -14,20 +14,24 @@
 
 package util
 
+// A ChanReadWriteCloser implements io.ReadWriteCloser over chan []byte.
 type ChanReadWriteCloser struct {
 	R <-chan []byte
 	W chan []byte
 }
 
+// Read implements io.Reader for ChanReadWriteCloser.
 func (crw ChanReadWriteCloser) Read(p []byte) (int, error) {
 	return copy(p, <-crw.R), nil
 }
 
+// Write implements io.Writer for ChanReadWriteCloser.
 func (crw ChanReadWriteCloser) Write(p []byte) (int, error) {
 	crw.W <- p
 	return len(p), nil
 }
 
+// Close implements io.Closer for ChanReadWriteCloser.
 func (crw ChanReadWriteCloser) Close() error {
 	close(crw.W)
 	return nil

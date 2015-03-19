@@ -35,9 +35,8 @@ func (pair PairReadWriteCloser) Close() error {
 	err2 := pair.WriteCloser.Close()
 	if err1 != nil {
 		return err1
-	} else {
-		return err2
 	}
+	return err2
 }
 
 // NewPairReadWriteCloser creates a new io.ReadWriteCloser given separate
@@ -48,7 +47,6 @@ func (pair PairReadWriteCloser) Close() error {
 func NewPairReadWriteCloser(r io.ReadCloser, w io.WriteCloser) *PairReadWriteCloser {
 	if rw, _ := w.(io.ReadCloser); r == rw {
 		return &PairReadWriteCloser{ioutil.NopCloser(r), w}
-	} else {
-		return &PairReadWriteCloser{r, w}
 	}
+	return &PairReadWriteCloser{r, w}
 }

@@ -54,7 +54,7 @@ type CoreOSConfig struct {
 	SocketPath string
 }
 
-// A KVMCoreOSContainer is a simple wrapper for CoreOS running on KVM. It uses
+// A KvmCoreOSContainer is a simple wrapper for CoreOS running on KVM. It uses
 // os/exec.Cmd to send commands to QEMU/KVM to start CoreOS then uses SSH to
 // connect to CoreOS to start the LinuxHost there with a virtio-serial
 // connection for its communication with the Tao running on Linux in the guest.
@@ -88,11 +88,11 @@ func (kcc *KvmCoreOSContainer) Start() error {
 
 	// Create a temporary directory for the linux_host image. Note that the
 	// args were validated in Launch before this call.
-	td_docker := kcc.Args[1]
+	tdDocker := kcc.Args[1]
 
 	// Expand the host file into the directory.
 	// TODO(tmroeder): save this path and remove it on Stop/Kill.
-	// defer os.RemoveAll(td_docker)
+	// defer os.RemoveAll(tdDocker)
 	linuxHostFile, err := os.Open(kcc.HostFile)
 	if err != nil {
 		return err
@@ -120,7 +120,7 @@ func (kcc *KvmCoreOSContainer) Start() error {
 		}
 
 		fi := hdr.FileInfo()
-		outputName := path.Join(td_docker, hdr.Name)
+		outputName := path.Join(tdDocker, hdr.Name)
 		if fi.IsDir() {
 			if err := os.Mkdir(outputName, fi.Mode()); err != nil {
 				return err
@@ -158,7 +158,7 @@ func (kcc *KvmCoreOSContainer) Start() error {
 		if err != nil {
 			return err
 		}
-		rulesFile := path.Join(td_docker, path.Base(cfg.RulesPath))
+		rulesFile := path.Join(tdDocker, path.Base(cfg.RulesPath))
 		if err := ioutil.WriteFile(rulesFile, []byte(rules), 0700); err != nil {
 			return err
 		}
@@ -183,7 +183,7 @@ func (kcc *KvmCoreOSContainer) Start() error {
 		"-fsdev", "local,id=conf,security_model=none,readonly,path=" + td,
 		"-device", "virtio-9p-pci,fsdev=conf,mount_tag=config-2",
 		// Another Plan9P filesystem for the linux_host files.
-		"-fsdev", "local,id=tao,security_model=none,path=" + td_docker,
+		"-fsdev", "local,id=tao,security_model=none,path=" + tdDocker,
 		"-device", "virtio-9p-pci,fsdev=tao,mount_tag=tao",
 		// Machine config.
 		"-cpu", "host",
@@ -199,7 +199,7 @@ func (kcc *KvmCoreOSContainer) Start() error {
 	//qemuCmd.Stdout = os.Stdout
 	//qemuCmd.Stderr = os.Stderr
 	kcc.QCmd = qemuCmd
-	kcc.LHPath = td_docker
+	kcc.LHPath = tdDocker
 	return kcc.QCmd.Start()
 }
 

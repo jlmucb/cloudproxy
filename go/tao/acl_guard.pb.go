@@ -13,7 +13,7 @@ It is generated from these files:
 	keys.proto
 	linux_host_admin_rpc.proto
 	linux_host.proto
-	tao_rpc.proto
+	rpc.proto
 	tpm_tao.proto
 
 It has these top-level messages:

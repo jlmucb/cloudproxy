@@ -19,9 +19,9 @@ import (
 	"fmt"
 )
 
-// AuthLogicElement is any element of the authorization logic, i.e. a formula, a
+// LogicElement is any element of the authorization logic, i.e. a formula, a
 // term, or a principal extension.
-type AuthLogicElement interface {
+type LogicElement interface {
 
 	// Marshal writes a binary encoding of the element into b.
 	Marshal(b *Buffer)
@@ -37,48 +37,48 @@ type AuthLogicElement interface {
 	// debug-printing, and other formats will use an unspecified format.
 	fmt.Formatter // Format(out fmt.State, verb rune)
 
-	isAuthLogicElement() // marker
+	isLogicElement() // marker
 }
 
-// isAuthLogicElement ensures only appropriate types can be assigned to an
-// AuthLogicElement.
-func (t Prin) isAuthLogicElement()      {}
-func (t PrinTail) isAuthLogicElement()  {}
-func (t SubPrin) isAuthLogicElement()   {}
-func (t Str) isAuthLogicElement()       {}
-func (t Bytes) isAuthLogicElement()     {}
-func (t Int) isAuthLogicElement()       {}
-func (t TermVar) isAuthLogicElement()   {}
-func (f Pred) isAuthLogicElement()      {}
-func (f Const) isAuthLogicElement()     {}
-func (f Not) isAuthLogicElement()       {}
-func (f And) isAuthLogicElement()       {}
-func (f Or) isAuthLogicElement()        {}
-func (f Implies) isAuthLogicElement()   {}
-func (f Speaksfor) isAuthLogicElement() {}
-func (f Says) isAuthLogicElement()      {}
-func (f Forall) isAuthLogicElement()    {}
-func (f Exists) isAuthLogicElement()    {}
+// isLogicElement ensures only appropriate types can be assigned to an
+// LogicElement.
+func (t Prin) isLogicElement()      {}
+func (t PrinTail) isLogicElement()  {}
+func (t SubPrin) isLogicElement()   {}
+func (t Str) isLogicElement()       {}
+func (t Bytes) isLogicElement()     {}
+func (t Int) isLogicElement()       {}
+func (t TermVar) isLogicElement()   {}
+func (f Pred) isLogicElement()      {}
+func (f Const) isLogicElement()     {}
+func (f Not) isLogicElement()       {}
+func (f And) isLogicElement()       {}
+func (f Or) isLogicElement()        {}
+func (f Implies) isLogicElement()   {}
+func (f Speaksfor) isLogicElement() {}
+func (f Says) isLogicElement()      {}
+func (f Forall) isLogicElement()    {}
+func (f Exists) isLogicElement()    {}
 
 // These declarations ensure all the appropriate types can be assigned to an
-// AuthLogicElement.
-var _ AuthLogicElement = Prin{}
-var _ AuthLogicElement = PrinTail{}
-var _ AuthLogicElement = SubPrin{}
-var _ AuthLogicElement = Str("")
-var _ AuthLogicElement = Bytes(nil)
-var _ AuthLogicElement = Int(0)
-var _ AuthLogicElement = TermVar("X")
-var _ AuthLogicElement = Pred{}
-var _ AuthLogicElement = Const(false)
-var _ AuthLogicElement = Not{}
-var _ AuthLogicElement = And{}
-var _ AuthLogicElement = Or{}
-var _ AuthLogicElement = Implies{}
-var _ AuthLogicElement = Speaksfor{}
-var _ AuthLogicElement = Says{}
-var _ AuthLogicElement = Forall{}
-var _ AuthLogicElement = Exists{}
+// LogicElement.
+var _ LogicElement = Prin{}
+var _ LogicElement = PrinTail{}
+var _ LogicElement = SubPrin{}
+var _ LogicElement = Str("")
+var _ LogicElement = Bytes(nil)
+var _ LogicElement = Int(0)
+var _ LogicElement = TermVar("X")
+var _ LogicElement = Pred{}
+var _ LogicElement = Const(false)
+var _ LogicElement = Not{}
+var _ LogicElement = And{}
+var _ LogicElement = Or{}
+var _ LogicElement = Implies{}
+var _ LogicElement = Speaksfor{}
+var _ LogicElement = Says{}
+var _ LogicElement = Forall{}
+var _ LogicElement = Exists{}
 
 // These declarations ensure all the appropriate types can be assigned to a
 // fmt.Scanner.
@@ -129,7 +129,7 @@ type PrinTail struct {
 
 // Term is an argument to a predicate or a principal extension.
 type Term interface {
-	AuthLogicElement
+	LogicElement
 	Identical(other Term) bool
 	isTerm() // marker
 }
@@ -156,7 +156,7 @@ type TermVar string
 
 // Form is a formula in the Tao authorization logic.
 type Form interface {
-	AuthLogicElement
+	LogicElement
 	isForm() // marker
 }
 

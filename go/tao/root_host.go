@@ -117,9 +117,9 @@ func (t *RootHost) RemovedHostedProgram(childSubprin auth.SubPrin) error {
 	return nil
 }
 
-// TaoHostName gets the Tao principal name assigned to this hosted Tao host.
+// HostName gets the Tao principal name assigned to this hosted Tao host.
 // The name encodes the full path from the root Tao, through all intermediary
 // Tao hosts, to this hosted Tao host.
-func (t *RootHost) TaoHostName() auth.Prin {
+func (t *RootHost) HostName() auth.Prin {
 	return t.taoHostName
 }

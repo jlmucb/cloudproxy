@@ -97,10 +97,10 @@ func testTaoHostEncryption(t *testing.T, th Host) {
 	}
 }
 
-func testTaoHostName(t *testing.T, th Host) {
-	n := th.TaoHostName()
+func testHostName(t *testing.T, th Host) {
+	n := th.HostName()
 	if n.Key == nil {
-		t.Fatal("TaoHostName returned an invalid Host name")
+		t.Fatal("HostName returned an invalid Host name")
 	}
 }
 
@@ -127,7 +127,7 @@ func TestTaoRootHostEncryption(t *testing.T) {
 }
 
 func TestTaoRootHostName(t *testing.T) {
-	testTaoHostName(t, testNewTaoRootHost(t))
+	testHostName(t, testNewTaoRootHost(t))
 }
 
 func TestTaoRootHostRemovedHostedProgram(t *testing.T) {
@@ -151,7 +151,7 @@ func TestTaoStackedHostEncryption(t *testing.T) {
 }
 
 func TestTaoStackedHostName(t *testing.T) {
-	testTaoHostName(t, testNewTaoStackedHost(t))
+	testHostName(t, testNewTaoStackedHost(t))
 }
 
 func TestTaoStackedHostRemovedHostedProgram(t *testing.T) {

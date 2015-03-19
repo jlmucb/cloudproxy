@@ -98,7 +98,7 @@ type LinuxHostChild struct {
 
 // GetTaoName returns the Tao name for the child.
 func (lh *LinuxHost) GetTaoName(child *LinuxHostChild) auth.Prin {
-	return lh.taoHost.TaoHostName().MakeSubprincipal(child.ChildSubprin)
+	return lh.taoHost.HostName().MakeSubprincipal(child.ChildSubprin)
 }
 
 // ExtendTaoName irreversibly extends the Tao principal name of the child.
@@ -230,7 +230,7 @@ func (lh *LinuxHost) StartHostedProgram(path string, args []string, uid, gid int
 
 	// TODO(tmroeder): do we want to support concurrent updates to policy?
 	// Then we need a lock here, too.
-	hostName := lh.taoHost.TaoHostName()
+	hostName := lh.taoHost.HostName()
 	childName := hostName.MakeSubprincipal(subprin)
 	if !lh.guard.IsAuthorized(childName, "Execute", []string{}) {
 		return auth.SubPrin{}, 0, newError("Hosted program %s denied authorization to execute on host %s", subprin, hostName)
@@ -329,7 +329,7 @@ func (lh *LinuxHost) KillHostedProgram(subprin auth.SubPrin) error {
 	return nil
 }
 
-// TaoHostName returns the name of the Host used by the LinuxHost.
-func (lh *LinuxHost) TaoHostName() auth.Prin {
-	return lh.taoHost.TaoHostName()
+// HostName returns the name of the Host used by the LinuxHost.
+func (lh *LinuxHost) HostName() auth.Prin {
+	return lh.taoHost.HostName()
 }

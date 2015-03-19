@@ -104,11 +104,11 @@ func (client LinuxHostAdminClient) KillHostedProgram(subprin auth.SubPrin) error
 	return nil
 }
 
-// TaoHostName is the client stub for LinuxHost.TaoHostName..
-func (client LinuxHostAdminClient) TaoHostName() (auth.Prin, error) {
+// HostName is the client stub for LinuxHost.HostName..
+func (client LinuxHostAdminClient) HostName() (auth.Prin, error) {
 	req := &LinuxHostAdminRPCRequest{}
 	resp := new(LinuxHostAdminRPCResponse)
-	err := client.Call("LinuxHost.TaoHostName", req, resp)
+	err := client.Call("LinuxHost.HostName", req, resp)
 	if err != nil {
 		return auth.Prin{}, err
 	}
@@ -230,9 +230,9 @@ func (server linuxHostAdminServerStub) KillHostedProgram(r *LinuxHostAdminReques
 	return server.lh.KillHostedProgram(subprin)
 }
 
-// TaoHostName is the server stub for LinuxHost.TaoHostName.
-func (server linuxHostAdminServerStub) TaoHostName(r *LinuxHostAdminRequest, s *LinuxHostAdminRPCResponse) error {
-	prin := server.lh.TaoHostName()
+// HostName is the server stub for LinuxHost.HostName.
+func (server linuxHostAdminServerStub) HostName(r *LinuxHostAdminRequest, s *LinuxHostAdminRPCResponse) error {
+	prin := server.lh.HostName()
 	s.Prin = auth.Marshal(prin)
 	return nil
 }

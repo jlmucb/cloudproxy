@@ -80,7 +80,7 @@ var testChildLH = &LinuxHostChild{
 }
 
 func testLinuxHostHandleGetTaoName(t *testing.T, lh *LinuxHost) {
-	if !lh.GetTaoName(testChildLH).Identical(lh.taoHost.TaoHostName().MakeSubprincipal(testChildLH.ChildSubprin)) {
+	if !lh.GetTaoName(testChildLH).Identical(lh.taoHost.HostName().MakeSubprincipal(testChildLH.ChildSubprin)) {
 		t.Fatal("Incorrect construction of Tao name")
 	}
 }

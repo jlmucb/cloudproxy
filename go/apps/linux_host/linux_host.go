@@ -220,7 +220,7 @@ func main() {
 
 		switch *action {
 		case "show":
-			fmt.Printf("%v", host.TaoHostName())
+			fmt.Printf("%v", host.HostName())
 		case "start":
 			// Make sure callers can read the directory that
 			// contains the socket.
@@ -240,7 +240,7 @@ func main() {
 			err = os.Chmod(sockPath, 0666)
 			fatalIf(err)
 
-			fmt.Fprintf(verbose, "Linux Tao Service (%s) started and waiting for requests\n", host.TaoHostName())
+			fmt.Fprintf(verbose, "Linux Tao Service (%s) started and waiting for requests\n", host.HostName())
 			tao.NewLinuxHostAdminServer(host).Serve(sock)
 		}
 	case "shutdown":

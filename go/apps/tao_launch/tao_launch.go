@@ -100,7 +100,7 @@ func main() {
 		}
 		glog.Infof("%d processes\n", len(pid))
 	case "name":
-		name, err := client.TaoHostName()
+		name, err := client.HostName()
 		if err != nil {
 			glog.Exit(err)
 		}

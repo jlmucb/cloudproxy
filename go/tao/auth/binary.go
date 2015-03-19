@@ -69,7 +69,7 @@ const (
 // }
 
 // Marshal encodes a Form or Term.
-func Marshal(e AuthLogicElement) []byte {
+func Marshal(e LogicElement) []byte {
 	buf := new(Buffer)
 	e.Marshal(buf)
 	return buf.Bytes()

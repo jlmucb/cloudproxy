@@ -309,11 +309,11 @@ func (e PrinExt) Identical(other PrinExt) bool {
 }
 
 // Identical checks if one SubPrin is identical to another.
-func (s SubPrin) Identical(other SubPrin) bool {
-	if len(s) != len(other) {
+func (t SubPrin) Identical(other SubPrin) bool {
+	if len(t) != len(other) {
 		return false
 	}
-	for i, e := range s {
+	for i, e := range t {
 		if !e.Identical(other[i]) {
 			return false
 		}
@@ -352,8 +352,8 @@ func SubprinOrIdentical(child, parent Term) bool {
 }
 
 // MakeSubprincipal creates principal p.e... given principal p and extensions e.
-func (p Prin) MakeSubprincipal(e SubPrin) Prin {
-	other := Prin{Type: p.Type, Key: p.Key, Ext: append([]PrinExt{}, p.Ext...)}
+func (t Prin) MakeSubprincipal(e SubPrin) Prin {
+	other := Prin{Type: t.Type, Key: t.Key, Ext: append([]PrinExt{}, t.Ext...)}
 	other.Ext = append(other.Ext, []PrinExt(e)...)
 	return other
 }

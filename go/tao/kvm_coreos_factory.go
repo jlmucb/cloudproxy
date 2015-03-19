@@ -423,7 +423,7 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string, uid, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("couldn't establish a start session on SSH: %s", err)
 	}
-	if err := start.Start("sudo /media/tao/linux_host --host_type stacked --host_spec 'tao::TaoRPC+tao::FileMessageChannel(/dev/virtio-ports/tao)' --host_channel_type file --config_path /media/tao/tao.config"); err != nil {
+	if err := start.Start("sudo /media/tao/linux_host --host_type stacked --host_spec 'tao::RPC+tao::FileMessageChannel(/dev/virtio-ports/tao)' --host_channel_type file --config_path /media/tao/tao.config"); err != nil {
 		return nil, nil, fmt.Errorf("couldn't start linux_host on the guest: %s", err)
 	}
 	start.Close()

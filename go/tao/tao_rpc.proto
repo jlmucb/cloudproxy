@@ -14,7 +14,7 @@
 
 package tao;
 
-message TaoRPCRequest {
+message RPCRequest {
   optional bytes data = 1;
   optional int32 size = 2;
   optional string policy = 3;
@@ -23,7 +23,7 @@ message TaoRPCRequest {
   optional bytes issuer = 6;
 }
 
-message TaoRPCResponse {
+message RPCResponse {
   optional bytes data = 1;
   optional string policy = 2;
 }

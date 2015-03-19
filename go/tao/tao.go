@@ -93,12 +93,12 @@ type Tao interface {
 var cachedHost Tao
 var cacheOnce sync.Once
 
-// ParentFromConfig gets a parent Tao given a TaoConfig that specifies the Tao
+// ParentFromConfig gets a parent Tao given a Config that specifies the Tao
 // type.
-func ParentFromConfig(tc TaoConfig) Tao {
+func ParentFromConfig(tc Config) Tao {
 	cacheOnce.Do(func() {
 		// Get a default config from the environment.
-		tcEnv := NewTaoConfigFromEnv()
+		tcEnv := NewConfigFromEnv()
 
 		// The incoming config overrides the environment variables for
 		// any values that are set in it.
@@ -139,21 +139,21 @@ func ParentFromConfig(tc TaoConfig) Tao {
 
 			cachedHost = host
 		case Pipe:
-			host, err := DeserializeTaoRPC(tcEnv.HostSpec)
+			host, err := DeserializeRPC(tcEnv.HostSpec)
 			if err != nil {
 				glog.Error(err)
 				return
 			}
 			cachedHost = host
 		case File:
-			host, err := DeserializeFileTaoRPC(tcEnv.HostSpec)
+			host, err := DeserializeFileRPC(tcEnv.HostSpec)
 			if err != nil {
 				glog.Error(err)
 				return
 			}
 			cachedHost = host
 		case Unix:
-			host, err := DeserializeUnixSocketTaoRPC(tcEnv.HostSpec)
+			host, err := DeserializeUnixSocketRPC(tcEnv.HostSpec)
 			if err != nil {
 				glog.Error(err)
 				return
@@ -177,6 +177,6 @@ func ParentFromConfig(tc TaoConfig) Tao {
 // expression, e.g.:
 //   name, err := tao.Parent().GetTaoName()
 func Parent() Tao {
-	ParentFromConfig(TaoConfig{})
+	ParentFromConfig(Config{})
 	return cachedHost
 }

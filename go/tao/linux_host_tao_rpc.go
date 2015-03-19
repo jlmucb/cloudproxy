@@ -54,13 +54,13 @@ func (server LinuxHostTaoServer) Serve(conn io.ReadWriteCloser) error {
 }
 
 // GetTaoName is the server stub for Tao.GetTaoName.
-func (server linuxHostTaoServerStub) GetTaoName(r *TaoRPCRequest, s *TaoRPCResponse) error {
+func (server linuxHostTaoServerStub) GetTaoName(r *RPCRequest, s *RPCResponse) error {
 	s.Data = auth.Marshal(server.lh.GetTaoName(server.child))
 	return nil
 }
 
 // ExtendTaoName is the server stub for Tao.ExtendTaoName.
-func (server linuxHostTaoServerStub) ExtendTaoName(r *TaoRPCRequest, s *TaoRPCResponse) error {
+func (server linuxHostTaoServerStub) ExtendTaoName(r *RPCRequest, s *RPCResponse) error {
 	ext, err := auth.UnmarshalSubPrin(r.Data)
 	if err != nil {
 		return err
@@ -69,7 +69,7 @@ func (server linuxHostTaoServerStub) ExtendTaoName(r *TaoRPCRequest, s *TaoRPCRe
 }
 
 // GetRandomBytes is the server stub for Tao.GetRandomBytes.
-func (server linuxHostTaoServerStub) GetRandomBytes(r *TaoRPCRequest, s *TaoRPCResponse) error {
+func (server linuxHostTaoServerStub) GetRandomBytes(r *RPCRequest, s *RPCResponse) error {
 	if r.Size == nil || *r.Size <= 0 {
 		return newError("invalid size")
 	}
@@ -79,7 +79,7 @@ func (server linuxHostTaoServerStub) GetRandomBytes(r *TaoRPCRequest, s *TaoRPCR
 }
 
 // GetSharedSecret is the server stub for Tao.GetSharedSecret.
-func (server linuxHostTaoServerStub) GetSharedSecret(r *TaoRPCRequest, s *TaoRPCResponse) error {
+func (server linuxHostTaoServerStub) GetSharedSecret(r *RPCRequest, s *RPCResponse) error {
 	if r.Size == nil || *r.Size <= 0 {
 		return newError("invalid size")
 	}
@@ -92,7 +92,7 @@ func (server linuxHostTaoServerStub) GetSharedSecret(r *TaoRPCRequest, s *TaoRPC
 }
 
 // Seal is the server stub for Tao.Seal.
-func (server linuxHostTaoServerStub) Seal(r *TaoRPCRequest, s *TaoRPCResponse) error {
+func (server linuxHostTaoServerStub) Seal(r *RPCRequest, s *RPCResponse) error {
 	if r.Policy == nil {
 		return newError("missing policy")
 	}
@@ -102,7 +102,7 @@ func (server linuxHostTaoServerStub) Seal(r *TaoRPCRequest, s *TaoRPCResponse) e
 }
 
 // Unseal is the server stub for Tao.Unseal.
-func (server linuxHostTaoServerStub) Unseal(r *TaoRPCRequest, s *TaoRPCResponse) error {
+func (server linuxHostTaoServerStub) Unseal(r *RPCRequest, s *RPCResponse) error {
 	data, policy, err := server.lh.Unseal(server.child, r.Data)
 	s.Data = data
 	s.Policy = proto.String(policy)
@@ -110,7 +110,7 @@ func (server linuxHostTaoServerStub) Unseal(r *TaoRPCRequest, s *TaoRPCResponse)
 }
 
 // Attest is the server stub for Tao.Attest.
-func (server linuxHostTaoServerStub) Attest(r *TaoRPCRequest, s *TaoRPCResponse) error {
+func (server linuxHostTaoServerStub) Attest(r *RPCRequest, s *RPCResponse) error {
 	stmt, err := auth.UnmarshalForm(r.Data)
 	if err != nil {
 		return err

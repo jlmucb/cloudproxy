@@ -78,9 +78,9 @@ var HostedProgramTypeMap = map[string]HostedProgramType{
 	"kvm_coreos": KVMCoreOSFile,
 }
 
-// A TaoConfig stores the information about the Tao, its Host Tao, and the way
+// A Config stores the information about the Tao, its Host Tao, and the way
 // it creates Hosted Programs.
-type TaoConfig struct {
+type Config struct {
 	HostType        HostTaoType
 	HostChannelType HostTaoChannelType
 	HostSpec        string
@@ -92,8 +92,8 @@ type TaoConfig struct {
 	TPMDevice  string
 }
 
-// IsValid checks a TaoConfig for validity.
-func (tc TaoConfig) IsValid() bool {
+// IsValid checks a Config for validity.
+func (tc Config) IsValid() bool {
 	// All valid Tao configs support creating hosted programs.
 	if tc.HostedType == NoHostedPrograms {
 		return false
@@ -120,10 +120,10 @@ func (tc TaoConfig) IsValid() bool {
 	return true
 }
 
-// NewTaoConfigFromString creates a new TaoConfig using strings representing the
+// NewConfigFromString creates a new Config using strings representing the
 // options.
-func NewTaoConfigFromString(htt, htct, f, hpt, tpmaik, tpmpcrs, tpmdev string) TaoConfig {
-	tc := TaoConfig{}
+func NewConfigFromString(htt, htct, f, hpt, tpmaik, tpmpcrs, tpmdev string) Config {
+	tc := Config{}
 	switch htt {
 	case "none", "":
 		tc.HostType = NoHost
@@ -173,9 +173,9 @@ func NewTaoConfigFromString(htt, htct, f, hpt, tpmaik, tpmpcrs, tpmdev string) T
 	return tc
 }
 
-// NewTaoConfigFromEnv creates a TaoConfig using values drawn from environment
+// NewConfigFromEnv creates a Config using values drawn from environment
 // variables.
-func NewTaoConfigFromEnv() TaoConfig {
+func NewConfigFromEnv() Config {
 	htt := os.Getenv(HostTypeEnvVar)
 	htct := os.Getenv(HostChannelTypeEnvVar)
 	f := os.Getenv(HostSpecEnvVar)
@@ -184,15 +184,15 @@ func NewTaoConfigFromEnv() TaoConfig {
 	tpmpcrs := os.Getenv(TaoTPMPCRsEnvVar)
 	tpmdev := os.Getenv(TaoTPMDeviceEnvVar)
 
-	return NewTaoConfigFromString(htt, htct, f, hpt, tpmaik, tpmpcrs, tpmdev)
+	return NewConfigFromString(htt, htct, f, hpt, tpmaik, tpmpcrs, tpmdev)
 }
 
-// Merge combines two TaoConfig values into one. The parameter value take
+// Merge combines two Config values into one. The parameter value take
 // precendence over the existing values unless an incoming value is NoHost,
 // NoChannel, or NoHostedPrograms. This is used to merge a config taken from the
 // environment with a config specified explicitly on the command line. The
 // latter takes precedence where it is explicitly given.
-func (tc *TaoConfig) Merge(c TaoConfig) {
+func (tc *Config) Merge(c Config) {
 	if tc.HostType == NoHost || c.HostType != NoHost {
 		tc.HostType = c.HostType
 	}

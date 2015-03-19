@@ -15,8 +15,8 @@
 package tao
 
 // This now tests a full round trip:
-// TaoRPC -> protorpc -> pipe -> protorpc -> LinuxHostTaoServer -> LinuxHost
-// TaoRPC <- protorpc <- pipe <- protorpc <- LinuxHostTaoServer <- LinuxHost
+// RPC -> protorpc -> pipe -> protorpc -> LinuxHostTaoServer -> LinuxHost
+// RPC <- protorpc <- pipe <- protorpc <- LinuxHostTaoServer <- LinuxHost
 
 import (
 	"bytes"
@@ -55,7 +55,7 @@ func testNewLinuxHostTaoServer(t *testing.T) (Tao, string) {
 	}
 
 	go NewLinuxHostTaoServer(lh, child).Serve(hostChannel)
-	return &TaoRPC{protorpc.NewClient(childChannel), "Tao"}, tmpdir
+	return &RPC{protorpc.NewClient(childChannel), "Tao"}, tmpdir
 }
 
 func TestLinuxHostTaoServerGetTaoName(t *testing.T) {

@@ -30,19 +30,19 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util/protorpc"
 )
 
-// TaoRPC sends requests between this hosted program and the host Tao.
-type TaoRPC struct {
+// RPC sends requests between this hosted program and the host Tao.
+type RPC struct {
 	rpc         *rpc.Client
 	serviceName string
 }
 
-// DeserializeTaoRPC produces a TaoRPC from a string.
-func DeserializeTaoRPC(s string) (*TaoRPC, error) {
+// DeserializeRPC produces a RPC from a string.
+func DeserializeRPC(s string) (*RPC, error) {
 	if s == "" {
 		return nil, newError("taorpc: missing host Tao spec" +
 			" (ensure $" + HostSpecEnvVar + " is set)")
 	}
-	r := strings.TrimPrefix(s, "tao::TaoRPC+")
+	r := strings.TrimPrefix(s, "tao::RPC+")
 	if r == s {
 		return nil, newError("taorpc: unrecognized $" + HostSpecEnvVar + " string " + s)
 	}
@@ -51,16 +51,16 @@ func DeserializeTaoRPC(s string) (*TaoRPC, error) {
 		return nil, newError("taorpc: unrecognized $" + HostSpecEnvVar + " string " + s +
 			" (" + err.Error() + ")")
 	}
-	return &TaoRPC{protorpc.NewClient(ms), "Tao"}, nil
+	return &RPC{protorpc.NewClient(ms), "Tao"}, nil
 }
 
-// DeserializeFileTaoRPC produces a TaoRPC from a string representing a file.
-func DeserializeFileTaoRPC(s string) (*TaoRPC, error) {
+// DeserializeFileRPC produces a RPC from a string representing a file.
+func DeserializeFileRPC(s string) (*RPC, error) {
 	if s == "" {
 		return nil, newError("taorpc: missing host Tao spec" +
 			" (ensure $" + HostSpecEnvVar + " is set)")
 	}
-	r := strings.TrimPrefix(s, "tao::TaoRPC+")
+	r := strings.TrimPrefix(s, "tao::RPC+")
 	if r == s {
 		return nil, newError("taorpc: unrecognized $" + HostSpecEnvVar + " string " + s)
 	}
@@ -69,11 +69,11 @@ func DeserializeFileTaoRPC(s string) (*TaoRPC, error) {
 		return nil, newError("taorpc: unrecognized $" + HostSpecEnvVar + " string " + s +
 			" (" + err.Error() + ")")
 	}
-	return &TaoRPC{protorpc.NewClient(ms), "Tao"}, nil
+	return &RPC{protorpc.NewClient(ms), "Tao"}, nil
 }
 
-// DeserializeUnixSocketTaoRPC produces a TaoRPC from a path string.
-func DeserializeUnixSocketTaoRPC(p string) (*TaoRPC, error) {
+// DeserializeUnixSocketRPC produces a RPC from a path string.
+func DeserializeUnixSocketRPC(p string) (*RPC, error) {
 	if p == "" {
 		return nil, newError("taorpc: missing host Tao spec" +
 			" (ensure $" + HostSpecEnvVar + " is set)")
@@ -84,13 +84,13 @@ func DeserializeUnixSocketTaoRPC(p string) (*TaoRPC, error) {
 		return nil, err
 	}
 
-	return &TaoRPC{protorpc.NewClient(ms), "Tao"}, nil
+	return &RPC{protorpc.NewClient(ms), "Tao"}, nil
 }
 
-// NewTaoRPC constructs a TaoRPC for the default gob encoding rpc client using
+// NewRPC constructs a RPC for the default gob encoding rpc client using
 // an io.ReadWriteCloser.
-func NewTaoRPC(rwc io.ReadWriteCloser, serviceName string) (*TaoRPC, error) {
-	return &TaoRPC{rpc.NewClient(rwc), serviceName}, nil
+func NewRPC(rwc io.ReadWriteCloser, serviceName string) (*RPC, error) {
+	return &RPC{rpc.NewClient(rwc), serviceName}, nil
 }
 
 type expectedResponse int
@@ -106,8 +106,8 @@ var ErrMalformedResponse = errors.New("taorpc: malformed response")
 
 // call issues an rpc request, obtains the response, checks the response for
 // errors, and checks that the response contains exactly the expected values.
-func (t *TaoRPC) call(method string, r *TaoRPCRequest, e expectedResponse) (data []byte, policy string, err error) {
-	s := new(TaoRPCResponse)
+func (t *RPC) call(method string, r *RPCRequest, e expectedResponse) (data []byte, policy string, err error) {
+	s := new(RPCResponse)
 	err = t.rpc.Call(method, r, s)
 	if err != nil {
 		return
@@ -127,8 +127,8 @@ func (t *TaoRPC) call(method string, r *TaoRPCRequest, e expectedResponse) (data
 }
 
 // GetTaoName implements part of the Tao interface.
-func (t *TaoRPC) GetTaoName() (auth.Prin, error) {
-	r := &TaoRPCRequest{}
+func (t *RPC) GetTaoName() (auth.Prin, error) {
+	r := &RPCRequest{}
 	data, _, err := t.call(t.serviceName+".GetTaoName", r, wantData)
 	if err != nil {
 		return auth.Prin{}, err
@@ -137,17 +137,17 @@ func (t *TaoRPC) GetTaoName() (auth.Prin, error) {
 }
 
 // ExtendTaoName implements part of the Tao interface.
-func (t *TaoRPC) ExtendTaoName(subprin auth.SubPrin) error {
-	r := &TaoRPCRequest{Data: auth.Marshal(subprin)}
+func (t *RPC) ExtendTaoName(subprin auth.SubPrin) error {
+	r := &RPCRequest{Data: auth.Marshal(subprin)}
 	_, _, err := t.call(t.serviceName+".ExtendTaoName", r, wantNothing)
 	return err
 }
 
-type taoRandReader TaoRPC
+type taoRandReader RPC
 
 // Read implements part of the Tao interface.
 func (t *taoRandReader) Read(p []byte) (n int, err error) {
-	bytes, err := (*TaoRPC)(t).GetRandomBytes(len(p))
+	bytes, err := (*RPC)(t).GetRandomBytes(len(p))
 	if err != nil {
 		return 0, err
 	}
@@ -156,40 +156,40 @@ func (t *taoRandReader) Read(p []byte) (n int, err error) {
 }
 
 // TODO(kwalsh) Can Rand be made generic, or does it need to be defined for the
-// concrete type TaoRPC?
+// concrete type RPC?
 
 // Rand implements part of the Tao interface.
-func (t *TaoRPC) Rand() io.Reader {
+func (t *RPC) Rand() io.Reader {
 	return (*taoRandReader)(t)
 }
 
 // GetRandomBytes implements part of the Tao interface.
-func (t *TaoRPC) GetRandomBytes(n int) ([]byte, error) {
+func (t *RPC) GetRandomBytes(n int) ([]byte, error) {
 	if n > math.MaxUint32 {
 		return nil, newError("taorpc: request for too many random bytes")
 	}
-	r := &TaoRPCRequest{Size: proto.Int32(int32(n))}
+	r := &RPCRequest{Size: proto.Int32(int32(n))}
 	bytes, _, err := t.call(t.serviceName+".GetRandomBytes", r, wantData)
 	return bytes, err
 }
 
 // GetSharedSecret implements part of the Tao interface.
-func (t *TaoRPC) GetSharedSecret(n int, policy string) ([]byte, error) {
+func (t *RPC) GetSharedSecret(n int, policy string) ([]byte, error) {
 	if n > math.MaxUint32 {
 		return nil, newError("taorpc: request for too many secret bytes")
 	}
-	r := &TaoRPCRequest{Size: proto.Int32(int32(n)), Policy: proto.String(policy)}
+	r := &RPCRequest{Size: proto.Int32(int32(n)), Policy: proto.String(policy)}
 	bytes, _, err := t.call(t.serviceName+".GetSharedSecret", r, wantData)
 	return bytes, err
 }
 
 // Attest implements part of the Tao interface.
-func (t *TaoRPC) Attest(issuer *auth.Prin, time, expiration *int64, message auth.Form) (*Attestation, error) {
+func (t *RPC) Attest(issuer *auth.Prin, time, expiration *int64, message auth.Form) (*Attestation, error) {
 	var issuerBytes []byte
 	if issuer != nil {
 		issuerBytes = auth.Marshal(*issuer)
 	}
-	r := &TaoRPCRequest{
+	r := &RPCRequest{
 		Issuer:     issuerBytes,
 		Time:       time,
 		Expiration: expiration,
@@ -208,15 +208,15 @@ func (t *TaoRPC) Attest(issuer *auth.Prin, time, expiration *int64, message auth
 }
 
 // Seal implements part of the Tao interface.
-func (t *TaoRPC) Seal(data []byte, policy string) (sealed []byte, err error) {
-	r := &TaoRPCRequest{Data: data, Policy: proto.String(policy)}
+func (t *RPC) Seal(data []byte, policy string) (sealed []byte, err error) {
+	r := &RPCRequest{Data: data, Policy: proto.String(policy)}
 	sealed, _, err = t.call(t.serviceName+".Seal", r, wantData)
 	return
 }
 
 // Unseal implements part of the Tao interface.
-func (t *TaoRPC) Unseal(sealed []byte) (data []byte, policy string, err error) {
-	r := &TaoRPCRequest{Data: sealed}
+func (t *RPC) Unseal(sealed []byte) (data []byte, policy string, err error) {
+	r := &RPCRequest{Data: sealed}
 	data, policy, err = t.call(t.serviceName+".Unseal", r, wantData|wantPolicy)
 	return
 }

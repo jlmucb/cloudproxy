@@ -70,7 +70,7 @@ func main() {
 		verbose = os.Stderr
 	}
 
-	tc := tao.TaoConfig{
+	tc := tao.Config{
 		HostType:        tao.HostTaoTypeMap[*hostType],
 		HostChannelType: tao.HostTaoChannelMap[*hostChannelType],
 		HostSpec:        *hostSpec,

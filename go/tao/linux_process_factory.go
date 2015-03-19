@@ -153,7 +153,7 @@ func (lpf *LinuxProcessFactory) Launch(prog string, args []string, uid, gid int)
 		extraFiles = []*os.File{clientRead, clientWrite} // fd 3, fd 4
 
 		// Note: ExtraFiles below ensures readfd=3, writefd=4 in child
-		evar = HostSpecEnvVar + "=tao::TaoRPC+tao::FDMessageChannel(3, 4)"
+		evar = HostSpecEnvVar + "=tao::RPC+tao::FDMessageChannel(3, 4)"
 	case "unix":
 		// Get a random name for the socket.
 		nameBytes := make([]byte, sockNameLen)

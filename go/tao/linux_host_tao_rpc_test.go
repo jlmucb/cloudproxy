@@ -50,7 +50,7 @@ func testNewLinuxHostTaoServer(t *testing.T) (Tao, string) {
 
 	child := &LinuxHostChild{
 		channel:      hostChannel,
-		ChildSubprin: auth.SubPrin{auth.PrinExt{Name: "TestChild"}},
+		ChildSubprin: auth.SubPrin{Ext: auth.PrinExt{Name: "TestChild"}},
 		Cmd:          nil, // The Cmd field is not used in this test.
 	}
 

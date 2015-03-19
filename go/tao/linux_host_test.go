@@ -76,7 +76,7 @@ func TestNewRootLinuxHost(t *testing.T) {
 var testChildLH = &LinuxHostChild{
 	channel:      nil,
 	Cmd:          nil,
-	ChildSubprin: auth.SubPrin{auth.PrinExt{Name: "TestChild"}},
+	ChildSubprin: auth.SubPrin{Ext: auth.PrinExt{Name: "TestChild"}},
 }
 
 func testLinuxHostHandleGetTaoName(t *testing.T, lh *LinuxHost) {

@@ -237,7 +237,7 @@ func NewLinuxKVMCoreOSFactory(sockPath string, cfg *CoreOSConfig) HostedProgramF
 	if err != nil {
 		glog.Fatalf("couldn't create a 2048-bit RSA key: %s", err)
 	}
-	sshpk, err := ssh.NewPublicKey(priv.Public())
+	sshpk, err := ssh.NewPublicKey(&priv.PublicKey)
 	if err != nil {
 		glog.Fatalf("couldn't create a SSH public key from the RSA key: %s", err)
 	}

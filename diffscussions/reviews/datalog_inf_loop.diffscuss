@@ -1,0 +1,332 @@
+#* 
+#* author: Kevin Walsh
+#* email: kwalsh@holycross.edu
+#* date: 2015-05-19T19:13:15-0400
+#* 
+#- Fixed infinite loop in datalog guard
+#- 
+#- 
+diff --git a/go/tao/datalog_guard.go b/go/tao/datalog_guard.go
+index 9537f5b..f0d3d3f 100644
+--- a/go/tao/datalog_guard.go
++++ b/go/tao/datalog_guard.go
+@@ -83,147 +83,173 @@ type DatalogGuard struct {
+ // detection. The predicate Subprin(S, P, E) in auth is special-cased in
+ // DatalogGuard to write in datalog to subprin/3 with arguments S, P, E.
+ type subprinPrim struct {
+ 	datalog.DistinctPred
+ }
+ 
+ // String returns a string representation of the subprin custom datalog
+ // predicate.
+ func (sp *subprinPrim) String() string {
+ 	return "subprin"
+ }
+ 
+ func (sp *subprinPrim) Assert(c *datalog.Clause) error {
+ 	return newError("datalog: can't assert for custom predicates")
+ }
+ 
+ func (sp *subprinPrim) Retract(c *datalog.Clause) error {
+ 	return newError("datalog: can't retract for custom predicates")
+ }
+ 
+-// parseRootExtPrins parses a pair of terms as a key/tpm principal and an
+-// extension principal tail. Both Terms must implement fmt.Stringer.
+-func parseRootExtPrins(o datalog.Term, e datalog.Term) (oprin auth.Prin, eprin auth.PrinTail, err error) {
+-	// Report subprin(O.E, O, E) as discovered.
+-	ostringer, ok1 := o.(fmt.Stringer)
+-	estringer, ok2 := e.(fmt.Stringer)
+-	if !ok1 || !ok2 {
+-		err = fmt.Errorf("arguments 2 and 3 must implement fmt.Stringer in subprin/3")
+-		return
+-	}
+-
+-	// The first must be a regular rooted principal, and the second must be
+-	// an ext principal tail.
+-	var ostr string
+-	if _, err = fmt.Sscanf(ostringer.String(), "%q", &ostr); err != nil {
+-		return
+-	}
+-
+-	var estr string
+-	if _, err = fmt.Sscanf(estringer.String(), "%q", &estr); err != nil {
+-		return
+-	}
+-
+-	if _, err = fmt.Sscanf(ostr, "%v", &oprin); err != nil {
+-		return
++// parsePrinTail parses Term (which msut be a datalog.Quoted) as principal tail.
++func parsePrinTail(e datalog.Term) (tail auth.PrinTail, ok bool) {
++	// Parse p as Parent.Ext and report subprin(Parent.Ext, Parent, Ext).
++	// Note: The way the translation works between DatalogGuard and the Datalog
++	// engine, e will be a dlengine.Quoted holding a string. 
++	q, ok := e.(*dlengine.Quoted)
++	if !ok {
++        return
+ 	}
+-	if _, err = fmt.Sscanf(estr, "%v", &eprin); err != nil {
+-		return
++	if _, err := fmt.Sscanf(q.Value, "%v", &tail); err != nil {
++        ok = false
+ 	}
+-	return
++    return
+ }
+ 
+-// parseCompositePrin parses a Term (which must implement fmt.Stringer) as a
+-// principal with at least one extension.
+-func parseCompositePrin(p datalog.Term) (prin auth.Prin, err error) {
++// parsePrin parses a Term (which must be a datalog.Quoted) as a principal.
++func parsePrin(p datalog.Term) (prin auth.Prin, ok bool) {
+ 	// Parse p as Parent.Ext and report subprin(Parent.Ext, Parent, Ext).
+-	pstringer, ok := p.(fmt.Stringer)
++	// Note: The way the translation works between DatalogGuard and the Datalog
++	// engine, p will be a dlengine.Quoted holding a string. 
++	q, ok := p.(*dlengine.Quoted)
+ 	if !ok {
+-		err = fmt.Errorf("A composite principal must be a Stringer")
+-		return
++        return
+ 	}
+-
+-	// Due to the way the translation works between DatalogGuard and the Datalog
+-	// engine, this is a quoted string. So, trim the quotes at the beginning and
+-	// the end of the string before parsing it.
+-	var pstr string
+-	if _, err = fmt.Sscanf(pstringer.String(), "%q", &pstr); err != nil {
+-		return
++	if _, err := fmt.Sscanf(q.Value, "%v", &prin); err != nil {
++        ok = false
+ 	}
+-	if _, err = fmt.Sscanf(pstr, "%v", &prin); err != nil {
+-		return
+-	}
+-	if len(prin.Ext) < 1 {
+-		err = fmt.Errorf("A composite principal must have extensions")
+-		return
+-	}
+-
+-	return
++    return
+ }
+ 
+ // Search implements the subprinPrim custom datalog primitive by parsing
+ // constant arguments of subprin/3 as principals and reporting any clauses it
+-// discovers.
++// discovers. Note: Datalog termination requires that Search discover only a
++// finite number of new facts, and more specifically, that Search introduces
++// new, distinct terms only if these will not kick off new Search calls in an
++// infinite regression. Search meets this requirement by only generating new
++// principal (or principal tail) terms that are strictly "smaller" than those
++// already present, where "smaller" is essentially the subprincipal relation.
+ func (sp *subprinPrim) Search(target *datalog.Literal, discovered func(c *datalog.Clause)) {
+ 	p := target.Arg[0]
+ 	o := target.Arg[1]
+ 	e := target.Arg[2]
+ 	if p.Constant() && o.Variable() && e.Variable() {
+-		prin, err := parseCompositePrin(p)
+-		if err != nil {
++        // fmt.Printf("splitting prin %v\n", p)
++		prin, ok := parsePrin(p)
++		if !ok || len(prin.Ext) < 1 {
+ 			return
+ 		}
+-		extIndex := len(prin.Ext) - 1
+-		trimmedPrin := auth.Prin{
+-			Type: prin.Type,
+-			Key:  prin.Key,
+-			Ext:  prin.Ext[:extIndex],
+-		}
+-		extPrin := auth.PrinTail{
+-			Ext: []auth.PrinExt{prin.Ext[extIndex]},
++        // enumerate all possible tails
++        for i := 1; i < len(prin.Ext); i++ {
++            trimmedPrin := auth.Prin{
++                Type: prin.Type,
++                Key:  prin.Key,
++                Ext:  prin.Ext[:i],
++            }
++            extPrin := auth.PrinTail{
++                Ext: prin.Ext[i:],
++            }
++            o = dlengine.NewQuoted(trimmedPrin.String())
++            e = dlengine.NewQuoted(extPrin.String())
++            discovered(datalog.NewClause(datalog.NewLiteral(sp, p, o, e)))
++        }
++	} else if p.Constant() && o.Variable() && e.Constant() {
++        // fmt.Printf("checking prin %v against tail %v\n", p, e)
++		prin, ok1 := parsePrin(p)
++		etail, ok2 := parsePrinTail(e)
++		if !ok1 || !ok2 || len(etail.Ext) < 1 {
++			return
+ 		}
+-
+-		parentIdent := dlengine.NewIdent(fmt.Sprintf("%q", trimmedPrin.String()))
+-		extIdent := dlengine.NewIdent(fmt.Sprintf("%q", extPrin.String()))
+-		discovered(datalog.NewClause(datalog.NewLiteral(sp, p, parentIdent, extIdent)))
+-	} else if p.Variable() && o.Constant() && e.Constant() {
+-		oprin, eprin, err := parseRootExtPrins(o, e)
+-		if err != nil {
++        n := len(prin.Ext) - len(etail.Ext)
++        if n < 0 {
++            return
++        }
++        extPrin := auth.PrinTail{
++            Ext: prin.Ext[n:],
++        }
++        if !extPrin.Identical(etail) {
++            return
++        }
++        trimmedPrin := auth.Prin{
++            Type: prin.Type,
++            Key:  prin.Key,
++            Ext:  prin.Ext[0:n],
++        }
++        o = dlengine.NewQuoted(trimmedPrin.String())
++        discovered(datalog.NewClause(datalog.NewLiteral(sp, p, o, e)))
++	} else if p.Constant() && o.Constant() && e.Variable() {
++        // fmt.Printf("extracting from prin %v tail for %v\n", p, o)
++		prin, ok1 := parsePrin(p)
++		oprin, ok2 := parsePrin(o)
++		if !ok1 || !ok2 {
+ 			return
+ 		}
+-		oprin.Ext = append(oprin.Ext, eprin.Ext...)
+-		oeIdent := dlengine.NewIdent(fmt.Sprintf("%q", oprin.String()))
+-		discovered(datalog.NewClause(datalog.NewLiteral(sp, oeIdent, o, e)))
++        n := len(oprin.Ext)
++        if len(prin.Ext) <= n {
++            return
++        }
++        trimmedPrin := auth.Prin{
++            Type: prin.Type,
++            Key:  prin.Key,
++            Ext:  prin.Ext[0:n],
++        }
++		if !trimmedPrin.Identical(oprin) {
++            return
++        }
++        extPrin := auth.PrinTail{
++            Ext: prin.Ext[n:],
++        }
++        e = dlengine.NewQuoted(extPrin.String())
++        discovered(datalog.NewClause(datalog.NewLiteral(sp, p, o, e)))
++	} else if p.Variable() && o.Constant() && e.Constant() {
++        // fmt.Printf("refusing to join %v with extension %v\n", o, e)
++        // Note: although it seems that p must equal "o.e", it is unsafe to
++        // report this as discovered. That is, "o.e" may be a new,
++        // never-before-seen term, and it may cause an infinite regression of
++        // new calls to Search.
++        // Note also that refusing to discover "o.e" here does not limit the
++        // power of datalog too much... in practice, the engine will eventually
++        // call Search using "o.e" for argument p, if "o.e" is within the
++        // universe of discussion, and that Search call will succeed.
++        return
+ 	} else if p.Constant() && o.Constant() && e.Constant() {
++        // fmt.Printf("checking %v against prin %v extension %v\n", p, o, e)
+ 		// Check that the constraint holds and report it as discovered.
+-		prin, err := parseCompositePrin(p)
+-		if err != nil {
++		prin, ok1 := parsePrin(p)
++        oprin, ok2 := parsePrin(o)
++        etail, ok3 := parsePrinTail(e)
++		if !ok1 || !ok2 || !ok3 {
+ 			return
+ 		}
+-		oprin, eprin, err := parseRootExtPrins(o, e)
+-		if err != nil {
+-			return
+-		}
+-
+ 		// Extend the root principal with the extension from the ext principal
+ 		// and check identity.
+-		oprin.Ext = append(oprin.Ext, eprin.Ext...)
++		oprin.Ext = append(oprin.Ext, etail.Ext...)
+ 		if prin.Identical(oprin) {
+ 			discovered(datalog.NewClause(datalog.NewLiteral(sp, p, o, e)))
+ 		}
+ 	}
+ }
+ 
+ // NewTemporaryDatalogGuard returns a new datalog guard with a fresh, unsigned,
+ // non-persistent rule set. It adds a custom predicate subprin(P, O, E) to check
+ // if a principal P is a subprincipal O.E.
+ func NewTemporaryDatalogGuard() Guard {
+ 	sp := new(subprinPrim)
+ 	sp.SetArity(3)
+ 	eng := dlengine.NewEngine()
+ 	eng.AddPred(sp)
+ 	return &DatalogGuard{dl: eng}
+ }
+ 
+ // NewDatalogGuard returns a new datalog guard that uses a signed, persistent
+ // signed rule set. ReloadIfModified() should be called to load the rule set.
+ func NewDatalogGuard(key *Verifier, config DatalogGuardDetails) (*DatalogGuard, error) {
+diff --git a/go/tao/datalog_guard_test.go b/go/tao/datalog_guard_test.go
+index a50838b..57240e7 100644
+--- a/go/tao/datalog_guard_test.go
++++ b/go/tao/datalog_guard_test.go
+@@ -205,20 +205,62 @@ func TestDatalogSubprin(t *testing.T) {
+ 	for _, s := range datalogSubprinProg {
+ 		if err := g.AddRule(s); err != nil {
+ 			t.Fatal("Couldn't add rule '", s, "':", err)
+ 		}
+ 	}
+ 
+ 	pprin := auth.Prin{
+ 		Type: "key",
+ 		Key:  auth.Bytes([]byte{0x70}),
+ 		Ext: []auth.PrinExt{
+ 			auth.PrinExt{
+ 				Name: "Hash",
+ 				Arg:  []auth.Term{auth.Bytes([]byte{0x71})},
+ 			},
+ 		},
+ 	}
+ 	if !g.IsAuthorized(pprin, "Execute", nil) {
+ 		t.Fatal("Subprin authorization check failed")
+ 	}
+ }
++
++var datalogLoops = []string{
++	"(forall Host: forall Hash: forall P: TrustedHost(Host) and TrustedHash(Hash) and Subprin(P, Host, Hash) implies TrustedHost(P))",
++	"(TrustedHost(key([70])))",
++	"(TrustedHash(ext.Hash([71])))",
++}
++
++func TestDatalogLoop(t *testing.T) {
++	g, key, tmpdir := makeDatalogGuard(t)
++	defer os.RemoveAll(tmpdir)
++	err := g.Save(key)
++
++	for _, s := range datalogLoops {
++		if err := g.AddRule(s); err != nil {
++			t.Fatalf("Couldn't add rule '%s': %s", s, err)
++		}
++	}
++
++	ok, err := g.Query("TrustedHost(key([70]).Hash([71]))")
++	if err != nil {
++		t.Fatalf("Couldn't query the datalog guard: %s", err)
++	}
++	if !ok {
++		t.Fatal("Datalog guard incorrectly returned false for a true statement")
++	}
++
++	ok, err = g.Query("TrustedHost(key([70]))")
++	if err != nil {
++		t.Fatalf("Couldn't query the datalog guard: %s", err)
++	}
++	if !ok {
++		t.Fatal("Datalog guard incorrectly returned false for a true statement")
++	}
++
++	ok, err = g.Query("TrustedHost(key([70]).Hash([72]))")
++	if err != nil {
++		t.Fatalf("Couldn't query the datalog guard: %s", err)
++	}
++	if ok {
++		t.Fatal("Datalog guard incorrectly returned true for a false statement")
++	}
++}

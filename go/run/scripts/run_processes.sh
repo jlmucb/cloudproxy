@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ "$#" != "1" ]; then
 	echo "Must supply the path to an initialized domain"
@@ -8,6 +8,11 @@ fi
 set -o nounset
 set -o errexit
 
+gowhich() {
+	WHICH=$(which which)
+	echo -n "$(PATH="${GOPATH//://bin:}/bin" $WHICH "$1")"
+}
+
 DOMAIN=$1
 BINDIR=${GOPATH}/bin
 
@@ -15,16 +20,16 @@ BINDIR=${GOPATH}/bin
 # below.
 sudo test true
 
-sudo ${BINDIR}/linux_host -config_path ${DOMAIN}/tao.config -pass BogusPass &
+sudo "$(gowhich linux_host)" -config_path ${DOMAIN}/tao.config -pass BogusPass &
 HOSTPID=$!
 
 echo "Waiting for linux_host to start"
 sleep 5
 
-DSPID=$(${BINDIR}/tao_launch -sock ${DOMAIN}/linux_tao_host/admin_socket \
-	${BINDIR}/demo_server -config=${DOMAIN}/tao.config)
-${BINDIR}/tao_launch -sock ${DOMAIN}/linux_tao_host/admin_socket \
-	${BINDIR}/demo_client -config=${DOMAIN}/tao.config > /dev/null
+DSPID=$("$(gowhich tao_launch)" -sock ${DOMAIN}/linux_tao_host/admin_socket \
+	"$(gowhich demo_server)" -config=${DOMAIN}/tao.config)
+"$(gowhich tao_launch)" -sock ${DOMAIN}/linux_tao_host/admin_socket \
+	"$(gowhich demo_client)" -config=${DOMAIN}/tao.config > /dev/null
 
 
 echo "Waiting for the tests to finish"

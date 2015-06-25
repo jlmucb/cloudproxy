@@ -10,14 +10,15 @@ if [ "$#" != "2" ]; then
 	exit 1
 fi
 
-BINDIR=${GOPATH}/bin
+WHICH=$(which which)
+APP_BIN="$(PATH="${GOPATH//://bin:}/bin" $WHICH linux_host)"
 TEMP_DIR=`mktemp -d`
-cp ${BINDIR}/linux_host ${TEMP_DIR}/linux_host
+cp "$APP_BIN" ${TEMP_DIR}/linux_host
 mkdir ${TEMP_DIR}/policy_keys
 mkdir ${TEMP_DIR}/linux_tao_host
 chmod 755 ${TEMP_DIR}/linux_tao_host
 cp $1 ${TEMP_DIR}/policy_keys/cert
 cp $2 ${TEMP_DIR}/tao.config
 
-tar -C ${TEMP_DIR} -czf ${BINDIR}/linux_host.img.tgz `ls ${TEMP_DIR}`
+tar -C ${TEMP_DIR} -czf "$APP_BIN".img.tgz `ls ${TEMP_DIR}`
 rm -fr ${TEMP_DIR}

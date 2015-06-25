@@ -9,12 +9,12 @@ set -o nounset
 set -o errexit
 
 
-GUARD=$1
+GUARD="$1"
 WHICH=$(which which)
 ADMIN="$(PATH="${GOPATH//://bin:}/bin" $WHICH tao_admin)"
 SCRIPT_PATH="$(readlink -e "$(dirname "$0")")"
 TEMPLATE="${SCRIPT_PATH}"/domain_template.pb
-DOMAIN_PATH=`mktemp -d /tmp/domain.XXXXXX`
+DOMAIN_PATH=$(mktemp -d /tmp/domain.XXXXXX)
 HOST_REL_PATH=linux_tao_host
 FAKE_PASS=BogusPass
 

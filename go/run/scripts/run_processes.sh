@@ -13,8 +13,7 @@ gowhich() {
 	echo -n "$(PATH="${GOPATH//://bin:}/bin" $WHICH "$1")"
 }
 
-DOMAIN=$1
-BINDIR=${GOPATH}/bin
+DOMAIN="$1"
 
 # Make sure we have sudo privileges before using them to try to start linux_host
 # below.

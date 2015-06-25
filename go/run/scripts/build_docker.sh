@@ -17,12 +17,12 @@ function build_docker() {
 	# readlink -e)
 
 	script_name="$1"
-	app_name=$2
-	policy_cert=$3
-	tao_config=$4
+	app_name="$2"
+	policy_cert="$3"
+	tao_config="$4"
 
 	DEMO_DIR="$(readlink -e "$(dirname "$script_name")")"/../../apps/demo
-	TEMP_DIR=`mktemp -d`
+        TEMP_DIR=$(mktemp -d)
 	cp "${DEMO_DIR}"/${app_name}/Dockerfile ${TEMP_DIR}/Dockerfile
 	mkdir ${TEMP_DIR}/tmp
 	mkdir ${TEMP_DIR}/bin
@@ -33,8 +33,8 @@ function build_docker() {
 	cp $policy_cert ${TEMP_DIR}/policy_keys/cert
 	cp $tao_config ${TEMP_DIR}/tao.config
 
-	tar -C ${TEMP_DIR} -czf "$APP_BIN".img.tgz `ls ${TEMP_DIR}`
+        tar -C ${TEMP_DIR} -czf "$APP_BIN".img.tgz $(ls ${TEMP_DIR})
 }
 
-build_docker "$0" demo_server $1 $2
-build_docker "$0" demo_client $1 $2
+build_docker "$0" demo_server "$1" "$2"
+build_docker "$0" demo_client "$1" "$2"

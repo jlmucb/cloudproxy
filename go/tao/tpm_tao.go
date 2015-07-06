@@ -92,45 +92,22 @@ func NewTPMTao(tpmPath string, aikblob []byte, pcrNums []int) (Tao, error) {
 		return nil, err
 	}
 
-	aik, err := x509.MarshalPKIXPublicKey(tt.verifier)
+	// Get the pcr values for the PCR nums.
+	tt.pcrNums = make([]int, len(pcrNums))
+	for i, v := range pcrNums {
+		tt.pcrNums[i] = v
+	}
+
+	tt.pcrVals, err = ReadPCRs(tt.tpmfile, pcrNums)
 	if err != nil {
 		return nil, err
 	}
-	tt.name = auth.Prin{
-		Type: "tpm",
-		Key:  auth.Bytes(aik),
-	}
 
-	// Get the pcr values for the PCR nums.
-	tt.pcrNums = make([]int, len(pcrNums))
-	tt.pcrVals = make([][]byte, len(pcrNums))
-	for i, v := range pcrNums {
-		tt.pcrNums[i] = v
-		pv, err := tpm.ReadPCR(tt.tpmfile, uint32(v))
-		if err != nil {
-			return nil, err
-		}
-		tt.pcrVals[i] = pv
+	// Create principal.
+	tt.name, err = MakeTPMPrin(tt.verifier, tt.pcrNums, tt.pcrVals)
+	if err != nil {
+		return nil, err
 	}
-
-	asp := auth.PrinExt{
-		Name: "PCRs",
-		Arg:  make([]auth.Term, 2),
-	}
-	var pcrNumStrs []string
-	for _, v := range tt.pcrNums {
-		pcrNumStrs = append(pcrNumStrs, strconv.Itoa(v))
-	}
-	asp.Arg[0] = auth.Str(strings.Join(pcrNumStrs, ","))
-
-	var pcrValStrs []string
-	for _, p := range tt.pcrVals {
-		pcrValStrs = append(pcrValStrs, hex.EncodeToString(p))
-	}
-	asp.Arg[1] = auth.Str(strings.Join(pcrValStrs, ","))
-
-	// The PCRs are the first extension of the name.
-	tt.name.Ext = []auth.PrinExt{asp}
 
 	return tt, nil
 }
@@ -396,4 +373,49 @@ func extractAIK(p auth.Prin) (*rsa.PublicKey, error) {
 	}
 
 	return aik, nil
+}
+
+func ReadPCRs(tpmfile *os.File, pcrNums []int) ([][]byte, error) {
+	pcrVals := make([][]byte, len(pcrNums))
+	for i, v := range pcrNums {
+		pv, err := tpm.ReadPCR(tpmfile, uint32(v))
+		if err != nil {
+			return nil, err
+		}
+		pcrVals[i] = pv
+	}
+	return pcrVals, nil
+}
+
+func MakeTPMPrin(verifier *rsa.PublicKey, pcrNums []int, pcrVals [][]byte) (auth.Prin, error) {
+	aik, err := x509.MarshalPKIXPublicKey(verifier)
+	if err != nil {
+		return auth.Prin{}, err
+	}
+
+	name := auth.Prin{
+		Type: "tpm",
+		Key:  auth.Bytes(aik),
+	}
+
+	asp := auth.PrinExt{
+		Name: "PCRs",
+		Arg:  make([]auth.Term, 2),
+	}
+	var pcrNumStrs []string
+	for _, v := range pcrNums {
+		pcrNumStrs = append(pcrNumStrs, strconv.Itoa(v))
+	}
+	asp.Arg[0] = auth.Str(strings.Join(pcrNumStrs, ","))
+
+	var pcrValStrs []string
+	for _, p := range pcrVals {
+		pcrValStrs = append(pcrValStrs, hex.EncodeToString(p))
+	}
+	asp.Arg[1] = auth.Str(strings.Join(pcrValStrs, ","))
+
+	// The PCRs are the first extension of the name.
+	name.Ext = []auth.PrinExt{asp}
+
+	return name, nil
 }

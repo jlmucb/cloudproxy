@@ -66,4 +66,6 @@ message DomainTemplate {
   optional string linux_host_predicate_name = 13;
   // The name of the predicate to use for trusted guards.
   optional string guard_predicate_name = 14;
+  // The name of the predicate to use for trusted TPMs.
+  optional string tpm_predicate_name = 15; 
 }

@@ -14,12 +14,18 @@ gowhich() {
 }
 
 DOMAIN="$1"
+FAKE_PASS=BogusPass
+TPM="/dev/tpm0"
+PCRS="17,18" # PCR registers of TPM 
+AIKBLOB="${HOME}/aikblob"
 
 # Make sure we have sudo privileges before using them to try to start linux_host
 # below.
 sudo test true
 
-sudo "$(gowhich linux_host)" -config_path ${DOMAIN}/tao.config -pass BogusPass &
+sudo "$(gowhich linux_host)" -config_path ${DOMAIN}/tao.config \
+	-host_type stacked -host_channel_type tpm \
+	-tpm_device $TPM -tpm_pcrs $PCRS -tpm_aik_path $AIKBLOB &
 HOSTPID=$!
 
 echo "Waiting for linux_host to start"

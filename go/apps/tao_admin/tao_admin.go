@@ -16,7 +16,6 @@ package main
 
 import (
 	"crypto/sha256"
-	"crypto/x509"
 	"flag"
 	"fmt"
 	"io"
@@ -88,6 +87,7 @@ func main() {
 	addVMs := flag.Bool("add_vms", false, "Add VMs to the policy")
 	addLinuxHost := flag.Bool("add_linux_host", false, "Add LinuxHost to the policy")
 	addGuard := flag.Bool("add_guard", false, "Add a trusted guard to the policy")
+	addTPM := flag.Bool("add_tpm", false, "Add trusted platform module to the policy")
 
 	// Flags for the 'user' option, used to create new user keys.
 	userKeyDetails := flag.String("user_key_details", "", "Path to a file that contains an X509Details proto")
@@ -213,6 +213,9 @@ func main() {
 			if *addGuard {
 				addGuardRules(&dt, domain)
 			}
+			if *addTPM {
+				addTPMRules(&dt, domain, *tpmPath, *aikFile, pcrVals)
+			}
 		}
 	case "user":
 		createUserKeys(*userPass, *pass, *userKeyDetails, *userKeyPath, configPath)
@@ -292,6 +295,36 @@ func makeContainerSubPrin(prog string) (auth.SubPrin, error) {
 		return auth.SubPrin{}, err
 	}
 	return tao.FormatDockerSubprin(id, h), nil
+}
+
+func makeTPMPrin(tpmPath, aikFile string, pcrNums []int) (auth.Prin, error) {
+	// Read AIK blob (TPM's public key).
+	aikblob, err := ioutil.ReadFile(aikFile)
+	if err != nil {
+		return auth.Prin{}, nil
+	}
+
+	verifier, err := tpm.UnmarshalRSAPublicKey(aikblob)
+	if err != nil {
+		return auth.Prin{}, nil
+	}
+
+	// Open a connection to the TPM.
+	tpmFile, err := os.OpenFile(tpmPath, os.O_RDWR, 0)
+	defer tpmFile.Close()
+	if err != nil {
+		return auth.Prin{}, nil
+	}
+
+	// Read registers corresponding to pcrNums.
+	pcrVals, err := tao.ReadPCRs(tpmFile, pcrNums)
+
+	// Construct a TPM principal.
+	prin, err := tao.MakeTPMPrin(verifier, pcrNums, pcrVals)
+	if err != nil {
+		return auth.Prin{}, nil
+	}
+	return prin, nil
 }
 
 func getKey(prompt, input string) []byte {
@@ -591,6 +624,24 @@ func addGuardRules(dt *tao.DomainTemplate, domain *tao.Domain) {
 	}
 }
 
+func addTPMRules(dt *tao.DomainTemplate, domain *tao.Domain, tpmPath, aikFile string, pcrNums []int) {
+	prin, err := makeTPMPrin(tpmPath, aikFile, pcrNums)
+	if err != nil {
+		glog.Exit(err)
+	}
+	// Construct a TrustedTPM predicate, add it as a rule.
+	// TODO(cjpatton) Need a TrustedOS(PCR( ... )) and TrustedTPM(tpm( ... )). For the
+	// former create a PrinTail from prin.Ext. For the latter, do prin.Ext = nil.
+	// NOTE a temporary change domain_template.pb to the policy.
+	pred := auth.MakePredicate(dt.GetTpmPredicateName(), prin)
+	if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
+		glog.Exit(err)
+	}
+	if err := domain.Save(); err != nil {
+		glog.Exit(err)
+	}
+}
+
 func createUserKeys(userPass, pass, userKeyDetails, userKeyPath, configPath string) {
 	upwd := getKey("user password", userPass)
 	pwd := getKey("policy key password", pass)
@@ -646,43 +697,15 @@ func outputPrincipal(principal, tpmPath, aikFile, domainPath, keyPass string, pc
 		pt := auth.PrinTail{Ext: subprin}
 		fmt.Println(pt)
 	case "tpm":
-		f, err := os.OpenFile(tpmPath, os.O_RDWR, 0600)
+		prin, err := makeTPMPrin(tpmPath, aikFile, pcrVals)
+
 		if err != nil {
 			glog.Exit(err)
 		}
-		defer f.Close()
-
-		pcrpe := auth.PrinExt{
-			Name: "PCRs",
-			Arg:  make([]auth.Term, len(pcrVals)),
-		}
-		for i, pcr := range pcrVals {
-			res, err := tpm.ReadPCR(f, uint32(pcr))
-			if err != nil {
-				glog.Exit(err)
-			}
-
-			pcrpe.Arg[i] = auth.Bytes(res)
-		}
-
-		aikblob, err := ioutil.ReadFile(aikFile)
-		if err != nil {
-			glog.Exit(err)
-		}
-		v, err := tpm.UnmarshalRSAPublicKey(aikblob)
-		if err != nil {
-			glog.Exit(err)
-		}
-		aik, err := x509.MarshalPKIXPublicKey(v)
-		if err != nil {
-			glog.Exit(err)
-		}
-
-		name := auth.Prin{
-			Type: "tpm",
-			Key:  auth.Bytes(aik),
-			Ext:  []auth.PrinExt{pcrpe},
-		}
+		// In the domain template the host name is in quotes. We need to escape
+		// quote strings in the Principal string so that domain_template.pb gets
+		// parsed correctly.
+		name := strings.Replace(prin.String(), "\"", "\\\"", -1)
 		fmt.Println(name)
 	case "key":
 		lhpwd := getKey("key password", keyPass)

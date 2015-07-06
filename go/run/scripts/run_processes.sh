@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ "$#" != "1" ]; then
-	echo "Must supply the path to an initialized domain"
+if [ "$#" != "2" ]; then
+	echo "Must supply the path to an initialized domain and a host type (Key or TPM)"
 	exit 1
 fi
 
@@ -14,19 +14,30 @@ gowhich() {
 }
 
 DOMAIN="$1"
+TYPE="$2"
 FAKE_PASS=BogusPass
 TPM="/dev/tpm0"
-PCRS="17,18" # PCR registers of TPM 
+PCRS="17,18" # PCR registers of TPM
 AIKBLOB="${HOME}/aikblob"
 
 # Make sure we have sudo privileges before using them to try to start linux_host
 # below.
 sudo test true
 
-sudo "$(gowhich linux_host)" -config_path ${DOMAIN}/tao.config \
-	-host_type stacked -host_channel_type tpm \
-	-tpm_device $TPM -tpm_pcrs $PCRS -tpm_aik_path $AIKBLOB &
-HOSTPID=$!
+if [[ "$TYPE" == "TPM" ]]; then
+  sudo "$(gowhich linux_host)" -config_path ${DOMAIN}/tao.config \
+          -host_type stacked -host_channel_type tpm \
+          -tpm_device $TPM -tpm_pcrs $PCRS -tpm_aik_path $AIKBLOB &
+  HOSTPID=$!
+elif [[ "$TYPE" == "Key" ]]; then
+  sudo "$(gowhich linux_host)" -config_path ${DOMAIN}/tao.config \
+     -pass BogusPass &
+  HOSTPID=$!
+else
+  echo "Invalid host type '$TYPE'"
+  exit 1
+fi
+
 
 echo "Waiting for linux_host to start"
 sleep 5

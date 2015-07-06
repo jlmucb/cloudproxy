@@ -301,19 +301,19 @@ func makeTPMPrin(tpmPath, aikFile string, pcrNums []int) (auth.Prin, error) {
 	// Read AIK blob (TPM's public key).
 	aikblob, err := ioutil.ReadFile(aikFile)
 	if err != nil {
-		return auth.Prin{}, nil
+		return auth.Prin{}, err
 	}
 
 	verifier, err := tpm.UnmarshalRSAPublicKey(aikblob)
 	if err != nil {
-		return auth.Prin{}, nil
+		return auth.Prin{}, err
 	}
 
 	// Open a connection to the TPM.
 	tpmFile, err := os.OpenFile(tpmPath, os.O_RDWR, 0)
 	defer tpmFile.Close()
 	if err != nil {
-		return auth.Prin{}, nil
+		return auth.Prin{}, err
 	}
 
 	// Read registers corresponding to pcrNums.
@@ -322,7 +322,7 @@ func makeTPMPrin(tpmPath, aikFile string, pcrNums []int) (auth.Prin, error) {
 	// Construct a TPM principal.
 	prin, err := tao.MakeTPMPrin(verifier, pcrNums, pcrVals)
 	if err != nil {
-		return auth.Prin{}, nil
+		return auth.Prin{}, err
 	}
 	return prin, nil
 }

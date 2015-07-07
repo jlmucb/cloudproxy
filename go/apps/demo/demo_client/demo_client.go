@@ -36,9 +36,7 @@ var demoAuth = flag.String("auth", "tao", "\"tcp\", \"tls\", or \"tao\"")
 var configPath = flag.String("config", "tao.config", "The Tao domain config")
 var ca = flag.String("ca", "", "address for Tao CA, if any")
 
-var subprinRule = "(forall P: forall Hash: TrustedProgramHash(Hash) and Subprin(P, %v, Hash) implies MemberProgram(P))"
-var argsRule = "(forall Y: forall P: forall S: MemberProgram(P) and TrustedArgs(S) and Subprin(Y, P, S) implies Authorized(Y, \"Execute\"))"
-var demoRule = "TrustedArgs(ext.Args(%s))"
+var subprinRule = "(forall P: forall Hash: TrustedProgramHash(Hash) and Subprin(P, %v, Hash) implies Authorized(P, \"Execute\"))"
 
 func doRequest(guard tao.Guard, domain *tao.Domain, keys *tao.Keys) bool {
 	glog.Infof("client: connecting to %s using %s authentication.\n", serverAddr, *demoAuth)
@@ -77,25 +75,10 @@ func newTempCAGuard(v *tao.Verifier) (tao.Guard, error) {
 	vprin := v.ToPrincipal()
 	rule := fmt.Sprintf(subprinRule, vprin)
 
-	// Add a rule that says that valid args are the ones we were called with.
-	args := ""
-	for i, a := range os.Args {
-		if i > 0 {
-			args += ", "
-		}
-		args += "\"" + a + "\""
-	}
-	authRule := fmt.Sprintf(demoRule, args)
-
 	if err := g.AddRule(rule); err != nil {
 		return nil, err
 	}
-	if err := g.AddRule(argsRule); err != nil {
-		return nil, err
-	}
-	if err := g.AddRule(authRule); err != nil {
-		return nil, err
-	}
+
 	return g, nil
 }
 

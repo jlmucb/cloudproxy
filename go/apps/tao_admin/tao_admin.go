@@ -22,7 +22,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 	"syscall"
 
@@ -33,30 +32,6 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"golang.org/x/crypto/ssh/terminal"
 )
-
-// A Value that converts 3,5,1 into []int{3, 5, 1}
-type pcrs []int
-
-func (p *pcrs) Set(val string) error {
-	s := strings.Split(val, ",")
-	for _, str := range s {
-		v, err := strconv.Atoi(str)
-		if err != nil {
-			return err
-		}
-
-		*p = append(*p, v)
-	}
-	return nil
-}
-
-func (p *pcrs) String() string {
-	s := make([]string, len([]int(*p)))
-	for i, val := range *p {
-		s[i] = strconv.Itoa(val)
-	}
-	return strings.Join(s, ",")
-}
 
 func main() {
 	// The main flag that switches between operations.
@@ -96,12 +71,7 @@ func main() {
 
 	// Flags for the 'principal' option, used to compute principal hashes.
 	principal := flag.String("principal", "program", "Type of hash to produce ('program', 'container', 'tpm', 'linux')")
-	tpmPath := flag.String("tpm", "/dev/tpm0", "Path to a TPM device.")
-	aikFile := flag.String("aikblob", "", "A file containing a TPM AIK.")
 	keyPass := flag.String("key_pass", "", "A password to use for key-based principal (for testing only!).")
-
-	var pcrVals pcrs
-	flag.Var(&pcrVals, "pcrs", "Indices of PCRs to return.")
 
 	help := "Administrative utility for Tao Domain.\n"
 	help += "[options] = [-quiet] [-config_path tao.config]\n"
@@ -140,8 +110,8 @@ func main() {
 		}
 	}
 
-	if dt.Config == nil && (*operation == "key" || *operation == "domain" || *operation == "policy") {
-		glog.Exit("must supply a template for 'key', 'domain', or 'policy' operations")
+	if dt.Config == nil && (*operation == "key" || *operation == "domain" || *operation == "policy" || *operation == "principal") {
+		glog.Exit("must supply a template for 'key', 'domain', 'policy', or 'principal' operations")
 	}
 
 	configPath := path.Join(*domainPath, *configName)
@@ -214,13 +184,13 @@ func main() {
 				addGuardRules(&dt, domain)
 			}
 			if *addTPM {
-				addTPMRules(&dt, domain, *tpmPath, *aikFile, pcrVals)
+				addTPMRules(&dt, domain, *domainPath)
 			}
 		}
 	case "user":
 		createUserKeys(*userPass, *pass, *userKeyDetails, *userKeyPath, configPath)
 	case "principal":
-		outputPrincipal(*principal, *tpmPath, *aikFile, *domainPath, *keyPass, pcrVals)
+		outputPrincipal(*principal, *domainPath, *keyPass, &dt)
 	default:
 		glog.Exitf("Unknown operation '%s'", *operation)
 	}
@@ -624,7 +594,8 @@ func addGuardRules(dt *tao.DomainTemplate, domain *tao.Domain) {
 	}
 }
 
-func addTPMRules(dt *tao.DomainTemplate, domain *tao.Domain, tpmPath, aikFile string, pcrNums []int) {
+func addTPMRules(dt *tao.DomainTemplate, domain *tao.Domain, domainPath string) {
+	tpmPath, aikFile, pcrNums := getTPMConfig(domainPath, dt)
 	prin, err := makeTPMPrin(tpmPath, aikFile, pcrNums)
 	if err != nil {
 		glog.Exit(err)
@@ -676,7 +647,18 @@ func createUserKeys(userPass, pass, userKeyDetails, userKeyPath, configPath stri
 	}
 }
 
-func outputPrincipal(principal, tpmPath, aikFile, domainPath, keyPass string, pcrVals []int) {
+func getTPMConfig(domainPath string, dt *tao.DomainTemplate) (string, string, []int) {
+	tpmPath := dt.GetConfig().GetTpmInfo().GetTpmPath()
+	aikFile := dt.GetConfig().GetTpmInfo().GetAikPath()
+	pcrVals := dt.GetConfig().GetTpmInfo().GetPcr()
+	pcrNums := make([]int, len(pcrVals))
+	for i, v := range pcrVals {
+		pcrNums[i] = int(v)
+	}
+	return tpmPath, aikFile, pcrNums
+}
+
+func outputPrincipal(principal, domainPath, keyPass string, dt *tao.DomainTemplate) {
 	args := flag.Args()
 	switch principal {
 	case "program":
@@ -704,6 +686,7 @@ func outputPrincipal(principal, tpmPath, aikFile, domainPath, keyPass string, pc
 		pt := auth.PrinTail{Ext: subprin}
 		fmt.Println(pt)
 	case "tpm":
+		tpmPath, aikFile, pcrVals := getTPMConfig(domainPath, dt)
 		prin, err := makeTPMPrin(tpmPath, aikFile, pcrVals)
 
 		if err != nil {

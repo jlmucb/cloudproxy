@@ -65,6 +65,18 @@ func (cfg *DomainConfig) SetDefaults() {
 	if cfg.X509Info.CommonName == nil {
 		cfg.X509Info.CommonName = cfg.DomainInfo.Name
 	}
+
+	if cfg.TpmInfo == nil {
+		cfg.TpmInfo = &TPMDetails{}
+	}
+
+	if cfg.TpmInfo.TpmPath == nil {
+		cfg.TpmInfo.TpmPath = proto.String("/dev/tpm0")
+	}
+
+	if cfg.TpmInfo.Pcr == nil {
+		cfg.TpmInfo.Pcr = []int32{17,18}
+	}
 }
 
 // String returns the name of the domain.

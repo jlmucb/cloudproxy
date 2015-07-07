@@ -19,6 +19,13 @@ config: {
   datalog_guard_info: {
     signed_rules_path: "rules"
   }
+
+  tpm_info: {
+    tpm_path: "/dev/tpm0"
+    aik_path: "aikblob"
+    pcr: 17
+    pcr: 18
+  }
 }
 
 datalog_rules: "(forall P: forall Host: forall Hash: TrustedHost(Host) and TrustedProgramHash(Hash) and Subprin(P, Host, Hash) implies MemberProgram(P))"

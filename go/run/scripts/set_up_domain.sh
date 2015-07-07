@@ -18,12 +18,6 @@ TEMPLATE="${SCRIPT_PATH}"/domain_template.pb
 DOMAIN_PATH=$(mktemp -d /tmp/domain.XXXXXX)
 HOST_REL_PATH=linux_tao_host
 
-# TPM parameters.
-# TODO(tmroeder) move these to domain template.
-TPM="/dev/tpm0"
-PCRS="17,18" # PCR registers of TPM
-AIKBLOB="${HOME}/aikblob"
-
 # Used to encrypt policy keys (as well as the keys for SoftTao) on disk.
 FAKE_PASS=BogusPass
 
@@ -73,8 +67,7 @@ fi
 # TPMTao: add TPM principal to domain, if one exists.
 if [ "$TYPE" == "TPM" ]; then
 	if [ -f "$AIKBLOB" ] && [ -e "$TPM" ]; then
-	  	sudo "$ADMIN" -operation policy -add_tpm \
-			  -principal tpm -tpm $TPM -pcrs $PCRS -aikblob $AIKBLOB \
+	  	sudo "$ADMIN" -operation policy -add_tpm -principal tpm \
 			  -pass $FAKE_PASS -domain_path $DOMAIN_PATH \
 			  -config_template $TEMP_FILE -logtostderr
 	else

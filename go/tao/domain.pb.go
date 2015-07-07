@@ -2,20 +2,6 @@
 // source: domain.proto
 // DO NOT EDIT!
 
-/*
-Package tao is a generated protocol buffer package.
-
-It is generated from these files:
-	domain.proto
-
-It has these top-level messages:
-	DomainDetails
-	X509Details
-	ACLGuardDetails
-	DatalogGuardDetails
-	DomainConfig
-	DomainTemplate
-*/
 package tao
 
 import proto "github.com/golang/protobuf/proto"
@@ -145,11 +131,44 @@ func (m *DatalogGuardDetails) GetSignedRulesPath() string {
 	return ""
 }
 
+type TPMDetails struct {
+	TpmPath          *string `protobuf:"bytes,1,opt,name=tpm_path" json:"tpm_path,omitempty"`
+	AikPath          *string `protobuf:"bytes,2,opt,name=aik_path" json:"aik_path,omitempty"`
+	Pcr              []int32 `protobuf:"varint,3,rep,name=pcr" json:"pcr,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *TPMDetails) Reset()         { *m = TPMDetails{} }
+func (m *TPMDetails) String() string { return proto.CompactTextString(m) }
+func (*TPMDetails) ProtoMessage()    {}
+
+func (m *TPMDetails) GetTpmPath() string {
+	if m != nil && m.TpmPath != nil {
+		return *m.TpmPath
+	}
+	return ""
+}
+
+func (m *TPMDetails) GetAikPath() string {
+	if m != nil && m.AikPath != nil {
+		return *m.AikPath
+	}
+	return ""
+}
+
+func (m *TPMDetails) GetPcr() []int32 {
+	if m != nil {
+		return m.Pcr
+	}
+	return nil
+}
+
 type DomainConfig struct {
 	DomainInfo       *DomainDetails       `protobuf:"bytes,1,opt,name=domain_info" json:"domain_info,omitempty"`
 	X509Info         *X509Details         `protobuf:"bytes,2,opt,name=x509_info" json:"x509_info,omitempty"`
 	AclGuardInfo     *ACLGuardDetails     `protobuf:"bytes,3,opt,name=acl_guard_info" json:"acl_guard_info,omitempty"`
 	DatalogGuardInfo *DatalogGuardDetails `protobuf:"bytes,4,opt,name=datalog_guard_info" json:"datalog_guard_info,omitempty"`
+	TpmInfo          *TPMDetails          `protobuf:"bytes,5,opt,name=tpm_info" json:"tpm_info,omitempty"`
 	XXX_unrecognized []byte               `json:"-"`
 }
 
@@ -181,6 +200,13 @@ func (m *DomainConfig) GetAclGuardInfo() *ACLGuardDetails {
 func (m *DomainConfig) GetDatalogGuardInfo() *DatalogGuardDetails {
 	if m != nil {
 		return m.DatalogGuardInfo
+	}
+	return nil
+}
+
+func (m *DomainConfig) GetTpmInfo() *TPMDetails {
+	if m != nil {
+		return m.TpmInfo
 	}
 	return nil
 }

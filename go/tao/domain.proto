@@ -37,11 +37,18 @@ message DatalogGuardDetails {
   optional string signed_rules_path = 2;
 }
 
+message TPMDetails {
+  optional string tpm_path = 1;
+  optional string aik_path = 2;
+  repeated int32 pcr = 3;
+}
+
 message DomainConfig {
   optional DomainDetails domain_info = 1;
   optional X509Details x509_info = 2;
   optional ACLGuardDetails acl_guard_info = 3;
   optional DatalogGuardDetails datalog_guard_info = 4;
+  optional TPMDetails tpm_info = 5;
 }
 
 message DomainTemplate {

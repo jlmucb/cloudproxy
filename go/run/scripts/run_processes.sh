@@ -1,7 +1,8 @@
 #!/bin/bash
 
 if [ "$#" != "2" ]; then
-	echo "Must supply the path to an initialized domain and a host type (Key or TPM)"
+	echo "Must supply the path to an initialized domain and a root Tao type"
+	echo "('TPM' or 'Soft')"
 	exit 1
 fi
 
@@ -29,7 +30,7 @@ if [[ "$TYPE" == "TPM" ]]; then
           -host_type stacked -host_channel_type tpm \
           -tpm_device $TPM -tpm_pcrs $PCRS -tpm_aik_path $AIKBLOB &
   HOSTPID=$!
-elif [[ "$TYPE" == "Key" ]]; then
+elif [[ "$TYPE" == "Soft" ]]; then
   sudo "$(gowhich linux_host)" -config_path ${DOMAIN}/tao.config \
      -pass BogusPass &
   HOSTPID=$!
@@ -51,10 +52,10 @@ DSPID=$("$(gowhich tao_launch)" -sock ${DOMAIN}/linux_tao_host/admin_socket \
 echo "Waiting for the tests to finish"
 sleep 5
 
-echo "\n\nClient output:"
+echo -e "\n\nClient output:"
 cat /tmp/demo_client.INFO
 
-echo "\n\nServer output:"
+echo -e "\n\nServer output:"
 cat /tmp/demo_server.INFO
 
 echo "Cleaning up remaining programs"

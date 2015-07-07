@@ -17,7 +17,7 @@ config: {
   }
 
   datalog_guard_info: {
-    signed_rules_path: "rules" 
+    signed_rules_path: "rules"
   }
 }
 
@@ -26,9 +26,7 @@ datalog_rules: "(forall P: forall Host: forall Hash: TrustedHost(Host) and Trust
 datalog_rules: "(forall P: forall Host: forall Hash: TrustedVMHost(Host) and TrustedProgramHash(Hash) and Subprin(P, Host, Hash) implies MemberProgram(P))"
 datalog_rules: "(forall P: forall Host: forall Hash: TrustedGuardedHost(Host) and TrustedProgramHash(Hash) and Subprin(P, Host, Hash) implies MemberProgram(P))"
 
-# TODO(cjpatton) Temporary stop-gap for this patch.  
-# datalog_rules: "(forall T: forall PCRs: forall P: TrustedTPM(T) and TrustedOS(PCRs) and Subprin(P, T, PCRs) implies TrustedHost(P))
-datalog_rules: "(forall T: TrustedTPM(T) implies TrustedHost(T))"
+datalog_rules: "(forall T: forall PCRs: forall P: TrustedTPM(T) and TrustedOS(PCRs) and Subprin(P, T, PCRs) implies TrustedHost(P))"
 datalog_rules: "(forall P: forall VM: forall Host: TrustedHost(Host) and TrustedVMImage(VM) and Subprin(P, Host, VM) implies TrustedVM(P))"
 datalog_rules: "(forall P: forall VM: forall Hash: TrustedVM(VM) and TrustedLinuxHost(Hash) and Subprin(P, VM, Hash) implies TrustedVMHost(P))"
 datalog_rules: "(forall P: forall VM: forall Guard: TrustedVMHost(VM) and TrustedGuard(Guard) and Subprin(P, VM, Guard) implies TrustedGuardedHost(P))"
@@ -54,3 +52,4 @@ linux_host_predicate_name: "TrustedLinuxHost"
 
 guard_predicate_name: "TrustedGuard"
 tpm_predicate_name: "TrustedTPM"
+os_predicate_name: "TrustedOS"

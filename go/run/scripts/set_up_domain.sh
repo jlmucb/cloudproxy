@@ -57,20 +57,11 @@ echo host_name: \"$KEY_NAME\" >> $TEMP_FILE
 	-config_template $TEMP_FILE -logtostderr
 
 # Add TPM principal to domain, if one exists.
-if [ -f "$AIKBLOB" ] && [ -f "$TPM" ]; then
+if [ -f "$AIKBLOB" ] && [ -e "$TPM" ]; then
   sudo "$ADMIN" -operation policy -add_tpm \
           -principal tpm -tpm $TPM -pcrs $PCRS -aikblob $AIKBLOB \
           -pass $FAKE_PASS -domain_path $DOMAIN_PATH \
           -config_template $TEMP_FILE -logtostderr
-
-  # Get the TPM host name, add it to the template.
-  TPM_NAME=$(sudo "$ADMIN" -operation principal \
-          -principal tpm -tpm $TPM -pcrs $PCRS -aikblob $AIKBLOB \
-          -pass $FAKE_PASS -domain_path $DOMAIN_PATH \
-          -config_template $TEMP_FILE -logtostderr)
-
-  cat "$TEMPLATE" | sed "s/REPLACE_WITH_DOMAIN_GUARD_TYPE/$GUARD/g" > $TEMP_FILE
-  echo host_name: \"$TPM_NAME\" >> $TEMP_FILE
 fi
 
 rm $TEMP_FILE

@@ -17,7 +17,7 @@ package tao;
 message DomainDetails {
   optional string name = 1;
   optional string policy_keys_path = 2;
-  optional string guard_type = 3;	
+  optional string guard_type = 3;
 }
 
 message X509Details {
@@ -67,5 +67,7 @@ message DomainTemplate {
   // The name of the predicate to use for trusted guards.
   optional string guard_predicate_name = 14;
   // The name of the predicate to use for trusted TPMs.
-  optional string tpm_predicate_name = 15; 
+  optional string tpm_predicate_name = 15;
+  // The name of the predicate to use for trusted OSs.
+  optional string os_predicate_name = 16;
 }

@@ -629,14 +629,21 @@ func addTPMRules(dt *tao.DomainTemplate, domain *tao.Domain, tpmPath, aikFile st
 	if err != nil {
 		glog.Exit(err)
 	}
-	// Construct a TrustedTPM predicate, add it as a rule.
-	// TODO(cjpatton) Need a TrustedOS(PCR( ... )) and TrustedTPM(tpm( ... )). For the
-	// former create a PrinTail from prin.Ext. For the latter, do prin.Ext = nil.
-	// NOTE a temporary change domain_template.pb to the policy.
-	pred := auth.MakePredicate(dt.GetTpmPredicateName(), prin)
-	if err := domain.Guard.AddRule(fmt.Sprint(pred)); err != nil {
+
+	// TrustedOS predicate from PCR principal tail.
+	prinPCRs := auth.PrinTail{Ext: prin.Ext}
+	predTrustedOS := auth.MakePredicate(dt.GetOsPredicateName(), prinPCRs)
+	if err := domain.Guard.AddRule(fmt.Sprint(predTrustedOS)); err != nil {
 		glog.Exit(err)
 	}
+
+	// TrustedTPM predicate from TPM principal.
+	prin.Ext = nil
+	predTrustedTPM := auth.MakePredicate(dt.GetTpmPredicateName(), prin)
+	if err := domain.Guard.AddRule(fmt.Sprint(predTrustedTPM)); err != nil {
+		glog.Exit(err)
+	}
+
 	if err := domain.Save(); err != nil {
 		glog.Exit(err)
 	}

@@ -17,6 +17,7 @@ gowhich() {
 DOMAIN="$1"
 TYPE="$2"
 FAKE_PASS=BogusPass
+CA="localhost:8124"
 
 # Make sure we have sudo privileges before using them to try to start linux_host
 # below.
@@ -40,9 +41,12 @@ echo "Waiting for linux_host to start"
 sleep 5
 
 DSPID=$("$(gowhich tao_launch)" -sock ${DOMAIN}/linux_tao_host/admin_socket \
-	"$(gowhich demo_server)" -config=${DOMAIN}/tao.config)
+	"$(gowhich demo_server)" -config=${DOMAIN}/tao.config -ca "$CA")
+
+sleep 2
+
 "$(gowhich tao_launch)" -sock ${DOMAIN}/linux_tao_host/admin_socket \
-	"$(gowhich demo_client)" -config=${DOMAIN}/tao.config > /dev/null
+	"$(gowhich demo_client)" -config=${DOMAIN}/tao.config -ca "$CA" > /dev/null
 
 
 echo "Waiting for the tests to finish"

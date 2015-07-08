@@ -48,12 +48,6 @@ func main() {
 	hostedProgramType := flag.String("hosted_program_type", "process", "The type of hosted program to create ('process', 'docker', or 'kvm_coreos')")
 	hostedProgramSocketPath := flag.String("hosted_program_socket_path", "linux_tao_host", "The directory in which to create unix sockets for hosted-program communication")
 
-	// TPM configuration for the case where we are communicating with a TPM
-	// host Tao.
-	tpmAIKPath := flag.String("tpm_aik_path", "tpm/aikblob", "The path to the TPM AIK blob file, relative to the location of the tao domain configuration")
-	tpmPCRs := flag.String("tpm_pcrs", "", "The PCR values, in the format PCRs(\"<PCR num>,<PCR num>,...,<PCR num>\", \"<PCR value>,<PCR value>,...,<PCR value>\")")
-	tpmDevice := flag.String("tpm_device", "/dev/tpm0", "The absolute path to the TPM device")
-
 	// QEMU/KVM CoreOS configuration with some reasonable defaults.
 	coreOSImage := flag.String("kvm_coreos_img", "coreos.img", "The path to a CoreOS image")
 	vmMemory := flag.Int("kvm_coreos_vm_memory", 1024, "The amount of RAM to give the VM")
@@ -68,19 +62,6 @@ func main() {
 		verbose = ioutil.Discard
 	} else {
 		verbose = os.Stderr
-	}
-
-	tc := tao.Config{
-		HostType:        tao.HostTaoTypeMap[*hostType],
-		HostChannelType: tao.HostTaoChannelMap[*hostChannelType],
-		HostSpec:        *hostSpec,
-		HostedType:      tao.HostedProgramTypeMap[*hostedProgramType],
-	}
-
-	if tc.HostChannelType == tao.TPM {
-		tc.TPMAIKPath = *tpmAIKPath
-		tc.TPMPCRs = *tpmPCRs
-		tc.TPMDevice = *tpmDevice
 	}
 
 	var dir string
@@ -136,6 +117,28 @@ func main() {
 	absHostPath := path.Join(dir, *hostPath)
 	sockPath := path.Join(absHostPath, "admin_socket")
 
+	domain, err := tao.LoadDomain(absConfigPath, nil)
+	fatalIf(err)
+
+	tc := tao.Config{
+		HostType:        tao.HostTaoTypeMap[*hostType],
+		HostChannelType: tao.HostTaoChannelMap[*hostChannelType],
+		HostSpec:        *hostSpec,
+		HostedType:      tao.HostedProgramTypeMap[*hostedProgramType],
+	}
+
+	if tc.HostChannelType == tao.TPM {
+		// Look up the TPM information in the domain config.
+		if domain.Config.TpmInfo == nil {
+			glog.Infof("must provide TPM configuration info in the domain to use a TPM")
+			return
+		}
+
+		tc.TPMAIKPath = domain.Config.TpmInfo.GetAikPath()
+		tc.TPMPCRs = domain.Config.TpmInfo.GetPcrs()
+		tc.TPMDevice = domain.Config.TpmInfo.GetTpmPath()
+	}
+
 	// Check to see if this directory information should be written to a
 	// file.
 	if *pathFile != "" {
@@ -159,9 +162,6 @@ func main() {
 
 	switch *action {
 	case "init", "show", "start":
-		domain, err := tao.LoadDomain(absConfigPath, nil)
-		fatalIf(err)
-
 		rules := domain.RulesPath()
 		var rulesPath string
 		if rules != "" {

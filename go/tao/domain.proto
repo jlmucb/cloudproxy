@@ -40,7 +40,9 @@ message DatalogGuardDetails {
 message TPMDetails {
   optional string tpm_path = 1;
   optional string aik_path = 2;
-  repeated int32 pcr = 3;
+
+  // A string representing the IDs of PCRs, like "17,18".
+  optional string pcrs = 3;
 }
 
 message DomainConfig {

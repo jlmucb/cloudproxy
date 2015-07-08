@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -650,11 +651,17 @@ func createUserKeys(userPass, pass, userKeyDetails, userKeyPath, configPath stri
 func getTPMConfig(domainPath string, dt *tao.DomainTemplate) (string, string, []int) {
 	tpmPath := dt.GetConfig().GetTpmInfo().GetTpmPath()
 	aikFile := dt.GetConfig().GetTpmInfo().GetAikPath()
-	pcrVals := dt.GetConfig().GetTpmInfo().GetPcr()
-	pcrNums := make([]int, len(pcrVals))
-	for i, v := range pcrVals {
-		pcrNums[i] = int(v)
+	pcrVals := dt.GetConfig().GetTpmInfo().GetPcrs()
+	var pcrNums []int
+	for _, s := range strings.Split(pcrVals, ",") {
+		v, err := strconv.ParseInt(s, 10, 32)
+		if err != nil {
+			glog.Exit(err)
+		}
+
+		pcrNums = append(pcrNums, int(v))
 	}
+
 	return tpmPath, aikFile, pcrNums
 }
 

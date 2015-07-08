@@ -66,14 +66,9 @@ fi
 
 # TPMTao: add TPM principal to domain, if one exists.
 if [ "$TYPE" == "TPM" ]; then
-	if [ -f "$AIKBLOB" ] && [ -e "$TPM" ]; then
-	  	sudo "$ADMIN" -operation policy -add_tpm -principal tpm \
-			  -pass $FAKE_PASS -domain_path $DOMAIN_PATH \
-			  -config_template $TEMP_FILE -logtostderr
-	else
-		echo "Couldn't add TPM: missing AIK blob '$AIKBLOB' or TPM device"
-		echo "'$TPM' not found."
-	fi
+	sudo "$ADMIN" -operation policy -add_tpm -principal tpm \
+		  -pass $FAKE_PASS -domain_path $DOMAIN_PATH \
+		  -config_template $TEMP_FILE -logtostderr
 fi
 
 rm $TEMP_FILE

@@ -23,8 +23,7 @@ config: {
   tpm_info: {
     tpm_path: "/dev/tpm0"
     aik_path: "aikblob"
-    pcr: 17
-    pcr: 18
+    pcrs: "17,18"
   }
 }
 

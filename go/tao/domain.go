@@ -74,8 +74,8 @@ func (cfg *DomainConfig) SetDefaults() {
 		cfg.TpmInfo.TpmPath = proto.String("/dev/tpm0")
 	}
 
-	if cfg.TpmInfo.Pcr == nil {
-		cfg.TpmInfo.Pcr = []int32{17,18}
+	if cfg.TpmInfo.Pcrs == nil {
+		cfg.TpmInfo.Pcrs = proto.String("17,18")
 	}
 }
 

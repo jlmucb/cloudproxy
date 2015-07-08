@@ -2,6 +2,21 @@
 // source: domain.proto
 // DO NOT EDIT!
 
+/*
+Package tao is a generated protocol buffer package.
+
+It is generated from these files:
+	domain.proto
+
+It has these top-level messages:
+	DomainDetails
+	X509Details
+	ACLGuardDetails
+	DatalogGuardDetails
+	TPMDetails
+	DomainConfig
+	DomainTemplate
+*/
 package tao
 
 import proto "github.com/golang/protobuf/proto"
@@ -132,9 +147,10 @@ func (m *DatalogGuardDetails) GetSignedRulesPath() string {
 }
 
 type TPMDetails struct {
-	TpmPath          *string `protobuf:"bytes,1,opt,name=tpm_path" json:"tpm_path,omitempty"`
-	AikPath          *string `protobuf:"bytes,2,opt,name=aik_path" json:"aik_path,omitempty"`
-	Pcr              []int32 `protobuf:"varint,3,rep,name=pcr" json:"pcr,omitempty"`
+	TpmPath *string `protobuf:"bytes,1,opt,name=tpm_path" json:"tpm_path,omitempty"`
+	AikPath *string `protobuf:"bytes,2,opt,name=aik_path" json:"aik_path,omitempty"`
+	// A string representing the IDs of PCRs, like "17,18".
+	Pcrs             *string `protobuf:"bytes,3,opt,name=pcrs" json:"pcrs,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -156,11 +172,11 @@ func (m *TPMDetails) GetAikPath() string {
 	return ""
 }
 
-func (m *TPMDetails) GetPcr() []int32 {
-	if m != nil {
-		return m.Pcr
+func (m *TPMDetails) GetPcrs() string {
+	if m != nil && m.Pcrs != nil {
+		return *m.Pcrs
 	}
-	return nil
+	return ""
 }
 
 type DomainConfig struct {
@@ -353,7 +369,4 @@ func (m *DomainTemplate) GetOsPredicateName() string {
 		return *m.OsPredicateName
 	}
 	return ""
-}
-
-func init() {
 }

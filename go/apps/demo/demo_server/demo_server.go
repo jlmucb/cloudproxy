@@ -69,14 +69,13 @@ func doResponse(conn net.Conn, responseOk chan<- bool) {
 	glog.Flush()
 }
 
-func doServer(done chan<- bool) {
+func doServer() {
 	var sock net.Listener
 	var err error
 	var keys *tao.Keys
 	network := "tcp"
 	domain, err := tao.LoadDomain(*configPath, nil)
 	if err != nil {
-		done <- true
 		return
 	}
 
@@ -84,30 +83,41 @@ func doServer(done chan<- bool) {
 	case "tcp":
 		sock, err = net.Listen(network, serverAddr)
 		if err != nil {
-			glog.Fatalf("Couldn't listen to the network: %s\n", err)
-		}
-	case "tls", "tao":
-		keys, err = tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Parent())
-		if err != nil {
-			done <- true
+			glog.Info("server: couldn't listen to the network: %s\n", err)
 			return
 		}
+
+	case "tls", "tao":
+		// Generate a private/public key for this hosted program (hp) and
+		// request attestation from the host of the statement "hp speaksFor
+		// host". The resulting certificate, keys.Delegation, is a chain of
+		// "says" statements extending to the policy key. The policy is
+		// checked by the host before this program is executed.
+		keys, err = tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Parent())
+		if err != nil {
+			glog.Info("server: failed to generate delegated keys: %s\n", err)
+			return
+		}
+
+		// Create a certificate for the hp.
 		keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
 			Organization: []string{"Google Tao Demo"}})
 		if err != nil {
-			done <- true
+			glog.Info("server: couldn't create certificate: %s\n", err)
 			return
 		}
 
 		g := domain.Guard
 		if *ca != "" {
+			// Replace keys.Delegation with a "says" statement directly from
+			// the policy key.
 			na, err := taonet.RequestTruncatedAttestation(network, *ca, keys, domain.Keys.VerifyingKey)
 			if err != nil {
-				done <- true
+				glog.Infof("server: truncated attestation request failed: %s\n", err)
 				return
 			}
-
 			keys.Delegation = na
+
 			g, err = newTempCAGuard(domain.Keys.VerifyingKey)
 			if err != nil {
 				glog.Infof("server: couldn't set up a new guard: %s\n", err)
@@ -117,27 +127,32 @@ func doServer(done chan<- bool) {
 
 		tlsc, err := taonet.EncodeTLSCert(keys)
 		if err != nil {
-			done <- true
+			glog.Infof("server: couldn't encode TLS certificate: %s\n", err)
 			return
 		}
+
 		conf := &tls.Config{
 			RootCAs:            x509.NewCertPool(),
 			Certificates:       []tls.Certificate{*tlsc},
 			InsecureSkipVerify: true,
 			ClientAuth:         tls.RequireAnyClientCert,
 		}
+
 		if *demoAuth == "tao" {
 			sock, err = taonet.Listen(network, serverAddr, conf, g, domain.Keys.VerifyingKey, keys.Delegation)
 			if err != nil {
-				glog.Fatalf("Couldn't create a taonet listener: %s\n", err)
+				glog.Infof("sever: couldn't create a taonet listener: %s\n", err)
+				return
 			}
 		} else {
 			sock, err = tls.Listen(network, serverAddr, conf)
 			if err != nil {
-				glog.Fatalf("Couldn't create a tls listener: %s\n", err)
+				glog.Infof("server: couldn't create a tls listener: %s\n", err)
+				return
 			}
 		}
 	}
+
 	glog.Infof("server: listening at %s using %s authentication.\n", serverAddr, *demoAuth)
 	defer sock.Close()
 
@@ -187,10 +202,7 @@ func main() {
 		return
 	}
 
-	serverDone := make(chan bool, 1)
-
-	go doServer(serverDone)
-	<-serverDone
+	doServer()
 	glog.Info("Server Done")
 	glog.Flush()
 }

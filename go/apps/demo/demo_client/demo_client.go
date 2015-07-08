@@ -53,17 +53,20 @@ func doRequest(guard tao.Guard, domain *tao.Domain, keys *tao.Keys) bool {
 		conn, err = taonet.DialWithKeys(network, serverAddr, guard, domain.Keys.VerifyingKey, keys)
 	}
 	if err != nil {
-		glog.Fatalf("client: error connecting to %s: %s\n", serverAddr, err.Error())
+		glog.Infof("client: error connecting to %s: %s\n", serverAddr, err.Error())
+		return false
 	}
 	defer conn.Close()
 
 	_, err = fmt.Fprintf(conn, "Hello\n")
 	if err != nil {
-		glog.Fatalf("client: can't write: %s\n", err.Error())
+		glog.Infof("client: can't write: %s\n", err.Error())
+		return false
 	}
 	msg, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
-		glog.Fatalf("client can't read: %s\n", err.Error())
+		glog.Infof("client: can't read: %s\n", err.Error())
+		return false
 	}
 	msg = strings.TrimSpace(msg)
 	glog.Infof("client: got reply: %s\n", msg)

@@ -74,6 +74,10 @@ func (cfg *DomainConfig) SetDefaults() {
 		cfg.TpmInfo.TpmPath = proto.String("/dev/tpm0")
 	}
 
+	if cfg.TpmInfo.AikPath == nil {
+		cfg.TpmInfo.AikPath = proto.String("aikblob")
+	}
+
 	if cfg.TpmInfo.Pcrs == nil {
 		cfg.TpmInfo.Pcrs = proto.String("17,18")
 	}

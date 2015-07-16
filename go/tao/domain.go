@@ -170,7 +170,7 @@ func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain
 // TODO(cjpatton) create a net.Conn here. defer Close() somehow. Add new
 // constructor from a net.Conn that doesn't save the domain to disk.
 // Refactor Request's in ca.go to use already existing connection.
-func (d *Domain) CreatePublicCachedDomain(network, addr string) (*Domain, error) {
+func (d *Domain) CreatePublicCachedDomain(network, addr string, ttl int64) (*Domain, error) {
 	newDomain := &Domain{
 		Config: d.Config,
 	}
@@ -187,7 +187,7 @@ func (d *Domain) CreatePublicCachedDomain(network, addr string) (*Domain, error)
 
 	// Set up a CachedGuard.
 	newDomain.Guard = NewCachedGuard(newDomain.Keys.VerifyingKey,
-		Datalog /*TODO(cjpatton) hardcoded*/, network, addr)
+		Datalog /*TODO(cjpatton) hardcoded*/, network, addr, ttl)
 	newDomain.Config.DomainInfo.GuardNetwork = proto.String(network)
 	newDomain.Config.DomainInfo.GuardAddress = proto.String(addr)
 
@@ -265,7 +265,7 @@ func LoadDomain(configPath string, password []byte) (*Domain, error) {
 
 	var guard Guard
 
-	if cfg.DomainInfo.GetGuardAddress() != "" {
+	if cfg.DomainInfo.GetGuardAddress() != "" && cfg.DomainInfo.GetGuardNetwork() != "" {
 		// Use CachedGuard to fetch policy from a remote TaoCA.
 		var guardType CachedGuardType
 		switch cfg.DomainInfo.GetGuardType() {
@@ -278,7 +278,8 @@ func LoadDomain(configPath string, password []byte) (*Domain, error) {
 		}
 		guard = NewCachedGuard(keys.VerifyingKey, guardType,
 			cfg.DomainInfo.GetGuardNetwork(),
-			cfg.DomainInfo.GetGuardAddress())
+			cfg.DomainInfo.GetGuardAddress(),
+			cfg.DomainInfo.GetGuardTtl())
 
 	} else {
 		// Policy stored locally on disk, or using a trivial guard.

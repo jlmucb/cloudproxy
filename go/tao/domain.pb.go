@@ -17,6 +17,7 @@ type DomainDetails struct {
 	GuardType        *string `protobuf:"bytes,3,opt,name=guard_type" json:"guard_type,omitempty"`
 	GuardNetwork     *string `protobuf:"bytes,4,opt,name=guard_network" json:"guard_network,omitempty"`
 	GuardAddress     *string `protobuf:"bytes,5,opt,name=guard_address" json:"guard_address,omitempty"`
+	GuardTtl         *int64  `protobuf:"varint,6,opt,name=guard_ttl" json:"guard_ttl,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -57,6 +58,13 @@ func (m *DomainDetails) GetGuardAddress() string {
 		return *m.GuardAddress
 	}
 	return ""
+}
+
+func (m *DomainDetails) GetGuardTtl() int64 {
+	if m != nil && m.GuardTtl != nil {
+		return *m.GuardTtl
+	}
+	return 0
 }
 
 type X509Details struct {

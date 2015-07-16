@@ -19,8 +19,8 @@ import (
 	"flag"
 	"fmt"
 	"net"
-	"os"
 
+	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
@@ -33,7 +33,7 @@ func main() {
 	flag.Parse()
 	domain, err := tao.LoadDomain(*configPath, []byte(*domainPass))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Couldn't load the config path %s: %s\n", *configPath, err)
+		glog.Exit("Couldn't load the config path %s: %s\n", *configPath, err)
 		return
 	}
 
@@ -42,24 +42,27 @@ func main() {
 	// attestation from the policy key.
 	keys, err := tao.NewTemporaryKeys(tao.Signing)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't set up temporary keys for the connection:", err)
+		glog.Exit("Couldn't set up temporary keys for the connection:", err)
 		return
 	}
 	keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
 		Organization: []string{"Google Tao Demo"}})
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't set up a self-signed cert:", err)
+		glog.Exit("Couldn't set up a self-signed cert:", err)
 		return
 	}
 
 	sock, err := net.Listen(*network, *addr)
-	// TODO(cjpatton) handle binding error here. If it fails, do glog.Exit(err)
+	if err != nil {
+		glog.Exit("Couldn't bind socket to address:", err)
+		return
+	}
 
 	fmt.Println("tcca: accepting connections")
 	for {
 		conn, err := sock.Accept()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Couldn't accept a connection on %s: %s\n", *addr, err)
+			glog.Exitf("Couldn't accept a connection on %s: %s", *addr, err)
 			return
 		}
 

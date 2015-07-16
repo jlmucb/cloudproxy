@@ -20,6 +20,7 @@ message DomainDetails {
   optional string guard_type = 3;
   optional string guard_network = 4;
   optional string guard_address = 5;
+  optional int64 guard_ttl = 6;
 }
 
 message X509Details {

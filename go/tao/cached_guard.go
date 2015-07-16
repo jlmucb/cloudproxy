@@ -17,6 +17,8 @@ package tao
 import (
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
@@ -28,8 +30,13 @@ type CachedGuard struct {
 	guardType CachedGuardType
 	guard     Guard
 
-	// Details of TaoCA, e.g. "tcp", "localhost:8124"
-	network, address string
+	// Details of TaoCA.
+	network string // e.g. "tcp"
+	address string // e.g. "localhost:8124"
+
+	// TODO(cjpatton) use time.Duration instead of int64.
+	timeToLive  int64 // Number of seconds until guard expires
+	timeUpdated int64 // Timestamp of last update.
 
 	// Public policy key. (The TaoCA should sign with the private policy key.)
 	verifier *Verifier
@@ -49,19 +56,19 @@ var errCachedGuardSave = errors.New("CachedGuard: saving cached policy is not al
 var errCachedGuardReload = errors.New("CachedGuard: failed to update policy.")
 
 // NewCachedGuard returns a new CachedGuard.
-func NewCachedGuard(vfy *Verifier, t CachedGuardType, network, addr string) *CachedGuard {
+func NewCachedGuard(vfy *Verifier, t CachedGuardType, network, addr string, ttl int64) *CachedGuard {
 	return &CachedGuard{
-		guardType: t,
-		network:   network,
-		address:   addr,
-		verifier:  vfy,
+		guardType:  t,
+		network:    network,
+		address:    addr,
+		verifier:   vfy,
+		timeToLive: ttl,
 	}
 }
 
 // IsExpired checks if the cached policy is out of date.
 func (cg *CachedGuard) IsExpired() bool {
-	// TODO(cjpatton)
-	return false
+	return (time.Now().Unix() - cg.timeUpdated) > cg.timeToLive
 }
 
 // Reload requests the policy from the remote TaoCA and instantiates a
@@ -83,11 +90,11 @@ func (cg *CachedGuard) Reload() error {
 			}
 			datalogGuard.dl.Assert(rule)
 		}
-		// TODO(cjpatton) Set datalogGuard.modTime.
 		cg.guard = datalogGuard
-	case ACLs:
-		// TODO(cjpatton)
+	case ACLs: // TODO(cjpatton)
+		return errors.New("CacheGuard: ACL set reload not implemented")
 	}
+	cg.timeUpdated = time.Now().Unix()
 	return nil
 }
 

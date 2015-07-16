@@ -17,6 +17,8 @@ package tao
 import (
 	"fmt"
 	"net"
+	"os"
+	"path"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -32,9 +34,9 @@ import (
 // TODO(cjpatton) Modify CreatePublicCachedDomain() to accept either (network,addr) or a
 // net.Conn. Modify this test to use net.Pipe instead of the loopback interface here.
 
-func TestCachingDatalogReload(t *testing.T) {
-	network := "tcp"
-	addr := "localhost:8124"
+var password []byte = make([]byte, 32)
+
+func makeTestDomains(configDir, network, addr string, ttl int64) (policy *Domain, public *Domain, err error) {
 
 	// Create a domain with a Datalog guard and policy keys.
 	var policyDomainConfig DomainConfig
@@ -43,27 +45,73 @@ func TestCachingDatalogReload(t *testing.T) {
 	policyDomainConfig.DatalogGuardInfo = &DatalogGuardDetails{
 		SignedRulesPath: proto.String("rules"),
 	}
-	configPath := "/tmp/domain_test/tao.config"
-	password := make([]byte, 32)
+	configPath := path.Join(configDir, "tao.config")
 
-	policyDomain, err := CreateDomain(policyDomainConfig, configPath, password)
+	policy, err = CreateDomain(policyDomainConfig, configPath, password)
 	if err != nil {
-		t.Fatal(err)
+		return nil, nil, err
 	}
 
 	// Add some bogus rules.
 	prin := auth.NewKeyPrin([]byte("Alice"))
-	err = policyDomain.Guard.AddRule(fmt.Sprintf(
-		`(forall P: forall F: IsFood(F) and IsPerson(P) implies Authorized(P, "eat", F))`))
+	err = policy.Guard.AddRule(
+		`(forall P: forall F: IsFood(F) and IsPerson(P) implies Authorized(P, "eat", F))`)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err = policy.Guard.AddRule(fmt.Sprintf(`IsPerson(%s)`, prin)); err != nil {
+		return nil, nil, err
+	}
+	if err = policy.Guard.AddRule(`IsFood("sandwich")`); err != nil {
+		return nil, nil, err
+	}
+
+	// Create a public domain with a Cached Datalog guard.
+	public, err = policy.CreatePublicCachedDomain(network, addr, ttl)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return
+}
+
+func TestCachingDatalogLoad(t *testing.T) {
+	var network, addr string
+	var ttl int64
+	network = "tcp"
+	addr = "localhost:8124"
+	ttl = 1
+	configDir := "/tmp/domain_test"
+
+	if _, _, err := makeTestDomains(configDir, network, addr, ttl); err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(configDir)
+	defer os.RemoveAll(configDir + ".pub")
+
+	if _, err := LoadDomain(path.Join(configDir+".pub", "tao.config"), nil); err != nil {
+		t.Fatal(err)
+	}
+
+}
+
+func TestCachingDatalogReload(t *testing.T) {
+
+	var network, addr string
+	var ttl int64
+	network = "tcp"
+	addr = "localhost:8124"
+	ttl = 10
+
+	configDir := "/tmp/domain_test"
+	policyDomain, publicDomain, err := makeTestDomains(configDir, network, addr, ttl)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = policyDomain.Guard.AddRule(fmt.Sprintf(`IsPerson(%s)`, prin)); err != nil {
-		t.Fatal(err)
-	}
-	if err = policyDomain.Guard.AddRule(fmt.Sprintf(`IsFood("sandwich")`)); err != nil {
-		t.Fatal(err)
-	}
+	defer os.RemoveAll(configDir)
+	defer os.RemoveAll(configDir + ".pub")
+
+	prin := auth.NewKeyPrin([]byte("Alice"))
 
 	// Sanity check.
 	if policyDomain.Guard.IsAuthorized(prin, "eat", []string{"sandwich"}) == false {
@@ -78,13 +126,7 @@ func TestCachingDatalogReload(t *testing.T) {
 	}
 	go runTCCA(t, cal, policyDomain.Keys, policyDomain.Guard, ch)
 
-	// Create a public domain with a Cached Datalog guard.
-	publicDomain, err := policyDomain.CreatePublicCachedDomain(network, addr)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Generate policy request.
+	// Explicitly call Reload(), generating a policy request.
 	if err = publicDomain.Guard.(*CachedGuard).Reload(); err != nil {
 		t.Fatal(err)
 	}
@@ -94,11 +136,22 @@ func TestCachingDatalogReload(t *testing.T) {
 	for i := 0; i < ct; i++ {
 		t.Logf("rule %d: %s", i, publicDomain.Guard.GetRule(i))
 	}
+	<-ch
 
-	// Try a query.
+	// Force Reload() by clearing the guard.
+	publicDomain.Guard.Clear()
+	go runTCCA(t, cal, policyDomain.Keys, policyDomain.Guard, ch)
+
+	// This should cause an implicit reload. If the request to the TaoCA fails,
+	// IsAuthorized() will return false and not propagate an error.
 	if publicDomain.Guard.IsAuthorized(prin, "eat", []string{"sandwich"}) == false {
 		t.Fatal("denied, should have been authorized")
 	}
+	<-ch
+
+	// Simulate time-to-live running out.
+	publicDomain.Guard.(*CachedGuard).timeUpdated -= ttl + 1
+	go runTCCA(t, cal, policyDomain.Keys, policyDomain.Guard, ch)
 
 	if publicDomain.Guard.IsAuthorized(prin, "eat", []string{"salad"}) == true {
 		t.Fatal("authorized, should have been denied")

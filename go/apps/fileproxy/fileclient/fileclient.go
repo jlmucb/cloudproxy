@@ -33,7 +33,6 @@ import (
 	"github.com/jlmucb/cloudproxy/go/apps/fileproxy"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
-	taonet "github.com/jlmucb/cloudproxy/go/tao/net"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
@@ -106,7 +105,7 @@ func main() {
 	pool := x509.NewCertPool()
 	pool.AddCert(hostDomain.Keys.Cert)
 
-	tlsc, err := taonet.EncodeTLSCert(fcKeys)
+	tlsc, err := tao.EncodeTLSCert(fcKeys)
 	if err != nil {
 		log.Fatalln("fileclient, encode error: ", err)
 	}

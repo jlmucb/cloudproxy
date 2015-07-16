@@ -26,7 +26,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/tao"
-	taonet "github.com/jlmucb/cloudproxy/go/tao/net"
 )
 
 var serverHost = flag.String("host", "0.0.0.0", "address for client/server")
@@ -111,7 +110,7 @@ func doServer() {
 		if *ca != "" {
 			// Replace keys.Delegation with a "says" statement directly from
 			// the policy key.
-			na, err := taonet.RequestTruncatedAttestation(network, *ca, keys, domain.Keys.VerifyingKey)
+			na, err := tao.RequestTruncatedAttestation(network, *ca, keys, domain.Keys.VerifyingKey)
 			if err != nil {
 				glog.Infof("server: truncated attestation request failed: %s\n", err)
 				return
@@ -125,7 +124,7 @@ func doServer() {
 			}
 		}
 
-		tlsc, err := taonet.EncodeTLSCert(keys)
+		tlsc, err := tao.EncodeTLSCert(keys)
 		if err != nil {
 			glog.Infof("server: couldn't encode TLS certificate: %s\n", err)
 			return
@@ -139,7 +138,7 @@ func doServer() {
 		}
 
 		if *demoAuth == "tao" {
-			sock, err = taonet.Listen(network, serverAddr, conf, g, domain.Keys.VerifyingKey, keys.Delegation)
+			sock, err = tao.Listen(network, serverAddr, conf, g, domain.Keys.VerifyingKey, keys.Delegation)
 			if err != nil {
 				glog.Infof("sever: couldn't create a taonet listener: %s\n", err)
 				return

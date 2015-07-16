@@ -54,24 +54,33 @@ func (a *ACLGuard) Subprincipal() auth.SubPrin {
 	return auth.SubPrin{e}
 }
 
-// Save writes all presistent policy data to disk, signed by key.
-func (a *ACLGuard) Save(key *Signer) error {
+// GetSignedACLSet serializes and signs the ACL set and returns a SignedACLSet
+// pointer.
+func (a *ACLGuard) GetSignedACLSet(signer *Signer) (*SignedACLSet, error) {
 	acls := &ACLSet{Entries: a.ACL}
 	ser, err := proto.Marshal(acls)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	sig, err := key.Sign(ser, ACLGuardSigningContext)
+	sig, err := signer.Sign(ser, ACLGuardSigningContext)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	signedACL := &SignedACLSet{
+	sdb := &SignedACLSet{
 		SerializedAclset: ser,
 		Signature:        sig,
 	}
+	return sdb, nil
+}
 
-	b, err := proto.Marshal(signedACL)
+// Save writes all persistent policy data to disk, signed by key.
+func (a *ACLGuard) Save(signer *Signer) error {
+	sdb, err := a.GetSignedACLSet(signer)
+	if err != nil {
+		return err
+	}
+	b, err := proto.Marshal(sdb)
 	if err != nil {
 		return err
 	}

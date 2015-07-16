@@ -15,15 +15,13 @@
 package main
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"crypto/x509/pkix"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 
 	"github.com/jlmucb/cloudproxy/go/tao"
-	"github.com/jlmucb/cloudproxy/go/tao/net"
 )
 
 var network = flag.String("network", "tcp", "The network to use for connections")
@@ -54,18 +52,8 @@ func main() {
 		return
 	}
 
-	tlsc, err := net.EncodeTLSCert(keys)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Couldn't encode a TLS cert:", err)
-		return
-	}
-	conf := &tls.Config{
-		RootCAs:            x509.NewCertPool(),
-		Certificates:       []tls.Certificate{*tlsc},
-		InsecureSkipVerify: true,
-		ClientAuth:         tls.RequireAnyClientCert,
-	}
-	sock, err := tls.Listen(*network, *addr, conf)
+	sock, err := net.Listen(*network, *addr)
+	// TODO(cjpatton) handle binding error here. If it fails, do glog.Exit(err)
 
 	fmt.Println("tcca: accepting connections")
 	for {
@@ -75,6 +63,6 @@ func main() {
 			return
 		}
 
-		go net.HandleCARequest(conn, domain.Keys.SigningKey, domain.Guard)
+		go tao.HandleCARequest(conn, domain.Keys.SigningKey, domain.Guard)
 	}
 }

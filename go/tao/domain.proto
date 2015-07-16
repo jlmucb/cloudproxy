@@ -18,6 +18,8 @@ message DomainDetails {
   optional string name = 1;
   optional string policy_keys_path = 2;
   optional string guard_type = 3;
+  optional string guard_network = 4;
+  optional string guard_address = 5;
 }
 
 message X509Details {

@@ -117,8 +117,10 @@ func main() {
 	absHostPath := path.Join(dir, *hostPath)
 	sockPath := path.Join(absHostPath, "admin_socket")
 
+	// Load the domain.
 	domain, err := tao.LoadDomain(absConfigPath, nil)
 	fatalIf(err)
+	glog.Info("Domain guard: ", domain.Guard)
 
 	tc := tao.Config{
 		HostType:        tao.HostTaoTypeMap[*hostType],
@@ -168,6 +170,9 @@ func main() {
 			rulesPath = path.Join(dir, rules)
 		}
 
+		// TODO(cjpatton) How do the NewLinuxDockerContainterFactory and the
+		// NewLinuxKVMCoreOSFactory need to be modified to support the new
+		// CachedGuard? They probably don't.
 		var childFactory tao.HostedProgramFactory
 		switch tc.HostedType {
 		case tao.ProcessPipe:

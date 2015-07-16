@@ -2,21 +2,6 @@
 // source: domain.proto
 // DO NOT EDIT!
 
-/*
-Package tao is a generated protocol buffer package.
-
-It is generated from these files:
-	domain.proto
-
-It has these top-level messages:
-	DomainDetails
-	X509Details
-	ACLGuardDetails
-	DatalogGuardDetails
-	TPMDetails
-	DomainConfig
-	DomainTemplate
-*/
 package tao
 
 import proto "github.com/golang/protobuf/proto"
@@ -30,6 +15,8 @@ type DomainDetails struct {
 	Name             *string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 	PolicyKeysPath   *string `protobuf:"bytes,2,opt,name=policy_keys_path" json:"policy_keys_path,omitempty"`
 	GuardType        *string `protobuf:"bytes,3,opt,name=guard_type" json:"guard_type,omitempty"`
+	GuardNetwork     *string `protobuf:"bytes,4,opt,name=guard_network" json:"guard_network,omitempty"`
+	GuardAddress     *string `protobuf:"bytes,5,opt,name=guard_address" json:"guard_address,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -54,6 +41,20 @@ func (m *DomainDetails) GetPolicyKeysPath() string {
 func (m *DomainDetails) GetGuardType() string {
 	if m != nil && m.GuardType != nil {
 		return *m.GuardType
+	}
+	return ""
+}
+
+func (m *DomainDetails) GetGuardNetwork() string {
+	if m != nil && m.GuardNetwork != nil {
+		return *m.GuardNetwork
+	}
+	return ""
+}
+
+func (m *DomainDetails) GetGuardAddress() string {
+	if m != nil && m.GuardAddress != nil {
+		return *m.GuardAddress
 	}
 	return ""
 }
@@ -369,4 +370,7 @@ func (m *DomainTemplate) GetOsPredicateName() string {
 		return *m.OsPredicateName
 	}
 	return ""
+}
+
+func init() {
 }

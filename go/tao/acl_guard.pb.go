@@ -8,6 +8,7 @@ Package tao is a generated protocol buffer package.
 It is generated from these files:
 	acl_guard.proto
 	attestation.proto
+	ca.proto
 	datalog_guard.proto
 	domain.proto
 	keys.proto

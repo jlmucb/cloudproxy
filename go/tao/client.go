@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package net provides Tao-specific networking functions and types.
-package net
+package tao
 
 import (
 	"crypto/tls"
@@ -25,7 +24,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
@@ -39,12 +37,12 @@ const (
 
 // EncodeTLSCert combines a signing key and a certificate in a single tls
 // certificate suitable for a TLS config.
-func EncodeTLSCert(keys *tao.Keys) (*tls.Certificate, error) {
+func EncodeTLSCert(keys *Keys) (*tls.Certificate, error) {
 	if keys.Cert == nil {
 		return nil, fmt.Errorf("client: can't encode a nil certificate")
 	}
 	certPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: keys.Cert.Raw})
-	keyBytes, err := tao.MarshalSignerDER(keys.SigningKey)
+	keyBytes, err := MarshalSignerDER(keys.SigningKey)
 	if err != nil {
 		return nil, err
 	}
@@ -59,8 +57,8 @@ func EncodeTLSCert(keys *tao.Keys) (*tls.Certificate, error) {
 
 // generateX509 creates a fresh set of Tao-delegated keys and gets a certificate
 // from these keys.
-func generateX509() (*tao.Keys, *tls.Certificate, error) {
-	keys, err := tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Parent())
+func generateX509() (*Keys, *tls.Certificate, error) {
+	keys, err := NewTemporaryTaoDelegatedKeys(Signing, Parent())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -104,7 +102,7 @@ func DialTLS(network, addr string) (net.Conn, error) {
 }
 
 // DialTLSWithKeys connects to a TLS server using an existing set of keys.
-func DialTLSWithKeys(network, addr string, keys *tao.Keys) (net.Conn, error) {
+func DialTLSWithKeys(network, addr string, keys *Keys) (net.Conn, error) {
 	tlsCert, err := EncodeTLSCert(keys)
 	conn, err := tls.Dial(network, addr, &tls.Config{
 		RootCAs:            x509.NewCertPool(),
@@ -115,9 +113,9 @@ func DialTLSWithKeys(network, addr string, keys *tao.Keys) (net.Conn, error) {
 }
 
 // Dial connects to a Tao TLS server, performs a TLS handshake, and exchanges
-// tao.Attestation values with the server, checking that this is a Tao server
+// Attestation values with the server, checking that this is a Tao server
 // that is authorized to Execute. It uses a Tao Guard to perform this check.
-func Dial(network, addr string, guard tao.Guard, v *tao.Verifier) (net.Conn, error) {
+func Dial(network, addr string, guard Guard, v *Verifier) (net.Conn, error) {
 	keys, _, err := generateX509()
 	if err != nil {
 		return nil, fmt.Errorf("client: can't create key and cert: %s\n", err.Error())
@@ -127,7 +125,7 @@ func Dial(network, addr string, guard tao.Guard, v *tao.Verifier) (net.Conn, err
 }
 
 // DialWithKeys connects to a Tao TLS server using an existing set of keys.
-func DialWithKeys(network, addr string, guard tao.Guard, v *tao.Verifier, keys *tao.Keys) (net.Conn, error) {
+func DialWithKeys(network, addr string, guard Guard, v *Verifier, keys *Keys) (net.Conn, error) {
 	if keys.Cert == nil {
 		return nil, fmt.Errorf("client: can't dial with an empty client certificate\n")
 	}
@@ -152,7 +150,7 @@ func DialWithKeys(network, addr string, guard tao.Guard, v *tao.Verifier, keys *
 	}
 
 	// Tao handshake: read server delegation.
-	var a tao.Attestation
+	var a Attestation
 	if err := ms.ReadMessage(&a); err != nil {
 		conn.Close()
 		return nil, err
@@ -175,13 +173,13 @@ func DialWithKeys(network, addr string, guard tao.Guard, v *tao.Verifier, keys *
 
 // AddEndorsements reads the SerializedEndorsements in an attestation and adds
 // the ones that are predicates signed by the policy key.
-func AddEndorsements(guard tao.Guard, a *tao.Attestation, v *tao.Verifier) error {
+func AddEndorsements(guard Guard, a *Attestation, v *Verifier) error {
 	// Before validating against the guard, check to see if there are any
 	// predicates endorsed by the policy key. This allows truncated principals
 	// to get the Tao CA to sign a statement of the form
 	// TrustedHash(ext.Program(...)).
 	for _, e := range a.SerializedEndorsements {
-		var ea tao.Attestation
+		var ea Attestation
 		if err := proto.Unmarshal(e, &ea); err != nil {
 			return err
 		}
@@ -213,7 +211,7 @@ func AddEndorsements(guard tao.Guard, a *tao.Attestation, v *tao.Verifier) error
 		if !v.ToPrincipal().Identical(signerPrin) {
 			return fmt.Errorf("the signer of an endorsement must be the policy key")
 		}
-		if ok, err := v.Verify(ea.SerializedStatement, tao.AttestationSigningContext, ea.Signature); (err != nil) || !ok {
+		if ok, err := v.Verify(ea.SerializedStatement, AttestationSigningContext, ea.Signature); (err != nil) || !ok {
 			return fmt.Errorf("the signature on an endorsement didn't pass verification")
 		}
 
@@ -226,7 +224,7 @@ func AddEndorsements(guard tao.Guard, a *tao.Attestation, v *tao.Verifier) error
 // TruncateAttestation cuts off a delegation chain at its "Program" subprincipal
 // extension and replaces its prefix with the given key principal. It also
 // returns the PrinExt that represents exactly the program hash.
-func TruncateAttestation(kprin auth.Prin, a *tao.Attestation) (auth.Says, auth.PrinExt, error) {
+func TruncateAttestation(kprin auth.Prin, a *Attestation) (auth.Says, auth.PrinExt, error) {
 	// This attestation must have a top-level delegation to a key. Return an
 	// authorization for this program rooted in the policy key. I don't like
 	// this, since it seems like it's much riskier, since this doesn't say

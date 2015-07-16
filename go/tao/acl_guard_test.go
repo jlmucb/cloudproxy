@@ -15,6 +15,7 @@
 package tao
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -24,6 +25,34 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
+
+func makeACLGuard() (*ACLGuard, *Keys, string, error) {
+	tmpDir, err := ioutil.TempDir("", "acl_guard_test")
+	if err != nil {
+		return nil, nil, "",
+			fmt.Errorf("Couldn't get a temp directory for the ACL guard test")
+	}
+	keys, err := NewTemporaryKeys(Signing)
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	config := ACLGuardDetails{
+		SignedAclsPath: proto.String(path.Join(tmpDir, "acls")),
+	}
+	tg := NewACLGuard(keys.VerifyingKey, config)
+
+	// Add a bogus rule.
+	p := auth.Prin{
+		Type: "key",
+		Key:  auth.Bytes([]byte(`Fake key`)),
+	}
+	if err := tg.Authorize(p, "Write", []string{"filename"}); err != nil {
+		return nil, nil, "", err
+	}
+
+	return tg.(*ACLGuard), keys, tmpDir, err
+}
 
 func testNewACLGuard(t *testing.T, v *Verifier) (Guard, string) {
 	tmpdir, err := ioutil.TempDir("/tmp", "acl_guard_test")

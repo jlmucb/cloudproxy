@@ -224,18 +224,28 @@ func NewTemporaryDatalogGuard() Guard {
 	return &DatalogGuard{dl: eng}
 }
 
-// NewDatalogGuard returns a new datalog guard that uses a signed, persistent
-// signed rule set. ReloadIfModified() should be called to load the rule set.
-func NewDatalogGuard(key *Verifier, config DatalogGuardDetails) (*DatalogGuard, error) {
-	if key == nil || config.GetSignedRulesPath() == "" {
+// NewDatalogGuardFromConfig returns a new datalog guard that uses a signed,
+// persistent rule set. ReloadIfModified() should be called to load the rule
+// set.
+func NewDatalogGuardFromConfig(verifier *Verifier, config DatalogGuardDetails) (*DatalogGuard, error) {
+	if verifier == nil || config.GetSignedRulesPath() == "" {
 		return nil, newError("datalog guard missing key or path")
 	}
+	dg := NewDatalogGuard(verifier)
+	dg.Config = config
+	return dg, nil
+}
+
+// NewDatalogGuard returns a new datalog guard without configuring a rules
+// file.
+func NewDatalogGuard(verifier *Verifier) *DatalogGuard {
 	sp := new(subprinPrim)
 	sp.SetArity(3)
 	eng := dlengine.NewEngine()
 	eng.AddPred(sp)
-	g := &DatalogGuard{Config: config, Key: key, dl: eng}
-	return g, nil
+	dg := &DatalogGuard{Key: verifier, dl: eng}
+	dg.Config.SignedRulesPath = nil
+	return dg
 }
 
 // Subprincipal returns subprincipal DatalogGuard, for temporary guards, or
@@ -305,22 +315,32 @@ func (g *DatalogGuard) ReloadIfModified() error {
 	return nil
 }
 
-// Save writes all persistent policy data to disk, signed by key.
-func (g *DatalogGuard) Save(key *Signer) error {
-	if key == nil {
-		return newError("datalog temporary ruleset can't be saved")
+// GetSignedDatalogRules serializes and signs the datalog rules and returns
+// a SignedDatalogRules pointer.
+func (g *DatalogGuard) GetSignedDatalogRules(signer *Signer) (*SignedDatalogRules, error) {
+	if signer == nil {
+		return nil, newError("datalog temporary ruleset can't be saved")
 	}
 	rules, err := proto.Marshal(&g.db)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	sig, err := key.Sign(rules, DatalogRulesSigningContext)
+	sig, err := signer.Sign(rules, DatalogRulesSigningContext)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	sdb := &SignedDatalogRules{
 		SerializedRules: rules,
 		Signature:       sig,
+	}
+	return sdb, nil
+}
+
+// Save writes all persistent policy data to disk, signed by key.
+func (g *DatalogGuard) Save(signer *Signer) error {
+	sdb, err := g.GetSignedDatalogRules(signer)
+	if err != nil {
+		return err
 	}
 	serialized, err := proto.Marshal(sdb)
 	if err != nil {

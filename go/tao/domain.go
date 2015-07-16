@@ -15,10 +15,13 @@
 package tao
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
@@ -42,6 +45,8 @@ type Domain struct {
 	Keys       *Keys
 	Guard      Guard
 }
+
+var errUnknownGuardType = errors.New("unknown guard type")
 
 // SetDefaults sets each blank field of cfg to a reasonable default value.
 func (cfg *DomainConfig) SetDefaults() {
@@ -141,7 +146,7 @@ func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain
 		dgi := DatalogGuardDetails{
 			SignedRulesPath: proto.String(path.Join(configDir, rulesPath)),
 		}
-		guard, err = NewDatalogGuard(keys.VerifyingKey, dgi)
+		guard, err = NewDatalogGuardFromConfig(keys.VerifyingKey, dgi)
 		if err != nil {
 			return nil, err
 		}
@@ -159,6 +164,68 @@ func CreateDomain(cfg DomainConfig, configPath string, password []byte) (*Domain
 		return nil, err
 	}
 	return d, nil
+}
+
+// Create a public domain with a CachedGuard.
+// TODO(cjpatton) create a net.Conn here. defer Close() somehow. Add new
+// constructor from a net.Conn that doesn't save the domain to disk.
+// Refactor Request's in ca.go to use already existing connection.
+func (d *Domain) CreatePublicCachedDomain(network, addr string) (*Domain, error) {
+	newDomain := &Domain{
+		Config: d.Config,
+	}
+	configDir, configName := path.Split(d.ConfigPath) // '/path/to/', 'file'
+
+	// Load public key from domain.
+	keyPath := path.Join(configDir, d.Config.DomainInfo.GetPolicyKeysPath())
+	keys, err := NewOnDiskPBEKeys(Signing, make([]byte, 0), keyPath,
+		NewX509Name(d.Config.X509Info))
+	if err != nil {
+		return nil, err
+	}
+	newDomain.Keys = keys
+
+	// Set up a CachedGuard.
+	newDomain.Guard = NewCachedGuard(newDomain.Keys.VerifyingKey,
+		Datalog /*TODO(cjpatton) hardcoded*/, network, addr)
+	newDomain.Config.DomainInfo.GuardNetwork = proto.String(network)
+	newDomain.Config.DomainInfo.GuardAddress = proto.String(addr)
+
+	// Create domain directory ending with ".pub".
+	configDir = strings.TrimRight(configDir, "/") + ".pub"
+	err = os.MkdirAll(configDir, 0777)
+	if err != nil {
+		return nil, err
+	}
+	newDomain.ConfigPath = path.Join(configDir, configName)
+	newDomain.Keys.dir = path.Join(configDir, d.Config.DomainInfo.GetPolicyKeysPath())
+
+	// Save public key. Copy certificate from the old to new directory.
+	// TODO(tmroeder) this is a bit hacky, but the best we can do short
+	// of refactoring the NewOnDiskPBEKey() code. In particular, there is
+	// currently no way to *just* save the keys.
+	err = os.MkdirAll(newDomain.Keys.dir, 0777)
+	if err != nil {
+		return nil, err
+	}
+	inFile, err := os.Open(d.Keys.X509Path())
+	if err != nil {
+		return nil, err
+	}
+	defer inFile.Close()
+	outFile, err := os.Create(newDomain.Keys.X509Path())
+	if err != nil {
+		return nil, err
+	}
+	defer outFile.Close()
+	_, err = io.Copy(outFile, inFile)
+	if err != nil {
+		return nil, err
+	}
+
+	// Save domain.
+	err = newDomain.Save()
+	return newDomain, err
 }
 
 // Save writes all domain configuration and policy data.
@@ -197,42 +264,63 @@ func LoadDomain(configPath string, password []byte) (*Domain, error) {
 	}
 
 	var guard Guard
-	switch cfg.DomainInfo.GetGuardType() {
-	case "ACLs":
-		var err error
-		if cfg.AclGuardInfo == nil {
-			return nil, fmt.Errorf("must supply ACL info for the ACL guard")
-		}
-		agi := ACLGuardDetails{
-			SignedAclsPath: proto.String(path.Join(configDir, cfg.AclGuardInfo.GetSignedAclsPath())),
-		}
-		guard, err = LoadACLGuard(keys.VerifyingKey, agi)
-		if err != nil {
-			return nil, err
-		}
-	case "Datalog":
-		var err error
-		if cfg.DatalogGuardInfo == nil {
-			return nil, fmt.Errorf("must supply Datalog info for the Datalog guard")
-		}
-		dgi := DatalogGuardDetails{
-			SignedRulesPath: proto.String(path.Join(configDir, cfg.DatalogGuardInfo.GetSignedRulesPath())),
-		}
-		datalogGuard, err := NewDatalogGuard(keys.VerifyingKey, dgi)
-		if err != nil {
-			return nil, err
-		}
-		if err := datalogGuard.ReloadIfModified(); err != nil {
-			return nil, err
-		}
-		guard = datalogGuard
-	case "AllowAll":
-		guard = LiberalGuard
-	case "DenyAll":
-		guard = ConservativeGuard
-	}
-	//TODO (important!): Need to modify tao name to reflect policy key
 
+	if cfg.DomainInfo.GetGuardAddress() != "" {
+		// Use CachedGuard to fetch policy from a remote TaoCA.
+		var guardType CachedGuardType
+		switch cfg.DomainInfo.GetGuardType() {
+		case "ACLs":
+			guardType = ACLs
+		case "Datalog":
+			guardType = Datalog
+		default:
+			return nil, errUnknownGuardType
+		}
+		guard = NewCachedGuard(keys.VerifyingKey, guardType,
+			cfg.DomainInfo.GetGuardNetwork(),
+			cfg.DomainInfo.GetGuardAddress())
+
+	} else {
+		// Policy stored locally on disk, or using a trivial guard.
+		switch cfg.DomainInfo.GetGuardType() {
+		case "ACLs":
+			var err error
+			if cfg.AclGuardInfo == nil {
+				return nil, fmt.Errorf("must supply ACL info for the ACL guard")
+			}
+			agi := ACLGuardDetails{
+				SignedAclsPath: proto.String(path.Join(configDir,
+					cfg.AclGuardInfo.GetSignedAclsPath())),
+			}
+			guard, err = LoadACLGuard(keys.VerifyingKey, agi)
+			if err != nil {
+				return nil, err
+			}
+		case "Datalog":
+			var err error
+			if cfg.DatalogGuardInfo == nil {
+				return nil, fmt.Errorf("must supply Datalog info for the Datalog guard")
+			}
+			dgi := DatalogGuardDetails{
+				SignedRulesPath: proto.String(path.Join(configDir,
+					cfg.DatalogGuardInfo.GetSignedRulesPath())),
+			}
+			datalogGuard, err := NewDatalogGuardFromConfig(keys.VerifyingKey, dgi)
+			if err != nil {
+				return nil, err
+			}
+			if err := datalogGuard.ReloadIfModified(); err != nil {
+				return nil, err
+			}
+			guard = datalogGuard
+		case "AllowAll":
+			guard = LiberalGuard
+		case "DenyAll":
+			guard = ConservativeGuard
+		default:
+			return nil, errUnknownGuardType
+		}
+	}
 	return &Domain{cfg, configPath, keys, guard}, nil
 }
 

@@ -29,7 +29,6 @@ import (
 	"github.com/jlmucb/cloudproxy/go/apps/fileproxy"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
-	taonet "github.com/jlmucb/cloudproxy/go/tao/net"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
@@ -42,7 +41,7 @@ func serve(addr, fp string, cert []byte, signingKey *tao.Keys, policy *fileproxy
 	}
 	pool := x509.NewCertPool()
 	pool.AddCert(policyCert)
-	tlsc, err := taonet.EncodeTLSCert(signingKey)
+	tlsc, err := tao.EncodeTLSCert(signingKey)
 	if err != nil {
 		return err
 	}

@@ -28,7 +28,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
-	taonet "github.com/jlmucb/cloudproxy/go/tao/net"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
@@ -45,7 +44,7 @@ func handleRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) error {
 	}
 
 	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
-	if err := taonet.ValidatePeerAttestation(&a, peerCert, guard); err != nil {
+	if err := tao.ValidatePeerAttestation(&a, peerCert, guard); err != nil {
 		return err
 	}
 
@@ -172,7 +171,7 @@ func main() {
 		log.Fatalln("keynegoserver: Couldn't get policy key:", err)
 	}
 
-	tlsc, err := taonet.EncodeTLSCert(keys)
+	tlsc, err := tao.EncodeTLSCert(keys)
 	if err != nil {
 		log.Fatalln("keynegoserver: Couldn't encode a TLS cert:", err)
 	}

@@ -25,7 +25,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/tao"
-	taonet "github.com/jlmucb/cloudproxy/go/tao/net"
 )
 
 var serverHost = flag.String("host", "localhost", "address for client/server")
@@ -48,9 +47,9 @@ func doRequest(guard tao.Guard, domain *tao.Domain, keys *tao.Keys) bool {
 	case "tcp":
 		conn, err = net.Dial(network, serverAddr)
 	case "tls":
-		conn, err = taonet.DialTLSWithKeys(network, serverAddr, keys)
+		conn, err = tao.DialTLSWithKeys(network, serverAddr, keys)
 	case "tao":
-		conn, err = taonet.DialWithKeys(network, serverAddr, guard, domain.Keys.VerifyingKey, keys)
+		conn, err = tao.DialWithKeys(network, serverAddr, guard, domain.Keys.VerifyingKey, keys)
 	}
 	if err != nil {
 		glog.Infof("client: error connecting to %s: %s\n", serverAddr, err.Error())
@@ -103,7 +102,7 @@ func doClient(domain *tao.Domain) {
 
 	g := domain.Guard
 	if *ca != "" {
-		na, err := taonet.RequestTruncatedAttestation(network, *ca, keys, domain.Keys.VerifyingKey)
+		na, err := tao.RequestTruncatedAttestation(network, *ca, keys, domain.Keys.VerifyingKey)
 		if err != nil {
 			glog.Fatalf("client: couldn't get a truncated attestation from %s: %s\n", *ca, err)
 		}

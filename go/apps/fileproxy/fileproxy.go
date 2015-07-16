@@ -31,7 +31,6 @@ import (
 
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
-	taonet "github.com/jlmucb/cloudproxy/go/tao/net"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
@@ -64,7 +63,7 @@ func NewProgramPolicy(policyCert []byte, taoName string, signingKey *tao.Keys, s
 // replaces the current delegation and cert on k with the new delegation and
 // cert from the response.
 func EstablishCert(network, addr string, k *tao.Keys, v *tao.Verifier) error {
-	na, err := taonet.RequestAttestation(network, addr, k, v)
+	na, err := tao.RequestAttestation(network, addr, k, v)
 	if err != nil {
 		return err
 	}

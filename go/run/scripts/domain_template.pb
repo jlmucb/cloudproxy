@@ -3,6 +3,7 @@ config: {
     name: "Demo"
     policy_keys_path: "policy_keys"
     guard_type: "REPLACE_WITH_DOMAIN_GUARD_TYPE"
+    guard_address: ""
   }
 
   x509_info: {

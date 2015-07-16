@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package net
+package tao
 
 import (
 	"bytes"
@@ -20,18 +20,19 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"net"
+	"os"
 	"testing"
 
-	"github.com/jlmucb/cloudproxy/go/tao"
+	"github.com/jlmucb/cloudproxy/go/util"
 )
 
-func newNetKeys(t *testing.T, ta tao.Tao, org string) (*tao.Keys, *tls.Config) {
-	var keys *tao.Keys
+func newNetKeys(t *testing.T, ta Tao, org string) (*Keys, *tls.Config) {
+	var keys *Keys
 	var err error
 	if ta != nil {
-		keys, err = tao.NewTemporaryTaoDelegatedKeys(tao.Signing, ta)
+		keys, err = NewTemporaryTaoDelegatedKeys(Signing, ta)
 	} else {
-		keys, err = tao.NewTemporaryKeys(tao.Signing)
+		keys, err = NewTemporaryKeys(Signing)
 	}
 	if err != nil {
 		t.Fatalf("couldn't create new temporary delegated keys: %s", err)
@@ -58,13 +59,13 @@ func newNetKeys(t *testing.T, ta tao.Tao, org string) (*tao.Keys, *tls.Config) {
 	return keys, conf
 }
 
-func setUpListener(t *testing.T) (net.Listener, *tao.Keys, tao.Tao) {
-	st, err := tao.NewSoftTao("", nil)
+func setUpListener(t *testing.T) (net.Listener, *Keys, Tao) {
+	st, err := NewSoftTao("", nil)
 	if err != nil {
 		t.Fatalf("couldn't create a new SoftTao: %s", err)
 	}
 
-	soft, ok := st.(*tao.SoftTao)
+	soft, ok := st.(*SoftTao)
 	if !ok {
 		t.Fatalf("couldn't down-cast the Tao to a SoftTao")
 	}
@@ -72,7 +73,7 @@ func setUpListener(t *testing.T) (net.Listener, *tao.Keys, tao.Tao) {
 	keys, conf := newNetKeys(t, st, "Net Test")
 
 	// For a simple Listen test, use the LiberalGuard.
-	l, err := Listen("tcp", "127.0.0.1:0", conf, tao.LiberalGuard, soft.GetVerifier(), keys.Delegation)
+	l, err := Listen("tcp", "127.0.0.1:0", conf, LiberalGuard, soft.GetVerifier(), keys.Delegation)
 	if err != nil {
 		t.Fatalf("couldn't set up a Tao listener: %s", err)
 	}
@@ -128,11 +129,11 @@ func TestClientServer(t *testing.T) {
 
 	// Create a client to connect to the server and send and receive a
 	// message.
-	verifier := st.(*tao.SoftTao).GetVerifier()
+	verifier := st.(*SoftTao).GetVerifier()
 
 	ck, _ := newNetKeys(t, st, "Net Test")
 
-	c, err := DialWithKeys("tcp", addr.String(), tao.LiberalGuard, verifier, ck)
+	c, err := DialWithKeys("tcp", addr.String(), LiberalGuard, verifier, ck)
 	if err != nil {
 		t.Fatalf("couldn't dial the server using Tao networking: %s", err)
 	}
@@ -155,7 +156,7 @@ func TestClientServer(t *testing.T) {
 	<-ch
 }
 
-func runTCCA(t *testing.T, l net.Listener, pk *tao.Keys, g tao.Guard, ch chan<- bool) {
+func runTCCA(t *testing.T, l net.Listener, pk *Keys, g Guard, ch chan<- bool) {
 	conn, err := l.Accept()
 	if err != nil {
 		t.Fatalf("couldn't accept a connection for tcca: %s", err)
@@ -167,22 +168,20 @@ func runTCCA(t *testing.T, l net.Listener, pk *tao.Keys, g tao.Guard, ch chan<- 
 
 func TestCARequestAttestation(t *testing.T) {
 	// Create a temporary key as the policy key.
-	pk, err := tao.NewTemporaryKeys(tao.Signing)
+	pk, err := NewTemporaryKeys(Signing)
 	if err != nil {
 		t.Fatalf("couldn't set up a temporary policy key: %s", err)
 	}
 
-	_, caconf := newNetKeys(t, nil, "Net Test")
-
-	cal, err := tls.Listen("tcp", "127.0.0.1:0", caconf)
+	cal, err := net.Listen("tcp", "127.0.0.1:0")
 	caAddr := cal.Addr()
 
 	// For the simple test, use a LiberalGuard in the CA.
 	ch := make(chan bool)
-	go runTCCA(t, cal, pk, tao.LiberalGuard, ch)
+	go runTCCA(t, cal, pk, LiberalGuard, ch)
 
 	// Set up some keys to be attested.
-	st, err := tao.NewSoftTao("", nil)
+	st, err := NewSoftTao("", nil)
 	if err != nil {
 		t.Fatalf("couldn't create a new SoftTao: %s", err)
 	}
@@ -200,22 +199,21 @@ func TestCARequestAttestation(t *testing.T) {
 
 func TestCARequestTruncatedAttestation(t *testing.T) {
 	// Create a temporary key as the policy key.
-	pk, err := tao.NewTemporaryKeys(tao.Signing)
+
+	pk, err := NewTemporaryKeys(Signing)
 	if err != nil {
 		t.Fatalf("couldn't set up a temporary policy key: %s", err)
 	}
 
-	_, caconf := newNetKeys(t, nil, "Net Test")
-
-	cal, err := tls.Listen("tcp", "127.0.0.1:0", caconf)
+	cal, err := net.Listen("tcp", "127.0.0.1:0")
 	caAddr := cal.Addr()
 
 	// For the simple test, use a LiberalGuard in the CA.
 	ch := make(chan bool)
-	go runTCCA(t, cal, pk, tao.LiberalGuard, ch)
+	go runTCCA(t, cal, pk, LiberalGuard, ch)
 
 	// Set up some keys to be attested.
-	st, err := tao.NewSoftTao("", nil)
+	st, err := NewSoftTao("", nil)
 	if err != nil {
 		t.Fatalf("couldn't create a new SoftTao: %s", err)
 	}
@@ -228,5 +226,113 @@ func TestCARequestTruncatedAttestation(t *testing.T) {
 	}
 
 	// Wait for the CA to finish
+	<-ch
+}
+
+func TestCARequestDatalogRules(t *testing.T) {
+	cal, err := net.Listen("tcp", "127.0.0.1:0")
+	caAddr := cal.Addr()
+
+	guard, keys, tmpDir, err := makeDatalogGuard()
+	if err != nil {
+		os.RemoveAll(tmpDir)
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+	ch := make(chan bool)
+
+	// Nominal test
+	go runTCCA(t, cal, keys, guard, ch)
+	_, err = RequestDatalogRules("tcp", caAddr.String(), keys.VerifyingKey)
+	if err != nil {
+		t.Errorf("Failed to get datalog rules from CA: %s", err)
+	}
+	<-ch
+
+	// Signature shouldn't verify
+	badKeys, _ := NewTemporaryKeys(Signing)
+	go runTCCA(t, cal, badKeys, guard, ch)
+	_, err = RequestDatalogRules("tcp", caAddr.String(), keys.VerifyingKey)
+	if err == nil {
+		t.Error("Signature verified, should have failed")
+	} else {
+		t.Logf("Signature invalid!, %s", err)
+	}
+	<-ch
+}
+
+func TestCARequestACLSet(t *testing.T) {
+	cal, err := net.Listen("tcp", "127.0.0.1:0")
+	caAddr := cal.Addr()
+
+	// Run TaoCA with a DatalogGuard.
+	guard, keys, tmpDir, err := makeACLGuard()
+	if err != nil {
+		os.RemoveAll(tmpDir)
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+	ch := make(chan bool)
+
+	// Nominal test.
+	go runTCCA(t, cal, keys, guard, ch)
+	_, err = RequestACLSet("tcp", caAddr.String(), keys.VerifyingKey)
+	if err != nil {
+		t.Fatalf("Failed to get ACL set from CA: %s", err)
+	}
+	<-ch
+
+	// Signature shouldn't verify
+	badKeys, _ := NewTemporaryKeys(Signing)
+	go runTCCA(t, cal, badKeys, guard, ch)
+	_, err = RequestACLSet("tcp", caAddr.String(), keys.VerifyingKey)
+	if err == nil {
+		t.Error("Signature verified, should have failed")
+	} else {
+		t.Logf("Signature invalid!, %s", err)
+	}
+	<-ch
+}
+
+func TestInvalidRequest(t *testing.T) {
+	cal, err := net.Listen("tcp", "127.0.0.1:0")
+	caAddr := cal.Addr()
+
+	guard, keys, tmpDir, err := makeDatalogGuard()
+	if err != nil {
+		os.RemoveAll(tmpDir)
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+	ch := make(chan bool)
+
+	// Test an invalid request.
+	go runTCCA(t, cal, keys, guard, ch)
+
+	conn, err := net.Dial("tcp", caAddr.String())
+	if err != nil {
+		t.Fatal("Failed to connect to TaoCA.")
+	}
+	defer conn.Close()
+
+	// Bad CArequest, no value for bad_req.Attesation
+	badReq := new(CARequest)
+	badReq.Type = CAType_ATTESTATION.Enum()
+
+	ms := util.NewMessageStream(conn)
+	if _, err = ms.WriteMessage(badReq); err != nil {
+		t.Logf("Failed to write to message stream: %s", err)
+	}
+
+	// Receive response.
+	var resp CAResponse
+	if err := ms.ReadMessage(&resp); err != nil {
+		t.Fatalf("Failed to read from message stream: %s", err)
+	}
+
+	if *resp.Type != CAType_UNDEFINED {
+		t.Fatalf("Response should have been UNDEFINED, got %s", resp.Type.String())
+	}
+
 	<-ch
 }

@@ -24,31 +24,44 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
-func makeDatalogGuard(t *testing.T) (*DatalogGuard, *Signer, string) {
-	tmpdir, err := ioutil.TempDir("/tmp", "test_datalog_guard")
+func makeDatalogGuard() (*DatalogGuard, *Keys, string, error) {
+	tmpdir, err := ioutil.TempDir("", "test_datalog_guard")
 	if err != nil {
-		t.Fatal("Couldn't get a temp directory for the datalog guard test")
+		return nil, nil, "",
+			fmt.Errorf("Couldn't get a temp directory for the datalog guard test")
 	}
-	signer, err := GenerateSigner()
+	keys, err := NewTemporaryKeys(Signing)
 	if err != nil {
-		t.Fatal(err.Error())
+		return nil, nil, "", err
 	}
-	g, err := NewDatalogGuard(signer.GetVerifier(), DatalogGuardDetails{
+	g, err := NewDatalogGuardFromConfig(keys.VerifyingKey, DatalogGuardDetails{
 		SignedRulesPath: proto.String(tmpdir + "/rules"),
 	})
 	if err != nil {
-		t.Fatal(err)
+		return nil, nil, "", err
 	}
-	return g, signer, tmpdir
+
+	// Add a bogus rule.
+	bogusOSString := `ext.PCRs("17, 18", "000, 000")`
+	var prin auth.PrinTail
+	fmt.Sscanf(bogusOSString, "%s", &prin)
+	pred := auth.MakePredicate("BogusTPM", prin)
+	if err = g.AddRule(fmt.Sprint(pred)); err != nil {
+		return nil, nil, "", err
+	}
+	return g, keys, tmpdir, nil
 }
 
 var subj = auth.NewKeyPrin([]byte("test1"))
 var subj2 = auth.NewKeyPrin([]byte("test2"))
 
 func TestDatalogSaveReload(t *testing.T) {
-	g, key, tmpdir := makeDatalogGuard(t)
+	g, keys, tmpdir, err := makeDatalogGuard()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.RemoveAll(tmpdir)
-	err := g.Save(key)
+	err = g.Save(keys.SigningKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +73,7 @@ func TestDatalogSaveReload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = g.Save(key)
+	err = g.Save(keys.SigningKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,19 +81,22 @@ func TestDatalogSaveReload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if g.RuleCount() != 1 {
+	if g.RuleCount() != 2 {
 		t.Fatal("wrong number of rules")
 	}
-	if g.GetRule(0) != `Authorized(key([7465737431]), "read", "somefile")` {
+	if g.GetRule(1) != `Authorized(key([7465737431]), "read", "somefile")` {
 		t.Fatalf("wrong rule: %s", g.GetRule(0))
 	}
 }
 
 func TestDatalogAuthorizeRetract(t *testing.T) {
-	g, _, tmpdir := makeDatalogGuard(t)
+	g, _, tmpdir, err := makeDatalogGuard()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.RemoveAll(tmpdir)
 
-	err := g.Authorize(subj, "read", []string{"somefile"})
+	err = g.Authorize(subj, "read", []string{"somefile"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,10 +123,13 @@ func TestDatalogAuthorizeRetract(t *testing.T) {
 }
 
 func TestDatalogRules(t *testing.T) {
-	g, _, tmpdir := makeDatalogGuard(t)
+	g, _, tmpdir, err := makeDatalogGuard()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.RemoveAll(tmpdir)
 
-	err := g.AddRule(fmt.Sprintf(`(forall F: IsFile(F) implies Authorized(%s, "read", F))`, subj))
+	err = g.AddRule(fmt.Sprintf(`(forall F: IsFile(F) implies Authorized(%s, "read", F))`, subj))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +172,10 @@ var datalogProg = []string{
 }
 
 func TestDatalogSimpleTranslation(t *testing.T) {
-	g, s, tmpdir := makeDatalogGuard(t)
+	g, keys, tmpdir, err := makeDatalogGuard()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.RemoveAll(tmpdir)
 
 	for _, s := range datalogProg {
@@ -170,7 +192,7 @@ func TestDatalogSimpleTranslation(t *testing.T) {
 		t.Fatal("Simple authorization check failed")
 	}
 
-	if err := g.Save(s); err != nil {
+	if err := g.Save(keys.SigningKey); err != nil {
 		t.Fatal("Couldn't save the guard:", err)
 	}
 
@@ -199,7 +221,10 @@ var datalogSubprinProg = []string{
 }
 
 func TestDatalogSubprin(t *testing.T) {
-	g, _, tmpdir := makeDatalogGuard(t)
+	g, _, tmpdir, err := makeDatalogGuard()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.RemoveAll(tmpdir)
 
 	for _, s := range datalogSubprinProg {

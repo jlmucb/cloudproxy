@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package net
+package tao
 
 import (
 	"crypto/tls"
@@ -20,27 +20,26 @@ import (
 	"errors"
 	"net"
 
-	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
 // A Listener implements net.Listener for Tao connections. Each time it accepts
 // a connection, it exchanges Tao attestation chains and checks the attestation
-// for the certificate of the client against its tao.Guard. The guard in this
+// for the certificate of the client against its Guard. The guard in this
 // case should be the guard of the Tao domain. This listener allows connections
 // from any program that is authorized under the Tao to execute.
 type listener struct {
 	gl         net.Listener
-	guard      tao.Guard
-	verifier   *tao.Verifier
-	delegation *tao.Attestation
+	guard      Guard
+	verifier   *Verifier
+	delegation *Attestation
 }
 
 // Listen returns a new Tao-based net.Listener that uses the underlying
-// crypto/tls net.Listener and a tao.Guard to check whether or not connections
+// crypto/tls net.Listener and a Guard to check whether or not connections
 // are authorized.
-func Listen(network, laddr string, config *tls.Config, g tao.Guard, v *tao.Verifier, del *tao.Attestation) (net.Listener, error) {
+func Listen(network, laddr string, config *tls.Config, g Guard, v *Verifier, del *Attestation) (net.Listener, error) {
 	config.ClientAuth = tls.RequireAnyClientCert
 	inner, err := tls.Listen(network, laddr, config)
 	if err != nil {
@@ -50,9 +49,9 @@ func Listen(network, laddr string, config *tls.Config, g tao.Guard, v *tao.Verif
 	return &listener{inner, g, v, del}, nil
 }
 
-// ValidatePeerAttestation checks a tao.Attestation for a given Listener against
+// ValidatePeerAttestation checks a Attestation for a given Listener against
 // an X.509 certificate from a TLS channel.
-func ValidatePeerAttestation(a *tao.Attestation, cert *x509.Certificate, guard tao.Guard) error {
+func ValidatePeerAttestation(a *Attestation, cert *x509.Certificate, guard Guard) error {
 	stmt, err := a.Validate()
 	if err != nil {
 		return err
@@ -95,9 +94,9 @@ func ValidatePeerAttestation(a *tao.Attestation, cert *x509.Certificate, guard t
 	}
 
 	// The bytes of the delegate are the result of ToPrincipal on
-	// tao.Keys.SigningKey. Check that this represents the same key as the one
+	// Keys.SigningKey. Check that this represents the same key as the one
 	// in the certificate.
-	verifier, err := tao.FromPrincipal(kprin)
+	verifier, err := FromPrincipal(kprin)
 	if err != nil {
 		return err
 	}
@@ -123,7 +122,7 @@ func (l *listener) Accept() (net.Conn, error) {
 	// 3. Server -> Client: Tao delegation for X.509 certificate.
 	// 4. Client: checks for a Tao-authorized program.
 	ms := util.NewMessageStream(c)
-	var a tao.Attestation
+	var a Attestation
 	if err := ms.ReadMessage(&a); err != nil {
 		c.Close()
 		return nil, err

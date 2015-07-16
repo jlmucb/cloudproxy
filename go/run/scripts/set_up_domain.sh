@@ -33,10 +33,10 @@ cat "$TEMPLATE" | sed "s/REPLACE_WITH_DOMAIN_GUARD_TYPE/$GUARD/g" > $TEMP_FILE
 # SoftTao: generate root keys for signing, attestation, and sealing.
 if [ "$TYPE" == "Soft" ]; then
 	"$ADMIN" -operation key -domain_path $DOMAIN_PATH -pass $FAKE_PASS \
-		-config_template "$TEMPLATE" $HOST_REL_PATH
+		-config_template "$TEMP_FILE" $HOST_REL_PATH
 
 	# Get key host name and add it to the template.
-	KEY_NAME=$("$ADMIN" -config_template "$TEMPLATE" -domain_path $DOMAIN_PATH \
+	KEY_NAME=$("$ADMIN" -config_template "$TEMP_FILE" -domain_path $DOMAIN_PATH \
 		-pass $FAKE_PASS -logtostderr $HOST_REL_PATH)
 
 	# Specify key principal as host name.

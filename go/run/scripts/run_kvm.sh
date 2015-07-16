@@ -1,7 +1,9 @@
 #!/bin/bash
 
-if [ "$#" != "4" ]; then
-	echo "Must supply a CoreOS image, an SSH auth keys file, a domain path, and a linux_host image for CoreOS"
+if [ "$#" != "5" ]; then
+	echo "Must supply a CoreOS image, an SSH auth keys file, a domain "
+	echo "path, a linux_host image for CoreOS, and a type of LinuxHost "
+	echo "(Soft or TPM)"
 	exit 1
 fi
 
@@ -17,15 +19,27 @@ IMG="$1"
 KEYS="$2"
 DOMAIN="$3"
 LINUXHOST="$4"
+TYPE="$5"
 
 # Make sure we have sudo privileges before running anything.
 sudo test true
 
 # Start linux_host in KVM mode.
-sudo "$(gowhich linux_host)" -hosted_program_type kvm_coreos -kvm_coreos_img $IMG \
-	-kvm_coreos_ssh_auth_keys $KEYS -config_path ${DOMAIN}/tao.config \
-	-pass BogusPass &
-HOSTPID=$!
+if [[ "$TYPE" == "TPM" ]]; then
+  sudo "$(gowhich linux_host)" -hosted_program_type kvm_coreos \
+	  -kvm_coreos_img $IMG -kvm_coreos_ssh_auth_keys $KEYS \
+	  -config_path ${DOMAIN}/tao.config -host_type stacked \
+	  -host_channel_type tpm -pass BogusPass &
+  HOSTPID=$!
+elif [[ "$TYPE" == "Soft" ]]; then
+  sudo "$(gowhich linux_host)" -hosted_program_type kvm_coreos \
+	  -kvm_coreos_img $IMG -kvm_coreos_ssh_auth_keys $KEYS \
+	  -config_path ${DOMAIN}/tao.config -pass BogusPass &
+  HOSTPID=$!
+else
+  echo "Invalid host type '$TYPE'"
+  exit 1
+fi
 
 echo "Waiting for the hypervisor Linux Host to start"
 sleep 2

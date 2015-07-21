@@ -35,6 +35,7 @@ import (
 // net.Conn. Modify this test to use net.Pipe instead of the loopback interface here.
 
 var password []byte = make([]byte, 32)
+var prin auth.Prin = auth.NewKeyPrin([]byte("Alice"))
 
 func makeTestDomains(configDir, network, addr string, ttl int64) (policy *Domain, public *Domain, err error) {
 
@@ -53,7 +54,6 @@ func makeTestDomains(configDir, network, addr string, ttl int64) (policy *Domain
 	}
 
 	// Add some bogus rules.
-	prin := auth.NewKeyPrin([]byte("Alice"))
 	err = policy.Guard.AddRule(
 		`(forall P: forall F: IsFood(F) and IsPerson(P) implies Authorized(P, "eat", F))`)
 	if err != nil {
@@ -83,16 +83,32 @@ func TestCachingDatalogLoad(t *testing.T) {
 	ttl = 1
 	configDir := "/tmp/domain_test"
 
-	if _, _, err := makeTestDomains(configDir, network, addr, ttl); err != nil {
+	policy, _, err := makeTestDomains(configDir, network, addr, ttl)
+	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(configDir)
 	defer os.RemoveAll(configDir + ".pub")
 
-	if _, err := LoadDomain(path.Join(configDir+".pub", "tao.config"), nil); err != nil {
+	public, err := LoadDomain(path.Join(configDir+".pub", "tao.config"), nil)
+	if err != nil {
 		t.Fatal(err)
 	}
 
+	ch := make(chan bool)
+	cal, err := net.Listen(network, addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cal.Close()
+	go runTCCA(t, cal, policy.Keys, policy.Guard, ch)
+
+	// This should cause an implicit reload. If the request to the TaoCA fails,
+	// IsAuthorized() will return false and not propagate an error.
+	if public.Guard.IsAuthorized(prin, "eat", []string{"sandwich"}) == false {
+		t.Fatal("IsAuthorized() failed, good rule should have been authorized")
+	}
+	<-ch
 }
 
 func TestCachingDatalogReload(t *testing.T) {
@@ -111,11 +127,9 @@ func TestCachingDatalogReload(t *testing.T) {
 	defer os.RemoveAll(configDir)
 	defer os.RemoveAll(configDir + ".pub")
 
-	prin := auth.NewKeyPrin([]byte("Alice"))
-
 	// Sanity check.
 	if policyDomain.Guard.IsAuthorized(prin, "eat", []string{"sandwich"}) == false {
-		t.Fatal("denied, should have been authorized")
+		t.Fatal("Policy guard IsAuthorized() failed, good rule should have been authorized")
 	}
 
 	// Run the TaoCA. This handles one request and then exits.
@@ -124,6 +138,7 @@ func TestCachingDatalogReload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer cal.Close()
 	go runTCCA(t, cal, policyDomain.Keys, policyDomain.Guard, ch)
 
 	// Explicitly call Reload(), generating a policy request.
@@ -145,7 +160,7 @@ func TestCachingDatalogReload(t *testing.T) {
 	// This should cause an implicit reload. If the request to the TaoCA fails,
 	// IsAuthorized() will return false and not propagate an error.
 	if publicDomain.Guard.IsAuthorized(prin, "eat", []string{"sandwich"}) == false {
-		t.Fatal("denied, should have been authorized")
+		t.Fatal("IsAuthorized() failed, good rule should have been authorized")
 	}
 	<-ch
 
@@ -154,7 +169,7 @@ func TestCachingDatalogReload(t *testing.T) {
 	go runTCCA(t, cal, policyDomain.Keys, policyDomain.Guard, ch)
 
 	if publicDomain.Guard.IsAuthorized(prin, "eat", []string{"salad"}) == true {
-		t.Fatal("authorized, should have been denied")
+		t.Fatal("IsAuthorized() succeeded, bad rule should have been denied")
 	}
 	<-ch
 }

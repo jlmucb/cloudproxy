@@ -74,6 +74,12 @@ func main() {
 	principal := flag.String("principal", "program", "Type of hash to produce ('program', 'container', 'tpm', 'linux')")
 	keyPass := flag.String("key_pass", "", "A password to use for key-based principal (for testing only!).")
 
+	// When creating a domain, if these flags are specified, a public cached
+	// version of the domain will also be created.
+	publicDomainAddr := flag.String("pub_domain_address", "", "Address of TaoCA for public cached domain.")
+	publicDomainNetwork := flag.String("pub_domain_network", "tcp", "Network of TaoCA for public cached domain.")
+	publicDomainTTL := flag.Int64("pub_domain_ttl", 30, "Time-to-live of cached policy (in seconds).")
+
 	help := "Administrative utility for Tao Domain.\n"
 	help += "[options] = [-quiet] [-config_path tao.config]\n"
 	help += "Usage: %[1]s -operation key -domain_path path -config_template file key_path\n"
@@ -118,7 +124,8 @@ func main() {
 	configPath := path.Join(*domainPath, *configName)
 	switch *operation {
 	case "key", "domain":
-		createKeyOrDomain(*pass, *domainPath, configPath, *operation, &dt)
+		createKeyOrDomain(*pass, *domainPath, configPath, *operation,
+			*publicDomainNetwork, *publicDomainAddr, *publicDomainTTL, &dt)
 	case "policy":
 		if *query != "" {
 			queryGuard(configPath, *query)
@@ -317,7 +324,9 @@ func getKey(prompt, input string) []byte {
 	return pwd
 }
 
-func createKeyOrDomain(pass, domainPath, configPath, operation string, dt *tao.DomainTemplate) {
+func createKeyOrDomain(pass, domainPath, configPath, operation,
+	publicDomainNetwork, publicDomainAddr string, publicDomainTTL int64, dt *tao.DomainTemplate) {
+
 	pwd := getKey("password", pass)
 	if domainPath == "" {
 		glog.Exit("must supply a domain path for key and domain creation")
@@ -360,6 +369,13 @@ func createKeyOrDomain(pass, domainPath, configPath, operation string, dt *tao.D
 
 		if err := domain.Save(); err != nil {
 			glog.Exit(err)
+		}
+
+		// Create a public cached domain.
+		if publicDomainAddr != "" {
+			// Save the domain to disk.
+			_, err = domain.CreatePublicCachedDomain(
+				publicDomainNetwork, publicDomainAddr, publicDomainTTL)
 		}
 	}
 }

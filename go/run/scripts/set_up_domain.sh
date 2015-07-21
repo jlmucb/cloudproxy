@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ "$#" != "2" ]; then
+if [ "$#" -lt "2" ]; then
 	echo "Must supply a type of domain guard ('Datalog', 'ACLs', 'AllowAll',"
 	echo "or 'DenyAll') and a root Tao type ('TPM' or 'Soft')."
 	exit 1
@@ -11,6 +11,12 @@ set -o errexit
 
 GUARD="$1"
 TYPE="$2"
+if [ "$#" == "3" ]; then
+	CA_ADDR="$3"
+else
+	CA_ADDR=""
+fi
+
 WHICH=$(which which)
 ADMIN="$(PATH="${GOPATH//://bin:}/bin" $WHICH tao_admin)"
 SCRIPT_PATH="$(readlink -e "$(dirname "$0")")"
@@ -47,7 +53,7 @@ fi
 # private/public key pair in policy_keys/{signer,cert}, the activity
 # owner's root key.
 "$ADMIN" -operation domain -domain_path $DOMAIN_PATH \
-	-config_template $TEMP_FILE \
+	-config_template $TEMP_FILE -pub_domain_address "$CA_ADDR" \
 	-pass $FAKE_PASS -logtostderr
 
 # Create the docker images.
@@ -73,3 +79,11 @@ fi
 
 rm $TEMP_FILE
 echo "Temp domain directory: $DOMAIN_PATH"
+
+# If we're using a soft Tao, and a public Tao domain was created, we need to
+# copy the root signing key and certificate.
+if [ "$#" == "3" ] && [ "$TYPE" == "Soft" ]; then
+	mkdir -p "${DOMAIN_PATH}.pub/${HOST_REL_PATH}"
+	cp $DOMAIN_PATH/$HOST_REL_PATH/{cert,keys} "${DOMAIN_PATH}.pub/${HOST_REL_PATH}"
+	echo "Temp public domain directory: ${DOMAIN_PATH}.pub"
+fi

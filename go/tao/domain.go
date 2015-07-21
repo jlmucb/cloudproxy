@@ -190,6 +190,7 @@ func (d *Domain) CreatePublicCachedDomain(network, addr string, ttl int64) (*Dom
 		Datalog /*TODO(cjpatton) hardcoded*/, network, addr, ttl)
 	newDomain.Config.DomainInfo.GuardNetwork = proto.String(network)
 	newDomain.Config.DomainInfo.GuardAddress = proto.String(addr)
+	newDomain.Config.DomainInfo.GuardTtl = proto.Int64(ttl)
 
 	// Create domain directory ending with ".pub".
 	configDir = strings.TrimRight(configDir, "/") + ".pub"

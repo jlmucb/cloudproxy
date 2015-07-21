@@ -3,7 +3,6 @@ config: {
     name: "Demo"
     policy_keys_path: "policy_keys"
     guard_type: "REPLACE_WITH_DOMAIN_GUARD_TYPE"
-    guard_address: ""
   }
 
   x509_info: {
@@ -43,6 +42,7 @@ datalog_rules: "(forall P: MemberProgram(P) implies Authorized(P, \"Execute\"))"
 
 host_predicate_name: "TrustedHost"
 
+program_paths: "mixnet_router"
 program_paths: "demo_server"
 program_paths: "demo_client"
 program_predicate_name: "TrustedProgramHash"

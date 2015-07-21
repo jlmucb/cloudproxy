@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"os/signal"
 	"syscall"
 
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
@@ -218,6 +219,15 @@ func (lpf *LinuxProcessFactory) Launch(prog string, args []string, uid, gid int)
 		channel.Close()
 		return nil, nil, err
 	}
+
+	// Reap the child when the process dies.
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, syscall.SIGCHLD)
+	go func() {
+		<- sc
+		cmd.Wait()
+		signal.Stop(sc)
+	}()
 
 	return channel, cmd, nil
 }

@@ -27,12 +27,6 @@ const (
 	CellBytes = 1024 // Length of a cell
 )
 
-// x509 identity of a mixnet router.
-var x509Identity pkix.Name = pkix.Name{
-	Organization:       []string{"Google Inc."},
-	OrganizationalUnit: []string{"Cloud Security"},
-}
-
 // RouterContext stores the runtime environment for a Tao-delegated router.
 type RouterContext struct {
 	Keys     *tao.Keys    // Signing keys of this hosted program.
@@ -44,24 +38,21 @@ type RouterContext struct {
 // `path`, and binds an anonymous listener socket to `addr` on network
 // `network`. It is expected that this program will be called from a host
 // implementing the Tao, as it requests a delegation from its parent.
-func NewRouterContext(path, network, addr string) (hp *RouterContext, err error) {
+func NewRouterContext(path, network, addr string, x509Identity *pkix.Name) (hp *RouterContext, err error) {
 	hp = new(RouterContext)
 
 	// Generate keys and get attestation from parent.
-	hp.Keys, err = tao.NewTemporaryTaoDelegatedKeys(tao.Signing|tao.Crypting, tao.Parent())
-	if err != nil {
+	if hp.Keys, err = tao.NewTemporaryTaoDelegatedKeys(tao.Signing|tao.Crypting, tao.Parent()); err != nil {
 		return nil, err
 	}
 
 	// Create a certificate.
-	hp.Keys.Cert, err = hp.Keys.SigningKey.CreateSelfSignedX509(&x509Identity)
-	if err != nil {
+	if hp.Keys.Cert, err = hp.Keys.SigningKey.CreateSelfSignedX509(x509Identity); err != nil {
 		return nil, err
 	}
 
 	// Load domain from local configuration.
-	hp.Domain, err = tao.LoadDomain(path, nil)
-	if err != nil {
+	if hp.Domain, err = tao.LoadDomain(path, nil); err != nil {
 		return nil, err
 	}
 
@@ -79,9 +70,8 @@ func NewRouterContext(path, network, addr string) (hp *RouterContext, err error)
 	}
 
 	// Bind address to socket.
-	hp.Listener, err = tao.ListenAnonymous(network, addr, tlsConfig,
-		hp.Domain.Guard, hp.Domain.Keys.VerifyingKey, hp.Keys.Delegation)
-	if err != nil {
+	if hp.Listener, err = tao.ListenAnonymous(network, addr, tlsConfig,
+		hp.Domain.Guard, hp.Domain.Keys.VerifyingKey, hp.Keys.Delegation); err != nil {
 		return nil, err
 	}
 
@@ -96,6 +86,8 @@ func (hp RouterContext) Close() {
 }
 
 // ProxyContext stores the runtime environment for a mixnet proxy.
+// TODO(cjpatton) implement the io.ReadWriteCloser interface. SendMessage
+// will become Write.
 type ProxyContext struct {
 	domain *tao.Domain // Policy guard and public key.
 	conn   net.Conn    // One-way authenticated TLS channel to Tao router.
@@ -128,8 +120,9 @@ func (c ProxyContext) Close() {
 // Send message divides a byte slice into fixed-length
 // cells and sends them to the Tao router.
 func (c ProxyContext) SendMessage(msg []byte) error {
-	// TODO(cjpatton) for now, just send one cell. The sender should
-	// send the total number of bytes in the message in the first cell.
+	// TODO(cjpatton) for now, just send one cell. Ultimately the protocol
+	// will be as follows: send a cell containing the total number of bytes
+	// in the message and the destination. Then send the message cells.
 	cell := make([]byte, CellBytes)
 	copy(cell, msg)
 	if _, err := c.conn.Write(cell); err != nil {

@@ -30,10 +30,10 @@ func main() {
 	flag.Parse()
 	c, err := mixnet.NewProxyContext(*configPath, *serverNetwork, *serverAddr)
 	if err != nil {
-		glog.Errorf("failed to configure client: %s\n", err)
+		glog.Errorf("failed to configure client: %s", err)
 	}
 	if err = c.SendMessage([]byte("Hello!")); err != nil {
-		glog.Errorf("failed to send message: %s\n", err)
+		glog.Errorf("failed to send message: %s", err)
 	}
 	defer c.Close()
 

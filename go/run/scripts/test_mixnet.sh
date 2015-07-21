@@ -67,13 +67,13 @@ sleep 2
 
 
 ### Start mixnet router.
-echo "----------------- Starting Mixnet Router"
+echo "Starting Mixnet Router"
 DSPID=$("$(gowhich tao_launch)" -sock ${DOMAIN_PUB}/linux_tao_host/admin_socket \
 	"$(gowhich mixnet_router)" -config=${DOMAIN_PUB}/tao.config)
 
 
 ### Start mixnet proxy.
-echo "----------------- Starting Mixnet Proxy"
+echo "Starting Mixnet Proxy"
 "$(gowhich mixnet_proxy)" -config=${DOMAIN_PUB}/tao.config
 
 echo "Waiting for the tests to finish"

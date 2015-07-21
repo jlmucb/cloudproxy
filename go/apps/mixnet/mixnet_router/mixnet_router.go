@@ -15,6 +15,7 @@
 package main
 
 import (
+	"crypto/x509/pkix"
 	"errors"
 	"flag"
 	"io"
@@ -63,16 +64,22 @@ var serverAddr = flag.String("addr", "localhost:8123", "Address and port for Tao
 var serverNetwork = flag.String("network", "tcp", "Network protocol for Tao server.")
 var configPath = flag.String("config", "tao.config", "Path to domain configuration file.")
 
+// x509 identity of the mixnet router.
+var x509Identity pkix.Name = pkix.Name{
+	Organization:       []string{"Google Inc."},
+	OrganizationalUnit: []string{"Cloud Security"},
+}
+
 func main() {
 	flag.Parse()
 	hp, err := mixnet.NewRouterContext(*configPath, *serverNetwork, *serverAddr)
 	if err != nil {
-		glog.Errorf("failed to configure server: %s\n", err)
+		glog.Errorf("failed to configure server: %s", err)
 	}
 	defer hp.Close()
 
 	if err = serveMixnetClients(hp); err != nil {
-		glog.Errorf("error occured while serving: %s\n", err)
+		glog.Errorf("error occured while serving: %s", err)
 	}
 
 	glog.Flush()

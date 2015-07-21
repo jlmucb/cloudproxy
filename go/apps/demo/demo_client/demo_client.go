@@ -49,7 +49,7 @@ func doRequest(guard tao.Guard, domain *tao.Domain, keys *tao.Keys) bool {
 	case "tls":
 		conn, err = tao.DialTLSWithKeys(network, serverAddr, keys)
 	case "tao":
-		conn, err = tao.DialWithKeys(network, serverAddr, guard, domain.Keys.VerifyingKey, keys)
+		conn, err = tao.Dial(network, serverAddr, guard, domain.Keys.VerifyingKey, keys)
 	}
 	if err != nil {
 		glog.Infof("client: error connecting to %s: %s\n", serverAddr, err.Error())

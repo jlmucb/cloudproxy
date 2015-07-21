@@ -115,38 +115,50 @@ func DialTLSWithKeys(network, addr string, keys *Keys) (net.Conn, error) {
 // Dial connects to a Tao TLS server, performs a TLS handshake, and exchanges
 // Attestation values with the server, checking that this is a Tao server
 // that is authorized to Execute. It uses a Tao Guard to perform this check.
-func Dial(network, addr string, guard Guard, v *Verifier) (net.Conn, error) {
+func DialWithNewX509(network, addr string, guard Guard, v *Verifier) (net.Conn, error) {
 	keys, _, err := generateX509()
 	if err != nil {
 		return nil, fmt.Errorf("client: can't create key and cert: %s\n", err.Error())
 	}
 
-	return DialWithKeys(network, addr, guard, v, keys)
+	return Dial(network, addr, guard, v, keys)
 }
 
-// DialWithKeys connects to a Tao TLS server using an existing set of keys.
-func DialWithKeys(network, addr string, guard Guard, v *Verifier, keys *Keys) (net.Conn, error) {
-	if keys.Cert == nil {
-		return nil, fmt.Errorf("client: can't dial with an empty client certificate\n")
-	}
-	tlsCert, err := EncodeTLSCert(keys)
-	if err != nil {
-		return nil, err
-	}
-	conn, err := tls.Dial(network, addr, &tls.Config{
+// Dial connects to a Tao TLS server, performs a TLS handshake, and verifies
+// the Attestation value of the server, checking that the server is authorized
+// to execute. If keys are provided (keys!=nil), then it sends an attestation
+// of its identity to the peer.
+func Dial(network, addr string, guard Guard, v *Verifier, keys *Keys) (net.Conn, error) {
+	tlsConfig := &tls.Config{
 		RootCAs:            x509.NewCertPool(),
-		Certificates:       []tls.Certificate{*tlsCert},
 		InsecureSkipVerify: true,
-	})
+	}
+
+	// Set up certificate for two-way authentication.
+	if keys != nil {
+		if keys.Cert == nil {
+			return nil, fmt.Errorf("client: can't dial with an empty client certificate\n")
+		}
+		tlsCert, err := EncodeTLSCert(keys)
+		if err != nil {
+			return nil, err
+		}
+		tlsConfig.Certificates = []tls.Certificate{*tlsCert}
+	}
+
+	conn, err := tls.Dial(network, addr, tlsConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	// Tao handshake: send client delegation.
 	ms := util.NewMessageStream(conn)
-	if _, err = ms.WriteMessage(keys.Delegation); err != nil {
-		conn.Close()
-		return nil, err
+
+	// Two-way Tao handshake: send client delegation.
+	if keys != nil {
+		if _, err = ms.WriteMessage(keys.Delegation); err != nil {
+			conn.Close()
+			return nil, err
+		}
 	}
 
 	// Tao handshake: read server delegation.

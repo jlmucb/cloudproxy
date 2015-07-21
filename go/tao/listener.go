@@ -24,7 +24,7 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
-// A Listener implements net.Listener for Tao connections. Each time it accepts
+// A listener implements net.Listener for Tao connections. Each time it accepts
 // a connection, it exchanges Tao attestation chains and checks the attestation
 // for the certificate of the client against its Guard. The guard in this
 // case should be the guard of the Tao domain. This listener allows connections
@@ -34,6 +34,13 @@ type listener struct {
 	guard      Guard
 	verifier   *Verifier
 	delegation *Attestation
+}
+
+// anonymousListener is like a listener, except it does not require its peer to
+// attest to its identity. This provides a one-way authenticated TLS channel for
+// anonymous clients to Tao-based services.
+type anonymousListener struct {
+	listener
 }
 
 // Listen returns a new Tao-based net.Listener that uses the underlying
@@ -47,6 +54,18 @@ func Listen(network, laddr string, config *tls.Config, g Guard, v *Verifier, del
 	}
 
 	return &listener{inner, g, v, del}, nil
+}
+
+// ListenAnonymous returns a new Tao-based net.Listener that does not require
+// its peer to attest to its identity.
+func ListenAnonymous(network, laddr string, config *tls.Config, g Guard, v *Verifier, del *Attestation) (net.Listener, error) {
+	config.ClientAuth = tls.NoClientCert
+	inner, err := tls.Listen(network, laddr, config)
+	if err != nil {
+		return nil, err
+	}
+
+	return &anonymousListener{listener{inner, g, v, del}}, nil
 }
 
 // ValidatePeerAttestation checks a Attestation for a given Listener against
@@ -115,7 +134,7 @@ func (l *listener) Accept() (net.Conn, error) {
 		return nil, err
 	}
 
-	// Protocol:
+	// Tao handshake Protocol:
 	// 0. TLS handshake (executed automatically on first message)
 	// 1. Client -> Server: Tao delegation for X.509 certificate.
 	// 2. Server: checks for a Tao-authorized program.
@@ -137,6 +156,28 @@ func (l *listener) Accept() (net.Conn, error) {
 		c.Close()
 		return nil, err
 	}
+
+	if _, err := ms.WriteMessage(l.delegation); err != nil {
+		c.Close()
+		return nil, err
+	}
+
+	return c, nil
+}
+
+// Accept waits for a connect, accepts it using the underlying Conn and checks
+// the attestations and the statement.
+func (l *anonymousListener) Accept() (net.Conn, error) {
+	c, err := l.gl.Accept()
+	if err != nil {
+		return nil, err
+	}
+
+	// One-way Tao handshake Protocol:
+	// 0. TLS handshake (executed automatically on first message)
+	// 1. Server -> Client: Tao delegation for X.509 certificate.
+	// 2. Client: checks for a Tao-authorized program.
+	ms := util.NewMessageStream(c)
 
 	if _, err := ms.WriteMessage(l.delegation); err != nil {
 		c.Close()

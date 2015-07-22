@@ -23,9 +23,7 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
-const (
-	CellBytes = 1024 // Length of a cell
-)
+const CellBytes = 1024 // Length of a cell
 
 // RouterContext stores the runtime environment for a Tao-delegated router.
 type RouterContext struct {

@@ -33,7 +33,7 @@ func handleMixnetClient(conn net.Conn, ch chan<- error) {
 	if n, err := conn.Read(cell); err != nil && err != io.EOF {
 		ch <- err
 	} else if n != mixnet.CellBytes {
-		ch <- errors.New("Received a cell with the wrong length")
+		ch <- errors.New("received a cell with the wrong length")
 	} else {
 		glog.Info("The cell on the wire:", string(cell))
 	}
@@ -55,9 +55,8 @@ func serveMixnetClients(hp *mixnet.RouterContext) error {
 
 	// TODO(cjpatton) for now, just accept one connection.
 	go handleMixnetClient(conn, ch)
-	err = <-ch
 
-	return err
+	return <-ch
 }
 
 // Command line arguments.

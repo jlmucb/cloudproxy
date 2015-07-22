@@ -23,6 +23,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/apps/mixnet"
+	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
 // Handle connections from mixnet clients.
@@ -72,7 +73,8 @@ var x509Identity pkix.Name = pkix.Name{
 
 func main() {
 	flag.Parse()
-	hp, err := mixnet.NewRouterContext(*configPath, *serverNetwork, *serverAddr)
+	hp, err := mixnet.NewRouterContext(*configPath, *serverNetwork, *serverAddr,
+		&x509Identity, tao.Parent())
 	if err != nil {
 		glog.Errorf("failed to configure server: %s", err)
 	}

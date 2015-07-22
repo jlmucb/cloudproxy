@@ -38,11 +38,11 @@ type RouterContext struct {
 // `path`, and binds an anonymous listener socket to `addr` on network
 // `network`. It is expected that this program will be called from a host
 // implementing the Tao, as it requests a delegation from its parent.
-func NewRouterContext(path, network, addr string, x509Identity *pkix.Name) (hp *RouterContext, err error) {
+func NewRouterContext(path, network, addr string, x509Identity *pkix.Name, t tao.Tao) (hp *RouterContext, err error) {
 	hp = new(RouterContext)
 
 	// Generate keys and get attestation from parent.
-	if hp.Keys, err = tao.NewTemporaryTaoDelegatedKeys(tao.Signing|tao.Crypting, tao.Parent()); err != nil {
+	if hp.Keys, err = tao.NewTemporaryTaoDelegatedKeys(tao.Signing|tao.Crypting, t); err != nil {
 		return nil, err
 	}
 

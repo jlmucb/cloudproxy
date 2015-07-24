@@ -21,6 +21,11 @@ import (
 
 const CellBytes = 1024 // Length of a cell
 
+const (
+	msgCell = 0x00
+	dirCell = 0x01
+)
+
 var errCellLength error = errors.New("incorrect cell length")
 
 // Conn implements the net.Conn interface. The read and write operations are
@@ -30,7 +35,7 @@ type Conn struct {
 	net.Conn
 }
 
-// Read a cell from the channel. Return an error if len(msg) != CellBytes.
+// Read a cell from the channel. If len(msg) != CellBytes, return an error.
 func (c Conn) Read(msg []byte) (n int, err error) {
 	n, err = c.Conn.Read(msg)
 	if err != nil {
@@ -42,17 +47,49 @@ func (c Conn) Read(msg []byte) (n int, err error) {
 	return n, nil
 }
 
-// Write a cell to the channel. If the len(msg) > CellBytes, return an error.
-// If len(msg) < CellBytes, then zero-pad the message up to length of a cell.
-func (c Conn) Write(msg []byte) (n int, err error) {
-	cell := make([]byte, CellBytes) // Initialzed as an array of 0-bytes.
-	if len(msg) > CellBytes {
+// Write a cell to the channel. If the len(cell) != CellBytes, return an error.
+func (c *Conn) Write(msg []byte) (n int, err error) {
+	if len(msg) != CellBytes {
 		return 0, errCellLength
 	}
-	copy(cell, msg)
-	n, err = c.Conn.Write(cell)
+	n, err = c.Conn.Write(msg)
 	if err != nil {
 		return n, err
 	}
 	return n, nil
+}
+
+// padCell pads a message to the length of a cell and returns a byte slice of
+// length CellBytes. If len(msg) > CellBytes, then return msg.
+func padCell(msg []byte) []byte {
+	if len(msg) >= CellBytes {
+		return msg
+	}
+
+	cell := make([]byte, CellBytes) // Initially zero
+	bytes := copy(cell, msg)
+	cell[bytes] = 0xf0
+	return cell
+}
+
+// unpadCell removes the padding from a message whose length is less than
+// CellBytesa.
+func unpadCell(cell []byte) []byte {
+	i := len(cell) - 1
+	for i > 0 && cell[i] == 0x00 {
+		i--
+	}
+	if cell[i] == 0xf0 {
+		msg := make([]byte, i)
+		copy(msg, cell)
+		return msg
+	}
+	return cell
+}
+
+// Write zeros to each byte of a cell.
+func zeroCell(cell []byte) {
+	for i := 0; i < CellBytes; i++ {
+		cell[i] = 0
+	}
 }

@@ -18,21 +18,31 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/binary"
+	"errors"
+	"io"
 	"net"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
+
+var errBadDirective error = errors.New("received bad directive")
 
 // RouterContext stores the runtime environment for a Tao-delegated router.
 type RouterContext struct {
 	keys          *tao.Keys    // Signing keys of this hosted program.
 	domain        *tao.Domain  // Policy guard and public key.
 	proxyListener net.Listener // Socket where server listens for proxies.
+
+	// For the moment, buffer a single message and destination.
+	msgBuffer     []byte
+	dstAddrBuffer string
 }
 
 // NewRouterContext generates new keys, loads a local domain configuration from
-// `path`, and binds an anonymous listener socket to `addr` on network
-// `network`. A delegation is requested from the Tao `t` which is  nominally
+// path and binds an anonymous listener socket to addr on network
+// network. A delegation is requested from the Tao9 t which is  nominally
 // the parent of this hosted program.
 func NewRouterContext(path, network, addr string, x509Identity *pkix.Name, t tao.Tao) (hp *RouterContext, err error) {
 	hp = new(RouterContext)
@@ -84,8 +94,53 @@ func (hp RouterContext) AcceptProxy() (net.Conn, error) {
 }
 
 // Close releases any resources held by the hosted program.
-func (hp RouterContext) Close() {
+func (hp *RouterContext) Close() {
 	if hp.proxyListener != nil {
 		hp.proxyListener.Close()
 	}
+}
+
+// HandleProxy reads a directive or a message from a proxy.
+func (hp *RouterContext) HandleProxy(c net.Conn) error {
+	var err error
+	cell := make([]byte, CellBytes)
+	if _, err = c.Read(cell); err != nil && err != io.EOF {
+		return err
+	}
+
+	// The first byte signals either a message or a directive to the router.
+	if cell[0] == msgCell {
+
+		// The first eight bytes of the first cell encode the message length.
+		// TODO(cjpatton) How to deal with endianness discrepancies?
+		msgBytes := int(binary.BigEndian.Uint64(cell[1:9]))
+		hp.msgBuffer = make([]byte, msgBytes)
+		bytes := copy(hp.msgBuffer, unpadCell(cell[9:]))
+
+		// While the connection is open and the message is incomplete, read
+		// the next cell.
+		for err != io.EOF && bytes < msgBytes {
+			if _, err = c.Read(cell); err != nil && err != io.EOF {
+				return err
+			}
+			bytes += copy(hp.msgBuffer[bytes:], unpadCell(cell))
+		}
+
+	} else if cell[0] == dirCell {
+		var d Directive
+		if err := proto.Unmarshal(unpadCell(cell)[1:], &d); err != nil {
+			return err
+		}
+
+		if *d.Type == DirectiveType_CREATE_CIRCUIT {
+			if len(d.Addrs) == 0 {
+				return errBadDirective
+			} else if len(d.Addrs) > 1 {
+				return errors.New("multi-hop circuits not implemented")
+			}
+
+			hp.dstAddrBuffer = d.Addrs[0]
+		}
+	}
+	return nil
 }

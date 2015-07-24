@@ -24,7 +24,7 @@ message Directive {
 
   // A sequence of addresses (e.g. "192.168.1.1:7007") comprising the circuit
   // to be constructed over the mixnet. Each address corresponds to a mixnet
-  // router exeppt the last, which is the service the proxy would like to
+  // router except the last, which is the service the proxy would like to
   // contact.
   repeated string addrs = 2;
 }

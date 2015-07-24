@@ -86,7 +86,7 @@ func (p *ProxyContext) SendMessage(c net.Conn, msg []byte) (n int, err error) {
 		return 0, err
 	}
 
-	for bytes != msgBytes {
+	for bytes < msgBytes {
 		bytes += copy(cell, msg[bytes:])
 		if _, err := c.Write(padCell(cell)); err != nil {
 			return bytes, err

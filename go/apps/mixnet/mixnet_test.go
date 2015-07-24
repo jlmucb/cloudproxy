@@ -259,7 +259,7 @@ func TestProxyRouterRelay(t *testing.T) {
 	if res.err != nil {
 		t.Error(res.err)
 	} else if bytes.Compare(res.msg, msg[:37]) != 0 {
-		t.Error("Short message, Server got:", res.msg)
+		t.Error("Short message, server got:", res.msg)
 	}
 
 	// Long message.

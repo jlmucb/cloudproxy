@@ -42,7 +42,7 @@ type RouterContext struct {
 
 // NewRouterContext generates new keys, loads a local domain configuration from
 // path and binds an anonymous listener socket to addr on network
-// network. A delegation is requested from the Tao9 t which is  nominally
+// network. A delegation is requested from the Tao t which is  nominally
 // the parent of this hosted program.
 func NewRouterContext(path, network, addr string, x509Identity *pkix.Name, t tao.Tao) (hp *RouterContext, err error) {
 	hp = new(RouterContext)

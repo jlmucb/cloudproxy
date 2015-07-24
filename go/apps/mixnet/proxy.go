@@ -49,18 +49,6 @@ func (p *ProxyContext) DialRouter(network, addr string) (net.Conn, error) {
 	return &Conn{c}, nil
 }
 
-// Serialize and pad a directive to the length of a cell and send it to the
-// router. A directive is signaled to the receiver by the first byte of the
-// cell. If the serialized protocol buffer doesn't fit into a cell, c.Write()
-// will throw an error.
-func (p *ProxyContext) SendDirective(c net.Conn, d *Directive) (n int, err error) {
-	db, err := proto.Marshal(d)
-	if err != nil {
-		return 0, err
-	}
-	return c.Write(padCell(append([]byte{dirCell}, db...)))
-}
-
 // CreateCircuit directs the router to construct a circuit to a particular
 // destination over the mixnet.
 func (p *ProxyContext) CreateCircuit(c net.Conn, circuitAddrs []string) (n int, err error) {
@@ -68,6 +56,31 @@ func (p *ProxyContext) CreateCircuit(c net.Conn, circuitAddrs []string) (n int, 
 	d.Type = DirectiveType_CREATE_CIRCUIT.Enum()
 	d.Addrs = circuitAddrs
 	return p.SendDirective(c, &d)
+}
+
+// Serialize and pad a directive to the length of a cell and send it to the
+// router. A directive is signaled to the receiver by the first byte of the
+// cell. The next 8 bytes encodse the length of of the serialized protocol
+// buffer. If the buffer doesn't fit in a cell, then throw an error.
+func (p *ProxyContext) SendDirective(c net.Conn, d *Directive) (n int, err error) {
+	db, err := proto.Marshal(d)
+	if err != nil {
+		return 0, err
+	}
+	dirBytes := len(db)
+
+	// Throw an error if encoded Directive doesn't fit into a cell.
+	if dirBytes+9 > CellBytes {
+		return 0, errCellLength
+	}
+
+	cell := make([]byte, CellBytes)
+	cell[0] = dirCell
+	// TODO(cjpatton) How to deal with endianness discrepancies?
+	binary.BigEndian.PutUint64(cell[1:9], uint64(dirBytes))
+	copy(cell[9:], db)
+
+	return c.Write(cell)
 }
 
 // SendMessage directs the router to relay a message over the already constructed
@@ -82,13 +95,14 @@ func (p *ProxyContext) SendMessage(c net.Conn, msg []byte) (n int, err error) {
 	binary.BigEndian.PutUint64(cell[1:9], uint64(msgBytes))
 
 	bytes := copy(cell[9:], msg)
-	if _, err := c.Write(padCell(cell)); err != nil {
+	if _, err := c.Write(cell); err != nil {
 		return 0, err
 	}
 
 	for bytes < msgBytes {
+		zeroCell(cell)
 		bytes += copy(cell, msg[bytes:])
-		if _, err := c.Write(padCell(cell)); err != nil {
+		if _, err := c.Write(cell); err != nil {
 			return bytes, err
 		}
 	}

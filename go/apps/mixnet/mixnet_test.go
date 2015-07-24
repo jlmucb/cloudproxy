@@ -20,7 +20,6 @@ import (
 	"io"
 	"os"
 	"path"
-	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -93,9 +92,9 @@ func runRouterReadCell(router *RouterContext, ch chan<- testResult) {
 
 	cell := make([]byte, CellBytes)
 	if _, err := c.Read(cell); err != nil {
-		ch <- testResult{err, unpadCell(cell)}
+		ch <- testResult{err, cell}
 	} else {
-		ch <- testResult{nil, unpadCell(cell)}
+		ch <- testResult{nil, cell}
 	}
 }
 
@@ -107,7 +106,7 @@ func runProxyWriteCell(proxy *ProxyContext, msg []byte) error {
 	}
 	defer c.Close()
 
-	if _, err := c.Write(padCell(msg)); err != nil {
+	if _, err := c.Write(msg); err != nil {
 		return err
 	}
 
@@ -157,26 +156,6 @@ func runProxyRelay(proxy *ProxyContext, msg []byte) error {
 	return nil
 }
 
-// Test padding.
-func TestPadding(t *testing.T) {
-	msg := make([]byte, CellBytes+7)
-	for i := 0; i < CellBytes+7; i++ {
-		msg[i] = byte(i % 256)
-	}
-
-	if bytes.Compare(msg[:CellBytes], unpadCell(padCell(msg[:CellBytes]))) != 0 {
-		t.Error("failed to pad message the length of a cell")
-	}
-
-	if bytes.Compare(msg[:CellBytes-31], unpadCell(padCell(msg[:CellBytes-31]))) != 0 {
-		t.Error("failed to pad a short message")
-	}
-
-	if bytes.Compare(msg, unpadCell(padCell(msg))) != 0 {
-		t.Error("failed to pad a longer message")
-	}
-}
-
 // Test connection set up.
 func TestProxyRouterConnect(t *testing.T) {
 	router, proxy, err := makeContext()
@@ -211,23 +190,26 @@ func TestProxyRouterCell(t *testing.T) {
 	defer router.Close()
 	ch := make(chan testResult)
 
-	// Test sending a good cell. Messages where len(msg) <= CellBytes are zero-padded.
-	msg1 := []byte("This is a great message.")
+	msg := make([]byte, CellBytes+1)
+	for i := 0; i < len(msg); i++ {
+		msg[i] = byte(i % 256)
+	}
+
+	// The cell is just right.
 	go runRouterReadCell(router, ch)
-	if err = runProxyWriteCell(proxy, msg1); err != nil {
+	if err = runProxyWriteCell(proxy, msg[:CellBytes]); err != nil {
 		t.Error(err)
 	}
 	res := <-ch
 	if res.err != nil && res.err != io.EOF {
 		t.Error(res.err)
-	} else if string(msg1) != strings.TrimRight(string(res.msg), "\x00") {
-		t.Errorf("Server got \"%s\", sent \"%s\"", string(res.msg), string(msg1))
+	} else if bytes.Compare(res.msg, msg[:CellBytes]) != 0 {
+		t.Errorf("Server got:", res.msg)
 	}
 
 	// This cell is too big.
-	msg2 := make([]byte, CellBytes+1)
 	go runRouterReadCell(router, ch)
-	if err = runProxyWriteCell(proxy, msg2); err != errCellLength {
+	if err = runProxyWriteCell(proxy, msg); err != errCellLength {
 		t.Error("runProxyWriteCell(): should have returned errCellLength")
 	}
 	res = <-ch

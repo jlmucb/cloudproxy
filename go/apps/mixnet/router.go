@@ -115,7 +115,7 @@ func (hp *RouterContext) HandleProxy(c net.Conn) error {
 		// TODO(cjpatton) How to deal with endianness discrepancies?
 		msgBytes := int(binary.BigEndian.Uint64(cell[1:9]))
 		hp.msgBuffer = make([]byte, msgBytes)
-		bytes := copy(hp.msgBuffer, unpadCell(cell[9:]))
+		bytes := copy(hp.msgBuffer, cell[9:])
 
 		// While the connection is open and the message is incomplete, read
 		// the next cell.
@@ -123,12 +123,16 @@ func (hp *RouterContext) HandleProxy(c net.Conn) error {
 			if _, err = c.Read(cell); err != nil && err != io.EOF {
 				return err
 			}
-			bytes += copy(hp.msgBuffer[bytes:], unpadCell(cell))
+			bytes += copy(hp.msgBuffer[bytes:], cell)
 		}
 
 	} else if cell[0] == dirCell {
+		// The first eight bytes of the first cell encode the message length.
+		// TODO(cjpatton) How to deal with endianness discrepancies?
+		dirBytes := int(binary.BigEndian.Uint64(cell[1:9]))
+
 		var d Directive
-		if err := proto.Unmarshal(unpadCell(cell)[1:], &d); err != nil {
+		if err := proto.Unmarshal(cell[9:9+dirBytes], &d); err != nil {
 			return err
 		}
 

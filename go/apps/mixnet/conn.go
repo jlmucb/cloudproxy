@@ -22,8 +22,9 @@ import (
 const CellBytes = 1024 // Length of a cell
 
 const (
-	msgCell = 0x00
-	dirCell = 0x01
+	msgCell   = iota
+	dirCell   = iota
+	relayCell = iota
 )
 
 var errCellLength error = errors.New("incorrect cell length")
@@ -57,34 +58,6 @@ func (c *Conn) Write(msg []byte) (n int, err error) {
 		return n, err
 	}
 	return n, nil
-}
-
-// padCell pads a message to the length of a cell and returns a byte slice of
-// length CellBytes. If len(msg) > CellBytes, then return msg.
-func padCell(msg []byte) []byte {
-	if len(msg) >= CellBytes {
-		return msg
-	}
-
-	cell := make([]byte, CellBytes) // Initially zero
-	bytes := copy(cell, msg)
-	cell[bytes] = 0xf0
-	return cell
-}
-
-// unpadCell removes the padding from a message whose length is less than
-// CellBytesa.
-func unpadCell(cell []byte) []byte {
-	i := len(cell) - 1
-	for i > 0 && cell[i] == 0x00 {
-		i--
-	}
-	if cell[i] == 0xf0 {
-		msg := make([]byte, i)
-		copy(msg, cell)
-		return msg
-	}
-	return cell
 }
 
 // Write zeros to each byte of a cell.

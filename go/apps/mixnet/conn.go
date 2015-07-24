@@ -30,12 +30,13 @@ type Conn struct {
 	net.Conn
 }
 
-// Read a cell from the channel. Return an error if the length
+// Read a cell from the channel. Return an error if len(msg) != CellBytes.
 func (c Conn) Read(msg []byte) (n int, err error) {
 	n, err = c.Conn.Read(msg)
 	if err != nil {
 		return n, err
-	} else if n != CellBytes {
+	}
+	if n != CellBytes {
 		return n, errCellLength
 	}
 	return n, nil

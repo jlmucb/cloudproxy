@@ -16,7 +16,6 @@ package main
 
 import (
 	"crypto/x509/pkix"
-	"errors"
 	"flag"
 	"io"
 	"net"
@@ -28,14 +27,10 @@ import (
 
 // Handle connections from mixnet clients.
 func handleMixnetClient(conn net.Conn, ch chan<- error) {
-	// TODO(cjpatton) for now, just receive a cell and print it.
+	// TODO(cjpatton) for now, just receive a cell.
 	cell := make([]byte, mixnet.CellBytes)
-	if n, err := conn.Read(cell); err != nil && err != io.EOF {
+	if _, err := conn.Read(cell); err != nil {
 		ch <- err
-	} else if n != mixnet.CellBytes {
-		ch <- errors.New("received a cell with the wrong length")
-	} else {
-		glog.Info("The cell on the wire:", string(cell))
 	}
 	ch <- nil
 }
@@ -47,13 +42,12 @@ func handleMixnetClient(conn net.Conn, ch chan<- error) {
 // signal handler to make sure it gets called (almost) no matter what.
 func serveMixnetClients(hp *mixnet.RouterContext) error {
 	ch := make(chan error)
-	conn, err := hp.Listener.Accept()
+	conn, err := hp.AcceptProxy()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	// TODO(cjpatton) for now, just accept one connection.
 	go handleMixnetClient(conn, ch)
 
 	return <-ch
@@ -79,7 +73,7 @@ func main() {
 	}
 	defer hp.Close()
 
-	if err = serveMixnetClients(hp); err != nil {
+	if err = serveMixnetClients(hp); err != nil && err != io.EOF {
 		glog.Errorf("error occured while serving: %s", err)
 	}
 

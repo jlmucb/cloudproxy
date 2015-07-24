@@ -28,14 +28,20 @@ var configPath = flag.String("config", "tao.config", "Path to domain configurati
 
 func main() {
 	flag.Parse()
-	c, err := mixnet.NewProxyContext(*configPath, *serverNetwork, *serverAddr)
+	p, err := mixnet.NewProxyContext(*configPath)
 	if err != nil {
-		glog.Errorf("failed to configure client: %s", err)
+		glog.Fatalf("failed to configure proxy: %s", err)
 	}
-	if err = c.SendMessage([]byte("Hello!")); err != nil {
-		glog.Errorf("failed to send message: %s", err)
+
+	c, err := p.DialRouter(*serverNetwork, *serverAddr)
+	if err != nil {
+		glog.Fatalf("failed to connect to router: %s", err)
 	}
 	defer c.Close()
+
+	if _, err = c.Write([]byte("Hello!")); err != nil {
+		glog.Errorf("failed to send message: %s", err)
+	}
 
 	glog.Flush()
 }

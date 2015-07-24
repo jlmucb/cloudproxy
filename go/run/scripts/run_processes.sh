@@ -39,10 +39,11 @@ fi
 echo "Waiting for linux_host to start"
 sleep 5
 
-DSPID=$("$(gowhich tao_launch)" -sock ${DOMAIN}/linux_tao_host/admin_socket \
-	"$(gowhich demo_server)" -config=${DOMAIN}/tao.config)
+{ DSPID=$("$(gowhich tao_launch)" -sock ${DOMAIN}/linux_tao_host/admin_socket \
+  "$(gowhich demo_server)" -config=${DOMAIN}/tao.config 3>&1 1>&4); } 4>&1
+
 "$(gowhich tao_launch)" -sock ${DOMAIN}/linux_tao_host/admin_socket \
-	"$(gowhich demo_client)" -config=${DOMAIN}/tao.config > /dev/null
+	"$(gowhich demo_client)" -config=${DOMAIN}/tao.config 3> /dev/null
 
 
 echo "Waiting for the tests to finish"

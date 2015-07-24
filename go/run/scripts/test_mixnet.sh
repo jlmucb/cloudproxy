@@ -68,8 +68,8 @@ sleep 2
 
 ### Start mixnet router.
 echo "Starting Mixnet Router"
-DSPID=$("$(gowhich tao_launch)" -sock ${DOMAIN_PUB}/linux_tao_host/admin_socket \
-	"$(gowhich mixnet_router)" -config=${DOMAIN_PUB}/tao.config)
+{ DSPID=$("$(gowhich tao_launch)" -sock ${DOMAIN_PUB}/linux_tao_host/admin_socket \
+  "$(gowhich mixnet_router)" -config=${DOMAIN_PUB}/tao.config 3>&1 1>&4); } 4>&1
 
 
 ### Start mixnet proxy.

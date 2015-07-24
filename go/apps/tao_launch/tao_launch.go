@@ -18,13 +18,21 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"os"
 
 	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/util"
 )
 
 func main() {
+	// child PID is output to fd 3, if it exists, otherwise to stdout
+	pidOut := os.Stdout
+	if util.IsValidFD(3) {
+		pidOut = util.NewFile(3)
+	}
+
 	operation := flag.String("operation", "run", "The operation to perform ('run', 'stop', 'kill', 'list', or 'name').")
 	sockPath := flag.String("sock", "linux_tao_host/admin_socket", "The path to the socket for the linux_host")
 	docker := flag.String("docker_img", "", "The path to a tarball to use to create a docker image")
@@ -52,7 +60,7 @@ func main() {
 				glog.Exit(err)
 			}
 			glog.Infof("%d %v\n", pid, subprin)
-			fmt.Println(pid)
+			pidOut.Write([]byte(fmt.Sprintf("%d\n", pid)))
 		} else {
 			// Drop the first arg for Docker, since it will
 			// be handled by the Dockerfile directly.

@@ -63,6 +63,7 @@ func doResponse(conn net.Conn, responseOk chan<- bool) {
 	}
 	msg = strings.TrimSpace(msg)
 	glog.Infof("server: got message: %s\n", msg)
+	fmt.Printf("server: got message: %s\n", msg)
 	responseOk <- true
 	fmt.Fprintf(conn, "echo(%s)\n", msg)
 	glog.Flush()
@@ -195,6 +196,7 @@ func main() {
 	}
 
 	glog.Info("Go Tao Demo Server")
+	fmt.Println("Go Tao Demo Server")
 
 	if tao.Parent() == nil {
 		glog.Fatal("can't continue: No host Tao available")
@@ -204,4 +206,5 @@ func main() {
 	doServer()
 	glog.Info("Server Done")
 	glog.Flush()
+	fmt.Println("Server Done")
 }

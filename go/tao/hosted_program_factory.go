@@ -35,5 +35,5 @@ type HostedProgram interface {
 // containing a new instance of an operating system.
 type HostedProgramFactory interface {
 	MakeSubprin(uint, string, int, int) (auth.SubPrin, string, error)
-	Launch(string, []string, int, int) (io.ReadWriteCloser, HostedProgram, error)
+	Launch(string, []string, int, int, []int) (io.ReadWriteCloser, HostedProgram, error)
 }

@@ -18,6 +18,7 @@ package util
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"syscall"
 )
@@ -27,6 +28,49 @@ import (
 func NewFile(fd int) *os.File {
 	name := fmt.Sprintf("/dev/fd/%d", fd)
 	return os.NewFile(uintptr(fd), name)
+}
+
+// NewFiles wraps each file descriptor inside an os.File, giving each a
+// reasonable name.
+func NewFiles(fds []int) []*os.File {
+	files := make([]*os.File, len(fds))
+	for i, fd := range fds {
+		files[i] = NewFile(fd)
+	}
+	return files
+}
+
+// NewStdio wraps each file descriptor in an os.File then returns the first
+// three as stdin, stdout, stderr, and the remainder as extra. If there are less
+// than three file descriptors, the corresponding values from os.Stdin,
+// os.Stdout, and os.Stderr are returned.
+func NewStdio(fds []int) (stdin io.Reader, stdout io.Writer, stderr io.Writer, extra []*os.File) {
+	if len(fds) > 0 {
+		stdin = NewFile(fds[0])
+	} else {
+		stdin = os.Stdin // TODO(kwalsh) use nil instead?
+	}
+	if len(fds) > 1 {
+		stdout = NewFile(fds[1])
+	} else {
+		stdout = os.Stdout // TODO(kwalsh) use nil instead?
+	}
+	if len(fds) > 2 {
+		stderr = NewFile(fds[2])
+	} else {
+		stderr = os.Stderr // TODO(kwalsh) use nil instead?
+	}
+	for i := 3; i < len(fds); i++ {
+		extra = append(extra, NewFile(fds[i]))
+	}
+	return
+}
+
+// CloseFDs closes each of the file descriptors.
+func CloseFDs(fds []int) {
+	for _, f := range fds {
+		NewFile(f).Close()
+	}
 }
 
 // IsValidFD uses the fcntl(F_GETFD) system call to check whether a file

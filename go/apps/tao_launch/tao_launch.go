@@ -47,8 +47,12 @@ func main() {
 	if err != nil {
 		glog.Fatal(err)
 	}
+	uconn, ok := conn.(*net.UnixConn)
+	if !ok {
+		glog.Fatalf("Connection not a unix domain socket")
+	}
 	defer conn.Close()
-	client := tao.NewLinuxHostAdminClient(conn)
+	client := tao.NewLinuxHostAdminClient(uconn)
 	switch *operation {
 	case "run":
 		if flag.NArg() == 0 {

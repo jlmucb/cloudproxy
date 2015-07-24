@@ -23,9 +23,9 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path"
 	"strings"
-	"os/signal"
 	"syscall"
 
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
@@ -130,7 +130,7 @@ func (lpf *LinuxProcessFactory) MakeSubprin(id uint, prog string, uid, gid int) 
 const sockNameLen = 24
 
 // Launch uses a path and arguments to fork a new process.
-func (lpf *LinuxProcessFactory) Launch(prog string, args []string, uid, gid int) (io.ReadWriteCloser, HostedProgram, error) {
+func (lpf *LinuxProcessFactory) Launch(prog string, args []string, uid, gid int, fds []int) (io.ReadWriteCloser, HostedProgram, error) {
 	var channel io.ReadWriteCloser
 	var extraFiles []*os.File
 	var evar string
@@ -172,6 +172,9 @@ func (lpf *LinuxProcessFactory) Launch(prog string, args []string, uid, gid int)
 		return nil, nil, fmt.Errorf("invalid channel type '%s'\n", lpf.channelType)
 	}
 
+	stdin, stdout, stderr, extraFds := util.NewStdio(fds)
+	extraFiles = append(extraFiles, extraFds...)
+
 	env := os.Environ()
 	// Make sure that the child knows to use the right kind of channel.
 	etvar := HostChannelTypeEnvVar + "=" + lpf.channelType
@@ -206,9 +209,9 @@ func (lpf *LinuxProcessFactory) Launch(prog string, args []string, uid, gid int)
 		&exec.Cmd{
 			Path:        prog,
 			Args:        args,
-			Stdin:       os.Stdin,
-			Stdout:      os.Stdout,
-			Stderr:      os.Stderr,
+			Stdin:       stdin,
+			Stdout:      stdout,
+			Stderr:      stderr,
 			Env:         env,
 			ExtraFiles:  extraFiles,
 			SysProcAttr: spa,
@@ -224,7 +227,7 @@ func (lpf *LinuxProcessFactory) Launch(prog string, args []string, uid, gid int)
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGCHLD)
 	go func() {
-		<- sc
+		<-sc
 		cmd.Wait()
 		signal.Stop(sc)
 	}()

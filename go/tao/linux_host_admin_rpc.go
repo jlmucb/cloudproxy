@@ -18,26 +18,28 @@ package tao
 // This code is extremely dull and, ideally, would be generated automatically.
 
 import (
-	"io"
 	"net"
 	"net/rpc"
 	"syscall"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/util"
 	"github.com/jlmucb/cloudproxy/go/util/protorpc"
 )
 
 // LinuxHostAdminClient is a client stub for LinuxHost's admin RPC interface.
 type LinuxHostAdminClient struct {
+	oob *util.OOBUnixConn
 	*rpc.Client
 }
 
 // NewLinuxHostAdminClient returns a new client stub for LinuxHost's admin RPC
 // interface.
-func NewLinuxHostAdminClient(conn io.ReadWriteCloser) LinuxHostAdminClient {
-	c := rpc.NewClientWithCodec(protorpc.NewClientCodec(conn))
-	return LinuxHostAdminClient{c}
+func NewLinuxHostAdminClient(conn *net.UnixConn) LinuxHostAdminClient {
+	oob := util.NewOOBUnixConn(conn)
+	c := rpc.NewClientWithCodec(protorpc.NewClientCodec(oob))
+	return LinuxHostAdminClient{oob, c}
 }
 
 // StartHostedProgram is the client stub for LinuxHost.StartHostedProgram.
@@ -47,6 +49,7 @@ func (client LinuxHostAdminClient) StartHostedProgram(path string, args ...strin
 		Args: args,
 	}
 	resp := new(LinuxHostAdminRPCResponse)
+	client.oob.ShareFDs(0, 1, 2)
 	err := client.Call("LinuxHost.StartHostedProgram", req, resp)
 	if err != nil {
 		return auth.SubPrin{}, 0, err
@@ -120,7 +123,10 @@ type LinuxHostAdminServer struct {
 	lh *LinuxHost
 }
 
-type linuxHostAdminServerStub LinuxHostAdminServer
+type linuxHostAdminServerStub struct {
+	oob *util.OOBUnixConn
+	lh  *LinuxHost
+}
 
 // NewLinuxHostAdminServer returns a new server stub for LinuxHost's admin RPC
 // interface.
@@ -147,41 +153,25 @@ func (server LinuxHostAdminServer) Serve(sock *net.UnixListener) error {
 		if err != nil {
 			return err
 		}
-		connFile, err := conn.File()
-		if err != nil {
-			return err
-		}
-		ucred, err := syscall.GetsockoptUcred(int(connFile.Fd()), syscall.SOL_SOCKET, syscall.SO_PEERCRED)
-		if err != nil {
-			connFile.Close()
-			return err
-		}
-		connFile.Close()
-
 		s := rpc.NewServer()
-		err = s.RegisterName("LinuxHost", linuxHostAdminServerStub(server))
+		oob := util.NewOOBUnixConn(conn)
+		err = s.RegisterName("LinuxHost", linuxHostAdminServerStub{oob, server.lh})
 		if err != nil {
 			return err
 		}
-		go s.ServeCodec(protorpc.NewUIDServerCodec(conn, int(ucred.Uid), int(ucred.Gid)))
+		go s.ServeCodec(protorpc.NewServerCodec(oob))
 	}
-}
-
-// LinuxHostAdminRequest is the type used to get the UID,GID of a caller sending
-// a LinuxHostAdminRPCRequest. A server must use this type if it uses
-// NewServerUIDCodec to create its ServerCodec for net/rpc.
-type LinuxHostAdminRequest struct {
-	UID     int
-	GID     int
-	Request *LinuxHostAdminRPCRequest
 }
 
 // StartHostedProgram is the server stub for LinuxHost.StartHostedProgram.
-func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminRequest, s *LinuxHostAdminRPCResponse) error {
-	if r.Request.Path == nil {
+func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
+	fds := server.oob.SharedFDs()
+	defer util.CloseFDs(fds)
+	ucred := server.oob.PeerCred()
+	if r.Path == nil {
 		return newError("missing path")
 	}
-	subprin, pid, err := server.lh.StartHostedProgram(*r.Request.Path, r.Request.Args, r.UID, r.GID)
+	subprin, pid, err := server.lh.StartHostedProgram(*r.Path, r.Args, int(ucred.Uid), int(ucred.Gid), fds)
 	if err != nil {
 		return err
 	}
@@ -194,8 +184,8 @@ func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminReque
 }
 
 // StopHostedProgram is the server stub for LinuxHost.StopHostedProgram.
-func (server linuxHostAdminServerStub) StopHostedProgram(r *LinuxHostAdminRequest, s *LinuxHostAdminRPCResponse) error {
-	subprin, err := auth.UnmarshalSubPrin(r.Request.Subprin)
+func (server linuxHostAdminServerStub) StopHostedProgram(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
+	subprin, err := auth.UnmarshalSubPrin(r.Subprin)
 	if err != nil {
 		return err
 	}
@@ -203,7 +193,7 @@ func (server linuxHostAdminServerStub) StopHostedProgram(r *LinuxHostAdminReques
 }
 
 // ListHostedPrograms is the server stub for LinuxHost.ListHostedPrograms.
-func (server linuxHostAdminServerStub) ListHostedPrograms(r *LinuxHostAdminRequest, s *LinuxHostAdminRPCResponse) error {
+func (server linuxHostAdminServerStub) ListHostedPrograms(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
 	names, pids, err := server.lh.ListHostedPrograms()
 	if err != nil {
 		return err
@@ -222,8 +212,8 @@ func (server linuxHostAdminServerStub) ListHostedPrograms(r *LinuxHostAdminReque
 }
 
 // KillHostedProgram is the server stub for LinuxHost.KillHostedProgram.
-func (server linuxHostAdminServerStub) KillHostedProgram(r *LinuxHostAdminRequest, s *LinuxHostAdminRPCResponse) error {
-	subprin, err := auth.UnmarshalSubPrin(r.Request.Subprin)
+func (server linuxHostAdminServerStub) KillHostedProgram(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
+	subprin, err := auth.UnmarshalSubPrin(r.Subprin)
 	if err != nil {
 		return err
 	}
@@ -231,7 +221,7 @@ func (server linuxHostAdminServerStub) KillHostedProgram(r *LinuxHostAdminReques
 }
 
 // HostName is the server stub for LinuxHost.HostName.
-func (server linuxHostAdminServerStub) HostName(r *LinuxHostAdminRequest, s *LinuxHostAdminRPCResponse) error {
+func (server linuxHostAdminServerStub) HostName(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
 	prin := server.lh.HostName()
 	s.Prin = auth.Marshal(prin)
 	return nil

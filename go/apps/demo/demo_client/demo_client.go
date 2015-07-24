@@ -126,6 +126,7 @@ func doClient(domain *tao.Domain) {
 			pingFail++
 		}
 		glog.Infof("client: made %d connections, finished %d ok, %d bad pings\n", i+1, pingGood, pingFail)
+		fmt.Printf("client: made %d connections, finished %d ok, %d bad pings\n", i+1, pingGood, pingFail)
 	}
 }
 
@@ -153,6 +154,7 @@ func main() {
 	}
 
 	glog.Info("Go Tao Demo")
+	fmt.Println("Go Tao Demo")
 
 	if tao.Parent() == nil {
 		glog.Fatal("can't continue: No host Tao available")
@@ -166,4 +168,5 @@ func main() {
 	doClient(domain)
 	glog.Info("Client Done")
 	glog.Flush()
+	fmt.Println("Client Done")
 }

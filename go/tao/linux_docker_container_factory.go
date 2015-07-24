@@ -37,6 +37,9 @@ type DockerContainer struct {
 	SocketPath    string
 	RulesPath     string
 	Args          []string
+	Stdin         io.Reader
+	Stdout        io.Writer
+	Stderr        io.Writer
 }
 
 // Kill sends a SIGKILL signal to a docker container.
@@ -60,8 +63,9 @@ func (dc *DockerContainer) Start() error {
 	glog.Info("About to run docker with args ", cmdArgs)
 	glog.Flush()
 	c := exec.Command("docker", cmdArgs...)
-	c.Stdout = os.Stdout
-	c.Stderr = os.Stderr
+	c.Stdin = dc.Stdin
+	c.Stdout = dc.Stdout
+	c.Stderr = dc.Stderr
 	return c.Start()
 }
 
@@ -158,9 +162,11 @@ func FormatDockerSubprin(id uint, hash []byte) auth.SubPrin {
 
 // Launch builds a docker container from a tar file and launches it with the
 // given arguments.
-func (ldcf *LinuxDockerContainerFactory) Launch(tarPath string, args []string, uid, gid int) (io.ReadWriteCloser, HostedProgram, error) {
+func (ldcf *LinuxDockerContainerFactory) Launch(tarPath string, args []string, uid, gid int, fds []int) (io.ReadWriteCloser, HostedProgram, error) {
 	sockName := getRandomFileName(nameLen)
 	sockPath := path.Join(ldcf.SocketPath, sockName)
+
+	stdin, stdout, stderr, _ := util.NewStdio(fds)
 
 	// Create a new docker image from the filesystem tarball, and use it to
 	// build a container and launch it.
@@ -169,6 +175,9 @@ func (ldcf *LinuxDockerContainerFactory) Launch(tarPath string, args []string, u
 		SocketPath: sockPath,
 		RulesPath:  ldcf.RulesPath,
 		Args:       args,
+		Stdin:      stdin,
+		Stdout:     stdout,
+		Stderr:     stderr,
 	}
 	rwc := util.NewUnixSingleReadWriteCloser(sockPath)
 	if err := dc.Build(tarPath); err != nil {

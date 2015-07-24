@@ -209,7 +209,7 @@ func (lh *LinuxHost) Attest(child *LinuxHostChild, issuer *auth.Prin, time, expi
 }
 
 // StartHostedProgram starts a new hosted program.
-func (lh *LinuxHost) StartHostedProgram(path string, args []string, uid, gid int) (auth.SubPrin, int, error) {
+func (lh *LinuxHost) StartHostedProgram(path string, args []string, uid, gid int, fds []int) (auth.SubPrin, int, error) {
 	lh.idm.Lock()
 	id := lh.nextChildID
 	if lh.nextChildID != 0 {
@@ -236,7 +236,7 @@ func (lh *LinuxHost) StartHostedProgram(path string, args []string, uid, gid int
 		return auth.SubPrin{}, 0, newError("Hosted program %s denied authorization to execute on host %s", subprin, hostName)
 	}
 
-	channel, cmd, err := lh.childFactory.Launch(temppath, args, uid, gid)
+	channel, cmd, err := lh.childFactory.Launch(temppath, args, uid, gid, fds)
 	if err != nil {
 		return auth.SubPrin{}, 0, err
 	}

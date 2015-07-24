@@ -336,7 +336,7 @@ var nameLen = 10
 
 // Launch launches a QEMU/KVM CoreOS instance, connects to it with SSH to start
 // the LinuxHost on it, and returns the socket connection to that host.
-func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string, uid, gid int) (io.ReadWriteCloser, HostedProgram, error) {
+func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string, uid, gid int, fds []int) (io.ReadWriteCloser, HostedProgram, error) {
 	// The args must contain the directory to write the linux_host into, as
 	// well as the port to use for SSH.
 	if len(args) != 3 {
@@ -402,12 +402,15 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string, uid, 
 		return nil, nil, fmt.Errorf("couldn't dial '%s': %s", hostPort, err)
 	}
 
+	stdin, stdout, stderr, _ := util.NewStdio(fds)
+
 	// We need to run a set of commands to set up the LinuxHost on the
 	// remote system.
 	// Mount the filesystem.
 	mount, err := client.NewSession()
-	mount.Stdout = os.Stdout
-	mount.Stderr = os.Stderr
+	mount.Stdin = stdin
+	mount.Stdout = stdout
+	mount.Stderr = stderr
 	if err != nil {
 		return nil, nil, fmt.Errorf("couldn't establish a mount session on SSH: %s", err)
 	}
@@ -418,8 +421,9 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string, uid, 
 
 	// Start the linux_host on the container.
 	start, err := client.NewSession()
-	start.Stdout = os.Stdout
-	start.Stderr = os.Stderr
+	start.Stdin = stdin
+	start.Stdout = stdout
+	start.Stderr = stderr
 	if err != nil {
 		return nil, nil, fmt.Errorf("couldn't establish a start session on SSH: %s", err)
 	}

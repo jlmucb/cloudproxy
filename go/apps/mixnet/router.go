@@ -111,15 +111,13 @@ func (hp *RouterContext) HandleProxy(c net.Conn) error {
 	// The first byte signals either a message or a directive to the router.
 	if cell[0] == msgCell {
 
-		// The first eight bytes of the first cell encode the message length.
-		// TODO(cjpatton) How to deal with endianness discrepancies?
-		msgBytes := int(binary.BigEndian.Uint64(cell[1:9]))
+		msgBytes, n := binary.Uvarint(cell[1:])
 		hp.msgBuffer = make([]byte, msgBytes)
-		bytes := copy(hp.msgBuffer, cell[9:])
+		bytes := copy(hp.msgBuffer, cell[1+n:])
 
 		// While the connection is open and the message is incomplete, read
 		// the next cell.
-		for err != io.EOF && bytes < msgBytes {
+		for err != io.EOF && uint64(bytes) < msgBytes {
 			if _, err = c.Read(cell); err != nil && err != io.EOF {
 				return err
 			}
@@ -127,19 +125,18 @@ func (hp *RouterContext) HandleProxy(c net.Conn) error {
 		}
 
 	} else if cell[0] == dirCell {
-		// The first eight bytes of the first cell encode the message length.
-		// TODO(cjpatton) How to deal with endianness discrepancies?
-		dirBytes := int(binary.BigEndian.Uint64(cell[1:9]))
+		dirBytes, n := binary.Uvarint(cell[1:])
 
 		var d Directive
-		if err := proto.Unmarshal(cell[9:9+dirBytes], &d); err != nil {
+		if err := proto.Unmarshal(cell[1+n:1+n+int(dirBytes)], &d); err != nil {
 			return err
 		}
 
 		if *d.Type == DirectiveType_CREATE_CIRCUIT {
 			if len(d.Addrs) == 0 {
 				return errBadDirective
-			} else if len(d.Addrs) > 1 {
+			}
+			if len(d.Addrs) > 1 {
 				return errors.New("multi-hop circuits not implemented")
 			}
 

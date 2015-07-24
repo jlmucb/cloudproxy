@@ -51,7 +51,7 @@ func (p *ProxyContext) DialRouter(network, addr string) (net.Conn, error) {
 
 // CreateCircuit directs the router to construct a circuit to a particular
 // destination over the mixnet.
-func (p *ProxyContext) CreateCircuit(c net.Conn, circuitAddrs []string) (n int, err error) {
+func (p *ProxyContext) CreateCircuit(c net.Conn, circuitAddrs []string) (int, error) {
 	var d Directive
 	d.Type = DirectiveType_CREATE_CIRCUIT.Enum()
 	d.Addrs = circuitAddrs
@@ -62,7 +62,7 @@ func (p *ProxyContext) CreateCircuit(c net.Conn, circuitAddrs []string) (n int, 
 // router. A directive is signaled to the receiver by the first byte of the
 // cell. The next 8 bytes encodse the length of of the serialized protocol
 // buffer. If the buffer doesn't fit in a cell, then throw an error.
-func (p *ProxyContext) SendDirective(c net.Conn, d *Directive) (n int, err error) {
+func (p *ProxyContext) SendDirective(c net.Conn, d *Directive) (int, error) {
 	db, err := proto.Marshal(d)
 	if err != nil {
 		return 0, err
@@ -76,9 +76,8 @@ func (p *ProxyContext) SendDirective(c net.Conn, d *Directive) (n int, err error
 
 	cell := make([]byte, CellBytes)
 	cell[0] = dirCell
-	// TODO(cjpatton) How to deal with endianness discrepancies?
-	binary.BigEndian.PutUint64(cell[1:9], uint64(dirBytes))
-	copy(cell[9:], db)
+	n := binary.PutUvarint(cell[1:], uint64(dirBytes))
+	copy(cell[1+n:], db)
 
 	return c.Write(cell)
 }
@@ -86,15 +85,13 @@ func (p *ProxyContext) SendDirective(c net.Conn, d *Directive) (n int, err error
 // SendMessage directs the router to relay a message over the already constructed
 // circuit. A message is signaled to the reecevier by the first byte of the first
 // cell. The next 8 bytes encode the total number of bytes in the message.
-func (p *ProxyContext) SendMessage(c net.Conn, msg []byte) (n int, err error) {
+func (p *ProxyContext) SendMessage(c net.Conn, msg []byte) (int, error) {
 	msgBytes := len(msg)
 	cell := make([]byte, CellBytes)
 	cell[0] = msgCell
+	n := binary.PutUvarint(cell[1:], uint64(msgBytes))
 
-	// TODO(cjpatton) How to deal with endianness discrepancies?
-	binary.BigEndian.PutUint64(cell[1:9], uint64(msgBytes))
-
-	bytes := copy(cell[9:], msg)
+	bytes := copy(cell[1+n:], msg)
 	if _, err := c.Write(cell); err != nil {
 		return 0, err
 	}

@@ -62,9 +62,8 @@ func (s *OOBUnixConn) ShareFDs(fd ...int) {
 
 // SharedFDs retreives the file descriptors shared during recent Read calls.
 func (s *OOBUnixConn) SharedFDs() []int {
-	var fds []int
 	s.m.Lock()
-	fds = s.recvFDs
+	fds := s.recvFDs
 	s.recvFDs = nil
 	s.m.Unlock()
 	return fds
@@ -80,9 +79,8 @@ func (s *OOBUnixConn) PeerCred() *syscall.Ucred {
 
 func (s *OOBUnixConn) Write(buf []byte) (int, error) {
 	var oob []byte
-	var fds []int
 	s.m.Lock()
-	fds = s.sendFDs
+	fds := s.sendFDs
 	s.sendFDs = nil
 	s.m.Unlock()
 	if len(fds) > 0 {
@@ -105,10 +103,18 @@ func (s *OOBUnixConn) Read(p []byte) (n int, err error) {
 		}
 		s.m.Lock()
 		for _, m := range scm {
-			if fds, err := syscall.ParseUnixRights(&m); err == nil {
-				s.recvFDs = append(s.recvFDs, fds...)
-			} else if ucred, err := syscall.ParseUnixCredentials(&m); err == nil {
-				s.peerCred = ucred
+			if m.Header.Level != syscall.SOL_SOCKET {
+				continue
+			}
+			switch m.Header.Type {
+			case syscall.SCM_RIGHTS:
+				if fds, err := syscall.ParseUnixRights(&m); err == nil {
+					s.recvFDs = append(s.recvFDs, fds...)
+				}
+			case syscall.SCM_CREDENTIALS:
+				if ucred, err := syscall.ParseUnixCredentials(&m); err == nil {
+					s.peerCred = ucred
+				}
 			}
 		}
 		s.m.Unlock()

@@ -39,6 +39,11 @@ fi
 echo "Waiting for linux_host to start"
 sleep 5
 
+# tao_launch outputs the new hosted program's PID on fd 3, so we redirect fd 3
+# to fd 1 (stdout) and capture the value in DSPID. The assignment is done inside
+# braces. We temprarily redirect the original fd 1 (stdout) to fd 4 inside the
+# braces, and redirect that back to fd 1 (stdout) outside the braces. That way,
+# the hosted program's stdout still goes to the shell's stdout.
 { DSPID=$("$(gowhich tao_launch)" -sock ${DOMAIN}/linux_tao_host/admin_socket \
   "$(gowhich demo_server)" -config=${DOMAIN}/tao.config 3>&1 1>&4); } 4>&1
 

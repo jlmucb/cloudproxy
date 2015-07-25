@@ -20,6 +20,7 @@ package tao
 import (
 	"net"
 	"net/rpc"
+	"os"
 	"syscall"
 
 	"github.com/golang/protobuf/proto"
@@ -49,7 +50,14 @@ func (client LinuxHostAdminClient) StartHostedProgram(path string, args ...strin
 		Args: args,
 	}
 	resp := new(LinuxHostAdminRPCResponse)
-	client.oob.ShareFDs(0, 1, 2)
+	// TODO(kwalsh) If any stdio files are closed, this code will likely fail:
+	// Fd() will return ^uintptr(0) and OOB probably chokes on that. We need to
+	// send 3 fds, so maybe open /dev/null for such cases, then close it after.
+	// Todo(kwalsh) Consider making oob use uintptr for file descriptors to
+	// avoid the conversions here, at the cost of performing conversions
+	// elsehwere. Go is inconsistent, using both int and uintptr for file
+	// descriptors in different places.
+	client.oob.ShareFDs(int(os.Stdin.Fd()), int(os.Stdout.Fd()), int(os.Stderr.Fd()))
 	err := client.Call("LinuxHost.StartHostedProgram", req, resp)
 	if err != nil {
 		return auth.SubPrin{}, 0, err

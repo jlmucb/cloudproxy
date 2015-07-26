@@ -32,29 +32,6 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
-// A Process wraps os/exec.Cmd and adds a Kill method to match the HostedProgram
-// interface.
-type Process struct {
-	*exec.Cmd
-}
-
-// Kill kills an os/exec.Cmd process.
-func (p *Process) Kill() error {
-	return p.Process.Kill()
-}
-
-const sigterm = 15
-
-// Stop tries to send SIGTERM to a process.
-func (p *Process) Stop() error {
-	return syscall.Kill(p.Process.Pid, syscall.Signal(sigterm))
-}
-
-// ID returns the PID of the underlying os/exec.Cmd instance.
-func (p *Process) ID() int {
-	return p.Process.Pid
-}
-
 // A LinuxProcessFactory supports methods for creating Linux processes as
 // hosted programs. LinuxProcessFactory implements HostedProgramFactory.
 type LinuxProcessFactory struct {
@@ -62,8 +39,8 @@ type LinuxProcessFactory struct {
 	socketPath  string
 }
 
-// NewLinuxProcessFactory creates a LinuxProcessFactory as a
-// HostedProgramFactory.
+// NewLinuxProcessFactory returns a new HostedProgramFactory that can create
+// linux processes.
 func NewLinuxProcessFactory(channelType, socketPath string) HostedProgramFactory {
 	return &LinuxProcessFactory{
 		channelType: channelType,
@@ -71,44 +48,58 @@ func NewLinuxProcessFactory(channelType, socketPath string) HostedProgramFactory
 	}
 }
 
-// FormatSubprin produces a string that represents a subprincipal with the given
-// ID and hash.
-func FormatSubprin(id uint, hash []byte) auth.SubPrin {
-	var args []auth.Term
-	if id != 0 {
-		args = append(args, auth.Int(id))
-	}
-	args = append(args, auth.Bytes(hash))
-	return auth.SubPrin{auth.PrinExt{Name: "Program", Arg: args}}
+// A LinuxProcess represents a hosted program that executes as a linux process.
+type HostedProcess struct {
+
+	// The spec from which this process was created.
+	spec HostedProgramSpec
+
+	// A secured, private copy of the executable.
+	Temppath string
+
+	// A temporary directory for storing the temporary executable.
+	Tempdir string
+
+	// Hash of the executable.
+	Hash []byte
+
+	// The underlying process.
+	Cmd exec.Cmd
+
+	// The factory responsible for the hosted process.
+	Factory *LinuxProcessFactory
 }
 
-// MakeSubprin computes the hash of a program to get its hosted-program
-// subprincipal. In the process, it copies the program to a temporary file
-// controlled by this code and returns the path to that new binary.
-func (lpf *LinuxProcessFactory) MakeSubprin(id uint, prog string, uid, gid int) (subprin auth.SubPrin, temppath string, err error) {
+// NewHostedProgram initializes, but does not start, a hosted process.
+func (lpf *LinuxProcessFactory) NewHostedProgram(spec HostedProgramSpec) (child HostedProgram, err error) {
+
 	// To avoid a time-of-check-to-time-of-use error, we copy the file
 	// bytes to a temp file as we read them. This temp-file path is
 	// returned so it can be used to start the program.
-	td, err := ioutil.TempDir("/tmp", "cloudproxy_linux_host")
+	tempdir, err := ioutil.TempDir("/tmp", "cloudproxy_linux_host")
 	if err != nil {
 		return
 	}
-	if err = os.Chmod(td, 0755); err != nil {
+	defer func() {
+		if err != nil {
+			os.RemoveAll(tempdir)
+		}
+	}()
+	if err = os.Chmod(tempdir, 0755); err != nil {
 		return
 	}
 
-	temppath = path.Join(td, "hosted_program")
+	temppath := path.Join(tempdir, "hosted_program")
 	tf, err := os.OpenFile(temppath, os.O_CREATE|os.O_RDWR, 0700)
 	defer tf.Close()
 	if err != nil {
 		return
 	}
-
 	if err = tf.Chmod(0755); err != nil {
 		return
 	}
 
-	inf, err := os.Open(prog)
+	inf, err := os.Open(spec.Path)
 	defer inf.Close()
 	if err != nil {
 		return
@@ -122,31 +113,38 @@ func (lpf *LinuxProcessFactory) MakeSubprin(id uint, prog string, uid, gid int) 
 	}
 
 	h := sha256.Sum256(b)
-	subprin = FormatSubprin(id, h[:])
+
+	child = &HostedProcess{
+		spec:     spec,
+		Temppath: temppath,
+		Tempdir:  tempdir,
+		Hash:     h[:],
+		Factory:  lpf,
+	}
 	return
 }
 
 // Use 24 bytes for the socket name.
 const sockNameLen = 24
 
-// Launch uses a path and arguments to fork a new process.
-func (lpf *LinuxProcessFactory) Launch(prog string, args []string, uid, gid int, fds []int) (io.ReadWriteCloser, HostedProgram, error) {
-	var channel io.ReadWriteCloser
+// Start starts the the hosted process and returns a tao channel to it.
+func (p *HostedProcess) Start() (channel io.ReadWriteCloser, err error) {
 	var extraFiles []*os.File
 	var evar string
-	switch lpf.channelType {
+	switch p.Factory.channelType {
 	case "pipe":
 		// Get a pipe pair for communication with the child.
-		serverRead, clientWrite, err := os.Pipe()
+		var serverRead, clientRead, serverWrite, clientWrite *os.File
+		serverRead, clientWrite, err = os.Pipe()
 		if err != nil {
-			return nil, nil, err
+			return
 		}
 		defer clientWrite.Close()
 
-		clientRead, serverWrite, err := os.Pipe()
+		clientRead, serverWrite, err = os.Pipe()
 		if err != nil {
 			serverRead.Close()
-			return nil, nil, err
+			return
 		}
 		defer clientRead.Close()
 
@@ -158,26 +156,37 @@ func (lpf *LinuxProcessFactory) Launch(prog string, args []string, uid, gid int,
 	case "unix":
 		// Get a random name for the socket.
 		nameBytes := make([]byte, sockNameLen)
-		if _, err := rand.Read(nameBytes); err != nil {
-			return nil, nil, err
+		if _, err = rand.Read(nameBytes); err != nil {
+			return
 		}
 		sockName := base64.URLEncoding.EncodeToString(nameBytes)
-		sockPath := path.Join(lpf.socketPath, sockName)
+		sockPath := path.Join(p.Factory.socketPath, sockName)
 		channel = util.NewUnixSingleReadWriteCloser(sockPath)
 		if channel == nil {
-			return nil, nil, fmt.Errorf("Couldn't create a new Unix channel\n")
+			err = fmt.Errorf("Couldn't create a new Unix channel\n")
+			return
 		}
 		evar = HostSpecEnvVar + "=" + sockPath
 	default:
-		return nil, nil, fmt.Errorf("invalid channel type '%s'\n", lpf.channelType)
+		err = fmt.Errorf("invalid channel type '%s'\n", p.Factory.channelType)
+		return
 	}
+	defer func() {
+		if err != nil {
+			channel.Close()
+			channel = nil
+		}
+	}()
 
-	stdin, stdout, stderr, extraFds := util.NewStdio(fds)
+	stdin, stdout, stderr, extraFds := util.NewStdio(p.spec.Fds)
 	extraFiles = append(extraFiles, extraFds...)
 
-	env := os.Environ()
+	env := p.spec.Env
+	if env == nil {
+		env = os.Environ()
+	}
 	// Make sure that the child knows to use the right kind of channel.
-	etvar := HostChannelTypeEnvVar + "=" + lpf.channelType
+	etvar := HostChannelTypeEnvVar + "=" + p.Factory.channelType
 	replaced := false
 	replacedType := false
 	for i, pair := range env {
@@ -199,28 +208,31 @@ func (lpf *LinuxProcessFactory) Launch(prog string, args []string, uid, gid int,
 		env = append(env, etvar)
 	}
 
-	spa := &syscall.SysProcAttr{
-		Credential: &syscall.Credential{
-			Uid: uint32(uid),
-			Gid: uint32(gid),
-		},
-	}
-	cmd := &Process{
-		&exec.Cmd{
-			Path:        prog,
-			Args:        args,
-			Stdin:       stdin,
-			Stdout:      stdout,
-			Stderr:      stderr,
-			Env:         env,
-			ExtraFiles:  extraFiles,
-			SysProcAttr: spa,
-		},
+	if (p.spec.Uid == 0 || p.spec.Gid == 0) && !p.spec.Superuser {
+		err = fmt.Errorf("Uid and Gid must be nonzero unless Superuser is set\n")
+		return
 	}
 
-	if err := cmd.Start(); err != nil {
-		channel.Close()
-		return nil, nil, err
+	spa := &syscall.SysProcAttr{
+		Credential: &syscall.Credential{
+			Uid: uint32(p.spec.Uid),
+			Gid: uint32(p.spec.Uid),
+		},
+	}
+	p.Cmd = exec.Cmd{
+		Path:        p.Temppath,
+		Dir:         p.Tempdir,
+		Args:        p.spec.Args,
+		Stdin:       stdin,
+		Stdout:      stdout,
+		Stderr:      stderr,
+		Env:         env,
+		ExtraFiles:  extraFiles,
+		SysProcAttr: spa,
+	}
+
+	if err = p.Cmd.Start(); err != nil {
+		return
 	}
 
 	// Reap the child when the process dies.
@@ -228,9 +240,56 @@ func (lpf *LinuxProcessFactory) Launch(prog string, args []string, uid, gid int,
 	signal.Notify(sc, syscall.SIGCHLD)
 	go func() {
 		<-sc
-		cmd.Wait()
+		p.Cmd.Wait()
 		signal.Stop(sc)
+		os.RemoveAll(p.Tempdir)
 	}()
 
-	return channel, cmd, nil
+	// TODO(kwalsh) put channel into p, remove the struct in linux_host.go
+
+	return
+}
+
+// Kill kills an os/exec.Cmd process.
+func (p *HostedProcess) Kill() error {
+	return p.Cmd.Process.Kill()
+}
+
+const sigterm = 15
+
+// Stop tries to send SIGTERM to a process.
+func (p *HostedProcess) Stop() error {
+	return syscall.Kill(p.Cmd.Process.Pid, syscall.Signal(sigterm))
+}
+
+// Spec returns the specification used to start the hosted process.
+func (p *HostedProcess) Spec() HostedProgramSpec {
+	return p.spec
+}
+
+// ID returns the PID of the underlying os/exec.Cmd instance.
+func (p *HostedProcess) ID() int {
+	return p.Cmd.Process.Pid
+}
+
+// Subprin returns the subprincipal representing the hosted process.
+func (p *HostedProcess) Subprin() auth.SubPrin {
+	return FormatProcessSubprin(p.spec.Id, p.Hash)
+}
+
+// FormatProcessSubprin produces a string that represents a subprincipal with
+// the given ID and hash.
+func FormatProcessSubprin(id uint, hash []byte) auth.SubPrin {
+	var args []auth.Term
+	if id != 0 {
+		args = append(args, auth.Int(id))
+	}
+	args = append(args, auth.Bytes(hash))
+	return auth.SubPrin{auth.PrinExt{Name: "Program", Arg: args}}
+}
+
+func (p *HostedProcess) Cleanup() error {
+	// TODO(kwalsh) close channel, maybe also kill process if still running?
+	os.RemoveAll(p.Tempdir)
+	return nil
 }

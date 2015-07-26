@@ -179,7 +179,17 @@ func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminRPCRe
 	if r.Path == nil {
 		return newError("missing path")
 	}
-	subprin, pid, err := server.lh.StartHostedProgram(*r.Path, r.Args, int(ucred.Uid), int(ucred.Gid), fds)
+	spec := HostedProgramSpec{
+		Path: *r.Path,
+		Args: r.Args,
+		Uid:  int(ucred.Uid),
+		Gid:  int(ucred.Gid),
+		Fds:  fds,
+		// TODO(kwalsh) env, dir
+	}
+	// We do allow superuser here, since we trust the oob credentials
+	spec.Superuser = (ucred.Uid == 0 || ucred.Gid == 0)
+	subprin, pid, err := server.lh.StartHostedProgram(spec)
 	if err != nil {
 		return err
 	}

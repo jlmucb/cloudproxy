@@ -90,6 +90,9 @@ func NewRootLinuxHost(path string, guard Guard, password []byte, childFactory Ho
 }
 
 // LinuxHostChild holds state associated with a running child program.
+// TODO(kwalsh) Nothing in this is linux specific. Move channel and ChildSubprin
+// into (getter methods of) interface HostedProgram and eliminate this struct?
+// Also merge channel cleanup into HostedProgram.Cleanup()
 type LinuxHostChild struct {
 	channel      io.ReadWriteCloser
 	ChildSubprin auth.SubPrin
@@ -209,7 +212,7 @@ func (lh *LinuxHost) Attest(child *LinuxHostChild, issuer *auth.Prin, time, expi
 }
 
 // StartHostedProgram starts a new hosted program.
-func (lh *LinuxHost) StartHostedProgram(path string, args []string, uid, gid int, fds []int) (auth.SubPrin, int, error) {
+func (lh *LinuxHost) StartHostedProgram(spec HostedProgramSpec) (auth.SubPrin, int, error) {
 	lh.idm.Lock()
 	id := lh.nextChildID
 	if lh.nextChildID != 0 {
@@ -219,7 +222,9 @@ func (lh *LinuxHost) StartHostedProgram(path string, args []string, uid, gid int
 	}
 	lh.idm.Unlock()
 
-	subprin, temppath, err := lh.childFactory.MakeSubprin(id, path, uid, gid)
+	spec.Id = id
+
+	prog, err := lh.childFactory.NewHostedProgram(spec)
 	if err != nil {
 		return auth.SubPrin{}, 0, err
 	}
@@ -231,16 +236,17 @@ func (lh *LinuxHost) StartHostedProgram(path string, args []string, uid, gid int
 	// TODO(tmroeder): do we want to support concurrent updates to policy?
 	// Then we need a lock here, too.
 	hostName := lh.taoHost.HostName()
+	subprin := prog.Subprin()
 	childName := hostName.MakeSubprincipal(subprin)
 	if !lh.guard.IsAuthorized(childName, "Execute", []string{}) {
 		return auth.SubPrin{}, 0, newError("Hosted program %s denied authorization to execute on host %s", subprin, hostName)
 	}
 
-	channel, cmd, err := lh.childFactory.Launch(temppath, args, uid, gid, fds)
+	channel, err := prog.Start()
 	if err != nil {
 		return auth.SubPrin{}, 0, err
 	}
-	child := &LinuxHostChild{channel, subprin, cmd}
+	child := &LinuxHostChild{channel, subprin, prog}
 	go NewLinuxHostTaoServer(lh, child).Serve(channel)
 	pid := child.Cmd.ID()
 

@@ -242,7 +242,7 @@ func makeProgramSubPrin(prog string) (auth.SubPrin, error) {
 	if err != nil {
 		return auth.SubPrin{}, err
 	}
-	return tao.FormatSubprin(id, h), nil
+	return tao.FormatProcessSubprin(id, h), nil
 }
 
 func makeVMSubPrin(prog string) (auth.SubPrin, error) {

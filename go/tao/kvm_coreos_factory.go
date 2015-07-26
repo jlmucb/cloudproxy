@@ -33,7 +33,6 @@ import (
 	"os/exec"
 	"path"
 	"strconv"
-	"sync"
 	"syscall"
 	"time"
 
@@ -54,18 +53,43 @@ type CoreOSConfig struct {
 	SocketPath string
 }
 
-// A KvmCoreOSContainer is a simple wrapper for CoreOS running on KVM. It uses
-// os/exec.Cmd to send commands to QEMU/KVM to start CoreOS then uses SSH to
-// connect to CoreOS to start the LinuxHost there with a virtio-serial
-// connection for its communication with the Tao running on Linux in the guest.
-// This use of os/exec is to avoid having to rewrite or hook into libvirt for
-// now.
+// A KvmCoreOSContainer represents a hosted program running as a CoreOS image on
+// KVM. It uses os/exec.Cmd to send commands to QEMU/KVM to start CoreOS then
+// uses SSH to connect to CoreOS to start the LinuxHost there with a
+// virtio-serial connection for its communication with the Tao running on Linux
+// in the guest. This use of os/exec is to avoid having to rewrite or hook into
+// libvirt for now.
 type KvmCoreOSContainer struct {
-	Cfg      *CoreOSConfig
-	HostFile string
-	Args     []string
-	QCmd     *exec.Cmd
-	LHPath   string
+
+	// The spec from which this vm was created.
+	spec HostedProgramSpec
+
+	// TODO(kwalsh) A secured, private copy of the image.
+	// Temppath string
+
+	// TODO(kwalsh) A temporary directory for the config drive.
+	Tempdir string
+
+	// Hash of the CoreOS image.
+	Hash []byte
+
+	// Hash of the factory's KVM image.
+	// TODO(kwalsh) Move this to LinuxKVMCoreOSFactory. and don't recompute?
+	FactoryHash []byte
+
+	// The factory responsible for the vm.
+	Factory *LinuxKVMCoreOSFactory
+
+	// Configuration details for CoreOS, mostly obtained from the factory.
+	// TODO(kwalsh) what is a good description for this?
+	Cfg *CoreOSConfig
+
+	// The underlying vm process.
+	QCmd *exec.Cmd
+
+	// Path to linux host.
+	// TODO(kwalsh) is this description correct?
+	LHPath string
 }
 
 // Kill sends a SIGKILL signal to a QEMU instance.
@@ -77,23 +101,20 @@ func (kcc *KvmCoreOSContainer) Kill() error {
 }
 
 // Start starts a QEMU/KVM CoreOS container using the command line.
-func (kcc *KvmCoreOSContainer) Start() error {
+func (kcc *KvmCoreOSContainer) startVM() error {
 	// Create a temporary directory for the config drive.
 	td, err := ioutil.TempDir("", "coreos")
+	kcc.Tempdir = td
 	if err != nil {
 		return err
 	}
-	// TODO(tmroeder): save this path and remove it on Stop/Kill.
-	// defer os.RemoveAll(td)
 
 	// Create a temporary directory for the linux_host image. Note that the
-	// args were validated in Launch before this call.
-	tdDocker := kcc.Args[1]
+	// args were validated in Start before this call.
+	kcc.LHPath = kcc.spec.Args[1]
 
 	// Expand the host file into the directory.
-	// TODO(tmroeder): save this path and remove it on Stop/Kill.
-	// defer os.RemoveAll(tdDocker)
-	linuxHostFile, err := os.Open(kcc.HostFile)
+	linuxHostFile, err := os.Open(kcc.spec.Path)
 	if err != nil {
 		return err
 	}
@@ -120,7 +141,7 @@ func (kcc *KvmCoreOSContainer) Start() error {
 		}
 
 		fi := hdr.FileInfo()
-		outputName := path.Join(tdDocker, hdr.Name)
+		outputName := path.Join(kcc.LHPath, hdr.Name)
 		if fi.IsDir() {
 			if err := os.Mkdir(outputName, fi.Mode()); err != nil {
 				return err
@@ -158,7 +179,7 @@ func (kcc *KvmCoreOSContainer) Start() error {
 		if err != nil {
 			return err
 		}
-		rulesFile := path.Join(tdDocker, path.Base(cfg.RulesPath))
+		rulesFile := path.Join(kcc.LHPath, path.Base(cfg.RulesPath))
 		if err := ioutil.WriteFile(rulesFile, []byte(rules), 0700); err != nil {
 			return err
 		}
@@ -170,7 +191,7 @@ func (kcc *KvmCoreOSContainer) Start() error {
 		"-machine", "accel=kvm:tcg",
 		// Networking.
 		"-net", "nic,vlan=0,model=virtio",
-		"-net", "user,vlan=0,hostfwd=tcp::" + kcc.Args[2] + "-:22,hostname=" + cfg.Name,
+		"-net", "user,vlan=0,hostfwd=tcp::" + kcc.spec.Args[2] + "-:22,hostname=" + cfg.Name,
 		// Tao communications through virtio-serial. With this
 		// configuration, QEMU waits for a server on cfg.SocketPath,
 		// then connects to it.
@@ -183,23 +204,22 @@ func (kcc *KvmCoreOSContainer) Start() error {
 		"-fsdev", "local,id=conf,security_model=none,readonly,path=" + td,
 		"-device", "virtio-9p-pci,fsdev=conf,mount_tag=config-2",
 		// Another Plan9P filesystem for the linux_host files.
-		"-fsdev", "local,id=tao,security_model=none,path=" + tdDocker,
+		"-fsdev", "local,id=tao,security_model=none,path=" + kcc.LHPath,
 		"-device", "virtio-9p-pci,fsdev=tao,mount_tag=tao",
 		// Machine config.
 		"-cpu", "host",
 		"-smp", "4",
 		"-nographic"} // for now, we add -nographic explicitly.
 	// TODO(tmroeder): append args later.
-	//qemuArgs = append(qemuArgs, kcc.Args...)
+	//qemuArgs = append(qemuArgs, kcc.spec.Args...)
 
-	qemuCmd := exec.Command(qemuProg, qemuArgs...)
+	kcc.QCmd = exec.Command(qemuProg, qemuArgs...)
 	// Don't connect QEMU/KVM to any of the current input/output channels,
 	// since we'll connect over SSH.
-	//qemuCmd.Stdin = os.Stdin
-	//qemuCmd.Stdout = os.Stdout
-	//qemuCmd.Stderr = os.Stderr
-	kcc.QCmd = qemuCmd
-	kcc.LHPath = tdDocker
+	//kcc.QCmd.Stdin = os.Stdin
+	//kcc.QCmd.Stdout = os.Stdout
+	//kcc.QCmd.Stderr = os.Stderr
+	// TODO(kwalsh) set up env, dir, and uid/gid.
 	return kcc.QCmd.Start()
 }
 
@@ -221,14 +241,15 @@ func (kcc *KvmCoreOSContainer) ID() int {
 type LinuxKVMCoreOSFactory struct {
 	Cfg        *CoreOSConfig
 	SocketPath string
-	HostFile   string
-	Mutex      sync.Mutex
+	// TODO(kwalsh) figure out why these next two were here in the first place
+	// Mutex      sync.Mutex
 	PublicKey  string
 	PrivateKey ssh.Signer
 }
 
 // NewLinuxKVMCoreOSFactory returns a new HostedProgramFactory that can
 // create docker containers to wrap programs.
+// TODO(kwalsh) fix comment.
 func NewLinuxKVMCoreOSFactory(sockPath string, cfg *CoreOSConfig) HostedProgramFactory {
 
 	// Create a key to use to connect to the instance and set up LinuxHost
@@ -276,29 +297,41 @@ func CloudConfigFromSSHKeys(keysFile string) (string, error) {
 
 // MakeSubprin computes the hash of a QEMU/KVM CoreOS image to get a
 // subprincipal for authorization purposes.
-func (lkcf *LinuxKVMCoreOSFactory) MakeSubprin(id uint, image string, uid, gid int) (auth.SubPrin, string, error) {
-	var empty auth.SubPrin
+func (lkcf *LinuxKVMCoreOSFactory) NewHostedProgram(spec HostedProgramSpec) (child HostedProgram, err error) {
+	// (id uint, image string, uid, gid int) (auth.SubPrin, string, error) {
 	// TODO(tmroeder): the combination of TeeReader and ReadAll doesn't seem
 	// to copy the entire image, so we're going to hash in place for now.
 	// This needs to be fixed to copy the image so we can avoid a TOCTTOU
 	// attack.
+	// TODO(kwalsh) why is this recomputed for each hosted program?
 	b, err := ioutil.ReadFile(lkcf.Cfg.ImageFile)
 	if err != nil {
-		return empty, "", err
+		return
 	}
-
 	h := sha256.Sum256(b)
-	subprin := FormatCoreOSSubprin(id, h[:])
 
-	bb, err := ioutil.ReadFile(image)
+	bb, err := ioutil.ReadFile(spec.Path)
 	if err != nil {
-		return empty, "", err
+		return
 	}
 	hh := sha256.Sum256(bb)
-	lhSubprin := FormatLinuxHostSubprin(id, hh[:])
 
-	subprin = append(subprin, lhSubprin...)
-	return subprin, image, nil
+	// vet things
+
+	child = &KvmCoreOSContainer{
+		spec:        spec,
+		FactoryHash: h[:],
+		Hash:        hh[:],
+		Factory:     lkcf,
+	}
+	return
+}
+
+// Subprin returns the subprincipal representing the hosted vm.
+func (kcc *KvmCoreOSContainer) Subprin() auth.SubPrin {
+	subprin := FormatCoreOSSubprin(kcc.spec.Id, kcc.FactoryHash)
+	lhSubprin := FormatLinuxHostSubprin(kcc.spec.Id, kcc.Hash)
+	return append(subprin, lhSubprin...)
 }
 
 // FormatLinuxHostSubprin produces a string that represents a subprincipal with
@@ -332,52 +365,61 @@ func getRandomFileName(n int) string {
 	return hex.EncodeToString(nameBytes)
 }
 
+// Spec returns the specification used to start the hosted vm.
+func (kcc *KvmCoreOSContainer) Spec() HostedProgramSpec {
+	return kcc.spec
+}
+
 var nameLen = 10
 
-// Launch launches a QEMU/KVM CoreOS instance, connects to it with SSH to start
+// Start launches a QEMU/KVM CoreOS instance, connects to it with SSH to start
 // the LinuxHost on it, and returns the socket connection to that host.
-func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string, uid, gid int, fds []int) (io.ReadWriteCloser, HostedProgram, error) {
+func (kcc *KvmCoreOSContainer) Start() (channel io.ReadWriteCloser, err error) {
+
 	// The args must contain the directory to write the linux_host into, as
 	// well as the port to use for SSH.
-	if len(args) != 3 {
-		glog.Errorf("Expected %d args, but got %d", 3, len(args))
-		for i, a := range args {
+	if len(kcc.spec.Args) != 3 {
+		glog.Errorf("Expected %d args, but got %d", 3, len(kcc.spec.Args))
+		for i, a := range kcc.spec.Args {
 			glog.Errorf("Arg %d: %s", i, a)
 		}
-		return nil, nil, errors.New("KVM/CoreOS guest Tao requires args: <linux_host image> <temp directory for linux_host> <SSH port>")
+		err = errors.New("KVM/CoreOS guest Tao requires args: <linux_host image> <temp directory for linux_host> <SSH port>")
+		return
 	}
 	// Build the new Config and start it. Make sure it has a random name so
 	// it doesn't conflict with other virtual machines. Note that we need to
 	// assign fresh local SSH ports for each new virtual machine, hence the
 	// mutex and increment operation.
+	// TODO(kwalsh) what mutex and increment?
 	sockName := getRandomFileName(nameLen)
-	sockPath := path.Join(lkcf.SocketPath, sockName)
-	sshCfg := lkcf.Cfg.SSHKeysCfg + "\n - " + string(lkcf.PublicKey)
-
-	cfg := &CoreOSConfig{
-		Name:       getRandomFileName(nameLen),
-		ImageFile:  lkcf.Cfg.ImageFile, // the VM image
-		Memory:     lkcf.Cfg.Memory,
-		RulesPath:  lkcf.Cfg.RulesPath,
-		SSHKeysCfg: sshCfg,
-		SocketPath: sockPath,
-	}
+	sockPath := path.Join(kcc.Factory.SocketPath, sockName)
+	sshCfg := kcc.Factory.Cfg.SSHKeysCfg + "\n - " + string(kcc.Factory.PublicKey)
 
 	// Create a new docker image from the filesystem tarball, and use it to
 	// build a container and launch it.
-	kcc := &KvmCoreOSContainer{
-		Cfg:      cfg,
-		HostFile: imagePath, // The linux_host image
-		Args:     args,
+	kcc.Cfg = &CoreOSConfig{
+		Name:       getRandomFileName(nameLen),
+		ImageFile:  kcc.Factory.Cfg.ImageFile, // the VM image
+		Memory:     kcc.Factory.Cfg.Memory,
+		RulesPath:  kcc.Factory.Cfg.RulesPath,
+		SSHKeysCfg: sshCfg,
+		SocketPath: sockPath,
 	}
 
 	// Create the listening server before starting the connection. This lets
 	// QEMU start right away. See the comments in Start, above, for why this
 	// is.
-	rwc := util.NewUnixSingleReadWriteCloser(cfg.SocketPath)
-	if err := kcc.Start(); err != nil {
-		return nil, nil, err
+	channel = util.NewUnixSingleReadWriteCloser(kcc.Cfg.SocketPath)
+	defer func() {
+		if err != nil {
+			channel.Close()
+			channel = nil
+		}
+	}()
+	if err = kcc.startVM(); err != nil {
+		return
 	}
+	// TODO(kwalsh) reap and clenaup when vm dies; see linux_process_factory.go
 
 	// We need some way to wait for the socket to open before we can connect
 	// to it and return the ReadWriteCloser for communication. Also we need
@@ -390,19 +432,20 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string, uid, 
 		// The CoreOS user for the SSH keys is currently always 'core'
 		// on the virtual machine.
 		User: "core",
-		Auth: []ssh.AuthMethod{ssh.PublicKeys(lkcf.PrivateKey)},
+		Auth: []ssh.AuthMethod{ssh.PublicKeys(kcc.Factory.PrivateKey)},
 	}
 
 	glog.Info("Waiting for at most 10 seconds before trying to connect")
 	<-tc
 
-	hostPort := net.JoinHostPort("localhost", args[2])
+	hostPort := net.JoinHostPort("localhost", kcc.spec.Args[2])
 	client, err := ssh.Dial("tcp", hostPort, conf)
 	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't dial '%s': %s", hostPort, err)
+		err = fmt.Errorf("couldn't dial '%s': %s", hostPort, err)
+		return
 	}
 
-	stdin, stdout, stderr, _ := util.NewStdio(fds)
+	stdin, stdout, stderr, _ := util.NewStdio(kcc.spec.Fds)
 
 	// We need to run a set of commands to set up the LinuxHost on the
 	// remote system.
@@ -412,10 +455,12 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string, uid, 
 	mount.Stdout = stdout
 	mount.Stderr = stderr
 	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't establish a mount session on SSH: %s", err)
+		err = fmt.Errorf("couldn't establish a mount session on SSH: %s", err)
+		return
 	}
-	if err := mount.Run("sudo mkdir /media/tao && sudo mount -t 9p -o trans=virtio,version=9p2000.L tao /media/tao && sudo chmod -R 755 /media/tao"); err != nil {
-		return nil, nil, fmt.Errorf("couldn't mount the tao filesystem on the guest: %s", err)
+	if err = mount.Run("sudo mkdir /media/tao && sudo mount -t 9p -o trans=virtio,version=9p2000.L tao /media/tao && sudo chmod -R 755 /media/tao"); err != nil {
+		err = fmt.Errorf("couldn't mount the tao filesystem on the guest: %s", err)
+		return
 	}
 	mount.Close()
 
@@ -425,12 +470,21 @@ func (lkcf *LinuxKVMCoreOSFactory) Launch(imagePath string, args []string, uid, 
 	start.Stdout = stdout
 	start.Stderr = stderr
 	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't establish a start session on SSH: %s", err)
+		err = fmt.Errorf("couldn't establish a start session on SSH: %s", err)
+		return
 	}
-	if err := start.Start("sudo /media/tao/linux_host --host_type stacked --host_spec 'tao::RPC+tao::FileMessageChannel(/dev/virtio-ports/tao)' --host_channel_type file --config_path /media/tao/tao.config"); err != nil {
-		return nil, nil, fmt.Errorf("couldn't start linux_host on the guest: %s", err)
+	if err = start.Start("sudo /media/tao/linux_host --host_type stacked --host_spec 'tao::RPC+tao::FileMessageChannel(/dev/virtio-ports/tao)' --host_channel_type file --config_path /media/tao/tao.config"); err != nil {
+		err = fmt.Errorf("couldn't start linux_host on the guest: %s", err)
+		return
 	}
 	start.Close()
 
-	return rwc, kcc, nil
+	return
+}
+
+func (kcc *KvmCoreOSContainer) Cleanup() error {
+	// TODO(kwalsh) maybe also kill vm if still running?
+	os.RemoveAll(kcc.Tempdir)
+	os.RemoveAll(kcc.LHPath)
+	return nil
 }

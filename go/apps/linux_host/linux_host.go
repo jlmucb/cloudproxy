@@ -136,7 +136,7 @@ func main() {
 			return
 		}
 
-		tc.TPMAIKPath = domain.Config.TpmInfo.GetAikPath()
+		tc.TPMAIKPath = path.Join(dir, domain.Config.TpmInfo.GetAikPath())
 		tc.TPMPCRs = domain.Config.TpmInfo.GetPcrs()
 		tc.TPMDevice = domain.Config.TpmInfo.GetTpmPath()
 	}

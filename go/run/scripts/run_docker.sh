@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ "$#" != "3" ]; then
 	echo "Must supply a path to an initialized domain, along with client and server images for Docker"
@@ -32,8 +32,8 @@ sleep 5
 	"$SERVER" -- "$SERVER"
 echo "Waiting for docker to update its list of running containers"
 sleep 2
-container_name=$(docker inspect $(docker ps -q -l) | grep Name | tail -1 | \
-	cut -d' ' -f6 | sed 's?^"/\(.*\)",$?\1?g')
+container_name=$(sudo docker inspect --format='{{.Name}}' $(sudo docker ps -q -l))
+container_name=${container_name#/} # this removes the leading slash
 "$(gowhich tao_launch)" -sock ${DOMAIN}/linux_tao_host/admin_socket -docker_img \
 	"$CLIENT" -- "$CLIENT" --link ${container_name}:server
 
@@ -41,6 +41,6 @@ echo "Waiting for the tests to complete"
 sleep 5
 
 echo "Cleaning up docker containers"
-docker stop $container_name
+sudo docker stop $container_name
 sudo kill $HOSTPID
 sudo rm -f ${DOMAIN}/linux_tao_host/admin_socket

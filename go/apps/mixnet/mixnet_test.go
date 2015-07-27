@@ -17,6 +17,7 @@ package mixnet
 import (
 	"bytes"
 	"crypto/x509/pkix"
+	"encoding/binary"
 	"io"
 	"os"
 	"path"
@@ -113,24 +114,20 @@ func runProxyWriteCell(proxy *ProxyContext, msg []byte) error {
 	return nil
 }
 
-// Router accepts a connection from a proxy and handles two requests.
-func runRouterHandleProxy(router *RouterContext, ch chan<- testResult) {
+// Router accepts a connection from a proxy and handles a number of
+// requests.
+func runRouterHandleProxy(router *RouterContext, requestCount int, ch chan<- testResult) {
 	c, err := router.AcceptProxy()
 	if err != nil {
 		ch <- testResult{err, []byte{}}
 		return
 	}
 
-	// Create circuit.
-	if err = router.HandleProxy(c); err != nil {
-		ch <- testResult{err, []byte{}}
-		return
-	}
-
-	// Receive message.
-	if err = router.HandleProxy(c); err != nil {
-		ch <- testResult{err, []byte{}}
-		return
+	for i := 0; i < requestCount; i++ {
+		if err = router.HandleProxy(c); err != nil {
+			ch <- testResult{err, []byte{}}
+			return
+		}
 	}
 
 	ch <- testResult{nil, router.msgBuffer}
@@ -192,7 +189,7 @@ func TestProxyRouterCell(t *testing.T) {
 
 	msg := make([]byte, CellBytes+1)
 	for i := 0; i < len(msg); i++ {
-		msg[i] = byte(i % 256)
+		msg[i] = byte(i)
 	}
 
 	// The cell is just right.
@@ -227,13 +224,14 @@ func TestProxyRouterRelay(t *testing.T) {
 	defer router.Close()
 	ch := make(chan testResult)
 
+	// Create a long message.
 	msg := make([]byte, (CellBytes*5)+237)
 	for i := 0; i < len(msg); i++ {
-		msg[i] = byte(i % 256)
+		msg[i] = byte(i)
 	}
 
-	// Short message.
-	go runRouterHandleProxy(router, ch)
+	// Short message, the first 37 bytes of msg.
+	go runRouterHandleProxy(router, 2, ch)
 	if err = runProxyRelay(proxy, msg[:37]); err != nil {
 		t.Error(err)
 	}
@@ -245,7 +243,7 @@ func TestProxyRouterRelay(t *testing.T) {
 	}
 
 	// Long message.
-	go runRouterHandleProxy(router, ch)
+	go runRouterHandleProxy(router, 2, ch)
 	if err = runProxyRelay(proxy, msg); err != nil {
 		t.Error(err)
 	}
@@ -255,4 +253,52 @@ func TestProxyRouterRelay(t *testing.T) {
 	} else if bytes.Compare(res.msg, msg) != 0 {
 		t.Error("Long message, server got:", res.msg)
 	}
+}
+
+// Test sending malformed messages from the proxy to the router.
+func TestMaliciousProxyRouterRelay(t *testing.T) {
+	router, proxy, err := makeContext()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer router.Close()
+	ch := make(chan testResult)
+
+	cell := make([]byte, CellBytes)
+	buff := make([]byte, CellBytes*10)
+
+	// Unrecognized cell type.
+	cell[0] = dirCell ^ msgCell ^ relayCell
+	go runRouterHandleProxy(router, 1, ch)
+	c, err := proxy.DialRouter(network, routerAddr)
+	if err != nil {
+		t.Error(err)
+	}
+	if _, err = c.Write(cell); err != nil {
+		t.Error(err)
+	}
+	_, err = proxy.ReceiveMessage(c, buff)
+	if err == nil || err.Error() != "router error: "+errBadCellType.Error() {
+		t.Error("Bad cell, got incorrect error: ", err)
+	}
+	c.Close()
+	<-ch
+
+	// Message too long.
+	cell[0] = msgCell
+	binary.PutUvarint(cell[1:], uint64(MaxMsgBytes+1))
+	go runRouterHandleProxy(router, 1, ch)
+	c, err = proxy.DialRouter(network, routerAddr)
+	if err != nil {
+		t.Error(err)
+	}
+	if _, err = c.Write(cell); err != nil {
+		t.Error(err)
+	}
+	_, err = proxy.ReceiveMessage(c, buff)
+	if err == nil || err.Error() != "router error: "+errMsgLength.Error()+" (connection closed)" {
+		t.Error("Long message, got incorrect error: ", err)
+	}
+	c.Close()
+	<-ch
 }

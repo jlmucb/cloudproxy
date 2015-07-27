@@ -16,9 +16,11 @@ package mixnet
 
 import (
 	"encoding/binary"
+	"errors"
+	"io"
 	"net"
 
-	"github.com/golang/protobuf/proto"
+	proto "github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
@@ -55,31 +57,7 @@ func (p *ProxyContext) CreateCircuit(c net.Conn, circuitAddrs []string) (int, er
 	var d Directive
 	d.Type = DirectiveType_CREATE_CIRCUIT.Enum()
 	d.Addrs = circuitAddrs
-	return p.SendDirective(c, &d)
-}
-
-// Serialize and pad a directive to the length of a cell and send it to the
-// router. A directive is signaled to the receiver by the first byte of the
-// cell. The next 8 bytes encodse the length of of the serialized protocol
-// buffer. If the buffer doesn't fit in a cell, then throw an error.
-func (p *ProxyContext) SendDirective(c net.Conn, d *Directive) (int, error) {
-	db, err := proto.Marshal(d)
-	if err != nil {
-		return 0, err
-	}
-	dirBytes := len(db)
-
-	// Throw an error if encoded Directive doesn't fit into a cell.
-	if dirBytes+9 > CellBytes {
-		return 0, errCellLength
-	}
-
-	cell := make([]byte, CellBytes)
-	cell[0] = dirCell
-	n := binary.PutUvarint(cell[1:], uint64(dirBytes))
-	copy(cell[1+n:], db)
-
-	return c.Write(cell)
+	return SendDirective(c, &d)
 }
 
 // SendMessage directs the router to relay a message over the already constructed
@@ -105,4 +83,34 @@ func (p *ProxyContext) SendMessage(c net.Conn, msg []byte) (int, error) {
 	}
 
 	return bytes, nil
+}
+
+func (p *ProxyContext) ReceiveMessage(c net.Conn, msg []byte) (int, error) {
+	var err error
+	cell := make([]byte, CellBytes)
+	if _, err = c.Read(cell); err != nil && err != io.EOF {
+		return 0, err
+	}
+
+	if cell[0] == msgCell { // Read a message.
+		// TODO(cjpatton)
+
+	} else if cell[0] == dirCell { // Handle a directive.
+		dirBytes, n := binary.Uvarint(cell[1:])
+		var d Directive
+		if err := proto.Unmarshal(cell[1+n:1+n+int(dirBytes)], &d); err != nil {
+			return 0, err
+		}
+
+		switch *d.Type {
+		case DirectiveType_ERROR:
+			return 0, errors.New("router error: " + (*d.Error))
+		case DirectiveType_FATAL:
+			return 0, errors.New("router error: " + (*d.Error) + " (connection closed)")
+		default:
+			return 0, errBadDirective
+		}
+	}
+
+	return 0, errBadCellType
 }

@@ -15,19 +15,28 @@
 package mixnet
 
 import (
+	"encoding/binary"
 	"errors"
 	"net"
+
+	"github.com/golang/protobuf/proto"
 )
 
-const CellBytes = 1024 // Length of a cell
+const (
+	CellBytes   = 1 << 10 // Length of a cell
+	MaxMsgBytes = 1 << 16 // Maximum length of a message
+)
 
 const (
-	msgCell   = iota
-	dirCell   = iota
-	relayCell = iota
+	msgCell = iota
+	dirCell
+	relayCell
 )
 
 var errCellLength error = errors.New("incorrect cell length")
+var errBadCellType error = errors.New("unrecognized cell type")
+var errBadDirective error = errors.New("received bad directive")
+var errMsgLength error = errors.New("message too long")
 
 // Conn implements the net.Conn interface. The read and write operations are
 // overloaded to check that only cells are sent between agents in the mixnet
@@ -58,6 +67,30 @@ func (c *Conn) Write(msg []byte) (n int, err error) {
 		return n, err
 	}
 	return n, nil
+}
+
+// Serialize and pad a directive to the length of a cell and send it to the
+// router. A directive is signaled to the receiver by the first byte of the
+// cell. The next 8 bytes encodes the length of of the serialized protocol
+// buffer. If the buffer doesn't fit in a cell, then throw an error.
+func SendDirective(c net.Conn, d *Directive) (int, error) {
+	db, err := proto.Marshal(d)
+	if err != nil {
+		return 0, err
+	}
+	dirBytes := len(db)
+
+	// Throw an error if encoded Directive doesn't fit into a cell.
+	if dirBytes+9 > CellBytes {
+		return 0, errCellLength
+	}
+
+	cell := make([]byte, CellBytes)
+	cell[0] = dirCell
+	n := binary.PutUvarint(cell[1:], uint64(dirBytes))
+	copy(cell[1+n:], db)
+
+	return c.Write(cell)
 }
 
 // Write zeros to each byte of a cell.

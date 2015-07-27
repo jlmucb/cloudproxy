@@ -27,8 +27,6 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
-var errBadDirective error = errors.New("received bad directive")
-
 // RouterContext stores the runtime environment for a Tao-delegated router.
 type RouterContext struct {
 	keys          *tao.Keys    // Signing keys of this hosted program.
@@ -108,10 +106,14 @@ func (hp *RouterContext) HandleProxy(c net.Conn) error {
 		return err
 	}
 
-	// The first byte signals either a message or a directive to the router.
-	if cell[0] == msgCell {
-
+	if cell[0] == msgCell { // Handle a message.
 		msgBytes, n := binary.Uvarint(cell[1:])
+		if msgBytes > MaxMsgBytes {
+			hp.SendFatal(c, errMsgLength)
+			c.Close()
+			return nil
+		}
+
 		hp.msgBuffer = make([]byte, msgBytes)
 		bytes := copy(hp.msgBuffer, cell[1+n:])
 
@@ -124,9 +126,8 @@ func (hp *RouterContext) HandleProxy(c net.Conn) error {
 			bytes += copy(hp.msgBuffer[bytes:], cell)
 		}
 
-	} else if cell[0] == dirCell {
+	} else if cell[0] == dirCell { // Handle a directive.
 		dirBytes, n := binary.Uvarint(cell[1:])
-
 		var d Directive
 		if err := proto.Unmarshal(cell[1+n:1+n+int(dirBytes)], &d); err != nil {
 			return err
@@ -142,6 +143,27 @@ func (hp *RouterContext) HandleProxy(c net.Conn) error {
 
 			hp.dstAddrBuffer = d.Addrs[0]
 		}
+
+	} else { // Unknown cell type, return an error.
+		hp.SendError(c, errBadCellType)
 	}
+
 	return nil
+}
+
+// SendError sends an error message to a client.
+func (hp *RouterContext) SendError(c net.Conn, err error) (int, error) {
+	var d Directive
+	d.Type = DirectiveType_ERROR.Enum()
+	d.Error = proto.String(err.Error())
+	return SendDirective(c, &d)
+}
+
+// SendFatal sends an error message and signals the client that the connection
+// was severed on the server side.
+func (hp *RouterContext) SendFatal(c net.Conn, err error) (int, error) {
+	var d Directive
+	d.Type = DirectiveType_FATAL.Enum()
+	d.Error = proto.String(err.Error())
+	return SendDirective(c, &d)
 }

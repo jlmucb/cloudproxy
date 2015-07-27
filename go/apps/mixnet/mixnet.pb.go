@@ -23,17 +23,23 @@ var _ = math.Inf
 type DirectiveType int32
 
 const (
-	DirectiveType_CREATE_CIRCUIT  DirectiveType = 1
-	DirectiveType_DESTROY_CIRCUIT DirectiveType = 2
+	DirectiveType_ERROR           DirectiveType = 0
+	DirectiveType_FATAL           DirectiveType = 1
+	DirectiveType_CREATE_CIRCUIT  DirectiveType = 2
+	DirectiveType_DESTROY_CIRCUIT DirectiveType = 3
 )
 
 var DirectiveType_name = map[int32]string{
-	1: "CREATE_CIRCUIT",
-	2: "DESTROY_CIRCUIT",
+	0: "ERROR",
+	1: "FATAL",
+	2: "CREATE_CIRCUIT",
+	3: "DESTROY_CIRCUIT",
 }
 var DirectiveType_value = map[string]int32{
-	"CREATE_CIRCUIT":  1,
-	"DESTROY_CIRCUIT": 2,
+	"ERROR":           0,
+	"FATAL":           1,
+	"CREATE_CIRCUIT":  2,
+	"DESTROY_CIRCUIT": 3,
 }
 
 func (x DirectiveType) Enum() *DirectiveType {
@@ -55,12 +61,14 @@ func (x *DirectiveType) UnmarshalJSON(data []byte) error {
 
 type Directive struct {
 	Type *DirectiveType `protobuf:"varint,1,req,name=type,enum=mixnet.DirectiveType" json:"type,omitempty"`
-	// A sequence of addresses (e.g. "192.168.1.1:7007") comprising the circuit
-	// to be constructed over the mixnet. Each address corresponds to a mixnet
-	// router exeppt the last, which is the service the proxy would like to
-	// contact.
-	Addrs            []string `protobuf:"bytes,2,rep,name=addrs" json:"addrs,omitempty"`
-	XXX_unrecognized []byte   `json:"-"`
+	// CREATE_CIRCUIT, a sequence of addresses (e.g. "192.168.1.1:7007")
+	// comprising the circuit to be constructed over the mixnet. Each address
+	// corresponds to a mixnet router except the last, which is the service the
+	// proxy would like to contact.
+	Addrs []string `protobuf:"bytes,2,rep,name=addrs" json:"addrs,omitempty"`
+	// ERROR or FATAL, an error message.
+	Error            *string `protobuf:"bytes,3,opt,name=error" json:"error,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
 }
 
 func (m *Directive) Reset()         { *m = Directive{} }
@@ -71,7 +79,7 @@ func (m *Directive) GetType() DirectiveType {
 	if m != nil && m.Type != nil {
 		return *m.Type
 	}
-	return DirectiveType_CREATE_CIRCUIT
+	return DirectiveType_ERROR
 }
 
 func (m *Directive) GetAddrs() []string {
@@ -79,6 +87,13 @@ func (m *Directive) GetAddrs() []string {
 		return m.Addrs
 	}
 	return nil
+}
+
+func (m *Directive) GetError() string {
+	if m != nil && m.Error != nil {
+		return *m.Error
+	}
+	return ""
 }
 
 func init() {

@@ -74,7 +74,7 @@ outputs the directory name of a domain that it created. This directory name is
 needed to run the demo. For example, to get a domain with policy based on
 Datalog, run the command
 
-	run/scripts/set_up_domain.sh Datalog
+	run/scripts/set_up_domain.sh Datalog Soft
 
 The `set_up_domain.sh` script uses `run/scripts/domain_template.pb` to configure
 the domain. This text-format protobuf structure contains rules and paths to
@@ -91,12 +91,12 @@ using the script `run/scripts/build_standalone.sh`.
 Let the generated domain directory be `$DOMAIN`. Then to start the Linux process
 demo, run the command
 
-	run/scripts/run_processes.sh $DOMAIN
+	run/scripts/run_processes.sh $DOMAIN Soft
 
 The Docker-based demo assumes that `$PATH` contains a Docker binary called
 `docker`. To start the Linux Docker demo, run the command
 
-	run/scripts/run_docker.sh $DOMAIN
+	run/scripts/run_docker.sh $DOMAIN ${GOPATH/bin/demo_{client,server}.img.tgz 
 
 The KVM/CoreOS demo assumes that `$PATH` contains a QEMU binary called
 `qemu-system-x86_64`. It also requires a CoreOS virtual-machine image (call it

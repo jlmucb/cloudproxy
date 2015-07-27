@@ -1,8 +1,7 @@
 #!/bin/bash
 
-if [ "$#" != "2" ]; then
-	echo "Must supply the path to an initialized domain and a root Tao type"
-	echo "('TPM' or 'Soft')"
+if [ "$#" != "1" ]; then
+	echo "Must supply the path to an initialized domain."
 	exit 1
 fi
 
@@ -15,8 +14,12 @@ gowhich() {
 }
 
 DOMAIN="$1"
-TYPE="$2"
 FAKE_PASS=BogusPass
+if [ -e "$DOMAIN/aikblob" ]; then
+  TYPE="TPM"
+else
+  TYPE="Soft"
+fi
 
 # Make sure we have sudo privileges before using them to try to start linux_host
 # below.

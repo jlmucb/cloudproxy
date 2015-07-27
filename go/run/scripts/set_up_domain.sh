@@ -27,9 +27,23 @@ HOST_REL_PATH=linux_tao_host
 # Used to encrypt policy keys (as well as the keys for SoftTao) on disk.
 FAKE_PASS=BogusPass
 
-# TPMTao: need sudo to read from /dev/tpm0.
 if [ "$TYPE" == "TPM" ]; then
+  # TPMTao: need sudo to read from /dev/tpm0.
 	sudo test true
+
+  # Find the aikblob file in cwd or one of our parents
+  path="."
+  while [ "$path" != "/" ]; do
+    if [ -e "$path/aikblob" ]; then
+      break
+    fi
+    path="$(readlink -f $path/..)"
+  done
+  if [ ! -e "$path/aikblob" ]; then
+	  echo "There must be an aikblob file in or above the current directory."
+    exit 1
+  fi
+  aikpath="$path/aikblob"
 fi
 
 # Fill in guard type in the domain template.
@@ -75,6 +89,7 @@ if [ "$TYPE" == "TPM" ]; then
 	sudo "$ADMIN" -operation policy -add_tpm -principal tpm \
 		  -pass $FAKE_PASS -domain_path $DOMAIN_PATH \
 		  -config_template $TEMP_FILE -logtostderr
+  cp "$aikpath" ${DOMAIN_PATH}/aikblob
 fi
 
 rm $TEMP_FILE

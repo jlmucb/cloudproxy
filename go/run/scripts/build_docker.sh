@@ -22,7 +22,7 @@ function build_docker() {
 	tao_config="$4"
 
 	DEMO_DIR="$(readlink -e "$(dirname "$script_name")")"/../../apps/demo
-        TEMP_DIR=$(mktemp -d)
+  TEMP_DIR=$(mktemp -d)
 	cp "${DEMO_DIR}"/${app_name}/Dockerfile ${TEMP_DIR}/Dockerfile
 	mkdir ${TEMP_DIR}/tmp
 	mkdir ${TEMP_DIR}/bin

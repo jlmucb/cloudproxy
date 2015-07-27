@@ -32,15 +32,21 @@ import (
 func main() {
 	// General configuration options.
 	configPath := flag.String("config_path", "", "Location of tao domain configuration")
+	trivialPath := flag.String("temp_trivial_domain", "", "Location to create a trival domain configuration")
 	hostPath := flag.String("path", "linux_tao_host", "Name of relative path to the location of linux host configuration")
 	quiet := flag.Bool("quiet", false, "Be more quiet.")
-	pathFile := flag.String("tmppath", "", "Write the path to the tmp configuration directory to this file if a filename is provided")
 
-	// Absent any flags indicating other options, the default configuration of
-	// linux_host runs in root mode with a fresh key (so with a soft Tao), and with
-	// its configuration stored in a fresh temporary directory, and with a liberal
-	// guard policy. Its default method of creating hosted programs is as processes
-	// with pipe communication.
+	// If config_path is given, that is used as the domain config path.
+	// Otherwise, if TAO_DOMAIN_CONFIG environment variable is set to a
+	// non-empty string, that is used as the domain config path.
+	//
+	// If temp_trivial_domain is given, then config_path must not be given and
+	// TAO_DOMAIN_CONFIG is ignored. In this case, trivial configuration will be
+	// created. The trival configuration causes linux_host to run in root mode
+	// with a fresh key (so with a soft Tao), and with its configuration stored
+	// in a fresh temporary directory, and with a liberal guard policy. Its
+	// default method of creating hosted programs is as processes with pipe
+	// communication.
 	hostType := flag.String("host_type", "root", "The type of Tao host to implement ('root' or 'stacked').")
 	pass := flag.String("pass", "BogusPass", "Password for unlocking keys if running in root host mode")
 	hostSpec := flag.String("host_spec", "", "The spec to use for communicating with the parent (e.g., '/dev/tpm0')")
@@ -64,21 +70,24 @@ func main() {
 		verbose = os.Stderr
 	}
 
-	var dir string
-	var absConfigPath string
-	var err error
-	// If the configPath doesn't exist, then create a temp path for the
-	// configuration. This also handles the case where the config path is
-	// empty.
-	if _, err = os.Stat(*configPath); err != nil {
-		dir, err = ioutil.TempDir("", "linux_host")
-		if err != nil {
-			glog.Fatalf("Couldn't create a temporary directory for linux host: %s", err)
+	// If temp_trivial_domain was given, create a temp domain.
+	if *trivialPath != "" {
+		if *configPath != "" {
+			glog.Fatalf("Conflicting options given: config_path, init_trivial_domain")
 		}
-		if err := os.Chmod(dir, 0777); err != nil {
-			glog.Fatalf("Couldn't change permissions on %s to 777: %s", dir, err)
+		if err := os.MkdirAll(*trivialPath, 0777); err != nil {
+			glog.Fatalf("Couldn't create directory for trivial domain %s: %s", *trivialPath, err)
+		}
+		// We need a password to create a set of temporary policy keys.
+		if len(*pass) == 0 {
+			glog.Fatalf("Must provide a password for temporary keys")
 		}
 
+		*configPath = path.Join(*trivialPath, "tao.config")
+		absConfigPath, err := filepath.Abs(*configPath)
+		if err != nil {
+			glog.Fatalf("Couldn't get an absolute version of the config path %s: %s", *configPath, err)
+		}
 		cfg := tao.DomainConfig{
 			DomainInfo: &tao.DomainDetails{
 				Name:           proto.String("testing"),
@@ -93,27 +102,23 @@ func main() {
 			},
 		}
 		trivialConfig := proto.MarshalTextString(&cfg)
-		absConfigPath = path.Join(dir, "tao.config")
 		if err = ioutil.WriteFile(absConfigPath, []byte(trivialConfig), 0644); err != nil {
 			glog.Fatalf("Couldn't write a trivial Tao config to %s: %s", absConfigPath, err)
 		}
-
-		// If we're creating a temporary directory, then create a set of
-		// fake policy keys as well, using the password provided.
-		if len(*pass) == 0 {
-			glog.Fatalf("Must provide a password for temporary keys")
-		}
-
 		_, err = tao.CreateDomain(cfg, absConfigPath, []byte(*pass))
 		fatalIf(err)
-	} else {
-		absConfigPath, err = filepath.Abs(*configPath)
-		if err != nil {
-			glog.Fatalf("Couldn't get an absolute version of the config path %s: %s", *configPath, err)
+	} else if *configPath == "" {
+		*configPath = os.Getenv("TAO_DOMAIN_CONFIG")
+		if *configPath == "" {
+			glog.Fatalf("No tao domain configuration specified. Use -config_path or set $TAO_DOMAIN_CONFIG")
 		}
-		dir = path.Dir(absConfigPath)
 	}
 
+	absConfigPath, err := filepath.Abs(*configPath)
+	if err != nil {
+		glog.Fatalf("Couldn't get an absolute version of the config path %s: %s", *configPath, err)
+	}
+	dir := path.Dir(absConfigPath)
 	absHostPath := path.Join(dir, *hostPath)
 	sockPath := path.Join(absHostPath, "admin_socket")
 
@@ -139,18 +144,6 @@ func main() {
 		tc.TPMAIKPath = path.Join(dir, domain.Config.TpmInfo.GetAikPath())
 		tc.TPMPCRs = domain.Config.TpmInfo.GetPcrs()
 		tc.TPMDevice = domain.Config.TpmInfo.GetTpmPath()
-	}
-
-	// Check to see if this directory information should be written to a
-	// file.
-	if *pathFile != "" {
-		pf, err := os.OpenFile(*pathFile, os.O_RDWR, 0600)
-		if err != nil {
-			glog.Fatalf("Couldn't open the provided temporary path file %s: %s", *pathFile, err)
-		}
-
-		fmt.Fprintf(pf, dir)
-		pf.Close()
 	}
 
 	absChannelSocketPath := path.Join(dir, *hostedProgramSocketPath)

@@ -71,12 +71,10 @@ fi
 	-pass $FAKE_PASS -logtostderr
 
 # Create the docker images.
-"${SCRIPT_PATH}"/build_docker.sh ${DOMAIN_PATH}/policy_keys/cert \
-	${DOMAIN_PATH}/tao.config
+"${SCRIPT_PATH}"/build_docker.sh ${DOMAIN_PATH}
 
 # Create the linux_host image for use in a VM.
-"${SCRIPT_PATH}"/build_linux_host.sh ${DOMAIN_PATH}/policy_keys/cert \
-	${DOMAIN_PATH}/tao.config
+"${SCRIPT_PATH}"/build_linux_host.sh ${DOMAIN_PATH}
 
 # Add domain-specific hashes to the policy (e.g. linux_host, demo_client,
 # and demo_server).

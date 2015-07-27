@@ -5,8 +5,8 @@ set -o errexit
 
 # This script assumes that the code for running the demo server and demo client
 # has already been built in standalone mode using build_standalone.
-if [ "$#" != "2" ]; then
-	echo "Must supply a policy certificate and tao.config for the demo code"
+if [ "$#" != "1" ]; then
+	echo "Must supply the path to an initialized domain."
 	exit 1
 fi
 
@@ -36,5 +36,5 @@ function build_docker() {
         tar -C ${TEMP_DIR} -czf "$APP_BIN".img.tgz $(ls ${TEMP_DIR})
 }
 
-build_docker "$0" demo_server "$1" "$2"
-build_docker "$0" demo_client "$1" "$2"
+build_docker "$0" demo_server "$1/policy_keys/cert" "$1/tao.config"
+build_docker "$0" demo_client "$1/policy_keys/cert" "$1/tao.config"

@@ -73,21 +73,19 @@ func main() {
 	// If temp_trivial_domain was given, create a temp domain.
 	if *trivialPath != "" {
 		if *configPath != "" {
-			glog.Fatalf("Conflicting options given: config_path, init_trivial_domain")
+			badUsage("Conflicting options given: config_path, init_trivial_domain")
 		}
 		if err := os.MkdirAll(*trivialPath, 0777); err != nil {
-			glog.Fatalf("Couldn't create directory for trivial domain %s: %s", *trivialPath, err)
+			badUsage("Couldn't create directory for trivial domain %s: %s", *trivialPath, err)
 		}
 		// We need a password to create a set of temporary policy keys.
 		if len(*pass) == 0 {
-			glog.Fatalf("Must provide a password for temporary keys")
+			badUsage("Must provide a password for temporary keys")
 		}
 
 		*configPath = path.Join(*trivialPath, "tao.config")
 		absConfigPath, err := filepath.Abs(*configPath)
-		if err != nil {
-			glog.Fatalf("Couldn't get an absolute version of the config path %s: %s", *configPath, err)
-		}
+		fatalIf(err)
 		cfg := tao.DomainConfig{
 			DomainInfo: &tao.DomainDetails{
 				Name:           proto.String("testing"),
@@ -102,22 +100,19 @@ func main() {
 			},
 		}
 		trivialConfig := proto.MarshalTextString(&cfg)
-		if err = ioutil.WriteFile(absConfigPath, []byte(trivialConfig), 0644); err != nil {
-			glog.Fatalf("Couldn't write a trivial Tao config to %s: %s", absConfigPath, err)
-		}
+		err = ioutil.WriteFile(absConfigPath, []byte(trivialConfig), 0644)
+		fatalIf(err)
 		_, err = tao.CreateDomain(cfg, absConfigPath, []byte(*pass))
 		fatalIf(err)
 	} else if *configPath == "" {
 		*configPath = os.Getenv("TAO_DOMAIN_CONFIG")
 		if *configPath == "" {
-			glog.Fatalf("No tao domain configuration specified. Use -config_path or set $TAO_DOMAIN_CONFIG")
+			badUsage("No tao domain configuration specified. Use -config_path or set $TAO_DOMAIN_CONFIG")
 		}
 	}
 
 	absConfigPath, err := filepath.Abs(*configPath)
-	if err != nil {
-		glog.Fatalf("Couldn't get an absolute version of the config path %s: %s", *configPath, err)
-	}
+	fatalIf(err)
 	dir := path.Dir(absConfigPath)
 	absHostPath := path.Join(dir, *hostPath)
 	sockPath := path.Join(absHostPath, "admin_socket")
@@ -151,7 +146,7 @@ func main() {
 	// Get the Tao parent from the config information if possible.
 	if tc.HostType == tao.Stacked {
 		if tao.ParentFromConfig(tc) == nil {
-			glog.Fatalf("error: no host tao available, check $%s or set --host_channel_type", tao.HostChannelTypeEnvVar)
+			badUsage("error: no host tao available, check $%s or set --host_channel_type\n", tao.HostChannelTypeEnvVar)
 		}
 	}
 
@@ -174,15 +169,15 @@ func main() {
 			childFactory = tao.NewLinuxDockerContainerFactory(absChannelSocketPath, rulesPath)
 		case tao.KVMCoreOSFile:
 			if *sshFile == "" {
-				glog.Fatal("Must specify an SSH authorized_key file for CoreOS")
+				badUsage("Must specify an SSH authorized_key file for CoreOS")
 			}
 			sshKeysCfg, err := tao.CloudConfigFromSSHKeys(*sshFile)
 			if err != nil {
-				glog.Fatalf("Couldn't load the ssh files file '%s': %s", *sshFile, err)
+				badUsage("Couldn't load the ssh files file '%s': %s", *sshFile, err)
 			}
 
 			if *coreOSImage == "" {
-				glog.Fatal("Must specify a CoreOS image file for the CoreOS hosted-program factory")
+				badUsage("Must specify a CoreOS image file for the CoreOS hosted-program factory")
 			}
 
 			// Construct the CoreOS configuration from the flags.
@@ -194,26 +189,26 @@ func main() {
 			}
 			childFactory = tao.NewLinuxKVMCoreOSFactory(absChannelSocketPath, cfg)
 		default:
-			glog.Fatalf("Unknown hosted-program factory '%d'", tc.HostedType)
+			badUsage("Unknown hosted-program factory '%d'", tc.HostedType)
 		}
 
 		var host *tao.LinuxHost
 		switch tc.HostType {
 		case tao.Root:
 			if len(*pass) == 0 {
-				glog.Fatal("password is required")
+				badUsage("password is required")
 			}
 			host, err = tao.NewRootLinuxHost(absHostPath, domain.Guard, []byte(*pass), childFactory)
 			fatalIf(err)
 		case tao.Stacked:
 
 			if tao.ParentFromConfig(tc) == nil {
-				glog.Fatalf("error: no host tao available, check $%s or set --host_channel_type", tao.HostChannelTypeEnvVar)
+				badUsage("error: no host tao available, check $%s or set --host_channel_type", tao.HostChannelTypeEnvVar)
 			}
 			host, err = tao.NewStackedLinuxHost(absHostPath, domain.Guard, tao.ParentFromConfig(tc), childFactory)
 			fatalIf(err)
 		default:
-			glog.Fatal("error: must specify either --host_type as either 'root' or 'stacked'")
+			badUsage("error: must specify either --host_type as either 'root' or 'stacked'")
 		}
 
 		switch *action {
@@ -242,8 +237,9 @@ func main() {
 			tao.NewLinuxHostAdminServer(host).Serve(sock)
 		}
 	case "shutdown":
-		glog.Fatal("not yet implemented")
+		badUsage("shutdown command not yet implemented")
 	default:
+		badUsage("unrecognized command: %s", *action)
 	}
 
 	glog.Flush()
@@ -253,4 +249,12 @@ func fatalIf(err error) {
 	if err != nil {
 		glog.Fatal(err)
 	}
+}
+
+func badUsage(msg string, args ...interface{}) {
+	if msg[len(msg)-1] != '\n' {
+		msg += "\n"
+	}
+	fmt.Fprintf(os.Stderr, msg, args...)
+	os.Exit(1)
 }

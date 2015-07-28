@@ -55,6 +55,14 @@ type DockerContainer struct {
 
 	// The underlying docker process.
 	Cmd *exec.Cmd
+
+	// A channel to be signaled when the vm is done.
+	Done chan bool
+}
+
+// WaitChan returns a chan that will be signaled when the hosted vm is done.
+func (dc *DockerContainer) WaitChan() <-chan bool {
+	return dc.Done
 }
 
 // Kill sends a SIGKILL signal to a docker container.
@@ -180,6 +188,7 @@ func (ldcf *LinuxDockerContainerFactory) NewHostedProgram(spec HostedProgramSpec
 		Tempdir:  tempdir,
 		Hash:     h[:],
 		Factory:  ldcf,
+		Done:     make(chan bool, 1),
 	}
 	return
 }

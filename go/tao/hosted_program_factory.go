@@ -95,6 +95,8 @@ type HostedProgram interface {
 	// Stop stops the hosted program and cleans up resources.
 	Stop() error
 
+	WaitChan() <-chan bool
+
 	// Cleanup cleans up resources, such as temporary files.
 	Cleanup() error
 

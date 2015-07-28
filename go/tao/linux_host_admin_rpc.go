@@ -115,7 +115,7 @@ func (client LinuxHostAdminClient) KillHostedProgram(subprin auth.SubPrin) error
 	return nil
 }
 
-// HostName is the client stub for LinuxHost.HostName..
+// HostName is the client stub for LinuxHost.HostName.
 func (client LinuxHostAdminClient) HostName() (auth.Prin, error) {
 	req := &LinuxHostAdminRPCRequest{}
 	resp := new(LinuxHostAdminRPCResponse)
@@ -126,20 +126,29 @@ func (client LinuxHostAdminClient) HostName() (auth.Prin, error) {
 	return auth.UnmarshalPrin(resp.Prin)
 }
 
+// Shutdown is the client stub for LinuxHost.Shutdown.
+func (client LinuxHostAdminClient) Shutdown() error {
+	req := &LinuxHostAdminRPCRequest{}
+	resp := new(LinuxHostAdminRPCResponse)
+	return client.Call("LinuxHost.Shutdown", req, resp)
+}
+
 // LinuxHostAdminServer is a server stub for LinuxHost's admin RPC interface.
 type LinuxHostAdminServer struct {
-	lh *LinuxHost
+	lh   *LinuxHost
+	Done chan bool
 }
 
 type linuxHostAdminServerStub struct {
-	oob *util.OOBUnixConn
-	lh  *LinuxHost
+	oob  *util.OOBUnixConn
+	lh   *LinuxHost
+	Done chan bool
 }
 
 // NewLinuxHostAdminServer returns a new server stub for LinuxHost's admin RPC
 // interface.
 func NewLinuxHostAdminServer(host *LinuxHost) LinuxHostAdminServer {
-	return LinuxHostAdminServer{host}
+	return LinuxHostAdminServer{host, make(chan bool, 1)}
 }
 
 // Serve listens on sock for new connections and services them.
@@ -150,20 +159,37 @@ func (server LinuxHostAdminServer) Serve(sock *net.UnixListener) error {
 		return err
 	}
 	err = syscall.SetsockoptInt(int(sockFile.Fd()), syscall.SOL_SOCKET, syscall.SO_PASSCRED, 1 /* true */)
+	sockFile.Close()
 	if err != nil {
-		sockFile.Close()
 		return err
 	}
-	sockFile.Close()
+
+	connections := make(chan *net.UnixConn, 1)
+	errors := make(chan error, 1)
+	go func() {
+		for {
+			conn, err := sock.AcceptUnix()
+			if err != nil {
+				errors <- err
+				break
+			}
+			connections <- conn
+		}
+	}()
 
 	for {
-		conn, err := sock.AcceptUnix()
-		if err != nil {
+		var conn *net.UnixConn
+		select {
+		case conn = <-connections:
+			break
+		case err = <-errors:
 			return err
+		case <-server.Done:
+			return nil
 		}
 		s := rpc.NewServer()
 		oob := util.NewOOBUnixConn(conn)
-		err = s.RegisterName("LinuxHost", linuxHostAdminServerStub{oob, server.lh})
+		err = s.RegisterName("LinuxHost", linuxHostAdminServerStub{oob, server.lh, server.Done})
 		if err != nil {
 			return err
 		}
@@ -203,6 +229,10 @@ func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminRPCRe
 
 // StopHostedProgram is the server stub for LinuxHost.StopHostedProgram.
 func (server linuxHostAdminServerStub) StopHostedProgram(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
+	ucred := server.oob.PeerCred()
+	if ucred.Uid != 0 && int(ucred.Uid) != os.Geteuid() {
+		return newError("unauthorized: only root or owner can stop hosted programs")
+	}
 	subprin, err := auth.UnmarshalSubPrin(r.Subprin)
 	if err != nil {
 		return err
@@ -231,6 +261,10 @@ func (server linuxHostAdminServerStub) ListHostedPrograms(r *LinuxHostAdminRPCRe
 
 // KillHostedProgram is the server stub for LinuxHost.KillHostedProgram.
 func (server linuxHostAdminServerStub) KillHostedProgram(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
+	ucred := server.oob.PeerCred()
+	if ucred.Uid != 0 && int(ucred.Uid) != os.Geteuid() {
+		return newError("unauthorized: only root or owner can kill hosted programs")
+	}
 	subprin, err := auth.UnmarshalSubPrin(r.Subprin)
 	if err != nil {
 		return err
@@ -243,4 +277,16 @@ func (server linuxHostAdminServerStub) HostName(r *LinuxHostAdminRPCRequest, s *
 	prin := server.lh.HostName()
 	s.Prin = auth.Marshal(prin)
 	return nil
+}
+
+// Shutdown is the server stub for LinuxHost.Shutdown.
+func (server linuxHostAdminServerStub) Shutdown(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
+	ucred := server.oob.PeerCred()
+	if ucred.Uid != 0 && int(ucred.Uid) != os.Geteuid() {
+		return newError("unauthorized: only root or owner can shut down linux_host")
+	}
+	err := server.lh.Shutdown()
+	server.Done <- true
+	close(server.Done)
+	return err
 }

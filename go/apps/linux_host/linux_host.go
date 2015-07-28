@@ -21,8 +21,10 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"os/signal"
 	"path"
 	"path/filepath"
+	"syscall"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -42,12 +44,12 @@ func main() {
 	//
 	// If temp_trivial_domain is given, then config_path must not be given and
 	// TAO_DOMAIN_CONFIG is ignored. In this case, trivial configuration will be
-	// created. The trival configuration causes linux_host to run in root mode
-	// with a fresh key (so with a soft Tao), and with its configuration stored
-	// in a fresh temporary directory, and with a liberal guard policy. Its
-	// default method of creating hosted programs is as processes with pipe
-	// communication.
-	hostType := flag.String("host_type", "root", "The type of Tao host to implement ('root' or 'stacked').")
+	// created. By default, the trival configuration causes linux_host to run in
+	// root mode with a fresh key (so with a soft Tao), and with its
+	// configuration stored in a fresh temporary directory, and with a liberal
+	// guard policy. Its default method of creating hosted programs is as
+	// processes with pipe communication.
+	hostType := flag.String("host_type", "auto", "The type of Tao host to implement ('auto', 'root' or 'stacked').")
 	pass := flag.String("pass", "BogusPass", "Password for unlocking keys if running in root host mode")
 	hostSpec := flag.String("host_spec", "", "The spec to use for communicating with the parent (e.g., '/dev/tpm0')")
 	hostChannelType := flag.String("host_channel_type", "", "The type of the host channel (e.g., 'tpm', 'file', or 'unix')")
@@ -81,6 +83,9 @@ func main() {
 		// We need a password to create a set of temporary policy keys.
 		if len(*pass) == 0 {
 			badUsage("Must provide a password for temporary keys")
+		}
+		if *hostType == "auto" {
+			*hostType = "root"
 		}
 
 		*configPath = path.Join(*trivialPath, "tao.config")
@@ -121,6 +126,20 @@ func main() {
 	domain, err := tao.LoadDomain(absConfigPath, nil)
 	fatalIf(err)
 	glog.Info("Domain guard: ", domain.Guard)
+
+	switch *hostType {
+	case "auto":
+		aikpath := path.Join(dir, domain.Config.TpmInfo.GetAikPath())
+		if _, err = os.Stat(aikpath); err == nil {
+			*hostType = "TPM"
+		} else {
+			*hostType = "root"
+		}
+	case "root":
+	case "TPM":
+	default:
+		badUsage("Invalid argument for -host_type option")
+	}
 
 	tc := tao.Config{
 		HostType:        tao.HostTaoTypeMap[*hostType],
@@ -187,7 +206,8 @@ func main() {
 				RulesPath:  rulesPath,
 				SSHKeysCfg: sshKeysCfg,
 			}
-			childFactory = tao.NewLinuxKVMCoreOSFactory(absChannelSocketPath, cfg)
+			childFactory, err = tao.NewLinuxKVMCoreOSFactory(absChannelSocketPath, cfg)
+			fatalIf(err)
 		default:
 			badUsage("Unknown hosted-program factory '%d'", tc.HostedType)
 		}
@@ -231,13 +251,42 @@ func main() {
 			fatalIf(err)
 			defer sock.Close()
 			err = os.Chmod(sockPath, 0666)
+			if err != nil {
+				sock.Close()
+				glog.Fatal(err)
+			}
+			fmt.Println("opened path,", sockPath)
+
+			go func() {
+				c := make(chan os.Signal, 1)
+				signal.Notify(c, os.Interrupt, os.Kill, syscall.SIGTERM)
+				fmt.Fprintf(verbose, "Linux Tao Service (%s) started and waiting for requests\n", host.HostName())
+				err = tao.NewLinuxHostAdminServer(host).Serve(sock)
+				fmt.Fprintf(verbose, "Linux Tao Service finished\n")
+				sock.Close()
+				fatalIf(err)
+				os.Exit(0)
+			}()
+
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt, os.Kill, syscall.SIGTERM)
+			<-c
+			fmt.Fprintf(verbose, "Linux Tao Service shutting down\n")
+			err = shutdown(sockPath)
 			fatalIf(err)
 
-			fmt.Fprintf(verbose, "Linux Tao Service (%s) started and waiting for requests\n", host.HostName())
-			tao.NewLinuxHostAdminServer(host).Serve(sock)
+			// The above goroutine will normally end by calling os.Exit(), so we
+			// can block here indefinitely. But if we get a second kill signal,
+			// let's abort.
+			fmt.Fprintf(verbose, "Waiting for shutdown....\n")
+			<-c
+			glog.Fatalf("Could not shut down linux_host")
+
 		}
 	case "shutdown":
-		badUsage("shutdown command not yet implemented")
+	case "stop":
+		err = shutdown(sockPath)
+		fatalIf(err)
 	default:
 		badUsage("unrecognized command: %s", *action)
 	}
@@ -245,9 +294,22 @@ func main() {
 	glog.Flush()
 }
 
+func shutdown(sockPath string) error {
+	conn, err := net.Dial("unix", sockPath)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	uconn, ok := conn.(*net.UnixConn)
+	if !ok {
+		glog.Fatalf("Connection not a unix domain socket")
+	}
+	return tao.NewLinuxHostAdminClient(uconn).Shutdown()
+}
+
 func fatalIf(err error) {
 	if err != nil {
-		glog.Fatal(err)
+		glog.FatalDepth(1, err)
 	}
 }
 

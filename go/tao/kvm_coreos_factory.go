@@ -90,6 +90,14 @@ type KvmCoreOSContainer struct {
 	// Path to linux host.
 	// TODO(kwalsh) is this description correct?
 	LHPath string
+
+	// A channel to be signaled when the vm is done.
+	Done chan bool
+}
+
+// WaitChan returns a chan that will be signaled when the hosted vm is done.
+func (kcc *KvmCoreOSContainer) WaitChan() <-chan bool {
+	return kcc.Done
 }
 
 // Kill sends a SIGKILL signal to a QEMU instance.
@@ -250,23 +258,23 @@ type LinuxKVMCoreOSFactory struct {
 // NewLinuxKVMCoreOSFactory returns a new HostedProgramFactory that can
 // create docker containers to wrap programs.
 // TODO(kwalsh) fix comment.
-func NewLinuxKVMCoreOSFactory(sockPath string, cfg *CoreOSConfig) HostedProgramFactory {
+func NewLinuxKVMCoreOSFactory(sockPath string, cfg *CoreOSConfig) (HostedProgramFactory, error) {
 
 	// Create a key to use to connect to the instance and set up LinuxHost
 	// there.
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		glog.Fatalf("couldn't create a 2048-bit RSA key: %s", err)
+		return nil, err
 	}
 	sshpk, err := ssh.NewPublicKey(&priv.PublicKey)
 	if err != nil {
-		glog.Fatalf("couldn't create a SSH public key from the RSA key: %s", err)
+		return nil, err
 	}
 	pkstr := "ssh-rsa " + base64.StdEncoding.EncodeToString(sshpk.Marshal()) + " linux_host"
 
 	sshpriv, err := ssh.NewSignerFromKey(priv)
 	if err != nil {
-		glog.Fatalf("couldn't create an SSH private key from the RSA key: %s", err)
+		return nil, err
 	}
 
 	return &LinuxKVMCoreOSFactory{
@@ -274,7 +282,7 @@ func NewLinuxKVMCoreOSFactory(sockPath string, cfg *CoreOSConfig) HostedProgramF
 		SocketPath: sockPath,
 		PublicKey:  pkstr,
 		PrivateKey: sshpriv,
-	}
+	}, nil
 }
 
 // CloudConfigFromSSHKeys converts an ssh authorized-keys file into a format
@@ -323,6 +331,7 @@ func (lkcf *LinuxKVMCoreOSFactory) NewHostedProgram(spec HostedProgramSpec) (chi
 		FactoryHash: h[:],
 		Hash:        hh[:],
 		Factory:     lkcf,
+		Done:        make(chan bool, 1),
 	}
 	return
 }

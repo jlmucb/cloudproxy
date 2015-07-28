@@ -17,6 +17,7 @@ package tao
 import (
 	"io"
 	"sync"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -254,6 +255,19 @@ func (lh *LinuxHost) StartHostedProgram(spec HostedProgramSpec) (auth.SubPrin, i
 	lh.hostedPrograms = append(lh.hostedPrograms, child)
 	lh.hpm.Unlock()
 
+	defer func() {
+		<-child.Cmd.WaitChan()
+		lh.hpm.Lock()
+		for i, lph := range lh.hostedPrograms {
+			if child == lph {
+				var empty []*LinuxHostChild
+				lh.hostedPrograms = append(append(empty, lh.hostedPrograms[:i]...), lh.hostedPrograms[i+1:]...)
+				break
+			}
+		}
+		lh.hpm.Unlock()
+	}()
+
 	return subprin, pid, nil
 }
 
@@ -261,31 +275,13 @@ func (lh *LinuxHost) StartHostedProgram(spec HostedProgramSpec) (auth.SubPrin, i
 func (lh *LinuxHost) StopHostedProgram(subprin auth.SubPrin) error {
 	lh.hpm.Lock()
 	defer lh.hpm.Unlock()
-
-	var i int
-	for i < len(lh.hostedPrograms) {
-		lph := lh.hostedPrograms[i]
-		n := len(lh.hostedPrograms)
+	for _, lph := range lh.hostedPrograms {
 		if lph.ChildSubprin.Identical(subprin) {
-			// Close the channel before sending SIGTERM
 			lph.channel.Close()
-
 			if err := lph.Cmd.Stop(); err != nil {
 				glog.Errorf("Couldn't stop hosted program %d, subprincipal %s: %s\n", lph.Cmd.ID(), subprin, err)
 			}
-
-			// The order of this array doesn't matter, and we want
-			// to make sure we remove all references to pointers to
-			// LinuxHostServer instances so that they get garbage
-			// collected. So, we implement delete from the slice by
-			// moving elements around.
-			lh.hostedPrograms[i] = lh.hostedPrograms[n-1]
-			lh.hostedPrograms[n-1] = nil
-			lh.hostedPrograms = lh.hostedPrograms[:n-1]
-			i--
 		}
-
-		i++
 	}
 	return nil
 }
@@ -307,30 +303,13 @@ func (lh *LinuxHost) ListHostedPrograms() ([]auth.SubPrin, []int, error) {
 func (lh *LinuxHost) KillHostedProgram(subprin auth.SubPrin) error {
 	lh.hpm.Lock()
 	defer lh.hpm.Unlock()
-	var i int
-	for i < len(lh.hostedPrograms) {
-		lph := lh.hostedPrograms[i]
-		n := len(lh.hostedPrograms)
+	for _, lph := range lh.hostedPrograms {
 		if lph.ChildSubprin.Identical(subprin) {
-			// Close the channel before killing the hosted program.
 			lph.channel.Close()
-
 			if err := lph.Cmd.Kill(); err != nil {
 				glog.Errorf("Couldn't kill hosted program %d, subprincipal %s: %s\n", lph.Cmd.ID(), subprin, err)
 			}
-
-			// The order of this array doesn't matter, and we want
-			// to make sure we remove all references to pointers to
-			// LinuxHostServer instances so that they get garbage
-			// collected. So, we implement delete from the slice by
-			// moving elements around.
-			lh.hostedPrograms[i] = lh.hostedPrograms[n-1]
-			lh.hostedPrograms[n-1] = nil
-			lh.hostedPrograms = lh.hostedPrograms[:n-1]
-			i--
 		}
-
-		i++
 	}
 	return nil
 }
@@ -338,4 +317,42 @@ func (lh *LinuxHost) KillHostedProgram(subprin auth.SubPrin) error {
 // HostName returns the name of the Host used by the LinuxHost.
 func (lh *LinuxHost) HostName() auth.Prin {
 	return lh.taoHost.HostName()
+}
+
+// Shutdown stops all hosted programs. If any remain after 10 seconds, they are
+// killed.
+func (lh *LinuxHost) Shutdown() error {
+	glog.Infof("shutting down")
+	lh.hpm.Lock()
+	// Request each child stop
+	for _, lph := range lh.hostedPrograms {
+		// lph.channel.Close()
+		if err := lph.Cmd.Stop(); err != nil {
+			glog.Errorf("Couldn't stop hosted program %d, subprincipal %s: %s\n", lph.Cmd.ID(), lph.Cmd.Subprin(), err)
+		}
+	}
+	timeout := make(chan bool, 1)
+	go func() {
+		time.Sleep(10 * time.Second)
+		timeout <- true
+		close(timeout)
+	}()
+	// If timeout expires before child is done, kill child
+	for _, lph := range lh.hostedPrograms {
+		select {
+		case <-lph.Cmd.WaitChan():
+			break
+		case <-timeout:
+			if err := lph.Cmd.Kill(); err != nil {
+				glog.Errorf("Couldn't kill hosted program %d, subprincipal %s: %s\n", lph.Cmd.ID(), lph.Cmd.Subprin(), err)
+			}
+		}
+	}
+	// Reap all children
+	for _, lph := range lh.hostedPrograms {
+		<-lph.Cmd.WaitChan()
+	}
+	lh.hostedPrograms = nil
+	lh.hpm.Unlock()
+	return nil
 }

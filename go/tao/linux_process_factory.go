@@ -68,6 +68,9 @@ type HostedProcess struct {
 
 	// The factory responsible for the hosted process.
 	Factory *LinuxProcessFactory
+
+	// A channel to be signaled when the process is done.
+	Done chan bool
 }
 
 // NewHostedProgram initializes, but does not start, a hosted process.
@@ -120,6 +123,7 @@ func (lpf *LinuxProcessFactory) NewHostedProgram(spec HostedProgramSpec) (child 
 		Tempdir:  tempdir,
 		Hash:     h[:],
 		Factory:  lpf,
+		Done:     make(chan bool, 1),
 	}
 	return
 }
@@ -243,11 +247,19 @@ func (p *HostedProcess) Start() (channel io.ReadWriteCloser, err error) {
 		p.Cmd.Wait()
 		signal.Stop(sc)
 		os.RemoveAll(p.Tempdir)
+		p.Done <- true
+		close(p.Done) // prevent any more blocking
 	}()
 
 	// TODO(kwalsh) put channel into p, remove the struct in linux_host.go
 
 	return
+}
+
+// WaitChan returns a chan that will be signaled when the hosted process is
+// done.
+func (p *HostedProcess) WaitChan() <-chan bool {
+	return p.Done
 }
 
 // Kill kills an os/exec.Cmd process.

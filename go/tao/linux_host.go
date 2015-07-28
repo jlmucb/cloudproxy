@@ -255,7 +255,7 @@ func (lh *LinuxHost) StartHostedProgram(spec HostedProgramSpec) (auth.SubPrin, i
 	lh.hostedPrograms = append(lh.hostedPrograms, child)
 	lh.hpm.Unlock()
 
-	defer func() {
+	go func() {
 		<-child.Cmd.WaitChan()
 		lh.hpm.Lock()
 		for i, lph := range lh.hostedPrograms {

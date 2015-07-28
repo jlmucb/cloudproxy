@@ -10,6 +10,7 @@ It is generated from these files:
 
 It has these top-level messages:
 	Directive
+	Queueable
 */
 package mixnet
 
@@ -94,6 +95,49 @@ func (m *Directive) GetError() string {
 		return *m.Error
 	}
 	return ""
+}
+
+// Protocol buffer for a message or directive in a send queue.
+type Queueable struct {
+	// Serial identifier of the sender.
+	Id *uint64 `protobuf:"varint,1,req,name=id" json:"id,omitempty"`
+	// If the connection needs to be set up, specify the address the host.
+	Addr             *string    `protobuf:"bytes,2,opt,name=addr" json:"addr,omitempty"`
+	Dir              *Directive `protobuf:"bytes,3,opt,name=dir" json:"dir,omitempty"`
+	Msg              []byte     `protobuf:"bytes,4,opt,name=msg" json:"msg,omitempty"`
+	XXX_unrecognized []byte     `json:"-"`
+}
+
+func (m *Queueable) Reset()         { *m = Queueable{} }
+func (m *Queueable) String() string { return proto.CompactTextString(m) }
+func (*Queueable) ProtoMessage()    {}
+
+func (m *Queueable) GetId() uint64 {
+	if m != nil && m.Id != nil {
+		return *m.Id
+	}
+	return 0
+}
+
+func (m *Queueable) GetAddr() string {
+	if m != nil && m.Addr != nil {
+		return *m.Addr
+	}
+	return ""
+}
+
+func (m *Queueable) GetDir() *Directive {
+	if m != nil {
+		return m.Dir
+	}
+	return nil
+}
+
+func (m *Queueable) GetMsg() []byte {
+	if m != nil {
+		return m.Msg
+	}
+	return nil
 }
 
 func init() {

@@ -33,9 +33,16 @@ type RouterContext struct {
 	domain        *tao.Domain  // Policy guard and public key.
 	proxyListener net.Listener // Socket where server listens for proxies.
 
+	id uint64 // Next serial identifier that will be assigned to a connection.
+
+	// Map a connection to its next hop destination.
+	next map[uint64]net.Conn
+
 	// For the moment, buffer a single message and destination.
 	msgBuffer     []byte
 	dstAddrBuffer string
+
+	network string // Network protocol, e.g. "tcp"
 }
 
 // NewRouterContext generates new keys, loads a local domain configuration from
@@ -44,6 +51,9 @@ type RouterContext struct {
 // the parent of this hosted program.
 func NewRouterContext(path, network, addr string, x509Identity *pkix.Name, t tao.Tao) (hp *RouterContext, err error) {
 	hp = new(RouterContext)
+
+	hp.network = network
+	hp.next = make(map[uint64]net.Conn)
 
 	// Generate keys and get attestation from parent.
 	if hp.keys, err = tao.NewTemporaryTaoDelegatedKeys(tao.Signing|tao.Crypting, t); err != nil {
@@ -83,23 +93,26 @@ func NewRouterContext(path, network, addr string, x509Identity *pkix.Name, t tao
 }
 
 // AcceptProxy Waits for connectons from proxies.
-func (hp RouterContext) AcceptProxy() (net.Conn, error) {
+func (hp RouterContext) AcceptProxy() (*Conn, error) {
 	c, err := hp.proxyListener.Accept()
 	if err != nil {
 		return nil, err
 	}
-	return &Conn{c}, nil
+	return &Conn{c, hp.nextID()}, nil
 }
 
 // Close releases any resources held by the hosted program.
 func (hp *RouterContext) Close() {
+	for _, c := range hp.next {
+		c.Close()
+	}
 	if hp.proxyListener != nil {
 		hp.proxyListener.Close()
 	}
 }
 
 // HandleProxy reads a directive or a message from a proxy.
-func (hp *RouterContext) HandleProxy(c net.Conn) error {
+func (hp *RouterContext) HandleProxy(c *Conn) error {
 	var err error
 	cell := make([]byte, CellBytes)
 	if _, err = c.Read(cell); err != nil && err != io.EOF {
@@ -126,6 +139,11 @@ func (hp *RouterContext) HandleProxy(c net.Conn) error {
 			bytes += copy(hp.msgBuffer[bytes:], cell)
 		}
 
+		// For now, send the message straight away.
+		if _, err = hp.next[c.id].Write(hp.msgBuffer); err != nil {
+			return err
+		}
+
 	} else if cell[0] == dirCell { // Handle a directive.
 		dirBytes, n := binary.Uvarint(cell[1:])
 		var d Directive
@@ -133,6 +151,8 @@ func (hp *RouterContext) HandleProxy(c net.Conn) error {
 			return err
 		}
 
+		// Construct a circuit and establish a connection with the destination.
+		// TODO(cjpatton) For now, only single-hop circuits are supported.
 		if *d.Type == DirectiveType_CREATE_CIRCUIT {
 			if len(d.Addrs) == 0 {
 				return errBadDirective
@@ -141,7 +161,10 @@ func (hp *RouterContext) HandleProxy(c net.Conn) error {
 				return errors.New("multi-hop circuits not implemented")
 			}
 
-			hp.dstAddrBuffer = d.Addrs[0]
+			// For now, connect to destination straight away.
+			if hp.next[c.id], err = net.Dial(hp.network, d.Addrs[0]); err != nil {
+				return err
+			}
 		}
 
 	} else { // Unknown cell type, return an error.
@@ -166,4 +189,13 @@ func (hp *RouterContext) SendFatal(c net.Conn, err error) (int, error) {
 	d.Type = DirectiveType_FATAL.Enum()
 	d.Error = proto.String(err.Error())
 	return SendDirective(c, &d)
+}
+
+// Get the next Id to assign and increment counter.
+// TODO(cjpatton) This will need mutual exclusion when AcceptRouter() is
+// implemented.
+func (hp *RouterContext) nextID() (id uint64) {
+	id = hp.id
+	hp.id++
+	return id
 }

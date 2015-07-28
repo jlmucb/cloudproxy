@@ -23,8 +23,12 @@ import (
 )
 
 const (
-	CellBytes   = 1 << 10 // Length of a cell
-	MaxMsgBytes = 1 << 16 // Maximum length of a message
+
+	// CellBytes specifies the length of a cell.
+	CellBytes = 1 << 10
+
+	// MaxMsgBytes specifies the maximum length of a message.
+	MaxMsgBytes = 1 << 16
 )
 
 const (
@@ -33,16 +37,17 @@ const (
 	relayCell
 )
 
-var errCellLength error = errors.New("incorrect cell length")
-var errBadCellType error = errors.New("unrecognized cell type")
-var errBadDirective error = errors.New("received bad directive")
-var errMsgLength error = errors.New("message too long")
+var errCellLength = errors.New("incorrect cell length")
+var errBadCellType = errors.New("unrecognized cell type")
+var errBadDirective = errors.New("received bad directive")
+var errMsgLength = errors.New("message too long")
 
 // Conn implements the net.Conn interface. The read and write operations are
 // overloaded to check that only cells are sent between agents in the mixnet
 // protocol.
 type Conn struct {
 	net.Conn
+	id uint64 // Serial identifier of connection in a given context.
 }
 
 // Read a cell from the channel. If len(msg) != CellBytes, return an error.
@@ -69,10 +74,10 @@ func (c *Conn) Write(msg []byte) (n int, err error) {
 	return n, nil
 }
 
-// Serialize and pad a directive to the length of a cell and send it to the
-// router. A directive is signaled to the receiver by the first byte of the
-// cell. The next 8 bytes encodes the length of of the serialized protocol
-// buffer. If the buffer doesn't fit in a cell, then throw an error.
+// SendDirective serializes and pads a directive to the length of a cell and
+// sends it to the router. A directive is signaled to the receiver by the first
+// byte of the cell. The next 8 bytes encodes the length of of the serialized
+// protocol buffer. If the buffer doesn't fit in a cell, then throw an error.
 func SendDirective(c net.Conn, d *Directive) (int, error) {
 	db, err := proto.Marshal(d)
 	if err != nil {

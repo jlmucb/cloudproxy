@@ -20,7 +20,7 @@ import (
 	"io"
 	"net"
 
-	proto "github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
@@ -28,6 +28,7 @@ import (
 // proxy connects to a mixnet router on behalf of a client's application.
 type ProxyContext struct {
 	domain *tao.Domain // Policy guard and public key.
+	id     uint64      // Next serial identifier that will assigned to a new connection.
 }
 
 // NewProxyContext loads a domain from a local configuration.
@@ -43,12 +44,12 @@ func NewProxyContext(path string) (p *ProxyContext, err error) {
 }
 
 // DialRouter connects anonymously to a remote Tao-delegated mixnet router.
-func (p *ProxyContext) DialRouter(network, addr string) (net.Conn, error) {
+func (p *ProxyContext) DialRouter(network, addr string) (*Conn, error) {
 	c, err := tao.Dial(network, addr, p.domain.Guard, p.domain.Keys.VerifyingKey, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &Conn{c}, nil
+	return &Conn{c, p.nextID()}, nil
 }
 
 // CreateCircuit directs the router to construct a circuit to a particular
@@ -85,6 +86,7 @@ func (p *ProxyContext) SendMessage(c net.Conn, msg []byte) (int, error) {
 	return bytes, nil
 }
 
+// ReceiveMessage waits for a reply or error message from the router.
 func (p *ProxyContext) ReceiveMessage(c net.Conn, msg []byte) (int, error) {
 	var err error
 	cell := make([]byte, CellBytes)
@@ -113,4 +115,10 @@ func (p *ProxyContext) ReceiveMessage(c net.Conn, msg []byte) (int, error) {
 	}
 
 	return 0, errBadCellType
+}
+
+func (p *ProxyContext) nextID() (id uint64) {
+	id = p.id
+	p.id++
+	return id
 }

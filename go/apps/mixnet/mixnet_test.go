@@ -19,6 +19,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/binary"
 	"io"
+	"net"
 	"os"
 	"path"
 	"testing"
@@ -27,12 +28,12 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
-var password []byte = make([]byte, 32)
-var network string = "tcp"
-var routerAddr string = "localhost:7007"
-var dstAddr string = "localhost:7009"
+var password = make([]byte, 32)
+var network = "tcp"
+var routerAddr = "localhost:7007"
+var dstAddr = "localhost:7009"
 
-var id pkix.Name = pkix.Name{
+var id = pkix.Name{
 	Organization: []string{"Mixnet tester"},
 }
 
@@ -122,6 +123,7 @@ func runRouterHandleProxy(router *RouterContext, requestCount int, ch chan<- tes
 		ch <- testResult{err, []byte{}}
 		return
 	}
+	defer c.Close()
 
 	for i := 0; i < requestCount; i++ {
 		if err = router.HandleProxy(c); err != nil {
@@ -151,6 +153,33 @@ func runProxyRelay(proxy *ProxyContext, msg []byte) error {
 	}
 
 	return nil
+}
+
+// A dummy server that waits for a message from the a client.
+func runDestination(ch chan<- testResult) {
+	l, err := net.Listen(network, dstAddr)
+	if err != nil {
+		ch <- testResult{err, []byte{}}
+		return
+	}
+	defer l.Close()
+
+	c, err := l.Accept()
+	if err != nil {
+		ch <- testResult{err, []byte{}}
+		return
+	}
+	defer c.Close()
+
+	buff := make([]byte, CellBytes*10)
+	bytes, err := c.Read(buff)
+	if err != nil {
+		ch <- testResult{err, []byte{}}
+		return
+	}
+
+	ch <- testResult{nil, buff[:bytes]}
+	return
 }
 
 // Test connection set up.
@@ -201,7 +230,7 @@ func TestProxyRouterCell(t *testing.T) {
 	if res.err != nil && res.err != io.EOF {
 		t.Error(res.err)
 	} else if bytes.Compare(res.msg, msg[:CellBytes]) != 0 {
-		t.Errorf("Server got:", res.msg)
+		t.Errorf("Server got: %s", res.msg)
 	}
 
 	// This cell is too big.
@@ -215,43 +244,59 @@ func TestProxyRouterCell(t *testing.T) {
 	}
 }
 
-// Test setting up a circuit and relaying a message.
+// Test setting up a circuit and relay a message to destination.
 func TestProxyRouterRelay(t *testing.T) {
 	router, proxy, err := makeContext()
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer router.Close()
-	ch := make(chan testResult)
+	routerCh := make(chan testResult)
+	dstCh := make(chan testResult)
 
 	// Create a long message.
 	msg := make([]byte, (CellBytes*5)+237)
 	for i := 0; i < len(msg); i++ {
 		msg[i] = byte(i)
 	}
+	var res testResult
 
 	// Short message, the first 37 bytes of msg.
-	go runRouterHandleProxy(router, 2, ch)
+	go runDestination(dstCh)
+	go runRouterHandleProxy(router, 2, routerCh)
 	if err = runProxyRelay(proxy, msg[:37]); err != nil {
 		t.Error(err)
 	}
-	res := <-ch
+
+	res = <-routerCh
+	if res.err != nil {
+		t.Error(res.err)
+	}
+
+	res = <-dstCh
 	if res.err != nil {
 		t.Error(res.err)
 	} else if bytes.Compare(res.msg, msg[:37]) != 0 {
-		t.Error("Short message, server got:", res.msg)
+		t.Error("Server got:", res.msg)
 	}
 
 	// Long message.
-	go runRouterHandleProxy(router, 2, ch)
+	go runDestination(dstCh)
+	go runRouterHandleProxy(router, 2, routerCh)
 	if err = runProxyRelay(proxy, msg); err != nil {
 		t.Error(err)
 	}
-	res = <-ch
+
+	res = <-routerCh
+	if res.err != nil {
+		t.Error(res.err)
+	}
+
+	res = <-dstCh
 	if res.err != nil {
 		t.Error(res.err)
 	} else if bytes.Compare(res.msg, msg) != 0 {
-		t.Error("Long message, server got:", res.msg)
+		t.Error("Server got:", res.msg)
 	}
 }
 

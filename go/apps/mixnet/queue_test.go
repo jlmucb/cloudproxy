@@ -24,7 +24,7 @@ import (
 
 // A dummy server that accepts ct connections and waits for a message
 // from each client.
-func runDummyServer(ct int, ch chan<- testResult) {
+func runDummyServer(clientCt, msgCt int, ch chan<- testResult) {
 	l, err := net.Listen(network, dstAddr)
 	if err != nil {
 		ch <- testResult{err, []byte{}}
@@ -33,42 +33,45 @@ func runDummyServer(ct int, ch chan<- testResult) {
 	defer l.Close()
 
 	done := make(chan bool)
-	for i := 0; i < ct; i++ {
+	for i := 0; i < clientCt; i++ {
 		c, err := l.Accept()
 		if err != nil {
 			ch <- testResult{err, []byte{}}
 			return
 		}
-		defer c.Close()
 
 		go func() {
+			defer c.Close()
 			buff := make([]byte, CellBytes*10)
-			bytes, err := c.Read(buff)
-			if err != nil {
-				ch <- testResult{err, []byte{}}
-				done <- true
-				return
+			for j := 0; j < msgCt; j++ {
+				bytes, err := c.Read(buff)
+				if err != nil {
+					ch <- testResult{err, []byte{}}
+					done <- true
+					return
+				}
+				ch <- testResult{nil, buff[:bytes]}
 			}
-
-			ch <- testResult{nil, buff[:bytes]}
 			done <- true
 		}()
 	}
 
-	for i := 0; i < ct; i++ {
+	for i := 0; i < clientCt*msgCt; i++ {
 		<-done
 	}
 }
 
-// Enqueue a bunch of messages and then dequeue them.
+// Test SendQueue by enqueueing a bunch of messages and dequeueing them.
+// Test multiple rounds.
 func TestSendQueue(t *testing.T) {
-	batchSize := 10
-	sq := NewSendQueue(network, batchSize)
+	clientCt := 3
+	msgCt := 2
+	sq := NewSendQueue(network, clientCt)
 	kill := make(chan bool)
 	done := make(chan bool)
 	dstCh := make(chan testResult)
 
-	go runDummyServer(batchSize, dstCh)
+	go runDummyServer(clientCt, msgCt, dstCh)
 
 	go func() {
 		sq.DoSendQueue(kill)
@@ -80,23 +83,25 @@ func TestSendQueue(t *testing.T) {
 		done <- true
 	}()
 
-	// Enqueue some messages.
-	for i := 0; i < batchSize; i++ {
-		q := new(Queueable)
-		q.Id = proto.Uint64(uint64(i))
-		q.Addr = proto.String(dstAddr)
-		q.Msg = []byte(
-			fmt.Sprintf("I am anonymous, but my ID is %d.", i))
-		sq.Enqueue(q)
-	}
+	for round := 0; round < msgCt; round++ {
+		// Enqueue some messages.
+		for i := 0; i < clientCt; i++ {
+			q := new(Queueable)
+			q.Id = proto.Uint64(uint64(i))
+			q.Addr = proto.String(dstAddr)
+			q.Msg = []byte(
+				fmt.Sprintf("I am anonymous, but my ID is %d.", i))
+			sq.Enqueue(q)
+		}
 
-	// Read results from destination server.
-	for i := 0; i < batchSize; i++ {
-		res := <-dstCh
-		if res.err != nil {
-			t.Error(res.err)
-		} else {
-			t.Log(string(res.msg))
+		// Read results from destination server.
+		for i := 0; i < clientCt; i++ {
+			res := <-dstCh
+			if res.err != nil {
+				t.Error(res.err)
+			} else {
+				t.Log(string(res.msg))
+			}
 		}
 	}
 

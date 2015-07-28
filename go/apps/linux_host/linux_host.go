@@ -255,7 +255,6 @@ func main() {
 				sock.Close()
 				glog.Fatal(err)
 			}
-			fmt.Println("opened path,", sockPath)
 
 			go func() {
 				c := make(chan os.Signal, 1)
@@ -286,7 +285,9 @@ func main() {
 	case "shutdown":
 	case "stop":
 		err = shutdown(sockPath)
-		fatalIf(err)
+		if err != nil {
+			badUsage("Couldn't connect to linux_host: %s", err)
+		}
 	default:
 		badUsage("unrecognized command: %s", *action)
 	}

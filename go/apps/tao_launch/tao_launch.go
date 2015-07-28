@@ -17,8 +17,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net"
 	"os"
+	"path"
+	"path/filepath"
 
 	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/tao"
@@ -34,92 +38,107 @@ func main() {
 	}
 
 	operation := flag.String("operation", "run", "The operation to perform ('run', 'stop', 'kill', 'list', or 'name').")
-	sockPath := flag.String("sock", "linux_tao_host/admin_socket", "The path to the socket for the linux_host")
+	sockPath := flag.String("sock", "", "The path to the socket for the linux_host")
 	docker := flag.String("docker_img", "", "The path to a tarball to use to create a docker image")
-
-	if *sockPath == "" {
-		glog.Fatalf("Must supply a socket patch for the linux host")
-	}
+	quiet := flag.Bool("quiet", false, "Be more quiet.")
 
 	flag.Parse()
 
-	conn, err := net.Dial("unix", *sockPath)
+	var verbose io.Writer
+	if *quiet {
+		verbose = ioutil.Discard
+	} else {
+		verbose = os.Stderr
+	}
+
+	// If -sock was not given, try $TAO_DOMAIN_CONFIG from env
+	if *sockPath == "" {
+		configPath := os.Getenv("TAO_DOMAIN_CONFIG")
+		if configPath == "" {
+			badUsage("Must supply a socket patch for the linux host, or set $TAO_DOMAIN_CONFIG")
+		}
+		absConfigPath, err := filepath.Abs(configPath)
+		fatalIf(err)
+		dir := path.Dir(absConfigPath)
+		*sockPath = path.Join(dir, "linux_tao_host/admin_socket")
+	}
+
+	conn, err := net.DialUnix("unix", nil, &net.UnixAddr{*sockPath, "unix"})
 	if err != nil {
-		glog.Fatal(err)
+		badUsage("Couldn't connect to linux_host: %s", err)
 	}
 	defer conn.Close()
-	uconn, ok := conn.(*net.UnixConn)
-	if !ok {
-		glog.Fatalf("Connection not a unix domain socket")
-	}
-	client := tao.NewLinuxHostAdminClient(uconn)
+	client := tao.NewLinuxHostAdminClient(conn)
 	switch *operation {
 	case "run":
 		if flag.NArg() == 0 {
-			glog.Fatal("missing program path")
+			badUsage("missing program path")
 		}
+		var subprin auth.SubPrin
+		var pid int
 		if *docker == "" {
-			subprin, pid, err := client.StartHostedProgram(flag.Arg(0), flag.Args()...)
-			if err != nil {
-				glog.Exit(err)
-			}
-			glog.Infof("%d %v\n", pid, subprin)
-			pidOut.Write([]byte(fmt.Sprintf("%d\n", pid)))
+			subprin, pid, err = client.StartHostedProgram(flag.Arg(0), flag.Args()...)
 		} else {
 			// Drop the first arg for Docker, since it will
 			// be handled by the Dockerfile directly.
+			// TODO(kwalsh) I don't understand the above comment
 			if flag.NArg() == 1 {
-				subprin, pid, err := client.StartHostedProgram(*docker)
-				if err != nil {
-					glog.Exit(err)
-				}
-				glog.Infof("%d %v\n", pid, subprin)
+				subprin, pid, err = client.StartHostedProgram(*docker)
 			} else {
-				subprin, pid, err := client.StartHostedProgram(*docker, flag.Args()[1:]...)
-				if err != nil {
-					glog.Exit(err)
-				}
-				glog.Infof("%d %v\n", pid, subprin)
+				subprin, pid, err = client.StartHostedProgram(*docker, flag.Args()[1:]...)
 			}
 		}
+		fatalIf(err)
+		pidOut.Write([]byte(fmt.Sprintf("%d\n", pid)))
+		fmt.Fprintf(verbose, "Started %v\n", subprin)
 	case "stop":
 		for _, s := range flag.Args() {
 			var subprin auth.SubPrin
 			if _, err := fmt.Sscanf(s, "%v", &subprin); err != nil {
-				glog.Exit(err)
+				badUsage("Not a subprin: %s\n", s)
 			}
 			if err = client.StopHostedProgram(subprin); err != nil {
-				glog.Exit(err)
+				badUsage("Could not stop %s: %s\n", s, err)
 			}
 		}
 	case "kill":
 		for _, s := range flag.Args() {
 			var subprin auth.SubPrin
 			if _, err := fmt.Sscanf(s, "%v", &subprin); err != nil {
-				glog.Exit(err)
+				badUsage("Not a subprin: %s\n", s)
 			}
 			if err = client.KillHostedProgram(subprin); err != nil {
-				glog.Exit(err)
+				badUsage("Could not kill %s: %s\n", s, err)
 			}
 		}
 	case "list":
 		name, pid, err := client.ListHostedPrograms()
-		if err != nil {
-			glog.Exit(err)
-		}
+		fatalIf(err)
 		for i, p := range pid {
-			glog.Infof("pid=%d %v\n", p, name[i])
+			fmt.Printf("pid=%d %v\n", p, name[i])
 		}
-		glog.Infof("%d processes\n", len(pid))
+		fmt.Printf("%d processes\n", len(pid))
 	case "name":
 		name, err := client.HostName()
-		if err != nil {
-			glog.Exit(err)
-		}
-		glog.Infof("LinuxHost: %v\n", name)
+		fatalIf(err)
+		fmt.Printf("LinuxHost: %v\n", name)
 	default:
-		glog.Fatalf("Unknown operation '%s'", *operation)
+		badUsage("Unknown operation '%s'", *operation)
 	}
 
 	return
+}
+
+func fatalIf(err error) {
+	if err != nil {
+		glog.FatalDepth(1, err)
+	}
+}
+
+func badUsage(msg string, args ...interface{}) {
+	if msg[len(msg)-1] != '\n' {
+		msg += "\n"
+	}
+	fmt.Fprintf(os.Stderr, msg, args...)
+	os.Exit(1)
 }

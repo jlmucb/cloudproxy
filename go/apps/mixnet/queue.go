@@ -115,7 +115,7 @@ func (sq *SendQueue) DoSendQueue(kill <-chan bool) {
 			}
 
 			// Transmit the message batch if it is full.
-			if sq.ct == sq.batchSize {
+			if sq.ct >= sq.batchSize {
 				sq.dequeue()
 			}
 		}
@@ -145,14 +145,16 @@ func (sq *SendQueue) dequeue() {
 	order := rand.Perm(int(sq.ct)) // TODO(cjpatton) Use tao.GetRandomBytes().
 	ids := make([]uint64, sq.ct)
 	i := 0
-	for id := range sq.sendBuffer {
-		ids[order[i]] = id
-		i++
+	for id, buf := range sq.sendBuffer {
+		if buf.Len() > 0 {
+			ids[order[i]] = id
+			i++
+		}
 	}
 
 	// Issue a sendWorker thread for each message to be sent.
 	ch := make(chan senderResult)
-	for _, id := range ids {
+	for _, id := range ids[:sq.batchSize] {
 		addr := sq.nextAddr[id]
 		msg := sq.sendBuffer[id].Front().Value.([]byte)
 		c, def := sq.nextConn[id]
@@ -160,7 +162,7 @@ func (sq *SendQueue) dequeue() {
 	}
 
 	// Wait for workers to finish.
-	for _ = range ids {
+	for _ = range ids[:sq.batchSize] {
 		res := <-ch
 		if res.c != nil {
 			// Save the connection.

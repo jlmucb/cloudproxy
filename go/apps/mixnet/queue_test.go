@@ -64,9 +64,13 @@ func runDummyServer(clientCt, msgCt int, ch chan<- testResult) {
 // Test SendQueue by enqueueing a bunch of messages and dequeueing them.
 // Test multiple rounds.
 func TestSendQueue(t *testing.T) {
-	clientCt := 3
-	msgCt := 2
-	sq := NewSendQueue(network, clientCt)
+
+	// batchSize must divide clientCt; otherwise the sendQueue will block forever.
+	batchSize := 2
+	clientCt := 4
+	msgCt := 3
+
+	sq := NewSendQueue(network, batchSize)
 	kill := make(chan bool)
 	done := make(chan bool)
 	dstCh := make(chan testResult)

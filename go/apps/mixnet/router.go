@@ -35,12 +35,13 @@ type RouterContext struct {
 
 	id uint64 // Next serial identifier that will be assigned to a connection.
 
-	// Map a connection to its next hop destination.
-	next map[uint64]net.Conn
+	// Data structure for queueing and batching outgoing messages.
+	sendQueue *SendQueue
 
-	// For the moment, buffer a single message and destination.
-	msgBuffer     []byte
-	dstAddrBuffer string
+	// The send queue and error handler are instantiated as go routines; these
+	// channels are for managing them.
+	killSendQueue             chan bool
+	killSendQueueErrorHandler chan bool
 
 	network string // Network protocol, e.g. "tcp"
 }
@@ -49,11 +50,10 @@ type RouterContext struct {
 // path and binds an anonymous listener socket to addr on network
 // network. A delegation is requested from the Tao t which is  nominally
 // the parent of this hosted program.
-func NewRouterContext(path, network, addr string, x509Identity *pkix.Name, t tao.Tao) (hp *RouterContext, err error) {
+func NewRouterContext(path, network, addr string, batchSize int, x509Identity *pkix.Name, t tao.Tao) (hp *RouterContext, err error) {
 	hp = new(RouterContext)
 
 	hp.network = network
-	hp.next = make(map[uint64]net.Conn)
 
 	// Generate keys and get attestation from parent.
 	if hp.keys, err = tao.NewTemporaryTaoDelegatedKeys(tao.Signing|tao.Crypting, t); err != nil {
@@ -89,11 +89,17 @@ func NewRouterContext(path, network, addr string, x509Identity *pkix.Name, t tao
 		return nil, err
 	}
 
+	hp.sendQueue = NewSendQueue(network, batchSize)
+	hp.killSendQueue = make(chan bool)
+	hp.killSendQueueErrorHandler = make(chan bool)
+	go hp.sendQueue.DoSendQueue(hp.killSendQueue)
+	go hp.sendQueue.DoSendQueueErrorHandler(hp.killSendQueueErrorHandler)
+
 	return hp, nil
 }
 
 // AcceptProxy Waits for connectons from proxies.
-func (hp RouterContext) AcceptProxy() (*Conn, error) {
+func (hp *RouterContext) AcceptProxy() (*Conn, error) {
 	c, err := hp.proxyListener.Accept()
 	if err != nil {
 		return nil, err
@@ -103,9 +109,8 @@ func (hp RouterContext) AcceptProxy() (*Conn, error) {
 
 // Close releases any resources held by the hosted program.
 func (hp *RouterContext) Close() {
-	for _, c := range hp.next {
-		c.Close()
-	}
+	hp.killSendQueue <- true
+	hp.killSendQueueErrorHandler <- true
 	if hp.proxyListener != nil {
 		hp.proxyListener.Close()
 	}
@@ -127,8 +132,8 @@ func (hp *RouterContext) HandleProxy(c *Conn) error {
 			return nil
 		}
 
-		hp.msgBuffer = make([]byte, msgBytes)
-		bytes := copy(hp.msgBuffer, cell[1+n:])
+		msg := make([]byte, msgBytes)
+		bytes := copy(msg, cell[1+n:])
 
 		// While the connection is open and the message is incomplete, read
 		// the next cell.
@@ -136,13 +141,13 @@ func (hp *RouterContext) HandleProxy(c *Conn) error {
 			if _, err = c.Read(cell); err != nil && err != io.EOF {
 				return err
 			}
-			bytes += copy(hp.msgBuffer[bytes:], cell)
+			bytes += copy(msg[bytes:], cell)
 		}
 
-		// For now, send the message straight away.
-		if _, err = hp.next[c.id].Write(hp.msgBuffer); err != nil {
-			return err
-		}
+		q := new(Queueable)
+		q.Id = proto.Uint64(c.id)
+		q.Msg = msg
+		hp.sendQueue.Enqueue(q)
 
 	} else if cell[0] == dirCell { // Handle a directive.
 		dirBytes, n := binary.Uvarint(cell[1:])
@@ -161,10 +166,10 @@ func (hp *RouterContext) HandleProxy(c *Conn) error {
 				return errors.New("multi-hop circuits not implemented")
 			}
 
-			// For now, connect to destination straight away.
-			if hp.next[c.id], err = net.Dial(hp.network, d.Addrs[0]); err != nil {
-				return err
-			}
+			q := new(Queueable)
+			q.Id = proto.Uint64(c.id)
+			q.Addr = proto.String(d.Addrs[0])
+			hp.sendQueue.Enqueue(q)
 		}
 
 	} else { // Unknown cell type, return an error.

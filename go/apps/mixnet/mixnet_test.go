@@ -45,7 +45,7 @@ func makeTrivialDomain(configDir string) (*tao.Domain, error) {
 	return tao.CreateDomain(policyDomainConfig, configPath, password)
 }
 
-func makeContext() (*RouterContext, *ProxyContext, error) {
+func makeContext(batchSize int) (*RouterContext, *ProxyContext, error) {
 	configDir := "/tmp/mixnet_test_domain"
 	configPath := path.Join(configDir, "tao.config")
 
@@ -64,7 +64,7 @@ func makeContext() (*RouterContext, *ProxyContext, error) {
 
 	// Create router context. This loads the domain and binds a
 	// socket and an anddress.
-	router, err := NewRouterContext(configPath, network, routerAddr, &id, st)
+	router, err := NewRouterContext(configPath, network, routerAddr, batchSize, &id, st)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -132,7 +132,7 @@ func runRouterHandleProxy(router *RouterContext, requestCount int, ch chan<- tes
 		}
 	}
 
-	ch <- testResult{nil, router.msgBuffer}
+	ch <- testResult{nil, []byte{}}
 }
 
 // Proxy dials a router, creates a circuit, and sends a message over
@@ -184,7 +184,7 @@ func runDestination(ch chan<- testResult) {
 
 // Test connection set up.
 func TestProxyRouterConnect(t *testing.T) {
-	router, proxy, err := makeContext()
+	router, proxy, err := makeContext(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +209,7 @@ func TestProxyRouterConnect(t *testing.T) {
 
 // Test sending a cell.
 func TestProxyRouterCell(t *testing.T) {
-	router, proxy, err := makeContext()
+	router, proxy, err := makeContext(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,9 +244,10 @@ func TestProxyRouterCell(t *testing.T) {
 	}
 }
 
-// Test setting up a circuit and relay a message to destination.
+// Test setting up a circuit and relay a message to destination. Try
+// messages of various lengths.
 func TestProxyRouterRelay(t *testing.T) {
-	router, proxy, err := makeContext()
+	router, proxy, err := makeContext(1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,48 +262,38 @@ func TestProxyRouterRelay(t *testing.T) {
 	}
 	var res testResult
 
-	// Short message, the first 37 bytes of msg.
-	go runDestination(dstCh)
-	go runRouterHandleProxy(router, 2, routerCh)
-	if err = runProxyRelay(proxy, msg[:37]); err != nil {
-		t.Error(err)
+	trials := []int{
+		37,        // A short message
+		CellBytes, // A cell
+		len(msg),  // A long message
 	}
 
-	res = <-routerCh
-	if res.err != nil {
-		t.Error(res.err)
-	}
+	go runDummyServer(len(trials), 1, dstCh)
 
-	res = <-dstCh
-	if res.err != nil {
-		t.Error(res.err)
-	} else if bytes.Compare(res.msg, msg[:37]) != 0 {
-		t.Error("Server got:", res.msg)
-	}
+	for _, l := range trials {
 
-	// Long message.
-	go runDestination(dstCh)
-	go runRouterHandleProxy(router, 2, routerCh)
-	if err = runProxyRelay(proxy, msg); err != nil {
-		t.Error(err)
-	}
+		go runRouterHandleProxy(router, 2, routerCh)
+		if err = runProxyRelay(proxy, msg[:l]); err != nil {
+			t.Errorf("relay (length=%d): %s", l, err)
+		}
 
-	res = <-routerCh
-	if res.err != nil {
-		t.Error(res.err)
-	}
+		res = <-routerCh
+		if res.err != nil {
+			t.Errorf("relay (length=%d): %s", l, res.err)
+		}
 
-	res = <-dstCh
-	if res.err != nil {
-		t.Error(res.err)
-	} else if bytes.Compare(res.msg, msg) != 0 {
-		t.Error("Server got:", res.msg)
+		res = <-dstCh
+		if res.err != nil {
+			t.Error(res.err)
+		} else if bytes.Compare(res.msg, msg[:l]) != 0 {
+			t.Error("relay (length=%d): Server got: %s", l, res.msg)
+		}
 	}
 }
 
 // Test sending malformed messages from the proxy to the router.
 func TestMaliciousProxyRouterRelay(t *testing.T) {
-	router, proxy, err := makeContext()
+	router, proxy, err := makeContext(1)
 	if err != nil {
 		t.Fatal(err)
 	}

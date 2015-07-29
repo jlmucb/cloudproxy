@@ -57,6 +57,7 @@ func serveMixnetClients(hp *mixnet.RouterContext) error {
 var serverAddr = flag.String("addr", "localhost:8123", "Address and port for Tao server.")
 var serverNetwork = flag.String("network", "tcp", "Network protocol for Tao server.")
 var configPath = flag.String("config", "tao.config", "Path to domain configuration file.")
+var batchSize = flag.Int("batch", 2, "Number of senders in a batch.")
 
 // x509 identity of the mixnet router.
 var x509Identity pkix.Name = pkix.Name{
@@ -66,7 +67,7 @@ var x509Identity pkix.Name = pkix.Name{
 
 func main() {
 	flag.Parse()
-	hp, err := mixnet.NewRouterContext(*configPath, *serverNetwork, *serverAddr,
+	hp, err := mixnet.NewRouterContext(*configPath, *serverNetwork, *serverAddr, *batchSize,
 		&x509Identity, tao.Parent())
 	if err != nil {
 		glog.Errorf("failed to configure server: %s", err)

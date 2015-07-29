@@ -40,7 +40,7 @@ func runDummyServer(clientCt, msgCt int, ch chan<- testResult) {
 			return
 		}
 
-		go func() {
+		go func(c net.Conn) {
 			defer c.Close()
 			buff := make([]byte, CellBytes*10)
 			for j := 0; j < msgCt; j++ {
@@ -48,12 +48,11 @@ func runDummyServer(clientCt, msgCt int, ch chan<- testResult) {
 				if err != nil {
 					ch <- testResult{err, []byte{}}
 					done <- true
-					return
 				}
 				ch <- testResult{nil, buff[:bytes]}
+				done <- true
 			}
-			done <- true
-		}()
+		}(c)
 	}
 
 	for i := 0; i < clientCt*msgCt; i++ {
@@ -103,6 +102,7 @@ func TestSendQueue(t *testing.T) {
 			res := <-dstCh
 			if res.err != nil {
 				t.Error(res.err)
+				break
 			} else {
 				t.Log(string(res.msg))
 			}

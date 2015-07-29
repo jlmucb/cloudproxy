@@ -61,8 +61,8 @@ func main() {
 	vmMemory := flag.Int("kvm_coreos_vm_memory", 1024, "The amount of RAM to give the VM")
 	sshFile := flag.String("kvm_coreos_ssh_auth_keys", "auth_ssh_coreos", "A path to the authorized keys file for SSH connections to the CoreOS guest")
 
-	// An action for the service to take.
-	action := flag.String("action", "start", "The action to take ('init', 'show', 'start', or 'stop')")
+	// An operation to perform.
+	operation := flag.String("operation", "start", "The operation to do ('init', 'show', 'start', or 'stop')")
 	flag.Parse()
 
 	var verbose io.Writer
@@ -169,7 +169,7 @@ func main() {
 		}
 	}
 
-	switch *action {
+	switch *operation {
 	case "init", "show", "start":
 		rules := domain.RulesPath()
 		var rulesPath string
@@ -231,7 +231,7 @@ func main() {
 			badUsage("error: must specify either --host_type as either 'root' or 'stacked'")
 		}
 
-		switch *action {
+		switch *operation {
 		case "show":
 			fmt.Printf("%v", host.HostName())
 		case "start":
@@ -257,8 +257,6 @@ func main() {
 			}
 
 			go func() {
-				c := make(chan os.Signal, 1)
-				signal.Notify(c, os.Interrupt, os.Kill, syscall.SIGTERM)
 				fmt.Fprintf(verbose, "Linux Tao Service (%s) started and waiting for requests\n", host.HostName())
 				err = tao.NewLinuxHostAdminServer(host).Serve(sock)
 				fmt.Fprintf(verbose, "Linux Tao Service finished\n")
@@ -289,7 +287,7 @@ func main() {
 			badUsage("Couldn't connect to linux_host: %s", err)
 		}
 	default:
-		badUsage("unrecognized command: %s", *action)
+		badUsage("unrecognized command: %s", *operation)
 	}
 
 	glog.Flush()

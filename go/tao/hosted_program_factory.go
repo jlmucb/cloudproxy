@@ -100,8 +100,12 @@ type HostedProgram interface {
 	// Cleanup cleans up resources, such as temporary files.
 	Cleanup() error
 
-	// Id returns a factory-specific numeric identifier, e.g. a PID.
-	ID() int
+	// Pid returns a factory-specific numeric identifier.
+	Pid() int
+
+	// ExitStatus returns a factory-specific exit status code if
+	// the hosted program has exited.
+	ExitStatus() (int, error)
 }
 
 // A HostedProgramFactory manages the creation of hosted programs. For example,

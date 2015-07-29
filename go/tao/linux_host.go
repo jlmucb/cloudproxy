@@ -249,7 +249,7 @@ func (lh *LinuxHost) StartHostedProgram(spec HostedProgramSpec) (auth.SubPrin, i
 	}
 	child := &LinuxHostChild{channel, subprin, prog}
 	go NewLinuxHostTaoServer(lh, child).Serve(channel)
-	pid := child.Cmd.ID()
+	pid := child.Cmd.Pid()
 
 	lh.hpm.Lock()
 	lh.hostedPrograms = append(lh.hostedPrograms, child)
@@ -279,7 +279,7 @@ func (lh *LinuxHost) StopHostedProgram(subprin auth.SubPrin) error {
 		if lph.ChildSubprin.Identical(subprin) {
 			lph.channel.Close()
 			if err := lph.Cmd.Stop(); err != nil {
-				glog.Errorf("Couldn't stop hosted program %d, subprincipal %s: %s\n", lph.Cmd.ID(), subprin, err)
+				glog.Errorf("Couldn't stop hosted program %d, subprincipal %s: %s\n", lph.Cmd.Pid(), subprin, err)
 			}
 		}
 	}
@@ -293,10 +293,25 @@ func (lh *LinuxHost) ListHostedPrograms() ([]auth.SubPrin, []int, error) {
 	pids := make([]int, len(lh.hostedPrograms))
 	for i, v := range lh.hostedPrograms {
 		subprins[i] = v.ChildSubprin
-		pids[i] = v.Cmd.ID()
+		pids[i] = v.Cmd.Pid()
 	}
 	lh.hpm.RUnlock()
 	return subprins, pids, nil
+}
+
+// WaitHostedProgram waits for a running hosted program to exit.
+func (lh *LinuxHost) WaitHostedProgram(pid int, subprin auth.SubPrin) (int, error) {
+	lh.hpm.Lock()
+	var p *LinuxHostChild
+	for _, lph := range lh.hostedPrograms {
+		if lph.Cmd.Pid() == pid && lph.ChildSubprin.Identical(subprin) {
+			p = lph
+			break
+		}
+	}
+	lh.hpm.Unlock()
+	<-p.Cmd.WaitChan()
+	return p.Cmd.ExitStatus()
 }
 
 // KillHostedProgram kills a running hosted program.
@@ -307,7 +322,7 @@ func (lh *LinuxHost) KillHostedProgram(subprin auth.SubPrin) error {
 		if lph.ChildSubprin.Identical(subprin) {
 			lph.channel.Close()
 			if err := lph.Cmd.Kill(); err != nil {
-				glog.Errorf("Couldn't kill hosted program %d, subprincipal %s: %s\n", lph.Cmd.ID(), subprin, err)
+				glog.Errorf("Couldn't kill hosted program %d, subprincipal %s: %s\n", lph.Cmd.Pid(), subprin, err)
 			}
 		}
 	}
@@ -328,7 +343,7 @@ func (lh *LinuxHost) Shutdown() error {
 	for _, lph := range lh.hostedPrograms {
 		// lph.channel.Close()
 		if err := lph.Cmd.Stop(); err != nil {
-			glog.Errorf("Couldn't stop hosted program %d, subprincipal %s: %s\n", lph.Cmd.ID(), lph.Cmd.Subprin(), err)
+			glog.Errorf("Couldn't stop hosted program %d, subprincipal %s: %s\n", lph.Cmd.Pid(), lph.Cmd.Subprin(), err)
 		}
 	}
 	timeout := make(chan bool, 1)
@@ -344,7 +359,7 @@ func (lh *LinuxHost) Shutdown() error {
 			break
 		case <-timeout:
 			if err := lph.Cmd.Kill(); err != nil {
-				glog.Errorf("Couldn't kill hosted program %d, subprincipal %s: %s\n", lph.Cmd.ID(), lph.Cmd.Subprin(), err)
+				glog.Errorf("Couldn't kill hosted program %d, subprincipal %s: %s\n", lph.Cmd.Pid(), lph.Cmd.Subprin(), err)
 			}
 		}
 	}

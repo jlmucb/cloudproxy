@@ -44,20 +44,13 @@ func NewLinuxHostAdminClient(conn *net.UnixConn) LinuxHostAdminClient {
 }
 
 // StartHostedProgram is the client stub for LinuxHost.StartHostedProgram.
-func (client LinuxHostAdminClient) StartHostedProgram(path string, args ...string) (auth.SubPrin, int, error) {
+func (client LinuxHostAdminClient) StartHostedProgram(fds []int, path string, args ...string) (auth.SubPrin, int, error) {
 	req := &LinuxHostAdminRPCRequest{
 		Path: proto.String(path),
 		Args: args,
 	}
 	resp := new(LinuxHostAdminRPCResponse)
-	// TODO(kwalsh) If any stdio files are closed, this code will likely fail:
-	// Fd() will return ^uintptr(0) and OOB probably chokes on that. We need to
-	// send 3 fds, so maybe open /dev/null for such cases, then close it after.
-	// Todo(kwalsh) Consider making oob use uintptr for file descriptors to
-	// avoid the conversions here, at the cost of performing conversions
-	// elsehwere. Go is inconsistent, using both int and uintptr for file
-	// descriptors in different places.
-	client.oob.ShareFDs(int(os.Stdin.Fd()), int(os.Stdout.Fd()), int(os.Stderr.Fd()))
+	client.oob.ShareFDs(fds...)
 	err := client.Call("LinuxHost.StartHostedProgram", req, resp)
 	if err != nil {
 		return auth.SubPrin{}, 0, err
@@ -100,6 +93,20 @@ func (client LinuxHostAdminClient) ListHostedPrograms() (name []auth.SubPrin, pi
 		}
 	}
 	return name, pid, nil
+}
+
+// WaitHostedProgram is the client stub for LinuxHost.WaitHostedProgram.
+func (client LinuxHostAdminClient) WaitHostedProgram(pid int, subprin auth.SubPrin) (int, error) {
+	req := &LinuxHostAdminRPCRequest{
+		Pid:     proto.Int32(int32(pid)),
+		Subprin: auth.Marshal(subprin),
+	}
+	resp := new(LinuxHostAdminRPCResponse)
+	err := client.Call("LinuxHost.WaitHostedProgram", req, resp)
+	if err != nil {
+		return -1, err
+	}
+	return int(*resp.Status), nil
 }
 
 // KillHostedProgram is the client stub for LinuxHost.KillHostedProgram.
@@ -230,6 +237,7 @@ func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminRPCRe
 // StopHostedProgram is the server stub for LinuxHost.StopHostedProgram.
 func (server linuxHostAdminServerStub) StopHostedProgram(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
 	ucred := server.oob.PeerCred()
+	// TODO(kwalsh): also authorize owner of child
 	if ucred.Uid != 0 && int(ucred.Uid) != os.Geteuid() {
 		return newError("unauthorized: only root or owner can stop hosted programs")
 	}
@@ -259,9 +267,33 @@ func (server linuxHostAdminServerStub) ListHostedPrograms(r *LinuxHostAdminRPCRe
 	return nil
 }
 
+// WaitHostedProgram is the server stub for LinuxHost.WaitHostedProgram.
+func (server linuxHostAdminServerStub) WaitHostedProgram(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
+	// ucred := server.oob.PeerCred()
+	// TODO(kwalsh): also authorize owner of child
+	// if ucred.Uid != 0 && int(ucred.Uid) != os.Geteuid() {
+	// 	return newError("unauthorized: only root or owner can wait for hosted programs")
+	// }
+	if r.Pid == nil {
+		return newError("required pid is nil")
+	}
+	pid := int(*r.Pid)
+	subprin, err := auth.UnmarshalSubPrin(r.Subprin)
+	if err != nil {
+		return err
+	}
+	status, err := server.lh.WaitHostedProgram(pid, subprin)
+	if err != nil {
+		return err
+	}
+	s.Status = proto.Int32(int32(status))
+	return nil
+}
+
 // KillHostedProgram is the server stub for LinuxHost.KillHostedProgram.
 func (server linuxHostAdminServerStub) KillHostedProgram(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
 	ucred := server.oob.PeerCred()
+	// TODO(kwalsh): also authorize owner of child
 	if ucred.Uid != 0 && int(ucred.Uid) != os.Geteuid() {
 		return newError("unauthorized: only root or owner can kill hosted programs")
 	}
@@ -282,6 +314,7 @@ func (server linuxHostAdminServerStub) HostName(r *LinuxHostAdminRPCRequest, s *
 // Shutdown is the server stub for LinuxHost.Shutdown.
 func (server linuxHostAdminServerStub) Shutdown(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
 	ucred := server.oob.PeerCred()
+	// TODO(kwalsh): also authorize owner of child
 	if ucred.Uid != 0 && int(ucred.Uid) != os.Geteuid() {
 		return newError("unauthorized: only root or owner can shut down linux_host")
 	}

@@ -18,38 +18,28 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
+	"os/signal"
 	"path"
 	"path/filepath"
 
 	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
-	"github.com/jlmucb/cloudproxy/go/util"
 )
 
 func main() {
-	// child PID is output to fd 3, if it exists, otherwise to stdout
-	pidOut := os.Stdout
-	if util.IsValidFD(3) {
-		pidOut = util.NewFile(3)
-	}
 
 	operation := flag.String("operation", "run", "The operation to perform ('run', 'stop', 'kill', 'list', or 'name').")
 	sockPath := flag.String("sock", "", "The path to the socket for the linux_host")
 	docker := flag.String("docker_img", "", "The path to a tarball to use to create a docker image")
-	quiet := flag.Bool("quiet", false, "Be more quiet.")
+	pidfile := flag.String("pidfile", "", "Write hosted program pid to this file")
+	namefile := flag.String("namefile", "", "Write hosted program subprin name to this file")
+	disown := flag.Bool("disown", false, "Don't wait for hosted program to exit")
+	daemon := flag.Bool("daemon", false, "Don't pipe stdio or wait for hosted program to exit")
 
 	flag.Parse()
-
-	var verbose io.Writer
-	if *quiet {
-		verbose = ioutil.Discard
-	} else {
-		verbose = os.Stderr
-	}
 
 	// If -sock was not given, try $TAO_DOMAIN_CONFIG from env
 	if *sockPath == "" {
@@ -74,23 +64,126 @@ func main() {
 		if flag.NArg() == 0 {
 			badUsage("missing program path")
 		}
+		var pidOut *os.File
+		if *pidfile == "-" {
+			pidOut = os.Stdout
+		} else if *pidfile != "" {
+			if pidOut, err = os.Open(*pidfile); err != nil {
+				badUsage("Can't open pid file: %s", err)
+			}
+		}
+		var nameOut *os.File
+		if *namefile == "-" {
+			nameOut = os.Stdout
+		} else if *namefile != "" {
+			if nameOut, err = os.Open(*namefile); err != nil {
+				badUsage("Can't open name file: %s", err)
+			}
+		}
+		var fds [3]int
+		var pr, pw [3]*os.File
+		if *daemon {
+			null, err := os.Open(os.DevNull)
+			fatalIf(err)
+			fds[0] = int(null.Fd())
+			fds[1] = int(null.Fd())
+			fds[2] = int(null.Fd())
+		} else if *disown {
+			fds[0] = int(os.Stdin.Fd())
+			fds[1] = int(os.Stdout.Fd())
+			fds[2] = int(os.Stderr.Fd())
+		} else {
+			for i := 0; i < 3; i++ {
+				pr[i], pw[i], err = os.Pipe()
+				fatalIf(err)
+			}
+			fds[0] = int(pr[0].Fd())
+			fds[1] = int(pw[1].Fd())
+			fds[2] = int(pw[2].Fd())
+		}
 		var subprin auth.SubPrin
 		var pid int
 		if *docker == "" {
-			subprin, pid, err = client.StartHostedProgram(flag.Arg(0), flag.Args()...)
+			subprin, pid, err = client.StartHostedProgram(fds[:], flag.Arg(0), flag.Args()...)
 		} else {
 			// Drop the first arg for Docker, since it will
 			// be handled by the Dockerfile directly.
 			// TODO(kwalsh) I don't understand the above comment
 			if flag.NArg() == 1 {
-				subprin, pid, err = client.StartHostedProgram(*docker)
+				subprin, pid, err = client.StartHostedProgram(fds[:], *docker)
 			} else {
-				subprin, pid, err = client.StartHostedProgram(*docker, flag.Args()[1:]...)
+				subprin, pid, err = client.StartHostedProgram(fds[:], *docker, flag.Args()[1:]...)
 			}
 		}
 		fatalIf(err)
-		pidOut.Write([]byte(fmt.Sprintf("%d\n", pid)))
-		fmt.Fprintf(verbose, "Started %v\n", subprin)
+		if pidOut != nil {
+			fmt.Fprintln(pidOut, pid)
+			pidOut.Close()
+		}
+		if nameOut != nil {
+			fmt.Fprintln(nameOut, subprin)
+			nameOut.Close()
+		}
+		if !*disown && !*daemon {
+			// Note: there is a race here, if pids are reused very quickly. That
+			// seems unlikely, but there is not much we can do about it anyway.
+			child, err := os.FindProcess(pid)
+			fatalIf(err)
+			status := make(chan int, 1)
+			go func() {
+				s, err := client.WaitHostedProgram(pid, subprin)
+				fatalIf(err)
+				status <- s
+			}()
+			pr[0].Close()
+			pw[1].Close()
+			pw[2].Close()
+			go func() {
+				_, err := io.Copy(pw[0], os.Stdin)
+				if err != nil {
+					glog.Errorf("Error copying stdin: %v", err)
+				}
+				err = pw[0].Close()
+				if err != nil {
+					glog.Errorf("Error closing stdin: %v", err)
+				}
+			}()
+			go func() {
+				_, err := io.Copy(os.Stdout, pr[1])
+				if err != nil {
+					glog.Errorf("Error copying stdout: %v", err)
+				}
+				err = pw[0].Close()
+				if err != nil {
+					glog.Errorf("Error closing stdout: %v", err)
+				}
+			}()
+			go func() {
+				_, err := io.Copy(os.Stderr, pr[1])
+				if err != nil {
+					glog.Errorf("Error copying stdout: %v", err)
+				}
+				err = pw[0].Close()
+				if err != nil {
+					glog.Errorf("Error closing stdout: %v", err)
+				}
+			}()
+			c := make(chan os.Signal, 10) // a little buffering
+			signal.Notify(c)
+		loop:
+			for {
+				select {
+				case sig := <-c:
+					fmt.Printf("signalling child with %v\n", sig)
+					err := child.Signal(sig)
+					fatalIf(err)
+				case s := <-status:
+					fmt.Printf("child exiited with status %v\n", s)
+					break loop
+				}
+			}
+			signal.Stop(c)
+		}
 	case "stop":
 		for _, s := range flag.Args() {
 			var subprin auth.SubPrin

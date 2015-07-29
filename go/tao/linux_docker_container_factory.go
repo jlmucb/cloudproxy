@@ -16,11 +16,13 @@ package tao
 
 import (
 	"crypto/sha256"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
+	"syscall"
 
 	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
@@ -97,9 +99,21 @@ func (dc *DockerContainer) Stop() error {
 	return c.Run()
 }
 
-// ID returns a numeric ID for this docker container. For now, this ID is 0.
-func (dc *DockerContainer) ID() int {
-	return 0
+// Pid returns a numeric ID for this docker container.
+func (dc *DockerContainer) Pid() int {
+	return dc.Cmd.Process.Pid
+}
+
+// ExitStatus returns an exit code for the container.
+func (dc *DockerContainer) ExitStatus() (int, error) {
+	s := dc.Cmd.ProcessState
+	if s == nil {
+		return -1, fmt.Errorf("Child has not exited")
+	}
+	if code, ok := (*s).Sys().(syscall.WaitStatus); ok {
+		return int(code), nil
+	}
+	return -1, fmt.Errorf("Couldn't get exit status\n")
 }
 
 // Build uses the provided path to a tar file to build a Docker image.

@@ -71,6 +71,3 @@ func (m *SignedACLSet) GetSignature() []byte {
 	}
 	return nil
 }
-
-func init() {
-}

@@ -256,6 +256,18 @@ func (p *HostedProcess) Start() (channel io.ReadWriteCloser, err error) {
 	return
 }
 
+// ExitStatus returns an exit code for the process.
+func (p *HostedProcess) ExitStatus() (int, error) {
+	s := p.Cmd.ProcessState
+	if s == nil {
+		return -1, fmt.Errorf("Child has not exited")
+	}
+	if code, ok := (*s).Sys().(syscall.WaitStatus); ok {
+		return int(code), nil
+	}
+	return -1, fmt.Errorf("Couldn't get exit status\n")
+}
+
 // WaitChan returns a chan that will be signaled when the hosted process is
 // done.
 func (p *HostedProcess) WaitChan() <-chan bool {
@@ -279,8 +291,8 @@ func (p *HostedProcess) Spec() HostedProgramSpec {
 	return p.spec
 }
 
-// ID returns the PID of the underlying os/exec.Cmd instance.
-func (p *HostedProcess) ID() int {
+// Pid returns the pid of the underlying os/exec.Cmd instance.
+func (p *HostedProcess) Pid() int {
 	return p.Cmd.Process.Pid
 }
 

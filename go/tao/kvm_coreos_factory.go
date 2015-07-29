@@ -239,9 +239,21 @@ func (kcc *KvmCoreOSContainer) Stop() error {
 	return kcc.QCmd.Process.Signal(syscall.SIGSTOP)
 }
 
-// ID returns a numeric ID for this container. For now, this ID is 0.
-func (kcc *KvmCoreOSContainer) ID() int {
-	return 0
+// Pid returns a numeric ID for this container.
+func (kcc *KvmCoreOSContainer) Pid() int {
+	return kcc.QCmd.Process.Pid
+}
+
+// ExitStatus returns an exit code for the container.
+func (kcc *KvmCoreOSContainer) ExitStatus() (int, error) {
+	s := kcc.QCmd.ProcessState
+	if s == nil {
+		return -1, fmt.Errorf("Child has not exited")
+	}
+	if code, ok := (*s).Sys().(syscall.WaitStatus); ok {
+		return int(code), nil
+	}
+	return -1, fmt.Errorf("Couldn't get exit status\n")
 }
 
 // A LinuxKVMCoreOSFactory manages hosted programs started as QEMU/KVM

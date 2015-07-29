@@ -15,6 +15,7 @@ type LinuxHostAdminRPCRequest struct {
 	Subprin          []byte   `protobuf:"bytes,1,opt,name=subprin" json:"subprin,omitempty"`
 	Path             *string  `protobuf:"bytes,2,opt,name=path" json:"path,omitempty"`
 	Args             []string `protobuf:"bytes,3,rep,name=args" json:"args,omitempty"`
+	Pid              *int32   `protobuf:"varint,4,opt,name=pid" json:"pid,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
@@ -41,6 +42,13 @@ func (m *LinuxHostAdminRPCRequest) GetArgs() []string {
 		return m.Args
 	}
 	return nil
+}
+
+func (m *LinuxHostAdminRPCRequest) GetPid() int32 {
+	if m != nil && m.Pid != nil {
+		return *m.Pid
+	}
+	return 0
 }
 
 type LinuxHostAdminRPCHostedProgram struct {
@@ -70,6 +78,7 @@ func (m *LinuxHostAdminRPCHostedProgram) GetPid() int32 {
 type LinuxHostAdminRPCResponse struct {
 	Child            []*LinuxHostAdminRPCHostedProgram `protobuf:"bytes,1,rep,name=child" json:"child,omitempty"`
 	Prin             []byte                            `protobuf:"bytes,2,opt,name=prin" json:"prin,omitempty"`
+	Status           *int32                            `protobuf:"varint,3,opt,name=status" json:"status,omitempty"`
 	XXX_unrecognized []byte                            `json:"-"`
 }
 
@@ -91,5 +100,9 @@ func (m *LinuxHostAdminRPCResponse) GetPrin() []byte {
 	return nil
 }
 
-func init() {
+func (m *LinuxHostAdminRPCResponse) GetStatus() int32 {
+	if m != nil && m.Status != nil {
+		return *m.Status
+	}
+	return 0
 }

@@ -379,6 +379,3 @@ func (m *DomainTemplate) GetOsPredicateName() string {
 	}
 	return ""
 }
-
-func init() {
-}

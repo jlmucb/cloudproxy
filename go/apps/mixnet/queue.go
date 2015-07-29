@@ -156,7 +156,7 @@ func (sq *SendQueue) dequeue() {
 		addr := sq.nextAddr[id]
 		msg := sq.sendBuffer[id].Front().Value.([]byte)
 		c, def := sq.nextConn[id]
-		go senderWorker(network, addr, id, msg, c, def, ch, sq.err)
+		go senderWorker(sq.network, addr, id, msg, c, def, ch, sq.err)
 	}
 
 	// Wait for workers to finish.

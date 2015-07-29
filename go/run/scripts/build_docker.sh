@@ -33,7 +33,8 @@ function build_docker() {
 	cp $policy_cert ${TEMP_DIR}/policy_keys/cert
 	cp $tao_config ${TEMP_DIR}/tao.config
 
-        tar -C ${TEMP_DIR} -czf "$APP_BIN".img.tgz $(ls ${TEMP_DIR})
+  tar -C ${TEMP_DIR} -czf "$APP_BIN".img.tgz $(ls ${TEMP_DIR})
+  rm -rf ${TEMP_DIR}
 }
 
 build_docker "$0" demo_server "$1/policy_keys/cert" "$1/tao.config"

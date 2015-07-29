@@ -87,7 +87,7 @@ func (dc *DockerContainer) StartDocker() error {
 	glog.Info("About to run docker with args ", cmdArgs)
 	glog.Flush()
 	dc.Cmd = exec.Command("docker", cmdArgs...)
-	dc.Cmd.Stdin, dc.Cmd.Stdout, dc.Cmd.Stderr, _ = util.NewStdio(dc.spec.Fds)
+	dc.Cmd.Stdin, dc.Cmd.Stdout, dc.Cmd.Stderr, _ = util.NewStdio(dc.spec.Files)
 	// TODO(kwalsh) set uid/gid, dir, env, etc.
 	// TODO(kwalsh) reap and cleanup
 	return dc.Cmd.Start()

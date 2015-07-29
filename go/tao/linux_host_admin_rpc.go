@@ -206,18 +206,22 @@ func (server LinuxHostAdminServer) Serve(sock *net.UnixListener) error {
 
 // StartHostedProgram is the server stub for LinuxHost.StartHostedProgram.
 func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminRPCRequest, s *LinuxHostAdminRPCResponse) error {
-	fds := server.oob.SharedFDs()
-	defer util.CloseFDs(fds)
+	files := server.oob.SharedFiles()
+	defer func() {
+		for _, f := range files {
+			f.Close()
+		}
+	}()
 	ucred := server.oob.PeerCred()
 	if r.Path == nil {
 		return newError("missing path")
 	}
 	spec := HostedProgramSpec{
-		Path: *r.Path,
-		Args: r.Args,
-		Uid:  int(ucred.Uid),
-		Gid:  int(ucred.Gid),
-		Fds:  fds,
+		Path:  *r.Path,
+		Args:  r.Args,
+		Uid:   int(ucred.Uid),
+		Gid:   int(ucred.Gid),
+		Files: files,
 		// TODO(kwalsh) env, dir
 	}
 	// We do allow superuser here, since we trust the oob credentials

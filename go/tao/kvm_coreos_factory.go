@@ -466,7 +466,7 @@ func (kcc *KvmCoreOSContainer) Start() (channel io.ReadWriteCloser, err error) {
 		return
 	}
 
-	stdin, stdout, stderr, _ := util.NewStdio(kcc.spec.Fds)
+	stdin, stdout, stderr, _ := util.NewStdio(kcc.spec.Files)
 
 	// We need to run a set of commands to set up the LinuxHost on the
 	// remote system.

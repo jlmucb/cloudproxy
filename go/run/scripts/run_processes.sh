@@ -1,7 +1,11 @@
 #!/bin/bash
 
-if [ "$#" != "1" ]; then
-	echo "Must supply the path to an initialized domain."
+if [ "$#" == "0" -a "$TAO_DOMAIN" != "" ]; then
+  DOMAIN="$TAO_DOMAIN"
+elif [ "$#" == "1" ]; then
+  DOMAIN="$1"
+else
+	echo "Must supply the path to an initialized domain, or set \$TAO_DOMAIN."
 	exit 1
 fi
 
@@ -13,57 +17,20 @@ gowhich() {
 	echo -n "$(PATH="${GOPATH//://bin:}/bin" $WHICH "$1")"
 }
 
-DOMAIN="$1"
+TAO="$(gowhich tao)"
 FAKE_PASS=BogusPass
-if [ -e "$DOMAIN/aikblob" ]; then
-  TYPE="TPM"
-else
-  TYPE="Soft"
-fi
 
 # Make sure we have sudo privileges before using them to try to start linux_host
 # below.
 sudo test true
 
-if [[ "$TYPE" == "TPM" ]]; then
-  sudo "$(gowhich linux_host)" -config_path ${DOMAIN}/tao.config \
-          -host_type stacked -host_channel_type tpm &
-  HOSTPID=$!
-elif [[ "$TYPE" == "Soft" ]]; then
-  sudo "$(gowhich linux_host)" -config_path ${DOMAIN}/tao.config \
-     -pass BogusPass &
-  HOSTPID=$!
-else
-  echo "Invalid host type '$TYPE'"
-  exit 1
-fi
-
+sudo "$TAO" host start -tao_domain "$DOMAIN" -pass $FAKE_PASS &
 
 echo "Waiting for linux_host to start"
 sleep 5
 
-# tao_launch outputs the new hosted program's PID on fd 3, so we redirect fd 3
-# to fd 1 (stdout) and capture the value in DSPID. The assignment is done inside
-# braces. We temprarily redirect the original fd 1 (stdout) to fd 4 inside the
-# braces, and redirect that back to fd 1 (stdout) outside the braces. That way,
-# the hosted program's stdout still goes to the shell's stdout.
-{ DSPID=$("$(gowhich tao_launch)" -sock ${DOMAIN}/linux_tao_host/admin_socket \
-  "$(gowhich demo_server)" -config=${DOMAIN}/tao.config 3>&1 1>&4); } 4>&1
+"$TAO" run -tao_domain "$DOMAIN" "$(gowhich demo_server)" -config "$DOMAIN/tao.config" &
+"$TAO" run -tao_domain "$DOMAIN" "$(gowhich demo_client)" -config "$DOMAIN/tao.config"
 
-"$(gowhich tao_launch)" -sock ${DOMAIN}/linux_tao_host/admin_socket \
-	"$(gowhich demo_client)" -config=${DOMAIN}/tao.config 3> /dev/null
-
-
-echo "Waiting for the tests to finish"
-sleep 5
-
-echo -e "\n\nClient output:"
-cat /tmp/demo_client.INFO
-
-echo -e "\n\nServer output:"
-cat /tmp/demo_server.INFO
-
-echo "Cleaning up remaining programs"
-kill $DSPID
-sudo kill $HOSTPID
-sudo rm -f ${DOMAIN}/linux_tao_host/admin_socket
+echo "Shutting down linux_host"
+sudo "$TAO" host stop -tao_domain "$DOMAIN"

@@ -182,8 +182,8 @@ func (p *HostedProcess) Start() (channel io.ReadWriteCloser, err error) {
 		}
 	}()
 
-	stdin, stdout, stderr, extraFds := util.NewStdio(p.spec.Fds)
-	extraFiles = append(extraFiles, extraFds...)
+	stdin, stdout, stderr, moreFiles := util.NewStdio(p.spec.Files)
+	extraFiles = append(extraFiles, moreFiles...)
 
 	env := p.spec.Env
 	if env == nil {
@@ -217,11 +217,35 @@ func (p *HostedProcess) Start() (channel io.ReadWriteCloser, err error) {
 		return
 	}
 
+	// Every hosted process is given its own process group (Setpgid=true). This
+	// ensures that hosted processes will not be in orphaned process groups,
+	// allowing them to receive job control signals (SIGTTIN, SIGTTOU, and
+	// SIGTSTP).
+	//
+	// If this host is running in "daemon" mode, i.e. without a controlling tty
+	// and in our own session and process group, then this host will be (a) the
+	// parent of a process in the child's group, (b) in the same session, and
+	// (c) not in the same group as the child, so it will serve as the anchor
+	// that keeps the child process groups from being considered orphaned.
+	//
+	// If this host is running in "foreground" mode, i.e. with a controlling tty
+	// and as part of our parent process's session but in our own process group,
+	// then the same three conditions are satisified, so this host can still
+	// serve as the anchor that keeps the child process groups from being
+	// considered orphaned. (Note: We could also use Setpid=false in this case,
+	// since the host would be part of the child process group and our parent
+	// would then meet the requirements.)
+
 	spa := &syscall.SysProcAttr{
 		Credential: &syscall.Credential{
 			Uid: uint32(p.spec.Uid),
 			Gid: uint32(p.spec.Uid),
 		},
+		// Setsid: true, // Create session.
+		Setpgid: true, // Set process group ID to new pid (SYSV setpgrp)
+		// Setctty: true, // Set controlling terminal to fd Ctty (only meaningful if Setsid is set)
+		// Noctty: true, // Detach fd 0 from controlling terminal
+		// Ctty: 0, // Controlling TTY fd (Linux only)
 	}
 	p.Cmd = exec.Cmd{
 		Path:        p.Temppath,
@@ -279,11 +303,11 @@ func (p *HostedProcess) Kill() error {
 	return p.Cmd.Process.Kill()
 }
 
-const sigterm = 15
-
 // Stop tries to send SIGTERM to a process.
 func (p *HostedProcess) Stop() error {
-	return syscall.Kill(p.Cmd.Process.Pid, syscall.Signal(sigterm))
+	err := syscall.Kill(p.Cmd.Process.Pid, syscall.SIGTERM)
+	syscall.Kill(p.Cmd.Process.Pid, syscall.SIGCONT)
+	return err
 }
 
 // Spec returns the specification used to start the hosted process.

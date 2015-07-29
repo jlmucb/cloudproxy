@@ -20,6 +20,7 @@ package util
 import (
 	"errors"
 	"net"
+	"os"
 	"sync"
 	"syscall"
 )
@@ -38,10 +39,10 @@ const OOBMaxLength = 100 // usually under 64 in practice
 // asynchronously make use of the out-of-band mechanism to share file descriptors
 // and credentials.
 type OOBUnixConn struct {
-	m        sync.Mutex // protects recvFDs, sendFDs, and peerCred
-	recvFDs  []int
-	sendFDs  []int
-	peerCred *syscall.Ucred
+	m         sync.Mutex // protects recvFiles, sendFDs, and peerCred
+	recvFiles []*os.File
+	sendFDs   []int
+	peerCred  *syscall.Ucred
 	*net.UnixConn
 }
 
@@ -60,11 +61,11 @@ func (s *OOBUnixConn) ShareFDs(fd ...int) {
 	s.m.Unlock()
 }
 
-// SharedFDs retreives the file descriptors shared during recent Read calls.
-func (s *OOBUnixConn) SharedFDs() []int {
+// SharedFiles retreives the open files shared during recent Read calls.
+func (s *OOBUnixConn) SharedFiles() []*os.File {
 	s.m.Lock()
-	fds := s.recvFDs
-	s.recvFDs = nil
+	fds := s.recvFiles
+	s.recvFiles = nil
 	s.m.Unlock()
 	return fds
 }
@@ -109,7 +110,12 @@ func (s *OOBUnixConn) Read(p []byte) (n int, err error) {
 			switch m.Header.Type {
 			case syscall.SCM_RIGHTS:
 				if fds, err := syscall.ParseUnixRights(&m); err == nil {
-					s.recvFDs = append(s.recvFDs, fds...)
+					for _, fd := range fds {
+						// Note: We wrap the raw FDs inside an os.File just
+						// once, early, to prevent double-free or leaking FDs.
+						f := NewFile(fd)
+						s.recvFiles = append(s.recvFiles, f)
+					}
 				}
 			case syscall.SCM_CREDENTIALS:
 				if ucred, err := syscall.ParseUnixCredentials(&m); err == nil {

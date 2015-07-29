@@ -218,8 +218,6 @@ func (lh *LinuxHost) StartHostedProgram(spec HostedProgramSpec) (auth.SubPrin, i
 	id := lh.nextChildID
 	if lh.nextChildID != 0 {
 		lh.nextChildID++
-	} else {
-		glog.Warning("Running without unique child IDs")
 	}
 	lh.idm.Unlock()
 
@@ -248,6 +246,8 @@ func (lh *LinuxHost) StartHostedProgram(spec HostedProgramSpec) (auth.SubPrin, i
 		return auth.SubPrin{}, 0, err
 	}
 	child := &LinuxHostChild{channel, subprin, prog}
+	glog.Infof("Started hosted program with pid %d ...\n  path: %s\n  subprincipal: %s\n", child.Cmd.Pid(), spec.Path, subprin)
+
 	go NewLinuxHostTaoServer(lh, child).Serve(channel)
 	pid := child.Cmd.Pid()
 
@@ -257,6 +257,7 @@ func (lh *LinuxHost) StartHostedProgram(spec HostedProgramSpec) (auth.SubPrin, i
 
 	go func() {
 		<-child.Cmd.WaitChan()
+		glog.Infof("Hosted program with pid %d exited", child.Cmd.Pid())
 		lh.hpm.Lock()
 		for i, lph := range lh.hostedPrograms {
 			if child == lph {
@@ -310,6 +311,9 @@ func (lh *LinuxHost) WaitHostedProgram(pid int, subprin auth.SubPrin) (int, erro
 		}
 	}
 	lh.hpm.Unlock()
+	if p == nil {
+		return -1, newError("no such hosted program")
+	}
 	<-p.Cmd.WaitChan()
 	return p.Cmd.ExitStatus()
 }
@@ -337,18 +341,22 @@ func (lh *LinuxHost) HostName() auth.Prin {
 // Shutdown stops all hosted programs. If any remain after 10 seconds, they are
 // killed.
 func (lh *LinuxHost) Shutdown() error {
-	glog.Infof("shutting down")
+	glog.Infof("Stopping all hosted programs")
 	lh.hpm.Lock()
 	// Request each child stop
 	for _, lph := range lh.hostedPrograms {
 		// lph.channel.Close()
+		glog.Infof("Stopping hosted program %d\n", lph.Cmd.Pid())
 		if err := lph.Cmd.Stop(); err != nil {
 			glog.Errorf("Couldn't stop hosted program %d, subprincipal %s: %s\n", lph.Cmd.Pid(), lph.Cmd.Subprin(), err)
 		}
 	}
 	timeout := make(chan bool, 1)
+	waiting := make(chan bool, 1)
 	go func() {
-		time.Sleep(10 * time.Second)
+		time.Sleep(1 * time.Second)
+		waiting <- true
+		time.Sleep(9 * time.Second)
 		timeout <- true
 		close(timeout)
 	}()
@@ -357,7 +365,10 @@ func (lh *LinuxHost) Shutdown() error {
 		select {
 		case <-lph.Cmd.WaitChan():
 			break
+		case <-waiting:
+			glog.Infof("Waiting for hosted programs to stop")
 		case <-timeout:
+			glog.Infof("Killing hosted program %d, subprincipal %s\n", lph.Cmd.Pid(), lph.Cmd.Subprin())
 			if err := lph.Cmd.Kill(); err != nil {
 				glog.Errorf("Couldn't kill hosted program %d, subprincipal %s: %s\n", lph.Cmd.Pid(), lph.Cmd.Subprin(), err)
 			}

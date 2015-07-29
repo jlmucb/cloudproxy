@@ -16,6 +16,7 @@ package tao
 
 import (
 	"io"
+	"os"
 
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
@@ -58,12 +59,12 @@ type HostedProgramSpec struct {
 	// superuser must explicitly be set.
 	Superuser bool
 
-	// Fds is a list of file descriptors to be shared with the hosted program in
-	// a factory-specific way. If present, the first three are used for stdin,
-	// stdout, and stderr. Otherwise stdin, stdout, and stderr are given
-	// factory-specific default values, e.g. perhaps /dev/null or inheriting
-	// from the tao host server.
-	Fds []int
+	// Files is a list of open file descriptors to be shared with the hosted
+	// program in a factory-specific way. If present, the first three are used
+	// for stdin, stdout, and stderr. Otherwise stdin, stdout, and stderr are
+	// given factory-specific default values, e.g. perhaps /dev/null or
+	// inheriting from the tao host server. These must have a File.Fd()
+	Files []*os.File
 
 	// Dir is the directory in which to start the program. If empty, a
 	// factory-specific default will be used, e.g. perhaps the tao host server's

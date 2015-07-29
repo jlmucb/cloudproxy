@@ -2,6 +2,16 @@
 // source: linux_host.proto
 // DO NOT EDIT!
 
+/*
+Package tao is a generated protocol buffer package.
+
+It is generated from these files:
+	linux_host.proto
+
+It has these top-level messages:
+	LinuxHostSealedBundle
+	LinuxHostConfig
+*/
 package tao
 
 import proto "github.com/golang/protobuf/proto"
@@ -41,4 +51,84 @@ func (m *LinuxHostSealedBundle) GetData() []byte {
 		return m.Data
 	}
 	return nil
+}
+
+type LinuxHostConfig struct {
+	// Either "root" or "stacked"
+	Type *string `protobuf:"bytes,1,req,name=type" json:"type,omitempty"`
+	// Either "TPM", "pipe", "file", or "unix"
+	ParentType *string `protobuf:"bytes,2,opt,name=parent_type" json:"parent_type,omitempty"`
+	// For non-tpm parent types, the parent connection spec
+	ParentSpec *string `protobuf:"bytes,3,opt,name=parent_spec" json:"parent_spec,omitempty"`
+	// Socket directory, relative to host configuration directory.
+	SocketDir *string `protobuf:"bytes,4,opt,name=socket_dir" json:"socket_dir,omitempty"`
+	// Either "process", "docker", or "kvm_coreos"
+	Hosting *string `protobuf:"bytes,5,req,name=hosting" json:"hosting,omitempty"`
+	// Path to CoreOS image for hosted KVM, absolute or relative to domain.
+	KvmCoreosImg *string `protobuf:"bytes,6,opt,name=kvm_coreos_img" json:"kvm_coreos_img,omitempty"`
+	// KB of memory to allocate for each VM
+	KvmCoreosVmMemory *int32 `protobuf:"varint,7,opt,name=kvm_coreos_vm_memory" json:"kvm_coreos_vm_memory,omitempty"`
+	// Path to CoreOS authorized_keys for hosted KVM, absolute or relative to domain.
+	KvmCoreosSshAuthKeys *string `protobuf:"bytes,8,opt,name=kvm_coreos_ssh_auth_keys" json:"kvm_coreos_ssh_auth_keys,omitempty"`
+	XXX_unrecognized     []byte  `json:"-"`
+}
+
+func (m *LinuxHostConfig) Reset()         { *m = LinuxHostConfig{} }
+func (m *LinuxHostConfig) String() string { return proto.CompactTextString(m) }
+func (*LinuxHostConfig) ProtoMessage()    {}
+
+func (m *LinuxHostConfig) GetType() string {
+	if m != nil && m.Type != nil {
+		return *m.Type
+	}
+	return ""
+}
+
+func (m *LinuxHostConfig) GetParentType() string {
+	if m != nil && m.ParentType != nil {
+		return *m.ParentType
+	}
+	return ""
+}
+
+func (m *LinuxHostConfig) GetParentSpec() string {
+	if m != nil && m.ParentSpec != nil {
+		return *m.ParentSpec
+	}
+	return ""
+}
+
+func (m *LinuxHostConfig) GetSocketDir() string {
+	if m != nil && m.SocketDir != nil {
+		return *m.SocketDir
+	}
+	return ""
+}
+
+func (m *LinuxHostConfig) GetHosting() string {
+	if m != nil && m.Hosting != nil {
+		return *m.Hosting
+	}
+	return ""
+}
+
+func (m *LinuxHostConfig) GetKvmCoreosImg() string {
+	if m != nil && m.KvmCoreosImg != nil {
+		return *m.KvmCoreosImg
+	}
+	return ""
+}
+
+func (m *LinuxHostConfig) GetKvmCoreosVmMemory() int32 {
+	if m != nil && m.KvmCoreosVmMemory != nil {
+		return *m.KvmCoreosVmMemory
+	}
+	return 0
+}
+
+func (m *LinuxHostConfig) GetKvmCoreosSshAuthKeys() string {
+	if m != nil && m.KvmCoreosSshAuthKeys != nil {
+		return *m.KvmCoreosSshAuthKeys
+	}
+	return ""
 }

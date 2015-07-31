@@ -15,16 +15,16 @@
 package mixnet;
 
 enum DirectiveType {
-  ERROR = 0;           // Signal an error to peer.
-  FATAL = 1;           // Signal an error and that the connection was closed.
-  CREATE_CIRCUIT = 2;  // Create a circuit.
-  DESTROY_CIRCUIT = 3; // Destroy a circuit.
+  ERROR = 0;     // Signal an error to peer.
+  CREATE = 1;    // Create a circuit.
+  CREATED = 2;   // Reply from router confirming the circuit was created.
+  DESTROY = 3;   // Destroy a circuit.
 }
 
 message Directive {
   required DirectiveType type = 1;
 
-  // CREATE_CIRCUIT, a sequence of addresses (e.g. "192.168.1.1:7007")
+  // CREATE, a sequence of addresses (e.g. "192.168.1.1:7007")
   // comprising the circuit to be constructed over the mixnet. Each address
   // corresponds to a mixnet router except the last, which is the service the
   // proxy would like to contact.
@@ -32,16 +32,4 @@ message Directive {
 
   // ERROR or FATAL, an error message.
   optional string error = 3;
-}
-
-// Protocol buffer for a message or directive in a send queue.
-message Queueable {
-  // Serial identifier of the sender.
-  required uint64 id = 1;
-
-  // If the connection needs to be set up, specify the address the host.
-  optional string addr = 2;
-
-  optional Directive dir = 3;
-  optional bytes msg = 4;
 }

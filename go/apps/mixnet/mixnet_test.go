@@ -19,10 +19,10 @@ import (
 	"crypto/x509/pkix"
 	"encoding/binary"
 	"io"
-	"net"
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao"
@@ -46,6 +46,8 @@ func makeTrivialDomain(configDir string) (*tao.Domain, error) {
 }
 
 func makeContext(batchSize int) (*RouterContext, *ProxyContext, error) {
+
+	timeout, _ := time.ParseDuration("5s")
 	configDir := "/tmp/mixnet_test_domain"
 	configPath := path.Join(configDir, "tao.config")
 
@@ -54,6 +56,8 @@ func makeContext(batchSize int) (*RouterContext, *ProxyContext, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	// CrateDomain() saves the configuration to disk; delete this now since
+	// we don't need it.
 	defer os.RemoveAll(configDir)
 
 	// Create a SoftTao from the domain.
@@ -64,7 +68,8 @@ func makeContext(batchSize int) (*RouterContext, *ProxyContext, error) {
 
 	// Create router context. This loads the domain and binds a
 	// socket and an anddress.
-	router, err := NewRouterContext(configPath, network, routerAddr, batchSize, &id, st)
+	router, err := NewRouterContext(configPath, network, routerAddr,
+		batchSize, timeout, &id, st)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -127,59 +132,34 @@ func runRouterHandleProxy(router *RouterContext, requestCount int, ch chan<- tes
 
 	for i := 0; i < requestCount; i++ {
 		if err = router.HandleProxy(c); err != nil {
-			ch <- testResult{err, []byte{}}
+			ch <- testResult{err, nil}
 			return
 		}
 	}
 
-	ch <- testResult{nil, []byte{}}
+	ch <- testResult{nil, nil}
 }
 
 // Proxy dials a router, creates a circuit, and sends a message over
 // the circuit.
-func runProxyRelay(proxy *ProxyContext, msg []byte) error {
+func runProxySendMessage(proxy *ProxyContext, msg []byte) ([]byte, error) {
 	c, err := proxy.DialRouter(network, routerAddr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer c.Close()
 
-	if _, err = proxy.CreateCircuit(c, []string{dstAddr}); err != nil {
-		return err
+	if err = proxy.CreateCircuit(c, dstAddr); err != nil {
+		return nil, err
 	}
 
-	if _, err = proxy.SendMessage(c, msg); err != nil {
-		return err
+	if err = proxy.SendMessage(c, msg); err != nil {
+		return nil, err
 	}
 
-	return nil
-}
-
-// A dummy server that waits for a message from the a client.
-func runDestination(ch chan<- testResult) {
-	l, err := net.Listen(network, dstAddr)
-	if err != nil {
-		ch <- testResult{err, []byte{}}
-		return
-	}
-	defer l.Close()
-
-	c, err := l.Accept()
-	if err != nil {
-		ch <- testResult{err, []byte{}}
-		return
-	}
-	defer c.Close()
-
-	buff := make([]byte, CellBytes*10)
-	bytes, err := c.Read(buff)
-	if err != nil {
-		ch <- testResult{err, []byte{}}
-		return
-	}
-
-	ch <- testResult{nil, buff[:bytes]}
-	return
+	// dummyServer receives one message and replies. Without this line,
+	// the router will report a broken pipe.
+	return proxy.ReceiveMessage(c)
 }
 
 // Test connection set up.
@@ -273,7 +253,8 @@ func TestProxyRouterRelay(t *testing.T) {
 	for _, l := range trials {
 
 		go runRouterHandleProxy(router, 2, routerCh)
-		if err = runProxyRelay(proxy, msg[:l]); err != nil {
+		reply, err := runProxySendMessage(proxy, msg[:l])
+		if err != nil {
 			t.Errorf("relay (length=%d): %s", l, err)
 		}
 
@@ -285,8 +266,9 @@ func TestProxyRouterRelay(t *testing.T) {
 		res = <-dstCh
 		if res.err != nil {
 			t.Error(res.err)
-		} else if bytes.Compare(res.msg, msg[:l]) != 0 {
-			t.Error("relay (length=%d): Server got: %s", l, res.msg)
+		} else if bytes.Compare(reply, msg[:l]) != 0 {
+			t.Errorf("relay (length=%s): received: %v", l, reply)
+			t.Errorf("relay (length=%s): sent: %x", l, msg[:l])
 		}
 	}
 }
@@ -298,43 +280,55 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer router.Close()
+	cell := make([]byte, CellBytes)
 	ch := make(chan testResult)
 
-	cell := make([]byte, CellBytes)
-	buff := make([]byte, CellBytes*10)
-
-	// Unrecognized cell type.
-	cell[0] = dirCell ^ msgCell ^ relayCell
-	go runRouterHandleProxy(router, 1, ch)
+	go runRouterHandleProxy(router, 5, ch)
 	c, err := proxy.DialRouter(network, routerAddr)
 	if err != nil {
 		t.Error(err)
 	}
+
+	// Unrecognized cell type.
+	cell[0] = 0xff
 	if _, err = c.Write(cell); err != nil {
 		t.Error(err)
 	}
-	_, err = proxy.ReceiveMessage(c, buff)
+	_, err = proxy.ReceiveMessage(c)
 	if err == nil || err.Error() != "router error: "+errBadCellType.Error() {
-		t.Error("Bad cell, got incorrect error: ", err)
+		t.Error("bad cell, got incorrect error:", err)
 	}
-	c.Close()
-	<-ch
 
 	// Message too long.
 	cell[0] = msgCell
 	binary.PutUvarint(cell[1:], uint64(MaxMsgBytes+1))
-	go runRouterHandleProxy(router, 1, ch)
-	c, err = proxy.DialRouter(network, routerAddr)
-	if err != nil {
+	if _, err := c.Write(cell); err != nil {
 		t.Error(err)
 	}
-	if _, err = c.Write(cell); err != nil {
+	_, err = proxy.ReceiveMessage(c)
+	if err == nil || err.Error() != "router error: "+errMsgLength.Error() {
+		t.Error("message too long, got incorrect error:", err)
+	}
+
+	// Bogus destination.
+	if err = proxy.CreateCircuit(c, "localhost:9999"); err != nil {
 		t.Error(err)
 	}
-	_, err = proxy.ReceiveMessage(c, buff)
-	if err == nil || err.Error() != "router error: "+errMsgLength.Error()+" (connection closed)" {
-		t.Error("Long message, got incorrect error: ", err)
+	if err = proxy.SendMessage(c, []byte("Are you there?")); err != nil {
+		t.Error(err)
 	}
-	c.Close()
+
+	_, err = proxy.ReceiveMessage(c)
+	if err == nil || (err != nil && err.Error() != "router error: dial tcp 127.0.0.1:9999: connection refused") {
+		t.Error("should have gotten \"connection refused\" from the router")
+	}
+
+	// Multihop circuits not supported yet.
+	err = proxy.CreateCircuit(c, "one:234", "two:34", "three:4")
+	if err == nil || (err != nil && err.Error() != "router error: multi-hlp circuits not implemented") {
+		t.Error("should have gotten \"multi-hlp circuits not implemented\" from router", err)
+	}
+
 	<-ch
+	c.Close()
 }

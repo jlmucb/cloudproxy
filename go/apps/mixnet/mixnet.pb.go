@@ -10,7 +10,6 @@ It is generated from these files:
 
 It has these top-level messages:
 	Directive
-	Queueable
 */
 package mixnet
 
@@ -24,23 +23,23 @@ var _ = math.Inf
 type DirectiveType int32
 
 const (
-	DirectiveType_ERROR           DirectiveType = 0
-	DirectiveType_FATAL           DirectiveType = 1
-	DirectiveType_CREATE_CIRCUIT  DirectiveType = 2
-	DirectiveType_DESTROY_CIRCUIT DirectiveType = 3
+	DirectiveType_ERROR   DirectiveType = 0
+	DirectiveType_CREATE  DirectiveType = 1
+	DirectiveType_CREATED DirectiveType = 2
+	DirectiveType_DESTROY DirectiveType = 3
 )
 
 var DirectiveType_name = map[int32]string{
 	0: "ERROR",
-	1: "FATAL",
-	2: "CREATE_CIRCUIT",
-	3: "DESTROY_CIRCUIT",
+	1: "CREATE",
+	2: "CREATED",
+	3: "DESTROY",
 }
 var DirectiveType_value = map[string]int32{
-	"ERROR":           0,
-	"FATAL":           1,
-	"CREATE_CIRCUIT":  2,
-	"DESTROY_CIRCUIT": 3,
+	"ERROR":   0,
+	"CREATE":  1,
+	"CREATED": 2,
+	"DESTROY": 3,
 }
 
 func (x DirectiveType) Enum() *DirectiveType {
@@ -62,7 +61,7 @@ func (x *DirectiveType) UnmarshalJSON(data []byte) error {
 
 type Directive struct {
 	Type *DirectiveType `protobuf:"varint,1,req,name=type,enum=mixnet.DirectiveType" json:"type,omitempty"`
-	// CREATE_CIRCUIT, a sequence of addresses (e.g. "192.168.1.1:7007")
+	// CREATE, a sequence of addresses (e.g. "192.168.1.1:7007")
 	// comprising the circuit to be constructed over the mixnet. Each address
 	// corresponds to a mixnet router except the last, which is the service the
 	// proxy would like to contact.
@@ -95,49 +94,6 @@ func (m *Directive) GetError() string {
 		return *m.Error
 	}
 	return ""
-}
-
-// Protocol buffer for a message or directive in a send queue.
-type Queueable struct {
-	// Serial identifier of the sender.
-	Id *uint64 `protobuf:"varint,1,req,name=id" json:"id,omitempty"`
-	// If the connection needs to be set up, specify the address the host.
-	Addr             *string    `protobuf:"bytes,2,opt,name=addr" json:"addr,omitempty"`
-	Dir              *Directive `protobuf:"bytes,3,opt,name=dir" json:"dir,omitempty"`
-	Msg              []byte     `protobuf:"bytes,4,opt,name=msg" json:"msg,omitempty"`
-	XXX_unrecognized []byte     `json:"-"`
-}
-
-func (m *Queueable) Reset()         { *m = Queueable{} }
-func (m *Queueable) String() string { return proto.CompactTextString(m) }
-func (*Queueable) ProtoMessage()    {}
-
-func (m *Queueable) GetId() uint64 {
-	if m != nil && m.Id != nil {
-		return *m.Id
-	}
-	return 0
-}
-
-func (m *Queueable) GetAddr() string {
-	if m != nil && m.Addr != nil {
-		return *m.Addr
-	}
-	return ""
-}
-
-func (m *Queueable) GetDir() *Directive {
-	if m != nil {
-		return m.Dir
-	}
-	return nil
-}
-
-func (m *Queueable) GetMsg() []byte {
-	if m != nil {
-		return m.Msg
-	}
-	return nil
 }
 
 func init() {

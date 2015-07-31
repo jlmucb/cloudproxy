@@ -19,63 +19,126 @@ import (
 	"errors"
 	"math/rand"
 	"net"
+	"time"
 
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
 )
+
+type Queueable struct {
+	id    uint64
+	addr  string
+	msg   []byte
+	conn  net.Conn
+	reply chan []byte
+}
 
 type sendQueueError struct {
 	id uint64 // Serial identifier of sender to which error pertains.
 	error
 }
 
-// The SendQueue structure maps a serial identifier corresponding to a sender
+// The Queue structure maps a serial identifier corresponding to a sender
 // (in the router context) to a destination. It also maintains a message buffer
 // for each sender. Once there messages ready on enough buffers, a batch of
 // messages are transmitted simultaneously.
-type SendQueue struct {
+type Queue struct {
 	batchSize int // Number of messages to transmit in a roud.
 	ct        int // Current number of buffers with messages ready.
 
-	network string // Network protocol, e.g. "tcp".
+	network string        // Network protocol, e.g. "tcp".
+	timeout time.Duration // Timeout on dial/read/write.
 
 	nextAddr   map[uint64]string     // Address of destination.
 	nextConn   map[uint64]net.Conn   // Connection to destination.
 	sendBuffer map[uint64]*list.List // Message buffer of sender.
 
-	queue chan Queueable      // Channel for queueing messages/directives.
+	queue chan *Queueable     // Channel for queueing messages/directives.
 	err   chan sendQueueError // Channel for handling errors.
 }
 
-// NewSendQueue creates a new SendQueue structure.
-func NewSendQueue(network string, batchSize int) (sq *SendQueue) {
-	sq = new(SendQueue)
+// NewQueue creates a new Queue structure.
+func NewQueue(network string, batchSize int, timeout time.Duration) (sq *Queue) {
+	sq = new(Queue)
 	sq.batchSize = batchSize
 	sq.network = network
+	sq.timeout = timeout
 
 	sq.nextAddr = make(map[uint64]string)
 	sq.nextConn = make(map[uint64]net.Conn)
 	sq.sendBuffer = make(map[uint64]*list.List)
 
-	sq.queue = make(chan Queueable)
+	sq.queue = make(chan *Queueable)
 	sq.err = make(chan sendQueueError)
 	return sq
 }
 
-// Enqueue adds a queueable object, such as a message or directive, to the
-// send queue.
-func (sq *SendQueue) Enqueue(q *Queueable) {
-	sq.queue <- *q
+// Enqueue inserts a queueable object into the queue. Note that this is
+// generally unsafe to use concurrently because it doesn't make a copy of the
+// data.
+func (sq *Queue) Enqueue(q *Queueable) {
+	sq.queue <- q
 }
 
-// DoSendQueue adds messages to a queue and transmits messages in batches.
-// Typically a message is a cell, but when the calling router is an exit point,
-// the message length is arbitrary. A batch is transmitted when there are
-// messages on batchSize distinct sender channels.
-func (sq *SendQueue) DoSendQueue(kill <-chan bool) {
+// EnqueueMsg copies a byte slice into a queueable object and adds it to
+// the queue.
+func (sq *Queue) EnqueueMsg(id uint64, msg []byte) {
+	q := new(Queueable)
+	q.id = id
+	q.msg = make([]byte, len(msg))
+	copy(q.msg, msg)
+	sq.queue <- q
+}
+
+// EnqueueReply creates a queuable object with a reply channel and adds it to
+// the queue.
+func (sq *Queue) EnqueueReply(id uint64, reply chan []byte) {
+	q := new(Queueable)
+	q.id = id
+	q.reply = reply
+	sq.queue <- q
+}
+
+// EnqueueMsgRply creates a queueable object with a message and a reply channel
+// and adds it to the queue.
+func (sq *Queue) EnqueueMsgReply(id uint64, msg []byte, reply chan []byte) {
+	q := new(Queueable)
+	q.id = id
+	q.msg = make([]byte, len(msg))
+	q.reply = reply
+	copy(q.msg, msg)
+	sq.queue <- q
+}
+
+// SetAddr copies an address into a queuable object and adds it to the queue.
+// This sets the next-hop address for the id.
+func (sq *Queue) SetAddr(id uint64, addr string) {
+	q := new(Queueable)
+	q.id = id
+	q.addr = addr
+	sq.queue <- q
+}
+
+// SetConn creates a queueable object with a net.Conn interface and adds it to
+// the queue. This allows us to reuse an already created channel for replying.
+func (sq *Queue) SetConn(id uint64, c net.Conn) {
+	q := new(Queueable)
+	q.id = id
+	q.conn = c
+	sq.queue <- q
+}
+
+// DoQueue adds messages to a queue and transmits messages in batches. It also
+// provides an interface for receiving messages from a server. Typically a
+// message is a cell, but when the calling router is an exit point, the message
+// length is arbitrary. A batch is transmitted when there are messages on
+// batchSize distinct sender channels.
+func (sq *Queue) DoQueue(kill <-chan bool) {
 	for {
 		select {
 		case <-kill:
 			for _, c := range sq.nextConn {
+				// TODO(cjpatton) send DESTROY to next hop.
 				c.Close()
 			}
 			return
@@ -84,25 +147,31 @@ func (sq *SendQueue) DoSendQueue(kill <-chan bool) {
 			// Set the next-hop address. We don't allow the destination address
 			// or connection to be overwritten in order to avoid accumulating
 			// stale connections on routers.
-			if _, def := sq.nextAddr[*q.Id]; !def && q.Addr != nil {
-				sq.nextAddr[*q.Id] = *q.Addr
+			if _, def := sq.nextAddr[q.id]; !def && q.addr != "" {
+				sq.nextAddr[q.id] = q.addr
 			}
 
-			if q.Dir != nil {
-				sq.err <- sendQueueError{*q.Id,
-					errors.New("directives not implemented")}
+			// Set the next-hop connection. This is useful for routing replies
+			// from the destination over already created circuits back to the
+			// source.
+			if _, def := sq.nextConn[q.id]; !def && q.conn != nil {
+				sq.nextConn[q.id] = q.conn
+			}
 
-			} else if _, def := sq.nextAddr[*q.Id]; !def && q.Msg != nil {
-				sq.err <- sendQueueError{*q.Id,
-					errors.New("request to send message without a destination")}
+			// Add message or message request (reply) to the queue.
+			if q.msg != nil || q.reply != nil {
 
-			} else {
+				if _, def := sq.nextAddr[q.id]; !def {
+					sq.err <- sendQueueError{q.id,
+						errors.New("request to send/receive message without a destination")}
+					continue
+				}
 
 				// Create a send buffer for the sender ID if it doesn't exist.
-				if _, def := sq.sendBuffer[*q.Id]; !def {
-					sq.sendBuffer[*q.Id] = list.New()
+				if _, def := sq.sendBuffer[q.id]; !def {
+					sq.sendBuffer[q.id] = list.New()
 				}
-				buf := sq.sendBuffer[*q.Id]
+				buf := sq.sendBuffer[q.id]
 
 				// The buffer was empty but now has a message ready; increment
 				// the counter.
@@ -111,35 +180,54 @@ func (sq *SendQueue) DoSendQueue(kill <-chan bool) {
 				}
 
 				// Add message to send buffer.
-				buf.PushBack(q.Msg)
+				buf.PushBack(q)
 			}
 
-			// Transmit the message batch if it is full.
-			if sq.ct >= sq.batchSize {
+			// Transmit batches of messages.
+			for sq.ct >= sq.batchSize {
 				sq.dequeue()
 			}
 		}
 	}
 }
 
-// DoSendQueueErrorHandler handles errors produced by DoSendQueue. When this
-// is fully fleshed out, it will enqueue into the response queue a Directive
-// containing an error message. For now, just print out the error.
-func (sq *SendQueue) DoSendQueueErrorHandler(kill <-chan bool) {
+// DoQueueErrorHandler handles errors produced by DoQueue by enqueing onto
+// queue a directive containing the error message.
+func (sq *Queue) DoQueueErrorHandler(queue *Queue, kill <-chan bool) {
 	for {
 		select {
 		case <-kill:
 			return
 		case err := <-sq.err:
-			glog.Errorf("send queue (%d): %s\n", err.id, err.Error())
+			var d Directive
+			d.Type = DirectiveType_ERROR.Enum()
+			d.Error = proto.String(err.Error())
+			cell, e := marshalDirective(&d)
+			if e != nil {
+				glog.Errorf("queue: %s\n", e.Error())
+				return
+			}
+			queue.EnqueueMsg(err.id, cell)
+		}
+	}
+}
+
+// DoQueueErrorHandlerLog logs errors that occur on this queue.
+func (sq *Queue) DoQueueErrorHandlerLog(name string, kill <-chan bool) {
+	for {
+		select {
+		case <-kill:
+			return
+		case err := <-sq.err:
+			glog.Errorf("%s (%d): %s\n", name, err.id, err.Error())
 		}
 	}
 }
 
 // dequeue sends one message from each send buffer for each serial ID in a
-// random order. This is called by DoSendQueue and is not safe to call directly
+// random order. This is called by DoQueue and is not safe to call directly
 // elsewhere.
-func (sq *SendQueue) dequeue() {
+func (sq *Queue) dequeue() {
 
 	// Shuffle the serial IDs.
 	order := rand.Perm(int(sq.ct)) // TODO(cjpatton) Use tao.GetRandomBytes().
@@ -156,9 +244,9 @@ func (sq *SendQueue) dequeue() {
 	ch := make(chan senderResult)
 	for _, id := range ids[:sq.batchSize] {
 		addr := sq.nextAddr[id]
-		msg := sq.sendBuffer[id].Front().Value.([]byte)
+		q := sq.sendBuffer[id].Front().Value.(*Queueable)
 		c, def := sq.nextConn[id]
-		go senderWorker(sq.network, addr, id, msg, c, def, ch, sq.err)
+		go senderWorker(sq.network, addr, id, q, c, def, ch, sq.err, sq.timeout)
 	}
 
 	// Wait for workers to finish.
@@ -167,14 +255,14 @@ func (sq *SendQueue) dequeue() {
 		if res.c != nil {
 			// Save the connection.
 			sq.nextConn[res.id] = res.c
+		}
 
-			// Pop the message from the buffer and decrement the counter
-			// if the buffer is empty.
-			buf := sq.sendBuffer[res.id]
-			buf.Remove(buf.Front())
-			if buf.Len() == 0 {
-				sq.ct--
-			}
+		// Pop the message from the buffer and decrement the counter
+		// if the buffer is empty.
+		buf := sq.sendBuffer[res.id]
+		buf.Remove(buf.Front())
+		if buf.Len() == 0 {
+			sq.ct--
 		}
 	}
 }
@@ -184,27 +272,49 @@ type senderResult struct {
 	id uint64
 }
 
-func senderWorker(network, addr string, id uint64, msg []byte, c net.Conn, def bool,
-	res chan<- senderResult, err chan<- sendQueueError) {
+func senderWorker(network, addr string, id uint64, q *Queueable, c net.Conn, def bool,
+	res chan<- senderResult, err chan<- sendQueueError, timeout time.Duration) {
 	var e error
 
 	// Wait to connect until the queue is dequeued in order to prevent
 	// an observer from correlating an incoming cell with the handshake
 	// with the destination server.
 	if !def {
-		c, e = net.Dial(network, addr) // TODO(cjpatton) timeout.
+		c, e = net.DialTimeout(network, addr, timeout)
 		if e != nil {
 			err <- sendQueueError{id, e}
-			res <- senderResult{nil, id}
+			res <- senderResult{c, id}
+			if q.reply != nil {
+				q.reply <- nil
+			}
 			return
 		}
 	}
 
-	// Send the message.
-	if _, e := c.Write(msg); e != nil {
-		err <- sendQueueError{id, e}
-		res <- senderResult{nil, id}
-		return
+	c.SetDeadline(time.Now().Add(timeout))
+	if q.msg != nil { // Send the message.
+		if _, e := c.Write(q.msg); e != nil {
+			err <- sendQueueError{id, e}
+			res <- senderResult{c, id}
+			if q.reply != nil {
+				q.reply <- nil
+			}
+			return
+		}
+	}
+
+	c.SetDeadline(time.Now().Add(timeout))
+	if q.reply != nil { // Receive a message.
+		msg := make([]byte, MaxMsgBytes)
+		bytes, e := c.Read(msg)
+		if e != nil {
+			err <- sendQueueError{id, e}
+			res <- senderResult{c, id}
+			q.reply <- nil
+			return
+		}
+		// Pass message to channel.
+		q.reply <- msg[:bytes]
 	}
 
 	res <- senderResult{c, id}

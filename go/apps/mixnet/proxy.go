@@ -18,9 +18,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	"net"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
@@ -54,17 +52,31 @@ func (p *ProxyContext) DialRouter(network, addr string) (*Conn, error) {
 
 // CreateCircuit directs the router to construct a circuit to a particular
 // destination over the mixnet.
-func (p *ProxyContext) CreateCircuit(c net.Conn, circuitAddrs []string) (int, error) {
-	var d Directive
-	d.Type = DirectiveType_CREATE_CIRCUIT.Enum()
-	d.Addrs = circuitAddrs
-	return SendDirective(c, &d)
+func (p *ProxyContext) CreateCircuit(c *Conn, circuitAddrs ...string) error {
+	d := &Directive{
+		Type:  DirectiveType_CREATE.Enum(),
+		Addrs: circuitAddrs,
+	}
+
+	// Send CREATE directive to router.
+	if _, err := p.SendDirective(c, d); err != nil {
+		return err
+	}
+
+	// Wait for CREATED directive from router.
+	if _, err := p.ReceiveDirective(c, d); err != nil {
+		return err
+	} else if *d.Type != DirectiveType_CREATED {
+		return errors.New("could not create circuit")
+	}
+	return nil
 }
 
-// SendMessage directs the router to relay a message over the already constructed
-// circuit. A message is signaled to the reecevier by the first byte of the first
-// cell. The next 8 bytes encode the total number of bytes in the message.
-func (p *ProxyContext) SendMessage(c net.Conn, msg []byte) (int, error) {
+// SendMessage divides a message into cells and sends each cell over the network
+// connection. A message is signaled to the receiver by the first byte of the
+// first cell. The next few bytes encode the total number of bytes in the
+// message.
+func (p *ProxyContext) SendMessage(c *Conn, msg []byte) error {
 	msgBytes := len(msg)
 	cell := make([]byte, CellBytes)
 	cell[0] = msgCell
@@ -72,51 +84,99 @@ func (p *ProxyContext) SendMessage(c net.Conn, msg []byte) (int, error) {
 
 	bytes := copy(cell[1+n:], msg)
 	if _, err := c.Write(cell); err != nil {
-		return 0, err
+		return err
 	}
 
 	for bytes < msgBytes {
 		zeroCell(cell)
-		bytes += copy(cell, msg[bytes:])
+		cell[0] = msgCell
+		bytes += copy(cell[1:], msg[bytes:])
 		if _, err := c.Write(cell); err != nil {
-			return bytes, err
+			return err
 		}
 	}
-
-	return bytes, nil
+	return nil
 }
 
-// ReceiveMessage waits for a reply or error message from the router.
-func (p *ProxyContext) ReceiveMessage(c net.Conn, msg []byte) (int, error) {
+// ReceiveMessage reads message cells from the router and assembles them into
+// a messsage.
+func (p *ProxyContext) ReceiveMessage(c *Conn) ([]byte, error) {
 	var err error
+
+	// Receive cells from router.
 	cell := make([]byte, CellBytes)
 	if _, err = c.Read(cell); err != nil && err != io.EOF {
+		return nil, err
+	}
+
+	if cell[0] == dirCell {
+		var d Directive
+		if err = unmarshalDirective(cell, &d); err != nil {
+			return nil, err
+		}
+		if *d.Type == DirectiveType_ERROR {
+			return nil, errors.New("router error: " + (*d.Error))
+		}
+		return nil, errCellType
+	} else if cell[0] != msgCell {
+		return nil, errCellType
+	}
+
+	msgBytes, n := binary.Uvarint(cell[1:])
+	if msgBytes > MaxMsgBytes {
+		return nil, errMsgLength
+	}
+
+	msg := make([]byte, msgBytes)
+	bytes := copy(msg, cell[1+n:])
+
+	for err != io.EOF && uint64(bytes) < msgBytes {
+		if _, err = c.Read(cell); err != nil && err != io.EOF {
+			return nil, err
+		}
+		if cell[0] != msgCell {
+			return nil, errCellType
+		}
+		bytes += copy(msg[bytes:], cell[1:])
+	}
+
+	return msg, nil
+}
+
+// SendDirective serializes and pads a directive to the length of a cell and
+// sends it to the peer. A directive is signaled to the receiver by the first
+// byte of the cell. The next few bytes encode the length of of the serialized
+// protocol buffer. If the buffer doesn't fit in a cell, then throw an error.
+func (p *ProxyContext) SendDirective(c *Conn, d *Directive) (int, error) {
+	cell, err := marshalDirective(d)
+	if err != nil {
+		return 0, err
+	}
+	return c.Write(cell)
+}
+
+// ReceiveDirective awaits a reply from the peer and returns the directive
+// received, e.g. in response to RouterContext.HandleProxy(). If the directive
+// type is ERROR, return an error.
+func (p *ProxyContext) ReceiveDirective(c *Conn, d *Directive) (int, error) {
+	cell := make([]byte, CellBytes)
+	bytes, err := c.Read(cell)
+	if err != nil && err != io.EOF {
 		return 0, err
 	}
 
-	if cell[0] == msgCell { // Read a message.
-		// TODO(cjpatton)
-
-	} else if cell[0] == dirCell { // Handle a directive.
-		dirBytes, n := binary.Uvarint(cell[1:])
-		var d Directive
-		if err := proto.Unmarshal(cell[1+n:1+n+int(dirBytes)], &d); err != nil {
-			return 0, err
-		}
-
-		switch *d.Type {
-		case DirectiveType_ERROR:
-			return 0, errors.New("router error: " + (*d.Error))
-		case DirectiveType_FATAL:
-			return 0, errors.New("router error: " + (*d.Error) + " (connection closed)")
-		default:
-			return 0, errBadDirective
-		}
+	err = unmarshalDirective(cell, d)
+	if err != nil {
+		return 0, err
 	}
 
-	return 0, errBadCellType
+	if *d.Type == DirectiveType_ERROR {
+		return bytes, errors.New("router error: " + (*d.Error))
+	}
+	return bytes, nil
 }
 
+// Return the next serial identifier.
 func (p *ProxyContext) nextID() (id uint64) {
 	id = p.id
 	p.id++

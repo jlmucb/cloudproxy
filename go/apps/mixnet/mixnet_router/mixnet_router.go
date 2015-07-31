@@ -19,6 +19,7 @@ import (
 	"flag"
 	"io"
 	"net"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/apps/mixnet"
@@ -67,8 +68,9 @@ var x509Identity pkix.Name = pkix.Name{
 
 func main() {
 	flag.Parse()
+	timeout, _ := time.ParseDuration("5s") // TODO(cjpatton) make this a command line parameter.
 	hp, err := mixnet.NewRouterContext(*configPath, *serverNetwork, *serverAddr, *batchSize,
-		&x509Identity, tao.Parent())
+		timeout, &x509Identity, tao.Parent())
 	if err != nil {
 		glog.Errorf("failed to configure server: %s", err)
 	}

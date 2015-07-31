@@ -22,6 +22,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao"
@@ -35,25 +36,30 @@ type RouterContext struct {
 
 	id uint64 // Next serial identifier that will be assigned to a connection.
 
-	// Data structure for queueing and batching outgoing messages.
-	sendQueue *SendQueue
+	// Data structures for queueing and batching messages from sender to
+	// recipient and recipient to sender respectively.
+	sendQueue  *Queue
+	replyQueue *Queue
 
-	// The send queue and error handler are instantiated as go routines; these
-	// channels are for managing them.
-	killSendQueue             chan bool
-	killSendQueueErrorHandler chan bool
+	// The queues and error handlers are instantiated as go routines; these
+	// channels are for tearing them down.
+	killQueue             chan bool
+	killQueueErrorHandler chan bool
 
-	network string // Network protocol, e.g. "tcp"
+	network string        // Network protocol, e.g. "tcp"
+	timeout time.Duration // Timeout on read/write/dial.
 }
 
 // NewRouterContext generates new keys, loads a local domain configuration from
 // path and binds an anonymous listener socket to addr on network
 // network. A delegation is requested from the Tao t which is  nominally
 // the parent of this hosted program.
-func NewRouterContext(path, network, addr string, batchSize int, x509Identity *pkix.Name, t tao.Tao) (hp *RouterContext, err error) {
-	hp = new(RouterContext)
+func NewRouterContext(path, network, addr string, batchSize int, timeout time.Duration,
+	x509Identity *pkix.Name, t tao.Tao) (hp *RouterContext, err error) {
 
+	hp = new(RouterContext)
 	hp.network = network
+	hp.timeout = timeout
 
 	// Generate keys and get attestation from parent.
 	if hp.keys, err = tao.NewTemporaryTaoDelegatedKeys(tao.Signing|tao.Crypting, t); err != nil {
@@ -89,11 +95,15 @@ func NewRouterContext(path, network, addr string, batchSize int, x509Identity *p
 		return nil, err
 	}
 
-	hp.sendQueue = NewSendQueue(network, batchSize)
-	hp.killSendQueue = make(chan bool)
-	hp.killSendQueueErrorHandler = make(chan bool)
-	go hp.sendQueue.DoSendQueue(hp.killSendQueue)
-	go hp.sendQueue.DoSendQueueErrorHandler(hp.killSendQueueErrorHandler)
+	// Instantiate the queues.
+	hp.sendQueue = NewQueue(network, batchSize, timeout)
+	hp.replyQueue = NewQueue(network, batchSize, timeout)
+	hp.killQueue = make(chan bool)
+	hp.killQueueErrorHandler = make(chan bool)
+	go hp.sendQueue.DoQueue(hp.killQueue)
+	go hp.replyQueue.DoQueue(hp.killQueue)
+	go hp.sendQueue.DoQueueErrorHandler(hp.replyQueue, hp.killQueueErrorHandler)
+	go hp.replyQueue.DoQueueErrorHandlerLog("reply queue", hp.killQueueErrorHandler)
 
 	return hp, nil
 }
@@ -109,8 +119,10 @@ func (hp *RouterContext) AcceptProxy() (*Conn, error) {
 
 // Close releases any resources held by the hosted program.
 func (hp *RouterContext) Close() {
-	hp.killSendQueue <- true
-	hp.killSendQueueErrorHandler <- true
+	hp.killQueue <- true
+	hp.killQueue <- true
+	hp.killQueueErrorHandler <- true
+	hp.killQueueErrorHandler <- true
 	if hp.proxyListener != nil {
 		hp.proxyListener.Close()
 	}
@@ -124,11 +136,19 @@ func (hp *RouterContext) HandleProxy(c *Conn) error {
 		return err
 	}
 
-	if cell[0] == msgCell { // Handle a message.
+	hp.replyQueue.SetConn(c.id, c)
+	hp.replyQueue.SetAddr(c.id, c.RemoteAddr().String())
+
+	if cell[0] == msgCell {
+		// If this router is an exit point, then read cells until the whole
+		// message is assembled and add it to sendQueue. If this router is
+		// a relay (not implemented), then just add the cell to the
+		// sendQueue.
 		msgBytes, n := binary.Uvarint(cell[1:])
 		if msgBytes > MaxMsgBytes {
-			hp.SendFatal(c, errMsgLength)
-			c.Close()
+			if err = hp.SendError(c, errMsgLength); err != nil {
+				return err
+			}
 			return nil
 		}
 
@@ -140,14 +160,34 @@ func (hp *RouterContext) HandleProxy(c *Conn) error {
 		for err != io.EOF && uint64(bytes) < msgBytes {
 			if _, err = c.Read(cell); err != nil && err != io.EOF {
 				return err
+			} else if cell[0] != msgCell {
+				return errCellType
 			}
-			bytes += copy(msg[bytes:], cell)
+			bytes += copy(msg[bytes:], cell[1:])
 		}
 
-		q := new(Queueable)
-		q.Id = proto.Uint64(c.id)
-		q.Msg = msg
-		hp.sendQueue.Enqueue(q)
+		// Wait for a message from the destination, divide it into cells,
+		// and add the cells to replyQueue.
+		reply := make(chan []byte)
+		hp.sendQueue.EnqueueMsgReply(c.id, msg, reply)
+
+		msg = <-reply
+		if msg != nil {
+			zeroCell(cell)
+			msgBytes := len(msg)
+
+			cell[0] = msgCell
+			n := binary.PutUvarint(cell[1:], uint64(msgBytes))
+			bytes := copy(cell[1+n:], msg)
+			hp.replyQueue.EnqueueMsg(c.id, cell)
+
+			for bytes < msgBytes {
+				zeroCell(cell)
+				cell[0] = msgCell
+				bytes += copy(cell[1:], msg[bytes:])
+				hp.replyQueue.EnqueueMsg(c.id, cell)
+			}
+		}
 
 	} else if cell[0] == dirCell { // Handle a directive.
 		dirBytes, n := binary.Uvarint(cell[1:])
@@ -156,44 +196,51 @@ func (hp *RouterContext) HandleProxy(c *Conn) error {
 			return err
 		}
 
-		// Construct a circuit and establish a connection with the destination.
-		// TODO(cjpatton) For now, only single-hop circuits are supported.
-		if *d.Type == DirectiveType_CREATE_CIRCUIT {
+		if *d.Type == DirectiveType_CREATE {
+			// Add next hop for this circuit to sendQueue and send a CREATED
+			// directive to sender to inform the sender. TODO(cjpatton) For
+			// now, only single hop circuits are supported.
 			if len(d.Addrs) == 0 {
-				return errBadDirective
+				if err = hp.SendError(c, errBadDirective); err != nil {
+					return err
+				}
+				return nil
 			}
 			if len(d.Addrs) > 1 {
-				return errors.New("multi-hop circuits not implemented")
+				if err = hp.SendError(c, errors.New("multi-hlp circuits not implemented")); err != nil {
+					return err
+				}
+				return nil
 			}
 
-			q := new(Queueable)
-			q.Id = proto.Uint64(c.id)
-			q.Addr = proto.String(d.Addrs[0])
-			hp.sendQueue.Enqueue(q)
+			hp.sendQueue.SetAddr(c.id, d.Addrs[0])
+			cell, err = marshalDirective(dirCreated)
+			if err != nil {
+				return err
+			}
+			hp.replyQueue.EnqueueMsg(c.id, cell)
 		}
 
 	} else { // Unknown cell type, return an error.
-		hp.SendError(c, errBadCellType)
+		if err = hp.SendError(c, errBadCellType); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
 // SendError sends an error message to a client.
-func (hp *RouterContext) SendError(c net.Conn, err error) (int, error) {
+func (hp *RouterContext) SendError(c *Conn, err error) error {
 	var d Directive
 	d.Type = DirectiveType_ERROR.Enum()
 	d.Error = proto.String(err.Error())
-	return SendDirective(c, &d)
-}
-
-// SendFatal sends an error message and signals the client that the connection
-// was severed on the server side.
-func (hp *RouterContext) SendFatal(c net.Conn, err error) (int, error) {
-	var d Directive
-	d.Type = DirectiveType_FATAL.Enum()
-	d.Error = proto.String(err.Error())
-	return SendDirective(c, &d)
+	cell, err := marshalDirective(&d)
+	if err != nil {
+		return err
+	}
+	hp.replyQueue.EnqueueMsg(c.id, cell)
+	return nil
 }
 
 // Get the next Id to assign and increment counter.

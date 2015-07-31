@@ -207,7 +207,7 @@ func (hp *RouterContext) HandleProxy(c *Conn) error {
 				return nil
 			}
 			if len(d.Addrs) > 1 {
-				if err = hp.SendError(c, errors.New("multi-hlp circuits not implemented")); err != nil {
+				if err = hp.SendError(c, errors.New("multi-hop circuits not implemented")); err != nil {
 					return err
 				}
 				return nil

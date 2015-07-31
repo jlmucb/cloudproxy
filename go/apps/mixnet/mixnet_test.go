@@ -325,8 +325,8 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 
 	// Multihop circuits not supported yet.
 	err = proxy.CreateCircuit(c, "one:234", "two:34", "three:4")
-	if err == nil || (err != nil && err.Error() != "router error: multi-hlp circuits not implemented") {
-		t.Error("should have gotten \"multi-hlp circuits not implemented\" from router", err)
+	if err == nil || (err != nil && err.Error() != "router error: multi-hop circuits not implemented") {
+		t.Error("should have gotten \"multi-hop circuits not implemented\" from router", err)
 	}
 
 	<-ch

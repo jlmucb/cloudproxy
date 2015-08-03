@@ -28,7 +28,7 @@ var configPath = flag.String("config", "tao.config", "Path to domain configurati
 
 func main() {
 	flag.Parse()
-	p, err := mixnet.NewProxyContext(*configPath)
+	p, err := mixnet.NewProxyContext(*configPath, *serverNetwork)
 	if err != nil {
 		glog.Fatalf("failed to configure proxy: %s", err)
 	}

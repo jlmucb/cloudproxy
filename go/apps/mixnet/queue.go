@@ -26,11 +26,12 @@ import (
 )
 
 type Queueable struct {
-	id    uint64
-	addr  string
-	msg   []byte
-	conn  net.Conn
-	reply chan []byte
+	id      uint64
+	addr    string
+	msg     []byte
+	conn    net.Conn
+	reply   chan []byte
+	destroy bool
 }
 
 type sendQueueError struct {
@@ -128,6 +129,15 @@ func (sq *Queue) SetConn(id uint64, c net.Conn) {
 	sq.queue <- q
 }
 
+// Close creates a queueable object that closes the connection and deletes all
+// associated resources.
+func (sq *Queue) Close(id uint64) {
+	q := new(Queueable)
+	q.id = id
+	q.destroy = true
+	sq.queue <- q
+}
+
 // DoQueue adds messages to a queue and transmits messages in batches. It also
 // provides an interface for receiving messages from a server. Typically a
 // message is a cell, but when the calling router is an exit point, the message
@@ -138,7 +148,6 @@ func (sq *Queue) DoQueue(kill <-chan bool) {
 		select {
 		case <-kill:
 			for _, c := range sq.nextConn {
-				// TODO(cjpatton) send DESTROY to next hop.
 				c.Close()
 			}
 			return
@@ -158,8 +167,22 @@ func (sq *Queue) DoQueue(kill <-chan bool) {
 				sq.nextConn[q.id] = q.conn
 			}
 
-			// Add message or message request (reply) to the queue.
-			if q.msg != nil || q.reply != nil {
+			if q.destroy {
+				// Close the connection and delete all resources. Any subsequent
+				// messages or reply requests will cause an error.
+				if c, def := sq.nextConn[q.id]; def {
+					c.Close()
+					delete(sq.nextConn, q.id)
+				}
+				if _, def := sq.nextAddr[q.id]; def {
+					delete(sq.nextAddr, q.id)
+				}
+				if _, def := sq.sendBuffer[q.id]; def {
+					delete(sq.sendBuffer, q.id)
+				}
+
+			} else if q.msg != nil || q.reply != nil {
+				// Add message or message request (reply) to the queue.
 
 				if _, def := sq.nextAddr[q.id]; !def {
 					sq.err <- sendQueueError{q.id,

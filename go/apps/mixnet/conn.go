@@ -43,6 +43,7 @@ var errBadDirective = errors.New("received bad directive")
 var errMsgLength = errors.New("message too long")
 
 var dirCreated = &Directive{Type: DirectiveType_CREATED.Enum()}
+var dirDestroy = &Directive{Type: DirectiveType_DESTROY.Enum()}
 
 // Conn implements the net.Conn interface. The read and write operations are
 // overloaded to check that only cells are sent between entities in the mixnet

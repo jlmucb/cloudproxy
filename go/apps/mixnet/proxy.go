@@ -27,11 +27,14 @@ import (
 type ProxyContext struct {
 	domain *tao.Domain // Policy guard and public key.
 	id     uint64      // Next serial identifier that will assigned to a new connection.
+
+	network string // Network protocol, e.g. "tcp".
 }
 
 // NewProxyContext loads a domain from a local configuration.
-func NewProxyContext(path string) (p *ProxyContext, err error) {
+func NewProxyContext(path, network string) (p *ProxyContext, err error) {
 	p = new(ProxyContext)
+	p.network = network
 
 	// Load domain from a local configuration.
 	if p.domain, err = tao.LoadDomain(path, nil); err != nil {
@@ -50,25 +53,78 @@ func (p *ProxyContext) DialRouter(network, addr string) (*Conn, error) {
 	return &Conn{c, p.nextID()}, nil
 }
 
-// CreateCircuit directs the router to construct a circuit to a particular
-// destination over the mixnet.
-func (p *ProxyContext) CreateCircuit(c *Conn, circuitAddrs ...string) error {
+// SendDirective serializes and pads a directive to the length of a cell and
+// sends it to the peer. A directive is signaled to the receiver by the first
+// byte of the cell. The next few bytes encode the length of of the serialized
+// protocol buffer. If the buffer doesn't fit in a cell, then throw an error.
+func (p *ProxyContext) SendDirective(c *Conn, d *Directive) (int, error) {
+	cell, err := marshalDirective(d)
+	if err != nil {
+		return 0, err
+	}
+	return c.Write(cell)
+}
+
+// ReceiveDirective awaits a reply from the peer and returns the directive
+// received, e.g. in response to RouterContext.HandleProxy(). If the directive
+// type is ERROR, return an error.
+func (p *ProxyContext) ReceiveDirective(c *Conn, d *Directive) (int, error) {
+	cell := make([]byte, CellBytes)
+	bytes, err := c.Read(cell)
+	if err != nil && err != io.EOF {
+		return 0, err
+	}
+
+	err = unmarshalDirective(cell, d)
+	if err != nil {
+		return 0, err
+	}
+
+	if *d.Type == DirectiveType_ERROR {
+		return bytes, errors.New("router error: " + (*d.Error))
+	}
+	return bytes, nil
+}
+
+// CreateCircuit connects anonymously to a remote Tao-delegated mixnet router
+// specified by addrs[0]. It directs the router to construct a circuit to a
+// particular destination over the mixnet specified by addrs[len(addrs)-1].
+func (p *ProxyContext) CreateCircuit(addrs ...string) (*Conn, error) {
+	c, err := p.DialRouter(p.network, addrs[0])
+	if err != nil {
+		return nil, err
+	}
+
 	d := &Directive{
 		Type:  DirectiveType_CREATE.Enum(),
-		Addrs: circuitAddrs,
+		Addrs: addrs[1:],
 	}
 
 	// Send CREATE directive to router.
 	if _, err := p.SendDirective(c, d); err != nil {
-		return err
+		return c, err
 	}
 
 	// Wait for CREATED directive from router.
 	if _, err := p.ReceiveDirective(c, d); err != nil {
-		return err
+		return c, err
 	} else if *d.Type != DirectiveType_CREATED {
-		return errors.New("could not create circuit")
+		return c, errors.New("could not create circuit")
 	}
+
+	return c, nil
+}
+
+// DestroyCircuit directs the router to close the connection to the destination
+// and destroy the circuit then closes the connection. TODO(cjpatton) in order
+// to support multi-hop circuits, this code will need to wait for a DESTROYED
+// directive from the first hop.
+func (p *ProxyContext) DestroyCircuit(c *Conn) error {
+	// Send DESTROY directive to router.
+	if _, err := p.SendDirective(c, dirDestroy); err != nil {
+		return err
+	}
+	c.Close()
 	return nil
 }
 
@@ -141,39 +197,6 @@ func (p *ProxyContext) ReceiveMessage(c *Conn) ([]byte, error) {
 	}
 
 	return msg, nil
-}
-
-// SendDirective serializes and pads a directive to the length of a cell and
-// sends it to the peer. A directive is signaled to the receiver by the first
-// byte of the cell. The next few bytes encode the length of of the serialized
-// protocol buffer. If the buffer doesn't fit in a cell, then throw an error.
-func (p *ProxyContext) SendDirective(c *Conn, d *Directive) (int, error) {
-	cell, err := marshalDirective(d)
-	if err != nil {
-		return 0, err
-	}
-	return c.Write(cell)
-}
-
-// ReceiveDirective awaits a reply from the peer and returns the directive
-// received, e.g. in response to RouterContext.HandleProxy(). If the directive
-// type is ERROR, return an error.
-func (p *ProxyContext) ReceiveDirective(c *Conn, d *Directive) (int, error) {
-	cell := make([]byte, CellBytes)
-	bytes, err := c.Read(cell)
-	if err != nil && err != io.EOF {
-		return 0, err
-	}
-
-	err = unmarshalDirective(cell, d)
-	if err != nil {
-		return 0, err
-	}
-
-	if *d.Type == DirectiveType_ERROR {
-		return bytes, errors.New("router error: " + (*d.Error))
-	}
-	return bytes, nil
 }
 
 // Return the next serial identifier.

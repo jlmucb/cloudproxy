@@ -75,7 +75,7 @@ func makeContext(batchSize int) (*RouterContext, *ProxyContext, error) {
 	}
 
 	// Create a proxy context. This just loads the domain.
-	proxy, err := NewProxyContext(configPath)
+	proxy, err := NewProxyContext(configPath, network)
 	if err != nil {
 		router.Close()
 		return nil, nil, err
@@ -143,15 +143,11 @@ func runRouterHandleProxy(router *RouterContext, requestCount int, ch chan<- tes
 // Proxy dials a router, creates a circuit, and sends a message over
 // the circuit.
 func runProxySendMessage(proxy *ProxyContext, msg []byte) ([]byte, error) {
-	c, err := proxy.DialRouter(network, routerAddr)
+	c, err := proxy.CreateCircuit(routerAddr, dstAddr)
 	if err != nil {
 		return nil, err
 	}
 	defer c.Close()
-
-	if err = proxy.CreateCircuit(c, dstAddr); err != nil {
-		return nil, err
-	}
 
 	if err = proxy.SendMessage(c, msg); err != nil {
 		return nil, err
@@ -185,6 +181,34 @@ func TestProxyRouterConnect(t *testing.T) {
 	defer c.Close()
 
 	<-ch
+}
+
+// Test CREATE and DESTROY.
+// TODO(cjpatton) try changing the batchSize to 2 and SendMessage to see
+// what happens when the circuit is torn down with messages on the queue.
+func TestCreateDestroy(t *testing.T) {
+	router, proxy, err := makeContext(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer router.Close()
+
+	ch := make(chan testResult)
+	go runRouterHandleProxy(router, 2, ch)
+
+	c, err := proxy.CreateCircuit(routerAddr, dstAddr)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if err = proxy.DestroyCircuit(c); err != nil {
+		t.Error(err)
+	}
+
+	res := <-ch
+	if res.err != io.EOF {
+		t.Error("should have gotten EOF from router, but got:", res.err)
+	}
 }
 
 // Test sending a cell.
@@ -283,7 +307,7 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 	cell := make([]byte, CellBytes)
 	ch := make(chan testResult)
 
-	go runRouterHandleProxy(router, 5, ch)
+	go runRouterHandleProxy(router, 2, ch)
 	c, err := proxy.DialRouter(network, routerAddr)
 	if err != nil {
 		t.Error(err)
@@ -309,26 +333,31 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 	if err == nil || err.Error() != "router error: "+errMsgLength.Error() {
 		t.Error("message too long, got incorrect error:", err)
 	}
+	<-ch
+	c.Close()
 
 	// Bogus destination.
-	if err = proxy.CreateCircuit(c, "localhost:9999"); err != nil {
+	go runRouterHandleProxy(router, 2, ch)
+	c, err = proxy.CreateCircuit(routerAddr, "localhost:9999")
+	if err != nil {
 		t.Error(err)
 	}
 	if err = proxy.SendMessage(c, []byte("Are you there?")); err != nil {
 		t.Error(err)
 	}
-
 	_, err = proxy.ReceiveMessage(c)
 	if err == nil || (err != nil && err.Error() != "router error: dial tcp 127.0.0.1:9999: connection refused") {
 		t.Error("should have gotten \"connection refused\" from the router")
 	}
+	<-ch
+	c.Close()
 
 	// Multihop circuits not supported yet.
-	err = proxy.CreateCircuit(c, "one:234", "two:34", "three:4")
+	go runRouterHandleProxy(router, 1, ch)
+	c, err = proxy.CreateCircuit(routerAddr, "one:234", "two:34", "three:4")
 	if err == nil || (err != nil && err.Error() != "router error: multi-hop circuits not implemented") {
 		t.Error("should have gotten \"multi-hop circuits not implemented\" from router", err)
 	}
-
 	<-ch
 	c.Close()
 }

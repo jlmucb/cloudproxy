@@ -219,6 +219,14 @@ func (hp *RouterContext) HandleProxy(c *Conn) error {
 				return err
 			}
 			hp.replyQueue.EnqueueMsg(c.id, cell)
+
+		} else if *d.Type == DirectiveType_DESTROY {
+			// TODO(cjpatton) when multi-hop circuits are implemented, send
+			// a DESTROY directive to the next hop and wait for DESTROYED in
+			// response. For now, just close the connection to the circuit.
+			hp.sendQueue.Close(c.id)
+			hp.replyQueue.Close(c.id)
+			return io.EOF
 		}
 
 	} else { // Unknown cell type, return an error.
@@ -244,8 +252,9 @@ func (hp *RouterContext) SendError(c *Conn, err error) error {
 }
 
 // Get the next Id to assign and increment counter.
-// TODO(cjpatton) This will need mutual exclusion when AcceptRouter() is
-// implemented.
+// TODO(cjpatton) AcceptRouter() will wait for connections from other mixnet
+// routers when multi-hop circuits are implemented. This will need mutual
+// exclusion when that happens.
 func (hp *RouterContext) nextID() (id uint64) {
 	id = hp.id
 	hp.id++

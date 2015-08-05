@@ -618,6 +618,119 @@ func (g *DatalogGuard) retract(f auth.Form) error {
 	return nil
 }
 
+func max(args ...int) int {
+	m := 0
+	for _, v := range args {
+		if m < v {
+			m = v
+		}
+	}
+	return m
+}
+
+// Figure out the max length of a principal in a term, where the length of a
+// principal is one more than the length of the extensions of the principal.
+func getMaxTermLength(t auth.Term) int {
+	if t == nil {
+		return 0
+	}
+
+	switch t.(type) {
+	case auth.Prin:
+		// TODO(tmroeder): this is not fully general, since there might be an Arg that has a longer principal.
+		return 1 + len(t.(auth.Prin).Ext)
+	case *auth.Prin:
+		// TODO(tmroeder): this is not fully general, since there might be an Arg that has a longer principal.
+		return 1 + len(t.(*auth.Prin).Ext)
+	case auth.PrinTail:
+		return len(t.(auth.PrinTail).Ext)
+	case *auth.PrinTail:
+		return len(t.(*auth.PrinTail).Ext)
+	case auth.Str, auth.Bytes, auth.Int, auth.TermVar:
+		return 0
+	default:
+		return 0
+	}
+}
+
+// Figure out the max length of a principal in a form, where the length of a
+// principal is one more than the length of the extensions of the principal.
+func getMaxFormLength(f auth.Form) int {
+	if f == nil {
+		return 0
+	}
+
+	var m []int
+	switch f.(type) {
+	case auth.Pred:
+		for _, t := range f.(auth.Pred).Arg {
+			m = append(m, getMaxTermLength(t))
+		}
+	case *auth.Pred:
+		for _, t := range f.(*auth.Pred).Arg {
+			m = append(m, getMaxTermLength(t))
+		}
+	case auth.Const, *auth.Const:
+		return 0
+	case auth.Not:
+		return getMaxFormLength(f.(auth.Not).Negand)
+	case *auth.Not:
+		return getMaxFormLength(f.(*auth.Not).Negand)
+	case auth.And:
+		for _, c := range f.(auth.And).Conjunct {
+			m = append(m, getMaxFormLength(c))
+		}
+	case *auth.And:
+		for _, c := range f.(*auth.And).Conjunct {
+			m = append(m, getMaxFormLength(c))
+		}
+	case auth.Or:
+		for _, d := range f.(auth.Or).Disjunct {
+			m = append(m, getMaxFormLength(d))
+		}
+	case *auth.Or:
+		for _, d := range f.(*auth.Or).Disjunct {
+			m = append(m, getMaxFormLength(d))
+		}
+	case auth.Implies:
+		first := getMaxFormLength(f.(auth.Implies).Antecedent)
+		second := getMaxFormLength(f.(auth.Implies).Consequent)
+		return max(first, second)
+	case *auth.Implies:
+		first := getMaxFormLength(f.(*auth.Implies).Antecedent)
+		second := getMaxFormLength(f.(*auth.Implies).Consequent)
+		return max(first, second)
+	case auth.Speaksfor:
+		first := getMaxTermLength(f.(auth.Speaksfor).Delegate)
+		second := getMaxTermLength(f.(auth.Speaksfor).Delegator)
+		return max(first, second)
+	case *auth.Speaksfor:
+		first := getMaxTermLength(f.(*auth.Speaksfor).Delegate)
+		second := getMaxTermLength(f.(*auth.Speaksfor).Delegator)
+		return max(first, second)
+	case auth.Says:
+		sl := getMaxTermLength(f.(auth.Says).Speaker)
+		ml := getMaxFormLength(f.(auth.Says).Message)
+		return max(sl, ml)
+	case *auth.Says:
+		sl := getMaxTermLength(f.(*auth.Says).Speaker)
+		ml := getMaxFormLength(f.(*auth.Says).Message)
+		return max(sl, ml)
+	case auth.Forall:
+		return getMaxFormLength(f.(auth.Forall).Body)
+	case *auth.Forall:
+		return getMaxFormLength(f.(*auth.Forall).Body)
+	case auth.Exists:
+		return getMaxFormLength(f.(auth.Exists).Body)
+	case *auth.Exists:
+		return getMaxFormLength(f.(*auth.Exists).Body)
+	default:
+		return 0
+	}
+
+	return max(m...)
+}
+
 func (g *DatalogGuard) query(f auth.Form) (bool, error) {
 	q, err := g.stmtToDatalog(f, nil, nil)
 	if err != nil {
@@ -699,6 +812,9 @@ func (g *DatalogGuard) Query(query string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
+	m := getMaxFormLength(r.Form)
+	glog.Infof("Max length of query %q is %d", query, m)
 	return g.query(r.Form)
 }
 

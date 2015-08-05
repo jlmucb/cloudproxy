@@ -247,3 +247,60 @@ func TestDatalogSubprin(t *testing.T) {
 		t.Fatal("Subprin authorization check failed")
 	}
 }
+
+var datalogFormLengthChecks = []struct {
+	query  string
+	length int
+}{
+	{"P(key([70]).Program([71]))", 2},
+	{"not P(key([70]).Program([71]))", 2},
+	{"P()", 0},
+	{"P() and Q(key([70]).Program([71]))", 2},
+	{"P() or Q(key([70]).Program([71]))", 2},
+	{"P(key([70]).Program([71])) and Q(key([70]).Program([71]))", 2},
+	{"P(key([70]).Program([71]).N([72])) and Q(key([70]).Program([71]))", 3},
+	{"P() implies Q(key([70]).Program([71]))", 2},
+	{"tpm([70]) speaksfor key([70]).Program([71])", 2},
+	{"tpm([70]).PCRs(\"17,18\", \"a4c7,b876\") says key([72]) speaksfor key([73]).A(\"B\").C()", 3},
+	{"forall X: forall Y: TPM(X) and TrustedHost(Y) implies M(key([70]))", 1},
+	{"exists X: P(X)", 0},
+	{"exists X: P(X, key([71]).P())", 2},
+}
+
+func TestDatalogMaxFormLength(t *testing.T) {
+	for _, v := range datalogFormLengthChecks {
+		var form auth.AnyForm
+		if fmt.Sscanf("("+v.query+")", "%v", &form); form.Form == nil {
+			t.Errorf("fmt.Sscanf(%q) failed", v.query)
+		}
+		l := getMaxFormLength(form.Form)
+		if l != v.length {
+			t.Errorf("%q had length %d, want %d", v.query, l, v.length)
+		}
+	}
+}
+
+var datalogTermLengthChecks = []struct {
+	query  string
+	length int
+}{
+	{"5", 0},
+	{"\"a string\"", 0},
+	{"[716475a8e3]", 0},
+	{"ext.Program([7154])", 1},
+	{"ext.P().Q().R().S().T()", 5},
+	{"key([70]).Program([71])", 2},
+}
+
+func TestDatalogMaxTermLength(t *testing.T) {
+	for _, v := range datalogTermLengthChecks {
+		var term auth.AnyTerm
+		if fmt.Sscanf(v.query, "%v", &term); term.Term == nil {
+			t.Errorf("fmt.Sscanf(%q) failed", v.query)
+		}
+		l := getMaxTermLength(term.Term)
+		if l != v.length {
+			t.Errorf("%q had length %d, want %d", v.query, l, v.length)
+		}
+	}
+}

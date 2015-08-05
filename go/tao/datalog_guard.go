@@ -70,6 +70,7 @@ const (
 // "Pred(...)" alone is translated to "says(K, \"Pred\", ...)".
 //
 // "forall ... F1 and F2 and ... imp G" is translated to "G :- F1, F2, ...".
+// Not safe for concurrent use by goroutines.
 type DatalogGuard struct {
 	Config DatalogGuardDetails
 	Key    *Verifier
@@ -77,6 +78,7 @@ type DatalogGuard struct {
 	modTime time.Time // Modification time of signed rules file at time of reading.
 	db      DatalogRules
 	dl      *dlengine.Engine
+	sp	*subprinPrim
 }
 
 // subprinPrim is a custom datalog primitive that implements subprincipal
@@ -84,6 +86,7 @@ type DatalogGuard struct {
 // DatalogGuard to write in datalog to subprin/3 with arguments S, P, E.
 type subprinPrim struct {
 	datalog.DistinctPred
+	max int
 }
 
 // String returns a string representation of the subprin custom datalog
@@ -192,7 +195,9 @@ func (sp *subprinPrim) Search(target *datalog.Literal, discovered func(c *datalo
 		}
 		oprin.Ext = append(oprin.Ext, eprin.Ext...)
 		oeIdent := dlengine.NewIdent(fmt.Sprintf("%q", oprin.String()))
-		discovered(datalog.NewClause(datalog.NewLiteral(sp, oeIdent, o, e)))
+		if len(oprin.Ext) + 1 <= sp.max {
+			discovered(datalog.NewClause(datalog.NewLiteral(sp, oeIdent, o, e)))
+		}
 	} else if p.Constant() && o.Constant() && e.Constant() {
 		// Check that the constraint holds and report it as discovered.
 		prin, err := parseCompositePrin(p)
@@ -205,7 +210,8 @@ func (sp *subprinPrim) Search(target *datalog.Literal, discovered func(c *datalo
 		}
 
 		// Extend the root principal with the extension from the ext principal
-		// and check identity.
+		// and check identity. Make sure the constructed principal does
+		// not exceed the given maximum principal length.
 		oprin.Ext = append(oprin.Ext, eprin.Ext...)
 		if prin.Identical(oprin) {
 			discovered(datalog.NewClause(datalog.NewLiteral(sp, p, o, e)))
@@ -217,11 +223,11 @@ func (sp *subprinPrim) Search(target *datalog.Literal, discovered func(c *datalo
 // non-persistent rule set. It adds a custom predicate subprin(P, O, E) to check
 // if a principal P is a subprincipal O.E.
 func NewTemporaryDatalogGuard() Guard {
-	sp := new(subprinPrim)
+	sp := &subprinPrim{max: 1}
 	sp.SetArity(3)
 	eng := dlengine.NewEngine()
 	eng.AddPred(sp)
-	return &DatalogGuard{dl: eng}
+	return &DatalogGuard{dl: eng, sp: sp}
 }
 
 // NewDatalogGuardFromConfig returns a new datalog guard that uses a signed,
@@ -239,11 +245,11 @@ func NewDatalogGuardFromConfig(verifier *Verifier, config DatalogGuardDetails) (
 // NewDatalogGuard returns a new datalog guard without configuring a rules
 // file.
 func NewDatalogGuard(verifier *Verifier) *DatalogGuard {
-	sp := new(subprinPrim)
+	sp := &subprinPrim{max: 1}
 	sp.SetArity(3)
 	eng := dlengine.NewEngine()
 	eng.AddPred(sp)
-	dg := &DatalogGuard{Key: verifier, dl: eng}
+	dg := &DatalogGuard{Key: verifier, dl: eng, sp: sp}
 	dg.Config.SignedRulesPath = nil
 	return dg
 }
@@ -732,6 +738,8 @@ func getMaxFormLength(f auth.Form) int {
 }
 
 func (g *DatalogGuard) query(f auth.Form) (bool, error) {
+	g.sp.max = getMaxFormLength(f)
+
 	q, err := g.stmtToDatalog(f, nil, nil)
 	if err != nil {
 		return false, err
@@ -813,8 +821,6 @@ func (g *DatalogGuard) Query(query string) (bool, error) {
 		return false, err
 	}
 
-	m := getMaxFormLength(r.Form)
-	glog.Infof("Max length of query %q is %d", query, m)
 	return g.query(r.Form)
 }
 

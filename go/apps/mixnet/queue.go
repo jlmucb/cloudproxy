@@ -25,8 +25,12 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+// The Queueable object is passed through a channel and mutates the state of
+// the Queue in some manner; for example, it can set the destination
+// adddress or connection of a sender, add a message or request for reply
+// to the queue, or destroy any resources associated with the connection.
 type Queueable struct {
-	id      uint64
+	id      uint64 // Serial identififer of associated connection.
 	addr    string
 	msg     []byte
 	conn    net.Conn
@@ -100,7 +104,7 @@ func (sq *Queue) EnqueueReply(id uint64, reply chan []byte) {
 	sq.queue <- q
 }
 
-// EnqueueMsgRply creates a queueable object with a message and a reply channel
+// EnqueueMsgReply creates a queueable object with a message and a reply channel
 // and adds it to the queue.
 func (sq *Queue) EnqueueMsgReply(id uint64, msg []byte, reply chan []byte) {
 	q := new(Queueable)
@@ -227,7 +231,7 @@ func (sq *Queue) DoQueueErrorHandler(queue *Queue, kill <-chan bool) {
 			d.Error = proto.String(err.Error())
 			cell, e := marshalDirective(&d)
 			if e != nil {
-				glog.Errorf("queue: %s\n", e.Error())
+				glog.Errorf("queue: %s\n", e)
 				return
 			}
 			queue.EnqueueMsg(err.id, cell)
@@ -242,7 +246,7 @@ func (sq *Queue) DoQueueErrorHandlerLog(name string, kill <-chan bool) {
 		case <-kill:
 			return
 		case err := <-sq.err:
-			glog.Errorf("%s (%d): %s\n", name, err.id, err.Error())
+			glog.Errorf("%s, client no. %d: %s\n", name, err.id, err)
 		}
 	}
 }

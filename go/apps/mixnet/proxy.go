@@ -18,30 +18,50 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"net"
+	"time"
 
+	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/tao"
 )
 
 // ProxyContext stores the runtime environment for a mixnet proxy. A mixnet
 // proxy connects to a mixnet router on behalf of a client's application.
 type ProxyContext struct {
-	domain *tao.Domain // Policy guard and public key.
-	id     uint64      // Next serial identifier that will assigned to a new connection.
+	domain   *tao.Domain  // Policy guard and public key.
+	listener net.Listener // SOCKS5 server for listening to clients.
 
-	network string // Network protocol, e.g. "tcp".
+	// Next serial identifier that will be assigned to a new connection.
+	id uint64
+
+	network string        // Network protocol, e.g. "tcp".
+	timeout time.Duration // Timeout on read/write.
 }
 
 // NewProxyContext loads a domain from a local configuration.
-func NewProxyContext(path, network string) (p *ProxyContext, err error) {
+func NewProxyContext(path, network, addr string, timeout time.Duration) (p *ProxyContext, err error) {
 	p = new(ProxyContext)
 	p.network = network
+	p.timeout = timeout
 
 	// Load domain from a local configuration.
 	if p.domain, err = tao.LoadDomain(path, nil); err != nil {
 		return nil, err
 	}
 
+	// Initialize a SOCKS server.
+	if p.listener, err = SocksListen(network, addr); err != nil {
+		return nil, err
+	}
+
 	return p, nil
+}
+
+// Close unbinds the proxy server socket.
+func (p *ProxyContext) Close() {
+	if p.listener != nil {
+		p.listener.Close()
+	}
 }
 
 // DialRouter connects anonymously to a remote Tao-delegated mixnet router.
@@ -50,7 +70,7 @@ func (p *ProxyContext) DialRouter(network, addr string) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Conn{c, p.nextID()}, nil
+	return &Conn{c, p.nextID(), p.timeout}, nil
 }
 
 // SendDirective serializes and pads a directive to the length of a cell and
@@ -144,7 +164,7 @@ func (p *ProxyContext) SendMessage(c *Conn, msg []byte) error {
 	}
 
 	for bytes < msgBytes {
-		zeroCell(cell)
+		tao.ZeroBytes(cell)
 		cell[0] = msgCell
 		bytes += copy(cell[1:], msg[bytes:])
 		if _, err := c.Write(cell); err != nil {
@@ -204,4 +224,63 @@ func (p *ProxyContext) nextID() (id uint64) {
 	id = p.id
 	p.id++
 	return id
+}
+
+// Accept waits for clients running the SOCKS5 protocol.
+func (p *ProxyContext) Accept() (net.Conn, error) {
+	return p.listener.Accept()
+}
+
+// ServeClient creates a circuit over the mixnet and relays messages to a
+// destination (specified by addrs[len(addrs)-1]) on behalf of the client.
+// Read a message from the client, send it over the mixnet, wait for a reply,
+// and forward it the client. Once an EOF is encountered (or some other error
+// occurs), destroy the circuit.
+func (p *ProxyContext) ServeClient(c net.Conn, addrs ...string) error {
+
+	d, err := p.CreateCircuit(addrs...)
+	if err != nil {
+		return err
+	}
+
+	for {
+		err = p.HandleClient(c, d)
+		if err == io.EOF {
+			glog.Info("proxy: encountered EOF while serving")
+			break
+		} else if err != nil {
+			glog.Errorf("proxy: reading message from client: %s", err)
+			break
+		}
+	}
+
+	return p.DestroyCircuit(d)
+}
+
+// HandleClient relays a message read from client connection c to mixnet
+// connection  d and relay reply.
+func (p *ProxyContext) HandleClient(c net.Conn, d *Conn) error {
+
+	msg := make([]byte, MaxMsgBytes)
+	c.SetDeadline(time.Now().Add(p.timeout))
+	bytes, err := c.Read(msg)
+	if err != nil {
+		return err
+	}
+
+	if err = p.SendMessage(d, msg[:bytes]); err != nil {
+		return err
+	}
+
+	reply, err := p.ReceiveMessage(d)
+	if err != nil {
+		return err
+	}
+
+	c.SetDeadline(time.Now().Add(p.timeout))
+	if _, err = c.Write(reply); err != nil {
+		return err
+	}
+
+	return nil
 }

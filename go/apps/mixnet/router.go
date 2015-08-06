@@ -114,7 +114,7 @@ func (hp *RouterContext) AcceptProxy() (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Conn{c, hp.nextID()}, nil
+	return &Conn{c, hp.nextID(), hp.timeout}, nil
 }
 
 // Close releases any resources held by the hosted program.
@@ -173,7 +173,7 @@ func (hp *RouterContext) HandleProxy(c *Conn) error {
 
 		msg = <-reply
 		if msg != nil {
-			zeroCell(cell)
+			tao.ZeroBytes(cell)
 			msgBytes := len(msg)
 
 			cell[0] = msgCell
@@ -182,7 +182,7 @@ func (hp *RouterContext) HandleProxy(c *Conn) error {
 			hp.replyQueue.EnqueueMsg(c.id, cell)
 
 			for bytes < msgBytes {
-				zeroCell(cell)
+				tao.ZeroBytes(cell)
 				cell[0] = msgCell
 				bytes += copy(cell[1:], msg[bytes:])
 				hp.replyQueue.EnqueueMsg(c.id, cell)

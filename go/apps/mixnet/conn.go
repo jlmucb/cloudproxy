@@ -18,6 +18,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"net"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -50,11 +51,13 @@ var dirDestroy = &Directive{Type: DirectiveType_DESTROY.Enum()}
 // protocol.
 type Conn struct {
 	net.Conn
-	id uint64 // Serial identifier of connection in a given context.
+	id      uint64        // Serial identifier of connection in a given context.
+	timeout time.Duration // timeout on read/write.
 }
 
 // Read a cell from the channel. If len(msg) != CellBytes, return an error.
-func (c Conn) Read(msg []byte) (n int, err error) {
+func (c *Conn) Read(msg []byte) (n int, err error) {
+	c.Conn.SetDeadline(time.Now().Add(c.timeout))
 	n, err = c.Conn.Read(msg)
 	if err != nil {
 		return n, err
@@ -67,6 +70,7 @@ func (c Conn) Read(msg []byte) (n int, err error) {
 
 // Write a cell to the channel. If the len(cell) != CellBytes, return an error.
 func (c *Conn) Write(msg []byte) (n int, err error) {
+	c.Conn.SetDeadline(time.Now().Add(c.timeout))
 	if len(msg) != CellBytes {
 		return 0, errCellLength
 	}
@@ -77,6 +81,13 @@ func (c *Conn) Write(msg []byte) (n int, err error) {
 	return n, nil
 }
 
+// GetID returns the connection's serial ID.
+func (c *Conn) GetID() uint64 {
+	return c.id
+}
+
+// Transform a directive into a cell, encoding its length and padding it to the
+// length of a cell.
 func marshalDirective(d *Directive) ([]byte, error) {
 	db, err := proto.Marshal(d)
 	if err != nil {
@@ -97,6 +108,7 @@ func marshalDirective(d *Directive) ([]byte, error) {
 	return cell, nil
 }
 
+// Parse a directive from a cell.
 func unmarshalDirective(cell []byte, d *Directive) error {
 	if cell[0] != dirCell {
 		return errCellType
@@ -108,23 +120,4 @@ func unmarshalDirective(cell []byte, d *Directive) error {
 	}
 
 	return nil
-}
-
-// SendDirective serializes and pads a directive to the length of a cell and
-// sends it to the peer. A directive is signaled to the receiver by the first
-// byte of the cell. The next few bytes encode the length of of the serialized
-// protocol buffer. If the buffer doesn't fit in a cell, then throw an error.
-func (c *Conn) SendDirective(d *Directive) (int, error) {
-	cell, err := marshalDirective(d)
-	if err != nil {
-		return 0, err
-	}
-	return c.Write(cell)
-}
-
-// Write zeros to each byte of a cell.
-func zeroCell(cell []byte) {
-	for i := 0; i < CellBytes; i++ {
-		cell[i] = 0
-	}
 }

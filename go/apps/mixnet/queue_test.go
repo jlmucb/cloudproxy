@@ -22,24 +22,29 @@ import (
 )
 
 // A dummy sever that reads a message from the connecting client.
-func runDummyServerReadOne(ch chan<- testResult) {
+func runDummyServerOne(ch chan<- testResult) {
 	l, err := net.Listen(network, dstAddr)
 	if err != nil {
-		ch <- testResult{err, []byte{}}
+		ch <- testResult{err, nil}
 		return
 	}
 	defer l.Close()
 
 	c, err := l.Accept()
 	if err != nil {
-		ch <- testResult{err, []byte{}}
+		ch <- testResult{err, nil}
 		return
 	}
 	defer c.Close()
 
-	buf := make([]byte, CellBytes*10)
+	buf := make([]byte, MaxMsgBytes)
 	bytes, err := c.Read(buf)
 	if err != nil {
+		ch <- testResult{err, nil}
+		return
+	}
+
+	if _, err = c.Write(buf[:bytes]); err != nil {
 		ch <- testResult{err, nil}
 		return
 	}

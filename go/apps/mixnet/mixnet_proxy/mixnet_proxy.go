@@ -16,31 +16,63 @@ package main
 
 import (
 	"flag"
+	"net"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/apps/mixnet"
 )
 
+// serveClient runs the SOCKS5 proxy for clients and connects them
+// to the mixnet.
+func serveClients(routerAddr string, proxy *mixnet.ProxyContext) error {
+	for {
+		c, err := proxy.Accept()
+		if err != nil {
+			return err
+		}
+
+		go func(c net.Conn) {
+			defer c.Close()
+			proxy.ServeClient(c, routerAddr, c.(*mixnet.SocksConn).DestinationAddr())
+		}(c)
+	}
+}
+
 // Command line arguments.
-var serverAddr = flag.String("addr", "localhost:8123", "Address and port for Tao server.")
-var serverNetwork = flag.String("network", "tcp", "Network protocol for Tao server.")
+var proxyAddr = flag.String("proxy_addr", "127.0.0.1:1080", "Address and port for the Tao-delegated mixnet router.")
+var routerAddr = flag.String("router_addr", "127.0.0.1:8123", "Address and port for the Tao-delegated mixnet router.")
+var network = flag.String("network", "tcp", "Network protocol for the mixnet proxy and router.")
 var configPath = flag.String("config", "tao.config", "Path to domain configuration file.")
+var timeoutDuration = flag.String("timeout", "10s", "Timeout on TCP connections, e.g. \"10s\".")
 
 func main() {
 	flag.Parse()
-	p, err := mixnet.NewProxyContext(*configPath, *serverNetwork)
+	timeout, err := time.ParseDuration(*timeoutDuration)
+	if err != nil {
+		glog.Fatalf("proxy: failed to parse timeout duration: %s", err)
+	}
+
+	proxy, err := mixnet.NewProxyContext(*configPath, *network, *proxyAddr, timeout)
 	if err != nil {
 		glog.Fatalf("failed to configure proxy: %s", err)
 	}
+	defer proxy.Close()
 
-	c, err := p.DialRouter(*serverNetwork, *serverAddr)
-	if err != nil {
-		glog.Fatalf("failed to connect to router: %s", err)
-	}
-	defer c.Close()
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+	go func() {
+		sig := <-sigs
+		proxy.Close()
+		glog.Infof("router: closing on signal: %s", sig)
+		os.Exit(0x81) // TODO(cjpatton) see mixnet_router/mixnet_router.go.
+	}()
 
-	if _, err = c.Write([]byte("Hello!")); err != nil {
-		glog.Errorf("failed to send message: %s", err)
+	if err = serveClients(*routerAddr, proxy); err != nil {
+		glog.Errorf("proxy: error while serving: %s", err)
 	}
 
 	glog.Flush()

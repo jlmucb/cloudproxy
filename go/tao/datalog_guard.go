@@ -624,14 +624,11 @@ func (g *DatalogGuard) retract(f auth.Form) error {
 	return nil
 }
 
-func max(args ...int) int {
-	m := 0
-	for _, v := range args {
-		if m < v {
-			m = v
-		}
+func max(x, y int) int {
+	if x > y {
+		return x
 	}
-	return m
+	return y
 }
 
 // Figure out the max length of a principal in a term, where the length of a
@@ -643,10 +640,11 @@ func getMaxTermLength(t auth.Term) int {
 
 	switch t.(type) {
 	case auth.Prin:
-		// TODO(tmroeder): this is not fully general, since there might be an Arg that has a longer principal.
+		// TODO(tmroeder): this and the next case are not fully
+		// general, since there might be an Arg that has a longer
+		// principal.
 		return 1 + len(t.(auth.Prin).Ext)
 	case *auth.Prin:
-		// TODO(tmroeder): this is not fully general, since there might be an Arg that has a longer principal.
 		return 1 + len(t.(*auth.Prin).Ext)
 	case auth.PrinTail:
 		return len(t.(auth.PrinTail).Ext)
@@ -666,15 +664,15 @@ func getMaxFormLength(f auth.Form) int {
 		return 0
 	}
 
-	var m []int
+	m := 0
 	switch f.(type) {
 	case auth.Pred:
 		for _, t := range f.(auth.Pred).Arg {
-			m = append(m, getMaxTermLength(t))
+			m = max(m, getMaxTermLength(t))
 		}
 	case *auth.Pred:
 		for _, t := range f.(*auth.Pred).Arg {
-			m = append(m, getMaxTermLength(t))
+			m = max(m, getMaxTermLength(t))
 		}
 	case auth.Const, *auth.Const:
 		return 0
@@ -684,19 +682,19 @@ func getMaxFormLength(f auth.Form) int {
 		return getMaxFormLength(f.(*auth.Not).Negand)
 	case auth.And:
 		for _, c := range f.(auth.And).Conjunct {
-			m = append(m, getMaxFormLength(c))
+			m = max(m, getMaxFormLength(c))
 		}
 	case *auth.And:
 		for _, c := range f.(*auth.And).Conjunct {
-			m = append(m, getMaxFormLength(c))
+			m = max(m, getMaxFormLength(c))
 		}
 	case auth.Or:
 		for _, d := range f.(auth.Or).Disjunct {
-			m = append(m, getMaxFormLength(d))
+			m = max(m, getMaxFormLength(d))
 		}
 	case *auth.Or:
 		for _, d := range f.(*auth.Or).Disjunct {
-			m = append(m, getMaxFormLength(d))
+			m = max(m, getMaxFormLength(d))
 		}
 	case auth.Implies:
 		first := getMaxFormLength(f.(auth.Implies).Antecedent)
@@ -734,7 +732,7 @@ func getMaxFormLength(f auth.Form) int {
 		return 0
 	}
 
-	return max(m...)
+	return m
 }
 
 func (g *DatalogGuard) query(f auth.Form) (bool, error) {

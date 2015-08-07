@@ -304,3 +304,45 @@ func TestDatalogMaxTermLength(t *testing.T) {
 		}
 	}
 }
+
+var datalogLoops = []string{
+       "(forall X: forall Y: forall P: A(X) and B(Y) and Subprin(P, X, Y) implies A(P))",
+       "(A(key([70])))",
+       "(B(ext.Hash([71])))",
+}
+
+var datalogLoopQueries = []struct{
+	query string
+	expected bool
+} {
+	{"A(key([70]).Hash([71]))", true},
+	{"A(key([70]))", true},
+	{"A(key([70]).Hash([72]))", false},
+}
+
+func TestDatalogLoop(t *testing.T) {
+       g, key, tmpdir, err := makeDatalogGuard()
+       if err != nil {
+	       t.Fatalf("makeDatalogGuard failed: %v", err)
+       }
+       defer os.RemoveAll(tmpdir)
+       if err = g.Save(key.SigningKey); err != nil {
+	       t.Fatalf("Failed to save DatalogGuard: %v", err)
+       }
+
+       for _, s := range datalogLoops {
+               if err := g.AddRule(s); err != nil {
+                       t.Fatalf("Couldn't add rule '%s': %s", s, err)
+               }
+       }
+
+       for _, q := range datalogLoopQueries {
+	       ok, err := g.Query(q.query)
+	       if err != nil {
+		       t.Errorf("Query(%q) failed: %v", q.query, err)
+	       }
+	       if ok != q.expected {
+		       t.Errorf("Query(%q) = %t; want %t", q.query, ok, q.expected)
+	       }
+       }
+}

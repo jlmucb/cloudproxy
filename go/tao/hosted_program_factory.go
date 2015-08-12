@@ -21,13 +21,6 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 )
 
-// TODO(kwalsh) Refactor this entire file. For the factory, use one function,
-// which returns a HostedProgram that isn't yet launched. From that, we can
-// query the subprin name and then launch it. This way we only have to pass all
-// the configuration variables once. Also, usa a struct to hold all the
-// configuration variables. We can also avoid the silliness with returning
-// temppath then taking it as a parameter in the very next call.
-
 // A HostedProgramSpec contains all of the information that might be needed to
 // start a hosted program. Some factories may not use all of this information,
 // and the semantics of each field vary by factory.

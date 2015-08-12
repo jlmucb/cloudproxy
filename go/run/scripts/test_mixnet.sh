@@ -20,13 +20,13 @@ sudo test true
 
 
 ### Create domain.
-echo "----------------- Creating domain."
+echo "Creating domain."
 GUARD="Datalog"
 SCRIPT_PATH="$(readlink -e "$(dirname "$0")")"
 TEMPLATE="${SCRIPT_PATH}"/domain_template.pb
 ADMIN="$(gowhich tao_admin)"
 HOST_REL_PATH=linux_tao_host
-CA_ADDR="localhost:8124"
+CA_ADDR="127.0.0.1:8124"
 
 TEMP_FILE=`mktemp /tmp/domain_template.XXXXXX`
 cat "$TEMPLATE" | sed "s/REPLACE_WITH_DOMAIN_GUARD_TYPE/$GUARD/g" > $TEMP_FILE
@@ -50,42 +50,62 @@ echo host_name: \"$KEY_NAME\" >> $TEMP_FILE
 mkdir -p "${DOMAIN}.pub/${HOST_REL_PATH}"
 cp $DOMAIN/$HOST_REL_PATH/{cert,keys} "${DOMAIN_PUB}/${HOST_REL_PATH}"
 echo "Temp public domain directory: ${DOMAIN_PUB}"
-
+echo
 
 ### Start TaoCA.
-echo "----------------- Starting TaoCA"
+echo "Starting TaoCA"
 "$(gowhich tcca)" -config ${DOMAIN}/tao.config -password ${FAKE_PASS} &
 CAPID=$!
-sleep 2
+sleep 1
+echo
 
 ### Start LinuxHost.
-echo "----------------- Starting LinuxHost"
+echo "Starting LinuxHost"
 sudo "$(gowhich linux_host)" -config_path ${DOMAIN_PUB}/tao.config \
      -pass ${FAKE_PASS} &
 HOSTPID=$!
-sleep 2
+sleep 1
+echo
 
+SERVER_MSG="Who is this?"
+CLIENT_MSG="I am the enigma."
+
+### Start a dummy server.
+echo "Starting a test server"
+(echo "$SERVER_MSG" | $(which nc) -l 8080 > /tmp/serverout) &
+SERVERPID=$!
 
 ### Start mixnet router.
-echo "Starting Mixnet Router"
-# tao_launch outputs the new hosted program's PID on fd 3, so we redirect fd 3
-# to fd 1 (stdout) and capture the value in DSPID. The assignment is done inside
-# braces. We temprarily redirect the original fd 1 (stdout) to fd 4 inside the
-# braces, and redirect that back to fd 1 (stdout) outside the braces. That way,
-# the hosted program's stdout still goes to the shell's stdout.
-{ DSPID=$("$(gowhich tao_launch)" -sock ${DOMAIN_PUB}/linux_tao_host/admin_socket \
-  "$(gowhich mixnet_router)" -config=${DOMAIN_PUB}/tao.config 3>&1 1>&4); } 4>&1
-
+echo "Starting mixnet router"
+ROUTERPID=$("$(gowhich tao_launch)" -sock ${DOMAIN_PUB}/linux_tao_host/admin_socket \
+	"$(gowhich mixnet_router)" -config=${DOMAIN_PUB}/tao.config -batch=1)
+sleep 1
 
 ### Start mixnet proxy.
-echo "Starting Mixnet Proxy"
-"$(gowhich mixnet_proxy)" -config=${DOMAIN_PUB}/tao.config
+echo "Starting mixnet proxy"
+"$(gowhich mixnet_proxy)" -config=${DOMAIN_PUB}/tao.config &
+PROXYPID=$!
+sleep 1
 
-echo "Waiting for the tests to finish"
-sleep 2
+### Run client.
+echo "Starting a client"
+echo "$CLIENT_MSG" | $(which nc) 127.0.0.1 8080 -X 5 -x 127.0.0.1:1080 > /tmp/clientout
 
-echo "Cleaning up remaining programs"
-kill $DSPID
-kill $CAPID
-sudo kill $HOSTPID
+if [ "$(cat /tmp/serverout)" != "$CLIENT_MSG" ]; then
+  echo "Server got the wrong message: $(cat /tmp/serverout)"
+else
+  echo "Server passed!"
+fi
+
+if [ "$(cat /tmp/clientout)" != "$SERVER_MSG" ]; then
+  echo "Client got the wrong message: $(cat /tmp/clientout)"
+else
+  echo "Client passed!"
+fi
+
+echo -e "\nCleaning up remaining programs"
 sudo rm -f ${DOMAIN_PUB}/linux_tao_host/admin_socket
+kill $PROXYPID
+kill $ROUTERPID
+killall tcca
+sudo kill $HOSTPID

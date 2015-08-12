@@ -125,7 +125,11 @@ func main() {
 	// Load the domain.
 	domain, err := tao.LoadDomain(domainConfigPath(), nil)
 	failIf(err, "Can't load domain")
-	glog.Info("Domain guard: ", domain.Guard)
+
+	// Set $TAO_DOMAIN so it will be inherited by hosted programs
+	os.Unsetenv("TAO_DOMAIN")
+	err = os.Setenv("TAO_DOMAIN", domainPath())
+	failIf(err, "Can't set $TAO_DOMAIN")
 
 	switch cmd {
 	case "help":

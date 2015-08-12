@@ -29,9 +29,9 @@ sudo "$TAO" host start -tao_domain "$DOMAIN" -pass $FAKE_PASS &
 echo "Waiting for linux_host to start"
 sleep 5
 
-"$TAO" run -tao_domain "$DOMAIN" "$(gowhich demo_server)" -tao_domain "$DOMAIN" &
+"$TAO" run -tao_domain "$DOMAIN" "$(gowhich demo_server)" &
 sleep 2
-"$TAO" run -tao_domain "$DOMAIN" "$(gowhich demo_client)" -tao_domain "$DOMAIN"
+"$TAO" run -tao_domain "$DOMAIN" "$(gowhich demo_client)"
 
 echo "Shutting down linux_host"
 sudo "$TAO" host stop -tao_domain "$DOMAIN"

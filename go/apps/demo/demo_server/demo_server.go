@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/jlmucb/cloudproxy/go/tao"
@@ -33,7 +34,7 @@ var serverPort = flag.String("port", "8123", "port for client/server")
 var serverAddr string // see main()
 var pingCount = flag.Int("n", 5, "Number of client/server pings")
 var demoAuth = flag.String("auth", "tao", "\"tcp\", \"tls\", or \"tao\"")
-var configPath = flag.String("config", "tao.config", "The Tao domain config")
+var domainPathFlag = flag.String("tao_domain", "", "The Tao domain directory")
 var ca = flag.String("ca", "", "address for Tao CA, if any")
 
 var subprinRule = "(forall P: forall Hash: TrustedProgramHash(Hash) and Subprin(P, %v, Hash) implies Authorized(P, \"Execute\"))"
@@ -72,10 +73,8 @@ func doServer() {
 	var err error
 	var keys *tao.Keys
 	network := "tcp"
-	domain, err := tao.LoadDomain(*configPath, nil)
-	if err != nil {
-		return
-	}
+	domain, err := tao.LoadDomain(configPath(), nil)
+	failIf(err, "error: couldn't load the tao domain from %s\n", configPath())
 
 	switch *demoAuth {
 	case "tcp":
@@ -174,6 +173,21 @@ func main() {
 
 	doServer()
 	fmt.Println("Server Done")
+}
+
+func domainPath() string {
+	if *domainPathFlag != "" {
+		return *domainPathFlag
+	}
+	if path := os.Getenv("TAO_DOMAIN"); path != "" {
+		return path
+	}
+	usage("Must supply -tao_domain or set $TAO_DOMAIN")
+	return ""
+}
+
+func configPath() string {
+	return path.Join(domainPath(), "tao.config")
 }
 
 func failIf(err error, msg string, args ...interface{}) {

@@ -88,15 +88,15 @@ require that the CloudProxy Go binaries were built in for a standalone
 environment and have been installed in `${GOPATH}/bin`. This can be accomplished
 using the script `run/scripts/build_standalone.sh`.
 
-Let the generated domain directory be `$DOMAIN`. Then to start the Linux process
-demo, run the command
+Let the generated domain directory be `$TAO_DOMAIN`. Then to start the Linux
+process demo, run the command
 
-	run/scripts/run_processes.sh $DOMAIN Soft
+	run/scripts/run_processes.sh $TAO_DOMAIN Soft
 
 The Docker-based demo assumes that `$PATH` contains a Docker binary called
 `docker`. To start the Linux Docker demo, run the command
 
-	run/scripts/run_docker.sh $DOMAIN ${GOPATH/bin/demo_{client,server}.img.tgz 
+	run/scripts/run_docker.sh $TAO_DOMAIN ${GOPATH/bin/demo_{client,server}.img.tgz 
 
 The KVM/CoreOS demo assumes that `$PATH` contains a QEMU binary called
 `qemu-system-x86_64`. It also requires a CoreOS virtual-machine image (call it
@@ -106,4 +106,4 @@ a running SSH agent that holds a private key corresponding to one of the keys in
 `vm_paths`. If all these requirements are satisfied, then the Linux KVM/CoreOS
 demo can be started by running the command
 
-	run/scripts/run_kvm.sh $IMG $KEYFILE $DOMAIN
+	run/scripts/run_kvm.sh $IMG $KEYFILE $TAO_DOMAIN

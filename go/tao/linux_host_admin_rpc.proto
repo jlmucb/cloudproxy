@@ -19,6 +19,7 @@ message LinuxHostAdminRPCRequest {
   optional string path = 2;
   repeated string args = 3;
   optional int32 pid = 4;
+  optional string dir = 5;
 }
 
 message LinuxHostAdminRPCHostedProgram {

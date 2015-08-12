@@ -2,6 +2,17 @@
 // source: linux_host_admin_rpc.proto
 // DO NOT EDIT!
 
+/*
+Package tao is a generated protocol buffer package.
+
+It is generated from these files:
+	linux_host_admin_rpc.proto
+
+It has these top-level messages:
+	LinuxHostAdminRPCRequest
+	LinuxHostAdminRPCHostedProgram
+	LinuxHostAdminRPCResponse
+*/
 package tao
 
 import proto "github.com/golang/protobuf/proto"
@@ -16,6 +27,7 @@ type LinuxHostAdminRPCRequest struct {
 	Path             *string  `protobuf:"bytes,2,opt,name=path" json:"path,omitempty"`
 	Args             []string `protobuf:"bytes,3,rep,name=args" json:"args,omitempty"`
 	Pid              *int32   `protobuf:"varint,4,opt,name=pid" json:"pid,omitempty"`
+	Dir              *string  `protobuf:"bytes,5,opt,name=dir" json:"dir,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
@@ -49,6 +61,13 @@ func (m *LinuxHostAdminRPCRequest) GetPid() int32 {
 		return *m.Pid
 	}
 	return 0
+}
+
+func (m *LinuxHostAdminRPCRequest) GetDir() string {
+	if m != nil && m.Dir != nil {
+		return *m.Dir
+	}
+	return ""
 }
 
 type LinuxHostAdminRPCHostedProgram struct {

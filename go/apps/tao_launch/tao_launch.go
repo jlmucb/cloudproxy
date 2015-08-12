@@ -341,6 +341,9 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 		fmt.Fprintf(noise, "[proxying stdin]\n")
 	}
 
+	wd, err := os.Getwd()
+	failIf(err, "Can't get working directory")
+
 	// Start catching signals early, buffering a few, so we don't miss any. We
 	// don't proxy SIGTTIN. However, we do catch it and stop ourselves, rather
 	// than letting the OS stop us. This is necessary so that we can send
@@ -388,7 +391,7 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 	)
 
 	// Start the hosted program
-	subprin, pid, err := client.StartHostedProgram(fds[:], binary, args...)
+	subprin, pid, err := client.StartHostedProgram(wd, fds[:], binary, args...)
 	failIf(err, "Can't start hosted program")
 	fmt.Fprintf(noise, "[started hosted program with pid %d]\n", pid)
 	fmt.Fprintf(noise, "[subprin is %v]\n", subprin)

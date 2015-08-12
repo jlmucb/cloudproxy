@@ -44,9 +44,10 @@ func NewLinuxHostAdminClient(conn *net.UnixConn) LinuxHostAdminClient {
 }
 
 // StartHostedProgram is the client stub for LinuxHost.StartHostedProgram.
-func (client LinuxHostAdminClient) StartHostedProgram(fds []int, path string, args ...string) (auth.SubPrin, int, error) {
+func (client LinuxHostAdminClient) StartHostedProgram(wd string, fds []int, path string, args ...string) (auth.SubPrin, int, error) {
 	req := &LinuxHostAdminRPCRequest{
 		Path: proto.String(path),
+		Dir:  proto.String(wd),
 		Args: args,
 	}
 	resp := new(LinuxHostAdminRPCResponse)
@@ -219,6 +220,7 @@ func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminRPCRe
 	spec := HostedProgramSpec{
 		Path:  *r.Path,
 		Args:  r.Args,
+		Dir:   *r.Dir,
 		Uid:   int(ucred.Uid),
 		Gid:   int(ucred.Gid),
 		Files: files,

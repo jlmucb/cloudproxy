@@ -217,6 +217,11 @@ func (p *HostedProcess) Start() (channel io.ReadWriteCloser, err error) {
 		return
 	}
 
+	wd := p.spec.Dir
+	if wd == "" {
+		wd = p.Tempdir
+	}
+
 	// Every hosted process is given its own process group (Setpgid=true). This
 	// ensures that hosted processes will not be in orphaned process groups,
 	// allowing them to receive job control signals (SIGTTIN, SIGTTOU, and
@@ -249,7 +254,7 @@ func (p *HostedProcess) Start() (channel io.ReadWriteCloser, err error) {
 	}
 	p.Cmd = exec.Cmd{
 		Path:        p.Temppath,
-		Dir:         p.Tempdir,
+		Dir:         wd,
 		Args:        p.spec.Args,
 		Stdin:       stdin,
 		Stdout:      stdout,

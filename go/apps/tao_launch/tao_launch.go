@@ -286,18 +286,23 @@ func split(a []string, delim string) (before []string, after []string) {
 }
 
 func runHosted(client *tao.LinuxHostAdminClient, args []string) {
+	var err error
+
 	if len(args) == 0 {
 		usage("Missing program path and arguments")
 	}
+
+	spec := new(tao.HostedProgramSpec)
+
 	ctype := "process"
-	prog := args[0]
+	spec.Path = args[0]
 	for _, prefix := range []string{"process", "docker", "kvm_coreos"} {
-		if strings.HasPrefix(prog, prefix+":") {
+		if strings.HasPrefix(spec.Path, prefix+":") {
 			ctype = prefix
-			prog = strings.TrimPrefix(prog, prefix+":")
+			spec.Path = strings.TrimPrefix(spec.Path, prefix+":")
 		}
 	}
-	var cargs []string
+
 	switch ctype {
 	case "process":
 		dirs := util.LiberalSearchPath()
@@ -305,12 +310,11 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 		if binary == "" {
 			fail(nil, "Can't find `%s` on path '%s'", args[0], strings.Join(dirs, ":"))
 		}
-		cargs = []string{prog}
-		args = args[1:]
-		prog = binary
-	case "docker":
-	case "kvm_coreos":
-		cargs, args = split(args[1:], "--")
+		spec.ContainerArgs = []string{spec.Path}
+		spec.Args = args[1:]
+		spec.Path = binary
+	case "docker", "kvm_coreos":
+		spec.ContainerArgs, spec.Args = split(args[1:], "--")
 	}
 
 	pidfile := *options.String["pidfile"]
@@ -318,7 +322,6 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 	if pidfile == "-" {
 		pidOut = os.Stdout
 	} else if pidfile != "" {
-		var err error
 		pidOut, err = os.Create(pidfile)
 		failIf(err, "Can't open pid file")
 	}
@@ -328,7 +331,6 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 	if namefile == "-" {
 		nameOut = os.Stdout
 	} else if namefile != "" {
-		var err error
 		nameOut, err = os.Create(namefile)
 		failIf(err, "Can't open name file")
 	}
@@ -336,44 +338,37 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 	daemon := *options.Bool["daemon"]
 	disown := *options.Bool["disown"]
 
-	null, err := os.Open(os.DevNull)
-	failIf(err, "Can't open")
-	defer null.Close() // required to keep null alive while we use the fd
-
-	var fds [3]int
 	var pr, pw *os.File
 	proxying := false
 	tty := isCtty(int(os.Stdin.Fd()))
 	if daemon {
-		fds[0] = int(null.Fd())
-		fds[1] = int(null.Fd())
-		fds[2] = int(null.Fd())
+		// stdio is nil
 	} else if disown {
 		// We are assuming that if stdin is a terminal, it is our controlling
 		// terminal. I don't know any way to verify it, but it seems likely.
 		if tty {
-			fds[0] = int(null.Fd()) // stdin would let them steal input from tty
+			// stdin is nil, else they would steal input from tty
 		} else {
-			fds[0] = int(os.Stdin.Fd())
+			spec.Stdin = os.Stdin
 		}
-		fds[1] = int(os.Stdout.Fd())
-		fds[2] = int(os.Stderr.Fd())
+		spec.Stdout = os.Stdout
+		spec.Stderr = os.Stderr
 	} else {
 		// interactive
 		proxying = tty
 		if proxying {
 			pr, pw, err = os.Pipe()
 			failIf(err, "Can't pipe")
-			fds[0] = int(pr.Fd())
+			spec.Stdin = pr
 		} else {
-			fds[0] = int(os.Stdin.Fd())
+			spec.Stdin = os.Stdin
 		}
-		fds[1] = int(os.Stdout.Fd())
-		fds[2] = int(os.Stderr.Fd())
+		spec.Stdout = os.Stdout
+		spec.Stderr = os.Stderr
 		fmt.Fprintf(noise, "[proxying stdin]\n")
 	}
 
-	wd, err := os.Getwd()
+	spec.Dir, err = os.Getwd()
 	failIf(err, "Can't get working directory")
 
 	// Start catching signals early, buffering a few, so we don't miss any. We
@@ -423,7 +418,7 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 	)
 
 	// Start the hosted program
-	subprin, pid, err := client.StartHostedProgram(wd, fds[:], prog, cargs, args...)
+	subprin, pid, err := client.StartHostedProgram(spec)
 	failIf(err, "Can't start hosted program")
 	fmt.Fprintf(noise, "[started hosted program with pid %d]\n", pid)
 	fmt.Fprintf(noise, "[subprin is %v]\n", subprin)

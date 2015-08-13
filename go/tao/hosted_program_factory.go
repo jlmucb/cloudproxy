@@ -57,12 +57,11 @@ type HostedProgramSpec struct {
 	// superuser must explicitly be set.
 	Superuser bool
 
-	// Files is a list of open file descriptors to be shared with the hosted
-	// program in a factory-specific way. If present, the first three are used
-	// for stdin, stdout, and stderr. Otherwise stdin, stdout, and stderr are
-	// given factory-specific default values, e.g. perhaps /dev/null or
-	// inheriting from the tao host server. These must have a File.Fd()
-	Files []*os.File
+	// Stdin, Stdout, and Stderr are open file descriptors to be shared with the
+	// hosted program in a factory-specific way. If nil, factory-specific
+	// default values are used, e.g. perhaps /dev/null or inheriting from the
+	// tao host server. If not nil, these must have a File.Fd().
+	Stdin, Stdout, Stderr *os.File
 
 	// Dir is the directory in which to start the program. If empty, a
 	// factory-specific default will be used, e.g. perhaps the tao host server's

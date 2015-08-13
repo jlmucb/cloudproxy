@@ -18,7 +18,6 @@ package util
 
 import (
 	"fmt"
-	"io"
 	"os"
 )
 
@@ -27,23 +26,4 @@ import (
 func NewFile(fd int) *os.File {
 	name := fmt.Sprintf("/dev/fd/%d", fd)
 	return os.NewFile(uintptr(fd), name)
-}
-
-// NewStdio splits the list of files. The first three are taken as stdin,
-// stdout, stderr, and the remainder as extra. If there are less than three
-// files, nil is used instead.
-func NewStdio(files []*os.File) (stdin io.Reader, stdout io.Writer, stderr io.Writer, extra []*os.File) {
-	if len(files) > 0 {
-		stdin = files[0]
-	}
-	if len(files) > 1 {
-		stdout = files[1]
-	}
-	if len(files) > 2 {
-		stderr = files[2]
-	}
-	if len(files) > 3 {
-		extra = files[3:]
-	}
-	return
 }

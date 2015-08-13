@@ -44,12 +44,26 @@ func NewLinuxHostAdminClient(conn *net.UnixConn) LinuxHostAdminClient {
 }
 
 // StartHostedProgram is the client stub for LinuxHost.StartHostedProgram.
-func (client LinuxHostAdminClient) StartHostedProgram(wd string, fds []int, path string, cargs []string, args ...string) (auth.SubPrin, int, error) {
+func (client LinuxHostAdminClient) StartHostedProgram(spec *HostedProgramSpec) (auth.SubPrin, int, error) {
 	req := &LinuxHostAdminRPCRequest{
-		Path:          proto.String(path),
-		Dir:           proto.String(wd),
-		ContainerArgs: cargs,
-		Args:          args,
+		Path:          proto.String(spec.Path),
+		Dir:           proto.String(spec.Dir),
+		ContainerArgs: spec.ContainerArgs,
+		Args:          spec.Args,
+		// TODO: pass uid and gid?
+	}
+	var fds []int
+	if spec.Stdin != nil {
+		req.Stdin = proto.Int32(int32(len(fds)))
+		fds = append(fds, int(spec.Stdin.Fd()))
+	}
+	if spec.Stdin != nil {
+		req.Stdout = proto.Int32(int32(len(fds)))
+		fds = append(fds, int(spec.Stdout.Fd()))
+	}
+	if spec.Stdin != nil {
+		req.Stderr = proto.Int32(int32(len(fds)))
+		fds = append(fds, int(spec.Stderr.Fd()))
 	}
 	resp := new(LinuxHostAdminRPCResponse)
 	client.oob.ShareFDs(fds...)
@@ -225,10 +239,27 @@ func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminRPCRe
 		Dir:           *r.Dir,
 		Uid:           int(ucred.Uid),
 		Gid:           int(ucred.Gid),
-		Files:         files,
 	}
 	// We do allow superuser here, since we trust the oob credentials
 	spec.Superuser = (ucred.Uid == 0 || ucred.Gid == 0)
+	if r.Stdin != nil {
+		if int(*r.Stdin) >= len(files) {
+			return newError("missing stdin")
+		}
+		spec.Stdin = files[*r.Stdin]
+	}
+	if r.Stdout != nil {
+		if int(*r.Stdout) >= len(files) {
+			return newError("missing stdout")
+		}
+		spec.Stdout = files[*r.Stdout]
+	}
+	if r.Stderr != nil {
+		if int(*r.Stderr) >= len(files) {
+			return newError("missing stderr")
+		}
+		spec.Stderr = files[*r.Stderr]
+	}
 	subprin, pid, err := server.lh.StartHostedProgram(spec)
 	if err != nil {
 		return err

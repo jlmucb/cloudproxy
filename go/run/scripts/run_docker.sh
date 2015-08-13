@@ -37,7 +37,7 @@ sleep 2
 container_name=$(sudo docker inspect --format='{{.Name}}' $(sudo docker ps -q -l))
 container_name=${container_name#/} # this removes the leading slash
 
-"$TAO" run "docker:$CLIENT" --link "${container_name}:server"
+"$TAO" run "docker:$CLIENT" --link "${container_name}:server" &
 
 echo "Waiting for the tests to complete"
 sleep 5

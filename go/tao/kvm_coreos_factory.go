@@ -466,15 +466,13 @@ func (kcc *KvmCoreOSContainer) Start() (channel io.ReadWriteCloser, err error) {
 		return
 	}
 
-	stdin, stdout, stderr, _ := util.NewStdio(kcc.spec.Files)
-
 	// We need to run a set of commands to set up the LinuxHost on the
 	// remote system.
 	// Mount the filesystem.
 	mount, err := client.NewSession()
-	mount.Stdin = stdin
-	mount.Stdout = stdout
-	mount.Stderr = stderr
+	mount.Stdin = kcc.spec.Stdin
+	mount.Stdout = kcc.spec.Stdout
+	mount.Stderr = kcc.spec.Stderr
 	if err != nil {
 		err = fmt.Errorf("couldn't establish a mount session on SSH: %s", err)
 		return
@@ -487,9 +485,9 @@ func (kcc *KvmCoreOSContainer) Start() (channel io.ReadWriteCloser, err error) {
 
 	// Start the linux_host on the container.
 	start, err := client.NewSession()
-	start.Stdin = stdin
-	start.Stdout = stdout
-	start.Stderr = stderr
+	start.Stdin = kcc.spec.Stdin
+	start.Stdout = kcc.spec.Stdout
+	start.Stderr = kcc.spec.Stderr
 	if err != nil {
 		err = fmt.Errorf("couldn't establish a start session on SSH: %s", err)
 		return

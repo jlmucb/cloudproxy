@@ -18,6 +18,9 @@ type LinuxHostAdminRPCRequest struct {
 	Pid              *int32   `protobuf:"varint,4,opt,name=pid" json:"pid,omitempty"`
 	Dir              *string  `protobuf:"bytes,5,opt,name=dir" json:"dir,omitempty"`
 	ContainerArgs    []string `protobuf:"bytes,6,rep,name=container_args" json:"container_args,omitempty"`
+	Stdin            *int32   `protobuf:"varint,7,opt,name=stdin" json:"stdin,omitempty"`
+	Stdout           *int32   `protobuf:"varint,8,opt,name=stdout" json:"stdout,omitempty"`
+	Stderr           *int32   `protobuf:"varint,9,opt,name=stderr" json:"stderr,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
@@ -65,6 +68,27 @@ func (m *LinuxHostAdminRPCRequest) GetContainerArgs() []string {
 		return m.ContainerArgs
 	}
 	return nil
+}
+
+func (m *LinuxHostAdminRPCRequest) GetStdin() int32 {
+	if m != nil && m.Stdin != nil {
+		return *m.Stdin
+	}
+	return 0
+}
+
+func (m *LinuxHostAdminRPCRequest) GetStdout() int32 {
+	if m != nil && m.Stdout != nil {
+		return *m.Stdout
+	}
+	return 0
+}
+
+func (m *LinuxHostAdminRPCRequest) GetStderr() int32 {
+	if m != nil && m.Stderr != nil {
+		return *m.Stderr
+	}
+	return 0
 }
 
 type LinuxHostAdminRPCHostedProgram struct {

@@ -195,9 +195,6 @@ func (p *HostedProcess) Start() (channel io.ReadWriteCloser, err error) {
 		}
 	}()
 
-	stdin, stdout, stderr, moreFiles := util.NewStdio(p.spec.Files)
-	extraFiles = append(extraFiles, moreFiles...)
-
 	env := p.spec.Env
 	if env == nil {
 		env = os.Environ()
@@ -271,9 +268,9 @@ func (p *HostedProcess) Start() (channel io.ReadWriteCloser, err error) {
 		Path:        p.Temppath,
 		Dir:         wd,
 		Args:        argv,
-		Stdin:       stdin,
-		Stdout:      stdout,
-		Stderr:      stderr,
+		Stdin:       p.spec.Stdin,
+		Stdout:      p.spec.Stdout,
+		Stderr:      p.spec.Stderr,
 		Env:         env,
 		ExtraFiles:  extraFiles,
 		SysProcAttr: spa,

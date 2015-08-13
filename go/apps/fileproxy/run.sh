@@ -16,7 +16,7 @@ echo "Script dir is ${SCRIPT_DIR}"
 # Make sure we have sudo credentials before running linux_host.
 sudo test true
 
-umask 022 # some dists use umask 077, but we need 022
+umask 022 # Some dists use umask 077, but we need 022.
 DIR=`mktemp -d /tmp/fileproxy_domain.XXXXXX`
 sudo "$(gowhich linux_host)" -temp_trivial_domain=${DIR} &
 hostpid=$!

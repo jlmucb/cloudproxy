@@ -119,7 +119,6 @@ func doClient(domain *tao.Domain) {
 			pingFail++
 		}
 		fmt.Printf("client: made %d connections, finished %d ok, %d bad pings\n", i+1, pingGood, pingFail)
-		fmt.Printf("client: made %d connections, finished %d ok, %d bad pings\n", i+1, pingGood, pingFail)
 	}
 }
 

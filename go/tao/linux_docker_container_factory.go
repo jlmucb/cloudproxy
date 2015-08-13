@@ -79,11 +79,12 @@ func (dc *DockerContainer) StartDocker() error {
 	if dc.RulesPath != "" {
 		cmdArgs = append(cmdArgs, "-v", dc.RulesPath+":/"+path.Base(dc.RulesPath))
 	}
-	// The arguments for Docker are arguments directly to Docker. To add
-	// arguments to an application, set up a Dockerfile for this
-	// application.
-	cmdArgs = append(cmdArgs, dc.spec.Args...)
+	// ContainerArgs are passed directly to docker, i.e. before image name.
+	// Args are passed to the ENTRYPOINT within the Docker image, i.e. after
+	// image name.
+	cmdArgs = append(cmdArgs, dc.spec.ContainerArgs...)
 	cmdArgs = append(cmdArgs, dc.ImageName)
+	cmdArgs = append(cmdArgs, dc.spec.Args...)
 	glog.Info("About to run docker with args ", cmdArgs)
 	glog.Flush()
 	dc.Cmd = exec.Command("docker", cmdArgs...)

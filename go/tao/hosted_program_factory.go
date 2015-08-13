@@ -38,6 +38,11 @@ type HostedProgramSpec struct {
 	// e.g. as command line arguments.
 	Args []string
 
+	// ContainerArgs are used to configure the factory-specific container in
+	// which the hosted program is executed, e.g. by being passed as parameters
+	// to `docker run`.
+	ContainerArgs []string
+
 	// Uid is a the linux uid under which the hosted program is to be executed.
 	// Zero is not a legal value unless Superuser is set.
 	Uid int

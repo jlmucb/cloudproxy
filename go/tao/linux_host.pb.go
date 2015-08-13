@@ -2,16 +2,6 @@
 // source: linux_host.proto
 // DO NOT EDIT!
 
-/*
-Package tao is a generated protocol buffer package.
-
-It is generated from these files:
-	linux_host.proto
-
-It has these top-level messages:
-	LinuxHostSealedBundle
-	LinuxHostConfig
-*/
 package tao
 
 import proto "github.com/golang/protobuf/proto"

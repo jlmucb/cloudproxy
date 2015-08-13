@@ -44,11 +44,12 @@ func NewLinuxHostAdminClient(conn *net.UnixConn) LinuxHostAdminClient {
 }
 
 // StartHostedProgram is the client stub for LinuxHost.StartHostedProgram.
-func (client LinuxHostAdminClient) StartHostedProgram(wd string, fds []int, path string, args ...string) (auth.SubPrin, int, error) {
+func (client LinuxHostAdminClient) StartHostedProgram(wd string, fds []int, path string, cargs []string, args ...string) (auth.SubPrin, int, error) {
 	req := &LinuxHostAdminRPCRequest{
-		Path: proto.String(path),
-		Dir:  proto.String(wd),
-		Args: args,
+		Path:          proto.String(path),
+		Dir:           proto.String(wd),
+		ContainerArgs: cargs,
+		Args:          args,
 	}
 	resp := new(LinuxHostAdminRPCResponse)
 	client.oob.ShareFDs(fds...)
@@ -218,12 +219,13 @@ func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminRPCRe
 		return newError("missing path")
 	}
 	spec := HostedProgramSpec{
-		Path:  *r.Path,
-		Args:  r.Args,
-		Dir:   *r.Dir,
-		Uid:   int(ucred.Uid),
-		Gid:   int(ucred.Gid),
-		Files: files,
+		Path:          *r.Path,
+		Args:          r.Args,
+		ContainerArgs: r.ContainerArgs,
+		Dir:           *r.Dir,
+		Uid:           int(ucred.Uid),
+		Gid:           int(ucred.Gid),
+		Files:         files,
 	}
 	// We do allow superuser here, since we trust the oob credentials
 	spec.Superuser = (ucred.Uid == 0 || ucred.Gid == 0)

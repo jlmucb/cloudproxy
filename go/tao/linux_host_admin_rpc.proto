@@ -20,6 +20,7 @@ message LinuxHostAdminRPCRequest {
   repeated string args = 3;
   optional int32 pid = 4;
   optional string dir = 5;
+  repeated string container_args = 6;
 }
 
 message LinuxHostAdminRPCHostedProgram {

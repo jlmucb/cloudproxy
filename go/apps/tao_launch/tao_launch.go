@@ -190,7 +190,9 @@ func help() {
 	default:
 		fmt.Fprintf(w, "Tao Hosted Program Utility\n")
 		fmt.Fprintf(w, "Usage:\n")
-		fmt.Fprintf(w, "  %s run [options] <prog> [args...]\t Run a new hosted program\n", av0)
+		fmt.Fprintf(w, "  %s run [options] [process:]<prog> [args...]\t Run a new hosted process\n", av0)
+		fmt.Fprintf(w, "  %s run [options] docker:<img> [dockerargs...] [-- [imgargs...]]\t Run a new hosted docker image\n", av0)
+		fmt.Fprintf(w, "  %s run [options] kvm_coreos:<img> [dockerargs...] [-- [imgargs...]]\t Run a new hosted QEMU/kvm CoreOS image\n", av0)
 		fmt.Fprintf(w, "  %s list [options]\t List hosted programs\n", av0)
 		fmt.Fprintf(w, "  %s stop [options] subprin [subprin...]\t Stop hosted programs\n", av0)
 		fmt.Fprintf(w, "  %s stop [options] subprin [subprin...]\t Kill hosted programs\n", av0)
@@ -271,14 +273,44 @@ func main() {
 
 const moment = 100 * time.Millisecond
 
+func split(a []string, delim string) (before []string, after []string) {
+	for i, s := range a {
+		if s == delim {
+			before = append(before, a[0:i]...)
+			after = append(after, a[i+1:]...)
+			return
+		}
+	}
+	before = append(before, a...)
+	return
+}
+
 func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 	if len(args) == 0 {
 		usage("Missing program path and arguments")
 	}
-	dirs := util.LiberalSearchPath()
-	binary := util.FindExecutable(args[0], dirs)
-	if binary == "" {
-		fail(nil, "Can't find `%s` on path '%s'", args[0], strings.Join(dirs, ":"))
+	ctype := "process"
+	prog := args[0]
+	for _, prefix := range []string{"process", "docker", "kvm_coreos"} {
+		if strings.HasPrefix(prog, prefix+":") {
+			ctype = prefix
+			prog = strings.TrimPrefix(prog, prefix+":")
+		}
+	}
+	var cargs []string
+	switch ctype {
+	case "process":
+		dirs := util.LiberalSearchPath()
+		binary := util.FindExecutable(args[0], dirs)
+		if binary == "" {
+			fail(nil, "Can't find `%s` on path '%s'", args[0], strings.Join(dirs, ":"))
+		}
+		cargs = []string{prog}
+		args = args[1:]
+		prog = binary
+	case "docker":
+	case "kvm_coreos":
+		cargs, args = split(args[1:], "--")
 	}
 
 	pidfile := *options.String["pidfile"]
@@ -391,7 +423,7 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 	)
 
 	// Start the hosted program
-	subprin, pid, err := client.StartHostedProgram(wd, fds[:], binary, args...)
+	subprin, pid, err := client.StartHostedProgram(wd, fds[:], prog, cargs, args...)
 	failIf(err, "Can't start hosted program")
 	fmt.Fprintf(noise, "[started hosted program with pid %d]\n", pid)
 	fmt.Fprintf(noise, "[subprin is %v]\n", subprin)

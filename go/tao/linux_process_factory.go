@@ -54,6 +54,9 @@ type HostedProcess struct {
 	// The spec from which this process was created.
 	spec HostedProgramSpec
 
+	// The value to be used as argv[0]
+	Argv0 string
+
 	// A secured, private copy of the executable.
 	Temppath string
 
@@ -75,6 +78,15 @@ type HostedProcess struct {
 
 // NewHostedProgram initializes, but does not start, a hosted process.
 func (lpf *LinuxProcessFactory) NewHostedProgram(spec HostedProgramSpec) (child HostedProgram, err error) {
+
+	// The argv[0] for the child is given by spec.ContainerArgs
+	argv0 := spec.Path
+	if len(spec.ContainerArgs) == 1 {
+		argv0 = spec.ContainerArgs[0]
+	} else if len(spec.ContainerArgs) > 0 {
+		err = fmt.Errorf("Too many container arguments for process")
+		return
+	}
 
 	// To avoid a time-of-check-to-time-of-use error, we copy the file
 	// bytes to a temp file as we read them. This temp-file path is
@@ -119,6 +131,7 @@ func (lpf *LinuxProcessFactory) NewHostedProgram(spec HostedProgramSpec) (child 
 
 	child = &HostedProcess{
 		spec:     spec,
+		Argv0:    argv0,
 		Temppath: temppath,
 		Tempdir:  tempdir,
 		Hash:     h[:],
@@ -252,10 +265,12 @@ func (p *HostedProcess) Start() (channel io.ReadWriteCloser, err error) {
 		// Noctty: true, // Detach fd 0 from controlling terminal
 		// Ctty: 0, // Controlling TTY fd (Linux only)
 	}
+	argv := []string{p.Argv0}
+	argv = append(argv, p.spec.Args...)
 	p.Cmd = exec.Cmd{
 		Path:        p.Temppath,
 		Dir:         wd,
-		Args:        p.spec.Args,
+		Args:        argv,
 		Stdin:       stdin,
 		Stdout:      stdout,
 		Stderr:      stderr,

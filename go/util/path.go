@@ -48,11 +48,8 @@ func CreatePath(path string, dirPerm, filePerm os.FileMode) (*os.File, error) {
 // emptystring is returned.
 func FindExecutable(name string, dirs []string) string {
 	if filepath.IsAbs(name) {
-		if IsExecutable(name) {
-			return name
-		} else {
-			return ""
-		}
+		// For absolute names, the file need not be executable
+		return name
 	}
 	for _, dir := range dirs {
 		path := filepath.Join(dir, name)

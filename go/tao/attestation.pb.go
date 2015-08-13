@@ -201,6 +201,3 @@ func (m *Attestation) GetSerializedEndorsements() [][]byte {
 	}
 	return nil
 }
-
-func init() {
-}

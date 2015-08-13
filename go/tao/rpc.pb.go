@@ -90,6 +90,3 @@ func (m *RPCResponse) GetPolicy() string {
 	}
 	return ""
 }
-
-func init() {
-}

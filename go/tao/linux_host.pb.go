@@ -42,6 +42,3 @@ func (m *LinuxHostSealedBundle) GetData() []byte {
 	}
 	return nil
 }
-
-func init() {
-}

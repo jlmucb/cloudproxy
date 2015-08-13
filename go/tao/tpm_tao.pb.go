@@ -34,6 +34,3 @@ func (m *HybridSealedData) GetEncryptedData() []byte {
 	}
 	return nil
 }
-
-func init() {
-}

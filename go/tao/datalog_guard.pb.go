@@ -52,6 +52,3 @@ func (m *SignedDatalogRules) GetSignature() []byte {
 	}
 	return nil
 }
-
-func init() {
-}

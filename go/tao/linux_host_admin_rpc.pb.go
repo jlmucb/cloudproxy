@@ -90,6 +90,3 @@ func (m *LinuxHostAdminRPCResponse) GetPrin() []byte {
 	}
 	return nil
 }
-
-func init() {
-}

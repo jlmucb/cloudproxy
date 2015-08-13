@@ -191,6 +191,5 @@ func usage(msg string, args ...interface{}) {
 	s := fmt.Sprintf(msg, args...)
 	fmt.Fprintf(os.Stderr, "%s\n", s)
 	fmt.Fprintf(os.Stderr, "Try -help instead!\n")
-	// help()
 	os.Exit(1)
 }

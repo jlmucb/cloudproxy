@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/jlmucb/cloudproxy/go/tao"
+	"github.com/jlmucb/cloudproxy/go/util/options"
 )
 
 var serverHost = flag.String("host", "0.0.0.0", "address for client/server")
@@ -74,12 +75,12 @@ func doServer() {
 	var keys *tao.Keys
 	network := "tcp"
 	domain, err := tao.LoadDomain(configPath(), nil)
-	failIf(err, "error: couldn't load the tao domain from %s\n", configPath())
+	options.FailIf(err, "error: couldn't load the tao domain from %s\n", configPath())
 
 	switch *demoAuth {
 	case "tcp":
 		sock, err = net.Listen(network, serverAddr)
-		failIf(err, "server: couldn't listen to the network")
+		options.FailIf(err, "server: couldn't listen to the network")
 
 	case "tls", "tao":
 		// Generate a private/public key for this hosted program (hp) and
@@ -88,27 +89,27 @@ func doServer() {
 		// "says" statements extending to the policy key. The policy is
 		// checked by the host before this program is executed.
 		keys, err = tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Parent())
-		failIf(err, "server: failed to generate delegated keys")
+		options.FailIf(err, "server: failed to generate delegated keys")
 
 		// Create a certificate for the hp.
 		keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
 			Organization: []string{"Google Tao Demo"}})
-		failIf(err, "server: couldn't create certificate")
+		options.FailIf(err, "server: couldn't create certificate")
 
 		g := domain.Guard
 		if *ca != "" {
 			// Replace keys.Delegation with a "says" statement directly from
 			// the policy key.
 			na, err := tao.RequestTruncatedAttestation(network, *ca, keys, domain.Keys.VerifyingKey)
-			failIf(err, "server: truncated attestation request failed")
+			options.FailIf(err, "server: truncated attestation request failed")
 			keys.Delegation = na
 
 			g, err = newTempCAGuard(domain.Keys.VerifyingKey)
-			failIf(err, "server: couldn't set up a new guard")
+			options.FailIf(err, "server: couldn't set up a new guard")
 		}
 
 		tlsc, err := tao.EncodeTLSCert(keys)
-		failIf(err, "server: couldn't encode TLS certificate")
+		options.FailIf(err, "server: couldn't encode TLS certificate")
 
 		conf := &tls.Config{
 			RootCAs:            x509.NewCertPool(),
@@ -119,10 +120,10 @@ func doServer() {
 
 		if *demoAuth == "tao" {
 			sock, err = tao.Listen(network, serverAddr, conf, g, domain.Keys.VerifyingKey, keys.Delegation)
-			failIf(err, "sever: couldn't create a taonet listener")
+			options.FailIf(err, "sever: couldn't create a taonet listener")
 		} else {
 			sock, err = tls.Listen(network, serverAddr, conf)
-			failIf(err, "server: couldn't create a tls listener")
+			options.FailIf(err, "server: couldn't create a tls listener")
 		}
 	}
 
@@ -135,7 +136,7 @@ func doServer() {
 	go func() {
 		for connCount = 0; connCount < *pingCount || *pingCount < 0; connCount++ { // negative means forever
 			conn, err := sock.Accept()
-			failIf(err, "server: can't accept connection")
+			options.FailIf(err, "server: can't accept connection")
 			go doResponse(conn, pings)
 		}
 	}()
@@ -161,14 +162,14 @@ func main() {
 	switch *demoAuth {
 	case "tcp", "tls", "tao":
 	default:
-		usage("unrecognized authentication mode: %s\n", *demoAuth)
+		options.Usage("unrecognized authentication mode: %s\n", *demoAuth)
 		return
 	}
 
 	fmt.Println("Go Tao Demo Server")
 
 	if tao.Parent() == nil {
-		fail(nil, "can't continue: No host Tao available")
+		options.Fail(nil, "can't continue: No host Tao available")
 	}
 
 	doServer()
@@ -182,33 +183,10 @@ func domainPath() string {
 	if path := os.Getenv("TAO_DOMAIN"); path != "" {
 		return path
 	}
-	usage("Must supply -tao_domain or set $TAO_DOMAIN")
+	options.Usage("Must supply -tao_domain or set $TAO_DOMAIN")
 	return ""
 }
 
 func configPath() string {
 	return path.Join(domainPath(), "tao.config")
-}
-
-func failIf(err error, msg string, args ...interface{}) {
-	if err != nil {
-		fail(err, msg, args...)
-	}
-}
-
-func fail(err error, msg string, args ...interface{}) {
-	s := fmt.Sprintf(msg, args...)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v: %s\n", err, s)
-	} else {
-		fmt.Fprintf(os.Stderr, "error: %s\n", s)
-	}
-	os.Exit(2)
-}
-
-func usage(msg string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, msg+"\n", args...)
-	fmt.Fprintf(os.Stderr, "Try -help instead!\n")
-	// help()
-	os.Exit(1)
 }

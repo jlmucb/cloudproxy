@@ -233,7 +233,7 @@ func main() {
 
 	sockPath := path.Join(hostPath(), "admin_socket")
 	conn, err := net.DialUnix("unix", nil, &net.UnixAddr{sockPath, "unix"})
-	failIf(err, "Can't connect to host admin socket")
+	options.FailIf(err, "Can't connect to host admin socket")
 	defer conn.Close()
 
 	client := tao.NewLinuxHostAdminClient(conn)
@@ -246,26 +246,26 @@ func main() {
 		for _, s := range flag.Args() {
 			var subprin auth.SubPrin
 			_, err := fmt.Sscanf(s, "%v", &subprin)
-			failIf(err, "Not a subprin: %s", s)
+			options.FailIf(err, "Not a subprin: %s", s)
 			err = client.StopHostedProgram(subprin)
-			failIf(err, "Could not stop %s", s)
+			options.FailIf(err, "Could not stop %s", s)
 		}
 	case "kill":
 		for _, s := range flag.Args() {
 			var subprin auth.SubPrin
-			failIf(err, "Not a subprin: %s", s)
+			options.FailIf(err, "Not a subprin: %s", s)
 			err = client.KillHostedProgram(subprin)
-			failIf(err, "Could not kill %s", s)
+			options.FailIf(err, "Could not kill %s", s)
 		}
 	case "list":
 		names, pids, err := client.ListHostedPrograms()
-		failIf(err, "Can't list hosted programs")
+		options.FailIf(err, "Can't list hosted programs")
 		for i, p := range pids {
 			fmt.Printf("pid=%d subprin=%v\n", p, names[i])
 		}
 		fmt.Printf("%d hosted programs\n", len(pids))
 	default:
-		usage("Unrecognized command: %s", cmd)
+		options.Usage("Unrecognized command: %s", cmd)
 	}
 
 	return
@@ -289,7 +289,7 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 	var err error
 
 	if len(args) == 0 {
-		usage("Missing program path and arguments")
+		options.Usage("Missing program path and arguments")
 	}
 
 	spec := new(tao.HostedProgramSpec)
@@ -308,7 +308,7 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 		dirs := util.LiberalSearchPath()
 		binary := util.FindExecutable(args[0], dirs)
 		if binary == "" {
-			fail(nil, "Can't find `%s` on path '%s'", args[0], strings.Join(dirs, ":"))
+			options.Fail(nil, "Can't find `%s` on path '%s'", args[0], strings.Join(dirs, ":"))
 		}
 		spec.ContainerArgs = []string{spec.Path}
 		spec.Args = args[1:]
@@ -323,7 +323,7 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 		pidOut = os.Stdout
 	} else if pidfile != "" {
 		pidOut, err = os.Create(pidfile)
-		failIf(err, "Can't open pid file")
+		options.FailIf(err, "Can't open pid file")
 	}
 
 	namefile := *options.String["namefile"]
@@ -332,7 +332,7 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 		nameOut = os.Stdout
 	} else if namefile != "" {
 		nameOut, err = os.Create(namefile)
-		failIf(err, "Can't open name file")
+		options.FailIf(err, "Can't open name file")
 	}
 
 	daemon := *options.Bool["daemon"]
@@ -358,7 +358,7 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 		proxying = tty
 		if proxying {
 			pr, pw, err = os.Pipe()
-			failIf(err, "Can't pipe")
+			options.FailIf(err, "Can't pipe")
 			spec.Stdin = pr
 		} else {
 			spec.Stdin = os.Stdin
@@ -369,7 +369,7 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 	}
 
 	spec.Dir, err = os.Getwd()
-	failIf(err, "Can't get working directory")
+	options.FailIf(err, "Can't get working directory")
 
 	// Start catching signals early, buffering a few, so we don't miss any. We
 	// don't proxy SIGTTIN. However, we do catch it and stop ourselves, rather
@@ -419,7 +419,7 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 
 	// Start the hosted program
 	subprin, pid, err := client.StartHostedProgram(spec)
-	failIf(err, "Can't start hosted program")
+	options.FailIf(err, "Can't start hosted program")
 	fmt.Fprintf(noise, "[started hosted program with pid %d]\n", pid)
 	fmt.Fprintf(noise, "[subprin is %v]\n", subprin)
 
@@ -443,7 +443,7 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 		s, _ := client.WaitHostedProgram(pid, subprin)
 		// For short programs, we often lose the race, so
 		// we get a "no such hosted program" error.
-		// failIf(err, "Can't wait for hosted program exit")
+		// options.FailIf(err, "Can't wait for hosted program exit")
 		status <- s
 	}()
 
@@ -459,7 +459,7 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 		pr.Close()
 		go func() {
 			_, err := io.Copy(pw, os.Stdin)
-			warnIf(err, "Can't copy from stdin to pipe")
+			options.WarnIf(err, "Can't copy from stdin to pipe")
 			pw.Close()
 		}()
 	}
@@ -688,48 +688,18 @@ func domainPath() string {
 	if path := os.Getenv("TAO_DOMAIN"); path != "" {
 		return path
 	}
-	usage("Must supply -tao_domain or set $TAO_DOMAIN")
+	options.Usage("Must supply -tao_domain or set $TAO_DOMAIN")
 	return ""
 }
 
 func hostPath() string {
 	hostPath := *options.String["host"]
 	if hostPath == "" {
-		// usage("Must supply a -host path")
+		// options.Usage("Must supply a -host path")
 		hostPath = "linux_tao_host"
 	}
 	if !path.IsAbs(hostPath) {
 		hostPath = path.Join(domainPath(), hostPath)
 	}
 	return hostPath
-}
-
-func failIf(err error, msg string, args ...interface{}) {
-	if err != nil {
-		fail(err, msg, args...)
-	}
-}
-
-func fail(err error, msg string, args ...interface{}) {
-	s := fmt.Sprintf(msg, args...)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v: %s\n", err, s)
-	} else {
-		fmt.Fprintf(os.Stderr, "error: %s\n", s)
-	}
-	os.Exit(2)
-}
-
-func warnIf(err error, msg string, args ...interface{}) {
-	if err != nil {
-		s := fmt.Sprintf(msg, args...)
-		fmt.Fprintf(os.Stderr, "warning: %v: %s\n", err, s)
-	}
-}
-
-func usage(msg string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, msg+"\n", args...)
-	fmt.Fprintf(os.Stderr, "Try -help instead!\n")
-	// help()
-	os.Exit(1)
 }

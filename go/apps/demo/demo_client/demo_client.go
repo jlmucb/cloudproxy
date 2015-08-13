@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/jlmucb/cloudproxy/go/tao"
+	"github.com/jlmucb/cloudproxy/go/util/options"
 )
 
 var serverHost = flag.String("host", "localhost", "address for client/server")
@@ -87,12 +88,12 @@ func newTempCAGuard(v *tao.Verifier) (tao.Guard, error) {
 func doClient(domain *tao.Domain) {
 	network := "tcp"
 	keys, err := tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Parent())
-	failIf(err, "client: couldn't generate temporary Tao keys")
+	options.FailIf(err, "client: couldn't generate temporary Tao keys")
 
 	// TODO(tmroeder): fix the name
 	cert, err := keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
 		Organization: []string{"Google Tao Demo"}})
-	failIf(err, "client: couldn't create a self-signed X.509 cert")
+	options.FailIf(err, "client: couldn't create a self-signed X.509 cert")
 
 	// TODO(kwalsh) keys should save cert on disk if keys are on disk
 	keys.Cert = cert
@@ -100,14 +101,14 @@ func doClient(domain *tao.Domain) {
 	g := domain.Guard
 	if *ca != "" {
 		na, err := tao.RequestTruncatedAttestation(network, *ca, keys, domain.Keys.VerifyingKey)
-		failIf(err, "client: couldn't get a truncated attestation from %s: %s\n", *ca)
+		options.FailIf(err, "client: couldn't get a truncated attestation from %s: %s\n", *ca)
 
 		keys.Delegation = na
 
 		// If we're using a CA, then use a custom guard that accepts only
 		// programs that have talked to the CA.
 		g, err = newTempCAGuard(domain.Keys.VerifyingKey)
-		failIf(err, "client: couldn't set up a new guard")
+		options.FailIf(err, "client: couldn't set up a new guard")
 	}
 
 	pingGood := 0
@@ -134,24 +135,24 @@ func main() {
 	} else {
 		serverAddr = strings.TrimPrefix(serverEnvVar, "tcp://")
 		if serverAddr == serverEnvVar {
-			usage("client: invalid SERVER_PORT environment variable value '%s'\n", serverEnvVar)
+			options.Usage("client: invalid SERVER_PORT environment variable value '%s'\n", serverEnvVar)
 		}
 	}
 
 	switch *demoAuth {
 	case "tcp", "tls", "tao":
 	default:
-		usage("unrecognized authentication mode: %s\n", *demoAuth)
+		options.Usage("unrecognized authentication mode: %s\n", *demoAuth)
 	}
 
 	fmt.Println("Go Tao Demo Client")
 
 	if tao.Parent() == nil {
-		fail(nil, "can't continue: No host Tao available")
+		options.Fail(nil, "can't continue: No host Tao available")
 	}
 
 	domain, err := tao.LoadDomain(configPath(), nil)
-	failIf(err, "error: couldn't load the tao domain from %s\n", configPath())
+	options.FailIf(err, "error: couldn't load the tao domain from %s\n", configPath())
 
 	doClient(domain)
 	fmt.Println("Client Done")
@@ -164,33 +165,10 @@ func domainPath() string {
 	if path := os.Getenv("TAO_DOMAIN"); path != "" {
 		return path
 	}
-	usage("Must supply -tao_domain or set $TAO_DOMAIN")
+	options.Usage("Must supply -tao_domain or set $TAO_DOMAIN")
 	return ""
 }
 
 func configPath() string {
 	return path.Join(domainPath(), "tao.config")
-}
-
-func failIf(err error, msg string, args ...interface{}) {
-	if err != nil {
-		fail(err, msg, args...)
-	}
-}
-
-func fail(err error, msg string, args ...interface{}) {
-	s := fmt.Sprintf(msg, args...)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v: %s\n", err, s)
-	} else {
-		fmt.Fprintf(os.Stderr, "error: %s\n", s)
-	}
-	os.Exit(2)
-}
-
-func usage(msg string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, msg+"\n", args...)
-	fmt.Fprintf(os.Stderr, "Try -help instead!\n")
-	// help()
-	os.Exit(1)
 }

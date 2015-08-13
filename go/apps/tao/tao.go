@@ -110,19 +110,19 @@ func main() {
 		if e := strings.Index(arg, "="); e != -1 { // -name=val
 			name := flagName(arg[0:e])
 			if !match(name, boolopts...) && !match(name, valopts...) {
-				usage("Unrecognized option: %s", arg)
+				options.Usage("Unrecognized option: %s", arg)
 			}
 			args = append(args, arg)
 		} else if match(flagName(arg), boolopts...) { // -bool
 			args = append(args, arg)
 		} else if match(flagName(arg), valopts...) { // -name val
 			if i+1 >= len(os.Args) {
-				usage("flag needs an argument: %s", arg)
+				options.Usage("flag needs an argument: %s", arg)
 			}
 			args = append(args, arg, os.Args[i+1])
 			i++
 		} else {
-			usage("Unrecognized option: %s", arg)
+			options.Usage("Unrecognized option: %s", arg)
 		}
 	}
 
@@ -137,9 +137,9 @@ func main() {
 	logdir := os.TempDir() + "/tao_log"
 	if !util.IsDir(logdir) {
 		err := os.Mkdir(logdir, 0777)
-		failIf(err, "Can't create log directory: %s", logdir)
+		options.FailIf(err, "Can't create log directory: %s", logdir)
 		err = os.Chmod(logdir, 0777)
-		failIf(err, "Can't set permissions on log directory: %s", logdir)
+		options.FailIf(err, "Can't set permissions on log directory: %s", logdir)
 	}
 	arg := fmt.Sprintf("--log_dir=%s", logdir)
 	args = append([]string{arg}, args...)
@@ -156,7 +156,7 @@ func main() {
 	case "run", "list", "stop", "kill":
 		subcmd(cmd, "tao_launch", args)
 	default:
-		usage("Unrecognized tao command: %s", cmd)
+		options.Usage("Unrecognized tao command: %s", cmd)
 	}
 }
 
@@ -164,31 +164,9 @@ func subcmd(cmd, prog string, args []string) {
 	dirs := util.LiberalSearchPath()
 	binary := util.FindExecutable(prog, dirs)
 	if binary == "" {
-		fail(nil, "Can't find `%s` on path '%s'", prog, strings.Join(dirs, ":"))
+		options.Fail(nil, "Can't find `%s` on path '%s'", prog, strings.Join(dirs, ":"))
 	}
 	args = append([]string{"tao_" + cmd}, args...)
 	err := syscall.Exec(binary, args, os.Environ())
-	fail(err, "Can't exec `%s`", cmd)
-}
-
-func failIf(err error, msg string, args ...interface{}) {
-	if err != nil {
-		fail(err, msg, args...)
-	}
-}
-
-func fail(err error, msg string, args ...interface{}) {
-	s := fmt.Sprintf(msg, args...)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v: %s\n", err, s)
-	} else {
-		fmt.Fprintf(os.Stderr, "error: %s\n", s)
-	}
-	os.Exit(2)
-}
-
-func usage(msg string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, msg+"\n", args...)
-	fmt.Fprintf(os.Stderr, "Try -help instead!\n")
-	os.Exit(1)
+	options.Fail(err, "Can't exec `%s`", cmd)
 }

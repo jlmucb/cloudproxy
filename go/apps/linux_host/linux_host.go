@@ -124,12 +124,12 @@ func main() {
 
 	// Load the domain.
 	domain, err := tao.LoadDomain(domainConfigPath(), nil)
-	failIf(err, "Can't load domain")
+	options.FailIf(err, "Can't load domain")
 
 	// Set $TAO_DOMAIN so it will be inherited by hosted programs
 	os.Unsetenv("TAO_DOMAIN")
 	err = os.Setenv("TAO_DOMAIN", domainPath())
-	failIf(err, "Can't set $TAO_DOMAIN")
+	options.FailIf(err, "Can't set $TAO_DOMAIN")
 
 	switch cmd {
 	case "help":
@@ -143,7 +143,7 @@ func main() {
 	case "stop", "shutdown":
 		stopHost(domain)
 	default:
-		usage("Unrecognized command: %s", cmd)
+		options.Usage("Unrecognized command: %s", cmd)
 	}
 }
 
@@ -154,7 +154,7 @@ func domainPath() string {
 	if path := os.Getenv("TAO_DOMAIN"); path != "" {
 		return path
 	}
-	usage("Must supply -tao_domain or set $TAO_DOMAIN")
+	options.Usage("Must supply -tao_domain or set $TAO_DOMAIN")
 	return ""
 }
 
@@ -165,7 +165,7 @@ func domainConfigPath() string {
 func hostPath() string {
 	hostPath := *options.String["host"]
 	if hostPath == "" {
-		// usage("Must supply a -host path")
+		// options.Usage("Must supply a -host path")
 		hostPath = "linux_tao_host"
 	}
 	if !path.IsAbs(hostPath) {
@@ -181,13 +181,13 @@ func hostConfigPath() string {
 // Update configuration based on command-line options. Does very little sanity checking.
 func configureFromOptions(cfg *tao.LinuxHostConfig) {
 	if *options.Bool["root"] && *options.Bool["stacked"] {
-		usage("Can supply only one of -root and -stacked")
+		options.Usage("Can supply only one of -root and -stacked")
 	} else if *options.Bool["root"] {
 		cfg.Type = proto.String("root")
 	} else if *options.Bool["stacked"] {
 		cfg.Type = proto.String("stacked")
 	} else if cfg.Type == nil {
-		usage("Must supply one of -root and -stacked")
+		options.Usage("Must supply one of -root and -stacked")
 	}
 	if s := *options.String["hosting"]; s != "" {
 		cfg.Hosting = proto.String(s)
@@ -215,11 +215,11 @@ func configureFromOptions(cfg *tao.LinuxHostConfig) {
 func configureFromFile() *tao.LinuxHostConfig {
 	d, err := ioutil.ReadFile(hostConfigPath())
 	if err != nil {
-		fail(err, "Can't read linux host configuration")
+		options.Fail(err, "Can't read linux host configuration")
 	}
 	var cfg tao.LinuxHostConfig
 	if err := proto.UnmarshalText(string(d), &cfg); err != nil {
-		fail(err, "Can't parse linux host configuration")
+		options.Fail(err, "Can't parse linux host configuration")
 	}
 	return &cfg
 }
@@ -234,9 +234,9 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) *tao.LinuxHost {
 	case "stacked":
 		tc.HostType = tao.Stacked
 	case "":
-		usage("Must supply -hosting flag")
+		options.Usage("Must supply -hosting flag")
 	default:
-		usage("Invalid host type: %s", cfg.GetType())
+		options.Usage("Invalid host type: %s", cfg.GetType())
 	}
 
 	// Decide hosting type
@@ -248,9 +248,9 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) *tao.LinuxHost {
 	case "kvm_coreos":
 		tc.HostedType = tao.KVMCoreOSFile
 	case "":
-		usage("Must supply -hosting flag")
+		options.Usage("Must supply -hosting flag")
 	default:
-		usage("Invalid hosting type: %s", cfg.GetHosting())
+		options.Usage("Invalid hosting type: %s", cfg.GetHosting())
 	}
 
 	// For stacked hosts, figure out the channel type: TPM, pipe, file, or unix
@@ -265,21 +265,21 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) *tao.LinuxHost {
 		case "unix":
 			tc.HostChannelType = tao.Unix
 		case "":
-			usage("Must supply -parent_type for stacked hosts")
+			options.Usage("Must supply -parent_type for stacked hosts")
 		default:
-			usage("Invalid parent type: %s", cfg.GetParentType())
+			options.Usage("Invalid parent type: %s", cfg.GetParentType())
 		}
 
 		// For stacked hosts on anything but a TPM, we also need parent spec
 		if tc.HostChannelType != tao.TPM {
 			tc.HostSpec = cfg.GetParentSpec()
 			if tc.HostSpec == "" {
-				usage("Must supply -parent_spec for non-TPM stacked hosts")
+				options.Usage("Must supply -parent_spec for non-TPM stacked hosts")
 			}
 		} else {
 			// For stacked hosts on a TPM, we also need info from domain config
 			if domain.Config.TpmInfo == nil {
-				usage("Must provide TPM configuration in the domain to use a TPM")
+				options.Usage("Must provide TPM configuration in the domain to use a TPM")
 			}
 			tc.TPMAIKPath = path.Join(domainPath(), domain.Config.TpmInfo.GetAikPath())
 			tc.TPMPCRs = domain.Config.TpmInfo.GetPcrs()
@@ -314,17 +314,17 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) *tao.LinuxHost {
 	case tao.KVMCoreOSFile:
 		sshFile := cfg.GetKvmCoreosSshAuthKeys()
 		if sshFile == "" {
-			usage("Must specify -kvm_coreos_ssh_auth_keys for hosting QEMU/KVM CoreOS")
+			options.Usage("Must specify -kvm_coreos_ssh_auth_keys for hosting QEMU/KVM CoreOS")
 		}
 		if !path.IsAbs(sshFile) {
 			sshFile = path.Join(domainPath(), sshFile)
 		}
 		sshKeysCfg, err := tao.CloudConfigFromSSHKeys(sshFile)
-		failIf(err, "Can't read ssh keys")
+		options.FailIf(err, "Can't read ssh keys")
 
 		coreOSImage := cfg.GetKvmCoreosImg()
 		if coreOSImage == "" {
-			usage("Must specify -kvm_coreos_image for hosting QEMU/KVM CoreOS")
+			options.Usage("Must specify -kvm_coreos_image for hosting QEMU/KVM CoreOS")
 		}
 		if !path.IsAbs(coreOSImage) {
 			coreOSImage = path.Join(domainPath(), coreOSImage)
@@ -342,7 +342,7 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) *tao.LinuxHost {
 			SSHKeysCfg: sshKeysCfg,
 		}
 		childFactory, err = tao.NewLinuxKVMCoreOSFactory(socketPath, cfg)
-		failIf(err, "Can't create KVM CoreOS factory")
+		options.FailIf(err, "Can't create KVM CoreOS factory")
 	}
 
 	var host *tao.LinuxHost
@@ -354,11 +354,11 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) *tao.LinuxHost {
 	case tao.Stacked:
 		parent := tao.ParentFromConfig(tc)
 		if parent == nil {
-			usage("No host tao available, verify -parent_type or $%s\n", tao.HostChannelTypeEnvVar)
+			options.Usage("No host tao available, verify -parent_type or $%s\n", tao.HostChannelTypeEnvVar)
 		}
 		host, err = tao.NewStackedLinuxHost(hostPath(), domain.Guard, tao.ParentFromConfig(tc), childFactory)
 	}
-	failIf(err, "Can't create host")
+	options.FailIf(err, "Can't create host")
 
 	return host
 }
@@ -372,7 +372,7 @@ func initHost(domain *tao.Domain) {
 	// If we get here, keys were created and flags must be ok.
 
 	file, err := util.CreatePath(hostConfigPath(), 0777, 0666)
-	failIf(err, "Can't create host configuration")
+	options.FailIf(err, "Can't create host configuration")
 	cs := proto.MarshalTextString(&cfg)
 	fmt.Fprint(file, cs)
 	file.Close()
@@ -401,7 +401,7 @@ func daemonize() {
 	if errno != 0 {
 		err = errno
 	}
-	failIf(err, "Can't get process SID")
+	options.FailIf(err, "Can't get process SID")
 	if int(sid) != syscall.Getpid() {
 		if syscall.Getpid() == syscall.Getpid() {
 			fmt.Fprintf(noise, "Forking to enable setsid\n")
@@ -410,7 +410,7 @@ func daemonize() {
 		}
 		// No daemonize, but we can just fork/exec and exit
 		path, err := os.Readlink("/proc/self/exe")
-		failIf(err, "Can't get path to self executable")
+		options.FailIf(err, "Can't get path to self executable")
 		// special case: keep stderr if -logtostderr or -alsologtostderr
 		stderr := os.Stderr
 		if !isBoolFlagSet("logtostderr") && !isBoolFlagSet("alsologtostderr") {
@@ -430,7 +430,7 @@ func daemonize() {
 			SysProcAttr: spa,
 		}
 		err = daemon.Start()
-		failIf(err, "Can't become daemon")
+		options.FailIf(err, "Can't become daemon")
 		fmt.Fprintf(noise, "Linux Tao Host running as daemon\n")
 		os.Exit(0)
 	} else {
@@ -441,7 +441,7 @@ func daemonize() {
 func startHost(domain *tao.Domain) {
 
 	if *options.Bool["daemon"] && *options.Bool["foreground"] {
-		usage("Can supply only one of -daemon and -foreground")
+		options.Usage("Can supply only one of -daemon and -foreground")
 	}
 	if *options.Bool["daemon"] {
 		daemonize()
@@ -454,16 +454,16 @@ func startHost(domain *tao.Domain) {
 	sockPath := path.Join(hostPath(), "admin_socket")
 	// Make sure callers can read the admin socket directory
 	err := os.Chmod(path.Dir(sockPath), 0755)
-	failIf(err, "Can't change permissions")
+	options.FailIf(err, "Can't change permissions")
 	uaddr, err := net.ResolveUnixAddr("unix", sockPath)
-	failIf(err, "Can't resolve unix socket")
+	options.FailIf(err, "Can't resolve unix socket")
 	sock, err := net.ListenUnix("unix", uaddr)
-	failIf(err, "Can't create admin socket")
+	options.FailIf(err, "Can't create admin socket")
 	defer sock.Close()
 	err = os.Chmod(sockPath, 0666)
 	if err != nil {
 		sock.Close()
-		fail(err, "Can't change permissions on admin socket")
+		options.Fail(err, "Can't change permissions on admin socket")
 	}
 
 	go func() {
@@ -471,7 +471,7 @@ func startHost(domain *tao.Domain) {
 		err = tao.NewLinuxHostAdminServer(host).Serve(sock)
 		fmt.Fprintf(noise, "Linux Tao Service finished\n")
 		sock.Close()
-		failIf(err, "Error serving admin requests")
+		options.FailIf(err, "Error serving admin requests")
 		os.Exit(0)
 	}()
 
@@ -482,7 +482,7 @@ func startHost(domain *tao.Domain) {
 	err = shutdown()
 	if err != nil {
 		sock.Close()
-		fail(err, "Can't shut down admin socket")
+		options.Fail(err, "Can't shut down admin socket")
 	}
 
 	// The above goroutine will normally end by calling os.Exit(), so we
@@ -490,13 +490,13 @@ func startHost(domain *tao.Domain) {
 	// let's abort.
 	fmt.Fprintf(noise, "Waiting for shutdown....\n")
 	<-c
-	fail(nil, "Could not shut down linux_host")
+	options.Fail(nil, "Could not shut down linux_host")
 }
 
 func stopHost(domain *tao.Domain) {
 	err := shutdown()
 	if err != nil {
-		usage("Couldn't connect to linux_host: %s", err)
+		options.Usage("Couldn't connect to linux_host: %s", err)
 	}
 }
 
@@ -519,31 +519,8 @@ func getKey(prompt, name string) []byte {
 		// Get the password from the user.
 		fmt.Print(prompt + ": ")
 		pwd, err := terminal.ReadPassword(syscall.Stdin)
-		failIf(err, "Can't get password")
+		options.FailIf(err, "Can't get password")
 		fmt.Println()
 		return pwd
 	}
-}
-
-func failIf(err error, msg string, args ...interface{}) {
-	if err != nil {
-		fail(err, msg, args...)
-	}
-}
-
-func fail(err error, msg string, args ...interface{}) {
-	s := fmt.Sprintf(msg, args...)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v: %s\n", err, s)
-	} else {
-		fmt.Fprintf(os.Stderr, "error: %s\n", s)
-	}
-	os.Exit(2)
-}
-
-func usage(msg string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, msg+"\n", args...)
-	fmt.Fprintf(os.Stderr, "Try -help instead!\n")
-	// help()
-	os.Exit(1)
 }

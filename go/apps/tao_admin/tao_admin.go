@@ -151,7 +151,7 @@ func main() {
 	case "principal":
 		outputPrincipal()
 	default:
-		usage("Unrecognized command: %s", cmd)
+		options.Usage("Unrecognized command: %s", cmd)
 	}
 }
 
@@ -162,13 +162,13 @@ func template() *tao.DomainTemplate {
 	if savedTemplate == nil {
 		configTemplate := *options.String["config_template"]
 		if configTemplate == "" {
-			usage("Must supply -config_template")
+			options.Usage("Must supply -config_template")
 		}
 		savedTemplate = new(tao.DomainTemplate)
 		pbtext, err := ioutil.ReadFile(configTemplate)
-		failIf(err, "Can't read config template")
+		options.FailIf(err, "Can't read config template")
 		err = proto.UnmarshalText(string(pbtext), savedTemplate)
-		failIf(err, "Can't parse config template: %s", configTemplate)
+		options.FailIf(err, "Can't parse config template: %s", configTemplate)
 	}
 	return savedTemplate
 }
@@ -180,7 +180,7 @@ func domainPath() string {
 	if path := os.Getenv("TAO_DOMAIN"); path != "" {
 		return path
 	}
-	usage("Must supply -tao_domain or set $TAO_DOMAIN")
+	options.Usage("Must supply -tao_domain or set $TAO_DOMAIN")
 	return ""
 }
 
@@ -199,13 +199,13 @@ func managePolicy() {
 	// Load domain
 	pwd := getKey("domain policy key password", "pass")
 	domain, err := tao.LoadDomain(configPath(), pwd)
-	failIf(err, "Can't load domain")
+	options.FailIf(err, "Can't load domain")
 
 	// Clear all the policy stored by the Guard.
 	if *options.Bool["clear"] {
 		domain.Guard.Clear()
 		err := domain.Save()
-		failIf(err, "Can't save domain")
+		options.FailIf(err, "Can't save domain")
 	}
 
 	// Add permissions
@@ -216,9 +216,9 @@ func managePolicy() {
 	if add := *options.String["add"]; add != "" {
 		fmt.Fprintf(noise, "Adding policy rule: %s\n", add)
 		err := domain.Guard.AddRule(add)
-		failIf(err, "Can't add rule to domain")
+		options.FailIf(err, "Can't add rule to domain")
 		err = domain.Save()
-		failIf(err, "Can't save domain")
+		options.FailIf(err, "Can't save domain")
 	}
 	if *options.Bool["add_programs"] {
 		host := template().GetHostName()
@@ -251,9 +251,9 @@ func managePolicy() {
 	if retract := *options.String["retract"]; retract != "" {
 		fmt.Fprintf(noise, "Retracting policy rule: %s\n", retract)
 		err := domain.Guard.RetractRule(retract)
-		failIf(err, "Can't retract rule from domain")
+		options.FailIf(err, "Can't retract rule from domain")
 		err = domain.Save()
-		failIf(err, "Can't save domain")
+		options.FailIf(err, "Can't save domain")
 	}
 	if retractCanExecute := *options.String["retractcanexecute"]; retractCanExecute != "" {
 		host := template().GetHostName()
@@ -277,17 +277,17 @@ func hash(p string) ([]byte, error) {
 	}
 	hasher := sha256.New()
 	_, err = io.Copy(hasher, file)
-	failIf(err, "Can't hash file")
+	options.FailIf(err, "Can't hash file")
 	return hasher.Sum(nil), nil
 }
 
 func makeHostPrin(host string) auth.Prin {
 	if host == "" {
-		usage("The domain template must contain a Tao host in host_name")
+		options.Usage("The domain template must contain a Tao host in host_name")
 	}
 	var prin auth.Prin
 	_, err := fmt.Sscanf(host, "%v", &prin)
-	failIf(err, "Can't create host principal")
+	options.FailIf(err, "Can't create host principal")
 	return prin
 }
 
@@ -334,23 +334,23 @@ func makeContainerSubPrin(prog string) (auth.SubPrin, error) {
 func makeTPMPrin(tpmPath, aikFile string, pcrNums []int) auth.Prin {
 	// Read AIK blob (TPM's public key).
 	aikblob, err := ioutil.ReadFile(aikFile)
-	failIf(err, "Can't read TPM aik file")
+	options.FailIf(err, "Can't read TPM aik file")
 
 	verifier, err := tpm.UnmarshalRSAPublicKey(aikblob)
-	failIf(err, "Can't parse TPM key")
+	options.FailIf(err, "Can't parse TPM key")
 
 	// Open a connection to the TPM.
 	tpmFile, err := os.OpenFile(tpmPath, os.O_RDWR, 0)
-	failIf(err, "Can't access TPM")
+	options.FailIf(err, "Can't access TPM")
 
 	// Read registers corresponding to pcrNums.
 	pcrVals, err := tao.ReadPCRs(tpmFile, pcrNums)
 	tpmFile.Close()
-	failIf(err, "Can't read PCRs from TPM")
+	options.FailIf(err, "Can't read PCRs from TPM")
 
 	// Construct a TPM principal.
 	prin, err := tao.MakeTPMPrin(verifier, pcrNums, pcrVals)
-	failIf(err, "Can't create TPM principal")
+	options.FailIf(err, "Can't create TPM principal")
 
 	return prin
 }
@@ -364,7 +364,7 @@ func getKey(prompt, name string) []byte {
 		// Get the password from the user.
 		fmt.Print(prompt + ": ")
 		pwd, err := terminal.ReadPassword(syscall.Stdin)
-		failIf(err, "Can't get password")
+		options.FailIf(err, "Can't get password")
 		fmt.Println()
 		return pwd
 	}
@@ -375,14 +375,14 @@ func createSoftTaoKeys() {
 
 	args := flag.Args()
 	if len(args) != 1 {
-		usage("Must supply a path for the new key set")
+		options.Usage("Must supply a path for the new key set")
 	}
 	keypath := args[0]
 
 	pwd := getKey("soft tao key password", "soft_pass")
 
 	k, err := tao.NewOnDiskPBEKeys(tao.Signing|tao.Crypting|tao.Deriving, pwd, keypath, tao.NewX509Name(dt.Config.X509Info))
-	failIf(err, "Can't create keys")
+	options.FailIf(err, "Can't create keys")
 
 	fmt.Println(k.VerifyingKey.ToPrincipal())
 }
@@ -390,45 +390,45 @@ func createSoftTaoKeys() {
 func createDomain() {
 	dt := template()
 	if dt.Config.DomainInfo.GetPolicyKeysPath() == "" {
-		usage("Must supply a policy_keys_path in the domain configuration")
+		options.Usage("Must supply a policy_keys_path in the domain configuration")
 	}
 
 	pwd := getKey("domain policy key password", "pass")
 
 	domain, err := tao.CreateDomain(*dt.Config, configPath(), pwd)
-	failIf(err, "Can't create domain")
+	options.FailIf(err, "Can't create domain")
 
 	if domain.Config.DomainInfo.GetGuardType() == "Datalog" {
 		// Add any rules specified in the domain template.
 		for _, rule := range dt.DatalogRules {
 			err := domain.Guard.AddRule(rule)
-			failIf(err, "Can't add rule to domain")
+			options.FailIf(err, "Can't add rule to domain")
 		}
 	} else if domain.Config.DomainInfo.GetGuardType() == "ACLs" {
 		for _, rule := range dt.AclRules {
 			err := domain.Guard.AddRule(rule)
-			failIf(err, "Can't add rule to domain")
+			options.FailIf(err, "Can't add rule to domain")
 		}
 	}
 
 	err = domain.Save()
-	failIf(err, "Can't save domain")
+	options.FailIf(err, "Can't save domain")
 
 	// Optionally, create a public cached domain.
 	if addr := *options.String["pub_domain_address"]; addr != "" {
 		net := *options.String["pub_domain_network"]
 		ttl := *options.Duration["pub_domain_ttl"]
 		_, err = domain.CreatePublicCachedDomain(net, addr, int64(ttl))
-		failIf(err, "Can't create public cached domain")
+		options.FailIf(err, "Can't create public cached domain")
 	}
 }
 
 func queryGuard(query string) {
 	domain, err := tao.LoadDomain(configPath(), nil)
-	failIf(err, "Can't load domain")
+	options.FailIf(err, "Can't load domain")
 
 	ok, err := domain.Guard.Query(query)
-	failIf(err, "Can't process query")
+	options.FailIf(err, "Can't process query")
 	if ok {
 		fmt.Println("The policy implies the statement.")
 	} else {
@@ -446,9 +446,9 @@ func addExecute(path, host string, domain *tao.Domain) {
 			"  host: %s\n"+
 			"  name: %s\n", path, prin, subprin)
 		err := domain.Guard.Authorize(prog, "Execute", nil)
-		failIf(err, "Can't authorize program in domain")
+		options.FailIf(err, "Can't authorize program in domain")
 		err = domain.Save()
-		failIf(err, "Can't save domain")
+		options.FailIf(err, "Can't save domain")
 	}
 }
 
@@ -462,7 +462,7 @@ func retractExecute(path, host string, domain *tao.Domain) {
 			"  host: %s\n"+
 			"  name: %s\n", path, prin, subprin)
 		err := domain.Guard.Retract(prog, "Execute", nil)
-		failIf(err, "Can't retract program authorization from domain")
+		options.FailIf(err, "Can't retract program authorization from domain")
 	}
 }
 
@@ -479,7 +479,7 @@ func addACLPrograms(host string, domain *tao.Domain) {
 		}
 		prog := prin.MakeSubprincipal(subprin)
 		err = domain.Guard.Authorize(prog, "Execute", nil)
-		failIf(err, "Can't authorize program in domain")
+		options.FailIf(err, "Can't authorize program in domain")
 	}
 	for _, vm := range dt.VmPaths {
 		vmPrin, err := makeVMSubPrin(vm)
@@ -496,7 +496,7 @@ func addACLPrograms(host string, domain *tao.Domain) {
 			lsp = append(lsp, lhPrin...)
 			lprog := prin.MakeSubprincipal(lsp)
 			err = domain.Guard.Authorize(lprog, "Execute", nil)
-			failIf(err, "Can't authorize program in domain")
+			options.FailIf(err, "Can't authorize program in domain")
 
 			for _, p := range dt.ProgramPaths {
 				subprin, err := makeProgramSubPrin(p)
@@ -509,7 +509,7 @@ func addACLPrograms(host string, domain *tao.Domain) {
 				sp = append(sp, subprin...)
 				prog := prin.MakeSubprincipal(sp)
 				err = domain.Guard.Authorize(prog, "Execute", nil)
-				failIf(err, "Can't authorize program in domain")
+				options.FailIf(err, "Can't authorize program in domain")
 
 				var gsp auth.SubPrin
 				gsp = append(gsp, vmPrin...)
@@ -518,7 +518,7 @@ func addACLPrograms(host string, domain *tao.Domain) {
 				gsp = append(gsp, subprin...)
 				gprog := prin.MakeSubprincipal(gsp)
 				err = domain.Guard.Authorize(gprog, "Execute", nil)
-				failIf(err, "Can't authorize program in domain")
+				options.FailIf(err, "Can't authorize program in domain")
 			}
 		}
 	}
@@ -536,13 +536,13 @@ func addProgramRules(host string, domain *tao.Domain) {
 			pt := auth.PrinTail{Ext: prin}
 			pred := auth.MakePredicate(dt.GetProgramPredicateName(), pt)
 			err = domain.Guard.AddRule(fmt.Sprint(pred))
-			failIf(err, "Can't add rule to domain")
+			options.FailIf(err, "Can't add rule to domain")
 		}
 	} else if domain.Config.DomainInfo.GetGuardType() == "ACLs" {
 		addACLPrograms(host, domain)
 	}
 	err := domain.Save()
-	failIf(err, "Can't save domain")
+	options.FailIf(err, "Can't save domain")
 }
 
 func addContainerRules(host string, domain *tao.Domain) {
@@ -556,7 +556,7 @@ func addContainerRules(host string, domain *tao.Domain) {
 			pt := auth.PrinTail{Ext: prin}
 			pred := auth.MakePredicate(dt.GetContainerPredicateName(), pt)
 			err = domain.Guard.AddRule(fmt.Sprint(pred))
-			failIf(err, "Can't add rule to domain")
+			options.FailIf(err, "Can't add rule to domain")
 		}
 	} else if domain.Config.DomainInfo.GetGuardType() == "ACLs" && host != "" {
 		prin := makeHostPrin(host)
@@ -567,11 +567,11 @@ func addContainerRules(host string, domain *tao.Domain) {
 			}
 			prog := prin.MakeSubprincipal(subprin)
 			err = domain.Guard.Authorize(prog, "Execute", nil)
-			failIf(err, "Can't authorize program in domain")
+			options.FailIf(err, "Can't authorize program in domain")
 		}
 	}
 	err := domain.Save()
-	failIf(err, "Can't save domain")
+	options.FailIf(err, "Can't save domain")
 }
 
 func addVMRules(domain *tao.Domain) {
@@ -584,12 +584,12 @@ func addVMRules(domain *tao.Domain) {
 		pt := auth.PrinTail{Ext: prin}
 		pred := auth.MakePredicate(dt.GetVmPredicateName(), pt)
 		err = domain.Guard.AddRule(fmt.Sprint(pred))
-		failIf(err, "Can't add rule to domain")
+		options.FailIf(err, "Can't add rule to domain")
 	}
 	// The ACLs need the full name, so that only happens for containers and
 	// programs.
 	err := domain.Save()
-	failIf(err, "Can't save domain")
+	options.FailIf(err, "Can't save domain")
 }
 
 func addLinuxHostRules(domain *tao.Domain) {
@@ -602,12 +602,12 @@ func addLinuxHostRules(domain *tao.Domain) {
 		pt := auth.PrinTail{Ext: prin}
 		pred := auth.MakePredicate(dt.GetLinuxHostPredicateName(), pt)
 		err = domain.Guard.AddRule(fmt.Sprint(pred))
-		failIf(err, "Can't add rule to domain")
+		options.FailIf(err, "Can't add rule to domain")
 	}
 	// The ACLs need the full name, so that only happens for containers and
 	// programs.
 	err := domain.Save()
-	failIf(err, "Can't save domain")
+	options.FailIf(err, "Can't save domain")
 }
 
 func addHostRules(host string, domain *tao.Domain) {
@@ -618,9 +618,9 @@ func addHostRules(host string, domain *tao.Domain) {
 	prin := makeHostPrin(host)
 	pred := auth.MakePredicate(dt.GetHostPredicateName(), prin)
 	err := domain.Guard.AddRule(fmt.Sprint(pred))
-	failIf(err, "Can't add rule to domain")
+	options.FailIf(err, "Can't add rule to domain")
 	err = domain.Save()
-	failIf(err, "Can't save domain")
+	options.FailIf(err, "Can't save domain")
 }
 
 func addGuardRules(domain *tao.Domain) {
@@ -632,9 +632,9 @@ func addGuardRules(domain *tao.Domain) {
 		Arg:  []auth.Term{pt},
 	}
 	err := domain.Guard.AddRule(fmt.Sprint(pred))
-	failIf(err, "Can't add rule to domain")
+	options.FailIf(err, "Can't add rule to domain")
 	err = domain.Save()
-	failIf(err, "Can't save domain")
+	options.FailIf(err, "Can't save domain")
 }
 
 func addTPMRules(domain *tao.Domain) {
@@ -646,50 +646,50 @@ func addTPMRules(domain *tao.Domain) {
 	prinPCRs := auth.PrinTail{Ext: prin.Ext}
 	predTrustedOS := auth.MakePredicate(dt.GetOsPredicateName(), prinPCRs)
 	err := domain.Guard.AddRule(fmt.Sprint(predTrustedOS))
-	failIf(err, "Can't add rule to domain")
+	options.FailIf(err, "Can't add rule to domain")
 
 	// TrustedTPM predicate from TPM principal.
 	prin.Ext = nil
 	predTrustedTPM := auth.MakePredicate(dt.GetTpmPredicateName(), prin)
 	err = domain.Guard.AddRule(fmt.Sprint(predTrustedTPM))
-	failIf(err, "Can't add rule to domain")
+	options.FailIf(err, "Can't add rule to domain")
 
 	err = domain.Save()
-	failIf(err, "Can't save domain")
+	options.FailIf(err, "Can't save domain")
 }
 
 func createUserKeys() {
 	// Read the X509Details for this user from a text protobuf file.
 	userKeyDetails := *options.String["user_key_details"]
 	xdb, err := ioutil.ReadFile(userKeyDetails)
-	failIf(err, "Can't read user details")
+	options.FailIf(err, "Can't read user details")
 	var xd tao.X509Details
 	err = proto.UnmarshalText(string(xdb), &xd)
-	failIf(err, "Can't parse user details: %s", userKeyDetails)
+	options.FailIf(err, "Can't parse user details: %s", userKeyDetails)
 
 	upwd := getKey("user password", "user_pass")
 	pwd := getKey("domain policy key password", "pass")
 
 	domain, err := tao.LoadDomain(configPath(), pwd)
-	failIf(err, "Can't load domain")
+	options.FailIf(err, "Can't load domain")
 	policyKey := domain.Keys
 
 	subjectName := tao.NewX509Name(&xd)
 	userKeyPath := *options.String["user_key_path"]
 	_, err = tao.NewSignedOnDiskPBEKeys(tao.Signing, upwd, userKeyPath, subjectName, int(xd.GetSerialNumber()), policyKey)
-	failIf(err, "Can't create user signing key")
+	options.FailIf(err, "Can't create user signing key")
 }
 
 func getTPMConfig() (string, string, []int) {
 	domain, err := tao.LoadDomain(configPath(), nil)
-	failIf(err, "Can't load domain")
+	options.FailIf(err, "Can't load domain")
 	tpmPath := domain.Config.GetTpmInfo().GetTpmPath()
 	aikFile := domain.Config.GetTpmInfo().GetAikPath()
 	pcrVals := domain.Config.GetTpmInfo().GetPcrs()
 	var pcrNums []int
 	for _, s := range strings.Split(pcrVals, ",") {
 		v, err := strconv.ParseInt(s, 10, 32)
-		failIf(err, "Can't parse TPM PCR spec")
+		options.FailIf(err, "Can't parse TPM PCR spec")
 
 		pcrNums = append(pcrNums, int(v))
 	}
@@ -700,13 +700,13 @@ func getTPMConfig() (string, string, []int) {
 func outputPrincipal() {
 	if path := *options.String["program"]; path != "" {
 		subprin, err := makeProgramSubPrin(path)
-		failIf(err, "Can't create program principal")
+		options.FailIf(err, "Can't create program principal")
 		pt := auth.PrinTail{Ext: subprin}
 		fmt.Println(pt)
 	}
 	if path := *options.String["container"]; path != "" {
 		subprin, err := makeContainerSubPrin(path)
-		failIf(err, "Can't create container principal")
+		options.FailIf(err, "Can't create container principal")
 		pt := auth.PrinTail{Ext: subprin}
 		fmt.Println(pt)
 	}
@@ -724,30 +724,7 @@ func outputPrincipal() {
 			lhpath = path.Join(domainPath(), lhpath)
 		}
 		k, err := tao.NewOnDiskPBEKeys(tao.Signing, nil, lhpath, nil)
-		failIf(err, "Can't create soft tao keys")
+		options.FailIf(err, "Can't create soft tao keys")
 		fmt.Println(k.VerifyingKey.ToPrincipal())
 	}
-}
-
-func failIf(err error, msg string, args ...interface{}) {
-	if err != nil {
-		fail(err, msg, args...)
-	}
-}
-
-func fail(err error, msg string, args ...interface{}) {
-	s := fmt.Sprintf(msg, args...)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v: %s\n", err, s)
-	} else {
-		fmt.Fprintf(os.Stderr, "error: %s\n", s)
-	}
-	os.Exit(2)
-}
-
-func usage(msg string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, msg+"\n", args...)
-	fmt.Fprintf(os.Stderr, "Try -help instead!\n")
-	// help()
-	os.Exit(1)
 }

@@ -382,7 +382,7 @@ func showHost(domain *tao.Domain) {
 }
 
 func isBoolFlagSet(name string) bool {
-	f := flag.Lookup("logtostderr")
+	f := flag.Lookup(name)
 	if f == nil {
 		return false
 	}

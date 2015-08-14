@@ -86,7 +86,7 @@ func GoBinPath() []string {
 	return dirs
 }
 
-// Localpath returns the directory of the current executable
+// LocalPath returns the directory of the current executable
 func LocalPath() []string {
 	path, err := filepath.Abs(os.Args[0])
 	if err != nil {

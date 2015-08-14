@@ -356,7 +356,7 @@ func makeTPMPrin(tpmPath, aikFile string, pcrNums []int) auth.Prin {
 
 func getKey(prompt, name string) []byte {
 	if input := *options.String[name]; input != "" {
-		fmt.Fprintf(os.Stderr, "Warning: Passwords on the command line are not secure. Use -%s option only for testing.", name)
+		fmt.Fprintf(os.Stderr, "Warning: Passwords on the command line are not secure. Use -%s option only for testing.\n", name)
 		return []byte(input)
 	} else {
 		// Get the password from the user.

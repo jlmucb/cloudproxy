@@ -261,8 +261,6 @@ func (kcc *KvmCoreOSContainer) ExitStatus() (int, error) {
 type LinuxKVMCoreOSFactory struct {
 	Cfg        *CoreOSConfig
 	SocketPath string
-	// TODO(kwalsh) figure out why these next two were here in the first place
-	// Mutex      sync.Mutex
 	PublicKey  string
 	PrivateKey ssh.Signer
 }
@@ -408,10 +406,7 @@ func (kcc *KvmCoreOSContainer) Start() (channel io.ReadWriteCloser, err error) {
 		return
 	}
 	// Build the new Config and start it. Make sure it has a random name so
-	// it doesn't conflict with other virtual machines. Note that we need to
-	// assign fresh local SSH ports for each new virtual machine, hence the
-	// mutex and increment operation.
-	// TODO(kwalsh) what mutex and increment?
+	// it doesn't conflict with other virtual machines.
 	sockName := getRandomFileName(nameLen)
 	sockPath := path.Join(kcc.Factory.SocketPath, sockName)
 	sshCfg := kcc.Factory.Cfg.SSHKeysCfg + "\n - " + string(kcc.Factory.PublicKey)

@@ -443,7 +443,8 @@ func startHost(domain *tao.Domain) {
 	options.FailIf(err, "Can't create host")
 
 	sockPath := path.Join(hostPath(), "admin_socket")
-	// Make sure callers can read the admin socket directory
+	// Set the socketPath directory go+rx so tao_launch can access sockPath and
+	// connect to this linux host, even when tao_launch is run as non-root.
 	err = os.Chmod(path.Dir(sockPath), 0755)
 	options.FailIf(err, "Can't change permissions")
 	uaddr, err := net.ResolveUnixAddr("unix", sockPath)

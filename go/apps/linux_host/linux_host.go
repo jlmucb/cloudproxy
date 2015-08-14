@@ -412,10 +412,6 @@ func daemonize() {
 		}
 		spa := &syscall.SysProcAttr{
 			Setsid: true, // Create session.
-			// Setpgid: true, // Set process group ID to new pid (SYSV setpgrp)
-			// Setctty: true, // Set controlling terminal to fd Ctty (only meaningful if Setsid is set)
-			// Noctty: true, // Detach fd 0 from controlling terminal
-			// Ctty: 0, // Controlling TTY fd (Linux only)
 		}
 		daemon := exec.Cmd{
 			Path:        path,

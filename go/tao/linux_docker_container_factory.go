@@ -23,7 +23,6 @@ import (
 	"path"
 	"syscall"
 
-	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
@@ -78,13 +77,11 @@ func (dc *DockerContainer) StartDocker() error {
 	cmdArgs = append(cmdArgs, dc.spec.ContainerArgs...)
 	cmdArgs = append(cmdArgs, dc.ImageName)
 	cmdArgs = append(cmdArgs, dc.spec.Args...)
-	glog.Info("About to run docker with args ", cmdArgs)
-	glog.Flush()
 	dc.Cmd = exec.Command("docker", cmdArgs...)
 	dc.Cmd.Stdin = dc.spec.Stdin
 	dc.Cmd.Stdout = dc.spec.Stdout
 	dc.Cmd.Stderr = dc.spec.Stderr
-	// TODO(kwalsh) set uid/gid, dir, env, etc.
+	// Note: Uid, Gid, Dir, and Env do not apply to docker hosted programs.
 	// TODO(kwalsh) reap and cleanup
 	return dc.Cmd.Start()
 }

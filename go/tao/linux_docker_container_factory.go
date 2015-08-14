@@ -253,7 +253,7 @@ func (dc *DockerContainer) Start() (channel io.ReadWriteCloser, err error) {
 		return
 	}
 
-	// todo pull in start here
+	// TODO(kwalsh) inline StartDocker() here.
 	if err = dc.StartDocker(); err != nil {
 		return
 	}

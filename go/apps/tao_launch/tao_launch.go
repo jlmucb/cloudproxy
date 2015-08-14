@@ -442,8 +442,7 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 	go func() {
 		s, _ := client.WaitHostedProgram(pid, subprin)
 		// For short programs, we often lose the race, so
-		// we get a "no such hosted program" error.
-		// options.FailIf(err, "Can't wait for hosted program exit")
+		// we get a "no such hosted program" error. Ignore it.
 		status <- s
 	}()
 
@@ -633,7 +632,6 @@ func isForeground() bool {
 // linux_host, e.g. have linux_host send the signal on our behalf.
 func send(pid int, sig syscall.Signal) {
 	fmt.Fprintf(noise, "[sending %s to hosted program]\n", sigName(sig))
-	// fmt.Fprintf(noise, "[signal %v (%d)]\n", sig, int(sig.(syscall.Signal)))
 	syscall.Kill(pid, sig)
 }
 
@@ -695,7 +693,6 @@ func domainPath() string {
 func hostPath() string {
 	hostPath := *options.String["host"]
 	if hostPath == "" {
-		// options.Usage("Must supply a -host path")
 		hostPath = "linux_tao_host"
 	}
 	if !path.IsAbs(hostPath) {

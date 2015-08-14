@@ -46,8 +46,13 @@ type Option struct {
 	Relevance string
 }
 
+// Category describes a group of related command-line flags.
 type Category struct {
-	Name        string
+
+	// Name for this group of flags.
+	Name string
+
+	// Description for this group of flags.
 	Description string
 }
 

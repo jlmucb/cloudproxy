@@ -493,7 +493,7 @@ func stopHost(domain *tao.Domain) {
 
 func shutdown() error {
 	sockPath := path.Join(hostPath(), "admin_socket")
-	conn, err := net.DialUnix("unix", nil, &net.UnixAddr{sockPath, "unix"})
+	conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: sockPath, Net: "unix"})
 	if err != nil {
 		return err
 	}

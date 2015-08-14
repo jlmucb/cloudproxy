@@ -232,7 +232,7 @@ func main() {
 	}
 
 	sockPath := path.Join(hostPath(), "admin_socket")
-	conn, err := net.DialUnix("unix", nil, &net.UnixAddr{sockPath, "unix"})
+	conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: sockPath, Net: "unix"})
 	options.FailIf(err, "Can't connect to host admin socket")
 	defer conn.Close()
 

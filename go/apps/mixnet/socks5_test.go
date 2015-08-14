@@ -15,13 +15,16 @@
 package mixnet
 
 import (
+	"io/ioutil"
+	"os"
+	"path"
 	"testing"
 
 	netproxy "golang.org/x/net/proxy"
 )
 
 // Run proxy server.
-func runSocksServerOne(proxy *ProxyContext, ch chan<- testResult) {
+func runSocksServerOne(proxy *ProxyContext, rAddr string, ch chan<- testResult) {
 	c, err := proxy.Accept()
 	if err != nil {
 		ch <- testResult{err, nil}
@@ -30,7 +33,7 @@ func runSocksServerOne(proxy *ProxyContext, ch chan<- testResult) {
 	defer c.Close()
 	addr := c.(*SocksConn).dstAddr
 
-	d, err := proxy.CreateCircuit(routerAddr, addr)
+	d, err := proxy.CreateCircuit(rAddr, addr)
 	if err != nil {
 		ch <- testResult{err, nil}
 		return
@@ -51,13 +54,13 @@ func runSocksServerOne(proxy *ProxyContext, ch chan<- testResult) {
 
 // Connect to a destination through a mixnet proxy, send a message,
 // and wait for a response.
-func runSocksClient(proxyAddr string, msg []byte) testResult {
-	dialer, err := netproxy.SOCKS5(network, proxyAddr, nil, netproxy.Direct)
+func runSocksClient(pAddr, dAddr string, msg []byte) testResult {
+	dialer, err := netproxy.SOCKS5(network, pAddr, nil, netproxy.Direct)
 	if err != nil {
 		return testResult{err, nil}
 	}
 
-	c, err := dialer.Dial(network, dstAddr)
+	c, err := dialer.Dial(network, dAddr)
 	if err != nil {
 		return testResult{err, nil}
 	}
@@ -77,13 +80,22 @@ func runSocksClient(proxyAddr string, msg []byte) testResult {
 
 // Test the SOCKS proxy server.
 func TestSocks(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "test_socks")
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, err := makeTrivialDomain(tempDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	proxy, err := makeProxyContext(proxyAddr)
+	proxy, err := makeProxyContext(localAddr, d)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer proxy.Close()
-	proxyAddr = proxy.listener.Addr().String()
+	defer os.RemoveAll(path.Base(d.ConfigPath))
+	proxyAddr := proxy.listener.Addr().String()
 
 	ch := make(chan testResult)
 	go func() {
@@ -92,7 +104,7 @@ func TestSocks(t *testing.T) {
 			ch <- testResult{err, nil}
 			return
 		}
-		c.Close()
+		defer c.Close()
 		ch <- testResult{nil, []byte(c.(*SocksConn).dstAddr)}
 	}()
 
@@ -101,11 +113,13 @@ func TestSocks(t *testing.T) {
 		t.Error(err)
 	}
 
-	c, err := dialer.Dial(network, dstAddr)
+	// The value of dstAddr doesn't matter here because the client never
+	// tries to send anything to it.
+	c, err := dialer.Dial(network, "127.0.0.1:1234")
 	if err != nil {
 		t.Error(err)
 	}
-	c.Close()
+	defer c.Close()
 
 	res := <-ch
 	if res.err != nil {

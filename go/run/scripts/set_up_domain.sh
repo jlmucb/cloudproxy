@@ -27,6 +27,7 @@ SCRIPT_PATH="$(readlink -e "$(dirname "$0")")"
 TEMPLATE_SRC="${SCRIPT_PATH}"/domain_template.pb
 DOMAIN=$(mktemp -d /tmp/domain.XXXXXX)
 TEMPLATE=$(mktemp /tmp/domain_template.XXXXXX)
+HOST_REL_PATH="linux_tao_host"
 
 # Used to encrypt policy keys (as well as the keys for SoftTao) on disk.
 FAKE_PASS=BogusPass
@@ -102,7 +103,7 @@ rm $TEMPLATE
 # copy the root signing key and certificate.
 if [ "$#" == "3" ] && [ "$TYPE" == "Soft" ]; then
   mkdir -p "${DOMAIN}.pub/${HOST_REL_PATH}"
-  cp $DOMAIN/$HOST_REL_PATH/{cert,keys} "${DOMAIN}.pub/${HOST_REL_PATH}"
+  cp $DOMAIN/$HOST_REL_PATH/{cert,keys,host.config} "${DOMAIN}.pub/${HOST_REL_PATH}"
   echo "Temp public domain directory: ${DOMAIN}.pub"
 fi
 

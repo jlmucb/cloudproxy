@@ -26,7 +26,6 @@ import (
 	"syscall"
 	"text/tabwriter"
 
-	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/util"
@@ -504,8 +503,7 @@ func shutdown() error {
 
 func getKey(prompt, name string) []byte {
 	if input := *options.String[name]; input != "" {
-		// TODO(kwalsh) Maybe this should go to stderr?
-		glog.Warning("Passwords on the command line are not secure. Use this only for testing")
+		fmt.Fprintf(os.Stderr, "Warning: Passwords on the command line are not secure. Use -%s option only for testing.", name)
 		return []byte(input)
 	} else {
 		// Get the password from the user.

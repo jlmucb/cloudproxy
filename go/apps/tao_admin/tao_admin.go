@@ -28,7 +28,6 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-tpm/tpm"
 	"github.com/jlmucb/cloudproxy/go/tao"
@@ -357,8 +356,7 @@ func makeTPMPrin(tpmPath, aikFile string, pcrNums []int) auth.Prin {
 
 func getKey(prompt, name string) []byte {
 	if input := *options.String[name]; input != "" {
-		// TODO(kwalsh) Maybe this should go to stderr?
-		glog.Warning("Passwords on the command line are not secure. Use this only for testing")
+		fmt.Fprintf(os.Stderr, "Warning: Passwords on the command line are not secure. Use -%s option only for testing.", name)
 		return []byte(input)
 	} else {
 		// Get the password from the user.

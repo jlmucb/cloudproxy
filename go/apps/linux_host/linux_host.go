@@ -224,7 +224,7 @@ func configureFromFile() *tao.LinuxHostConfig {
 	return &cfg
 }
 
-func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) *tao.LinuxHost {
+func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, error) {
 	var tc tao.Config
 
 	// Decide host type
@@ -345,29 +345,24 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) *tao.LinuxHost {
 		options.FailIf(err, "Can't create KVM CoreOS factory")
 	}
 
-	var host *tao.LinuxHost
-	var err error
-	switch tc.HostType {
-	case tao.Root:
+	if tc.HostType == tao.Root {
 		pwd := getKey("root host key password", "pass")
-		host, err = tao.NewRootLinuxHost(hostPath(), domain.Guard, pwd, childFactory)
-	case tao.Stacked:
+		return tao.NewRootLinuxHost(hostPath(), domain.Guard, pwd, childFactory)
+	} else {
 		parent := tao.ParentFromConfig(tc)
 		if parent == nil {
 			options.Usage("No host tao available, verify -parent_type or $%s\n", tao.HostChannelTypeEnvVar)
 		}
-		host, err = tao.NewStackedLinuxHost(hostPath(), domain.Guard, tao.ParentFromConfig(tc), childFactory)
+		return tao.NewStackedLinuxHost(hostPath(), domain.Guard, tao.ParentFromConfig(tc), childFactory)
 	}
-	options.FailIf(err, "Can't create host")
-
-	return host
 }
 
 func initHost(domain *tao.Domain) {
 	var cfg tao.LinuxHostConfig
 
 	configureFromOptions(&cfg)
-	_ = loadHost(domain, &cfg)
+	_, err := loadHost(domain, &cfg)
+	options.FailIf(err, "Can't create host")
 
 	// If we get here, keys were created and flags must be ok.
 
@@ -381,7 +376,8 @@ func initHost(domain *tao.Domain) {
 func showHost(domain *tao.Domain) {
 	cfg := configureFromFile()
 	configureFromOptions(cfg)
-	host := loadHost(domain, cfg)
+	host, err := loadHost(domain, cfg)
+	options.FailIf(err, "Can't create host")
 	fmt.Printf("%v\n", host.HostName())
 }
 
@@ -449,11 +445,12 @@ func startHost(domain *tao.Domain) {
 
 	cfg := configureFromFile()
 	configureFromOptions(cfg)
-	host := loadHost(domain, cfg)
+	host, err := loadHost(domain, cfg)
+	options.FailIf(err, "Can't create host")
 
 	sockPath := path.Join(hostPath(), "admin_socket")
 	// Make sure callers can read the admin socket directory
-	err := os.Chmod(path.Dir(sockPath), 0755)
+	err = os.Chmod(path.Dir(sockPath), 0755)
 	options.FailIf(err, "Can't change permissions")
 	uaddr, err := net.ResolveUnixAddr("unix", sockPath)
 	options.FailIf(err, "Can't resolve unix socket")

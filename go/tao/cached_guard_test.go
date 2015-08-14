@@ -79,9 +79,17 @@ func TestCachingDatalogLoad(t *testing.T) {
 	var network, addr string
 	var ttl int64
 	network = "tcp"
-	addr = "localhost:8124"
+	addr = "localhost:0"
 	ttl = 1
 	configDir := "/tmp/domain_test"
+
+	ch := make(chan bool)
+	cal, err := net.Listen(network, addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cal.Close()
+	addr = cal.Addr().String()
 
 	policy, _, err := makeTestDomains(configDir, network, addr, ttl)
 	if err != nil {
@@ -95,12 +103,6 @@ func TestCachingDatalogLoad(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ch := make(chan bool)
-	cal, err := net.Listen(network, addr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer cal.Close()
 	go runTCCA(t, cal, policy.Keys, policy.Guard, ch)
 
 	// This should cause an implicit reload. If the request to the TaoCA fails,
@@ -116,8 +118,17 @@ func TestCachingDatalogReload(t *testing.T) {
 	var network, addr string
 	var ttl int64
 	network = "tcp"
-	addr = "localhost:8124"
+	addr = "localhost:0"
 	ttl = 10
+
+	// Run the TaoCA. This handles one request and then exits.
+	ch := make(chan bool)
+	cal, err := net.Listen(network, addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cal.Close()
+	addr = cal.Addr().String()
 
 	configDir := "/tmp/domain_test"
 	policyDomain, publicDomain, err := makeTestDomains(configDir, network, addr, ttl)
@@ -132,13 +143,6 @@ func TestCachingDatalogReload(t *testing.T) {
 		t.Fatal("Policy guard IsAuthorized() failed, good rule should have been authorized")
 	}
 
-	// Run the TaoCA. This handles one request and then exits.
-	ch := make(chan bool)
-	cal, err := net.Listen(network, addr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer cal.Close()
 	go runTCCA(t, cal, policyDomain.Keys, policyDomain.Guard, ch)
 
 	// Explicitly call Reload(), generating a policy request.

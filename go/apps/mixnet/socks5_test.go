@@ -83,6 +83,7 @@ func TestSocks(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer proxy.Close()
+	proxyAddr = proxy.listener.Addr().String()
 
 	ch := make(chan testResult)
 	go func() {

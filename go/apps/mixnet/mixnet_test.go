@@ -34,9 +34,9 @@ import (
 
 var password = make([]byte, 32)
 var network = "tcp"
-var proxyAddr = "127.0.0.1:1080"
-var routerAddr = "127.0.0.1:7007"
-var dstAddr = "127.0.0.1:7009"
+var proxyAddr = "127.0.0.1:0"
+var routerAddr = "127.0.0.1:0"
+var dstAddr = "127.0.0.1:0"
 var timeout, _ = time.ParseDuration("1s")
 var configDir = "/tmp/mixnet_test_domain"
 var configPath = path.Join(configDir, "tao.config")
@@ -228,6 +228,7 @@ func TestProxyRouterConnect(t *testing.T) {
 	}
 	defer router.Close()
 	defer proxy.Close()
+	routerAddr = router.proxyListener.Addr().String()
 
 	// Wait for a connection from the proxy.
 	ch := make(chan bool)
@@ -254,6 +255,7 @@ func TestCreateDestroy(t *testing.T) {
 	}
 	defer router.Close()
 	defer proxy.Close()
+	routerAddr = router.proxyListener.Addr().String()
 
 	ch := make(chan testResult)
 	go runRouterHandleOneProxy(router, 3, ch)
@@ -332,6 +334,7 @@ func TestProxyRouterRelay(t *testing.T) {
 	defer proxy.Close()
 	routerCh := make(chan testResult)
 	dstCh := make(chan testResult)
+	dstAddrCh := make(chan string)
 
 	// Create a long message.
 	msg := make([]byte, (CellBytes*5)+237)
@@ -346,7 +349,8 @@ func TestProxyRouterRelay(t *testing.T) {
 		len(msg),  // A long message
 	}
 
-	go runDummyServer(len(trials), 1, dstCh)
+	go runDummyServer(len(trials), 1, dstCh, dstAddrCh)
+	dstAddr = <-dstAddrCh
 
 	for _, l := range trials {
 
@@ -379,6 +383,7 @@ func TestMaliciousProxyRouterRelay(t *testing.T) {
 	}
 	defer router.Close()
 	defer proxy.Close()
+	routerAddr = router.proxyListener.Addr().String()
 	cell := make([]byte, CellBytes)
 	ch := make(chan testResult)
 
@@ -445,12 +450,13 @@ func TestCreateTimeout(t *testing.T) {
 	}
 	defer router.Close()
 	defer proxy.Close()
+	routerAddr = router.proxyListener.Addr().String()
 	ch := make(chan testResult)
 
 	// The proxy should get a timeout if it's the only connecting client.
 	go runRouterHandleProxy(router, 1, 1, ch)
 	_, err = proxy.CreateCircuit(routerAddr, genHostname()+":80")
-	if err == nil || (err != nil && err.Error() != "read tcp 127.0.0.1:7007: i/o timeout") {
+	if err == nil || (err != nil && err.Error() != fmt.Sprintf("read tcp %s: i/o timeout", routerAddr)) {
 		t.Error("should have got network timeout, got:", err)
 	}
 	res := <-ch
@@ -467,6 +473,7 @@ func TestSendMessageTimeout(t *testing.T) {
 	}
 	defer router.Close()
 	defer proxy.Close()
+	routerAddr = router.proxyListener.Addr().String()
 	ch := make(chan testResult)
 	done := make(chan bool)
 
@@ -481,7 +488,7 @@ func TestSendMessageTimeout(t *testing.T) {
 		if err = proxy.SendMessage(c, []byte("hello")); err != nil {
 			t.Error(err)
 		}
-		if _, err = proxy.ReceiveMessage(c); err == nil || (err != nil && err.Error() != "read tcp 127.0.0.1:7007: i/o timeout") {
+		if _, err = proxy.ReceiveMessage(c); err == nil || (err != nil && err.Error() != fmt.Sprintf("read tcp %s: i/o timeout", routerAddr)) {
 			t.Error(err)
 		}
 		done <- true
@@ -510,15 +517,18 @@ func TestMixnet(t *testing.T) {
 	}
 	proxy.Close()
 	defer router.Close()
+	routerAddr = router.proxyListener.Addr().String()
 
 	var res testResult
 	clientCh := make(chan testResult)
 	proxyCh := make(chan testResult)
 	routerCh := make(chan testResult)
 	dstCh := make(chan testResult)
+	dstAddrCh := make(chan string)
 
 	go runRouterHandleProxy(router, clientCt, 3, routerCh)
-	go runDummyServer(clientCt, 1, dstCh)
+	go runDummyServer(clientCt, 1, dstCh, dstAddrCh)
+	dstAddr = <-dstAddrCh
 
 	for i := 0; i < clientCt; i++ {
 		go func(pid int, ch chan<- testResult) {

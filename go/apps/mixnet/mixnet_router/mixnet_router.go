@@ -51,7 +51,6 @@ func serveMixnetProxies(hp *mixnet.RouterContext) error {
 			}
 		}(c)
 	}
-	return nil
 }
 
 // Command line arguments.

@@ -588,27 +588,27 @@ func isCtty(fd int) bool {
 	name := "/proc/self/stat"
 	f, err := os.Open(name)
 	if err != nil {
-		fmt.Println(noise, "[warning: open(%q) failed: %v]\n", name, err)
+		fmt.Fprintf(noise, "[warning: open(%q) failed: %v]\n", name, err)
 		return true
 	}
 	b, err := ioutil.ReadAll(f)
 	if err != nil {
-		fmt.Println(noise, "[warning: read(%q) failed: %v]\n", name, err)
+		fmt.Fprintf(noise, "[warning: read(%q) failed: %v]\n", name, err)
 		return true
 	}
 	a := strings.Split(string(b), " ")
 	tty_nr := 6
 	if len(a) <= tty_nr {
-		fmt.Println(noise, "[warning: read(%q) borked: only %d fields]\n", name, len(a))
+		fmt.Fprintf(noise, "[warning: read(%q) borked: only %d fields]\n", name, len(a))
 		return true
 	}
 	ctty, err := strconv.Atoi(a[tty_nr])
 	if err != nil {
-		fmt.Println(noise, "[warning: read(%q) borked: tty_nr = %v]\n", name, a[tty_nr])
+		fmt.Fprintf(noise, "[warning: read(%q) borked: tty_nr = %v]\n", name, a[tty_nr])
 		return true
 	}
 	if uint64(ctty) != s.Rdev {
-		fmt.Println(noise, "[warning: stdin is a tty, but not ctty]\n")
+		fmt.Fprintf(noise, "[warning: stdin is a tty, but not ctty]\n")
 		return false
 	}
 	return true

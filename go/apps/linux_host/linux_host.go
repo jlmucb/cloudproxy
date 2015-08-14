@@ -399,12 +399,10 @@ func daemonize() {
 	}
 	options.FailIf(err, "Can't get process SID")
 	if int(sid) != syscall.Getpid() {
-		if syscall.Getpid() == syscall.Getpid() {
-			fmt.Fprintf(noise, "Forking to enable setsid\n")
-		} else {
-			fmt.Fprintf(noise, "Forking anyway\n")
-		}
-		// No daemonize, but we can just fork/exec and exit
+		// Go does not support daemonize(), and we can't simply call setsid
+		// because PID may be equal to GID. Using exec.Cmd with the Setsid=true
+		// will fork, ensuring that PID differs from GID, then call setsid, then
+		// exec ourself again in the new session.
 		path, err := os.Readlink("/proc/self/exe")
 		options.FailIf(err, "Can't get path to self executable")
 		// special case: keep stderr if -logtostderr or -alsologtostderr

@@ -74,7 +74,7 @@ var opts = []options.Option{
 	// Flags for 'user' command, used to create new user keys.
 	{"user_key_details", "", "<file>", "File containing an X509Details proto", "user"},
 	{"user_key_path", "usercreds", "<file>", "Key path", "user"},
-	{"user_pass", "", "<pass>", "A password for the new user (for testing only!)", "user"},
+	{"user_pass", "", "<pass>", "A password for the new user (Testing only!)", "user"},
 
 	// Flags for the 'principal' option, used to compute principal hashes.
 	{"program", "", "<file>", "Path to a program to be hashed", "principal"},

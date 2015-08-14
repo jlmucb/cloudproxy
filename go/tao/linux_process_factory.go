@@ -301,12 +301,12 @@ func (p *HostedProcess) Start() (channel io.ReadWriteCloser, err error) {
 func (p *HostedProcess) ExitStatus() (int, error) {
 	s := p.Cmd.ProcessState
 	if s == nil {
-		return -1, fmt.Errorf("Child has not exited")
+		return 0, fmt.Errorf("Child has not exited")
 	}
 	if code, ok := (*s).Sys().(syscall.WaitStatus); ok {
 		return int(code), nil
 	}
-	return -1, fmt.Errorf("Couldn't get exit status\n")
+	return 0, fmt.Errorf("Couldn't get exit status\n")
 }
 
 // WaitChan returns a chan that will be signaled when the hosted process is

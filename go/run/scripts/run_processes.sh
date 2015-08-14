@@ -1,8 +1,9 @@
 #!/bin/bash
 
-if [ "$#" != "2" ]; then
-	echo "Must supply the path to an initialized domain and a root Tao type"
-	echo "('TPM' or 'Soft')"
+if [ "$#" -ge 1 ]; then
+  export TAO_DOMAIN="$1"
+elif [ "$TAO_DOMAIN" == "" ]; then
+	echo "Must supply the path to an initialized domain, or set \$TAO_DOMAIN."
 	exit 1
 fi
 
@@ -14,47 +15,20 @@ gowhich() {
 	echo -n "$(PATH="${GOPATH//://bin:}/bin" $WHICH "$1")"
 }
 
-DOMAIN="$1"
-TYPE="$2"
+TAO="$(gowhich tao)"
 FAKE_PASS=BogusPass
 
-# Make sure we have sudo privileges before using them to try to start linux_host
-# below.
+# Make sure we have sudo privileges before trying to start the tao host
 sudo test true
 
-if [[ "$TYPE" == "TPM" ]]; then
-  sudo "$(gowhich linux_host)" -config_path ${DOMAIN}/tao.config \
-          -host_type stacked -host_channel_type tpm &
-  HOSTPID=$!
-elif [[ "$TYPE" == "Soft" ]]; then
-  sudo "$(gowhich linux_host)" -config_path ${DOMAIN}/tao.config \
-     -pass BogusPass &
-  HOSTPID=$!
-else
-  echo "Invalid host type '$TYPE'"
-  exit 1
-fi
-
+sudo "$TAO" host start -tao_domain "$TAO_DOMAIN" -pass $FAKE_PASS &
 
 echo "Waiting for linux_host to start"
 sleep 5
 
-DSPID=$("$(gowhich tao_launch)" -sock ${DOMAIN}/linux_tao_host/admin_socket \
-	"$(gowhich demo_server)" -config=${DOMAIN}/tao.config)
-"$(gowhich tao_launch)" -sock ${DOMAIN}/linux_tao_host/admin_socket \
-	"$(gowhich demo_client)" -config=${DOMAIN}/tao.config > /dev/null
+"$TAO" run demo_server &
+sleep 2
+"$TAO" run demo_client
 
-
-echo "Waiting for the tests to finish"
-sleep 5
-
-echo -e "\n\nClient output:"
-cat /tmp/demo_client.INFO
-
-echo -e "\n\nServer output:"
-cat /tmp/demo_server.INFO
-
-echo "Cleaning up remaining programs"
-kill $DSPID
-sudo kill $HOSTPID
-sudo rm -f ${DOMAIN}/linux_tao_host/admin_socket
+echo "Shutting down linux_host"
+sudo "$TAO" host stop -tao_domain "$TAO_DOMAIN"

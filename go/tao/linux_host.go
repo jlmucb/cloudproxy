@@ -17,6 +17,7 @@ package tao
 import (
 	"io"
 	"sync"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
@@ -90,6 +91,9 @@ func NewRootLinuxHost(path string, guard Guard, password []byte, childFactory Ho
 }
 
 // LinuxHostChild holds state associated with a running child program.
+// TODO(kwalsh) Nothing in this is linux specific. Move channel and ChildSubprin
+// into (getter methods of) interface HostedProgram and eliminate this struct?
+// Also merge channel cleanup into HostedProgram.Cleanup()
 type LinuxHostChild struct {
 	channel      io.ReadWriteCloser
 	ChildSubprin auth.SubPrin
@@ -209,17 +213,17 @@ func (lh *LinuxHost) Attest(child *LinuxHostChild, issuer *auth.Prin, time, expi
 }
 
 // StartHostedProgram starts a new hosted program.
-func (lh *LinuxHost) StartHostedProgram(path string, args []string, uid, gid int) (auth.SubPrin, int, error) {
+func (lh *LinuxHost) StartHostedProgram(spec HostedProgramSpec) (auth.SubPrin, int, error) {
 	lh.idm.Lock()
 	id := lh.nextChildID
 	if lh.nextChildID != 0 {
 		lh.nextChildID++
-	} else {
-		glog.Warning("Running without unique child IDs")
 	}
 	lh.idm.Unlock()
 
-	subprin, temppath, err := lh.childFactory.MakeSubprin(id, path, uid, gid)
+	spec.Id = id
+
+	prog, err := lh.childFactory.NewHostedProgram(spec)
 	if err != nil {
 		return auth.SubPrin{}, 0, err
 	}
@@ -231,22 +235,39 @@ func (lh *LinuxHost) StartHostedProgram(path string, args []string, uid, gid int
 	// TODO(tmroeder): do we want to support concurrent updates to policy?
 	// Then we need a lock here, too.
 	hostName := lh.taoHost.HostName()
+	subprin := prog.Subprin()
 	childName := hostName.MakeSubprincipal(subprin)
 	if !lh.guard.IsAuthorized(childName, "Execute", []string{}) {
 		return auth.SubPrin{}, 0, newError("Hosted program %s denied authorization to execute on host %s", subprin, hostName)
 	}
 
-	channel, cmd, err := lh.childFactory.Launch(temppath, args, uid, gid)
+	channel, err := prog.Start()
 	if err != nil {
 		return auth.SubPrin{}, 0, err
 	}
-	child := &LinuxHostChild{channel, subprin, cmd}
+	child := &LinuxHostChild{channel, subprin, prog}
+	glog.Infof("Started hosted program with pid %d ...\n  path: %s\n  subprincipal: %s\n", child.Cmd.Pid(), spec.Path, subprin)
+
 	go NewLinuxHostTaoServer(lh, child).Serve(channel)
-	pid := child.Cmd.ID()
+	pid := child.Cmd.Pid()
 
 	lh.hpm.Lock()
 	lh.hostedPrograms = append(lh.hostedPrograms, child)
 	lh.hpm.Unlock()
+
+	go func() {
+		<-child.Cmd.WaitChan()
+		glog.Infof("Hosted program with pid %d exited", child.Cmd.Pid())
+		lh.hpm.Lock()
+		for i, lph := range lh.hostedPrograms {
+			if child == lph {
+				var empty []*LinuxHostChild
+				lh.hostedPrograms = append(append(empty, lh.hostedPrograms[:i]...), lh.hostedPrograms[i+1:]...)
+				break
+			}
+		}
+		lh.hpm.Unlock()
+	}()
 
 	return subprin, pid, nil
 }
@@ -255,31 +276,13 @@ func (lh *LinuxHost) StartHostedProgram(path string, args []string, uid, gid int
 func (lh *LinuxHost) StopHostedProgram(subprin auth.SubPrin) error {
 	lh.hpm.Lock()
 	defer lh.hpm.Unlock()
-
-	var i int
-	for i < len(lh.hostedPrograms) {
-		lph := lh.hostedPrograms[i]
-		n := len(lh.hostedPrograms)
+	for _, lph := range lh.hostedPrograms {
 		if lph.ChildSubprin.Identical(subprin) {
-			// Close the channel before sending SIGTERM
 			lph.channel.Close()
-
 			if err := lph.Cmd.Stop(); err != nil {
-				glog.Errorf("Couldn't stop hosted program %d, subprincipal %s: %s\n", lph.Cmd.ID(), subprin, err)
+				glog.Errorf("Couldn't stop hosted program %d, subprincipal %s: %s\n", lph.Cmd.Pid(), subprin, err)
 			}
-
-			// The order of this array doesn't matter, and we want
-			// to make sure we remove all references to pointers to
-			// LinuxHostServer instances so that they get garbage
-			// collected. So, we implement delete from the slice by
-			// moving elements around.
-			lh.hostedPrograms[i] = lh.hostedPrograms[n-1]
-			lh.hostedPrograms[n-1] = nil
-			lh.hostedPrograms = lh.hostedPrograms[:n-1]
-			i--
 		}
-
-		i++
 	}
 	return nil
 }
@@ -291,40 +294,41 @@ func (lh *LinuxHost) ListHostedPrograms() ([]auth.SubPrin, []int, error) {
 	pids := make([]int, len(lh.hostedPrograms))
 	for i, v := range lh.hostedPrograms {
 		subprins[i] = v.ChildSubprin
-		pids[i] = v.Cmd.ID()
+		pids[i] = v.Cmd.Pid()
 	}
 	lh.hpm.RUnlock()
 	return subprins, pids, nil
+}
+
+// WaitHostedProgram waits for a running hosted program to exit.
+func (lh *LinuxHost) WaitHostedProgram(pid int, subprin auth.SubPrin) (int, error) {
+	lh.hpm.Lock()
+	var p *LinuxHostChild
+	for _, lph := range lh.hostedPrograms {
+		if lph.Cmd.Pid() == pid && lph.ChildSubprin.Identical(subprin) {
+			p = lph
+			break
+		}
+	}
+	lh.hpm.Unlock()
+	if p == nil {
+		return -1, newError("no such hosted program")
+	}
+	<-p.Cmd.WaitChan()
+	return p.Cmd.ExitStatus()
 }
 
 // KillHostedProgram kills a running hosted program.
 func (lh *LinuxHost) KillHostedProgram(subprin auth.SubPrin) error {
 	lh.hpm.Lock()
 	defer lh.hpm.Unlock()
-	var i int
-	for i < len(lh.hostedPrograms) {
-		lph := lh.hostedPrograms[i]
-		n := len(lh.hostedPrograms)
+	for _, lph := range lh.hostedPrograms {
 		if lph.ChildSubprin.Identical(subprin) {
-			// Close the channel before killing the hosted program.
 			lph.channel.Close()
-
 			if err := lph.Cmd.Kill(); err != nil {
-				glog.Errorf("Couldn't kill hosted program %d, subprincipal %s: %s\n", lph.Cmd.ID(), subprin, err)
+				glog.Errorf("Couldn't kill hosted program %d, subprincipal %s: %s\n", lph.Cmd.Pid(), subprin, err)
 			}
-
-			// The order of this array doesn't matter, and we want
-			// to make sure we remove all references to pointers to
-			// LinuxHostServer instances so that they get garbage
-			// collected. So, we implement delete from the slice by
-			// moving elements around.
-			lh.hostedPrograms[i] = lh.hostedPrograms[n-1]
-			lh.hostedPrograms[n-1] = nil
-			lh.hostedPrograms = lh.hostedPrograms[:n-1]
-			i--
 		}
-
-		i++
 	}
 	return nil
 }
@@ -332,4 +336,49 @@ func (lh *LinuxHost) KillHostedProgram(subprin auth.SubPrin) error {
 // HostName returns the name of the Host used by the LinuxHost.
 func (lh *LinuxHost) HostName() auth.Prin {
 	return lh.taoHost.HostName()
+}
+
+// Shutdown stops all hosted programs. If any remain after 10 seconds, they are
+// killed.
+func (lh *LinuxHost) Shutdown() error {
+	glog.Infof("Stopping all hosted programs")
+	lh.hpm.Lock()
+	// Request each child stop
+	for _, lph := range lh.hostedPrograms {
+		// lph.channel.Close()
+		glog.Infof("Stopping hosted program %d\n", lph.Cmd.Pid())
+		if err := lph.Cmd.Stop(); err != nil {
+			glog.Errorf("Couldn't stop hosted program %d, subprincipal %s: %s\n", lph.Cmd.Pid(), lph.Cmd.Subprin(), err)
+		}
+	}
+	timeout := make(chan bool, 1)
+	waiting := make(chan bool, 1)
+	go func() {
+		time.Sleep(1 * time.Second)
+		waiting <- true
+		time.Sleep(9 * time.Second)
+		timeout <- true
+		close(timeout)
+	}()
+	// If timeout expires before child is done, kill child
+	for _, lph := range lh.hostedPrograms {
+		select {
+		case <-lph.Cmd.WaitChan():
+			break
+		case <-waiting:
+			glog.Infof("Waiting for hosted programs to stop")
+		case <-timeout:
+			glog.Infof("Killing hosted program %d, subprincipal %s\n", lph.Cmd.Pid(), lph.Cmd.Subprin())
+			if err := lph.Cmd.Kill(); err != nil {
+				glog.Errorf("Couldn't kill hosted program %d, subprincipal %s: %s\n", lph.Cmd.Pid(), lph.Cmd.Subprin(), err)
+			}
+		}
+	}
+	// Reap all children
+	for _, lph := range lh.hostedPrograms {
+		<-lph.Cmd.WaitChan()
+	}
+	lh.hostedPrograms = nil
+	lh.hpm.Unlock()
+	return nil
 }

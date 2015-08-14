@@ -5,8 +5,10 @@ set -o errexit
 
 # This script assumes that the code for running the demo server and demo client
 # has already been built in standalone mode using build_standalone.
-if [ "$#" != "2" ]; then
-	echo "Must supply a policy certificate and tao.config for the demo code"
+if [ "$#" -ge 1 ]; then
+  export TAO_DOMAIN="$1"
+elif [ "$TAO_DOMAIN" == "" ]; then
+	echo "Must supply the path to an initialized domain, or set \$TAO_DOMAIN."
 	exit 1
 fi
 
@@ -22,7 +24,7 @@ function build_docker() {
 	tao_config="$4"
 
 	DEMO_DIR="$(readlink -e "$(dirname "$script_name")")"/../../apps/demo
-        TEMP_DIR=$(mktemp -d)
+  TEMP_DIR=$(mktemp -d)
 	cp "${DEMO_DIR}"/${app_name}/Dockerfile ${TEMP_DIR}/Dockerfile
 	mkdir ${TEMP_DIR}/tmp
 	mkdir ${TEMP_DIR}/bin
@@ -33,8 +35,9 @@ function build_docker() {
 	cp $policy_cert ${TEMP_DIR}/policy_keys/cert
 	cp $tao_config ${TEMP_DIR}/tao.config
 
-        tar -C ${TEMP_DIR} -czf "$APP_BIN".img.tgz $(ls ${TEMP_DIR})
+  tar -C ${TEMP_DIR} -czf "$APP_BIN".img.tgz $(ls ${TEMP_DIR})
+  rm -rf ${TEMP_DIR}
 }
 
-build_docker "$0" demo_server "$1" "$2"
-build_docker "$0" demo_client "$1" "$2"
+build_docker "$0" demo_server "$TAO_DOMAIN/policy_keys/cert" "$TAO_DOMAIN/tao.config"
+build_docker "$0" demo_client "$TAO_DOMAIN/policy_keys/cert" "$TAO_DOMAIN/tao.config"

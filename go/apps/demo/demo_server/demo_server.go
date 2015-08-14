@@ -22,10 +22,12 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"os"
+	"path"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/tao"
+	"github.com/jlmucb/cloudproxy/go/util/options"
 )
 
 var serverHost = flag.String("host", "0.0.0.0", "address for client/server")
@@ -33,7 +35,7 @@ var serverPort = flag.String("port", "8123", "port for client/server")
 var serverAddr string // see main()
 var pingCount = flag.Int("n", 5, "Number of client/server pings")
 var demoAuth = flag.String("auth", "tao", "\"tcp\", \"tls\", or \"tao\"")
-var configPath = flag.String("config", "tao.config", "The Tao domain config")
+var domainPathFlag = flag.String("tao_domain", "", "The Tao domain directory")
 var ca = flag.String("ca", "", "address for Tao CA, if any")
 
 var subprinRule = "(forall P: forall Hash: TrustedProgramHash(Hash) and Subprin(P, %v, Hash) implies Authorized(P, \"Execute\"))"
@@ -57,15 +59,14 @@ func doResponse(conn net.Conn, responseOk chan<- bool) {
 	// needed here.
 	msg, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
-		glog.Fatalf("server: can't read: %s\n", err.Error())
+		fmt.Fprintf(os.Stderr, "server: can't read: %s\n", err)
 		responseOk <- false
 		return
 	}
 	msg = strings.TrimSpace(msg)
-	glog.Infof("server: got message: %s\n", msg)
+	fmt.Printf("server: got message: %s\n", msg)
 	responseOk <- true
 	fmt.Fprintf(conn, "echo(%s)\n", msg)
-	glog.Flush()
 }
 
 func doServer() {
@@ -73,18 +74,13 @@ func doServer() {
 	var err error
 	var keys *tao.Keys
 	network := "tcp"
-	domain, err := tao.LoadDomain(*configPath, nil)
-	if err != nil {
-		return
-	}
+	domain, err := tao.LoadDomain(configPath(), nil)
+	options.FailIf(err, "error: couldn't load the tao domain from %s\n", configPath())
 
 	switch *demoAuth {
 	case "tcp":
 		sock, err = net.Listen(network, serverAddr)
-		if err != nil {
-			glog.Info("server: couldn't listen to the network: %s\n", err)
-			return
-		}
+		options.FailIf(err, "server: couldn't listen to the network")
 
 	case "tls", "tao":
 		// Generate a private/public key for this hosted program (hp) and
@@ -93,42 +89,27 @@ func doServer() {
 		// "says" statements extending to the policy key. The policy is
 		// checked by the host before this program is executed.
 		keys, err = tao.NewTemporaryTaoDelegatedKeys(tao.Signing, tao.Parent())
-		if err != nil {
-			glog.Info("server: failed to generate delegated keys: %s\n", err)
-			return
-		}
+		options.FailIf(err, "server: failed to generate delegated keys")
 
 		// Create a certificate for the hp.
 		keys.Cert, err = keys.SigningKey.CreateSelfSignedX509(&pkix.Name{
 			Organization: []string{"Google Tao Demo"}})
-		if err != nil {
-			glog.Info("server: couldn't create certificate: %s\n", err)
-			return
-		}
+		options.FailIf(err, "server: couldn't create certificate")
 
 		g := domain.Guard
 		if *ca != "" {
 			// Replace keys.Delegation with a "says" statement directly from
 			// the policy key.
 			na, err := tao.RequestTruncatedAttestation(network, *ca, keys, domain.Keys.VerifyingKey)
-			if err != nil {
-				glog.Infof("server: truncated attestation request failed: %s\n", err)
-				return
-			}
+			options.FailIf(err, "server: truncated attestation request failed")
 			keys.Delegation = na
 
 			g, err = newTempCAGuard(domain.Keys.VerifyingKey)
-			if err != nil {
-				glog.Infof("server: couldn't set up a new guard: %s\n", err)
-				return
-			}
+			options.FailIf(err, "server: couldn't set up a new guard")
 		}
 
 		tlsc, err := tao.EncodeTLSCert(keys)
-		if err != nil {
-			glog.Infof("server: couldn't encode TLS certificate: %s\n", err)
-			return
-		}
+		options.FailIf(err, "server: couldn't encode TLS certificate")
 
 		conf := &tls.Config{
 			RootCAs:            x509.NewCertPool(),
@@ -139,20 +120,14 @@ func doServer() {
 
 		if *demoAuth == "tao" {
 			sock, err = tao.Listen(network, serverAddr, conf, g, domain.Keys.VerifyingKey, keys.Delegation)
-			if err != nil {
-				glog.Infof("sever: couldn't create a taonet listener: %s\n", err)
-				return
-			}
+			options.FailIf(err, "sever: couldn't create a taonet listener")
 		} else {
 			sock, err = tls.Listen(network, serverAddr, conf)
-			if err != nil {
-				glog.Infof("server: couldn't create a tls listener: %s\n", err)
-				return
-			}
+			options.FailIf(err, "server: couldn't create a tls listener")
 		}
 	}
 
-	glog.Infof("server: listening at %s using %s authentication.\n", serverAddr, *demoAuth)
+	fmt.Printf("server: listening at %s using %s authentication.\n", serverAddr, *demoAuth)
 	defer sock.Close()
 
 	pings := make(chan bool, 5)
@@ -161,10 +136,7 @@ func doServer() {
 	go func() {
 		for connCount = 0; connCount < *pingCount || *pingCount < 0; connCount++ { // negative means forever
 			conn, err := sock.Accept()
-			if err != nil {
-				glog.Infof("server: can't accept connection: %s\n", err.Error())
-				return
-			}
+			options.FailIf(err, "server: can't accept connection")
 			go doResponse(conn, pings)
 		}
 	}()
@@ -190,18 +162,31 @@ func main() {
 	switch *demoAuth {
 	case "tcp", "tls", "tao":
 	default:
-		glog.Fatalf("unrecognized authentication mode: %s\n", *demoAuth)
+		options.Usage("unrecognized authentication mode: %s\n", *demoAuth)
 		return
 	}
 
-	glog.Info("Go Tao Demo Server")
+	fmt.Println("Go Tao Demo Server")
 
 	if tao.Parent() == nil {
-		glog.Fatal("can't continue: No host Tao available")
-		return
+		options.Fail(nil, "can't continue: No host Tao available")
 	}
 
 	doServer()
-	glog.Info("Server Done")
-	glog.Flush()
+	fmt.Println("Server Done")
+}
+
+func domainPath() string {
+	if *domainPathFlag != "" {
+		return *domainPathFlag
+	}
+	if path := os.Getenv("TAO_DOMAIN"); path != "" {
+		return path
+	}
+	options.Usage("Must supply -tao_domain or set $TAO_DOMAIN")
+	return ""
+}
+
+func configPath() string {
+	return path.Join(domainPath(), "tao.config")
 }

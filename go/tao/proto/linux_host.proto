@@ -19,3 +19,29 @@ message LinuxHostSealedBundle {
   optional string policy_info = 2;
   required bytes data = 3;
 }
+
+message LinuxHostConfig {
+  // Either "root" or "stacked"
+  required string type = 1;
+
+  // Either "TPM", "pipe", "file", or "unix"
+  optional string parent_type = 2;
+
+  // For non-tpm parent types, the parent connection spec
+  optional string parent_spec = 3;
+
+  // Socket directory, relative to host configuration directory.
+  optional string socket_dir = 4;
+
+  // Either "process", "docker", or "kvm_coreos"
+  required string hosting = 5;
+
+  // Path to CoreOS image for hosted KVM, absolute or relative to domain.
+  optional string kvm_coreos_img = 6;
+
+  // KB of memory to allocate for each VM
+  optional int32 kvm_coreos_vm_memory = 7;
+
+  // Path to CoreOS authorized_keys for hosted KVM, absolute or relative to domain.
+  optional string kvm_coreos_ssh_auth_keys = 8;
+}

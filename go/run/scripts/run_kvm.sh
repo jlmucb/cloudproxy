@@ -1,9 +1,7 @@
 #!/bin/bash
 
-if [ "$#" != "5" ]; then
-	echo "Must supply a CoreOS image, an SSH auth keys file, a domain "
-	echo "path, a linux_host image for CoreOS, and a type of LinuxHost "
-	echo "(Soft or TPM)"
+if [ "$#" != "3" ]; then
+	echo "Must supply a CoreOS image, an SSH auth keys file, and a domain path."
 	exit 1
 fi
 
@@ -18,8 +16,12 @@ gowhich() {
 IMG="$1"
 KEYS="$2"
 DOMAIN="$3"
-LINUXHOST="$4"
-TYPE="$5"
+LINUXHOST="$(gowhich linux_host).img.tgz"
+if [ -e "$DOMAIN/aikblob" ]; then
+  TYPE="TPM"
+else
+  TYPE="Soft"
+fi
 
 # Make sure we have sudo privileges before running anything.
 sudo test true
@@ -57,19 +59,22 @@ sleep 10
 # the virtual machine.
 cp "$(gowhich demo_server)" "$(gowhich demo_client)" "$(gowhich tao_launch)" ${LHTEMP}
 
+# Ensure docker / CoreOS user, e.g. id=500(core), can access these binaries.
+# TODO(kwalsh) Mounting host directories seems to be discouraged... use scp?
+chmod a+rx ${LHTEMP}/{demo_server,demo_client,tao_launch}
+
 # Run tao_launch twice across SSH to start the demo programs. For the ssh
 # command to work, this session must have an ssh agent with the keys from
 # ${KEYS}.
-ssh -l core -p ${SSHPORT} localhost /media/tao/tao_launch \
+ssh -x -l core -p ${SSHPORT} localhost /media/tao/tao_launch \
 	-sock /media/tao/linux_tao_host/admin_socket /media/tao/demo_server \
-	-config /media/tao/tao.config
-
+	-config /media/tao/tao.config &
 echo Waiting for the server to start
 sleep 2
 
-ssh -l core -p ${SSHPORT} localhost /media/tao/tao_launch \
+ssh -x -l core -p ${SSHPORT} localhost /media/tao/tao_launch \
 	-sock /media/tao/linux_tao_host/admin_socket /media/tao/demo_client \
-	-config /media/tao/tao.config -host 127.0.0.1
+	-config /media/tao/tao.config -host 127.0.0.1 &
 echo Waiting for the client to run
 sleep 4
 
@@ -82,7 +87,7 @@ echo -e "\n\nServer output:"
 cat /tmp/demo_server.INFO
 
 echo -e "\n\nCleaning up"
-ssh -l core -p ${SSHPORT} localhost sudo shutdown -h now
+ssh -x -l core -p ${SSHPORT} localhost sudo shutdown -h now
 sudo kill $HOSTPID
 sudo rm -fr $LHTEMP /tmp/demo_server.INFO /tmp/demo_client.INFO
 sudo rm -f ${DOMAIN}/linux_tao_host/admin_socket

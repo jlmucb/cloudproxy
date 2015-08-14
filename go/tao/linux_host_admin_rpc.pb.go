@@ -15,6 +15,12 @@ type LinuxHostAdminRPCRequest struct {
 	Subprin          []byte   `protobuf:"bytes,1,opt,name=subprin" json:"subprin,omitempty"`
 	Path             *string  `protobuf:"bytes,2,opt,name=path" json:"path,omitempty"`
 	Args             []string `protobuf:"bytes,3,rep,name=args" json:"args,omitempty"`
+	Pid              *int32   `protobuf:"varint,4,opt,name=pid" json:"pid,omitempty"`
+	Dir              *string  `protobuf:"bytes,5,opt,name=dir" json:"dir,omitempty"`
+	ContainerArgs    []string `protobuf:"bytes,6,rep,name=container_args" json:"container_args,omitempty"`
+	Stdin            *int32   `protobuf:"varint,7,opt,name=stdin" json:"stdin,omitempty"`
+	Stdout           *int32   `protobuf:"varint,8,opt,name=stdout" json:"stdout,omitempty"`
+	Stderr           *int32   `protobuf:"varint,9,opt,name=stderr" json:"stderr,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
@@ -41,6 +47,48 @@ func (m *LinuxHostAdminRPCRequest) GetArgs() []string {
 		return m.Args
 	}
 	return nil
+}
+
+func (m *LinuxHostAdminRPCRequest) GetPid() int32 {
+	if m != nil && m.Pid != nil {
+		return *m.Pid
+	}
+	return 0
+}
+
+func (m *LinuxHostAdminRPCRequest) GetDir() string {
+	if m != nil && m.Dir != nil {
+		return *m.Dir
+	}
+	return ""
+}
+
+func (m *LinuxHostAdminRPCRequest) GetContainerArgs() []string {
+	if m != nil {
+		return m.ContainerArgs
+	}
+	return nil
+}
+
+func (m *LinuxHostAdminRPCRequest) GetStdin() int32 {
+	if m != nil && m.Stdin != nil {
+		return *m.Stdin
+	}
+	return 0
+}
+
+func (m *LinuxHostAdminRPCRequest) GetStdout() int32 {
+	if m != nil && m.Stdout != nil {
+		return *m.Stdout
+	}
+	return 0
+}
+
+func (m *LinuxHostAdminRPCRequest) GetStderr() int32 {
+	if m != nil && m.Stderr != nil {
+		return *m.Stderr
+	}
+	return 0
 }
 
 type LinuxHostAdminRPCHostedProgram struct {
@@ -70,6 +118,7 @@ func (m *LinuxHostAdminRPCHostedProgram) GetPid() int32 {
 type LinuxHostAdminRPCResponse struct {
 	Child            []*LinuxHostAdminRPCHostedProgram `protobuf:"bytes,1,rep,name=child" json:"child,omitempty"`
 	Prin             []byte                            `protobuf:"bytes,2,opt,name=prin" json:"prin,omitempty"`
+	Status           *int32                            `protobuf:"varint,3,opt,name=status" json:"status,omitempty"`
 	XXX_unrecognized []byte                            `json:"-"`
 }
 
@@ -89,4 +138,11 @@ func (m *LinuxHostAdminRPCResponse) GetPrin() []byte {
 		return m.Prin
 	}
 	return nil
+}
+
+func (m *LinuxHostAdminRPCResponse) GetStatus() int32 {
+	if m != nil && m.Status != nil {
+		return *m.Status
+	}
+	return 0
 }

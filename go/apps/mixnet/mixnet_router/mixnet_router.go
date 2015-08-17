@@ -85,12 +85,8 @@ func main() {
 		sig := <-sigs
 		hp.Close()
 		glog.Infof("router: closing on signal: %s", sig)
-
-		// TODO(cjpatton) reuturn an error status that reflects the signal that
-		// was handled, i.e. the Unix signal number. Currently the go.Signal
-		// interface doesn't allow us to access this. Return 0x81 for now since
-		// it is the first number greater than 128.
-		os.Exit(0x81)
+		signo := int(sig.(syscall.Signal))
+		os.Exit(0x80 + signo)
 	}()
 
 	if err := serveMixnetProxies(hp); err != nil {

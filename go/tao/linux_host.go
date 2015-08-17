@@ -362,15 +362,19 @@ func (lh *LinuxHost) Shutdown() error {
 	}()
 	// If timeout expires before child is done, kill child
 	for _, lph := range lh.hostedPrograms {
-		select {
-		case <-lph.Cmd.WaitChan():
-			break
-		case <-waiting:
-			glog.Infof("Waiting for hosted programs to stop")
-		case <-timeout:
-			glog.Infof("Killing hosted program %d, subprincipal %s\n", lph.Cmd.Pid(), lph.Cmd.Subprin())
-			if err := lph.Cmd.Kill(); err != nil {
-				glog.Errorf("Couldn't kill hosted program %d, subprincipal %s: %s\n", lph.Cmd.Pid(), lph.Cmd.Subprin(), err)
+	childWaitLoop:
+		for {
+			select {
+			case <-lph.Cmd.WaitChan():
+				break childWaitLoop
+			case <-waiting:
+				glog.Infof("Waiting for hosted programs to stop")
+			case <-timeout:
+				glog.Infof("Killing hosted program %d, subprincipal %s\n", lph.Cmd.Pid(), lph.Cmd.Subprin())
+				if err := lph.Cmd.Kill(); err != nil {
+					glog.Errorf("Couldn't kill hosted program %d, subprincipal %s: %s\n", lph.Cmd.Pid(), lph.Cmd.Subprin(), err)
+				}
+				break childWaitLoop
 			}
 		}
 	}

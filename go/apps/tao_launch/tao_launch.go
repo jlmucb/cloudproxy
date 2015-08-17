@@ -118,6 +118,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -314,7 +315,11 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 		spec.Args = args[1:]
 		spec.Path = binary
 	case "docker", "kvm_coreos":
-		spec.ContainerArgs, spec.Args = split(args[1:], "--")
+		// args contains [ "docker:argv0", docker_args..., "--", prog_args... ]
+		spec.ContainerArgs, spec.Args = split(args, "--")
+		// Replace docker arg 0 with valid image name constructed from // base(argv[0]).
+		r, _ := regexp.Compile("[^a-zA-Z0-9_.]+")
+		spec.ContainerArgs[0] = r.ReplaceAllLiteralString(path.Base(spec.Path), "_")
 	}
 
 	pidfile := *options.String["pidfile"]

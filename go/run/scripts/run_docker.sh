@@ -25,25 +25,15 @@ SERVER="$(gowhich demo_server).img.tgz"
 sudo test true
 
 sudo "$TAO" host start -tao_domain "$TAO_DOMAIN" -pass $FAKE_PASS \
-	-hosting docker &
-
+	-hosting docker & # daemon
 echo "Waiting for linux_host to start"
 sleep 5
 
-"$TAO" run "docker:$SERVER" &
+"$TAO" run "docker:$SERVER" --name "/demo_server" & # daemon
+echo "Waiting for demo_server to start"
+sleep 3
 
-echo "Waiting for docker to update its list of running containers"
-sleep 2
-container_name=$(sudo docker inspect --format='{{.Name}}' $(sudo docker ps -q -l))
-container_name=${container_name#/} # this removes the leading slash
-
-"$TAO" run "docker:$CLIENT" --link "${container_name}:server" &
-
-echo "Waiting for the tests to complete"
-sleep 5
-
-echo "Cleaning up docker containers"
-sudo docker stop $container_name
+"$TAO" run "docker:$CLIENT" --link "/demo_server:server"
 
 echo "Shutting down linux_host"
 sudo "$TAO" host stop -tao_domain "$TAO_DOMAIN"

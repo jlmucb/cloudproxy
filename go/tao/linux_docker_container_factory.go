@@ -18,13 +18,11 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"syscall"
 
-	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
@@ -37,12 +35,6 @@ type DockerContainer struct {
 
 	// The spec from which this process was created.
 	spec HostedProgramSpec
-
-	// A secured, private copy of the docker image.
-	Temppath string
-
-	// A temporary directory for storing the temporary docker image.
-	Tempdir string
 
 	// Hash of the docker image.
 	Hash []byte
@@ -85,13 +77,11 @@ func (dc *DockerContainer) StartDocker() error {
 	cmdArgs = append(cmdArgs, dc.spec.ContainerArgs...)
 	cmdArgs = append(cmdArgs, dc.ImageName)
 	cmdArgs = append(cmdArgs, dc.spec.Args...)
-	glog.Info("About to run docker with args ", cmdArgs)
-	glog.Flush()
 	dc.Cmd = exec.Command("docker", cmdArgs...)
 	dc.Cmd.Stdin = dc.spec.Stdin
 	dc.Cmd.Stdout = dc.spec.Stdout
 	dc.Cmd.Stderr = dc.spec.Stderr
-	// TODO(kwalsh) set uid/gid, dir, env, etc.
+	// Note: Uid, Gid, Dir, and Env do not apply to docker hosted programs.
 	// TODO(kwalsh) reap and cleanup
 	return dc.Cmd.Start()
 }
@@ -119,23 +109,6 @@ func (dc *DockerContainer) ExitStatus() (int, error) {
 	return -1, fmt.Errorf("Couldn't get exit status\n")
 }
 
-// Build uses the provided path to a tar file to build a Docker image.
-func (dc *DockerContainer) Build() error {
-	tarFile, err := os.Open(dc.Temppath)
-	if err != nil {
-		return err
-	}
-	defer tarFile.Close()
-
-	buildCmd := exec.Command("docker", "build", "-t", dc.ImageName, "-q", "-")
-	buildCmd.Stdin = tarFile
-	if err := buildCmd.Run(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // A LinuxDockerContainerFactory manages hosted programs started as docker
 // containers over a given docker image.
 type LinuxDockerContainerFactory struct {
@@ -154,35 +127,8 @@ func NewLinuxDockerContainerFactory(sockPath, rulesPath string) HostedProgramFac
 
 // NewHostedProgram initializes, but does not start, a hosted docker container.
 func (ldcf *LinuxDockerContainerFactory) NewHostedProgram(spec HostedProgramSpec) (child HostedProgram, err error) {
-	// TODO(kwalsh) this code is nearly identical to LinuxProcessFactor's code
 
-	// To avoid a time-of-check-to-time-of-use error, we copy the file
-	// bytes to a temp file as we read them. This temp-file path is
-	// returned so it can be used to start the docker container.
-	tempdir, err := ioutil.TempDir("/tmp", "cloudproxy_linux_docker_container")
-	if err != nil {
-		return
-	}
-	defer func() {
-		if err != nil {
-			os.RemoveAll(tempdir)
-		}
-	}()
-	// TODO(kwalsh):
-	// if err = os.Chmod(tempdir, 0755); err != nil {
-	// 	return
-	// }
-
-	temppath := path.Join(tempdir, "image")
-	tf, err := os.OpenFile(temppath, os.O_CREATE|os.O_RDWR, 0700)
-	defer tf.Close()
-	if err != nil {
-		return
-	}
-	// TODO(kwalsh):
-	// if err = tf.Chmod(0755); err != nil {
-	//	return
-	// }
+	img := getRandomFileName(nameLen)
 
 	inf, err := os.Open(spec.Path)
 	defer inf.Close()
@@ -190,23 +136,24 @@ func (ldcf *LinuxDockerContainerFactory) NewHostedProgram(spec HostedProgramSpec
 		return
 	}
 
-	// Read from the input file and write to the temp file.
-	tr := io.TeeReader(inf, tf)
-	b, err := ioutil.ReadAll(tr)
-	if err != nil {
+	// Build the docker image, and hash the image as it is sent.
+	hasher := sha256.New()
+	build := exec.Command("docker", "build", "-t", img, "-q", "-")
+	build.Stdin = io.TeeReader(inf, hasher)
+	if err = build.Run(); err != nil {
 		return
 	}
 
-	h := sha256.Sum256(b)
+	hash := hasher.Sum(nil)
 
 	child = &DockerContainer{
-		spec:     spec,
-		Temppath: temppath,
-		Tempdir:  tempdir,
-		Hash:     h[:],
-		Factory:  ldcf,
-		Done:     make(chan bool, 1),
+		spec:      spec,
+		ImageName: img,
+		Hash:      hash,
+		Factory:   ldcf,
+		Done:      make(chan bool, 1),
 	}
+
 	return
 }
 
@@ -237,8 +184,6 @@ func (dc *DockerContainer) Start() (channel io.ReadWriteCloser, err error) {
 	sockName := getRandomFileName(nameLen)
 	dc.SocketPath = path.Join(dc.Factory.SocketPath, sockName)
 
-	dc.ImageName = getRandomFileName(nameLen)
-
 	dc.RulesPath = dc.Factory.RulesPath
 
 	channel = util.NewUnixSingleReadWriteCloser(dc.SocketPath)
@@ -248,10 +193,6 @@ func (dc *DockerContainer) Start() (channel io.ReadWriteCloser, err error) {
 			channel = nil
 		}
 	}()
-
-	if err = dc.Build(); err != nil {
-		return
-	}
 
 	// TODO(kwalsh) inline StartDocker() here.
 	if err = dc.StartDocker(); err != nil {
@@ -263,6 +204,5 @@ func (dc *DockerContainer) Start() (channel io.ReadWriteCloser, err error) {
 
 func (p *DockerContainer) Cleanup() error {
 	// TODO(kwalsh) close channel, maybe also kill process if still running?
-	os.RemoveAll(p.Tempdir)
 	return nil
 }

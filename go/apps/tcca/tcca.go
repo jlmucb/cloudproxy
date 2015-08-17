@@ -33,7 +33,7 @@ func main() {
 	flag.Parse()
 	domain, err := tao.LoadDomain(*configPath, []byte(*domainPass))
 	if err != nil {
-		glog.Exit("Couldn't load the config path %s: %s\n", *configPath, err)
+		glog.Exitf("Couldn't load the config path %s: %s\n", *configPath, err)
 		return
 	}
 

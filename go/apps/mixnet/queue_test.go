@@ -23,7 +23,7 @@ import (
 
 // A dummy sever that reads a message from the connecting client.
 func runDummyServerOne(ch chan<- testResult) {
-	l, err := net.Listen(network, dstAddr)
+	l, err := net.Listen(network, localAddr)
 	if err != nil {
 		ch <- testResult{err, nil}
 		return
@@ -54,7 +54,7 @@ func runDummyServerOne(ch chan<- testResult) {
 // A dummy server that accepts clientCt connections and waits for msgCt messages
 // from each client. The message is echoed.
 func runDummyServer(clientCt, msgCt int, ch chan<- testResult, addr chan<- string) {
-	l, err := net.Listen(network, dstAddr)
+	l, err := net.Listen(network, localAddr)
 	if err != nil {
 		ch <- testResult{err, []byte{}}
 		return
@@ -111,7 +111,7 @@ func TestQueueSend(t *testing.T) {
 	dstAddrCh := make(chan string)
 
 	go runDummyServer(clientCt, msgCt, dstCh, dstAddrCh)
-	dstAddr = <-dstAddrCh
+	dstAddr := <-dstAddrCh
 
 	go func() {
 		sq.DoQueue(kill)

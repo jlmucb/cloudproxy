@@ -30,6 +30,12 @@ function build_docker() {
 	mkdir ${TEMP_DIR}/bin
 	WHICH=$(which which)
 	APP_BIN="$(PATH="${GOPATH//://bin:}/bin" $WHICH ${app_name})"
+  if ldd "$APP_BIN" >/dev/null 2>&1; then
+    echo "Found dynamic executable: $APP_BIN"
+    echo "Docker requires static executables."
+    echo "See build_static.sh for static build instructions."
+    exit 1
+  fi
 	cp "$APP_BIN" ${TEMP_DIR}/bin/${app_name}
 	mkdir ${TEMP_DIR}/policy_keys
 	cp $policy_cert ${TEMP_DIR}/policy_keys/cert

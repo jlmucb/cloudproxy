@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/jlmucb/cloudproxy/go/util"
 )
 
 func TestGenerateKeys(t *testing.T) {
@@ -393,7 +394,7 @@ func TestNewOnDiskPBESigner(t *testing.T) {
 	}
 }
 
-func TestNewTemporaryTaoDelegatedKeys(t *testing.T) {
+func TestTaoDelegatedKeys(t *testing.T) {
 	ft, err := NewSoftTao("", nil)
 	if err != nil {
 		t.Fatal("Couldn't initialize a SoftTao:", err)
@@ -425,5 +426,82 @@ func TestNewOnDiskTaoSealedKeys(t *testing.T) {
 	_, err = NewOnDiskTaoSealedKeys(Signing|Crypting|Deriving, ft, tempDir, SealPolicyDefault)
 	if err != nil {
 		t.Fatal("Couldn't read back a sealed, hosted keyset:", err)
+	}
+}
+
+// saveKeyset serializes and saves a Keys object to disk in plaintext.
+func saveKeyset(k *Keys) error {
+	cks, err := MarshalKeyset(k)
+	if err != nil {
+		return err
+	}
+	cks.Delegation = k.Delegation
+
+	m, err := proto.Marshal(cks)
+	if err != nil {
+		return err
+	}
+
+	if err = util.WritePath(k.SealedKeysetPath(), m, 0700, 0600); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Test generating a new set of keys and saving/loading them to/from the disk unsealed.
+func TestUnsealedDelegatedKeysSaveLoad(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "TestInitHosted")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer os.RemoveAll(tempDir)
+
+	ft, err := NewSoftTao("", nil)
+	if err != nil {
+		t.Error("Couldn't initialize a SoftTao:", err)
+		return
+	}
+
+	k, err := NewTemporaryTaoDelegatedKeys(Signing|Crypting|Deriving, ft)
+	if err != nil {
+		t.Error("failed to generate keys:", err)
+		return
+	}
+	k.dir = tempDir
+
+	if err = saveKeyset(k); err != nil {
+		t.Error("failed to save keys:", err)
+		return
+	}
+
+	if _, err = LoadKeys(Signing|Crypting|Deriving, nil, tempDir, SealPolicyDefault); err != nil {
+		t.Error("failed to load keys:", err)
+	}
+}
+
+// Test generating a new set of keys and saving/loading them to/from the disk
+// unsealed without a delegation.
+func TestUnsealedUndelegatedKeysSaveLoad(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "TestInitHosted")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer os.RemoveAll(tempDir)
+
+	k, err := NewTemporaryTaoDelegatedKeys(Signing|Crypting|Deriving, nil)
+	if err != nil {
+		t.Error("failed to generate keys:", err)
+		return
+	}
+	k.dir = tempDir
+
+	if err = saveKeyset(k); err != nil {
+		t.Error("failed to save keys:", err)
+		return
+	}
+
+	if _, err = LoadKeys(Signing|Crypting|Deriving, nil, tempDir, SealPolicyDefault); err != nil {
+		t.Error("failed to load keys:", err)
 	}
 }

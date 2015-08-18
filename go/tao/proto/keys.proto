@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import "attestation.proto";
+
 package tao;
 
 // TODO(kwalsh) add finer-granularity version tags?
@@ -40,10 +42,11 @@ message CryptoKey {
 
 message CryptoKeyset {
   repeated CryptoKey keys = 1;
+  optional Attestation delegation = 2;
 }
 
 // Stacked Tao hosts can invoke their host Tao to seal a serialized CryptoKeyset
-// (or individual CryptoKeys). 
+// (or individual CryptoKeys).
 
 // PBEData is used by root Tao hosts to seal a serialized CryptoKeyset
 // using a user-chosen password.

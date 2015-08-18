@@ -51,7 +51,7 @@ const (
 	ACLs
 )
 
-var errCachedGuardModify = errors.New("CachedGuard: modifying cached policy is not allowed.")
+var errCachedNotImplemented = errors.New("CachedGuard: not implemented.")
 var errCachedGuardSave = errors.New("CachedGuard: saving cached policy is not allowed.")
 var errCachedGuardReload = errors.New("CachedGuard: failed to update policy.")
 
@@ -124,12 +124,12 @@ func (cg *CachedGuard) Save(key *Signer) error {
 // Authorize is not allowed for cached guards, since it doesn't have the
 // private policy key.
 func (cg *CachedGuard) Authorize(name auth.Prin, op string, args []string) error {
-	return errCachedGuardModify
+	return errCachedNotImplemented
 }
 
 // Retract is not allowed for cached guards.
 func (cg *CachedGuard) Retract(name auth.Prin, op string, args []string) error {
-	return errCachedGuardModify
+	return errCachedNotImplemented
 }
 
 // IsAuthorized checks if the principal `name` is authorized to perform `op`
@@ -145,12 +145,17 @@ func (cg *CachedGuard) IsAuthorized(name auth.Prin, op string, args []string) bo
 
 // AddRule is not allowed for cached guards.
 func (cg *CachedGuard) AddRule(rule string) error {
-	return errCachedGuardModify
+	if cg.guard == nil || cg.IsExpired() {
+		if err := cg.Reload(); err != nil {
+			return err
+		}
+	}
+	return cg.guard.AddRule(rule)
 }
 
 // RetractRule is not allowed for cached guards.
 func (cg *CachedGuard) RetractRule(rule string) error {
-	return errCachedGuardModify
+	return errCachedNotImplemented
 }
 
 // Clear deletes the guard. This will cause a Reload() the next time the guard

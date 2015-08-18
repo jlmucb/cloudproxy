@@ -15,6 +15,7 @@
 package tao
 
 import (
+	"crypto/x509/pkix"
 	"fmt"
 	"net"
 	"os"
@@ -176,4 +177,126 @@ func TestCachingDatalogReload(t *testing.T) {
 		t.Fatal("IsAuthorized() succeeded, bad rule should have been denied")
 	}
 	<-ch
+}
+
+// Test that a client can correctly verify that the server is allowed to
+// execute according to the policy. The policy is set up and the policy
+// key is used to attest to the identity of the server. The attestation
+// includes an endorsement of the service itself. The client verifies the
+// endorsement and adds the predicate to the policy before it checking.
+func TestCachingDatalogValidatePeerAttestation(t *testing.T) {
+	var network, addr string
+	var ttl int64
+	network = "tcp"
+	addr = "localhost:0"
+	ttl = 1
+	tmpDir := "/tmp/domain_test"
+
+	// Set up the TaoCA.
+	ch := make(chan bool)
+	cal, err := net.Listen(network, addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cal.Close()
+	addr = cal.Addr().String()
+
+	// Set up the policy domain and a public, cached version.
+	policy, pub, err := makeTestDomains(tmpDir, network, addr, ttl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+	defer os.RemoveAll(tmpDir + ".pub")
+
+	// Set up policy. A key being authorized to execute is of course nonsense;
+	// this is only meant to test that ValidatePeerAttestation() properly adds
+	// the endoresement to the policy.
+	rule := "(forall K: TrustedKey(K) implies Authorized(K, \"Execute\"))"
+	if err := policy.Guard.AddRule(rule); err != nil {
+		t.Errorf("could not add rule : %s", err)
+		return
+	}
+
+	// Generate a set of keys for the Tao-delegated server.
+	k, err := NewTemporaryTaoDelegatedKeys(Signing|Crypting|Deriving, nil)
+	if err != nil {
+		t.Error("failed to generate keys:", err)
+		return
+	}
+	k.dir = tmpDir
+
+	// Generate an attesation of the statements: "k.VerifyingKey speaks for
+	// key(K)" and "TrustedKey(key(K))" signed by the policy key and set to
+	// k.Delegation.
+	prin := auth.Prin{
+		Type: "key",
+		Key:  auth.Bytes("This is a terrible key."),
+	}
+
+	pred := auth.Pred{
+		Name: "TrustedKey",
+		Arg:  []auth.Term{prin},
+	}
+
+	sf := auth.Speaksfor{
+		Delegate:  k.SigningKey.ToPrincipal(),
+		Delegator: prin,
+	}
+
+	stmt := auth.Says{
+		Speaker:    policy.Keys.SigningKey.ToPrincipal(),
+		Time:       nil,
+		Expiration: nil,
+		Message:    sf,
+	}
+
+	if k.Delegation, err = GenerateAttestation(policy.Keys.SigningKey, nil, stmt); err != nil {
+		t.Error("failed to attest to speaksfor:", err)
+		return
+	}
+
+	e := auth.Says{
+		Speaker: policy.Keys.SigningKey.ToPrincipal(),
+		Message: pred,
+	}
+
+	ea, err := GenerateAttestation(policy.Keys.SigningKey, nil, e)
+	if err != nil {
+		t.Error("failed to attest to endorsement:", err)
+		return
+	}
+
+	eab, err := proto.Marshal(ea)
+	if err != nil {
+		t.Error("failed to marshal attested endorsement:", err)
+		return
+	}
+	k.Delegation.SerializedEndorsements = [][]byte{eab}
+
+	// Generate an x509 certificate for the Tao-delegated server.
+	k.Cert, err = k.SigningKey.CreateSelfSignedX509(&pkix.Name{
+		Organization: []string{"Identity of some Tao service"}})
+	if err != nil {
+		t.Error("failed to generate x509 certificate:", err)
+		return
+	}
+
+	// Run the TaoCA. This handles one request and then exits.
+	go runTCCA(t, cal, policy.Keys, policy.Guard, ch)
+
+	// Add any verified predicates to the policy. This will cause a
+	// policy query to the TaoCA.
+	if err = AddEndorsements(pub.Guard, k.Delegation, pub.Keys.VerifyingKey); err != nil {
+		t.Error("failed to add endorsements:", err)
+		return
+	}
+
+	<-ch
+
+	// Finally, the client verifies the Tao-delegated server is allowed to
+	// execute.
+	if err = ValidatePeerAttestation(k.Delegation, k.Cert, pub.Guard); err != nil {
+		t.Error("failed to verity attestation:", err)
+	}
 }

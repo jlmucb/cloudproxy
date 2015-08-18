@@ -227,7 +227,7 @@ func AddEndorsements(guard Guard, a *Attestation, v *Verifier) error {
 			return fmt.Errorf("the signature on an endorsement didn't pass verification")
 		}
 
-		guard.AddRule(pred.String())
+		return guard.AddRule(pred.String())
 	}
 
 	return nil

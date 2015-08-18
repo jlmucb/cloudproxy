@@ -115,8 +115,8 @@ func (p *parser) expectPrinTail() (pt PrinTail, err error) {
 
 // expectPrin expects a Prin.
 func (p *parser) expectPrin() (prin Prin, err error) {
-	if p.cur() != tokenTPM && p.cur() != tokenKey {
-		err = fmt.Errorf(`expected "key" or "tpm", found %v`, p.cur())
+	if !isPrinToken(p.cur()) {
+		err = fmt.Errorf(`expected a principal token, found %v`, p.cur())
 		return
 	}
 	prin.Type = p.cur().val.(string)
@@ -345,13 +345,13 @@ func (p *parser) expectTerm() (Term, error) {
 		if !ok {
 			return nil, fmt.Errorf("a keyword must be a string")
 		}
-		switch s {
-		case "ext":
+		switch {
+		case p.cur() == tokenExt:
 			return p.expectPrinTail()
-		case "key", "tpm":
+		case isPrinToken(p.cur()):
 			return p.expectPrin()
 		default:
-			return nil, fmt.Errorf(`expected "key", "tpm", or "ext", found %s`, s)
+			return nil, fmt.Errorf(`expected keyword of principal token, found %s`, s)
 		}
 	case itemIdentifier:
 		return p.expectTermVar()
@@ -561,7 +561,10 @@ func (p *parser) parseFormAtHigh(greedy bool) (Form, error) {
 		return Not{f}, nil
 	case tokenForall, tokenExists:
 		return p.expectQuantification(greedy)
-	case tokenKey, tokenTPM, tokenExt:
+	case tokenExt:
+		return p.expectTermOperation(greedy)
+	}
+	if isPrinToken(p.cur()) {
 		return p.expectTermOperation(greedy)
 	}
 	switch p.cur().typ {

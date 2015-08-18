@@ -106,7 +106,7 @@ var _ fmt.Scanner = &AnyTerm{}
 // signatures on credentials issued by the principal, and a sequence of zero or
 // more extensions to identify the subprincipal of that key.
 type Prin struct {
-	Type string  // either "key" or "tpm".
+	Type string  // The keyword of a principal token, e.g. "key" or "tpm".
 	Key  Term    // TermVar or Bytes with marshalled CryptoKey protobuf structure with purpose CryptoKey.VERIFYING. Or this can be a marshalled TPM AIK, or a X.509 certificate, marshalled as ASN.1 DER.
 	Ext  SubPrin // zero or more extensions for descendents
 }

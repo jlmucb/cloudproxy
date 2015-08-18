@@ -71,8 +71,6 @@ var (
 	tokenFalse     = token{itemKeyword, "false"}
 	tokenTrue      = token{itemKeyword, "true"}
 	tokenExt       = token{itemKeyword, "ext"}
-	tokenKey       = token{itemKeyword, "key"}
-	tokenTPM       = token{itemKeyword, "tpm"}
 	tokenLP        = token{itemLP, '('}
 	tokenRP        = token{itemRP, ')'}
 	tokenComma     = token{itemComma, ','}
@@ -80,6 +78,16 @@ var (
 	tokenColon     = token{itemColon, ':'}
 	tokenEOF       = token{itemEOF, nil}
 )
+
+var prinTokens = map[token]bool{
+	token{itemKeyword, "tpm"}: true,
+	token{itemKeyword, "key"}: true,
+}
+
+func isPrinToken(i token) bool {
+	_, ok := prinTokens[i]
+	return ok
+}
 
 // String returns pretty-printed token, e.g. for debugging.
 func (i token) String() string {

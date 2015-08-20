@@ -82,18 +82,18 @@ func (dc *DockerContainer) ContainerName() (string, error) {
 	return strings.TrimSpace(string(b)), nil
 }
 
-func docker(stdin io.Reader, args ...string) error {
-	c := exec.Command("docker", args...)
+func docker(stdin io.Reader, cmd string, args ...string) error {
+	c := exec.Command("docker", append([]string{cmd}, args...)...)
 	var b bytes.Buffer
 	c.Stdin = stdin
 	c.Stdout = &b
 	c.Stderr = &b
 	err := c.Run()
 	if err != nil {
-		glog.Errorf("Docker error %v: args=%v\n"+
+		glog.Errorf("Docker error %v: cmd=%v args=%v\n"+
 			"begin docker output\n"+
 			"%v\n"+
-			"end docker output\n", err, args, b.String())
+			"end docker output\n", err, cmd, args, b.String())
 	}
 	return err
 }
@@ -258,11 +258,45 @@ func (dc *DockerContainer) Start() (channel io.ReadWriteCloser, err error) {
 		}
 	}()
 
-	// TODO(kwalsh) inline StartDocker() here.
-	if err = dc.StartDocker(); err != nil {
+	args := []string{"run", "--rm=true", "-v", dc.SocketPath + ":/tao"}
+	args = append(args, "--cidfile", dc.CidfilePath)
+	if dc.RulesPath != "" {
+		args = append(args, "-v", dc.RulesPath+":/"+path.Base(dc.RulesPath))
+	}
+	// ContainerArgs has a name plus args passed directly to docker, i.e. before
+	// image name. Args are passed to the ENTRYPOINT within the Docker image,
+	// i.e. after image name.
+	// Note: Uid, Gid, Dir, and Env do not apply to docker hosted programs.
+	if len(dc.spec.ContainerArgs) > 1 {
+		args = append(args, dc.spec.ContainerArgs[1:]...)
+	}
+	args = append(args, dc.ImageName)
+	args = append(args, dc.spec.Args...)
+	dc.Cmd = exec.Command("docker", args...)
+	dc.Cmd.Stdin = dc.spec.Stdin
+	dc.Cmd.Stdout = dc.spec.Stdout
+	dc.Cmd.Stderr = dc.spec.Stderr
+
+	err = dc.Cmd.Start()
+	if err != nil {
 		return
 	}
+	// Reap the child when the process dies.
+	go func() {
+		sc := make(chan os.Signal, 1)
+		signal.Notify(sc, syscall.SIGCHLD)
+		<-sc
+		dc.Cmd.Wait()
+		signal.Stop(sc)
 
+		time.Sleep(1 * time.Second)
+		docker(nil, "rmi", dc.ImageName)
+		dc.Done <- true
+		os.Remove(dc.CidfilePath)
+		close(dc.Done) // prevent any more blocking
+	}()
+
+	// TODO(kwalsh) put channel into dc, remove the struct in linux_host.go
 	return
 }
 

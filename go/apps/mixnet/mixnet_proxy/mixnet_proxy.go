@@ -68,7 +68,8 @@ func main() {
 		sig := <-sigs
 		proxy.Close()
 		glog.Infof("router: closing on signal: %s", sig)
-		os.Exit(0x81) // TODO(cjpatton) see mixnet_router/mixnet_router.go.
+		signo := int(sig.(syscall.Signal))
+		os.Exit(0x80 + signo)
 	}()
 
 	if err = serveClients(*routerAddr, proxy); err != nil {

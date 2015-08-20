@@ -248,6 +248,7 @@ func (m *CryptoKey) GetKey() []byte {
 
 type CryptoKeyset struct {
 	Keys             []*CryptoKey `protobuf:"bytes,1,rep,name=keys" json:"keys,omitempty"`
+	Delegation       *Attestation `protobuf:"bytes,2,opt,name=delegation" json:"delegation,omitempty"`
 	XXX_unrecognized []byte       `json:"-"`
 }
 
@@ -258,6 +259,13 @@ func (*CryptoKeyset) ProtoMessage()    {}
 func (m *CryptoKeyset) GetKeys() []*CryptoKey {
 	if m != nil {
 		return m.Keys
+	}
+	return nil
+}
+
+func (m *CryptoKeyset) GetDelegation() *Attestation {
+	if m != nil {
+		return m.Delegation
 	}
 	return nil
 }

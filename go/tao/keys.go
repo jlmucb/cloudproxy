@@ -27,6 +27,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
+	"errors"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -836,15 +837,6 @@ func (k *Keys) SealedKeysetPath() string {
 	return path.Join(k.dir, "sealed_keyset")
 }
 
-// DelegationPath returns the path for a stored delegation.
-func (k *Keys) DelegationPath() string {
-	if k.dir == "" {
-		return ""
-	}
-
-	return path.Join(k.dir, "delegation")
-}
-
 // ZeroBytes clears the bytes in a slice.
 func ZeroBytes(b []byte) {
 	for i := range b {
@@ -1151,12 +1143,14 @@ func NewTemporaryTaoDelegatedKeys(keyTypes KeyType, t Tao) (*Keys, error) {
 	if err != nil {
 		return nil, err
 	}
-	self, err := t.GetTaoName()
-	if err != nil {
-		return nil, err
-	}
 
-	if k.SigningKey != nil {
+	if t != nil && k.SigningKey != nil {
+
+		self, err := t.GetTaoName()
+		if err != nil {
+			return nil, err
+		}
+
 		s := &auth.Speaksfor{
 			Delegate:  k.SigningKey.ToPrincipal(),
 			Delegator: self,
@@ -1327,6 +1321,72 @@ func UnmarshalKeyset(cks *CryptoKeyset) (*Keys, error) {
 
 // NewOnDiskTaoSealedKeys sets up the keys sealed under a host Tao or reads sealed keys.
 func NewOnDiskTaoSealedKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys, error) {
+
+	// Fail if no parent Tao exists (otherwise t.Seal() would not be called).
+	if t == nil {
+		return nil, errors.New("parent tao is nil")
+	}
+
+	k := &Keys{
+		keyTypes: keyTypes,
+		dir:      path,
+		policy:   policy,
+	}
+
+	// Check if keys exist: if not, generate and save a new set.
+	f, err := os.Open(k.SealedKeysetPath())
+	if err != nil {
+		k, err = NewTemporaryTaoDelegatedKeys(keyTypes, t)
+		if err != nil {
+			return nil, err
+		}
+		k.dir = path
+		k.policy = policy
+
+		if err = k.Save(t); err != nil {
+			return k, err
+		}
+		return k, nil
+	}
+	f.Close()
+
+	// Otherwise, load from file.
+	return LoadKeys(keyTypes, t, path, policy)
+}
+
+// Save serializes, seals, and writes a key set to disk. It calls t.Seal().
+func (k *Keys) Save(t Tao) error {
+	// Marshal key set.
+	cks, err := MarshalKeyset(k)
+	if err != nil {
+		return err
+	}
+	cks.Delegation = k.Delegation
+
+	// TODO(tmroeder): defer zeroKeyset(cks)
+
+	m, err := proto.Marshal(cks)
+	if err != nil {
+		return err
+	}
+	defer ZeroBytes(m)
+
+	data, err := t.Seal(m, k.policy)
+	if err != nil {
+		return err
+	}
+
+	if err = util.WritePath(k.SealedKeysetPath(), data, 0700, 0600); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// LoadKeys reads a key set from file. If there is a parent tao (t!=nil), then
+// expect the keys are sealed and call t.Unseal(); otherwise, expect the key
+// set to be plaintext.
+func LoadKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys, error) {
 	k := &Keys{
 		keyTypes: keyTypes,
 		dir:      path,
@@ -1335,13 +1395,18 @@ func NewOnDiskTaoSealedKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys
 
 	// Check to see if there are already keys.
 	f, err := os.Open(k.SealedKeysetPath())
-	if err == nil {
-		defer f.Close()
-		ks, err := ioutil.ReadAll(f)
-		if err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
 
+	ks, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+
+	var cks CryptoKeyset
+	if t != nil {
 		data, p, err := t.Unseal(ks)
 		if err != nil {
 			return nil, err
@@ -1349,94 +1414,32 @@ func NewOnDiskTaoSealedKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys
 		defer ZeroBytes(data)
 
 		if p != policy {
-			return nil, newError("invalid policy from Unseal")
+			return nil, errors.New("invalid policy from Unseal")
 		}
-
-		var cks CryptoKeyset
 		if err = proto.Unmarshal(data, &cks); err != nil {
 			return nil, err
 		}
 
-		// TODO(tmroeder): defer zeroKeyset(&cks)
-
-		ktemp, err := UnmarshalKeyset(&cks)
-		if err != nil {
-			return nil, err
-		}
-
-		k.SigningKey = ktemp.SigningKey
-		k.VerifyingKey = ktemp.VerifyingKey
-		k.CryptingKey = ktemp.CryptingKey
-		k.DerivingKey = ktemp.DerivingKey
-
-		// Read the delegation.
-		if k.SigningKey != nil {
-			ds, err := ioutil.ReadFile(k.DelegationPath())
-			if err != nil {
-				return nil, err
-			}
-
-			k.Delegation = new(Attestation)
-			if err := proto.Unmarshal(ds, k.Delegation); err != nil {
-				return nil, err
-			}
-		}
 	} else {
-		// Create and store a new set of keys.
-		k, err = NewTemporaryKeys(keyTypes)
-		if err != nil {
+		if err = proto.Unmarshal(ks, &cks); err != nil {
 			return nil, err
-		}
-
-		k.dir = path
-		k.policy = policy
-
-		cks, err := MarshalKeyset(k)
-		if err != nil {
-			return nil, err
-		}
-
-		// TODO(tmroeder): defer zeroKeyset(cks)
-
-		m, err := proto.Marshal(cks)
-		if err != nil {
-			return nil, err
-		}
-		defer ZeroBytes(m)
-
-		enc, err := t.Seal(m, policy)
-		if err != nil {
-			return nil, err
-		}
-
-		if err = util.WritePath(k.SealedKeysetPath(), enc, 0700, 0600); err != nil {
-			return nil, err
-		}
-
-		// Get and write a delegation.
-		if k.SigningKey != nil {
-			self, err := t.GetTaoName()
-			if err != nil {
-				return nil, err
-			}
-			s := &auth.Speaksfor{
-				Delegate:  k.SigningKey.ToPrincipal(),
-				Delegator: self,
-			}
-			if k.Delegation, err = t.Attest(&self, nil, nil, s); err != nil {
-				return nil, err
-			}
-
-			m, err := proto.Marshal(k.Delegation)
-			if err != nil {
-				return nil, err
-			}
-
-			if err = util.WritePath(k.DelegationPath(), m, 0700, 0600); err != nil {
-				return nil, err
-			}
 		}
 	}
+
+	// TODO(tmroeder): defer zeroKeyset(&cks)
+
+	ktemp, err := UnmarshalKeyset(&cks)
+	if err != nil {
+		return nil, err
+	}
+
+	k.SigningKey = ktemp.SigningKey
+	k.VerifyingKey = ktemp.VerifyingKey
+	k.CryptingKey = ktemp.CryptingKey
+	k.DerivingKey = ktemp.DerivingKey
+
+	// Read the delegation.
+	k.Delegation = cks.Delegation
 
 	return k, nil
 }

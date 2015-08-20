@@ -15,14 +15,20 @@
 package tao
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path"
+	"strings"
 	"syscall"
+	"time"
 
+	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
@@ -42,10 +48,10 @@ type DockerContainer struct {
 	// The factory responsible for the hosted process.
 	Factory *LinuxDockerContainerFactory
 
-	ContainerName string
-	ImageName     string
-	SocketPath    string
-	RulesPath     string
+	ImageName   string
+	SocketPath  string
+	CidfilePath string
+	RulesPath   string
 
 	// The underlying docker process.
 	Cmd *exec.Cmd
@@ -61,35 +67,88 @@ func (dc *DockerContainer) WaitChan() <-chan bool {
 
 // Kill sends a SIGKILL signal to a docker container.
 func (dc *DockerContainer) Kill() error {
-	c := exec.Command("docker", "kill", dc.ContainerName)
-	return c.Run()
+	cid, err := dc.ContainerName()
+	if err != nil {
+		return err
+	}
+	return docker(nil, "kill", cid)
+}
+
+func (dc *DockerContainer) ContainerName() (string, error) {
+	b, err := ioutil.ReadFile(dc.CidfilePath)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(b)), nil
+}
+
+func docker(stdin io.Reader, cmd string, args ...string) error {
+	c := exec.Command("docker", append([]string{cmd}, args...)...)
+	var b bytes.Buffer
+	c.Stdin = stdin
+	c.Stdout = &b
+	c.Stderr = &b
+	err := c.Run()
+	if err != nil {
+		glog.Errorf("Docker error %v: cmd=%v args=%v\n"+
+			"begin docker output\n"+
+			"%v\n"+
+			"end docker output\n", err, cmd, args, b.String())
+	}
+	return err
 }
 
 // StartDocker starts a docker container using the docker run subcommand.
 func (dc *DockerContainer) StartDocker() error {
-	cmdArgs := []string{"run", "--rm=true", "-v", dc.SocketPath + ":/tao"}
+	args := []string{"run", "--rm=true", "-v", dc.SocketPath + ":/tao"}
+	args = append(args, "--cidfile", dc.CidfilePath)
 	if dc.RulesPath != "" {
-		cmdArgs = append(cmdArgs, "-v", dc.RulesPath+":/"+path.Base(dc.RulesPath))
+		args = append(args, "-v", dc.RulesPath+":/"+path.Base(dc.RulesPath))
 	}
-	// ContainerArgs are passed directly to docker, i.e. before image name.
-	// Args are passed to the ENTRYPOINT within the Docker image, i.e. after
-	// image name.
-	cmdArgs = append(cmdArgs, dc.spec.ContainerArgs...)
-	cmdArgs = append(cmdArgs, dc.ImageName)
-	cmdArgs = append(cmdArgs, dc.spec.Args...)
-	dc.Cmd = exec.Command("docker", cmdArgs...)
+	// ContainerArgs has a name plus args passed directly to docker, i.e. before
+	// image name. Args are passed to the ENTRYPOINT within the Docker image,
+	// i.e. after image name.
+	// Note: Uid, Gid, Dir, and Env do not apply to docker hosted programs.
+	if len(dc.spec.ContainerArgs) > 1 {
+		args = append(args, dc.spec.ContainerArgs[1:]...)
+	}
+	args = append(args, dc.ImageName)
+	args = append(args, dc.spec.Args...)
+	dc.Cmd = exec.Command("docker", args...)
 	dc.Cmd.Stdin = dc.spec.Stdin
 	dc.Cmd.Stdout = dc.spec.Stdout
 	dc.Cmd.Stderr = dc.spec.Stderr
-	// Note: Uid, Gid, Dir, and Env do not apply to docker hosted programs.
-	// TODO(kwalsh) reap and cleanup
-	return dc.Cmd.Start()
+
+	err := dc.Cmd.Start()
+	if err != nil {
+		return err
+	}
+	// Reap the child when the process dies.
+	go func() {
+		sc := make(chan os.Signal, 1)
+		signal.Notify(sc, syscall.SIGCHLD)
+		<-sc
+		dc.Cmd.Wait()
+		signal.Stop(sc)
+
+		time.Sleep(1 * time.Second)
+		docker(nil, "rmi", dc.ImageName)
+		dc.Done <- true
+		os.Remove(dc.CidfilePath)
+		close(dc.Done) // prevent any more blocking
+	}()
+
+	return nil
+	// TODO(kwalsh) put channel into p, remove the struct in linux_host.go
 }
 
 // Stop sends a SIGSTOP signal to a docker container.
 func (dc *DockerContainer) Stop() error {
-	c := exec.Command("docker", "kill", "-s", "STOP", dc.ContainerName)
-	return c.Run()
+	cid, err := dc.ContainerName()
+	if err != nil {
+		return err
+	}
+	return docker(nil, "kill", "-s", "STOP", cid)
 }
 
 // Pid returns a numeric ID for this docker container.
@@ -112,23 +171,28 @@ func (dc *DockerContainer) ExitStatus() (int, error) {
 // A LinuxDockerContainerFactory manages hosted programs started as docker
 // containers over a given docker image.
 type LinuxDockerContainerFactory struct {
-	SocketPath string
-	RulesPath  string
+	SocketDir string
+	RulesPath string
 }
 
 // NewLinuxDockerContainerFactory returns a new HostedProgramFactory that can
 // create docker containers to wrap programs.
-func NewLinuxDockerContainerFactory(sockPath, rulesPath string) HostedProgramFactory {
+func NewLinuxDockerContainerFactory(sockDir, rulesPath string) HostedProgramFactory {
 	return &LinuxDockerContainerFactory{
-		SocketPath: sockPath,
-		RulesPath:  rulesPath,
+		SocketDir: sockDir,
+		RulesPath: rulesPath,
 	}
 }
 
 // NewHostedProgram initializes, but does not start, a hosted docker container.
 func (ldcf *LinuxDockerContainerFactory) NewHostedProgram(spec HostedProgramSpec) (child HostedProgram, err error) {
 
-	img := getRandomFileName(nameLen)
+	// The imagename for the child is given by spec.ContainerArgs[0]
+	argv0 := "cloudproxy"
+	if len(spec.ContainerArgs) >= 1 {
+		argv0 = spec.ContainerArgs[0]
+	}
+	img := argv0 + ":" + getRandomFileName(nameLen)
 
 	inf, err := os.Open(spec.Path)
 	defer inf.Close()
@@ -138,9 +202,8 @@ func (ldcf *LinuxDockerContainerFactory) NewHostedProgram(spec HostedProgramSpec
 
 	// Build the docker image, and hash the image as it is sent.
 	hasher := sha256.New()
-	build := exec.Command("docker", "build", "-t", img, "-q", "-")
-	build.Stdin = io.TeeReader(inf, hasher)
-	if err = build.Run(); err != nil {
+	err = docker(io.TeeReader(inf, hasher), "build", "-t", img, "-q", "-")
+	if err != nil {
 		return
 	}
 
@@ -181,8 +244,9 @@ func FormatDockerSubprin(id uint, hash []byte) auth.SubPrin {
 // Start builds the docker container from the tar file and launches it.
 func (dc *DockerContainer) Start() (channel io.ReadWriteCloser, err error) {
 
-	sockName := getRandomFileName(nameLen)
-	dc.SocketPath = path.Join(dc.Factory.SocketPath, sockName)
+	s := path.Join(dc.Factory.SocketDir, getRandomFileName(nameLen))
+	dc.SocketPath = s + ".sock"
+	dc.CidfilePath = s + ".cid"
 
 	dc.RulesPath = dc.Factory.RulesPath
 
@@ -194,11 +258,45 @@ func (dc *DockerContainer) Start() (channel io.ReadWriteCloser, err error) {
 		}
 	}()
 
-	// TODO(kwalsh) inline StartDocker() here.
-	if err = dc.StartDocker(); err != nil {
+	args := []string{"run", "--rm=true", "-v", dc.SocketPath + ":/tao"}
+	args = append(args, "--cidfile", dc.CidfilePath)
+	if dc.RulesPath != "" {
+		args = append(args, "-v", dc.RulesPath+":/"+path.Base(dc.RulesPath))
+	}
+	// ContainerArgs has a name plus args passed directly to docker, i.e. before
+	// image name. Args are passed to the ENTRYPOINT within the Docker image,
+	// i.e. after image name.
+	// Note: Uid, Gid, Dir, and Env do not apply to docker hosted programs.
+	if len(dc.spec.ContainerArgs) > 1 {
+		args = append(args, dc.spec.ContainerArgs[1:]...)
+	}
+	args = append(args, dc.ImageName)
+	args = append(args, dc.spec.Args...)
+	dc.Cmd = exec.Command("docker", args...)
+	dc.Cmd.Stdin = dc.spec.Stdin
+	dc.Cmd.Stdout = dc.spec.Stdout
+	dc.Cmd.Stderr = dc.spec.Stderr
+
+	err = dc.Cmd.Start()
+	if err != nil {
 		return
 	}
+	// Reap the child when the process dies.
+	go func() {
+		sc := make(chan os.Signal, 1)
+		signal.Notify(sc, syscall.SIGCHLD)
+		<-sc
+		dc.Cmd.Wait()
+		signal.Stop(sc)
 
+		time.Sleep(1 * time.Second)
+		docker(nil, "rmi", dc.ImageName)
+		dc.Done <- true
+		os.Remove(dc.CidfilePath)
+		close(dc.Done) // prevent any more blocking
+	}()
+
+	// TODO(kwalsh) put channel into dc, remove the struct in linux_host.go
 	return
 }
 

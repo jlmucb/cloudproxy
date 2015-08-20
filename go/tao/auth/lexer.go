@@ -89,6 +89,12 @@ func isPrinToken(i token) bool {
 	return ok
 }
 
+func AddPrinTokens(keywords ...string) {
+	for _, keyword := range keywords {
+		prinTokens[token{itemKeyword, keyword}] = true
+	}
+}
+
 // String returns pretty-printed token, e.g. for debugging.
 func (i token) String() string {
 	switch i.typ {

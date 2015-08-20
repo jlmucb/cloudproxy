@@ -351,7 +351,7 @@ func (p *parser) expectTerm() (Term, error) {
 		case isPrinToken(p.cur()):
 			return p.expectPrin()
 		default:
-			return nil, fmt.Errorf(`expected keyword of principal token, found %s`, s)
+			return nil, fmt.Errorf(`expected keyword of principal token or ext, found %s`, s)
 		}
 	case itemIdentifier:
 		return p.expectTermVar()

@@ -78,7 +78,7 @@ type DatalogGuard struct {
 	modTime time.Time // Modification time of signed rules file at time of reading.
 	db      DatalogRules
 	dl      *dlengine.Engine
-	sp	*subprinPrim
+	sp      *subprinPrim
 }
 
 // subprinPrim is a custom datalog primitive that implements subprincipal
@@ -195,7 +195,7 @@ func (sp *subprinPrim) Search(target *datalog.Literal, discovered func(c *datalo
 		}
 		oprin.Ext = append(oprin.Ext, eprin.Ext...)
 		oeIdent := dlengine.NewIdent(fmt.Sprintf("%q", oprin.String()))
-		if len(oprin.Ext) + 1 <= sp.max {
+		if len(oprin.Ext)+1 <= sp.max {
 			discovered(datalog.NewClause(datalog.NewLiteral(sp, oeIdent, o, e)))
 		}
 	} else if p.Constant() && o.Constant() && e.Constant() {

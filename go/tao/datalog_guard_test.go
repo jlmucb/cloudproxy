@@ -248,6 +248,37 @@ func TestDatalogSubprin(t *testing.T) {
 	}
 }
 
+// Test adding a principal token to the authorization language on the fly.
+// Add a predicate of a new principal type and test that it is authorized.
+func TestDatalogAddPrinToken(t *testing.T) {
+	g, keys, tmpdir, err := makeDatalogGuard()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpdir)
+
+	auth.AddPrinTokens("bogus")
+	prin := auth.Prin{
+		Type: "bogus",
+		Key:  auth.Bytes{0xfa, 0xce},
+	}
+
+	pred := auth.MakePredicate("IsBogus", prin)
+	if err = g.AddRule(pred.String()); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := g.Save(keys.SigningKey); err != nil {
+		t.Fatal("Couldn't save the guard:", err)
+	}
+
+	if ok, err := g.Query(pred.String()); err != nil {
+		t.Error("query returned error:", err)
+	} else if !ok {
+		t.Error("query should have returned true")
+	}
+}
+
 var datalogFormLengthChecks = []struct {
 	query  string
 	length int
@@ -306,43 +337,43 @@ func TestDatalogMaxTermLength(t *testing.T) {
 }
 
 var datalogLoops = []string{
-       "(forall X: forall Y: forall P: A(X) and B(Y) and Subprin(P, X, Y) implies A(P))",
-       "(A(key([70])))",
-       "(B(ext.Hash([71])))",
+	"(forall X: forall Y: forall P: A(X) and B(Y) and Subprin(P, X, Y) implies A(P))",
+	"(A(key([70])))",
+	"(B(ext.Hash([71])))",
 }
 
-var datalogLoopQueries = []struct{
-	query string
+var datalogLoopQueries = []struct {
+	query    string
 	expected bool
-} {
+}{
 	{"A(key([70]).Hash([71]))", true},
 	{"A(key([70]))", true},
 	{"A(key([70]).Hash([72]))", false},
 }
 
 func TestDatalogLoop(t *testing.T) {
-       g, key, tmpdir, err := makeDatalogGuard()
-       if err != nil {
-	       t.Fatalf("makeDatalogGuard failed: %v", err)
-       }
-       defer os.RemoveAll(tmpdir)
-       if err = g.Save(key.SigningKey); err != nil {
-	       t.Fatalf("Failed to save DatalogGuard: %v", err)
-       }
+	g, key, tmpdir, err := makeDatalogGuard()
+	if err != nil {
+		t.Fatalf("makeDatalogGuard failed: %v", err)
+	}
+	defer os.RemoveAll(tmpdir)
+	if err = g.Save(key.SigningKey); err != nil {
+		t.Fatalf("Failed to save DatalogGuard: %v", err)
+	}
 
-       for _, s := range datalogLoops {
-               if err := g.AddRule(s); err != nil {
-                       t.Fatalf("Couldn't add rule '%s': %s", s, err)
-               }
-       }
+	for _, s := range datalogLoops {
+		if err := g.AddRule(s); err != nil {
+			t.Fatalf("Couldn't add rule '%s': %s", s, err)
+		}
+	}
 
-       for _, q := range datalogLoopQueries {
-	       ok, err := g.Query(q.query)
-	       if err != nil {
-		       t.Errorf("Query(%q) failed: %v", q.query, err)
-	       }
-	       if ok != q.expected {
-		       t.Errorf("Query(%q) = %t; want %t", q.query, ok, q.expected)
-	       }
-       }
+	for _, q := range datalogLoopQueries {
+		ok, err := g.Query(q.query)
+		if err != nil {
+			t.Errorf("Query(%q) failed: %v", q.query, err)
+		}
+		if ok != q.expected {
+			t.Errorf("Query(%q) = %t; want %t", q.query, ok, q.expected)
+		}
+	}
 }

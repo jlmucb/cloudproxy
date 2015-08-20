@@ -77,11 +77,9 @@ func makeTestDomains(configDir, network, addr string, ttl int64) (policy *Domain
 }
 
 func TestCachingDatalogLoad(t *testing.T) {
-	var network, addr string
-	var ttl int64
-	network = "tcp"
-	addr = "localhost:0"
-	ttl = 1
+	network := "tcp"
+	addr := "localhost:0"
+	ttl := int64(1)
 	configDir := "/tmp/domain_test"
 
 	ch := make(chan bool)
@@ -116,11 +114,9 @@ func TestCachingDatalogLoad(t *testing.T) {
 
 func TestCachingDatalogReload(t *testing.T) {
 
-	var network, addr string
-	var ttl int64
-	network = "tcp"
-	addr = "localhost:0"
-	ttl = 10
+	network := "tcp"
+	addr := "localhost:0"
+	ttl := int64(10)
 
 	// Run the TaoCA. This handles one request and then exits.
 	ch := make(chan bool)
@@ -183,13 +179,11 @@ func TestCachingDatalogReload(t *testing.T) {
 // execute according to the policy. The policy is set up and the policy
 // key is used to attest to the identity of the server. The attestation
 // includes an endorsement of the service itself. The client verifies the
-// endorsement and adds the predicate to the policy before it checking.
+// endorsement and adds the predicate to the policy before checking it.
 func TestCachingDatalogValidatePeerAttestation(t *testing.T) {
-	var network, addr string
-	var ttl int64
-	network = "tcp"
-	addr = "localhost:0"
-	ttl = 1
+	network := "tcp"
+	addr := "localhost:0"
+	ttl := int64(1)
 	tmpDir := "/tmp/domain_test"
 
 	// Set up the TaoCA.

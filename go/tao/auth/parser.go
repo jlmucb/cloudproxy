@@ -340,18 +340,13 @@ func (p *parser) expectTerm() (Term, error) {
 	case itemInt:
 		return p.expectInt()
 	case itemKeyword:
-		// All keywords have a string value.
-		s, ok := p.cur().val.(string)
-		if !ok {
-			return nil, fmt.Errorf("a keyword must be a string")
-		}
 		switch {
 		case p.cur() == tokenExt:
 			return p.expectPrinTail()
 		case isPrinToken(p.cur()):
 			return p.expectPrin()
 		default:
-			return nil, fmt.Errorf(`expected keyword of principal token or ext, found %s`, s)
+			return nil, fmt.Errorf(`expected keyword of principal token or ext, found %s`, p.cur().val)
 		}
 	case itemIdentifier:
 		return p.expectTermVar()

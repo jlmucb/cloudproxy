@@ -248,37 +248,6 @@ func TestDatalogSubprin(t *testing.T) {
 	}
 }
 
-// Test adding a principal token to the authorization language on the fly.
-// Add a predicate of a new principal type and test that it is authorized.
-func TestDatalogAddPrinToken(t *testing.T) {
-	g, keys, tmpdir, err := makeDatalogGuard()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
-
-	auth.AddPrinTokens("bogus")
-	prin := auth.Prin{
-		Type: "bogus",
-		Key:  auth.Bytes{0xfa, 0xce},
-	}
-
-	pred := auth.MakePredicate("IsBogus", prin)
-	if err = g.AddRule(pred.String()); err != nil {
-		t.Error(err)
-		return
-	}
-	if err := g.Save(keys.SigningKey); err != nil {
-		t.Fatal("Couldn't save the guard:", err)
-	}
-
-	if ok, err := g.Query(pred.String()); err != nil {
-		t.Error("query returned error:", err)
-	} else if !ok {
-		t.Error("query should have returned true")
-	}
-}
-
 var datalogFormLengthChecks = []struct {
 	query  string
 	length int

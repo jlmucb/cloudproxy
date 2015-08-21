@@ -430,7 +430,8 @@ func TestNewOnDiskTaoSealedKeys(t *testing.T) {
 }
 
 // saveKeyset serializes and saves a Keys object to disk in plaintext.
-func saveKeyset(k *Keys) error {
+func saveKeyset(k *Keys, dir string) error {
+	k.dir = dir
 	cks, err := MarshalKeyset(k)
 	if err != nil {
 		return err
@@ -468,9 +469,8 @@ func TestUnsealedDelegatedKeysSaveLoad(t *testing.T) {
 		t.Error("failed to generate keys:", err)
 		return
 	}
-	k.dir = tempDir
 
-	if err = saveKeyset(k); err != nil {
+	if err = saveKeyset(k, tempDir); err != nil {
 		t.Error("failed to save keys:", err)
 		return
 	}
@@ -494,9 +494,8 @@ func TestUnsealedUndelegatedKeysSaveLoad(t *testing.T) {
 		t.Error("failed to generate keys:", err)
 		return
 	}
-	k.dir = tempDir
 
-	if err = saveKeyset(k); err != nil {
+	if err = saveKeyset(k, tempDir); err != nil {
 		t.Error("failed to save keys:", err)
 		return
 	}

@@ -30,6 +30,7 @@ var key = []string{
 }
 
 var termtests = []string{
+	`bogus([face])`,
 	"42",
 	"0",
 	"-1",

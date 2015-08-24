@@ -30,9 +30,9 @@ import (
 // processes, or shutting down the host. A LinuxTao can be run in stacked mode
 // (on top of a host Tao) or in root mode (without an underlying host Tao).
 type LinuxHost struct {
+	Host        Host
 	path           string
 	guard          Guard
-	taoHost        Host
 	childFactory   HostedProgramFactory
 	hostedPrograms []*LinuxHostChild
 	hpm            sync.RWMutex
@@ -60,7 +60,7 @@ func NewStackedLinuxHost(path string, guard Guard, hostTao Tao, childFactory Hos
 		return nil, err
 	}
 
-	lh.taoHost, err = NewTaoStackedHostFromKeys(k, hostTao)
+	lh.Host, err = NewTaoStackedHostFromKeys(k, hostTao)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func NewRootLinuxHost(path string, guard Guard, password []byte, childFactory Ho
 		return nil, err
 	}
 
-	lh.taoHost, err = NewTaoRootHostFromKeys(k)
+	lh.Host, err = NewTaoRootHostFromKeys(k)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ type LinuxHostChild struct {
 
 // GetTaoName returns the Tao name for the child.
 func (lh *LinuxHost) GetTaoName(child *LinuxHostChild) auth.Prin {
-	return lh.taoHost.HostName().MakeSubprincipal(child.ChildSubprin)
+	return lh.Host.HostName().MakeSubprincipal(child.ChildSubprin)
 }
 
 // ExtendTaoName irreversibly extends the Tao principal name of the child.
@@ -111,7 +111,7 @@ func (lh *LinuxHost) ExtendTaoName(child *LinuxHostChild, ext auth.SubPrin) erro
 
 // GetRandomBytes returns a slice of n random bytes for the child.
 func (lh *LinuxHost) GetRandomBytes(child *LinuxHostChild, n int) ([]byte, error) {
-	return lh.taoHost.GetRandomBytes(child.ChildSubprin, n)
+	return lh.Host.GetRandomBytes(child.ChildSubprin, n)
 }
 
 // GetSharedSecret returns a slice of n secret bytes for the child.
@@ -135,7 +135,7 @@ func (lh *LinuxHost) GetSharedSecret(child *LinuxHostChild, n int, policy string
 	default:
 		return nil, newError("policy not supported for GetSharedSecret: " + policy)
 	}
-	return lh.taoHost.GetSharedSecret(tag, n)
+	return lh.Host.GetSharedSecret(tag, n)
 }
 
 // Seal encrypts data for the child. This call also zeroes the data parameter.
@@ -170,12 +170,12 @@ func (lh *LinuxHost) Seal(child *LinuxHostChild, data []byte, policy string) ([]
 	}
 	defer ZeroBytes(m)
 
-	return lh.taoHost.Encrypt(m)
+	return lh.Host.Encrypt(m)
 }
 
 // Unseal decrypts data for the child, but only if the policy is satisfied.
 func (lh *LinuxHost) Unseal(child *LinuxHostChild, sealed []byte) ([]byte, string, error) {
-	decrypted, err := lh.taoHost.Decrypt(sealed)
+	decrypted, err := lh.Host.Decrypt(sealed)
 	if err != nil {
 		return nil, "", err
 	}
@@ -207,7 +207,7 @@ func (lh *LinuxHost) Unseal(child *LinuxHostChild, sealed []byte) ([]byte, strin
 
 // Attest signs a statement on behalf of the child.
 func (lh *LinuxHost) Attest(child *LinuxHostChild, issuer *auth.Prin, time, expiration *int64, stmt auth.Form) (*Attestation, error) {
-	return lh.taoHost.Attest(child.ChildSubprin, issuer, time, expiration, stmt)
+	return lh.Host.Attest(child.ChildSubprin, issuer, time, expiration, stmt)
 }
 
 // StartHostedProgram starts a new hosted program.
@@ -232,7 +232,7 @@ func (lh *LinuxHost) StartHostedProgram(spec HostedProgramSpec) (auth.SubPrin, i
 
 	// TODO(tmroeder): do we want to support concurrent updates to policy?
 	// Then we need a lock here, too.
-	hostName := lh.taoHost.HostName()
+	hostName := lh.Host.HostName()
 	subprin := prog.Subprin()
 	childName := hostName.MakeSubprincipal(subprin)
 	if !lh.guard.IsAuthorized(childName, "Execute", []string{}) {
@@ -333,7 +333,7 @@ func (lh *LinuxHost) KillHostedProgram(subprin auth.SubPrin) error {
 
 // HostName returns the name of the Host used by the LinuxHost.
 func (lh *LinuxHost) HostName() auth.Prin {
-	return lh.taoHost.HostName()
+	return lh.Host.HostName()
 }
 
 // Shutdown stops all hosted programs. If any remain after 10 seconds, they are

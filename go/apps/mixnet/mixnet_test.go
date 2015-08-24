@@ -248,7 +248,7 @@ func TestCreateDestroy(t *testing.T) {
 
 	// The address doesn't matter here because no packets will be sent on
 	// the established circuit.
-	fakeAddr := "127.0.0.1:1234"
+	fakeAddr := "127.0.0.1:0"
 	ch := make(chan testResult)
 	go runRouterHandleOneProxy(router, 3, ch)
 

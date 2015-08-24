@@ -35,8 +35,8 @@ import (
 // TODO(cjpatton) Modify CreatePublicCachedDomain() to accept either (network,addr) or a
 // net.Conn. Modify this test to use net.Pipe instead of the loopback interface here.
 
-var password []byte = make([]byte, 32)
-var prin auth.Prin = auth.NewKeyPrin([]byte("Alice"))
+var password = make([]byte, 32)
+var prin = auth.NewKeyPrin([]byte("Alice"))
 
 func makeTestDomains(configDir, network, addr string, ttl int64) (policy *Domain, public *Domain, err error) {
 

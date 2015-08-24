@@ -112,9 +112,10 @@ func DialTLSWithKeys(network, addr string, keys *Keys) (net.Conn, error) {
 	return conn, err
 }
 
-// Dial connects to a Tao TLS server, performs a TLS handshake, and exchanges
-// Attestation values with the server, checking that this is a Tao server
-// that is authorized to Execute. It uses a Tao Guard to perform this check.
+// DialWithNewX509 connects to a Tao TLS server, performs a TLS handshake, and
+// exchanges Attestation values with the server, checking that this is a Tao
+// server that is authorized to Execute. It uses a Tao Guard to perform this
+// check.
 func DialWithNewX509(network, addr string, guard Guard, v *Verifier) (net.Conn, error) {
 	keys, _, err := generateX509()
 	if err != nil {

@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/go/util"
 )
 
 func TestGenerateKeys(t *testing.T) {
@@ -427,27 +426,6 @@ func TestNewOnDiskTaoSealedKeys(t *testing.T) {
 	if err != nil {
 		t.Fatal("Couldn't read back a sealed, hosted keyset:", err)
 	}
-}
-
-// SaveKeyset serializes and saves a Keys object to disk in plaintext.
-func SaveKeyset(k *Keys, dir string) error {
-	k.dir = dir
-	cks, err := MarshalKeyset(k)
-	if err != nil {
-		return err
-	}
-	cks.Delegation = k.Delegation
-
-	m, err := proto.Marshal(cks)
-	if err != nil {
-		return err
-	}
-
-	if err = util.WritePath(k.SealedKeysetPath(), m, 0700, 0600); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // Test generating a new set of keys and saving/loading them to/from the disk unsealed.

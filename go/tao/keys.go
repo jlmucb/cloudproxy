@@ -1489,3 +1489,24 @@ func (k *Keys) NewSecret(file string, length int) ([]byte, error) {
 
 	return dec, nil
 }
+
+// SaveKeyset serializes and saves a Keys object to disk in plaintext.
+func SaveKeyset(k *Keys, dir string) error {
+	k.dir = dir
+	cks, err := MarshalKeyset(k)
+	if err != nil {
+		return err
+	}
+	cks.Delegation = k.Delegation
+
+	m, err := proto.Marshal(cks)
+	if err != nil {
+		return err
+	}
+
+	if err = util.WritePath(k.SealedKeysetPath(), m, 0700, 0600); err != nil {
+		return err
+	}
+
+	return nil
+}

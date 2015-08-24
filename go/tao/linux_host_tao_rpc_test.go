@@ -20,6 +20,7 @@ package tao
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"strconv"
 	"testing"
@@ -30,19 +31,22 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util/protorpc"
 )
 
-func testNewLinuxHostTaoServer(t *testing.T) (Tao, string) {
-	lh, tmpdir := testNewRootLinuxHost(t)
+func testNewLinuxHostTaoServer(t *testing.T) (Tao, error) {
+	lh, err := testNewRootLinuxHost()
+	if err != nil {
+		return nil, fmt.Errorf("Can't make root linux host: %s", err)
+	}
 
 	hostRead, childWrite, err := os.Pipe()
 	if err != nil {
-		t.Fatal("Can't make pipe:", err)
+		return nil, fmt.Errorf("Can't make pipe: %s", err)
 	}
 
 	childRead, hostWrite, err := os.Pipe()
 	if err != nil {
 		childWrite.Close()
 		hostRead.Close()
-		t.Fatal("Can't make pipe:", err)
+		return nil, fmt.Errorf("Can't make pipe: %s", err)
 	}
 
 	hostChannel := util.NewPairReadWriteCloser(hostRead, hostWrite)
@@ -55,12 +59,14 @@ func testNewLinuxHostTaoServer(t *testing.T) (Tao, string) {
 	}
 
 	go NewLinuxHostTaoServer(lh, child).Serve(hostChannel)
-	return &RPC{protorpc.NewClient(childChannel), "Tao"}, tmpdir
+	return &RPC{protorpc.NewClient(childChannel), "Tao"}, nil
 }
 
 func TestLinuxHostTaoServerGetTaoName(t *testing.T) {
-	host, tmpdir := testNewLinuxHostTaoServer(t)
-	defer os.RemoveAll(tmpdir)
+	host, err := testNewLinuxHostTaoServer(t)
+	if err != nil {
+		t.Fatal(err)
+	}
 	prin, err := host.GetTaoName()
 	if err != nil {
 		t.Fatal("Couldn't get the Tao name from the LinuxHostTaoServer:", err)
@@ -71,8 +77,10 @@ func TestLinuxHostTaoServerGetTaoName(t *testing.T) {
 }
 
 func TestLinuxHostTaoServerExtendTaoName(t *testing.T) {
-	host, tmpdir := testNewLinuxHostTaoServer(t)
-	defer os.RemoveAll(tmpdir)
+	host, err := testNewLinuxHostTaoServer(t)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ext := auth.SubPrin{auth.PrinExt{Name: "Extension"}}
 	if err := host.ExtendTaoName(ext); err != nil {
 		t.Fatal("Couldn't extend the Tao name through LinuxHostTaoServer:", err)
@@ -80,8 +88,10 @@ func TestLinuxHostTaoServerExtendTaoName(t *testing.T) {
 }
 
 func TestLinuxHostTaoServerGetRandomBytes(t *testing.T) {
-	host, tmpdir := testNewLinuxHostTaoServer(t)
-	defer os.RemoveAll(tmpdir)
+	host, err := testNewLinuxHostTaoServer(t)
+	if err != nil {
+		t.Fatal(err)
+	}
 	data, err := host.GetRandomBytes(10)
 	if err != nil {
 		t.Fatal("Couldn't get random bytes from LinuxHostTaoServer:", err)
@@ -92,8 +102,10 @@ func TestLinuxHostTaoServerGetRandomBytes(t *testing.T) {
 }
 
 func TestLinuxHostTaoServerSealUnseal(t *testing.T) {
-	host, tmpdir := testNewLinuxHostTaoServer(t)
-	defer os.RemoveAll(tmpdir)
+	host, err := testNewLinuxHostTaoServer(t)
+	if err != nil {
+		t.Fatal(err)
+	}
 	orig := []byte{1, 2, 3, 4, 5}
 	sealed, err := host.Seal(orig, SealPolicyDefault)
 	if err != nil {
@@ -115,8 +127,10 @@ func TestLinuxHostTaoServerSealUnseal(t *testing.T) {
 }
 
 func TestLinuxHostTaoServerAttest(t *testing.T) {
-	host, tmpdir := testNewLinuxHostTaoServer(t)
-	defer os.RemoveAll(tmpdir)
+	host, err := testNewLinuxHostTaoServer(t)
+	if err != nil {
+		t.Fatal(err)
+	}
 	prin, err := host.GetTaoName()
 	if err != nil {
 		t.Fatal("Couldn't get the Tao name from the LinuxHostTaoServer:", err)

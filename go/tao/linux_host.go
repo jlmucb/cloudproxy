@@ -49,10 +49,8 @@ func NewStackedLinuxHost(path string, guard Guard, hostTao Tao, childFactory Hos
 		childFactory: childFactory,
 	}
 
-	// TODO(tmroeder): the TPM Tao currently doesn't support name extensions.
-	if _, ok := hostTao.(*TPMTao); !ok {
-		subprin := guard.Subprincipal()
-		if err := hostTao.ExtendTaoName(subprin); err != nil {
+	if _, ok := hostTao.(*SoftTao); ok {
+		if err := hostTao.ExtendTaoName(guard.Subprincipal()); err != nil {
 			return nil, err
 		}
 	}

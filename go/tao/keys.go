@@ -803,11 +803,11 @@ type Keys struct {
 }
 
 const (
-	X509Path           = "cert"
-	PBEKeysetPath      = "keys"
-	PBESignerPath      = "signer"
-	SealedKeysetPath   = "sealed_keyset"
-	UnsealedKeysetPath = "unsealed_keyset"
+	X509Path            = "cert"
+	PBEKeysetPath       = "keys"
+	PBESignerPath       = "signer"
+	SealedKeysetPath    = "sealed_keyset"
+	PlaintextKeysetPath = "plaintext_keyset"
 )
 
 // X509Path returns the path to the verifier key, stored as an X.509
@@ -845,12 +845,12 @@ func (k *Keys) SealedKeysetPath() string {
 	return path.Join(k.dir, SealedKeysetPath)
 }
 
-func (k *Keys) UnsealedKeysetPath() string {
+func (k *Keys) PlaintextKeysetPath() string {
 	if k.dir == "" {
 		return ""
 	}
 
-	return path.Join(k.dir, UnsealedKeysetPath)
+	return path.Join(k.dir, PlaintextKeysetPath)
 }
 
 // ZeroBytes clears the bytes in a slice.
@@ -1412,7 +1412,7 @@ func LoadKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys, error) {
 	// Check to see if there are already keys.
 	var keysetPath string
 	if t == nil {
-		keysetPath = k.UnsealedKeysetPath()
+		keysetPath = k.PlaintextKeysetPath()
 	} else {
 		keysetPath = k.SealedKeysetPath()
 	}
@@ -1526,7 +1526,7 @@ func SaveKeyset(k *Keys, dir string) error {
 		return err
 	}
 
-	if err = util.WritePath(k.UnsealedKeysetPath(), m, 0700, 0600); err != nil {
+	if err = util.WritePath(k.PlaintextKeysetPath(), m, 0700, 0600); err != nil {
 		return err
 	}
 

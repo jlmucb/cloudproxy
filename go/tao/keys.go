@@ -837,6 +837,14 @@ func (k *Keys) SealedKeysetPath() string {
 	return path.Join(k.dir, "sealed_keyset")
 }
 
+func (k *Keys) UnsealedKeysetPath() string {
+	if k.dir == "" {
+		return ""
+	}
+
+	return path.Join(k.dir, "unsealed_keyset")
+}
+
 // ZeroBytes clears the bytes in a slice.
 func ZeroBytes(b []byte) {
 	for i := range b {
@@ -1394,7 +1402,13 @@ func LoadKeys(keyTypes KeyType, t Tao, path, policy string) (*Keys, error) {
 	}
 
 	// Check to see if there are already keys.
-	f, err := os.Open(k.SealedKeysetPath())
+	var keysetPath string
+	if t == nil {
+		keysetPath = k.UnsealedKeysetPath()
+	} else {
+		keysetPath = k.SealedKeysetPath()
+	}
+	f, err := os.Open(keysetPath)
 	if err != nil {
 		return nil, err
 	}
@@ -1504,7 +1518,7 @@ func SaveKeyset(k *Keys, dir string) error {
 		return err
 	}
 
-	if err = util.WritePath(k.SealedKeysetPath(), m, 0700, 0600); err != nil {
+	if err = util.WritePath(k.UnsealedKeysetPath(), m, 0700, 0600); err != nil {
 		return err
 	}
 

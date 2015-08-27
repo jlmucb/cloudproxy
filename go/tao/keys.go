@@ -802,6 +802,14 @@ type Keys struct {
 	Cert         *x509.Certificate
 }
 
+const (
+	X509Path           = "cert"
+	PBEKeysetPath      = "keys"
+	PBESignerPath      = "signer"
+	SealedKeysetPath   = "sealed_keyset"
+	UnsealedKeysetPath = "unsealed_keyset"
+)
+
 // X509Path returns the path to the verifier key, stored as an X.509
 // certificate.
 func (k *Keys) X509Path() string {
@@ -809,7 +817,7 @@ func (k *Keys) X509Path() string {
 		return ""
 	}
 
-	return path.Join(k.dir, "cert")
+	return path.Join(k.dir, X509Path)
 }
 
 // PBEKeysetPath returns the path for stored keys.
@@ -817,7 +825,7 @@ func (k *Keys) PBEKeysetPath() string {
 	if k.dir == "" {
 		return ""
 	}
-	return path.Join(k.dir, "keys")
+	return path.Join(k.dir, PBEKeysetPath)
 }
 
 // PBESignerPath returns the path for a stored signing key.
@@ -825,7 +833,7 @@ func (k *Keys) PBESignerPath() string {
 	if k.dir == "" {
 		return ""
 	}
-	return path.Join(k.dir, "signer")
+	return path.Join(k.dir, PBESignerPath)
 }
 
 // SealedKeysetPath returns the path for a stored signing key.
@@ -834,7 +842,7 @@ func (k *Keys) SealedKeysetPath() string {
 		return ""
 	}
 
-	return path.Join(k.dir, "sealed_keyset")
+	return path.Join(k.dir, SealedKeysetPath)
 }
 
 func (k *Keys) UnsealedKeysetPath() string {
@@ -842,7 +850,7 @@ func (k *Keys) UnsealedKeysetPath() string {
 		return ""
 	}
 
-	return path.Join(k.dir, "unsealed_keyset")
+	return path.Join(k.dir, UnsealedKeysetPath)
 }
 
 // ZeroBytes clears the bytes in a slice.

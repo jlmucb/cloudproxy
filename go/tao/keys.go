@@ -802,6 +802,7 @@ type Keys struct {
 	Cert         *x509.Certificate
 }
 
+// The paths to the filename used by the Keys type.
 const (
 	X509Path            = "cert"
 	PBEKeysetPath       = "keys"
@@ -845,6 +846,8 @@ func (k *Keys) SealedKeysetPath() string {
 	return path.Join(k.dir, SealedKeysetPath)
 }
 
+// PlaintextKeysetPath returns the path for a key stored in plaintext (this is
+// not normally the case).
 func (k *Keys) PlaintextKeysetPath() string {
 	if k.dir == "" {
 		return ""

@@ -28,6 +28,7 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -296,6 +297,10 @@ func UnmarshalSignerProto(ck *CryptoKey) (*Signer, error) {
 	s.ec.D = new(big.Int).SetBytes(k.EcPrivate)
 	s.ec.Curve = elliptic.P256()
 	s.ec.X, s.ec.Y = elliptic.Unmarshal(elliptic.P256(), k.EcPublic)
+	if s.ec.X == nil || s.ec.Y == nil {
+		return nil, fmt.Errorf("failed to unmarshal EC point: X=%v, Y=%v", s.ec.X, s.ec.Y)
+	}
+
 	return s, nil
 }
 

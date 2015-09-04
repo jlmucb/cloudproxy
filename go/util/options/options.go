@@ -71,10 +71,25 @@ var (
 	// Int maps from name to value for int options added with Add.
 	Int = make(map[string]*int)
 
+	// Strings maps from name to value for []string options added with Add.
+	Strings = make(map[string][]string)
+
 	// Duration maps from name to value for time.Duration options added with
 	// Add.
 	Duration = make(map[string]*time.Duration)
 )
+
+type namedStringList string
+
+func (name namedStringList) Set(v string) error {
+	s := strings.Split(v, ",")
+	Strings[string(name)] = append(Strings[string(name)], s...)
+	return nil
+}
+
+func (name namedStringList) String() string {
+	return strings.Join(Strings[string(name)], ",")
+}
 
 func init() {
 	// Add to options all existing flags, which presumably come from golang/glog
@@ -95,13 +110,16 @@ func init() {
 }
 
 // Add adds one or more options to Options, to the flag package's list, and to
-// the approprate map (either String, Bool, Int, or Duration).
+// the approprate map (String, Bool, Int, etc.).
 func Add(option ...Option) {
 	Options = append(Options, option...)
 	for _, o := range option {
 		switch defval := o.Default.(type) {
 		case string:
 			String[o.Name] = flag.String(o.Name, defval, o.Help)
+		case []string:
+			Strings[o.Name] = defval
+			flag.Var(namedStringList(o.Name), o.Name, o.Help)
 		case bool:
 			Bool[o.Name] = flag.Bool(o.Name, defval, o.Help)
 		case int:

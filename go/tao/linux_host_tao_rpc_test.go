@@ -21,6 +21,7 @@ package tao
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"testing"
@@ -30,6 +31,47 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util"
 	"github.com/jlmucb/cloudproxy/go/util/protorpc"
 )
+
+type DummyChild struct {
+	channel io.ReadWriteCloser
+	subprin auth.SubPrin
+}
+
+func (d *DummyChild) Spec() HostedProgramSpec {
+	return HostedProgramSpec{}
+}
+
+func (d *DummyChild) Subprin() auth.SubPrin {
+	return d.subprin
+}
+
+func (d *DummyChild) Extend(ext auth.SubPrin) {
+	d.subprin = append(d.subprin, ext...)
+}
+func (d *DummyChild) Start() error {
+	return nil
+}
+func (d *DummyChild) Kill() error {
+	return nil
+}
+func (d *DummyChild) Stop() error {
+	return nil
+}
+func (d *DummyChild) Channel() io.ReadWriteCloser {
+	return d.channel
+}
+func (d *DummyChild) WaitChan() <-chan bool {
+	return nil
+}
+func (d *DummyChild) Cleanup() error {
+	return nil
+}
+func (d *DummyChild) Pid() int {
+	return 0
+}
+func (d *DummyChild) ExitStatus() (int, error) {
+	return 0, nil
+}
 
 func testNewLinuxHostTaoServer(t *testing.T) (Tao, error) {
 	lh, err := testNewRootLinuxHost()
@@ -52,10 +94,9 @@ func testNewLinuxHostTaoServer(t *testing.T) (Tao, error) {
 	hostChannel := util.NewPairReadWriteCloser(hostRead, hostWrite)
 	childChannel := util.NewPairReadWriteCloser(childRead, childWrite)
 
-	child := &LinuxHostChild{
-		channel:      hostChannel,
-		ChildSubprin: []auth.PrinExt{auth.PrinExt{Name: "TestChild"}},
-		Cmd:          nil, // The Cmd field is not used in this test.
+	child := &DummyChild{
+		channel: hostChannel,
+		subprin: []auth.PrinExt{auth.PrinExt{Name: "TestChild"}},
 	}
 
 	go NewLinuxHostTaoServer(lh, child).Serve(hostChannel)

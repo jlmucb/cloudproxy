@@ -84,8 +84,11 @@ type HostedProgram interface {
 	// Subprin returns the subprincipal representing the hosted program.
 	Subprin() auth.SubPrin
 
-	// Start starts the the hosted program and returns a tao channel to it.
-	Start() (io.ReadWriteCloser, error)
+	// Extend adds components to the subprincipal for the hosted program.
+	Extend(ext auth.SubPrin)
+
+	// Start starts the the hosted program.
+	Start() error
 
 	// Kill kills the hosted program and cleans up resources.
 	Kill() error
@@ -93,6 +96,11 @@ type HostedProgram interface {
 	// Stop stops the hosted program and cleans up resources.
 	Stop() error
 
+	// Channel returns the channel the child uses for the tao api.
+	Channel() io.ReadWriteCloser
+
+	// WaitChan returns a chan that will be signaled when the hosted process is
+	// done.
 	WaitChan() <-chan bool
 
 	// Cleanup cleans up resources, such as temporary files.

@@ -31,14 +31,14 @@ import (
 // LinuxHostTaoServer is a server stub for LinuxHost's Tao RPC interface.
 type LinuxHostTaoServer struct {
 	lh    *LinuxHost
-	child *LinuxHostChild
+	child HostedProgram
 }
 
 type linuxHostTaoServerStub LinuxHostTaoServer
 
 // NewLinuxHostTaoServer returns a new server stub for LinuxHost's Tao RPC
 // interface.
-func NewLinuxHostTaoServer(host *LinuxHost, child *LinuxHostChild) LinuxHostTaoServer {
+func NewLinuxHostTaoServer(host *LinuxHost, child HostedProgram) LinuxHostTaoServer {
 	return LinuxHostTaoServer{host, child}
 }
 

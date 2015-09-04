@@ -76,14 +76,13 @@ func TestNewRootLinuxHost(t *testing.T) {
 
 // Test the methods directly instead of testing them across a channel.
 
-var testChildLH = &LinuxHostChild{
-	channel:      nil,
-	Cmd:          nil,
-	ChildSubprin: []auth.PrinExt{auth.PrinExt{Name: "TestChild"}},
+var testChildLH = &DummyChild{
+	channel: nil,
+	subprin: []auth.PrinExt{auth.PrinExt{Name: "TestChild"}},
 }
 
 func DoTestLinuxHostHandleGetTaoName(lh *LinuxHost) error {
-	if !lh.GetTaoName(testChildLH).Identical(lh.Host.HostName().MakeSubprincipal(testChildLH.ChildSubprin)) {
+	if !lh.GetTaoName(testChildLH).Identical(lh.Host.HostName().MakeSubprincipal(testChildLH.Subprin())) {
 		return fmt.Errorf("Incorrect construction of Tao name")
 	}
 

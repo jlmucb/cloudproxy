@@ -74,6 +74,12 @@ type HostedProcess struct {
 
 	// A channel to be signaled when the process is done.
 	Done chan bool
+
+	// The channel serving the tao api to this child.
+	TaoChannel io.ReadWriteCloser
+
+	// The current subprincipal for the process.
+	subprin auth.SubPrin
 }
 
 // NewHostedProgram initializes, but does not start, a hosted process.
@@ -135,6 +141,7 @@ func (lpf *LinuxProcessFactory) NewHostedProgram(spec HostedProgramSpec) (child 
 		Temppath: temppath,
 		Tempdir:  tempdir,
 		Hash:     h[:],
+		subprin:  FormatProcessSubprin(spec.Id, h[:]),
 		Factory:  lpf,
 		Done:     make(chan bool, 1),
 	}
@@ -144,8 +151,8 @@ func (lpf *LinuxProcessFactory) NewHostedProgram(spec HostedProgramSpec) (child 
 // Use 24 bytes for the socket name.
 const sockNameLen = 24
 
-// Start starts the the hosted process and returns a tao channel to it.
-func (p *HostedProcess) Start() (channel io.ReadWriteCloser, err error) {
+// Start starts the the hosted process.
+func (p *HostedProcess) Start() (err error) {
 	var extraFiles []*os.File
 	var evar string
 	switch p.Factory.channelType {
@@ -165,7 +172,7 @@ func (p *HostedProcess) Start() (channel io.ReadWriteCloser, err error) {
 		}
 		defer clientRead.Close()
 
-		channel = util.NewPairReadWriteCloser(serverRead, serverWrite)
+		p.TaoChannel = util.NewPairReadWriteCloser(serverRead, serverWrite)
 		extraFiles = []*os.File{clientRead, clientWrite} // fd 3, fd 4
 
 		// Note: ExtraFiles below ensures readfd=3, writefd=4 in child
@@ -178,8 +185,8 @@ func (p *HostedProcess) Start() (channel io.ReadWriteCloser, err error) {
 		}
 		sockName := base64.URLEncoding.EncodeToString(nameBytes)
 		sockPath := path.Join(p.Factory.socketPath, sockName)
-		channel = util.NewUnixSingleReadWriteCloser(sockPath)
-		if channel == nil {
+		p.TaoChannel = util.NewUnixSingleReadWriteCloser(sockPath)
+		if p.TaoChannel == nil {
 			err = fmt.Errorf("Couldn't create a new Unix channel\n")
 			return
 		}
@@ -190,8 +197,8 @@ func (p *HostedProcess) Start() (channel io.ReadWriteCloser, err error) {
 	}
 	defer func() {
 		if err != nil {
-			channel.Close()
-			channel = nil
+			p.TaoChannel.Close()
+			p.TaoChannel = nil
 		}
 	}()
 
@@ -292,8 +299,6 @@ func (p *HostedProcess) Start() (channel io.ReadWriteCloser, err error) {
 		close(p.Done) // prevent any more blocking
 	}()
 
-	// TODO(kwalsh) put channel into p, remove the struct in linux_host.go
-
 	return
 }
 
@@ -309,6 +314,11 @@ func (p *HostedProcess) ExitStatus() (int, error) {
 	return 0, fmt.Errorf("Couldn't get exit status\n")
 }
 
+// Channel returns the channel the child uses for the tao api.
+func (p *HostedProcess) Channel() io.ReadWriteCloser {
+	return p.TaoChannel
+}
+
 // WaitChan returns a chan that will be signaled when the hosted process is
 // done.
 func (p *HostedProcess) WaitChan() <-chan bool {
@@ -317,6 +327,7 @@ func (p *HostedProcess) WaitChan() <-chan bool {
 
 // Kill kills an os/exec.Cmd process.
 func (p *HostedProcess) Kill() error {
+	p.TaoChannel.Close()
 	return p.Cmd.Process.Kill()
 }
 
@@ -339,7 +350,12 @@ func (p *HostedProcess) Pid() int {
 
 // Subprin returns the subprincipal representing the hosted process.
 func (p *HostedProcess) Subprin() auth.SubPrin {
-	return FormatProcessSubprin(p.spec.Id, p.Hash)
+	return p.subprin
+}
+
+// Extend adds components to the subprincipal for the hosted program.
+func (p *HostedProcess) Extend(ext auth.SubPrin) {
+	p.subprin = append(p.subprin, ext...)
 }
 
 // FormatProcessSubprin produces a string that represents a subprincipal with
@@ -354,7 +370,10 @@ func FormatProcessSubprin(id uint, hash []byte) auth.SubPrin {
 }
 
 func (p *HostedProcess) Cleanup() error {
-	// TODO(kwalsh) close channel, maybe also kill process if still running?
+	// TODO(kwalsh) need to kill process if still running?
+	if p.TaoChannel != nil {
+		p.TaoChannel.Close()
+	}
 	os.RemoveAll(p.Tempdir)
 	return nil
 }

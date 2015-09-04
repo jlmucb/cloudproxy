@@ -58,6 +58,17 @@ type DockerContainer struct {
 
 	// A channel to be signaled when the vm is done.
 	Done chan bool
+
+	// The channel serving the tao api to this child.
+	TaoChannel io.ReadWriteCloser
+
+	// The current subprincipal for the process.
+	subprin auth.SubPrin
+}
+
+// Channel returns the channel the child uses for the tao api.
+func (dc *DockerContainer) Channel() io.ReadWriteCloser {
+	return dc.TaoChannel
 }
 
 // WaitChan returns a chan that will be signaled when the hosted vm is done.
@@ -67,6 +78,7 @@ func (dc *DockerContainer) WaitChan() <-chan bool {
 
 // Kill sends a SIGKILL signal to a docker container.
 func (dc *DockerContainer) Kill() error {
+	dc.TaoChannel.Close()
 	cid, err := dc.ContainerName()
 	if err != nil {
 		return err
@@ -213,6 +225,7 @@ func (ldcf *LinuxDockerContainerFactory) NewHostedProgram(spec HostedProgramSpec
 		spec:      spec,
 		ImageName: img,
 		Hash:      hash,
+		subprin:   FormatProcessSubprin(spec.Id, hash),
 		Factory:   ldcf,
 		Done:      make(chan bool, 1),
 	}
@@ -225,9 +238,14 @@ func (dc *DockerContainer) Spec() HostedProgramSpec {
 	return dc.spec
 }
 
-// Subprin returns the subprincipal representing the hosted docker container..
+// Subprin returns the subprincipal representing the hosted docker container.
 func (dc *DockerContainer) Subprin() auth.SubPrin {
-	return FormatProcessSubprin(dc.spec.Id, dc.Hash)
+	return dc.subprin
+}
+
+// Extend adds components to the subprincipal for the hosted docker container.
+func (dc *DockerContainer) Extend(ext auth.SubPrin) {
+	dc.subprin = append(dc.subprin, ext...)
 }
 
 // FormatDockerSubprin produces a string that represents a subprincipal with the
@@ -242,7 +260,7 @@ func FormatDockerSubprin(id uint, hash []byte) auth.SubPrin {
 }
 
 // Start builds the docker container from the tar file and launches it.
-func (dc *DockerContainer) Start() (channel io.ReadWriteCloser, err error) {
+func (dc *DockerContainer) Start() (err error) {
 
 	s := path.Join(dc.Factory.SocketDir, getRandomFileName(nameLen))
 	dc.SocketPath = s + ".sock"
@@ -250,11 +268,11 @@ func (dc *DockerContainer) Start() (channel io.ReadWriteCloser, err error) {
 
 	dc.RulesPath = dc.Factory.RulesPath
 
-	channel = util.NewUnixSingleReadWriteCloser(dc.SocketPath)
+	dc.TaoChannel = util.NewUnixSingleReadWriteCloser(dc.SocketPath)
 	defer func() {
 		if err != nil {
-			channel.Close()
-			channel = nil
+			dc.TaoChannel.Close()
+			dc.TaoChannel = nil
 		}
 	}()
 
@@ -296,11 +314,13 @@ func (dc *DockerContainer) Start() (channel io.ReadWriteCloser, err error) {
 		close(dc.Done) // prevent any more blocking
 	}()
 
-	// TODO(kwalsh) put channel into dc, remove the struct in linux_host.go
 	return
 }
 
-func (p *DockerContainer) Cleanup() error {
-	// TODO(kwalsh) close channel, maybe also kill process if still running?
+func (dc *DockerContainer) Cleanup() error {
+	// TODO(kwalsh) need to kill docker container if still running?
+	if dc.TaoChannel != nil {
+		dc.TaoChannel.Close()
+	}
 	return nil
 }

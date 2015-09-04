@@ -93,6 +93,17 @@ type KvmCoreOSContainer struct {
 
 	// A channel to be signaled when the vm is done.
 	Done chan bool
+
+	// The channel serving the tao api to this child.
+	TaoChannel io.ReadWriteCloser
+
+	// The current subprincipal for the process.
+	subprin auth.SubPrin
+}
+
+// Channel returns the channel the child uses for the tao api.
+func (kcc *KvmCoreOSContainer) Channel() io.ReadWriteCloser {
+	return kcc.TaoChannel
 }
 
 // WaitChan returns a chan that will be signaled when the hosted vm is done.
@@ -340,17 +351,22 @@ func (lkcf *LinuxKVMCoreOSFactory) NewHostedProgram(spec HostedProgramSpec) (chi
 		spec:        spec,
 		FactoryHash: h[:],
 		Hash:        hh[:],
-		Factory:     lkcf,
-		Done:        make(chan bool, 1),
+		// TODO(kwalsh) why does Id appear twice in subprin?
+		subprin: append(FormatCoreOSSubprin(spec.Id, h[:]), FormatLinuxHostSubprin(spec.Id, hh[:])...),
+		Factory: lkcf,
+		Done:    make(chan bool, 1),
 	}
 	return
 }
 
 // Subprin returns the subprincipal representing the hosted vm.
 func (kcc *KvmCoreOSContainer) Subprin() auth.SubPrin {
-	subprin := FormatCoreOSSubprin(kcc.spec.Id, kcc.FactoryHash)
-	lhSubprin := FormatLinuxHostSubprin(kcc.spec.Id, kcc.Hash)
-	return append(subprin, lhSubprin...)
+	return kcc.subprin
+}
+
+// Extend adds components to the subprincipal for the hosted program.
+func (kcc *KvmCoreOSContainer) Extend(ext auth.SubPrin) {
+	kcc.subprin = append(kcc.subprin, ext...)
 }
 
 // FormatLinuxHostSubprin produces a string that represents a subprincipal with
@@ -393,7 +409,7 @@ var nameLen = 10
 
 // Start launches a QEMU/KVM CoreOS instance, connects to it with SSH to start
 // the LinuxHost on it, and returns the socket connection to that host.
-func (kcc *KvmCoreOSContainer) Start() (channel io.ReadWriteCloser, err error) {
+func (kcc *KvmCoreOSContainer) Start() (err error) {
 
 	// The args must contain the directory to write the linux_host into, as
 	// well as the port to use for SSH.
@@ -425,11 +441,11 @@ func (kcc *KvmCoreOSContainer) Start() (channel io.ReadWriteCloser, err error) {
 	// Create the listening server before starting the connection. This lets
 	// QEMU start right away. See the comments in Start, above, for why this
 	// is.
-	channel = util.NewUnixSingleReadWriteCloser(kcc.Cfg.SocketPath)
+	kcc.TaoChannel = util.NewUnixSingleReadWriteCloser(kcc.Cfg.SocketPath)
 	defer func() {
 		if err != nil {
-			channel.Close()
-			channel = nil
+			kcc.TaoChannel.Close()
+			kcc.TaoChannel = nil
 		}
 	}()
 	if err = kcc.startVM(); err != nil {
@@ -497,7 +513,10 @@ func (kcc *KvmCoreOSContainer) Start() (channel io.ReadWriteCloser, err error) {
 }
 
 func (kcc *KvmCoreOSContainer) Cleanup() error {
-	// TODO(kwalsh) maybe also kill vm if still running?
+	// TODO(kwalsh) need to kill vm if still running?
+	if kcc.TaoChannel != nil {
+		kcc.TaoChannel.Close()
+	}
 	os.RemoveAll(kcc.Tempdir)
 	os.RemoveAll(kcc.LHPath)
 	return nil

@@ -39,12 +39,6 @@ import (
 // code doesn't depend on the docker code for now.
 type DockerContainer struct {
 
-	// The spec from which this process was created.
-	spec HostedProgramSpec
-
-	// Hash of the docker image.
-	Hash []byte
-
 	// The factory responsible for the hosted process.
 	Factory *LinuxDockerContainerFactory
 
@@ -56,24 +50,7 @@ type DockerContainer struct {
 	// The underlying docker process.
 	Cmd *exec.Cmd
 
-	// A channel to be signaled when the vm is done.
-	Done chan bool
-
-	// The channel serving the tao api to this child.
-	TaoChannel io.ReadWriteCloser
-
-	// The current subprincipal for the process.
-	subprin auth.SubPrin
-}
-
-// Channel returns the channel the child uses for the tao api.
-func (dc *DockerContainer) Channel() io.ReadWriteCloser {
-	return dc.TaoChannel
-}
-
-// WaitChan returns a chan that will be signaled when the hosted vm is done.
-func (dc *DockerContainer) WaitChan() <-chan bool {
-	return dc.Done
+	HostedProgramInfo
 }
 
 // Kill sends a SIGKILL signal to a docker container.
@@ -222,30 +199,16 @@ func (ldcf *LinuxDockerContainerFactory) NewHostedProgram(spec HostedProgramSpec
 	hash := hasher.Sum(nil)
 
 	child = &DockerContainer{
-		spec:      spec,
+		HostedProgramInfo: HostedProgramInfo{
+			spec:    spec,
+			subprin: FormatProcessSubprin(spec.Id, hash),
+			Done:    make(chan bool, 1),
+		},
 		ImageName: img,
-		Hash:      hash,
-		subprin:   FormatProcessSubprin(spec.Id, hash),
 		Factory:   ldcf,
-		Done:      make(chan bool, 1),
 	}
 
 	return
-}
-
-// Spec returns the specification used to start the hosted docker container.
-func (dc *DockerContainer) Spec() HostedProgramSpec {
-	return dc.spec
-}
-
-// Subprin returns the subprincipal representing the hosted docker container.
-func (dc *DockerContainer) Subprin() auth.SubPrin {
-	return dc.subprin
-}
-
-// Extend adds components to the subprincipal for the hosted docker container.
-func (dc *DockerContainer) Extend(ext auth.SubPrin) {
-	dc.subprin = append(dc.subprin, ext...)
 }
 
 // FormatDockerSubprin produces a string that represents a subprincipal with the

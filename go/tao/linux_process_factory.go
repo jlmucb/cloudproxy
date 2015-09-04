@@ -50,10 +50,6 @@ func NewLinuxProcessFactory(channelType, socketPath string) HostedProgramFactory
 
 // A LinuxProcess represents a hosted program that executes as a linux process.
 type HostedProcess struct {
-
-	// The spec from which this process was created.
-	spec HostedProgramSpec
-
 	// The value to be used as argv[0]
 	Argv0 string
 
@@ -63,23 +59,13 @@ type HostedProcess struct {
 	// A temporary directory for storing the temporary executable.
 	Tempdir string
 
-	// Hash of the executable.
-	Hash []byte
-
 	// The underlying process.
 	Cmd exec.Cmd
 
 	// The factory responsible for the hosted process.
 	Factory *LinuxProcessFactory
 
-	// A channel to be signaled when the process is done.
-	Done chan bool
-
-	// The channel serving the tao api to this child.
-	TaoChannel io.ReadWriteCloser
-
-	// The current subprincipal for the process.
-	subprin auth.SubPrin
+	HostedProgramInfo
 }
 
 // NewHostedProgram initializes, but does not start, a hosted process.
@@ -136,14 +122,15 @@ func (lpf *LinuxProcessFactory) NewHostedProgram(spec HostedProgramSpec) (child 
 	h := sha256.Sum256(b)
 
 	child = &HostedProcess{
-		spec:     spec,
+		HostedProgramInfo: HostedProgramInfo{
+			spec:    spec,
+			subprin: FormatProcessSubprin(spec.Id, h[:]),
+			Done:    make(chan bool, 1),
+		},
 		Argv0:    argv0,
 		Temppath: temppath,
 		Tempdir:  tempdir,
-		Hash:     h[:],
-		subprin:  FormatProcessSubprin(spec.Id, h[:]),
 		Factory:  lpf,
-		Done:     make(chan bool, 1),
 	}
 	return
 }
@@ -314,17 +301,6 @@ func (p *HostedProcess) ExitStatus() (int, error) {
 	return 0, fmt.Errorf("Couldn't get exit status\n")
 }
 
-// Channel returns the channel the child uses for the tao api.
-func (p *HostedProcess) Channel() io.ReadWriteCloser {
-	return p.TaoChannel
-}
-
-// WaitChan returns a chan that will be signaled when the hosted process is
-// done.
-func (p *HostedProcess) WaitChan() <-chan bool {
-	return p.Done
-}
-
 // Kill kills an os/exec.Cmd process.
 func (p *HostedProcess) Kill() error {
 	p.TaoChannel.Close()
@@ -338,24 +314,9 @@ func (p *HostedProcess) Stop() error {
 	return err
 }
 
-// Spec returns the specification used to start the hosted process.
-func (p *HostedProcess) Spec() HostedProgramSpec {
-	return p.spec
-}
-
 // Pid returns the pid of the underlying os/exec.Cmd instance.
 func (p *HostedProcess) Pid() int {
 	return p.Cmd.Process.Pid
-}
-
-// Subprin returns the subprincipal representing the hosted process.
-func (p *HostedProcess) Subprin() auth.SubPrin {
-	return p.subprin
-}
-
-// Extend adds components to the subprincipal for the hosted program.
-func (p *HostedProcess) Extend(ext auth.SubPrin) {
-	p.subprin = append(p.subprin, ext...)
 }
 
 // FormatProcessSubprin produces a string that represents a subprincipal with

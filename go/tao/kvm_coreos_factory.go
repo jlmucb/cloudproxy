@@ -61,21 +61,11 @@ type CoreOSConfig struct {
 // libvirt for now.
 type KvmCoreOSContainer struct {
 
-	// The spec from which this vm was created.
-	spec HostedProgramSpec
-
 	// TODO(kwalsh) A secured, private copy of the image.
 	// Temppath string
 
 	// TODO(kwalsh) A temporary directory for the config drive.
 	Tempdir string
-
-	// Hash of the CoreOS image.
-	Hash []byte
-
-	// Hash of the factory's KVM image.
-	// TODO(kwalsh) Move this to LinuxKVMCoreOSFactory. and don't recompute?
-	FactoryHash []byte
 
 	// The factory responsible for the vm.
 	Factory *LinuxKVMCoreOSFactory
@@ -91,24 +81,7 @@ type KvmCoreOSContainer struct {
 	// TODO(kwalsh) is this description correct?
 	LHPath string
 
-	// A channel to be signaled when the vm is done.
-	Done chan bool
-
-	// The channel serving the tao api to this child.
-	TaoChannel io.ReadWriteCloser
-
-	// The current subprincipal for the process.
-	subprin auth.SubPrin
-}
-
-// Channel returns the channel the child uses for the tao api.
-func (kcc *KvmCoreOSContainer) Channel() io.ReadWriteCloser {
-	return kcc.TaoChannel
-}
-
-// WaitChan returns a chan that will be signaled when the hosted vm is done.
-func (kcc *KvmCoreOSContainer) WaitChan() <-chan bool {
-	return kcc.Done
+	HostedProgramInfo
 }
 
 // Kill sends a SIGKILL signal to a QEMU instance.
@@ -333,6 +306,7 @@ func (lkcf *LinuxKVMCoreOSFactory) NewHostedProgram(spec HostedProgramSpec) (chi
 	// This needs to be fixed to copy the image so we can avoid a TOCTTOU
 	// attack.
 	// TODO(kwalsh) why is this recomputed for each hosted program?
+	// TODO(kwalsh) Move this hash to LinuxKVMCoreOSFactory?
 	b, err := ioutil.ReadFile(lkcf.Cfg.ImageFile)
 	if err != nil {
 		return
@@ -345,28 +319,16 @@ func (lkcf *LinuxKVMCoreOSFactory) NewHostedProgram(spec HostedProgramSpec) (chi
 	}
 	hh := sha256.Sum256(bb)
 
-	// vet things
-
 	child = &KvmCoreOSContainer{
-		spec:        spec,
-		FactoryHash: h[:],
-		Hash:        hh[:],
-		// TODO(kwalsh) why does Id appear twice in subprin?
-		subprin: append(FormatCoreOSSubprin(spec.Id, h[:]), FormatLinuxHostSubprin(spec.Id, hh[:])...),
+		HostedProgramInfo: HostedProgramInfo{
+			spec: spec,
+			// TODO(kwalsh) why does Id appear twice in subprin?
+			subprin: append(FormatCoreOSSubprin(spec.Id, h[:]), FormatLinuxHostSubprin(spec.Id, hh[:])...),
+			Done:    make(chan bool, 1),
+		},
 		Factory: lkcf,
-		Done:    make(chan bool, 1),
 	}
 	return
-}
-
-// Subprin returns the subprincipal representing the hosted vm.
-func (kcc *KvmCoreOSContainer) Subprin() auth.SubPrin {
-	return kcc.subprin
-}
-
-// Extend adds components to the subprincipal for the hosted program.
-func (kcc *KvmCoreOSContainer) Extend(ext auth.SubPrin) {
-	kcc.subprin = append(kcc.subprin, ext...)
 }
 
 // FormatLinuxHostSubprin produces a string that represents a subprincipal with
@@ -398,11 +360,6 @@ func getRandomFileName(n int) string {
 		return ""
 	}
 	return hex.EncodeToString(nameBytes)
-}
-
-// Spec returns the specification used to start the hosted vm.
-func (kcc *KvmCoreOSContainer) Spec() HostedProgramSpec {
-	return kcc.spec
 }
 
 var nameLen = 10

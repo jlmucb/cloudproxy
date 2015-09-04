@@ -114,6 +114,49 @@ type HostedProgram interface {
 	ExitStatus() (int, error)
 }
 
+// HostedProgramInfo contains basic info about a HostedProgram and implements
+// part of the HostedProgram interface.
+type HostedProgramInfo struct {
+
+	// The spec from which this hosted program was created.
+	spec HostedProgramSpec
+
+	// A channel to be signaled when the hosted program is done.
+	Done chan bool
+
+	// The channel serving the tao api to this hosted program.
+	TaoChannel io.ReadWriteCloser
+
+	// The current subprincipal for the hosted program.
+	subprin auth.SubPrin
+}
+
+// Spec returns the specification used to start the hosted program.
+func (p *HostedProgramInfo) Spec() HostedProgramSpec {
+	return p.spec
+}
+
+// WaitChan returns a chan that will be signaled when the hosted process is
+// done.
+func (p *HostedProgramInfo) WaitChan() <-chan bool {
+	return p.Done
+}
+
+// Channel returns the channel the child uses for the tao api.
+func (p *HostedProgramInfo) Channel() io.ReadWriteCloser {
+	return p.TaoChannel
+}
+
+// Subprin returns the subprincipal representing the hosted process.
+func (p *HostedProgramInfo) Subprin() auth.SubPrin {
+	return p.subprin
+}
+
+// Extend adds components to the subprincipal for the hosted program.
+func (p *HostedProgramInfo) Extend(ext auth.SubPrin) {
+	p.subprin = append(p.subprin, ext...)
+}
+
 // A HostedProgramFactory manages the creation of hosted programs. For example,
 // on Linux, it might create processes using fork, or it might create processes
 // running on docker containers. It might also start a virtual machine

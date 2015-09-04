@@ -2,6 +2,17 @@
 // source: linux_host_admin_rpc.proto
 // DO NOT EDIT!
 
+/*
+Package tao is a generated protocol buffer package.
+
+It is generated from these files:
+	linux_host_admin_rpc.proto
+
+It has these top-level messages:
+	LinuxHostAdminRPCRequest
+	LinuxHostAdminRPCHostedProgram
+	LinuxHostAdminRPCResponse
+*/
 package tao
 
 import proto "github.com/golang/protobuf/proto"
@@ -17,10 +28,11 @@ type LinuxHostAdminRPCRequest struct {
 	Args             []string `protobuf:"bytes,3,rep,name=args" json:"args,omitempty"`
 	Pid              *int32   `protobuf:"varint,4,opt,name=pid" json:"pid,omitempty"`
 	Dir              *string  `protobuf:"bytes,5,opt,name=dir" json:"dir,omitempty"`
-	ContainerArgs    []string `protobuf:"bytes,6,rep,name=container_args" json:"container_args,omitempty"`
-	Stdin            *int32   `protobuf:"varint,7,opt,name=stdin" json:"stdin,omitempty"`
-	Stdout           *int32   `protobuf:"varint,8,opt,name=stdout" json:"stdout,omitempty"`
-	Stderr           *int32   `protobuf:"varint,9,opt,name=stderr" json:"stderr,omitempty"`
+	ContainerType    *string  `protobuf:"bytes,6,opt,name=container_type" json:"container_type,omitempty"`
+	ContainerArgs    []string `protobuf:"bytes,7,rep,name=container_args" json:"container_args,omitempty"`
+	Stdin            *int32   `protobuf:"varint,8,opt,name=stdin" json:"stdin,omitempty"`
+	Stdout           *int32   `protobuf:"varint,9,opt,name=stdout" json:"stdout,omitempty"`
+	Stderr           *int32   `protobuf:"varint,10,opt,name=stderr" json:"stderr,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
@@ -59,6 +71,13 @@ func (m *LinuxHostAdminRPCRequest) GetPid() int32 {
 func (m *LinuxHostAdminRPCRequest) GetDir() string {
 	if m != nil && m.Dir != nil {
 		return *m.Dir
+	}
+	return ""
+}
+
+func (m *LinuxHostAdminRPCRequest) GetContainerType() string {
+	if m != nil && m.ContainerType != nil {
+		return *m.ContainerType
 	}
 	return ""
 }

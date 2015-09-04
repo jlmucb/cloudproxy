@@ -30,6 +30,10 @@ type HostedProgramSpec struct {
 	// zero, it will be omitted.
 	Id uint
 
+	// ContainerType specifies the type of container in which to start the
+	// executable: "process", "docker", etc.
+	ContainerType string
+
 	// Path specifies a file, e.g. an executable or a vm image, to be
 	// executed in some factory-specific way.
 	Path string

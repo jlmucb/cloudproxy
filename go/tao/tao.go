@@ -30,10 +30,8 @@ import (
 // Constants used by the Tao implementations for policy, signing contexts, and
 // environment variables.
 const (
-	HostTypeEnvVar        = "CLOUDPROXY_TAO_HOST_TYPE"
 	HostSpecEnvVar        = "CLOUDPROXY_TAO_HOST_SPEC"
 	HostChannelTypeEnvVar = "CLOUDPROXY_TAO_HOST_CHANNEL_TYPE"
-	HostedTypeEnvVar      = "CLOUDPROXY_TAO_HOSTED_TYPE"
 
 	TaoTPMPCRsEnvVar   = "CLOUDPROXY_TAO_TPM_PCRS"
 	TaoTPMAIKEnvVar    = "CLOUDPROXY_TAO_TPM_AIK"

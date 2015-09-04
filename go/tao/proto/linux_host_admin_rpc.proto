@@ -21,10 +21,11 @@ message LinuxHostAdminRPCRequest {
   repeated string args = 3;
   optional int32 pid = 4;
   optional string dir = 5;
-  repeated string container_args = 6;
-  optional int32 stdin = 7;
-  optional int32 stdout = 8;
-  optional int32 stderr = 9;
+  optional string container_type = 6;
+  repeated string container_args = 7;
+  optional int32 stdin = 8;
+  optional int32 stdout = 9;
+  optional int32 stderr = 10;
 }
 
 message LinuxHostAdminRPCHostedProgram {

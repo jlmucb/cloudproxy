@@ -18,24 +18,6 @@ import (
 	"os"
 )
 
-// The HostTaoType is the type of Tao (either a Root of trust, or Stacked on
-// another Tao)
-type HostTaoType int
-
-// These constants represent the different types of configurations for the Tao.
-const (
-	NoHost HostTaoType = iota
-	Root
-	Stacked
-)
-
-// HostTaoTypeMap maps strings to the type of a host Tao.
-var HostTaoTypeMap = map[string]HostTaoType{
-	"none":    NoHost,
-	"root":    Root,
-	"stacked": Stacked,
-}
-
 // The HostTaoChannelType represents the type of the host Tao for a Stacked Tao.
 type HostTaoChannelType int
 
@@ -48,43 +30,11 @@ const (
 	Unix
 )
 
-// HostTaoChannelMap maps strings to the type of a host Tao channel.
-var HostTaoChannelMap = map[string]HostTaoChannelType{
-	"none": NoChannel,
-	"tpm":  TPM,
-	"pipe": Pipe,
-	"file": File,
-	"unix": Unix,
-}
-
-// The HostedProgramType represents the type of hosted programs and the channel
-// type used for communication between the Host and the Hosted Program.
-type HostedProgramType int
-
-// These constants represent the different configurations of hosted programs and
-// communication channels.
-const (
-	NoHostedPrograms HostedProgramType = iota
-	ProcessPipe
-	DockerUnix
-	KVMCoreOSFile
-)
-
-// HostedProgramTypeMap maps strings to the type of a hosted program.
-var HostedProgramTypeMap = map[string]HostedProgramType{
-	"none":       NoHostedPrograms,
-	"process":    ProcessPipe,
-	"docker":     DockerUnix,
-	"kvm_coreos": KVMCoreOSFile,
-}
-
-// A Config stores the information about the Tao, its Host Tao, and the way
-// it creates Hosted Programs.
+// A Config stores the information needed to talk to establish a channel
+// with a host tao.
 type Config struct {
-	HostType        HostTaoType
 	HostChannelType HostTaoChannelType
 	HostSpec        string
-	HostedType      HostedProgramType
 
 	// Variables for the TPM configuration
 	TPMAIKPath string
@@ -92,59 +42,20 @@ type Config struct {
 	TPMDevice  string
 }
 
-// IsValid checks a Config for validity.
-func (tc Config) IsValid() bool {
-	// All valid Tao configs support creating hosted programs.
-	if tc.HostedType == NoHostedPrograms {
-		return false
-	}
+// NewConfigFromEnv creates a Config using values drawn from environment
+// variables.
+func NewConfigFromEnv() Config {
 
-	switch tc.HostType {
-	case NoHost:
-		return false
-	case Root:
-		if tc.HostChannelType != NoChannel || tc.HostType != NoHost {
-			return false
-		}
-
-		// There are no constraints on the hosted-program types for a
-		// root Tao.
-	case Stacked:
-		if tc.HostChannelType == NoChannel || tc.HostSpec == "" {
-			return false
-		}
-	default:
-		return false
-	}
-
-	return true
-}
-
-// NewConfigFromString creates a new Config using strings representing the
-// options.
-func NewConfigFromString(htt, htct, f, hpt, tpmaik, tpmpcrs, tpmdev string) Config {
 	tc := Config{}
-	switch htt {
-	case "none", "":
-		tc.HostType = NoHost
-	case "root":
-		tc.HostType = Root
-	case "stacked":
-		tc.HostType = Stacked
-	default:
-		tc.HostType = NoHost
-	}
 
-	switch htct {
+	switch os.Getenv(HostChannelTypeEnvVar) {
 	case "none":
 		tc.HostChannelType = NoChannel
 	case "tpm":
 		tc.HostChannelType = TPM
-		// TODO(tmroeder): check the TPM variables here and add them to
-		// the config in some way.
-		tc.TPMAIKPath = tpmaik
-		tc.TPMPCRs = tpmpcrs
-		tc.TPMDevice = tpmdev
+		tc.TPMAIKPath = os.Getenv(TaoTPMAIKEnvVar)
+		tc.TPMPCRs = os.Getenv(TaoTPMPCRsEnvVar)
+		tc.TPMDevice = os.Getenv(TaoTPMDeviceEnvVar)
 	case "pipe":
 		tc.HostChannelType = Pipe
 	case "file":
@@ -155,47 +66,16 @@ func NewConfigFromString(htt, htct, f, hpt, tpmaik, tpmpcrs, tpmdev string) Conf
 		tc.HostChannelType = NoChannel
 	}
 
-	if f != "" {
-		tc.HostSpec = f
-	}
-
-	switch hpt {
-	case "process":
-		tc.HostedType = ProcessPipe
-	case "docker":
-		tc.HostedType = DockerUnix
-	case "kvm_coreos":
-		tc.HostedType = KVMCoreOSFile
-	default:
-		tc.HostedType = NoHostedPrograms
-	}
+	tc.HostSpec = os.Getenv(HostSpecEnvVar)
 
 	return tc
 }
 
-// NewConfigFromEnv creates a Config using values drawn from environment
-// variables.
-func NewConfigFromEnv() Config {
-	htt := os.Getenv(HostTypeEnvVar)
-	htct := os.Getenv(HostChannelTypeEnvVar)
-	f := os.Getenv(HostSpecEnvVar)
-	hpt := os.Getenv(HostedTypeEnvVar)
-	tpmaik := os.Getenv(TaoTPMAIKEnvVar)
-	tpmpcrs := os.Getenv(TaoTPMPCRsEnvVar)
-	tpmdev := os.Getenv(TaoTPMDeviceEnvVar)
-
-	return NewConfigFromString(htt, htct, f, hpt, tpmaik, tpmpcrs, tpmdev)
-}
-
 // Merge combines two Config values into one. The parameter value take
-// precendence over the existing values unless an incoming value is NoHost,
-// NoChannel, or NoHostedPrograms. This is used to merge a config taken from the
-// environment with a config specified explicitly on the command line. The
-// latter takes precedence where it is explicitly given.
+// precendence over the existing values. This is used to merge a config taken
+// from the environment with a config specified explicitly on the command line.
+// The latter takes precedence where it is explicitly given.
 func (tc *Config) Merge(c Config) {
-	if tc.HostType == NoHost || c.HostType != NoHost {
-		tc.HostType = c.HostType
-	}
 
 	if tc.HostChannelType == NoChannel || c.HostChannelType != NoChannel {
 		tc.HostChannelType = c.HostChannelType
@@ -203,10 +83,6 @@ func (tc *Config) Merge(c Config) {
 
 	if tc.HostSpec == "" || c.HostSpec != "" {
 		tc.HostSpec = c.HostSpec
-	}
-
-	if tc.HostedType == NoHostedPrograms || c.HostedType != NoHostedPrograms {
-		tc.HostedType = c.HostedType
 	}
 
 	if tc.TPMAIKPath == "" || c.TPMAIKPath != "" {

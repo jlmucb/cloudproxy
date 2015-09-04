@@ -32,7 +32,7 @@ type LinuxHost struct {
 	Host           Host
 	path           string
 	guard          Guard
-	childFactory   HostedProgramFactory
+	childFactory   map[string]HostedProgramFactory
 	hostedPrograms []HostedProgram
 	hpm            sync.RWMutex
 	nextChildID    uint
@@ -41,7 +41,7 @@ type LinuxHost struct {
 
 // NewStackedLinuxHost creates a new LinuxHost as a hosted program of an existing
 // host Tao.
-func NewStackedLinuxHost(path string, guard Guard, hostTao Tao, childFactory HostedProgramFactory) (*LinuxHost, error) {
+func NewStackedLinuxHost(path string, guard Guard, hostTao Tao, childFactory map[string]HostedProgramFactory) (*LinuxHost, error) {
 	lh := &LinuxHost{
 		path:         path,
 		guard:        guard,
@@ -69,7 +69,7 @@ func NewStackedLinuxHost(path string, guard Guard, hostTao Tao, childFactory Hos
 
 // NewRootLinuxHost creates a new LinuxHost as a standalone Host that can
 // provide the Tao to hosted Linux processes.
-func NewRootLinuxHost(path string, guard Guard, password []byte, childFactory HostedProgramFactory) (*LinuxHost, error) {
+func NewRootLinuxHost(path string, guard Guard, password []byte, childFactory map[string]HostedProgramFactory) (*LinuxHost, error) {
 	lh := &LinuxHost{
 		guard:        guard,
 		childFactory: childFactory,
@@ -210,7 +210,11 @@ func (lh *LinuxHost) StartHostedProgram(spec HostedProgramSpec) (auth.SubPrin, i
 
 	spec.Id = id
 
-	prog, err := lh.childFactory.NewHostedProgram(spec)
+	factory := lh.childFactory[spec.ContainerType]
+	if factory == nil {
+		return auth.SubPrin{}, 0, newError("No suitable factory for starting container type %s", spec.ContainerType)
+	}
+	prog, err := factory.NewHostedProgram(spec)
 	if err != nil {
 		return auth.SubPrin{}, 0, err
 	}

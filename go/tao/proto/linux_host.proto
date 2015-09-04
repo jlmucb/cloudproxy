@@ -34,8 +34,8 @@ message LinuxHostConfig {
   // Socket directory, relative to host configuration directory.
   optional string socket_dir = 4;
 
-  // Either "process", "docker", or "kvm_coreos"
-  required string hosting = 5;
+  // List of "process", "docker", and/or "kvm_coreos"
+  repeated string hosting = 5;
 
   // Path to CoreOS image for hosted KVM, absolute or relative to domain.
   optional string kvm_coreos_img = 6;

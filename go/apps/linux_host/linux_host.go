@@ -33,6 +33,8 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
+var emptylist []string
+
 var opts = []options.Option{
 	// Flags for all/most commands
 	{"tao_domain", "", "<dir>", "Tao domain configuration directory", "all"},
@@ -44,7 +46,7 @@ var opts = []options.Option{
 	{"stacked", false, "", "Create a stacked host, backed by a parent Tao", "init,start"},
 	// TODO(kwalsh) hosted program type should be selectable at time of
 	// tao_launch. A single host should be able to host all types concurrently.
-	{"hosting", "", "<type>", "Hosted program type: process, docker, or kvm_coreos", "init"},
+	{"hosting", emptylist, "<type>[,<type>...]", "Hosted program type: process, docker, or kvm_coreos", "init"},
 	{"socket_dir", "", "<dir>", "Hosted program socket directory, relative to host directory or absolute", "init"},
 
 	// Flags for start command
@@ -185,12 +187,8 @@ func configureFromOptions(cfg *tao.LinuxHostConfig) {
 		cfg.Type = proto.String("root")
 	} else if *options.Bool["stacked"] {
 		cfg.Type = proto.String("stacked")
-	} else if cfg.Type == nil {
-		options.Usage("Must supply one of -root and -stacked")
 	}
-	if s := *options.String["hosting"]; s != "" {
-		cfg.Hosting = proto.String(s)
-	}
+	cfg.Hosting = append(cfg.Hosting, options.Strings["hosting"]...)
 	if s := *options.String["parent_type"]; s != "" {
 		cfg.ParentType = proto.String(s)
 	}
@@ -226,34 +224,35 @@ func configureFromFile() *tao.LinuxHostConfig {
 func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, error) {
 	var tc tao.Config
 
-	// Decide host type
+	// Sanity check host type
+	var stacked bool
 	switch cfg.GetType() {
 	case "root":
-		tc.HostType = tao.Root
+		stacked = false
 	case "stacked":
-		tc.HostType = tao.Stacked
+		stacked = true
 	case "":
-		options.Usage("Must supply -hosting flag")
+		options.Usage("Must supply -root or -stacked flag")
 	default:
 		options.Usage("Invalid host type: %s", cfg.GetType())
 	}
 
-	// Decide hosting type
-	switch cfg.GetHosting() {
-	case "process":
-		tc.HostedType = tao.ProcessPipe
-	case "docker":
-		tc.HostedType = tao.DockerUnix
-	case "kvm_coreos":
-		tc.HostedType = tao.KVMCoreOSFile
-	case "":
+	// Sanity check hosting type
+	hosting := make(map[string]bool)
+	for _, h := range cfg.GetHosting() {
+		switch h {
+		case "process", "docker", "kvm_coreos":
+			hosting[h] = true
+		default:
+			options.Usage("Invalid hosting type: %s", cfg.GetHosting())
+		}
+	}
+	if len(hosting) == 0 {
 		options.Usage("Must supply -hosting flag")
-	default:
-		options.Usage("Invalid hosting type: %s", cfg.GetHosting())
 	}
 
 	// For stacked hosts, figure out the channel type: TPM, pipe, file, or unix
-	if tc.HostType == tao.Stacked {
+	if stacked {
 		switch cfg.GetParentType() {
 		case "TPM":
 			tc.HostChannelType = tao.TPM
@@ -264,22 +263,17 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 		case "unix":
 			tc.HostChannelType = tao.Unix
 		case "":
-			options.Usage("Must supply -parent_type for stacked hosts")
+			// leave channel type blank, tao may find it in env vars
+			tc.HostChannelType = tao.NoChannel
 		default:
 			options.Usage("Invalid parent type: %s", cfg.GetParentType())
 		}
 
-		// For stacked hosts on anything but a TPM, we also need parent spec
-		if tc.HostChannelType != tao.TPM {
-			tc.HostSpec = cfg.GetParentSpec()
-			if tc.HostSpec == "" {
-				options.Usage("Must supply -parent_spec for non-TPM stacked hosts")
-			}
-		} else {
-			// For stacked hosts on a TPM, we also need info from domain config
-			if domain.Config.TpmInfo == nil {
-				options.Usage("Must provide TPM configuration in the domain to use a TPM")
-			}
+		// For stacked hosts, we may also have a parent spec from command line
+		tc.HostSpec = cfg.GetParentSpec()
+
+		// For stacked hosts on a TPM, we may also have tpm info from domain config
+		if domain.Config.TpmInfo != nil {
 			tc.TPMAIKPath = path.Join(domainPath(), domain.Config.TpmInfo.GetAikPath())
 			tc.TPMPCRs = domain.Config.TpmInfo.GetPcrs()
 			tc.TPMDevice = domain.Config.TpmInfo.GetTpmPath()
@@ -304,13 +298,14 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 	// TODO(cjpatton) How do the NewLinuxDockerContainterFactory and the
 	// NewLinuxKVMCoreOSFactory need to be modified to support the new
 	// CachedGuard? They probably don't.
-	var childFactory tao.HostedProgramFactory
-	switch tc.HostedType {
-	case tao.ProcessPipe:
-		childFactory = tao.NewLinuxProcessFactory("pipe", socketPath)
-	case tao.DockerUnix:
-		childFactory = tao.NewLinuxDockerContainerFactory(socketPath, rulesPath)
-	case tao.KVMCoreOSFile:
+	childFactory := make(map[string]tao.HostedProgramFactory)
+	if hosting["process"] {
+		childFactory["process"] = tao.NewLinuxProcessFactory("pipe", socketPath)
+	}
+	if hosting["docker"] {
+		childFactory["docker"] = tao.NewLinuxDockerContainerFactory(socketPath, rulesPath)
+	}
+	if hosting["kvm_coreos"] {
 		sshFile := cfg.GetKvmCoreosSshAuthKeys()
 		if sshFile == "" {
 			options.Usage("Must specify -kvm_coreos_ssh_auth_keys for hosting QEMU/KVM CoreOS")
@@ -340,19 +335,20 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 			RulesPath:  rulesPath,
 			SSHKeysCfg: sshKeysCfg,
 		}
-		childFactory, err = tao.NewLinuxKVMCoreOSFactory(socketPath, cfg)
+
+		childFactory["kvm_coreos"], err = tao.NewLinuxKVMCoreOSFactory(socketPath, cfg)
 		options.FailIf(err, "Can't create KVM CoreOS factory")
 	}
 
-	if tc.HostType == tao.Root {
+	if !stacked {
 		pwd := getKey("root host key password", "pass")
 		return tao.NewRootLinuxHost(hostPath(), domain.Guard, pwd, childFactory)
 	} else {
 		parent := tao.ParentFromConfig(tc)
 		if parent == nil {
-			options.Usage("No host tao available, verify -parent_type or $%s\n", tao.HostChannelTypeEnvVar)
+			options.Usage("No host tao available, verify -parent_type (or $%s) and associated variables\n", tao.HostChannelTypeEnvVar)
 		}
-		return tao.NewStackedLinuxHost(hostPath(), domain.Guard, tao.ParentFromConfig(tc), childFactory)
+		return tao.NewStackedLinuxHost(hostPath(), domain.Guard, parent, childFactory)
 	}
 }
 

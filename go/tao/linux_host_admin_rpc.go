@@ -48,6 +48,7 @@ func (client LinuxHostAdminClient) StartHostedProgram(spec *HostedProgramSpec) (
 	req := &LinuxHostAdminRPCRequest{
 		Path:          proto.String(spec.Path),
 		Dir:           proto.String(spec.Dir),
+		ContainerType: proto.String(spec.ContainerType),
 		ContainerArgs: spec.ContainerArgs,
 		Args:          spec.Args,
 		// TODO: pass uid and gid?
@@ -235,6 +236,7 @@ func (server linuxHostAdminServerStub) StartHostedProgram(r *LinuxHostAdminRPCRe
 	spec := HostedProgramSpec{
 		Path:          *r.Path,
 		Args:          r.Args,
+		ContainerType: *r.ContainerType,
 		ContainerArgs: r.ContainerArgs,
 		Dir:           *r.Dir,
 		Uid:           int(ucred.Uid),

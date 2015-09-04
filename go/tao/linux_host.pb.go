@@ -2,6 +2,16 @@
 // source: linux_host.proto
 // DO NOT EDIT!
 
+/*
+Package tao is a generated protocol buffer package.
+
+It is generated from these files:
+	linux_host.proto
+
+It has these top-level messages:
+	LinuxHostSealedBundle
+	LinuxHostConfig
+*/
 package tao
 
 import proto "github.com/golang/protobuf/proto"
@@ -52,8 +62,8 @@ type LinuxHostConfig struct {
 	ParentSpec *string `protobuf:"bytes,3,opt,name=parent_spec" json:"parent_spec,omitempty"`
 	// Socket directory, relative to host configuration directory.
 	SocketDir *string `protobuf:"bytes,4,opt,name=socket_dir" json:"socket_dir,omitempty"`
-	// Either "process", "docker", or "kvm_coreos"
-	Hosting *string `protobuf:"bytes,5,req,name=hosting" json:"hosting,omitempty"`
+	// List of "process", "docker", and/or "kvm_coreos"
+	Hosting []string `protobuf:"bytes,5,rep,name=hosting" json:"hosting,omitempty"`
 	// Path to CoreOS image for hosted KVM, absolute or relative to domain.
 	KvmCoreosImg *string `protobuf:"bytes,6,opt,name=kvm_coreos_img" json:"kvm_coreos_img,omitempty"`
 	// KB of memory to allocate for each VM
@@ -95,11 +105,11 @@ func (m *LinuxHostConfig) GetSocketDir() string {
 	return ""
 }
 
-func (m *LinuxHostConfig) GetHosting() string {
-	if m != nil && m.Hosting != nil {
-		return *m.Hosting
+func (m *LinuxHostConfig) GetHosting() []string {
+	if m != nil {
+		return m.Hosting
 	}
-	return ""
+	return nil
 }
 
 func (m *LinuxHostConfig) GetKvmCoreosImg() string {

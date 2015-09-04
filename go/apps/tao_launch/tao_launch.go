@@ -295,16 +295,16 @@ func runHosted(client *tao.LinuxHostAdminClient, args []string) {
 
 	spec := new(tao.HostedProgramSpec)
 
-	ctype := "process"
+	spec.ContainerType = "process"
 	spec.Path = args[0]
 	for _, prefix := range []string{"process", "docker", "kvm_coreos"} {
 		if strings.HasPrefix(spec.Path, prefix+":") {
-			ctype = prefix
+			spec.ContainerType = prefix
 			spec.Path = strings.TrimPrefix(spec.Path, prefix+":")
 		}
 	}
 
-	switch ctype {
+	switch spec.ContainerType {
 	case "process":
 		dirs := util.LiberalSearchPath()
 		binary := util.FindExecutable(args[0], dirs)

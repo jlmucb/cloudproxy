@@ -36,27 +36,6 @@ var HostTaoTypeMap = map[string]HostTaoType{
 	"stacked": Stacked,
 }
 
-// The HostTaoChannelType represents the type of the host Tao for a Stacked Tao.
-type HostTaoChannelType int
-
-// These constants given the different types of host Tao.
-const (
-	NoChannel HostTaoChannelType = iota
-	TPM
-	Pipe
-	File
-	Unix
-)
-
-// HostTaoChannelMap maps strings to the type of a host Tao channel.
-var HostTaoChannelMap = map[string]HostTaoChannelType{
-	"none": NoChannel,
-	"tpm":  TPM,
-	"pipe": Pipe,
-	"file": File,
-	"unix": Unix,
-}
-
 // The HostedProgramType represents the type of hosted programs and the channel
 // type used for communication between the Host and the Hosted Program.
 type HostedProgramType int
@@ -82,7 +61,7 @@ var HostedProgramTypeMap = map[string]HostedProgramType{
 // it creates Hosted Programs.
 type Config struct {
 	HostType        HostTaoType
-	HostChannelType HostTaoChannelType
+	HostChannelType string
 	HostSpec        string
 	HostedType      HostedProgramType
 
@@ -103,14 +82,14 @@ func (tc Config) IsValid() bool {
 	case NoHost:
 		return false
 	case Root:
-		if tc.HostChannelType != NoChannel || tc.HostType != NoHost {
+		if tc.HostChannelType != "none" || tc.HostType != NoHost {
 			return false
 		}
 
 		// There are no constraints on the hosted-program types for a
 		// root Tao.
 	case Stacked:
-		if tc.HostChannelType == NoChannel || tc.HostSpec == "" {
+		if tc.HostChannelType == "none" || tc.HostSpec == "" {
 			return false
 		}
 	default:
@@ -135,24 +114,13 @@ func NewConfigFromString(htt, htct, f, hpt, tpmaik, tpmpcrs, tpmdev string) Conf
 		tc.HostType = NoHost
 	}
 
-	switch htct {
-	case "none":
-		tc.HostChannelType = NoChannel
-	case "tpm":
-		tc.HostChannelType = TPM
+	tc.HostChannelType = htct
+	if htct == "tpm" {
 		// TODO(tmroeder): check the TPM variables here and add them to
 		// the config in some way.
 		tc.TPMAIKPath = tpmaik
 		tc.TPMPCRs = tpmpcrs
 		tc.TPMDevice = tpmdev
-	case "pipe":
-		tc.HostChannelType = Pipe
-	case "file":
-		tc.HostChannelType = File
-	case "unix":
-		tc.HostChannelType = Unix
-	default:
-		tc.HostChannelType = NoChannel
 	}
 
 	if f != "" {
@@ -197,7 +165,7 @@ func (tc *Config) Merge(c Config) {
 		tc.HostType = c.HostType
 	}
 
-	if tc.HostChannelType == NoChannel || c.HostChannelType != NoChannel {
+	if tc.HostChannelType == "none" || c.HostChannelType != "none" {
 		tc.HostChannelType = c.HostChannelType
 	}
 

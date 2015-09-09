@@ -89,9 +89,27 @@ type Tao interface {
 	Unseal(sealed []byte) (data []byte, policy string, err error)
 }
 
-// Cached interface to the host Tao underlying this hosted program.
+// The following variables are accessible within the tao package so they can be
+// accessed by the functions that manage the Tao parent singleton object.
+
+// cachedHost is a singleton parent Tao instance.
 var cachedHost Tao
+
+// cacheOnce protects the creation of the singleton cachedHost.
 var cacheOnce sync.Once
+
+// registryLock protects Tao host-channel registry operations.
+var registryLock sync.RWMutex
+
+// registry stores methods that create an instance of the Tao for a given name.
+var registry = map[string]func(string) (Tao, error){}
+
+// Register adds a Tao-creation function for a given host channel type.
+func Register(name string, generator func(string) (Tao, error)) {
+	registryLock.Lock()
+	registry[name] = generator
+	registryLock.Unlock()
+}
 
 // ParentFromConfig gets a parent Tao given a Config that specifies the Tao
 // type.
@@ -104,7 +122,7 @@ func ParentFromConfig(tc Config) Tao {
 		// any values that are set in it.
 		tcEnv.Merge(tc)
 		switch tcEnv.HostChannelType {
-		case TPM:
+		case "tpm":
 			aikblob, err := ioutil.ReadFile(tcEnv.TPMAIKPath)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Couldn't read the aikblob: %s\n", err)
@@ -138,21 +156,21 @@ func ParentFromConfig(tc Config) Tao {
 			}
 
 			cachedHost = host
-		case Pipe:
+		case "pipe":
 			host, err := DeserializeRPC(tcEnv.HostSpec)
 			if err != nil {
 				glog.Error(err)
 				return
 			}
 			cachedHost = host
-		case File:
+		case "file":
 			host, err := DeserializeFileRPC(tcEnv.HostSpec)
 			if err != nil {
 				glog.Error(err)
 				return
 			}
 			cachedHost = host
-		case Unix:
+		case "unix":
 			host, err := DeserializeUnixSocketRPC(tcEnv.HostSpec)
 			if err != nil {
 				glog.Error(err)
@@ -160,7 +178,22 @@ func ParentFromConfig(tc Config) Tao {
 			}
 			cachedHost = host
 		default:
-			glog.Errorf("unknown host tao channel type '%d'\n", tcEnv.HostChannelType)
+			// Look in the registry to see if there is a function
+			// that can produce a Tao instance for this host spec
+			// and name.
+			registryLock.RLock()
+			defer registryLock.RUnlock()
+			f := registry[tcEnv.HostChannelType]
+			if f == nil {
+				glog.Errorf("unknown host tao channel type %q", tcEnv.HostChannelType)
+			}
+
+			host, err := f(tcEnv.HostSpec)
+			if err != nil {
+				glog.Error(err)
+				return
+			}
+			cachedHost = host
 		}
 
 	})

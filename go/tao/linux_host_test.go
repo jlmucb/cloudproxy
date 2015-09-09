@@ -74,6 +74,37 @@ func TestNewRootLinuxHost(t *testing.T) {
 	}
 }
 
+func TestNewStackedLinuxHostWithTao(t *testing.T) {
+	tmpdir, err := ioutil.TempDir("", "test_new_stacked_linux_host")
+	if err != nil {
+		t.Errorf("ioutil.TempDir(\"\", \"test_new_stacked_linux_host\") = %v; want no error", err)
+	}
+	defer os.RemoveAll(tmpdir)
+
+	tc := &Config{
+		HostType:        Stacked,
+		HostChannelType: "completely fake type",
+		HostSpec:        "completely fake spec",
+		HostedType:      NoHostedPrograms,
+	}
+
+	st, err := NewSoftTao("", nil)
+	if err != nil {
+		t.Errorf("NewSoftTao(\"\", nil) = %v; want no error", err)
+	}
+
+	f := func(string) (Tao, error) {
+		return st, nil
+	}
+	Register("completely fake type", f)
+
+	parentTao := ParentFromConfig(*tc)
+	tg := LiberalGuard
+	if _, err = NewStackedLinuxHost(tmpdir, &tg, parentTao, nil); err != nil {
+		t.Errorf("NewStackedLinuxHost(%q, %v, %v, nil) = %v", tmpdir, tg, parentTao, nil)
+	}
+}
+
 // Test the methods directly instead of testing them across a channel.
 
 var testChildLH = &LinuxHostChild{

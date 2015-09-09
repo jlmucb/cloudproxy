@@ -256,13 +256,13 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 	if tc.HostType == tao.Stacked {
 		switch cfg.GetParentType() {
 		case "TPM":
-			tc.HostChannelType = tao.TPM
+			tc.HostChannelType = "tpm"
 		case "pipe":
-			tc.HostChannelType = tao.Pipe
+			tc.HostChannelType = "pipe"
 		case "file":
-			tc.HostChannelType = tao.File
+			tc.HostChannelType = "file"
 		case "unix":
-			tc.HostChannelType = tao.Unix
+			tc.HostChannelType = "unix"
 		case "":
 			options.Usage("Must supply -parent_type for stacked hosts")
 		default:
@@ -270,7 +270,7 @@ func loadHost(domain *tao.Domain, cfg *tao.LinuxHostConfig) (*tao.LinuxHost, err
 		}
 
 		// For stacked hosts on anything but a TPM, we also need parent spec
-		if tc.HostChannelType != tao.TPM {
+		if tc.HostChannelType != "tpm" {
 			tc.HostSpec = cfg.GetParentSpec()
 			if tc.HostSpec == "" {
 				options.Usage("Must supply -parent_spec for non-TPM stacked hosts")

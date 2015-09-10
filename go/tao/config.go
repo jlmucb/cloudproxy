@@ -82,14 +82,14 @@ func (tc Config) IsValid() bool {
 	case NoHost:
 		return false
 	case Root:
-		if tc.HostChannelType != "none" || tc.HostType != NoHost {
+		if tc.HostChannelType != "" || tc.HostType != NoHost {
 			return false
 		}
 
 		// There are no constraints on the hosted-program types for a
 		// root Tao.
 	case Stacked:
-		if tc.HostChannelType == "none" || tc.HostSpec == "" {
+		if tc.HostChannelType == "" || tc.HostSpec == "" {
 			return false
 		}
 	default:
@@ -165,7 +165,7 @@ func (tc *Config) Merge(c Config) {
 		tc.HostType = c.HostType
 	}
 
-	if tc.HostChannelType == "none" || c.HostChannelType != "none" {
+	if tc.HostChannelType == "" || c.HostChannelType != "" {
 		tc.HostChannelType = c.HostChannelType
 	}
 

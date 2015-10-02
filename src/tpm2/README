@@ -1,0 +1,29 @@
+This is a very preliminary version of a tpm2 utility.
+
+compile my saying make -f tpm2_util.mak.  You'll have to
+adjust the object and binary directories.
+You can try the following tests, as root.
+
+./tpm2_util.exe --command=KeyCombinedTest --pcr_num=7
+./tpm2_util.exe --command=Flushall
+./tpm2_util.exe --command=SealCombinedTest --pcr_num=7
+./tpm2_util.exe --command=Flushall
+./tpm2_util.exe --command=QuoteCombinedTest --pcr_num=7
+./tpm2_util.exe --command=Flushall
+./tpm2_util.exe --command=NvCombinedTest
+./tpm2_util.exe --command=Flushall
+./tpm2_util.exe --command=ContextCombinedTest
+./tpm2_util.exe --command=Flushall
+
+Other random commands that work are:
+
+./tpm2_util.exe --command=GetRandom
+./tpm2_util.exe --command=ReadClock
+./tpm2_util.exe --command=GetCapabilities
+./tpm2_util.exe --command=ReadPcr --pcr_num=15
+
+
+The code is extremely fragile and very limited.  It is being re-written but
+the other cloudproxy participants may need it for planning.
+
+John

@@ -142,6 +142,11 @@ bool Tpm2_DefineSpace(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
 bool Tpm2_UndefineSpace(LocalTpm& tpm, TPMI_RH_NV_INDEX index);
 bool Tpm2_Flushall(LocalTpm& tpm);
 
+bool Tpm2_Certify(LocalTpm& tpm, TPM_HANDLE signedKey, TPM_HANDLE signingKey,
+                  string& auth_signed_key, string& auth_signing_key,
+                  TPM2B_DATA& qualifyingData,
+                  TPM2B_ATTEST* attest, TPMT_SIGNATURE* sig);
+
 bool Tpm2_SealCombinedTest(LocalTpm& tpm, int pcr_num);
 bool Tpm2_QuoteCombinedTest(LocalTpm& tpm, int pcr_num);
 bool Tpm2_KeyCombinedTest(LocalTpm& tpm, int pcr_num);

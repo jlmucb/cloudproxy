@@ -32,7 +32,7 @@ LOCAL_LIB=/usr/local/lib
 TARGET_MACHINE_TYPE= x64
 #endif
 
-S= $(SRC_DIR)/cloudproxy/src/tpm2
+S= $(SRC_DIR)/src/github.com/jlmucb/cloudproxy/src/tpm2
 O= $(OBJ_DIR)/tpm20
 INCLUDE= -I$(S) -I$(SRC_DIR)/keys -I/usr/local/include -I$(GOOGLE_INCLUDE)
 

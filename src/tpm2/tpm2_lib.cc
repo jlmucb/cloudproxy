@@ -1440,6 +1440,148 @@ bool Tpm2_Save(LocalTpm& tpm) {
   return false;
 }
 
+bool Tpm2_Certify(LocalTpm& tpm, TPM_HANDLE signedKey, TPM_HANDLE signingKey,
+                  string& auth_signed_key, string& auth_signing_key, 
+                  TPM2B_DATA& qualifyingData,
+                  TPM2B_ATTEST* attest, TPMT_SIGNATURE* sig) {
+  byte commandBuf[2*MAX_SIZE_PARAMS];
+  memset(commandBuf, 0, MAX_SIZE_PARAMS);
+
+  int size_resp = MAX_SIZE_PARAMS;
+  byte resp_buf[MAX_SIZE_PARAMS];
+  memset(resp_buf, 0, MAX_SIZE_PARAMS);
+  int size_params = 0;
+  byte params_buf[MAX_SIZE_PARAMS];
+  int size_params_left = MAX_SIZE_PARAMS;
+  memset(params_buf, 0, MAX_SIZE_PARAMS);
+  byte* current_out = params_buf;
+  int n;
+
+  ChangeEndian32((uint32_t*)&signedKey, (uint32_t*)current_out);
+  size_params += sizeof(uint32_t);
+  current_out += sizeof(uint32_t);
+  size_params_left -= sizeof(uint32_t);
+
+  ChangeEndian32((uint32_t*)&signingKey, (uint32_t*)current_out);
+  size_params += sizeof(uint32_t);
+  current_out += sizeof(uint32_t);
+  size_params_left -= sizeof(uint32_t);
+
+  memset(current_out, 0, sizeof(uint16_t));
+  size_params += sizeof(uint16_t);
+  current_out += sizeof(uint16_t);
+  size_params_left -= sizeof(uint16_t);
+
+  byte* size_ptr = current_out;
+  memset(current_out, 0, sizeof(uint16_t));
+  size_params += sizeof(uint16_t);
+  current_out += sizeof(uint16_t);
+  size_params_left -= sizeof(uint16_t);
+
+  uint16_t first_position= size_params;
+  uint32_t password_auth = TPM_RS_PW;
+
+  ChangeEndian32((uint32_t*)&password_auth, (uint32_t*)current_out);
+  size_params += sizeof(uint32_t);
+  current_out += sizeof(uint32_t);
+  size_params_left -= sizeof(uint32_t);
+
+  memset(current_out, 0, sizeof(uint16_t));
+  size_params += sizeof(uint16_t);
+  current_out += sizeof(uint16_t);
+  size_params_left -= sizeof(uint16_t);
+
+  *current_out = 1;
+  size_params += 1;
+  current_out += 1;
+  size_params_left -= 1;
+
+  n = SetPasswordData(auth_signed_key, size_params_left, current_out);
+  size_params += n;
+  current_out += n;
+  size_params_left -= n;
+
+  ChangeEndian32((uint32_t*)&password_auth, (uint32_t*)current_out);
+  size_params += sizeof(uint32_t);
+  current_out += sizeof(uint32_t);
+  size_params_left -= sizeof(uint32_t);
+
+  memset(current_out, 0, sizeof(uint16_t));
+  size_params += sizeof(uint16_t);
+  current_out += sizeof(uint16_t);
+  size_params_left -= sizeof(uint16_t);
+
+  *current_out = 1;
+  size_params += 1;
+  current_out += 1;
+  size_params_left -= 1;
+
+  n = SetPasswordData(auth_signed_key, size_params_left, current_out);
+  size_params += n;
+  current_out += n;
+  size_params_left -= n;
+
+  uint16_t block_size = size_params - first_position;
+  ChangeEndian16((uint16_t*)&block_size, (uint16_t*)size_ptr);
+
+  // parameters: qualifying data, scheme
+  ChangeEndian16((uint16_t*)&qualifyingData.size, (uint16_t*)current_out);
+  size_params += sizeof(uint16_t);
+  current_out += sizeof(uint16_t);
+  size_params_left -= sizeof(uint16_t);
+
+  memcpy(current_out, qualifyingData.buffer, qualifyingData.size);
+  size_params += qualifyingData.size;
+  current_out += qualifyingData.size;
+  size_params_left -= qualifyingData.size;
+
+  TPMI_ALG_HASH alg = TPM_ALG_NULL;
+  ChangeEndian16((uint16_t*)&alg, (uint16_t*)current_out);
+  size_params += sizeof(uint16_t);
+  current_out += sizeof(uint16_t);
+  size_params_left -= sizeof(uint16_t);
+
+  int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_Certify,
+                                commandBuf, size_params, params_buf);
+  printCommand("Certify", in_size, commandBuf);
+  if (!tpm.SendCommand(in_size, commandBuf)) {
+    printf("SendCommand failed\n");
+    return false;
+  }
+  if (!tpm.GetResponse(&size_resp, resp_buf)) {
+    printf("GetResponse failed\n");
+    return false;
+  }
+  uint16_t cap = 0;
+  uint32_t responseSize; 
+  uint32_t responseCode; 
+  Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
+                        &responseSize, &responseCode);
+  printResponse("Certify", cap, responseSize, responseCode, resp_buf);
+  if (responseCode != TPM_RC_SUCCESS)
+    return false;
+  byte* out = resp_buf + sizeof(TPM_RESPONSE);
+  out += 2*sizeof(uint16_t);  // check this
+  ChangeEndian16((uint16_t*)out, &attest->size);
+  out += sizeof(uint16_t);
+  memcpy(attest->attestationData, out, attest->size);
+  out += attest->size;
+  ChangeEndian16((uint16_t*)out, &sig->sigAlg);
+  out += sizeof(uint16_t);
+  if (sig->sigAlg != TPM_ALG_RSASSA) {
+    printf("I only understand TPM_ALG_RSASSA signatures for now\n");
+    return false;
+  }
+  ChangeEndian16((uint16_t*)out, &sig->signature.rsassa.hash);
+  out += sizeof(uint16_t);
+  ChangeEndian16((uint16_t*)out, &sig->signature.rsassa.sig.size);
+  out += sizeof(uint16_t);
+  memcpy(sig->signature.rsassa.sig.buffer, out,
+         sig->signature.rsassa.sig.size);
+  out += sizeof(sig->signature.rsassa.sig.size);
+  return true;
+}
+
 bool GetCreateOut(int size, byte* in,
                   int* size_public, byte* out_public, 
                   int* size_private, byte* out_private, 
@@ -2405,7 +2547,7 @@ bool Tpm2_NvCombinedTest(LocalTpm& tpm) {
 bool Tpm2_KeyCombinedTest(LocalTpm& tpm, int pcr_num) {
   string authString("01020304");
   string parentAuth("01020304");
-  string emptyAuth();
+  string emptyAuth;
 
   TPM_HANDLE parent_handle;
   TPM2B_PUBLIC pub_out;
@@ -2444,9 +2586,36 @@ bool Tpm2_KeyCombinedTest(LocalTpm& tpm, int pcr_num) {
                size_private, out_private, &load_handle, &name)) {
     printf("Load succeeded, handle: %08x\n", load_handle);
   } else {
+    Tpm2_FlushContext(tpm, parent_handle);
     printf("Load failed\n");
     return false;
   }
+  TPM2B_DATA qualifyingData;
+  TPM2B_ATTEST attest;
+  TPMT_SIGNATURE sig;
+  qualifyingData.size = 3;
+  qualifyingData.buffer[0] = 5;
+  qualifyingData.buffer[1] = 6;
+  qualifyingData.buffer[2] = 7;
+  if (Tpm2_Certify(tpm, load_handle, load_handle,
+                  parentAuth, parentAuth,
+                  qualifyingData, &attest, &sig)) {
+    printf("Certify succeeded\n");
+    printf("attested (%d): ", attest.size);
+    PrintBytes(attest.size, attest.attestationData);
+    printf("\n");
+    printf("signature (%d %d %d): ", sig.sigAlg, sig.signature.rsassa.hash,
+           sig.signature.rsassa.sig.size);
+    PrintBytes(sig.signature.rsassa.sig.size, sig.signature.rsassa.sig.buffer);
+    printf("\n");
+  } else {
+    Tpm2_FlushContext(tpm, load_handle);
+    Tpm2_FlushContext(tpm, parent_handle);
+    printf("Certify failed\n");
+    return false;
+  }
+  Tpm2_FlushContext(tpm, load_handle);
+  Tpm2_FlushContext(tpm, parent_handle);
   return true;
 }
 
@@ -2742,6 +2911,7 @@ bool Tpm2_QuoteCombinedTest(LocalTpm& tpm, int pcr_num) {
                   &quote_size, quoted, &sig_size, sig)) {
     printf("Quote failed\n");
     Tpm2_FlushContext(tpm, load_handle);
+    Tpm2_FlushContext(tpm, parent_handle);
     return false;
   }
   printf("Quote succeeded, quoted (%d): ", quote_size); 
@@ -2751,6 +2921,7 @@ bool Tpm2_QuoteCombinedTest(LocalTpm& tpm, int pcr_num) {
   PrintBytes(sig_size, sig);
   printf("\n"); 
   Tpm2_FlushContext(tpm, load_handle);
+  Tpm2_FlushContext(tpm, parent_handle);
   return true;
 }
 

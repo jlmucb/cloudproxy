@@ -59,7 +59,7 @@ DEFINE_string(creation_data_file, "", "private public area");
 DEFINE_string(save_context_file, "", "save(d) context area");
 DEFINE_string(decrypt, "", "decrypt flag");
 
-int num_tpmutil_ops = 26;
+int num_tpmutil_ops = 27;
 std::string tpmutil_ops[] = {
     "--command=Startup",
     "--command=Shutdown",
@@ -87,6 +87,7 @@ std::string tpmutil_ops[] = {
     "--command=KeyCombinedTest",
     "--command=NvCombinedTest",
     "--command=ContextCombinedTest",
+    "--command=EndorsementCombinedTest",
 };
 
 void PrintOptions() {
@@ -413,6 +414,12 @@ int main(int an, char** av) {
       printf("ContextCombinedTest succeeded\n");
     } else {
       printf("ContextCombinedTest failed\n");
+    }
+  } else if (FLAGS_command == "EndorsementCombinedTest") {
+    if (Tpm2_EndorsementCombinedTest(tpm)) {
+      printf("EndorsementCombinedTest succeeded\n");
+    } else {
+      printf("EndorsementCombinedTest failed\n");
     }
   } else if (FLAGS_command == "DictionaryAttackLockReset") {
     if (Tpm2_DictionaryAttackLockReset(tpm)) {

@@ -78,7 +78,7 @@ bool Tpm2_GetRandom(LocalTpm& tpm, int numBytes, byte* buf);
 bool Tpm2_ReadClock(LocalTpm& tpm, uint64_t* current_time, uint64_t* current_clock);
 bool Tpm2_ReadPcr(LocalTpm& tpm, int pcrNum, uint32_t* updateCounter,
                   TPML_PCR_SELECTION* pcrSelectOut, TPML_DIGEST* digest);
-bool Tpm2_CreatePrimary(LocalTpm& tpm, string& authString,
+bool Tpm2_CreatePrimary(LocalTpm& tpm, TPM_HANDLE owner, string& authString,
                         TPML_PCR_SELECTION& pcr_selection, bool sign,
                         TPM_HANDLE* handle, TPM2B_PUBLIC* pub_out);
 bool Tpm2_Load(LocalTpm& tpm, TPM_HANDLE parent_handle, string& parentAuth,
@@ -137,21 +137,24 @@ bool Tpm2_ReadNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
                  string& authString, uint16_t size, byte* data);
 bool Tpm2_WriteNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, string& authString,
                   uint16_t size, byte* data);
-bool Tpm2_DefineSpace(LocalTpm& tpm, TPMI_RH_NV_INDEX index, 
+bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index, 
                       string& authString, uint16_t size_data);
-bool Tpm2_UndefineSpace(LocalTpm& tpm, TPMI_RH_NV_INDEX index);
+bool Tpm2_UndefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index);
 bool Tpm2_Flushall(LocalTpm& tpm);
 
 bool Tpm2_Certify(LocalTpm& tpm, TPM_HANDLE signedKey, TPM_HANDLE signingKey,
                   string& auth_signed_key, string& auth_signing_key,
                   TPM2B_DATA& qualifyingData,
                   TPM2B_ATTEST* attest, TPMT_SIGNATURE* sig);
+bool Tpm2_ReadPublic(LocalTpm& tpm, TPM_HANDLE handle, TPM2B_PUBLIC& outPublic, TPM2B_NAME& name,
+                     TPM2B_NAME& qualifiedName);
 
 bool Tpm2_SealCombinedTest(LocalTpm& tpm, int pcr_num);
 bool Tpm2_QuoteCombinedTest(LocalTpm& tpm, int pcr_num);
 bool Tpm2_KeyCombinedTest(LocalTpm& tpm, int pcr_num);
 bool Tpm2_NvCombinedTest(LocalTpm& tpm);
 bool Tpm2_ContextCombinedTest(LocalTpm& tpm);
+bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm);
 
 bool Tpm2_DictionaryAttackLockReset(LocalTpm& tpm);
 #endif

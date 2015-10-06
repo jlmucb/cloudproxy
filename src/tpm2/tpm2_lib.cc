@@ -496,8 +496,8 @@ bool Tpm2_ReadPcr(LocalTpm& tpm, int pcrNum, uint32_t* updateCounter,
                      pcrSelectOut, values);
 }
 
-int SetOwnerHandle(int size, byte* buf) {
-  TPM_HANDLE handle = TPM_RH_OWNER;
+int SetOwnerHandle(TPM_HANDLE owner, int size, byte* buf) {
+  TPM_HANDLE handle = owner;
 
   ChangeEndian32(&handle, (uint32_t*)buf);
   return sizeof(TPM_HANDLE);
@@ -1075,7 +1075,7 @@ bool GetPublicOut(int size, byte* in, TPM_HANDLE* handle, TPM2B_PUBLIC* pub_out,
   return true;
 }
 
-bool Tpm2_CreatePrimary(LocalTpm& tpm, string& authString,
+bool Tpm2_CreatePrimary(LocalTpm& tpm, TPM_HANDLE owner, string& authString,
                         TPML_PCR_SELECTION& pcr_selection, bool sign,
                         TPM_HANDLE* handle, TPM2B_PUBLIC* pub_out) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
@@ -1089,7 +1089,7 @@ bool Tpm2_CreatePrimary(LocalTpm& tpm, string& authString,
   string emptyAuth;
 
   int n;
-  n = SetOwnerHandle(parameter_space_left, current_buf);
+  n = SetOwnerHandle(owner, parameter_space_left, current_buf);
   current_buf += n;
   size_params += n;
   parameter_space_left -= n;
@@ -1436,6 +1436,12 @@ bool Tpm2_Load(LocalTpm& tpm, TPM_HANDLE parent_handle,
 }
 
 bool Tpm2_Save(LocalTpm& tpm) {
+  printf("Unimplmented\n");
+  return false;
+}
+
+bool Tpm2_ReadPublic(LocalTpm& tpm, TPM_HANDLE handle, TPM2B_PUBLIC& outPublic, TPM2B_NAME& name,
+                     TPM2B_NAME& qualifiedName) {
   printf("Unimplmented\n");
   return false;
 }
@@ -2156,6 +2162,14 @@ bool Tpm2_FlushContext(LocalTpm& tpm, TPM_HANDLE handle) {
   return true;
 }
 
+bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
+  // Create Primary in Endorsement hierarchy
+  // ReadPublic
+  // CreateSigningKey
+  // Certify
+  return true;
+}
+
 bool Tpm2_ContextCombinedTest(LocalTpm& tpm) {
   TPM_HANDLE handle;
   int size;
@@ -2167,7 +2181,7 @@ bool Tpm2_ContextCombinedTest(LocalTpm& tpm) {
   TPML_PCR_SELECTION pcrSelect;
   InitSinglePcrSelection(7, TPM_ALG_SHA1, pcrSelect);
 
-  if (Tpm2_CreatePrimary(tpm, authString, pcrSelect, false,
+  if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, authString, pcrSelect, false,
                          &handle, &pub_out)) {
     printf("CreatePrimary succeeded\n");
   } else {
@@ -2348,7 +2362,7 @@ bool Tpm2_WriteNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   return true;
 }
 
-bool Tpm2_DefineSpace(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
+bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
                       string& authString, uint16_t size_data) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   memset(commandBuf, 0, MAX_SIZE_PARAMS);
@@ -2362,7 +2376,7 @@ bool Tpm2_DefineSpace(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   int size_params_left = MAX_SIZE_PARAMS;
 
   byte* current_out = params_buf;
-  int n = SetOwnerHandle(size_params_left, current_out);
+  int n = SetOwnerHandle(owner, size_params_left, current_out);
   size_params += n;
   current_out += n;
   size_params_left -= n;
@@ -2447,7 +2461,7 @@ bool Tpm2_DefineSpace(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   return true;
 }
 
-bool Tpm2_UndefineSpace(LocalTpm& tpm, TPMI_RH_NV_INDEX index) {
+bool Tpm2_UndefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   memset(commandBuf, 0, MAX_SIZE_PARAMS);
 
@@ -2460,7 +2474,7 @@ bool Tpm2_UndefineSpace(LocalTpm& tpm, TPMI_RH_NV_INDEX index) {
   int size_params_left = MAX_SIZE_PARAMS;
 
   byte* current_out = params_buf;
-  int n = SetOwnerHandle(size_params_left, params_buf);
+  int n = SetOwnerHandle(owner, size_params_left, params_buf);
   size_params += n;
   current_out += n;
   size_params_left -= n;
@@ -2516,12 +2530,12 @@ bool Tpm2_NvCombinedTest(LocalTpm& tpm) {
   byte data_out[512];
   TPM_HANDLE nv_handle = GetNvHandle(slot);
 
-  if (Tpm2_UndefineSpace(tpm, nv_handle)) {
+  if (Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
     printf("Tpm2_UndefineSpace %d succeeds\n", slot);
   } else {
     printf("Tpm2_UndefineSpace fails (but that's OK usually)\n");
   }
-  if (Tpm2_DefineSpace(tpm, nv_handle, authString, size_data) ) {
+  if (Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle, authString, size_data) ) {
     printf("Tpm2_DefineSpace %d succeeds\n", nv_handle);
   } else {
     printf("Tpm2_DefineSpace fails\n");
@@ -2554,7 +2568,7 @@ bool Tpm2_KeyCombinedTest(LocalTpm& tpm, int pcr_num) {
   TPML_PCR_SELECTION pcrSelect;
   InitSinglePcrSelection(pcr_num, TPM_ALG_SHA1, pcrSelect);
 
-  if (Tpm2_CreatePrimary(tpm, authString, pcrSelect, false,
+  if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, authString, pcrSelect, false,
                         &parent_handle, &pub_out)) {
     printf("CreatePrimary succeeded\n");
   } else {
@@ -2630,7 +2644,7 @@ bool Tpm2_SealCombinedTest(LocalTpm& tpm, int pcr_num) {
   TPML_PCR_SELECTION pcrSelect;
   InitSinglePcrSelection(pcr_num, TPM_ALG_SHA1, pcrSelect);
 
-  if (Tpm2_CreatePrimary(tpm, authString,
+  if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, authString,
                         pcrSelect, false,
                         &parent_handle, &pub_out)) {
     printf("CreatePrimary succeeded\n");
@@ -2849,7 +2863,7 @@ bool Tpm2_QuoteCombinedTest(LocalTpm& tpm, int pcr_num) {
   TPML_PCR_SELECTION pcr_selection;
   InitSinglePcrSelection(pcr_num, TPM_ALG_SHA1, pcr_selection);
 
-  if (Tpm2_CreatePrimary(tpm, authString, pcr_selection, false,
+  if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, authString, pcr_selection, false,
                         &parent_handle, &pub_out)) {
     printf("CreatePrimary succeeded\n");
   } else {

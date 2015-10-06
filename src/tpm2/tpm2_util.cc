@@ -153,7 +153,8 @@ int main(int an, char** av) {
     if (FLAGS_decrypt.size() > 0)
       sign = false;
 
-    if (Tpm2_CreatePrimary(tpm, FLAGS_authString, pcrSelect, sign,
+    if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, FLAGS_authString,
+                           pcrSelect, sign,
                            &handle, &pub_out)) {
       printf("Tpm2_CreatePrimary succeeds\n");
       printf("Public handle: %08x\n", (uint32_t)handle);
@@ -302,7 +303,7 @@ int main(int an, char** av) {
     
     if (FLAGS_nv_slot < 0) {
       printf("Invalid index\n");
-    } else if (!Tpm2_UndefineSpace(tpm, FLAGS_nv_slot)) {
+    } else if (!Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, FLAGS_nv_slot)) {
       printf("UndefineSpace succeeded\n");
     } else {
       printf("UndefineSpace failed\n");
@@ -310,7 +311,8 @@ int main(int an, char** av) {
   } else if (FLAGS_command == "DefineSpace") {
     TPM_HANDLE nv_handle = GetNvHandle(FLAGS_nv_slot);
     uint16_t size_data = (uint16_t) FLAGS_nv_size;
-    if (Tpm2_DefineSpace(tpm, nv_handle, FLAGS_authString, size_data)) {
+    if (Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle,
+                         FLAGS_authString, size_data)) {
       printf("DefineSpace succeeded\n");
     } else {
       printf("DefineSpace failed\n");

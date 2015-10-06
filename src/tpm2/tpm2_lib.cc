@@ -1440,10 +1440,144 @@ bool Tpm2_Save(LocalTpm& tpm) {
   return false;
 }
 
-bool Tpm2_ReadPublic(LocalTpm& tpm, TPM_HANDLE handle, TPM2B_PUBLIC& outPublic, TPM2B_NAME& name,
+int GetRsaParams(uint16_t size_in, byte* input, TPMS_RSA_PARMS& rsaParams) {
+  int total_size = 0;
+
+  // TPMT_SYM_DEF_OBJECT symmetric;
+  //    TPMI_ALG_SYM_OBJECT algorithm;
+  //    TPMU_SYM_KEY_BITS   keyBits;
+  //       uint16_t size
+  //       bytes
+  //    uint16_t mode;
+  // TPMT_RSA_SCHEME     scheme;
+  //   uint16_t scheme;
+  //   TPMU_ASYM_SCHEME    details.rsaassa;
+  //     hashAlg
+  // TPMI_RSA_KEY_BITS   keyBits;
+  //   uint16_t size
+  //   bytes
+  // uint32_t            exponent; 
+
+  return -1;
+}
+
+bool GetPublicOut(uint16_t size_in, byte* input, TPM2B_PUBLIC& outPublic) {
+  ChangeEndian16((uint16_t*) input, (uint16_t*)&outPublic.publicArea.type);
+  input += sizeof(uint16_t);
+  ChangeEndian16((uint16_t*) input, (uint16_t*)&outPublic.publicArea.nameAlg);
+  input += sizeof(uint16_t);
+  ChangeEndian32((uint32_t*) input,
+                 (uint32_t*)&outPublic.publicArea.objectAttributes);
+  input += sizeof(uint32_t);
+  ChangeEndian16((uint16_t*) input, 
+                 (uint16_t*)&outPublic.publicArea.authPolicy.size);
+  input += sizeof(uint16_t);
+  memcpy(outPublic.publicArea.authPolicy.buffer, input,
+         outPublic.publicArea.authPolicy.size);
+  input += outPublic.publicArea.authPolicy.size;
+
+  if (outPublic.publicArea.nameAlg != TPM_ALG_RSA) {
+    printf("Can only retrieve RSA Params\n");
+    return false;
+  }
+  int n = GetRsaParams(0, input, outPublic.publicArea.parameters.rsaDetail);
+  if (n < 0) {
+    printf("Can't get RSA Params\n");
+    return false;
+  }
+  input += n;
+
+  // TPMU_PUBLIC_ID    unique;
+  //   TPM2B_DIGEST         keyedHash;
+  //   TPM2B_DIGEST         sym;
+  //   TPM2B_PUBLIC_KEY_RSA rsa;
+  //   TPMS_ECC_POINT       ecc;
+  ChangeEndian16((uint16_t*) input,
+                 (uint16_t*)&outPublic.publicArea.unique.keyedHash.size);
+  input += sizeof(uint16_t);
+  if (outPublic.publicArea.unique.keyedHash.size !=0) {
+    printf("unique digest is not 0\n");
+    return false;
+  }
+  return true;
+}
+
+bool Tpm2_ReadPublic(LocalTpm& tpm, TPM_HANDLE handle,
+                     TPM2B_PUBLIC& outPublic, TPM2B_NAME& name,
                      TPM2B_NAME& qualifiedName) {
-  printf("Unimplmented\n");
-  return false;
+  byte commandBuf[2*MAX_SIZE_PARAMS];
+  memset(commandBuf, 0, MAX_SIZE_PARAMS);
+
+  int size_resp = MAX_SIZE_PARAMS;
+  byte resp_buf[MAX_SIZE_PARAMS];
+  memset(resp_buf, 0, MAX_SIZE_PARAMS);
+  int size_params = 0;
+  byte params_buf[MAX_SIZE_PARAMS];
+  int size_params_left = MAX_SIZE_PARAMS;
+  memset(params_buf, 0, MAX_SIZE_PARAMS);
+  byte* current_out = params_buf;
+  int n;
+
+  ChangeEndian32((uint32_t*)&handle, (uint32_t*)current_out);
+  size_params += sizeof(uint32_t);
+  current_out += sizeof(uint32_t);
+  size_params_left -= sizeof(uint32_t);
+
+  int in_size = Tpm2_SetCommand(TPM_ST_NO_SESSIONS, TPM_CC_ReadPublic,
+                                commandBuf, size_params, params_buf);
+  printCommand("ReadPublic", in_size, commandBuf);
+  if (!tpm.SendCommand(in_size, commandBuf)) {
+    printf("SendCommand failed\n");
+    return false;
+  }
+  if (!tpm.GetResponse(&size_resp, resp_buf)) {
+    printf("GetResponse failed\n");
+    return false;
+  }
+  uint16_t cap = 0;
+  uint32_t responseSize; 
+  uint32_t responseCode; 
+  Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
+                        &responseSize, &responseCode);
+  printResponse("ReadPublic", cap, responseSize, responseCode, resp_buf);
+  if (responseCode != TPM_RC_SUCCESS)
+    return false;
+  byte* out = resp_buf + sizeof(TPM_RESPONSE);
+
+  ChangeEndian16((uint16_t*) out,(uint16_t*)&outPublic.size);
+  size_params += sizeof(uint16_t);
+  out += sizeof(uint16_t);
+  size_params_left -= sizeof(uint16_t);
+
+  if (!GetPublicOut(outPublic.size, out, outPublic)) {
+    printf("ReadPublic can't GetPublic\n");
+    return false;
+  }
+  size_params += outPublic.size;
+  out += outPublic.size;
+  size_params_left -= outPublic.size;
+
+  ChangeEndian16((uint16_t*) out,(uint16_t*)&name.size);
+  size_params += sizeof(uint16_t);
+  out += sizeof(uint16_t);
+  size_params_left -= sizeof(uint16_t);
+
+  memcpy(name.name, out, name.size);
+  size_params += name.size;
+  out += name.size;
+  size_params_left -= name.size;
+
+  ChangeEndian16((uint16_t*) out,(uint16_t*)&qualifiedName.size);
+  size_params += sizeof(uint16_t);
+  out += sizeof(uint16_t);
+  size_params_left -= sizeof(uint16_t);
+
+  memcpy(qualifiedName.name, out, qualifiedName.size);
+  size_params += qualifiedName.size;
+  out += qualifiedName.size;
+  size_params_left -= name.size;
+
+  return true;
 }
 
 bool Tpm2_Certify(LocalTpm& tpm, TPM_HANDLE signedKey, TPM_HANDLE signingKey,

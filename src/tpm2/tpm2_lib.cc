@@ -2331,6 +2331,7 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
   int size;
   byte saveArea[4096];
   string authString("01020304");
+  string parentAuth("01020304");
 
   TPM_HANDLE parent_handle;
   TPM2B_PUBLIC pub_out;
@@ -2342,14 +2343,15 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
   TPML_PCR_SELECTION pcrSelect;
   InitSinglePcrSelection(7, TPM_ALG_SHA1, pcrSelect);
 
+  // for TPM_RH_ENDORSEMENT, this should be an asymmetric key
   if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, authString, pcrSelect, false,
-                         &handle, &pub_out)) {
+                         &parent_handle, &pub_out)) {
     printf("CreatePrimary succeeded\n");
   } else {
     printf("CreatePrimary failed\n");
     return false;
   }
-  if (Tpm2_ReadPublic(tpm, handle, &pub_blob_size, pub_blob,
+  if (Tpm2_ReadPublic(tpm, parent_handle, &pub_blob_size, pub_blob,
                       pub_out, pub_name, qualified_pub_name)) {
     printf("ReadPublic succeeded\n");
   } else {
@@ -2365,7 +2367,61 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
   printf("Qualified name: ");
   PrintBytes(qualified_pub_name.size, qualified_pub_name.name);
   printf("\n");
-  // CreateSigningKey
+  TPM2B_CREATION_DATA creation_out;
+  TPM2B_DIGEST digest_out;
+  TPMT_TK_CREATION creation_ticket;
+  int size_public = MAX_SIZE_PARAMS;
+  byte out_public[MAX_SIZE_PARAMS];
+  int size_private = MAX_SIZE_PARAMS;
+  byte out_private[MAX_SIZE_PARAMS];
+
+  if (Tpm2_CreateKey(tpm, parent_handle, parentAuth, authString, pcrSelect,
+                  true, false, &size_public, out_public,
+                  &size_private, out_private,
+                  &creation_out, &digest_out, &creation_ticket)) {
+    printf("Create succeeded private size: %d, public size: %d\n",
+           size_private, size_public);
+  } else {
+    printf("Create failed\n");
+    return false;
+  }
+
+  TPM_HANDLE load_handle;
+  TPM2B_NAME name;
+  if (Tpm2_Load(tpm, parent_handle, parentAuth, size_public, out_public,
+               size_private, out_private, &load_handle, &name)) {
+    printf("Load succeeded, handle: %08x\n", load_handle);
+  } else {
+    Tpm2_FlushContext(tpm, parent_handle);
+    printf("Load failed\n");
+    return false;
+  }
+  TPM2B_DATA qualifyingData;
+  TPM2B_ATTEST attest;
+  TPMT_SIGNATURE sig;
+  qualifyingData.size = 3;
+  qualifyingData.buffer[0] = 5;
+  qualifyingData.buffer[1] = 6;
+  qualifyingData.buffer[2] = 7;
+  if (Tpm2_Certify(tpm, parent_handle, load_handle,
+                  parentAuth, parentAuth,
+                  qualifyingData, &attest, &sig)) {
+    printf("Certify succeeded\n");
+    printf("attested (%d): ", attest.size);
+    PrintBytes(attest.size, attest.attestationData);
+    printf("\n");
+    printf("signature (%d %d %d): ", sig.sigAlg, sig.signature.rsassa.hash,
+           sig.signature.rsassa.sig.size);
+    PrintBytes(sig.signature.rsassa.sig.size, sig.signature.rsassa.sig.buffer);
+    printf("\n");
+  } else {
+    Tpm2_FlushContext(tpm, load_handle);
+    Tpm2_FlushContext(tpm, parent_handle);
+    printf("Certify failed\n");
+    return false;
+  }
+  Tpm2_FlushContext(tpm, load_handle);
+  Tpm2_FlushContext(tpm, parent_handle);
   // Certify
   return true;
 }

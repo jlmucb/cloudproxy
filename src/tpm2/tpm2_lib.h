@@ -146,8 +146,10 @@ bool Tpm2_Certify(LocalTpm& tpm, TPM_HANDLE signedKey, TPM_HANDLE signingKey,
                   string& auth_signed_key, string& auth_signing_key,
                   TPM2B_DATA& qualifyingData,
                   TPM2B_ATTEST* attest, TPMT_SIGNATURE* sig);
-bool Tpm2_ReadPublic(LocalTpm& tpm, TPM_HANDLE handle, TPM2B_PUBLIC& outPublic, TPM2B_NAME& name,
-                     TPM2B_NAME& qualifiedName);
+bool Tpm2_ReadPublic(LocalTpm& tpm, TPM_HANDLE handle, 
+                     uint16_t* pub_blob_size, byte* pub_blob,
+                     TPM2B_PUBLIC& outPublic,
+                     TPM2B_NAME& name, TPM2B_NAME& qualifiedName);
 
 bool Tpm2_SealCombinedTest(LocalTpm& tpm, int pcr_num);
 bool Tpm2_QuoteCombinedTest(LocalTpm& tpm, int pcr_num);

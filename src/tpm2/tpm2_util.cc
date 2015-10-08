@@ -101,7 +101,7 @@ void PrintOptions() {
 int main(int an, char** av) {
   LocalTpm tpm;
 
-  gflags::ParseCommandLineFlags(&an, &av, true);
+   gflags::ParseCommandLineFlags(&an, &av, true);
   if (!tpm.OpenTpm("/dev/tpm0")) {
     printf("Can't open tpm\n");
     return 1;
@@ -140,7 +140,7 @@ int main(int an, char** av) {
   } else if (FLAGS_command == "ReadClock") {
     uint64_t current_time, current_clock;
     if (Tpm2_ReadClock(tpm, &current_time, &current_clock)) {
-      printf("time: %lx %lx\n\n", current_time, current_clock);
+      printf("time: %llx %llx\n\n", current_time, current_clock);
     } else {
       printf("ReadClock failed\n");
     }
@@ -303,7 +303,7 @@ int main(int an, char** av) {
     
     if (FLAGS_nv_slot < 0) {
       printf("Invalid index\n");
-    } else if (!Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, FLAGS_nv_slot)) {
+    } else if (!Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
       printf("UndefineSpace succeeded\n");
     } else {
       printf("UndefineSpace failed\n");

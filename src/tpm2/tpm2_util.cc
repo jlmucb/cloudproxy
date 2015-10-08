@@ -152,7 +152,7 @@ int main(int an, char** av) {
     bool sign = true;
     if (FLAGS_decrypt.size() > 0)
       sign = false;
-
+#if 0
     if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, FLAGS_authString,
                            pcrSelect, sign,
                            &handle, &pub_out)) {
@@ -172,6 +172,7 @@ int main(int an, char** av) {
     } else {
       printf("CreatePrimary failed\n");
     }
+#endif
   } else if (FLAGS_command == "Load") {
     TPM_HANDLE parent_handle = 0x80000000;
     TPM_HANDLE new_handle;
@@ -241,7 +242,7 @@ int main(int an, char** av) {
     bool sign = true;
     if (FLAGS_decrypt.size() > 0)
       sign = false;
-
+#if 0
     if (Tpm2_CreateKey(tpm, parent_handle, FLAGS_parentAuth,
                     FLAGS_authString, pcrSelect,
                     sign, false, &size_public, out_public,
@@ -265,6 +266,7 @@ int main(int an, char** av) {
       }
     }
     printf("CreateKey failed\n");
+#endif
   } else if (FLAGS_command == "Unseal") {
 #if 0
     TPM_HANDLE item_handle = 0;
@@ -292,12 +294,14 @@ int main(int an, char** av) {
     byte attest[1024];
     int sig_size = 1024;
     byte sig[1024];
+#if 0
     if (Tpm2_Quote(tpm, signingHandle, quote_size, quote, scheme, pcr_selection,
                &attest_size, attest, &sig_size, sig)) {
       printf("Quote succeeded\n");
     } else {
       printf("Quote failed\n");
     }
+#endif
   } else if (FLAGS_command == "UndefineSpace") {
     TPM_HANDLE nv_handle = GetNvHandle(FLAGS_nv_slot);
     

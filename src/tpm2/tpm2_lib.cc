@@ -1125,7 +1125,6 @@ bool Tpm2_CreatePrimary(LocalTpm& tpm, TPM_HANDLE owner, string& authString,
   IF_NEG_RETURN_FALSE(n);
   Update(n, &out, &size_params, &space_left);
 
-
   TPM2B_PUBLIC pub_key;
   FillPublicRsaTemplate(enc_alg, int_alg, flags, sym_alg,
                         sym_key_size, sym_mode, sig_scheme,
@@ -2227,12 +2226,26 @@ bool Tpm2_FlushContext(LocalTpm& tpm, TPM_HANDLE handle) {
   return true;
 }
 
+/*
+ * Template for endorsement
+ * TPM2_PolicySecret(TPM_RH_ENDO RSEMENT), see 2.1.5.3
+ */
 bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
   TPM_HANDLE handle;
   int size;
   byte saveArea[4096];
   string authString("01020304");
   string parentAuth("01020304");
+  string emptyAuth;
+  uint16_t auth_policy_size = 32;
+  byte auth_policy[32] ={
+     0x83, 0x71, 0x97, 0x67, 0x44, 0x84,
+     0xB3, 0xF8, 0x1A, 0x90, 0xCC, 0x8D,
+     0x46, 0xA5, 0xD7, 0x24, 0xFD, 0x52,
+     0xD7, 0x6E, 0x06, 0x52, 0x0B, 0x64,
+     0xF2, 0xA1, 0xDA, 0x1B, 0x33, 0x14,
+     0x69, 0xAA
+  };
 
   TPM_HANDLE parent_handle;
   TPM2B_PUBLIC pub_out;
@@ -2242,23 +2255,25 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
   byte pub_blob[1024];
 
   TPML_PCR_SELECTION pcrSelect;
-  InitSinglePcrSelection(7, TPM_ALG_SHA1, pcrSelect);
+  InitSinglePcrSelection(7, TPM_ALG_SHA256, pcrSelect);
 
-  // for TPM_RH_ENDORSEMENT, this should be an asymmetric key
+  // need a session
+  // with policy secret
+
+  // TPM_RH_ENDORSEMENT
   TPMA_OBJECT primary_flags;
   *(uint32_t*)(&primary_flags) = 0;
   primary_flags.fixedTPM = 1;
   primary_flags.fixedParent = 1;
   primary_flags.sensitiveDataOrigin = 1;
-  primary_flags.userWithAuth = 1;
-  primary_flags.sign = 1;
+  primary_flags.userWithAuth = 0;
+  primary_flags.decrypt = 1;
   primary_flags.restricted = 1;
 
   if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, authString, pcrSelect,
-                         TPM_ALG_RSA, TPM_ALG_SHA1, primary_flags, TPM_ALG_NULL,
-                         (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB, TPM_ALG_RSASSA,
-                         1024, 0x010001,
-                         &parent_handle, &pub_out)) {
+                         TPM_ALG_RSA, TPM_ALG_SHA256, primary_flags,
+                         TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
+                         2048, 0x010001, &parent_handle, &pub_out)) {
     printf("CreatePrimary succeeded\n");
   } else {
     printf("CreatePrimary failed\n");
@@ -2288,8 +2303,17 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
   int size_private = MAX_SIZE_PARAMS;
   byte out_private[MAX_SIZE_PARAMS];
 
-  if (Tpm2_CreateKey(tpm, parent_handle, parentAuth, authString, pcrSelect,
-                     TPM_ALG_RSA, TPM_ALG_SHA1, primary_flags, TPM_ALG_NULL,
+  TPMA_OBJECT create_flags;
+  *(uint32_t*)(&create_flags) = 0;
+  create_flags.fixedTPM = 1;
+  create_flags.fixedParent = 1;
+  create_flags.sensitiveDataOrigin = 1;
+  create_flags.userWithAuth = 1;
+  create_flags.sign = 1;
+  create_flags.restricted = 1;
+
+  if (Tpm2_CreateKey(tpm, parent_handle, emptyAuth, authString, pcrSelect,
+                     TPM_ALG_RSA, TPM_ALG_SHA1, create_flags, TPM_ALG_NULL,
                      (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB, TPM_ALG_RSASSA,
                      1024, 0x010001, &size_public, out_public,
                      &size_private, out_private,

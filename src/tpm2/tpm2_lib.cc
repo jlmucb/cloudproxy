@@ -913,31 +913,40 @@ int Marshal_Keyed_Hash_Info(TPM2B_PUBLIC& keyed_hash, int size, byte* buf) {
   IF_LESS_THAN_RETURN_MINUS1(space_left, sizeof(uint16_t))
   memset(out, 0, 2);
   Update(sizeof(uint16_t), &out, &total_size, &space_left);
+
   IF_LESS_THAN_RETURN_MINUS1(space_left, sizeof(uint16_t))
   ChangeEndian16(&keyed_hash.publicArea.type, (uint16_t*)out);
   Update(sizeof(uint16_t), &out, &total_size, &space_left);
+
   IF_LESS_THAN_RETURN_MINUS1(space_left, sizeof(uint16_t))
   ChangeEndian16(&keyed_hash.publicArea.nameAlg, (uint16_t*)out);
   Update(sizeof(uint16_t), &out, &total_size, &space_left);
+
   IF_LESS_THAN_RETURN_MINUS1(space_left, sizeof(uint32_t))
   ChangeEndian32((uint32_t*)&keyed_hash.publicArea.objectAttributes,
                  (uint32_t*)out);
   Update(sizeof(uint32_t), &out, &total_size, &space_left);
+
   IF_LESS_THAN_RETURN_MINUS1(space_left, sizeof(uint16_t))
   ChangeEndian16(&keyed_hash.publicArea.authPolicy.size,
                  (uint16_t*)out);
   Update(sizeof(uint16_t), &out, &total_size, &space_left);
+
   IF_LESS_THAN_RETURN_MINUS1(space_left, keyed_hash.publicArea.authPolicy.size)
   memcpy(out, keyed_hash.publicArea.authPolicy.buffer,
          keyed_hash.publicArea.authPolicy.size);
   Update(keyed_hash.publicArea.authPolicy.size, &out, &total_size, &space_left);
+
   IF_LESS_THAN_RETURN_MINUS1(space_left, sizeof(uint16_t))
   ChangeEndian16(&keyed_hash.publicArea.parameters.keyedHashDetail.scheme.scheme,
                  (uint16_t*)out);
   Update(sizeof(uint16_t), &out, &total_size, &space_left);
+
+  // public id
   IF_LESS_THAN_RETURN_MINUS1(space_left, sizeof(uint16_t))
   memset(out, 0, sizeof(uint16_t));
-  Update(keyed_hash.publicArea.authPolicy.size, &out, &total_size, &space_left);
+  Update(sizeof(uint16_t), &out, &total_size, &space_left);
+
   uint16_t size_publicArea = total_size - sizeof(uint16_t);
   ChangeEndian16(&size_publicArea, (uint16_t*)pSize);
   return total_size;
@@ -1855,6 +1864,7 @@ bool Tpm2_CreateSealed(LocalTpm& tpm, TPM_HANDLE parent_handle,
   memset(commandBuf, 0, 2*MAX_SIZE_PARAMS);
   memset(params, 0, MAX_SIZE_PARAMS);
 
+  // parent handle
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
   ChangeEndian32((uint32_t*) &parent_handle, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
@@ -1871,6 +1881,7 @@ bool Tpm2_CreateSealed(LocalTpm& tpm, TPM_HANDLE parent_handle,
                           space_left, in);
   IF_NEG_RETURN_FALSE(n)
   Update(n, &in, &size_params, &space_left);
+printf("CSB after Sens: ");PrintBytes(size_params, params); printf("\n");
 
   TPM2B_PUBLIC keyed_hash;
   FillKeyedHashTemplate(TPM_ALG_KEYEDHASH, int_alg, flags, 
@@ -1878,6 +1889,7 @@ bool Tpm2_CreateSealed(LocalTpm& tpm, TPM_HANDLE parent_handle,
   n = Marshal_Keyed_Hash_Info(keyed_hash, space_left, in);
   IF_NEG_RETURN_FALSE(n)
   Update(n, &in, &size_params, &space_left);
+printf("CSB after Keyed: ");PrintBytes(size_params, params); printf("\n");
 
   TPM2B_DATA data;
   FillEmptyData(data);
@@ -2793,10 +2805,11 @@ bool Tpm2_SealCombinedTest(LocalTpm& tpm, int pcr_num) {
   primary_flags.sensitiveDataOrigin = 1;
   primary_flags.userWithAuth = 1;
   primary_flags.decrypt = 1;
+  primary_flags.restricted = 1;
 
   if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, authString, pcrSelect, 
-                         TPM_ALG_RSA, TPM_ALG_SHA1, primary_flags, TPM_ALG_NULL,
-                         (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB, TPM_ALG_RSASSA,
+                         TPM_ALG_RSA, TPM_ALG_SHA1, primary_flags,
+                         TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
                          1024, 0x010001,
                         &parent_handle, &pub_out)) {
     printf("CreatePrimary succeeded\n");
@@ -2887,9 +2900,6 @@ bool Tpm2_SealCombinedTest(LocalTpm& tpm, int pcr_num) {
   *(uint32_t*)(&create_flags) = 0;
   create_flags.fixedTPM = 1;
   create_flags.fixedParent = 1;
-  create_flags.sensitiveDataOrigin = 1;
-  create_flags.userWithAuth = 1;
-  create_flags.decrypt = 1;
 
   if (Tpm2_CreateSealed(tpm, parent_handle, policy_digest.size, policy_digest.buffer,
                         parentAuth, secret.size, secret.buffer, pcrSelect,

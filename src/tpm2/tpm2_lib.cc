@@ -655,26 +655,31 @@ bool Tpm2_PCR_Event(LocalTpm& tpm, int pcr_num,
   byte resp_buf[MAX_SIZE_PARAMS];
   int n;
 
+  memset(resp_buf, 0, resp_size);
+  memset(input_params, 0, MAX_SIZE_PARAMS);
+
   if (pcr_num < 0) {
     printf("No PCR to update\n");
     return true;
   }
-  memset(resp_buf, 0, resp_size);
-  memset(input_params, 0, MAX_SIZE_PARAMS);
 
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
   ChangeEndian32((uint32_t*)&pcr_num, (uint32_t*)in);
-  Update(sizeof(uint16_t), &in, &input_size, &space_left);
+  Update(sizeof(uint32_t), &in, &input_size, &space_left);
+
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   memset(in, 0, sizeof(uint16_t));
   Update(sizeof(uint16_t), &in, &input_size, &space_left);
+
   string emptyAuth;
   n = CreatePasswordAuthArea(emptyAuth, MAX_SIZE_PARAMS, in);
   IF_NEG_RETURN_FALSE(n);
   Update(n, &in, &input_size, &space_left);
+
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   ChangeEndian16(&size_eventData, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &input_size, &space_left);
+
   IF_LESS_THAN_RETURN_FALSE(space_left, size_eventData)
   memcpy(in, eventData, size_eventData);
   Update(size_eventData, &in, &input_size, &space_left);
@@ -2048,13 +2053,16 @@ bool Tpm2_Quote(LocalTpm& tpm, TPM_HANDLE signingHandle,
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   memset(in, 0, sizeof(uint16_t));
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
   string emptyAuth("01020304");
   n = CreatePasswordAuthArea(emptyAuth, space_left, in);
   IF_NEG_RETURN_FALSE(n);
   Update(n, &in, &size_params, &space_left);
+
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   ChangeEndian16((uint16_t*)&quote_size, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
   IF_LESS_THAN_RETURN_FALSE(space_left, quote_size)
   memcpy(in, toQuote, quote_size);
   Update(quote_size, &in, &size_params, &space_left);
@@ -2063,12 +2071,15 @@ bool Tpm2_Quote(LocalTpm& tpm, TPM_HANDLE signingHandle,
   IF_LESS_THAN_RETURN_FALSE(space_left, quote_size)
   ChangeEndian16((uint16_t*)&algorithm, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
   ChangeEndian16((uint16_t*)&algorithm, (uint16_t*)in);
   memset(in, 0, sizeof(uint16_t));
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
   n= Marshal_Signature_Scheme_Info(scheme, space_left, in);
   IF_NEG_RETURN_FALSE(n);
   Update(n, &in, &size_params, &space_left);
+
   n = Marshal_PCR_Short_Selection(pcr_selection.pcrSelections[0], space_left, in);
   IF_NEG_RETURN_FALSE(n);
   Update(n, &in, &size_params, &space_left);
@@ -3040,10 +3051,11 @@ bool Tpm2_QuoteCombinedTest(LocalTpm& tpm, int pcr_num) {
   primary_flags.sensitiveDataOrigin = 1;
   primary_flags.userWithAuth = 1;
   primary_flags.decrypt = 1;
+  primary_flags.restricted = 1;
 
   if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, authString, pcr_selection, 
-                         TPM_ALG_RSA, TPM_ALG_SHA1, primary_flags, TPM_ALG_NULL,
-                         (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB, TPM_ALG_RSASSA,
+                         TPM_ALG_RSA, TPM_ALG_SHA1, primary_flags,
+                         TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
                          1024, 0x010001,
                          &parent_handle, &pub_out)) {
     printf("CreatePrimary succeeded\n");
@@ -3076,10 +3088,11 @@ bool Tpm2_QuoteCombinedTest(LocalTpm& tpm, int pcr_num) {
   create_flags.fixedParent = 1;
   create_flags.sensitiveDataOrigin = 1;
   create_flags.userWithAuth = 1;
-  create_flags.decrypt = 1;
+  create_flags.sign = 1;
+  create_flags.restricted = 1;
 
   if (Tpm2_CreateKey(tpm, parent_handle, parentAuth, authString, pcr_selection,
-                     TPM_ALG_RSA, TPM_ALG_SHA1, primary_flags, TPM_ALG_NULL,
+                     TPM_ALG_RSA, TPM_ALG_SHA1, create_flags, TPM_ALG_NULL,
                      (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB, TPM_ALG_RSASSA,
                      1024, 0x010001,
                      &size_public, out_public, &size_private, out_private,

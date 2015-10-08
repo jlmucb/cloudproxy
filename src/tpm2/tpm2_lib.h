@@ -140,7 +140,7 @@ bool Tpm2_Unseal(LocalTpm& tpm, TPM_HANDLE item_handle, string& parentAuth,
                  TPM_HANDLE session_handle, TPM2B_NONCE& nonce,
                  byte session_attributes, TPM2B_DIGEST& hmac_digest,
                  int* out_size, byte* sealed);
-bool Tpm2_Quote(LocalTpm& tpm, TPM_HANDLE signingHandle, 
+bool Tpm2_Quote(LocalTpm& tpm, TPM_HANDLE signingHandle, string& parentAuth,
                 int quote_size, byte* toQuote,
                 TPMT_SIG_SCHEME scheme, TPML_PCR_SELECTION& pcr_selection,
                 TPM_ALG_ID sig_alg, TPM_ALG_ID hash_alg, 

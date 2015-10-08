@@ -873,7 +873,6 @@ int Marshal_PCR_Long_Selection(TPML_PCR_SELECTION& in, int size, byte* buf) {
            in.pcrSelections[i].sizeofSelect);
     Update(in.pcrSelections[i].sizeofSelect, &out, &total_size, &space_left);
   }
-printf("Long selection: ");PrintBytes(total_size, buf);printf("\n");
   return total_size;
 }
 
@@ -1110,10 +1109,6 @@ bool Tpm2_CreatePrimary(LocalTpm& tpm, TPM_HANDLE owner, string& authString,
 
   memset(commandBuf, 0, 2*MAX_SIZE_PARAMS);
   memset(params, 0, MAX_SIZE_PARAMS);
-  printf("Public key enc: %04x, int: %04x, sym_alg: %04x\n", 
-         enc_alg, int_alg, sym_alg);
-  printf("Public key key size: %04x, sym mode: %04x, scheme: %04x\n",
-          sym_key_size, sym_mode, sig_scheme);
 
   n = SetOwnerHandle(owner, space_left, out);
   IF_NEG_RETURN_FALSE(n);
@@ -1138,19 +1133,16 @@ bool Tpm2_CreatePrimary(LocalTpm& tpm, TPM_HANDLE owner, string& authString,
   n = Marshal_Public_Key_Info(pub_key, space_left, out);
   IF_NEG_RETURN_FALSE(n);
   Update(n, &out, &size_params, &space_left);
-printf("After Public key: ");PrintBytes(size_params, params);printf("\n");
 
   TPM2B_DATA data;
   FillEmptyData(data);
   n = Marshal_OutsideInfo(data, space_left, out);
   IF_NEG_RETURN_FALSE(n);
   Update(n, &out, &size_params, &space_left);
-printf("After outside info: ");PrintBytes(size_params, params);printf("\n");
   n = Marshal_PCR_Long_Selection(pcr_selection, space_left, out);
 
   IF_NEG_RETURN_FALSE(n);
   Update(n, &out, &size_params, &space_left);
-printf("After PCR select: ");PrintBytes(size_params, params);printf("\n");
   int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_CreatePrimary,
                                 (byte*)commandBuf,
                                 size_params,
@@ -2025,7 +2017,7 @@ bool Tpm2_Unseal(LocalTpm& tpm, TPM_HANDLE item_handle, string& parentAuth,
   return true;
 }
 
-bool Tpm2_Quote(LocalTpm& tpm, TPM_HANDLE signingHandle,
+bool Tpm2_Quote(LocalTpm& tpm, TPM_HANDLE signingHandle, string& parentAuth,
                int quote_size, byte* toQuote,
                TPMT_SIG_SCHEME scheme, TPML_PCR_SELECTION& pcr_selection,
                TPM_ALG_ID sig_alg, TPM_ALG_ID hash_alg, 
@@ -2054,8 +2046,7 @@ bool Tpm2_Quote(LocalTpm& tpm, TPM_HANDLE signingHandle,
   memset(in, 0, sizeof(uint16_t));
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
 
-  string emptyAuth("01020304");
-  n = CreatePasswordAuthArea(emptyAuth, space_left, in);
+  n = CreatePasswordAuthArea(parentAuth, space_left, in);
   IF_NEG_RETURN_FALSE(n);
   Update(n, &in, &size_params, &space_left);
 
@@ -3124,7 +3115,8 @@ bool Tpm2_QuoteCombinedTest(LocalTpm& tpm, int pcr_num) {
   byte quoted[MAX_SIZE_PARAMS];
   int sig_size = MAX_SIZE_PARAMS;
   byte sig[MAX_SIZE_PARAMS];
-  if (!Tpm2_Quote(tpm, load_handle, to_quote.size, to_quote.buffer,
+  if (!Tpm2_Quote(tpm, load_handle, parentAuth,
+                  to_quote.size, to_quote.buffer,
                   scheme, pcr_selection, TPM_ALG_RSA, TPM_ALG_SHA1,
                   &quote_size, quoted, &sig_size, sig)) {
     printf("Quote failed\n");

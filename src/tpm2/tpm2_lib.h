@@ -107,6 +107,10 @@ bool Tpm2_StartAuthSession(LocalTpm& tpm, TPM_RH tpm_obj,
                            TPM2B_NONCE* nonce_obj);
 bool Tpm2_PolicyPcr(LocalTpm& tpm, TPM_HANDLE session_handle,
                     TPM2B_DIGEST& expected_digest, TPML_PCR_SELECTION& pcr);
+bool Tpm2_PolicySecret(LocalTpm& tpm, TPM_HANDLE handle,
+                       TPM2B_DIGEST* policy_digest,
+                       TPM2B_TIMEOUT* timeout,
+                       TPMT_TK_AUTH* ticket);
 
 bool Tpm2_CreateSealed(LocalTpm& tpm, TPM_HANDLE parent_handle,
                        int size_policy_digest, byte* policy_digest,

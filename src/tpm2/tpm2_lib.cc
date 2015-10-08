@@ -709,7 +709,8 @@ bool Tpm2_PCR_Event(LocalTpm& tpm, int pcr_num,
 }
 
 int Marshal_AuthSession_Info(TPMI_DH_OBJECT& tpm_obj, TPMI_DH_ENTITY& bind_obj,
-                             TPM2B_NONCE& initial_nonce, TPM2B_ENCRYPTED_SECRET& salt,
+                             TPM2B_NONCE& initial_nonce,
+                             TPM2B_ENCRYPTED_SECRET& salt,
                              TPM_SE& session_type, TPMT_SYM_DEF& symmetric,
                              TPMI_ALG_HASH& hash_alg, int size, byte* out_buf) {
 
@@ -720,21 +721,27 @@ int Marshal_AuthSession_Info(TPMI_DH_OBJECT& tpm_obj, TPMI_DH_ENTITY& bind_obj,
   IF_LESS_THAN_RETURN_MINUS1(space_left, sizeof(uint32_t))
   ChangeEndian32((uint32_t*)&tpm_obj, (uint32_t*)out);
   Update(sizeof(uint32_t), &out, &total_size, &space_left);
+
   IF_LESS_THAN_RETURN_MINUS1(space_left, sizeof(uint32_t))
   ChangeEndian32((uint32_t*)&bind_obj, (uint32_t*)out);
   Update(sizeof(uint32_t), &out, &total_size, &space_left);
+
   IF_LESS_THAN_RETURN_MINUS1(space_left, sizeof(uint16_t))
   ChangeEndian16((uint16_t*)&initial_nonce.size, (uint16_t*)out);
   Update(sizeof(uint16_t), &out, &total_size, &space_left);
+
   IF_LESS_THAN_RETURN_MINUS1(space_left, initial_nonce.size)
   memcpy(out, initial_nonce.buffer, initial_nonce.size);
   Update(initial_nonce.size, &out, &total_size, &space_left);
+
   IF_LESS_THAN_RETURN_MINUS1(space_left, sizeof(uint16_t))
   ChangeEndian16((uint16_t*)&salt.size, (uint16_t*)out);
   Update(sizeof(uint16_t), &out, &total_size, &space_left);
+
   IF_LESS_THAN_RETURN_MINUS1(space_left, salt.size)
   memcpy(out, salt.secret, salt.size);
   Update(salt.size, &out, &total_size, &space_left);
+
   *out = session_type;
   Update(1, &out, &total_size, &space_left);
 
@@ -746,6 +753,7 @@ int Marshal_AuthSession_Info(TPMI_DH_OBJECT& tpm_obj, TPMI_DH_ENTITY& bind_obj,
     printf("alg != TPM_ALG_NULL not supported\n");
     return false;
   }
+
   IF_LESS_THAN_RETURN_MINUS1(space_left, sizeof(uint16_t))
   ChangeEndian16((uint16_t*)&hash_alg, (uint16_t*)out);
   Update(sizeof(uint16_t), &out, &total_size, &space_left);
@@ -1192,6 +1200,51 @@ bool GetLoadOut(int size, byte* in, TPM_HANDLE* new_handle, TPM2B_NAME* name) {
   return true;
 }
 
+bool Tpm2_PolicySecret(LocalTpm& tpm, TPM_HANDLE handle,
+                       TPM2B_DIGEST* policy_digest,
+                       TPM2B_TIMEOUT* timeout,
+                       TPMT_TK_AUTH* ticket) {
+  byte commandBuf[2*MAX_SIZE_PARAMS];
+
+  int resp_size = MAX_SIZE_PARAMS;
+  byte resp_buf[MAX_SIZE_PARAMS];
+  byte params[MAX_SIZE_PARAMS];
+  byte* in = params;
+  int total_size = 0;
+  int space_left = MAX_SIZE_PARAMS;
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&handle, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &total_size, &space_left);
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  ChangeEndian16((uint16_t*)&policy_digest->size, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &total_size, &space_left);
+  IF_LESS_THAN_RETURN_FALSE(space_left, policy_digest->size)
+  memcpy(in, policy_digest->buffer, policy_digest->size);
+  Update(policy_digest->size, &in, &total_size, &space_left);
+
+  int in_size = Tpm2_SetCommand(TPM_ST_NO_SESSIONS, TPM_CC_PolicySecret,
+                                commandBuf, total_size, params);
+  printCommand("PolicySecret", in_size, commandBuf);
+  if (!tpm.SendCommand(in_size, commandBuf)) {
+    printf("SendCommand failed\n");
+    return false;
+  }
+  if (!tpm.GetResponse(&resp_size, resp_buf)) {
+    printf("GetResponse failed\n");
+    return false;
+  }
+  uint16_t cap = 0;
+  uint32_t responseSize; 
+  uint32_t responseCode; 
+  Tpm2_InterpretResponse(resp_size, resp_buf, &cap,
+                         &responseSize, &responseCode);
+  printResponse("PolicySecret", cap, responseSize, responseCode, resp_buf);
+  if (responseCode != TPM_RC_SUCCESS)
+    return false;
+  return true;
+}
+
 bool Tpm2_PolicyPassword(LocalTpm& tpm, TPM_HANDLE handle) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
 
@@ -1266,7 +1319,8 @@ bool Tpm2_PolicyGetDigest(LocalTpm& tpm, TPM_HANDLE handle, TPM2B_DIGEST* digest
 }
 
 bool Tpm2_StartAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_obj,
-                           TPM2B_NONCE& initial_nonce, TPM2B_ENCRYPTED_SECRET& salt,
+                           TPM2B_NONCE& initial_nonce,
+                           TPM2B_ENCRYPTED_SECRET& salt,
                            TPM_SE session_type, TPMT_SYM_DEF& symmetric,
                            TPMI_ALG_HASH hash_alg, TPM_HANDLE* session_handle,
                            TPM2B_NONCE* nonce_obj) {
@@ -2324,6 +2378,9 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
     printf("Create failed\n");
     return false;
   }
+
+  // get activation blob
+  // ActivateCredential
 
   TPM_HANDLE load_handle;
   TPM2B_NAME name;

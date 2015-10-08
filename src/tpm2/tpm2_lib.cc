@@ -812,6 +812,7 @@ int Marshal_Public_Key_Info(TPM2B_PUBLIC& in, int size, byte* buf) {
                    (uint16_t*)out);
     Update(sizeof(uint16_t), &out, &total_size, &space_left);
   }
+
   IF_LESS_THAN_RETURN_MINUS1(space_left, sizeof(uint16_t))
   ChangeEndian16((uint16_t*)&in.publicArea.parameters.rsaDetail.scheme.scheme,
                  (uint16_t*)out);
@@ -1824,15 +1825,19 @@ bool Tpm2_CreateKey(LocalTpm& tpm, TPM_HANDLE parent_handle,
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
   ChangeEndian32((uint32_t*) &parent_handle, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   memset(in, 0, sizeof(uint16_t));
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
   n = CreatePasswordAuthArea(authString, space_left, in);
   IF_NEG_RETURN_FALSE(n)
   Update(n, &in, &size_params, &space_left);
+
   n = CreateSensitiveArea(authString, 0, NULL, space_left, in);
   IF_NEG_RETURN_FALSE(n)
   Update(n, &in, &size_params, &space_left);
+printf("after sensitive area: ");PrintBytes(size_params, in);printf("\n");
 
   TPM2B_PUBLIC pub_key;
   FillPublicRsaTemplate(enc_alg, int_alg, flags, sym_alg,
@@ -1842,6 +1847,7 @@ bool Tpm2_CreateKey(LocalTpm& tpm, TPM_HANDLE parent_handle,
   n = Marshal_Public_Key_Info(pub_key, space_left, in);
   IF_NEG_RETURN_FALSE(n)
   Update(n, &in, &size_params, &space_left);
+printf("after RSA keyarea: ");PrintBytes(size_params, in);printf("\n");
 
   TPM2B_DATA data;
   FillEmptyData(data);
@@ -2309,7 +2315,7 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
   byte pub_blob[1024];
 
   TPML_PCR_SELECTION pcrSelect;
-  InitSinglePcrSelection(7, TPM_ALG_SHA256, pcrSelect);
+  // InitSinglePcrSelection(7, TPM_ALG_SHA256, pcrSelect);
 
   // need a session
   // with policy secret
@@ -2320,15 +2326,15 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
   primary_flags.fixedTPM = 1;
   primary_flags.fixedParent = 1;
   primary_flags.sensitiveDataOrigin = 1;
-  primary_flags.userWithAuth = 0;
+  primary_flags.userWithAuth = 1;
   primary_flags.decrypt = 1;
   primary_flags.restricted = 1;
 
-  if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, authString, pcrSelect,
+  if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect,
                          TPM_ALG_RSA, TPM_ALG_SHA256, primary_flags,
                          TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
                          2048, 0x010001, &parent_handle, &pub_out)) {
-    printf("CreatePrimary succeeded\n");
+    printf("CreatePrimary succeeded parent: %08x\n", parent_handle);
   } else {
     printf("CreatePrimary failed\n");
     return false;
@@ -2366,10 +2372,10 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
   create_flags.sign = 1;
   create_flags.restricted = 1;
 
-  if (Tpm2_CreateKey(tpm, parent_handle, emptyAuth, authString, pcrSelect,
+  if (Tpm2_CreateKey(tpm, parent_handle, emptyAuth, emptyAuth, pcrSelect,
                      TPM_ALG_RSA, TPM_ALG_SHA1, create_flags, TPM_ALG_NULL,
                      (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB, TPM_ALG_RSASSA,
-                     1024, 0x010001, &size_public, out_public,
+                     2048, 0x010001, &size_public, out_public,
                      &size_private, out_private,
                      &creation_out, &digest_out, &creation_ticket)) {
     printf("Create succeeded private size: %d, public size: %d\n",
@@ -2379,12 +2385,9 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
     return false;
   }
 
-  // get activation blob
-  // ActivateCredential
-
   TPM_HANDLE load_handle;
   TPM2B_NAME name;
-  if (Tpm2_Load(tpm, parent_handle, parentAuth, size_public, out_public,
+  if (Tpm2_Load(tpm, parent_handle, emptyAuth, size_public, out_public,
                size_private, out_private, &load_handle, &name)) {
     printf("Load succeeded, handle: %08x\n", load_handle);
   } else {
@@ -2400,7 +2403,7 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
   qualifyingData.buffer[1] = 6;
   qualifyingData.buffer[2] = 7;
   if (Tpm2_Certify(tpm, parent_handle, load_handle,
-                  parentAuth, parentAuth,
+                  emptyAuth, emptyAuth,
                   qualifyingData, &attest, &sig)) {
     printf("Certify succeeded\n");
     printf("attested (%d): ", attest.size);

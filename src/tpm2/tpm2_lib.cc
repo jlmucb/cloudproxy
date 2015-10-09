@@ -1410,13 +1410,12 @@ bool Tpm2_PolicyPcr(LocalTpm& tpm, TPM_HANDLE session_handle,
 }
 
 bool Tpm2_MakeCredential(LocalTpm& tpm,
-                         TPM_HANDLE encrypting_object_handle,
+                         TPM_HANDLE keyHandle,
                          TPM2B_DIGEST& credential,
                          TPM2B_NAME& objectName,
                          TPM2B_ID_OBJECT* credentialBlob,
                          TPM2B_ENCRYPTED_SECRET* secret) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
-
   int resp_size = MAX_SIZE_PARAMS;
   byte resp_buf[MAX_SIZE_PARAMS];
   byte params[MAX_SIZE_PARAMS];
@@ -1424,8 +1423,11 @@ bool Tpm2_MakeCredential(LocalTpm& tpm,
   int total_size = 0;
   int space_left = MAX_SIZE_PARAMS;
 
+  memset(params, 0, MAX_SIZE_PARAMS);
+  memset(resp_buf, 0, MAX_SIZE_PARAMS);
+
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
-  ChangeEndian32((uint32_t*)&encrypting_object_handle, (uint32_t*)in);
+  ChangeEndian32((uint32_t*)&keyHandle, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &total_size, &space_left);
 
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
@@ -1444,7 +1446,7 @@ bool Tpm2_MakeCredential(LocalTpm& tpm,
   memcpy(in, objectName.name, objectName.size);
   Update(objectName.size, &in, &total_size, &space_left);
 
-  int in_size = Tpm2_SetCommand(TPM_ST_NO_SESSIONS, TPM_CC_MakeCredential,
+  int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_MakeCredential,
                                 commandBuf, total_size, params);
   printCommand("MakeCredential", in_size, commandBuf);
   if (!tpm.SendCommand(in_size, commandBuf)) {
@@ -1485,13 +1487,15 @@ bool Tpm2_ActivateCredential(LocalTpm& tpm,
                              TPM2B_ENCRYPTED_SECRET& secret,
                              TPM2B_DIGEST* certInfo) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
-
   int resp_size = MAX_SIZE_PARAMS;
   byte resp_buf[MAX_SIZE_PARAMS];
   byte params[MAX_SIZE_PARAMS];
   byte* in = params;
   int total_size = 0;
   int space_left = MAX_SIZE_PARAMS;
+
+  memset(params, 0, MAX_SIZE_PARAMS);
+  memset(resp_buf, 0, MAX_SIZE_PARAMS);
 
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
   ChangeEndian32((uint32_t*)&activeHandle, (uint32_t*)in);
@@ -1967,7 +1971,6 @@ bool Tpm2_CreateKey(LocalTpm& tpm, TPM_HANDLE parent_handle,
   n = CreateSensitiveArea(authString, 0, NULL, space_left, in);
   IF_NEG_RETURN_FALSE(n)
   Update(n, &in, &size_params, &space_left);
-printf("after sensitive area: ");PrintBytes(size_params, in);printf("\n");
 
   TPM2B_PUBLIC pub_key;
   FillPublicRsaTemplate(enc_alg, int_alg, flags, sym_alg,
@@ -1977,7 +1980,6 @@ printf("after sensitive area: ");PrintBytes(size_params, in);printf("\n");
   n = Marshal_Public_Key_Info(pub_key, space_left, in);
   IF_NEG_RETURN_FALSE(n)
   Update(n, &in, &size_params, &space_left);
-printf("after RSA keyarea: ");PrintBytes(size_params, in);printf("\n");
 
   TPM2B_DATA data;
   FillEmptyData(data);
@@ -2421,12 +2423,10 @@ bool Tpm2_FlushContext(LocalTpm& tpm, TPM_HANDLE handle) {
  * TPM2_PolicySecret(TPM_RH_ENDORSEMENT), see 2.1.5.3
  */
 bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
-  TPM_HANDLE handle;
-  int size;
-  byte saveArea[4096];
   string authString("01020304");
   string parentAuth("01020304");
   string emptyAuth;
+  /*
   uint16_t auth_policy_size = 32;
   byte auth_policy[32] ={
      0x83, 0x71, 0x97, 0x67, 0x44, 0x84,
@@ -2436,6 +2436,7 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
      0xF2, 0xA1, 0xDA, 0x1B, 0x33, 0x14,
      0x69, 0xAA
   };
+  */
 
   TPM_HANDLE ekHandle;
   TPM2B_PUBLIC pub_out;
@@ -2482,24 +2483,12 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
   printf("Qualified name: ");
   PrintBytes(qualified_pub_name.size, qualified_pub_name.name);
   printf("\n");
-  TPM2B_CREATION_DATA creation_out;
-  TPM2B_DIGEST digest_out;
-  TPMT_TK_CREATION creation_ticket;
-  int size_public = MAX_SIZE_PARAMS;
-  byte out_public[MAX_SIZE_PARAMS];
-  int size_private = MAX_SIZE_PARAMS;
-  byte out_private[MAX_SIZE_PARAMS];
-
-#if 0
-  string authString("01020304");
-  string parentAuth("01020304");
-  string emptyAuth;
-
+#if 1
   TPM_HANDLE parentHandle;
   TPM_HANDLE activeHandle;
-  TPM2B_PUBLIC pub_out;
-  TPML_PCR_SELECTION pcrSelect;
-  InitSinglePcrSelection(pcr_num, TPM_ALG_SHA1, pcrSelect);
+  TPM2B_PUBLIC parent_pub_out;
+  TPML_PCR_SELECTION parent_pcrSelect;
+  InitSinglePcrSelection(7, TPM_ALG_SHA1, parent_pcrSelect);
 
   TPMA_OBJECT parent_flags;
   *(uint32_t*)(&parent_flags) = 0;
@@ -2510,11 +2499,11 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
   parent_flags.decrypt = 1;
   parent_flags.restricted = 1;
 
-  if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, authString, pcrSelect,
+  if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, authString, parent_pcrSelect,
                          TPM_ALG_RSA, TPM_ALG_SHA1, parent_flags,
                          TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
                          1024, 0x010001,
-                         &parent_handle, &pub_out)) {
+                         &parentHandle, &parent_pub_out)) {
     printf("CreatePrimary succeeded\n");
   } else {
     printf("CreatePrimary failed\n");
@@ -2536,7 +2525,8 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
   active_flags.userWithAuth = 1;
   active_flags.sign = 1;
 
-  if (Tpm2_CreateKey(tpm, parent_handle, parentAuth, authString, pcrSelect,
+  if (Tpm2_CreateKey(tpm, parentHandle, parentAuth, authString,
+                     parent_pcrSelect,
                      TPM_ALG_RSA, TPM_ALG_SHA1, active_flags, TPM_ALG_NULL,
                      (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB, TPM_ALG_RSASSA,
                      1024, 0x010001, &size_public, out_public,
@@ -2549,9 +2539,8 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
     return false;
   }
 
-  TPM_HANDLE activeHandle;
   if (Tpm2_Load(tpm, parentHandle, parentAuth, size_public, out_public,
-               size_private, out_private, &activeHandle, &name)) {
+               size_private, out_private, &activeHandle, &pub_name)) {
     printf("Load succeeded, handle: %08x\n", activeHandle);
   } else {
     Tpm2_FlushContext(tpm, ekHandle);
@@ -2564,7 +2553,7 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
   TPM2B_NAME objectName;
   TPM2B_ID_OBJECT credentialBlob;
   TPM2B_ENCRYPTED_SECRET secret;
-  TPM2B_ID_OBJECT recovered_credential;
+  TPM2B_DIGEST recovered_credential;
   if (Tpm2_MakeCredential(tpm, ekHandle, credential, objectName,
                           &credentialBlob, &secret)) {
     printf("MakeCredential succeeded\n");
@@ -2576,7 +2565,7 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
     Tpm2_FlushContext(tpm, ekHandle);
     return false;
   }
-  if (Tpm2_ActivateCredential(tpm, activeHndle, ekHandle, credentialBlob,
+  if (Tpm2_ActivateCredential(tpm, activeHandle, ekHandle, credentialBlob,
                               secret, &recovered_credential)) {
     printf("ActivateCredential succeeded\n");
   } else {

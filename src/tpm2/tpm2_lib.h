@@ -165,7 +165,7 @@ bool Tpm2_UndefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index)
 bool Tpm2_Flushall(LocalTpm& tpm);
 
 bool Tpm2_MakeCredential(LocalTpm& tpm,
-                         TPM_HANDLE encrypting_object_handle,
+                         TPM_HANDLE keyHandle,
                          TPM2B_DIGEST& credential,
                          TPM2B_NAME& objectName,
                          TPM2B_ID_OBJECT* credentialBlob,

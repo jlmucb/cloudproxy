@@ -1441,7 +1441,7 @@ bool Tpm2_MakeCredential(LocalTpm& tpm,
   Update(sizeof(uint16_t), &in, &total_size, &space_left);
 
   IF_LESS_THAN_RETURN_FALSE(space_left, objectName.size)
-  memcpy(in, objectName.buffer, objectName.size);
+  memcpy(in, objectName.name, objectName.size);
   Update(objectName.size, &in, &total_size, &space_left);
 
   int in_size = Tpm2_SetCommand(TPM_ST_NO_SESSIONS, TPM_CC_MakeCredential,
@@ -1466,15 +1466,10 @@ bool Tpm2_MakeCredential(LocalTpm& tpm,
 
   byte* out = resp_buf + sizeof(TPM_RESPONSE);
 
-  ChangeEndian16((uint16_t*)out, (uint16_t*)&credentialBlob->integrityHMAC.size);
+  ChangeEndian16((uint16_t*)out, (uint16_t*)&credentialBlob->size);
   out += sizeof(uint16_t);
-  memcpy(credentialBlob->integrityHMAC.buffer, out, credentialBlob->integrityHMAC.size);
-  out += credentialBlob->integrityHMAC.size;
-
-  ChangeEndian16((uint16_t*)out, (uint16_t*)&credentialBlob->integrityHMAC.size);
-  out += sizeof(uint16_t);
-  memcpy(credentialBlob->encIdentity.buffer, out, credentialBlob->encIdentity.size);
-  out += credentialBlob->encIdentity.size;
+  memcpy(credentialBlob->credential, out, credentialBlob->size);
+  out += credentialBlob->size;
 
   ChangeEndian16((uint16_t*)in, (uint16_t*)&secret->size);
   out += sizeof(uint16_t);
@@ -1488,7 +1483,7 @@ bool Tpm2_ActivateCredential(LocalTpm& tpm,
                              TPM_HANDLE keyHandle,
                              TPM2B_ID_OBJECT& credentialBlob,
                              TPM2B_ENCRYPTED_SECRET& secret,
-                             TMP2B_DIGEST* certInfo) {
+                             TPM2B_DIGEST* certInfo) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
 
   int resp_size = MAX_SIZE_PARAMS;
@@ -1506,19 +1501,14 @@ bool Tpm2_ActivateCredential(LocalTpm& tpm,
   ChangeEndian32((uint32_t*)&keyHandle, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &total_size, &space_left);
 
-  ChangeEndian16((uint16_t*)in, (uint16_t*)&credentialBlob.integrityHMAC.size);
+  ChangeEndian16((uint16_t*)in, (uint16_t*)&credentialBlob.size);
   in += sizeof(uint16_t);
-  memcpy(in, credentialBlob.integrityHMAC.buffer, credentialBlob.integrityHMAC.size);
-  in += credentialBlob.integrityHMAC.size;
-
-  ChangeEndian16((uint16_t*)in, (uint16_t*)&credentialBlob.encIdentity.size);
-  in += sizeof(uint16_t);
-  memcpy(in, credentialBlob.encIdentity.buffer, credentialBlob.encIdentity.size);
-  in += credentialBlob.encIdentity.size;
+  memcpy(in, credentialBlob.credential, credentialBlob.size);
+  in += credentialBlob.size;
 
   ChangeEndian16((uint16_t*)in, (uint16_t*)&secret.size);
   in += sizeof(uint16_t);
-  memcpy(in, secret.buffer, secret.size);
+  memcpy(in, secret.secret, secret.size);
   in += secret.size;
 
   int in_size = Tpm2_SetCommand(TPM_ST_NO_SESSIONS, TPM_CC_ActivateCredential,

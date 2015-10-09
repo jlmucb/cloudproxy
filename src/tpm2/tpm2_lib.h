@@ -175,7 +175,7 @@ bool Tpm2_ActivateCredential(LocalTpm& tpm,
                              TPM_HANDLE keyHandle,
                              TPM2B_ID_OBJECT& credentialBlob,
                              TPM2B_ENCRYPTED_SECRET& secret,
-                             TMP2B_DIGEST* certInfo);
+                             TPM2B_DIGEST* certInfo);
 bool Tpm2_Certify(LocalTpm& tpm, TPM_HANDLE signedKey, TPM_HANDLE signingKey,
                   string& auth_signed_key, string& auth_signing_key,
                   TPM2B_DATA& qualifyingData,

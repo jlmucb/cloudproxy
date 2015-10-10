@@ -173,6 +173,7 @@ bool Tpm2_MakeCredential(LocalTpm& tpm,
 bool Tpm2_ActivateCredential(LocalTpm& tpm,
                              TPM_HANDLE activeHandle,
                              TPM_HANDLE keyHandle,
+                             string& parentAuth,
                              TPM2B_ID_OBJECT& credentialBlob,
                              TPM2B_ENCRYPTED_SECRET& secret,
                              TPM2B_DIGEST* certInfo);

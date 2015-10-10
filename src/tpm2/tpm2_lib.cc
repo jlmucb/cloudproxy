@@ -1472,9 +1472,9 @@ bool Tpm2_MakeCredential(LocalTpm& tpm,
   memcpy(credentialBlob->credential, out, credentialBlob->size);
   out += credentialBlob->size;
 
-  ChangeEndian16((uint16_t*)in, (uint16_t*)&secret->size);
+  ChangeEndian16((uint16_t*)out, (uint16_t*)&secret->size);
   out += sizeof(uint16_t);
-  memcpy(secret->secret, in, secret->size);
+  memcpy(secret->secret, out, secret->size);
   out += secret->size;
   return true;
 }
@@ -1482,6 +1482,7 @@ bool Tpm2_MakeCredential(LocalTpm& tpm,
 bool Tpm2_ActivateCredential(LocalTpm& tpm,
                              TPM_HANDLE activeHandle,
                              TPM_HANDLE keyHandle,
+                             string& parentAuth,
                              TPM2B_ID_OBJECT& credentialBlob,
                              TPM2B_ENCRYPTED_SECRET& secret,
                              TPM2B_DIGEST* certInfo) {
@@ -1504,17 +1505,42 @@ bool Tpm2_ActivateCredential(LocalTpm& tpm,
   ChangeEndian32((uint32_t*)&keyHandle, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &total_size, &space_left);
 
-  ChangeEndian16((uint16_t*)in, (uint16_t*)&credentialBlob.size);
-  in += sizeof(uint16_t);
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  memset(in, 0, sizeof(uint16_t));
+  Update(sizeof(uint16_t), &in, &total_size, &space_left);
+
+  uint32_t password_auth = TPM_RS_PW;
+  byte hack1[30];
+  ChangeEndian32(&password_auth, (uint32_t*)&hack1[0]);
+  hack1[4] = 0;
+  hack1[5] = 0;
+  hack1[6] = 1;
+  uint16_t m = 4;
+  ChangeEndian16(&m, (uint16_t*)&hack1[7]);
+  hack1[9] = 1;
+  hack1[10] = 2;
+  hack1[11] = 3;
+  hack1[12] = 4;
+  memcpy(&hack1[13], &hack1[0], 7);
+  m = 0;
+  ChangeEndian16(&m, (uint16_t*)&hack1[20]);
+  uint16_t k = 22;
+  ChangeEndian16(&k, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &total_size, &space_left);
+  memcpy(in, hack1, k);
+  Update(k, &in, &total_size, &space_left);
+
+  ChangeEndian16((uint16_t*)&credentialBlob.size, (uint16_t*) in);
+  Update(sizeof(uint16_t), &in, &total_size, &space_left);
   memcpy(in, credentialBlob.credential, credentialBlob.size);
-  in += credentialBlob.size;
+  Update(credentialBlob.size, &in, &total_size, &space_left);
 
-  ChangeEndian16((uint16_t*)in, (uint16_t*)&secret.size);
-  in += sizeof(uint16_t);
+  ChangeEndian16((uint16_t*)&secret.size, (uint16_t*) in);
+  Update(sizeof(uint16_t), &in, &total_size, &space_left);
   memcpy(in, secret.secret, secret.size);
-  in += secret.size;
+  Update(secret.size, &in, &total_size, &space_left);
 
-  int in_size = Tpm2_SetCommand(TPM_ST_NO_SESSIONS, TPM_CC_ActivateCredential,
+  int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_ActivateCredential,
                                 commandBuf, total_size, params);
   printCommand("ActivateCredential", in_size, commandBuf);
   if (!tpm.SendCommand(in_size, commandBuf)) {
@@ -2614,8 +2640,10 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
     Tpm2_FlushContext(tpm, ekHandle);
     return false;
   }
-  if (Tpm2_ActivateCredential(tpm, activeHandle, ekHandle, credentialBlob,
-                              secret, &recovered_credential)) {
+  printf("credBlob size: %d\n", credentialBlob.size);
+  printf("secret size: %d\n", secret.size);
+  if (Tpm2_ActivateCredential(tpm, activeHandle, ekHandle, parentAuth,
+                              credentialBlob, secret, &recovered_credential)) {
     printf("ActivateCredential succeeded\n");
   } else {
     Tpm2_FlushContext(tpm, parentHandle);

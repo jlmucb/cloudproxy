@@ -1482,7 +1482,7 @@ bool Tpm2_MakeCredential(LocalTpm& tpm,
 bool Tpm2_ActivateCredential(LocalTpm& tpm,
                              TPM_HANDLE activeHandle,
                              TPM_HANDLE keyHandle,
-                             string& parentAuth,
+                             string& activeAuth, string& keyAuth,
                              TPM2B_ID_OBJECT& credentialBlob,
                              TPM2B_ENCRYPTED_SECRET& secret,
                              TPM2B_DIGEST* certInfo) {
@@ -1509,26 +1509,18 @@ bool Tpm2_ActivateCredential(LocalTpm& tpm,
   memset(in, 0, sizeof(uint16_t));
   Update(sizeof(uint16_t), &in, &total_size, &space_left);
 
-  uint32_t password_auth = TPM_RS_PW;
-  byte hack1[30];
-  ChangeEndian32(&password_auth, (uint32_t*)&hack1[0]);
-  hack1[4] = 0;
-  hack1[5] = 0;
-  hack1[6] = 1;
-  uint16_t m = 4;
-  ChangeEndian16(&m, (uint16_t*)&hack1[7]);
-  hack1[9] = 1;
-  hack1[10] = 2;
-  hack1[11] = 3;
-  hack1[12] = 4;
-  memcpy(&hack1[13], &hack1[0], 7);
-  m = 0;
-  ChangeEndian16(&m, (uint16_t*)&hack1[20]);
-  uint16_t k = 22;
-  ChangeEndian16(&k, (uint16_t*)in);
-  Update(sizeof(uint16_t), &in, &total_size, &space_left);
-  memcpy(in, hack1, k);
-  Update(k, &in, &total_size, &space_left);
+  // twin auth areas
+  byte activeAuthArea[512]; 
+  byte keyAuthArea[512]; 
+  byte outAuthArea[512]; 
+  int n = CreatePasswordAuthArea(activeAuth, 512, activeAuthArea);
+  int m = CreatePasswordAuthArea(keyAuth, 512, keyAuthArea);
+  uint16_t k = m + n - 4;
+  ChangeEndian16(&k, (uint16_t*)outAuthArea);
+  memcpy(&outAuthArea[2], &activeAuthArea[2], n - 2);
+  memcpy(&outAuthArea[n], &keyAuthArea[2], m - 2);
+  memcpy(in, outAuthArea, k + 2);
+  Update(k + 2, &in, &total_size, &space_left);
 
   ChangeEndian16((uint16_t*)&credentialBlob.size, (uint16_t*) in);
   Update(sizeof(uint16_t), &in, &total_size, &space_left);
@@ -2642,9 +2634,14 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
   }
   printf("credBlob size: %d\n", credentialBlob.size);
   printf("secret size: %d\n", secret.size);
-  if (Tpm2_ActivateCredential(tpm, activeHandle, ekHandle, parentAuth,
-                              credentialBlob, secret, &recovered_credential)) {
+  if (Tpm2_ActivateCredential(tpm, activeHandle, ekHandle,
+                              parentAuth, emptyAuth,
+                              credentialBlob, secret,
+                              &recovered_credential)) {
     printf("ActivateCredential succeeded\n");
+    printf("Recovered credential: ");
+    PrintBytes(recovered_credential.size, recovered_credential.buffer);
+    printf("\n");
   } else {
     Tpm2_FlushContext(tpm, parentHandle);
     printf("ActivateCredential failed\n");

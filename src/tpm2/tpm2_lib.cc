@@ -1553,7 +1553,7 @@ bool Tpm2_ActivateCredential(LocalTpm& tpm,
     return false;
 
   byte* out = resp_buf + sizeof(TPM_RESPONSE);
-
+  out += sizeof(uint32_t);
   ChangeEndian16((uint16_t*)out, (uint16_t*)&certInfo->size);
   out += sizeof(uint16_t);
   memcpy(certInfo->buffer, out, certInfo->size);
@@ -2639,7 +2639,7 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
                               credentialBlob, secret,
                               &recovered_credential)) {
     printf("ActivateCredential succeeded\n");
-    printf("Recovered credential: ");
+    printf("Recovered credential (%d): ", recovered_credential.size);
     PrintBytes(recovered_credential.size, recovered_credential.buffer);
     printf("\n");
   } else {

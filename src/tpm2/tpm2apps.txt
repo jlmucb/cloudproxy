@@ -1,0 +1,115 @@
+Applications using tpm2 library
+
+1. GetEndorsementKey
+  This program creates endorsement key and produces a file containing
+  a protobuf consisting of:
+     a. Algorithm name (string) RSA
+     b. TPM flags
+     c. Date
+     d. Algorithm dependent simplified parameters
+        (i) For RSA:
+            modulus size in bits
+            modulus (most significant byte first)
+            exponent
+      --endorsement_info_file=                                          [OUT]
+
+2. CloudProxySignEndorsementKey
+  This program reads the endorsement_info_file and produces a certificate
+  for the endorsement key using the cloudproxy_signing_key in accordance with
+  the signing instructions.  signing instructions contains a subset of:
+  duration, purpose, and other information to be included in the signed certificate.
+      --cloudproxy_private_key_file=                                    [IN]
+      --endorsement_info_file=  (output of GetEndorsement)              [IN]
+      --signing_instructions_file=                                      [IN]
+      --signed_endorsement_cert=                                        [OUT]
+
+3. CreateAndSaveCloudProxyKeyHierarchy
+  This program creates a primary key, signing key (for quotes) and sealing key under the owner hierarchy
+  and saves them to the cloudproxy defined namespace in nv ram so they can be reloaded.  NV ram
+  is protected with PCR's of current "authenticated boot" so they can only be reread by
+  the same cloudproxy environment.  It optionally seals an input string and quotes a quote string.
+  This program removes existing cloudproxy slots with same names and slot numbers.  (CHECK)
+    Parameters are:
+      --cloudproxy_namespace="name".  name should be cloudproxy         [IN]
+      --cloudproxy_slot_primary=                                        [IN]
+      --cloudproxy_slot_seal=                                           [IN]
+      --slot_quote=                                                     [IN]
+      --seal_value=                                                     [IN]
+      --quote_value=                                                    [IN]
+      --pcr_hash_alg_name=   Should be sha1 or sha256.                  [IN]
+      --pcr_list="#, #, ..."                                            [IN]
+      --seal_output_file=                                               [OUT]
+      --quote_output_file=                                              [OUT]
+      --pcr_file=                                                       [OUT]
+
+3. RestoreCloudProxyKeyHierarchy
+  This program reloads primary key, signing key (for quotes) and sealing key under the owner hierarchy
+  from nv ram.  It optionally unseals sealed file contents and verifies quoted file contents.
+    Parameters are:
+      --cloudproxy_namespace="name".  name should be cloudproxy         [IN]
+      --cloudproxy_slot_primary=                                        [IN]
+      --cloudproxy_slot_seal=                                           [IN]
+      --cloudproxy_slot_quote=                                          [IN]
+      --seal_value=                                                     [IN]
+      --seal_file=                                                      [IN]
+      --quote_value=                                                    [IN]
+      --quote_file=                                                     [IN]
+      --pcr_hash_alg_name=   Should be sha1 or sha256.                  [IN]
+      --pcr_list="#, #, ..."                                            [IN]
+      --pcr_file=                                                       [IN]
+
+The following peograms implement the Cloudproxy KeyNegoServer protocol.
+  
+4. ClientCreateInterimSigningKey
+  This program creates a primary key and signingkey.  Produces the signed_interim_cert_request_file
+  which contains a protobuf consisting of the endorsement key certificate, and
+  a request signed by the signing key with the public portion of the signing key, the
+  the policy for MakeCredential to activate the key and the date/time.
+      --signed_endorsement_cert=                                        [IN]
+      --storage_key_type=                                               [IN]
+      --storage_key_size=                                               [IN]
+      --signing_key_type=                                               [IN]
+      --signing_key_size=                                               [IN]
+      --signing_key_namespace=                                          [IN]
+      --signing_key_primary_slot=                                       [IN]
+      --signing_key_signing_slot=                                       [IN]
+      --signed_interim_cert_request_file=                               [OUT]
+
+5. ServerSignInterimSigningKeyWithCredential
+  This program reads and validates the signed_interim_cert_request_file and,
+  if valid, signs a short duration certificate for a signing_key with the policy_key
+      --program_private_key_file=                                       [IN]
+      --signing_instructions_file=                                      [IN]
+      --signed_interim_cert_request_file=                               [IN]
+      --tpm_credential_file=                                            [OUT]
+      --encrypted_signing_key_certificate_file=                         [OUT]
+
+6. ClientRetrieveInterimSigningKey
+  This program restores the signing key context, unwraps the tpm_crenential allowing it to
+  decrypt the encrypted_signing_key_certificate_file, it then generates and/or
+  retrieves the program  private/public key pair, seals the private portion to 
+  the cloudproxy environment and creates a file containing a protobuf with the 
+  signing_key_certificate and a protobuf signed by the signing_key 
+  naming the public portion of the proposed cloudproxy_program_key.
+      --cloudproxy_namespace="name".  name should be cloudproxy         [IN]
+      --cloudproxy_slot_primary=                                        [IN]
+      --cloudproxy_slot_seal=                                           [IN]
+      --encrypted_interim_certificate_file=                             [IN]
+      --signing_key_namespace=                                          [IN]
+      --signing_key_primary_slot=                                       [IN]
+      --signing_key_signing_slot=                                       [IN]
+      --signing_key_cert_file_=                                         [IN]
+      --tpm_credential_file=                                            [IN]
+      --cloudproxy_regenerate_program_key=                              [IN]
+      --signed_program_public_key_request_file=                         [OUT]
+
+6. CloudproxySignProgramKey
+   This program reads a signed_program_public_key_request_file, verifies validity of the certificate and
+   the request and, if verified, outputs a file (the signed_program_key_cert_file) with a cert for the 
+   proposed program key in accordance with the signing isnstructions.
+      --program_private_key_file=                                       [IN]
+      --signing_instructions_file=                                      [IN]
+      --signed_program_public_key_request_file=                         [IN]
+      --signed_program_key_cert_file=                                   [OUT]
+
+

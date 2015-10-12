@@ -1,5 +1,14 @@
 Applications using tpm2 library
 
+0. GeneratePolicyKey
+  This program creates public/private key pair and produces a file containing
+  a protobuf consisting of the keypair.
+      --algorithm="RSA"                                                 [IN]
+      --modulus_size_in_bits=                                           [IN]
+      --signing_instructions=                                           [IN]
+      --key_name=                                                       [IN]
+      --cloudproxy_key_file=                                            [OUT]
+
 1. GetEndorsementKey
   This program creates endorsement key and produces a file containing
   a protobuf consisting of:

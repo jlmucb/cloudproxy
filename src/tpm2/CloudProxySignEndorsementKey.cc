@@ -48,26 +48,28 @@ using std::string;
 //  the signing instructions.  signing instructions contains a subset of:
 //  duration, purpose, and other information to be included in the signed certificate.
 
-#define CALLING_SEQUENCE "Calling secquence: CloudProxySignEndorsementKey.exe \
---cloudproxy_private_key_file=input-file-name \
---endorsement_info_file=file-name  --signing_instructions_file=input-file-name \
---signed_endorsement_cert=output-file-name\n"
+#define CALLING_SEQUENCE "Calling secquence: CloudProxySignEndorsementKey.exe" \
+"--cloudproxy_private_key_file=input-file-name" \
+"--endorsement_info_file=file-name  --signing_instructions_file=input-file-name" \
+"--signed_endorsement_cert=output-file-name\n"
 
 void PrintOptions() {
   printf(CALLING_SEQUENCE);
 }
 
-
 DEFINE_string(endorsement_info_file, "", "output file");
 DEFINE_string(cloudproxy_private_key_file, "", "private key file");
-DEFINE_string(endorsement_info_file, "", "endorsement key info file");
 DEFINE_string(signing_instructions_file, "", "signing instructions file");
 DEFINE_string(signed_endorsement_cert, "", "signed endorsement cert file");
+
+#ifndef GFLAGS_NS
+#define GFLAGS_NS gflags
+#endif
 
 int main(int an, char** av) {
   LocalTpm tpm;
 
-   gflags::ParseCommandLineFlags(&an, &av, true);
+  GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   if (!tpm.OpenTpm("/dev/tpm0")) {
     printf("Can't open tpm\n");
     return 1;

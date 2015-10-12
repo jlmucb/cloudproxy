@@ -46,9 +46,8 @@
 using std::string;
 
 
-#define CALLING_SEQUENCE 
-"GeneratePolicyKey.exe --algorithm=\"RSA\" --modulus_size_in_bits=int32 \
---signing_instructions=input-file --key_name=input-file --cloudproxy_key_file=output-file\n"
+#define CALLING_SEQUENCE "GeneratePolicyKey.exe --algorithm=\"RSA\" --modulus_size_in_bits=int32" \
+"--signing_instructions=input-file --key_name=input-file --cloudproxy_key_file=output-file\n"
 
 void PrintOptions() {
   printf(CALLING_SEQUENCE);
@@ -57,14 +56,18 @@ void PrintOptions() {
 
 DEFINE_string(algorithm, "RSA", "signing algorithm");
 DEFINE_int32(modulus_size_in_bits, 2048, "modulus-size");
-DEFINE_string(signing_instructions=input-file-name, "", "file-name");
+DEFINE_string(signing_instructions_file, "", "input-file-name");
 DEFINE_string(key_name, "", "key name");
-DEFINE_string(cloudproxy_key_file, "", "private key file");
+DEFINE_string(cloudproxy_key_file, "", "output-file-name");
+
+#ifndef GFLAGS_NS
+#define GFLAGS_NS gflags
+#endif
 
 int main(int an, char** av) {
   LocalTpm tpm;
 
-   gflags::ParseCommandLineFlags(&an, &av, true);
+  GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   if (!tpm.OpenTpm("/dev/tpm0")) {
     printf("Can't open tpm\n");
     return 1;

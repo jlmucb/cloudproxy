@@ -59,6 +59,10 @@ DEFINE_string(creation_data_file, "", "private public area");
 DEFINE_string(save_context_file, "", "save(d) context area");
 DEFINE_string(decrypt, "", "decrypt flag");
 
+#ifndef GFLAGS_NS
+#define GFLAGS_NS gflags
+#endif
+
 int num_tpmutil_ops = 27;
 std::string tpmutil_ops[] = {
     "--command=Startup",
@@ -101,7 +105,7 @@ void PrintOptions() {
 int main(int an, char** av) {
   LocalTpm tpm;
 
-   gflags::ParseCommandLineFlags(&an, &av, true);
+  GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   if (!tpm.OpenTpm("/dev/tpm0")) {
     printf("Can't open tpm\n");
     return 1;

@@ -1,22 +1,75 @@
 // To compile: protoc -I=. --cpp_out=. tpm2.proto
-//  PROTO=protoc
-// $(S)/tpm2.pb.cc $(S)/tpm2.pb.h: $(S)/tpm2.proto
-//        $(PROTO) -I=$(S) --cpp_out=$(S) $(S)/tpm2.proto
-// LDFLAGS= $(LOCAL_LIB)/libprotobuf.a -L$(LOCAL_LIB) -lgtest -lgflags -lprotobuf -lpthread
 
 // Definition of protobufs for tpm2 applications
+syntax = "proto2";
 
-message public_key_message {
+message rsa_public_key_message {
+  optional string key_name                    = 1;
+  required int32  bit_modulus_size            = 2;
+  required int64  exponent                    = 3;
+  required string modulus                     = 4;
 }
 
-message private_key_message {
+message rsa_private_key_message {
+  required rsa_public_key_message public_key  = 1;
+  optional string d                           = 2;
+  optional string p                           = 3;
+  optional string q                           = 4;
+  optional string dp                          = 5;
+  optional string dq                          = 6;
+}
+
+message asymmetric_key_message {
+  optional rsa_private_key_message key        = 1;
+}
+
+message public_key_message {
+  optional rsa_public_key_message public_key  = 1;
 }
 
 message endorsement_key_message {
-    required string algorithm                   = 1;
-    optional string key_name                    = 2;
-    optional public_key_message public_key      = 3;
-    optional private_key_message private_key    = 4;
-    optional string tpm2b_blob                  = 5;
-  }
+  required asymmetric_key_message key         = 1;
+  optional string tpm2b_blob                  = 2;
+}
+
+message signing_instructions_message {
+  optional string issuer                      = 1;
+  optional string duration                    = 2;
+  required string purpose                     = 3;
+  optional string date                        = 4;
+  optional string time                        = 5;
+  optional string hash_alg                    = 6;
+  required bool can_sign                      = 7;
+}
+
+message cert_request_message {
+  optional public_key_message public_params   = 1;
+}
+
+message signed_cert_message {
+  required string algorithm                   = 1;
+  required int32 key_size                     = 2;
+  optional string issuer                      = 3;
+  optional string body_type                   = 4;
+  optional string body                        = 5;
+  optional string hash_alg                    = 6;
+  optional string hash                        = 7;
+  optional string sig                         = 8;
+}
+
+message tpm2_make_credential_info_message {
+  optional public_key_message public_key      = 1;
+  optional string name                        = 2;
+  optional int32 properties                   = 3;
+  optional string hash_alg                    = 4;
+  optional string hash                        = 5;
+  optional string secret                      = 6;
+}
+
+message encrypted_data_message {
+  required int32 size                         = 1;
+  optional string key_name                    = 2;
+  optional string data_type                   = 3;
+  optional string data                        = 4;
+}
 

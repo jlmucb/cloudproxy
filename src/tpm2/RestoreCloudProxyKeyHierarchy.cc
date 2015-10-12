@@ -74,10 +74,14 @@ DEFINE_string(quote_output_file, "", "output-file-name");
 DEFINE_string(pcr_file, "", "output-file-name");
 
 
+#ifndef GFLAGS_NS
+#define GFLAGS_NS gflags
+#endif
+
 int main(int an, char** av) {
   LocalTpm tpm;
 
-   gflags::ParseCommandLineFlags(&an, &av, true);
+  GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   if (!tpm.OpenTpm("/dev/tpm0")) {
     printf("Can't open tpm\n");
     return 1;

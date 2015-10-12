@@ -68,11 +68,14 @@ DEFINE_string(signed_interim_cert_request_file, "", "input-file-name");
 DEFINE_string(tpm_credential_file, "", "input-file-name");
 DEFINE_string(encrypted_signing_key_certificate_file, "", "output-file-name");
 
+#ifndef GFLAGS_NS
+#define GFLAGS_NS gflags
+#endif
 
 int main(int an, char** av) {
   LocalTpm tpm;
 
-   gflags::ParseCommandLineFlags(&an, &av, true);
+  GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   if (!tpm.OpenTpm("/dev/tpm0")) {
     printf("Can't open tpm\n");
     return 1;

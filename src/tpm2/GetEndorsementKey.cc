@@ -54,6 +54,10 @@ using std::string;
 
 DEFINE_string(endorsement_info_file, "", "output file");
 
+#ifndef GFLAGS_NS
+#define GFLAGS_NS gflags
+#endif
+
 void PrintOptions() {
   printf("Calling sequence: GetEndorsementKey.exe --endorsement_info_file=output-file\n");
 }
@@ -61,7 +65,7 @@ void PrintOptions() {
 int main(int an, char** av) {
   LocalTpm tpm;
 
-   gflags::ParseCommandLineFlags(&an, &av, true);
+  GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   if (!tpm.OpenTpm("/dev/tpm0")) {
     printf("Can't open tpm\n");
     return 1;

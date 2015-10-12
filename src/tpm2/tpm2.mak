@@ -46,18 +46,82 @@ AR=ar
 export LD_LIBRARY_PATH=/usr/local/lib
 LDFLAGS= -lprotobuf -lgtest -lgflags -lpthread
 
-dobj=	$(O)/tpm2_lib.o $(O)/tpm2_util.o
+dobj_tpm2_util=				$(O)/tpm2_lib.o $(O)/tpm2_util.o
+dobj_GeneratePolicyKey=			$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/GeneratePolicyKey.o
+dobj_CloudProxySignEndorsementKey=	$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/CloudProxySignEndorsementKey.o
+dobj_CloudproxySignProgramKey=	$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/CloudproxySignProgramKey.o
+dobj_GetEndorsementKey=	$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/GetEndorsementKey.o
+dobj_CreateAndSaveCloudProxyKeyHierarchy=	$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/CreateAndSaveCloudProxyKeyHierarchy.o
+dobj_RestoreCloudProxyKeyHierarchy=	$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/RestoreCloudProxyKeyHierarchy.o
+dobj_ClientCreateInterimSigningKey=	$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/ClientCreateInterimSigningKey.o
+dobj_ServerSignInterimSigningKeyWithCredential=	$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/ServerSignInterimSigningKeyWithCredential.o
+dobj_ClientRetrieveInterimSigningKey=	$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/ClientRetrieveInterimSigningKey.o
 
-all:	tpm2_util.exe
+all:	$(EXE_DIR)/tpm2_util.exe \
+	$(EXE_DIR)/CloudProxySignEndorsementKey.exe \
+	$(EXE_DIR)/GeneratePolicyKey.exe
 clean:
 	@echo "removing object files"
 	rm $(O)/*.o
 	@echo "removing executable file"
 	rm $(EXE_DIR)/tpm2_util.exe
+	rm $(EXE_DIR)/GeneratePolicyKey.exe
+	rm $(EXE_DIR)/CloudProxySignEndorsementKey.exe
+	rm $(EXE_DIR)/CloudproxySignProgramKey.exe
+	rm $(EXE_DIR)/GetEndorsementKey.exe
+	rm $(EXE_DIR)/CreateAndSaveCloudProxyKeyHierarchy.exe
+	rm $(EXE_DIR)/RestoreCloudProxyKeyHierarchy.exe
+	rm $(EXE_DIR)/ClientCreateInterimSigningKey.exe
+	rm $(EXE_DIR)/ServerSignInterimSigningKeyWithCredential.exe
+	rm $(EXE_DIR)/ClientRetrieveInterimSigningKey.exe
 
-tpm2_util.exe: $(dobj) 
-	@echo "linking executable files"
-	$(LINK) -o $(EXE_DIR)/tpm2_util.exe $(dobj) $(LDFLAGS)
+$(EXE_DIR)/tpm2_util.exe: $(dobj_tpm2_util)
+	@echo "linking tpm2_util"
+	$(LINK) -o $(EXE_DIR)/tpm2_util.exe $(dobj_tpm2_util) $(LDFLAGS)
+
+$(EXE_DIR)/GeneratePolicyKey.exe: $(dobj_GeneratePolicyKey)
+	@echo "linking GeneratePolicyKey"
+	$(LINK) -o $(EXE_DIR)/GeneratePolicyKey.exe $(dobj_GeneratePolicyKey) $(LDFLAGS)
+
+$(EXE_DIR)/CloudProxySignEndorsementKey.exe: $(dobj_CloudProxySignEndorsementKey)
+	@echo "linking CloudProxySignEndorsementKey"
+	$(LINK) -o $(EXE_DIR)/CloudProxySignEndorsementKey.exe $(dobj_CloudProxySignEndorsementKey) $(LDFLAGS)
+
+$(EXE_DIR)/CloudproxySignProgramKey.exe: $(dobj_CloudproxySignProgramKey)
+	@echo "linking CloudproxySignProgramKey"
+	$(LINK) -o $(EXE_DIR)/CloudproxySignProgramKey.exe $(dobj_CloudproxySignProgramKey) $(LDFLAGS)
+
+$(EXE_DIR)/GetEndorsementKey.exe: $(dobj_GetEndorsementKey)
+	@echo "linking GetEndorsementKey"
+	$(LINK) -o $(EXE_DIR)/GetEndorsementKey.exe $(dobj_GetEndorsementKey) $(LDFLAGS)
+
+$(EXE_DIR)/CreateAndSaveCloudProxyKeyHierarchy.exe: $(dobj_CreateAndSaveCloudProxyKeyHierarchy)
+	@echo "linking CreateAndSaveCloudProxyKeyHierarchy"
+	$(LINK) -o $(EXE_DIR)/CreateAndSaveCloudProxyKeyHierarchy.exe $(dobj_CreateAndSaveCloudProxyKeyHierarchy) $(LDFLAGS)
+
+$(EXE_DIR)/RestoreCloudProxyKeyHierarchy.exe: $(dobj_RestoreCloudProxyKeyHierarchy)
+	@echo "linking RestoreCloudProxyKeyHierarchy"
+	$(LINK) -o $(EXE_DIR)/RestoreCloudProxyKeyHierarchy.exe $(dobj_RestoreCloudProxyKeyHierarchy) $(LDFLAGS)
+
+$(EXE_DIR)/ClientCreateInterimSigningKey.exe: $(dobj_ClientCreateInterimSigningKey)
+	@echo "linking ClientCreateInterimSigningKey"
+	$(LINK) -o $(EXE_DIR)/ClientCreateInterimSigningKey.exe $(dobj_ClientCreateInterimSigningKey) $(LDFLAGS)
+
+$(EXE_DIR)/ServerSignInterimSigningKeyWithCredential.exe: $(dobj_ServerSignInterimSigningKeyWithCredential)
+	@echo "linking ServerSignInterimSigningKeyWithCredential"
+	$(LINK) -o $(EXE_DIR)/ServerSignInterimSigningKeyWithCredential.exe $(dobj_ServerSignInterimSigningKeyWithCredential) $(LDFLAGS)
+
+$(EXE_DIR)/ClientRetrieveInterimSigningKey.exe: $(dobj_ClientRetrieveInterimSigningKey)
+	@echo "linking ClientRetrieveInterimSigningKey"
+	$(LINK) -o $(EXE_DIR)/ClientRetrieveInterimSigningKey.exe $(dobj_ClientRetrieveInterimSigningKey) $(LDFLAGS)
+
+$(O)/tpm2.pb.o: $(S)/tpm2.pb.cc
+	@echo "compiling protobuf object"
+	$(CC) $(CFLAGS) -c -o $(O)/tpm2.pb.o $(S)/tpm2.pb.cc
+
+$(S)/tpm2.pb.cc tpm2.pb.h: $(S)/tpm2.proto
+	@echo "creating protobuf files"
+	$(PROTO) -I=$(S) --cpp_out=$(S) $(S)/tpm2.proto
 
 $(O)/tpm2_lib.o: $(S)/tpm2_lib.cc
 	@echo "compiling tpm2_lib.cc"
@@ -66,4 +130,41 @@ $(O)/tpm2_lib.o: $(S)/tpm2_lib.cc
 $(O)/tpm2_util.o: $(S)/tpm2_util.cc
 	@echo "compiling tpm2_util.cc"
 	$(CC) $(CFLAGS) -c -o $(O)/tpm2_util.o $(S)/tpm2_util.cc
+
+$(O)/GeneratePolicyKey.o: $(S)/GeneratePolicyKey.cc
+	@echo "compiling GeneratePolicyKey.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/GeneratePolicyKey.o $(S)/GeneratePolicyKey.cc
+
+$(O)/CloudProxySignEndorsementKey.o: $(S)/CloudProxySignEndorsementKey.cc
+	@echo "compiling CloudProxySignEndorsementKey.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/CloudProxySignEndorsementKey.o $(S)/CloudProxySignEndorsementKey.cc
+
+$(O)/CloudproxySignProgramKey.o: $(S)/CloudproxySignProgramKey.cc
+	@echo "compiling CloudproxySignProgramKey.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/CloudproxySignProgramKey.o $(S)/CloudproxySignProgramKey.cc
+
+$(O)/CreateAndSaveCloudProxyKeyHierarchy.o: $(S)/CreateAndSaveCloudProxyKeyHierarchy.cc
+	@echo "compiling CreateAndSaveCloudProxyKeyHierarchy.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/CreateAndSaveCloudProxyKeyHierarchy.o $(S)/CreateAndSaveCloudProxyKeyHierarchy.cc
+
+$(O)/RestoreCloudProxyKeyHierarchy.o: $(S)/RestoreCloudProxyKeyHierarchy.cc
+	@echo "compiling RestoreCloudProxyKeyHierarchy.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/RestoreCloudProxyKeyHierarchy.o $(S)/RestoreCloudProxyKeyHierarchy.cc
+
+$(O)/ClientCreateInterimSigningKey.o: $(S)/ClientCreateInterimSigningKey.cc
+	@echo "compiling ClientCreateInterimSigningKey.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/ClientCreateInterimSigningKey.o $(S)/ClientCreateInterimSigningKey.cc
+
+$(O)/ServerSignInterimSigningKeyWithCredential.o: $(S)/ServerSignInterimSigningKeyWithCredential.cc
+	@echo "compiling ServerSignInterimSigningKeyWithCredential.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/ServerSignInterimSigningKeyWithCredential.o $(S)/ServerSignInterimSigningKeyWithCredential.cc
+
+$(O)/ClientRetrieveInterimSigningKey.o: $(S)/ClientRetrieveInterimSigningKey.cc
+	@echo "compiling ClientRetrieveInterimSigningKey.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/ClientRetrieveInterimSigningKey.o $(S)/ClientRetrieveInterimSigningKey.cc
+
+$(O)/GetEndorsementKey.o: $(S)/GetEndorsementKey.cc
+	@echo "compiling GetEndorsementKey.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/GetEndorsementKey.o $(S)/GetEndorsementKey.cc
+
 

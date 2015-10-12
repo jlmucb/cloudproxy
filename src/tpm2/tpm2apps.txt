@@ -109,7 +109,7 @@ The following peograms implement the Cloudproxy KeyNegoServer protocol.
       --signing_key_signing_slot=                                       [IN]
       --signing_key_cert_file_=                                         [IN]
       --tpm_credential_file=                                            [IN]
-      --cloudproxy_regenerate_program_key=                              [IN]
+      --cloudproxy_regenerate_program_keyflag=                          [IN]
       --signed_program_public_key_request_file=                         [OUT]
 
 6. CloudproxySignProgramKey

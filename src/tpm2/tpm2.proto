@@ -1,0 +1,22 @@
+// To compile: protoc -I=. --cpp_out=. tpm2.proto
+//  PROTO=protoc
+// $(S)/tpm2.pb.cc $(S)/tpm2.pb.h: $(S)/tpm2.proto
+//        $(PROTO) -I=$(S) --cpp_out=$(S) $(S)/tpm2.proto
+// LDFLAGS= $(LOCAL_LIB)/libprotobuf.a -L$(LOCAL_LIB) -lgtest -lgflags -lprotobuf -lpthread
+
+// Definition of protobufs for tpm2 applications
+
+message public_key_message {
+}
+
+message private_key_message {
+}
+
+message endorsement_key_message {
+    required string algorithm                   = 1;
+    optional string key_name                    = 2;
+    optional public_key_message public_key      = 3;
+    optional private_key_message private_key    = 4;
+    optional string tpm2b_blob                  = 5;
+  }
+

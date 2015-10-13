@@ -47,7 +47,7 @@ export LD_LIBRARY_PATH=/usr/local/lib
 LDFLAGS= -lprotobuf -lgtest -lgflags -lpthread
 
 dobj_tpm2_util=					$(O)/tpm2_lib.o $(O)/tpm2_util.o
-dobj_GeneratePolicyKey=				$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/GeneratePolicyKey.o
+dobj_GeneratePolicyKey=				$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/conversions.o $(O)/GeneratePolicyKey.o
 dobj_CloudProxySignEndorsementKey=		$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/CloudProxySignEndorsementKey.o
 dobj_CloudproxySignProgramKey=			$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/CloudproxySignProgramKey.o
 dobj_GetEndorsementKey=				$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/GetEndorsementKey.o
@@ -135,6 +135,10 @@ $(S)/tpm2.pb.cc tpm2.pb.h: $(S)/tpm2.proto
 $(O)/tpm2_lib.o: $(S)/tpm2_lib.cc
 	@echo "compiling tpm2_lib.cc"
 	$(CC) $(CFLAGS) -c -o $(O)/tpm2_lib.o $(S)/tpm2_lib.cc
+
+$(O)/conversions.o: $(S)/conversions.cc
+	@echo "compiling conversions.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/conversions.o $(S)/conversions.cc
 
 $(O)/tpm2_util.o: $(S)/tpm2_util.cc
 	@echo "compiling tpm2_util.cc"

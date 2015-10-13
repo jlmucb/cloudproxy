@@ -70,35 +70,6 @@ DEFINE_string(cloudproxy_key_file, "", "output-file-name");
 #define GFLAGS_NS gflags
 #endif
 
-#if 0
-char* base64Encode(byte* in, int len) {
-  BIO *bio, *b64;
-  b64 = BIO_new(BIO_f_base64());
-  bio = BIO_new_fp(stdout, BIO_NOCLOSE);
-  BIO_push(b64, bio);
-  BIO_write(b64, in, len);
-  BIO_flush(b64);
-  char* out = strcpy(b64);
-  BIO_free_all(b64);
-  return out;
-}
-
-bool base64Decode(char* in, byte* out, int* len) {
-  BIO *bio, *b64, *bio_out;
-  int inlen;
-
-  b64 = BIO_new(BIO_f_base64());
-  bio = BIO_new_fp(stdin, BIO_NOCLOSE);
-  bio_out = BIO_new_fp(stdout, BIO_NOCLOSE);
-  BIO_push(b64, bio);
-  while((inlen = BIO_read(b64, in, strlen(in))) > 0) 
-    BIO_write(bio_out, in, strlen(in));
-  BIO_flush(bio_out);
-  BIO_free_all(b64);
-  memcpy(out, b64.buffer,
-  return true;
-}
-#endif
 
 #define MAXKEY_BUF 8192
 

@@ -59,15 +59,15 @@ dobj_ClientRetrieveInterimSigningKey=		$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/Clien
 
 all:	$(EXE_DIR)/tpm2_util.exe \
 	$(EXE_DIR)/GeneratePolicyKey.exe \
-	$(EXE_DIR)/GetEndorsementKey.exe
-#	$(EXE_DIR)/CloudProxySignEndorsementKey.exe
-#	$(EXE_DIR)/CloudproxySignProgramKey.exe
-#	$(EXE_DIR)/CreateAndSaveCloudProxyKeyHierarchy.exe
-#	$(EXE_DIR)/CloudProxySignEndorsementKey.exe \
-#	$(EXE_DIR)/RestoreCloudProxyKeyHierarchy.exe
-#	$(EXE_DIR)/ClientCreateInterimSigningKey.exe
-#	$(EXE_DIR)/ServerSignInterimSigningKeyWithCredential.exe
-#	$(EXE_DIR)/ClientRetrieveInterimSigningKey.exe
+	$(EXE_DIR)/GetEndorsementKey.exe \
+	$(EXE_DIR)/CloudProxySignEndorsementKey.exe \
+	$(EXE_DIR)/CloudproxySignProgramKey.exe \
+	$(EXE_DIR)/CreateAndSaveCloudProxyKeyHierarchy.exe \
+	$(EXE_DIR)/CloudProxySignEndorsementKey.exe \
+	$(EXE_DIR)/RestoreCloudProxyKeyHierarchy.exe \
+	$(EXE_DIR)/ClientCreateInterimSigningKey.exe \
+	$(EXE_DIR)/ServerSignInterimSigningKeyWithCredential.exe \
+	$(EXE_DIR)/ClientRetrieveInterimSigningKey.exe \
 
 clean:
 	@echo "removing object files"
@@ -90,39 +90,39 @@ $(EXE_DIR)/tpm2_util.exe: $(dobj_tpm2_util)
 
 $(EXE_DIR)/GeneratePolicyKey.exe: $(dobj_GeneratePolicyKey)
 	@echo "linking GeneratePolicyKey"
-	$(LINK) -o $(EXE_DIR)/GeneratePolicyKey.exe $(dobj_GeneratePolicyKey) $(LDFLAGS)
+	$(LINK) -o $(EXE_DIR)/GeneratePolicyKey.exe $(dobj_GeneratePolicyKey) $(LDFLAGS) -lcrypto
 
 $(EXE_DIR)/CloudProxySignEndorsementKey.exe: $(dobj_CloudProxySignEndorsementKey)
 	@echo "linking CloudProxySignEndorsementKey"
-	$(LINK) -o $(EXE_DIR)/CloudProxySignEndorsementKey.exe $(dobj_CloudProxySignEndorsementKey) $(LDFLAGS)
+	$(LINK) -o $(EXE_DIR)/CloudProxySignEndorsementKey.exe $(dobj_CloudProxySignEndorsementKey) $(LDFLAGS) -lcrypto
 
 $(EXE_DIR)/CloudproxySignProgramKey.exe: $(dobj_CloudproxySignProgramKey)
 	@echo "linking CloudproxySignProgramKey"
-	$(LINK) -o $(EXE_DIR)/CloudproxySignProgramKey.exe $(dobj_CloudproxySignProgramKey) $(LDFLAGS)
+	$(LINK) -o $(EXE_DIR)/CloudproxySignProgramKey.exe $(dobj_CloudproxySignProgramKey) $(LDFLAGS) -lcrypto
 
 $(EXE_DIR)/GetEndorsementKey.exe: $(dobj_GetEndorsementKey)
 	@echo "linking GetEndorsementKey"
-	$(LINK) -o $(EXE_DIR)/GetEndorsementKey.exe $(dobj_GetEndorsementKey) $(LDFLAGS)
+	$(LINK) -o $(EXE_DIR)/GetEndorsementKey.exe $(dobj_GetEndorsementKey) $(LDFLAGS) -lcrypto
 
 $(EXE_DIR)/CreateAndSaveCloudProxyKeyHierarchy.exe: $(dobj_CreateAndSaveCloudProxyKeyHierarchy)
 	@echo "linking CreateAndSaveCloudProxyKeyHierarchy"
-	$(LINK) -o $(EXE_DIR)/CreateAndSaveCloudProxyKeyHierarchy.exe $(dobj_CreateAndSaveCloudProxyKeyHierarchy) $(LDFLAGS)
+	$(LINK) -o $(EXE_DIR)/CreateAndSaveCloudProxyKeyHierarchy.exe $(dobj_CreateAndSaveCloudProxyKeyHierarchy) $(LDFLAGS) -lcrypto
 
 $(EXE_DIR)/RestoreCloudProxyKeyHierarchy.exe: $(dobj_RestoreCloudProxyKeyHierarchy)
 	@echo "linking RestoreCloudProxyKeyHierarchy"
-	$(LINK) -o $(EXE_DIR)/RestoreCloudProxyKeyHierarchy.exe $(dobj_RestoreCloudProxyKeyHierarchy) $(LDFLAGS)
+	$(LINK) -o $(EXE_DIR)/RestoreCloudProxyKeyHierarchy.exe $(dobj_RestoreCloudProxyKeyHierarchy) $(LDFLAGS) -lcrypto
 
 $(EXE_DIR)/ClientCreateInterimSigningKey.exe: $(dobj_ClientCreateInterimSigningKey)
 	@echo "linking ClientCreateInterimSigningKey"
-	$(LINK) -o $(EXE_DIR)/ClientCreateInterimSigningKey.exe $(dobj_ClientCreateInterimSigningKey) $(LDFLAGS)
+	$(LINK) -o $(EXE_DIR)/ClientCreateInterimSigningKey.exe $(dobj_ClientCreateInterimSigningKey) $(LDFLAGS) -lcrypto
 
 $(EXE_DIR)/ServerSignInterimSigningKeyWithCredential.exe: $(dobj_ServerSignInterimSigningKeyWithCredential)
 	@echo "linking ServerSignInterimSigningKeyWithCredential"
-	$(LINK) -o $(EXE_DIR)/ServerSignInterimSigningKeyWithCredential.exe $(dobj_ServerSignInterimSigningKeyWithCredential) $(LDFLAGS)
+	$(LINK) -o $(EXE_DIR)/ServerSignInterimSigningKeyWithCredential.exe $(dobj_ServerSignInterimSigningKeyWithCredential) $(LDFLAGS) -lcrypto
 
 $(EXE_DIR)/ClientRetrieveInterimSigningKey.exe: $(dobj_ClientRetrieveInterimSigningKey)
 	@echo "linking ClientRetrieveInterimSigningKey"
-	$(LINK) -o $(EXE_DIR)/ClientRetrieveInterimSigningKey.exe $(dobj_ClientRetrieveInterimSigningKey) $(LDFLAGS)
+	$(LINK) -o $(EXE_DIR)/ClientRetrieveInterimSigningKey.exe $(dobj_ClientRetrieveInterimSigningKey) $(LDFLAGS) -lcrypto
 
 $(O)/tpm2.pb.o: $(S)/tpm2.pb.cc
 	@echo "compiling protobuf object"

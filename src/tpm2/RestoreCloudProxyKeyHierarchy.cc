@@ -49,15 +49,17 @@
 using std::string;
 
 
-#define CALLING_SEQUENCE 
-"RestoreCloudProxyKeyHierarchy.exe --cloudproxy_namespace=name \
---cloudproxy_slot_primary=int32 --cloudproxy_slot_seal=int32 --slot_quote=int32 \
---seal_value=value-string --quote_value=value-string --pcr_hash_alg_name=[sha1 | sha256] \
---pcr_list=\"int, int, ...\" --seal_output_file=output-file-name \
---quote_output_file= output-file-name --pcr_file=output-file-name\n"
+#define CALLING_SEQUENCE "RestoreCloudProxyKeyHierarchy.exe " \
+"--cloudproxy_namespace=name " \
+"--cloudproxy_slot_primary=int32 --cloudproxy_slot_seal=int32 " \
+"--slot_quote=int32" \
+"--seal_value=value-string --quote_value=value-string " \
+"--pcr_hash_alg_name=[sha1 | sha256]" \
+"--pcr_list=\"int, int, ...\" --seal_output_file=output-file-name" \
+"--quote_output_file= output-file-name --pcr_file=output-file-name\n"
 
 void PrintOptions() {
-  printf("Calling sequence: " + CALLING_SEQUENCE);
+  printf("Calling sequence: %s", CALLING_SEQUENCE);
 }
 
 

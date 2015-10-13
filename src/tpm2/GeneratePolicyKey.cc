@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <string.h>
 
+#include <openssl/rsa.h>
+
 #include <tpm20.h>
 #include <tpm2_lib.h>
 #include <gflags/gflags.h>
@@ -46,8 +48,10 @@
 using std::string;
 
 
-#define CALLING_SEQUENCE "GeneratePolicyKey.exe --algorithm=\"RSA\" --modulus_size_in_bits=int32" \
-"--signing_instructions=input-file --key_name=input-file --cloudproxy_key_file=output-file\n"
+#define CALLING_SEQUENCE "GeneratePolicyKey.exe --algorithm=\"RSA\" "\
+" --exponent=exponent --modulus_size_in_bits=int32" \
+"--signing_instructions=input-file --key_name=input-file " \
+"--cloudproxy_key_file=output-file\n"
 
 void PrintOptions() {
   printf(CALLING_SEQUENCE);
@@ -56,7 +60,9 @@ void PrintOptions() {
 
 DEFINE_string(algorithm, "RSA", "signing algorithm");
 DEFINE_int32(modulus_size_in_bits, 2048, "modulus-size");
+DEFINE_int64(exponent, 0x010001ULL, "exponent");
 DEFINE_string(signing_instructions_file, "", "input-file-name");
+DEFINE_string(, "", "input-file-name");
 DEFINE_string(key_name, "", "key name");
 DEFINE_string(cloudproxy_key_file, "", "output-file-name");
 
@@ -66,14 +72,47 @@ DEFINE_string(cloudproxy_key_file, "", "output-file-name");
 
 int main(int an, char** av) {
   LocalTpm tpm;
+  int ret_val = 0;
+  RSA* rsa_key = nullptr;
 
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   if (!tpm.OpenTpm("/dev/tpm0")) {
     printf("Can't open tpm\n");
-    return 1;
+    ret_val = 1;
+    goto done;
+  }
+
+  if (FLAGS_algorithm != "RSA") {
+    printf("Only RSA supported\n");
+    ret_val = 1;
+    goto done;
+  }
+  if (FLAGS_signing_instructions_file == "") {
+    printf("No signing instructions\n");
+    ret_val = 1;
+    goto done;
+  }
+  if (FLAGS_key_name == "") {
+    printf("No key name\n");
+    ret_val = 1;
+    goto done;
+  }
+  if (FLAGS_cloudproxy_key_file == "") {
+    printf("No key file\n");
+    ret_val = 1;
+    goto done;
+  }
+
+  rsa_key = RSA_generate_key(FLAGS_modulus_size_in_bits, 
+                             FLAGS_exponent, nullptr, nullptr);
+  if (rsa_key == nullptr) {
+    printf("Can't generate RSA key\n");
+    ret_val = 1;
+    goto done;
   }
 
 done:
   tpm.CloseTpm();
+  return ret_val;
 }
 

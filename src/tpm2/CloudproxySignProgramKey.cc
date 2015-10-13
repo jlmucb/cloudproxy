@@ -48,14 +48,14 @@
 using std::string;
 
 
-#define CALLING_SEQUENCE 
-" CloudproxySignProgramKey.exe --program_private_key_file=input-file-name \
---signing_instructions_file=input-file-name \
---signed_program_public_key_request_file=input-file-name \
---signed_program_key_cert_file=output-file-name\n"
+#define CALLING_SEQUENCE "CloudproxySignProgramKey.exe" \
+"--program_private_key_file=input-file-name" \
+"--signing_instructions_file=input-file-name" \
+"--signed_program_public_key_request_file=input-file-name" \
+"--signed_program_key_cert_file=output-file-name\n"
 
 void PrintOptions() {
-  printf("Calling sequence: " + CALLING_SEQUENCE);
+  printf("Calling sequence: %s", CALLING_SEQUENCE);
 }
 
 

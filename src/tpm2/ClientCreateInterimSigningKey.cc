@@ -56,20 +56,19 @@
 using std::string;
 
 
-#define CALLING_SEQUENCE 
-" ClientCreateInterimSigningKey.exe \
---signed_endorsement_cert=input-file-name \
---storage_key_type=RSA \
---storage_key_size=2048 \
---signing_key_type=RSA \
---signing_key_size=2048 \
---signing_key_namespace=name \
---signing_key_primary_slot=int \
---signing_key_signing_slot=int \
---signed_interim_cert_request_file=output-file-name\n"
+#define CALLING_SEQUENCE "ClientCreateInterimSigningKey.exe " \
+"--signed_endorsement_cert=input-file-name " \
+"--storage_key_type=RSA " \
+"--storage_key_size=2048 " \
+"--signing_key_type=RSA " \
+"--signing_key_size=2048 " \
+"--signing_key_namespace=name " \
+"--signing_key_primary_slot=int " \
+"--signing_key_signing_slot=int " \
+"--signed_interim_cert_request_file=output-file-name\n"
 
 void PrintOptions() {
-  printf("Calling sequence: " + CALLING_SEQUENCE);
+  printf("Calling sequence: %s", CALLING_SEQUENCE);
 }
 
 

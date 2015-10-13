@@ -49,8 +49,7 @@
 using std::string;
 
 
-#define CALLING_SEQUENCE 
-" ServerSignInterimSigningKeyWithCredential.exe " \
+#define CALLING_SEQUENCE "ServerSignInterimSigningKeyWithCredential.exe " \
 "--program_private_key_file=input-file-name " \
 "--signing_instructions_file=input-file-name " \
 "--signed_interim_cert_request_file=input-file-name " \
@@ -58,7 +57,7 @@ using std::string;
 "--encrypted_signing_key_certificate_file=output-file-name\n"
 
 void PrintOptions() {
-  printf("Calling sequence: " + CALLING_SEQUENCE);
+  printf("Calling sequence: %s", CALLING_SEQUENCE);
 }
 
 

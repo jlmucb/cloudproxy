@@ -59,22 +59,21 @@
 using std::string;
 
 
-#define CALLING_SEQUENCE 
-" ClientRetrieveInterimSigningKey.exe \
---cloudproxy_namespace=name \
---cloudproxy_slot_primary=slot-number \
---cloudproxy_slot_seal= slot-number \
---encrypted_interim_certificate_file=input-file-name \
---signing_key_namespace=name \
---signing_key_primary_slot=slot-number \
---signing_key_signing_slot=slot-number \
---signing_key_cert_file_=input-file-name \
---tpm_credential_file=input-file-name \
---cloudproxy_regenerate_program_key=input-file-name \
---signed_program_public_key_request_file=output-file-name\n"
+#define CALLING_SEQUENCE "ClientRetrieveInterimSigningKey.exe " \
+"--cloudproxy_namespace=name " \
+"--cloudproxy_slot_primary=slot-number " \
+"--cloudproxy_slot_seal= slot-number " \
+"--encrypted_interim_certificate_file=input-file-name " \
+"--signing_key_namespace=name " \
+"--signing_key_primary_slot=slot-number " \
+"--signing_key_signing_slot=slot-number " \
+"--signing_key_cert_file_=input-file-name " \
+"--tpm_credential_file=input-file-name " \
+"--cloudproxy_regenerate_program_key=input-file-name " \
+"--signed_program_public_key_request_file=output-file-name\n"
 
 void PrintOptions() {
-  printf("Calling sequence: " + CALLING_SEQUENCE);
+  printf("Calling sequence: %s", CALLING_SEQUENCE);
 }
 
 

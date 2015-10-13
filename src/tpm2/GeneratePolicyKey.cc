@@ -61,7 +61,7 @@ void PrintOptions() {
 DEFINE_string(algorithm, "RSA", "signing algorithm");
 DEFINE_int32(modulus_size_in_bits, 2048, "modulus-size");
 DEFINE_int64(exponent, 0x010001ULL, "exponent");
-DEFINE_string(signing_instructions_file, "", "input-file-name");
+DEFINE_string(signing_instructions, "", "input-file-name");
 DEFINE_string(, "", "input-file-name");
 DEFINE_string(key_name, "", "key name");
 DEFINE_string(cloudproxy_key_file, "", "output-file-name");
@@ -70,24 +70,25 @@ DEFINE_string(cloudproxy_key_file, "", "output-file-name");
 #define GFLAGS_NS gflags
 #endif
 
+#define MAXKEY_BUF 8192
+
 int main(int an, char** av) {
   LocalTpm tpm;
   int ret_val = 0;
   RSA* rsa_key = nullptr;
+  byte der_array[MAXKEY_BUF];
+  byte* start = nullptr;
+  byte* next = nullptr;
+  int len;
 
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
-  if (!tpm.OpenTpm("/dev/tpm0")) {
-    printf("Can't open tpm\n");
-    ret_val = 1;
-    goto done;
-  }
 
   if (FLAGS_algorithm != "RSA") {
     printf("Only RSA supported\n");
     ret_val = 1;
     goto done;
   }
-  if (FLAGS_signing_instructions_file == "") {
+  if (FLAGS_signing_instructions == "") {
     printf("No signing instructions\n");
     ret_val = 1;
     goto done;
@@ -110,6 +111,14 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+  len = i2d_RSAPublicKey(rsa_key, nullptr);
+  start = der_array;
+  next = der_array;
+  i2d_RSAPublicKey(rsa_key, (byte**)&next);
+  printf("der encoded key (%d %016lx): ", len, (uint64_t)start);
+  PrintBytes(len, start);
+  printf("\n");
+
 
 done:
   tpm.CloseTpm();

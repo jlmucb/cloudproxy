@@ -18,6 +18,8 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <stdio.h>
+#include <tpm2_types.h>
+
 using namespace std;
 
 const char* websafebase64_order =

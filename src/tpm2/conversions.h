@@ -22,6 +22,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <tpm2_types.h>
 
 #include <string>
 #include <memory>

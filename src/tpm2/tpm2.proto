@@ -12,7 +12,7 @@ message private_key_blob_message {
 message rsa_public_key_message {
   optional string key_name                    = 1;
   required int32  bit_modulus_size            = 2;
-  required int64  exponent                    = 3;
+  required string exponent                    = 3;
   required string modulus                     = 4;
 }
 

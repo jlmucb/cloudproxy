@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include <openssl/rsa.h>
+#include <openssl_helpers.h>
 
 #include <tpm20.h>
 #include <tpm2_lib.h>
@@ -183,16 +184,25 @@ int main(int an, char** av) {
   BN_print_fp(stdout, key->iqmp);
   printf("\n\n");
 
-  // tpm2b_blob
-  // tpm2_name
-  // tpm2_qualified_name
-  // key
+  public_key_message msg_key;
+  msg_key.set_key_type(private_key.key_type());
+  msg_key.set_key_type(private_key.key_name());
+  if (!FillPrivateKeyStructure(*key, &msg_key)) {
+    printf("Can't fill public key structure\n");
+    return 1;
+  }
 
-  // parse Public key structure
-  // create certificate template
+  // create x509 certificate template
+
   // sign it
-  // fill the output buffer
-  // save it
+
+  // fill the output buffer and save it
+  string output;
+  msg_key.SerializeToString(&output);
+  if (!WriteFileFromBlock(FLAGS_signed_endorsement_cert,
+                          output.size(),
+                          (byte*)output.data())) {
+  }
 
   return ret_val;
 }

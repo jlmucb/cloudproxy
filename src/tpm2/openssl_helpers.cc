@@ -37,16 +37,33 @@ using std::string;
 // standard buffer size
 #define MAX_SIZE_PARAMS 4096
 
-bool FillPrivateKeyStructure(RSA& rsa, public_key_message* key) {
-/*
-  optional string key_type                    = 1;
-  optional rsa_public_key_message public_key  = 2;
+string* BN_to_base64(BIGNUM& n) {
+  return nullptr;
+}
 
-   optional string key_name                    = 1;
-  required int32  bit_modulus_size            = 2;
-  required int64  exponent                    = 3;
-  required string modulus                     = 4;
- */
-  return true;
+bool FillPrivateKeyStructure(RSA& key, public_key_message* msg_key) {
+  string* n = nullptr;
+  string* e = nullptr;
+  bool ret = true;
+
+  n = BN_to_base64(*key.n);
+  if (n == nullptr) {
+    ret = false;
+    goto done;
+  }
+  e = BN_to_base64(*key.e);
+  if (e == nullptr) {
+    ret = false;
+    goto done;
+  }
+  msg_key->mutable_public_key()->set_modulus(*n);
+  msg_key->mutable_public_key()->set_exponent(*e);
+
+done:
+  if (e != nullptr)
+    delete e;
+  if (n != nullptr)
+    delete n;
+  return ret;
 }
 

@@ -37,5 +37,7 @@
 #include <string>
 using std::string;
 
+bool FillPrivateKeyStructure(RSA& rsa, public_key_message* key_msg);
+
 #endif
 

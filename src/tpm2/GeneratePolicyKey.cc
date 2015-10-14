@@ -81,6 +81,7 @@ int main(int an, char** av) {
   byte* next_private = nullptr;
   int len_private;
   private_key_blob_message key_out;
+  string output;
 
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
 
@@ -120,16 +121,16 @@ int main(int an, char** av) {
   PrintBytes(len_private, start_private);
   printf("\n");
 
-  key_out.set_type("RSA");
-  key_out.set_name(FLAGS_key_name);
-  key_out.set_blob(start_private, len_private);
-  string output;
-  if (!key_out.SerializeToString(output)) {
+  key_out.set_key_type("RSA");
+  key_out.set_key_name(FLAGS_key_name);
+  key_out.set_blob((const char*)start_private, len_private);
+  if (!key_out.SerializeToString(&output)) {
     printf("Can't serialize output\n");
     ret_val = 1;
     goto done;
   }
-  if (!WriteFileFromBlock(FLAGS_cloudproxy_key_file, output.size(), output.data())) {
+  if (!WriteFileFromBlock(FLAGS_cloudproxy_key_file, output.size(),
+                          (byte*)output.data())) {
     printf("Can't write output file\n");
     ret_val = 1;
   }

@@ -67,7 +67,7 @@ void PrintOptions() {
 DEFINE_string(issuer, "", "issuer name");
 DEFINE_string(purpose, "", "purpose");
 DEFINE_string(hash_alg, "", "hash alg");
-DEFINE_int64(duration, "", "duration (in seconds)");
+DEFINE_int64(duration, 31536000, "duration (in seconds)");
 DEFINE_string(instructions_file, "signing_instructions", "output-file-name");
 DEFINE_bool(can_sign, true, "can sign");
 
@@ -79,6 +79,7 @@ DEFINE_bool(can_sign, true, "can sign");
 
 int main(int an, char** av) {
   signing_instructions_message message;
+  int ret_val = 0;
 
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
 
@@ -88,12 +89,13 @@ int main(int an, char** av) {
   message.set_hash_alg(FLAGS_hash_alg);
   message.set_can_sign(true);
   string output;
-  if (!message.SerializeToString(output)) {
+  if (!message.SerializeToString(&output)) {
     printf("Can't serialize output\n");
     ret_val = 1;
     goto done;
   }
-  if (!WriteFileFromBlock(FLAGS_instructions_file, output.size(), output.data())) {
+  if (!WriteFileFromBlock(FLAGS_instructions_file, output.size(),
+                          (byte*)output.data())) {
     printf("Can't write output file\n");
     ret_val = 1;
   }

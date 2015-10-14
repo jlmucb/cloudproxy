@@ -42,7 +42,7 @@ message endorsement_key_message {
 
 message signing_instructions_message {
   optional string issuer                      = 1;
-  optional string duration                    = 2;
+  optional int64 duration                     = 2;
   required string purpose                     = 3;
   optional string date                        = 4;
   optional string time                        = 5;

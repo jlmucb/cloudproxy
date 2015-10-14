@@ -8,6 +8,7 @@
 
 #include <tpm20.h>
 #include <tpm2_lib.h>
+#include <tpm2.pb.h>
 #include <gflags/gflags.h>
 
 //
@@ -38,7 +39,8 @@
 
 // Calling sequence
 //   CloudProxySignEndorsementKey.exe --cloudproxy_private_key_file=file-name [IN]
-//       --endorsement_info_file=file-name [IN] --signing_instructions_file=file-name [IN]
+//       --endorsement_info_file=file-name [IN]
+//       --signing_instructions_file=file-name [IN]
 //       --signed_endorsement_cert=file-name [OUT]
 
 using std::string;
@@ -46,7 +48,11 @@ using std::string;
 //  This program reads the endorsement_info_file and produces a certificate
 //  for the endorsement key using the cloudproxy_signing_key in accordance with
 //  the signing instructions.  signing instructions contains a subset of:
-//  duration, purpose, and other information to be included in the signed certificate.
+//  duration, purpose, and other information to be included in the 
+//  signed certificate.
+
+
+#define MAX_BUF_SIZE 8192
 
 #define CALLING_SEQUENCE "Calling secquence: CloudProxySignEndorsementKey.exe" \
 "--cloudproxy_private_key_file=input-file-name" \
@@ -67,31 +73,57 @@ DEFINE_string(signed_endorsement_cert, "", "signed endorsement cert file");
 #endif
 
 int main(int an, char** av) {
+  int ret_val = 0;
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
 
+  if (FLAGS_signing_instructions_file == "") {
+    printf("signing_instructions_file is empty\n");
+    return 1;
+  }
+  if (FLAGS_endorsement_info_file == "") {
+    printf("endorsement_info_file is empty\n");
+    return 1;
+  }
+  if (FLAGS_cloudproxy_private_key_file == "") {
+    printf("cloudproxy_private_key_file is empty\n");
+    return 1;
+  }
+  if (FLAGS_signed_endorsement_cert == "") {
+    printf("signed_endorsement_cert is empty\n");
+    return 1;
+  }
+
+  int in_size = MAX_BUF_SIZE;
+  byte in_buf[MAX_BUF_SIZE];
+
+  string input;
+  signing_instructions_message signing_message;
+  if (!ReadFileIntoBlock(FLAGS_signing_instructions_file, &in_size, 
+                         in_buf)) {
+    printf("Can't read signing instructions %s\n",
+           FLAGS_signing_instructions_file.c_str());
+    return 1;
+  }
+  input.assign((const char*)in_buf, in_size);
+  if (!signing_message.ParseFromString(input)) {
+    printf("Can't parse signing instructions\n");
+    return 1;
+  }
+  printf("issuer: %s, duration: %lld, purpose: %s, hash: %s\n",
+         signing_message.issuer().c_str(), signing_message.duration(),
+         signing_message.purpose().c_str(), signing_message.hash_alg().c_str());
+  
+  if (!signing_message.can_sign()) {
+    printf("Signing is invalid\n");
+    return 1;
+  }
+  return 0;
 #if 0
-message signing_instructions_message {
-  optional string issuer                      = 1;
-  optional string duration                    = 2;
-  required string purpose                     = 3;
-  optional string date                        = 4;
-  optional string time                        = 5;
-  optional string hash_alg                    = 6;
-  required bool can_sign                      = 7;
-}
-  // Get signing instructions
-
-  // Get signing key
-
-  // Get endorsement key info
-bool ReadFileIntoBlock(const string& filename, int* size, byte* block);
-if (!message->ParseFromString(data)) {
-
-message endorsement_key_message {
-  optional string tpm2b_blob                  = 1;
-  optional string tpm2_name                   = 2;
-  optional string tpm2_qualified_name         = 3;      
-  optional asymmetric_key_message key         = 4;
+endorsement_key_message endorsement_info;
+  tpm2b_blob
+  tpm2_name
+  tpm2_qualified_name
+  key
 }
 
   // parse Public key structure
@@ -106,6 +138,6 @@ message endorsement_key_message {
 #endif
 
 done:
-  return 0;
+  return ret_val;
 }
 

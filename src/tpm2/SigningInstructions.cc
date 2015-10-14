@@ -65,8 +65,8 @@ void PrintOptions() {
 }
 
 DEFINE_string(issuer, "", "issuer name");
-DEFINE_string(purpose, "", "purpose");
-DEFINE_string(hash_alg, "", "hash alg");
+DEFINE_string(purpose, "signing", "purpose");
+DEFINE_string(hash_alg, "sha256", "hash alg");
 DEFINE_int64(duration, 31536000, "duration (in seconds)");
 DEFINE_string(instructions_file, "signing_instructions", "output-file-name");
 DEFINE_bool(can_sign, true, "can sign");

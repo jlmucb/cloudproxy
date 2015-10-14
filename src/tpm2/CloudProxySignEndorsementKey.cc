@@ -117,9 +117,35 @@ int main(int an, char** av) {
     printf("Signing is invalid\n");
     return 1;
   }
+
+  in_size = MAX_BUF_SIZE;
+  endorsement_key_message endorsement_info;
+  if (!ReadFileIntoBlock(FLAGS_endorsement_info_file, &in_size, 
+                         in_buf)) {
+    printf("Can't read endorsement info\n");
+    return 1;
+  }
+  input.assign((const char*)in_buf, in_size);
+  if (!endorsement_info.ParseFromString(input)) {
+    printf("Can't parse endorsement info\n");
+    return 1;
+  }
+
+  in_size = MAX_BUF_SIZE;
+  private_key_blob_message private_key;
+  if (!ReadFileIntoBlock(FLAGS_cloudproxy_private_key_file, &in_size, 
+                         in_buf)) {
+    printf("Can't read private key\n");
+    return 1;
+  }
+  input.assign((const char*)in_buf, in_size);
+  if (!private_key.ParseFromString(input)) {
+    printf("Can't parse private key\n");
+    return 1;
+  }
   return 0;
+
 #if 0
-endorsement_key_message endorsement_info;
   tpm2b_blob
   tpm2_name
   tpm2_qualified_name

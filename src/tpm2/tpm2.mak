@@ -46,17 +46,41 @@ AR=ar
 export LD_LIBRARY_PATH=/usr/local/lib
 LDFLAGS= -lprotobuf -lgtest -lgflags -lpthread
 
-dobj_tpm2_util=					$(O)/tpm2_lib.o $(O)/tpm2_util.o
-dobj_GeneratePolicyKey=				$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/conversions.o $(O)/GeneratePolicyKey.o
-dobj_CloudProxySignEndorsementKey=		$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/CloudProxySignEndorsementKey.o
-dobj_CloudproxySignProgramKey=			$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/CloudproxySignProgramKey.o
-dobj_GetEndorsementKey=				$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/GetEndorsementKey.o
-dobj_CreateAndSaveCloudProxyKeyHierarchy=	$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/CreateAndSaveCloudProxyKeyHierarchy.o
-dobj_RestoreCloudProxyKeyHierarchy=		$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/RestoreCloudProxyKeyHierarchy.o
-dobj_ClientCreateInterimSigningKey=		$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/ClientCreateInterimSigningKey.o
-dobj_ServerSignInterimSigningKeyWithCredential=	$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/ServerSignInterimSigningKeyWithCredential.o
-dobj_ClientRetrieveInterimSigningKey=		$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/ClientRetrieveInterimSigningKey.o
-dobj_SigningInstructions=			$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/SigningInstructions.o
+dobj_tpm2_util=					$(O)/tpm2_lib.o \
+  $(O)/tpm2_util.o
+dobj_GeneratePolicyKey=				$(O)/tpm2_lib.o \
+  $(O)/tpm2.pb.o \
+  $(O)/conversions.o \
+  $(O)/GeneratePolicyKey.o
+dobj_CloudProxySignEndorsementKey=		$(O)/tpm2_lib.o \
+  $(O)/tpm2.pb.o \
+  $(O)/openssl_helpers.o \
+  $(O)/CloudProxySignEndorsementKey.o 
+dobj_CloudproxySignProgramKey=			$(O)/tpm2_lib.o \
+  $(O)/tpm2.pb.o \
+  $(O)/openssl_helpers.o \
+  $(O)/CloudproxySignProgramKey.o
+dobj_GetEndorsementKey=				$(O)/tpm2_lib.o \
+  $(O)/tpm2.pb.o \
+  $(O)/GetEndorsementKey.o
+dobj_CreateAndSaveCloudProxyKeyHierarchy=	$(O)/tpm2_lib.o \
+  $(O)/tpm2.pb.o \
+  $(O)/CreateAndSaveCloudProxyKeyHierarchy.o
+dobj_RestoreCloudProxyKeyHierarchy=		$(O)/tpm2_lib.o \
+  $(O)/tpm2.pb.o \
+  $(O)/RestoreCloudProxyKeyHierarchy.o
+dobj_ClientCreateInterimSigningKey=		$(O)/tpm2_lib.o \
+  $(O)/tpm2.pb.o \
+  $(O)/ClientCreateInterimSigningKey.o
+dobj_ServerSignInterimSigningKeyWithCredential=	$(O)/tpm2_lib.o \
+  $(O)/tpm2.pb.o \
+  $(O)/ServerSignInterimSigningKeyWithCredential.o
+dobj_ClientRetrieveInterimSigningKey=		$(O)/tpm2_lib.o \
+  $(O)/tpm2.pb.o \
+  $(O)/ClientRetrieveInterimSigningKey.o
+dobj_SigningInstructions=			$(O)/tpm2_lib.o \
+  $(O)/tpm2.pb.o \
+  $(O)/SigningInstructions.o
 
 all:	$(EXE_DIR)/tpm2_util.exe \
 	$(EXE_DIR)/GeneratePolicyKey.exe \
@@ -146,6 +170,10 @@ $(O)/tpm2_lib.o: $(S)/tpm2_lib.cc
 $(O)/conversions.o: $(S)/conversions.cc
 	@echo "compiling conversions.cc"
 	$(CC) $(CFLAGS) -c -o $(O)/conversions.o $(S)/conversions.cc
+
+$(O)/openssl_helpers.o: $(S)/openssl_helpers.cc
+	@echo "compiling openssl_helpers.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/openssl_helpers.o $(S)/openssl_helpers.cc
 
 $(O)/tpm2_util.o: $(S)/tpm2_util.cc
 	@echo "compiling tpm2_util.cc"

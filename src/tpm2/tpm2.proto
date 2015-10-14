@@ -30,7 +30,8 @@ message asymmetric_key_message {
 }
 
 message public_key_message {
-  optional rsa_public_key_message public_key  = 1;
+  optional string key_type                    = 1;
+  optional rsa_public_key_message public_key  = 2;
 }
 
 message endorsement_key_message {

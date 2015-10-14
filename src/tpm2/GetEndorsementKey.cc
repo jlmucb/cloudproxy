@@ -8,6 +8,7 @@
 
 #include <tpm20.h>
 #include <tpm2_lib.h>
+#include <tpm2.pb.h>
 #include <gflags/gflags.h>
 
 //
@@ -46,35 +47,46 @@ using std::string;
 // TODO: include machine identifier?
 
 DEFINE_string(endorsement_info_file, "", "output file");
+DEFINE_string(machine_identifier, "", "text to identify endorsement");
 
 #ifndef GFLAGS_NS
 #define GFLAGS_NS gflags
 #endif
 
 void PrintOptions() {
-  printf("Calling sequence: GetEndorsementKey.exe --endorsement_info_file=output-file\n");
+  printf("Calling sequence: GetEndorsementKey.exe " \
+          "-- machine_identifier= name --endorsement_info_file=output-file\n");
 }
 
 int main(int an, char** av) {
   LocalTpm tpm;
-
-  GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
-  if (!tpm.OpenTpm("/dev/tpm0")) {
-    printf("Can't open tpm\n");
-    return 1;
-  }
-
-#if 0
-TPM_HANDLE ekHandle;
+  TPM_HANDLE ekHandle;
   TPM2B_PUBLIC pub_out;
   TPM2B_NAME pub_name;
   TPM2B_NAME qualified_pub_name;
   uint16_t pub_blob_size = 1024;
   byte pub_blob[1024];
+  string emptyAuth;
   TPML_PCR_SELECTION pcrSelect;
-
   TPMA_OBJECT primary_flags;
   *(uint32_t*)(&primary_flags) = 0;
+
+  int ret_val = 0;
+  endorsement_key_message message;
+  string output;
+
+  GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
+  if (FLAGS_endorsement_info_file == "") {
+    printf("You must specify an endorsement output file\n");
+    PrintOptions();
+    return 1;
+  }
+
+  if (!tpm.OpenTpm("/dev/tpm0")) {
+    printf("Can't open tpm\n");
+    return 1;
+  }
+
   primary_flags.fixedTPM = 1;
   primary_flags.fixedParent = 1;
   primary_flags.sensitiveDataOrigin = 1;
@@ -82,6 +94,7 @@ TPM_HANDLE ekHandle;
   primary_flags.decrypt = 1;
   primary_flags.restricted = 1;
 
+  InitSinglePcrSelection(-1, TPM_ALG_SHA256, pcrSelect);
   if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect,
                          TPM_ALG_RSA, TPM_ALG_SHA256, primary_flags,
                          TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
@@ -89,16 +102,19 @@ TPM_HANDLE ekHandle;
     printf("CreatePrimary succeeded parent: %08x\n", ekHandle);
   } else {
     printf("CreatePrimary failed\n");
-    return false;
+    ret_val = 1;
+    goto done;
   }
   if (Tpm2_ReadPublic(tpm, ekHandle, &pub_blob_size, pub_blob,
                       pub_out, pub_name, qualified_pub_name)) {
     printf("ReadPublic succeeded\n");
   } else {
     printf("ReadPublic failed\n");
-    return false;
+    ret_val = 1;
+    Tpm2_FlushContext(tpm, ekHandle);
+    goto done;
   }
-  Tpm2_FlushContext(ekHandle);
+  Tpm2_FlushContext(tpm, ekHandle);
   printf("Public blob: ");
   PrintBytes(pub_blob_size, pub_blob);
   printf("\n");
@@ -107,33 +123,27 @@ TPM_HANDLE ekHandle;
   printf("\n");
   printf("Qualified name: ");
   PrintBytes(qualified_pub_name.size, qualified_pub_name.name);
-  printf("\n")
+  printf("\n");
 
-message endorsement_key_message {
-  optional string tpm2b_blob                  = 1;
-  optional string tpm2_name                   = 2;
-  optional string tpm2_qualified_name         = 3;      
-  optional asymmetric_key_message key         = 4;
-}
+  message.set_machine_identifier(FLAGS_machine_identifier);
+  message.set_tpm2b_blob( (const char*)pub_blob, (int)pub_blob_size);
+  message.set_tpm2_name((const char*)pub_name.name, (int)pub_name.size);
+  message.set_tpm2_qualified_name((const char*)qualified_pub_name.name,
+                                  (int)qualified_pub_name.size);
 
-  key_out.set_type("RSA");
-  key_out.set_name(FLAGS_key_name);
-  key_out.set_blob(start_private, len_private);
-  string output;
-  if (!key_out.SerializeToString(output)) {
+  if (!message.SerializeToString(&output)) {
     printf("Can't serialize output\n");
     ret_val = 1;
     goto done;
   }
-  if (!WriteFileFromBlock(FLAGS_cloudproxy_key_file, output.size(), output.data())) {
+  if (!WriteFileFromBlock(FLAGS_endorsement_info_file, output.size(),
+                          (byte*)output.data())) {
     printf("Can't write output file\n");
     ret_val = 1;
   }
-#endif
-
-  // bool WriteFileFromBlock(const string& filename, int size, byte* block)
 
 done:
   tpm.CloseTpm();
+  return ret_val;
 }
 

@@ -1147,7 +1147,6 @@ bool Tpm2_CreatePrimary(LocalTpm& tpm, TPM_HANDLE owner, string& authString,
   IF_NEG_RETURN_FALSE(n);
   Update(n, &out, &size_params, &space_left);
   n = Marshal_PCR_Long_Selection(pcr_selection, space_left, out);
-
   IF_NEG_RETURN_FALSE(n);
   Update(n, &out, &size_params, &space_left);
   int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_CreatePrimary,
@@ -2483,6 +2482,7 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
   byte pub_blob[1024];
 
   TPML_PCR_SELECTION pcrSelect;
+  memset((void*)&pcrSelect, 0, sizeof(TPML_PCR_SELECTION));
   // InitSinglePcrSelection(7, TPM_ALG_SHA256, pcrSelect);
 
   // TPM_RH_ENDORSEMENT

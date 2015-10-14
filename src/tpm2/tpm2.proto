@@ -34,10 +34,11 @@ message public_key_message {
 }
 
 message endorsement_key_message {
-  optional string tpm2b_blob                  = 1;
-  optional string tpm2_name                   = 2;
-  optional string tpm2_qualified_name         = 3;
-  optional asymmetric_key_message key         = 4;
+  optional string machine_identifier          = 1;
+  optional bytes tpm2b_blob                   = 2;
+  optional bytes tpm2_name                    = 3;
+  optional bytes tpm2_qualified_name          = 4;
+  optional asymmetric_key_message key         = 5;
 }
 
 message signing_instructions_message {

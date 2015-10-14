@@ -192,18 +192,28 @@ int main(int an, char** av) {
     return 1;
   }
 
+  signed_cert_message cert_message;
+  /*
+    signed_cert_message.algorithm
+    signed_cert_message.key_size
+    signed_cert_message.issuer
+    signed_cert_message.body_type
+    signed_cert_message.body
+    signed_cert_message.hash_alg
+    signed_cert_message.hash
+   */
+
   // create x509 certificate template
 
   // sign it
 
   // fill the output buffer and save it
   string output;
-  msg_key.SerializeToString(&output);
+  cert_message.SerializeToString(&output);
   if (!WriteFileFromBlock(FLAGS_signed_endorsement_cert,
                           output.size(),
                           (byte*)output.data())) {
   }
-
   return ret_val;
 }
 

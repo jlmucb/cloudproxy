@@ -52,19 +52,19 @@ message signing_instructions_message {
   required bool can_sign                      = 7;
 }
 
-message cert_request_message {
-  optional public_key_message public_params   = 1;
-}
 
 message signed_cert_message {
-  required string algorithm                   = 1;
-  required int32 key_size                     = 2;
-  optional string issuer                      = 3;
-  optional string body_type                   = 4;
-  optional string body                        = 5;
-  optional string hash_alg                    = 6;
-  optional string hash                        = 7;
-  optional string sig                         = 8;
+  optional string algorithm                   = 1;
+  optional string hash_alg                    = 2;
+  optional int32  key_size                    = 3;
+  optional string issuer                      = 4;
+  optional string subject                     = 5;
+  optional string not_before                  = 6;
+  optional string not_after                   = 7;
+  optional string body_type                   = 8;
+  optional bytes  body                        = 9;
+  optional bytes  hash                        = 10;
+  optional bytes  sig                         = 11;
 }
 
 message tpm2_make_credential_info_message {

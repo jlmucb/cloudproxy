@@ -42,15 +42,8 @@
 using std::string;
 
 // This program creates endorsement key and produces a file containing
-//   a protobuf consisting of:
-//      a. Algorithm name (string) RSA
-//      b. TPM flags
-//      c. Date
-//      d. Algorithm dependent simplified parameters
-//         (i) For RSA:
-//             modulus size in bits
-//             modulus (most significant byte first)
-//             exponent
+// a protobuf consisting of the TPM2B_PUBLIC blob and other information.
+// TODO: include machine identifier?
 
 DEFINE_string(endorsement_info_file, "", "output file");
 
@@ -70,6 +63,75 @@ int main(int an, char** av) {
     printf("Can't open tpm\n");
     return 1;
   }
+
+#if 0
+TPM_HANDLE ekHandle;
+  TPM2B_PUBLIC pub_out;
+  TPM2B_NAME pub_name;
+  TPM2B_NAME qualified_pub_name;
+  uint16_t pub_blob_size = 1024;
+  byte pub_blob[1024];
+  TPML_PCR_SELECTION pcrSelect;
+
+  TPMA_OBJECT primary_flags;
+  *(uint32_t*)(&primary_flags) = 0;
+  primary_flags.fixedTPM = 1;
+  primary_flags.fixedParent = 1;
+  primary_flags.sensitiveDataOrigin = 1;
+  primary_flags.userWithAuth = 1;
+  primary_flags.decrypt = 1;
+  primary_flags.restricted = 1;
+
+  if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect,
+                         TPM_ALG_RSA, TPM_ALG_SHA256, primary_flags,
+                         TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
+                         2048, 0x010001, &ekHandle, &pub_out)) {
+    printf("CreatePrimary succeeded parent: %08x\n", ekHandle);
+  } else {
+    printf("CreatePrimary failed\n");
+    return false;
+  }
+  if (Tpm2_ReadPublic(tpm, ekHandle, &pub_blob_size, pub_blob,
+                      pub_out, pub_name, qualified_pub_name)) {
+    printf("ReadPublic succeeded\n");
+  } else {
+    printf("ReadPublic failed\n");
+    return false;
+  }
+  Tpm2_FlushContext(ekHandle);
+  printf("Public blob: ");
+  PrintBytes(pub_blob_size, pub_blob);
+  printf("\n");
+  printf("Name: ");
+  PrintBytes(pub_name.size, pub_name.name);
+  printf("\n");
+  printf("Qualified name: ");
+  PrintBytes(qualified_pub_name.size, qualified_pub_name.name);
+  printf("\n")
+
+message endorsement_key_message {
+  optional string tpm2b_blob                  = 1;
+  optional string tpm2_name                   = 2;
+  optional string tpm2_qualified_name         = 3;      
+  optional asymmetric_key_message key         = 4;
+}
+
+  key_out.set_type("RSA");
+  key_out.set_name(FLAGS_key_name);
+  key_out.set_blob(start_private, len_private);
+  string output;
+  if (!key_out.SerializeToString(output)) {
+    printf("Can't serialize output\n");
+    ret_val = 1;
+    goto done;
+  }
+  if (!WriteFileFromBlock(FLAGS_cloudproxy_key_file, output.size(), output.data())) {
+    printf("Can't write output file\n");
+    ret_val = 1;
+  }
+#endif
+
+  // bool WriteFileFromBlock(const string& filename, int size, byte* block)
 
 done:
   tpm.CloseTpm();

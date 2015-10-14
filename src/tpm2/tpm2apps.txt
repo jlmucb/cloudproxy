@@ -115,10 +115,17 @@ The following peograms implement the Cloudproxy KeyNegoServer protocol.
 6. CloudproxySignProgramKey
    This program reads a signed_program_public_key_request_file, verifies validity of the certificate and
    the request and, if verified, outputs a file (the signed_program_key_cert_file) with a cert for the 
-   proposed program key in accordance with the signing isnstructions.
+   proposed program key in accordance with the signing instructions.
       --program_private_key_file=                                       [IN]
       --signing_instructions_file=                                      [IN]
       --signed_program_public_key_request_file=                         [IN]
       --signed_program_key_cert_file=                                   [OUT]
 
-
+7. SigningInstructions
+   This program initializes the signing instructions.
+     --issuer=name
+     --purpose=purpose
+     --hash_alg=[sha1|sha256]
+     --duration=duration-in-seconds
+     --instructions_file=output-file
+     --can_sign=[true|false]

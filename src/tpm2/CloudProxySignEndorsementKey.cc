@@ -67,15 +67,45 @@ DEFINE_string(signed_endorsement_cert, "", "signed endorsement cert file");
 #endif
 
 int main(int an, char** av) {
-  LocalTpm tpm;
-
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
-  if (!tpm.OpenTpm("/dev/tpm0")) {
-    printf("Can't open tpm\n");
-    return 1;
-  }
+
+#if 0
+message signing_instructions_message {
+  optional string issuer                      = 1;
+  optional string duration                    = 2;
+  required string purpose                     = 3;
+  optional string date                        = 4;
+  optional string time                        = 5;
+  optional string hash_alg                    = 6;
+  required bool can_sign                      = 7;
+}
+  // Get signing instructions
+
+  // Get signing key
+
+  // Get endorsement key info
+bool ReadFileIntoBlock(const string& filename, int* size, byte* block);
+if (!message->ParseFromString(data)) {
+
+message endorsement_key_message {
+  optional string tpm2b_blob                  = 1;
+  optional string tpm2_name                   = 2;
+  optional string tpm2_qualified_name         = 3;      
+  optional asymmetric_key_message key         = 4;
+}
+
+  // parse Public key structure
+
+  // create certificate template
+
+  // sign it
+
+  // fill the output buffer
+
+  // save it
+#endif
 
 done:
-  tpm.CloseTpm();
+  return 0;
 }
 

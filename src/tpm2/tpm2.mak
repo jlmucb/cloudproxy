@@ -56,9 +56,11 @@ dobj_RestoreCloudProxyKeyHierarchy=		$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/Restore
 dobj_ClientCreateInterimSigningKey=		$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/ClientCreateInterimSigningKey.o
 dobj_ServerSignInterimSigningKeyWithCredential=	$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/ServerSignInterimSigningKeyWithCredential.o
 dobj_ClientRetrieveInterimSigningKey=		$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/ClientRetrieveInterimSigningKey.o
+dobj_SigningInstructions=			$(O)/tpm2_lib.o $(O)/tpm2.pb.o $(O)/SigningInstructions.o
 
 all:	$(EXE_DIR)/tpm2_util.exe \
 	$(EXE_DIR)/GeneratePolicyKey.exe \
+	$(EXE_DIR)/SigningInstructions.exe \
 	$(EXE_DIR)/GetEndorsementKey.exe \
 	$(EXE_DIR)/CloudProxySignEndorsementKey.exe \
 	$(EXE_DIR)/CloudproxySignProgramKey.exe \
@@ -67,7 +69,7 @@ all:	$(EXE_DIR)/tpm2_util.exe \
 	$(EXE_DIR)/RestoreCloudProxyKeyHierarchy.exe \
 	$(EXE_DIR)/ClientCreateInterimSigningKey.exe \
 	$(EXE_DIR)/ServerSignInterimSigningKeyWithCredential.exe \
-	$(EXE_DIR)/ClientRetrieveInterimSigningKey.exe \
+	$(EXE_DIR)/ClientRetrieveInterimSigningKey.exe
 
 clean:
 	@echo "removing object files"
@@ -83,6 +85,7 @@ clean:
 	rm $(EXE_DIR)/ClientCreateInterimSigningKey.exe
 	rm $(EXE_DIR)/ServerSignInterimSigningKeyWithCredential.exe
 	rm $(EXE_DIR)/ClientRetrieveInterimSigningKey.exe
+	rm $(EXE_DIR)/SigningInstructions.exe
 
 $(EXE_DIR)/tpm2_util.exe: $(dobj_tpm2_util)
 	@echo "linking tpm2_util"
@@ -123,6 +126,10 @@ $(EXE_DIR)/ServerSignInterimSigningKeyWithCredential.exe: $(dobj_ServerSignInter
 $(EXE_DIR)/ClientRetrieveInterimSigningKey.exe: $(dobj_ClientRetrieveInterimSigningKey)
 	@echo "linking ClientRetrieveInterimSigningKey"
 	$(LINK) -o $(EXE_DIR)/ClientRetrieveInterimSigningKey.exe $(dobj_ClientRetrieveInterimSigningKey) $(LDFLAGS) -lcrypto
+
+$(EXE_DIR)/SigningInstructions.exe: $(dobj_SigningInstructions)
+	@echo "linking SigningInstructions"
+	$(LINK) -o $(EXE_DIR)/SigningInstructions.exe $(dobj_SigningInstructions) $(LDFLAGS)
 
 $(O)/tpm2.pb.o: $(S)/tpm2.pb.cc
 	@echo "compiling protobuf object"
@@ -179,5 +186,9 @@ $(O)/ClientRetrieveInterimSigningKey.o: $(S)/ClientRetrieveInterimSigningKey.cc
 $(O)/GetEndorsementKey.o: $(S)/GetEndorsementKey.cc
 	@echo "compiling GetEndorsementKey.cc"
 	$(CC) $(CFLAGS) -c -o $(O)/GetEndorsementKey.o $(S)/GetEndorsementKey.cc
+
+$(O)/SigningInstructions.o: $(S)/SigningInstructions.cc
+	@echo "compiling SigningInstructions.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/SigningInstructions.o $(S)/SigningInstructions.cc
 
 

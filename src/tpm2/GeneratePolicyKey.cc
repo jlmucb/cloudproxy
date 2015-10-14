@@ -10,6 +10,7 @@
 
 #include <tpm20.h>
 #include <tpm2_lib.h>
+#include <tpm2.pb.h>
 #include <gflags/gflags.h>
 
 //
@@ -44,7 +45,7 @@
 
 // Calling sequence
 //   GeneratePolicyKey.exe --algorithm="RSA" --modulus_size_in_bits=int32
-//      --signing_instructions=input-file --key_name=input-file --cloudproxy_key_file=output-file 
+//      --key_name=input-file --cloudproxy_key_file=output-file 
 using std::string;
 
 
@@ -70,17 +71,16 @@ DEFINE_string(cloudproxy_key_file, "", "output-file-name");
 #define GFLAGS_NS gflags
 #endif
 
-
 #define MAXKEY_BUF 8192
 
 int main(int an, char** av) {
-  LocalTpm tpm;
   int ret_val = 0;
   RSA* rsa_key = nullptr;
   byte der_array_private[MAXKEY_BUF];
   byte* start_private = nullptr;
   byte* next_private = nullptr;
   int len_private;
+  private_key_blob_message key_out;
 
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
 
@@ -120,8 +120,21 @@ int main(int an, char** av) {
   PrintBytes(len_private, start_private);
   printf("\n");
 
+  key_out.set_type("RSA");
+  key_out.set_name(FLAGS_key_name);
+  key_out.set_blob(start_private, len_private);
+  string output;
+  if (!key_out.SerializeToString(output)) {
+    printf("Can't serialize output\n");
+    ret_val = 1;
+    goto done;
+  }
+  if (!WriteFileFromBlock(FLAGS_cloudproxy_key_file, output.size(), output.data())) {
+    printf("Can't write output file\n");
+    ret_val = 1;
+  }
+
 done:
-  tpm.CloseTpm();
   return ret_val;
 }
 

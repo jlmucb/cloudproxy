@@ -482,3 +482,57 @@ func TestUnsealedUndelegatedKeysSaveLoad(t *testing.T) {
 		t.Error("failed to load keys:", err)
 	}
 }
+
+func TestCorruptedCiphertext(t *testing.T) {
+	c, err := GenerateCrypter()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	data := []byte("Test data to encrypt")
+	crypted, err := c.Encrypt(data)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	var ed EncryptedData
+	if err := proto.Unmarshal(crypted, &ed); err != nil {
+		t.Fatal("Could not unmarshal the encrypted data")
+	}
+
+	// Read random data for the ciphertext.
+	if _, err := rand.Read(ed.Ciphertext); err != nil {
+		t.Fatal("Could not read random data into the ciphertext")
+	}
+
+	crypted2, err := proto.Marshal(&ed)
+	if err != nil {
+		t.Fatal("Could not marshal the corrupted ciphertext")
+	}
+
+	if _, err := c.Decrypt(crypted2); err == nil {
+		t.Fatal("Incorrectly succeeded at decrypting corrupted ciphertext")
+	}
+
+	// Corrupt each bit individually and make sure the test fails for any
+	// single bit flip. The range is over the first ciphertext, but this is
+	// identical to the range of the unmarshalled ciphertext in this loop.
+	for i := range ed.Ciphertext {
+		var ed2 EncryptedData
+		if err := proto.Unmarshal(crypted, &ed2); err != nil {
+			t.Fatal("Could not unmarshal the encrypted data a second time")
+		}
+
+		// Corrupt a single bit in the ciphertext.
+		ed2.Ciphertext[i] ^= ed2.Ciphertext[i]
+
+		crypted3, err := proto.Marshal(&ed2)
+		if err != nil {
+			t.Fatal("Could not marshal a second corrupted ciphertext")
+		}
+
+		if _, err := c.Decrypt(crypted3); err == nil {
+			t.Fatal("Incorrectly succeeded at decrypting a second corrupted ciphertext")
+		}
+	}
+}

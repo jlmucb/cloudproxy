@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <string.h>
 
+#include <openssl/rsa.h>
+
 #include <tpm20.h>
 #include <tpm2_lib.h>
 #include <tpm2.pb.h>
@@ -143,27 +145,55 @@ int main(int an, char** av) {
     printf("Can't parse private key\n");
     return 1;
   }
-  return 0;
 
-#if 0
-  tpm2b_blob
-  tpm2_name
-  tpm2_qualified_name
-  key
-}
+  printf("Key type: %s\n", private_key.key_type().c_str());
+  printf("Key name: %s\n", private_key.key_name().c_str());
+  string the_blob = private_key.blob();
+  PrintBytes(the_blob.size(), (byte*)the_blob.data());
+  const byte* p = (byte*)the_blob.data();
+  RSA* key = d2i_RSAPrivateKey(nullptr, &p, the_blob.size());
+  if (key == nullptr) {
+    printf("Can't translate private key\n");
+    return 1;
+  }
+
+  printf("\n\n");
+  printf("\nModulus: \n");
+  BN_print_fp(stdout, key->n);
+  printf("\n\n");
+  printf("\ne: \n");
+  BN_print_fp(stdout, key->e);
+  printf("\n\n");
+  printf("\nd: \n");
+  BN_print_fp(stdout, key->d);
+  printf("\n\n");
+  printf("\np: \n");
+  BN_print_fp(stdout, key->p);
+  printf("\n\n");
+  printf("\nq: \n");
+  BN_print_fp(stdout, key->q);
+  printf("\n\n");
+  printf("\ndmp1: \n");
+  BN_print_fp(stdout, key->dmp1);
+  printf("\n\n");
+  printf("\ndmq1: \n");
+  BN_print_fp(stdout, key->dmq1);
+  printf("\n\n");
+  printf("\niqmp: \n");
+  BN_print_fp(stdout, key->iqmp);
+  printf("\n\n");
+
+  // tpm2b_blob
+  // tpm2_name
+  // tpm2_qualified_name
+  // key
 
   // parse Public key structure
-
   // create certificate template
-
   // sign it
-
   // fill the output buffer
-
   // save it
-#endif
 
-done:
   return ret_val;
 }
 

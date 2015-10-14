@@ -6,7 +6,7 @@ syntax = "proto2";
 message private_key_blob_message {
   required string key_type                    = 1;
   optional string key_name                    = 2;
-  optional string blob                        = 3;
+  optional bytes blob                         = 3;
 }
 
 message rsa_public_key_message {

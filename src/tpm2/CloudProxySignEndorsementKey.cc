@@ -123,8 +123,7 @@ int main(int an, char** av) {
 
   in_size = MAX_BUF_SIZE;
   endorsement_key_message endorsement_info;
-  if (!ReadFileIntoBlock(FLAGS_endorsement_info_file, &in_size, 
-                         in_buf)) {
+  if (!ReadFileIntoBlock(FLAGS_endorsement_info_file, &in_size, in_buf)) {
     printf("Can't read endorsement info\n");
     return 1;
   }
@@ -152,67 +151,56 @@ int main(int an, char** av) {
   string the_blob = private_key.blob();
   PrintBytes(the_blob.size(), (byte*)the_blob.data());
   const byte* p = (byte*)the_blob.data();
-  RSA* key = d2i_RSAPrivateKey(nullptr, &p, the_blob.size());
-  if (key == nullptr) {
+  RSA* signing_key = d2i_RSAPrivateKey(nullptr, &p, the_blob.size());
+  if (signing_key == nullptr) {
     printf("Can't translate private key\n");
     return 1;
   }
+  print_internal_private_key(*signing_key);
 
-  printf("\n\n");
-  printf("\nModulus: \n");
-  BN_print_fp(stdout, key->n);
-  printf("\n\n");
-  printf("\ne: \n");
-  BN_print_fp(stdout, key->e);
-  printf("\n\n");
-  printf("\nd: \n");
-  BN_print_fp(stdout, key->d);
-  printf("\n\n");
-  printf("\np: \n");
-  BN_print_fp(stdout, key->p);
-  printf("\n\n");
-  printf("\nq: \n");
-  BN_print_fp(stdout, key->q);
-  printf("\n\n");
-  printf("\ndmp1: \n");
-  BN_print_fp(stdout, key->dmp1);
-  printf("\n\n");
-  printf("\ndmq1: \n");
-  BN_print_fp(stdout, key->dmq1);
-  printf("\n\n");
-  printf("\niqmp: \n");
-  BN_print_fp(stdout, key->iqmp);
-  printf("\n\n");
-
-  public_key_message msg_key;
-  msg_key.set_key_type(private_key.key_type());
-  msg_key.set_key_type(private_key.key_name());
-  if (!FillPrivateKeyStructure(*key, &msg_key)) {
-    printf("Can't fill public key structure\n");
+  string key_blob = endorsement_info.tpm2b_blob();
+  uint16_t size_in;
+  ChangeEndian16((uint16_t*)key_blob.data(), (uint16_t*)&size_in);
+  TPM2B_PUBLIC outPublic;
+  if (!GetReadPublicOut(size_in, (key_blob.data() + sizeof(uint16_t)), outPublic)) {
+    printf("Can't parse endorsement blob\n");
     return 1;
   }
 
-  signed_cert_message cert_message;
-  /*
-    signed_cert_message.algorithm
-    signed_cert_message.key_size
-    signed_cert_message.issuer
-    signed_cert_message.body_type
-    signed_cert_message.body
-    signed_cert_message.hash_alg
-    signed_cert_message.hash
-   */
+  // fill x509_cert_request_parameters_message
+  x509_cert_request_parameters_message req_message;
+  req_message.set_common_name(endorsement_info.machine_identifier());
+  // country_name state_name locality_name organization_name suborganization_name
+  req_message.key().set_bit_modulus_size(outPublic.publicArea.parameters.rsaDetail.keyBits);
+  uint64_t exp;
+  ChangeEndian64(uint64_t)outPublic.publicArea.parameters.rsaDetail.exponent, &exp);
 
-  // create x509 certificate template
+  req_message.key().set_exponent(sizeof(uint64_t), (byte*)&exp);
+  req_message.key().set_modulus((int)outPublic.publicArea.unique.rsa.size,
+                                     outPublic.publicArea.unique.rsa.buffer);
+
+  X509_REQ req;
+  if (!GenerateX509CertificateRequest(req_message, &req)) {
+    printf("Can't generate x509 request\n");
+    return 1;
+  }
 
   // sign it
+  X509 cert;
+  if (!SignX509CertificateRequest(signing_key, signing_message, &req, &cert)) {
+    printf("Can't sign x509 request\n");
+    return 1;
+  }
 
+  // PEM Encode
+  // PEM_write_x509_REQ(fp, req)
   // fill the output buffer and save it
   string output;
-  cert_message.SerializeToString(&output);
   if (!WriteFileFromBlock(FLAGS_signed_endorsement_cert,
                           output.size(),
                           (byte*)output.data())) {
+    printf("Can't write endorsement cert\n");
+    return 1;
   }
   return ret_val;
 }

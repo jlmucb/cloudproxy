@@ -31,7 +31,7 @@ message asymmetric_key_message {
 
 message public_key_message {
   optional string key_type                    = 1;
-  optional rsa_public_key_message public_key  = 2;
+  optional rsa_public_key_message rsa_key     = 2;
 }
 
 message endorsement_key_message {
@@ -39,7 +39,6 @@ message endorsement_key_message {
   optional bytes tpm2b_blob                   = 2;
   optional bytes tpm2_name                    = 3;
   optional bytes tpm2_qualified_name          = 4;
-  optional asymmetric_key_message key         = 5;
 }
 
 message signing_instructions_message {
@@ -48,23 +47,9 @@ message signing_instructions_message {
   required string purpose                     = 3;
   optional string date                        = 4;
   optional string time                        = 5;
-  optional string hash_alg                    = 6;
-  required bool can_sign                      = 7;
-}
-
-
-message signed_cert_message {
-  optional string algorithm                   = 1;
-  optional string hash_alg                    = 2;
-  optional int32  key_size                    = 3;
-  optional string issuer                      = 4;
-  optional string subject                     = 5;
-  optional string not_before                  = 6;
-  optional string not_after                   = 7;
-  optional string body_type                   = 8;
-  optional bytes  body                        = 9;
-  optional bytes  hash                        = 10;
-  optional bytes  sig                         = 11;
+  optional string sign_alg                    = 6;
+  optional string hash_alg                    = 7;
+  required bool can_sign                      = 8;
 }
 
 message tpm2_make_credential_info_message {
@@ -76,10 +61,42 @@ message tpm2_make_credential_info_message {
   optional string secret                      = 6;
 }
 
-message encrypted_data_message {
-  required int32 size                         = 1;
-  optional string key_name                    = 2;
-  optional string data_type                   = 3;
-  optional string data                        = 4;
+message x509_cert_request_parameters_message {
+  required string common_name                 = 1;
+  optional string country_name                = 2;
+  optional string state_name                  = 3;
+  optional string locality_name               = 4;
+  optional string organization_name           = 5;
+  optional string suborganization_name        = 6;
+  optional public_key_message key             = 7;
+}
+
+message x509_cert_issuer_parameters_message {
+  required string common_name                 = 1;
+  optional string country_name                = 2;
+  optional string state_name                  = 3;
+  optional string locality_name               = 4;
+  optional string organization_name           = 5;
+  optional string suborganization_name        = 6;
+  optional string purpose                     = 7;
+  optional public_key_message key             = 8;
+}
+
+message cert_parameters {
+  optional x509_cert_request_parameters_message request;
+  optional x509_cert_issuer_parameters_message signer;
+  optional string not_before;
+  optional string not_after;
+}
+
+message certificate_chain_entry_message {
+  optional string subject_key_name;
+  optional string issuer_key_name;
+  optional string cert_type;
+  optional bytes cert_blob;
+}
+
+message certificate_chain_message {
+  repeated certificate_chain_entry_message entry;
 }
 

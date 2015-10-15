@@ -40,6 +40,7 @@ bool ReadFileIntoBlock(const string& filename, int* size, byte* block);
 bool WriteFileFromBlock(const string& filename, int size, byte* block);
 
 void PrintCapabilities(int size, byte* buf);
+bool GetReadPublicOut(uint16_t size_in, byte* input, TPM2B_PUBLIC& outPublic);
 
 // Local Tpm interaction
 class LocalTpm {

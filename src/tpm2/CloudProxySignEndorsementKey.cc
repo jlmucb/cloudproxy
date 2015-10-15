@@ -112,7 +112,7 @@ int main(int an, char** av) {
     printf("Can't parse signing instructions\n");
     return 1;
   }
-  printf("issuer: %s, duration: %lld, purpose: %s, hash: %s\n",
+  printf("issuer: %s, duration: %ld, purpose: %s, hash: %s\n",
          signing_message.issuer().c_str(), signing_message.duration(),
          signing_message.purpose().c_str(), signing_message.hash_alg().c_str());
   
@@ -162,7 +162,8 @@ int main(int an, char** av) {
   uint16_t size_in;
   ChangeEndian16((uint16_t*)key_blob.data(), (uint16_t*)&size_in);
   TPM2B_PUBLIC outPublic;
-  if (!GetReadPublicOut(size_in, (key_blob.data() + sizeof(uint16_t)), outPublic)) {
+  if (!GetReadPublicOut(size_in, (byte*)(key_blob.data() + sizeof(uint16_t)),
+                        outPublic)) {
     printf("Can't parse endorsement blob\n");
     return 1;
   }
@@ -171,13 +172,19 @@ int main(int an, char** av) {
   x509_cert_request_parameters_message req_message;
   req_message.set_common_name(endorsement_info.machine_identifier());
   // country_name state_name locality_name organization_name suborganization_name
-  req_message.key().set_bit_modulus_size(outPublic.publicArea.parameters.rsaDetail.keyBits);
+#if 0
+  req_message.key().set_bit_modulus_size(
+      outPublic.publicArea.parameters.rsaDetail.keyBits);
+#endif
   uint64_t exp;
-  ChangeEndian64(uint64_t)outPublic.publicArea.parameters.rsaDetail.exponent, &exp);
+  ChangeEndian64((uint64_t*)outPublic.publicArea.parameters.rsaDetail.exponent,
+                 &exp);
 
+#if 0
   req_message.key().set_exponent(sizeof(uint64_t), (byte*)&exp);
   req_message.key().set_modulus((int)outPublic.publicArea.unique.rsa.size,
                                      outPublic.publicArea.unique.rsa.buffer);
+#endif
 
   X509_REQ req;
   if (!GenerateX509CertificateRequest(req_message, &req)) {
@@ -187,7 +194,7 @@ int main(int an, char** av) {
 
   // sign it
   X509 cert;
-  if (!SignX509CertificateRequest(signing_key, signing_message, &req, &cert)) {
+  if (!SignX509CertificateRequest(*signing_key, signing_message, &req, &cert)) {
     printf("Can't sign x509 request\n");
     return 1;
   }

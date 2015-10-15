@@ -10,7 +10,9 @@
 #include <errno.h>
 
 #include <tpm2.pb.h>
+#include <openssl_helpers.h>
 #include <openssl/rsa.h>
+#include <openssl/x509.h>
 
 #include <string>
 using std::string;
@@ -41,25 +43,26 @@ void print_cert_request_message(x509_cert_request_parameters_message& req_messag
   if (req_message.has_common_name()) {
     printf("common name: %s\n", req_message.common_name().c_str());
   }
-  if (req_message.has_country_name) {
+  if (req_message.has_country_name()) {
     printf("country name: %s\n", req_message.country_name().c_str());
   }
-  if (req_message.has_state_name) {
+  if (req_message.has_state_name()) {
     printf("state name: %s\n", req_message.state_name().c_str());
   }
-  if (req_message.has_locality_name) {
+  if (req_message.has_locality_name()) {
     printf("locality name: %s\n", req_message.locality_name().c_str());
   }
-  if (req_message.has_organization_name) {
+  if (req_message.has_organization_name()) {
     printf("organization name: %s\n", req_message.organization_name().c_str());
   }
-  if (req_message.has_suborganization_name) {
+  if (req_message.has_suborganization_name()) {
     printf("suborganization name: %s\n", req_message.suborganization_name().c_str());
   }
-  if (req_message.key.has_key_type()) {
+#if 0
+  if (req_message.has_key_type()) {
     printf("key_type name: %s\n", req_message.key_type_name().c_str());
   }
-  if (!req_message.has_key)
+  if (!req_message.has_key())
     return;
   if (req_message.key.rsa_key().has_key_name()) {
     printf("key name: %s\n", req_message.key().key_type().c_str());
@@ -79,6 +82,7 @@ void print_cert_request_message(x509_cert_request_parameters_message& req_messag
     PrintBytes(mod.size(), mod.data());
     printf("\n");
   }
+#endif
 }
 
 void print_internal_private_key(RSA& key) {
@@ -111,52 +115,62 @@ void print_internal_private_key(RSA& key) {
 
 BIGNUM* bin_to_BN(int len, byte* buf) {
   BIGNUM* bn;
-  BN_alloc(&bn);
-  BN_init(&bn);
-  BN_bin2bn(buf, byte_len, &bn);
+  bn = BN_new();
+  //BN_init(&bn);
+  BN_bin2bn(buf, len, bn);
   return bn;
 }
 
 
 string* BN_to_bin(BIGNUM& n) {
   byte buf[MAX_SIZE_PARAMS];
-  int byte_len = BN_num_bytes(n);
-  int len = BN_bn2bin(buf, byte_len, nullptr);
-  return new string(byte_len, buf);
+  int byte_len = BN_num_bytes(&n);
+  // BN_bn2bin(buf, byte_len, &n);
+  return new string((const char*)buf, byte_len);
 }
 
-bool GenerateX509CertificateRequest(x509_cert_request_parameters_message& params, X509_REQ* req) {
+bool GenerateX509CertificateRequest(x509_cert_request_parameters_message& params,
+                                    X509_REQ* req) {
   RSA  rsa;
   X509_NAME* subject = X509_NAME_new();
+  EVP_PKEY* pKey = new EVP_PKEY();
 
-  if (params.public_key.key_type() != "RSA") {
+  if (params.key().key_type() != "RSA") {
     printf("Only rsa keys supported\n");
     return false;
   }
-  if (name == nullptr) {
+  if (subject == nullptr) {
     printf("Can't alloc x509 name\n");
     return false;
   }
+#if 0
   if (params.has_common_name()) {
     int nid = OBJ_txt2nid("commonName");
-    X509_NAME_entry* ent = X509_NAME_ENTRY_create_by_nid(nullptr, nid, MBSTRING_ASC,
-                                                         params.common_name(), -1);
+    X509_NAME_ENTRY* ent = X509_NAME_ENTRY_create_by_nid(nullptr, nid,
+                                                         MBSTRING_ASC,
+                                                         params.common_name(),
+                                                         -1);
     X509_NAME_add_entry(subject, ent, -1, 0);
   }
+#endif
   // TODO: do the foregoing for the other name components
   if (X509_REQ_set_subject_name(req, subject) != 1)  {
     printf("Can't add x509 subject\n");
     return false;
   }
-  if (!GetPublicRsaKeyFromParameters(params.public_key.public_key, &rsa)) {
+#if 0
+  if (!GetPublicRsaKeyFromParameters(params.key().rsa_key(), &rsa)) {
     printf("Can't make rsa key\n");
     return false;
   }
+#endif
   EVP_PKEY* pkey = new EVP_PKEY();
+#if 0
   EVP_PKEY_set1_RSA(pKey, rsa);
+#endif
   X509_REQ_set_pubkey(req, pkey);
 
-  print_cert_request_parameters(params);
+  print_cert_request_message(params);
   return true;
 }
 
@@ -165,18 +179,21 @@ bool GetPublicRsaParametersFromSSLKey(RSA& rsa, public_key_message* key_msg) {
   string* e = nullptr;
   bool ret = true;
 
-  n = BN_to_bin(*key.n);
+#if 0
+  n = BN_to_bin(key_msg->n);
   if (n == nullptr) {
     ret = false;
     goto done;
   }
-  e = BN_to_bin(*key.e);
+  e = BN_to_bin(key_msg->e);
   if (e == nullptr) {
     ret = false;
     goto done;
   }
-  msg_key->mutable_public_key()->set_modulus(*n);
-  msg_key->mutable_public_key()->set_exponent(*e);
+
+  key_msg->mutable_public_key()->set_modulus(*n);
+  key_msg->mutable_public_key()->set_exponent(*e);
+#endif
 
 done:
   if (e != nullptr)
@@ -186,40 +203,45 @@ done:
   return ret;
 }
 
-bool GetPrivateRsaParametersFromSSLKey(RSA& rsa, private_key_message* key_msg) {
+bool GetPrivateRsaParametersFromSSLKey(RSA& rsa,
+                                       rsa_private_key_message* key_msg) {
   string* d = nullptr;
   string* p = nullptr;
   string* q = nullptr;
   bool ret = true;
 
-  if (!GetPublicRsaParametersFromSSLKey(rsa, key_msg.key())) {
+#if 0
+  if (!GetPublicRsaParametersFromSSLKey(rsa, key_msg->key())) {
     ret = false;
     goto done;
   }
-  d = BN_to_bin(*key_msg.d);
+  d = BN_to_bin(key_msg->d);
   if (d == nullptr) {
     ret = false;
     goto done;
   }
-  p = BN_to_bin(*key_msg.p);
+  p = BN_to_bin(key_msg->p);
   if (p == nullptr) {
     ret = false;
     goto done;
   }
-  q = BN_to_bin(*key_msg.q);
+  q = BN_to_bin(key_msg->q);
   if (q == nullptr) {
     ret = false;
     goto done;
   }
+#endif
 
 done:
   return ret;
 }
 
-bool SignX509CertificateRequest(RSA& signing_key, signing_instructions_message& signing_message,
-                                x509_req* req, X509* cert) {
+bool SignX509CertificateRequest(RSA& signing_key,
+                                signing_instructions_message& signing_message,
+                                X509_REQ* req, X509* cert) {
   uint64_t serial = 1;
   EVP_PKEY* pKey = nullptr;
+#if 0
   const EVP_MD* digest;
   X509* caCert = nullptr;
   X509_NAME* name;
@@ -235,15 +257,19 @@ bool SignX509CertificateRequest(RSA& signing_key, signing_instructions_message& 
     printf("Req does not verify\n");
     return false;
   }
+#endif
   
   X509_set_version(cert, 2L);
-  ASN1_INTEGER_set(X509_get_serialNumber(cert));
+  ASN1_INTEGER_set(X509_get_serialNumber(cert), serial++);
   
+#if 0
   name = X509_REQ_get_subject_name(req);
+  X509_NAME* issuer_name = X509_new_name();
   if (X509_set_issuer_name(cert, signing_message.issuer().c_str()) != 1) {
     printf("Can't set issuer name\n");
     return false;
   }
+#endif
   if (X509_set_pubkey(cert, pKey) != 1) {
     printf("Can't set pubkey\n");
     return false;
@@ -256,6 +282,7 @@ bool SignX509CertificateRequest(RSA& signing_key, signing_instructions_message& 
     printf("Can't adj notAfter\n");
     return false;
   }
+#if 0
   if (EVP_PKEY_type(caCert->type) != EVP_PKEY_RSA) {
     printf("Bad PKEY type\n");
     return false;
@@ -264,6 +291,7 @@ bool SignX509CertificateRequest(RSA& signing_key, signing_instructions_message& 
     printf("Signing failed\n");
     return false;
   }
+#endif
   return true;
 }
 

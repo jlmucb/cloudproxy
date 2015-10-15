@@ -58,31 +58,29 @@ void print_cert_request_message(x509_cert_request_parameters_message& req_messag
   if (req_message.has_suborganization_name()) {
     printf("suborganization name: %s\n", req_message.suborganization_name().c_str());
   }
-#if 0
-  if (req_message.has_key_type()) {
-    printf("key_type name: %s\n", req_message.key_type_name().c_str());
-  }
   if (!req_message.has_key())
     return;
-  if (req_message.key.rsa_key().has_key_name()) {
-    printf("key name: %s\n", req_message.key().key_type().c_str());
+  if (req_message.key().has_key_type()) {
+    printf("key_type name: %s\n", req_message.key().key_type().c_str());
   }
-  if (req_message.key.rsa_key().has_bit_modulus_size()) {
-    printf("modulus bit size: %d\n", req_message.key().bit_modulus_size());
+  if (req_message.key().rsa_key().has_key_name()) {
+    printf("key name: %s\n", req_message.key().rsa_key().key_name().c_str());
   }
-  if (req_message.key.rsa_key().has_exponent()) {
-    string exp = req_message.key.rsa_key().exponent();
+  if (req_message.key().rsa_key().has_bit_modulus_size()) {
+    printf("modulus bit size: %d\n", req_message.key().rsa_key().bit_modulus_size());
+  }
+  if (req_message.key().rsa_key().has_exponent()) {
+    string exp = req_message.key().rsa_key().exponent();
     printf("exponent: ");
-    PrintBytes(exp.size(), exp.data());
+    PrintBytes(exp.size(), (byte*)exp.data());
     printf("\n");
   }
-  if (req_message.key.rsa_key().has_modulus()) {
-    string mod = req_message.key.rsa_key().modulus();
+  if (req_message.key().rsa_key().has_modulus()) {
+    string mod = req_message.key().rsa_key().modulus();
     printf("modulus : ");
-    PrintBytes(mod.size(), mod.data());
+    PrintBytes(mod.size(), (byte*)mod.data());
     printf("\n");
   }
-#endif
 }
 
 void print_internal_private_key(RSA& key) {
@@ -114,10 +112,7 @@ void print_internal_private_key(RSA& key) {
 }
 
 BIGNUM* bin_to_BN(int len, byte* buf) {
-  BIGNUM* bn;
-  bn = BN_new();
-  //BN_init(&bn);
-  BN_bin2bn(buf, len, bn);
+  BIGNUM* bn = BN_bin2bn(buf, len, nullptr);
   return bn;
 }
 
@@ -125,18 +120,19 @@ BIGNUM* bin_to_BN(int len, byte* buf) {
 string* BN_to_bin(BIGNUM& n) {
   byte buf[MAX_SIZE_PARAMS];
   int byte_len = BN_num_bytes(&n);
-  // BN_bn2bin(buf, byte_len, &n);
-  return new string((const char*)buf, byte_len);
+
+  int len = BN_bn2bin(&n, buf);
+  return new string((const char*)buf, len);
 }
 
-bool GenerateX509CertificateRequest(x509_cert_request_parameters_message& params,
-                                    X509_REQ* req) {
+bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
+        params, X509_REQ* req) {
   RSA  rsa;
   X509_NAME* subject = X509_NAME_new();
   EVP_PKEY* pKey = new EVP_PKEY();
 
   if (params.key().key_type() != "RSA") {
-    printf("Only rsa keys supported\n");
+    printf("Only rsa keys supported %s\n", params.key().key_type().c_str());
     return false;
   }
   if (subject == nullptr) {

@@ -48,7 +48,7 @@ type sendQueueError struct {
 // for each sender. Once there messages ready on enough buffers, a batch of
 // messages are transmitted simultaneously.
 type Queue struct {
-	batchSize int // Number of messages to transmit in a roud.
+	batchSize int // Number of messages to transmit in a round.
 	ct        int // Current number of buffers with messages ready.
 
 	network string        // Network protocol, e.g. "tcp".
@@ -58,8 +58,9 @@ type Queue struct {
 	nextConn   map[uint64]net.Conn   // Connection to destination.
 	sendBuffer map[uint64]*list.List // Message buffer of sender.
 
-	queue chan *Queueable     // Channel for queueing messages/directives.
-	err   chan sendQueueError // Channel for handling errors.
+	queue	  chan *Queueable     // Channel for queueing messages/directives.
+	err       chan sendQueueError // Channel for handling errors.
+	destroyed chan uint64 // Channel for waiting for circuit destruction, which happens asynchronously.
 }
 
 // NewQueue creates a new Queue structure.
@@ -75,6 +76,7 @@ func NewQueue(network string, batchSize int, timeout time.Duration) (sq *Queue) 
 
 	sq.queue = make(chan *Queueable)
 	sq.err = make(chan sendQueueError)
+	sq.destroyed = make(chan uint64)
 	return sq
 }
 
@@ -184,6 +186,8 @@ func (sq *Queue) DoQueue(kill <-chan bool) {
 				if _, def := sq.sendBuffer[q.id]; def {
 					delete(sq.sendBuffer, q.id)
 				}
+
+				sq.destroyed <- q.id
 
 			} else if q.msg != nil || q.reply != nil {
 				// Add message or message request (reply) to the queue.

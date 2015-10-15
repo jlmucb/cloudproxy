@@ -226,6 +226,16 @@ func (hp *RouterContext) HandleProxy(c *Conn) error {
 			// response. For now, just close the connection to the circuit.
 			hp.sendQueue.Close(c.id)
 			hp.replyQueue.Close(c.id)
+			sid := <-hp.sendQueue.destroyed
+			for sid != c.id {
+				sid = <-hp.sendQueue.destroyed
+			}
+
+			rid := <-hp.replyQueue.destroyed
+			for rid != c.id {
+				rid = <-hp.replyQueue.destroyed
+			}
+
 			return io.EOF
 		}
 

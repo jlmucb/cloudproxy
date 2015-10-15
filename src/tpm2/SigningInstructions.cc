@@ -99,7 +99,6 @@ int main(int an, char** av) {
     printf("Can't write output file\n");
     ret_val = 1;
   }
-
 done:
   return ret_val;
 }

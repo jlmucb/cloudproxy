@@ -177,7 +177,7 @@ int main(int an, char** av) {
       outPublic.publicArea.parameters.rsaDetail.keyBits);
 #endif
   uint64_t exp;
-  ChangeEndian64((uint64_t*)outPublic.publicArea.parameters.rsaDetail.exponent,
+  ChangeEndian64((uint64_t*)&outPublic.publicArea.parameters.rsaDetail.exponent,
                  &exp);
 
 #if 0
@@ -192,6 +192,7 @@ int main(int an, char** av) {
     return 1;
   }
 
+#if 0
   // sign it
   X509 cert;
   if (!SignX509CertificateRequest(*signing_key, signing_message, &req, &cert)) {
@@ -209,6 +210,7 @@ int main(int an, char** av) {
     printf("Can't write endorsement cert\n");
     return 1;
   }
+#endif
   return ret_val;
 }
 

@@ -13,6 +13,9 @@
 #include <openssl_helpers.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
+#include <openssl/ssl.h>
+#include <openssl/evp.h>
+#include <openssl/asn1.h>
 
 #include <string>
 using std::string;
@@ -139,23 +142,19 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
     printf("Can't alloc x509 name\n");
     return false;
   }
-#if 0
   if (params.has_common_name()) {
     int nid = OBJ_txt2nid("commonName");
-    X509_NAME_ENTRY* ent = X509_NAME_ENTRY_create_by_nid(nullptr, nid,
-                                                         MBSTRING_ASC,
-                                                         params.common_name(),
-                                                         -1);
+    X509_NAME_ENTRY* ent = X509_NAME_ENTRY_create_by_NID(nullptr, nid,
+        MBSTRING_ASC, (byte*)params.common_name().c_str(), -1);
     X509_NAME_add_entry(subject, ent, -1, 0);
   }
-#endif
   // TODO: do the foregoing for the other name components
   if (X509_REQ_set_subject_name(req, subject) != 1)  {
     printf("Can't add x509 subject\n");
     return false;
   }
 #if 0
-  if (!GetPublicRsaKeyFromParameters(params.key().rsa_key(), &rsa)) {
+  if (!GetPublicRsaKeyFromParameters((const rsa_public_key_message)params.key().rsa_key(), &rsa)) {
     printf("Can't make rsa key\n");
     return false;
   }

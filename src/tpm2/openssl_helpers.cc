@@ -155,7 +155,7 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
   // TODO: do the foregoing for the other name components
   if (X509_REQ_set_subject_name(req, subject) != 1)  {
     printf("Can't set x509 subject\n");
-    printf("%s\n", errstr(ERR_get_error());
+    // printf("%d\n", ERR_get_error());
     return false;
   }
 #if 0
@@ -269,7 +269,6 @@ bool SignX509CertificateRequest(RSA& signing_key,
     printf("Can't set issuer name\n");
     return false;
   }
-#endif
   if (X509_set_pubkey(cert, pKey) != 1) {
     printf("Can't set pubkey\n");
     return false;
@@ -282,7 +281,6 @@ bool SignX509CertificateRequest(RSA& signing_key,
     printf("Can't adj notAfter\n");
     return false;
   }
-#if 0
   if (EVP_PKEY_type(caCert->type) != EVP_PKEY_RSA) {
     printf("Bad PKEY type\n");
     return false;

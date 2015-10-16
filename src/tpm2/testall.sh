@@ -19,14 +19,11 @@
 
 ./SigningInstructions.exe --issuer=JohnsCloudProxyCa --can_read=true
 
-
 ./GetEndorsementKey.exe --machine_identifier="John's Nuc" --endorsement_info_file=endorsement_key_info_file
 
 ./CloudProxySignEndorsementKey.exe \
---cloudproxy_private_key_file=cloudproxy_private_key \
+--cloudproxy_private_key_file=cloudproxy_key_file \
 --endorsement_info_file=endorsement_key_info_file \
 --signing_instructions_file=signing_instructions \
 --signed_endorsement_cert=endorsement_cert
-
-
 

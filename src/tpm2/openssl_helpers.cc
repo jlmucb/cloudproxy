@@ -146,11 +146,14 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
     int nid = OBJ_txt2nid("commonName");
     X509_NAME_ENTRY* ent = X509_NAME_ENTRY_create_by_NID(nullptr, nid,
         MBSTRING_ASC, (byte*)params.common_name().c_str(), -1);
-    X509_NAME_add_entry(subject, ent, -1, 0);
+    if (X509_NAME_add_entry(subject, ent, -1, 0) != 1) {
+      printf("Can't add name ent\n");
+      return false;
+    }
   }
   // TODO: do the foregoing for the other name components
   if (X509_REQ_set_subject_name(req, subject) != 1)  {
-    printf("Can't add x509 subject\n");
+    printf("Can't set x509 subject\n");
     return false;
   }
 #if 0

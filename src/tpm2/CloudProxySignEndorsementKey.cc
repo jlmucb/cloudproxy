@@ -138,6 +138,7 @@ int main(int an, char** av) {
   if (!ReadFileIntoBlock(FLAGS_cloudproxy_private_key_file, &in_size, 
                          in_buf)) {
     printf("Can't read private key\n");
+    printf("    %s\n", FLAGS_cloudproxy_private_key_file.c_str());
     return 1;
   }
   input.assign((const char*)in_buf, in_size);
@@ -172,19 +173,19 @@ int main(int an, char** av) {
   x509_cert_request_parameters_message req_message;
   req_message.set_common_name(endorsement_info.machine_identifier());
   // country_name state_name locality_name organization_name suborganization_name
-#if 0
-  req_message.key().set_bit_modulus_size(
+  req_message.mutable_key()->set_key_type("RSA");
+  req_message.mutable_key()->mutable_rsa_key()->set_bit_modulus_size(
       outPublic.publicArea.parameters.rsaDetail.keyBits);
-#endif
   uint64_t exp;
   ChangeEndian64((uint64_t*)&outPublic.publicArea.parameters.rsaDetail.exponent,
                  &exp);
 
-#if 0
-  req_message.key().set_exponent(sizeof(uint64_t), (byte*)&exp);
-  req_message.key().set_modulus((int)outPublic.publicArea.unique.rsa.size,
-                                     outPublic.publicArea.unique.rsa.buffer);
-#endif
+  req_message.mutable_key()->mutable_rsa_key()->set_exponent(
+      (const char*)&exp, sizeof(uint64_t));
+  req_message.mutable_key()->mutable_rsa_key()->set_modulus(
+      (const char*)outPublic.publicArea.unique.rsa.buffer,
+      (int)outPublic.publicArea.unique.rsa.size);
+  print_cert_request_message(req_message); printf("\n");
 
   X509_REQ req;
   if (!GenerateX509CertificateRequest(req_message, &req)) {

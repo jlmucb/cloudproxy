@@ -584,7 +584,8 @@ func (c *Crypter) Encrypt(data []byte) ([]byte, error) {
 	s.XORKeyStream(ciphertext[aes.BlockSize:], data)
 
 	mac := hmac.New(sha256.New, c.hmacKey)
-	m := mac.Sum(ciphertext)
+	mac.Write(ciphertext)
+	m := mac.Sum(nil)
 
 	ed := &EncryptedData{
 		Header:     ch,
@@ -615,7 +616,8 @@ func (c *Crypter) Decrypt(ciphertext []byte) ([]byte, error) {
 	copy(fullCiphertext[len(ed.Iv):], ed.Ciphertext)
 
 	mac := hmac.New(sha256.New, c.hmacKey)
-	m := mac.Sum(fullCiphertext)
+	mac.Write(fullCiphertext)
+	m := mac.Sum(nil)
 	if !hmac.Equal(m, ed.Mac) {
 		return nil, newError("bad HMAC")
 	}

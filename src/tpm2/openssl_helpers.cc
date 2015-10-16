@@ -16,7 +16,6 @@
 #include <openssl/ssl.h>
 #include <openssl/evp.h>
 #include <openssl/asn1.h>
-#include <openssl/err.h>
 
 #include <string>
 using std::string;
@@ -130,7 +129,7 @@ string* BN_to_bin(BIGNUM& n) {
 }
 
 bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
-        params, X509_REQ* req) {
+        params, bool sign_request, X509_REQ* req) {
   RSA  rsa;
   X509_NAME* subject = X509_NAME_new();
   EVP_PKEY* pKey = new EVP_PKEY();
@@ -155,21 +154,30 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
   // TODO: do the foregoing for the other name components
   if (X509_REQ_set_subject_name(req, subject) != 1)  {
     printf("Can't set x509 subject\n");
-    printf("%s\n", errstr(ERR_get_error());
     return false;
   }
-#if 0
-  if (!GetPublicRsaKeyFromParameters((const rsa_public_key_message)params.key().rsa_key(), &rsa)) {
+  if (!GetPublicRsaKeyFromParameters(params.mutable_key()->mutable_rsa_key(), &rsa)) {
     printf("Can't make rsa key\n");
     return false;
   }
-#endif
-  EVP_PKEY* pkey = new EVP_PKEY();
-#if 0
-  EVP_PKEY_set1_RSA(pKey, rsa);
-#endif
-  X509_REQ_set_pubkey(req, pkey);
+  // fill key parameters in request
 
+  if (sign_request) {
+#if 0
+  EVP_PKEY* pkey = EVP_PKEY_new();
+  EVP_MD* digest;
+  pkey->type = EVP_PKEY_RSA;
+  // check type
+  digest = EVP_sha256();
+  EVP_PKEY_set1_RSA(pKey, rsa);
+  X509_REQ_set_pubkey(req, pkey);
+  if (!X509_REQ_sign(req, pkey, digest)) {
+  }
+#else
+  printf("Signed certificate requests not supported yet\n");
+  return false;
+#endif
+  }
   print_cert_request_message(params);
   return true;
 }
@@ -190,9 +198,10 @@ bool GetPublicRsaParametersFromSSLKey(RSA& rsa, public_key_message* key_msg) {
     ret = false;
     goto done;
   }
-
-  key_msg->mutable_public_key()->set_modulus(*n);
-  key_msg->mutable_public_key()->set_exponent(*e);
+  if (key_msg->public_key().key_type() != "RSA") {
+  }
+  key_msg->mutable_public_key()->mutable_rsa_key()->set_modulus(*n);
+  key_msg->mutable_public_key()->mutable_rsa_key()->set_exponent(*e);
 #endif
 
 done:
@@ -203,8 +212,7 @@ done:
   return ret;
 }
 
-bool GetPrivateRsaParametersFromSSLKey(RSA& rsa,
-                                       rsa_private_key_message* key_msg) {
+bool GetPrivateRsaParametersFromSSLKey(RSA& rsa, rsa_private_key_message* key_msg) {
   string* d = nullptr;
   string* p = nullptr;
   string* q = nullptr;
@@ -236,41 +244,54 @@ done:
   return ret;
 }
 
-bool SignX509CertificateRequest(RSA& signing_key,
-                                signing_instructions_message& signing_message,
-                                X509_REQ* req, X509* cert) {
-  uint64_t serial = 1;
-  EVP_PKEY* pKey = nullptr;
+/*
+    "basicConstraints", "CA:FALSE"
+    "nsComment", "\"OpenSSL Cert"
+    "subjectKeyIdentifier", "hash"
+    "authorityKeyIdentifier", "keyid, issuer:always"
+    "keyUsage", "nonrepudiation,digitalSignature,keyEncipherment"
+ */
+
+bool SignX509Certificate(RSA& signing_key, signing_instructions_message& signing_message,
+                         X509_REQ* req, bool verify_req_sig, X509* cert) {
+  EVP_PKEY* signedKey = X509_REQ_get_pubkey(req);
+  if (pSigningKey != nullptr) {
+    printf("Can't get pubkey\n");
+    return false;
+  }
+
+  if (verify_req_sig) {
 #if 0
-  const EVP_MD* digest;
+    if (X509_REQ_verify(req, pSignedKey) != 1) {
+      printf("Req does not verify\n");
+      return false;
+    }
+#else
+    printf("Signed certificate requests not accepted\n");
+    return false;
+#endif
+  }
+  
+  uint64_t serial = 1;
+  EVP_PKEY* pSigningKey= EVP_PKEY_new();
+  const EVP_MD* digest = EVP_sha256();
   X509* caCert = nullptr;
   X509_NAME* name;
   X509V3_CTX ctx;
   X509* extension;
-  
-  pKey = X509_REQ_get_pubkey(req);
-  if (pKey != nullptr) {
-    printf("Can't get pubkey\n");
-    return false;
-  }
-  if (X509_REQ_verify(req, pKey) != 1) {
-    printf("Req does not verify\n");
-    return false;
-  }
-#endif
   
   X509_set_version(cert, 2L);
   ASN1_INTEGER_set(X509_get_serialNumber(cert), serial++);
   
 #if 0
   name = X509_REQ_get_subject_name(req);
-  X509_NAME* issuer_name = X509_new_name();
+  X509_NAME* issuer_name = X509_NAME_new();
   if (X509_set_issuer_name(cert, signing_message.issuer().c_str()) != 1) {
     printf("Can't set issuer name\n");
     return false;
   }
 #endif
-  if (X509_set_pubkey(cert, pKey) != 1) {
+  if (X509_set_pubkey(cert, pSigningKey) != 1) {
     printf("Can't set pubkey\n");
     return false;
   }
@@ -282,16 +303,10 @@ bool SignX509CertificateRequest(RSA& signing_key,
     printf("Can't adj notAfter\n");
     return false;
   }
-#if 0
-  if (EVP_PKEY_type(caCert->type) != EVP_PKEY_RSA) {
-    printf("Bad PKEY type\n");
-    return false;
-  }
-  if (!X509_sign(cert, caPkey, digest)) {
+  if (!X509_sign(cert, pSigningKey, digest)) {
     printf("Signing failed\n");
     return false;
   }
-#endif
   return true;
 }
 

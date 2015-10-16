@@ -154,6 +154,7 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
   // TODO: do the foregoing for the other name components
   if (X509_REQ_set_subject_name(req, subject) != 1)  {
     printf("Can't set x509 subject\n");
+    printf("%d\n", ERR_get_error());
     return false;
   }
   if (!GetPublicRsaKeyFromParameters(params.mutable_key()->mutable_rsa_key(), &rsa)) {
@@ -304,6 +305,10 @@ bool SignX509Certificate(RSA& signing_key, signing_instructions_message& signing
     return false;
   }
   if (!X509_sign(cert, pSigningKey, digest)) {
+    printf("Bad PKEY type\n");
+    return false;
+  }
+  if (!X509_sign(cert, caPkey, digest)) {
     printf("Signing failed\n");
     return false;
   }

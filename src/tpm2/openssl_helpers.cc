@@ -16,6 +16,7 @@
 #include <openssl/ssl.h>
 #include <openssl/evp.h>
 #include <openssl/asn1.h>
+#include <openssl/err.h>
 
 #include <string>
 using std::string;
@@ -154,6 +155,7 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
   // TODO: do the foregoing for the other name components
   if (X509_REQ_set_subject_name(req, subject) != 1)  {
     printf("Can't set x509 subject\n");
+    printf("%s\n", errstr(ERR_get_error());
     return false;
   }
 #if 0

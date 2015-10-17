@@ -322,8 +322,10 @@ bool SignX509Certificate(RSA* signing_key,
     printf("Can't set issuer name\n");
     return false;
   }
+#if 0
   // add extensions
   X509V3_CTX ctx;
+  X509V3_set_ctx(&ctx, NULL, NULL, NULL, NULL, 0);
   for (int i = 0; i < EXT_COUNT; i++) {
     X509_EXTENSION* ext = X509V3_EXT_conf(nullptr, &ctx,
         ext_ent[i].key, ext_ent[i].value);
@@ -331,12 +333,13 @@ bool SignX509Certificate(RSA* signing_key,
       printf("Bad ext_conf\n");
       return false;
     }
-    if (X509_add_ext(cert, ext, -1) != 0) {
-      printf("Bad add ext\n");
+    if (!X509_add_ext(cert, ext, -1)) {
+      printf("Bad add ext %d\n", i);
       return false;
     }
     X509_EXTENSION_free(ext);
   }
+#endif
 printf("about to call sign\n");
   if (!X509_sign(cert, pSigningKey, digest)) {
     printf("Bad PKEY type\n");

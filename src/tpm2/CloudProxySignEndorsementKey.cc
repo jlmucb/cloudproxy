@@ -203,18 +203,16 @@ int main(int an, char** av) {
   }
   printf("message signed\n");
 
-#if 0
-  // PEM Encode
-  // PEM_write_x509_REQ(fp, req)
-  // fill the output buffer and save it
+  byte* out = nullptr;
+  int size = i2d_X509(cert, &out);
   string output;
+  output.assign((const char*)out, size);
   if (!WriteFileFromBlock(FLAGS_signed_endorsement_cert,
                           output.size(),
                           (byte*)output.data())) {
     printf("Can't write endorsement cert\n");
     return 1;
   }
-#endif
   return ret_val;
 }
 

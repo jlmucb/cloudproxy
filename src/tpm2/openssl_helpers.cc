@@ -171,6 +171,8 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
   EVP_PKEY_set1_RSA(pKey, rsa);
   X509_REQ_set_pubkey(req, pkey);
   if (!X509_REQ_sign(req, pkey, digest)) {
+    printf("Sign request fails\n");
+    return false;
   }
 #else
   printf("Signed certificate requests not supported yet\n");
@@ -293,10 +295,11 @@ bool SignX509Certificate(RSA* signing_key,
   const EVP_MD* digest = EVP_sha256();
   X509_NAME* name;
   EVP_PKEY_set1_RSA(pSigningKey, signing_key);
+  pSigningKey->type = EVP_PKEY_RSA;
   
   X509_set_version(cert, 2L);
   ASN1_INTEGER_set(X509_get_serialNumber(cert), serial++);
-  
+
   name = X509_REQ_get_subject_name(req);
   if (X509_set_subject_name(cert, name) != 1) {
     printf("Can't set subject name\n");
@@ -350,6 +353,10 @@ printf("about to call sign\n");
     printf("Bad PKEY type\n");
     return false;
   }
+
+  printf("digest->size: %d\n", digest->md_size);
+  PrintBytes(digest->md_size, (byte*)digest->final);
+  printf("\n");
   return true;
 }
 

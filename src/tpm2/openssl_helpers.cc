@@ -122,7 +122,6 @@ BIGNUM* bin_to_BN(int len, byte* buf) {
 
 string* BN_to_bin(BIGNUM& n) {
   byte buf[MAX_SIZE_PARAMS];
-  int byte_len = BN_num_bytes(&n);
 
   int len = BN_bn2bin(&n, buf);
   return new string((const char*)buf, len);
@@ -254,15 +253,22 @@ done:
   return ret;
 }
 
-/*
-    "basicConstraints", "CA:FALSE"
-    "nsComment", "\"OpenSSL Cert"
-    "subjectKeyIdentifier", "hash"
-    "authorityKeyIdentifier", "keyid, issuer:always"
-    "keyUsage", "nonrepudiation,digitalSignature,keyEncipherment"
- */
+struct entry {
+  char* key;
+  char* value;
+};
 
-bool SignX509Certificate(RSA& signing_key, signing_instructions_message& signing_message,
+#define EXT_COUNT 5
+struct entry ext_ent[EXT_COUNT] = {
+  {"basicConstraints", "CA:FALSE"},
+  {"nsComment", "OpenSSL Cert"},
+  {"subjectKeyIdentifier", "hash"},
+  {"authorityKeyIdentifier", "keyid, issuer:always"},
+  {"keyUsage", "nonrepudiation,digitalSignature,keyEncipherment"},
+};
+
+bool SignX509Certificate(RSA* signing_key,
+                         signing_instructions_message& signing_instructions,
                          X509_REQ* req, bool verify_req_sig, X509* cert) {
   EVP_PKEY* pSignedKey = X509_REQ_get_pubkey(req);
   if (pSignedKey != nullptr) {
@@ -286,19 +292,12 @@ bool SignX509Certificate(RSA& signing_key, signing_instructions_message& signing
   EVP_PKEY* pSigningKey= EVP_PKEY_new();
   const EVP_MD* digest = EVP_sha256();
   X509_NAME* name;
-  X509* extension;
+  EVP_PKEY_set1_RSA(pSigningKey, signing_key);
   
   X509_set_version(cert, 2L);
   ASN1_INTEGER_set(X509_get_serialNumber(cert), serial++);
   
-#if 0
   name = X509_REQ_get_subject_name(req);
-  X509_NAME* issuer_name = X509_NAME_new();
-  if (X509_set_issuer_name(cert, signing_message.issuer().c_str()) != 1) {
-    printf("Can't set issuer name\n");
-    return false;
-  }
-#endif
   if (X509_set_pubkey(cert, pSigningKey) != 1) {
     printf("Can't set pubkey\n");
     return false;
@@ -311,6 +310,34 @@ bool SignX509Certificate(RSA& signing_key, signing_instructions_message& signing
     printf("Can't adj notAfter\n");
     return false;
   }
+  X509_NAME* issuer = X509_NAME_new();
+  int nid = OBJ_txt2nid("issuerName");
+  X509_NAME_ENTRY* ent = X509_NAME_ENTRY_create_by_NID(nullptr, nid,
+      MBSTRING_ASC, (byte*)signing_instructions.issuer().c_str(), -1);
+  if (X509_NAME_add_entry(issuer, ent, -1, 0) != 1) {
+    printf("Can't add issuer name ent\n");
+    return false;
+  }
+  if (X509_set_issuer_name(cert, issuer) != 1) {
+    printf("Can't set issuer name\n");
+    return false;
+  }
+  // add extensions
+  X509V3_CTX ctx;
+  for (int i = 0; i < EXT_COUNT; i++) {
+    X509_EXTENSION* ext = X509V3_EXT_conf(nullptr, &ctx,
+        ext_ent[i].key, ext_ent[i].value);
+    if (ext == 0) {
+      printf("Bad ext_conf\n");
+      return false;
+    }
+    if (X509_add_ext(cert, ext, -1) != 0) {
+      printf("Bad add ext\n");
+      return false;
+    }
+    X509_EXTENSION_free(ext);
+  }
+printf("about to call sign\n");
   if (!X509_sign(cert, pSigningKey, digest)) {
     printf("Bad PKEY type\n");
     return false;

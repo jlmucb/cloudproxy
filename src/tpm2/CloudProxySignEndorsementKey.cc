@@ -189,14 +189,15 @@ int main(int an, char** av) {
 
   X509_REQ* req = X509_REQ_new();
   X509_REQ_set_version(req, 2);
-  if (!GenerateX509CertificateRequest(req_message, req)) {
+  if (!GenerateX509CertificateRequest(req_message, false, req)) {
     printf("Can't generate x509 request\n");
     return 1;
   }
 
   // sign it
   X509* cert = X509_new();
-  if (!SignX509CertificateRequest(*signing_key, signing_message, req, cert)) {
+  if (!SignX509Certificate(*signing_key, signing_message, req,
+                           false, cert)) {
     printf("Can't sign x509 request\n");
     return 1;
   }

@@ -130,7 +130,7 @@ string* BN_to_bin(BIGNUM& n) {
 
 bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
         params, bool sign_request, X509_REQ* req) {
-  RSA  rsa;
+  RSA*  rsa = nullptr;
   X509_NAME* subject = X509_NAME_new();
   EVP_PKEY* pKey = new EVP_PKEY();
 
@@ -154,10 +154,9 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
   // TODO: do the foregoing for the other name components
   if (X509_REQ_set_subject_name(req, subject) != 1)  {
     printf("Can't set x509 subject\n");
-    printf("%d\n", ERR_get_error());
     return false;
   }
-  if (!GetPublicRsaKeyFromParameters(params.mutable_key()->mutable_rsa_key(), &rsa)) {
+  if (!GetPublicRsaKeyFromParameters(params.key().rsa_key(), rsa)) {
     printf("Can't make rsa key\n");
     return false;
   }
@@ -180,6 +179,16 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
 #endif
   }
   print_cert_request_message(params);
+  return true;
+}
+
+bool GetPrivateRsaKeyFromParameters(const rsa_public_key_message& key_msg,
+                                    RSA* rsa) {
+  return true;
+}
+
+bool GetPublicRsaKeyFromParameters(const rsa_public_key_message& key_msg,
+                                   RSA* rsa) {
   return true;
 }
 
@@ -255,8 +264,8 @@ done:
 
 bool SignX509Certificate(RSA& signing_key, signing_instructions_message& signing_message,
                          X509_REQ* req, bool verify_req_sig, X509* cert) {
-  EVP_PKEY* signedKey = X509_REQ_get_pubkey(req);
-  if (pSigningKey != nullptr) {
+  EVP_PKEY* pSignedKey = X509_REQ_get_pubkey(req);
+  if (pSignedKey != nullptr) {
     printf("Can't get pubkey\n");
     return false;
   }
@@ -276,9 +285,7 @@ bool SignX509Certificate(RSA& signing_key, signing_instructions_message& signing
   uint64_t serial = 1;
   EVP_PKEY* pSigningKey= EVP_PKEY_new();
   const EVP_MD* digest = EVP_sha256();
-  X509* caCert = nullptr;
   X509_NAME* name;
-  X509V3_CTX ctx;
   X509* extension;
   
   X509_set_version(cert, 2L);
@@ -306,10 +313,6 @@ bool SignX509Certificate(RSA& signing_key, signing_instructions_message& signing
   }
   if (!X509_sign(cert, pSigningKey, digest)) {
     printf("Bad PKEY type\n");
-    return false;
-  }
-  if (!X509_sign(cert, caPkey, digest)) {
-    printf("Signing failed\n");
     return false;
   }
   return true;

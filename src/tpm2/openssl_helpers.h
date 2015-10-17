@@ -44,15 +44,18 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message& params
 bool GetPublicRsaParametersFromSSLKey(RSA& rsa, rsa_public_key_message* key_msg);
 bool GetPrivateRsaParametersFromSSLKey(RSA& rsa,
                                        rsa_private_key_message* key_msg);
-bool SignX509Certificate(RSA& rsa, signing_instructions_message& signing_message,
+bool SignX509Certificate(RSA& rsa,
+                         signing_instructions_message& signing_message,
                          X509_REQ* req,  bool verify_req_sig, X509* cert);
 bool VerifyX509CertificateChain(certificate_chain_message& chain);
 bool GetCertificateRequestParametersFromX509(X509_REQ& x509_req,
                                              cert_parameters* cert_params);
 bool GetCertificateParametersFromX509(X509& x509_cert,
                                       cert_parameters* cert_params);
-bool GetPublicRsaKeyFromParameters(rsa_public_key_message& key_msg, RSA* rsa);
-bool GetPrivateRsaKeyFromParameters(rsa_private_key_message& key_msg, RSA* rsa);
+bool GetPublicRsaKeyFromParameters(const rsa_public_key_message& key_msg,
+                                   RSA* rsa);
+bool GetPrivateRsaKeyFromParameters(const rsa_private_key_message& key_msg,
+                                    RSA* rsa);
 
 void print_internal_private_key(RSA& key);
 void print_cert_request_message(x509_cert_request_parameters_message&

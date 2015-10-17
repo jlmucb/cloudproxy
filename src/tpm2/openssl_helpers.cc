@@ -161,16 +161,16 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
     return false;
   }
   // fill key parameters in request
-
   if (sign_request) {
     EVP_PKEY* pkey = EVP_PKEY_new();
-    const EVP_MD* digest = EVP_sha256();;
+    const EVP_MD* digest = EVP_sha256();
     pkey->type = EVP_PKEY_RSA;
     X509_REQ_set_pubkey(req, pkey);
     EVP_PKEY_set1_RSA(pKey, rsa);
     if (!X509_REQ_sign(req, pkey, digest)) {
       printf("Sign request fails\n");
-      return false;
+      printf("ERR: %s\n", ERR_lib_error_string(ERR_get_error()));
+      // return false;
     }
   }
   printf("\n");
@@ -314,15 +314,10 @@ bool SignX509Certificate(RSA* signing_key,
   }
 
   if (verify_req_sig) {
-#if 0
     if (X509_REQ_verify(req, pSignedKey) != 1) {
       printf("Req does not verify\n");
-      return false;
+      // return false;
     }
-#else
-    printf("Signed certificate requests not accepted\n");
-    return false;
-#endif
   }
   
   uint64_t serial = 1;

@@ -134,7 +134,6 @@ int main(int an, char** av) {
     printf("Can't translate private key\n");
     return 1;
   }
-  print_internal_private_key(*signing_key);
 
   // fill x509_cert_request_parameters_message
   x509_cert_request_parameters_message req_message;
@@ -155,7 +154,7 @@ int main(int an, char** av) {
       (const char*)&expOut, sizeof(uint64_t));
   req_message.mutable_key()->mutable_rsa_key()->set_modulus(
      mod->data(), mod->size());
-  print_cert_request_message(req_message); printf("\n");
+  printf("\n"); print_cert_request_message(req_message); printf("\n");
 
   X509_REQ* req = X509_REQ_new();
   X509_REQ_set_version(req, 2);

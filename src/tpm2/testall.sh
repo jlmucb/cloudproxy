@@ -19,7 +19,7 @@
 
 ./SigningInstructions.exe --issuer=JohnsCloudProxyCa --can_sign=true
 
-./SelfSignPolicyCert.exe --signing_instructions=signing_instructions \
+./SelfSignPolicyCert.exe --signing_instructions_file=signing_instructions \
 --key_file=cloudproxy_key_file --policy_identifier=test-policy-domain --cert_file=policy_key_cert
 
 ./GetEndorsementKey.exe --machine_identifier="John's Nuc" --endorsement_info_file=endorsement_key_info_file

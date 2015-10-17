@@ -298,6 +298,10 @@ bool SignX509Certificate(RSA* signing_key,
   ASN1_INTEGER_set(X509_get_serialNumber(cert), serial++);
   
   name = X509_REQ_get_subject_name(req);
+  if (X509_set_subject_name(cert, name) != 1) {
+    printf("Can't set subject name\n");
+    return false;
+  }
   if (X509_set_pubkey(cert, pSigningKey) != 1) {
     printf("Can't set pubkey\n");
     return false;
@@ -306,7 +310,8 @@ bool SignX509Certificate(RSA* signing_key,
     printf("Can't adj notBefore\n");
     return false;
   }
-  if (!X509_gmtime_adj(X509_get_notAfter(cert), 0)) {
+  if (!X509_gmtime_adj(X509_get_notAfter(cert),
+                       signing_instructions.duration())) {
     printf("Can't adj notAfter\n");
     return false;
   }

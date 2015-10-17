@@ -55,6 +55,7 @@ using std::string;
 #define CALLING_SEQUENCE "SigningInstructions.exe "\
 "--issuer=name " \
 "--purpose=purpose " \
+"--isCA=[true|false]" \
 "--hash_alg=[sha1|sha256] " \
 "--duration=duration-in-seconds " \
 "--can_sign=[true|false] " \
@@ -65,10 +66,12 @@ void PrintOptions() {
 }
 
 DEFINE_string(issuer, "", "issuer name");
-DEFINE_string(purpose, "signing", "purpose");
+DEFINE_string(purpose, "nonrepudiation,digitalSignature,keyEncipherment",
+              "purpose");
 DEFINE_string(hash_alg, "sha256", "hash alg");
 DEFINE_int64(duration, 31536000, "duration (in seconds)");
 DEFINE_string(instructions_file, "signing_instructions", "output-file-name");
+DEFINE_bool(isCA, false, "is CA");
 DEFINE_bool(can_sign, true, "can sign");
 
 #ifndef GFLAGS_NS
@@ -88,6 +91,7 @@ int main(int an, char** av) {
   message.set_purpose(FLAGS_purpose);
   message.set_hash_alg(FLAGS_hash_alg);
   message.set_can_sign(true);
+  message.set_isca(FLAGS_isCA);
   string output;
   if (!message.SerializeToString(&output)) {
     printf("Can't serialize output\n");

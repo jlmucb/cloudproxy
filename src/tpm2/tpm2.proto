@@ -49,7 +49,8 @@ message signing_instructions_message {
   optional string time                        = 5;
   optional string sign_alg                    = 6;
   optional string hash_alg                    = 7;
-  optional bool can_sign                      = 8;
+  optional bool isCA                          = 8;
+  optional bool can_sign                      = 9;
 }
 
 message tpm2_make_credential_info_message {

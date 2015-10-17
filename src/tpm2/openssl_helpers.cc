@@ -251,18 +251,58 @@ done:
   return ret;
 }
 
-struct entry {
-  char* key;
-  char* value;
+class extEntry {
+public:
+  char* key_;
+  char* value_;
+
+  extEntry(const char* k, const char* v);
+  extEntry();
+  char* getKey();
+  char* getValue();
 };
 
-#define EXT_COUNT 4
-struct entry ext_ent[EXT_COUNT] = {
-  {"basicConstraints", "CA:FALSE"},
-  {"subjectKeyIdentifier", "hash"},
-  {"authorityKeyIdentifier", "keyid, issuer:always"},
-  {"keyUsage", "nonrepudiation,digitalSignature,keyEncipherment"},
-};
+extEntry::extEntry(const char* k, const char* v) {
+  key_ = (char*)strdup(k);
+  value_ = (char*)strdup(v);
+}
+
+extEntry::extEntry() {
+  key_ = nullptr;
+  value_ = nullptr;
+}
+
+char* extEntry::getKey() {
+  return key_;
+}
+
+char* extEntry::getValue() {
+  return value_;
+}
+
+bool addExtensionsToCert(int num_entry, extEntry** entries, X509* cert) {
+  // add extensions
+  for (int i = 0; i < num_entry; i++) {
+    int nid = OBJ_txt2nid(entries[i]->getKey());
+    ASN1_OCTET_STRING* val = ASN1_OCTET_STRING_new();
+    ASN1_STRING_set(val, (const void *)entries[i]->getValue(),
+                    strlen(entries[i]->getValue()));
+    X509_EXTENSION* ext = X509_EXTENSION_create_by_NID(NULL, nid, 0,
+                               val);
+    if (ext == 0) {
+      printf("Bad ext_conf %d\n", i);
+      printf("ERR: %s\n", ERR_lib_error_string(ERR_get_error()));
+      return false;
+    }
+    if (!X509_add_ext(cert, ext, -1)) {
+      printf("Bad add ext %d\n", i);
+      printf("ERR: %s\n", ERR_lib_error_string(ERR_get_error()));
+      return false;
+    }
+    X509_EXTENSION_free(ext);
+  }
+  return true;
+}
 
 bool SignX509Certificate(RSA* signing_key,
                          signing_instructions_message& signing_instructions,
@@ -326,25 +366,19 @@ bool SignX509Certificate(RSA* signing_key,
     return false;
   }
   // add extensions
-  for (int i = 0; i < EXT_COUNT; i++) {
-    int nid = OBJ_txt2nid(ext_ent[i].key);
-    ASN1_OCTET_STRING* val = ASN1_OCTET_STRING_new();
-    ASN1_STRING_set(val, (const void *)ext_ent[i].value,
-                    strlen(ext_ent[i].value));
-    X509_EXTENSION* ext = X509_EXTENSION_create_by_NID(NULL, nid, 0,
-                               val);
-    if (ext == 0) {
-      printf("Bad ext_conf %d\n", i);
-      printf("ERR: %s\n", ERR_lib_error_string(ERR_get_error()));
-      return false;
-    }
-    if (!X509_add_ext(cert, ext, -1)) {
-      printf("Bad add ext %d\n", i);
-      printf("ERR: %s\n", ERR_lib_error_string(ERR_get_error()));
-      return false;
-    }
-    X509_EXTENSION_free(ext);
+  extEntry* entries[4];
+  if (signing_instructions.isca())
+    entries[0] = new extEntry("basicConstraints", "CA:TRUE");
+  else
+    entries[0] = new extEntry("basicConstraints", "CA:FALSE");
+  entries[1] = new extEntry("subjectKeyIdentifier", "hash");
+  entries[2] = new extEntry("authorityKeyIdentifier", "keyid, issuer:always");
+  entries[3] = new extEntry("keyUsage", signing_instructions.purpose().c_str());
+  if (!addExtensionsToCert(4, entries, cert)) {
+    printf("Can't add extensions\n");
+    return false;
   }
+
   if (!X509_sign(cert, pSigningKey, digest)) {
     printf("Bad PKEY type\n");
     return false;

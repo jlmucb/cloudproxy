@@ -181,13 +181,13 @@ int main(int an, char** av) {
   // country_name state_name locality_name organization_name suborganization_name
   req_message.mutable_key()->set_key_type("RSA");
   req_message.mutable_key()->mutable_rsa_key()->set_bit_modulus_size(
-      outPublic.publicArea.parameters.rsaDetail.keyBits);
-  uint64_t exp;
-  ChangeEndian64((uint64_t*)&outPublic.publicArea.parameters.rsaDetail.exponent,
-                 &exp);
+      (int)outPublic.publicArea.unique.rsa.size * 8);
+  uint64_t expIn = (uint64_t) outPublic.publicArea.parameters.rsaDetail.exponent;
+  uint64_t expOut;
+  ChangeEndian64((uint64_t*)&expIn, (uint64_t*)(&expOut));
 
   req_message.mutable_key()->mutable_rsa_key()->set_exponent(
-      (const char*)&exp, sizeof(uint64_t));
+      (const char*)&expOut, sizeof(uint64_t));
   req_message.mutable_key()->mutable_rsa_key()->set_modulus(
       (const char*)outPublic.publicArea.unique.rsa.buffer,
       (int)outPublic.publicArea.unique.rsa.size);

@@ -6,6 +6,9 @@
 #include <unistd.h>
 #include <string.h>
 
+#include <openssl/err.h>
+#include <openssl/rand.h>
+#include <openssl/ssl.h>
 #include <openssl/rsa.h>
 #include <openssl_helpers.h>
 
@@ -77,8 +80,11 @@ DEFINE_string(signed_endorsement_cert, "", "signed endorsement cert file");
 
 int main(int an, char** av) {
   int ret_val = 0;
-  GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
 
+  GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
+  OpenSSL_add_all_algorithms();
+  ERR_load_crypto_strings();
+  
   if (FLAGS_signing_instructions_file == "") {
     printf("signing_instructions_file is empty\n");
     return 1;

@@ -27,6 +27,6 @@
 --signing_instructions_file=signing_instructions \
 --signed_endorsement_cert=endorsement_cert
 
-openssl x509 -inform DER -in endorsement_cert -serial -subject -issuer -startdate -enddate -hash -purpose -modulus -pubkey
+openssl x509 -inform DER -in endorsement_cert -purpose -text
 
 

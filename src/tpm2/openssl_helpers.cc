@@ -16,6 +16,7 @@
 #include <openssl/ssl.h>
 #include <openssl/evp.h>
 #include <openssl/asn1.h>
+#include <openssl/err.h>
 
 #include <string>
 using std::string;
@@ -162,24 +163,19 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
   // fill key parameters in request
 
   if (sign_request) {
-#if 0
-  EVP_PKEY* pkey = EVP_PKEY_new();
-  EVP_MD* digest;
-  pkey->type = EVP_PKEY_RSA;
-  // check type
-  digest = EVP_sha256();
-  EVP_PKEY_set1_RSA(pKey, rsa);
-  X509_REQ_set_pubkey(req, pkey);
-  if (!X509_REQ_sign(req, pkey, digest)) {
-    printf("Sign request fails\n");
-    return false;
+    EVP_PKEY* pkey = EVP_PKEY_new();
+    const EVP_MD* digest = EVP_sha256();;
+    pkey->type = EVP_PKEY_RSA;
+    X509_REQ_set_pubkey(req, pkey);
+    EVP_PKEY_set1_RSA(pKey, rsa);
+    if (!X509_REQ_sign(req, pkey, digest)) {
+      printf("Sign request fails\n");
+      return false;
+    }
   }
-#else
-  printf("Signed certificate requests not supported yet\n");
-  return false;
-#endif
-  }
+  printf("\n");
   print_cert_request_message(params);
+  printf("\n");
   return true;
 }
 
@@ -260,10 +256,9 @@ struct entry {
   char* value;
 };
 
-#define EXT_COUNT 5
+#define EXT_COUNT 4
 struct entry ext_ent[EXT_COUNT] = {
   {"basicConstraints", "CA:FALSE"},
-  {"nsComment", "OpenSSL Cert"},
   {"subjectKeyIdentifier", "hash"},
   {"authorityKeyIdentifier", "keyid, issuer:always"},
   {"keyUsage", "nonrepudiation,digitalSignature,keyEncipherment"},
@@ -330,25 +325,26 @@ bool SignX509Certificate(RSA* signing_key,
     printf("Can't set issuer name\n");
     return false;
   }
-#if 0
   // add extensions
-  X509V3_CTX ctx;
-  X509V3_set_ctx(&ctx, NULL, NULL, NULL, NULL, 0);
   for (int i = 0; i < EXT_COUNT; i++) {
-    X509_EXTENSION* ext = X509V3_EXT_conf(nullptr, &ctx,
-        ext_ent[i].key, ext_ent[i].value);
+    int nid = OBJ_txt2nid(ext_ent[i].key);
+    ASN1_OCTET_STRING* val = ASN1_OCTET_STRING_new();
+    ASN1_STRING_set(val, (const void *)ext_ent[i].value,
+                    strlen(ext_ent[i].value));
+    X509_EXTENSION* ext = X509_EXTENSION_create_by_NID(NULL, nid, 0,
+                               val);
     if (ext == 0) {
-      printf("Bad ext_conf\n");
+      printf("Bad ext_conf %d\n", i);
+      printf("ERR: %s\n", ERR_lib_error_string(ERR_get_error()));
       return false;
     }
     if (!X509_add_ext(cert, ext, -1)) {
       printf("Bad add ext %d\n", i);
+      printf("ERR: %s\n", ERR_lib_error_string(ERR_get_error()));
       return false;
     }
     X509_EXTENSION_free(ext);
   }
-#endif
-printf("about to call sign\n");
   if (!X509_sign(cert, pSigningKey, digest)) {
     printf("Bad PKEY type\n");
     return false;

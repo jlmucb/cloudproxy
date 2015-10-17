@@ -60,5 +60,8 @@ bool GetPrivateRsaKeyFromParameters(const rsa_private_key_message& key_msg,
 void print_internal_private_key(RSA& key);
 void print_cert_request_message(x509_cert_request_parameters_message&
                                 req_message);
+
+BIGNUM* bin_to_BN(int len, byte* buf);
+string* BN_to_bin(BIGNUM& n);
 #endif
 

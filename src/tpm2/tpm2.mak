@@ -63,6 +63,10 @@ dobj_CloudproxySignProgramKey=			$(O)/tpm2_lib.o \
 dobj_GetEndorsementKey=				$(O)/tpm2_lib.o \
   $(O)/tpm2.pb.o \
   $(O)/GetEndorsementKey.o
+dobj_SelfSignPolicyCert=			$(O)/tpm2_lib.o \
+  $(O)/openssl_helpers.o \
+  $(O)/tpm2.pb.o \
+  $(O)/SelfSignPolicyCert.o
 dobj_CreateAndSaveCloudProxyKeyHierarchy=	$(O)/tpm2_lib.o \
   $(O)/tpm2.pb.o \
   $(O)/CreateAndSaveCloudProxyKeyHierarchy.o
@@ -86,6 +90,7 @@ all:	$(EXE_DIR)/tpm2_util.exe \
 	$(EXE_DIR)/GeneratePolicyKey.exe \
 	$(EXE_DIR)/SigningInstructions.exe \
 	$(EXE_DIR)/GetEndorsementKey.exe \
+	$(EXE_DIR)/SelfSignPolicyCert.exe \
 	$(EXE_DIR)/CloudProxySignEndorsementKey.exe \
 	$(EXE_DIR)/CloudproxySignProgramKey.exe \
 	$(EXE_DIR)/CreateAndSaveCloudProxyKeyHierarchy.exe \
@@ -110,6 +115,7 @@ clean:
 	rm $(EXE_DIR)/ServerSignInterimSigningKeyWithCredential.exe
 	rm $(EXE_DIR)/ClientRetrieveInterimSigningKey.exe
 	rm $(EXE_DIR)/SigningInstructions.exe
+	rm $(EXE_DIR)/SelfSignPolicyCert.exe
 
 $(EXE_DIR)/tpm2_util.exe: $(dobj_tpm2_util)
 	@echo "linking tpm2_util"
@@ -130,6 +136,10 @@ $(EXE_DIR)/CloudproxySignProgramKey.exe: $(dobj_CloudproxySignProgramKey)
 $(EXE_DIR)/GetEndorsementKey.exe: $(dobj_GetEndorsementKey)
 	@echo "linking GetEndorsementKey"
 	$(LINK) -o $(EXE_DIR)/GetEndorsementKey.exe $(dobj_GetEndorsementKey) $(LDFLAGS) -lcrypto
+
+$(EXE_DIR)/SelfSignPolicyCert.exe: $(dobj_SelfSignPolicyCert)
+	@echo "linking SelfSignPolicyCert"
+	$(LINK) -o $(EXE_DIR)/SelfSignPolicyCert.exe $(dobj_SelfSignPolicyCert) $(LDFLAGS) -lcrypto
 
 $(EXE_DIR)/CreateAndSaveCloudProxyKeyHierarchy.exe: $(dobj_CreateAndSaveCloudProxyKeyHierarchy)
 	@echo "linking CreateAndSaveCloudProxyKeyHierarchy"
@@ -214,6 +224,10 @@ $(O)/ClientRetrieveInterimSigningKey.o: $(S)/ClientRetrieveInterimSigningKey.cc
 $(O)/GetEndorsementKey.o: $(S)/GetEndorsementKey.cc
 	@echo "compiling GetEndorsementKey.cc"
 	$(CC) $(CFLAGS) -c -o $(O)/GetEndorsementKey.o $(S)/GetEndorsementKey.cc
+
+$(O)/SelfSignPolicyCert.o: $(S)/SelfSignPolicyCert.cc
+	@echo "compiling SelfSignPolicyCert.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/SelfSignPolicyCert.o $(S)/SelfSignPolicyCert.cc
 
 $(O)/SigningInstructions.o: $(S)/SigningInstructions.cc
 	@echo "compiling SigningInstructions.cc"

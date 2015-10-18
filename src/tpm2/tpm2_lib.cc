@@ -2857,7 +2857,7 @@ bool Tpm2_WriteNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
   n = CreatePasswordAuthArea(authString, space_left, in);
   IF_NEG_RETURN_FALSE(n);
-  Update(n, &in, &size_params, &space_left);;
+  Update(n, &in, &size_params, &space_left);
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   ChangeEndian16((uint16_t*)&size, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);

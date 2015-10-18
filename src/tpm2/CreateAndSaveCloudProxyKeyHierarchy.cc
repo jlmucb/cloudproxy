@@ -45,7 +45,7 @@
 
 // Calling sequence
 //   CreateAndSaveCloudProxyKeyHierarchy.exe --cloudproxy_namespace="name"
-//      --cloudproxy_slot_primary=int32 --cloudproxy_slot_seal=int32 --slot_quote=int32
+//      --slot_primary=int32 --slot_seal=int32 --slot_quote=int32
 //      --seal_value=value-string --quote_value=value-string --pcr_hash_alg_name=[sha1 | sha256]
 //      --pcr_list="int, int, ..." --seal_output_file=output-file-name
 //      --quote_output_file= output-file-name --pcr_file=output-file-name
@@ -54,8 +54,7 @@ using std::string;
 
 
 #define CALLING_SEQUENCE "CreateAndSaveCloudProxyKeyHierarchy.exe " \
-"--cloudproxy_namespace=name " \
-"--cloudproxy_slot_primary=int32 --cloudproxy_slot_seal=int32 " \
+"--slot_primary=int32 --slot_seal=int32 " \
 "--slot_quote=int32 " \
 "--seal_value=value-string --quote_value=value-string " \
 "--pcr_hash_alg_name=[sha1 | sha256] " \
@@ -66,10 +65,9 @@ void PrintOptions() {
   printf("Calling sequence: %s", CALLING_SEQUENCE);
 }
 
-DEFINE_string(cloudproxy_namespace, "", "");
-DEFINE_int32(cloudproxy_slot_primary, 0, "");
-DEFINE_int32(cloudproxy_slot_seal, 1, "");
-DEFINE_int32(slot_quote, 2, "");
+DEFINE_int32(slot_primary, 1, "");
+DEFINE_int32(slot_seal, 2, "");
+DEFINE_int32(slot_quote, 3, "");
 DEFINE_string(seal_value, "", "test seal value");
 DEFINE_string(quote_value, "", "test quote value");
 DEFINE_string(pcr_hash_alg_name, "", "hash alg (sha1 or sha256");
@@ -106,15 +104,10 @@ int main(int an, char** av) {
   TPM2B_DIGEST digest_out;
   TPMT_TK_CREATION creation_ticket;
 
-  TPM_HANDLE root_handle; 
+  TPM_HANDLE root_handle = 0; 
   TPM2B_PUBLIC root_pub_out;
-  int root_size_public = MAX_SIZE_PARAMS;
-  byte root_out_public[MAX_SIZE_PARAMS];
-  int root_size_private = MAX_SIZE_PARAMS;
-  byte root_out_private[MAX_SIZE_PARAMS];
 
-  TPM2B_PUBLIC seal_pub_out;
-  TPM_HANDLE seal_load_handle;
+  TPM_HANDLE seal_load_handle = 0;
   TPMA_OBJECT seal_create_flags;
   TPM2B_NAME seal_name;
   int seal_size_public = MAX_SIZE_PARAMS;
@@ -122,32 +115,29 @@ int main(int an, char** av) {
   int seal_size_private = MAX_SIZE_PARAMS;
   byte seal_out_private[MAX_SIZE_PARAMS];
 
-  TPM_HANDLE sealed_load_handle;
-  TPM2B_NAME sealed_name;
-  int sealed_size_public = MAX_SIZE_PARAMS;
-  byte sealed_out_public[MAX_SIZE_PARAMS];
-  int sealed_size_private = MAX_SIZE_PARAMS;
-  byte sealed_out_private[MAX_SIZE_PARAMS];
-
   TPMA_OBJECT quote_create_flags;
-  TPM_HANDLE quote_load_handle;
   TPM2B_NAME quote_name;
+  TPM_HANDLE quote_load_handle = 0;
   int quote_size_public = MAX_SIZE_PARAMS;
   byte quote_out_public[MAX_SIZE_PARAMS];
   int quote_size_private = MAX_SIZE_PARAMS;
   byte quote_out_private[MAX_SIZE_PARAMS];
 
+  TPM_HANDLE nv_handle = 0;
+  // uint16_t size_context_save_area =  MAX_SIZE_PARAMS;
+  byte context_save_area[MAX_SIZE_PARAMS];
+  int context_data_size = MAX_SIZE_PARAMS;
+
+  TPM_HANDLE sealed_load_handle = 0;
+  int sealed_size_public = MAX_SIZE_PARAMS;
+  byte sealed_out_public[MAX_SIZE_PARAMS];
+  int sealed_size_private = MAX_SIZE_PARAMS;
+  byte sealed_out_private[MAX_SIZE_PARAMS];
+
   TPM2B_DIGEST policy_digest;
   TPM2B_DIGEST secret;
+  InitSinglePcrSelection(7, TPM_ALG_SHA1, pcrSelect);
 
-  uint16_t size_context_save_area =  MAX_SIZE_PARAMS;
-  byte context_save_area[MAX_SIZE_PARAMS];
-  int context_data_size = 1024;
-
-  // read pcrlist and make selection
-  // InitSinglePcrSelection(pcr_num, TPM_ALG_SHA1, pcrSelect);
-  // FLAGS_pcr_list
- 
   // root of hierarchy 
   *(uint32_t*)(&root_flags) = 0;
   root_flags.fixedTPM = 1;
@@ -160,8 +150,9 @@ int main(int an, char** av) {
                          TPM_ALG_RSA, TPM_ALG_SHA1, root_flags,
                          TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
                          2048, 0x010001, &root_handle, &root_pub_out)) {
-    printf("CreatePrimary succeeded\n");
+    printf("CreatePrimary root succeeded\n");
   } else {
+    printf("CreatePrimary root failed\n");
     ret_val = 1;
     goto done;
   }
@@ -179,22 +170,158 @@ int main(int an, char** av) {
                      2048, 0x010001, &seal_size_public, seal_out_public,
                      &seal_size_private, seal_out_private,
                      &creation_out, &digest_out, &creation_ticket)) {
-    printf("Create succeeded private size: %d, public size: %d\n",
-           root_size_private, root_size_public);
+    printf("Create seal key succeeded private size: %d, public size: %d\n",
+           seal_size_private, seal_size_public);
   } else {
-    printf("Create failed\n");
+    printf("Create seal key failed\n");
     ret_val = 1;
     goto done;
   }
 
+  // load seal key
   if (Tpm2_Load(tpm, root_handle, parentAuth, seal_size_public, seal_out_public,
                seal_size_private, seal_out_private, &seal_load_handle, &seal_name)) {
-    printf("Load succeeded, handle: %08x\n", seal_load_handle);
+    printf("Load seal key succeeded\n");
   } else {
-    Tpm2_FlushContext(tpm, root_handle);
+    printf("Load seal key failed\n");
     ret_val = 1;
     goto done;
   }
+
+  *(uint32_t*)(&quote_create_flags) = 0;
+  quote_create_flags.fixedTPM = 1;
+  quote_create_flags.fixedParent = 1;
+  quote_create_flags.sensitiveDataOrigin = 1;
+  quote_create_flags.userWithAuth = 1;
+  quote_create_flags.sign = 1;
+  quote_create_flags.restricted = 1;
+
+  if (Tpm2_CreateKey(tpm, root_handle, parentAuth, authString, pcrSelect,
+                     TPM_ALG_RSA, TPM_ALG_SHA1, quote_create_flags, TPM_ALG_NULL,
+                     (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB, TPM_ALG_RSASSA,
+                     1024, 0x010001,
+                     &quote_size_public, quote_out_public,
+                     &quote_size_private, quote_out_private,
+                     &creation_out, &digest_out, &creation_ticket)) {
+    printf("Create quote succeeded, private size: %d, public size: %d\n",
+           quote_size_private, quote_size_public);
+  } else {
+    printf("Create quote failed\n");
+    ret_val = 1;
+    goto done;
+  }
+
+  if (Tpm2_Load(tpm, root_handle, parentAuth, quote_size_public, quote_out_public,
+               quote_size_private, quote_out_private, &quote_load_handle, &quote_name)) {
+    printf("Load quote succeeded\n");
+  } else {
+    printf("Load quote failed\n");
+    ret_val = 1;
+    goto done;
+  }
+
+  // Save context primary context
+  nv_handle = GetNvHandle(FLAGS_slot_primary);
+  context_data_size = MAX_SIZE_PARAMS;
+  if (!Tpm2_SaveContext(tpm, root_handle, &context_data_size,
+                        context_save_area)) {
+    printf("Primary SaveContext failed\n");
+    ret_val = 1;
+    goto done;
+  }
+  printf("Primary Save context worked, size is %d\n", context_data_size);
+  printf("nv_handle: %08x\n", nv_handle);
+  if (!Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
+    printf("Primary UndefinedSpace failed\n");
+  }
+  // TODO(jlm): should be pcrpolicy protected
+  // TODO(jlm): index into structures should be added 
+  if (!Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle,
+                      authString, (uint16_t)context_data_size)) {
+    printf("Primary DefinedSpace failed\n");
+    ret_val = 1;
+    goto done;
+  }
+  if (!Tpm2_WriteNv(tpm, nv_handle, authString, 
+                    (uint16_t)context_data_size, context_save_area)){
+    printf("Primary WriteNv failed\n");
+    ret_val = 1;
+    goto done;
+  }
+
+  // Save seal context
+  nv_handle = GetNvHandle(FLAGS_slot_seal);
+  context_data_size = MAX_SIZE_PARAMS;
+  if (!Tpm2_SaveContext(tpm, seal_load_handle, &context_data_size,
+                        context_save_area)) {
+    printf("Seal SaveContext failed\n");
+    ret_val = 1;
+    goto done;
+  }
+  printf("Seal Save context worked, size is %d\n", context_data_size);
+  printf("nv_handle: %08x\n", nv_handle);
+  if (!Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
+    printf("Seal UndefinedSpace failed\n");
+  }
+  // TODO(jlm): should be pcrpolicy protected
+  // TODO(jlm): index into structures should be added 
+  if (!Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle,
+                      authString, (uint16_t)context_data_size)) {
+    printf("Seal DefinedSpace failed\n");
+    ret_val = 1;
+    goto done;
+  }
+  if (!Tpm2_WriteNv(tpm, nv_handle, authString, 
+                    (uint16_t)context_data_size, context_save_area)){
+    printf("Seal WriteNv failed\n");
+    ret_val = 1;
+    goto done;
+  }
+
+  // Save quote context
+  nv_handle = GetNvHandle(FLAGS_slot_quote);
+  context_data_size = MAX_SIZE_PARAMS;
+  if (!Tpm2_SaveContext(tpm, quote_load_handle, &context_data_size,
+                        context_save_area)) {
+    printf("Quote SaveContext failed\n");
+    ret_val = 1;
+    goto done;
+  }
+  printf("Quote SaveContext worked, size is %d\n", context_data_size);
+  printf("nv_handle: %08x\n", nv_handle);
+  if (!Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
+    printf("Seal UndefinedSpace failed\n");
+  }
+  // TODO(jlm): should be pcrpolicy protected
+  // TODO(jlm): index into structures should be added 
+  if (!Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle,
+                      authString, (uint16_t)context_data_size)) {
+    printf("Seal DefinedSpace failed\n");
+    ret_val = 1;
+    goto done;
+  }
+  if (!Tpm2_WriteNv(tpm, nv_handle, authString, 
+                    (uint16_t)context_data_size, context_save_area)){
+    printf("Seal WriteNv failed\n");
+    ret_val = 1;
+    goto done;
+  }
+
+#if 0
+  if (!Tpm2_ReadNv(tpm, nv_handle, authString, &size_context_save_area,
+                        context_save_area)) {
+    printf("ReadNv failed\n");
+    ret_val = 1;
+    goto done;
+  }
+#endif
+
+  // test seal and quote
+  //  seal and quote as test
+  //  FLAGS_seal_value
+  //  FLAGS_quote_value
+  //  FLAGS_seal_output_file
+  //  FLAGS_quote_output_file
 
   if (Tpm2_CreateSealed(tpm, root_handle, policy_digest.size, policy_digest.buffer,
                         parentAuth, secret.size, secret.buffer, pcrSelect,
@@ -212,97 +339,31 @@ int main(int an, char** av) {
     goto done;
   }
 
-  if (Tpm2_Load(tpm, root_handle, parentAuth, sealed_size_public, sealed_out_public,
-               sealed_size_private, sealed_out_private, &sealed_load_handle, &sealed_name)) {
-    printf("Load succeeded\n");
+  if (Tpm2_Load(tpm, root_handle, parentAuth, seal_size_public, seal_out_public,
+               seal_size_private, seal_out_private, &seal_load_handle, &seal_name)) {
+    printf("Load succeeded, handle: %08x\n", seal_load_handle);
   } else {
-    printf("Load failed\n");
-    Tpm2_FlushContext(tpm, root_handle);
     ret_val = 1;
     goto done;
   }
-
-  *(uint32_t*)(&quote_create_flags) = 0;
-  quote_create_flags.fixedTPM = 1;
-  quote_create_flags.fixedParent = 1;
-  quote_create_flags.sensitiveDataOrigin = 1;
-  quote_create_flags.userWithAuth = 1;
-  quote_create_flags.sign = 1;
-  quote_create_flags.restricted = 1;
-
-  if (Tpm2_CreateKey(tpm, root_handle, parentAuth, authString, pcrSelect,
-                     TPM_ALG_RSA, TPM_ALG_SHA1, quote_create_flags, TPM_ALG_NULL,
-                     (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB, TPM_ALG_RSASSA,
-                     1024, 0x010001,
-                     &sealed_size_public, sealed_out_public,
-                     &sealed_size_private, sealed_out_private,
-                     &creation_out, &digest_out, &creation_ticket)) {
-    printf("Create succeeded, private size: %d, public size: %d\n",
-           sealed_size_private, sealed_size_public);
-  } else {
-    printf("Create failed\n");
-    ret_val = 1;
-    goto done;
-  }
-
-  if (Tpm2_Load(tpm, root_handle, parentAuth, quote_size_public, quote_out_public,
-               quote_size_private, quote_out_private, &quote_load_handle, &quote_name)) {
-    printf("Load succeeded\n");
-  } else {
-    printf("Load failed\n");
-    ret_val = 1;
-    goto done;
-  }
-
-#if 0
-  // Save to TPM slots
-  // FLAGS_cloudproxy_slot_seal
-
-  TPMI_RH_NV_INDEX index = FLAGS_cloudproxy_slot_primary;
-  if (!Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, index)) {
-    printf("UndefinedSpace failed\n");
-    ret_val = 1;
-    goto done;
-  }
-
-  if (!Tpm2_DefineSpace(tpm, TPM_RH_OWNER, index,
-                      authString, context_data_size)) {
-    printf("DefinedSpace failed\n");
-    ret_val = 1;
-    goto done;
-  }
-  if (!Tpm2_SaveContext(tpm, TPM_RH_OWNER, &size_context_save_area,
-                        context_save_area)) {
-    printf("SaveContext failed\n");
-    ret_val = 1;
-    goto done;
-  }
-  if (!Tpm2_ReadNv(tpm, index, authString, &size_context_save_area,
-                        context_save_area)) {
-    printf("ReadNv failed\n");
-    ret_val = 1;
-    goto done;
-  }
-  if (!Tpm2_WriteNv(tpm, index, authString, 
-                    &size_context_save_area, context_save_area)){
-    printf("WriteNv failed\n");
-    ret_val = 1;
-    goto done;
-  }
-#endif
 
   // FLAGS_pcr_hash_alg_name
 
   // FLAGS_slot_quote
   // FLAGS_pcr_file
-
-  // seal and quote as test
-  // FLAGS_seal_value
-  // FLAGS_quote_value
-  // FLAGS_seal_output_file
-  // FLAGS_quote_output_file
-
 done:
+  if (root_handle != 0) {
+    Tpm2_FlushContext(tpm, root_handle);
+  }
+  if (seal_load_handle != 0) {
+    Tpm2_FlushContext(tpm, seal_load_handle);
+  }
+  if (quote_load_handle != 0) {
+    Tpm2_FlushContext(tpm, quote_load_handle);
+  }
+  if (sealed_load_handle != 0) {
+    Tpm2_FlushContext(tpm, sealed_load_handle);
+  }
   tpm.CloseTpm();
   return ret_val;
 }

@@ -36,6 +36,11 @@
 --slot_quote=3 \
 --pcr_hash_alg_name=sha256
 
+./RestoreCloudProxyKeyHierarchy.exe \
+--slot_primary=1 --slot_seal=2 \
+ --slot_quote=3  --pcr_hash_alg_name=sha256
+
+
 openssl x509 -inform DER -in endorsement_cert -purpose -text
 
 

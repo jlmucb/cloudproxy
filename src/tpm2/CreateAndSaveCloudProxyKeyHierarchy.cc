@@ -237,11 +237,12 @@ int main(int an, char** av) {
   // TODO(jlm): should be pcrpolicy protected
   // TODO(jlm): index into structures should be added 
   if (!Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle,
-                      authString, (uint16_t)context_data_size)) {
+                        authString, (uint16_t)context_data_size)) {
     printf("Primary DefinedSpace failed\n");
     ret_val = 1;
     goto done;
   }
+  printf("Root writing %d bytes\n", context_data_size);
   if (!Tpm2_WriteNv(tpm, nv_handle, authString, 
                     (uint16_t)context_data_size, context_save_area)){
     printf("Primary WriteNv failed\n");
@@ -271,6 +272,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+  printf("Seal writing %d bytes\n", context_data_size);
   if (!Tpm2_WriteNv(tpm, nv_handle, authString, 
                     (uint16_t)context_data_size, context_save_area)){
     printf("Seal WriteNv failed\n");
@@ -300,6 +302,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+  printf("Quote writing %d bytes\n", context_data_size);
   if (!Tpm2_WriteNv(tpm, nv_handle, authString, 
                     (uint16_t)context_data_size, context_save_area)){
     printf("Seal WriteNv failed\n");

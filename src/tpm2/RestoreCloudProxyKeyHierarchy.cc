@@ -95,15 +95,16 @@ int main(int an, char** av) {
   TPML_PCR_SELECTION pcrSelect;
 
   TPM_HANDLE root_handle = 0; 
-  TPM_HANDLE seal_load_handle = 0;
-  TPM_HANDLE quote_load_handle = 0;
+  TPM_HANDLE seal_handle = 0;
+  TPM_HANDLE quote_handle = 0;
   TPM_HANDLE nv_handle = 0;
   byte context_save_area[MAX_SIZE_PARAMS];
-  int context_data_size = MAX_SIZE_PARAMS;
+  int context_data_size = 924;
 
   InitSinglePcrSelection(7, TPM_ALG_SHA1, pcrSelect);
 
   // root handle
+  memset(context_save_area, 0, MAX_SIZE_PARAMS);
   nv_handle = GetNvHandle(FLAGS_slot_primary);
   if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t) context_data_size,
                    context_save_area)) {
@@ -111,6 +112,9 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+  printf("\ncontext_save_area: ");
+  PrintBytes(context_data_size, context_save_area);
+  printf("\n\n");
   if (!Tpm2_LoadContext(tpm, context_data_size, context_save_area, &root_handle)) {
     printf("Root LoadContext failed\n");
     ret_val = 1;
@@ -118,6 +122,7 @@ int main(int an, char** av) {
   }
 
   // seal handle
+  memset(context_save_area, 0, MAX_SIZE_PARAMS);
   nv_handle = GetNvHandle(FLAGS_slot_seal);
   if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t)context_data_size,
                    context_save_area)) {
@@ -125,6 +130,9 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+  printf("context_save_area: ");
+  PrintBytes(context_data_size, context_save_area);
+  printf("\n");
   if (!Tpm2_LoadContext(tpm, context_data_size, context_save_area, &seal_handle)) {
     printf("Root LoadContext failed\n");
     ret_val = 1;
@@ -132,6 +140,7 @@ int main(int an, char** av) {
   }
 
   // quote handle
+  memset(context_save_area, 0, MAX_SIZE_PARAMS);
   nv_handle = GetNvHandle(FLAGS_slot_quote);
   if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t)context_data_size,
                    context_save_area)) {
@@ -149,11 +158,11 @@ done:
   if (root_handle != 0) {
     Tpm2_FlushContext(tpm, root_handle);
   }
-  if (seal_load_handle != 0) {
-    Tpm2_FlushContext(tpm, seal_load_handle);
+  if (seal_handle != 0) {
+    Tpm2_FlushContext(tpm, seal_handle);
   }
-  if (quote_load_handle != 0) {
-    Tpm2_FlushContext(tpm, quote_load_handle);
+  if (quote_handle != 0) {
+    Tpm2_FlushContext(tpm, quote_handle);
   }
 
   tpm.CloseTpm();

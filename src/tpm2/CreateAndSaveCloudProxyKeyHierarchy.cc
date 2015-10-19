@@ -231,13 +231,16 @@ int main(int an, char** av) {
   }
   printf("Primary Save context worked, size is %d\n", context_data_size);
   printf("nv_handle: %08x\n", nv_handle);
+  printf("Context save area (%d): ", context_data_size);
+  PrintBytes(context_data_size, context_save_area);
+  printf("\n");
   if (!Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
     printf("Primary UndefinedSpace failed\n");
   }
   // TODO(jlm): should be pcrpolicy protected
   // TODO(jlm): index into structures should be added 
   if (!Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle,
-                        authString, (uint16_t)context_data_size)) {
+                        authString, (uint16_t)context_data_size + 32)) {
     printf("Primary DefinedSpace failed\n");
     ret_val = 1;
     goto done;
@@ -267,7 +270,7 @@ int main(int an, char** av) {
   // TODO(jlm): should be pcrpolicy protected
   // TODO(jlm): index into structures should be added 
   if (!Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle,
-                      authString, (uint16_t)context_data_size)) {
+                      authString, (uint16_t)context_data_size + 32)) {
     printf("Seal DefinedSpace failed\n");
     ret_val = 1;
     goto done;
@@ -297,7 +300,7 @@ int main(int an, char** av) {
   // TODO(jlm): should be pcrpolicy protected
   // TODO(jlm): index into structures should be added 
   if (!Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle,
-                      authString, (uint16_t)context_data_size)) {
+                      authString, (uint16_t)context_data_size + 32)) {
     printf("Seal DefinedSpace failed\n");
     ret_val = 1;
     goto done;
@@ -311,14 +314,6 @@ int main(int an, char** av) {
   }
 
 #if 0
-  if (!Tpm2_ReadNv(tpm, nv_handle, authString, &size_context_save_area,
-                        context_save_area)) {
-    printf("ReadNv failed\n");
-    ret_val = 1;
-    goto done;
-  }
-#endif
-
   // test seal and quote
   //  seal and quote as test
   //  FLAGS_seal_value
@@ -349,6 +344,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+#endif
 
   // FLAGS_pcr_hash_alg_name
 

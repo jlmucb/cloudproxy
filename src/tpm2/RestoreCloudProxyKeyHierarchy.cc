@@ -99,7 +99,7 @@ int main(int an, char** av) {
   TPM_HANDLE quote_handle = 0;
   TPM_HANDLE nv_handle = 0;
   byte context_save_area[MAX_SIZE_PARAMS];
-  int context_data_size = 924;
+  int context_data_size = 930;
 
   InitSinglePcrSelection(7, TPM_ALG_SHA1, pcrSelect);
 
@@ -113,9 +113,10 @@ int main(int an, char** av) {
     goto done;
   }
   printf("\ncontext_save_area: ");
-  PrintBytes(context_data_size, context_save_area);
+  PrintBytes(context_data_size - 6, context_save_area + 6);
   printf("\n\n");
-  if (!Tpm2_LoadContext(tpm, context_data_size, context_save_area, &root_handle)) {
+  if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
+                        &root_handle)) {
     printf("Root LoadContext failed\n");
     ret_val = 1;
     goto done;
@@ -133,7 +134,8 @@ int main(int an, char** av) {
   printf("context_save_area: ");
   PrintBytes(context_data_size, context_save_area);
   printf("\n");
-  if (!Tpm2_LoadContext(tpm, context_data_size, context_save_area, &seal_handle)) {
+  if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
+                        &seal_handle)) {
     printf("Root LoadContext failed\n");
     ret_val = 1;
     goto done;
@@ -148,7 +150,8 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-  if (!Tpm2_LoadContext(tpm, context_data_size, context_save_area, &quote_handle)) {
+  if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
+                        &quote_handle)) {
     printf("Quote LoadContext failed\n");
     ret_val = 1;
     goto done;

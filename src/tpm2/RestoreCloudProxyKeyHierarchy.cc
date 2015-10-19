@@ -40,8 +40,8 @@
 //  from nv ram.  It optionally unseals sealed file contents and verifies quoted file contents.
 
 // Calling sequence
-//   RestoreCloudProxyKeyHierarchy.exe --cloudproxy_namespace="name"
-//      --cloudproxy_slot_primary=int32 --cloudproxy_slot_seal=int32 --slot_quote=int32
+//   RestoreCloudProxyKeyHierarchy.exe 
+//      --slot_primary=int32 --slot_seal=int32 --slot_quote=int32
 //      --seal_value=value-string --quote_value=value-string --pcr_hash_alg_name=[sha1 | sha256]
 //      --pcr_list="int, int, ..." --seal_output_file=output-file-name
 //      --quote_output_file= output-file-name --pcr_file=output-file-name
@@ -50,8 +50,7 @@ using std::string;
 
 
 #define CALLING_SEQUENCE "RestoreCloudProxyKeyHierarchy.exe " \
-"--cloudproxy_namespace=name " \
-"--cloudproxy_slot_primary=int32 --cloudproxy_slot_seal=int32 " \
+"--slot_primary=int32 --slot_seal=int32 " \
 "--slot_quote=int32" \
 "--seal_value=value-string --quote_value=value-string " \
 "--pcr_hash_alg_name=[sha1 | sha256]" \
@@ -62,10 +61,8 @@ void PrintOptions() {
   printf("Calling sequence: %s", CALLING_SEQUENCE);
 }
 
-
-DEFINE_string(cloudproxy_namespace, "", "");
-DEFINE_int32(cloudproxy_slot_primary, 0, "");
-DEFINE_int32(cloudproxy_slot_seal, 1, "");
+DEFINE_int32(slot_primary, 0, "");
+DEFINE_int32(slot_seal, 1, "");
 DEFINE_int32(slot_quote, 2, "");
 DEFINE_string(seal_value, "", "test seal value");
 DEFINE_string(quote_value, "", "test quote value");
@@ -75,13 +72,15 @@ DEFINE_string(seal_output_file, "", "output-file-name");
 DEFINE_string(quote_output_file, "", "output-file-name");
 DEFINE_string(pcr_file, "", "output-file-name");
 
-
 #ifndef GFLAGS_NS
 #define GFLAGS_NS gflags
 #endif
 
+#define MAX_SIZE_PARAMS 4096
+
 int main(int an, char** av) {
   LocalTpm tpm;
+  int ret_val = 0;
 
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   if (!tpm.OpenTpm("/dev/tpm0")) {
@@ -89,7 +88,75 @@ int main(int an, char** av) {
     return 1;
   }
 
+  string authString("01020304");
+  string parentAuth("01020304");
+  string emptyAuth;
+
+  TPML_PCR_SELECTION pcrSelect;
+
+  TPM_HANDLE root_handle = 0; 
+  TPM_HANDLE seal_load_handle = 0;
+  TPM_HANDLE quote_load_handle = 0;
+  TPM_HANDLE nv_handle = 0;
+  byte context_save_area[MAX_SIZE_PARAMS];
+  int context_data_size = MAX_SIZE_PARAMS;
+
+  InitSinglePcrSelection(7, TPM_ALG_SHA1, pcrSelect);
+
+  // root handle
+  nv_handle = GetNvHandle(FLAGS_slot_primary);
+  if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t) context_data_size,
+                   context_save_area)) {
+    printf("Root ReadNv failed\n");
+    ret_val = 1;
+    goto done;
+  }
+  if (!Tpm2_LoadContext(tpm, context_data_size, context_save_area, &root_handle)) {
+    printf("Root LoadContext failed\n");
+    ret_val = 1;
+    goto done;
+  }
+
+  // seal handle
+  nv_handle = GetNvHandle(FLAGS_slot_seal);
+  if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t)context_data_size,
+                   context_save_area)) {
+    printf("Root ReadNv failed\n");
+    ret_val = 1;
+    goto done;
+  }
+  if (!Tpm2_LoadContext(tpm, context_data_size, context_save_area, &seal_handle)) {
+    printf("Root LoadContext failed\n");
+    ret_val = 1;
+    goto done;
+  }
+
+  // quote handle
+  nv_handle = GetNvHandle(FLAGS_slot_quote);
+  if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t)context_data_size,
+                   context_save_area)) {
+    printf("Quote ReadNv failed\n");
+    ret_val = 1;
+    goto done;
+  }
+  if (!Tpm2_LoadContext(tpm, context_data_size, context_save_area, &quote_handle)) {
+    printf("Quote LoadContext failed\n");
+    ret_val = 1;
+    goto done;
+  }
+
 done:
+  if (root_handle != 0) {
+    Tpm2_FlushContext(tpm, root_handle);
+  }
+  if (seal_load_handle != 0) {
+    Tpm2_FlushContext(tpm, seal_load_handle);
+  }
+  if (quote_load_handle != 0) {
+    Tpm2_FlushContext(tpm, quote_load_handle);
+  }
+
   tpm.CloseTpm();
+  return ret_val;
 }
 

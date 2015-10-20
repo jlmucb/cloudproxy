@@ -79,12 +79,15 @@ DEFINE_int64(program_key_exponent, 0x010001ULL, "program key exponent");
 DEFINE_int32(primary_slot, 0, "slot number");
 DEFINE_int32(quote_slot, 0, "quote slot number");
 DEFINE_int32(seal_slot, 0, "seal slot number");
+DEFINE_string(hash_quote_alg, "sha256", "sha1|sha256");
 DEFINE_string(program_key_file, "", "output-file-name");
 DEFINE_string(program_cert_request_file, "", "output-file-name");
 
 #ifndef GFLAGS_NS
 #define GFLAGS_NS gflags
 #endif
+
+#define MAX_SIZE_PARAMS 4096
 
 int main(int an, char** av) {
   LocalTpm tpm;
@@ -97,14 +100,15 @@ int main(int an, char** av) {
   }
 
   TPM_HANDLE ekHandle = 0;
+  TPMA_OBJECT primary_flags;
   TPM2B_PUBLIC ek_pub_out;
   TPM2B_NAME ek_pub_name;
   TPM2B_NAME ek_qualified_pub_name;
-  int ek_pub_blob_size = 1024;
-  byte ek_pub_blob[1024];
+  uint16_t ek_pub_blob_size = MAX_SIZE_PARAMS;
+  byte ek_pub_blob[MAX_SIZE_PARAMS];
 
-  uint16_t ek_cert_blob_size = 1024;
-  byte ek_cert_blob[1024];
+  int ek_cert_blob_size = MAX_SIZE_PARAMS;
+  byte ek_cert_blob[MAX_SIZE_PARAMS];
 
   TPM_HANDLE nv_handle = 0;
 
@@ -121,27 +125,37 @@ int main(int an, char** av) {
   TPM2B_PUBLIC quote_pub_out;
   TPM2B_NAME quote_pub_name;
   TPM2B_NAME quote_qualified_pub_name;
-  uint16_t quote_pub_blob_size = 1024;
-  byte quote_pub_blob[1024];
+  uint16_t quote_pub_blob_size = MAX_SIZE_PARAMS;
+  byte quote_pub_blob[MAX_SIZE_PARAMS];
 
+  string endorsement_key_blob;
   byte context_save_area[MAX_SIZE_PARAMS];
   int context_data_size = 930;
 
   RSA* program_rsa_key = nullptr;
-  byte program_der_array_private[MAXKEY_BUF];
+  byte program_der_array_private[MAX_SIZE_PARAMS];
   byte* program_start_private = nullptr;
   byte* program_next_private = nullptr;
   int program_len_private;
 
+  string* mod = nullptr;
+  uint64_t expIn;
+  uint64_t expOut;
+  SHA256_CTX sha256;
   x509_cert_request_parameters_message cert_parameters;
+  string x509_request_key_blob;
   private_key_blob_message program_key_out;
   program_cert_request_message request;
   X509_REQ* req = nullptr;
 
-  TPM2B_DATA to_quote;
-  TPMT_SIG_SCHEME scheme;
   int quote_size = MAX_SIZE_PARAMS;
   byte quoted[MAX_SIZE_PARAMS];
+  byte quoted_hash[128];
+  string quote_key_info;
+  string quote_sig;
+  string quote_info;
+  TPM2B_DATA to_quote;
+  TPMT_SIG_SCHEME scheme;
   int sig_size = MAX_SIZE_PARAMS;
   byte sig[MAX_SIZE_PARAMS];
 
@@ -177,7 +191,7 @@ int main(int an, char** av) {
     goto done;
   }
   printf("ek Public blob: ");
-  PrintBytes(ek_pub_blob_size, pub_blob);
+  PrintBytes(ek_pub_blob_size, ek_pub_blob);
   printf("\n");
   printf("ek Name: ");
   PrintBytes(ek_pub_name.size, ek_pub_name.name);
@@ -185,13 +199,14 @@ int main(int an, char** av) {
   printf("ek Qualified name: ");
   PrintBytes(ek_qualified_pub_name.size, ek_qualified_pub_name.name);
   printf("\n");
-  // message.set_machine_identifier(FLAGS_machine_identifier);
 
   // Get endorsement cert
-  if (!ReadFileIntoBlock(FLAGS_signed_endorsement_cert_file, &ek_cert_blob_size, byte ek_cert_blob)) {
+  if (!ReadFileIntoBlock(FLAGS_signed_endorsement_cert_file, 
+                         &ek_cert_blob_size, ek_cert_blob)) {
     printf("Can't read endorsement info\n");
     return 1;
   }
+  endorsement_key_blob.assign((const char*)ek_cert_blob, ek_cert_blob_size);
 
   // restore hierarchy
   // TODO(jlm): should get pcr list from parameters
@@ -199,7 +214,7 @@ int main(int an, char** av) {
 
   // root handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);
-  nv_handle = GetNvHandle(FLAGS_slot_primary);
+  nv_handle = GetNvHandle(FLAGS_primary_slot);
   if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t) context_data_size,
                    context_save_area)) {
     printf("Root ReadNv failed\n");
@@ -218,7 +233,7 @@ int main(int an, char** av) {
 
   // seal handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);
-  nv_handle = GetNvHandle(FLAGS_slot_seal);
+  nv_handle = GetNvHandle(FLAGS_seal_slot);
   if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t)context_data_size,
                    context_save_area)) {
     printf("Root ReadNv failed\n");
@@ -237,7 +252,7 @@ int main(int an, char** av) {
 
   // quote handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);
-  nv_handle = GetNvHandle(FLAGS_slot_quote);
+  nv_handle = GetNvHandle(FLAGS_quote_slot);
   if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t)context_data_size,
                    context_save_area)) {
     printf("Quote ReadNv failed\n");
@@ -252,13 +267,8 @@ int main(int an, char** av) {
   }
 
   // Generate program key
-  if (program_key_type != "RSA") {
+  if (FLAGS_program_key_type != "RSA") {
     printf("Only RSA supported\n");
-    ret_val = 1;
-    goto done;
-  }
-  if (FLAGS_signing_instructions == "") {
-    printf("No signing instructions\n");
     ret_val = 1;
     goto done;
   }
@@ -274,7 +284,8 @@ int main(int an, char** av) {
   }
 
   program_rsa_key = RSA_generate_key(FLAGS_program_key_size, 
-                             FLAGS_program_key_exponent, nullptr, nullptr);
+                                     FLAGS_program_key_exponent,
+                                     nullptr, nullptr);
   if (program_rsa_key == nullptr) {
     printf("Can't generate RSA key\n");
     ret_val = 1;
@@ -289,8 +300,9 @@ int main(int an, char** av) {
   printf("\n");
 
   program_key_out.set_key_type("RSA");
-  program_key_out.set_key_name(FLAGS_key_name);
-  program_key_out.set_blob((const char*)program_start_private, program_len_private);
+  program_key_out.set_key_name(FLAGS_program_key_name);
+  program_key_out.set_blob((const char*)program_start_private,
+                           program_len_private);
   if (!program_key_out.SerializeToString(&output)) {
     printf("Can't serialize output\n");
     ret_val = 1;
@@ -303,32 +315,24 @@ int main(int an, char** av) {
     goto done;
   }
 
-  // Fill program key cert request
-#if 0
-  string key_blob = endorsement_info.tpm2b_blob();
-  uint16_t size_in;
-  ChangeEndian16((uint16_t*)key_blob.data(), (uint16_t*)&size_in);
-  TPM2B_PUBLIC outPublic;
-  if (!GetReadPublicOut(size_in, (byte*)(key_blob.data() + sizeof(uint16_t)),
-                        outPublic)) {
-    printf("Can't parse endorsement blob\n");
-    return 1;
-  }
-  // fill x509_cert_request_parameters_message
-  cert_parameters_common_name(endorsement_info.machine_identifier());
-  // country_name state_name locality_name organization_name suborganization_name
-  cert_parameters.mutable_key()->set_key_type("RSA");
+  // Fill program key cert request with progran key parameters
+  cert_parameters.set_common_name(FLAGS_program_key_name);
+  cert_parameters.mutable_key()->set_key_type(FLAGS_program_key_type);
   cert_parameters.mutable_key()->mutable_rsa_key()->set_bit_modulus_size(
-      (int)outPublic.publicArea.unique.rsa.size * 8);
-  uint64_t expIn = (uint64_t) outPublic.publicArea.parameters.rsaDetail.exponent;
-  uint64_t expOut;
+      FLAGS_program_key_size);
+  expIn = (uint64_t) FLAGS_program_key_exponent;
   ChangeEndian64((uint64_t*)&expIn, (uint64_t*)(&expOut));
 
   cert_parameters.mutable_key()->mutable_rsa_key()->set_exponent(
       (const char*)&expOut, sizeof(uint64_t));
+  mod = BN_to_bin(*program_rsa_key->n);
+  if (mod == nullptr) {
+    printf("Can't get program key modulus\n");
+    ret_val = 1;
+    goto done;
+  }
   cert_parameters.mutable_key()->mutable_rsa_key()->set_modulus(
-      (const char*)outPublic.publicArea.unique.rsa.buffer,
-      (int)outPublic.publicArea.unique.rsa.size);
+      mod->data(), mod->size());
   print_cert_request_message(cert_parameters); printf("\n");
 
   req = X509_REQ_new();
@@ -337,13 +341,15 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-  request.endorsement_cert_blob
-  request.x509_program_key_request
-  request.hash_quote_alg
+  // x509_request_key_blob.assign((byte*)req, sizeof(req));
+  request.set_endorsement_cert_blob(endorsement_key_blob);
+  request.set_x509_program_key_request(x509_request_key_blob);
+  request.set_hash_quote_alg(FLAGS_hash_quote_alg);
 
   // get quote key info
   if (Tpm2_ReadPublic(tpm, quote_handle, &quote_pub_blob_size, quote_pub_blob,
-                      quote_pub_out, quote_pub_name, quote_qualified_pub_name)) {
+                      quote_pub_out, quote_pub_name,
+                      quote_qualified_pub_name)) {
     printf("Quote ReadPublic succeeded\n");
   } else {
     printf("Quote ReadPublic failed\n");
@@ -351,7 +357,7 @@ int main(int an, char** av) {
     goto done;
   }
   printf("Quote Public blob: ");
-  PrintBytes(quote_pub_blob_size, pub_blob);
+  PrintBytes(quote_pub_blob_size, quote_pub_blob);
   printf("\n");
   printf("Quote Name: ");
   PrintBytes(quote_pub_name.size, quote_pub_name.name);
@@ -359,20 +365,19 @@ int main(int an, char** av) {
   printf("Quote Qualified name: ");
   PrintBytes(quote_qualified_pub_name.size, quote_qualified_pub_name.name);
   printf("\n");
-  // message.set_machine_identifier(FLAGS_machine_identifier);
-  request.quote_key_info
 
-  // Quote sign request
-  to_quote.size = 16;
-  for  (int i = 0; i < 16; i++)
-    to_quote.buffer[i] = (byte)(i + 1);
-  if (!Tpm2_Quote(tpm, load_handle, parentAuth,
+  // hash x509 request
+  SHA256_Init(&sha256);
+  SHA256_Update(&sha256, (byte*)req, sizeof(req));
+  SHA256_Final(quoted_hash, &sha256);
+  to_quote.size = 32;
+  memset(to_quote.buffer, 0, to_quote.size);
+  memcpy(to_quote.buffer, quoted_hash, to_quote.size);
+  if (!Tpm2_Quote(tpm, quote_handle, parentAuth,
                   to_quote.size, to_quote.buffer,
-                  scheme, pcr_selection, TPM_ALG_RSA, TPM_ALG_SHA1,
+                  scheme, pcrSelect, TPM_ALG_RSA, TPM_ALG_SHA256,
                   &quote_size, quoted, &sig_size, sig)) {
     printf("Quote failed\n");
-    Tpm2_FlushContext(tpm, load_handle);
-    Tpm2_FlushContext(tpm, parent_handle);
     return false;
   }
   printf("Quote succeeded, quoted (%d): ", quote_size);
@@ -381,11 +386,15 @@ int main(int an, char** av) {
   printf("Sig (%d): ", sig_size);
   PrintBytes(sig_size, sig);
   printf("\n");
-  request.quote_signature
+
+  //quote_key_info.assign();
+  quote_sig.assign((const char*)sig, sig_size);
+  quote_info.assign((const char*)quoted, quote_size);
+  request.set_quote_key_info(quote_key_info);
+  request.set_quote_signature(quote_sig);
 
   // Get ActivateCredential info
-  request.cred = ;
-#endif
+  // request.set_cred();
 
   request.SerializeToString(&output);
   if (!WriteFileFromBlock(FLAGS_program_cert_request_file,

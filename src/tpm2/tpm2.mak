@@ -69,9 +69,10 @@ dobj_CreateAndSaveCloudProxyKeyHierarchy=	$(O)/tpm2_lib.o \
 dobj_RestoreCloudProxyKeyHierarchy=		$(O)/tpm2_lib.o \
   $(O)/tpm2.pb.o \
   $(O)/RestoreCloudProxyKeyHierarchy.o
-dobj_ClientGenerateProgramKeyReques=		$(O)/tpm2_lib.o \
+dobj_ClientGenerateProgramKeyRequest=		$(O)/tpm2_lib.o \
   $(O)/tpm2.pb.o \
-  $(O)/ClientGenerateProgramKeyReques.o
+  $(O)/openssl_helpers.o \
+  $(O)/ClientGenerateProgramKeyRequest.o
 dobj_ServerSignProgramKeyRequest=		$(O)/tpm2_lib.o \
   $(O)/tpm2.pb.o \
   $(O)/ServerSignProgramKeyRequest.o

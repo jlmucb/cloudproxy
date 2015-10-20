@@ -81,7 +81,7 @@ message cert_parameters {
   optional string not_after	                        = 4;
 }
 
-message tpm2_credential_info_message {
+message credential_info_message {
   optional public_key_message public_key      = 1;
   optional string name                        = 2;
   optional int32 properties                   = 3;
@@ -96,14 +96,14 @@ message program_cert_request_message {
   optional bytes x509_program_key_request     = 2;
   optional string hash_quote_alg              = 3;
   optional bytes quote_signature              = 5;
-  optional tpm2_credential_info_message cred  = 6;
+  optional credential_info_message cred       = 6;
 }
 
 message program_cert_response_message {
   optional string enc_alg                     = 1;
   optional string enc_mode                    = 2;
   optional bytes encrypted_cert               = 3;
-  optional bytes credential_info              = 4;
+  optional credential_info_message info       = 4;
 }
 
 message certificate_chain_entry_message {

@@ -36,11 +36,8 @@
 // File: ClientRetrieveInterimSigningKey.cc
 
 
-//  This program decrypts the encrypted_signing_key_certificate_file, it then generates and/or
-//  retrieves the program  private/public key pair, seals the private portion to
-//  the cloudproxy environment and creates a file containing a protobuf with the
-//  signing_key_certificate and a protobuf signed by the signing_key
-//  naming the public portion of the proposed cloudproxy_program_key.
+//  This program decrypts the program  key certificate using ActivateCredential
+//  and stores the resulting decrypted cert.
 
 // Calling sequence: ClientGetProgramKeyCert.exe
 //    --slot_primary=slot-number
@@ -104,6 +101,24 @@ int main(int an, char** av) {
   TPM2B_ENCRYPTED_SECRET secret;
   TPM2B_DIGEST recovered_credential;
 
+  TPMA_OBJECT primary_flags;
+
+  TPM2B_PUBLIC ek_pub_out;
+  TPM2B_NAME ek_pub_name;
+  TPM2B_NAME ek_qualified_pub_name;
+  uint16_t ek_pub_blob_size = MAX_SIZE_PARAMS;
+
+  TPM2B_PUBLIC quote_pub_out;
+  TPM2B_NAME quote_pub_name;
+  TPM2B_NAME quote_qualified_pub_name;
+  uint16_t quote_pub_blob_size = MAX_SIZE_PARAMS;
+  byte quote_pub_blob[1024];
+
+  int ek_cert_blob_size = MAX_SIZE_PARAMS;
+  byte ek_cert_blob[MAX_SIZE_PARAMS];
+  int context_data_size = MAX_SIZE_PARAMS;
+  byte context_data_area[MAX_SIZE_PARAMS];
+
   // Generate program key
   if (FLAGS_program_key_type != "RSA") {
     printf("Only RSA supported\n");
@@ -115,11 +130,11 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-  // read input
 
+  // read endorsement cert
   if (!ReadFileIntoBlock(FLAGS_signed_endorsement_cert_file,
                        &ek_cert_blob_size, ek_cert_blob)) {
-  printf("Can't read endorsement info\n");
+  printf("Can't read endorsement cert\n");
   ret_val = 1;
   goto done;
   }
@@ -164,7 +179,7 @@ int main(int an, char** av) {
   printf("\n");
 
   // restore context
- // TODO(jlm): should get pcr list from parameters
+  // TODO(jlm): should get pcr list from parameters
   InitSinglePcrSelection(7, TPM_ALG_SHA1, pcrSelect);
 
   // root handle
@@ -224,34 +239,25 @@ int main(int an, char** av) {
   memset((void*)&credential, 0, sizeof(TPM2B_DIGEST));
   memset((void*)&secret, 0, sizeof(TPM2B_ENCRYPTED_SECRET));
   memset((void*)&credentialBlob, 0, sizeof(TPM2B_ID_OBJECT));
-  credential.size = 20;
-  for (int i = 0; i < 20; i++)
-    credential.buffer[i] = i + 1;
-
-  TPM2B_PUBLIC active_pub_out;
-  TPM2B_NAME active_pub_name;
-  TPM2B_NAME active_qualified_pub_name;
-  uint16_t active_pub_blob_size = 1024;
-  byte active_pub_blob[1024];
-
-  memset((void*)&active_pub_out, 0, sizeof(TPM2B_PUBLIC));
 
   if (Tpm2_ReadPublic(tpm, activeHandle,
-                      &active_pub_blob_size, active_pub_blob,
-                      active_pub_out, active_pub_name,
-                      active_qualified_pub_name)) {
+                      &quote_pub_blob_size, quote_pub_blob,
+                      quote_pub_out, quote_pub_name,
+                      quote_qualified_pub_name)) {
     printf("ReadPublic succeeded\n");
   } else {
     printf("ReadPublic failed\n");
     return false;
   }
-  printf("Active Name (%d): ", active_pub_name.size);
-  PrintBytes(active_pub_name.size, active_pub_name.name);
+  printf("Quote name (%d): ", quote_pub_name.size);
+  PrintBytes(quote_pub_name.size, active_pub_name.name);
   printf("\n");
 
+  // Fill credential blob and secret
   printf("credBlob size: %d\n", credentialBlob.size);
   printf("secret size: %d\n", secret.size);
-  if (Tpm2_ActivateCredential(tpm, activeHandle, ekHandle,
+
+  if (Tpm2_ActivateCredential(tpm, quote_handle, ekHandle,
                               parentAuth, emptyAuth,
                               credentialBlob, secret,
                               &recovered_credential)) {
@@ -260,6 +266,9 @@ int main(int an, char** av) {
     PrintBytes(recovered_credential.size, recovered_credential.buffer);
     printf("\n")
   }
+
+  // Decrypt cert, credential is key
+  response.encrypted_cert();
 
  // Write output cert
  request.SerializeToString(&output);

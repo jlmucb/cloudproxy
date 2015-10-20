@@ -42,7 +42,7 @@
 
 using std::string;
 
-// This program creates endorsement key and produces a file containing
+// This program creates the endorsement key and produces a file containing
 // a protobuf consisting of the TPM2B_PUBLIC blob and other information.
 // TODO: include machine identifier?
 

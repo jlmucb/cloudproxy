@@ -49,9 +49,8 @@
 
 using std::string;
 
-// This program creates endorsement key and produces a file containing
-// a protobuf consisting of the TPM2B_PUBLIC blob and other information.
-// TODO: include machine identifier?
+// This program signs the policy key using the policy key.
+// The policy_identifier identifies the policy domain.
 
 DEFINE_string(signing_instructions_file, "", "signing_instructions");
 DEFINE_string(key_file, "", "key_input");

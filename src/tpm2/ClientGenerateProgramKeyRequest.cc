@@ -40,10 +40,10 @@
 // File: ClientGenerateProgramKeyRequest.cc
 
 
-//   This program creates a primary key and signingkey.  Produces the signed_interim_cert_request_file
+//   This program creates a program key and produces a program_cert_request_message 
 //   which contains a protobuf consisting of the endorsement key certificate, and
-//   a request signed by the signing key with the public portion of the signing key, the
-//   the policy for MakeCredential to activate the key and the date/time.
+//   a request to sign the program key and encrypt the result with a credential
+//   that can be unlocked with the endorsement key referencing the Quote key properties..
 
 // Calling sequence: ClientGenerateProgramKeyRequest.exe
 //    --signed_endorsement_cert=input-file-name
@@ -154,7 +154,7 @@ int main(int an, char** av) {
   string quote_key_info;
   string quote_sig;
   string quote_info;
-  tpm2_credential_info_message cred_info;
+  credential_info_message cred_info;
   TPM2B_DATA to_quote;
   TPMT_SIG_SCHEME scheme;
   int sig_size = MAX_SIZE_PARAMS;

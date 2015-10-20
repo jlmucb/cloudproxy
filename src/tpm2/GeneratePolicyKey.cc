@@ -40,7 +40,8 @@
 
 
 // This program creates public/private key pair and produces a file containing
-// a protobuf consisting of the keypair.
+// a protobuf consisting of the keypair.  It is usually the root of a Cloudproxy
+// policy domain.
 
 
 // Calling sequence

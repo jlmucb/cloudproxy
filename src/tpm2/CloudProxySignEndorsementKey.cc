@@ -51,7 +51,7 @@
 
 using std::string;
 
-//  This program reads the endorsement_info_file and produces a certificate
+//  This program reads the endorsement_info_file and sogns a certificate
 //  for the endorsement key using the cloudproxy_signing_key in accordance with
 //  the signing instructions.  signing instructions contains a subset of:
 //  duration, purpose, and other information to be included in the 

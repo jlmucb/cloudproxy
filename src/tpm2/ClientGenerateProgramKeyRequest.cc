@@ -205,7 +205,8 @@ int main(int an, char** av) {
   if (!ReadFileIntoBlock(FLAGS_signed_endorsement_cert_file, 
                          &ek_cert_blob_size, ek_cert_blob)) {
     printf("Can't read endorsement info\n");
-    return 1;
+    ret_val = 1;
+    goto done;
   }
   endorsement_key_blob.assign((const char*)ek_cert_blob, ek_cert_blob_size);
 

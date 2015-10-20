@@ -63,35 +63,30 @@ using std::string;
 "--cloudproxy_namespace=name " \
 "--cloudproxy_slot_primary=slot-number " \
 "--cloudproxy_slot_seal= slot-number " \
-"--encrypted_interim_certificate_file=input-file-name " \
-"--signing_key_namespace=name " \
+"--encrypted_certificate_file=input-file-name " \
 "--signing_key_primary_slot=slot-number " \
 "--signing_key_signing_slot=slot-number " \
 "--signing_key_cert_file_=input-file-name " \
 "--tpm_credential_file=input-file-name " \
-"--cloudproxy_regenerate_program_key=input-file-name " \
-"--signed_program_public_key_request_file=output-file-name\n"
+"--program_key_cert_file=output-file-name\n"
 
 void PrintOptions() {
   printf("Calling sequence: %s", CALLING_SEQUENCE);
 }
 
 
-DEFINE_string(cloudproxy_namespace, "", "name");
-DEFINE_int32(cloudproxy_slot_primary, 0, "slot-number");
-DEFINE_int32(cloudproxy_slot_seal, 1, " slot-number");
-DEFINE_string(encrypted_interim_certificate_file, "", "input-file-name");
-DEFINE_string(signing_key_namespace, "", "name");
-DEFINE_int32(signing_key_primary_slot, 2, "slot-number");
-DEFINE_int32(signing_key_signing_slot, 3, "slot-number");
-DEFINE_string(signing_key_cert_file_, "", "input-file-name");
+DEFINE_string(encrypted_certificate_file, "", "input-file-name");
+DEFINE_int32(primary_slot, 1, "slot-number");
+DEFINE_int32(seal_slot, 2, "slot-number");
+DEFINE_int32(quote_slot, 3, "slot-number");
 DEFINE_string(tpm_credential_file, "", "input-file-name");
-DEFINE_string(cloudproxy_regenerate_program_key, "", "input-file-name");
-DEFINE_string(signed_program_public_key_request_file, "", "output-file-name");
+DEFINE_string(program_cert_file, "", "output-file-name");
 
 #ifndef GFLAGS_NS
 #define GFLAGS_NS gflags
 #endif
+
+#define MAX_SIZE_PARAMS 4096
 
 int main(int an, char** av) {
   LocalTpm tpm;
@@ -104,12 +99,139 @@ int main(int an, char** av) {
   }
 
 #if 0
-  // get ekHandle
-  // restore context
- TPM2B_DIGEST credential;
+  TPM_HANDLE nv_handle = 0;
+
+  string authString("01020304");
+  string parentAuth("01020304");
+  string emptyAuth;
+
+  TPML_PCR_SELECTION pcrSelect;
+
+  TPM_HANDLE root_handle = 0;
+  TPM_HANDLE seal_handle = 0;
+  TPM_HANDLE quote_handle = 0;
+
+  TPM2B_DIGEST credential;
   TPM2B_ID_OBJECT credentialBlob;
   TPM2B_ENCRYPTED_SECRET secret;
   TPM2B_DIGEST recovered_credential;
+
+  // Generate program key
+  if (FLAGS_program_key_type != "RSA") {
+    printf("Only RSA supported\n");
+    ret_val = 1;
+    goto done;
+  }
+  if (FLAGS_program_key_name == "") {
+    printf("No key name\n");
+    ret_val = 1;
+    goto done;
+  }
+  // read input
+
+  if (!ReadFileIntoBlock(FLAGS_signed_endorsement_cert_file,
+                       &ek_cert_blob_size, ek_cert_blob)) {
+  printf("Can't read endorsement info\n");
+  ret_val = 1;
+  goto done;
+  }
+
+  // Create endorsement key
+  *(uint32_t*)(&primary_flags) = 0;
+
+  primary_flags.fixedTPM = 1;
+  primary_flags.fixedParent = 1;
+  primary_flags.sensitiveDataOrigin = 1;
+  primary_flags.userWithAuth = 1;
+  primary_flags.decrypt = 1;
+  primary_flags.restricted = 1;
+
+  InitSinglePcrSelection(-1, TPM_ALG_SHA256, pcrSelect);
+  if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect,
+                         TPM_ALG_RSA, TPM_ALG_SHA256, primary_flags,
+                         TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
+                         2048, 0x010001, &ekHandle, &ek_pub_out)) {
+    printf("CreatePrimary succeeded parent: %08x\n", ekHandle);
+  } else {
+    printf("CreatePrimary failed\n");
+    ret_val = 1;
+    goto done;
+  }
+  if (Tpm2_ReadPublic(tpm, ekHandle, &ek_pub_blob_size, ek_pub_blob,
+                      ek_pub_out, ek_pub_name, ek_qualified_pub_name)) {
+    printf("ek ReadPublic succeeded\n");
+  } else {
+    printf("ek ReadPublic failed\n");
+    ret_val = 1;
+    goto done;
+  }
+  printf("ek Public blob: ");
+  PrintBytes(ek_pub_blob_size, ek_pub_blob);
+  printf("\n");
+  printf("ek Name: ");
+  PrintBytes(ek_pub_name.size, ek_pub_name.name);
+  printf("\n");
+  printf("ek Qualified name: ");
+  PrintBytes(ek_qualified_pub_name.size, ek_qualified_pub_name.name);
+  printf("\n");
+
+  // restore context
+ // TODO(jlm): should get pcr list from parameters
+  InitSinglePcrSelection(7, TPM_ALG_SHA1, pcrSelect);
+
+  // root handle
+  memset(context_save_area, 0, MAX_SIZE_PARAMS);
+  nv_handle = GetNvHandle(FLAGS_primary_slot);
+  if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t) context_data_size,
+                   context_save_area)) {
+    printf("Root ReadNv failed\n");
+    ret_val = 1;
+    goto done;
+  }
+  printf("\ncontext_save_area: ");
+  PrintBytes(context_data_size - 6, context_save_area + 6);
+  printf("\n\n");
+  if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
+                        &root_handle)) {
+    printf("Root LoadContext failed\n");
+    ret_val = 1;
+    goto done;
+  }
+
+  // seal handle
+  memset(context_save_area, 0, MAX_SIZE_PARAMS);
+  nv_handle = GetNvHandle(FLAGS_seal_slot);
+  if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t)context_data_size,
+                   context_save_area)) {
+    printf("Root ReadNv failed\n");
+    ret_val = 1;
+    goto done;
+  }
+  printf("context_save_area: ");
+  PrintBytes(context_data_size, context_save_area);
+  printf("\n");
+  if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
+                        &seal_handle)) {
+    printf("Root LoadContext failed\n");
+    ret_val = 1;
+    goto done;
+
+
+  // quote handle
+  memset(context_save_area, 0, MAX_SIZE_PARAMS);
+  nv_handle = GetNvHandle(FLAGS_quote_slot);
+  if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t)context_data_size,
+                   context_save_area)) {
+    printf("Quote ReadNv failed\n");
+    ret_val = 1;
+    goto done;
+  }
+  if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
+                        &quote_handle)) {
+    printf("Quote LoadContext failed\n");
+    ret_val = 1;
+    goto done;
+  }
 
   memset((void*)&credential, 0, sizeof(TPM2B_DIGEST));
   memset((void*)&secret, 0, sizeof(TPM2B_ENCRYPTED_SECRET));
@@ -149,10 +271,35 @@ int main(int an, char** av) {
     printf("Recovered credential (%d): ", recovered_credential.size);
     PrintBytes(recovered_credential.size, recovered_credential.buffer);
     printf("\n")
+  }
+
+ // Write output cert
+ request.SerializeToString(&output);
+  if (!WriteFileFromBlock(FLAGS_program_cert_request_file,
+                          output.size(),
+                          (byte*)output.data())) {
+    printf("Can't write endorsement cert\n");
+    goto done;
+  }
+
   // print out cert
 #endif
 
 done:
+#if 0
+ if (root_handle != 0) {
+    Tpm2_FlushContext(tpm, root_handle);
+  }
+  if (seal_handle != 0) {
+    Tpm2_FlushContext(tpm, seal_handle);
+  }
+  if (quote_handle != 0) {
+    Tpm2_FlushContext(tpm, quote_handle);
+  }
+  if (ekHandle != 0) {
+    Tpm2_FlushContext(tpm, ekHandle);
+  }
+#endif
   tpm.CloseTpm();
   return ret_val;
 }

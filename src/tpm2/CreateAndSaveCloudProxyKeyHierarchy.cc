@@ -92,6 +92,9 @@ int main(int an, char** av) {
     return 1;
   }
 
+  // OpenSSL_add_all_algorithms();
+  // ERR_load_crypto_strings();
+
   // Create the Heirarchy 
   string authString("01020304");
   string parentAuth("01020304");

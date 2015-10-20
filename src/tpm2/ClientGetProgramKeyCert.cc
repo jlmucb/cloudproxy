@@ -95,6 +95,7 @@ DEFINE_string(signed_program_public_key_request_file, "", "output-file-name");
 
 int main(int an, char** av) {
   LocalTpm tpm;
+  int ret_val = 0;
 
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   if (!tpm.OpenTpm("/dev/tpm0")) {
@@ -102,7 +103,57 @@ int main(int an, char** av) {
     return 1;
   }
 
+#if 0
+  // get ekHandle
+  // restore context
+ TPM2B_DIGEST credential;
+  TPM2B_ID_OBJECT credentialBlob;
+  TPM2B_ENCRYPTED_SECRET secret;
+  TPM2B_DIGEST recovered_credential;
+
+  memset((void*)&credential, 0, sizeof(TPM2B_DIGEST));
+  memset((void*)&secret, 0, sizeof(TPM2B_ENCRYPTED_SECRET));
+  memset((void*)&credentialBlob, 0, sizeof(TPM2B_ID_OBJECT));
+  credential.size = 20;
+  for (int i = 0; i < 20; i++)
+    credential.buffer[i] = i + 1;
+
+  TPM2B_PUBLIC active_pub_out;
+  TPM2B_NAME active_pub_name;
+  TPM2B_NAME active_qualified_pub_name;
+  uint16_t active_pub_blob_size = 1024;
+  byte active_pub_blob[1024];
+
+  memset((void*)&active_pub_out, 0, sizeof(TPM2B_PUBLIC));
+
+  if (Tpm2_ReadPublic(tpm, activeHandle,
+                      &active_pub_blob_size, active_pub_blob,
+                      active_pub_out, active_pub_name,
+                      active_qualified_pub_name)) {
+    printf("ReadPublic succeeded\n");
+  } else {
+    printf("ReadPublic failed\n");
+    return false;
+  }
+  printf("Active Name (%d): ", active_pub_name.size);
+  PrintBytes(active_pub_name.size, active_pub_name.name);
+  printf("\n");
+
+  printf("credBlob size: %d\n", credentialBlob.size);
+  printf("secret size: %d\n", secret.size);
+  if (Tpm2_ActivateCredential(tpm, activeHandle, ekHandle,
+                              parentAuth, emptyAuth,
+                              credentialBlob, secret,
+                              &recovered_credential)) {
+    printf("ActivateCredential succeeded\n");
+    printf("Recovered credential (%d): ", recovered_credential.size);
+    PrintBytes(recovered_credential.size, recovered_credential.buffer);
+    printf("\n")
+  // print out cert
+#endif
+
 done:
   tpm.CloseTpm();
+  return ret_val;
 }
 

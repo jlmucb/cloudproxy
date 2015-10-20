@@ -74,82 +74,100 @@ DEFINE_string(program_response_file, "", "output-file-name");
 #define GFLAGS_NS gflags
 #endif
 
+#define MAX_SIZE_PARAMS 8192
+
 int main(int an, char** av) {
   int ret_val = 0;
 
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
 
-  // Read Request
-#if 0
- if (!ReadFileIntoBlock(FLAGS_private_file, &size_private, inPrivate)) {
-      printf("Can't read public block\n");
-      ok = false;
-    }
-#endif
-  // Extract program key request
-  // Extract quote key info
-  // Validate request
-  // Get cloudproxy key
-#if 0
-  OpenSSL_add_all_algorithms();
-  ERR_load_crypto_strings();
+  int size_cert_request = MAX_SIZE_PARAMS;
+  byte* cert_request_buf[MAX_SIZE_PARAMS];
+  x509_cert_request_parameters_message cert_request;
   
-  if (FLAGS_signing_instructions_file == "") {
-    printf("signing_instructions_file is empty\n");
-    return 1;
-  }
-  if (FLAGS_program_cert_request_file == "") {
-    printf("program_cert_request_file is empty\n");
-    return 1;
-  }
-  if (FLAGS_cloudproxy_key_file == "") {
-    printf("cloudproxy_key_file is empty\n");
-    return 1;
-  }
-  if (FLAGS_signed_endorsement_cert == "") {
-    printf("signed_endorsement_cert is empty\n");
-    return 1;
-  }
-
   int in_size = MAX_BUF_SIZE;
   byte in_buf[MAX_BUF_SIZE];
 
   string input;
+
+#if 0
+  X509_REQ* req = X509_REQ_new();
+  X509_REQ_set_version(req, 2);
+
+  TPM2B_DIGEST credential;
+  TPM2B_NAME objectName;
+  TPM2B_ID_OBJECT credentialBlob;
+  TPM2B_ENCRYPTED_SECRET secret ;
+
+  X509* cert = X509_new();
+
+  private_key_blob_message private_key;
+  program_cert_request_message request;
+  program_cert_response_message response;
+  string output;
+
+  OpenSSL_add_all_algorithms();
+  ERR_load_crypto_strings();
+
+  if (FLAGS_signing_instructions_file == "") {
+    printf("signing_instructions_file is empty\n");
+    ret_val = 1;
+    goto done;
+  }
+  if (FLAGS_program_cert_request_file == "") {
+    printf("program_cert_request_file is empty\n");
+  }
+  if (FLAGS_cloudproxy_key_file == "") {
+    printf("cloudproxy_key_file is empty\n");
+  }
+  if (FLAGS_signed_endorsement_cert == "") {
+    printf("signed_endorsement_cert is empty\n");
+  }
+
+  // Get cloudproxy key
+  if (!ReadFileIntoBlock(FLAGS_program_cert_request_file, &size_cert_request, cert_request_buf)) {
+    printf("Can't read cert request\n");
+    ret_val = 1;
+    goto done;
+  }
+  input.assign((const char*)in_buf, in_size);
+  if (!request.ParseFromString(input)) {
+    printf("Can't parse cert request\n");
+    ret_val = 1;
+    goto done;
+  }
+
   signing_instructions_message signing_message;
-  if (!ReadFileIntoBlock(FLAGS_signing_instructions_file, &in_size, 
-                         in_buf)) {
+  if (!ReadFileIntoBlock(FLAGS_signing_instructions_file, &in_size, in_buf)) {
     printf("Can't read signing instructions %s\n",
            FLAGS_signing_instructions_file.c_str());
-    return 1;
+    ret_val = 1;
+    goto done;
   }
   input.assign((const char*)in_buf, in_size);
   if (!signing_message.ParseFromString(input)) {
     printf("Can't parse signing instructions\n");
-    return 1;
+    ret_val = 1;
+    goto done;
   }
   printf("issuer: %s, duration: %ld, purpose: %s, hash: %s\n",
          signing_message.issuer().c_str(), signing_message.duration(),
          signing_message.purpose().c_str(), signing_message.hash_alg().c_str());
-  
   if (!signing_message.can_sign()) {
     printf("Signing is invalid\n");
-    return 1;
+    ret_val = 1;
+    goto done;
   }
 
   in_size = MAX_BUF_SIZE;
-  private_key_blob_message private_key;
-  if (!ReadFileIntoBlock(FLAGS_cloudproxy_private_key_file, &in_size, 
-                         in_buf)) {
+  if (!ReadFileIntoBlock(FLAGS_cloudproxy_key_file, &in_size, in_buf)) {
     printf("Can't read private key\n");
-    printf("    %s\n", FLAGS_cloudproxy_private_key_file.c_str());
-    return 1;
+    printf("    %s\n", FLAGS_cloudproxy_key_file.c_str());
   }
   input.assign((const char*)in_buf, in_size);
   if (!private_key.ParseFromString(input)) {
     printf("Can't parse private key\n");
-    return 1;
   }
-
   printf("Key type: %s\n", private_key.key_type().c_str());
   printf("Key name: %s\n", private_key.key_name().c_str());
   string the_blob = private_key.blob();
@@ -158,75 +176,63 @@ int main(int an, char** av) {
   RSA* signing_key = d2i_RSAPrivateKey(nullptr, &p, the_blob.size());
   if (signing_key == nullptr) {
     printf("Can't translate private key\n");
-    return 1;
+    ret_val = 1;
+    goto done;
   }
   print_internal_private_key(*signing_key);
 
-  string key_blob = endorsement_info.tpm2b_blob();
-  uint16_t size_in;
   ChangeEndian16((uint16_t*)key_blob.data(), (uint16_t*)&size_in);
   TPM2B_PUBLIC outPublic;
   if (!GetReadPublicOut(size_in, (byte*)(key_blob.data() + sizeof(uint16_t)),
                         outPublic)) {
     printf("Can't parse endorsement blob\n");
-    return 1;
+    ret_val = 1;
+    goto done;
   }
+  // Extract program key request
 
-  // fill x509_cert_request_parameters_message
-  x509_cert_request_parameters_message req_message;
-  req_message.set_common_name(endorsement_info.machine_identifier());
-  // country_name state_name locality_name organization_name suborganization_name
-  req_message.mutable_key()->set_key_type("RSA");
-  req_message.mutable_key()->mutable_rsa_key()->set_bit_modulus_size(
-      (int)outPublic.publicArea.unique.rsa.size * 8);
-  uint64_t expIn = (uint64_t) outPublic.publicArea.parameters.rsaDetail.exponent;
-  uint64_t expOut;
-  ChangeEndian64((uint64_t*)&expIn, (uint64_t*)(&expOut));
+  // Extract quote key info
 
-  req_message.mutable_key()->mutable_rsa_key()->set_exponent(
-      (const char*)&expOut, sizeof(uint64_t));
-  req_message.mutable_key()->mutable_rsa_key()->set_modulus(
-      (const char*)outPublic.publicArea.unique.rsa.buffer,
-      (int)outPublic.publicArea.unique.rsa.size);
-  print_cert_request_message(req_message); printf("\n");
+  // Validate request
 
-  X509_REQ* req = X509_REQ_new();
-  X509_REQ_set_version(req, 2);
-  if (!GenerateX509CertificateRequest(req_message, false, req)) {
+  if (!GenerateX509CertificateRequest(cert_request, false, req)) {
     printf("Can't generate x509 request\n");
-    return 1;
+    ret_val = 1;
+    goto done;
   }
 
   // sign it
-  X509* cert = X509_new();
-  if (!SignX509Certificate(signing_key, signing_message, req,
-                           false, cert)) {
+  if (!SignX509Certificate(signing_key, signing_message, req, false, cert)) {
     printf("Can't sign x509 request\n");
-    return 1;
+    ret_val = 1;
+    goto done;
   }
   printf("message signed\n");
 
   byte* out = nullptr;
   int size = i2d_X509(cert, &out);
-#endif
 
   // Sign program key
+
   // Encrypt for ActivateCredential
 
+  // bool MakeCredential(TPM2B_DIGEST& credential, TPM2B_NAME& objectName,
+  //                     TPM2B_ID_OBJECT* credentialBlob, TPM2B_ENCRYPTED_SECRET* secret);
+
   // Write response file
-#if 0
-  program_cert_response_message response;
-  string output;
+
   response.SerializeToString(&output);
   if (!WriteFileFromBlock(FLAGS_program_response_file,
                           output.size(),
                           (byte*)output.data())) {
     printf("Can't write endorsement cert\n");
-    return 1;
+    ret_val = 1;
+    goto done;
   }
 #endif
 
 done:
   return ret_val;
 }
+
 

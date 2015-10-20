@@ -154,6 +154,7 @@ int main(int an, char** av) {
   string quote_key_info;
   string quote_sig;
   string quote_info;
+  tpm2_credential_info_message cred_info;
   TPM2B_DATA to_quote;
   TPMT_SIG_SCHEME scheme;
   int sig_size = MAX_SIZE_PARAMS;
@@ -341,7 +342,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-  // x509_request_key_blob.assign((byte*)req, sizeof(req));
+  x509_request_key_blob.assign((const char*)req, sizeof(req));
   request.set_endorsement_cert_blob(endorsement_key_blob);
   request.set_x509_program_key_request(x509_request_key_blob);
   request.set_hash_quote_alg(FLAGS_hash_quote_alg);
@@ -378,7 +379,8 @@ int main(int an, char** av) {
                   scheme, pcrSelect, TPM_ALG_RSA, TPM_ALG_SHA256,
                   &quote_size, quoted, &sig_size, sig)) {
     printf("Quote failed\n");
-    return false;
+    ret_val = 1;
+    goto done;
   }
   printf("Quote succeeded, quoted (%d): ", quote_size);
   PrintBytes(quote_size, quoted);
@@ -387,14 +389,56 @@ int main(int an, char** av) {
   PrintBytes(sig_size, sig);
   printf("\n");
 
-  //quote_key_info.assign();
+  // Quote key information
+  // quote_pub_out.publicArea contains quote key info.  Namely,
+  // TPMI_ALG_PUBLIC   type;
+  // TPMI_ALG_HASH     nameAlg;
+  // TPMA_OBJECT       objectAttributes;
+  // TPM2B_DIGEST      authPolicy;
+  // TPMU_PUBLIC_PARMS parameters;
+  //   TPMI_ALG_PUBLIC   type;
+  //   TPMU_PUBLIC_PARMS parameters;
+  //     TPMS_RSA_PARMS rsaDetails
+  //        TPMT_SYM_DEF_OBJECT symmetric;
+  //        TPMT_RSA_SCHEME     scheme;
+  //        TPMI_RSA_KEY_BITS   keyBits;
+  //        uint32_t            exponent;
+  // TPMU_PUBLIC_ID    unique;
+  //   TPM2B_PUBLIC_KEY_RSA rsa
+  //      size
+  //      buffer
   quote_sig.assign((const char*)sig, sig_size);
-  quote_info.assign((const char*)quoted, quote_size);
-  request.set_quote_key_info(quote_key_info);
   request.set_quote_signature(quote_sig);
-
-  // Get ActivateCredential info
-  // request.set_cred();
+  request.mutable_cred()->mutable_public_key()->set_key_type("RSA");
+  request.mutable_cred()->mutable_public_key()->mutable_rsa_key()
+      ->set_key_name("Quote_key");
+  request.mutable_cred()->mutable_public_key()->mutable_rsa_key()
+      ->set_bit_modulus_size(
+         quote_pub_out.publicArea.parameters.rsaDetail.keyBits);
+  expOut = 0ULL;
+  ChangeEndian32((uint32_t*)&quote_pub_out.publicArea.parameters.rsaDetail.exponent,
+                 (uint32_t*)&expOut);
+  request.mutable_cred()->mutable_public_key()->mutable_rsa_key()
+     ->set_exponent((const char*)&expOut, sizeof(uint64_t));
+  request.mutable_cred()->mutable_public_key()->mutable_rsa_key()
+    ->set_modulus((const char*)quote_pub_out.publicArea.unique.rsa.buffer,
+                  quote_pub_out.publicArea.unique.rsa.size);
+  request.mutable_cred()->set_name(
+    (const char*)quote_pub_name.name, quote_pub_name.size);
+  request.mutable_cred()->set_properties(
+    *(uint32_t*)&quote_pub_out.publicArea.objectAttributes);
+  if (quote_pub_out.publicArea.nameAlg == TPM_ALG_SHA256) {
+    request.mutable_cred()->set_hash_alg("sha256");
+  } else if (quote_pub_out.publicArea.nameAlg == TPM_ALG_SHA1) {
+    request.mutable_cred()->set_hash_alg("sha1");
+  } else {
+    printf("Unsupported hash alg\n");
+    ret_val = 1;
+    goto done;
+  }
+  request.mutable_cred()->set_qualified_name(
+      (const char*)quote_qualified_pub_name.name,
+       quote_qualified_pub_name.size);
 
   request.SerializeToString(&output);
   if (!WriteFileFromBlock(FLAGS_program_cert_request_file,

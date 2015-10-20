@@ -95,7 +95,6 @@ message program_cert_request_message {
   optional bytes endorsement_cert_blob        = 1;
   optional bytes x509_program_key_request     = 2;
   optional string hash_quote_alg              = 3;
-  optional bytes quote_key_info               = 4;
   optional bytes quote_signature              = 5;
   optional tpm2_credential_info_message cred  = 6;
 }

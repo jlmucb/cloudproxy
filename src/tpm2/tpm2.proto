@@ -53,15 +53,6 @@ message signing_instructions_message {
   optional bool can_sign                      = 9;
 }
 
-message tpm2_make_credential_info_message {
-  optional public_key_message public_key      = 1;
-  optional string name                        = 2;
-  optional int32 properties                   = 3;
-  optional string hash_alg                    = 4;
-  optional string hash                        = 5;
-  optional string secret                      = 6;
-}
-
 message x509_cert_request_parameters_message {
   required string common_name                 = 1;
   optional string country_name                = 2;
@@ -88,6 +79,30 @@ message cert_parameters {
   optional x509_cert_issuer_parameters_message signer	= 2;
   optional string not_before	                        = 3;
   optional string not_after	                        = 4;
+}
+
+message tpm2_credential_info_message {
+  optional public_key_message public_key      = 1;
+  optional string name                        = 2;
+  optional int32 properties                   = 3;
+  optional string hash_alg                    = 4;
+  optional string hash                        = 5;
+  optional string secret                      = 6;
+  optional string qualified_name              = 7;
+}
+
+message program_cert_request_message {
+  optional bytes endorsement_cert_blob        = 1;
+  optional bytes x509_program_key_request     = 2;
+  optional string hash_quote_alg              = 3;
+  optional bytes quote_key_info               = 4;
+  optional bytes quote_signature              = 5;
+  optional tpm2_credential_info_message cred  = 6;
+}
+
+message program_cert_response_message {
+  optional bytes encrypted_cert               = 1;
+  optional bytes credential_info              = 2;
 }
 
 message certificate_chain_entry_message {

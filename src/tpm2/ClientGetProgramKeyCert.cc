@@ -42,32 +42,21 @@
 //  signing_key_certificate and a protobuf signed by the signing_key
 //  naming the public portion of the proposed cloudproxy_program_key.
 
-// Calling sequence: ClientRetrieveInterimSigningKey.exe
-//    --cloudproxy_namespace="name"
-//    --cloudproxy_slot_primary=slot-number
-//    --cloudproxy_slot_seal= slot-number
-//    --encrypted_interim_certificate_file=input-file-name
-//    --signing_key_namespace=name
-//    --signing_key_primary_slot=slot-number
-//    --signing_key_signing_slot=slot-number
-//    --signing_key_cert_file_=input-file-name
-//    --tpm_credential_file=input-file-name
-//    --cloudproxy_regenerate_program_key=input-file-name
-//    --signed_program_public_key_request_file=output-file-name
+// Calling sequence: ClientGetProgramKeyCert.exe
+//    --slot_primary=slot-number
+//    --slot_seal= slot-number
+//    --program_key_response_file=input-file-name
+//    --program_key_cert_file=output-file-name
 
 
 using std::string;
 
 
-#define CALLING_SEQUENCE "ClientRetrieveInterimSigningKey.exe " \
-"--cloudproxy_namespace=name " \
-"--cloudproxy_slot_primary=slot-number " \
-"--cloudproxy_slot_seal= slot-number " \
-"--encrypted_certificate_file=input-file-name " \
-"--signing_key_primary_slot=slot-number " \
-"--signing_key_signing_slot=slot-number " \
-"--signing_key_cert_file_=input-file-name " \
-"--tpm_credential_file=input-file-name " \
+#define CALLING_SEQUENCE "ClientGetProgramKeyCert.exe " \
+"--slot_primary=slot-number " \
+"--slot_seal= slot-number " \
+"--slot_quote= slot-number " \
+"--program_key_response_file=input-file-name " \
 "--program_key_cert_file=output-file-name\n"
 
 void PrintOptions() {
@@ -75,11 +64,10 @@ void PrintOptions() {
 }
 
 
-DEFINE_string(encrypted_certificate_file, "", "input-file-name");
+DEFINE_string(program_key_response_file, "", "input-file-name");
 DEFINE_int32(primary_slot, 1, "slot-number");
 DEFINE_int32(seal_slot, 2, "slot-number");
 DEFINE_int32(quote_slot, 3, "slot-number");
-DEFINE_string(tpm_credential_file, "", "input-file-name");
 DEFINE_string(program_cert_file, "", "output-file-name");
 
 #ifndef GFLAGS_NS

@@ -99,11 +99,14 @@ int main(int an, char** av) {
   TPM2B_ID_OBJECT credentialBlob;
   TPM2B_ENCRYPTED_SECRET secret ;
 
+  byte* out = nullptr;
+  int size;
   X509* cert = X509_new();
 
   private_key_blob_message private_key;
   program_cert_request_message request;
   program_cert_response_message response;
+  string input;
   string output;
 
   OpenSSL_add_all_algorithms();
@@ -135,7 +138,7 @@ int main(int an, char** av) {
     goto done;
   }
 
-  // Get cloudproxy key
+  // Get request
   if (!ReadFileIntoBlock(FLAGS_program_cert_request_file, &size_cert_request, cert_request_buf)) {
     printf("Can't read cert request\n");
     ret_val = 1;
@@ -148,6 +151,7 @@ int main(int an, char** av) {
     goto done;
   }
 
+  // Get signing instructions
   signing_instructions_message signing_message;
   if (!ReadFileIntoBlock(FLAGS_signing_instructions_file, &in_size, in_buf)) {
     printf("Can't read signing instructions %s\n",
@@ -170,6 +174,7 @@ int main(int an, char** av) {
     goto done;
   }
 
+  // Get cloudproxy key
   in_size = MAX_BUF_SIZE;
   if (!ReadFileIntoBlock(FLAGS_cloudproxy_key_file, &in_size, in_buf)) {
     printf("Can't read private key\n");
@@ -217,15 +222,44 @@ int main(int an, char** av) {
 
   // Extract quote key info
 
-  // Validate request
+  // Extract endorsement key info
 
+  // Validate request: self-signed, endorsement, quote sig
+
+  // Generate certificate request for program key
+  x509_cert_request_parameters_message req_message;
+  req_message.set_common_name(FLAGS_policy_identifier);
+  req_message.mutable_key()->set_key_type("RSA");
+  string* mod = BN_to_bin(*signing_key->n);
+  if (mod == nullptr) {
+    printf("Can't get private key modulus\n");
+    ret_val = 1;
+    goto done;
+  }
+  req_message.mutable_key()->mutable_rsa_key()->set_bit_modulus_size(
+       BN_num_bits(signing_key->n));
+  uint64_t expIn = 0x10001ULL;
+  uint64_t expOut;
+  ChangeEndian64((uint64_t*)&expIn, (uint64_t*)(&expOut));
+  req_message.mutable_key()->mutable_rsa_key()->set_exponent(
+      (const char*)&expOut, sizeof(uint64_t));
+  req_message.mutable_key()->mutable_rsa_key()->set_modulus(
+     mod->data(), mod->size());
+  printf("\n"); print_cert_request_message(req_message); printf("\n");
+  X509_REQ* req = X509_REQ_new();
+  X509_REQ_set_version(req, 2);
+  if (!GenerateX509CertificateRequest(req_message, true, req)) {
+    printf("Can't generate x509 request\n");
+    ret_val = 1;
+    goto done;
+  }
   if (!GenerateX509CertificateRequest(cert_request, false, req)) {
     printf("Can't generate x509 request\n");
     ret_val = 1;
     goto done;
   }
 
-  // sign it
+  // sign program key
   if (!SignX509Certificate(signing_key, signing_message, req, false, cert)) {
     printf("Can't sign x509 request\n");
     ret_val = 1;
@@ -233,82 +267,25 @@ int main(int an, char** av) {
   }
   printf("message signed\n");
 
-  byte* out = nullptr;
-  int size = i2d_X509(cert, &out);
+  // Serialize program cert
+  out = nullptr;
+  size = i2d_X509(cert, &out);
 
-  // Sign program key
+  // Generate encryption key for cert
 
-  in_size = MAX_BUF_SIZE;
-  private_key_blob_message private_key;
-  if (!ReadFileIntoBlock(FLAGS_key_file, &in_size, in_buf)) {
-    printf("Can't read private key\n");
-    return 1;
-  }
-  input.assign((const char*)in_buf, in_size);
-  if (!private_key.ParseFromString(input)) {
-    printf("Can't parse private key\n");
-    return 1;
-  }
+  // Encrypt cert
 
-  printf("Key type: %s\n", private_key.key_type().c_str());
-  printf("Key name: %s\n", private_key.key_name().c_str());
-  string the_blob = private_key.blob();
-  PrintBytes(the_blob.size(), (byte*)the_blob.data());
-  const byte* p = (byte*)the_blob.data();
-  RSA* signing_key = d2i_RSAPrivateKey(nullptr, &p, the_blob.size());
-  if (signing_key == nullptr) {
-    printf("Can't translate private key\n");
-    return 1;
-  }
-
-  // fill x509_cert_request_parameters_message
-  x509_cert_request_parameters_message req_message;
-  req_message.set_common_name(FLAGS_policy_identifier);
-  req_message.mutable_key()->set_key_type("RSA");
-  string* mod = BN_to_bin(*signing_key->n);
-  if (mod == nullptr) {
-    printf("Can't get private key modulus\n");
-    return 1;
-  }
-  req_message.mutable_key()->mutable_rsa_key()->set_bit_modulus_size(
-       BN_num_bits(signing_key->n));
-  uint64_t expIn = 0x10001ULL;
-  uint64_t expOut;
-  ChangeEndian64((uint64_t*)&expIn, (uint64_t*)(&expOut));
-
-  req_message.mutable_key()->mutable_rsa_key()->set_exponent(
-      (const char*)&expOut, sizeof(uint64_t));
-  req_message.mutable_key()->mutable_rsa_key()->set_modulus(
-     mod->data(), mod->size());
-  printf("\n"); print_cert_request_message(req_message); printf("\n");
-
-  X509_REQ* req = X509_REQ_new();
-  X509_REQ_set_version(req, 2);
-  if (!GenerateX509CertificateRequest(req_message, true, req)) {
-    printf("Can't generate x509 request\n");
-    return 1;
-  }
-
-  // sign it
-  X509* cert = X509_new();
-  if (!SignX509Certificate(signing_key, signing_message, req,
-                           true, cert)) {
-    printf("Can't sign x509 request\n");
-    return 1;
-  }
-  printf("message signed\n");
-
-  byte* out = nullptr;
-  int size = i2d_X509(cert, &out);
-  string output;
-
-  // Encrypt for ActivateCredential
+  // Encrypt credential for ActivateCredential
 
   // bool MakeCredential(TPM2B_DIGEST& credential, TPM2B_NAME& objectName,
   //                     TPM2B_ID_OBJECT* credentialBlob, TPM2B_ENCRYPTED_SECRET* secret);
 
-  // Write response file
-
+  // Fill, serialize and write program_cert_response_message
+  program_cert_response_message response;
+  // response.enc_alg
+  // response.enc_mode
+  // response.encrypted_cert
+  // response.credential_info
   response.SerializeToString(&output);
   if (!WriteFileFromBlock(FLAGS_program_response_file,
                           output.size(),

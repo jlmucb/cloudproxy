@@ -100,8 +100,10 @@ message program_cert_request_message {
 }
 
 message program_cert_response_message {
-  optional bytes encrypted_cert               = 1;
-  optional bytes credential_info              = 2;
+  optional string enc_alg                     = 1;
+  optional string enc_mode                    = 2;
+  optional bytes encrypted_cert               = 3;
+  optional bytes credential_info              = 4;
 }
 
 message certificate_chain_entry_message {

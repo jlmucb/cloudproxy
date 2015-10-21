@@ -98,9 +98,10 @@ int main(int an, char** av) {
 
   X509_REQ* req = nullptr;
 
-  TPM2B_DIGEST secret;
+  byte seed[32];
   TPM2B_NAME objectName;
   TPM2B_ID_OBJECT credentialBlob;
+  TPM2B_DIGEST secret;
   TPM2B_ENCRYPTED_SECRET encrypted_secret;
 
   byte* out = nullptr;
@@ -227,6 +228,7 @@ int main(int an, char** av) {
   // Check self-signed
 
   // Check endorsement cert
+  // request.endorsement_cert_blob();
 
   // Get certificate request for program key
   der_cert_request_in = (byte*)request.x509_program_key_request().data();
@@ -255,6 +257,10 @@ int main(int an, char** av) {
   printf("quoted_hash: "); PrintBytes(32, quoted_hash); printf("\n");
 
   // Encrypt with quote key
+  // if (!request.cred().has_public_key()) {
+  // }
+  // request.hash_quote_alg();
+  // request.quote_signature();
 
   // Compare signature and computed hash
 
@@ -273,31 +279,37 @@ int main(int an, char** av) {
   response.set_encrypted_cert(encrypted_data, size);
 goto done;
 
-  // Encrypt credential for ActivateCredential
-#if 0
-  request.endorsement_cert_blob();
-  request.x509_program_key_request();
-  request.hash_quote_alg();
-  request.quote_signature();
-  if (!request.cred().has_public_key()) {
-  }
-  request.cred().name
-  request.cred().properties
-  request.cred().hash_alg
-  request.cred().hash
-  request.cred().secret
-  request.cred().qualified_name
-#endif
+  // Encrypt secret with ek public key, put it in encrypted_secret
+  // request.cred().name
+  // request.cred().hash_alg
+  // request.cred().hash
+  // request.cred().secret
 
-  // Define:
-  // bool MakeCredential(TPM2B_DIGEST& credential, TPM2B_NAME& objectName,
-  //                     TPM2B_ID_OBJECT* credentialBlob, TPM2B_ENCRYPTED_SECRET* secret);
+  // use name of quote object
+  
+  // generate seed
+  RAND_bytes(seed, 32);
 
-  // Fill, serialize and write program_cert_response_message
-  response.set_enc_alg("aes");
-  response.set_enc_mode("ctr");
-  // response.mutable_info();
+  // Marshal secret area to credential buffer, leave space for integrity
+  // sensitiveData += ivSize;
+  // Compute symmetric key parameters for outer buffer encryption
+  // ComputeProtectionKeyParms(protector, hashAlg, name, seed,
+  //                           &symAlg, &keyBits, &symKey);
+  // Encrypt inner buffer in place
+  // CryptSymmetricEncrypt(sensitiveData, symAlg, keyBits,
+  //                       TPM_ALG_CFB, symKey.t.buffer, iv, dataSize,
+  //                     sensitiveData);
+  // Compute outer integrity. Integrity computation includes the optional IV
+  // area
+  // ComputeOuterIntegrity(name, protector, hashAlg, seed, dataSize + ivSize,
+  //                       outerBuffer + integritySize, &integrity);
+  // Add integrity at the beginning of outer buffer
+  // buffer = outerBuffer;
+  // TPM2B_DIGEST_Marshal(&integrity, &buffer, NULL);
+  // return the total size in outer wrap
+  // return dataSize + integritySize+ ivSize;
 
+  // write out buffer
   response.SerializeToString(&output);
   if (!WriteFileFromBlock(FLAGS_program_response_file,
                           output.size(),

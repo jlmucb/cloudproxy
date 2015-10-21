@@ -58,13 +58,15 @@ using std::string;
 
 #define CALLING_SEQUENCE "ClientCreateSigningKey.exe " \
 "--signed_endorsement_cert_file=input-file-name " \
-"--primary_slot=1" \
-"--seal_slot=2" \
-"--quote_slot=3" \
+"--slot_primary=1" \
+"--slot_seal=2" \
+"--slot_quote=3" \
 "--program_key_name=name " \
 "--program_key_type=RSA " \
 "--program_key_size=2048 " \
 "--program_key_exponent=0x10001" \
+"--hash_quote_alg=sha256 " \
+"--program_key_file=output-file-name" \
 "--program_cert_request_file=output-file-name\n"
 
 void PrintOptions() {
@@ -77,9 +79,9 @@ DEFINE_string(program_key_name, "NAME", "program name");
 DEFINE_string(program_key_type, "RSA", "program key type");
 DEFINE_int32(program_key_size, 2048, "program key type");
 DEFINE_int64(program_key_exponent, 0x010001ULL, "program key exponent");
-DEFINE_int32(primary_slot, 0, "slot number");
-DEFINE_int32(quote_slot, 0, "quote slot number");
-DEFINE_int32(seal_slot, 0, "seal slot number");
+DEFINE_int32(slot_primary, 1, "slot number");
+DEFINE_int32(slot_seal, 2, "seal slot number");
+DEFINE_int32(slot_quote, 3, "quote slot number");
 DEFINE_string(hash_quote_alg, "sha256", "sha1|sha256");
 DEFINE_string(program_key_file, "", "output-file-name");
 DEFINE_string(program_cert_request_file, "", "output-file-name");
@@ -219,7 +221,7 @@ int main(int an, char** av) {
 
   // root handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);
-  nv_handle = GetNvHandle(FLAGS_primary_slot);
+  nv_handle = GetNvHandle(FLAGS_slot_primary);
   if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t) context_data_size,
                    context_save_area)) {
     printf("Root ReadNv failed\n");
@@ -238,7 +240,7 @@ int main(int an, char** av) {
 
   // seal handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);
-  nv_handle = GetNvHandle(FLAGS_seal_slot);
+  nv_handle = GetNvHandle(FLAGS_slot_seal);
   if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t)context_data_size,
                    context_save_area)) {
     printf("Root ReadNv failed\n");
@@ -246,7 +248,7 @@ int main(int an, char** av) {
     goto done;
   }
   printf("context_save_area: ");
-  PrintBytes(context_data_size, context_save_area);
+  PrintBytes(context_data_size - 6, context_save_area + 6);
   printf("\n");
   if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
                         &seal_handle)) {
@@ -257,13 +259,16 @@ int main(int an, char** av) {
 
   // quote handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);
-  nv_handle = GetNvHandle(FLAGS_quote_slot);
+  nv_handle = GetNvHandle(FLAGS_slot_quote);
   if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t)context_data_size,
                    context_save_area)) {
     printf("Quote ReadNv failed\n");
     ret_val = 1;
     goto done;
   }
+  printf("context_save_area: ");
+  PrintBytes(context_data_size - 6, context_save_area + 6);
+  printf("\n");
   if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
                         &quote_handle)) {
     printf("Quote LoadContext failed\n");
@@ -379,6 +384,8 @@ int main(int an, char** av) {
   to_quote.size = 32;
   memset(to_quote.buffer, 0, to_quote.size);
   memcpy(to_quote.buffer, quoted_hash, to_quote.size);
+  printf("quoted_hash: "); PrintBytes(to_quote.size, to_quote.buffer);
+  printf("\n");
   if (!Tpm2_Quote(tpm, quote_handle, parentAuth,
                   to_quote.size, to_quote.buffer,
                   scheme, pcrSelect, TPM_ALG_RSA, TPM_ALG_SHA256,

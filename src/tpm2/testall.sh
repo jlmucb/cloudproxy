@@ -40,6 +40,13 @@
 --slot_primary=1 --slot_seal=2 \
  --slot_quote=3  --pcr_hash_alg_name=sha256
 
+./ClientGenerateProgramKeyRequest.exe --signed_endorsement_cert_file=endorsement_cert \
+--slot_primary=1 --slot_seal=2 --slot_quote=3 \
+--program_key_name=CloudProxy-test-app-1 --program_key_type=RSA \
+--program_key_size=2048 --program_key_exponent=0x10001 \
+--hash_quote_alg=sha256 --program_key_file=app_program_file \
+--program_cert_request_file=cert_request_file
+
 
 openssl x509 -inform DER -in endorsement_cert -purpose -text
 

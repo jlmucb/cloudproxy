@@ -347,6 +347,7 @@ int main(int an, char** av) {
     goto done;
   }
   x509_request_key_blob.assign((const char*)req, sizeof(req));
+  request.set_program_name(FLAGS_program_key_name);
   request.set_endorsement_cert_blob(endorsement_key_blob);
   request.set_x509_program_key_request(x509_request_key_blob);
   request.set_hash_quote_alg(FLAGS_hash_quote_alg);

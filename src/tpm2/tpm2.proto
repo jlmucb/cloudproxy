@@ -92,9 +92,10 @@ message credential_info_message {
 }
 
 message program_cert_request_message {
-  optional bytes endorsement_cert_blob        = 1;
-  optional bytes x509_program_key_request     = 2;
-  optional string hash_quote_alg              = 3;
+  optional string program_name                = 1;
+  optional bytes endorsement_cert_blob        = 2;
+  optional bytes x509_program_key_request     = 3;
+  optional string hash_quote_alg              = 4;
   optional bytes quote_signature              = 5;
   optional credential_info_message cred       = 6;
 }

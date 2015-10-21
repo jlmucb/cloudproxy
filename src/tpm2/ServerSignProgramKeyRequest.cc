@@ -196,6 +196,7 @@ int main(int an, char** av) {
   printf("Key name: %s\n", private_key.key_name().c_str());
   the_blob = private_key.blob();
   PrintBytes(the_blob.size(), (byte*)the_blob.data());
+
   p = (byte*)the_blob.data();
   signing_key = d2i_RSAPrivateKey(nullptr, (const byte**)&p, the_blob.size());
   if (signing_key == nullptr) {
@@ -215,12 +216,16 @@ int main(int an, char** av) {
   }
 
   // Extract program key request
+  if (!request.has_cred()) {
+    printf("No information to construct cred\n");
+    ret_val = 1;
+    goto done;
+  }
 #if 0
-  request.endorsement_cert_blob = ;
-  request.x509_program_key_request = ;
-  request.hash_quote_alg = ;
-  request.quote_signature = ;
-  request.has_cred() 
+  request.endorsement_cert_blob();
+  request.x509_program_key_request();
+  request.hash_quote_alg();
+  request.quote_signature();
   request.cred().public_key
   request.cred().name
   request.cred().properties
@@ -231,14 +236,19 @@ int main(int an, char** av) {
 #endif
 
   // Validate request: self-signed, endorsement, quote sig
+
   // Check self-signed
+
   // Check endorsement cert
+
   // Hash request
+
   // Encrypt with quote key
-  // compare signature
+
+  // Compare signature and computed hash
 
   // Generate certificate request for program key
-  cert_parameters.set_common_name(FLAGS_policy_identifier);
+  cert_parameters.set_common_name(request.program_name());
   cert_parameters.mutable_key()->set_key_type("RSA");
   mod = BN_to_bin(*signing_key->n);
   if (mod == nullptr) {

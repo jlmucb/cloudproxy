@@ -63,5 +63,8 @@ void print_cert_request_message(x509_cert_request_parameters_message&
 
 BIGNUM* bin_to_BN(int len, byte* buf);
 string* BN_to_bin(BIGNUM& n);
+
+void XorBlocks(int size, byte* in1, byte* in2, byte* out);
+
 #endif
 

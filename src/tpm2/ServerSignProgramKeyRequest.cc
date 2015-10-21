@@ -6,9 +6,11 @@
 #include <unistd.h>
 #include <string.h>
 
+#include <openssl/aes.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 #include <openssl_helpers.h>
+#include <openssl/rand.h>
 
 #include <tpm20.h>
 #include <tpm2_lib.h>
@@ -94,8 +96,7 @@ int main(int an, char** av) {
 
   OpenSSL_add_all_algorithms();
 
-  X509_REQ* req = X509_REQ_new();
-  X509_REQ_set_version(req, 2);
+  X509_REQ* req = nullptr;
 
   TPM2B_DIGEST credential;
   TPM2B_NAME objectName;
@@ -104,7 +105,16 @@ int main(int an, char** av) {
 
   byte* out = nullptr;
   int size = 0;
+  int t_size = 0;
   X509* cert = X509_new();
+  byte quoted_hash[256];
+  AES_KEY ectx;
+  AES_KEY dectx;
+  uint64_t ctr[2] = {0ULL, 1ULL};
+  uint64_t block[2];
+  byte encrypted_data[MAX_SIZE_PARAMS];
+  byte* ptr_byte = nullptr;
+  byte* input_data = nullptr;
 
   private_key_blob_message private_key;
   program_cert_request_message request;
@@ -117,11 +127,12 @@ int main(int an, char** av) {
   string the_blob;
 
   uint16_t size_in = 0;
+  SHA256_CTX sha256;
+#if 0
   string* mod = nullptr;
-
   uint64_t expIn;
   uint64_t expOut;
-
+#endif
   byte* p = nullptr;
   RSA* signing_key = nullptr;
 
@@ -153,7 +164,6 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-printf("Cert request size: %d\n", size_cert_request);
   input.assign((const char*)cert_request_buf, size_cert_request);
   if (!request.ParseFromString(input)) {
     printf("Can't parse cert request\n");
@@ -196,6 +206,7 @@ printf("Cert request size: %d\n", size_cert_request);
 
   printf("Key type: %s\n", private_key.key_type().c_str());
   printf("Key name: %s\n", private_key.key_name().c_str());
+
   the_blob = private_key.blob();
   PrintBytes(the_blob.size(), (byte*)the_blob.data()); printf("\n");
   p = (byte*)the_blob.data();
@@ -206,15 +217,6 @@ printf("Cert request size: %d\n", size_cert_request);
     goto done;
   }
   print_internal_private_key(*signing_key);
-goto done;
-  ChangeEndian16((uint16_t*)the_blob.data(), (uint16_t*)&size_in);
-  TPM2B_PUBLIC outPublic;
-  if (!GetReadPublicOut(size_in, (byte*)(the_blob.data() + sizeof(uint16_t)),
-                        outPublic)) {
-    printf("Can't parse endorsement blob\n");
-    ret_val = 1;
-    goto done;
-  }
 
   // Extract program key request
   if (!request.has_cred()) {
@@ -222,21 +224,6 @@ goto done;
     ret_val = 1;
     goto done;
   }
-goto done;
-#if 0
-  request.endorsement_cert_blob();
-  request.x509_program_key_request();
-  request.hash_quote_alg();
-  request.quote_signature();
-  request.cred().public_key
-  request.cred().name
-  request.cred().properties
-  request.cred().hash_alg
-  request.cred().hash
-  request.cred().secret
-  request.cred().qualified_name
-#endif
-goto done;
 
   // Validate request: self-signed, endorsement, quote sig
 
@@ -244,44 +231,10 @@ goto done;
 
   // Check endorsement cert
 
-  // Hash request
-
-  // Encrypt with quote key
-
-  // Compare signature and computed hash
-
-  // Generate certificate request for program key
-  cert_parameters.set_common_name(request.program_name());
-  cert_parameters.mutable_key()->set_key_type("RSA");
-  mod = BN_to_bin(*signing_key->n);
-  if (mod == nullptr) {
-    printf("Can't get private key modulus\n");
-    ret_val = 1;
-    goto done;
-  }
-  cert_parameters.mutable_key()->mutable_rsa_key()->set_bit_modulus_size(
-       BN_num_bits(signing_key->n));
-  expIn = 0x10001ULL;
-  expOut = 0ULL;
-  ChangeEndian64((uint64_t*)&expIn, (uint64_t*)(&expOut));
-  cert_parameters.mutable_key()->mutable_rsa_key()->set_exponent(
-      (const char*)&expOut, sizeof(uint64_t));
-  cert_parameters.mutable_key()->mutable_rsa_key()->set_modulus(
-     mod->data(), mod->size());
-  printf("\n"); print_cert_request_message(cert_parameters); printf("\n");
-
-  X509_REQ_set_version(req, 2);
-  if (!GenerateX509CertificateRequest(cert_parameters, true, req)) {
-    printf("Can't generate x509 request\n");
-    ret_val = 1;
-    goto done;
-  }
-  if (!GenerateX509CertificateRequest(cert_request, false, req)) {
-    printf("Can't generate x509 request\n");
-    ret_val = 1;
-    goto done;
-  }
-
+  // Get certificate request for program key
+  out = (byte*)request.x509_program_key_request().data();
+  req = d2i_X509_REQ(nullptr, (const byte**)&out,
+                     request.x509_program_key_request().size());
   // sign program key
   if (!SignX509Certificate(signing_key, signing_message, req, false, cert)) {
     printf("Can't sign x509 request\n");
@@ -293,24 +246,65 @@ goto done;
   // Serialize program cert
   out = nullptr;
   size = i2d_X509(cert, &out);
+  printf("Program cert: ");
+  PrintBytes(size, out); printf("\n");
+
+  // Hash request
+  SHA256_Init(&sha256);
+  SHA256_Update(&sha256, (byte*)request.x509_program_key_request().data(),
+                request.x509_program_key_request().size());
+  SHA256_Final(quoted_hash, &sha256);
+  printf("quoted_hash: "); PrintBytes(32, quoted_hash); printf("\n");
+
+  // Encrypt with quote key
+
+  // Compare signature and computed hash
 
   // Generate encryption key for cert
+  credential.size = 16;
+  RAND_bytes(credential.buffer, credential.size);
+goto done;
 
   // Encrypt cert
+  ctr[1]++;
+  t_size = size;
+  ptr_byte = encrypted_data;
+  input_data = out;
+  AES_set_encrypt_key(credential.buffer, 128, &ectx);
+  while (t_size > 0) {
+    AES_encrypt((byte*)ctr, (byte*)block, &ectx);
+    XorBlocks(16, (byte*)block, (byte*)input_data, ptr_byte);
+    input_data += 16;
+    ptr_byte += 16;
+    t_size -= 16;
+  }
+  response.set_encrypted_cert(out, size);
 
   // Encrypt credential for ActivateCredential
+#if 0
+  request.endorsement_cert_blob();
+  request.x509_program_key_request();
+  request.hash_quote_alg();
+  request.quote_signature();
+  if (!request.cred().has_public_key()) {
+  }
+  request.cred().name
+  request.cred().properties
+  request.cred().hash_alg
+  request.cred().hash
+  request.cred().secret
+  request.cred().qualified_name
+#endif
 
   // Define:
   // bool MakeCredential(TPM2B_DIGEST& credential, TPM2B_NAME& objectName,
   //                     TPM2B_ID_OBJECT* credentialBlob, TPM2B_ENCRYPTED_SECRET* secret);
 
   // Fill, serialize and write program_cert_response_message
-  // response.set_enc_alg();
-  // response.set_enc_mode();
-  // response.mutable_encrypted_cert();
+  response.set_enc_alg("aes");
+  response.set_enc_mode("ctr");
   // response.mutable_info();
 
-#if 0
   response.SerializeToString(&output);
   if (!WriteFileFromBlock(FLAGS_program_response_file,
                           output.size(),
@@ -319,7 +313,6 @@ goto done;
     ret_val = 1;
     goto done;
   }
-#endif
 
 done:
   return ret_val;

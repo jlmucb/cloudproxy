@@ -153,9 +153,13 @@ int main(int an, char** av) {
   program_cert_request_message request;
   X509_REQ* req = nullptr;
 
+  int der_cert_size = MAX_SIZE_PARAMS;
+  byte der_cert_buf[MAX_SIZE_PARAMS];
+  byte* p_der_cert_buf = der_cert_buf;
+
   int quote_size = MAX_SIZE_PARAMS;
   byte quoted[MAX_SIZE_PARAMS];
-  byte quoted_hash[128];
+  byte quoted_hash[256];
   string quote_key_info;
   string quote_sig;
   string quote_info;
@@ -353,7 +357,8 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-  x509_request_key_blob.assign((const char*)req, sizeof(req));
+  der_cert_size = i2d_X509_REQ(req, &p_der_cert_buf);
+  x509_request_key_blob.assign((const char*)der_cert_buf, der_cert_size);
   request.set_program_name(FLAGS_program_key_name);
   request.set_endorsement_cert_blob(endorsement_key_blob);
   request.set_x509_program_key_request(x509_request_key_blob);
@@ -381,7 +386,7 @@ int main(int an, char** av) {
 
   // hash x509 request
   SHA256_Init(&sha256);
-  SHA256_Update(&sha256, (byte*)req, sizeof(req));
+  SHA256_Update(&sha256, (byte*)der_cert_buf, der_cert_size);
   SHA256_Final(quoted_hash, &sha256);
   to_quote.size = 32;
   memset(to_quote.buffer, 0, to_quote.size);

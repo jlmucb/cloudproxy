@@ -398,3 +398,10 @@ bool GetCertificateParametersFromX509(X509& x509_cert, cert_parameters* cert_par
   return false;
 }
 
+void XorBlocks(int size, byte* in1, byte* in2, byte* out) {
+  int i;
+
+  for (i = 0; i < size; i++)
+    out[i] = in1[i] ^ in2[i];
+}
+

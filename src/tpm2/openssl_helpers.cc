@@ -18,6 +18,7 @@
 #include <openssl/evp.h>
 #include <openssl/asn1.h>
 #include <openssl/err.h>
+#include <openssl/aes.h>
 #include <openssl/hmac.h>
 
 #include <string>
@@ -410,7 +411,7 @@ void XorBlocks(int size, byte* in1, byte* in2, byte* out) {
 bool KDFa(uint16_t hashAlg, string& key, string& label, string& contextU,
           string& contextV, int bits, int out_size, byte* out) {
   HMAC_CTX ctx;
-  int len = 32;
+  uint32_t len = 32;
   uint32_t counter = 0;
   int bytes_left = (bits + 7) / 8;
   byte* current_out = out;
@@ -418,7 +419,7 @@ bool KDFa(uint16_t hashAlg, string& key, string& label, string& contextU,
   byte buf[MAX_SIZE_PARAMS];
   int n;
 
-  ChangeEndian32(&counter, (uint32_t*)buffer);
+  ChangeEndian32(&counter, (uint32_t*)buf);
   size_buf += sizeof(uint32_t);
   n = strlen(label.c_str()) + 1;
   if ((size_buf + n) > MAX_SIZE_PARAMS) return false;
@@ -431,20 +432,43 @@ bool KDFa(uint16_t hashAlg, string& key, string& label, string& contextU,
   memcpy(&buf[size_buf], contextV.data(), contextV.size());
   size_buf += contextV.size();
   if ((size_buf + sizeof(uint32_t)) > MAX_SIZE_PARAMS) return false;
-  ChangeEndian32((uint32_t*)&bits, (uint32_t*)buffer);
+  ChangeEndian32((uint32_t*)&bits, (uint32_t*)buf);
   size_buf += sizeof(uint32_t);
 
   while (bytes_left > 0) {
     counter++;
-    ChangeEndian32(&counter, (uint32_t*)buffer);
+    ChangeEndian32(&counter, (uint32_t*)buf);
 
     HMAC_CTX_init(&ctx);
-    HMAC_init_ex(&ctx, key.data(), key.size(), EVP_sha256(), nullptr);
+    HMAC_Init_ex(&ctx, key.data(), key.size(), EVP_sha256(), nullptr);
     HMAC_Update(&ctx, buf, size_buf);
     HMAC_Final(&ctx, current_out, &len);
     HMAC_CTX_cleanup(&ctx);
     current_out += len;
     bytes_left -= len;
+  }
+  return true;
+}
+
+
+bool AesCtrCrypt(int key_size_bits, byte* key, int size,
+                 byte* in, byte* out) {
+  AES_KEY ectx;
+  uint64_t ctr[2] = {0ULL, 0ULL};
+  byte block[32];
+
+  if (key_size_bits != 128) {
+    return false;
+  }
+  
+  AES_set_encrypt_key(key, 128, &ectx);
+  while (size > 0) {
+    ctr[1]++;
+    AES_encrypt((byte*)ctr, block, &ectx);
+    XorBlocks(16, block, in, out);
+    in += 16;
+    out += 16;
+    size -= 16;
   }
   return true;
 }

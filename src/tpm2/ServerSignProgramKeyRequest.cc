@@ -98,23 +98,20 @@ int main(int an, char** av) {
 
   X509_REQ* req = nullptr;
 
-  TPM2B_DIGEST credential;
+  TPM2B_DIGEST secret;
   TPM2B_NAME objectName;
   TPM2B_ID_OBJECT credentialBlob;
-  TPM2B_ENCRYPTED_SECRET secret ;
+  TPM2B_ENCRYPTED_SECRET encrypted_secret;
 
   byte* out = nullptr;
+  byte* der_cert_request_in = nullptr;
+  int der_cert_request_size = 0;
+  byte* der_cert_in = nullptr;
   int size = 0;
-  int t_size = 0;
   X509* cert = X509_new();
   byte quoted_hash[256];
-  AES_KEY ectx;
-  AES_KEY dectx;
-  uint64_t ctr[2] = {0ULL, 1ULL};
-  uint64_t block[2];
+  uint16_t secret_size = 0;
   byte encrypted_data[MAX_SIZE_PARAMS];
-  byte* ptr_byte = nullptr;
-  byte* input_data = nullptr;
 
   private_key_blob_message private_key;
   program_cert_request_message request;
@@ -232,9 +229,10 @@ int main(int an, char** av) {
   // Check endorsement cert
 
   // Get certificate request for program key
-  out = (byte*)request.x509_program_key_request().data();
-  req = d2i_X509_REQ(nullptr, (const byte**)&out,
-                     request.x509_program_key_request().size());
+  der_cert_request_in = (byte*)request.x509_program_key_request().data();
+  der_cert_request_size = request.x509_program_key_request().size();
+  out = der_cert_request_in;
+  req = d2i_X509_REQ(nullptr, (const byte**)&out, der_cert_request_size);
   // sign program key
   if (!SignX509Certificate(signing_key, signing_message, req, false, cert)) {
     printf("Can't sign x509 request\n");
@@ -244,10 +242,10 @@ int main(int an, char** av) {
   printf("message signed\n");
 
   // Serialize program cert
-  out = nullptr;
-  size = i2d_X509(cert, &out);
+  der_cert_in = nullptr;
+  size = i2d_X509(cert, &der_cert_in);
   printf("Program cert: ");
-  PrintBytes(size, out); printf("\n");
+  PrintBytes(size, der_cert_in); printf("\n");
 
   // Hash request
   SHA256_Init(&sha256);
@@ -261,24 +259,19 @@ int main(int an, char** av) {
   // Compare signature and computed hash
 
   // Generate encryption key for cert
-  credential.size = 16;
-  RAND_bytes(credential.buffer, credential.size);
-goto done;
+  secret_size = 16;
+  RAND_bytes(secret.buffer, secret_size);
+  ChangeEndian16(&secret_size, &secret.size);
 
   // Encrypt cert
-  ctr[1]++;
-  t_size = size;
-  ptr_byte = encrypted_data;
-  input_data = out;
-  AES_set_encrypt_key(credential.buffer, 128, &ectx);
-  while (t_size > 0) {
-    AES_encrypt((byte*)ctr, (byte*)block, &ectx);
-    XorBlocks(16, (byte*)block, (byte*)input_data, ptr_byte);
-    input_data += 16;
-    ptr_byte += 16;
-    t_size -= 16;
+  if (!AesCtrCrypt(128, secret.buffer, size,
+                   der_cert_in, encrypted_data)) {
+    printf("Can't encrypt cert\n");
+    ret_val = 1;
+    goto done;
   }
-  response.set_encrypted_cert(out, size);
+  response.set_encrypted_cert(encrypted_data, size);
+goto done;
 
   // Encrypt credential for ActivateCredential
 #if 0

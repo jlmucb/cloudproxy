@@ -12,17 +12,17 @@ message private_key_blob_message {
 message rsa_public_key_message {
   optional string key_name                    = 1;
   required int32  bit_modulus_size            = 2;
-  required string exponent                    = 3;
-  required string modulus                     = 4;
+  required bytes  exponent                    = 3;
+  required bytes  modulus                     = 4;
 }
 
 message rsa_private_key_message {
   required rsa_public_key_message public_key  = 1;
-  optional string d                           = 2;
-  optional string p                           = 3;
-  optional string q                           = 4;
-  optional string dp                          = 5;
-  optional string dq                          = 6;
+  optional bytes  d                           = 2;
+  optional bytes  p                           = 3;
+  optional bytes  q                           = 4;
+  optional bytes  dp                          = 5;
+  optional bytes  dq                          = 6;
 }
 
 message asymmetric_key_message {
@@ -83,12 +83,12 @@ message cert_parameters {
 
 message credential_info_message {
   optional public_key_message public_key      = 1;
-  optional string name                        = 2;
-  optional int32 properties                   = 3;
-  optional string hash_alg                    = 4;
-  optional string hash                        = 5;
-  optional string secret                      = 6;
-  optional string qualified_name              = 7;
+  optional bytes  name                        = 2;
+  optional bytes  qualified_name              = 3;
+  optional int32 properties                   = 4;
+  optional string hash_alg                    = 5;
+  optional string hash                        = 6;
+  optional bytes  secret                      = 7;
 }
 
 message program_cert_request_message {

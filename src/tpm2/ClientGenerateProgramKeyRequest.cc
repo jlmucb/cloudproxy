@@ -205,6 +205,8 @@ int main(int an, char** av) {
   printf("ek Qualified name: ");
   PrintBytes(ek_qualified_pub_name.size, ek_qualified_pub_name.name);
   printf("\n");
+  Tpm2_FlushContext(tpm, ekHandle);
+  ekHandle = 0;
 
   // Get endorsement cert
   if (!ReadFileIntoBlock(FLAGS_signed_endorsement_cert_file, 
@@ -252,7 +254,7 @@ int main(int an, char** av) {
   printf("\n");
   if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
                         &seal_handle)) {
-    printf("Root LoadContext failed\n");
+    printf("Seal LoadContext failed\n");
     ret_val = 1;
     goto done;
   }
@@ -439,10 +441,10 @@ int main(int an, char** av) {
     (const char*)quote_pub_name.name, quote_pub_name.size);
   request.mutable_cred()->set_properties(
     *(uint32_t*)&quote_pub_out.publicArea.objectAttributes);
-  if (quote_pub_out.publicArea.nameAlg == TPM_ALG_SHA256) {
-    request.mutable_cred()->set_hash_alg("sha256");
-  } else if (quote_pub_out.publicArea.nameAlg == TPM_ALG_SHA1) {
+  if (quote_pub_out.publicArea.nameAlg == TPM_ALG_SHA1) {
     request.mutable_cred()->set_hash_alg("sha1");
+  } else if (quote_pub_out.publicArea.nameAlg == TPM_ALG_SHA256) {
+    request.mutable_cred()->set_hash_alg("sha256");
   } else {
     printf("Unsupported hash alg\n");
     ret_val = 1;

@@ -53,6 +53,19 @@
 --program_key_file=app_program_file \
 --program_cert_request_file=cert_request_file
 
+./ServerSignProgramKeyRequest.exe \
+--signing_instructions_file=signing_instructions \
+--cloudproxy_key_file=cloudproxy_key_file \
+--program_cert_request_file=cert_request_file \
+--program_response_file=app_program_file
+
+./ClientGetProgramKeyCert.exe \
+--slot_primary=1 \
+--slot_seal=2 \
+--slot_quote=3 \
+--program_key_response_file=app_program_file \
+--program_key_cert_file=program_cert_file
+
 
 openssl x509 -inform DER -in endorsement_cert -purpose -text
 

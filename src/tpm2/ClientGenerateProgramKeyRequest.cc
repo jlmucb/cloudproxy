@@ -453,14 +453,19 @@ int main(int an, char** av) {
   request.mutable_cred()->set_qualified_name(
       (const char*)quote_qualified_pub_name.name,
        quote_qualified_pub_name.size);
-
-  request.SerializeToString(&output);
+  output.clear();
+  if (!request.SerializeToString(&output)) {
+    printf("Can't serialize string\n");
+    ret_val = 1;
+    goto done;
+  }
   if (!WriteFileFromBlock(FLAGS_program_cert_request_file,
                           output.size(),
                           (byte*)output.data())) {
     printf("Can't write endorsement cert\n");
     goto done;
   }
+  printf("%s\n", request.DebugString().c_str());
 
 done:
   if (root_handle != 0) {

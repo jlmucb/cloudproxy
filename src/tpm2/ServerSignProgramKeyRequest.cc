@@ -55,9 +55,10 @@ using std::string;
 
 
 #define CALLING_SEQUENCE "ServerSignProgramKeyRequest.exe " \
-"--cloud_proxy_key_file=input-file" \
+"--signing_instructions_file=input-file" \
+"--cloudproxy_key_file=input-file" \
 "--program_cert_request_file=output-file-name " \
-"--program_cert_response_file=output-file-name"
+"--program_response_file=output-file-name"
 
 void PrintOptions() {
   printf("Calling sequence: %s", CALLING_SEQUENCE);
@@ -152,7 +153,8 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-  input.assign((const char*)in_buf, in_size);
+printf("Cert request size: %d\n", size_cert_request);
+  input.assign((const char*)cert_request_buf, size_cert_request);
   if (!request.ParseFromString(input)) {
     printf("Can't parse cert request\n");
     ret_val = 1;
@@ -195,8 +197,7 @@ int main(int an, char** av) {
   printf("Key type: %s\n", private_key.key_type().c_str());
   printf("Key name: %s\n", private_key.key_name().c_str());
   the_blob = private_key.blob();
-  PrintBytes(the_blob.size(), (byte*)the_blob.data());
-
+  PrintBytes(the_blob.size(), (byte*)the_blob.data()); printf("\n");
   p = (byte*)the_blob.data();
   signing_key = d2i_RSAPrivateKey(nullptr, (const byte**)&p, the_blob.size());
   if (signing_key == nullptr) {
@@ -205,7 +206,7 @@ int main(int an, char** av) {
     goto done;
   }
   print_internal_private_key(*signing_key);
-
+goto done;
   ChangeEndian16((uint16_t*)the_blob.data(), (uint16_t*)&size_in);
   TPM2B_PUBLIC outPublic;
   if (!GetReadPublicOut(size_in, (byte*)(the_blob.data() + sizeof(uint16_t)),
@@ -221,6 +222,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+goto done;
 #if 0
   request.endorsement_cert_blob();
   request.x509_program_key_request();
@@ -234,6 +236,7 @@ int main(int an, char** av) {
   request.cred().secret
   request.cred().qualified_name
 #endif
+goto done;
 
   // Validate request: self-signed, endorsement, quote sig
 

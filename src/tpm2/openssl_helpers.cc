@@ -10,6 +10,7 @@
 #include <errno.h>
 
 #include <tpm2.pb.h>
+
 #include <openssl_helpers.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
@@ -17,6 +18,7 @@
 #include <openssl/evp.h>
 #include <openssl/asn1.h>
 #include <openssl/err.h>
+#include <openssl/hmac.h>
 
 #include <string>
 using std::string;
@@ -404,4 +406,47 @@ void XorBlocks(int size, byte* in1, byte* in2, byte* out) {
   for (i = 0; i < size; i++)
     out[i] = in1[i] ^ in2[i];
 }
+
+bool KDFa(uint16_t hashAlg, string& key, string& label, string& contextU,
+          string& contextV, int bits, int out_size, byte* out) {
+  HMAC_CTX ctx;
+  int len = 32;
+  uint32_t counter = 0;
+  int bytes_left = (bits + 7) / 8;
+  byte* current_out = out;
+  int size_buf = 0;
+  byte buf[MAX_SIZE_PARAMS];
+  int n;
+
+  ChangeEndian32(&counter, (uint32_t*)buffer);
+  size_buf += sizeof(uint32_t);
+  n = strlen(label.c_str()) + 1;
+  if ((size_buf + n) > MAX_SIZE_PARAMS) return false;
+  memcpy(&buf[size_buf], label.data(), n);
+  size_buf += n;
+  if ((size_buf + contextU.size()) > MAX_SIZE_PARAMS) return false;
+  memcpy(&buf[size_buf], contextU.data(), contextU.size());
+  size_buf += contextU.size();
+  if ((size_buf + contextV.size()) > MAX_SIZE_PARAMS) return false;
+  memcpy(&buf[size_buf], contextV.data(), contextV.size());
+  size_buf += contextV.size();
+  if ((size_buf + sizeof(uint32_t)) > MAX_SIZE_PARAMS) return false;
+  ChangeEndian32((uint32_t*)&bits, (uint32_t*)buffer);
+  size_buf += sizeof(uint32_t);
+
+  while (bytes_left > 0) {
+    counter++;
+    ChangeEndian32(&counter, (uint32_t*)buffer);
+
+    HMAC_CTX_init(&ctx);
+    HMAC_init_ex(&ctx, key.data(), key.size(), EVP_sha256(), nullptr);
+    HMAC_Update(&ctx, buf, size_buf);
+    HMAC_Final(&ctx, current_out, &len);
+    HMAC_CTX_cleanup(&ctx);
+    current_out += len;
+    bytes_left -= len;
+  }
+  return true;
+}
+
 

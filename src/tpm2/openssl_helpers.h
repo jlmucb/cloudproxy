@@ -65,6 +65,8 @@ BIGNUM* bin_to_BN(int len, byte* buf);
 string* BN_to_bin(BIGNUM& n);
 
 void XorBlocks(int size, byte* in1, byte* in2, byte* out);
+bool KDFa(uint16_t hashAlg, string& key, string& label, string& contextU,
+          string& contextV, int bits, int out_size, byte* out);
 
 #endif
 

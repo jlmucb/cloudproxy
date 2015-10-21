@@ -6,6 +6,11 @@
 #include <unistd.h>
 #include <string.h>
 
+#include <openssl/ssl.h>
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
+#include <openssl_helpers.h>
+
 #include <tpm20.h>
 #include <tpm2_lib.h>
 #include <gflags/gflags.h>
@@ -33,7 +38,7 @@
 // Portions of this code were derived from the crypto utility
 // published by John Manferdelli under the Apache 2.0 license.
 // See github.com/jlmucb/crypto.
-// File: ClientRetrieveInterimSigningKey.cc
+// File: ClientGetProgramKeyCert.cc
 
 
 //  This program decrypts the program  key certificate using ActivateCredential
@@ -65,7 +70,8 @@ DEFINE_string(program_key_response_file, "", "input-file-name");
 DEFINE_int32(primary_slot, 1, "slot-number");
 DEFINE_int32(seal_slot, 2, "slot-number");
 DEFINE_int32(quote_slot, 3, "slot-number");
-DEFINE_string(program_cert_file, "", "output-file-name");
+DEFINE_string(program_key_type, "RSA", "alg name");
+DEFINE_string(program_key_cert_file, "", "output-file-name");
 
 #ifndef GFLAGS_NS
 #define GFLAGS_NS gflags
@@ -83,7 +89,6 @@ int main(int an, char** av) {
     return 1;
   }
 
-#if 0
   TPM_HANDLE nv_handle = 0;
 
   string authString("01020304");
@@ -92,6 +97,7 @@ int main(int an, char** av) {
 
   TPML_PCR_SELECTION pcrSelect;
 
+  TPM_HANDLE ekHandle = 0;
   TPM_HANDLE root_handle = 0;
   TPM_HANDLE seal_handle = 0;
   TPM_HANDLE quote_handle = 0;
@@ -107,17 +113,16 @@ int main(int an, char** av) {
   TPM2B_NAME ek_pub_name;
   TPM2B_NAME ek_qualified_pub_name;
   uint16_t ek_pub_blob_size = MAX_SIZE_PARAMS;
+  byte ek_pub_blob[MAX_SIZE_PARAMS];
 
   TPM2B_PUBLIC quote_pub_out;
   TPM2B_NAME quote_pub_name;
   TPM2B_NAME quote_qualified_pub_name;
   uint16_t quote_pub_blob_size = MAX_SIZE_PARAMS;
-  byte quote_pub_blob[1024];
+  byte quote_pub_blob[MAX_SIZE_PARAMS];
 
-  int ek_cert_blob_size = MAX_SIZE_PARAMS;
-  byte ek_cert_blob[MAX_SIZE_PARAMS];
   int context_data_size = MAX_SIZE_PARAMS;
-  byte context_data_area[MAX_SIZE_PARAMS];
+  byte context_save_area[MAX_SIZE_PARAMS];
 
   // Generate program key
   if (FLAGS_program_key_type != "RSA") {
@@ -125,18 +130,15 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-  if (FLAGS_program_key_name == "") {
+  if (FLAGS_program_key_response_file == "") {
     printf("No key name\n");
     ret_val = 1;
     goto done;
   }
-
-  // read endorsement cert
-  if (!ReadFileIntoBlock(FLAGS_signed_endorsement_cert_file,
-                       &ek_cert_blob_size, ek_cert_blob)) {
-  printf("Can't read endorsement cert\n");
-  ret_val = 1;
-  goto done;
+  if (FLAGS_program_key_cert_file == "") {
+    printf("No key name\n");
+    ret_val = 1;
+    goto done;
   }
 
   // Create endorsement key
@@ -218,7 +220,7 @@ int main(int an, char** av) {
     printf("Root LoadContext failed\n");
     ret_val = 1;
     goto done;
-
+  }
 
   // quote handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);
@@ -240,7 +242,7 @@ int main(int an, char** av) {
   memset((void*)&secret, 0, sizeof(TPM2B_ENCRYPTED_SECRET));
   memset((void*)&credentialBlob, 0, sizeof(TPM2B_ID_OBJECT));
 
-  if (Tpm2_ReadPublic(tpm, activeHandle,
+  if (Tpm2_ReadPublic(tpm, quote_handle,
                       &quote_pub_blob_size, quote_pub_blob,
                       quote_pub_out, quote_pub_name,
                       quote_qualified_pub_name)) {
@@ -250,9 +252,10 @@ int main(int an, char** av) {
     return false;
   }
   printf("Quote name (%d): ", quote_pub_name.size);
-  PrintBytes(quote_pub_name.size, active_pub_name.name);
+  PrintBytes(quote_pub_name.size, quote_pub_name.name);
   printf("\n");
 
+#if 0
   // Fill credential blob and secret
   printf("credBlob size: %d\n", credentialBlob.size);
   printf("secret size: %d\n", secret.size);
@@ -278,8 +281,6 @@ int main(int an, char** av) {
     printf("Can't write endorsement cert\n");
     goto done;
   }
-
-  // print out cert
 #endif
 
 done:

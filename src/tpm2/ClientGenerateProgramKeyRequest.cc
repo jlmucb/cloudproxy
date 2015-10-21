@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <string.h>
 
+#include <openssl/ssl.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 #include <openssl_helpers.h>
@@ -98,6 +99,8 @@ int main(int an, char** av) {
     printf("Can't open tpm\n");
     return 1;
   }
+
+  OpenSSL_add_all_algorithms();
 
   TPM_HANDLE ekHandle = 0;
   TPMA_OBJECT primary_flags;

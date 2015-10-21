@@ -65,9 +65,11 @@ void PrintOptions() {
 
 
 DEFINE_string(signed_endorsement_cert_file, "", "input-file-name");
+DEFINE_string(signing_instructions_file, "", "input-file-name");
 DEFINE_string(program_cert_request_file, "", "input-file-name");
 // TODO(jlm): policy file should contain list of approved pcrs
 DEFINE_string(policy_file, "", "input-file-name");
+DEFINE_string(policy_identifier, "cloudproxy", "policy domain name");
 DEFINE_string(cloudproxy_key_file, "", "input-file-name");
 DEFINE_string(program_response_file, "", "output-file-name");
 
@@ -83,17 +85,13 @@ int main(int an, char** av) {
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
 
   int size_cert_request = MAX_SIZE_PARAMS;
-  byte* cert_request_buf[MAX_SIZE_PARAMS];
+  byte cert_request_buf[MAX_SIZE_PARAMS];
   x509_cert_request_parameters_message cert_request;
   
-  int in_size = MAX_BUF_SIZE;
-  byte in_buf[MAX_BUF_SIZE];
+  int in_size = MAX_SIZE_PARAMS;
+  byte in_buf[MAX_SIZE_PARAMS];
 
-  string input;
-
-#if 0
   OpenSSL_add_all_algorithms();
-  ERR_load_crypto_strings();
 
   X509_REQ* req = X509_REQ_new();
   X509_REQ_set_version(req, 2);
@@ -104,15 +102,21 @@ int main(int an, char** av) {
   TPM2B_ENCRYPTED_SECRET secret ;
 
   byte* out = nullptr;
-  int size;
+  int size = 0;
   X509* cert = X509_new();
 
   private_key_blob_message private_key;
   program_cert_request_message request;
   program_cert_response_message response;
+  signing_instructions_message signing_message;
   x509_cert_request_parameters_message cert_parameters;
+
   string input;
   string output;
+  string the_blob;
+
+  uint16_t size_in = 0;
+  string* mod = nullptr;
 
   uint64_t expIn;
   uint64_t expOut;
@@ -135,11 +139,6 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-  if (FLAGS_signed_endorsement_cert == "") {
-    printf("signed_endorsement_cert is empty\n");
-    ret_val = 1;
-    goto done;
-  }
   if (FLAGS_program_response_file == "") {
     printf("program_response_file is empty\n");
     ret_val = 1;
@@ -147,7 +146,8 @@ int main(int an, char** av) {
   }
 
   // Get request
-  if (!ReadFileIntoBlock(FLAGS_program_cert_request_file, &size_cert_request, cert_request_buf)) {
+  if (!ReadFileIntoBlock(FLAGS_program_cert_request_file, &size_cert_request,
+                         cert_request_buf)) {
     printf("Can't read cert request\n");
     ret_val = 1;
     goto done;
@@ -160,7 +160,6 @@ int main(int an, char** av) {
   }
 
   // Get signing instructions
-  signing_instructions_message signing_message;
   if (!ReadFileIntoBlock(FLAGS_signing_instructions_file, &in_size, in_buf)) {
     printf("Can't read signing instructions %s\n",
            FLAGS_signing_instructions_file.c_str());
@@ -183,7 +182,7 @@ int main(int an, char** av) {
   }
 
   // Get cloudproxy key
-  in_size = MAX_BUF_SIZE;
+  in_size = MAX_SIZE_PARAMS;
   if (!ReadFileIntoBlock(FLAGS_cloudproxy_key_file, &in_size, in_buf)) {
     printf("Can't read private key\n");
     printf("    %s\n", FLAGS_cloudproxy_key_file.c_str());
@@ -192,12 +191,13 @@ int main(int an, char** av) {
   if (!private_key.ParseFromString(input)) {
     printf("Can't parse private key\n");
   }
+
   printf("Key type: %s\n", private_key.key_type().c_str());
   printf("Key name: %s\n", private_key.key_name().c_str());
-  string the_blob = private_key.blob();
+  the_blob = private_key.blob();
   PrintBytes(the_blob.size(), (byte*)the_blob.data());
   p = (byte*)the_blob.data();
-  signing_key = d2i_RSAPrivateKey(nullptr, &p, the_blob.size());
+  signing_key = d2i_RSAPrivateKey(nullptr, (const byte**)&p, the_blob.size());
   if (signing_key == nullptr) {
     printf("Can't translate private key\n");
     ret_val = 1;
@@ -205,9 +205,9 @@ int main(int an, char** av) {
   }
   print_internal_private_key(*signing_key);
 
-  ChangeEndian16((uint16_t*)key_blob.data(), (uint16_t*)&size_in);
+  ChangeEndian16((uint16_t*)the_blob.data(), (uint16_t*)&size_in);
   TPM2B_PUBLIC outPublic;
-  if (!GetReadPublicOut(size_in, (byte*)(key_blob.data() + sizeof(uint16_t)),
+  if (!GetReadPublicOut(size_in, (byte*)(the_blob.data() + sizeof(uint16_t)),
                         outPublic)) {
     printf("Can't parse endorsement blob\n");
     ret_val = 1;
@@ -215,6 +215,7 @@ int main(int an, char** av) {
   }
 
   // Extract program key request
+#if 0
   request.endorsement_cert_blob = ;
   request.x509_program_key_request = ;
   request.hash_quote_alg = ;
@@ -227,6 +228,7 @@ int main(int an, char** av) {
   request.cred().hash
   request.cred().secret
   request.cred().qualified_name
+#endif
 
   // Validate request: self-signed, endorsement, quote sig
   // Check self-signed
@@ -238,7 +240,7 @@ int main(int an, char** av) {
   // Generate certificate request for program key
   cert_parameters.set_common_name(FLAGS_policy_identifier);
   cert_parameters.mutable_key()->set_key_type("RSA");
-  string* mod = BN_to_bin(*signing_key->n);
+  mod = BN_to_bin(*signing_key->n);
   if (mod == nullptr) {
     printf("Can't get private key modulus\n");
     ret_val = 1;
@@ -253,10 +255,10 @@ int main(int an, char** av) {
       (const char*)&expOut, sizeof(uint64_t));
   cert_parameters.mutable_key()->mutable_rsa_key()->set_modulus(
      mod->data(), mod->size());
-  printf("\n"); print_cert_request_message(req_message); printf("\n");
+  printf("\n"); print_cert_request_message(cert_parameters); printf("\n");
 
   X509_REQ_set_version(req, 2);
-  if (!GenerateX509CertificateRequest(req_message, true, req)) {
+  if (!GenerateX509CertificateRequest(cert_parameters, true, req)) {
     printf("Can't generate x509 request\n");
     ret_val = 1;
     goto done;
@@ -290,12 +292,12 @@ int main(int an, char** av) {
   //                     TPM2B_ID_OBJECT* credentialBlob, TPM2B_ENCRYPTED_SECRET* secret);
 
   // Fill, serialize and write program_cert_response_message
-  program_cert_response_message response;
   // response.set_enc_alg();
   // response.set_enc_mode();
   // response.mutable_encrypted_cert();
   // response.mutable_info();
 
+#if 0
   response.SerializeToString(&output);
   if (!WriteFileFromBlock(FLAGS_program_response_file,
                           output.size(),

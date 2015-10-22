@@ -126,13 +126,8 @@ int main(int an, char** av) {
 
   uint16_t size_in = 0;
   SHA256_CTX sha256;
-#if 0
-  string* mod = nullptr;
-  uint64_t expIn;
-  uint64_t expOut;
-#endif
-  byte* p = nullptr;
   RSA* signing_key = nullptr;
+  RSA* protector_key = nullptr;
 
   if (FLAGS_signing_instructions_file == "") {
     printf("signing_instructions_file is empty\n");
@@ -235,6 +230,7 @@ int main(int an, char** av) {
   der_cert_request_size = request.x509_program_key_request().size();
   out = der_cert_request_in;
   req = d2i_X509_REQ(nullptr, (const byte**)&out, der_cert_request_size);
+
   // sign program key
   if (!SignX509Certificate(signing_key, signing_message, req, false, cert)) {
     printf("Can't sign x509 request\n");
@@ -290,26 +286,18 @@ goto done;
   // generate seed
   RAND_bytes(seed, 32);
 
-  // Marshal secret area to credential buffer, leave space for integrity
-  // sensitiveData += ivSize;
-  // Compute symmetric key parameters for outer buffer encryption
-  // ComputeProtectionKeyParms(protector, hashAlg, name, seed,
-  //                           &symAlg, &keyBits, &symKey);
-  // Encrypt inner buffer in place
-  // CryptSymmetricEncrypt(sensitiveData, symAlg, keyBits,
-  //                       TPM_ALG_CFB, symKey.t.buffer, iv, dataSize,
-  //                     sensitiveData);
-  // Compute outer integrity. Integrity computation includes the optional IV
-  // area
-  // ComputeOuterIntegrity(name, protector, hashAlg, seed, dataSize + ivSize,
-  //                       outerBuffer + integritySize, &integrity);
-  // Add integrity at the beginning of outer buffer
-  // buffer = outerBuffer;
-  // TPM2B_DIGEST_Marshal(&integrity, &buffer, NULL);
-  // return the total size in outer wrap
-  // return dataSize + integritySize+ ivSize;
+  // prependedSecret is Secret structure above
+  // Secret= E(protector_key, seed || "IDENTITY")
+  // symKey= KDFa(hash, seed, "STORAGE", name, nullptr, 128);
+  // encIdentity = CFBEncrypt(AES, symKey, prependedSecret)
+  // hmacKey= KDFa(hash, seed, "INTEGRITY", nullptr, nullptr, 8*hashsize);
+  // outerMac = HMAC(hmacKey, encIdentity || name);
+  // CredentialBlob= outerMac || encIdentity
 
-  // write out buffer
+  // response.set_encrypted_cert(encrypted_data, size);
+  // response.set_Secret(encrypted_data, size);
+  // response.set_CredentialBlob(encrypted_data, size);
+
   response.SerializeToString(&output);
   if (!WriteFileFromBlock(FLAGS_program_response_file,
                           output.size(),

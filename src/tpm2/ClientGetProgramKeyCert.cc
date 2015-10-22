@@ -119,6 +119,7 @@ int main(int an, char** av) {
   int size_cert_out = MAX_SIZE_PARAMS;
   byte cert_out_buf[MAX_SIZE_PARAMS];
 
+  string input;
   string output;
 
   // Generate program key
@@ -229,19 +230,18 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-  input.assign((const char*)cert_response_buf, size_cert_response);
+  input.assign((const char*)response_buf, size_response);
   if (!response.ParseFromString(input)) {
     printf("Can't parse response\n");
     ret_val = 1;
     goto done;
   }
 
-#if 0
   // Fill credential blob and secret
-  printf("credBlob size: %d\n", response.credentialblob().size());
-  printf("secret size: %d\n", response.secret.size());
+  printf("credBlob size: %d\n", (int)response.credentialblob().size());
+  printf("secret size: %d\n", (int)response.secret().size());
 
-  TPM2B_DIGEST recovered_credential;
+#if 0
   if (Tpm2_ActivateCredential(tpm, quote_handle, ekHandle,
                               parentAuth, emptyAuth,
                               credentialBlob, secret,
@@ -258,27 +258,29 @@ int main(int an, char** av) {
   response.enc_alg();
   response.enc_mode();
   response.encrypted_cert();
+#endif
 
   if (response.encrypted_cert().size() > MAX_SIZE_PARAMS) {
   }
   size_cert_out = response.encrypted_cert().size();
-  if (!AesCtrCrypt(128, recovered_credential.data(), response.encrypted_cert().size(),
-                 response.encrypted_cert().data(), cert_out_buf)) {
+  if (!AesCtrCrypt(128, recovered_credential.buffer,
+                   response.encrypted_cert().size(),
+                   (byte*)response.encrypted_cert().data(),
+                   cert_out_buf)) {
+    printf("Can't parse response\n");
+    ret_val = 1;
+    goto done;
   }
-
   
  // Write output cert
- request.SerializeToString(&output);
-  if (!WriteFileFromBlock(FLAGS_program_cert_request_file,
+ if (!WriteFileFromBlock(FLAGS_program_key_cert_file,
                           size_cert_out,
                           cert_out_buf)) {
     printf("Can't write out program cert\n");
     goto done;
   }
-#endif
 
 done:
-#if 0
  if (root_handle != 0) {
     Tpm2_FlushContext(tpm, root_handle);
   }
@@ -291,7 +293,6 @@ done:
   if (ekHandle != 0) {
     Tpm2_FlushContext(tpm, ekHandle);
   }
-#endif
   tpm.CloseTpm();
   return ret_val;
 }

@@ -79,6 +79,7 @@ dobj_ServerSignProgramKeyRequest=		$(O)/tpm2_lib.o \
   $(O)/ServerSignProgramKeyRequest.o
 dobj_ClientGetProgramKeyCert=			$(O)/tpm2_lib.o \
   $(O)/tpm2.pb.o \
+  $(O)/openssl_helpers.o \
   $(O)/ClientGetProgramKeyCert.o
 dobj_SigningInstructions=			$(O)/tpm2_lib.o \
   $(O)/tpm2.pb.o \

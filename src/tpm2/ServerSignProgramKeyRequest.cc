@@ -131,7 +131,6 @@ int main(int an, char** av) {
   int endorsement_blob_size;
   X509* program_cert = X509_new();
   X509* endorsement_cert = nullptr;
-  X509* tmp_cert = nullptr;
 
   byte quoted_hash[256];
   uint16_t secret_size = 0;
@@ -250,9 +249,9 @@ int main(int an, char** av) {
   // Check self-signed
 
   // Get endorsement cert
-  p = endorsement_cert_blob.data();
-  endorsement_blob_size = endorsement_cert_blob.size();
-  endorsement_cert = d2i_X509(nullptr, &p, &endorsement_blob_size);
+  p = (byte*)request.endorsement_cert_blob().data();
+  endorsement_blob_size = request.endorsement_cert_blob().size();
+  endorsement_cert = d2i_X509(nullptr, (const byte**)&p, endorsement_blob_size);
 
   // Check it
 
@@ -291,10 +290,10 @@ int main(int an, char** av) {
   }
 
   // Set quote key exponent and modulus
-  active_key->n = bin_to_BN(request.cred().public_key().rsa_public_key().modulus()size(),
-                            request.cred().public_key().rsa_public_key().modulus().data());
-  active_key->n = bin_to_BN(request.cred().public_key().rsa_public_key().exponent()size(),
-                            request.cred().public_key().rsa_public_key().exponent().data());
+  active_key->n = bin_to_BN(request.cred().public_key().rsa_key().modulus().size(),
+                            (byte*)request.cred().public_key().rsa_key().modulus().data());
+  active_key->n = bin_to_BN(request.cred().public_key().rsa_key().exponent().size(),
+                            (byte*)request.cred().public_key().rsa_key().exponent().data());
   active_key = RSA_new();
   size_active_out = RSA_public_encrypt(request.quote_signature().size(),
                         (const byte*)request.quote_signature().data(),
@@ -326,7 +325,7 @@ int main(int an, char** av) {
   RAND_bytes(seed, size_seed);
 
   // Protector_key is endorsement key
-  protector_evp_key = X509_get_pubkey(endorsement_key);
+  protector_evp_key = X509_get_pubkey(endorsement_cert);
   protector_key = EVP_PKEY_get1_RSA(protector_evp_key);
   
   size_in = 0;

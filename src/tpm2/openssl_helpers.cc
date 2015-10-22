@@ -20,6 +20,7 @@
 #include <openssl/err.h>
 #include <openssl/aes.h>
 #include <openssl/hmac.h>
+#include <openssl/rand.h>
 
 #include <string>
 using std::string;

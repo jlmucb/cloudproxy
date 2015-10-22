@@ -121,12 +121,18 @@ int main(int an, char** av) {
   int size_rsa_out = 0;
   int size_cred_blob = 0;
   int size_active_out = 0;
+
   byte* out = nullptr;
   byte* der_cert_request_in = nullptr;
   int der_cert_request_size = 0;
   byte* der_cert_in = nullptr;
   int size_der_cert;
-  X509* cert = X509_new();
+
+  int endorsement_blob_size;
+  X509* program_cert = X509_new();
+  X509* endorsement_cert = nullptr;
+  X509* tmp_cert = nullptr;
+
   byte quoted_hash[256];
   uint16_t secret_size = 0;
   byte encrypted_data[MAX_SIZE_PARAMS];
@@ -140,13 +146,15 @@ int main(int an, char** av) {
   string name;
   string input;
   string output;
-  string the_blob;
+  string private_key_blob;
 
   uint16_t size_in = 0;
   SHA256_CTX sha256;
   RSA* signing_key = nullptr;
-  RSA* protector_key = nullptr;
   RSA* active_key = nullptr;
+
+  EVP_PKEY* protector_evp_key = nullptr;
+  RSA* protector_key = nullptr;
 
   if (FLAGS_signing_instructions_file == "") {
     printf("signing_instructions_file is empty\n");
@@ -219,10 +227,10 @@ int main(int an, char** av) {
   printf("Key type: %s\n", private_key.key_type().c_str());
   printf("Key name: %s\n", private_key.key_name().c_str());
 
-  the_blob = private_key.blob();
-  PrintBytes(the_blob.size(), (byte*)the_blob.data()); printf("\n");
-  p = (byte*)the_blob.data();
-  signing_key = d2i_RSAPrivateKey(nullptr, (const byte**)&p, the_blob.size());
+  private_key_blob = private_key.blob();
+  PrintBytes(private_key_blob.size(), (byte*)private_key_blob.data()); printf("\n");
+  p = (byte*)private_key_blob.data();
+  signing_key = d2i_RSAPrivateKey(nullptr, (const byte**)&p, private_key_blob.size());
   if (signing_key == nullptr) {
     printf("Can't translate private key\n");
     ret_val = 1;
@@ -241,9 +249,12 @@ int main(int an, char** av) {
 
   // Check self-signed
 
-  // Check endorsement cert
+  // Get endorsement cert
+  p = endorsement_cert_blob.data();
+  endorsement_blob_size = endorsement_cert_blob.size();
+  endorsement_cert = d2i_X509(nullptr, &p, &endorsement_blob_size);
 
-  // request.endorsement_cert_blob();
+  // Check it
 
   // Get certificate request for program key
   der_cert_request_in = (byte*)request.x509_program_key_request().data();
@@ -252,7 +263,7 @@ int main(int an, char** av) {
   req = d2i_X509_REQ(nullptr, (const byte**)&out, der_cert_request_size);
 
   // sign program key
-  if (!SignX509Certificate(signing_key, signing_message, req, false, cert)) {
+  if (!SignX509Certificate(signing_key, signing_message, req, false, program_cert)) {
     printf("Can't sign x509 request\n");
     ret_val = 1;
     goto done;
@@ -261,7 +272,7 @@ int main(int an, char** av) {
 
   // Serialize program cert
   der_cert_in = nullptr;
-  size_der_cert = i2d_X509(cert, &der_cert_in);
+  size_der_cert = i2d_X509(program_cert, &der_cert_in);
   printf("Program cert: ");
   PrintBytes(size_der_cert, der_cert_in); printf("\n");
 
@@ -279,7 +290,11 @@ int main(int an, char** av) {
     goto done;
   }
 
-  // TODO(jlm): set quote key exponent and modulus
+  // Set quote key exponent and modulus
+  active_key->n = bin_to_BN(request.cred().public_key().rsa_public_key().modulus()size(),
+                            request.cred().public_key().rsa_public_key().modulus().data());
+  active_key->n = bin_to_BN(request.cred().public_key().rsa_public_key().exponent()size(),
+                            request.cred().public_key().rsa_public_key().exponent().data());
   active_key = RSA_new();
   size_active_out = RSA_public_encrypt(request.quote_signature().size(),
                         (const byte*)request.quote_signature().data(),
@@ -293,12 +308,12 @@ int main(int an, char** av) {
     goto done;
   }
 
-  // Generate encryption key for cert
+  // Generate encryption key for signed program cert
   secret_size = 16;
   RAND_bytes(secret.buffer, secret_size);
   ChangeEndian16(&secret_size, &secret.size);
 
-  // Encrypt cert
+  // Encrypt signed program cert
   if (!AesCtrCrypt(128, secret.buffer, size_der_cert,
                    der_cert_in, encrypted_data)) {
     printf("Can't encrypt cert\n");
@@ -307,12 +322,13 @@ int main(int an, char** av) {
   }
   response.set_encrypted_cert(encrypted_data, size_der_cert);
 
-  // generate seed
+  // Generate seed for MakeCredential protocol
   RAND_bytes(seed, size_seed);
 
-  // protector_key is endorsement key
-  // TODO(jlm): get modulus and exponent from request.x509_program_key_request
-  protector_key = RSA_new();
+  // Protector_key is endorsement key
+  protector_evp_key = X509_get_pubkey(endorsement_key);
+  protector_key = EVP_PKEY_get1_RSA(protector_evp_key);
+  
   size_in = 0;
   memcpy(in_buf, seed, size_seed);
   size_in += size_seed;
@@ -340,7 +356,7 @@ int main(int an, char** av) {
   }
 
   // encIdentity = CFBEncrypt(symKey, prependedSecret, encIdentity, &size_rsa_ out)
-  if (!AesCFBEncrypt(symKey, size_rsa_out + 2, (byte*)&encrypted_secret,
+  if (!AesCFBEncrypt(symKey, size_rsa_out + sizeof(uint16_t), (byte*)&encrypted_secret,
                              &size_encIdentity, encIdentity)) {
     printf("Can't AesCFBEncrypt\n");
     ret_val = 1;

@@ -473,6 +473,54 @@ bool AesCtrCrypt(int key_size_bits, byte* key, int size,
   return true;
 }
 
+#define AESBLKSIZE 16
+
 bool AesCFBEncrypt(byte* key, int in_size, byte* in, int* out_size, byte* out) {
+  byte last_cipher[32];
+  byte next_cipher[32];
+  byte padded_plain[32];
+  bool last = false;
+  int size = 0;
+
+  AES_KEY ectx;
+  AES_set_encrypt_key(key, 128, &ectx);
+
+  // Get  and write IV
+  RAND_bytes(last_cipher, AESBLKSIZE);
+  if ((size + AESBLKSIZE) > *out_size) return false; 
+  memcpy(out, last_cipher, AESBLKSIZE);
+  size += AESBLKSIZE;
+
+  while (in_size > 0) {
+    if ((size + AESBLKSIZE) > *out_size) return false; 
+    // pad?
+    if (in_size < AESBLKSIZE) {
+      memcpy(padded_plain, in, in_size);
+      padded_plain[in_size++] = 0x80;
+      memset(&padded_plain[in_size], 0, AESBLKSIZE-in_size);
+      in_size = AESBLKSIZE;
+      in = padded_plain;
+      last = true;
+    }
+    // C[0] = IV, C[i] = P[i] ^ E(K, C[i-1])
+    AES_encrypt(last_cipher, next_cipher, &ectx);
+    XorBlocks(AESBLKSIZE, next_cipher, in, last_cipher);
+    memcpy(last_cipher, next_cipher, AESBLKSIZE);
+    memcpy(out, last_cipher, AESBLKSIZE);
+    out += AESBLKSIZE;
+    size += AESBLKSIZE;
+    in += AESBLKSIZE;
+    in_size -= AESBLKSIZE;
+  }
+  // pad?
+  if (!last) {
+    if ((size + AESBLKSIZE) > *out_size) return false; 
+    padded_plain[0] = 0x80;
+    memset(&padded_plain[1], 0, AESBLKSIZE-1);
+    AES_encrypt(last_cipher, next_cipher, &ectx);
+    XorBlocks(AESBLKSIZE, next_cipher, padded_plain, out);
+    size += AESBLKSIZE;
+  }
+  *out_size = size;
   return true;
 }

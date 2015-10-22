@@ -108,21 +108,18 @@ int main(int an, char** av) {
   TPM2B_DIGEST recovered_credential;
 
   TPMA_OBJECT primary_flags;
-
   TPM2B_PUBLIC ek_pub_out;
-  TPM2B_NAME ek_pub_name;
-  TPM2B_NAME ek_qualified_pub_name;
-  uint16_t ek_pub_blob_size = MAX_SIZE_PARAMS;
-  byte ek_pub_blob[MAX_SIZE_PARAMS];
-
-  TPM2B_PUBLIC quote_pub_out;
-  TPM2B_NAME quote_pub_name;
-  TPM2B_NAME quote_qualified_pub_name;
-  uint16_t quote_pub_blob_size = MAX_SIZE_PARAMS;
-  byte quote_pub_blob[MAX_SIZE_PARAMS];
 
   int context_data_size = MAX_SIZE_PARAMS;
   byte context_save_area[MAX_SIZE_PARAMS];
+
+  int size_response = MAX_SIZE_PARAMS;
+  byte response_buf[MAX_SIZE_PARAMS];
+  program_cert_response_message response;
+  int size_cert_out = MAX_SIZE_PARAMS;
+  byte cert_out_buf[MAX_SIZE_PARAMS];
+
+  string output;
 
   // Generate program key
   if (FLAGS_program_key_type != "RSA") {
@@ -162,23 +159,6 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-  if (Tpm2_ReadPublic(tpm, ekHandle, &ek_pub_blob_size, ek_pub_blob,
-                      ek_pub_out, ek_pub_name, ek_qualified_pub_name)) {
-    printf("ek ReadPublic succeeded\n");
-  } else {
-    printf("ek ReadPublic failed\n");
-    ret_val = 1;
-    goto done;
-  }
-  printf("ek Public blob: ");
-  PrintBytes(ek_pub_blob_size, ek_pub_blob);
-  printf("\n");
-  printf("ek Name: ");
-  PrintBytes(ek_pub_name.size, ek_pub_name.name);
-  printf("\n");
-  printf("ek Qualified name: ");
-  PrintBytes(ek_qualified_pub_name.size, ek_qualified_pub_name.name);
-  printf("\n");
 
   // restore context
   // TODO(jlm): should get pcr list from parameters
@@ -242,24 +222,26 @@ int main(int an, char** av) {
   memset((void*)&secret, 0, sizeof(TPM2B_ENCRYPTED_SECRET));
   memset((void*)&credentialBlob, 0, sizeof(TPM2B_ID_OBJECT));
 
-  if (Tpm2_ReadPublic(tpm, quote_handle,
-                      &quote_pub_blob_size, quote_pub_blob,
-                      quote_pub_out, quote_pub_name,
-                      quote_qualified_pub_name)) {
-    printf("ReadPublic succeeded\n");
-  } else {
-    printf("ReadPublic failed\n");
-    return false;
+  // Get response
+  if (!ReadFileIntoBlock(FLAGS_program_key_response_file, &size_response,
+                         response_buf)) {
+    printf("Can't read response\n");
+    ret_val = 1;
+    goto done;
   }
-  printf("Quote name (%d): ", quote_pub_name.size);
-  PrintBytes(quote_pub_name.size, quote_pub_name.name);
-  printf("\n");
+  input.assign((const char*)cert_response_buf, size_cert_response);
+  if (!response.ParseFromString(input)) {
+    printf("Can't parse response\n");
+    ret_val = 1;
+    goto done;
+  }
 
 #if 0
   // Fill credential blob and secret
-  printf("credBlob size: %d\n", credentialBlob.size);
-  printf("secret size: %d\n", secret.size);
+  printf("credBlob size: %d\n", response.credentialblob().size());
+  printf("secret size: %d\n", response.secret.size());
 
+  TPM2B_DIGEST recovered_credential;
   if (Tpm2_ActivateCredential(tpm, quote_handle, ekHandle,
                               parentAuth, emptyAuth,
                               credentialBlob, secret,
@@ -271,14 +253,26 @@ int main(int an, char** av) {
   }
 
   // Decrypt cert, credential is key
+  response.request_id();
+  response.program_name();
+  response.enc_alg();
+  response.enc_mode();
   response.encrypted_cert();
 
+  if (response.encrypted_cert().size() > MAX_SIZE_PARAMS) {
+  }
+  size_cert_out = response.encrypted_cert().size();
+  if (!AesCtrCrypt(128, recovered_credential.data(), response.encrypted_cert().size(),
+                 response.encrypted_cert().data(), cert_out_buf)) {
+  }
+
+  
  // Write output cert
  request.SerializeToString(&output);
   if (!WriteFileFromBlock(FLAGS_program_cert_request_file,
-                          output.size(),
-                          (byte*)output.data())) {
-    printf("Can't write endorsement cert\n");
+                          size_cert_out,
+                          cert_out_buf)) {
+    printf("Can't write out program cert\n");
     goto done;
   }
 #endif

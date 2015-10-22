@@ -69,6 +69,7 @@ bool AesCtrCrypt(int key_size_bits, byte* key, int size,
                  byte* in, byte* out);
 bool KDFa(uint16_t hashAlg, string& key, string& label, string& contextU,
           string& contextV, int bits, int out_size, byte* out);
+bool AesCFBEncrypt(byte* key, int in_size, byte* in, int* out_size, byte* out);
 
 #endif
 

@@ -473,4 +473,6 @@ bool AesCtrCrypt(int key_size_bits, byte* key, int size,
   return true;
 }
 
-
+bool AesCFBEncrypt(byte* key, int in_size, byte* in, int* out_size, byte* out) {
+  return true;
+}

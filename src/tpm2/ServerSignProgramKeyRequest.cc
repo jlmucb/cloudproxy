@@ -94,16 +94,35 @@ int main(int an, char** av) {
   int in_size = MAX_SIZE_PARAMS;
   byte in_buf[MAX_SIZE_PARAMS];
 
+  int size_buf;
+  int out_size;
+  byte out_buf[MAX_SIZE_PARAMS];
+
   OpenSSL_add_all_algorithms();
 
   X509_REQ* req = nullptr;
 
+  int size_seed = 32;
   byte seed[32];
   TPM2B_NAME objectName;
   TPM2B_ID_OBJECT credentialBlob;
   TPM2B_DIGEST secret;
   TPM2B_ENCRYPTED_SECRET encrypted_secret;
 
+  int size_symKey;
+  byte symKey[MAX_SIZE_PARAMS];
+  int size_hmacKey;
+  byte hmacKey[MAX_SIZE_PARAMS];
+  string key;
+  string label;
+  string contextU;
+  string contextV;
+  HMAC_CTX hctx;
+  int size_encIdentity;
+  byte encIdentity[MAX_SIZE_PARAMS];
+  byte outerHmac[64];
+
+  int size_out = 0;
   byte* out = nullptr;
   byte* der_cert_request_in = nullptr;
   int der_cert_request_size = 0;
@@ -275,28 +294,64 @@ int main(int an, char** av) {
   response.set_encrypted_cert(encrypted_data, size);
 goto done;
 
-  // Encrypt secret with ek public key, put it in encrypted_secret
-  // request.cred().name
-  // request.cred().hash_alg
-  // request.cred().hash
-  // request.cred().secret
-
-  // use name of quote object
-  
   // generate seed
-  RAND_bytes(seed, 32);
+  RAND_bytes(seed, size_seed);
 
-  // prependedSecret is Secret structure above
+  protector_key = RSA_new();
+  // get modulus and exponent from request.x509_program_key_request
+  size_in= 0;
+  memcpy(in_buf, seed, size_seed);
+  size_in+= size_seed;
+  memcpy(&in_buf[size_in], (byte*)"IDENTITY", strlen("IDENTITY") + 1);
+  size_in += strlen("IDENTITY") + 1;
+
   // Secret= E(protector_key, seed || "IDENTITY")
-  // symKey= KDFa(hash, seed, "STORAGE", name, nullptr, 128);
-  // encIdentity = CFBEncrypt(AES, symKey, prependedSecret)
-  // hmacKey= KDFa(hash, seed, "INTEGRITY", nullptr, nullptr, 8*hashsize);
-  // outerMac = HMAC(hmacKey, encIdentity || name);
-  // CredentialBlob= outerMac || encIdentity
+  size_out = RSA_public_encrypt(size_in, in_buf, encrypted_secret.buffer,
+                                protector_key, RSA_PKCS1_OAEP_PADDING);
+  // prependedSecret is encrypted_secret structure above
+  ChangeEndian16((uint16_t*)&size_out, &encrypted_secret.size);
+  response.set_Secret(encrypted_secret.buffer, encrypted_secret.size);
 
-  // response.set_encrypted_cert(encrypted_data, size);
-  // response.set_Secret(encrypted_data, size);
-  // response.set_CredentialBlob(encrypted_data, size);
+  // symKey= KDFa(hash, seed, "STORAGE", name, nullptr, 128);
+  label = "STORAGE";
+  key.assign(seed, size_seed);
+  contextV.clear();
+  if (!KDFa(TPM_ALG_SHA256, key, label, request.cred().name, contextV, 256, 32, symKey)) {
+    printf("Can't KDFa symKey\n");
+    ret_val = 1;
+    goto done;
+  }
+  // encIdentity = AesCFBEncrypt(symKey, prependedSecret, encIdentity, &size_out)
+  if (!AesCFBEncrypt(symKey, size_out + 2, (byte*)&encrypted_secret,
+                             &size_encIdentity, encIdentity)) {
+    printf("Can't AesCFBEncrypt\n");
+    ret_val = 1;
+    goto done;
+  }
+  // hmacKey= KDFa(hash, seed, "INTEGRITY", nullptr, nullptr, 8*hashsize);
+  label = "INTEGRITY";
+  if (!KDFa(TPM_ALG_SHA256, key, label, contextV, contextV, 256, 32, hmacKey)) {
+    printf("Can't KDFa hmacKey\n");
+    ret_val = 1;
+    goto done;
+  }
+  
+  // outerMac = HMAC(hmacKey, encIdentity || name);
+  HMAC_CTX_init(&hctx);
+  HMAC_Init_ex(&hctx, hmacKey, 32, EVP_sha256(), nullptr);
+  HMAC_Update(&hctx, encIdentity, size_encIdentity);
+  HMAC_Update(&hctx, request.cred().name().data(), request.cred().name().size());
+  size_hmac = 32;
+  HMAC_Final(&hctx, outerHmac, &size_hmac);
+  HMAC_CTX_cleanup(&hctx);
+
+  // CredentialBlob= outerMac || encIdentity
+  size_out = 0;
+  memcpy(out_buf, outerHmac, 32);
+  size_out += 32;
+  memcpy(&out_buf[size_out], encIdentity, size_encIdentity);
+  size_out += size_encIdentity;
+  response.set_CredentialBlob(out_buf, size_out);
 
   response.SerializeToString(&output);
   if (!WriteFileFromBlock(FLAGS_program_response_file,

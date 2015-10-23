@@ -261,7 +261,6 @@ int main(int an, char** av) {
   memcpy(secret.secret,
          response.secret().data(), tmp);
 
-#if 0
   if (Tpm2_ActivateCredential(tpm, quote_handle, ekHandle,
                               parentAuth, emptyAuth,
                               credentialBlob, secret,
@@ -269,9 +268,10 @@ int main(int an, char** av) {
     printf("ActivateCredential succeeded\n");
     printf("Recovered credential (%d): ", recovered_credential.size);
     PrintBytes(recovered_credential.size, recovered_credential.buffer);
-    printf("\n")
+    printf("\n");
   }
 
+#if 0
   // Decrypt cert, credential is key
   response.request_id();
   response.program_name();

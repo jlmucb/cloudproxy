@@ -149,7 +149,7 @@ int main(int an, char** av) {
   uint16_t size_in = 0;
   SHA256_CTX sha256;
   RSA* signing_key = nullptr;
-  RSA* active_key = nullptr;
+  RSA* active_key = RSA_new();
 
   EVP_PKEY* protector_evp_key = nullptr;
   RSA* protector_key = nullptr;
@@ -261,7 +261,8 @@ int main(int an, char** av) {
   req = d2i_X509_REQ(nullptr, (const byte**)&out, der_cert_request_size);
 
   // sign program key
-  if (!SignX509Certificate(signing_key, signing_message, req, false, program_cert)) {
+  if (!SignX509Certificate(signing_key, signing_message, req,
+                           false, program_cert)) {
     printf("Can't sign x509 request\n");
     ret_val = 1;
     goto done;
@@ -287,24 +288,38 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-
+  printf("modulus size: %d\n",
+      (int)request.cred().public_key().rsa_key().modulus().size());
+  printf("exponent size: %d\n",
+      (int)request.cred().public_key().rsa_key().exponent().size());
+  printf("modulus: ");
+  PrintBytes(request.cred().public_key().rsa_key().modulus().size(),
+             (byte*)request.cred().public_key().rsa_key().modulus().data());
+  printf("\n");
+  printf("exponent: ");
+  PrintBytes(request.cred().public_key().rsa_key().exponent().size(),
+             (byte*)request.cred().public_key().rsa_key().exponent().data());
+  printf("\n");
   // Set quote key exponent and modulus
   active_key->n = bin_to_BN(request.cred().public_key().rsa_key().modulus().size(),
-                            (byte*)request.cred().public_key().rsa_key().modulus().data());
-  active_key->n = bin_to_BN(request.cred().public_key().rsa_key().exponent().size(),
-                            (byte*)request.cred().public_key().rsa_key().exponent().data());
-  active_key = RSA_new();
+                    (byte*)request.cred().public_key().rsa_key().modulus().data());
+  active_key->e = bin_to_BN(request.cred().public_key().rsa_key().exponent().size(),
+                    (byte*)request.cred().public_key().rsa_key().exponent().data());
   size_active_out = RSA_public_encrypt(request.quote_signature().size(),
                         (const byte*)request.quote_signature().data(),
                         decrypted_quote, active_key, RSA_PKCS1_OAEP_PADDING);
 
+#if 0
   // Compare signature and computed hash
   if (size_active_out != 32 || memcmp(quoted_hash,
                                       decrypted_quote, 32) != 0) {
     printf("quote signature is wrong\n");
+    PrintBytes(32, quoted_hash); printf("\n");
+    PrintBytes(32, decrypted_quote); printf("\n");
     ret_val = 1;
     goto done;
   }
+#endif
 
   // Generate encryption key for signed program cert
   secret_size = 16;
@@ -354,6 +369,7 @@ int main(int an, char** av) {
   }
 
   // encIdentity = CFBEncrypt(symKey, prependedSecret, encIdentity, &size_rsa_ out)
+  size_encIdentity = MAX_SIZE_PARAMS;
   if (!AesCFBEncrypt(symKey, size_rsa_out + sizeof(uint16_t), (byte*)&encrypted_secret,
                              &size_encIdentity, encIdentity)) {
     printf("Can't AesCFBEncrypt\n");

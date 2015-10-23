@@ -434,9 +434,9 @@ int main(int an, char** av) {
   request.mutable_cred()->mutable_public_key()->mutable_rsa_key()
       ->set_bit_modulus_size(
          quote_pub_out.publicArea.parameters.rsaDetail.keyBits);
+  expIn = quote_pub_out.publicArea.parameters.rsaDetail.exponent;
   expOut = 0ULL;
-  ChangeEndian32((uint32_t*)&quote_pub_out.publicArea.parameters.rsaDetail.exponent,
-                 (uint32_t*)&expOut);
+  ChangeEndian64((uint64_t*)&expIn, (uint64_t*)&expOut);
   request.mutable_cred()->mutable_public_key()->mutable_rsa_key()
      ->set_exponent((const char*)&expOut, sizeof(uint64_t));
   request.mutable_cred()->mutable_public_key()->mutable_rsa_key()

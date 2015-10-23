@@ -89,6 +89,8 @@ int main(int an, char** av) {
     return 1;
   }
 
+  OpenSSL_add_all_algorithms();
+
   TPM_HANDLE nv_handle = 0;
 
   string authString("01020304");
@@ -110,7 +112,7 @@ int main(int an, char** av) {
   TPMA_OBJECT primary_flags;
   TPM2B_PUBLIC ek_pub_out;
 
-  int context_data_size = MAX_SIZE_PARAMS;
+  int context_data_size = 930;
   byte context_save_area[MAX_SIZE_PARAMS];
 
   int size_response = MAX_SIZE_PARAMS;
@@ -151,7 +153,7 @@ int main(int an, char** av) {
   primary_flags.decrypt = 1;
   primary_flags.restricted = 1;
 
-  InitSinglePcrSelection(-1, TPM_ALG_SHA256, pcrSelect);
+  InitSinglePcrSelection(-1, TPM_ALG_SHA1, pcrSelect);
   if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect,
                          TPM_ALG_RSA, TPM_ALG_SHA256, primary_flags,
                          TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
@@ -186,6 +188,7 @@ int main(int an, char** av) {
     goto done;
   }
 
+#if 0
   // seal handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);
   nv_handle = GetNvHandle(FLAGS_slot_seal);
@@ -204,6 +207,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+#endif
 
   // quote handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);

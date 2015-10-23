@@ -351,10 +351,11 @@ int main(int an, char** av) {
   // Secret= E(protector_key, seed || "IDENTITY")
   size_rsa_out = RSA_public_encrypt(size_in, in_buf, encrypted_secret.secret,
                                 protector_key, RSA_PKCS1_OAEP_PADDING);
+  printf("size_rsa_out: %d\n", size_rsa_out);
 
   // prependedSecret is encrypted_secret structure above
   ChangeEndian16((uint16_t*)&size_rsa_out, &encrypted_secret.size);
-  response.set_secret(encrypted_secret.secret, encrypted_secret.size);
+  response.set_secret(encrypted_secret.secret, size_rsa_out);
 
   // symKey= KDFa(hash, seed, "STORAGE", name, nullptr, 128);
   label = "STORAGE";

@@ -112,6 +112,7 @@ int main(int an, char** av) {
   TPMA_OBJECT primary_flags;
   TPM2B_PUBLIC ek_pub_out;
 
+  int current_size = 0;
   int context_data_size = 930;
   byte context_save_area[MAX_SIZE_PARAMS];
 
@@ -249,21 +250,27 @@ int main(int an, char** av) {
   printf("secret size: %d\n", (int)response.secret().size());
 
   // integrityHMAC
+  current_size = 0;
   tmp = response.integrityhmac().size();
-  ChangeEndian16(&tmp, &secret.size);
-  memcpy(credentialBlob.credential,
+  ChangeEndian16(&tmp, (uint16_t*)&credentialBlob.credential[current_size]);
+  current_size += sizeof(uint16_t);
+  memcpy(&credentialBlob.credential[current_size],
          response.integrityhmac().data(), tmp);
+  current_size += tmp;
+
   // encIdentity 
   tmp = response.encidentity().size();
-  ChangeEndian16(&tmp, &secret.size);
-  memcpy(&credentialBlob.credential[response.integrityhmac().size()],
+  ChangeEndian16(&tmp, (uint16_t*)&credentialBlob.credential[current_size]);
+  current_size += sizeof(uint16_t);
+  memcpy(&credentialBlob.credential[current_size],
          response.encidentity().data(), tmp);
+  current_size += tmp;
+  credentialBlob.size = current_size;
  
   // secret 
   tmp = response.secret().size();
-  ChangeEndian16(&tmp, &secret.size);
-  memcpy(secret.secret,
-         response.secret().data(), tmp);
+  secret.size = tmp;
+  memcpy(secret.secret, response.secret().data(), tmp);
 
   if (Tpm2_ActivateCredential(tpm, quote_handle, ekHandle,
                               parentAuth, emptyAuth,

@@ -101,12 +101,16 @@ int main(int an, char** av) {
 
   int size_seed = 32;
   byte seed[32];
-  TPM2B_DIGEST secret;
-  TPM2B_ENCRYPTED_SECRET encrypted_secret;
+
+  TPM2B_DIGEST unmarshaled_credential;
+  TPM2B_DIGEST marshaled_credential;
+  int encrypted_marshaled_credential_size = MAX_SIZE_PARAMS;
+  byte encrypted_marshaled_credential[MAX_SIZE_PARAMS];
 
   byte symKey[MAX_SIZE_PARAMS];
   int size_hmacKey = 32;
   byte hmacKey[MAX_SIZE_PARAMS];
+
   string key;
   string label;
   string contextU;
@@ -116,6 +120,7 @@ int main(int an, char** av) {
   byte encIdentity[MAX_SIZE_PARAMS];
   byte decrypted_quote[MAX_SIZE_PARAMS];
   byte outerHmac[64];
+
   byte* p;
 
   int size_rsa_out = 0;
@@ -131,9 +136,14 @@ int main(int an, char** av) {
   X509* program_cert = X509_new();
   X509* endorsement_cert = nullptr;
 
+  int quoted_has_size = 32;  // always sha256 for us
   byte quoted_hash[256];
-  uint16_t secret_size = 0;
+  int encrypted_data_size = 0;
   byte encrypted_data[MAX_SIZE_PARAMS];
+  byte zero_iv[32];
+  memset(zero_iv, 0, 32);
+  
+  int encrypted_secret_size = 0;
 
   private_key_blob_message private_key;
   program_cert_request_message request;
@@ -282,7 +292,7 @@ int main(int an, char** av) {
   SHA256_Final(quoted_hash, &sha256);
   printf("quoted_hash: "); PrintBytes(32, quoted_hash); printf("\n");
 
-  // Encrypt with quote key
+  // "Encrypt" with quote key
   if (!request.cred().has_public_key()) {
     printf("no quote key\n");
     ret_val = 1;
@@ -322,21 +332,30 @@ int main(int an, char** av) {
 #endif
 
   // Generate encryption key for signed program cert
-  secret_size = 16;
-  RAND_bytes(secret.buffer, secret_size);
-  ChangeEndian16(&secret_size, &secret.size);
+  // This is the "credential."
+  // TODO: make this 32 for HMACing later
+  unmarshaled_credential.size = 16;
+  RAND_bytes(unmarshaled_credential.credential, unmarshaled_credential.size);
+  ChangeEndian16(&unmarshaled_credential.size, &marshaled_credential.size);
+  memcpy(marshaled_credential.credential, unmarshaled_credential.credential,
+         unmarshaled_credential.size);
 
   // Encrypt signed program cert
-  if (!AesCtrCrypt(128, secret.buffer, size_der_cert,
+  if (!AesCtrCrypt(128, unmarshaled_credential.credential, size_der_cert,
                    der_cert_in, encrypted_data)) {
     printf("Can't encrypt cert\n");
     ret_val = 1;
     goto done;
   }
-  response.set_encrypted_cert(encrypted_data, size_der_cert);
+  encrypted_data_size = size_der_cert;
+  response.set_encrypted_cert(encrypted_data, encrypted_data_size);
+  printf("Encrypted program cert: ");
+  PrintBytes(size_der_cert, der_cert_in); printf("\n");
 
   // Generate seed for MakeCredential protocol
   RAND_bytes(seed, size_seed);
+  printf("seed: ");
+  PrintBytes(size_seed, seed); printf("\n");
 
   // Protector_key is endorsement key
   protector_evp_key = X509_get_pubkey(endorsement_cert);
@@ -349,34 +368,39 @@ int main(int an, char** av) {
   size_in += strlen("IDENTITY") + 1;
 
   // Secret= E(protector_key, seed || "IDENTITY")
-  size_rsa_out = RSA_public_encrypt(size_in, in_buf, encrypted_secret.secret,
-                                protector_key, RSA_PKCS1_OAEP_PADDING);
-  printf("size_rsa_out: %d\n", size_rsa_out);
-
-  // prependedSecret is encrypted_secret structure above
-  ChangeEndian16((uint16_t*)&size_rsa_out, &encrypted_secret.size);
-  response.set_secret(encrypted_secret.secret, size_rsa_out);
+  encrypted_secret_size = RSA_public_encrypt(size_in, in_buf, encrypted_secret.secret,
+                                             protector_key, RSA_PKCS1_OAEP_PADDING);
+  encrypted_secret.size = encrypted_secret_size;
+  printf("encrypted_secret_size: %d\n", encrypted_secret_size);
+  printf("Encrypted secret: ");
+  PrintBytes(encrypted_secret.size, encrypted_secret.secret); printf("\n");
+  response.set_secret(encrypted_secret.secret, encrypted_secret_size);
 
   // symKey= KDFa(hash, seed, "STORAGE", name, nullptr, 128);
   label = "STORAGE";
   key.assign((const char*)seed, size_seed);
   contextV.clear();
   name.assign(request.cred().name().data(), request.cred().name().size());
-  if (!KDFa(TPM_ALG_SHA256, key, label, name,
-            contextV, 256, 32, symKey)) {
+  if (!KDFa(TPM_ALG_SHA256, key, label, name, contextV, 256, 32, symKey)) {
     printf("Can't KDFa symKey\n");
     ret_val = 1;
     goto done;
   }
+  printf("symKey: "); PrintBytes(32, symKey); printf("\n");
 
-  // encIdentity = CFBEncrypt(symKey, prependedSecret, encIdentity, &size_rsa_ out)
+  // encIdentity = CFBEncrypt(symKey, marshaled_credential, out)
+  // We need to encrypt the entire marshaled_credential
+  int encrypted_marshaled_credential_size = MAX_SIZE_PARAMS;
+  byte encrypted_marshaled_credential[MAX_SIZE_PARAMS];
   size_encIdentity = MAX_SIZE_PARAMS;
-  if (!AesCFBEncrypt(symKey, size_rsa_out + sizeof(uint16_t), (byte*)&encrypted_secret,
-                             &size_encIdentity, encIdentity)) {
+  if (!AesCFBEncrypt(symKey, unmarshaled_credential.size + sizeof(uint16_t),
+                     (byte*)&marshaled_credential, 16, zero_iv,
+                     &size_encIdentity, encIdentity)) {
     printf("Can't AesCFBEncrypt\n");
     ret_val = 1;
     goto done;
   }
+  response.set_encidentity(encIdentity, size_encIdentity);
 
   // hmacKey= KDFa(hash, seed, "INTEGRITY", nullptr, nullptr, 8*hashsize);
   label = "INTEGRITY";
@@ -386,19 +410,14 @@ int main(int an, char** av) {
     goto done;
   }
   
-  // outerMac = HMAC(hmacKey, encIdentity || name);
-  HMAC_CTX_init(&hctx);
-  HMAC_Init_ex(&hctx, hmacKey, 32, EVP_sha256(), nullptr);
-  HMAC_Update(&hctx, (const byte*)encIdentity, size_encIdentity);
-  HMAC_Update(&hctx, (const byte*)request.cred().name().data(), request.cred().name().size());
+  // outerMac = HMAC(hmacKey, encIdentity);
   size_hmacKey = 32;
+  HMAC_CTX_init(&hctx);
+  HMAC_Init_ex(&hctx, hmacKey, size_hmacKey, EVP_sha256(), nullptr);
+  HMAC_Update(&hctx, (const byte*)encIdentity, size_encIdentity);
   HMAC_Final(&hctx, outerHmac, (uint32_t*)&size_hmacKey);
   HMAC_CTX_cleanup(&hctx);
-
-  // CredentialBlob= outerMac || encIdentity
-  memcpy(out_buf, outerHmac, 32);
   response.set_integrityhmac(outerHmac, 32);
-  response.set_encidentity(encIdentity, size_encIdentity);
 
   // Serialize output
   response.SerializeToString(&output);

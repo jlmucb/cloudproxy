@@ -476,9 +476,10 @@ bool AesCtrCrypt(int key_size_bits, byte* key, int size,
 
 #define AESBLKSIZE 16
 
-bool AesCFBEncrypt(byte* key, int in_size, byte* in, int* out_size, byte* out) {
+bool AesCFBEncrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
+                   int* out_size, byte* out) {
   byte last_cipher[32];
-  byte next_cipher[32];
+  byte cipher_block[32];
   byte padded_plain[32];
   bool last = false;
   int size = 0;
@@ -486,11 +487,9 @@ bool AesCFBEncrypt(byte* key, int in_size, byte* in, int* out_size, byte* out) {
   AES_KEY ectx;
   AES_set_encrypt_key(key, 128, &ectx);
 
-  // Get  and write IV
-  RAND_bytes(last_cipher, AESBLKSIZE);
-  if ((size + AESBLKSIZE) > *out_size) return false; 
-  memcpy(out, last_cipher, AESBLKSIZE);
-  size += AESBLKSIZE;
+  // Don't write iv, called already knows it
+  if(iv_size != AESBLKSIZE) return false;
+  memcpy(last_cipher, iv, AESBLKSIZE);
 
   while (in_size > 0) {
     if ((size + AESBLKSIZE) > *out_size) return false; 
@@ -504,9 +503,8 @@ bool AesCFBEncrypt(byte* key, int in_size, byte* in, int* out_size, byte* out) {
       last = true;
     }
     // C[0] = IV, C[i] = P[i] ^ E(K, C[i-1])
-    AES_encrypt(last_cipher, next_cipher, &ectx);
-    XorBlocks(AESBLKSIZE, next_cipher, in, last_cipher);
-    memcpy(last_cipher, next_cipher, AESBLKSIZE);
+    AES_encrypt(last_cipher, cipher_block, &ectx);
+    XorBlocks(AESBLKSIZE, cipher_block, in, last_cipher);
     memcpy(out, last_cipher, AESBLKSIZE);
     out += AESBLKSIZE;
     size += AESBLKSIZE;
@@ -518,10 +516,48 @@ bool AesCFBEncrypt(byte* key, int in_size, byte* in, int* out_size, byte* out) {
     if ((size + AESBLKSIZE) > *out_size) return false; 
     padded_plain[0] = 0x80;
     memset(&padded_plain[1], 0, AESBLKSIZE-1);
-    AES_encrypt(last_cipher, next_cipher, &ectx);
-    XorBlocks(AESBLKSIZE, next_cipher, padded_plain, out);
+    AES_encrypt(last_cipher, cipher_block, &ectx);
+    XorBlocks(AESBLKSIZE, cipher_block, padded_plain, out);
     size += AESBLKSIZE;
   }
   *out_size = size;
+  return true;
+}
+
+bool AesCFBDecrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
+                   int* out_size, byte* out) {
+  byte last_cipher[32];
+  byte cipher_block[32];
+  byte padded_plain[32];
+  int size = 0;
+
+  AES_KEY ectx;
+  AES_set_encrypt_key(key, 128, &ectx);
+
+  // Don't write iv, called already knows it
+  if(iv_size != AESBLKSIZE) return false;
+  memcpy(last_cipher, iv, AESBLKSIZE);
+
+  while (in_size > 0) {
+    if ((size + AESBLKSIZE) > *out_size) return false; 
+    // P[i] = C[i] ^ E(K, C[i-1])
+    AES_encrypt(last_cipher, cipher_block, &ectx);
+    XorBlocks(AESBLKSIZE, cipher_block, in, out);
+    memcpy(cipher_block, last_cipher, AESBLKSIZE);
+    out += AESBLKSIZE;
+    size += AESBLKSIZE;
+    in += AESBLKSIZE;
+    in_size -= AESBLKSIZE;
+  }
+  // unpad
+  int n = 0;
+  byte* last = out - 1;
+  while (n < AESBLKSIZE && *(last--) == 0) {
+    n++;
+  }
+  if (*(++last) != 0x80)
+   return false;
+  n++;
+  *out_size = size - n;
   return true;
 }

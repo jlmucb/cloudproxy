@@ -74,40 +74,57 @@ message x509_cert_issuer_parameters_message {
   optional public_key_message key             = 8;
 }
 
-message cert_parameters {
-  optional x509_cert_request_parameters_message request	= 1;
-  optional x509_cert_issuer_parameters_message signer	= 2;
-  optional string not_before	                        = 3;
-  optional string not_after	                        = 4;
-}
+//message cert_parameters {
+//  optional x509_cert_request_parameters_message request	= 1;
+//  optional x509_cert_issuer_parameters_message signer	= 2;
+//  optional string not_before	                        = 3;
+//  optional string not_after	                        = 4;
+//}
 
 message credential_info_message {
+  // public key parameters of "active-key"
   optional public_key_message public_key      = 1;
+  // Tpm2 name (hash) of the "active-key" info
   optional bytes  name                        = 2;
+  // objectAttributes of the "active key"
   optional int32  properties                  = 3;
-  optional string hash_alg                    = 4;
-  optional string hash                        = 5;
+  // optional string hash_alg                    = 4;
+  // optional string hash                        = 5;
 }
 
 message program_cert_request_message {
   optional string request_id                  = 1;
   optional string program_name                = 2;
   optional bytes endorsement_cert_blob        = 3;
+  // X509 der encoded cert request for program key
   optional bytes x509_program_key_request     = 4;
-  optional string hash_quote_alg              = 5;
-  optional bytes quote_signature              = 6;
-  optional credential_info_message cred       = 7;
+  optional string active_sign_alg             = 5;
+  optional int32 active_sign_bit_size         = 6;
+  optional string active_sign_hash_alg        = 7;
+  optional bytes active_signature             = 8;
+  optional credential_info_message cred       = 9;
 }
 
 message program_cert_response_message {
   optional string request_id                  = 1;
   optional string program_name                = 2;
-  optional string enc_alg                     = 3;
-  optional string enc_mode                    = 4;
-  optional bytes integrityHMAC                = 5;
-  optional bytes encIdentity                  = 6;
-  optional bytes Secret                       = 7;
-  optional bytes encrypted_cert               = 8;
+  optional string integrity_alg               = 3;
+  // outer HMAC, does not include size in buffer
+  // HMAC key is KDFa derived from seed and "INTEGRITY"
+  optional bytes integrityHMAC                = 4;
+  // encIdentity, does not include size of encIdentity in buffer.
+  // encIdentity should be an encrypted correctly marshalled
+  // TMP2B_DIGEST containing the credential.
+  // encIdentity is always CFB Aes-128 encrypted
+  // with KDFa derived key derived from the "seed," "STORAGE" and
+  // the name of the active key.
+  optional bytes encIdentity                  = 5;
+  // protector-key private-key encrypted seed || "IDENTITY" buffer
+  optional bytes secret                       = 6;
+  // Signed, der-encoded program cert CTR encrypted with
+  // secret in credential buffer.  TODO(jlm): should also
+  // contain an HMAC.
+  optional bytes encrypted_cert               = 7;
 }
 
 message certificate_chain_entry_message {

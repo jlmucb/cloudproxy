@@ -67,9 +67,9 @@ void PrintOptions() {
 
 
 DEFINE_string(program_key_response_file, "", "input-file-name");
-DEFINE_int32(primary_slot, 1, "slot-number");
-DEFINE_int32(seal_slot, 2, "slot-number");
-DEFINE_int32(quote_slot, 3, "slot-number");
+DEFINE_int32(slot_primary, 1, "slot-number");
+DEFINE_int32(slot_seal, 2, "slot-number");
+DEFINE_int32(slot_quote, 3, "slot-number");
 DEFINE_string(program_key_type, "RSA", "alg name");
 DEFINE_string(program_key_cert_file, "", "output-file-name");
 
@@ -169,7 +169,7 @@ int main(int an, char** av) {
 
   // root handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);
-  nv_handle = GetNvHandle(FLAGS_primary_slot);
+  nv_handle = GetNvHandle(FLAGS_slot_primary);
   if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t) context_data_size,
                    context_save_area)) {
     printf("Root ReadNv failed\n");
@@ -188,7 +188,7 @@ int main(int an, char** av) {
 
   // seal handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);
-  nv_handle = GetNvHandle(FLAGS_seal_slot);
+  nv_handle = GetNvHandle(FLAGS_slot_seal);
   if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t)context_data_size,
                    context_save_area)) {
     printf("Root ReadNv failed\n");
@@ -207,7 +207,7 @@ int main(int an, char** av) {
 
   // quote handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);
-  nv_handle = GetNvHandle(FLAGS_quote_slot);
+  nv_handle = GetNvHandle(FLAGS_slot_quote);
   if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t)context_data_size,
                    context_save_area)) {
     printf("Quote ReadNv failed\n");

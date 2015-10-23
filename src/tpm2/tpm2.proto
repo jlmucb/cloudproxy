@@ -38,7 +38,7 @@ message endorsement_key_message {
   optional string machine_identifier          = 1;
   optional bytes tpm2b_blob                   = 2;
   optional bytes tpm2_name                    = 3;
-  optional bytes tpm2_qualified_name          = 4;
+  // optional bytes tpm2_qualified_name          = 4;
 }
 
 message signing_instructions_message {
@@ -104,9 +104,10 @@ message program_cert_response_message {
   optional string program_name                = 2;
   optional string enc_alg                     = 3;
   optional string enc_mode                    = 4;
-  optional bytes CredentialBlob               = 5;
-  optional bytes Secret                       = 6;
-  optional bytes encrypted_cert               = 7;
+  optional bytes integrityHMAC                = 5;
+  optional bytes encIdentity                  = 6;
+  optional bytes Secret                       = 7;
+  optional bytes encrypted_cert               = 8;
 }
 
 message certificate_chain_entry_message {

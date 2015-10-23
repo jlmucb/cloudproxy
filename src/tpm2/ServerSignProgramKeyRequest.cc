@@ -119,7 +119,6 @@ int main(int an, char** av) {
   byte* p;
 
   int size_rsa_out = 0;
-  int size_cred_blob = 0;
   int size_active_out = 0;
 
   byte* out = nullptr;
@@ -380,12 +379,9 @@ int main(int an, char** av) {
   HMAC_CTX_cleanup(&hctx);
 
   // CredentialBlob= outerMac || encIdentity
-  size_cred_blob = 0;
   memcpy(out_buf, outerHmac, 32);
-  size_cred_blob += 32;
-  memcpy(&out_buf[size_cred_blob], encIdentity, size_encIdentity);
-  size_cred_blob += size_encIdentity;
-  response.set_credentialblob(out_buf, size_cred_blob);
+  response.set_integrityhmac(outerHmac, 32);
+  response.set_encidentity(encIdentity, size_encIdentity);
 
   // Serialize output
   response.SerializeToString(&output);

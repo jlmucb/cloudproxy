@@ -119,6 +119,8 @@ int main(int an, char** av) {
   int size_cert_out = MAX_SIZE_PARAMS;
   byte cert_out_buf[MAX_SIZE_PARAMS];
 
+  uint16_t tmp;
+
   string input;
   string output;
 
@@ -238,8 +240,26 @@ int main(int an, char** av) {
   }
 
   // Fill credential blob and secret
-  printf("credBlob size: %d\n", (int)response.credentialblob().size());
+  printf("integrity size: %d\n", (int)response.integrityhmac().size());
+  printf("encidentity size: %d\n", (int)response.encidentity().size());
   printf("secret size: %d\n", (int)response.secret().size());
+
+  // integrityHMAC
+  tmp = response.integrityhmac().size();
+  ChangeEndian16(&tmp, &secret.size);
+  memcpy(credentialBlob.credential,
+         response.integrityhmac().data(), tmp);
+  // encIdentity 
+  tmp = response.encidentity().size();
+  ChangeEndian16(&tmp, &secret.size);
+  memcpy(&credentialBlob.credential[response.integrityhmac().size()],
+         response.encidentity().data(), tmp);
+ 
+  // secret 
+  tmp = response.secret().size();
+  ChangeEndian16(&tmp, &secret.size);
+  memcpy(secret.secret,
+         response.secret().data(), tmp);
 
 #if 0
   if (Tpm2_ActivateCredential(tpm, quote_handle, ekHandle,

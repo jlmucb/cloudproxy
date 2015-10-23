@@ -455,9 +455,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-  request.mutable_cred()->set_qualified_name(
-      (const char*)quote_qualified_pub_name.name,
-       quote_qualified_pub_name.size);
+
   output.clear();
   if (!request.SerializeToString(&output)) {
     printf("Can't serialize string\n");

@@ -274,7 +274,8 @@ int main(int an, char** av) {
   // Credential blob is size || marshaled_integrityHmac || marshaled_encIdentity
   credentialBlob.size = unmarshaled_integrityHmac.size + 
                         unmarshaled_encIdentity.size
-                        + 2 * sizeof(uint16_t);
+                        + sizeof(uint16_t)
+                        + sizeof(uint16_t);
   ChangeEndian16(&unmarshaled_integrityHmac.size, &marshaled_integrityHmac.size);
   memcpy(marshaled_integrityHmac.buffer, unmarshaled_integrityHmac.buffer,
          unmarshaled_integrityHmac.size);

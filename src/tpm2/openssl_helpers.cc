@@ -469,7 +469,7 @@ bool AesCtrCrypt(int key_size_bits, byte* key, int size,
   return true;
 }
 
-#define PADCFB
+//#define PADCFB
 #define AESBLKSIZE 16
 
 bool AesCFBEncrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,

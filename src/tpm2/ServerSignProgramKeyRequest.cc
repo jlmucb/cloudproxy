@@ -462,6 +462,7 @@ int main(int an, char** av) {
   HMAC_CTX_init(&hctx);
   HMAC_Init_ex(&hctx, hmacKey, size_hmacKey, EVP_sha256(), nullptr);
   HMAC_Update(&hctx, (const byte*)encIdentity, size_encIdentity);
+  HMAC_Update(&hctx, (const byte*)name.data(), name.size());
   HMAC_Final(&hctx, outerHmac, (uint32_t*)&size_hmacKey);
   HMAC_CTX_cleanup(&hctx);
   response.set_integrityhmac(outerHmac, size_hmacKey);

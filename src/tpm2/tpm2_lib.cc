@@ -2537,7 +2537,7 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
   parent_flags.restricted = 1;
 
   if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, authString, parent_pcrSelect,
-                         TPM_ALG_RSA, TPM_ALG_SHA1, parent_flags,
+                         TPM_ALG_RSA, TPM_ALG_SHA256, parent_flags,
                          TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
                          1024, 0x010001,
                          &parentHandle, &parent_pub_out)) {
@@ -2566,7 +2566,7 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
 
   if (Tpm2_CreateKey(tpm, parentHandle, parentAuth, authString,
                      parent_pcrSelect,
-                     TPM_ALG_RSA, TPM_ALG_SHA1, active_flags, TPM_ALG_NULL,
+                     TPM_ALG_RSA, TPM_ALG_SHA256, active_flags, TPM_ALG_NULL,
                      (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB, TPM_ALG_RSASSA,
                      1024, 0x010001, &size_public, out_public,
                      &size_private, out_private,
@@ -2664,7 +2664,7 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
   create_flags.restricted = 1;
 
   if (Tpm2_CreateKey(tpm, ekHandle, emptyAuth, emptyAuth, pcrSelect,
-                     TPM_ALG_RSA, TPM_ALG_SHA1, create_flags, TPM_ALG_NULL,
+                     TPM_ALG_RSA, TPM_ALG_SHA256, create_flags, TPM_ALG_NULL,
                      (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB, TPM_ALG_RSASSA,
                      2048, 0x010001, &size_public, out_public,
                      &size_private, out_private,

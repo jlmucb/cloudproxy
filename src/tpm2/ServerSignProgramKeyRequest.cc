@@ -91,6 +91,11 @@ int main(int an, char** av) {
   int size_cert_request = MAX_SIZE_PARAMS;
   byte cert_request_buf[MAX_SIZE_PARAMS];
   x509_cert_request_parameters_message cert_request;
+ 
+#if 1 
+  int test_size = MAX_SIZE_PARAMS;
+  byte test_buf[MAX_SIZE_PARAMS];
+#endif
   
   int in_size = MAX_SIZE_PARAMS;
   byte in_buf[MAX_SIZE_PARAMS];
@@ -350,6 +355,26 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+#if 1
+  printf("credential secret: ");
+  PrintBytes(16, unmarshaled_credential.buffer);
+  printf("\n");
+  printf("der_program_cert: ");
+  PrintBytes(der_program_cert_size, der_program_cert);
+  printf("\n");
+  printf("encrypted der_program_cert: ");
+  PrintBytes(der_program_cert_size, encrypted_data);
+  printf("\n");
+  if (!AesCtrCrypt(128, unmarshaled_credential.buffer, der_program_cert_size,
+                   encrypted_data, test_buf)) {
+    printf("Can't decrypt cert\n");
+    ret_val = 1;
+    goto done;
+  }
+  printf("decrypted der_program_cert: ");
+  PrintBytes(der_program_cert_size, test_buf);
+  printf("\n");
+#endif
   encrypted_data_size = der_program_cert_size;
   response.set_encrypted_cert(encrypted_data, encrypted_data_size);
   printf("Encrypted program cert: ");
@@ -394,13 +419,27 @@ int main(int an, char** av) {
   // encIdentity = CFBEncrypt(symKey, marshaled_credential, out)
   // We need to encrypt the entire marshaled_credential
   size_encIdentity = MAX_SIZE_PARAMS;
-  if (!AesCFBEncrypt(symKey, unmarshaled_credential.size + sizeof(uint16_t),
-                     (byte*)&marshaled_credential, 16, zero_iv,
+  if (!AesCFBEncrypt(symKey, unmarshaled_credential.size,
+                     (byte*)&marshaled_credential.buffer,
+                     16, zero_iv,
                      &size_encIdentity, encIdentity)) {
     printf("Can't AesCFBEncrypt\n");
     ret_val = 1;
     goto done;
   }
+#if 1
+  printf("\n");
+  test_size = MAX_SIZE_PARAMS;
+  if (!AesCFBDecrypt(symKey, unmarshaled_credential.size + sizeof(uint16_t),
+                     (byte*)encIdentity, 16, zero_iv,
+                     &test_size, test_buf)) {
+    printf("Can't AesCFBDecrypt\n");
+    ret_val = 1;
+    goto done;
+  }
+  printf("Decrypted secret (%d): ", test_size);
+  PrintBytes(test_size, test_buf); printf("\n");
+#endif
   response.set_encidentity(encIdentity, size_encIdentity);
 
   // hmacKey= KDFa(hash, seed, "INTEGRITY", nullptr, nullptr, 8*hashsize);

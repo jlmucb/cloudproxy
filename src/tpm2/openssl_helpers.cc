@@ -215,7 +215,7 @@ bool GetPublicRsaParametersFromSSLKey(RSA& rsa, public_key_message* key_msg) {
   key_msg->mutable_public_key()->mutable_rsa_key()->set_exponent(*e);
 #endif
 
-done:
+//done:
   if (e != nullptr)
     delete e;
   if (n != nullptr)
@@ -224,11 +224,6 @@ done:
 }
 
 bool GetPrivateRsaParametersFromSSLKey(RSA& rsa, rsa_private_key_message* key_msg) {
-  string* d = nullptr;
-  string* p = nullptr;
-  string* q = nullptr;
-  bool ret = true;
-
 #if 0
   if (!GetPublicRsaParametersFromSSLKey(rsa, key_msg->key())) {
     ret = false;
@@ -250,9 +245,7 @@ bool GetPrivateRsaParametersFromSSLKey(RSA& rsa, rsa_private_key_message* key_ms
     goto done;
   }
 #endif
-
-done:
-  return ret;
+  return false;
 }
 
 class extEntry {
@@ -544,7 +537,7 @@ bool AesCFBDecrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
     // P[i] = C[i] ^ E(K, C[i-1])
     AES_encrypt(last_cipher, cipher_block, &ectx);
     XorBlocks(AESBLKSIZE, cipher_block, in, out);
-    memcpy(cipher_block, last_cipher, AESBLKSIZE);
+    memcpy(last_cipher, in, AESBLKSIZE);
     out += AESBLKSIZE;
     size += AESBLKSIZE;
     in += AESBLKSIZE;

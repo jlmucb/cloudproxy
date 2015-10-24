@@ -108,6 +108,8 @@ int main(int an, char** av) {
 
   TPM2B_DIGEST unmarshaled_credential;
   TPM2B_DIGEST marshaled_credential;
+  TPM2B_NAME unmarshaled_name;
+  TPM2B_NAME marshaled_name;
 
   byte symKey[MAX_SIZE_PARAMS];
   int size_hmacKey = 32;
@@ -481,12 +483,18 @@ int main(int an, char** av) {
     goto done;
   }
   
-  // outerMac = HMAC(hmacKey, encIdentity);
+  // outerMac = HMAC(hmacKey, encIdentity || name);
+  unmarshaled_name.size = name.size();
+  ChangeEndian16(&unmarshaled_name.size, &marshaled_name.size);
+  memcpy(unmarshaled_name.name, (byte*)name.data(), unmarshaled_name.size);
+  memcpy(marshaled_name.name, (byte*)name.data(), unmarshaled_name.size);
+
   size_hmacKey = 32;
   HMAC_CTX_init(&hctx);
   HMAC_Init_ex(&hctx, hmacKey, size_hmacKey, EVP_sha256(), nullptr);
   HMAC_Update(&hctx, (const byte*)encIdentity, size_encIdentity);
-  HMAC_Update(&hctx, (const byte*)name.data(), name.size());
+  HMAC_Update(&hctx, (const byte*)&marshaled_name,
+              name.size() + sizeof(uint16_t));
   HMAC_Final(&hctx, outerHmac, (uint32_t*)&size_hmacKey);
   HMAC_CTX_cleanup(&hctx);
 

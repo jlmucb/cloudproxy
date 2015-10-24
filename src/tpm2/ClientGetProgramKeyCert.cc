@@ -273,8 +273,8 @@ int main(int an, char** av) {
 
   // Credential blob is size || marshaled_integrityHmac || marshaled_encIdentity
   credentialBlob.size = unmarshaled_integrityHmac.size + 
-                        unmarshaled_encIdentity.size; // was: + 2 * sizeof(uint16_t);
-                        ;
+                        unmarshaled_encIdentity.size
+                        + 2 * sizeof(uint16_t);
   ChangeEndian16(&unmarshaled_integrityHmac.size, &marshaled_integrityHmac.size);
   memcpy(marshaled_integrityHmac.buffer, unmarshaled_integrityHmac.buffer,
          unmarshaled_integrityHmac.size);
@@ -286,9 +286,13 @@ int main(int an, char** av) {
   memcpy(&credentialBlob.credential[current_size], (byte*)&marshaled_integrityHmac,
          unmarshaled_integrityHmac.size + sizeof(uint16_t));
   current_size += unmarshaled_integrityHmac.size + sizeof(uint16_t);
-  memcpy(&credentialBlob.credential[current_size], (byte*)&marshaled_encIdentity,
+  memcpy(&credentialBlob.credential[current_size],
+         (byte*)&marshaled_encIdentity,
          unmarshaled_encIdentity.size + sizeof(uint16_t));
   current_size += unmarshaled_encIdentity.size + sizeof(uint16_t);
+  printf("Constructed credBlob (%d): ", credentialBlob.size);
+  PrintBytes(current_size, credentialBlob.credential);
+  printf("\n");
  
   // secret 
   secret.size = response.secret().size();
@@ -334,7 +338,7 @@ int main(int an, char** av) {
     PrintBytes(active_secret.size, active_secret.secret);
     printf("\n");
     printf("credBlob (%d): ", credBlob.size);
-    PrintBytes(credBlob.size, credBlob.credential);
+    PrintBytes(credBlob.size + 4, credBlob.credential);
     printf("\n");
   }
 }

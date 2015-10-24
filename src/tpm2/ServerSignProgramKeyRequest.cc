@@ -429,8 +429,9 @@ int main(int an, char** av) {
   }
 #if 1
   printf("\n");
+  printf("size_encIdentity: %d\n", size_encIdentity);
   test_size = MAX_SIZE_PARAMS;
-  if (!AesCFBDecrypt(symKey, unmarshaled_credential.size + sizeof(uint16_t),
+  if (!AesCFBDecrypt(symKey, size_encIdentity,
                      (byte*)encIdentity, 16, zero_iv,
                      &test_size, test_buf)) {
     printf("Can't AesCFBDecrypt\n");

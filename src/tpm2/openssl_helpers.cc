@@ -475,9 +475,11 @@ bool AesCFBEncrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
                    int* out_size, byte* out) {
   byte last_cipher[32];
   byte cipher_block[32];
-  byte padded_plain[32];
-  bool last = false;
   int size = 0;
+#ifdef PADCFB
+  bool last = false;
+  byte padded_plain[32];
+#endif
 
   AES_KEY ectx;
   AES_set_encrypt_key(key, 128, &ectx);
@@ -488,6 +490,7 @@ bool AesCFBEncrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
 
   while (in_size > 0) {
     if ((size + AESBLKSIZE) > *out_size) return false; 
+#ifdef PADCFB
     // pad?
     if (in_size < AESBLKSIZE) {
       memcpy(padded_plain, in, in_size);
@@ -497,6 +500,7 @@ bool AesCFBEncrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
       in = padded_plain;
       last = true;
     }
+#endif
     // C[0] = IV, C[i] = P[i] ^ E(K, C[i-1])
     AES_encrypt(last_cipher, cipher_block, &ectx);
     XorBlocks(AESBLKSIZE, cipher_block, in, last_cipher);
@@ -506,6 +510,7 @@ bool AesCFBEncrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
     in += AESBLKSIZE;
     in_size -= AESBLKSIZE;
   }
+#ifdef PADCFB
   // pad?
   if (!last) {
     if ((size + AESBLKSIZE) > *out_size) return false; 
@@ -515,6 +520,7 @@ bool AesCFBEncrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
     XorBlocks(AESBLKSIZE, cipher_block, padded_plain, out);
     size += AESBLKSIZE;
   }
+#endif
   *out_size = size;
   return true;
 }
@@ -543,6 +549,7 @@ bool AesCFBDecrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
     in += AESBLKSIZE;
     in_size -= AESBLKSIZE;
   }
+#ifdef PADCFB
   // unpad
   int n = 0;
   byte* last = out - 1;
@@ -553,5 +560,8 @@ bool AesCFBDecrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
    return false;
   n++;
   *out_size = size - n;
+#else
+  *out_size = size;
+#endif
   return true;
 }

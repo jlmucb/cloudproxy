@@ -78,6 +78,7 @@ DEFINE_string(program_key_cert_file, "", "output-file-name");
 #endif
 
 #define MAX_SIZE_PARAMS 4096
+#define DEBUG
 
 int main(int an, char** av) {
   LocalTpm tpm;
@@ -107,11 +108,6 @@ int main(int an, char** av) {
   TPM2B_DIGEST credential;
   TPM2B_ID_OBJECT credentialBlob;
   TPM2B_ENCRYPTED_SECRET secret;
-
-  TPM2B_DIGEST unmarshaled_integrityHmac;
-  TPM2B_DIGEST unmarshaled_encIdentity;
-  TPM2B_DIGEST marshaled_integrityHmac;
-  TPM2B_DIGEST marshaled_encIdentity;
 
   TPM2B_DIGEST recovered_credential;
 
@@ -193,27 +189,6 @@ int main(int an, char** av) {
     goto done;
   }
 
-#if 0
-  // seal handle
-  memset(context_save_area, 0, MAX_SIZE_PARAMS);
-  nv_handle = GetNvHandle(FLAGS_slot_seal);
-  if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t)context_data_size,
-                   context_save_area)) {
-    printf("Root ReadNv failed\n");
-    ret_val = 1;
-    goto done;
-  }
-  printf("context_save_area: ");
-  PrintBytes(context_data_size, context_save_area);
-  printf("\n");
-  if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
-                        &seal_handle)) {
-    printf("Root LoadContext failed\n");
-    ret_val = 1;
-    goto done;
-  }
-#endif
-
   // quote handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);
   nv_handle = GetNvHandle(FLAGS_slot_quote);
@@ -248,7 +223,7 @@ int main(int an, char** av) {
     goto done;
   }
 
-  // Fill credential blob and secret
+#ifdef DEBUG
   printf("\nintegrity (%d): ", (int)response.integrityhmac().size());
   PrintBytes(response.integrityhmac().size(),
              (byte*)response.integrityhmac().data());
@@ -260,40 +235,25 @@ int main(int an, char** av) {
   printf("\nsecret: %d\n", (int)response.secret().size());
   PrintBytes(response.secret().size(), (byte*)response.secret().data());
   printf("\n");
+#endif
 
-  // integrityHMAC
-  unmarshaled_integrityHmac.size = response.integrityhmac().size();
-  memcpy(unmarshaled_integrityHmac.buffer, response.integrityhmac().data(),
-         unmarshaled_integrityHmac.size);
-
-  // encIdentity 
-  unmarshaled_encIdentity.size = response.encidentity().size();
-  memcpy(unmarshaled_encIdentity.buffer,
-         response.encidentity().data(), unmarshaled_encIdentity.size);
-
-  // Credential blob is size || marshaled_integrityHmac || marshaled_encIdentity
-  credentialBlob.size = unmarshaled_integrityHmac.size + 
-                        unmarshaled_encIdentity.size
-                        + sizeof(uint16_t)
-                        + sizeof(uint16_t);
-  ChangeEndian16(&unmarshaled_integrityHmac.size, &marshaled_integrityHmac.size);
-  memcpy(marshaled_integrityHmac.buffer, unmarshaled_integrityHmac.buffer,
-         unmarshaled_integrityHmac.size);
-  ChangeEndian16(&unmarshaled_encIdentity.size, &marshaled_encIdentity.size);
-  memcpy(marshaled_encIdentity.buffer, unmarshaled_encIdentity.buffer,
-         unmarshaled_encIdentity.size);
-
+  // Fill credential blob and secret
+  credentialBlob.size = (int)response.integrityhmac().size() + (int)response.encidentity().size();
   current_size = 0;
-  memcpy(&credentialBlob.credential[current_size], (byte*)&marshaled_integrityHmac,
-         unmarshaled_integrityHmac.size + sizeof(uint16_t));
-  current_size += unmarshaled_integrityHmac.size + sizeof(uint16_t);
   memcpy(&credentialBlob.credential[current_size],
-         (byte*)&marshaled_encIdentity,
-         unmarshaled_encIdentity.size + sizeof(uint16_t));
-  current_size += unmarshaled_encIdentity.size + sizeof(uint16_t);
+         (byte*) response.integrityhmac().data(),
+         response.integrityhmac().size());
+  current_size += response.integrityhmac().size();
+  memcpy(&credentialBlob.credential[current_size],
+         (byte*) encIdentity().data(),
+         encIdentity().size());
+  current_size += encIdentity().size();
+
+#ifdef DEBUG
   printf("Constructed credBlob (%d): ", credentialBlob.size);
   PrintBytes(credentialBlob.size, credentialBlob.credential);
   printf("\n");
+#endif
  
   // secret 
   secret.size = response.secret().size();
@@ -352,19 +312,19 @@ int main(int an, char** av) {
     goto done;
   }
 
+#ifdef DEBUG
   printf("ActivateCredential succeeded\n");
   printf("Recovered credential (%d): ", recovered_credential.size);
   PrintBytes(recovered_credential.size, recovered_credential.buffer);
   printf("\n");
-
-#if 0
-  // Decrypt cert, credential is key
-  response.request_id();
-  response.program_name();
-  response.enc_alg();
-  response.enc_mode();
-  response.encrypted_cert();
 #endif
+
+  // Decrypt cert, credential is key
+  // response.request_id();
+  // response.program_name();
+  // response.enc_alg();
+  // response.enc_mode();
+  // response.encrypted_cert();
 
   if (response.encrypted_cert().size() > MAX_SIZE_PARAMS) {
     printf("encrypted cert too large\n");
@@ -381,9 +341,11 @@ int main(int an, char** av) {
     goto done;
   }
   size_cert_out = response.encrypted_cert().size();
+#ifdef DEBUG
   printf("decrypted cert (%d): ", size_cert_out);
   PrintBytes(size_cert_out, cert_out_buf);
   printf("\n");
+#endif
   
  // Write output cert
  if (!WriteFileFromBlock(FLAGS_program_key_cert_file,

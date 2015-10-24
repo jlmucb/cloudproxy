@@ -185,66 +185,19 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
 
 bool GetPrivateRsaKeyFromParameters(const rsa_public_key_message& key_msg,
                                     RSA* rsa) {
-  return true;
+  return false;
 }
 
 bool GetPublicRsaKeyFromParameters(const rsa_public_key_message& key_msg,
                                    RSA* rsa) {
-  return true;
+  return false;
 }
 
 bool GetPublicRsaParametersFromSSLKey(RSA& rsa, public_key_message* key_msg) {
-  string* n = nullptr;
-  string* e = nullptr;
-  bool ret = true;
-
-#if 0
-  n = BN_to_bin(key_msg->n);
-  if (n == nullptr) {
-    ret = false;
-    goto done;
-  }
-  e = BN_to_bin(key_msg->e);
-  if (e == nullptr) {
-    ret = false;
-    goto done;
-  }
-  if (key_msg->public_key().key_type() != "RSA") {
-  }
-  key_msg->mutable_public_key()->mutable_rsa_key()->set_modulus(*n);
-  key_msg->mutable_public_key()->mutable_rsa_key()->set_exponent(*e);
-#endif
-
-//done:
-  if (e != nullptr)
-    delete e;
-  if (n != nullptr)
-    delete n;
-  return ret;
+  return false;
 }
 
 bool GetPrivateRsaParametersFromSSLKey(RSA& rsa, rsa_private_key_message* key_msg) {
-#if 0
-  if (!GetPublicRsaParametersFromSSLKey(rsa, key_msg->key())) {
-    ret = false;
-    goto done;
-  }
-  d = BN_to_bin(key_msg->d);
-  if (d == nullptr) {
-    ret = false;
-    goto done;
-  }
-  p = BN_to_bin(key_msg->p);
-  if (p == nullptr) {
-    ret = false;
-    goto done;
-  }
-  q = BN_to_bin(key_msg->q);
-  if (q == nullptr) {
-    ret = false;
-    goto done;
-  }
-#endif
   return false;
 }
 
@@ -469,7 +422,6 @@ bool AesCtrCrypt(int key_size_bits, byte* key, int size,
   return true;
 }
 
-//#define PADCFB
 #define AESBLKSIZE 16
 
 bool AesCFBEncrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
@@ -477,10 +429,7 @@ bool AesCFBEncrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
   byte last_cipher[32];
   byte cipher_block[32];
   int size = 0;
-#ifdef PADCFB
-  bool last = false;
-  byte padded_plain[32];
-#endif
+  int current_size;
 
   AES_KEY ectx;
   AES_set_encrypt_key(key, 128, &ectx);
@@ -491,37 +440,19 @@ bool AesCFBEncrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
 
   while (in_size > 0) {
     if ((size + AESBLKSIZE) > *out_size) return false; 
-#ifdef PADCFB
-    // pad?
-    if (in_size < AESBLKSIZE) {
-      memcpy(padded_plain, in, in_size);
-      padded_plain[in_size++] = 0x80;
-      memset(&padded_plain[in_size], 0, AESBLKSIZE-in_size);
-      in_size = AESBLKSIZE;
-      in = padded_plain;
-      last = true;
-    }
-#endif
     // C[0] = IV, C[i] = P[i] ^ E(K, C[i-1])
     AES_encrypt(last_cipher, cipher_block, &ectx);
+    if (in_size >= AESBLKSIZE)
+      current_size = AESBLKSIZE;
+    else
+      current_size = in_size;
     XorBlocks(AESBLKSIZE, cipher_block, in, last_cipher);
-    memcpy(out, last_cipher, AESBLKSIZE);
-    out += AESBLKSIZE;
-    size += AESBLKSIZE;
-    in += AESBLKSIZE;
-    in_size -= AESBLKSIZE;
+    memcpy(out, last_cipher, current_size);
+    out += current_size;
+    size += current_size;
+    in += current_size;
+    in_size -= current_size;
   }
-#ifdef PADCFB
-  // pad?
-  if (!last) {
-    if ((size + AESBLKSIZE) > *out_size) return false; 
-    padded_plain[0] = 0x80;
-    memset(&padded_plain[1], 0, AESBLKSIZE-1);
-    AES_encrypt(last_cipher, cipher_block, &ectx);
-    XorBlocks(AESBLKSIZE, cipher_block, padded_plain, out);
-    size += AESBLKSIZE;
-  }
-#endif
   *out_size = size;
   return true;
 }
@@ -531,6 +462,7 @@ bool AesCFBDecrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
   byte last_cipher[32];
   byte cipher_block[32];
   int size = 0;
+  int current_size;
 
   AES_KEY ectx;
   AES_set_encrypt_key(key, 128, &ectx);
@@ -543,26 +475,17 @@ bool AesCFBDecrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
     if ((size + AESBLKSIZE) > *out_size) return false; 
     // P[i] = C[i] ^ E(K, C[i-1])
     AES_encrypt(last_cipher, cipher_block, &ectx);
-    XorBlocks(AESBLKSIZE, cipher_block, in, out);
-    memcpy(last_cipher, in, AESBLKSIZE);
-    out += AESBLKSIZE;
-    size += AESBLKSIZE;
-    in += AESBLKSIZE;
-    in_size -= AESBLKSIZE;
+    if (in_size >= AESBLKSIZE)
+      current_size = AESBLKSIZE;
+    else
+      current_size = in_size;
+    XorBlocks(current_size, cipher_block, in, out);
+    memcpy(last_cipher, in, current_size);
+    out += current_size;
+    size += current_size;
+    in += current_size;
+    in_size -= current_size;
   }
-#ifdef PADCFB
-  // unpad
-  int n = 0;
-  byte* last = out - 1;
-  while (n < AESBLKSIZE && *(last--) == 0) {
-    n++;
-  }
-  if (*(++last) != 0x80)
-   return false;
-  n++;
-  *out_size = size - n;
-#else
   *out_size = size;
-#endif
   return true;
 }

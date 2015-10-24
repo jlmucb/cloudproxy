@@ -82,6 +82,7 @@ DEFINE_string(program_response_file, "", "output-file-name");
 #endif
 
 #define MAX_SIZE_PARAMS 8192
+#define DEBUG
 
 int main(int an, char** av) {
   int ret_val = 0;
@@ -92,7 +93,7 @@ int main(int an, char** av) {
   byte cert_request_buf[MAX_SIZE_PARAMS];
   x509_cert_request_parameters_message cert_request;
  
-#if 1 
+#ifdef DEBUG
   int test_size = MAX_SIZE_PARAMS;
   byte test_buf[MAX_SIZE_PARAMS];
 #endif
@@ -120,7 +121,7 @@ int main(int an, char** av) {
   int size_encIdentity;
   byte encIdentity[MAX_SIZE_PARAMS];
   byte decrypted_quote[MAX_SIZE_PARAMS];
-  byte outerHmac[64];
+  byte outerHmac[128];
 
   byte* p;
 
@@ -155,6 +156,7 @@ int main(int an, char** av) {
   string input;
   string output;
   string private_key_blob;
+  TPM2B_DIGEST marshaled_integrityHmac;
 
   uint16_t size_in = 0;
   SHA256_CTX sha256;
@@ -234,8 +236,10 @@ int main(int an, char** av) {
     printf("Can't parse private key\n");
   }
 
+#ifdef DEBUG
   printf("Key type: %s\n", private_key.key_type().c_str());
   printf("Key name: %s\n", private_key.key_name().c_str());
+#endif
 
   private_key_blob = private_key.blob();
   PrintBytes(private_key_blob.size(), (byte*)private_key_blob.data()); printf("\n");
@@ -246,7 +250,9 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+#ifdef DEBUG
   print_internal_private_key(*signing_key);
+#endif
 
   // Extract program key request
   if (!request.has_cred()) {
@@ -284,15 +290,20 @@ int main(int an, char** av) {
   // Serialize program cert
   der_program_cert = nullptr;
   der_program_cert_size = i2d_X509(program_cert, &der_program_cert);
+
+#ifdef DEBUG
   printf("Program cert: ");
   PrintBytes(der_program_cert_size, der_program_cert); printf("\n");
+#endif
 
   // Hash request
   SHA256_Init(&sha256);
   SHA256_Update(&sha256, (byte*)request.x509_program_key_request().data(),
                 request.x509_program_key_request().size());
   SHA256_Final(quoted_hash, &sha256);
+#ifdef DEBUG
   printf("quoted_hash: "); PrintBytes(32, quoted_hash); printf("\n");
+#endif
 
   // "Encrypt" with quote key
   if (!request.cred().has_public_key()) {
@@ -300,6 +311,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+#ifdef DEBUG
   printf("modulus size: %d\n",
       (int)request.cred().public_key().rsa_key().modulus().size());
   printf("exponent size: %d\n",
@@ -312,6 +324,8 @@ int main(int an, char** av) {
   PrintBytes(request.cred().public_key().rsa_key().exponent().size(),
              (byte*)request.cred().public_key().rsa_key().exponent().data());
   printf("\n");
+#endif
+
   // Set quote key exponent and modulus
   active_key->n = bin_to_BN(request.cred().public_key().rsa_key().modulus().size(),
                     (byte*)request.cred().public_key().rsa_key().modulus().data());
@@ -325,7 +339,9 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+#ifdef DEBUG
   printf("active signature size: %d\n", size_active_out);
+#endif
 
 #if 0
   // Compare signature and computed hash
@@ -358,7 +374,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-#if 1
+#ifdef DEBUG
   printf("credential secret: ");
   PrintBytes(16, unmarshaled_credential.buffer);
   printf("\n");
@@ -380,13 +396,17 @@ int main(int an, char** av) {
 #endif
   encrypted_data_size = der_program_cert_size;
   response.set_encrypted_cert(encrypted_data, encrypted_data_size);
+#ifdef DEBUG
   printf("Encrypted program cert: ");
   PrintBytes(der_program_cert_size, der_program_cert); printf("\n");
+#endif
 
   // Generate seed for MakeCredential protocol
   RAND_bytes(seed, size_seed);
+#ifdef DEBUG
   printf("seed: ");
   PrintBytes(size_seed, seed); printf("\n");
+#endif
 
   // Protector_key is endorsement key
   protector_evp_key = X509_get_pubkey(endorsement_cert);
@@ -402,6 +422,7 @@ int main(int an, char** av) {
   encrypted_secret_size = RSA_public_encrypt(size_in, in_buf, 
                               encrypted_secret, protector_key,
                               RSA_PKCS1_OAEP_PADDING);
+#ifdef DEBUG
   printf("encrypted_secret_size: %d\n", encrypted_secret_size);
   printf("Encrypted secret: ");
   PrintBytes(encrypted_secret_size, encrypted_secret); printf("\n");
@@ -409,6 +430,7 @@ int main(int an, char** av) {
   printf("name: "); 
   PrintBytes(request.cred().name().size(),
              (byte*)request.cred().name().data()); printf("\n");
+#endif
 
   // symKey= KDFa(hash, seed, "STORAGE", name, nullptr, 128);
   label = "STORAGE";
@@ -420,20 +442,22 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+#ifdef DEBUG
   printf("symKey: "); PrintBytes(32, symKey); printf("\n");
+#endif
 
   // encIdentity = CFBEncrypt(symKey, marshaled_credential, out)
   // We need to encrypt the entire marshaled_credential
   size_encIdentity = MAX_SIZE_PARAMS;
-  if (!AesCFBEncrypt(symKey, unmarshaled_credential.size,
-                     (byte*)&marshaled_credential.buffer,
+  if (!AesCFBEncrypt(symKey, unmarshaled_credential.size + sizeof(uint16_t),
+                     (byte*)&marshaled_credential,
                      16, zero_iv,
                      &size_encIdentity, encIdentity)) {
     printf("Can't AesCFBEncrypt\n");
     ret_val = 1;
     goto done;
   }
-#if 1
+#ifdef DEBUG
   printf("\n");
   printf("size_encIdentity: %d\n", size_encIdentity);
   test_size = MAX_SIZE_PARAMS;
@@ -465,7 +489,12 @@ int main(int an, char** av) {
   HMAC_Update(&hctx, (const byte*)name.data(), name.size());
   HMAC_Final(&hctx, outerHmac, (uint32_t*)&size_hmacKey);
   HMAC_CTX_cleanup(&hctx);
-  response.set_integrityhmac(outerHmac, size_hmacKey);
+
+  // integrityHMAC
+  ChangeEndian16((uint16_t*)&size_hmacKey, &marshaled_integrityHmac.size);
+  memcpy(marshaled_integrityHmac.buffer, outerHmac, size_hmacKey);
+  response.set_integrityhmac((byte*)&marshaled_integrityHmac,
+                             size_hmacKey + sizeof(uint16_t));
 
   // Serialize output
   response.SerializeToString(&output);

@@ -108,10 +108,11 @@ message program_cert_response_message {
   optional string integrity_alg               = 3;
   // outer HMAC, does not include size in buffer
   // HMAC key is KDFa derived from seed and "INTEGRITY"
+  // This is a TPM2B_DIGEST and has a size.
   optional bytes integrityHMAC                = 4;
   // encIdentity, does not include size of encIdentity in buffer.
   // encIdentity should be an encrypted correctly marshalled
-  // TMP2B_DIGEST containing the credential.
+  // This is an encrypted TPM2B_DIGEST and has a size.
   // encIdentity is always CFB Aes-128 encrypted
   // with KDFa derived key derived from the "seed," "STORAGE" and
   // the name of the active key.

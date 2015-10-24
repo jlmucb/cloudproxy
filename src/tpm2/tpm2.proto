@@ -38,7 +38,6 @@ message endorsement_key_message {
   optional string machine_identifier          = 1;
   optional bytes tpm2b_blob                   = 2;
   optional bytes tpm2_name                    = 3;
-  // optional bytes tpm2_qualified_name          = 4;
 }
 
 message signing_instructions_message {
@@ -88,8 +87,6 @@ message credential_info_message {
   optional bytes  name                        = 2;
   // objectAttributes of the "active key"
   optional int32  properties                  = 3;
-  // optional string hash_alg                    = 4;
-  // optional string hash                        = 5;
 }
 
 message program_cert_request_message {

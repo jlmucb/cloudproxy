@@ -253,7 +253,7 @@ int main(int an, char** av) {
   PrintBytes(response.integrityhmac().size(),
              (byte*)response.integrityhmac().data());
   printf("\n");
-  printf("\nencidentity(%d): ", (int)response.encidentity().size());
+  printf("encidentity(%d): ", (int)response.encidentity().size());
   PrintBytes(response.encidentity().size(),
              (byte*)response.encidentity().data());
   printf("\n");
@@ -293,7 +293,7 @@ int main(int an, char** av) {
   secret.size = response.secret().size();
   memcpy(secret.secret, response.secret().data(), secret.size);
 
-  if (Tpm2_ActivateCredential(tpm, quote_handle, ekHandle, parentAuth, emptyAuth,
+  if (!Tpm2_ActivateCredential(tpm, quote_handle, ekHandle, parentAuth, emptyAuth,
                               credentialBlob, secret, &recovered_credential)) {
     printf("ActivateCredential failed\n");
     ret_val = 1;

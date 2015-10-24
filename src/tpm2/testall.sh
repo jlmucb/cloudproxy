@@ -49,7 +49,6 @@
 --program_key_type=RSA \
 --program_key_size=2048 \
 --program_key_exponent=0x10001 \
---hash_quote_alg=sha256 \
 --program_key_file=app_program_file \
 --program_cert_request_file=cert_request_file
 

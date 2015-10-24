@@ -49,9 +49,9 @@ bool SignX509Certificate(RSA* rsa,
                          X509_REQ* req,  bool verify_req_sig, X509* cert);
 bool VerifyX509CertificateChain(certificate_chain_message& chain);
 bool GetCertificateRequestParametersFromX509(X509_REQ& x509_req,
-                                             cert_parameters* cert_params);
+                                             cert_parameters_message* cert_params);
 bool GetCertificateParametersFromX509(X509& x509_cert,
-                                      cert_parameters* cert_params);
+                                      cert_parameters_message* cert_params);
 bool GetPublicRsaKeyFromParameters(const rsa_public_key_message& key_msg,
                                    RSA* rsa);
 bool GetPrivateRsaKeyFromParameters(const rsa_private_key_message& key_msg,

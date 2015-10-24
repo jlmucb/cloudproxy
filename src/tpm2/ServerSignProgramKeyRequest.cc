@@ -94,8 +94,6 @@ int main(int an, char** av) {
   
   int in_size = MAX_SIZE_PARAMS;
   byte in_buf[MAX_SIZE_PARAMS];
-  byte out_buf[MAX_SIZE_PARAMS];
-  OpenSSL_add_all_algorithms();
 
   X509_REQ* req = nullptr;
 
@@ -104,8 +102,6 @@ int main(int an, char** av) {
 
   TPM2B_DIGEST unmarshaled_credential;
   TPM2B_DIGEST marshaled_credential;
-  int encrypted_marshaled_credential_size = MAX_SIZE_PARAMS;
-  byte encrypted_marshaled_credential[MAX_SIZE_PARAMS];
 
   byte symKey[MAX_SIZE_PARAMS];
   int size_hmacKey = 32;
@@ -123,20 +119,18 @@ int main(int an, char** av) {
 
   byte* p;
 
-  int size_rsa_out = 0;
-  int size_active_out = 0;
+  int size_active_out;
 
   byte* out = nullptr;
-  byte* der_cert_request_in = nullptr;
-  int der_cert_request_size = 0;
-  byte* der_cert_in = nullptr;
-  int size_der_cert;
+  byte* der_program_cert_request = nullptr;
+  int der_program_cert_request_size = 0;
+  byte* der_program_cert = nullptr;
+  int der_program_cert_size = 0;
 
   int endorsement_blob_size;
   X509* program_cert = X509_new();
   X509* endorsement_cert = nullptr;
 
-  int quoted_has_size = 32;  // always sha256 for us
   byte quoted_hash[256];
   int encrypted_data_size = 0;
   byte encrypted_data[MAX_SIZE_PARAMS];
@@ -144,6 +138,7 @@ int main(int an, char** av) {
   memset(zero_iv, 0, 32);
   
   int encrypted_secret_size = 0;
+  byte encrypted_secret[MAX_SIZE_PARAMS];
 
   private_key_blob_message private_key;
   program_cert_request_message request;
@@ -184,6 +179,8 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
+  OpenSSL_add_all_algorithms();
 
   // Get request
   if (!ReadFileIntoBlock(FLAGS_program_cert_request_file, &size_cert_request,
@@ -265,10 +262,10 @@ int main(int an, char** av) {
   // Check it
 
   // Get certificate request for program key
-  der_cert_request_in = (byte*)request.x509_program_key_request().data();
-  der_cert_request_size = request.x509_program_key_request().size();
-  out = der_cert_request_in;
-  req = d2i_X509_REQ(nullptr, (const byte**)&out, der_cert_request_size);
+  der_program_cert_request = (byte*)request.x509_program_key_request().data();
+  der_program_cert_request_size = request.x509_program_key_request().size();
+  out = der_program_cert_request;
+  req = d2i_X509_REQ(nullptr, (const byte**)&out, der_program_cert_request_size);
 
   // sign program key
   if (!SignX509Certificate(signing_key, signing_message, req,
@@ -280,10 +277,10 @@ int main(int an, char** av) {
   printf("message signed\n");
 
   // Serialize program cert
-  der_cert_in = nullptr;
-  size_der_cert = i2d_X509(program_cert, &der_cert_in);
+  der_program_cert = nullptr;
+  der_program_cert_size = i2d_X509(program_cert, &der_program_cert);
   printf("Program cert: ");
-  PrintBytes(size_der_cert, der_cert_in); printf("\n");
+  PrintBytes(der_program_cert_size, der_program_cert); printf("\n");
 
   // Hash request
   SHA256_Init(&sha256);
@@ -315,9 +312,15 @@ int main(int an, char** av) {
                     (byte*)request.cred().public_key().rsa_key().modulus().data());
   active_key->e = bin_to_BN(request.cred().public_key().rsa_key().exponent().size(),
                     (byte*)request.cred().public_key().rsa_key().exponent().data());
-  size_active_out = RSA_public_encrypt(request.quote_signature().size(),
-                        (const byte*)request.quote_signature().data(),
+  size_active_out = RSA_public_encrypt(request.active_signature().size(),
+                        (const byte*)request.active_signature().data(),
                         decrypted_quote, active_key, RSA_PKCS1_OAEP_PADDING);
+  if (size_active_out > MAX_SIZE_PARAMS) {
+    printf("active signature is too big\n");
+    ret_val = 1;
+    goto done;
+  }
+  printf("active signature size: %d\n", size_active_out);
 
 #if 0
   // Compare signature and computed hash
@@ -335,22 +338,22 @@ int main(int an, char** av) {
   // This is the "credential."
   // TODO: make this 32 for HMACing later
   unmarshaled_credential.size = 16;
-  RAND_bytes(unmarshaled_credential.credential, unmarshaled_credential.size);
+  RAND_bytes(unmarshaled_credential.buffer, unmarshaled_credential.size);
   ChangeEndian16(&unmarshaled_credential.size, &marshaled_credential.size);
-  memcpy(marshaled_credential.credential, unmarshaled_credential.credential,
+  memcpy(marshaled_credential.buffer, unmarshaled_credential.buffer,
          unmarshaled_credential.size);
 
   // Encrypt signed program cert
-  if (!AesCtrCrypt(128, unmarshaled_credential.credential, size_der_cert,
-                   der_cert_in, encrypted_data)) {
+  if (!AesCtrCrypt(128, unmarshaled_credential.buffer, der_program_cert_size,
+                   der_program_cert, encrypted_data)) {
     printf("Can't encrypt cert\n");
     ret_val = 1;
     goto done;
   }
-  encrypted_data_size = size_der_cert;
+  encrypted_data_size = der_program_cert_size;
   response.set_encrypted_cert(encrypted_data, encrypted_data_size);
   printf("Encrypted program cert: ");
-  PrintBytes(size_der_cert, der_cert_in); printf("\n");
+  PrintBytes(der_program_cert_size, der_program_cert); printf("\n");
 
   // Generate seed for MakeCredential protocol
   RAND_bytes(seed, size_seed);
@@ -368,13 +371,13 @@ int main(int an, char** av) {
   size_in += strlen("IDENTITY") + 1;
 
   // Secret= E(protector_key, seed || "IDENTITY")
-  encrypted_secret_size = RSA_public_encrypt(size_in, in_buf, encrypted_secret.secret,
-                                             protector_key, RSA_PKCS1_OAEP_PADDING);
-  encrypted_secret.size = encrypted_secret_size;
+  encrypted_secret_size = RSA_public_encrypt(size_in, in_buf, 
+                              encrypted_secret, protector_key,
+                              RSA_PKCS1_OAEP_PADDING);
   printf("encrypted_secret_size: %d\n", encrypted_secret_size);
   printf("Encrypted secret: ");
-  PrintBytes(encrypted_secret.size, encrypted_secret.secret); printf("\n");
-  response.set_secret(encrypted_secret.secret, encrypted_secret_size);
+  PrintBytes(encrypted_secret_size, encrypted_secret); printf("\n");
+  response.set_secret(encrypted_secret, encrypted_secret_size);
 
   // symKey= KDFa(hash, seed, "STORAGE", name, nullptr, 128);
   label = "STORAGE";
@@ -390,8 +393,6 @@ int main(int an, char** av) {
 
   // encIdentity = CFBEncrypt(symKey, marshaled_credential, out)
   // We need to encrypt the entire marshaled_credential
-  int encrypted_marshaled_credential_size = MAX_SIZE_PARAMS;
-  byte encrypted_marshaled_credential[MAX_SIZE_PARAMS];
   size_encIdentity = MAX_SIZE_PARAMS;
   if (!AesCFBEncrypt(symKey, unmarshaled_credential.size + sizeof(uint16_t),
                      (byte*)&marshaled_credential, 16, zero_iv,

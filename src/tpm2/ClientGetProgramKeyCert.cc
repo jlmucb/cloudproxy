@@ -128,8 +128,6 @@ int main(int an, char** av) {
   int size_cert_out = MAX_SIZE_PARAMS;
   byte cert_out_buf[MAX_SIZE_PARAMS];
 
-  uint16_t tmp;
-
   string input;
   string output;
 
@@ -252,18 +250,20 @@ int main(int an, char** av) {
 
   // Fill credential blob and secret
   printf("\nintegrity (%d): ", (int)response.integrityhmac().size());
-  PrintBytes(response.integrityhmac().size(), response.integrityhmac().data());
+  PrintBytes(response.integrityhmac().size(),
+             (byte*)response.integrityhmac().data());
   printf("\n");
   printf("\nencidentity(%d): ", (int)response.encidentity().size());
-  PrintBytes(response.encidentity().size(), response.encidentity().data());
+  PrintBytes(response.encidentity().size(),
+             (byte*)response.encidentity().data());
   printf("\n");
   printf("\nsecret: %d\n", (int)response.secret().size());
-  PrintBytes(response.secret().size(), response.secret().data());
+  PrintBytes(response.secret().size(), (byte*)response.secret().data());
   printf("\n");
 
   // integrityHMAC
   unmarshaled_integrityHmac.size = response.integrityhmac().size();
-  memcpy(unmarshaled_integrityHmac.size.credential, response.integrityhmac().data(),
+  memcpy(unmarshaled_integrityHmac.buffer, response.integrityhmac().data(),
          unmarshaled_integrityHmac.size);
 
   // encIdentity 
@@ -282,10 +282,10 @@ int main(int an, char** av) {
          unmarshaled_encIdentity.size);
 
   current_size = 0;
-  memcpy(credentialBlob.credential[current_size], (byte*)&marshaled_integrityHmac,
+  memcpy(&credentialBlob.credential[current_size], (byte*)&marshaled_integrityHmac,
          unmarshaled_integrityHmac.size + sizeof(uint16_t));
   current_size += unmarshaled_integrityHmac.size + sizeof(uint16_t);
-  memcpy(credentialBlob.credential[current_size], (byte*)&marshaled_encIdentity,
+  memcpy(&credentialBlob.credential[current_size], (byte*)&marshaled_encIdentity,
          unmarshaled_encIdentity.size + sizeof(uint16_t));
   current_size += unmarshaled_encIdentity.size + sizeof(uint16_t);
  

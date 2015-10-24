@@ -65,7 +65,7 @@ using std::string;
 "--program_key_type=RSA " \
 "--program_key_size=2048 " \
 "--program_key_exponent=0x10001" \
-"--hash_quote_alg=sha256 " \
+"--hash_active_alg=sha256 " \
 "--program_key_file=output-file-name" \
 "--program_cert_request_file=output-file-name\n"
 
@@ -82,7 +82,7 @@ DEFINE_int64(program_key_exponent, 0x010001ULL, "program key exponent");
 DEFINE_int32(slot_primary, 1, "slot number");
 DEFINE_int32(slot_seal, 2, "seal slot number");
 DEFINE_int32(slot_quote, 3, "quote slot number");
-DEFINE_string(hash_quote_alg, "sha256", "sha1|sha256");
+DEFINE_string(hash_active_alg, "sha256", "sha1|sha256");
 DEFINE_string(program_key_file, "", "output-file-name");
 DEFINE_string(program_cert_request_file, "", "output-file-name");
 
@@ -160,9 +160,9 @@ int main(int an, char** av) {
   int quote_size = MAX_SIZE_PARAMS;
   byte quoted[MAX_SIZE_PARAMS];
   byte quoted_hash[256];
-  string quote_key_info;
-  string quote_sig;
-  string quote_info;
+  string active_key_info;
+  string active_sig;
+  string active_info;
   credential_info_message cred_info;
   TPM2B_DATA to_quote;
   TPMT_SIG_SCHEME scheme;
@@ -362,7 +362,9 @@ int main(int an, char** av) {
   request.set_program_name(FLAGS_program_key_name);
   request.set_endorsement_cert_blob(endorsement_key_blob);
   request.set_x509_program_key_request(x509_request_key_blob);
-  request.set_hash_quote_alg(FLAGS_hash_quote_alg);
+  request.set_active_sign_alg("RSA");
+  request.set_active_sign_bit_size(2048);
+  request.set_active_sign_hash_alg("sha256");
 
   // get quote key info
   if (Tpm2_ReadPublic(tpm, quote_handle, &quote_pub_blob_size, quote_pub_blob,
@@ -426,8 +428,8 @@ int main(int an, char** av) {
   //   TPM2B_PUBLIC_KEY_RSA rsa
   //      size
   //      buffer
-  quote_sig.assign((const char*)sig, sig_size);
-  request.set_quote_signature(quote_sig);
+  active_sig.assign((const char*)sig, sig_size);
+  request.set_active_signature(active_sig);
   request.mutable_cred()->mutable_public_key()->set_key_type("RSA");
   request.mutable_cred()->mutable_public_key()->mutable_rsa_key()
       ->set_key_name("Quote_key");
@@ -447,9 +449,9 @@ int main(int an, char** av) {
   request.mutable_cred()->set_properties(
     *(uint32_t*)&quote_pub_out.publicArea.objectAttributes);
   if (quote_pub_out.publicArea.nameAlg == TPM_ALG_SHA1) {
-    request.mutable_cred()->set_hash_alg("sha1");
+    request.set_active_sign_hash_alg("sha1");
   } else if (quote_pub_out.publicArea.nameAlg == TPM_ALG_SHA256) {
-    request.mutable_cred()->set_hash_alg("sha256");
+    request.set_active_sign_hash_alg("sha256");
   } else {
     printf("Unsupported hash alg\n");
     ret_val = 1;

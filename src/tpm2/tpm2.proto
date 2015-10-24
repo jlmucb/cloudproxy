@@ -74,12 +74,12 @@ message x509_cert_issuer_parameters_message {
   optional public_key_message key             = 8;
 }
 
-//message cert_parameters {
-//  optional x509_cert_request_parameters_message request	= 1;
-//  optional x509_cert_issuer_parameters_message signer	= 2;
-//  optional string not_before	                        = 3;
-//  optional string not_after	                        = 4;
-//}
+message cert_parameters_message {
+  optional x509_cert_request_parameters_message request	= 1;
+  optional x509_cert_issuer_parameters_message signer	= 2;
+  optional string not_before	                        = 3;
+  optional string not_after	                        = 4;
+}
 
 message credential_info_message {
   // public key parameters of "active-key"

@@ -394,11 +394,13 @@ bool VerifyX509CertificateChain(certificate_chain_message& chain) {
   return false;
 }
 
-bool GetCertificateRequestParametersFromX509(X509_REQ& x509_req, cert_parameters* cert_params) {
+bool GetCertificateRequestParametersFromX509(X509_REQ& x509_req,
+        cert_parameters_message* cert_params) {
   return false;
 }
 
-bool GetCertificateParametersFromX509(X509& x509_cert, cert_parameters* cert_params) {
+bool GetCertificateParametersFromX509(X509& x509_cert,
+         cert_parameters_message* cert_params) {
   return false;
 }
 
@@ -528,7 +530,6 @@ bool AesCFBDecrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
                    int* out_size, byte* out) {
   byte last_cipher[32];
   byte cipher_block[32];
-  byte padded_plain[32];
   int size = 0;
 
   AES_KEY ectx;

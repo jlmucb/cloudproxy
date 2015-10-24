@@ -132,13 +132,6 @@ int main(int an, char** av) {
   int context_data_size = MAX_SIZE_PARAMS;
 
   TPM_HANDLE sealed_load_handle = 0;
-  int sealed_size_public = MAX_SIZE_PARAMS;
-  byte sealed_out_public[MAX_SIZE_PARAMS];
-  int sealed_size_private = MAX_SIZE_PARAMS;
-  byte sealed_out_private[MAX_SIZE_PARAMS];
-
-  TPM2B_DIGEST policy_digest;
-  TPM2B_DIGEST secret;
   InitSinglePcrSelection(7, TPM_ALG_SHA1, pcrSelect);
 
   // root of hierarchy 

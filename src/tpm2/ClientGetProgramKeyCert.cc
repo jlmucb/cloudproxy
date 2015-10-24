@@ -272,8 +272,9 @@ int main(int an, char** av) {
          response.encidentity().data(), unmarshaled_encIdentity.size);
 
   // Credential blob is size || marshaled_integrityHmac || marshaled_encIdentity
-  credentialBlob.size = unmarshaled_integrityHmac.size + unmarshaled_encIdentity.size +
-                        2 * sizeof(uint16_t);
+  credentialBlob.size = unmarshaled_integrityHmac.size + 
+                        unmarshaled_encIdentity.size; // was: + 2 * sizeof(uint16_t);
+                        ;
   ChangeEndian16(&unmarshaled_integrityHmac.size, &marshaled_integrityHmac.size);
   memcpy(marshaled_integrityHmac.buffer, unmarshaled_integrityHmac.buffer,
          unmarshaled_integrityHmac.size);
@@ -293,8 +294,54 @@ int main(int an, char** av) {
   secret.size = response.secret().size();
   memcpy(secret.secret, response.secret().data(), secret.size);
 
+#if 1
+{
+  uint16_t quote_pub_blob_size = MAX_SIZE_PARAMS;
+  byte quote_pub_blob[MAX_SIZE_PARAMS];
+  TPM2B_PUBLIC quote_pub_out;
+  TPM2B_NAME quote_pub_name;
+  TPM2B_NAME quote_qualified_pub_name;
+
+  if (Tpm2_ReadPublic(tpm, quote_handle, &quote_pub_blob_size, quote_pub_blob,
+                      quote_pub_out, quote_pub_name,
+                      quote_qualified_pub_name)) {
+    printf("Quote ReadPublic succeeded\n");
+  } else {
+    printf("Quote ReadPublic failed\n");
+    ret_val = 1;
+    goto done;
+  }
+
+  TPM2B_DIGEST original_credential;
+  TPM2B_ID_OBJECT credBlob;
+  TPM2B_ENCRYPTED_SECRET active_secret;
+  
+  original_credential.size = 16;
+  memset(original_credential.buffer, 0, original_credential.size);
+
+  if (!Tpm2_MakeCredential(tpm, ekHandle, original_credential, quote_pub_name,
+                          &credBlob, &active_secret)) {
+    printf("MakeCredential failed\n");
+  } else {
+    printf("From MakeCred\n");
+    printf("original cred: ");
+    PrintBytes(original_credential.size, original_credential.buffer);
+    printf("\n");
+    printf("active_pub_name (%d): ", quote_pub_name.size);
+    PrintBytes(quote_pub_name.size, quote_pub_name.name);
+    printf("\n");
+    printf("active_secret (%d): ", active_secret.size);
+    PrintBytes(active_secret.size, active_secret.secret);
+    printf("\n");
+    printf("credBlob (%d): ", credBlob.size);
+    PrintBytes(credBlob.size, credBlob.credential);
+    printf("\n");
+  }
+}
+#endif
+
   if (!Tpm2_ActivateCredential(tpm, quote_handle, ekHandle, parentAuth, emptyAuth,
-                              credentialBlob, secret, &recovered_credential)) {
+                               credentialBlob, secret, &recovered_credential)) {
     printf("ActivateCredential failed\n");
     ret_val = 1;
     goto done;

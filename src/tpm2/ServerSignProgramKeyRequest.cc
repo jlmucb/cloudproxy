@@ -102,14 +102,14 @@ int main(int an, char** av) {
 
   X509_REQ* req = nullptr;
 
-  int size_seed = 32;
+  int size_seed = 16; // was: = 32;
   byte seed[32];
 
   TPM2B_DIGEST unmarshaled_credential;
   TPM2B_DIGEST marshaled_credential;
 
   byte symKey[MAX_SIZE_PARAMS];
-  int size_hmacKey = 32;
+  int size_hmacKey = 20; // was = 32;
   byte hmacKey[MAX_SIZE_PARAMS];
 
   string key;
@@ -338,12 +338,15 @@ int main(int an, char** av) {
     goto done;
   }
 #endif
-
   // Generate encryption key for signed program cert
   // This is the "credential."
   // TODO: make this 32 for HMACing later
   unmarshaled_credential.size = 16;
+#if 0
   RAND_bytes(unmarshaled_credential.buffer, unmarshaled_credential.size);
+#else
+  memset(unmarshaled_credential.buffer, 0, unmarshaled_credential.size);
+#endif
   ChangeEndian16(&unmarshaled_credential.size, &marshaled_credential.size);
   memcpy(marshaled_credential.buffer, unmarshaled_credential.buffer,
          unmarshaled_credential.size);
@@ -403,13 +406,17 @@ int main(int an, char** av) {
   printf("Encrypted secret: ");
   PrintBytes(encrypted_secret_size, encrypted_secret); printf("\n");
   response.set_secret(encrypted_secret, encrypted_secret_size);
+  printf("name: "); 
+  PrintBytes(request.cred().name().size(),
+             (byte*)request.cred().name().data()); printf("\n");
 
   // symKey= KDFa(hash, seed, "STORAGE", name, nullptr, 128);
   label = "STORAGE";
   key.assign((const char*)seed, size_seed);
   contextV.clear();
   name.assign(request.cred().name().data(), request.cred().name().size());
-  if (!KDFa(TPM_ALG_SHA256, key, label, name, contextV, 256, 32, symKey)) {
+  // was: if (!KDFa(TPM_ALG_SHA1, key, label, name, contextV, 256, 32, symKey)) {
+  if (!KDFa(TPM_ALG_SHA1, key, label, name, contextV, 160, 32, symKey)) {
     printf("Can't KDFa symKey\n");
     ret_val = 1;
     goto done;
@@ -445,20 +452,22 @@ int main(int an, char** av) {
 
   // hmacKey= KDFa(hash, seed, "INTEGRITY", nullptr, nullptr, 8*hashsize);
   label = "INTEGRITY";
-  if (!KDFa(TPM_ALG_SHA256, key, label, contextV, contextV, 256, 32, hmacKey)) {
+  // if (!KDFa(TPM_ALG_SHA256, key, label, contextV, contextV, 256, 32, hmacKey)) {
+  if (!KDFa(TPM_ALG_SHA1, key, label, contextV, contextV, 160, 32, hmacKey)) {
     printf("Can't KDFa hmacKey\n");
     ret_val = 1;
     goto done;
   }
   
   // outerMac = HMAC(hmacKey, encIdentity);
-  size_hmacKey = 32;
+  size_hmacKey = 20; // was: = 32;
   HMAC_CTX_init(&hctx);
-  HMAC_Init_ex(&hctx, hmacKey, size_hmacKey, EVP_sha256(), nullptr);
+  // was HMAC_Init_ex(&hctx, hmacKey, size_hmacKey, EVP_sha256(), nullptr);
+  HMAC_Init_ex(&hctx, hmacKey, size_hmacKey, EVP_sha1(), nullptr);
   HMAC_Update(&hctx, (const byte*)encIdentity, size_encIdentity);
   HMAC_Final(&hctx, outerHmac, (uint32_t*)&size_hmacKey);
   HMAC_CTX_cleanup(&hctx);
-  response.set_integrityhmac(outerHmac, 32);
+  response.set_integrityhmac(outerHmac, size_hmacKey);
 
   // Serialize output
   response.SerializeToString(&output);

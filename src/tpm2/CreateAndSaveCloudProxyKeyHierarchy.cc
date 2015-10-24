@@ -143,7 +143,7 @@ int main(int an, char** av) {
   root_flags.decrypt = 1;
   root_flags.restricted = 1;
   if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, authString, pcrSelect,
-                         TPM_ALG_RSA, TPM_ALG_SHA1, root_flags,
+                         TPM_ALG_RSA, TPM_ALG_SHA256, root_flags,
                          TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
                          2048, 0x010001, &root_handle, &root_pub_out)) {
     printf("CreatePrimary root succeeded\n");
@@ -161,7 +161,7 @@ int main(int an, char** av) {
   seal_create_flags.sign = 1;
 
   if (Tpm2_CreateKey(tpm, root_handle, parentAuth, authString, pcrSelect,
-                     TPM_ALG_RSA, TPM_ALG_SHA1, seal_create_flags, TPM_ALG_NULL,
+                     TPM_ALG_RSA, TPM_ALG_SHA256, seal_create_flags, TPM_ALG_NULL,
                      (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB, TPM_ALG_RSASSA,
                      2048, 0x010001, &seal_size_public, seal_out_public,
                      &seal_size_private, seal_out_private,
@@ -193,7 +193,7 @@ int main(int an, char** av) {
   quote_create_flags.restricted = 1;
 
   if (Tpm2_CreateKey(tpm, root_handle, parentAuth, authString, pcrSelect,
-                     TPM_ALG_RSA, TPM_ALG_SHA1, quote_create_flags, TPM_ALG_NULL,
+                     TPM_ALG_RSA, TPM_ALG_SHA256, quote_create_flags, TPM_ALG_NULL,
                      (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB, TPM_ALG_RSASSA,
                      1024, 0x010001,
                      &quote_size_public, quote_out_public,

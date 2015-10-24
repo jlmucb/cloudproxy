@@ -291,7 +291,7 @@ int main(int an, char** av) {
          unmarshaled_encIdentity.size + sizeof(uint16_t));
   current_size += unmarshaled_encIdentity.size + sizeof(uint16_t);
   printf("Constructed credBlob (%d): ", credentialBlob.size);
-  PrintBytes(current_size, credentialBlob.credential);
+  PrintBytes(credentialBlob.size, credentialBlob.credential);
   printf("\n");
  
   // secret 
@@ -338,7 +338,7 @@ int main(int an, char** av) {
     PrintBytes(active_secret.size, active_secret.secret);
     printf("\n");
     printf("credBlob (%d): ", credBlob.size);
-    PrintBytes(credBlob.size + 4, credBlob.credential);
+    PrintBytes(credBlob.size, credBlob.credential);
     printf("\n");
   }
 }

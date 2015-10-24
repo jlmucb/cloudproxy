@@ -168,6 +168,18 @@ int main(int an, char** av) {
   EVP_PKEY* protector_evp_key = nullptr;
   RSA* protector_key = nullptr;
 
+#ifdef DEBUG
+  string k;
+  string nullstr;
+  label = "INTEGRITY";
+  k.assign((const char*)zero_iv, 16);
+  KDFa(TPM_ALG_SHA256, k, label, nullstr, nullstr, 128, 32, test_buf);
+  printf("\nKDFa(TPM_ALG_SHA256, 0, null, null, 128): ");
+  PrintBytes(16, test_buf);
+  printf("\n");
+  label.clear();
+#endif
+
   if (FLAGS_signing_instructions_file == "") {
     printf("signing_instructions_file is empty\n");
     ret_val = 1;
@@ -360,11 +372,12 @@ int main(int an, char** av) {
   // This is the "credential."
   // TODO: make this 32 for HMACing later
   unmarshaled_credential.size = 16;
-#if 0
+#ifndef DEBUG
   RAND_bytes(unmarshaled_credential.buffer, unmarshaled_credential.size);
 #else
   memset(unmarshaled_credential.buffer, 0, unmarshaled_credential.size);
 #endif
+
   ChangeEndian16(&unmarshaled_credential.size, &marshaled_credential.size);
   memcpy(marshaled_credential.buffer, unmarshaled_credential.buffer,
          unmarshaled_credential.size);
@@ -439,7 +452,7 @@ int main(int an, char** av) {
   key.assign((const char*)seed, size_seed);
   contextV.clear();
   name.assign(request.cred().name().data(), request.cred().name().size());
-  if (!KDFa(TPM_ALG_SHA256, key, label, name, contextV, 256, 32, symKey)) {
+  if (!KDFa(TPM_ALG_SHA256, key, label, name, contextV, 128, 32, symKey)) {
     printf("Can't KDFa symKey\n");
     ret_val = 1;
     goto done;

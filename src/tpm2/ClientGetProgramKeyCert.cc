@@ -245,9 +245,9 @@ int main(int an, char** av) {
          response.integrityhmac().size());
   current_size += response.integrityhmac().size();
   memcpy(&credentialBlob.credential[current_size],
-         (byte*) encIdentity().data(),
-         encIdentity().size());
-  current_size += encIdentity().size();
+         (byte*) response.encidentity().data(),
+         response.encidentity().size());
+  current_size += response.encidentity().size();
 
 #ifdef DEBUG
   printf("Constructed credBlob (%d): ", credentialBlob.size);

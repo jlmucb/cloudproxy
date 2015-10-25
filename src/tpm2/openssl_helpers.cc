@@ -390,7 +390,11 @@ bool KDFa(uint16_t hashAlg, string& key, string& label, string& contextU,
     ChangeEndian32(&counter, (uint32_t*)buf);
 
     HMAC_CTX_init(&ctx);
-    HMAC_Init_ex(&ctx, key.data(), key.size(), EVP_sha256(), nullptr);
+    if (hashAlg == TPM_ALG_SHA1 ) {
+      HMAC_Init_ex(&ctx, key.data(), key.size(), EVP_sha1(), nullptr);
+    } else {
+      HMAC_Init_ex(&ctx, key.data(), key.size(), EVP_sha256(), nullptr);
+    }
     HMAC_Update(&ctx, buf, size_buf);
     HMAC_Final(&ctx, current_out, &len);
     HMAC_CTX_cleanup(&ctx);

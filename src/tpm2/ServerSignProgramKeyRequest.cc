@@ -103,7 +103,7 @@ int main(int an, char** av) {
 
   X509_REQ* req = nullptr;
 
-  int size_seed = 16; // was: = 32;
+  int size_seed = 16;
   byte seed[32];
 
   TPM2B_DIGEST unmarshaled_credential;
@@ -167,18 +167,6 @@ int main(int an, char** av) {
 
   EVP_PKEY* protector_evp_key = nullptr;
   RSA* protector_key = nullptr;
-
-#ifdef DEBUG
-  string k;
-  string nullstr;
-  label = "INTEGRITY";
-  k.assign((const char*)zero_iv, 16);
-  KDFa(TPM_ALG_SHA256, k, label, nullstr, nullstr, 128, 32, test_buf);
-  printf("\nKDFa(TPM_ALG_SHA256, 0, null, null, 128): ");
-  PrintBytes(16, test_buf);
-  printf("\n");
-  label.clear();
-#endif
 
   if (FLAGS_signing_instructions_file == "") {
     printf("signing_instructions_file is empty\n");
@@ -372,11 +360,7 @@ int main(int an, char** av) {
   // This is the "credential."
   // TODO: make this 32 for HMACing later
   unmarshaled_credential.size = 16;
-#ifndef DEBUG
   RAND_bytes(unmarshaled_credential.buffer, unmarshaled_credential.size);
-#else
-  memset(unmarshaled_credential.buffer, 0, unmarshaled_credential.size);
-#endif
 
   ChangeEndian16(&unmarshaled_credential.size, &marshaled_credential.size);
   memcpy(marshaled_credential.buffer, unmarshaled_credential.buffer,
@@ -506,8 +490,7 @@ int main(int an, char** av) {
   HMAC_CTX_init(&hctx);
   HMAC_Init_ex(&hctx, hmacKey, size_hmacKey, EVP_sha256(), nullptr);
   HMAC_Update(&hctx, (const byte*)encIdentity, size_encIdentity);
-  HMAC_Update(&hctx, (const byte*)&marshaled_name,
-              name.size() + sizeof(uint16_t));
+  HMAC_Update(&hctx, (const byte*)&marshaled_name.name, name.size());
   HMAC_Final(&hctx, outerHmac, (uint32_t*)&size_hmacKey);
   HMAC_CTX_cleanup(&hctx);
 

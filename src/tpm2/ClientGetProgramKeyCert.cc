@@ -127,6 +127,10 @@ int main(int an, char** av) {
   string input;
   string output;
 
+#ifdef DEBUG
+  TPM2B_DIGEST test_cred;
+#endif
+
   // Generate program key
   if (FLAGS_program_key_type != "RSA") {
     printf("Only RSA supported\n");
@@ -179,9 +183,11 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+#ifdef DEBUG1
   printf("\ncontext_save_area: ");
   PrintBytes(context_data_size - 6, context_save_area + 6);
   printf("\n\n");
+#endif
   if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
                         &root_handle)) {
     printf("Root LoadContext failed\n");
@@ -204,6 +210,11 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+#ifdef DEBUG1
+  printf("\ncontext_save_area: ");
+  PrintBytes(context_data_size - 6, context_save_area + 6);
+  printf("\n\n");
+#endif
 
   memset((void*)&credential, 0, sizeof(TPM2B_DIGEST));
   memset((void*)&secret, 0, sizeof(TPM2B_ENCRYPTED_SECRET));
@@ -259,7 +270,7 @@ int main(int an, char** av) {
   secret.size = response.secret().size();
   memcpy(secret.secret, response.secret().data(), secret.size);
 
-#if 1
+#ifdef DEBUG
 {
   uint16_t quote_pub_blob_size = MAX_SIZE_PARAMS;
   byte quote_pub_blob[MAX_SIZE_PARAMS];
@@ -301,6 +312,18 @@ int main(int an, char** av) {
     printf("credBlob (%d): ", credBlob.size);
     PrintBytes(credBlob.size, credBlob.credential);
     printf("\n");
+  }
+  if (Tpm2_ActivateCredential(tpm, quote_handle, ekHandle, parentAuth, emptyAuth,
+                              credBlob, active_secret, test_credential)) {
+    printf("Paired ActivateCredential succeeded\n");
+    printf("Original credential (%d): ", original_credential.size);
+    PrintBytes(original_credential.size, original_credential.buffer);
+    printf("\n");
+    printf("Recovered credential (%d): ", test_cred.size);
+    PrintBytes(test_cred.size, test_cred.buffer);
+    printf("\n");
+  } else {
+    printf("Paired ActivateCredential failed\n");
   }
 }
 #endif

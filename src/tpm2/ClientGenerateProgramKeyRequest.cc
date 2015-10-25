@@ -91,6 +91,7 @@ DEFINE_string(program_cert_request_file, "", "output-file-name");
 #endif
 
 #define MAX_SIZE_PARAMS 4096
+#define DEBUG
 
 int main(int an, char** av) {
   LocalTpm tpm;
@@ -200,6 +201,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+#ifdef DEBUG
   printf("ek Public blob: ");
   PrintBytes(ek_pub_blob_size, ek_pub_blob);
   printf("\n");
@@ -209,6 +211,7 @@ int main(int an, char** av) {
   printf("ek Qualified name: ");
   PrintBytes(ek_qualified_pub_name.size, ek_qualified_pub_name.name);
   printf("\n");
+#endif
   Tpm2_FlushContext(tpm, ekHandle);
   ekHandle = 0;
 
@@ -234,8 +237,10 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+#ifdef DEBUG
   printf("\ncontext_save_area: ");
   PrintBytes(context_data_size - 6, context_save_area + 6);
+#endif
   printf("\n\n");
   if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
                         &root_handle)) {
@@ -253,9 +258,11 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+#ifdef DEBUG
   printf("context_save_area: ");
   PrintBytes(context_data_size - 6, context_save_area + 6);
   printf("\n");
+#endif
   if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
                         &seal_handle)) {
     printf("Seal LoadContext failed\n");
@@ -272,9 +279,11 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+#ifdef DEBUG
   printf("context_save_area: ");
   PrintBytes(context_data_size - 6, context_save_area + 6);
   printf("\n");
+#endif
   if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
                         &quote_handle)) {
     printf("Quote LoadContext failed\n");
@@ -376,6 +385,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+#ifdef DEBUG
   printf("Quote Public blob: ");
   PrintBytes(quote_pub_blob_size, quote_pub_blob);
   printf("\n");
@@ -385,6 +395,7 @@ int main(int an, char** av) {
   printf("Quote Qualified name: ");
   PrintBytes(quote_qualified_pub_name.size, quote_qualified_pub_name.name);
   printf("\n");
+#endif
 
   // hash x509 request
   SHA256_Init(&sha256);
@@ -393,8 +404,10 @@ int main(int an, char** av) {
   to_quote.size = 32;
   memset(to_quote.buffer, 0, to_quote.size);
   memcpy(to_quote.buffer, quoted_hash, to_quote.size);
+#ifdef DEBUG
   printf("quoted_hash: "); PrintBytes(to_quote.size, to_quote.buffer);
   printf("\n");
+#endif
   if (!Tpm2_Quote(tpm, quote_handle, parentAuth,
                   to_quote.size, to_quote.buffer,
                   scheme, pcrSelect, TPM_ALG_RSA, TPM_ALG_SHA256,
@@ -403,12 +416,14 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+#ifdef DEBUG
   printf("Quote succeeded, quoted (%d): ", quote_size);
   PrintBytes(quote_size, quoted);
   printf("\n");
   printf("Sig (%d): ", sig_size);
   PrintBytes(sig_size, sig);
   printf("\n");
+#endif
 
   // Quote key information
   // quote_pub_out.publicArea contains quote key info.  Namely,
@@ -470,7 +485,9 @@ int main(int an, char** av) {
     printf("Can't write endorsement cert\n");
     goto done;
   }
+#ifdef DEBUG
   printf("%s\n", request.DebugString().c_str());
+#endif
 
 done:
   if (root_handle != 0) {

@@ -314,7 +314,7 @@ int main(int an, char** av) {
     printf("\n");
   }
   if (Tpm2_ActivateCredential(tpm, quote_handle, ekHandle, parentAuth, emptyAuth,
-                              credBlob, active_secret, test_credential)) {
+                              credBlob, active_secret, &test_cred)) {
     printf("Paired ActivateCredential succeeded\n");
     printf("Original credential (%d): ", original_credential.size);
     PrintBytes(original_credential.size, original_credential.buffer);

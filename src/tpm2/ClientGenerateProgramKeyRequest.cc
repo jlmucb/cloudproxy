@@ -182,7 +182,7 @@ int main(int an, char** av) {
   primary_flags.decrypt = 1;
   primary_flags.restricted = 1;
 
-  InitSinglePcrSelection(-1, TPM_ALG_SHA256, pcrSelect);
+  InitSinglePcrSelection(7, TPM_ALG_SHA256, pcrSelect);
   if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect,
                          TPM_ALG_RSA, TPM_ALG_SHA256, primary_flags,
                          TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,

@@ -225,7 +225,7 @@ int main(int an, char** av) {
     printf("Signing is invalid\n");
     ret_val = 1;
     goto done;
-  }
+  } 
 
   // Get cloudproxy key
   in_size = MAX_SIZE_PARAMS;

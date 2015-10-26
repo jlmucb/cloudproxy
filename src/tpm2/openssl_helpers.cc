@@ -134,7 +134,7 @@ string* BN_to_bin(BIGNUM& n) {
 
 bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
         params, bool sign_request, X509_REQ* req) {
-  RSA*  rsa = nullptr;
+  RSA*  rsa = RSA_new();
   X509_NAME* subject = X509_NAME_new();
   EVP_PKEY* pKey = new EVP_PKEY();
 
@@ -174,7 +174,6 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
     if (!X509_REQ_sign(req, pkey, digest)) {
       printf("Sign request fails\n");
       printf("ERR: %s\n", ERR_lib_error_string(ERR_get_error()));
-      // return false;
     }
   }
   printf("\n");
@@ -190,7 +189,9 @@ bool GetPrivateRsaKeyFromParameters(const rsa_public_key_message& key_msg,
 
 bool GetPublicRsaKeyFromParameters(const rsa_public_key_message& key_msg,
                                    RSA* rsa) {
-  return false;
+  rsa->e = bin_to_BN(key_msg.exponent().size(), (byte*)key_msg.exponent().data());
+  rsa->n = bin_to_BN(key_msg.modulus().size(), (byte*)key_msg.modulus().data());
+  return rsa->e != nullptr && rsa->n != nullptr;
 }
 
 bool GetPublicRsaParametersFromSSLKey(RSA& rsa, public_key_message* key_msg) {

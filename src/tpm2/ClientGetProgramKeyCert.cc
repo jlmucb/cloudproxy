@@ -147,6 +147,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+  InitSinglePcrSelection(7, TPM_ALG_SHA256, pcrSelect);
 
   // Create endorsement key
   *(uint32_t*)(&primary_flags) = 0;

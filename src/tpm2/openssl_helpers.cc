@@ -92,31 +92,46 @@ void print_cert_request_message(x509_cert_request_parameters_message& req_messag
 }
 
 void print_internal_private_key(RSA& key) {
-  printf("\n\n");
-  printf("\nModulus: \n");
-  BN_print_fp(stdout, key.n);
-  printf("\n\n");
-  printf("\ne: \n");
-  BN_print_fp(stdout, key.e);
-  printf("\n\n");
-  printf("\nd: \n");
-  BN_print_fp(stdout, key.d);
-  printf("\n\n");
-  printf("\np: \n");
-  BN_print_fp(stdout, key.p);
-  printf("\n\n");
-  printf("\nq: \n");
-  BN_print_fp(stdout, key.q);
-  printf("\n\n");
-  printf("\ndmp1: \n");
-  BN_print_fp(stdout, key.dmp1);
-  printf("\n\n");
-  printf("\ndmq1: \n");
-  BN_print_fp(stdout, key.dmq1);
-  printf("\n\n");
-  printf("\niqmp: \n");
-  BN_print_fp(stdout, key.iqmp);
-  printf("\n\n");
+  if (key.n != nullptr) {
+    printf("\nModulus: \n");
+    BN_print_fp(stdout, key.n);
+    printf("\n");
+  }
+  if (key.e != nullptr) {
+    printf("\ne: \n");
+    BN_print_fp(stdout, key.e);
+    printf("\n");
+  }
+  if (key.d != nullptr) {
+    printf("\nd: \n");
+    BN_print_fp(stdout, key.d);
+    printf("\n");
+  }
+  if (key.p != nullptr) {
+    printf("\np: \n");
+    BN_print_fp(stdout, key.p);
+    printf("\n");
+  }
+  if (key.q != nullptr) {
+    printf("\nq: \n");
+    BN_print_fp(stdout, key.q);
+    printf("\n");
+  }
+  if (key.dmp1 != nullptr) {
+    printf("\ndmp1: \n");
+    BN_print_fp(stdout, key.dmp1);
+    printf("\n");
+  }
+  if (key.dmq1 != nullptr) {
+    printf("\ndmq1: \n");
+    BN_print_fp(stdout, key.dmq1);
+    printf("\n");
+  }
+  if (key.iqmp != nullptr) {
+    printf("\niqmp: \n");
+    BN_print_fp(stdout, key.iqmp);
+    printf("\n");
+  }
 }
 
 BIGNUM* bin_to_BN(int len, byte* buf) {
@@ -164,6 +179,14 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
     printf("Can't make rsa key\n");
     return false;
   }
+  printf("\nretrieved key parameters\n");
+  printf("n: ");
+  BN_print_fp(stdout, rsa->n);
+  printf("\n");
+  printf("e: ");
+  BN_print_fp(stdout, rsa->e);
+  printf("\n");
+
   // fill key parameters in request
   if (sign_request) {
     EVP_PKEY* pkey = EVP_PKEY_new();

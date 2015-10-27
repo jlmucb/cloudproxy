@@ -1,30 +1,36 @@
 
 void test_paul(RSA* p_key) {
   int seed_size = 0x14;
-  byte seed[] = {
-    0x6caa5cd913bda6610454253564061a68
+  byte seedbuf[] = {
   };
+  string seed;
+  seed.assign(seed_buf, seed_size);
+  int name_size;
+  byte name_buf[] = {
+  };
+  string name;
+  name.assign(name_buf, name_size);
   string label("IDENTITY");
-  TPM2B_DIGEST cred;
-  TPM2B_DIGEST marshaled_cred;
-  cred.size = 0x14;
-  byte t_const_b1[] = {
-    0xbd, 0xb6, 0x19, 0xbc, 0xe5, 0x6c, 0x37, 0x03,
-    0x9f, 0xa8, 0x8d, 0x8f, 0xdf, 0xbf, 0x7c, 0xc2, 
-    0xe5, 0xaa, 0x69, 0x89
-  };
   int test_size;
   byte test_buf[4096];
+  string contextV;
+  int size_hmacKey = 20;
 
-  memcpy(cred.buffer, t_const_b1, cred.size);
-  ChangeEndian16(&cred.size, &marshaled_cred.size);
-  memcpy(marshaled_cred.buffer, t_const_b1, cred.size);
+  TPM2B_DIGEST marshaled_credential;
+  TPM2B_DIGEST unmarshaled_credential;
+  unmarshaled_credential.size = 0x14;
 
-  printf("symKey should be: 5f4bf3de 71e5bd27 e005b53d f311b4ba\n");
-  printf("encId should be: d7362104 13755b00 5c0bff1f b0606420 7ebb065e 5f93");
-  printf("hmacKey should be: 40d88e87 6b898bb2 68015ea3 526629f6 f7754c38\n");
-  printf("outerHmac should be: 0fbbf123 1af3da06 5ef28ab5 5d8c1daa 8a06b6f4\n");
-  printf("actBlob should be: 00140fbb f1231af3 da065ef2 8ab55d8c 1daa8a06 b6f4d736 21041375 5b005c0b ff1fb060 64207ebb 065e5f93\n");
+  byte credential_buf[] = {
+  };
+  memcpy(unmarshaled_credential.buffer, credential_buf, unmarshaled_credential.size);
+  ChangeEndian16(&unmarshaled_credential.size, &marshaled_credential.size);
+  memcpy(marshaled_credential.buffer, credential_buf, unmarshaled_credential.size);
+
+  printf("symKey should be: \n");
+  printf("encId should be: ");
+  printf("hmacKey should be: \n");
+  printf("outerHmac should be: \n");
+  printf("actBlob should be: \n");
 
   int size_in = 0;
   byte in_buf[4096];
@@ -35,17 +41,16 @@ void test_paul(RSA* p_key) {
 
   // Secret= E(protector_key, seed || "IDENTITY")
   byte encrypted_secret[4096];
-  int encrypted_secret_size = RSA_public_encrypt(size_in, in_buf,
-                                encrypted_secret, p_key,
-                                RSA_PKCS1_OAEP_PADDING);
+  int encrypted_secret_size = RSA_public_encrypt(size_in, in_buf, encrypted_secret,
+                                                  p_key, RSA_PKCS1_OAEP_PADDING);
 
   printf("encrypted_secret_size: %d\n", encrypted_secret_size);
   printf("Encrypted secret: ");
   PrintBytes(encrypted_secret_size, encrypted_secret); printf("\n");
   response.set_secret(encrypted_secret, encrypted_secret_size);
   printf("name: ");
-  PrintBytes(request.cred().name().size(),
-             (byte*)request.cred().name().data()); printf("\n");
+  PrintBytes(name_size, name_buf);
+  printf("\n");
 
   // symKey= KDFa(hash, seed, "STORAGE", name, nullptr, 128);
   string key;
@@ -53,12 +58,11 @@ void test_paul(RSA* p_key) {
   label = "STORAGE";
   key.assign((const char*)seed, size_seed);
   contextV.clear();
-  name.assign(request.cred().name().data(), request.cred().name().size());
-  if (!KDFa(TPM_ALG_SHA256, key, label, name, contextV, 128, 32, symKey)) {
+  if (!KDFa(TPM_ALG_SHA1, key, label, name, contextV, 128, 32, symKey)) {
     printf("Can't KDFa symKey\n");
     ret_val = 1;
   }
-  printf("symKey: "); PrintBytes(32, symKey); printf("\n");
+  printf("symKey: "); PrintBytes(16, symKey); printf("\n");
   printf("marshaled_credential: ");
   PrintBytes(unmarshaled_credential.size + sizeof(uint16_t),
              (byte*)&marshaled_credential);
@@ -83,8 +87,30 @@ void test_paul(RSA* p_key) {
     printf("Can't AesCFBDecrypt\n");
     goto done;
   }
- printf("Decrypted secret (%d): ", test_size);
+  printf("Decrypted secret (%d): ", test_size);
   PrintBytes(test_size, test_buf); printf("\n");
+
+ // hmacKey= KDFa(TPM_ALG_SHA1, seed, "INTEGRITY", nullptr, nullptr, 8*hashsize);
+  label = "INTEGRITY";
+  if (!KDFa(TPM_ALG_SHA1, key, label, contextV,
+            contextV, 8 * 20, 32, hmacKey)) {
+    printf("Can't KDFa hmacKey\n");
+    ret_val = 1;
+    goto done;
+  }
+
+  // outerMac = HMAC(hmacKey, encIdentity || name);
+  HMAC_CTX_init(&hctx);
+  if (hash_alg_id == TPM_ALG_SHA1) {
+    HMAC_Init_ex(&hctx, hmacKey, size_hmacKey, EVP_sha1(), nullptr);
+  } else {
+    HMAC_Init_ex(&hctx, hmacKey, size_hmacKey, EVP_sha256(), nullptr);
+  }
+  HMAC_Update(&hctx, (const byte*)encIdentity, size_encIdentity);
+  HMAC_Update(&hctx, (const byte*)name.data(), name.size());
+  HMAC_Final(&hctx, outerHmac, (uint32_t*)&size_hmacKey);
+  HMAC_CTX_cleanup(&hctx);
+
 done:
   return;
 }

@@ -170,8 +170,8 @@ int main(int an, char** av) {
 
   // sign it
   X509* cert = X509_new();
-  if (!SignX509Certificate(signing_key, signing_message, req,
-                           false, cert)) {
+  if (!SignX509Certificate(signing_key, signing_message, nullptr,
+                           req, false, cert)) {
     printf("Can't sign x509 request\n");
     return 1;
   }

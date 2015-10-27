@@ -78,8 +78,12 @@ DEFINE_string(signed_endorsement_cert, "", "signed endorsement cert file");
 #define GFLAGS_NS gflags
 #endif
 
+#define DEBUG
+
 int main(int an, char** av) {
   int ret_val = 0;
+
+  printf("CloudProxySignEndorsementKey\n\n");
 
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   OpenSSL_add_all_algorithms();
@@ -118,9 +122,11 @@ int main(int an, char** av) {
     printf("Can't parse signing instructions\n");
     return 1;
   }
+#ifdef DEBUG
   printf("issuer: %s, duration: %ld, purpose: %s, hash: %s\n",
          signing_message.issuer().c_str(), signing_message.duration(),
          signing_message.purpose().c_str(), signing_message.hash_alg().c_str());
+#endif
   
   if (!signing_message.can_sign()) {
     printf("Signing is invalid\n");
@@ -153,8 +159,11 @@ int main(int an, char** av) {
     return 1;
   }
 
-  printf("Key type: %s\n", private_key.key_type().c_str());
-  printf("Key name: %s\n", private_key.key_name().c_str());
+#ifdef DEBUG
+  printf("\nPolicy key type: %s\n", private_key.key_type().c_str());
+  printf("Policy key name: %s\n", private_key.key_name().c_str());
+#endif
+
   string the_blob = private_key.blob();
   PrintBytes(the_blob.size(), (byte*)the_blob.data());
   const byte* p = (byte*)the_blob.data();
@@ -163,7 +172,9 @@ int main(int an, char** av) {
     printf("Can't translate private key\n");
     return 1;
   }
+#ifdef DEBUG
   print_internal_private_key(*signing_key);
+#endif
 
   string key_blob = endorsement_info.tpm2b_blob();
   uint16_t size_in;
@@ -174,6 +185,15 @@ int main(int an, char** av) {
     printf("Can't parse endorsement blob\n");
     return 1;
   }
+#ifdef DEBUG
+  printf("\nEndorsement key size: %d\n",
+         (int)outPublic.publicArea.unique.rsa.size * 8);
+  printf("Endorsement key modulus: ");
+  PrintBytes((int)outPublic.publicArea.unique.rsa.size,
+             outPublic.publicArea.unique.rsa.buffer);
+  printf("\n");
+  printf("\n");
+#endif
 
   // fill x509_cert_request_parameters_message
   x509_cert_request_parameters_message req_message;
@@ -191,7 +211,17 @@ int main(int an, char** av) {
   req_message.mutable_key()->mutable_rsa_key()->set_modulus(
       (const char*)outPublic.publicArea.unique.rsa.buffer,
       (int)outPublic.publicArea.unique.rsa.size);
+#ifdef DEBUG
+  printf("\nCert request:\n");
   print_cert_request_message(req_message); printf("\n");
+#endif
+
+  EVP_PKEY* subject_key = EVP_PKEY_new();
+  RSA* rsa_subject_key = RSA_new();
+  rsa_subject_key->n = bin_to_BN((int)outPublic.publicArea.unique.rsa.size,
+                                 outPublic.publicArea.unique.rsa.buffer);
+  rsa_subject_key->e = bin_to_BN(sizeof(uint64_t), (byte*)&expOut);
+  EVP_PKEY_assign_RSA(subject_key, rsa_subject_key);
 
   X509_REQ* req = X509_REQ_new();
   X509_REQ_set_version(req, 2);
@@ -202,12 +232,16 @@ int main(int an, char** av) {
 
   // sign it
   X509* cert = X509_new();
-  if (!SignX509Certificate(signing_key, signing_message, req,
-                           false, cert)) {
+  X509_set_pubkey(cert, subject_key);
+  // X509_set_issuer_name(cert, issuerSubject)
+  if (!SignX509Certificate(signing_key, signing_message, subject_key,
+                           req, false, cert)) {
     printf("Can't sign x509 request\n");
     return 1;
   }
-  printf("message signed\n");
+#ifdef DEBUG
+  printf("\nmessage signed\n");
+#endif
 
   byte* out = nullptr;
   int size = i2d_X509(cert, &out);

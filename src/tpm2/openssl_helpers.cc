@@ -46,6 +46,7 @@ using std::string;
 
 // standard buffer size
 #define MAX_SIZE_PARAMS 4096
+#define DEBUG
 
 void print_cert_request_message(x509_cert_request_parameters_message& req_message) {
   if (req_message.has_common_name()) {
@@ -179,6 +180,8 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
     printf("Can't make rsa key\n");
     return false;
   }
+
+#ifdef DEBUG
   printf("\nretrieved key parameters\n");
   printf("n: ");
   BN_print_fp(stdout, rsa->n);
@@ -186,22 +189,28 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
   printf("e: ");
   BN_print_fp(stdout, rsa->e);
   printf("\n");
+#endif
+
+  EVP_PKEY_assign_RSA(pKey, rsa);
 
   // fill key parameters in request
   if (sign_request) {
-    EVP_PKEY* pkey = EVP_PKEY_new();
     const EVP_MD* digest = EVP_sha256();
-    pkey->type = EVP_PKEY_RSA;
-    X509_REQ_set_pubkey(req, pkey);
-    EVP_PKEY_set1_RSA(pKey, rsa);
-    if (!X509_REQ_sign(req, pkey, digest)) {
+    if (!X509_REQ_sign(req, pKey, digest)) {
       printf("Sign request fails\n");
       printf("ERR: %s\n", ERR_lib_error_string(ERR_get_error()));
     }
   }
+  pKey->type = EVP_PKEY_RSA;
+  if (X509_REQ_set_pubkey(req, pKey) ==0) {
+      printf("X509_REQ_set_pubkey failed\n");
+  }
+
+#ifdef DEBUG
+  printf("\nREQ:\n");
+  X509_REQ_print_fp(stdout, req);
   printf("\n");
-  print_cert_request_message(params);
-  printf("\n");
+#endif
   return true;
 }
 
@@ -280,15 +289,17 @@ bool addExtensionsToCert(int num_entry, extEntry** entries, X509* cert) {
 
 bool SignX509Certificate(RSA* signing_key,
                          signing_instructions_message& signing_instructions,
+                         EVP_PKEY* signedKey,
                          X509_REQ* req, bool verify_req_sig, X509* cert) {
-  EVP_PKEY* pSignedKey = X509_REQ_get_pubkey(req);
-  if (pSignedKey != nullptr) {
+  if (signedKey == NULL)
+    signedKey = X509_REQ_get_pubkey(req);
+  if (signedKey == nullptr) {
     printf("Can't get pubkey\n");
     return false;
   }
 
   if (verify_req_sig) {
-    if (X509_REQ_verify(req, pSignedKey) != 1) {
+    if (X509_REQ_verify(req, signedKey) != 1) {
       printf("Req does not verify\n");
       // return false;
     }
@@ -309,7 +320,7 @@ bool SignX509Certificate(RSA* signing_key,
     printf("Can't set subject name\n");
     return false;
   }
-  if (X509_set_pubkey(cert, pSigningKey) != 1) {
+  if (X509_set_pubkey(cert, signedKey) != 1) {
     printf("Can't set pubkey\n");
     return false;
   }

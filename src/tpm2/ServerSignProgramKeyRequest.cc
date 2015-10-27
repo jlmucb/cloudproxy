@@ -294,7 +294,7 @@ int main(int an, char** av) {
   req = d2i_X509_REQ(nullptr, (const byte**)&out, der_program_cert_request_size);
 
   // sign program key
-  if (!SignX509Certificate(signing_key, signing_message, req,
+  if (!SignX509Certificate(signing_key, signing_message, nullptr, req,
                            false, program_cert)) {
     printf("Can't sign x509 request\n");
     ret_val = 1;
@@ -455,6 +455,9 @@ int main(int an, char** av) {
                               encrypted_secret, protector_key,
                               RSA_PKCS1_OAEP_PADDING);
 #ifdef DEBUG
+  printf("\nEndorsement public: ");
+  BN_print_fp(stdout, protector_key->n);
+  printf("\n");
   printf("\nprepended: ");
   PrintBytes(size_in, in_buf); printf("\n");
   printf("Encrypted secret: ");

@@ -239,7 +239,7 @@ int main(int an, char** av) {
   }
 
 #ifdef DEBUG
-  printf("Key type: %s\n", private_key.key_type().c_str());
+  printf("\nKey type: %s\n", private_key.key_type().c_str());
   printf("Key name: %s\n", private_key.key_name().c_str());
 #endif
 
@@ -287,7 +287,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-  printf("message signed\n");
+  printf("\nmessage signed\n");
 
   // Serialize program cert
   der_program_cert = nullptr;
@@ -304,7 +304,7 @@ int main(int an, char** av) {
                 request.x509_program_key_request().size());
   SHA256_Final(quoted_hash, &sha256);
 #ifdef DEBUG
-  printf("quoted_hash: "); PrintBytes(32, quoted_hash); printf("\n");
+  printf("\nquoted_hash: "); PrintBytes(32, quoted_hash); printf("\n");
 #endif
 
   // "Encrypt" with quote key
@@ -314,7 +314,7 @@ int main(int an, char** av) {
     goto done;
   }
 #ifdef DEBUG
-  printf("modulus size: %d\n",
+  printf("\nmodulus size: %d\n",
       (int)request.cred().public_key().rsa_key().modulus().size());
   printf("exponent size: %d\n",
       (int)request.cred().public_key().rsa_key().exponent().size());
@@ -342,7 +342,7 @@ int main(int an, char** av) {
     goto done;
   }
 #ifdef DEBUG
-  printf("active signature size: %d\n", size_active_out);
+  printf("\nactive signature size: %d\n", size_active_out);
 #endif
 
 #if 0
@@ -374,36 +374,32 @@ int main(int an, char** av) {
     goto done;
   }
 #ifdef DEBUG
-  printf("credential secret: ");
+  printf("\ncredential secret: ");
   PrintBytes(16, unmarshaled_credential.buffer);
   printf("\n");
-  printf("der_program_cert: ");
+  printf("\nder_program_cert: ");
   PrintBytes(der_program_cert_size, der_program_cert);
   printf("\n");
-  printf("encrypted der_program_cert: ");
+  printf("\nencrypted der_program_cert: ");
   PrintBytes(der_program_cert_size, encrypted_data);
   printf("\n");
   if (!AesCtrCrypt(128, unmarshaled_credential.buffer, der_program_cert_size,
                    encrypted_data, test_buf)) {
-    printf("Can't decrypt cert\n");
+    printf("\nCan't decrypt cert\n");
     ret_val = 1;
     goto done;
   }
-  printf("decrypted der_program_cert: ");
+  printf("\ndecrypted der_program_cert: ");
   PrintBytes(der_program_cert_size, test_buf);
   printf("\n");
 #endif
   encrypted_data_size = der_program_cert_size;
   response.set_encrypted_cert(encrypted_data, encrypted_data_size);
-#ifdef DEBUG
-  printf("Encrypted program cert: ");
-  PrintBytes(der_program_cert_size, der_program_cert); printf("\n");
-#endif
 
   // Generate seed for MakeCredential protocol
   RAND_bytes(seed, size_seed);
 #ifdef DEBUG
-  printf("seed: ");
+  printf("\nseed: ");
   PrintBytes(size_seed, seed); printf("\n");
 #endif
 
@@ -422,11 +418,11 @@ int main(int an, char** av) {
                               encrypted_secret, protector_key,
                               RSA_PKCS1_OAEP_PADDING);
 #ifdef DEBUG
-  printf("encrypted_secret_size: %d\n", encrypted_secret_size);
+  printf("\nencrypted_secret_size: %d\n", encrypted_secret_size);
   printf("Encrypted secret: ");
   PrintBytes(encrypted_secret_size, encrypted_secret); printf("\n");
   response.set_secret(encrypted_secret, encrypted_secret_size);
-  printf("name: "); 
+  printf("\nname: "); 
   PrintBytes(request.cred().name().size(),
              (byte*)request.cred().name().data()); printf("\n");
 #endif
@@ -442,7 +438,11 @@ int main(int an, char** av) {
     goto done;
   }
 #ifdef DEBUG
-  printf("symKey: "); PrintBytes(32, symKey); printf("\n");
+  printf("\nsymKey: "); PrintBytes(16, symKey); printf("\n");
+  printf("marshaled_credential: ");
+  PrintBytes(unmarshaled_credential.size + sizeof(uint16_t),
+             (byte*)&marshaled_credential);
+  printf("\n");
 #endif
 
   // encIdentity = CFBEncrypt(symKey, marshaled_credential, out)

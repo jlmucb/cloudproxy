@@ -53,6 +53,7 @@ DEFINE_string(hash_alg, "sha1", "hash");
 #ifndef GFLAGS_NS
 #define GFLAGS_NS gflags
 #endif
+#define DEBUG
 
 void PrintOptions() {
   printf("Calling sequence: GetEndorsementKey.exe " \
@@ -75,6 +76,8 @@ int main(int an, char** av) {
   int ret_val = 0;
   endorsement_key_message message;
   string output;
+
+  printf("GetEndorsementKey\n\n");
 
   TPM_ALG_ID hash_alg_id;
   if (FLAGS_hash_alg == "sha1") {
@@ -126,6 +129,7 @@ int main(int an, char** av) {
     goto done;
   }
   Tpm2_FlushContext(tpm, ekHandle);
+#ifdef DEBUG
   printf("Public blob: ");
   PrintBytes(pub_blob_size, pub_blob);
   printf("\n");
@@ -135,6 +139,7 @@ int main(int an, char** av) {
   printf("Qualified name: ");
   PrintBytes(qualified_pub_name.size, qualified_pub_name.name);
   printf("\n");
+#endif
 
   message.set_machine_identifier(FLAGS_machine_identifier);
   message.set_tpm2b_blob( (const char*)pub_blob, (int)pub_blob_size);

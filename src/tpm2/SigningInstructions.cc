@@ -84,6 +84,8 @@ int main(int an, char** av) {
   signing_instructions_message message;
   int ret_val = 0;
 
+  printf("SigningInstructions\n\n");
+
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
 
   message.set_issuer(FLAGS_issuer);

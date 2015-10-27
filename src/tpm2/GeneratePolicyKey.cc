@@ -73,6 +73,7 @@ DEFINE_string(cloudproxy_key_file, "", "output-file-name");
 #endif
 
 #define MAXKEY_BUF 8192
+#define DEBUG
 
 int main(int an, char** av) {
   int ret_val = 0;
@@ -83,6 +84,8 @@ int main(int an, char** av) {
   int len_private;
   private_key_blob_message key_out;
   string output;
+
+  printf("GeneratePolicyKey\n\n");
 
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
 
@@ -118,9 +121,12 @@ int main(int an, char** av) {
   start_private = der_array_private;
   next_private = der_array_private;
   i2d_RSAPrivateKey(rsa_key, (byte**)&next_private);
+
+#ifdef DEBUG
   printf("der encoded private key (%d): ", len_private);
   PrintBytes(len_private, start_private);
   printf("\n");
+#endif
 
   key_out.set_key_type("RSA");
   key_out.set_key_name(FLAGS_key_name);

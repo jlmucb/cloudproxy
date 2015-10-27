@@ -1,12 +1,13 @@
-
 void test_paul(RSA* p_key) {
   int seed_size = 0x14;
-  byte seedbuf[] = {
+  byte seed_buf[] = {
+    e0bf4e1cb60b4cbb6f536b375a60db4f
   };
   string seed;
   seed.assign(seed_buf, seed_size);
   int name_size;
   byte name_buf[] = {
+    0004b994ef4d9315b4d0701680fdef8c9a76f8ae8383
   };
   string name;
   name.assign(name_buf, name_size);
@@ -21,16 +22,17 @@ void test_paul(RSA* p_key) {
   unmarshaled_credential.size = 0x14;
 
   byte credential_buf[] = {
+    b8194046303204953f82a87aae81c05f1c9f4443
   };
   memcpy(unmarshaled_credential.buffer, credential_buf, unmarshaled_credential.size);
   ChangeEndian16(&unmarshaled_credential.size, &marshaled_credential.size);
   memcpy(marshaled_credential.buffer, credential_buf, unmarshaled_credential.size);
 
-  printf("symKey should be: \n");
-  printf("encId should be: ");
-  printf("hmacKey should be: \n");
-  printf("outerHmac should be: \n");
-  printf("actBlob should be: \n");
+  printf("symKey should be: 6d1d2858 20df1eab 4254839b a13979b3\n");
+  printf("encId should be: 2e1aa996 3f555eda ca3e04b3 2368b4c1 911c0344 85e1\n");
+  printf("hmacKey should be: 1f44b597 9aafa320 90e6a5e9 f93489d5 ea84dd88\n");
+  printf("outerHmac should be: 44441767 90c9ebf1 3a3ff0dc d7a9f01d fb4597ee\n");
+  printf("actBlob should be: 00144444 176790c9 ebf13a3f f0dcd7a9 f01dfb45 97ee2e1a a9963f55 5edaca3e 04b32368 b4c1911c 034485e1\n");
 
   int size_in = 0;
   byte in_buf[4096];

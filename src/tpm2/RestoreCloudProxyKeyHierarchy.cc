@@ -83,6 +83,8 @@ int main(int an, char** av) {
   LocalTpm tpm;
   int ret_val = 0;
 
+  printf("RestoreCloudProxyKeyHierarchy\n\n");
+
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   if (!tpm.OpenTpm("/dev/tpm0")) {
     printf("Can't open tpm\n");
@@ -124,9 +126,13 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
+#ifdef DEBUG1
   printf("\ncontext_save_area: ");
   PrintBytes(context_data_size - 6, context_save_area + 6);
   printf("\n\n");
+#endif
+
   if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
                         &root_handle)) {
     printf("Root LoadContext failed\n");

@@ -264,12 +264,6 @@ int main(int an, char** av) {
          response.encidentity().size());
   current_size += response.encidentity().size();
 
-#ifdef DEBUG
-  printf("\nConstructed credBlob (%d): ", credentialBlob.size);
-  PrintBytes(credentialBlob.size, credentialBlob.credential);
-  printf("\n");
-#endif
- 
   // secret 
   unmarshaled_secret.size = response.secret().size();
   memcpy(unmarshaled_secret.secret, response.secret().data(),
@@ -333,8 +327,12 @@ int main(int an, char** av) {
 #endif
 
 #ifdef DEBUG
-  printf("\nunmarshaled secret: %d\n", unmarshaled_secret.size + sizeof(uint16_t));
+  printf("\nunmarshaled secret: %d\n",
+         (int) (unmarshaled_secret.size + sizeof(uint16_t)));
   PrintBytes(unmarshaled_secret.size + sizeof(uint16_t), (byte*)&unmarshaled_secret);
+  printf("\n");
+  printf("\nConstructed credBlob (%d): ", credentialBlob.size);
+  PrintBytes(credentialBlob.size, credentialBlob.credential);
   printf("\n");
 #endif
   if (!Tpm2_ActivateCredential(tpm, quote_handle, ekHandle, parentAuth, emptyAuth,

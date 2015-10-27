@@ -437,12 +437,15 @@ int main(int an, char** av) {
   // Protector_key is endorsement key
   protector_evp_key = X509_get_pubkey(endorsement_cert);
   protector_key = EVP_PKEY_get1_RSA(protector_evp_key);
+
+#ifdef DEBUG1
   printf("endorsement modulus: ");
   BN_print_fp(stdout, protector_key->n);
   printf("\n");
   printf("endorsement exponent: ");
   BN_print_fp(stdout, protector_key->e);
   printf("\n");
+#endif
 
   size_in = 0;
   memcpy(in_buf, seed, size_seed);

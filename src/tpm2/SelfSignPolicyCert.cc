@@ -71,6 +71,9 @@ void PrintOptions() {
 
 int main(int an, char** av) {
   int ret_val = 0;
+
+  printf("SelfSignPolicyCert\n\n");
+
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   if (FLAGS_signing_instructions_file == "") {
     printf("You must specify a signing instructions file \n");

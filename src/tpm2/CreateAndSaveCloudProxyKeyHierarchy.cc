@@ -82,10 +82,13 @@ DEFINE_string(pcr_file, "", "output-file-name");
 #endif
 
 #define MAX_SIZE_PARAMS 8192
+#define DEBUG
 
 int main(int an, char** av) {
   LocalTpm tpm;
   int ret_val = 0;
+
+  printf("CreateAndSaveCloudProxyKeyHierarchy\n\n");
 
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   if (!tpm.OpenTpm("/dev/tpm0")) {
@@ -128,7 +131,6 @@ int main(int an, char** av) {
   byte quote_out_private[MAX_SIZE_PARAMS];
 
   TPM_HANDLE nv_handle = 0;
-  // uint16_t size_context_save_area =  MAX_SIZE_PARAMS;
   byte context_save_area[MAX_SIZE_PARAMS];
   int context_data_size = MAX_SIZE_PARAMS;
 
@@ -237,11 +239,15 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+#ifdef DEBUG
   printf("Primary Save context worked, size is %d\n", context_data_size);
   printf("nv_handle: %08x\n", nv_handle);
   printf("Context save area (%d): ", context_data_size);
+#endif
+#ifdef DEBUG1
   PrintBytes(context_data_size, context_save_area);
   printf("\n");
+#endif
   if (!Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
     printf("Primary UndefinedSpace failed\n");
   }
@@ -253,7 +259,9 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+#ifdef DEBUG
   printf("Root writing %d bytes\n", context_data_size);
+#endif
   if (!Tpm2_WriteNv(tpm, nv_handle, authString, 
                     (uint16_t)context_data_size, context_save_area)){
     printf("Primary WriteNv failed\n");
@@ -270,8 +278,12 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
+#ifdef DEBUG
   printf("Seal Save context worked, size is %d\n", context_data_size);
   printf("nv_handle: %08x\n", nv_handle);
+#endif
+
   if (!Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
     printf("Seal UndefinedSpace failed\n");
   }
@@ -283,7 +295,9 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+#ifdef DEBUG
   printf("Seal writing %d bytes\n", context_data_size);
+#endif
   if (!Tpm2_WriteNv(tpm, nv_handle, authString, 
                     (uint16_t)context_data_size, context_save_area)){
     printf("Seal WriteNv failed\n");
@@ -300,8 +314,12 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
+#ifdef DEBUG1
   printf("Quote SaveContext worked, size is %d\n", context_data_size);
   printf("nv_handle: %08x\n", nv_handle);
+#endif
+
   if (!Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
     printf("Seal UndefinedSpace failed\n");
   }

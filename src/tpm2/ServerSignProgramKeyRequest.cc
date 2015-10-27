@@ -327,6 +327,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
 #ifdef DEBUG
   printf("\nquoted_hash: ");
   PrintBytes(SizeHash(hash_alg_id), quoted_hash);
@@ -339,6 +340,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
 #ifdef DEBUG
   printf("\nmodulus size: %d\n",
       (int)request.cred().public_key().rsa_key().modulus().size());
@@ -367,6 +369,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
 #ifdef DEBUG
   printf("\nactive signature size: %d\n", size_active_out);
 #endif
@@ -382,6 +385,7 @@ int main(int an, char** av) {
     goto done;
   }
 #endif
+
   // Generate encryption key for signed program cert
   // This is the "credential."
   // TODO: make this 32 for HMACing later
@@ -399,6 +403,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
 #ifdef DEBUG
   printf("\ncredential secret: ");
   PrintBytes(16, unmarshaled_credential.buffer);
@@ -475,8 +480,7 @@ int main(int an, char** av) {
   // We need to encrypt the entire marshaled_credential
   size_encIdentity = MAX_SIZE_PARAMS;
   if (!AesCFBEncrypt(symKey, unmarshaled_credential.size + sizeof(uint16_t),
-                     (byte*)&marshaled_credential,
-                     16, zero_iv,
+                     (byte*)&marshaled_credential, 16, zero_iv,
                      &size_encIdentity, encIdentity)) {
     printf("Can't AesCFBEncrypt\n");
     ret_val = 1;

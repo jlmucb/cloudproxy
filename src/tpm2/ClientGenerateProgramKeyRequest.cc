@@ -82,7 +82,7 @@ DEFINE_int64(program_key_exponent, 0x010001ULL, "program key exponent");
 DEFINE_int32(slot_primary, 1, "slot number");
 DEFINE_int32(slot_seal, 2, "seal slot number");
 DEFINE_int32(slot_quote, 3, "quote slot number");
-DEFINE_string(hash_active_alg, "sha256", "sha1|sha256");
+DEFINE_string(hash_alg, "sha1", "sha1|sha256");
 DEFINE_string(program_key_file, "", "output-file-name");
 DEFINE_string(program_cert_request_file, "", "output-file-name");
 
@@ -149,6 +149,7 @@ int main(int an, char** av) {
   string* mod = nullptr;
   uint64_t expIn;
   uint64_t expOut;
+  SHA_CTX sha1;
   SHA256_CTX sha256;
   x509_cert_request_parameters_message cert_parameters;
   string x509_request_key_blob;
@@ -172,6 +173,16 @@ int main(int an, char** av) {
   int sig_size = MAX_SIZE_PARAMS;
   byte sig[MAX_SIZE_PARAMS];
 
+  TPM_ALG_ID hash_alg_id;
+  if (FLAGS_hash_alg == "sha1") {
+    hash_alg_id = TPM_ALG_SHA1;
+  } else if (FLAGS_hash_alg == "sha256") {
+    hash_alg_id = TPM_ALG_SHA256;
+  } else {
+    printf("Unknown hash algorithm\n");
+    return 1;
+  }
+
   string output;
 
   // Create endorsement key
@@ -184,9 +195,9 @@ int main(int an, char** av) {
   primary_flags.decrypt = 1;
   primary_flags.restricted = 1;
 
-  InitSinglePcrSelection(7, TPM_ALG_SHA256, pcrSelect);
+  InitSinglePcrSelection(7, hash_alg_id, pcrSelect);
   if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect,
-                         TPM_ALG_RSA, TPM_ALG_SHA256, primary_flags,
+                         TPM_ALG_RSA, hash_alg_id, primary_flags,
                          TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
                          2048, 0x010001, &ekHandle, &ek_pub_out)) {
     printf("CreatePrimary succeeded parent: %08x\n", ekHandle);
@@ -228,7 +239,7 @@ int main(int an, char** av) {
 
   // restore hierarchy
   // TODO(jlm): should get pcr list from parameters
-  InitSinglePcrSelection(7, TPM_ALG_SHA1, pcrSelect);
+  InitSinglePcrSelection(7, hash_alg_id, pcrSelect);
 
   // root handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);
@@ -400,10 +411,16 @@ int main(int an, char** av) {
 #endif
 
   // hash x509 request
-  SHA256_Init(&sha256);
-  SHA256_Update(&sha256, (byte*)der_cert_buf, der_cert_size);
-  SHA256_Final(quoted_hash, &sha256);
-  to_quote.size = 32;
+  if (hash_alg_id == TPM_ALG_SHA1) {
+    SHA_Init(&sha1);
+    SHA_Update(&sha1, (byte*)der_cert_buf, der_cert_size);
+    SHA_Final(quoted_hash, &sha1);
+  } else {
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, (byte*)der_cert_buf, der_cert_size);
+    SHA256_Final(quoted_hash, &sha256);
+  }
+  to_quote.size = SizeHash(hash_alg_id);
   memset(to_quote.buffer, 0, to_quote.size);
   memcpy(to_quote.buffer, quoted_hash, to_quote.size);
 #ifdef DEBUG
@@ -412,7 +429,7 @@ int main(int an, char** av) {
 #endif
   if (!Tpm2_Quote(tpm, quote_handle, parentAuth,
                   to_quote.size, to_quote.buffer,
-                  scheme, pcrSelect, TPM_ALG_RSA, TPM_ALG_SHA256,
+                  scheme, pcrSelect, TPM_ALG_RSA, hash_alg_id,
                   &quote_size, quoted, &sig_size, sig)) {
     printf("Quote failed\n");
     ret_val = 1;

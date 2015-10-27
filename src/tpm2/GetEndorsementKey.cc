@@ -48,6 +48,7 @@ using std::string;
 
 DEFINE_string(endorsement_info_file, "", "output file");
 DEFINE_string(machine_identifier, "", "text to identify endorsement");
+DEFINE_string(hash_alg, "sha1", "hash");
 
 #ifndef GFLAGS_NS
 #define GFLAGS_NS gflags
@@ -75,6 +76,16 @@ int main(int an, char** av) {
   endorsement_key_message message;
   string output;
 
+  TPM_ALG_ID hash_alg_id;
+  if (FLAGS_hash_alg == "sha1") {
+    hash_alg_id = TPM_ALG_SHA1;
+  } else if (FLAGS_hash_alg == "sha256") {
+    hash_alg_id = TPM_ALG_SHA256;
+  } else {
+    printf("Unknown hash algorithm\n");
+    return 1;
+  }
+
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   if (FLAGS_endorsement_info_file == "") {
     printf("You must specify an endorsement output file\n");
@@ -94,9 +105,9 @@ int main(int an, char** av) {
   primary_flags.decrypt = 1;
   primary_flags.restricted = 1;
 
-  InitSinglePcrSelection(-1, TPM_ALG_SHA256, pcrSelect);
+  InitSinglePcrSelection(7, hash_alg_id, pcrSelect);
   if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect,
-                         TPM_ALG_RSA, TPM_ALG_SHA256, primary_flags,
+                         TPM_ALG_RSA, hash_alg_id, primary_flags,
                          TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
                          2048, 0x010001, &ekHandle, &pub_out)) {
     printf("CreatePrimary succeeded parent: %08x\n", ekHandle);

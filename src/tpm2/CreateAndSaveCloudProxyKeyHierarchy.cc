@@ -71,6 +71,7 @@ DEFINE_int32(slot_quote, 3, "");
 DEFINE_string(seal_value, "", "test seal value");
 DEFINE_string(quote_value, "", "test quote value");
 DEFINE_string(pcr_hash_alg_name, "", "hash alg (sha1 or sha256");
+DEFINE_string(hash_alg, "sha1", "hash alg (sha1 or sha256");
 DEFINE_string(pcr_list, "", "comma separated pcr list");
 DEFINE_string(seal_output_file, "", "output-file-name");
 DEFINE_string(quote_output_file, "", "output-file-name");
@@ -132,7 +133,18 @@ int main(int an, char** av) {
   int context_data_size = MAX_SIZE_PARAMS;
 
   TPM_HANDLE sealed_load_handle = 0;
-  InitSinglePcrSelection(7, TPM_ALG_SHA1, pcrSelect);
+
+  TPM_ALG_ID hash_alg_id;
+  if (FLAGS_hash_alg == "sha1") {
+    hash_alg_id = TPM_ALG_SHA1;
+  } else if (FLAGS_hash_alg == "sha256") {
+    hash_alg_id = TPM_ALG_SHA256;
+  } else {
+    printf("Unknown hash algorithm\n");
+    return 1;
+  }
+
+  InitSinglePcrSelection(7, hash_alg_id, pcrSelect);
 
   // root of hierarchy 
   *(uint32_t*)(&root_flags) = 0;
@@ -143,7 +155,7 @@ int main(int an, char** av) {
   root_flags.decrypt = 1;
   root_flags.restricted = 1;
   if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, authString, pcrSelect,
-                         TPM_ALG_RSA, TPM_ALG_SHA256, root_flags,
+                         TPM_ALG_RSA, hash_alg_id, root_flags,
                          TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
                          2048, 0x010001, &root_handle, &root_pub_out)) {
     printf("CreatePrimary root succeeded\n");
@@ -161,7 +173,7 @@ int main(int an, char** av) {
   seal_create_flags.sign = 1;
 
   if (Tpm2_CreateKey(tpm, root_handle, parentAuth, authString, pcrSelect,
-                     TPM_ALG_RSA, TPM_ALG_SHA256, seal_create_flags, TPM_ALG_NULL,
+                     TPM_ALG_RSA, hash_alg_id, seal_create_flags, TPM_ALG_NULL,
                      (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB, TPM_ALG_RSASSA,
                      2048, 0x010001, &seal_size_public, seal_out_public,
                      &seal_size_private, seal_out_private,
@@ -193,7 +205,7 @@ int main(int an, char** av) {
   quote_create_flags.restricted = 1;
 
   if (Tpm2_CreateKey(tpm, root_handle, parentAuth, authString, pcrSelect,
-                     TPM_ALG_RSA, TPM_ALG_SHA256, quote_create_flags, TPM_ALG_NULL,
+                     TPM_ALG_RSA, hash_alg_id, quote_create_flags, TPM_ALG_NULL,
                      (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB, TPM_ALG_RSASSA,
                      1024, 0x010001,
                      &quote_size_public, quote_out_public,
@@ -319,7 +331,7 @@ int main(int an, char** av) {
 
   if (Tpm2_CreateSealed(tpm, root_handle, policy_digest.size, policy_digest.buffer,
                         parentAuth, secret.size, secret.buffer, pcrSelect,
-                        TPM_ALG_SHA1, seal_create_flags, TPM_ALG_NULL,
+                        hash_alg_id, seal_create_flags, TPM_ALG_NULL,
                         (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB, TPM_ALG_RSASSA,
                         1024, 0x010001,
                         &sealed_size_public, sealed_out_public,

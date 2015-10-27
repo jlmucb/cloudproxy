@@ -72,6 +72,7 @@ DEFINE_int32(slot_seal, 2, "slot-number");
 DEFINE_int32(slot_quote, 3, "slot-number");
 DEFINE_string(program_key_type, "RSA", "alg name");
 DEFINE_string(program_key_cert_file, "", "output-file-name");
+DEFINE_string(hash_alg, "sha1", "hash algorithm");
 
 #ifndef GFLAGS_NS
 #define GFLAGS_NS gflags
@@ -126,6 +127,16 @@ int main(int an, char** av) {
   int size_cert_out = MAX_SIZE_PARAMS;
   byte cert_out_buf[MAX_SIZE_PARAMS];
 
+  TPM_ALG_ID hash_alg_id;
+  if (FLAGS_hash_alg == "sha1") {
+    hash_alg_id = TPM_ALG_SHA1;
+  } else if (FLAGS_hash_alg == "sha256") {
+    hash_alg_id = TPM_ALG_SHA256;
+  } else {
+    printf("Unknown hash algorithm\n");
+    return 1;
+  }
+
   string input;
   string output;
 
@@ -149,7 +160,6 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-  InitSinglePcrSelection(7, TPM_ALG_SHA256, pcrSelect);
 
   // Create endorsement key
   *(uint32_t*)(&primary_flags) = 0;
@@ -161,9 +171,8 @@ int main(int an, char** av) {
   primary_flags.decrypt = 1;
   primary_flags.restricted = 1;
 
-  InitSinglePcrSelection(-1, TPM_ALG_SHA1, pcrSelect);
   if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect,
-                         TPM_ALG_RSA, TPM_ALG_SHA256, primary_flags,
+                         TPM_ALG_RSA, hash_alg_id, primary_flags,
                          TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
                          2048, 0x010001, &ekHandle, &ek_pub_out)) {
     printf("CreatePrimary succeeded parent: %08x\n", ekHandle);
@@ -175,7 +184,7 @@ int main(int an, char** av) {
 
   // restore context
   // TODO(jlm): should get pcr list from parameters
-  InitSinglePcrSelection(7, TPM_ALG_SHA1, pcrSelect);
+  InitSinglePcrSelection(7, hash_alg_id, pcrSelect);
 
   // root handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);
@@ -274,6 +283,9 @@ int main(int an, char** av) {
   memcpy(secret.secret, response.secret().data(), secret.size);
 
 #ifdef DEBUG
+  TPM2B_DIGEST original_credential;
+  TPM2B_ID_OBJECT credBlob;
+  TPM2B_ENCRYPTED_SECRET active_secret;
 {
   uint16_t quote_pub_blob_size = MAX_SIZE_PARAMS;
   byte quote_pub_blob[MAX_SIZE_PARAMS];
@@ -290,10 +302,6 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-
-  TPM2B_DIGEST original_credential;
-  TPM2B_ID_OBJECT credBlob;
-  TPM2B_ENCRYPTED_SECRET active_secret;
   
   original_credential.size = 16;
   memset(original_credential.buffer, 0, original_credential.size);

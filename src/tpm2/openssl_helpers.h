@@ -73,5 +73,6 @@ bool AesCFBEncrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
                    int* out_size, byte* out);
 bool AesCFBDecrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
                    int* out_size, byte* out);
+int SizeHash(TPM_ALG_ID hash);
 #endif
 

@@ -71,6 +71,7 @@ DEFINE_string(pcr_list, "", "comma separated pcr list");
 DEFINE_string(seal_output_file, "", "output-file-name");
 DEFINE_string(quote_output_file, "", "output-file-name");
 DEFINE_string(pcr_file, "", "output-file-name");
+DEFINE_string(hash_alg, "sha1", "hash alg");
 
 #ifndef GFLAGS_NS
 #define GFLAGS_NS gflags
@@ -88,6 +89,17 @@ int main(int an, char** av) {
     return 1;
   }
 
+  TPM_ALG_ID hash_alg_id;
+  if (FLAGS_hash_alg == "sha1") {
+    hash_alg_id = TPM_ALG_SHA1;
+  } else if (FLAGS_hash_alg == "sha256") {
+    hash_alg_id = TPM_ALG_SHA256;
+  } else {
+    printf("Unknown hash algorithm\n");
+    return 1;
+  }
+
+
   string authString("01020304");
   string parentAuth("01020304");
   string emptyAuth;
@@ -101,7 +113,7 @@ int main(int an, char** av) {
   byte context_save_area[MAX_SIZE_PARAMS];
   int context_data_size = 930;
 
-  InitSinglePcrSelection(7, TPM_ALG_SHA1, pcrSelect);
+  InitSinglePcrSelection(7, hash_alg_id, pcrSelect);
 
   // root handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);

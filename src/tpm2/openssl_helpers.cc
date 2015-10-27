@@ -518,3 +518,14 @@ bool AesCFBDecrypt(byte* key, int in_size, byte* in, int iv_size, byte* iv,
   *out_size = size;
   return true;
 }
+
+int SizeHash(TPM_ALG_ID hash) {
+  switch(hash) {
+  case TPM_ALG_SHA1:
+    return 20;
+  case TPM_ALG_SHA256:
+    return 32;
+  default:
+    return -1;
+  }
+}

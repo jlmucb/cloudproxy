@@ -34,11 +34,11 @@
 --slot_primary=1 \
 --slot_seal=2 \
 --slot_quote=3 \
---pcr_hash_alg_name=sha256
+--pcr_hash_alg_name=sha1
 
 ./RestoreCloudProxyKeyHierarchy.exe \
 --slot_primary=1 --slot_seal=2 \
- --slot_quote=3  --pcr_hash_alg_name=sha256
+ --slot_quote=3  --pcr_hash_alg_name=sha1
 
 ./ClientGenerateProgramKeyRequest.exe \
 --signed_endorsement_cert_file=endorsement_cert \

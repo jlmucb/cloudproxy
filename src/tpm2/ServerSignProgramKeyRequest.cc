@@ -12,6 +12,7 @@
 #include <openssl_helpers.h>
 #include <openssl/rand.h>
 #include <openssl/hmac.h>
+#include <openssl/sha.h>
 
 #include <tpm20.h>
 #include <tpm2_lib.h>
@@ -67,11 +68,11 @@ void PrintOptions() {
   printf("Calling sequence: %s", CALLING_SEQUENCE);
 }
 
-
 DEFINE_string(signed_endorsement_cert_file, "", "input-file-name");
 DEFINE_string(signing_instructions_file, "", "input-file-name");
 DEFINE_string(program_cert_request_file, "", "input-file-name");
 // TODO(jlm): policy file should contain list of approved pcrs
+DEFINE_string(hash_alg, "sha1", "hash-function");
 DEFINE_string(policy_file, "", "input-file-name");
 DEFINE_string(policy_identifier, "cloudproxy", "policy domain name");
 DEFINE_string(cloudproxy_key_file, "", "input-file-name");
@@ -114,7 +115,16 @@ int main(int an, char** av) {
   TPM2B_NAME marshaled_name;
 
   byte symKey[MAX_SIZE_PARAMS];
-  int size_hmacKey = 32;
+  TPM_ALG_ID hash_alg_id;
+  if (FLAGS_hash_alg == "sha1") {
+    hash_alg_id = TPM_ALG_SHA1;
+  } else if (FLAGS_hash_alg == "sha256") {
+    hash_alg_id = TPM_ALG_SHA256;
+  } else {
+    printf("Unknown hash algorithm\n");
+    return 1;
+  }
+  int size_hmacKey = SizeHash(hash_alg_id);
   byte hmacKey[MAX_SIZE_PARAMS];
 
   string key;
@@ -163,6 +173,7 @@ int main(int an, char** av) {
   TPM2B_DIGEST marshaled_integrityHmac;
 
   uint16_t size_in = 0;
+  SHA_CTX sha1;
   SHA256_CTX sha256;
   RSA* signing_key = nullptr;
   RSA* active_key = RSA_new();
@@ -301,12 +312,25 @@ int main(int an, char** av) {
 #endif
 
   // Hash request
-  SHA256_Init(&sha256);
-  SHA256_Update(&sha256, (byte*)request.x509_program_key_request().data(),
-                request.x509_program_key_request().size());
-  SHA256_Final(quoted_hash, &sha256);
+  if (hash_alg_id == TPM_ALG_SHA1) {
+    SHA_Init(&sha1);
+    SHA_Update(&sha1, (byte*)request.x509_program_key_request().data(),
+                  request.x509_program_key_request().size());
+    SHA_Final(quoted_hash, &sha1);
+  } else if (hash_alg_id == TPM_ALG_SHA256) {
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, (byte*)request.x509_program_key_request().data(),
+                  request.x509_program_key_request().size());
+    SHA256_Final(quoted_hash, &sha256);
+  } else {
+    printf("Unknown hash alg\n");
+    ret_val = 1;
+    goto done;
+  }
 #ifdef DEBUG
-  printf("\nquoted_hash: "); PrintBytes(32, quoted_hash); printf("\n");
+  printf("\nquoted_hash: ");
+  PrintBytes(SizeHash(hash_alg_id), quoted_hash);
+  printf("\n");
 #endif
 
   // "Encrypt" with quote key
@@ -408,7 +432,7 @@ int main(int an, char** av) {
   // Protector_key is endorsement key
   protector_evp_key = X509_get_pubkey(endorsement_cert);
   protector_key = EVP_PKEY_get1_RSA(protector_evp_key);
-  
+
   size_in = 0;
   memcpy(in_buf, seed, size_seed);
   size_in += size_seed;
@@ -434,7 +458,7 @@ int main(int an, char** av) {
   key.assign((const char*)seed, size_seed);
   contextV.clear();
   name.assign(request.cred().name().data(), request.cred().name().size());
-  if (!KDFa(TPM_ALG_SHA256, key, label, name, contextV, 128, 32, symKey)) {
+  if (!KDFa(hash_alg_id, key, label, name, contextV, 128, 32, symKey)) {
     printf("Can't KDFa symKey\n");
     ret_val = 1;
     goto done;
@@ -476,7 +500,8 @@ int main(int an, char** av) {
 
   // hmacKey= KDFa(hash, seed, "INTEGRITY", nullptr, nullptr, 8*hashsize);
   label = "INTEGRITY";
-  if (!KDFa(TPM_ALG_SHA256, key, label, contextV, contextV, 256, 32, hmacKey)) {
+  if (!KDFa(hash_alg_id, key, label, contextV,
+            contextV, 8 * SizeHash(hash_alg_id), 32, hmacKey)) {
     printf("Can't KDFa hmacKey\n");
     ret_val = 1;
     goto done;
@@ -488,9 +513,12 @@ int main(int an, char** av) {
   memcpy(unmarshaled_name.name, (byte*)name.data(), unmarshaled_name.size);
   memcpy(marshaled_name.name, (byte*)name.data(), unmarshaled_name.size);
 
-  size_hmacKey = 32;
   HMAC_CTX_init(&hctx);
-  HMAC_Init_ex(&hctx, hmacKey, size_hmacKey, EVP_sha256(), nullptr);
+  if (hash_alg_id == TPM_ALG_SHA1) {
+    HMAC_Init_ex(&hctx, hmacKey, size_hmacKey, EVP_sha1(), nullptr);
+  } else {
+    HMAC_Init_ex(&hctx, hmacKey, size_hmacKey, EVP_sha256(), nullptr);
+  }
   HMAC_Update(&hctx, (const byte*)encIdentity, size_encIdentity);
   HMAC_Update(&hctx, (const byte*)&marshaled_name.name, name.size());
   HMAC_Final(&hctx, outerHmac, (uint32_t*)&size_hmacKey);

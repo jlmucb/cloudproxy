@@ -84,6 +84,8 @@ int main(int an, char** av) {
   LocalTpm tpm;
   int ret_val = 0;
 
+  printf("ClientGetProgramKeyCert\n\n");
+
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   if (!tpm.OpenTpm("/dev/tpm0")) {
     printf("Can't open tpm\n");
@@ -262,7 +264,7 @@ int main(int an, char** av) {
   current_size += response.encidentity().size();
 
 #ifdef DEBUG
-  printf("Constructed credBlob (%d): ", credentialBlob.size);
+  printf("\nConstructed credBlob (%d): ", credentialBlob.size);
   PrintBytes(credentialBlob.size, credentialBlob.credential);
   printf("\n");
 #endif
@@ -300,7 +302,7 @@ int main(int an, char** av) {
                           &credBlob, &active_secret)) {
     printf("MakeCredential failed\n");
   } else {
-    printf("From MakeCred\n");
+    printf("\nFrom MakeCred\n");
     printf("original cred: ");
     PrintBytes(original_credential.size, original_credential.buffer);
     printf("\n");
@@ -337,19 +339,13 @@ int main(int an, char** av) {
   }
 
 #ifdef DEBUG
-  printf("ActivateCredential succeeded\n");
+  printf("\nActivateCredential succeeded\n");
   printf("Recovered credential (%d): ", recovered_credential.size);
   PrintBytes(recovered_credential.size, recovered_credential.buffer);
   printf("\n");
 #endif
 
   // Decrypt cert, credential is key
-  // response.request_id();
-  // response.program_name();
-  // response.enc_alg();
-  // response.enc_mode();
-  // response.encrypted_cert();
-
   if (response.encrypted_cert().size() > MAX_SIZE_PARAMS) {
     printf("encrypted cert too large\n");
     ret_val = 1;

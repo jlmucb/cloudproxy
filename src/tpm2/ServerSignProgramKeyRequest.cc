@@ -87,6 +87,8 @@ DEFINE_string(program_response_file, "", "output-file-name");
 int main(int an, char** av) {
   int ret_val = 0;
 
+  printf("ServerSignProgramKeyRequest\n\n");
+
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
 
   int size_cert_request = MAX_SIZE_PARAMS;

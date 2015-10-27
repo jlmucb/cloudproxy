@@ -97,6 +97,8 @@ int main(int an, char** av) {
   LocalTpm tpm;
   int ret_val = 0;
 
+  printf("ClientGenerateProgramKeyRequest\n\n");
+
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   if (!tpm.OpenTpm("/dev/tpm0")) {
     printf("Can't open tpm\n");
@@ -202,7 +204,7 @@ int main(int an, char** av) {
     goto done;
   }
 #ifdef DEBUG
-  printf("ek Public blob: ");
+  printf("\nek Public blob: ");
   PrintBytes(ek_pub_blob_size, ek_pub_blob);
   printf("\n");
   printf("ek Name: ");
@@ -237,7 +239,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-#ifdef DEBUG
+#ifdef DEBUG1
   printf("\ncontext_save_area: ");
   PrintBytes(context_data_size - 6, context_save_area + 6);
 #endif
@@ -258,7 +260,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-#ifdef DEBUG
+#ifdef DEBUG1
   printf("context_save_area: ");
   PrintBytes(context_data_size - 6, context_save_area + 6);
   printf("\n");
@@ -279,7 +281,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
-#ifdef DEBUG
+#ifdef DEBUG1
   printf("context_save_area: ");
   PrintBytes(context_data_size - 6, context_save_area + 6);
   printf("\n");
@@ -320,9 +322,9 @@ int main(int an, char** av) {
   program_start_private = program_der_array_private;
   program_next_private = program_der_array_private;
   i2d_RSAPrivateKey(program_rsa_key, (byte**)&program_next_private);
-  printf("der encoded private key (%d): ", program_len_private);
+  printf("\nder encoded private key (%d): ", program_len_private);
   PrintBytes(program_len_private, program_start_private);
-  printf("\n");
+  printf("\n\n");
 
   program_key_out.set_key_type("RSA");
   program_key_out.set_key_name(FLAGS_program_key_name);
@@ -386,7 +388,7 @@ int main(int an, char** av) {
     goto done;
   }
 #ifdef DEBUG
-  printf("Quote Public blob: ");
+  printf("\nQuote Public blob: ");
   PrintBytes(quote_pub_blob_size, quote_pub_blob);
   printf("\n");
   printf("Quote Name: ");
@@ -405,7 +407,7 @@ int main(int an, char** av) {
   memset(to_quote.buffer, 0, to_quote.size);
   memcpy(to_quote.buffer, quoted_hash, to_quote.size);
 #ifdef DEBUG
-  printf("quoted_hash: "); PrintBytes(to_quote.size, to_quote.buffer);
+  printf("\nquoted_hash: "); PrintBytes(to_quote.size, to_quote.buffer);
   printf("\n");
 #endif
   if (!Tpm2_Quote(tpm, quote_handle, parentAuth,
@@ -417,12 +419,12 @@ int main(int an, char** av) {
     goto done;
   }
 #ifdef DEBUG
-  printf("Quote succeeded, quoted (%d): ", quote_size);
+  printf("\nQuote succeeded, quoted (%d): ", quote_size);
   PrintBytes(quote_size, quoted);
   printf("\n");
   printf("Sig (%d): ", sig_size);
   PrintBytes(sig_size, sig);
-  printf("\n");
+  printf("\n\n");
 #endif
 
   // Quote key information
@@ -486,7 +488,7 @@ int main(int an, char** av) {
     goto done;
   }
 #ifdef DEBUG
-  printf("%s\n", request.DebugString().c_str());
+  printf("\nrequest:\n%s\n", request.DebugString().c_str());
 #endif
 
 done:

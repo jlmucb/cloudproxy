@@ -108,9 +108,8 @@ int main(int an, char** av) {
   TPM_HANDLE seal_handle = 0;
   TPM_HANDLE quote_handle = 0;
 
-  TPM2B_DIGEST credential;
   TPM2B_ID_OBJECT credentialBlob;
-  TPM2B_ENCRYPTED_SECRET secret;
+  TPM2B_ENCRYPTED_SECRET unmarshaled_secret;
 
   TPM2B_DIGEST recovered_credential;
 
@@ -228,10 +227,6 @@ int main(int an, char** av) {
   printf("\n\n");
 #endif
 
-  memset((void*)&credential, 0, sizeof(TPM2B_DIGEST));
-  memset((void*)&secret, 0, sizeof(TPM2B_ENCRYPTED_SECRET));
-  memset((void*)&credentialBlob, 0, sizeof(TPM2B_ID_OBJECT));
-
   // Get response
   if (!ReadFileIntoBlock(FLAGS_program_key_response_file, &size_response,
                          response_buf)) {
@@ -255,9 +250,6 @@ int main(int an, char** av) {
   PrintBytes(response.encidentity().size(),
              (byte*)response.encidentity().data());
   printf("\n");
-  printf("\nsecret: %d\n", (int)response.secret().size());
-  PrintBytes(response.secret().size(), (byte*)response.secret().data());
-  printf("\n");
 #endif
 
   // Fill credential blob and secret
@@ -279,8 +271,9 @@ int main(int an, char** av) {
 #endif
  
   // secret 
-  secret.size = response.secret().size();
-  memcpy(secret.secret, response.secret().data(), secret.size);
+  unmarshaled_secret.size = response.secret().size();
+  memcpy(unmarshaled_secret.secret, response.secret().data(),
+         unmarshaled_secret.size);
 
 #ifdef DEBUG
   TPM2B_DIGEST original_credential;
@@ -339,8 +332,14 @@ int main(int an, char** av) {
 }
 #endif
 
+#ifdef DEBUG
+  printf("\nunmarshaled secret: %d\n", unmarshaled_secret.size + sizeof(uint16_t));
+  PrintBytes(unmarshaled_secret.size + sizeof(uint16_t), (byte*)&unmarshaled_secret);
+  printf("\n");
+#endif
   if (!Tpm2_ActivateCredential(tpm, quote_handle, ekHandle, parentAuth, emptyAuth,
-                               credentialBlob, secret, &recovered_credential)) {
+                               credentialBlob, unmarshaled_secret,
+                               &recovered_credential)) {
     printf("ActivateCredential failed\n");
     ret_val = 1;
     goto done;

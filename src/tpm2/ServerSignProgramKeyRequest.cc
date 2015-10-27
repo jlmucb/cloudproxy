@@ -437,6 +437,12 @@ int main(int an, char** av) {
   // Protector_key is endorsement key
   protector_evp_key = X509_get_pubkey(endorsement_cert);
   protector_key = EVP_PKEY_get1_RSA(protector_evp_key);
+  printf("endorsement modulus: ");
+  BN_print_fp(stdout, protector_key->n);
+  printf("\n");
+  printf("endorsement exponent: ");
+  BN_print_fp(stdout, protector_key->e);
+  printf("\n");
 
   size_in = 0;
   memcpy(in_buf, seed, size_seed);
@@ -449,7 +455,8 @@ int main(int an, char** av) {
                               encrypted_secret, protector_key,
                               RSA_PKCS1_OAEP_PADDING);
 #ifdef DEBUG
-  printf("\nencrypted_secret_size: %d\n", encrypted_secret_size);
+  printf("\nprepended: ");
+  PrintBytes(size_in, in_buf); printf("\n");
   printf("Encrypted secret: ");
   PrintBytes(encrypted_secret_size, encrypted_secret); printf("\n");
   response.set_secret(encrypted_secret, encrypted_secret_size);

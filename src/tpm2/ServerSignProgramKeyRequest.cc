@@ -106,7 +106,7 @@ int main(int an, char** av) {
 
   X509_REQ* req = nullptr;
 
-  int size_seed = 16;
+  int size_seed = 20;
   byte seed[32];
 
   TPM2B_DIGEST unmarshaled_credential;
@@ -438,36 +438,34 @@ int main(int an, char** av) {
   protector_evp_key = X509_get_pubkey(endorsement_cert);
   protector_key = EVP_PKEY_get1_RSA(protector_evp_key);
 
-#ifdef DEBUG1
-  printf("endorsement modulus: ");
-  BN_print_fp(stdout, protector_key->n);
-  printf("\n");
-  printf("endorsement exponent: ");
-  BN_print_fp(stdout, protector_key->e);
-  printf("\n");
-  printf("seed_size: %d\n", seed_size);
-#endif
-
   memset(in_buf, 0, 512);
+  memset(encrypted_secret, 0, 512);
   size_in = 0;
   memcpy(in_buf, seed, size_seed);
   size_in += size_seed;
   memcpy(&in_buf[size_in], (byte*)"IDENTITY", strlen("IDENTITY") + 1);
   size_in += strlen("IDENTITY") + 1;
 
+#ifdef DEBUG
+  printf("Buffer to encrypt: ");
+  PrintBytes(size_in, in_buf);
+  printf("\n");
+#endif
+
   // Secret= E(protector_key, seed || "IDENTITY")
   encrypted_secret_size = RSA_public_encrypt(size_in, in_buf, 
                               encrypted_secret, protector_key,
                               RSA_PKCS1_OAEP_PADDING);
+  response.set_secret(encrypted_secret, encrypted_secret_size);
 #ifdef DEBUG
-  printf("\nEndorsement public: ");
+  printf("\nEndorsement modulus: ");
   BN_print_fp(stdout, protector_key->n);
   printf("\n");
-  printf("\nprepended: ");
-  PrintBytes(size_in, in_buf); printf("\n");
-  printf("Encrypted secret (%d): ", encrypted_secret_size);
+  printf("endorsement exponent: ");
+  BN_print_fp(stdout, protector_key->e);
+  printf("\n");
+  printf("\nEncrypted secret (%d): ", encrypted_secret_size);
   PrintBytes(encrypted_secret_size, encrypted_secret); printf("\n");
-  response.set_secret(encrypted_secret, encrypted_secret_size);
   printf("\nname: "); 
   PrintBytes(request.cred().name().size(),
              (byte*)request.cred().name().data()); printf("\n");

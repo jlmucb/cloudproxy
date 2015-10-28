@@ -340,8 +340,10 @@ int main(int an, char** av) {
   PrintBytes(credentialBlob.size, credentialBlob.credential);
   printf("\n");
 #endif
-  if (!Tpm2_ActivateCredential(tpm, quote_handle, ekHandle, parentAuth, emptyAuth,
-                               credentialBlob, unmarshaled_secret,
+  if (!Tpm2_ActivateCredential(tpm, quote_handle, ekHandle,
+                               parentAuth, emptyAuth,
+                               credentialBlob,
+                               unmarshaled_secret,
                                &recovered_credential)) {
     printf("ActivateCredential failed\n");
     ret_val = 1;

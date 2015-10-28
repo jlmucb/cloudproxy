@@ -250,6 +250,10 @@ int main(int an, char** av) {
   PrintBytes(response.encidentity().size(),
              (byte*)response.encidentity().data());
   printf("\n");
+  printf("secret(%d): ", (int)response.secret().size());
+  PrintBytes(response.secret().size(),
+             (byte*)response.secret().data());
+  printf("\n");
 #endif
 
   // Fill credential blob and secret
@@ -329,7 +333,8 @@ int main(int an, char** av) {
 #ifdef DEBUG
   printf("\nunmarshaled secret: %d\n",
          (int) (unmarshaled_secret.size + sizeof(uint16_t)));
-  PrintBytes(unmarshaled_secret.size + sizeof(uint16_t), (byte*)&unmarshaled_secret);
+  PrintBytes(unmarshaled_secret.size, 
+             (byte*)&unmarshaled_secret.secret);
   printf("\n");
   printf("\nConstructed credBlob (%d): ", credentialBlob.size);
   PrintBytes(credentialBlob.size, credentialBlob.credential);

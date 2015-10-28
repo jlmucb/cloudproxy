@@ -82,8 +82,6 @@ DEFINE_string(program_response_file, "", "output-file-name");
 #define GFLAGS_NS gflags
 #endif
 
-#include "extraTest2.cc"
-
 #define MAX_SIZE_PARAMS 8192
 #define DEBUG
 
@@ -447,8 +445,10 @@ int main(int an, char** av) {
   printf("endorsement exponent: ");
   BN_print_fp(stdout, protector_key->e);
   printf("\n");
+  printf("seed_size: %d\n", seed_size);
 #endif
 
+  memset(in_buf, 0, 512);
   size_in = 0;
   memcpy(in_buf, seed, size_seed);
   size_in += size_seed;
@@ -465,7 +465,7 @@ int main(int an, char** av) {
   printf("\n");
   printf("\nprepended: ");
   PrintBytes(size_in, in_buf); printf("\n");
-  printf("Encrypted secret: ");
+  printf("Encrypted secret (%d): ", encrypted_secret_size);
   PrintBytes(encrypted_secret_size, encrypted_secret); printf("\n");
   response.set_secret(encrypted_secret, encrypted_secret_size);
   printf("\nname: "); 

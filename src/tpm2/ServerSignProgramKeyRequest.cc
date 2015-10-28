@@ -99,6 +99,8 @@ int main(int an, char** av) {
 #ifdef DEBUG
   int test_size = MAX_SIZE_PARAMS;
   byte test_buf[MAX_SIZE_PARAMS];
+  int test_size2 = MAX_SIZE_PARAMS;
+  byte test_buf2[MAX_SIZE_PARAMS];
 #endif
   
   int in_size = MAX_SIZE_PARAMS;
@@ -469,6 +471,14 @@ int main(int an, char** av) {
   printf("\nname: "); 
   PrintBytes(request.cred().name().size(),
              (byte*)request.cred().name().data()); printf("\n");
+  test_size = RSA_public_encrypt(size_in, in_buf, test_buf, signing_key,
+                              RSA_PKCS1_OAEP_PADDING);
+  test_size2 = RSA_private_decrypt(test_size, test_buf, test_buf2, signing_key,
+                              RSA_PKCS1_OAEP_PADDING);
+  printf("OUT (%d): ", test_size2);
+  PrintBytes(test_size2, test_buf2);
+  printf("\n");
+
 #endif
 
   // symKey= KDFa(hash, seed, "STORAGE", name, nullptr, 128);

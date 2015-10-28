@@ -82,6 +82,8 @@ DEFINE_string(program_response_file, "", "output-file-name");
 #define GFLAGS_NS gflags
 #endif
 
+#include "extraTest2.cc"
+
 #define MAX_SIZE_PARAMS 8192
 #define DEBUG
 

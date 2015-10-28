@@ -106,7 +106,7 @@ int main(int an, char** av) {
 
   X509_REQ* req = nullptr;
 
-  int size_seed = 20;
+  int size_seed = 16;
   byte seed[32];
 
   TPM2B_DIGEST unmarshaled_credential;

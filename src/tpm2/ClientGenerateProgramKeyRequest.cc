@@ -97,7 +97,7 @@ int main(int an, char** av) {
   LocalTpm tpm;
   int ret_val = 0;
 
-  printf("ClientGenerateProgramKeyRequest\n\n");
+  printf("\nClientGenerateProgramKeyRequest\n\n");
 
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   if (!tpm.OpenTpm("/dev/tpm0")) {

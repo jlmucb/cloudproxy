@@ -83,7 +83,7 @@ DEFINE_string(signed_endorsement_cert, "", "signed endorsement cert file");
 int main(int an, char** av) {
   int ret_val = 0;
 
-  printf("CloudProxySignEndorsementKey\n\n");
+  printf("\nCloudProxySignEndorsementKey\n\n");
 
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   OpenSSL_add_all_algorithms();

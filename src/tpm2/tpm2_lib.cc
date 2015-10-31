@@ -2832,8 +2832,7 @@ bool Tpm2_ReadNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
 }
 
 bool Tpm2_WriteNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, 
-                  string& authString, uint16_t size,
-                  byte* data) {
+                  string& authString, uint16_t size, byte* data) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   int size_resp = MAX_SIZE_PARAMS;
   byte resp_buf[MAX_SIZE_PARAMS];
@@ -3507,6 +3506,130 @@ bool Tpm2_QuoteCombinedTest(LocalTpm& tpm, int pcr_num) {
   printf("\n"); 
   Tpm2_FlushContext(tpm, load_handle);
   Tpm2_FlushContext(tpm, parent_handle);
+  return true;
+}
+
+bool Tpm2_Rsa_Encrypt(LocalTpm& tpm, TPM_HANDLE handle, string& authString, TPM2B_PUBLIC_KEY_RSA& inData,
+                      TPMT_RSA_DECRYPT& scheme, TPM2B_DATA& label, TPM2B_PUBLIC_KEY_RSA* outData) {
+  byte commandBuf[2*MAX_SIZE_PARAMS];
+  int size_resp = MAX_SIZE_PARAMS;
+  byte resp_buf[MAX_SIZE_PARAMS];
+  int size_params = 0;
+  byte params_buf[MAX_SIZE_PARAMS];
+  int space_left = MAX_SIZE_PARAMS;
+  byte* in = params_buf;
+  int n;
+
+  memset(commandBuf, 0, MAX_SIZE_PARAMS);
+  memset(resp_buf, 0, MAX_SIZE_PARAMS);
+
+  n = SetPasswordData(authString, space_left, in);
+  IF_NEG_RETURN_FALSE(n);
+  Update(n, &in, &size_params, &space_left);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&handle, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  ChangeEndian16((uint16_t*)&inData.size, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+  IF_LESS_THAN_RETURN_FALSE(space_left, inData.size)
+  memcpy(in, inData.buffer, inData.size);
+  Update(inData.size, &in, &size_params, &space_left);
+
+
+  scheme.scheme = TPM_ALG_NULL;
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  ChangeEndian16((uint16_t*)&scheme.scheme, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  ChangeEndian16((uint16_t*)&label.size, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+  IF_LESS_THAN_RETURN_FALSE(space_left, label.size)
+  memcpy(in, label.buffer, label.size);
+  Update(label.size, &in, &size_params, &space_left);
+
+  int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_RSA_Encrypt,
+                                commandBuf, size_params, params_buf);
+  printCommand("TPM_CC_RSA_Encrypt", in_size, commandBuf);
+  if (!tpm.SendCommand(in_size, commandBuf)) {
+    printf("SendCommand failed\n");
+    return false;
+  }
+  if (!tpm.GetResponse(&size_resp, resp_buf)) {
+    printf("GetResponse failed\n");
+    return false;
+  }
+  uint16_t cap = 0;
+  uint32_t responseSize; 
+  uint32_t responseCode; 
+  Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
+                        &responseSize, &responseCode);
+  printResponse("TPM_RSA_Encrypt", cap, responseSize, responseCode, resp_buf);
+  if (responseCode != TPM_RC_SUCCESS)
+    return false;
+  byte* out = resp_buf +  sizeof(TPM_RESPONSE);
+  ChangeEndian16((uint16_t*)out, &outData->size);
+  out += sizeof(uint16_t);
+  memcpy(outData->buffer, out, outData->size);
+  out += outData->size;
+  return true;
+}
+
+bool Tpm2_EvictControl(LocalTpm& tpm, TPMI_RH_PROVISION owner, TPM_HANDLE handle, string& authString,
+                       TPMI_DH_PERSISTENT* persistantHandle) {
+  byte commandBuf[2*MAX_SIZE_PARAMS];
+  int size_resp = MAX_SIZE_PARAMS;
+  byte resp_buf[MAX_SIZE_PARAMS];
+  int size_params = 0;
+  byte params_buf[MAX_SIZE_PARAMS];
+  int space_left = MAX_SIZE_PARAMS;
+  byte* in = params_buf;
+  int n;
+
+  memset(commandBuf, 0, MAX_SIZE_PARAMS);
+  memset(resp_buf, 0, MAX_SIZE_PARAMS);
+
+  n = SetOwnerHandle(owner, space_left, in);
+  IF_NEG_RETURN_FALSE(n);
+  Update(n, &in, &size_params, &space_left);
+
+  string emptyAuth;
+  n = CreatePasswordAuthArea(emptyAuth, space_left, in);
+  IF_NEG_RETURN_FALSE(n);
+  Update(n, &in, &size_params, &space_left);
+  n = SetPasswordData(authString, space_left, in);
+  IF_NEG_RETURN_FALSE(n);
+  Update(n, &in, &size_params, &space_left);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&handle, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+  int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_EvictControl,
+                                commandBuf, size_params, params_buf);
+  printCommand("EvictControl", in_size, commandBuf);
+  if (!tpm.SendCommand(in_size, commandBuf)) {
+    printf("SendCommand failed\n");
+    return false;
+  }
+  if (!tpm.GetResponse(&size_resp, resp_buf)) {
+    printf("GetResponse failed\n");
+    return false;
+  }
+  uint16_t cap = 0;
+  uint32_t responseSize; 
+  uint32_t responseCode; 
+  Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
+                        &responseSize, &responseCode);
+  printResponse("EvictControl", cap, responseSize, responseCode, resp_buf);
+  if (responseCode != TPM_RC_SUCCESS)
+    return false;
+  byte* out = resp_buf +  sizeof(TPM_RESPONSE);
+  ChangeEndian32((uint32_t*)out, persistantHandle);
+  out += sizeof(uint32_t);
   return true;
 }
 

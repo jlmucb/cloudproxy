@@ -51,6 +51,7 @@
 //     --can_sign=[true|false]
 using std::string;
 
+#define DEBUG
 
 #define CALLING_SEQUENCE "SigningInstructions.exe "\
 "--issuer=name " \
@@ -84,7 +85,7 @@ int main(int an, char** av) {
   signing_instructions_message message;
   int ret_val = 0;
 
-  printf("SigningInstructions\n\n");
+  printf("\nSigningInstructions\n\n");
 
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
 
@@ -100,6 +101,9 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+#ifdef DEBUG
+  printf("Signinginstructions: %s\n", message.DebugString().c_str());
+#endif
   if (!WriteFileFromBlock(FLAGS_instructions_file, output.size(),
                           (byte*)output.data())) {
     printf("Can't write output file\n");

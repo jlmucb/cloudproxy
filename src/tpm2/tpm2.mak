@@ -36,7 +36,7 @@ S= $(SRC_DIR)/src/github.com/jlmucb/cloudproxy/src/tpm2
 O= $(OBJ_DIR)/tpm20
 INCLUDE= -I$(S) -I$(SRC_DIR)/keys -I/usr/local/include -I$(GOOGLE_INCLUDE)
 
-CFLAGS=$(INCLUDE) -O3 -g -Wall -std=c++11 -Wno-strict-aliasing
+CFLAGS=$(INCLUDE) -O3 -g -Wall -std=c++11 -Wno-strict-aliasing # -DGFLAGS_NS=google
 CFLAGS1=$(INCLUDE) -O1 -g -Wall -std=c++11
 
 CC=g++

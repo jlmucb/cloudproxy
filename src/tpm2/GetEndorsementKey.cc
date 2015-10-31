@@ -77,7 +77,7 @@ int main(int an, char** av) {
   endorsement_key_message message;
   string output;
 
-  printf("GetEndorsementKey\n\n");
+  printf("\nGetEndorsementKey\n\n");
 
   TPM_ALG_ID hash_alg_id;
   if (FLAGS_hash_alg == "sha1") {

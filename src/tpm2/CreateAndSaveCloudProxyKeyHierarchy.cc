@@ -88,7 +88,7 @@ int main(int an, char** av) {
   LocalTpm tpm;
   int ret_val = 0;
 
-  printf("CreateAndSaveCloudProxyKeyHierarchy\n\n");
+  printf("\nCreateAndSaveCloudProxyKeyHierarchy\n\n");
 
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   if (!tpm.OpenTpm("/dev/tpm0")) {

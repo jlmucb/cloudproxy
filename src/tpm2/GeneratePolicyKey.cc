@@ -85,7 +85,7 @@ int main(int an, char** av) {
   private_key_blob_message key_out;
   string output;
 
-  printf("GeneratePolicyKey\n\n");
+  printf("\nGeneratePolicyKey\n\n");
 
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
 

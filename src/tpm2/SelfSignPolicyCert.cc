@@ -72,7 +72,7 @@ void PrintOptions() {
 int main(int an, char** av) {
   int ret_val = 0;
 
-  printf("SelfSignPolicyCert\n\n");
+  printf("\nSelfSignPolicyCert\n\n");
 
   GFLAGS_NS::ParseCommandLineFlags(&an, &av, true);
   if (FLAGS_signing_instructions_file == "") {
@@ -113,7 +113,7 @@ int main(int an, char** av) {
     printf("Signing is invalid\n");
     return 1;
   }
-  printf("\nGot signing instrctions\n");
+  printf("\nGot signing instructions\n");
 
   in_size = MAX_BUF_SIZE;
   private_key_blob_message private_key;

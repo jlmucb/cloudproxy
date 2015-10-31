@@ -459,6 +459,57 @@ int main(int an, char** av) {
                               encrypted_secret, protector_key,
                               RSA_PKCS1_OAEP_PADDING);
   response.set_secret(encrypted_secret, encrypted_secret_size);
+#ifdef DEBUG2
+{
+  TPM_HANDLE ekHandle;
+  string emptyAuth;
+  TPM2B_PUBLIC pub_out;
+
+  TPML_PCR_SELECTION pcrSelect;
+  memset((void*)&pcrSelect, 0, sizeof(TPML_PCR_SELECTION));
+
+  TPMA_OBJECT primary_flags;
+  *(uint32_t*)(&primary_flags) = 0;
+  primary_flags.fixedTPM = 1;
+  primary_flags.fixedParent = 1;
+  primary_flags.sensitiveDataOrigin = 1;
+  primary_flags.userWithAuth = 1;
+  primary_flags.decrypt = 1;
+  primary_flags.restricted = 1;
+
+  LocalTpm tpm;
+  if (!tpm.OpenTpm("/dev/tpm0")) {
+    printf("Can't open tpm\n");
+    ret_val = 1;
+    goto done;
+  }
+
+  if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect, 
+                         TPM_ALG_RSA, TPM_ALG_SHA256, primary_flags,
+                         TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
+                         2048, 0x010001, &ekHandle, &pub_out)) {
+    printf("CreatePrimary succeeded parent: %08x\n", ekHandle);
+  } else {
+    printf("CreatePrimary failed\n");
+    return false;
+  }
+
+  TPM2B_PUBLIC_KEY_RSA in;
+  TPMT_RSA_DECRYPT scheme;
+  TPM2B_DATA label;
+  TPM2B_PUBLIC_KEY_RSA out;
+  in.size = size_in;
+  memcpy(in.buffer, in_buf, size_in);
+  scheme.scheme = TPM_ALG_NULL;
+
+  if (!Tpm2_Rsa_Encrypt(tpm, ekHandle, emptyAuth, in, scheme, label, &out)) {
+    printf("Tpm2_Rsa_Encrypt failed\n");
+    ret_val = 1;
+  }
+  printf("Tpm2_Rsa_Encrypt out size: %d\n", out.size);
+  PrintBytes(out.size, out.buffer); printf("\n\n");
+}
+#endif
 #ifdef DEBUG
   printf("\nEndorsement modulus: ");
   BN_print_fp(stdout, protector_key->n);

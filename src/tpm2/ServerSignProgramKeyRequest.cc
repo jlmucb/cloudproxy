@@ -363,6 +363,7 @@ int main(int an, char** av) {
                     (byte*)request.cred().public_key().rsa_key().modulus().data());
   active_key->e = bin_to_BN(request.cred().public_key().rsa_key().exponent().size(),
                     (byte*)request.cred().public_key().rsa_key().exponent().data());
+  // Should this be RSA_NO_PADDING?
   size_active_out = RSA_public_encrypt(request.active_signature().size(),
                         (const byte*)request.active_signature().data(),
                         decrypted_quote, active_key, RSA_PKCS1_OAEP_PADDING);

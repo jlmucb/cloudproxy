@@ -17,7 +17,7 @@
 --modulus_size_in_bits=2048 --signing_instructions=signing_instructions \
 --key_name=test_key1 --cloudproxy_key_file=cloudproxy_key_file
 
-./SigningInstructions.exe --issuer=JohnsCloudProxyCa --can_sign=true
+./SigningInstructions.exe --issuer=JohnsCpCa --can_sign=true
 
 ./SelfSignPolicyCert.exe --signing_instructions_file=signing_instructions \
 --key_file=cloudproxy_key_file --policy_identifier=test-policy-domain --cert_file=policy_key_cert

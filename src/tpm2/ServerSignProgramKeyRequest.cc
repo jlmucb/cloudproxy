@@ -439,6 +439,7 @@ int main(int an, char** av) {
   // Protector_key is endorsement key
   protector_evp_key = X509_get_pubkey(endorsement_cert);
   protector_key = EVP_PKEY_get1_RSA(protector_evp_key);
+  RSA_up_ref(protector_key);
 
   memset(in_buf, 0, 512);
   memset(encrypted_secret, 0, 512);
@@ -449,7 +450,10 @@ int main(int an, char** av) {
   size_in += strlen("IDENTITY") + 1;
 
 #ifdef DEBUG
-  printf("Buffer to encrypt: ");
+  printf("\nEndorsement key as read: ");
+  RSA_print_fp(stdout, protector_key, 0);
+  printf("\n");
+  printf("\nBuffer to encrypt: ");
   PrintBytes(size_in, in_buf);
   printf("\n");
 #endif
@@ -459,6 +463,7 @@ int main(int an, char** av) {
                               encrypted_secret, protector_key,
                               RSA_PKCS1_OAEP_PADDING);
   response.set_secret(encrypted_secret, encrypted_secret_size);
+
 #ifdef DEBUG2
 {
   TPM_HANDLE ekHandle;
@@ -510,13 +515,17 @@ int main(int an, char** av) {
   PrintBytes(out.size, out.buffer); printf("\n\n");
 }
 #endif
-#ifdef DEBUG
+
+#ifdef DEBUG2
   printf("\nEndorsement modulus: ");
   BN_print_fp(stdout, protector_key->n);
   printf("\n");
   printf("endorsement exponent: ");
   BN_print_fp(stdout, protector_key->e);
   printf("\n");
+#endif
+
+#ifdef DEBUG
   printf("\nEncrypted secret (%d): ", encrypted_secret_size);
   PrintBytes(encrypted_secret_size, encrypted_secret); printf("\n");
   printf("\nname: "); 
@@ -542,6 +551,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
 #ifdef DEBUG
   printf("\nsymKey: "); PrintBytes(16, symKey); printf("\n");
   printf("marshaled_credential: ");
@@ -560,6 +570,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
 #ifdef DEBUG
   printf("\n");
   printf("size_encIdentity: %d\n", size_encIdentity);

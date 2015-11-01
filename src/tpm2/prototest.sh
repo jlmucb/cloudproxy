@@ -1,6 +1,6 @@
 #
 rm protocol_test.txt
-./SigningInstructions.exe --issuer=JohnsCpCa --can_sign=true
+./SigningInstructions.exe --issuer=JohnsCpCa --can_sign=true >> protocol_test.txt
 ./tpm2_util.exe --command=Flushall
 ./GetEndorsementKey.exe --machine_identifier="John's Nuc" --endorsement_info_file=endorsement_key_info_file >> protocol_test.txt
 ./tpm2_util.exe --command=Flushall

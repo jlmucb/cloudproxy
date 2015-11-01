@@ -65,7 +65,7 @@ using std::string;
 "--program_key_type=RSA " \
 "--program_key_size=2048 " \
 "--program_key_exponent=0x10001" \
-"--hash_active_alg=sha256 " \
+"--hash_alg=sha1 " \
 "--program_key_file=output-file-name" \
 "--program_cert_request_file=output-file-name\n"
 
@@ -386,7 +386,7 @@ int main(int an, char** av) {
   request.set_x509_program_key_request(x509_request_key_blob);
   request.set_active_sign_alg("RSA");
   request.set_active_sign_bit_size(2048);
-  request.set_active_sign_hash_alg("sha256");
+  request.set_active_sign_hash_alg(FLAGS_hash_alg);
 
   // get quote key info
   if (Tpm2_ReadPublic(tpm, quote_handle, &quote_pub_blob_size, quote_pub_blob,

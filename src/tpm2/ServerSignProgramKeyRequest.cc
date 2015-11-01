@@ -365,7 +365,7 @@ int main(int an, char** av) {
                     (byte*)request.cred().public_key().rsa_key().exponent().data());
   size_active_out = RSA_public_encrypt(request.active_signature().size(),
                         (const byte*)request.active_signature().data(),
-                        decrypted_quote, active_key, RSA_NO_PADDING); // RSA_PKCS1_OAEP_PADDING);
+                        decrypted_quote, active_key, RSA_PKCS1_OAEP_PADDING);
   if (size_active_out > MAX_SIZE_PARAMS) {
     printf("active signature is too big\n");
     ret_val = 1;
@@ -441,6 +441,8 @@ int main(int an, char** av) {
   protector_key = EVP_PKEY_get1_RSA(protector_evp_key);
   RSA_up_ref(protector_key);
 
+// remove if pad below works
+#if 0
   memset(in_buf, 0, 512);
   memset(encrypted_secret, 0, 512);
   size_in = 0;
@@ -448,6 +450,7 @@ int main(int an, char** av) {
   size_in += size_seed;
   memcpy(&in_buf[size_in], (byte*)"IDENTITY", strlen("IDENTITY") + 1);
   size_in += strlen("IDENTITY") + 1;
+#endif
 
 #ifdef DEBUG
   printf("\nEndorsement key as read: ");
@@ -459,9 +462,10 @@ int main(int an, char** av) {
 #endif
 
   // Secret= E(protector_key, seed || "IDENTITY")
+  RSA_padding_add_PKCS1_OAEP(in_buf, 256, seed, size_seed, (byte*)"IDENTITY", strlen("IDENTITY")+1);
   encrypted_secret_size = RSA_public_encrypt(size_in, in_buf, 
                               encrypted_secret, protector_key,
-                              RSA_PKCS1_OAEP_PADDING);
+                              RSA_NO_PADDING); // RSA_PKCS1_OAEP_PADDING);
   response.set_secret(encrypted_secret, encrypted_secret_size);
 
 #ifdef DEBUG2

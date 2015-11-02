@@ -338,7 +338,9 @@ bool SignX509Certificate(RSA* signing_key,
   X509_NAME_ENTRY* ent = X509_NAME_ENTRY_create_by_NID(nullptr, nid,
       MBSTRING_ASC, (byte*)signing_instructions.issuer().c_str(), -1);
   if (X509_NAME_add_entry(issuer, ent, -1, 0) != 1) {
-    printf("Can't add issuer name ent: %s\n", signing_instructions.issuer().c_str());
+    printf("Can't add issuer name ent: %s, %ld\n",
+           signing_instructions.issuer().c_str(), (long unsigned)ent);
+    printf("ERR: %s\n", ERR_lib_error_string(ERR_get_error()));
     return false;
   }
   if (X509_set_issuer_name(cert, issuer) != 1) {

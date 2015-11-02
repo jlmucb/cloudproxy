@@ -462,10 +462,12 @@ int main(int an, char** av) {
 #endif
 
   // Secret= E(protector_key, seed || "IDENTITY")
-  //                         to                 from       label              len
-  RSA_padding_add_PKCS1_OAEP(in_buf, 256, seed, size_seed, (byte*)"IDENTITY", strlen("IDENTITY")+1);  // note sepecial pad
-  encrypted_secret_size = RSA_public_encrypt(size_in, in_buf, encrypted_secret, protector_key,
-                                             RSA_NO_PADDING); // RSA_PKCS1_OAEP_PADDING);
+  //   args: to, from, label, len
+  RSA_padding_add_PKCS1_OAEP(in_buf, 256, seed, size_seed, 
+      (byte*)"IDENTITY", strlen("IDENTITY")+1);
+  encrypted_secret_size = RSA_public_encrypt(size_in, in_buf, encrypted_secret,
+                              protector_key, RSA_NO_PADDING);
+                              // RSA_PKCS1_OAEP_PADDING);
   response.set_secret(encrypted_secret, encrypted_secret_size);
 
 #ifdef DEBUG2

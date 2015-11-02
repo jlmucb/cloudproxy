@@ -1,5 +1,14 @@
 #
 rm protocol_test.txt
+./tpm2_util.exe --command=Flushall
+./SigningInstructions.exe --issuer=JohnsCpCa --can_sign=true --isCA=true
+./tpm2_util.exe --command=Flushall
+./GeneratePolicyKey.exe --algorithm=RSA --exponent=0x010001 \
+--modulus_size_in_bits=2048 --signing_instructions=signing_instructions \
+--key_name=test_key1 --cloudproxy_key_file=cloudproxy_key_file
+./tpm2_util.exe --command=Flushall
+./SelfSignPolicyCert.exe --signing_instructions_file=signing_instructions \
+--key_file=cloudproxy_key_file --policy_identifier=test-policy-domain --cert_file=policy_key_cert
 ./SigningInstructions.exe --issuer=JohnsCpCa --can_sign=true >> protocol_test.txt
 ./tpm2_util.exe --command=Flushall
 ./GetEndorsementKey.exe --machine_identifier="John's Nuc" --endorsement_info_file=endorsement_key_info_file >> protocol_test.txt

@@ -213,6 +213,13 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
+#ifdef DEBUG
+  printf("Program cert request (%d): ", size_cert_request);
+  PrintBytes(size_cert_request, cert_request_buf);
+  printf("\n");
+#endif
+
   input.assign((const char*)cert_request_buf, size_cert_request);
   if (!request.ParseFromString(input)) {
     printf("Can't parse cert request\n");
@@ -292,13 +299,26 @@ int main(int an, char** av) {
   // Get certificate request for program key
   der_program_cert_request = (byte*)request.x509_program_key_request().data();
   der_program_cert_request_size = request.x509_program_key_request().size();
+
+#ifdef DEBUG
+  printf("Program cert request (%d): ", der_program_cert_request_size);
+  PrintBytes(der_program_cert_request_size, der_program_cert_request);
+  printf("\n");
+#endif
+
   out = der_program_cert_request;
   req = d2i_X509_REQ(nullptr, (const byte**)&out, der_program_cert_request_size);
+  if (req == nullptr) {
+    printf("d2i_X509_REQ returns null for request, input size: %d\n", der_program_cert_request_size);
+    WriteFileFromBlock("FailedReq", der_program_cert_request_size, der_program_cert_request);
+    ret_val = 1;
+    goto done;
+  }
 
   // sign program key
   if (!SignX509Certificate(signing_key, signing_message, nullptr, req,
                            false, program_cert)) {
-    printf("Can't sign x509 request\n");
+    printf("Can't sign x509 request for program key\n");
     ret_val = 1;
     goto done;
   }

@@ -388,6 +388,12 @@ int main(int an, char** av) {
   request.set_active_sign_bit_size(2048);
   request.set_active_sign_hash_alg(FLAGS_hash_alg);
 
+#ifdef DEBUG
+  printf("\nx509_request_key_blob(%d): ", x509_request_key_blob.size());
+  PrintBytes(x509_request_key_blob.size(), (byte*)x509_request_key_blob.data());
+  printf("\n\n");
+#endif
+
   // get quote key info
   if (Tpm2_ReadPublic(tpm, quote_handle, &quote_pub_blob_size, quote_pub_blob,
                       quote_pub_out, quote_pub_name,

@@ -291,7 +291,12 @@ bool SignX509Certificate(RSA* signing_key,
                          signing_instructions_message& signing_instructions,
                          EVP_PKEY* signedKey,
                          X509_REQ* req, bool verify_req_sig, X509* cert) {
-  if (signedKey == NULL)
+#ifdef DEBUG
+  printf("SignX509Certificate, request: ");
+  X509_REQ_print_fp(stdout, req);
+  printf("\n");
+#endif
+  if (signedKey == nullptr)
     signedKey = X509_REQ_get_pubkey(req);
   if (signedKey == nullptr) {
     printf("Can't get pubkey\n");

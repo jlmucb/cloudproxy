@@ -163,7 +163,7 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
     return false;
   }
   if (params.has_common_name()) {
-    int nid = OBJ_txt2nid("commonName");
+    int nid = OBJ_txt2nid("CN");
     X509_NAME_ENTRY* ent = X509_NAME_ENTRY_create_by_NID(nullptr, nid,
         MBSTRING_ASC, (byte*)params.common_name().c_str(), -1);
     if (X509_NAME_add_entry(subject, ent, -1, 0) != 1) {

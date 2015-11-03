@@ -334,7 +334,7 @@ bool SignX509Certificate(RSA* signing_key,
     return false;
   }
   X509_NAME* issuer = X509_NAME_new();
-  int nid = OBJ_txt2nid("issuerName");
+  int nid = OBJ_txt2nid("CN");
   X509_NAME_ENTRY* ent = X509_NAME_ENTRY_create_by_NID(nullptr, nid,
       MBSTRING_ASC, (byte*)signing_instructions.issuer().c_str(), -1);
   if (X509_NAME_add_entry(issuer, ent, -1, 0) != 1) {

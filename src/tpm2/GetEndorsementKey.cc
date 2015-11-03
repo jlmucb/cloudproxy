@@ -142,7 +142,7 @@ int main(int an, char** av) {
 #endif
 
   message.set_machine_identifier(FLAGS_machine_identifier);
-  message.set_tpm2b_blob( (const char*)pub_blob, (int)pub_blob_size);
+  message.set_tpm2b_blob((const char*)pub_blob, (int)pub_blob_size);
   message.set_tpm2_name((const char*)pub_name.name, (int)pub_name.size);
 
   if (!message.SerializeToString(&output)) {

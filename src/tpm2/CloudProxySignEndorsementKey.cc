@@ -185,6 +185,7 @@ int main(int an, char** av) {
     printf("Can't parse endorsement blob\n");
     return 1;
   }
+
 #ifdef DEBUG
   printf("\nEndorsement key size: %d\n",
          (int)outPublic.publicArea.unique.rsa.size * 8);
@@ -211,6 +212,7 @@ int main(int an, char** av) {
   req_message.mutable_key()->mutable_rsa_key()->set_modulus(
       (const char*)outPublic.publicArea.unique.rsa.buffer,
       (int)outPublic.publicArea.unique.rsa.size);
+
 #ifdef DEBUG
   printf("\nCert request:\n");
   print_cert_request_message(req_message); printf("\n");

@@ -154,6 +154,7 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
   X509_NAME* subject = X509_NAME_new();
   EVP_PKEY* pKey = new EVP_PKEY();
 
+  X509_REQ_set_version(req, 2L);
   if (params.key().key_type() != "RSA") {
     printf("Only rsa keys supported %s\n", params.key().key_type().c_str());
     return false;
@@ -166,6 +167,10 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
     int nid = OBJ_txt2nid("CN");
     X509_NAME_ENTRY* ent = X509_NAME_ENTRY_create_by_NID(nullptr, nid,
         MBSTRING_ASC, (byte*)params.common_name().c_str(), -1);
+    if (ent == nullptr) {
+      printf("X509_NAME_ENTRY return is null, nid: %d\n", nid);
+      return false;
+    }
     if (X509_NAME_add_entry(subject, ent, -1, 0) != 1) {
       printf("Can't add name ent\n");
       return false;

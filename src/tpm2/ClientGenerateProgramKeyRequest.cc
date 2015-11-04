@@ -389,6 +389,11 @@ int main(int an, char** av) {
   request.set_active_sign_hash_alg(FLAGS_hash_alg);
 
 #ifdef DEBUG
+  printf("Cert req: ");
+  PrintBytes(der_cert_size, der_cert_buf);
+  printf("\n");
+  X509_REQ_print_fp(stdout, req);
+  printf("\n");
   printf("\nx509_request_key_blob(%d): ", x509_request_key_blob.size());
   PrintBytes(x509_request_key_blob.size(), (byte*)x509_request_key_blob.data());
   printf("\n\n");

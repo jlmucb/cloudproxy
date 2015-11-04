@@ -159,7 +159,7 @@ int main(int an, char** av) {
 
   int der_cert_size = MAX_SIZE_PARAMS;
   byte der_cert_buf[MAX_SIZE_PARAMS];
-  byte* p_der_cert_buf = der_cert_buf;
+  byte* p_der_cert_buf;
 
   int quote_size = MAX_SIZE_PARAMS;
   byte quoted[MAX_SIZE_PARAMS];
@@ -379,6 +379,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+  p_der_cert_buf = der_cert_buf;
   der_cert_size = i2d_X509_REQ(req, &p_der_cert_buf);
   x509_request_key_blob.assign((const char*)der_cert_buf, der_cert_size);
   request.set_program_name(FLAGS_program_key_name);
@@ -390,10 +391,6 @@ int main(int an, char** av) {
 
 #ifdef DEBUG
   printf("Cert req: ");
-  PrintBytes(der_cert_size, der_cert_buf);
-  printf("\n");
-  X509_REQ_print_fp(stdout, req);
-  printf("\n");
   printf("\nx509_request_key_blob(%d): ", x509_request_key_blob.size());
   PrintBytes(x509_request_key_blob.size(), (byte*)x509_request_key_blob.data());
   printf("\n\n");

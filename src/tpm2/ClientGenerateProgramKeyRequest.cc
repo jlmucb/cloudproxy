@@ -184,6 +184,10 @@ int main(int an, char** av) {
   }
 
   string output;
+#ifdef DEBUG
+  X509_REQ* req2 = nullptr;
+  byte* p_s_ref = nullptr;
+#endif
 
   // Create endorsement key
   *(uint32_t*)(&primary_flags) = 0;
@@ -394,6 +398,15 @@ int main(int an, char** av) {
   printf("\nx509_request_key_blob(%d): ", x509_request_key_blob.size());
   PrintBytes(x509_request_key_blob.size(), (byte*)x509_request_key_blob.data());
   printf("\n\n");
+  p_s_ref = (byte*)x509_request_key_blob.data();
+  req2 = d2i_X509_REQ(nullptr, (const byte**)&p_s_ref, x509_request_key_blob.size());
+  if (req2 == nullptr) {
+    printf("\nreq2 returns null\n\n");
+  } else {
+    printf("\nreq2 serialization: "); 
+    X509_REQ_print_fp(stdout, req2);
+    printf("\n");
+  }
 #endif
 
   // get quote key info

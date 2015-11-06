@@ -251,9 +251,9 @@ int main(int an, char** av) {
 #ifdef DEBUG1
   printf("\ncontext_save_area: ");
   PrintBytes(context_data_size - 6, context_save_area + 6);
+  printf("\n\n");
 #endif
 
-  printf("\n\n");
   if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
                         &root_handle)) {
     printf("Root LoadContext failed\n");
@@ -377,8 +377,7 @@ int main(int an, char** av) {
 
   // get quote key info
   if (Tpm2_ReadPublic(tpm, quote_handle, &quote_pub_blob_size, quote_pub_blob,
-                      quote_pub_out, quote_pub_name,
-                      quote_qualified_pub_name)) {
+                      quote_pub_out, quote_pub_name, quote_qualified_pub_name)) {
     printf("Quote ReadPublic succeeded\n");
   } else {
     printf("Quote ReadPublic failed\n");

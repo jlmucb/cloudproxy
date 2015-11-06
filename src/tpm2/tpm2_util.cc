@@ -149,6 +149,7 @@ int main(int an, char** av) {
       printf("ReadClock failed\n");
     }
   } else if (FLAGS_command == "CreatePrimary") {
+#if 0
     TPM_HANDLE handle;
     TPM2B_PUBLIC pub_out;
     TPML_PCR_SELECTION pcrSelect;
@@ -156,7 +157,6 @@ int main(int an, char** av) {
     bool sign = true;
     if (FLAGS_decrypt.size() > 0)
       sign = false;
-#if 0
     if (Tpm2_CreatePrimary(tpm, TPM_RH_OWNER, FLAGS_authString,
                            pcrSelect, sign,
                            &handle, &pub_out)) {
@@ -225,6 +225,7 @@ int main(int an, char** av) {
       printf("ReadPcr failed\n");
     }
   } else if (FLAGS_command == "CreateKey") {
+#if 0
     TPM_HANDLE parent_handle;
 
     TPM2B_CREATION_DATA creation_out;
@@ -246,7 +247,6 @@ int main(int an, char** av) {
     bool sign = true;
     if (FLAGS_decrypt.size() > 0)
       sign = false;
-#if 0
     if (Tpm2_CreateKey(tpm, parent_handle, FLAGS_parentAuth,
                     FLAGS_authString, pcrSelect,
                     sign, false, &size_public, out_public,
@@ -289,6 +289,7 @@ int main(int an, char** av) {
     }
 #endif
   } else if (FLAGS_command == "Quote") {
+#if 0
     int quote_size = 1024;
     byte quote[1024];
     TPM_HANDLE signingHandle = 0;
@@ -298,7 +299,6 @@ int main(int an, char** av) {
     byte attest[1024];
     int sig_size = 1024;
     byte sig[1024];
-#if 0
     if (Tpm2_Quote(tpm, signingHandle, quote_size, quote, scheme, pcr_selection,
                &attest_size, attest, &sig_size, sig)) {
       printf("Quote succeeded\n");

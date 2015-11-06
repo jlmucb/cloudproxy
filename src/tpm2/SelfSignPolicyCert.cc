@@ -106,7 +106,7 @@ int main(int an, char** av) {
     return 1;
   }
   printf("issuer: %s, duration: %ld, purpose: %s, hash: %s\n",
-         signing_message.issuer().c_str(), signing_message.duration(),
+         signing_message.issuer().c_str(), (long)signing_message.duration(),
          signing_message.purpose().c_str(), signing_message.hash_alg().c_str());
 
   if (!signing_message.can_sign()) {

@@ -209,6 +209,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
 #ifdef DEBUG
   printf("\nek Public blob: ");
   PrintBytes(ek_pub_blob_size, ek_pub_blob);
@@ -220,6 +221,7 @@ int main(int an, char** av) {
   PrintBytes(ek_qualified_pub_name.size, ek_qualified_pub_name.name);
   printf("\n");
 #endif
+
   Tpm2_FlushContext(tpm, ekHandle);
   ekHandle = 0;
 
@@ -245,10 +247,12 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
 #ifdef DEBUG1
   printf("\ncontext_save_area: ");
   PrintBytes(context_data_size - 6, context_save_area + 6);
 #endif
+
   printf("\n\n");
   if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
                         &root_handle)) {
@@ -266,11 +270,13 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
 #ifdef DEBUG1
   printf("context_save_area: ");
   PrintBytes(context_data_size - 6, context_save_area + 6);
   printf("\n");
 #endif
+
   if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
                         &seal_handle)) {
     printf("Seal LoadContext failed\n");
@@ -287,11 +293,13 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
 #ifdef DEBUG1
   printf("context_save_area: ");
   PrintBytes(context_data_size - 6, context_save_area + 6);
   printf("\n");
 #endif
+
   if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
                         &quote_handle)) {
     printf("Quote LoadContext failed\n");
@@ -377,6 +385,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
 #ifdef DEBUG
   printf("\nQuote Public blob: ");
   PrintBytes(quote_pub_blob_size, quote_pub_blob);
@@ -419,6 +428,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
 #ifdef DEBUG
   printf("\nQuote succeeded, quoted (%d): ", quote_size);
   PrintBytes(quote_size, quoted);
@@ -488,6 +498,7 @@ int main(int an, char** av) {
     printf("Can't write endorsement cert\n");
     goto done;
   }
+
 #ifdef DEBUG
   printf("\nrequest:\n%s\n", request.DebugString().c_str());
 #endif

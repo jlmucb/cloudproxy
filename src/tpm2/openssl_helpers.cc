@@ -140,7 +140,6 @@ BIGNUM* bin_to_BN(int len, byte* buf) {
   return bn;
 }
 
-
 string* BN_to_bin(BIGNUM& n) {
   byte buf[MAX_SIZE_PARAMS];
 
@@ -153,12 +152,6 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
   RSA*  rsa = RSA_new();
   X509_NAME* subject = X509_NAME_new();
   EVP_PKEY* pKey = new EVP_PKEY();
-
-#if 0
-  // X509_ALGOR* alg = X509_ALGOR_new();
-  // X509_ALGOR_set0(alg, OBJ_nid2obj(NID_rsaEncryption), V_ASN1_NULL, 0);
-  memset((byte*)req, 0, sizeof(X509_REQ));
-#endif
 
   X509_REQ_set_version(req, 2L);
   if (params.key().key_type() != "RSA") {
@@ -193,7 +186,6 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
     return false;
   }
 
-
 #ifdef DEBUG
   printf("\nretrieved key parameters\n");
   printf("n: ");
@@ -224,12 +216,8 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
   X509_REQ_print_fp(stdout, req);
   printf("\n");
 #endif
-  return true;
-}
 
-bool GetPrivateRsaKeyFromParameters(const rsa_public_key_message& key_msg,
-                                    RSA* rsa) {
-  return false;
+  return true;
 }
 
 bool GetPublicRsaKeyFromParameters(const rsa_public_key_message& key_msg,
@@ -237,6 +225,11 @@ bool GetPublicRsaKeyFromParameters(const rsa_public_key_message& key_msg,
   rsa->e = bin_to_BN(key_msg.exponent().size(), (byte*)key_msg.exponent().data());
   rsa->n = bin_to_BN(key_msg.modulus().size(), (byte*)key_msg.modulus().data());
   return rsa->e != nullptr && rsa->n != nullptr;
+}
+
+bool GetPrivateRsaKeyFromParameters(const rsa_public_key_message& key_msg,
+                                    RSA* rsa) {
+  return false;
 }
 
 bool GetPublicRsaParametersFromSSLKey(RSA& rsa, public_key_message* key_msg) {
@@ -458,7 +451,6 @@ bool KDFa(uint16_t hashAlg, string& key, string& label, string& contextU,
   }
   return true;
 }
-
 
 bool AesCtrCrypt(int key_size_bits, byte* key, int size,
                  byte* in, byte* out) {

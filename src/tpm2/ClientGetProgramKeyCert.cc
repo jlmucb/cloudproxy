@@ -360,7 +360,7 @@ int main(int an, char** av) {
 
 #ifdef DEBUG
   printf("\nActivateCredential succeeded\n");
-  printf("Recovered credential (%d): ", recovered_credential.size);
+  printf("\nRecovered credential (%d): ", recovered_credential.size);
   PrintBytes(recovered_credential.size, recovered_credential.buffer);
   printf("\n");
 #endif
@@ -395,6 +395,8 @@ int main(int an, char** av) {
   HMAC_CTX_cleanup(&hctx);
   if (memcmp(encrypted_cert_hmac, response.encrypted_cert_hmac().data(), encrypted_cert_hmac_size) !=0) {
     printf("Hmac compare failed\n");
+    ret_val = 1;
+    goto done;
   }
   // decrypt
   if (!AesCtrCrypt(128, derived_keys, response.encrypted_cert().size(),
@@ -407,12 +409,12 @@ int main(int an, char** av) {
   size_cert_out = response.encrypted_cert().size();
 
 #ifdef DEBUG
-  printf("hmac (%d): ", encrypted_cert_hmac_size);
+  printf("\nhmac (%d): ", encrypted_cert_hmac_size);
   PrintBytes(encrypted_cert_hmac_size, encrypted_cert_hmac);
   printf("\n");
   printf("decrypted cert (%d): ", size_cert_out);
   PrintBytes(size_cert_out, cert_out_buf);
-  printf("\n");
+  printf("\n\n");
 #endif
   
  // Write output cert

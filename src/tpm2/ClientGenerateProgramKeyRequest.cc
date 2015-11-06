@@ -398,7 +398,6 @@ int main(int an, char** av) {
   printf("\n");
 #endif
 
-  // TODO: hash x509 request
   {
     string serialized_key = request.mutable_program_key()->DebugString();
     if (hash_alg_id == TPM_ALG_SHA1) {

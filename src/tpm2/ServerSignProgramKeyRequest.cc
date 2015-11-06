@@ -461,11 +461,21 @@ int main(int an, char** av) {
 
   // Secret= E(protector_key, seed || "IDENTITY")
   //   args: to, from, label, len
+  size_in = 256;
   RSA_padding_add_PKCS1_OAEP(in_buf, 256, seed, size_seed, 
       (byte*)"IDENTITY", strlen("IDENTITY")+1);
+
+#ifdef DEBUG
+  printf("\nAfter RSAPad");
+  PrintBytes(size_in, in_buf);
+  printf("\n");
+#endif
+
   encrypted_secret_size = RSA_public_encrypt(size_in, in_buf, encrypted_secret,
                               protector_key, RSA_NO_PADDING);
                               // RSA_PKCS1_OAEP_PADDING);
+printf("******encrypted secret size: %d\n", encrypted_secret_size);
+printf("******size_in: %d\n", size_in);
   response.set_secret(encrypted_secret, encrypted_secret_size);
 
 #ifdef DEBUG

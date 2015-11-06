@@ -210,7 +210,7 @@ int main(int an, char** av) {
     goto done;
   }
 
-#ifdef DEBUG
+#ifdef DEBUG2
   printf("\nek Public blob: ");
   PrintBytes(ek_pub_blob_size, ek_pub_blob);
   printf("\n");
@@ -398,6 +398,7 @@ int main(int an, char** av) {
   printf("\n");
 #endif
 
+  // hash program key request
   {
     string serialized_key = request.mutable_program_key()->DebugString();
     if (hash_alg_id == TPM_ALG_SHA1) {
@@ -419,8 +420,7 @@ int main(int an, char** av) {
   printf("\n");
 #endif
 
-  if (!Tpm2_Quote(tpm, quote_handle, parentAuth,
-                  to_quote.size, to_quote.buffer,
+  if (!Tpm2_Quote(tpm, quote_handle, parentAuth, to_quote.size, to_quote.buffer,
                   scheme, pcrSelect, TPM_ALG_RSA, hash_alg_id,
                   &quote_size, quoted, &sig_size, sig)) {
     printf("Quote failed\n");
@@ -472,9 +472,9 @@ int main(int an, char** av) {
     ->set_modulus((const char*)quote_pub_out.publicArea.unique.rsa.buffer,
                   quote_pub_out.publicArea.unique.rsa.size);
   request.mutable_cred()->set_name(
-    (const char*)quote_pub_name.name, quote_pub_name.size);
+      (const char*)quote_pub_name.name, quote_pub_name.size);
   request.mutable_cred()->set_properties(
-    *(uint32_t*)&quote_pub_out.publicArea.objectAttributes);
+      *(uint32_t*)&quote_pub_out.publicArea.objectAttributes);
   if (quote_pub_out.publicArea.nameAlg == TPM_ALG_SHA1) {
     request.set_active_sign_hash_alg("sha1");
   } else if (quote_pub_out.publicArea.nameAlg == TPM_ALG_SHA256) {
@@ -498,7 +498,7 @@ int main(int an, char** av) {
     goto done;
   }
 
-#ifdef DEBUG
+#ifdef DEBUG2
   printf("\nrequest:\n%s\n", request.DebugString().c_str());
 #endif
 

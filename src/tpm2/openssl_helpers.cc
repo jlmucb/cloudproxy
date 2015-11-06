@@ -154,6 +154,12 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
   X509_NAME* subject = X509_NAME_new();
   EVP_PKEY* pKey = new EVP_PKEY();
 
+#if 0
+  // X509_ALGOR* alg = X509_ALGOR_new();
+  // X509_ALGOR_set0(alg, OBJ_nid2obj(NID_rsaEncryption), V_ASN1_NULL, 0);
+  memset((byte*)req, 0, sizeof(X509_REQ));
+#endif
+
   X509_REQ_set_version(req, 2L);
   if (params.key().key_type() != "RSA") {
     printf("Only rsa keys supported %s\n", params.key().key_type().c_str());
@@ -181,10 +187,12 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
     printf("Can't set x509 subject\n");
     return false;
   }
+
   if (!GetPublicRsaKeyFromParameters(params.key().rsa_key(), rsa)) {
     printf("Can't make rsa key\n");
     return false;
   }
+
 
 #ifdef DEBUG
   printf("\nretrieved key parameters\n");

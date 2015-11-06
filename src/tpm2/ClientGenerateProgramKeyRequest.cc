@@ -151,15 +151,10 @@ int main(int an, char** av) {
   uint64_t expOut;
   SHA_CTX sha1;
   SHA256_CTX sha256;
-  x509_cert_request_parameters_message cert_parameters;
   string x509_request_key_blob;
+
   private_key_blob_message program_key_out;
   program_cert_request_message request;
-  X509_REQ* req = nullptr;
-
-  int der_cert_size = MAX_SIZE_PARAMS;
-  byte der_cert_buf[MAX_SIZE_PARAMS];
-  byte* p_der_cert_buf;
 
   int quote_size = MAX_SIZE_PARAMS;
   byte quoted[MAX_SIZE_PARAMS];
@@ -184,10 +179,6 @@ int main(int an, char** av) {
   }
 
   string output;
-#ifdef DEBUG
-  X509_REQ* req2 = nullptr;
-  byte* p_s_ref = nullptr;
-#endif
 
   // Create endorsement key
   *(uint32_t*)(&primary_flags) = 0;
@@ -357,57 +348,24 @@ int main(int an, char** av) {
     goto done;
   }
 
-  // Fill program key cert request with progran key parameters
-  cert_parameters.set_common_name(FLAGS_program_key_name);
-  cert_parameters.mutable_key()->set_key_type(FLAGS_program_key_type);
-  cert_parameters.mutable_key()->mutable_rsa_key()->set_bit_modulus_size(
-      FLAGS_program_key_size);
+  // Fill program key parameters
+  request.set_endorsement_cert_blob(endorsement_key_blob);
+  request.set_active_sign_alg("RSA");
+  request.set_active_sign_bit_size(2048);
+  request.set_active_sign_hash_alg(FLAGS_hash_alg);
+  request.mutable_program_key()->set_program_name(FLAGS_program_key_name);
+  request.mutable_program_key()->set_program_key_type("RSA");
+  request.mutable_program_key()->set_program_bit_modulus_size(FLAGS_program_key_size);
   expIn = (uint64_t) FLAGS_program_key_exponent;
   ChangeEndian64((uint64_t*)&expIn, (uint64_t*)(&expOut));
-
-  cert_parameters.mutable_key()->mutable_rsa_key()->set_exponent(
-      (const char*)&expOut, sizeof(uint64_t));
+  request.mutable_program_key()->set_program_key_exponent((const char*)&expOut, sizeof(uint64_t));
   mod = BN_to_bin(*program_rsa_key->n);
   if (mod == nullptr) {
     printf("Can't get program key modulus\n");
     ret_val = 1;
     goto done;
   }
-  cert_parameters.mutable_key()->mutable_rsa_key()->set_modulus(
-      mod->data(), mod->size());
-  print_cert_request_message(cert_parameters); printf("\n");
-
-  req = X509_REQ_new();
-  if (!GenerateX509CertificateRequest(cert_parameters, false, req)) {
-    printf("Can't generate certificate request\n");
-    ret_val = 1;
-    goto done;
-  }
-  p_der_cert_buf = der_cert_buf;
-  der_cert_size = i2d_X509_REQ(req, &p_der_cert_buf);
-  x509_request_key_blob.assign((const char*)der_cert_buf, der_cert_size);
-  request.set_program_name(FLAGS_program_key_name);
-  request.set_endorsement_cert_blob(endorsement_key_blob);
-  request.set_x509_program_key_request(x509_request_key_blob);
-  request.set_active_sign_alg("RSA");
-  request.set_active_sign_bit_size(2048);
-  request.set_active_sign_hash_alg(FLAGS_hash_alg);
-
-#ifdef DEBUG
-  printf("Cert req: ");
-  printf("\nx509_request_key_blob(%d): ", x509_request_key_blob.size());
-  PrintBytes(x509_request_key_blob.size(), (byte*)x509_request_key_blob.data());
-  printf("\n\n");
-  p_s_ref = (byte*)x509_request_key_blob.data();
-  req2 = d2i_X509_REQ(nullptr, (const byte**)&p_s_ref, x509_request_key_blob.size());
-  if (req2 == nullptr) {
-    printf("\nreq2 returns null\n\n");
-  } else {
-    printf("\nreq2 serialization: "); 
-    X509_REQ_print_fp(stdout, req2);
-    printf("\n");
-  }
-#endif
+  request.mutable_program_key()->set_program_key_modulus((byte*)mod->data(), mod->size());
 
   // get quote key info
   if (Tpm2_ReadPublic(tpm, quote_handle, &quote_pub_blob_size, quote_pub_blob,
@@ -431,23 +389,28 @@ int main(int an, char** av) {
   printf("\n");
 #endif
 
-  // hash x509 request
-  if (hash_alg_id == TPM_ALG_SHA1) {
-    SHA_Init(&sha1);
-    SHA_Update(&sha1, (byte*)der_cert_buf, der_cert_size);
-    SHA_Final(quoted_hash, &sha1);
-  } else {
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, (byte*)der_cert_buf, der_cert_size);
-    SHA256_Final(quoted_hash, &sha256);
+  // TODO: hash x509 request
+  {
+    string serialized_key = request.mutable_program_key()->DebugString();
+    if (hash_alg_id == TPM_ALG_SHA1) {
+      SHA_Init(&sha1);
+      SHA_Update(&sha1, (byte*)serialized_key.data(), serialized_key.size());
+      SHA_Final(quoted_hash, &sha1);
+    } else {
+      SHA256_Init(&sha256);
+      SHA256_Update(&sha256, (byte*)serialized_key.data(), serialized_key.size());
+      SHA256_Final(quoted_hash, &sha256);
+    }
+    to_quote.size = SizeHash(hash_alg_id);
+    memset(to_quote.buffer, 0, to_quote.size);
+    memcpy(to_quote.buffer, quoted_hash, to_quote.size);
   }
-  to_quote.size = SizeHash(hash_alg_id);
-  memset(to_quote.buffer, 0, to_quote.size);
-  memcpy(to_quote.buffer, quoted_hash, to_quote.size);
+
 #ifdef DEBUG
   printf("\nquoted_hash: "); PrintBytes(to_quote.size, to_quote.buffer);
   printf("\n");
 #endif
+
   if (!Tpm2_Quote(tpm, quote_handle, parentAuth,
                   to_quote.size, to_quote.buffer,
                   scheme, pcrSelect, TPM_ALG_RSA, hash_alg_id,

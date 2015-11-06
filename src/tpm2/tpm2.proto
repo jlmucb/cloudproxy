@@ -74,10 +74,10 @@ message x509_cert_issuer_parameters_message {
 }
 
 message cert_parameters_message {
-  optional x509_cert_request_parameters_message request	= 1;
-  optional x509_cert_issuer_parameters_message signer	= 2;
-  optional string not_before	                        = 3;
-  optional string not_after	                        = 4;
+  optional x509_cert_request_parameters_message request = 1;
+  optional x509_cert_issuer_parameters_message signer   = 2;
+  optional string not_before                            = 3;
+  optional string not_after                             = 4;
 }
 
 message credential_info_message {
@@ -89,17 +89,23 @@ message credential_info_message {
   optional int32  properties                  = 3;
 }
 
+message program_key_parameters {
+  optional string program_name                = 1;
+  optional string program_key_type            = 2;
+  optional int32 program_bit_modulus_size     = 3;
+  optional bytes program_key_exponent         = 4;
+  optional bytes program_key_modulus          = 5;
+};
+
 message program_cert_request_message {
   optional string request_id                  = 1;
-  optional string program_name                = 2;
-  optional bytes endorsement_cert_blob        = 3;
-  // X509 der encoded cert request for program key
-  optional bytes x509_program_key_request     = 4;
-  optional string active_sign_alg             = 5;
-  optional int32 active_sign_bit_size         = 6;
-  optional string active_sign_hash_alg        = 7;
-  optional bytes active_signature             = 8;
-  optional credential_info_message cred       = 9;
+  optional bytes endorsement_cert_blob        = 2;
+  optional program_key_parameters program_key = 3;
+  optional string active_sign_alg             = 4;
+  optional int32 active_sign_bit_size         = 5;
+  optional string active_sign_hash_alg        = 6;
+  optional bytes active_signature             = 7;
+  optional credential_info_message cred       = 8;
 }
 
 message program_cert_response_message {

@@ -143,9 +143,6 @@ int main(int an, char** av) {
 
   int size_active_out;
 
-  byte* out = nullptr;
-  byte* der_program_cert_request = nullptr;
-  int der_program_cert_request_size = 0;
   byte* der_program_cert = nullptr;
   int der_program_cert_size = 0;
 
@@ -182,6 +179,8 @@ int main(int an, char** av) {
 
   EVP_PKEY* protector_evp_key = nullptr;
   RSA* protector_key = nullptr;
+
+  string serialized_program_key;
 
   if (FLAGS_signing_instructions_file == "") {
     printf("signing_instructions_file is empty\n");
@@ -241,7 +240,7 @@ int main(int an, char** av) {
     goto done;
   }
   printf("issuer: %s, duration: %ld, purpose: %s, hash: %s\n",
-         signing_message.issuer().c_str(), signing_message.duration(),
+         signing_message.issuer().c_str(), (long)signing_message.duration(),
          signing_message.purpose().c_str(), signing_message.hash_alg().c_str());
   if (!signing_message.can_sign()) {
     printf("Signing is invalid\n");
@@ -285,32 +284,27 @@ int main(int an, char** av) {
     goto done;
   }
 
-  // Validate request: self-signed, endorsement, quote sig
-
-  // Check self-signed
+  // Validate request: self-signed, endorsement
 
   // Get endorsement cert
   p = (byte*)request.endorsement_cert_blob().data();
   endorsement_blob_size = request.endorsement_cert_blob().size();
   endorsement_cert = d2i_X509(nullptr, (const byte**)&p, endorsement_blob_size);
 
-  // Check it
+  // Generate request for program cert
+  cert_parameters.set_common_name(request.program_key().program_name());
+  cert_parameters.mutable_key()->set_key_type(request.program_key().program_key_type());
+  cert_parameters.mutable_key()->mutable_rsa_key()->set_bit_modulus_size(
+      request.program_key().program_bit_modulus_size());
+  cert_parameters.mutable_key()->mutable_rsa_key()->set_exponent(
+      request.program_key().program_key_exponent());
+  cert_parameters.mutable_key()->mutable_rsa_key()->set_modulus(
+       request.program_key().program_key_modulus());
+  print_cert_request_message(cert_parameters); printf("\n");
 
-  // Get certificate request for program key
-  der_program_cert_request = (byte*)request.x509_program_key_request().data();
-  der_program_cert_request_size = request.x509_program_key_request().size();
-
-#ifdef DEBUG
-  printf("Program cert request (%d): ", der_program_cert_request_size);
-  PrintBytes(der_program_cert_request_size, der_program_cert_request);
-  printf("\n");
-#endif
-
-  out = der_program_cert_request;
-  req = d2i_X509_REQ(nullptr, (const byte**)&out, der_program_cert_request_size);
-  if (req == nullptr) {
-    printf("d2i_X509_REQ returns null for request, input size: %d\n", der_program_cert_request_size);
-    WriteFileFromBlock("FailedReq", der_program_cert_request_size, der_program_cert_request);
+  req = X509_REQ_new();
+  if (!GenerateX509CertificateRequest(cert_parameters, false, req)) {
+    printf("Can't generate certificate request\n");
     ret_val = 1;
     goto done;
   }
@@ -331,18 +325,21 @@ int main(int an, char** av) {
 #ifdef DEBUG
   printf("Program cert: ");
   PrintBytes(der_program_cert_size, der_program_cert); printf("\n");
+  X509_print_fp(stdout, program_cert);
+  printf("\n");
 #endif
 
   // Hash request
+  serialized_program_key = request.program_key().DebugString();
   if (hash_alg_id == TPM_ALG_SHA1) {
     SHA_Init(&sha1);
-    SHA_Update(&sha1, (byte*)request.x509_program_key_request().data(),
-                  request.x509_program_key_request().size());
+    SHA_Update(&sha1, (byte*)serialized_program_key.data(),
+                      serialized_program_key.size());
     SHA_Final(quoted_hash, &sha1);
   } else if (hash_alg_id == TPM_ALG_SHA256) {
     SHA256_Init(&sha256);
-    SHA256_Update(&sha256, (byte*)request.x509_program_key_request().data(),
-                  request.x509_program_key_request().size());
+    SHA256_Update(&sha256, (byte*)serialized_program_key.data(),
+                           serialized_program_key.size());
     SHA256_Final(quoted_hash, &sha256);
   } else {
     printf("Unknown hash alg\n");
@@ -451,6 +448,7 @@ int main(int an, char** av) {
 
   // Generate seed for MakeCredential protocol
   RAND_bytes(seed, size_seed);
+
 #ifdef DEBUG
   printf("\nseed: ");
   PrintBytes(size_seed, seed); printf("\n");
@@ -461,26 +459,6 @@ int main(int an, char** av) {
   protector_key = EVP_PKEY_get1_RSA(protector_evp_key);
   RSA_up_ref(protector_key);
 
-// remove if pad below works
-#if 0
-  memset(in_buf, 0, 512);
-  memset(encrypted_secret, 0, 512);
-  size_in = 0;
-  memcpy(in_buf, seed, size_seed);
-  size_in += size_seed;
-  memcpy(&in_buf[size_in], (byte*)"IDENTITY", strlen("IDENTITY") + 1);
-  size_in += strlen("IDENTITY") + 1;
-#endif
-
-#ifdef DEBUG
-  printf("\nEndorsement key as read: ");
-  RSA_print_fp(stdout, protector_key, 0);
-  printf("\n");
-  printf("\nBuffer to encrypt: ");
-  PrintBytes(size_in, in_buf);
-  printf("\n");
-#endif
-
   // Secret= E(protector_key, seed || "IDENTITY")
   //   args: to, from, label, len
   RSA_padding_add_PKCS1_OAEP(in_buf, 256, seed, size_seed, 
@@ -490,59 +468,7 @@ int main(int an, char** av) {
                               // RSA_PKCS1_OAEP_PADDING);
   response.set_secret(encrypted_secret, encrypted_secret_size);
 
-#ifdef DEBUG2
-{
-  TPM_HANDLE ekHandle;
-  string emptyAuth;
-  TPM2B_PUBLIC pub_out;
-
-  TPML_PCR_SELECTION pcrSelect;
-  memset((void*)&pcrSelect, 0, sizeof(TPML_PCR_SELECTION));
-
-  TPMA_OBJECT primary_flags;
-  *(uint32_t*)(&primary_flags) = 0;
-  primary_flags.fixedTPM = 1;
-  primary_flags.fixedParent = 1;
-  primary_flags.sensitiveDataOrigin = 1;
-  primary_flags.userWithAuth = 1;
-  primary_flags.decrypt = 1;
-  primary_flags.restricted = 1;
-
-  LocalTpm tpm;
-  if (!tpm.OpenTpm("/dev/tpm0")) {
-    printf("Can't open tpm\n");
-    ret_val = 1;
-    goto done;
-  }
-
-  if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect, 
-                         TPM_ALG_RSA, TPM_ALG_SHA1, primary_flags,
-                         TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
-                         2048, 0x010001, &ekHandle, &pub_out)) {
-    printf("CreatePrimary succeeded parent: %08x\n", ekHandle);
-  } else {
-    printf("CreatePrimary failed\n");
-    return false;
-  }
-
-  TPM2B_PUBLIC_KEY_RSA in;
-  TPMT_RSA_DECRYPT scheme;
-  TPM2B_DATA label;
-  TPM2B_PUBLIC_KEY_RSA out;
-  in.size = size_in;
-  memcpy(in.buffer, in_buf, size_in);
-  scheme.scheme = TPM_ALG_NULL;
-
-  if (!Tpm2_Rsa_Encrypt(tpm, ekHandle, emptyAuth, in, scheme, label, &out)) {
-    printf("Tpm2_Rsa_Encrypt failed\n");
-    ret_val = 1;
-  }
-  printf("Tpm2_Rsa_Encrypt out size: %d\n", out.size);
-  PrintBytes(out.size, out.buffer); printf("\n\n");
-}
-#endif
-
-#ifdef DEBUG2
+#ifdef DEBUG
   printf("\nEndorsement modulus: ");
   BN_print_fp(stdout, protector_key->n);
   printf("\n");

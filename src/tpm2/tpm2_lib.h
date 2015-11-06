@@ -35,6 +35,7 @@ void ChangeEndian64(const uint64_t* in, uint64_t* out);
 void InitSinglePcrSelection(int pcrNum, TPM_ALG_ID alg,
                             TPML_PCR_SELECTION& pcrSelect);
 void setPcrBit(int pcrNum, byte* array);
+bool testPcrBit(int pcrNum, byte* array);
 
 bool ReadFileIntoBlock(const string& filename, int* size, byte* block);
 bool WriteFileFromBlock(const string& filename, int size, byte* block);
@@ -69,6 +70,17 @@ int Tpm2_Set_OwnerAuthData(int size, byte* buf);
 
 TPM_HANDLE GetNvHandle(uint32_t slot);
 
+
+bool FillTpmPcrData(LocalTpm& tpm, TPMS_PCR_SELECTION pcrSelection,
+                    int* size, byte* buf);
+bool ComputePcrDigest(TPMS_PCR_SELECTION pcrSelection,
+                      int size_in, byte* in_buf,
+                      int* size_out, byte* out);
+bool ComputeQuotedValue(TPMS_PCR_SELECTION pcrSelection, 
+                        int size_pcr, byte* pcr_buf,
+                        int quote_size, byte* quote,
+                        int* size_quoted, byte* quoted);
+
 // TPM Commands
 bool Tpm2_Startup(LocalTpm& tpm);
 bool Tpm2_Shutdown(LocalTpm& tpm);
@@ -77,6 +89,9 @@ bool Tpm2_GetCapability(LocalTpm& tpm, uint32_t cap,
 bool Tpm2_GetRandom(LocalTpm& tpm, int numBytes, byte* buf);
 
 bool Tpm2_ReadClock(LocalTpm& tpm, uint64_t* current_time, uint64_t* current_clock);
+bool Tpm2_ReadPcrs(LocalTpm& tpm, TPML_PCR_SELECTION pcrSelect,
+                   uint32_t* updateCounter,
+                   TPML_PCR_SELECTION* pcrSelectOut, TPML_DIGEST* values);
 bool Tpm2_ReadPcr(LocalTpm& tpm, int pcrNum, uint32_t* updateCounter,
                   TPML_PCR_SELECTION* pcrSelectOut, TPML_DIGEST* digest);
 bool Tpm2_CreatePrimary(LocalTpm& tpm, TPM_HANDLE owner, string& authString,

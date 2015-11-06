@@ -44,9 +44,11 @@ LINK=g++
 PROTO=protoc
 AR=ar
 export LD_LIBRARY_PATH=/usr/local/lib
-LDFLAGS= -lprotobuf -lgtest -lgflags -lpthread
+LDFLAGS= -lprotobuf -lgtest -lgflags -lpthread -lcrypto
 
 dobj_tpm2_util=					$(O)/tpm2_lib.o \
+  $(O)/tpm2.pb.o \
+  $(O)/openssl_helpers.o \
   $(O)/tpm2_util.o
 dobj_GeneratePolicyKey=				$(O)/tpm2_lib.o \
   $(O)/tpm2.pb.o \
@@ -121,39 +123,39 @@ $(EXE_DIR)/tpm2_util.exe: $(dobj_tpm2_util)
 
 $(EXE_DIR)/GeneratePolicyKey.exe: $(dobj_GeneratePolicyKey)
 	@echo "linking GeneratePolicyKey"
-	$(LINK) -o $(EXE_DIR)/GeneratePolicyKey.exe $(dobj_GeneratePolicyKey) $(LDFLAGS) -lcrypto
+	$(LINK) -o $(EXE_DIR)/GeneratePolicyKey.exe $(dobj_GeneratePolicyKey) $(LDFLAGS)
 
 $(EXE_DIR)/CloudProxySignEndorsementKey.exe: $(dobj_CloudProxySignEndorsementKey)
 	@echo "linking CloudProxySignEndorsementKey"
-	$(LINK) -o $(EXE_DIR)/CloudProxySignEndorsementKey.exe $(dobj_CloudProxySignEndorsementKey) $(LDFLAGS) -lcrypto
+	$(LINK) -o $(EXE_DIR)/CloudProxySignEndorsementKey.exe $(dobj_CloudProxySignEndorsementKey) $(LDFLAGS)
 
 $(EXE_DIR)/GetEndorsementKey.exe: $(dobj_GetEndorsementKey)
 	@echo "linking GetEndorsementKey"
-	$(LINK) -o $(EXE_DIR)/GetEndorsementKey.exe $(dobj_GetEndorsementKey) $(LDFLAGS) -lcrypto
+	$(LINK) -o $(EXE_DIR)/GetEndorsementKey.exe $(dobj_GetEndorsementKey) $(LDFLAGS)
 
 $(EXE_DIR)/SelfSignPolicyCert.exe: $(dobj_SelfSignPolicyCert)
 	@echo "linking SelfSignPolicyCert"
-	$(LINK) -o $(EXE_DIR)/SelfSignPolicyCert.exe $(dobj_SelfSignPolicyCert) $(LDFLAGS) -lcrypto
+	$(LINK) -o $(EXE_DIR)/SelfSignPolicyCert.exe $(dobj_SelfSignPolicyCert) $(LDFLAGS)
 
 $(EXE_DIR)/CreateAndSaveCloudProxyKeyHierarchy.exe: $(dobj_CreateAndSaveCloudProxyKeyHierarchy)
 	@echo "linking CreateAndSaveCloudProxyKeyHierarchy"
-	$(LINK) -o $(EXE_DIR)/CreateAndSaveCloudProxyKeyHierarchy.exe $(dobj_CreateAndSaveCloudProxyKeyHierarchy) $(LDFLAGS) -lcrypto
+	$(LINK) -o $(EXE_DIR)/CreateAndSaveCloudProxyKeyHierarchy.exe $(dobj_CreateAndSaveCloudProxyKeyHierarchy) $(LDFLAGS)
 
 $(EXE_DIR)/RestoreCloudProxyKeyHierarchy.exe: $(dobj_RestoreCloudProxyKeyHierarchy)
 	@echo "linking RestoreCloudProxyKeyHierarchy"
-	$(LINK) -o $(EXE_DIR)/RestoreCloudProxyKeyHierarchy.exe $(dobj_RestoreCloudProxyKeyHierarchy) $(LDFLAGS) -lcrypto
+	$(LINK) -o $(EXE_DIR)/RestoreCloudProxyKeyHierarchy.exe $(dobj_RestoreCloudProxyKeyHierarchy) $(LDFLAGS)
 
 $(EXE_DIR)/ClientGenerateProgramKeyRequest.exe: $(dobj_ClientGenerateProgramKeyRequest)
 	@echo "linking ClientGenerateProgramKeyRequest"
-	$(LINK) -o $(EXE_DIR)/ClientGenerateProgramKeyRequest.exe $(dobj_ClientGenerateProgramKeyRequest) $(LDFLAGS) -lcrypto
+	$(LINK) -o $(EXE_DIR)/ClientGenerateProgramKeyRequest.exe $(dobj_ClientGenerateProgramKeyRequest) $(LDFLAGS)
 
 $(EXE_DIR)/ServerSignProgramKeyRequest.exe: $(dobj_ServerSignProgramKeyRequest)
 	@echo "linking ServerSignProgramKeyRequest"
-	$(LINK) -o $(EXE_DIR)/ServerSignProgramKeyRequest.exe $(dobj_ServerSignProgramKeyRequest) $(LDFLAGS) -lcrypto
+	$(LINK) -o $(EXE_DIR)/ServerSignProgramKeyRequest.exe $(dobj_ServerSignProgramKeyRequest) $(LDFLAGS)
 
 $(EXE_DIR)/ClientGetProgramKeyCert.exe: $(dobj_ClientGetProgramKeyCert)
 	@echo "linking ClientGetProgramKeyCert"
-	$(LINK) -o $(EXE_DIR)/ClientGetProgramKeyCert.exe $(dobj_ClientGetProgramKeyCert) $(LDFLAGS) -lcrypto
+	$(LINK) -o $(EXE_DIR)/ClientGetProgramKeyCert.exe $(dobj_ClientGetProgramKeyCert) $(LDFLAGS)
 
 $(EXE_DIR)/SigningInstructions.exe: $(dobj_SigningInstructions)
 	@echo "linking SigningInstructions"

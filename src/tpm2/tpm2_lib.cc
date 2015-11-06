@@ -9,6 +9,8 @@
 #include <tpm2_lib.h>
 #include <errno.h>
 
+#include <openssl/sha.h>
+
 #include <string>
 using std::string;
 
@@ -175,6 +177,104 @@ struct TPM_RESPONSE {
   uint32_t responseCode_;
 };
 #pragma pack(pop)
+
+bool FillTpmPcrData(LocalTpm& tpm, TPMS_PCR_SELECTION pcrSelection,
+                    int* size, byte* buf) {
+  TPML_PCR_SELECTION pcrSelect;
+  uint32_t updateCounter = 0;
+  TPML_PCR_SELECTION pcrSelectOut;
+  TPML_DIGEST digest;
+
+  if (!Tpm2_ReadPcrs(tpm, pcrSelect, &updateCounter,
+                     &pcrSelectOut, &digest)) {
+    return false;
+  }
+  int total_size = 0;
+  for (int i = 0; i < (int)digest.count; i++) {
+    if ((total_size + digest.digests[i].size) > *size) {
+      printf("FillTpmPcrData: buffer too small\n");
+      return false;
+    }
+    memcpy(&buf[total_size], digest.digests[i].buffer,
+           digest.digests[i].size);
+    total_size += digest.digests[i].size;
+  }
+  *size = total_size;
+  return true;
+}
+
+bool ComputePcrDigest(TPMS_PCR_SELECTION pcrSelection,
+                      int size_in, byte* in_buf,
+                      int* size_out, byte* out) {
+  SHA_CTX sha1;
+  SHA256_CTX sha256;
+
+  if (pcrSelection.sizeofSelect != 3) {
+    return false;
+  }
+  if (pcrSelection.hash == TPM_ALG_SHA1) {
+    SHA_Init(&sha1);
+  } else if (pcrSelection.hash == TPM_ALG_SHA256) {
+    SHA256_Init(&sha256);
+  } else  {
+    printf("ComputePcrDigest: unsupported hash algorithm\n");
+    return false;
+  }
+ 
+  int i;
+  for (i = 0; i < pcrSelection.sizeofSelect * 8; i++) {
+    if (!testPcrBit(i, pcrSelection.pcrSelect))
+      continue;
+    // pcrSelection.pcrSelect[PCR_SELECT_MAX];
+    if (pcrSelection.hash == TPM_ALG_SHA1) {
+      SHA_Update(&sha1, &in_buf[i * 20], 20);
+    } else {
+      SHA256_Update(&sha256, &in_buf[i * 32], 32);
+    }
+  }
+  if (pcrSelection.hash == TPM_ALG_SHA1) {
+    SHA_Final(out, &sha1);
+    *size_out = 20;
+  } else {
+    SHA256_Final(out, &sha256);
+    *size_out = 32;
+  }
+  return true;
+}
+
+bool ComputeQuotedValue(TPMS_PCR_SELECTION pcrSelection, 
+                        int size_pcr, byte* pcr_buf,
+                        int quote_size, byte* quote,
+                        int* size_quoted, byte* quoted) {
+  byte pcr_digest[256];
+  int size_out;
+
+  size_out = 256;
+  if (!ComputePcrDigest(pcrSelection, size_pcr, pcr_buf,
+                      &size_out, pcr_digest)) {
+    printf("ComputePcrDigest failed\n");
+    return false;
+  }
+
+  if (pcrSelection.hash == TPM_ALG_SHA1) {
+    SHA_CTX sha1;
+    SHA_Update(&sha1, pcr_digest, 20);
+    SHA_Update(&sha1, quote, quote_size);
+    SHA_Final(quoted, &sha1);
+    *size_quoted = 20;
+  } else if (pcrSelection.hash == TPM_ALG_SHA256) {
+    SHA256_CTX sha256;
+    SHA256_Update(&sha256, pcr_digest, 32);
+    SHA256_Update(&sha256, quote, quote_size);
+    SHA256_Final(quoted, &sha256);
+    *size_quoted = 32;
+  } else {
+    printf("unsupported hash alg\n");
+    return false;
+  }
+
+  return true;
+}
 
 void Tpm2_InterpretResponse(int out_size, byte* out_buf, uint16_t* cap,
                            uint32_t* responseSize, uint32_t* responseCode) {
@@ -404,6 +504,10 @@ void setPcrBit(int pcrNum, byte* array) {
     array[pcrNum / 8] = 1 << (pcrNum % 8);
 }
 
+bool testPcrBit(int pcrNum, byte* array) {
+  return (array[pcrNum / 8] & (1 << (pcrNum % 8))) != 0;
+}
+
 bool GetPcrValue(int size, byte* in, uint32_t* updateCounter,
                  TPML_PCR_SELECTION* pcr_out, TPML_DIGEST* values) {
   byte* current_in = in;
@@ -448,8 +552,9 @@ void InitSinglePcrSelection(int pcrNum, TPM_ALG_ID hash,
     setPcrBit(pcrNum, pcrSelect.pcrSelections[0].pcrSelect);
 }
 
-bool Tpm2_ReadPcr(LocalTpm& tpm, int pcrNum, uint32_t* updateCounter,
-                  TPML_PCR_SELECTION* pcrSelectOut, TPML_DIGEST* values) {
+bool Tpm2_ReadPcrs(LocalTpm& tpm, TPML_PCR_SELECTION pcrSelect,
+                   uint32_t* updateCounter,
+                   TPML_PCR_SELECTION* pcrSelectOut, TPML_DIGEST* values) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   byte input_params[MAX_SIZE_PARAMS];
   int space_left = MAX_SIZE_PARAMS;
@@ -457,13 +562,6 @@ bool Tpm2_ReadPcr(LocalTpm& tpm, int pcrNum, uint32_t* updateCounter,
   byte resp_buf[MAX_SIZE_PARAMS];
   int in_size = 0;
   byte* in = input_params;
-
-  if (pcrNum < 0) {
-    printf("No PCR to read\n");
-    return true;
-  }
-  TPML_PCR_SELECTION pcrSelect;
-  InitSinglePcrSelection(pcrNum, TPM_ALG_SHA1, pcrSelect);
 
   memset(resp_buf, 0, resp_size);
   memset(input_params, 0, space_left);
@@ -506,6 +604,14 @@ bool Tpm2_ReadPcr(LocalTpm& tpm, int pcrNum, uint32_t* updateCounter,
   return GetPcrValue(responseSize - sizeof(TPM_RESPONSE),
                      resp_buf + sizeof(TPM_RESPONSE), updateCounter,
                      pcrSelectOut, values);
+}
+
+bool Tpm2_ReadPcr(LocalTpm& tpm, int pcrNum, uint32_t* updateCounter,
+                  TPML_PCR_SELECTION* pcrSelectOut, TPML_DIGEST* values) {
+  TPML_PCR_SELECTION pcrSelect;
+  InitSinglePcrSelection(pcrNum, TPM_ALG_SHA1, pcrSelect);
+  return Tpm2_ReadPcrs(tpm, pcrSelect, updateCounter,
+                   pcrSelectOut, values);
 }
 
 int SetOwnerHandle(TPM_HANDLE owner, int size, byte* buf) {

@@ -14,6 +14,8 @@
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
 
+#include <openssl_helpers.h>
+
 #include <tpm20.h>
 #include <tpm2_lib.h>
 #include <gflags/gflags.h>
@@ -138,6 +140,10 @@ int main(int an, char** av) {
   byte decrypted_quote[MAX_SIZE_PARAMS];
   byte outerHmac[128];
 
+  string cert_key_seed;
+  int size_derived_keys;
+  byte derived_keys[128];
+
   byte* p;
 
   int size_active_out;
@@ -152,6 +158,8 @@ int main(int an, char** av) {
   byte quoted_hash[256];
   int encrypted_data_size = 0;
   byte encrypted_data[MAX_SIZE_PARAMS];
+  int encrypted_data_hmac_size = 0;
+  byte encrypted_data_hmac[MAX_SIZE_PARAMS];
   byte zero_iv[32];
   memset(zero_iv, 0, 32);
   
@@ -415,16 +423,39 @@ int main(int an, char** av) {
          unmarshaled_credential.size);
 
   // Encrypt signed program cert
-  if (!AesCtrCrypt(128, unmarshaled_credential.buffer, der_program_cert_size,
+  size_derived_keys = 128;
+  label = "PROTECT";
+  cert_key_seed.assign((const char*)unmarshaled_credential.buffer, unmarshaled_credential.size);
+  if (!KDFa(hash_alg_id, cert_key_seed, label, contextV, contextV, 256,
+            size_derived_keys, derived_keys)) {
+    printf("Can't derive cert protection keys\n");
+    ret_val = 1;
+    goto done;
+  }
+  if (!AesCtrCrypt(128, derived_keys, der_program_cert_size,
                    der_program_cert, encrypted_data)) {
     printf("Can't encrypt cert\n");
     ret_val = 1;
     goto done;
   }
+  HMAC_CTX_init(&hctx);
+  if (hash_alg_id == TPM_ALG_SHA1) {
+    HMAC_Init_ex(&hctx, &derived_keys[16], 16, EVP_sha1(), nullptr);
+    encrypted_data_hmac_size = 20;
+  } else {
+    HMAC_Init_ex(&hctx, &derived_keys[16], 16, EVP_sha256(), nullptr);
+    encrypted_data_hmac_size = 32;
+  }
+  HMAC_Update(&hctx, encrypted_data, der_program_cert_size);
+  HMAC_Final(&hctx, encrypted_data_hmac, (uint32_t*)&encrypted_data_hmac_size);
+  HMAC_CTX_cleanup(&hctx);
 
 #ifdef DEBUG
   printf("\ncredential secret: ");
   PrintBytes(16, unmarshaled_credential.buffer);
+  printf("\n");
+  printf("\nderived keys: ");
+  PrintBytes(32, derived_keys);
   printf("\n");
   printf("\nder_program_cert: ");
   PrintBytes(der_program_cert_size, der_program_cert);
@@ -432,7 +463,7 @@ int main(int an, char** av) {
   printf("\nencrypted der_program_cert: ");
   PrintBytes(der_program_cert_size, encrypted_data);
   printf("\n");
-  if (!AesCtrCrypt(128, unmarshaled_credential.buffer, der_program_cert_size,
+  if (!AesCtrCrypt(128, derived_keys, der_program_cert_size,
                    encrypted_data, test_buf)) {
     printf("\nCan't decrypt cert\n");
     ret_val = 1;
@@ -441,9 +472,13 @@ int main(int an, char** av) {
   printf("\ndecrypted der_program_cert: ");
   PrintBytes(der_program_cert_size, test_buf);
   printf("\n");
+  printf("\nencrypted_dert_hmac: ");
+  PrintBytes(encrypted_data_hmac_size, encrypted_data_hmac);
+  printf("\n");
 #endif
   encrypted_data_size = der_program_cert_size;
   response.set_encrypted_cert(encrypted_data, encrypted_data_size);
+  response.set_encrypted_cert_hmac(encrypted_data_hmac, encrypted_data_hmac_size);
 
   // Generate seed for MakeCredential protocol
   RAND_bytes(seed, size_seed);

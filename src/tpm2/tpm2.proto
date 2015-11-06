@@ -129,6 +129,7 @@ message program_cert_response_message {
   // secret in credential buffer.  TODO(jlm): should also
   // contain an HMAC.
   optional bytes encrypted_cert               = 7;
+  optional bytes encrypted_cert_hmac          = 8;
 }
 
 message certificate_chain_entry_message {

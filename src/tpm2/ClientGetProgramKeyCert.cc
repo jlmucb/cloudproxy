@@ -120,6 +120,15 @@ int main(int an, char** av) {
   int context_data_size = 930;
   byte context_save_area[MAX_SIZE_PARAMS];
 
+  string cert_key_seed;
+  string label;
+  string contextV;
+  int size_derived_keys;
+  byte derived_keys[128];
+  int encrypted_cert_hmac_size;
+  byte encrypted_cert_hmac[256];
+  HMAC_CTX hctx;
+
   int size_response = MAX_SIZE_PARAMS;
   byte response_buf[MAX_SIZE_PARAMS];
   program_cert_response_message response;
@@ -363,8 +372,32 @@ int main(int an, char** av) {
     goto done;
   }
   size_cert_out = response.encrypted_cert().size();
-  if (!AesCtrCrypt(128, recovered_credential.buffer,
-                   response.encrypted_cert().size(),
+
+  size_derived_keys = 128;
+  label = "PROTECT";
+  cert_key_seed.assign((const char*)recovered_credential.buffer, recovered_credential.size);
+  if (!KDFa(hash_alg_id, cert_key_seed, label, contextV, contextV, 256,
+            size_derived_keys, derived_keys)) {
+    printf("Can't derive cert protection keys\n");
+    ret_val = 1;
+    goto done;
+  }
+  // Check Hmac first
+  if (hash_alg_id == TPM_ALG_SHA1) {
+    HMAC_Init_ex(&hctx, &derived_keys[16], 16, EVP_sha1(), nullptr);
+    encrypted_cert_hmac_size = 20;
+  } else {
+    HMAC_Init_ex(&hctx, &derived_keys[16], 16, EVP_sha256(), nullptr);
+    encrypted_cert_hmac_size = 32;
+  }
+  HMAC_Update(&hctx, (byte*)response.encrypted_cert().data(), response.encrypted_cert().size());
+  HMAC_Final(&hctx, encrypted_cert_hmac, (uint32_t*)&encrypted_cert_hmac_size);
+  HMAC_CTX_cleanup(&hctx);
+  if (memcmp(encrypted_cert_hmac, response.encrypted_cert_hmac().data(), encrypted_cert_hmac_size) !=0) {
+    printf("Hmac compare failed\n");
+  }
+  // decrypt
+  if (!AesCtrCrypt(128, derived_keys, response.encrypted_cert().size(),
                    (byte*)response.encrypted_cert().data(),
                    cert_out_buf)) {
     printf("Can't parse response\n");
@@ -374,6 +407,9 @@ int main(int an, char** av) {
   size_cert_out = response.encrypted_cert().size();
 
 #ifdef DEBUG
+  printf("hmac (%d): ", encrypted_cert_hmac_size);
+  PrintBytes(encrypted_cert_hmac_size, encrypted_cert_hmac);
+  printf("\n");
   printf("decrypted cert (%d): ", size_cert_out);
   PrintBytes(size_cert_out, cert_out_buf);
   printf("\n");

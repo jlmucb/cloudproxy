@@ -139,11 +139,6 @@ int main(int an, char** av) {
   string input;
   string output;
 
-#ifdef DEBUG
-  TPM2B_DIGEST test_cred;
-#endif
-
-  // Generate program key
   if (FLAGS_program_key_type != "RSA") {
     printf("Only RSA supported\n");
     ret_val = 1;
@@ -276,16 +271,18 @@ int main(int an, char** av) {
   memcpy(unmarshaled_secret.secret, response.secret().data(),
          unmarshaled_secret.size);
 
-#ifdef DEBUG
+#ifdef DEBUG2
+  // Equivalent implementation using internal TPM functions
+{
   TPM2B_DIGEST original_credential;
   TPM2B_ID_OBJECT credBlob;
   TPM2B_ENCRYPTED_SECRET active_secret;
-{
   uint16_t quote_pub_blob_size = MAX_SIZE_PARAMS;
   byte quote_pub_blob[MAX_SIZE_PARAMS];
   TPM2B_PUBLIC quote_pub_out;
   TPM2B_NAME quote_pub_name;
   TPM2B_NAME quote_qualified_pub_name;
+  TPM2B_DIGEST test_cred;
 
   if (Tpm2_ReadPublic(tpm, quote_handle, &quote_pub_blob_size, quote_pub_blob,
                       quote_pub_out, quote_pub_name,
@@ -343,10 +340,9 @@ int main(int an, char** av) {
   PrintBytes(credentialBlob.size, credentialBlob.credential);
   printf("\n");
 #endif
-  if (!Tpm2_ActivateCredential(tpm, quote_handle, ekHandle,
-                               parentAuth, emptyAuth,
-                               credentialBlob,
-                               unmarshaled_secret,
+
+  if (!Tpm2_ActivateCredential(tpm, quote_handle, ekHandle, parentAuth,
+                               emptyAuth, credentialBlob, unmarshaled_secret,
                                &recovered_credential)) {
     printf("ActivateCredential failed\n");
     ret_val = 1;
@@ -376,6 +372,7 @@ int main(int an, char** av) {
     goto done;
   }
   size_cert_out = response.encrypted_cert().size();
+
 #ifdef DEBUG
   printf("decrypted cert (%d): ", size_cert_out);
   PrintBytes(size_cert_out, cert_out_buf);

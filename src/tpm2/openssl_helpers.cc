@@ -46,7 +46,6 @@ using std::string;
 
 // standard buffer size
 #define MAX_SIZE_PARAMS 4096
-#define DEBUG
 
 void print_cert_request_message(x509_cert_request_parameters_message& req_message) {
   if (req_message.has_common_name()) {
@@ -186,16 +185,6 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
     return false;
   }
 
-#ifdef DEBUG
-  printf("\nretrieved key parameters\n");
-  printf("n: ");
-  BN_print_fp(stdout, rsa->n);
-  printf("\n");
-  printf("e: ");
-  BN_print_fp(stdout, rsa->e);
-  printf("\n");
-#endif
-
   EVP_PKEY_assign_RSA(pKey, rsa);
 
   // fill key parameters in request
@@ -210,12 +199,6 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message&
   if (X509_REQ_set_pubkey(req, pKey) ==0) {
       printf("X509_REQ_set_pubkey failed\n");
   }
-
-#ifdef DEBUG
-  printf("\nREQ:\n");
-  X509_REQ_print_fp(stdout, req);
-  printf("\n");
-#endif
 
   return true;
 }
@@ -297,11 +280,6 @@ bool SignX509Certificate(RSA* signing_key,
                          signing_instructions_message& signing_instructions,
                          EVP_PKEY* signedKey,
                          X509_REQ* req, bool verify_req_sig, X509* cert) {
-#ifdef DEBUG
-  printf("SignX509Certificate, request: ");
-  X509_REQ_print_fp(stdout, req);
-  printf("\n");
-#endif
   if (signedKey == nullptr)
     signedKey = X509_REQ_get_pubkey(req);
   if (signedKey == nullptr) {

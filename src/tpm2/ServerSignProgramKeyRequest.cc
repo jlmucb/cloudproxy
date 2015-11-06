@@ -99,8 +99,6 @@ int main(int an, char** av) {
 #ifdef DEBUG
   int test_size = MAX_SIZE_PARAMS;
   byte test_buf[MAX_SIZE_PARAMS];
-  int test_size2 = MAX_SIZE_PARAMS;
-  byte test_buf2[MAX_SIZE_PARAMS];
 #endif
   
   int in_size = MAX_SIZE_PARAMS;
@@ -126,6 +124,7 @@ int main(int an, char** av) {
     printf("Unknown hash algorithm\n");
     return 1;
   }
+
   int size_hmacKey = SizeHash(hash_alg_id);
   byte hmacKey[MAX_SIZE_PARAMS];
 
@@ -466,7 +465,7 @@ int main(int an, char** av) {
       (byte*)"IDENTITY", strlen("IDENTITY")+1);
 
 #ifdef DEBUG
-  printf("\nAfter RSAPad");
+  printf("\nAfter RSAPad: ");
   PrintBytes(size_in, in_buf);
   printf("\n");
 #endif
@@ -474,8 +473,6 @@ int main(int an, char** av) {
   encrypted_secret_size = RSA_public_encrypt(size_in, in_buf, encrypted_secret,
                               protector_key, RSA_NO_PADDING);
                               // RSA_PKCS1_OAEP_PADDING);
-printf("******encrypted secret size: %d\n", encrypted_secret_size);
-printf("******size_in: %d\n", size_in);
   response.set_secret(encrypted_secret, encrypted_secret_size);
 
 #ifdef DEBUG
@@ -485,25 +482,15 @@ printf("******size_in: %d\n", size_in);
   printf("endorsement exponent: ");
   BN_print_fp(stdout, protector_key->e);
   printf("\n");
-#endif
-
-#ifdef DEBUG
   printf("\nEncrypted secret (%d): ", encrypted_secret_size);
   PrintBytes(encrypted_secret_size, encrypted_secret); printf("\n");
   printf("\nname: "); 
   PrintBytes(request.cred().name().size(),
              (byte*)request.cred().name().data()); printf("\n");
-  test_size = RSA_public_encrypt(size_in, in_buf, test_buf, signing_key,
-                              RSA_PKCS1_OAEP_PADDING);
-  test_size2 = RSA_private_decrypt(test_size, test_buf, test_buf2, signing_key,
-                              RSA_PKCS1_OAEP_PADDING);
-  printf("OUT (%d): ", test_size2);
-  PrintBytes(test_size2, test_buf2);
   printf("\n");
-
 #endif
 
-  // symKey= KDFa(hash, seed, "STORAGE", name, nullptr, 128);
+  // Calculate symKey
   label = "STORAGE";
   key.assign((const char*)seed, size_seed);
   contextV.clear();
@@ -522,8 +509,8 @@ printf("******size_in: %d\n", size_in);
   printf("\n");
 #endif
 
-  // encIdentity = CFBEncrypt(symKey, marshaled_credential, out)
-  // We need to encrypt the entire marshaled_credential
+  // Calculate encIdentity
+  //   Note: We need to encrypt the entire marshaled_credential.
   size_encIdentity = MAX_SIZE_PARAMS;
   if (!AesCFBEncrypt(symKey, unmarshaled_credential.size + sizeof(uint16_t),
                      (byte*)&marshaled_credential, 16, zero_iv,
@@ -558,7 +545,7 @@ printf("******size_in: %d\n", size_in);
     goto done;
   }
   
-  // outerMac = HMAC(hmacKey, encIdentity || name);
+  // Calculate outerMac = HMAC(hmacKey, encIdentity || name);
   unmarshaled_name.size = name.size();
   ChangeEndian16(&unmarshaled_name.size, &marshaled_name.size);
   memcpy(unmarshaled_name.name, (byte*)name.data(), unmarshaled_name.size);

@@ -185,8 +185,12 @@ bool FillTpmPcrData(LocalTpm& tpm, TPMS_PCR_SELECTION pcrSelection,
   TPML_PCR_SELECTION pcrSelectOut;
   TPML_DIGEST digest;
 
+  pcrSelect.count = 1;
+  pcrSelect.pcrSelections[0] = pcrSelection;
+
   if (!Tpm2_ReadPcrs(tpm, pcrSelect, &updateCounter,
                      &pcrSelectOut, &digest)) {
+    printf("FillTpmPcrData: Tpm2_ReadPcrs fails\n");
     return false;
   }
   int total_size = 0;

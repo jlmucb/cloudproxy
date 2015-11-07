@@ -260,6 +260,13 @@ bool ComputeQuotedValue(TPMS_PCR_SELECTION pcrSelection,
     return false;
   }
 
+#define DEBUG
+#ifdef DEBUG
+  printf("PCR digest: ");
+  PrintBytes(size_out, pcr_digest);
+  printf("\n");
+#endif
+
   if (pcrSelection.hash == TPM_ALG_SHA1) {
     SHA_CTX sha1;
     SHA_Update(&sha1, pcr_digest, 20);

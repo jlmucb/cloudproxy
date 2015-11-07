@@ -510,7 +510,8 @@ int main(int an, char** av) {
 
     int size_quoted = 256;
     byte computed_quoted[256];
-    if (!ComputeQuotedValue(TPM_ALG_SHA1, quote_size, quoted,
+    if (!ComputeQuotedValue(TPM_ALG_SHA1, to_quote.size, to_quote.buffer,
+                            quote_size, quoted,
                             &size_quoted, computed_quoted)) {
       printf("Cant compute ComputeQuotedValue\n");
     } else {

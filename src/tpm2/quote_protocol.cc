@@ -148,20 +148,29 @@ bool CertifyInfoToProto(TPMS_ATTEST& in, quote_certification_information& messag
   return true;
 }
 
-bool ComputeQuotedValue(TPM_ALG_ID alg,
+bool ComputeQuotedValue(TPM_ALG_ID alg, int size_qualifying, byte* qualifying,
                         int credInfo_size, byte* credInfo,
                         int* size_quoted, byte* quoted) {
+  byte hash1[64];
   if (alg == TPM_ALG_SHA1) {
     SHA_CTX sha1;
     SHA_Init(&sha1);
     SHA_Update(&sha1, credInfo, credInfo_size);
-    SHA_Final(quoted, &sha1);
+    SHA_Final(hash1, &sha1);
+    if (size_qualifying > 0) {
+       SHA_Init(&sha1);
+       SHA_Update(&sha1, qualifying, size_qualifying);
+       SHA_Update(&sha1, hash1, 20);
+       SHA_Final(quoted, &sha1);
+    } else {
+       memcpy(quoted, hash1, 20);
+    }
     *size_quoted = 20;
   } else if (alg == TPM_ALG_SHA256) {
     SHA256_CTX sha256;
     SHA256_Init(&sha256);
     SHA256_Update(&sha256, credInfo, credInfo_size);
-    SHA256_Final(quoted, &sha256);
+    SHA256_Final(hash1, &sha256);
     *size_quoted = 32;
   } else {
     printf("unsupported hash alg\n");

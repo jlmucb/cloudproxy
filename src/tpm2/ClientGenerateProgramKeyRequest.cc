@@ -441,28 +441,6 @@ int main(int an, char** av) {
     printf("Sig (%d): ", sig_size);
     PrintBytes(sig_size, sig);
     printf("\n\n");
-    int size_pcr_vals = 4096;
-    int size_quoted = 256;
-    byte pcr_values[4096];
-    byte computed_quoted[256];
-    if (!FillTpmPcrData(tpm, pcrSelect.pcrSelections[0],
-                      &size_pcr_vals, pcr_values)) {
-      printf("Cant compute FillTpmPcrData\n");
-    } else {
-      printf("pcr values: ");
-      PrintBytes(size_pcr_vals, pcr_values);
-      printf("\n");
-    }
-    if (!ComputeQuotedValue(pcrSelect.pcrSelections[0], size_pcr_vals, pcr_values,
-                          to_quote.size, to_quote.buffer,
-                          &size_quoted, computed_quoted)) {
-      printf("Cant compute ComputeQuotedValue\n");
-    } else {
-      printf("tpm2_lib computed_quoted: ");
-      PrintBytes(size_quoted, computed_quoted);
-      printf("\n");
-    }
-  }
 #endif
 
   // Quote key information
@@ -512,6 +490,31 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
+#ifdef DEBUG
+    int size_pcr_vals = 4096;
+    int size_quoted = 256;
+    byte pcr_values[4096];
+    byte computed_quoted[256];
+    if (!FillTpmPcrData(tpm, pcrSelect.pcrSelections[0],
+                      &size_pcr_vals, pcr_values)) {
+      printf("Cant compute FillTpmPcrData\n");
+    } else {
+      printf("pcr values: ");
+      PrintBytes(size_pcr_vals, pcr_values);
+      printf("\n");
+    }
+    if (!ComputeQuotedValue(pcrSelect.pcrSelections[0], size_pcr_vals, pcr_values,
+                          to_quote.size, to_quote.buffer,
+                          &size_quoted, computed_quoted)) {
+      printf("Cant compute ComputeQuotedValue\n");
+    } else {
+      printf("tpm2_lib computed_quoted: ");
+      PrintBytes(size_quoted, computed_quoted);
+      printf("\n");
+    }
+  }
+#endif
 
   output.clear();
   if (!request.SerializeToString(&output)) {

@@ -36,6 +36,23 @@
 #include <string>
 
 
+/*
+ *  typedef struct {
+ *    TPM_GENERATED   magic;
+ *    TPMI_ST_ATTEST  type;
+ *    TPM2B_NAME      qualifiedSigner;
+ *    TPM2B_DATA      extraData; (none)
+ *    TPMS_CLOCK_INFO clockInfo;
+ *    uint64_t        firmwareVersion;
+ *    TPMU_ATTEST     attested;  (quote info) TPML_PCR_SELECTION, DIGEST
+ *         TPML_PCR_SELECTION pcrSelect;
+ *         TPM2B_DIGEST       pcrDigest;
+ *  } TPMS_ATTEST;  This is the certInfo
+ *  
+ *  hash certifyinfo  (contains pcrDigests)
+ *  hash(qualifyingData || hash(certInfo))
+ */
+
 bool MarshalCertifyInfo(TPMS_ATTEST& in, int* size, byte* out) {
   return true;
 }
@@ -45,6 +62,14 @@ bool UnmarshalCertifyInfo(int size, byte* in, TPMS_ATTEST* out) {
 }
 
 bool ProtoToCertifyInfo(quote_certification_information& message, TPMS_ATTEST* out) {
+  memcpy((byte*)&out->magic, (byte*)message.magic().data(), sizeof(uint32_t));
+  out->type = *(uint16_t*)message.type().data();
+  message.qualifiedsigner();
+  out->extraData.size = 0;
+  memcpy(&out->clockInfo, message.clockinfo().data(), message.clockinfo().size());
+  out->firmwareVersion = message.firmwareversion();
+  memcpy(&out->attested.quote.pcrSelect, message.pcr_selection().data(), message.pcr_selection().size());
+  out->attested.quote.pcrDigest.size = message.digest().size();
   return true;
 }
 
@@ -52,25 +77,8 @@ bool CertifyInfoToProto(TPMS_ATTEST& in, quote_certification_information& messag
   return true;
 }
 
-/*
-    typedef struct {
-      TPM_GENERATED   magic;
-      TPMI_ST_ATTEST  type;
-      TPM2B_NAME      qualifiedSigner;
-      TPM2B_DATA      extraData; (none)
-      TPMS_CLOCK_INFO clockInfo;
-      uint64_t        firmwareVersion;
-      TPMU_ATTEST     attested;  (quote info) TPML_PCR_SELECTION, DIGEST
-    } TPMS_ATTEST;  This is the certInfo
-    
-    hash certifyinfo  (contains pcrDigests)
-    hash(qualifyingData || hash(certInfo))
- */
-
-bool ComputeQuotedValue(TPMS_PCR_SELECTION pcrSelection, 
-                        int size_pcr, byte* pcr_buf,
-                        int quote_size, byte* quote,
-                        int* size_quoted, byte* quoted) {
+bool ComputeQuotedValue(TPMS_PCR_SELECTION pcrSelection, int size_pcr, byte* pcr_buf,
+                        int quote_size, byte* quote, int* size_quoted, byte* quoted) {
   byte pcr_digest[256];
   int size_out;
 

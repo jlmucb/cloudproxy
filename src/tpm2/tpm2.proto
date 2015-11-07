@@ -143,3 +143,14 @@ message certificate_chain_message {
   repeated certificate_chain_entry_message entry  = 1;
 }
 
+message quote_certification_information {
+  optional bytes magic                        = 1;
+  optional bytes type                         = 2;
+  optional bytes qualifiedSigner              = 3;
+  optional bytes extraData                    = 4;
+  optional bytes clockInfo                    = 5;
+  optional int64 firmwareVersion              = 6;
+  optional bytes pcr_selection                = 7;
+  optional bytes digest                       = 8;
+}
+

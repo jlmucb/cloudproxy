@@ -11,6 +11,8 @@
 #include <openssl/x509.h>
 #include <openssl_helpers.h>
 
+#include <quote_protocol.h>
+
 #include <tpm20.h>
 #include <tpm2_lib.h>
 #include <gflags/gflags.h>

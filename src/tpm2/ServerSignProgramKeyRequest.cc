@@ -15,6 +15,7 @@
 #include <openssl/sha.h>
 
 #include <openssl_helpers.h>
+#include <quote_protocol.h>
 
 #include <tpm20.h>
 #include <tpm2_lib.h>

@@ -73,10 +73,12 @@ dobj_RestoreCloudProxyKeyHierarchy=		$(O)/tpm2_lib.o \
   $(O)/RestoreCloudProxyKeyHierarchy.o
 dobj_ClientGenerateProgramKeyRequest=		$(O)/tpm2_lib.o \
   $(O)/tpm2.pb.o \
+  $(O)/quote_protocol.o \
   $(O)/openssl_helpers.o \
   $(O)/ClientGenerateProgramKeyRequest.o
 dobj_ServerSignProgramKeyRequest=		$(O)/tpm2_lib.o \
   $(O)/tpm2.pb.o \
+  $(O)/quote_protocol.o \
   $(O)/openssl_helpers.o \
   $(O)/ServerSignProgramKeyRequest.o
 dobj_ClientGetProgramKeyCert=			$(O)/tpm2_lib.o \
@@ -180,6 +182,10 @@ $(O)/conversions.o: $(S)/conversions.cc
 $(O)/openssl_helpers.o: $(S)/openssl_helpers.cc
 	@echo "compiling openssl_helpers.cc"
 	$(CC) $(CFLAGS) -c -o $(O)/openssl_helpers.o $(S)/openssl_helpers.cc
+
+$(O)/quote_protocol.o: $(S)/quote_protocol.cc
+	@echo "compiling quote_protocol.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/quote_protocol.o $(S)/quote_protocol.cc
 
 $(O)/tpm2_util.o: $(S)/tpm2_util.cc
 	@echo "compiling tpm2_util.cc"

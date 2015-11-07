@@ -76,10 +76,6 @@ bool FillTpmPcrData(LocalTpm& tpm, TPMS_PCR_SELECTION pcrSelection,
 bool ComputePcrDigest(TPMS_PCR_SELECTION pcrSelection,
                       int size_in, byte* in_buf,
                       int* size_out, byte* out);
-bool ComputeQuotedValue(TPMS_PCR_SELECTION pcrSelection, 
-                        int size_pcr, byte* pcr_buf,
-                        int quote_size, byte* quote,
-                        int* size_quoted, byte* quoted);
 
 // TPM Commands
 bool Tpm2_Startup(LocalTpm& tpm);

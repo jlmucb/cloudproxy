@@ -207,21 +207,6 @@ bool FillTpmPcrData(LocalTpm& tpm, TPMS_PCR_SELECTION pcrSelection,
   return true;
 }
 
-/*
-    typedef struct {
-      TPM_GENERATED   magic;
-      TPMI_ST_ATTEST  type;
-      TPM2B_NAME      qualifiedSigner;
-      TPM2B_DATA      extraData; (none)
-      TPMS_CLOCK_INFO clockInfo;
-      uint64_t        firmwareVersion;
-      TPMU_ATTEST     attested;  (quote info) TPML_PCR_SELECTION, DIGEST
-    } TPMS_ATTEST;  This is the certInfo
-    
-    hash certifyinfo  (contains pcrDigests)
-    hash(qualifyingData || hash(certInfo))
- */
-
 bool ComputePcrDigest(TPMS_PCR_SELECTION pcrSelection,
                       int size_in, byte* in_buf,
                       int* size_out, byte* out) {
@@ -258,47 +243,6 @@ bool ComputePcrDigest(TPMS_PCR_SELECTION pcrSelection,
     SHA256_Final(out, &sha256);
     *size_out = 32;
   }
-  return true;
-}
-
-bool ComputeQuotedValue(TPMS_PCR_SELECTION pcrSelection, 
-                        int size_pcr, byte* pcr_buf,
-                        int quote_size, byte* quote,
-                        int* size_quoted, byte* quoted) {
-  byte pcr_digest[256];
-  int size_out;
-
-  size_out = 256;
-  if (!ComputePcrDigest(pcrSelection, size_pcr, pcr_buf,
-                      &size_out, pcr_digest)) {
-    printf("ComputePcrDigest failed\n");
-    return false;
-  }
-
-#define DEBUG
-#ifdef DEBUG
-  printf("PCR digest: ");
-  PrintBytes(size_out, pcr_digest);
-  printf("\n");
-#endif
-
-  if (pcrSelection.hash == TPM_ALG_SHA1) {
-    SHA_CTX sha1;
-    SHA_Update(&sha1, pcr_digest, 20);
-    SHA_Update(&sha1, quote, quote_size);
-    SHA_Final(quoted, &sha1);
-    *size_quoted = 20;
-  } else if (pcrSelection.hash == TPM_ALG_SHA256) {
-    SHA256_CTX sha256;
-    SHA256_Update(&sha256, pcr_digest, 32);
-    SHA256_Update(&sha256, quote, quote_size);
-    SHA256_Final(quoted, &sha256);
-    *size_quoted = 32;
-  } else {
-    printf("unsupported hash alg\n");
-    return false;
-  }
-
   return true;
 }
 

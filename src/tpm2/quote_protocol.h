@@ -38,6 +38,7 @@
 #include <string>
 using std::string;
 
+void print_quote_certifyinfo(TPMS_ATTEST& in);
 bool MarshalCertifyInfo(TPMS_ATTEST& in, int* size, byte* out);
 bool UnmarshalCertifyInfo(int size, byte* in, TPMS_ATTEST* out);
 bool ProtoToCertifyInfo(quote_certification_information& message, TPMS_ATTEST* out);

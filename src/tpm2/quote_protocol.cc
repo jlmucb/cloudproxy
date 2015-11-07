@@ -54,11 +54,78 @@
  *  hash(qualifyingData || hash(certInfo))
  */
 
+void print_quote_certifyinfo(TPMS_ATTEST& in) {
+  printf("\n");
+  printf("magic: %08x\n", in.magic);
+  printf("type: %04x\n", in.type);
+  printf("qualifiedSigner: ");
+  PrintBytes(in.qualifiedSigner.size, in.qualifiedSigner.name);
+  printf("\n");
+  printf("extraData: ");
+  PrintBytes(in.extraData.size, in.extraData.buffer);
+  printf("\n");
+  printf("clock: %016lx\n", in.clockInfo.clock);
+  printf("resetCount: %08x\n", in.clockInfo.resetCount);
+  printf("restartCount: %08x\n", in.clockInfo.restartCount);
+  printf("safe: %02x\n", in.clockInfo.safe);
+  printf("pcrSelect: %08x\n", in.attested.quote.pcrSelect.count);
+  for (int i = 0; i < (int)in.attested.quote.pcrSelect.count; i++) {
+    printf("  %04x %02x ", in.attested.quote.pcrSelect.pcrSelections[i].hash,
+           in.attested.quote.pcrSelect.pcrSelections[i].sizeofSelect);
+    PrintBytes(in.attested.quote.pcrSelect.pcrSelections[i].sizeofSelect,
+               in.attested.quote.pcrSelect.pcrSelections[i].pcrSelect);
+    printf("\n");
+  }
+  printf("\n");
+}
+
 bool MarshalCertifyInfo(TPMS_ATTEST& in, int* size, byte* out) {
   return true;
 }
 
 bool UnmarshalCertifyInfo(int size, byte* in, TPMS_ATTEST* out) {
+  byte* current_in = in;
+
+  ChangeEndian32((uint32_t*)current_in, &out->magic);
+  current_in += sizeof(uint32_t);
+  ChangeEndian16((uint16_t*)current_in, &out->type);
+  current_in += sizeof(uint16_t);
+  ChangeEndian16((uint16_t*)current_in, &out->qualifiedSigner.size);
+  current_in += sizeof(uint16_t);
+  memcpy(out->qualifiedSigner.name, current_in, out->qualifiedSigner.size);
+  current_in += out->qualifiedSigner.size;
+  ChangeEndian16((uint16_t*)current_in, &out->extraData.size);
+  current_in += sizeof(uint16_t);
+  memcpy(out->extraData.buffer, current_in, out->extraData.size);
+  current_in += out->extraData.size;
+  // clock
+  ChangeEndian64((uint64_t*)current_in, &out->clockInfo.clock);
+  current_in += sizeof(uint64_t);
+  ChangeEndian32((uint32_t*)current_in, &out->clockInfo.resetCount);
+  current_in += sizeof(uint32_t);
+  ChangeEndian32((uint32_t*)current_in, &out->clockInfo.restartCount);
+  current_in += sizeof(uint32_t);
+  out->clockInfo.safe = *(current_in++);
+  ChangeEndian64((uint64_t*)current_in, &out->firmwareVersion);
+  current_in += sizeof(uint64_t);
+  ChangeEndian32((uint32_t*)current_in, &out->attested.quote.pcrSelect.count);
+  current_in += sizeof(uint32_t);
+  for (int i = 0; i < (int)out->attested.quote.pcrSelect.count; i++) {
+    ChangeEndian16((uint16_t*)current_in, (uint16_t*)
+                   &out->attested.quote.pcrSelect.pcrSelections[i].hash);
+    current_in += sizeof(uint16_t);
+    out->attested.quote.pcrSelect.pcrSelections[i].sizeofSelect =
+        *(current_in++);
+    memcpy(out->attested.quote.pcrSelect.pcrSelections[i].pcrSelect,
+           current_in,
+           out->attested.quote.pcrSelect.pcrSelections[i].sizeofSelect);
+    current_in += out->attested.quote.pcrSelect.pcrSelections[i].sizeofSelect;
+  }
+  ChangeEndian16((uint16_t*)current_in, &out->attested.quote.pcrDigest.size);
+  current_in += sizeof(uint16_t);
+  memcpy(out->attested.quote.pcrDigest.buffer, current_in,
+         out->attested.quote.pcrDigest.size);
+  current_in += out->attested.quote.pcrDigest.size;
   return true;
 }
 

@@ -76,6 +76,9 @@ void print_quote_certifyinfo(TPMS_ATTEST& in) {
                in.attested.quote.pcrSelect.pcrSelections[i].pcrSelect);
     printf("\n");
   }
+  printf("Pcr Digest (%d): ", in.attested.quote.pcrDigest.size);
+  PrintBytes(in.attested.quote.pcrDigest.size,
+             in.attested.quote.pcrDigest.buffer);
   printf("\n");
 }
 
@@ -161,6 +164,7 @@ bool ComputeQuotedValue(TPMS_PCR_SELECTION pcrSelection, int size_pcr, byte* pcr
   printf("PCR digest: ");
   PrintBytes(size_out, pcr_digest);
   printf("\n");
+  return true;
 #endif
 
   if (pcrSelection.hash == TPM_ALG_SHA1) {

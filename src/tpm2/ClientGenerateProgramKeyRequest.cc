@@ -440,7 +440,12 @@ int main(int an, char** av) {
     printf("\n");
     printf("Sig (%d): ", sig_size);
     PrintBytes(sig_size, sig);
-    printf("\n\n");
+    printf("\n");
+    TPMS_ATTEST t;
+    if (UnmarshalCertifyInfo(quote_size, quoted, &t)) {
+      print_quote_certifyinfo(t);
+    }
+    printf("\n");
 #endif
 
   // Quote key information
@@ -493,9 +498,7 @@ int main(int an, char** av) {
 
 #ifdef DEBUG
     int size_pcr_vals = 4096;
-    int size_quoted = 256;
     byte pcr_values[4096];
-    byte computed_quoted[256];
     if (!FillTpmPcrData(tpm, pcrSelect.pcrSelections[0],
                       &size_pcr_vals, pcr_values)) {
       printf("Cant compute FillTpmPcrData\n");
@@ -504,6 +507,9 @@ int main(int an, char** av) {
       PrintBytes(size_pcr_vals, pcr_values);
       printf("\n");
     }
+
+    int size_quoted = 256;
+    byte computed_quoted[256];
     if (!ComputeQuotedValue(pcrSelect.pcrSelections[0], size_pcr_vals, pcr_values,
                           to_quote.size, to_quote.buffer,
                           &size_quoted, computed_quoted)) {

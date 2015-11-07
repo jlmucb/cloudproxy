@@ -151,15 +151,15 @@ bool CertifyInfoToProto(TPMS_ATTEST& in, quote_certification_information& messag
 bool ComputeQuotedValue(TPM_ALG_ID alg,
                         int credInfo_size, byte* credInfo,
                         int* size_quoted, byte* quoted) {
-  *size_quoted = 20;
-  return true;
   if (alg == TPM_ALG_SHA1) {
     SHA_CTX sha1;
+    SHA_Init(&sha1);
     SHA_Update(&sha1, credInfo, credInfo_size);
     SHA_Final(quoted, &sha1);
     *size_quoted = 20;
   } else if (alg == TPM_ALG_SHA256) {
     SHA256_CTX sha256;
+    SHA256_Init(&sha256);
     SHA256_Update(&sha256, credInfo, credInfo_size);
     SHA256_Final(quoted, &sha256);
     *size_quoted = 32;

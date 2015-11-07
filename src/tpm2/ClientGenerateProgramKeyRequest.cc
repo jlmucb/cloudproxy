@@ -518,6 +518,20 @@ int main(int an, char** av) {
       PrintBytes(size_quoted, computed_quoted);
       printf("\n");
     }
+    int decrypted_quote_size = 512;
+    byte decrypted_quote[512];
+    RSA* active_key = RSA_new();
+    active_key->n = bin_to_BN(quote_pub_out.publicArea.unique.rsa.size,
+                              quote_pub_out.publicArea.unique.rsa.buffer);
+    active_key->e = bin_to_BN(sizeof(uint64_t), (byte*)&expOut);
+    decrypted_quote_size = RSA_public_encrypt(sig_size, sig,
+        decrypted_quote, active_key, RSA_NO_PADDING);
+    if (decrypted_quote_size > MAX_SIZE_PARAMS) {
+      printf("active signature is too big\n");
+    }
+   printf("Decrypted quote (%d): ", decrypted_quote_size);
+   PrintBytes(decrypted_quote_size, decrypted_quote);
+   printf("\n");
   }
 #endif
 

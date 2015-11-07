@@ -194,16 +194,16 @@ bool FillTpmPcrData(LocalTpm& tpm, TPMS_PCR_SELECTION pcrSelection,
     return false;
   }
   int total_size = 0;
-  ChangeEndian32(&digest.count, (uint32_t*)&buf[total_size]);
-  total_size += sizeof(uint32_t);
+  // ChangeEndian32(&digest.count, (uint32_t*)&buf[total_size]);
+  // total_size += sizeof(uint32_t);
   for (int i = 0; i < (int)digest.count; i++) {
     if ((int)(total_size + digest.digests[i].size + sizeof(uint16_t))
           > *size) {
       printf("FillTpmPcrData: buffer too small\n");
       return false;
     }
-    ChangeEndian16(&digest.digests[i].size, (uint16_t*)&buf[total_size]);
-    total_size += sizeof(uint16_t);
+    // ChangeEndian16(&digest.digests[i].size, (uint16_t*)&buf[total_size]);
+    // total_size += sizeof(uint16_t);
     memcpy(&buf[total_size], digest.digests[i].buffer,
            digest.digests[i].size);
     total_size += digest.digests[i].size;
@@ -217,51 +217,33 @@ bool ComputePcrDigest(TPMS_PCR_SELECTION pcrSelection,
                       int* size_out, byte* out) {
   SHA_CTX sha1;
   SHA256_CTX sha256;
+  if (pcrSelection.sizeofSelect != 3) {
+    return false;
+  }
+  if (pcrSelection.hash != TPM_ALG_SHA1 &&
+      pcrSelection.hash == TPM_ALG_SHA256) {
+    printf("ComputePcrDigest: unsupported hash algorithm\n");
+    return false;
+  }
 
+#define DEBUG
 #ifdef DEBUG
   printf("PCR Digest buffer: ");
   PrintBytes(size_in, in_buf);
   printf("\n");
 #endif
 
-  if (pcrSelection.sizeofSelect != 3) {
-    return false;
-  }
-  if (pcrSelection.hash == TPM_ALG_SHA1) {
-    SHA_Init(&sha1);
-  } else if (pcrSelection.hash == TPM_ALG_SHA256) {
-    SHA256_Init(&sha256);
-  } else  {
-    printf("ComputePcrDigest: unsupported hash algorithm\n");
-    return false;
-  }
-
-#if 1 
     if (pcrSelection.hash == TPM_ALG_SHA1) {
+      SHA_Init(&sha1);
       SHA_Update(&sha1, in_buf, size_in);
+      SHA_Final(out, &sha1);
+      *size_out = 20;
     } else {
+      SHA256_Init(&sha256);
       SHA256_Update(&sha256, in_buf, size_in);
+      SHA256_Final(out, &sha256);
+      *size_out = 32;
     }
-#else
-  int i;
-  for (i = 0; i < pcrSelection.sizeofSelect * 8; i++) {
-    if (!testPcrBit(i, pcrSelection.pcrSelect))
-      continue;
-    // pcrSelection.pcrSelect[PCR_SELECT_MAX];
-    if (pcrSelection.hash == TPM_ALG_SHA1) {
-      SHA_Update(&sha1, &in_buf[i * 20], 20);
-    } else {
-      SHA256_Update(&sha256, &in_buf[i * 32], 32);
-    }
-  }
-#endif
-  if (pcrSelection.hash == TPM_ALG_SHA1) {
-    SHA_Final(out, &sha1);
-    *size_out = 20;
-  } else {
-    SHA256_Final(out, &sha256);
-    *size_out = 32;
-  }
   return true;
 }
 

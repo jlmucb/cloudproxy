@@ -508,9 +508,20 @@ int main(int an, char** av) {
       printf("\n");
     }
 
+    int size_hashed_pcrs = 256;
+    byte hashed_pcrs[256];
+    if (!ComputePcrDigest(pcrSelect.pcrSelections[0],
+                      size_pcr_vals, pcr_values,
+                      &size_hashed_pcrs, hashed_pcrs)) {
+      printf("Cant ComputePcrDigest\n");
+    }
+    printf("Hashed pcrs: ");
+    PrintBytes(size_hashed_pcrs, hashed_pcrs);
+    printf("\n");
+
     int size_quoted = 256;
     byte computed_quoted[256];
-    if (!ComputeQuotedValue(TPM_ALG_SHA1, to_quote.size, to_quote.buffer,
+    if (!ComputeQuotedValue(TPM_ALG_SHA1, 0, nullptr,
                             quote_size, quoted,
                             &size_quoted, computed_quoted)) {
       printf("Cant compute ComputeQuotedValue\n");

@@ -34,6 +34,7 @@
 #include <openssl_helpers.h>
 
 #include <string>
+#define DEBUG
 
 
 /*
@@ -89,7 +90,6 @@ bool ComputeQuotedValue(TPMS_PCR_SELECTION pcrSelection, int size_pcr, byte* pcr
     return false;
   }
 
-#define DEBUG
 #ifdef DEBUG
   printf("PCR digest: ");
   PrintBytes(size_out, pcr_digest);

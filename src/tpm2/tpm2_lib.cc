@@ -207,6 +207,21 @@ bool FillTpmPcrData(LocalTpm& tpm, TPMS_PCR_SELECTION pcrSelection,
   return true;
 }
 
+/*
+    typedef struct {
+      TPM_GENERATED   magic;
+      TPMI_ST_ATTEST  type;
+      TPM2B_NAME      qualifiedSigner;
+      TPM2B_DATA      extraData; (none)
+      TPMS_CLOCK_INFO clockInfo;
+      uint64_t        firmwareVersion;
+      TPMU_ATTEST     attested;  (quote info) TPML_PCR_SELECTION, DIGEST
+    } TPMS_ATTEST;  This is the certInfo
+    
+    hash certifyinfo  (contains pcrDigests)
+    hash(qualifyingData || hash(certInfo))
+ */
+
 bool ComputePcrDigest(TPMS_PCR_SELECTION pcrSelection,
                       int size_in, byte* in_buf,
                       int* size_out, byte* out) {

@@ -194,11 +194,16 @@ bool FillTpmPcrData(LocalTpm& tpm, TPMS_PCR_SELECTION pcrSelection,
     return false;
   }
   int total_size = 0;
+  ChangeEndian32(&digest.count, (uint32_t*)&buf[total_size]);
+  total_size += sizeof(uint32_t);
   for (int i = 0; i < (int)digest.count; i++) {
-    if ((total_size + digest.digests[i].size) > *size) {
+    if ((int)(total_size + digest.digests[i].size + sizeof(uint16_t))
+          > *size) {
       printf("FillTpmPcrData: buffer too small\n");
       return false;
     }
+    ChangeEndian16(&digest.digests[i].size, (uint16_t*)&buf[total_size]);
+    total_size += sizeof(uint16_t);
     memcpy(&buf[total_size], digest.digests[i].buffer,
            digest.digests[i].size);
     total_size += digest.digests[i].size;
@@ -213,6 +218,12 @@ bool ComputePcrDigest(TPMS_PCR_SELECTION pcrSelection,
   SHA_CTX sha1;
   SHA256_CTX sha256;
 
+#ifdef DEBUG
+  printf("PCR Digest buffer: ");
+  PrintBytes(size_in, in_buf);
+  printf("\n");
+#endif
+
   if (pcrSelection.sizeofSelect != 3) {
     return false;
   }
@@ -224,7 +235,14 @@ bool ComputePcrDigest(TPMS_PCR_SELECTION pcrSelection,
     printf("ComputePcrDigest: unsupported hash algorithm\n");
     return false;
   }
- 
+
+#if 1 
+    if (pcrSelection.hash == TPM_ALG_SHA1) {
+      SHA_Update(&sha1, in_buf, size_in);
+    } else {
+      SHA256_Update(&sha256, in_buf, size_in);
+    }
+#else
   int i;
   for (i = 0; i < pcrSelection.sizeofSelect * 8; i++) {
     if (!testPcrBit(i, pcrSelection.pcrSelect))
@@ -236,6 +254,7 @@ bool ComputePcrDigest(TPMS_PCR_SELECTION pcrSelection,
       SHA256_Update(&sha256, &in_buf[i * 32], 32);
     }
   }
+#endif
   if (pcrSelection.hash == TPM_ALG_SHA1) {
     SHA_Final(out, &sha1);
     *size_out = 20;
@@ -2406,14 +2425,15 @@ bool Tpm2_Quote(LocalTpm& tpm, TPM_HANDLE signingHandle, string& parentAuth,
   TPMI_ALG_SIG_SCHEME scheme1;
   TPMI_ALG_SIG_SCHEME scheme2;
 
-  ChangeEndian16((uint16_t*)out, (uint16_t*)&scheme1);
-  out += sizeof(uint16_t);
-  ChangeEndian16((uint16_t*)out, (uint16_t*)&scheme2);
-  out += sizeof(uint16_t);
+  out += sizeof(uint32_t);
   ChangeEndian16((uint16_t*)out, (uint16_t*)attest_size);
   out += sizeof(uint16_t);
   memcpy(attest, out, *attest_size);
   out += *attest_size;
+  ChangeEndian16((uint16_t*)out, (uint16_t*)&scheme1);
+  out += sizeof(uint16_t);
+  ChangeEndian16((uint16_t*)out, (uint16_t*)&scheme2);
+  out += sizeof(uint16_t);
   ChangeEndian16((uint16_t*)out, (uint16_t*)sig_size);
   out += sizeof(uint16_t);
   memcpy(sig, out, *sig_size);

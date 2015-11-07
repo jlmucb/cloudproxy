@@ -148,42 +148,25 @@ bool CertifyInfoToProto(TPMS_ATTEST& in, quote_certification_information& messag
   return true;
 }
 
-bool ComputeQuotedValue(TPMS_PCR_SELECTION pcrSelection, int size_pcr, byte* pcr_buf,
-                        int quote_size, byte* quote, int* size_quoted, byte* quoted) {
-  byte pcr_digest[256];
-  int size_out;
-
-  size_out = 256;
-  if (!ComputePcrDigest(pcrSelection, size_pcr, pcr_buf,
-                      &size_out, pcr_digest)) {
-    printf("ComputePcrDigest failed\n");
-    return false;
-  }
-
-#ifdef DEBUG
-  printf("PCR digest: ");
-  PrintBytes(size_out, pcr_digest);
-  printf("\n");
+bool ComputeQuotedValue(TPM_ALG_ID alg,
+                        int credInfo_size, byte* credInfo,
+                        int* size_quoted, byte* quoted) {
+  *size_quoted = 20;
   return true;
-#endif
-
-  if (pcrSelection.hash == TPM_ALG_SHA1) {
+  if (alg == TPM_ALG_SHA1) {
     SHA_CTX sha1;
-    SHA_Update(&sha1, pcr_digest, 20);
-    SHA_Update(&sha1, quote, quote_size);
+    SHA_Update(&sha1, credInfo, credInfo_size);
     SHA_Final(quoted, &sha1);
     *size_quoted = 20;
-  } else if (pcrSelection.hash == TPM_ALG_SHA256) {
+  } else if (alg == TPM_ALG_SHA256) {
     SHA256_CTX sha256;
-    SHA256_Update(&sha256, pcr_digest, 32);
-    SHA256_Update(&sha256, quote, quote_size);
+    SHA256_Update(&sha256, credInfo, credInfo_size);
     SHA256_Final(quoted, &sha256);
     *size_quoted = 32;
   } else {
     printf("unsupported hash alg\n");
     return false;
   }
-
   return true;
 }
 

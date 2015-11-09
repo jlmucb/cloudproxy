@@ -64,10 +64,11 @@ void print_quote_certifyinfo(TPMS_ATTEST& in) {
   printf("extraData: ");
   PrintBytes(in.extraData.size, in.extraData.buffer);
   printf("\n");
-  printf("clock: %016lx\n", in.clockInfo.clock);
+  printf("clock: %016llx\n", in.clockInfo.clock);
   printf("resetCount: %08x\n", in.clockInfo.resetCount);
   printf("restartCount: %08x\n", in.clockInfo.restartCount);
   printf("safe: %02x\n", in.clockInfo.safe);
+  printf("firmwareVersion: %016llx\n", in.firmwareVersion);
   printf("pcrSelect: %08x\n", in.attested.quote.pcrSelect.count);
   for (int i = 0; i < (int)in.attested.quote.pcrSelect.count; i++) {
     printf("  %04x %02x ", in.attested.quote.pcrSelect.pcrSelections[i].hash,
@@ -148,34 +149,32 @@ bool CertifyInfoToProto(TPMS_ATTEST& in, quote_certification_information& messag
   return true;
 }
 
-bool ComputeQuotedValue(TPM_ALG_ID alg, int size_qualifying, byte* qualifying,
-                        int credInfo_size, byte* credInfo,
+bool ComputeQuotedValue(TPM_ALG_ID alg, int credInfo_size, byte* credInfo,
                         int* size_quoted, byte* quoted) {
-  byte hash1[64];
   if (alg == TPM_ALG_SHA1) {
     SHA_CTX sha1;
     SHA_Init(&sha1);
     SHA_Update(&sha1, credInfo, credInfo_size);
-    SHA_Final(hash1, &sha1);
-    if (size_qualifying > 0) {
-       SHA_Init(&sha1);
-       SHA_Update(&sha1, qualifying, size_qualifying);
-       SHA_Update(&sha1, hash1, 20);
-       SHA_Final(quoted, &sha1);
-    } else {
-       memcpy(quoted, hash1, 20);
-    }
+    SHA_Final(quoted, &sha1);
     *size_quoted = 20;
   } else if (alg == TPM_ALG_SHA256) {
     SHA256_CTX sha256;
     SHA256_Init(&sha256);
     SHA256_Update(&sha256, credInfo, credInfo_size);
-    SHA256_Final(hash1, &sha256);
+    SHA256_Final(quoted, &sha256);
     *size_quoted = 32;
   } else {
     printf("unsupported hash alg\n");
     return false;
   }
+#ifdef DEBUG
+  printf("Quote struct (%d): ", credInfo_size);
+  PrintBytes(credInfo_size, credInfo);
+  printf("\n");
+  printf("Computed hash: ");
+  PrintBytes(*size_quoted, quoted);
+  printf("\n");
+#endif
   return true;
 }
 

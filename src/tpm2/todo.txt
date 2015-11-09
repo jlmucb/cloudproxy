@@ -1,7 +1,5 @@
 Fix static auth strings
-Quote calculation including which PCR's
 Cert chain verify
-Integrity on encrypted program cert
 Replace DebugString as hashed object representing program request
 
 

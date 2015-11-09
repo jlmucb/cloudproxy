@@ -308,7 +308,7 @@ int main(int an, char** av) {
     goto done;
   }
 
-  // Validate request: self-signed, endorsement
+  // TODO(jlm): make sure self-signed policy key signed endorsement
 
   // Get endorsement cert
   p = (byte*)request.endorsement_cert_blob().data();

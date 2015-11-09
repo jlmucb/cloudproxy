@@ -88,6 +88,14 @@ DEFINE_string(program_response_file, "", "output-file-name");
 #define MAX_SIZE_PARAMS 8192
 #define DEBUG
 
+// magic constant for tpm generated
+#define TpmMagicConstant 0xff544347
+
+// Consults policy database to confirm pcr's are OK
+bool ValidPCR(TPM_ALG_ID hash, byte* pcr_selection, byte* digest) {
+  return true;
+}
+
 int main(int an, char** av) {
   int ret_val = 0;
 
@@ -190,6 +198,7 @@ int main(int an, char** av) {
   SHA256_CTX sha256;
   RSA* signing_key = nullptr;
   RSA* active_key = RSA_new();
+  TPMS_ATTEST attested_quote;
 
   EVP_PKEY* protector_evp_key = nullptr;
   RSA* protector_key = nullptr;
@@ -395,6 +404,32 @@ int main(int an, char** av) {
   printf("\n");
 #endif
 
+  // Decode quote structure
+  if (!UnmarshalCertifyInfo(quote_struct_size, quote_struct, &attested_quote)) {
+#ifdef DEBUG
+    print_quote_certifyinfo(attested_quote);
+#endif
+    printf("Invalid attested structure\n");
+    ret_val = 1;
+    goto done;
+  }
+#ifdef DEBUG
+  print_quote_certifyinfo(attested_quote);
+#endif
+  if (attested_quote.magic !=  TpmMagicConstant) {
+    printf("Invalid magic number\n");
+    ret_val = 1;
+    goto done;
+  }
+
+  if(!ValidPCR(attested_quote.attested.quote.pcrSelect.pcrSelections[0].hash,
+               &attested_quote.attested.quote.pcrSelect.pcrSelections[0].sizeofSelect,
+               attested_quote.attested.quote.pcrDigest.buffer)) {
+    printf("Invalid pcr\n");
+    ret_val = 1;
+    goto done;
+  }
+
   // Set quote key exponent and modulus
   active_key->n = bin_to_BN(request.cred().public_key().rsa_key().modulus().size(),
                     (byte*)request.cred().public_key().rsa_key().modulus().data());
@@ -429,22 +464,19 @@ int main(int an, char** av) {
   printf("\n");
 #endif
 
-#if 0
   // recover pcr hash and magic number and check them
   // Compare signature and computed hash
-  if (size_active_out != 32 || memcmp(quoted_hash,
-                                      decrypted_quote, 32) != 0) {
+  if (memcmp(signed_quote_hash, decrypted_quote + size_active_out - SizeHash(hash_alg_id),
+             SizeHash(hash_alg_id)) != 0) {
     printf("quote signature is wrong\n");
-    PrintBytes(32, quoted_hash); printf("\n");
-    PrintBytes(32, decrypted_quote); printf("\n");
+    PrintBytes(SizeHash(hash_alg_id), signed_quote_hash); printf("\n");
+    PrintBytes(size_active_out, decrypted_quote); printf("\n");
     ret_val = 1;
     goto done;
   }
-#endif
 
   // Generate encryption key for signed program cert
   // This is the "credential."
-  // TODO: make this 32 for HMACing later
   unmarshaled_credential.size = 16;
   RAND_bytes(unmarshaled_credential.buffer, unmarshaled_credential.size);
 

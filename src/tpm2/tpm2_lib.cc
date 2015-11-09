@@ -222,24 +222,17 @@ bool ComputePcrDigest(TPM_ALG_ID hash, int size_in, byte* in_buf,
     return false;
   }
 
-#define DEBUG
-#ifdef DEBUG
-  printf("PCR Digest buffer: ");
-  PrintBytes(size_in, in_buf);
-  printf("\n");
-#endif
-
-    if (hash == TPM_ALG_SHA1) {
-      SHA1_Init(&sha1);
-      SHA1_Update(&sha1, in_buf, size_in);
-      SHA1_Final(out, &sha1);
-      *size_out = 20;
-    } else {
-      SHA256_Init(&sha256);
-      SHA256_Update(&sha256, in_buf, size_in);
-      SHA256_Final(out, &sha256);
-      *size_out = 32;
-    }
+  if (hash == TPM_ALG_SHA1) {
+    SHA1_Init(&sha1);
+    SHA1_Update(&sha1, in_buf, size_in);
+    SHA1_Final(out, &sha1);
+    *size_out = 20;
+  } else {
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, in_buf, size_in);
+    SHA256_Final(out, &sha256);
+    *size_out = 32;
+  }
   return true;
 }
 

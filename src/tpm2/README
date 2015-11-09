@@ -1,7 +1,9 @@
 This is a very preliminary version of a tpm2 utility.
 
-compile my saying make -f tpm2.mak.  You'll have to
-adjust the object and binary directories.
+compile my saying make -f tpm2.mak.
+
+You'll have to adjust the object and binary directories.
+
 You can try the following tests, as root.
 
 ./tpm2_util.exe --command=KeyCombinedTest --pcr_num=7
@@ -37,15 +39,14 @@ ClientGenerateProgramKeyRequest.exe - Generates a program key and request, quoti
      of the request.
 ServerSignProgramKeyRequest.exe - Checks the program key request.  If compliant, signs and
      encrypts the cert with a symmetric key.  The symmetric key is sealed to the ActivateCredential
-     protocol protected by the requestors Endorsement and Quoteing keys.
+     protocol protected by the requestor's Endorsement and Quoting keys.
 ClientGetProgramKeyCert.exe - Uses ActivateCredential to unseal the symmetric key
-     protecting the signed program cert and decrypts the program key file.
+     protecting the signed program cert and decrypts the program key cert file.
 
 SigningInstructions.exe - prepares signing instructions for signing functions.
 
 Coming: PolicyInstructions - prepares policy ServerSignProgramKeyRequest.exe will consult to
      determine which program keys to sign,
-
 
 There are two test script: testall.sh and prototest.sh.  Most of the commands must
 be run as root.

@@ -1,6 +1,6 @@
 This is a very preliminary version of a tpm2 utility.
 
-compile my saying make -f tpm2_util.mak.  You'll have to
+compile my saying make -f tpm2.mak.  You'll have to
 adjust the object and binary directories.
 You can try the following tests, as root.
 
@@ -22,9 +22,33 @@ Other random commands that work are:
 ./tpm2_util.exe --command=GetCapabilities
 ./tpm2_util.exe --command=ReadPcr --pcr_num=15
 
+The following utilities implement the cloudproxy protocols:
 
-The code is extremely fragile and very limited.  It is being re-written but
-the other cloudproxy participants may need it for planning.
+GeneratePolicyKey.exe - Generates the policy key.
+SelfSignPolicyCert.exe - Self signs policy key.  The resulting cert should be included
+                                   in the cloudproxy applications.
+GetEndorsementKey.exe - Gets the TPMs endorsement key.
+CloudProxySignEndorsementKey.exe - Signs the endorsement key with the policy key.
+
+CreateAndSaveCloudProxyKeyHierarchy.exe  - Generates and save the TPM key hierarchy.
+RestoreCloudProxyKeyHierarchy.exe - Restores the TPM key hierarchy.
+
+ClientGenerateProgramKeyRequest.exe - Generates a program key and request, quoting the hash
+     of the request.
+ServerSignProgramKeyRequest.exe - Checks the program key request.  If compliant, signs and
+     encrypts the cert with a symmetric key.  The symmetric key is sealed to the ActivateCredential
+     protocol protected by the requestors Endorsement and Quoteing keys.
+ClientGetProgramKeyCert.exe - Uses ActivateCredential to unseal the symmetric key
+     protecting the signed program cert and decrypts the program key file.
+
+SigningInstructions.exe - prepares signing instructions for signing functions.
+
+Coming: PolicyInstructions - prepares policy ServerSignProgramKeyRequest.exe will consult to
+     determine which program keys to sign,
+
+
+There are two test script: testall.sh and prototest.sh.  Most of the commands must
+be run as root.
 
 Many thanks to Paul England for very helpful discussions.
 

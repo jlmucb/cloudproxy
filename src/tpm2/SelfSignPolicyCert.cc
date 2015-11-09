@@ -58,7 +58,7 @@ DEFINE_string(policy_identifier, "", "text to identify policy domain");
 DEFINE_string(cert_file, "cert_file", "cert output file");
 
 #ifndef GFLAGS_NS
-#define GFLAGS_NS gflags
+#define GFLAGS_NS google
 #endif
 
 #define MAX_BUF_SIZE 8192

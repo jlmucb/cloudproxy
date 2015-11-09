@@ -60,7 +60,7 @@ DEFINE_string(save_context_file, "", "save(d) context area");
 DEFINE_string(decrypt, "", "decrypt flag");
 
 #ifndef GFLAGS_NS
-#define GFLAGS_NS gflags
+#define GFLAGS_NS google
 #endif
 
 int num_tpmutil_ops = 27;
@@ -144,7 +144,7 @@ int main(int an, char** av) {
   } else if (FLAGS_command == "ReadClock") {
     uint64_t current_time, current_clock;
     if (Tpm2_ReadClock(tpm, &current_time, &current_clock)) {
-      printf("time: %llx %llx\n\n", current_time, current_clock);
+      printf("time: %lx %lx\n\n", current_time, current_clock);
     } else {
       printf("ReadClock failed\n");
     }

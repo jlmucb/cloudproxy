@@ -69,7 +69,7 @@ DEFINE_string(key_name, "", "key name");
 DEFINE_string(cloudproxy_key_file, "", "output-file-name");
 
 #ifndef GFLAGS_NS
-#define GFLAGS_NS gflags
+#define GFLAGS_NS google
 #endif
 
 #define MAXKEY_BUF 8192

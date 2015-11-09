@@ -51,7 +51,7 @@ DEFINE_string(machine_identifier, "", "text to identify endorsement");
 DEFINE_string(hash_alg, "sha1", "hash");
 
 #ifndef GFLAGS_NS
-#define GFLAGS_NS gflags
+#define GFLAGS_NS google
 #endif
 #define DEBUG
 

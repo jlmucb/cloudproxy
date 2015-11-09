@@ -82,7 +82,7 @@ DEFINE_string(cloudproxy_key_file, "", "input-file-name");
 DEFINE_string(program_response_file, "", "output-file-name");
 
 #ifndef GFLAGS_NS
-#define GFLAGS_NS gflags
+#define GFLAGS_NS google
 #endif
 
 #define MAX_SIZE_PARAMS 8192

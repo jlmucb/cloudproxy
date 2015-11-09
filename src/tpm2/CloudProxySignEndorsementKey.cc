@@ -75,7 +75,7 @@ DEFINE_string(signing_instructions_file, "", "signing instructions file");
 DEFINE_string(signed_endorsement_cert, "", "signed endorsement cert file");
 
 #ifndef GFLAGS_NS
-#define GFLAGS_NS gflags
+#define GFLAGS_NS google
 #endif
 
 #define DEBUG

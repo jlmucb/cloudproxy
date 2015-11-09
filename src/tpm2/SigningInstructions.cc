@@ -76,7 +76,7 @@ DEFINE_bool(isCA, false, "is CA");
 DEFINE_bool(can_sign, true, "can sign");
 
 #ifndef GFLAGS_NS
-#define GFLAGS_NS gflags
+#define GFLAGS_NS google
 #endif
 
 #define MAXKEY_BUF 8192

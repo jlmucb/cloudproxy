@@ -89,7 +89,7 @@ DEFINE_string(program_key_file, "", "output-file-name");
 DEFINE_string(program_cert_request_file, "", "output-file-name");
 
 #ifndef GFLAGS_NS
-#define GFLAGS_NS gflags
+#define GFLAGS_NS google
 #endif
 
 #define MAX_SIZE_PARAMS 4096

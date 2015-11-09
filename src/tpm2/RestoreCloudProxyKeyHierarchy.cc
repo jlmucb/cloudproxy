@@ -74,7 +74,7 @@ DEFINE_string(pcr_file, "", "output-file-name");
 DEFINE_string(hash_alg, "sha1", "hash alg");
 
 #ifndef GFLAGS_NS
-#define GFLAGS_NS gflags
+#define GFLAGS_NS google
 #endif
 
 #define MAX_SIZE_PARAMS 4096

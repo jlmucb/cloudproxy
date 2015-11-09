@@ -106,6 +106,7 @@ message program_cert_request_message {
   optional string active_sign_hash_alg        = 6;
   optional bytes active_signature             = 7;
   optional credential_info_message cred       = 8;
+  optional bytes quoted_blob                  = 9;
 }
 
 message program_cert_response_message {

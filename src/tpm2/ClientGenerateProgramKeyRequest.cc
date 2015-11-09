@@ -466,6 +466,7 @@ int main(int an, char** av) {
   //   TPM2B_PUBLIC_KEY_RSA rsa
   //      size
   //      buffer
+  request.set_quoted_blob(quoted, quote_size);
   active_sig.assign((const char*)sig, sig_size);
   request.set_active_signature(active_sig);
   request.mutable_cred()->mutable_public_key()->set_key_type("RSA");

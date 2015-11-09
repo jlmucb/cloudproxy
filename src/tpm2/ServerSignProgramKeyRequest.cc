@@ -161,11 +161,17 @@ int main(int an, char** av) {
   byte encrypted_data[MAX_SIZE_PARAMS];
   int encrypted_data_hmac_size = 0;
   byte encrypted_data_hmac[MAX_SIZE_PARAMS];
+
+  int signed_quote_hash_size = 0;
+  byte signed_quote_hash[MAX_SIZE_PARAMS];
+
   byte zero_iv[32];
   memset(zero_iv, 0, 32);
   
   int encrypted_secret_size = 0;
   byte encrypted_secret[MAX_SIZE_PARAMS];
+  int quote_struct_size = 0;
+  byte quote_struct[MAX_SIZE_PARAMS];
 
   private_key_blob_message private_key;
   program_cert_request_message request;
@@ -368,6 +374,9 @@ int main(int an, char** av) {
     goto done;
   }
 
+  quote_struct_size = request.quoted_blob().size();
+  memcpy(quote_struct, request.quoted_blob().data(), quote_struct_size);
+
 #ifdef DEBUG
   printf("\nmodulus size: %d\n",
       (int)request.cred().public_key().rsa_key().modulus().size());
@@ -381,6 +390,9 @@ int main(int an, char** av) {
   PrintBytes(request.cred().public_key().rsa_key().exponent().size(),
              (byte*)request.cred().public_key().rsa_key().exponent().data());
   printf("\n");
+  printf("quote_struct: ");
+  PrintBytes(quote_struct_size, quote_struct);
+  printf("\n");
 #endif
 
   // Set quote key exponent and modulus
@@ -390,18 +402,35 @@ int main(int an, char** av) {
                     (byte*)request.cred().public_key().rsa_key().exponent().data());
   size_active_out = RSA_public_encrypt(request.active_signature().size(),
                         (const byte*)request.active_signature().data(),
-                        decrypted_quote, active_key, RSA_PKCS1_OAEP_PADDING);
+                        decrypted_quote, active_key, RSA_NO_PADDING);
   if (size_active_out > MAX_SIZE_PARAMS) {
     printf("active signature is too big\n");
     ret_val = 1;
     goto done;
   }
+  signed_quote_hash_size = MAX_SIZE_PARAMS;
+  if (!ComputeQuotedValue(hash_alg_id, quote_struct_size, quote_struct,
+                          &signed_quote_hash_size, signed_quote_hash)) {
+    printf("Cant compute ComputeQuotedValue\n");
+    ret_val = 1;
+    goto done;
+    }
 
 #ifdef DEBUG
   printf("\nactive signature size: %d\n", size_active_out);
+  printf("Quote structure: ");
+  PrintBytes(quote_struct_size, quote_struct);
+  printf("\n");
+  printf("Quote hash: ");
+  PrintBytes(signed_quote_hash_size, signed_quote_hash);
+  printf("\n");
+  printf("Decrypted hash: ");
+  PrintBytes(size_active_out, decrypted_quote);
+  printf("\n");
 #endif
 
 #if 0
+  // recover pcr hash and magic number and check them
   // Compare signature and computed hash
   if (size_active_out != 32 || memcmp(quoted_hash,
                                       decrypted_quote, 32) != 0) {

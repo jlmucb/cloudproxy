@@ -164,7 +164,8 @@ int main(int an, char** av) {
   X509* program_cert = X509_new();
   X509* endorsement_cert = nullptr;
 
-  byte quoted_hash[256];
+  byte program_key_quoted_hash[256];
+
   int encrypted_data_size = 0;
   byte encrypted_data[MAX_SIZE_PARAMS];
   int encrypted_data_hmac_size = 0;
@@ -358,12 +359,12 @@ int main(int an, char** av) {
     SHA1_Init(&sha1);
     SHA1_Update(&sha1, (byte*)serialized_program_key.data(),
                       serialized_program_key.size());
-    SHA1_Final(quoted_hash, &sha1);
+    SHA1_Final(program_key_quoted_hash, &sha1);
   } else if (hash_alg_id == TPM_ALG_SHA256) {
     SHA256_Init(&sha256);
     SHA256_Update(&sha256, (byte*)serialized_program_key.data(),
                            serialized_program_key.size());
-    SHA256_Final(quoted_hash, &sha256);
+    SHA256_Final(program_key_quoted_hash, &sha256);
   } else {
     printf("Unknown hash alg\n");
     ret_val = 1;
@@ -371,8 +372,8 @@ int main(int an, char** av) {
   }
 
 #ifdef DEBUG
-  printf("\nquoted_hash: ");
-  PrintBytes(SizeHash(hash_alg_id), quoted_hash);
+  printf("\nprogram_key_quoted_hash: ");
+  PrintBytes(SizeHash(hash_alg_id), program_key_quoted_hash);
   printf("\n");
 #endif
 
@@ -450,6 +451,14 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
     }
+
+  // Check hash of request
+  if (memcmp(attested_quote.extraData.buffer, program_key_quoted_hash, 
+             attested_quote.extraData.size) != 0) {
+    printf("Program key hash does not match\n");
+    ret_val = 1;
+    // REMOVE goto done;
+  }
 
 #ifdef DEBUG
   printf("\nactive signature size: %d\n", size_active_out);

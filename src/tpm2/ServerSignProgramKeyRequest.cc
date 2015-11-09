@@ -340,10 +340,10 @@ int main(int an, char** av) {
   // Hash request
   serialized_program_key = request.program_key().DebugString();
   if (hash_alg_id == TPM_ALG_SHA1) {
-    SHA_Init(&sha1);
-    SHA_Update(&sha1, (byte*)serialized_program_key.data(),
+    SHA1_Init(&sha1);
+    SHA1_Update(&sha1, (byte*)serialized_program_key.data(),
                       serialized_program_key.size());
-    SHA_Final(quoted_hash, &sha1);
+    SHA1_Final(quoted_hash, &sha1);
   } else if (hash_alg_id == TPM_ALG_SHA256) {
     SHA256_Init(&sha256);
     SHA256_Update(&sha256, (byte*)serialized_program_key.data(),

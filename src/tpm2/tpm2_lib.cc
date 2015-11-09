@@ -212,16 +212,12 @@ bool FillTpmPcrData(LocalTpm& tpm, TPMS_PCR_SELECTION pcrSelection,
   return true;
 }
 
-bool ComputePcrDigest(TPMS_PCR_SELECTION pcrSelection,
-                      int size_in, byte* in_buf,
+bool ComputePcrDigest(TPM_ALG_ID hash, int size_in, byte* in_buf,
                       int* size_out, byte* out) {
   SHA_CTX sha1;
   SHA256_CTX sha256;
-  if (pcrSelection.sizeofSelect != 3) {
-    return false;
-  }
-  if (pcrSelection.hash != TPM_ALG_SHA1 &&
-      pcrSelection.hash == TPM_ALG_SHA256) {
+
+  if (hash != TPM_ALG_SHA1 && hash != TPM_ALG_SHA256) {
     printf("ComputePcrDigest: unsupported hash algorithm\n");
     return false;
   }
@@ -233,10 +229,10 @@ bool ComputePcrDigest(TPMS_PCR_SELECTION pcrSelection,
   printf("\n");
 #endif
 
-    if (pcrSelection.hash == TPM_ALG_SHA1) {
-      SHA_Init(&sha1);
-      SHA_Update(&sha1, in_buf, size_in);
-      SHA_Final(out, &sha1);
+    if (hash == TPM_ALG_SHA1) {
+      SHA1_Init(&sha1);
+      SHA1_Update(&sha1, in_buf, size_in);
+      SHA1_Final(out, &sha1);
       *size_out = 20;
     } else {
       SHA256_Init(&sha256);

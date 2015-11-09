@@ -153,9 +153,9 @@ bool ComputeQuotedValue(TPM_ALG_ID alg, int credInfo_size, byte* credInfo,
                         int* size_quoted, byte* quoted) {
   if (alg == TPM_ALG_SHA1) {
     SHA_CTX sha1;
-    SHA_Init(&sha1);
-    SHA_Update(&sha1, credInfo, credInfo_size);
-    SHA_Final(quoted, &sha1);
+    SHA1_Init(&sha1);
+    SHA1_Update(&sha1, credInfo, credInfo_size);
+    SHA1_Final(quoted, &sha1);
     *size_quoted = 20;
   } else if (alg == TPM_ALG_SHA256) {
     SHA256_CTX sha256;

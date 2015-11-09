@@ -403,9 +403,9 @@ int main(int an, char** av) {
   {
     string serialized_key = request.mutable_program_key()->DebugString();
     if (hash_alg_id == TPM_ALG_SHA1) {
-      SHA_Init(&sha1);
-      SHA_Update(&sha1, (byte*)serialized_key.data(), serialized_key.size());
-      SHA_Final(quoted_hash, &sha1);
+      SHA1_Init(&sha1);
+      SHA1_Update(&sha1, (byte*)serialized_key.data(), serialized_key.size());
+      SHA1_Final(quoted_hash, &sha1);
     } else {
       SHA256_Init(&sha256);
       SHA256_Update(&sha256, (byte*)serialized_key.data(), serialized_key.size());
@@ -510,9 +510,9 @@ int main(int an, char** av) {
 
     int size_hashed_pcrs = 256;
     byte hashed_pcrs[256];
-    if (!ComputePcrDigest(pcrSelect.pcrSelections[0],
-                      size_pcr_vals, pcr_values,
-                      &size_hashed_pcrs, hashed_pcrs)) {
+    if (!ComputePcrDigest(pcrSelect.pcrSelections[0].hash,
+                          size_pcr_vals, pcr_values,
+                          &size_hashed_pcrs, hashed_pcrs)) {
       printf("Cant ComputePcrDigest\n");
     }
     printf("Hashed pcrs: ");
@@ -580,4 +580,3 @@ done:
   tpm.CloseTpm();
   return ret_val;
 }
-

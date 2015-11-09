@@ -73,8 +73,7 @@ TPM_HANDLE GetNvHandle(uint32_t slot);
 
 bool FillTpmPcrData(LocalTpm& tpm, TPMS_PCR_SELECTION pcrSelection,
                     int* size, byte* buf);
-bool ComputePcrDigest(TPMS_PCR_SELECTION pcrSelection,
-                      int size_in, byte* in_buf,
+bool ComputePcrDigest(TPM_ALG_ID hash, int size_in, byte* in_buf,
                       int* size_out, byte* out);
 
 // TPM Commands

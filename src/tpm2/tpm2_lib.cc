@@ -472,7 +472,7 @@ bool Tpm2_ReadClock(LocalTpm& tpm, uint64_t* current_time, uint64_t* current_clo
 
 void setPcrBit(int pcrNum, byte* array) {
   if (pcrNum >= 0 && pcrNum < PLATFORM_PCR)
-    array[pcrNum / 8] = 1 << (pcrNum % 8);
+    array[pcrNum / 8] |= (1 << (pcrNum % 8));
 }
 
 bool testPcrBit(int pcrNum, byte* array) {

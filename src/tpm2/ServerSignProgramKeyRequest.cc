@@ -347,17 +347,12 @@ int main(int an, char** av) {
     goto done;
   }
 
-#if 0
-  X509_STORE_add_cert(store, policy_cert);
-  X509_STORE_CTX_init(verify_ctx, store, endorsement_cert, nullptr);
-  cert_OK = X509_verify_cert(verify_ctx);
-  if (cert_OK != 1) {
-    printf("cert verify failure\n");
-    printf("%s\n", X509_verify_cert_error_string(verify_ctx->error));
+  cert_OK = X509_verify(endorsement_cert, X509_get_pubkey(policy_cert));
+  if (cert_OK <= 0) {
+    printf("Endorsement cert does not verivy\n");
     ret_val = 1;
     goto done;
   }
-#endif
 
   // Generate request for program cert
   cert_parameters.set_common_name(request.program_key().program_name());

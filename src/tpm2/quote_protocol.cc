@@ -64,11 +64,11 @@ void print_quote_certifyinfo(TPMS_ATTEST& in) {
   printf("extraData: ");
   PrintBytes(in.extraData.size, in.extraData.buffer);
   printf("\n");
-  printf("clock: %016lx\n", in.clockInfo.clock);
+  printf("clock: %016llx\n", in.clockInfo.clock);
   printf("resetCount: %08x\n", in.clockInfo.resetCount);
   printf("restartCount: %08x\n", in.clockInfo.restartCount);
   printf("safe: %02x\n", in.clockInfo.safe);
-  printf("firmwareVersion: %016lx\n", in.firmwareVersion);
+  printf("firmwareVersion: %016llx\n", in.firmwareVersion);
   printf("pcrSelect: %08x\n", in.attested.quote.pcrSelect.count);
   for (int i = 0; i < (int)in.attested.quote.pcrSelect.count; i++) {
     printf("  %04x %02x ", in.attested.quote.pcrSelect.pcrSelections[i].hash,

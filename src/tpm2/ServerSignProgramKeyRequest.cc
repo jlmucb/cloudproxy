@@ -77,6 +77,7 @@ DEFINE_string(program_cert_request_file, "", "input-file-name");
 // TODO(jlm): policy file should contain list of approved pcrs
 DEFINE_string(hash_alg, "sha1", "hash-function");
 DEFINE_string(policy_file, "", "input-file-name");
+DEFINE_string(policy_cert_file, "policy_cert_file", "input-file-name");
 DEFINE_string(policy_identifier, "cloudproxy", "policy domain name");
 DEFINE_string(cloudproxy_key_file, "", "input-file-name");
 DEFINE_string(program_response_file, "", "output-file-name");
@@ -159,10 +160,13 @@ int main(int an, char** av) {
 
   byte* der_program_cert = nullptr;
   int der_program_cert_size = 0;
+  byte der_policy_cert[MAX_SIZE_PARAMS];
+  int der_policy_cert_size = MAX_SIZE_PARAMS;
 
   int endorsement_blob_size;
   X509* program_cert = X509_new();
   X509* endorsement_cert = nullptr;
+  X509* policy_cert = nullptr;
 
   byte program_key_quoted_hash[256];
 
@@ -187,6 +191,11 @@ int main(int an, char** av) {
   program_cert_response_message response;
   signing_instructions_message signing_message;
   x509_cert_request_parameters_message cert_parameters;
+
+  X509_STORE* store = nullptr;
+  X509_STORE_CTX* verify_ctx = nullptr;
+  int cert_OK = 0;
+  byte* p_byte = nullptr;
 
   string name;
   string input;
@@ -283,15 +292,12 @@ int main(int an, char** av) {
     printf("Can't parse private key\n");
   }
 
-#ifdef DEBUG
-  printf("\nKey type: %s\n", private_key.key_type().c_str());
-  printf("Key name: %s\n", private_key.key_name().c_str());
-#endif
-
   private_key_blob = private_key.blob();
-  PrintBytes(private_key_blob.size(), (byte*)private_key_blob.data()); printf("\n");
+  PrintBytes(private_key_blob.size(), (byte*)private_key_blob.data());
+  printf("\n");
   p = (byte*)private_key_blob.data();
-  signing_key = d2i_RSAPrivateKey(nullptr, (const byte**)&p, private_key_blob.size());
+  signing_key = d2i_RSAPrivateKey(nullptr, (const byte**)&p,
+                                  private_key_blob.size());
   if (signing_key == nullptr) {
     printf("Can't translate private key\n");
     ret_val = 1;
@@ -308,12 +314,50 @@ int main(int an, char** av) {
     goto done;
   }
 
-  // TODO(jlm): make sure self-signed policy key signed endorsement
+  // Get Policy cert
+  if (!ReadFileIntoBlock(FLAGS_policy_cert_file, &der_policy_cert_size,
+                         der_policy_cert)) {
+    printf("Can't read policy cert \n");
+    ret_val = 1;
+    goto done;
+  }
 
   // Get endorsement cert
   p = (byte*)request.endorsement_cert_blob().data();
   endorsement_blob_size = request.endorsement_cert_blob().size();
   endorsement_cert = d2i_X509(nullptr, (const byte**)&p, endorsement_blob_size);
+
+  // TODO(jlm): make sure self-signed policy key signed endorsement
+  if ((store = X509_STORE_new()) == nullptr) {
+    printf("Can't new X509_STORE\n");
+    ret_val = 1;
+    goto done;
+  }
+  if ((verify_ctx = X509_STORE_CTX_new()) == nullptr) {
+    printf("Can't new X509_STORE_CTX\n");
+    ret_val = 1;
+    goto done;
+  }
+  p_byte = der_policy_cert;
+  policy_cert = d2i_X509(nullptr, (const byte**)&p_byte,
+                         der_policy_cert_size);
+  if (policy_cert == nullptr) {
+    printf("Can't convert policy cert\n");
+    ret_val = 1;
+    goto done;
+  }
+
+#if 0
+  X509_STORE_add_cert(store, policy_cert);
+  X509_STORE_CTX_init(verify_ctx, store, endorsement_cert, nullptr);
+  cert_OK = X509_verify_cert(verify_ctx);
+  if (cert_OK != 1) {
+    printf("cert verify failure\n");
+    printf("%s\n", X509_verify_cert_error_string(verify_ctx->error));
+    ret_val = 1;
+    goto done;
+  }
+#endif
 
   // Generate request for program cert
   cert_parameters.set_common_name(request.program_key().program_name());
@@ -457,7 +501,7 @@ int main(int an, char** av) {
              attested_quote.extraData.size) != 0) {
     printf("Program key hash does not match\n");
     ret_val = 1;
-    // REMOVE goto done;
+    goto done;
   }
 
 #ifdef DEBUG

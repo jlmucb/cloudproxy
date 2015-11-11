@@ -64,7 +64,8 @@ void print_cert_request_message(x509_cert_request_parameters_message& req_messag
     printf("organization name: %s\n", req_message.organization_name().c_str());
   }
   if (req_message.has_suborganization_name()) {
-    printf("suborganization name: %s\n", req_message.suborganization_name().c_str());
+    printf("suborganization name: %s\n",
+        req_message.suborganization_name().c_str());
   }
   if (!req_message.has_key())
     return;
@@ -75,7 +76,8 @@ void print_cert_request_message(x509_cert_request_parameters_message& req_messag
     printf("key name: %s\n", req_message.key().rsa_key().key_name().c_str());
   }
   if (req_message.key().rsa_key().has_bit_modulus_size()) {
-    printf("modulus bit size: %d\n", req_message.key().rsa_key().bit_modulus_size());
+    printf("modulus bit size: %d\n",
+           req_message.key().rsa_key().bit_modulus_size());
   }
   if (req_message.key().rsa_key().has_exponent()) {
     string exp = req_message.key().rsa_key().exponent();
@@ -117,6 +119,7 @@ void print_internal_private_key(RSA& key) {
     BN_print_fp(stdout, key.q);
     printf("\n");
   }
+#if 0
   if (key.dmp1 != nullptr) {
     printf("\ndmp1: \n");
     BN_print_fp(stdout, key.dmp1);
@@ -132,6 +135,7 @@ void print_internal_private_key(RSA& key) {
     BN_print_fp(stdout, key.iqmp);
     printf("\n");
   }
+#endif
 }
 
 BIGNUM* bin_to_BN(int len, byte* buf) {
@@ -212,14 +216,6 @@ bool GetPublicRsaKeyFromParameters(const rsa_public_key_message& key_msg,
 
 bool GetPrivateRsaKeyFromParameters(const rsa_public_key_message& key_msg,
                                     RSA* rsa) {
-  return false;
-}
-
-bool GetPublicRsaParametersFromSSLKey(RSA& rsa, public_key_message* key_msg) {
-  return false;
-}
-
-bool GetPrivateRsaParametersFromSSLKey(RSA& rsa, rsa_private_key_message* key_msg) {
   return false;
 }
 
@@ -359,21 +355,6 @@ bool SignX509Certificate(RSA* signing_key,
   PrintBytes(digest->md_size, (byte*)digest->final);
   printf("\n");
   return true;
-}
-
-bool VerifyX509CertificateChain(certificate_chain_message& chain) {
-  // first cert is self signed root
-  return false;
-}
-
-bool GetCertificateRequestParametersFromX509(X509_REQ& x509_req,
-        cert_parameters_message* cert_params) {
-  return false;
-}
-
-bool GetCertificateParametersFromX509(X509& x509_cert,
-         cert_parameters_message* cert_params) {
-  return false;
 }
 
 void XorBlocks(int size, byte* in1, byte* in2, byte* out) {

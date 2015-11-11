@@ -43,7 +43,6 @@
 // a protobuf consisting of the keypair.  It is usually the root of a Cloudproxy
 // policy domain.
 
-
 // Calling sequence
 //   GeneratePolicyKey.exe --algorithm="RSA" --modulus_size_in_bits=int32
 //      --key_name=input-file --cloudproxy_key_file=output-file 
@@ -58,7 +57,6 @@ using std::string;
 void PrintOptions() {
   printf(CALLING_SEQUENCE);
 }
-
 
 DEFINE_string(algorithm, "RSA", "signing algorithm");
 DEFINE_int32(modulus_size_in_bits, 2048, "modulus-size");

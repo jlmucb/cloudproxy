@@ -35,19 +35,19 @@
 // See github.com/jlmucb/crypto.
 // File: RestoreCloudProxyKeyHierarchy.cc
 
-
-// This program reloads primary key, signing key (for quotes) and sealing key under the owner hierarchy
-//  from nv ram.  It optionally unseals sealed file contents and verifies quoted file contents.
+// This program reloads primary key, signing key (for quotes) and
+// sealing key under the owner hierarchy from nv ram.  It optionally
+// unseals sealed file contents and verifies quoted file contents.
 
 // Calling sequence
 //   RestoreCloudProxyKeyHierarchy.exe 
 //      --slot_primary=int32 --slot_seal=int32 --slot_quote=int32
-//      --seal_value=value-string --quote_value=value-string --pcr_hash_alg_name=[sha1 | sha256]
+//      --seal_value=value-string --quote_value=value-string
+//      --pcr_hash_alg_name=[sha1 | sha256]
 //      --pcr_list="int, int, ..." --seal_output_file=output-file-name
 //      --quote_output_file= output-file-name --pcr_file=output-file-name
 
 using std::string;
-
 
 #define CALLING_SEQUENCE "RestoreCloudProxyKeyHierarchy.exe " \
 "--slot_primary=int32 --slot_seal=int32 " \
@@ -127,7 +127,7 @@ int main(int an, char** av) {
     goto done;
   }
 
-#ifdef DEBUG1
+#ifdef DEBUG_EXTRA
   printf("\ncontext_save_area: ");
   PrintBytes(context_data_size - 6, context_save_area + 6);
   printf("\n\n");

@@ -129,6 +129,7 @@ int main(int an, char** av) {
     goto done;
   }
   Tpm2_FlushContext(tpm, ekHandle);
+
 #ifdef DEBUG
   printf("Public blob: ");
   PrintBytes(pub_blob_size, pub_blob);

@@ -65,7 +65,6 @@ void PrintOptions() {
   printf("Calling sequence: %s", CALLING_SEQUENCE);
 }
 
-
 DEFINE_string(program_key_response_file, "", "input-file-name");
 DEFINE_int32(slot_primary, 1, "slot-number");
 DEFINE_int32(slot_seal, 2, "slot-number");
@@ -199,7 +198,7 @@ int main(int an, char** av) {
     goto done;
   }
 
-#ifdef DEBUG1
+#ifdef DEBUG_EXTRA
   printf("\ncontext_save_area: ");
   PrintBytes(context_data_size - 6, context_save_area + 6);
   printf("\n\n");
@@ -228,7 +227,7 @@ int main(int an, char** av) {
     goto done;
   }
 
-#ifdef DEBUG1
+#ifdef DEBUG_EXTRA
   printf("\ncontext_save_area: ");
   PrintBytes(context_data_size - 6, context_save_area + 6);
   printf("\n\n");
@@ -280,65 +279,6 @@ int main(int an, char** av) {
   memcpy(unmarshaled_secret.secret, response.secret().data(),
          unmarshaled_secret.size);
 
-#ifdef DEBUG2
-  // Equivalent implementation using internal TPM functions
-{
-  TPM2B_DIGEST original_credential;
-  TPM2B_ID_OBJECT credBlob;
-  TPM2B_ENCRYPTED_SECRET active_secret;
-  uint16_t quote_pub_blob_size = MAX_SIZE_PARAMS;
-  byte quote_pub_blob[MAX_SIZE_PARAMS];
-  TPM2B_PUBLIC quote_pub_out;
-  TPM2B_NAME quote_pub_name;
-  TPM2B_NAME quote_qualified_pub_name;
-  TPM2B_DIGEST test_cred;
-
-  if (Tpm2_ReadPublic(tpm, quote_handle, &quote_pub_blob_size, quote_pub_blob,
-                      quote_pub_out, quote_pub_name,
-                      quote_qualified_pub_name)) {
-    printf("Quote ReadPublic succeeded\n");
-  } else {
-    printf("Quote ReadPublic failed\n");
-    ret_val = 1;
-    goto done;
-  }
-  
-  original_credential.size = 16;
-  memset(original_credential.buffer, 0, original_credential.size);
-
-  if (!Tpm2_MakeCredential(tpm, ekHandle, original_credential, quote_pub_name,
-                          &credBlob, &active_secret)) {
-    printf("MakeCredential failed\n");
-  } else {
-    printf("\nFrom MakeCred\n");
-    printf("original cred: ");
-    PrintBytes(original_credential.size, original_credential.buffer);
-    printf("\n");
-    printf("active_pub_name (%d): ", quote_pub_name.size);
-    PrintBytes(quote_pub_name.size, quote_pub_name.name);
-    printf("\n");
-    printf("active_secret (%d): ", active_secret.size);
-    PrintBytes(active_secret.size, active_secret.secret);
-    printf("\n");
-    printf("credBlob (%d): ", credBlob.size);
-    PrintBytes(credBlob.size, credBlob.credential);
-    printf("\n");
-  }
-  if (Tpm2_ActivateCredential(tpm, quote_handle, ekHandle, parentAuth, emptyAuth,
-                              credBlob, active_secret, &test_cred)) {
-    printf("Paired ActivateCredential succeeded\n");
-    printf("Original credential (%d): ", original_credential.size);
-    PrintBytes(original_credential.size, original_credential.buffer);
-    printf("\n");
-    printf("Recovered credential (%d): ", test_cred.size);
-    PrintBytes(test_cred.size, test_cred.buffer);
-    printf("\n");
-  } else {
-    printf("Paired ActivateCredential failed\n");
-  }
-}
-#endif
-
 #ifdef DEBUG
   printf("\nunmarshaled secret: %d\n",
          (int) (unmarshaled_secret.size + sizeof(uint16_t)));
@@ -375,7 +315,8 @@ int main(int an, char** av) {
 
   size_derived_keys = 128;
   label = "PROTECT";
-  cert_key_seed.assign((const char*)recovered_credential.buffer, recovered_credential.size);
+  cert_key_seed.assign((const char*)recovered_credential.buffer,
+                       recovered_credential.size);
   if (!KDFa(hash_alg_id, cert_key_seed, label, contextV, contextV, 256,
             size_derived_keys, derived_keys)) {
     printf("Can't derive cert protection keys\n");
@@ -390,10 +331,12 @@ int main(int an, char** av) {
     HMAC_Init_ex(&hctx, &derived_keys[16], 16, EVP_sha256(), nullptr);
     encrypted_cert_hmac_size = 32;
   }
-  HMAC_Update(&hctx, (byte*)response.encrypted_cert().data(), response.encrypted_cert().size());
+  HMAC_Update(&hctx, (byte*)response.encrypted_cert().data(),
+              response.encrypted_cert().size());
   HMAC_Final(&hctx, encrypted_cert_hmac, (uint32_t*)&encrypted_cert_hmac_size);
   HMAC_CTX_cleanup(&hctx);
-  if (memcmp(encrypted_cert_hmac, response.encrypted_cert_hmac().data(), encrypted_cert_hmac_size) !=0) {
+  if (memcmp(encrypted_cert_hmac, response.encrypted_cert_hmac().data(),
+             encrypted_cert_hmac_size) !=0) {
     printf("Hmac compare failed\n");
     ret_val = 1;
     goto done;

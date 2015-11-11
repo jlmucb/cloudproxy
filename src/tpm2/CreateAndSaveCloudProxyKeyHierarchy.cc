@@ -36,17 +36,21 @@
 // File: CreateAndSaveCloudProxyKeyHierarchy.cc
 
 
-// This program creates a primary key, signing key (for quotes) and sealing key under the owner hierarchy
-// and saves them to the cloudproxy defined namespace in nv ram so they can be reloaded.  NV ram
-//  is protected with PCR's of current "authenticated boot" so they can only be reread by
-//  the same cloudproxy environment.  It optionally seals an input string and quotes a quote string.
-//  This program removes existing cloudproxy slots with same names and slot numbers.
+// This program creates a primary key, signing key (for quotes) and
+// sealing key under the owner hierarchy and saves them to the 
+//  cloudproxy defined namespace in nv ram so they can be reloaded.
+// NV ram is protected with PCR's of current "authenticated boot" so
+// they can only be reread by the same cloudproxy environment.
+// It optionally seals an input string and quotes a quote string.
+// This program removes existing cloudproxy slots with same names
+// and slot numbers.
 
 
 // Calling sequence
 //   CreateAndSaveCloudProxyKeyHierarchy.exe --cloudproxy_namespace="name"
 //      --slot_primary=int32 --slot_seal=int32 --slot_quote=int32
-//      --seal_value=value-string --quote_value=value-string --pcr_hash_alg_name=[sha1 | sha256]
+//      --seal_value=value-string --quote_value=value-string
+//      --pcr_hash_alg_name=[sha1 | sha256]
 //      --pcr_list="int, int, ..." --seal_output_file=output-file-name
 //      --quote_output_file= output-file-name --pcr_file=output-file-name
 
@@ -189,8 +193,9 @@ int main(int an, char** av) {
   }
 
   // load seal key
-  if (Tpm2_Load(tpm, root_handle, parentAuth, seal_size_public, seal_out_public,
-               seal_size_private, seal_out_private, &seal_load_handle, &seal_name)) {
+  if (Tpm2_Load(tpm, root_handle, parentAuth, seal_size_public,
+                seal_out_public, seal_size_private, seal_out_private,
+                &seal_load_handle, &seal_name)) {
     printf("Load seal key succeeded\n");
   } else {
     printf("Load seal key failed\n");
@@ -221,8 +226,9 @@ int main(int an, char** av) {
     goto done;
   }
 
-  if (Tpm2_Load(tpm, root_handle, parentAuth, quote_size_public, quote_out_public,
-               quote_size_private, quote_out_private, &quote_load_handle, &quote_name)) {
+  if (Tpm2_Load(tpm, root_handle, parentAuth, quote_size_public,
+                quote_out_public, quote_size_private, quote_out_private,
+                &quote_load_handle, &quote_name)) {
     printf("Load quote succeeded\n");
   } else {
     printf("Load quote failed\n");
@@ -239,12 +245,13 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
 #ifdef DEBUG
   printf("Primary Save context worked, size is %d\n", context_data_size);
   printf("nv_handle: %08x\n", nv_handle);
   printf("Context save area (%d): ", context_data_size);
 #endif
-#ifdef DEBUG1
+#ifdef DEBUG_EXTRA
   PrintBytes(context_data_size, context_save_area);
   printf("\n");
 #endif
@@ -259,9 +266,11 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
 #ifdef DEBUG
   printf("Root writing %d bytes\n", context_data_size);
 #endif
+
   if (!Tpm2_WriteNv(tpm, nv_handle, authString, 
                     (uint16_t)context_data_size, context_save_area)){
     printf("Primary WriteNv failed\n");
@@ -295,6 +304,7 @@ int main(int an, char** av) {
     ret_val = 1;
     goto done;
   }
+
 #ifdef DEBUG
   printf("Seal writing %d bytes\n", context_data_size);
 #endif
@@ -339,43 +349,6 @@ int main(int an, char** av) {
     goto done;
   }
 
-#if 0
-  // test seal and quote
-  //  seal and quote as test
-  //  FLAGS_seal_value
-  //  FLAGS_quote_value
-  //  FLAGS_seal_output_file
-  //  FLAGS_quote_output_file
-
-  if (Tpm2_CreateSealed(tpm, root_handle, policy_digest.size, policy_digest.buffer,
-                        parentAuth, secret.size, secret.buffer, pcrSelect,
-                        hash_alg_id, seal_create_flags, TPM_ALG_NULL,
-                        (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB, TPM_ALG_RSASSA,
-                        1024, 0x010001,
-                        &sealed_size_public, sealed_out_public,
-                        &sealed_size_private, sealed_out_private,
-                        &creation_out, &digest_out, &creation_ticket)) {
-    printf("Create with digest succeeded private size: %d, public size: %d\n",
-           sealed_size_private, sealed_size_public);
-  } else {
-    Tpm2_FlushContext(tpm, root_handle);
-    ret_val = 1;
-    goto done;
-  }
-
-  if (Tpm2_Load(tpm, root_handle, parentAuth, seal_size_public, seal_out_public,
-               seal_size_private, seal_out_private, &seal_load_handle, &seal_name)) {
-    printf("Load succeeded, handle: %08x\n", seal_load_handle);
-  } else {
-    ret_val = 1;
-    goto done;
-  }
-#endif
-
-  // FLAGS_pcr_hash_alg_name
-
-  // FLAGS_slot_quote
-  // FLAGS_pcr_file
 done:
   if (root_handle != 0) {
     Tpm2_FlushContext(tpm, root_handle);

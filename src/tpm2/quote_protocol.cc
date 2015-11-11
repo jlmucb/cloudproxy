@@ -36,24 +36,6 @@
 #include <string>
 #define DEBUG
 
-
-/*
- *  typedef struct {
- *    TPM_GENERATED   magic;
- *    TPMI_ST_ATTEST  type;
- *    TPM2B_NAME      qualifiedSigner;
- *    TPM2B_DATA      extraData; (none)
- *    TPMS_CLOCK_INFO clockInfo;
- *    uint64_t        firmwareVersion;
- *    TPMU_ATTEST     attested;  (quote info) TPML_PCR_SELECTION, DIGEST
- *         TPML_PCR_SELECTION pcrSelect;
- *         TPM2B_DIGEST       pcrDigest;
- *  } TPMS_ATTEST;  This is the certInfo
- *  
- *  hash certifyinfo  (contains pcrDigests)
- *  hash(qualifyingData || hash(certInfo))
- */
-
 void print_quote_certifyinfo(TPMS_ATTEST& in) {
   printf("\n");
   printf("magic: %08x\n", in.magic);
@@ -133,7 +115,8 @@ bool UnmarshalCertifyInfo(int size, byte* in, TPMS_ATTEST* out) {
   return true;
 }
 
-bool ProtoToCertifyInfo(quote_certification_information& message, TPMS_ATTEST* out) {
+bool ProtoToCertifyInfo(quote_certification_information& message,
+                        TPMS_ATTEST* out) {
   memcpy((byte*)&out->magic, (byte*)message.magic().data(), sizeof(uint32_t));
   out->type = *(uint16_t*)message.type().data();
   message.qualifiedsigner();
@@ -142,10 +125,6 @@ bool ProtoToCertifyInfo(quote_certification_information& message, TPMS_ATTEST* o
   out->firmwareVersion = message.firmwareversion();
   memcpy(&out->attested.quote.pcrSelect, message.pcr_selection().data(), message.pcr_selection().size());
   out->attested.quote.pcrDigest.size = message.digest().size();
-  return true;
-}
-
-bool CertifyInfoToProto(TPMS_ATTEST& in, quote_certification_information& message) {
   return true;
 }
 
@@ -167,6 +146,7 @@ bool ComputeQuotedValue(TPM_ALG_ID alg, int credInfo_size, byte* credInfo,
     printf("unsupported hash alg\n");
     return false;
   }
+
 #ifdef DEBUG
   printf("Quote struct (%d): ", credInfo_size);
   PrintBytes(credInfo_size, credInfo);

@@ -43,10 +43,12 @@
 // File: ClientGenerateProgramKeyRequest.cc
 
 
-//   This program creates a program key and produces a program_cert_request_message 
-//   which contains a protobuf consisting of the endorsement key certificate, and
-//   a request to sign the program key and encrypt the result with a credential
-//   that can be unlocked with the endorsement key referencing the Quote key properties..
+// This program creates a program key and produces a
+// program_cert_request_message which contains a protobuf
+// consisting of the endorsement key certificate, and
+// a request to sign the program key and encrypt the result
+// with a credential that can be unlocked with the endorsement
+// key referencing the Quote key properties..
 
 // Calling sequence: ClientGenerateProgramKeyRequest.exe
 //    --signed_endorsement_cert=input-file-name
@@ -212,7 +214,7 @@ int main(int an, char** av) {
     goto done;
   }
 
-#ifdef DEBUG2
+#ifdef DEBUG_EXTRA
   printf("\nek Public blob: ");
   PrintBytes(ek_pub_blob_size, ek_pub_blob);
   printf("\n");
@@ -250,7 +252,7 @@ int main(int an, char** av) {
     goto done;
   }
 
-#ifdef DEBUG1
+#ifdef DEBUG_EXTRA
   printf("\ncontext_save_area: ");
   PrintBytes(context_data_size - 6, context_save_area + 6);
   printf("\n\n");
@@ -273,7 +275,7 @@ int main(int an, char** av) {
     goto done;
   }
 
-#ifdef DEBUG1
+#ifdef DEBUG_EXTRA
   printf("context_save_area: ");
   PrintBytes(context_data_size - 6, context_save_area + 6);
   printf("\n");
@@ -296,7 +298,7 @@ int main(int an, char** av) {
     goto done;
   }
 
-#ifdef DEBUG1
+#ifdef DEBUG_EXTRA
   printf("context_save_area: ");
   PrintBytes(context_data_size - 6, context_save_area + 6);
   printf("\n");
@@ -365,21 +367,25 @@ int main(int an, char** av) {
   request.set_active_sign_hash_alg(FLAGS_hash_alg);
   request.mutable_program_key()->set_program_name(FLAGS_program_key_name);
   request.mutable_program_key()->set_program_key_type("RSA");
-  request.mutable_program_key()->set_program_bit_modulus_size(FLAGS_program_key_size);
+  request.mutable_program_key()->set_program_bit_modulus_size(
+      FLAGS_program_key_size);
   expIn = (uint64_t) FLAGS_program_key_exponent;
   ChangeEndian64((uint64_t*)&expIn, (uint64_t*)(&expOut));
-  request.mutable_program_key()->set_program_key_exponent((const char*)&expOut, sizeof(uint64_t));
+  request.mutable_program_key()->set_program_key_exponent(
+      (const char*)&expOut, sizeof(uint64_t));
   mod = BN_to_bin(*program_rsa_key->n);
   if (mod == nullptr) {
     printf("Can't get program key modulus\n");
     ret_val = 1;
     goto done;
   }
-  request.mutable_program_key()->set_program_key_modulus((byte*)mod->data(), mod->size());
+  request.mutable_program_key()->set_program_key_modulus(
+      (byte*)mod->data(), mod->size());
 
   // get quote key info
-  if (Tpm2_ReadPublic(tpm, quote_handle, &quote_pub_blob_size, quote_pub_blob,
-                      quote_pub_out, quote_pub_name, quote_qualified_pub_name)) {
+  if (Tpm2_ReadPublic(tpm, quote_handle, &quote_pub_blob_size,
+                      quote_pub_blob, quote_pub_out, quote_pub_name,
+                      quote_qualified_pub_name)) {
     printf("Quote ReadPublic succeeded\n");
   } else {
     printf("Quote ReadPublic failed\n");
@@ -387,7 +393,7 @@ int main(int an, char** av) {
     goto done;
   }
 
-#ifdef DEBUG
+#ifdef DEBUG_EXTRA
   printf("\nQuote Public blob: ");
   PrintBytes(quote_pub_blob_size, quote_pub_blob);
   printf("\n");
@@ -408,7 +414,8 @@ int main(int an, char** av) {
       SHA1_Final(quoted_hash, &sha1);
     } else {
       SHA256_Init(&sha256);
-      SHA256_Update(&sha256, (byte*)serialized_key.data(), serialized_key.size());
+      SHA256_Update(&sha256, (byte*)serialized_key.data(),
+                    serialized_key.size());
       SHA256_Final(quoted_hash, &sha256);
     }
     to_quote.size = SizeHash(hash_alg_id);
@@ -421,9 +428,9 @@ int main(int an, char** av) {
   printf("\n");
 #endif
 
-  if (!Tpm2_Quote(tpm, quote_handle, parentAuth, to_quote.size, to_quote.buffer,
-                  scheme, pcrSelect, TPM_ALG_RSA, hash_alg_id,
-                  &quote_size, quoted, &sig_size, sig)) {
+  if (!Tpm2_Quote(tpm, quote_handle, parentAuth, to_quote.size,
+                  to_quote.buffer, scheme, pcrSelect, TPM_ALG_RSA,
+                  hash_alg_id, &quote_size, quoted, &sig_size, sig)) {
     printf("Quote failed\n");
     ret_val = 1;
     goto done;
@@ -446,6 +453,7 @@ int main(int an, char** av) {
       print_quote_certifyinfo(t);
     }
     printf("\n");
+  }
 #endif
 
   // Quote key information
@@ -497,56 +505,6 @@ int main(int an, char** av) {
     goto done;
   }
 
-#ifdef DEBUG
-    int size_pcr_vals = 4096;
-    byte pcr_values[4096];
-    if (!FillTpmPcrData(tpm, pcrSelect.pcrSelections[0],
-                      &size_pcr_vals, pcr_values)) {
-      printf("Cant compute FillTpmPcrData\n");
-    } else {
-      printf("pcr values: ");
-      PrintBytes(size_pcr_vals, pcr_values);
-      printf("\n");
-    }
-
-    int size_hashed_pcrs = 256;
-    byte hashed_pcrs[256];
-    if (!ComputePcrDigest(pcrSelect.pcrSelections[0].hash,
-                          size_pcr_vals, pcr_values,
-                          &size_hashed_pcrs, hashed_pcrs)) {
-      printf("Cant ComputePcrDigest\n");
-    }
-    printf("Hashed pcrs: ");
-    PrintBytes(size_hashed_pcrs, hashed_pcrs);
-    printf("\n");
-
-    int size_quoted = 256;
-    byte computed_quoted[256];
-    if (!ComputeQuotedValue(TPM_ALG_SHA1, quote_size, quoted,
-                            &size_quoted, computed_quoted)) {
-      printf("Cant compute ComputeQuotedValue\n");
-    } else {
-      printf("tpm2_lib computed_quoted: ");
-      PrintBytes(size_quoted, computed_quoted);
-      printf("\n");
-    }
-    int decrypted_quote_size = 512;
-    byte decrypted_quote[512];
-    RSA* active_key = RSA_new();
-    active_key->n = bin_to_BN(quote_pub_out.publicArea.unique.rsa.size,
-                              quote_pub_out.publicArea.unique.rsa.buffer);
-    active_key->e = bin_to_BN(sizeof(uint64_t), (byte*)&expOut);
-    decrypted_quote_size = RSA_public_encrypt(sig_size, sig,
-        decrypted_quote, active_key, RSA_NO_PADDING);
-    if (decrypted_quote_size > MAX_SIZE_PARAMS) {
-      printf("active signature is too big\n");
-    }
-   printf("Decrypted quote (%d): ", decrypted_quote_size);
-   PrintBytes(decrypted_quote_size, decrypted_quote);
-   printf("\n");
-  }
-#endif
-
   output.clear();
   if (!request.SerializeToString(&output)) {
     printf("Can't serialize string\n");
@@ -560,7 +518,7 @@ int main(int an, char** av) {
     goto done;
   }
 
-#ifdef DEBUG2
+#ifdef DEBUG_EXTRA
   printf("\nrequest:\n%s\n", request.DebugString().c_str());
 #endif
 

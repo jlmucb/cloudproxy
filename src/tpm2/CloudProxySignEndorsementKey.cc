@@ -161,7 +161,7 @@ int main(int an, char** av) {
 
 #ifdef DEBUG
   printf("\nPolicy key type: %s\n", private_key.key_type().c_str());
-  printf("Policy key name: %s\n", private_key.key_name().c_str());
+  printf("Policy key name: %s\n\n", private_key.key_name().c_str());
 #endif
 
   string the_blob = private_key.blob();
@@ -192,18 +192,19 @@ int main(int an, char** av) {
   printf("Endorsement key modulus: ");
   PrintBytes((int)outPublic.publicArea.unique.rsa.size,
              outPublic.publicArea.unique.rsa.buffer);
-  printf("\n");
-  printf("\n");
+  printf("\n\n");
 #endif
 
   // fill x509_cert_request_parameters_message
   x509_cert_request_parameters_message req_message;
   req_message.set_common_name(endorsement_info.machine_identifier());
-  // country_name state_name locality_name organization_name suborganization_name
+  // country_name state_name locality_name organization_name
+  //      suborganization_name
   req_message.mutable_key()->set_key_type("RSA");
   req_message.mutable_key()->mutable_rsa_key()->set_bit_modulus_size(
       (int)outPublic.publicArea.unique.rsa.size * 8);
-  uint64_t expIn = (uint64_t) outPublic.publicArea.parameters.rsaDetail.exponent;
+  uint64_t expIn = (uint64_t)
+      outPublic.publicArea.parameters.rsaDetail.exponent;
   uint64_t expOut;
   ChangeEndian64((uint64_t*)&expIn, (uint64_t*)(&expOut));
 
@@ -241,8 +242,9 @@ int main(int an, char** av) {
     printf("Can't sign x509 request\n");
     return 1;
   }
+
 #ifdef DEBUG
-  printf("\nmessage signed\n");
+  printf("message signed\n");
 #endif
 
   byte* out = nullptr;

@@ -47,11 +47,12 @@
 // File: ServerSignProgramKeyRequest.cc
 
 
-//   This program verifies endorsement cert, quote key and signature. It then
-//   constructs and signs an x509 cert for the proposed program key.  It encrypts
-//   the signed cert to the Endorsement key referencing the Quote Key and creates
-//   the decrypt information required by ActivateCredential.  It saves the encrypted
-//   information in the response file.
+//  This program verifies endorsement cert, quote key and signature.
+//  It then constructs and signs an x509 cert for the proposed
+//  program key.  It encrypts the signed cert to the Endorsement Key
+//  referencing the Quote Key and creates the decrypt information
+//  required by ActivateCredential.  It saves the encrypted
+//  information in the response file.
 
 // Calling sequence: ServerSignProgramKeyRequest.exe
 //    --program_cert_request_file=input-file-name
@@ -426,7 +427,7 @@ int main(int an, char** av) {
   quote_struct_size = request.quoted_blob().size();
   memcpy(quote_struct, request.quoted_blob().data(), quote_struct_size);
 
-#ifdef DEBUG
+#ifdef DEBUG_EXTRA
   printf("\nmodulus size: %d\n",
       (int)request.cred().public_key().rsa_key().modulus().size());
   printf("exponent size: %d\n",
@@ -446,14 +447,14 @@ int main(int an, char** av) {
 
   // Decode quote structure
   if (!UnmarshalCertifyInfo(quote_struct_size, quote_struct, &attested_quote)) {
-#ifdef DEBUG
+#ifdef DEBUG_EXTRA
     print_quote_certifyinfo(attested_quote);
 #endif
     printf("Invalid attested structure\n");
     ret_val = 1;
     goto done;
   }
-#ifdef DEBUG
+#ifdef DEBUG_EXTRA
   print_quote_certifyinfo(attested_quote);
 #endif
   if (attested_quote.magic !=  TpmMagicConstant) {
@@ -471,10 +472,12 @@ int main(int an, char** av) {
   }
 
   // Set quote key exponent and modulus
-  active_key->n = bin_to_BN(request.cred().public_key().rsa_key().modulus().size(),
-                    (byte*)request.cred().public_key().rsa_key().modulus().data());
-  active_key->e = bin_to_BN(request.cred().public_key().rsa_key().exponent().size(),
-                    (byte*)request.cred().public_key().rsa_key().exponent().data());
+  active_key->n = bin_to_BN(
+      request.cred().public_key().rsa_key().modulus().size(),
+      (byte*)request.cred().public_key().rsa_key().modulus().data());
+  active_key->e = bin_to_BN(
+      request.cred().public_key().rsa_key().exponent().size(),
+      (byte*)request.cred().public_key().rsa_key().exponent().data());
   size_active_out = RSA_public_encrypt(request.active_signature().size(),
                         (const byte*)request.active_signature().data(),
                         decrypted_quote, active_key, RSA_NO_PADDING);
@@ -514,7 +517,8 @@ int main(int an, char** av) {
 
   // recover pcr hash and magic number and check them
   // Compare signature and computed hash
-  if (memcmp(signed_quote_hash, decrypted_quote + size_active_out - SizeHash(hash_alg_id),
+  if (memcmp(signed_quote_hash,
+             decrypted_quote + size_active_out - SizeHash(hash_alg_id),
              SizeHash(hash_alg_id)) != 0) {
     printf("quote signature is wrong\n");
     PrintBytes(SizeHash(hash_alg_id), signed_quote_hash); printf("\n");
@@ -535,7 +539,8 @@ int main(int an, char** av) {
   // Encrypt signed program cert
   size_derived_keys = 128;
   label = "PROTECT";
-  cert_key_seed.assign((const char*)unmarshaled_credential.buffer, unmarshaled_credential.size);
+  cert_key_seed.assign((const char*)unmarshaled_credential.buffer,
+                       unmarshaled_credential.size);
   if (!KDFa(hash_alg_id, cert_key_seed, label, contextV, contextV, 256,
             size_derived_keys, derived_keys)) {
     printf("Can't derive cert protection keys\n");
@@ -560,7 +565,7 @@ int main(int an, char** av) {
   HMAC_Final(&hctx, encrypted_data_hmac, (uint32_t*)&encrypted_data_hmac_size);
   HMAC_CTX_cleanup(&hctx);
 
-#ifdef DEBUG
+#ifdef DEBUG_EXTRA
   printf("\ncredential secret: ");
   PrintBytes(16, unmarshaled_credential.buffer);
   printf("\n");
@@ -610,7 +615,7 @@ int main(int an, char** av) {
       (byte*)"IDENTITY", strlen("IDENTITY")+1);
 
 #ifdef DEBUG
-  printf("\nAfter RSAPad: ");
+  printf("After RSAPad: ");
   PrintBytes(size_in, in_buf);
   printf("\n");
 #endif
@@ -620,7 +625,7 @@ int main(int an, char** av) {
                               // RSA_PKCS1_OAEP_PADDING);
   response.set_secret(encrypted_secret, encrypted_secret_size);
 
-#ifdef DEBUG
+#ifdef DEBUG_EXTRA
   printf("\nEndorsement modulus: ");
   BN_print_fp(stdout, protector_key->n);
   printf("\n");
@@ -666,7 +671,6 @@ int main(int an, char** av) {
   }
 
 #ifdef DEBUG
-  printf("\n");
   printf("size_encIdentity: %d\n", size_encIdentity);
   test_size = MAX_SIZE_PARAMS;
   if (!AesCFBDecrypt(symKey, size_encIdentity,
@@ -679,6 +683,7 @@ int main(int an, char** av) {
   printf("Decrypted secret (%d): ", test_size);
   PrintBytes(test_size, test_buf); printf("\n");
 #endif
+
   response.set_encidentity(encIdentity, size_encIdentity);
 
   // hmacKey= KDFa(hash, seed, "INTEGRITY", nullptr, nullptr, 8*hashsize);

@@ -2640,20 +2640,17 @@ bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
   // not sure what this is
   //   nameAlg
   //   attributes
-  uint16_t hack = 0xb;
-  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
-  ChangeEndian16((uint16_t*)&hack, (uint16_t*)in);
-  Update(sizeof(uint16_t), &in, &size_params, &space_left);
-
-  TPMI_ALG_HASH alg = TPM_ALG_SHA1;
+  TPMI_ALG_HASH alg = TPM_ALG_SHA256;
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   ChangeEndian16((uint16_t*)&alg, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
-
-  uint16_t hack2 = 0x4;
+  uint32_t attributes;
+  memset((byte*)&attributes, 0 , sizeof(uint32_t));
+  // TODO(jlm): what attributes is this?
+  attributes = 0x00040004;
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
-  ChangeEndian16((uint16_t*)&hack2, (uint16_t*)in);
-  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+  ChangeEndian32((uint32_t*)&attributes, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
 
   // authPolicy size
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))

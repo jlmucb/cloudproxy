@@ -107,14 +107,11 @@ bool Tpm2_PCR_Event(LocalTpm& tpm, int pcr_num,
                     uint16_t size, byte* eventData);
 bool Tpm2_PolicyGetDigest(LocalTpm& tpm, TPM_HANDLE handle,
                           TPM2B_DIGEST* digest_out);
-bool Tpm2_StartAuthSession(LocalTpm& tpm, TPM_RH tpm_obj,
-                           TPM_RH bind_obj,
+bool Tpm2_StartAuthSession(LocalTpm& tpm, TPM_RH tpm_obj, TPM_RH bind_obj,
                            TPM2B_NONCE& initial_nonce,
-                           TPM2B_ENCRYPTED_SECRET* salt,
-                           TPM_SE session_type,
-                           TPMT_SYM_DEF& symmetric,
-                           TPMI_ALG_HASH hash_alg,
-                           TPM_HANDLE* session_handle,
+                           TPM2B_ENCRYPTED_SECRET& salt,
+                           TPM_SE session_type, TPMT_SYM_DEF& symmetric,
+                           TPMI_ALG_HASH hash_alg, TPM_HANDLE* session_handle,
                            TPM2B_NONCE* nonce_obj);
 bool Tpm2_PolicyPcr(LocalTpm& tpm, TPM_HANDLE session_handle,
                     TPM2B_DIGEST& expected_digest, TPML_PCR_SELECTION& pcr);
@@ -196,13 +193,6 @@ bool Tpm2_ReadPublic(LocalTpm& tpm, TPM_HANDLE handle,
                      uint16_t* pub_blob_size, byte* pub_blob,
                      TPM2B_PUBLIC& outPublic,
                      TPM2B_NAME& name, TPM2B_NAME& qualifiedName);
-
-bool Tpm2_SealCombinedTest(LocalTpm& tpm, int pcr_num);
-bool Tpm2_QuoteCombinedTest(LocalTpm& tpm, int pcr_num);
-bool Tpm2_KeyCombinedTest(LocalTpm& tpm, int pcr_num);
-bool Tpm2_NvCombinedTest(LocalTpm& tpm);
-bool Tpm2_ContextCombinedTest(LocalTpm& tpm);
-bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm);
 
 bool Tpm2_Rsa_Encrypt(LocalTpm& tpm, TPM_HANDLE handle, string& authString, TPM2B_PUBLIC_KEY_RSA& in,
                      TPMT_RSA_DECRYPT& scheme, TPM2B_DATA& label, TPM2B_PUBLIC_KEY_RSA* out);

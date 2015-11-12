@@ -1687,7 +1687,7 @@ int GetRsaParams(uint16_t size_in, byte* input, TPMS_RSA_PARMS& rsaParams,
                    (uint16_t*)&rsaParams.scheme.scheme);
     input += sizeof(uint16_t);
     total_size += sizeof(uint16_t);
-    // hack
+    // TODO(jlm): what goes here?  Details?
     input += sizeof(uint16_t);
     total_size += sizeof(uint16_t);
    } else {
@@ -1696,7 +1696,7 @@ int GetRsaParams(uint16_t size_in, byte* input, TPMS_RSA_PARMS& rsaParams,
      input += sizeof(uint16_t);
      total_size += sizeof(uint16_t);
      printf("Scheme: %04x\n", rsaParams.scheme.scheme);
-     // hack
+     // TODO(jlm): what goes here?  Details?
      input += sizeof(uint32_t);
      total_size += sizeof(uint32_t);
    }
@@ -2632,10 +2632,14 @@ bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
   ChangeEndian16((uint16_t*)&size_nv_area, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+
+  // nvIndex;
   ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
 
   // not sure what this is
+  //   nameAlg
+  //   attributes
   uint16_t hack = 0xb;
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   ChangeEndian16((uint16_t*)&hack, (uint16_t*)in);
@@ -2651,10 +2655,12 @@ bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
   ChangeEndian16((uint16_t*)&hack2, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
 
+  // authPolicy size
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   memset(in, 0, sizeof(uint16_t));
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
 
+  // dataSize
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   ChangeEndian16((uint16_t*)&size_data, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);

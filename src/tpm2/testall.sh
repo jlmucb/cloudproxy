@@ -1,19 +1,19 @@
 #!/bin/bash
-./tpm2_util --command=Flushall
-./tpm2_util --command=ReadPcr --pcr_num=7
-./tpm2_util --command=Flushall
-./tpm2_util --command=KeyCombinedTest --pcr_num=7
-./tpm2_util --command=Flushall
-./tpm2_util --command=SealCombinedTest --pcr_num=7
-./tpm2_util --command=Flushall
-./tpm2_util --command=QuoteCombinedTest --pcr_num=7
-./tpm2_util --command=Flushall
-./tpm2_util --command=ContextCombinedTest --pcr_num=7
-./tpm2_util --command=Flushall
-./tpm2_util --command=NvCombinedTest --pcr_num=7
-./tpm2_util --command=Flushall
-./tpm2_util --command=EndorsementCombinedTest --pcr_num=7
-./tpm2_util --command=Flushall
+./tpm2_util.exe --command=Flushall
+./tpm2_util.exe --command=ReadPcr --pcr_num=7
+./tpm2_util.exe --command=Flushall
+./tpm2_util.exe --command=KeyCombinedTest --pcr_num=7
+./tpm2_util.exe --command=Flushall
+./tpm2_util.exe --command=SealCombinedTest --pcr_num=7
+./tpm2_util.exe --command=Flushall
+./tpm2_util.exe --command=QuoteCombinedTest --pcr_num=7
+./tpm2_util.exe --command=Flushall
+./tpm2_util.exe --command=ContextCombinedTest --pcr_num=7
+./tpm2_util.exe --command=Flushall
+./tpm2_util.exe --command=NvCombinedTest --pcr_num=7
+./tpm2_util.exe --command=Flushall
+./tpm2_util.exe --command=EndorsementCombinedTest --pcr_num=7
+./tpm2_util.exe --command=Flushall
 
 ./GeneratePolicyKey --algorithm=RSA --exponent=0x010001 \
 --modulus_size_in_bits=2048 --signing_instructions=signing_instructions \

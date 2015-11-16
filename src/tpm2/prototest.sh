@@ -11,7 +11,7 @@ rm protocol_test.txt
 --key_file=cloudproxy_key_file --policy_identifier=test-policy-domain --cert_file=policy_key_cert
 ./SigningInstructions.exe --issuer=test-policy-domain --can_sign=true >> protocol_test.txt
 ./tpm2_util.exe --command=Flushall
-./GetEndorsementKey --machine_identifier="John's Nuc" --endorsement_info_file=endorsement_key_info_file >> protocol_test.txt
+./GetEndorsementKey.exe --machine_identifier="John's Nuc" --endorsement_info_file=endorsement_key_info_file >> protocol_test.txt
 ./tpm2_util.exe --command=Flushall
 ./CloudProxySignEndorsementKey.exe \
 --cloudproxy_private_key_file=cloudproxy_key_file \

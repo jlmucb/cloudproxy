@@ -246,7 +246,6 @@ void Tpm2_InterpretResponse(int out_size, byte* out_buf, uint16_t* cap,
 }
 
 bool Tpm2_Startup(LocalTpm& tpm) {
-
   byte commandBuf[MAX_SIZE_PARAMS];
 
   TPM_SU state = TPM_SU_CLEAR;
@@ -777,7 +776,6 @@ int Marshal_AuthSession_Info(TPMI_DH_OBJECT& tpm_obj, TPMI_DH_ENTITY& bind_obj,
                              TPM2B_NONCE& initial_nonce, TPM2B_ENCRYPTED_SECRET& salt,
                              TPM_SE& session_type, TPMT_SYM_DEF& symmetric,
                              TPMI_ALG_HASH& hash_alg, int size, byte* out_buf) {
-
   int total_size = 0;
   int space_left = size;
   byte* out = out_buf;
@@ -965,7 +963,6 @@ int Marshal_PCR_Short_Selection(TPMS_PCR_SELECTION& in, int size, byte* buf) {
 
 int Marshal_Signature_Scheme_Info(TPMT_SIG_SCHEME& sig_scheme, int size,
                                   byte* buf) {
-
   int total_size = 0;
   int space_left = size;
   byte* out = buf;
@@ -980,7 +977,6 @@ int Marshal_Signature_Scheme_Info(TPMT_SIG_SCHEME& sig_scheme, int size,
 }
 
 int Marshal_Keyed_Hash_Info(TPM2B_PUBLIC& keyed_hash, int size, byte* buf) {
-
   int total_size = 0;
   int space_left = size;
   byte* out = buf;
@@ -1612,10 +1608,8 @@ bool Tpm2_Load(LocalTpm& tpm, TPM_HANDLE parent_handle,
   IF_LESS_THAN_RETURN_FALSE(space_left, size_public + 2)
   memcpy(in, inPublic, size_public + 2);
   Update(size_public + 2, &in, &size_params, &space_left);
-  int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_Load,
-                                (byte*)commandBuf,
-                                size_params,
-                                (byte*)params_buf);
+  int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_Load, (byte*)commandBuf,
+                                size_params, (byte*)params_buf);
   printCommand("Load", in_size, commandBuf);
   if (!tpm.SendCommand(in_size, (byte*)commandBuf)) {
     printf("SendCommand failed\n");
@@ -1921,8 +1915,7 @@ bool Tpm2_Certify(LocalTpm& tpm, TPM_HANDLE signedKey, TPM_HANDLE signingKey,
   return true;
 }
 
-bool GetCreateOut(int size, byte* in,
-                  int* size_public, byte* out_public, 
+bool GetCreateOut(int size, byte* in, int* size_public, byte* out_public, 
                   int* size_private, byte* out_private, 
                   TPM2B_CREATION_DATA* creation_out, TPM2B_DIGEST* digest_out,
                   TPMT_TK_CREATION* creation_ticket) {
@@ -2060,8 +2053,7 @@ bool Tpm2_CreateKey(LocalTpm& tpm, TPM_HANDLE parent_handle,
                       &resp_buf[sizeof(TPM_RESPONSE)],
                       size_public, out_public,
                       size_private, out_private,
-                      creation_out, digest_out,
-                      creation_ticket);
+                      creation_out, digest_out, creation_ticket);
 }
 
 bool Tpm2_CreateSealed(LocalTpm& tpm, TPM_HANDLE parent_handle, 
@@ -2785,8 +2777,9 @@ bool Tpm2_Flushall(LocalTpm& tpm) {
   return true;
 }
 
-bool Tpm2_Rsa_Encrypt(LocalTpm& tpm, TPM_HANDLE handle, string& authString, TPM2B_PUBLIC_KEY_RSA& inData,
-                      TPMT_RSA_DECRYPT& scheme, TPM2B_DATA& label, TPM2B_PUBLIC_KEY_RSA* outData) {
+bool Tpm2_Rsa_Encrypt(LocalTpm& tpm, TPM_HANDLE handle, string& authString,
+                      TPM2B_PUBLIC_KEY_RSA& inData, TPMT_RSA_DECRYPT& scheme,
+                      TPM2B_DATA& label, TPM2B_PUBLIC_KEY_RSA* outData) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   int size_resp = MAX_SIZE_PARAMS;
   byte resp_buf[MAX_SIZE_PARAMS];
@@ -2813,7 +2806,6 @@ bool Tpm2_Rsa_Encrypt(LocalTpm& tpm, TPM_HANDLE handle, string& authString, TPM2
   IF_LESS_THAN_RETURN_FALSE(space_left, inData.size)
   memcpy(in, inData.buffer, inData.size);
   Update(inData.size, &in, &size_params, &space_left);
-
 
   scheme.scheme = TPM_ALG_NULL;
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))

@@ -774,8 +774,7 @@ bool Tpm2_PCR_Event(LocalTpm& tpm, int pcr_num,
 }
 
 int Marshal_AuthSession_Info(TPMI_DH_OBJECT& tpm_obj, TPMI_DH_ENTITY& bind_obj,
-                             TPM2B_NONCE& initial_nonce,
-                             TPM2B_ENCRYPTED_SECRET& salt,
+                             TPM2B_NONCE& initial_nonce, TPM2B_ENCRYPTED_SECRET& salt,
                              TPM_SE& session_type, TPMT_SYM_DEF& symmetric,
                              TPMI_ALG_HASH& hash_alg, int size, byte* out_buf) {
 
@@ -1034,8 +1033,7 @@ void FillPublicRsaTemplate(TPM_ALG_ID enc_alg, TPM_ALG_ID int_alg,
                            TPMA_OBJECT flags, TPM_ALG_ID sym_alg,
                            TPMI_AES_KEY_BITS sym_key_size,
                            TPMI_ALG_SYM_MODE sym_mode, TPM_ALG_ID sig_scheme,
-                           int mod_size,
-                           uint32_t exp, TPM2B_PUBLIC& pub_key) {
+                           int mod_size, uint32_t exp, TPM2B_PUBLIC& pub_key) {
   pub_key.publicArea.type = enc_alg;
   pub_key.publicArea.nameAlg = int_alg;
   pub_key.publicArea.objectAttributes = flags;
@@ -1502,8 +1500,7 @@ bool Tpm2_MakeCredential(LocalTpm& tpm,
   return true;
 }
 
-bool Tpm2_ActivateCredential(LocalTpm& tpm,
-                             TPM_HANDLE activeHandle,
+bool Tpm2_ActivateCredential(LocalTpm& tpm, TPM_HANDLE activeHandle,
                              TPM_HANDLE keyHandle,
                              string& activeAuth, string& keyAuth,
                              TPM2B_ID_OBJECT& credentialBlob,
@@ -1653,9 +1650,6 @@ bool Tpm2_Save(LocalTpm& tpm) {
 int GetName(uint16_t size_in, byte* in, TPM2B_NAME& name) {
   int total_size = 0;
 
-  // TPMU_PUBLIC_ID    unique;
-  //   TPM2B_DIGEST         keyedHash;
-  //   TPM2B_DIGEST         sym;
   ChangeEndian16((uint16_t*) in, (uint16_t*)&name.size);
   in += sizeof(uint16_t);
   memcpy(name.name, in, name.size);
@@ -1667,12 +1661,6 @@ int GetRsaParams(uint16_t size_in, byte* input, TPMS_RSA_PARMS& rsaParams,
                  TPM2B_PUBLIC_KEY_RSA& rsa) {
   int total_size = 0;
 
-  // TPMT_SYM_DEF_OBJECT symmetric;
-  //    TPMI_ALG_SYM_OBJECT algorithm;
-  //    TPMU_SYM_KEY_BITS   keyBits;
-  //       uint16_t size
-  //       bytes
-  //    uint16_t mode;
   ChangeEndian16((uint16_t*) input, (uint16_t*)&rsaParams.symmetric.algorithm);
   input += sizeof(uint16_t);
   total_size += sizeof(uint16_t);
@@ -1695,7 +1683,6 @@ int GetRsaParams(uint16_t size_in, byte* input, TPMS_RSA_PARMS& rsaParams,
                     (uint16_t*)&rsaParams.scheme.scheme);
      input += sizeof(uint16_t);
      total_size += sizeof(uint16_t);
-     printf("Scheme: %04x\n", rsaParams.scheme.scheme);
      // TODO(jlm): what goes here?  Details?
      input += sizeof(uint32_t);
      total_size += sizeof(uint32_t);
@@ -1980,10 +1967,6 @@ bool GetCreateOut(int size, byte* in,
   memcpy(creation_out->creationData.pcrDigest.buffer, current_in,
          creation_out->creationData.pcrDigest.size);
   current_in += creation_out->creationData.pcrDigest.size;
-
-  // TODO(jlm):
-  //     TPM2B_DIGEST
-  //     TPMT_TK_CREATION
   return true;
 }
 
@@ -2124,7 +2107,6 @@ bool Tpm2_CreateSealed(LocalTpm& tpm, TPM_HANDLE parent_handle,
                           space_left, in);
   IF_NEG_RETURN_FALSE(n)
   Update(n, &in, &size_params, &space_left);
-printf("CSB after Sens: ");PrintBytes(size_params, params); printf("\n");
 
   TPM2B_PUBLIC keyed_hash;
   FillKeyedHashTemplate(TPM_ALG_KEYEDHASH, int_alg, flags, 
@@ -2132,7 +2114,6 @@ printf("CSB after Sens: ");PrintBytes(size_params, params); printf("\n");
   n = Marshal_Keyed_Hash_Info(keyed_hash, space_left, in);
   IF_NEG_RETURN_FALSE(n)
   Update(n, &in, &size_params, &space_left);
-printf("CSB after Keyed: ");PrintBytes(size_params, params); printf("\n");
 
   TPM2B_DATA data;
   FillEmptyData(data);
@@ -2173,10 +2154,8 @@ printf("CSB after Keyed: ");PrintBytes(size_params, params); printf("\n");
 
   return GetCreateOut(responseSize - sizeof(TPM_RESPONSE),
                       &resp_buf[sizeof(TPM_RESPONSE)],
-                      size_public, out_public,
-                      size_private, out_private,
-                      creation_out, digest_out,
-                      creation_ticket);
+                      size_public, out_public, size_private, out_private,
+                      creation_out, digest_out, creation_ticket);
 }
 
 bool ComputeHmac(int size_buf, byte* command, TPM2B_NONCE& newNonce, 
@@ -2637,9 +2616,6 @@ bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
   ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
 
-  // not sure what this is
-  //   nameAlg
-  //   attributes
   TPMI_ALG_HASH alg = TPM_ALG_SHA256;
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   ChangeEndian16((uint16_t*)&alg, (uint16_t*)in);
@@ -2878,7 +2854,8 @@ bool Tpm2_Rsa_Encrypt(LocalTpm& tpm, TPM_HANDLE handle, string& authString, TPM2
   return true;
 }
 
-bool Tpm2_EvictControl(LocalTpm& tpm, TPMI_RH_PROVISION owner, TPM_HANDLE handle, string& authString,
+bool Tpm2_EvictControl(LocalTpm& tpm, TPMI_RH_PROVISION owner,
+                       TPM_HANDLE handle, string& authString,
                        TPMI_DH_PERSISTENT* persistantHandle) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   int size_resp = MAX_SIZE_PARAMS;

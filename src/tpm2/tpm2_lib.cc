@@ -2848,7 +2848,7 @@ bool Tpm2_Rsa_Encrypt(LocalTpm& tpm, TPM_HANDLE handle, string& authString,
 
 bool Tpm2_EvictControl(LocalTpm& tpm, TPMI_RH_PROVISION owner,
                        TPM_HANDLE handle, string& authString,
-                       TPMI_DH_PERSISTENT* persistantHandle) {
+                       TPMI_DH_PERSISTENT persistantHandle) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   int size_resp = MAX_SIZE_PARAMS;
   byte resp_buf[MAX_SIZE_PARAMS];
@@ -2865,16 +2865,29 @@ bool Tpm2_EvictControl(LocalTpm& tpm, TPMI_RH_PROVISION owner,
   IF_NEG_RETURN_FALSE(n);
   Update(n, &in, &size_params, &space_left);
 
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&handle, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+#if 1
+  uint16_t hack = 0;
+  ChangeEndian16((uint16_t*)&hack, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+#endif
+
   string emptyAuth;
   n = CreatePasswordAuthArea(emptyAuth, space_left, in);
   IF_NEG_RETURN_FALSE(n);
   Update(n, &in, &size_params, &space_left);
+
+#if 0
   n = SetPasswordData(authString, space_left, in);
   IF_NEG_RETURN_FALSE(n);
   Update(n, &in, &size_params, &space_left);
+#endif
 
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
-  ChangeEndian32((uint32_t*)&handle, (uint32_t*)in);
+  ChangeEndian32((uint32_t*)&persistantHandle, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
 
   int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_EvictControl,
@@ -2896,9 +2909,11 @@ bool Tpm2_EvictControl(LocalTpm& tpm, TPMI_RH_PROVISION owner,
   printResponse("EvictControl", cap, responseSize, responseCode, resp_buf);
   if (responseCode != TPM_RC_SUCCESS)
     return false;
+#if 0
   byte* out = resp_buf +  sizeof(TPM_RESPONSE);
-  ChangeEndian32((uint32_t*)out, persistantHandle);
+  ChangeEndian32((uint32_t*)out, &persistantHandle);
   out += sizeof(uint32_t);
+#endif
   return true;
 }
 

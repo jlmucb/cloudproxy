@@ -196,8 +196,9 @@ bool Tpm2_ReadPublic(LocalTpm& tpm, TPM_HANDLE handle,
 
 bool Tpm2_Rsa_Encrypt(LocalTpm& tpm, TPM_HANDLE handle, string& authString, TPM2B_PUBLIC_KEY_RSA& in,
                      TPMT_RSA_DECRYPT& scheme, TPM2B_DATA& label, TPM2B_PUBLIC_KEY_RSA* out);
-bool Tpm2_EvictControl(LocalTpm& tpm, TPMI_RH_PROVISION owner, TPM_HANDLE handle, string& authString,
-                       TPMI_DH_PERSISTENT* persistantHandle);
+bool Tpm2_EvictControl(LocalTpm& tpm, TPMI_RH_PROVISION owner, TPM_HANDLE handle,
+                       string& authString,
+                       TPMI_DH_PERSISTENT persistantHandle);
 
 bool Tpm2_DictionaryAttackLockReset(LocalTpm& tpm);
 #endif

@@ -735,6 +735,26 @@ bool Tpm2_NvCombinedTest(LocalTpm& tpm) {
     printf("Tpm2_ReadNv fails\n");
     return false;
   }
+
+#if 0
+  // Evict Control
+  TPM_HANDLE persistant_handle = 0;
+  TPM_HANDLE other_handle = 0;
+
+  if (!Tpm2_EvictControl(tpm, TPM_RH_OWNER, nv_handle, authString,
+                       &persistant_handle)) {
+    printf("Tpm2_EvictControl fails\n");
+  } else {
+    printf("Tpm2_EvictControl succeeds %08x\n", persistant_handle);
+    if (!Tpm2_EvictControl(tpm, TPM_RH_OWNER, persistant_handle,
+                           authString, &other_handle)) {
+    printf("Tpm2_EvictControl evicting fails\n");
+    } else {
+      printf("Tpm2_EvictControl evicting succeeds %08x\n",
+             other_handle);
+    }
+  }
+#endif
   return true;
 }
 
@@ -796,7 +816,7 @@ bool Tpm2_KeyCombinedTest(LocalTpm& tpm, int pcr_num) {
     return false;
   }
 
-  TPM_HANDLE load_handle;
+  TPM_HANDLE load_handle = 0;
   TPM2B_NAME name;
   if (Tpm2_Load(tpm, parent_handle, parentAuth, size_public, out_public,
                size_private, out_private, &load_handle, &name)) {
@@ -830,7 +850,9 @@ bool Tpm2_KeyCombinedTest(LocalTpm& tpm, int pcr_num) {
     printf("Certify failed\n");
     return false;
   }
-  Tpm2_FlushContext(tpm, load_handle);
+
+  if (load_handle != 0)
+    Tpm2_FlushContext(tpm, load_handle);
   Tpm2_FlushContext(tpm, parent_handle);
   return true;
 }

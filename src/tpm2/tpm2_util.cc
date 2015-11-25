@@ -838,7 +838,7 @@ bool Tpm2_KeyCombinedTest(LocalTpm& tpm, int pcr_num) {
   TPM_HANDLE other_handle = 0;
 
   if (!Tpm2_EvictControl(tpm, TPM_RH_OWNER, persistant_handle,
-                         authString, other_handle)) {
+                         authString, persistant_handle)) {
   printf("Tpm2_EvictControl evicting fails\n");
   } else {
     printf("Tpm2_EvictControl evicting succeeds %08x\n",
@@ -855,7 +855,7 @@ bool Tpm2_KeyCombinedTest(LocalTpm& tpm, int pcr_num) {
 
   // evict it again
   if (!Tpm2_EvictControl(tpm, TPM_RH_OWNER, persistant_handle,
-                         authString, other_handle)) {
+                         authString, persistant_handle)) {
   printf("Tpm2_EvictControl second evicting fails\n");
   } else {
     printf("Tpm2_EvictControl second evicting succeeds %08x\n",

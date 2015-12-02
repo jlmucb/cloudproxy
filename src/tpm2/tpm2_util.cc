@@ -982,11 +982,11 @@ bool Tpm2_SealCombinedTest(LocalTpm& tpm, int pcr_num) {
   create_flags.fixedTPM = 1;
   create_flags.fixedParent = 1;
 
-  if (Tpm2_CreateSealed(tpm, parent_handle, policy_digest.size, policy_digest.buffer,
-                        parentAuth, secret.size, secret.buffer, pcrSelect,
-                        TPM_ALG_SHA1, create_flags, TPM_ALG_NULL,
-                        (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB, TPM_ALG_RSASSA,
-                        1024, 0x010001,
+  if (Tpm2_CreateSealed(tpm, parent_handle, policy_digest.size,
+                        policy_digest.buffer, parentAuth, secret.size,
+                        secret.buffer, pcrSelect, TPM_ALG_SHA1, create_flags,
+                        TPM_ALG_NULL, (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB,
+                        TPM_ALG_RSASSA, 1024, 0x010001,
                         &size_public, out_public, &size_private, out_private,
                         &creation_out, &digest_out, &creation_ticket)) {
     printf("Create with digest succeeded private size: %d, public size: %d\n",

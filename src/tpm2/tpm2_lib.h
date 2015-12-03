@@ -167,8 +167,9 @@ bool Tpm2_ReadNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
                  string& authString, uint16_t size, byte* data);
 bool Tpm2_WriteNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, string& authString,
                   uint16_t size, byte* data);
-bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index, 
-                      string& authString, uint16_t size_data);
+bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
+		      string& authString, uint16_t authPolicySize, byte* authPolicy,
+		      uint16_t size_data);
 bool Tpm2_UndefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index);
 bool Tpm2_Flushall(LocalTpm& tpm);
 
@@ -201,5 +202,11 @@ bool Tpm2_EvictControl(LocalTpm& tpm, TPMI_RH_PROVISION owner, TPM_HANDLE handle
                        TPMI_DH_PERSISTENT persistantHandle);
 
 bool Tpm2_DictionaryAttackLockReset(LocalTpm& tpm);
+
+#define NV_PLATFORMCREATE 0x40000000
+#define NV_AUTHWRITE      0x00000004
+#define NV_EXTEND         0x00000040
+#define NV_POLICY_DELETE  0x00000400
+#define NV_AUTHREAD       0x00040000
 #endif
 

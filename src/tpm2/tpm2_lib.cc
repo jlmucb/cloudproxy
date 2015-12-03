@@ -2614,7 +2614,8 @@ bool Tpm2_WriteNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
 }
 
 bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
-                      string& authString, uint16_t size_data) {
+                      string& authString, uint16_t authPolicySize, byte* authPolicy,
+		      uint16_t size_data) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   int size_resp = MAX_SIZE_PARAMS;
   byte resp_buf[MAX_SIZE_PARAMS];
@@ -2665,17 +2666,21 @@ bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
   memset((byte*)&attributes, 0 , sizeof(uint32_t));
 
   // TODO(jlm): what attributes is this?
-  // Probably AUTHREAD | AUTHWRITE
-  // PLATFORMCREATE|AUTHREAD|POLICYDELETE|EXTEND|WRITE is 0x40040444 in order
   attributes = 0x00040004;
+  // attributes = NV_AUTHWRITE | NV_AUTHREAD;
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   ChangeEndian32((uint32_t*)&attributes, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
 
   // authPolicy size
+  ChangeEndian16((uint16_t*)&authPolicySize, (uint16_t*)in);
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
-  memset(in, 0, sizeof(uint16_t));
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
+  if (authPolicySize > 0) {
+    IF_LESS_THAN_RETURN_FALSE(space_left, authPolicySize))
+    memcpy(in, authPolicy, authPolicySize);
+    Update(authPolicySize, &in, &size_params, &space_left);
+  }
 
   // dataSize
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))

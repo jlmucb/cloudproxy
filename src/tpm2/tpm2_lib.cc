@@ -2647,7 +2647,8 @@ bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
 
   // TPM2B_NV_PUBLIC
   uint16_t size_nv_area = sizeof(uint32_t) + sizeof(TPMI_RH_NV_INDEX) +
-                          sizeof(TPMI_ALG_HASH) + 2*sizeof(uint16_t);
+                          sizeof(TPMI_ALG_HASH) + 2*sizeof(uint16_t) +
+			  authPolicySize;
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   ChangeEndian16((uint16_t*)&size_nv_area, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
@@ -2665,9 +2666,9 @@ bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
   uint32_t attributes;
   memset((byte*)&attributes, 0 , sizeof(uint32_t));
 
-  // TODO(jlm): what attributes is this?
-  attributes = 0x00040004;
-  // attributes = NV_AUTHWRITE | NV_AUTHREAD;
+  // TODO(jlm): what attributes is this?  Remove
+  // attributes = 0x00040004;
+  attributes = NV_AUTHWRITE | NV_AUTHREAD;
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   ChangeEndian32((uint32_t*)&attributes, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);

@@ -832,17 +832,14 @@ bool Tpm2_KeyCombinedTest(LocalTpm& tpm, int pcr_num) {
     return false;
   }
 
-
-  // Evict Control
+  // evict Control
   TPM_HANDLE persistant_handle = 0x810003e8;
-  TPM_HANDLE other_handle = 0;
 
   if (!Tpm2_EvictControl(tpm, TPM_RH_OWNER, persistant_handle,
                          authString, persistant_handle)) {
-  printf("Tpm2_EvictControl evicting fails\n");
+  printf("Tpm2_EvictControl first evicting fails\n");
   } else {
-    printf("Tpm2_EvictControl evicting succeeds %08x\n",
-           other_handle);
+    printf("Tpm2_EvictControl first evicting succeeds\n");
   }
 
   // make control permanent
@@ -858,8 +855,7 @@ bool Tpm2_KeyCombinedTest(LocalTpm& tpm, int pcr_num) {
                          authString, persistant_handle)) {
   printf("Tpm2_EvictControl second evicting fails\n");
   } else {
-    printf("Tpm2_EvictControl second evicting succeeds %08x\n",
-           other_handle);
+    printf("Tpm2_EvictControl second evicting succeeds\n");
   }
 
   if (load_handle != 0)

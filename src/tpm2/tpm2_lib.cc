@@ -2869,11 +2869,9 @@ bool Tpm2_EvictControl(LocalTpm& tpm, TPMI_RH_PROVISION owner,
   ChangeEndian32((uint32_t*)&handle, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
 
-#if 1
   uint16_t hack = 0;
   ChangeEndian16((uint16_t*)&hack, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
-#endif
 
   string emptyAuth;
   n = CreatePasswordAuthArea(emptyAuth, space_left, in);

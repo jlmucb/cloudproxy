@@ -63,7 +63,7 @@ DEFINE_string(decrypt, "", "decrypt flag");
 #define GFLAGS_NS google
 #endif
 
-int num_tpmutil_ops = 27;
+int num_tpmutil_ops = 28;
 std::string tpmutil_ops[] = {
     "--command=Startup",
     "--command=Shutdown",
@@ -90,6 +90,7 @@ std::string tpmutil_ops[] = {
     "--command=DictionaryAttackLockReset",
     "--command=KeyCombinedTest",
     "--command=NvCombinedTest",
+    "--command=NvCombinedSessionTest",
     "--command=ContextCombinedTest",
     "--command=EndorsementCombinedTest",
 };
@@ -102,6 +103,7 @@ bool Tpm2_SealCombinedTest(LocalTpm& tpm, int pcr_num);
 bool Tpm2_QuoteCombinedTest(LocalTpm& tpm, int pcr_num);
 bool Tpm2_KeyCombinedTest(LocalTpm& tpm, int pcr_num);
 bool Tpm2_NvCombinedTest(LocalTpm& tpm);
+bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm);
 bool Tpm2_ContextCombinedTest(LocalTpm& tpm);
 bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm);
 
@@ -430,6 +432,12 @@ int main(int an, char** av) {
     } else {
       printf("NvCombinedTest failed\n");
     }
+  } else if (FLAGS_command == "NvCombinedSessionTest") {
+    if (Tpm2_NvCombinedSessionTest(tpm)) {
+      printf("NvCombinedSessionTest succeeded\n");
+    } else {
+      printf("NvCombinedSessionTest failed\n");
+    }
   } else if (FLAGS_command == "ContextCombinedTest") {
     if (Tpm2_ContextCombinedTest(tpm)) {
       printf("ContextCombinedTest succeeded\n");
@@ -739,6 +747,121 @@ bool Tpm2_NvCombinedTest(LocalTpm& tpm) {
   return true;
 }
 
+bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
+  int slot = 1000;
+  string authString("01020304");
+  uint16_t size_data = 16;
+  byte data_in[512] = {
+    0x9, 0x8, 0x7, 0x6,
+    0x9, 0x8, 0x7, 0x6,
+    0x9, 0x8, 0x7, 0x6,
+    0x9, 0x8, 0x7, 0x6
+  };
+  byte data_out[512];
+  TPM_HANDLE nv_handle = GetNvHandle(slot);
+
+  printf("Tpm2_NvCombinedSessionTest\n\n");
+
+#if 1  
+  TPM2B_NONCE initial_nonce;
+  TPM2B_ENCRYPTED_SECRET salt;
+  TPMT_SYM_DEF symmetric;
+  TPM_HANDLE session_handle = 0;
+  TPM2B_NONCE nonce_obj;
+  TPML_PCR_SELECTION pcrSelect;
+  InitSinglePcrSelection(FLAGS_pcr_num, TPM_ALG_SHA1, pcrSelect);
+
+  initial_nonce.size = 16;
+  memset(initial_nonce.buffer, 0, 16);
+  salt.size = 0;
+  symmetric.algorithm = TPM_ALG_NULL;
+
+  // Start auth session
+  if (Tpm2_StartAuthSession(tpm, TPM_RH_NULL, TPM_RH_NULL,
+                            initial_nonce, salt, TPM_SE_POLICY,
+                            symmetric, TPM_ALG_SHA1, &session_handle,
+                            &nonce_obj)) {
+    printf("Tpm2_StartAuthSession succeeds handle: %08x\n",
+           session_handle);
+    printf("nonce (%d): ", nonce_obj.size);
+    PrintBytes(nonce_obj.size, nonce_obj.buffer);
+    printf("\n");
+  } else {
+    printf("Tpm2_StartAuthSession fails\n");
+    return false;
+  }
+
+  TPM2B_DIGEST policy_digest;
+  // get policy digest
+  if(Tpm2_PolicyGetDigest(tpm, session_handle, &policy_digest)) {
+    printf("PolicyGetDigest before Pcr succeeded: ");
+    PrintBytes(policy_digest.size, policy_digest.buffer); printf("\n");
+  } else {
+    Tpm2_FlushContext(tpm, session_handle);
+    printf("PolicyGetDigest failed\n");
+    return false;
+  }
+
+  if (Tpm2_PolicyPassword(tpm, session_handle)) {
+    printf("PolicyPassword succeeded\n");
+  } else {
+    Tpm2_FlushContext(tpm, session_handle);
+    printf("PolicyPassword failed\n");
+    return false;
+  }
+
+  TPM2B_DIGEST expected_digest;
+  expected_digest.size = 0;
+  if (Tpm2_PolicyPcr(tpm, session_handle,
+                     expected_digest, pcrSelect)) {
+    printf("PolicyPcr succeeded\n");
+  } else {
+    printf("PolicyPcr failed\n");
+    Tpm2_FlushContext(tpm, session_handle);
+    return false;
+  }
+
+  if(Tpm2_PolicyGetDigest(tpm, session_handle, &policy_digest)) {
+    printf("PolicyGetDigest succeeded: ");
+    PrintBytes(policy_digest.size, policy_digest.buffer); printf("\n");
+  } else {
+    printf("PolicyGetDigest failed\n");
+    return false;
+  }
+#endif
+
+  if (Tpm2_UndefineSpace(tpm, TPM_RH_OWNER, nv_handle)) {
+    printf("Tpm2_UndefineSpace %d succeeds\n", slot);
+  } else {
+    printf("Tpm2_UndefineSpace fails (but that's OK usually)\n");
+  }
+  if (Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle, authString, size_data) ) {
+    printf("Tpm2_DefineSpace %d succeeds\n", nv_handle);
+  } else {
+    printf("Tpm2_DefineSpace fails\n");
+    return false;
+  }
+  if (Tpm2_WriteNv(tpm, nv_handle, authString, size_data, data_in)) {
+    printf("Tpm2_WriteNv %d succeeds\n", nv_handle);
+  } else {
+    printf("Tpm2_WriteNv fails\n");
+    return false;
+  }
+  if (Tpm2_ReadNv(tpm, nv_handle, authString, size_data, data_out)) {
+    printf("Tpm2_ReadNv %d succeeds: ", nv_handle);
+    PrintBytes(size_data, data_out);
+    printf("\n");
+  } else {
+    printf("Tpm2_ReadNv fails\n");
+    return false;
+  }
+
+  if (session_handle != 0) {
+    Tpm2_FlushContext(tpm, session_handle);
+  }
+  return true;
+}
+
 bool Tpm2_KeyCombinedTest(LocalTpm& tpm, int pcr_num) {
   string authString("01020304");
   string parentAuth("01020304");
@@ -935,8 +1058,7 @@ bool Tpm2_SealCombinedTest(LocalTpm& tpm, int pcr_num) {
 
   TPM2B_DIGEST policy_digest;
   // get policy digest
-  if(Tpm2_PolicyGetDigest(tpm, session_handle,
-                          &policy_digest)) {
+  if(Tpm2_PolicyGetDigest(tpm, session_handle, &policy_digest)) {
     printf("PolicyGetDigest before Pcr succeeded: ");
     PrintBytes(policy_digest.size, policy_digest.buffer); printf("\n");
   } else {
@@ -964,8 +1086,7 @@ bool Tpm2_SealCombinedTest(LocalTpm& tpm, int pcr_num) {
     return false;
   }
 
-  if(Tpm2_PolicyGetDigest(tpm, session_handle,
-                          &policy_digest)) {
+  if(Tpm2_PolicyGetDigest(tpm, session_handle, &policy_digest)) {
     printf("PolicyGetDigest succeeded: ");
     PrintBytes(policy_digest.size, policy_digest.buffer); printf("\n");
   } else {
@@ -978,11 +1099,11 @@ bool Tpm2_SealCombinedTest(LocalTpm& tpm, int pcr_num) {
   create_flags.fixedTPM = 1;
   create_flags.fixedParent = 1;
 
-  if (Tpm2_CreateSealed(tpm, parent_handle, policy_digest.size, policy_digest.buffer,
-                        parentAuth, secret.size, secret.buffer, pcrSelect,
-                        TPM_ALG_SHA1, create_flags, TPM_ALG_NULL,
-                        (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB, TPM_ALG_RSASSA,
-                        1024, 0x010001,
+  if (Tpm2_CreateSealed(tpm, parent_handle, policy_digest.size,
+                        policy_digest.buffer, parentAuth, secret.size,
+                        secret.buffer, pcrSelect, TPM_ALG_SHA1, create_flags,
+                        TPM_ALG_NULL, (TPMI_AES_KEY_BITS)0, TPM_ALG_ECB,
+                        TPM_ALG_RSASSA, 1024, 0x010001,
                         &size_public, out_public, &size_private, out_private,
                         &creation_out, &digest_out, &creation_ticket)) {
     printf("Create with digest succeeded private size: %d, public size: %d\n",
@@ -1008,9 +1129,8 @@ bool Tpm2_SealCombinedTest(LocalTpm& tpm, int pcr_num) {
   byte unsealed[MAX_SIZE_PARAMS];
   TPM2B_DIGEST hmac;
   hmac.size = 0;
-  if (!Tpm2_Unseal(tpm, load_handle, parentAuth, 
-                   session_handle, nonce_obj,
-                   0x01, hmac,
+  if (!Tpm2_Unseal(tpm, load_handle, parentAuth, session_handle,
+                   nonce_obj, 0x01, hmac,
                    &unsealed_size, unsealed)) {
     printf("Unseal failed\n");
     Tpm2_FlushContext(tpm, session_handle);

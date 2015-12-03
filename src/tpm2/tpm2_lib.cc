@@ -2666,6 +2666,7 @@ bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
 
   // TODO(jlm): what attributes is this?
   // Probably AUTHREAD | AUTHWRITE
+  // PLATFORMCREATE|AUTHREAD|POLICYDELETE|EXTEND|WRITE is 0x40040444 in order
   attributes = 0x00040004;
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   ChangeEndian32((uint32_t*)&attributes, (uint32_t*)in);

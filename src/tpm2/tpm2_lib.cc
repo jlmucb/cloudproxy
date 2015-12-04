@@ -2678,7 +2678,7 @@ bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
   if (authPolicySize > 0) {
-    IF_LESS_THAN_RETURN_FALSE(space_left, authPolicySize))
+    IF_LESS_THAN_RETURN_FALSE(space_left, authPolicySize)
     memcpy(in, authPolicy, authPolicySize);
     Update(authPolicySize, &in, &size_params, &space_left);
   }

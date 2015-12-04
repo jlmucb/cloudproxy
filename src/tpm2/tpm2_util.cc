@@ -858,10 +858,11 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("Tpm2_ReadNv fails\n");
     return false;
   }
-
+#if 0
   if (session_handle != 0) {
     Tpm2_FlushContext(tpm, session_handle);
   }
+#endif
   return true;
 }
 

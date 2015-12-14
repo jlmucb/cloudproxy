@@ -1,0 +1,40 @@
+
+func TestJlmtest1(t *testing.T) {
+	var a uint32 
+	a = uint32(3)
+	var b []byte
+	buf := bytes.NewBuffer(b)
+	fmt.Printf("type of b: %T, buf: %T\n", b, buf.Bytes())
+	_ = binary.Write(buf, binary.BigEndian, a)
+	fmt.Printf("Big   : %x\n", buf)
+	fmt.Printf("First: %x\n", buf.Bytes()[0])
+	fmt.Printf("Last : %x\n", buf.Bytes()[3])
+	buf = bytes.NewBuffer(b)
+	_ = binary.Write(buf, binary.LittleEndian, a)
+	fmt.Printf("Little: %x\n", buf)
+	fmt.Printf("First: %x\n", buf.Bytes()[0])
+	fmt.Printf("Last : %x\n", buf.Bytes()[3])
+}
+
+func TestJlmtest2(t *testing.T) {
+	fmt.Printf("TestJlmtest2\n")
+	var b []byte
+	c3 := []byte{01,02,03,04}
+	var len = len(c3)
+	c0 := uint16(tagNO_SESSIONS)
+	c1 := uint32(len + 10)
+	c2 := uint32(cmdFlushContext)
+	buf := bytes.NewBuffer(b)
+	_ = packType(buf, []interface{}{c0, c1, c2, c3})
+	x := buf.Bytes()
+	fmt.Printf("Answers: %x\n", x)
+}
+
+func TestJlmtest3(t *testing.T) {
+	fmt.Printf("TestJlmtest3\n")
+	cmdHdr, _ := makeCommandHeader(tagNO_SESSIONS, 0, cmdFlushContext)
+	c3 := []byte{1,2,3,4,5,6,7,8}
+	c4 :=  []interface{}{c3}
+	x, _ := packWithHeader(cmdHdr, c4)
+	fmt.Printf("Answer: %x\n", x)
+}

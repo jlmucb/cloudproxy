@@ -73,6 +73,12 @@ func TestDecode(t *testing.T) {
 	}
 }
 
+func TestConstructGetRandom(t *testing.T) {
+}
+
+func TestDecodeGetRandom(t *testing.T) {
+}
+
 func TestGetRandom(t *testing.T) {
 	fmt.Printf("TestGetRandom\n")
 
@@ -92,66 +98,209 @@ func TestGetRandom(t *testing.T) {
 }
 
 // TestReadPcr tests a ReadPcr command.
+
+// func TestConstructXXX(t *testing.T) {
+// }
+
+// func TestDecodeXXX(t *testing.T) {
+// }
+
 func TestReadPcr(t *testing.T) {
 }
 
 // TestReadClock tests a ReadClock command.
+
+// func TestConstructXXX(t *testing.T) {
+// }
+
+// func TestDecodeXXX(t *testing.T) {
+// }
+
 func TestReadClock(t *testing.T) {
 }
 
 // TestGetCapabilities tests a GetCapabilities command.
+
+// Command: 8001000000160000017a000000018000000000000014
+func TestConstructGetCapabilities(t *testing.T) {
+}
+
+// Response: 80010000001300000000000000000100000000
+func TestDecodeGetCapabilities(t *testing.T) {
+}
+
 func TestGetCapabilities(t *testing.T) {
 }
 
 // TestFlushContext tests a FlushContext command.
+
+// Command: 80010000000e0000016580000001
+func TestConstructFlushContext(t *testing.T) {
+}
+
+// Response:  80010000000a00000000
+func TestDecodeFlushContext(t *testing.T) {
+}
+
 func TestFlushContext(t *testing.T) {
 }
 
 // TestLoadKey tests a LoadKey command.
+
+// Command:  8002000000b300000157800000000000000d40000009000001000401020
+//           304005a0014450ecdce5f1ce202e4f8db15e2bde9a1241f85f30010faf6
+//           2244fedc13fe0abb526e64b10b2de030b6f02be278e23365ef663febe7e
+//           b4ddae935ca627ce4c40af9f5244dafbc7f47ceb84de87e72a75c7f1032
+//           d3e7faddde0036000800040000001200140debb4cc9d2158cf7051a19ca
+//           24b31e35d53b64d001000140b0758c7e4ce32c9d249151e91b72e35a6372fed
+func TestConstructLoadKey(t *testing.T) {
+}
+
+// Response: 80020000002f000000008000000100000018001600049bc5e230c250b7d984d757f6450f575a5a896ad00000010000
+func TestDecodeLoadKey(t *testing.T) {
+}
+
 func TestLoadKey(t *testing.T) {
 }
 
 // TestCreatePrimary tests a CreatePrimary command.
+
+// Command: 80020000004d00000131400000010000000940000009000001000000080004010203040000001a0001000400030072000000060080004300100400000100010000000000000001000403800000
+func TestConstructCreatePrimary(t *testing.T) {
+}
+
+// Response: 80020000013c000000008000000000000125009a0001000400030072000000060080004300100400000100010080afe42d93b037f25f5f4a92bd65d61b417b51041f057e08670da98bb4720df166d8c0e12cd651196e0e577828e65f0e9b0a0da4181bc6553e35970f8b4a6c1790c6132359c62f45952a6e3779256de208b996bf2d216fdcfbddd4bdcb0e0cf9fd454caa9604d867e7d7901353d1ccd23e16c7a53788f57b602449b0ecaf0590fb0031000000010004038000000014bbf70aea75095f280ea3b835afda4a195279ab2c010010000440000001000440000001000000141a1ea8de55d7410287405c3b54057d578d76444a8021400000010020e74aa1a8f272b604d6c0cf55b271211a130c011a12b0ba632cc1448c4de83713001600043adbc7b1296c49aac7c154371fd99aeb6e58a9f50000010000
+func TestDecodeCreatePrimary(t *testing.T) {
+}
+
 func TestCreatePrimary(t *testing.T) {
 }
 
 // TestPolicyPassword tests a PolicyPassword command.
+
+// Command: 80010000000e0000018c03000000
+func TestConstructPolicyPassword(t *testing.T) {
+}
+
+// Response: 80010000000a00000000
+func TestDecodePolicyPassword(t *testing.T) {
+}
+
 func TestPolicyPassword(t *testing.T) {
 }
 
 // TestPolicyGetDigest tests a PolicyGetDigest command.
+
+// Command: 80010000000e0000018903000000
+// func TestConstructPolicyGetDigest(t *testing.T) {
+// }
+
+// Response: 80010000000a00000000
+// func TestDecodePolicyGetDigest(t *testing.T) {
+// }
+
 func TestPolicyGetDigest(t *testing.T) {
 }
 
 // TestStartAuthSession tests a StartAuthSession command.
+
+// Command: 80010000002b00000176400000074000000700100000000000000000000000000000000000000100100004
+func TestConstructStartAuthSession(t *testing.T) {
+}
+
+// Response: 800100000020000000000300000000106cf0c90c419ce1a96d5205eb870ec527
+func TestDecodeStartAuthSession(t *testing.T) {
+}
+
 func TestStartAuthSession(t *testing.T) {
 }
 
 // TestCreateSealed tests a CreateSealed command.
-func TestCreateSealed(t *testing.T) {
+
+// Command: 80020000006900000153800000000000000d40000009000001000401020304001800040102030400100102030405060708090a0b0c0d0e0f100022000800040000001200140debb4cc9d2158cf7051a19ca24b31e35d53b64d00100000000000000001000403800000
+func TestConstructCreateSealed(t *testing.T) {
+}
+
+// Response: 80020000013c0000000000000129005a0014450ecdce5f1ce202e4f8db15e2bde9a1241f85f30010faf62244fedc13fe0abb526e64b10b2de030b6f02be278e23365ef663febe7eb4ddae935ca627ce4c40af9f5244dafbc7f47ceb84de87e72a75c7f1032d3e7faddde0036000800040000001200140debb4cc9d2158cf7051a19ca24b31e35d53b64d001000140b0758c7e4ce32c9d249151e91b72e35a6372fed0055000000010004038000000014bbf70aea75095f280ea3b835afda4a195279ab2c010004001600043adbc7b1296c49aac7c154371fd99aeb6e58a9f500160004cfcb68f91fb12789154c722d4dbb528420ca211a0000001409987adb82d9864dbbdf515545798e3fe3e55a418021400000010020b3b60fa880ac9256d10ee3abdc6b500dec1ba885082b20c305eb1ff072bc13480000010000
+func TestDecodeCreateSealed(t *testing.T) {
 }
 
 // TestCreateKey tests a CreateKey command.
+
+// Command: 80020000004f00000153800000000000000d40000009000001000401020304000800040102030400000018000100040004007200000010001400040400000100010000000000000001000403800000
+func TestConstructCreateKey(t *testing.T) {
+}
+
+// Response: 8002000001ba00000000000001a70076001405f2c6b6035d4fab43fdc2ed0b6544de59ebd07100100e88a20eb9f58f0f13474a8ab6135144f7c49b80f0f1c2f4900458e2c573c94e7d81e413a06031c634890ccf47e6d02762366aedaa902f7e369950b6397e5a5884a0e888ab42fbc38b2d703d265bb539d3d8567f766c7aac4046327c6a6b0098000100040004007200000010001400040400000100010080e1189c2d7b301ecc75e2ab3a5f07484d6399fd5601e95af66d567a5ff4078dd5edd0f38c6a7002370ba8e65eb8700aa5b0b41ddc33ba48543dc00cc855b3eefa62985b75e720f62dcf2ac48d8aeb022610dea42bb9091cd304e3d13f6e85e9563c2744591bccee343da9d8d0b183ed6409314ce19e990d644e115d78a51b225b0055000000010004038000000014bbf70aea75095f280ea3b835afda4a195279ab2c010004001600043adbc7b1296c49aac7c154371fd99aeb6e58a9f500160004cfcb68f91fb12789154c722d4dbb528420ca211a0000001409987adb82d9864dbbdf515545798e3fe3e55a418021400000010020e504b9a055eb465316328cfa9d9cbb20706db0160457fa3dfe7e7aca34a334370000010000
+func TestDecodeCreateKey(t *testing.T) {
+}
+
 func TestCreateKey(t *testing.T) {
 }
 
 // TestUnseal tests a Unseal command.
+
+// Command: 80020000001f0000015e800000010000000d03000000000001000401020304
+func TestConstructUnseal(t *testing.T) {
+}
+
+// Command: 800200000035000000000000001200100102030405060708090a0b0c0d0e0f100010ea78d080f9f77d9d85e1f80350247ecb010000
+func TestDecodeUnseal(t *testing.T) {
+}
+
+// Response: 
 func TestUnseal(t *testing.T) {
 }
 
 // TestQuote tests a Quote command.
+
+// Command: 80020000003d00000158800000010000000d4000000900000100040102030400100102030405060708090a0b0c0d0e0f10001000000001000403800000
+func TestConstructQuote(t *testing.T) {
+}
+
+// Response: a80020000010400000000000000f10069ff5443478018001600047705bde86e3780577632421d34e5db4759667c8900100102030405060708090a0b0c0d0e0f1000000000000fe8f99cf4968c1d6e516100eb40a3278641a1c6000000010004038000000014ae2edb7e23d7e8f58daa87af87775993a42672250014000400804e49bb73712bc6acca4778005741b586ee6da2c98fe4dd1a3babdd9dd58c2d6fed9441a5bfb3c07ae0c7a5f2aff3d46b97429cff515caa12726fec6021b439c9856ebdd2f006b9159b5bfcbb8ca16c6a8f4a5953669d6af769593c00249e240f5009735b03abff38917de1c43bfdcc7a488fa6474c1011d3f399939e033930bb0000010000
+func TestDecodeQuote(t *testing.T) {
+}
+
 func TestQuote(t *testing.T) {
 }
 
 // TestActivateCredential tests a ActivateCredential command.
+
+// Command: 800200000168000001478000000280000000000000164000000900000100040102030440000009000001000000380020a2b634475ae0cfccff45d273f173cb4c74089167c94ed4666fa41a0039b71ad6956316cbb65c1ac71225c204d9f752fa62a84c70b51701007d9fec0ddff9c8e27904913f498aa20416e66e4a91eeb263d1a7badd7bd0043b4f2e165018d21e892359856cd93b45a983606e3482b029796659266f01277c944500bda57a5442d670173093307377783fd94aaf481bbdde1914720fc7f41637ff66593c50ce72626bc6e5edfa6e532c446faa3af1279f68d84edaa7386d97229be8edf74fc33e74e2f0f4b7a1ec985b42463fbf387ecc268b3a3a45c66968113ab0ed0d3573a9076eebe3d45efbc12c970465cf80af155434d8b0eb377a50942a742f86a0fa93c29bd0c37e8ac18c2f6b63558ba03df7bc5f80be70e504203b2b55c243794e7fc4cdb817e2da0796e088ca408a3c5d95abb32fa6dfddd4101f
+func TestConstructActivateCredential(t *testing.T) {
+}
+
+// Response: 80020000002e000000000000001600140102030405060708090a0b0c0d0e0f101112131400000100000000010000
+func TestDecodeActivateCredential(t *testing.T) {
+}
+
 func TestActivateCredential(t *testing.T) {
 }
 
 // TestReadPublic tests a ReadPublic command.
+
+// Command: 80010000000e0000017380000000
+func TestConstructReadPublic(t *testing.T) {
+}
+
+// Response: 80010000016e00000000011a0001000b00030072000000060080004300100800000100010100c02b360837e3bfcb42c509eeafc89561cd3b68b0e257d77488d99515f4135149adb64a419aea5f1d254819123b4a9e7df8c9f0c7ae11f128d68fef78c318cf62cee8aef48236027d0e6c8c63c4eec24b35c939017156a18b4a3f7d0279e2ee79bfe9fa7680228490ad0bde089220ed59644b7a27667ddcca899e87bd564fb96114884ad4534e2c4b4d838a3403b8f50508a2c18d0c405b5837b0534990511112d1b1b961061ae9b24f01ad5cbae911e91fd7ee02507bd6b86df96ece3c9d47f312ec0b2855cd203605fbab5c887d0f912674e17e8e76c50b0053da2b616746365c49bc58ac80d1bac7f19b410feee62a048ccbfafd006af04988901d0852a0f30022000bcc5923a0993903ea7754f3243ad11ab20c84e30c82a0bc0a443049e5f45278200022000bcc514224b2eda95f3ef72174e551ecb5f5370d1886b06a68e54581bef5592bbe
+func TestDecodeReadPublic(t *testing.T) {
+}
+
 func TestReadPublic(t *testing.T) {
 }
 
-// TestEvictControl tests a EviceControl command.
+// TestEvictControl tests a EvictControl command.
+
+// Command: 
+func TestConstructEvictControl(t *testing.T) {
+}
+
+// Response: 
+func TestDecodeEvictControl(t *testing.T) {
+}
+
 func TestEvictControl(t *testing.T) {
 }
 

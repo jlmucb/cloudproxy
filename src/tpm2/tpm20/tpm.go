@@ -148,7 +148,7 @@ func ConstructReadPublic(keyBlob []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// ConstructEvictControl constructs a EviceControl command.
+// ConstructEvictControl constructs a EvictControl command.
 func ConstructEvictControl(keyBlob []byte) ([]byte, error) {
 	return nil, nil
 }
@@ -234,7 +234,7 @@ func DecodeReadPublic(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// DecodeEvictControl constructs a EviceControl command.
+// DecodeEvictControl constructs a EvictControl command.
 func DecodeEvictControl(in []byte) ([]byte, error) {
 	return nil, nil
 }

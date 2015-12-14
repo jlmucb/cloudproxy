@@ -153,87 +153,88 @@ func ConstructEvictControl(keyBlob []byte) ([]byte, error) {
 }
 
 // DecodeReadPcr constructs a ReadPcr command.
-func DecodeReadPcr(pcr uint32) ([]byte, error) {
+func DecodeReadPcr(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
 // DecodeReadClock constructs a ReadClock command.
-func DecodeReadClock(keyBlob []byte) ([]byte, error) {
+func DecodeReadClock(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
 // DecodeGetRandom constructs a GetRandom command.
-func DecodeGetRandom(size uint32) ([]byte, error) {
-	return nil, nil
+func DecodeGetRandom(in []byte) ([]byte, error) {
+	// size?
+	return in, nil
 }
 
 // DecodeGetCapabilities constructs a GetCapabilities command.
-func DecodeGetCapabilities(keyBlob []byte) ([]byte, error) {
+func DecodeGetCapabilities(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
 // DecodeFlushContext constructs a FlushContext command.
-func DecodeFlushContext(keyBlob []byte) ([]byte, error) {
+func DecodeFlushContext(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
 // DecodeLoadKey constructs a LoadKey command.
-func DecodeLoadKey(keyBlob []byte) ([]byte, error) {
+func DecodeLoadKey(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
 // DecodeCreatePrimary constructs a CreatePrimary command.
-func DecodeCreatePrimary(keyBlob []byte) ([]byte, error) {
+func DecodeCreatePrimary(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
 // DecodePolicyPassword constructs a PolicyPassword command.
-func DecodePolicyPassword(keyBlob []byte) ([]byte, error) {
+func DecodePolicyPassword(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
 // DecodePolicyGetDigest constructs a PolicyGetDigest command.
-func DecodePolicyGetDigest(keyBlob []byte) ([]byte, error) {
+func DecodePolicyGetDigest(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
 // DecodeStartAuthSession constructs a StartAuthSession command.
-func DecodeStartAuthSession(keyBlob []byte) ([]byte, error) {
+func DecodeStartAuthSession(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
 // DecodeCreateSealed constructs a CreateSealed command.
-func DecodeCreateSealed(keyBlob []byte) ([]byte, error) {
+func DecodeCreateSealed(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
 // DecodeCreateKey constructs a CreateKey command.
-func DecodeCreateKey(keyBlob []byte) ([]byte, error) {
+func DecodeCreateKey(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
 // DecodeUnseal constructs a Unseal command.
-func DecodeUnseal(keyBlob []byte) ([]byte, error) {
+func DecodeUnseal(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
 // DecodeQuote constructs a Quote command.
-func DecodeQuote(keyBlob []byte) ([]byte, error) {
+func DecodeQuote(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
 // DecodeActivateCredential constructs a ActivateCredential command.
-func DecodeActivateCredential(keyBlob []byte) ([]byte, error) {
+func DecodeActivateCredential(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
 // DecodeReadPublic constructs a ReadPublic command.
-func DecodeReadPublic(keyBlob []byte) ([]byte, error) {
+func DecodeReadPublic(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
 // DecodeEvictControl constructs a EviceControl command.
-func DecodeEvictControl(keyBlob []byte) ([]byte, error) {
+func DecodeEvictControl(in []byte) ([]byte, error) {
 	return nil, nil
 }
 

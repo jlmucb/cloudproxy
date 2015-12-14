@@ -75,15 +75,55 @@ func TestDecode(t *testing.T) {
 
 func TestGetRandom(t *testing.T) {
 	fmt.Printf("TestGetRandom\n")
+
+	// Open TPM
+	rw, err := OpenTPM("/dev/tpm0")
+	if err != nil {
+		fmt.Printf("OpenTPM failed %s\n", err)
+		return 
+	}
+
+	// Construct command
 	x, err:= ConstructGetRandom(16)
 	if err != nil {
 		fmt.Printf("makeCommandHeader failed %s\n", err)
 		return 
 	}
-	fmt.Printf("Constructed command: %x\n", x)
+        fmt.Printf("TestDecode Constructed command: %x\n", x)
+
 	// Send command
+	written, err := rw.Write(x)
+	if err != nil {
+		fmt.Printf("Write command %s\n", err)
+		return 
+	}
+	fmt.Printf("%d bytes written\n", written)
+
 	// Get response
+	var resp []byte
+	read, err := rw.Read(resp)
+        if err != nil {
+                fmt.Printf("Read command %s\n", err)
+                return 
+        }
+        fmt.Printf("%d bytes written\n", read)
+
 	// Decode Response
+	var b []byte
+	buf := bytes.NewBuffer(b)
+        binary.Write(buf, binary.BigEndian, resp[0:9])
+	tag, size, status, err := DecodeCommandResponse(buf)
+	if err != nil {
+		fmt.Printf("DecodeCommandResponse %s\n", err)
+		return 
+	}
+	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	rand, err :=  DecodeGetRandom(resp[10:])
+	if err != nil {
+		fmt.Printf("DecodeGetRandom %s\n", err)
+		return 
+	}
+	fmt.Printf("rand: %x\n", rand)
 }
 
 // TestReadPcr tests a ReadPcr command.

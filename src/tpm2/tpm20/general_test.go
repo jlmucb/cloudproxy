@@ -17,6 +17,7 @@ package tpm
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"reflect"
 	"testing"
@@ -75,8 +76,23 @@ func TestDecode(t *testing.T) {
 
 // Test GetRandom
 
-// Command: 
+// Command: 80010000000e0000017b00000010
 func TestConstructGetRandom(t *testing.T) {
+	test_cmd_bytes, err := hex.DecodeString("80010000000e0000017b00000010")
+	if err != nil {
+		t.Fatal("Can't convert hex command\n")
+		return
+	}
+	fmt.Printf("Reference command  : %x\n", test_cmd_bytes)
+	cmd_bytes, err := ConstructGetRandom(16)
+        if err != nil {
+                t.Fatal("Can't construct Random command\n")
+                return
+        }
+	fmt.Printf("Constructed command: %x\n", cmd_bytes)
+	if !bytes.Equal(cmd_bytes, test_cmd_bytes) {
+		t.Fatal("TestConstructGetRandom: misgenerated command")
+	}
 }
 
 // Response: 
@@ -105,6 +121,12 @@ func TestGetRandom(t *testing.T) {
 
 // Command: 8001000000140000017e00000001000403800000
 func TestConstructReadPcr(t *testing.T) {
+	test_cmd_bytes, err := hex.DecodeString("8001000000140000017e00000001000403800000")
+	if err != nil {
+		t.Fatal("Can't convert hex command\n")
+		return
+	}
+	fmt.Printf("Command: %x\n", test_cmd_bytes)
 }
 
 // Response: 800100000032000000000000001400000001000403800000000000010014427d27fe15f8f69736e02b6007b8f6ea674c0745

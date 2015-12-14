@@ -73,9 +73,13 @@ func TestDecode(t *testing.T) {
 	}
 }
 
+// Test GetRandom
+
+// Command: 
 func TestConstructGetRandom(t *testing.T) {
 }
 
+// Response: 
 func TestDecodeGetRandom(t *testing.T) {
 }
 
@@ -99,22 +103,26 @@ func TestGetRandom(t *testing.T) {
 
 // TestReadPcr tests a ReadPcr command.
 
-// func TestConstructXXX(t *testing.T) {
-// }
+// Command: 8001000000140000017e00000001000403800000
+func TestConstructReadPcr(t *testing.T) {
+}
 
-// func TestDecodeXXX(t *testing.T) {
-// }
+// Response: 800100000032000000000000001400000001000403800000000000010014427d27fe15f8f69736e02b6007b8f6ea674c0745
+func TestDecodeReadPcr(t *testing.T) {
+}
 
 func TestReadPcr(t *testing.T) {
 }
 
 // TestReadClock tests a ReadClock command.
 
-// func TestConstructXXX(t *testing.T) {
-// }
+// Command: 
+func TestConstructReadClock(t *testing.T) {
+}
 
-// func TestDecodeXXX(t *testing.T) {
-// }
+// Response: 
+func TestDecodeReadClock(t *testing.T) {
+}
 
 func TestReadClock(t *testing.T) {
 }

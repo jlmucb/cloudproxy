@@ -32,7 +32,7 @@ func makeCommandHeader(tag uint16, size uint32, command uint32) (commandHeader, 
 }
 
 // Decode response
-func DecodeCommandResponse(in *bytes.Buffer) (uint16, uint32, uint32, error) {
+func DecodeCommandResponse(in *bytes.Buffer) (uint16, uint32, TpmError, error) {
 	var tag uint16 
         var size uint32
         var status uint32
@@ -43,7 +43,7 @@ func DecodeCommandResponse(in *bytes.Buffer) (uint16, uint32, uint32, error) {
                 return 0, 0, 0, errors.New("Can't decode response")
         }
 
-	return tag, size, status, nil
+	return tag, size, TpmError(status), nil
 }
 
 // packedSize computes the size of a sequence of types that can be passed to

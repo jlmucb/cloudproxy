@@ -22,7 +22,8 @@ import (
 	//"crypto/rsa"
 	//"crypto/sha1"
 	//"crypto/subtle"
-	//"encoding/binary"
+	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -254,7 +255,49 @@ func ReadClock(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 
 // GetRandom gets random bytes from the TPM.
 func GetRandom(rw io.ReadWriter, size uint32) ([]byte, error) {
-	return nil, nil
+	// Construct command
+	x, err:= ConstructGetRandom(size)
+	if err != nil {
+		fmt.Printf("makeCommandHeader failed %s\n", err)
+		return nil,err
+	}
+
+	// Send command
+	written, err := rw.Write(x)
+	if err != nil {
+		fmt.Printf("Write command %s\n", err)
+		return nil,err
+	}
+	fmt.Printf("%d bytes written\n", written)  // remove
+
+	// Get response
+	var resp []byte
+	read, err := rw.Read(resp)
+        if err != nil {
+                fmt.Printf("Read command %s\n", err)
+                return nil,err
+        }
+        fmt.Printf("%d bytes read\n", read)  // remove
+
+	// Decode Response
+	var b []byte
+	buf := bytes.NewBuffer(b)
+        binary.Write(buf, binary.BigEndian, resp[0:9])
+	tag, size, status, err := DecodeCommandResponse(buf)
+	if err != nil {
+		fmt.Printf("DecodeCommandResponse %s\n", err)
+		return nil,err
+	}
+	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
+	if status != errSuccess {
+	}
+	rand, err :=  DecodeGetRandom(resp[10:])
+	if err != nil {
+		fmt.Printf("DecodeGetRandom %s\n", err)
+		return nil,err
+	}
+	fmt.Printf("rand: %x\n", rand)
+	return rand, nil
 }
 
 // GetCapabilities 

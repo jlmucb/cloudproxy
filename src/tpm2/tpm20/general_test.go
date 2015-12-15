@@ -133,7 +133,7 @@ func TestGetRandom(t *testing.T) {
 
 	rand, err :=  GetRandom(rw, 16)
 	if err != nil {
-		fmt.Printf("GetRandom failed %s\n", err)
+		t.Fatal("GetRandom failed\n")
 		return 
 	}
 	fmt.Printf("rand: %x\n", rand)

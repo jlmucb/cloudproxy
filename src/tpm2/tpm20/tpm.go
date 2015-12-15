@@ -74,7 +74,7 @@ func ConstructReadClock(keyBlob []byte) ([]byte, error) {
 
 // ConstructGetRandom constructs a GetRandom command.
 func ConstructGetRandom(size uint32) ([]byte, error) {
-	cmdHdr, err := makeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
 	if err != nil {
 		return nil, errors.New("ConstructGetRandom failed")
 	}
@@ -266,24 +266,23 @@ func GetRandom(rw io.ReadWriter, size uint32) ([]byte, error) {
 	// Construct command
 	x, err:= ConstructGetRandom(size)
 	if err != nil {
-		fmt.Printf("makeCommandHeader failed %s\n", err)
-		return nil,err
+		fmt.Printf("MakeCommandHeader failed %s\n", err)
+		return nil, err
 	}
 
 	// Send command
 	written, err := rw.Write(x)
 	if err != nil {
 		fmt.Printf("Write command %s\n", err)
-		return nil,err
+		return nil, err
 	}
 	fmt.Printf("%d bytes written\n", written)  // remove
 
 	// Get response
 	var resp []byte
 	read, err := rw.Read(resp)
-        if err != nil {
-                fmt.Printf("Read command %s\n", err)
-                return nil,err
+        if err != nil || read <= 0 {
+                return nil, errors.New(" --- Read Tpm fails")
         }
         fmt.Printf("%d bytes read\n", read)  // remove
 

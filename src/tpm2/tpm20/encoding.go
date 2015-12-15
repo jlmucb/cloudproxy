@@ -22,8 +22,8 @@ import (
 	"reflect"
 )
 
-// make commandHeader
-func makeCommandHeader(tag uint16, size uint32, command uint32) (commandHeader, error) {
+// Make commandHeader
+func MakeCommandHeader(tag uint16, size uint32, command uint32) (commandHeader, error) {
 	var cmdHdr commandHeader
 	cmdHdr.Tag = tag
 	cmdHdr.Size = size

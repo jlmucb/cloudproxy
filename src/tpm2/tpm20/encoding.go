@@ -110,7 +110,7 @@ func packWithHeader(ch commandHeader, cmd []interface{}) ([]byte, error) {
 // pack encodes a set of elements into a single byte array, using
 // encoding/binary. This means that all the elements must be encodeable
 // according to the rules of encoding/binary. It has one difference from
-// encoding/binary: it encodes byte slices with a prepended uint32 length, to
+// encoding/binary: it encodes byte slices with a prepended uint16 length, to
 // match how the TPM encodes variable-length arrays.
 func pack(elts []interface{}) ([]byte, error) {
 	buf := new(bytes.Buffer)
@@ -122,7 +122,7 @@ func pack(elts []interface{}) ([]byte, error) {
 }
 
 // packType recursively packs types the same way that encoding/binary does under
-// binary.BigEndian, but with one difference: it packs a byte slice as a uint32
+// binary.BigEndian, but with one difference: it packs a byte slice as a uint16
 // size followed by the bytes. The function unpackType performs the inverse
 // operation of unpacking slices stored in this manner and using encoding/binary
 // for everything else.
@@ -184,7 +184,7 @@ func resizeBytes(b *[]byte, size uint32) {
 
 // unpackType recursively unpacks types from a reader just as encoding/binary
 // does under binary.BigEndian, but with one difference: it unpacks a byte slice
-// by first reading a uint32, then reading that many bytes. It assumes that
+// by first reading a uint16, then reading that many bytes. It assumes that
 // incoming values are pointers to values so that, e.g., underlying slices can
 // be resized as needed.
 func unpackType(buf io.Reader, elts []interface{}) error {
@@ -209,7 +209,7 @@ func unpackType(buf io.Reader, elts []interface{}) error {
 				}
 			}
 		case reflect.Slice:
-			// Read a uint32 and resize the byte array as needed
+			// Read a uint16 and resize the byte array as needed
 			var size uint16
 			if err := binary.Read(buf, binary.BigEndian, &size); err != nil {
 				return err

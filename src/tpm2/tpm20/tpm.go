@@ -184,27 +184,27 @@ func ConstructReadPcrs(pcr uint32) ([]byte, error) {
 	if err != nil {
 		return nil, errors.New("ConstructGetRandom failed")
 	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
+	x, _ := packWithHeader(cmdHdr, nil)
 	return x, nil
 */
 	return nil, nil
 }
 
 // DecodeReadPcrs decodes a ReadPcr response.
-func DecodeReadPcrs(in []byte) ([]byte, error) {
+func DecodeReadPcrs(in []byte) (uint32, []byte, []byte, error) {
 /*
-        var rand_bytes []byte
+        var digest []byte
+        var updateCounter uint32
 
         out :=  []interface{}{&rand_bytes}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
+                return nil, errors.New("Can't decode ReadPcrs response")
         }
 
         return rand_bytes, nil
 */
-	return nil, nil
+	return 1, nil, nil, nil
 }
 
 // ReadPcr reads a PCR value from the TPM.
@@ -255,50 +255,42 @@ func ReadPcrs(rw io.ReadWriter, pcrSelect uint32) (uint32, []byte, []byte, error
 }
 
 // ConstructReadClock constructs a ReadClock command.
-func ConstructReadClock(keyBlob []byte) ([]byte, error) {
-/*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+func ConstructReadClock() ([]byte, error) {
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdReadClock)
 	if err != nil {
 		return nil, errors.New("ConstructGetRandom failed")
 	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
+	x, _ := packWithHeader(cmdHdr, nil)
 	return x, nil
- */
-	return nil, nil
 }
 
 // DecodeReadClock decodes a ReadClock response.
-func DecodeReadClock(in []byte) ([]byte, error) {
-/*
-        var rand_bytes []byte
+func DecodeReadClock(in []byte) (uint64, uint64, error) {
+        var current_time, current_clock uint64
 
-        out :=  []interface{}{&rand_bytes}
+        out :=  []interface{}{&current_time, &current_clock}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
+                return 0, 0, errors.New("Can't decode DecodeReadClock response")
         }
 
-        return rand_bytes, nil
-*/
-	return nil, nil
+	return current_time, current_clock, nil
 }
 
 // ReadClock
 //	Output: current time, current clock
 func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
-/*
 	// Construct command
-	x, err:= ConstructGetRandom(size)
+	x, err:= ConstructReadClock()
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return nil, err
+		return 0 ,0, err
 	}
 
 	// Send command
 	_, err = rw.Write(x)
 	if err != nil {
-		return nil, errors.New("Write Tpm fails") 
+		return 0, 0, errors.New("Write Tpm fails") 
 	}
 
 	// Get response
@@ -306,29 +298,27 @@ func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
 	resp = make([]byte, 1024, 1024)
 	read, err := rw.Read(resp)
         if err != nil {
-                return nil, errors.New("Read Tpm fails")
+                return 0, 0, errors.New("Read Tpm fails")
         }
 
 	// Decode Response
         if read < 10 {
-                return nil, errors.New("Read buffer too small")
+                return 0, 0, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
-		return nil, err
+		return 0, 0, err
 	}
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
+	current_time, current_clock, err :=  DecodeReadClock(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
-		return nil,err
+		fmt.Printf("DecodeReadClock %s\n", err)
+		return 0, 0,err
 	}
-	return rand, nil
-*/
-	return 1, 1, nil
+	return current_time, current_clock, nil
 }
 
 // ConstructGetCapabilities constructs a GetCapabilities command.

@@ -262,7 +262,7 @@ func ReadClock(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 }
 
 // GetRandom gets random bytes from the TPM.
-func GetRandom(rw io.ReadWriter, size uint32) ([]byte, error) {
+func GetRandom(rw io.ReadWriteCloser, size uint32) ([]byte, error) {
 	// Construct command
 	x, err:= ConstructGetRandom(size)
 	if err != nil {
@@ -273,30 +273,33 @@ func GetRandom(rw io.ReadWriter, size uint32) ([]byte, error) {
 	// Send command
 	written, err := rw.Write(x)
 	if err != nil {
-		fmt.Printf("Write command %s\n", err)
-		return nil, err
+		return nil, errors.New("Write Tpm fails") 
 	}
 	fmt.Printf("%d bytes written\n", written)  // remove
 
 	// Get response
 	var resp []byte
+	resp = make([]byte, 1024, 1024)
 	read, err := rw.Read(resp)
-        if err != nil || read <= 0 {
-                return nil, errors.New(" --- Read Tpm fails")
+        if err != nil {
+                return nil, errors.New("Read Tpm fails")
         }
         fmt.Printf("%d bytes read\n", read)  // remove
 
 	// Decode Response
+        if read < 10 {
+                return nil, errors.New("Read buffer too small")
+	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
-		return nil,err
+		return nil, err
 	}
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
-	fmt.Printf("resp[10:]: %x\n", resp[10:])
-	rand, err :=  DecodeGetRandom(resp[10:])
+	fmt.Printf("resp[10:]: %x\n", resp[10:read])
+	rand, err :=  DecodeGetRandom(resp[10:read])
 	if err != nil {
 		fmt.Printf("DecodeGetRandom %s\n", err)
 		return nil,err

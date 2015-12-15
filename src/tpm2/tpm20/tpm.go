@@ -177,8 +177,8 @@ func FlushContext(rw io.ReadWriter, handle Handle) (error) {
 	return nil
 }
 
-// ConstructReadPcr constructs a ReadPcr command.
-func ConstructReadPcr(pcr uint32) ([]byte, error) {
+// ConstructReadPcrs constructs a ReadPcr command.
+func ConstructReadPcrs(pcr uint32) ([]byte, error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
 	if err != nil {
@@ -191,8 +191,8 @@ func ConstructReadPcr(pcr uint32) ([]byte, error) {
 	return nil, nil
 }
 
-// DecodeReadPcr decodes a ReadPcr response.
-func DecodeReadPcr(in []byte) ([]byte, error) {
+// DecodeReadPcrs decodes a ReadPcr response.
+func DecodeReadPcrs(in []byte) ([]byte, error) {
 /*
         var rand_bytes []byte
 
@@ -208,7 +208,8 @@ func DecodeReadPcr(in []byte) ([]byte, error) {
 }
 
 // ReadPcr reads a PCR value from the TPM.
-func ReadPcr(rw io.ReadWriter, pcr uint32) ([]byte, error) {
+//	Output: updatecounter, selectout, digest
+func ReadPcrs(rw io.ReadWriter, pcrSelect uint32) (uint32, []byte, []byte, error) {
 /*
 	// Construct command
 	x, err:= ConstructGetRandom(size)
@@ -250,12 +251,7 @@ func ReadPcr(rw io.ReadWriter, pcr uint32) ([]byte, error) {
 	}
 	return rand, nil
  */
-	return nil, nil
-}
-
-// ReadPcrs gets a given sequence of PCR values.
-func ReadPcrs(rw io.ReadWriter, pcrVals []int) ([]byte, error) {
-	return nil, nil
+	return 1, nil, nil, nil
 }
 
 // ConstructReadClock constructs a ReadClock command.
@@ -288,7 +284,9 @@ func DecodeReadClock(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
-func ReadClock(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
+// ReadClock
+//	Output: current time, current clock
+func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
 /*
 	// Construct command
 	x, err:= ConstructGetRandom(size)
@@ -330,7 +328,7 @@ func ReadClock(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	}
 	return rand, nil
 */
-	return nil, nil
+	return 1, 1, nil
 }
 
 // ConstructGetCapabilities constructs a GetCapabilities command.
@@ -364,7 +362,8 @@ func DecodeGetCapabilities(in []byte) ([]byte, error) {
 }
 
 // GetCapabilities 
-func GetCapabilities(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
+//	Output: output buf
+func GetCapabilities(rw io.ReadWriter, cap uint32) ([]byte, error) {
 /*
 	// Construct command
 	x, err:= ConstructGetRandom(size)
@@ -409,8 +408,8 @@ func GetCapabilities(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// ConstructLoadKey constructs a LoadKey command.
-func ConstructLoadKey(keyBlob []byte) ([]byte, error) {
+// ConstructLoad constructs a Load command.
+func ConstructLoad(keyBlob []byte) ([]byte, error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
 	if err != nil {
@@ -423,8 +422,8 @@ func ConstructLoadKey(keyBlob []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// DecodeLoadKey decodes a LoadKey response.
-func DecodeLoadKey(in []byte) ([]byte, error) {
+// DecodeLoad decodes a Load response.
+func DecodeLoad(in []byte) ([]byte, error) {
 /*
         var rand_bytes []byte
 
@@ -439,8 +438,10 @@ func DecodeLoadKey(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// LoadKey
-func LoadKey(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
+// Load
+//	Output: handle, name
+func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string,
+	     inPublic []byte, inPrivate []byte) (Handle, []byte, error) {
 /*
 	// Construct command
 	x, err:= ConstructGetRandom(size)
@@ -482,7 +483,7 @@ func LoadKey(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	}
 	return rand, nil
 */
-	return nil, nil
+	return 1, nil, nil
 }
 
 // ConstructCreatePrimary constructs a CreatePrimary command.
@@ -518,6 +519,15 @@ func DecodeCreatePrimary(in []byte) ([]byte, error) {
 // CreatePrimary
 func CreatePrimary(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 /*
+	TPM_HANDLE owner, string& authString,
+        TPML_PCR_SELECTION& pcr_selection,
+        TPM_ALG_ID enc_alg, TPM_ALG_ID int_alg,
+        TPMA_OBJECT& flags, TPM_ALG_ID sym_alg,
+        TPMI_AES_KEY_BITS sym_key_size,
+        TPMI_ALG_SYM_MODE sym_mode, TPM_ALG_ID sig_scheme,
+        int mod_size, uint32_t exp,
+        TPM_HANDLE* handle, TPM2B_PUBLIC* pub_out
+
 	// Construct command
 	x, err:= ConstructGetRandom(size)
 	if err != nil {
@@ -592,7 +602,7 @@ func DecodePolicyPassword(in []byte) ([]byte, error) {
 }
 
 // PolicyPassword
-func PolicyPassword(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
+func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
 /*
 	// Construct command
 	x, err:= ConstructGetRandom(size)
@@ -634,7 +644,7 @@ func PolicyPassword(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	}
 	return rand, nil
 */
-	return nil, nil
+	return nil
 }
 
 // ConstructPolicyGetDigest constructs a PolicyGetDigest command.
@@ -668,7 +678,8 @@ func DecodePolicyGetDigest(in []byte) ([]byte, error) {
 }
 
 // PolicyGetDigest
-func PolicyGetDigest(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
+//	Output: digest
+func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 /*
 	// Construct command
 	x, err:= ConstructGetRandom(size)
@@ -746,6 +757,21 @@ func DecodeCreateSealed(in []byte) ([]byte, error) {
 // CreateSealed
 func CreateSealed(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 /*
+	TPM_HANDLE parent_handle,
+        int size_policy_digest, byte* policy_digest,
+        string& parentAuth,
+        int size_to_seal, byte* to_seal,
+        TPML_PCR_SELECTION& pcr_selection,
+        TPM_ALG_ID int_alg,
+        TPMA_OBJECT& flags, TPM_ALG_ID sym_alg,
+        TPMI_AES_KEY_BITS sym_key_size,
+        TPMI_ALG_SYM_MODE sym_mode, TPM_ALG_ID sig_scheme,
+        int mod_size, uint32_t exp,
+        int* size_public, byte* out_public,
+        int* size_private, byte* out_private,
+        TPM2B_CREATION_DATA* creation_out,
+        TPM2B_DIGEST* digest_out,
+        TPMT_TK_CREATION* creation_ticket
 	// Construct command
 	x, err:= ConstructGetRandom(size)
 	if err != nil {
@@ -822,6 +848,12 @@ func DecodeStartAuthSession(in []byte) ([]byte, error) {
 // StartAuthSession
 func StartAuthSession(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 /*
+ 	TPM_RH tpm_obj, TPM_RH bind_obj,
+        TPM2B_NONCE& initial_nonce,
+        TPM2B_ENCRYPTED_SECRET& salt,
+        TPM_SE session_type, TPMT_SYM_DEF& symmetric,
+        TPMI_ALG_HASH hash_alg, TPM_HANDLE* session_handle,
+        TPM2B_NONCE* nonce_obj
 	// Construct command
 	x, err:= ConstructGetRandom(size)
 	if err != nil {
@@ -898,6 +930,18 @@ func DecodeCreateKey(in []byte) ([]byte, error) {
 // CreateKey
 func CreateKey(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 /*
+ 	TPM_HANDLE parent_handle,
+        string& parentAuth, string& authString,
+        TPML_PCR_SELECTION& pcr_selection,
+        TPM_ALG_ID enc_alg, TPM_ALG_ID int_alg,
+        TPMA_OBJECT& flags, TPM_ALG_ID sym_alg,
+        TPMI_AES_KEY_BITS sym_key_size,
+        TPMI_ALG_SYM_MODE sym_mode, TPM_ALG_ID sig_scheme,
+        int mod_size, uint32_t exp,
+        int* size_public, byte* out_public,
+        int* size_private, byte* out_private,
+        TPM2B_CREATION_DATA* creation_out,
+        TPM2B_DIGEST* digest_out, TPMT_TK_CREATION* creation_ticket
 	// Construct command
 	x, err:= ConstructGetRandom(size)
 	if err != nil {
@@ -974,6 +1018,10 @@ func DecodeUnseal(in []byte) ([]byte, error) {
 // Unseal
 func Unseal(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 /*
+ 	TPM_HANDLE item_handle, string& parentAuth,
+        TPM_HANDLE session_handle, TPM2B_NONCE& nonce,
+        byte session_attributes, TPM2B_DIGEST& hmac_digest,
+        int* out_size, byte* unsealed
 	// Construct command
 	x, err:= ConstructGetRandom(size)
 	if err != nil {
@@ -1050,6 +1098,11 @@ func DecodeQuote(in []byte) ([]byte, error) {
 // Quote
 func Quote(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 /*
+	TPM_HANDLE signingHandle, string& parentAuth,
+        int quote_size, byte* toQuote,
+        TPMT_SIG_SCHEME scheme, TPML_PCR_SELECTION& pcr_selection,
+        TPM_ALG_ID sig_alg, TPM_ALG_ID hash_alg,
+        int* attest_size, byte* attest, int* sig_size, byte* sig
 	// Construct command
 	x, err:= ConstructGetRandom(size)
 	if err != nil {
@@ -1126,6 +1179,12 @@ func DecodeActivateCredential(in []byte) ([]byte, error) {
 // ActivateCredential
 func ActivateCredential(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 /*
+ 	TPM_HANDLE activeHandle,
+        TPM_HANDLE keyHandle,
+        string& activeAuth, string& keyAuth,
+        TPM2B_ID_OBJECT& credentialBlob,
+        TPM2B_ENCRYPTED_SECRET& secret,
+        TPM2B_DIGEST* certInfo
 	// Construct command
 	x, err:= ConstructGetRandom(size)
 	if err != nil {
@@ -1202,6 +1261,10 @@ func DecodeReadPublic(in []byte) ([]byte, error) {
 // ReadPublic
 func ReadPublic(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 /*
+	TPM_HANDLE handle,
+        uint16_t* pub_blob_size, byte* pub_blob,
+        TPM2B_PUBLIC& outPublic, TPM2B_NAME& name,
+        TPM2B_NAME& qualifiedName
 	// Construct command
 	x, err:= ConstructGetRandom(size)
 	if err != nil {
@@ -1278,6 +1341,9 @@ func DecodeEvictControl(in []byte) ([]byte, error) {
 // EvictControl
 func EvictControl(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 /*
+	TPMI_RH_PROVISION owner,
+        TPM_HANDLE handle, string& authString,
+        TPMI_DH_PERSISTENT persistantHandle
 	// Construct command
 	x, err:= ConstructGetRandom(size)
 	if err != nil {
@@ -1354,6 +1420,7 @@ func  DecodeSaveContext(in []byte) ([]byte, error) {
 // SaveContext
 func SaveContext(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 /*
+	TPM_HANDLE handle, int* size, byte* saveArea
 	// Construct command
 	x, err:= ConstructGetRandom(size)
 	if err != nil {
@@ -1430,6 +1497,7 @@ func  DecodeLoadContext(in []byte) ([]byte, error) {
 // LoadContext
 func LoadContext(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 /*
+	int size, byte* saveArea, TPM_HANDLE* handle
 	// Construct command
 	x, err:= ConstructGetRandom(size)
 	if err != nil {
@@ -1478,3 +1546,7 @@ func Flushall(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	return nil, nil
 }
 
+/*
+bool ComputeQuotedValue(TPM_ALG_ID alg, int credInfo_size, byte* credInfo,
+                        int* size_quoted, byte* quoted)
+ */

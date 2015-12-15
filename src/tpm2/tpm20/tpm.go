@@ -72,24 +72,8 @@ func ConstructReadClock(keyBlob []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// ConstructGetRandom constructs a GetRandom command.
-func ConstructGetRandom(size uint32) ([]byte, error) {
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
-	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
-	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
-	return x, nil
-}
-
 // ConstructGetCapabilities constructs a GetCapabilities command.
 func ConstructGetCapabilities(keyBlob []byte) ([]byte, error) {
-	return nil, nil
-}
-
-// ConstructFlushContext constructs a FlushContext command.
-func ConstructFlushContext(keyBlob []byte) ([]byte, error) {
 	return nil, nil
 }
 
@@ -153,97 +137,98 @@ func ConstructEvictControl(keyBlob []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// DecodeReadPcr constructs a ReadPcr command.
+// ConstructSaveContext constructs a SaveContext command.
+func ConstructSaveContext(keyBlob []byte) ([]byte, error) {
+	return nil, nil
+}
+
+// ConstructLoadContext constructs a LoadContext command.
+func ConstructLoadContext(keyBlob []byte) ([]byte, error) {
+	return nil, nil
+}
+
+// DecodeReadPcr decodes a ReadPcr response.
 func DecodeReadPcr(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// DecodeReadClock constructs a ReadClock command.
+// DecodeReadClock decodes a ReadClock response.
 func DecodeReadClock(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// DecodeGetRandom constructs a GetRandom command.
-func DecodeGetRandom(in []byte) ([]byte, error) {
-        var rand_bytes []byte
-
-	fmt.Printf("DecodeGetRandom %x\n", in)
-        out :=  []interface{}{&rand_bytes}
-        err := unpack(in, out)
-        if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
-        }
-
-        return rand_bytes, nil
-}
-
-// DecodeGetCapabilities constructs a GetCapabilities command.
+// DecodeGetCapabilities decodes a GetCapabilities response.
 func DecodeGetCapabilities(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// DecodeFlushContext constructs a FlushContext command.
-func DecodeFlushContext(in []byte) ([]byte, error) {
-	return nil, nil
-}
-
-// DecodeLoadKey constructs a LoadKey command.
+// DecodeLoadKey decodes a LoadKey response.
 func DecodeLoadKey(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// DecodeCreatePrimary constructs a CreatePrimary command.
+// DecodeCreatePrimary decodes a CreatePrimary response.
 func DecodeCreatePrimary(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// DecodePolicyPassword constructs a PolicyPassword command.
+// DecodePolicyPassword decodes a PolicyPassword response.
 func DecodePolicyPassword(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// DecodePolicyGetDigest constructs a PolicyGetDigest command.
+// DecodePolicyGetDigest decodes a PolicyGetDigest response.
 func DecodePolicyGetDigest(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// DecodeStartAuthSession constructs a StartAuthSession command.
+// DecodeStartAuthSession decodes a StartAuthSession response.
 func DecodeStartAuthSession(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// DecodeCreateSealed constructs a CreateSealed command.
+// DecodeCreateSealed decodes a CreateSealed response.
 func DecodeCreateSealed(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// DecodeCreateKey constructs a CreateKey command.
+// DecodeCreateKey decodes a CreateKey response.
 func DecodeCreateKey(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// DecodeUnseal constructs a Unseal command.
+// DecodeUnseal decodes a Unseal response.
 func DecodeUnseal(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// DecodeQuote constructs a Quote command.
+// DecodeQuote decodes a Quote response.
 func DecodeQuote(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// DecodeActivateCredential constructs a ActivateCredential command.
+// DecodeActivateCredential decodes a ActivateCredential response.
 func DecodeActivateCredential(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// DecodeReadPublic constructs a ReadPublic command.
+// DecodeReadPublic decodes a ReadPublic response.
 func DecodeReadPublic(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// DecodeEvictControl constructs a EvictControl command.
+// DecodeEvictControl decodes a EvictControl response.
 func DecodeEvictControl(in []byte) ([]byte, error) {
+	return nil, nil
+}
+
+// DecodeLoadContext decodes a LoadContext response.
+func  DecodeLoadContext(in []byte) ([]byte, error) {
+	return nil, nil
+}
+
+// DecodeSaveContext decodes a SaveContext response.
+func  DecodeSaveContext(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
@@ -261,6 +246,30 @@ func ReadClock(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	return nil, nil
 }
 
+// ConstructGetRandom constructs a GetRandom command.
+func ConstructGetRandom(size uint32) ([]byte, error) {
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+	if err != nil {
+		return nil, errors.New("ConstructGetRandom failed")
+	}
+	num_bytes :=  []interface{}{uint16(size)}
+	x, _ := packWithHeader(cmdHdr, num_bytes)
+	return x, nil
+}
+
+// DecodeGetRandom decodes a GetRandom response.
+func DecodeGetRandom(in []byte) ([]byte, error) {
+        var rand_bytes []byte
+
+        out :=  []interface{}{&rand_bytes}
+        err := unpack(in, out)
+        if err != nil {
+                return nil, errors.New("Can't decode GetRandom response")
+        }
+
+        return rand_bytes, nil
+}
+
 // GetRandom gets random bytes from the TPM.
 func GetRandom(rw io.ReadWriteCloser, size uint32) ([]byte, error) {
 	// Construct command
@@ -271,11 +280,10 @@ func GetRandom(rw io.ReadWriteCloser, size uint32) ([]byte, error) {
 	}
 
 	// Send command
-	written, err := rw.Write(x)
+	_, err = rw.Write(x)
 	if err != nil {
 		return nil, errors.New("Write Tpm fails") 
 	}
-	fmt.Printf("%d bytes written\n", written)  // remove
 
 	// Get response
 	var resp []byte
@@ -284,7 +292,6 @@ func GetRandom(rw io.ReadWriteCloser, size uint32) ([]byte, error) {
         if err != nil {
                 return nil, errors.New("Read Tpm fails")
         }
-        fmt.Printf("%d bytes read\n", read)  // remove
 
 	// Decode Response
         if read < 10 {
@@ -298,13 +305,11 @@ func GetRandom(rw io.ReadWriteCloser, size uint32) ([]byte, error) {
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
-	fmt.Printf("resp[10:]: %x\n", resp[10:read])
 	rand, err :=  DecodeGetRandom(resp[10:read])
 	if err != nil {
 		fmt.Printf("DecodeGetRandom %s\n", err)
 		return nil,err
 	}
-	fmt.Printf("rand: %x\n", rand)
 	return rand, nil
 }
 
@@ -313,9 +318,52 @@ func GetCapabilities(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	return nil, nil
 }
 
+// ConstructFlushContext constructs a FlushContext command.
+func ConstructFlushContext(handle Handle) ([]byte, error) {
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdFlushContext)
+	if err != nil {
+		return nil, errors.New("ConstructFlushContext failed")
+	}
+	cmd_text :=  []interface{}{uint32(handle)}
+	x, _ := packWithHeader(cmdHdr, cmd_text)
+	return x, nil
+}
+
 // FlushContext
-func FlushContext(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
-	return nil, nil
+func FlushContext(rw io.ReadWriter, handle Handle) (error) {
+	// Construct command
+	x, err:= ConstructFlushContext(handle)
+	if err != nil {
+		return errors.New("ConstructFlushContext fails") 
+	}
+
+	// Send command
+	_, err = rw.Write(x)
+	if err != nil {
+		return errors.New("Write Tpm fails") 
+	}
+
+	// Get response
+	var resp []byte
+	resp = make([]byte, 1024, 1024)
+	read, err := rw.Read(resp)
+        if err != nil {
+                return errors.New("Read Tpm fails")
+        }
+
+	// Decode Response
+        if read < 10 {
+                return errors.New("Read buffer too small")
+	}
+	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	if err != nil {
+                return errors.New("DecodeCommandResponse fails")
+	}
+	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	if status != errSuccess {
+		return errors.New("FlushContext unsuccessful")
+	}
+	return nil
 }
 
 // Flushall

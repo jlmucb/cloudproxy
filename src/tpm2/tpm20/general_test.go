@@ -33,7 +33,6 @@ func TestDecode(t *testing.T) {
         buf := bytes.NewBuffer(b)
 	fmt.Printf("TestDecode Constructed command: %x\n", x)
 	binary.Write(buf, binary.BigEndian, x)
-	fmt.Printf("SIZE: %d\n", len(buf.Bytes()))
 	var a1 uint16 
 	var a2 uint32
 	var a3 uint32
@@ -83,7 +82,6 @@ func TestConstructGetRandom(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 		return
 	}
-	fmt.Printf("Reference command  : %x\n", test_cmd_bytes)
 	cmd_bytes, err := ConstructGetRandom(16)
         if err != nil {
                 t.Fatal("Can't construct Random command\n")
@@ -104,14 +102,10 @@ func TestDecodeGetRandom(t *testing.T) {
 	}
 
 	// Decode Response
-	fmt.Printf("test_resp_bytes      : %x\n", test_resp_bytes)
-	fmt.Printf("test_resp_bytes[0:10]: %x\n", test_resp_bytes[0:10])
-        fmt.Printf("test_resp_bytes[10:] : %x\n", test_resp_bytes[10:])
-        tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+        _, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
         if err != nil {
                 t.Fatal("DecodeCommandResponse error\n")
         }
-        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
         if status != errSuccess {
         }
         rand, err :=  DecodeGetRandom(test_resp_bytes[10:])

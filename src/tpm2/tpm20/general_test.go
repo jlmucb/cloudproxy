@@ -76,9 +76,9 @@ func TestDecode(t *testing.T) {
 
 // Test GetRandom
 
-// Command: 80010000000e0000017b00000010
+// Command: 80010000000c0000017b0010
 func TestConstructGetRandom(t *testing.T) {
-	test_cmd_bytes, err := hex.DecodeString("80010000000e0000017b00000010")
+	test_cmd_bytes, err := hex.DecodeString("80010000000c0000017b0010")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 		return
@@ -95,8 +95,30 @@ func TestConstructGetRandom(t *testing.T) {
 	}
 }
 
-// Response: 
+// Response: 80010000001c00000000001024357dadbf82ec9f245d1fcdcda33ed7
 func TestDecodeGetRandom(t *testing.T) {
+	test_resp_bytes, err := hex.DecodeString("80010000001c00000000001024357dadbf82ec9f245d1fcdcda33ed7")
+	if err != nil {
+		t.Fatal("Can't convert hex command\n")
+		return
+	}
+
+	// Decode Response
+	fmt.Printf("test_resp_bytes      : %x\n", test_resp_bytes)
+	fmt.Printf("test_resp_bytes[0:10]: %x\n", test_resp_bytes[0:10])
+        fmt.Printf("test_resp_bytes[10:] : %x\n", test_resp_bytes[10:])
+        tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+        if err != nil {
+                t.Fatal("DecodeCommandResponse error\n")
+        }
+        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+        if status != errSuccess {
+        }
+        rand, err :=  DecodeGetRandom(test_resp_bytes[10:])
+        if err != nil {
+                t.Fatal("DecodeGetRandom error\n")
+        }
+        fmt.Printf("rand: %x\n", rand)
 }
 
 func TestGetRandom(t *testing.T) {
@@ -323,11 +345,11 @@ func TestReadPublic(t *testing.T) {
 
 // TestEvictControl tests a EvictControl command.
 
-// Command: 
+// Command: 8002000000230000012040000001810003e800000009400000090000010000810003e8
 func TestConstructEvictControl(t *testing.T) {
 }
 
-// Response: 
+// Response: 80020000001300000000000000000000010000
 func TestDecodeEvictControl(t *testing.T) {
 }
 

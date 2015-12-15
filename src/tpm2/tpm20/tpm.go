@@ -22,8 +22,8 @@ import (
 	//"crypto/rsa"
 	//"crypto/sha1"
 	//"crypto/subtle"
-	"bytes"
-	"encoding/binary"
+	//"bytes"
+	//"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -78,8 +78,8 @@ func ConstructGetRandom(size uint32) ([]byte, error) {
 	if err != nil {
 		return nil, errors.New("ConstructGetRandom failed")
 	}
-	c4 :=  []interface{}{uint32(size)}
-	x, _ := packWithHeader(cmdHdr, c4)
+	num_bytes :=  []interface{}{uint16(size)}
+	x, _ := packWithHeader(cmdHdr, num_bytes)
 	return x, nil
 }
 
@@ -165,8 +165,16 @@ func DecodeReadClock(in []byte) ([]byte, error) {
 
 // DecodeGetRandom constructs a GetRandom command.
 func DecodeGetRandom(in []byte) ([]byte, error) {
-	// size?
-	return in, nil
+        var rand_bytes []byte
+
+	fmt.Printf("DecodeGetRandom %x\n", in)
+        out :=  []interface{}{&rand_bytes}
+        err := unpack(in, out)
+        if err != nil {
+                return nil, errors.New("Can't decode GetRandom response")
+        }
+
+        return rand_bytes, nil
 }
 
 // DecodeGetCapabilities constructs a GetCapabilities command.
@@ -280,10 +288,7 @@ func GetRandom(rw io.ReadWriter, size uint32) ([]byte, error) {
         fmt.Printf("%d bytes read\n", read)  // remove
 
 	// Decode Response
-	var b []byte
-	buf := bytes.NewBuffer(b)
-        binary.Write(buf, binary.BigEndian, resp[0:9])
-	tag, size, status, err := DecodeCommandResponse(buf)
+	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil,err
@@ -291,6 +296,7 @@ func GetRandom(rw io.ReadWriter, size uint32) ([]byte, error) {
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
+	fmt.Printf("resp[10:]: %x\n", resp[10:])
 	rand, err :=  DecodeGetRandom(resp[10:])
 	if err != nil {
 		fmt.Printf("DecodeGetRandom %s\n", err)

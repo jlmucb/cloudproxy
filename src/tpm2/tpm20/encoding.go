@@ -32,13 +32,13 @@ func makeCommandHeader(tag uint16, size uint32, command uint32) (commandHeader, 
 }
 
 // Decode response
-func DecodeCommandResponse(in *bytes.Buffer) (uint16, uint32, TpmError, error) {
+func DecodeCommandResponse(in []byte) (uint16, uint32, TpmError, error) {
 	var tag uint16 
         var size uint32
         var status uint32
 
         out :=  []interface{}{&tag, &size, &status}
-        err := unpackType(in, out)
+        err := unpack(in, out)
         if err != nil {
                 return 0, 0, 0, errors.New("Can't decode response")
         }
@@ -210,7 +210,7 @@ func unpackType(buf io.Reader, elts []interface{}) error {
 			}
 		case reflect.Slice:
 			// Read a uint32 and resize the byte array as needed
-			var size uint32
+			var size uint16
 			if err := binary.Read(buf, binary.BigEndian, &size); err != nil {
 				return err
 			}
@@ -226,7 +226,7 @@ func unpackType(buf io.Reader, elts []interface{}) error {
 				return errors.New("can't fill pointers to slices of non-byte values")
 			}
 
-			resizeBytes(b, size)
+			resizeBytes(b, uint32(size))
 			if err := binary.Read(buf, binary.BigEndian, e); err != nil {
 				return err
 			}

@@ -62,6 +62,57 @@ func OpenTPM(path string) (io.ReadWriteCloser, error) {
 	return rwc, nil
 }
 
+func SetLongPcrs(pcr_nums []int) ([]byte, error) {
+	return nil, nil
+}
+
+func SetShortPcrs(pcr_nums []int) ([]byte, error) {
+	return nil, nil
+}
+
+func ComputePcrDigest(alg uint16, in []byte) ([]byte, error) {
+	return nil, nil
+}
+
+func SetOwnerHandle(handle Handle) ([]byte, error) {
+	return nil, nil
+}
+
+
+// ----------------------------------------------------------------
+// remove
+
+// SetPasswordData(string& password, int size, byte* buf)
+
+// int CreatePasswordAuthArea(string& password, int size, byte* buf)
+
+// int CreateSensitiveArea(int size_in, byte* in, int size_data, byte* data, int size, byte* buf)
+
+// CreateSensitiveArea(string& authString, int size_data, byte* data, int size, byte* buf)
+
+// Marshal_AuthSession_Info(TPMI_DH_OBJECT& tpm_obj, TPMI_DH_ENTITY& bind_obj,
+//                          TPM2B_NONCE& initial_nonce, TPM2B_ENCRYPTED_SECRET& salt,
+//                          TPM_SE& session_type, TPMT_SYM_DEF& symmetric,
+//                          TPMI_ALG_HASH& hash_alg, int size, byte* out_buf)
+
+// FillPublicRsaTemplate(enc_alg, int_alg, flags, sym_alg,
+//                        sym_key_size, sym_mode, sig_scheme,
+//                        mod_size, exp, pub_key);
+// Marshal_Public_Key_Info(TPM2B_PUBLIC& in, int size, byte* buf)
+// GetReadPublicOut(uint16_t size_in, byte* input, TPM2B_PUBLIC& outPublic)
+//int GetRsaParams(uint16_t size_in, byte* input, TPMS_RSA_PARMS& rsaParams,
+//                 TPM2B_PUBLIC_KEY_RSA& rsa)
+//GetCreateOut(int size, byte* in, int* size_public, byte* out_public,
+//                  int* size_private, byte* out_private,
+//                  TPM2B_CREATION_DATA* creation_out, TPM2B_DIGEST* digest_out,
+//                  TPMT_TK_CREATION* creation_ticket)
+//   FillKeyedHashTemplate(TPM_ALG_KEYEDHASH, int_alg, flags,
+//                        size_policy_digest, policy_digest, keyed_hash);
+//  n = Marshal_Keyed_Hash_Info(keyed_hash, space_left, in);
+
+// ----------------------------------------------------------------
+
+
 // ConstructGetRandom constructs a GetRandom command.
 func ConstructGetRandom(size uint32) ([]byte, error) {
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
@@ -317,28 +368,31 @@ func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
 }
 
 // ConstructGetCapabilities constructs a GetCapabilities command.
-func ConstructGetCapabilities(keyBlob []byte) ([]byte, error) {
-/*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+func ConstructGetCapabilities(cap uint32, count uint32, property uint32) ([]byte, error) {
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetCapability)
 	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
+		return nil, errors.New("GetCapability failed")
 	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
+	cap_bytes:=  []interface{}{&cap, &property, &count}
+	x, _ := packWithHeader(cmdHdr, cap_bytes)
 	return x, nil
-*/
-	return nil, nil
 }
 
 // DecodeGetCapabilities decodes a GetCapabilities response.
 func DecodeGetCapabilities(in []byte) ([]byte, error) {
 /*
-        var rand_bytes []byte
+	int - count
+	list of handles
+	or
+	list of property, value pairs
 
-        out :=  []interface{}{&rand_bytes}
+
+        var num_handles
+
+        out :=  []interface{}{&num_handles}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
+                return nil, errors.New("Can't decode GetCapabilities response")
         }
 
         return rand_bytes, nil
@@ -348,10 +402,10 @@ func DecodeGetCapabilities(in []byte) ([]byte, error) {
 
 // GetCapabilities 
 //	Output: output buf
-func GetCapabilities(rw io.ReadWriter, cap uint32) ([]byte, error) {
+func GetCapabilities(rw io.ReadWriter, cap uint32, count uint32, property uint32) ([]byte, error) {
 /*
 	// Construct command
-	x, err:= ConstructGetRandom(size)
+	x, err:= ConstructGetCapabilities(cap, count, property)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, err

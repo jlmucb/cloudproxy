@@ -61,6 +61,7 @@ const(
 	ordTPM_RH_ENDORSEMENT      uint32 = 0x4000000B
 	ordTPM_RH_PLATFORM         uint32 = 0x4000000C
 	ordTPM_CAP_TPM_PROPERTIES  uint32 = 0x00000006
+	ordTPM_CAP_HANDLES         uint32 = 0x00000001
 )
 
 // Tags

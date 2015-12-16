@@ -243,6 +243,16 @@ func TestConstructGetCapabilities(t *testing.T) {
 		return
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+	cmd_bytes, err := ConstructGetCapabilities(ordTPM_CAP_HANDLES, 20, 0x80000000)
+	if err != nil {
+		t.Fatal("Can't construct GetCapabilities\n")
+		return
+	}
+	fmt.Printf("Command: %x\n", cmd_bytes)
+	if !bytes.Equal(test_cmd_bytes, cmd_bytes) {
+		t.Fatal("Bad GetCapabilities command\n")
+		return
+	}
 }
 
 // Response: 80010000001300000000000000000100000000

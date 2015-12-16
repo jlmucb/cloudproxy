@@ -464,9 +464,9 @@ func Flushall(rw io.ReadWriter) (error) {
 // ConstructCreatePrimary constructs a CreatePrimary command.
 func ConstructCreatePrimary(keyBlob []byte) ([]byte, error) {
 /*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdCreatePrimary)
 	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
+		return nil, errors.New("ConstructCreatePrimary failed")
 	}
 	num_bytes :=  []interface{}{uint16(size)}
 	x, _ := packWithHeader(cmdHdr, num_bytes)
@@ -483,7 +483,7 @@ func DecodeCreatePrimary(in []byte) ([]byte, error) {
         out :=  []interface{}{&rand_bytes}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
+                return nil, errors.New("Can't decode CreatePrimary response")
         }
 
         return rand_bytes, nil
@@ -504,7 +504,7 @@ func CreatePrimary(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
         TPM_HANDLE* handle, TPM2B_PUBLIC* pub_out
 
 	// Construct command
-	x, err:= ConstructGetRandom(size)
+	x, err:= ConstructCreatePrimary(size)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, err
@@ -536,9 +536,9 @@ func CreatePrimary(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
+	rand, err :=  DecodeCreatePrimary(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
+		fmt.Printf("DecodeCreatePrimary %s\n", err)
 		return nil,err
 	}
 	return rand, nil
@@ -549,9 +549,9 @@ func CreatePrimary(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 // ConstructReadPublic constructs a ReadPublic command.
 func ConstructReadPublic(keyBlob []byte) ([]byte, error) {
 /*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdReadPublic)
 	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
+		return nil, errors.New("ConstructReadPublic failed")
 	}
 	num_bytes :=  []interface{}{uint16(size)}
 	x, _ := packWithHeader(cmdHdr, num_bytes)
@@ -568,7 +568,7 @@ func DecodeReadPublic(in []byte) ([]byte, error) {
         out :=  []interface{}{&rand_bytes}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
+                return nil, errors.New("Can't decode ReadPublic response")
         }
 
         return rand_bytes, nil
@@ -584,7 +584,7 @@ func ReadPublic(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
         TPM2B_PUBLIC& outPublic, TPM2B_NAME& name,
         TPM2B_NAME& qualifiedName
 	// Construct command
-	x, err:= ConstructGetRandom(size)
+	x, err:= ConstructReadPublic(size)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, err
@@ -616,9 +616,9 @@ func ReadPublic(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
+	rand, err :=  DecodeReadPublic(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
+		fmt.Printf("DecodeReadPublic %s\n", err)
 		return nil,err
 	}
 	return rand, nil
@@ -650,7 +650,7 @@ func DecodeCreateKey(in []byte) ([]byte, error) {
         out :=  []interface{}{&rand_bytes}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
+                return nil, errors.New("Can't decode CreateKey response")
         }
 
         return rand_bytes, nil
@@ -673,7 +673,7 @@ func CreateKey(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
         TPM2B_CREATION_DATA* creation_out,
         TPM2B_DIGEST* digest_out, TPMT_TK_CREATION* creation_ticket
 	// Construct command
-	x, err:= ConstructGetRandom(size)
+	x, err:= ConstructCreateKey(size)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, err
@@ -705,9 +705,9 @@ func CreateKey(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
+	rand, err :=  DecodeCreateKey(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
+		fmt.Printf("DecodeCreateKey %s\n", err)
 		return nil,err
 	}
 	return rand, nil
@@ -718,9 +718,9 @@ func CreateKey(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 // ConstructLoad constructs a Load command.
 func ConstructLoad(keyBlob []byte) ([]byte, error) {
 /*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdLoad)
 	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
+		return nil, errors.New("ConstructLoad failed")
 	}
 	num_bytes :=  []interface{}{uint16(size)}
 	x, _ := packWithHeader(cmdHdr, num_bytes)
@@ -737,7 +737,7 @@ func DecodeLoad(in []byte) ([]byte, error) {
         out :=  []interface{}{&rand_bytes}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
+                return nil, errors.New("Can't decode Load response")
         }
 
         return rand_bytes, nil
@@ -783,9 +783,9 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string,
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
+	rand, err :=  DecodeLoad(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
+		fmt.Printf("DecodeLoad %s\n", err)
 		return nil,err
 	}
 	return rand, nil
@@ -796,9 +796,9 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string,
 // ConstructPolicyPassword constructs a PolicyPassword command.
 func ConstructPolicyPassword(keyBlob []byte) ([]byte, error) {
 /*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdPolicyPassword)
 	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
+		return nil, errors.New("ConstructPolicyPassword failed")
 	}
 	num_bytes :=  []interface{}{uint16(size)}
 	x, _ := packWithHeader(cmdHdr, num_bytes)
@@ -815,7 +815,7 @@ func DecodePolicyPassword(in []byte) ([]byte, error) {
         out :=  []interface{}{&rand_bytes}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
+                return nil, errors.New("Can't decode PolicyPassword response")
         }
 
         return rand_bytes, nil
@@ -859,9 +859,9 @@ func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
+	rand, err :=  DecodePolicyPassword(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
+		fmt.Printf("DecodePolicyPassword %s\n", err)
 		return nil,err
 	}
 	return rand, nil
@@ -872,9 +872,9 @@ func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
 // ConstructPolicyGetDigest constructs a PolicyGetDigest command.
 func ConstructPolicyGetDigest(keyBlob []byte) ([]byte, error) {
 /*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdPolicyGetDigest)
 	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
+		return nil, errors.New("ConstructPolicyGetDigest failed")
 	}
 	num_bytes :=  []interface{}{uint16(size)}
 	x, _ := packWithHeader(cmdHdr, num_bytes)
@@ -891,7 +891,7 @@ func DecodePolicyGetDigest(in []byte) ([]byte, error) {
         out :=  []interface{}{&rand_bytes}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
+                return nil, errors.New("Can't decode PolicyGetDigest response")
         }
 
         return rand_bytes, nil
@@ -904,7 +904,7 @@ func DecodePolicyGetDigest(in []byte) ([]byte, error) {
 func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 /*
 	// Construct command
-	x, err:= ConstructGetRandom(size)
+	x, err:= ConstructPolicyGetDigest(size)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, err
@@ -936,9 +936,9 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
+	rand, err :=  DecodePolicyGetDigest(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
+		fmt.Printf("DecodePolicyGetDigest %s\n", err)
 		return nil,err
 	}
 	return rand, nil
@@ -949,9 +949,9 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 // ConstructStartAuthSession constructs a StartAuthSession command.
 func ConstructStartAuthSession(keyBlob []byte) ([]byte, error) {
 /*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdStartAuthSession)
 	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
+		return nil, errors.New("ConstructStartAuthSession failed")
 	}
 	num_bytes :=  []interface{}{uint16(size)}
 	x, _ := packWithHeader(cmdHdr, num_bytes)
@@ -968,7 +968,7 @@ func DecodeStartAuthSession(in []byte) ([]byte, error) {
         out :=  []interface{}{&rand_bytes}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
+                return nil, errors.New("Can't decode StartAuthSession response")
         }
 
         return rand_bytes, nil
@@ -986,7 +986,7 @@ func StartAuthSession(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
         TPMI_ALG_HASH hash_alg, TPM_HANDLE* session_handle,
         TPM2B_NONCE* nonce_obj
 	// Construct command
-	x, err:= ConstructGetRandom(size)
+	x, err:= ConstructStartAuthSession(size)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, err
@@ -1018,9 +1018,9 @@ func StartAuthSession(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
+	rand, err :=  DecodeStartAuthSession(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
+		fmt.Printf("DecodeStartAuthSession %s\n", err)
 		return nil,err
 	}
 	return rand, nil
@@ -1031,9 +1031,9 @@ func StartAuthSession(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 // ConstructCreateSealed constructs a CreateSealed command.
 func ConstructCreateSealed(keyBlob []byte) ([]byte, error) {
 /*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdCreateSealed)
 	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
+		return nil, errors.New("ConstructCreateSealed failed")
 	}
 	num_bytes :=  []interface{}{uint16(size)}
 	x, _ := packWithHeader(cmdHdr, num_bytes)
@@ -1050,7 +1050,7 @@ func DecodeCreateSealed(in []byte) ([]byte, error) {
         out :=  []interface{}{&rand_bytes}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
+                return nil, errors.New("Can't decode CreateSealed response")
         }
 
         return rand_bytes, nil
@@ -1077,7 +1077,7 @@ func CreateSealed(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
         TPM2B_DIGEST* digest_out,
         TPMT_TK_CREATION* creation_ticket
 	// Construct command
-	x, err:= ConstructGetRandom(size)
+	x, err:= ConstructCreateSealed(size)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, err
@@ -1109,9 +1109,9 @@ func CreateSealed(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
+	rand, err :=  DecodeCreateSealed(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
+		fmt.Printf("DecodeCreateSealed %s\n", err)
 		return nil,err
 	}
 	return rand, nil
@@ -1122,9 +1122,9 @@ func CreateSealed(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 // ConstructUnseal constructs a Unseal command.
 func ConstructUnseal(keyBlob []byte) ([]byte, error) {
 /*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdUnseal)
 	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
+		return nil, errors.New("ConstructUnseal failed")
 	}
 	num_bytes :=  []interface{}{uint16(size)}
 	x, _ := packWithHeader(cmdHdr, num_bytes)
@@ -1141,7 +1141,7 @@ func DecodeUnseal(in []byte) ([]byte, error) {
         out :=  []interface{}{&rand_bytes}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
+                return nil, errors.New("Can't decode Unseal response")
         }
 
         return rand_bytes, nil
@@ -1157,7 +1157,7 @@ func Unseal(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
         byte session_attributes, TPM2B_DIGEST& hmac_digest,
         int* out_size, byte* unsealed
 	// Construct command
-	x, err:= ConstructGetRandom(size)
+	x, err:= ConstructUnseal(size)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, err
@@ -1189,9 +1189,9 @@ func Unseal(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
+	rand, err :=  DecodeUnseal(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
+		fmt.Printf("DecodeUnseal %s\n", err)
 		return nil,err
 	}
 	return rand, nil
@@ -1202,9 +1202,9 @@ func Unseal(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 // ConstructQuote constructs a Quote command.
 func ConstructQuote(keyBlob []byte) ([]byte, error) {
 /*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdQuote)
 	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
+		return nil, errors.New("ConstructQuote failed")
 	}
 	num_bytes :=  []interface{}{uint16(size)}
 	x, _ := packWithHeader(cmdHdr, num_bytes)
@@ -1221,7 +1221,7 @@ func DecodeQuote(in []byte) ([]byte, error) {
         out :=  []interface{}{&rand_bytes}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
+                return nil, errors.New("Can't decode Quote response")
         }
 
         return rand_bytes, nil
@@ -1238,7 +1238,7 @@ func Quote(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
         TPM_ALG_ID sig_alg, TPM_ALG_ID hash_alg,
         int* attest_size, byte* attest, int* sig_size, byte* sig
 	// Construct command
-	x, err:= ConstructGetRandom(size)
+	x, err:= ConstructQuote(size)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, err
@@ -1270,9 +1270,9 @@ func Quote(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
+	rand, err :=  DecodeQuote(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
+		fmt.Printf("DecodeQuote %s\n", err)
 		return nil,err
 	}
 	return rand, nil
@@ -1283,9 +1283,9 @@ func Quote(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 // ConstructActivateCredential constructs a ActivateCredential command.
 func ConstructActivateCredential(keyBlob []byte) ([]byte, error) {
 /*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdActivateCredential)
 	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
+		return nil, errors.New("ConstructActivateCredential failed")
 	}
 	num_bytes :=  []interface{}{uint16(size)}
 	x, _ := packWithHeader(cmdHdr, num_bytes)
@@ -1302,7 +1302,7 @@ func DecodeActivateCredential(in []byte) ([]byte, error) {
         out :=  []interface{}{&rand_bytes}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
+                return nil, errors.New("Can't decode ActivateCredential response")
         }
 
         return rand_bytes, nil
@@ -1320,7 +1320,7 @@ func ActivateCredential(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
         TPM2B_ENCRYPTED_SECRET& secret,
         TPM2B_DIGEST* certInfo
 	// Construct command
-	x, err:= ConstructGetRandom(size)
+	x, err:= ConstructActivateCredential(size)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, err
@@ -1352,9 +1352,9 @@ func ActivateCredential(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
+	rand, err :=  DecodeActivateCredential(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
+		fmt.Printf("DecodeActivateCredential %s\n", err)
 		return nil,err
 	}
 	return rand, nil
@@ -1365,9 +1365,9 @@ func ActivateCredential(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 // ConstructEvictControl constructs a EvictControl command.
 func ConstructEvictControl(keyBlob []byte) ([]byte, error) {
 /*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdEvictControl)
 	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
+		return nil, errors.New("ConstructEvictControl failed")
 	}
 	num_bytes :=  []interface{}{uint16(size)}
 	x, _ := packWithHeader(cmdHdr, num_bytes)
@@ -1384,7 +1384,7 @@ func DecodeEvictControl(in []byte) ([]byte, error) {
         out :=  []interface{}{&rand_bytes}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
+                return nil, errors.New("Can't decode EvictControl response")
         }
 
         return rand_bytes, nil
@@ -1399,7 +1399,7 @@ func EvictControl(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
         TPM_HANDLE handle, string& authString,
         TPMI_DH_PERSISTENT persistantHandle
 	// Construct command
-	x, err:= ConstructGetRandom(size)
+	x, err:= ConstructEvictControl(size)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, err
@@ -1431,9 +1431,9 @@ func EvictControl(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
+	rand, err :=  DecodeEvictControl(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
+		fmt.Printf("DecodeEvictControl %s\n", err)
 		return nil,err
 	}
 	return rand, nil
@@ -1444,9 +1444,9 @@ func EvictControl(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 // ConstructSaveContext constructs a SaveContext command.
 func ConstructSaveContext(keyBlob []byte) ([]byte, error) {
 /*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdSaveContext)
 	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
+		return nil, errors.New("ConstructSaveContext failed")
 	}
 	num_bytes :=  []interface{}{uint16(size)}
 	x, _ := packWithHeader(cmdHdr, num_bytes)
@@ -1463,7 +1463,7 @@ func  DecodeSaveContext(in []byte) ([]byte, error) {
         out :=  []interface{}{&rand_bytes}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
+                return nil, errors.New("Can't decode SaveContext response")
         }
 
         return rand_bytes, nil
@@ -1476,7 +1476,7 @@ func SaveContext(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 /*
 	TPM_HANDLE handle, int* size, byte* saveArea
 	// Construct command
-	x, err:= ConstructGetRandom(size)
+	x, err:= ConstructSaveContext(size)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, err
@@ -1508,9 +1508,9 @@ func SaveContext(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
+	rand, err :=  DecodeSaveContext(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
+		fmt.Printf("DecodeSaveContext %s\n", err)
 		return nil,err
 	}
 	return rand, nil
@@ -1521,9 +1521,9 @@ func SaveContext(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 // ConstructLoadContext constructs a LoadContext command.
 func ConstructLoadContext(keyBlob []byte) ([]byte, error) {
 /*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdLoadContext)
 	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
+		return nil, errors.New("ConstructLoadContext failed")
 	}
 	num_bytes :=  []interface{}{uint16(size)}
 	x, _ := packWithHeader(cmdHdr, num_bytes)
@@ -1540,7 +1540,7 @@ func  DecodeLoadContext(in []byte) ([]byte, error) {
         out :=  []interface{}{&rand_bytes}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
+                return nil, errors.New("Can't decode LoadContext response")
         }
 
         return rand_bytes, nil
@@ -1553,7 +1553,7 @@ func LoadContext(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 /*
 	int size, byte* saveArea, TPM_HANDLE* handle
 	// Construct command
-	x, err:= ConstructGetRandom(size)
+	x, err:= ConstructLoadContext(size)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, err
@@ -1585,9 +1585,9 @@ func LoadContext(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
+	rand, err :=  DecodeLoadContext(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
+		fmt.Printf("DecodeLoadContext %s\n", err)
 		return nil,err
 	}
 	return rand, nil

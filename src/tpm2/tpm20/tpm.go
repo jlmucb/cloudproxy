@@ -63,7 +63,15 @@ func OpenTPM(path string) (io.ReadWriteCloser, error) {
 }
 
 func SetLongPcrs(pcr_nums []int) ([]byte, error) {
-	return nil, nil
+	pcr := []byte{3,0,0,0}
+	var byte_num int
+	var byte_pos byte
+	for _,e := range pcr_nums {
+		byte_num = e / 8;
+		byte_pos = 1 << uint16(e % 8)
+		pcr[byte_num] |= byte_pos
+	}
+	return pcr, nil
 }
 
 func SetShortPcrs(pcr_nums []int) ([]byte, error) {

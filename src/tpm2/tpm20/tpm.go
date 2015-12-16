@@ -178,16 +178,15 @@ func FlushContext(rw io.ReadWriter, handle Handle) (error) {
 }
 
 // ConstructReadPcrs constructs a ReadPcr command.
-func ConstructReadPcrs(pcr uint32) ([]byte, error) {
-/*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+func ConstructReadPcrs(num_spec int, num_pcr byte, pcrs []byte) ([]byte, error) {
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdPCR_Read)
 	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
+		return nil, errors.New("ConstructReadPcrs failed")
 	}
-	x, _ := packWithHeader(cmdHdr, nil)
+	num := uint32(num_spec)
+	out := []interface{}{&num, &pcrs}
+	x, _ := packWithHeader(cmdHdr, out)
 	return x, nil
-*/
-	return nil, nil
 }
 
 // DecodeReadPcrs decodes a ReadPcr response.
@@ -209,15 +208,16 @@ func DecodeReadPcrs(in []byte) (uint32, []byte, []byte, error) {
 
 // ReadPcr reads a PCR value from the TPM.
 //	Output: updatecounter, selectout, digest
-func ReadPcrs(rw io.ReadWriter, pcrSelect uint32) (uint32, []byte, []byte, error) {
-/*
+func ReadPcrs(rw io.ReadWriter, num_byte, pcrSelect []byte) (uint32, []byte, []byte, error) {
 	// Construct command
-	x, err:= ConstructGetRandom(size)
+	x, err:= ConstructReadPcrs(1, 4, pcrSelect)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return nil, err
+		return 1, nil, nil, errors.New("MakeCommandHeader failed") 
 	}
+	fmt.Printf("ReadPcrs command: %x", x)
 
+/*
 	// Send command
 	_, err = rw.Write(x)
 	if err != nil {

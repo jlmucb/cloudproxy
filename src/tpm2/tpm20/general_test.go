@@ -143,9 +143,11 @@ func TestConstructReadPcrs(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 		return
 	}
-	fmt.Printf("Command: %x\n", test_cmd_bytes)
-/*
-	cmd_bytes, err := ConstructReadPcrs()
+	fmt.Printf("Test command: %x\n", test_cmd_bytes)
+	pcrs := []byte{0x03, 0x80, 0x00, 0x00}
+	var num_pcr byte
+	num_pcr = 4
+	cmd_bytes, err := ConstructReadPcrs(1, num_pcr, pcrs)
 	if err != nil {
 		t.Fatal("Can't construct ReadPcrs\n")
 		return
@@ -155,7 +157,6 @@ func TestConstructReadPcrs(t *testing.T) {
 		t.Fatal("Bad ReadPcrs command\n")
 		return
 	}
-*/
 }
 
 // Response: 800100000032000000000000001400000001000403800000000000010014427d27fe15f8f69736e02b6007b8f6ea674c0745

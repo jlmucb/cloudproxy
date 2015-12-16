@@ -379,25 +379,31 @@ func ConstructGetCapabilities(cap uint32, count uint32, property uint32) ([]byte
 }
 
 // DecodeGetCapabilities decodes a GetCapabilities response.
-func DecodeGetCapabilities(in []byte) ([]byte, error) {
-/*
-	int - count
-	list of handles
-	or
-	list of property, value pairs
+func DecodeGetCapabilities(in []byte) (uint32, []uint32, error) {
+        var num_handles uint32
+        var cap_reported uint32
 
-
-        var num_handles
-
-        out :=  []interface{}{&num_handles}
-        err := unpack(in, out)
+        out :=  []interface{}{&cap_reported,&num_handles}
+        err := unpack(in[1:9], out)
         if err != nil {
-                return nil, errors.New("Can't decode GetCapabilities response")
+                return 0, nil, errors.New("Can't decode GetCapabilities response")
         }
+	// only ordTPM_CAP_HANDLES handled
+        if cap_reported !=  ordTPM_CAP_HANDLES {
+                return 0, nil, errors.New("Only ordTPM_CAP_HANDLES supported")
+        }
+	var handles []uint32
+	var handle uint32
+        handle_out :=  []interface{}{&handle}
+	for i:= 0; i < int(num_handles); i++ {
+		err := unpack(in[8 + 4 * i:18:12 + 4 * i], handle_out)
+		if err != nil {
+			return 0, nil, errors.New("Can't decode GetCapabilities handle")
+		}
+		handles = append(handles, handle)
+	}
 
-        return rand_bytes, nil
-*/
-	return nil, nil
+        return cap_reported, handles, nil
 }
 
 // GetCapabilities 

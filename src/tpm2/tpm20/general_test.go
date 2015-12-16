@@ -263,6 +263,23 @@ func TestDecodeGetCapabilities(t *testing.T) {
 		return
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
+
+        tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+        if err != nil {
+		t.Fatal("DecodeCommandResponse fails\n")
+        }
+        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+
+	cap_reported, handles, err := DecodeGetCapabilities(test_resp_bytes[10:])
+	if err != nil {
+		fmt.Printf("Error: %s\n", err)
+		t.Fatal("DecodeGetCapabilities\n")
+		return
+	}
+	if cap_reported != ordTPM_CAP_HANDLES || len(handles) != 0 {
+		t.Fatal("wrong property or number of handles\n")
+		return
+	}
 }
 
 func TestGetCapabilities(t *testing.T) {

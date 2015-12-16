@@ -193,9 +193,9 @@ func TestConstructReadClock(t *testing.T) {
 	}
 }
 
-// Response: 
+// Response: 8001000000230000000000000001011380d00000001d1f57f84d000000530000000001
 func TestDecodeReadClock(t *testing.T) {
-	test_resp_bytes, err := hex.DecodeString("")
+	test_resp_bytes, err := hex.DecodeString("8001000000230000000000000001011380d00000001d1f57f84d000000530000000001")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 		return
@@ -512,20 +512,30 @@ func TestConstructQuote(t *testing.T) {
 }
 
 // Response: a80020000010400000000000000f10069ff5443478018001600047705bde86e3780577632421d34e5db4759667c8900100102030405060708090a0b0c0d0e0f1000000000000fe8f99cf4968c1d6e516100eb40a3278641a1c6000000010004038000000014ae2edb7e23d7e8f58daa87af87775993a42672250014000400804e49bb73712bc6acca4778005741b586ee6da2c98fe4dd1a3babdd9dd58c2d6fed9441a5bfb3c07ae0c7a5f2aff3d46b97429cff515caa12726fec6021b439c9856ebdd2f006b9159b5bfcbb8ca16c6a8f4a5953669d6af769593c00249e240f5009735b03abff38917de1c43bfdcc7a488fa6474c1011d3f399939e033930bb0000010000
-const strQuoteResp = "a80020000010400000000000000f10069ff544347801800160004" +
+const strQuoteResp1 = "80020000010400000000000000f10069ff544347801800160004" +
 	"7705bde86e3780577632421d34e5db4759667c8900100102030405060708090a0b" +
 	"0c0d0e0f1000000000000fe8f99cf4968c1d6e516100eb40a3278641a1c6000000" +
-	"010004038000000014ae2edb7e23d7e8f58daa87af87775993a426722500140004" +
-	"00804e49bb73712bc6acca4778005741b586ee6da2c98fe4dd1a3babdd9dd58c2d" +
+	"010004038000000014ae2edb7e23d7e8f58daa87af87775993a426722500140004"
+
+const strQuoteResp2= "00804e49bb73712bc6acca4778005741b586ee6da2c98fe4dd1a3" +
+	"babdd9dd58c2d" +
 	"6fed9441a5bfb3c07ae0c7a5f2aff3d46b97429cff515caa12726fec6021b439c9" +
 	"856ebdd2f006b9159b5bfcbb8ca16c6a8f4a5953669d6af769593c00249e240f50" +
-	"09735b03abff38917de1c43bfdcc7a488fa6474c1011d3f399939e033930bb0000010000"
+	"09735b03abff38917de1c43bfdcc7a488fa6474c1011d3f399939e033930bb0000" +
+	"010000"
+
 func TestDecodeQuote(t *testing.T) {
-	test_resp_bytes, err := hex.DecodeString(strQuoteResp)
+	test_resp_bytes_first, err := hex.DecodeString(strQuoteResp1)
 	if err != nil {
-		t.Fatal("Can't convert hex command\n")
+		t.Fatal("Can't convert hex command 1\n")
 		return
 	}
+	test_resp_bytes_next, err := hex.DecodeString(strQuoteResp2)
+	if err != nil {
+		t.Fatal("Can't convert hex command 2\n")
+		return
+	}
+	test_resp_bytes := append(test_resp_bytes_first, test_resp_bytes_next...)
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 }
 

@@ -190,38 +190,36 @@ func ConstructReadPcrs(num_spec int, num_pcr byte, pcrs []byte) ([]byte, error) 
 }
 
 // DecodeReadPcrs decodes a ReadPcr response.
-func DecodeReadPcrs(in []byte) (uint32, []byte, []byte, error) {
-/*
+func DecodeReadPcrs(in []byte) (uint32, []byte, uint16, []byte, error) {
+        var pcr []byte
         var digest []byte
         var updateCounter uint32
+        var t uint32
+        var s uint32
 
-        out :=  []interface{}{&rand_bytes}
+        out :=  []interface{}{&t, &updateCounter, &pcr, &s, &digest}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode ReadPcrs response")
+                return 1, nil, 0, nil, errors.New("Can't decode ReadPcrs response")
         }
-
-        return rand_bytes, nil
-*/
-	return 1, nil, nil, nil
+	return updateCounter, pcr, uint16(t), digest, nil
 }
 
 // ReadPcr reads a PCR value from the TPM.
 //	Output: updatecounter, selectout, digest
-func ReadPcrs(rw io.ReadWriter, num_byte, pcrSelect []byte) (uint32, []byte, []byte, error) {
+func ReadPcrs(rw io.ReadWriter, num_byte byte, pcrSelect []byte) (uint32, []byte, uint16, []byte, error) {
 	// Construct command
 	x, err:= ConstructReadPcrs(1, 4, pcrSelect)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return 1, nil, nil, errors.New("MakeCommandHeader failed") 
+		return 1, nil, 0, nil, errors.New("MakeCommandHeader failed") 
 	}
 	fmt.Printf("ReadPcrs command: %x", x)
 
-/*
 	// Send command
 	_, err = rw.Write(x)
 	if err != nil {
-		return nil, errors.New("Write Tpm fails") 
+		return 0, nil, 0, nil, errors.New("Write Tpm fails") 
 	}
 
 	// Get response
@@ -229,29 +227,26 @@ func ReadPcrs(rw io.ReadWriter, num_byte, pcrSelect []byte) (uint32, []byte, []b
 	resp = make([]byte, 1024, 1024)
 	read, err := rw.Read(resp)
         if err != nil {
-                return nil, errors.New("Read Tpm fails")
+                return 0, nil, 0, nil, errors.New("Read Tpm fails")
         }
 
 	// Decode Response
         if read < 10 {
-                return nil, errors.New("Read buffer too small")
+                return 0, nil, 0, nil, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
-		return nil, err
+		return 0, nil, 0, nil, errors.New("DecodeCommandResponse fails")
 	}
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
+		return 0, nil, 0, nil, errors.New("ReadPcr command failed")
 	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
+	counter, pcr, alg, digest, err := DecodeReadPcrs(resp[10:])
 	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
-		return nil,err
+		return 0, nil, 0, nil, errors.New("DecodeReadPcrsfails")
 	}
-	return rand, nil
- */
-	return 1, nil, nil, nil
+	return counter, pcr, alg, digest, err 
 }
 
 // ConstructReadClock constructs a ReadClock command.

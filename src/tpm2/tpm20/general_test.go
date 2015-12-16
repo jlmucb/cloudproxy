@@ -167,9 +167,35 @@ func TestDecodeReadPcrs(t *testing.T) {
 		return
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
+	 _, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+        if err != nil {
+                t.Fatal("DecodeCommandResponse error\n")
+        }
+	counter, pcr, alg, digest, err := DecodeReadPcrs(test_resp_bytes[10:])
+        if err != nil {
+                t.Fatal("DecodeReadPcrs error\n")
+        }
+	fmt.Printf("Status: %x, Counter: %x, pcr: %x, alg: %x, digest: %x\n", status, counter, pcr, alg, digest)
 }
 
 func TestReadPcrs(t *testing.T) {
+	fmt.Printf("TestReadPcrs\n")
+
+	// Open TPM
+	rw, err := OpenTPM("/dev/tpm0")
+	if err != nil {
+		fmt.Printf("OpenTPM failed %s\n", err)
+		return 
+	}
+
+	pcr := []byte{0x03, 0x80, 0x00, 0x00}
+	counter, pcr_out, alg, digest, err := ReadPcrs(rw, byte(4), pcr)
+	if err != nil {
+		fmt.Printf("Error: %s\n", err)
+		t.Fatal("ConstructReadPcrs failed\n")
+		return 
+	}
+	fmt.Printf("Counter: %x, pcr: %x, alg: %x, digest: %x\n", counter, pcr_out, alg, digest)
 }
 
 // TestReadClock tests a ReadClock command.

@@ -408,8 +408,7 @@ func DecodeGetCapabilities(in []byte) (uint32, []uint32, error) {
 
 // GetCapabilities 
 //	Output: output buf
-func GetCapabilities(rw io.ReadWriter, cap uint32, count uint32, property uint32) ([]byte, error) {
-/*
+func GetCapabilities(rw io.ReadWriter, cap uint32, count uint32, property uint32) ([]uint32, error) {
 	// Construct command
 	x, err:= ConstructGetCapabilities(cap, count, property)
 	if err != nil {
@@ -443,19 +442,23 @@ func GetCapabilities(rw io.ReadWriter, cap uint32, count uint32, property uint32
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
+	_, handles, err :=  DecodeGetCapabilities(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
 		return nil,err
 	}
-	return rand, nil
-*/
-	return nil, nil
+	return handles, nil
 }
 
 // Flushall
-func Flushall(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
-	return nil, nil
+func Flushall(rw io.ReadWriter) (error) {
+	handles, err := GetCapabilities(rw, ordTPM_CAP_HANDLES, 1, 0x80000000)
+	if err != nil {
+		return err
+	}
+	for _, e := range handles {
+		_ = FlushContext(rw, Handle(e))
+	}
+	return nil
 }
 
 // ConstructCreatePrimary constructs a CreatePrimary command.

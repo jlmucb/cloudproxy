@@ -453,82 +453,9 @@ func GetCapabilities(rw io.ReadWriter, cap uint32, count uint32, property uint32
 	return nil, nil
 }
 
-// ConstructLoad constructs a Load command.
-func ConstructLoad(keyBlob []byte) ([]byte, error) {
-/*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
-	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
-	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
-	return x, nil
-*/
+// Flushall
+func Flushall(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	return nil, nil
-}
-
-// DecodeLoad decodes a Load response.
-func DecodeLoad(in []byte) ([]byte, error) {
-/*
-        var rand_bytes []byte
-
-        out :=  []interface{}{&rand_bytes}
-        err := unpack(in, out)
-        if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
-        }
-
-        return rand_bytes, nil
-*/
-	return nil, nil
-}
-
-// Load
-//	Output: handle, name
-func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string,
-	     inPublic []byte, inPrivate []byte) (Handle, []byte, error) {
-/*
-	// Construct command
-	x, err:= ConstructGetRandom(size)
-	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return nil, err
-	}
-
-	// Send command
-	_, err = rw.Write(x)
-	if err != nil {
-		return nil, errors.New("Write Tpm fails") 
-	}
-
-	// Get response
-	var resp []byte
-	resp = make([]byte, 1024, 1024)
-	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, errors.New("Read Tpm fails")
-        }
-
-	// Decode Response
-        if read < 10 {
-                return nil, errors.New("Read buffer too small")
-	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
-	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
-		return nil, err
-	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
-	if status != errSuccess {
-	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
-	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
-		return nil,err
-	}
-	return rand, nil
-*/
-	return 1, nil, nil
 }
 
 // ConstructCreatePrimary constructs a CreatePrimary command.
@@ -614,6 +541,253 @@ func CreatePrimary(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	return rand, nil
 */
 	return nil, nil
+}
+
+// ConstructReadPublic constructs a ReadPublic command.
+func ConstructReadPublic(keyBlob []byte) ([]byte, error) {
+/*
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+	if err != nil {
+		return nil, errors.New("ConstructGetRandom failed")
+	}
+	num_bytes :=  []interface{}{uint16(size)}
+	x, _ := packWithHeader(cmdHdr, num_bytes)
+	return x, nil
+*/
+	return nil, nil
+}
+
+// DecodeReadPublic decodes a ReadPublic response.
+func DecodeReadPublic(in []byte) ([]byte, error) {
+/*
+        var rand_bytes []byte
+
+        out :=  []interface{}{&rand_bytes}
+        err := unpack(in, out)
+        if err != nil {
+                return nil, errors.New("Can't decode GetRandom response")
+        }
+
+        return rand_bytes, nil
+*/
+	return nil, nil
+}
+
+// ReadPublic
+func ReadPublic(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
+/*
+	TPM_HANDLE handle,
+        uint16_t* pub_blob_size, byte* pub_blob,
+        TPM2B_PUBLIC& outPublic, TPM2B_NAME& name,
+        TPM2B_NAME& qualifiedName
+	// Construct command
+	x, err:= ConstructGetRandom(size)
+	if err != nil {
+		fmt.Printf("MakeCommandHeader failed %s\n", err)
+		return nil, err
+	}
+
+	// Send command
+	_, err = rw.Write(x)
+	if err != nil {
+		return nil, errors.New("Write Tpm fails") 
+	}
+
+	// Get response
+	var resp []byte
+	resp = make([]byte, 1024, 1024)
+	read, err := rw.Read(resp)
+        if err != nil {
+                return nil, errors.New("Read Tpm fails")
+        }
+
+	// Decode Response
+        if read < 10 {
+                return nil, errors.New("Read buffer too small")
+	}
+	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	if err != nil {
+		fmt.Printf("DecodeCommandResponse %s\n", err)
+		return nil, err
+	}
+	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
+	if status != errSuccess {
+	}
+	rand, err :=  DecodeGetRandom(resp[10:read])
+	if err != nil {
+		fmt.Printf("DecodeGetRandom %s\n", err)
+		return nil,err
+	}
+	return rand, nil
+*/
+	return nil, nil
+}
+
+// CreateKey
+
+// ConstructCreateKey constructs a CreateKey command.
+func ConstructCreateKey(keyBlob []byte) ([]byte, error) {
+/*
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+	if err != nil {
+		return nil, errors.New("ConstructGetRandom failed")
+	}
+	num_bytes :=  []interface{}{uint16(size)}
+	x, _ := packWithHeader(cmdHdr, num_bytes)
+	return x, nil
+*/
+	return nil, nil
+}
+
+// DecodeCreateKey decodes a CreateKey response.
+func DecodeCreateKey(in []byte) ([]byte, error) {
+/*
+        var rand_bytes []byte
+
+        out :=  []interface{}{&rand_bytes}
+        err := unpack(in, out)
+        if err != nil {
+                return nil, errors.New("Can't decode GetRandom response")
+        }
+
+        return rand_bytes, nil
+*/
+	return nil, nil
+}
+
+func CreateKey(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
+/*
+ 	TPM_HANDLE parent_handle,
+        string& parentAuth, string& authString,
+        TPML_PCR_SELECTION& pcr_selection,
+        TPM_ALG_ID enc_alg, TPM_ALG_ID int_alg,
+        TPMA_OBJECT& flags, TPM_ALG_ID sym_alg,
+        TPMI_AES_KEY_BITS sym_key_size,
+        TPMI_ALG_SYM_MODE sym_mode, TPM_ALG_ID sig_scheme,
+        int mod_size, uint32_t exp,
+        int* size_public, byte* out_public,
+        int* size_private, byte* out_private,
+        TPM2B_CREATION_DATA* creation_out,
+        TPM2B_DIGEST* digest_out, TPMT_TK_CREATION* creation_ticket
+	// Construct command
+	x, err:= ConstructGetRandom(size)
+	if err != nil {
+		fmt.Printf("MakeCommandHeader failed %s\n", err)
+		return nil, err
+	}
+
+	// Send command
+	_, err = rw.Write(x)
+	if err != nil {
+		return nil, errors.New("Write Tpm fails") 
+	}
+
+	// Get response
+	var resp []byte
+	resp = make([]byte, 1024, 1024)
+	read, err := rw.Read(resp)
+        if err != nil {
+                return nil, errors.New("Read Tpm fails")
+        }
+
+	// Decode Response
+        if read < 10 {
+                return nil, errors.New("Read buffer too small")
+	}
+	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	if err != nil {
+		fmt.Printf("DecodeCommandResponse %s\n", err)
+		return nil, err
+	}
+	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
+	if status != errSuccess {
+	}
+	rand, err :=  DecodeGetRandom(resp[10:read])
+	if err != nil {
+		fmt.Printf("DecodeGetRandom %s\n", err)
+		return nil,err
+	}
+	return rand, nil
+*/
+	return nil, nil
+}
+
+// ConstructLoad constructs a Load command.
+func ConstructLoad(keyBlob []byte) ([]byte, error) {
+/*
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
+	if err != nil {
+		return nil, errors.New("ConstructGetRandom failed")
+	}
+	num_bytes :=  []interface{}{uint16(size)}
+	x, _ := packWithHeader(cmdHdr, num_bytes)
+	return x, nil
+*/
+	return nil, nil
+}
+
+// DecodeLoad decodes a Load response.
+func DecodeLoad(in []byte) ([]byte, error) {
+/*
+        var rand_bytes []byte
+
+        out :=  []interface{}{&rand_bytes}
+        err := unpack(in, out)
+        if err != nil {
+                return nil, errors.New("Can't decode GetRandom response")
+        }
+
+        return rand_bytes, nil
+*/
+	return nil, nil
+}
+
+// Load
+//	Output: handle, name
+func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string,
+	     inPublic []byte, inPrivate []byte) (Handle, []byte, error) {
+/*
+	// Construct command
+	x, err:= ConstructGetRandom(size)
+	if err != nil {
+		fmt.Printf("MakeCommandHeader failed %s\n", err)
+		return nil, err
+	}
+
+	// Send command
+	_, err = rw.Write(x)
+	if err != nil {
+		return nil, errors.New("Write Tpm fails") 
+	}
+
+	// Get response
+	var resp []byte
+	resp = make([]byte, 1024, 1024)
+	read, err := rw.Read(resp)
+        if err != nil {
+                return nil, errors.New("Read Tpm fails")
+        }
+
+	// Decode Response
+        if read < 10 {
+                return nil, errors.New("Read buffer too small")
+	}
+	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	if err != nil {
+		fmt.Printf("DecodeCommandResponse %s\n", err)
+		return nil, err
+	}
+	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
+	if status != errSuccess {
+	}
+	rand, err :=  DecodeGetRandom(resp[10:read])
+	if err != nil {
+		fmt.Printf("DecodeGetRandom %s\n", err)
+		return nil,err
+	}
+	return rand, nil
+*/
+	return 1, nil, nil
 }
 
 // ConstructPolicyPassword constructs a PolicyPassword command.
@@ -769,97 +943,6 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 	return nil, nil
 }
 
-// ConstructCreateSealed constructs a CreateSealed command.
-func ConstructCreateSealed(keyBlob []byte) ([]byte, error) {
-/*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
-	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
-	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
-	return x, nil
-*/
-	return nil, nil
-}
-
-// DecodeCreateSealed decodes a CreateSealed response.
-func DecodeCreateSealed(in []byte) ([]byte, error) {
-/*
-        var rand_bytes []byte
-
-        out :=  []interface{}{&rand_bytes}
-        err := unpack(in, out)
-        if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
-        }
-
-        return rand_bytes, nil
-*/
-	return nil, nil
-}
-
-// CreateSealed
-func CreateSealed(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
-/*
-	TPM_HANDLE parent_handle,
-        int size_policy_digest, byte* policy_digest,
-        string& parentAuth,
-        int size_to_seal, byte* to_seal,
-        TPML_PCR_SELECTION& pcr_selection,
-        TPM_ALG_ID int_alg,
-        TPMA_OBJECT& flags, TPM_ALG_ID sym_alg,
-        TPMI_AES_KEY_BITS sym_key_size,
-        TPMI_ALG_SYM_MODE sym_mode, TPM_ALG_ID sig_scheme,
-        int mod_size, uint32_t exp,
-        int* size_public, byte* out_public,
-        int* size_private, byte* out_private,
-        TPM2B_CREATION_DATA* creation_out,
-        TPM2B_DIGEST* digest_out,
-        TPMT_TK_CREATION* creation_ticket
-	// Construct command
-	x, err:= ConstructGetRandom(size)
-	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return nil, err
-	}
-
-	// Send command
-	_, err = rw.Write(x)
-	if err != nil {
-		return nil, errors.New("Write Tpm fails") 
-	}
-
-	// Get response
-	var resp []byte
-	resp = make([]byte, 1024, 1024)
-	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, errors.New("Read Tpm fails")
-        }
-
-	// Decode Response
-        if read < 10 {
-                return nil, errors.New("Read buffer too small")
-	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
-	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
-		return nil, err
-	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
-	if status != errSuccess {
-	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
-	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
-		return nil,err
-	}
-	return rand, nil
-*/
-	return nil, nil
-}
-
 // ConstructStartAuthSession constructs a StartAuthSession command.
 func ConstructStartAuthSession(keyBlob []byte) ([]byte, error) {
 /*
@@ -942,8 +1025,8 @@ func StartAuthSession(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// ConstructCreateKey constructs a CreateKey command.
-func ConstructCreateKey(keyBlob []byte) ([]byte, error) {
+// ConstructCreateSealed constructs a CreateSealed command.
+func ConstructCreateSealed(keyBlob []byte) ([]byte, error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
 	if err != nil {
@@ -956,8 +1039,8 @@ func ConstructCreateKey(keyBlob []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// DecodeCreateKey decodes a CreateKey response.
-func DecodeCreateKey(in []byte) ([]byte, error) {
+// DecodeCreateSealed decodes a CreateSealed response.
+func DecodeCreateSealed(in []byte) ([]byte, error) {
 /*
         var rand_bytes []byte
 
@@ -972,13 +1055,15 @@ func DecodeCreateKey(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// CreateKey
-func CreateKey(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
+// CreateSealed
+func CreateSealed(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 /*
- 	TPM_HANDLE parent_handle,
-        string& parentAuth, string& authString,
+	TPM_HANDLE parent_handle,
+        int size_policy_digest, byte* policy_digest,
+        string& parentAuth,
+        int size_to_seal, byte* to_seal,
         TPML_PCR_SELECTION& pcr_selection,
-        TPM_ALG_ID enc_alg, TPM_ALG_ID int_alg,
+        TPM_ALG_ID int_alg,
         TPMA_OBJECT& flags, TPM_ALG_ID sym_alg,
         TPMI_AES_KEY_BITS sym_key_size,
         TPMI_ALG_SYM_MODE sym_mode, TPM_ALG_ID sig_scheme,
@@ -986,7 +1071,8 @@ func CreateKey(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
         int* size_public, byte* out_public,
         int* size_private, byte* out_private,
         TPM2B_CREATION_DATA* creation_out,
-        TPM2B_DIGEST* digest_out, TPMT_TK_CREATION* creation_ticket
+        TPM2B_DIGEST* digest_out,
+        TPMT_TK_CREATION* creation_ticket
 	// Construct command
 	x, err:= ConstructGetRandom(size)
 	if err != nil {
@@ -1273,86 +1359,6 @@ func ActivateCredential(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// ConstructReadPublic constructs a ReadPublic command.
-func ConstructReadPublic(keyBlob []byte) ([]byte, error) {
-/*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
-	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
-	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
-	return x, nil
-*/
-	return nil, nil
-}
-
-// DecodeReadPublic decodes a ReadPublic response.
-func DecodeReadPublic(in []byte) ([]byte, error) {
-/*
-        var rand_bytes []byte
-
-        out :=  []interface{}{&rand_bytes}
-        err := unpack(in, out)
-        if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
-        }
-
-        return rand_bytes, nil
-*/
-	return nil, nil
-}
-
-// ReadPublic
-func ReadPublic(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
-/*
-	TPM_HANDLE handle,
-        uint16_t* pub_blob_size, byte* pub_blob,
-        TPM2B_PUBLIC& outPublic, TPM2B_NAME& name,
-        TPM2B_NAME& qualifiedName
-	// Construct command
-	x, err:= ConstructGetRandom(size)
-	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return nil, err
-	}
-
-	// Send command
-	_, err = rw.Write(x)
-	if err != nil {
-		return nil, errors.New("Write Tpm fails") 
-	}
-
-	// Get response
-	var resp []byte
-	resp = make([]byte, 1024, 1024)
-	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, errors.New("Read Tpm fails")
-        }
-
-	// Decode Response
-        if read < 10 {
-                return nil, errors.New("Read buffer too small")
-	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
-	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
-		return nil, err
-	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
-	if status != errSuccess {
-	}
-	rand, err :=  DecodeGetRandom(resp[10:read])
-	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
-		return nil,err
-	}
-	return rand, nil
-*/
-	return nil, nil
-}
-
 // ConstructEvictControl constructs a EvictControl command.
 func ConstructEvictControl(keyBlob []byte) ([]byte, error) {
 /*
@@ -1586,12 +1592,9 @@ func LoadContext(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	return nil, nil
 }
 
-// Flushall
-func Flushall(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
-	return nil, nil
-}
-
 /*
 bool ComputeQuotedValue(TPM_ALG_ID alg, int credInfo_size, byte* credInfo,
                         int* size_quoted, byte* quoted)
+
+ComputeMakeCredentialData()
  */

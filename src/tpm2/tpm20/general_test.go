@@ -36,6 +36,30 @@ func TestSetShortPcrs(t *testing.T) {
 	}
 }
 
+func TestSetHandle(t *testing.T) {
+	hand := SetHandle(Handle(ordTPM_RH_OWNER))
+	if hand == nil {
+		t.Fatal("Test SetHandle fails\n")
+	}
+	test_out := []byte{0x40, 0, 0, 1}
+	if !bytes.Equal(test_out, hand)  {
+		t.Fatal("Test SetHandle bad output\n")
+	}
+	fmt.Printf("TestHandle: %x\n", hand)
+}
+
+func TestSetPasswordData(t *testing.T) {
+// SetPasswordData(password string)
+}
+
+func TestCreatePasswordAuthArea(t *testing.T) {
+// CreatePasswordAuthArea(password string) ([]byte)
+}
+
+func TestCreateSensitiveArea(t *testing.T) {
+// CreateSensitiveArea(in1 []byte, in2 []byte)
+}
+
 func TestDecode(t *testing.T) {
 	x, err := ConstructGetRandom(16)
 	if err != nil {

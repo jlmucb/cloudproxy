@@ -114,8 +114,9 @@ func CreatePasswordAuthArea(password string) ([]byte) {
 	return ret
 }
 
-func CreateSensitiveArea(in1 []byte, in2 []byte) ([]byte, error) {
-	return nil, nil
+// nil is error
+func CreateSensitiveArea(in1 []byte, in2 []byte) ([]byte) {
+	return nil
 }
 
 // ----------------------------------------------------------------

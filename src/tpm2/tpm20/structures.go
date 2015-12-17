@@ -42,18 +42,6 @@ type responseHeader struct {
 
 /*
 typedef struct {
-  TPM2B_AUTH           userAuth;
-  TPM2B_SENSITIVE_DATA data;
-} TPMS_SENSITIVE_CREATE;
-
-// Table 182 - TPMT_PUBLIC_PARMS Structure
-typedef struct {
-  TPMI_ALG_PUBLIC   type;
-  TPMU_PUBLIC_PARMS parameters;
-} TPMT_PUBLIC_PARMS;
-
-// Table 183 - TPMT_PUBLIC Structure
-typedef struct {
   TPMI_ALG_PUBLIC   type;
   TPMI_ALG_HASH     nameAlg;
   TPMA_OBJECT       objectAttributes;
@@ -61,17 +49,6 @@ typedef struct {
   TPMU_PUBLIC_PARMS parameters;
   TPMU_PUBLIC_ID    unique;
 } TPMT_PUBLIC;
-
-typedef struct {
-  TPMI_ALG_PUBLIC   type;
-  TPMU_PUBLIC_PARMS parameters;
-} TPMT_PUBLIC_PARMS;
-
-// Table 184 - TPM2B_PUBLIC Structure
-typedef struct {
-  uint16_t    size;
-  TPMT_PUBLIC publicArea;
-} TPM2B_PUBLIC;
 
 typedef struct {
   uint32_t TPMA_NV_PPWRITE        : 1;
@@ -106,21 +83,25 @@ typedef struct {
   TPMI_ALG_KEYEDHASH_SCHEME scheme;
   TPMU_SCHEME_KEYEDHASH     details;
 } TPMT_KEYEDHASH_SCHEME;
+*/
 
 // RSA Key
-type RsaKey {
-	TPMT_SYM_DEF_OBJECT symmetric;
-TPMI_ALG_SYM_OBJECT algorithm;
-  TPMU_SYM_KEY_BITS   keyBits;
-  TPMU_SYM_MODE       mode;
-	TPMT_RSA_SCHEME     scheme;
-	TPMI_RSA_KEY_BITS   keyBits;
-	uint32_t            exponent;
+type RsaKey struct {
+	algorithm uint16
+	num_key_bits uint16
+	mode uint16
+	scheme uint16
+	modulus []byte
+	d []byte
+	p []byte
+	q []byte
+	exponent uint32
 }
 
 // Public key
-type PublicKey {
+type PublicKey struct {
+	key_type uint16
+	key RsaKey
 }
-*/
 
 

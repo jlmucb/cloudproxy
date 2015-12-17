@@ -87,13 +87,26 @@ func SetOwnerHandle(handle Handle) ([]byte, error) {
 }
 
 
-// ----------------------------------------------------------------
 // remove
 
-// SetPasswordData(string& password, int size, byte* buf)
+func SetPasswordData(password string) ([]byte, error) {
+	return nil, nil
+}
 
-// int CreatePasswordAuthArea(string& password, int size, byte* buf)
+func CreatePasswordAuthArea(password string) ([]byte, error) {
+// 00 TPM_RS_PW 000 password data
+	return nil, nil
+}
 
+func GetRsaPublicKeyFromBlob(in []byte) (*RsaKey, error) {
+	return nil, nil
+}
+
+func GetRsaPrivateKeyFromBlob(in []byte) (*RsaKey, error) {
+	return nil, nil
+}
+
+// ----------------------------------------------------------------
 // int CreateSensitiveArea(int size_in, byte* in, int size_data, byte* data, int size, byte* buf)
 
 // CreateSensitiveArea(string& authString, int size_data, byte* data, int size, byte* buf)
@@ -108,7 +121,7 @@ func SetOwnerHandle(handle Handle) ([]byte, error) {
 //                        mod_size, exp, pub_key);
 // Marshal_Public_Key_Info(TPM2B_PUBLIC& in, int size, byte* buf)
 // GetReadPublicOut(uint16_t size_in, byte* input, TPM2B_PUBLIC& outPublic)
-//int GetRsaParams(uint16_t size_in, byte* input, TPMS_RSA_PARMS& rsaParams,
+// GetRsaParams(uint16_t size_in, byte* input, TPMS_RSA_PARMS& rsaParams,
 //                 TPM2B_PUBLIC_KEY_RSA& rsa)
 //GetCreateOut(int size, byte* in, int* size_public, byte* out_public,
 //                  int* size_private, byte* out_private,
@@ -471,10 +484,36 @@ func Flushall(rw io.ReadWriter) (error) {
 
 // ConstructCreatePrimary constructs a CreatePrimary command.
 func ConstructCreatePrimary(owner uint32, pcr_selection []byte, enc_alg uint16, int_alg uint16,
-        create_flags uint32, owner_password string,
-        sym_alg uint16, sym_key_size_bits uint16,
-        sym_mode uint16, sig_scheme uint16,
-        modulus_size_bits uint16, exp uint32) ([]byte, error) {
+        create_flags uint32, owner_password string, sym_alg uint16, sym_key_size_bits uint16,
+        sym_mode uint16, sig_scheme uint16, modulus_size_bits uint16, exp uint32) ([]byte, error) {
+/*
+  80020000004d00000131
+  owner
+  40000001
+  zero
+  0000
+  pw auth area
+  0009 40000009 00000100 00
+  password (sensitive area)
+  0008 0004 01020304
+       0000
+  public key info
+  001a
+   alg  alg attributes
+  0001 0004 00030072
+  auth size
+  0000
+   alg aessz scheme TPM_ALG_RSASSA
+  0006 0080    0043 0010
+  rsa-bits
+  0400
+  exponent
+  00010001
+  outside info
+  0000
+  long pcr    count  alg pcr
+  0000     00000001 0004 03800000
+*/
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdCreatePrimary)
 	if err != nil {
@@ -505,12 +544,9 @@ func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
 
 // CreatePrimary
 //	Output: handle, public key blob
-func CreatePrimary(rw io.ReadWriter, 
-	owner uint32, pcr_selection []byte,
-	enc_alg uint16, int_alg uint16,
-	create_flags uint32, owner_password string,
-	sym_alg uint16, sym_key_size_bits uint16,
-	sym_mode uint16, sig_scheme uint16,
+func CreatePrimary(rw io.ReadWriter, owner uint32, pcr_selection []byte,
+	enc_alg uint16, int_alg uint16, create_flags uint32, owner_password string,
+	sym_alg uint16, sym_key_size_bits uint16, sym_mode uint16, sig_scheme uint16,
 	modulus_size_bits uint16, exp uint32) (Handle, []byte, error) {
 /*
 	// Construct command

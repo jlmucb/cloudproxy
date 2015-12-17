@@ -24,6 +24,7 @@ import (
 	//"crypto/subtle"
 	//"bytes"
 	//"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -74,42 +75,43 @@ func SetShortPcrs(pcr_nums []int) ([]byte, error) {
 	return pcr, nil
 }
 
+// Fill Rsa key structure for public blob
+// Note: Only Rsa keys for now
 func GetPublicKeyFromBlob(in []byte) (*RsaKey, error) {
-	// key := new RsaKey
-	return nil, nil
+	key := new(RsaKey)
+	return key, nil
 }
 
-func ComputePcrDigest(alg uint16, in []byte) ([]byte, error) {
-	return nil, nil
+// nil is error
+func SetHandle(handle Handle) ([]byte) {
+	uint32_handle := uint32(handle)
+	str,_ := pack([]interface{}{&uint32_handle})
+	return str
 }
 
-func SetOwnerHandle(handle Handle) ([]byte, error) {
-	return nil, nil
+
+// nil return is an error
+func SetPasswordData(password string) ([]byte) {
+// len password
+	pw, err := hex.DecodeString(password)
+	if err != nil {
+		return nil
+	}
+	ret, _ := pack([]interface{}{&pw})
+	return ret
 }
 
-
-// remove
-
-func SetPasswordData(password string) ([]byte, error) {
-	// len pw
-	return nil, nil
-}
-
-func CreatePasswordAuthArea(password string) ([]byte, error) {
-// len0 TPM_RS_PW 0000 01 password data
-	// password buffer
-	// convert TPM_RS_PW
-	// 0000 01
-	// set password area
-	return nil, nil
-}
-
-func GetRsaPublicKeyFromBlob(in []byte) (*RsaKey, error) {
-	return nil, nil
-}
-
-func GetRsaPrivateKeyFromBlob(in []byte) (*RsaKey, error) {
-	return nil, nil
+// nil return is an error
+// 	returns: len0 TPM_RS_PW 0000 01 password data as []byte
+func CreatePasswordAuthArea(password string) ([]byte) {
+	owner_str := SetHandle(Handle(ordTPM_RS_PW))
+	suffix := []byte{0, 0, 1}
+	pw := SetPasswordData(password)
+	final_buf := append(owner_str, suffix...)
+	final_buf = append(final_buf, pw...)
+	out := []interface{}{&final_buf}
+	ret, _:= pack(out)
+	return ret
 }
 
 func CreateSensitiveArea(in1 []byte, in2 []byte) ([]byte, error) {
@@ -139,6 +141,10 @@ func CreateSensitiveArea(in1 []byte, in2 []byte) ([]byte, error) {
 //  n = Marshal_Keyed_Hash_Info(keyed_hash, space_left, in);
 
 // ----------------------------------------------------------------
+
+func ComputePcrDigest(alg uint16, in []byte) ([]byte, error) {
+	return nil, nil
+}
 
 
 // ConstructGetRandom constructs a GetRandom command.

@@ -106,10 +106,11 @@ func GetRsaPrivateKeyFromBlob(in []byte) (*RsaKey, error) {
 	return nil, nil
 }
 
-// ----------------------------------------------------------------
-// int CreateSensitiveArea(int size_in, byte* in, int size_data, byte* data, int size, byte* buf)
+func CreateSensitiveArea(in1 []byte, in2 []byte) ([]byte, error) {
+	return nil, nil
+}
 
-// CreateSensitiveArea(string& authString, int size_data, byte* data, int size, byte* buf)
+// ----------------------------------------------------------------
 
 // Marshal_AuthSession_Info(TPMI_DH_OBJECT& tpm_obj, TPMI_DH_ENTITY& bind_obj,
 //                          TPM2B_NONCE& initial_nonce, TPM2B_ENCRYPTED_SECRET& salt,
@@ -529,15 +530,49 @@ func ConstructCreatePrimary(owner uint32, pcr_selection []byte, enc_alg uint16, 
 // DecodeCreatePrimary decodes a CreatePrimary response.
 func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
 /*
-        var rand_bytes []byte
+	80020000013c00000000
+        80000000
+	0000
+	0125 009a
+	0001 0004 00030072
+	0000
+	0006 0080 0043 0010 0400 00010001
+	0080 afe42d93b037f25f5f4a92bd65d61b417b51041f057e08670da98bb4720df166d8c0e12cd651196e0e577828e65f0e9b0a0da4181bc6553e35970f8b4a6c1790c6132359c62f45952a6e3779256de208b996bf2d216fdcfbddd4bdcb0e0cf9fd454caa9604d867e7d7901353d1ccd23e16c7a53788f57b602449b0ecaf0590fb
+	00310000 0001 0004
+	03800000
+	0014 bbf70aea75095f280ea3b835afda4a195279ab2c
+	0100 1000044000 0001 0004 40000001 0000
+	0014 1a1ea8de55d7410287405c3b54057d578d76444a
+	8021 40000001
+	0020 e74aa1a8f272b604d6c0cf55b271211a130c011a12b0ba632cc1448c4de83713
+	0016 0004 3adbc7b1296c49aac7c154371fd99aeb6e58a9f
+	50000010000
 
-        out :=  []interface{}{&rand_bytes}
+        var handle uint32
+	var empty []byte
+	var t1 uint16
+	var t2 uint16
+	var enc_alg uint16
+	var int_alg uint16
+	var t3 uint16
+	var scheme1 uint16
+	var sym_bits uint16
+	var scheme2 uint16
+	var alg2 uint16
+	var mod_size uint16
+	var exp uint32
+	var modulus []byte
+	var something uint32
+	var alg3 uint16
+	var alg4 uint16
+	var hash1 []byte
+	// skip 4
+
+        out :=  []interface{}{&handle, &empty}
         err := unpack(in, out)
         if err != nil {
                 return nil, errors.New("Can't decode CreatePrimary response")
         }
-
-        return rand_bytes, nil
 */
 	return Handle(0), nil, nil
 }

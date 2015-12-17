@@ -588,8 +588,7 @@ func DecodeReadPublic(in []byte) ([]byte, error) {
 
 // ReadPublic
 //	Output: key blob, name, qualified name
-func ReadPublic(rw io.ReadWriter, handle Handle) (
-	[]byte, []byte, []byte, error) {
+func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error) {
 /*
 	// Construct command
 	x, err:= ConstructReadPublic(size)
@@ -748,7 +747,7 @@ func DecodeLoad(in []byte) ([]byte, error) {
 // Load
 //	Output: handle, name
 func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string,
-	     inPublic []byte, inPrivate []byte) (Handle, []byte, error) {
+	     public_blob []byte, private_blob []byte) (Handle, []byte, error) {
 /*
 	// Construct command
 	x, err:= ConstructGetRandom(size)
@@ -1141,7 +1140,8 @@ func DecodeUnseal(in []byte) ([]byte, error) {
 }
 
 // Unseal
-func Unseal(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
+func Unseal(rw io.ReadWriter, item_handle Handle, password string, session_handle Handle,
+	attributes []byte, digest []byte) ([]byte, error) {
 /*
  	TPM_HANDLE item_handle, string& parentAuth,
         TPM_HANDLE session_handle, TPM2B_NONCE& nonce,
@@ -1221,7 +1221,10 @@ func DecodeQuote(in []byte) ([]byte, error) {
 }
 
 // Quote
-func Quote(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
+// 	Output: attest, sig
+func Quote(rw io.ReadWriter, signing_handle Handle, password string,
+	to_quote []byte, scheme uint16, pcr []byte, sig_alg uint16,
+	hash_alg uint16) ([]byte, []byte, error) {
 /*
 	TPM_HANDLE signingHandle, string& parentAuth,
         int quote_size, byte* toQuote,
@@ -1268,7 +1271,7 @@ func Quote(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	}
 	return rand, nil
 */
-	return nil, nil
+	return nil, nil, nil
 }
 
 // ConstructActivateCredential constructs a ActivateCredential command.
@@ -1302,14 +1305,10 @@ func DecodeActivateCredential(in []byte) ([]byte, error) {
 }
 
 // ActivateCredential
-func ActivateCredential(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
+// 	Output: certinfo, encrypted secret
+func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handle,
+	active_password string, key_password string) ([]byte, []byte, error) {
 /*
- 	TPM_HANDLE activeHandle,
-        TPM_HANDLE keyHandle,
-        string& activeAuth, string& keyAuth,
-        TPM2B_ID_OBJECT& credentialBlob,
-        TPM2B_ENCRYPTED_SECRET& secret,
-        TPM2B_DIGEST* certInfo
 	// Construct command
 	x, err:= ConstructActivateCredential(size)
 	if err != nil {
@@ -1350,7 +1349,7 @@ func ActivateCredential(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	}
 	return rand, nil
 */
-	return nil, nil
+	return nil, nil, nil
 }
 
 // ConstructEvictControl constructs a EvictControl command.
@@ -1384,11 +1383,9 @@ func DecodeEvictControl(in []byte) ([]byte, error) {
 }
 
 // EvictControl
-func EvictControl(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
+func EvictControl(rw io.ReadWriter, owner Handle, password string,
+	persistant_handle Handle) (error) {
 /*
-	TPMI_RH_PROVISION owner,
-        TPM_HANDLE handle, string& authString,
-        TPMI_DH_PERSISTENT persistantHandle
 	// Construct command
 	x, err:= ConstructEvictControl(size)
 	if err != nil {
@@ -1429,7 +1426,7 @@ func EvictControl(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	}
 	return rand, nil
 */
-	return nil, nil
+	return nil
 }
 
 // ConstructSaveContext constructs a SaveContext command.
@@ -1463,9 +1460,8 @@ func  DecodeSaveContext(in []byte) ([]byte, error) {
 }
 
 // SaveContext
-func SaveContext(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
+func SaveContext(rw io.ReadWriter, handle Handle, save_area []byte) (error) {
 /*
-	TPM_HANDLE handle, int* size, byte* saveArea
 	// Construct command
 	x, err:= ConstructSaveContext(size)
 	if err != nil {
@@ -1506,7 +1502,7 @@ func SaveContext(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	}
 	return rand, nil
 */
-	return nil, nil
+	return nil
 }
 
 // ConstructLoadContext constructs a LoadContext command.
@@ -1540,7 +1536,7 @@ func  DecodeLoadContext(in []byte) ([]byte, error) {
 }
 
 // LoadContext
-func LoadContext(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
+func LoadContext(rw io.ReadWriter, save_area []byte) (Handle, error) {
 /*
 	int size, byte* saveArea, TPM_HANDLE* handle
 	// Construct command
@@ -1583,7 +1579,7 @@ func LoadContext(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	}
 	return rand, nil
 */
-	return nil, nil
+	return Handle(0), nil
 }
 
 /*

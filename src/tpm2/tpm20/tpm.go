@@ -484,18 +484,39 @@ func Flushall(rw io.ReadWriter) (error) {
 }
 
 // ConstructCreatePrimary constructs a CreatePrimary command.
+//
+// From spec.  Buffer is
+//	TPM_HANDLE (owner)
+//	Auth area
+//	TPM2B_SENSITIVE_CREATE
+//	TPM2B_PUBLIC
+//		size buffer
+//		type
+//		hash
+//		attributes
+//		authPolicy
+//		params
+//			SYMDEF_OBJ
+//				alg
+//				bits
+//				mode
+//		scheme
+//		bits
+//		exponent
+//		size
+//		modulus
 func ConstructCreatePrimary(owner uint32, pcr_selection []byte, enc_alg uint16, int_alg uint16,
         create_flags uint32, owner_password string, sym_alg uint16, sym_key_size_bits uint16,
         sym_mode uint16, sig_scheme uint16, modulus_size_bits uint16, exp uint32) ([]byte, error) {
 /*
   80020000004d00000131
-  owner
+  owner handle
   40000001
-  zero
+  zero 
   0000
   pw auth area
   0009 40000009 00000100 00
-  password (sensitive area)
+  password (SENSITIVE CREATE)
   0008 0004 01020304
        0000
   public key info
@@ -510,9 +531,9 @@ func ConstructCreatePrimary(owner uint32, pcr_selection []byte, enc_alg uint16, 
   0400
   exponent
   00010001
-  outside info
+  outside info (TPM2B_DATA)
   0000
-  long pcr    count  alg pcr
+  long pcr    count  alg pcr (TPML_PCR_SELECTION)
   0000     00000001 0004 03800000
 */
 /*

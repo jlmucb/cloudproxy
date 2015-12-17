@@ -62,7 +62,7 @@ func OpenTPM(path string) (io.ReadWriteCloser, error) {
 	return rwc, nil
 }
 
-func SetLongPcrs(pcr_nums []int) ([]byte, error) {
+func SetShortPcrs(pcr_nums []int) ([]byte, error) {
 	pcr := []byte{3,0,0,0}
 	var byte_num int
 	var byte_pos byte
@@ -74,8 +74,8 @@ func SetLongPcrs(pcr_nums []int) ([]byte, error) {
 	return pcr, nil
 }
 
-func SetShortPcrs(pcr_nums []int) ([]byte, error) {
-	return nil, nil
+func GetPublicKeyFromBlob(in []byte) (error) {
+	return nil
 }
 
 func ComputePcrDigest(alg uint16, in []byte) ([]byte, error) {
@@ -470,7 +470,11 @@ func Flushall(rw io.ReadWriter) (error) {
 }
 
 // ConstructCreatePrimary constructs a CreatePrimary command.
-func ConstructCreatePrimary(keyBlob []byte) ([]byte, error) {
+func ConstructCreatePrimary(owner uint32, pcr_selection []byte, enc_alg uint16, int_alg uint16,
+        create_flags uint32, owner_password string,
+        sym_alg uint16, sym_key_size_bits uint16,
+        sym_mode uint16, sig_scheme uint16,
+        modulus_size_bits uint16, exp uint32) ([]byte, error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdCreatePrimary)
 	if err != nil {
@@ -484,7 +488,7 @@ func ConstructCreatePrimary(keyBlob []byte) ([]byte, error) {
 }
 
 // DecodeCreatePrimary decodes a CreatePrimary response.
-func DecodeCreatePrimary(in []byte) ([]byte, error) {
+func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
 /*
         var rand_bytes []byte
 
@@ -496,21 +500,19 @@ func DecodeCreatePrimary(in []byte) ([]byte, error) {
 
         return rand_bytes, nil
 */
-	return nil, nil
+	return Handle(0), nil, nil
 }
 
 // CreatePrimary
-func CreatePrimary(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
+//	Output: handle, public key blob
+func CreatePrimary(rw io.ReadWriter, 
+	owner uint32, pcr_selection []byte,
+	enc_alg uint16, int_alg uint16,
+	create_flags uint32, owner_password string,
+	sym_alg uint16, sym_key_size_bits uint16,
+	sym_mode uint16, sig_scheme uint16,
+	modulus_size_bits uint16, exp uint32) (Handle, []byte, error) {
 /*
-	TPM_HANDLE owner, string& authString,
-        TPML_PCR_SELECTION& pcr_selection,
-        TPM_ALG_ID enc_alg, TPM_ALG_ID int_alg,
-        TPMA_OBJECT& flags, TPM_ALG_ID sym_alg,
-        TPMI_AES_KEY_BITS sym_key_size,
-        TPMI_ALG_SYM_MODE sym_mode, TPM_ALG_ID sig_scheme,
-        int mod_size, uint32_t exp,
-        TPM_HANDLE* handle, TPM2B_PUBLIC* pub_out
-
 	// Construct command
 	x, err:= ConstructCreatePrimary(size)
 	if err != nil {
@@ -551,7 +553,7 @@ func CreatePrimary(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	}
 	return rand, nil
 */
-	return nil, nil
+	return 1, nil, nil
 }
 
 // ConstructReadPublic constructs a ReadPublic command.
@@ -585,12 +587,10 @@ func DecodeReadPublic(in []byte) ([]byte, error) {
 }
 
 // ReadPublic
-func ReadPublic(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
+//	Output: key blob, name, qualified name
+func ReadPublic(rw io.ReadWriter, handle Handle) (
+	[]byte, []byte, []byte, error) {
 /*
-	TPM_HANDLE handle,
-        uint16_t* pub_blob_size, byte* pub_blob,
-        TPM2B_PUBLIC& outPublic, TPM2B_NAME& name,
-        TPM2B_NAME& qualifiedName
 	// Construct command
 	x, err:= ConstructReadPublic(size)
 	if err != nil {
@@ -631,7 +631,7 @@ func ReadPublic(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	}
 	return rand, nil
 */
-	return nil, nil
+	return nil, nil, nil, nil
 }
 
 // CreateKey
@@ -666,20 +666,12 @@ func DecodeCreateKey(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
-func CreateKey(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
+// Output: public blob, private blob, creation data, digest, creation-ticket
+func CreateKey(rw io.ReadWriter, 
+	parent Handle, parent_password string, pcr_selection []byte, enc_alg uint16, int_alg uint16,
+        create_flags uint32, owner_password string, sym_alg uint16, sym_key_size_bits uint16,
+        sym_mode uint16, sig_scheme uint16, modulus_size_bits uint16, exp uint32) ([]byte, error) {
 /*
- 	TPM_HANDLE parent_handle,
-        string& parentAuth, string& authString,
-        TPML_PCR_SELECTION& pcr_selection,
-        TPM_ALG_ID enc_alg, TPM_ALG_ID int_alg,
-        TPMA_OBJECT& flags, TPM_ALG_ID sym_alg,
-        TPMI_AES_KEY_BITS sym_key_size,
-        TPMI_ALG_SYM_MODE sym_mode, TPM_ALG_ID sig_scheme,
-        int mod_size, uint32_t exp,
-        int* size_public, byte* out_public,
-        int* size_private, byte* out_private,
-        TPM2B_CREATION_DATA* creation_out,
-        TPM2B_DIGEST* digest_out, TPMT_TK_CREATION* creation_ticket
 	// Construct command
 	x, err:= ConstructCreateKey(size)
 	if err != nil {
@@ -720,7 +712,7 @@ func CreateKey(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	}
 	return rand, nil
 */
-	return nil, nil
+	return  nil, nil
 }
 
 // ConstructLoad constructs a Load command.
@@ -802,7 +794,7 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string,
 }
 
 // ConstructPolicyPassword constructs a PolicyPassword command.
-func ConstructPolicyPassword(keyBlob []byte) ([]byte, error) {
+func ConstructPolicyPassword(handle Handle) (error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdPolicyPassword)
 	if err != nil {
@@ -812,7 +804,7 @@ func ConstructPolicyPassword(keyBlob []byte) ([]byte, error) {
 	x, _ := packWithHeader(cmdHdr, num_bytes)
 	return x, nil
 */
-	return nil, nil
+	return nil
 }
 
 // DecodePolicyPassword decodes a PolicyPassword response.
@@ -1067,23 +1059,14 @@ func DecodeCreateSealed(in []byte) ([]byte, error) {
 }
 
 // CreateSealed
-func CreateSealed(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
+// 	Output: public blob, private blob
+func CreateSealed(rw io.ReadWriter, 
+	parent Handle, policy_digest []byte, parent_password string, 
+	to_seal []byte, pcr_selection []byte, int_alg uint16,
+        create_flags uint32, sym_alg uint16, sym_key_size_bits uint16,
+        sym_mode uint16, sig_scheme uint16, modulus_size_bits uint16,
+	 exp uint32) ([]byte, []byte, error) {
 /*
-	TPM_HANDLE parent_handle,
-        int size_policy_digest, byte* policy_digest,
-        string& parentAuth,
-        int size_to_seal, byte* to_seal,
-        TPML_PCR_SELECTION& pcr_selection,
-        TPM_ALG_ID int_alg,
-        TPMA_OBJECT& flags, TPM_ALG_ID sym_alg,
-        TPMI_AES_KEY_BITS sym_key_size,
-        TPMI_ALG_SYM_MODE sym_mode, TPM_ALG_ID sig_scheme,
-        int mod_size, uint32_t exp,
-        int* size_public, byte* out_public,
-        int* size_private, byte* out_private,
-        TPM2B_CREATION_DATA* creation_out,
-        TPM2B_DIGEST* digest_out,
-        TPMT_TK_CREATION* creation_ticket
 	// Construct command
 	x, err:= ConstructCreateSealed(size)
 	if err != nil {
@@ -1124,7 +1107,7 @@ func CreateSealed(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	}
 	return rand, nil
 */
-	return nil, nil
+	return nil, nil, nil
 }
 
 // ConstructUnseal constructs a Unseal command.

@@ -23,10 +23,23 @@ import (
 	"testing"
 )
 
+func TestSetShortPcrs(t *testing.T) {
+	pcr_nums := []int{7,8}
+	pcr, err := SetShortPcrs(pcr_nums)
+	if err != nil {
+		t.Fatal("Test SetShortPcrs fails\n")
+	}
+	fmt.Printf("Pcr's: %x\n", pcr)
+	test_pcr := []byte{0x03,0x80,0x01,0x00}
+	if !bytes.Equal(test_pcr, pcr) {
+		t.Fatal("Wrong pcr value\n")
+	}
+}
+
 func TestDecode(t *testing.T) {
 	x, err := ConstructGetRandom(16)
 	if err != nil {
-		fmt.Printf("TestDecode ConstructGetRandom fails\n")
+		fmt.Printf("TestDecode fails\n")
 		return
 	}
 	var b []byte

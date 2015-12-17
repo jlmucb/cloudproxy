@@ -557,7 +557,7 @@ func CreatePrimary(rw io.ReadWriter,
 }
 
 // ConstructReadPublic constructs a ReadPublic command.
-func ConstructReadPublic(keyBlob []byte) ([]byte, error) {
+func ConstructReadPublic(handle Handle) ([]byte, error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdReadPublic)
 	if err != nil {
@@ -571,7 +571,7 @@ func ConstructReadPublic(keyBlob []byte) ([]byte, error) {
 }
 
 // DecodeReadPublic decodes a ReadPublic response.
-func DecodeReadPublic(in []byte) ([]byte, error) {
+func DecodeReadPublic(in []byte) ([]byte, []byte, []byte, error) {
 /*
         var rand_bytes []byte
 
@@ -583,7 +583,7 @@ func DecodeReadPublic(in []byte) ([]byte, error) {
 
         return rand_bytes, nil
 */
-	return nil, nil
+	return nil, nil, nil, nil
 }
 
 // ReadPublic
@@ -636,7 +636,9 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 // CreateKey
 
 // ConstructCreateKey constructs a CreateKey command.
-func ConstructCreateKey(keyBlob []byte) ([]byte, error) {
+func ConstructCreateKey(arent Handle, parent_password string, pcr_selection []byte, enc_alg uint16, int_alg uint16,
+        create_flags uint32, owner_password string, sym_alg uint16, sym_key_size_bits uint16,
+        sym_mode uint16, sig_scheme uint16, modulus_size_bits uint16, exp uint32) ([]byte, error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
 	if err != nil {
@@ -650,7 +652,7 @@ func ConstructCreateKey(keyBlob []byte) ([]byte, error) {
 }
 
 // DecodeCreateKey decodes a CreateKey response.
-func DecodeCreateKey(in []byte) ([]byte, error) {
+func DecodeCreateKey(in []byte) ([]byte, []byte, []byte, error) {
 /*
         var rand_bytes []byte
 
@@ -662,14 +664,14 @@ func DecodeCreateKey(in []byte) ([]byte, error) {
 
         return rand_bytes, nil
 */
-	return nil, nil
+	return nil, nil, nil, nil
 }
 
-// Output: public blob, private blob, creation data, digest, creation-ticket
+// Output: public blob, private blob, digest
 func CreateKey(rw io.ReadWriter, 
 	parent Handle, parent_password string, pcr_selection []byte, enc_alg uint16, int_alg uint16,
         create_flags uint32, owner_password string, sym_alg uint16, sym_key_size_bits uint16,
-        sym_mode uint16, sig_scheme uint16, modulus_size_bits uint16, exp uint32) ([]byte, error) {
+        sym_mode uint16, sig_scheme uint16, modulus_size_bits uint16, exp uint32) ([]byte, []byte, []byte, error) {
 /*
 	// Construct command
 	x, err:= ConstructCreateKey(size)
@@ -711,11 +713,12 @@ func CreateKey(rw io.ReadWriter,
 	}
 	return rand, nil
 */
-	return  nil, nil
+	return  nil, nil, nil, nil
 }
 
 // ConstructLoad constructs a Load command.
-func ConstructLoad(keyBlob []byte) ([]byte, error) {
+func ConstructLoad(parentHandle Handle, parentAuth string,
+             public_blob []byte, private_blob []byte) ([]byte, error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdLoad)
 	if err != nil {
@@ -729,7 +732,7 @@ func ConstructLoad(keyBlob []byte) ([]byte, error) {
 }
 
 // DecodeLoad decodes a Load response.
-func DecodeLoad(in []byte) ([]byte, error) {
+func DecodeLoad(in []byte) (Handle, []byte, error) {
 /*
         var rand_bytes []byte
 
@@ -741,7 +744,7 @@ func DecodeLoad(in []byte) ([]byte, error) {
 
         return rand_bytes, nil
 */
-	return nil, nil
+	return Handle(0), nil, nil
 }
 
 // Load
@@ -806,22 +809,6 @@ func ConstructPolicyPassword(handle Handle) (error) {
 	return nil
 }
 
-// DecodePolicyPassword decodes a PolicyPassword response.
-func DecodePolicyPassword(in []byte) ([]byte, error) {
-/*
-        var rand_bytes []byte
-
-        out :=  []interface{}{&rand_bytes}
-        err := unpack(in, out)
-        if err != nil {
-                return nil, errors.New("Can't decode PolicyPassword response")
-        }
-
-        return rand_bytes, nil
- */
-	return nil, nil
-}
-
 // PolicyPassword
 func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
 /*
@@ -869,7 +856,7 @@ func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
 }
 
 // ConstructPolicyGetDigest constructs a PolicyGetDigest command.
-func ConstructPolicyGetDigest(keyBlob []byte) ([]byte, error) {
+func ConstructPolicyGetDigest(handle Handle) ([]byte, error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdPolicyGetDigest)
 	if err != nil {
@@ -883,7 +870,7 @@ func ConstructPolicyGetDigest(keyBlob []byte) ([]byte, error) {
 }
 
 // DecodePolicyGetDigest decodes a PolicyGetDigest response.
-func DecodePolicyGetDigest(in []byte) ([]byte, error) {
+func DecodePolicyGetDigest(in []byte) (error) {
 /*
         var rand_bytes []byte
 
@@ -895,7 +882,7 @@ func DecodePolicyGetDigest(in []byte) ([]byte, error) {
 
         return rand_bytes, nil
 */
-	return nil, nil
+	return nil
 }
 
 // PolicyGetDigest
@@ -946,7 +933,7 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 }
 
 // ConstructStartAuthSession constructs a StartAuthSession command.
-func ConstructStartAuthSession(keyBlob []byte) ([]byte, error) {
+func ConstructStartAuthSession() ([]byte, error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdStartAuthSession)
 	if err != nil {
@@ -976,7 +963,7 @@ func DecodeStartAuthSession(in []byte) ([]byte, error) {
 }
 
 // StartAuthSession
-func StartAuthSession(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
+func StartAuthSession(rw io.ReadWriter) (Handle, error) {
 /*
  	TPM_RH tpm_obj, TPM_RH bind_obj,
         TPM2B_NONCE& initial_nonce,
@@ -1024,11 +1011,15 @@ func StartAuthSession(rw io.ReadWriter, keyBlob []byte) ([]byte, error) {
 	}
 	return rand, nil
 */
-	return nil, nil
+	return Handle(0), nil
 }
 
 // ConstructCreateSealed constructs a CreateSealed command.
-func ConstructCreateSealed(keyBlob []byte) ([]byte, error) {
+func ConstructCreateSealed(parent Handle, policy_digest []byte, parent_password string,
+        to_seal []byte, pcr_selection []byte, int_alg uint16,
+        create_flags uint32, sym_alg uint16, sym_key_size_bits uint16,
+        sym_mode uint16, sig_scheme uint16, modulus_size_bits uint16,
+        exp uint32) ([]byte, error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdCreateSealed)
 	if err != nil {
@@ -1042,7 +1033,7 @@ func ConstructCreateSealed(keyBlob []byte) ([]byte, error) {
 }
 
 // DecodeCreateSealed decodes a CreateSealed response.
-func DecodeCreateSealed(in []byte) ([]byte, error) {
+func DecodeCreateSealed(in []byte) ([]byte, []byte, error) {
 /*
         var rand_bytes []byte
 
@@ -1054,7 +1045,7 @@ func DecodeCreateSealed(in []byte) ([]byte, error) {
 
         return rand_bytes, nil
 */
-	return nil, nil
+	return nil, nil, nil
 }
 
 // CreateSealed
@@ -1064,7 +1055,7 @@ func CreateSealed(rw io.ReadWriter,
 	to_seal []byte, pcr_selection []byte, int_alg uint16,
         create_flags uint32, sym_alg uint16, sym_key_size_bits uint16,
         sym_mode uint16, sig_scheme uint16, modulus_size_bits uint16,
-	 exp uint32) ([]byte, []byte, error) {
+	exp uint32) ([]byte, []byte, error) {
 /*
 	// Construct command
 	x, err:= ConstructCreateSealed(size)
@@ -1110,7 +1101,8 @@ func CreateSealed(rw io.ReadWriter,
 }
 
 // ConstructUnseal constructs a Unseal command.
-func ConstructUnseal(keyBlob []byte) ([]byte, error) {
+func ConstructUnseal(item_handle Handle, password string, session_handle Handle,
+        attributes []byte, digest []byte) ([]byte, error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdUnseal)
 	if err != nil {
@@ -1191,7 +1183,9 @@ func Unseal(rw io.ReadWriter, item_handle Handle, password string, session_handl
 }
 
 // ConstructQuote constructs a Quote command.
-func ConstructQuote(keyBlob []byte) ([]byte, error) {
+func ConstructQuote(isigning_handle Handle, password string,
+        to_quote []byte, scheme uint16, pcr []byte, sig_alg uint16,
+        hash_alg uint16) ([]byte, error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdQuote)
 	if err != nil {
@@ -1226,11 +1220,6 @@ func Quote(rw io.ReadWriter, signing_handle Handle, password string,
 	to_quote []byte, scheme uint16, pcr []byte, sig_alg uint16,
 	hash_alg uint16) ([]byte, []byte, error) {
 /*
-	TPM_HANDLE signingHandle, string& parentAuth,
-        int quote_size, byte* toQuote,
-        TPMT_SIG_SCHEME scheme, TPML_PCR_SELECTION& pcr_selection,
-        TPM_ALG_ID sig_alg, TPM_ALG_ID hash_alg,
-        int* attest_size, byte* attest, int* sig_size, byte* sig
 	// Construct command
 	x, err:= ConstructQuote(size)
 	if err != nil {
@@ -1275,7 +1264,8 @@ func Quote(rw io.ReadWriter, signing_handle Handle, password string,
 }
 
 // ConstructActivateCredential constructs a ActivateCredential command.
-func ConstructActivateCredential(keyBlob []byte) ([]byte, error) {
+func ConstructActivateCredential(active_handle Handle, key_handle Handle,
+        active_password string, key_password string) ([]byte, error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdActivateCredential)
 	if err != nil {
@@ -1289,7 +1279,7 @@ func ConstructActivateCredential(keyBlob []byte) ([]byte, error) {
 }
 
 // DecodeActivateCredential decodes a ActivateCredential response.
-func DecodeActivateCredential(in []byte) ([]byte, error) {
+func DecodeActivateCredential(in []byte) ([]byte, []byte, error) {
 /*
         var rand_bytes []byte
 
@@ -1301,7 +1291,7 @@ func DecodeActivateCredential(in []byte) ([]byte, error) {
 
         return rand_bytes, nil
 */
-	return nil, nil
+	return nil, nil, nil
 }
 
 // ActivateCredential
@@ -1353,7 +1343,7 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 }
 
 // ConstructEvictControl constructs a EvictControl command.
-func ConstructEvictControl(keyBlob []byte) ([]byte, error) {
+func ConstructEvictControl(tmp_handle Handle, password string, persistant_handle Handle) ([]byte, error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdEvictControl)
 	if err != nil {
@@ -1367,7 +1357,7 @@ func ConstructEvictControl(keyBlob []byte) ([]byte, error) {
 }
 
 // DecodeEvictControl decodes a EvictControl response.
-func DecodeEvictControl(in []byte) ([]byte, error) {
+func DecodeEvictControl(in []byte) (error) {
 /*
         var rand_bytes []byte
 
@@ -1379,11 +1369,11 @@ func DecodeEvictControl(in []byte) ([]byte, error) {
 
         return rand_bytes, nil
 */
-	return nil, nil
+	return nil
 }
 
 // EvictControl
-func EvictControl(rw io.ReadWriter, owner Handle, password string,
+func EvictControl(rw io.ReadWriter, tmp_handle Handle, password string,
 	persistant_handle Handle) (error) {
 /*
 	// Construct command
@@ -1430,7 +1420,7 @@ func EvictControl(rw io.ReadWriter, owner Handle, password string,
 }
 
 // ConstructSaveContext constructs a SaveContext command.
-func ConstructSaveContext(keyBlob []byte) ([]byte, error) {
+func ConstructSaveContext(handle Handle, save_area []byte) ([]byte, error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdSaveContext)
 	if err != nil {
@@ -1439,22 +1429,6 @@ func ConstructSaveContext(keyBlob []byte) ([]byte, error) {
 	num_bytes :=  []interface{}{uint16(size)}
 	x, _ := packWithHeader(cmdHdr, num_bytes)
 	return x, nil
-*/
-	return nil, nil
-}
-
-// DecodeSaveContext decodes a SaveContext response.
-func  DecodeSaveContext(in []byte) ([]byte, error) {
-/*
-        var rand_bytes []byte
-
-        out :=  []interface{}{&rand_bytes}
-        err := unpack(in, out)
-        if err != nil {
-                return nil, errors.New("Can't decode SaveContext response")
-        }
-
-        return rand_bytes, nil
 */
 	return nil, nil
 }
@@ -1506,7 +1480,7 @@ func SaveContext(rw io.ReadWriter, handle Handle, save_area []byte) (error) {
 }
 
 // ConstructLoadContext constructs a LoadContext command.
-func ConstructLoadContext(keyBlob []byte) ([]byte, error) {
+func ConstructLoadContext(save_area []byte) ([]byte, error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdLoadContext)
 	if err != nil {
@@ -1520,7 +1494,7 @@ func ConstructLoadContext(keyBlob []byte) ([]byte, error) {
 }
 
 // DecodeLoadContext decodes a LoadContext response.
-func  DecodeLoadContext(in []byte) ([]byte, error) {
+func  DecodeLoadContext(in []byte) (Handle, error) {
 /*
         var rand_bytes []byte
 
@@ -1532,7 +1506,7 @@ func  DecodeLoadContext(in []byte) ([]byte, error) {
 
         return rand_bytes, nil
 */
-	return nil, nil
+	return Handle(0), nil
 }
 
 // LoadContext

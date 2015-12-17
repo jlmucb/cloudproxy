@@ -49,11 +49,32 @@ func TestSetHandle(t *testing.T) {
 }
 
 func TestSetPasswordData(t *testing.T) {
-// SetPasswordData(password string)
+	pw1 := SetPasswordData("01020304")
+	test1 := []byte{0,4,1,2,3,4}
+	if pw1 == nil || !bytes.Equal(test1, pw1) {
+		t.Fatal("Test Password 1 fails\n")
+	}
+	pw2 := SetPasswordData("0102030405")
+	test2 := []byte{0,5,1,2,3,4,5}
+	if pw2 == nil || !bytes.Equal(test2, pw2) {
+		t.Fatal("Test Password 2 fails\n")
+	}
 }
 
 func TestCreatePasswordAuthArea(t *testing.T) {
-// CreatePasswordAuthArea(password string) ([]byte)
+	pw_auth1 := CreatePasswordAuthArea("01020304")
+	fmt.Printf("TestCreatePasswordAuthArea: %x\n", pw_auth1)
+	test1 := []byte{0,0xd,0x40,0,0,9,0,0,1,0,4,1,2,3,4}
+	if test1 == nil || !bytes.Equal(test1, pw_auth1) {
+		t.Fatal("Test PasswordAuthArea 1 fails\n")
+	}
+
+	pw_auth2 := CreatePasswordAuthArea("")
+	test2 := []byte{0,0x9,0x40,0,0,9,0,0,1,0,0}
+	if test2 == nil || !bytes.Equal(test1, pw_auth1) {
+		t.Fatal("Test PasswordAuthArea 2 fails\n")
+	}
+	fmt.Printf("TestCreatePasswordAuthArea: %x\n", pw_auth2)
 }
 
 func TestCreateSensitiveArea(t *testing.T) {

@@ -74,8 +74,9 @@ func SetShortPcrs(pcr_nums []int) ([]byte, error) {
 	return pcr, nil
 }
 
-func GetPublicKeyFromBlob(in []byte) (error) {
-	return nil
+func GetPublicKeyFromBlob(in []byte) (*RsaKey, error) {
+	// key := new RsaKey
+	return nil, nil
 }
 
 func ComputePcrDigest(alg uint16, in []byte) ([]byte, error) {
@@ -90,11 +91,16 @@ func SetOwnerHandle(handle Handle) ([]byte, error) {
 // remove
 
 func SetPasswordData(password string) ([]byte, error) {
+	// len pw
 	return nil, nil
 }
 
 func CreatePasswordAuthArea(password string) ([]byte, error) {
-// 00 TPM_RS_PW 000 password data
+// len0 TPM_RS_PW 0000 01 password data
+	// password buffer
+	// convert TPM_RS_PW
+	// 0000 01
+	// set password area
 	return nil, nil
 }
 

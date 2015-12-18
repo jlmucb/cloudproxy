@@ -90,6 +90,40 @@ func TestCreateSensitiveArea(t *testing.T) {
 	fmt.Printf("Sensitive area: %x\n", s)
 }
 
+func TestCreateSymParams(t *testing.T) {
+	s := CreateSymParams(uint16(algTPM_ALG_AES), uint16(128), uint16(algTPM_ALG_CFB))
+	if s == nil {
+		t.Fatal("CreateSymParams fails")
+	}
+	test := []byte{0,6,0,0x80,0,0x43}
+	if !bytes.Equal(test, s) {
+		t.Fatal("CreateSymParams fails")
+	}
+	fmt.Printf("SymParams area: %x\n", s)
+}
+
+func TestCreateRsaParams(t *testing.T) {
+	var empty_modulus []byte
+	s := CreateRsaParams(uint16(algTPM_ALG_AES), uint16(128), uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(1024), uint32(0x00010001), empty_modulus)
+	if s == nil {
+		t.Fatal("CreateRsaParams fails")
+	}
+	test := []byte{0,6,0,0x80,0,0x43, 0, 0x10, 4,0,0,1,0,1,0,0}
+	fmt.Printf("RsaParams area: %x\n", s)
+	if !bytes.Equal(test, s) {
+		t.Fatal("CreateRsaParams fails")
+	}
+}
+
+func TestCreateLongPcr(t *testing.T) {
+	s :=  CreateLongPcr(uint32(1), []int{7})
+	test := []byte{0, 0, 0, 1, 0, 4, 3, 0x80, 0, 0}
+	if !bytes.Equal(test, s) {
+		t.Fatal("CreateRsaParams fails")
+	}
+	fmt.Printf("CreateLongPcr: %x\n", s)
+}
+
 func TestDecode(t *testing.T) {
 	x, err := ConstructGetRandom(16)
 	if err != nil {

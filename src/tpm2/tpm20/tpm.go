@@ -137,6 +137,43 @@ func CreateSensitiveArea(in1 []byte, in2 []byte) ([]byte) {
 	return ret 
 }
 
+// nil return is error
+func CreateSymParams(symalg uint16, sz uint16, mode uint16) ([]byte) {
+	template := []interface{}{&symalg, &sz, &mode}
+	t, err := pack(template)
+	if err != nil {
+		return nil
+	}
+	return t
+}
+
+// nil return is error
+func CreateRsaParams(symalg uint16, sym_sz uint16, mode uint16,
+		     scheme uint16, mod_sz uint16, exp uint32,
+		     modulus []byte) ([]byte) {
+	b1 := CreateSymParams(symalg, sym_sz, mode)
+	template := []interface{}{&scheme, &mod_sz, &exp, modulus}
+	b2, err := pack(template)
+	if err != nil {
+		return nil
+	}
+	return append(b1, b2...)
+}
+
+// nil return is error
+func CreateLongPcr(count uint32, pcr_nums []int) ([]byte) {
+	b1, err :=  SetShortPcrs(pcr_nums)
+	if err != nil {
+		return nil
+	}
+	template := []interface{}{&count, &b1}
+	b2, err := pack(template)
+	if err != nil {
+		return nil
+	}
+	return b2
+}
+
 // ----------------------------------------------------------------
 
 // Marshal_AuthSession_Info(TPMI_DH_OBJECT& tpm_obj, TPMI_DH_ENTITY& bind_obj,
@@ -515,30 +552,20 @@ func Flushall(rw io.ReadWriter) (error) {
 }
 
 // ConstructCreatePrimary constructs a CreatePrimary command.
-//
-// From spec.  Buffer is
-//	TPM_HANDLE (owner)
-//	Auth area
-//	TPM2B_SENSITIVE_CREATE
-//	TPM2B_PUBLIC
-//		size buffer
-//		type
-//		hash
-//		attributes
-//		authPolicy
-//		params
-//			SYMDEF_OBJ
-//				alg
-//				bits
-//				mode
-//		scheme
-//		bits
-//		exponent
-//		size
-//		modulus
 func ConstructCreatePrimary(owner uint32, pcr_selection []byte, enc_alg uint16, int_alg uint16,
         create_flags uint32, owner_password string, sym_alg uint16, sym_key_size_bits uint16,
         sym_mode uint16, sig_scheme uint16, modulus_size_bits uint16, exp uint32) ([]byte, error) {
+	// command
+	// owner handle
+	// zero
+	// autharea
+	// sensitive create
+	// public key info
+	//	alg alg attributes
+	// auth
+	// RsaParams
+	// outside info
+	// long pcr
 /*
   80020000004d00000131
   owner handle

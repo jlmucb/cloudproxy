@@ -21,6 +21,8 @@ const(
 
 // Supported Algorithms.
 const(
+	algTPM_ALG_SHA1     uint16 = 0x0004
+	algTPM_ALG_AES      uint16 = 0x0006
 	algTPM_ALG_SHA256   uint16 = 0x000B
 	algTPM_ALG_SHA384   uint16 = 0x000C
 	algTPM_ALG_SHA512   uint16 = 0x000D

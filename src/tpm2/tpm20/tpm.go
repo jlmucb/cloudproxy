@@ -136,31 +136,26 @@ func CreateSensitiveArea(in1 []byte, in2 []byte) ([]byte) {
 	return ret 
 }
 
-//func DecodeRsaPublicArea(in []byte) (enc_alg uint16, hash_alg uint16, attributes uint32,
-//	auth_policy []byte, sym_alg uint16, sym_sz uint16,
-//	mode uint16, scheme uint16, key_sz uint16, exp uint32, modulus []byte) {
-//}
+func DecodeRsaPublicArea(in []byte) (*RsaParams, error) {
+	return nil, nil
+}
 
 // nil return is error
-func CreateRsaParams(enc_alg uint16, hash_alg uint16, attributes uint32,
-		     auth_policy []byte,
-		     symalg uint16, sym_sz uint16, mode uint16,
-		     scheme uint16, scheme_hash uint16, mod_sz uint16, exp uint32,
-		     modulus []byte) ([]byte) {
-
-
-	template1 := []interface{}{&enc_alg, &hash_alg, &attributes, &auth_policy}
+func CreateRsaParams(parms RsaParams) ([]byte) {
+	template1 := []interface{}{&parms.enc_alg, &parms.hash_alg,
+				   &parms.attributes, &parms.auth_policy}
 	t1, err := pack(template1)
 	if err != nil {
 		return nil
 	}
-	template2 := []interface{}{&symalg, &sym_sz, &mode, &scheme}
+	template2 := []interface{}{&parms.symalg, &parms.sym_sz,
+				   &parms.mode, &parms.scheme}
 	t2, err := pack(template2)
 	if err != nil {
 		return nil
 	}
-	if scheme == uint16(algTPM_ALG_RSASSA) {
-		template3 := []interface{}{&scheme_hash}
+	if parms.scheme == uint16(algTPM_ALG_RSASSA) {
+		template3 := []interface{}{&parms.scheme_hash}
 		t3, err := pack(template3)
 		if err != nil {
 			return nil
@@ -168,7 +163,7 @@ func CreateRsaParams(enc_alg uint16, hash_alg uint16, attributes uint32,
 		t2 = append(t2, t3...)
 	}
 
-	template4 := []interface{}{&mod_sz, &exp, modulus}
+	template4 := []interface{}{&parms.mod_sz, &parms.exp, parms.modulus}
 	t4, err := pack(template4)
 	if err != nil {
 		return nil
@@ -576,38 +571,22 @@ func Flushall(rw io.ReadWriter) (error) {
 }
 
 // ConstructCreatePrimary constructs a CreatePrimary command.
-func ConstructCreatePrimary(owner uint32, pcr_nums []int, enc_alg uint16,
-	hash_alg uint16, create_flags uint32, auth_policy []byte,
-	parent_password string, owner_password string,
-	sym_alg uint16, sym_key_size_bits uint16, sym_mode uint16,
-	scheme uint16, scheme_hash uint16, modulus_size_bits uint16,
-	exp uint32) ([]byte, error) {
-	// command
-	// owner handle
-	// zero
-	// autharea
-	// sensitive create
-	// public key info
-	//	alg alg attributes
-	// auth
-	// RsaParams
-	// outside info
-	// long pcr
+func ConstructCreatePrimary(owner uint32, pcr_nums []int,
+		parent_password string, owner_password string,
+		parms RsaParams) ([]byte, error) {
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdCreatePrimary)
 	if err != nil {
 		return nil, errors.New("ConstructCreatePrimary failed")
 	}
 	var empty []byte
-	b1 := SetHandle(Handle(ordTPM_RH_OWNER))
+	b1 := SetHandle(Handle(owner))
 	b2,_ := pack([]interface{}{&empty})
 	b3 := CreatePasswordAuthArea(parent_password)
 	t1 := SetPasswordData(owner_password)
 	b4 := CreateSensitiveArea(t1[2:], empty)
-	b5 := CreateRsaParams(enc_alg, hash_alg, create_flags, auth_policy,
-		sym_alg, sym_key_size_bits, sym_mode, uint16(algTPM_ALG_NULL),
-		uint16(0), modulus_size_bits, exp, empty)
+	b5 := CreateRsaParams(parms)
 	b6,_ := pack([]interface{}{&empty})
-	b7 := CreateLongPcr(uint32(1), []int{7})
+	b7 := CreateLongPcr(uint32(1), pcr_nums)
 	arg_bytes := append(b1, b2...)
 	arg_bytes = append(arg_bytes, b3...)
 	arg_bytes = append(arg_bytes, b4...)
@@ -671,9 +650,7 @@ func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
 // CreatePrimary
 //	Output: handle, public key blob
 func CreatePrimary(rw io.ReadWriter, owner uint32, pcr_nums []int,
-	enc_alg uint16, int_alg uint16, create_flags uint32, owner_password string,
-	sym_alg uint16, sym_key_size_bits uint16, sym_mode uint16, sig_scheme uint16,
-	modulus_size_bits uint16, exp uint32) (Handle, []byte, error) {
+	owner_password string, parms RsaParams) (Handle, []byte, error) {
 /*
 	// Construct command
 	x, err:= ConstructCreatePrimary(size)

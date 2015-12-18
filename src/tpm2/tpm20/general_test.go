@@ -92,10 +92,12 @@ func TestCreateSensitiveArea(t *testing.T) {
 
 func TestCreateRsaParams(t *testing.T) {
 	var empty []byte
-	s := CreateRsaParams(uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
+	parms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
 		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
 		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
-		uint16(1024), uint32(0x00010001), empty)
+		uint16(1024), uint32(0x00010001), empty}
+
+	s := CreateRsaParams(parms)
 	if s == nil {
 		t.Fatal("CreateRsaParams fails")
 	}
@@ -447,11 +449,12 @@ func TestConstructCreatePrimary(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 		return
 	}
+	parms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
+		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+		uint16(1024), uint32(0x00010001), empty}
 	cmd_bytes, err := ConstructCreatePrimary(uint32(ordTPM_RH_OWNER), []int{7},
-		uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-		uint32(0x00030072), empty, "", "01020304", uint16(algTPM_ALG_AES),
-		uint16(128), uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL),
-		uint16(0), uint16(1024), uint32(0x00010001))
+						 "", "01020304", parms)
 	if err != nil {
 		t.Fatal("ConstructCreatePrimary fails")
 	}

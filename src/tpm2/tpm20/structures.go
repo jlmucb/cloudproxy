@@ -40,50 +40,20 @@ type responseHeader struct {
 	Res  uint32
 }
 
-/*
-typedef struct {
-  TPMI_ALG_PUBLIC   type;
-  TPMI_ALG_HASH     nameAlg;
-  TPMA_OBJECT       objectAttributes;
-  TPM2B_DIGEST      authPolicy;
-  TPMU_PUBLIC_PARMS parameters;
-  TPMU_PUBLIC_ID    unique;
-} TPMT_PUBLIC;
-
-typedef struct {
-  uint32_t TPMA_NV_PPWRITE        : 1;
-  uint32_t TPMA_NV_OWNERWRITE     : 1;
-  uint32_t TPMA_NV_AUTHWRITE      : 1;
-  uint32_t TPMA_NV_POLICYWRITE    : 1;
-  uint32_t TPMA_NV_COUNTER        : 1;
-  uint32_t TPMA_NV_BITS           : 1;
-  uint32_t TPMA_NV_EXTEND         : 1;
-  uint32_t reserved7_9            : 3;
-  uint32_t TPMA_NV_POLICY_DELETE  : 1;
-  uint32_t TPMA_NV_WRITELOCKED    : 1;
-  uint32_t TPMA_NV_WRITEALL       : 1;
-  uint32_t TPMA_NV_WRITEDEFINE    : 1;
-  uint32_t TPMA_NV_WRITE_STCLEAR  : 1;
-  uint32_t TPMA_NV_GLOBALLOCK     : 1;
-  uint32_t TPMA_NV_PPREAD         : 1;
-  uint32_t TPMA_NV_OWNERREAD      : 1;
-  uint32_t TPMA_NV_AUTHREAD       : 1;
-  uint32_t TPMA_NV_POLICYREAD     : 1;
-  uint32_t reserved20_24          : 5;
-  uint32_t TPMA_NV_NO_DA          : 1;
-  uint32_t TPMA_NV_ORDERLY        : 1;
-  uint32_t TPMA_NV_CLEAR_STCLEAR  : 1;
-  uint32_t TPMA_NV_READLOCKED     : 1;
-  uint32_t TPMA_NV_WRITTEN        : 1;
-  uint32_t TPMA_NV_PLATFORMCREATE : 1;
-  uint32_t TPMA_NV_READ_STCLEAR   : 1;
-} TPMA_NV;
-
-typedef struct {
-  TPMI_ALG_KEYEDHASH_SCHEME scheme;
-  TPMU_SCHEME_KEYEDHASH     details;
-} TPMT_KEYEDHASH_SCHEME;
-*/
+type RsaParams struct {
+	enc_alg uint16
+	hash_alg uint16
+	attributes uint32
+	auth_policy []byte
+	symalg uint16
+	sym_sz uint16
+	mode uint16
+	scheme uint16
+	scheme_hash uint16
+	mod_sz uint16
+	exp uint32
+	modulus []byte
+}
 
 // RSA Key
 type RsaKey struct {

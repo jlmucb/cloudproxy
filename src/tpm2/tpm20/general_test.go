@@ -104,7 +104,7 @@ func TestCreateSymParams(t *testing.T) {
 
 func TestCreateRsaParams(t *testing.T) {
 	var empty_modulus []byte
-	s := CreateRsaParams(uint16(algTPM_ALG_AES), uint16(128), uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(1024), uint32(0x00010001), empty_modulus)
+	s := CreateRsaParams(uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1), uint32(0x00030072), uint16(algTPM_ALG_AES), uint16(128), uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(1024), uint32(0x00010001), empty_modulus)
 	if s == nil {
 		t.Fatal("CreateRsaParams fails")
 	}
@@ -453,7 +453,12 @@ func TestConstructCreatePrimary(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 		return
 	}
-	fmt.Printf("Command: %x\n", test_cmd_bytes)
+	x, err := ConstructCreatePrimary(uint32(ordTPM_RH_OWNER), []int{7}, uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1), uint32(0x00030072), "01020304", uint16(algTPM_ALG_AES), uint16(128), uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(1024), uint32(0x00010001))
+	if err != nil {
+		t.Fatal("ConstructCreatePrimary fails")
+	}
+	fmt.Printf("Test command  : %x\n", test_cmd_bytes)
+	fmt.Printf("CreatePrimary : %x\n", x)
 }
 
 // Response: 80020000013c000000008000000000000125009a0001000400030072000000060080004300100400000100010080afe42d93b037f25f5f4a92bd65d61b417b51041f057e08670da98bb4720df166d8c0e12cd651196e0e577828e65f0e9b0a0da4181bc6553e35970f8b4a6c1790c6132359c62f45952a6e3779256de208b996bf2d216fdcfbddd4bdcb0e0cf9fd454caa9604d867e7d7901353d1ccd23e16c7a53788f57b602449b0ecaf0590fb0031000000010004038000000014bbf70aea75095f280ea3b835afda4a195279ab2c010010000440000001000440000001000000141a1ea8de55d7410287405c3b54057d578d76444a8021400000010020e74aa1a8f272b604d6c0cf55b271211a130c011a12b0ba632cc1448c4de83713001600043adbc7b1296c49aac7c154371fd99aeb6e58a9f50000010000

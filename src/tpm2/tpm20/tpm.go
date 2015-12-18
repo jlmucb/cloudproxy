@@ -148,7 +148,8 @@ func CreateSymParams(symalg uint16, sz uint16, mode uint16) ([]byte) {
 }
 
 // nil return is error
-func CreateRsaParams(symalg uint16, sym_sz uint16, mode uint16,
+func CreateRsaParams(enc_alg uint16, hash_alg uint16, attributes uint32,
+		     symalg uint16, sym_sz uint16, mode uint16,
 		     scheme uint16, mod_sz uint16, exp uint32,
 		     modulus []byte) ([]byte) {
 	b1 := CreateSymParams(symalg, sym_sz, mode)
@@ -552,9 +553,10 @@ func Flushall(rw io.ReadWriter) (error) {
 }
 
 // ConstructCreatePrimary constructs a CreatePrimary command.
-func ConstructCreatePrimary(owner uint32, pcr_selection []byte, enc_alg uint16, int_alg uint16,
-        create_flags uint32, owner_password string, sym_alg uint16, sym_key_size_bits uint16,
-        sym_mode uint16, sig_scheme uint16, modulus_size_bits uint16, exp uint32) ([]byte, error) {
+func ConstructCreatePrimary(owner uint32, pcr_nums []int, enc_alg uint16,
+	hash_alg uint16, create_flags uint32, owner_password string,
+	sym_alg uint16, sym_key_size_bits uint16, sym_mode uint16,
+	sig_scheme uint16, modulus_size_bits uint16, exp uint32) ([]byte, error) {
 	// command
 	// owner handle
 	// zero
@@ -566,44 +568,28 @@ func ConstructCreatePrimary(owner uint32, pcr_selection []byte, enc_alg uint16, 
 	// RsaParams
 	// outside info
 	// long pcr
-/*
-  80020000004d00000131
-  owner handle
-  40000001
-  zero 
-  0000
-  pw auth area
-  0009 40000009 00000100 00
-  password (SENSITIVE CREATE)
-  0008 0004 01020304
-       0000
-  public key info
-  001a
-   alg  alg attributes
-  0001 0004 00030072
-  auth size
-  0000
-   alg aessz scheme TPM_ALG_RSASSA
-  0006 0080    0043 0010
-  rsa-bits
-  0400
-  exponent
-  00010001
-  outside info (TPM2B_DATA)
-  0000
-  long pcr    count  alg pcr (TPML_PCR_SELECTION)
-  0000     00000001 0004 03800000
-*/
-/*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdCreatePrimary)
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdCreatePrimary)
 	if err != nil {
 		return nil, errors.New("ConstructCreatePrimary failed")
 	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
-	return x, nil
-*/
-	return nil, nil
+	var empty_str string
+	var empty []byte
+	b1 := SetHandle(Handle(ordTPM_RH_OWNER))
+	b2,_ := pack([]interface{}{&empty})
+	b3 := CreatePasswordAuthArea(empty_str)
+	t1 := SetPasswordData("01020304")
+	b4 := CreateSensitiveArea(t1[2:], empty)
+	b5 := CreateRsaParams(enc_alg, hash_alg, create_flags, sym_alg, sym_key_size_bits, sym_mode, uint16(algTPM_ALG_NULL), modulus_size_bits, exp, empty)
+	b6,_ := pack([]interface{}{&empty})
+	b7 := CreateLongPcr(uint32(1), []int{7})
+	arg_bytes := append(b1, b2...)
+	arg_bytes = append(arg_bytes, b3...)
+	arg_bytes = append(arg_bytes, b4...)
+	arg_bytes = append(arg_bytes, b5...)
+	arg_bytes = append(arg_bytes, b6...)
+	arg_bytes = append(arg_bytes, b7...)
+	cmd_bytes, _ := packWithHeader(cmdHdr, nil)
+	return append(cmd_bytes, arg_bytes...), nil
 }
 
 // DecodeCreatePrimary decodes a CreatePrimary response.
@@ -658,7 +644,7 @@ func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
 
 // CreatePrimary
 //	Output: handle, public key blob
-func CreatePrimary(rw io.ReadWriter, owner uint32, pcr_selection []byte,
+func CreatePrimary(rw io.ReadWriter, owner uint32, pcr_nums []int,
 	enc_alg uint16, int_alg uint16, create_flags uint32, owner_password string,
 	sym_alg uint16, sym_key_size_bits uint16, sym_mode uint16, sig_scheme uint16,
 	modulus_size_bits uint16, exp uint32) (Handle, []byte, error) {

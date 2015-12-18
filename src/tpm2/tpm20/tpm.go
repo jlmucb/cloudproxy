@@ -138,27 +138,46 @@ func CreateSensitiveArea(in1 []byte, in2 []byte) ([]byte) {
 }
 
 // nil return is error
-func CreateSymParams(symalg uint16, sz uint16, mode uint16) ([]byte) {
-	template := []interface{}{&symalg, &sz, &mode}
-	t, err := pack(template)
-	if err != nil {
-		return nil
-	}
-	return t
-}
-
-// nil return is error
 func CreateRsaParams(enc_alg uint16, hash_alg uint16, attributes uint32,
 		     symalg uint16, sym_sz uint16, mode uint16,
-		     scheme uint16, mod_sz uint16, exp uint32,
+		     scheme uint16, scheme_hash uint16, mod_sz uint16, exp uint32,
 		     modulus []byte) ([]byte) {
-	b1 := CreateSymParams(symalg, sym_sz, mode)
-	template := []interface{}{&scheme, &mod_sz, &exp, modulus}
-	b2, err := pack(template)
+
+
+	var empty []byte
+	template1 := []interface{}{&enc_alg, &hash_alg, &attributes, &empty}
+	t1, err := pack(template1)
 	if err != nil {
 		return nil
 	}
-	return append(b1, b2...)
+	template2 := []interface{}{&symalg, &sym_sz, &mode, &empty}
+	t2, err := pack(template2)
+	if err != nil {
+		return nil
+	}
+	if scheme == uint16(algTPM_ALG_RSASSA) {
+		template3 := []interface{}{&scheme_hash}
+		t3, err := pack(template3)
+		if err != nil {
+			return nil
+		}
+		t2 = append(t2, t3...)
+	}
+
+	template4 := []interface{}{&mod_sz, &exp, modulus}
+	t4, err := pack(template4)
+	if err != nil {
+		return nil
+	}
+
+	t5 := append(t1, t2...)
+	t5 = append(t5, t4...)
+	template5 := []interface{}{&t5}
+	buf, err := pack(template5)
+	if err != nil {
+		return nil
+	}
+	return buf
 }
 
 // nil return is error
@@ -556,7 +575,8 @@ func Flushall(rw io.ReadWriter) (error) {
 func ConstructCreatePrimary(owner uint32, pcr_nums []int, enc_alg uint16,
 	hash_alg uint16, create_flags uint32, owner_password string,
 	sym_alg uint16, sym_key_size_bits uint16, sym_mode uint16,
-	sig_scheme uint16, modulus_size_bits uint16, exp uint32) ([]byte, error) {
+	scheme uint16, scheme_hash uint16, modulus_size_bits uint16,
+	exp uint32) ([]byte, error) {
 	// command
 	// owner handle
 	// zero
@@ -579,7 +599,9 @@ func ConstructCreatePrimary(owner uint32, pcr_nums []int, enc_alg uint16,
 	b3 := CreatePasswordAuthArea(empty_str)
 	t1 := SetPasswordData("01020304")
 	b4 := CreateSensitiveArea(t1[2:], empty)
-	b5 := CreateRsaParams(enc_alg, hash_alg, create_flags, sym_alg, sym_key_size_bits, sym_mode, uint16(algTPM_ALG_NULL), modulus_size_bits, exp, empty)
+	b5 := CreateRsaParams(enc_alg, hash_alg, create_flags, sym_alg,
+		sym_key_size_bits, sym_mode, uint16(algTPM_ALG_NULL), uint16(0),
+		modulus_size_bits, exp, empty)
 	b6,_ := pack([]interface{}{&empty})
 	b7 := CreateLongPcr(uint32(1), []int{7})
 	arg_bytes := append(b1, b2...)

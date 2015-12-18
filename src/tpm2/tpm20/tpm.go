@@ -89,7 +89,6 @@ func SetHandle(handle Handle) ([]byte) {
 	return str
 }
 
-
 // nil return is an error
 func SetPasswordData(password string) ([]byte) {
 // len password
@@ -137,20 +136,25 @@ func CreateSensitiveArea(in1 []byte, in2 []byte) ([]byte) {
 	return ret 
 }
 
+//func DecodeRsaPublicArea(in []byte) (enc_alg uint16, hash_alg uint16, attributes uint32,
+//	auth_policy []byte, sym_alg uint16, sym_sz uint16,
+//	mode uint16, scheme uint16, key_sz uint16, exp uint32, modulus []byte) {
+//}
+
 // nil return is error
 func CreateRsaParams(enc_alg uint16, hash_alg uint16, attributes uint32,
+		     auth_policy []byte,
 		     symalg uint16, sym_sz uint16, mode uint16,
 		     scheme uint16, scheme_hash uint16, mod_sz uint16, exp uint32,
 		     modulus []byte) ([]byte) {
 
 
-	var empty []byte
-	template1 := []interface{}{&enc_alg, &hash_alg, &attributes, &empty}
+	template1 := []interface{}{&enc_alg, &hash_alg, &attributes, &auth_policy}
 	t1, err := pack(template1)
 	if err != nil {
 		return nil
 	}
-	template2 := []interface{}{&symalg, &sym_sz, &mode, &empty}
+	template2 := []interface{}{&symalg, &sym_sz, &mode, &scheme}
 	t2, err := pack(template2)
 	if err != nil {
 		return nil
@@ -573,7 +577,8 @@ func Flushall(rw io.ReadWriter) (error) {
 
 // ConstructCreatePrimary constructs a CreatePrimary command.
 func ConstructCreatePrimary(owner uint32, pcr_nums []int, enc_alg uint16,
-	hash_alg uint16, create_flags uint32, owner_password string,
+	hash_alg uint16, create_flags uint32, auth_policy []byte,
+	parent_password string, owner_password string,
 	sym_alg uint16, sym_key_size_bits uint16, sym_mode uint16,
 	scheme uint16, scheme_hash uint16, modulus_size_bits uint16,
 	exp uint32) ([]byte, error) {
@@ -592,16 +597,15 @@ func ConstructCreatePrimary(owner uint32, pcr_nums []int, enc_alg uint16,
 	if err != nil {
 		return nil, errors.New("ConstructCreatePrimary failed")
 	}
-	var empty_str string
 	var empty []byte
 	b1 := SetHandle(Handle(ordTPM_RH_OWNER))
 	b2,_ := pack([]interface{}{&empty})
-	b3 := CreatePasswordAuthArea(empty_str)
-	t1 := SetPasswordData("01020304")
+	b3 := CreatePasswordAuthArea(parent_password)
+	t1 := SetPasswordData(owner_password)
 	b4 := CreateSensitiveArea(t1[2:], empty)
-	b5 := CreateRsaParams(enc_alg, hash_alg, create_flags, sym_alg,
-		sym_key_size_bits, sym_mode, uint16(algTPM_ALG_NULL), uint16(0),
-		modulus_size_bits, exp, empty)
+	b5 := CreateRsaParams(enc_alg, hash_alg, create_flags, auth_policy,
+		sym_alg, sym_key_size_bits, sym_mode, uint16(algTPM_ALG_NULL),
+		uint16(0), modulus_size_bits, exp, empty)
 	b6,_ := pack([]interface{}{&empty})
 	b7 := CreateLongPcr(uint32(1), []int{7})
 	arg_bytes := append(b1, b2...)

@@ -16,7 +16,6 @@ package tpm
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"reflect"
@@ -78,7 +77,17 @@ func TestCreatePasswordAuthArea(t *testing.T) {
 }
 
 func TestCreateSensitiveArea(t *testing.T) {
-// CreateSensitiveArea(in1 []byte, in2 []byte)
+	a1 := []byte{1,2,3,4}
+	var a2 []byte
+	s := CreateSensitiveArea(a1, a2)
+	if s == nil {
+		t.Fatal("CreateSensitiveArea fails")
+	}
+	test := []byte{0, 8, 0, 4, 1, 2, 3, 4,0,0}
+	if !bytes.Equal(test, s) {
+		t.Fatal("CreateSensitiveArea fails")
+	}
+	fmt.Printf("Sensitive area: %x\n", s)
 }
 
 func TestDecode(t *testing.T) {
@@ -87,16 +96,13 @@ func TestDecode(t *testing.T) {
 		fmt.Printf("TestDecode fails\n")
 		return
 	}
-	var b []byte
-        buf := bytes.NewBuffer(b)
 	fmt.Printf("TestDecode Constructed command: %x\n", x)
-	binary.Write(buf, binary.BigEndian, x)
 	var a1 uint16 
 	var a2 uint32
 	var a3 uint32
 	var a4 uint32
 	out :=  []interface{}{&a1, &a2, &a3, &a4}
-	err = unpackType(buf, out)
+	err = unpack(x, out)
 	if err != nil {
 		fmt.Printf("unpack breaks\n")
 		return

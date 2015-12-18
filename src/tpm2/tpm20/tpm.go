@@ -116,7 +116,25 @@ func CreatePasswordAuthArea(password string) ([]byte) {
 
 // nil is error
 func CreateSensitiveArea(in1 []byte, in2 []byte) ([]byte) {
-	return nil
+//   password (SENSITIVE CREATE)
+//   0008 0004 01020304
+//        0000
+	t1, err := pack([]interface{}{&in1})
+	if err != nil {
+		return nil
+	}
+	t2, err := pack([]interface{}{&in2})
+	if err != nil {
+		return nil
+	}
+
+	t := append(t1, t2...)
+	ret, err := pack([]interface{}{&t})
+	if err != nil {
+		return nil
+	}
+
+	return ret 
 }
 
 // ----------------------------------------------------------------

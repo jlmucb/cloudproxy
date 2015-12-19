@@ -712,7 +712,24 @@ func DecodeCreatePrimary(in []byte) (Handle, error) {
 	current += len(digest) +2
 
 	// TPMT_TK_CREATION
+	current += 6
+	var crap []byte
+        template =  []interface{}{&crap}
+        err = unpack(tpm2_public[current:], template)
+        if err != nil {
+                return Handle(0), errors.New("Can't decode CreatePrimary response 5")
+	}
+	fmt.Printf("crap: %x\n", crap)
+	current += len(crap) +2
+
 	// Name
+	var name []byte
+        template =  []interface{}{&name}
+        err = unpack(tpm2_public[current:], template)
+        if err != nil {
+                return Handle(0), errors.New("Can't decode CreatePrimary response 5")
+	}
+	fmt.Printf("name: %x\n", name)
 
 	return Handle(handle), nil
 }

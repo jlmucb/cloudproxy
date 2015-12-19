@@ -401,8 +401,6 @@ func TestDecodeFlushContext(t *testing.T) {
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 }
 
-func TestFlushContext(t *testing.T) {
-}
 
 // TestLoad tests a Load command.
 
@@ -493,7 +491,7 @@ func TestDecodeCreatePrimary(t *testing.T) {
         if status != errSuccess {
                 t.Fatal("error status\n")
         }
-	handle, err := DecodeCreatePrimary(test_resp_bytes[10:])
+	handle, _, err := DecodeCreatePrimary(test_resp_bytes[10:])
 	if err != nil {
 		t.Fatal(err) //"Can't DecodeCreatePrimary --- %s\n", err)
 	}
@@ -501,6 +499,27 @@ func TestDecodeCreatePrimary(t *testing.T) {
 }
 
 func TestCreatePrimary(t *testing.T) {
+	fmt.Printf("TestCreatePrimary\n")
+
+	// Open TPM
+	rw, err := OpenTPM("/dev/tpm0")
+	if err != nil {
+		fmt.Printf("OpenTPM failed %s\n", err)
+		return 
+	}
+
+	var empty []byte
+	parms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
+		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+		uint16(1024), uint32(0x00010001), empty}
+	handle, blob, err := CreatePrimary(rw, uint32(ordTPM_RH_OWNER), []int{7},
+						 "", "01020304", parms)
+	if err != nil {
+		t.Fatal("ConstructCreatePrimary fails")
+	}
+        fmt.Printf("Handle : %x\nblob: %x", handle, blob)
+	_ = FlushContext(rw, handle)
 }
 
 // TestPolicyPassword tests a PolicyPassword command.

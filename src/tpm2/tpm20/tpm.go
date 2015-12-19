@@ -653,7 +653,7 @@ func ConstructCreatePrimary(owner uint32, pcr_nums []int,
 }
 
 // DecodeCreatePrimary decodes a CreatePrimary response.
-func DecodeCreatePrimary(in []byte) (Handle, error) {
+func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
 	var handle uint32
 	var auth []byte
 
@@ -661,7 +661,7 @@ func DecodeCreatePrimary(in []byte) (Handle, error) {
         template :=  []interface{}{&handle, &auth}
         err := unpack(in, template)
         if err != nil {
-                return Handle(0), errors.New("Can't decode response 1")
+                return Handle(0), nil, errors.New("Can't decode response 1")
         }
 
 	var current int
@@ -671,7 +671,7 @@ func DecodeCreatePrimary(in []byte) (Handle, error) {
         template =  []interface{}{&tpm2_public}
         err = unpack(in[current:], template)
         if err != nil {
-                return Handle(0), errors.New("Can't decode CreatePrimary response 2")
+                return Handle(0), nil, errors.New("Can't decode CreatePrimary response 2")
         }
 	fmt.Printf("tpm2_public : %x %x\n", len(tpm2_public), tpm2_public)
 
@@ -679,14 +679,14 @@ func DecodeCreatePrimary(in []byte) (Handle, error) {
         template =  []interface{}{&rsa_params_buf}
         err = unpack(tpm2_public, template)
         if err != nil {
-                return Handle(0), errors.New("Can't decode CreatePrimary response 3")
+                return Handle(0), nil, errors.New("Can't decode CreatePrimary response 3")
         }
 	fmt.Printf("rsa_params_buf: %x %x\n", len(rsa_params_buf), rsa_params_buf)
 
 	// params
 	params, err := DecodeRsaArea(tpm2_public)
         if err != nil {
-                return Handle(0), err // errors.New("Can't decode CreatePrimary response")
+                return Handle(0), nil, err
         } 
 	PrintRsaParams(params)
 
@@ -696,7 +696,7 @@ func DecodeCreatePrimary(in []byte) (Handle, error) {
         template =  []interface{}{&creation_data}
         err = unpack(tpm2_public[current:], template)
         if err != nil {
-                return Handle(0), errors.New("Can't decode CreatePrimary response 4")
+                return Handle(0), nil, errors.New("Can't decode CreatePrimary response 4")
 	}
 	fmt.Printf("creation data: %x\n", creation_data)
 	current += len(creation_data) +2
@@ -706,7 +706,7 @@ func DecodeCreatePrimary(in []byte) (Handle, error) {
         template =  []interface{}{&digest}
         err = unpack(tpm2_public[current:], template)
         if err != nil {
-                return Handle(0), errors.New("Can't decode CreatePrimary response 5")
+                return Handle(0), nil, errors.New("Can't decode CreatePrimary response 5")
 	}
 	fmt.Printf("digest : %x\n", digest)
 	current += len(digest) +2
@@ -717,7 +717,7 @@ func DecodeCreatePrimary(in []byte) (Handle, error) {
         template =  []interface{}{&crap}
         err = unpack(tpm2_public[current:], template)
         if err != nil {
-                return Handle(0), errors.New("Can't decode CreatePrimary response 5")
+                return Handle(0), nil, errors.New("Can't decode CreatePrimary response 5")
 	}
 	fmt.Printf("crap: %x\n", crap)
 	current += len(crap) +2
@@ -727,59 +727,58 @@ func DecodeCreatePrimary(in []byte) (Handle, error) {
         template =  []interface{}{&name}
         err = unpack(tpm2_public[current:], template)
         if err != nil {
-                return Handle(0), errors.New("Can't decode CreatePrimary response 5")
+                return Handle(0), nil, errors.New("Can't decode CreatePrimary response 5")
 	}
 	fmt.Printf("name: %x\n", name)
 
-	return Handle(handle), nil
+	return Handle(handle), tpm2_public, nil
 }
 
 // CreatePrimary
 //	Output: handle, public key blob
 func CreatePrimary(rw io.ReadWriter, owner uint32, pcr_nums []int,
-	owner_password string, parms RsaParams) (Handle, []byte, error) {
-/*
+	parent_password, owner_password string, parms RsaParams) (Handle, []byte, error) {
+
 	// Construct command
-	x, err:= ConstructCreatePrimary(size)
+	x, err:= ConstructCreatePrimary(uint32(owner), pcr_nums, parent_password,
+		owner_password, parms)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return nil, err
+		return Handle(0), nil, err
 	}
 
 	// Send command
 	_, err = rw.Write(x)
 	if err != nil {
-		return nil, errors.New("Write Tpm fails") 
+		return Handle(0), nil, errors.New("Write Tpm fails") 
 	}
 
 	// Get response
 	var resp []byte
-	resp = make([]byte, 1024, 1024)
+	resp = make([]byte, 2048, 2048)
 	read, err := rw.Read(resp)
         if err != nil {
-                return nil, errors.New("Read Tpm fails")
+                return Handle(0), nil, errors.New("Read Tpm fails")
         }
 
 	// Decode Response
         if read < 10 {
-                return nil, errors.New("Read buffer too small")
+                return Handle(0), nil, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
-		return nil, err
+		return Handle(0), nil, err
 	}
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
-	rand, err :=  DecodeCreatePrimary(resp[10:read])
+	handle, public_blob, err :=  DecodeCreatePrimary(resp[10:read])
 	if err != nil {
 		fmt.Printf("DecodeCreatePrimary %s\n", err)
-		return nil,err
+		return Handle(0), nil, err
 	}
-	return rand, nil
-*/
-	return 1, nil, nil
+	return Handle(handle), public_blob, nil
 }
 
 // ConstructReadPublic constructs a ReadPublic command.

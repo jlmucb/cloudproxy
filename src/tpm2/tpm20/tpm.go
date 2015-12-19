@@ -861,54 +861,68 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 // CreateKey
 
 // ConstructCreateKey constructs a CreateKey command.
-func ConstructCreateKey(arent Handle, parent_password string, pcr_selection []byte, enc_alg uint16, int_alg uint16,
-        create_flags uint32, owner_password string, sym_alg uint16, sym_key_size_bits uint16,
-        sym_mode uint16, sig_scheme uint16, modulus_size_bits uint16, exp uint32) ([]byte, error) {
-/*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)
-	if err != nil {
-		return nil, errors.New("ConstructGetRandom failed")
+func ConstructCreateKey(owner uint32, pcr_nums []int, parent_password string, owner_password string,
+                parms RsaParams) ([]byte, error) {
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdCreate)
+ 	if err != nil {
+		return nil, errors.New("ConstructCreateKey failed")
 	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
-	return x, nil
-*/
-	return nil, nil
+ 	var empty []byte
+ 	b1 := SetHandle(Handle(owner))
+	b2 ,_ := pack([]interface{}{&empty})
+ 	b3 := CreatePasswordAuthArea(parent_password)
+ 	t1 := SetPasswordData(owner_password)
+ 	b4 := CreateSensitiveArea(t1[2:], empty)
+ 	b5 := CreateRsaParams(parms)
+	b6 ,_ := pack([]interface{}{&empty})
+ 	b7:= CreateLongPcr(uint32(1), pcr_nums)
+ 	arg_bytes := append(b1, b2...)
+ 	arg_bytes = append(arg_bytes, b3...)
+ 	arg_bytes = append(arg_bytes, b4...)
+ 	arg_bytes = append(arg_bytes, b5...)
+ 	arg_bytes = append(arg_bytes, b6...)
+ 	arg_bytes = append(arg_bytes, b7...)
+	cmd_bytes, _ := packWithHeader(cmdHdr, nil)
+	return append(cmd_bytes, arg_bytes...), nil
 }
 
 // DecodeCreateKey decodes a CreateKey response.
-func DecodeCreateKey(in []byte) ([]byte, []byte, []byte, error) {
-/*
-        var rand_bytes []byte
+//	Output: private_blob, public_blob
+func DecodeCreateKey(in []byte) ([]byte, []byte, error) {
+        var tpm2b_private []byte
+        var tpm2b_public []byte
 
-        out :=  []interface{}{&rand_bytes}
-        err := unpack(in, out)
+	// auth?
+	// tpm2b_private
+	// tpm2b_public
+        out :=  []interface{}{&tpm2b_private, &tpm2b_public}
+        err := unpack(in[4:], out)
         if err != nil {
-                return nil, errors.New("Can't decode CreateKey response")
+                return nil, nil, errors.New("Can't decode CreateKey response")
         }
+	// creation data
+	// tpmt_tk_creation
+	// digest
 
-        return rand_bytes, nil
-*/
-	return nil, nil, nil, nil
+	return tpm2b_private, tpm2b_public, nil
 }
 
 // Output: public blob, private blob, digest
-func CreateKey(rw io.ReadWriter, 
-	parent Handle, parent_password string, pcr_selection []byte, enc_alg uint16, int_alg uint16,
-        create_flags uint32, owner_password string, sym_alg uint16, sym_key_size_bits uint16,
-        sym_mode uint16, sig_scheme uint16, modulus_size_bits uint16, exp uint32) ([]byte, []byte, []byte, error) {
-/*
+func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password string, owner_password string,
+		parms RsaParams) ([]byte, []byte, error) {
+
 	// Construct command
-	x, err:= ConstructCreateKey(size)
+	x, err:= ConstructCreateKey(uint32(owner), pcr_nums, parent_password,
+                owner_password, parms)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Send command
 	_, err = rw.Write(x)
 	if err != nil {
-		return nil, errors.New("Write Tpm fails") 
+		return nil, nil, errors.New("Write Tpm fails") 
 	}
 
 	// Get response
@@ -916,29 +930,28 @@ func CreateKey(rw io.ReadWriter,
 	resp = make([]byte, 1024, 1024)
 	read, err := rw.Read(resp)
         if err != nil {
-                return nil, errors.New("Read Tpm fails")
+                return nil, nil, errors.New("Read Tpm fails")
         }
 
 	// Decode Response
         if read < 10 {
-                return nil, errors.New("Read buffer too small")
+                return nil, nil, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
-		return nil, err
+		return nil, nil, err
 	}
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
+		return nil, nil, errors.New("Error from command")
 	}
-	rand, err :=  DecodeCreateKey(resp[10:read])
+	private_blob, public_blob, err :=  DecodeCreateKey(resp[10:read])
 	if err != nil {
 		fmt.Printf("DecodeCreateKey %s\n", err)
-		return nil,err
+		return nil, nil, err
 	}
-	return rand, nil
-*/
-	return  nil, nil, nil, nil
+	return private_blob, public_blob, nil
 }
 
 // ConstructLoad constructs a Load command.

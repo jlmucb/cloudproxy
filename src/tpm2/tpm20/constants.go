@@ -79,6 +79,7 @@ const (
 	cmdClockSet                uint32 = 0x00000128
 	cmdPCR_Allocate            uint32 = 0x0000012B
 	cmdCreatePrimary           uint32 = 0x00000131
+	cmdCreate                  uint32 = 0x00000153
 	cmdStirRandom              uint32 = 0x00000146
 	cmdActivateCredential      uint32 = 0x00000147
 	cmdCertify                 uint32 = 0x00000148

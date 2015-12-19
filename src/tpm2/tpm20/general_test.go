@@ -173,12 +173,10 @@ func TestConstructGetRandom(t *testing.T) {
 	test_cmd_bytes, err := hex.DecodeString("80010000000c0000017b0010")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	cmd_bytes, err := ConstructGetRandom(16)
         if err != nil {
                 t.Fatal("Can't construct Random command\n")
-                return
         }
 	fmt.Printf("Constructed command: %x\n", cmd_bytes)
 	if !bytes.Equal(cmd_bytes, test_cmd_bytes) {
@@ -191,7 +189,6 @@ func TestDecodeGetRandom(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString("80010000001c00000000001024357dadbf82ec9f245d1fcdcda33ed7")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 
 	// Decode Response
@@ -223,7 +220,6 @@ func TestGetRandom(t *testing.T) {
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)
 		t.Fatal("GetRandom failed\n")
-		return 
 	}
 	fmt.Printf("rand: %x\n", rand)
 }
@@ -235,7 +231,6 @@ func TestConstructReadPcrs(t *testing.T) {
 	test_cmd_bytes, err := hex.DecodeString("8001000000140000017e00000001000403800000")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("Test command: %x\n", test_cmd_bytes)
 	pcrs := []byte{0x03, 0x80, 0x00, 0x00}
@@ -244,12 +239,10 @@ func TestConstructReadPcrs(t *testing.T) {
 	cmd_bytes, err := ConstructReadPcrs(1, num_pcr, pcrs)
 	if err != nil {
 		t.Fatal("Can't construct ReadPcrs\n")
-		return
 	}
 	fmt.Printf("Command: %x\n", cmd_bytes)
 	if !bytes.Equal(test_cmd_bytes, cmd_bytes) {
 		t.Fatal("Bad ReadPcrs command\n")
-		return
 	}
 }
 
@@ -258,7 +251,6 @@ func TestDecodeReadPcrs(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString("800100000032000000000000001400000001000403800000000000010014427d27fe15f8f69736e02b6007b8f6ea674c0745")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 	 _, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
@@ -285,9 +277,7 @@ func TestReadPcrs(t *testing.T) {
 	pcr := []byte{0x03, 0x80, 0x00, 0x00}
 	counter, pcr_out, alg, digest, err := ReadPcrs(rw, byte(4), pcr)
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
 		t.Fatal("ConstructReadPcrs failed\n")
-		return 
 	}
 	fmt.Printf("Counter: %x, pcr: %x, alg: %x, digest: %x\n", counter, pcr_out, alg, digest)
 }
@@ -310,7 +300,6 @@ func TestConstructReadClock(t *testing.T) {
 	fmt.Printf("Command: %x\n", cmd_bytes)
 	if !bytes.Equal(test_cmd_bytes, cmd_bytes) {
 		t.Fatal("Bad ReadClock command\n")
-		return
 	}
 }
 
@@ -319,7 +308,6 @@ func TestDecodeReadClock(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString("8001000000230000000000000001011380d00000001d1f57f84d000000530000000001")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 }
@@ -334,18 +322,15 @@ func TestConstructGetCapabilities(t *testing.T) {
 	test_cmd_bytes, err := hex.DecodeString("8001000000160000017a000000018000000000000014")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 	cmd_bytes, err := ConstructGetCapabilities(ordTPM_CAP_HANDLES, 20, 0x80000000)
 	if err != nil {
 		t.Fatal("Can't construct GetCapabilities\n")
-		return
 	}
 	fmt.Printf("Command: %x\n", cmd_bytes)
 	if !bytes.Equal(test_cmd_bytes, cmd_bytes) {
 		t.Fatal("Bad GetCapabilities command\n")
-		return
 	}
 }
 
@@ -354,7 +339,6 @@ func TestDecodeGetCapabilities(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString("80010000001300000000000000000100000000")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 
@@ -366,17 +350,11 @@ func TestDecodeGetCapabilities(t *testing.T) {
 
 	cap_reported, handles, err := DecodeGetCapabilities(test_resp_bytes[10:])
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
 		t.Fatal("DecodeGetCapabilities\n")
-		return
 	}
 	if cap_reported != ordTPM_CAP_HANDLES || len(handles) != 0 {
 		t.Fatal("wrong property or number of handles\n")
-		return
 	}
-}
-
-func TestGetCapabilities(t *testing.T) {
 }
 
 // TestFlushContext tests a FlushContext command.
@@ -396,11 +374,9 @@ func TestDecodeFlushContext(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString("80010000000a00000000")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 }
-
 
 // TestLoad tests a Load command.
 
@@ -420,7 +396,6 @@ func TestConstructLoad(t *testing.T) {
 	test_cmd_bytes, err := hex.DecodeString(strLoadTest)
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 }
@@ -430,7 +405,6 @@ func TestDecodeLoad(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString("80020000002f000000008000000100000018001600049bc5e230c250b7d984d757f6450f575a5a896ad00000010000")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 }
@@ -529,7 +503,6 @@ func TestConstructPolicyPassword(t *testing.T) {
 	test_cmd_bytes, err := hex.DecodeString("80010000000e0000018c03000000")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 }
@@ -539,7 +512,6 @@ func TestDecodePolicyPassword(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString("80010000000a00000000")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 }
@@ -554,7 +526,6 @@ func TestConstructPolicyGetDigest(t *testing.T) {
 	test_cmd_bytes, err := hex.DecodeString("80010000000e0000018903000000")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 }
@@ -564,7 +535,6 @@ func TestDecodePolicyGetDigest(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString("80010000000a00000000")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 }
@@ -579,7 +549,6 @@ func TestConstructStartAuthSession(t *testing.T) {
 	test_cmd_bytes, err := hex.DecodeString("80010000002b00000176400000074000000700100000000000000000000000000000000000000100100004")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 }
@@ -589,7 +558,6 @@ func TestDecodeStartAuthSession(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString("800100000020000000000300000000106cf0c90c419ce1a96d5205eb870ec527")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 }
@@ -604,7 +572,6 @@ func TestConstructCreateSealed(t *testing.T) {
 	test_cmd_bytes, err := hex.DecodeString("80020000006900000153800000000000000d40000009000001000401020304001800040102030400100102030405060708090a0b0c0d0e0f100022000800040000001200140debb4cc9d2158cf7051a19ca24b31e35d53b64d00100000000000000001000403800000")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 }
@@ -624,7 +591,6 @@ func TestDecodeCreateSealed(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString(strCreateSealed)
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 }
@@ -636,9 +602,22 @@ func TestConstructCreateKey(t *testing.T) {
 	test_cmd_bytes, err := hex.DecodeString("80020000004f00000153800000000000000d40000009000001000401020304000800040102030400000018000100040004007200000010001400040400000100010000000000000001000403800000")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
+ 	var empty []byte
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+	parms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
+			uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
+			uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+			uint16(1024), uint32(0x00010001), empty}
+	cmd_bytes, err := ConstructCreateKey(uint32(ordTPM_RH_OWNER), []int{7}, "", "01020304", parms)
+	if err != nil {
+		t.Fatal("ConstructCreateKey fails")
+	}
+	fmt.Printf("Test command  : %x\n", test_cmd_bytes)
+	fmt.Printf("CreateKey : %x\n", cmd_bytes)
+	if bytes.Equal(test_cmd_bytes, cmd_bytes) {
+		t.Fatal("ConstructKey incorrect command")
+	}
 }
 
 // Response: 8002000001ba00000000000001a70076001405f2c6b6035d4fab43fdc2ed0b6544de59ebd07100100e88a20eb9f58f0f13474a8ab6135144f7c49b80f0f1c2f4900458e2c573c94e7d81e413a06031c634890ccf47e6d02762366aedaa902f7e369950b6397e5a5884a0e888ab42fbc38b2d703d265bb539d3d8567f766c7aac4046327c6a6b0098000100040004007200000010001400040400000100010080e1189c2d7b301ecc75e2ab3a5f07484d6399fd5601e95af66d567a5ff4078dd5edd0f38c6a7002370ba8e65eb8700aa5b0b41ddc33ba48543dc00cc855b3eefa62985b75e720f62dcf2ac48d8aeb022610dea42bb9091cd304e3d13f6e85e9563c2744591bccee343da9d8d0b183ed6409314ce19e990d644e115d78a51b225b0055000000010004038000000014bbf70aea75095f280ea3b835afda4a195279ab2c010004001600043adbc7b1296c49aac7c154371fd99aeb6e58a9f500160004cfcb68f91fb12789154c722d4dbb528420ca211a0000001409987adb82d9864dbbdf515545798e3fe3e55a418021400000010020e504b9a055eb465316328cfa9d9cbb20706db0160457fa3dfe7e7aca34a334370000010000
@@ -657,15 +636,50 @@ const strRespCreateKey = "8002000001ba00000000000001a70076001405f2c6b6035d4" +
 	"15545798e3fe3e55a418021400000010020e504b9a055eb465316328cfa9d9cbb2" +
 	"0706db0160457fa3dfe7e7aca34a334370000010000"
 func TestDecodeCreateKey(t *testing.T) {
-}
-
-func TestCreateKey(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString(strRespCreateKey)
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
+
+	// Decode Response
+        _, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+        if err != nil {
+                t.Fatal("DecodeCommandResponse error\n")
+        }
+        if status != errSuccess {
+                t.Fatal("error status\n")
+        }
+	private_blob, public_blob, err := DecodeCreateKey(test_resp_bytes[10:])
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("\nprivate blob: %x\n", private_blob)
+	fmt.Printf("\npublic blob: %x\n", public_blob)
+}
+
+func TestCreateKey(t *testing.T) {
+	fmt.Printf("TestCreatePrimary\n")
+
+	// Open TPM
+	rw, err := OpenTPM("/dev/tpm0")
+	if err != nil {
+		fmt.Printf("OpenTPM failed %s\n", err)
+		return
+	}
+
+	var empty []byte
+	parms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
+		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+		uint16(1024), uint32(0x00010001), empty}
+	private_blob, public_blob, err := CreateKey(rw, uint32(ordTPM_RH_OWNER), []int{7},
+						    "", "01020304", parms)
+	if err != nil {
+		t.Fatal("ConstructCreatePrimary fails")
+	}
+	fmt.Printf("\nPrivate blob: %x\n", private_blob)
+	fmt.Printf("\nPublic  blob: %x\n", public_blob)
 }
 
 // TestUnseal tests a Unseal command.
@@ -675,7 +689,6 @@ func TestConstructUnseal(t *testing.T) {
 	test_cmd_bytes, err := hex.DecodeString("80020000001f0000015e800000010000000d03000000000001000401020304")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 }
@@ -685,7 +698,6 @@ func TestDecodeUnseal(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString("800200000035000000000000001200100102030405060708090a0b0c0d0e0f100010ea78d080f9f77d9d85e1f80350247ecb010000")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 }
@@ -701,7 +713,6 @@ func TestConstructQuote(t *testing.T) {
 	test_cmd_bytes, err := hex.DecodeString("80020000003d00000158800000010000000d4000000900000100040102030400100102030405060708090a0b0c0d0e0f10001000000001000403800000")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 }
@@ -723,12 +734,10 @@ func TestDecodeQuote(t *testing.T) {
 	test_resp_bytes_first, err := hex.DecodeString(strQuoteResp1)
 	if err != nil {
 		t.Fatal("Can't convert hex command 1\n")
-		return
 	}
 	test_resp_bytes_next, err := hex.DecodeString(strQuoteResp2)
 	if err != nil {
 		t.Fatal("Can't convert hex command 2\n")
-		return
 	}
 	test_resp_bytes := append(test_resp_bytes_first, test_resp_bytes_next...)
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
@@ -755,7 +764,6 @@ func TestConstructActivateCredential(t *testing.T) {
 	test_cmd_bytes, err := hex.DecodeString(strActCmd)
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 }
@@ -765,7 +773,6 @@ func TestDecodeActivateCredential(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString("80020000002e000000000000001600140102030405060708090a0b0c0d0e0f101112131400000100000000010000")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 }
@@ -780,7 +787,6 @@ func TestConstructReadPublic(t *testing.T) {
 	test_cmd_bytes, err := hex.DecodeString("80010000000e0000017380000000")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 }
@@ -801,12 +807,8 @@ func TestDecodeReadPublic(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString(strReadPub)
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
-}
-
-func TestReadPublic(t *testing.T) {
 }
 
 // TestEvictControl tests a EvictControl command.
@@ -816,7 +818,6 @@ func TestConstructEvictControl(t *testing.T) {
 	test_cmd_bytes, err := hex.DecodeString("8002000000230000012040000001810003e800000009400000090000010000810003e8")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 }
@@ -826,7 +827,6 @@ func TestDecodeEvictControl(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString("80020000001300000000000000000000010000")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
-		return
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 }

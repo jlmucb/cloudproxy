@@ -136,7 +136,7 @@ func CreateSensitiveArea(in1 []byte, in2 []byte) ([]byte) {
 	return ret 
 }
 
-func DecodeRsaPublicArea(in []byte) (*RsaParams, error) {
+func DecodeRsaArea(in []byte) (*RsaParams, error) {
 	return nil, nil
 }
 
@@ -598,11 +598,42 @@ func ConstructCreatePrimary(owner uint32, pcr_nums []int,
 }
 
 // DecodeCreatePrimary decodes a CreatePrimary response.
-func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
-/*
-        handle
-	auth data
+func DecodeCreatePrimary(in []byte) (Handle, error) {
+	var handle uint32
+	var auth []byte
+
+	// handle and auth data
+        template :=  []interface{}{&handle, &auth}
+        err := unpack(in, template)
+        if err != nil {
+                return Handle(0), errors.New("Can't decode CreatePrimary response")
+        }
+
+	var current int
+	current = 6 + 2*len(auth)
 	// size, size-public
+	var tpm2_public []byte
+        template =  []interface{}{&tpm2_public}
+        err = unpack(in[current:], template)
+        if err != nil {
+                return Handle(0), errors.New("Can't decode CreatePrimary response")
+        }
+	fmt.Printf("tpm2_public : %x %x\n", len(tpm2_public), tpm2_public)
+
+	var rsa_params_buf []byte
+        template =  []interface{}{&rsa_params_buf}
+        err = unpack(tpm2_public, template)
+        if err != nil {
+                return Handle(0), errors.New("Can't decode CreatePrimary response")
+        }
+	fmt.Printf("rsa_params_buf: %x %x\n", len(rsa_params_buf), rsa_params_buf)
+
+	// params
+	_, err = DecodeRsaArea(rsa_params_buf)
+        if err != nil {
+                return Handle(0), errors.New("Can't decode CreatePrimary response")
+        }
+/*
 	// RsaParams
 	// Creation data
 	// Digest
@@ -611,15 +642,8 @@ func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
         var handle uint32
 	var auth[]byte
 	var t1 uint16
-	var t2 uint16
-
-        out :=  []interface{}{&handle, &empty}
-        err := unpack(in, out)
-        if err != nil {
-                return nil, errors.New("Can't decode CreatePrimary response")
-        }
 */
-	return Handle(0), nil, nil
+	return Handle(handle), nil
 }
 
 // CreatePrimary

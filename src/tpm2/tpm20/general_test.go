@@ -200,6 +200,7 @@ func TestDecodeGetRandom(t *testing.T) {
                 t.Fatal("DecodeCommandResponse error\n")
         }
         if status != errSuccess {
+                t.Fatal("error status\n")
         }
         rand, err :=  DecodeGetRandom(test_resp_bytes[10:])
         if err != nil {
@@ -483,6 +484,20 @@ func TestDecodeCreatePrimary(t *testing.T) {
 		return
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
+
+	// Decode Response
+        _, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+        if err != nil {
+                t.Fatal("DecodeCommandResponse error\n")
+        }
+        if status != errSuccess {
+                t.Fatal("error status\n")
+        }
+	handle, err := DecodeCreatePrimary(test_resp_bytes[10:])
+	if err != nil {
+		t.Fatal("Can't DecodeCreatePrimary\n")
+	}
+	fmt.Printf("Handle : %x\n", handle)
 }
 
 func TestCreatePrimary(t *testing.T) {

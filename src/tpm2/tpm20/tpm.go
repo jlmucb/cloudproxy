@@ -63,6 +63,21 @@ func OpenTPM(path string) (io.ReadWriteCloser, error) {
 	return rwc, nil
 }
 
+func PrintRsaParams(parms *RsaParams) {
+        fmt.Printf("enc_alg :%x\n", parms.enc_alg)
+        fmt.Printf("hash_alg :%x\n", parms.hash_alg)
+        fmt.Printf("attributes :%x\n", parms.attributes)
+        fmt.Printf("auth_policy :%x\n", parms.auth_policy)
+        fmt.Printf("symalg :%x\n", parms.symalg)
+        fmt.Printf("sym_sz :%x\n", parms.sym_sz)
+        fmt.Printf("mode :%x\n", parms.mode)
+        fmt.Printf("scheme :%x\n", parms.scheme)
+        fmt.Printf("scheme_hash :%x\n", parms.scheme_hash)
+        fmt.Printf("modulus size :%x\n", parms.mod_sz)
+        fmt.Printf("exp :%x\n", parms.exp)
+        fmt.Printf("modulus :%x\n", parms.modulus)
+}
+
 func SetShortPcrs(pcr_nums []int) ([]byte, error) {
 	pcr := []byte{3,0,0,0}
 	var byte_num int
@@ -137,7 +152,47 @@ func CreateSensitiveArea(in1 []byte, in2 []byte) ([]byte) {
 }
 
 func DecodeRsaArea(in []byte) (*RsaParams, error) {
-	return nil, nil
+	parms := new(RsaParams)
+	fmt.Printf("DecodeRsaArea : %x\n", in)
+	var rsa_buf []byte
+	var current int
+
+        template := []interface{}{&rsa_buf}
+        err := unpack(in, template)
+        if err != nil {
+                return nil, errors.New("Can't unpack Rsa buffer 1")
+        }
+
+	current = 0
+	template = []interface{}{&parms.enc_alg, &parms.hash_alg,
+                                   &parms.attributes, &parms.auth_policy}
+        err = unpack(rsa_buf[current:], template)
+        if err != nil {
+                return nil, errors.New("Can't unpack Rsa buffer 2")
+        }
+	current += 10 + len(parms.auth_policy)
+        template = []interface{}{&parms.symalg, &parms.sym_sz,
+                                   &parms.mode, &parms.scheme}
+        err = unpack(rsa_buf[current:], template)
+        if err != nil {
+                return nil, errors.New("Can't unpack Rsa buffer 3")
+        }
+	current += 8
+        if parms.scheme == uint16(algTPM_ALG_RSASSA) {
+                template = []interface{}{&parms.scheme_hash}
+                err = unpack(rsa_buf[current:], template)
+                if err != nil {
+                        return nil, errors.New("Can't unpack Rsa buffer 4")
+                }
+		current += 2
+        }
+
+        template = []interface{}{&parms.mod_sz, &parms.exp, &parms.modulus}
+        err = unpack(rsa_buf[current:], template)
+        if err != nil {
+                return nil, errors.New("Can't unpack Rsa buffer 5")
+        }
+	return parms, nil
 }
 
 // nil return is error
@@ -606,7 +661,7 @@ func DecodeCreatePrimary(in []byte) (Handle, error) {
         template :=  []interface{}{&handle, &auth}
         err := unpack(in, template)
         if err != nil {
-                return Handle(0), errors.New("Can't decode CreatePrimary response")
+                return Handle(0), errors.New("Can't decode response 1")
         }
 
 	var current int
@@ -616,7 +671,7 @@ func DecodeCreatePrimary(in []byte) (Handle, error) {
         template =  []interface{}{&tpm2_public}
         err = unpack(in[current:], template)
         if err != nil {
-                return Handle(0), errors.New("Can't decode CreatePrimary response")
+                return Handle(0), errors.New("Can't decode CreatePrimary response 2")
         }
 	fmt.Printf("tpm2_public : %x %x\n", len(tpm2_public), tpm2_public)
 
@@ -624,17 +679,17 @@ func DecodeCreatePrimary(in []byte) (Handle, error) {
         template =  []interface{}{&rsa_params_buf}
         err = unpack(tpm2_public, template)
         if err != nil {
-                return Handle(0), errors.New("Can't decode CreatePrimary response")
+                return Handle(0), errors.New("Can't decode CreatePrimary response 3")
         }
 	fmt.Printf("rsa_params_buf: %x %x\n", len(rsa_params_buf), rsa_params_buf)
 
 	// params
-	_, err = DecodeRsaArea(rsa_params_buf)
+	params, err := DecodeRsaArea(tpm2_public)
         if err != nil {
-                return Handle(0), errors.New("Can't decode CreatePrimary response")
-        }
+                return Handle(0), err // errors.New("Can't decode CreatePrimary response")
+        } 
+	PrintRsaParams(params)
 /*
-	// RsaParams
 	// Creation data
 	// Digest
 	// TPMT_TK_CREATION

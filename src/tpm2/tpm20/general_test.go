@@ -495,7 +495,7 @@ func TestDecodeCreatePrimary(t *testing.T) {
         }
 	handle, err := DecodeCreatePrimary(test_resp_bytes[10:])
 	if err != nil {
-		t.Fatal("Can't DecodeCreatePrimary\n")
+		t.Fatal(err) //"Can't DecodeCreatePrimary --- %s\n", err)
 	}
 	fmt.Printf("Handle : %x\n", handle)
 }

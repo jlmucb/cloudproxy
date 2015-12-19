@@ -689,15 +689,31 @@ func DecodeCreatePrimary(in []byte) (Handle, error) {
                 return Handle(0), err // errors.New("Can't decode CreatePrimary response")
         } 
 	PrintRsaParams(params)
-/*
+
 	// Creation data
+	current = 2+len(rsa_params_buf)
+	var creation_data []byte
+        template =  []interface{}{&creation_data}
+        err = unpack(tpm2_public[current:], template)
+        if err != nil {
+                return Handle(0), errors.New("Can't decode CreatePrimary response 4")
+	}
+	fmt.Printf("creation data: %x\n", creation_data)
+	current += len(creation_data) +2
+
 	// Digest
+	var digest []byte
+        template =  []interface{}{&digest}
+        err = unpack(tpm2_public[current:], template)
+        if err != nil {
+                return Handle(0), errors.New("Can't decode CreatePrimary response 5")
+	}
+	fmt.Printf("digest : %x\n", digest)
+	current += len(digest) +2
+
 	// TPMT_TK_CREATION
 	// Name
-        var handle uint32
-	var auth[]byte
-	var t1 uint16
-*/
+
 	return Handle(handle), nil
 }
 

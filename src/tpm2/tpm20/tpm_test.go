@@ -148,6 +148,7 @@ func TestEvictControl(t *testing.T) {
 
 // Combined Key Test
 func TestCombinedKeyTest(t *testing.T) {
+	// int pcr's
 	// CreatePrimary
 	// CreateKey
 	// Load
@@ -155,16 +156,17 @@ func TestCombinedKeyTest(t *testing.T) {
 	// Flush
 }
 
-// Combined ActivateTest
-func TestCombinedActivateTest(t *testing.T) {
-	// CreatePrimary
-	// CreateKey
-}
-
 // Combined Seal test
 func TestCombinedSealTest(t *testing.T) {
+	// Init pcr's
 	// CreatePrimary
+	// StartAuthSession
+	// PolicyGetDigest
+	// PolicyPassword
+	// PolicyPcr
+	// PolicyGetDigest
 	// CreateSealed
+	// Load
 	// Unseal
 	// Flush
 }
@@ -172,6 +174,7 @@ func TestCombinedSealTest(t *testing.T) {
 // Combined Quote test
 func TestCombinedQuoteTest(t *testing.T) {
 	// CreatePrimary
+	// PCR_Event
 	// CreateKey
 	// Quote
 	// Verify quote
@@ -187,4 +190,29 @@ func TestCombinedEvictTest(t *testing.T) {
 	// Evict
 	// Flush
 }
+
+// Combined Endorsementtest
+func TestCombinedEndorsementTest(t *testing.T) {
+	// Set pcr's
+	// CreatePrimary
+	// ReadPublic
+	// CreateKey
+	// Load
+	// Construct credential
+	// MakeCredential
+	// ActivateCredential
+	// Flush
+}
+
+// Combined Context test
+func TestCombinedEndorsementTest(t *testing.T) {
+	// pcr selections
+	//CreatePrimary
+	// SaveContext
+	// FlushContext
+	// LoadContext
+	// FlushContext
+
+}
+
 

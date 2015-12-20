@@ -1035,46 +1035,55 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string,
 }
 
 // Construct PolicyPcr command.
-// PolicyPcr command: 80010000001a0000017f03000000000000000001000403800000
-func ConstructPolicyPcr(handle Handle, expected_digest []byte, pcr_nums []int) (error) {
-	return nil
-}
-
-// Decode PolicyPcr
-// Response: 80010000000a00000000
-func DecodePolicyPcr(handle Handle, expected_digest []byte, pcr_nums []int) (error) {
-	return nil
+// PolicyPcr command: 80010000001a0000017f 03000000 0000 00000001 000403800000
+func ConstructPolicyPcr(handle Handle, expected_digest []byte, pcr_nums []int) ([]byte, error) {
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdPolicyPCR)
+	if err != nil {
+		return nil, errors.New("ConstructPcr failed")
+	}
+	u_handle := uint32(handle)
+	template :=  []interface{}{&u_handle, &expected_digest}
+	b1, err := pack(template)
+	if err != nil {
+		return nil, errors.New("Can't pack pcr buf")
+	}
+	b2 := CreateLongPcr(1, pcr_nums)
+	cmd, _ := packWithHeader(cmdHdr, nil)
+	cmd = append(cmd, append(b1, b2...)...)
+	return cmd, nil
 }
 
 // ConstructPolicyPassword constructs a PolicyPassword command.
 // Command: 80010000000e0000018c03000000
-func ConstructPolicyPassword(handle Handle) (error) {
-/*
+func ConstructPolicyPassword(handle Handle) ([]byte, error) {
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdPolicyPassword)
 	if err != nil {
-		return nil, errors.New("ConstructPolicyPassword failed")
+		return nil, errors.New("ConstructPassword failed")
 	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
-	return x, nil
-*/
-	return nil
+	u_handle := uint32(handle)
+	template :=  []interface{}{&u_handle}
+	b1, err := pack(template)
+	if err != nil {
+		return nil, errors.New("Can't pack pcr buf")
+	}
+	cmd, _ := packWithHeader(cmdHdr, nil)
+	cmd = append(cmd, b1...)
+	return cmd, nil
 }
 
 // PolicyPassword
 func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
-/*
 	// Construct command
-	x, err:= ConstructGetRandom(size)
+	x, err:= ConstructPolicyPassword(handle)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return nil, err
+		return err
 	}
 
 	// Send command
 	_, err = rw.Write(x)
 	if err != nil {
-		return nil, errors.New("Write Tpm fails") 
+		return errors.New("Write Tpm fails") 
 	}
 
 	// Get response
@@ -1082,75 +1091,67 @@ func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
 	resp = make([]byte, 1024, 1024)
 	read, err := rw.Read(resp)
         if err != nil {
-                return nil, errors.New("Read Tpm fails")
+                return errors.New("Read Tpm fails")
         }
 
 	// Decode Response
         if read < 10 {
-                return nil, errors.New("Read buffer too small")
+                return errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
-		return nil, err
+		return err
 	}
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
+		return errors.New("Comand failure")
 	}
-	rand, err :=  DecodePolicyPassword(resp[10:read])
-	if err != nil {
-		fmt.Printf("DecodePolicyPassword %s\n", err)
-		return nil,err
-	}
-	return rand, nil
-*/
 	return nil
 }
 
 // ConstructPolicyGetDigest constructs a PolicyGetDigest command.
 // Command: 80010000000e0000018903000000
 func ConstructPolicyGetDigest(handle Handle) ([]byte, error) {
-/*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdPolicyGetDigest)
 	if err != nil {
-		return nil, errors.New("ConstructPolicyGetDigest failed")
+		return nil, errors.New("ConstructGetDigest failed")
 	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
-	return x, nil
-*/
-	return nil, nil
+	u_handle := uint32(handle)
+	template :=  []interface{}{&u_handle}
+	b1, err := pack(template)
+	if err != nil {
+		return nil, errors.New("Can't pack pcr buf")
+	}
+	cmd, _ := packWithHeader(cmdHdr, nil)
+	cmd = append(cmd, b1...)
+	return cmd, nil
 }
 
 // DecodePolicyGetDigest decodes a PolicyGetDigest response.
 func DecodePolicyGetDigest(in []byte) ([]byte, error) {
-/*
-        var rand_bytes []byte
+        var digest []byte
 
-        out :=  []interface{}{&rand_bytes}
+        out :=  []interface{}{&digest}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode PolicyGetDigest response")
+                return nil, errors.New("Can't decode Load response")
         }
-
-        return rand_bytes, nil
-*/
-	return nil, nil
+        return digest, nil
 }
 
 // PolicyGetDigest
 //	Output: digest
 func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
-/*
 	// Construct command
-	x, err:= ConstructPolicyGetDigest(size)
+	cmd, err:= ConstructPolicyGetDigest(handle)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, err
 	}
 
 	// Send command
-	_, err = rw.Write(x)
+	_, err = rw.Write(cmd)
 	if err != nil {
 		return nil, errors.New("Write Tpm fails") 
 	}
@@ -1174,15 +1175,13 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 	}
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
+		return nil, errors.New("Comand failure")
 	}
-	rand, err :=  DecodePolicyGetDigest(resp[10:read])
+	digest, err := DecodePolicyGetDigest(resp[10:])
 	if err != nil {
-		fmt.Printf("DecodePolicyGetDigest %s\n", err)
-		return nil,err
+		return nil, err
 	}
-	return rand, nil
-*/
-	return nil, nil
+	return digest, nil
 }
 
 // ConstructStartAuthSession constructs a StartAuthSession command.

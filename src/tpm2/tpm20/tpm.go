@@ -1034,7 +1034,20 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string,
 	return handle, name, nil
 }
 
+// Construct PolicyPcr command.
+// PolicyPcr command: 80010000001a0000017f03000000000000000001000403800000
+func ConstructPolicyPcr(handle Handle, expected_digest []byte, pcr_nums []int) (error) {
+	return nil
+}
+
+// Decode PolicyPcr
+// Response: 80010000000a00000000
+func DecodePolicyPcr(handle Handle, expected_digest []byte, pcr_nums []int) (error) {
+	return nil
+}
+
 // ConstructPolicyPassword constructs a PolicyPassword command.
+// Command: 80010000000e0000018c03000000
 func ConstructPolicyPassword(handle Handle) (error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdPolicyPassword)
@@ -1095,6 +1108,7 @@ func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
 }
 
 // ConstructPolicyGetDigest constructs a PolicyGetDigest command.
+// Command: 80010000000e0000018903000000
 func ConstructPolicyGetDigest(handle Handle) ([]byte, error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdPolicyGetDigest)
@@ -1109,7 +1123,7 @@ func ConstructPolicyGetDigest(handle Handle) ([]byte, error) {
 }
 
 // DecodePolicyGetDigest decodes a PolicyGetDigest response.
-func DecodePolicyGetDigest(in []byte) (error) {
+func DecodePolicyGetDigest(in []byte) ([]byte, error) {
 /*
         var rand_bytes []byte
 
@@ -1121,7 +1135,7 @@ func DecodePolicyGetDigest(in []byte) (error) {
 
         return rand_bytes, nil
 */
-	return nil
+	return nil, nil
 }
 
 // PolicyGetDigest
@@ -1503,8 +1517,9 @@ func Quote(rw io.ReadWriter, signing_handle Handle, password string,
 }
 
 // ConstructActivateCredential constructs a ActivateCredential command.
+// Command: 800200000168000001478000000280000000000000164000000900000100040102030440000009000001000000380020a2b634475ae0cfccff45d273f173cb4c74089167c94ed4666fa41a0039b71ad6956316cbb65c1ac71225c204d9f752fa62a84c70b51701007d9fec0ddff9c8e27904913f498aa20416e66e4a91eeb263d1a7badd7bd0043b4f2e165018d21e892359856cd93b45a983606e3482b029796659266f01277c944500bda57a5442d670173093307377783fd94aaf481bbdde1914720fc7f41637ff66593c50ce72626bc6e5edfa6e532c446faa3af1279f68d84edaa7386d97229be8edf74fc33e74e2f0f4b7a1ec985b42463fbf387ecc268b3a3a45c66968113ab0ed0d3573a9076eebe3d45efbc12c970465cf80af155434d8b0eb377a50942a742f86a0fa93c29bd0c37e8ac18c2f6b63558ba03df7bc5f80be70e504203b2b55c243794e7fc4cdb817e2da0796e088ca408a3c5d95abb32fa6dfddd4101f
 func ConstructActivateCredential(active_handle Handle, key_handle Handle,
-        active_password string, key_password string) ([]byte, error) {
+        credBlob []byte, secret []byte) ([]byte, error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdActivateCredential)
 	if err != nil {
@@ -1518,7 +1533,8 @@ func ConstructActivateCredential(active_handle Handle, key_handle Handle,
 }
 
 // DecodeActivateCredential decodes a ActivateCredential response.
-func DecodeActivateCredential(in []byte) ([]byte, []byte, error) {
+// returns certInfo
+func DecodeActivateCredential(in []byte) ([]byte, error) {
 /*
         var rand_bytes []byte
 
@@ -1530,7 +1546,7 @@ func DecodeActivateCredential(in []byte) ([]byte, []byte, error) {
 
         return rand_bytes, nil
 */
-	return nil, nil, nil
+	return nil, nil
 }
 
 // ActivateCredential
@@ -1582,6 +1598,7 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 }
 
 // ConstructEvictControl constructs a EvictControl command.
+// Command: 8002000000230000012040000001810003e800000009400000090000010000810003e8
 func ConstructEvictControl(tmp_handle Handle, password string, persistant_handle Handle) ([]byte, error) {
 /*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdEvictControl)
@@ -1596,6 +1613,7 @@ func ConstructEvictControl(tmp_handle Handle, password string, persistant_handle
 }
 
 // DecodeEvictControl decodes a EvictControl response.
+// Response: 80020000001300000000000000000000010000
 func DecodeEvictControl(in []byte) (error) {
 /*
         var rand_bytes []byte

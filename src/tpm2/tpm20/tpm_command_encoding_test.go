@@ -310,7 +310,17 @@ func TestDecodeCreatePrimary(t *testing.T) {
 	fmt.Printf("Handle : %x\n", handle)
 }
 
+// TestPolicyPcr tests a PolicyPcr command.
+
 // TestPolicyPassword tests a PolicyPassword command.
+
+func TestConstructPolicyPcr(t *testing.T) {
+	test_cmd_bytes, err := hex.DecodeString("80010000001a0000017f03000000000000000001000403800000")
+	if err != nil {
+		t.Fatal("Can't convert hex command\n")
+	}
+	fmt.Printf("Command: %x\n", test_cmd_bytes)
+}
 
 // Command: 80010000000e0000018c03000000
 func TestConstructPolicyPassword(t *testing.T) {
@@ -319,6 +329,10 @@ func TestConstructPolicyPassword(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+}
+
+// Response: 80010000000a00000000
+func TestDecodePolicyPcr(t *testing.T) {
 }
 
 // Response: 80010000000a00000000

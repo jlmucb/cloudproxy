@@ -957,50 +957,57 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 // ConstructLoad constructs a Load command.
 func ConstructLoad(parentHandle Handle, parentAuth string,
              public_blob []byte, private_blob []byte) ([]byte, error) {
-/*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdLoad)
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdLoad)
 	if err != nil {
 		return nil, errors.New("ConstructLoad failed")
 	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
-	return x, nil
-*/
-	return nil, nil
+	var empty []byte
+	b1 := SetHandle(parentHandle)
+	b2,_ := pack([]interface{}{&empty})
+	b3 := CreatePasswordAuthArea("")
+	b4 := SetPasswordData(parentAuth)
+	x, _ := packWithHeader(cmdHdr, nil)
+	// private, public
+	b5,_ := pack([]interface{}{&private_blob, &public_blob})
+	cmd_bytes := append(x, b1...)
+	cmd_bytes = append(cmd_bytes, b2...)
+	cmd_bytes = append(cmd_bytes, b3...)
+	cmd_bytes = append(cmd_bytes, b4...)
+	cmd_bytes = append(cmd_bytes, b5...)
+	return b5, nil
 }
 
 // DecodeLoad decodes a Load response.
+//	handle, name
 func DecodeLoad(in []byte) (Handle, []byte, error) {
-/*
-        var rand_bytes []byte
+        var handle uint32
+        var auth []byte
+        var name []byte
 
-        out :=  []interface{}{&rand_bytes}
+        out :=  []interface{}{&handle, &auth, &name}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode Load response")
+                return Handle(0), nil, errors.New("Can't decode Load response")
         }
-
-        return rand_bytes, nil
-*/
-	return Handle(0), nil, nil
+        return Handle(handle), name, nil
 }
 
 // Load
-//	Output: handle, name
+//	Output: handle
 func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string,
 	     public_blob []byte, private_blob []byte) (Handle, []byte, error) {
-/*
+
 	// Construct command
-	x, err:= ConstructGetRandom(size)
+	x, err:= ConstructLoad(parentHandle, parentAuth, public_blob, private_blob)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return nil, err
+		return Handle(0), nil, err
 	}
 
 	// Send command
 	_, err = rw.Write(x)
 	if err != nil {
-		return nil, errors.New("Write Tpm fails") 
+		return Handle(0), nil, errors.New("Write Tpm fails") 
 	}
 
 	// Get response
@@ -1008,29 +1015,28 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string,
 	resp = make([]byte, 1024, 1024)
 	read, err := rw.Read(resp)
         if err != nil {
-                return nil, errors.New("Read Tpm fails")
+                return Handle(0), nil, errors.New("Read Tpm fails")
         }
 
 	// Decode Response
         if read < 10 {
-                return nil, errors.New("Read buffer too small")
+                return Handle(0), nil, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
-		return nil, err
+		return Handle(0), nil, err
 	}
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
+		return Handle(0), nil, errors.New("Error from command")
 	}
-	rand, err :=  DecodeLoad(resp[10:read])
+	handle, name, err :=  DecodeLoad(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeLoad %s\n", err)
-		return nil,err
+		fmt.Printf("DecodeCreateKey %s\n", err)
+		return Handle(0), nil, err
 	}
-	return rand, nil
-*/
-	return 1, nil, nil
+	return handle, name, nil
 }
 
 // ConstructPolicyPassword constructs a PolicyPassword command.

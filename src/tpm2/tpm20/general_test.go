@@ -380,12 +380,13 @@ func TestDecodeFlushContext(t *testing.T) {
 
 // TestLoad tests a Load command.
 
-// Command:  8002000000b300000157800000000000000d40000009000001000401020
-//           304005a0014450ecdce5f1ce202e4f8db15e2bde9a1241f85f30010faf6
-//           2244fedc13fe0abb526e64b10b2de030b6f02be278e23365ef663febe7e
-//           b4ddae935ca627ce4c40af9f5244dafbc7f47ceb84de87e72a75c7f1032
-//           d3e7faddde0036000800040000001200140debb4cc9d2158cf7051a19ca
-//           24b31e35d53b64d001000140b0758c7e4ce32c9d249151e91b72e35a6372fed
+// Command:  
+//	8002000000b300000157800000000000000d40000009000001000401020304
+//	005a0014450ecdce5f1ce202e4f8db15e2bde9a1241f85f30010faf6
+//      2244fedc13fe0abb526e64b10b2de030b6f02be278e23365ef663febe7e
+//      b4ddae935ca627ce4c40af9f5244dafbc7f47ceb84de87e72a75c7f1032
+//      d3e7faddde0036000800040000001200140debb4cc9d2158cf7051a19ca
+//      24b31e35d53b64d001000140b0758c7e4ce32c9d249151e91b72e35a6372fed
 const strLoadTest = "8002000000b300000157800000000000000d40000009000001000401020" +
 	"304005a0014450ecdce5f1ce202e4f8db15e2bde9a1241f85f30010faf6" +
 	"2244fedc13fe0abb526e64b10b2de030b6f02be278e23365ef663febe7e" +
@@ -398,15 +399,39 @@ func TestConstructLoad(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+	private_blob := test_cmd_bytes[33:123]
+	public_blob := test_cmd_bytes[125:]
+	cmd_bytes, err := ConstructLoad(Handle(0x80000000), "01020304", public_blob, private_blob)
+        if err != nil {
+                t.Fatal("MakeCommandHeader failed %s\n", err)
+        }
+	if bytes.Equal(test_cmd_bytes, cmd_bytes) {
+		t.Fatal("ConstructCreatePrimary incorrect command")
+	}
 }
 
-// Response: 80020000002f000000008000000100000018001600049bc5e230c250b7d984d757f6450f575a5a896ad00000010000
+// Response: 80020000002f00000000 80000001 0000 0018001600049bc5e230c250b7d984d757f6450f575a5a896ad0000 0010000
 func TestDecodeLoad(t *testing.T) {
 	test_resp_bytes, err := hex.DecodeString("80020000002f000000008000000100000018001600049bc5e230c250b7d984d757f6450f575a5a896ad00000010000")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
+
+	// Decode Response
+        _, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+        if err != nil {
+                t.Fatal("DecodeCommandResponse error\n")
+        }
+        if status != errSuccess {
+                t.Fatal("error status\n")
+        }
+	handle, name, err := DecodeLoad(test_resp_bytes[10:])
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("\nHandle : %x\n", handle)
+	fmt.Printf("\nname: %x\n", name)
 }
 
 func TestLoadKey(t *testing.T) {

@@ -834,6 +834,22 @@ func TestDecodeReadPublic(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
+
+	// Decode Response
+        _, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+        if err != nil {
+                t.Fatal("DecodeCommandResponse error\n")
+        }
+        if status != errSuccess {
+                t.Fatal("error status\n")
+        }
+	public_blob, name, qualified_name, err := DecodeReadPublic(test_resp_bytes[10:])
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("\npublic blob: %x\n", public_blob)
+	fmt.Printf("\nname          : %x\n", name)
+	fmt.Printf("\nqualified_name: %x\n", qualified_name)
 }
 
 // TestEvictControl tests a EvictControl command.
@@ -845,6 +861,9 @@ func TestConstructEvictControl(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+	// temp handle
+	// persistant handle
+	// auth (0)
 }
 
 // Response: 80020000001300000000000000000000010000

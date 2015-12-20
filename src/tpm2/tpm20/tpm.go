@@ -783,32 +783,28 @@ func CreatePrimary(rw io.ReadWriter, owner uint32, pcr_nums []int,
 
 // ConstructReadPublic constructs a ReadPublic command.
 func ConstructReadPublic(handle Handle) ([]byte, error) {
-/*
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdReadPublic)
 	if err != nil {
 		return nil, errors.New("ConstructReadPublic failed")
 	}
-	num_bytes :=  []interface{}{uint16(size)}
+	num_bytes :=  []interface{}{uint32(handle)}
 	x, _ := packWithHeader(cmdHdr, num_bytes)
 	return x, nil
-*/
-	return nil, nil
 }
 
 // DecodeReadPublic decodes a ReadPublic response.
+//	public, name, qualified name
 func DecodeReadPublic(in []byte) ([]byte, []byte, []byte, error) {
-/*
-        var rand_bytes []byte
+        var public_blob []byte
+        var name []byte
+        var qualified_name []byte
 
-        out :=  []interface{}{&rand_bytes}
+        out :=  []interface{}{&public_blob, &name, &qualified_name}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode ReadPublic response")
+                return nil, nil, nil, errors.New("Can't decode ReadPublic response")
         }
-
-        return rand_bytes, nil
-*/
-	return nil, nil, nil, nil
+        return public_blob, name, qualified_name, nil
 }
 
 // ReadPublic

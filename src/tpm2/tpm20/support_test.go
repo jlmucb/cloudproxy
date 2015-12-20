@@ -26,7 +26,6 @@ func TestSetShortPcrs(t *testing.T) {
 	if err != nil {
 		t.Fatal("Test SetShortPcrs fails\n")
 	}
-	fmt.Printf("Pcr's: %x\n", pcr)
 	test_pcr := []byte{0x03,0x80,0x01,0x00}
 	if !bytes.Equal(test_pcr, pcr) {
 		t.Fatal("Wrong pcr value\n")
@@ -42,7 +41,6 @@ func TestSetHandle(t *testing.T) {
 	if !bytes.Equal(test_out, hand)  {
 		t.Fatal("Test SetHandle bad output\n")
 	}
-	fmt.Printf("TestHandle: %x\n", hand)
 }
 
 func TestSetPasswordData(t *testing.T) {
@@ -114,6 +112,5 @@ func TestCreateLongPcr(t *testing.T) {
 	if !bytes.Equal(test, s) {
 		t.Fatal("CreateRsaParams fails")
 	}
-	fmt.Printf("CreateLongPcr: %x\n", s)
 }
 

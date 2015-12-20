@@ -297,7 +297,6 @@ func DecodeGetRandom(in []byte) ([]byte, error) {
         if err != nil {
                 return nil, errors.New("Can't decode GetRandom response")
         }
-
         return rand_bytes, nil
 }
 

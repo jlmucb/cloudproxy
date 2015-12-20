@@ -809,18 +809,18 @@ func DecodeReadPublic(in []byte) ([]byte, []byte, []byte, error) {
 // ReadPublic
 //	Output: key blob, name, qualified name
 func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error) {
-/*
+
 	// Construct command
-	x, err:= ConstructReadPublic(size)
+	x, err:= ConstructReadPublic(handle)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return nil, err
+		return nil, nil, nil, err
 	}
 
 	// Send command
 	_, err = rw.Write(x)
 	if err != nil {
-		return nil, errors.New("Write Tpm fails") 
+		return nil, nil, nil, errors.New("Write Tpm fails") 
 	}
 
 	// Get response
@@ -828,29 +828,28 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 	resp = make([]byte, 1024, 1024)
 	read, err := rw.Read(resp)
         if err != nil {
-                return nil, errors.New("Read Tpm fails")
+                return nil, nil, nil, errors.New("Read Tpm fails")
         }
 
 	// Decode Response
         if read < 10 {
-                return nil, errors.New("Read buffer too small")
+                return nil, nil, nil, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
-		return nil, err
+		return nil, nil, nil, err
 	}
 	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
+		return nil, nil, nil, err
 	}
-	rand, err :=  DecodeReadPublic(resp[10:read])
+	public_blob, name, qualified_name, err :=  DecodeReadPublic(resp[10:read])
 	if err != nil {
 		fmt.Printf("DecodeReadPublic %s\n", err)
-		return nil,err
+		return nil, nil, nil,err
 	}
-	return rand, nil
-*/
-	return nil, nil, nil, nil
+	return public_blob, name, qualified_name, nil
 }
 
 // CreateKey

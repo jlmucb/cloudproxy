@@ -99,7 +99,8 @@ func TestDecodeReadPcrs(t *testing.T) {
         if err != nil {
                 t.Fatal("DecodeReadPcrs error\n")
         }
-	fmt.Printf("Status: %x, Counter: %x, pcr: %x, alg: %x, digest: %x\n", status, counter, pcr, alg, digest)
+	fmt.Printf("Status: %x, Counter: %x, pcr: %x, alg: %x, digest: %x\n",
+		status, counter, pcr, alg, digest)
 }
 
 // TestReadClock tests a ReadClock command.

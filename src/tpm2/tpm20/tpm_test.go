@@ -148,12 +148,49 @@ func TestEvictControl(t *testing.T) {
 
 // Combined Key Test
 func TestCombinedKeyTest(t *testing.T) {
-	// int pcr's
+	// Open tpm
+	rw, err := OpenTPM("dev/tpm0")
+        if err != nil {
+                return
+        }
+
+	var empty []byte
+	parms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
+                uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
+                uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+                uint16(1024), uint32(0x00010001), empty}
 	// CreatePrimary
+	parent_handle, public_blob, err := CreatePrimary(rw,
+		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "01020304", parms)
+        if err != nil {
+                t.Fatal("CreatePrimary fails")
+        }
 	// CreateKey
+	 private_blob, public_blob, err := CreateKey(rw, uint32(ordTPM_RH_OWNER),
+		[]int{7}, "", "01020304", parms)
+        if err != nil {
+                t.Fatal("CreateKey fails")
+        }
+        fmt.Printf("\nPrivate blob: %x\n", private_blob)
+        fmt.Printf("\nPublic  blob: %x\n", public_blob)
 	// Load
+	key_handle, blob, err := Load(rw, parent_handle, "01020304",
+             public_blob, private_blob)
+        if err != nil {
+                t.Fatal("Load fails")
+        }
+        fmt.Printf("\nBlob from Load     : %x\n", blob)
 	// ReadPublic
+	public, name, qualified_name, err := ReadPublic(rw, key_handle)
+        if err != nil {
+                t.Fatal("ReadPublic fails")
+        }
+        fmt.Printf("\nPublic         blob: %x\n", public)
+        fmt.Printf("\nName           blob: %x\n", name)
+        fmt.Printf("\nQualified name blob: %x\n", qualified_name)
 	// Flush
+	err = FlushContext(rw, key_handle)
+	err = FlushContext(rw, parent_handle)
 }
 
 // Combined Seal test
@@ -205,7 +242,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 }
 
 // Combined Context test
-func TestCombinedEndorsementTest(t *testing.T) {
+func TestCombinedContextTest(t *testing.T) {
 	// pcr selections
 	//CreatePrimary
 	// SaveContext

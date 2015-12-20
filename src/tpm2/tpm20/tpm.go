@@ -1186,31 +1186,11 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 
 // ConstructStartAuthSession constructs a StartAuthSession command.
 func ConstructStartAuthSession() ([]byte, error) {
-/*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdStartAuthSession)
-	if err != nil {
-		return nil, errors.New("ConstructStartAuthSession failed")
-	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
-	return x, nil
-*/
 	return nil, nil
 }
 
 // DecodeStartAuthSession decodes a StartAuthSession response.
 func DecodeStartAuthSession(in []byte) ([]byte, error) {
-/*
-        var rand_bytes []byte
-
-        out :=  []interface{}{&rand_bytes}
-        err := unpack(in, out)
-        if err != nil {
-                return nil, errors.New("Can't decode StartAuthSession response")
-        }
-
-        return rand_bytes, nil
-*/
 	return nil, nil
 }
 
@@ -1223,163 +1203,43 @@ func StartAuthSession(rw io.ReadWriter) (Handle, error) {
         TPM_SE session_type, TPMT_SYM_DEF& symmetric,
         TPMI_ALG_HASH hash_alg, TPM_HANDLE* session_handle,
         TPM2B_NONCE* nonce_obj
-	// Construct command
-	x, err:= ConstructStartAuthSession(size)
-	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return nil, err
-	}
-
-	// Send command
-	_, err = rw.Write(x)
-	if err != nil {
-		return nil, errors.New("Write Tpm fails") 
-	}
-
-	// Get response
-	var resp []byte
-	resp = make([]byte, 1024, 1024)
-	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, errors.New("Read Tpm fails")
-        }
-
-	// Decode Response
-        if read < 10 {
-                return nil, errors.New("Read buffer too small")
-	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
-	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
-		return nil, err
-	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
-	if status != errSuccess {
-	}
-	rand, err :=  DecodeStartAuthSession(resp[10:read])
-	if err != nil {
-		fmt.Printf("DecodeStartAuthSession %s\n", err)
-		return nil,err
-	}
-	return rand, nil
 */
 	return Handle(0), nil
 }
 
 // ConstructCreateSealed constructs a CreateSealed command.
 func ConstructCreateSealed(parent Handle, policy_digest []byte, parent_password string,
-        to_seal []byte, pcr_selection []byte, int_alg uint16,
-        create_flags uint32, sym_alg uint16, sym_key_size_bits uint16,
-        sym_mode uint16, sig_scheme uint16, modulus_size_bits uint16,
-        exp uint32) ([]byte, error) {
-/*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdCreateSealed)
-	if err != nil {
-		return nil, errors.New("ConstructCreateSealed failed")
-	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
-	return x, nil
-*/
+        	to_seal []byte, pcr_selection []byte, int_alg uint16,
+        	create_flags uint32, sym_alg uint16, sym_key_size_bits uint16,
+        	sym_mode uint16, sig_scheme uint16, modulus_size_bits uint16,
+        	exp uint32) ([]byte, error) {
 	return nil, nil
 }
 
 // DecodeCreateSealed decodes a CreateSealed response.
 func DecodeCreateSealed(in []byte) ([]byte, []byte, error) {
-/*
-        var rand_bytes []byte
-
-        out :=  []interface{}{&rand_bytes}
-        err := unpack(in, out)
-        if err != nil {
-                return nil, errors.New("Can't decode CreateSealed response")
-        }
-
-        return rand_bytes, nil
-*/
 	return nil, nil, nil
 }
 
 // CreateSealed
 // 	Output: public blob, private blob
 func CreateSealed(rw io.ReadWriter, 
-	parent Handle, policy_digest []byte, parent_password string, 
-	to_seal []byte, pcr_selection []byte, int_alg uint16,
-        create_flags uint32, sym_alg uint16, sym_key_size_bits uint16,
-        sym_mode uint16, sig_scheme uint16, modulus_size_bits uint16,
-	exp uint32) ([]byte, []byte, error) {
-/*
-	// Construct command
-	x, err:= ConstructCreateSealed(size)
-	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return nil, err
-	}
-
-	// Send command
-	_, err = rw.Write(x)
-	if err != nil {
-		return nil, errors.New("Write Tpm fails") 
-	}
-
-	// Get response
-	var resp []byte
-	resp = make([]byte, 1024, 1024)
-	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, errors.New("Read Tpm fails")
-        }
-
-	// Decode Response
-        if read < 10 {
-                return nil, errors.New("Read buffer too small")
-	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
-	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
-		return nil, err
-	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
-	if status != errSuccess {
-	}
-	rand, err :=  DecodeCreateSealed(resp[10:read])
-	if err != nil {
-		fmt.Printf("DecodeCreateSealed %s\n", err)
-		return nil,err
-	}
-	return rand, nil
-*/
+		parent Handle, policy_digest []byte, parent_password string, 
+		to_seal []byte, pcr_selection []byte, int_alg uint16,
+        	create_flags uint32, sym_alg uint16, sym_key_size_bits uint16,
+        	sym_mode uint16, sig_scheme uint16, modulus_size_bits uint16,
+		exp uint32) ([]byte, []byte, error) {
 	return nil, nil, nil
 }
 
 // ConstructUnseal constructs a Unseal command.
 func ConstructUnseal(item_handle Handle, password string, session_handle Handle,
-        attributes []byte, digest []byte) ([]byte, error) {
-/*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdUnseal)
-	if err != nil {
-		return nil, errors.New("ConstructUnseal failed")
-	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
-	return x, nil
-*/
+        	attributes []byte, digest []byte) ([]byte, error) {
 	return nil, nil
 }
 
 // DecodeUnseal decodes a Unseal response.
 func DecodeUnseal(in []byte) ([]byte, error) {
-/*
-        var rand_bytes []byte
-
-        out :=  []interface{}{&rand_bytes}
-        err := unpack(in, out)
-        if err != nil {
-                return nil, errors.New("Can't decode Unseal response")
-        }
-
-        return rand_bytes, nil
-*/
 	return nil, nil
 }
 
@@ -1390,128 +1250,27 @@ func Unseal(rw io.ReadWriter, item_handle Handle, password string, session_handl
  	TPM_HANDLE item_handle, string& parentAuth,
         TPM_HANDLE session_handle, TPM2B_NONCE& nonce,
         byte session_attributes, TPM2B_DIGEST& hmac_digest,
-        int* out_size, byte* unsealed
-	// Construct command
-	x, err:= ConstructUnseal(size)
-	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return nil, err
-	}
-
-	// Send command
-	_, err = rw.Write(x)
-	if err != nil {
-		return nil, errors.New("Write Tpm fails") 
-	}
-
-	// Get response
-	var resp []byte
-	resp = make([]byte, 1024, 1024)
-	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, errors.New("Read Tpm fails")
-        }
-
-	// Decode Response
-        if read < 10 {
-                return nil, errors.New("Read buffer too small")
-	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
-	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
-		return nil, err
-	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
-	if status != errSuccess {
-	}
-	rand, err :=  DecodeUnseal(resp[10:read])
-	if err != nil {
-		fmt.Printf("DecodeUnseal %s\n", err)
-		return nil,err
-	}
-	return rand, nil
 */
 	return nil, nil
 }
 
 // ConstructQuote constructs a Quote command.
 func ConstructQuote(isigning_handle Handle, password string,
-        to_quote []byte, scheme uint16, pcr []byte, sig_alg uint16,
-        hash_alg uint16) ([]byte, error) {
-/*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdQuote)
-	if err != nil {
-		return nil, errors.New("ConstructQuote failed")
-	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
-	return x, nil
-*/
+        	to_quote []byte, scheme uint16, pcr []byte, sig_alg uint16,
+        	hash_alg uint16) ([]byte, error) {
 	return nil, nil
 }
 
 // DecodeQuote decodes a Quote response.
 func DecodeQuote(in []byte) ([]byte, error) {
-/*
-        var rand_bytes []byte
-
-        out :=  []interface{}{&rand_bytes}
-        err := unpack(in, out)
-        if err != nil {
-                return nil, errors.New("Can't decode Quote response")
-        }
-
-        return rand_bytes, nil
-*/
 	return nil, nil
 }
 
 // Quote
 // 	Output: attest, sig
 func Quote(rw io.ReadWriter, signing_handle Handle, password string,
-	to_quote []byte, scheme uint16, pcr []byte, sig_alg uint16,
-	hash_alg uint16) ([]byte, []byte, error) {
-/*
-	// Construct command
-	x, err:= ConstructQuote(size)
-	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return nil, err
-	}
-
-	// Send command
-	_, err = rw.Write(x)
-	if err != nil {
-		return nil, errors.New("Write Tpm fails") 
-	}
-
-	// Get response
-	var resp []byte
-	resp = make([]byte, 1024, 1024)
-	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, errors.New("Read Tpm fails")
-        }
-
-	// Decode Response
-        if read < 10 {
-                return nil, errors.New("Read buffer too small")
-	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
-	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
-		return nil, err
-	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
-	if status != errSuccess {
-	}
-	rand, err :=  DecodeQuote(resp[10:read])
-	if err != nil {
-		fmt.Printf("DecodeQuote %s\n", err)
-		return nil,err
-	}
-	return rand, nil
-*/
+		to_quote []byte, scheme uint16, pcr []byte, sig_alg uint16,
+		hash_alg uint16) ([]byte, []byte, error) {
 	return nil, nil, nil
 }
 
@@ -1519,296 +1278,62 @@ func Quote(rw io.ReadWriter, signing_handle Handle, password string,
 // Command: 800200000168000001478000000280000000000000164000000900000100040102030440000009000001000000380020a2b634475ae0cfccff45d273f173cb4c74089167c94ed4666fa41a0039b71ad6956316cbb65c1ac71225c204d9f752fa62a84c70b51701007d9fec0ddff9c8e27904913f498aa20416e66e4a91eeb263d1a7badd7bd0043b4f2e165018d21e892359856cd93b45a983606e3482b029796659266f01277c944500bda57a5442d670173093307377783fd94aaf481bbdde1914720fc7f41637ff66593c50ce72626bc6e5edfa6e532c446faa3af1279f68d84edaa7386d97229be8edf74fc33e74e2f0f4b7a1ec985b42463fbf387ecc268b3a3a45c66968113ab0ed0d3573a9076eebe3d45efbc12c970465cf80af155434d8b0eb377a50942a742f86a0fa93c29bd0c37e8ac18c2f6b63558ba03df7bc5f80be70e504203b2b55c243794e7fc4cdb817e2da0796e088ca408a3c5d95abb32fa6dfddd4101f
 func ConstructActivateCredential(active_handle Handle, key_handle Handle,
         credBlob []byte, secret []byte) ([]byte, error) {
-/*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdActivateCredential)
-	if err != nil {
-		return nil, errors.New("ConstructActivateCredential failed")
-	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
-	return x, nil
-*/
 	return nil, nil
 }
 
 // DecodeActivateCredential decodes a ActivateCredential response.
 // returns certInfo
 func DecodeActivateCredential(in []byte) ([]byte, error) {
-/*
-        var rand_bytes []byte
-
-        out :=  []interface{}{&rand_bytes}
-        err := unpack(in, out)
-        if err != nil {
-                return nil, errors.New("Can't decode ActivateCredential response")
-        }
-
-        return rand_bytes, nil
-*/
 	return nil, nil
 }
 
 // ActivateCredential
 // 	Output: certinfo, encrypted secret
 func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handle,
-	active_password string, key_password string) ([]byte, []byte, error) {
-/*
-	// Construct command
-	x, err:= ConstructActivateCredential(size)
-	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return nil, err
-	}
-
-	// Send command
-	_, err = rw.Write(x)
-	if err != nil {
-		return nil, errors.New("Write Tpm fails") 
-	}
-
-	// Get response
-	var resp []byte
-	resp = make([]byte, 1024, 1024)
-	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, errors.New("Read Tpm fails")
-        }
-
-	// Decode Response
-        if read < 10 {
-                return nil, errors.New("Read buffer too small")
-	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
-	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
-		return nil, err
-	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
-	if status != errSuccess {
-	}
-	rand, err :=  DecodeActivateCredential(resp[10:read])
-	if err != nil {
-		fmt.Printf("DecodeActivateCredential %s\n", err)
-		return nil,err
-	}
-	return rand, nil
-*/
+		active_password string, key_password string) ([]byte, []byte, error) {
 	return nil, nil, nil
 }
 
 // ConstructEvictControl constructs a EvictControl command.
 // Command: 8002000000230000012040000001810003e800000009400000090000010000810003e8
 func ConstructEvictControl(tmp_handle Handle, password string, persistant_handle Handle) ([]byte, error) {
-/*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdEvictControl)
-	if err != nil {
-		return nil, errors.New("ConstructEvictControl failed")
-	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
-	return x, nil
-*/
 	return nil, nil
 }
 
 // DecodeEvictControl decodes a EvictControl response.
 // Response: 80020000001300000000000000000000010000
 func DecodeEvictControl(in []byte) (error) {
-/*
-        var rand_bytes []byte
-
-        out :=  []interface{}{&rand_bytes}
-        err := unpack(in, out)
-        if err != nil {
-                return nil, errors.New("Can't decode EvictControl response")
-        }
-
-        return rand_bytes, nil
-*/
 	return nil
 }
 
 // EvictControl
 func EvictControl(rw io.ReadWriter, tmp_handle Handle, password string,
-	persistant_handle Handle) (error) {
-/*
-	// Construct command
-	x, err:= ConstructEvictControl(size)
-	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return nil, err
-	}
-
-	// Send command
-	_, err = rw.Write(x)
-	if err != nil {
-		return nil, errors.New("Write Tpm fails") 
-	}
-
-	// Get response
-	var resp []byte
-	resp = make([]byte, 1024, 1024)
-	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, errors.New("Read Tpm fails")
-        }
-
-	// Decode Response
-        if read < 10 {
-                return nil, errors.New("Read buffer too small")
-	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
-	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
-		return nil, err
-	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
-	if status != errSuccess {
-	}
-	rand, err :=  DecodeEvictControl(resp[10:read])
-	if err != nil {
-		fmt.Printf("DecodeEvictControl %s\n", err)
-		return nil,err
-	}
-	return rand, nil
-*/
+		persistant_handle Handle) (error) {
 	return nil
 }
 
 // ConstructSaveContext constructs a SaveContext command.
 func ConstructSaveContext(handle Handle, save_area []byte) ([]byte, error) {
-/*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdSaveContext)
-	if err != nil {
-		return nil, errors.New("ConstructSaveContext failed")
-	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
-	return x, nil
-*/
 	return nil, nil
 }
 
 // SaveContext
 func SaveContext(rw io.ReadWriter, handle Handle, save_area []byte) (error) {
-/*
-	// Construct command
-	x, err:= ConstructSaveContext(size)
-	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return nil, err
-	}
-
-	// Send command
-	_, err = rw.Write(x)
-	if err != nil {
-		return nil, errors.New("Write Tpm fails") 
-	}
-
-	// Get response
-	var resp []byte
-	resp = make([]byte, 1024, 1024)
-	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, errors.New("Read Tpm fails")
-        }
-
-	// Decode Response
-        if read < 10 {
-                return nil, errors.New("Read buffer too small")
-	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
-	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
-		return nil, err
-	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
-	if status != errSuccess {
-	}
-	rand, err :=  DecodeSaveContext(resp[10:read])
-	if err != nil {
-		fmt.Printf("DecodeSaveContext %s\n", err)
-		return nil,err
-	}
-	return rand, nil
-*/
 	return nil
 }
 
 // ConstructLoadContext constructs a LoadContext command.
 func ConstructLoadContext(save_area []byte) ([]byte, error) {
-/*
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdLoadContext)
-	if err != nil {
-		return nil, errors.New("ConstructLoadContext failed")
-	}
-	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
-	return x, nil
-*/
 	return nil, nil
 }
 
 // DecodeLoadContext decodes a LoadContext response.
 func  DecodeLoadContext(in []byte) (Handle, error) {
-/*
-        var rand_bytes []byte
-
-        out :=  []interface{}{&rand_bytes}
-        err := unpack(in, out)
-        if err != nil {
-                return nil, errors.New("Can't decode LoadContext response")
-        }
-
-        return rand_bytes, nil
-*/
 	return Handle(0), nil
 }
 
 // LoadContext
 func LoadContext(rw io.ReadWriter, save_area []byte) (Handle, error) {
-/*
-	int size, byte* saveArea, TPM_HANDLE* handle
-	// Construct command
-	x, err:= ConstructLoadContext(size)
-	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
-		return nil, err
-	}
-
-	// Send command
-	_, err = rw.Write(x)
-	if err != nil {
-		return nil, errors.New("Write Tpm fails") 
-	}
-
-	// Get response
-	var resp []byte
-	resp = make([]byte, 1024, 1024)
-	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, errors.New("Read Tpm fails")
-        }
-
-	// Decode Response
-        if read < 10 {
-                return nil, errors.New("Read buffer too small")
-	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
-	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
-		return nil, err
-	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
-	if status != errSuccess {
-	}
-	rand, err :=  DecodeLoadContext(resp[10:read])
-	if err != nil {
-		fmt.Printf("DecodeLoadContext %s\n", err)
-		return nil,err
-	}
-	return rand, nil
-*/
 	return Handle(0), nil
 }
 

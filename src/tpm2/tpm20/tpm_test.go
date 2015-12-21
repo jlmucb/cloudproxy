@@ -108,7 +108,7 @@ func TestStartAuthSession(t *testing.T) {
 
 // CreateKey
 func TestCreateKey(t *testing.T) {
-	fmt.Printf("TestCreatePrimary\n")
+	fmt.Printf("TestCreateKey\n")
 
 	// Open TPM
 	rw, err := OpenTPM("/dev/tpm0")
@@ -174,7 +174,7 @@ func TestCombinedKeyTest(t *testing.T) {
         fmt.Printf("\nPrivate blob: %x\n", private_blob)
         fmt.Printf("\nPublic  blob: %x\n", public_blob)
 	// Load
-	key_handle, blob, err := Load(rw, parent_handle, "01020304",
+	key_handle, blob, err := Load(rw, parent_handle, "", "01020304",
              public_blob, private_blob)
         if err != nil {
                 t.Fatal("Load fails")

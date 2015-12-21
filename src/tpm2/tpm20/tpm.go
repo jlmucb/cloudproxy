@@ -391,9 +391,9 @@ func ConstructReadPcrs(num_spec int, num_pcr byte, pcrs []byte) ([]byte, error) 
 		return nil, errors.New("ConstructReadPcrs failed")
 	}
 	num := uint32(num_spec)
-	out := []interface{}{&num, &pcrs}
-	x, _ := packWithHeader(cmdHdr, out)
-	return x, nil
+	template := []interface{}{&num, &pcrs}
+	cmd, _ := packWithHeader(cmdHdr, template)
+	return cmd, nil
 }
 
 // DecodeReadPcrs decodes a ReadPcr response.
@@ -462,7 +462,7 @@ func ConstructReadClock() ([]byte, error) {
 	if err != nil {
 		return nil, errors.New("ConstructGetRandom failed")
 	}
-	cmd, _ := packWithHeader(cmdHdr, nil)
+	cmd := packWithBytes(cmdHdr, nil)
 	return cmd, nil
 }
 
@@ -529,8 +529,8 @@ func ConstructGetCapabilities(cap uint32, count uint32, property uint32) ([]byte
 		return nil, errors.New("GetCapability failed")
 	}
 	cap_bytes:=  []interface{}{&cap, &property, &count}
-	x, _ := packWithHeader(cmdHdr, cap_bytes)
-	return x, nil
+	cmd, _ := packWithHeader(cmdHdr, cap_bytes)
+	return cmd, nil
 }
 
 // DecodeGetCapabilities decodes a GetCapabilities response.
@@ -639,8 +639,8 @@ func ConstructCreatePrimary(owner uint32, pcr_nums []int,
 	arg_bytes = append(arg_bytes, b5...)
 	arg_bytes = append(arg_bytes, b6...)
 	arg_bytes = append(arg_bytes, b7...)
-	cmd_bytes, _ := packWithHeader(cmdHdr, nil)
-	return append(cmd_bytes, arg_bytes...), nil
+	cmd_bytes := packWithBytes(cmdHdr, arg_bytes)
+	return cmd_bytes, nil
 }
 
 // DecodeCreatePrimary decodes a CreatePrimary response.
@@ -868,8 +868,8 @@ func ConstructCreateKey(owner uint32, pcr_nums []int, parent_password string, ow
  	arg_bytes = append(arg_bytes, b5...)
  	arg_bytes = append(arg_bytes, b6...)
  	arg_bytes = append(arg_bytes, b7...)
-	cmd_bytes, _ := packWithHeader(cmdHdr, nil)
-	return append(cmd_bytes, arg_bytes...), nil
+	cmd_bytes := packWithBytes(cmdHdr, arg_bytes)
+	return cmd_bytes, nil
 }
 
 // DecodeCreateKey decodes a CreateKey response.
@@ -940,26 +940,22 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 }
 
 // ConstructLoad constructs a Load command.
-func ConstructLoad(parentHandle Handle, parentAuth string,
+func ConstructLoad(parentHandle Handle, parentAuth string, ownerAuth string,
              public_blob []byte, private_blob []byte) ([]byte, error) {
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdLoad)
 	if err != nil {
 		return nil, errors.New("ConstructLoad failed")
 	}
-	var empty []byte
 	b1 := SetHandle(parentHandle)
-	b2,_ := pack([]interface{}{&empty})
-	b3 := CreatePasswordAuthArea("", Handle(ordTPM_RS_PW))
-	b4 := SetPasswordData(parentAuth)
-	x, _ := packWithHeader(cmdHdr, nil)
+	b3 := SetPasswordData(parentAuth)
+	b4 := CreatePasswordAuthArea(ownerAuth, Handle(ordTPM_RS_PW))
 	// private, public
 	b5,_ := pack([]interface{}{&private_blob, &public_blob})
-	cmd_bytes := append(x, b1...)
-	cmd_bytes = append(cmd_bytes, b2...)
-	cmd_bytes = append(cmd_bytes, b3...)
-	cmd_bytes = append(cmd_bytes, b4...)
-	cmd_bytes = append(cmd_bytes, b5...)
-	return b5, nil
+	arg_bytes := append(b1, b3...)
+	arg_bytes = append(arg_bytes, b4...)
+	arg_bytes = append(arg_bytes, b5...)
+	cmd_bytes := packWithBytes(cmdHdr, arg_bytes)
+	return cmd_bytes, nil
 }
 
 // DecodeLoad decodes a Load response.
@@ -979,11 +975,11 @@ func DecodeLoad(in []byte) (Handle, []byte, error) {
 
 // Load
 //	Output: handle
-func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string,
+func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string, ownerAuth string,
 	     public_blob []byte, private_blob []byte) (Handle, []byte, error) {
 
 	// Construct command
-	cmd, err:= ConstructLoad(parentHandle, parentAuth, public_blob, private_blob)
+	cmd, err:= ConstructLoad(parentHandle, parentAuth, ownerAuth, public_blob, private_blob)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return Handle(0), nil, err
@@ -1037,8 +1033,7 @@ func ConstructPolicyPcr(handle Handle, expected_digest []byte, pcr_nums []int) (
 		return nil, errors.New("Can't pack pcr buf")
 	}
 	b2 := CreateLongPcr(1, pcr_nums)
-	cmd, _ := packWithHeader(cmdHdr, nil)
-	cmd = append(cmd, append(b1, b2...)...)
+	cmd := packWithBytes(cmdHdr, append(b1, b2...))
 	return cmd, nil
 }
 
@@ -1054,8 +1049,7 @@ func ConstructPolicyPassword(handle Handle) ([]byte, error) {
 	if err != nil {
 		return nil, errors.New("Can't pack pcr buf")
 	}
-	cmd, _ := packWithHeader(cmdHdr, nil)
-	cmd = append(cmd, b1...)
+	cmd := packWithBytes(cmdHdr, b1)
 	return cmd, nil
 }
 
@@ -1110,8 +1104,7 @@ func ConstructPolicyGetDigest(handle Handle) ([]byte, error) {
 	if err != nil {
 		return nil, errors.New("Can't pack pcr buf")
 	}
-	cmd, _ := packWithHeader(cmdHdr, nil)
-	cmd = append(cmd, b1...)
+	cmd := packWithBytes(cmdHdr, b1)
 	return cmd, nil
 }
 

@@ -26,7 +26,7 @@ import (
 func MakeCommandHeader(tag uint16, size uint32, command uint32) (commandHeader, error) {
 	var cmdHdr commandHeader
 	cmdHdr.Tag = tag
-	cmdHdr.Size = size
+	cmdHdr.Size = size + 10
 	cmdHdr.Cmd = command
 	return cmdHdr, nil
 }
@@ -87,6 +87,21 @@ func packedSize(elts []interface{}) int {
 	}
 
 	return size
+}
+
+// packWithBytes takes a command and byte slice and packs them into a single
+// nil is error
+func packWithBytes(ch commandHeader, args []byte) ([]byte) {
+	hdrSize := binary.Size(ch)
+	bodySize := len(args)
+	if bodySize < 0 {
+		return nil
+	}
+
+	ch.Size = uint32(hdrSize + bodySize)
+
+	out,_ := pack([]interface{}{ch})
+	return append(out, args...)
 }
 
 // packWithHeader takes a header and a sequence of elements that are either of

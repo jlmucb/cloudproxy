@@ -176,6 +176,11 @@ func TestConstructFlushContext(t *testing.T) {
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 	// TODO
+	cmd_bytes, err := ConstructFlushContext(Handle(0x80000001)) 
+	fmt.Printf("Command: %x\n", cmd_bytes)
+	if err != nil || !bytes.Equal(test_cmd_bytes, cmd_bytes) {
+		t.Fatal("Bad GetCapabilities command\n")
+	}
 }
 
 func TestDecodeFlushContext(t *testing.T) {
@@ -208,12 +213,13 @@ func TestConstructLoad(t *testing.T) {
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 	private_blob := test_cmd_bytes[33:123]
 	public_blob := test_cmd_bytes[125:]
-	cmd_bytes, err := ConstructLoad(Handle(0x80000000), "01020304", public_blob, private_blob)
+	cmd_bytes, err := ConstructLoad(Handle(0x80000000), "", "01020304", public_blob, private_blob)
+	fmt.Printf("Command: %x\n", cmd_bytes)
         if err != nil {
                 t.Fatal("MakeCommandHeader failed %s\n", err)
         }
-	if bytes.Equal(test_cmd_bytes, cmd_bytes) {
-		t.Fatal("ConstructCreatePrimary incorrect command")
+	if !bytes.Equal(test_cmd_bytes, cmd_bytes) {
+		t.Fatal("ConstructLoad incorrect command")
 	}
 }
 
@@ -260,7 +266,7 @@ func TestConstructCreatePrimary(t *testing.T) {
 	}
 	fmt.Printf("Test command  : %x\n", test_cmd_bytes)
 	fmt.Printf("CreatePrimary : %x\n", cmd_bytes)
-	if bytes.Equal(test_cmd_bytes, cmd_bytes) {
+	if !bytes.Equal(test_cmd_bytes, cmd_bytes) {
 		t.Fatal("ConstructCreatePrimary incorrect command")
 	}
 }
@@ -308,7 +314,15 @@ func TestConstructPolicyPcr(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
-	// TODO
+	var empty []byte
+	cmd_bytes, err := ConstructPolicyPcr(Handle(0x03000000), empty, []int{7})
+	if err != nil {
+		t.Fatal("Can't construct policy pcr\n")
+	}
+	fmt.Printf("Command: %x\n", cmd_bytes)
+	if !bytes.Equal(cmd_bytes, test_cmd_bytes) {
+		t.Fatal("TestConstructPolicyPcr: misgenerated command")
+	}
 }
 
 func TestConstructPolicyPassword(t *testing.T) {
@@ -317,7 +331,14 @@ func TestConstructPolicyPassword(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
-	// TODO
+	cmd_bytes, err := ConstructPolicyPassword(Handle(0x03000000))
+	if err != nil {
+		t.Fatal("Can't construct policy pcr\n")
+	}
+	fmt.Printf("Command: %x\n", cmd_bytes)
+	if !bytes.Equal(cmd_bytes, test_cmd_bytes) {
+		t.Fatal("TestPolicyPcr: misgenerated command")
+	}
 }
 
 // Response: 80010000000a00000000

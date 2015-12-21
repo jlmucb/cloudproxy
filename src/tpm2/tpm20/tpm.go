@@ -195,6 +195,16 @@ func DecodeRsaArea(in []byte) (*RsaParams, error) {
 	return parms, nil
 }
 
+// nil is error
+func CreateKeyedHash(parms KeyedHashParams) ([]byte) {
+	// 0 (uint16)
+	// type
+	// attributes
+	// auth
+	// scheme
+	return nil
+}
+
 // nil return is error
 func CreateRsaParams(parms RsaParams) ([]byte) {
 	template1 := []interface{}{&parms.enc_alg, &parms.hash_alg,
@@ -482,7 +492,6 @@ func DecodeReadClock(in []byte) (uint64, uint64, error) {
         if err != nil {
                 return 0, 0, errors.New("Can't decode DecodeReadClock response")
         }
-
 	return current_time, current_clock, nil
 }
 
@@ -897,7 +906,6 @@ func DecodeCreateKey(in []byte) ([]byte, []byte, error) {
 	// creation data
 	// tpmt_tk_creation
 	// digest
-
 	return tpm2b_private, tpm2b_public, nil
 }
 
@@ -1184,38 +1192,46 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 }
 
 // ConstructStartAuthSession constructs a StartAuthSession command.
+// Command: 80010000002b00000176400000074000000700100000000000000000000000000000000000000100100004
 func ConstructStartAuthSession() ([]byte, error) {
+	// tpm_key
+	// bind (TPM_RH_NULL)
+	// noncecaller
+	// encrypted secret (salt)
+	// TPM_SE
+	// TPM_SYM_DEF
+	// Alg hash
 	return nil, nil
 }
 
 // DecodeStartAuthSession decodes a StartAuthSession response.
+//	Output: session_handle, nonce
+// Response: 800100000020000000000300000000106cf0c90c419ce1a96d5205eb870ec527
 func DecodeStartAuthSession(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
 // StartAuthSession
 func StartAuthSession(rw io.ReadWriter) (Handle, error) {
-/*
- 	TPM_RH tpm_obj, TPM_RH bind_obj,
-        TPM2B_NONCE& initial_nonce,
-        TPM2B_ENCRYPTED_SECRET& salt,
-        TPM_SE session_type, TPMT_SYM_DEF& symmetric,
-        TPMI_ALG_HASH hash_alg, TPM_HANDLE* session_handle,
-        TPM2B_NONCE* nonce_obj
-*/
 	return Handle(0), nil
 }
 
 // ConstructCreateSealed constructs a CreateSealed command.
+// Command: 80020000006900000153800000000000000d40000009000001000401020304001800040102030400100102030405060708090a0b0c0d0e0f100022000800040000001200140debb4cc9d2158cf7051a19ca24b31e35d53b64d00100000000000000001000403800000
 func ConstructCreateSealed(parent Handle, policy_digest []byte, parent_password string,
-        	to_seal []byte, pcr_selection []byte, int_alg uint16,
-        	create_flags uint32, sym_alg uint16, sym_key_size_bits uint16,
-        	sym_mode uint16, sig_scheme uint16, modulus_size_bits uint16,
-        	exp uint32) ([]byte, error) {
+        	to_seal []byte, pcr_selection []byte, parms KeyedHashParams) ([]byte, error) {
+	// parent handle
+	// auth (0)
+	// pasword auth area
+	// Sensitive area
+	// keyed hash template
+	// outside info
+	// pcr long
 	return nil, nil
 }
 
 // DecodeCreateSealed decodes a CreateSealed response.
+// 	Output: private, public, creation_out, digest_out, creation_ticket
 func DecodeCreateSealed(in []byte) ([]byte, []byte, error) {
 	return nil, nil, nil
 }
@@ -1232,12 +1248,16 @@ func CreateSealed(rw io.ReadWriter,
 }
 
 // ConstructUnseal constructs a Unseal command.
+// Command: 80020000001f0000015e800000010000000d03000000000001000401020304
 func ConstructUnseal(item_handle Handle, password string, session_handle Handle,
         	attributes []byte, digest []byte) ([]byte, error) {
+	// item_handle
 	return nil, nil
 }
 
 // DecodeUnseal decodes a Unseal response.
+//	Output: sensitive data
+// Resp: 800200000035000000000000001200100102030405060708090a0b0c0d0e0f100010ea78d080f9f77d9d85e1f80350247ecb010000
 func DecodeUnseal(in []byte) ([]byte, error) {
 	return nil, nil
 }
@@ -1245,24 +1265,34 @@ func DecodeUnseal(in []byte) ([]byte, error) {
 // Unseal
 func Unseal(rw io.ReadWriter, item_handle Handle, password string, session_handle Handle,
 	attributes []byte, digest []byte) ([]byte, error) {
-/*
- 	TPM_HANDLE item_handle, string& parentAuth,
-        TPM_HANDLE session_handle, TPM2B_NONCE& nonce,
-        byte session_attributes, TPM2B_DIGEST& hmac_digest,
-*/
 	return nil, nil
 }
 
 // ConstructQuote constructs a Quote command.
+// Command: 80020000003d00000158800000010000000d4000000900000100040102030400100102030405060708090a0b0c0d0e0f10001000000001000403800000
 func ConstructQuote(isigning_handle Handle, password string,
         	to_quote []byte, scheme uint16, pcr []byte, sig_alg uint16,
         	hash_alg uint16) ([]byte, error) {
+	// handle
+	// qualifying data
+	// sig scheme
+	// long pcr selection
 	return nil, nil
 }
 
 // DecodeQuote decodes a Quote response.
-func DecodeQuote(in []byte) ([]byte, error) {
-	return nil, nil
+//	Output: attest, signature
+// Response: a80020000010400000000000000f10069ff5443478018001600047705bde86e3780577632421d34e5db4759667c8900100102030405060708090a0b0c0d0e0f1000000000000fe8f99cf4968c1d6e516100eb40a3278641a1c6000000010004038000000014ae2edb7e23d7e8f58daa87af87775993a42672250014000400804e49bb73712bc6acca4778005741b586ee6da2c98fe4dd1a3babdd9dd58c2d6fed9441a5bfb3c07ae0c7a5f2aff3d46b97429cff515caa12726fec6021b439c9856ebdd2f006b9159b5bfcbb8ca16c6a8f4a5953669d6af769593c00249e240f5009735b03abff38917de1c43bfdcc7a488fa6474c1011d3f399939e033930bb0000010000
+func DecodeQuote(in []byte) ([]byte, []byte, error) {
+        var attest []byte
+        var signature []byte
+
+        out :=  []interface{}{&attest, &signature}
+        err := unpack(in, out)
+        if err != nil {
+                return nil, nil, errors.New("Can't decode Quote response")
+        }
+        return attest, signature, nil
 }
 
 // Quote
@@ -1277,25 +1307,35 @@ func Quote(rw io.ReadWriter, signing_handle Handle, password string,
 // Command: 800200000168000001478000000280000000000000164000000900000100040102030440000009000001000000380020a2b634475ae0cfccff45d273f173cb4c74089167c94ed4666fa41a0039b71ad6956316cbb65c1ac71225c204d9f752fa62a84c70b51701007d9fec0ddff9c8e27904913f498aa20416e66e4a91eeb263d1a7badd7bd0043b4f2e165018d21e892359856cd93b45a983606e3482b029796659266f01277c944500bda57a5442d670173093307377783fd94aaf481bbdde1914720fc7f41637ff66593c50ce72626bc6e5edfa6e532c446faa3af1279f68d84edaa7386d97229be8edf74fc33e74e2f0f4b7a1ec985b42463fbf387ecc268b3a3a45c66968113ab0ed0d3573a9076eebe3d45efbc12c970465cf80af155434d8b0eb377a50942a742f86a0fa93c29bd0c37e8ac18c2f6b63558ba03df7bc5f80be70e504203b2b55c243794e7fc4cdb817e2da0796e088ca408a3c5d95abb32fa6dfddd4101f
 func ConstructActivateCredential(active_handle Handle, key_handle Handle,
         credBlob []byte, secret []byte) ([]byte, error) {
+	// active_handle
+	// key_handle
+	// cred_blob
+	// secret
 	return nil, nil
 }
 
 // DecodeActivateCredential decodes a ActivateCredential response.
 // returns certInfo
+// Response: 80020000002e000000000000001600140102030405060708090a0b0c0d0e0f101112131400000100000000010000
 func DecodeActivateCredential(in []byte) ([]byte, error) {
 	return nil, nil
 }
 
 // ActivateCredential
-// 	Output: certinfo, encrypted secret
+// 	Output: certinfo
 func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handle,
 		active_password string, key_password string) ([]byte, []byte, error) {
 	return nil, nil, nil
 }
 
 // ConstructEvictControl constructs a EvictControl command.
-// Command: 8002000000230000012040000001810003e800000009400000090000010000810003e8
+// Command: 800200000023 00000120 40000001 810003e8 0000 000940000009000001 0000810003e8
 func ConstructEvictControl(tmp_handle Handle, password string, persistant_handle Handle) ([]byte, error) {
+	// owner
+	// loaded object handle
+	// auth 0
+	// auth
+	// persistant handle
 	return nil, nil
 }
 
@@ -1312,22 +1352,37 @@ func EvictControl(rw io.ReadWriter, tmp_handle Handle, password string,
 }
 
 // ConstructSaveContext constructs a SaveContext command.
+// command: 80010000000e0000016280000000
 func ConstructSaveContext(handle Handle, save_area []byte) ([]byte, error) {
+	// handle
 	return nil, nil
 }
 
-// SaveContext
+// DecodeSaveContext constructs a SaveContext command.
+// output contest
+// 8001000003a60000000000000000000000268000000040000001038a00202280de0e478f25261abb7b96dc2f74f3be2b005bc4ad02a595074660aa0560a2b719fc2865b391dba8a7cb0d27eec7b30a5608c8b35bd42c8308cadc5c900f51f70cba9eebc0f63a86294c5f90dd8dcb64d08494dcb82571683090a5ba37398ff03e801384b21b7d2f5f0d50d96ed21ad49b79df200edab3427f59c574918c54385ee346a946e21430315ce00af2edf615cbcef035691edf723d20c6adc7ca5a98cb78c9e72bc7edd604dd04943b0bd7ec77b8236ec3fd64524d6dcd1fc6436e0e07dff24422ec3e51153000cdff8e4e65013d331941ce72b49bf4a454a394c4fe821ab6d7caecaa8d48081ba5865d76c631acfd301b9ef582d2dd9c54c380f44a849ff5fc182bc81071f32dea85f4016b74434ee2979a93d2e5ff51e061c8694d3e953c1d18ca714c72e4196dd6b82371724580f367780ec11d1a6ffa7a7485d6d503769896fba02d61ceb901cca0c2fc27689cd62b384ea28c0318fed3cd19c22dbef6ac08e49347b90227f94c3a544d7846ce93581c7ee76da5535651056b4dc2d669323684fc0ac93bdf44c3c2246f3bdb53f0b8df9d0b2bf39d85dbd7a1b2b76154474bf745664806919a13689b83d84780079d227f5d4021532097b0b4152661f6095b789259c968966e89e4ec272b3b54413bd0fabf9bcf241d78a6fbe61ba326d8f91ee012d5a31e15f46a0a45a2be0482f714c027df0c957806f8697a69d72ef7e4c2dbde2430f173e7a66b2f8fbab8e8b97fbecef8b2bdcddb572636aded2fb4f77f10009dd71bcf70264526f89bc3723fee3ba423cb1f2ba96c0080618667a2d358c2361c37fb2f72c5a02f4e4f9cdbf1f685651e0710b4d0da70b89ebca400c0f58b897b9c93eb8e840bdbc9f5aa13edd6803d3321d2f3672b73300d6d8629950264d9d5f404cf63f97f7f511df2f1aa58e8f1f80b6fbd75c3b7dd45321e1e4c964af1dc8014d9ded585493a905a91d5ec038cfe854fb33a99667b89789078fdf12841737789545a7e9f4323cbb27c3c9a9148fb567b4c9dd026f6be97a78d0ddbc7f86752b8369ed72ec82350a45215f4aaa24ee3d85cff8bd2c6b5071420ffc14f0b6650d5a3b1335e26faa9552f98a7c02e43babdd0ca23f78222af6454e169fbef9fd35b97d837c3fe51d7a0b2f0ac27912d1eb249f5b7d2194f32464dc24d3f29c91c2dc524ef4fcbe762194ceb3383dcd3baffd03e2ff40898e55819606db26d988f1d67fdf3875d77019a3a0dc3284b9e0f8c18f89d87f178c9363de081e4
+func DecodeSaveContext(handle Handle, save_area []byte) ([]byte, error) {
+	// context
+	return nil, nil
+}
+
 func SaveContext(rw io.ReadWriter, handle Handle, save_area []byte) (error) {
 	return nil
 }
 
+// LoadContext
+
 // ConstructLoadContext constructs a LoadContext command.
+// command: 8001000003a60000016100000000000000268000000040000001038a00202280de0e478f25261abb7b96dc2f74f3be2b005bc4ad02a595074660aa0560a2b719fc2865b391dba8a7cb0d27eec7b30a5608c8b35bd42c8308cadc5c900f51f70cba9eebc0f63a86294c5f90dd8dcb64d08494dcb82571683090a5ba37398ff03e801384b21b7d2f5f0d50d96ed21ad49b79df200edab3427f59c574918c54385ee346a946e21430315ce00af2edf615cbcef035691edf723d20c6adc7ca5a98cb78c9e72bc7edd604dd04943b0bd7ec77b8236ec3fd64524d6dcd1fc6436e0e07dff24422ec3e51153000cdff8e4e65013d331941ce72b49bf4a454a394c4fe821ab6d7caecaa8d48081ba5865d76c631acfd301b9ef582d2dd9c54c380f44a849ff5fc182bc81071f32dea85f4016b74434ee2979a93d2e5ff51e061c8694d3e953c1d18ca714c72e4196dd6b82371724580f367780ec11d1a6ffa7a7485d6d503769896fba02d61ceb901cca0c2fc27689cd62b384ea28c0318fed3cd19c22dbef6ac08e49347b90227f94c3a544d7846ce93581c7ee76da5535651056b4dc2d669323684fc0ac93bdf44c3c2246f3bdb53f0b8df9d0b2bf39d85dbd7a1b2b76154474bf745664806919a13689b83d84780079d227f5d4021532097b0b4152661f6095b789259c968966e89e4ec272b3b54413bd0fabf9bcf241d78a6fbe61ba326d8f91ee012d5a31e15f46a0a45a2be0482f714c027df0c957806f8697a69d72ef7e4c2dbde2430f173e7a66b2f8fbab8e8b97fbecef8b2bdcddb572636aded2fb4f77f10009dd71bcf70264526f89bc3723fee3ba423cb1f2ba96c0080618667a2d358c2361c37fb2f72c5a02f4e4f9cdbf1f685651e0710b4d0da70b89ebca400c0f58b897b9c93eb8e840bdbc9f5aa13edd6803d3321d2f3672b73300d6d8629950264d9d5f404cf63f97f7f511df2f1aa58e8f1f80b6fbd75c3b7dd45321e1e4c964af1dc8014d9ded585493a905a91d5ec038cfe854fb33a99667b89789078fdf12841737789545a7e9f4323cbb27c3c9a9148fb567b4c9dd026f6be97a78d0ddbc7f86752b8369ed72ec82350a45215f4aaa24ee3d85cff8bd2c6b5071420ffc14f0b6650d5a3b1335e26faa9552f98a7c02e43babdd0ca23f78222af6454e169fbef9fd35b97d837c3fe51d7a0b2f0ac27912d1eb249f5b7d2194f32464dc24d3f29c91c2dc524ef4fcbe762194ceb3383dcd3baffd03e2ff40898e55819606db26d988f1d67fdf3875d77019a3a0dc3284b9e0f8c18f89d87f178c9363de081e4
 func ConstructLoadContext(save_area []byte) ([]byte, error) {
+	// context
 	return nil, nil
 }
 
 // DecodeLoadContext decodes a LoadContext response.
+// 80010000000e0000000080000000
 func  DecodeLoadContext(in []byte) (Handle, error) {
+	// handle
 	return Handle(0), nil
 }
 

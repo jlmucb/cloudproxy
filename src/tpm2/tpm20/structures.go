@@ -55,6 +55,21 @@ type RsaParams struct {
 	modulus []byte
 }
 
+type KeyedHashParams struct {
+	type_alg uint16
+	hash_alg uint16
+	attributes uint32
+	auth_policy []byte
+	symalg uint16
+        sym_sz uint16
+        mode uint16
+        scheme uint16
+        scheme_hash uint16
+        mod_sz uint16
+        exp uint32
+        modulus []byte
+}
+
 // RSA Key
 type RsaKey struct {
 	algorithm uint16

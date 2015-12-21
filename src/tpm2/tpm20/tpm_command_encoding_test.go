@@ -369,7 +369,7 @@ func TestConstructCreateSealed(t *testing.T) {
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 }
 
-const strCreateSealed = "80020000013c0000000000000129005a0014450ecdce5f1ce202" +
+const strCreateSealedResp = "80020000013c0000000000000129005a0014450ecdce5f1ce202" +
 	"e4f8db15e2bde9a1241f85f30010faf62244fedc13fe0abb526e64b10b2de030b6f0" +
 	"2be278e23365ef663febe7eb4ddae935ca627ce4c40af9f5244dafbc7f47ceb84de8" +
 	"7e72a75c7f1032d3e7faddde0036000800040000001200140debb4cc9d2158cf7051" +
@@ -380,7 +380,7 @@ const strCreateSealed = "80020000013c0000000000000129005a0014450ecdce5f1ce202" +
 	"798e3fe3e55a418021400000010020b3b60fa880ac9256d10ee3abdc6b500dec1ba8" +
 	"85082b20c305eb1ff072bc13480000010000"
 func TestDecodeCreateSealed(t *testing.T) {
-	test_resp_bytes, err := hex.DecodeString(strCreateSealed)
+	test_resp_bytes, err := hex.DecodeString(strCreateSealedResp)
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 	}

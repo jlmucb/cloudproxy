@@ -1231,7 +1231,6 @@ func ConstructCreateSealed(parent Handle, policy_digest []byte, parent_password 
  	arg_bytes = append(arg_bytes, b7...)
 	cmd_bytes, _ := packWithHeader(cmdHdr, nil)
 	return append(cmd_bytes, arg_bytes...), nil
-	return nil, nil
 }
 
 // DecodeCreateSealed decodes a CreateSealed response.
@@ -1246,7 +1245,7 @@ func DecodeCreateSealed(in []byte) ([]byte, []byte, error) {
         out :=  []interface{}{&tpm2b_private, &tpm2b_public}
         err := unpack(in[4:], out)
         if err != nil {
-                return nil, nil, errors.New("Can't decode CreateKey response")
+                return nil, nil, errors.New("Can't decode CreateSealed response")
         }
 	// creation data
 	// tpmt_tk_creation
@@ -1289,9 +1288,17 @@ func ConstructUnseal(item_handle Handle, password string, session_handle Handle,
 
 // DecodeUnseal decodes a Unseal response.
 //	Output: sensitive data
-// Resp: 800200000035000000000000001200100102030405060708090a0b0c0d0e0f100010ea78d080f9f77d9d85e1f80350247ecb010000
-func DecodeUnseal(in []byte) ([]byte, error) {
-	return nil, nil
+// Resp: 80020000003500000000 0000 01200100102030405060708090a0b0c0d0e0f100010ea78d080f9f77d9d85e1f80350247ecb010000
+func DecodeUnseal(in []byte) ([]byte, []byte, error) {
+        var unsealed []byte
+        var digest []byte
+
+        template :=  []interface{}{&unsealed, &digest}
+        err := unpack(in[4:], template)
+        if err != nil {
+                return nil, nil, errors.New("Can't decode Unseal response")
+        }
+	return unsealed, digest, nil
 }
 
 // Unseal
@@ -1301,15 +1308,32 @@ func Unseal(rw io.ReadWriter, item_handle Handle, password string, session_handl
 }
 
 // ConstructQuote constructs a Quote command.
-// Command: 80020000003d00000158800000010000000d4000000900000100040102030400100102030405060708090a0b0c0d0e0f10001000000001000403800000
-func ConstructQuote(isigning_handle Handle, password string,
-        	to_quote []byte, scheme uint16, pcr []byte, sig_alg uint16,
-        	hash_alg uint16) ([]byte, error) {
+// Command: 80020000003d00000158 80000001 00000 00d40000009000001 000401020304 00100102030405060708090a0b0c0d0e0f10001000000001000403800000
+func ConstructQuote(signing_handle Handle, parent_password, owner_password string,
+        	to_quote []byte, pcr_nums []int, scheme uint16, sig_alg uint16) ([]byte, error) {
+	var qualifying_data []byte
+	
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdQuote)
+ 	if err != nil {
+		return nil, errors.New("ConstructQuote failed")
+	}
 	// handle
-	// qualifying data
-	// sig scheme
-	// long pcr selection
-	return nil, nil
+ 	var empty []byte
+ 	b1 := SetHandle(signing_handle)
+	b2 ,_ := pack([]interface{}{&empty})
+ 	b3 := CreatePasswordAuthArea(parent_password, Handle(ordTPM_RS_PW))
+ 	b4 := SetPasswordData(owner_password)
+	b5 ,_ := pack([]interface{}{&qualifying_data})
+	b6 ,_ := pack([]interface{}{&scheme, &sig_alg})
+ 	b7 := CreateLongPcr(uint32(1), pcr_nums)
+ 	arg_bytes := append(b1, b2...)
+ 	arg_bytes = append(arg_bytes, b3...)
+ 	arg_bytes = append(arg_bytes, b4...)
+ 	arg_bytes = append(arg_bytes, b5...)
+ 	arg_bytes = append(arg_bytes, b6...)
+ 	arg_bytes = append(arg_bytes, b7...)
+	cmd_bytes, _ := packWithHeader(cmdHdr, nil)
+	return append(cmd_bytes, arg_bytes...), nil
 }
 
 // DecodeQuote decodes a Quote response.
@@ -1336,21 +1360,46 @@ func Quote(rw io.ReadWriter, signing_handle Handle, password string,
 }
 
 // ConstructActivateCredential constructs a ActivateCredential command.
-// Command: 800200000168000001478000000280000000000000164000000900000100040102030440000009000001000000380020a2b634475ae0cfccff45d273f173cb4c74089167c94ed4666fa41a0039b71ad6956316cbb65c1ac71225c204d9f752fa62a84c70b51701007d9fec0ddff9c8e27904913f498aa20416e66e4a91eeb263d1a7badd7bd0043b4f2e165018d21e892359856cd93b45a983606e3482b029796659266f01277c944500bda57a5442d670173093307377783fd94aaf481bbdde1914720fc7f41637ff66593c50ce72626bc6e5edfa6e532c446faa3af1279f68d84edaa7386d97229be8edf74fc33e74e2f0f4b7a1ec985b42463fbf387ecc268b3a3a45c66968113ab0ed0d3573a9076eebe3d45efbc12c970465cf80af155434d8b0eb377a50942a742f86a0fa93c29bd0c37e8ac18c2f6b63558ba03df7bc5f80be70e504203b2b55c243794e7fc4cdb817e2da0796e088ca408a3c5d95abb32fa6dfddd4101f
-func ConstructActivateCredential(active_handle Handle, key_handle Handle,
+// Command: 80020000016800000147 80000002 80000000 0000 001640000009000001 000401020304 40000009000001 0000 00380020a2b634475ae0cfccff45d273f173cb4c74089167c94ed4666fa41a0039b71ad6956316cbb65c1ac71225c204d9f752fa62a84c70b51701 007d9fec0ddff9c8e27904913f498aa20416e66e4a91eeb263d1a7badd7bd0043b4f2e165018d21e892359856cd93b45a983606e3482b029796659266f01277c944500bda57a5442d670173093307377783fd94aaf481bbdde1914720fc7f41637ff66593c50ce72626bc6e5edfa6e532c446faa3af1279f68d84edaa7386d97229be8edf74fc33e74e2f0f4b7a1ec985b42463fbf387ecc268b3a3a45c66968113ab0ed0d3573a9076eebe3d45efbc12c970465cf80af155434d8b0eb377a50942a742f86a0fa93c29bd0c37e8ac18c2f6b63558ba03df7bc5f80be70e504203b2b55c243794e7fc4cdb817e2da0796e088ca408a3c5d95abb32fa6dfddd4101f
+func ConstructActivateCredential(active_handle Handle, key_handle Handle, password string,
         credBlob []byte, secret []byte) ([]byte, error) {
-	// active_handle
-	// key_handle
-	// cred_blob
-	// secret
-	return nil, nil
+	var empty []byte	
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdActivateCredential)
+ 	if err != nil {
+		return nil, errors.New("ConstructActivateCredential failed")
+	}
+ 	b1 := SetHandle(active_handle)
+ 	b2 := SetHandle(key_handle)
+	b3 ,_ := pack([]interface{}{&empty})
+ 	b4 := CreatePasswordAuthArea(password, Handle(ordTPM_RS_PW))
+	b5 ,_ := pack([]interface{}{&credBlob, &secret})
+ 	arg_bytes := append(b1, b2...)
+ 	arg_bytes = append(arg_bytes, b3...)
+ 	arg_bytes = append(arg_bytes, b4...)
+ 	arg_bytes = append(arg_bytes, b5...)
+	cmd_bytes, _ := packWithHeader(cmdHdr, nil)
+	return append(cmd_bytes, arg_bytes...), nil
 }
 
 // DecodeActivateCredential decodes a ActivateCredential response.
 // returns certInfo
-// Response: 80020000002e000000000000001600140102030405060708090a0b0c0d0e0f101112131400000100000000010000
+// Response: 80020000002e00000000 0000 0016 0014 0102030405060708090a0b0c0d0e0f1011121314 00000100000000010000
 func DecodeActivateCredential(in []byte) ([]byte, error) {
-	return nil, nil
+	var empty []byte
+        var buf []byte
+        var certInfo []byte
+
+        template :=  []interface{}{&empty, &buf}
+        err := unpack(in, template)
+        if err != nil {
+                return nil, errors.New("Can't decode ActivateCredential response")
+        }
+        template =  []interface{}{&certInfo}
+        err = unpack(buf, template)
+        if err != nil {
+                return nil, errors.New("Can't decode ActivateCredential response")
+        }
+	return certInfo, nil
 }
 
 // ActivateCredential
@@ -1362,17 +1411,28 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 
 // ConstructEvictControl constructs a EvictControl command.
 // Command: 800200000023 00000120 40000001 810003e8 0000 000940000009000001 0000810003e8
-func ConstructEvictControl(tmp_handle Handle, password string, persistant_handle Handle) ([]byte, error) {
-	// owner
-	// loaded object handle
-	// auth 0
-	// auth
-	// persistant handle
+func ConstructEvictControl(owner Handle, tmp_handle Handle, parent_password string, owner_password string,
+		persistant_handle Handle) ([]byte, error) {
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdEvictControl)
+ 	if err != nil {
+		return nil, errors.New("ConstructEvictControl failed")
+	}
+ 	b1 := SetHandle(owner)
+ 	b2 := SetHandle(tmp_handle)
+	b3 := SetPasswordData(parent_password)
+ 	b4 := CreatePasswordAuthArea(owner_password, Handle(ordTPM_RS_PW))
+ 	b5 := SetHandle(persistant_handle)
+ 	arg_bytes := append(b1, b2...)
+ 	arg_bytes = append(arg_bytes, b3...)
+ 	arg_bytes = append(arg_bytes, b4...)
+ 	arg_bytes = append(arg_bytes, b5...)
+	cmd_bytes, _ := packWithHeader(cmdHdr, nil)
+	return append(cmd_bytes, arg_bytes...), nil
 	return nil, nil
 }
 
 // DecodeEvictControl decodes a EvictControl response.
-// Response: 80020000001300000000000000000000010000
+// Response: 80020000001300000000 00000000 00000100 00
 func DecodeEvictControl(in []byte) (error) {
 	return nil
 }
@@ -1386,16 +1446,21 @@ func EvictControl(rw io.ReadWriter, tmp_handle Handle, password string,
 // ConstructSaveContext constructs a SaveContext command.
 // command: 80010000000e0000016280000000
 func ConstructSaveContext(handle Handle, save_area []byte) ([]byte, error) {
-	// handle
-	return nil, nil
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdContextSave)
+ 	if err != nil {
+		return nil, errors.New("ConstructSaveContext failed")
+	}
+	cmd, err := packWithHeader(cmdHdr,nil)	
+ 	if err != nil {
+		return nil, errors.New("ConstructSaveContext failed")
+	}
+ 	b1 := SetHandle(handle)
+	return append(cmd, b1...), nil
 }
 
 // DecodeSaveContext constructs a SaveContext command.
-// output contest
-// 8001000003a60000000000000000000000268000000040000001038a00202280de0e478f25261abb7b96dc2f74f3be2b005bc4ad02a595074660aa0560a2b719fc2865b391dba8a7cb0d27eec7b30a5608c8b35bd42c8308cadc5c900f51f70cba9eebc0f63a86294c5f90dd8dcb64d08494dcb82571683090a5ba37398ff03e801384b21b7d2f5f0d50d96ed21ad49b79df200edab3427f59c574918c54385ee346a946e21430315ce00af2edf615cbcef035691edf723d20c6adc7ca5a98cb78c9e72bc7edd604dd04943b0bd7ec77b8236ec3fd64524d6dcd1fc6436e0e07dff24422ec3e51153000cdff8e4e65013d331941ce72b49bf4a454a394c4fe821ab6d7caecaa8d48081ba5865d76c631acfd301b9ef582d2dd9c54c380f44a849ff5fc182bc81071f32dea85f4016b74434ee2979a93d2e5ff51e061c8694d3e953c1d18ca714c72e4196dd6b82371724580f367780ec11d1a6ffa7a7485d6d503769896fba02d61ceb901cca0c2fc27689cd62b384ea28c0318fed3cd19c22dbef6ac08e49347b90227f94c3a544d7846ce93581c7ee76da5535651056b4dc2d669323684fc0ac93bdf44c3c2246f3bdb53f0b8df9d0b2bf39d85dbd7a1b2b76154474bf745664806919a13689b83d84780079d227f5d4021532097b0b4152661f6095b789259c968966e89e4ec272b3b54413bd0fabf9bcf241d78a6fbe61ba326d8f91ee012d5a31e15f46a0a45a2be0482f714c027df0c957806f8697a69d72ef7e4c2dbde2430f173e7a66b2f8fbab8e8b97fbecef8b2bdcddb572636aded2fb4f77f10009dd71bcf70264526f89bc3723fee3ba423cb1f2ba96c0080618667a2d358c2361c37fb2f72c5a02f4e4f9cdbf1f685651e0710b4d0da70b89ebca400c0f58b897b9c93eb8e840bdbc9f5aa13edd6803d3321d2f3672b73300d6d8629950264d9d5f404cf63f97f7f511df2f1aa58e8f1f80b6fbd75c3b7dd45321e1e4c964af1dc8014d9ded585493a905a91d5ec038cfe854fb33a99667b89789078fdf12841737789545a7e9f4323cbb27c3c9a9148fb567b4c9dd026f6be97a78d0ddbc7f86752b8369ed72ec82350a45215f4aaa24ee3d85cff8bd2c6b5071420ffc14f0b6650d5a3b1335e26faa9552f98a7c02e43babdd0ca23f78222af6454e169fbef9fd35b97d837c3fe51d7a0b2f0ac27912d1eb249f5b7d2194f32464dc24d3f29c91c2dc524ef4fcbe762194ceb3383dcd3baffd03e2ff40898e55819606db26d988f1d67fdf3875d77019a3a0dc3284b9e0f8c18f89d87f178c9363de081e4
-func DecodeSaveContext(handle Handle, save_area []byte) ([]byte, error) {
-	// context
-	return nil, nil
+func DecodeSaveContext(save_area []byte) ([]byte, error) {
+	return save_area, nil
 }
 
 func SaveContext(rw io.ReadWriter, handle Handle, save_area []byte) (error) {
@@ -1407,15 +1472,27 @@ func SaveContext(rw io.ReadWriter, handle Handle, save_area []byte) (error) {
 // ConstructLoadContext constructs a LoadContext command.
 // command: 8001000003a60000016100000000000000268000000040000001038a00202280de0e478f25261abb7b96dc2f74f3be2b005bc4ad02a595074660aa0560a2b719fc2865b391dba8a7cb0d27eec7b30a5608c8b35bd42c8308cadc5c900f51f70cba9eebc0f63a86294c5f90dd8dcb64d08494dcb82571683090a5ba37398ff03e801384b21b7d2f5f0d50d96ed21ad49b79df200edab3427f59c574918c54385ee346a946e21430315ce00af2edf615cbcef035691edf723d20c6adc7ca5a98cb78c9e72bc7edd604dd04943b0bd7ec77b8236ec3fd64524d6dcd1fc6436e0e07dff24422ec3e51153000cdff8e4e65013d331941ce72b49bf4a454a394c4fe821ab6d7caecaa8d48081ba5865d76c631acfd301b9ef582d2dd9c54c380f44a849ff5fc182bc81071f32dea85f4016b74434ee2979a93d2e5ff51e061c8694d3e953c1d18ca714c72e4196dd6b82371724580f367780ec11d1a6ffa7a7485d6d503769896fba02d61ceb901cca0c2fc27689cd62b384ea28c0318fed3cd19c22dbef6ac08e49347b90227f94c3a544d7846ce93581c7ee76da5535651056b4dc2d669323684fc0ac93bdf44c3c2246f3bdb53f0b8df9d0b2bf39d85dbd7a1b2b76154474bf745664806919a13689b83d84780079d227f5d4021532097b0b4152661f6095b789259c968966e89e4ec272b3b54413bd0fabf9bcf241d78a6fbe61ba326d8f91ee012d5a31e15f46a0a45a2be0482f714c027df0c957806f8697a69d72ef7e4c2dbde2430f173e7a66b2f8fbab8e8b97fbecef8b2bdcddb572636aded2fb4f77f10009dd71bcf70264526f89bc3723fee3ba423cb1f2ba96c0080618667a2d358c2361c37fb2f72c5a02f4e4f9cdbf1f685651e0710b4d0da70b89ebca400c0f58b897b9c93eb8e840bdbc9f5aa13edd6803d3321d2f3672b73300d6d8629950264d9d5f404cf63f97f7f511df2f1aa58e8f1f80b6fbd75c3b7dd45321e1e4c964af1dc8014d9ded585493a905a91d5ec038cfe854fb33a99667b89789078fdf12841737789545a7e9f4323cbb27c3c9a9148fb567b4c9dd026f6be97a78d0ddbc7f86752b8369ed72ec82350a45215f4aaa24ee3d85cff8bd2c6b5071420ffc14f0b6650d5a3b1335e26faa9552f98a7c02e43babdd0ca23f78222af6454e169fbef9fd35b97d837c3fe51d7a0b2f0ac27912d1eb249f5b7d2194f32464dc24d3f29c91c2dc524ef4fcbe762194ceb3383dcd3baffd03e2ff40898e55819606db26d988f1d67fdf3875d77019a3a0dc3284b9e0f8c18f89d87f178c9363de081e4
 func ConstructLoadContext(save_area []byte) ([]byte, error) {
-	// context
-	return nil, nil
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdContextLoad)
+ 	if err != nil {
+		return nil, errors.New("ConstructLoadContext failed")
+	}
+	cmd, err := packWithHeader(cmdHdr, nil)
+        if err != nil {
+                return nil, errors.New("Can't pack ConstructLoadContext")
+        }
+	return append(cmd, save_area...), nil
 }
 
 // DecodeLoadContext decodes a LoadContext response.
 // 80010000000e0000000080000000
 func  DecodeLoadContext(in []byte) (Handle, error) {
-	// handle
-	return Handle(0), nil
+	var handle uint32
+        template :=  []interface{}{&handle}
+        err := unpack(in, template)
+        if err != nil {
+                return Handle(0), errors.New("Can't decode LoadContext response")
+        }
+	return Handle(handle), nil
 }
 
 // LoadContext

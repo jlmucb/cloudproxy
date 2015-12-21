@@ -258,34 +258,9 @@ func CreateLongPcr(count uint32, pcr_nums []int) ([]byte) {
 	return b2
 }
 
-// ----------------------------------------------------------------
-
-// Marshal_AuthSession_Info(TPMI_DH_OBJECT& tpm_obj, TPMI_DH_ENTITY& bind_obj,
-//                          TPM2B_NONCE& initial_nonce, TPM2B_ENCRYPTED_SECRET& salt,
-//                          TPM_SE& session_type, TPMT_SYM_DEF& symmetric,
-//                          TPMI_ALG_HASH& hash_alg, int size, byte* out_buf)
-
-// FillPublicRsaTemplate(enc_alg, int_alg, flags, sym_alg,
-//                        sym_key_size, sym_mode, sig_scheme,
-//                        mod_size, exp, pub_key);
-// Marshal_Public_Key_Info(TPM2B_PUBLIC& in, int size, byte* buf)
-// GetReadPublicOut(uint16_t size_in, byte* input, TPM2B_PUBLIC& outPublic)
-// GetRsaParams(uint16_t size_in, byte* input, TPMS_RSA_PARMS& rsaParams,
-//                 TPM2B_PUBLIC_KEY_RSA& rsa)
-//GetCreateOut(int size, byte* in, int* size_public, byte* out_public,
-//                  int* size_private, byte* out_private,
-//                  TPM2B_CREATION_DATA* creation_out, TPM2B_DIGEST* digest_out,
-//                  TPMT_TK_CREATION* creation_ticket)
-//   FillKeyedHashTemplate(TPM_ALG_KEYEDHASH, int_alg, flags,
-//                        size_policy_digest, policy_digest, keyed_hash);
-//  n = Marshal_Keyed_Hash_Info(keyed_hash, space_left, in);
-
-// ----------------------------------------------------------------
-
 func ComputePcrDigest(alg uint16, in []byte) ([]byte, error) {
 	return nil, nil
 }
-
 
 // ConstructGetRandom constructs a GetRandom command.
 func ConstructGetRandom(size uint32) ([]byte, error) {

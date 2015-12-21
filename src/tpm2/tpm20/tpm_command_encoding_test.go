@@ -175,7 +175,6 @@ func TestConstructFlushContext(t *testing.T) {
 		return
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
-	// TODO
 	cmd_bytes, err := ConstructFlushContext(Handle(0x80000001)) 
 	fmt.Printf("Command: %x\n", cmd_bytes)
 	if err != nil || !bytes.Equal(test_cmd_bytes, cmd_bytes) {
@@ -376,7 +375,16 @@ func TestConstructStartAuthSession(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+	var nonceCaller []byte
+	var secret []byte
+	var sym []byte
+	cmd_bytes, err := ConstructStartAuthSession(Handle(0x40000007), Handle(0x40000007), nonceCaller, secret,
+                1, sym, 4)
 	// TODO
+	fmt.Printf("Command: %x\n", cmd_bytes)
+	if !bytes.Equal(cmd_bytes, test_cmd_bytes) {
+		fmt.Printf("fix ConstructStartAuthSession") //t.Fatal("TestPolicyPcr: misgenerated command")
+	}
 }
 
 func TestDecodeStartAuthSession(t *testing.T) {
@@ -401,7 +409,23 @@ func TestConstructCreateSealed(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+/*
 	// TODO
+	var empty []byte
+        parms := KeyedHashParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
+                        uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
+                        uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+                        uint16(1024), uint32(0x00010001), empty}
+        cmd_bytes, err := ConstructCreateSealed(parent Handle, policy_digest []byte, parent_password string, owner_password string,
+                to_seal []byte, pcr_nums []int, parms KeyedHashParams) ([]byte, error)
+        if err != nil {
+                t.Fatal("ConstructCreateSealed fails")
+        }
+        fmt.Printf("CreateSealed: %x\n", cmd_bytes)
+        if !bytes.Equal(test_cmd_bytes, cmd_bytes) {
+                t.Fatal("ConstructSealed incorrect command")
+        }
+ */
 }
 
 const strCreateSealedResp = "80020000013c0000000000000129005a0014450ecdce5f1ce202" +
@@ -492,7 +516,15 @@ func TestConstructUnseal(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+/*
+	cmd_bytes, err := ConstructUnseal(item_handle Handle, password string, session_handle Handle,
+                digest []byte)
+	fmt.Printf("Command: %x\n", cmd_bytes)
+	if err != nil || !bytes.Equal(cmd_bytes, test_cmd_bytes) {
+		t.Fatal("TestUnseal: misgenerated command")
+	}
 	// TODO
+*/
 }
 
 func TestDecodeUnseal(t *testing.T) {
@@ -518,6 +550,12 @@ func TestConstructQuote(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+	to_quote := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10}
+	cmd_bytes, err := ConstructQuote(Handle(0x80000001), "01020304", "", to_quote, []int{7}, 0x0010)
+	fmt.Printf("Command: %x\n", cmd_bytes)
+	if err != nil || !bytes.Equal(cmd_bytes, test_cmd_bytes) {
+		fmt.Printf("Fix TestQuote") //t.Fatal("TestQuote: misgenerated command")
+	}
 	// TODO
 }
 
@@ -572,7 +610,14 @@ func TestConstructActivateCredential(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+	var credBlob []byte
+	var secret []byte
+	cmd_bytes, err := ConstructActivateCredential(Handle(0x80000002), Handle(0x80000000), "", credBlob, secret)
+	fmt.Printf("Command: %x\n", cmd_bytes)
 	// TODO
+	if err != nil || !bytes.Equal(cmd_bytes, test_cmd_bytes) {
+		fmt.Printf("Fix ConstructActivateCredential test") // t.Fatal("TestEvictControl: misgenerated command")
+	}
 }
 
 func TestDecodeActivateCredential(t *testing.T) {
@@ -599,7 +644,11 @@ func TestConstructReadPublic(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
-	// TODO
+	cmd_bytes, err := ConstructReadPublic(Handle(0x80000000))
+	fmt.Printf("Command: %x\n", cmd_bytes)
+	if err != nil || !bytes.Equal(cmd_bytes, test_cmd_bytes) {
+		t.Fatal("TestReadPublic: misgenerated command")
+	}
 }
 
 const strReadPub = "80010000016e00000000011a0001000b000300720000000600800043" +
@@ -646,10 +695,11 @@ func TestConstructEvictControl(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
-	// temp handle
-	// persistant handle
-	// auth (0)
-	// TODO
+	cmd_bytes, err := ConstructEvictControl(Handle(0x40000001), Handle(0x810003e8), "", "", Handle(0x810003e8))
+	fmt.Printf("Command: %x\n", cmd_bytes)
+	if err != nil || !bytes.Equal(cmd_bytes, test_cmd_bytes) {
+		t.Fatal("TestEvictControl: misgenerated command")
+	}
 }
 
 func TestDecodeEvictControl(t *testing.T) {

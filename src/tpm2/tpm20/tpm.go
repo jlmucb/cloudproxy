@@ -779,8 +779,8 @@ func ConstructReadPublic(handle Handle) ([]byte, error) {
 		return nil, errors.New("ConstructReadPublic failed")
 	}
 	num_bytes :=  []interface{}{uint32(handle)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
-	return x, nil
+	cmd, _ := packWithHeader(cmdHdr, num_bytes)
+	return cmd, nil
 }
 
 // DecodeReadPublic decodes a ReadPublic response.
@@ -897,7 +897,7 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 		parms RsaParams) ([]byte, []byte, error) {
 
 	// Construct command
-	x, err:= ConstructCreateKey(uint32(owner), pcr_nums, parent_password,
+	cmd, err:= ConstructCreateKey(uint32(owner), pcr_nums, parent_password,
                 owner_password, parms)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
@@ -905,7 +905,7 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 	}
 
 	// Send command
-	_, err = rw.Write(x)
+	_, err = rw.Write(cmd)
 	if err != nil {
 		return nil, nil, errors.New("Write Tpm fails") 
 	}
@@ -1188,9 +1188,8 @@ func ConstructStartAuthSession(tpm_key Handle, bind_key Handle, nonceCaller []by
  	arg_bytes = append(arg_bytes, b3...)
  	arg_bytes = append(arg_bytes, b4...)
  	arg_bytes = append(arg_bytes, b5...)
-	cmd_bytes, _ := packWithHeader(cmdHdr, nil)
-	return append(cmd_bytes, arg_bytes...), nil
-	return nil, nil
+	cmd_bytes := packWithBytes(cmdHdr, arg_bytes)
+	return cmd_bytes, nil
 }
 
 // DecodeStartAuthSession decodes a StartAuthSession response.
@@ -1279,8 +1278,8 @@ func ConstructCreateSealed(parent Handle, policy_digest []byte, parent_password 
  	arg_bytes = append(arg_bytes, b5...)
  	arg_bytes = append(arg_bytes, b6...)
  	arg_bytes = append(arg_bytes, b7...)
-	cmd_bytes, _ := packWithHeader(cmdHdr, nil)
-	return append(cmd_bytes, arg_bytes...), nil
+	cmd_bytes := packWithBytes(cmdHdr, arg_bytes)
+	return cmd_bytes, nil
 }
 
 // DecodeCreateSealed decodes a CreateSealed response.
@@ -1354,7 +1353,6 @@ func ConstructUnseal(item_handle Handle, password string, session_handle Handle,
 	if err != nil {
 		return nil, errors.New("ConstructGetDigest failed")
 	}
-	cmd, _ := packWithHeader(cmdHdr, nil)
 	// item_handle
 	var tpm2b_public []byte
 	handle1 := uint32(item_handle)
@@ -1365,7 +1363,8 @@ func ConstructUnseal(item_handle Handle, password string, session_handle Handle,
         }
 	t2 := CreatePasswordAuthArea(password, session_handle)
 	t3 := SetHandle(session_handle)
-	return append(cmd, append(t1, append(t2, t3...)...)...), nil
+	cmd_bytes := packWithBytes(cmdHdr, append(t1, append(t2, t3...)...))
+	return cmd_bytes, nil
 }
 
 // DecodeUnseal decodes a Unseal response.
@@ -1426,30 +1425,29 @@ func Unseal(rw io.ReadWriter, item_handle Handle, password string, session_handl
 
 // ConstructQuote constructs a Quote command.
 func ConstructQuote(signing_handle Handle, parent_password, owner_password string,
-        	to_quote []byte, pcr_nums []int, scheme uint16, sig_alg uint16) ([]byte, error) {
-	var qualifying_data []byte
-	
+        	to_quote []byte, pcr_nums []int, sig_alg uint16) ([]byte, error) {
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdQuote)
  	if err != nil {
 		return nil, errors.New("ConstructQuote failed")
 	}
+	// TODO: no scheme or sig_alg
 	// handle
  	var empty []byte
  	b1 := SetHandle(signing_handle)
 	b2 ,_ := pack([]interface{}{&empty})
  	b3 := CreatePasswordAuthArea(parent_password, Handle(ordTPM_RS_PW))
- 	b4 := SetPasswordData(owner_password)
-	b5 ,_ := pack([]interface{}{&qualifying_data})
-	b6 ,_ := pack([]interface{}{&scheme, &sig_alg})
+ 	// b4 := SetPasswordData(owner_password)
+	b5 ,_ := pack([]interface{}{&sig_alg})
+	b6 ,_ := pack([]interface{}{&to_quote})
  	b7 := CreateLongPcr(uint32(1), pcr_nums)
  	arg_bytes := append(b1, b2...)
  	arg_bytes = append(arg_bytes, b3...)
- 	arg_bytes = append(arg_bytes, b4...)
+ 	// arg_bytes = append(arg_bytes, b4...)
  	arg_bytes = append(arg_bytes, b5...)
  	arg_bytes = append(arg_bytes, b6...)
  	arg_bytes = append(arg_bytes, b7...)
-	cmd_bytes, _ := packWithHeader(cmdHdr, nil)
-	return append(cmd_bytes, arg_bytes...), nil
+	cmd_bytes := packWithBytes(cmdHdr, arg_bytes)
+	return cmd_bytes, nil
 }
 
 // DecodeQuote decodes a Quote response.
@@ -1469,9 +1467,9 @@ func DecodeQuote(in []byte) ([]byte, []byte, error) {
 // Quote
 // 	Output: attest, sig
 func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owner_password string,
-		to_quote []byte, pcr_nums []int, scheme uint16, sig_alg uint16) ([]byte, []byte, error) {
+		to_quote []byte, pcr_nums []int, sig_alg uint16) ([]byte, []byte, error) {
 	// Construct command
-	cmd, err:= ConstructQuote(signing_handle, parent_password, owner_password, to_quote, pcr_nums, scheme, sig_alg)
+	cmd, err:= ConstructQuote(signing_handle, parent_password, owner_password, to_quote, pcr_nums, sig_alg)
 	if err != nil {
 		return nil, nil, errors.New("ConstructQuote fails") 
 	}
@@ -1526,8 +1524,8 @@ func ConstructActivateCredential(active_handle Handle, key_handle Handle, passwo
  	arg_bytes = append(arg_bytes, b3...)
  	arg_bytes = append(arg_bytes, b4...)
  	arg_bytes = append(arg_bytes, b5...)
-	cmd_bytes, _ := packWithHeader(cmdHdr, nil)
-	return append(cmd_bytes, arg_bytes...), nil
+	cmd_bytes := packWithBytes(cmdHdr, arg_bytes)
+	return cmd_bytes, nil
 }
 
 // DecodeActivateCredential decodes a ActivateCredential response.
@@ -1609,9 +1607,8 @@ func ConstructEvictControl(owner Handle, tmp_handle Handle, parent_password stri
  	arg_bytes = append(arg_bytes, b3...)
  	arg_bytes = append(arg_bytes, b4...)
  	arg_bytes = append(arg_bytes, b5...)
-	cmd_bytes, _ := packWithHeader(cmdHdr, nil)
-	return append(cmd_bytes, arg_bytes...), nil
-	return nil, nil
+	cmd_bytes := packWithBytes(cmdHdr, arg_bytes)
+	return cmd_bytes, nil
 }
 
 // DecodeEvictControl decodes a EvictControl response.
@@ -1667,12 +1664,9 @@ func ConstructSaveContext(handle Handle) ([]byte, error) {
  	if err != nil {
 		return nil, errors.New("ConstructSaveContext failed")
 	}
-	cmd, err := packWithHeader(cmdHdr,nil)	
- 	if err != nil {
-		return nil, errors.New("ConstructSaveContext failed")
-	}
  	b1 := SetHandle(handle)
-	return append(cmd, b1...), nil
+	cmd_bytes := packWithBytes(cmdHdr, b1)
+	return cmd_bytes, nil
 }
 
 // DecodeSaveContext constructs a SaveContext command.
@@ -1728,11 +1722,8 @@ func ConstructLoadContext(save_area []byte) ([]byte, error) {
  	if err != nil {
 		return nil, errors.New("ConstructLoadContext failed")
 	}
-	cmd, err := packWithHeader(cmdHdr, nil)
-        if err != nil {
-                return nil, errors.New("Can't pack ConstructLoadContext")
-        }
-	return append(cmd, save_area...), nil
+	cmd_bytes := packWithBytes(cmdHdr, save_area)
+	return cmd_bytes, nil
 }
 
 // DecodeLoadContext decodes a LoadContext response.

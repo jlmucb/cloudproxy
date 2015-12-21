@@ -117,8 +117,8 @@ func SetPasswordData(password string) ([]byte) {
 
 // nil return is an error
 // 	returns: len0 TPM_RS_PW 0000 01 password data as []byte
-func CreatePasswordAuthArea(password string) ([]byte) {
-	owner_str := SetHandle(Handle(ordTPM_RS_PW))
+func CreatePasswordAuthArea(password string, owner Handle) ([]byte) {
+	owner_str := SetHandle(owner)
 	suffix := []byte{0, 0, 1}
 	pw := SetPasswordData(password)
 	final_buf := append(owner_str, suffix...)
@@ -196,13 +196,21 @@ func DecodeRsaArea(in []byte) (*RsaParams, error) {
 }
 
 // nil is error
-func CreateKeyedHash(parms KeyedHashParams) ([]byte) {
+func CreateKeyedHashParams(parms KeyedHashParams) ([]byte) {
 	// 0 (uint16)
 	// type
 	// attributes
 	// auth
 	// scheme
-	return nil
+	// 0 (uinque)
+	var empty []byte
+	template1 := []interface{}{&empty, &parms.type_alg, &parms.hash_alg, &parms.attributes,
+		&parms.auth_policy, &parms.scheme, &empty}
+	t1, err := pack(template1)
+	if err != nil {
+		return nil
+	}
+	return t1
 }
 
 // nil return is error
@@ -269,8 +277,8 @@ func ConstructGetRandom(size uint32) ([]byte, error) {
 		return nil, errors.New("ConstructGetRandom failed")
 	}
 	num_bytes :=  []interface{}{uint16(size)}
-	x, _ := packWithHeader(cmdHdr, num_bytes)
-	return x, nil
+	cmd, _ := packWithHeader(cmdHdr, num_bytes)
+	return cmd, nil
 }
 
 // DecodeGetRandom decodes a GetRandom response.
@@ -619,7 +627,7 @@ func ConstructCreatePrimary(owner uint32, pcr_nums []int,
 	var empty []byte
 	b1 := SetHandle(Handle(owner))
 	b2,_ := pack([]interface{}{&empty})
-	b3 := CreatePasswordAuthArea(parent_password)
+	b3 := CreatePasswordAuthArea(parent_password, Handle(ordTPM_RS_PW))
 	t1 := SetPasswordData(owner_password)
 	b4 := CreateSensitiveArea(t1[2:], empty)
 	b5 := CreateRsaParams(parms)
@@ -848,7 +856,7 @@ func ConstructCreateKey(owner uint32, pcr_nums []int, parent_password string, ow
  	var empty []byte
  	b1 := SetHandle(Handle(owner))
 	b2 ,_ := pack([]interface{}{&empty})
- 	b3 := CreatePasswordAuthArea(parent_password)
+ 	b3 := CreatePasswordAuthArea(parent_password, Handle(ordTPM_RS_PW))
  	t1 := SetPasswordData(owner_password)
  	b4 := CreateSensitiveArea(t1[2:], empty)
  	b5 := CreateRsaParams(parms)
@@ -941,7 +949,7 @@ func ConstructLoad(parentHandle Handle, parentAuth string,
 	var empty []byte
 	b1 := SetHandle(parentHandle)
 	b2,_ := pack([]interface{}{&empty})
-	b3 := CreatePasswordAuthArea("")
+	b3 := CreatePasswordAuthArea("", Handle(ordTPM_RS_PW))
 	b4 := SetPasswordData(parentAuth)
 	x, _ := packWithHeader(cmdHdr, nil)
 	// private, public
@@ -1128,7 +1136,7 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 	// Construct command
 	cmd, err:= ConstructPolicyGetDigest(handle)
 	if err != nil {
-		fmt.Printf("MakeCommandHeader failed %s\n", err)
+		fmt.Printf("ConstructPolicyGetDigest failed %s\n", err)
 		return nil, err
 	}
 
@@ -1193,8 +1201,8 @@ func StartAuthSession(rw io.ReadWriter) (Handle, error) {
 
 // ConstructCreateSealed constructs a CreateSealed command.
 // Command: 80020000006900000153800000000000000d40000009000001000401020304001800040102030400100102030405060708090a0b0c0d0e0f100022000800040000001200140debb4cc9d2158cf7051a19ca24b31e35d53b64d00100000000000000001000403800000
-func ConstructCreateSealed(parent Handle, policy_digest []byte, parent_password string,
-        	to_seal []byte, pcr_selection []byte, parms KeyedHashParams) ([]byte, error) {
+func ConstructCreateSealed(parent Handle, policy_digest []byte, parent_password string, owner_password string,
+        	to_seal []byte, pcr_nums []int, parms KeyedHashParams) ([]byte, error) {
 	// parent handle
 	// auth (0)
 	// pasword auth area
@@ -1202,13 +1210,48 @@ func ConstructCreateSealed(parent Handle, policy_digest []byte, parent_password 
 	// keyed hash template
 	// outside info
 	// pcr long
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdCreate)
+ 	if err != nil {
+		return nil, errors.New("ConstructCreateKey failed")
+	}
+ 	var empty []byte
+ 	b1 := SetHandle(parent)
+	b2 ,_ := pack([]interface{}{&empty})
+ 	b3 := CreatePasswordAuthArea(parent_password, Handle(ordTPM_RS_PW))
+ 	t1 := SetPasswordData(owner_password)
+ 	b4 := CreateSensitiveArea(t1[2:], to_seal)
+ 	b5 := CreateKeyedHashParams(parms)
+	b6 ,_ := pack([]interface{}{&empty})
+ 	b7:= CreateLongPcr(uint32(1), pcr_nums)
+ 	arg_bytes := append(b1, b2...)
+ 	arg_bytes = append(arg_bytes, b3...)
+ 	arg_bytes = append(arg_bytes, b4...)
+ 	arg_bytes = append(arg_bytes, b5...)
+ 	arg_bytes = append(arg_bytes, b6...)
+ 	arg_bytes = append(arg_bytes, b7...)
+	cmd_bytes, _ := packWithHeader(cmdHdr, nil)
+	return append(cmd_bytes, arg_bytes...), nil
 	return nil, nil
 }
 
 // DecodeCreateSealed decodes a CreateSealed response.
 // 	Output: private, public, creation_out, digest_out, creation_ticket
 func DecodeCreateSealed(in []byte) ([]byte, []byte, error) {
-	return nil, nil, nil
+        var tpm2b_private []byte
+        var tpm2b_public []byte
+
+	// auth?
+	// tpm2b_private
+	// tpm2b_public
+        out :=  []interface{}{&tpm2b_private, &tpm2b_public}
+        err := unpack(in[4:], out)
+        if err != nil {
+                return nil, nil, errors.New("Can't decode CreateKey response")
+        }
+	// creation data
+	// tpmt_tk_creation
+	// digest
+	return tpm2b_private, tpm2b_public, nil
 }
 
 // CreateSealed
@@ -1223,11 +1266,25 @@ func CreateSealed(rw io.ReadWriter,
 }
 
 // ConstructUnseal constructs a Unseal command.
-// Command: 80020000001f0000015e800000010000000d03000000000001000401020304
+// Command: 80020000001f0000015e 80000001 0000000d030000000 00001 000401020304
 func ConstructUnseal(item_handle Handle, password string, session_handle Handle,
         	attributes []byte, digest []byte) ([]byte, error) {
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdUnseal)
+	if err != nil {
+		return nil, errors.New("ConstructGetDigest failed")
+	}
+	cmd, _ := packWithHeader(cmdHdr, nil)
 	// item_handle
-	return nil, nil
+	var tpm2b_public []byte
+	handle1 := uint32(item_handle)
+        out :=  []interface{}{&handle1, &tpm2b_public}
+        t1, err := pack(out)
+        if err != nil {
+                return nil, errors.New("Can't construct CreateSealed")
+        }
+	t2 := CreatePasswordAuthArea(password, session_handle)
+	t3 := SetHandle(session_handle)
+	return append(cmd, append(t1, append(t2, t3...)...)...), nil
 }
 
 // DecodeUnseal decodes a Unseal response.

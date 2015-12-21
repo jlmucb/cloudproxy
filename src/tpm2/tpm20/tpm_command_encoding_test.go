@@ -175,6 +175,7 @@ func TestConstructFlushContext(t *testing.T) {
 		return
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+	// TODO
 }
 
 func TestDecodeFlushContext(t *testing.T) {
@@ -183,6 +184,12 @@ func TestDecodeFlushContext(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
+
+        tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+        if err != nil || status != 0 {
+		t.Fatal("DecodeCommandResponse fails\n")
+        }
 }
 
 // TestLoad tests a Load command.
@@ -301,6 +308,7 @@ func TestConstructPolicyPcr(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+	// TODO
 }
 
 func TestConstructPolicyPassword(t *testing.T) {
@@ -309,18 +317,11 @@ func TestConstructPolicyPassword(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+	// TODO
 }
 
 // Response: 80010000000a00000000
 func TestDecodePolicyPcr(t *testing.T) {
-}
-
-func TestDecodePolicyPassword(t *testing.T) {
-	test_resp_bytes, err := hex.DecodeString("80010000000a00000000")
-	if err != nil {
-		t.Fatal("Can't convert hex command\n")
-	}
-	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 }
 
 // TestPolicyGetDigest tests a PolicyGetDigest command.
@@ -339,6 +340,11 @@ func TestDecodePolicyGetDigest(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
+        tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+        if err != nil || status != 0 {
+		t.Fatal("DecodeCommandResponse fails\n")
+        }
 }
 
 // TestStartAuthSession tests a StartAuthSession command.
@@ -349,6 +355,7 @@ func TestConstructStartAuthSession(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+	// TODO
 }
 
 func TestDecodeStartAuthSession(t *testing.T) {
@@ -357,6 +364,12 @@ func TestDecodeStartAuthSession(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
+
+        tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+        if err != nil || status != 0 {
+		t.Fatal("DecodeCommandResponse fails\n")
+        }
 }
 
 // TestCreateSealed tests a CreateSealed command.
@@ -367,6 +380,7 @@ func TestConstructCreateSealed(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+	// TODO
 }
 
 const strCreateSealedResp = "80020000013c0000000000000129005a0014450ecdce5f1ce202" +
@@ -385,6 +399,7 @@ func TestDecodeCreateSealed(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
+	// TODO
 }
 
 // TestCreateKey tests a CreateKey command.
@@ -456,6 +471,7 @@ func TestConstructUnseal(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+	// TODO
 }
 
 func TestDecodeUnseal(t *testing.T) {
@@ -464,6 +480,13 @@ func TestDecodeUnseal(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
+
+        tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+        if err != nil || status != 0 {
+		t.Fatal("DecodeCommandResponse fails\n")
+        }
+	// TODO
 }
 
 // TestQuote tests a Quote command.
@@ -474,6 +497,7 @@ func TestConstructQuote(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+	// TODO
 }
 
 const strQuoteResp1 = "80020000010400000000000000f10069ff544347801800160004" +
@@ -499,6 +523,13 @@ func TestDecodeQuote(t *testing.T) {
 	}
 	test_resp_bytes := append(test_resp_bytes_first, test_resp_bytes_next...)
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
+
+        tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+        if err != nil || status != 0 {
+		t.Fatal("DecodeCommandResponse fails\n")
+        }
+	// TODO
 }
 
 // TestActivateCredential tests a ActivateCredential command.
@@ -520,6 +551,7 @@ func TestConstructActivateCredential(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+	// TODO
 }
 
 func TestDecodeActivateCredential(t *testing.T) {
@@ -528,6 +560,13 @@ func TestDecodeActivateCredential(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
+
+        tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+        if err != nil || status != 0 {
+		t.Fatal("DecodeCommandResponse fails\n")
+        }
+	// TODO
 }
 
 // TestReadPublic tests a ReadPublic command.
@@ -539,6 +578,7 @@ func TestConstructReadPublic(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+	// TODO
 }
 
 const strReadPub = "80010000016e00000000011a0001000b000300720000000600800043" +
@@ -574,6 +614,7 @@ func TestDecodeReadPublic(t *testing.T) {
 	fmt.Printf("\npublic blob: %x\n", public_blob)
 	fmt.Printf("\nname          : %x\n", name)
 	fmt.Printf("\nqualified_name: %x\n", qualified_name)
+	// TODO
 }
 
 // TestEvictControl tests a EvictControl command.
@@ -587,6 +628,7 @@ func TestConstructEvictControl(t *testing.T) {
 	// temp handle
 	// persistant handle
 	// auth (0)
+	// TODO
 }
 
 func TestDecodeEvictControl(t *testing.T) {
@@ -595,5 +637,11 @@ func TestDecodeEvictControl(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
+
+        tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+        if err != nil || status != 0 {
+		t.Fatal("DecodeCommandResponse fails\n")
+        }
 }
 

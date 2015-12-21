@@ -1189,9 +1189,16 @@ func ConstructStartAuthSession() ([]byte, error) {
 
 // DecodeStartAuthSession decodes a StartAuthSession response.
 //	Output: session_handle, nonce
-// Response: 800100000020000000000300000000106cf0c90c419ce1a96d5205eb870ec527
-func DecodeStartAuthSession(in []byte) ([]byte, error) {
-	return nil, nil
+// Response: 800100000020000000000 3000000 00106cf0c90c419ce1a96d5205eb870ec527
+func DecodeStartAuthSession(in []byte) (Handle, []byte, error) {
+	var handle uint32
+	var nonce []byte
+        template :=  []interface{}{&handle, &nonce}
+        err := unpack(in, template)
+        if err != nil {
+                return Handle(0), nil, errors.New("Can't decode StartAuthSession response")
+        }
+	return Handle(handle), nonce, nil
 }
 
 // StartAuthSession
@@ -1242,8 +1249,8 @@ func DecodeCreateSealed(in []byte) ([]byte, []byte, error) {
 	// auth?
 	// tpm2b_private
 	// tpm2b_public
-        out :=  []interface{}{&tpm2b_private, &tpm2b_public}
-        err := unpack(in[4:], out)
+        template :=  []interface{}{&tpm2b_private, &tpm2b_public}
+        err := unpack(in[4:], template)
         if err != nil {
                 return nil, nil, errors.New("Can't decode CreateSealed response")
         }

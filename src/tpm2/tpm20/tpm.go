@@ -1175,8 +1175,9 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 }
 
 // ConstructStartAuthSession constructs a StartAuthSession command.
-// Command: 80010000002b00000176400000074000000700100000000000000000000000000000000000000100100004
-func ConstructStartAuthSession() ([]byte, error) {
+// Command: 80010000002b00000176 40000007 40000007 0010 00000000000000000000 0000000000000000 01 0010 0004
+func ConstructStartAuthSession(tpm_key Handle, bind_key Handle, nonceCaller []byte, secret []byte,
+		se byte, sym []byte, hash_alg uint16) ([]byte, error) {
 	// tpm_key
 	// bind (TPM_RH_NULL)
 	// noncecaller
@@ -1184,6 +1185,22 @@ func ConstructStartAuthSession() ([]byte, error) {
 	// TPM_SE
 	// TPM_SYM_DEF
 	// Alg hash
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdStartAuthSession)
+ 	if err != nil {
+		return nil, errors.New("ConstructStartAuthSession failed")
+	}
+ 	b1 := SetHandle(tpm_key)
+ 	b2 := SetHandle(bind_key)
+	b3 ,_ := pack([]interface{}{&nonceCaller})
+	// secret and se
+ 	b4 := []byte{0,0,0,0,0,0,0,0,se}
+	b5 ,_ := pack([]interface{}{&sym, &hash_alg})
+ 	arg_bytes := append(b1, b2...)
+ 	arg_bytes = append(arg_bytes, b3...)
+ 	arg_bytes = append(arg_bytes, b4...)
+ 	arg_bytes = append(arg_bytes, b5...)
+	cmd_bytes, _ := packWithHeader(cmdHdr, nil)
+	return append(cmd_bytes, arg_bytes...), nil
 	return nil, nil
 }
 

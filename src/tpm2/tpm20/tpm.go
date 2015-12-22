@@ -1115,7 +1115,7 @@ func DecodePolicyGetDigest(in []byte) ([]byte, error) {
         out :=  []interface{}{&digest}
         err := unpack(in, out)
         if err != nil {
-                return nil, errors.New("Can't decode Load response")
+                return nil, errors.New("Can't decode DecodePolicyGetDigest response")
         }
         return digest, nil
 }

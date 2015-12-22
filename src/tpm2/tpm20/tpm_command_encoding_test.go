@@ -125,6 +125,17 @@ func TestDecodeReadClock(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
+
+        tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+        if err != nil || status != 0 {
+		t.Fatal("DecodeCommandResponse fails\n")
+        }
+	current_time, curent_clock, err := DecodeReadClock(test_resp_bytes[10:])
+	if err != nil {
+		t.Fatal("DecodeReadClock fails\n")
+	}
+        fmt.Printf("current_time: %x, current_clock: %x\n", current_time, curent_clock)
 }
 
 // TestGetCapabilities tests a GetCapabilities command.
@@ -298,7 +309,7 @@ func TestDecodeCreatePrimary(t *testing.T) {
         }
 	handle, _, err := DecodeCreatePrimary(test_resp_bytes[10:])
 	if err != nil {
-		t.Fatal(err) //"Can't DecodeCreatePrimary --- %s\n", err)
+		t.Fatal(err)
 	}
 	fmt.Printf("Handle : %x\n", handle)
 }
@@ -340,10 +351,6 @@ func TestConstructPolicyPassword(t *testing.T) {
 	}
 }
 
-// Response: 80010000000a00000000
-func TestDecodePolicyPcr(t *testing.T) {
-}
-
 // TestPolicyGetDigest tests a PolicyGetDigest command.
 
 func TestConstructPolicyGetDigest(t *testing.T) {
@@ -352,10 +359,15 @@ func TestConstructPolicyGetDigest(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
+	cmd_bytes, err := ConstructPolicyGetDigest(Handle(0x03000000))
+	fmt.Printf("Command: %x\n", cmd_bytes)
+	if !bytes.Equal(test_cmd_bytes, cmd_bytes) {
+		t.Fatal("Bad Get PolicyGetDigestcommand\n")
+	}
 }
 
 func TestDecodePolicyGetDigest(t *testing.T) {
-	test_resp_bytes, err := hex.DecodeString("80010000000a00000000")
+	test_resp_bytes, err := hex.DecodeString("8001000000200000000000140000000000000000000000000000000000000000")
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 	}
@@ -365,6 +377,11 @@ func TestDecodePolicyGetDigest(t *testing.T) {
         if err != nil || status != 0 {
 		t.Fatal("DecodeCommandResponse fails\n")
         }
+	digest, err := DecodePolicyGetDigest(test_resp_bytes[10:])
+        if err != nil || status != 0 {
+		t.Fatal("DecodePolicyGetDigest fails\n")
+        }
+	fmt.Printf("digest: %x\n", digest)
 }
 
 // TestStartAuthSession tests a StartAuthSession command.

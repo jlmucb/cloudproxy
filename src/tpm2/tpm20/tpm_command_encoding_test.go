@@ -561,7 +561,12 @@ func TestDecodeUnseal(t *testing.T) {
         if err != nil || status != 0 {
 		t.Fatal("DecodeCommandResponse fails\n")
         }
-	// TODO
+	unsealed, digest, err := DecodeUnseal(test_resp_bytes[10:])
+        if err != nil {
+		t.Fatal("DecodeUnseal fails\n")
+        }
+	fmt.Printf("Unsealed: %x\n", unsealed)
+	fmt.Printf("Digest  : %x\n", digest)
 }
 
 // TestQuote tests a Quote command.

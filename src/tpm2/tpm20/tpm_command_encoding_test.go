@@ -416,6 +416,11 @@ func TestDecodeStartAuthSession(t *testing.T) {
         if err != nil || status != 0 {
 		t.Fatal("DecodeCommandResponse fails\n")
         }
+	handle, nonce, err := DecodeStartAuthSession(test_resp_bytes[10:])
+        if err != nil || status != 0 {
+		t.Fatal("DecodeStartAuthSession fails\n")
+        }
+	fmt.Printf("Handle: %x, nonce: %x\n", handle, nonce)
 }
 
 // TestCreateSealed tests a CreateSealed command.
@@ -605,7 +610,12 @@ func TestDecodeQuote(t *testing.T) {
         if err != nil || status != 0 {
 		t.Fatal("DecodeCommandResponse fails\n")
         }
-	// TODO
+	attest, sig, err := DecodeQuote(test_resp_bytes[10:])
+	if err != nil {
+		t.Fatal("DecodeQuote fails\n")
+	}
+	fmt.Printf("\nattest: %x\n", attest)
+	fmt.Printf("sig     : %x\n", sig)
 }
 
 // TestActivateCredential tests a ActivateCredential command.
@@ -701,7 +711,6 @@ func TestDecodeReadPublic(t *testing.T) {
 	fmt.Printf("\npublic blob: %x\n", public_blob)
 	fmt.Printf("\nname          : %x\n", name)
 	fmt.Printf("\nqualified_name: %x\n", qualified_name)
-	// TODO
 }
 
 // TestEvictControl tests a EvictControl command.

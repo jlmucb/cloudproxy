@@ -1453,11 +1453,19 @@ func ConstructQuote(signing_handle Handle, parent_password, owner_password strin
 // DecodeQuote decodes a Quote response.
 //	Output: attest, signature
 func DecodeQuote(in []byte) ([]byte, []byte, error) {
+        var empty []byte
+        var buf []byte
         var attest []byte
         var signature []byte
 
-        out :=  []interface{}{&attest, &signature}
-        err := unpack(in, out)
+        template :=  []interface{}{&empty, &buf}
+        err := unpack(in, template)
+        if err != nil {
+                return nil, nil, errors.New("Can't decode Quote response")
+        }
+
+        template =  []interface{}{&attest, &signature}
+        err = unpack(buf, template)
         if err != nil {
                 return nil, nil, errors.New("Can't decode Quote response")
         }

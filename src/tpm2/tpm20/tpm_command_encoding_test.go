@@ -538,15 +538,15 @@ func TestConstructUnseal(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
-/*
-	cmd_bytes, err := ConstructUnseal(item_handle Handle, password string, session_handle Handle,
-                digest []byte)
+	cmd_bytes, err := ConstructUnseal(Handle(0x80000001), "01020304", Handle(0x03000000))
+	if err != nil {
+		t.Fatal("Can't construct unseal\n")
+	}
 	fmt.Printf("Command: %x\n", cmd_bytes)
 	if err != nil || !bytes.Equal(cmd_bytes, test_cmd_bytes) {
 		t.Fatal("TestUnseal: misgenerated command")
 	}
 	// TODO
-*/
 }
 
 func TestDecodeUnseal(t *testing.T) {

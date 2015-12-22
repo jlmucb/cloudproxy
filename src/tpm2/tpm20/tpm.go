@@ -1347,9 +1347,8 @@ func CreateSealed(rw io.ReadWriter, parent Handle, policy_digest []byte, parent_
 }
 
 // ConstructUnseal constructs a Unseal command.
-func ConstructUnseal(item_handle Handle, password string, session_handle Handle,
-        	digest []byte) ([]byte, error) {
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdUnseal)
+func ConstructUnseal(item_handle Handle, password string, session_handle Handle) ([]byte, error)  {
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdUnseal)
 	if err != nil {
 		return nil, errors.New("ConstructGetDigest failed")
 	}
@@ -1362,8 +1361,7 @@ func ConstructUnseal(item_handle Handle, password string, session_handle Handle,
                 return nil, errors.New("Can't construct CreateSealed")
         }
 	t2 := CreatePasswordAuthArea(password, session_handle)
-	t3 := SetHandle(session_handle)
-	cmd_bytes := packWithBytes(cmdHdr, append(t1, append(t2, t3...)...))
+	cmd_bytes := packWithBytes(cmdHdr, append(t1, t2...))
 	return cmd_bytes, nil
 }
 
@@ -1385,7 +1383,7 @@ func DecodeUnseal(in []byte) ([]byte, []byte, error) {
 func Unseal(rw io.ReadWriter, item_handle Handle, password string, session_handle Handle,
 		digest []byte) ([]byte, []byte, error) {
 	// Construct command
-	cmd, err:= ConstructUnseal(item_handle, password, session_handle, digest)
+	cmd, err:= ConstructUnseal(item_handle, password, session_handle)
 	if err != nil {
 		return nil, nil, errors.New("ConstructUnseal fails") 
 	}

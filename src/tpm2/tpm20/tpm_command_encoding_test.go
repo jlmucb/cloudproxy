@@ -467,7 +467,21 @@ func TestDecodeCreateSealed(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
-	// TODO
+
+	// Decode Response
+        _, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
+        if err != nil {
+                t.Fatal("DecodeCommandResponse error\n")
+        }
+        if status != errSuccess {
+                t.Fatal("error status\n")
+        }
+	private_blob, public_blob, err := DecodeCreateSealed(test_resp_bytes[10:])
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("\nprivate blob: %x\n", private_blob)
+	fmt.Printf("\npublic blob: %x\n", public_blob)
 }
 
 // TestCreateKey tests a CreateKey command.

@@ -197,12 +197,7 @@ func DecodeRsaArea(in []byte) (*RsaParams, error) {
 
 // nil is error
 func CreateKeyedHashParams(parms KeyedHashParams) ([]byte) {
-	// 0 (uint16)
-	// type
-	// attributes
-	// auth
-	// scheme
-	// 0 (uinque)
+	// 0 (uint16), type, attributes, auth, scheme, 0 (uinque)
 	var empty []byte
 	template1 := []interface{}{&empty, &parms.type_alg, &parms.hash_alg, &parms.attributes,
 		&parms.auth_policy, &parms.scheme, &empty}
@@ -1252,32 +1247,35 @@ func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle, nonceCa
 // ConstructCreateSealed constructs a CreateSealed command.
 func ConstructCreateSealed(parent Handle, policy_digest []byte, parent_password string, owner_password string,
         	to_seal []byte, pcr_nums []int, parms KeyedHashParams) ([]byte, error) {
-	// parent handle
-	// auth (0)
-	// pasword auth area
-	// Sensitive area
-	// keyed hash template
-	// outside info
-	// pcr long
+	// parent handle, auth (0), pasword auth area, Sensitive area, keyed hash template
+	// outside info, pcr long
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdCreate)
  	if err != nil {
 		return nil, errors.New("ConstructCreateKey failed")
 	}
  	var empty []byte
+	alg := uint16(algTPM_ALG_NULL)
+	alghack := uint16(algTPM_ALG_KEYEDHASH)
+	// zero := uint32(0)
  	b1 := SetHandle(parent)
 	b2 ,_ := pack([]interface{}{&empty})
  	b3 := CreatePasswordAuthArea(parent_password, Handle(ordTPM_RS_PW))
  	t1 := SetPasswordData(owner_password)
  	b4 := CreateSensitiveArea(t1[2:], to_seal)
- 	b5 := CreateKeyedHashParams(parms)
-	b6 ,_ := pack([]interface{}{&empty})
- 	b7:= CreateLongPcr(uint32(1), pcr_nums)
+	b5a ,_ := pack([]interface{}{&alghack, &parms.hash_alg, &parms.attributes})
+	b5b ,_ := pack([]interface{}{&policy_digest, &alg, &empty})
+	s := append(b5a, b5b...)
+	b6 ,_ := pack([]interface{}{&s})
+ 	// b6 := CreateSensitiveArea(b5a[2:], append(policy_digest, b5b...))
+	b7, _ := pack([]interface{}{&empty})
+ 	b8:= CreateLongPcr(uint32(1), pcr_nums)
  	arg_bytes := append(b1, b2...)
  	arg_bytes = append(arg_bytes, b3...)
  	arg_bytes = append(arg_bytes, b4...)
- 	arg_bytes = append(arg_bytes, b5...)
+ 	// arg_bytes = append(arg_bytes, b5...)
  	arg_bytes = append(arg_bytes, b6...)
  	arg_bytes = append(arg_bytes, b7...)
+ 	arg_bytes = append(arg_bytes, b8...)
 	cmd_bytes := packWithBytes(cmdHdr, arg_bytes)
 	return cmd_bytes, nil
 }
@@ -1288,9 +1286,7 @@ func DecodeCreateSealed(in []byte) ([]byte, []byte, error) {
         var tpm2b_private []byte
         var tpm2b_public []byte
 
-	// auth?
-	// tpm2b_private
-	// tpm2b_public
+	// auth, tpm2b_private, tpm2b_public
         template :=  []interface{}{&tpm2b_private, &tpm2b_public}
         err := unpack(in[4:], template)
         if err != nil {

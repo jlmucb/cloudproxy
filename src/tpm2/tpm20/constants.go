@@ -42,6 +42,7 @@ const(
 	algTPM_ALG_CFB      uint16 = 0x0043
 	algTPM_ALG_ECB      uint16 = 0x0044
 	algTPM_ALG_LAST     uint16 = 0x0044
+	algTPM_ALG_KEYEDHASH uint16 = 0x0008
 )
 
 // Policy

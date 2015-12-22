@@ -431,15 +431,17 @@ func TestConstructCreateSealed(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
-/*
 	// TODO
 	var empty []byte
-        parms := KeyedHashParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-                        uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
+	to_seal := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10}
+	digest := []byte{0x0d, 0xeb, 0xb4, 0xcc, 0x9d, 0x21, 0x58, 0xcf, 0x70, 0x51, 0xa1, 0x9c, 0xa2, 0x4b,
+			 0x31, 0xe3, 0x5d, 0x53, 0xb6, 0x4d}
+        parms := KeyedHashParams{uint16(algTPM_ALG_KEYEDHASH), uint16(algTPM_ALG_SHA1),
+                        uint32(0x00000012), empty, uint16(algTPM_ALG_AES), uint16(128),
                         uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
                         uint16(1024), uint32(0x00010001), empty}
-        cmd_bytes, err := ConstructCreateSealed(parent Handle, policy_digest []byte, parent_password string, owner_password string,
-                to_seal []byte, pcr_nums []int, parms KeyedHashParams) ([]byte, error)
+        cmd_bytes, err := ConstructCreateSealed(Handle(0x80000000), digest, "01020304", "01020304",
+		to_seal, []int{7}, parms)
         if err != nil {
                 t.Fatal("ConstructCreateSealed fails")
         }
@@ -447,7 +449,6 @@ func TestConstructCreateSealed(t *testing.T) {
         if !bytes.Equal(test_cmd_bytes, cmd_bytes) {
                 t.Fatal("ConstructSealed incorrect command")
         }
- */
 }
 
 const strCreateSealedResp = "80020000013c0000000000000129005a0014450ecdce5f1ce202" +

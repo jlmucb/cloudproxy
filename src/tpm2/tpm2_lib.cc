@@ -1666,13 +1666,13 @@ bool Tpm2_Save(LocalTpm& tpm) {
   return false;
 }
 
-int GetName(uint16_t size_in, byte* in, TPM2B_NAME& name) {
+int GetName(uint16_t size_in, byte* in, TPM2B_NAME* name) {
   int total_size = 0;
 
-  ChangeEndian16((uint16_t*) in, (uint16_t*)&name.size);
+  ChangeEndian16((uint16_t*) in, (uint16_t*)&name->size);
   in += sizeof(uint16_t);
-  memcpy(name.name, in, name.size);
-  in += name.size;
+  memcpy(name->name, in, name->size);
+  in += name->size;
   return total_size;
 }
 
@@ -1721,33 +1721,33 @@ int GetRsaParams(uint16_t size_in, byte* input, TPMS_RSA_PARMS& rsaParams,
   return total_size;
 }
 
-bool GetReadPublicOut(uint16_t size_in, byte* input, TPM2B_PUBLIC& outPublic) {
-  ChangeEndian16((uint16_t*) input, (uint16_t*)&outPublic.publicArea.type);
+bool GetReadPublicOut(uint16_t size_in, byte* input, TPM2B_PUBLIC* outPublic) {
+  ChangeEndian16((uint16_t*) input, (uint16_t*)&outPublic->publicArea.type);
   input += sizeof(uint16_t);
   size_in -= sizeof(uint16_t);
-  ChangeEndian16((uint16_t*) input, (uint16_t*)&outPublic.publicArea.nameAlg);
+  ChangeEndian16((uint16_t*) input, (uint16_t*)&outPublic->publicArea.nameAlg);
   input += sizeof(uint16_t);
   size_in -= sizeof(uint16_t);
   ChangeEndian32((uint32_t*) input,
-                 (uint32_t*)&outPublic.publicArea.objectAttributes);
+                 (uint32_t*)&outPublic->publicArea.objectAttributes);
   input += sizeof(uint32_t);
   size_in -= sizeof(uint32_t);
   ChangeEndian16((uint16_t*) input, 
-                 (uint16_t*)&outPublic.publicArea.authPolicy.size);
+                 (uint16_t*)&outPublic->publicArea.authPolicy.size);
   input += sizeof(uint16_t);
   size_in -= sizeof(uint16_t);
-  memcpy(outPublic.publicArea.authPolicy.buffer, input,
-         outPublic.publicArea.authPolicy.size);
-  input += outPublic.publicArea.authPolicy.size;
-  size_in -= outPublic.publicArea.authPolicy.size;
+  memcpy(outPublic->publicArea.authPolicy.buffer, input,
+         outPublic->publicArea.authPolicy.size);
+  input += outPublic->publicArea.authPolicy.size;
+  size_in -= outPublic->publicArea.authPolicy.size;
 
-  if (outPublic.publicArea.type!= TPM_ALG_RSA) {
-    printf("Can only retrieve RSA Params %04x\n", outPublic.publicArea.nameAlg);
+  if (outPublic->publicArea.type!= TPM_ALG_RSA) {
+    printf("Can only retrieve RSA Params %04x\n", outPublic->publicArea.nameAlg);
     return false;
   }
   int n = GetRsaParams(size_in, input,
-                       outPublic.publicArea.parameters.rsaDetail,
-                       outPublic.publicArea.unique.rsa);
+                       outPublic->publicArea.parameters.rsaDetail,
+                       outPublic->publicArea.unique.rsa);
   if (n < 0) {
     printf("Can't get RSA Params\n");
     return false;
@@ -1758,8 +1758,8 @@ bool GetReadPublicOut(uint16_t size_in, byte* input, TPM2B_PUBLIC& outPublic) {
 
 bool Tpm2_ReadPublic(LocalTpm& tpm, TPM_HANDLE handle,
                      uint16_t* pub_blob_size, byte* pub_blob,
-                     TPM2B_PUBLIC& outPublic, TPM2B_NAME& name,
-                     TPM2B_NAME& qualifiedName) {
+                     TPM2B_PUBLIC* outPublic, TPM2B_NAME* name,
+                     TPM2B_NAME* qualifiedName) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   memset(commandBuf, 0, MAX_SIZE_PARAMS);
 
@@ -1799,15 +1799,15 @@ bool Tpm2_ReadPublic(LocalTpm& tpm, TPM_HANDLE handle,
     return false;
   byte* out = resp_buf + sizeof(TPM_RESPONSE);
 
-  ChangeEndian16((uint16_t*)out, (uint16_t*)&outPublic.size);
-  *pub_blob_size = outPublic.size + 2;
-  memcpy(pub_blob, out, outPublic.size + 2);
+  ChangeEndian16((uint16_t*)out, (uint16_t*)&outPublic->size);
+  *pub_blob_size = outPublic->size + 2;
+  memcpy(pub_blob, out, outPublic->size + 2);
   out += sizeof(uint16_t);
-  if (!GetReadPublicOut(outPublic.size, out, outPublic)) {
+  if (!GetReadPublicOut(outPublic->size, out, outPublic)) {
     printf("ReadPublic can't GetPublic\n");
     return false;
   }
-  out += outPublic.size;
+  out += outPublic->size;
   n = GetName(0, out, name);
   if (n < 0) {
     printf("ReadPublic can't Get name\n");

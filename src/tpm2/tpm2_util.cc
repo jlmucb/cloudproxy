@@ -502,7 +502,7 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
     return false;
   }
   if (Tpm2_ReadPublic(tpm, ekHandle, &pub_blob_size, pub_blob,
-                      pub_out, pub_name, qualified_pub_name)) {
+                      &pub_out, &pub_name, &qualified_pub_name)) {
     printf("ReadPublic succeeded\n");
   } else {
     printf("ReadPublic failed\n");
@@ -607,8 +607,8 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
 
   if (Tpm2_ReadPublic(tpm, activeHandle,
                       &active_pub_blob_size, active_pub_blob,
-                      active_pub_out, active_pub_name,
-                      active_qualified_pub_name)) {
+                      &active_pub_out, &active_pub_name,
+                      &active_qualified_pub_name)) {
     printf("ReadPublic succeeded\n");
   } else {
     printf("ReadPublic failed\n");

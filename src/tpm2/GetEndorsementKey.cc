@@ -120,7 +120,7 @@ int main(int an, char** av) {
     goto done;
   }
   if (Tpm2_ReadPublic(tpm, ekHandle, &pub_blob_size, pub_blob,
-                      pub_out, pub_name, qualified_pub_name)) {
+                      &pub_out, &pub_name, &qualified_pub_name)) {
     printf("ReadPublic succeeded\n");
   } else {
     printf("ReadPublic failed\n");

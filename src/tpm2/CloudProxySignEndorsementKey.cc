@@ -181,7 +181,7 @@ int main(int an, char** av) {
   ChangeEndian16((uint16_t*)key_blob.data(), (uint16_t*)&size_in);
   TPM2B_PUBLIC outPublic;
   if (!GetReadPublicOut(size_in, (byte*)(key_blob.data() + sizeof(uint16_t)),
-                        outPublic)) {
+                        &outPublic)) {
     printf("Can't parse endorsement blob\n");
     return 1;
   }

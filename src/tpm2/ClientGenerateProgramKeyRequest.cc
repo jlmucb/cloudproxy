@@ -206,7 +206,7 @@ int main(int an, char** av) {
     goto done;
   }
   if (Tpm2_ReadPublic(tpm, ekHandle, &ek_pub_blob_size, ek_pub_blob,
-                      ek_pub_out, ek_pub_name, ek_qualified_pub_name)) {
+                      &ek_pub_out, &ek_pub_name, &ek_qualified_pub_name)) {
     printf("ek ReadPublic succeeded\n");
   } else {
     printf("ek ReadPublic failed\n");
@@ -384,8 +384,8 @@ int main(int an, char** av) {
 
   // get quote key info
   if (Tpm2_ReadPublic(tpm, quote_handle, &quote_pub_blob_size,
-                      quote_pub_blob, quote_pub_out, quote_pub_name,
-                      quote_qualified_pub_name)) {
+                      quote_pub_blob, &quote_pub_out, &quote_pub_name,
+                      &quote_qualified_pub_name)) {
     printf("Quote ReadPublic succeeded\n");
   } else {
     printf("Quote ReadPublic failed\n");

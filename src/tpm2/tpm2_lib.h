@@ -41,7 +41,7 @@ bool ReadFileIntoBlock(const string& filename, int* size, byte* block);
 bool WriteFileFromBlock(const string& filename, int size, byte* block);
 
 void PrintCapabilities(int size, byte* buf);
-bool GetReadPublicOut(uint16_t size_in, byte* input, TPM2B_PUBLIC& outPublic);
+bool GetReadPublicOut(uint16_t size_in, byte* input, TPM2B_PUBLIC* outPublic);
 
 // Local Tpm interaction
 class LocalTpm {
@@ -192,8 +192,8 @@ bool Tpm2_Certify(LocalTpm& tpm, TPM_HANDLE signedKey, TPM_HANDLE signingKey,
                   TPM2B_ATTEST* attest, TPMT_SIGNATURE* sig);
 bool Tpm2_ReadPublic(LocalTpm& tpm, TPM_HANDLE handle, 
                      uint16_t* pub_blob_size, byte* pub_blob,
-                     TPM2B_PUBLIC& outPublic,
-                     TPM2B_NAME& name, TPM2B_NAME& qualifiedName);
+                     TPM2B_PUBLIC* outPublic,
+                     TPM2B_NAME* name, TPM2B_NAME* qualifiedName);
 
 bool Tpm2_Rsa_Encrypt(LocalTpm& tpm, TPM_HANDLE handle, string& authString, TPM2B_PUBLIC_KEY_RSA& in,
                      TPMT_RSA_DECRYPT& scheme, TPM2B_DATA& label, TPM2B_PUBLIC_KEY_RSA* out);

@@ -9,7 +9,15 @@
 #include <tpm2_lib.h>
 #include <errno.h>
 
+#include <openssl/aes.h>
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
+#include <openssl_helpers.h>
+#include <openssl/rand.h>
+#include <openssl/hmac.h>
 #include <openssl/sha.h>
+
+#include <openssl_helpers.h>
 
 #include <string>
 using std::string;
@@ -499,18 +507,18 @@ bool GetPcrValue(int size, byte* in, uint32_t* updateCounter,
 }
 
 void InitSinglePcrSelection(int pcrNum, TPM_ALG_ID hash,
-                            TPML_PCR_SELECTION& pcrSelect) {
+                            TPML_PCR_SELECTION* pcrSelect) {
   if (pcrNum == -1) {
-    pcrSelect.count = 0;
+    pcrSelect->count = 0;
     return;
   }
-  pcrSelect.count = 1;
-  pcrSelect.pcrSelections[0].hash = hash;
-  pcrSelect.pcrSelections[0].sizeofSelect = 3;
+  pcrSelect->count = 1;
+  pcrSelect->pcrSelections[0].hash = hash;
+  pcrSelect->pcrSelections[0].sizeofSelect = 3;
   for (int i = 0; i < 3; i++)
-    pcrSelect.pcrSelections[0].pcrSelect[i] = 0;
+    pcrSelect->pcrSelections[0].pcrSelect[i] = 0;
   if (pcrNum != 0)
-    setPcrBit(pcrNum, pcrSelect.pcrSelections[0].pcrSelect);
+    setPcrBit(pcrNum, pcrSelect->pcrSelections[0].pcrSelect);
 }
 
 bool Tpm2_ReadPcrs(LocalTpm& tpm, TPML_PCR_SELECTION pcrSelect,
@@ -573,7 +581,7 @@ bool Tpm2_ReadPcrs(LocalTpm& tpm, TPML_PCR_SELECTION pcrSelect,
 bool Tpm2_ReadPcr(LocalTpm& tpm, int pcrNum, uint32_t* updateCounter,
                   TPML_PCR_SELECTION* pcrSelectOut, TPML_DIGEST* values) {
   TPML_PCR_SELECTION pcrSelect;
-  InitSinglePcrSelection(pcrNum, TPM_ALG_SHA1, pcrSelect);
+  InitSinglePcrSelection(pcrNum, TPM_ALG_SHA1, &pcrSelect);
   return Tpm2_ReadPcrs(tpm, pcrSelect, updateCounter,
                    pcrSelectOut, values);
 }
@@ -2615,7 +2623,7 @@ bool Tpm2_WriteNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
 
 bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
                       string& authString, uint16_t authPolicySize, byte* authPolicy,
-		      uint16_t size_data) {
+                      uint16_t size_data) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   int size_resp = MAX_SIZE_PARAMS;
   byte resp_buf[MAX_SIZE_PARAMS];
@@ -2648,7 +2656,7 @@ bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
   // TPM2B_NV_PUBLIC
   uint16_t size_nv_area = sizeof(uint32_t) + sizeof(TPMI_RH_NV_INDEX) +
                           sizeof(TPMI_ALG_HASH) + 2*sizeof(uint16_t) +
-			  authPolicySize;
+                          authPolicySize;
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   ChangeEndian16((uint16_t*)&size_nv_area, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
@@ -2973,6 +2981,244 @@ bool Tpm2_EvictControl(LocalTpm& tpm, TPMI_RH_PROVISION owner,
   ChangeEndian32((uint32_t*)out, &persistantHandle);
   out += sizeof(uint32_t);
 #endif
+  return true;
+}
+
+bool MakeCredential(int endorsement_blob_size, byte* endorsement_cert_blob,
+                    int credential_size, int* size_secret, byte* secret,
+                    TPM_ALG_ID hash_alg_id, int size_name, byte* name_buf,
+                    int* size_certBlob, byte* certBlob) {
+  X509* endorsement_cert = nullptr;
+  TPM2B_DIGEST unmarshaled_credential;
+  TPM2B_NAME unmarshaled_name;
+  TPM2B_DIGEST marshaled_credential;
+  TPM2B_NAME marshaled_name;
+  int size_derived_keys;
+  byte derived_keys[128];
+
+  unmarshaled_credential.size = credential_size;
+
+  // Generate encryption key for signed program cert
+  // This is the "credential."
+  RAND_bytes(unmarshaled_credential.buffer, unmarshaled_credential.size);
+  unmarshaled_name.size = size_name;
+  memcpy(unmarshaled_name.name, name_buf, size_name); 
+
+  // Get endorsement public key
+  byte* p =  endorsement_cert_blob;
+  endorsement_cert = d2i_X509(nullptr, (const byte**)&p, endorsement_blob_size);
+
+  ChangeEndian16(&unmarshaled_credential.size, &marshaled_credential.size);
+  memcpy(marshaled_credential.buffer, unmarshaled_credential.buffer,
+         unmarshaled_credential.size);
+
+  string key_seed;
+  key_seed.assign((const char*)unmarshaled_credential.buffer,
+                  unmarshaled_credential.size);
+
+  int size_hmacKey = SizeHash(hash_alg_id);
+  byte hmacKey[MAX_SIZE_PARAMS];
+
+  string key;
+  string label;
+  string contextU;
+  string contextV;
+
+  SHA_CTX sha1;
+  SHA256_CTX sha256;
+  HMAC_CTX hctx;
+
+  int size_encIdentity;
+  byte encIdentity[MAX_SIZE_PARAMS];
+  byte outerHmac[128];
+
+  RSA* signing_key = nullptr;
+  RSA* active_key = RSA_new();
+
+  string name;
+  string input;
+  string output;
+  string private_key_blob;
+  TPM2B_DIGEST marshaled_integrityHmac;
+
+  EVP_PKEY* protector_evp_key = nullptr;
+  RSA* protector_key = nullptr;
+
+  // Encrypt signed program cert
+  size_derived_keys = 128;
+  label = "PROTECT";
+  key_seed.assign((const char*)unmarshaled_credential.buffer,
+                       unmarshaled_credential.size);
+  if (!KDFa(hash_alg_id, key_seed, label, contextV, contextV, 256,
+            size_derived_keys, derived_keys)) {
+    printf("Can't derive cert protection keys\n");
+    return false;
+  }
+/*
+
+  uint16_t size_in = 0;
+  if (!AesCtrCrypt(128, derived_keys, der_program_cert_size,
+                   der_program_cert, encrypted_data)) {
+    printf("Can't encrypt cert\n");
+    ret_val = 1;
+    goto done;
+  }
+  HMAC_CTX_init(&hctx);
+  if (hash_alg_id == TPM_ALG_SHA1) {
+    HMAC_Init_ex(&hctx, &derived_keys[16], 16, EVP_sha1(), nullptr);
+    encrypted_data_hmac_size = 20;
+  } else {
+    HMAC_Init_ex(&hctx, &derived_keys[16], 16, EVP_sha256(), nullptr);
+    encrypted_data_hmac_size = 32;
+  }
+  HMAC_Update(&hctx, encrypted_data, der_program_cert_size);
+  HMAC_Final(&hctx, encrypted_data_hmac, (uint32_t*)&encrypted_data_hmac_size);
+  HMAC_CTX_cleanup(&hctx);
+
+#ifdef DEBUG_EXTRA
+  printf("\ncredential secret: ");
+  PrintBytes(16, unmarshaled_credential.buffer);
+  printf("\n");
+  printf("\nderived keys: ");
+  PrintBytes(32, derived_keys);
+  printf("\n");
+  printf("\nder_program_cert: ");
+  PrintBytes(der_program_cert_size, der_program_cert);
+  printf("\n");
+  printf("\nencrypted der_program_cert: ");
+  PrintBytes(der_program_cert_size, encrypted_data);
+  printf("\n");
+  if (!AesCtrCrypt(128, derived_keys, der_program_cert_size,
+                   encrypted_data, test_buf)) {
+    printf("\nCan't decrypt cert\n");
+    ret_val = 1;
+    goto done;
+  }
+  printf("\ndecrypted der_program_cert: ");
+  PrintBytes(der_program_cert_size, test_buf);
+  printf("\n");
+  printf("\nencrypted_dert_hmac: ");
+  PrintBytes(encrypted_data_hmac_size, encrypted_data_hmac);
+  printf("\n");
+#endif
+  encrypted_data_size = der_program_cert_size;
+  response.set_encrypted_cert(encrypted_data, encrypted_data_size);
+  response.set_encrypted_cert_hmac(encrypted_data_hmac, encrypted_data_hmac_size);
+
+  // Generate seed for MakeCredential protocol
+  RAND_bytes(seed, size_seed);
+
+#ifdef DEBUG
+  printf("\nseed: ");
+  PrintBytes(size_seed, seed); printf("\n");
+#endif
+
+  // Protector_key is endorsement key
+  protector_evp_key = X509_get_pubkey(endorsement_cert);
+  protector_key = EVP_PKEY_get1_RSA(protector_evp_key);
+  RSA_up_ref(protector_key);
+
+  // Secret= E(protector_key, seed || "IDENTITY")
+  //   args: to, from, label, len
+  size_in = 256;
+  RSA_padding_add_PKCS1_OAEP(in_buf, 256, seed, size_seed, 
+      (byte*)"IDENTITY", strlen("IDENTITY")+1);
+
+#ifdef DEBUG_EXTRA
+  printf("\nEndorsement modulus: ");
+  BN_print_fp(stdout, protector_key->n);
+  printf("\n");
+  printf("endorsement exponent: ");
+  BN_print_fp(stdout, protector_key->e);
+  printf("\n");
+  printf("\nEncrypted secret (%d): ", encrypted_secret_size);
+  PrintBytes(encrypted_secret_size, encrypted_secret); printf("\n");
+  printf("\nname: ");
+  PrintBytes(request.cred().name().size(),
+             (byte*)request.cred().name().data()); printf("\n");
+  printf("\n");
+#endif
+
+
+
+  // Calculate symKey
+  label = "STORAGE";
+  key.assign((const char*)seed, size_seed);
+  contextV.clear();
+  name.assign(request.cred().name().data(), request.cred().name().size());
+  if (!KDFa(hash_alg_id, key, label, name, contextV, 128, 32, symKey)) {
+    printf("Can't KDFa symKey\n");
+    ret_val = 1;
+    goto done;
+  }
+
+#ifdef DEBUG
+  printf("\nsymKey: "); PrintBytes(16, symKey); printf("\n");
+  printf("marshaled_credential: ");
+  PrintBytes(unmarshaled_credential.size + sizeof(uint16_t),
+             (byte*)&marshaled_credential);
+  printf("\n");
+#endif
+
+  // Calculate encIdentity
+  //   Note: We need to encrypt the entire marshaled_credential.
+  size_encIdentity = MAX_SIZE_PARAMS;
+  if (!AesCFBEncrypt(symKey, unmarshaled_credential.size + sizeof(uint16_t),
+                     (byte*)&marshaled_credential, 16, zero_iv,
+                     &size_encIdentity, encIdentity)) {
+    printf("Can't AesCFBEncrypt\n");
+    ret_val = 1;
+    goto done;
+  }
+
+#ifdef DEBUG
+  printf("size_encIdentity: %d\n", size_encIdentity);
+  test_size = MAX_SIZE_PARAMS;
+  if (!AesCFBDecrypt(symKey, size_encIdentity,
+                     (byte*)encIdentity, 16, zero_iv,
+                     &test_size, test_buf)) {
+    printf("Can't AesCFBDecrypt\n");
+    ret_val = 1;
+    goto done;
+  }
+  printf("Decrypted secret (%d): ", test_size);
+  PrintBytes(test_size, test_buf); printf("\n");
+#endif
+
+  response.set_encidentity(encIdentity, size_encIdentity);
+
+  // hmacKey= KDFa(hash, seed, "INTEGRITY", nullptr, nullptr, 8*hashsize);
+  label = "INTEGRITY";
+  if (!KDFa(hash_alg_id, key, label, contextV,
+            contextV, 8 * SizeHash(hash_alg_id), 32, hmacKey)) {
+    printf("Can't KDFa hmacKey\n");
+    ret_val = 1;
+    goto done;
+  }
+  
+  // Calculate outerMac = HMAC(hmacKey, encIdentity || name);
+  unmarshaled_name.size = name.size();
+  ChangeEndian16(&unmarshaled_name.size, &marshaled_name.size);
+  memcpy(unmarshaled_name.name, (byte*)name.data(), unmarshaled_name.size);
+  memcpy(marshaled_name.name, (byte*)name.data(), unmarshaled_name.size);
+
+  HMAC_CTX_init(&hctx);
+  if (hash_alg_id == TPM_ALG_SHA1) {
+    HMAC_Init_ex(&hctx, hmacKey, size_hmacKey, EVP_sha1(), nullptr);
+  } else {
+    HMAC_Init_ex(&hctx, hmacKey, size_hmacKey, EVP_sha256(), nullptr);
+  }
+  HMAC_Update(&hctx, (const byte*)encIdentity, size_encIdentity);
+  HMAC_Update(&hctx, (const byte*)&marshaled_name.name, name.size());
+  HMAC_Final(&hctx, outerHmac, (uint32_t*)&size_hmacKey);
+  HMAC_CTX_cleanup(&hctx);
+
+  // integrityHMAC
+  ChangeEndian16((uint16_t*)&size_hmacKey, &marshaled_integrityHmac.size);
+  memcpy(marshaled_integrityHmac.buffer, outerHmac, size_hmacKey);
+  response.set_integrityhmac((byte*)&marshaled_integrityHmac,
+                             size_hmacKey + sizeof(uint16_t));
+ */
   return true;
 }
 

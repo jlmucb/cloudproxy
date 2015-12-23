@@ -166,7 +166,7 @@ int main(int an, char** av) {
     TPM_HANDLE handle;
     TPM2B_PUBLIC pub_out;
     TPML_PCR_SELECTION pcrSelect;
-    InitSinglePcrSelection(FLAGS_pcr_num, TPM_ALG_SHA1, pcrSelect);
+    InitSinglePcrSelection(FLAGS_pcr_num, TPM_ALG_SHA1, &pcrSelect);
     bool sign = true;
     if (FLAGS_decrypt.size() > 0)
       sign = false;
@@ -256,7 +256,7 @@ int main(int an, char** av) {
       parent_handle = (TPM_HANDLE) t;
     } 
     TPML_PCR_SELECTION pcrSelect;
-    InitSinglePcrSelection(FLAGS_pcr_num, TPM_ALG_SHA1, pcrSelect);
+    InitSinglePcrSelection(FLAGS_pcr_num, TPM_ALG_SHA1, &pcrSelect);
     bool sign = true;
     if (FLAGS_decrypt.size() > 0)
       sign = false;
@@ -480,7 +480,6 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
 
   TPML_PCR_SELECTION pcrSelect;
   memset((void*)&pcrSelect, 0, sizeof(TPML_PCR_SELECTION));
-  // InitSinglePcrSelection(7, TPM_ALG_SHA256, pcrSelect);
 
   // TPM_RH_ENDORSEMENT
   TPMA_OBJECT primary_flags;
@@ -522,7 +521,7 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
   TPM_HANDLE activeHandle;
   TPM2B_PUBLIC parent_pub_out;
   TPML_PCR_SELECTION parent_pcrSelect;
-  InitSinglePcrSelection(7, TPM_ALG_SHA1, parent_pcrSelect);
+  InitSinglePcrSelection(7, TPM_ALG_SHA1, &parent_pcrSelect);
 
   TPMA_OBJECT parent_flags;
   *(uint32_t*)(&parent_flags) = 0;
@@ -661,7 +660,7 @@ bool Tpm2_ContextCombinedTest(LocalTpm& tpm) {
 
   TPM2B_PUBLIC pub_out;
   TPML_PCR_SELECTION pcrSelect;
-  InitSinglePcrSelection(7, TPM_ALG_SHA1, pcrSelect);
+  InitSinglePcrSelection(7, TPM_ALG_SHA1, &pcrSelect);
 
   TPMA_OBJECT primary_flags;
   *(uint32_t*)(&primary_flags) = 0;
@@ -771,7 +770,7 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
   TPM_HANDLE session_handle = 0;
   TPM2B_NONCE nonce_obj;
   TPML_PCR_SELECTION pcrSelect;
-  InitSinglePcrSelection(FLAGS_pcr_num, TPM_ALG_SHA1, pcrSelect);
+  InitSinglePcrSelection(FLAGS_pcr_num, TPM_ALG_SHA1, &pcrSelect);
 
   initial_nonce.size = 16;
   memset(initial_nonce.buffer, 0, 16);
@@ -874,7 +873,7 @@ bool Tpm2_KeyCombinedTest(LocalTpm& tpm, int pcr_num) {
   TPM_HANDLE parent_handle;
   TPM2B_PUBLIC pub_out;
   TPML_PCR_SELECTION pcrSelect;
-  InitSinglePcrSelection(pcr_num, TPM_ALG_SHA1, pcrSelect);
+  InitSinglePcrSelection(pcr_num, TPM_ALG_SHA1, &pcrSelect);
 
   TPMA_OBJECT primary_flags;
   *(uint32_t*)(&primary_flags) = 0;
@@ -1000,7 +999,7 @@ bool Tpm2_SealCombinedTest(LocalTpm& tpm, int pcr_num) {
   TPM_HANDLE parent_handle;
   TPM2B_PUBLIC pub_out;
   TPML_PCR_SELECTION pcrSelect;
-  InitSinglePcrSelection(pcr_num, TPM_ALG_SHA1, pcrSelect);
+  InitSinglePcrSelection(pcr_num, TPM_ALG_SHA1, &pcrSelect);
 
   TPMA_OBJECT primary_flags;
   *(uint32_t*)(&primary_flags) = 0;
@@ -1157,7 +1156,7 @@ bool Tpm2_QuoteCombinedTest(LocalTpm& tpm, int pcr_num) {
   TPM_HANDLE parent_handle;
   TPM2B_PUBLIC pub_out;
   TPML_PCR_SELECTION pcr_selection;
-  InitSinglePcrSelection(pcr_num, TPM_ALG_SHA1, pcr_selection);
+  InitSinglePcrSelection(pcr_num, TPM_ALG_SHA1, &pcr_selection);
 
   TPMA_OBJECT primary_flags;
   *(uint32_t*)(&primary_flags) = 0;

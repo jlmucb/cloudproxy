@@ -33,7 +33,7 @@ void ChangeEndian16(const uint16_t* in, uint16_t* out);
 void ChangeEndian32(const uint32_t* in, uint32_t* out);
 void ChangeEndian64(const uint64_t* in, uint64_t* out);
 void InitSinglePcrSelection(int pcrNum, TPM_ALG_ID alg,
-                            TPML_PCR_SELECTION& pcrSelect);
+                            TPML_PCR_SELECTION* pcrSelect);
 void setPcrBit(int pcrNum, byte* array);
 bool testPcrBit(int pcrNum, byte* array);
 
@@ -83,7 +83,8 @@ bool Tpm2_GetCapability(LocalTpm& tpm, uint32_t cap,
                         int* size, byte* buf);
 bool Tpm2_GetRandom(LocalTpm& tpm, int numBytes, byte* buf);
 
-bool Tpm2_ReadClock(LocalTpm& tpm, uint64_t* current_time, uint64_t* current_clock);
+bool Tpm2_ReadClock(LocalTpm& tpm, uint64_t* current_time,
+                    uint64_t* current_clock);
 bool Tpm2_ReadPcrs(LocalTpm& tpm, TPML_PCR_SELECTION pcrSelect,
                    uint32_t* updateCounter,
                    TPML_PCR_SELECTION* pcrSelectOut, TPML_DIGEST* values);
@@ -168,8 +169,8 @@ bool Tpm2_ReadNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
 bool Tpm2_WriteNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, string& authString,
                   uint16_t size, byte* data);
 bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
-		      string& authString, uint16_t authPolicySize, byte* authPolicy,
-		      uint16_t size_data);
+		      string& authString, uint16_t authPolicySize,
+                      byte* authPolicy, uint16_t size_data);
 bool Tpm2_UndefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index);
 bool Tpm2_Flushall(LocalTpm& tpm);
 
@@ -195,8 +196,9 @@ bool Tpm2_ReadPublic(LocalTpm& tpm, TPM_HANDLE handle,
                      TPM2B_PUBLIC* outPublic,
                      TPM2B_NAME* name, TPM2B_NAME* qualifiedName);
 
-bool Tpm2_Rsa_Encrypt(LocalTpm& tpm, TPM_HANDLE handle, string& authString, TPM2B_PUBLIC_KEY_RSA& in,
-                     TPMT_RSA_DECRYPT& scheme, TPM2B_DATA& label, TPM2B_PUBLIC_KEY_RSA* out);
+bool Tpm2_Rsa_Encrypt(LocalTpm& tpm, TPM_HANDLE handle, string& authString,
+                      TPM2B_PUBLIC_KEY_RSA& in, TPMT_RSA_DECRYPT& scheme,
+                      TPM2B_DATA& label, TPM2B_PUBLIC_KEY_RSA* out);
 bool Tpm2_EvictControl(LocalTpm& tpm, TPMI_RH_PROVISION owner, TPM_HANDLE handle,
                        string& authString,
                        TPMI_DH_PERSISTENT persistantHandle);

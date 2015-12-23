@@ -194,7 +194,7 @@ int main(int an, char** av) {
   primary_flags.decrypt = 1;
   primary_flags.restricted = 1;
 
-  InitSinglePcrSelection(7, hash_alg_id, pcrSelect);
+  InitSinglePcrSelection(7, hash_alg_id, &pcrSelect);
   if (Tpm2_CreatePrimary(tpm, TPM_RH_ENDORSEMENT, emptyAuth, pcrSelect,
                          TPM_ALG_RSA, hash_alg_id, primary_flags,
                          TPM_ALG_AES, 128, TPM_ALG_CFB, TPM_ALG_NULL,
@@ -240,7 +240,7 @@ int main(int an, char** av) {
 
   // restore hierarchy
   // TODO(jlm): should get pcr list from parameters
-  InitSinglePcrSelection(7, hash_alg_id, pcrSelect);
+  InitSinglePcrSelection(7, hash_alg_id, &pcrSelect);
 
   // root handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);

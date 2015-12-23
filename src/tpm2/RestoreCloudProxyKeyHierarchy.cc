@@ -115,7 +115,7 @@ int main(int an, char** av) {
   byte context_save_area[MAX_SIZE_PARAMS];
   int context_data_size = 930;
 
-  InitSinglePcrSelection(7, hash_alg_id, pcrSelect);
+  InitSinglePcrSelection(7, hash_alg_id, &pcrSelect);
 
   // root handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);

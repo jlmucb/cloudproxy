@@ -150,7 +150,7 @@ int main(int an, char** av) {
     return 1;
   }
 
-  InitSinglePcrSelection(7, hash_alg_id, pcrSelect);
+  InitSinglePcrSelection(7, hash_alg_id, &pcrSelect);
 
   // root of hierarchy 
   *(uint32_t*)(&root_flags) = 0;

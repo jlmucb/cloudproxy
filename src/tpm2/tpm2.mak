@@ -52,6 +52,7 @@ dobj_tpm2_util=					$(O)/tpm2_lib.o \
   $(O)/tpm2_util.o
 dobj_GeneratePolicyKey=				$(O)/tpm2_lib.o \
   $(O)/tpm2.pb.o \
+  $(O)/openssl_helpers.o \
   $(O)/conversions.o \
   $(O)/GeneratePolicyKey.o
 dobj_CloudProxySignEndorsementKey=		$(O)/tpm2_lib.o \
@@ -60,6 +61,7 @@ dobj_CloudProxySignEndorsementKey=		$(O)/tpm2_lib.o \
   $(O)/CloudProxySignEndorsementKey.o 
 dobj_GetEndorsementKey=				$(O)/tpm2_lib.o \
   $(O)/tpm2.pb.o \
+  $(O)/openssl_helpers.o \
   $(O)/GetEndorsementKey.o
 dobj_SelfSignPolicyCert=			$(O)/tpm2_lib.o \
   $(O)/openssl_helpers.o \
@@ -67,9 +69,11 @@ dobj_SelfSignPolicyCert=			$(O)/tpm2_lib.o \
   $(O)/SelfSignPolicyCert.o
 dobj_CreateAndSaveCloudProxyKeyHierarchy=	$(O)/tpm2_lib.o \
   $(O)/tpm2.pb.o \
+  $(O)/openssl_helpers.o \
   $(O)/CreateAndSaveCloudProxyKeyHierarchy.o
 dobj_RestoreCloudProxyKeyHierarchy=		$(O)/tpm2_lib.o \
   $(O)/tpm2.pb.o \
+  $(O)/openssl_helpers.o \
   $(O)/RestoreCloudProxyKeyHierarchy.o
 dobj_ClientGenerateProgramKeyRequest=		$(O)/tpm2_lib.o \
   $(O)/tpm2.pb.o \
@@ -87,6 +91,7 @@ dobj_ClientGetProgramKeyCert=			$(O)/tpm2_lib.o \
   $(O)/ClientGetProgramKeyCert.o
 dobj_SigningInstructions=			$(O)/tpm2_lib.o \
   $(O)/tpm2.pb.o \
+  $(O)/openssl_helpers.o \
   $(O)/SigningInstructions.o
 
 all:	$(EXE_DIR)/tpm2_util.exe \

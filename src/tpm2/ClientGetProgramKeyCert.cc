@@ -186,7 +186,7 @@ int main(int an, char** av) {
 
   // restore context
   // TODO(jlm): should get pcr list from parameters
-  InitSinglePcrSelection(7, hash_alg_id, pcrSelect);
+  InitSinglePcrSelection(7, hash_alg_id, &pcrSelect);
 
   // root handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);

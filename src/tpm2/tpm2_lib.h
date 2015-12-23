@@ -42,6 +42,17 @@ bool WriteFileFromBlock(const string& filename, int size, byte* block);
 
 void PrintCapabilities(int size, byte* buf);
 bool GetReadPublicOut(uint16_t size_in, byte* input, TPM2B_PUBLIC* outPublic);
+bool MakeCredential(int size_endorsement_blob, byte* endorsement_cert_blob,
+                    TPM_ALG_ID hash_alg_id,
+                    TPM2B_DIGEST& unmarshaled_credential,
+                    TPM2B_NAME& unmarshaled_name,
+                    TPM2B_ENCRYPTED_SECRET* unmarshaled_encrypted_secret,
+                    TPM2B_DIGEST* unmarshaled_integrityHmac);
+bool EncryptData(bool encrypt_flag, TPM_ALG_ID hash_alg_id,
+                 TPM2B_DIGEST unmarshaled_credential,
+                 int size_input_data, byte* input_data,
+                 int* size_hmac, byte* encrypted_data_hmac,
+                 int* size_output_data, byte* output_data);
 
 // Local Tpm interaction
 class LocalTpm {

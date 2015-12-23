@@ -64,10 +64,7 @@ type KeyedHashParams struct {
         sym_sz uint16
         mode uint16
         scheme uint16
-        scheme_hash uint16
-        mod_sz uint16
-        exp uint32
-        modulus []byte
+	unique []byte
 }
 
 // RSA Key

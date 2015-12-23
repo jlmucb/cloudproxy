@@ -625,7 +625,7 @@ int main(int an, char** av) {
                               // RSA_PKCS1_OAEP_PADDING);
   response.set_secret(encrypted_secret, encrypted_secret_size);
 
-#ifdef DEBUG_EXTRA
+#ifdef DEBUG
   printf("\nEndorsement modulus: ");
   BN_print_fp(stdout, protector_key->n);
   printf("\n");

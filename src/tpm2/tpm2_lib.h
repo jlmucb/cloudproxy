@@ -45,14 +45,20 @@ bool GetReadPublicOut(uint16_t size_in, byte* input, TPM2B_PUBLIC* outPublic);
 bool MakeCredential(int size_endorsement_blob, byte* endorsement_cert_blob,
                     TPM_ALG_ID hash_alg_id,
                     TPM2B_DIGEST& unmarshaled_credential,
+                    TPM2B_DIGEST& marshaled_credential,
                     TPM2B_NAME& unmarshaled_name,
+                    TPM2B_NAME& marshaled_name,
+                    int* size_encIdentity, byte* encIdentity,
                     TPM2B_ENCRYPTED_SECRET* unmarshaled_encrypted_secret,
-                    TPM2B_DIGEST* unmarshaled_integrityHmac);
-bool EncryptData(bool encrypt_flag, TPM_ALG_ID hash_alg_id,
-                 TPM2B_DIGEST unmarshaled_credential,
-                 int size_input_data, byte* input_data,
-                 int* size_hmac, byte* encrypted_data_hmac,
-                 int* size_output_data, byte* output_data);
+                    TPM2B_ENCRYPTED_SECRET* marshaled_encrypted_secret,
+                    TPM2B_DIGEST* unmarshaled_integrityHmac,
+                    TPM2B_DIGEST* marshaled_integrityHmac);
+bool EncryptDataWithCredential(bool encrypt_flag, TPM_ALG_ID hash_alg_id,
+                               TPM2B_DIGEST unmarshaled_credential,
+                               TPM2B_DIGEST marshaled_credential,
+                               int size_input_data, byte* input_data,
+                               int* size_hmac, byte* encrypted_data_hmac,
+                               int* size_output_data, byte* output_data);
 
 // Local Tpm interaction
 class LocalTpm {
@@ -180,7 +186,7 @@ bool Tpm2_ReadNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
 bool Tpm2_WriteNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, string& authString,
                   uint16_t size, byte* data);
 bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
-		      string& authString, uint16_t authPolicySize,
+                      string& authString, uint16_t authPolicySize,
                       byte* authPolicy, uint16_t size_data);
 bool Tpm2_UndefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index);
 bool Tpm2_Flushall(LocalTpm& tpm);

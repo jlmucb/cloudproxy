@@ -22,6 +22,8 @@
 #include <string>
 using std::string;
 
+#define DEBUG
+
 //
 // Copyright 2015 Google Corporation, All Rights Reserved.
 //
@@ -2993,20 +2995,21 @@ bool Tpm2_EvictControl(LocalTpm& tpm, TPMI_RH_PROVISION owner,
 bool MakeCredential(int size_endorsement_blob, byte* endorsement_cert_blob,
                     TPM_ALG_ID hash_alg_id,
                     TPM2B_DIGEST& unmarshaled_credential,
+                    TPM2B_DIGEST& marshaled_credential,
                     TPM2B_NAME& unmarshaled_name,
+                    TPM2B_NAME& marshaled_name,
+                    int* size_encIdentity, byte* encIdentity,
                     TPM2B_ENCRYPTED_SECRET* unmarshaled_encrypted_secret,
-                    TPM2B_DIGEST* unmarshaled_integrityHmac) {
+                    TPM2B_ENCRYPTED_SECRET* marshaled_encrypted_secret,
+                    TPM2B_DIGEST* unmarshaled_integrityHmac,
+                    TPM2B_DIGEST* marshaled_integrityHmac) {
   X509* endorsement_cert = nullptr;
-  TPM2B_DIGEST marshaled_credential;
-  TPM2B_NAME marshaled_name;
   int size_seed = 16;
   byte seed[32];
   int size_secret = 256;
   byte secret_buf[256];
   byte zero_iv[32];
   byte symKey[MAX_SIZE_PARAMS];
-  int size_encIdentity = MAX_SIZE_PARAMS;
-  byte encIdentity[MAX_SIZE_PARAMS];
   string label;
   string key;
   string contextU;
@@ -3017,6 +3020,11 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_cert_blob,
 
   // 2. Generate seed
   RAND_bytes(seed, size_seed);
+
+#ifdef DEBUG
+  printf("\nseed: ");
+  PrintBytes(size_seed, seed); printf("\n");
+#endif
 
   // Get endorsement public key, which is protector key
   byte* p =  endorsement_cert_blob;
@@ -3030,12 +3038,17 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_cert_blob,
   size_secret= 256;
   RSA_padding_add_PKCS1_OAEP(secret_buf, 256, seed, size_seed,
       (byte*)"IDENTITY", strlen("IDENTITY")+1);
-  int n = RSA_public_encrypt(size_secret, secret_buf, unmarshaled_encrypted_secret->secret,
-                              protector_key, RSA_NO_PADDING);
+  int n = RSA_public_encrypt(size_secret, secret_buf,
+                             unmarshaled_encrypted_secret->secret,
+                             protector_key, RSA_NO_PADDING);
   if (n <=0)
     return false;
   unmarshaled_encrypted_secret->size = n;
-  
+  ChangeEndian16((uint16_t*)&unmarshaled_encrypted_secret->size,
+                 &marshaled_encrypted_secret->size);
+  memcpy(marshaled_encrypted_secret->secret,
+         unmarshaled_encrypted_secret->secret,
+         unmarshaled_encrypted_secret->size);
  
   // 4. Calculate symKey
   label = "STORAGE";
@@ -3047,17 +3060,24 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_cert_blob,
     return false;
   }
 
+#ifdef DEBUG
+  printf("\nsymKey: "); PrintBytes(16, symKey); printf("\n");
+  printf("marshaled_credential: ");
+  PrintBytes(unmarshaled_credential.size + sizeof(uint16_t),
+             (byte*)&marshaled_credential);
+  printf("\n");
+#endif
+
   // 5. encIdentity
   if (!AesCFBEncrypt(symKey, unmarshaled_credential.size + sizeof(uint16_t),
                      (byte*)&marshaled_credential, 16, zero_iv,
-                     &size_encIdentity, encIdentity)) {
+                     size_encIdentity, encIdentity)) {
     printf("Can't AesCFBEncrypt\n");
     return false;
   }
 
   int size_hmacKey = SizeHash(hash_alg_id);
-  byte hmacKey[MAX_SIZE_PARAMS];
-  byte outerHmac[128];
+  byte hmacKey[128];
 
 // 6. HMACkey ≔ KDFa (ekNameAlg, seed, “INTEGRITY”, NULL, NULL, bits)
   label = "INTEGRITY";
@@ -3068,11 +3088,6 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_cert_blob,
   }
 
 // 7. Calculate outerMac = HMAC(hmacKey, encIdentity || name);
-  unmarshaled_name.size = name.size();
-  ChangeEndian16(&unmarshaled_name.size, &marshaled_name.size);
-  memcpy(unmarshaled_name.name, (byte*)name.data(), unmarshaled_name.size);
-  memcpy(marshaled_name.name, (byte*)name.data(), unmarshaled_name.size);
-
   HMAC_CTX hctx;
   HMAC_CTX_init(&hctx);
   if (hash_alg_id == TPM_ALG_SHA1) {
@@ -3080,18 +3095,24 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_cert_blob,
   } else {
     HMAC_Init_ex(&hctx, hmacKey, size_hmacKey, EVP_sha256(), nullptr);
   }
-  HMAC_Update(&hctx, (const byte*)encIdentity, size_encIdentity);
+  HMAC_Update(&hctx, (const byte*)encIdentity, (size_t)*size_encIdentity);
   HMAC_Update(&hctx, (const byte*)&marshaled_name.name, name.size());
-  HMAC_Final(&hctx, outerHmac, (uint32_t*)&size_hmacKey);
+  unmarshaled_integrityHmac->size = size_hmacKey;
+  HMAC_Final(&hctx, unmarshaled_integrityHmac->buffer, (uint32_t*)&size_hmacKey);
   HMAC_CTX_cleanup(&hctx);
 
+  // integrityHMAC
+  ChangeEndian16((uint16_t*)&size_hmacKey, &marshaled_integrityHmac->size);
+  memcpy(marshaled_integrityHmac->buffer, unmarshaled_integrityHmac->buffer,
+         size_hmacKey);
   return true;
 }
 
 // encrypted_data_hmac is an input argument for decrypt and
 // an output argument for encrypt.
-bool EncryptData(bool encrypt_flag, TPM_ALG_ID hash_alg_id,
+bool EncryptDataWithCredential(bool encrypt_flag, TPM_ALG_ID hash_alg_id,
                  TPM2B_DIGEST unmarshaled_credential,
+                 TPM2B_DIGEST marshaled_credential,
                  int size_input_data, byte* input_data,
                  int* size_hmac, byte* encrypted_data_hmac,
                  int* size_output_data, byte* output_data) {
@@ -3112,6 +3133,15 @@ bool EncryptData(bool encrypt_flag, TPM_ALG_ID hash_alg_id,
     printf("Can't derive protection keys\n");
     return false;
   }
+
+#ifdef DEBUG
+  printf("Derived keys: ");
+  PrintBytes(32, derived_keys);
+  printf("\n");
+  printf("insize: %d, outsize: %d\n", size_input_data, *size_output_data);
+#endif
+
+  memset(output_data, 0, *size_output_data);
   if (!AesCtrCrypt(128, derived_keys, size_input_data, input_data, output_data)) {
     printf("Can't encrypt input\n");
     return false;
@@ -3140,6 +3170,12 @@ bool EncryptData(bool encrypt_flag, TPM_ALG_ID hash_alg_id,
     if (memcmp(decrypt_mac, encrypted_data_hmac, *size_hmac) != 0)
       return false;
   }
+
+#ifdef DEBUG
+  printf("returning true insize: %d, outsize: %d\n",
+         size_input_data, *size_output_data);
+#endif
+
   return true;
 }
 

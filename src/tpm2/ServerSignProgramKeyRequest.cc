@@ -88,7 +88,6 @@ DEFINE_string(program_response_file, "", "output-file-name");
 #endif
 
 #define MAX_SIZE_PARAMS 8192
-#define DEBUG
 
 // magic constant for tpm generated
 #define TpmMagicConstant 0xff544347
@@ -491,7 +490,6 @@ int main(int an, char** av) {
   // This is the "credential."
   unmarshaled_credential.size = 16;
   RAND_bytes(unmarshaled_credential.buffer, unmarshaled_credential.size);
-  // memset(unmarshaled_credential.buffer, 1, 16);
   ChangeEndian16(&unmarshaled_credential.size, &marshaled_credential.size);
   memcpy(marshaled_credential.buffer, unmarshaled_credential.buffer,
          unmarshaled_credential.size);
@@ -559,9 +557,6 @@ int main(int an, char** av) {
       printf("Original cert and decrypted cert DO NOT match\n");
     }
   }
-  printf("\nencrypted_secret: ");
-  PrintBytes(size_encrypted_data, encrypted_data);
-  printf("\n");
   printf("\nhmac: ");
   PrintBytes(unmarshaled_integrityHmac.size, unmarshaled_integrityHmac.buffer);
   printf("\n");

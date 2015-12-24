@@ -22,7 +22,6 @@
 #include <string>
 using std::string;
 
-#define DEBUG
 
 //
 // Copyright 2015 Google Corporation, All Rights Reserved.
@@ -3020,14 +3019,6 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_blob,
 
   // 2. Generate seed
   RAND_bytes(seed, size_seed);
-  // memset(seed, 1, size_seed);
-
-#ifdef DEBUG
-  printf("\nseed: ");
-  PrintBytes(size_seed, seed); printf("\n");
-  printf("endorsement blob: ");
-  PrintBytes(size_endorsement_blob, endorsement_blob); printf("\n");
-#endif
 
   // Get endorsement public key, which is protector key
   byte* p = endorsement_blob;
@@ -3062,18 +3053,6 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_blob,
     printf("Can't KDFa symKey\n");
     return false;
   }
-
-#ifdef DEBUG
-  printf("\nunencrypted secret: "); PrintBytes(size_secret, secret_buf); printf("\n");
-  printf("hash: %d, key: ", hash_alg_id); PrintBytes(key.size(), (byte*)key.data()); printf("\n");
-  printf("contextV: %d\n", (int)contextV.size()); 
-  printf("name: "); PrintBytes((int)name.size(), (byte*)name.data()); printf("\n");
-  printf("\nsymKey: "); PrintBytes(16, symKey); printf("\n");
-  printf("marshaled_credential: ");
-  PrintBytes(unmarshaled_credential.size + sizeof(uint16_t),
-             (byte*)&marshaled_credential);
-  printf("\n");
-#endif
 
   // 5. encIdentity
   if (!AesCFBEncrypt(symKey, unmarshaled_credential.size + sizeof(uint16_t),
@@ -3141,13 +3120,6 @@ bool EncryptDataWithCredential(bool encrypt_flag, TPM_ALG_ID hash_alg_id,
     return false;
   }
 
-#ifdef DEBUG
-  printf("Derived keys: ");
-  PrintBytes(32, derived_keys);
-  printf("\n");
-  printf("insize: %d, outsize: %d\n", size_input_data, *size_output_data);
-#endif
-
   memset(output_data, 0, *size_output_data);
   if (!AesCtrCrypt(128, derived_keys, size_input_data, input_data, output_data)) {
     printf("Can't encrypt input\n");
@@ -3177,11 +3149,6 @@ bool EncryptDataWithCredential(bool encrypt_flag, TPM_ALG_ID hash_alg_id,
     if (memcmp(decrypt_mac, encrypted_data_hmac, *size_hmac) != 0)
       return false;
   }
-
-#ifdef DEBUG
-  printf("returning true insize: %d, outsize: %d\n",
-         size_input_data, *size_output_data);
-#endif
 
   return true;
 }

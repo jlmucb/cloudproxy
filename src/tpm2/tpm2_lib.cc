@@ -3019,8 +3019,8 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_blob,
   memset(zero_iv, 0, 32);
 
   // 2. Generate seed
-  // RAND_bytes(seed, size_seed);
-  memset(seed, 1, size_seed);
+  RAND_bytes(seed, size_seed);
+  // memset(seed, 1, size_seed);
 
 #ifdef DEBUG
   printf("\nseed: ");
@@ -3041,7 +3041,6 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_blob,
   size_secret= 256;
   RSA_padding_add_PKCS1_OAEP(secret_buf, 256, seed, size_seed,
       (byte*)"IDENTITY", strlen("IDENTITY")+1);
-printf("\n1 unencrypted secret: "); PrintBytes(size_secret, secret_buf); printf("\n");
   int n = RSA_public_encrypt(size_secret, secret_buf,
                              unmarshaled_encrypted_secret->secret,
                              protector_key, RSA_NO_PADDING);

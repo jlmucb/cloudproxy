@@ -2992,7 +2992,7 @@ bool Tpm2_EvictControl(LocalTpm& tpm, TPMI_RH_PROVISION owner,
 //    4. encIdentity ≔ AesCFB(symKey, 0, credential)
 //    5. HMACkey ≔ KDFa (ekNameAlg, seed, “INTEGRITY”, NULL, NULL, bits)
 //    6. outerHMAC ≔ HMAC(HMACkey, encIdentity || Name)
-bool MakeCredential(int size_endorsement_blob, byte* endorsement_cert_blob,
+bool MakeCredential(int size_endorsement_blob, byte* endorsement_blob,
                     TPM_ALG_ID hash_alg_id,
                     TPM2B_DIGEST& unmarshaled_credential,
                     TPM2B_DIGEST& marshaled_credential,
@@ -3019,15 +3019,18 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_cert_blob,
   memset(zero_iv, 0, 32);
 
   // 2. Generate seed
-  RAND_bytes(seed, size_seed);
+  // RAND_bytes(seed, size_seed);
+  memset(seed, 1, size_seed);
 
 #ifdef DEBUG
   printf("\nseed: ");
   PrintBytes(size_seed, seed); printf("\n");
+  printf("endorsement blob: ");
+  PrintBytes(size_endorsement_blob, endorsement_blob); printf("\n");
 #endif
 
   // Get endorsement public key, which is protector key
-  byte* p =  endorsement_cert_blob;
+  byte* p = endorsement_blob;
   endorsement_cert = d2i_X509(nullptr, (const byte**)&p, size_endorsement_blob);
   EVP_PKEY* protector_evp_key = X509_get_pubkey(endorsement_cert);
   RSA* protector_key = EVP_PKEY_get1_RSA(protector_evp_key);
@@ -3038,6 +3041,7 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_cert_blob,
   size_secret= 256;
   RSA_padding_add_PKCS1_OAEP(secret_buf, 256, seed, size_seed,
       (byte*)"IDENTITY", strlen("IDENTITY")+1);
+printf("\n1 unencrypted secret: "); PrintBytes(size_secret, secret_buf); printf("\n");
   int n = RSA_public_encrypt(size_secret, secret_buf,
                              unmarshaled_encrypted_secret->secret,
                              protector_key, RSA_NO_PADDING);
@@ -3061,6 +3065,10 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_cert_blob,
   }
 
 #ifdef DEBUG
+  printf("\nunencrypted secret: "); PrintBytes(size_secret, secret_buf); printf("\n");
+  printf("hash: %d, key: ", hash_alg_id); PrintBytes(key.size(), (byte*)key.data()); printf("\n");
+  printf("contextV: %d\n", (int)contextV.size()); 
+  printf("name: "); PrintBytes((int)name.size(), (byte*)name.data()); printf("\n");
   printf("\nsymKey: "); PrintBytes(16, symKey); printf("\n");
   printf("marshaled_credential: ");
   PrintBytes(unmarshaled_credential.size + sizeof(uint16_t),

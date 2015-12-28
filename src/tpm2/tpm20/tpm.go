@@ -16,7 +16,8 @@
 package tpm
 
 import (
-	//"crypto/aes"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/hmac"
 	//"crypto/rand"
 	// "crypto/rsa"
@@ -1878,31 +1879,80 @@ func EncryptDataWithCredential(encrypt_flag bool, hash_alg_id uint16,
 //	6. outerHMAC ≔ HMAC(HMACkey, encIdentity || Name)
 //
 //	Return (all []byte)
+//		encrypted_secret
 //		encIdentity
-//		unmarshaled_encrypted_secret
-//		marshaled_encrypted_secret
-//		unmarshaled_integrityHmac
-//		marshaled_integrityHmac
-func MakeCredential(endorsement_blob []byte, hash_alg_id uint16,
-                    unmarshaled_credential []byte, marshaled_credential []byte,
-                    unmarshaled_name []byte, marshaled_name []byte) ([]byte, []byte,
-		    []byte, []byte, []byte, error) {
-	// EncryptOAEP(hash hash.Hash, random io.Reader, pub *PublicKey, msg []byte, label []byte)
-	// RsaKey
-	// GetPublicKeyFromBlob(endorsement_blob)
+//		integrityHmac
+func MakeCredential(endorsement_blob []byte, hash_alg_id uint16, unmarshaled_credential []byte,
+		    unmarshaled_name []byte) ([]byte, []byte, []byte, error) {
+	encrypted_secret := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+	fmt.Printf("encrypted_secret    : %x\n", encrypted_secret)
+
+	var a [20]byte
+	copy(a[:], "IDENTITY")
+	a[len("IDENTITY")] = 0
+	rsaKeyParams, err := GetPublicKeyFromBlob(endorsement_blob)
+	if err !=nil {
+		return nil, nil, nil, err
+	}
+	fmt.Printf("rsaKeyParams: %x\n", rsaKeyParams)
 	// public := PublicKey{m, test.e}
-	// out, err := EncryptOAEP(sha1, randReader, &public, message.in, nil)
-	// block, err := aes.NewCipher(key)
-	// ciphertext := make([]byte, len(plaintext))
-	// cfb := cipher.NewCFBEncrypter(block, iv)
-	// cfb.XORKeyStream(ciphertext, plaintext)
-	// cfbdec := cipher.NewCFBDecrypter(block, iv)
-	// plaintextCopy := make([]byte, len(ciphertext))
-	// cfbdec.XORKeyStream(plaintextCopy, ciphertext)
-	// mac := hmac.New(sha256.New, key)
-	// mac.Write(message)
-	// expectedMAC := mac.Sum(nil)
-	return nil, nil, nil, nil, nil, nil
+	// encrypted_secret, err := EncryptOAEP(sha1, randReader, &public, unmarshaled_credential, a[0:len("IDENTITY")+1)
+
+	// replace with RAND_bytes
+	seed := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+
+	var symKey []byte
+	iv := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
+		symKey, err = KDFA(uint16(algTPM_ALG_SHA1), seed, "STORAGE", nil, nil, 128)
+		if err !=nil {
+			return nil, nil, nil, err
+		}
+	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
+		symKey, err = KDFA(uint16(algTPM_ALG_SHA256), seed, "STORAGE", nil, nil, 128)
+		if err !=nil {
+			return nil, nil, nil, err
+		}
+	} else {
+			return nil, nil, nil, errors.New("Unsupported hash alg") 
+	}
+	fmt.Printf("symKey: %x\n", symKey)
+	block, err := aes.NewCipher(symKey)
+	if err !=nil {
+		return nil, nil, nil, err
+	}
+	fmt.Printf("         credential: %x\n", unmarshaled_credential)
+	encIdentity := make([]byte, len(unmarshaled_credential))
+	copy(encIdentity, unmarshaled_credential)
+	cfb := cipher.NewCFBEncrypter(block, iv)
+	cfb.XORKeyStream(encIdentity, unmarshaled_credential)
+	fmt.Printf("encIdentity: %x\n", encIdentity)
+
+	cfbdec := cipher.NewCFBDecrypter(block, iv)
+	decrypted_credential := make([]byte, len(unmarshaled_credential))
+	cfbdec.XORKeyStream(decrypted_credential, encIdentity)
+	fmt.Printf("decrypted credential: %x\n", decrypted_credential)
+
+	hmacKey, err := KDFA(uint16(algTPM_ALG_SHA1), seed, "INTEGRITY", nil, nil, 128)
+	if err !=nil {
+		return nil, nil, nil, err
+	}
+	fmt.Printf("hmacKey: %x\n", hmacKey)
+
+	var hmac_bytes []byte	
+	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
+		mac := hmac.New(sha1.New, hmacKey)
+		mac.Write(append(encIdentity, unmarshaled_name...))
+		hmac_bytes = mac.Sum(nil)
+	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
+		mac := hmac.New(sha256.New, hmacKey)
+		mac.Write(append(encIdentity, unmarshaled_name...))
+		hmac_bytes = mac.Sum(nil)
+	} else {
+		return nil, nil, nil, errors.New("Unsupported has alg") 
+	}
+	fmt.Printf("hmac                : %x\n", hmac_bytes)
+	return encrypted_secret, encIdentity, hmac_bytes, nil
 }
 
 func ConstructClientRequest(endorsement_blob []byte) (error) {

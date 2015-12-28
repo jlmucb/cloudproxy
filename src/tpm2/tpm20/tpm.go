@@ -16,14 +16,10 @@
 package tpm
 
 import (
-	//"crypto"
-	//"crypto/hmac"
 	//"crypto/rand"
-	//"crypto/rsa"
-	//"crypto/sha1"
-	//"crypto/subtle"
-	//"bytes"
-	//"encoding/binary"
+	// "crypto/rsa"
+	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -271,10 +267,6 @@ func CreateLongPcr(count uint32, pcr_nums []int) ([]byte) {
 		return nil
 	}
 	return b2
-}
-
-func ComputePcrDigest(alg uint16, in []byte) ([]byte, error) {
-	return nil, nil
 }
 
 // ConstructGetRandom constructs a GetRandom command.
@@ -1790,9 +1782,74 @@ func LoadContext(rw io.ReadWriter, save_area []byte) (Handle, error) {
 	return handle, nil
 }
 
-/*
-bool ComputeQuotedValue(TPM_ALG_ID alg, int credInfo_size, byte* credInfo,
-                        int* size_quoted, byte* quoted)
+func UnmarshalCertifyInfo(in []byte) (*Attest, error) {
+	attest := new(Attest)
+	attest.magic_number = 0
+	// type uint16
+	// name []byte
+	// data []byte
+	// clock uint64
+	// resetCount uint32
+	// restartCount uint32
+	// safe byte
+	// firmwareVersion uint64
+	// pcrSelect []byte
+	// pcrDigest []byte
+	return nil, nil
+}
 
-ComputeMakeCredentialData()
- */
+func ComputeQuotedValue(alg uint16, credInfo []byte) ([]byte, error) {
+	if alg ==  uint16(algTPM_ALG_SHA1) {
+		quoted_hash := sha1.New()
+		quoted_hash.Write(credInfo)
+		quoted_value := quoted_hash.Sum(nil)
+    		return quoted_value, nil
+	} else if alg == uint16(algTPM_ALG_SHA256) {
+		quoted_hash := sha256.New()
+		quoted_hash.Write(credInfo)
+		quoted_value := quoted_hash.Sum(nil)
+    		return quoted_value, nil
+	} else {
+    		return nil, errors.New("unsupported hash alg")
+	}
+}
+
+func KDFA(alg uint16, key []byte, label string, contextU []byte, contextV []byte, bits int) ([]byte, error) {
+	return nil, nil
+}
+
+func ComputePcrDigest(alg uint16, in []byte) ([]byte, error) {
+	// in should just be a sequence of digest values
+	return ComputeQuotedValue(alg, in)
+}
+
+//	Return: out_hmac, output_data
+func EncryptDataWithCredential(encrypt_flag bool, hash_alg_id uint16,
+                               unmarshaled_credential []byte,
+                               input_data []byte, in_hmac []byte) ([]byte, []byte, error) {
+	return nil, nil, nil
+}
+
+//	1. Generate Seed
+//	2. encrypted_secret= E(protector_key, seed || "IDENTITY")
+//	3. symKey ≔ KDFa (ekNameAlg, seed, “STORAGE”, name, NULL , bits)
+//	4. encIdentity ≔ AesCFB(symKey, 0, credential)
+//	5. HMACkey ≔ KDFa (ekNameAlg, seed, “INTEGRITY”, NULL, NULL, bits)
+//	6. outerHMAC ≔ HMAC(HMACkey, encIdentity || Name)
+//
+//	Return (all []byte)
+//		encIdentity
+//		unmarshaled_encrypted_secret
+//		marshaled_encrypted_secret
+//		unmarshaled_integrityHmac
+//		marshaled_integrityHmac
+func MakeCredential(endorsement_blob []byte, hash_alg_id uint16,
+                    unmarshaled_credential []byte, marshaled_credential []byte,
+                    unmarshaled_name []byte, marshaled_name []byte) ([]byte, []byte,
+		    []byte, []byte, []byte, error) {
+	// RsaKey
+	// GetPublicKeyFromBlob
+	// public := PublicKey{m, test.e}
+	// out, err := EncryptOAEP(sha1, randReader, &public, message.in, nil)
+	return nil, nil, nil, nil, nil, nil
+}

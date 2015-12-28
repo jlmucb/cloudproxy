@@ -80,10 +80,18 @@ type RsaKey struct {
 	exponent uint32
 }
 
-// Public key
-type PublicKey struct {
-	key_type uint16
-	key RsaKey
+type Attest struct {
+	magic_number uint32
+	attest_type uint16
+	name []byte
+	data []byte
+	clock uint64
+	resetCount uint32
+	restartCount uint32
+	safe byte
+	firmwareVersion uint64
+	pcrSelect []byte
+	pcrDigest []byte
 }
 
 

@@ -74,6 +74,11 @@ const(
 	tagSESSIONS    uint16 = 0x8002
 )
 
+// magic number
+const(
+	ordTpmMagin		   uint32 = 0xff544347
+)
+
 // Supported TPM operations.
 const (
 	cmdEvictControl            uint32 = 0x00000120

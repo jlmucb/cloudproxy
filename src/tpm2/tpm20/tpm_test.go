@@ -252,4 +252,9 @@ func TestCombinedContextTest(t *testing.T) {
 
 }
 
+// Combined Quote Protocol
+func TestCombinedQuoteProtocolTest(t *testing.T) {
+	// pcr selections
+}
+
 

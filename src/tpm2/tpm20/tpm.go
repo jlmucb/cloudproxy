@@ -16,6 +16,7 @@
 package tpm
 
 import (
+	//"crypto/aes"
 	//"crypto/rand"
 	// "crypto/rsa"
 	"crypto/sha1"
@@ -24,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	// "math/big"
 	"net"
 	"os"
 )
@@ -1847,9 +1849,71 @@ func MakeCredential(endorsement_blob []byte, hash_alg_id uint16,
                     unmarshaled_credential []byte, marshaled_credential []byte,
                     unmarshaled_name []byte, marshaled_name []byte) ([]byte, []byte,
 		    []byte, []byte, []byte, error) {
+	// EncryptOAEP(hash hash.Hash, random io.Reader, pub *PublicKey, msg []byte, label []byte)
 	// RsaKey
-	// GetPublicKeyFromBlob
+	// GetPublicKeyFromBlob(endorsement_blob)
 	// public := PublicKey{m, test.e}
 	// out, err := EncryptOAEP(sha1, randReader, &public, message.in, nil)
+	// block, err := aes.NewCipher(key)
+	// ciphertext := make([]byte, len(plaintext))
+	// cfb := cipher.NewCFBEncrypter(block, iv)
+	// cfb.XORKeyStream(ciphertext, plaintext)
+	// cfbdec := cipher.NewCFBDecrypter(block, iv)
+	// plaintextCopy := make([]byte, len(ciphertext))
+	// cfbdec.XORKeyStream(plaintextCopy, ciphertext)
+	// mac := hmac.New(sha256.New, key)
+	// mac.Write(message)
+	// expectedMAC := mac.Sum(nil)
 	return nil, nil, nil, nil, nil, nil
+}
+
+func ConstructClientRequest(endorsement_blob []byte) (error) {
+	// Generate Program key: RSA_generate_key(FLAGS_program_key_size, FLAGS_program_key_exponent, nullptr, nullptr)
+	// Fill program key parameters: request.set_endorsement_cert_blob(endorsement_key_blob);
+	// get quote key info: Tpm2_ReadPublic(tpm, quote_handle, &quote_pub_blob_size,
+        //     quote_pub_blob, &quote_pub_out, &quote_pub_name, &quote_qualified_pub_name)) 
+	// hash program key request: string serialized_key = request.mutable_program_key()->DebugString();
+	// Do the quote: Tpm2_Quote(tpm, quote_handle, parentAuth, to_quote.size,
+        //     to_quote.buffer, scheme, pcrSelect, TPM_ALG_RSA, hash_alg_id, &quote_size, quoted, &sig_size, sig)
+	// Fill request: request.set_quoted_blob(quoted, quote_size), ...
+	return nil
+}
+
+func ConstructServerResponse(privateKeyBlob []byte, endorsement_blob []byte,
+// Input:request, signing-instructions, Output: response
+		) (error) {
+	// policy_cert = d2i_X509(nullptr, (const byte**)&p_byte, der_policy_cert_size);
+	// endorsement_cert = d2i_X509(nullptr, (const byte**)&p_byte, endorsement_blob_size)
+	// X509_verify(endorsement_cert, X509_get_pubkey(policy_cert));
+	// GenerateX509CertificateRequest(cert_parameters, false, req)  from request parameters
+  	// SignX509Certificate(signing_key, signing_message, nullptr, req, false, program_cert))
+	// Hash request: request.program_key().DebugString();
+	// Decode attest: UnmarshalCertifyInfo(quote_struct_size, quote_struct, &attested_quote)
+	// attested_quote.magic !=  TpmMagicConstant?
+	// PCR's valid?
+	// Get quote key: equest.cred().public_key().rsa_key().modulus().size()
+	// RSA_public_encrypt(request.active_signature().size(),
+	//	(const byte*)request.active_signature().data(), decrypted_quote,active_key, RSA_NO_PADDING);
+	// Check hash of request: memcmp(attested_quote.extraData.buffer, program_key_quoted_hash,
+	//	attested_quote.extraData.size)
+	// Compare signature and computed hash memcmp(signed_quote_hash,
+	//	decrypted_quote + size_active_out - SizeHash(hash_alg_id), SizeHash(hash_alg_id))
+	// Generate credential
+	// MakeCredential(endorsement_blob_size, endorsement_blob, hash_alg_id, unmarshaled_credential,
+	//	marshaled_credential, unmarshaled_name, marshaled_name, &size_encIdentity, encIdentity,
+        //      &unmarshaled_encrypted_secret, &marshaled_encrypted_secret,
+        //      &unmarshaled_integrityHmac, &marshaled_integrityHmac)
+	// EncryptDataWithCredential(true, hash_alg_id, unmarshaled_credential, marshaled_credential,
+        //      der_program_cert_size, der_program_cert, &size_hmac, (byte*)encrypted_data_hmac,
+        //      &size_encrypted_data, encrypted_data)
+	// construct response
+	return nil
+}
+
+func ClientDecodeServerResponse(in []byte) (error) {
+	// Tpm2_ActivateCredential(tpm, quote_handle, ekHandle, parentAuth,
+        //      emptyAuth, credentialBlob, unmarshaled_secret, &recovered_credential)
+	// Decrypt using recovered_credential
+	// Return decrypted cert
+	return nil
 }

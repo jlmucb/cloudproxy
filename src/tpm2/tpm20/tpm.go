@@ -19,8 +19,8 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
-	//"crypto/rand"
-	// "crypto/rsa"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
@@ -1884,8 +1884,6 @@ func EncryptDataWithCredential(encrypt_flag bool, hash_alg_id uint16,
 //		integrityHmac
 func MakeCredential(endorsement_blob []byte, hash_alg_id uint16, unmarshaled_credential []byte,
 		    unmarshaled_name []byte) ([]byte, []byte, []byte, error) {
-	encrypted_secret := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-	fmt.Printf("encrypted_secret    : %x\n", encrypted_secret)
 
 	var a [20]byte
 	copy(a[:], "IDENTITY")
@@ -1895,11 +1893,24 @@ func MakeCredential(endorsement_blob []byte, hash_alg_id uint16, unmarshaled_cre
 		return nil, nil, nil, err
 	}
 	fmt.Printf("rsaKeyParams: %x\n", rsaKeyParams)
-	// public := PublicKey{m, test.e}
-	// encrypted_secret, err := EncryptOAEP(sha1, randReader, &public, unmarshaled_credential, a[0:len("IDENTITY")+1)
+	public := new(rsa.PublicKey) // {m, test.e}
+	var encrypted_secret []byte
+	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
+		encrypted_secret, err = rsa.EncryptOAEP(sha1.New(), rand.Reader, public, unmarshaled_credential,
+			a[0:len("IDENTITY")+1])
+	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
+		encrypted_secret, err = rsa.EncryptOAEP(sha256.New(), rand.Reader, public, unmarshaled_credential,
+			a[0:len("IDENTITY")+1])
+	} else {
+		return nil, nil, nil, errors.New("Unsupported hash alg") 
+	}
+	// encrypted_secret := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+	fmt.Printf("encrypted_secret    : %x\n", encrypted_secret)
 
 	// replace with RAND_bytes
 	seed := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+	// var seed []byte
+	// rand.Read(seed[0:16]);
 
 	var symKey []byte
 	iv := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}

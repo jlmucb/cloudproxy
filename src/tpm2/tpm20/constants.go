@@ -76,7 +76,7 @@ const(
 
 // magic number
 const(
-	ordTpmMagin		   uint32 = 0xff544347
+	ordTpmMagic		   uint32 = 0xff544347
 )
 
 // Supported TPM operations.

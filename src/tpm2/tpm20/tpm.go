@@ -17,6 +17,7 @@ package tpm
 
 import (
 	//"crypto/aes"
+	"crypto/hmac"
 	//"crypto/rand"
 	// "crypto/rsa"
 	"crypto/sha1"
@@ -1817,7 +1818,44 @@ func ComputeQuotedValue(alg uint16, credInfo []byte) ([]byte, error) {
 }
 
 func KDFA(alg uint16, key []byte, label string, contextU []byte, contextV []byte, bits int) ([]byte, error) {
-	return nil, nil
+	counter := uint32(0)
+	bytes_left := (bits + 7) / 8;
+	var out []byte
+	for ; bytes_left > 0 ; {
+		counter = counter + 1
+		if alg == algTPM_ALG_SHA1 {
+			mac := hmac.New(sha1.New, key)
+			// copy counter (big Endian), label, contextU, contextV, bits (big Endian)
+			outa,_ := pack([]interface{}{&counter})
+			var arr [32]byte
+			copy(arr[0:], label)
+			arr[len(label)] = 0
+			outc := append(contextU, contextV...)
+			u_bits := uint32(bits)
+			outd,_ := pack([]interface{}{&u_bits})
+			in := append(outa, append(arr[0:len(label)+1], append(outc, outd...)...)...)
+			mac.Write(in)
+			out = append(out, mac.Sum(nil)...)
+			bytes_left -= 20
+		} else if alg == algTPM_ALG_SHA256 {
+			mac := hmac.New(sha256.New, key)
+			// copy counter (big Endian), label, contextU, contextV, bits (big Endian)
+			outa, _ := pack([]interface{}{&counter})
+			var arr [32]byte
+			copy(arr[0:], label)
+			arr[len(label)] = 0
+			outc := append(contextU, contextV...)
+			u_bits := uint32(bits)
+			outd,_ := pack([]interface{}{&u_bits})
+			in := append(outa, append(arr[0:len(label)+1], append(outc, outd...)...)...)
+			mac.Write(in)
+			out = append(out, mac.Sum(nil)...)
+			bytes_left -= 32
+		} else {
+			return nil, errors.New("Unsupported key hmac alg")
+		}
+	}
+	return out, nil
 }
 
 func ComputePcrDigest(alg uint16, in []byte) ([]byte, error) {

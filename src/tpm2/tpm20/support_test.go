@@ -114,3 +114,12 @@ func TestCreateLongPcr(t *testing.T) {
 	}
 }
 
+func TestKDFa(t *testing.T) {
+	key := []byte{0,1,2,3,4,5,6,7,8,9,10,11,12,23,14,15}
+	out, err := KDFA(uint16(algTPM_ALG_SHA1), key, "IDENTITY", nil, nil, 256)
+	if err != nil {
+		t.Fatal("KDFa fails")
+	}
+	fmt.Printf("KDFA: %x\n", out)
+}
+

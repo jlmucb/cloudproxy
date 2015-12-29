@@ -1998,23 +1998,26 @@ func MakeCredential(endorsement_blob []byte, hash_alg_id uint16,
 	return encrypted_secret, encIdentity, hmac_bytes, nil
 }
 
-func ConstructClientRequest(endorsement_blob []byte) (*ProgramCertRequestMessage, error) {
+// Input: Der encoded endorsement key and handles
+// Returns der encoded program private key, CertRequestMessage
+func ConstructClientRequest(endorsement_cert []byte, endorsement_handle Handle,
+		quote_handle Handle) ([]byte, *ProgramCertRequestMessage, error) {
 	// Generate Program key: RSA_generate_key(FLAGS_program_key_size, FLAGS_program_key_exponent, nullptr, nullptr)
 	// Fill program key parameters: request.set_endorsement_cert_blob(endorsement_key_blob);
 	// get quote key info: Tpm2_ReadPublic(tpm, quote_handle, &quote_pub_blob_size,
         //     quote_pub_blob, &quote_pub_out, &quote_pub_name, &quote_qualified_pub_name)) 
 	// hash program key request: string serialized_key = request.mutable_program_key()->DebugString();
 	// Do the quote: Tpm2_Quote(tpm, quote_handle, parentAuth, to_quote.size,
-        //     to_quote.buffer, scheme, pcrSelect, TPM_ALG_RSA, hash_alg_id, &quote_size, quoted, &sig_size, sig)
+        //     to_quote.buffer, scheme, pcrSelect, TPM_ALG_RSA, hash_alg_id,
+	//     &quote_size, quoted, &sig_size, sig)
 	// Fill request: request.set_quoted_blob(quoted, quote_size), ...
-	return nil, nil
+	return nil, nil, nil
 }
 
-func ConstructServerResponse(policy_key_message RsaPrivateKeyMessage,
+// Input: Der encoded policy private key
+func ConstructServerResponse(policy_key []byte,
 	     signing_instructions_message SigningInstructionsMessage,
-	     policy_cert []byte,
-	     request_message ProgramCertRequestMessage) (*ProgramCertResponseMessage,error) {
-	// policy_cert = d2i_X509(nullptr, (const byte**)&p_byte, der_policy_cert_size);
+	     request_message ProgramCertRequestMessage) (*ProgramCertResponseMessage, error) {
 	// endorsement_cert = d2i_X509(nullptr, (const byte**)&p_byte, endorsement_blob_size)
 	// X509_verify(endorsement_cert, X509_get_pubkey(policy_cert));
 	// GenerateX509CertificateRequest(cert_parameters, false, req)  from request parameters
@@ -2023,7 +2026,7 @@ func ConstructServerResponse(policy_key_message RsaPrivateKeyMessage,
 	// Decode attest: UnmarshalCertifyInfo(quote_struct_size, quote_struct, &attested_quote)
 	// attested_quote.magic !=  TpmMagicConstant?
 	// PCR's valid?
-	// Get quote key: equest.cred().public_key().rsa_key().modulus().size()
+	// Get quote key: request.cred().public_key().rsa_key().modulus().size()
 	// RSA_public_encrypt(request.active_signature().size(),
 	//	(const byte*)request.active_signature().data(), decrypted_quote,active_key, RSA_NO_PADDING);
 	// Check hash of request: memcmp(attested_quote.extraData.buffer, program_key_quoted_hash,
@@ -2042,8 +2045,9 @@ func ConstructServerResponse(policy_key_message RsaPrivateKeyMessage,
 	return nil, nil
 }
 
-// Output is Program Cert
-func ClientDecodeServerResponse(server_response_message ProgramCertResponseMessage) ([]byte, error) {
+// Output is der encoded Program Cert
+func ClientDecodeServerResponse(endorsement_handle Handle, quote_handle Handle,
+		server_response_message ProgramCertResponseMessage) ([]byte, error) {
 	// Tpm2_ActivateCredential(tpm, quote_handle, ekHandle, parentAuth,
         //      emptyAuth, credentialBlob, unmarshaled_secret, &recovered_credential)
 	// Decrypt using recovered_credential

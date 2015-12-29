@@ -27,7 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	// "math/big"
+	"math/big"
 	"net"
 	"os"
 )
@@ -1924,18 +1924,19 @@ func MakeCredential(endorsement_blob []byte, hash_alg_id uint16,
 		return nil, nil, nil, err
 	}
 	fmt.Printf("rsaKeyParams: %x\n", rsaKeyParams)
-	public := new(rsa.PublicKey) // {m, test.e}
+	m := new(big.Int)
+	m.SetBytes(rsaKeyParams.rsa_params.modulus[0:len(rsaKeyParams.rsa_params.modulus)])
+	public := rsa.PublicKey{m, int(rsaKeyParams.rsa_params.exp)}
 	var encrypted_secret []byte
 	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
-		encrypted_secret, err = rsa.EncryptOAEP(sha1.New(), rand.Reader, public, unmarshaled_credential,
+		encrypted_secret, err = rsa.EncryptOAEP(sha1.New(), rand.Reader, &public, unmarshaled_credential,
 			a[0:len("IDENTITY")+1])
 	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
-		encrypted_secret, err = rsa.EncryptOAEP(sha256.New(), rand.Reader, public, unmarshaled_credential,
+		encrypted_secret, err = rsa.EncryptOAEP(sha256.New(), rand.Reader, &public, unmarshaled_credential,
 			a[0:len("IDENTITY")+1])
 	} else {
 		return nil, nil, nil, errors.New("Unsupported hash alg") 
 	}
-	// encrypted_secret := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 	fmt.Printf("encrypted_secret    : %x\n", encrypted_secret)
 
 	// replace with RAND_bytes
@@ -1997,7 +1998,7 @@ func MakeCredential(endorsement_blob []byte, hash_alg_id uint16,
 	return encrypted_secret, encIdentity, hmac_bytes, nil
 }
 
-func ConstructClientRequest(endorsement_blob []byte) (error) {
+func ConstructClientRequest(endorsement_blob []byte) (*ProgramCertRequestMessage, error) {
 	// Generate Program key: RSA_generate_key(FLAGS_program_key_size, FLAGS_program_key_exponent, nullptr, nullptr)
 	// Fill program key parameters: request.set_endorsement_cert_blob(endorsement_key_blob);
 	// get quote key info: Tpm2_ReadPublic(tpm, quote_handle, &quote_pub_blob_size,
@@ -2006,7 +2007,7 @@ func ConstructClientRequest(endorsement_blob []byte) (error) {
 	// Do the quote: Tpm2_Quote(tpm, quote_handle, parentAuth, to_quote.size,
         //     to_quote.buffer, scheme, pcrSelect, TPM_ALG_RSA, hash_alg_id, &quote_size, quoted, &sig_size, sig)
 	// Fill request: request.set_quoted_blob(quoted, quote_size), ...
-	return nil
+	return nil, nil
 }
 
 func ConstructServerResponse(privateKeyBlob []byte, endorsement_blob []byte,

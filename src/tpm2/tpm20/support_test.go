@@ -123,3 +123,5 @@ func TestKDFa(t *testing.T) {
 	fmt.Printf("KDFA: %x\n", out)
 }
 
+func TestReadRsaBlob(t *testing.T) {
+}

@@ -1857,62 +1857,39 @@ func ComputePcrDigest(alg uint16, in []byte) ([]byte, error) {
 	return ComputeQuotedValue(alg, in)
 }
 
-func PrintRsaPublicKey(key *RsaKey) {
-	fmt.Printf("enc_algorithm : %x\n", key.enc_algorithm)
-	fmt.Printf("hash_algorithm : %x\n", key.hash_algorithm)
-	fmt.Printf("attributes : %x\n", key.attributes)
-	fmt.Printf("auth_policy : %x\n", key.auth_policy)
-	fmt.Printf("sym_alg : %x\n", key.sym_alg)
-	fmt.Printf("sym_key_bits : %x\n", key.sym_key_bits)
-	fmt.Printf("mode : %x\n", key.mode)
-	fmt.Printf("scheme : %x\n", key.scheme)
-	fmt.Printf("size_modulus : %x\n", key.size_modulus)
-	fmt.Printf("modulus : %x\n", key.modulus)
-	fmt.Printf("e : %x\n", key.e)
-	fmt.Printf("d : %x\n", key.d)
-	fmt.Printf("p : %x\n", key.p)
-	fmt.Printf("q : %x\n", key.q)
+func PrintRsaPublicKey(key *TpmRsaPublicKey) {
+	fmt.Printf("enc_alg : %x\n", key.rsa_params.enc_alg)
+	fmt.Printf("hash_alg : %x\n", key.rsa_params.hash_alg)
+	fmt.Printf("attributes : %x\n", key.rsa_params.attributes)
+	fmt.Printf("auth_policy : %x\n", key.rsa_params.auth_policy)
+	fmt.Printf("symalg : %x\n", key.rsa_params.symalg)
+	fmt.Printf("sym_sz : %x\n", key.rsa_params.sym_sz)
+	fmt.Printf("mode : %x\n", key.rsa_params.mode)
+	fmt.Printf("scheme : %x\n", key.rsa_params.scheme)
+	fmt.Printf("size modulus : %x\n", key.rsa_params.mod_sz)
+	fmt.Printf("modulus : %x\n", key.rsa_params.modulus)
 	fmt.Printf("name : %x\n", key.name)
 	fmt.Printf("qualified_name : %x\n", key.qualified_name)
 }
 
 // Note: Only Rsa keys for now
-func GetRsaPublicKeyFromBlob(in []byte) (*RsaKey, error) {
-	key := new(RsaKey)
-	var size uint16
+func GetRsaPublicKeyFromBlob(in []byte) (*TpmRsaPublicKey, error) {
+	key := new(TpmRsaPublicKey)
+	var  out_public []byte
 
-	template :=  []interface{}{&size, &key.enc_algorithm, &key.hash_algorithm,
-	    &key.attributes, &key.auth_policy, &key.sym_alg}
-
+	template :=  []interface{}{&out_public}
         err := unpack(in, template)
         if err != nil {
                 return nil, errors.New("Can't decode response")
         }
-	var something uint16
-	var somethingelse uint32
-	if key.sym_alg != uint16(algTPM_ALG_NULL) {
-		template =  []interface{}{&key.sym_key_bits, &key.mode, &key.scheme,
-	    		&something}
-        	err = unpack(in, template)
-        	if err != nil {
-                	return nil, errors.New("Can't decode response")
-        	}
-	} else {
-		template = []interface{}{&key.scheme, &somethingelse}
-        	err = unpack(in, template)
-        	if err != nil {
-                	return nil, errors.New("Can't decode response")
-        	}
-	}
-	var exp uint32
-	template =  []interface{}{&exp, &key.size_modulus, &key.modulus}
-        err = unpack(in, template)
+	rsaParams, err := DecodeRsaArea(out_public)
         if err != nil {
-                return nil, errors.New("Can't decode response")
+                return nil, errors.New("Can't decode Rsa Area")
         }
-	// convert exp to []byte
+	key.rsa_params = rsaParams
+
 	template =  []interface{}{&key.name, &key.qualified_name}
-        err = unpack(in, template)
+        err = unpack(in[len(out_public) + 2:], template)
         if err != nil {
                 return nil, errors.New("Can't decode response")
         }

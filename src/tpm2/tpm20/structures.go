@@ -67,21 +67,8 @@ type KeyedHashParams struct {
 	unique []byte
 }
 
-type RsaKey struct {
-	enc_algorithm uint16
-	hash_algorithm uint16
-	attributes uint32
-	auth_policy []byte
-	sym_alg uint16
-	sym_key_bits uint16
-	mode uint16
-	scheme uint16
-	size_modulus uint16
-	modulus []byte
-	e []byte
-	d []byte
-	p []byte
-	q []byte
+type TpmRsaPublicKey struct {
+	rsa_params *RsaParams
 	name []byte
 	qualified_name []byte
 }

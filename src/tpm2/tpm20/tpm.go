@@ -2000,8 +2000,7 @@ func MakeCredential(endorsement_blob []byte, hash_alg_id uint16,
 
 // Input: Der encoded endorsement key and handles
 // Returns der encoded program private key, CertRequestMessage
-func ConstructClientRequest(endorsement_cert []byte, endorsement_handle Handle,
-		quote_handle Handle) ([]byte, *ProgramCertRequestMessage, error) {
+func ConstructClientRequest(endorsement_cert []byte, quote_handle Handle) ([]byte, *ProgramCertRequestMessage, error) {
 	// Generate Program key: RSA_generate_key(FLAGS_program_key_size, FLAGS_program_key_exponent, nullptr, nullptr)
 	// Fill program key parameters: request.set_endorsement_cert_blob(endorsement_key_blob);
 	// get quote key info: Tpm2_ReadPublic(tpm, quote_handle, &quote_pub_blob_size,

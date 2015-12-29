@@ -254,15 +254,14 @@ func TestCombinedContextTest(t *testing.T) {
 
 // Combined Quote Protocol
 func TestCombinedQuoteProtocolTest(t *testing.T) {
-	// read and parse private policy key
-	// PCR selection
+	// Read der-encoded private policy key
 	// Read endorsement cert file
-	// ConstructClientRequest(quote_handle, endorsement_cert) (*ProgramCertRequestMessage, error)
-	// ConstructServerResponse(policy_key_message RsaPrivateKeyMessage,
-        //   signing_instructions_message SigningInstructionsMessage,
-        //   request_message ProgramCertRequestMessage) (*ProgramCertResponseMessage,error)
-	// ClientDecodeServerResponse(server_response_message ProgramCertResponseMessage) ([]byte, error)
+	// Open endorsement and quote keys
+	// der_program_private, request_message, err := ConstructClientRequest(endorsement_cert, quote_handle)
+	// response_message, err := ConstructServerResponse(policy_key, signing_instructions_message, request_message)
+	// der_program_cert, err := ClientDecodeServerResponse(endorsement_handle, quote_handle, server_response_message)
+	// Save cert
+	// Close handles
 }
-
 
 

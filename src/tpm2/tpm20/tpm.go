@@ -1857,10 +1857,27 @@ func ComputePcrDigest(alg uint16, in []byte) ([]byte, error) {
 	return ComputeQuotedValue(alg, in)
 }
 
-// Fill Rsa key structure for public blob
+func PrintRsaPublicKey(key *RsaKey) {
+	fmt.Printf("enc_algorithm : %x\n", key.enc_algorithm)
+	fmt.Printf("hash_algorithm : %x\n", key.hash_algorithm)
+	fmt.Printf("attributes : %x\n", key.attributes)
+	fmt.Printf("auth_policy : %x\n", key.auth_policy)
+	fmt.Printf("sym_alg : %x\n", key.sym_alg)
+	fmt.Printf("sym_key_bits : %x\n", key.sym_key_bits)
+	fmt.Printf("mode : %x\n", key.mode)
+	fmt.Printf("scheme : %x\n", key.scheme)
+	fmt.Printf("size_modulus : %x\n", key.size_modulus)
+	fmt.Printf("modulus : %x\n", key.modulus)
+	fmt.Printf("e : %x\n", key.e)
+	fmt.Printf("d : %x\n", key.d)
+	fmt.Printf("p : %x\n", key.p)
+	fmt.Printf("q : %x\n", key.q)
+	fmt.Printf("name : %x\n", key.name)
+	fmt.Printf("qualified_name : %x\n", key.qualified_name)
+}
+
 // Note: Only Rsa keys for now
 func GetRsaPublicKeyFromBlob(in []byte) (*RsaKey, error) {
-	// DecodeRsaArea(in []byte) (*RsaParams, error) 
 	key := new(RsaKey)
 	var size uint16
 

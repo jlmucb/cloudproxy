@@ -2010,9 +2010,10 @@ func ConstructClientRequest(endorsement_blob []byte) (*ProgramCertRequestMessage
 	return nil, nil
 }
 
-func ConstructServerResponse(privateKeyBlob []byte, endorsement_blob []byte,
-// Input:request, signing-instructions, Output: response
-		) (error) {
+func ConstructServerResponse(policy_key_message RsaPrivateKeyMessage,
+	     signing_instructions_message SigningInstructionsMessage,
+	     policy_cert []byte,
+	     request_message ProgramCertRequestMessage) (*ProgramCertResponseMessage,error) {
 	// policy_cert = d2i_X509(nullptr, (const byte**)&p_byte, der_policy_cert_size);
 	// endorsement_cert = d2i_X509(nullptr, (const byte**)&p_byte, endorsement_blob_size)
 	// X509_verify(endorsement_cert, X509_get_pubkey(policy_cert));
@@ -2038,13 +2039,14 @@ func ConstructServerResponse(privateKeyBlob []byte, endorsement_blob []byte,
         //      der_program_cert_size, der_program_cert, &size_hmac, (byte*)encrypted_data_hmac,
         //      &size_encrypted_data, encrypted_data)
 	// construct response
-	return nil
+	return nil, nil
 }
 
-func ClientDecodeServerResponse(in []byte) (error) {
+// Output is Program Cert
+func ClientDecodeServerResponse(server_response_message ProgramCertResponseMessage) ([]byte, error) {
 	// Tpm2_ActivateCredential(tpm, quote_handle, ekHandle, parentAuth,
         //      emptyAuth, credentialBlob, unmarshaled_secret, &recovered_credential)
 	// Decrypt using recovered_credential
 	// Return decrypted cert
-	return nil
+	return nil, nil
 }

@@ -67,17 +67,23 @@ type KeyedHashParams struct {
 	unique []byte
 }
 
-// RSA Key
 type RsaKey struct {
-	algorithm uint16
-	num_key_bits uint16
+	enc_algorithm uint16
+	hash_algorithm uint16
+	attributes uint32
+	auth_policy []byte
+	sym_alg uint16
+	sym_key_bits uint16
 	mode uint16
 	scheme uint16
+	size_modulus uint16
 	modulus []byte
+	e []byte
 	d []byte
 	p []byte
 	q []byte
-	exponent uint32
+	name []byte
+	qualified_name []byte
 }
 
 type Attest struct {

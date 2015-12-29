@@ -1686,7 +1686,7 @@ int GetName(uint16_t size_in, byte* in, TPM2B_NAME* name) {
 }
 
 int GetRsaParams(uint16_t size_in, byte* input, TPMS_RSA_PARMS& rsaParams,
-                 TPM2B_PUBLIC_KEY_RSA& rsa) {
+                 TPM2B_PUBLIC_KEY_RSA* rsa) {
   int total_size = 0;
 
   ChangeEndian16((uint16_t*) input, (uint16_t*)&rsaParams.symmetric.algorithm);
@@ -1720,13 +1720,13 @@ int GetRsaParams(uint16_t size_in, byte* input, TPMS_RSA_PARMS& rsaParams,
   input += sizeof(uint32_t);
   total_size += sizeof(uint32_t);
   // modulus size
-  ChangeEndian16((uint16_t*) input, (uint16_t*)&rsa.size);
+  ChangeEndian16((uint16_t*) input, (uint16_t*)&rsa->size);
   input += sizeof(uint16_t);
   total_size += sizeof(uint16_t);
   // modulus
-  memcpy(rsa.buffer, input, rsa.size);
-  input += rsa.size;
-  total_size += rsa.size;
+  memcpy(rsa->buffer, input, rsa->size);
+  input += rsa->size;
+  total_size += rsa->size;
   return total_size;
 }
 
@@ -1756,7 +1756,7 @@ bool GetReadPublicOut(uint16_t size_in, byte* input, TPM2B_PUBLIC* outPublic) {
   }
   int n = GetRsaParams(size_in, input,
                        outPublic->publicArea.parameters.rsaDetail,
-                       outPublic->publicArea.unique.rsa);
+                       &outPublic->publicArea.unique.rsa);
   if (n < 0) {
     printf("Can't get RSA Params\n");
     return false;

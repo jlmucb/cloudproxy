@@ -102,13 +102,6 @@ func SetShortPcrs(pcr_nums []int) ([]byte, error) {
 	return pcr, nil
 }
 
-// Fill Rsa key structure for public blob
-// Note: Only Rsa keys for now
-func GetPublicKeyFromBlob(in []byte) (*RsaKey, error) {
-	key := new(RsaKey)
-	return key, nil
-}
-
 // nil is error
 func SetHandle(handle Handle) ([]byte) {
 	uint32_handle := uint32(handle)
@@ -1864,10 +1857,55 @@ func ComputePcrDigest(alg uint16, in []byte) ([]byte, error) {
 	return ComputeQuotedValue(alg, in)
 }
 
+// Fill Rsa key structure for public blob
+// Note: Only Rsa keys for now
+func GetRsaPublicKeyFromBlob(in []byte) (*RsaKey, error) {
+	// DecodeRsaArea(in []byte) (*RsaParams, error) 
+	key := new(RsaKey)
+	var size uint16
+
+	template :=  []interface{}{&size, &key.enc_algorithm, &key.hash_algorithm,
+	    &key.attributes, &key.auth_policy, &key.sym_alg}
+
+        err := unpack(in, template)
+        if err != nil {
+                return nil, errors.New("Can't decode response")
+        }
+	var something uint16
+	var somethingelse uint32
+	if key.sym_alg != uint16(algTPM_ALG_NULL) {
+		template =  []interface{}{&key.sym_key_bits, &key.mode, &key.scheme,
+	    		&something}
+        	err = unpack(in, template)
+        	if err != nil {
+                	return nil, errors.New("Can't decode response")
+        	}
+	} else {
+		template = []interface{}{&key.scheme, &somethingelse}
+        	err = unpack(in, template)
+        	if err != nil {
+                	return nil, errors.New("Can't decode response")
+        	}
+	}
+	var exp uint32
+	template =  []interface{}{&exp, &key.size_modulus, &key.modulus}
+        err = unpack(in, template)
+        if err != nil {
+                return nil, errors.New("Can't decode response")
+        }
+	// convert exp to []byte
+	template =  []interface{}{&key.name, &key.qualified_name}
+        err = unpack(in, template)
+        if err != nil {
+                return nil, errors.New("Can't decode response")
+        }
+
+	return key, nil
+}
+
 //	Return: out_hmac, output_data
 func EncryptDataWithCredential(encrypt_flag bool, hash_alg_id uint16,
-                               unmarshaled_credential []byte,
-                               input_data []byte, in_hmac []byte) ([]byte, []byte, error) {
+		unmarshaled_credential []byte, input_data []byte, in_hmac []byte) ([]byte, []byte, error) {
 	return nil, nil, nil
 }
 
@@ -1882,13 +1920,12 @@ func EncryptDataWithCredential(encrypt_flag bool, hash_alg_id uint16,
 //		encrypted_secret
 //		encIdentity
 //		integrityHmac
-func MakeCredential(endorsement_blob []byte, hash_alg_id uint16, unmarshaled_credential []byte,
-		    unmarshaled_name []byte) ([]byte, []byte, []byte, error) {
-
+func MakeCredential(endorsement_blob []byte, hash_alg_id uint16,
+		unmarshaled_credential []byte, unmarshaled_name []byte) ([]byte, []byte, []byte, error) {
 	var a [20]byte
 	copy(a[:], "IDENTITY")
 	a[len("IDENTITY")] = 0
-	rsaKeyParams, err := GetPublicKeyFromBlob(endorsement_blob)
+	rsaKeyParams, err := GetRsaPublicKeyFromBlob(endorsement_blob)
 	if err !=nil {
 		return nil, nil, nil, err
 	}

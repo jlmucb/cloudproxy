@@ -24,7 +24,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/x509"
-	// "crypto/x509/pkix"
+	"crypto/x509/pkix"
 	"encoding/hex"
 	//"encoding/asn1"
 	"errors"
@@ -33,6 +33,7 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"time"
 )
 
 // OpenTPM opens a channel to the TPM at the given path. If the file is a
@@ -2016,9 +2017,9 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte, quote
 	request := new(ProgramCertRequestMessage)
 	request.EndorsementCertBlob = der_endorsement_cert
 	req_id := "001"
+        request.RequestId = &req_id
 	modulus_bits := int32(2048)
 	key_type := "RSA"
-	request.RequestId = &req_id
         request.ProgramKey.ProgramName = &program_name
         request.ProgramKey.ProgramKeyType = &key_type
         request.ProgramKey.ProgramBitModulusSize = &modulus_bits
@@ -2062,38 +2063,121 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte, quote
 	return der_program_key, request, nil
 }
 
+func publicKeyFromPrivate(priv interface{}) interface{} {
+	switch k := priv.(type) {
+	case *rsa.PrivateKey:
+		return &k.PublicKey
+	default:
+	return nil
+	}
+}
+
+func GetSerialNumber() (*big.Int) {
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	sn, _ := rand.Int(rand.Reader, serialNumberLimit)
+	return sn
+}
+
 // Input: Der encoded policy private key
 func ConstructServerResponse(der_policy_key []byte,
 	     signing_instructions_message SigningInstructionsMessage,
-	     request_message ProgramCertRequestMessage) (*ProgramCertResponseMessage, error) {
+	     request ProgramCertRequestMessage) (*ProgramCertResponseMessage, error) {
 	program_key, err := x509. ParsePKCS1PrivateKey(der_policy_key)
 	if err != nil {
 		return nil, err
 	}
 	fmt.Printf("Key: %x\n", program_key)
-	// endorsement_cert, err := x509.ParseCertificate(der_endorsement_cert)
-	// ParseCertificates(asn1Data []byte) ([]*Certificate, error)
-	// CreateCertificate(rand io.Reader, template, parent *Certificate, pub, priv interface{})
-	// ParseCertificate(asn1Data []byte) (*Certificate, error)
-	// (c *Certificate) Verify(opts VerifyOptions) (chains [][]*Certificate, err error)
-	// signing_instructions_message.GetIssuer(), GetDuration(), GetPurpose()
-	// signing_instructions_message.GetSignAlg(), GetHashAlg(), GetIsCA(), GetCanSign()
+	der_endorsement_cert := request.EndorsementCertBlob
+	endorsement_cert, err := x509.ParseCertificate(der_endorsement_cert)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("Endorsement cert: %x\n", endorsement_cert)
+	// roots := x509.NewCertPool(
+	// opts := x509.VerifyOptions{
+	//	DNSName: "mail.google.com",
+	//	Roots:   roots,
+	// }
+	// endorsement_cert.Verify(opts VerifyOptions) (chains [][]*Certificate, err error)
+
+	// Create Program Key Certificate	
+	var notBefore time.Time
+	notBefore = time.Now()
+	validFor := 365*24*time.Hour
+	notAfter := notBefore.Add(validFor)
+	progName := request.ProgramKey.ProgramName
+	template := x509.Certificate{
+		SerialNumber: GetSerialNumber(),
+		Subject: pkix.Name {
+		Organization: []string{"Google"},
+		CommonName:   *progName,
+		},
+	NotBefore: notBefore,
+	NotAfter:  notAfter,
+	KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+	ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	BasicConstraintsValid: true,
+	}
+	fmt.Printf("Template: %x\n", template)
+	// check second template
+	var der_program_cert []byte
+	// der_program_cert, err := x509.CreateCertificate(rand.Reader, &template, &template, pub, priv interface{})
+
 	// Hash request: request.program_key().DebugString();
-	// Decode attest: UnmarshalCertifyInfo(quote_struct_size, quote_struct, &attested_quote)
+	serialized_program_key := request.ProgramKey.String();
+	sha256Hash := sha256.New()
+	sha256Hash.Write([]byte(serialized_program_key))
+	hashed_program_key := sha256Hash.Sum(nil)
+	fmt.Printf("Program request hash: %x\n", hashed_program_key)
+
+	// Decode attest
+	attest, err := UnmarshalCertifyInfo(request.QuotedBlob)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("Attest: %x\n", attest)
+
 	// attested_quote.magic !=  TpmMagicConstant?
 	// PCR's valid?
-	// Get quote key: request.cred().public_key().rsa_key().modulus().size()
+
+	// Verify quote
 	// RSA_public_encrypt(request.active_signature().size(),
-	//	(const byte*)request.active_signature().data(), decrypted_quote,active_key, RSA_NO_PADDING);
+	//  (const byte*)request.active_signature().data(), decrypted_quote,active_key, RSA_NO_PADDING);
 	// Check hash of request: memcmp(attested_quote.extraData.buffer, program_key_quoted_hash,
 	//	attested_quote.extraData.size)
 	// Compare signature and computed hash memcmp(signed_quote_hash,
 	//	decrypted_quote + size_active_out - SizeHash(hash_alg_id), SizeHash(hash_alg_id))
 
 	// Generate credential
-	// encrypted_secret, encIdentity, integrityHmac, err := MakeCredential(endorsement_blob []byte,
-	// hash_alg_id uint16, unmarshaled_credential []byte, unmarshaled_name []byte)
-	return nil, nil
+	var credential []byte
+	var name []byte
+	rand.Read(credential[0:16])
+	fmt.Printf("Credential: %x\n", credential)
+	hash_alg_id := uint16(algTPM_ALG_SHA1)  // TODO: get this from quote key
+	encrypted_secret, encIdentity, integrityHmac, err := MakeCredential(der_endorsement_cert,
+		hash_alg_id, credential[0:16], name)
+	if err != nil {
+		return nil, err
+	}
+	response := new(ProgramCertResponseMessage)
+	response.RequestId = request.RequestId
+	response.ProgramName = request.ProgramKey.ProgramName
+	integrity_alg := "sha1"
+	response.IntegrityAlg = &integrity_alg
+        response.IntegrityHMAC = integrityHmac
+        // encIdentity should be an encrypted correctly marshalled
+        response.EncIdentity = encIdentity
+        response.Secret = encrypted_secret
+
+	// Encrypt cert with credential
+	cert_hmac, cert_out, err :=  EncryptDataWithCredential(true, uint16(algTPM_ALG_SHA1),
+                credential, der_program_cert, nil)
+	if err != nil {
+		return nil, err
+	}
+        response.EncryptedCert = cert_out
+        response.EncryptedCertHmac = cert_hmac
+	return response, nil
 }
 
 // Output is der encoded Program Cert

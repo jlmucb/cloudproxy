@@ -326,8 +326,8 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
         }
 	fmt.Printf("Quote blob size: %d\n", len(quote_blob))
 
-	der_program_private, request_message, err := ConstructClientRequest(der_endorsement_cert,
-		quote_handle)
+	der_program_private, request_message, err := ConstructClientRequest(rw, der_endorsement_cert,
+		quote_handle, "", "01020304", "Test-Program-1")
         if err != nil {
 		t.Fatal("ConstructClientRequest fails")
         }
@@ -341,7 +341,7 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
 		t.Fatal("ConstructServerResponse fails")
         }
 
-	der_program_cert, err := ClientDecodeServerResponse(endorsement_handle, quote_handle,
+	der_program_cert, err := ClientDecodeServerResponse(rw, endorsement_handle, quote_handle,
 		*response_message)
         if err != nil {
 		t.Fatal("ClientDecodeServerResponse fails")

@@ -23,7 +23,10 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
+	"crypto/x509"
+	// "crypto/x509/pkix"
 	"encoding/hex"
+	//"encoding/asn1"
 	"errors"
 	"fmt"
 	"io"
@@ -2000,27 +2003,81 @@ func MakeCredential(endorsement_blob []byte, hash_alg_id uint16,
 
 // Input: Der encoded endorsement key and handles
 // Returns der encoded program private key, CertRequestMessage
-func ConstructClientRequest(endorsement_cert []byte, quote_handle Handle) ([]byte, *ProgramCertRequestMessage, error) {
-	// Generate Program key: RSA_generate_key(FLAGS_program_key_size, FLAGS_program_key_exponent, nullptr, nullptr)
-	// Fill program key parameters: request.set_endorsement_cert_blob(endorsement_key_blob);
-	// get quote key info: Tpm2_ReadPublic(tpm, quote_handle, &quote_pub_blob_size,
-        //     quote_pub_blob, &quote_pub_out, &quote_pub_name, &quote_qualified_pub_name)) 
-	// hash program key request: string serialized_key = request.mutable_program_key()->DebugString();
-	// Do the quote: Tpm2_Quote(tpm, quote_handle, parentAuth, to_quote.size,
-        //     to_quote.buffer, scheme, pcrSelect, TPM_ALG_RSA, hash_alg_id,
-	//     &quote_size, quoted, &sig_size, sig)
-	// Fill request: request.set_quoted_blob(quoted, quote_size), ...
-	return nil, nil, nil
+func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte, quote_handle Handle,
+		parent_pw string, owner_pw string, program_name string) ([]byte, *ProgramCertRequestMessage, error) {
+	// Generate Program Key.
+	programPrivateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return nil, nil, err
+	}
+	der_program_key := x509.MarshalPKCS1PrivateKey(programPrivateKey)
+	
+	// Generate Request
+	request := new(ProgramCertRequestMessage)
+	request.EndorsementCertBlob = der_endorsement_cert
+	req_id := "001"
+	modulus_bits := int32(2048)
+	key_type := "RSA"
+	request.RequestId = &req_id
+        request.ProgramKey.ProgramName = &program_name
+        request.ProgramKey.ProgramKeyType = &key_type
+        request.ProgramKey.ProgramBitModulusSize = &modulus_bits
+        // request.ProgramKey.ProgramKeyExponent = 0x010001
+        // request.ProgramKey.ProgramKeyModulus
+	serialized_program_key := request.ProgramKey.String();
+	sha256Hash := sha256.New()
+	sha256Hash.Write([]byte(serialized_program_key))
+	hashed_program_key := sha256Hash.Sum(nil)
+	fmt.Printf("ProgramKey: %s\n", serialized_program_key)
+	fmt.Printf("Hashed req: %s\n", hashed_program_key)
+	key_blob, name, _, err := ReadPublic(rw, quote_handle)
+	if err != nil {
+		return nil, nil, err
+	}
+	fmt.Printf("Quote key blob: %x\n", key_blob)
+	fmt.Printf("Name: %x\n", name)
+
+	sig_alg := uint16(algTPM_ALG_RSASSA) // Check!
+	attest, sig, err := Quote(rw, quote_handle, parent_pw, owner_pw, hashed_program_key,
+		[]int{7}, sig_alg)
+	if err != nil {
+		return nil, nil, err
+	}
+	fmt.Printf("Attest: %x\n", attest)
+	fmt.Printf("Sig: %x\n", sig)
+
+	// Quote key info.
+        request.Cred.Name = name
+        // request.Cred.Properties
+        // request.Cred.PublicKeyMessage.KeyName
+        // request.Cred.PublicKeyMessage.KeyType
+        // request.Cred.PublicKeyMessage.BitModulusSize
+        // request.Cred.PublicKeyMessage.Modulus
+        // request.ActiveSignAlg
+        // request.ActiveSignBitSize
+        // request.ActiveSignHashAlg
+
+        request.QuotedBlob = attest
+        request.ActiveSignature = sig
+	return der_program_key, request, nil
 }
 
 // Input: Der encoded policy private key
-func ConstructServerResponse(policy_key []byte,
+func ConstructServerResponse(der_policy_key []byte,
 	     signing_instructions_message SigningInstructionsMessage,
 	     request_message ProgramCertRequestMessage) (*ProgramCertResponseMessage, error) {
-	// endorsement_cert = d2i_X509(nullptr, (const byte**)&p_byte, endorsement_blob_size)
-	// X509_verify(endorsement_cert, X509_get_pubkey(policy_cert));
-	// GenerateX509CertificateRequest(cert_parameters, false, req)  from request parameters
-  	// SignX509Certificate(signing_key, signing_message, nullptr, req, false, program_cert))
+	program_key, err := x509. ParsePKCS1PrivateKey(der_policy_key)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("Key: %x\n", program_key)
+	// endorsement_cert, err := x509.ParseCertificate(der_endorsement_cert)
+	// ParseCertificates(asn1Data []byte) ([]*Certificate, error)
+	// CreateCertificate(rand io.Reader, template, parent *Certificate, pub, priv interface{})
+	// ParseCertificate(asn1Data []byte) (*Certificate, error)
+	// (c *Certificate) Verify(opts VerifyOptions) (chains [][]*Certificate, err error)
+	// signing_instructions_message.GetIssuer(), GetDuration(), GetPurpose()
+	// signing_instructions_message.GetSignAlg(), GetHashAlg(), GetIsCA(), GetCanSign()
 	// Hash request: request.program_key().DebugString();
 	// Decode attest: UnmarshalCertifyInfo(quote_struct_size, quote_struct, &attested_quote)
 	// attested_quote.magic !=  TpmMagicConstant?
@@ -2032,24 +2089,19 @@ func ConstructServerResponse(policy_key []byte,
 	//	attested_quote.extraData.size)
 	// Compare signature and computed hash memcmp(signed_quote_hash,
 	//	decrypted_quote + size_active_out - SizeHash(hash_alg_id), SizeHash(hash_alg_id))
+
 	// Generate credential
-	// MakeCredential(endorsement_blob_size, endorsement_blob, hash_alg_id, unmarshaled_credential,
-	//	marshaled_credential, unmarshaled_name, marshaled_name, &size_encIdentity, encIdentity,
-        //      &unmarshaled_encrypted_secret, &marshaled_encrypted_secret,
-        //      &unmarshaled_integrityHmac, &marshaled_integrityHmac)
-	// EncryptDataWithCredential(true, hash_alg_id, unmarshaled_credential, marshaled_credential,
-        //      der_program_cert_size, der_program_cert, &size_hmac, (byte*)encrypted_data_hmac,
-        //      &size_encrypted_data, encrypted_data)
-	// construct response
+	// encrypted_secret, encIdentity, integrityHmac, err := MakeCredential(endorsement_blob []byte,
+	// hash_alg_id uint16, unmarshaled_credential []byte, unmarshaled_name []byte)
 	return nil, nil
 }
 
 // Output is der encoded Program Cert
-func ClientDecodeServerResponse(endorsement_handle Handle, quote_handle Handle,
+func ClientDecodeServerResponse(rw io.ReadWriter, endorsement_handle Handle, quote_handle Handle,
 		server_response_message ProgramCertResponseMessage) ([]byte, error) {
-	// Tpm2_ActivateCredential(tpm, quote_handle, ekHandle, parentAuth,
-        //      emptyAuth, credentialBlob, unmarshaled_secret, &recovered_credential)
-	// Decrypt using recovered_credential
-	// Return decrypted cert
+	// certInfo, err := ActivateCredential(rw, active_handle, key_handle, password, credBlob, secret)
+	// Decrypt cert.
+	// _, out, err :=  EncryptDataWithCredential(encrypt_flag bool, hash_alg_id,
+        //        unmarshaled_credential, input_data, in_hmac)
 	return nil, nil
 }

@@ -16,6 +16,8 @@ package tpm
 
 import (
 	"fmt"
+	"os"
+	"github.com/golang/protobuf/proto"
 	"testing"
 )
 
@@ -254,14 +256,103 @@ func TestCombinedContextTest(t *testing.T) {
 
 // Combined Quote Protocol
 func TestCombinedQuoteProtocolTest(t *testing.T) {
+	t.Fatal("Don't start yet")
+
 	// Read der-encoded private policy key
+	private_key_file := "/Users/jlm/cryptobin/cloudproxy_key_file"
+	fileInfo, err := os.Stat(private_key_file)
+	if err != nil {
+		t.Fatal("Can't stat private key file")
+	}
+	der_policy_key := make([]byte, fileInfo.Size())
+	key_file, err := os.Open(private_key_file)
+	if err != nil {
+		t.Fatal("Can't open private key file")
+	}
+	_, err = key_file.Read(der_policy_key)
+	if err != nil {
+		key_file.Close()
+		t.Fatal("Can't read private key file")
+	}
+	key_file.Close()
+
 	// Read endorsement cert file
+	endorsement_cert_file := "/Users/jlm/cryptobin/cloudproxy_key_file"
+	fileInfo, err = os.Stat(endorsement_cert_file)
+	if err != nil {
+		t.Fatal("Can't stat endorsement cert file")
+	}
+	der_endorsement_cert := make([]byte, fileInfo.Size())
+	cert_file, err := os.Open(private_key_file)
+	if err != nil {
+		t.Fatal("Can't open endorsement cert file")
+	}
+	_, err = cert_file.Read(der_endorsement_cert)
+	if err != nil {
+		cert_file.Close()
+		t.Fatal("Can't read private key file")
+	}
+	cert_file.Close()
+
+	// Open tpm
+	rw, err := OpenTPM("/dev/tpm0")
+	if err != nil {
+		t.Fatal("Can't open tpm")
+	}
+	var empty []byte
+
 	// Open endorsement and quote keys
-	// der_program_private, request_message, err := ConstructClientRequest(endorsement_cert, quote_handle)
-	// response_message, err := ConstructServerResponse(policy_key, signing_instructions_message, request_message)
-	// der_program_cert, err := ClientDecodeServerResponse(endorsement_handle, quote_handle, server_response_message)
-	// Save cert
+        ek_parms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
+                uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
+                uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+                uint16(1024), uint32(0x00010001), empty}
+	endorsement_handle, _, err := CreatePrimary(rw, uint32(ordTPM_RH_OWNER), []int{7},
+		"", "01020304", ek_parms)
+        if err != nil {
+		t.Fatal("CreatePrimary fails")
+        }
+	quote_parms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
+		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+		uint16(1024), uint32(0x00010001), empty}
+        private_blob, public_blob, err := CreateKey(rw, uint32(ordTPM_RH_OWNER), []int{7},
+                                                    "", "01020304", quote_parms)
+        if err != nil {
+		t.Fatal("Create fails")
+        }
+	quote_handle, quote_blob, err := Load(rw, endorsement_handle, "", "01020304", public_blob, private_blob)
+        if err != nil {
+		t.Fatal("Quote Load fails")
+        }
+	fmt.Printf("Quote blob size: %d\n", len(quote_blob))
+
+	der_program_private, request_message, err := ConstructClientRequest(der_endorsement_cert,
+		quote_handle)
+        if err != nil {
+		t.Fatal("ConstructClientRequest fails")
+        }
+	fmt.Printf("der_program_private size: %d\n", len(der_program_private))
+	fmt.Printf("Request: %s\n", proto.MarshalTextString(request_message))
+
+	signing_instructions_message := new(SigningInstructionsMessage)
+	response_message, err := ConstructServerResponse(der_policy_key,
+		*signing_instructions_message, *request_message)
+        if err != nil {
+		t.Fatal("ConstructServerResponse fails")
+        }
+
+	der_program_cert, err := ClientDecodeServerResponse(endorsement_handle, quote_handle,
+		*response_message)
+        if err != nil {
+		t.Fatal("ClientDecodeServerResponse fails")
+        }
+
+	// Save Program cert
+	fmt.Printf("Program cert: %x\n", der_program_cert)
+
 	// Close handles
+	FlushContext(rw, endorsement_handle)
+	FlushContext(rw, quote_handle)
 }
 
 

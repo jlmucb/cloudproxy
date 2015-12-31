@@ -2215,10 +2215,20 @@ func ConstructServerResponse(der_policy_key []byte,
 
 // Output is der encoded Program Cert
 func ClientDecodeServerResponse(rw io.ReadWriter, endorsement_handle Handle, quote_handle Handle,
-		server_response_message ProgramCertResponseMessage) ([]byte, error) {
-	// certInfo, err := ActivateCredential(rw, active_handle, key_handle, password, credBlob, secret)
+		password string,
+		response ProgramCertResponseMessage) ([]byte, error) {
+	certInfo, err := ActivateCredential(rw, quote_handle, endorsement_handle, password, 
+		response.EncIdentity, response.Secret)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("certInfo: %x\n", certInfo)
+
 	// Decrypt cert.
-	// _, out, err :=  EncryptDataWithCredential(encrypt_flag bool, hash_alg_id,
-        //        unmarshaled_credential, input_data, in_hmac)
-	return nil, nil
+	_, out, err :=  EncryptDataWithCredential(false, uint16(algTPM_ALG_SHA1),
+        	certInfo, response.EncryptedCert, response.EncryptedCertHmac)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }

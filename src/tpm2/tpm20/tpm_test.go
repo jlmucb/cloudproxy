@@ -342,7 +342,7 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
         }
 
 	der_program_cert, err := ClientDecodeServerResponse(rw, endorsement_handle, quote_handle,
-		*response_message)
+		"01020304", *response_message)
         if err != nil {
 		t.Fatal("ClientDecodeServerResponse fails")
         }

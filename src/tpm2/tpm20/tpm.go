@@ -16,6 +16,7 @@
 package tpm
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
@@ -1918,8 +1919,8 @@ func EncryptDataWithCredential(encrypt_flag bool, hash_alg_id uint16,
 //		encrypted_secret
 //		encIdentity
 //		integrityHmac
-func MakeCredential(endorsement_blob []byte, hash_alg_id uint16,
-		unmarshaled_credential []byte, unmarshaled_name []byte) ([]byte, []byte, []byte, error) {
+func MakeCredential(endorsement_blob []byte, hash_alg_id uint16, unmarshaled_credential []byte,
+		unmarshaled_name []byte) ([]byte, []byte, []byte, error) {
 	var a [20]byte
 	copy(a[:], "IDENTITY")
 	a[len("IDENTITY")] = 0
@@ -1928,25 +1929,26 @@ func MakeCredential(endorsement_blob []byte, hash_alg_id uint16,
 		return nil, nil, nil, err
 	}
 	fmt.Printf("rsaKeyParams: %x\n", rsaKeyParams)
-	m := new(big.Int)
-	m.SetBytes(rsaKeyParams.rsa_params.modulus[0:len(rsaKeyParams.rsa_params.modulus)])
-	public := rsa.PublicKey{m, int(rsaKeyParams.rsa_params.exp)}
-	var encrypted_secret []byte
-	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
-		encrypted_secret, err = rsa.EncryptOAEP(sha1.New(), rand.Reader, &public, unmarshaled_credential,
-			a[0:len("IDENTITY")+1])
-	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
-		encrypted_secret, err = rsa.EncryptOAEP(sha256.New(), rand.Reader, &public, unmarshaled_credential,
-			a[0:len("IDENTITY")+1])
-	} else {
-		return nil, nil, nil, errors.New("Unsupported hash alg") 
-	}
-	fmt.Printf("encrypted_secret    : %x\n", encrypted_secret)
 
 	// replace with RAND_bytes
 	seed := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 	// var seed []byte
 	// rand.Read(seed[0:16]);
+
+	m := new(big.Int)
+	m.SetBytes(rsaKeyParams.rsa_params.modulus[0:len(rsaKeyParams.rsa_params.modulus)])
+	public := rsa.PublicKey{m, int(rsaKeyParams.rsa_params.exp)}
+	var encrypted_secret []byte
+	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
+		encrypted_secret, err = rsa.EncryptOAEP(sha1.New(), rand.Reader, &public, seed,
+			a[0:len("IDENTITY")+1])
+	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
+		encrypted_secret, err = rsa.EncryptOAEP(sha256.New(), rand.Reader, &public, seed,
+			a[0:len("IDENTITY")+1])
+	} else {
+		return nil, nil, nil, errors.New("Unsupported hash alg") 
+	}
+	fmt.Printf("encrypted_secret    : %x\n", encrypted_secret)
 
 	var symKey []byte
 	iv := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
@@ -2012,6 +2014,7 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte, quote
 		return nil, nil, err
 	}
 	der_program_key := x509.MarshalPKCS1PrivateKey(programPrivateKey)
+	programPublicKey := programPrivateKey.Public()
 	
 	// Generate Request
 	request := new(ProgramCertRequestMessage)
@@ -2024,7 +2027,8 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte, quote
         request.ProgramKey.ProgramKeyType = &key_type
         request.ProgramKey.ProgramBitModulusSize = &modulus_bits
         // request.ProgramKey.ProgramKeyExponent = 0x010001
-        // request.ProgramKey.ProgramKeyModulus
+	n := programPublicKey.(*rsa.PublicKey).N
+        request.ProgramKey.ProgramKeyModulus = n.Bytes()
 	serialized_program_key := request.ProgramKey.String();
 	sha256Hash := sha256.New()
 	sha256Hash.Write([]byte(serialized_program_key))
@@ -2078,15 +2082,25 @@ func GetSerialNumber() (*big.Int) {
 	return sn
 }
 
+func SizeHash(alg_id uint16) (int) {
+	if alg_id == uint16(algTPM_ALG_SHA1) {
+		return 20
+	} else if alg_id == uint16(algTPM_ALG_SHA256) {
+		return 32
+	} else {
+		return -1
+	}
+}
+
 // Input: Der encoded policy private key
 func ConstructServerResponse(der_policy_key []byte,
 	     signing_instructions_message SigningInstructionsMessage,
 	     request ProgramCertRequestMessage) (*ProgramCertResponseMessage, error) {
-	program_key, err := x509. ParsePKCS1PrivateKey(der_policy_key)
+	policy_key, err := x509.ParsePKCS1PrivateKey(der_policy_key)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("Key: %x\n", program_key)
+	fmt.Printf("Key: %x\n", policy_key)
 	der_endorsement_cert := request.EndorsementCertBlob
 	endorsement_cert, err := x509.ParseCertificate(der_endorsement_cert)
 	if err != nil {
@@ -2118,10 +2132,14 @@ func ConstructServerResponse(der_policy_key []byte,
 	ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	BasicConstraintsValid: true,
 	}
-	fmt.Printf("Template: %x\n", template)
-	// check second template
-	var der_program_cert []byte
-	// der_program_cert, err := x509.CreateCertificate(rand.Reader, &template, &template, pub, priv interface{})
+	fmt.Printf("Template: %x\n", template)     // check second template
+	pub := new(rsa.PublicKey)
+	pub.N.SetBytes(request.ProgramKey.ProgramKeyModulus)
+	// set exponent
+	der_program_cert, err := x509.CreateCertificate(rand.Reader, &template, &template, pub, policy_key)
+	if err != nil {
+		return nil, err
+	}
 
 	// Hash request: request.program_key().DebugString();
 	serialized_program_key := request.ProgramKey.String();
@@ -2137,40 +2155,55 @@ func ConstructServerResponse(der_policy_key []byte,
 	}
 	fmt.Printf("Attest: %x\n", attest)
 
-	// attested_quote.magic !=  TpmMagicConstant?
+	if attest.magic_number != ordTpmMagic {
+		return nil, errors.New("Bad magic constants") 
+	}
+
+	// attest.attest_type
+	// attest.data
+	// attest.pcrSelect 
+
+	hash_alg_id := uint16(algTPM_ALG_SHA1)  // TODO: get this from quote key
+
+	fmt.Printf("PCR: %x\n", attest.pcrDigest)
 	// PCR's valid?
 
 	// Verify quote
-	// RSA_public_encrypt(request.active_signature().size(),
-	//  (const byte*)request.active_signature().data(), decrypted_quote,active_key, RSA_NO_PADDING);
-	// Check hash of request: memcmp(attested_quote.extraData.buffer, program_key_quoted_hash,
-	//	attested_quote.extraData.size)
-	// Compare signature and computed hash memcmp(signed_quote_hash,
-	//	decrypted_quote + size_active_out - SizeHash(hash_alg_id), SizeHash(hash_alg_id))
+	var quote_key *rsa.PublicKey
 
-	// Generate credential
-	var credential []byte
-	var name []byte
-	rand.Read(credential[0:16])
-	fmt.Printf("Credential: %x\n", credential)
-	hash_alg_id := uint16(algTPM_ALG_SHA1)  // TODO: get this from quote key
-	encrypted_secret, encIdentity, integrityHmac, err := MakeCredential(der_endorsement_cert,
-		hash_alg_id, credential[0:16], name)
+	decrypted_quote, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, quote_key,
+		request.ActiveSignature, nil)
 	if err != nil {
 		return nil, err
 	}
+	start_quote_blob := int(*request.ProgramKey.ProgramBitModulusSize) / 8 - SizeHash(hash_alg_id)
+	if bytes.Compare(decrypted_quote[start_quote_blob:], hashed_program_key) != 0 {
+		return nil, errors.New("Bad Signature") 
+	}
+
+	// Generate credential
+	var credential []byte
+	rand.Read(credential[0:16])
+	fmt.Printf("Credential: %x\n", credential)
+	encrypted_secret, encIdentity, integrityHmac, err := MakeCredential(der_endorsement_cert,
+		hash_alg_id, credential[0:16], attest.name)
+	if err != nil {
+		return nil, err
+	}
+	// Response
 	response := new(ProgramCertResponseMessage)
 	response.RequestId = request.RequestId
 	response.ProgramName = request.ProgramKey.ProgramName
 	integrity_alg := "sha1"
+	response.Secret = encrypted_secret
 	response.IntegrityAlg = &integrity_alg
         response.IntegrityHMAC = integrityHmac
         // encIdentity should be an encrypted correctly marshalled
+	response.IntegrityHMAC = integrityHmac 
         response.EncIdentity = encIdentity
-        response.Secret = encrypted_secret
 
 	// Encrypt cert with credential
-	cert_hmac, cert_out, err :=  EncryptDataWithCredential(true, uint16(algTPM_ALG_SHA1),
+	cert_hmac, cert_out, err :=  EncryptDataWithCredential(true, hash_alg_id, 
                 credential, der_program_cert, nil)
 	if err != nil {
 		return nil, err

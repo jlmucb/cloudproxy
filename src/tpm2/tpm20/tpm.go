@@ -1093,6 +1093,46 @@ func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
 	return nil
 }
 
+// PolicyPcr
+func PolicyPcr(rw io.ReadWriter, handle Handle, expected_digest []byte, pcr_nums []int) (error) {
+	// Construct command
+	cmd, err:= ConstructPolicyPcr(handle, expected_digest, pcr_nums)
+	if err != nil {
+		fmt.Printf("MakeCommandHeader failed %s\n", err)
+		return err
+	}
+
+	// Send command
+	_, err = rw.Write(cmd)
+	if err != nil {
+		return errors.New("Write Tpm fails") 
+	}
+
+	// Get response
+	var resp []byte
+	resp = make([]byte, 1024, 1024)
+	read, err := rw.Read(resp)
+        if err != nil {
+                return errors.New("Read Tpm fails")
+        }
+
+	// Decode Response
+        if read < 10 {
+                return errors.New("Read buffer too small")
+	}
+	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	if err != nil {
+		fmt.Printf("DecodeCommandResponse %s\n", err)
+		return err
+	}
+	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
+	if status != errSuccess {
+		return errors.New("Comand failure")
+	}
+	return nil
+}
+
+
 // ConstructPolicyGetDigest constructs a PolicyGetDigest command.
 func ConstructPolicyGetDigest(handle Handle) ([]byte, error) {
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdPolicyGetDigest)

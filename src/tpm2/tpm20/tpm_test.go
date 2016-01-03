@@ -208,32 +208,38 @@ func TestCombinedSealTest(t *testing.T) {
 	var sym []byte
 	var to_seal []byte
 	hash_alg := uint16(algTPM_ALG_SHA1)
-	session_handle, policy_digest, err := StartAuthSession(rw,
-		Handle(ordTPM_RH_NULL),
+	session_handle, policy_digest, err := StartAuthSession(rw, Handle(ordTPM_RH_NULL),
 		Handle(ordTPM_RH_NULL), nonceCaller, secret,
 		uint8(ordTPM_SE_POLICY), sym, hash_alg)
         if err != nil {
                 t.Fatal("StartAuthSession fails")
         }
+	fmt.Printf("policy digest 1: %x\n", policy_digest)
 
-	// Init pcrs
+	// policy for AuthSession
+	policy_digest, err = PolicyGetDigest(rw, session_handle)
+        if err != nil {
+                t.Fatal("PolicyGetDigest 1 fails")
+        }
+	fmt.Printf("policy digest 2: %x\n", policy_digest)
+	err = PolicyPcr(rw, session_handle, policy_digest, []int{7})
+        if err != nil {
+                t.Fatal("PolicyPcr fails")
+        }
+	policy_digest, err = PolicyGetDigest(rw, session_handle)
+        if err != nil {
+                t.Fatal("PolicyGetDigest 2 fails")
+        }
+	fmt.Printf("policy digest 3: %x\n", policy_digest)
 
+	// TODO: Fix attributes
 	keyedhashparms := KeyedHashParams{uint16(algTPM_ALG_KEYEDHASH),
 		uint16(algTPM_ALG_SHA1),
                 uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
                 uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), empty}
 
-	private_blob, public_blob, err := CreateSealed(rw, parent_handle,
-		policy_digest, "",  "01020304", to_seal,
-		[]int{7}, keyedhashparms)
-
-	// PolicyGetDigest
-
-	// PolicyPassword
-
-	// PolicyPcr
-
-	// PolicyGetDigest
+	private_blob, public_blob, err := CreateSealed(rw, parent_handle, policy_digest,
+		"",  "01020304", to_seal, []int{7}, keyedhashparms)
 
 	// Load
 	item_handle, blob, err := Load(rw, parent_handle, "", "01020304",
@@ -242,7 +248,7 @@ func TestCombinedSealTest(t *testing.T) {
                 t.Fatal("Load fails")
         }
 	fmt.Printf("Load succeeded\n")
-        fmt.Printf("\nBlob from Load     : %x\n", blob)
+        fmt.Printf("Blob from Load     : %x\n", blob)
 
 	// ReadPublic
 	public, name, qualified_name, err := ReadPublic(rw, item_handle)
@@ -267,7 +273,6 @@ func TestCombinedSealTest(t *testing.T) {
 	err = FlushContext(rw, item_handle)
 	err = FlushContext(rw, parent_handle)
 	rw.Close()
-	// Flush
 }
 
 // Combined Quote test
@@ -417,8 +422,21 @@ func TestCombinedEvictTest(t *testing.T) {
         fmt.Printf("\nName           blob: %x\n", name)
         fmt.Printf("\nQualified name blob: %x\n", qualified_name)
 
+	perm_handle := uint32(0x810003e8)
+
 	// Evict
+	err = EvictControl(rw, Handle(ordTPM_RH_OWNER), key_handle, "", "01020304",
+                Handle(perm_handle))
+        if err != nil {
+                t.Fatal("EvictControl 1 fails")
+        }
+
 	// Evict
+	err = EvictControl(rw, Handle(ordTPM_RH_OWNER), Handle(perm_handle), "", "01020304",
+                Handle(perm_handle))
+        if err != nil {
+                t.Fatal("EvictControl 1 fails")
+        }
 
 	// Flush
 	err = FlushContext(rw, key_handle)
@@ -426,7 +444,7 @@ func TestCombinedEvictTest(t *testing.T) {
 	rw.Close()
 }
 
-// Combined Endorsementtest
+// Combined Endorsement test
 func TestCombinedEndorsementTest(t *testing.T) {
 	fmt.Printf("TestCombinedEndorsementTest excluded\n")
 	return
@@ -507,6 +525,22 @@ func TestCombinedEndorsementTest(t *testing.T) {
         }
 
 	// Get endorsement cert
+	endorsement_key_file := "/Users/jlm/cryptobin/endorsement_cert"
+	fileInfo, err := os.Stat(endorsement_key_file)
+	if err != nil {
+		t.Fatal("Can't stat endorsement key file")
+	}
+	der_endorsement_key := make([]byte, fileInfo.Size())
+	key_file, err := os.Open(endorsement_key_file)
+	if err != nil {
+		t.Fatal("Can't open endorsement key file")
+	}
+	_, err = key_file.Read(der_endorsement_key)
+	if err != nil {
+		key_file.Close()
+		t.Fatal("Can't read endorsement key file")
+	}
+	key_file.Close()
 
 	// ActivateCredential
 	recovered_credential, err := ActivateCredential(rw, key_handle,
@@ -560,7 +594,7 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
 	key_file.Close()
 
 	// Read endorsement cert file
-	endorsement_cert_file := "/Users/jlm/cryptobin/cloudproxy_key_file"
+	endorsement_cert_file := "/Users/jlm/cryptobin/endorsement_cert"
 	fileInfo, err = os.Stat(endorsement_cert_file)
 	if err != nil {
 		t.Fatal("Can't stat endorsement cert file")

@@ -604,6 +604,60 @@ func GetCapabilities(rw io.ReadWriter, cap uint32, count uint32, property uint32
 	return handles, nil
 }
 
+// PCR_Event
+func ConstructPcrEvent(pcrnum int, eventData []byte) ([]byte, error) {
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdPcrEvent)
+	if err != nil {
+		return nil, errors.New("GetCapability failed")
+	}
+	// pcrnum, empty, emptyauth, eventData size, eventData
+	var empty []byte
+	pc := uint32(pcrnum)
+	b1,_ := pack([]interface{}{&pc, &empty})
+	b2 := CreatePasswordAuthArea("", Handle(ordTPM_RS_PW))
+	b3,_ := pack([]interface{}{&eventData})
+	cmd := packWithBytes(cmdHdr, append(append(b1, b2...),b3...))
+	return cmd, nil
+}
+
+func PcrEvent(rw io.ReadWriter, pcrnum int, eventData []byte) (error) {
+	// Construct command
+	cmd, err:= ConstructPcrEvent(pcrnum, eventData)
+	if err != nil {
+		fmt.Printf("MakeCommandHeader failed %s\n", err)
+		return err
+	}
+
+	// Send command
+	_, err = rw.Write(cmd)
+	if err != nil {
+		return errors.New("Write Tpm fails") 
+	}
+
+	// Get response
+	var resp []byte
+	resp = make([]byte, 1024, 1024)
+	read, err := rw.Read(resp)
+        if err != nil {
+                return errors.New("Read Tpm fails")
+        }
+
+	// Decode Response
+        if read < 10 {
+                return errors.New("Read buffer too small")
+	}
+	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	if err != nil {
+		fmt.Printf("DecodeCommandResponse %s\n", err)
+		return err
+	}
+	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
+	if status != errSuccess {
+		return errors.New("Command failure")
+	}
+	return nil
+}
+
 // Flushall
 func Flushall(rw io.ReadWriter) (error) {
 	handles, err := GetCapabilities(rw, ordTPM_CAP_HANDLES, 1, 0x80000000)

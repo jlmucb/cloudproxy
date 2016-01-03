@@ -318,11 +318,12 @@ func TestCombinedQuoteTest(t *testing.T) {
         }
         fmt.Printf("CreatePrimary succeeded\n")
 
-        /*
-         *  uint16_t size_eventData = 3;
-         *  byte eventData[3] = {1, 2, 3};
-         *  Tpm2_PCR_Event(tpm, pcr_num, size_eventData, eventData)
-         */
+	// Pcr event
+	eventData := []byte{1,2,3}
+	err =  PcrEvent(rw, 7, eventData)
+        if err != nil {
+                t.Fatal("PcrEvent fails")
+        }
 
         // CreateKey (Quote Key)
         keyparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),

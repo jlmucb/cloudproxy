@@ -107,6 +107,7 @@ const (
 	cmdPCR_Extend              uint32 = 0x00000182
 	cmdPolicyGetDigest         uint32 = 0x00000189
 	cmdPolicyPassword          uint32 = 0x0000018C
+	cmdPcrEvent                uint32 = 0x0000013C
 )
 
 const maxTPMResponse = 4096

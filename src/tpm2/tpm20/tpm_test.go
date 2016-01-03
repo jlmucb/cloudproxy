@@ -175,16 +175,98 @@ func TestCombinedKeyTest(t *testing.T) {
 func TestCombinedSealTest(t *testing.T) {
 	fmt.Printf("TestCombinedSealTest excluded\n")
 	return
-	// Init pcr's
+
+	// Open tpm
+	rw, err := OpenTPM("/dev/tpm0")
+        if err != nil {
+		fmt.Printf("OpenTPM failed %s\n", err)
+		return 
+        }
+
+	// Flushall
+	err =  Flushall(rw)
+        if err != nil {
+		t.Fatal("Flushall failed\n")
+        }
+	fmt.Printf("Flushall succeeded\n")
+
 	// CreatePrimary
-	// StartAuthSession
+	var empty []byte
+	primaryparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
+                uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
+                uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+                uint16(1024), uint32(0x00010001), empty}
+	parent_handle, public_blob, err := CreatePrimary(rw,
+		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
+        if err != nil {
+                t.Fatal("CreatePrimary fails")
+        }
+	fmt.Printf("CreatePrimary succeeded\n")
+
+	var nonceCaller []byte
+	var secret []byte
+	var sym []byte
+	var to_seal []byte
+	hash_alg := uint16(algTPM_ALG_SHA1)
+	session_handle, policy_digest, err := StartAuthSession(rw,
+		Handle(ordTPM_RH_NULL),
+		Handle(ordTPM_RH_NULL), nonceCaller, secret,
+		uint8(ordTPM_SE_POLICY), sym, hash_alg)
+        if err != nil {
+                t.Fatal("StartAuthSession fails")
+        }
+
+	// Init pcrs
+
+	keyedhashparms := KeyedHashParams{uint16(algTPM_ALG_KEYEDHASH),
+		uint16(algTPM_ALG_SHA1),
+                uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
+                uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), empty}
+
+	private_blob, public_blob, err := CreateSealed(rw, parent_handle,
+		policy_digest, "",  "01020304", to_seal,
+		[]int{7}, keyedhashparms)
+
 	// PolicyGetDigest
+
 	// PolicyPassword
+
 	// PolicyPcr
+
 	// PolicyGetDigest
-	// CreateSealed
+
 	// Load
+	item_handle, blob, err := Load(rw, parent_handle, "", "01020304",
+             public_blob, private_blob)
+        if err != nil {
+                t.Fatal("Load fails")
+        }
+	fmt.Printf("Load succeeded\n")
+        fmt.Printf("\nBlob from Load     : %x\n", blob)
+
+	// ReadPublic
+	public, name, qualified_name, err := ReadPublic(rw, item_handle)
+        if err != nil {
+                t.Fatal("ReadPublic fails")
+        }
+	fmt.Printf("ReadPublic succeeded\n")
+        fmt.Printf("Public         blob: %x\n", public)
+        fmt.Printf("Name           blob: %x\n", name)
+        fmt.Printf("Qualified name blob: %x\n", qualified_name)
+
 	// Unseal
+	unsealed, nonce, err := Unseal(rw, item_handle, "01020304",
+		 session_handle, policy_digest)
+        if err != nil {
+                t.Fatal("Unseal fails")
+        }
+        fmt.Printf("unsealed           : %x\n", unsealed)
+        fmt.Printf("nonce              : %x\n", nonce)
+
+	// Flush
+	err = FlushContext(rw, item_handle)
+	err = FlushContext(rw, parent_handle)
+	rw.Close()
 	// Flush
 }
 
@@ -192,11 +274,81 @@ func TestCombinedSealTest(t *testing.T) {
 func TestCombinedQuoteTest(t *testing.T) {
 	fmt.Printf("TestCombinedQuoteTest excluded\n")
 	return
+
+	// Open tpm
+	rw, err := OpenTPM("/dev/tpm0")
+        if err != nil {
+		fmt.Printf("OpenTPM failed %s\n", err)
+		return 
+        }
+
+	// Flushall
+	err =  Flushall(rw)
+        if err != nil {
+		t.Fatal("Flushall failed\n")
+        }
+	fmt.Printf("Flushall succeeded\n")
+
 	// CreatePrimary
+	var empty []byte
+	primaryparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
+                uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
+                uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+                uint16(1024), uint32(0x00010001), empty}
+	parent_handle, public_blob, err := CreatePrimary(rw,
+		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
+        if err != nil {
+                t.Fatal("CreatePrimary fails")
+        }
+	fmt.Printf("CreatePrimary succeeded\n")
+
+	// CreateKey (Quote Key)
+	keyparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
+                uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
+                uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+                uint16(1024), uint32(0x00010001), empty}
+	private_blob, public_blob, err := CreateKey(rw, uint32(parent_handle), 
+		[]int{7}, "01020304", "01020304", keyparms)
+        if err != nil {
+                t.Fatal("CreateKey fails")
+        }
+	fmt.Printf("CreateKey succeeded\n")
+        fmt.Printf("\nPrivate blob: %x\n", private_blob)
+        fmt.Printf("\nPublic  blob: %x\n", public_blob)
+
+	// Load
+	key_handle, blob, err := Load(rw, parent_handle, "", "01020304",
+             public_blob, private_blob)
+        if err != nil {
+                t.Fatal("Load fails")
+        }
+	fmt.Printf("Load succeeded\n")
+        fmt.Printf("\nBlob from Load     : %x\n", blob)
+
+	// ReadPublic
+	public, name, qualified_name, err := ReadPublic(rw, key_handle)
+        if err != nil {
+                t.Fatal("ReadPublic fails")
+        }
+	fmt.Printf("ReadPublic succeeded\n")
+        fmt.Printf("\nPublic         blob: %x\n", public)
+        fmt.Printf("\nName           blob: %x\n", name)
+        fmt.Printf("\nQualified name blob: %x\n", qualified_name)
+
 	// PCR_Event
-	// CreateKey (signing key)
+
 	// Quote
+	var to_quote []byte
+	attest, sig, err := Quote(rw, key_handle, "01020304", "01020304",
+                to_quote, []int{7}, uint16(algTPM_ALG_RSA))
+        if err != nil {
+                t.Fatal("Quote fails")
+        }
+        fmt.Printf("attest             : %x\n", attest)
+        fmt.Printf("sig                : %x\n", sig)
+
 	// Verify quote
+
 	// Flush
 }
 
@@ -204,12 +356,74 @@ func TestCombinedQuoteTest(t *testing.T) {
 func TestCombinedEvictTest(t *testing.T) {
 	fmt.Printf("TestCombinedEvictTest excluded\n")
 	return
+
+	// Open tpm
+	rw, err := OpenTPM("/dev/tpm0")
+        if err != nil {
+		fmt.Printf("OpenTPM failed %s\n", err)
+		return 
+        }
+
+	// Flushall
+	err =  Flushall(rw)
+        if err != nil {
+		t.Fatal("Flushall failed\n")
+        }
+	fmt.Printf("Flushall succeeded\n")
+
 	// CreatePrimary
+	var empty []byte
+	primaryparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
+                uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
+                uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+                uint16(1024), uint32(0x00010001), empty}
+	parent_handle, public_blob, err := CreatePrimary(rw,
+		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
+        if err != nil {
+                t.Fatal("CreatePrimary fails")
+        }
+	fmt.Printf("CreatePrimary succeeded\n")
+
 	// CreateKey
+	keyparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
+                uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
+                uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+                uint16(1024), uint32(0x00010001), empty}
+	private_blob, public_blob, err := CreateKey(rw, uint32(parent_handle), 
+		[]int{7}, "01020304", "01020304", keyparms)
+        if err != nil {
+                t.Fatal("CreateKey fails")
+        }
+	fmt.Printf("CreateKey succeeded\n")
+        fmt.Printf("\nPrivate blob: %x\n", private_blob)
+        fmt.Printf("\nPublic  blob: %x\n", public_blob)
+
 	// Load
+	key_handle, blob, err := Load(rw, parent_handle, "", "01020304",
+             public_blob, private_blob)
+        if err != nil {
+                t.Fatal("Load fails")
+        }
+	fmt.Printf("Load succeeded\n")
+        fmt.Printf("\nBlob from Load     : %x\n", blob)
+
+	// ReadPublic
+	public, name, qualified_name, err := ReadPublic(rw, key_handle)
+        if err != nil {
+                t.Fatal("ReadPublic fails")
+        }
+	fmt.Printf("ReadPublic succeeded\n")
+        fmt.Printf("\nPublic         blob: %x\n", public)
+        fmt.Printf("\nName           blob: %x\n", name)
+        fmt.Printf("\nQualified name blob: %x\n", qualified_name)
+
 	// Evict
 	// Evict
+
 	// Flush
+	err = FlushContext(rw, key_handle)
+	err = FlushContext(rw, parent_handle)
+	rw.Close()
 }
 
 // Combined Endorsementtest

@@ -1209,12 +1209,12 @@ func DecodeStartAuthSession(in []byte) (Handle, []byte, error) {
 // StartAuthSession
 func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle, nonceCaller []byte, secret []byte,
                 se byte, sym []byte, hash_alg uint16) (Handle, []byte, error) {
-	
+
 	// Construct command
 	cmd, err:= ConstructStartAuthSession(tpm_key, bind_key, nonceCaller, secret,
                 se, sym, hash_alg)
 	if err != nil {
-		return Handle(0), nil, errors.New("ConstructStartAuthSession fails") 
+		return Handle(0), nil, errors.New("ConstructStartAuthSession fails")
 	}
 
 	// Send command
@@ -1253,31 +1253,31 @@ func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle, nonceCa
 // ConstructCreateSealed constructs a CreateSealed command.
 func ConstructCreateSealed(parent Handle, policy_digest []byte,
 			   parent_password string, owner_password string,
-        		   to_seal []byte, pcr_nums []int,
+		   to_seal []byte, pcr_nums []int,
 			   parms KeyedHashParams) ([]byte, error) {
 	fmt.Printf("ConstructCreateSealed\n")
 	PrintKeyedHashParams(&parms)
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdCreate)
- 	if err != nil {
+	if err != nil {
 		return nil, errors.New("ConstructCreateKey failed")
 	}
- 	var empty []byte
- 	b1 := SetHandle(parent)
+	var empty []byte
+	b1 := SetHandle(parent)
 	b2 ,_ := pack([]interface{}{&empty})
- 	b3 := CreatePasswordAuthArea(parent_password, Handle(ordTPM_RS_PW))
- 	t1 := SetPasswordData(owner_password)
- 	b4 := CreateSensitiveArea(t1[2:], to_seal)
+	b3 := CreatePasswordAuthArea(parent_password, Handle(ordTPM_RS_PW))
+	t1 := SetPasswordData(owner_password)
+	b4 := CreateSensitiveArea(t1[2:], to_seal)
 	parms.auth_policy =  policy_digest
 	b5 := CreateKeyedHashParams(parms)
 	b6 ,_ := pack([]interface{}{&b5})
 	b7, _ := pack([]interface{}{&empty})
- 	b8:= CreateLongPcr(uint32(1), pcr_nums)
- 	arg_bytes := append(b1, b2...)
- 	arg_bytes = append(arg_bytes, b3...)
- 	arg_bytes = append(arg_bytes, b4...)
- 	arg_bytes = append(arg_bytes, b6...)
- 	arg_bytes = append(arg_bytes, b7...)
- 	arg_bytes = append(arg_bytes, b8...)
+	b8:= CreateLongPcr(uint32(1), pcr_nums)
+	arg_bytes := append(b1, b2...)
+	arg_bytes = append(arg_bytes, b3...)
+	arg_bytes = append(arg_bytes, b4...)
+	arg_bytes = append(arg_bytes, b6...)
+	arg_bytes = append(arg_bytes, b7...)
+	arg_bytes = append(arg_bytes, b8...)
 	cmd_bytes := packWithBytes(cmdHdr, arg_bytes)
 	return cmd_bytes, nil
 }
@@ -1308,7 +1308,7 @@ func CreateSealed(rw io.ReadWriter, parent Handle, policy_digest []byte,
 	// Construct command
 	cmd, err:= ConstructCreateSealed(parent, policy_digest,
 			parent_password, owner_password,
-                	to_seal, pcr_nums, parms)
+			to_seal, pcr_nums, parms)
 	if err != nil {
 		return nil, nil, errors.New("ConstructCreateSealed fails") 
 	}
@@ -1414,36 +1414,36 @@ func Unseal(rw io.ReadWriter, item_handle Handle, password string, session_handl
 	if status != errSuccess {
 		return nil, nil, errors.New("Unseal unsuccessful")
 	}
-	handle, nonce, err := DecodeUnseal(resp[10:])
+	unsealed, nonce, err := DecodeUnseal(resp[10:])
         if err != nil {
                 return nil, nil, errors.New("DecodeStartAuthSession fails")
         }
-	return handle, nonce, nil
+	return unsealed, nonce, nil
 }
 
 // ConstructQuote constructs a Quote command.
 func ConstructQuote(signing_handle Handle, parent_password, owner_password string,
-        	to_quote []byte, pcr_nums []int, sig_alg uint16) ([]byte, error) {
+	to_quote []byte, pcr_nums []int, sig_alg uint16) ([]byte, error) {
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdQuote)
- 	if err != nil {
+	if err != nil {
 		return nil, errors.New("ConstructQuote failed")
 	}
 	// TODO: no scheme or sig_alg
 	// handle
- 	var empty []byte
- 	b1 := SetHandle(signing_handle)
+	var empty []byte
+	b1 := SetHandle(signing_handle)
 	b2 ,_ := pack([]interface{}{&empty})
- 	b3 := CreatePasswordAuthArea(parent_password, Handle(ordTPM_RS_PW))
- 	// b4 := SetPasswordData(owner_password)
+	b3 := CreatePasswordAuthArea(parent_password, Handle(ordTPM_RS_PW))
+	// b4 := SetPasswordData(owner_password)
 	b5 ,_ := pack([]interface{}{&sig_alg})
 	b6 ,_ := pack([]interface{}{&to_quote})
- 	b7 := CreateLongPcr(uint32(1), pcr_nums)
- 	arg_bytes := append(b1, b2...)
- 	arg_bytes = append(arg_bytes, b3...)
- 	// arg_bytes = append(arg_bytes, b4...)
- 	arg_bytes = append(arg_bytes, b5...)
- 	arg_bytes = append(arg_bytes, b6...)
- 	arg_bytes = append(arg_bytes, b7...)
+	b7 := CreateLongPcr(uint32(1), pcr_nums)
+	arg_bytes := append(b1, b2...)
+	arg_bytes = append(arg_bytes, b3...)
+	// arg_bytes = append(arg_bytes, b4...)
+	arg_bytes = append(arg_bytes, b5...)
+	arg_bytes = append(arg_bytes, b6...)
+	arg_bytes = append(arg_bytes, b7...)
 	cmd_bytes := packWithBytes(cmdHdr, arg_bytes)
 	return cmd_bytes, nil
 }

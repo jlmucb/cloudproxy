@@ -27,7 +27,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/hex"
-	//"encoding/asn1"
 	"errors"
 	"fmt"
 	"io"
@@ -851,24 +850,24 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 func ConstructCreateKey(owner uint32, pcr_nums []int, parent_password string, owner_password string,
                 parms RsaParams) ([]byte, error) {
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdCreate)
- 	if err != nil {
+	if err != nil {
 		return nil, errors.New("ConstructCreateKey failed")
 	}
- 	var empty []byte
- 	b1 := SetHandle(Handle(owner))
+	var empty []byte
+	b1 := SetHandle(Handle(owner))
 	b2 ,_ := pack([]interface{}{&empty})
- 	b3 := CreatePasswordAuthArea(parent_password, Handle(ordTPM_RS_PW))
- 	t1 := SetPasswordData(owner_password)
- 	b4 := CreateSensitiveArea(t1[2:], empty)
- 	b5 := CreateRsaParams(parms)
+	b3 := CreatePasswordAuthArea(parent_password, Handle(ordTPM_RS_PW))
+	t1 := SetPasswordData(owner_password)
+	b4 := CreateSensitiveArea(t1[2:], empty)
+	b5 := CreateRsaParams(parms)
 	b6 ,_ := pack([]interface{}{&empty})
- 	b7:= CreateLongPcr(uint32(1), pcr_nums)
- 	arg_bytes := append(b1, b2...)
- 	arg_bytes = append(arg_bytes, b3...)
- 	arg_bytes = append(arg_bytes, b4...)
- 	arg_bytes = append(arg_bytes, b5...)
- 	arg_bytes = append(arg_bytes, b6...)
- 	arg_bytes = append(arg_bytes, b7...)
+	b7:= CreateLongPcr(uint32(1), pcr_nums)
+	arg_bytes := append(b1, b2...)
+	arg_bytes = append(arg_bytes, b3...)
+	arg_bytes = append(arg_bytes, b4...)
+	arg_bytes = append(arg_bytes, b5...)
+	arg_bytes = append(arg_bytes, b6...)
+	arg_bytes = append(arg_bytes, b7...)
 	cmd_bytes := packWithBytes(cmdHdr, arg_bytes)
 	return cmd_bytes, nil
 }
@@ -904,6 +903,7 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, nil, err
 	}
+	fmt.Printf("CreateKey command: %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)

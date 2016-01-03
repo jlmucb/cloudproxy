@@ -120,23 +120,28 @@ func TestCombinedKeyTest(t *testing.T) {
 
 	// CreatePrimary
 	var empty []byte
-	parms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
+	primaryparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
                 uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
                 uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
                 uint16(1024), uint32(0x00010001), empty}
 	parent_handle, public_blob, err := CreatePrimary(rw,
-		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "01020304", parms)
+		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
         if err != nil {
                 t.Fatal("CreatePrimary fails")
         }
 	fmt.Printf("CreatePrimary succeeded\n")
 
 	// CreateKey
-	 private_blob, public_blob, err := CreateKey(rw, uint32(ordTPM_RH_OWNER),
-		[]int{7}, "", "01020304", parms)
+	keyparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
+                uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
+                uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+                uint16(1024), uint32(0x00010001), empty}
+	private_blob, public_blob, err := CreateKey(rw, uint32(parent_handle), 
+		[]int{7}, "01020304", "01020304", keyparms)
         if err != nil {
                 t.Fatal("CreateKey fails")
         }
+	fmt.Printf("CreateKey succeeded\n")
         fmt.Printf("\nPrivate blob: %x\n", private_blob)
         fmt.Printf("\nPublic  blob: %x\n", public_blob)
 
@@ -146,6 +151,7 @@ func TestCombinedKeyTest(t *testing.T) {
         if err != nil {
                 t.Fatal("Load fails")
         }
+	fmt.Printf("Load succeeded\n")
         fmt.Printf("\nBlob from Load     : %x\n", blob)
 
 	// ReadPublic
@@ -153,6 +159,7 @@ func TestCombinedKeyTest(t *testing.T) {
         if err != nil {
                 t.Fatal("ReadPublic fails")
         }
+	fmt.Printf("ReadPublic succeeded\n")
         fmt.Printf("\nPublic         blob: %x\n", public)
         fmt.Printf("\nName           blob: %x\n", name)
         fmt.Printf("\nQualified name blob: %x\n", qualified_name)

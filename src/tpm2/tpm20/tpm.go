@@ -2011,14 +2011,21 @@ func MakeCredential(endorsement_blob []byte, hash_alg_id uint16, unmarshaled_cre
 		return nil, nil, nil, err
 	}
 	fmt.Printf("         credential: %x\n", unmarshaled_credential)
-	encIdentity := make([]byte, len(unmarshaled_credential))
-	copy(encIdentity, unmarshaled_credential)
+
+	// encIdentity is encrypted(size || byte-stream), size in big endian
+	encIdentity := make([]byte, 2 + len(unmarshaled_credential))
+	l := uint16(len(unmarshaled_credential))
+	t := byte(l >> 8)
+	encIdentity[0] = t
+	t = byte(l & 0xff)
+	encIdentity[1] = t
+	copy(encIdentity, unmarshaled_credential[2:])
 	cfb := cipher.NewCFBEncrypter(block, iv)
 	cfb.XORKeyStream(encIdentity, unmarshaled_credential)
 	fmt.Printf("encIdentity: %x\n", encIdentity)
 
 	cfbdec := cipher.NewCFBDecrypter(block, iv)
-	decrypted_credential := make([]byte, len(unmarshaled_credential))
+	decrypted_credential := make([]byte, 2 + len(unmarshaled_credential))
 	cfbdec.XORKeyStream(decrypted_credential, encIdentity)
 	fmt.Printf("decrypted credential: %x\n", decrypted_credential)
 

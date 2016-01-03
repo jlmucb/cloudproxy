@@ -81,18 +81,18 @@ func PrintKeyedHashParams(parms *KeyedHashParams) {
 }
 
 func PrintRsaParams(parms *RsaParams) {
-        fmt.Printf("enc_alg :%x\n", parms.enc_alg)
-        fmt.Printf("hash_alg :%x\n", parms.hash_alg)
-        fmt.Printf("attributes :%x\n", parms.attributes)
-        fmt.Printf("auth_policy :%x\n", parms.auth_policy)
-        fmt.Printf("symalg :%x\n", parms.symalg)
-        fmt.Printf("sym_sz :%x\n", parms.sym_sz)
-        fmt.Printf("mode :%x\n", parms.mode)
-        fmt.Printf("scheme :%x\n", parms.scheme)
-        fmt.Printf("scheme_hash :%x\n", parms.scheme_hash)
-        fmt.Printf("modulus size :%x\n", parms.mod_sz)
-        fmt.Printf("exp :%x\n", parms.exp)
-        fmt.Printf("modulus :%x\n", parms.modulus)
+        fmt.Printf("enc_alg     : %x\n", parms.enc_alg)
+        fmt.Printf("hash_alg    : %x\n", parms.hash_alg)
+        fmt.Printf("attributes  : %x\n", parms.attributes)
+        fmt.Printf("auth_policy : %x\n", parms.auth_policy)
+        fmt.Printf("symalg      : %x\n", parms.symalg)
+        fmt.Printf("sym_sz      : %x\n", parms.sym_sz)
+        fmt.Printf("mode        : %x\n", parms.mode)
+        fmt.Printf("scheme      : %x\n", parms.scheme)
+        fmt.Printf("scheme_hash : %x\n", parms.scheme_hash)
+        fmt.Printf("modulus size: %x\n", parms.mod_sz)
+        fmt.Printf("exp         : %x\n", parms.exp)
+        fmt.Printf("modulus     : %x\n", parms.modulus)
 }
 
 func SetShortPcrs(pcr_nums []int) ([]byte, error) {

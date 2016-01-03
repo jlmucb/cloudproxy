@@ -38,6 +38,7 @@ func TestGetRandom(t *testing.T) {
 		t.Fatal("GetRandom failed\n")
 	}
 	fmt.Printf("rand: %x\n", rand)
+	rw.Close()
 }
 
 // TestReadPcr tests a ReadPcr command.
@@ -54,28 +55,15 @@ func TestReadPcrs(t *testing.T) {
 	pcr := []byte{0x03, 0x80, 0x00, 0x00}
 	counter, pcr_out, alg, digest, err := ReadPcrs(rw, byte(4), pcr)
 	if err != nil {
-		t.Fatal("ConstructReadPcrs failed\n")
+		t.Fatal("ReadPcrs failed\n")
 	}
 	fmt.Printf("Counter: %x, pcr: %x, alg: %x, digest: %x\n", counter, pcr_out, alg, digest)
+	rw.Close()
 }
 
 // TestReadClock tests a ReadClock command.
 func TestReadClock(t *testing.T) {
-	fmt.Printf("TestReadClock excluded\n")
-	return
-
-}
-
-// TestGetCapabilities tests a GetCapabilities command.
-// Command: 8001000000160000017a000000018000000000000014
-func TestGetCapabilities(t *testing.T) {
-	fmt.Printf("TestGetCapabilities excluded\n")
-	return
-}
-
-// TestCreatePrimary tests a CreatePrimary command.
-func TestCreatePrimary(t *testing.T) {
-	fmt.Printf("TestCreatePrimary\n")
+	fmt.Printf("TestReadClock\n")
 
 	// Open TPM
 	rw, err := OpenTPM("/dev/tpm0")
@@ -83,110 +71,66 @@ func TestCreatePrimary(t *testing.T) {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return 
 	}
-
-	var empty []byte
-	parms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
-		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
-		uint16(1024), uint32(0x00010001), empty}
-	handle, blob, err := CreatePrimary(rw, uint32(ordTPM_RH_OWNER), []int{7},
-						 "", "01020304", parms)
+	current_time, current_clock, err := ReadClock(rw) 
 	if err != nil {
-		t.Fatal("ConstructCreatePrimary fails")
+		t.Fatal("ReadClock failed\n")
 	}
-        fmt.Printf("Handle : %x\nblob: %x", handle, blob)
-	_ = FlushContext(rw, handle)
+	fmt.Printf("current_time: %x , current_clock: %x\n", current_time, current_clock)
+	rw.Close()
+
 }
 
-// TestPolicyPassword tests a PolicyPassword command.
-func TestPolicyPassword(t *testing.T) {
-	fmt.Printf("TestPolicyPassword excluded\n")
-	return
-}
-
-// TestPolicyGetDigest tests a PolicyGetDigest command.
-func TestPolicyGetDigest(t *testing.T) {
-	fmt.Printf("TestPolicyGetDigest excluded\n")
-	return
-}
-
-// TestStartAuthSession tests a StartAuthSession command.
-func TestStartAuthSession(t *testing.T) {
-	fmt.Printf("TestStartAuthSession excluded\n")
-	return
-}
-
-// CreateKey
-func TestCreateKey(t *testing.T) {
-	fmt.Printf("TestCreateKey excluded\n")
-	return
-	fmt.Printf("TestCreateKey\n")
+// TestGetCapabilities tests a GetCapabilities command.
+// Command: 8001000000160000017a000000018000000000000014
+func TestGetCapabilities(t *testing.T) {
 
 	// Open TPM
 	rw, err := OpenTPM("/dev/tpm0")
 	if err != nil {
 		fmt.Printf("OpenTPM failed %s\n", err)
-		return
+		return 
 	}
-
-	var empty []byte
-	parms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
-		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
-		uint16(1024), uint32(0x00010001), empty}
-	private_blob, public_blob, err := CreateKey(rw, uint32(ordTPM_RH_OWNER), []int{7},
-						    "", "01020304", parms)
+	handles, err := GetCapabilities(rw, ordTPM_CAP_HANDLES, 1, 0x80000000)
 	if err != nil {
-		t.Fatal("ConstructCreatePrimary fails")
+		t.Fatal("GetCapabilities failed\n")
 	}
-	fmt.Printf("\nPrivate blob: %x\n", private_blob)
-	fmt.Printf("\nPublic  blob: %x\n", public_blob)
-}
-
-// TestUnseal tests a Unseal command.
-func TestUnseal(t *testing.T) {
-	fmt.Printf("TestUnseal excluded\n")
-	return
-}
-
-// TestQuote tests a Quote command.
-func TestQuote(t *testing.T) {
-	fmt.Printf("TestQuote excluded\n")
-	return
-}
-
-func TestActivateCredential(t *testing.T) {
-	fmt.Printf("TestActivateCredential excluded\n")
-	return
-}
-
-// TestEvictControl tests a EvictControl command.
-func TestEvictControl(t *testing.T) {
-	fmt.Printf("TestEvictControl excluded\n")
-	return
+	fmt.Printf("Open handles:\n")
+	for _, e := range handles {
+		fmt.Printf("    %x\n", e)
+	}
+	rw.Close()
 }
 
 // Combined Key Test
 func TestCombinedKeyTest(t *testing.T) {
-	fmt.Printf("TestCombinedKeyTest excluded\n")
-	return
+
 	// Open tpm
-	rw, err := OpenTPM("dev/tpm0")
+	rw, err := OpenTPM("/dev/tpm0")
         if err != nil {
-                return
+		fmt.Printf("OpenTPM failed %s\n", err)
+		return 
         }
 
+	// Flushall
+	err =  Flushall(rw)
+        if err != nil {
+		t.Fatal("Flushall failed\n")
+        }
+	fmt.Printf("Flushall succeeded\n")
+
+	// CreatePrimary
 	var empty []byte
 	parms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
                 uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
                 uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
                 uint16(1024), uint32(0x00010001), empty}
-	// CreatePrimary
 	parent_handle, public_blob, err := CreatePrimary(rw,
 		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "01020304", parms)
         if err != nil {
                 t.Fatal("CreatePrimary fails")
         }
+	fmt.Printf("CreatePrimary succeeded\n")
+
 	// CreateKey
 	 private_blob, public_blob, err := CreateKey(rw, uint32(ordTPM_RH_OWNER),
 		[]int{7}, "", "01020304", parms)
@@ -195,6 +139,7 @@ func TestCombinedKeyTest(t *testing.T) {
         }
         fmt.Printf("\nPrivate blob: %x\n", private_blob)
         fmt.Printf("\nPublic  blob: %x\n", public_blob)
+
 	// Load
 	key_handle, blob, err := Load(rw, parent_handle, "", "01020304",
              public_blob, private_blob)
@@ -202,6 +147,7 @@ func TestCombinedKeyTest(t *testing.T) {
                 t.Fatal("Load fails")
         }
         fmt.Printf("\nBlob from Load     : %x\n", blob)
+
 	// ReadPublic
 	public, name, qualified_name, err := ReadPublic(rw, key_handle)
         if err != nil {
@@ -210,9 +156,11 @@ func TestCombinedKeyTest(t *testing.T) {
         fmt.Printf("\nPublic         blob: %x\n", public)
         fmt.Printf("\nName           blob: %x\n", name)
         fmt.Printf("\nQualified name blob: %x\n", qualified_name)
+
 	// Flush
 	err = FlushContext(rw, key_handle)
 	err = FlushContext(rw, parent_handle)
+	rw.Close()
 }
 
 // Combined Seal test

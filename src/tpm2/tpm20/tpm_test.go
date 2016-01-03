@@ -15,9 +15,10 @@
 package tpm
 
 import (
+	"crypto/rand"
 	"fmt"
-	"os"
 	"github.com/golang/protobuf/proto"
+	"os"
 	"testing"
 )
 
@@ -193,7 +194,7 @@ func TestCombinedQuoteTest(t *testing.T) {
 	return
 	// CreatePrimary
 	// PCR_Event
-	// CreateKey
+	// CreateKey (signing key)
 	// Quote
 	// Verify quote
 	// Flush
@@ -215,15 +216,97 @@ func TestCombinedEvictTest(t *testing.T) {
 func TestCombinedEndorsementTest(t *testing.T) {
 	fmt.Printf("TestCombinedEndorsementTest excluded\n")
 	return
-	// Set pcr's
+
+	hash_alg_id := uint16(algTPM_ALG_SHA1)
+
+	// Open tpm
+	rw, err := OpenTPM("/dev/tpm0")
+        if err != nil {
+		fmt.Printf("OpenTPM failed %s\n", err)
+		return 
+        }
+
+	// Flushall
+	err =  Flushall(rw)
+        if err != nil {
+		t.Fatal("Flushall failed\n")
+        }
+	fmt.Printf("Flushall succeeded\n")
+
 	// CreatePrimary
-	// ReadPublic
+	var empty []byte
+	primaryparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
+                uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
+                uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+                uint16(1024), uint32(0x00010001), empty}
+	parent_handle, public_blob, err := CreatePrimary(rw,
+		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
+        if err != nil {
+                t.Fatal("CreatePrimary fails")
+        }
+	fmt.Printf("CreatePrimary succeeded\n")
+
 	// CreateKey
+	keyparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
+                uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
+                uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+                uint16(1024), uint32(0x00010001), empty}
+	private_blob, public_blob, err := CreateKey(rw, uint32(parent_handle), 
+		[]int{7}, "01020304", "01020304", keyparms)
+        if err != nil {
+                t.Fatal("CreateKey fails")
+        }
+	fmt.Printf("CreateKey succeeded\n")
+        fmt.Printf("\nPrivate blob: %x\n", private_blob)
+        fmt.Printf("\nPublic  blob: %x\n", public_blob)
+
 	// Load
-	// Construct credential
+	key_handle, blob, err := Load(rw, parent_handle, "", "01020304",
+             public_blob, private_blob)
+        if err != nil {
+                t.Fatal("Load fails")
+        }
+	fmt.Printf("Load succeeded\n")
+        fmt.Printf("\nBlob from Load     : %x\n", blob)
+
+	// ReadPublic
+	public, name, qualified_name, err := ReadPublic(rw, key_handle)
+        if err != nil {
+                t.Fatal("ReadPublic fails")
+        }
+	fmt.Printf("ReadPublic succeeded\n")
+        fmt.Printf("\nPublic         blob: %x\n", public)
+        fmt.Printf("\nName           blob: %x\n", name)
+        fmt.Printf("\nQualified name blob: %x\n", qualified_name)
+
+	// Set pcr's
+
 	// MakeCredential
+	var der_endorsement_cert []byte
+	var credential []byte
+	rand.Read(credential[0:16])
+	fmt.Printf("Credential: %x\n", credential)
+	encrypted_secret, encIdentity, integrityHmac, err := MakeCredential(
+		der_endorsement_cert, hash_alg_id, credential[0:16], name)
+        if err != nil {
+                t.Fatal("Can't MakeCredential\n")
+        }
+
+	// Get endorsement cert
+
 	// ActivateCredential
+	recovered_credential, err := ActivateCredential(rw, key_handle,
+		parent_handle, "01020304",
+                append(encIdentity, integrityHmac...), encrypted_secret)
+        if err != nil {
+                t.Fatal("Can't ActivateCredential\n")
+        }
+	fmt.Printf("Restored Credential: %x\n", recovered_credential)
+
 	// Flush
+	err = FlushContext(rw, key_handle)
+	err = FlushContext(rw, parent_handle)
+	rw.Close()
 }
 
 // Combined Context test

@@ -61,14 +61,16 @@ func TestReadPcrs(t *testing.T) {
 
 // TestReadClock tests a ReadClock command.
 func TestReadClock(t *testing.T) {
+	fmt.Printf("TestReadClock excluded\n")
+	return
+
 }
 
 // TestGetCapabilities tests a GetCapabilities command.
 // Command: 8001000000160000017a000000018000000000000014
 func TestGetCapabilities(t *testing.T) {
-}
-
-func TestLoadKey(t *testing.T) {
+	fmt.Printf("TestGetCapabilities excluded\n")
+	return
 }
 
 // TestCreatePrimary tests a CreatePrimary command.
@@ -98,18 +100,26 @@ func TestCreatePrimary(t *testing.T) {
 
 // TestPolicyPassword tests a PolicyPassword command.
 func TestPolicyPassword(t *testing.T) {
+	fmt.Printf("TestPolicyPassword excluded\n")
+	return
 }
 
 // TestPolicyGetDigest tests a PolicyGetDigest command.
 func TestPolicyGetDigest(t *testing.T) {
+	fmt.Printf("TestPolicyGetDigest excluded\n")
+	return
 }
 
 // TestStartAuthSession tests a StartAuthSession command.
 func TestStartAuthSession(t *testing.T) {
+	fmt.Printf("TestStartAuthSession excluded\n")
+	return
 }
 
 // CreateKey
 func TestCreateKey(t *testing.T) {
+	fmt.Printf("TestCreateKey excluded\n")
+	return
 	fmt.Printf("TestCreateKey\n")
 
 	// Open TPM
@@ -135,21 +145,31 @@ func TestCreateKey(t *testing.T) {
 
 // TestUnseal tests a Unseal command.
 func TestUnseal(t *testing.T) {
+	fmt.Printf("TestUnseal excluded\n")
+	return
 }
 
 // TestQuote tests a Quote command.
 func TestQuote(t *testing.T) {
+	fmt.Printf("TestQuote excluded\n")
+	return
 }
 
 func TestActivateCredential(t *testing.T) {
+	fmt.Printf("TestActivateCredential excluded\n")
+	return
 }
 
 // TestEvictControl tests a EvictControl command.
 func TestEvictControl(t *testing.T) {
+	fmt.Printf("TestEvictControl excluded\n")
+	return
 }
 
 // Combined Key Test
 func TestCombinedKeyTest(t *testing.T) {
+	fmt.Printf("TestCombinedKeyTest excluded\n")
+	return
 	// Open tpm
 	rw, err := OpenTPM("dev/tpm0")
         if err != nil {
@@ -197,6 +217,8 @@ func TestCombinedKeyTest(t *testing.T) {
 
 // Combined Seal test
 func TestCombinedSealTest(t *testing.T) {
+	fmt.Printf("TestCombinedSealTest excluded\n")
+	return
 	// Init pcr's
 	// CreatePrimary
 	// StartAuthSession
@@ -212,6 +234,8 @@ func TestCombinedSealTest(t *testing.T) {
 
 // Combined Quote test
 func TestCombinedQuoteTest(t *testing.T) {
+	fmt.Printf("TestCombinedQuoteTest excluded\n")
+	return
 	// CreatePrimary
 	// PCR_Event
 	// CreateKey
@@ -222,6 +246,8 @@ func TestCombinedQuoteTest(t *testing.T) {
 
 // Combined Evict test
 func TestCombinedEvictTest(t *testing.T) {
+	fmt.Printf("TestCombinedEvictTest excluded\n")
+	return
 	// CreatePrimary
 	// CreateKey
 	// Load
@@ -232,6 +258,8 @@ func TestCombinedEvictTest(t *testing.T) {
 
 // Combined Endorsementtest
 func TestCombinedEndorsementTest(t *testing.T) {
+	fmt.Printf("TestCombinedEndorsementTest excluded\n")
+	return
 	// Set pcr's
 	// CreatePrimary
 	// ReadPublic
@@ -245,6 +273,8 @@ func TestCombinedEndorsementTest(t *testing.T) {
 
 // Combined Context test
 func TestCombinedContextTest(t *testing.T) {
+	fmt.Printf("TestCombinedContextTest excluded\n")
+	return
 	// pcr selections
 	//CreatePrimary
 	// SaveContext
@@ -256,7 +286,8 @@ func TestCombinedContextTest(t *testing.T) {
 
 // Combined Quote Protocol
 func TestCombinedQuoteProtocolTest(t *testing.T) {
-	t.Fatal("Don't start yet")
+	fmt.Printf("TestCombinedQuoteProtocolTest excluded\n")
+	return
 
 	// Read der-encoded private policy key
 	private_key_file := "/Users/jlm/cryptobin/cloudproxy_key_file"

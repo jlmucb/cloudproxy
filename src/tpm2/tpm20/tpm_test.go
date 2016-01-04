@@ -443,8 +443,6 @@ func TestCombinedEndorsementTest(t *testing.T) {
         fmt.Printf("\nName           blob: %x\n", name)
         fmt.Printf("\nQualified name blob: %x\n", qualified_name)
 
-        // Set pcr's
-
         // Get endorsement cert
         endorsement_cert_file := "/Users/jlm/cryptobin/endorsement_cert"
         fileInfo, err := os.Stat(endorsement_cert_file)
@@ -588,7 +586,6 @@ func TestCombinedContextTest(t *testing.T) {
         // FlushContext
         // LoadContext
         // FlushContext
-
 }
 
 // Combined Quote Protocol
@@ -637,9 +634,9 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
         if err != nil {
                 t.Fatal("Can't open tpm")
         }
-        var empty []byte
 
         // Open endorsement and quote keys
+        var empty []byte
         ek_parms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
                 uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
                 uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
@@ -658,7 +655,8 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
         if err != nil {
                 t.Fatal("Create fails")
         }
-        quote_handle, quote_blob, err := Load(rw, endorsement_handle, "", "01020304", public_blob, private_blob)
+        quote_handle, quote_blob, err := Load(rw, endorsement_handle, "", "01020304",
+		public_blob, private_blob)
         if err != nil {
                 t.Fatal("Quote Load fails")
         }

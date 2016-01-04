@@ -604,7 +604,7 @@ func GetCapabilities(rw io.ReadWriter, cap uint32, count uint32, property uint32
 	return handles, nil
 }
 
-// PCR_Event
+// ConstructPcrEvent
 func ConstructPcrEvent(pcrnum int, eventData []byte) ([]byte, error) {
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdPcrEvent)
 	if err != nil {
@@ -620,6 +620,7 @@ func ConstructPcrEvent(pcrnum int, eventData []byte) ([]byte, error) {
 	return cmd, nil
 }
 
+// PcrEvent
 func PcrEvent(rw io.ReadWriter, pcrnum int, eventData []byte) (error) {
 	// Construct command
 	cmd, err:= ConstructPcrEvent(pcrnum, eventData)
@@ -1880,18 +1881,22 @@ func LoadContext(rw io.ReadWriter, save_area []byte) (Handle, error) {
 
 func UnmarshalCertifyInfo(in []byte) (*Attest, error) {
 	attest := new(Attest)
-	attest.magic_number = 0
-	// type uint16
-	// name []byte
-	// data []byte
-	// clock uint64
-	// resetCount uint32
-	// restartCount uint32
-	// safe byte
-	// firmwareVersion uint64
-	// pcrSelect []byte
-	// pcrDigest []byte
-	return nil, nil
+	var count uint32
+	template := []interface{}{&attest.magic_number, &attest.attest_type, &attest.name,
+			&attest.data, &attest.clock, &attest.resetCount,  &attest.restartCount,
+			&attest.safe, &attest.firmwareVersion, &count}
+	err := unpack(in, template)
+	if err != nil {
+		return nil, err
+	}
+	i := 4+2+2+2+8+4+4+1+8+4+len(attest.name)+len(attest.data)
+	attest.pcrSelect = in[i:i+4]
+	template = []interface{}{&attest.pcrDigest}
+	err = unpack(in[i+4:], template)
+	if err != nil {
+		return nil, err
+	}
+	return attest, nil
 }
 
 func ComputeQuotedValue(alg uint16, credInfo []byte) ([]byte, error) {

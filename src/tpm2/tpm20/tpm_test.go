@@ -303,7 +303,7 @@ func TestCombinedQuoteTest(t *testing.T) {
         if err != nil {
                 t.Fatal("Flushall failed\n")
         }
-        fmt.Printf("Flushall succeeded\n")
+        fmt.Printf("Flushall succeeded\n\n")
 
         // CreatePrimary
         var empty []byte
@@ -316,7 +316,7 @@ func TestCombinedQuoteTest(t *testing.T) {
         if err != nil {
                 t.Fatal("CreatePrimary fails")
         }
-        fmt.Printf("CreatePrimary succeeded\n")
+        fmt.Printf("CreatePrimary succeeded\n\n")
 
 	// Pcr event
 	eventData := []byte{1,2,3}
@@ -336,8 +336,8 @@ func TestCombinedQuoteTest(t *testing.T) {
                 t.Fatal("CreateKey fails")
         }
         fmt.Printf("CreateKey succeeded\n")
-        fmt.Printf("\nPrivate blob: %x\n", private_blob)
-        fmt.Printf("\nPublic  blob: %x\n", public_blob)
+        fmt.Printf("Private blob: %x\n", private_blob)
+        fmt.Printf("Public  blob: %x\n", public_blob)
 
         // Load
         quote_handle, blob, err := Load(rw, parent_handle, "", "01020304",
@@ -346,7 +346,7 @@ func TestCombinedQuoteTest(t *testing.T) {
                 t.Fatal("Load fails")
         }
         fmt.Printf("Load succeeded\n")
-        fmt.Printf("\nBlob from Load     : %x\n", blob)
+        fmt.Printf("Blob from Load     : %x\n\n", blob)
 
         // ReadPublic
         public, name, qualified_name, err := ReadPublic(rw, quote_handle)
@@ -354,9 +354,9 @@ func TestCombinedQuoteTest(t *testing.T) {
                 t.Fatal("ReadPublic fails")
         }
         fmt.Printf("ReadPublic succeeded\n")
-        fmt.Printf("\nPublic         blob: %x\n", public)
-        fmt.Printf("\nName           blob: %x\n", name)
-        fmt.Printf("\nQualified name blob: %x\n", qualified_name)
+        fmt.Printf("Public         blob: %x\n", public)
+        fmt.Printf("Name           blob: %x\n", name)
+        fmt.Printf("Qualified name blob: %x\n\n", qualified_name)
 
         // Quote
         var to_quote []byte
@@ -366,9 +366,13 @@ func TestCombinedQuoteTest(t *testing.T) {
                 t.Fatal("Quote fails")
         }
         fmt.Printf("attest             : %x\n", attest)
-        fmt.Printf("sig                : %x\n", sig)
+        fmt.Printf("sig                : %x\n\n", sig)
 
         // Verify quote
+	var quote_key_info CredentialInfoMessage // Fix
+        if !VerifyQuote(to_quote, quote_key_info, attest, sig) {
+                t.Fatal("VerifyQuote fails")
+        }
 
         // Flush
         err = FlushContext(rw, quote_handle)
@@ -395,7 +399,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
         if err != nil {
                 t.Fatal("Flushall failed\n")
         }
-        fmt.Printf("Flushall succeeded\n")
+        fmt.Printf("Flushall succeeded\n\n")
 
         // CreatePrimary
         var empty []byte
@@ -408,7 +412,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
         if err != nil {
                 t.Fatal("CreatePrimary fails")
         }
-        fmt.Printf("CreatePrimary succeeded\n")
+        fmt.Printf("CreatePrimary succeeded\n\n")
 
         // CreateKey
         keyparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
@@ -421,8 +425,8 @@ func TestCombinedEndorsementTest(t *testing.T) {
                 t.Fatal("CreateKey fails")
         }
         fmt.Printf("CreateKey succeeded\n")
-        fmt.Printf("\nPrivate blob: %x\n", private_blob)
-        fmt.Printf("\nPublic  blob: %x\n", public_blob)
+        fmt.Printf("Private blob: %x\n", private_blob)
+        fmt.Printf("Public  blob: %x\n\n", public_blob)
 
         // Load
         key_handle, blob, err := Load(rw, parent_handle, "", "01020304",
@@ -439,9 +443,9 @@ func TestCombinedEndorsementTest(t *testing.T) {
                 t.Fatal("ReadPublic fails")
         }
         fmt.Printf("ReadPublic succeeded\n")
-        fmt.Printf("\nPublic         blob: %x\n", public)
-        fmt.Printf("\nName           blob: %x\n", name)
-        fmt.Printf("\nQualified name blob: %x\n", qualified_name)
+        fmt.Printf("Public         blob: %x\n", public)
+        fmt.Printf("Name           blob: %x\n", name)
+        fmt.Printf("Qualified name blob: %x\n\n", qualified_name)
 
         // Get endorsement cert
         endorsement_cert_file := "/Users/jlm/cryptobin/endorsement_cert"
@@ -532,8 +536,8 @@ func TestCombinedEvictTest(t *testing.T) {
                 t.Fatal("CreateKey fails")
         }
         fmt.Printf("CreateKey succeeded\n")
-        fmt.Printf("\nPrivate blob: %x\n", private_blob)
-        fmt.Printf("\nPublic  blob: %x\n", public_blob)
+        fmt.Printf("Private blob: %x\n", private_blob)
+        fmt.Printf("Public  blob: %x\n\n", public_blob)
 
         // Load
         key_handle, blob, err := Load(rw, parent_handle, "", "01020304",
@@ -550,9 +554,9 @@ func TestCombinedEvictTest(t *testing.T) {
                 t.Fatal("ReadPublic fails")
         }
         fmt.Printf("ReadPublic succeeded\n")
-        fmt.Printf("\nPublic         blob: %x\n", public)
-        fmt.Printf("\nName           blob: %x\n", name)
-        fmt.Printf("\nQualified name blob: %x\n", qualified_name)
+        fmt.Printf("Public         blob: %x\n", public)
+        fmt.Printf("Name           blob: %x\n", name)
+        fmt.Printf("Qualified name blob: %x\n\n", qualified_name)
 
         perm_handle := uint32(0x810003e8)
 
@@ -628,6 +632,7 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
                 t.Fatal("Can't read private key file")
         }
         cert_file.Close()
+	fmt.Printf("Got endorsement cert: %x\n\n", der_endorsement_cert)
 
         // Open tpm
         rw, err := OpenTPM("/dev/tpm0")
@@ -655,12 +660,16 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
         if err != nil {
                 t.Fatal("Create fails")
         }
+	fmt.Printf("Create Key for quote succeeded\n")
+	fmt.Printf("Private: %x\n", private_blob)
+	fmt.Printf("Public: %x\n", public_blob)
+
         quote_handle, quote_blob, err := Load(rw, endorsement_handle, "", "01020304",
 		public_blob, private_blob)
         if err != nil {
                 t.Fatal("Quote Load fails")
         }
-        fmt.Printf("Quote blob size: %d\n", len(quote_blob))
+        fmt.Printf("Load succeeded, blob size: %d\n\n", len(quote_blob))
 
         der_program_private, request_message, err := ConstructClientRequest(rw, der_endorsement_cert,
                 quote_handle, "", "01020304", "Test-Program-1")

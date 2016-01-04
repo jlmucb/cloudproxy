@@ -80,6 +80,7 @@ message cert_parameters_message {
   optional string not_after                             = 4;
 }
 
+// this should be renamed to quote_key_info_message
 message credential_info_message {
   // public key parameters of "active-key"
   optional public_key_message public_key      = 1;
@@ -105,6 +106,7 @@ message program_cert_request_message {
   optional int32 active_sign_bit_size         = 5;
   optional string active_sign_hash_alg        = 6;
   optional bytes active_signature             = 7;
+  // cert should be renamed to quote_key_info
   optional credential_info_message cred       = 8;
   optional bytes quoted_blob                  = 9;
 }

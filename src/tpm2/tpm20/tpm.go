@@ -2132,6 +2132,7 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte, quote
         request.ProgramKey.ProgramName = &program_name
         request.ProgramKey.ProgramKeyType = &key_type
         request.ProgramKey.ProgramBitModulusSize = &modulus_bits
+
         // request.ProgramKey.ProgramKeyExponent = 0x010001
 	n := programPublicKey.(*rsa.PublicKey).N
         request.ProgramKey.ProgramKeyModulus = n.Bytes()
@@ -2141,6 +2142,8 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte, quote
 	hashed_program_key := sha256Hash.Sum(nil)
 	fmt.Printf("ProgramKey: %s\n", serialized_program_key)
 	fmt.Printf("Hashed req: %s\n", hashed_program_key)
+
+	// Quote key
 	key_blob, name, _, err := ReadPublic(rw, quote_handle)
 	if err != nil {
 		return nil, nil, err
@@ -2198,6 +2201,80 @@ func SizeHash(alg_id uint16) (int) {
 	}
 }
 
+func ValidPcr(pcrSelect []byte, digest []byte) (bool) {
+	return true
+}
+
+func VerifyDerCert(der_cert []byte, signing_key *rsa.PublicKey) (bool) {
+	// Verify Endorsement key
+	cert, err := x509.ParseCertificate(der_cert)
+	if err != nil {
+		return false
+	}
+	fmt.Printf("Cert: %x\n", cert)
+
+	/*
+  	if ((verify_ctx = X509_STORE_CTX_new()) == nullptr) {
+    		printf("Can't new X509_STORE_CTX\n");
+    		ret_val = 1;
+    		goto done;
+  	}
+  	cert_OK = X509_verify(endorsement_cert, X509_get_pubkey(policy_cert));
+  	if (cert_OK <= 0) {
+    		printf("Endorsement cert does not verivy\n");
+    		ret_val = 1;
+    		goto done;
+  	}
+	 */
+	return true
+}
+
+func VerifyQuote(to_quote []byte, quote_key_info CredentialInfoMessage,
+		 quoted_blob []byte, signature []byte) (bool) {
+	hash_alg_id := uint16(algTPM_ALG_SHA1)  // TODO: get this from quote key
+
+	// Decode attest
+	attest, err := UnmarshalCertifyInfo(quoted_blob)
+	if err != nil {
+		return false
+	}
+	fmt.Printf("Attest: %x\n", attest)
+
+	if attest.magic_number != ordTpmMagic {
+		return false
+	}
+
+	fmt.Printf("PCR: %x\n", attest.pcrDigest)
+
+	// PCR's valid?
+	if !ValidPcr(attest.pcrSelect, attest.pcrDigest) {
+		return false
+	}
+
+	// Decode quote structure - this is wrong
+	quote_hash, err := ComputeQuotedValue(hash_alg_id, quoted_blob)
+	if err != nil {
+		return false
+	}
+
+	// Get quote key from quote_key_info
+	var quote_key *rsa.PublicKey
+	// Check it's an rsa key
+
+	// Verify quote
+	decrypted_quote, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, quote_key,
+		signature, nil)
+	if err != nil {
+		return false
+	}
+	start_quote_blob := int(*quote_key_info.PublicKey.RsaKey.BitModulusSize) / 8 - SizeHash(hash_alg_id)
+	if bytes.Compare(decrypted_quote[start_quote_blob:], quote_hash) != 0 {
+		return false
+	}
+
+	return true
+}
+
 // Input: Der encoded policy private key
 func ConstructServerResponse(der_policy_key []byte,
 	     signing_instructions_message SigningInstructionsMessage,
@@ -2208,11 +2285,25 @@ func ConstructServerResponse(der_policy_key []byte,
 	}
 	fmt.Printf("Key: %x\n", policy_key)
 	der_endorsement_cert := request.EndorsementCertBlob
-	endorsement_cert, err := x509.ParseCertificate(der_endorsement_cert)
-	if err != nil {
-		return nil, err
+
+	// Verify Endorsement Cert
+	var public_policy_key *rsa.PublicKey
+	if !VerifyDerCert(request.EndorsementCertBlob, public_policy_key) {
+		return nil, errors.New("Bad endorsement cert")
 	}
-	fmt.Printf("Endorsement cert: %x\n", endorsement_cert)
+
+	// hash program key
+	serialized_program_key := request.ProgramKey.String();
+	sha256Hash := sha256.New()
+	sha256Hash.Write([]byte(serialized_program_key))
+	hashed_program_key := sha256Hash.Sum(nil)
+	fmt.Printf("ProgramKey: %s\n", serialized_program_key)
+	fmt.Printf("Hashed req: %s\n", hashed_program_key)
+
+	if !VerifyQuote(hashed_program_key, *request.Cred, request.QuotedBlob, request.ActiveSignature) {
+		return nil, errors.New("Can't verify quote")
+	}
+
 	// roots := x509.NewCertPool(
 	// opts := x509.VerifyOptions{
 	//	DNSName: "mail.google.com",
@@ -2247,55 +2338,19 @@ func ConstructServerResponse(der_policy_key []byte,
 		return nil, err
 	}
 
-	// Hash request: request.program_key().DebugString();
-	serialized_program_key := request.ProgramKey.String();
-	sha256Hash := sha256.New()
-	sha256Hash.Write([]byte(serialized_program_key))
-	hashed_program_key := sha256Hash.Sum(nil)
-	fmt.Printf("Program request hash: %x\n", hashed_program_key)
-
-	// Decode attest
-	attest, err := UnmarshalCertifyInfo(request.QuotedBlob)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Printf("Attest: %x\n", attest)
-
-	if attest.magic_number != ordTpmMagic {
-		return nil, errors.New("Bad magic constants") 
-	}
-
-	// attest.attest_type
-	// attest.data
-	// attest.pcrSelect 
-
-	hash_alg_id := uint16(algTPM_ALG_SHA1)  // TODO: get this from quote key
-
-	fmt.Printf("PCR: %x\n", attest.pcrDigest)
-	// PCR's valid?
-
-	// Verify quote
-	var quote_key *rsa.PublicKey
-
-	decrypted_quote, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, quote_key,
-		request.ActiveSignature, nil)
-	if err != nil {
-		return nil, err
-	}
-	start_quote_blob := int(*request.ProgramKey.ProgramBitModulusSize) / 8 - SizeHash(hash_alg_id)
-	if bytes.Compare(decrypted_quote[start_quote_blob:], hashed_program_key) != 0 {
-		return nil, errors.New("Bad Signature") 
-	}
+	// Fix
+	hash_alg_id := uint16(algTPM_ALG_SHA1)
 
 	// Generate credential
 	var credential []byte
 	rand.Read(credential[0:16])
 	fmt.Printf("Credential: %x\n", credential)
 	encrypted_secret, encIdentity, integrityHmac, err := MakeCredential(der_endorsement_cert,
-		hash_alg_id, credential[0:16], attest.name)
+		hash_alg_id, credential[0:16], request.Cred.Name)
 	if err != nil {
 		return nil, err
 	}
+
 	// Response
 	response := new(ProgramCertResponseMessage)
 	response.RequestId = request.RequestId

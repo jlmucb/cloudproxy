@@ -615,6 +615,24 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
         }
         key_file.Close()
 
+        // Read der-encoded policy cert
+        policy_cert_file_name := "/Users/jlm/cryptobin/policy_key_cert"
+        fileInfo, err = os.Stat(policy_cert_file_name)
+        if err != nil {
+                t.Fatal("Can't stat policy cert file")
+        }
+        der_policy_cert := make([]byte, fileInfo.Size())
+        policy_cert_file, err := os.Open(policy_cert_file_name)
+        if err != nil {
+                t.Fatal("Can't open policy cert file")
+        }
+        _, err = policy_cert_file.Read(der_policy_cert)
+        if err != nil {
+                policy_cert_file.Close()
+                t.Fatal("Can't read policy cert file")
+        }
+        policy_cert_file.Close()
+
         // Read endorsement cert file
         endorsement_cert_file := "/Users/jlm/cryptobin/endorsement_cert"
         fileInfo, err = os.Stat(endorsement_cert_file)
@@ -680,8 +698,8 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
         fmt.Printf("Request: %s\n", proto.MarshalTextString(request_message))
 
         signing_instructions_message := new(SigningInstructionsMessage)
-        response_message, err := ConstructServerResponse(der_policy_key,
-                *signing_instructions_message, *request_message)
+        response_message, err := ConstructServerResponse(der_policy_cert,
+		der_policy_key, *signing_instructions_message, *request_message)
         if err != nil {
                 t.Fatal("ConstructServerResponse fails")
         }

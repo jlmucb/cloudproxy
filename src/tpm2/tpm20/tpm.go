@@ -2121,7 +2121,7 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte, quote
 	}
 	der_program_key := x509.MarshalPKCS1PrivateKey(programPrivateKey)
 	programPublicKey := programPrivateKey.Public()
-	
+
 	// Generate Request
 	request := new(ProgramCertRequestMessage)
 	request.EndorsementCertBlob = der_endorsement_cert
@@ -2204,27 +2204,31 @@ func ValidPcr(pcrSelect []byte, digest []byte) (bool) {
 	return true
 }
 
-func VerifyDerCert(der_cert []byte, signing_key *rsa.PublicKey) (bool) {
-	// Verify Endorsement key
+func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (bool) {
+	var opts x509.VerifyOptions
+        roots := x509.NewCertPool()
+
+	// Verify key
+	policy_cert, err := x509.ParseCertificate(der_signing_cert)
+	if err != nil {
+		return false
+	}
+	fmt.Printf("Root cert: %x\n", der_signing_cert)
+
+
+	// Verify key
 	cert, err := x509.ParseCertificate(der_cert)
 	if err != nil {
 		return false
 	}
 	fmt.Printf("Cert: %x\n", cert)
 
-	/*
-  	if ((verify_ctx = X509_STORE_CTX_new()) == nullptr) {
-    		printf("Can't new X509_STORE_CTX\n");
-    		ret_val = 1;
-    		goto done;
-  	}
-  	cert_OK = X509_verify(endorsement_cert, X509_get_pubkey(policy_cert));
-  	if (cert_OK <= 0) {
-    		printf("Endorsement cert does not verivy\n");
-    		ret_val = 1;
-    		goto done;
-  	}
-	 */
+	roots.AddCert(policy_cert)
+        opts.Roots = roots
+        chains, err := cert.Verify(opts)
+        if chains == nil || err != nil {
+                return false
+        }
 	return true
 }
 
@@ -2275,19 +2279,18 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
 }
 
 // Input: Der encoded policy private key
-func ConstructServerResponse(der_policy_key []byte,
+func ConstructServerResponse(der_policy_cert []byte, der_policy_private_key []byte,
 	     signing_instructions_message SigningInstructionsMessage,
 	     request ProgramCertRequestMessage) (*ProgramCertResponseMessage, error) {
-	policy_key, err := x509.ParsePKCS1PrivateKey(der_policy_key)
+	policy_private_key, err := x509.ParsePKCS1PrivateKey(der_policy_private_key)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("Key: %x\n", policy_key)
+	fmt.Printf("Key: %x\n", policy_private_key)
 	der_endorsement_cert := request.EndorsementCertBlob
 
 	// Verify Endorsement Cert
-	var public_policy_key *rsa.PublicKey
-	if !VerifyDerCert(request.EndorsementCertBlob, public_policy_key) {
+	if !VerifyDerCert(der_policy_cert, request.EndorsementCertBlob) {
 		return nil, errors.New("Bad endorsement cert")
 	}
 
@@ -2334,7 +2337,7 @@ func ConstructServerResponse(der_policy_key []byte,
 	pub.N.SetBytes(request.ProgramKey.ProgramKeyModulus)
 	// set exponent
 	der_program_cert, err := x509.CreateCertificate(rand.Reader,
-		&template, &template, pub, policy_key)
+		&template, &template, pub, policy_private_key)
 	if err != nil {
 		return nil, err
 	}

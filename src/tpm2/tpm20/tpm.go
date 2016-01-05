@@ -67,6 +67,20 @@ func OpenTPM(path string) (io.ReadWriteCloser, error) {
 	return rwc, nil
 }
 
+func PrintAttestData(parms *Attest) {
+        fmt.Printf("magic_number   : %x\n", parms.magic_number)
+	fmt.Printf("attest_type   : %x\n", parms.attest_type)
+        fmt.Printf("name : %x\n", parms.name)
+        fmt.Printf("data     : %x\n", parms.data)
+        fmt.Printf("clock     : %x\n", parms.clock)
+        fmt.Printf("resetCount       : %x\n", parms.resetCount)
+        fmt.Printf("restartCount       : %x\n", parms.restartCount)
+        fmt.Printf("safe     : %x\n", parms.safe)
+        fmt.Printf("firmwareVersion     : %x\n", parms.firmwareVersion)
+        fmt.Printf("pcrSelect : %x\n", parms.pcrSelect)
+        fmt.Printf("pcrDigest : %x\n", parms.pcrDigest)
+}
+
 func PrintKeyedHashParams(parms *KeyedHashParams) {
         fmt.Printf("type_alg   : %x\n", parms.type_alg)
 	fmt.Printf("hash_alg   : %x\n", parms.hash_alg)
@@ -1040,6 +1054,7 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string, ownerAuth st
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return Handle(0), nil, err
 	}
+	fmt.Printf("Load command: %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1124,6 +1139,7 @@ func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
 	if err != nil {
 		return errors.New("Write Tpm fails") 
 	}
+	fmt.Printf("Policy password command: %x\n", cmd)
 
 	// Get response
 	var resp []byte
@@ -1572,7 +1588,8 @@ func DecodeQuote(in []byte) ([]byte, []byte, error) {
 func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owner_password string,
 		to_quote []byte, pcr_nums []int, sig_alg uint16) ([]byte, []byte, error) {
 	// Construct command
-	cmd, err:= ConstructQuote(signing_handle, parent_password, owner_password, to_quote, pcr_nums, sig_alg)
+	cmd, err:= ConstructQuote(signing_handle, parent_password, owner_password,
+				  to_quote, pcr_nums, sig_alg)
 	if err != nil {
 		return nil, nil, errors.New("ConstructQuote fails") 
 	}
@@ -1582,6 +1599,7 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 	if err != nil {
 		return nil, nil, errors.New("Write Tpm fails") 
 	}
+	fmt.Printf("Quote cmd : %x\n", cmd)
 
 	// Get response
 	var resp []byte
@@ -1666,6 +1684,7 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 	if err != nil {
 		return nil, errors.New("Write Tpm fails") 
 	}
+	fmt.Printf("ActivteCredential cmd : %x\n", cmd)
 
 	// Get response
 	var resp []byte
@@ -1727,6 +1746,7 @@ func EvictControl(rw io.ReadWriter, owner Handle, tmp_handle Handle, parent_pass
 	if err != nil {
 		return errors.New("ConstructEvictControl fails") 
 	}
+	fmt.Printf("Evict Control cmd : %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1783,6 +1803,7 @@ func SaveContext(rw io.ReadWriter, handle Handle) ([]byte, error) {
 	if err != nil {
 		return nil, errors.New("ConstructSaveContext fails") 
 	}
+	fmt.Printf("Save Context cmd : %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1847,6 +1868,7 @@ func LoadContext(rw io.ReadWriter, save_area []byte) (Handle, error) {
 	if err != nil {
 		return Handle(0), errors.New("ConstructLoadContext fails") 
 	}
+	fmt.Printf("Load Context cmd : %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -2115,7 +2137,8 @@ func MakeCredential(endorsement_blob []byte, hash_alg_id uint16, unmarshaled_cre
 // Input: Der encoded endorsement key and handles
 // Returns der encoded program private key, CertRequestMessage
 func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte, quote_handle Handle,
-		parent_pw string, owner_pw string, program_name string) ([]byte, *ProgramCertRequestMessage, error) {
+		parent_pw string, owner_pw string, program_name string) ([]byte,
+			*ProgramCertRequestMessage, error) {
 	// Generate Program Key.
 	programPrivateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -2165,10 +2188,11 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte, quote
 	// Quote key info.
         request.QuoteKeyInfo.Name = name
         // request.QuoteKeyInfo.Properties
-        // request.QuoteKeyInfo.PublicKeyMessage.KeyName
-        // request.QuoteKeyInfo.PublicKeyMessage.KeyType
-        // request.QuoteKeyInfo.PublicKeyMessage.BitModulusSize
-        // request.QuoteKeyInfo.PublicKeyMessage.Modulus
+	tmp_name := "Quote-Key"
+        request.QuoteKeyInfo.PublicKey.RsaKey.KeyName = &tmp_name
+        // request.QuoteKeyInfo.PublicKey.KeyType
+        // request.QuoteKeyInfo.PublicKey.BitModulusSize
+        // request.QuoteKeyInfo.PublicKey.Modulus
         // request.QuoteSignAlg
         // request.QuoteSignHashAlg
 
@@ -2203,6 +2227,7 @@ func SizeHash(alg_id uint16) (int) {
 }
 
 func ValidPcr(pcrSelect []byte, digest []byte) (bool) {
+	fmt.Printf("ValidPcr, %x, %x\n", pcrSelect, digest)
 	return true
 }
 
@@ -2213,14 +2238,15 @@ func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (bool) {
 	// Verify key
 	policy_cert, err := x509.ParseCertificate(der_signing_cert)
 	if err != nil {
+		fmt.Printf("Signing ParseCertificate fails")
 		return false
 	}
 	fmt.Printf("Root cert: %x\n", der_signing_cert)
 
-
 	// Verify key
 	cert, err := x509.ParseCertificate(der_cert)
 	if err != nil {
+		fmt.Printf("Cert ParseCertificate fails")
 		return false
 	}
 	fmt.Printf("Cert: %x\n", cert)
@@ -2229,27 +2255,27 @@ func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (bool) {
         opts.Roots = roots
         chains, err := cert.Verify(opts)
         if chains == nil || err != nil {
+		fmt.Printf("cert.Verify fails")
                 return false
         }
 	return true
 }
 
-func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
+func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage, hash_alg_id uint16,
 		 quoted_blob []byte, signature []byte) (bool) {
-	hash_alg_id := uint16(algTPM_ALG_SHA1)  // TODO: get this from quote key
 
 	// Decode attest
 	attest, err := UnmarshalCertifyInfo(quoted_blob)
 	if err != nil {
+		fmt.Printf("UnmarshalCertifyInfo fails\n")
 		return false
 	}
-	fmt.Printf("Attest: %x\n", attest)
+	PrintAttestData(attest)
 
 	if attest.magic_number != ordTpmMagic {
+		fmt.Printf("Bad magic number\n")
 		return false
 	}
-
-	fmt.Printf("PCR: %x\n", attest.pcrDigest)
 
 	// PCR's valid?
 	if !ValidPcr(attest.pcrSelect, attest.pcrDigest) {
@@ -2259,21 +2285,32 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
 	// Decode quote structure - this is wrong
 	quote_hash, err := ComputeQuotedValue(hash_alg_id, quoted_blob)
 	if err != nil {
+		fmt.Printf("ComputeQuotedValue fails\n")
 		return false
 	}
 
 	// Get quote key from quote_key_info
 	var quote_key *rsa.PublicKey
-	// Check it's an rsa key
+	if *quote_key_info.PublicKey.KeyType != "rsa" {
+		fmt.Printf("Bad key type %s\n", quote_key_info.PublicKey.KeyType)
+		return false;
+	}
+	/*
+  	quote_key.N = bin_to_BN(request.QuoteKeyInfo.PublicKey.RsaKey.Modulus().Size,
+      	(byte*)request.quote_key_info.PublicKey.RsaKey.Modulus.Data);
+  	quote_key.exp = bin_to_BN(request.QuoteKeyInfo.PublicKey.RsaKey.Exponent.Size,
+				  request.QuoteKeyInfo.PublicKey.RsaKey.Exponent.Data)
+	 */
 
 	// Verify quote
-	decrypted_quote, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, quote_key,
-		signature, nil)
+	decrypted_quote, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, quote_key, signature, nil)
 	if err != nil {
+		fmt.Printf("rsa.EncryptOAEP fails")
 		return false
 	}
 	start_quote_blob := int(*quote_key_info.PublicKey.RsaKey.BitModulusSize) / 8 - SizeHash(hash_alg_id)
 	if bytes.Compare(decrypted_quote[start_quote_blob:], quote_hash) != 0 {
+		fmt.Printf("Compare fails.  %x %x\n", quote_hash, decrypted_quote[start_quote_blob:])
 		return false
 	}
 
@@ -2304,7 +2341,13 @@ func ConstructServerResponse(der_policy_cert []byte, der_policy_private_key []by
 	fmt.Printf("ProgramKey: %s\n", serialized_program_key)
 	fmt.Printf("Hashed req: %s\n", hashed_program_key)
 
-	if !VerifyQuote(hashed_program_key, *request.QuoteKeyInfo,
+	var hash_alg_id uint16
+	if *request.QuoteSignHashAlg == "sha256" {
+		hash_alg_id = uint16(algTPM_ALG_SHA256)
+	} else {
+		hash_alg_id = uint16(algTPM_ALG_SHA1)
+	}
+	if !VerifyQuote(hashed_program_key, *request.QuoteKeyInfo, hash_alg_id,
 			request.QuotedBlob, request.QuoteSignature) {
 		return nil, errors.New("Can't verify quote")
 	}
@@ -2314,7 +2357,6 @@ func ConstructServerResponse(der_policy_cert []byte, der_policy_private_key []by
 	//	DNSName: "mail.google.com",
 	//	Roots:   roots,
 	// }
-	// endorsement_cert.Verify(opts VerifyOptions) (chains [][]*Certificate, err error)
 
 	// Create Program Key Certificate	
 	var notBefore time.Time
@@ -2344,15 +2386,6 @@ func ConstructServerResponse(der_policy_cert []byte, der_policy_private_key []by
 		return nil, err
 	}
 
-	// Fix
-	// request.QuoteKeyInfo.QuoteSignAlg
-	// request.QuoteKeyInfo.QuoteSignHashAlg
-	var hash_alg_id uint16
-	if *request.QuoteSignHashAlg == "sha256" {
-		hash_alg_id = uint16(algTPM_ALG_SHA256)
-	} else {
-		hash_alg_id = uint16(algTPM_ALG_SHA1)
-	}
 
 	// Generate credential
 	var credential []byte

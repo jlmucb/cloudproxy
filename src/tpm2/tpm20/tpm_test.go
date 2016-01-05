@@ -346,21 +346,12 @@ func TestCombinedQuoteTest(t *testing.T) {
         if err != nil {
                 t.Fatal("Load fails")
         }
-        fmt.Printf("Load succeeded\n")
+        fmt.Printf("Load succeeded, handle: %x\n", uint32(quote_handle))
         fmt.Printf("Blob from Load     : %x\n\n", blob)
 
-        // ReadPublic
-        public, name, qualified_name, err := ReadPublic(rw, quote_handle)
-        if err != nil {
-                t.Fatal("ReadPublic fails")
-        }
-        fmt.Printf("ReadPublic succeeded\n")
-        fmt.Printf("Public         blob: %x\n", public)
-        fmt.Printf("Name           blob: %x\n", name)
-        fmt.Printf("Qualified name blob: %x\n\n", qualified_name)
-
         // Quote
-        var to_quote []byte
+        to_quote := []byte{0x0f,0x0e,0x0d,0x0c,0x0b,0x0a,0x09,0x08,
+			   0x07,0x06,0x05,0x04,0x03,0x02,0x01,0x00}
         attest, sig, err := Quote(rw, quote_handle, "01020304", "01020304",
                 to_quote, []int{7}, uint16(algTPM_ALG_RSA))
         if err != nil {
@@ -371,7 +362,7 @@ func TestCombinedQuoteTest(t *testing.T) {
 
         // Verify quote
 	var quote_key_info QuoteKeyInfoMessage // Fix
-        if !VerifyQuote(to_quote, quote_key_info, attest, sig) {
+        if !VerifyQuote(to_quote, quote_key_info, uint16(algTPM_ALG_SHA1), attest, sig) {
                 t.Fatal("VerifyQuote fails")
         }
 

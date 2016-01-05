@@ -394,9 +394,9 @@ func TestConstructStartAuthSession(t *testing.T) {
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 	var nonceCaller []byte
 	var secret []byte
-	var sym []byte
-	cmd_bytes, err := ConstructStartAuthSession(Handle(0x40000007), Handle(0x40000007), nonceCaller, secret,
-                1, sym, 4)
+	sym := uint16(algTPM_ALG_NULL)
+	cmd_bytes, err := ConstructStartAuthSession(Handle(0x40000007),
+		Handle(0x40000007), nonceCaller, secret, 1, sym, 4)
 	// TODO
 	fmt.Printf("Command: %x\n", cmd_bytes)
 	if !bytes.Equal(cmd_bytes, test_cmd_bytes) {

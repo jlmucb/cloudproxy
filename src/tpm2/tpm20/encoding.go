@@ -97,11 +97,10 @@ func packWithBytes(ch commandHeader, args []byte) ([]byte) {
 	if bodySize < 0 {
 		return nil
 	}
-
 	ch.Size = uint32(hdrSize + bodySize)
-
-	out,_ := pack([]interface{}{ch})
-	return append(out, args...)
+	cmdHdr, _ := pack([]interface{}{ch})
+	cmd := append(cmdHdr, args...)
+	return cmd
 }
 
 // packWithHeader takes a header and a sequence of elements that are either of
@@ -114,9 +113,7 @@ func packWithHeader(ch commandHeader, cmd []interface{}) ([]byte, error) {
 	if bodySize < 0 {
 		return nil, errors.New("couldn't compute packed size for message body")
 	}
-
 	ch.Size = uint32(hdrSize + bodySize)
-
 	in := []interface{}{ch}
 	in = append(in, cmd...)
 	return pack(in)

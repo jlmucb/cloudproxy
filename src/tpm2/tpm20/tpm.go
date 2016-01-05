@@ -1261,29 +1261,23 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 }
 
 // ConstructStartAuthSession constructs a StartAuthSession command.
-func ConstructStartAuthSession(tpm_key Handle, bind_key Handle, nonceCaller []byte, secret []byte,
-		se byte, sym []byte, hash_alg uint16) ([]byte, error) {
-	// tpm_key
-	// bind (TPM_RH_NULL)
-	// noncecaller
-	// encrypted secret (salt)
-	// TPM_SE
-	// TPM_SYM_DEF
-	// Alg hash
-	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdStartAuthSession)
- 	if err != nil {
+func ConstructStartAuthSession(tpm_key Handle, bind_key Handle,
+		nonceCaller []byte, secret []byte,
+		se byte, sym uint16, hash_alg uint16) ([]byte, error) {
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdStartAuthSession)
+	if err != nil {
 		return nil, errors.New("ConstructStartAuthSession failed")
 	}
- 	b1 := SetHandle(tpm_key)
- 	b2 := SetHandle(bind_key)
-	b3 ,_ := pack([]interface{}{&nonceCaller})
+	b1 := SetHandle(tpm_key)
+	b2 := SetHandle(bind_key)
+	b3 ,_ := pack([]interface{}{&nonceCaller, &secret})
 	// secret and se
- 	b4 := []byte{0,0,0,0,0,0,0,0,se}
+	b4 := []byte{se}
 	b5 ,_ := pack([]interface{}{&sym, &hash_alg})
- 	arg_bytes := append(b1, b2...)
- 	arg_bytes = append(arg_bytes, b3...)
- 	arg_bytes = append(arg_bytes, b4...)
- 	arg_bytes = append(arg_bytes, b5...)
+	arg_bytes := append(b1, b2...)
+	arg_bytes = append(arg_bytes, b3...)
+	arg_bytes = append(arg_bytes, b4...)
+	arg_bytes = append(arg_bytes, b5...)
 	cmd_bytes := packWithBytes(cmdHdr, arg_bytes)
 	return cmd_bytes, nil
 }
@@ -1302,8 +1296,9 @@ func DecodeStartAuthSession(in []byte) (Handle, []byte, error) {
 }
 
 // StartAuthSession
-func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle, nonceCaller []byte, secret []byte,
-                se byte, sym []byte, hash_alg uint16) (Handle, []byte, error) {
+func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle,
+		nonceCaller []byte, secret []byte,
+                se byte, sym uint16, hash_alg uint16) (Handle, []byte, error) {
 
 	// Construct command
 	cmd, err:= ConstructStartAuthSession(tpm_key, bind_key, nonceCaller, secret,
@@ -1311,6 +1306,7 @@ func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle, nonceCa
 	if err != nil {
 		return Handle(0), nil, errors.New("ConstructStartAuthSession fails")
 	}
+	fmt.Printf("StartAuthSession cmd (%d): %x\n", len(cmd), cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1325,6 +1321,7 @@ func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle, nonceCa
         if err != nil {
                 return Handle(0), nil, errors.New("Read Tpm fails")
         }
+	fmt.Printf("StartAuthSession resp: %x\n\n",  resp[0:read])
 
 	// Decode Response
         if read < 10 {

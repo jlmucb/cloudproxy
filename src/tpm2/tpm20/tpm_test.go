@@ -184,8 +184,6 @@ func TestCombinedKeyTest(t *testing.T) {
 
 // Combined Seal test
 func TestCombinedSealTest(t *testing.T) {
-        fmt.Printf("TestCombinedSealTest excluded\n")
-        return
 
         // Open tpm
         rw, err := OpenTPM("/dev/tpm0")
@@ -214,15 +212,17 @@ func TestCombinedSealTest(t *testing.T) {
         }
         fmt.Printf("CreatePrimary succeeded\n")
 
-        var nonceCaller []byte
+        nonceCaller := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
         var secret []byte
-        var sym []byte
+        sym := uint16(algTPM_ALG_NULL)
         var to_seal []byte
         hash_alg := uint16(algTPM_ALG_SHA1)
-        session_handle, policy_digest, err := StartAuthSession(rw, Handle(ordTPM_RH_NULL),
+        session_handle, policy_digest, err := StartAuthSession(rw,
+		Handle(ordTPM_RH_NULL),
                 Handle(ordTPM_RH_NULL), nonceCaller, secret,
                 uint8(ordTPM_SE_POLICY), sym, hash_alg)
         if err != nil {
+		FlushContext(rw, parent_handle)
                 t.Fatal("StartAuthSession fails")
         }
         fmt.Printf("policy digest 1: %x\n", policy_digest)
@@ -230,15 +230,21 @@ func TestCombinedSealTest(t *testing.T) {
         // policy for AuthSession
         policy_digest, err = PolicyGetDigest(rw, session_handle)
         if err != nil {
+		FlushContext(rw, parent_handle)
+		FlushContext(rw, session_handle)
                 t.Fatal("PolicyGetDigest 1 fails")
         }
         fmt.Printf("policy digest 2: %x\n", policy_digest)
         err = PolicyPcr(rw, session_handle, policy_digest, []int{7})
         if err != nil {
+		FlushContext(rw, parent_handle)
+		FlushContext(rw, session_handle)
                 t.Fatal("PolicyPcr fails")
         }
         policy_digest, err = PolicyGetDigest(rw, session_handle)
         if err != nil {
+		FlushContext(rw, parent_handle)
+		FlushContext(rw, session_handle)
                 t.Fatal("PolicyGetDigest 2 fails")
         }
         fmt.Printf("policy digest 3: %x\n", policy_digest)
@@ -256,6 +262,9 @@ func TestCombinedSealTest(t *testing.T) {
         item_handle, blob, err := Load(rw, parent_handle, "", "01020304",
              public_blob, private_blob)
         if err != nil {
+		FlushContext(rw, session_handle)
+		FlushContext(rw, item_handle)
+		FlushContext(rw, parent_handle)
                 t.Fatal("Load fails")
         }
         fmt.Printf("Load succeeded\n")
@@ -275,14 +284,17 @@ func TestCombinedSealTest(t *testing.T) {
         unsealed, nonce, err := Unseal(rw, item_handle, "01020304",
                  session_handle, policy_digest)
         if err != nil {
+		FlushContext(rw, item_handle)
+		FlushContext(rw, parent_handle)
                 t.Fatal("Unseal fails")
         }
         fmt.Printf("unsealed           : %x\n", unsealed)
         fmt.Printf("nonce              : %x\n", nonce)
 
         // Flush
-        err = FlushContext(rw, item_handle)
-        err = FlushContext(rw, parent_handle)
+        FlushContext(rw, item_handle)
+        FlushContext(rw, parent_handle)
+        FlushContext(rw, session_handle)
         rw.Close()
 }
 

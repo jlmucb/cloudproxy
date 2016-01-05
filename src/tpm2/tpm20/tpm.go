@@ -325,7 +325,7 @@ func GetRandom(rw io.ReadWriteCloser, size uint32) ([]byte, error) {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, err
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
+	fmt.Printf("GetRandom Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
 	rand, err :=  DecodeGetRandom(resp[10:read])
@@ -377,7 +377,7 @@ func FlushContext(rw io.ReadWriter, handle Handle) (error) {
 	if err != nil {
                 return errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	fmt.Printf("FlushContext Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return errors.New("FlushContext unsuccessful")
 	}
@@ -445,7 +445,7 @@ func ReadPcrs(rw io.ReadWriter, num_byte byte, pcrSelect []byte) (uint32, []byte
 	if err != nil {
 		return 0, nil, 0, nil, errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
+	fmt.Printf("ReadPcrs Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return 0, nil, 0, nil, errors.New("ReadPcr command failed")
 	}
@@ -511,7 +511,7 @@ func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return 0, 0, err
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
+	fmt.Printf("ReadClock Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
 	current_time, current_clock, err :=  DecodeReadClock(resp[10:read])
@@ -594,7 +594,7 @@ func GetCapabilities(rw io.ReadWriter, cap uint32, count uint32, property uint32
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, err
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
+	fmt.Printf("GetCapabilities Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
 	_, handles, err :=  DecodeGetCapabilities(resp[10:read])
@@ -652,7 +652,7 @@ func PcrEvent(rw io.ReadWriter, pcrnum int, eventData []byte) (error) {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return err
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
+	fmt.Printf("PcrEvent Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 		return errors.New("Command failure")
 	}
@@ -816,7 +816,7 @@ func CreatePrimary(rw io.ReadWriter, owner uint32, pcr_nums []int,
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return Handle(0), nil, err
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
+	fmt.Printf("CreatePrimary Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
 	handle, public_blob, err :=  DecodeCreatePrimary(resp[10:read])
@@ -887,7 +887,7 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, nil, nil, err
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
+	fmt.Printf("ReadPublic Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 		return nil, nil, nil, err
 	}
@@ -983,7 +983,7 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, nil, err
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
+	fmt.Printf("CreateKey Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 		return nil, nil, errors.New("Error from command")
 	}
@@ -1064,7 +1064,7 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string, ownerAuth st
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return Handle(0), nil, err
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
+	fmt.Printf("Load Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 		return Handle(0), nil, errors.New("Error from command")
 	}
@@ -1082,6 +1082,7 @@ func ConstructPolicyPcr(handle Handle, expected_digest []byte, pcr_nums []int) (
 	if err != nil {
 		return nil, errors.New("ConstructPcr failed")
 	}
+	fmt.Printf("expected digest : %x\n", expected_digest)
 	u_handle := uint32(handle)
 	template :=  []interface{}{&u_handle, &expected_digest}
 	b1, err := pack(template)
@@ -1141,7 +1142,7 @@ func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return err
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
+	fmt.Printf("PolicyPassword Tag: %x, size: %x, error code: %x\n", tag, size, status) 
 	if status != errSuccess {
 		return errors.New("Comand failure")
 	}
@@ -1156,6 +1157,7 @@ func PolicyPcr(rw io.ReadWriter, handle Handle, expected_digest []byte, pcr_nums
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return err
 	}
+	fmt.Printf("Policy pcr : %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1180,7 +1182,7 @@ func PolicyPcr(rw io.ReadWriter, handle Handle, expected_digest []byte, pcr_nums
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return err
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
+	fmt.Printf("Policy Pcr Tag: %x, size: %x, error code: %x\n", tag, size, status) 
 	if status != errSuccess {
 		return errors.New("Comand failure")
 	}
@@ -1225,6 +1227,7 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 		fmt.Printf("ConstructPolicyGetDigest failed %s\n", err)
 		return nil, err
 	}
+	fmt.Printf("PolicyGetDigest : %x\n",  cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1249,7 +1252,7 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, err
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
+	fmt.Printf("PolicyGetDigest Tag: %x, size: %x, error code: %x\n", tag, size, status) 
 	if status != errSuccess {
 		return nil, errors.New("Comand failure")
 	}
@@ -1331,7 +1334,7 @@ func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle,
 	if err != nil {
                 return Handle(0), nil, errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	fmt.Printf("StartAuth Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return Handle(0), nil, errors.New("StartAuthSession unsuccessful")
 	}
@@ -1404,6 +1407,7 @@ func CreateSealed(rw io.ReadWriter, parent Handle, policy_digest []byte,
 	if err != nil {
 		return nil, nil, errors.New("ConstructCreateSealed fails") 
 	}
+	fmt.Printf("CreateSealed cmd : %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1427,7 +1431,7 @@ func CreateSealed(rw io.ReadWriter, parent Handle, policy_digest []byte,
 	if err != nil {
                 return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	fmt.Printf("CreateSealed Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return nil, nil, errors.New("CreateSealed unsuccessful")
 	}
@@ -1479,6 +1483,7 @@ func Unseal(rw io.ReadWriter, item_handle Handle, password string, session_handl
 	if err != nil {
 		return nil, nil, errors.New("ConstructUnseal fails") 
 	}
+	fmt.Printf("Unseal cmd : %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1502,7 +1507,7 @@ func Unseal(rw io.ReadWriter, item_handle Handle, password string, session_handl
 	if err != nil {
                 return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	fmt.Printf("Unseal Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return nil, nil, errors.New("Unseal unsuccessful")
 	}
@@ -1594,7 +1599,7 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 	if err != nil {
                 return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	fmt.Printf("Quote Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return nil, nil, errors.New("Quote unsuccessful")
 	}
@@ -1678,7 +1683,7 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 	if err != nil {
                 return nil, errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	fmt.Printf("ActivateCredential Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return nil, errors.New("ActivateCredential unsuccessful")
 	}
@@ -1745,7 +1750,7 @@ func EvictControl(rw io.ReadWriter, owner Handle, tmp_handle Handle, parent_pass
 	if err != nil {
                 return errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	fmt.Printf("EvictControl Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return errors.New("EvictControl unsuccessful")
 	}
@@ -1801,7 +1806,7 @@ func SaveContext(rw io.ReadWriter, handle Handle) ([]byte, error) {
 	if err != nil {
                 return nil, errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	fmt.Printf("SaveContext Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return nil, errors.New("SaveContext unsuccessful")
 	}
@@ -1865,7 +1870,7 @@ func LoadContext(rw io.ReadWriter, save_area []byte) (Handle, error) {
 	if err != nil {
                 return Handle(0), errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	fmt.Printf("LoadContext Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return Handle(0), errors.New("LoadContext unsuccessful")
 	}

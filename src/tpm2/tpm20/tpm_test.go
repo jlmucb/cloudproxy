@@ -215,8 +215,10 @@ func TestCombinedSealTest(t *testing.T) {
         nonceCaller := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
         var secret []byte
         sym := uint16(algTPM_ALG_NULL)
-        var to_seal []byte
+        to_seal := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+			  0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f1}
         hash_alg := uint16(algTPM_ALG_SHA1)
+
         session_handle, policy_digest, err := StartAuthSession(rw,
 		Handle(ordTPM_RH_NULL),
                 Handle(ordTPM_RH_NULL), nonceCaller, secret,
@@ -225,17 +227,10 @@ func TestCombinedSealTest(t *testing.T) {
 		FlushContext(rw, parent_handle)
                 t.Fatal("StartAuthSession fails")
         }
-        fmt.Printf("policy digest 1: %x\n", policy_digest)
+        fmt.Printf("policy digest  : %x\n", policy_digest)
 
-        // policy for AuthSession
-        policy_digest, err = PolicyGetDigest(rw, session_handle)
-        if err != nil {
-		FlushContext(rw, parent_handle)
-		FlushContext(rw, session_handle)
-                t.Fatal("PolicyGetDigest 1 fails")
-        }
-        fmt.Printf("policy digest 2: %x\n", policy_digest)
-        err = PolicyPcr(rw, session_handle, policy_digest, []int{7})
+	var tmp_digest []byte
+        err = PolicyPcr(rw, session_handle, tmp_digest, []int{7})
         if err != nil {
 		FlushContext(rw, parent_handle)
 		FlushContext(rw, session_handle)
@@ -245,9 +240,9 @@ func TestCombinedSealTest(t *testing.T) {
         if err != nil {
 		FlushContext(rw, parent_handle)
 		FlushContext(rw, session_handle)
-                t.Fatal("PolicyGetDigest 2 fails")
+                t.Fatal("PolicyGetDigest after PolicyPcr fails")
         }
-        fmt.Printf("policy digest 3: %x\n", policy_digest)
+        fmt.Printf("policy digest after PolicyPcr: %x\n", policy_digest)
 
         // TODO: Fix attributes, should be fixedTPM, fixedParent
         keyedhashparms := KeyedHashParams{uint16(algTPM_ALG_KEYEDHASH),
@@ -256,7 +251,7 @@ func TestCombinedSealTest(t *testing.T) {
                 uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), empty}
 
         private_blob, public_blob, err := CreateSealed(rw, parent_handle, policy_digest,
-                "",  "01020304", to_seal, []int{7}, keyedhashparms)
+                "01020304",  "01020304", to_seal, []int{7}, keyedhashparms)
 
         // Load
         item_handle, blob, err := Load(rw, parent_handle, "", "01020304",

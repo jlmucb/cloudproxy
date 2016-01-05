@@ -142,7 +142,7 @@ int main(int an, char** av) {
     return 1;
   }
 
-  int size_active_out;
+  int size_quote_out;
 
   byte* der_program_cert = nullptr;
   int der_program_cert_size = 0;
@@ -176,7 +176,7 @@ int main(int an, char** av) {
   SHA256_CTX sha256;
   RSA* signing_key = nullptr;
   byte* signing_blob = nullptr;
-  RSA* active_key = RSA_new();
+  RSA* quote_key = RSA_new();
   TPMS_ATTEST attested_quote;
   string serialized_program_key;
 
@@ -429,17 +429,17 @@ int main(int an, char** av) {
   }
 
   // Set quote key exponent and modulus
-  active_key->n = bin_to_BN(
+  quote_key->n = bin_to_BN(
       request.quote_key_info().public_key().rsa_key().modulus().size(),
       (byte*)request.quote_key_info().public_key().rsa_key().modulus().data());
-  active_key->e = bin_to_BN(
+  quote_key->e = bin_to_BN(
       request.quote_key_info().public_key().rsa_key().exponent().size(),
       (byte*)request.quote_key_info().public_key().rsa_key().exponent().data());
-  size_active_out = RSA_public_encrypt(request.active_signature().size(),
-                        (const byte*)request.active_signature().data(),
-                        decrypted_quote, active_key, RSA_NO_PADDING);
-  if (size_active_out > MAX_SIZE_PARAMS) {
-    printf("active signature is too big\n");
+  size_quote_out = RSA_public_encrypt(request.quote_signature().size(),
+                        (const byte*)request.quote_signature().data(),
+                        decrypted_quote, quote_key, RSA_NO_PADDING);
+  if (size_quote_out > MAX_SIZE_PARAMS) {
+    printf("quote signature is too big\n");
     ret_val = 1;
     goto done;
   }
@@ -460,7 +460,7 @@ int main(int an, char** av) {
   }
 
 #ifdef DEBUG
-  printf("\nactive signature size: %d\n", size_active_out);
+  printf("\nquote signature size: %d\n", size_quote_out);
   printf("Quote structure: ");
   PrintBytes(quote_struct_size, quote_struct);
   printf("\n");
@@ -468,18 +468,18 @@ int main(int an, char** av) {
   PrintBytes(signed_quote_hash_size, signed_quote_hash);
   printf("\n");
   printf("Decrypted hash: ");
-  PrintBytes(size_active_out, decrypted_quote);
+  PrintBytes(size_quote_out, decrypted_quote);
   printf("\n");
 #endif
 
   // recover pcr hash and magic number and check them
   // Compare signature and computed hash
   if (memcmp(signed_quote_hash,
-             decrypted_quote + size_active_out - SizeHash(hash_alg_id),
+             decrypted_quote + size_quote_out - SizeHash(hash_alg_id),
              SizeHash(hash_alg_id)) != 0) {
     printf("quote signature is wrong\n");
     PrintBytes(SizeHash(hash_alg_id), signed_quote_hash); printf("\n");
-    PrintBytes(size_active_out, decrypted_quote); printf("\n");
+    PrintBytes(size_quote_out, decrypted_quote); printf("\n");
     ret_val = 1;
     goto done;
   }

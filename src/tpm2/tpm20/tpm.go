@@ -2167,12 +2167,11 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte, quote
         // request.QuoteKeyInfo.PublicKeyMessage.KeyType
         // request.QuoteKeyInfo.PublicKeyMessage.BitModulusSize
         // request.QuoteKeyInfo.PublicKeyMessage.Modulus
-        // request.ActiveSignAlg
-        // request.ActiveSignBitSize
-        // request.ActiveSignHashAlg
+        // request.QuoteSignAlg
+        // request.QuoteSignHashAlg
 
         request.QuotedBlob = attest
-        request.ActiveSignature = sig
+        request.QuoteSignature = sig
 	return der_program_key, request, nil
 }
 
@@ -2301,7 +2300,7 @@ func ConstructServerResponse(der_policy_key []byte,
 	fmt.Printf("Hashed req: %s\n", hashed_program_key)
 
 	if !VerifyQuote(hashed_program_key, *request.QuoteKeyInfo,
-			request.QuotedBlob, request.ActiveSignature) {
+			request.QuotedBlob, request.QuoteSignature) {
 		return nil, errors.New("Can't verify quote")
 	}
 
@@ -2334,13 +2333,21 @@ func ConstructServerResponse(der_policy_key []byte,
 	pub := new(rsa.PublicKey)
 	pub.N.SetBytes(request.ProgramKey.ProgramKeyModulus)
 	// set exponent
-	der_program_cert, err := x509.CreateCertificate(rand.Reader, &template, &template, pub, policy_key)
+	der_program_cert, err := x509.CreateCertificate(rand.Reader,
+		&template, &template, pub, policy_key)
 	if err != nil {
 		return nil, err
 	}
 
 	// Fix
-	hash_alg_id := uint16(algTPM_ALG_SHA1)
+	// request.QuoteKeyInfo.QuoteSignAlg
+	// request.QuoteKeyInfo.QuoteSignHashAlg
+	var hash_alg_id uint16
+	if *request.QuoteSignHashAlg == "sha256" {
+		hash_alg_id = uint16(algTPM_ALG_SHA256)
+	} else {
+		hash_alg_id = uint16(algTPM_ALG_SHA1)
+	}
 
 	// Generate credential
 	var credential []byte

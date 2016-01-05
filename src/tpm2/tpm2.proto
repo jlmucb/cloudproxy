@@ -81,11 +81,11 @@ message cert_parameters_message {
 }
 
 message quote_key_info_message {
-  // public key parameters of "active-key"
+  // public key parameters of "quote-key"
   optional public_key_message public_key      = 1;
-  // Tpm2 name (hash) of the "active-key" info
+  // Tpm2 name (hash) of the "quote-key" info
   optional bytes  name                        = 2;
-  // objectAttributes of the "active key"
+  // objectAttributes of the "quote key"
   optional int32  properties                  = 3;
 }
 
@@ -98,15 +98,14 @@ message program_key_parameters {
 };
 
 message program_cert_request_message {
-  optional string request_id                  = 1;
-  optional bytes endorsement_cert_blob        = 2;
-  optional program_key_parameters program_key = 3;
-  optional string active_sign_alg             = 4;
-  optional int32 active_sign_bit_size         = 5;
-  optional string active_sign_hash_alg        = 6;
-  optional bytes active_signature             = 7;
-  optional quote_key_info_message quote_key_info = 8;
-  optional bytes quoted_blob                  = 9;
+  optional string request_id                     = 1;
+  optional bytes endorsement_cert_blob           = 2;
+  optional program_key_parameters program_key    = 3;
+  optional string quote_sign_alg                 = 4;
+  optional string quote_sign_hash_alg            = 5;
+  optional bytes quote_signature                = 6;
+  optional quote_key_info_message quote_key_info = 7;
+  optional bytes quoted_blob                     = 8;
 }
 
 message program_cert_response_message {
@@ -122,7 +121,7 @@ message program_cert_response_message {
   // This is an encrypted TPM2B_DIGEST and has a size.
   // encIdentity is always CFB Aes-128 encrypted
   // with KDFa derived key derived from the "seed," "STORAGE" and
-  // the name of the active key.
+  // the name of the quote key.
   optional bytes encIdentity                  = 5;
   // protector-key private-key encrypted seed || "IDENTITY" buffer
   optional bytes secret                       = 6;

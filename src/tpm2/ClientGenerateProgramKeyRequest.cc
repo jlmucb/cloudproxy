@@ -163,10 +163,10 @@ int main(int an, char** av) {
   int quote_size = MAX_SIZE_PARAMS;
   byte quoted[MAX_SIZE_PARAMS];
   byte quoted_hash[256];
-  string active_key_info;
-  string active_sig;
-  string active_info;
-  quote_key_info_message quote_key_info;
+  string quote_key_info;
+  string quote_sig;
+  string quote_info;
+  quote_key_info_message quote_key_info_message;
   TPM2B_DATA to_quote;
   TPMT_SIG_SCHEME scheme;
   int sig_size = MAX_SIZE_PARAMS;
@@ -362,9 +362,8 @@ int main(int an, char** av) {
 
   // Fill program key parameters
   request.set_endorsement_cert_blob(endorsement_key_blob);
-  request.set_active_sign_alg("RSA");
-  request.set_active_sign_bit_size(2048);
-  request.set_active_sign_hash_alg(FLAGS_hash_alg);
+  request.set_quote_sign_alg("RSA");
+  request.set_quote_sign_hash_alg(FLAGS_hash_alg);
   request.mutable_program_key()->set_program_name(FLAGS_program_key_name);
   request.mutable_program_key()->set_program_key_type("RSA");
   request.mutable_program_key()->set_program_bit_modulus_size(
@@ -475,8 +474,8 @@ int main(int an, char** av) {
   //      size
   //      buffer
   request.set_quoted_blob(quoted, quote_size);
-  active_sig.assign((const char*)sig, sig_size);
-  request.set_active_signature(active_sig);
+  quote_sig.assign((const char*)sig, sig_size);
+  request.set_quote_signature(quote_sig);
   request.mutable_quote_key_info()->mutable_public_key()->set_key_type("RSA");
   request.mutable_quote_key_info()->mutable_public_key()->mutable_rsa_key()
       ->set_key_name("Quote_key");
@@ -496,9 +495,9 @@ int main(int an, char** av) {
   request.mutable_quote_key_info()->set_properties(
       *(uint32_t*)&quote_pub_out.publicArea.objectAttributes);
   if (quote_pub_out.publicArea.nameAlg == TPM_ALG_SHA1) {
-    request.set_active_sign_hash_alg("sha1");
+    request.set_quote_sign_hash_alg("sha1");
   } else if (quote_pub_out.publicArea.nameAlg == TPM_ALG_SHA256) {
-    request.set_active_sign_hash_alg("sha256");
+    request.set_quote_sign_hash_alg("sha256");
   } else {
     printf("Unsupported hash alg\n");
     ret_val = 1;

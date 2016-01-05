@@ -2295,12 +2295,8 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage, hash_alg_i
 		fmt.Printf("Bad key type %s\n", quote_key_info.PublicKey.KeyType)
 		return false;
 	}
-	/*
-  	quote_key.N = bin_to_BN(request.QuoteKeyInfo.PublicKey.RsaKey.Modulus().Size,
-      	(byte*)request.quote_key_info.PublicKey.RsaKey.Modulus.Data);
-  	quote_key.exp = bin_to_BN(request.QuoteKeyInfo.PublicKey.RsaKey.Exponent.Size,
-				  request.QuoteKeyInfo.PublicKey.RsaKey.Exponent.Data)
-	 */
+	quote_key.N.SetBytes(quote_key_info.PublicKey.RsaKey.Modulus)
+	quote_key.E = int(0x10001) // Fix
 
 	// Verify quote
 	decrypted_quote, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, quote_key, signature, nil)

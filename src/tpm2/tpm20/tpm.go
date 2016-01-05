@@ -1611,20 +1611,20 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 // ConstructActivateCredential constructs a ActivateCredential command.
 func ConstructActivateCredential(active_handle Handle, key_handle Handle, password string,
         credBlob []byte, secret []byte) ([]byte, error) {
-	var empty []byte	
+	var empty []byte
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdActivateCredential)
- 	if err != nil {
+	if err != nil {
 		return nil, errors.New("ConstructActivateCredential failed")
 	}
- 	b1 := SetHandle(active_handle)
- 	b2 := SetHandle(key_handle)
+	b1 := SetHandle(active_handle)
+	b2 := SetHandle(key_handle)
 	b3 ,_ := pack([]interface{}{&empty})
- 	b4 := CreatePasswordAuthArea(password, Handle(ordTPM_RS_PW))
+	b4 := CreatePasswordAuthArea(password, Handle(ordTPM_RS_PW))
 	b5 ,_ := pack([]interface{}{&credBlob, &secret})
- 	arg_bytes := append(b1, b2...)
- 	arg_bytes = append(arg_bytes, b3...)
- 	arg_bytes = append(arg_bytes, b4...)
- 	arg_bytes = append(arg_bytes, b5...)
+	arg_bytes := append(b1, b2...)
+	arg_bytes = append(arg_bytes, b3...)
+	arg_bytes = append(arg_bytes, b4...)
+	arg_bytes = append(arg_bytes, b5...)
 	cmd_bytes := packWithBytes(cmdHdr, arg_bytes)
 	return cmd_bytes, nil
 }
@@ -2161,12 +2161,12 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte, quote
 	fmt.Printf("Sig: %x\n", sig)
 
 	// Quote key info.
-        request.Cred.Name = name
-        // request.Cred.Properties
-        // request.Cred.PublicKeyMessage.KeyName
-        // request.Cred.PublicKeyMessage.KeyType
-        // request.Cred.PublicKeyMessage.BitModulusSize
-        // request.Cred.PublicKeyMessage.Modulus
+        request.QuoteKeyInfo.Name = name
+        // request.QuoteKeyInfo.Properties
+        // request.QuoteKeyInfo.PublicKeyMessage.KeyName
+        // request.QuoteKeyInfo.PublicKeyMessage.KeyType
+        // request.QuoteKeyInfo.PublicKeyMessage.BitModulusSize
+        // request.QuoteKeyInfo.PublicKeyMessage.Modulus
         // request.ActiveSignAlg
         // request.ActiveSignBitSize
         // request.ActiveSignHashAlg
@@ -2229,7 +2229,7 @@ func VerifyDerCert(der_cert []byte, signing_key *rsa.PublicKey) (bool) {
 	return true
 }
 
-func VerifyQuote(to_quote []byte, quote_key_info CredentialInfoMessage,
+func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
 		 quoted_blob []byte, signature []byte) (bool) {
 	hash_alg_id := uint16(algTPM_ALG_SHA1)  // TODO: get this from quote key
 
@@ -2300,7 +2300,8 @@ func ConstructServerResponse(der_policy_key []byte,
 	fmt.Printf("ProgramKey: %s\n", serialized_program_key)
 	fmt.Printf("Hashed req: %s\n", hashed_program_key)
 
-	if !VerifyQuote(hashed_program_key, *request.Cred, request.QuotedBlob, request.ActiveSignature) {
+	if !VerifyQuote(hashed_program_key, *request.QuoteKeyInfo,
+			request.QuotedBlob, request.ActiveSignature) {
 		return nil, errors.New("Can't verify quote")
 	}
 
@@ -2345,8 +2346,9 @@ func ConstructServerResponse(der_policy_key []byte,
 	var credential []byte
 	rand.Read(credential[0:16])
 	fmt.Printf("Credential: %x\n", credential)
-	encrypted_secret, encIdentity, integrityHmac, err := MakeCredential(der_endorsement_cert,
-		hash_alg_id, credential[0:16], request.Cred.Name)
+	encrypted_secret, encIdentity, integrityHmac, err := MakeCredential(
+		der_endorsement_cert, hash_alg_id,
+		credential[0:16], request.QuoteKeyInfo.Name)
 	if err != nil {
 		return nil, err
 	}

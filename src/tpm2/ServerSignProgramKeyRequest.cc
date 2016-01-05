@@ -275,7 +275,7 @@ int main(int an, char** av) {
 #endif
 
   // Extract program key request
-  if (!request.has_cred()) {
+  if (!request.has_quote_key_info()) {
     printf("No information to construct cred\n");
     ret_val = 1;
     goto done;
@@ -381,7 +381,7 @@ int main(int an, char** av) {
 #endif
 
   // "Encrypt" with quote key to verify
-  if (!request.cred().has_public_key()) {
+  if (!request.quote_key_info().has_public_key()) {
     printf("no quote key\n");
     ret_val = 1;
     goto done;
@@ -392,16 +392,16 @@ int main(int an, char** av) {
 
 #ifdef DEBUG_EXTRA
   printf("\nmodulus size: %d\n",
-      (int)request.cred().public_key().rsa_key().modulus().size());
+      (int)request.quote_key_info().public_key().rsa_key().modulus().size());
   printf("exponent size: %d\n",
-      (int)request.cred().public_key().rsa_key().exponent().size());
+      (int)request.quote_key_info().public_key().rsa_key().exponent().size());
   printf("modulus: ");
-  PrintBytes(request.cred().public_key().rsa_key().modulus().size(),
-             (byte*)request.cred().public_key().rsa_key().modulus().data());
+  PrintBytes(request.quote_key_info().public_key().rsa_key().modulus().size(),
+             (byte*)request.quote_key_info().public_key().rsa_key().modulus().data());
   printf("\n");
   printf("exponent: ");
-  PrintBytes(request.cred().public_key().rsa_key().exponent().size(),
-             (byte*)request.cred().public_key().rsa_key().exponent().data());
+  PrintBytes(request.quote_key_info().public_key().rsa_key().exponent().size(),
+             (byte*)request.quote_key_info().public_key().rsa_key().exponent().data());
   printf("\n");
   printf("quote_struct: ");
   PrintBytes(quote_struct_size, quote_struct);
@@ -430,11 +430,11 @@ int main(int an, char** av) {
 
   // Set quote key exponent and modulus
   active_key->n = bin_to_BN(
-      request.cred().public_key().rsa_key().modulus().size(),
-      (byte*)request.cred().public_key().rsa_key().modulus().data());
+      request.quote_key_info().public_key().rsa_key().modulus().size(),
+      (byte*)request.quote_key_info().public_key().rsa_key().modulus().data());
   active_key->e = bin_to_BN(
-      request.cred().public_key().rsa_key().exponent().size(),
-      (byte*)request.cred().public_key().rsa_key().exponent().data());
+      request.quote_key_info().public_key().rsa_key().exponent().size(),
+      (byte*)request.quote_key_info().public_key().rsa_key().exponent().data());
   size_active_out = RSA_public_encrypt(request.active_signature().size(),
                         (const byte*)request.active_signature().data(),
                         decrypted_quote, active_key, RSA_NO_PADDING);
@@ -493,8 +493,8 @@ int main(int an, char** av) {
   ChangeEndian16(&unmarshaled_credential.size, &marshaled_credential.size);
   memcpy(marshaled_credential.buffer, unmarshaled_credential.buffer,
          unmarshaled_credential.size);
-  unmarshaled_name.size = request.cred().name().size();
-  memcpy(unmarshaled_name.name, (byte*)request.cred().name().data(),
+  unmarshaled_name.size = request.quote_key_info().name().size();
+  memcpy(unmarshaled_name.name, (byte*)request.quote_key_info().name().data(),
          unmarshaled_name.size);
   ChangeEndian16(&unmarshaled_name.size, &marshaled_name.size);
   memcpy(marshaled_name.name, unmarshaled_name.name, unmarshaled_name.size);

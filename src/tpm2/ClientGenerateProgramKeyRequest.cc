@@ -166,7 +166,7 @@ int main(int an, char** av) {
   string active_key_info;
   string active_sig;
   string active_info;
-  credential_info_message cred_info;
+  quote_key_info_message quote_key_info;
   TPM2B_DATA to_quote;
   TPMT_SIG_SCHEME scheme;
   int sig_size = MAX_SIZE_PARAMS;
@@ -477,23 +477,23 @@ int main(int an, char** av) {
   request.set_quoted_blob(quoted, quote_size);
   active_sig.assign((const char*)sig, sig_size);
   request.set_active_signature(active_sig);
-  request.mutable_cred()->mutable_public_key()->set_key_type("RSA");
-  request.mutable_cred()->mutable_public_key()->mutable_rsa_key()
+  request.mutable_quote_key_info()->mutable_public_key()->set_key_type("RSA");
+  request.mutable_quote_key_info()->mutable_public_key()->mutable_rsa_key()
       ->set_key_name("Quote_key");
-  request.mutable_cred()->mutable_public_key()->mutable_rsa_key()
+  request.mutable_quote_key_info()->mutable_public_key()->mutable_rsa_key()
       ->set_bit_modulus_size(
          quote_pub_out.publicArea.parameters.rsaDetail.keyBits);
   expIn = quote_pub_out.publicArea.parameters.rsaDetail.exponent;
   expOut = 0ULL;
   ChangeEndian64((uint64_t*)&expIn, (uint64_t*)&expOut);
-  request.mutable_cred()->mutable_public_key()->mutable_rsa_key()
+  request.mutable_quote_key_info()->mutable_public_key()->mutable_rsa_key()
      ->set_exponent((const char*)&expOut, sizeof(uint64_t));
-  request.mutable_cred()->mutable_public_key()->mutable_rsa_key()
+  request.mutable_quote_key_info()->mutable_public_key()->mutable_rsa_key()
     ->set_modulus((const char*)quote_pub_out.publicArea.unique.rsa.buffer,
                   quote_pub_out.publicArea.unique.rsa.size);
-  request.mutable_cred()->set_name(
+  request.mutable_quote_key_info()->set_name(
       (const char*)quote_pub_name.name, quote_pub_name.size);
-  request.mutable_cred()->set_properties(
+  request.mutable_quote_key_info()->set_properties(
       *(uint32_t*)&quote_pub_out.publicArea.objectAttributes);
   if (quote_pub_out.publicArea.nameAlg == TPM_ALG_SHA1) {
     request.set_active_sign_hash_alg("sha1");

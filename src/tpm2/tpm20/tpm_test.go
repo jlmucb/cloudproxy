@@ -369,7 +369,7 @@ func TestCombinedQuoteTest(t *testing.T) {
         fmt.Printf("sig                : %x\n\n", sig)
 
         // Verify quote
-	var quote_key_info CredentialInfoMessage // Fix
+	var quote_key_info QuoteKeyInfoMessage // Fix
         if !VerifyQuote(to_quote, quote_key_info, attest, sig) {
                 t.Fatal("VerifyQuote fails")
         }

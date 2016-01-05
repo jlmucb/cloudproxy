@@ -153,9 +153,9 @@ func TestCombinedKeyTest(t *testing.T) {
         if err != nil {
                 t.Fatal("CreateKey fails")
         }
-        fmt.Printf("CreateKey succeeded\n")
-        fmt.Printf("\nPrivate blob: %x\n", private_blob)
-        fmt.Printf("\nPublic  blob: %x\n", public_blob)
+        fmt.Printf("CreateKey succeeded, handle: %x\n", uint32(parent_handle))
+        fmt.Printf("Private blob: %x\n", private_blob)
+        fmt.Printf("Public  blob: %x\n\n", public_blob)
 
         // Load
         key_handle, blob, err := Load(rw, parent_handle, "", "01020304",
@@ -163,8 +163,8 @@ func TestCombinedKeyTest(t *testing.T) {
         if err != nil {
                 t.Fatal("Load fails")
         }
-        fmt.Printf("Load succeeded\n")
-        fmt.Printf("\nBlob from Load     : %x\n", blob)
+        fmt.Printf("Load succeeded, handle: %x\n", uint32(key_handle))
+        fmt.Printf("Blob from Load     : %x\n", blob)
 
         // ReadPublic
         public, name, qualified_name, err := ReadPublic(rw, key_handle)
@@ -172,9 +172,9 @@ func TestCombinedKeyTest(t *testing.T) {
                 t.Fatal("ReadPublic fails")
         }
         fmt.Printf("ReadPublic succeeded\n")
-        fmt.Printf("\nPublic         blob: %x\n", public)
-        fmt.Printf("\nName           blob: %x\n", name)
-        fmt.Printf("\nQualified name blob: %x\n", qualified_name)
+        fmt.Printf("Public         blob: %x\n", public)
+        fmt.Printf("Name           blob: %x\n", name)
+        fmt.Printf("Qualified name blob: %x\n\n", qualified_name)
 
         // Flush
         err = FlushContext(rw, key_handle)
@@ -216,17 +216,17 @@ func TestCombinedSealTest(t *testing.T) {
         var secret []byte
         sym := uint16(algTPM_ALG_NULL)
         to_seal := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-			  0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f1}
+			  0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10}
         hash_alg := uint16(algTPM_ALG_SHA1)
 
-        session_handle, policy_digest, err := StartAuthSession(rw,
-		Handle(ordTPM_RH_NULL),
+        session_handle, policy_digest, err := StartAuthSession(rw, Handle(ordTPM_RH_NULL),
                 Handle(ordTPM_RH_NULL), nonceCaller, secret,
                 uint8(ordTPM_SE_POLICY), sym, hash_alg)
         if err != nil {
 		FlushContext(rw, parent_handle)
                 t.Fatal("StartAuthSession fails")
         }
+        fmt.Printf("StartAuth succeeds, handle: %x\n", uint32(session_handle))
         fmt.Printf("policy digest  : %x\n", policy_digest)
 
 	var tmp_digest []byte
@@ -244,47 +244,41 @@ func TestCombinedSealTest(t *testing.T) {
         }
         fmt.Printf("policy digest after PolicyPcr: %x\n", policy_digest)
 
-        // TODO: Fix attributes, should be fixedTPM, fixedParent
+	// CreateSealed
         keyedhashparms := KeyedHashParams{uint16(algTPM_ALG_KEYEDHASH),
                 uint16(algTPM_ALG_SHA1),
                 uint32(0x00000012), empty, uint16(algTPM_ALG_AES), uint16(128),
                 uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), empty}
-
         private_blob, public_blob, err := CreateSealed(rw, parent_handle, policy_digest,
                 "01020304",  "01020304", to_seal, []int{7}, keyedhashparms)
+        if err != nil {
+		FlushContext(rw, parent_handle)
+		FlushContext(rw, session_handle)
+                t.Fatal("CreateSealed fails")
+        }
 
         // Load
         item_handle, blob, err := Load(rw, parent_handle, "", "01020304",
-             public_blob, private_blob)
+             	public_blob, private_blob)
         if err != nil {
 		FlushContext(rw, session_handle)
 		FlushContext(rw, item_handle)
 		FlushContext(rw, parent_handle)
                 t.Fatal("Load fails")
         }
-        fmt.Printf("Load succeeded\n")
-        fmt.Printf("Blob from Load     : %x\n", blob)
-
-        // ReadPublic
-        public, name, qualified_name, err := ReadPublic(rw, item_handle)
-        if err != nil {
-                t.Fatal("ReadPublic fails")
-        }
-        fmt.Printf("ReadPublic succeeded\n")
-        fmt.Printf("Public         blob: %x\n", public)
-        fmt.Printf("Name           blob: %x\n", name)
-        fmt.Printf("Qualified name blob: %x\n", qualified_name)
+        fmt.Printf("Load succeeded, handle: %x\n", uint32(item_handle))
+        fmt.Printf("Blob from Load     : %x\n\n", blob)
 
         // Unseal
-        unsealed, nonce, err := Unseal(rw, item_handle, "01020304",
-                 session_handle, policy_digest)
+        unsealed, nonce, err := Unseal(rw, item_handle, "01020304", session_handle, policy_digest)
         if err != nil {
 		FlushContext(rw, item_handle)
 		FlushContext(rw, parent_handle)
                 t.Fatal("Unseal fails")
         }
+        fmt.Printf("Unseal succeeds\n")
         fmt.Printf("unsealed           : %x\n", unsealed)
-        fmt.Printf("nonce              : %x\n", nonce)
+        fmt.Printf("nonce              : %x\n\n", nonce)
 
         // Flush
         FlushContext(rw, item_handle)

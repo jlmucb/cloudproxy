@@ -233,15 +233,20 @@ func CreateKeyedHashParams(parms KeyedHashParams) ([]byte) {
 
 // nil return is error
 func CreateRsaParams(parms RsaParams) ([]byte) {
-	template1 := []interface{}{&parms.enc_alg, &parms.hash_alg,
+	template := []interface{}{&parms.enc_alg, &parms.hash_alg,
 				   &parms.attributes, &parms.auth_policy}
-	t1, err := pack(template1)
+	t1, err := pack(template)
 	if err != nil {
 		return nil
 	}
-	template2 := []interface{}{&parms.symalg, &parms.sym_sz,
+
+	if  parms.symalg !=  uint16(algTPM_ALG_NULL) {
+		template = []interface{}{&parms.symalg, &parms.sym_sz,
 				   &parms.mode, &parms.scheme}
-	t2, err := pack(template2)
+	} else {
+		template = []interface{}{&parms.symalg, &parms.scheme}
+	}
+	t2, err := pack(template)
 	if err != nil {
 		return nil
 	}

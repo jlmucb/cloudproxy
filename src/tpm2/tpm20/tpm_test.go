@@ -338,10 +338,12 @@ func TestCombinedQuoteTest(t *testing.T) {
 
         // CreateKey (Quote Key)
         keyparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-                uint32(0x00040072), empty, uint16(algTPM_ALG_AES), uint16(128),
-                uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_RSASSA), uint16(0),
-                uint16(1024), uint32(0x00010001), empty}
-        private_blob, public_blob, err := CreateKey(rw, uint32(parent_handle), 
+		uint32(0x00050072), empty, uint16(algTPM_ALG_NULL), uint16(0),
+		uint16(algTPM_ALG_ECB), uint16(algTPM_ALG_RSASSA),
+		uint16(algTPM_ALG_SHA1),
+		uint16(1024), uint32(0x00010001), empty}
+
+        private_blob, public_blob, err := CreateKey(rw, uint32(parent_handle),
                 []int{7}, "01020304", "01020304", keyparms)
         if err != nil {
                 t.Fatal("CreateKey fails")

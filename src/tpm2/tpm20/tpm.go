@@ -2047,32 +2047,41 @@ func EncryptDataWithCredential(encrypt_flag bool, hash_alg_id uint16,
 //		encrypted_secret
 //		encIdentity
 //		integrityHmac
-func MakeCredential(endorsement_blob []byte, hash_alg_id uint16, unmarshaled_credential []byte,
+func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
+		unmarshaled_credential []byte,
 		unmarshaled_name []byte) ([]byte, []byte, []byte, error) {
 	var a [20]byte
 	copy(a[:], "IDENTITY")
 	a[len("IDENTITY")] = 0
-	rsaKeyParams, err := GetRsaPublicKeyFromBlob(endorsement_blob)
+	endorsement_cert, err := x509.ParseCertificate(der_endorsement_blob)
 	if err !=nil {
+		fmt.Printf("Can't Parse endorsement cert\n")
 		return nil, nil, nil, err
 	}
-	fmt.Printf("rsaKeyParams: %x\n", rsaKeyParams)
 
 	// replace with RAND_bytes
 	seed := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 	// var seed []byte
 	// rand.Read(seed[0:16]);
 
-	m := new(big.Int)
-	m.SetBytes(rsaKeyParams.rsa_params.modulus[0:len(rsaKeyParams.rsa_params.modulus)])
-	public := rsa.PublicKey{m, int(rsaKeyParams.rsa_params.exp)}
+	var public *rsa.PublicKey
+	switch k :=  endorsement_cert.PublicKey.(type) {
+	case  *rsa.PublicKey:
+		public = k
+	case  *rsa.PrivateKey:
+		public = &k.PublicKey
+	default:
+		fmt.Printf("endorsement cert is not an rsa key\n")
+		return nil, nil, nil, errors.New("endorsement cert not an rsa key")
+	}
 	var encrypted_secret []byte
 	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
-		encrypted_secret, err = rsa.EncryptOAEP(sha1.New(), rand.Reader, &public, seed,
+		encrypted_secret, err = rsa.EncryptOAEP(sha1.New(), rand.Reader,
+			public, seed,
 			a[0:len("IDENTITY")+1])
 	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
-		encrypted_secret, err = rsa.EncryptOAEP(sha256.New(), rand.Reader, &public, seed,
-			a[0:len("IDENTITY")+1])
+		encrypted_secret, err = rsa.EncryptOAEP(sha256.New(),
+			rand.Reader, public, seed, a[0:len("IDENTITY")+1])
 	} else {
 		return nil, nil, nil, errors.New("Unsupported hash alg") 
 	}

@@ -374,7 +374,11 @@ func TestCombinedQuoteTest(t *testing.T) {
         fmt.Printf("attest             : %x\n", attest)
         fmt.Printf("sig                : %x\n\n", sig)
 
-        fmt.Printf("TestCombinedQuoteTest excluded\n")
+        // Flush
+        err = FlushContext(rw, quote_handle)
+        err = FlushContext(rw, parent_handle)
+        rw.Close()
+
         return
 
         // Verify quote
@@ -382,18 +386,10 @@ func TestCombinedQuoteTest(t *testing.T) {
         if !VerifyQuote(to_quote, quote_key_info, uint16(algTPM_ALG_SHA1), attest, sig) {
                 t.Fatal("VerifyQuote fails")
         }
-
-        // Flush
-        err = FlushContext(rw, quote_handle)
-        err = FlushContext(rw, parent_handle)
-        rw.Close()
 }
 
 // Combined Endorsement/Activate test
 func TestCombinedEndorsementTest(t *testing.T) {
-        fmt.Printf("TestCombinedEndorsementTest excluded\n")
-        return
-
         hash_alg_id := uint16(algTPM_ALG_SHA1)
 
         // Open tpm
@@ -457,7 +453,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
         fmt.Printf("Qualified name blob: %x\n\n", qualified_name)
 
         // Get endorsement cert
-        endorsement_cert_file := "/Users/jlm/cryptobin/endorsement_cert"
+        endorsement_cert_file := "/home/jlm/cryptobin/endorsement_cert"
         fileInfo, err := os.Stat(endorsement_cert_file)
         if err != nil {
                 t.Fatal("Can't stat endorsement cert file")
@@ -483,6 +479,9 @@ func TestCombinedEndorsementTest(t *testing.T) {
         if err != nil {
                 t.Fatal("Can't MakeCredential\n")
         }
+
+        fmt.Printf("TestCombinedEndorsementTest excluded\n")
+        return
 
         // ActivateCredential
         recovered_credential, err := ActivateCredential(rw, key_handle,
@@ -607,7 +606,7 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
         return
 
         // Read der-encoded private policy key
-        private_key_file := "/Users/jlm/cryptobin/cloudproxy_key_file"
+        private_key_file := "/home/jlm/cryptobin/cloudproxy_key_file"
         fileInfo, err := os.Stat(private_key_file)
         if err != nil {
                 t.Fatal("Can't stat private key file")
@@ -625,7 +624,7 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
         key_file.Close()
 
         // Read der-encoded policy cert
-        policy_cert_file_name := "/Users/jlm/cryptobin/policy_key_cert"
+        policy_cert_file_name := "/home/jlm/cryptobin/policy_key_cert"
         fileInfo, err = os.Stat(policy_cert_file_name)
         if err != nil {
                 t.Fatal("Can't stat policy cert file")
@@ -643,7 +642,7 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
         policy_cert_file.Close()
 
         // Read endorsement cert file
-        endorsement_cert_file := "/Users/jlm/cryptobin/endorsement_cert"
+        endorsement_cert_file := "/home/jlm/cryptobin/endorsement_cert"
         fileInfo, err = os.Stat(endorsement_cert_file)
         if err != nil {
                 t.Fatal("Can't stat endorsement cert file")
@@ -689,7 +688,7 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
         }
 	fmt.Printf("Create Key for quote succeeded\n")
 	fmt.Printf("Private: %x\n", private_blob)
-	fmt.Printf("Public: %x\n", public_blob)
+	fmt.Printf("Public: %x\n\n", public_blob)
 
         quote_handle, quote_blob, err := Load(rw, endorsement_handle, "", "01020304",
 		public_blob, private_blob)

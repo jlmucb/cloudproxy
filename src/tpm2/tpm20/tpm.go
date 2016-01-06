@@ -289,6 +289,26 @@ func CreateLongPcr(count uint32, pcr_nums []int) ([]byte) {
 	return b2
 }
 
+// Retieve file.
+func RetrieveFile(fileName string) ([]byte) {
+        fileInfo, err := os.Stat(fileName)
+        if err != nil {
+                return nil
+        }
+        buf := make([]byte, fileInfo.Size())
+        fileHandle, err := os.Open(fileName)
+        if err != nil {
+                return nil
+        }
+        read, err := fileHandle.Read(buf)
+        if int64(read) < fileInfo.Size() || err != nil {
+                fileHandle.Close()
+                return nil
+        }
+        fileHandle.Close()
+	return buf
+}
+
 // ConstructGetRandom constructs a GetRandom command.
 func ConstructGetRandom(size uint32) ([]byte, error) {
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdGetRandom)

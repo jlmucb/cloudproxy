@@ -18,45 +18,8 @@ import (
         "bytes"
         "fmt"
         "github.com/golang/protobuf/proto"
-        "os"
         "testing"
-	"crypto/x509"
 )
-
-// Retieve file.
-func RetrieveFile(fileName string) ([]byte) {
-        fileInfo, err := os.Stat(fileName)
-        if err != nil {
-                return nil
-        }
-        buf := make([]byte, fileInfo.Size())
-        fileHandle, err := os.Open(fileName)
-        if err != nil {
-                return nil
-        }
-        read, err := fileHandle.Read(buf)
-        if int64(read) < fileInfo.Size() || err != nil {
-                fileHandle.Close()
-                return nil
-        }
-        fileHandle.Close()
-	return buf
-}
-
-
-func TestRetrieveFile(t *testing.T) {
-	out := RetrieveFile("/Users/jlm/cryptobin/example.der")
-	if out == nil {
-		t.Fatal("Can't retrieve file\n")
-	}
-	fmt.Printf("Cert (%d): %x\n", len(out), out)
-
-	cert, err := x509.ParseCertificate(out[0:len(out)-1])
-	if cert == nil || err !=nil {
-		fmt.Printf("Error: %s\n", err)
-		t.Fatal("Can't parse retrieved cert\n")
-	}
-}
 
 // Test GetRandom
 func TestEndian(t *testing.T) {
@@ -494,6 +457,9 @@ func TestCombinedEndorsementTest(t *testing.T) {
                 t.Fatal("Can't retrieve endorsement cert\n")
         }
 
+        fmt.Printf("TestCombinedEndorsementTest excluded\n")
+        return
+
         // MakeCredential
         credential := []byte{1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,0x10}
         fmt.Printf("Credential: %x\n", credential)
@@ -503,9 +469,6 @@ func TestCombinedEndorsementTest(t *testing.T) {
         if err != nil {
                 t.Fatal("Can't MakeCredential\n")
         }
-
-        fmt.Printf("TestCombinedEndorsementTest excluded\n")
-        return
 
         // ActivateCredential
         recovered_credential, err := ActivateCredential(rw, key_handle,

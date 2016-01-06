@@ -16,7 +16,9 @@ package tpm
 
 import (
 	"bytes"
+	"crypto/x509"
 	"fmt"
+	"os"
 	"testing"
 )
 
@@ -125,3 +127,35 @@ func TestKDFa(t *testing.T) {
 
 func TestReadRsaBlob(t *testing.T) {
 }
+
+func TestRetrieveFile(t *testing.T) {
+	fileName := "/home/jlm/cryptobin/cert.der"
+	out := RetrieveFile(fileName)
+	if out == nil {
+		t.Fatal("Can't retrieve file\n")
+	}
+	fmt.Printf("Cert (%d): %x\n", len(out), out)
+	fileInfo, err := os.Stat(fileName)
+	if err != nil {
+		t.Fatal("Can't stat file\n")
+	}
+	if len(out) != int(fileInfo.Size()) {
+		t.Fatal("Bad file retrieve\n")
+	}
+}
+
+func TestCertificateParse(t *testing.T) {
+	out := RetrieveFile("/home/jlm/cryptobin/cert.der")
+	if out == nil {
+		t.Fatal("Can't retrieve file\n")
+	}
+	fmt.Printf("Cert (%d): %x\n", len(out), out)
+
+	cert, err := x509.ParseCertificate(out)
+	if cert == nil || err !=nil {
+		fmt.Printf("Error: %s\n", err)
+		t.Fatal("Can't parse retrieved cert\n")
+	}
+}
+
+

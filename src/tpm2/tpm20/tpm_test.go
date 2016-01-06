@@ -219,7 +219,8 @@ func TestCombinedSealTest(t *testing.T) {
 			  0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10}
         hash_alg := uint16(algTPM_ALG_SHA1)
 
-        session_handle, policy_digest, err := StartAuthSession(rw, Handle(ordTPM_RH_NULL),
+        session_handle, policy_digest, err := StartAuthSession(rw,
+		Handle(ordTPM_RH_NULL),
                 Handle(ordTPM_RH_NULL), nonceCaller, secret,
                 uint8(ordTPM_SE_POLICY), sym, hash_alg)
         if err != nil {
@@ -229,13 +230,20 @@ func TestCombinedSealTest(t *testing.T) {
         fmt.Printf("StartAuth succeeds, handle: %x\n", uint32(session_handle))
         fmt.Printf("policy digest  : %x\n", policy_digest)
 
-	var tmp_digest []byte
-        err = PolicyPcr(rw, session_handle, tmp_digest, []int{7})
+        err = PolicyPassword(rw, session_handle)
         if err != nil {
 		FlushContext(rw, parent_handle)
 		FlushContext(rw, session_handle)
                 t.Fatal("PolicyPcr fails")
         }
+	var tpm_digest []byte
+        err = PolicyPcr(rw, session_handle, tpm_digest, []int{7})
+        if err != nil {
+		FlushContext(rw, parent_handle)
+		FlushContext(rw, session_handle)
+                t.Fatal("PolicyPcr fails")
+        }
+
         policy_digest, err = PolicyGetDigest(rw, session_handle)
         if err != nil {
 		FlushContext(rw, parent_handle)

@@ -1364,7 +1364,7 @@ func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle,
 // ConstructCreateSealed constructs a CreateSealed command.
 func ConstructCreateSealed(parent Handle, policy_digest []byte,
 			   parent_password string, owner_password string,
-		   to_seal []byte, pcr_nums []int,
+			   to_seal []byte, pcr_nums []int,
 			   parms KeyedHashParams) ([]byte, error) {
 	fmt.Printf("ConstructCreateSealed\n")
 	PrintKeyedHashParams(&parms)
@@ -1462,18 +1462,20 @@ func CreateSealed(rw io.ReadWriter, parent Handle, policy_digest []byte,
 func ConstructUnseal(item_handle Handle, password string, session_handle Handle) ([]byte, error)  {
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdUnseal)
 	if err != nil {
-		return nil, errors.New("ConstructGetDigest failed")
+		return nil, errors.New("Construct Unseal failed")
 	}
 	// item_handle
-	var tpm2b_public []byte
+	var empty []byte
 	handle1 := uint32(item_handle)
-        out :=  []interface{}{&handle1, &tpm2b_public}
-        t1, err := pack(out)
+        template :=  []interface{}{&handle1, &empty}
+        b1, err := pack(template)
         if err != nil {
-                return nil, errors.New("Can't construct CreateSealed")
+                return nil, errors.New("Can't construct Unseal")
         }
-	t2 := CreatePasswordAuthArea(password, session_handle)
-	cmd_bytes := packWithBytes(cmdHdr, append(t1, t2...))
+	session_attributes := uint8(1)
+	b2 := CreatePasswordAuthArea(password, session_handle)
+        template =  []interface{}{&empty, &session_attributes}  // null hmac
+	cmd_bytes := packWithBytes(cmdHdr, append(b1, b2...))
 	return cmd_bytes, nil
 }
 
@@ -1499,7 +1501,7 @@ func Unseal(rw io.ReadWriter, item_handle Handle, password string, session_handl
 	if err != nil {
 		return nil, nil, errors.New("ConstructUnseal fails") 
 	}
-	fmt.Printf("Unseal cmd : %x\n", cmd)
+	fmt.Printf("Unseal cmd (%d): %x\n", len(cmd), cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)

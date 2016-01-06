@@ -20,7 +20,43 @@ import (
         "github.com/golang/protobuf/proto"
         "os"
         "testing"
+	"crypto/x509"
 )
+
+// Retieve file.
+func RetrieveFile(fileName string) ([]byte) {
+        fileInfo, err := os.Stat(fileName)
+        if err != nil {
+                return nil
+        }
+        buf := make([]byte, fileInfo.Size())
+        fileHandle, err := os.Open(fileName)
+        if err != nil {
+                return nil
+        }
+        read, err := fileHandle.Read(buf)
+        if int64(read) < fileInfo.Size() || err != nil {
+                fileHandle.Close()
+                return nil
+        }
+        fileHandle.Close()
+	return buf
+}
+
+
+func TestRetrieveFile(t *testing.T) {
+	out := RetrieveFile("/Users/jlm/cryptobin/example.der")
+	if out == nil {
+		t.Fatal("Can't retrieve file\n")
+	}
+	fmt.Printf("Cert (%d): %x\n", len(out), out)
+
+	cert, err := x509.ParseCertificate(out[0:len(out)-1])
+	if cert == nil || err !=nil {
+		fmt.Printf("Error: %s\n", err)
+		t.Fatal("Can't parse retrieved cert\n")
+	}
+}
 
 // Test GetRandom
 func TestEndian(t *testing.T) {
@@ -453,22 +489,10 @@ func TestCombinedEndorsementTest(t *testing.T) {
         fmt.Printf("Qualified name blob: %x\n\n", qualified_name)
 
         // Get endorsement cert
-        endorsement_cert_file := "/home/jlm/cryptobin/endorsement_cert"
-        fileInfo, err := os.Stat(endorsement_cert_file)
-        if err != nil {
-                t.Fatal("Can't stat endorsement cert file")
+	der_endorsement_cert := RetrieveFile("/home/jlm/cryptobin/endorsement_cert")
+        if der_endorsement_cert == nil {
+                t.Fatal("Can't retrieve endorsement cert\n")
         }
-        der_endorsement_cert := make([]byte, fileInfo.Size())
-        cert_file, err := os.Open(endorsement_cert_file)
-        if err != nil {
-                t.Fatal("Can't open endorsement cert file")
-        }
-        _, err = cert_file.Read(der_endorsement_cert)
-        if err != nil {
-                cert_file.Close()
-                t.Fatal("Can't read endorsement cert file")
-        }
-        cert_file.Close()
 
         // MakeCredential
         credential := []byte{1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,0x10}
@@ -606,58 +630,22 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
         return
 
         // Read der-encoded private policy key
-        private_key_file := "/home/jlm/cryptobin/cloudproxy_key_file"
-        fileInfo, err := os.Stat(private_key_file)
-        if err != nil {
-                t.Fatal("Can't stat private key file")
-        }
-        der_policy_key := make([]byte, fileInfo.Size())
-        key_file, err := os.Open(private_key_file)
-        if err != nil {
+	der_policy_key := RetrieveFile("/home/jlm/cryptobin/cloudproxy_key_file")
+        if der_policy_key == nil {
                 t.Fatal("Can't open private key file")
         }
-        _, err = key_file.Read(der_policy_key)
-        if err != nil {
-                key_file.Close()
-                t.Fatal("Can't read private key file")
-        }
-        key_file.Close()
 
         // Read der-encoded policy cert
-        policy_cert_file_name := "/home/jlm/cryptobin/policy_key_cert"
-        fileInfo, err = os.Stat(policy_cert_file_name)
-        if err != nil {
-                t.Fatal("Can't stat policy cert file")
+	der_policy_cert := RetrieveFile("/home/jlm/cryptobin/policy_cert")
+        if der_policy_cert == nil {
+                t.Fatal("Can't open private key file")
         }
-        der_policy_cert := make([]byte, fileInfo.Size())
-        policy_cert_file, err := os.Open(policy_cert_file_name)
-        if err != nil {
-                t.Fatal("Can't open policy cert file")
-        }
-        _, err = policy_cert_file.Read(der_policy_cert)
-        if err != nil {
-                policy_cert_file.Close()
-                t.Fatal("Can't read policy cert file")
-        }
-        policy_cert_file.Close()
 
         // Read endorsement cert file
-        endorsement_cert_file := "/home/jlm/cryptobin/endorsement_cert"
-        fileInfo, err = os.Stat(endorsement_cert_file)
-        if err != nil {
-                t.Fatal("Can't stat endorsement cert file")
+	der_endorsement_cert := RetrieveFile("/home/jlm/cryptobin/endorsement_cert")
+        if der_endorsement_cert == nil {
+                t.Fatal("Can't open private key file")
         }
-        der_endorsement_cert := make([]byte, fileInfo.Size())
-        cert_file, err := os.Open(private_key_file)
-        if err != nil {
-                t.Fatal("Can't open endorsement cert file")
-        }
-        _, err = cert_file.Read(der_endorsement_cert)
-        if err != nil {
-                cert_file.Close()
-                t.Fatal("Can't read private key file")
-        }
-        cert_file.Close()
 	fmt.Printf("Got endorsement cert: %x\n\n", der_endorsement_cert)
 
         // Open tpm

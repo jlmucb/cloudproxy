@@ -552,7 +552,7 @@ func DecodeGetCapabilities(in []byte) (uint32, []uint32, error) {
         var num_handles uint32
         var cap_reported uint32
 
-        out :=  []interface{}{&cap_reported,&num_handles}
+        out :=  []interface{}{&cap_reported, &num_handles}
         err := unpack(in[1:9], out)
         if err != nil {
                 return 0, nil, errors.New("Can't decode GetCapabilities response")
@@ -1549,16 +1549,14 @@ func ConstructQuote(signing_handle Handle, parent_password, owner_password strin
 	b1 := SetHandle(signing_handle)
 	b2 ,_ := pack([]interface{}{&empty})
 	b3 := CreatePasswordAuthArea(parent_password, Handle(ordTPM_RS_PW))
-	// b4 := SetPasswordData(owner_password)
-	b5 ,_ := pack([]interface{}{&sig_alg})
-	b6 ,_ := pack([]interface{}{&to_quote})
-	b7 := CreateLongPcr(uint32(1), pcr_nums)
+	b4 ,_ := pack([]interface{}{&to_quote, &sig_alg})
+	b5 := CreateLongPcr(uint32(1), pcr_nums)
 	arg_bytes := append(b1, b2...)
 	arg_bytes = append(arg_bytes, b3...)
-	// arg_bytes = append(arg_bytes, b4...)
+	arg_bytes = append(arg_bytes, b4...)
+	// Scheme info?
 	arg_bytes = append(arg_bytes, b5...)
-	arg_bytes = append(arg_bytes, b6...)
-	arg_bytes = append(arg_bytes, b7...)
+	// arg_bytes = append(arg_bytes, b6...)
 	cmd_bytes := packWithBytes(cmdHdr, arg_bytes)
 	return cmd_bytes, nil
 }

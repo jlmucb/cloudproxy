@@ -267,7 +267,7 @@ func TestCombinedSealTest(t *testing.T) {
 
         // Load
         item_handle, blob, err := Load(rw, parent_handle, "", "01020304",
-             	public_blob, private_blob)
+		public_blob, private_blob)
         if err != nil {
 		FlushContext(rw, session_handle)
 		FlushContext(rw, item_handle)
@@ -278,7 +278,8 @@ func TestCombinedSealTest(t *testing.T) {
         fmt.Printf("Blob from Load     : %x\n\n", blob)
 
         // Unseal
-        unsealed, nonce, err := Unseal(rw, item_handle, "01020304", session_handle, policy_digest)
+        unsealed, nonce, err := Unseal(rw, item_handle, "01020304",
+		session_handle, policy_digest)
         if err != nil {
 		FlushContext(rw, item_handle)
 		FlushContext(rw, parent_handle)
@@ -293,12 +294,13 @@ func TestCombinedSealTest(t *testing.T) {
         FlushContext(rw, parent_handle)
         FlushContext(rw, session_handle)
         rw.Close()
+	if bytes.Compare(to_seal, unsealed) != 0 {
+                t.Fatal("seal and unsealed bytes dont match")
+	}
 }
 
 // Combined Quote test
 func TestCombinedQuoteTest(t *testing.T) {
-        fmt.Printf("TestCombinedQuoteTest excluded\n")
-        return
 
         // Open tpm
         rw, err := OpenTPM("/dev/tpm0")
@@ -336,8 +338,8 @@ func TestCombinedQuoteTest(t *testing.T) {
 
         // CreateKey (Quote Key)
         keyparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-                uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
-                uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+                uint32(0x00040072), empty, uint16(algTPM_ALG_AES), uint16(128),
+                uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_RSASSA), uint16(0),
                 uint16(1024), uint32(0x00010001), empty}
         private_blob, public_blob, err := CreateKey(rw, uint32(parent_handle), 
                 []int{7}, "01020304", "01020304", keyparms)
@@ -361,12 +363,17 @@ func TestCombinedQuoteTest(t *testing.T) {
         to_quote := []byte{0x0f,0x0e,0x0d,0x0c,0x0b,0x0a,0x09,0x08,
 			   0x07,0x06,0x05,0x04,0x03,0x02,0x01,0x00}
         attest, sig, err := Quote(rw, quote_handle, "01020304", "01020304",
-                to_quote, []int{7}, uint16(algTPM_ALG_RSA))
+                to_quote, []int{7}, uint16(algTPM_ALG_NULL))
         if err != nil {
+		FlushContext(rw, quote_handle)
+		rw.Close()
                 t.Fatal("Quote fails")
         }
         fmt.Printf("attest             : %x\n", attest)
         fmt.Printf("sig                : %x\n\n", sig)
+
+        fmt.Printf("TestCombinedQuoteTest excluded\n")
+        return
 
         // Verify quote
 	var quote_key_info QuoteKeyInfoMessage // Fix

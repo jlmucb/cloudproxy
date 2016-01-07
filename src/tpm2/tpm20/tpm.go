@@ -184,26 +184,43 @@ func DecodeRsaBuf(rsa_buf []byte) (*RsaParams, error) {
                 return nil, errors.New("Can't unpack Rsa buffer 2")
         }
 	current += 10 + len(parms.auth_policy)
-        template = []interface{}{&parms.symalg, &parms.sym_sz,
-                                   &parms.mode, &parms.scheme}
+        template = []interface{}{&parms.symalg}
         err = unpack(rsa_buf[current:], template)
         if err != nil {
                 return nil, errors.New("Can't unpack Rsa buffer 3")
         }
-	current += 8
-        if parms.scheme == uint16(algTPM_ALG_RSASSA) {
-                template = []interface{}{&parms.scheme_hash}
-                err = unpack(rsa_buf[current:], template)
-                if err != nil {
-                        return nil, errors.New("Can't unpack Rsa buffer 4")
-                }
+	current += 2
+	if parms.symalg != uint16(algTPM_ALG_NULL) {
+		template = []interface{}{&parms.sym_sz, &parms.mode}
+		err = unpack(rsa_buf[current:], template)
+		if err != nil {
+			return nil, errors.New("Can't unpack Rsa buffer 5")
+		}
+		current += 4
+	} else {
+		parms.sym_sz = 0
+		parms.mode = 0
+		parms.scheme = 0
+	}
+	template = []interface{}{&parms.scheme}
+	err = unpack(rsa_buf[current:], template)
+	if err != nil {
+		return nil, errors.New("Can't unpack Rsa buffer 5")
+	}
+	current += 2
+	if parms.scheme == uint16(algTPM_ALG_RSASSA) {
+		template = []interface{}{&parms.scheme_hash}
+		err = unpack(rsa_buf[current:], template)
+		if err != nil {
+			return nil, errors.New("Can't unpack Rsa buffer 6")
+		}
 		current += 2
-        }
+	}
 
         template = []interface{}{&parms.mod_sz, &parms.exp, &parms.modulus}
         err = unpack(rsa_buf[current:], template)
         if err != nil {
-                return nil, errors.New("Can't unpack Rsa buffer 5")
+                return nil, errors.New("Can't unpack Rsa buffer 7")
         }
 	return parms, nil
 }

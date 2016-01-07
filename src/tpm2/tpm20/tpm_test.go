@@ -391,10 +391,9 @@ func TestCombinedQuoteTest(t *testing.T) {
 	fmt.Printf("keyblob(%x): %x\n", len(keyblob), keyblob)
 	fmt.Printf("name(%x): %x\n", len(name), name)
 	fmt.Printf("qualified_name(%x): %x\n", len(qualified_name), qualified_name)
-	return
-	rsaParams, err := DecodeRsaArea(public_blob)
+	rsaParams, err := DecodeRsaBuf(public_blob)
         if err != nil {
-                t.Fatal("DecodeRsaArea fails %s", err)
+                t.Fatal("DecodeRsaBuf fails %s", err)
         }
 	PrintRsaParams(rsaParams)
 

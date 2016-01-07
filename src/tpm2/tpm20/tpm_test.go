@@ -378,9 +378,14 @@ func TestCombinedQuoteTest(t *testing.T) {
         err = FlushContext(rw, parent_handle)
         rw.Close()
 
-        return
-
         // Verify quote
+	rsaParams, err := DecodeRsaArea(public_blob)
+        if err != nil {
+                t.Fatal("DecodeRsaArea fails %s", err)
+        }
+	PrintRsaParams(rsaParams)
+
+        return
 	var quote_key_info QuoteKeyInfoMessage // Fix
         if !VerifyQuote(to_quote, quote_key_info, uint16(algTPM_ALG_SHA1), attest, sig) {
                 t.Fatal("VerifyQuote fails")
@@ -457,9 +462,6 @@ func TestCombinedEndorsementTest(t *testing.T) {
                 t.Fatal("Can't retrieve endorsement cert\n")
         }
 
-        fmt.Printf("TestCombinedEndorsementTest excluded\n")
-        return
-
         // MakeCredential
         credential := []byte{1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,0x10}
         fmt.Printf("Credential: %x\n", credential)
@@ -469,10 +471,11 @@ func TestCombinedEndorsementTest(t *testing.T) {
         if err != nil {
                 t.Fatal("Can't MakeCredential\n")
         }
+	return
 
         // ActivateCredential
         recovered_credential, err := ActivateCredential(rw, key_handle,
-                parent_handle, "01020304",
+                parent_handle, "01020304", "",
                 append(integrityHmac, encIdentity...), encrypted_secret)
         if err != nil {
                 t.Fatal("Can't ActivateCredential\n")
@@ -663,8 +666,8 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
                 t.Fatal("ConstructServerResponse fails")
         }
 
-        der_program_cert, err := ClientDecodeServerResponse(rw, endorsement_handle, quote_handle,
-                "01020304", *response_message)
+        der_program_cert, err := ClientDecodeServerResponse(rw, endorsement_handle,
+		quote_handle, "01020304", *response_message)
         if err != nil {
                 t.Fatal("ClientDecodeServerResponse fails")
         }

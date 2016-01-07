@@ -145,7 +145,7 @@ func TestRetrieveFile(t *testing.T) {
 }
 
 func TestCertificateParse(t *testing.T) {
-	out := RetrieveFile("/home/jlm/cryptobin/cert.der")
+	out := RetrieveFile("/home/jlm/cryptobin/endorsement_cert")
 	if out == nil {
 		t.Fatal("Can't retrieve file\n")
 	}

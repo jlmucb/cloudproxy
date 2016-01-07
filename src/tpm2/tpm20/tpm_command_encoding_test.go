@@ -663,7 +663,8 @@ func TestConstructActivateCredential(t *testing.T) {
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 	var credBlob []byte
 	var secret []byte
-	cmd_bytes, err := ConstructActivateCredential(Handle(0x80000002), Handle(0x80000000), "", credBlob, secret)
+	cmd_bytes, err := ConstructActivateCredential(Handle(0x80000002), Handle(0x80000000),
+		"", "", credBlob, secret)
 	fmt.Printf("Command: %x\n", cmd_bytes)
 	// TODO
 	if err != nil || !bytes.Equal(cmd_bytes, test_cmd_bytes) {

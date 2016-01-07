@@ -1654,8 +1654,9 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 }
 
 // ConstructActivateCredential constructs a ActivateCredential command.
-func ConstructActivateCredential(active_handle Handle, key_handle Handle, password string,
-        credBlob []byte, secret []byte) ([]byte, error) {
+func ConstructActivateCredential(active_handle Handle, key_handle Handle,
+		activePassword string, keyPassword string,
+		credBlob []byte, secret []byte) ([]byte, error) {
 	var empty []byte
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdActivateCredential)
 	if err != nil {
@@ -1663,9 +1664,12 @@ func ConstructActivateCredential(active_handle Handle, key_handle Handle, passwo
 	}
 	b1 := SetHandle(active_handle)
 	b2 := SetHandle(key_handle)
-	b3 ,_ := pack([]interface{}{&empty})
-	b4 := CreatePasswordAuthArea(password, Handle(ordTPM_RS_PW))
-	b5 ,_ := pack([]interface{}{&credBlob, &secret})
+	b3, _ := pack([]interface{}{&empty})
+	b4a := CreatePasswordAuthArea(activePassword, Handle(ordTPM_RS_PW))
+	b4b := CreatePasswordAuthArea(keyPassword, Handle(ordTPM_RS_PW))
+	b4t := append(b4a[2:], b4b[2:]...)
+	b4, _ := pack([]interface{}{&b4t})
+	b5, _ := pack([]interface{}{&credBlob, &secret})
 	arg_bytes := append(b1, b2...)
 	arg_bytes = append(arg_bytes, b3...)
 	arg_bytes = append(arg_bytes, b4...)
@@ -1696,10 +1700,12 @@ func DecodeActivateCredential(in []byte) ([]byte, error) {
 
 // ActivateCredential
 // 	Output: certinfo
-func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handle, password string,
+func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handle,
+		activePassword string, keyPassword string,
 		credBlob []byte, secret []byte) ([]byte, error) {
 	// Construct command
-	cmd, err:= ConstructActivateCredential (active_handle, key_handle, password, credBlob, secret)
+	cmd, err:= ConstructActivateCredential (active_handle, key_handle, activePassword,
+		keyPassword, credBlob, secret)
 	if err != nil {
 		return nil, errors.New("ConstructActivateCredential fails") 
 	}
@@ -2120,11 +2126,13 @@ func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 			return nil, nil, nil, err
 		}
 	} else {
-			return nil, nil, nil, errors.New("Unsupported hash alg") 
+		fmt.Printf("Unsupported hash %x\n",  hash_alg_id)
+		return nil, nil, nil, errors.New("Unsupported hash alg") 
 	}
 	fmt.Printf("symKey: %x\n", symKey)
-	block, err := aes.NewCipher(symKey)
+	block, err := aes.NewCipher(symKey[0:16])
 	if err !=nil {
+		fmt.Printf("After Newcipher %s\n", err)
 		return nil, nil, nil, err
 	}
 	fmt.Printf("         credential: %x\n", unmarshaled_credential)
@@ -2154,11 +2162,11 @@ func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 
 	var hmac_bytes []byte	
 	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
-		mac := hmac.New(sha1.New, hmacKey)
+		mac := hmac.New(sha1.New, hmacKey[0:20])
 		mac.Write(append(encIdentity, unmarshaled_name...))
 		hmac_bytes = mac.Sum(nil)
 	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
-		mac := hmac.New(sha256.New, hmacKey)
+		mac := hmac.New(sha256.New, hmacKey[0:32])
 		mac.Write(append(encIdentity, unmarshaled_name...))
 		hmac_bytes = mac.Sum(nil)
 	} else {
@@ -2452,10 +2460,10 @@ func ConstructServerResponse(der_policy_cert []byte, der_policy_private_key []by
 }
 
 // Output is der encoded Program Cert
-func ClientDecodeServerResponse(rw io.ReadWriter, endorsement_handle Handle, quote_handle Handle,
-		password string,
+func ClientDecodeServerResponse(rw io.ReadWriter, endorsement_handle Handle,
+		quote_handle Handle, password string,
 		response ProgramCertResponseMessage) ([]byte, error) {
-	certInfo, err := ActivateCredential(rw, quote_handle, endorsement_handle, password, 
+	certInfo, err := ActivateCredential(rw, quote_handle, endorsement_handle, "", password, 
 		response.EncIdentity, response.Secret)
 	if err != nil {
 		return nil, err
@@ -2464,7 +2472,7 @@ func ClientDecodeServerResponse(rw io.ReadWriter, endorsement_handle Handle, quo
 
 	// Decrypt cert.
 	_, out, err :=  EncryptDataWithCredential(false, uint16(algTPM_ALG_SHA1),
-        	certInfo, response.EncryptedCert, response.EncryptedCertHmac)
+		certInfo, response.EncryptedCert, response.EncryptedCertHmac)
 	if err != nil {
 		return nil, err
 	}

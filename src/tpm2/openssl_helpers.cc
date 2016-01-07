@@ -249,14 +249,16 @@ char* extEntry::getValue() {
 }
 
 bool addExtensionsToCert(int num_entry, extEntry** entries, X509* cert) {
+#if 1
+  return true;
+#endif
   // add extensions
   for (int i = 0; i < num_entry; i++) {
     int nid = OBJ_txt2nid(entries[i]->getKey());
     ASN1_OCTET_STRING* val = ASN1_OCTET_STRING_new();
     ASN1_STRING_set(val, (const void *)entries[i]->getValue(),
                     strlen(entries[i]->getValue()));
-    X509_EXTENSION* ext = X509_EXTENSION_create_by_NID(NULL, nid, 0,
-                               val);
+    X509_EXTENSION* ext = X509_EXTENSION_create_by_NID(NULL, nid, 0, val);
     if (ext == 0) {
       printf("Bad ext_conf %d\n", i);
       printf("ERR: %s\n", ERR_lib_error_string(ERR_get_error()));
@@ -296,7 +298,6 @@ bool SignX509Certificate(RSA* signing_key,
   X509_NAME* name;
   EVP_PKEY_set1_RSA(pSigningKey, signing_key);
   pSigningKey->type = EVP_PKEY_RSA;
-  
   X509_set_version(cert, 2L);
   ASN1_INTEGER_set(X509_get_serialNumber(cert), serial++);
 
@@ -332,12 +333,13 @@ bool SignX509Certificate(RSA* signing_key,
     printf("Can't set issuer name\n");
     return false;
   }
+
   // add extensions
   extEntry* entries[4];
   if (signing_instructions.isca())
-    entries[0] = new extEntry("basicConstraints", "CA:TRUE");
+    entries[0] = new extEntry("basicConstraints", "critical,CA:TRUE");
   else
-    entries[0] = new extEntry("basicConstraints", "CA:FALSE");
+    entries[0] = new extEntry("basicConstraints", "critical,CA:FALSE");
   entries[1] = new extEntry("subjectKeyIdentifier", "hash");
   entries[2] = new extEntry("authorityKeyIdentifier", "keyid, issuer:always");
   entries[3] = new extEntry("keyUsage", signing_instructions.purpose().c_str());

@@ -1974,20 +1974,32 @@ func UnmarshalCertifyInfo(in []byte) (*Attest, error) {
 	return attest, nil
 }
 
-func ComputeQuotedValue(alg uint16, credInfo []byte) ([]byte, error) {
+func ComputeHashValue(alg uint16, to_hash []byte) ([]byte, error) {
 	if alg ==  uint16(algTPM_ALG_SHA1) {
-		quoted_hash := sha1.New()
-		quoted_hash.Write(credInfo)
-		quoted_value := quoted_hash.Sum(nil)
-		return quoted_value, nil
+		hash := sha1.New()
+		hash.Write(to_hash)
+		hash_value := hash.Sum(nil)
+		return hash_value, nil
 	} else if alg == uint16(algTPM_ALG_SHA256) {
-		quoted_hash := sha256.New()
-		quoted_hash.Write(credInfo)
-		quoted_value := quoted_hash.Sum(nil)
-		return quoted_value, nil
+		hash:= sha256.New()
+		hash.Write(to_hash)
+		hash_value := hash.Sum(nil)
+		return hash_value, nil
 	} else {
 		return nil, errors.New("unsupported hash alg")
 	}
+}
+
+func ComputeQuotedValue(alg uint16, credInfo []byte, to_quote []byte) ([]byte, error) {
+	hashed_quote, err := ComputeHashValue(alg, to_quote)
+	if err != nil {
+		return nil, err
+	}
+	quote_value, err := ComputeHashValue(alg, append(credInfo, hashed_quote...))
+	if err != nil {
+		return nil, err
+	}
+	return quote_value, nil
 }
 
 func KDFA(alg uint16, key []byte, label string, contextU []byte, contextV []byte, bits int) ([]byte, error) {
@@ -2033,7 +2045,7 @@ func KDFA(alg uint16, key []byte, label string, contextU []byte, contextV []byte
 
 func ComputePcrDigest(alg uint16, in []byte) ([]byte, error) {
 	// in should just be a sequence of digest values
-	return ComputeQuotedValue(alg, in)
+	return ComputeHashValue(alg, in)
 }
 
 func PrintRsaPublicKey(key *TpmRsaPublicKey) {
@@ -2324,10 +2336,10 @@ func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (bool) {
 }
 
 func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage, hash_alg_id uint16,
-		 quoted_blob []byte, signature []byte) (bool) {
+		 quote_struct_blob []byte, signature []byte) (bool) {
 	fmt.Printf("VerifyQuote\n")
 	// Decode attest
-	attest, err := UnmarshalCertifyInfo(quoted_blob)
+	attest, err := UnmarshalCertifyInfo(quote_struct_blob)
 	if err != nil {
 		fmt.Printf("UnmarshalCertifyInfo fails\n")
 		return false
@@ -2344,12 +2356,14 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage, hash_alg_i
 		return false
 	}
 
-	// Decode quote structure - this is wrong
-	quote_hash, err := ComputeQuotedValue(hash_alg_id, quoted_blob)
+	// Decode quote structure
+	quote_hash, err := ComputeQuotedValue(hash_alg_id, quote_struct_blob, to_quote)
 	if err != nil {
 		fmt.Printf("ComputeQuotedValue fails\n")
 		return false
 	}
+	fmt.Printf("\nto_quote           : %x\n", to_quote)
+	fmt.Printf("quote_struct_blob  : %x\n", quote_struct_blob)
 	fmt.Printf("ComputedQuotedValue: %x\n", quote_hash)
 
 	// Get quote key from quote_key_info
@@ -2357,7 +2371,7 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage, hash_alg_i
 		fmt.Printf("Bad key type %s\n", quote_key_info.PublicKey.KeyType)
 		return false;
 	}
-	fmt.Printf("Modulus: %x\n", quote_key_info.PublicKey.RsaKey.Modulus)
+	fmt.Printf("Modulus: %x\n\n", quote_key_info.PublicKey.RsaKey.Modulus)
 
 	quote_key := new(rsa.PublicKey)
 	quote_key.N = new(big.Int)
@@ -2373,11 +2387,12 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage, hash_alg_i
 	}
 	start_quote_blob := int(*quote_key_info.PublicKey.RsaKey.BitModulusSize) / 8 - SizeHash(hash_alg_id)
 	fmt.Printf("decrypted_quote: %x\n", decrypted_quote[start_quote_blob:])
-	fmt.Printf("quote_hash: %x\n", quote_hash)
+	fmt.Printf("quote_hash: %x\n\n", quote_hash)
 	return true
 
 	if bytes.Compare(decrypted_quote[start_quote_blob:], quote_hash) != 0 {
 		fmt.Printf("Compare fails.  %x %x\n", quote_hash, decrypted_quote[start_quote_blob:])
+
 		return false
 	}
 

@@ -2335,8 +2335,9 @@ func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (bool) {
 	return true
 }
 
-func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage, hash_alg_id uint16,
-		 quote_struct_blob []byte, signature []byte) (bool) {
+func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
+		hash_alg_id uint16, quote_struct_blob []byte,
+		signature []byte) (bool) {
 	fmt.Printf("VerifyQuote\n")
 	// Decode attest
 	attest, err := UnmarshalCertifyInfo(quote_struct_blob)
@@ -2362,9 +2363,12 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage, hash_alg_i
 		fmt.Printf("ComputeQuotedValue fails\n")
 		return false
 	}
+	hashed_quote_struct, err := ComputeHashValue(hash_alg_id, quote_struct_blob)
+
 	fmt.Printf("\nto_quote           : %x\n", to_quote)
 	fmt.Printf("quote_struct_blob  : %x\n", quote_struct_blob)
 	fmt.Printf("ComputedQuotedValue: %x\n", quote_hash)
+	fmt.Printf("hashed_quote_struct: %x\n", hashed_quote_struct)
 
 	// Get quote key from quote_key_info
 	if *quote_key_info.PublicKey.KeyType != "rsa" {
@@ -2387,7 +2391,7 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage, hash_alg_i
 	}
 	start_quote_blob := int(*quote_key_info.PublicKey.RsaKey.BitModulusSize) / 8 - SizeHash(hash_alg_id)
 	fmt.Printf("decrypted_quote: %x\n", decrypted_quote[start_quote_blob:])
-	fmt.Printf("quote_hash: %x\n\n", quote_hash)
+	fmt.Printf("quote_hash     : %x\n\n", quote_hash)
 	return true
 
 	if bytes.Compare(decrypted_quote[start_quote_blob:], quote_hash) != 0 {

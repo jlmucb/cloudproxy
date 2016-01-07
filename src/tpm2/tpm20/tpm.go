@@ -174,22 +174,12 @@ func CreateSensitiveArea(in1 []byte, in2 []byte) ([]byte) {
 	return ret 
 }
 
-func DecodeRsaArea(in []byte) (*RsaParams, error) {
+func DecodeRsaBuf(rsa_buf []byte) (*RsaParams, error) {
 	parms := new(RsaParams)
-	fmt.Printf("DecodeRsaArea : %x\n", in)
-	var rsa_buf []byte
-	var current int
-
-        template := []interface{}{&rsa_buf}
-        err := unpack(in, template)
-        if err != nil {
-                return nil, errors.New("Can't unpack Rsa buffer 1")
-        }
-
-	current = 0
-	template = []interface{}{&parms.enc_alg, &parms.hash_alg,
+	current := int(0)
+	template := []interface{}{&parms.enc_alg, &parms.hash_alg,
                                    &parms.attributes, &parms.auth_policy}
-        err = unpack(rsa_buf[current:], template)
+        err := unpack(rsa_buf[current:], template)
         if err != nil {
                 return nil, errors.New("Can't unpack Rsa buffer 2")
         }
@@ -216,6 +206,19 @@ func DecodeRsaArea(in []byte) (*RsaParams, error) {
                 return nil, errors.New("Can't unpack Rsa buffer 5")
         }
 	return parms, nil
+}
+
+// nil is error
+func DecodeRsaArea(in []byte) (*RsaParams, error) {
+	fmt.Printf("DecodeRsaArea : %x\n", in)
+	var rsa_buf []byte
+
+        template := []interface{}{&rsa_buf}
+        err := unpack(in, template)
+        if err != nil {
+                return nil, errors.New("Can't unpack Rsa buffer 1")
+        }
+	return DecodeRsaBuf(rsa_buf)
 }
 
 // nil is error

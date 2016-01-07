@@ -373,12 +373,25 @@ func TestCombinedQuoteTest(t *testing.T) {
         fmt.Printf("attest             : %x\n", attest)
         fmt.Printf("sig                : %x\n\n", sig)
 
+	// get info for verify
+	keyblob, name, qualified_name, err := ReadPublic(rw, quote_handle)
+        if err != nil {
+		FlushContext(rw, quote_handle)
+		err = FlushContext(rw, parent_handle)
+		rw.Close()
+                t.Fatal("Quote fails")
+        }
+
         // Flush
         err = FlushContext(rw, quote_handle)
         err = FlushContext(rw, parent_handle)
         rw.Close()
 
         // Verify quote
+	fmt.Printf("keyblob(%x): %x\n", len(keyblob), keyblob)
+	fmt.Printf("name(%x): %x\n", len(name), name)
+	fmt.Printf("qualified_name(%x): %x\n", len(qualified_name), qualified_name)
+	return
 	rsaParams, err := DecodeRsaArea(public_blob)
         if err != nil {
                 t.Fatal("DecodeRsaArea fails %s", err)

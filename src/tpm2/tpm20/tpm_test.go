@@ -411,7 +411,6 @@ func TestCombinedQuoteTest(t *testing.T) {
 	quote_key_info.PublicKey.RsaKey.BitModulusSize = &sz_mod
 	quote_key_info.PublicKey.RsaKey.Exponent = []byte{0,0,0,1,0,0,0,1}
 	quote_key_info.PublicKey.RsaKey.Modulus =  rsaParams.modulus
-        return
         if !VerifyQuote(to_quote, quote_key_info, uint16(algTPM_ALG_SHA1), attest, sig) {
                 t.Fatal("VerifyQuote fails")
         }

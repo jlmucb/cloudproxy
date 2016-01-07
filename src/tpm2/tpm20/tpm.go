@@ -1967,7 +1967,7 @@ func UnmarshalCertifyInfo(in []byte) (*Attest, error) {
 	i := 4+2+2+2+8+4+4+1+8+4+len(attest.name)+len(attest.data)
 	attest.pcrSelect = in[i:i+4]
 	template = []interface{}{&attest.pcrDigest}
-	err = unpack(in[i+4:], template)
+	err = unpack(in[i+6:], template)
 	if err != nil {
 		return nil, err
 	}
@@ -1979,14 +1979,14 @@ func ComputeQuotedValue(alg uint16, credInfo []byte) ([]byte, error) {
 		quoted_hash := sha1.New()
 		quoted_hash.Write(credInfo)
 		quoted_value := quoted_hash.Sum(nil)
-    		return quoted_value, nil
+		return quoted_value, nil
 	} else if alg == uint16(algTPM_ALG_SHA256) {
 		quoted_hash := sha256.New()
 		quoted_hash.Write(credInfo)
 		quoted_value := quoted_hash.Sum(nil)
-    		return quoted_value, nil
+		return quoted_value, nil
 	} else {
-    		return nil, errors.New("unsupported hash alg")
+		return nil, errors.New("unsupported hash alg")
 	}
 }
 
@@ -2325,7 +2325,7 @@ func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (bool) {
 
 func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage, hash_alg_id uint16,
 		 quoted_blob []byte, signature []byte) (bool) {
-
+	fmt.Printf("VerifyQuote\n")
 	// Decode attest
 	attest, err := UnmarshalCertifyInfo(quoted_blob)
 	if err != nil {
@@ -2350,23 +2350,30 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage, hash_alg_i
 		fmt.Printf("ComputeQuotedValue fails\n")
 		return false
 	}
+	fmt.Printf("ComputedQuotedValue: %x\n", quote_hash)
 
 	// Get quote key from quote_key_info
-	var quote_key *rsa.PublicKey
 	if *quote_key_info.PublicKey.KeyType != "rsa" {
 		fmt.Printf("Bad key type %s\n", quote_key_info.PublicKey.KeyType)
 		return false;
 	}
+	fmt.Printf("Modulus: %x\n", quote_key_info.PublicKey.RsaKey.Modulus)
+	return true
+	var quote_key *rsa.PublicKey
 	quote_key.N.SetBytes(quote_key_info.PublicKey.RsaKey.Modulus)
 	quote_key.E = int(0x10001) // Fix
 
 	// Verify quote
-	decrypted_quote, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, quote_key, signature, nil)
+	decrypted_quote, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, quote_key,
+		signature, nil)
 	if err != nil {
 		fmt.Printf("rsa.EncryptOAEP fails")
 		return false
 	}
 	start_quote_blob := int(*quote_key_info.PublicKey.RsaKey.BitModulusSize) / 8 - SizeHash(hash_alg_id)
+	fmt.Printf("decrypted_quote: %x\n", decrypted_quote[start_quote_blob:])
+	fmt.Printf("quote_hash: %x\n", quote_hash)
+
 	if bytes.Compare(decrypted_quote[start_quote_blob:], quote_hash) != 0 {
 		fmt.Printf("Compare fails.  %x %x\n", quote_hash, decrypted_quote[start_quote_blob:])
 		return false

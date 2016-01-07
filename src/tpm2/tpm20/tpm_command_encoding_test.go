@@ -634,7 +634,7 @@ func TestDecodeQuote(t *testing.T) {
         if err != nil || status != 0 {
 		t.Fatal("DecodeCommandResponse fails\n")
         }
-	attest, sig, err := DecodeQuote(test_resp_bytes[10:])
+	attest, _, _, sig, err := DecodeQuote(test_resp_bytes[10:])
 	if err != nil {
 		t.Fatal("DecodeQuote fails\n")
 	}

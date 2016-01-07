@@ -1608,24 +1608,26 @@ func ConstructQuote(signing_handle Handle, parent_password, owner_password strin
 
 // DecodeQuote decodes a Quote response.
 //	Output: attest, signature
-func DecodeQuote(in []byte) ([]byte, []byte, error) {
+func DecodeQuote(in []byte) ([]byte, uint16, uint16, []byte, error) {
         var empty []byte
         var buf []byte
         var attest []byte
         var signature []byte
+	var s1 uint16
+	var s2 uint16
 
         template :=  []interface{}{&empty, &buf}
         err := unpack(in, template)
         if err != nil {
-                return nil, nil, errors.New("Can't decode Quote response")
+                return nil, 0, 0, nil, errors.New("Can't decode Quote response")
         }
 
-        template =  []interface{}{&attest, &signature}
+        template =  []interface{}{&attest, &s1, &s2, &signature}
         err = unpack(buf, template)
         if err != nil {
-                return nil, nil, errors.New("Can't decode Quote response")
+                return nil, 0, 0, nil, errors.New("Can't decode Quote response")
         }
-        return attest, signature, nil
+        return attest, s1, s2, signature, nil
 }
 
 // Quote
@@ -1653,6 +1655,7 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
         if err != nil {
                 return nil, nil, errors.New("Read Tpm fails")
         }
+	fmt.Printf("Quote resp: %x\n", resp)
 
 	// Decode Response
         if read < 10 {
@@ -1666,7 +1669,7 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 	if status != errSuccess {
 		return nil, nil, errors.New("Quote unsuccessful")
 	}
-	attest, sig, err := DecodeQuote(resp[10:])
+	attest, _, _, sig, err := DecodeQuote(resp[10:])
         if err != nil {
                 return nil, nil, errors.New("DecodeQuote fails")
         }
@@ -1988,18 +1991,6 @@ func ComputeHashValue(alg uint16, to_hash []byte) ([]byte, error) {
 	} else {
 		return nil, errors.New("unsupported hash alg")
 	}
-}
-
-func ComputeQuotedValue(alg uint16, credInfo []byte, to_quote []byte) ([]byte, error) {
-	hashed_credInfo, err := ComputeHashValue(alg, credInfo)
-	if err != nil {
-		return nil, err
-	}
-	quote_value, err := ComputeHashValue(alg, append(to_quote, hashed_credInfo...))
-	if err != nil {
-		return nil, err
-	}
-	return quote_value, nil
 }
 
 func KDFA(alg uint16, key []byte, label string, contextU []byte, contextV []byte, bits int) ([]byte, error) {
@@ -2357,49 +2348,45 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
 		return false
 	}
 
-	// Decode quote structure
-	quote_hash, err := ComputeQuotedValue(hash_alg_id, quote_struct_blob, to_quote)
+	// Compute quote
+	quote_hash, err := ComputeHashValue(hash_alg_id, quote_struct_blob)
 	if err != nil {
-		fmt.Printf("ComputeQuotedValue fails\n")
+		fmt.Printf("ComputeHashValue fails")
 		return false
 	}
-	hashed_quote_struct, err := ComputeHashValue(hash_alg_id, quote_struct_blob)
 
-	fmt.Printf("\nto_quote           : %x\n", to_quote)
 	fmt.Printf("quote_struct_blob  : %x\n", quote_struct_blob)
 	fmt.Printf("ComputedQuotedValue: %x\n", quote_hash)
-	fmt.Printf("hashed_quote_struct: %x\n", hashed_quote_struct)
 
 	// Get quote key from quote_key_info
 	if *quote_key_info.PublicKey.KeyType != "rsa" {
 		fmt.Printf("Bad key type %s\n", quote_key_info.PublicKey.KeyType)
 		return false;
 	}
-	fmt.Printf("Modulus: %x\n\n", quote_key_info.PublicKey.RsaKey.Modulus)
-
-	quote_key := new(rsa.PublicKey)
-	quote_key.N = new(big.Int)
-	quote_key.N.SetBytes(quote_key_info.PublicKey.RsaKey.Modulus)
-	quote_key.E = int(0x10001) // Fix
 
 	// Verify quote
-	decrypted_quote, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, quote_key,
-		signature, nil)
-	if err != nil {
-		fmt.Printf("rsa.EncryptOAEP fails")
-		return false
-	}
-	start_quote_blob := int(*quote_key_info.PublicKey.RsaKey.BitModulusSize) / 8 - SizeHash(hash_alg_id)
-	fmt.Printf("decrypted_quote: %x\n", decrypted_quote[start_quote_blob:])
+	var N *big.Int
+	var E *big.Int
+	N  = new(big.Int)
+	N.SetBytes(quote_key_info.PublicKey.RsaKey.Modulus)
+	E  = new(big.Int)
+	E.SetBytes([]byte{0,1,0,1})
+	x := new(big.Int)
+	x.SetBytes(signature)
+	z := new(big.Int)
+	z = z.Exp(x, E, N)
+	decrypted_quote := z.Bytes()
+	fmt.Printf("\nmodulus        : %x\n", N)
+	fmt.Printf("signature      : %x\n", x)
+	fmt.Printf("E              : %x\n", E)
+	fmt.Printf("decrypted_quote: %x\n", decrypted_quote)
 	fmt.Printf("quote_hash     : %x\n\n", quote_hash)
-	return true
-
+	start_quote_blob := len(decrypted_quote) - SizeHash(hash_alg_id)
 	if bytes.Compare(decrypted_quote[start_quote_blob:], quote_hash) != 0 {
 		fmt.Printf("Compare fails.  %x %x\n", quote_hash, decrypted_quote[start_quote_blob:])
 
 		return false
 	}
-
 	return true
 }
 

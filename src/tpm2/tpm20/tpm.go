@@ -1991,11 +1991,11 @@ func ComputeHashValue(alg uint16, to_hash []byte) ([]byte, error) {
 }
 
 func ComputeQuotedValue(alg uint16, credInfo []byte, to_quote []byte) ([]byte, error) {
-	hashed_quote, err := ComputeHashValue(alg, to_quote)
+	hashed_credInfo, err := ComputeHashValue(alg, credInfo)
 	if err != nil {
 		return nil, err
 	}
-	quote_value, err := ComputeHashValue(alg, append(credInfo, hashed_quote...))
+	quote_value, err := ComputeHashValue(alg, append(to_quote, hashed_credInfo...))
 	if err != nil {
 		return nil, err
 	}

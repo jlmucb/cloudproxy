@@ -2358,8 +2358,9 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage, hash_alg_i
 		return false;
 	}
 	fmt.Printf("Modulus: %x\n", quote_key_info.PublicKey.RsaKey.Modulus)
-	return true
-	var quote_key *rsa.PublicKey
+
+	quote_key := new(rsa.PublicKey)
+	quote_key.N = new(big.Int)
 	quote_key.N.SetBytes(quote_key_info.PublicKey.RsaKey.Modulus)
 	quote_key.E = int(0x10001) // Fix
 
@@ -2373,6 +2374,7 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage, hash_alg_i
 	start_quote_blob := int(*quote_key_info.PublicKey.RsaKey.BitModulusSize) / 8 - SizeHash(hash_alg_id)
 	fmt.Printf("decrypted_quote: %x\n", decrypted_quote[start_quote_blob:])
 	fmt.Printf("quote_hash: %x\n", quote_hash)
+	return true
 
 	if bytes.Compare(decrypted_quote[start_quote_blob:], quote_hash) != 0 {
 		fmt.Printf("Compare fails.  %x %x\n", quote_hash, decrypted_quote[start_quote_blob:])

@@ -3032,6 +3032,17 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_blob,
   size_secret= 256;
   RSA_padding_add_PKCS1_OAEP(secret_buf, 256, seed, size_seed,
       (byte*)"IDENTITY", strlen("IDENTITY")+1);
+#if 1
+  int k = 0;
+  byte check[512];
+  memset(check, 0, 512);
+  while(k < 256 && secret_buf[k] == 0) k++;
+  int check_len = RSA_padding_check_PKCS1_OAEP(check, 256, &secret_buf[k], 256-k,
+                    256, (byte*)"IDENTITY", strlen("IDENTITY")+1);
+  printf("Seed         : ");PrintBytes(size_seed, seed);printf("\n");
+  printf("Funny padding: ");PrintBytes(256, secret_buf);printf("\n");
+  printf("check %03d    : ", check_len);PrintBytes(check_len, check);printf("\n");
+#endif
   int n = RSA_public_encrypt(size_secret, secret_buf,
                              unmarshaled_encrypted_secret->secret,
                              protector_key, RSA_NO_PADDING);

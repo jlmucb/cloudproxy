@@ -16,8 +16,12 @@ package tpm
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/x509"
 	"fmt"
+	"math/big"
 	"os"
 	"testing"
 )
@@ -156,6 +160,47 @@ func TestCertificateParse(t *testing.T) {
 		fmt.Printf("Error: %s\n", err)
 		t.Fatal("Can't parse retrieved cert\n")
 	}
+}
+
+func TestPad(t *testing.T) {
+	der_policy_key := RetrieveFile("/home/jlm/cryptobin/cloudproxy_key_file")
+	if der_policy_key == nil {
+		t.Fatal("Can't retrieve file\n")
+	}
+	private, err := rsa.GenerateKey(rand.Reader, 2048)
+	if  err != nil || private == nil {
+		t.Fatal("Can't parse private key %s\n", err)
+	}
+	public := &private.PublicKey
+	var a []byte
+	copy(a[:], "IDENTITY")
+	a = append(a, 0x00)
+
+	seed := []byte{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}
+	encrypted_secret, err := rsa.EncryptOAEP(sha1.New(), rand.Reader,
+                        public, seed, a)
+	if  err != nil {
+		t.Fatal("Can't encrypt ", err)
+	}
+	fmt.Printf("encrypted_secret: %x\n", encrypted_secret)
+	decrypted_secret, err := rsa.DecryptOAEP(sha1.New(), rand.Reader,
+                        private, encrypted_secret, a)
+	if  err != nil {
+		t.Fatal("Can't decrypt ", err)
+	}
+	fmt.Printf("decrypted_secret: %x\n", decrypted_secret)
+	var N *big.Int
+	var D *big.Int
+	var x *big.Int
+	var z *big.Int
+	N = public.N
+	D = private.D
+	x = new(big.Int)
+	z = new(big.Int)
+	x.SetBytes(encrypted_secret)
+	z = z.Exp(x, D, N)
+	decrypted_pad := z.Bytes()
+	fmt.Printf("decrypted_pad   : %x\n", decrypted_pad)
 }
 
 

@@ -496,7 +496,9 @@ func TestCombinedEndorsementTest(t *testing.T) {
         if err != nil {
                 t.Fatal("Can't MakeCredential\n")
         }
-	return
+	fmt.Printf("\nencrypted secret   : %x\n", encrypted_secret)
+	fmt.Printf("encIdentity        : %x\n", encIdentity)
+	fmt.Printf("integrityHmac      : %x\n\n", integrityHmac)
 
         // ActivateCredential
         recovered_credential, err := ActivateCredential(rw, key_handle,

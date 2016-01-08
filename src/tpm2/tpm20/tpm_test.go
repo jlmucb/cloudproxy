@@ -442,7 +442,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
                 uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
                 uint16(1024), uint32(0x00010001), empty}
         parent_handle, public_blob, err := CreatePrimary(rw,
-                uint32(ordTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
+                uint32(ordTPM_RH_OWNER), []int{0x7}, "", "", primaryparms)
         if err != nil {
                 t.Fatal("CreatePrimary fails")
         }
@@ -454,7 +454,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
                 uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
                 uint16(1024), uint32(0x00010001), empty}
         private_blob, public_blob, err := CreateKey(rw, uint32(parent_handle), 
-                []int{7}, "01020304", "01020304", keyparms)
+                []int{7}, "", "01020304", keyparms)
         if err != nil {
                 t.Fatal("CreateKey fails")
         }
@@ -463,7 +463,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
         fmt.Printf("Public  blob: %x\n\n", public_blob)
 
         // Load
-        key_handle, blob, err := Load(rw, parent_handle, "", "01020304",
+        key_handle, blob, err := Load(rw, parent_handle, "", "",
              public_blob, private_blob)
         if err != nil {
                 t.Fatal("Load fails")
@@ -502,7 +502,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 
         // ActivateCredential
         recovered_credential, err := ActivateCredential(rw, key_handle,
-                parent_handle, "01020304", "",
+                parent_handle, "", "01020304",
                 append(integrityHmac, encIdentity...), encrypted_secret)
         if err != nil {
                 t.Fatal("Can't ActivateCredential\n")

@@ -2157,26 +2157,27 @@ func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 		fmt.Printf("After Newcipher %s\n", err)
 		return nil, nil, nil, err
 	}
-	fmt.Printf("         credential: %x\n", unmarshaled_credential)
+	fmt.Printf("credential           : %x\n", unmarshaled_credential)
 
 	// encIdentity is encrypted(size || byte-stream), size in big endian
+	marshaled_credential := make([]byte, 2 + len(unmarshaled_credential))
 	encIdentity := make([]byte, 2 + len(unmarshaled_credential))
 	l := uint16(len(unmarshaled_credential))
 	t := byte(l >> 8)
-	encIdentity[0] = t
+	marshaled_credential[0] = t
 	t = byte(l & 0xff)
-	encIdentity[1] = t
-	copy(encIdentity, unmarshaled_credential[2:])
+	marshaled_credential[1] = t
+	copy(marshaled_credential[2:], unmarshaled_credential)
 	cfb := cipher.NewCFBEncrypter(block, iv)
-	cfb.XORKeyStream(encIdentity, unmarshaled_credential)
-	fmt.Printf("encIdentity: %x\n", encIdentity)
-
+	cfb.XORKeyStream(encIdentity, marshaled_credential)
+	fmt.Printf("marshaled_credential: %x\n", marshaled_credential)
+	fmt.Printf("encIdentity         : %x\n", encIdentity)
 	cfbdec := cipher.NewCFBDecrypter(block, iv)
 	decrypted_credential := make([]byte, 2 + len(unmarshaled_credential))
 	cfbdec.XORKeyStream(decrypted_credential, encIdentity)
 	fmt.Printf("decrypted credential: %x\n", decrypted_credential)
 
-	hmacKey, err := KDFA(uint16(algTPM_ALG_SHA1), seed, "INTEGRITY", nil, nil, 128)
+	hmacKey, err := KDFA(uint16(algTPM_ALG_SHA1), seed, "INTEGRITY", nil, nil, 256)
 	if err !=nil {
 		return nil, nil, nil, err
 	}
@@ -2195,6 +2196,8 @@ func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 		return nil, nil, nil, errors.New("Unsupported has alg") 
 	}
 	marshalled_hmac, _ := pack([]interface{}{&hmac_bytes})
+	fmt.Printf("hmac             : %x\n", hmac_bytes)
+	fmt.Printf("marshaled_hmac   : %x\n", marshalled_hmac)
 	return encrypted_secret, encIdentity, marshalled_hmac, nil
 }
 

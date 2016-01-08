@@ -498,6 +498,7 @@ int main(int an, char** av) {
          unmarshaled_name.size);
   ChangeEndian16(&unmarshaled_name.size, &marshaled_name.size);
   memcpy(marshaled_name.name, unmarshaled_name.name, unmarshaled_name.size);
+  printf("Quote name : ");PrintBytes(unmarshaled_name.size, unmarshaled_name.name); printf("\n");
 
   // Encrypt signed program cert and prepare ActivateCredential buffer
   if (!MakeCredential(endorsement_blob_size, endorsement_blob,

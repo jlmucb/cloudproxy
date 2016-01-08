@@ -2109,7 +2109,7 @@ func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 	}
 
 	// replace with RAND_bytes
-	seed := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+	seed := []byte{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1}
 	// var seed []byte
 	// rand.Read(seed[0:16]);
 
@@ -2138,12 +2138,14 @@ func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 	var symKey []byte
 	iv := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
-		symKey, err = KDFA(uint16(algTPM_ALG_SHA1), seed, "STORAGE", nil, nil, 128)
+		symKey, err = KDFA(hash_alg_id, seed, "STORAGE",
+			unmarshaled_name, nil, 128)
 		if err !=nil {
 			return nil, nil, nil, err
 		}
 	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
-		symKey, err = KDFA(uint16(algTPM_ALG_SHA256), seed, "STORAGE", nil, nil, 128)
+		symKey, err = KDFA(hash_alg_id, seed, "STORAGE",
+			unmarshaled_name, nil, 256)
 		if err !=nil {
 			return nil, nil, nil, err
 		}
@@ -2177,7 +2179,8 @@ func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 	cfbdec.XORKeyStream(decrypted_credential, encIdentity)
 	fmt.Printf("decrypted credential: %x\n", decrypted_credential)
 
-	hmacKey, err := KDFA(uint16(algTPM_ALG_SHA1), seed, "INTEGRITY", nil, nil, 256)
+	hmacKey, err := KDFA(hash_alg_id, seed, "INTEGRITY",
+		nil, nil, 8*SizeHash(hash_alg_id))
 	if err !=nil {
 		return nil, nil, nil, err
 	}

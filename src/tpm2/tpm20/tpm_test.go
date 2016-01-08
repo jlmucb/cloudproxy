@@ -501,8 +501,8 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	fmt.Printf("integrityHmac      : %x\n\n", integrityHmac)
 
         // ActivateCredential
-        recovered_credential, err := ActivateCredential(rw, key_handle,
-                parent_handle, "", "01020304",
+        recovered_credential, err := ActivateCredential(rw,
+		key_handle, parent_handle, "", "01020304",
                 append(integrityHmac, encIdentity...), encrypted_secret)
         if err != nil {
                 t.Fatal("Can't ActivateCredential\n")

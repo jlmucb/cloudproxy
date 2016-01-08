@@ -2099,9 +2099,9 @@ func EncryptDataWithCredential(encrypt_flag bool, hash_alg_id uint16,
 func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 		unmarshaled_credential []byte,
 		unmarshaled_name []byte) ([]byte, []byte, []byte, error) {
-	var a []byte
-	copy(a[:], "IDENTITY")
-	a = append(a, 0x00)
+	var a [9]byte
+	copy(a[0:9], "IDENTITY")
+	fmt.Printf("MakeCredential, a: %x\n", a)
 	endorsement_cert, err := x509.ParseCertificate(der_endorsement_blob)
 	if err !=nil {
 		fmt.Printf("Can't Parse endorsement cert\n")
@@ -2126,10 +2126,10 @@ func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 	var encrypted_secret []byte
 	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
 		encrypted_secret, err = rsa.EncryptOAEP(sha1.New(), rand.Reader,
-			public, seed, a)
+			public, seed, a[0:9])
 	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
 		encrypted_secret, err = rsa.EncryptOAEP(sha256.New(),
-			rand.Reader, public, seed, a)
+			rand.Reader, public, seed, a[0:9])
 	} else {
 		return nil, nil, nil, errors.New("Unsupported hash alg") 
 	}

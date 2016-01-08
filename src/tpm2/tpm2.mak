@@ -93,6 +93,11 @@ dobj_SigningInstructions=			$(O)/tpm2_lib.o \
   $(O)/tpm2.pb.o \
   $(O)/openssl_helpers.o \
   $(O)/SigningInstructions.o
+dobj_PadTest =	$(O)/tpm2_lib.o \
+  $(O)/tpm2.pb.o \
+  $(O)/quote_protocol.o \
+  $(O)/openssl_helpers.o \
+  $(O)/padtest.o
 
 all:	$(EXE_DIR)/tpm2_util.exe \
 	$(EXE_DIR)/GeneratePolicyKey.exe \
@@ -105,7 +110,8 @@ all:	$(EXE_DIR)/tpm2_util.exe \
 	$(EXE_DIR)/RestoreCloudProxyKeyHierarchy.exe \
 	$(EXE_DIR)/ClientGenerateProgramKeyRequest.exe \
 	$(EXE_DIR)/ServerSignProgramKeyRequest.exe \
-	$(EXE_DIR)/ClientGetProgramKeyCert.exe
+	$(EXE_DIR)/ClientGetProgramKeyCert.exe \
+	$(EXE_DIR)/padtest.exe
 
 clean:
 	@echo "removing object files"
@@ -235,5 +241,13 @@ $(O)/SelfSignPolicyCert.o: $(S)/SelfSignPolicyCert.cc
 $(O)/SigningInstructions.o: $(S)/SigningInstructions.cc
 	@echo "compiling SigningInstructions.cc"
 	$(CC) $(CFLAGS) -c -o $(O)/SigningInstructions.o $(S)/SigningInstructions.cc
+
+$(O)/padtest.o: $(S)/padtest.cc
+	@echo "compiling padtest.cc"
+	$(CC) $(CFLAGS) -c -o $(O)/padtest.o $(S)/padtest.cc
+
+$(EXE_DIR)/padtest.exe: $(dobj_PadTest)
+	@echo "linking padtest"
+	$(LINK) -o $(EXE_DIR)/padtest.exe $(dobj_PadTest) $(LDFLAGS)
 
 

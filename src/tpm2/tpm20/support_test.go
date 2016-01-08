@@ -163,28 +163,23 @@ func TestCertificateParse(t *testing.T) {
 }
 
 func TestPad(t *testing.T) {
-	der_policy_key := RetrieveFile("/home/jlm/cryptobin/cloudproxy_key_file")
-	if der_policy_key == nil {
-		t.Fatal("Can't retrieve file\n")
-	}
 	private, err := rsa.GenerateKey(rand.Reader, 2048)
 	if  err != nil || private == nil {
-		t.Fatal("Can't parse private key %s\n", err)
+		t.Fatal("Can't gen private key %s\n", err)
 	}
 	public := &private.PublicKey
-	var a []byte
-	copy(a[:], "IDENTITY")
-	a = append(a, 0x00)
+	var a [9]byte
+	copy(a[0:8], "IDENTITY")
 
 	seed := []byte{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}
 	encrypted_secret, err := rsa.EncryptOAEP(sha1.New(), rand.Reader,
-                        public, seed, a)
+                        public, seed, a[0:9])
 	if  err != nil {
 		t.Fatal("Can't encrypt ", err)
 	}
 	fmt.Printf("encrypted_secret: %x\n", encrypted_secret)
 	decrypted_secret, err := rsa.DecryptOAEP(sha1.New(), rand.Reader,
-                        private, encrypted_secret, a)
+                        private, encrypted_secret, a[0:9])
 	if  err != nil {
 		t.Fatal("Can't decrypt ", err)
 	}
@@ -202,5 +197,4 @@ func TestPad(t *testing.T) {
 	decrypted_pad := z.Bytes()
 	fmt.Printf("decrypted_pad   : %x\n", decrypted_pad)
 }
-
 

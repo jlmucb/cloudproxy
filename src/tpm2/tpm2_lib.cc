@@ -598,9 +598,9 @@ byte ToHex(const char in) {
   if (in >= 0 && in <= '9')
     return in - '0';
   if (in >= 'a' && in <= 'f')
-    return in - 'a';
+    return in - 'a' + 10;
   if (in >= 'A' && in <= 'F')
-    return in - 'A';
+    return in - 'A' + 10;
   return 0;
 }
 

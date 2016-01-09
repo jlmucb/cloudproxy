@@ -76,7 +76,9 @@ int main(int an, char** av) {
   int buf_size = 1024;
   byte padded_buf[512];
   byte check[512];
+  byte repadded_buf[1024];
   memset(check, 0, 512);
+  memset(repadded_buf, 0, 512);
 
   if (!ReadFileIntoBlock(filename, &buf_size, buf)) {
     printf("Cant read %s\n", filename.c_str());
@@ -88,5 +90,8 @@ int main(int an, char** av) {
                     256, (byte*)"IDENTITY", strlen("IDENTITY")+1);
   printf("Padding %3d  : ", pad_size);PrintBytes(pad_size, padded_buf);printf("\n");
   printf("check %03d    : ", check_len);PrintBytes(check_len, check);printf("\n");
+  int repadded_len = RSA_padding_add_PKCS1_OAEP(repadded_buf, 256, check, check_len,
+                    	(byte*)"IDENTITY", strlen("IDENTITY")+1);
+  printf("repadded  %03d : ", 256);PrintBytes(256, repadded_buf);printf("\n");
   return 0;
 }

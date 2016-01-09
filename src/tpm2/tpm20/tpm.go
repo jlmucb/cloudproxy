@@ -2084,6 +2084,62 @@ func EncryptDataWithCredential(encrypt_flag bool, hash_alg_id uint16,
 	return nil, nil, nil
 }
 
+// Returns encrypted secret.
+func encryptHack (hash_alg_id uint16, modSize int,
+		  protectorPublic *rsa.PublicKey, seed []byte,
+		  label []byte) ([]byte, error) {
+
+	private, err := rsa.GenerateKey(rand.Reader, modSize)
+	if  err != nil || private == nil {
+		return nil, errors.New("Can't gen private key")
+	}
+	public := &private.PublicKey
+
+	var fake_encrypted_secret []byte
+	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
+		fake_encrypted_secret, err = rsa.EncryptOAEP(sha1.New(),
+			rand.Reader, public, seed, label)
+	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
+		fake_encrypted_secret, err = rsa.EncryptOAEP(sha256.New(),
+			rand.Reader, public, seed, label)
+	} else {
+		return nil, errors.New("Unsupported hash")
+	}
+	if  err != nil {
+		return nil, errors.New("Can't fake encrypt")
+	}
+	fmt.Printf("encrypted_secret: %x\n", fake_encrypted_secret)
+	var N *big.Int
+	var D *big.Int
+	var x *big.Int
+	var z *big.Int
+	N = public.N
+	D = private.D
+	x = new(big.Int)
+	z = new(big.Int)
+	x.SetBytes(fake_encrypted_secret)
+	z = z.Exp(x, D, N)
+	decrypted_pad := z.Bytes()
+	fmt.Printf("decrypted with pad (%d): %x\n", len(decrypted_pad), decrypted_pad)
+	zero := []byte{0}
+	decrypted_pad = append(zero, decrypted_pad...)
+	fmt.Printf("new pad (%d): %x\n", len(decrypted_pad), decrypted_pad)
+
+	// Now encrypt with real key
+	var M *big.Int
+	var E *big.Int
+	var u *big.Int
+	var w *big.Int
+	M = protectorPublic.N
+	E = big.NewInt(int64(protectorPublic.E))
+	u = new(big.Int)
+	w = new(big.Int)
+	u.SetBytes(decrypted_pad)
+	w = w.Exp(u, E, M)
+	encrypted_secret  := w.Bytes()
+	return encrypted_secret, nil
+}
+
 //	1. Generate Seed
 //	2. encrypted_secret= E(protector_key, seed || "IDENTITY")
 //	3. symKey ≔ KDFa (ekNameAlg, seed, “STORAGE”, name, NULL , bits)
@@ -2125,23 +2181,10 @@ func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 	rand.Read(seed[0:16]);
 
 	// encrypt secret
-	var encrypted_secret []byte
-	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
-		encrypted_secret, err = rsa.EncryptOAEP(sha1.New(), rand.Reader,
-			public, seed[0:16], a[0:9])
-		if err != nil {
-			 return nil, nil, nil, errors.New("Can't OAEP encrypt")
-		}
-	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
-		encrypted_secret, err = rsa.EncryptOAEP(sha256.New(),
-			rand.Reader, public, seed[0:16], a[0:9])
-		if err != nil {
-			 return nil, nil, nil, errors.New("Can't OAEP encrypt")
-		}
-	} else {
-		return nil, nil, nil, errors.New("Unsupported hash alg") 
-	}
-	fmt.Printf("encrypted_secret: %x\n", encrypted_secret)
+	encrypted_secret, err := encryptHack (hash_alg_id, 2048,
+                  public, seed[0:16], a[0:9]) 
+	fmt.Printf("real encrypted secret (%d): %x\n", len(encrypted_secret),
+		encrypted_secret)
 
 	var symKey []byte
 	iv := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}

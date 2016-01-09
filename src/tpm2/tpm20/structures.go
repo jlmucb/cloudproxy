@@ -67,12 +67,6 @@ type KeyedHashParams struct {
 	unique []byte
 }
 
-type TpmRsaPublicKey struct {
-	rsa_params *RsaParams
-	name []byte
-	qualified_name []byte
-}
-
 type Attest struct {
 	magic_number uint32
 	attest_type uint16

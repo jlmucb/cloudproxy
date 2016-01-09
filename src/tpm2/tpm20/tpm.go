@@ -68,7 +68,7 @@ func OpenTPM(path string) (io.ReadWriteCloser, error) {
 }
 
 func PrintAttestData(parms *Attest) {
-fmt.Printf("magic_number   : %x\n", parms.magic_number)
+	fmt.Printf("magic_number   : %x\n", parms.magic_number)
 	fmt.Printf("attest_type   : %x\n", parms.attest_type)
 	fmt.Printf("name : %x\n", parms.name)
 	fmt.Printf("data     : %x\n", parms.data)
@@ -227,7 +227,6 @@ func DecodeRsaBuf(rsa_buf []byte) (*RsaParams, error) {
 
 // nil is error
 func DecodeRsaArea(in []byte) (*RsaParams, error) {
-	fmt.Printf("DecodeRsaArea : %x\n", in)
 	var rsa_buf []byte
 
 	template := []interface{}{&rsa_buf}
@@ -384,7 +383,6 @@ func GetRandom(rw io.ReadWriteCloser, size uint32) ([]byte, error) {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, err
 	}
-	fmt.Printf("GetRandom Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
 	rand, err :=  DecodeGetRandom(resp[10:read])
@@ -436,7 +434,6 @@ func FlushContext(rw io.ReadWriter, handle Handle) (error) {
 	if err != nil {
 		return errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("FlushContext Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return errors.New("FlushContext unsuccessful")
 	}
@@ -480,7 +477,6 @@ func ReadPcrs(rw io.ReadWriter, num_byte byte, pcrSelect []byte) (uint32, []byte
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return 1, nil, 0, nil, errors.New("MakeCommandHeader failed") 
 	}
-	fmt.Printf("ReadPcrs command: %x", x)
 
 	// Send command
 	_, err = rw.Write(x)
@@ -504,7 +500,6 @@ func ReadPcrs(rw io.ReadWriter, num_byte byte, pcrSelect []byte) (uint32, []byte
 	if err != nil {
 		return 0, nil, 0, nil, errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("ReadPcrs Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return 0, nil, 0, nil, errors.New("ReadPcr command failed")
 	}
@@ -570,7 +565,6 @@ func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return 0, 0, err
 	}
-	fmt.Printf("ReadClock Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
 	current_time, current_clock, err :=  DecodeReadClock(resp[10:read])
@@ -653,7 +647,6 @@ func GetCapabilities(rw io.ReadWriter, cap uint32, count uint32, property uint32
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, err
 	}
-	fmt.Printf("GetCapabilities Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
 	_, handles, err :=  DecodeGetCapabilities(resp[10:read])
@@ -711,7 +704,6 @@ func PcrEvent(rw io.ReadWriter, pcrnum int, eventData []byte) (error) {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return err
 	}
-	fmt.Printf("PcrEvent Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 		return errors.New("Command failure")
 	}
@@ -778,7 +770,6 @@ func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
 	if err != nil {
 		return Handle(0), nil, errors.New("Can't decode CreatePrimary response 2")
 	}
-	fmt.Printf("tpm2_public : %x %x\n", len(tpm2_public), tpm2_public)
 
 	var rsa_params_buf []byte
 	template =  []interface{}{&rsa_params_buf}
@@ -786,7 +777,6 @@ func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
 	if err != nil {
 		return Handle(0), nil, errors.New("Can't decode CreatePrimary response 3")
 	}
-	fmt.Printf("rsa_params_buf: %x %x\n", len(rsa_params_buf), rsa_params_buf)
 
 	// params
 	params, err := DecodeRsaArea(tpm2_public)
@@ -803,7 +793,6 @@ func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
 	if err != nil {
 		return Handle(0), nil, errors.New("Can't decode CreatePrimary response 4")
 	}
-	fmt.Printf("creation data: %x\n", creation_data)
 	current += len(creation_data) +2
 
 	// Digest
@@ -813,7 +802,6 @@ func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
 	if err != nil {
 		return Handle(0), nil, errors.New("Can't decode CreatePrimary response 5")
 	}
-	fmt.Printf("digest : %x\n", digest)
 	current += len(digest) +2
 
 	// TPMT_TK_CREATION
@@ -824,7 +812,6 @@ func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
 	if err != nil {
 		return Handle(0), nil, errors.New("Can't decode CreatePrimary response 5")
 	}
-	fmt.Printf("crap: %x\n", crap)
 	current += len(crap) +2
 
 	// Name
@@ -834,7 +821,6 @@ func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
 	if err != nil {
 		return Handle(0), nil, errors.New("Can't decode CreatePrimary response 5")
 	}
-	fmt.Printf("name: %x\n", name)
 
 	return Handle(handle), tpm2_public, nil
 }
@@ -875,7 +861,6 @@ func CreatePrimary(rw io.ReadWriter, owner uint32, pcr_nums []int,
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return Handle(0), nil, err
 	}
-	fmt.Printf("CreatePrimary Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 	}
 	handle, public_blob, err :=  DecodeCreatePrimary(resp[10:read])
@@ -946,7 +931,6 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, nil, nil, err
 	}
-	fmt.Printf("ReadPublic Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 		return nil, nil, nil, err
 	}
@@ -1016,7 +1000,6 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, nil, err
 	}
-	fmt.Printf("CreateKey command: %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1041,7 +1024,6 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, nil, err
 	}
-	fmt.Printf("CreateKey Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 		return nil, nil, errors.New("Error from command")
 	}
@@ -1098,7 +1080,6 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string, ownerAuth st
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return Handle(0), nil, err
 	}
-	fmt.Printf("Load command: %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1123,7 +1104,6 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string, ownerAuth st
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return Handle(0), nil, err
 	}
-	fmt.Printf("Load Tag: %x, size: %x, error code: %x\n", tag, size, status)  // remove
 	if status != errSuccess {
 		return Handle(0), nil, errors.New("Error from command")
 	}
@@ -1141,7 +1121,6 @@ func ConstructPolicyPcr(handle Handle, expected_digest []byte, pcr_nums []int) (
 	if err != nil {
 		return nil, errors.New("ConstructPcr failed")
 	}
-	fmt.Printf("expected digest : %x\n", expected_digest)
 	u_handle := uint32(handle)
 	template :=  []interface{}{&u_handle, &expected_digest}
 	b1, err := pack(template)
@@ -1183,7 +1162,6 @@ func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
 	if err != nil {
 		return errors.New("Write Tpm fails") 
 	}
-	fmt.Printf("Policy password command: %x\n", cmd)
 
 	// Get response
 	var resp []byte
@@ -1202,7 +1180,6 @@ func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return err
 	}
-	fmt.Printf("PolicyPassword Tag: %x, size: %x, error code: %x\n", tag, size, status) 
 	if status != errSuccess {
 		return errors.New("Comand failure")
 	}
@@ -1217,7 +1194,6 @@ func PolicyPcr(rw io.ReadWriter, handle Handle, expected_digest []byte, pcr_nums
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return err
 	}
-	fmt.Printf("Policy pcr : %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1242,7 +1218,6 @@ func PolicyPcr(rw io.ReadWriter, handle Handle, expected_digest []byte, pcr_nums
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return err
 	}
-	fmt.Printf("Policy Pcr Tag: %x, size: %x, error code: %x\n", tag, size, status) 
 	if status != errSuccess {
 		return errors.New("Comand failure")
 	}
@@ -1287,7 +1262,6 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 		fmt.Printf("ConstructPolicyGetDigest failed %s\n", err)
 		return nil, err
 	}
-	fmt.Printf("PolicyGetDigest : %x\n",  cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1312,7 +1286,6 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, err
 	}
-	fmt.Printf("PolicyGetDigest Tag: %x, size: %x, error code: %x\n", tag, size, status) 
 	if status != errSuccess {
 		return nil, errors.New("Comand failure")
 	}
@@ -1384,7 +1357,6 @@ func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle,
 	if err != nil {
 		return Handle(0), nil, errors.New("Read Tpm fails")
 	}
-	fmt.Printf("StartAuthSession resp: %x\n\n",  resp[0:read])
 
 	// Decode Response
 	if read < 10 {
@@ -1394,7 +1366,6 @@ func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle,
 	if err != nil {
 		return Handle(0), nil, errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("StartAuth Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return Handle(0), nil, errors.New("StartAuthSession unsuccessful")
 	}
@@ -1467,7 +1438,6 @@ func CreateSealed(rw io.ReadWriter, parent Handle, policy_digest []byte,
 	if err != nil {
 		return nil, nil, errors.New("ConstructCreateSealed fails") 
 	}
-	fmt.Printf("CreateSealed cmd : %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1545,7 +1515,6 @@ func Unseal(rw io.ReadWriter, item_handle Handle, password string, session_handl
 	if err != nil {
 		return nil, nil, errors.New("ConstructUnseal fails") 
 	}
-	fmt.Printf("Unseal cmd (%d): %x\n", len(cmd), cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1569,7 +1538,6 @@ func Unseal(rw io.ReadWriter, item_handle Handle, password string, session_handl
 	if err != nil {
 		return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("Unseal Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return nil, nil, errors.New("Unseal unsuccessful")
 	}
@@ -1645,7 +1613,6 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 	if err != nil {
 		return nil, nil, errors.New("Write Tpm fails") 
 	}
-	fmt.Printf("Quote cmd : %x\n", cmd)
 
 	// Get response
 	var resp []byte
@@ -1654,7 +1621,6 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 	if err != nil {
 		return nil, nil, errors.New("Read Tpm fails")
 	}
-	fmt.Printf("Quote resp: %x\n", resp[0:read])
 
 	// Decode Response
 	if read < 10 {
@@ -1664,7 +1630,6 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 	if err != nil {
 		return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("Quote Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return nil, nil, errors.New("Quote unsuccessful")
 	}
@@ -1737,7 +1702,6 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 	if err != nil {
 		return nil, errors.New("Write Tpm fails") 
 	}
-	fmt.Printf("ActivateCredential cmd : %x\n", cmd)
 
 	// Get response
 	var resp []byte
@@ -1755,7 +1719,6 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 	if err != nil {
 		return nil, errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("ActivateCredential Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return nil, errors.New("ActivateCredential unsuccessful")
 	}
@@ -2038,46 +2001,6 @@ func ComputePcrDigest(alg uint16, in []byte) ([]byte, error) {
 	return ComputeHashValue(alg, in)
 }
 
-func PrintRsaPublicKey(key *TpmRsaPublicKey) {
-	fmt.Printf("enc_alg : %x\n", key.rsa_params.enc_alg)
-	fmt.Printf("hash_alg : %x\n", key.rsa_params.hash_alg)
-	fmt.Printf("attributes : %x\n", key.rsa_params.attributes)
-	fmt.Printf("auth_policy : %x\n", key.rsa_params.auth_policy)
-	fmt.Printf("symalg : %x\n", key.rsa_params.symalg)
-	fmt.Printf("sym_sz : %x\n", key.rsa_params.sym_sz)
-	fmt.Printf("mode : %x\n", key.rsa_params.mode)
-	fmt.Printf("scheme : %x\n", key.rsa_params.scheme)
-	fmt.Printf("size modulus : %x\n", key.rsa_params.mod_sz)
-	fmt.Printf("modulus : %x\n", key.rsa_params.modulus)
-	fmt.Printf("name : %x\n", key.name)
-	fmt.Printf("qualified_name : %x\n", key.qualified_name)
-}
-
-// Note: Only Rsa keys for now
-func GetRsaPublicKeyFromBlob(in []byte) (*TpmRsaPublicKey, error) {
-	key := new(TpmRsaPublicKey)
-	var  out_public []byte
-
-	template :=  []interface{}{&out_public}
-	err := unpack(in, template)
-	if err != nil {
-		return nil, errors.New("Can't decode response")
-	}
-	rsaParams, err := DecodeRsaArea(out_public)
-	if err != nil {
-		return nil, errors.New("Can't decode Rsa Area")
-	}
-	key.rsa_params = rsaParams
-
-	template =  []interface{}{&key.name, &key.qualified_name}
-	err = unpack(in[len(out_public) + 2:], template)
-	if err != nil {
-		return nil, errors.New("Can't decode response")
-	}
-
-	return key, nil
-}
-
 //	Return: out_hmac, output_data
 func EncryptDataWithCredential(encrypt_flag bool, hash_alg_id uint16,
 		unmarshaled_credential []byte, input_data []byte, in_hmac []byte) ([]byte, []byte, error) {
@@ -2154,12 +2077,8 @@ func encryptHack (hash_alg_id uint16, modSize int,
 func MakeCredential(protectorPublic *rsa.PublicKey, hash_alg_id uint16,
 		unmarshaled_credential []byte,
 		unmarshaled_name []byte) ([]byte, []byte, []byte, error) {
-	fmt.Printf("\nMakeCredential\n")
 	var a [9]byte
 	copy(a[0:9], "IDENTITY")
-	fmt.Printf("Public N(%d): %x\n", len(protectorPublic.N.Bytes()),
-		protectorPublic.N.Bytes())
-	fmt.Printf("Public E: %x\n\n",  protectorPublic.E);
 
 	// Seed.
 	var seed [16]byte
@@ -2180,8 +2099,6 @@ func MakeCredential(protectorPublic *rsa.PublicKey, hash_alg_id uint16,
 	if  err != nil {
 		return nil, nil, nil, errors.New("Can't encrypt secret")
 	}
-	fmt.Printf("real encrypted secret (%d): %x\n", len(encrypted_secret),
-		encrypted_secret)
 
 	var symKey []byte
 	iv := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
@@ -2201,12 +2118,10 @@ func MakeCredential(protectorPublic *rsa.PublicKey, hash_alg_id uint16,
 		fmt.Printf("Unsupported hash %x\n",  hash_alg_id)
 		return nil, nil, nil, errors.New("Unsupported hash alg") 
 	}
-	fmt.Printf("symKey: %x\n", symKey)
 	block, err := aes.NewCipher(symKey[0:16])
 	if err !=nil {
 		return nil, nil, nil, err
 	}
-	fmt.Printf("credential           : %x\n", unmarshaled_credential)
 
 	// encIdentity is encrypted(size || byte-stream), size in big endian
 	marshaled_credential := make([]byte, 2 + len(unmarshaled_credential))
@@ -2217,7 +2132,7 @@ func MakeCredential(protectorPublic *rsa.PublicKey, hash_alg_id uint16,
 	copy(marshaled_credential[2:], unmarshaled_credential)
 	cfb := cipher.NewCFBEncrypter(block, iv)
 	cfb.XORKeyStream(encIdentity, marshaled_credential)
-	fmt.Printf("marshaled_credential: %x\n", marshaled_credential)
+	fmt.Printf("\nmarshaled_credential: %x\n", marshaled_credential)
 	fmt.Printf("encIdentity         : %x\n", encIdentity)
 	cfbdec := cipher.NewCFBDecrypter(block, iv)
 	decrypted_credential := make([]byte, 2 + len(unmarshaled_credential))
@@ -2342,7 +2257,6 @@ func SizeHash(alg_id uint16) (int) {
 }
 
 func ValidPcr(pcrSelect []byte, digest []byte) (bool) {
-	fmt.Printf("ValidPcr, %x, %x\n", pcrSelect, digest)
 	return true
 }
 
@@ -2379,7 +2293,6 @@ func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (bool) {
 func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
 		hash_alg_id uint16, quote_struct_blob []byte,
 		signature []byte) (bool) {
-	fmt.Printf("VerifyQuote\n")
 	// Decode attest
 	attest, err := UnmarshalCertifyInfo(quote_struct_blob)
 	if err != nil {
@@ -2405,9 +2318,6 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
 		return false
 	}
 
-	fmt.Printf("quote_struct_blob  : %x\n", quote_struct_blob)
-	fmt.Printf("ComputedQuotedValue: %x\n", quote_hash)
-
 	// Get quote key from quote_key_info
 	if *quote_key_info.PublicKey.KeyType != "rsa" {
 		fmt.Printf("Bad key type %s\n", quote_key_info.PublicKey.KeyType)
@@ -2426,11 +2336,6 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
 	z := new(big.Int)
 	z = z.Exp(x, E, N)
 	decrypted_quote := z.Bytes()
-	fmt.Printf("\nmodulus        : %x\n", N)
-	fmt.Printf("signature      : %x\n", x)
-	fmt.Printf("E              : %x\n", E)
-	fmt.Printf("decrypted_quote: %x\n", decrypted_quote)
-	fmt.Printf("quote_hash     : %x\n\n", quote_hash)
 	start_quote_blob := len(decrypted_quote) - SizeHash(hash_alg_id)
 	if bytes.Compare(decrypted_quote[start_quote_blob:], quote_hash) != 0 {
 		fmt.Printf("Compare fails.  %x %x\n", quote_hash, decrypted_quote[start_quote_blob:])
@@ -2623,7 +2528,6 @@ func InternalMakeCredential(rw io.ReadWriter, protectorHandle Handle, credential
 	if err != nil {
 		return nil, nil, errors.New("Write Tpm fails")
 	}
-	fmt.Printf("InternalMakeCredential cmd : %x\n", cmd)
 
 	// Get response
 	var resp []byte
@@ -2632,7 +2536,6 @@ func InternalMakeCredential(rw io.ReadWriter, protectorHandle Handle, credential
 	if err != nil {
 		return nil, nil, errors.New("Read Tpm fails")
 	}
-	fmt.Printf("InternalMakeCredential response: %x\n", resp[0:read])
 
 	// Decode Response
 	if read < 10 {
@@ -2642,7 +2545,6 @@ func InternalMakeCredential(rw io.ReadWriter, protectorHandle Handle, credential
 	if err != nil {
 		return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("InternalMakeCredential Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return nil, nil, errors.New("InternalMakeCredential unsuccessful")
 	}

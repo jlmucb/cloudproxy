@@ -447,6 +447,12 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		t.Fatal("CreatePrimary fails")
 	}
 	fmt.Printf("CreatePrimary succeeded\n\n")
+	endorseParams, err := DecodeRsaArea(public_blob)
+	if err != nil {
+		t.Fatal("DecodeRsaBuf fails", err)
+	}
+	fmt.Printf("\nEndorsement key:\n")
+	PrintRsaParams(endorseParams)
 
 	// CreateKey
 	keyparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),

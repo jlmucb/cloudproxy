@@ -2163,11 +2163,23 @@ func MakeCredential(protectorPublic *rsa.PublicKey, hash_alg_id uint16,
 
 	// Seed.
 	var seed [16]byte
-	rand.Read(seed[0:16]);
+	rand.Read(seed[0:16])
 
 	// encrypt secret
-	encrypted_secret, err := encryptHack (hash_alg_id, 2048,
-                  protectorPublic, seed[0:16], a[0:9]) 
+	var encrypted_secret []byte
+	var err error
+	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
+		encrypted_secret, err = rsa.EncryptOAEP(sha1.New(),
+			rand.Reader, protectorPublic, seed[0:16], a[0:9])
+	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
+		encrypted_secret, err = rsa.EncryptOAEP(sha256.New(),
+			rand.Reader, protectorPublic, seed[0:16], a[0:9])
+	} else {
+		return nil, nil, nil, errors.New("Unsupported hash")
+	}
+	if  err != nil {
+		return nil, nil, nil, errors.New("Can't encrypt secret")
+	}
 	fmt.Printf("real encrypted secret (%d): %x\n", len(encrypted_secret),
 		encrypted_secret)
 

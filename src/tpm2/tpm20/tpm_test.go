@@ -31,7 +31,9 @@ func TestEndian(t *testing.T) {
 	s[0] = v
 	v = byte(l & 0xff)
 	s[1] = v
-	fmt.Printf("Endian test: %x\n", s)
+	if s[0] != 0xff || s[1] != 0x12 {
+		t.Fatal("Endian test mismatch")
+	}
 }
 
 // Test GetRandom
@@ -129,7 +131,6 @@ func TestCombinedKeyTest(t *testing.T) {
 	if err != nil {
 		t.Fatal("Flushall failed\n")
 	}
-	fmt.Printf("Flushall succeeded\n")
 
 	// CreatePrimary
 	var empty []byte
@@ -198,7 +199,6 @@ func TestCombinedSealTest(t *testing.T) {
 	if err != nil {
 		t.Fatal("Flushall failed\n")
 	}
-	fmt.Printf("Flushall succeeded\n")
 
 	// CreatePrimary
 	var empty []byte
@@ -228,7 +228,6 @@ func TestCombinedSealTest(t *testing.T) {
 		FlushContext(rw, parent_handle)
 		t.Fatal("StartAuthSession fails")
 	}
-	fmt.Printf("StartAuth succeeds, handle: %x\n", uint32(session_handle))
 	fmt.Printf("policy digest  : %x\n", policy_digest)
 
 	err = PolicyPassword(rw, session_handle)
@@ -267,7 +266,7 @@ func TestCombinedSealTest(t *testing.T) {
 	}
 
 	// Load
-	item_handle, blob, err := Load(rw, parent_handle, "", "01020304",
+	item_handle, _, err := Load(rw, parent_handle, "", "01020304",
 		public_blob, private_blob)
 	if err != nil {
 		FlushContext(rw, session_handle)
@@ -275,8 +274,7 @@ func TestCombinedSealTest(t *testing.T) {
 		FlushContext(rw, parent_handle)
 		t.Fatal("Load fails")
 	}
-	fmt.Printf("Load succeeded, handle: %x\n", uint32(item_handle))
-	fmt.Printf("Blob from Load     : %x\n\n", blob)
+	fmt.Printf("Load succeeded\n")
 
 	// Unseal
 	unsealed, nonce, err := Unseal(rw, item_handle, "01020304",
@@ -315,7 +313,6 @@ func TestCombinedQuoteTest(t *testing.T) {
 	if err != nil {
 		t.Fatal("Flushall failed\n")
 	}
-	fmt.Printf("Flushall succeeded\n\n")
 
 	// CreatePrimary
 	var empty []byte
@@ -435,7 +432,6 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	if err != nil {
 		t.Fatal("Flushall failed\n")
 	}
-	fmt.Printf("Flushall succeeded\n\n")
 
 	// CreatePrimary
 	var empty []byte
@@ -448,13 +444,11 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	if err != nil {
 		t.Fatal("CreatePrimary fails")
 	}
-	fmt.Printf("CreatePrimary succeeded\n\n")
+	fmt.Printf("CreatePrimary succeeded\n")
 	endorseParams, err := DecodeRsaArea(public_blob)
 	if err != nil {
 		t.Fatal("DecodeRsaBuf fails", err)
 	}
-	fmt.Printf("\nEndorsement key:\n")
-	PrintRsaParams(endorseParams)
 
 	// CreateKey
 	keyparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
@@ -467,25 +461,21 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		t.Fatal("CreateKey fails")
 	}
 	fmt.Printf("CreateKey succeeded\n")
-	fmt.Printf("Private blob: %x\n", private_blob)
-	fmt.Printf("Public  blob: %x\n\n", public_blob)
 
 	// Load
-	key_handle, blob, err := Load(rw, parent_handle, "", "",
+	key_handle, _, err := Load(rw, parent_handle, "", "",
 	     public_blob, private_blob)
 	if err != nil {
 		t.Fatal("Load fails")
 	}
 	fmt.Printf("Load succeeded\n")
-	fmt.Printf("\nBlob from Load     : %x\n", blob)
 
 	// ReadPublic
-	public, name, _, err := ReadPublic(rw, key_handle)
+	_, name, _, err := ReadPublic(rw, key_handle)
 	if err != nil {
 		t.Fatal("ReadPublic fails")
 	}
 	fmt.Printf("ReadPublic succeeded\n")
-	fmt.Printf("Public         blob: %x\n", public)
 
 	// Generate Credential
 	credential := []byte{1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,0x10}
@@ -498,9 +488,6 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		FlushContext(rw, parent_handle)
 		t.Fatal("Can't InternalMakeCredential\n")
 	}
-	fmt.Printf("\nencrypted secret   : %x\n", encrypted_secret0)
-	fmt.Printf("name                 : %x\n", name)
-	fmt.Printf("credBlob             : %x\n", credBlob)
 
 	// ActivateCredential
 	recovered_credential1, err := ActivateCredential(rw, key_handle, parent_handle,
@@ -510,13 +497,12 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		FlushContext(rw, parent_handle)
 		t.Fatal("Can't ActivateCredential\n")
 	}
-	fmt.Printf("Restored Credential, test 1: %x\n", recovered_credential1)
 	if bytes.Compare(credential, recovered_credential1) != 0 {
 		FlushContext(rw, key_handle)
 		FlushContext(rw, parent_handle)
 		t.Fatal("Credential and recovered credential differ\n")
 	}
-	fmt.Printf("Make/Activate test 1 succeeds\n\n")
+	fmt.Printf("InternalMake/Activate test succeeds\n\n")
 
 	protectorPublic := new(rsa.PublicKey)
 	protectorPublic.E = 0x00010001
@@ -532,9 +518,6 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		FlushContext(rw, parent_handle)
 		t.Fatal("Can't MakeCredential\n")
 	}
-	fmt.Printf("\nencrypted secret   : %x\n", encrypted_secret)
-	fmt.Printf("encIdentity        : %x\n", encIdentity)
-	fmt.Printf("integrityHmac      : %x\n\n", integrityHmac)
 
 	// ActivateCredential
 	recovered_credential2, err := ActivateCredential(rw,
@@ -545,13 +528,12 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		FlushContext(rw, parent_handle)
 		t.Fatal("Can't ActivateCredential\n")
 	}
-	fmt.Printf("Restored Credential, test 2: %x\n", recovered_credential2)
 	if bytes.Compare(credential, recovered_credential2) != 0 {
 		FlushContext(rw, key_handle)
 		FlushContext(rw, parent_handle)
 		t.Fatal("Credential and recovered credential differ\n")
 	}
-	fmt.Printf("Make/Activate test 2 succeeds\n")
+	fmt.Printf("Make/Activate test succeeds\n")
 
 	// Flush
 	FlushContext(rw, key_handle)
@@ -576,7 +558,6 @@ func TestCombinedEvictTest(t *testing.T) {
 	if err != nil {
 		t.Fatal("Flushall failed\n")
 	}
-	fmt.Printf("Flushall succeeded\n")
 
 	// CreatePrimary
 	var empty []byte
@@ -602,27 +583,14 @@ func TestCombinedEvictTest(t *testing.T) {
 		t.Fatal("CreateKey fails")
 	}
 	fmt.Printf("CreateKey succeeded\n")
-	fmt.Printf("Private blob: %x\n", private_blob)
-	fmt.Printf("Public  blob: %x\n\n", public_blob)
 
 	// Load
-	key_handle, blob, err := Load(rw, parent_handle, "", "01020304",
+	key_handle, _, err := Load(rw, parent_handle, "", "01020304",
 	     public_blob, private_blob)
 	if err != nil {
 		t.Fatal("Load fails")
 	}
 	fmt.Printf("Load succeeded\n")
-	fmt.Printf("\nBlob from Load     : %x\n", blob)
-
-	// ReadPublic
-	public, name, qualified_name, err := ReadPublic(rw, key_handle)
-	if err != nil {
-		t.Fatal("ReadPublic fails")
-	}
-	fmt.Printf("ReadPublic succeeded\n")
-	fmt.Printf("Public         blob: %x\n", public)
-	fmt.Printf("Name           blob: %x\n", name)
-	fmt.Printf("Qualified name blob: %x\n\n", qualified_name)
 
 	perm_handle := uint32(0x810003e8)
 
@@ -709,8 +677,6 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
 		t.Fatal("Create fails")
 	}
 	fmt.Printf("Create Key for quote succeeded\n")
-	fmt.Printf("Private: %x\n", private_blob)
-	fmt.Printf("Public: %x\n\n", public_blob)
 
 	quote_handle, quote_blob, err := Load(rw, endorsement_handle, "", "01020304",
 		public_blob, private_blob)
@@ -719,13 +685,14 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
 	}
 	fmt.Printf("Load succeeded, blob size: %d\n\n", len(quote_blob))
 
-	der_program_private, request_message, err := ConstructClientRequest(rw, der_endorsement_cert,
+	der_program_private, request_message, err := ConstructClientRequest(rw,
+		der_endorsement_cert,
 		quote_handle, "", "01020304", "Test-Program-1")
 	if err != nil {
 		t.Fatal("ConstructClientRequest fails")
 	}
-	fmt.Printf("der_program_private size: %d\n", len(der_program_private))
-	fmt.Printf("Request: %s\n", proto.MarshalTextString(request_message))
+	fmt.Printf("Request        : %s\n", proto.MarshalTextString(request_message))
+	fmt.Printf("Program private: %x\n", der_program_private)
 
 	signing_instructions_message := new(SigningInstructionsMessage)
 	response_message, err := ConstructServerResponse(der_policy_cert,

@@ -150,7 +150,7 @@ func TestReadRsaBlob(t *testing.T) {
 }
 
 func TestRetrieveFile(t *testing.T) {
-	fileName := "/home/jlm/cryptobin/cert.der"
+	fileName := "./tmptest/cert.der"
 	out := RetrieveFile(fileName)
 	if out == nil {
 		t.Fatal("Can't retrieve file\n")
@@ -166,7 +166,7 @@ func TestRetrieveFile(t *testing.T) {
 }
 
 func TestCertificateParse(t *testing.T) {
-	out := RetrieveFile("/home/jlm/cryptobin/endorsement_cert")
+	out := RetrieveFile("./tmptest/endorsement_cert")
 	if out == nil {
 		t.Fatal("Can't retrieve file\n")
 	}

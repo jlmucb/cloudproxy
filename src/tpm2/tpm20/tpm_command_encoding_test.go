@@ -86,7 +86,6 @@ func TestDecodeReadPcrs(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 	}
-	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 	 _, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
         if err != nil {
                 t.Fatal("DecodeCommandResponse error\n")
@@ -124,7 +123,6 @@ func TestDecodeReadClock(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 	}
-	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 
         tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
         fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
@@ -160,7 +158,6 @@ func TestDecodeGetCapabilities(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 	}
-	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 
         tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
         if err != nil {
@@ -198,7 +195,6 @@ func TestDecodeFlushContext(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 	}
-	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 
         tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
         fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
@@ -238,7 +234,6 @@ func TestDecodeLoad(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 	}
-	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 
 	// Decode Response
         _, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
@@ -297,7 +292,6 @@ func TestDecodeCreatePrimary(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 		return
 	}
-	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 
 	// Decode Response
         _, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
@@ -371,7 +365,6 @@ func TestDecodePolicyGetDigest(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 	}
-	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
         tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
         fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
         if err != nil || status != 0 {
@@ -409,7 +402,6 @@ func TestDecodeStartAuthSession(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 	}
-	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 
         tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
         fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
@@ -470,7 +462,6 @@ func TestDecodeCreateSealed(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 	}
-	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 
 	// Decode Response
         _, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
@@ -531,7 +522,6 @@ func TestDecodeCreateKey(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 	}
-	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 
 	// Decode Response
         _, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
@@ -573,7 +563,6 @@ func TestDecodeUnseal(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 	}
-	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 
         tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
         fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
@@ -627,7 +616,6 @@ func TestDecodeQuote(t *testing.T) {
 		t.Fatal("Can't convert hex command 2\n")
 	}
 	test_resp_bytes := append(test_resp_bytes_first, test_resp_bytes_next...)
-	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 
         tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
         fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
@@ -672,22 +660,6 @@ func TestConstructActivateCredential(t *testing.T) {
 	}
 }
 
-func TestDecodeActivateCredential(t *testing.T) {
-	test_resp_bytes, err := hex.DecodeString("80020000002e000000000000001600140102030405060708090a0b0c0d0e0f101112131400000100000000010000")
-	if err != nil {
-		t.Fatal("Can't convert hex command\n")
-	}
-	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
-
-        tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
-        fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
-        if err != nil || status != 0 {
-		t.Fatal("DecodeCommandResponse fails\n")
-        }
-	// TODO
-}
-
-// TestReadPublic tests a ReadPublic command.
 
 // Command: 80010000000e0000017380000000
 func TestConstructReadPublic(t *testing.T) {
@@ -719,7 +691,6 @@ func TestDecodeReadPublic(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 	}
-	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 
 	// Decode Response
         _, _, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
@@ -758,7 +729,6 @@ func TestDecodeEvictControl(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't convert hex command\n")
 	}
-	fmt.Printf("test_resp_bytes: %x\n", test_resp_bytes)
 
         tag, size, status, err := DecodeCommandResponse(test_resp_bytes[0:10])
         fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)

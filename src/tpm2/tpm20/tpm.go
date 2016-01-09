@@ -1342,7 +1342,6 @@ func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle,
 	if err != nil {
 		return Handle(0), nil, errors.New("ConstructStartAuthSession fails")
 	}
-	fmt.Printf("StartAuthSession cmd (%d): %x\n", len(cmd), cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1381,7 +1380,6 @@ func ConstructCreateSealed(parent Handle, policy_digest []byte,
 			   parent_password string, owner_password string,
 			   to_seal []byte, pcr_nums []int,
 			   parms KeyedHashParams) ([]byte, error) {
-	fmt.Printf("ConstructCreateSealed\n")
 	PrintKeyedHashParams(&parms)
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdCreate)
 	if err != nil {
@@ -1457,11 +1455,10 @@ func CreateSealed(rw io.ReadWriter, parent Handle, policy_digest []byte,
 	if read < 10 {
 		return nil, nil, errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("CreateSealed Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return nil, nil, errors.New("CreateSealed unsuccessful")
 	}
@@ -2132,19 +2129,18 @@ func MakeCredential(protectorPublic *rsa.PublicKey, hash_alg_id uint16,
 	copy(marshaled_credential[2:], unmarshaled_credential)
 	cfb := cipher.NewCFBEncrypter(block, iv)
 	cfb.XORKeyStream(encIdentity, marshaled_credential)
-	fmt.Printf("\nmarshaled_credential: %x\n", marshaled_credential)
-	fmt.Printf("encIdentity         : %x\n", encIdentity)
 	cfbdec := cipher.NewCFBDecrypter(block, iv)
 	decrypted_credential := make([]byte, 2 + len(unmarshaled_credential))
 	cfbdec.XORKeyStream(decrypted_credential, encIdentity)
-	fmt.Printf("decrypted credential: %x\n", decrypted_credential)
+	if bytes.Compare(marshaled_credential, decrypted_credential) != 0 {
+		return nil, nil, nil,errors.New("decrypted cred mismatch") 
+	}
 
 	hmacKey, err := KDFA(hash_alg_id, seed[0:16], "INTEGRITY",
 		nil, nil, 8*SizeHash(hash_alg_id))
 	if err !=nil {
 		return nil, nil, nil, err
 	}
-	fmt.Printf("hmacKey: %x\n", hmacKey)
 
 	var hmac_bytes []byte
 	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
@@ -2159,8 +2155,6 @@ func MakeCredential(protectorPublic *rsa.PublicKey, hash_alg_id uint16,
 		return nil, nil, nil, errors.New("Unsupported has alg") 
 	}
 	marshalled_hmac, _ := pack([]interface{}{&hmac_bytes})
-	fmt.Printf("hmac             : %x\n", hmac_bytes)
-	fmt.Printf("marshaled_hmac   : %x\n\n", marshalled_hmac)
 	return encrypted_secret, encIdentity, marshalled_hmac, nil
 }
 

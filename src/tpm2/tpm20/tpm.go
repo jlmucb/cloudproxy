@@ -2128,10 +2128,10 @@ func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 	var encrypted_secret []byte
 	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
 		encrypted_secret, err = rsa.EncryptOAEP(sha1.New(), rand.Reader,
-			public, seed, a[0:9])
+			public, seed[0:16], a[0:9])
 	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
 		encrypted_secret, err = rsa.EncryptOAEP(sha256.New(),
-			rand.Reader, public, seed, a[0:9])
+			rand.Reader, public, seed[0:16], a[0:9])
 	} else {
 		return nil, nil, nil, errors.New("Unsupported hash alg") 
 	}

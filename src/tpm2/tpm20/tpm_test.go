@@ -508,7 +508,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		FlushContext(rw, parent_handle)
 		t.Fatal("Credential and recovered credential differ\n")
 	}
-	fmt.Printf("Make/Activate test 1 succeeds\n")
+	fmt.Printf("Make/Activate test 1 succeeds\n\n")
 
 	// Get endorsement cert
 	der_endorsement_cert := RetrieveFile("/home/jlm/cryptobin/endorsement_cert")

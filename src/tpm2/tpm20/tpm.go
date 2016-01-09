@@ -2098,9 +2098,9 @@ func EncryptDataWithCredential(encrypt_flag bool, hash_alg_id uint16,
 func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 		unmarshaled_credential []byte,
 		unmarshaled_name []byte) ([]byte, []byte, []byte, error) {
+	fmt.Printf("\nMakeCredential\n")
 	var a [9]byte
 	copy(a[0:9], "IDENTITY")
-	fmt.Printf("MakeCredential, a: %x\n", a)
 	endorsement_cert, err := x509.ParseCertificate(der_endorsement_blob)
 	if err !=nil {
 		fmt.Printf("Can't Parse endorsement cert\n")
@@ -2117,36 +2117,42 @@ func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 		fmt.Printf("endorsement cert is not an rsa key\n")
 		return nil, nil, nil, errors.New("endorsement cert not an rsa key")
 	}
-	fmt.Printf("Public key: %x\n", public)
+	fmt.Printf("Public N(%d): %x\n", len(public.N.Bytes()), public.N.Bytes())
+	fmt.Printf("Public E: %x\n\n",  public.E);
 
-	// replace with RAND_bytes
-	seed := []byte{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1}
-	// var seed []byte
-	// rand.Read(seed[0:16]);
+	// Seed.
+	var seed [16]byte
+	rand.Read(seed[0:16]);
 
 	// encrypt secret
 	var encrypted_secret []byte
 	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
 		encrypted_secret, err = rsa.EncryptOAEP(sha1.New(), rand.Reader,
 			public, seed[0:16], a[0:9])
+		if err != nil {
+			 return nil, nil, nil, errors.New("Can't OAEP encrypt")
+		}
 	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
 		encrypted_secret, err = rsa.EncryptOAEP(sha256.New(),
 			rand.Reader, public, seed[0:16], a[0:9])
+		if err != nil {
+			 return nil, nil, nil, errors.New("Can't OAEP encrypt")
+		}
 	} else {
 		return nil, nil, nil, errors.New("Unsupported hash alg") 
 	}
-	fmt.Printf("encrypted_secret    : %x\n", encrypted_secret)
+	fmt.Printf("encrypted_secret: %x\n", encrypted_secret)
 
 	var symKey []byte
 	iv := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
-		symKey, err = KDFA(hash_alg_id, seed, "STORAGE",
+		symKey, err = KDFA(hash_alg_id, seed[0:16], "STORAGE",
 			unmarshaled_name, nil, 128)
 		if err !=nil {
 			return nil, nil, nil, err
 		}
 	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
-		symKey, err = KDFA(hash_alg_id, seed, "STORAGE",
+		symKey, err = KDFA(hash_alg_id, seed[0:16], "STORAGE",
 			unmarshaled_name, nil, 256)
 		if err !=nil {
 			return nil, nil, nil, err
@@ -2158,7 +2164,6 @@ func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 	fmt.Printf("symKey: %x\n", symKey)
 	block, err := aes.NewCipher(symKey[0:16])
 	if err !=nil {
-		fmt.Printf("After Newcipher %s\n", err)
 		return nil, nil, nil, err
 	}
 	fmt.Printf("credential           : %x\n", unmarshaled_credential)
@@ -2167,10 +2172,8 @@ func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 	marshaled_credential := make([]byte, 2 + len(unmarshaled_credential))
 	encIdentity := make([]byte, 2 + len(unmarshaled_credential))
 	l := uint16(len(unmarshaled_credential))
-	t := byte(l >> 8)
-	marshaled_credential[0] = t
-	t = byte(l & 0xff)
-	marshaled_credential[1] = t
+	marshaled_credential[0] = byte(l >> 8)
+	marshaled_credential[1] = byte(l & 0xff)
 	copy(marshaled_credential[2:], unmarshaled_credential)
 	cfb := cipher.NewCFBEncrypter(block, iv)
 	cfb.XORKeyStream(encIdentity, marshaled_credential)
@@ -2181,7 +2184,7 @@ func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 	cfbdec.XORKeyStream(decrypted_credential, encIdentity)
 	fmt.Printf("decrypted credential: %x\n", decrypted_credential)
 
-	hmacKey, err := KDFA(hash_alg_id, seed, "INTEGRITY",
+	hmacKey, err := KDFA(hash_alg_id, seed[0:16], "INTEGRITY",
 		nil, nil, 8*SizeHash(hash_alg_id))
 	if err !=nil {
 		return nil, nil, nil, err
@@ -2202,7 +2205,7 @@ func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 	}
 	marshalled_hmac, _ := pack([]interface{}{&hmac_bytes})
 	fmt.Printf("hmac             : %x\n", hmac_bytes)
-	fmt.Printf("marshaled_hmac   : %x\n", marshalled_hmac)
+	fmt.Printf("marshaled_hmac   : %x\n\n", marshalled_hmac)
 	return encrypted_secret, encIdentity, marshalled_hmac, nil
 }
 
@@ -2452,8 +2455,8 @@ func ConstructServerResponse(der_policy_cert []byte, der_policy_private_key []by
 		},
 	NotBefore: notBefore,
 	NotAfter:  notAfter,
-	KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-	ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	KeyUsage:  x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+	ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	BasicConstraintsValid: true,
 	}
 	fmt.Printf("Template: %x\n", template)     // check second template

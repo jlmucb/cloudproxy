@@ -68,17 +68,17 @@ func OpenTPM(path string) (io.ReadWriteCloser, error) {
 }
 
 func PrintAttestData(parms *Attest) {
-	fmt.Printf("magic_number   : %x\n", parms.magic_number)
-	fmt.Printf("attest_type   : %x\n", parms.attest_type)
-	fmt.Printf("name : %x\n", parms.name)
-	fmt.Printf("data     : %x\n", parms.data)
-	fmt.Printf("clock     : %x\n", parms.clock)
-	fmt.Printf("resetCount       : %x\n", parms.resetCount)
-	fmt.Printf("restartCount       : %x\n", parms.restartCount)
-	fmt.Printf("safe     : %x\n", parms.safe)
-	fmt.Printf("firmwareVersion     : %x\n", parms.firmwareVersion)
-	fmt.Printf("pcrSelect : %x\n", parms.pcrSelect)
-	fmt.Printf("pcrDigest : %x\n", parms.pcrDigest)
+	fmt.Printf("magic_number: %x\n", parms.magic_number)
+	fmt.Printf("attest_type : %x\n", parms.attest_type)
+	fmt.Printf("name        : %x\n", parms.name)
+	fmt.Printf("data        : %x\n", parms.data)
+	fmt.Printf("clock       : %x\n", parms.clock)
+	fmt.Printf("resetCount  : %x\n", parms.resetCount)
+	fmt.Printf("restartCount: %x\n", parms.restartCount)
+	fmt.Printf("safe        : %x\n", parms.safe)
+	fmt.Printf("firmwareVersion: %x\n", parms.firmwareVersion)
+	fmt.Printf("pcrSelect   : %x\n", parms.pcrSelect)
+	fmt.Printf("pcrDigest   : %x\n", parms.pcrDigest)
 }
 
 func PrintKeyedHashParams(parms *KeyedHashParams) {
@@ -378,7 +378,7 @@ func GetRandom(rw io.ReadWriteCloser, size uint32) ([]byte, error) {
 	if read < 10 {
 		return nil, errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, err
@@ -430,7 +430,7 @@ func FlushContext(rw io.ReadWriter, handle Handle) (error) {
 	if read < 10 {
 		return errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return errors.New("DecodeCommandResponse fails")
 	}
@@ -496,7 +496,7 @@ func ReadPcrs(rw io.ReadWriter, num_byte byte, pcrSelect []byte) (uint32, []byte
 	if read < 10 {
 		return 0, nil, 0, nil, errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return 0, nil, 0, nil, errors.New("DecodeCommandResponse fails")
 	}
@@ -560,7 +560,7 @@ func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
 	if read < 10 {
 		return 0, 0, errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return 0, 0, err
@@ -642,7 +642,7 @@ func GetCapabilities(rw io.ReadWriter, cap uint32, count uint32, property uint32
 	if read < 10 {
 		return nil, errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, err
@@ -699,7 +699,7 @@ func PcrEvent(rw io.ReadWriter, pcrnum int, eventData []byte) (error) {
 	if read < 10 {
 		return errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return err
@@ -856,7 +856,7 @@ func CreatePrimary(rw io.ReadWriter, owner uint32, pcr_nums []int,
 	if read < 10 {
 		return Handle(0), nil, errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return Handle(0), nil, err
@@ -926,7 +926,7 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 	if read < 10 {
 		return nil, nil, nil, errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, nil, nil, err
@@ -1019,7 +1019,7 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 	if read < 10 {
 		return nil, nil, errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, nil, err
@@ -1099,7 +1099,7 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string, ownerAuth st
 	if read < 10 {
 		return Handle(0), nil, errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return Handle(0), nil, err
@@ -1175,7 +1175,7 @@ func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
 	if read < 10 {
 		return errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return err
@@ -1213,7 +1213,7 @@ func PolicyPcr(rw io.ReadWriter, handle Handle, expected_digest []byte, pcr_nums
 	if read < 10 {
 		return errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return err
@@ -1281,7 +1281,7 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 	if read < 10 {
 		return nil, errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, err
@@ -1362,7 +1362,7 @@ func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle,
 	if read < 10 {
 		return Handle(0), nil, errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return Handle(0), nil, errors.New("DecodeCommandResponse fails")
 	}
@@ -1534,7 +1534,7 @@ func Unseal(rw io.ReadWriter, item_handle Handle, password string, session_handl
 	if read < 10 {
 		return nil, nil, errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
@@ -1626,7 +1626,7 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 	if read < 10 {
 		return nil, nil, errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
@@ -1715,7 +1715,7 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 	if read < 10 {
 		return nil, errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return nil, errors.New("DecodeCommandResponse fails")
 	}
@@ -2541,7 +2541,7 @@ func InternalMakeCredential(rw io.ReadWriter, protectorHandle Handle, credential
 	if read < 10 {
 		return nil, nil, errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return nil, nil, errors.New("DecodeCommandResponse fails")
 	}

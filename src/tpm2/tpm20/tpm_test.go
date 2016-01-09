@@ -440,7 +440,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	primaryparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
 		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
 		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
-		uint16(1024), uint32(0x00010001), empty}
+		uint16(2048), uint32(0x00010001), empty}
 	parent_handle, public_blob, err := CreatePrimary(rw,
 		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "", primaryparms)
 	if err != nil {
@@ -452,7 +452,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	keyparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
 		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
 		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
-		uint16(1024), uint32(0x00010001), empty}
+		uint16(2048), uint32(0x00010001), empty}
 	private_blob, public_blob, err := CreateKey(rw, uint32(parent_handle),
 		[]int{7}, "", "01020304", keyparms)
 	if err != nil {
@@ -530,7 +530,6 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	fmt.Printf("encIdentity        : %x\n", encIdentity)
 	fmt.Printf("integrityHmac      : %x\n\n", integrityHmac)
 
-/*
 	// ActivateCredential
 	recovered_credential2, err := ActivateCredential(rw,
 		key_handle, parent_handle, "01020304", "",
@@ -547,7 +546,6 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		t.Fatal("Credential and recovered credential differ\n")
 	}
 	fmt.Printf("Make/Activate test 2 succeeds\n")
-*/
 
 	// Flush
 	FlushContext(rw, key_handle)

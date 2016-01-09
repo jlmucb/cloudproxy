@@ -2121,9 +2121,9 @@ func encryptHack (hash_alg_id uint16, modSize int,
 	z = z.Exp(x, D, N)
 	decrypted_pad := z.Bytes()
 	fmt.Printf("decrypted with pad (%d): %x\n", len(decrypted_pad), decrypted_pad)
-	zero := []byte{0}
-	decrypted_pad = append(zero, decrypted_pad...)
-	fmt.Printf("new pad (%d): %x\n", len(decrypted_pad), decrypted_pad)
+	// zero := []byte{0}
+	// decrypted_pad = append(zero, decrypted_pad...)
+	// fmt.Printf("new pad (%d): %x\n", len(decrypted_pad), decrypted_pad)
 
 	// Now encrypt with real key
 	var M *big.Int
@@ -2151,30 +2151,15 @@ func encryptHack (hash_alg_id uint16, modSize int,
 //		encrypted_secret
 //		encIdentity
 //		integrityHmac
-func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
+func MakeCredential(protectorPublic *rsa.PublicKey, hash_alg_id uint16,
 		unmarshaled_credential []byte,
 		unmarshaled_name []byte) ([]byte, []byte, []byte, error) {
 	fmt.Printf("\nMakeCredential\n")
 	var a [9]byte
 	copy(a[0:9], "IDENTITY")
-	endorsement_cert, err := x509.ParseCertificate(der_endorsement_blob)
-	if err !=nil {
-		fmt.Printf("Can't Parse endorsement cert\n")
-		return nil, nil, nil, err
-	}
-
-	var public *rsa.PublicKey
-	switch k :=  endorsement_cert.PublicKey.(type) {
-	case  *rsa.PublicKey:
-		public = k
-	case  *rsa.PrivateKey:
-		public = &k.PublicKey
-	default:
-		fmt.Printf("endorsement cert is not an rsa key\n")
-		return nil, nil, nil, errors.New("endorsement cert not an rsa key")
-	}
-	fmt.Printf("Public N(%d): %x\n", len(public.N.Bytes()), public.N.Bytes())
-	fmt.Printf("Public E: %x\n\n",  public.E);
+	fmt.Printf("Public N(%d): %x\n", len(protectorPublic.N.Bytes()),
+		protectorPublic.N.Bytes())
+	fmt.Printf("Public E: %x\n\n",  protectorPublic.E);
 
 	// Seed.
 	var seed [16]byte
@@ -2182,7 +2167,7 @@ func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 
 	// encrypt secret
 	encrypted_secret, err := encryptHack (hash_alg_id, 2048,
-                  public, seed[0:16], a[0:9]) 
+                  protectorPublic, seed[0:16], a[0:9]) 
 	fmt.Printf("real encrypted secret (%d): %x\n", len(encrypted_secret),
 		encrypted_secret)
 
@@ -2512,13 +2497,30 @@ func ConstructServerResponse(der_policy_cert []byte, der_policy_private_key []by
 		return nil, err
 	}
 
+	// Get Endorsement Key
+	endorsement_cert, err := x509.ParseCertificate(der_endorsement_cert)
+	if err !=nil {
+		fmt.Printf("Can't Parse endorsement cert\n")
+		return nil, err
+	}
+
+	var protectorPublic *rsa.PublicKey
+	switch k :=  endorsement_cert.PublicKey.(type) {
+	case  *rsa.PublicKey:
+		protectorPublic = k
+	case  *rsa.PrivateKey:
+		protectorPublic = &k.PublicKey
+	default:
+		fmt.Printf("endorsement cert is not an rsa key\n")
+		return nil, errors.New("endorsement cert not an rsa key")
+	}
 
 	// Generate credential
 	var credential []byte
 	rand.Read(credential[0:16])
 	fmt.Printf("Credential: %x\n", credential)
 	encrypted_secret, encIdentity, integrityHmac, err := MakeCredential(
-		der_endorsement_cert, hash_alg_id,
+		protectorPublic, hash_alg_id,
 		credential[0:16], request.QuoteKeyInfo.Name)
 	if err != nil {
 		return nil, err

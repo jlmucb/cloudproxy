@@ -16,8 +16,10 @@ package tpm
 
 import (
 	"bytes"
+	"crypto/rsa"
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"math/big"
 	"testing"
 )
 
@@ -516,17 +518,15 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	}
 	fmt.Printf("Make/Activate test 1 succeeds\n\n")
 
-	// Get endorsement cert
-	der_endorsement_cert := RetrieveFile("/home/jlm/cryptobin/endorsement_cert")
-	if der_endorsement_cert == nil {
-		FlushContext(rw, key_handle)
-		FlushContext(rw, parent_handle)
-		t.Fatal("Can't retrieve endorsement cert\n")
-	}
+	protectorPublic := new(rsa.PublicKey)
+	protectorPublic.E = 0x00010001
+	M := new(big.Int)
+	M.SetBytes(endorseParams.modulus)
+	protectorPublic.N = M
 
 	// MakeCredential
 	encrypted_secret, encIdentity, integrityHmac, err := MakeCredential(
-		der_endorsement_cert, hash_alg_id, credential, name)
+		protectorPublic, hash_alg_id, credential, name)
 	if err != nil {
 		FlushContext(rw, key_handle)
 		FlushContext(rw, parent_handle)

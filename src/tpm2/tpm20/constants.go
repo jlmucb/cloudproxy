@@ -50,6 +50,19 @@ const(
 	ordTPM_SE_POLICY  uint8 = 0x01
 )
 
+// Properties
+const(
+	flagFixedTPM	           uint32 = 0x00000002
+	flagFixedParent            uint32 = 0x00000010
+	flagSensitiveDataOrigin    uint32 = 0x00000020
+	flagUserWithAuth           uint32 = 0x00000040
+	flagAdminWithPolicy        uint32 = 0x00000080
+
+	flagRestricted             uint32 = 0x00010000
+	flagDecrypt                uint32 = 0x00020000
+	flagSign                   uint32 = 0x00040000
+)
+
 // Reserved Handles and Properties
 const(
 	ordTPM_RH_OWNER            uint32 = 0x40000001

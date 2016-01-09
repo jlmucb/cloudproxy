@@ -26,6 +26,23 @@ import (
 	"testing"
 )
 
+func TestAttributes(t *testing.T) {
+	sealedObj := uint32(flagFixedTPM | flagFixedParent)
+	if  sealedObj != 0x12 {
+		t.Fatal("sealed object flags wrong\n")
+	}
+	storageObj := uint32(flagRestricted | flagDecrypt | flagUserWithAuth |
+		flagSensitiveDataOrigin | flagFixedTPM | flagFixedParent)
+	if  storageObj != 0x30072 {
+		t.Fatal("storage object flags wrong\n")
+	}
+	signObj := uint32(flagRestricted | flagSign | flagUserWithAuth |
+		flagSensitiveDataOrigin | flagFixedTPM | flagFixedParent)
+	if  signObj != 0x50072 {
+		t.Fatal("storage object flags wrong\n")
+	}
+}
+
 func TestSetShortPcrs(t *testing.T) {
 	pcr_nums := []int{7,8}
 	pcr, err := SetShortPcrs(pcr_nums)

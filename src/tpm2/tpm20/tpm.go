@@ -1654,7 +1654,7 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 	if err != nil {
 		return nil, nil, errors.New("Read Tpm fails")
 	}
-	fmt.Printf("Quote resp: %x\n", resp)
+	fmt.Printf("Quote resp: %x\n", resp[0:read])
 
 	// Decode Response
 	if read < 10 {
@@ -2107,11 +2107,6 @@ func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 		return nil, nil, nil, err
 	}
 
-	// replace with RAND_bytes
-	seed := []byte{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1}
-	// var seed []byte
-	// rand.Read(seed[0:16]);
-
 	var public *rsa.PublicKey
 	switch k :=  endorsement_cert.PublicKey.(type) {
 	case  *rsa.PublicKey:
@@ -2122,6 +2117,14 @@ func MakeCredential(der_endorsement_blob []byte, hash_alg_id uint16,
 		fmt.Printf("endorsement cert is not an rsa key\n")
 		return nil, nil, nil, errors.New("endorsement cert not an rsa key")
 	}
+	fmt.Printf("Public key: %x\n", public)
+
+	// replace with RAND_bytes
+	seed := []byte{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1}
+	// var seed []byte
+	// rand.Read(seed[0:16]);
+
+	// encrypt secret
 	var encrypted_secret []byte
 	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
 		encrypted_secret, err = rsa.EncryptOAEP(sha1.New(), rand.Reader,
@@ -2521,7 +2524,7 @@ func ClientDecodeServerResponse(rw io.ReadWriter, endorsement_handle Handle,
 // ConstructInternalMakeCredential constructs a InternalMakeCredential command.
 func ConstructInternalMakeCredential(protectorHandle Handle, credential []byte,
 		activeName []byte) ([]byte, error) {
-	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdMakeCredential)
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdMakeCredential)
 	if err != nil {
 		return nil, errors.New("ConstructInternalMakeCredential failed")
 	}
@@ -2569,7 +2572,7 @@ func InternalMakeCredential(rw io.ReadWriter, protectorHandle Handle, credential
 	if err != nil {
 		return nil, nil, errors.New("Read Tpm fails")
 	}
-	fmt.Printf("InternalMakeCredential response: %x\n", resp)
+	fmt.Printf("InternalMakeCredential response: %x\n", resp[0:read])
 
 	// Decode Response
 	if read < 10 {

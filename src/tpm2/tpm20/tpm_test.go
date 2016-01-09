@@ -472,33 +472,31 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	fmt.Printf("\nBlob from Load     : %x\n", blob)
 
 	// ReadPublic
-	public, name, qualified_name, err := ReadPublic(rw, key_handle)
+	public, name, _, err := ReadPublic(rw, key_handle)
 	if err != nil {
 		t.Fatal("ReadPublic fails")
 	}
 	fmt.Printf("ReadPublic succeeded\n")
 	fmt.Printf("Public         blob: %x\n", public)
-	fmt.Printf("Name           blob: %x\n", name)
-	fmt.Printf("Qualified name blob: %x\n\n", qualified_name)
 
 	// Generate Credential
-	   credential := []byte{1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,0x10}
+	credential := []byte{1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,0x10}
 	fmt.Printf("Credential: %x\n", credential)
 
-
 	// Internal MakeCredential
-	credBlob, encrypted_secret, err := InternalMakeCredential(rw, parent_handle, credential, name)
+	credBlob, encrypted_secret0, err := InternalMakeCredential(rw, parent_handle, credential, name)
 	if err != nil {
 		FlushContext(rw, key_handle)
 		FlushContext(rw, parent_handle)
 		t.Fatal("Can't InternalMakeCredential\n")
 	}
-	fmt.Printf("\nencrypted secret   : %x\n", encrypted_secret)
+	fmt.Printf("\nencrypted secret   : %x\n", encrypted_secret0)
+	fmt.Printf("name                 : %x\n", name)
 	fmt.Printf("credBlob             : %x\n", credBlob)
 
 	// ActivateCredential
 	recovered_credential1, err := ActivateCredential(rw, key_handle, parent_handle,
-		"01020304", "", credBlob, encrypted_secret)
+		"01020304", "", credBlob, encrypted_secret0)
 	if err != nil {
 		FlushContext(rw, key_handle)
 		FlushContext(rw, parent_handle)
@@ -532,9 +530,10 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	fmt.Printf("encIdentity        : %x\n", encIdentity)
 	fmt.Printf("integrityHmac      : %x\n\n", integrityHmac)
 
+/*
 	// ActivateCredential
 	recovered_credential2, err := ActivateCredential(rw,
-		key_handle, parent_handle, "", "01020304",
+		key_handle, parent_handle, "01020304", "",
 		append(integrityHmac, encIdentity...), encrypted_secret)
 	if err != nil {
 		FlushContext(rw, key_handle)
@@ -548,10 +547,11 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		t.Fatal("Credential and recovered credential differ\n")
 	}
 	fmt.Printf("Make/Activate test 2 succeeds\n")
+*/
 
 	// Flush
-	err = FlushContext(rw, key_handle)
-	err = FlushContext(rw, parent_handle)
+	FlushContext(rw, key_handle)
+	FlushContext(rw, parent_handle)
 	rw.Close()
 }
 

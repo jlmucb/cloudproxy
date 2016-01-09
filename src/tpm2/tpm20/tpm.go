@@ -68,44 +68,44 @@ func OpenTPM(path string) (io.ReadWriteCloser, error) {
 }
 
 func PrintAttestData(parms *Attest) {
-        fmt.Printf("magic_number   : %x\n", parms.magic_number)
+fmt.Printf("magic_number   : %x\n", parms.magic_number)
 	fmt.Printf("attest_type   : %x\n", parms.attest_type)
-        fmt.Printf("name : %x\n", parms.name)
-        fmt.Printf("data     : %x\n", parms.data)
-        fmt.Printf("clock     : %x\n", parms.clock)
-        fmt.Printf("resetCount       : %x\n", parms.resetCount)
-        fmt.Printf("restartCount       : %x\n", parms.restartCount)
-        fmt.Printf("safe     : %x\n", parms.safe)
-        fmt.Printf("firmwareVersion     : %x\n", parms.firmwareVersion)
-        fmt.Printf("pcrSelect : %x\n", parms.pcrSelect)
-        fmt.Printf("pcrDigest : %x\n", parms.pcrDigest)
+	fmt.Printf("name : %x\n", parms.name)
+	fmt.Printf("data     : %x\n", parms.data)
+	fmt.Printf("clock     : %x\n", parms.clock)
+	fmt.Printf("resetCount       : %x\n", parms.resetCount)
+	fmt.Printf("restartCount       : %x\n", parms.restartCount)
+	fmt.Printf("safe     : %x\n", parms.safe)
+	fmt.Printf("firmwareVersion     : %x\n", parms.firmwareVersion)
+	fmt.Printf("pcrSelect : %x\n", parms.pcrSelect)
+	fmt.Printf("pcrDigest : %x\n", parms.pcrDigest)
 }
 
 func PrintKeyedHashParams(parms *KeyedHashParams) {
-        fmt.Printf("type_alg   : %x\n", parms.type_alg)
+	fmt.Printf("type_alg   : %x\n", parms.type_alg)
 	fmt.Printf("hash_alg   : %x\n", parms.hash_alg)
-        fmt.Printf("attributes : %x\n", parms.attributes)
-        fmt.Printf("auth_policy: %x\n", parms.auth_policy)
-        fmt.Printf("symalg     : %x\n", parms.symalg)
-        fmt.Printf("sym_sz     : %x\n", parms.sym_sz)
-        fmt.Printf("mode       : %x\n", parms.mode)
-        fmt.Printf("scheme     : %x\n", parms.scheme)
-        fmt.Printf("unique     : %x\n", parms.unique)
+	fmt.Printf("attributes : %x\n", parms.attributes)
+	fmt.Printf("auth_policy: %x\n", parms.auth_policy)
+	fmt.Printf("symalg     : %x\n", parms.symalg)
+	fmt.Printf("sym_sz     : %x\n", parms.sym_sz)
+	fmt.Printf("mode       : %x\n", parms.mode)
+	fmt.Printf("scheme     : %x\n", parms.scheme)
+	fmt.Printf("unique     : %x\n", parms.unique)
 }
 
 func PrintRsaParams(parms *RsaParams) {
-        fmt.Printf("enc_alg     : %x\n", parms.enc_alg)
-        fmt.Printf("hash_alg    : %x\n", parms.hash_alg)
-        fmt.Printf("attributes  : %x\n", parms.attributes)
-        fmt.Printf("auth_policy : %x\n", parms.auth_policy)
-        fmt.Printf("symalg      : %x\n", parms.symalg)
-        fmt.Printf("sym_sz      : %x\n", parms.sym_sz)
-        fmt.Printf("mode        : %x\n", parms.mode)
-        fmt.Printf("scheme      : %x\n", parms.scheme)
-        fmt.Printf("scheme_hash : %x\n", parms.scheme_hash)
-        fmt.Printf("modulus size: %x\n", parms.mod_sz)
-        fmt.Printf("exp         : %x\n", parms.exp)
-        fmt.Printf("modulus     : %x\n", parms.modulus)
+	fmt.Printf("enc_alg     : %x\n", parms.enc_alg)
+	fmt.Printf("hash_alg    : %x\n", parms.hash_alg)
+	fmt.Printf("attributes  : %x\n", parms.attributes)
+	fmt.Printf("auth_policy : %x\n", parms.auth_policy)
+	fmt.Printf("symalg      : %x\n", parms.symalg)
+	fmt.Printf("sym_sz      : %x\n", parms.sym_sz)
+	fmt.Printf("mode        : %x\n", parms.mode)
+	fmt.Printf("scheme      : %x\n", parms.scheme)
+	fmt.Printf("scheme_hash : %x\n", parms.scheme_hash)
+	fmt.Printf("modulus size: %x\n", parms.mod_sz)
+	fmt.Printf("exp         : %x\n", parms.exp)
+	fmt.Printf("modulus     : %x\n", parms.modulus)
 }
 
 func SetShortPcrs(pcr_nums []int) ([]byte, error) {
@@ -178,17 +178,17 @@ func DecodeRsaBuf(rsa_buf []byte) (*RsaParams, error) {
 	parms := new(RsaParams)
 	current := int(0)
 	template := []interface{}{&parms.enc_alg, &parms.hash_alg,
-                                   &parms.attributes, &parms.auth_policy}
-        err := unpack(rsa_buf[current:], template)
-        if err != nil {
-                return nil, errors.New("Can't unpack Rsa buffer 2")
-        }
+			&parms.attributes, &parms.auth_policy}
+	err := unpack(rsa_buf[current:], template)
+	if err != nil {
+		return nil, errors.New("Can't unpack Rsa buffer 2")
+	}
 	current += 10 + len(parms.auth_policy)
-        template = []interface{}{&parms.symalg}
-        err = unpack(rsa_buf[current:], template)
-        if err != nil {
-                return nil, errors.New("Can't unpack Rsa buffer 3")
-        }
+	template = []interface{}{&parms.symalg}
+	err = unpack(rsa_buf[current:], template)
+	if err != nil {
+		return nil, errors.New("Can't unpack Rsa buffer 3")
+	}
 	current += 2
 	if parms.symalg != uint16(algTPM_ALG_NULL) {
 		template = []interface{}{&parms.sym_sz, &parms.mode}
@@ -217,11 +217,11 @@ func DecodeRsaBuf(rsa_buf []byte) (*RsaParams, error) {
 		current += 2
 	}
 
-        template = []interface{}{&parms.mod_sz, &parms.exp, &parms.modulus}
-        err = unpack(rsa_buf[current:], template)
-        if err != nil {
-                return nil, errors.New("Can't unpack Rsa buffer 7")
-        }
+	template = []interface{}{&parms.mod_sz, &parms.exp, &parms.modulus}
+	err = unpack(rsa_buf[current:], template)
+	if err != nil {
+		return nil, errors.New("Can't unpack Rsa buffer 7")
+	}
 	return parms, nil
 }
 
@@ -230,11 +230,11 @@ func DecodeRsaArea(in []byte) (*RsaParams, error) {
 	fmt.Printf("DecodeRsaArea : %x\n", in)
 	var rsa_buf []byte
 
-        template := []interface{}{&rsa_buf}
-        err := unpack(in, template)
-        if err != nil {
-                return nil, errors.New("Can't unpack Rsa buffer 1")
-        }
+	template := []interface{}{&rsa_buf}
+	err := unpack(in, template)
+	if err != nil {
+		return nil, errors.New("Can't unpack Rsa buffer 1")
+	}
 	return DecodeRsaBuf(rsa_buf)
 }
 
@@ -311,21 +311,21 @@ func CreateLongPcr(count uint32, pcr_nums []int) ([]byte) {
 
 // Retieve file.
 func RetrieveFile(fileName string) ([]byte) {
-        fileInfo, err := os.Stat(fileName)
-        if err != nil {
-                return nil
-        }
-        buf := make([]byte, fileInfo.Size())
-        fileHandle, err := os.Open(fileName)
-        if err != nil {
-                return nil
-        }
-        read, err := fileHandle.Read(buf)
-        if int64(read) < fileInfo.Size() || err != nil {
-                fileHandle.Close()
-                return nil
-        }
-        fileHandle.Close()
+	fileInfo, err := os.Stat(fileName)
+	if err != nil {
+		return nil
+	}
+	buf := make([]byte, fileInfo.Size())
+	fileHandle, err := os.Open(fileName)
+	if err != nil {
+		return nil
+	}
+	read, err := fileHandle.Read(buf)
+	if int64(read) < fileInfo.Size() || err != nil {
+		fileHandle.Close()
+	return nil
+	}
+	fileHandle.Close()
 	return buf
 }
 
@@ -342,14 +342,14 @@ func ConstructGetRandom(size uint32) ([]byte, error) {
 
 // DecodeGetRandom decodes a GetRandom response.
 func DecodeGetRandom(in []byte) ([]byte, error) {
-        var rand_bytes []byte
+var rand_bytes []byte
 
-        out :=  []interface{}{&rand_bytes}
-        err := unpack(in, out)
-        if err != nil {
-                return nil, errors.New("Can't decode GetRandom response")
-        }
-        return rand_bytes, nil
+	out :=  []interface{}{&rand_bytes}
+	err := unpack(in, out)
+	if err != nil {
+	return nil, errors.New("Can't decode GetRandom response")
+	}
+	return rand_bytes, nil
 }
 
 // GetRandom gets random bytes from the TPM.
@@ -371,13 +371,13 @@ func GetRandom(rw io.ReadWriteCloser, size uint32) ([]byte, error) {
 	var resp []byte
 	resp = make([]byte, 1024, 1024)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return nil, errors.New("Read Tpm fails")
+	}
 
 	// Decode Response
-        if read < 10 {
-                return nil, errors.New("Read buffer too small")
+	if read < 10 {
+		return nil, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
@@ -424,17 +424,17 @@ func FlushContext(rw io.ReadWriter, handle Handle) (error) {
 	var resp []byte
 	resp = make([]byte, 1024, 1024)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return errors.New("Read Tpm fails")
+	}
 
 	// Decode Response
-        if read < 10 {
-                return errors.New("Read buffer too small")
+	if read < 10 {
+		return errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-                return errors.New("DecodeCommandResponse fails")
+		return errors.New("DecodeCommandResponse fails")
 	}
 	fmt.Printf("FlushContext Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
@@ -457,17 +457,17 @@ func ConstructReadPcrs(num_spec int, num_pcr byte, pcrs []byte) ([]byte, error) 
 
 // DecodeReadPcrs decodes a ReadPcr response.
 func DecodeReadPcrs(in []byte) (uint32, []byte, uint16, []byte, error) {
-        var pcr []byte
-        var digest []byte
-        var updateCounter uint32
-        var t uint32
-        var s uint32
+	var pcr []byte
+	var digest []byte
+	var updateCounter uint32
+	var t uint32
+	var s uint32
 
-        out :=  []interface{}{&t, &updateCounter, &pcr, &s, &digest}
-        err := unpack(in, out)
-        if err != nil {
-                return 1, nil, 0, nil, errors.New("Can't decode ReadPcrs response")
-        }
+	out :=  []interface{}{&t, &updateCounter, &pcr, &s, &digest}
+	err := unpack(in, out)
+	if err != nil {
+		return 1, nil, 0, nil, errors.New("Can't decode ReadPcrs response")
+	}
 	return updateCounter, pcr, uint16(t), digest, nil
 }
 
@@ -492,13 +492,13 @@ func ReadPcrs(rw io.ReadWriter, num_byte byte, pcrSelect []byte) (uint32, []byte
 	var resp []byte
 	resp = make([]byte, 1024, 1024)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return 0, nil, 0, nil, errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return 0, nil, 0, nil, errors.New("Read Tpm fails")
+	}
 
 	// Decode Response
-        if read < 10 {
-                return 0, nil, 0, nil, errors.New("Read buffer too small")
+	if read < 10 {
+		return 0, nil, 0, nil, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
@@ -527,13 +527,13 @@ func ConstructReadClock() ([]byte, error) {
 
 // DecodeReadClock decodes a ReadClock response.
 func DecodeReadClock(in []byte) (uint64, uint64, error) {
-        var current_time, current_clock uint64
+	var current_time, current_clock uint64
 
-        template :=  []interface{}{&current_time, &current_clock}
-        err := unpack(in, template)
-        if err != nil {
-                return 0, 0, errors.New("Can't decode DecodeReadClock response")
-        }
+	template :=  []interface{}{&current_time, &current_clock}
+	err := unpack(in, template)
+	if err != nil {
+		return 0, 0, errors.New("Can't decode DecodeReadClock response")
+	}
 	return current_time, current_clock, nil
 }
 
@@ -557,13 +557,13 @@ func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
 	var resp []byte
 	resp = make([]byte, 1024, 1024)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return 0, 0, errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return 0, 0, errors.New("Read Tpm fails")
+	}
 
 	// Decode Response
-        if read < 10 {
-                return 0, 0, errors.New("Read buffer too small")
+	if read < 10 {
+		return 0, 0, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
@@ -594,21 +594,21 @@ func ConstructGetCapabilities(cap uint32, count uint32, property uint32) ([]byte
 
 // DecodeGetCapabilities decodes a GetCapabilities response.
 func DecodeGetCapabilities(in []byte) (uint32, []uint32, error) {
-        var num_handles uint32
-        var cap_reported uint32
+	var num_handles uint32
+	var cap_reported uint32
 
-        out :=  []interface{}{&cap_reported, &num_handles}
-        err := unpack(in[1:9], out)
-        if err != nil {
-                return 0, nil, errors.New("Can't decode GetCapabilities response")
-        }
+	out :=  []interface{}{&cap_reported, &num_handles}
+	err := unpack(in[1:9], out)
+	if err != nil {
+		return 0, nil, errors.New("Can't decode GetCapabilities response")
+	}
 	// only ordTPM_CAP_HANDLES handled
-        if cap_reported !=  ordTPM_CAP_HANDLES {
-                return 0, nil, errors.New("Only ordTPM_CAP_HANDLES supported")
-        }
+	if cap_reported !=  ordTPM_CAP_HANDLES {
+		return 0, nil, errors.New("Only ordTPM_CAP_HANDLES supported")
+	}
 	var handles []uint32
 	var handle uint32
-        handle_out :=  []interface{}{&handle}
+	handle_out :=  []interface{}{&handle}
 	for i:= 0; i < int(num_handles); i++ {
 		err := unpack(in[8 + 4 * i:18:12 + 4 * i], handle_out)
 		if err != nil {
@@ -617,7 +617,7 @@ func DecodeGetCapabilities(in []byte) (uint32, []uint32, error) {
 		handles = append(handles, handle)
 	}
 
-        return cap_reported, handles, nil
+	return cap_reported, handles, nil
 }
 
 // GetCapabilities 
@@ -638,15 +638,15 @@ func GetCapabilities(rw io.ReadWriter, cap uint32, count uint32, property uint32
 
 	// Get response
 	var resp []byte
-	resp = make([]byte, 1024, 1024)
+	resp = make([]byte, 4096, 4096)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return nil, errors.New("Read Tpm fails")
+	}
 
 	// Decode Response
-        if read < 10 {
-                return nil, errors.New("Read buffer too small")
+	if read < 10 {
+		return nil, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
@@ -698,13 +698,13 @@ func PcrEvent(rw io.ReadWriter, pcrnum int, eventData []byte) (error) {
 	var resp []byte
 	resp = make([]byte, 1024, 1024)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return errors.New("Read Tpm fails")
+	}
 
 	// Decode Response
-        if read < 10 {
-                return errors.New("Read buffer too small")
+	if read < 10 {
+		return errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
@@ -763,55 +763,55 @@ func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
 	var auth []byte
 
 	// handle and auth data
-        template :=  []interface{}{&handle, &auth}
-        err := unpack(in, template)
-        if err != nil {
-                return Handle(0), nil, errors.New("Can't decode response 1")
-        }
+	template :=  []interface{}{&handle, &auth}
+	err := unpack(in, template)
+	if err != nil {
+		return Handle(0), nil, errors.New("Can't decode response 1")
+	}
 
 	var current int
 	current = 6 + 2*len(auth)
 	// size, size-public
 	var tpm2_public []byte
-        template =  []interface{}{&tpm2_public}
-        err = unpack(in[current:], template)
-        if err != nil {
-                return Handle(0), nil, errors.New("Can't decode CreatePrimary response 2")
-        }
+	template =  []interface{}{&tpm2_public}
+	err = unpack(in[current:], template)
+	if err != nil {
+		return Handle(0), nil, errors.New("Can't decode CreatePrimary response 2")
+	}
 	fmt.Printf("tpm2_public : %x %x\n", len(tpm2_public), tpm2_public)
 
 	var rsa_params_buf []byte
-        template =  []interface{}{&rsa_params_buf}
-        err = unpack(tpm2_public, template)
-        if err != nil {
-                return Handle(0), nil, errors.New("Can't decode CreatePrimary response 3")
-        }
+	template =  []interface{}{&rsa_params_buf}
+	err = unpack(tpm2_public, template)
+	if err != nil {
+		return Handle(0), nil, errors.New("Can't decode CreatePrimary response 3")
+	}
 	fmt.Printf("rsa_params_buf: %x %x\n", len(rsa_params_buf), rsa_params_buf)
 
 	// params
 	params, err := DecodeRsaArea(tpm2_public)
-        if err != nil {
-                return Handle(0), nil, err
-        } 
+	if err != nil {
+		return Handle(0), nil, err
+	}
 	PrintRsaParams(params)
 
 	// Creation data
 	current = 2+len(rsa_params_buf)
 	var creation_data []byte
-        template =  []interface{}{&creation_data}
-        err = unpack(tpm2_public[current:], template)
-        if err != nil {
-                return Handle(0), nil, errors.New("Can't decode CreatePrimary response 4")
+	template =  []interface{}{&creation_data}
+	err = unpack(tpm2_public[current:], template)
+	if err != nil {
+		return Handle(0), nil, errors.New("Can't decode CreatePrimary response 4")
 	}
 	fmt.Printf("creation data: %x\n", creation_data)
 	current += len(creation_data) +2
 
 	// Digest
 	var digest []byte
-        template =  []interface{}{&digest}
-        err = unpack(tpm2_public[current:], template)
-        if err != nil {
-                return Handle(0), nil, errors.New("Can't decode CreatePrimary response 5")
+	template =  []interface{}{&digest}
+	err = unpack(tpm2_public[current:], template)
+	if err != nil {
+		return Handle(0), nil, errors.New("Can't decode CreatePrimary response 5")
 	}
 	fmt.Printf("digest : %x\n", digest)
 	current += len(digest) +2
@@ -819,20 +819,20 @@ func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
 	// TPMT_TK_CREATION
 	current += 6
 	var crap []byte
-        template =  []interface{}{&crap}
-        err = unpack(tpm2_public[current:], template)
-        if err != nil {
-                return Handle(0), nil, errors.New("Can't decode CreatePrimary response 5")
+	template =  []interface{}{&crap}
+	err = unpack(tpm2_public[current:], template)
+	if err != nil {
+		return Handle(0), nil, errors.New("Can't decode CreatePrimary response 5")
 	}
 	fmt.Printf("crap: %x\n", crap)
 	current += len(crap) +2
 
 	// Name
 	var name []byte
-        template =  []interface{}{&name}
-        err = unpack(tpm2_public[current:], template)
-        if err != nil {
-                return Handle(0), nil, errors.New("Can't decode CreatePrimary response 5")
+	template =  []interface{}{&name}
+	err = unpack(tpm2_public[current:], template)
+	if err != nil {
+		return Handle(0), nil, errors.New("Can't decode CreatePrimary response 5")
 	}
 	fmt.Printf("name: %x\n", name)
 
@@ -862,13 +862,13 @@ func CreatePrimary(rw io.ReadWriter, owner uint32, pcr_nums []int,
 	var resp []byte
 	resp = make([]byte, 2048, 2048)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return Handle(0), nil, errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return Handle(0), nil, errors.New("Read Tpm fails")
+	}
 
 	// Decode Response
-        if read < 10 {
-                return Handle(0), nil, errors.New("Read buffer too small")
+	if read < 10 {
+		return Handle(0), nil, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
@@ -900,16 +900,16 @@ func ConstructReadPublic(handle Handle) ([]byte, error) {
 // DecodeReadPublic decodes a ReadPublic response.
 //	public, name, qualified name
 func DecodeReadPublic(in []byte) ([]byte, []byte, []byte, error) {
-        var public_blob []byte
-        var name []byte
-        var qualified_name []byte
+	var public_blob []byte
+	var name []byte
+	var qualified_name []byte
 
-        out :=  []interface{}{&public_blob, &name, &qualified_name}
-        err := unpack(in, out)
-        if err != nil {
-                return nil, nil, nil, errors.New("Can't decode ReadPublic response")
-        }
-        return public_blob, name, qualified_name, nil
+	out :=  []interface{}{&public_blob, &name, &qualified_name}
+	err := unpack(in, out)
+	if err != nil {
+		return nil, nil, nil, errors.New("Can't decode ReadPublic response")
+	}
+	return public_blob, name, qualified_name, nil
 }
 
 // ReadPublic
@@ -931,15 +931,15 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 
 	// Get response
 	var resp []byte
-	resp = make([]byte, 1024, 1024)
+	resp = make([]byte, 4096, 4096)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, nil, nil, errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return nil, nil, nil, errors.New("Read Tpm fails")
+	}
 
 	// Decode Response
-        if read < 10 {
-                return nil, nil, nil, errors.New("Read buffer too small")
+	if read < 10 {
+		return nil, nil, nil, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
@@ -962,7 +962,7 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 
 // ConstructCreateKey constructs a CreateKey command.
 func ConstructCreateKey(owner uint32, pcr_nums []int, parent_password string, owner_password string,
-                parms RsaParams) ([]byte, error) {
+		parms RsaParams) ([]byte, error) {
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdCreate)
 	if err != nil {
 		return nil, errors.New("ConstructCreateKey failed")
@@ -989,17 +989,17 @@ func ConstructCreateKey(owner uint32, pcr_nums []int, parent_password string, ow
 // DecodeCreateKey decodes a CreateKey response.
 //	Output: private_blob, public_blob
 func DecodeCreateKey(in []byte) ([]byte, []byte, error) {
-        var tpm2b_private []byte
-        var tpm2b_public []byte
+	var tpm2b_private []byte
+	var tpm2b_public []byte
 
 	// auth?
 	// tpm2b_private
 	// tpm2b_public
-        out :=  []interface{}{&tpm2b_private, &tpm2b_public}
-        err := unpack(in[4:], out)
-        if err != nil {
-                return nil, nil, errors.New("Can't decode CreateKey response")
-        }
+	out :=  []interface{}{&tpm2b_private, &tpm2b_public}
+	err := unpack(in[4:], out)
+	if err != nil {
+		return nil, nil, errors.New("Can't decode CreateKey response")
+	}
 	// creation data
 	// tpmt_tk_creation
 	// digest
@@ -1011,8 +1011,7 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 		parms RsaParams) ([]byte, []byte, error) {
 
 	// Construct command
-	cmd, err:= ConstructCreateKey(uint32(owner), pcr_nums, parent_password,
-                owner_password, parms)
+	cmd, err:= ConstructCreateKey(uint32(owner), pcr_nums, parent_password, owner_password, parms)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, nil, err
@@ -1027,15 +1026,15 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 
 	// Get response
 	var resp []byte
-	resp = make([]byte, 1024, 1024)
+	resp = make([]byte, 4096, 4096)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, nil, errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return nil, nil, errors.New("Read Tpm fails")
+	}
 
 	// Decode Response
-        if read < 10 {
-                return nil, nil, errors.New("Read buffer too small")
+	if read < 10 {
+		return nil, nil, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
@@ -1056,7 +1055,7 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 
 // ConstructLoad constructs a Load command.
 func ConstructLoad(parentHandle Handle, parentAuth string, ownerAuth string,
-             public_blob []byte, private_blob []byte) ([]byte, error) {
+	     public_blob []byte, private_blob []byte) ([]byte, error) {
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdLoad)
 	if err != nil {
 		return nil, errors.New("ConstructLoad failed")
@@ -1076,16 +1075,16 @@ func ConstructLoad(parentHandle Handle, parentAuth string, ownerAuth string,
 // DecodeLoad decodes a Load response.
 //	handle, name
 func DecodeLoad(in []byte) (Handle, []byte, error) {
-        var handle uint32
-        var auth []byte
-        var name []byte
+	var handle uint32
+	var auth []byte
+	var name []byte
 
-        out :=  []interface{}{&handle, &auth, &name}
-        err := unpack(in, out)
-        if err != nil {
-                return Handle(0), nil, errors.New("Can't decode Load response")
-        }
-        return Handle(handle), name, nil
+	out :=  []interface{}{&handle, &auth, &name}
+	err := unpack(in, out)
+	if err != nil {
+		return Handle(0), nil, errors.New("Can't decode Load response")
+	}
+	return Handle(handle), name, nil
 }
 
 // Load
@@ -1109,15 +1108,15 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string, ownerAuth st
 
 	// Get response
 	var resp []byte
-	resp = make([]byte, 1024, 1024)
+	resp = make([]byte, 4096, 4096)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return Handle(0), nil, errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return Handle(0), nil, errors.New("Read Tpm fails")
+	}
 
 	// Decode Response
-        if read < 10 {
-                return Handle(0), nil, errors.New("Read buffer too small")
+	if read < 10 {
+		return Handle(0), nil, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
@@ -1190,13 +1189,13 @@ func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
 	var resp []byte
 	resp = make([]byte, 1024, 1024)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return errors.New("Read Tpm fails")
+	}
 
 	// Decode Response
-        if read < 10 {
-                return errors.New("Read buffer too small")
+	if read < 10 {
+		return errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
@@ -1230,13 +1229,13 @@ func PolicyPcr(rw io.ReadWriter, handle Handle, expected_digest []byte, pcr_nums
 	var resp []byte
 	resp = make([]byte, 1024, 1024)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return errors.New("Read Tpm fails")
+	}
 
 	// Decode Response
-        if read < 10 {
-                return errors.New("Read buffer too small")
+	if read < 10 {
+		return errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
@@ -1269,14 +1268,14 @@ func ConstructPolicyGetDigest(handle Handle) ([]byte, error) {
 
 // DecodePolicyGetDigest decodes a PolicyGetDigest response.
 func DecodePolicyGetDigest(in []byte) ([]byte, error) {
-        var digest []byte
+	var digest []byte
 
-        out :=  []interface{}{&digest}
-        err := unpack(in, out)
-        if err != nil {
-                return nil, errors.New("Can't decode DecodePolicyGetDigest response")
-        }
-        return digest, nil
+	out :=  []interface{}{&digest}
+	err := unpack(in, out)
+	if err != nil {
+		return nil, errors.New("Can't decode DecodePolicyGetDigest response")
+	}
+	return digest, nil
 }
 
 // PolicyGetDigest
@@ -1298,15 +1297,15 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 
 	// Get response
 	var resp []byte
-	resp = make([]byte, 1024, 1024)
+	resp = make([]byte, 4096, 4096)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return nil, errors.New("Read Tpm fails")
+	}
 
 	// Decode Response
-        if read < 10 {
-                return nil, errors.New("Read buffer too small")
+	if read < 10 {
+		return nil, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
@@ -1351,22 +1350,22 @@ func ConstructStartAuthSession(tpm_key Handle, bind_key Handle,
 func DecodeStartAuthSession(in []byte) (Handle, []byte, error) {
 	var handle uint32
 	var nonce []byte
-        template :=  []interface{}{&handle, &nonce}
-        err := unpack(in, template)
-        if err != nil {
-                return Handle(0), nil, errors.New("Can't decode StartAuthSession response")
-        }
+	template :=  []interface{}{&handle, &nonce}
+	err := unpack(in, template)
+	if err != nil {
+		return Handle(0), nil, errors.New("Can't decode StartAuthSession response")
+	}
 	return Handle(handle), nonce, nil
 }
 
 // StartAuthSession
 func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle,
 		nonceCaller []byte, secret []byte,
-                se byte, sym uint16, hash_alg uint16) (Handle, []byte, error) {
+		se byte, sym uint16, hash_alg uint16) (Handle, []byte, error) {
 
 	// Construct command
 	cmd, err:= ConstructStartAuthSession(tpm_key, bind_key, nonceCaller, secret,
-                se, sym, hash_alg)
+		se, sym, hash_alg)
 	if err != nil {
 		return Handle(0), nil, errors.New("ConstructStartAuthSession fails")
 	}
@@ -1382,27 +1381,27 @@ func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle,
 	var resp []byte
 	resp = make([]byte, 1024, 1024)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return Handle(0), nil, errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return Handle(0), nil, errors.New("Read Tpm fails")
+	}
 	fmt.Printf("StartAuthSession resp: %x\n\n",  resp[0:read])
 
 	// Decode Response
-        if read < 10 {
-                return Handle(0), nil, errors.New("Read buffer too small")
+	if read < 10 {
+		return Handle(0), nil, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-                return Handle(0), nil, errors.New("DecodeCommandResponse fails")
+		return Handle(0), nil, errors.New("DecodeCommandResponse fails")
 	}
 	fmt.Printf("StartAuth Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return Handle(0), nil, errors.New("StartAuthSession unsuccessful")
 	}
 	handle, nonce, err := DecodeStartAuthSession(resp[10:])
-        if err != nil {
-                return Handle(0), nil, errors.New("DecodeStartAuthSession fails")
-        }
+	if err != nil {
+		return Handle(0), nil, errors.New("DecodeStartAuthSession fails")
+	}
 	return handle, nonce, nil
 }
 
@@ -1441,15 +1440,15 @@ func ConstructCreateSealed(parent Handle, policy_digest []byte,
 // DecodeCreateSealed decodes a CreateSealed response.
 // 	Output: private, public, creation_out, digest_out, creation_ticket
 func DecodeCreateSealed(in []byte) ([]byte, []byte, error) {
-        var tpm2b_private []byte
-        var tpm2b_public []byte
+	var tpm2b_private []byte
+	var tpm2b_public []byte
 
 	// auth, tpm2b_private, tpm2b_public
-        template :=  []interface{}{&tpm2b_private, &tpm2b_public}
-        err := unpack(in[4:], template)
-        if err != nil {
-                return nil, nil, errors.New("Can't decode CreateSealed response")
-        }
+	template :=  []interface{}{&tpm2b_private, &tpm2b_public}
+	err := unpack(in[4:], template)
+	if err != nil {
+		return nil, nil, errors.New("Can't decode CreateSealed response")
+	}
 	// creation data
 	// tpmt_tk_creation
 	// digest
@@ -1460,7 +1459,7 @@ func DecodeCreateSealed(in []byte) ([]byte, []byte, error) {
 // 	Output: public blob, private blob
 func CreateSealed(rw io.ReadWriter, parent Handle, policy_digest []byte,
 		  parent_password string, owner_password string,
-                  to_seal []byte, pcr_nums []int, parms KeyedHashParams) ([]byte, []byte, error) {
+		  to_seal []byte, pcr_nums []int, parms KeyedHashParams) ([]byte, []byte, error) {
 	// Construct command
 	cmd, err:= ConstructCreateSealed(parent, policy_digest,
 			parent_password, owner_password,
@@ -1478,28 +1477,28 @@ func CreateSealed(rw io.ReadWriter, parent Handle, policy_digest []byte,
 
 	// Get response
 	var resp []byte
-	resp = make([]byte, 1024, 1024)
+	resp = make([]byte, 4096, 4096)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, nil, errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return nil, nil, errors.New("Read Tpm fails")
+	}
 
 	// Decode Response
-        if read < 10 {
-                return nil, nil, errors.New("Read buffer too small")
+	if read < 10 {
+		return nil, nil, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-                return nil, nil, errors.New("DecodeCommandResponse fails")
+		return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
 	fmt.Printf("CreateSealed Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return nil, nil, errors.New("CreateSealed unsuccessful")
 	}
 	handle, nonce, err := DecodeCreateSealed(resp[10:])
-        if err != nil {
-                return nil, nil, errors.New("DecodeCreateSealed fails")
-        }
+	if err != nil {
+		return nil, nil, errors.New("DecodeCreateSealed fails")
+	}
 	return handle, nonce, nil
 }
 
@@ -1512,14 +1511,14 @@ func ConstructUnseal(item_handle Handle, password string, session_handle Handle)
 	// item_handle
 	var empty []byte
 	handle1 := uint32(item_handle)
-        template :=  []interface{}{&handle1, &empty}
-        b1, err := pack(template)
-        if err != nil {
-                return nil, errors.New("Can't construct Unseal")
-        }
+	template :=  []interface{}{&handle1, &empty}
+	b1, err := pack(template)
+	if err != nil {
+		return nil, errors.New("Can't construct Unseal")
+	}
 	session_attributes := uint8(1)
 	b2 := CreatePasswordAuthArea(password, session_handle)
-        template =  []interface{}{&empty, &session_attributes}  // null hmac
+	template =  []interface{}{&empty, &session_attributes}  // null hmac
 	cmd_bytes := packWithBytes(cmdHdr, append(b1, b2...))
 	return cmd_bytes, nil
 }
@@ -1527,14 +1526,14 @@ func ConstructUnseal(item_handle Handle, password string, session_handle Handle)
 // DecodeUnseal decodes a Unseal response.
 //	Output: sensitive data
 func DecodeUnseal(in []byte) ([]byte, []byte, error) {
-        var unsealed []byte
-        var digest []byte
+	var unsealed []byte
+	var digest []byte
 
-        template :=  []interface{}{&unsealed, &digest}
-        err := unpack(in[4:], template)
-        if err != nil {
-                return nil, nil, errors.New("Can't decode Unseal response")
-        }
+	template :=  []interface{}{&unsealed, &digest}
+	err := unpack(in[4:], template)
+	if err != nil {
+		return nil, nil, errors.New("Can't decode Unseal response")
+	}
 	return unsealed, digest, nil
 }
 
@@ -1556,28 +1555,28 @@ func Unseal(rw io.ReadWriter, item_handle Handle, password string, session_handl
 
 	// Get response
 	var resp []byte
-	resp = make([]byte, 1024, 1024)
+	resp = make([]byte, 4096, 4096)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, nil, errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return nil, nil, errors.New("Read Tpm fails")
+	}
 
 	// Decode Response
-        if read < 10 {
-                return nil, nil, errors.New("Read buffer too small")
+	if read < 10 {
+		return nil, nil, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-                return nil, nil, errors.New("DecodeCommandResponse fails")
+		return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
 	fmt.Printf("Unseal Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return nil, nil, errors.New("Unseal unsuccessful")
 	}
 	unsealed, nonce, err := DecodeUnseal(resp[10:])
-        if err != nil {
-                return nil, nil, errors.New("DecodeStartAuthSession fails")
-        }
+	if err != nil {
+		return nil, nil, errors.New("DecodeStartAuthSession fails")
+	}
 	return unsealed, nonce, nil
 }
 
@@ -1609,25 +1608,25 @@ func ConstructQuote(signing_handle Handle, parent_password, owner_password strin
 // DecodeQuote decodes a Quote response.
 //	Output: attest, signature
 func DecodeQuote(in []byte) ([]byte, uint16, uint16, []byte, error) {
-        var empty []byte
-        var buf []byte
-        var attest []byte
-        var signature []byte
+	var empty []byte
+	var buf []byte
+	var attest []byte
+	var signature []byte
 	var s1 uint16
 	var s2 uint16
 
-        template :=  []interface{}{&empty, &buf}
-        err := unpack(in, template)
-        if err != nil {
-                return nil, 0, 0, nil, errors.New("Can't decode Quote response")
-        }
+	template :=  []interface{}{&empty, &buf}
+	err := unpack(in, template)
+	if err != nil {
+		return nil, 0, 0, nil, errors.New("Can't decode Quote response")
+	}
 
-        template =  []interface{}{&attest, &s1, &s2, &signature}
-        err = unpack(buf, template)
-        if err != nil {
-                return nil, 0, 0, nil, errors.New("Can't decode Quote response")
-        }
-        return attest, s1, s2, signature, nil
+	template =  []interface{}{&attest, &s1, &s2, &signature}
+	err = unpack(buf, template)
+	if err != nil {
+		return nil, 0, 0, nil, errors.New("Can't decode Quote response")
+	}
+	return attest, s1, s2, signature, nil
 }
 
 // Quote
@@ -1650,35 +1649,35 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 
 	// Get response
 	var resp []byte
-	resp = make([]byte, 1024, 1024)
+	resp = make([]byte, 4096, 4096)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, nil, errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return nil, nil, errors.New("Read Tpm fails")
+	}
 	fmt.Printf("Quote resp: %x\n", resp)
 
 	// Decode Response
-        if read < 10 {
-                return nil, nil, errors.New("Read buffer too small")
+	if read < 10 {
+		return nil, nil, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-                return nil, nil, errors.New("DecodeCommandResponse fails")
+		return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
 	fmt.Printf("Quote Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return nil, nil, errors.New("Quote unsuccessful")
 	}
 	attest, _, _, sig, err := DecodeQuote(resp[10:])
-        if err != nil {
-                return nil, nil, errors.New("DecodeQuote fails")
-        }
+	if err != nil {
+		return nil, nil, errors.New("DecodeQuote fails")
+	}
 	return attest, sig, nil
 }
 
 // ConstructActivateCredential constructs a ActivateCredential command.
 func ConstructActivateCredential(active_handle Handle, key_handle Handle,
-		activePassword string, keyPassword string,
+		activePassword string, protectorPassword string,
 		credBlob []byte, secret []byte) ([]byte, error) {
 	var empty []byte
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdActivateCredential)
@@ -1689,7 +1688,7 @@ func ConstructActivateCredential(active_handle Handle, key_handle Handle,
 	b2 := SetHandle(key_handle)
 	b3, _ := pack([]interface{}{&empty})
 	b4a := CreatePasswordAuthArea(activePassword, Handle(ordTPM_RS_PW))
-	b4b := CreatePasswordAuthArea(keyPassword, Handle(ordTPM_RS_PW))
+	b4b := CreatePasswordAuthArea(protectorPassword, Handle(ordTPM_RS_PW))
 	b4t := append(b4a[2:], b4b[2:]...)
 	b4, _ := pack([]interface{}{&b4t})
 	b5, _ := pack([]interface{}{&credBlob, &secret})
@@ -1705,30 +1704,30 @@ func ConstructActivateCredential(active_handle Handle, key_handle Handle,
 // returns certInfo
 func DecodeActivateCredential(in []byte) ([]byte, error) {
 	var empty []byte
-        var buf []byte
-        var certInfo []byte
+	var buf []byte
+	var certInfo []byte
 
-        template :=  []interface{}{&empty, &buf}
-        err := unpack(in, template)
-        if err != nil {
-                return nil, errors.New("Can't decode ActivateCredential response")
-        }
-        template =  []interface{}{&certInfo}
-        err = unpack(buf, template)
-        if err != nil {
-                return nil, errors.New("Can't decode ActivateCredential response")
-        }
+	template :=  []interface{}{&empty, &buf}
+	err := unpack(in, template)
+	if err != nil {
+		return nil, errors.New("Can't decode ActivateCredential response")
+	}
+	template =  []interface{}{&certInfo}
+	err = unpack(buf, template)
+	if err != nil {
+		return nil, errors.New("Can't decode ActivateCredential response")
+	}
 	return certInfo, nil
 }
 
 // ActivateCredential
 // 	Output: certinfo
 func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handle,
-		activePassword string, keyPassword string,
+		activePassword string, protectorPassword string,
 		credBlob []byte, secret []byte) ([]byte, error) {
 	// Construct command
 	cmd, err:= ConstructActivateCredential (active_handle, key_handle, activePassword,
-		keyPassword, credBlob, secret)
+		protectorPassword, credBlob, secret)
 	if err != nil {
 		return nil, errors.New("ConstructActivateCredential fails") 
 	}
@@ -1742,28 +1741,28 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 
 	// Get response
 	var resp []byte
-	resp = make([]byte, 1024, 1024)
+	resp = make([]byte, 4096, 4096)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return nil, errors.New("Read Tpm fails")
+	}
 
 	// Decode Response
-        if read < 10 {
-                return nil, errors.New("Read buffer too small")
+	if read < 10 {
+		return nil, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-                return nil, errors.New("DecodeCommandResponse fails")
+		return nil, errors.New("DecodeCommandResponse fails")
 	}
 	fmt.Printf("ActivateCredential Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return nil, errors.New("ActivateCredential unsuccessful")
 	}
 	cred, err := DecodeActivateCredential(resp[10:])
-        if err != nil {
-                return nil, errors.New("DecodeActivateCredential fails")
-        }
+	if err != nil {
+		return nil, errors.New("DecodeActivateCredential fails")
+	}
 	return cred, nil
 }
 
@@ -1812,26 +1811,26 @@ func EvictControl(rw io.ReadWriter, owner Handle, tmp_handle Handle, parent_pass
 	var resp []byte
 	resp = make([]byte, 1024, 1024)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return errors.New("Read Tpm fails")
+	}
 
 	// Decode Response
-        if read < 10 {
-                return errors.New("Read buffer too small")
+	if read < 10 {
+		return errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-                return errors.New("DecodeCommandResponse fails")
+		return errors.New("DecodeCommandResponse fails")
 	}
 	fmt.Printf("EvictControl Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return errors.New("EvictControl unsuccessful")
 	}
 	err = DecodeEvictControl(resp[10:])
-        if err != nil {
-                return errors.New("DecodeEvictControl fails")
-        }
+	if err != nil {
+		return errors.New("DecodeEvictControl fails")
+	}
 	return nil
 }
 
@@ -1867,28 +1866,28 @@ func SaveContext(rw io.ReadWriter, handle Handle) ([]byte, error) {
 
 	// Get response
 	var resp []byte
-	resp = make([]byte, 1024, 1024)
+	resp = make([]byte, 4096, 4096)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return nil, errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return nil, errors.New("Read Tpm fails")
+	}
 
 	// Decode Response
-        if read < 10 {
-                return nil, errors.New("Read buffer too small")
+	if read < 10 {
+		return nil, errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-                return nil, errors.New("DecodeCommandResponse fails")
+		return nil, errors.New("DecodeCommandResponse fails")
 	}
 	fmt.Printf("SaveContext Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return nil, errors.New("SaveContext unsuccessful")
 	}
 	save_area, err := DecodeSaveContext(resp[10:])
-        if err != nil {
-                return nil, errors.New("DecodeSaveContext fails")
-        }
+	if err != nil {
+		return nil, errors.New("DecodeSaveContext fails")
+	}
 	return save_area, nil
 }
 
@@ -1907,11 +1906,11 @@ func ConstructLoadContext(save_area []byte) ([]byte, error) {
 // DecodeLoadContext decodes a LoadContext response.
 func  DecodeLoadContext(in []byte) (Handle, error) {
 	var handle uint32
-        template :=  []interface{}{&handle}
-        err := unpack(in, template)
-        if err != nil {
-                return Handle(0), errors.New("Can't decode LoadContext response")
-        }
+	template :=  []interface{}{&handle}
+	err := unpack(in, template)
+	if err != nil {
+		return Handle(0), errors.New("Can't decode LoadContext response")
+	}
 	return Handle(handle), nil
 }
 
@@ -1934,26 +1933,26 @@ func LoadContext(rw io.ReadWriter, save_area []byte) (Handle, error) {
 	var resp []byte
 	resp = make([]byte, 2048, 2048)
 	read, err := rw.Read(resp)
-        if err != nil {
-                return Handle(0), errors.New("Read Tpm fails")
-        }
+	if err != nil {
+		return Handle(0), errors.New("Read Tpm fails")
+	}
 
 	// Decode Response
-        if read < 10 {
-                return Handle(0), errors.New("Read buffer too small")
+	if read < 10 {
+		return Handle(0), errors.New("Read buffer too small")
 	}
 	tag, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-                return Handle(0), errors.New("DecodeCommandResponse fails")
+		return Handle(0), errors.New("DecodeCommandResponse fails")
 	}
 	fmt.Printf("LoadContext Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return Handle(0), errors.New("LoadContext unsuccessful")
 	}
 	handle, err := DecodeLoadContext(resp[10:])
-        if err != nil {
-                return Handle(0), errors.New("DecodeLoadContext fails")
-        }
+	if err != nil {
+		return Handle(0), errors.New("DecodeLoadContext fails")
+	}
 	return handle, nil
 }
 
@@ -2060,21 +2059,21 @@ func GetRsaPublicKeyFromBlob(in []byte) (*TpmRsaPublicKey, error) {
 	var  out_public []byte
 
 	template :=  []interface{}{&out_public}
-        err := unpack(in, template)
-        if err != nil {
-                return nil, errors.New("Can't decode response")
-        }
+	err := unpack(in, template)
+	if err != nil {
+		return nil, errors.New("Can't decode response")
+	}
 	rsaParams, err := DecodeRsaArea(out_public)
-        if err != nil {
-                return nil, errors.New("Can't decode Rsa Area")
-        }
+	if err != nil {
+		return nil, errors.New("Can't decode Rsa Area")
+	}
 	key.rsa_params = rsaParams
 
 	template =  []interface{}{&key.name, &key.qualified_name}
-        err = unpack(in[len(out_public) + 2:], template)
-        if err != nil {
-                return nil, errors.New("Can't decode response")
-        }
+	err = unpack(in[len(out_public) + 2:], template)
+	if err != nil {
+		return nil, errors.New("Can't decode response")
+	}
 
 	return key, nil
 }
@@ -2221,16 +2220,16 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte, quote
 	request := new(ProgramCertRequestMessage)
 	request.EndorsementCertBlob = der_endorsement_cert
 	req_id := "001"
-        request.RequestId = &req_id
+	request.RequestId = &req_id
 	modulus_bits := int32(2048)
 	key_type := "RSA"
-        request.ProgramKey.ProgramName = &program_name
-        request.ProgramKey.ProgramKeyType = &key_type
-        request.ProgramKey.ProgramBitModulusSize = &modulus_bits
+	request.ProgramKey.ProgramName = &program_name
+	request.ProgramKey.ProgramKeyType = &key_type
+	request.ProgramKey.ProgramBitModulusSize = &modulus_bits
 
-        // request.ProgramKey.ProgramKeyExponent = 0x010001
+	// request.ProgramKey.ProgramKeyExponent = 0x010001
 	n := programPublicKey.(*rsa.PublicKey).N
-        request.ProgramKey.ProgramKeyModulus = n.Bytes()
+	request.ProgramKey.ProgramKeyModulus = n.Bytes()
 	serialized_program_key := request.ProgramKey.String();
 	sha256Hash := sha256.New()
 	sha256Hash.Write([]byte(serialized_program_key))
@@ -2256,18 +2255,18 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte, quote
 	fmt.Printf("Sig: %x\n", sig)
 
 	// Quote key info.
-        request.QuoteKeyInfo.Name = name
-        // request.QuoteKeyInfo.Properties
+	request.QuoteKeyInfo.Name = name
+	// request.QuoteKeyInfo.Properties
 	tmp_name := "Quote-Key"
-        request.QuoteKeyInfo.PublicKey.RsaKey.KeyName = &tmp_name
-        // request.QuoteKeyInfo.PublicKey.KeyType
-        // request.QuoteKeyInfo.PublicKey.BitModulusSize
-        // request.QuoteKeyInfo.PublicKey.Modulus
-        // request.QuoteSignAlg
-        // request.QuoteSignHashAlg
+	request.QuoteKeyInfo.PublicKey.RsaKey.KeyName = &tmp_name
+	// request.QuoteKeyInfo.PublicKey.KeyType
+	// request.QuoteKeyInfo.PublicKey.BitModulusSize
+	// request.QuoteKeyInfo.PublicKey.Modulus
+	// request.QuoteSignAlg
+	// request.QuoteSignHashAlg
 
-        request.QuotedBlob = attest
-        request.QuoteSignature = sig
+	request.QuotedBlob = attest
+	request.QuoteSignature = sig
 	return der_program_key, request, nil
 }
 
@@ -2303,7 +2302,7 @@ func ValidPcr(pcrSelect []byte, digest []byte) (bool) {
 
 func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (bool) {
 	var opts x509.VerifyOptions
-        roots := x509.NewCertPool()
+	roots := x509.NewCertPool()
 
 	// Verify key
 	policy_cert, err := x509.ParseCertificate(der_signing_cert)
@@ -2322,12 +2321,12 @@ func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (bool) {
 	fmt.Printf("Cert: %x\n", cert)
 
 	roots.AddCert(policy_cert)
-        opts.Roots = roots
-        chains, err := cert.Verify(opts)
-        if chains == nil || err != nil {
+	opts.Roots = roots
+	chains, err := cert.Verify(opts)
+	if chains == nil || err != nil {
 		fmt.Printf("cert.Verify fails")
-                return false
-        }
+		return false
+	}
 	return true
 }
 
@@ -2483,19 +2482,19 @@ func ConstructServerResponse(der_policy_cert []byte, der_policy_private_key []by
 	integrity_alg := "sha1"
 	response.Secret = encrypted_secret
 	response.IntegrityAlg = &integrity_alg
-        response.IntegrityHMAC = integrityHmac
-        // encIdentity should be an encrypted correctly marshalled
+	response.IntegrityHMAC = integrityHmac
+	// encIdentity should be an encrypted correctly marshalled
 	response.IntegrityHMAC = integrityHmac 
-        response.EncIdentity = encIdentity
+	response.EncIdentity = encIdentity
 
 	// Encrypt cert with credential
 	cert_hmac, cert_out, err :=  EncryptDataWithCredential(true, hash_alg_id, 
-                credential, der_program_cert, nil)
+		credential, der_program_cert, nil)
 	if err != nil {
 		return nil, err
 	}
-        response.EncryptedCert = cert_out
-        response.EncryptedCertHmac = cert_hmac
+	response.EncryptedCert = cert_out
+	response.EncryptedCertHmac = cert_hmac
 	return response, nil
 }
 
@@ -2518,3 +2517,76 @@ func ClientDecodeServerResponse(rw io.ReadWriter, endorsement_handle Handle,
 	}
 	return out, nil
 }
+
+// ConstructInternalMakeCredential constructs a InternalMakeCredential command.
+func ConstructInternalMakeCredential(protectorHandle Handle, credential []byte,
+		activeName []byte) ([]byte, error) {
+	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdMakeCredential)
+	if err != nil {
+		return nil, errors.New("ConstructInternalMakeCredential failed")
+	}
+	b1 := SetHandle(protectorHandle)
+	b2, _ := pack([]interface{}{&credential, activeName})
+	cmd_bytes := packWithBytes(cmdHdr, append(b1, b2...))
+	return cmd_bytes, nil
+}
+
+// DecodeInternalMakeCredential decodes a InternalMakeCredential response.
+// returns blob, encrypted_secret
+func DecodeInternalMakeCredential(in []byte) ([]byte, []byte, error) {
+	var credBlob []byte
+	var encrypted_secret []byte
+
+	template :=  []interface{}{&credBlob, &encrypted_secret}
+	err := unpack(in, template)
+	if err != nil {
+		return nil, nil, errors.New("Can't decode InternalMakeCredential response")
+	}
+	return credBlob, encrypted_secret, nil
+}
+
+// InternalMakeCredential
+// 	Output: blob, secret
+func InternalMakeCredential(rw io.ReadWriter, protectorHandle Handle, credential []byte,
+		activeName []byte) ([]byte, []byte, error) {
+	// Construct command
+	cmd, err:= ConstructInternalMakeCredential (protectorHandle, credential, activeName)
+	if err != nil {
+		return nil, nil, errors.New("ConstructInternalMakeCredential fails")
+	}
+
+	// Send command
+	_, err = rw.Write(cmd)
+	if err != nil {
+		return nil, nil, errors.New("Write Tpm fails")
+	}
+	fmt.Printf("InternalMakeCredential cmd : %x\n", cmd)
+
+	// Get response
+	var resp []byte
+	resp = make([]byte, 2048, 2048)
+	read, err := rw.Read(resp)
+	if err != nil {
+		return nil, nil, errors.New("Read Tpm fails")
+	}
+	fmt.Printf("InternalMakeCredential response: %x\n", resp)
+
+	// Decode Response
+	if read < 10 {
+		return nil, nil, errors.New("Read buffer too small")
+	}
+	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	if err != nil {
+		return nil, nil, errors.New("DecodeCommandResponse fails")
+	}
+	fmt.Printf("InternalMakeCredential Tag: %x, size: %x, error code: %x\n", tag, size, status)
+	if status != errSuccess {
+		return nil, nil, errors.New("InternalMakeCredential unsuccessful")
+	}
+	credBlob, encrypted_secret, err := DecodeInternalMakeCredential(resp[10:])
+	if err != nil {
+		return nil, nil, errors.New("DecodeInternalMakeCredential fails")
+	}
+	return credBlob, encrypted_secret, nil
+}
+

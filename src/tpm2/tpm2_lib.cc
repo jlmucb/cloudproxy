@@ -2985,6 +2985,8 @@ bool Tpm2_EvictControl(LocalTpm& tpm, TPMI_RH_PROVISION owner,
   return true;
 }
 
+#define DEBUG
+
 //    1. Generate Seed
 //    2. encrypted_secret= E(protector_key, seed || "IDENTITY")
 //    3. symKey ≔ KDFa (ekNameAlg, seed, “STORAGE”, name, NULL , bits)
@@ -3016,8 +3018,11 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_blob,
   string name;
 
   memset(zero_iv, 0, 32);
+#ifdef DEBUG
+  printf("MakeCredential\n");
+#endif
 
-  // 2. Generate seed
+  // 1. Generate seed
   RAND_bytes(seed, size_seed);
 
   // Get endorsement public key, which is protector key
@@ -3027,12 +3032,12 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_blob,
   RSA* protector_key = EVP_PKEY_get1_RSA(protector_evp_key);
   RSA_up_ref(protector_key);
 
-  // 3. Secret= E(protector_key, seed || "IDENTITY")
+  // 2. Secret= E(protector_key, seed || "IDENTITY")
   //   args: to, from, label, len
   size_secret= 256;
   RSA_padding_add_PKCS1_OAEP(secret_buf, 256, seed, size_seed,
       (byte*)"IDENTITY", strlen("IDENTITY")+1);
-#if 1
+#ifdef DEBUG
   int k = 0;
   byte check[512];
   memset(check, 0, 512);
@@ -3051,11 +3056,10 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_blob,
   unmarshaled_encrypted_secret->size = n;
   ChangeEndian16((uint16_t*)&unmarshaled_encrypted_secret->size,
                  &marshaled_encrypted_secret->size);
-  memcpy(marshaled_encrypted_secret->secret,
-         unmarshaled_encrypted_secret->secret,
+  memcpy(marshaled_encrypted_secret->secret, unmarshaled_encrypted_secret->secret,
          unmarshaled_encrypted_secret->size);
  
-  // 4. Calculate symKey
+  // 3. Calculate symKey
   label = "STORAGE";
   key.assign((const char*)seed, size_seed);
   contextV.clear();
@@ -3065,7 +3069,7 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_blob,
     return false;
   }
 
-  // 5. encIdentity
+  // 4. encIdentity
   if (!AesCFBEncrypt(symKey, unmarshaled_credential.size + sizeof(uint16_t),
                      (byte*)&marshaled_credential, 16, zero_iv,
                      size_encIdentity, encIdentity)) {
@@ -3076,15 +3080,15 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_blob,
   int size_hmacKey = SizeHash(hash_alg_id);
   byte hmacKey[128];
 
-// 6. HMACkey ≔ KDFa (ekNameAlg, seed, “INTEGRITY”, NULL, NULL, bits)
+// 5. HMACkey ≔ KDFa (ekNameAlg, seed, “INTEGRITY”, NULL, NULL, bits)
   label = "INTEGRITY";
-  if (!KDFa(hash_alg_id, key, label, contextV,
-            contextV, 8 * SizeHash(hash_alg_id), 32, hmacKey)) {
+  if (!KDFa(hash_alg_id, key, label, contextV, contextV,
+            8 * SizeHash(hash_alg_id), 32, hmacKey)) {
     printf("Can't KDFa hmacKey\n");
     return false;
   }
 
-// 7. Calculate outerMac = HMAC(hmacKey, encIdentity || name);
+// 6. Calculate outerMac = HMAC(hmacKey, encIdentity || name);
   HMAC_CTX hctx;
   HMAC_CTX_init(&hctx);
   if (hash_alg_id == TPM_ALG_SHA1) {
@@ -3093,7 +3097,8 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_blob,
     HMAC_Init_ex(&hctx, hmacKey, size_hmacKey, EVP_sha256(), nullptr);
   }
   HMAC_Update(&hctx, (const byte*)encIdentity, (size_t)*size_encIdentity);
-  HMAC_Update(&hctx, (const byte*)&marshaled_name.name, name.size());
+  HMAC_Update(&hctx, (const byte*)name.data(), name.size());
+  // HMAC_Update(&hctx, (const byte*)&marshaled_name.name, name.size());
   unmarshaled_integrityHmac->size = size_hmacKey;
   HMAC_Final(&hctx, unmarshaled_integrityHmac->buffer, (uint32_t*)&size_hmacKey);
   HMAC_CTX_cleanup(&hctx);
@@ -3102,6 +3107,12 @@ bool MakeCredential(int size_endorsement_blob, byte* endorsement_blob,
   ChangeEndian16((uint16_t*)&size_hmacKey, &marshaled_integrityHmac->size);
   memcpy(marshaled_integrityHmac->buffer, unmarshaled_integrityHmac->buffer,
          size_hmacKey);
+#ifdef DEBUG
+  printf("encIdentity: "); PrintBytes(*size_encIdentity, (byte*)encIdentity); printf("\n");
+  printf("name       : "); PrintBytes(name.size(), (byte*)name.data()); printf("\n");
+  printf("hmac       : "); PrintBytes(size_hmacKey, (byte*)unmarshaled_integrityHmac->buffer); printf("\n");
+  printf("marsh-hmac : "); PrintBytes(size_hmacKey + 2, (byte*)&marshaled_integrityHmac); printf("\n");
+#endif
   return true;
 }
 

@@ -23,7 +23,7 @@ import (
 )
 
 // This program creates a key hierarchy consisting of the
-// endorsement key, sealing key and quoting key for cloudproxy
+// endorsement key and quoting key for cloudproxy
 // and makes their handles permanent.
 func main() {
 	keySize := flag.Int("modulus size",  2048,
@@ -32,17 +32,16 @@ func main() {
 		"hash algorithm used")
 	endorsementHandle := flag.Uint("endorsement handle", 0x810003e8,
 		"permenant endorsement handle")
-	sealHandle := flag.Uint("seal handle", 0x810003e9,
-		"permenant seal handle")
-	quoteHandle := flag.Uint("quote handle", 0x810003ea,
+	quoteHandle := flag.Uint("quote handle", 0x810003e9,
 		"permenant quote handle")
 	flag.Parse()
 
-	fmt.Printf("Endorsement handle: %x, Seal handle: %x, quote handle: %x\n",
-		*endorsementHandle, *sealHandle, *quoteHandle)
+	fmt.Printf("Endorsement handle: %x, quote handle: %x\n",
+		*endorsementHandle, *quoteHandle)
 	fmt.Printf("modulus size: %d,  hash algorithm: %s\n",
 		*keySize, *hashAlg)
 
+	modSize := uint16(*keySize)
 	var hash_alg_id uint16
 	if *hashAlg == "sha1" {
 		hash_alg_id = uint16(tpm.AlgTPM_ALG_SHA1)
@@ -69,34 +68,32 @@ func main() {
 	}
 	fmt.Printf("rw: %x\n", rw)
 
-/*
 	// CreatePrimary
 	var empty []byte
-	primaryparms := tpm.RsaParams{uint16(tpm.AlgTPM_ALG_RSA), uint16(tpm.AlgTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(tpm.AlgTPM_ALG_AES), uint16(128),
-		uint16(tpm.AlgTPM_ALG_CFB), uint16(tpm.AlgTPM_ALG_NULL), uint16(0),
-		uint16(2048), uint32(0x00010001), empty}
-	parent_handle, public_blob, err := CreatePrimary(rw,
-		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "", primaryparms)
+	primaryparms := tpm.RsaParams{uint16(tpm.AlgTPM_ALG_RSA),
+		uint16(tpm.AlgTPM_ALG_SHA1), uint32(0x00030072), empty,
+		uint16(tpm.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm.AlgTPM_ALG_CFB), uint16(tpm.AlgTPM_ALG_NULL),
+		uint16(0), modSize, uint32(0x00010001), empty}
+	parent_handle, public_blob, err := tpm.CreatePrimary(rw,
+		uint32(tpm.OrdTPM_RH_OWNER), []int{0x7}, "", "", primaryparms)
 	if err != nil {
 		fmt.Printf("CreatePrimary fails")
 		return
 	}
 	fmt.Printf("CreatePrimary succeeded\n")
-	endorseParams, err := tpmDecodeRsaArea(public_blob)
-	if err != nil {
-		t.Fatal("DecodeRsaBuf fails", err)
-	}
 
-	// CreateKey
-	keyparms := tpmRsaParams{uint16(tpm.AlgTPM_ALG_RSA), uint16(tpm.AlgTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(tpm.AlgTPM_ALG_AES), uint16(128),
-		uint16(tpm.AlgTPM_ALG_CFB), uint16(tpm.AlgTPM_ALG_NULL), uint16(0),
-		uint16(2048), uint32(0x00010001), empty}
-	private_blob, public_blob, err := CreateKey(rw, uint32(parent_handle),
-		[]int{7}, "", "01020304", keyparms)
+	// CreateKey (Quote Key)
+	keyparms := tpm.RsaParams{uint16(tpm.AlgTPM_ALG_RSA),
+		uint16(tpm.AlgTPM_ALG_SHA1), uint32(0x00030072),
+		empty, uint16(tpm.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm.AlgTPM_ALG_CFB), uint16(tpm.AlgTPM_ALG_NULL),
+		uint16(0), modSize, uint32(0x00010001), empty}
+	private_blob, public_blob, err := tpm.CreateKey(rw,
+		uint32(parent_handle), []int{7}, "", "01020304", keyparms)
 	if err != nil {
-		t.Fatal("CreateKey fails")
+		fmt.Printf("CreateKey fails")
+		return
 	}
 	fmt.Printf("CreateKey succeeded\n")
 
@@ -104,16 +101,15 @@ func main() {
 	key_handle, _, err := tpm.Load(rw, parent_handle, "", "",
 	     public_blob, private_blob)
 	if err != nil {
-		t.Fatal("Load fails")
+		fmt.Printf("Load fails\n")
+		return
 	}
-	fmt.Printf("Load succeeded\n")
+	fmt.Printf("Load succeeded %d\n", key_handle)
 
-	// ReadPublic
-	_, name, _, err := tpm.ReadPublic(rw, key_handle)
-	if err != nil {
-		fmt.Printf("ReadPublic fails")
-	}
-	fmt.Printf("ReadPublic succeeded\n")
- */
+	/*
+	  EvictControl(rw, primaryHandle, keyHandle, parent_password, owner_password,
+		uint32(quoteHandle)) (error) {
+	 */
+
 	return
 }

@@ -52,15 +52,15 @@ const(
 
 // Properties
 const(
-	flagFixedTPM	           uint32 = 0x00000002
-	flagFixedParent            uint32 = 0x00000010
-	flagSensitiveDataOrigin    uint32 = 0x00000020
-	flagUserWithAuth           uint32 = 0x00000040
-	flagAdminWithPolicy        uint32 = 0x00000080
+	FlagFixedTPM	           uint32 = 0x00000002
+	FlagFixedParent            uint32 = 0x00000010
+	FlagSensitiveDataOrigin    uint32 = 0x00000020
+	FlagUserWithAuth           uint32 = 0x00000040
+	FlagAdminWithPolicy        uint32 = 0x00000080
 
-	flagRestricted             uint32 = 0x00010000
-	flagDecrypt                uint32 = 0x00020000
-	flagSign                   uint32 = 0x00040000
+	FlagRestricted             uint32 = 0x00010000
+	FlagDecrypt                uint32 = 0x00020000
+	FlagSign                   uint32 = 0x00040000
 )
 
 // Reserved Handles and Properties

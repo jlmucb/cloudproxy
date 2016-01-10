@@ -27,17 +27,17 @@ import (
 )
 
 func TestAttributes(t *testing.T) {
-	sealedObj := uint32(flagFixedTPM | flagFixedParent)
+	sealedObj := uint32(FlagFixedTPM | FlagFixedParent)
 	if  sealedObj != 0x12 {
 		t.Fatal("sealed object flags wrong\n")
 	}
-	storageObj := uint32(flagRestricted | flagDecrypt | flagUserWithAuth |
-		flagSensitiveDataOrigin | flagFixedTPM | flagFixedParent)
+	storageObj := uint32(FlagRestricted | FlagDecrypt | FlagUserWithAuth |
+		FlagSensitiveDataOrigin | FlagFixedTPM | FlagFixedParent)
 	if  storageObj != 0x30072 {
 		t.Fatal("storage object flags wrong\n")
 	}
-	signObj := uint32(flagRestricted | flagSign | flagUserWithAuth |
-		flagSensitiveDataOrigin | flagFixedTPM | flagFixedParent)
+	signObj := uint32(FlagRestricted | FlagSign | FlagUserWithAuth |
+		FlagSensitiveDataOrigin | FlagFixedTPM | FlagFixedParent)
 	if  signObj != 0x50072 {
 		t.Fatal("storage object flags wrong\n")
 	}

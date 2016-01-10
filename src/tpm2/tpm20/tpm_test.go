@@ -134,9 +134,9 @@ func TestCombinedKeyTest(t *testing.T) {
 
 	// CreatePrimary
 	var empty []byte
-	primaryparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
-		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+	primaryparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(1024), uint32(0x00010001), empty}
 	parent_handle, public_blob, err := CreatePrimary(rw,
 		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
@@ -146,9 +146,9 @@ func TestCombinedKeyTest(t *testing.T) {
 	fmt.Printf("CreatePrimary succeeded\n")
 
 	// CreateKey
-	keyparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
-		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+	keyparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(1024), uint32(0x00010001), empty}
 	private_blob, public_blob, err := CreateKey(rw, uint32(parent_handle),
 		[]int{7}, "01020304", "01020304", keyparms)
@@ -202,9 +202,9 @@ func TestCombinedSealTest(t *testing.T) {
 
 	// CreatePrimary
 	var empty []byte
-	primaryparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
-		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+	primaryparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(1024), uint32(0x00010001), empty}
 	parent_handle, public_blob, err := CreatePrimary(rw,
 		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
@@ -215,10 +215,10 @@ func TestCombinedSealTest(t *testing.T) {
 
 	nonceCaller := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 	var secret []byte
-	sym := uint16(algTPM_ALG_NULL)
+	sym := uint16(AlgTPM_ALG_NULL)
 	to_seal := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
 			  0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10}
-	hash_alg := uint16(algTPM_ALG_SHA1)
+	hash_alg := uint16(AlgTPM_ALG_SHA1)
 
 	session_handle, policy_digest, err := StartAuthSession(rw,
 		Handle(ordTPM_RH_NULL),
@@ -253,10 +253,10 @@ func TestCombinedSealTest(t *testing.T) {
 	fmt.Printf("policy digest after PolicyPcr: %x\n", policy_digest)
 
 	// CreateSealed
-	keyedhashparms := KeyedHashParams{uint16(algTPM_ALG_KEYEDHASH),
-		uint16(algTPM_ALG_SHA1),
-		uint32(0x00000012), empty, uint16(algTPM_ALG_AES), uint16(128),
-		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), empty}
+	keyedhashparms := KeyedHashParams{uint16(AlgTPM_ALG_KEYEDHASH),
+		uint16(AlgTPM_ALG_SHA1),
+		uint32(0x00000012), empty, uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), empty}
 	private_blob, public_blob, err := CreateSealed(rw, parent_handle, policy_digest,
 		"01020304",  "01020304", to_seal, []int{7}, keyedhashparms)
 	if err != nil {
@@ -316,9 +316,9 @@ func TestCombinedQuoteTest(t *testing.T) {
 
 	// CreatePrimary
 	var empty []byte
-	primaryparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
-		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+	primaryparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(1024), uint32(0x00010001), empty}
 	parent_handle, public_blob, err := CreatePrimary(rw,
 		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
@@ -335,10 +335,10 @@ func TestCombinedQuoteTest(t *testing.T) {
 	}
 
 	// CreateKey (Quote Key)
-	keyparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-		uint32(0x00050072), empty, uint16(algTPM_ALG_NULL), uint16(0),
-		uint16(algTPM_ALG_ECB), uint16(algTPM_ALG_RSASSA),
-		uint16(algTPM_ALG_SHA1),
+	keyparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+		uint32(0x00050072), empty, uint16(AlgTPM_ALG_NULL), uint16(0),
+		uint16(AlgTPM_ALG_ECB), uint16(AlgTPM_ALG_RSASSA),
+		uint16(AlgTPM_ALG_SHA1),
 		uint16(1024), uint32(0x00010001), empty}
 
 	private_blob, public_blob, err := CreateKey(rw, uint32(parent_handle),
@@ -363,7 +363,7 @@ func TestCombinedQuoteTest(t *testing.T) {
 	to_quote := []byte{0x0f,0x0e,0x0d,0x0c,0x0b,0x0a,0x09,0x08,
 			   0x07,0x06,0x05,0x04,0x03,0x02,0x01,0x00}
 	attest, sig, err := Quote(rw, quote_handle, "01020304", "01020304",
-		to_quote, []int{7}, uint16(algTPM_ALG_NULL))
+		to_quote, []int{7}, uint16(AlgTPM_ALG_NULL))
 	if err != nil {
 		FlushContext(rw, quote_handle)
 		rw.Close()
@@ -410,7 +410,7 @@ func TestCombinedQuoteTest(t *testing.T) {
 	quote_key_info.PublicKey.RsaKey.BitModulusSize = &sz_mod
 	quote_key_info.PublicKey.RsaKey.Exponent = []byte{0,1,0,1}
 	quote_key_info.PublicKey.RsaKey.Modulus =  rsaParams.modulus
-	if !VerifyQuote(to_quote, quote_key_info, uint16(algTPM_ALG_SHA1), attest, sig) {
+	if !VerifyQuote(to_quote, quote_key_info, uint16(AlgTPM_ALG_SHA1), attest, sig) {
 		t.Fatal("VerifyQuote fails")
 	}
 	fmt.Printf("VerifyQuote succeeds\n")
@@ -418,7 +418,7 @@ func TestCombinedQuoteTest(t *testing.T) {
 
 // Combined Endorsement/Activate test
 func TestCombinedEndorsementTest(t *testing.T) {
-	hash_alg_id := uint16(algTPM_ALG_SHA1)
+	hash_alg_id := uint16(AlgTPM_ALG_SHA1)
 
 	// Open tpm
 	rw, err := OpenTPM("/dev/tpm0")
@@ -435,9 +435,9 @@ func TestCombinedEndorsementTest(t *testing.T) {
 
 	// CreatePrimary
 	var empty []byte
-	primaryparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
-		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+	primaryparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(2048), uint32(0x00010001), empty}
 	parent_handle, public_blob, err := CreatePrimary(rw,
 		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "", primaryparms)
@@ -451,9 +451,9 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	}
 
 	// CreateKey
-	keyparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
-		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+	keyparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(2048), uint32(0x00010001), empty}
 	private_blob, public_blob, err := CreateKey(rw, uint32(parent_handle),
 		[]int{7}, "", "01020304", keyparms)
@@ -561,9 +561,9 @@ func TestCombinedEvictTest(t *testing.T) {
 
 	// CreatePrimary
 	var empty []byte
-	primaryparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
-		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+	primaryparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(1024), uint32(0x00010001), empty}
 	parent_handle, public_blob, err := CreatePrimary(rw,
 		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
@@ -573,9 +573,9 @@ func TestCombinedEvictTest(t *testing.T) {
 	fmt.Printf("CreatePrimary succeeded\n")
 
 	// CreateKey
-	keyparms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
-		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+	keyparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(1024), uint32(0x00010001), empty}
 	private_blob, public_blob, err := CreateKey(rw, uint32(parent_handle),
 		[]int{7}, "01020304", "01020304", keyparms)
@@ -658,18 +658,18 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
 
 	// Open endorsement and quote keys
 	var empty []byte
-	ek_parms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
-		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+	ek_parms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(1024), uint32(0x00010001), empty}
 	endorsement_handle, _, err := CreatePrimary(rw, uint32(ordTPM_RH_OWNER), []int{7},
 		"", "01020304", ek_parms)
 	if err != nil {
 		t.Fatal("CreatePrimary fails")
 	}
-	quote_parms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
-		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+	quote_parms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(1024), uint32(0x00010001), empty}
 	private_blob, public_blob, err := CreateKey(rw, uint32(ordTPM_RH_OWNER), []int{7},
 						    "", "01020304", quote_parms)

@@ -260,9 +260,9 @@ func TestConstructCreatePrimary(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 		return
 	}
-	parms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
-		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+	parms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(1024), uint32(0x00010001), empty}
 	cmd_bytes, err := ConstructCreatePrimary(uint32(ordTPM_RH_OWNER), []int{7},
 						 "", "01020304", parms)
@@ -387,7 +387,7 @@ func TestConstructStartAuthSession(t *testing.T) {
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
 	var nonceCaller []byte
 	var secret []byte
-	sym := uint16(algTPM_ALG_NULL)
+	sym := uint16(AlgTPM_ALG_NULL)
 	cmd_bytes, err := ConstructStartAuthSession(Handle(0x40000007),
 		Handle(0x40000007), nonceCaller, secret, 1, sym, 4)
 	// TODO
@@ -428,13 +428,13 @@ func TestConstructCreateSealed(t *testing.T) {
 	to_seal := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10}
 	digest := []byte{0x0d, 0xeb, 0xb4, 0xcc, 0x9d, 0x21, 0x58, 0xcf, 0x70, 0x51, 0xa1, 0x9c, 0xa2, 0x4b,
 			 0x31, 0xe3, 0x5d, 0x53, 0xb6, 0x4d}
-        parms := KeyedHashParams{uint16(algTPM_ALG_KEYEDHASH),
-				 uint16(algTPM_ALG_SHA1),
+        parms := KeyedHashParams{uint16(AlgTPM_ALG_KEYEDHASH),
+				 uint16(AlgTPM_ALG_SHA1),
                         	 uint32(0x00000012),
 				 empty,
-				 uint16(algTPM_ALG_AES), uint16(128),
-                        	 uint16(algTPM_ALG_CFB),
-				 uint16(algTPM_ALG_NULL), empty}
+				 uint16(AlgTPM_ALG_AES), uint16(128),
+                        	 uint16(AlgTPM_ALG_CFB),
+				 uint16(AlgTPM_ALG_NULL), empty}
 	PrintKeyedHashParams(&parms)
         cmd_bytes, err := ConstructCreateSealed(Handle(0x80000000), digest, "01020304", "01020304",
 		to_seal, []int{7}, parms)
@@ -488,9 +488,9 @@ func TestConstructCreateKey(t *testing.T) {
 	}
  	var empty []byte
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
-	parms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-			uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
-			uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+	parms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+			uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
+			uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 			uint16(1024), uint32(0x00010001), empty}
 	cmd_bytes, err := ConstructCreateKey(uint32(ordTPM_RH_OWNER), []int{7}, "", "01020304", parms)
 	if err != nil {

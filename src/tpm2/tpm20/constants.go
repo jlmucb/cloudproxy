@@ -21,28 +21,28 @@ const(
 
 // Supported Algorithms.
 const(
-	algTPM_ALG_RSA      uint16 = 0x0001
-	algTPM_ALG_SHA1     uint16 = 0x0004
-	algTPM_ALG_AES      uint16 = 0x0006
-	algTPM_ALG_SHA256   uint16 = 0x000B
-	algTPM_ALG_SHA384   uint16 = 0x000C
-	algTPM_ALG_SHA512   uint16 = 0x000D
-	algTPM_ALG_NULL     uint16 = 0x0010
-	algTPM_ALG_RSASSA   uint16 = 0x0014
-	algTPM_ALG_RSAES    uint16 = 0x0015
-	algTPM_ALG_RSAPSS   uint16 = 0x0016
-	algTPM_ALG_OAEP     uint16 = 0x0017
-	algTPM_ALG_ECDSA    uint16 = 0x0018
-	algTPM_ALG_ECDH     uint16 = 0x0019
-	algTPM_ALG_ECDAA    uint16 = 0x001A
-	algTPM_ALG_ECC      uint16 = 0x0023
-	algTPM_ALG_CTR      uint16 = 0x0040
-	algTPM_ALG_OFB      uint16 = 0x0041
-	algTPM_ALG_CBC      uint16 = 0x0042
-	algTPM_ALG_CFB      uint16 = 0x0043
-	algTPM_ALG_ECB      uint16 = 0x0044
-	algTPM_ALG_LAST     uint16 = 0x0044
-	algTPM_ALG_KEYEDHASH uint16 = 0x0008
+	AlgTPM_ALG_RSA      uint16 = 0x0001
+	AlgTPM_ALG_SHA1     uint16 = 0x0004
+	AlgTPM_ALG_AES      uint16 = 0x0006
+	AlgTPM_ALG_SHA256   uint16 = 0x000B
+	AlgTPM_ALG_SHA384   uint16 = 0x000C
+	AlgTPM_ALG_SHA512   uint16 = 0x000D
+	AlgTPM_ALG_NULL     uint16 = 0x0010
+	AlgTPM_ALG_RSASSA   uint16 = 0x0014
+	AlgTPM_ALG_RSAES    uint16 = 0x0015
+	AlgTPM_ALG_RSAPSS   uint16 = 0x0016
+	AlgTPM_ALG_OAEP     uint16 = 0x0017
+	AlgTPM_ALG_ECDSA    uint16 = 0x0018
+	AlgTPM_ALG_ECDH     uint16 = 0x0019
+	AlgTPM_ALG_ECDAA    uint16 = 0x001A
+	AlgTPM_ALG_ECC      uint16 = 0x0023
+	AlgTPM_ALG_CTR      uint16 = 0x0040
+	AlgTPM_ALG_OFB      uint16 = 0x0041
+	AlgTPM_ALG_CBC      uint16 = 0x0042
+	AlgTPM_ALG_CFB      uint16 = 0x0043
+	AlgTPM_ALG_ECB      uint16 = 0x0044
+	AlgTPM_ALG_LAST     uint16 = 0x0044
+	AlgTPM_ALG_KEYEDHASH uint16 = 0x0008
 )
 
 // Policy

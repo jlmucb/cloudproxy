@@ -190,7 +190,7 @@ func DecodeRsaBuf(rsa_buf []byte) (*RsaParams, error) {
 		return nil, errors.New("Can't unpack Rsa buffer 3")
 	}
 	current += 2
-	if parms.symalg != uint16(algTPM_ALG_NULL) {
+	if parms.symalg != uint16(AlgTPM_ALG_NULL) {
 		template = []interface{}{&parms.sym_sz, &parms.mode}
 		err = unpack(rsa_buf[current:], template)
 		if err != nil {
@@ -208,7 +208,7 @@ func DecodeRsaBuf(rsa_buf []byte) (*RsaParams, error) {
 		return nil, errors.New("Can't unpack Rsa buffer 5")
 	}
 	current += 2
-	if parms.scheme == uint16(algTPM_ALG_RSASSA) {
+	if parms.scheme == uint16(AlgTPM_ALG_RSASSA) {
 		template = []interface{}{&parms.scheme_hash}
 		err = unpack(rsa_buf[current:], template)
 		if err != nil {
@@ -259,7 +259,7 @@ func CreateRsaParams(parms RsaParams) ([]byte) {
 		return nil
 	}
 
-	if  parms.symalg !=  uint16(algTPM_ALG_NULL) {
+	if  parms.symalg !=  uint16(AlgTPM_ALG_NULL) {
 		template = []interface{}{&parms.symalg, &parms.sym_sz,
 				   &parms.mode, &parms.scheme}
 	} else {
@@ -269,7 +269,7 @@ func CreateRsaParams(parms RsaParams) ([]byte) {
 	if err != nil {
 		return nil
 	}
-	if parms.scheme == uint16(algTPM_ALG_RSASSA) {
+	if parms.scheme == uint16(AlgTPM_ALG_RSASSA) {
 		template3 := []interface{}{&parms.scheme_hash}
 		t3, err := pack(template3)
 		if err != nil {
@@ -1937,12 +1937,12 @@ func UnmarshalCertifyInfo(in []byte) (*Attest, error) {
 }
 
 func ComputeHashValue(alg uint16, to_hash []byte) ([]byte, error) {
-	if alg ==  uint16(algTPM_ALG_SHA1) {
+	if alg ==  uint16(AlgTPM_ALG_SHA1) {
 		hash := sha1.New()
 		hash.Write(to_hash)
 		hash_value := hash.Sum(nil)
 		return hash_value, nil
-	} else if alg == uint16(algTPM_ALG_SHA256) {
+	} else if alg == uint16(AlgTPM_ALG_SHA256) {
 		hash:= sha256.New()
 		hash.Write(to_hash)
 		hash_value := hash.Sum(nil)
@@ -1958,7 +1958,7 @@ func KDFA(alg uint16, key []byte, label string, contextU []byte, contextV []byte
 	var out []byte
 	for ; bytes_left > 0 ; {
 		counter = counter + 1
-		if alg == algTPM_ALG_SHA1 {
+		if alg == AlgTPM_ALG_SHA1 {
 			mac := hmac.New(sha1.New, key)
 			// copy counter (big Endian), label, contextU, contextV, bits (big Endian)
 			outa,_ := pack([]interface{}{&counter})
@@ -1972,7 +1972,7 @@ func KDFA(alg uint16, key []byte, label string, contextU []byte, contextV []byte
 			mac.Write(in)
 			out = append(out, mac.Sum(nil)...)
 			bytes_left -= 20
-		} else if alg == algTPM_ALG_SHA256 {
+		} else if alg == AlgTPM_ALG_SHA256 {
 			mac := hmac.New(sha256.New, key)
 			// copy counter (big Endian), label, contextU, contextV, bits (big Endian)
 			outa, _ := pack([]interface{}{&counter})
@@ -2016,10 +2016,10 @@ func encryptHack (hash_alg_id uint16, modSize int,
 	public := &private.PublicKey
 
 	var fake_encrypted_secret []byte
-	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
+	if hash_alg_id == uint16(AlgTPM_ALG_SHA1) {
 		fake_encrypted_secret, err = rsa.EncryptOAEP(sha1.New(),
 			rand.Reader, public, seed, label)
-	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
+	} else if hash_alg_id == uint16(AlgTPM_ALG_SHA256) {
 		fake_encrypted_secret, err = rsa.EncryptOAEP(sha256.New(),
 			rand.Reader, public, seed, label)
 	} else {
@@ -2084,10 +2084,10 @@ func MakeCredential(protectorPublic *rsa.PublicKey, hash_alg_id uint16,
 	// encrypt secret
 	var encrypted_secret []byte
 	var err error
-	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
+	if hash_alg_id == uint16(AlgTPM_ALG_SHA1) {
 		encrypted_secret, err = rsa.EncryptOAEP(sha1.New(),
 			rand.Reader, protectorPublic, seed[0:16], a[0:9])
-	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
+	} else if hash_alg_id == uint16(AlgTPM_ALG_SHA256) {
 		encrypted_secret, err = rsa.EncryptOAEP(sha256.New(),
 			rand.Reader, protectorPublic, seed[0:16], a[0:9])
 	} else {
@@ -2099,13 +2099,13 @@ func MakeCredential(protectorPublic *rsa.PublicKey, hash_alg_id uint16,
 
 	var symKey []byte
 	iv := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
+	if hash_alg_id == uint16(AlgTPM_ALG_SHA1) {
 		symKey, err = KDFA(hash_alg_id, seed[0:16], "STORAGE",
 			unmarshaled_name, nil, 128)
 		if err !=nil {
 			return nil, nil, nil, err
 		}
-	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
+	} else if hash_alg_id == uint16(AlgTPM_ALG_SHA256) {
 		symKey, err = KDFA(hash_alg_id, seed[0:16], "STORAGE",
 			unmarshaled_name, nil, 256)
 		if err !=nil {
@@ -2143,11 +2143,11 @@ func MakeCredential(protectorPublic *rsa.PublicKey, hash_alg_id uint16,
 	}
 
 	var hmac_bytes []byte
-	if hash_alg_id == uint16(algTPM_ALG_SHA1) {
+	if hash_alg_id == uint16(AlgTPM_ALG_SHA1) {
 		mac := hmac.New(sha1.New, hmacKey[0:20])
 		mac.Write(append(encIdentity, unmarshaled_name...))
 		hmac_bytes = mac.Sum(nil)
-	} else if hash_alg_id == uint16(algTPM_ALG_SHA256) {
+	} else if hash_alg_id == uint16(AlgTPM_ALG_SHA256) {
 		mac := hmac.New(sha256.New, hmacKey[0:32])
 		mac.Write(append(encIdentity, unmarshaled_name...))
 		hmac_bytes = mac.Sum(nil)
@@ -2200,7 +2200,7 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte, quote
 	fmt.Printf("Quote key blob: %x\n", key_blob)
 	fmt.Printf("Name: %x\n", name)
 
-	sig_alg := uint16(algTPM_ALG_RSASSA) // Check!
+	sig_alg := uint16(AlgTPM_ALG_RSASSA) // Check!
 	attest, sig, err := Quote(rw, quote_handle, parent_pw, owner_pw, hashed_program_key,
 		[]int{7}, sig_alg)
 	if err != nil {
@@ -2241,9 +2241,9 @@ func GetSerialNumber() (*big.Int) {
 }
 
 func SizeHash(alg_id uint16) (int) {
-	if alg_id == uint16(algTPM_ALG_SHA1) {
+	if alg_id == uint16(AlgTPM_ALG_SHA1) {
 		return 20
-	} else if alg_id == uint16(algTPM_ALG_SHA256) {
+	} else if alg_id == uint16(AlgTPM_ALG_SHA256) {
 		return 32
 	} else {
 		return -1
@@ -2365,9 +2365,9 @@ func ConstructServerResponse(der_policy_cert []byte, der_policy_private_key []by
 
 	var hash_alg_id uint16
 	if *request.QuoteSignHashAlg == "sha256" {
-		hash_alg_id = uint16(algTPM_ALG_SHA256)
+		hash_alg_id = uint16(AlgTPM_ALG_SHA256)
 	} else {
-		hash_alg_id = uint16(algTPM_ALG_SHA1)
+		hash_alg_id = uint16(AlgTPM_ALG_SHA1)
 	}
 	if !VerifyQuote(hashed_program_key, *request.QuoteKeyInfo, hash_alg_id,
 			request.QuotedBlob, request.QuoteSignature) {
@@ -2472,7 +2472,7 @@ func ClientDecodeServerResponse(rw io.ReadWriter, endorsement_handle Handle,
 	fmt.Printf("certInfo: %x\n", certInfo)
 
 	// Decrypt cert.
-	_, out, err :=  EncryptDataWithCredential(false, uint16(algTPM_ALG_SHA1),
+	_, out, err :=  EncryptDataWithCredential(false, uint16(AlgTPM_ALG_SHA1),
 		certInfo, response.EncryptedCert, response.EncryptedCertHmac)
 	if err != nil {
 		return nil, err

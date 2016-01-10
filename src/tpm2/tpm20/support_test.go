@@ -111,9 +111,9 @@ func TestCreateSensitiveArea(t *testing.T) {
 
 func TestCreateRsaParams(t *testing.T) {
 	var empty []byte
-	parms := RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
-		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+	parms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(1024), uint32(0x00010001), empty}
 
 	s := CreateRsaParams(parms)
@@ -139,7 +139,7 @@ func TestCreateLongPcr(t *testing.T) {
 
 func TestKDFa(t *testing.T) {
 	key := []byte{0,1,2,3,4,5,6,7,8,9,10,11,12,23,14,15}
-	out, err := KDFA(uint16(algTPM_ALG_SHA1), key, "IDENTITY", nil, nil, 256)
+	out, err := KDFA(uint16(AlgTPM_ALG_SHA1), key, "IDENTITY", nil, nil, 256)
 	if err != nil {
 		t.Fatal("KDFa fails")
 	}

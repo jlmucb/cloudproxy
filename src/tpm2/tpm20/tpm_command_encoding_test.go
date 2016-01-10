@@ -143,7 +143,7 @@ func TestConstructGetCapabilities(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
-	cmd_bytes, err := ConstructGetCapabilities(ordTPM_CAP_HANDLES, 20, 0x80000000)
+	cmd_bytes, err := ConstructGetCapabilities(OrdTPM_CAP_HANDLES, 20, 0x80000000)
 	if err != nil {
 		t.Fatal("Can't construct GetCapabilities\n")
 	}
@@ -169,7 +169,7 @@ func TestDecodeGetCapabilities(t *testing.T) {
 	if err != nil {
 		t.Fatal("DecodeGetCapabilities\n")
 	}
-	if cap_reported != ordTPM_CAP_HANDLES || len(handles) != 0 {
+	if cap_reported != OrdTPM_CAP_HANDLES || len(handles) != 0 {
 		t.Fatal("wrong property or number of handles\n")
 	}
 }
@@ -264,7 +264,7 @@ func TestConstructCreatePrimary(t *testing.T) {
 		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
 		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(1024), uint32(0x00010001), empty}
-	cmd_bytes, err := ConstructCreatePrimary(uint32(ordTPM_RH_OWNER), []int{7},
+	cmd_bytes, err := ConstructCreatePrimary(uint32(OrdTPM_RH_OWNER), []int{7},
 						 "", "01020304", parms)
 	if err != nil {
 		t.Fatal("ConstructCreatePrimary fails")
@@ -492,7 +492,7 @@ func TestConstructCreateKey(t *testing.T) {
 			uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
 			uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 			uint16(1024), uint32(0x00010001), empty}
-	cmd_bytes, err := ConstructCreateKey(uint32(ordTPM_RH_OWNER), []int{7}, "", "01020304", parms)
+	cmd_bytes, err := ConstructCreateKey(uint32(OrdTPM_RH_OWNER), []int{7}, "", "01020304", parms)
 	if err != nil {
 		t.Fatal("ConstructCreateKey fails")
 	}

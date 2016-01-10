@@ -19,7 +19,7 @@ import (
 	"flag"
 	"fmt"
 
-	// "github.com/jlmucb/cloudproxy/src/tpm2/tpm20"
+	"github.com/jlmucb/cloudproxy/src/tpm2/tpm20"
 )
 
 // This program creates a key hierarchy consisting of the
@@ -43,16 +43,16 @@ func main() {
 	fmt.Printf("modulus size: %d,  hash algorithm: %s\n",
 		*keySize, *hashAlg)
 
-/*
 	var hash_alg_id uint16
 	if *hashAlg == "sha1" {
-		hash_alg_id := uint16(tpm.algTPM_ALG_SHA1)
+		hash_alg_id = uint16(tpm.AlgTPM_ALG_SHA1)
 	} else if  *hashAlg == "sha256" {
-		hash_alg_id := uint16(tpm.algTPM_ALG_SHA256)
+		hash_alg_id = uint16(tpm.AlgTPM_ALG_SHA256)
 	} else {
 		fmt.Printf("Unsupported Hash algoritm\n")
 		return
 	}
+	fmt.Printf("hash: %x\n", hash_alg_id)
 
 	// Open tpm
 	rw, err := tpm.OpenTPM("/dev/tpm0")
@@ -67,12 +67,14 @@ func main() {
 		fmt.Printf("Flushall failed\n")
 		return
 	}
+	fmt.Printf("rw: %x\n", rw)
 
+/*
 	// CreatePrimary
 	var empty []byte
-	primaryparms := tpm.RsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
-		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+	primaryparms := tpm.RsaParams{uint16(tpm.AlgTPM_ALG_RSA), uint16(tpm.AlgTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(tpm.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm.AlgTPM_ALG_CFB), uint16(tpm.AlgTPM_ALG_NULL), uint16(0),
 		uint16(2048), uint32(0x00010001), empty}
 	parent_handle, public_blob, err := CreatePrimary(rw,
 		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "", primaryparms)
@@ -87,9 +89,9 @@ func main() {
 	}
 
 	// CreateKey
-	keyparms := tpmRsaParams{uint16(algTPM_ALG_RSA), uint16(algTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(algTPM_ALG_AES), uint16(128),
-		uint16(algTPM_ALG_CFB), uint16(algTPM_ALG_NULL), uint16(0),
+	keyparms := tpmRsaParams{uint16(tpm.AlgTPM_ALG_RSA), uint16(tpm.AlgTPM_ALG_SHA1),
+		uint32(0x00030072), empty, uint16(tpm.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm.AlgTPM_ALG_CFB), uint16(tpm.AlgTPM_ALG_NULL), uint16(0),
 		uint16(2048), uint32(0x00010001), empty}
 	private_blob, public_blob, err := CreateKey(rw, uint32(parent_handle),
 		[]int{7}, "", "01020304", keyparms)

@@ -16,7 +16,7 @@ package tpm
 
 // TPM generated
 const(
-	ordTPM_GENERATED_VALUE uint32 = 0xff544347
+	OrdTPM_GENERATED_VALUE uint32 = 0xff544347
 )
 
 // Supported Algorithms.
@@ -47,7 +47,7 @@ const(
 
 // Policy
 const(
-	ordTPM_SE_POLICY  uint8 = 0x01
+	OrdTPM_SE_POLICY  uint8 = 0x01
 )
 
 // Properties
@@ -65,20 +65,20 @@ const(
 
 // Reserved Handles and Properties
 const(
-	ordTPM_RH_OWNER            uint32 = 0x40000001
-	ordTPM_RH_REVOKE           uint32 = 0x40000002
-	ordTPM_RH_TRANSPORT        uint32 = 0x40000003
-	ordTPM_RH_OPERATOR         uint32 = 0x40000004
-	ordTPM_RH_ADMIN            uint32 = 0x40000005
-	ordTPM_RH_EK               uint32 = 0x40000006
-	ordTPM_RH_NULL             uint32 = 0x40000007
-	ordTPM_RH_UNASSIGNED       uint32 = 0x40000008
-	ordTPM_RS_PW               uint32 = 0x40000009
-	ordTPM_RH_LOCKOUT          uint32 = 0x4000000A
-	ordTPM_RH_ENDORSEMENT      uint32 = 0x4000000B
-	ordTPM_RH_PLATFORM         uint32 = 0x4000000C
-	ordTPM_CAP_TPM_PROPERTIES  uint32 = 0x00000006
-	ordTPM_CAP_HANDLES         uint32 = 0x00000001
+	OrdTPM_RH_OWNER            uint32 = 0x40000001
+	OrdTPM_RH_REVOKE           uint32 = 0x40000002
+	OrdTPM_RH_TRANSPORT        uint32 = 0x40000003
+	OrdTPM_RH_OPERATOR         uint32 = 0x40000004
+	OrdTPM_RH_ADMIN            uint32 = 0x40000005
+	OrdTPM_RH_EK               uint32 = 0x40000006
+	OrdTPM_RH_NULL             uint32 = 0x40000007
+	OrdTPM_RH_UNASSIGNED       uint32 = 0x40000008
+	OrdTPM_RS_PW               uint32 = 0x40000009
+	OrdTPM_RH_LOCKOUT          uint32 = 0x4000000A
+	OrdTPM_RH_ENDORSEMENT      uint32 = 0x4000000B
+	OrdTPM_RH_PLATFORM         uint32 = 0x4000000C
+	OrdTPM_CAP_TPM_PROPERTIES  uint32 = 0x00000006
+	OrdTPM_CAP_HANDLES         uint32 = 0x00000001
 )
 
 // Tags

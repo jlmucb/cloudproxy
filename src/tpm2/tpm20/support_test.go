@@ -56,7 +56,7 @@ func TestSetShortPcrs(t *testing.T) {
 }
 
 func TestSetHandle(t *testing.T) {
-	hand := SetHandle(Handle(ordTPM_RH_OWNER))
+	hand := SetHandle(Handle(OrdTPM_RH_OWNER))
 	if hand == nil {
 		t.Fatal("Test SetHandle fails\n")
 	}
@@ -80,14 +80,14 @@ func TestSetPasswordData(t *testing.T) {
 }
 
 func TestCreatePasswordAuthArea(t *testing.T) {
-	pw_auth1 := CreatePasswordAuthArea("01020304", Handle(ordTPM_RS_PW))
+	pw_auth1 := CreatePasswordAuthArea("01020304", Handle(OrdTPM_RS_PW))
 	fmt.Printf("TestCreatePasswordAuthArea: %x\n", pw_auth1)
 	test1 := []byte{0,0xd,0x40,0,0,9,0,0,1,0,4,1,2,3,4}
 	if test1 == nil || !bytes.Equal(test1, pw_auth1) {
 		t.Fatal("Test PasswordAuthArea 1 fails\n")
 	}
 
-	pw_auth2 := CreatePasswordAuthArea("", Handle(ordTPM_RS_PW))
+	pw_auth2 := CreatePasswordAuthArea("", Handle(OrdTPM_RS_PW))
 	test2 := []byte{0,0x9,0x40,0,0,9,0,0,1,0,0}
 	if test2 == nil || !bytes.Equal(test1, pw_auth1) {
 		t.Fatal("Test PasswordAuthArea 2 fails\n")

@@ -105,7 +105,7 @@ func TestGetCapabilities(t *testing.T) {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
-	handles, err := GetCapabilities(rw, ordTPM_CAP_HANDLES, 1, 0x80000000)
+	handles, err := GetCapabilities(rw, OrdTPM_CAP_HANDLES, 1, 0x80000000)
 	if err != nil {
 		t.Fatal("GetCapabilities failed\n")
 	}
@@ -139,7 +139,7 @@ func TestCombinedKeyTest(t *testing.T) {
 		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(1024), uint32(0x00010001), empty}
 	parent_handle, public_blob, err := CreatePrimary(rw,
-		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
+		uint32(OrdTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
 	if err != nil {
 		t.Fatal("CreatePrimary fails")
 	}
@@ -207,7 +207,7 @@ func TestCombinedSealTest(t *testing.T) {
 		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(1024), uint32(0x00010001), empty}
 	parent_handle, public_blob, err := CreatePrimary(rw,
-		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
+		uint32(OrdTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
 	if err != nil {
 		t.Fatal("CreatePrimary fails")
 	}
@@ -221,9 +221,9 @@ func TestCombinedSealTest(t *testing.T) {
 	hash_alg := uint16(AlgTPM_ALG_SHA1)
 
 	session_handle, policy_digest, err := StartAuthSession(rw,
-		Handle(ordTPM_RH_NULL),
-		Handle(ordTPM_RH_NULL), nonceCaller, secret,
-		uint8(ordTPM_SE_POLICY), sym, hash_alg)
+		Handle(OrdTPM_RH_NULL),
+		Handle(OrdTPM_RH_NULL), nonceCaller, secret,
+		uint8(OrdTPM_SE_POLICY), sym, hash_alg)
 	if err != nil {
 		FlushContext(rw, parent_handle)
 		t.Fatal("StartAuthSession fails")
@@ -321,7 +321,7 @@ func TestCombinedQuoteTest(t *testing.T) {
 		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(1024), uint32(0x00010001), empty}
 	parent_handle, public_blob, err := CreatePrimary(rw,
-		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
+		uint32(OrdTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
 	if err != nil {
 		t.Fatal("CreatePrimary fails")
 	}
@@ -440,7 +440,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(2048), uint32(0x00010001), empty}
 	parent_handle, public_blob, err := CreatePrimary(rw,
-		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "", primaryparms)
+		uint32(OrdTPM_RH_OWNER), []int{0x7}, "", "", primaryparms)
 	if err != nil {
 		t.Fatal("CreatePrimary fails")
 	}
@@ -566,7 +566,7 @@ func TestCombinedEvictTest(t *testing.T) {
 		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(1024), uint32(0x00010001), empty}
 	parent_handle, public_blob, err := CreatePrimary(rw,
-		uint32(ordTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
+		uint32(OrdTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
 	if err != nil {
 		t.Fatal("CreatePrimary fails")
 	}
@@ -595,14 +595,14 @@ func TestCombinedEvictTest(t *testing.T) {
 	perm_handle := uint32(0x810003e8)
 
 	// Evict
-	err = EvictControl(rw, Handle(ordTPM_RH_OWNER), key_handle, "", "01020304",
+	err = EvictControl(rw, Handle(OrdTPM_RH_OWNER), key_handle, "", "01020304",
 		Handle(perm_handle))
 	if err != nil {
 		t.Fatal("EvictControl 1 fails")
 	}
 
 	// Evict
-	err = EvictControl(rw, Handle(ordTPM_RH_OWNER), Handle(perm_handle), "", "01020304",
+	err = EvictControl(rw, Handle(OrdTPM_RH_OWNER), Handle(perm_handle), "", "01020304",
 		Handle(perm_handle))
 	if err != nil {
 		t.Fatal("EvictControl 1 fails")
@@ -662,7 +662,7 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
 		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
 		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(1024), uint32(0x00010001), empty}
-	endorsement_handle, _, err := CreatePrimary(rw, uint32(ordTPM_RH_OWNER), []int{7},
+	endorsement_handle, _, err := CreatePrimary(rw, uint32(OrdTPM_RH_OWNER), []int{7},
 		"", "01020304", ek_parms)
 	if err != nil {
 		t.Fatal("CreatePrimary fails")
@@ -671,7 +671,7 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
 		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
 		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(1024), uint32(0x00010001), empty}
-	private_blob, public_blob, err := CreateKey(rw, uint32(ordTPM_RH_OWNER), []int{7},
+	private_blob, public_blob, err := CreateKey(rw, uint32(OrdTPM_RH_OWNER), []int{7},
 						    "", "01020304", quote_parms)
 	if err != nil {
 		t.Fatal("Create fails")

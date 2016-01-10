@@ -596,8 +596,8 @@ func DecodeGetCapabilities(in []byte) (uint32, []uint32, error) {
 	if err != nil {
 		return 0, nil, errors.New("Can't decode GetCapabilities response")
 	}
-	// only ordTPM_CAP_HANDLES handled
-	if cap_reported !=  ordTPM_CAP_HANDLES {
+	// only OrdTPM_CAP_HANDLES handled
+	if cap_reported !=  OrdTPM_CAP_HANDLES {
 		return 0, nil, errors.New("Only ordTPM_CAP_HANDLES supported")
 	}
 	var handles []uint32
@@ -666,7 +666,7 @@ func ConstructPcrEvent(pcrnum int, eventData []byte) ([]byte, error) {
 	var empty []byte
 	pc := uint32(pcrnum)
 	b1,_ := pack([]interface{}{&pc, &empty})
-	b2 := CreatePasswordAuthArea("", Handle(ordTPM_RS_PW))
+	b2 := CreatePasswordAuthArea("", Handle(OrdTPM_RS_PW))
 	b3,_ := pack([]interface{}{&eventData})
 	cmd := packWithBytes(cmdHdr, append(append(b1, b2...),b3...))
 	return cmd, nil
@@ -712,7 +712,7 @@ func PcrEvent(rw io.ReadWriter, pcrnum int, eventData []byte) (error) {
 
 // Flushall
 func Flushall(rw io.ReadWriter) (error) {
-	handles, err := GetCapabilities(rw, ordTPM_CAP_HANDLES, 1, 0x80000000)
+	handles, err := GetCapabilities(rw, OrdTPM_CAP_HANDLES, 1, 0x80000000)
 	if err != nil {
 		return err
 	}
@@ -733,7 +733,7 @@ func ConstructCreatePrimary(owner uint32, pcr_nums []int,
 	var empty []byte
 	b1 := SetHandle(Handle(owner))
 	b2,_ := pack([]interface{}{&empty})
-	b3 := CreatePasswordAuthArea(parent_password, Handle(ordTPM_RS_PW))
+	b3 := CreatePasswordAuthArea(parent_password, Handle(OrdTPM_RS_PW))
 	t1 := SetPasswordData(owner_password)
 	b4 := CreateSensitiveArea(t1[2:], empty)
 	b5 := CreateRsaParams(parms)
@@ -954,7 +954,7 @@ func ConstructCreateKey(owner uint32, pcr_nums []int, parent_password string, ow
 	var empty []byte
 	b1 := SetHandle(Handle(owner))
 	b2 ,_ := pack([]interface{}{&empty})
-	b3 := CreatePasswordAuthArea(parent_password, Handle(ordTPM_RS_PW))
+	b3 := CreatePasswordAuthArea(parent_password, Handle(OrdTPM_RS_PW))
 	t1 := SetPasswordData(owner_password)
 	b4 := CreateSensitiveArea(t1[2:], empty)
 	b5 := CreateRsaParams(parms)
@@ -1044,7 +1044,7 @@ func ConstructLoad(parentHandle Handle, parentAuth string, ownerAuth string,
 	}
 	b1 := SetHandle(parentHandle)
 	b3 := SetPasswordData(parentAuth)
-	b4 := CreatePasswordAuthArea(ownerAuth, Handle(ordTPM_RS_PW))
+	b4 := CreatePasswordAuthArea(ownerAuth, Handle(OrdTPM_RS_PW))
 	// private, public
 	b5,_ := pack([]interface{}{&private_blob, &public_blob})
 	arg_bytes := append(b1, b3...)
@@ -1388,7 +1388,7 @@ func ConstructCreateSealed(parent Handle, policy_digest []byte,
 	var empty []byte
 	b1 := SetHandle(parent)
 	b2 ,_ := pack([]interface{}{&empty})
-	b3 := CreatePasswordAuthArea(parent_password, Handle(ordTPM_RS_PW))
+	b3 := CreatePasswordAuthArea(parent_password, Handle(OrdTPM_RS_PW))
 	t1 := SetPasswordData(owner_password)
 	b4 := CreateSensitiveArea(t1[2:], to_seal)
 	parms.auth_policy =  policy_digest
@@ -1557,7 +1557,7 @@ func ConstructQuote(signing_handle Handle, parent_password, owner_password strin
 	var empty []byte
 	b1 := SetHandle(signing_handle)
 	b2 ,_ := pack([]interface{}{&empty})
-	b3 := CreatePasswordAuthArea(parent_password, Handle(ordTPM_RS_PW))
+	b3 := CreatePasswordAuthArea(parent_password, Handle(OrdTPM_RS_PW))
 	b4 ,_ := pack([]interface{}{&to_quote, &sig_alg})
 	b5 := CreateLongPcr(uint32(1), pcr_nums)
 	arg_bytes := append(b1, b2...)
@@ -1649,8 +1649,8 @@ func ConstructActivateCredential(active_handle Handle, key_handle Handle,
 	b1 := SetHandle(active_handle)
 	b2 := SetHandle(key_handle)
 	b3, _ := pack([]interface{}{&empty})
-	b4a := CreatePasswordAuthArea(activePassword, Handle(ordTPM_RS_PW))
-	b4b := CreatePasswordAuthArea(protectorPassword, Handle(ordTPM_RS_PW))
+	b4a := CreatePasswordAuthArea(activePassword, Handle(OrdTPM_RS_PW))
+	b4b := CreatePasswordAuthArea(protectorPassword, Handle(OrdTPM_RS_PW))
 	b4t := append(b4a[2:], b4b[2:]...)
 	b4, _ := pack([]interface{}{&b4t})
 	b5, _ := pack([]interface{}{&credBlob, &secret})
@@ -1730,18 +1730,18 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 func ConstructEvictControl(owner Handle, tmp_handle Handle, parent_password string, owner_password string,
 		persistant_handle Handle) ([]byte, error) {
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdEvictControl)
- 	if err != nil {
+	if err != nil {
 		return nil, errors.New("ConstructEvictControl failed")
 	}
- 	b1 := SetHandle(owner)
- 	b2 := SetHandle(tmp_handle)
+	b1 := SetHandle(owner)
+	b2 := SetHandle(tmp_handle)
 	b3 := SetPasswordData(parent_password)
- 	b4 := CreatePasswordAuthArea(owner_password, Handle(ordTPM_RS_PW))
- 	b5 := SetHandle(persistant_handle)
- 	arg_bytes := append(b1, b2...)
- 	arg_bytes = append(arg_bytes, b3...)
- 	arg_bytes = append(arg_bytes, b4...)
- 	arg_bytes = append(arg_bytes, b5...)
+	b4 := CreatePasswordAuthArea(owner_password, Handle(OrdTPM_RS_PW))
+	b5 := SetHandle(persistant_handle)
+	arg_bytes := append(b1, b2...)
+	arg_bytes = append(arg_bytes, b3...)
+	arg_bytes = append(arg_bytes, b4...)
+	arg_bytes = append(arg_bytes, b5...)
 	cmd_bytes := packWithBytes(cmdHdr, arg_bytes)
 	return cmd_bytes, nil
 }

@@ -68,44 +68,44 @@ func OpenTPM(path string) (io.ReadWriteCloser, error) {
 }
 
 func PrintAttestData(parms *Attest) {
-	fmt.Printf("magic_number: %x\n", parms.magic_number)
-	fmt.Printf("attest_type : %x\n", parms.attest_type)
-	fmt.Printf("name        : %x\n", parms.name)
-	fmt.Printf("data        : %x\n", parms.data)
-	fmt.Printf("clock       : %x\n", parms.clock)
-	fmt.Printf("resetCount  : %x\n", parms.resetCount)
-	fmt.Printf("restartCount: %x\n", parms.restartCount)
-	fmt.Printf("safe        : %x\n", parms.safe)
-	fmt.Printf("firmwareVersion: %x\n", parms.firmwareVersion)
-	fmt.Printf("pcrSelect   : %x\n", parms.pcrSelect)
-	fmt.Printf("pcrDigest   : %x\n", parms.pcrDigest)
+	fmt.Printf("Magic_number: %x\n", parms.Magic_number)
+	fmt.Printf("Attest_type : %x\n", parms.Attest_type)
+	fmt.Printf("Name        : %x\n", parms.Name)
+	fmt.Printf("Data        : %x\n", parms.Data)
+	fmt.Printf("Clock       : %x\n", parms.Clock)
+	fmt.Printf("ResetCount  : %x\n", parms.ResetCount)
+	fmt.Printf("RestartCount: %x\n", parms.RestartCount)
+	fmt.Printf("Safe        : %x\n", parms.Safe)
+	fmt.Printf("FirmwareVersion: %x\n", parms.FirmwareVersion)
+	fmt.Printf("PcrSelect   : %x\n", parms.PcrSelect)
+	fmt.Printf("PcrDigest   : %x\n", parms.PcrDigest)
 }
 
 func PrintKeyedHashParams(parms *KeyedHashParams) {
-	fmt.Printf("type_alg   : %x\n", parms.type_alg)
-	fmt.Printf("hash_alg   : %x\n", parms.hash_alg)
-	fmt.Printf("attributes : %x\n", parms.attributes)
-	fmt.Printf("auth_policy: %x\n", parms.auth_policy)
-	fmt.Printf("symalg     : %x\n", parms.symalg)
-	fmt.Printf("sym_sz     : %x\n", parms.sym_sz)
-	fmt.Printf("mode       : %x\n", parms.mode)
-	fmt.Printf("scheme     : %x\n", parms.scheme)
-	fmt.Printf("unique     : %x\n", parms.unique)
+	fmt.Printf("Type_alg   : %x\n", parms.Type_alg)
+	fmt.Printf("Hash_alg   : %x\n", parms.Hash_alg)
+	fmt.Printf("Attributes : %x\n", parms.Attributes)
+	fmt.Printf("Auth_policy: %x\n", parms.Auth_policy)
+	fmt.Printf("Symalg     : %x\n", parms.Symalg)
+	fmt.Printf("Sym_sz     : %x\n", parms.Sym_sz)
+	fmt.Printf("Mode       : %x\n", parms.Mode)
+	fmt.Printf("Scheme     : %x\n", parms.Scheme)
+	fmt.Printf("Unique     : %x\n", parms.Unique)
 }
 
 func PrintRsaParams(parms *RsaParams) {
-	fmt.Printf("enc_alg     : %x\n", parms.enc_alg)
-	fmt.Printf("hash_alg    : %x\n", parms.hash_alg)
-	fmt.Printf("attributes  : %x\n", parms.attributes)
-	fmt.Printf("auth_policy : %x\n", parms.auth_policy)
-	fmt.Printf("symalg      : %x\n", parms.symalg)
-	fmt.Printf("sym_sz      : %x\n", parms.sym_sz)
-	fmt.Printf("mode        : %x\n", parms.mode)
-	fmt.Printf("scheme      : %x\n", parms.scheme)
-	fmt.Printf("scheme_hash : %x\n", parms.scheme_hash)
-	fmt.Printf("modulus size: %x\n", parms.mod_sz)
-	fmt.Printf("exp         : %x\n", parms.exp)
-	fmt.Printf("modulus     : %x\n", parms.modulus)
+	fmt.Printf("Enc_alg     : %x\n", parms.Enc_alg)
+	fmt.Printf("Hash_alg    : %x\n", parms.Hash_alg)
+	fmt.Printf("Attributes  : %x\n", parms.Attributes)
+	fmt.Printf("Auth_policy : %x\n", parms.Auth_policy)
+	fmt.Printf("Symalg      : %x\n", parms.Symalg)
+	fmt.Printf("Sym_sz      : %x\n", parms.Sym_sz)
+	fmt.Printf("Mode        : %x\n", parms.Mode)
+	fmt.Printf("Scheme      : %x\n", parms.Scheme)
+	fmt.Printf("Scheme_hash : %x\n", parms.Scheme_hash)
+	fmt.Printf("Modulus size: %x\n", parms.Mod_sz)
+	fmt.Printf("Exp         : %x\n", parms.Exp)
+	fmt.Printf("Modulus     : %x\n", parms.Modulus)
 }
 
 func SetShortPcrs(pcr_nums []int) ([]byte, error) {
@@ -177,39 +177,39 @@ func CreateSensitiveArea(in1 []byte, in2 []byte) ([]byte) {
 func DecodeRsaBuf(rsa_buf []byte) (*RsaParams, error) {
 	parms := new(RsaParams)
 	current := int(0)
-	template := []interface{}{&parms.enc_alg, &parms.hash_alg,
-			&parms.attributes, &parms.auth_policy}
+	template := []interface{}{&parms.Enc_alg, &parms.Hash_alg,
+			&parms.Attributes, &parms.Auth_policy}
 	err := unpack(rsa_buf[current:], template)
 	if err != nil {
 		return nil, errors.New("Can't unpack Rsa buffer 2")
 	}
-	current += 10 + len(parms.auth_policy)
-	template = []interface{}{&parms.symalg}
+	current += 10 + len(parms.Auth_policy)
+	template = []interface{}{&parms.Symalg}
 	err = unpack(rsa_buf[current:], template)
 	if err != nil {
 		return nil, errors.New("Can't unpack Rsa buffer 3")
 	}
 	current += 2
-	if parms.symalg != uint16(AlgTPM_ALG_NULL) {
-		template = []interface{}{&parms.sym_sz, &parms.mode}
+	if parms.Symalg != uint16(AlgTPM_ALG_NULL) {
+		template = []interface{}{&parms.Sym_sz, &parms.Mode}
 		err = unpack(rsa_buf[current:], template)
 		if err != nil {
 			return nil, errors.New("Can't unpack Rsa buffer 5")
 		}
 		current += 4
 	} else {
-		parms.sym_sz = 0
-		parms.mode = 0
-		parms.scheme = 0
+		parms.Sym_sz = 0
+		parms.Mode = 0
+		parms.Scheme = 0
 	}
-	template = []interface{}{&parms.scheme}
+	template = []interface{}{&parms.Scheme}
 	err = unpack(rsa_buf[current:], template)
 	if err != nil {
 		return nil, errors.New("Can't unpack Rsa buffer 5")
 	}
 	current += 2
-	if parms.scheme == uint16(AlgTPM_ALG_RSASSA) {
-		template = []interface{}{&parms.scheme_hash}
+	if parms.Scheme == uint16(AlgTPM_ALG_RSASSA) {
+		template = []interface{}{&parms.Scheme_hash}
 		err = unpack(rsa_buf[current:], template)
 		if err != nil {
 			return nil, errors.New("Can't unpack Rsa buffer 6")
@@ -217,7 +217,7 @@ func DecodeRsaBuf(rsa_buf []byte) (*RsaParams, error) {
 		current += 2
 	}
 
-	template = []interface{}{&parms.mod_sz, &parms.exp, &parms.modulus}
+	template = []interface{}{&parms.Mod_sz, &parms.Exp, &parms.Modulus}
 	err = unpack(rsa_buf[current:], template)
 	if err != nil {
 		return nil, errors.New("Can't unpack Rsa buffer 7")
@@ -240,9 +240,9 @@ func DecodeRsaArea(in []byte) (*RsaParams, error) {
 // nil is error
 func CreateKeyedHashParams(parms KeyedHashParams) ([]byte) {
 	// 0 (uint16), type, attributes, auth, scheme, 0 (unique)
-	template := []interface{}{&parms.type_alg, &parms.hash_alg,
-			&parms.attributes, &parms.auth_policy, &parms.scheme,
-			&parms.unique}
+	template := []interface{}{&parms.Type_alg, &parms.Hash_alg,
+			&parms.Attributes, &parms.Auth_policy, &parms.Scheme,
+			&parms.Unique}
 	t1, err := pack(template)
 	if err != nil {
 		return nil
@@ -252,25 +252,25 @@ func CreateKeyedHashParams(parms KeyedHashParams) ([]byte) {
 
 // nil return is error
 func CreateRsaParams(parms RsaParams) ([]byte) {
-	template := []interface{}{&parms.enc_alg, &parms.hash_alg,
-				   &parms.attributes, &parms.auth_policy}
+	template := []interface{}{&parms.Enc_alg, &parms.Hash_alg,
+				   &parms.Attributes, &parms.Auth_policy}
 	t1, err := pack(template)
 	if err != nil {
 		return nil
 	}
 
-	if  parms.symalg !=  uint16(AlgTPM_ALG_NULL) {
-		template = []interface{}{&parms.symalg, &parms.sym_sz,
-				   &parms.mode, &parms.scheme}
+	if  parms.Symalg !=  uint16(AlgTPM_ALG_NULL) {
+		template = []interface{}{&parms.Symalg, &parms.Sym_sz,
+				   &parms.Mode, &parms.Scheme}
 	} else {
-		template = []interface{}{&parms.symalg, &parms.scheme}
+		template = []interface{}{&parms.Symalg, &parms.Scheme}
 	}
 	t2, err := pack(template)
 	if err != nil {
 		return nil
 	}
-	if parms.scheme == uint16(AlgTPM_ALG_RSASSA) {
-		template3 := []interface{}{&parms.scheme_hash}
+	if parms.Scheme == uint16(AlgTPM_ALG_RSASSA) {
+		template3 := []interface{}{&parms.Scheme_hash}
 		t3, err := pack(template3)
 		if err != nil {
 			return nil
@@ -278,7 +278,7 @@ func CreateRsaParams(parms RsaParams) ([]byte) {
 		t2 = append(t2, t3...)
 	}
 
-	template4 := []interface{}{&parms.mod_sz, &parms.exp, parms.modulus}
+	template4 := []interface{}{&parms.Mod_sz, &parms.Exp, parms.Modulus}
 	t4, err := pack(template4)
 	if err != nil {
 		return nil
@@ -1391,7 +1391,7 @@ func ConstructCreateSealed(parent Handle, policy_digest []byte,
 	b3 := CreatePasswordAuthArea(parent_password, Handle(OrdTPM_RS_PW))
 	t1 := SetPasswordData(owner_password)
 	b4 := CreateSensitiveArea(t1[2:], to_seal)
-	parms.auth_policy =  policy_digest
+	parms.Auth_policy =  policy_digest
 	b5 := CreateKeyedHashParams(parms)
 	b6 ,_ := pack([]interface{}{&b5})
 	b7, _ := pack([]interface{}{&empty})
@@ -1919,16 +1919,16 @@ func LoadContext(rw io.ReadWriter, save_area []byte) (Handle, error) {
 func UnmarshalCertifyInfo(in []byte) (*Attest, error) {
 	attest := new(Attest)
 	var count uint32
-	template := []interface{}{&attest.magic_number, &attest.attest_type, &attest.name,
-			&attest.data, &attest.clock, &attest.resetCount,  &attest.restartCount,
-			&attest.safe, &attest.firmwareVersion, &count}
+	template := []interface{}{&attest.Magic_number, &attest.Attest_type, &attest.Name,
+			&attest.Data, &attest.Clock, &attest.ResetCount,  &attest.RestartCount,
+			&attest.Safe, &attest.FirmwareVersion, &count}
 	err := unpack(in, template)
 	if err != nil {
 		return nil, err
 	}
-	i := 4+2+2+2+8+4+4+1+8+4+len(attest.name)+len(attest.data)
-	attest.pcrSelect = in[i:i+4]
-	template = []interface{}{&attest.pcrDigest}
+	i := 4+2+2+2+8+4+4+1+8+4+len(attest.Name)+len(attest.Data)
+	attest.PcrSelect = in[i:i+4]
+	template = []interface{}{&attest.PcrDigest}
 	err = unpack(in[i+6:], template)
 	if err != nil {
 		return nil, err
@@ -2295,13 +2295,13 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
 	}
 	PrintAttestData(attest)
 
-	if attest.magic_number != ordTpmMagic {
+	if attest.Magic_number != ordTpmMagic {
 		fmt.Printf("Bad magic number\n")
 		return false
 	}
 
 	// PCR's valid?
-	if !ValidPcr(attest.pcrSelect, attest.pcrDigest) {
+	if !ValidPcr(attest.PcrSelect, attest.PcrDigest) {
 		return false
 	}
 

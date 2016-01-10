@@ -397,7 +397,7 @@ func TestCombinedQuoteTest(t *testing.T) {
 	PrintRsaParams(rsaParams)
 
 	var quote_key_info QuoteKeyInfoMessage 
-	att := int32(rsaParams.attributes)
+	att := int32(rsaParams.Attributes)
 	quote_key_info.Name = name
 	quote_key_info.Properties = &att
 	quote_key_info.PublicKey = new(PublicKeyMessage)
@@ -406,10 +406,10 @@ func TestCombinedQuoteTest(t *testing.T) {
 	quote_key_info.PublicKey.RsaKey = new(RsaPublicKeyMessage)
 	key_name :=  "QuoteKey"
 	quote_key_info.PublicKey.RsaKey.KeyName = &key_name
-	sz_mod := int32(rsaParams.mod_sz)
+	sz_mod := int32(rsaParams.Mod_sz)
 	quote_key_info.PublicKey.RsaKey.BitModulusSize = &sz_mod
 	quote_key_info.PublicKey.RsaKey.Exponent = []byte{0,1,0,1}
-	quote_key_info.PublicKey.RsaKey.Modulus =  rsaParams.modulus
+	quote_key_info.PublicKey.RsaKey.Modulus =  rsaParams.Modulus
 	if !VerifyQuote(to_quote, quote_key_info, uint16(AlgTPM_ALG_SHA1), attest, sig) {
 		t.Fatal("VerifyQuote fails")
 	}
@@ -507,7 +507,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	protectorPublic := new(rsa.PublicKey)
 	protectorPublic.E = 0x00010001
 	M := new(big.Int)
-	M.SetBytes(endorseParams.modulus)
+	M.SetBytes(endorseParams.Modulus)
 	protectorPublic.N = M
 
 	// MakeCredential

@@ -2158,73 +2158,6 @@ func MakeCredential(protectorPublic *rsa.PublicKey, hash_alg_id uint16,
 	return encrypted_secret, encIdentity, marshalled_hmac, nil
 }
 
-// Input: Der encoded endorsement key and handles
-// Returns der encoded program private key, CertRequestMessage
-func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte, quote_handle Handle,
-		parent_pw string, owner_pw string, program_name string) ([]byte,
-			*ProgramCertRequestMessage, error) {
-	// Generate Program Key.
-	programPrivateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		return nil, nil, err
-	}
-	der_program_key := x509.MarshalPKCS1PrivateKey(programPrivateKey)
-	programPublicKey := programPrivateKey.Public()
-
-	// Generate Request
-	request := new(ProgramCertRequestMessage)
-	request.EndorsementCertBlob = der_endorsement_cert
-	req_id := "001"
-	request.RequestId = &req_id
-	modulus_bits := int32(2048)
-	key_type := "RSA"
-	request.ProgramKey.ProgramName = &program_name
-	request.ProgramKey.ProgramKeyType = &key_type
-	request.ProgramKey.ProgramBitModulusSize = &modulus_bits
-
-	// request.ProgramKey.ProgramKeyExponent = 0x010001
-	n := programPublicKey.(*rsa.PublicKey).N
-	request.ProgramKey.ProgramKeyModulus = n.Bytes()
-	serialized_program_key := request.ProgramKey.String();
-	sha256Hash := sha256.New()
-	sha256Hash.Write([]byte(serialized_program_key))
-	hashed_program_key := sha256Hash.Sum(nil)
-	fmt.Printf("ProgramKey: %s\n", serialized_program_key)
-	fmt.Printf("Hashed req: %s\n", hashed_program_key)
-
-	// Quote key
-	key_blob, name, _, err := ReadPublic(rw, quote_handle)
-	if err != nil {
-		return nil, nil, err
-	}
-	fmt.Printf("Quote key blob: %x\n", key_blob)
-	fmt.Printf("Name: %x\n", name)
-
-	sig_alg := uint16(AlgTPM_ALG_RSASSA) // Check!
-	attest, sig, err := Quote(rw, quote_handle, parent_pw, owner_pw, hashed_program_key,
-		[]int{7}, sig_alg)
-	if err != nil {
-		return nil, nil, err
-	}
-	fmt.Printf("Attest: %x\n", attest)
-	fmt.Printf("Sig: %x\n", sig)
-
-	// Quote key info.
-	request.QuoteKeyInfo.Name = name
-	// request.QuoteKeyInfo.Properties
-	tmp_name := "Quote-Key"
-	request.QuoteKeyInfo.PublicKey.RsaKey.KeyName = &tmp_name
-	// request.QuoteKeyInfo.PublicKey.KeyType
-	// request.QuoteKeyInfo.PublicKey.BitModulusSize
-	// request.QuoteKeyInfo.PublicKey.Modulus
-	// request.QuoteSignAlg
-	// request.QuoteSignHashAlg
-
-	request.QuotedBlob = attest
-	request.QuoteSignature = sig
-	return der_program_key, request, nil
-}
-
 func publicKeyFromPrivate(priv interface{}) interface{} {
 	switch k := priv.(type) {
 	case *rsa.PrivateKey:
@@ -2337,6 +2270,142 @@ func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
 		return false
 	}
 	return true
+}
+
+// ConstructInternalMakeCredential constructs a InternalMakeCredential command.
+func ConstructInternalMakeCredential(protectorHandle Handle, credential []byte,
+		activeName []byte) ([]byte, error) {
+	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdMakeCredential)
+	if err != nil {
+		return nil, errors.New("ConstructInternalMakeCredential failed")
+	}
+	b1 := SetHandle(protectorHandle)
+	b2, _ := pack([]interface{}{&credential, activeName})
+	cmd_bytes := packWithBytes(cmdHdr, append(b1, b2...))
+	return cmd_bytes, nil
+}
+
+// DecodeInternalMakeCredential decodes a InternalMakeCredential response.
+// returns blob, encrypted_secret
+func DecodeInternalMakeCredential(in []byte) ([]byte, []byte, error) {
+	var credBlob []byte
+	var encrypted_secret []byte
+
+	template :=  []interface{}{&credBlob, &encrypted_secret}
+	err := unpack(in, template)
+	if err != nil {
+		return nil, nil, errors.New("Can't decode InternalMakeCredential response")
+	}
+	return credBlob, encrypted_secret, nil
+}
+
+// InternalMakeCredential
+// 	Output: blob, secret
+func InternalMakeCredential(rw io.ReadWriter, protectorHandle Handle, credential []byte,
+		activeName []byte) ([]byte, []byte, error) {
+	// Construct command
+	cmd, err:= ConstructInternalMakeCredential (protectorHandle, credential, activeName)
+	if err != nil {
+		return nil, nil, errors.New("ConstructInternalMakeCredential fails")
+	}
+
+	// Send command
+	_, err = rw.Write(cmd)
+	if err != nil {
+		return nil, nil, errors.New("Write Tpm fails")
+	}
+
+	// Get response
+	var resp []byte
+	resp = make([]byte, 2048, 2048)
+	read, err := rw.Read(resp)
+	if err != nil {
+		return nil, nil, errors.New("Read Tpm fails")
+	}
+
+	// Decode Response
+	if read < 10 {
+		return nil, nil, errors.New("Read buffer too small")
+	}
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
+	if err != nil {
+		return nil, nil, errors.New("DecodeCommandResponse fails")
+	}
+	if status != errSuccess {
+		return nil, nil, errors.New("InternalMakeCredential unsuccessful")
+	}
+	credBlob, encrypted_secret, err := DecodeInternalMakeCredential(resp[10:])
+	if err != nil {
+		return nil, nil, errors.New("DecodeInternalMakeCredential fails")
+	}
+	return credBlob, encrypted_secret, nil
+}
+
+// Input: Der encoded endorsement key and handles
+// Returns der encoded program private key, CertRequestMessage
+func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte, quote_handle Handle,
+		parent_pw string, owner_pw string, program_name string) ([]byte,
+			*ProgramCertRequestMessage, error) {
+	// Generate Program Key.
+	programPrivateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return nil, nil, err
+	}
+	der_program_key := x509.MarshalPKCS1PrivateKey(programPrivateKey)
+	programPublicKey := programPrivateKey.Public()
+
+	// Generate Request
+	request := new(ProgramCertRequestMessage)
+	request.EndorsementCertBlob = der_endorsement_cert
+	req_id := "001"
+	request.RequestId = &req_id
+	modulus_bits := int32(2048)
+	key_type := "RSA"
+	request.ProgramKey.ProgramName = &program_name
+	request.ProgramKey.ProgramKeyType = &key_type
+	request.ProgramKey.ProgramBitModulusSize = &modulus_bits
+
+	// request.ProgramKey.ProgramKeyExponent = 0x010001
+	n := programPublicKey.(*rsa.PublicKey).N
+	request.ProgramKey.ProgramKeyModulus = n.Bytes()
+	serialized_program_key := request.ProgramKey.String();
+	sha256Hash := sha256.New()
+	sha256Hash.Write([]byte(serialized_program_key))
+	hashed_program_key := sha256Hash.Sum(nil)
+	fmt.Printf("ProgramKey: %s\n", serialized_program_key)
+	fmt.Printf("Hashed req: %s\n", hashed_program_key)
+
+	// Quote key
+	key_blob, name, _, err := ReadPublic(rw, quote_handle)
+	if err != nil {
+		return nil, nil, err
+	}
+	fmt.Printf("Quote key blob: %x\n", key_blob)
+	fmt.Printf("Name: %x\n", name)
+
+	sig_alg := uint16(AlgTPM_ALG_RSASSA) // Check!
+	attest, sig, err := Quote(rw, quote_handle, parent_pw, owner_pw, hashed_program_key,
+		[]int{7}, sig_alg)
+	if err != nil {
+		return nil, nil, err
+	}
+	fmt.Printf("Attest: %x\n", attest)
+	fmt.Printf("Sig: %x\n", sig)
+
+	// Quote key info.
+	request.QuoteKeyInfo.Name = name
+	// request.QuoteKeyInfo.Properties
+	tmp_name := "Quote-Key"
+	request.QuoteKeyInfo.PublicKey.RsaKey.KeyName = &tmp_name
+	// request.QuoteKeyInfo.PublicKey.KeyType
+	// request.QuoteKeyInfo.PublicKey.BitModulusSize
+	// request.QuoteKeyInfo.PublicKey.Modulus
+	// request.QuoteSignAlg
+	// request.QuoteSignHashAlg
+
+	request.QuotedBlob = attest
+	request.QuoteSignature = sig
+	return der_program_key, request, nil
 }
 
 // Input: Der encoded policy private key
@@ -2479,73 +2548,3 @@ func ClientDecodeServerResponse(rw io.ReadWriter, endorsement_handle Handle,
 	}
 	return out, nil
 }
-
-// ConstructInternalMakeCredential constructs a InternalMakeCredential command.
-func ConstructInternalMakeCredential(protectorHandle Handle, credential []byte,
-		activeName []byte) ([]byte, error) {
-	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdMakeCredential)
-	if err != nil {
-		return nil, errors.New("ConstructInternalMakeCredential failed")
-	}
-	b1 := SetHandle(protectorHandle)
-	b2, _ := pack([]interface{}{&credential, activeName})
-	cmd_bytes := packWithBytes(cmdHdr, append(b1, b2...))
-	return cmd_bytes, nil
-}
-
-// DecodeInternalMakeCredential decodes a InternalMakeCredential response.
-// returns blob, encrypted_secret
-func DecodeInternalMakeCredential(in []byte) ([]byte, []byte, error) {
-	var credBlob []byte
-	var encrypted_secret []byte
-
-	template :=  []interface{}{&credBlob, &encrypted_secret}
-	err := unpack(in, template)
-	if err != nil {
-		return nil, nil, errors.New("Can't decode InternalMakeCredential response")
-	}
-	return credBlob, encrypted_secret, nil
-}
-
-// InternalMakeCredential
-// 	Output: blob, secret
-func InternalMakeCredential(rw io.ReadWriter, protectorHandle Handle, credential []byte,
-		activeName []byte) ([]byte, []byte, error) {
-	// Construct command
-	cmd, err:= ConstructInternalMakeCredential (protectorHandle, credential, activeName)
-	if err != nil {
-		return nil, nil, errors.New("ConstructInternalMakeCredential fails")
-	}
-
-	// Send command
-	_, err = rw.Write(cmd)
-	if err != nil {
-		return nil, nil, errors.New("Write Tpm fails")
-	}
-
-	// Get response
-	var resp []byte
-	resp = make([]byte, 2048, 2048)
-	read, err := rw.Read(resp)
-	if err != nil {
-		return nil, nil, errors.New("Read Tpm fails")
-	}
-
-	// Decode Response
-	if read < 10 {
-		return nil, nil, errors.New("Read buffer too small")
-	}
-	_, _, status, err := DecodeCommandResponse(resp[0:10])
-	if err != nil {
-		return nil, nil, errors.New("DecodeCommandResponse fails")
-	}
-	if status != errSuccess {
-		return nil, nil, errors.New("InternalMakeCredential unsuccessful")
-	}
-	credBlob, encrypted_secret, err := DecodeInternalMakeCredential(resp[10:])
-	if err != nil {
-		return nil, nil, errors.New("DecodeInternalMakeCredential fails")
-	}
-	return credBlob, encrypted_secret, nil
-}
-

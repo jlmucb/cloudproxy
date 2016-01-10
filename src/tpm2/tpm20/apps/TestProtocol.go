@@ -41,4 +41,16 @@ func main() {
 	fmt.Printf("modulus size: %d,  hash algorithm: %s\n",
 		*keySize, *hashAlg)
 
+	/*
+	private_key, request, err := ConstructClientRequest(rw,
+		der_endorsement_cert []byte, quote_handle,
+                parent_pw, owner_pw, program_name)
+		([]byte, *ProgramCertRequestMessage, error)
+	response, err := ConstructServerResponse(der_policy_cert,
+		der_policy_private_key, signing_instructions_message,
+             	request )
+	cert, err := ClientDecodeServerResponse(rw, endorsementHandle,
+                quoteHandle, password, response)
+	 */
+
 }

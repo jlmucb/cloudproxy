@@ -111,13 +111,11 @@ func main() {
 			tpm.Handle(*endorsementHandle))
 	if err != nil {
 		fmt.Printf("Evict permanant endorsement handle failed\n")
-		return
 	}
 	err = tpm.EvictControl(rw, tpm.Handle(tpm.OrdTPM_RH_OWNER), tpm.Handle(*quoteHandle),
 		tpm.Handle(*quoteHandle))
 	if err != nil {
 		fmt.Printf("Evict permanant quote handle failed\n")
-		return
 	}
 	// Install new handles
 	err = tpm.EvictControl(rw, tpm.Handle(tpm.OrdTPM_RH_OWNER), primaryHandle,

@@ -1740,10 +1740,12 @@ func ConstructEvictControl(owner Handle, tmp_handle Handle,
 	if err != nil {
 		return nil, errors.New("can't encode empty")
 	}
-	b4 := SetHandle(persistant_handle)
+	b4 := CreatePasswordAuthArea("", Handle(OrdTPM_RS_PW))
+	b5 := SetHandle(persistant_handle)
 	arg_bytes := append(b1, b2...)
 	arg_bytes = append(arg_bytes, b3...)
 	arg_bytes = append(arg_bytes, b4...)
+	arg_bytes = append(arg_bytes, b5...)
 	cmd_bytes := packWithBytes(cmdHdr, arg_bytes)
 	return cmd_bytes, nil
 }

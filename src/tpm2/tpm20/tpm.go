@@ -1727,21 +1727,23 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 }
 
 // ConstructEvictControl constructs a EvictControl command.
-func ConstructEvictControl(owner Handle, tmp_handle Handle, parent_password string, owner_password string,
+func ConstructEvictControl(owner Handle, tmp_handle Handle,
 		persistant_handle Handle) ([]byte, error) {
+	var empty []byte
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdEvictControl)
 	if err != nil {
 		return nil, errors.New("ConstructEvictControl failed")
 	}
 	b1 := SetHandle(owner)
 	b2 := SetHandle(tmp_handle)
-	b3 := SetPasswordData(parent_password)
-	b4 := CreatePasswordAuthArea(owner_password, Handle(OrdTPM_RS_PW))
-	b5 := SetHandle(persistant_handle)
+	b3, err := pack([]interface{}{&empty})
+	if err != nil {
+		return nil, errors.New("can't encode empty")
+	}
+	b4 := SetHandle(persistant_handle)
 	arg_bytes := append(b1, b2...)
 	arg_bytes = append(arg_bytes, b3...)
 	arg_bytes = append(arg_bytes, b4...)
-	arg_bytes = append(arg_bytes, b5...)
 	cmd_bytes := packWithBytes(cmdHdr, arg_bytes)
 	return cmd_bytes, nil
 }
@@ -1752,10 +1754,9 @@ func DecodeEvictControl(in []byte) (error) {
 }
 
 // EvictControl
-func EvictControl(rw io.ReadWriter, owner Handle, tmp_handle Handle, parent_password string, owner_password string,
-		persistant_handle Handle) (error) {
+func EvictControl(rw io.ReadWriter, owner Handle, tmp_handle Handle, persistant_handle Handle) (error) {
 	// Construct command
-	cmd, err:= ConstructEvictControl(owner, tmp_handle, parent_password, owner_password, persistant_handle)
+	cmd, err:= ConstructEvictControl(owner, tmp_handle, persistant_handle)
 	if err != nil {
 		return errors.New("ConstructEvictControl fails") 
 	}

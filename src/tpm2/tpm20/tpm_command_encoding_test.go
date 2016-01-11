@@ -717,7 +717,7 @@ func TestConstructEvictControl(t *testing.T) {
 		t.Fatal("Can't convert hex command\n")
 	}
 	fmt.Printf("Command: %x\n", test_cmd_bytes)
-	cmd_bytes, err := ConstructEvictControl(Handle(0x40000001), Handle(0x810003e8), "", "", Handle(0x810003e8))
+	cmd_bytes, err := ConstructEvictControl(Handle(0x40000001), Handle(0x810003e8), Handle(0x810003e8))
 	fmt.Printf("Command: %x\n", cmd_bytes)
 	if err != nil || !bytes.Equal(cmd_bytes, test_cmd_bytes) {
 		t.Fatal("TestEvictControl: misgenerated command")

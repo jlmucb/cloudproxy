@@ -537,8 +537,6 @@ func TestCombinedEndorsementTest(t *testing.T) {
 
 	// Flush
 	FlushContext(rw, key_handle)
-	FlushContext(rw, parent_handle)
-	rw.Close()
 }
 
 // Combined Evict test
@@ -595,17 +593,15 @@ func TestCombinedEvictTest(t *testing.T) {
 	perm_handle := uint32(0x810003e8)
 
 	// Evict
-	err = EvictControl(rw, Handle(OrdTPM_RH_OWNER), key_handle, "", "01020304",
-		Handle(perm_handle))
+	err = EvictControl(rw, Handle(OrdTPM_RH_OWNER), key_handle, Handle(perm_handle))
 	if err != nil {
 		t.Fatal("EvictControl 1 fails")
 	}
 
 	// Evict
-	err = EvictControl(rw, Handle(OrdTPM_RH_OWNER), Handle(perm_handle), "", "01020304",
-		Handle(perm_handle))
+	err = EvictControl(rw, Handle(OrdTPM_RH_OWNER), Handle(perm_handle), Handle(perm_handle))
 	if err != nil {
-		t.Fatal("EvictControl 1 fails")
+		t.Fatal("EvictControl 2 fails")
 	}
 
 	// Flush
@@ -713,4 +709,6 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
 	// Close handles
 	FlushContext(rw, endorsement_handle)
 	FlushContext(rw, quote_handle)
+	rw.Close()
 }
+

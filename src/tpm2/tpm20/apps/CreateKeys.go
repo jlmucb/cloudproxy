@@ -75,7 +75,7 @@ func main() {
 		uint16(tpm.AlgTPM_ALG_AES), uint16(128),
 		uint16(tpm.AlgTPM_ALG_CFB), uint16(tpm.AlgTPM_ALG_NULL),
 		uint16(0), modSize, uint32(0x00010001), empty}
-	parent_handle, public_blob, err := tpm.CreatePrimary(rw,
+	primaryHandle, public_blob, err := tpm.CreatePrimary(rw,
 		uint32(tpm.OrdTPM_RH_OWNER), []int{0x7}, "", "", primaryparms)
 	if err != nil {
 		fmt.Printf("CreatePrimary fails")
@@ -90,7 +90,7 @@ func main() {
 		uint16(tpm.AlgTPM_ALG_CFB), uint16(tpm.AlgTPM_ALG_NULL),
 		uint16(0), modSize, uint32(0x00010001), empty}
 	private_blob, public_blob, err := tpm.CreateKey(rw,
-		uint32(parent_handle), []int{7}, "", "01020304", keyparms)
+		uint32(primaryHandle), []int{7}, "", "01020304", keyparms)
 	if err != nil {
 		fmt.Printf("CreateKey fails")
 		return
@@ -98,18 +98,46 @@ func main() {
 	fmt.Printf("CreateKey succeeded\n")
 
 	// Load
-	key_handle, _, err := tpm.Load(rw, parent_handle, "", "",
+	tmpQuoteHandle, _, err := tpm.Load(rw, primaryHandle, "", "",
 	     public_blob, private_blob)
 	if err != nil {
 		fmt.Printf("Load fails\n")
 		return
 	}
-	fmt.Printf("Load succeeded %d\n", key_handle)
+	fmt.Printf("Load succeeded %d\n", tmpQuoteHandle)
 
-	/*
-	  EvictControl(rw, primaryHandle, keyHandle, parent_password, owner_password,
-		uint32(quoteHandle)) (error) {
-	 */
+	// Remove old handles
+	err = tpm.EvictControl(rw, tpm.Handle(tpm.OrdTPM_RH_OWNER), tpm.Handle(*endorsementHandle),
+			tpm.Handle(*endorsementHandle))
+	if err != nil {
+		fmt.Printf("Evict permanant endorsement handle failed\n")
+		return
+	}
+	err = tpm.EvictControl(rw, tpm.Handle(tpm.OrdTPM_RH_OWNER), tpm.Handle(*quoteHandle),
+		tpm.Handle(*quoteHandle))
+	if err != nil {
+		fmt.Printf("Evict permanant quote handle failed\n")
+		return
+	}
+	// Install new handles
+	err = tpm.EvictControl(rw, tpm.Handle(tpm.OrdTPM_RH_OWNER), primaryHandle,
+			tpm.Handle(*endorsementHandle))
+	if err != nil {
+		tpm.FlushContext(rw, primaryHandle)
+		tpm.FlushContext(rw, tmpQuoteHandle)
+		rw.Close()
+		fmt.Printf("Evict new endorsement handle failed\n")
+		return
+	}
+	err = tpm.EvictControl(rw, tpm.Handle(tpm.OrdTPM_RH_OWNER), tmpQuoteHandle,
+			tpm.Handle(*quoteHandle))
+	if err != nil {
+		tpm.FlushContext(rw, tmpQuoteHandle)
+		rw.Close()
+		fmt.Printf("Evict new quote handle failed\n")
+		return
+	}
+	rw.Close()
 
 	return
 }

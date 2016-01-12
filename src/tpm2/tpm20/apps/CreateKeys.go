@@ -85,7 +85,7 @@ func main() {
 
 	// CreateKey (Quote Key)
 	keyparms := tpm.RsaParams{uint16(tpm.AlgTPM_ALG_RSA),
-		uint16(tpm.AlgTPM_ALG_SHA1), uint32(0x00030072),
+		uint16(tpm.AlgTPM_ALG_SHA1), uint32(0x00050072),
 		empty, uint16(tpm.AlgTPM_ALG_AES), uint16(128),
 		uint16(tpm.AlgTPM_ALG_CFB), uint16(tpm.AlgTPM_ALG_NULL),
 		uint16(0), modSize, uint32(0x00010001), empty}

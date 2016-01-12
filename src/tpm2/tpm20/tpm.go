@@ -1622,6 +1622,7 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 	if err != nil {
 		return nil, nil, errors.New("Write Tpm fails") 
 	}
+	fmt.Printf("\nQuote command: %x\n", cmd)
 
 	// Get response
 	var resp []byte
@@ -1635,6 +1636,7 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 	if read < 10 {
 		return nil, nil, errors.New("Read buffer too small")
 	}
+	fmt.Printf("Quote resp: %x\n", resp[0:read])
 	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return nil, nil, errors.New("DecodeCommandResponse fails")
@@ -2356,40 +2358,50 @@ func InternalMakeCredential(rw io.ReadWriter, protectorHandle Handle, credential
 	return credBlob, encrypted_secret, nil
 }
 
-// Input: Der encoded endorsement key and handles
+// Input: Der encoded endorsement cert and handles
 // Returns der encoded program private key, CertRequestMessage
 func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
 		quote_handle Handle,
 		parent_pw string, owner_pw string, program_name string) ([]byte,
 		*ProgramCertRequestMessage, error) {
+
 	// Generate Program Key.
 	programPrivateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return nil, nil, err
 	}
+	fmt.Printf("Generated private key: %x\n", programPrivateKey)
 	der_program_key := x509.MarshalPKCS1PrivateKey(programPrivateKey)
-	programPublicKey := programPrivateKey.Public()
+	if der_program_key == nil {
+		fmt.Printf("x509.MarshalPKCS1PrivateKey fails\n")
+		return nil, nil, errors.New("Can't marshal private key\n")
+	}
+	programPublicKey := programPrivateKey.PublicKey
+	fmt.Printf("exp: %x\n", programPublicKey.E)
+	fmt.Printf("mod: %x\n", programPublicKey.N)
+	fmt.Printf("mod bytes: %x\n", programPublicKey.N.Bytes())
 
 	// Generate Request
 	request := new(ProgramCertRequestMessage)
+	request.ProgramKey = new(ProgramKeyParameters)
 	request.EndorsementCertBlob = der_endorsement_cert
 	req_id := "001"
 	request.RequestId = &req_id
 	modulus_bits := int32(2048)
-	key_type := "RSA"
-	request.ProgramKey.ProgramName = &program_name
+	key_type := "rsa"
+	fmt.Printf("Program name: %s\n", program_name)
+	request.ProgramKey.ProgramName =  &program_name
 	request.ProgramKey.ProgramKeyType = &key_type
 	request.ProgramKey.ProgramBitModulusSize = &modulus_bits
+	fmt.Printf("Request generated\n")
 
-	// request.ProgramKey.ProgramKeyExponent = 0x010001
-	n := programPublicKey.(*rsa.PublicKey).N
-	request.ProgramKey.ProgramKeyModulus = n.Bytes()
+	request.ProgramKey.ProgramKeyExponent =  []byte{0,1,0,1}
+	request.ProgramKey.ProgramKeyModulus = programPublicKey.N.Bytes()
 	serialized_program_key := request.ProgramKey.String();
-	sha256Hash := sha256.New()
-	sha256Hash.Write([]byte(serialized_program_key))
-	hashed_program_key := sha256Hash.Sum(nil)
+	sha1Hash := sha1.New()
+	sha1Hash.Write([]byte(serialized_program_key))
+	hashed_program_key := sha1Hash.Sum(nil)
 	fmt.Printf("ProgramKey: %s\n", serialized_program_key)
-	fmt.Printf("Hashed req: %s\n", hashed_program_key)
 
 	// Quote key
 	key_blob, name, _, err := ReadPublic(rw, quote_handle)
@@ -2398,16 +2410,20 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
 	}
 	fmt.Printf("Quote key blob: %x\n", key_blob)
 	fmt.Printf("Name: %x\n", name)
+	fmt.Printf("parent_pw: %s, owner_pw: %s\n", parent_pw, owner_pw)
 
-	sig_alg := uint16(AlgTPM_ALG_RSASSA) // Check!
-	attest, sig, err := Quote(rw, quote_handle, parent_pw, owner_pw, hashed_program_key,
-		[]int{7}, sig_alg)
+	fmt.Printf("Generating quote\n")
+	sig_alg := uint16(AlgTPM_ALG_NULL)
+	attest, sig, err := Quote(rw, quote_handle, owner_pw, owner_pw,
+		hashed_program_key, []int{7}, sig_alg)
 	if err != nil {
+		fmt.Printf("Quote failed", err, "\n")
 		return nil, nil, err
 	}
 	fmt.Printf("Attest: %x\n", attest)
 	fmt.Printf("Sig: %x\n", sig)
 
+	return nil, nil, err
 	// Quote key info.
 	request.QuoteKeyInfo.Name = name
 	// request.QuoteKeyInfo.Properties

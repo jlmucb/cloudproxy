@@ -133,39 +133,44 @@ func main() {
 		return
 	}
 
-	return
 	// Parse policy key
+/*
 	policyPrivateKey, err := x509.ParsePKCS1PrivateKey(derPolicyKey)
 	if err != nil {
 		fmt.Printf("Can't parse key\n")
 		return
 	}
 	fmt.Printf("Key: %x\n", policyPrivateKey)
+ */
 
 	// Read signing instructions
-	signingInstructionsIn := tpm.RetrieveFile(*fileNamePolicyKey)
+	signingInstructionsIn := tpm.RetrieveFile(*fileNameSigningInstructions)
 	if derPolicyKey == nil {
-		fmt.Printf("Can't read policy key\n")
-		return
-	}
-	signing_instructions_message := new(tpm.SigningInstructionsMessage)
-	if err := proto.Unmarshal(signingInstructionsIn, 
-			signing_instructions_message); err != nil {
 		fmt.Printf("Can't read signing instructions\n")
 		return
 	}
+	signing_instructions_message := new(tpm.SigningInstructionsMessage)
+	err = proto.Unmarshal(signingInstructionsIn,
+		signing_instructions_message)
+	if  err != nil {
+		fmt.Printf("Can't unmarshal signing instructions\n", err)
+		return
+	}
 	fmt.Printf("Got signing instructions\n")
-	return
 
 	// Protocol
+	fmt.Printf("Program name is %s\n",  *programName)
+	prog_name := *programName
 	clientPrivateKey, request, err := tpm.ConstructClientRequest(rw,
 		derEndorsementCert, quoteHandle, "", *quoteOwnerPassword,
-		*programName)
+		prog_name)
 	if err != nil {
 		fmt.Printf("ConstructClientRequest failed\n")
 		return
 	}
 	fmt.Printf("Client private key: %x\n", clientPrivateKey)
+	fmt.Printf("Request: %s\n", request.String())
+/*
 	response, err := tpm.ConstructServerResponse(policyPrivateKey,
 		*signing_instructions_message, *request)
 	if err != nil {
@@ -181,6 +186,7 @@ func main() {
 
 	// Save cert so we can interpret it.
 	fmt.Printf("Client cert: %x\n", cert)
+ */
 
 	fmt.Printf("Cloudproxy protocol succeeds\n")
 	return

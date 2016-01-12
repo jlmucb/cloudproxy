@@ -2346,9 +2346,10 @@ func InternalMakeCredential(rw io.ReadWriter, protectorHandle Handle, credential
 
 // Input: Der encoded endorsement key and handles
 // Returns der encoded program private key, CertRequestMessage
-func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte, quote_handle Handle,
+func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
+		quote_handle Handle,
 		parent_pw string, owner_pw string, program_name string) ([]byte,
-			*ProgramCertRequestMessage, error) {
+		*ProgramCertRequestMessage, error) {
 	// Generate Program Key.
 	programPrivateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {

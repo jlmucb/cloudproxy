@@ -16,6 +16,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
 	"flag"
@@ -33,39 +34,41 @@ func main() {
 		"hash algorithm used")
 	permEndorsementHandle := flag.Uint("endorsement handle", 0x810003e8,
 		"permenant endorsement handle")
-	permQuoteHandle := flag.Uint("quote handle", 0x810003e9, "permenant quote handle")
-	fileNameEndorsementCert := flag.String("Endorsement cert file",  "../test/endorsement_cert",
-		"endorsement cert")
-	fileNamePolicyCert := flag.String("Policy cert",  "../test/policy_key_cert",
-		"policy_key_cert")
-	fileNamePolicyKey := flag.String("Policy key",  "../test/cloudproxy_key_file",
-		"policy_key_cert")
-	fileNameSigningInstructions := flag.String("Signing instructions", "../test/signing_instructions",
-		"signing instructions")
-	quoteOwnerPassword := flag.String("Quote owner password",  "01020304",
+	permQuoteHandle := flag.Uint("quote handle", 0x810003e9,
+		"permenant quote handle")
+	fileNameEndorsementCert := flag.String("Endorsement cert file",
+		"../tmptest/endorsement_cert", "endorsement cert")
+	fileNamePolicyCert := flag.String("Policy cert",
+		"../tmptest/policy_key_cert", "policy_key_cert")
+	fileNamePolicyKey := flag.String("Policy key",
+		"../tmptest/cloudproxy_key_file", "policy_key_cert")
+	fileNameSigningInstructions := flag.String("Signing instructions",
+		"../tmptest/signing_instructions", "signing instructions")
+	quoteOwnerPassword := flag.String("Quote owner password", "01020304",
 		"quote owner password")
-	programName := flag.String("Application program name",  "TestProgram",
+	programName := flag.String("Application program name", "TestProgram",
 		"program name")
 	flag.Parse()
 
-	fmt.Printf("Endorsement handle: %x, quote handle: %x\n", *permEndorsementHandle, *permQuoteHandle)
+	fmt.Printf("Endorsement handle: %x, quote handle: %x\n",
+		*permEndorsementHandle, *permQuoteHandle)
 	fmt.Printf("Endorsement cert file: %s, Policy cert file: %s, Policy key file: %s\n",
 		*fileNameEndorsementCert, *fileNamePolicyCert, *fileNamePolicyKey)
-	fmt.Printf("Program name: %s, Signing Instructions file: %s\n", *programName,
-		*fileNameSigningInstructions)
+	fmt.Printf("Program name: %s, Signing Instructions file: %s\n",
+		*programName, *fileNameSigningInstructions)
 	fmt.Printf("modulus size: %d,  hash algorithm: %s\n",
 		*keySize, *hashAlg)
 
 	// Read Endorsement key info
 	derEndorsementCert := tpm.RetrieveFile(*fileNameEndorsementCert)
 	if derEndorsementCert == nil {
-	 	fmt.Printf("Can't read endorsement cert")
+		fmt.Printf("Can't read endorsement cert\n")
 		return
 	}
 	// Get endorsement public from cert
 	endorsement_cert, err := x509.ParseCertificate(derEndorsementCert)
 	if err != nil {
-		fmt.Printf("Endorsement ParseCertificate fails")
+		fmt.Printf("Endorsement ParseCertificate fails\n")
 		return
 	}
 	fmt.Printf("Endorsement cert: %x\n", derEndorsementCert)
@@ -85,15 +88,15 @@ func main() {
 	// ReadPublic
 	protectorPublicBlob, name, _, err := tpm.ReadPublic(rw, protectorHandle)
 	if err != nil {
-	 	fmt.Printf("Can't read protector public")
+		fmt.Printf("Can't read protector public\n")
 		return
 	}
 	fmt.Printf("ReadPublic protector succeeded\n")
-	fmt.Printf("Public         blob: %x\n", public)
+	fmt.Printf("Public         blob: %x\n", protectorPublicBlob)
 	fmt.Printf("Name	   blob: %x\n", name)
 	rsaParams, err := tpm.DecodeRsaBuf(protectorPublicBlob)
 	if err != nil {
-	 	fmt.Printf("Can't interpret protector public")
+		fmt.Printf("Can't interpret protector public")
 		return
 	}
 	tpm.PrintRsaParams(rsaParams)
@@ -106,72 +109,76 @@ func main() {
 		protectorPublic = &k.PublicKey
 	default:
 		fmt.Printf("endorsement cert is not an rsa key\n")
-		return nil, errors.New("endorsement cert not an rsa key")
+		return
 	}
+	fmt.Printf("Public key: %x\n", protectorPublic);
+	return
 
 	// Does endorsement cert have the right key?
 	if bytes.Compare(protectorPublic.N.Bytes(), rsaParams.Modulus) != 0 {
-	 	fmt.Printf("Endorsement key does not match endorsement cert")
+		fmt.Printf("Endorsement key does not match endorsement cert\n")
 		return
 	}
 
 	// Read Policy cert
 	derPolicyCert := tpm.RetrieveFile(*fileNamePolicyCert)
 	if derPolicyCert == nil {
-	 	fmt.Printf("Can't read policy cert")
+		fmt.Printf("Can't read policy cert\n")
 		return
 	}
 
 	// Read Policy key
 	derPolicyKey := tpm.RetrieveFile(*fileNamePolicyKey)
 	if derPolicyKey == nil {
-	 	fmt.Printf("Can't read policy key")
+		fmt.Printf("Can't read policy key\n")
 		return
 	}
 
 	// Parse policy key
 	policyPrivateKey, err := x509.ParsePKCS1PrivateKey(derPolicyKey)
 	if err != nil {
-	 	fmt.Printf("Can't parse key")
+		fmt.Printf("Can't parse key\n")
 		return
 	}
-	fmt.Printf("Key: %x\n", policy_private_key)
-	der_endorsement_cert := request.EndorsementCertBlob
+	fmt.Printf("Key: %x\n", policyPrivateKey)
 
 	// Read signing instructions
 	signingInstructionsIn := tpm.RetrieveFile(*fileNamePolicyKey)
 	if derPolicyKey == nil {
-	 	fmt.Printf("Can't read policy key")
+		fmt.Printf("Can't read policy key\n")
 		return
 	}
 	signing_instructions_message := new(tpm.SigningInstructionsMessage)
-	if err := proto.Unmarshal(signingInstructionsIn, signing_instructions_message); err != nil {
-	 	fmt.Printf("Can't read signing instructions")
+	if err := proto.Unmarshal(signingInstructionsIn, 
+			signing_instructions_message); err != nil {
+		fmt.Printf("Can't read signing instructions\n")
 		return
 	}
 
 	// Protocol
-	var empty []byte
-	policyPrivateKey, request, err := tpm.ConstructClientRequest(rw,
-		derEndorsementCert, quoteHandle, empty, *quoteOwnerPassword, *programName)
+	clientPrivateKey, request, err := tpm.ConstructClientRequest(rw,
+		derEndorsementCert, quoteHandle, "", *quoteOwnerPassword,
+		*programName)
 	if err != nil {
-	 	fmt.Printf("ConstructClientRequest failed")
+		fmt.Printf("ConstructClientRequest failed\n")
 		return
 	}
+	fmt.Printf("Client private key: %x\n", clientPrivateKey)
 	response, err := tpm.ConstructServerResponse(policyPrivateKey,
-		signing_instructions_message, request)
+		*signing_instructions_message, *request)
 	if err != nil {
-	 	fmt.Printf("ConstructServerResponse failed")
+		fmt.Printf("ConstructServerResponse failed\n")
 		return
 	}
-	cert, err := tpm.ClientDecodeServerResponse(rw, endorsementHandle,
-                quoteHandle, quoteOwnerPassword, response)
+	cert, err := tpm.ClientDecodeServerResponse(rw, protectorHandle,
+                quoteHandle, *quoteOwnerPassword, *response)
 	if err != nil {
-	 	fmt.Printf("ClientDecodeServerResponse failed")
+		fmt.Printf("ClientDecodeServerResponse failed\n")
 		return
 	}
 
 	// Save cert so we can interpret it.
+	fmt.Printf("Client cert: %x\n", cert)
 
 	fmt.Printf("Cloudproxy protocol succeeds\n")
 	return

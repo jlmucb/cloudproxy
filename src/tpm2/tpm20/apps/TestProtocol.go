@@ -111,7 +111,7 @@ func main() {
 		fmt.Printf("endorsement cert is not an rsa key\n")
 		return
 	}
-	fmt.Printf("Public key: %x\n", protectorPublic);
+	fmt.Printf("Public key from ReadPublic: %x\n", protectorPublic);
 
 	// Does endorsement cert have the right key?
 	if bytes.Compare(protectorPublic.N.Bytes(), rsaParams.Modulus) != 0 {

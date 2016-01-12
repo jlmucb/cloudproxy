@@ -113,7 +113,7 @@ func SetShortPcrs(pcr_nums []int) ([]byte, error) {
 	var byte_num int
 	var byte_pos byte
 	for _,e := range pcr_nums {
-		byte_num = 1+ e / 8;
+		byte_num = 1 + e / 8;
 		byte_pos = 1 << uint16(e % 8)
 		pcr[byte_num] |= byte_pos
 	}
@@ -253,7 +253,7 @@ func CreateKeyedHashParams(parms KeyedHashParams) ([]byte) {
 // nil return is error
 func CreateRsaParams(parms RsaParams) ([]byte) {
 	template := []interface{}{&parms.Enc_alg, &parms.Hash_alg,
-				   &parms.Attributes, &parms.Auth_policy}
+				  &parms.Attributes, &parms.Auth_policy}
 	t1, err := pack(template)
 	if err != nil {
 		return nil

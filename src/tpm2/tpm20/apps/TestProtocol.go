@@ -112,7 +112,6 @@ func main() {
 		return
 	}
 	fmt.Printf("Public key: %x\n", protectorPublic);
-	return
 
 	// Does endorsement cert have the right key?
 	if bytes.Compare(protectorPublic.N.Bytes(), rsaParams.Modulus) != 0 {
@@ -154,6 +153,8 @@ func main() {
 		fmt.Printf("Can't read signing instructions\n")
 		return
 	}
+	fmt.Printf("Got signing instructions\n")
+	return
 
 	// Protocol
 	clientPrivateKey, request, err := tpm.ConstructClientRequest(rw,

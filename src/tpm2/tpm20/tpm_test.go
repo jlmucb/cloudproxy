@@ -690,6 +690,7 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
 	fmt.Printf("Request        : %s\n", proto.MarshalTextString(request_message))
 	fmt.Printf("Program private: %x\n", der_program_private)
 
+/*
 	signing_instructions_message := new(SigningInstructionsMessage)
 	response_message, err := ConstructServerResponse(der_policy_cert,
 		der_policy_key, *signing_instructions_message, *request_message)
@@ -705,6 +706,7 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
 
 	// Save Program cert
 	fmt.Printf("Program cert: %x\n", der_program_cert)
+ */
 
 	// Close handles
 	FlushContext(rw, endorsement_handle)

@@ -296,6 +296,13 @@ func CreateRsaParams(parms RsaParams) ([]byte) {
 
 // nil return is error
 func CreateLongPcr(count uint32, pcr_nums []int) ([]byte) {
+	if count == 0 {
+		b1, err := pack([]interface{}{&count})
+		if err != nil {
+			return nil
+		}
+		return b1
+	}
 	b1, err :=  SetShortPcrs(pcr_nums)
 	if err != nil {
 		return nil
@@ -689,7 +696,7 @@ func PcrEvent(rw io.ReadWriter, pcrnum int, eventData []byte) (error) {
 
 	// Get response
 	var resp []byte
-	resp = make([]byte, 1024, 1024)
+	resp = make([]byte, 4096, 4096)
 	read, err := rw.Read(resp)
 	if err != nil {
 		return errors.New("Read Tpm fails")
@@ -738,7 +745,12 @@ func ConstructCreatePrimary(owner uint32, pcr_nums []int,
 	b4 := CreateSensitiveArea(t1[2:], empty)
 	b5 := CreateRsaParams(parms)
 	b6,_ := pack([]interface{}{&empty})
-	b7 := CreateLongPcr(uint32(1), pcr_nums)
+	var b7 []byte
+	if len(pcr_nums) > 0 {
+		b7 = CreateLongPcr(uint32(1), pcr_nums)
+	} else {
+		b7 = CreateLongPcr(uint32(0), pcr_nums)
+	}
 	arg_bytes := append(b1, b2...)
 	arg_bytes = append(arg_bytes, b3...)
 	arg_bytes = append(arg_bytes, b4...)
@@ -786,7 +798,7 @@ func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
 	PrintRsaParams(params)
 
 	// Creation data
-	current = 2+len(rsa_params_buf)
+	current = 2 + len(rsa_params_buf)
 	var creation_data []byte
 	template =  []interface{}{&creation_data}
 	err = unpack(tpm2_public[current:], template)

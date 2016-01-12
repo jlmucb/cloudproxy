@@ -76,7 +76,7 @@ func main() {
 		uint16(tpm.AlgTPM_ALG_CFB), uint16(tpm.AlgTPM_ALG_NULL),
 		uint16(0), modSize, uint32(0x00010001), empty}
 	primaryHandle, public_blob, err := tpm.CreatePrimary(rw,
-		uint32(tpm.OrdTPM_RH_OWNER), []int{0x7}, "", "", primaryparms)
+		uint32(tpm.OrdTPM_RH_ENDORSEMENT), []int{0x7}, "", "", primaryparms)
 	if err != nil {
 		fmt.Printf("CreatePrimary fails")
 		return

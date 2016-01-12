@@ -133,6 +133,7 @@ func main() {
 		return
 	}
 
+	return
 	// Parse policy key
 	policyPrivateKey, err := x509.ParsePKCS1PrivateKey(derPolicyKey)
 	if err != nil {

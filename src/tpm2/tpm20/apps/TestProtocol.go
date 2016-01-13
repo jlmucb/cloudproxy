@@ -81,8 +81,23 @@ func main() {
 	}
 	defer rw.Close()
 
+	// protectorHandle := tpm.Handle(*permEndorsementHandle)
+	// CreatePrimary
+	var empty []byte
+	primaryparms := tpm.RsaParams{uint16(tpm.AlgTPM_ALG_RSA),
+		uint16(tpm.AlgTPM_ALG_SHA1), uint32(0x00030072), empty,
+		uint16(tpm.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm.AlgTPM_ALG_CFB), uint16(tpm.AlgTPM_ALG_NULL),
+		uint16(0), 2048, uint32(0x00010001), empty}
+	protectorHandle, _, err := tpm.CreatePrimary(rw,
+		uint32(tpm.OrdTPM_RH_ENDORSEMENT), []int{0x7}, "", "", primaryparms)
+	if err != nil {
+		fmt.Printf("CreatePrimary fails")
+		return
+	}
+	fmt.Printf("CreatePrimary succeeded\n")
+
 	// Use the permanent keys.
-	protectorHandle := tpm.Handle(*permEndorsementHandle)
 	quoteHandle := tpm.Handle(*permQuoteHandle)
 
 	// ReadPublic

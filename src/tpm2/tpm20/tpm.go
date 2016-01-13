@@ -927,7 +927,6 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 	if err != nil {
 		return nil, nil, nil, errors.New("Write Tpm fails") 
 	}
-	fmt.Printf("ReadPublic cmd: %x\n",  cmd)
 
 	// Get response
 	var resp []byte
@@ -936,7 +935,6 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 	if err != nil {
 		return nil, nil, nil, errors.New("Read Tpm fails")
 	}
-	fmt.Printf("ReadPublic resp: %x\n",  resp[0:read])
 
 	// Decode Response
 	if read < 10 {

@@ -49,7 +49,7 @@ func TestRsaTranslate(t *testing.T) {
 }
 
 func TestRsaPrivateKeyParse(t *testing.T) {
-	fileName := "./tmptest/t_cloudproxy_key_file.proto"
+	fileName := "./tmptest/cloudproxy_key_file.proto"
 	out := RetrieveFile(fileName)
 	if out == nil {
 		t.Fatal("Can't retrieve file\n")

@@ -18,9 +18,10 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"math/big"
 	"testing"
+
+	"github.com/golang/protobuf/proto"
 )
 
 // Test GetRandom

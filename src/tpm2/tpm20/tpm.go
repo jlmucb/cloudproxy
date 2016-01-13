@@ -34,6 +34,8 @@ import (
 	"net"
 	"os"
 	"time"
+
+	// "github.com/golang/protobuf/proto"
 )
 
 // OpenTPM opens a channel to the TPM at the given path. If the file is a
@@ -2357,6 +2359,45 @@ func InternalMakeCredential(rw io.ReadWriter, protectorHandle Handle, credential
 	}
 	return credBlob, encrypted_secret, nil
 }
+
+func MarshalRsaPrivateToProto(key *rsa.PrivateKey) (*RsaPrivateKeyMessage, error) {
+	if key == nil {
+		return nil, errors.New("No key")
+	}
+	msg := new(RsaPrivateKeyMessage)
+	msg.PublicKey = new(RsaPublicKeyMessage)
+	msg.D = key.D.Bytes()
+	msg.PublicKey.Exponent = []byte{0,1,0,1}
+	msg.PublicKey.Modulus = key.N.Bytes()
+	l := int32(len(msg.PublicKey.Modulus) * 8)
+	msg.PublicKey.BitModulusSize = &l
+	// if len(key.Primes == 2 {
+	// 	msg.PublicKey.P = msg.Primes[0].Bytes()
+	// 	msg.PublicKey.Q = msg.Primes[1].Bytes()
+	// }
+	return msg, nil
+}
+
+func UnmarshalRsaPrivateFromProto(msg *RsaPrivateKeyMessage) (*rsa.PrivateKey, error) {
+	if msg == nil {
+		return nil, errors.New("No message")
+	}
+	key := new(rsa.PrivateKey)
+	// key.PublicKey = new(rsa.PublicKey)
+	key.D = new(big.Int)
+	key.D.SetBytes(msg.D)
+	key.PublicKey.N = new(big.Int)
+	key.PublicKey.N.SetBytes(msg.PublicKey.Modulus)
+	key.PublicKey.E = 0x10001  // Fix
+	// if msg.PublicKey.P != nil && msg.PublicKey.Q != nil {
+	// 	msg.Primes[0] = new(big.Int)
+	// 	msg.Primes[1] = new(big.Int)
+	// 	msg.Primes[0].SetBytes(msg.PublicKey.P)
+	// 	msg.Primes[1].SetBytes(msg.PublicKey.Q)
+	// }
+	return key, nil
+}
+
 
 // Input: Der encoded endorsement cert and handles
 // Returns der encoded program private key, CertRequestMessage

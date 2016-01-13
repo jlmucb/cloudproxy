@@ -24,7 +24,45 @@ import (
 	"math/big"
 	"os"
 	"testing"
+
+	"github.com/golang/protobuf/proto"
 )
+
+func TestRsaTranslate(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if  err != nil || key == nil {
+		t.Fatal("Can't gen private key %s\n", err)
+	}
+	msg, err := MarshalRsaPrivateToProto(key)
+	if err != nil {
+		t.Fatal("Can't marshal key to proto\n")
+	}
+	newKey, err := UnmarshalRsaPrivateFromProto(msg)
+	if err != nil {
+		t.Fatal("Can't unmarshal key to proto\n")
+	}
+	// values equal?
+	if key.D.Cmp(newKey.D) != 0 {
+		t.Fatal("Keys are unequal\n")
+	}
+	fmt.Printf("TestRsaTranslate succeeds\n")
+}
+
+func TestRsaPrivateKeyParse(t *testing.T) {
+	fileName := "./tmptest/t_cloudproxy_key_file.proto"
+	out := RetrieveFile(fileName)
+	if out == nil {
+		t.Fatal("Can't retrieve file\n")
+	}
+	msg := new(RsaPrivateKeyMessage)
+	err := proto.Unmarshal(out, msg)
+	key, err := UnmarshalRsaPrivateFromProto(msg)
+	if err != nil {
+		t.Fatal("Can't unmarshal key to proto\n")
+	}
+	fmt.Printf("Private key: %x\n", key)
+	fmt.Printf("Unmarshaled private key\n")
+}
 
 func TestAttributes(t *testing.T) {
 	sealedObj := uint32(FlagFixedTPM | FlagFixedParent)

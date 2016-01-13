@@ -41,7 +41,7 @@ func main() {
 	fileNamePolicyCert := flag.String("Policy cert",
 		"../tmptest/policy_key_cert", "policy_key_cert")
 	fileNamePolicyKey := flag.String("Policy key",
-		"../tmptest/cloudproxy_key_file", "policy_key_cert")
+		"../tmptest/cloudproxy_key_file.proto", "policy_key_cert")
 	fileNameSigningInstructions := flag.String("Signing instructions",
 		"../tmptest/signing_instructions", "signing instructions")
 	quoteOwnerPassword := flag.String("Quote owner password", "01020304",
@@ -127,25 +127,29 @@ func main() {
 	}
 
 	// Read Policy key
-	derPolicyKey := tpm.RetrieveFile(*fileNamePolicyKey)
-	if derPolicyKey == nil {
-		fmt.Printf("Can't read policy key\n")
+	protoPolicyKey := tpm.RetrieveFile(*fileNamePolicyKey)
+	if protoPolicyKey == nil {
+		fmt.Printf("Can't read policy key file\n")
 		return
 	}
 
 	// Parse policy key
-/*
-	policyPrivateKey, err := x509.ParsePKCS1PrivateKey(derPolicyKey)
+	keyMsg := new(tpm.RsaPrivateKeyMessage)
+	err = proto.Unmarshal(protoPolicyKey, keyMsg)
 	if err != nil {
-		fmt.Printf("Can't parse key\n")
+		fmt.Printf("Can't unmarshal policy key\n")
+		return
+	}
+	policyPrivateKey, err := tpm.UnmarshalRsaPrivateFromProto(keyMsg)
+	if err != nil {
+		fmt.Printf("Can't decode policy key\n")
 		return
 	}
 	fmt.Printf("Key: %x\n", policyPrivateKey)
- */
 
 	// Read signing instructions
 	signingInstructionsIn := tpm.RetrieveFile(*fileNameSigningInstructions)
-	if derPolicyKey == nil {
+	if signingInstructionsIn == nil {
 		fmt.Printf("Can't read signing instructions\n")
 		return
 	}

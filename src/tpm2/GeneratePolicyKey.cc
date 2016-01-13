@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include <openssl/rsa.h>
+#include <openssl_helpers.h>
 
 #include <tpm20.h>
 #include <tpm2_lib.h>
@@ -138,6 +139,41 @@ int main(int an, char** av) {
                           (byte*)output.data())) {
     printf("Can't write output file\n");
     ret_val = 1;
+  }
+
+  // write it as protobuf too
+  {
+    rsa_private_key_message privateMsg;
+    privateMsg.mutable_public_key()->set_bit_modulus_size(FLAGS_modulus_size_in_bits);
+    byte exp_big_endian[4] = {0, 1, 0, 1};
+    string e_b_e;
+    e_b_e.assign((const char*)exp_big_endian, 4);
+  
+    privateMsg.mutable_public_key()->set_exponent(e_b_e);
+    string* n = BN_to_bin(*rsa_key->n);
+    string* d = BN_to_bin(*rsa_key->d);
+    privateMsg.mutable_public_key()->set_modulus(*n);
+    privateMsg.set_d(*d);
+    if (rsa_key->p != nullptr) {
+      string* p = BN_to_bin(*rsa_key->p);
+      privateMsg.set_p(*p);
+    }
+    if (rsa_key->q != nullptr) {
+      string* q = BN_to_bin(*rsa_key->q);
+      privateMsg.set_q(*q);
+    }
+    string proto_out;
+    if (!privateMsg.SerializeToString(&proto_out)) {
+      printf("Can't serialize proto\n");
+      goto done;
+    }
+    string proto_file_name;
+    proto_file_name = FLAGS_cloudproxy_key_file + ".proto";
+    if (!WriteFileFromBlock(proto_file_name, proto_out.size(),
+                            (byte*)proto_out.data())) {
+      printf("Can't write output file\n");
+      ret_val = 1;
+    }
   }
 
 done:

@@ -187,15 +187,16 @@ func main() {
 		fmt.Printf("ConstructClientRequest failed\n")
 		return
 	}
-	fmt.Printf("Client private key: %x\n", clientPrivateKey)
+	fmt.Printf("Client private key: %x\n", clientPrivateKey.PublicKey.Modulus)
 	fmt.Printf("Request: %s\n", request.String())
-/*
 	response, err := tpm.ConstructServerResponse(policyPrivateKey,
 		*signing_instructions_message, *request)
 	if err != nil {
 		fmt.Printf("ConstructServerResponse failed\n")
 		return
 	}
+	fmt.Printf("Response for ProgramName %s\n", response.ProgramName)
+/*
 	cert, err := tpm.ClientDecodeServerResponse(rw, protectorHandle,
                 quoteHandle, *quoteOwnerPassword, *response)
 	if err != nil {

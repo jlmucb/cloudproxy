@@ -2407,19 +2407,20 @@ func UnmarshalRsaPrivateFromProto(msg *RsaPrivateKeyMessage) (*rsa.PrivateKey, e
 // Returns program private key protobuf, CertRequestMessage
 func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
 		quote_handle Handle,
-		parent_pw string, owner_pw string, program_name string) ([]byte,
+		parent_pw string, owner_pw string, program_name string) (*RsaPrivateKeyMessage,
 		*ProgramCertRequestMessage, error) {
 
 	// Generate Program Key.
 	programPrivateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
+		fmt.Printf("Can't generate program key\n")
 		return nil, nil, err
 	}
 	fmt.Printf("Generated private key: %x\n", programPrivateKey)
-	der_program_key := x509.MarshalPKCS1PrivateKey(programPrivateKey)
-	if der_program_key == nil {
-		fmt.Printf("x509.MarshalPKCS1PrivateKey fails\n")
-		return nil, nil, errors.New("Can't marshal private key\n")
+	privateKeyMsg, err := MarshalRsaPrivateToProto(programPrivateKey)
+	if err != nil {
+		fmt.Printf("Can't marshal key to proto\n")
+		return nil, nil, err
 	}
 	programPublicKey := programPrivateKey.PublicKey
 	fmt.Printf("exp: %x\n", programPublicKey.E)
@@ -2482,7 +2483,7 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
 
 	request.QuotedBlob = attest
 	request.QuoteSignature = sig
-	return der_program_key, request, nil
+	return privateKeyMsg, request, nil
 }
 
 // Input: policy private key

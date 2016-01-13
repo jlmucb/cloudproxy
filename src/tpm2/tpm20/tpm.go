@@ -196,7 +196,7 @@ func DecodeRsaBuf(rsa_buf []byte) (*RsaParams, error) {
 		template = []interface{}{&parms.Sym_sz, &parms.Mode}
 		err = unpack(rsa_buf[current:], template)
 		if err != nil {
-			return nil, errors.New("Can't unpack Rsa buffer 5")
+			return nil, errors.New("Can't unpack Rsa buffer 4")
 		}
 		current += 4
 	} else {
@@ -916,17 +916,18 @@ func DecodeReadPublic(in []byte) ([]byte, []byte, []byte, error) {
 func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error) {
 
 	// Construct command
-	x, err:= ConstructReadPublic(handle)
+	cmd, err:= ConstructReadPublic(handle)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, nil, nil, err
 	}
 
 	// Send command
-	_, err = rw.Write(x)
+	_, err = rw.Write(cmd)
 	if err != nil {
 		return nil, nil, nil, errors.New("Write Tpm fails") 
 	}
+	fmt.Printf("ReadPublic cmd: %x\n",  cmd)
 
 	// Get response
 	var resp []byte
@@ -935,6 +936,7 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 	if err != nil {
 		return nil, nil, nil, errors.New("Read Tpm fails")
 	}
+	fmt.Printf("ReadPublic resp: %x\n",  resp[0:read])
 
 	// Decode Response
 	if read < 10 {

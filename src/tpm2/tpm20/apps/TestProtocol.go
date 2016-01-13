@@ -88,7 +88,7 @@ func main() {
 	// ReadPublic
 	protectorPublicBlob, name, _, err := tpm.ReadPublic(rw, protectorHandle)
 	if err != nil {
-		fmt.Printf("Can't read protector public\n")
+		fmt.Printf("Can't read protector public", err, "\n")
 		return
 	}
 	fmt.Printf("ReadPublic protector succeeded\n")
@@ -96,7 +96,7 @@ func main() {
 	fmt.Printf("Name	   blob: %x\n", name)
 	rsaParams, err := tpm.DecodeRsaBuf(protectorPublicBlob)
 	if err != nil {
-		fmt.Printf("Can't interpret protector public")
+		fmt.Printf("Can't interpret protector public", err, "\n")
 		return
 	}
 	tpm.PrintRsaParams(rsaParams)

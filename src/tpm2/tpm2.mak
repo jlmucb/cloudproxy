@@ -44,8 +44,8 @@ LINK=g++
 PROTO=protoc
 AR=ar
 export LD_LIBRARY_PATH=/usr/local/lib
-LDFLAGS= $(LOCAL_LIB)/libgtest.a $(LOCAL_LIB)/libgflags.a -lpthread -lcrypto $(LOCAL_LIB)/libprotobuf.a
-#LDFLAGS= -lprotobuf -lgtest -lgflags -lpthread -lcrypto
+#LDFLAGS= $(LOCAL_LIB)/libgtest.a $(LOCAL_LIB)/libgflags.a -lpthread -lcrypto $(LOCAL_LIB)/libprotobuf.a
+LDFLAGS= -lprotobuf -lgtest -lgflags -lpthread -lcrypto
 
 dobj_tpm2_util=					$(O)/tpm2_lib.o \
   $(O)/tpm2.pb.o \

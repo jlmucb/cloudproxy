@@ -1020,6 +1020,7 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 	if err != nil {
 		return nil, nil, errors.New("Write Tpm fails") 
 	}
+	fmt.Printf("CreateKey cmd : %x\n", cmd)
 
 	// Get response
 	var resp []byte
@@ -1028,6 +1029,7 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 	if err != nil {
 		return nil, nil, errors.New("Read Tpm fails")
 	}
+	fmt.Printf("CreateKey resp: %x\n", resp[0:read])
 
 	// Decode Response
 	if read < 10 {
@@ -1100,6 +1102,7 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string, ownerAuth st
 	if err != nil {
 		return Handle(0), nil, errors.New("Write Tpm fails") 
 	}
+	fmt.Printf("Load cmd: %x\n", cmd)
 
 	// Get response
 	var resp []byte
@@ -1108,6 +1111,7 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string, ownerAuth st
 	if err != nil {
 		return Handle(0), nil, errors.New("Read Tpm fails")
 	}
+	fmt.Printf("Load resp: %x\n", resp[0:read])
 
 	// Decode Response
 	if read < 10 {
@@ -1633,6 +1637,7 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 	if err != nil {
 		return nil, nil, errors.New("Read Tpm fails")
 	}
+	fmt.Printf("Quote resp: %x\n", resp[0:read])
 
 	// Decode Response
 	if read < 10 {
@@ -1798,11 +1803,10 @@ func EvictControl(rw io.ReadWriter, owner Handle, tmp_handle Handle, persistant_
 	if read < 10 {
 		return errors.New("Read buffer too small")
 	}
-	tag, size, status, err := DecodeCommandResponse(resp[0:10])
+	_, _, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
 		return errors.New("DecodeCommandResponse fails")
 	}
-	fmt.Printf("EvictControl Tag: %x, size: %x, error code: %x\n", tag, size, status)
 	if status != errSuccess {
 		return errors.New("EvictControl unsuccessful")
 	}
@@ -1816,10 +1820,10 @@ func EvictControl(rw io.ReadWriter, owner Handle, tmp_handle Handle, persistant_
 // ConstructSaveContext constructs a SaveContext command.
 func ConstructSaveContext(handle Handle) ([]byte, error) {
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdContextSave)
- 	if err != nil {
+	if err != nil {
 		return nil, errors.New("ConstructSaveContext failed")
 	}
- 	b1 := SetHandle(handle)
+	b1 := SetHandle(handle)
 	cmd_bytes := packWithBytes(cmdHdr, b1)
 	return cmd_bytes, nil
 }

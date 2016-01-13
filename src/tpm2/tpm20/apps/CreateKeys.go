@@ -73,12 +73,12 @@ func main() {
 	err = tpm.EvictControl(rw, tpm.Handle(tpm.OrdTPM_RH_OWNER), tpm.Handle(*primaryHandle),
 			tpm.Handle(*primaryHandle))
 	if err != nil {
-		fmt.Printf("Evict permanant primary handle failed\n")
+		fmt.Printf("Evict existing permanant primary handle failed\n")
 	}
 	err = tpm.EvictControl(rw, tpm.Handle(tpm.OrdTPM_RH_OWNER), tpm.Handle(*quoteHandle),
 		tpm.Handle(*quoteHandle))
 	if err != nil {
-		fmt.Printf("Evict permanant quote handle failed\n")
+		fmt.Printf("Evict existing permanant quote handle failed\n")
 	}
 
 	// CreatePrimary
@@ -88,41 +88,32 @@ func main() {
 		uint16(tpm.AlgTPM_ALG_CFB), uint16(tpm.AlgTPM_ALG_NULL),
 		uint16(0), modSize, uint32(0x00010001), empty}
 	tmpPrimaryHandle, public_blob, err := tpm.CreatePrimary(rw,
-		uint32(tpm.OrdTPM_RH_OWNER), []int{0x7}, "", "", primaryparms)
+		uint32(tpm.OrdTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
 	if err != nil {
-		fmt.Printf("CreatePrimary fails")
+		fmt.Printf("CreatePrimary fails\n")
 		return
 	}
 	fmt.Printf("CreatePrimary succeeded\n")
 
-	// Install new handle
-	err = tpm.EvictControl(rw, tpm.Handle(tpm.OrdTPM_RH_OWNER), tmpPrimaryHandle,
-			tpm.Handle(*primaryHandle))
-	if err != nil {
-		tpm.FlushContext(rw, tmpPrimaryHandle)
-		fmt.Printf("Evict new endorsement handle failed\n")
-		return
-	}
-
 	// CreateKey (Quote Key)
-	keyparms := tpm.RsaParams{uint16(tpm.AlgTPM_ALG_RSA),
-		uint16(tpm.AlgTPM_ALG_SHA1), uint32(0x00050072),
-		empty, uint16(tpm.AlgTPM_ALG_AES), uint16(128),
-		uint16(tpm.AlgTPM_ALG_CFB), uint16(tpm.AlgTPM_ALG_NULL),
-		uint16(0), modSize, uint32(0x00010001), empty}
+	keyparms := tpm.RsaParams{uint16(tpm.AlgTPM_ALG_RSA), uint16(tpm.AlgTPM_ALG_SHA1),
+		uint32(0x00050072), empty, uint16(tpm.AlgTPM_ALG_NULL), uint16(0),
+		uint16(tpm.AlgTPM_ALG_ECB), uint16(tpm.AlgTPM_ALG_RSASSA),
+		uint16(tpm.AlgTPM_ALG_SHA1),
+		uint16(1024), uint32(0x00010001), empty}
 	private_blob, public_blob, err := tpm.CreateKey(rw,
-		uint32(*primaryHandle), []int{7}, "", "01020304", keyparms)
+		uint32(tmpPrimaryHandle), []int{7}, "01020304", "01020304", keyparms)
 	if err != nil {
-		fmt.Printf("CreateKey fails")
+		fmt.Printf("CreateKey (Quote) fails ", err, "\n")
 		return
 	}
-	fmt.Printf("CreateKey succeeded\n")
+	fmt.Printf("CreateKey (Quote) succeeded\n")
 
 	// Load
-	tmpQuoteHandle, _, err := tpm.Load(rw, tpm.Handle(*primaryHandle), "", "",
+	tmpQuoteHandle, _, err := tpm.Load(rw, tmpPrimaryHandle, "", "01020304",
 	     public_blob, private_blob)
 	if err != nil {
-		fmt.Printf("Load fails\n")
+		fmt.Printf("Load fails ", err, "\n")
 		return
 	}
 	fmt.Printf("Load succeeded %d\n", tmpQuoteHandle)
@@ -132,16 +123,17 @@ func main() {
 			tpm.Handle(*primaryHandle))
 	if err != nil {
 		tpm.FlushContext(rw, tmpPrimaryHandle)
-		tpm.FlushContext(rw, tmpQuoteHandle)
-		fmt.Printf("Evict new endorsement handle failed\n")
+		fmt.Printf("Install new primary handle failed\n")
 		return
 	}
+	fmt.Printf("Install new primary handle succeeded\n")
 	err = tpm.EvictControl(rw, tpm.Handle(tpm.OrdTPM_RH_OWNER), tmpQuoteHandle,
 			tpm.Handle(*quoteHandle))
 	if err != nil {
 		tpm.FlushContext(rw, tmpQuoteHandle)
-		fmt.Printf("Evict new quote handle failed\n")
+		fmt.Printf("Install new quote handle failed\n")
 		return
 	}
+	fmt.Printf("Install new quote handle succeeded\n")
 	return
 }

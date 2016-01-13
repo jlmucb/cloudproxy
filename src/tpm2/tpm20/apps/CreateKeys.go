@@ -107,7 +107,7 @@ func main() {
 	fmt.Printf("Load succeeded %d\n", tmpQuoteHandle)
 
 	// Remove old handles
-	err = tpm.EvictControl(rw, tpm.Handle(tpm.OrdTPM_RH_OWNER), tpm.Handle(*endorsementHandle),
+	err = tpm.EvictControl(rw, tpm.Handle(tpm.OrdTPM_RH_ENDORSEMENT), tpm.Handle(*endorsementHandle),
 			tpm.Handle(*endorsementHandle))
 	if err != nil {
 		fmt.Printf("Evict permanant endorsement handle failed\n")
@@ -118,7 +118,7 @@ func main() {
 		fmt.Printf("Evict permanant quote handle failed\n")
 	}
 	// Install new handles
-	err = tpm.EvictControl(rw, tpm.Handle(tpm.OrdTPM_RH_OWNER), primaryHandle,
+	err = tpm.EvictControl(rw, tpm.Handle(tpm.OrdTPM_RH_ENDORSEMENT), primaryHandle,
 			tpm.Handle(*endorsementHandle))
 	if err != nil {
 		tpm.FlushContext(rw, primaryHandle)

@@ -81,7 +81,6 @@ func main() {
 	}
 	defer rw.Close()
 
-	// protectorHandle := tpm.Handle(*permEndorsementHandle)
 	// CreatePrimary
 	var empty []byte
 	primaryparms := tpm.RsaParams{uint16(tpm.AlgTPM_ALG_RSA),
@@ -178,7 +177,7 @@ func main() {
 	// Protocol
 	fmt.Printf("Program name is %s\n",  *programName)
 	prog_name := *programName
-	clientPrivateKey, request, err := tpm.ConstructClientRequest(rw,
+	protoClientPrivateKey, request, err := tpm.ConstructClientRequest(rw,
 		derEndorsementCert, tpm.Handle(*permQuoteHandle), "", *quoteOwnerPassword,
 		prog_name)
 	if err != nil {
@@ -186,11 +185,17 @@ func main() {
 		return
 	}
 	fmt.Printf("ConstructClientRequest succeeded\n")
+	if protoClientPrivateKey == nil {
+		fmt.Printf("clientPrivateKey is nil\n")
+	}
+	if request == nil {
+		fmt.Printf("request is nil\n")
+	}
 	return
-	if  clientPrivateKey.PublicKey != nil && clientPrivateKey.PublicKey.Modulus != nil {
+	if  protoClientPrivateKey != nil  {
 		fmt.Printf("Checking client key\n") //fmt.Printf("Client private key: %x\n", clientPrivateKey.PublicKey.Modulus)
 	}
-	fmt.Printf("Request: %s\n", request.String())
+	fmt.Printf("Request: %s\n", proto.CompactTextString(request))
 	response, err := tpm.ConstructServerResponse(policyPrivateKey, *signing_instructions_message, *request)
 	if err != nil {
 		fmt.Printf("ConstructServerResponse failed\n")

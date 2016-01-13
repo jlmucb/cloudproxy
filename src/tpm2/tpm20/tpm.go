@@ -2450,7 +2450,7 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
 	fmt.Printf("ProgramKey: %s\n", serialized_program_key)
 
 	// Quote key
-	key_blob, name, _, err := ReadPublic(rw, quote_handle)
+	key_blob, quote_key_name, _, err := ReadPublic(rw, quote_handle)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -2460,7 +2460,7 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
 		return nil, nil, err
 	}
 	PrintRsaParams(rsaQuoteParams)
-	fmt.Printf("Name: %x\n", name)
+	fmt.Printf("Quote key name: %x\n", quote_key_name)
 	fmt.Printf("parent_pw: %s, owner_pw: %s\n", parent_pw, owner_pw)
 
 	fmt.Printf("Generating quote\n")
@@ -2474,24 +2474,25 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
 	fmt.Printf("Attest: %x\n", attest)
 	fmt.Printf("Sig: %x\n", sig)
 
-	return nil, nil, err
 	// Quote key info.
-	request.QuoteKeyInfo.Name = name
+	request.QuoteKeyInfo = new(QuoteKeyInfoMessage)
+	request.QuoteKeyInfo.Name = quote_key_name
 	tmp_name := "Quote-Key"
+	request.QuoteKeyInfo.PublicKey= new(PublicKeyMessage)
+	request.QuoteKeyInfo.PublicKey.RsaKey = new(RsaPublicKeyMessage)
 	request.QuoteKeyInfo.PublicKey.RsaKey.KeyName = &tmp_name
 	var enc_alg string
 	var hash_alg string
 	if  rsaQuoteParams.Enc_alg == AlgTPM_ALG_RSA {
 		enc_alg = "rsa"
-
 	} else {
 		fmt.Printf("Unsupported enc alg\n")
 		return nil, nil, err
 	}
 	if  rsaQuoteParams.Hash_alg == AlgTPM_ALG_SHA1 {
-		enc_alg = "sha1"
+		hash_alg = "sha1"
 	} else if  rsaQuoteParams.Hash_alg == AlgTPM_ALG_SHA256 {
-		enc_alg = "sha256"
+		hash_alg = "sha256"
 	} else {
 		fmt.Printf("Unsupported hash alg\n")
 		return nil, nil, err
@@ -2503,6 +2504,7 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
 	request.QuoteSignAlg = &enc_alg
 	request.QuoteSignHashAlg = &hash_alg
 
+	request.ProgramKey = new(ProgramKeyParameters)
 	request.ProgramKey.ProgramName = &program_name
 	request.ProgramKey.ProgramKeyType= &enc_alg
 	request.ProgramKey.ProgramBitModulusSize= &modulus_bits

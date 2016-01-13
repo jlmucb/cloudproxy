@@ -32,8 +32,8 @@ func main() {
 		"Modulus size for keys")
 	hashAlg := flag.String("hash algorithm",  "sha1",
 		"hash algorithm used")
-	permEndorsementHandle := flag.Uint("endorsement handle", 0x810003e8,
-		"permenant endorsement handle")
+	permPrimaryHandle := flag.Uint("primary handle", 0x810003e8,
+		"permenant primary handle")
 	permQuoteHandle := flag.Uint("quote handle", 0x810003e9,
 		"permenant quote handle")
 	fileNameEndorsementCert := flag.String("Endorsement cert file",
@@ -50,8 +50,8 @@ func main() {
 		"program name")
 	flag.Parse()
 
-	fmt.Printf("Endorsement handle: %x, quote handle: %x\n",
-		*permEndorsementHandle, *permQuoteHandle)
+	fmt.Printf("Primary handle: %x, quote handle: %x\n",
+		*permPrimaryHandle, *permQuoteHandle)
 	fmt.Printf("Endorsement cert file: %s, Policy cert file: %s, Policy key file: %s\n",
 		*fileNameEndorsementCert, *fileNamePolicyCert, *fileNamePolicyKey)
 	fmt.Printf("Program name: %s, Signing Instructions file: %s\n",
@@ -97,8 +97,6 @@ func main() {
 	}
 	fmt.Printf("CreatePrimary succeeded\n")
 
-	// Use the permanent keys.
-	quoteHandle := tpm.Handle(*permQuoteHandle)
 
 	// ReadPublic
 	protectorPublicBlob, name, _, err := tpm.ReadPublic(rw, protectorHandle)
@@ -181,16 +179,19 @@ func main() {
 	fmt.Printf("Program name is %s\n",  *programName)
 	prog_name := *programName
 	clientPrivateKey, request, err := tpm.ConstructClientRequest(rw,
-		derEndorsementCert, quoteHandle, "", *quoteOwnerPassword,
+		derEndorsementCert, tpm.Handle(*permQuoteHandle), "", *quoteOwnerPassword,
 		prog_name)
 	if err != nil {
 		fmt.Printf("ConstructClientRequest failed\n")
 		return
 	}
-	fmt.Printf("Client private key: %x\n", clientPrivateKey.PublicKey.Modulus)
+	fmt.Printf("ConstructClientRequest succeeded\n")
+	return
+	if  clientPrivateKey.PublicKey != nil && clientPrivateKey.PublicKey.Modulus != nil {
+		fmt.Printf("Checking client key\n") //fmt.Printf("Client private key: %x\n", clientPrivateKey.PublicKey.Modulus)
+	}
 	fmt.Printf("Request: %s\n", request.String())
-	response, err := tpm.ConstructServerResponse(policyPrivateKey,
-		*signing_instructions_message, *request)
+	response, err := tpm.ConstructServerResponse(policyPrivateKey, *signing_instructions_message, *request)
 	if err != nil {
 		fmt.Printf("ConstructServerResponse failed\n")
 		return

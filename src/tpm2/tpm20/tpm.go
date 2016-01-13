@@ -2454,7 +2454,12 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
 	if err != nil {
 		return nil, nil, err
 	}
-	fmt.Printf("Quote key blob: %x\n", key_blob)
+	rsaQuoteParams, err := DecodeRsaBuf(key_blob)
+	if err != nil {
+		fmt.Printf("Can't decode quote blob\n")
+		return nil, nil, err
+	}
+	PrintRsaParams(rsaQuoteParams)
 	fmt.Printf("Name: %x\n", name)
 	fmt.Printf("parent_pw: %s, owner_pw: %s\n", parent_pw, owner_pw)
 
@@ -2472,14 +2477,36 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
 	return nil, nil, err
 	// Quote key info.
 	request.QuoteKeyInfo.Name = name
-	// request.QuoteKeyInfo.Properties
 	tmp_name := "Quote-Key"
 	request.QuoteKeyInfo.PublicKey.RsaKey.KeyName = &tmp_name
-	// request.QuoteKeyInfo.PublicKey.KeyType
-	// request.QuoteKeyInfo.PublicKey.BitModulusSize
-	// request.QuoteKeyInfo.PublicKey.Modulus
-	// request.QuoteSignAlg
-	// request.QuoteSignHashAlg
+	var enc_alg string
+	var hash_alg string
+	if  rsaQuoteParams.Enc_alg == AlgTPM_ALG_RSA {
+		enc_alg = "rsa"
+
+	} else {
+		fmt.Printf("Unsupported enc alg\n")
+		return nil, nil, err
+	}
+	if  rsaQuoteParams.Hash_alg == AlgTPM_ALG_SHA1 {
+		enc_alg = "sha1"
+	} else if  rsaQuoteParams.Hash_alg == AlgTPM_ALG_SHA256 {
+		enc_alg = "sha256"
+	} else {
+		fmt.Printf("Unsupported hash alg\n")
+		return nil, nil, err
+	}
+	request.QuoteKeyInfo.PublicKey.KeyType = &enc_alg
+	size := int32(rsaQuoteParams.Mod_sz)
+	request.QuoteKeyInfo.PublicKey.RsaKey.BitModulusSize =  &size
+	request.QuoteKeyInfo.PublicKey.RsaKey.Modulus =  rsaQuoteParams.Modulus
+	request.QuoteSignAlg = &enc_alg
+	request.QuoteSignHashAlg = &hash_alg
+
+	request.ProgramKey.ProgramName = &program_name
+	request.ProgramKey.ProgramKeyType= &enc_alg
+	request.ProgramKey.ProgramBitModulusSize= &modulus_bits
+	request.ProgramKey.ProgramKeyModulus = programPublicKey.N.Bytes()
 
 	request.QuotedBlob = attest
 	request.QuoteSignature = sig
@@ -2491,6 +2518,7 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey,
 	     signing_instructions_message SigningInstructionsMessage,
 	     request ProgramCertRequestMessage) (*ProgramCertResponseMessage, error) {
 
+fmt.Printf("ServerResponse 0\n")
 	// hash program key
 	serialized_program_key := request.ProgramKey.String();
 	sha256Hash := sha256.New()
@@ -2509,6 +2537,7 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey,
 			request.QuotedBlob, request.QuoteSignature) {
 		return nil, errors.New("Can't verify quote")
 	}
+fmt.Printf("ServerResponse 1\n")
 
 	// Create Program Key Certificate	
 	var notBefore time.Time
@@ -2537,6 +2566,7 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey,
 	if err != nil {
 		return nil, err
 	}
+fmt.Printf("ServerResponse 2\n")
 
 	// Get Endorsement blob
 	endorsement_cert, err := x509.ParseCertificate(request.EndorsementCertBlob)
@@ -2567,6 +2597,7 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey,
 		fmt.Printf("endorsement cert is not an rsa key\n")
 		return nil, errors.New("endorsement cert not an rsa key")
 	}
+fmt.Printf("ServerResponse 3\n")
 
 	// Generate credential
 	var credential []byte
@@ -2578,6 +2609,7 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey,
 	if err != nil {
 		return nil, err
 	}
+fmt.Printf("ServerResponse 4\n")
 
 	// Response
 	response := new(ProgramCertResponseMessage)
@@ -2591,6 +2623,7 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey,
 	response.IntegrityHMAC = integrityHmac 
 	response.EncIdentity = encIdentity
 
+fmt.Printf("ServerResponse 5\n")
 	// Encrypt cert with credential
 	cert_hmac, cert_out, err :=  EncryptDataWithCredential(true, hash_alg_id, 
 		credential, der_program_cert, nil)

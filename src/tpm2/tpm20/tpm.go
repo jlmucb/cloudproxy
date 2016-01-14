@@ -1714,6 +1714,7 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 	if err != nil {
 		return nil, errors.New("ConstructActivateCredential fails") 
 	}
+	fmt.Printf("MakeCredential  cmd: %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1728,6 +1729,7 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 	if err != nil {
 		return nil, errors.New("Read Tpm fails")
 	}
+	fmt.Printf("MakeCredential resp: %x\n", resp[0:read])
 
 	// Decode Response
 	if read < 10 {
@@ -2550,7 +2552,7 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey,
 	template := x509.Certificate{
 		SerialNumber: GetSerialNumber(),
 		Subject: pkix.Name {
-		Organization: []string{"Google"},
+		Organization: []string{"CloudProxyAuthority"},
 		CommonName:   *progName,
 		},
 	NotBefore: notBefore,
@@ -2560,8 +2562,9 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey,
 	BasicConstraintsValid: true,
 	}
 	pub := new(rsa.PublicKey)
-	pub.N = new(big.Int)
-	pub.N.SetBytes(request.ProgramKey.ProgramKeyModulus)
+	m := new(bit.Int)
+	m.SetBytes(request.ProgramKey.ProgramKeyModulus)
+	pub.N = m
 	pub.E = 0x00010001
 	der_program_cert, err := x509.CreateCertificate(rand.Reader,
 		&template, &template, pub, policy_private_key)
@@ -2609,6 +2612,7 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey,
 	encrypted_secret, encIdentity, integrityHmac, err := MakeCredential(protectorPublic, hash_alg_id,
 		credential[0:16], request.QuoteKeyInfo.Name)
 	if err != nil {
+		fmt.Printf("MakeCredential fails\n")
 		return nil, err
 	}
 
@@ -2616,11 +2620,10 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey,
 	response := new(ProgramCertResponseMessage)
 	response.RequestId = request.RequestId
 	response.ProgramName = progName
-	integrity_alg := "sha1"
+	integrity_alg := *request.QuoteSignHashAlg
 	response.Secret = encrypted_secret
 	response.IntegrityAlg = &integrity_alg
 	response.IntegrityHMAC = integrityHmac
-	response.IntegrityHMAC = integrityHmac 
 	response.EncIdentity = encIdentity
 
 	// Encrypt cert with credential
@@ -2635,13 +2638,14 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey,
 }
 
 // Output is der encoded Program Cert
-func ClientDecodeServerResponse(rw io.ReadWriter, endorsement_handle Handle,
-		quote_handle Handle, password string,
+func ClientDecodeServerResponse(rw io.ReadWriter, protectorHandle Handle,
+		quoteHandle Handle, password string,
 		response ProgramCertResponseMessage) ([]byte, error) {
-	certInfo, err := ActivateCredential(rw, quote_handle, endorsement_handle, "", password, 
-		response.EncIdentity, response.Secret)
+	certBlob := append(response.IntegrityHMAC, response.EncIdentity...)
+	certInfo, err := ActivateCredential(rw, quoteHandle, protectorHandle, "", password, 
+		certBlob, response.Secret)
 	if err != nil {
-		fmt.Printf("ActivateCredential failed\n")
+		fmt.Printf("ActivateCredential failed ", err, "\n")
 		return nil, err
 	}
 	fmt.Printf("certInfo: %x\n", certInfo)

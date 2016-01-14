@@ -173,7 +173,7 @@ func CreateSensitiveArea(in1 []byte, in2 []byte) ([]byte) {
 		return nil
 	}
 
-	return ret 
+	return ret
 }
 
 func DecodeRsaBuf(rsa_buf []byte) (*RsaParams, error) {
@@ -2641,6 +2641,7 @@ func ClientDecodeServerResponse(rw io.ReadWriter, endorsement_handle Handle,
 	certInfo, err := ActivateCredential(rw, quote_handle, endorsement_handle, "", password, 
 		response.EncIdentity, response.Secret)
 	if err != nil {
+		fmt.Printf("ActivateCredential failed\n")
 		return nil, err
 	}
 	fmt.Printf("certInfo: %x\n", certInfo)
@@ -2649,6 +2650,7 @@ func ClientDecodeServerResponse(rw io.ReadWriter, endorsement_handle Handle,
 	_, out, err :=  EncryptDataWithCredential(false, uint16(AlgTPM_ALG_SHA1),
 		certInfo, response.EncryptedCert, response.EncryptedCertHmac)
 	if err != nil {
+		fmt.Printf("EncryptDataWithCredential failed\n")
 		return nil, err
 	}
 	return out, nil

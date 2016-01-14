@@ -174,17 +174,16 @@ func main() {
 		fmt.Printf("response is nil\n")
 	}
 	fmt.Printf("Response for ProgramName %s\n", *response.ProgramName)
-/*
 	cert, err := tpm.ClientDecodeServerResponse(rw, protectorHandle,
-                quoteHandle, *quoteOwnerPassword, *response)
+                tpm.Handle(*permQuoteHandle), *quoteOwnerPassword, *response)
 	if err != nil {
 		fmt.Printf("ClientDecodeServerResponse failed\n")
 		return
 	}
+	fmt.Printf("Cert: %x\n", cert)
 
 	// Save cert so we can interpret it.
-	fmt.Printf("Client cert: %x\n", cert)
- */
+	// fmt.Printf("Client cert: %x\n", cert)
 
 	fmt.Printf("Cloudproxy protocol succeeds\n")
 	return

@@ -1714,7 +1714,7 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 	if err != nil {
 		return nil, errors.New("ConstructActivateCredential fails") 
 	}
-	fmt.Printf("MakeCredential  cmd: %x\n", cmd)
+	fmt.Printf("ActivateCredential  cmd: %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1729,7 +1729,7 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 	if err != nil {
 		return nil, errors.New("Read Tpm fails")
 	}
-	fmt.Printf("MakeCredential resp: %x\n", resp[0:read])
+	fmt.Printf("ActivateCredential resp: %x\n", resp[0:read])
 
 	// Decode Response
 	if read < 10 {
@@ -2642,7 +2642,7 @@ func ClientDecodeServerResponse(rw io.ReadWriter, protectorHandle Handle,
 		quoteHandle Handle, password string,
 		response ProgramCertResponseMessage) ([]byte, error) {
 	certBlob := append(response.IntegrityHMAC, response.EncIdentity...)
-	certInfo, err := ActivateCredential(rw, quoteHandle, protectorHandle, "", password, 
+	certInfo, err := ActivateCredential(rw, quoteHandle, protectorHandle, "", password,
 		certBlob, response.Secret)
 	if err != nil {
 		fmt.Printf("ActivateCredential failed ", err, "\n")

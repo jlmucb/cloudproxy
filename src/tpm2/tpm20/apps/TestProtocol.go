@@ -169,8 +169,10 @@ func main() {
 		fmt.Printf("ConstructServerResponse failed\n")
 		return
 	}
-	return
-	fmt.Printf("Response for ProgramName %s\n", response.ProgramName)
+	if response == nil {
+		fmt.Printf("response is nil\n")
+	}
+	// fmt.Printf("Response for ProgramName %s\n", response.ProgramName)
 /*
 	cert, err := tpm.ClientDecodeServerResponse(rw, protectorHandle,
                 quoteHandle, *quoteOwnerPassword, *response)

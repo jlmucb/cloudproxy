@@ -2606,11 +2606,11 @@ fmt.Printf("ServerResponse 2\n")
 fmt.Printf("ServerResponse 3\n")
 
 	// Generate credential
-	var credential []byte
+	var credential [16]byte
 	rand.Read(credential[0:16])
-	fmt.Printf("Credential: %x\n", credential)
-	encrypted_secret, encIdentity, integrityHmac, err := MakeCredential(
-		protectorPublic, hash_alg_id,
+	fmt.Printf("Credential: %x, hashid: %x\n", credential, hash_alg_id)
+	fmt.Printf("Name: %x\n", request.QuoteKeyInfo.Name)
+	encrypted_secret, encIdentity, integrityHmac, err := MakeCredential(protectorPublic, hash_alg_id,
 		credential[0:16], request.QuoteKeyInfo.Name)
 	if err != nil {
 		return nil, err
@@ -2632,7 +2632,7 @@ fmt.Printf("ServerResponse 4\n")
 fmt.Printf("ServerResponse 5\n")
 	// Encrypt cert with credential
 	cert_hmac, cert_out, err :=  EncryptDataWithCredential(true, hash_alg_id, 
-		credential, der_program_cert, nil)
+		credential[0:16], der_program_cert, nil)
 	if err != nil {
 		return nil, err
 	}

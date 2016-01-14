@@ -164,6 +164,7 @@ func main() {
 	fmt.Printf("ConstructClientRequest succeeded\n")
 	fmt.Printf("Key: %s\n", proto.CompactTextString(protoClientPrivateKey))
 	fmt.Printf("Request: %s\n", proto.CompactTextString(request))
+	fmt.Printf("Program name from request: %s\n", *request.ProgramKey.ProgramName)
 	response, err := tpm.ConstructServerResponse(policyPrivateKey, *signing_instructions_message, *request)
 	if err != nil {
 		fmt.Printf("ConstructServerResponse failed\n")
@@ -172,7 +173,7 @@ func main() {
 	if response == nil {
 		fmt.Printf("response is nil\n")
 	}
-	// fmt.Printf("Response for ProgramName %s\n", response.ProgramName)
+	fmt.Printf("Response for ProgramName %s\n", *response.ProgramName)
 /*
 	cert, err := tpm.ClientDecodeServerResponse(rw, protectorHandle,
                 quoteHandle, *quoteOwnerPassword, *response)

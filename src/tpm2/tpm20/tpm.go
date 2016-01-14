@@ -2520,7 +2520,6 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey,
 	     signing_instructions_message SigningInstructionsMessage,
 	     request ProgramCertRequestMessage) (*ProgramCertResponseMessage, error) {
 
-fmt.Printf("ServerResponse 0\n")
 	if request.ProgramKey == nil {
 		fmt.Printf("program key is nil\n")
 	}
@@ -2536,19 +2535,18 @@ fmt.Printf("ServerResponse 0\n")
 	} else {
 		hash_alg_id = uint16(AlgTPM_ALG_SHA1)
 	}
-fmt.Printf("ServerResponse 1\n")
 	if !VerifyQuote(hashed_program_key, *request.QuoteKeyInfo, hash_alg_id,
 			request.QuotedBlob, request.QuoteSignature) {
 		return nil, errors.New("Can't verify quote")
 	}
 
 	// Create Program Key Certificate	
+	progName := request.ProgramKey.ProgramName
 /*
 	var notBefore time.Time
 	notBefore = time.Now()
 	validFor := 365*24*time.Hour
 	notAfter := notBefore.Add(validFor)
-	progName := request.ProgramKey.ProgramName
 	template := x509.Certificate{
 		SerialNumber: GetSerialNumber(),
 		Subject: pkix.Name {
@@ -2572,7 +2570,6 @@ fmt.Printf("ServerResponse 1\n")
 	}
 */
 	der_program_cert := []byte{0,1,2,3,4,5,6,7,8}
-fmt.Printf("ServerResponse 2\n")
 
 	// Get Endorsement blob
 	endorsement_cert, err := x509.ParseCertificate(request.EndorsementCertBlob)
@@ -2603,7 +2600,6 @@ fmt.Printf("ServerResponse 2\n")
 		fmt.Printf("endorsement cert is not an rsa key\n")
 		return nil, errors.New("endorsement cert not an rsa key")
 	}
-fmt.Printf("ServerResponse 3\n")
 
 	// Generate credential
 	var credential [16]byte
@@ -2615,21 +2611,18 @@ fmt.Printf("ServerResponse 3\n")
 	if err != nil {
 		return nil, err
 	}
-fmt.Printf("ServerResponse 4\n")
 
 	// Response
 	response := new(ProgramCertResponseMessage)
 	response.RequestId = request.RequestId
-	response.ProgramName = request.ProgramKey.ProgramName
+	response.ProgramName = progName
 	integrity_alg := "sha1"
 	response.Secret = encrypted_secret
 	response.IntegrityAlg = &integrity_alg
 	response.IntegrityHMAC = integrityHmac
-	// encIdentity should be an encrypted correctly marshalled
 	response.IntegrityHMAC = integrityHmac 
 	response.EncIdentity = encIdentity
 
-fmt.Printf("ServerResponse 5\n")
 	// Encrypt cert with credential
 	cert_hmac, cert_out, err :=  EncryptDataWithCredential(true, hash_alg_id, 
 		credential[0:16], der_program_cert, nil)

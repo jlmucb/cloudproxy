@@ -18,12 +18,92 @@ package main
 import (
 	"crypto/rsa"
 	"crypto/x509"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
+	"io/ioutil"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/jlmucb/cloudproxy/src/tpm2/tpm20"
 )
+
+// return handle, policy digest
+func assistCreateSession(rw io.ReadWriteCloser, hash_alg uint16) (tpm.Handle, []byte, error) {
+	nonceCaller := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+	var secret []byte
+	sym := uint16(tpm.AlgTPM_ALG_NULL)
+
+	session_handle, policy_digest, err := tpm.StartAuthSession(rw,
+		tpm.Handle(tpm.OrdTPM_RH_NULL),
+		tpm.Handle(tpm.OrdTPM_RH_NULL), nonceCaller, secret,
+		uint8(tpm.OrdTPM_SE_POLICY), sym, hash_alg)
+	if err != nil {
+		return tpm.Handle(0), nil, errors.New("Can't start session")
+	}
+	fmt.Printf("policy digest  : %x\n", policy_digest)
+
+	err = tpm.PolicyPassword(rw, session_handle)
+	if err != nil {
+		fmt.Printf("PolicyPcr fails")
+		return tpm.Handle(0), nil, errors.New("Can't set policy password")
+	}
+	var tpm_digest []byte
+	err = tpm.PolicyPcr(rw, session_handle, tpm_digest, []int{7})
+	if err != nil {
+		fmt.Printf("PolicyPcr fails")
+		return tpm.Handle(0), nil, errors.New("Can't set policy pcr")
+	}
+
+	policy_digest, err = tpm.PolicyGetDigest(rw, session_handle)
+	if err != nil {
+		fmt.Printf("PolicyGetDigest after PolicyPcr fails")
+		return tpm.Handle(0), nil, errors.New("Can't start session")
+	}
+	fmt.Printf("policy digest after PolicyPcr: %x\n", policy_digest)
+	return session_handle, policy_digest, nil
+}
+
+// out: private, public
+func assistSeal(rw io.ReadWriteCloser, parentHandle tpm.Handle, toSeal []byte,
+	parentPassword string, ownerPassword string,
+	pcrs[]int, policy_digest []byte) ([]byte, []byte, error) {
+
+	var empty []byte
+	keyedhashparms := tpm.KeyedHashParams{uint16(tpm.AlgTPM_ALG_KEYEDHASH), uint16(tpm.AlgTPM_ALG_SHA1),
+		uint32(0x00000012), empty, uint16(tpm.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm.AlgTPM_ALG_CFB), uint16(tpm.AlgTPM_ALG_NULL), empty}
+	private_blob, public_blob, err := tpm.CreateSealed(rw, parentHandle, policy_digest,
+		parentPassword,  ownerPassword, toSeal, []int{7}, keyedhashparms)
+	if err != nil {
+		return nil, nil, nil
+	}
+	return private_blob, public_blob, nil
+}
+
+// out: unsealed blob, nonce
+func assistUnseal(rw io.ReadWriteCloser, sessionHandle tpm.Handle, primaryHandle tpm.Handle,
+	pub []byte, priv []byte, parentPassword string, ownerPassword string,
+	policy_digest []byte) ([]byte, []byte, error) {
+
+	// Load Sealed
+	sealHandle, _, err := tpm.Load(rw, primaryHandle, parentPassword, ownerPassword,
+		pub, priv)
+	if err != nil {
+		fmt.Printf("Load fails\n")
+		return nil, nil, errors.New("Load failed")
+	}
+	fmt.Printf("Load succeeded\n")
+
+	// Unseal
+	unsealed, nonce, err := tpm.Unseal(rw, sealHandle, ownerPassword,
+		sessionHandle, policy_digest)
+	if err != nil {
+		fmt.Printf("Unseal fails\n")
+		return nil, nil, errors.New("Unseal failed")
+	}
+	return unsealed, nonce, err
+}
 
 // This program runs the cloudproxy protocol.
 func main() {
@@ -45,6 +125,14 @@ func main() {
 		"../tmptest/signing_instructions", "signing instructions")
 	quoteOwnerPassword := flag.String("Quote owner password", "01020304",
 		"quote owner password")
+	sealedOwnerPassword := flag.String("Sealed owner password", "01020304",
+		"sealed owner password")
+	sealedParentPassword := flag.String("Sealed parent password", "01020304",
+		"sealed parent password")
+	sealedProgramKeyFile := flag.String("Sealed program key file", "../tmptest/test_program_key",
+		"sealed program key file")
+	programCertFile := flag.String("Program cert file", "../tmptest/test_program_key.cert",
+		"sealed program key file")
 	programName := flag.String("Application program name", "TestProgram",
 		"program name")
 	flag.Parse()
@@ -57,6 +145,9 @@ func main() {
 		*programName, *fileNameSigningInstructions)
 	fmt.Printf("modulus size: %d,  hash algorithm: %s\n",
 		*keySize, *hashAlg)
+	fmt.Printf("sealedParent password: %s,  sealedOwner password : %s, sealed key file: %s\n",
+		*sealedParentPassword, *sealedOwnerPassword, *sealedProgramKeyFile)
+	fmt.Printf("Program key cert: %s\n", *programCertFile)
 
 	// Read Endorsement key info
 	derEndorsementCert := tpm.RetrieveFile(*fileNameEndorsementCert)
@@ -165,7 +256,30 @@ func main() {
 	fmt.Printf("Key: %s\n", proto.CompactTextString(protoClientPrivateKey))
 	fmt.Printf("Request: %s\n", proto.CompactTextString(request))
 	fmt.Printf("Program name from request: %s\n", *request.ProgramKey.ProgramName)
-	response, err := tpm.ConstructServerResponse(policyPrivateKey, *signing_instructions_message, *request)
+
+/*
+	// Create Session for seal/unseal
+	sessionHandle, policy_digest, err := assistCreateSession(rw, tpm.AlgTPM_ALG_SHA1)
+	if err != nil {
+		fmt.Printf("Can't start session for Seal\n")
+		return
+	}
+
+	// Serialize the client private key proto, seal it and save it.
+	serializedProgramKey := proto.CompactTextString(protoClientPrivateKey)
+	sealed_priv, sealed_pub, err := assistSeal(rw, tpm.Handle(*permPrimaryHandle),
+		[]byte(serializedProgramKey), *sealedParentPassword, *sealedOwnerPassword,
+		[]int{7}, policy_digest)
+	if err != nil {
+		fmt.Printf("Can't seal Program private key\n")
+		return
+		}
+	ioutil.WriteFile(*sealedProgramKeyFile + ".private", sealed_priv, 0644)
+	ioutil.WriteFile(*sealedProgramKeyFile + ".public", sealed_pub, 0644)
+*/
+
+	response, err := tpm.ConstructServerResponse(policyPrivateKey, *signing_instructions_message,
+		*request)
 	if err != nil {
 		fmt.Printf("ConstructServerResponse failed\n")
 		return
@@ -180,10 +294,26 @@ func main() {
 		fmt.Printf("ClientDecodeServerResponse failed\n")
 		return
 	}
-	fmt.Printf("Cert: %x\n", cert)
 
-	// Save cert so we can interpret it.
-	// fmt.Printf("Client cert: %x\n", cert)
+/*
+	// recover program private key
+	programPrivateBlob := tpm.RetrieveFile(*sealedProgramKeyFile + ".private")
+	programPublicBlob := tpm.RetrieveFile(*sealedProgramKeyFile + ".public")
+	unsealed, _, err := assistUnseal(rw, sessionHandle, tpm.Handle(*permPrimaryHandle),
+		programPublicBlob, programPrivateBlob, "", "", policy_digest)
+
+	newPrivKeyMsg := new(tpm.RsaPrivateKeyMessage)
+        err = proto.Unmarshal(unsealed, newPrivKeyMsg)
+        newProgramKey, err := tpm.UnmarshalRsaPrivateFromProto(newPrivKeyMsg)
+        if err != nil {
+                fmt.Printf("Can't unmarshal key to proto\n")
+        }	
+	fmt.Printf("Recovered Program keys: %x\n", newProgramKey)
+ */
+
+	// Save cert 
+	fmt.Printf("Client cert: %x\n", cert)
+	ioutil.WriteFile(*programCertFile, cert, 0644)
 
 	fmt.Printf("Cloudproxy protocol succeeds\n")
 	return

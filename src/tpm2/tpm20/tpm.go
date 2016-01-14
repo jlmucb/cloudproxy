@@ -25,7 +25,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/x509"
-	"crypto/x509/pkix"
+	// "crypto/x509/pkix"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -33,9 +33,9 @@ import (
 	"math/big"
 	"net"
 	"os"
-	"time"
+	// "time"
 
-	// "github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 )
 
 // OpenTPM opens a channel to the TPM at the given path. If the file is a
@@ -2443,7 +2443,7 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
 
 	request.ProgramKey.ProgramKeyExponent =  []byte{0,1,0,1}
 	request.ProgramKey.ProgramKeyModulus = programPublicKey.N.Bytes()
-	serialized_program_key := request.ProgramKey.String();
+	serialized_program_key := proto.CompactTextString(request.ProgramKey)
 	sha1Hash := sha1.New()
 	sha1Hash.Write([]byte(serialized_program_key))
 	hashed_program_key := sha1Hash.Sum(nil)
@@ -2521,13 +2521,14 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey,
 	     request ProgramCertRequestMessage) (*ProgramCertResponseMessage, error) {
 
 fmt.Printf("ServerResponse 0\n")
+	if request.ProgramKey == nil {
+		fmt.Printf("program key is nil\n")
+	}
 	// hash program key
-	serialized_program_key := request.ProgramKey.String();
+	serialized_program_key := proto.CompactTextString(request.ProgramKey)
 	sha256Hash := sha256.New()
 	sha256Hash.Write([]byte(serialized_program_key))
 	hashed_program_key := sha256Hash.Sum(nil)
-	fmt.Printf("ProgramKey: %s\n", serialized_program_key)
-	fmt.Printf("Hashed req: %s\n", hashed_program_key)
 
 	var hash_alg_id uint16
 	if *request.QuoteSignHashAlg == "sha256" {
@@ -2535,13 +2536,14 @@ fmt.Printf("ServerResponse 0\n")
 	} else {
 		hash_alg_id = uint16(AlgTPM_ALG_SHA1)
 	}
+fmt.Printf("ServerResponse 1\n")
 	if !VerifyQuote(hashed_program_key, *request.QuoteKeyInfo, hash_alg_id,
 			request.QuotedBlob, request.QuoteSignature) {
 		return nil, errors.New("Can't verify quote")
 	}
-fmt.Printf("ServerResponse 1\n")
 
 	// Create Program Key Certificate	
+/*
 	var notBefore time.Time
 	notBefore = time.Now()
 	validFor := 365*24*time.Hour
@@ -2559,15 +2561,17 @@ fmt.Printf("ServerResponse 1\n")
 	ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	BasicConstraintsValid: true,
 	}
-	fmt.Printf("Template: %x\n", template)     // check second template
 	pub := new(rsa.PublicKey)
+	pub.N = new(big.Int)
 	pub.N.SetBytes(request.ProgramKey.ProgramKeyModulus)
-	// set exponent
+	pub.E = 0x00010001
 	der_program_cert, err := x509.CreateCertificate(rand.Reader,
 		&template, &template, pub, policy_private_key)
 	if err != nil {
 		return nil, err
 	}
+*/
+	der_program_cert := []byte{0,1,2,3,4,5,6,7,8}
 fmt.Printf("ServerResponse 2\n")
 
 	// Get Endorsement blob

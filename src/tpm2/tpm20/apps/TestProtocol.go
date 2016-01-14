@@ -16,7 +16,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
 	"flag"
@@ -73,6 +72,18 @@ func main() {
 	}
 	fmt.Printf("Endorsement cert: %x\n", derEndorsementCert)
 
+	var protectorPublic *rsa.PublicKey
+	switch k :=  endorsement_cert.PublicKey.(type) {
+	case  *rsa.PublicKey:
+		protectorPublic = k
+	case  *rsa.PrivateKey:
+		protectorPublic = &k.PublicKey
+	default:
+		fmt.Printf("endorsement cert is not an rsa key\n")
+		return
+	}
+	fmt.Printf("Endorsement publix: %x\n", protectorPublic)
+
 	// Open tpm
 	rw, err := tpm.OpenTPM("/dev/tpm0")
 	if err != nil {
@@ -95,41 +106,7 @@ func main() {
 		return
 	}
 	fmt.Printf("CreatePrimary succeeded\n")
-
-
-	// ReadPublic
-	protectorPublicBlob, name, _, err := tpm.ReadPublic(rw, protectorHandle)
-	if err != nil {
-		fmt.Printf("Can't read protector public", err, "\n")
-		return
-	}
-	fmt.Printf("ReadPublic protector succeeded\n")
-	fmt.Printf("Public         blob: %x\n", protectorPublicBlob)
-	fmt.Printf("Name	   blob: %x\n", name)
-	rsaParams, err := tpm.DecodeRsaBuf(protectorPublicBlob)
-	if err != nil {
-		fmt.Printf("Can't interpret protector public", err, "\n")
-		return
-	}
-	tpm.PrintRsaParams(rsaParams)
-
-	var protectorPublic *rsa.PublicKey
-	switch k :=  endorsement_cert.PublicKey.(type) {
-	case  *rsa.PublicKey:
-		protectorPublic = k
-	case  *rsa.PrivateKey:
-		protectorPublic = &k.PublicKey
-	default:
-		fmt.Printf("endorsement cert is not an rsa key\n")
-		return
-	}
-	fmt.Printf("Public key from ReadPublic: %x\n", protectorPublic);
-
-	// Does endorsement cert have the right key?
-	if bytes.Compare(protectorPublic.N.Bytes(), rsaParams.Modulus) != 0 {
-		fmt.Printf("Endorsement key does not match endorsement cert\n")
-		return
-	}
+	fmt.Printf("Endorsement handle: %x\n", protectorHandle)
 
 	// Read Policy cert
 	derPolicyCert := tpm.RetrieveFile(*fileNamePolicyCert)
@@ -185,22 +162,14 @@ func main() {
 		return
 	}
 	fmt.Printf("ConstructClientRequest succeeded\n")
-	if protoClientPrivateKey == nil {
-		fmt.Printf("clientPrivateKey is nil\n")
-	}
-	if request == nil {
-		fmt.Printf("request is nil\n")
-	}
-	return
-	if  protoClientPrivateKey != nil  {
-		fmt.Printf("Checking client key\n") //fmt.Printf("Client private key: %x\n", clientPrivateKey.PublicKey.Modulus)
-	}
+	fmt.Printf("Key: %s\n", proto.CompactTextString(protoClientPrivateKey))
 	fmt.Printf("Request: %s\n", proto.CompactTextString(request))
 	response, err := tpm.ConstructServerResponse(policyPrivateKey, *signing_instructions_message, *request)
 	if err != nil {
 		fmt.Printf("ConstructServerResponse failed\n")
 		return
 	}
+	return
 	fmt.Printf("Response for ProgramName %s\n", response.ProgramName)
 /*
 	cert, err := tpm.ClientDecodeServerResponse(rw, protectorHandle,

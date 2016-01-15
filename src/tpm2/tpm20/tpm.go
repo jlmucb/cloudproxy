@@ -1452,6 +1452,7 @@ func CreateSealed(rw io.ReadWriter, parent Handle, policy_digest []byte,
 	if err != nil {
 		return nil, nil, errors.New("ConstructCreateSealed fails") 
 	}
+	fmt.Printf("Seal cmd: %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1466,6 +1467,7 @@ func CreateSealed(rw io.ReadWriter, parent Handle, policy_digest []byte,
 	if err != nil {
 		return nil, nil, errors.New("Read Tpm fails")
 	}
+	fmt.Printf("Seal resp: %x\n", resp[0:read])
 
 	// Decode Response
 	if read < 10 {

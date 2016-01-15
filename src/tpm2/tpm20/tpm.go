@@ -25,7 +25,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/x509"
-	// "crypto/x509/pkix"
+	"crypto/x509/pkix"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -33,7 +33,7 @@ import (
 	"math/big"
 	"net"
 	"os"
-	// "time"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -2582,7 +2582,6 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey,
 
 	// Create Program Key Certificate	
 	progName := request.ProgramKey.ProgramName
-/*
 	var notBefore time.Time
 	notBefore = time.Now()
 	validFor := 365*24*time.Hour
@@ -2600,17 +2599,17 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey,
 	BasicConstraintsValid: true,
 	}
 	pub := new(rsa.PublicKey)
-	m := new(bit.Int)
+	m := new(big.Int)
 	m.SetBytes(request.ProgramKey.ProgramKeyModulus)
 	pub.N = m
 	pub.E = 0x00010001
-	der_program_cert, err := x509.CreateCertificate(rand.Reader,
-		&template, &template, pub, policy_private_key)
+	der_program_cert, err := x509.CreateCertificate(rand.Reader, &template, &template,
+		pub, policy_private_key)
 	if err != nil {
+		fmt.Printf("Can't create certificates\n")
 		return nil, err
 	}
-*/
-	der_program_cert := []byte{0,1,2,3,4,5,6,7,8}
+	// der_program_cert := []byte{0,1,2,3,4,5,6,7,8}
 
 	// Get Endorsement blob
 	endorsement_cert, err := x509.ParseCertificate(request.EndorsementCertBlob)
@@ -2621,8 +2620,8 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey,
 
 	// roots := x509.NewCertPool(
 	// opts := x509.VerifyOptions{
-	//	DNSName: "mail.google.com",
 	//	Roots:   roots,
+	// }
 
 	/*
 	// Verify Endorsement Cert

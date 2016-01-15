@@ -355,7 +355,7 @@ var rand_bytes []byte
 	out :=  []interface{}{&rand_bytes}
 	err := unpack(in, out)
 	if err != nil {
-	return nil, errors.New("Can't decode GetRandom response")
+		return nil, errors.New("Can't decode GetRandom response")
 	}
 	return rand_bytes, nil
 }
@@ -363,21 +363,20 @@ var rand_bytes []byte
 // GetRandom gets random bytes from the TPM.
 func GetRandom(rw io.ReadWriteCloser, size uint32) ([]byte, error) {
 	// Construct command
-	x, err:= ConstructGetRandom(size)
+	cmd, err:= ConstructGetRandom(size)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, err
 	}
 
 	// Send command
-	_, err = rw.Write(x)
+	_, err = rw.Write(cmd)
 	if err != nil {
 		return nil, errors.New("Write Tpm fails") 
 	}
 
 	// Get response
-	var resp []byte
-	resp = make([]byte, 1024, 1024)
+	resp := make([]byte, 1024, 1024)
 	read, err := rw.Read(resp)
 	if err != nil {
 		return nil, errors.New("Read Tpm fails")
@@ -389,14 +388,14 @@ func GetRandom(rw io.ReadWriteCloser, size uint32) ([]byte, error) {
 	}
 	_, size, status, err := DecodeCommandResponse(resp[0:10])
 	if err != nil {
-		fmt.Printf("DecodeCommandResponse %s\n", err)
+		fmt.Printf("DecodeCommandResponse ", err, "\n")
 		return nil, err
 	}
 	if status != errSuccess {
 	}
 	rand, err :=  DecodeGetRandom(resp[10:read])
 	if err != nil {
-		fmt.Printf("DecodeGetRandom %s\n", err)
+		fmt.Printf("DecodeGetRandom ", err, "\n")
 		return nil,err
 	}
 	return rand, nil
@@ -613,7 +612,7 @@ func DecodeGetCapabilities(in []byte) (uint32, []uint32, error) {
 	var handle uint32
 	handle_out :=  []interface{}{&handle}
 	for i:= 0; i < int(num_handles); i++ {
-		err := unpack(in[8 + 4 * i:18:12 + 4 * i], handle_out)
+		err := unpack(in[8 + 4 * i:12 + 4 * i], handle_out)
 		if err != nil {
 			return 0, nil, errors.New("Can't decode GetCapabilities handle")
 		}
@@ -627,21 +626,20 @@ func DecodeGetCapabilities(in []byte) (uint32, []uint32, error) {
 //	Output: output buf
 func GetCapabilities(rw io.ReadWriter, cap uint32, count uint32, property uint32) ([]uint32, error) {
 	// Construct command
-	x, err:= ConstructGetCapabilities(cap, count, property)
+	cmd, err:= ConstructGetCapabilities(cap, count, property)
 	if err != nil {
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return nil, err
 	}
 
 	// Send command
-	_, err = rw.Write(x)
+	_, err = rw.Write(cmd)
 	if err != nil {
 		return nil, errors.New("Write Tpm fails") 
 	}
 
 	// Get response
-	var resp []byte
-	resp = make([]byte, 4096, 4096)
+	resp := make([]byte, 4096, 4096)
 	read, err := rw.Read(resp)
 	if err != nil {
 		return nil, errors.New("Read Tpm fails")

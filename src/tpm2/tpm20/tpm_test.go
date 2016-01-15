@@ -24,21 +24,7 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-// Test Flushall
-func TestFlushall(t *testing.T) {
-	fmt.Printf("Flushall\n")
-
-	// Open TPM
-	rw, err := OpenTPM("/dev/tpm0")
-	if err != nil {
-		fmt.Printf("OpenTPM failed %s\n", err)
-		return
-	}
-	Flushall(rw)
-	rw.Close()
-}
-
-// Test GetRandom
+// Test Endian
 func TestEndian(t *testing.T) {
 	l := uint16(0xff12)
 	v := byte(l >> 8)
@@ -61,13 +47,16 @@ func TestGetRandom(t *testing.T) {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
+	fmt.Printf("Flushall\n")
+	Flushall(rw)
 
+	fmt.Printf("GetRandom\n")
 	rand, err :=  GetRandom(rw, 16)
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		fmt.Printf("GetRandon Error ", err, "\n")
 		t.Fatal("GetRandom failed\n")
 	}
-	fmt.Printf("rand: %x\n", rand)
+	fmt.Printf("rand: %x\n", rand[0:len(rand)])
 	rw.Close()
 }
 
@@ -81,6 +70,8 @@ func TestReadPcrs(t *testing.T) {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
+	fmt.Printf("Flushall\n")
+	Flushall(rw)
 
 	pcr := []byte{0x03, 0x80, 0x00, 0x00}
 	counter, pcr_out, alg, digest, err := ReadPcrs(rw, byte(4), pcr)
@@ -101,6 +92,9 @@ func TestReadClock(t *testing.T) {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
+	fmt.Printf("Flushall\n")
+	Flushall(rw)
+
 	current_time, current_clock, err := ReadClock(rw)
 	if err != nil {
 		t.Fatal("ReadClock failed\n")
@@ -120,6 +114,9 @@ func TestGetCapabilities(t *testing.T) {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
+	fmt.Printf("Flushall\n")
+	Flushall(rw)
+
 	handles, err := GetCapabilities(rw, OrdTPM_CAP_HANDLES, 1, 0x80000000)
 	if err != nil {
 		t.Fatal("GetCapabilities failed\n")

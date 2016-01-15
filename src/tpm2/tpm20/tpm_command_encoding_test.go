@@ -53,7 +53,7 @@ func TestDecodeGetRandom(t *testing.T) {
         if status != errSuccess {
                 t.Fatal("error status\n")
         }
-        rand, err :=  DecodeGetRandom(test_resp_bytes[10:])
+        rand, err :=  DecodeGetRandom(test_resp_bytes[10:len(test_resp_bytes)])
         if err != nil {
                 t.Fatal("DecodeGetRandom error\n")
         }
@@ -90,7 +90,7 @@ func TestDecodeReadPcrs(t *testing.T) {
         if err != nil {
                 t.Fatal("DecodeCommandResponse error\n")
         }
-	counter, pcr, alg, digest, err := DecodeReadPcrs(test_resp_bytes[10:])
+	counter, pcr, alg, digest, err := DecodeReadPcrs(test_resp_bytes[10:len(test_resp_bytes)])
         if err != nil {
                 t.Fatal("DecodeReadPcrs error\n")
         }
@@ -129,7 +129,7 @@ func TestDecodeReadClock(t *testing.T) {
         if err != nil || status != 0 {
 		t.Fatal("DecodeCommandResponse fails\n")
         }
-	current_time, curent_clock, err := DecodeReadClock(test_resp_bytes[10:])
+	current_time, curent_clock, err := DecodeReadClock(test_resp_bytes[10:len(test_resp_bytes)])
 	if err != nil {
 		t.Fatal("DecodeReadClock fails\n")
 	}
@@ -165,7 +165,7 @@ func TestDecodeGetCapabilities(t *testing.T) {
         }
         fmt.Printf("Tag: %x, size: %x, error code: %x\n", tag, size, status)
 
-	cap_reported, handles, err := DecodeGetCapabilities(test_resp_bytes[10:])
+	cap_reported, handles, err := DecodeGetCapabilities(test_resp_bytes[10:len(test_resp_bytes)])
 	if err != nil {
 		t.Fatal("DecodeGetCapabilities\n")
 	}
@@ -243,7 +243,7 @@ func TestDecodeLoad(t *testing.T) {
         if status != errSuccess {
                 t.Fatal("error status\n")
         }
-	handle, name, err := DecodeLoad(test_resp_bytes[10:])
+	handle, name, err := DecodeLoad(test_resp_bytes[10:len(test_resp_bytes)])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -370,7 +370,7 @@ func TestDecodePolicyGetDigest(t *testing.T) {
         if err != nil || status != 0 {
 		t.Fatal("DecodeCommandResponse fails\n")
         }
-	digest, err := DecodePolicyGetDigest(test_resp_bytes[10:])
+	digest, err := DecodePolicyGetDigest(test_resp_bytes[10:len(test_resp_bytes)])
         if err != nil || status != 0 {
 		t.Fatal("DecodePolicyGetDigest fails\n")
         }
@@ -429,11 +429,8 @@ func TestConstructCreateSealed(t *testing.T) {
 	digest := []byte{0x0d, 0xeb, 0xb4, 0xcc, 0x9d, 0x21, 0x58, 0xcf, 0x70, 0x51, 0xa1, 0x9c, 0xa2, 0x4b,
 			 0x31, 0xe3, 0x5d, 0x53, 0xb6, 0x4d}
         parms := KeyedHashParams{uint16(AlgTPM_ALG_KEYEDHASH),
-				 uint16(AlgTPM_ALG_SHA1),
-                        	 uint32(0x00000012),
-				 empty,
-				 uint16(AlgTPM_ALG_AES), uint16(128),
-                        	 uint16(AlgTPM_ALG_CFB),
+				 uint16(AlgTPM_ALG_SHA1), uint32(0x00000012), empty,
+				 uint16(AlgTPM_ALG_AES), uint16(128), uint16(AlgTPM_ALG_CFB),
 				 uint16(AlgTPM_ALG_NULL), empty}
 	PrintKeyedHashParams(&parms)
         cmd_bytes, err := ConstructCreateSealed(Handle(0x80000000), digest, "01020304", "01020304",
@@ -471,7 +468,7 @@ func TestDecodeCreateSealed(t *testing.T) {
         if status != errSuccess {
                 t.Fatal("error status\n")
         }
-	private_blob, public_blob, err := DecodeCreateSealed(test_resp_bytes[10:])
+	private_blob, public_blob, err := DecodeCreateSealed(test_resp_bytes[10:len(test_resp_bytes)])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -569,7 +566,7 @@ func TestDecodeUnseal(t *testing.T) {
         if err != nil || status != 0 {
 		t.Fatal("DecodeCommandResponse fails\n")
         }
-	unsealed, digest, err := DecodeUnseal(test_resp_bytes[10:])
+	unsealed, digest, err := DecodeUnseal(test_resp_bytes[10:len(test_resp_bytes)])
         if err != nil {
 		t.Fatal("DecodeUnseal fails\n")
         }
@@ -622,7 +619,7 @@ func TestDecodeQuote(t *testing.T) {
         if err != nil || status != 0 {
 		t.Fatal("DecodeCommandResponse fails\n")
         }
-	attest, _, _, sig, err := DecodeQuote(test_resp_bytes[10:])
+	attest, _, _, sig, err := DecodeQuote(test_resp_bytes[10:len(test_resp_bytes)])
 	if err != nil {
 		t.Fatal("DecodeQuote fails\n")
 	}
@@ -700,7 +697,7 @@ func TestDecodeReadPublic(t *testing.T) {
         if status != errSuccess {
                 t.Fatal("error status\n")
         }
-	public_blob, name, qualified_name, err := DecodeReadPublic(test_resp_bytes[10:])
+	public_blob, name, qualified_name, err := DecodeReadPublic(test_resp_bytes[10:len(test_resp_bytes)])
 	if err != nil {
 		t.Fatal(err)
 	}

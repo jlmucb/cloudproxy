@@ -16,6 +16,7 @@
 package main
 
 import (
+	//"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"errors"
@@ -197,7 +198,7 @@ func main() {
 	}
 	defer rw.Close()
 
-	// CreatePrimary for Endoorsement key
+	// CreatePrimary for Endorsement key
 	var empty []byte
 	primaryparms := tpm.RsaParams{uint16(tpm.AlgTPM_ALG_RSA),
 		uint16(tpm.AlgTPM_ALG_SHA1), uint32(0x00030072), empty,
@@ -274,20 +275,35 @@ func main() {
 	fmt.Printf("policy_digest: %x\n", policy_digest)
 
 	// Serialize the client private key proto, seal it and save it.
-	// serializedProgramKey := proto.CompactTextString(protoClientPrivateKey)
-	unmarshaled_credential :=  []byte{0,1,2,3,4,5,6,7,8,9,1,2,3,4,5,6}
+	// Replace later with
+	// 	var unsealing_secret [32]byte
+	// 	rand.Read(unsealing_secret[0:32])
+	unsealing_secret :=  []byte{0,1,2,3,4,5,6,7,8,9,1,2,3,4,5,6}
 	sealed_priv, sealed_pub, err := assistSeal(rw, tpm.Handle(*permPrimaryHandle),
-		unmarshaled_credential, *sealedParentPassword, *sealedOwnerPassword,
+		unsealing_secret, *sealedParentPassword, *sealedOwnerPassword,
 		[]int{7}, policy_digest)
 	if err != nil {
-		fmt.Printf("\n\nCan't seal Program private key\n\n")
-		tpm.FlushContext(rw, sessionHandle)
+		fmt.Printf("Can't seal Program private key\n")
+		// return
 	}
-/*
+	serialized_program_key, err := proto.Marshal(protoClientPrivateKey)
+	if err != nil {
+		fmt.Printf("Can't marshal Program private key\n")
+		// return
+	}
+	fmt.Printf("sealed priv, pub: %x %x\n", sealed_priv, sealed_pub)
+
+	var inHmac []byte
+        calcHmac, encrypted_program_key, err := tpm.EncryptDataWithCredential(true, tpm.AlgTPM_ALG_SHA1,
+                unsealing_secret, serialized_program_key, inHmac)
+	if err != nil {
+		fmt.Printf("Can't tpm.EncryptDataWithCredential program key\n")
+		// return
+	}
+	ioutil.WriteFile(*sealedProgramKeyFile + ".private.encrypted_program_key",
+		append(calcHmac, encrypted_program_key...), 0644)
 	ioutil.WriteFile(*sealedProgramKeyFile + ".private", sealed_priv, 0644)
 	ioutil.WriteFile(*sealedProgramKeyFile + ".public", sealed_pub, 0644)
- */
-	fmt.Printf("sealed priv, pub: %x %x\n", sealed_priv, sealed_pub)
 
 	response, err := tpm.ConstructServerResponse(policyPrivateKey, derPolicyCert,
 		*signing_instructions_message, *request)
@@ -308,23 +324,35 @@ func main() {
 
 /*
 	// recover program private key
+	encryptedProgramKey:= tpm.RetrieveFile(*sealedProgramKeyFile + ".encrypted_program_key")
 	programPrivateBlob := tpm.RetrieveFile(*sealedProgramKeyFile + ".private")
 	programPublicBlob := tpm.RetrieveFile(*sealedProgramKeyFile + ".public")
+	recovered_hmac = encryptedProgramKey[0:20]
+	recovered_cipher_text = encryptedProgramKey[20:]
+	fmt.Printf("Recovered hmac, cipher_text: %x, %x\n", recovered_hmac, recovered_cipher_text))
 	fmt.Printf("Recovered priv, pub: %x, %x\n", programPrivateBlob, programPublicBlob)
 	unsealed, _, err := assistUnseal(rw, sessionHandle, tpm.Handle(*permPrimaryHandle),
-		sealed_pub, sealed_priv, "", *sealedOwnerPassword, policy_digest)
+		sealed_pub, sealed_priv, *sealedParentKey, *sealedOwnerPassword, policy_digest)
         if err != nil {
-                fmt.Printf("Can't unmarshal key to proto\n")
+                fmt.Printf("Can't Unseal\n")
+		// return
         }
+        _, decrypted_program_key, err := tpm.EncryptDataWithCredential(false, tpm.AlgTPM_ALG_SHA1,
+                unsealed, recovered_cipher_text, recovered_hmac)
+	if err != nil {
+		fmt.Printf("Can't tpm.EncryptDataWithCredential (decrypt) program key\n")
+		// return
+	}
  */
 
 	tpm.FlushContext(rw, sessionHandle)
 /*
 	newPrivKeyMsg := new(tpm.RsaPrivateKeyMessage)
-        err = proto.Unmarshal(unsealed, newPrivKeyMsg)
+        err = proto.Unmarshal(decrypted_program_key, newPrivKeyMsg)
         newProgramKey, err := tpm.UnmarshalRsaPrivateFromProto(newPrivKeyMsg)
         if err != nil {
                 fmt.Printf("Can't unmarshal key to proto\n")
+		// return
         }
 	fmt.Printf("Recovered Program keys: %x\n", newProgramKey)
  */

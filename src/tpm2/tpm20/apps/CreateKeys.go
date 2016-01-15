@@ -123,6 +123,7 @@ func main() {
 			tpm.Handle(*primaryHandle))
 	if err != nil {
 		tpm.FlushContext(rw, tmpPrimaryHandle)
+		tpm.FlushContext(rw, tmpQuoteHandle)
 		fmt.Printf("Install new primary handle failed\n")
 		return
 	}

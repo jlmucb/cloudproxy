@@ -89,7 +89,7 @@ func TestSignCertificate(t *testing.T) {
 	BasicConstraintsValid: true,
 	}
 	program_pub := &privateProgramKey.PublicKey
-	der_program_cert, err := x509.CreateCertificate(rand.Reader, &template2, &template2,
+	der_program_cert, err := x509.CreateCertificate(rand.Reader, &template2, policy_cert,
 		program_pub, privatePolicyKey)
 	if err != nil {
 		t.Fatal("Can't CreateCertificate ", err, "\n")
@@ -106,7 +106,7 @@ func TestSignCertificate(t *testing.T) {
 	opts := x509.VerifyOptions{
 		Roots:   roots,
 	}
-	_, err = policy_cert.Verify(opts)
+	_, err = program_cert.Verify(opts)
 	if err != nil {
 	 	t.Fatal("Can't VerifyCertificate ", err, "\n")
 	}

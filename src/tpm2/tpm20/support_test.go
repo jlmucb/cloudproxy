@@ -32,13 +32,13 @@ import (
 
 func TestSignCertificate(t *testing.T) {
 
- 	// Generate Program Key.
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+ 	// Generate Policy Key.
+	privatePolicyKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatal("Can't generate privatekey\n")
 	}
 
-	progName := "Test-Program"
+	policyProgName := "Signer"
 	var notBefore time.Time
 	notBefore = time.Now()
 	validFor := 365*24*time.Hour
@@ -47,7 +47,40 @@ func TestSignCertificate(t *testing.T) {
 		SerialNumber: GetSerialNumber(),
 		Subject: pkix.Name {
 		Organization: []string{"CloudProxyAuthority"},
-		CommonName:   progName,
+		CommonName:   policyProgName,
+		},
+	NotBefore: notBefore,
+	NotAfter:  notAfter,
+	// KeyUsage:  x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+	KeyUsage:  x509.KeyUsageCertSign,
+	ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	BasicConstraintsValid: true,
+	IsCA: true,
+	}
+	policy_pub := &privatePolicyKey.PublicKey
+	der_policy_cert, err := x509.CreateCertificate(rand.Reader, &template, &template,
+		policy_pub, privatePolicyKey)
+	if err != nil {
+		t.Fatal("Can't CreateCertificate ", err, "\n")
+	}
+	policy_cert, err := x509.ParseCertificate(der_policy_cert)
+	if err != nil {
+		t.Fatal("Can't parse program certificate ", err, "\n")
+	}
+	fmt.Printf("Policy cert: %x\n", der_policy_cert)
+
+ 	// Generate Program Key.
+	privateProgramKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal("Can't generate program privatekey\n")
+	}
+
+	programProgName := "Test-Program"
+	template2 := x509.Certificate{
+		SerialNumber: GetSerialNumber(),
+		Subject: pkix.Name {
+		Organization: []string{"JLM"},
+		CommonName:   programProgName,
 		},
 	NotBefore: notBefore,
 	NotAfter:  notAfter,
@@ -55,30 +88,28 @@ func TestSignCertificate(t *testing.T) {
 	ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	BasicConstraintsValid: true,
 	}
-	pub := &privateKey.PublicKey
-	der_cert, err := x509.CreateCertificate(rand.Reader, &template, &template,
-		pub, privateKey)
+	program_pub := &privateProgramKey.PublicKey
+	der_program_cert, err := x509.CreateCertificate(rand.Reader, &template2, &template2,
+		program_pub, privatePolicyKey)
 	if err != nil {
 		t.Fatal("Can't CreateCertificate ", err, "\n")
 	}
-	fmt.Printf("Cert: %x\n", der_cert)
-	cert, err := x509.ParseCertificate(der_cert)
+	program_cert, err := x509.ParseCertificate(der_program_cert)
 	if err != nil {
-		t.Fatal("Can't Parse Certificate ", err, "\n")
+		t.Fatal("Can't parse program certificate ", err, "\n")
 	}
+	fmt.Printf("Program cert bin: %x\n", program_cert)
+	fmt.Printf("Program cert: %x\n", der_program_cert)
 
 	roots := x509.NewCertPool()
+	roots.AddCert(policy_cert)
 	opts := x509.VerifyOptions{
 		Roots:   roots,
 	}
-	ok, err := cert.Verify(opts)
-	// if err != nil {
-	// 	t.Fatal("Can't VerifyCertificate ", err, "\n")
-	// }
-	fmt.Printf("ok: %x\n", ok)
-	//if !ok {
-	//	t.Fatal("Verify is not ok ", err, "\n")
-	//}
+	_, err = policy_cert.Verify(opts)
+	if err != nil {
+	 	t.Fatal("Can't VerifyCertificate ", err, "\n")
+	}
 }
 
 func TestRsaEncryptDataWithCredential(t *testing.T) {

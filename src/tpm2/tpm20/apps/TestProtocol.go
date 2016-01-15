@@ -224,7 +224,7 @@ func main() {
 	keyMsg := new(tpm.RsaPrivateKeyMessage)
 	err = proto.Unmarshal(protoPolicyKey, keyMsg)
 	if err != nil {
-		fmt.Printf("Can't unmarshalpolicy key\n")
+		fmt.Printf("Can't unmarshal policy key\n")
 		return
 	}
 	policyPrivateKey, err := tpm.UnmarshalRsaPrivateFromProto(keyMsg)

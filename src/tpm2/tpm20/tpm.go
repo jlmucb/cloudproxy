@@ -2250,34 +2250,33 @@ func ValidPcr(pcrSelect []byte, digest []byte) (bool) {
 	return true
 }
 
-func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (bool) {
-	var opts x509.VerifyOptions
+func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (error) {
 	roots := x509.NewCertPool()
+	opts := x509.VerifyOptions{
+		Roots:   roots,
+	}
 
 	// Verify key
 	policy_cert, err := x509.ParseCertificate(der_signing_cert)
 	if err != nil {
 		fmt.Printf("Signing ParseCertificate fails")
-		return false
+		return err 
 	}
+	roots.AddCert(policy_cert)
 	fmt.Printf("Root cert: %x\n", der_signing_cert)
 
 	// Verify key
 	cert, err := x509.ParseCertificate(der_cert)
 	if err != nil {
 		fmt.Printf("Cert ParseCertificate fails")
-		return false
+		return err 
 	}
 	fmt.Printf("Cert: %x\n", cert)
 
 	roots.AddCert(policy_cert)
 	opts.Roots = roots
-	chains, err := cert.Verify(opts)
-	if chains == nil || err != nil {
-		fmt.Printf("cert.Verify fails")
-		return false
-	}
-	return true
+	_, err = cert.Verify(opts)
+	return err 
 }
 
 func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
@@ -2556,7 +2555,7 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
 }
 
 // Input: policy private key
-func ConstructServerResponse(policy_private_key *rsa.PrivateKey,
+func ConstructServerResponse(policy_private_key *rsa.PrivateKey, der_policy_cert []byte,
 	     signing_instructions_message SigningInstructionsMessage,
 	     request ProgramCertRequestMessage) (*ProgramCertResponseMessage, error) {
 
@@ -2618,17 +2617,11 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey,
 		return nil, err
 	}
 
-	// roots := x509.NewCertPool(
-	// opts := x509.VerifyOptions{
-	//	Roots:   roots,
-	// }
-
-	/*
 	// Verify Endorsement Cert
-	if !VerifyDerCert(policy_private_key, request.EndorsementCertBlob) {
+	if VerifyDerCert(der_policy_cert, request.EndorsementCertBlob) != nil {
+		fmt.Printf("Bad endorsement cert")
 		return nil, errors.New("Bad endorsement cert")
 	}
-	*/
 
 	var protectorPublic *rsa.PublicKey
 	switch k :=  endorsement_cert.PublicKey.(type) {

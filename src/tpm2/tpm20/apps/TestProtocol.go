@@ -149,12 +149,20 @@ func main() {
 		*sealedParentPassword, *sealedOwnerPassword, *sealedProgramKeyFile)
 	fmt.Printf("Program key cert: %s\n", *programCertFile)
 
+	// Read Policy Cert
+	derPolicyCert := tpm.RetrieveFile(*fileNamePolicyCert)
+	if derPolicyCert == nil {
+		fmt.Printf("Can't read policy cert\n")
+		return
+	}
+
 	// Read Endorsement key info
 	derEndorsementCert := tpm.RetrieveFile(*fileNameEndorsementCert)
 	if derEndorsementCert == nil {
 		fmt.Printf("Can't read endorsement cert\n")
 		return
 	}
+
 	// Get endorsement public from cert
 	endorsement_cert, err := x509.ParseCertificate(derEndorsementCert)
 	if err != nil {
@@ -198,13 +206,6 @@ func main() {
 	}
 	fmt.Printf("CreatePrimary succeeded\n")
 	fmt.Printf("Endorsement handle: %x\n", protectorHandle)
-
-	// Read Policy cert
-	derPolicyCert := tpm.RetrieveFile(*fileNamePolicyCert)
-	if derPolicyCert == nil {
-		fmt.Printf("Can't read policy cert\n")
-		return
-	}
 
 	// Read Policy key
 	protoPolicyKey := tpm.RetrieveFile(*fileNamePolicyKey)
@@ -278,8 +279,8 @@ func main() {
 	ioutil.WriteFile(*sealedProgramKeyFile + ".public", sealed_pub, 0644)
 */
 
-	response, err := tpm.ConstructServerResponse(policyPrivateKey, *signing_instructions_message,
-		*request)
+	response, err := tpm.ConstructServerResponse(policyPrivateKey, derPolicyCert,
+		*signing_instructions_message, *request)
 	if err != nil {
 		fmt.Printf("ConstructServerResponse failed\n")
 		return

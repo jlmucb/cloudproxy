@@ -20,13 +20,66 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"fmt"
 	"math/big"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 )
+
+func TestSignCertificate(t *testing.T) {
+
+ 	// Generate Program Key.
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal("Can't generate privatekey\n")
+	}
+
+	progName := "Test-Program"
+	var notBefore time.Time
+	notBefore = time.Now()
+	validFor := 365*24*time.Hour
+	notAfter := notBefore.Add(validFor)
+	template := x509.Certificate{
+		SerialNumber: GetSerialNumber(),
+		Subject: pkix.Name {
+		Organization: []string{"CloudProxyAuthority"},
+		CommonName:   progName,
+		},
+	NotBefore: notBefore,
+	NotAfter:  notAfter,
+	KeyUsage:  x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+	ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	BasicConstraintsValid: true,
+	}
+	pub := &privateKey.PublicKey
+	der_cert, err := x509.CreateCertificate(rand.Reader, &template, &template,
+		pub, privateKey)
+	if err != nil {
+		t.Fatal("Can't CreateCertificate ", err, "\n")
+	}
+	fmt.Printf("Cert: %x\n", der_cert)
+	cert, err := x509.ParseCertificate(der_cert)
+	if err != nil {
+		t.Fatal("Can't Parse Certificate ", err, "\n")
+	}
+
+	roots := x509.NewCertPool()
+	opts := x509.VerifyOptions{
+		Roots:   roots,
+	}
+	ok, err := cert.Verify(opts)
+	// if err != nil {
+	// 	t.Fatal("Can't VerifyCertificate ", err, "\n")
+	// }
+	fmt.Printf("ok: %x\n", ok)
+	//if !ok {
+	//	t.Fatal("Verify is not ok ", err, "\n")
+	//}
+}
 
 func TestRsaEncryptDataWithCredential(t *testing.T) {
 	unmarshaled_credential := []byte{0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8,

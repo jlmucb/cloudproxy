@@ -28,6 +28,35 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+func TestRsaEncryptDataWithCredential(t *testing.T) {
+	unmarshaled_credential := []byte{0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8,
+					 0x9, 0xa, 0xb, 0xc, 0xd, 0xf, 0x10}
+	var inData [64]byte
+	for i := 0; i < int(64); i++ {
+		inData[i] = byte(i)
+	}
+	fmt.Printf("Credential: %x\n", unmarshaled_credential)
+	fmt.Printf("inData: %x\n", inData)
+
+	var inHmac []byte
+	calcHmac, outData, err := EncryptDataWithCredential(true, AlgTPM_ALG_SHA1,
+		unmarshaled_credential, inData[0:64], inHmac)
+	if err != nil {
+		t.Fatal("Could not encrypt data\n")
+	}
+	fmt.Printf("calcHmac: %x\n", calcHmac)
+	fmt.Printf("outData: %x\n", outData)
+	_, checkData, err := EncryptDataWithCredential(false, AlgTPM_ALG_SHA1,
+		unmarshaled_credential, outData, calcHmac)
+	if err != nil {
+		t.Fatal("Could not encrypt data\n")
+	}
+	fmt.Printf("checkData: %x\n", checkData)
+	if bytes.Compare(inData[0:64], checkData) != 0 {
+		t.Fatal("input data and decrypt of encrypt don't match\n")
+	}
+}
+
 func TestRsaTranslate(t *testing.T) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if  err != nil || key == nil {

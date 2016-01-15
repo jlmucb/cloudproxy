@@ -2022,9 +2022,49 @@ func ComputePcrDigest(alg uint16, in []byte) ([]byte, error) {
 }
 
 //	Return: out_hmac, output_data
-func EncryptDataWithCredential(encrypt_flag bool, hash_alg_id uint16,
-		unmarshaled_credential []byte, input_data []byte, in_hmac []byte) ([]byte, []byte, error) {
-	return nil, nil, nil
+func EncryptDataWithCredential(encrypt_flag bool, hash_alg_id uint16, unmarshaled_credential []byte,
+		inData []byte, inHmac []byte) ([]byte, []byte, error) {
+	var contextV []byte
+	derivedKeys, err := KDFA(hash_alg_id, unmarshaled_credential, "PROTECT", contextV, contextV, 512)
+	if err != nil {
+		fmt.Printf("EncryptDataWithCredential can't derive keys\n")
+		return nil, nil, errors.New("KDFA failed")
+	}
+	var calculatedHmac []byte
+	outData := make([]byte, len(inData), len(inData))
+	iv := derivedKeys[16:32]
+	key := derivedKeys[0:16]
+	dec, err := aes.NewCipher(key)
+	ctr := cipher.NewCTR(dec, iv)
+	ctr.XORKeyStream(outData, inData)
+
+	var toHash []byte
+	if encrypt_flag == true {
+		toHash =  inData
+	} else {
+		toHash = outData
+	}
+	// Calculate hmac on output data
+	if hash_alg_id == AlgTPM_ALG_SHA1 {
+		hm := hmac.New(sha1.New, derivedKeys[48:64])
+		hm.Write(toHash)
+		calculatedHmac = hm.Sum(nil)
+	} else if hash_alg_id == AlgTPM_ALG_SHA256 {
+		hm := hmac.New(sha256.New, derivedKeys[32:64])
+		hm.Write(toHash)
+		calculatedHmac = hm.Sum(nil)
+	} else {
+		fmt.Printf("EncryptDataWithCredential unrecognized hmac alg\n")
+		return nil, nil, errors.New("Unsupported Hash alg")
+	}
+
+	if encrypt_flag == false {
+		if bytes.Compare(calculatedHmac, inHmac) != 0 {
+			return nil, nil, errors.New("Integrity check fails")
+		}
+	}
+
+	return calculatedHmac, outData, nil
 }
 
 // Returns encrypted secret.

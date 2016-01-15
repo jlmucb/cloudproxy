@@ -24,6 +24,20 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+// Test Flushall
+func TestFlushall(t *testing.T) {
+	fmt.Printf("Flushall\n")
+
+	// Open TPM
+	rw, err := OpenTPM("/dev/tpm0")
+	if err != nil {
+		fmt.Printf("OpenTPM failed %s\n", err)
+		return
+	}
+	Flushall(rw)
+	rw.Close()
+}
+
 // Test GetRandom
 func TestEndian(t *testing.T) {
 	l := uint16(0xff12)

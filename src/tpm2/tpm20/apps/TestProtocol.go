@@ -343,28 +343,28 @@ func main() {
 		return
 	}
 
-/*
 	// recover program private key
-	encryptedProgramKey:= tpm.RetrieveFile(*sealedProgramKeyFile + ".encrypted_program_key")
-	programPrivateBlob := tpm.RetrieveFile(*sealedProgramKeyFile + ".private")
-	programPublicBlob := tpm.RetrieveFile(*sealedProgramKeyFile + ".public")
-	recovered_hmac = encryptedProgramKey[0:20]
-	recovered_cipher_text = encryptedProgramKey[20:]
-	fmt.Printf("Recovered hmac, cipher_text: %x, %x\n", recovered_hmac, recovered_cipher_text))
-	fmt.Printf("Recovered priv, pub: %x, %x\n", programPrivateBlob, programPublicBlob)
-	unsealed, _, err := assistUnseal(rw, sessionHandle, tpm.Handle(*permPrimaryHandle),
-		sealed_pub, sealed_priv, *sealedParentKey, *sealedOwnerPassword, policy_digest)
+	// encryptedProgramKey:= tpm.RetrieveFile(*sealedProgramKeyFile + ".encrypted_program_key")
+	// programPrivateBlob := tpm.RetrieveFile(*sealedProgramKeyFile + ".private")
+	// programPublicBlob := tpm.RetrieveFile(*sealedProgramKeyFile + ".public")
+	// recovered_hmac := encryptedProgramKey[0:20]
+	// recovered_cipher_text := encryptedProgramKey[20:]
+	// fmt.Printf("Recovered hmac, cipher_text: %x, %x\n", recovered_hmac, recovered_cipher_text)
+	// fmt.Printf("Recovered priv, pub: %x, %x\n", programPrivateBlob, programPublicBlob)
+	unsealed, _, err := assistUnseal(rw, sessionHandle, primary2Handle, // tpm.Handle(*permPrimaryHandle),
+		sealed_pub, sealed_priv, "", *sealedOwnerPassword, policy_digest)
         if err != nil {
                 fmt.Printf("Can't Unseal\n")
 		// return
         }
         _, decrypted_program_key, err := tpm.EncryptDataWithCredential(false, tpm.AlgTPM_ALG_SHA1,
-                unsealed, recovered_cipher_text, recovered_hmac)
+                unsealed, encrypted_program_key, calcHmac)
 	if err != nil {
 		fmt.Printf("Can't tpm.EncryptDataWithCredential (decrypt) program key\n")
 		// return
 	}
- */
+	fmt.Printf("unsealed: %x\n", unsealed)
+	fmt.Printf("decrypted_program_key: %x\n", decrypted_program_key)
 
 	tpm.FlushContext(rw, sessionHandle)
 /*

@@ -1358,6 +1358,7 @@ func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle,
 	if err != nil {
 		return Handle(0), nil, errors.New("ConstructStartAuthSession fails")
 	}
+	fmt.Printf("StartAuth cmd: %d\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1367,11 +1368,12 @@ func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle,
 
 	// Get response
 	var resp []byte
-	resp = make([]byte, 1024, 1024)
+	resp = make([]byte, 4096, 4096)
 	read, err := rw.Read(resp)
 	if err != nil {
 		return Handle(0), nil, errors.New("Read Tpm fails")
 	}
+	fmt.Printf("StartAuth resp: %d\n", resp[0:read])
 
 	// Decode Response
 	if read < 10 {

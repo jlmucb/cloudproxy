@@ -30,7 +30,7 @@ import (
 )
 
 // return handle, policy digest
-func assistCreateSession(rw io.ReadWriteCloser, hash_alg uint16) (tpm.Handle, []byte, error) {
+func assistCreateSession(rw io.ReadWriteCloser, hash_alg uint16, pcrs []int) (tpm.Handle, []byte, error) {
 	nonceCaller := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 	var secret []byte
 	sym := uint16(tpm.AlgTPM_ALG_NULL)
@@ -50,7 +50,7 @@ func assistCreateSession(rw io.ReadWriteCloser, hash_alg uint16) (tpm.Handle, []
 		return tpm.Handle(0), nil, errors.New("Can't set policy password")
 	}
 	var tpm_digest []byte
-	err = tpm.PolicyPcr(rw, session_handle, tpm_digest, []int{7})
+	err = tpm.PolicyPcr(rw, session_handle, tpm_digest, pcrs)
 	if err != nil {
 		fmt.Printf("PolicyPcr fails")
 		return tpm.Handle(0), nil, errors.New("Can't set policy pcr")
@@ -67,8 +67,8 @@ func assistCreateSession(rw io.ReadWriteCloser, hash_alg uint16) (tpm.Handle, []
 
 // out: private, public
 func assistSeal(rw io.ReadWriteCloser, parentHandle tpm.Handle, toSeal []byte,
-	parentPassword string, ownerPassword string,
-	pcrs[]int, policy_digest []byte) ([]byte, []byte, error) {
+	parentPassword string, ownerPassword string, pcrs []int,
+	policy_digest []byte) ([]byte, []byte, error) {
 
 	fmt.Printf("Seal, parent: %x\n", uint32(parentHandle))
 	fmt.Printf("Seal, policy_digest: %x\n", policy_digest)
@@ -263,27 +263,48 @@ func main() {
 	fmt.Printf("ConstructClientRequest succeeded\n")
 	fmt.Printf("Key: %s\n", proto.CompactTextString(protoClientPrivateKey))
 	fmt.Printf("Request: %s\n", proto.CompactTextString(request))
-	fmt.Printf("Program name from request: %s\n", *request.ProgramKey.ProgramName)
+	fmt.Printf("Program name from request: %s\n\n", *request.ProgramKey.ProgramName)
 
 	// Create Session for seal/unseal
-	sessionHandle, policy_digest, err := assistCreateSession(rw, tpm.AlgTPM_ALG_SHA1)
+	sessionHandle, policy_digest, err := assistCreateSession(rw, tpm.AlgTPM_ALG_SHA1, []int{7})
 	if err != nil {
 		fmt.Printf("Can't start session for Seal\n")
 		return
 	}
 	fmt.Printf("Session handle: %x\n", sessionHandle)
-	fmt.Printf("policy_digest: %x\n", policy_digest)
+	fmt.Printf("policy_digest: %x\n\n", policy_digest)
+
+//
+//	Test only
+//     
+	// CreatePrimary for primary key
+	primaryparms2 := tpm.RsaParams{uint16(tpm.AlgTPM_ALG_RSA),
+		uint16(tpm.AlgTPM_ALG_SHA1), uint32(0x00030072), empty,
+		uint16(tpm.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm.AlgTPM_ALG_CFB), uint16(tpm.AlgTPM_ALG_NULL),
+		uint16(0), 2048, uint32(0x00010001), empty}
+	primary2Handle, _, err := tpm.CreatePrimary(rw,
+		uint32(tpm.OrdTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms2)
+	if err != nil {
+		fmt.Printf("CreatePrimary fails")
+		return
+	}
+	fmt.Printf("CreatePrimary succeeded\n")
+	fmt.Printf("Endorsement handle: %x\n", protectorHandle)
+//
+//
+//
 
 	// Serialize the client private key proto, seal it and save it.
 	// Replace later with
 	// 	var unsealing_secret [32]byte
 	// 	rand.Read(unsealing_secret[0:32])
 	unsealing_secret :=  []byte{0,1,2,3,4,5,6,7,8,9,1,2,3,4,5,6}
-	sealed_priv, sealed_pub, err := assistSeal(rw, tpm.Handle(*permPrimaryHandle),
+	sealed_priv, sealed_pub, err := assistSeal(rw, primary2Handle, // tpm.Handle(*permPrimaryHandle),
 		unsealing_secret, *sealedParentPassword, *sealedOwnerPassword,
 		[]int{7}, policy_digest)
 	if err != nil {
-		fmt.Printf("Can't seal Program private key\n")
+		fmt.Printf("Can't seal Program private key sealing secret\n")
 		// return
 	}
 	serialized_program_key, err := proto.Marshal(protoClientPrivateKey)

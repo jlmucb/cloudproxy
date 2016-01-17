@@ -255,7 +255,9 @@ func main() {
 	}
 	fmt.Printf("Got signing instructions\n")
 
-	// Protocol
+	//
+	// Cloudproxy protocol
+	//
 	fmt.Printf("Program name is %s\n",  *programName)
 	prog_name := *programName
 

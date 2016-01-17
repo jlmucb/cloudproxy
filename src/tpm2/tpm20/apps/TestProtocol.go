@@ -159,7 +159,7 @@ func main() {
 		*keySize, *hashAlg)
 	fmt.Printf("sealedParent pw: %s,  sealedOwner pw: %s, sealed key file: %s\n",
 		*sealedParentPassword, *sealedOwnerPassword, *sealedProgramKeyFile)
-	fmt.Printf("Program key cert: %s\n", *programCertFile)
+	fmt.Printf("Program key cert: %s\n\n", *programCertFile)
 
 	// Read Policy Cert
 	derPolicyCert := tpm.RetrieveFile(*fileNamePolicyCert)
@@ -193,7 +193,7 @@ func main() {
 		fmt.Printf("endorsement cert is not an rsa key\n")
 		return
 	}
-	fmt.Printf("Endorsement public: %x\n", protectorPublic)
+	fmt.Printf("Endorsement public: %x\n\n", protectorPublic)
 
 	// Open tpm
 	rw, err := tpm.OpenTPM("/dev/tpm0")
@@ -217,7 +217,7 @@ func main() {
 		return
 	}
 	fmt.Printf("CreatePrimary succeeded\n")
-	fmt.Printf("Endorsement handle: %x\n", protectorHandle)
+	fmt.Printf("Endorsement handle: %x\n\n", protectorHandle)
 
 	// Read Policy key
 	protoPolicyKey := tpm.RetrieveFile(*fileNamePolicyKey)
@@ -297,29 +297,31 @@ func main() {
 		fmt.Printf("Can't marshal Program private key\n")
 		return
 	}
-	fmt.Printf("sealed priv, pub: %x %x\n", sealed_priv, sealed_pub)
+	fmt.Printf("sealed priv, pub: %x %x\n\n", sealed_priv, sealed_pub)
 
 	var inHmac []byte
-        calcHmac, encrypted_program_key, err := tpm.EncryptDataWithCredential(true,
-		tpm.AlgTPM_ALG_SHA1, unsealing_secret[0:32], serialized_program_key,
-		inHmac)
+        calcHmac, encrypted_program_key, err := tpm.EncryptDataWithCredential(
+		true, tpm.AlgTPM_ALG_SHA1, unsealing_secret[0:32],
+		serialized_program_key, inHmac)
 	if err != nil {
 		fmt.Printf("Can't tpm.EncryptDataWithCredential program key\n")
 		return
 	}
-	ioutil.WriteFile(*sealedProgramKeyFile + ".private.encrypted_program_key",
+	ioutil.WriteFile(*sealedProgramKeyFile +
+		".private.encrypted_program_key",
 		append(calcHmac, encrypted_program_key...), 0644)
 	ioutil.WriteFile(*sealedProgramKeyFile + ".private", sealed_priv, 0644)
 	ioutil.WriteFile(*sealedProgramKeyFile + ".public", sealed_pub, 0644)
 
-	response, err := tpm.ConstructServerResponse(policyPrivateKey, derPolicyCert,
-		*signing_instructions_message, *request)
+	response, err := tpm.ConstructServerResponse(policyPrivateKey,
+		derPolicyCert, *signing_instructions_message, *request)
 	if err != nil {
 		fmt.Printf("ConstructServerResponse failed\n")
 		return
 	}
 	if response == nil {
 		fmt.Printf("response is nil\n")
+		return
 	}
 	fmt.Printf("Response for ProgramName %s\n", *response.ProgramName)
 	cert, err := tpm.ClientDecodeServerResponse(rw, protectorHandle,
@@ -332,19 +334,20 @@ func main() {
 	// recover program private key
 	encryptedProgramKey := tpm.RetrieveFile(*sealedProgramKeyFile +
 		".encrypted_program_key")
-	programPrivateBlob := tpm.RetrieveFile(*sealedProgramKeyFile + ".private")
+	programPrivateBlob := tpm.RetrieveFile(*sealedProgramKeyFile +
+		".private")
 	programPublicBlob := tpm.RetrieveFile(*sealedProgramKeyFile + ".public")
-	//recovered_hmac := encryptedProgramKey[0:20]
-	//recovered_cipher_text := encryptedProgramKey[20:]
-	//fmt.Printf("Recovered hmac, cipher_text: %x, %x\n", recovered_hmac,
-	//	recovered_cipher_text)
+	// recovered_hmac := encryptedProgramKey[0:20]
+	// recovered_cipher_text := encryptedProgramKey[20:]
+	// fmt.Printf("Recovered hmac, cipher_text: %x, %x\n", recovered_hmac,
+		// recovered_cipher_text)
 	fmt.Printf("encryptedProgramKey: %x\n", encryptedProgramKey)
-	fmt.Printf("Recovered priv, pub: %x, %x\n", programPrivateBlob,
+	fmt.Printf("Recovered priv, pub: %x, %x\n\n", programPrivateBlob,
 		programPublicBlob)
 
 	unsealed, _, err := assistUnseal(rw, sessionHandle,
-		tpm.Handle(*permPrimaryHandle),
-		sealed_pub, sealed_priv, "", *sealedOwnerPassword, policy_digest)
+		tpm.Handle(*permPrimaryHandle), sealed_pub, sealed_priv,
+		"", *sealedOwnerPassword, policy_digest)
         if err != nil {
                 fmt.Printf("Can't Unseal\n")
 		return
@@ -352,11 +355,11 @@ func main() {
         _, decrypted_program_key, err := tpm.EncryptDataWithCredential(false,
 		tpm.AlgTPM_ALG_SHA1, unsealed, encrypted_program_key, calcHmac)
 	if err != nil {
-		fmt.Printf("Can't tpm.EncryptDataWithCredential (decrypt) program key\n")
+		fmt.Printf("Can't EncryptDataWithCredential (decrypt) program key\n")
 		return
 	}
 	fmt.Printf("unsealed: %x\n", unsealed)
-	fmt.Printf("decrypted_program_key: %x\n", decrypted_program_key)
+	fmt.Printf("decrypted_program_key: %x\n\n", decrypted_program_key)
 
 	tpm.FlushContext(rw, sessionHandle)
 
@@ -367,10 +370,10 @@ func main() {
                 fmt.Printf("Can't unmarshal key to proto\n")
 		return
         }
-	fmt.Printf("Recovered Program keys: %x\n", newProgramKey)
+	fmt.Printf("Recovered Program keys: %x\n\n", newProgramKey)
 
 	// Save cert 
-	fmt.Printf("Client cert: %x\n", cert)
+	fmt.Printf("Client cert: %x\n\n", cert)
 	ioutil.WriteFile(*programCertFile, cert, 0644)
 
 	fmt.Printf("Cloudproxy protocol succeeds\n")

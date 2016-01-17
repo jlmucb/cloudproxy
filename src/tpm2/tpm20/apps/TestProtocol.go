@@ -89,13 +89,14 @@ func assistSeal(rw io.ReadWriteCloser, parentHandle tpm.Handle, toSeal []byte,
 }
 
 // out: unsealed blob, nonce
-func assistUnseal(rw io.ReadWriteCloser, sessionHandle tpm.Handle, primaryHandle tpm.Handle,
-	pub []byte, priv []byte, parentPassword string, ownerPassword string,
+func assistUnseal(rw io.ReadWriteCloser, sessionHandle tpm.Handle,
+	primaryHandle tpm.Handle, pub []byte, priv []byte,
+	parentPassword string, ownerPassword string,
 	policy_digest []byte) ([]byte, []byte, error) {
 
 	// Load Sealed
-	sealHandle, _, err := tpm.Load(rw, primaryHandle, parentPassword, ownerPassword,
-		pub, priv)
+	sealHandle, _, err := tpm.Load(rw, primaryHandle, parentPassword,
+		ownerPassword, pub, priv)
 	if err != nil {
 		tpm.FlushContext(rw, sessionHandle)
 		fmt.Printf("Load fails ", err, "\n")
@@ -257,8 +258,8 @@ func main() {
 	fmt.Printf("Program name is %s\n",  *programName)
 	prog_name := *programName
 	protoClientPrivateKey, request, err := tpm.ConstructClientRequest(rw,
-		derEndorsementCert, tpm.Handle(*permQuoteHandle), "", *quoteOwnerPassword,
-		prog_name)
+		derEndorsementCert, tpm.Handle(*permQuoteHandle), "",
+		*quoteOwnerPassword, prog_name)
 	if err != nil {
 		fmt.Printf("ConstructClientRequest failed\n")
 		return
@@ -266,7 +267,8 @@ func main() {
 	fmt.Printf("ConstructClientRequest succeeded\n")
 	fmt.Printf("Key: %s\n", proto.CompactTextString(protoClientPrivateKey))
 	fmt.Printf("Request: %s\n", proto.CompactTextString(request))
-	fmt.Printf("Program name from request: %s\n\n", *request.ProgramKey.ProgramName)
+	fmt.Printf("Program name from request: %s\n\n",
+		*request.ProgramKey.ProgramName)
 
 	// Create Session for seal/unseal
 	sessionHandle, policy_digest, err := assistCreateSession(rw,
@@ -289,12 +291,12 @@ func main() {
 		[]int{7}, policy_digest)
 	if err != nil {
 		fmt.Printf("Can't seal Program private key sealing secret\n")
-		// return
+		return
 	}
 	serialized_program_key, err := proto.Marshal(protoClientPrivateKey)
 	if err != nil {
 		fmt.Printf("Can't marshal Program private key\n")
-		// return
+		return
 	}
 	fmt.Printf("sealed priv, pub: %x %x\n", sealed_priv, sealed_pub)
 

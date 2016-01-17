@@ -330,22 +330,27 @@ func main() {
 	}
 
 	// recover program private key
-	// encryptedProgramKey:= tpm.RetrieveFile(*sealedProgramKeyFile + ".encrypted_program_key")
-	// programPrivateBlob := tpm.RetrieveFile(*sealedProgramKeyFile + ".private")
-	// programPublicBlob := tpm.RetrieveFile(*sealedProgramKeyFile + ".public")
-	// recovered_hmac := encryptedProgramKey[0:20]
-	// recovered_cipher_text := encryptedProgramKey[20:]
-	// fmt.Printf("Recovered hmac, cipher_text: %x, %x\n", recovered_hmac, recovered_cipher_text)
-	// fmt.Printf("Recovered priv, pub: %x, %x\n", programPrivateBlob, programPublicBlob)
+	encryptedProgramKey := tpm.RetrieveFile(*sealedProgramKeyFile +
+		".encrypted_program_key")
+	programPrivateBlob := tpm.RetrieveFile(*sealedProgramKeyFile + ".private")
+	programPublicBlob := tpm.RetrieveFile(*sealedProgramKeyFile + ".public")
+	//recovered_hmac := encryptedProgramKey[0:20]
+	//recovered_cipher_text := encryptedProgramKey[20:]
+	//fmt.Printf("Recovered hmac, cipher_text: %x, %x\n", recovered_hmac,
+	//	recovered_cipher_text)
+	fmt.Printf("encryptedProgramKey: %x\n", encryptedProgramKey)
+	fmt.Printf("Recovered priv, pub: %x, %x\n", programPrivateBlob,
+		programPublicBlob)
+
 	unsealed, _, err := assistUnseal(rw, sessionHandle,
 		tpm.Handle(*permPrimaryHandle),
-		sealed_pub, sealed_priv, "", "01020304", policy_digest)
+		sealed_pub, sealed_priv, "", *sealedOwnerPassword, policy_digest)
         if err != nil {
                 fmt.Printf("Can't Unseal\n")
 		return
         }
-        _, decrypted_program_key, err := tpm.EncryptDataWithCredential(false, tpm.AlgTPM_ALG_SHA1,
-                unsealed, encrypted_program_key, calcHmac)
+        _, decrypted_program_key, err := tpm.EncryptDataWithCredential(false,
+		tpm.AlgTPM_ALG_SHA1, unsealed, encrypted_program_key, calcHmac)
 	if err != nil {
 		fmt.Printf("Can't tpm.EncryptDataWithCredential (decrypt) program key\n")
 		return
@@ -354,16 +359,15 @@ func main() {
 	fmt.Printf("decrypted_program_key: %x\n", decrypted_program_key)
 
 	tpm.FlushContext(rw, sessionHandle)
-/*
+
 	newPrivKeyMsg := new(tpm.RsaPrivateKeyMessage)
         err = proto.Unmarshal(decrypted_program_key, newPrivKeyMsg)
         newProgramKey, err := tpm.UnmarshalRsaPrivateFromProto(newPrivKeyMsg)
         if err != nil {
                 fmt.Printf("Can't unmarshal key to proto\n")
-		// return
+		return
         }
 	fmt.Printf("Recovered Program keys: %x\n", newProgramKey)
- */
 
 	// Save cert 
 	fmt.Printf("Client cert: %x\n", cert)

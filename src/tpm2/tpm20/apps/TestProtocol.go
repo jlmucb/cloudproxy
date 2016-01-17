@@ -275,36 +275,12 @@ fmt.Printf("Calling CreatePrimary\n")
 	fmt.Printf("Session handle: %x\n", sessionHandle)
 	fmt.Printf("policy_digest: %x\n\n", policy_digest)
 
-//
-//	Test only
-//     
-/*
-	// CreatePrimary for primary key
-	primaryparms2 := tpm.RsaParams{uint16(tpm.AlgTPM_ALG_RSA),
-		uint16(tpm.AlgTPM_ALG_SHA1), uint32(0x00030072), empty,
-		uint16(tpm.AlgTPM_ALG_AES), uint16(128),
-		uint16(tpm.AlgTPM_ALG_CFB), uint16(tpm.AlgTPM_ALG_NULL),
-		uint16(0), 2048, uint32(0x00010001), empty}
-	primary2Handle, _, err := tpm.CreatePrimary(rw,
-		uint32(tpm.OrdTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms2)
-	if err != nil {
-		fmt.Printf("CreatePrimary fails")
-		return
-	}
-	fmt.Printf("CreatePrimary succeeded\n")
-	fmt.Printf("New primary handle: %x\n", primary2Handle)
-*/
-	primary2Handle := tpm.Handle(*permPrimaryHandle)
-//
-//
-//
-
 	// Serialize the client private key proto, seal it and save it.
 	// Replace later with
 	// 	var unsealing_secret [32]byte
 	// 	rand.Read(unsealing_secret[0:32])
 	unsealing_secret :=  []byte{0,1,2,3,4,5,6,7,8,9,1,2,3,4,5,6}
-	sealed_priv, sealed_pub, err := assistSeal(rw, primary2Handle, // tpm.Handle(*permPrimaryHandle),
+	sealed_priv, sealed_pub, err := assistSeal(rw, tpm.Handle(*permPrimaryHandle),
 		unsealing_secret, "01020304", "01020304", // *sealedParentPassword, *sealedOwnerPassword,
 		[]int{7}, policy_digest)
 	if err != nil {
@@ -355,7 +331,7 @@ fmt.Printf("Calling CreatePrimary\n")
 	// recovered_cipher_text := encryptedProgramKey[20:]
 	// fmt.Printf("Recovered hmac, cipher_text: %x, %x\n", recovered_hmac, recovered_cipher_text)
 	// fmt.Printf("Recovered priv, pub: %x, %x\n", programPrivateBlob, programPublicBlob)
-	unsealed, _, err := assistUnseal(rw, sessionHandle, primary2Handle, // tpm.Handle(*permPrimaryHandle),
+	unsealed, _, err := assistUnseal(rw, sessionHandle, tpm.Handle(*permPrimaryHandle),
 		sealed_pub, sealed_priv, "", "01020304", policy_digest)
         if err != nil {
                 fmt.Printf("Can't Unseal\n")

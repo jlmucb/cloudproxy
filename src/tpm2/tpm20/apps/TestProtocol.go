@@ -188,7 +188,7 @@ func main() {
 		fmt.Printf("endorsement cert is not an rsa key\n")
 		return
 	}
-	fmt.Printf("Endorsement publix: %x\n", protectorPublic)
+	fmt.Printf("Endorsement public: %x\n", protectorPublic)
 
 	// Open tpm
 	rw, err := tpm.OpenTPM("/dev/tpm0")
@@ -205,6 +205,7 @@ func main() {
 		uint16(tpm.AlgTPM_ALG_AES), uint16(128),
 		uint16(tpm.AlgTPM_ALG_CFB), uint16(tpm.AlgTPM_ALG_NULL),
 		uint16(0), 2048, uint32(0x00010001), empty}
+fmt.Printf("Calling CreatePrimary\n")
 	protectorHandle, _, err := tpm.CreatePrimary(rw,
 		uint32(tpm.OrdTPM_RH_ENDORSEMENT), []int{0x7}, "", "", primaryparms)
 	if err != nil {
@@ -277,6 +278,7 @@ func main() {
 //
 //	Test only
 //     
+/*
 	// CreatePrimary for primary key
 	primaryparms2 := tpm.RsaParams{uint16(tpm.AlgTPM_ALG_RSA),
 		uint16(tpm.AlgTPM_ALG_SHA1), uint32(0x00030072), empty,
@@ -290,7 +292,9 @@ func main() {
 		return
 	}
 	fmt.Printf("CreatePrimary succeeded\n")
-	fmt.Printf("Endorsement handle: %x\n", protectorHandle)
+	fmt.Printf("New primary handle: %x\n", primary2Handle)
+*/
+	primary2Handle := tpm.Handle(*permPrimaryHandle)
 //
 //
 //
@@ -301,7 +305,7 @@ func main() {
 	// 	rand.Read(unsealing_secret[0:32])
 	unsealing_secret :=  []byte{0,1,2,3,4,5,6,7,8,9,1,2,3,4,5,6}
 	sealed_priv, sealed_pub, err := assistSeal(rw, primary2Handle, // tpm.Handle(*permPrimaryHandle),
-		unsealing_secret, *sealedParentPassword, *sealedOwnerPassword,
+		unsealing_secret, "01020304", "01020304", // *sealedParentPassword, *sealedOwnerPassword,
 		[]int{7}, policy_digest)
 	if err != nil {
 		fmt.Printf("Can't seal Program private key sealing secret\n")
@@ -352,7 +356,7 @@ func main() {
 	// fmt.Printf("Recovered hmac, cipher_text: %x, %x\n", recovered_hmac, recovered_cipher_text)
 	// fmt.Printf("Recovered priv, pub: %x, %x\n", programPrivateBlob, programPublicBlob)
 	unsealed, _, err := assistUnseal(rw, sessionHandle, primary2Handle, // tpm.Handle(*permPrimaryHandle),
-		sealed_pub, sealed_priv, "", *sealedOwnerPassword, policy_digest)
+		sealed_pub, sealed_priv, "", "01020304", policy_digest)
         if err != nil {
                 fmt.Printf("Can't Unseal\n")
 		// return

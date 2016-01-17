@@ -258,6 +258,8 @@ func main() {
 	// Protocol
 	fmt.Printf("Program name is %s\n",  *programName)
 	prog_name := *programName
+
+	// Client request.
 	protoClientPrivateKey, request, err := tpm.ConstructClientRequest(rw,
 		derEndorsementCert, tpm.Handle(*permQuoteHandle), "",
 		*quoteOwnerPassword, prog_name)
@@ -299,6 +301,7 @@ func main() {
 	}
 	fmt.Printf("sealed priv, pub: %x %x\n\n", sealed_priv, sealed_pub)
 
+	// Encrypt private key.
 	var inHmac []byte
         calcHmac, encrypted_program_key, err := tpm.EncryptDataWithCredential(
 		true, tpm.AlgTPM_ALG_SHA1, unsealing_secret[0:32],
@@ -313,6 +316,7 @@ func main() {
 	ioutil.WriteFile(*sealedProgramKeyFile + ".private", sealed_priv, 0644)
 	ioutil.WriteFile(*sealedProgramKeyFile + ".public", sealed_pub, 0644)
 
+	// Server response.
 	response, err := tpm.ConstructServerResponse(policyPrivateKey,
 		derPolicyCert, *signing_instructions_message, *request)
 	if err != nil {
@@ -324,6 +328,8 @@ func main() {
 		return
 	}
 	fmt.Printf("Response for ProgramName %s\n", *response.ProgramName)
+
+	// Client cert recovery.
 	cert, err := tpm.ClientDecodeServerResponse(rw, protectorHandle,
                 tpm.Handle(*permQuoteHandle), *quoteOwnerPassword, *response)
 	if err != nil {
@@ -331,20 +337,21 @@ func main() {
 		return
 	}
 
-	// recover program private key
+	// Example: recover program private key from buffer.
 	encryptedProgramKey := tpm.RetrieveFile(*sealedProgramKeyFile +
 		".encrypted_program_key")
 	programPrivateBlob := tpm.RetrieveFile(*sealedProgramKeyFile +
 		".private")
 	programPublicBlob := tpm.RetrieveFile(*sealedProgramKeyFile + ".public")
 	// recovered_hmac := encryptedProgramKey[0:20]
-	// recovered_cipher_text := encryptedProgramKey[20:]
+	// recovered_cipher_text := encryptedProgramKey[20:len(encryptedProgramKey)]
 	// fmt.Printf("Recovered hmac, cipher_text: %x, %x\n", recovered_hmac,
-		// recovered_cipher_text)
+	//	recovered_cipher_text)
 	fmt.Printf("encryptedProgramKey: %x\n", encryptedProgramKey)
 	fmt.Printf("Recovered priv, pub: %x, %x\n\n", programPrivateBlob,
 		programPublicBlob)
 
+	// Unseal secret and decrypt private policy key.
 	unsealed, _, err := assistUnseal(rw, sessionHandle,
 		tpm.Handle(*permPrimaryHandle), sealed_pub, sealed_priv,
 		"", *sealedOwnerPassword, policy_digest)
@@ -361,8 +368,10 @@ func main() {
 	fmt.Printf("unsealed: %x\n", unsealed)
 	fmt.Printf("decrypted_program_key: %x\n\n", decrypted_program_key)
 
+	// Close session.
 	tpm.FlushContext(rw, sessionHandle)
 
+	// Unmarshal private policy key.
 	newPrivKeyMsg := new(tpm.RsaPrivateKeyMessage)
         err = proto.Unmarshal(decrypted_program_key, newPrivKeyMsg)
         newProgramKey, err := tpm.UnmarshalRsaPrivateFromProto(newPrivKeyMsg)
@@ -372,7 +381,7 @@ func main() {
         }
 	fmt.Printf("Recovered Program keys: %x\n\n", newProgramKey)
 
-	// Save cert 
+	// Save cert.
 	fmt.Printf("Client cert: %x\n\n", cert)
 	ioutil.WriteFile(*programCertFile, cert, 0644)
 

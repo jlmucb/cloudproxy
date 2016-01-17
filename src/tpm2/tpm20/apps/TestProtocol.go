@@ -313,7 +313,7 @@ func main() {
 		return
 	}
 	ioutil.WriteFile(*sealedProgramKeyFile +
-		".private.encrypted_program_key",
+		".encrypted_program_key",
 		append(calcHmac, encrypted_program_key...), 0644)
 	ioutil.WriteFile(*sealedProgramKeyFile + ".private", sealed_priv, 0644)
 	ioutil.WriteFile(*sealedProgramKeyFile + ".public", sealed_pub, 0644)
@@ -345,10 +345,10 @@ func main() {
 	programPrivateBlob := tpm.RetrieveFile(*sealedProgramKeyFile +
 		".private")
 	programPublicBlob := tpm.RetrieveFile(*sealedProgramKeyFile + ".public")
-	// recovered_hmac := encryptedProgramKey[0:20]
-	// recovered_cipher_text := encryptedProgramKey[20:len(encryptedProgramKey)]
-	// fmt.Printf("Recovered hmac, cipher_text: %x, %x\n", recovered_hmac,
-	//	recovered_cipher_text)
+	recovered_hmac := encryptedProgramKey[0:20]
+	recovered_cipher_text := encryptedProgramKey[20:len(encryptedProgramKey)]
+	fmt.Printf("Recovered hmac, cipher_text: %x, %x\n", recovered_hmac,
+		recovered_cipher_text)
 	fmt.Printf("encryptedProgramKey: %x\n", encryptedProgramKey)
 	fmt.Printf("Recovered priv, pub: %x, %x\n\n", programPrivateBlob,
 		programPublicBlob)

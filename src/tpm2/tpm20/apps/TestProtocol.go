@@ -134,11 +134,14 @@ func main() {
 		"../tmptest/signing_instructions", "signing instructions")
 	quoteOwnerPassword := flag.String("Quote owner password", "01020304",
 		"quote owner password")
-	sealedOwnerPassword := flag.String("Sealed owner password", "01020304", "sealed owner password")
-	sealedParentPassword := flag.String("Sealed parent password", "01020304", "sealed parent password")
-	sealedProgramKeyFile := flag.String("Sealed program key file", "../tmptest/test_program_key",
-		"sealed program key file")
-	programCertFile := flag.String("Program cert file", "../tmptest/test_program_key.cert",
+	sealedOwnerPassword := flag.String("Sealed owner password", "01020304",
+		"sealed owner password")
+	sealedParentPassword := flag.String("Sealed parent password", "01020304",
+		"sealed parent password")
+	sealedProgramKeyFile := flag.String("Sealed program key file",
+		"../tmptest/test_program_key", "sealed program key file")
+	programCertFile := flag.String("Program cert file",
+		"../tmptest/test_program_key.cert",
 		"sealed program key file")
 	programName := flag.String("Application program name", "TestProgram",
 		"program name")
@@ -152,7 +155,7 @@ func main() {
 		*programName, *fileNameSigningInstructions)
 	fmt.Printf("modulus size: %d,  hash algorithm: %s\n",
 		*keySize, *hashAlg)
-	fmt.Printf("sealedParent password: %s,  sealedOwner password : %s, sealed key file: %s\n",
+	fmt.Printf("sealedParent pw: %s,  sealedOwner pw: %s, sealed key file: %s\n",
 		*sealedParentPassword, *sealedOwnerPassword, *sealedProgramKeyFile)
 	fmt.Printf("Program key cert: %s\n", *programCertFile)
 
@@ -205,7 +208,6 @@ func main() {
 		uint16(tpm.AlgTPM_ALG_AES), uint16(128),
 		uint16(tpm.AlgTPM_ALG_CFB), uint16(tpm.AlgTPM_ALG_NULL),
 		uint16(0), 2048, uint32(0x00010001), empty}
-fmt.Printf("Calling CreatePrimary\n")
 	protectorHandle, _, err := tpm.CreatePrimary(rw,
 		uint32(tpm.OrdTPM_RH_ENDORSEMENT), []int{0x7}, "", "", primaryparms)
 	if err != nil {
@@ -267,7 +269,8 @@ fmt.Printf("Calling CreatePrimary\n")
 	fmt.Printf("Program name from request: %s\n\n", *request.ProgramKey.ProgramName)
 
 	// Create Session for seal/unseal
-	sessionHandle, policy_digest, err := assistCreateSession(rw, tpm.AlgTPM_ALG_SHA1, []int{7})
+	sessionHandle, policy_digest, err := assistCreateSession(rw,
+		tpm.AlgTPM_ALG_SHA1, []int{7})
 	if err != nil {
 		fmt.Printf("Can't start session for Seal\n")
 		return
@@ -280,8 +283,9 @@ fmt.Printf("Calling CreatePrimary\n")
 	// 	var unsealing_secret [32]byte
 	// 	rand.Read(unsealing_secret[0:32])
 	unsealing_secret :=  []byte{0,1,2,3,4,5,6,7,8,9,1,2,3,4,5,6}
-	sealed_priv, sealed_pub, err := assistSeal(rw, tpm.Handle(*permPrimaryHandle),
-		unsealing_secret, "01020304", "01020304", // *sealedParentPassword, *sealedOwnerPassword,
+	sealed_priv, sealed_pub, err := assistSeal(rw,
+		tpm.Handle(*permPrimaryHandle), unsealing_secret,
+		*sealedParentPassword, *sealedOwnerPassword,
 		[]int{7}, policy_digest)
 	if err != nil {
 		fmt.Printf("Can't seal Program private key sealing secret\n")
@@ -295,11 +299,12 @@ fmt.Printf("Calling CreatePrimary\n")
 	fmt.Printf("sealed priv, pub: %x %x\n", sealed_priv, sealed_pub)
 
 	var inHmac []byte
-        calcHmac, encrypted_program_key, err := tpm.EncryptDataWithCredential(true, tpm.AlgTPM_ALG_SHA1,
-                unsealing_secret, serialized_program_key, inHmac)
+        calcHmac, encrypted_program_key, err := tpm.EncryptDataWithCredential(true,
+		tpm.AlgTPM_ALG_SHA1, unsealing_secret, serialized_program_key,
+		inHmac)
 	if err != nil {
 		fmt.Printf("Can't tpm.EncryptDataWithCredential program key\n")
-		// return
+		return
 	}
 	ioutil.WriteFile(*sealedProgramKeyFile + ".private.encrypted_program_key",
 		append(calcHmac, encrypted_program_key...), 0644)
@@ -335,13 +340,13 @@ fmt.Printf("Calling CreatePrimary\n")
 		sealed_pub, sealed_priv, "", "01020304", policy_digest)
         if err != nil {
                 fmt.Printf("Can't Unseal\n")
-		// return
+		return
         }
         _, decrypted_program_key, err := tpm.EncryptDataWithCredential(false, tpm.AlgTPM_ALG_SHA1,
                 unsealed, encrypted_program_key, calcHmac)
 	if err != nil {
 		fmt.Printf("Can't tpm.EncryptDataWithCredential (decrypt) program key\n")
-		// return
+		return
 	}
 	fmt.Printf("unsealed: %x\n", unsealed)
 	fmt.Printf("decrypted_program_key: %x\n", decrypted_program_key)

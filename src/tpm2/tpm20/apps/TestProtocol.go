@@ -16,7 +16,7 @@
 package main
 
 import (
-	//"crypto/rand"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"errors"
@@ -30,7 +30,8 @@ import (
 )
 
 // return handle, policy digest
-func assistCreateSession(rw io.ReadWriteCloser, hash_alg uint16, pcrs []int) (tpm.Handle, []byte, error) {
+func assistCreateSession(rw io.ReadWriteCloser, hash_alg uint16,
+		pcrs []int) (tpm.Handle, []byte, error) {
 	nonceCaller := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 	var secret []byte
 	sym := uint16(tpm.AlgTPM_ALG_NULL)
@@ -281,12 +282,10 @@ func main() {
 	fmt.Printf("policy_digest: %x\n\n", policy_digest)
 
 	// Serialize the client private key proto, seal it and save it.
-	// Replace later with
-	// 	var unsealing_secret [32]byte
-	// 	rand.Read(unsealing_secret[0:32])
-	unsealing_secret :=  []byte{0,1,2,3,4,5,6,7,8,9,1,2,3,4,5,6}
+	var unsealing_secret [32]byte
+	rand.Read(unsealing_secret[0:32])
 	sealed_priv, sealed_pub, err := assistSeal(rw,
-		tpm.Handle(*permPrimaryHandle), unsealing_secret,
+		tpm.Handle(*permPrimaryHandle), unsealing_secret[0:32],
 		*sealedParentPassword, *sealedOwnerPassword,
 		[]int{7}, policy_digest)
 	if err != nil {
@@ -302,7 +301,7 @@ func main() {
 
 	var inHmac []byte
         calcHmac, encrypted_program_key, err := tpm.EncryptDataWithCredential(true,
-		tpm.AlgTPM_ALG_SHA1, unsealing_secret, serialized_program_key,
+		tpm.AlgTPM_ALG_SHA1, unsealing_secret[0:32], serialized_program_key,
 		inHmac)
 	if err != nil {
 		fmt.Printf("Can't tpm.EncryptDataWithCredential program key\n")
@@ -338,7 +337,8 @@ func main() {
 	// recovered_cipher_text := encryptedProgramKey[20:]
 	// fmt.Printf("Recovered hmac, cipher_text: %x, %x\n", recovered_hmac, recovered_cipher_text)
 	// fmt.Printf("Recovered priv, pub: %x, %x\n", programPrivateBlob, programPublicBlob)
-	unsealed, _, err := assistUnseal(rw, sessionHandle, tpm.Handle(*permPrimaryHandle),
+	unsealed, _, err := assistUnseal(rw, sessionHandle,
+		tpm.Handle(*permPrimaryHandle),
 		sealed_pub, sealed_priv, "", "01020304", policy_digest)
         if err != nil {
                 fmt.Printf("Can't Unseal\n")

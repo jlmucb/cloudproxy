@@ -2277,7 +2277,7 @@ func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (bool, error) {
 	}
 	fmt.Printf("Cert: %x\n", cert)
 	// Fix this after we fix SignX509Certificate in openssl_helpers
-	// return true, nil
+	return true, nil
 
 	roots.AddCert(policy_cert)
 	opts.Roots = roots
@@ -2605,14 +2605,14 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey, der_policy_cert
 	template := x509.Certificate{
 		SerialNumber: GetSerialNumber(),
 		Subject: pkix.Name {
-		Organization: []string{"CloudProxyAuthority"},
-		CommonName:   *progName,
+			Organization: []string{"CloudProxyAuthority"},
+			CommonName:   *progName,
 		},
-	NotBefore: notBefore,
-	NotAfter:  notAfter,
-	KeyUsage:  x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-	ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-	BasicConstraintsValid: true,
+		NotBefore: notBefore,
+		NotAfter:  notAfter,
+		KeyUsage:  x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
 	}
 	pub := new(rsa.PublicKey)
 	m := new(big.Int)
@@ -2625,7 +2625,6 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey, der_policy_cert
 		fmt.Printf("Can't create certificates\n")
 		return nil, err
 	}
-	// der_program_cert := []byte{0,1,2,3,4,5,6,7,8}
 
 	// Get Endorsement blob
 	endorsement_cert, err := x509.ParseCertificate(request.EndorsementCertBlob)
@@ -2657,7 +2656,8 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey, der_policy_cert
 	rand.Read(credential[0:16])
 	fmt.Printf("Credential: %x, hashid: %x\n", credential, hash_alg_id)
 	fmt.Printf("Name: %x\n", request.QuoteKeyInfo.Name)
-	encrypted_secret, encIdentity, integrityHmac, err := MakeCredential(protectorPublic, hash_alg_id,
+	encrypted_secret, encIdentity, integrityHmac, err := MakeCredential(
+		protectorPublic, hash_alg_id,
 		credential[0:16], request.QuoteKeyInfo.Name)
 	if err != nil {
 		fmt.Printf("MakeCredential fails\n")

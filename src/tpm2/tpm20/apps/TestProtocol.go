@@ -77,11 +77,13 @@ func assistSeal(rw io.ReadWriteCloser, parentHandle tpm.Handle, toSeal []byte,
 	fmt.Printf("seal: %x\n", toSeal)
 
 	var empty []byte
-	keyedhashparms := tpm.KeyedHashParams{uint16(tpm.AlgTPM_ALG_KEYEDHASH), uint16(tpm.AlgTPM_ALG_SHA1),
+	keyedhashparms := tpm.KeyedHashParams{uint16(tpm.AlgTPM_ALG_KEYEDHASH),
+		uint16(tpm.AlgTPM_ALG_SHA1),
 		uint32(0x00000012), empty, uint16(tpm.AlgTPM_ALG_AES), uint16(128),
 		uint16(tpm.AlgTPM_ALG_CFB), uint16(tpm.AlgTPM_ALG_NULL), empty}
-	private_blob, public_blob, err := tpm.CreateSealed(rw, parentHandle, policy_digest,
-		parentPassword,  ownerPassword, toSeal, []int{7}, keyedhashparms)
+	private_blob, public_blob, err := tpm.CreateSealed(rw, parentHandle,
+		policy_digest, parentPassword, ownerPassword, toSeal,
+		[]int{7}, keyedhashparms)
 	if err != nil {
 		fmt.Printf("CreateSealed fails ", err, "\n") 
 		return nil, nil, errors.New("CreateSealed fails") 
@@ -131,7 +133,7 @@ func main() {
 	fileNamePolicyCert := flag.String("Policy cert",
 		"../tmptest/policy_key_cert", "policy_key_cert")
 	fileNamePolicyKey := flag.String("Policy key",
-		"../tmptest/cloudproxy_key_file.proto", "policy_key_cert")
+		"../tmptest/cloudproxy_key_file.proto", "policy key")
 	fileNameSigningInstructions := flag.String("Signing instructions",
 		"../tmptest/signing_instructions", "signing instructions")
 	quoteOwnerPassword := flag.String("Quote owner password", "01020304",

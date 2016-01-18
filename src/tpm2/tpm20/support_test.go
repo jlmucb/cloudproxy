@@ -30,9 +30,23 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+
+func TestCppCertificate(t *testing.T) {
+	fileName := "./tmptest/endorsement_cert.ext"
+	out := RetrieveFile(fileName)
+	if out == nil {
+		t.Fatal("Can't retrieve file\n")
+	}
+	endorse_cert, err := x509.ParseCertificate(out)
+	if err != nil {
+		t.Fatal("Can't parse test endorse certificate ", err, "\n")
+	}
+	fmt.Printf("endorse cert: %x\n", endorse_cert)
+}
+
 func TestSignCertificate(t *testing.T) {
 
- 	// Generate Policy Key.
+	// Generate Policy Key.
 	privatePolicyKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatal("Can't generate privatekey\n")

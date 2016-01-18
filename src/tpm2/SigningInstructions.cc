@@ -67,8 +67,7 @@ void PrintOptions() {
 }
 
 DEFINE_string(issuer, "", "issuer name");
-DEFINE_string(purpose, "nonrepudiation,digitalSignature,keyEncipherment",
-              "purpose");
+DEFINE_string(purpose, "digitalSignature, keyEncipherment", "purpose");
 DEFINE_string(hash_alg, "sha1", "hash alg");
 DEFINE_int64(duration, 31536000, "duration (in seconds)");
 DEFINE_string(instructions_file, "signing_instructions", "output-file-name");

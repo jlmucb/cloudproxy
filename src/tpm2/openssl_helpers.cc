@@ -250,6 +250,7 @@ char* extEntry::getValue() {
 
 bool addExtensionsToCert(int num_entry, extEntry** entries, X509* cert) {
 #if 1
+  // Temporary because of go verification
   return true;
 #endif
   // add extensions
@@ -274,7 +275,7 @@ bool addExtensionsToCert(int num_entry, extEntry** entries, X509* cert) {
   return true;
 }
 
-bool SignX509Certificate(RSA* signing_key,
+bool SignX509Certificate(RSA* signing_key, bool f_isCa,
                          signing_instructions_message& signing_instructions,
                          EVP_PKEY* signedKey,
                          X509_REQ* req, bool verify_req_sig, X509* cert) {
@@ -336,14 +337,12 @@ bool SignX509Certificate(RSA* signing_key,
 
   // add extensions
   extEntry* entries[4];
-  if (signing_instructions.isca())
-    entries[0] = new extEntry("basicConstraints", "critical,CA:TRUE");
-  else
-    entries[0] = new extEntry("basicConstraints", "critical,CA:FALSE");
-  entries[1] = new extEntry("subjectKeyIdentifier", "hash");
-  entries[2] = new extEntry("authorityKeyIdentifier", "keyid, issuer:always");
-  entries[3] = new extEntry("keyUsage", signing_instructions.purpose().c_str());
-  if (!addExtensionsToCert(4, entries, cert)) {
+  int n = 0;
+  if (f_isCa)
+    entries[n++] = new extEntry("basicConstraints", "critical,CA:TRUE");
+  entries[n++] = new extEntry("subjectKeyIdentifier", "hash");
+  entries[n++] = new extEntry("keyUsage", signing_instructions.purpose().c_str());
+  if (!addExtensionsToCert(n, entries, cert)) {
     printf("Can't add extensions\n");
     return false;
   }

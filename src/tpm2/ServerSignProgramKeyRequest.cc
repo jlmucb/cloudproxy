@@ -337,7 +337,7 @@ int main(int an, char** av) {
   }
 
   // sign program key
-  if (!SignX509Certificate(signing_key, signing_message, nullptr, req,
+  if (!SignX509Certificate(signing_key, false, signing_message, nullptr, req,
                            false, program_cert)) {
     printf("Can't sign x509 request for program key\n");
     ret_val = 1;

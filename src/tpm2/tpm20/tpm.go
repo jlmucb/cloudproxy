@@ -2254,7 +2254,7 @@ func ValidPcr(pcrSelect []byte, digest []byte) (bool) {
 	return true
 }
 
-func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (error) {
+func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (bool, error) {
 	roots := x509.NewCertPool()
 	opts := x509.VerifyOptions{
 		Roots:   roots,
@@ -2264,7 +2264,7 @@ func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (error) {
 	policy_cert, err := x509.ParseCertificate(der_signing_cert)
 	if err != nil {
 		fmt.Printf("Signing ParseCertificate fails")
-		return err
+		return false, err
 	}
 	roots.AddCert(policy_cert)
 	fmt.Printf("Root cert: %x\n", der_signing_cert)
@@ -2273,17 +2273,27 @@ func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (error) {
 	cert, err := x509.ParseCertificate(der_cert)
 	if err != nil {
 		fmt.Printf("Cert ParseCertificate fails")
-		return err
+		return false, err
 	}
 	fmt.Printf("Cert: %x\n", cert)
-	return nil   // Fix
+	// Fix this after we fix SignX509Certificate in openssl_helpers
+	return true, nil
 
 	roots.AddCert(policy_cert)
 	opts.Roots = roots
-	_, err = cert.Verify(opts)
-	fmt.Printf("Verify fails ", err, "\n")
+	chains, err := cert.Verify(opts)
+	if err != nil {
+		fmt.Printf("Verify fails ", err, "\n")
+		return false, err
+	}
+	if chains != nil {
+		fmt.Printf("Verify\n")
+		return true, nil
+	} else {
+		fmt.Printf("Verify no verify\n")
+		return false, nil
+	}
 
-	return err
 }
 
 func VerifyQuote(to_quote []byte, quote_key_info QuoteKeyInfoMessage,
@@ -2625,7 +2635,8 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey, der_policy_cert
 	}
 
 	// Verify Endorsement Cert
-	if VerifyDerCert(der_policy_cert, request.EndorsementCertBlob) != nil {
+	ok, err := VerifyDerCert(der_policy_cert, request.EndorsementCertBlob)
+	if !ok {
 		fmt.Printf("Bad endorsement cert")
 		return nil, errors.New("Bad endorsement cert")
 	}

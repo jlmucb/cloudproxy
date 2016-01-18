@@ -237,7 +237,7 @@ int main(int an, char** av) {
   X509* cert = X509_new();
   X509_set_pubkey(cert, subject_key);
   // X509_set_issuer_name(cert, issuerSubject)
-  if (!SignX509Certificate(signing_key, signing_message, subject_key,
+  if (!SignX509Certificate(signing_key, false, signing_message, subject_key,
                            req, false, cert)) {
     printf("Can't sign x509 request\n");
     return 1;

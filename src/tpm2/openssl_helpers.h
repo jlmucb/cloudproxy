@@ -44,7 +44,7 @@ bool GenerateX509CertificateRequest(x509_cert_request_parameters_message& params
 bool GetPublicRsaParametersFromSSLKey(RSA& rsa, rsa_public_key_message* key_msg);
 bool GetPrivateRsaParametersFromSSLKey(RSA& rsa,
                                        rsa_private_key_message* key_msg);
-bool SignX509Certificate(RSA* signing_key,
+bool SignX509Certificate(RSA* signing_key, bool isCa,
                          signing_instructions_message& signing_instructions,
                          EVP_PKEY* signedKey,
                          X509_REQ* req, bool verify_req_sig, X509* cert);

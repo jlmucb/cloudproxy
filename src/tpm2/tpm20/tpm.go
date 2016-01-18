@@ -2277,7 +2277,7 @@ func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (bool, error) {
 	}
 	fmt.Printf("Cert: %x\n", cert)
 	// Fix this after we fix SignX509Certificate in openssl_helpers
-	return true, nil
+	// return true, nil
 
 	roots.AddCert(policy_cert)
 	opts.Roots = roots

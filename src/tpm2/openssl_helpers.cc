@@ -340,7 +340,7 @@ bool SignX509Certificate(RSA* signing_key, bool f_isCa,
   int n = 0;
   if (f_isCa)
     entries[n++] = new extEntry("basicConstraints", "critical,CA:TRUE");
-  entries[n++] = new extEntry("subjectKeyIdentifier", "hash");
+  // entries[n++] = new extEntry("subjectKeyIdentifier", "hash");
   entries[n++] = new extEntry("keyUsage", signing_instructions.purpose().c_str());
   if (!addExtensionsToCert(n, entries, cert)) {
     printf("Can't add extensions\n");

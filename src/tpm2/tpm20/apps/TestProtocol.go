@@ -129,9 +129,9 @@ func main() {
 	permQuoteHandle := flag.Uint("quote handle", 0x810003e9,
 		"permenant quote handle")
 	fileNameEndorsementCert := flag.String("Endorsement cert file",
-		"../tmptest/endorsement_cert", "endorsement cert")
+		"../tmptest/endorsement_cert.t", "endorsement cert")
 	fileNamePolicyCert := flag.String("Policy cert",
-		"../tmptest/policy_key_cert", "policy_key_cert")
+		"../tmptest/policy_key_cert.t", "policy_key_cert")
 	fileNamePolicyKey := flag.String("Policy key",
 		"../tmptest/cloudproxy_key_file.proto", "policy key")
 	fileNameSigningInstructions := flag.String("Signing instructions",

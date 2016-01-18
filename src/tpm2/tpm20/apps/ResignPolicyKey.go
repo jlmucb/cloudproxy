@@ -17,6 +17,7 @@ package main
 
 import (
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"flag"
@@ -122,9 +123,22 @@ func main() {
 		KeyUsage:  x509.KeyUsageCertSign,
 		BasicConstraintsValid: true,
 	}
-	endorse_pub := old_endorse_cert.PublicKey
+
+	// This seems to get the signer public key
+
+	var endorsementPublic *rsa.PublicKey
+	switch k :=  old_endorse_cert.PublicKey.(type) {
+	case  *rsa.PublicKey:
+		endorsementPublic = k
+	case  *rsa.PrivateKey:
+		endorsementPublic = &k.PublicKey
+	default:
+		fmt.Printf("endorsement cert is not an rsa key\n")
+		return
+	}
+
 	new_der_endorsement_cert, err := x509.CreateCertificate(rand.Reader,
-		&signeeTemplate, policy_cert, endorse_pub, policyPrivateKey)
+		&signeeTemplate, policy_cert, endorsementPublic, policyPrivateKey)
 	if err != nil {
 		fmt.Printf("Can't CreateCertificate ", err, "\n")
 	}
@@ -132,9 +146,9 @@ func main() {
 
 	// Save endorsement cert.
 	fmt.Printf("Policy cert: %x\n\n", der_policy_cert)
-	ioutil.WriteFile(*fileEndorsementCertOutFileName, der_policy_cert, 0644)
+	ioutil.WriteFile(*fileEndorsementCertOutFileName, new_der_endorsement_cert, 0644)
 
-	ok, err := tpm.VerifyDerCert(der_policy_cert, der_policy_cert)
+	ok, err := tpm.VerifyDerCert(new_der_endorsement_cert, der_policy_cert)
 	if ok {
 		fmt.Printf("Endorsement cert verifies\n")
 	} else {

@@ -2276,8 +2276,6 @@ func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (bool, error) {
 		return false, err
 	}
 	fmt.Printf("Cert: %x\n", cert)
-	// Fix this after we fix SignX509Certificate in openssl_helpers
-	return true, nil
 
 	roots.AddCert(policy_cert)
 	opts.Roots = roots
@@ -2634,7 +2632,7 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey, der_policy_cert
 	}
 
 	// Verify Endorsement Cert
-	ok, err := VerifyDerCert(der_policy_cert, request.EndorsementCertBlob)
+	ok, err := VerifyDerCert(request.EndorsementCertBlob, der_policy_cert)
 	if !ok {
 		fmt.Printf("Bad endorsement cert")
 		return nil, errors.New("Bad endorsement cert")

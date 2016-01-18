@@ -2462,8 +2462,8 @@ func UnmarshalRsaPrivateFromProto(msg *RsaPrivateKeyMessage) (*rsa.PrivateKey, e
 // Input: Der encoded endorsement cert and handles
 // Returns program private key protobuf, CertRequestMessage
 func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
-		quote_handle Handle,
-		parent_pw string, owner_pw string, program_name string) (*RsaPrivateKeyMessage,
+		quote_handle Handle, parent_pw string, owner_pw string,
+		program_name string) (*RsaPrivateKeyMessage,
 		*ProgramCertRequestMessage, error) {
 
 	// Generate Program Key.

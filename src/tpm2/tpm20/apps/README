@@ -1,0 +1,13 @@
+Instructions
+
+The applications in this directory make permanent keys in the TPM for cloudproxy machines
+and implement the CloudProxy protocol.
+
+To run these applications, first run protocol_test.sh as you would normally do to test
+the C++ version.  Copy the files cloudproxy_key_file, cloudproxy_key_file.proto, policy_key_cert,
+and signing_instructions into ../tmptest.
+
+Then run ResignPolicyKey.go with the default flags.  This will create Go-readable policy and endorsement
+certificates from the C++ generated version.  Finall, as root, run TestProtocol.go to actually run
+the Cloudproxy protocol demonstration.
+

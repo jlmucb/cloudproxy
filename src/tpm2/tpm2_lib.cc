@@ -2548,7 +2548,6 @@ bool Tpm2_InitNvCounter(LocalTpm& tpm, TPMI_RH_NV_INDEX index, string& authStrin
   printResponse("InitNvCounter", cap, responseSize, responseCode, resp_buf);
   if (responseCode != TPM_RC_SUCCESS)
     return false;
-  // TPM_CC_NV_DefineSpace
   return true;
 }
 

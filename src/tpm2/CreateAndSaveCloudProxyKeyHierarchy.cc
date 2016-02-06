@@ -261,7 +261,7 @@ int main(int an, char** av) {
   // TODO(jlm): should be pcrpolicy protected
   // TODO(jlm): index into structures should be added 
   if (!Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle, authString, 0, nullptr,
-			(uint16_t)context_data_size + 32)) {
+			NV_AUTHWRITE | NV_AUTHREAD, (uint16_t)context_data_size + 32)) {
     printf("Primary DefinedSpace failed\n");
     ret_val = 1;
     goto done;
@@ -298,8 +298,8 @@ int main(int an, char** av) {
   }
   // TODO(jlm): should be pcrpolicy protected
   // TODO(jlm): index into structures should be added 
-  if (!Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle, authString, 
-			0, nullptr, (uint16_t)context_data_size + 32)) {
+  if (!Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle, authString, 0, nullptr,
+                        NV_AUTHWRITE | NV_AUTHREAD, (uint16_t)context_data_size + 32)) {
     printf("Seal DefinedSpace failed\n");
     ret_val = 1;
     goto done;
@@ -336,7 +336,8 @@ int main(int an, char** av) {
   // TODO(jlm): should be pcrpolicy protected
   // TODO(jlm): index into structures should be added 
   if (!Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle, authString, 
-			0, nullptr, (uint16_t)context_data_size + 32)) {
+			0, nullptr, NV_AUTHWRITE | NV_AUTHREAD,
+                        (uint16_t)context_data_size + 32)) {
     printf("Seal DefinedSpace failed\n");
     ret_val = 1;
     goto done;

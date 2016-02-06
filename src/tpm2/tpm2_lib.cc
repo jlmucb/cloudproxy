@@ -2494,6 +2494,115 @@ TPM_HANDLE GetNvHandle(uint32_t slot) {
   return (TPM_HANDLE)((TPM_HT_NV_INDEX << HR_SHIFT) + slot);
 }
 
+bool Tpm2_InitNvCounter(LocalTpm& tpm, TPMI_RH_NV_INDEX index, string& authString) {
+  byte commandBuf[2*MAX_SIZE_PARAMS];
+  int size_resp = MAX_SIZE_PARAMS;
+  byte resp_buf[MAX_SIZE_PARAMS];
+  int size_params = 0;
+  byte params_buf[MAX_SIZE_PARAMS];
+  int space_left = MAX_SIZE_PARAMS;
+  byte* in = params_buf;
+  int n;
+
+  // attributes = 0x00040004;
+  uint32_t attributes = NV_AUTHWRITE | NV_AUTHREAD | NV_COUNTER;
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+  ChangeEndian32((uint32_t*)&attributes, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+  memset(commandBuf, 0, MAX_SIZE_PARAMS);
+  memset(resp_buf, 0, MAX_SIZE_PARAMS);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+  n = CreatePasswordAuthArea(authString, space_left, in);
+  IF_NEG_RETURN_FALSE(n);
+  Update(n, &in, &size_params, &space_left);
+
+  memset(in, 0, sizeof(uint16_t));
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  uint16_t offset = 0;
+  IF_NEG_RETURN_FALSE(n);
+  ChangeEndian16((uint16_t*)&offset, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_NV_UndefineSpace,
+                                commandBuf, size_params, params_buf);
+  printCommand("InitNvCounter", in_size, commandBuf);
+  if (!tpm.SendCommand(in_size, commandBuf)) {
+    printf("SendCommand failed\n");
+    return false;
+  }
+  if (!tpm.GetResponse(&size_resp, resp_buf)) {
+    printf("GetResponse failed\n");
+    return false;
+  }
+  uint16_t cap = 0;
+  uint32_t responseSize; 
+  uint32_t responseCode; 
+  Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
+                        &responseSize, &responseCode);
+  printResponse("InitNvCounter", cap, responseSize, responseCode, resp_buf);
+  if (responseCode != TPM_RC_SUCCESS)
+    return false;
+  // TPM_CC_NV_DefineSpace
+  return true;
+}
+
+bool Tpm2_IncrementNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, string& authString) {
+  byte commandBuf[2*MAX_SIZE_PARAMS];
+  int size_resp = MAX_SIZE_PARAMS;
+  byte resp_buf[MAX_SIZE_PARAMS];
+  int size_params = 0;
+  byte params_buf[MAX_SIZE_PARAMS];
+  int space_left = MAX_SIZE_PARAMS;
+  byte* in = params_buf;
+  int n;
+
+  memset(commandBuf, 0, MAX_SIZE_PARAMS);
+  memset(resp_buf, 0, MAX_SIZE_PARAMS);
+
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
+  ChangeEndian32((uint32_t*)&index, (uint32_t*)in);
+  Update(sizeof(uint32_t), &in, &size_params, &space_left);
+
+  n = CreatePasswordAuthArea(authString, space_left, in);
+  IF_NEG_RETURN_FALSE(n);
+  Update(n, &in, &size_params, &space_left);
+  memset(in, 0, sizeof(uint16_t));
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  uint16_t offset = 0;
+  IF_NEG_RETURN_FALSE(n);
+  ChangeEndian16((uint16_t*)&offset, (uint16_t*)in);
+  Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+  int in_size = Tpm2_SetCommand(TPM_ST_SESSIONS, TPM_CC_NV_Increment,
+                                commandBuf, size_params, params_buf);
+  printCommand("IncrementNv", in_size, commandBuf);
+  if (!tpm.SendCommand(in_size, commandBuf)) {
+    printf("SendCommand failed\n");
+    return false;
+  }
+  if (!tpm.GetResponse(&size_resp, resp_buf)) {
+    printf("GetResponse failed\n");
+    return false;
+  }
+  uint16_t cap = 0;
+  uint32_t responseSize; 
+  uint32_t responseCode; 
+  Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
+                        &responseSize, &responseCode);
+  printResponse("IncrementNv", cap, responseSize, responseCode, resp_buf);
+  if (responseCode != TPM_RC_SUCCESS)
+    return false;
+
+  return true;
+}
+
 bool Tpm2_ReadNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
                  string& authString, uint16_t size, byte* data) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
@@ -2624,7 +2733,7 @@ bool Tpm2_WriteNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
 
 bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
                       string& authString, uint16_t authPolicySize, byte* authPolicy,
-                      uint16_t size_data) {
+                      uint32_t attributes, uint16_t size_data) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   int size_resp = MAX_SIZE_PARAMS;
   byte resp_buf[MAX_SIZE_PARAMS];
@@ -2672,13 +2781,16 @@ bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,
   IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
   ChangeEndian16((uint16_t*)&alg, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
+
+#if 0
   uint32_t attributes;
   memset((byte*)&attributes, 0 , sizeof(uint32_t));
 
   // TODO(jlm): what attributes is this?  Remove
   // attributes = 0x00040004;
   attributes = NV_AUTHWRITE | NV_AUTHREAD;
-  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint16_t))
+#endif
+  IF_LESS_THAN_RETURN_FALSE(space_left, sizeof(uint32_t))
   ChangeEndian32((uint32_t*)&attributes, (uint32_t*)in);
   Update(sizeof(uint32_t), &in, &size_params, &space_left);
 

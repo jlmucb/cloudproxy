@@ -333,7 +333,7 @@ int main(int an, char** av) {
     TPM_HANDLE nv_handle = GetNvHandle(FLAGS_nv_slot);
     uint16_t size_data = (uint16_t) FLAGS_nv_size;
     if (Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle, FLAGS_authString,
-			 0, nullptr, size_data)) {
+			 0, nullptr, NV_AUTHWRITE | NV_AUTHREAD, size_data)) {
       printf("DefineSpace succeeded\n");
     } else {
       printf("DefineSpace failed\n");
@@ -723,7 +723,7 @@ bool Tpm2_NvCombinedTest(LocalTpm& tpm) {
     printf("Tpm2_UndefineSpace fails (but that's OK usually)\n");
   }
   if (Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle, authString, 0, nullptr,
-		       size_data) ) {
+		       NV_AUTHWRITE | NV_AUTHREAD, size_data) ) {
     printf("Tpm2_DefineSpace %d succeeds\n", nv_handle);
   } else {
     printf("Tpm2_DefineSpace fails\n");
@@ -837,7 +837,7 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("Tpm2_UndefineSpace fails (but that's OK usually)\n");
   }
   if (Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle, authString, 0, nullptr,
-		       size_data) ) {
+		       NV_AUTHWRITE | NV_AUTHREAD, size_data) ) {
     printf("Tpm2_DefineSpace %d succeeds\n", nv_handle);
   } else {
     printf("Tpm2_DefineSpace fails\n");

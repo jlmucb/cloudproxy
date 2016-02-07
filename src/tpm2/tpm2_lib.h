@@ -175,15 +175,15 @@ bool Tpm2_Quote(LocalTpm& tpm, TPM_HANDLE signingHandle, string& parentAuth,
                 TPMT_SIG_SCHEME scheme, TPML_PCR_SELECTION& pcr_selection,
                 TPM_ALG_ID sig_alg, TPM_ALG_ID hash_alg, 
                 int* attest_size, byte* attest, int* sig_size, byte* sig);
-bool Tpm2_LoadContext(LocalTpm& tpm, int size, byte* saveArea,
+bool Tpm2_LoadContext(LocalTpm& tpm, uint16_t size, byte* saveArea,
                       TPM_HANDLE* handle);
-bool Tpm2_SaveContext(LocalTpm& tpm, TPM_HANDLE handle, int* size,
+bool Tpm2_SaveContext(LocalTpm& tpm, TPM_HANDLE handle, uint16_t* size,
                       byte* saveArea);
 bool Tpm2_FlushContext(LocalTpm& tpm, TPM_HANDLE handle);
 
 bool Tpm2_IncrementNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, string& authString);
 bool Tpm2_ReadNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, 
-                 string& authString, uint16_t size, byte* data);
+                 string& authString, uint16_t* size, byte* data);
 bool Tpm2_WriteNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, string& authString,
                   uint16_t size, byte* data);
 bool Tpm2_DefineSpace(LocalTpm& tpm, TPM_HANDLE owner, TPMI_RH_NV_INDEX index,

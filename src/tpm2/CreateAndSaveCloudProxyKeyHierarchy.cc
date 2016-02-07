@@ -136,7 +136,7 @@ int main(int an, char** av) {
 
   TPM_HANDLE nv_handle = 0;
   byte context_save_area[MAX_SIZE_PARAMS];
-  int context_data_size = MAX_SIZE_PARAMS;
+  uint16_t context_data_size = MAX_SIZE_PARAMS;
 
   TPM_HANDLE sealed_load_handle = 0;
 

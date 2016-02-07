@@ -113,14 +113,14 @@ int main(int an, char** av) {
   TPM_HANDLE quote_handle = 0;
   TPM_HANDLE nv_handle = 0;
   byte context_save_area[MAX_SIZE_PARAMS];
-  int context_data_size = 930;
+  uint16_t context_data_size = 924;
 
   InitSinglePcrSelection(7, hash_alg_id, &pcrSelect);
 
   // root handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);
   nv_handle = GetNvHandle(FLAGS_slot_primary);
-  if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t) context_data_size,
+  if (!Tpm2_ReadNv(tpm, nv_handle, authString, &context_data_size,
                    context_save_area)) {
     printf("Root ReadNv failed\n");
     ret_val = 1;
@@ -129,11 +129,11 @@ int main(int an, char** av) {
 
 #ifdef DEBUG_EXTRA
   printf("\ncontext_save_area: ");
-  PrintBytes(context_data_size - 6, context_save_area + 6);
+  PrintBytes(context_data_size, context_save_area);
   printf("\n\n");
 #endif
 
-  if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
+  if (!Tpm2_LoadContext(tpm, context_data_size, context_save_area,
                         &root_handle)) {
     printf("Root LoadContext failed\n");
     ret_val = 1;
@@ -143,7 +143,7 @@ int main(int an, char** av) {
   // seal handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);
   nv_handle = GetNvHandle(FLAGS_slot_seal);
-  if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t)context_data_size,
+  if (!Tpm2_ReadNv(tpm, nv_handle, authString, &context_data_size,
                    context_save_area)) {
     printf("Root ReadNv failed\n");
     ret_val = 1;
@@ -152,7 +152,7 @@ int main(int an, char** av) {
   printf("context_save_area: ");
   PrintBytes(context_data_size, context_save_area);
   printf("\n");
-  if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
+  if (!Tpm2_LoadContext(tpm, context_data_size, context_save_area,
                         &seal_handle)) {
     printf("Root LoadContext failed\n");
     ret_val = 1;
@@ -162,13 +162,13 @@ int main(int an, char** av) {
   // quote handle
   memset(context_save_area, 0, MAX_SIZE_PARAMS);
   nv_handle = GetNvHandle(FLAGS_slot_quote);
-  if (!Tpm2_ReadNv(tpm, nv_handle, authString, (uint16_t)context_data_size,
+  if (!Tpm2_ReadNv(tpm, nv_handle, authString, &context_data_size,
                    context_save_area)) {
     printf("Quote ReadNv failed\n");
     ret_val = 1;
     goto done;
   }
-  if (!Tpm2_LoadContext(tpm, context_data_size - 6, context_save_area + 6,
+  if (!Tpm2_LoadContext(tpm, context_data_size, context_save_area,
                         &quote_handle)) {
     printf("Quote LoadContext failed\n");
     ret_val = 1;

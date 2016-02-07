@@ -2377,7 +2377,8 @@ bool Tpm2_Quote(LocalTpm& tpm, TPM_HANDLE signingHandle, string& parentAuth,
   return true;
 }
 
-bool Tpm2_LoadContext(LocalTpm& tpm, int size, byte* saveArea, TPM_HANDLE* handle) {
+bool Tpm2_LoadContext(LocalTpm& tpm, uint16_t size, byte* saveArea,
+                      TPM_HANDLE* handle) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   memset(commandBuf, 0, 2*MAX_SIZE_PARAMS);
 
@@ -2417,7 +2418,8 @@ bool Tpm2_LoadContext(LocalTpm& tpm, int size, byte* saveArea, TPM_HANDLE* handl
   return true;
 }
 
-bool Tpm2_SaveContext(LocalTpm& tpm, TPM_HANDLE handle, int* size, byte* saveArea) {
+bool Tpm2_SaveContext(LocalTpm& tpm, TPM_HANDLE handle, uint16_t* size,
+                      byte* saveArea) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   memset(commandBuf, 0, 2*MAX_SIZE_PARAMS);
 
@@ -2546,7 +2548,7 @@ bool Tpm2_IncrementNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, string& authString)
 }
 
 bool Tpm2_ReadNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
-                 string& authString, uint16_t size, byte* data) {
+                 string& authString, uint16_t* size, byte* data) {
   byte commandBuf[2*MAX_SIZE_PARAMS];
   int size_resp = MAX_SIZE_PARAMS;
   byte resp_buf[MAX_SIZE_PARAMS];
@@ -2576,7 +2578,7 @@ bool Tpm2_ReadNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   IF_NEG_RETURN_FALSE(n);
   Update(n, &in, &size_params, &space_left);
   memset(in, 0, sizeof(uint16_t));
-  ChangeEndian16((uint16_t*)&size, (uint16_t*)in);
+  ChangeEndian16((uint16_t*)size, (uint16_t*)in);
   Update(sizeof(uint16_t), &in, &size_params, &space_left);
 
   uint16_t offset = 0;
@@ -2599,12 +2601,14 @@ bool Tpm2_ReadNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index,
   uint32_t responseSize; 
   uint32_t responseCode; 
   Tpm2_InterpretResponse(size_resp, resp_buf, &cap,
-                        &responseSize, &responseCode);
+                         &responseSize, &responseCode);
   printResponse("ReadNv", cap, responseSize, responseCode, resp_buf);
   if (responseCode != TPM_RC_SUCCESS)
     return false;
-  byte* out = resp_buf + sizeof(TPM_RESPONSE);
-  memcpy(data, out, size);
+  byte* out = resp_buf + sizeof(TPM_RESPONSE) + sizeof(uint32_t);
+  ChangeEndian16((uint16_t*)out, (uint16_t*)size);
+  out += sizeof(uint16_t);
+  memcpy(data, out, *size);
   return true;
 }
 

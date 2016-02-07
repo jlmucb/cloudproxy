@@ -352,7 +352,7 @@ int main(int an, char** av) {
       printf("LoadContext failed\n");
     }
   } else if (FLAGS_command == "SaveContext") {
-    int size = 4096;
+    uint16_t size = 4096;
     byte saveArea[4096];
     memset(saveArea, 0, 4096);
 
@@ -384,9 +384,9 @@ int main(int an, char** av) {
     }
   } else if (FLAGS_command == "Tpm2_Read_Nv") {
     TPMI_RH_NV_INDEX index = (TPMI_RH_NV_INDEX) FLAGS_index;
-    int size_data = 0;
+    uint16_t size_data = 16;
     byte data[1024];
-    if (Tpm2_ReadNv(tpm, index, FLAGS_authString, size_data, data)) {
+    if (Tpm2_ReadNv(tpm, index, FLAGS_authString, &size_data, data)) {
       printf("Tpm2_Read_Nv succeeded\n");
       PrintBytes(size_data, data);
       printf("\n");
@@ -654,7 +654,7 @@ bool Tpm2_EndorsementCombinedTest(LocalTpm& tpm) {
 
 bool Tpm2_ContextCombinedTest(LocalTpm& tpm) {
   TPM_HANDLE handle;
-  int size;
+  uint16_t size = 4096;
   byte saveArea[4096];
   string authString("01020304");
 
@@ -714,6 +714,7 @@ bool Tpm2_NvCombinedTest(LocalTpm& tpm) {
     0x9, 0x8, 0x7, 0x6,
     0x9, 0x8, 0x7, 0x6
   };
+  uint16_t size_out = 512;
   byte data_out[512];
   TPM_HANDLE nv_handle = GetNvHandle(slot);
 
@@ -730,21 +731,21 @@ bool Tpm2_NvCombinedTest(LocalTpm& tpm) {
     return false;
   }
   if (Tpm2_WriteNv(tpm, nv_handle, authString, size_data, data_in)) {
-    printf("Tpm2_WriteNv %d succeeds\n", nv_handle);
+    printf("Tpm2_WriteNv %d succeeds, %d bytes written\n", nv_handle, size_data);
   } else {
     printf("Tpm2_WriteNv fails\n");
     return false;
   }
-  if (Tpm2_ReadNv(tpm, nv_handle, authString, size_data, data_out)) {
+  size_out = size_data;
+  if (Tpm2_ReadNv(tpm, nv_handle, authString, &size_out, data_out)) {
     printf("Tpm2_ReadNv %d succeeds: ", nv_handle);
-    PrintBytes(size_data, data_out);
+    PrintBytes(size_out, data_out);
     printf("\n");
   } else {
     printf("Tpm2_ReadNv fails\n");
     return false;
   }
 
-#if 1
   size_data = 8;
   memset(data_out, 0, 16);
   // Counter tests
@@ -756,7 +757,7 @@ bool Tpm2_NvCombinedTest(LocalTpm& tpm) {
   }
   // Should be AuthRead, AuthWrite, Counter, Sha256
   if (Tpm2_DefineSpace(tpm, TPM_RH_OWNER, nv_handle, authString, 0, nullptr,
-                       NV_COUNTER | NV_AUTHWRITE | NV_AUTHREAD, size_data)) {
+                       NV_COUNTER | NV_AUTHWRITE | NV_AUTHREAD, 8)) {
     printf("Tpm2_DefineSpace %d succeeds\n", nv_handle);
   } else {
     printf("Tpm2_DefineSpace fails\n");
@@ -767,8 +768,8 @@ bool Tpm2_NvCombinedTest(LocalTpm& tpm) {
   } else {
     printf("Tpm2_IncrementNv fails\n");
   }
-  int size_out = 8;
-  if (Tpm2_ReadNv(tpm, nv_handle, authString, size_out, data_out)) {
+  size_out = size_data;
+  if (Tpm2_ReadNv(tpm, nv_handle, authString, &size_out, data_out)) {
     printf("Tpm2_ReadNv succeeds\n");
     printf("Counter value: "); PrintBytes(size_out, data_out); printf("\n");
   } else {
@@ -779,7 +780,7 @@ bool Tpm2_NvCombinedTest(LocalTpm& tpm) {
   } else {
     printf("Tpm2_IncrementNv fails\n");
   }
-  if (Tpm2_ReadNv(tpm, nv_handle, authString, size_out, data_out)) {
+  if (Tpm2_ReadNv(tpm, nv_handle, authString, &size_out, data_out)) {
     printf("Tpm2_ReadNv succeeds\n");
     printf("Counter value: "); PrintBytes(size_out, data_out); printf("\n");
   } else {
@@ -790,7 +791,6 @@ bool Tpm2_NvCombinedTest(LocalTpm& tpm) {
   } else {
     printf("Tpm2_UndefineSpace fails (but that's OK usually)\n");
   }
-#endif
 
   return true;
 }
@@ -806,6 +806,7 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     0x9, 0x8, 0x7, 0x6,
     0x9, 0x8, 0x7, 0x6
   };
+  uint16_t size_out = 16;
   byte data_out[512];
   TPM_HANDLE nv_handle = GetNvHandle(slot);
 
@@ -897,9 +898,9 @@ bool Tpm2_NvCombinedSessionTest(LocalTpm& tpm) {
     printf("Tpm2_WriteNv fails\n");
     return false;
   }
-  if (Tpm2_ReadNv(tpm, nv_handle, authString, size_data, data_out)) {
+  if (Tpm2_ReadNv(tpm, nv_handle, authString, &size_out, data_out)) {
     printf("Tpm2_ReadNv %d succeeds: ", nv_handle);
-    PrintBytes(size_data, data_out);
+    PrintBytes(size_out, data_out);
     printf("\n");
   } else {
     printf("Tpm2_ReadNv fails\n");

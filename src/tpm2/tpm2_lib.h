@@ -181,7 +181,6 @@ bool Tpm2_SaveContext(LocalTpm& tpm, TPM_HANDLE handle, int* size,
                       byte* saveArea);
 bool Tpm2_FlushContext(LocalTpm& tpm, TPM_HANDLE handle);
 
-bool Tpm2_InitNvCounter(LocalTpm& tpm, TPMI_RH_NV_INDEX index, string& authString);
 bool Tpm2_IncrementNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, string& authString);
 bool Tpm2_ReadNv(LocalTpm& tpm, TPMI_RH_NV_INDEX index, 
                  string& authString, uint16_t size, byte* data);

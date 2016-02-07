@@ -744,8 +744,8 @@ bool Tpm2_NvCombinedTest(LocalTpm& tpm) {
     return false;
   }
 
-#if 0
-  size_data = 4;
+#if 1
+  size_data = 8;
   memset(data_out, 0, 16);
   // Counter tests
   printf("\n\nCounter tests\n");
@@ -762,18 +762,26 @@ bool Tpm2_NvCombinedTest(LocalTpm& tpm) {
     printf("Tpm2_DefineSpace fails\n");
     return false;
   }
-  if (Tpm2_InitNvCounter(tpm, nv_handle, authString)) {
-    printf("Tpm2_InitNvCounter succeeds\n");
+  if (Tpm2_IncrementNv(tpm, nv_handle, authString)) {
+    printf("Tpm2_IncrementNv succeeds\n");
   } else {
-    printf("Tpm2_InitNvCounter fails\n");
+    printf("Tpm2_IncrementNv fails\n");
+  }
+  int size_out = 8;
+  if (Tpm2_ReadNv(tpm, nv_handle, authString, size_out, data_out)) {
+    printf("Tpm2_ReadNv succeeds\n");
+    printf("Counter value: "); PrintBytes(size_out, data_out); printf("\n");
+  } else {
+    printf("Tpm2_ReadNv fails\n");
   }
   if (Tpm2_IncrementNv(tpm, nv_handle, authString)) {
     printf("Tpm2_IncrementNv succeeds\n");
   } else {
     printf("Tpm2_IncrementNv fails\n");
   }
-  if (Tpm2_ReadNv(tpm, nv_handle, authString, size_data, data_out)) {
+  if (Tpm2_ReadNv(tpm, nv_handle, authString, size_out, data_out)) {
     printf("Tpm2_ReadNv succeeds\n");
+    printf("Counter value: "); PrintBytes(size_out, data_out); printf("\n");
   } else {
     printf("Tpm2_ReadNv fails\n");
   }

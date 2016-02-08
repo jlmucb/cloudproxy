@@ -21,14 +21,14 @@ import (
 	"log"
 	"net"
 
-	"github.com/jlmucb/cloudproxy/apps/fileproxy"
+	"github.com/jlmucb/cloudproxy/apps/simplecommon"
 	tao "github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	taonet "github.com/jlmucb/cloudproxy/tao/net"
 	"github.com/jlmucb/cloudproxy/util"
 )
 
-var hostcfg = flag.String("../hostdomain/tao.config", "../hostdomain/tao.config", "path to host tao configuration")
+var simplecfg = flag.String("../simpledomain/tao.config", "../simpledomain/tao.config", "path to simple tao configuration")
 var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
 var fileserverFilePath = flag.String("fileserver_files/stored_files/", "fileserver_files/stored_files/",
@@ -123,7 +123,7 @@ func server(serverAddr string, prin string, derPolicyCert []byte, signingKey *ta
 
 func main() {
 
-	var serverProgramPolicy fileproxy.ProgramPolicy
+	var serverProgramPolicy simplecommon.ProgramPolicy
 
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
@@ -164,7 +164,7 @@ func main() {
 
 	// Get my keys and certs (or initialize them).
 	var programCert []byte
-	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := fileproxy.LoadProgramKeys(*simpleserverPath)
+	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := simplecommon.LoadProgramKeys(*simpleserverPath)
 	if err != nil {
 		log.Printf("simpleserver: cant retrieve key material\n")
 	}
@@ -189,7 +189,7 @@ func main() {
 		log.Printf("simpleserver: Unsealed symKeys: % x\n", symKeys)
 	} else {
 		symKeys, err = simplecommon.InitializeSealedSymmetricKeys(*simpleserverPath,
-			tao.Parent(), fileproxy.SizeofSymmetricKeys)
+			tao.Parent(), simplecommon.SizeofSymmetricKeys)
 		if err != nil {
 			log.Printf("simpleserver: InitializeSealedSymmetricKeys error: %s\n", err)
 		}

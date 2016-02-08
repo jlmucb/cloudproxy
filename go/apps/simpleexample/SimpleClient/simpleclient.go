@@ -25,7 +25,7 @@ import (
 
 	"code.google.com/p/goprotobuf/proto"
 
-	"github.com/jlmucb/cloudproxy/apps/fileproxy"
+	"github.com/jlmucb/cloudproxy/apps/simplecommon"
 	tao "github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	taonet "github.com/jlmucb/cloudproxy/tao/net"
@@ -51,7 +51,7 @@ func main() {
 	// Load domain info for this domain
 	simpleDomain, err := tao.LoadDomain(*hostcfg, nil)
 	if err != nil {
-		log.Fatalln("fileclient: Can't load domain")
+		log.Fatalln("simpleclient: Can't load domain")
 	}
 
 	var derPolicyCert []byte
@@ -76,7 +76,7 @@ func main() {
 	// Retrieve my name.
 	taoName, err := tao.Parent().GetTaoName()
 	if err != nil {
-		log.Fatalln("fileclient: Can't get tao name")
+		log.Fatalln("simpleclient: Can't get tao name")
 		return
 	}
 	log.Printf("simpleclient: my name is %s\n", taoName)
@@ -87,9 +87,9 @@ func main() {
 		log.Printf("simpleclient: can't retrieve key material\n")
 	}
 	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || programCert == nil {
-		log.Printf("fileclient: No key material present\n")
+		log.Printf("simpleclient: No key material present\n")
 	}
-	log.Printf("simpleclient: Finished fileproxy.LoadProgramKeys\n")
+	log.Printf("simpleclient: Finished simplecommon.LoadProgramKeys\n")
 
 	// Unseal my symmetric keys, or initialize them.
 	var symKeys []byte
@@ -101,7 +101,7 @@ func main() {
 		if policy != tao.SealPolicyDefault {
 			log.Printf("simpleclient: unexpected policy on unseal\n")
 		}
-		log.Printf("fileclient: Unsealed symKeys: % x\n", symKeys)
+		log.Printf("simpleclient: Unsealed symKeys: % x\n", symKeys)
 	} else {
 		symKeys, err := simplecommon.InitializeSealedSymmetricKeys(*simpleClientPath,
 			tao.Parent(), simpleclient.SizeofSymmetricKeys)
@@ -124,7 +124,7 @@ func main() {
 		}
 		log.Printf("simpleclient: Retrieved Signing key: % x\n", *signingKey)
 	} else {
-		signingKey, err = fileproxy.InitializeSealedSigningKey(*fileclientPath,
+		signingKey, err = simplecommon.InitializeSealedSigningKey(*simpleclientPath,
 			tao.Parent(), *simpleDomain)
 		if err != nil {
 			log.Printf("simpleclient: InitializeSealedSigningKey error: %s\n", err)
@@ -139,7 +139,7 @@ func main() {
 	// Parse policy cert and make it the root of our heierarchy.
 	policyCert, err := x509.ParseCertificate(derPolicyCert)
 	if err != nil {
-		log.Fatalln("fileclient:can't ParseCertificate")
+		log.Fatalln("simpleclient:can't ParseCertificate")
 		return
 	}
 	pool := x509.NewCertPool()
@@ -162,6 +162,8 @@ func main() {
 		log.Printf("\n")
 		return
 	}
+
+	// Stream for channel comms.
 	ms := util.NewMessageStream(conn)
 	log.Printf("simpleclient: Established channel\n")
 
@@ -170,19 +172,19 @@ func main() {
 	// Send a simple request and get response.
 	/*
 	rule := "Delegate(\"jlm\", \"tom\", \"getfile\",\"myfile\")"
-	log.Printf("fileclient, sending rule: %s\n", rule)
-	err = fileproxy.SendRule(ms, rule, userCert)
+	log.Printf("simpleclient, sending rule: %s\n", rule)
+	err = simplecommon.SendRule(ms, rule, userCert)
 	if err != nil {
-		log.Printf("fileclient: can't create file\n")
+		log.Printf("simpleclient: can't create file\n")
 		return
 	}
-	status, message, size, err := fileproxy.GetResponse(ms)
+	status, message, size, err := simplecommon.GetResponse(ms)
 	if err != nil {
 		log.Printf("simpleclient: Error in response to SendCreate\n")
 		return
 	}
 	log.Printf("Response to SendCreate\n")
-	fileproxy.PrintResponse(status, message, size)
+	simplecommon.PrintResponse(status, message, size)
 	if *status != "succeeded" {
 		return
 	}

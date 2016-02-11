@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// File: simple.go
+// File: simpleclient.go
 
 package main
 
@@ -49,127 +49,20 @@ func main() {
 	serverAddr = *serverHost + ":" + *serverPort
 
 	// Load domain info for this domain
-	simpleDomain, err := tao.LoadDomain(*hostcfg, nil)
+	// This was initialized by TODO.
+	if !TaoParadigm(*simplecfg, &clientProgramObject) {
+		log.Fatalln("simpleclient: Can't establish Tao")
+	}
+
+	// Open the Tao Channel using the Program key.
+	ms, serverName, err := OpenTaoChannel(&clientProgramPolicy)
 	if err != nil {
-		log.Fatalln("simpleclient: Can't load domain")
+		log.Fatalln("simpleclient: Can't establish Tao Channel")
 	}
-
-	var derPolicyCert []byte
-	if simpleDomain.Keys.Cert != nil {
-		derPolicyCert = simpleDomain.Keys.Cert.Raw
-	}
-	if derPolicyCert == nil {
-		log.Fatalln("simpleclient: Can't retrieve policy cert")
-	}
-
-	// Extend my name.
-	err := simpleDomain.ExtendTaoName(tao.Parent())
-	if err != nil {
-		log.Fatalln("simpleclient: can't extend the Tao with the policy key")
-	}
-	e := auth.PrinExt{Name: "simpleclient_version_1"}
-	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
-	if err != nil {
-		return
-	}
-
-	// Retrieve my name.
-	taoName, err := tao.Parent().GetTaoName()
-	if err != nil {
-		log.Fatalln("simpleclient: Can't get tao name")
-		return
-	}
-	log.Printf("simpleclient: my name is %s\n", taoName)
-
-	// Get my keys
-	sealedSymmetricKey, sealedSigningKey, programCert, delegation, err := simplecommon.LoadProgramKeys(*simpleClientPath)
-	if err != nil {
-		log.Printf("simpleclient: can't retrieve key material\n")
-	}
-	if sealedSymmetricKey == nil || sealedSigningKey == nil || delegation == nil || programCert == nil {
-		log.Printf("simpleclient: No key material present\n")
-	}
-	log.Printf("simpleclient: Finished simplecommon.LoadProgramKeys\n")
-
-	// Unseal my symmetric keys, or initialize them.
-	var symKeys []byte
-	if sealedSymmetricKey != nil {
-		symKeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
-		if err != nil {
-			return
-		}
-		if policy != tao.SealPolicyDefault {
-			log.Printf("simpleclient: unexpected policy on unseal\n")
-		}
-		log.Printf("simpleclient: Unsealed symKeys: % x\n", symKeys)
-	} else {
-		symKeys, err := simplecommon.InitializeSealedSymmetricKeys(*simpleClientPath,
-			tao.Parent(), simpleclient.SizeofSymmetricKeys)
-		if err != nil {
-			log.Printf("simpleclient: InitializeSealedSymmetricKeys error: %s\n", err)
-		}
-		log.Printf("simpleclient: InitilizedsymKeys: % x\n", symKeys)
-	}
-
-	// Remember to zero my keys.
-	defer simplecommon.ZeroBytes(symKeys)
-
-	// Get my private key if present or initialize them.
-	var signingKey *tao.Keys
-	if sealedSigningKey != nil {
-		signingKey, err = simplecommon.SigningKeyFromBlob(tao.Parent(),
-			sealedSigningKey, programCert, delegation)
-		if err != nil {
-			log.Printf("simpleclient: SigningKeyFromBlob error: %s\n", err)
-		}
-		log.Printf("simpleclient: Retrieved Signing key: % x\n", *signingKey)
-	} else {
-		signingKey, err = simplecommon.InitializeSealedSigningKey(*simpleclientPath,
-			tao.Parent(), *simpleDomain)
-		if err != nil {
-			log.Printf("simpleclient: InitializeSealedSigningKey error: %s\n", err)
-		}
-		log.Printf("simpleclient: Initilized signingKey\n")
-	}
-
-	// Get the program cert.
-	_ = clientProgramObject.InitProgramPolicy(derPolicyCert, taoName.String(), *signingKey,
-		symKeys, programCert)
-
-	// Parse policy cert and make it the root of our heierarchy.
-	policyCert, err := x509.ParseCertificate(derPolicyCert)
-	if err != nil {
-		log.Fatalln("simpleclient:can't ParseCertificate")
-		return
-	}
-	pool := x509.NewCertPool()
-	pool.AddCert(policyCert)
-
-	// Open the Cloudproxy channel.
-	tlsc, err := taonet.EncodeTLSCert(signingKey)
-	if err != nil {
-		log.Printf("simpleclient, encode error: ", err)
-		log.Printf("\n")
-		return
-	}
-	conn, err := tls.Dial("tcp", serverAddr, &tls.Config{
-		RootCAs:            pool,
-		Certificates:       []tls.Certificate{*tlsc},
-		InsecureSkipVerify: false,
-	})
-	if err != nil {
-		log.Printf("simpleclient: can't establish channel ", err)
-		log.Printf("\n")
-		return
-	}
-
-	// Stream for channel comms.
-	ms := util.NewMessageStream(conn)
-	log.Printf("simpleclient: Established channel\n")
-
-	// Get Tao name of Server.
+	log.Printf("Establish Tao Channel with %s\n", serverName)
 
 	// Send a simple request and get response.
+	var retrievedSecret string
 	/*
 	rule := "Delegate(\"jlm\", \"tom\", \"getfile\",\"myfile\")"
 	log.Printf("simpleclient, sending rule: %s\n", rule)
@@ -180,15 +73,14 @@ func main() {
 	}
 	status, message, size, err := simplecommon.GetResponse(ms)
 	if err != nil {
-		log.Printf("simpleclient: Error in response to SendCreate\n")
-		return
+		log.Fatalln("simpleclient: Error in response to SendCreate\n")
 	}
-	log.Printf("Response to SendCreate\n")
 	simplecommon.PrintResponse(status, message, size)
 	if *status != "succeeded" {
 		return
 	}
 	*/
 
-	log.Printf("simpleclient: Done\n")
+	// Close down
+	log.Printf("simpleclient: secret is %s, done\n")
 }

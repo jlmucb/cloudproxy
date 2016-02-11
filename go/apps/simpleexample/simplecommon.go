@@ -50,22 +50,9 @@ type ProgramPolicy struct {
 	Initialized       bool
 	TaoName           string
 	ThePolicyCert     []byte
-	ProgramSigningKey tao.Keys
+	ProgramKey        tao.Keys
 	ProgramSymKeys    []byte
 	ProgramCert       []byte
-}
-
-func (pp *ProgramPolicy) InitProgramPolicy(policyCert []byte, taoName string,
-		signingKey tao.Keys, symKeys []byte, programCert []byte) bool {
-	log.Printf("InitProgramPolicy\n")
-	pp.ThePolicyCert = policyCert
-	pp.TaoName = taoName
-	pp.ProgramSigningKey = signingKey
-	pp.ProgramSymKeys = symKeys
-	pp.ProgramCert = programCert
-	pp.Initialized = true
-	log.Printf("InitProgramPolicy done\n")
-	return true
 }
 
 // RequestTruncatedAttestation connects to a CA instance, sends the attestation
@@ -75,6 +62,7 @@ func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys, v *tao.Veri
 	if keys.Cert == nil {
 		return nil, errors.New("client: can't dial with an empty client certificate\n")
 	}
+	// Explain taonet and what keys are used
 	tlsCert, err := taonet.EncodeTLSCert(keys)
 	if err != nil {
 		return nil, err
@@ -90,6 +78,7 @@ func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys, v *tao.Veri
 	defer conn.Close()
 
 	// Tao handshake: send client delegation.
+	// TODO: Explain delegation
 	ms := util.NewMessageStream(conn)
 	if _, err = ms.WriteMessage(keys.Delegation); err != nil {
 		return nil, err
@@ -101,6 +90,7 @@ func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys, v *tao.Veri
 		return nil, err
 	}
 
+	// Explain Verify and what keys are used
 	ok, err := v.Verify(a.SerializedStatement, tao.AttestationSigningContext, a.Signature)
 	if err != nil {
 		return nil, err
@@ -111,6 +101,198 @@ func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys, v *tao.Veri
 
 	return &a, nil
 }
+
+func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) ([]byte, error) {
+	// Make up symmetric key and save sealed version
+	log.Printf("InitializeSealedSymmetricKeys\n")
+	unsealed, err := tao.Parent().GetRandomBytes(keysize)
+	if err != nil {
+		return nil, errors.New("Can't get random bytes")
+	}
+	sealed, err := tao.Parent().Seal(unsealed, tao.SealPolicyDefault)
+	if err != nil {
+		return nil, errors.New("Can't seal random bytes")
+	}
+	ioutil.WriteFile(path+"sealedsymmetrickey", sealed, os.ModePerm)
+	return unsealed, nil
+}
+
+func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao.Keys, error) {
+	k, derCert, err := CreateSigningKey(t)
+	if err != nil  || derCert == nil{
+		log.Printf("InitializeSealedSigningKey: CreateSigningKey failed with error %s\n", err)
+		return nil, err
+	}
+
+	// Request attestations.  Policy key is verifier.
+	na, err := RequestKeyNegoAttestation("tcp", *caAddr, k, domain.Keys.VerifyingKey)
+	if err != nil || na == nil {
+		log.Printf("fileproxy: error from taonet.RequestTruncatedAttestation\n")
+		return nil, err
+	}
+	k.Delegation = na
+	pa, _ := auth.UnmarshalForm(na.SerializedStatement)
+	var saysStatement *auth.Says
+	if ptr, ok := pa.(*auth.Says); ok {
+		saysStatement = ptr
+	} else if val, ok := pa.(auth.Says); ok {
+		saysStatement = &val
+	}
+	sf, ok := saysStatement.Message.(auth.Speaksfor)
+	if ok != true {
+		return nil, errors.New("InitializeSealedSigningKey: says doesnt have speaksfor message")
+	}
+	kprin, ok := sf.Delegate.(auth.Term)
+	if ok != true {
+		return nil, errors.New("InitializeSealedSigningKey: speaksfor message doesnt have Delegate")
+	}
+	newCert := auth.Bytes(kprin.(auth.Bytes))
+	k.Cert, err = x509.ParseCertificate(newCert)
+	if err != nil {
+		return nil, err
+	}
+	programKeyBlob, err := tao.MarshalSignerDER(k.SigningKey)
+	if err != nil {
+		return nil, errors.New("InitializeSealedSigningKey: Can't produce signing key blob")
+	}
+	sealedSigningKey, err := t.Seal(signingKeyBlob, tao.SealPolicyDefault)
+	if err != nil {
+		return nil, errors.New("InitializeSealedSigningKey: Can't seal signing key")
+	}
+	err = ioutil.WriteFile(path+"sealedsigningKey", sealedSigningKey, os.ModePerm)
+	if err != nil {
+		return nil, err
+	}
+	err = ioutil.WriteFile(path+"signerCert", newCert, os.ModePerm)
+	if err != nil {
+		return nil, err
+	}
+	delegateBlob, err := proto.Marshal(k.Delegation)
+	if err != nil {
+		return nil, errors.New("InitializeSealedSigningKey: Can't seal random bytes")
+	}
+	err = ioutil.WriteFile(path+"delegationBlob", delegateBlob, os.ModePerm)
+	if err != nil {
+		return nil, err
+	}
+	return k, nil
+}
+
+
+func TaoParadigm(path *string, cfg *string, programObject *simpleexample.ProgramPolicy) (error) {
+
+	// Load domain info for this domain
+	simpleDomain, err := tao.LoadDomain(*cfg, nil)
+	if err != nil {
+		return errors.New("TaoParadigm: Can't load domain")
+	}
+
+	// Get policy cert
+	if simpleDomain.Keys.Cert == nil {
+		return errors.New("TaoParadigm: Can't retrieve policy cert")
+	}
+	derPolicyCert := simpleDomain.Keys.Cert.Raw
+	if derPolicyCert == nil {
+		return errors.New("TaoParadigm: Can't retrieve der encoded policy cert")
+	}
+
+	// Extend my Tao Principal name with policy key
+	e := auth.PrinExt{Name: "simpleclient_version_1"}
+	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
+	if err != nil {
+		return errors.New("TaoParadigm: Can't extend name")
+	}
+
+	// Retrieve extended name.
+	taoName, err := tao.Parent().GetTaoName()
+	if err != nil {
+		return errors.New("TaoParadigm: Can't extern Tao Principal name")
+	}
+	log.Printf("TaoParadigm: my name is %s\n", taoName)
+
+	// Get my keys and certificates.
+	sealedSymmetricKey, sealedProgramKey, programCert, delegation, err :=
+		simplecommon.LoadProgramKeys(*path)
+	if err != nil {
+		return errors.New("TaoParadigm: Can't retrieve key material")
+	}
+
+	// Unseal my symmetric keys, or initialize them.
+	var symKeys []byte
+	if sealedSymmetricKey != nil {
+		symKeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
+		if err != nil || policy != tao.SealPolicyDefault {
+			return errors.New("TaoParadigm: can't unseal symmetric keys")
+		}
+	} 
+	symKeys, err := simplecommon.InitializeSealedSymmetricKeys(*path,
+		tao.Parent(), simpleclient.SizeofSymmetricKeys)
+	if err != nil {
+		retrun errors.New("TaoParadigm: InitializeSealedSymmetricKeys error")
+	}
+	log.Printf("Unsealed symmetric keys: % x\n", symKeys)
+
+	// Get my Program private key if present or initialize it.
+	var programKey *tao.Keys
+	if sealedProgramKey != nil {
+		programKey, err = simplecommon.SigningKeyFromBlob(tao.Parent(),
+			sealedProgramKey, programCert, delegation)
+		if err != nil {
+			retrun errors.New("TaoParadigm: SigningKeyFromBlob error: %s\n", err)
+		}
+	// Get Program key
+	programKey, err = simplecommon.InitializeSealedSigningKey(*path,
+		tao.Parent(), *simpleDomain)
+	if err != nil || programKey == nil {
+		return errors.New("TaoParadigm: InitializeSealedSigningKey error")
+	}
+	log.Printf("simpleclient: Retrieved Signing key: % x\n", *signingKey)
+
+	// Initialize Program policy object.
+	ok := clientProgramObject.InitProgramPolicy(derPolicyCert, taoName.String(), *programKey,
+		symKeys, programCert)
+	if !ok {
+		return errors.New("TaoParadigm: Can't initialize ProgramPolicy")
+	}
+	return nil
+}
+
+// Return connection and peer name.
+func OpenTaoChannel(programObject *simpleexample.ProgramPolicy) (*util.MessageStream, string, error) {
+
+	// Parse policy cert and make it the root of our heierarchy for verifying
+	// Tao Channel peer.
+	policyCert, err := x509.ParseCertificate(derPolicyCert)
+	if err != nil {
+		return errors.New("simpleclient:can't ParseCertificate")
+		return
+	}
+	pool := x509.NewCertPool()
+	pool.AddCert(policyCert)
+
+	// Open the Tao Channel using the Program key.
+	tlsc, err := taonet.EncodeTLSCert(signingKey)
+	if err != nil {
+		log.Fatalln("simpleclient, encode error: ", err)
+	}
+	conn, err := tls.Dial("tcp", serverAddr, &tls.Config{
+		RootCAs:            pool,
+		Certificates:       []tls.Certificate{*tlsc},
+		InsecureSkipVerify: false,
+	})
+	if err != nil {
+		log.Fatalln("simpleclient: Can't establish channel ", err)
+		log.Printf("\n")
+		return
+	}
+
+	// Stream for Tao Channel.
+	ms := util.NewMessageStream(conn)
+	return ms, peerName, nil 
+}
+
+
+// Support functions
 
 func ZeroBytes(buf []byte) {
 	n := len(buf)
@@ -129,7 +311,7 @@ func PrincipalNameFromDERCert(derCert []byte) *string {
 	return &cn
 }
 
-// returns sealed symmetric key, sealed signing key, DER encoded cert, delegation, error
+// Returns sealed symmetric key, sealed signing key, DER encoded cert, delegation, error.
 func LoadProgramKeys(path string) ([]byte, []byte, []byte, []byte, error) {
 	_, err := os.Stat(path + "sealedsymmetrickey")
 	if err != nil {
@@ -143,44 +325,43 @@ func LoadProgramKeys(path string) ([]byte, []byte, []byte, []byte, error) {
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-
 	sealedSymmetricKey, err := ioutil.ReadFile(path + "sealedsymmetricKey")
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	log.Printf("fileproxy: Got sealedSymmetricKey\n")
 	sealedSigningKey, err := ioutil.ReadFile(path + "sealedsigningKey")
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	log.Printf("fileproxy: Got sealedSigningKey\n")
 	derCert, err := ioutil.ReadFile(path + "signerCert")
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	log.Printf("fileproxy: Got signerCert\n")
 	ds, err := ioutil.ReadFile(path + "delegationBlob")
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	log.Printf("LoadProgramKeys succeeded\n")
 	return sealedSymmetricKey, sealedSigningKey, derCert, ds, nil
 }
 
 func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
-	log.Printf("CreateSigningKey\n")
+
 	self, err := t.GetTaoName()
 	k, err := tao.NewTemporaryKeys(tao.Signing)
 	if k == nil || err != nil {
 		return nil, nil, errors.New("Can't generate signing key")
 	}
+
 	publicString := strings.Replace(self.String(), "(", "", -1)
 	publicString = strings.Replace(publicString, ")", "", -1)
+
+	// publicString is now a canonicalized Tao Principal name
 	details := tao.X509Details{
 		Country:      "US",
 		Organization: "Google",
 		CommonName:   publicString}
 	subjectname := tao.NewX509Name(details)
+
 	derCert, err := k.SigningKey.CreateSelfSignedDER(subjectname)
 	if err != nil {
 		return nil, nil, errors.New("Can't self sign cert\n")
@@ -189,6 +370,9 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// Construct statement: "ProgramKey (new key) speaksfor Principal Name"
+	// ToPrincipal retrieves key's Tao Principal Name.
 	k.Cert = cert
 	s := &auth.Speaksfor{
 		Delegate:  k.SigningKey.ToPrincipal(),
@@ -196,101 +380,21 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 	if s == nil {
 		return nil, nil, errors.New("Can't produce speaksfor")
 	}
-	if k.Delegation, err = t.Attest(&self, nil, nil, s); err != nil {
+
+	// Sign attestation statement
+	if k.Delegation, err = t.Attest(&self, nil, nil, s)
+	if err != nil {
 		return nil, nil, err
 	}
-	if err == nil {
-		_, _ = auth.UnmarshalForm(k.Delegation.SerializedStatement)
-	}
+	_, _ = auth.UnmarshalForm(k.Delegation.SerializedStatement)
 	return k, derCert, nil
-}
-
-func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) ([]byte, error) {
-	log.Printf("InitializeSealedSymmetricKeys\n")
-	unsealed, err := tao.Parent().GetRandomBytes(keysize)
-	if err != nil {
-		return nil, errors.New("Can't get random bytes")
-	}
-	sealed, err := tao.Parent().Seal(unsealed, tao.SealPolicyDefault)
-	if err != nil {
-		return nil, errors.New("Can't seal random bytes")
-	}
-	ioutil.WriteFile(path+"sealedsymmetrickey", sealed, os.ModePerm)
-	return unsealed, nil
-}
-
-func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao.Keys, error) {
-	log.Printf("InitializeSealedSigningKey\n")
-	k, derCert, err := CreateSigningKey(t)
-	if err != nil {
-		log.Printf("fileproxy: CreateSigningKey failed with error %s\n", err)
-		return nil, err
-	}
-	if derCert == nil {
-		log.Printf("fileproxy: CreateSigningKey failed, no dercert\n")
-		return nil, errors.New("No DER cert")
-	}
-	na, err := RequestKeyNegoAttestation("tcp", *caAddr, k, domain.Keys.VerifyingKey)
-	if err != nil {
-		log.Printf("fileproxy: error from taonet.RequestTruncatedAttestation\n")
-		return nil, err
-	}
-	if na == nil {
-		return nil, errors.New("tao returned nil attestation")
-	}
-	k.Delegation = na
-	pa, _ := auth.UnmarshalForm(na.SerializedStatement)
-	var saysStatement *auth.Says
-	if ptr, ok := pa.(*auth.Says); ok {
-		saysStatement = ptr
-	} else if val, ok := pa.(auth.Says); ok {
-		saysStatement = &val
-	}
-	sf, ok := saysStatement.Message.(auth.Speaksfor)
-	if ok != true {
-		return nil, errors.New("says doesnt have speaksfor message")
-	}
-	kprin, ok := sf.Delegate.(auth.Term)
-	if ok != true {
-		return nil, errors.New("speaksfor message doesnt have Delegate")
-	}
-	newCert := auth.Bytes(kprin.(auth.Bytes))
-	k.Cert, err = x509.ParseCertificate(newCert)
-	if err != nil {
-		log.Printf("can't parse returned certificate", err)
-		log.Printf("\n")
-		return nil, err
-	}
-	signingKeyBlob, err := tao.MarshalSignerDER(k.SigningKey)
-	if err != nil {
-		return nil, errors.New("Can't produce signing key blob")
-	}
-	sealedSigningKey, err := t.Seal(signingKeyBlob, tao.SealPolicyDefault)
-	if err != nil {
-		return nil, errors.New("Can't seal signing key")
-	}
-	err = ioutil.WriteFile(path+"sealedsigningKey", sealedSigningKey, os.ModePerm)
-	if err != nil {
-		return nil, err
-	}
-	err = ioutil.WriteFile(path+"signerCert", newCert, os.ModePerm)
-	if err != nil {
-		return nil, err
-	}
-	delegateBlob, err := proto.Marshal(k.Delegation)
-	if err != nil {
-		return nil, errors.New("Can't seal random bytes")
-	}
-	err = ioutil.WriteFile(path+"delegationBlob", delegateBlob, os.ModePerm)
-	if err != nil {
-		return nil, err
-	}
-	return k, nil
 }
 
 func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte,
 		delegateBlob []byte) (*tao.Keys, error) {
-	log.Printf("SigningKeyFromBlob\n")
+
+	// Recover public key from blob
+
 	k := &tao.Keys{}
 	cert, err := x509.ParseCertificate(certBlob)
 	if err != nil {
@@ -302,15 +406,13 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte,
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("SigningKeyFromBlob: unmarshaled\n")
 	signingKeyBlob, policy, err := tao.Parent().Unseal(sealedKeyBlob)
 	if err != nil {
-		log.Printf("fileproxy: signingkey unsealing error: %s\n", err)
+		return nil, err
 	}
 	if policy != tao.SealPolicyDefault {
-		log.Printf("fileproxy: unexpected policy on unseal\n")
+		return nil, err
 	}
-	log.Printf("fileproxy: Unsealed Signing Key blob: %x\n", signingKeyBlob)
 	k.SigningKey, err = tao.UnmarshalSignerDER(signingKeyBlob)
 	k.Cert = cert
 	return k, err
@@ -318,6 +420,7 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte,
 
 func PrintRequest(subject []byte, action *string, resource *string, owner []byte) {
 	log.Printf("PrintRequest\n")
+
 	if subject != nil {
 		log.Printf("\tsubject: % x\n", subject)
 		subjectName := PrincipalNameFromDERCert(subject)
@@ -452,5 +555,17 @@ func GetProtocolMessage(ms *util.MessageStream) ([]byte, error) {
 		return nil, errors.New("GetProtocolMessage: empty buffer")
 	}
 	return []byte(*out), nil
+}
+
+
+func (pp *ProgramPolicy) InitProgramPolicy(policyCert []byte, taoName string,
+		signingKey tao.Keys, symKeys []byte, programCert []byte) bool {
+	pp.ThePolicyCert = policyCert
+	pp.TaoName = taoName
+	pp.ProgramKey = signingKey
+	pp.ProgramSymKeys = symKeys
+	pp.ProgramCert = programCert
+	pp.Initialized = true
+	return true
 }
 

@@ -46,10 +46,10 @@ var configPath = flag.String("config", "tao.config", "The Tao domain config")
 
 const SizeofSymmetricKeys = 64
 
-type ProgramPolicy struct {
+type TaoProgramData struct {
 	Initialized       bool
 	TaoName           string
-	ThePolicyCert     []byte
+	PolicyCert        []byte
 	ProgramKey        tao.Keys
 	ProgramSymKeys    []byte
 	ProgramCert       []byte
@@ -179,7 +179,7 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 }
 
 
-func TaoParadigm(path *string, cfg *string, programObject *simpleexample.ProgramPolicy) (error) {
+func TaoParadigm(path *string, cfg *string, programObject *simpleexample.TaoProgramData) (error) {
 
 	// Load domain info for this domain
 	simpleDomain, err := tao.LoadDomain(*cfg, nil)
@@ -249,16 +249,16 @@ func TaoParadigm(path *string, cfg *string, programObject *simpleexample.Program
 	log.Printf("simpleclient: Retrieved Signing key: % x\n", *signingKey)
 
 	// Initialize Program policy object.
-	ok := clientProgramObject.InitProgramPolicy(derPolicyCert, taoName.String(), *programKey,
+	ok := clientProgramObject.InitTaoProgramData(derPolicyCert, taoName.String(), *programKey,
 		symKeys, programCert)
 	if !ok {
-		return errors.New("TaoParadigm: Can't initialize ProgramPolicy")
+		return errors.New("TaoParadigm: Can't initialize TaoProgramData")
 	}
 	return nil
 }
 
 // Return connection and peer name.
-func OpenTaoChannel(programObject *simpleexample.ProgramPolicy) (*util.MessageStream, string, error) {
+func OpenTaoChannel(programObject *simpleexample.TaoProgramData) (*util.MessageStream, string, error) {
 
 	// Parse policy cert and make it the root of our heierarchy for verifying
 	// Tao Channel peer.
@@ -558,7 +558,7 @@ func GetProtocolMessage(ms *util.MessageStream) ([]byte, error) {
 }
 
 
-func (pp *ProgramPolicy) InitProgramPolicy(policyCert []byte, taoName string,
+func (pp *TaoProgramData) InitTaoProgramData(policyCert []byte, taoName string,
 		signingKey tao.Keys, symKeys []byte, programCert []byte) bool {
 	pp.ThePolicyCert = policyCert
 	pp.TaoName = taoName

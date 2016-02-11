@@ -33,13 +33,13 @@ var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
 var serverAddr string
 
-func HandleServiceRequest(ms *util.MessageStream, serverProgramPolicy *simplecommon.ProgramPolicy,
+func HandleServiceRequest(ms *util.MessageStream, serverProgramData *simplecommon.TaoProgramData,
 	clientProgramName, req string) (bool, error) {
 	return true, nil
 }
 
 func serviceThead(ms *util.MessageStream, clientProgramName string,
-		  serverProgramPolicy *simplecommon.ProgramPolicy) {
+		  serverProgramData *simplecommon.TaoProgramData) {
 
 	for {
 		log.Printf("clientServiceThead: ReadString\n")
@@ -47,7 +47,7 @@ func serviceThead(ms *util.MessageStream, clientProgramName string,
 		if err != nil {
 			return
 		}
-		terminate, _ := HandleServiceRequest(ms, serverProgramPolicy,
+		terminate, _ := HandleServiceRequest(ms, serverProgramData,
 			          clientProgramName, req)
 		if terminate {
 			break
@@ -57,7 +57,7 @@ func serviceThead(ms *util.MessageStream, clientProgramName string,
 }
 
 
-func server(serverAddr string, serverProgramPolicy *simplecommon.ProgramPolicy) {
+func server(serverAddr string, serverProgramData *simplecommon.TaoProgramData) {
 
 	var sock net.Listener
 
@@ -95,13 +95,13 @@ func server(serverAddr string, serverProgramPolicy *simplecommon.ProgramPolicy) 
 			}
 		log.Printf("server, peer client name: %s\n", clientName)
 		ms := util.NewMessageStream(conn)
-		go serviceThead(ms, clientName, serverProgramPolicy)
+		go serviceThead(ms, clientName, serverProgramData)
 	}
 }
 
 func main() {
 
-	var serverProgramPolicy simplecommon.ProgramPolicy
+	var serverProgramData simplecommon.TaoProgramData
 
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
@@ -109,11 +109,11 @@ func main() {
 
 	// Load domain info for this domain
 	// This was initialized by TODO.
-	if !TaoParadigm(*simplecfg, &serverProgramObject) {
+	if !TaoParadigm(*simplecfg, &serverProgramData) {
 		log.Fatalln("simpleclient: Can't establish Tao")
 	}
 
-	err = server(serverAddr, &serverProgramPolicy)
+	err = server(serverAddr, &serverProgramData)
 	if err != nil {
 		log.Printf("simpleserver: server error\n")
 	}

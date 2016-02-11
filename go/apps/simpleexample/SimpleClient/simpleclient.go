@@ -42,7 +42,7 @@ func main() {
 
 	// This holds the cloudproxy specific data for this program
 	// like Program Cert and Program Private key.
-	var clientProgramObject simpleexample.ProgramPolicy
+	var clientProgramData simpleexample.TaoProgramData
 
 	// Parse flags
 	flag.Parse()
@@ -50,12 +50,12 @@ func main() {
 
 	// Load domain info for this domain
 	// This was initialized by TODO.
-	if !TaoParadigm(*simplecfg, &clientProgramObject) {
+	if !TaoParadigm(*simplecfg, &clientProgramData) {
 		log.Fatalln("simpleclient: Can't establish Tao")
 	}
 
 	// Open the Tao Channel using the Program key.
-	ms, serverName, err := OpenTaoChannel(&clientProgramPolicy)
+	ms, serverName, err := OpenTaoChannel(&clientProgramData)
 	if err != nil {
 		log.Fatalln("simpleclient: Can't establish Tao Channel")
 	}

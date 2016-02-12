@@ -53,20 +53,22 @@ func main() {
 	log.Printf("Establish Tao Channel with %s\n", serverName)
 
 	// Send a simple request and get response.
-	secretRequest := []byte("SecretRequest")
-	var retrievedSecret string
+	secretRequest := "SecretRequest"
 
-	/*
-	SendProtocolMessage(ms, len(secretRequest), secretRequest)
+	msg := new(taosupport.SimpleMessage)
+	msg.RequestType = &secretRequest
+	taosupport.PrintMessage(msg)
+	taosupport.SendRequest(ms, msg)
 	if err != nil {
-		log.Fatalln("simpleclient: Error in response to SendProtocolMessage\n")
+		log.Fatalln("simpleclient: Error in response to SendRequest\n")
 	}
-	taosupport.PrintResponse(status, message, size)
-	if *status != "succeeded" {
-		return
+	respmsg, err := taosupport.GetResponse(ms)
+	if err != nil {
+		log.Fatalln("simpleclient: Error in response to GetResponse\n")
 	}
-	*/
+	taosupport.PrintMessage(respmsg)
+	retrieveSecret := respmsg.Data[0]
 
 	// Close down
-	log.Printf("simpleclient: secret is %s, done\n")
+	log.Printf("simpleclient: secret is %s, done\n", retrieveSecret)
 }

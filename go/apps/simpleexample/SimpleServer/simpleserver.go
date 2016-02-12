@@ -21,7 +21,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/jlmucb/cloudproxy/apps/simplecommon"
+	"github.com/jlmucb/cloudproxy/apps/taosupport"
 	tao "github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	taonet "github.com/jlmucb/cloudproxy/tao/net"
@@ -33,13 +33,13 @@ var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
 var serverAddr string
 
-func HandleServiceRequest(ms *util.MessageStream, serverProgramData *simplecommon.TaoProgramData,
+func HandleServiceRequest(ms *util.MessageStream, serverProgramData *taosupport.TaoProgramData,
 	clientProgramName, req string) (bool, error) {
 	return true, nil
 }
 
 func serviceThead(ms *util.MessageStream, clientProgramName string,
-		  serverProgramData *simplecommon.TaoProgramData) {
+		  serverProgramData *taosupport.TaoProgramData) {
 
 	for {
 		log.Printf("clientServiceThead: ReadString\n")
@@ -57,7 +57,7 @@ func serviceThead(ms *util.MessageStream, clientProgramName string,
 }
 
 
-func server(serverAddr string, serverProgramData *simplecommon.TaoProgramData) {
+func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 
 	var sock net.Listener
 
@@ -101,7 +101,7 @@ func server(serverAddr string, serverProgramData *simplecommon.TaoProgramData) {
 
 func main() {
 
-	var serverProgramData simplecommon.TaoProgramData
+	var serverProgramData taosupport.TaoProgramData
 
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort

@@ -10,9 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// File: simplecommon.go
+// File: taosupport.go
 
-package simpleexample
+package taosupport
 
 import (
 	"bytes"
@@ -58,9 +58,10 @@ type TaoProgramData struct {
 // RequestTruncatedAttestation connects to a CA instance, sends the attestation
 // for an X.509 certificate, and gets back a truncated attestation with a new
 // principal name based on the policy key.
-func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys, v *tao.Verifier) (*tao.Attestation, error) {
+func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys, v *tao.Verifier) (*tao.Attestation,
+		error) {
 	if keys.Cert == nil {
-		return nil, errors.New("client: can't dial with an empty client certificate\n")
+		return nil, errors.New("RequestKeyNegoAttestation: Can't dial with an empty client certificate")
 	}
 	// Explain taonet and what keys are used
 	tlsCert, err := taonet.EncodeTLSCert(keys)
@@ -90,7 +91,7 @@ func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys, v *tao.Veri
 		return nil, err
 	}
 
-	// Explain Verify and what keys are used
+	// Explain Verify and what keys are used.
 	ok, err := v.Verify(a.SerializedStatement, tao.AttestationSigningContext, a.Signature)
 	if err != nil {
 		return nil, err
@@ -103,7 +104,7 @@ func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys, v *tao.Veri
 }
 
 func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) ([]byte, error) {
-	// Make up symmetric key and save sealed version
+	// Make up symmetric key and save sealed version.
 	log.Printf("InitializeSealedSymmetricKeys\n")
 	unsealed, err := tao.Parent().GetRandomBytes(keysize)
 	if err != nil {
@@ -117,10 +118,10 @@ func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) ([]byte,
 	return unsealed, nil
 }
 
-func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao.Keys, error) {
+func InitializeSealedProgramKey(path string, t tao.Tao, domain tao.Domain) (*tao.Keys, error) {
 	k, derCert, err := CreateSigningKey(t)
 	if err != nil  || derCert == nil{
-		log.Printf("InitializeSealedSigningKey: CreateSigningKey failed with error %s\n", err)
+		log.Printf("InitializeSealedProgramKey: CreateSigningKey failed with error %s\n", err)
 		return nil, err
 	}
 
@@ -140,11 +141,11 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 	}
 	sf, ok := saysStatement.Message.(auth.Speaksfor)
 	if ok != true {
-		return nil, errors.New("InitializeSealedSigningKey: says doesnt have speaksfor message")
+		return nil, errors.New("InitializeSealedProgramKey: says doesnt have speaksfor message")
 	}
 	kprin, ok := sf.Delegate.(auth.Term)
 	if ok != true {
-		return nil, errors.New("InitializeSealedSigningKey: speaksfor message doesnt have Delegate")
+		return nil, errors.New("InitializeSealedProgramKey: speaksfor message doesn't have Delegate")
 	}
 	newCert := auth.Bytes(kprin.(auth.Bytes))
 	k.Cert, err = x509.ParseCertificate(newCert)
@@ -153,13 +154,13 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 	}
 	programKeyBlob, err := tao.MarshalSignerDER(k.SigningKey)
 	if err != nil {
-		return nil, errors.New("InitializeSealedSigningKey: Can't produce signing key blob")
+		return nil, errors.New("InitializeSealedProgramKey: Can't produce signing key blob")
 	}
-	sealedSigningKey, err := t.Seal(signingKeyBlob, tao.SealPolicyDefault)
+	sealedProgramKey, err := t.Seal(signingKeyBlob, tao.SealPolicyDefault)
 	if err != nil {
-		return nil, errors.New("InitializeSealedSigningKey: Can't seal signing key")
+		return nil, errors.New("InitializeSealedProgramKey: Can't seal signing key")
 	}
-	err = ioutil.WriteFile(path+"sealedsigningKey", sealedSigningKey, os.ModePerm)
+	err = ioutil.WriteFile(path+"sealedsigningKey", sealedProgramKey, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +170,7 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 	}
 	delegateBlob, err := proto.Marshal(k.Delegation)
 	if err != nil {
-		return nil, errors.New("InitializeSealedSigningKey: Can't seal random bytes")
+		return nil, errors.New("InitializeSealedProgramKey: Can't seal random bytes")
 	}
 	err = ioutil.WriteFile(path+"delegationBlob", delegateBlob, os.ModePerm)
 	if err != nil {
@@ -178,16 +179,26 @@ func InitializeSealedSigningKey(path string, t tao.Tao, domain tao.Domain) (*tao
 	return k, nil
 }
 
+func (pp *TaoProgramData) InitTaoProgramData(policyCert []byte, taoName string,
+		programKey tao.Keys, symKeys []byte, programCert []byte) bool {
+	pp.PolicyCert = policyCert
+	pp.TaoName = taoName
+	pp.ProgramKey = programKey
+	pp.ProgramSymKeys = symKeys
+	pp.ProgramCert = programCert
+	pp.Initialized = true
+	return true
+}
 
 func TaoParadigm(path *string, cfg *string, programObject *simpleexample.TaoProgramData) (error) {
 
-	// Load domain info for this domain
+	// Load domain info for this domain.
 	simpleDomain, err := tao.LoadDomain(*cfg, nil)
 	if err != nil {
 		return errors.New("TaoParadigm: Can't load domain")
 	}
 
-	// Get policy cert
+	// Get policy cert.
 	if simpleDomain.Keys.Cert == nil {
 		return errors.New("TaoParadigm: Can't retrieve policy cert")
 	}
@@ -196,7 +207,7 @@ func TaoParadigm(path *string, cfg *string, programObject *simpleexample.TaoProg
 		return errors.New("TaoParadigm: Can't retrieve der encoded policy cert")
 	}
 
-	// Extend my Tao Principal name with policy key
+	// Extend my Tao Principal name with policy key.
 	e := auth.PrinExt{Name: "simpleclient_version_1"}
 	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
 	if err != nil {
@@ -212,7 +223,7 @@ func TaoParadigm(path *string, cfg *string, programObject *simpleexample.TaoProg
 
 	// Get my keys and certificates.
 	sealedSymmetricKey, sealedProgramKey, programCert, delegation, err :=
-		simplecommon.LoadProgramKeys(*path)
+		taosupport.LoadProgramKeys(*path)
 	if err != nil {
 		return errors.New("TaoParadigm: Can't retrieve key material")
 	}
@@ -225,8 +236,8 @@ func TaoParadigm(path *string, cfg *string, programObject *simpleexample.TaoProg
 			return errors.New("TaoParadigm: can't unseal symmetric keys")
 		}
 	} 
-	symKeys, err := simplecommon.InitializeSealedSymmetricKeys(*path,
-		tao.Parent(), simpleclient.SizeofSymmetricKeys)
+	symKeys, err := taosupport.InitializeSealedSymmetricKeys(*path,
+		tao.Parent(), taosupport.SizeofSymmetricKeys)
 	if err != nil {
 		retrun errors.New("TaoParadigm: InitializeSealedSymmetricKeys error")
 	}
@@ -235,21 +246,20 @@ func TaoParadigm(path *string, cfg *string, programObject *simpleexample.TaoProg
 	// Get my Program private key if present or initialize it.
 	var programKey *tao.Keys
 	if sealedProgramKey != nil {
-		programKey, err = simplecommon.SigningKeyFromBlob(tao.Parent(),
+		programKey, err = taosupport.SigningKeyFromBlob(tao.Parent(),
 			sealedProgramKey, programCert, delegation)
 		if err != nil {
-			retrun errors.New("TaoParadigm: SigningKeyFromBlob error: %s\n", err)
+			retrun errors.New("TaoParadigm: SigningKeyFromBlob error")
 		}
-	// Get Program key
-	programKey, err = simplecommon.InitializeSealedSigningKey(*path,
-		tao.Parent(), *simpleDomain)
+	// Get Program key.
+	programKey, err = simplecommon.InitializeSealedSigningKey(*path, tao.Parent(), *simpleDomain)
 	if err != nil || programKey == nil {
 		return errors.New("TaoParadigm: InitializeSealedSigningKey error")
 	}
-	log.Printf("simpleclient: Retrieved Signing key: % x\n", *signingKey)
+	log.Printf("TaoParadigm: Retrieved Signing key: % x\n", *signingKey)
 
 	// Initialize Program policy object.
-	ok := clientProgramObject.InitTaoProgramData(derPolicyCert, taoName.String(), *programKey,
+	ok := programObject.InitTaoProgramData(derPolicyCert, taoName.String(), *programKey,
 		symKeys, programCert)
 	if !ok {
 		return errors.New("TaoParadigm: Can't initialize TaoProgramData")
@@ -264,8 +274,7 @@ func OpenTaoChannel(programObject *simpleexample.TaoProgramData) (*util.MessageS
 	// Tao Channel peer.
 	policyCert, err := x509.ParseCertificate(derPolicyCert)
 	if err != nil {
-		return errors.New("simpleclient:can't ParseCertificate")
-		return
+		return errors.New("OpenTaoChannel: Can't ParseCertificate")
 	}
 	pool := x509.NewCertPool()
 	pool.AddCert(policyCert)
@@ -273,7 +282,7 @@ func OpenTaoChannel(programObject *simpleexample.TaoProgramData) (*util.MessageS
 	// Open the Tao Channel using the Program key.
 	tlsc, err := taonet.EncodeTLSCert(signingKey)
 	if err != nil {
-		log.Fatalln("simpleclient, encode error: ", err)
+		log.Fatalln("OpenTaoChannel, encode error: ", err)
 	}
 	conn, err := tls.Dial("tcp", serverAddr, &tls.Config{
 		RootCAs:            pool,
@@ -281,9 +290,7 @@ func OpenTaoChannel(programObject *simpleexample.TaoProgramData) (*util.MessageS
 		InsecureSkipVerify: false,
 	})
 	if err != nil {
-		log.Fatalln("simpleclient: Can't establish channel ", err)
-		log.Printf("\n")
-		return
+		return errors.New("OpenTaoChannel: Can't establish channel")
 	}
 
 	// Stream for Tao Channel.
@@ -329,7 +336,7 @@ func LoadProgramKeys(path string) ([]byte, []byte, []byte, []byte, error) {
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	sealedSigningKey, err := ioutil.ReadFile(path + "sealedsigningKey")
+	sealedProgramKey, err := ioutil.ReadFile(path + "sealedsigningKey")
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -341,7 +348,7 @@ func LoadProgramKeys(path string) ([]byte, []byte, []byte, []byte, error) {
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	return sealedSymmetricKey, sealedSigningKey, derCert, ds, nil
+	return sealedSymmetricKey, sealedProgramKey, derCert, ds, nil
 }
 
 func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
@@ -418,154 +425,70 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte,
 	return k, err
 }
 
-func PrintRequest(subject []byte, action *string, resource *string, owner []byte) {
-	log.Printf("PrintRequest\n")
-
-	if subject != nil {
-		log.Printf("\tsubject: % x\n", subject)
-		subjectName := PrincipalNameFromDERCert(subject)
-		if subjectName != nil {
-			log.Printf("\tsubject: %s\n", *subjectName)
-		}
+func PrintMessage(msg *SimpleMessage) {
+	log.Printf("Message\n")
+	log.Printf("\tmessage type: %d\n", msg.MessageType)
+	log.Printf("\trequest_type: %s\n", msg.RequestType)
+	if msg.Err != nil {
+		log.Printf("\terror: %s\n", msg.Err)
 	}
-	if action != nil {
-		log.Printf("\taction: %s\n", *action)
+	log.Printf("\tdata: ");
+	for _, data = range msg.GetData() {
+		log.Printf("\t\t: %x\n", data);
 	}
-	if resource != nil {
-		log.Printf("\tresource: %s\n", *resource)
-	}
-	if owner != nil {
-		log.Printf("\towner: % x\n", owner)
-		ownerName := PrincipalNameFromDERCert(owner)
-		if ownerName != nil {
-			log.Printf("\towner: %s\n", *ownerName)
-		}
-	}
+	log.Printf("\n")
 }
 
-func GetResponse(ms *util.MessageStream) (*string, *string, *int, error) {
-	log.Printf("GetResponse\n")
-
-	strbytes, err := ms.ReadString()
-
-	fpMessage := new(FPMessage)
-	err = proto.Unmarshal([]byte(strbytes), fpMessage)
+func SendMessage(ms *util.MessageStream, msg *taosupport.SimpleMessage) (error) {
+	out, err := proto.Marshal(*msg)
 	if err != nil {
-		return nil, nil, nil, errors.New("GetResponse can't unmarshal message")
-	}
-	if fpMessage.MessageType == nil {
-		return nil, nil, nil, errors.New("GetResponse: no message type")
-	}
-	if *fpMessage.MessageType != int32(MessageType_RESPONSE) {
-		log.Printf("GetResponse bad type\n")
-		return nil, nil, nil, errors.New("reception error")
-	}
-	var status *string
-	var errMessage *string
-	var size int
-
-	if fpMessage.StatusOfRequest == nil {
-		log.Printf("GetResponse no status\n")
-		return nil, nil, nil, errors.New("reception error")
-	}
-	status = fpMessage.StatusOfRequest
-	errMessage = fpMessage.MessageFromRequest
-	if fpMessage.BufferSize == nil {
-		return status, errMessage, nil, nil
-	} else {
-		size = int(*fpMessage.BufferSize)
-		return status, errMessage, &size, nil
-	}
-}
-
-
-func PrintResponse(status *string, message *string, size *int) {
-	log.Printf("PrintResponse\n")
-	if status != nil {
-		log.Printf("\tstatus: %s\n", *status)
-	} else {
-		log.Printf("\tstatus: empty\n")
-	}
-	if message != nil {
-		log.Printf("\tmessage: %s\n", *message)
-	}
-	if size != nil {
-		log.Printf("\tsize: %d\n", *size)
-	}
-}
-
-func SendResponse(ms *util.MessageStream, status string, errMessage string, size int) error {
-	fpMessage := new(FPMessage)
-	fpMessage.MessageType = proto.Int32(int32(MessageType_RESPONSE))
-	fpMessage.StatusOfRequest = proto.String(status)
-	fpMessage.MessageFromRequest = proto.String(errMessage)
-	out, err := proto.Marshal(fpMessage)
-	if err != nil {
-		log.Printf("SendResponse can't encode response\n")
-		return err
+		return errors.New("SendRequest: Can't encode response")
 	}
 	send := string(out)
-	log.Printf("SendResponse sending %s %s %d\n", status, errMessage, len(send))
-	n, err := ms.WriteString(send)
+	_, err := ms.WriteString(send)
 	if err != nil {
-		log.Printf("SendResponse Writestring error %d\n", n, err)
-		return err
+		return errors.New("SendResponse: Writestring error")
 	}
 	return nil
 }
 
-func SendProtocolMessage(ms *util.MessageStream, size int, buf []byte) error {
-	log.Printf("SendProtocolMessage\n")
-	fpMessage := new(FPMessage)
-	fpMessage.MessageType = proto.Int32(int32(MessageType_PROTOCOL_RESPONSE))
-	fpMessage.BufferSize = proto.Int32(int32(size))
-	fpMessage.TheBuffer = proto.String(string(buf))
-	out, err := proto.Marshal(fpMessage)
-	if err != nil {
-		log.Printf("SendResponse can't encode response\n")
-		return err
-	}
-	n, err := ms.WriteString(string(out))
-	if err != nil {
-		log.Printf("SendProtocolMessage Writestring error %d\n", n, err)
-		return err
-	}
-	return nil
-}
-
-func GetProtocolMessage(ms *util.MessageStream) ([]byte, error) {
-	log.Printf("GetProtocolMessage\n")
-	strbytes, err := ms.ReadString()
+func GetMessage(ms *util.MessageStream) (*taosupport.SimpleMessage,
+	 	error) {
+	resp, err := ms.ReadString()
 	if err != nil {
 		return nil, err
 	}
-	fpMessage := new(FPMessage)
-	err = proto.Unmarshal([]byte(strbytes), fpMessage)
+	msg = new(taosupport.SimpleMessage)
+	err = proto.Unmarshal([]byte(resp), resp)
 	if err != nil {
-		return nil, errors.New("GetProtocolMessage can't unmarshal message")
+		return nil, errors.New("GetResponse: Can't unmarshal message")
 	}
-	if fpMessage.MessageType == nil {
-		return nil, errors.New("GetProtocolMessage: no message type")
-	}
-	if *fpMessage.MessageType != int32(MessageType_PROTOCOL_RESPONSE) {
-		return nil, errors.New("GetProtocolMessage: Wrong message type")
-	}
-	out := fpMessage.TheBuffer
-	if out == nil {
-		return nil, errors.New("GetProtocolMessage: empty buffer")
-	}
-	return []byte(*out), nil
+	return msg, nil
 }
 
+func SendRequest(ms *util.MessageStream, msg *taosupport.SimpleMessage) (error) {
+	msg.MessageType = MessageType_REQUEST
+	return SendMessage(ms, msg)
+}
 
-func (pp *TaoProgramData) InitTaoProgramData(policyCert []byte, taoName string,
-		signingKey tao.Keys, symKeys []byte, programCert []byte) bool {
-	pp.ThePolicyCert = policyCert
-	pp.TaoName = taoName
-	pp.ProgramKey = signingKey
-	pp.ProgramSymKeys = symKeys
-	pp.ProgramCert = programCert
-	pp.Initialized = true
-	return true
+func SendResponse(ms *util.MessageStream, msg *taosupport.SimpleMessage) (error) {
+	msg.MessageType = taosupport.MessageType.RESPONSE
+	return SendMessage(ms, msg)
+}
+
+func GetRequest(ms *util.MessageStream) (*SimpleMessage, error) {
+	msg, err := GetMessage(ms)
+	if err != nil || msg.MessageType != int32(MessageType_REQUEST) {
+		return nil, errors.New("GetResponse: reception error")
+	}
+	return msg, nil
+}
+
+func GetResponse(ms *util.MessageStream) (*SimpleMessage, error) {
+	msg, err := GetMessage(ms)
+	if err != nil || msg.MessageType != int32(MessageType_RESPONSE) {
+		return nil, errors.New("GetResponse: reception error")
+	}
+	return msg, nil
 }
 

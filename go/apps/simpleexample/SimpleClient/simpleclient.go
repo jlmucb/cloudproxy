@@ -25,7 +25,7 @@ import (
 
 	"code.google.com/p/goprotobuf/proto"
 
-	"github.com/jlmucb/cloudproxy/apps/simplecommon"
+	"github.com/jlmucb/cloudproxy/apps/taosupport"
 	tao "github.com/jlmucb/cloudproxy/tao"
 	"github.com/jlmucb/cloudproxy/tao/auth"
 	taonet "github.com/jlmucb/cloudproxy/tao/net"
@@ -62,20 +62,15 @@ func main() {
 	log.Printf("Establish Tao Channel with %s\n", serverName)
 
 	// Send a simple request and get response.
+	secretRequest := []byte("SecretRequest")
 	var retrievedSecret string
+
 	/*
-	rule := "Delegate(\"jlm\", \"tom\", \"getfile\",\"myfile\")"
-	log.Printf("simpleclient, sending rule: %s\n", rule)
-	err = simplecommon.SendRule(ms, rule, userCert)
+	SendProtocolMessage(ms, len(secretRequest), secretRequest)
 	if err != nil {
-		log.Printf("simpleclient: can't create file\n")
-		return
+		log.Fatalln("simpleclient: Error in response to SendProtocolMessage\n")
 	}
-	status, message, size, err := simplecommon.GetResponse(ms)
-	if err != nil {
-		log.Fatalln("simpleclient: Error in response to SendCreate\n")
-	}
-	simplecommon.PrintResponse(status, message, size)
+	taosupport.PrintResponse(status, message, size)
 	if *status != "succeeded" {
 		return
 	}

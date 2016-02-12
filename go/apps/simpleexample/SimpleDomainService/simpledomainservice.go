@@ -13,7 +13,6 @@
 package main
 
 import (
-	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -27,11 +26,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/go/apps/simpleexample"
-
 	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
-	taonet "github.com/jlmucb/cloudproxy/go/tao/net"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
@@ -65,7 +61,7 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 	}
 
 	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
-	if err := taonet.ValidatePeerAttestation(&a, peerCert, guard); err != nil {
+	if err := tao.ValidatePeerAttestation(&a, peerCert, guard); err != nil {
 		log.Printf("Couldn't validate peer attestation:", err)
 		return false, err
 	}
@@ -117,12 +113,16 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 	log.Printf("simpledomainservice, IsAuthenticationValid succeeded: subject principal name: %s\n", subjectnamestr)
 
 	// Sign program certificate.
+	us := "US"
+	google := "Google"
+	localhost := "localhost"
 	details := tao.X509Details{
-		Country:            "US",
-		Organization:       "Google",
-		OrganizationalUnit: subjectnamestr,
-		CommonName:         "localhost"}
-	subjectname := tao.NewX509Name(details)
+		Country:            &us,
+		Organization:       &google,
+		OrganizationalUnit: &subjectnamestr,
+		CommonName:         &localhost,
+	}
+	subjectname := tao.NewX509Name(&details)
 	SerialNumber = SerialNumber + 1
 	template := &x509.Certificate{
 		SignatureAlgorithm: x509.ECDSAWithSHA256,
@@ -139,13 +139,19 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 	if err != nil {
 		return false, errors.New("can't get principal from kprin")
 	}
-	clientDerCert, err := x509.CreateCertificate(rand.Reader, template, policyKey.Cert,
-		verifier.GetVerifierEc(),
+	var clientDerCert []byte
+	log.Printf("template: %x\n", template)
+	log.Printf("verifier: %x\n", verifier)
+	/*
+	TODO(manferdelli): Fix
+	clientDerCert, err := x509.CreateCertificate(rand.Reader,template,
+		policyKey.Cert, verifier.GetVerifierEc(),
 		policyKey.SigningKey.GetSignerEc())
 	if err != nil {
 		log.Printf("simpledomainservice: can't create client certificate: %s\n", err)
 		return false, err
 	}
+	*/
 	err = ioutil.WriteFile("ClientCert", clientDerCert, os.ModePerm)
 
 	nowTime := time.Now().UnixNano()
@@ -235,10 +241,11 @@ func main() {
 	// matters to the remote client is that they receive a correctly-signed new
 	// attestation from the policy key.
 	// JLM:  I left this in place but I'm not sure what a TLS connection with a
-	//   self signed Cert buys in terms of security.  The security of this protocol should
-	//   not depend on the confidentiality or intergity of the channel.  All that said,
-	//   if we do ever distribute a signed simpledomainservice cert for this TLS channel, it would
-	//   be good.
+	//   self signed Cert buys in terms of security.
+	//   The security of this protocol should not depend on the
+	//   confidentiality or intergity of the channel.  All that said, if we
+	//   do ever distribute a signed simpledomainservice cert
+	// for this TLS channel, it would be good.
 	keys, err := tao.NewTemporaryKeys(tao.Signing)
 	if keys == nil || err != nil {
 		log.Fatalln("simpledomainservice: Couldn't set up temporary keys for the connection:", err)
@@ -257,7 +264,7 @@ func main() {
 	}
 	log.Printf("simpledomainservice: Policy key %x\n: ", policyKey)
 
-	tlsc, err := taonet.EncodeTLSCert(keys)
+	tlsc, err := tao.EncodeTLSCert(keys)
 	if err != nil {
 		log.Fatalln("simpledomainservice: Couldn't encode a TLS cert:", err)
 	}

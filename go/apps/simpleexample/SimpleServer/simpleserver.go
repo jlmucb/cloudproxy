@@ -16,18 +16,16 @@ package main
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"flag"
 	"log"
 	"net"
 
 	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
-
-	tao "github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
-var simplecfg = flag.String("../simpledomain/tao.config", "../simpledomain/tao.config", "path to simple tao configuration")
+var simplePath = flag.String("../simpledomain/", "../simpledomain/", "path")
+var simpleCfg = flag.String("../simpledomain/tao.config", "../simpledomain/tao.config", "path to simple tao configuration")
 var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
 var serverAddr string
@@ -87,10 +85,6 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 			continue
 		}
 		clientName = peerCert.Subject.OrganizationalUnit[0]
-		if clientName == nil {
-			log.Printf("server: can't get client name\n")
-			continue
-		}
 		log.Printf("server, peer client name: %s\n", clientName)
 		ms := util.NewMessageStream(conn)
 		go serviceThead(ms, clientName, serverProgramData)
@@ -106,13 +100,11 @@ func main() {
 
 	// Load domain info for this domain
 	// This was initialized by TODO.
-	if !TaoParadigm(*simplecfg, &serverProgramData) {
+	if taosupport.TaoParadigm(simplePath, simpleCfg, &serverProgramData) !=
+			nil {
 		log.Fatalln("simpleserver: Can't establish Tao")
 	}
 
-	err = server(serverAddr, &serverProgramData)
-	if err != nil {
-		log.Printf("simpleserver: server error\n")
-	}
+	server(serverAddr, &serverProgramData)
 	log.Printf("simpleserver: done\n")
 }

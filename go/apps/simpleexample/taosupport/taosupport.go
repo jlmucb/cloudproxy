@@ -49,8 +49,8 @@ type TaoProgramData struct {
 // RequestTruncatedAttestation connects to a CA instance, sends the attestation
 // for an X.509 certificate, and gets back a truncated attestation with a new
 // principal name based on the policy key.
-func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys, v *tao.Verifier) (*tao.Attestation,
-		error) {
+func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys,
+		v *tao.Verifier) (*tao.Attestation, error) {
 	if keys.Cert == nil {
 		return nil, errors.New("RequestKeyNegoAttestation: Can't dial with an empty client certificate")
 	}
@@ -94,7 +94,10 @@ func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys, v *tao.Veri
 	return &a, nil
 }
 
-func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) ([]byte, error) {
+func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) (
+		[]byte, error) {
+
+	// TODO(manferdelli): add policy
 	// Make up symmetric key and save sealed version.
 	log.Printf("InitializeSealedSymmetricKeys\n")
 	unsealed, err := tao.Parent().GetRandomBytes(keysize)
@@ -109,7 +112,10 @@ func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) ([]byte,
 	return unsealed, nil
 }
 
-func InitializeSealedProgramKey(path string, t tao.Tao, domain tao.Domain) (*tao.Keys, error) {
+func InitializeSealedProgramKey(path string, t tao.Tao, domain tao.Domain) (
+		*tao.Keys, error) {
+
+	// TODO(manferdelli): add policy
 	k, derCert, err := CreateSigningKey(t)
 	if err != nil  || derCert == nil{
 		log.Printf("InitializeSealedProgramKey: CreateSigningKey failed with error %s\n", err)

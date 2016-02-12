@@ -15,21 +15,10 @@
 package main
 
 import (
-	"crypto/sha256"
-	"crypto/tls"
-	"crypto/x509"
-	"encoding/binary"
 	"flag"
-	"io/ioutil"
 	"log"
 
-	"code.google.com/p/goprotobuf/proto"
-
-	"github.com/jlmucb/cloudproxy/apps/taosupport"
-	tao "github.com/jlmucb/cloudproxy/tao"
-	"github.com/jlmucb/cloudproxy/tao/auth"
-	taonet "github.com/jlmucb/cloudproxy/tao/net"
-	"github.com/jlmucb/cloudproxy/util"
+	taosupport "github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
 )
 
 var simplecfg = flag.String("../simpledomain/tao.config", "../simpledomain/tao.config",
@@ -42,7 +31,7 @@ func main() {
 
 	// This holds the cloudproxy specific data for this program
 	// like Program Cert and Program Private key.
-	var clientProgramData simpleexample.TaoProgramData
+	var clientProgramData taosupport.TaoProgramData
 
 	// Parse flags
 	flag.Parse()
@@ -50,12 +39,14 @@ func main() {
 
 	// Load domain info for this domain
 	// This was initialized by TODO.
-	if !TaoParadigm(*simplecfg, &clientProgramData) {
+	if taosupport.TaoParadigm(simplecfg, &serverAddr, &clientProgramData) !=
+			nil {
 		log.Fatalln("simpleclient: Can't establish Tao")
 	}
 
 	// Open the Tao Channel using the Program key.
-	ms, serverName, err := OpenTaoChannel(&clientProgramData)
+	ms, serverName, err := taosupport.OpenTaoChannel(&clientProgramData,
+		&serverAddr)
 	if err != nil {
 		log.Fatalln("simpleclient: Can't establish Tao Channel")
 	}

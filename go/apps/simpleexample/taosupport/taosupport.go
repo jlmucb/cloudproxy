@@ -15,29 +15,20 @@
 package taosupport
 
 import (
-	"bytes"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/hmac"
-	"crypto/rand"
-	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"flag"
-	"hash"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
 
-	"code.google.com/p/goprotobuf/proto"
+	"github.com/golang/protobuf/proto"
 
-	"github.com/jlmucb/cloudproxy/tao"
-	"github.com/jlmucb/cloudproxy/tao/auth"
-	taonet "github.com/jlmucb/cloudproxy/tao/net"
-	"github.com/jlmucb/cloudproxy/util"
+	"github.com/jlmucb/cloudproxy/go/tao"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
+	"github.com/jlmucb/cloudproxy/go/util"
 )
 
 var caAddr = flag.String("caAddr", "localhost:8124", "The address to listen on")
@@ -64,7 +55,7 @@ func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys, v *tao.Veri
 		return nil, errors.New("RequestKeyNegoAttestation: Can't dial with an empty client certificate")
 	}
 	// Explain taonet and what keys are used
-	tlsCert, err := taonet.EncodeTLSCert(keys)
+	tlsCert, err := tao.EncodeTLSCert(keys)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +147,7 @@ func InitializeSealedProgramKey(path string, t tao.Tao, domain tao.Domain) (*tao
 	if err != nil {
 		return nil, errors.New("InitializeSealedProgramKey: Can't produce signing key blob")
 	}
-	sealedProgramKey, err := t.Seal(signingKeyBlob, tao.SealPolicyDefault)
+	sealedProgramKey, err := t.Seal(programKeyBlob, tao.SealPolicyDefault)
 	if err != nil {
 		return nil, errors.New("InitializeSealedProgramKey: Can't seal signing key")
 	}
@@ -190,7 +181,7 @@ func (pp *TaoProgramData) InitTaoProgramData(policyCert []byte, taoName string,
 	return true
 }
 
-func TaoParadigm(path *string, cfg *string, programObject *simpleexample.TaoProgramData) (error) {
+func TaoParadigm(path *string, cfg *string, programObject *TaoProgramData) (error) {
 
 	// Load domain info for this domain.
 	simpleDomain, err := tao.LoadDomain(*cfg, nil)
@@ -223,44 +214,49 @@ func TaoParadigm(path *string, cfg *string, programObject *simpleexample.TaoProg
 
 	// Get my keys and certificates.
 	sealedSymmetricKey, sealedProgramKey, programCert, delegation, err :=
-		taosupport.LoadProgramKeys(*path)
+		LoadProgramKeys(*path)
 	if err != nil {
 		return errors.New("TaoParadigm: Can't retrieve key material")
 	}
 
 	// Unseal my symmetric keys, or initialize them.
 	var symKeys []byte
+	var policy string
 	if sealedSymmetricKey != nil {
-		symKeys, policy, err := tao.Parent().Unseal(sealedSymmetricKey)
+		symKeys, policy, err = tao.Parent().Unseal(sealedSymmetricKey)
 		if err != nil || policy != tao.SealPolicyDefault {
 			return errors.New("TaoParadigm: can't unseal symmetric keys")
 		}
-	} 
-	symKeys, err := taosupport.InitializeSealedSymmetricKeys(*path,
-		tao.Parent(), taosupport.SizeofSymmetricKeys)
-	if err != nil {
-		retrun errors.New("TaoParadigm: InitializeSealedSymmetricKeys error")
+	} else {
+		symKeys, err = InitializeSealedSymmetricKeys(*path, tao.Parent(),
+			SizeofSymmetricKeys)
+		if err != nil {
+			return errors.New("TaoParadigm: InitializeSealedSymmetricKeys error")
+		}
 	}
 	log.Printf("Unsealed symmetric keys: % x\n", symKeys)
 
 	// Get my Program private key if present or initialize it.
 	var programKey *tao.Keys
 	if sealedProgramKey != nil {
-		programKey, err = taosupport.SigningKeyFromBlob(tao.Parent(),
+		programKey, err = SigningKeyFromBlob(tao.Parent(),
 			sealedProgramKey, programCert, delegation)
 		if err != nil {
-			retrun errors.New("TaoParadigm: SigningKeyFromBlob error")
+			return errors.New("TaoParadigm: SigningKeyFromBlob error")
 		}
-	// Get Program key.
-	programKey, err = simplecommon.InitializeSealedSigningKey(*path, tao.Parent(), *simpleDomain)
-	if err != nil || programKey == nil {
-		return errors.New("TaoParadigm: InitializeSealedSigningKey error")
+	} else {
+		// Get Program key.
+		programKey, err = InitializeSealedProgramKey(
+			*path, tao.Parent(), *simpleDomain)
+		if err != nil || programKey == nil {
+			return errors.New("TaoParadigm: InitializeSealedSigningKey error")
+		}
 	}
-	log.Printf("TaoParadigm: Retrieved Signing key: % x\n", *signingKey)
+	log.Printf("TaoParadigm: Retrieved Signing key: % x\n", *programKey)
 
 	// Initialize Program policy object.
-	ok := programObject.InitTaoProgramData(derPolicyCert, taoName.String(), *programKey,
-		symKeys, programCert)
+	ok := programObject.InitTaoProgramData(derPolicyCert, taoName.String(),
+		*programKey, symKeys, programCert)
 	if !ok {
 		return errors.New("TaoParadigm: Can't initialize TaoProgramData")
 	}
@@ -268,34 +264,37 @@ func TaoParadigm(path *string, cfg *string, programObject *simpleexample.TaoProg
 }
 
 // Return connection and peer name.
-func OpenTaoChannel(programObject *simpleexample.TaoProgramData) (*util.MessageStream, string, error) {
+func OpenTaoChannel(programObject *TaoProgramData, serverAddr *string) (
+		*util.MessageStream, *string, error) {
 
 	// Parse policy cert and make it the root of our heierarchy for verifying
 	// Tao Channel peer.
-	policyCert, err := x509.ParseCertificate(derPolicyCert)
+	policyCert, err := x509.ParseCertificate(programObject.PolicyCert)
 	if err != nil {
-		return errors.New("OpenTaoChannel: Can't ParseCertificate")
+		return nil, nil, errors.New("OpenTaoChannel: Can't ParseCertificate")
 	}
 	pool := x509.NewCertPool()
 	pool.AddCert(policyCert)
 
 	// Open the Tao Channel using the Program key.
-	tlsc, err := taonet.EncodeTLSCert(signingKey)
+	tlsc, err := tao.EncodeTLSCert(&programObject.ProgramKey)
 	if err != nil {
 		log.Fatalln("OpenTaoChannel, encode error: ", err)
 	}
-	conn, err := tls.Dial("tcp", serverAddr, &tls.Config{
+	conn, err := tls.Dial("tcp", *serverAddr, &tls.Config{
 		RootCAs:            pool,
 		Certificates:       []tls.Certificate{*tlsc},
 		InsecureSkipVerify: false,
 	})
 	if err != nil {
-		return errors.New("OpenTaoChannel: Can't establish channel")
+		return nil, nil, errors.New("OpenTaoChannel: Can't establish channel")
 	}
+
+	peerName := ""
 
 	// Stream for Tao Channel.
 	ms := util.NewMessageStream(conn)
-	return ms, peerName, nil 
+	return ms, &peerName, nil 
 }
 
 
@@ -363,11 +362,13 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 	publicString = strings.Replace(publicString, ")", "", -1)
 
 	// publicString is now a canonicalized Tao Principal name
+	us := "US"
+	google := "Google"
 	details := tao.X509Details{
-		Country:      "US",
-		Organization: "Google",
-		CommonName:   publicString}
-	subjectname := tao.NewX509Name(details)
+		Country:      &us,
+		Organization: &google,
+		CommonName:   &publicString}
+	subjectname := tao.NewX509Name(&details)
 
 	derCert, err := k.SigningKey.CreateSelfSignedDER(subjectname)
 	if err != nil {
@@ -389,7 +390,7 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 	}
 
 	// Sign attestation statement
-	if k.Delegation, err = t.Attest(&self, nil, nil, s)
+	k.Delegation, err = t.Attest(&self, nil, nil, s)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -433,52 +434,54 @@ func PrintMessage(msg *SimpleMessage) {
 		log.Printf("\terror: %s\n", msg.Err)
 	}
 	log.Printf("\tdata: ");
-	for _, data = range msg.GetData() {
+	for _, data := range msg.GetData() {
 		log.Printf("\t\t: %x\n", data);
 	}
 	log.Printf("\n")
 }
 
-func SendMessage(ms *util.MessageStream, msg *taosupport.SimpleMessage) (error) {
-	out, err := proto.Marshal(*msg)
+func SendMessage(ms *util.MessageStream, msg *SimpleMessage) (error) {
+	out, err := proto.Marshal(msg)
 	if err != nil {
 		return errors.New("SendRequest: Can't encode response")
 	}
 	send := string(out)
-	_, err := ms.WriteString(send)
+	_, err = ms.WriteString(send)
 	if err != nil {
 		return errors.New("SendResponse: Writestring error")
 	}
 	return nil
 }
 
-func GetMessage(ms *util.MessageStream) (*taosupport.SimpleMessage,
-	 	error) {
+func GetMessage(ms *util.MessageStream) (*SimpleMessage,
+		error) {
 	resp, err := ms.ReadString()
 	if err != nil {
 		return nil, err
 	}
-	msg = new(taosupport.SimpleMessage)
-	err = proto.Unmarshal([]byte(resp), resp)
+	msg := new(SimpleMessage)
+	err = proto.Unmarshal([]byte(resp), msg)
 	if err != nil {
 		return nil, errors.New("GetResponse: Can't unmarshal message")
 	}
 	return msg, nil
 }
 
-func SendRequest(ms *util.MessageStream, msg *taosupport.SimpleMessage) (error) {
-	msg.MessageType = MessageType_REQUEST
+func SendRequest(ms *util.MessageStream, msg *SimpleMessage) (error) {
+	m1 := int32(MessageType_REQUEST)
+	msg.MessageType = &m1
 	return SendMessage(ms, msg)
 }
 
-func SendResponse(ms *util.MessageStream, msg *taosupport.SimpleMessage) (error) {
-	msg.MessageType = taosupport.MessageType.RESPONSE
+func SendResponse(ms *util.MessageStream, msg *SimpleMessage) (error) {
+	m1 := int32(MessageType_RESPONSE)
+	msg.MessageType = &m1
 	return SendMessage(ms, msg)
 }
 
 func GetRequest(ms *util.MessageStream) (*SimpleMessage, error) {
 	msg, err := GetMessage(ms)
-	if err != nil || msg.MessageType != int32(MessageType_REQUEST) {
+	if err != nil || *msg.MessageType != int32(MessageType_REQUEST) {
 		return nil, errors.New("GetResponse: reception error")
 	}
 	return msg, nil
@@ -486,7 +489,7 @@ func GetRequest(ms *util.MessageStream) (*SimpleMessage, error) {
 
 func GetResponse(ms *util.MessageStream) (*SimpleMessage, error) {
 	msg, err := GetMessage(ms)
-	if err != nil || msg.MessageType != int32(MessageType_RESPONSE) {
+	if err != nil || *msg.MessageType != int32(MessageType_RESPONSE) {
 		return nil, errors.New("GetResponse: reception error")
 	}
 	return msg, nil

@@ -21,11 +21,12 @@ import (
 	"log"
 	"net"
 
-	"github.com/jlmucb/cloudproxy/apps/taosupport"
-	tao "github.com/jlmucb/cloudproxy/tao"
-	"github.com/jlmucb/cloudproxy/tao/auth"
-	taonet "github.com/jlmucb/cloudproxy/tao/net"
-	"github.com/jlmucb/cloudproxy/util"
+	"github.com/jlmucb/cloudproxy/apps/go/simpleclient"
+
+	tao "github.com/jlmucb/cloudproxy/go/tao"
+	"github.com/jlmucb/cloudproxy/go/tao/auth"
+	taonet "github.com/jlmucb/cloudproxy/go/tao/net"
+	"github.com/jlmucb/cloudproxy/go/util"
 )
 
 var simplecfg = flag.String("../simpledomain/tao.config", "../simpledomain/tao.config", "path to simple tao configuration")

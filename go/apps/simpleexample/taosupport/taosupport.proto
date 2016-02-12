@@ -20,9 +20,9 @@ enum MessageType {
  }
 
 message SimpleMessage {
-  required int32   	    message_type = 1;
-  required string  	    request_type = 2;
-  optional string   	    err = 3;
-  optional repeated bytes   data = 4;
+  required int32   message_type = 1;
+  required string  request_type = 2;
+  optional string  err = 3;
+  repeated bytes   data = 4;
 }
 

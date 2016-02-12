@@ -21,11 +21,9 @@ import (
 	"log"
 	"net"
 
-	"github.com/jlmucb/cloudproxy/apps/go/simpleclient"
+	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
 
 	tao "github.com/jlmucb/cloudproxy/go/tao"
-	"github.com/jlmucb/cloudproxy/go/tao/auth"
-	taonet "github.com/jlmucb/cloudproxy/go/tao/net"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
@@ -40,7 +38,7 @@ func HandleServiceRequest(ms *util.MessageStream, serverProgramData *taosupport.
 }
 
 func serviceThead(ms *util.MessageStream, clientProgramName string,
-		  serverProgramData *taosupport.TaoProgramData) {
+	serverProgramData *taosupport.TaoProgramData) {
 
 	for {
 		log.Printf("clientServiceThead: ReadString\n")
@@ -49,14 +47,13 @@ func serviceThead(ms *util.MessageStream, clientProgramName string,
 			return
 		}
 		terminate, _ := HandleServiceRequest(ms, serverProgramData,
-			          clientProgramName, req)
+			clientProgramName, req)
 		if terminate {
 			break
 		}
 	}
 	log.Printf("simpleserver: client thread terminating\n")
 }
-
 
 func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 
@@ -79,7 +76,7 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 		if peerCerts == nil {
 			log.Printf("server: can't get peer list\n")
 			continue
-		} 
+		}
 		peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
 		if peerCert.Raw == nil {
 			log.Printf("server: can't get peer cert\n")
@@ -93,7 +90,7 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 		if clientName == nil {
 			log.Printf("server: can't get client name\n")
 			continue
-			}
+		}
 		log.Printf("server, peer client name: %s\n", clientName)
 		ms := util.NewMessageStream(conn)
 		go serviceThead(ms, clientName, serverProgramData)
@@ -107,11 +104,10 @@ func main() {
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
 
-
 	// Load domain info for this domain
 	// This was initialized by TODO.
 	if !TaoParadigm(*simplecfg, &serverProgramData) {
-		log.Fatalln("simpleclient: Can't establish Tao")
+		log.Fatalln("simpleserver: Can't establish Tao")
 	}
 
 	err = server(serverAddr, &serverProgramData)

@@ -1,3 +1,3 @@
 #
-PROG_DIR=/Users/manferdelli/src/github.com/jlmucb/cloudproxy/apps/simpleclient/simpleclient
+PROG_DIR=~/src/github.com/jlmucb/cloudproxy/go/apps/simpleclient/simpleclient
 linux_host -path="../SimpleDomain/linux_tao_host" -run -- $PROG_DIR/simpleclient 

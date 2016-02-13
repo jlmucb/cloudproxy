@@ -1,6 +1,6 @@
 #
-export TAO_HOST_DIR=/Users/manferdelli/src/github.com/jlmucb/cloudproxy/apps/simpleexample/SimpleDomain
-export TAO_ROOTDIR=/Users/manferdelli/src/github.com/jlmucb/cloudproxy
+export TAO_HOST_DIR=~/src/github.com/jlmucb/cloudproxy/go/apps/simpleexample/SimpleDomain
+export TAO_ROOTDIR=~/src/github.com/jlmucb/cloudproxy/go
 cd $TAO_HOST_DIR
 linux_host -create -root -pass nopassword
 linux_host -service -root -pass nopassword &

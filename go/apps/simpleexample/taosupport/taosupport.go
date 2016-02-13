@@ -15,6 +15,10 @@
 package taosupport
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/hmac"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -22,6 +26,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
@@ -44,6 +49,7 @@ type TaoProgramData struct {
 	ProgramKey        tao.Keys
 	ProgramSymKeys    []byte
 	ProgramCert       []byte
+	ProgramFilePath   *string
 }
 
 // RequestTruncatedAttestation connects to a CA instance, sends the attestation
@@ -107,7 +113,7 @@ func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) (
 	if err != nil {
 		return nil, errors.New("Can't seal random bytes")
 	}
-	ioutil.WriteFile(path+"sealedsymmetrickey", sealed, os.ModePerm)
+	ioutil.WriteFile(path.Join(path, "sealedsymmetrickey"), sealed, os.ModePerm)
 	return unsealed, nil
 }
 
@@ -155,11 +161,11 @@ func InitializeSealedProgramKey(path string, t tao.Tao, domain tao.Domain) (
 	if err != nil {
 		return nil, errors.New("InitializeSealedProgramKey: Can't seal signing key")
 	}
-	err = ioutil.WriteFile(path+"sealedsigningKey", sealedProgramKey, os.ModePerm)
+	err = ioutil.WriteFile(path.Join(path, "sealedsigningKey"), sealedProgramKey, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}
-	err = ioutil.WriteFile(path+"signerCert", newCert, os.ModePerm)
+	err = ioutil.WriteFile(path.Join(path, "signerCert"), newCert, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +173,7 @@ func InitializeSealedProgramKey(path string, t tao.Tao, domain tao.Domain) (
 	if err != nil {
 		return nil, errors.New("InitializeSealedProgramKey: Can't seal random bytes")
 	}
-	err = ioutil.WriteFile(path+"delegationBlob", delegateBlob, os.ModePerm)
+	err = ioutil.WriteFile(path.Join(path, "delegationBlob"), delegateBlob, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +191,7 @@ func (pp *TaoProgramData) InitTaoProgramData(policyCert []byte, taoName string,
 	return true
 }
 
-func TaoParadigm(path *string, cfg *string, programObject *TaoProgramData) (error) {
+func TaoParadigm(cfg *string, programObject *TaoProgramData) (error) {
 
 	// Load domain info for this domain.
 	simpleDomain, err := tao.LoadDomain(*cfg, nil)
@@ -221,7 +227,7 @@ func TaoParadigm(path *string, cfg *string, programObject *TaoProgramData) (erro
 
 	// Get my keys and certificates.
 	sealedSymmetricKey, sealedProgramKey, programCert, delegation, err :=
-		LoadProgramKeys(*path)
+		LoadProgramKeys(*programObject.ProgramFilePath)
 	if err != nil {
 		return errors.New("TaoParadigm: Can't retrieve key material")
 	}
@@ -235,7 +241,7 @@ func TaoParadigm(path *string, cfg *string, programObject *TaoProgramData) (erro
 			return errors.New("TaoParadigm: can't unseal symmetric keys")
 		}
 	} else {
-		symKeys, err = InitializeSealedSymmetricKeys(*path, tao.Parent(),
+		symKeys, err = InitializeSealedSymmetricKeys(*programObject.ProgramFilePath, tao.Parent(),
 			SizeofSymmetricKeys)
 		if err != nil {
 			return errors.New("TaoParadigm: InitializeSealedSymmetricKeys error")
@@ -254,7 +260,7 @@ func TaoParadigm(path *string, cfg *string, programObject *TaoProgramData) (erro
 	} else {
 		// Get Program key.
 		programKey, err = InitializeSealedProgramKey(
-			*path, tao.Parent(), *simpleDomain)
+			*programObject.ProgramFilePath, tao.Parent(), *simpleDomain)
 		if err != nil || programKey == nil {
 			return errors.New("TaoParadigm: InitializeSealedSigningKey error")
 		}
@@ -326,31 +332,31 @@ func PrincipalNameFromDERCert(derCert []byte) *string {
 
 // Returns sealed symmetric key, sealed signing key, DER encoded cert, delegation, error.
 func LoadProgramKeys(path string) ([]byte, []byte, []byte, []byte, error) {
-	_, err := os.Stat(path + "sealedsymmetrickey")
+	_, err := os.Stat(path.Join(path, "sealedsymmetrickey"))
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	_, err = os.Stat(path + "sealedsigningKey")
+	_, err = os.Stat(path.Join(path, "sealedsigningKey"))
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	_, err = os.Stat(path + "signerCert")
+	_, err = os.Stat(path.Join(path, "signerCert"))
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	sealedSymmetricKey, err := ioutil.ReadFile(path + "sealedsymmetricKey")
+	sealedSymmetricKey, err := ioutil.ReadFile(path.Join(path, "sealedsymmetricKey"))
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	sealedProgramKey, err := ioutil.ReadFile(path + "sealedsigningKey")
+	sealedProgramKey, err := ioutil.ReadFile(path.Join(path, "sealedsigningKey"))
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	derCert, err := ioutil.ReadFile(path + "signerCert")
+	derCert, err := ioutil.ReadFile(path.Join(path, "signerCert"))
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	ds, err := ioutil.ReadFile(path + "delegationBlob")
+	ds, err := ioutil.ReadFile(path.Join(path, "delegationBlob"))
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -500,5 +506,45 @@ func GetResponse(ms *util.MessageStream) (*SimpleMessage, error) {
 		return nil, errors.New("GetResponse: reception error")
 	}
 	return msg, nil
+}
+
+func Protect(keys []byte, in []byte) ([]byte, error) {
+	out := make([]byte, len(in) + 48, len(in) + 48)
+	var iv [16]byte
+	_, err := rand.Read(iv)
+	if err != nil {
+		return nil, errors.New("Protect: Can't generate iv")
+	}
+	encKey := keys[0:16]
+	macKey := keys[16:32]
+	out[32:48] = iv
+	crypter, err := aes.NewCipher(key)
+	ctr := cipher.NewCTR(crypter, iv)
+	ctr.XORKeyStream(out[48:], in)
+
+	hm := hmac.New(sha256.New, keys[16:32])
+	hm.Write(out[32:])
+	calculatedHmac := hm.Sum(nil)
+	out[0:32] = calculatedHmac
+	return out, nil
+}
+
+func Unprotect(keys []byte, in []byte) ([]byte, error) {
+	out := make([]byte, len(in) - 48, len(in) - 48)
+	var iv [16]byte
+	iv = in[32:48]
+	encKey := keys[0:16]
+	macKey := keys[16:32]
+	crypter, err := aes.NewCipher(key)
+	ctr := cipher.NewCTR(crypter, iv)
+	ctr.XORKeyStream(out, in[48:])
+
+	hm := hmac.New(sha256.New, keys[16:32])
+	hm.Write(out[32:])
+	calculatedHmac := hm.Sum(nil)
+	if calculatedHmac != in[0:32] {
+		return nil, errors.New("Unprotect: bad mac")
+	}
+	return out, nil
 }
 

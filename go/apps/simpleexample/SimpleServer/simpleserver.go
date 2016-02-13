@@ -26,6 +26,8 @@ import (
 
 var simplePath = flag.String("../simpledomain/", "../simpledomain/", "path")
 var simpleCfg = flag.String("../simpledomain/tao.config", "../simpledomain/tao.config", "path to simple tao configuration")
+var simpleserverpath = flag.String("../simpledomain/SimpleServer/", "../simpledomain/SimpleServer",
+			"path to tao configuration")
 var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
 var serverAddr string
@@ -74,7 +76,6 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 			log.Printf("server: can't accept connection: %s\n", err.Error())
 			continue
 		}
-		// TODO(manferdelli): get client name from peer cert
 		var clientName string
 		err = conn.(*tls.Conn).Handshake()
 		if err != nil {
@@ -110,7 +111,8 @@ func main() {
 	serverAddr = *serverHost + ":" + *serverPort
 
 	// Load domain info for this domain
-	if taosupport.TaoParadigm(simplePath, simpleCfg, &serverProgramData) !=
+	serverProgramData.ProgramFilePath = simpleserverpath
+	if taosupport.TaoParadigm(simpleCfg, &serverProgramData) !=
 			nil {
 		log.Fatalln("simpleserver: Can't establish Tao")
 	}

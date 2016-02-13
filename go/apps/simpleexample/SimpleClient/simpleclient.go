@@ -17,11 +17,14 @@ package main
 import (
 	"flag"
 	"log"
+	"path"
 
 	taosupport "github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
 )
 
 var simplecfg = flag.String("../simpledomain/tao.config", "../simpledomain/tao.config",
+			"path to tao configuration")
+var simpleclientpath = flag.String("../simpledomain/SimpleClient/", "../simpledomain/SimpleClient",
 			"path to tao configuration")
 var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
@@ -32,20 +35,20 @@ func main() {
 	// This holds the cloudproxy specific data for this program
 	// like Program Cert and Program Private key.
 	var clientProgramData taosupport.TaoProgramData
+	clientProgramData.ProgramFilePath = simpleclientpath
 
 	// Parse flags
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
 
 	// Load domain info for this domain
-	if taosupport.TaoParadigm(simplecfg, &serverAddr, &clientProgramData) !=
+	if taosupport.TaoParadigm(simplecfg, &clientProgramData) !=
 			nil {
 		log.Fatalln("simpleclient: Can't establish Tao")
 	}
 
 	// Open the Tao Channel using the Program key.
-	ms, serverName, err := taosupport.OpenTaoChannel(&clientProgramData,
-		&serverAddr)
+	ms, serverName, err := taosupport.OpenTaoChannel(&clientProgramData, &serverAddr)
 	if err != nil {
 		log.Fatalln("simpleclient: Can't establish Tao Channel")
 	}
@@ -69,6 +72,14 @@ func main() {
 	retrieveSecret := respmsg.Data[0]
 
 	// Encrypt and store secret
+	out, err := Protect(clientProgramData.SymKeys, retrieveSecret)
+	if err != nil {
+		log.Fatalln("simpleclient: Error protecting data\n")
+	}
+	_, err := ioutil.WriteFile(path.Join(simpleclientpath, "retrieved_secret")
+	if err != nil {
+		log.Fatalln("simpleclient: error saving retrieved secret\n")
+	}
 
 	// Close down
 	log.Printf("simpleclient: secret is %s, done\n", retrieveSecret)

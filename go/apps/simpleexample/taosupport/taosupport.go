@@ -205,7 +205,10 @@ func TaoParadigm(path *string, cfg *string, programObject *TaoProgramData) (erro
 	}
 
 	// Extend my Tao Principal name with policy key.
-	e := auth.PrinExt{Name: "simpleclient_version_1"}
+	var t []auth.Term
+	t[0] = auth.TermVar(derPolicyCert)
+	e := auth.PrinExt{Name: "key",
+		          Arg: t}
 	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
 	if err != nil {
 		return errors.New("TaoParadigm: Can't extend name")

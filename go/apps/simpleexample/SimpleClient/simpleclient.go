@@ -16,7 +16,9 @@ package main
 
 import (
 	"flag"
+	"io/ioutil"
 	"log"
+	"os"
 	"path"
 
 	taosupport "github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
@@ -72,11 +74,12 @@ func main() {
 	retrieveSecret := respmsg.Data[0]
 
 	// Encrypt and store secret
-	out, err := Protect(clientProgramData.SymKeys, retrieveSecret)
+	out, err := taosupport.Protect(clientProgramData.ProgramSymKeys, retrieveSecret)
 	if err != nil {
 		log.Fatalln("simpleclient: Error protecting data\n")
 	}
-	_, err := ioutil.WriteFile(path.Join(simpleclientpath, "retrieved_secret")
+	err = ioutil.WriteFile(path.Join(*simpleclientpath,
+			"retrieved_secret"), out, os.ModePerm)
 	if err != nil {
 		log.Fatalln("simpleclient: error saving retrieved secret\n")
 	}

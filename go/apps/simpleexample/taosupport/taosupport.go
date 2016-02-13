@@ -15,10 +15,12 @@
 package taosupport
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -100,7 +102,7 @@ func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys,
 	return &a, nil
 }
 
-func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) (
+func InitializeSealedSymmetricKeys(filePath string, t tao.Tao, keysize int) (
 		[]byte, error) {
 
 	// Make up symmetric key and save sealed version.
@@ -113,11 +115,11 @@ func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) (
 	if err != nil {
 		return nil, errors.New("Can't seal random bytes")
 	}
-	ioutil.WriteFile(path.Join(path, "sealedsymmetrickey"), sealed, os.ModePerm)
+	ioutil.WriteFile(path.Join(filePath, "sealedsymmetrickey"), sealed, os.ModePerm)
 	return unsealed, nil
 }
 
-func InitializeSealedProgramKey(path string, t tao.Tao, domain tao.Domain) (
+func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 		*tao.Keys, error) {
 
 	k, derCert, err := CreateSigningKey(t)
@@ -161,11 +163,11 @@ func InitializeSealedProgramKey(path string, t tao.Tao, domain tao.Domain) (
 	if err != nil {
 		return nil, errors.New("InitializeSealedProgramKey: Can't seal signing key")
 	}
-	err = ioutil.WriteFile(path.Join(path, "sealedsigningKey"), sealedProgramKey, os.ModePerm)
+	err = ioutil.WriteFile(path.Join(filePath, "sealedsigningKey"), sealedProgramKey, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}
-	err = ioutil.WriteFile(path.Join(path, "signerCert"), newCert, os.ModePerm)
+	err = ioutil.WriteFile(path.Join(filePath, "signerCert"), newCert, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +175,7 @@ func InitializeSealedProgramKey(path string, t tao.Tao, domain tao.Domain) (
 	if err != nil {
 		return nil, errors.New("InitializeSealedProgramKey: Can't seal random bytes")
 	}
-	err = ioutil.WriteFile(path.Join(path, "delegationBlob"), delegateBlob, os.ModePerm)
+	err = ioutil.WriteFile(path.Join(filePath, "delegationBlob"), delegateBlob, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}
@@ -331,32 +333,32 @@ func PrincipalNameFromDERCert(derCert []byte) *string {
 }
 
 // Returns sealed symmetric key, sealed signing key, DER encoded cert, delegation, error.
-func LoadProgramKeys(path string) ([]byte, []byte, []byte, []byte, error) {
-	_, err := os.Stat(path.Join(path, "sealedsymmetrickey"))
+func LoadProgramKeys(filePath string) ([]byte, []byte, []byte, []byte, error) {
+	_, err := os.Stat(path.Join(filePath, "sealedsymmetrickey"))
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	_, err = os.Stat(path.Join(path, "sealedsigningKey"))
+	_, err = os.Stat(path.Join(filePath, "sealedsigningKey"))
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	_, err = os.Stat(path.Join(path, "signerCert"))
+	_, err = os.Stat(path.Join(filePath, "signerCert"))
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	sealedSymmetricKey, err := ioutil.ReadFile(path.Join(path, "sealedsymmetricKey"))
+	sealedSymmetricKey, err := ioutil.ReadFile(path.Join(filePath, "sealedsymmetricKey"))
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	sealedProgramKey, err := ioutil.ReadFile(path.Join(path, "sealedsigningKey"))
+	sealedProgramKey, err := ioutil.ReadFile(path.Join(filePath, "sealedsigningKey"))
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	derCert, err := ioutil.ReadFile(path.Join(path, "signerCert"))
+	derCert, err := ioutil.ReadFile(path.Join(filePath, "signerCert"))
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	ds, err := ioutil.ReadFile(path.Join(path, "delegationBlob"))
+	ds, err := ioutil.ReadFile(path.Join(filePath, "delegationBlob"))
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -509,41 +511,45 @@ func GetResponse(ms *util.MessageStream) (*SimpleMessage, error) {
 }
 
 func Protect(keys []byte, in []byte) ([]byte, error) {
-	out := make([]byte, len(in) + 48, len(in) + 48)
-	var iv [16]byte
-	_, err := rand.Read(iv)
+	out := make([]byte, len(in), len(in))
+	var iv []byte
+	_, err := rand.Read(iv[0:16])
 	if err != nil {
 		return nil, errors.New("Protect: Can't generate iv")
 	}
 	encKey := keys[0:16]
 	macKey := keys[16:32]
-	out[32:48] = iv
-	crypter, err := aes.NewCipher(key)
+	crypter, err := aes.NewCipher(encKey)
+	if err != nil {
+		return nil, errors.New("Protect: Can't make crypter")
+	}
 	ctr := cipher.NewCTR(crypter, iv)
-	ctr.XORKeyStream(out[48:], in)
+	ctr.XORKeyStream(out, in)
 
-	hm := hmac.New(sha256.New, keys[16:32])
-	hm.Write(out[32:])
+	hm := hmac.New(sha256.New, macKey)
+	hm.Write(append(iv, out...))
 	calculatedHmac := hm.Sum(nil)
-	out[0:32] = calculatedHmac
-	return out, nil
+	return append(calculatedHmac, append(iv, out...)...), nil
 }
 
 func Unprotect(keys []byte, in []byte) ([]byte, error) {
 	out := make([]byte, len(in) - 48, len(in) - 48)
-	var iv [16]byte
+	var iv []byte
 	iv = in[32:48]
 	encKey := keys[0:16]
 	macKey := keys[16:32]
-	crypter, err := aes.NewCipher(key)
+	crypter, err := aes.NewCipher(encKey)
+	if err != nil {
+		return nil, errors.New("Unprotect: Can't make crypter")
+	}
 	ctr := cipher.NewCTR(crypter, iv)
 	ctr.XORKeyStream(out, in[48:])
 
-	hm := hmac.New(sha256.New, keys[16:32])
-	hm.Write(out[32:])
+	hm := hmac.New(sha256.New, macKey)
+	hm.Write(in[32:])
 	calculatedHmac := hm.Sum(nil)
-	if calculatedHmac != in[0:32] {
-		return nil, errors.New("Unprotect: bad mac")
+	if bytes.Compare(calculatedHmac, in[0:32]) != 0 {
+		return nil, errors.New("Unprotect: Bad mac")
 	}
 	return out, nil
 }

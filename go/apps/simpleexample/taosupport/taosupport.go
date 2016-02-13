@@ -97,7 +97,6 @@ func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys,
 func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) (
 		[]byte, error) {
 
-	// TODO(manferdelli): add policy
 	// Make up symmetric key and save sealed version.
 	log.Printf("InitializeSealedSymmetricKeys\n")
 	unsealed, err := tao.Parent().GetRandomBytes(keysize)
@@ -115,7 +114,6 @@ func InitializeSealedSymmetricKeys(path string, t tao.Tao, keysize int) (
 func InitializeSealedProgramKey(path string, t tao.Tao, domain tao.Domain) (
 		*tao.Keys, error) {
 
-	// TODO(manferdelli): add policy
 	k, derCert, err := CreateSigningKey(t)
 	if err != nil  || derCert == nil{
 		log.Printf("InitializeSealedProgramKey: CreateSigningKey failed with error %s\n", err)

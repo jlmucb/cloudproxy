@@ -38,7 +38,6 @@ func main() {
 	serverAddr = *serverHost + ":" + *serverPort
 
 	// Load domain info for this domain
-	// This was initialized by TODO.
 	if taosupport.TaoParadigm(simplecfg, &serverAddr, &clientProgramData) !=
 			nil {
 		log.Fatalln("simpleclient: Can't establish Tao")
@@ -68,6 +67,8 @@ func main() {
 	}
 	taosupport.PrintMessage(respmsg)
 	retrieveSecret := respmsg.Data[0]
+
+	// Encrypt and store secret
 
 	// Close down
 	log.Printf("simpleclient: secret is %s, done\n", retrieveSecret)

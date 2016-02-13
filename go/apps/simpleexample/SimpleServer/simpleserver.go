@@ -30,17 +30,27 @@ var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
 var serverAddr string
 
-func HandleServiceRequest(ms *util.MessageStream, serverProgramData *taosupport.TaoProgramData,
-	clientProgramName, req string) (bool, error) {
-	return true, nil
+func HandleServiceRequest(ms *util.MessageStream, serverProgramData *taosupport.TaoProgramData, clientProgramName string, req *taosupport.SimpleMessage) (bool, error) {
+	//  Secret is program name || 43
+	secret := clientProgramName + "43"
+	msg, err := taosupport.GetRequest(ms)
+	// Check the request type
+	if err == nil && *msg.RequestType == "SecretRequest"  {
+		msg.Data = append(msg.Data, []byte(secret))
+		taosupport.SendResponse(ms, msg)
+		return true, nil
+	} else {
+		errmsg := "Bad request"
+		msg.Err = &errmsg
+		return false, nil
+	}
 }
 
 func serviceThead(ms *util.MessageStream, clientProgramName string,
 	serverProgramData *taosupport.TaoProgramData) {
 
 	for {
-		log.Printf("clientServiceThead: ReadString\n")
-		req, err := ms.ReadString()
+		req, err :=  taosupport.GetRequest(ms)
 		if err != nil {
 			return
 		}
@@ -64,6 +74,7 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 			log.Printf("server: can't accept connection: %s\n", err.Error())
 			continue
 		}
+		// TODO(manferdelli): get client name from peer cert
 		var clientName string
 		err = conn.(*tls.Conn).Handshake()
 		if err != nil {
@@ -99,7 +110,6 @@ func main() {
 	serverAddr = *serverHost + ":" + *serverPort
 
 	// Load domain info for this domain
-	// This was initialized by TODO.
 	if taosupport.TaoParadigm(simplePath, simpleCfg, &serverProgramData) !=
 			nil {
 		log.Fatalln("simpleserver: Can't establish Tao")

@@ -33,8 +33,9 @@ import (
 
 var network = flag.String("network", "tcp", "The network to use for connections")
 var addr = flag.String("addr", "localhost:8124", "The address to listen on")
-var domainPass = flag.String("password", "nopassword", "The domain password for the policy key")
-var configPath = flag.String("config", "tao.config", "The Tao domain config")
+var domainPass = flag.String("password", "xxx", "The domain password")
+var configPath = flag.String("config",
+	"SimpleDomain/domain.simpleexample/tao.config", "The Tao domain config")
 
 var SerialNumber int64
 
@@ -78,8 +79,6 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 		log.Printf("\nsimpledomainservice: can't unmarshal a.SerializedStatement\n")
 		return false, err
 	}
-	// log.Print("\nsimpledomainservice, unmarshaled serialized: ", f.String())
-	// log.Print("\n")
 
 	var saysStatement *auth.Says
 	if ptr, ok := f.(*auth.Says); ok {
@@ -92,6 +91,7 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 		log.Printf("simpledomainservice: says doesnt have speaksfor message\n")
 		return false, err
 	}
+
 	// log.Print("simpledomainservice, speaksfor: ", sf)
 	// log.Print("\n")
 	kprin, ok := sf.Delegate.(auth.Prin)
@@ -168,7 +168,7 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 
 	delegator, ok := sf.Delegator.(auth.Prin)
 	if !ok {
-		log.Printf("simpledomainservice: the delegator must be a principal")
+		log.Printf("simpledomainservice: delegator must be principal")
 		return false, err
 	}
 	var prog auth.PrinExt
@@ -188,8 +188,8 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 		return false, err
 	}
 
-	// Add an endorsement to this PrinExt Program hash so the receiver can check
-	// it successfully against policy.
+	// Add an endorsement to this PrinExt Program hash so the receiver can
+	//  check it successfully against policy.
 	endorsement := auth.Says{
 		Speaker: policyKey.SigningKey.ToPrincipal(),
 		Message: auth.Pred{
@@ -230,12 +230,14 @@ func main() {
 	flag.Parse()
 	domain, err := tao.LoadDomain(*configPath, []byte(*domainPass))
 	if domain == nil {
-		log.Printf("simpledomainservice: no domain\n")
+		log.Printf("simpledomainservice: no domain %s %s %s\n",
+			*configPath, *domainPass, err)
 		return
 	} else if err != nil {
 		log.Printf("simpledomainservice: Couldn't load the config path %s: %s\n", *configPath, err)
 		return
 	}
+	log.Printf("Loaded domain\n")
 
 	// Set up temporary keys for the connection, since the only thing that
 	// matters to the remote client is that they receive a correctly-signed new
@@ -258,7 +260,8 @@ func main() {
 		return
 	}
 	SerialNumber = int64(time.Now().UnixNano()) / (1000000)
-	policyKey, err := tao.NewOnDiskPBEKeys(tao.Signing, []byte(*domainPass), "policy_keys", nil)
+	policyKey, err := tao.NewOnDiskPBEKeys(tao.Signing,
+		[]byte(*domainPass), "policy_keys", nil)
 	if err != nil {
 		log.Fatalln("simpledomainservice: Couldn't get policy key\n", err)
 	}

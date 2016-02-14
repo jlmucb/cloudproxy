@@ -512,7 +512,7 @@ func GetResponse(ms *util.MessageStream) (*SimpleMessage, error) {
 
 func Protect(keys []byte, in []byte) ([]byte, error) {
 	out := make([]byte, len(in), len(in))
-	var iv []byte
+	iv := make([]byte, 16, 16)
 	_, err := rand.Read(iv[0:16])
 	if err != nil {
 		return nil, errors.New("Protect: Can't generate iv")

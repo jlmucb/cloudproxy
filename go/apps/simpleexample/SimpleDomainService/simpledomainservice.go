@@ -20,7 +20,6 @@ import (
 	"flag"
 	"io/ioutil"
 	"log"
-	"math/big"
 	"net"
 	"os"
 	"time"
@@ -72,11 +71,9 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 	// a is a says speaksfor, Delegate of speaksfor is cert and should be DER encoded
 
 	// Get underlying says
-	// log.Print("simpledomainservice, attest: ", a)
-	// log.Print("\n")
 	f, err := auth.UnmarshalForm(a.SerializedStatement)
 	if err != nil {
-		log.Printf("\nsimpledomainservice: can't unmarshal a.SerializedStatement\n")
+		log.Printf("simpledomainservice: can't unmarshal a.SerializedStatement\n")
 		return false, err
 	}
 
@@ -92,8 +89,8 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 		return false, err
 	}
 
-	// log.Print("simpledomainservice, speaksfor: ", sf)
-	// log.Print("\n")
+	log.Print("simpledomainservice, speaksfor: ", sf)
+	log.Print("\n")
 	kprin, ok := sf.Delegate.(auth.Prin)
 	if ok != true {
 		log.Printf("simpledomainservice: speaksfor Delegate is not auth.Prin\n")
@@ -110,7 +107,7 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 		log.Printf("simpledomainservice: name verification failed\n")
 		return false, err
 	}
-	log.Printf("simpledomainservice, IsAuthenticationValid succeeded: subject principal name: %s\n", subjectnamestr)
+	log.Printf("simpledomainservice, authenticated principal name: %s\n", subjectnamestr)
 
 	// Sign program certificate.
 	us := "US"
@@ -124,38 +121,22 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 	}
 	subjectname := tao.NewX509Name(&details)
 	SerialNumber = SerialNumber + 1
-	template := &x509.Certificate{
-		SignatureAlgorithm: x509.ECDSAWithSHA256,
-		PublicKeyAlgorithm: x509.ECDSA,
-		Version:            2,
-		SerialNumber:       new(big.Int).SetInt64(SerialNumber),
-		Subject:            *subjectname,
-		NotBefore:          time.Now(),
-		NotAfter:           time.Now().AddDate(1 /* years */, 0 /* months */, 0 /* days */),
-		KeyUsage:           x509.KeyUsageKeyAgreement,
-		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-	}
 	verifier, err := tao.FromPrincipal(kprin)
 	if err != nil {
 		return false, errors.New("can't get principal from kprin")
 	}
-	var clientDerCert []byte
-	log.Printf("template: %x\n", template)
 	log.Printf("verifier: %x\n", verifier)
-	/*
-	TODO(manferdelli): Fix
-	clientDerCert, err := x509.CreateCertificate(rand.Reader,template,
-		policyKey.Cert, verifier.GetVerifierEc(),
-		policyKey.SigningKey.GetSignerEc())
+	clientCert, err := policyKey.SigningKey.CreateSignedX509(policyKey.Cert, int(SerialNumber), verifier, subjectname)
 	if err != nil {
 		log.Printf("simpledomainservice: can't create client certificate: %s\n", err)
 		return false, err
 	}
-	*/
+	clientDerCert := clientCert.Raw
 	err = ioutil.WriteFile("ClientCert", clientDerCert, os.ModePerm)
 
 	nowTime := time.Now().UnixNano()
 	expireTime := time.Now().AddDate(1, 0, 0).UnixNano()
+
 	// Replace self signed cert in attest request
 	newspeaksFor := &auth.Speaksfor{
 		Delegate:  auth.Bytes(clientDerCert),

@@ -1,0 +1,14 @@
+#
+export TAO_HOST_DIR=~/src/github.com/jlmucb/cloudproxy/go/apps/simpleexample/SimpleDomain
+GUARD=AllowAll
+TYPE=Soft
+CA_ADDR=
+BINPATH=/home/jlm/bin
+TAO=/home/jlm/bin/tao
+TEMPLATE=$TAO_HOST_DIR/domain_template.simpleexample
+DOMAIN=$TAO_HOST_DIR/domain.simpleexample
+HOST_REL_PATH=linux_tao_host
+$BINPATH/tao domain newsoft -config_template $TEMPLATE -tao_domain $DOMAIN -pass "xxx"
+$BINPATH/tao domain init -tao_domain $DOMAIN -config_template $TEMPLATE -pass "xxx"
+$BINPATH/tao host init -tao_domain $DOMAIN -hosting process -root -pass "xxx"
+

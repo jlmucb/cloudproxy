@@ -1,4 +1,4 @@
 #
 source ./defines
 KEY_NAME="$($BINPATH/tao domain newsoft -soft_pass xxx -config_template $TEMPLATE $DOMAIN/linux_tao_host)"
-echo "hostname: $KEY_NAME" >> $TEMPLATE
+echo "host_name: \"$KEY_NAME\"" >> $TEMPLATE

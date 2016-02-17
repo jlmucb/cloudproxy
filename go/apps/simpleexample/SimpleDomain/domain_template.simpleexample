@@ -60,3 +60,4 @@ linux_host_predicate_name: "TrustedHost"
 guard_predicate_name: "TrustedGuard"
 tpm_predicate_name: "TrustedTPM"
 os_predicate_name: "TrustedOS"
+hostname: key([080110011801224508011241044ef14ef3cf69414e265d3d1329f73710e39b2de43f70ed93c8f17148b7707dbd26b786c451c1e81b0f8ecccad6f8efeb2ce2a8dabea0330662c753941faf5158])

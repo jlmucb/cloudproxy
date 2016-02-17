@@ -1,5 +1,4 @@
 #
-PROG_DIR=~/src/github.com/jlmucb/cloudproxy/go/apps/simpleexample/SimpleSomainService
 ./runhost&
 sleep 2
 ./runds &

@@ -1,0 +1,5 @@
+TAO_HOST_DIR=~/src/github.com/jlmucb/cloudproxy/go/apps/simpleexample/SimpleDomain 
+TEMPLATE=$TAO_HOST_DIR/domain_template.simpleexample
+DOMAIN=$TAO_HOST_DIR/domain.simpleexample
+BINPATH=~/bin
+

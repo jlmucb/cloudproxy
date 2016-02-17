@@ -1,7 +1,4 @@
 #
-export TAO_HOST_DIR=~/src/github.com/jlmucb/cloudproxy/go/apps/simpleexample/SimpleDomain
-export DOMAIN=$TAO_HOST_DIR/domain.simpleexample
-
-linux_host start -tao_domain $DOMAIN \
--host linux_tao_host/ -root -pass xxx 
+source ./defines
+$BINPATH/tao host start -tao_domain $DOMAIN -host linux_tao_host/ -pass xxx &
 

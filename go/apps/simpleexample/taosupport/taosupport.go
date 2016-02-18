@@ -59,10 +59,11 @@ type TaoProgramData struct {
 // RequestTruncatedAttestation connects to a CA instance, sends the attestation
 // for an X.509 certificate, and gets back a truncated attestation with a new
 // principal name based on the policy key.
-func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys,
+func RequestDomainServiceCert(network, addr string, keys *tao.Keys,
 		v *tao.Verifier) (*tao.Attestation, error) {
+fmt.Printf("Entering RequestDomainServiceCert\n")
 	if keys.Cert == nil {
-		return nil, errors.New("RequestKeyNegoAttestation: Can't dial with an empty client certificate")
+		return nil, errors.New("RequestDomainServiceCert: Can't dial with an empty client certificate")
 	}
 	// Explain taonet and what keys are used
 	tlsCert, err := tao.EncodeTLSCert(keys)
@@ -75,6 +76,7 @@ func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys,
 		InsecureSkipVerify: true,
 	})
 	if err != nil {
+fmt.Printf("RequestDomainServiceCert: Dial failed\n")
 		return nil, err
 	}
 	defer conn.Close()
@@ -88,16 +90,20 @@ func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys,
 
 	// Read the truncated attestation and check it.
 	var a tao.Attestation
+fmt.Printf("RequestDomainServiceCert: reading attestation\n")
 	if err := ms.ReadMessage(&a); err != nil {
 		return nil, err
 	}
 
 	// Explain Verify and what keys are used.
+fmt.Printf("RequestDomainServiceCert: verifying attestation\n")
 	ok, err := v.Verify(a.SerializedStatement, tao.AttestationSigningContext, a.Signature)
 	if err != nil {
+fmt.Printf("RequestDomainServiceCert: verify error\n")
 		return nil, err
 	}
 	if !ok {
+fmt.Printf("RequestDomainServiceCert: invalid signature\n")
 		return nil, errors.New("invalid attestation signature from Tao CA")
 	}
 
@@ -107,6 +113,7 @@ func RequestKeyNegoAttestation(network, addr string, keys *tao.Keys,
 func InitializeSealedSymmetricKeys(filePath string, t tao.Tao, keysize int) (
 		[]byte, error) {
 
+fmt.Printf("InitializeSealedSymmetricKeys: generating new symmetric keys\n")
 	// Make up symmetric key and save sealed version.
 	log.Printf("InitializeSealedSymmetricKeys\n")
 	unsealed, err := tao.Parent().GetRandomBytes(keysize)
@@ -115,6 +122,7 @@ func InitializeSealedSymmetricKeys(filePath string, t tao.Tao, keysize int) (
 	}
 	sealed, err := tao.Parent().Seal(unsealed, tao.SealPolicyDefault)
 	if err != nil {
+fmt.Printf("InitializeSealedSymmetricKeys: sealed failed ", err, "\n")
 		return nil, errors.New("Can't seal random bytes")
 	}
 	ioutil.WriteFile(path.Join(filePath, "sealedsymmetrickey"), sealed, os.ModePerm)
@@ -124,16 +132,20 @@ func InitializeSealedSymmetricKeys(filePath string, t tao.Tao, keysize int) (
 func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 		*tao.Keys, error) {
 
+fmt.Printf("InitializeSealedProgramKey: generating new signing key\n")
 	k, derCert, err := CreateSigningKey(t)
 	if err != nil  || derCert == nil{
 		log.Printf("InitializeSealedProgramKey: CreateSigningKey failed with error %s\n", err)
 		return nil, err
 	}
+fmt.Printf("InitializeSealedProgramKey: generated signing key\n")
+fmt.Printf("Calling RequestDomainServiceCert(\"tcp\", %s, %x, %x)\n", *caAddr, k, domain.Keys.VerifyingKey)
 
 	// Request attestations.  Policy key is verifier.
-	na, err := RequestKeyNegoAttestation("tcp", *caAddr, k, domain.Keys.VerifyingKey)
+	na, err := RequestDomainServiceCert("tcp", *caAddr, k, domain.Keys.VerifyingKey)
 	if err != nil || na == nil {
-		log.Printf("fileproxy: error from taonet.RequestTruncatedAttestation\n")
+fmt.Printf("InitializeSealedProgramKey: error from taonet.RequestTruncatedAttestation\n")
+		log.Printf("InitializeSealedProgramKey: error from taonet.RequestTruncatedAttestation\n")
 		return nil, err
 	}
 	k.Delegation = na
@@ -146,10 +158,13 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 	}
 	sf, ok := saysStatement.Message.(auth.Speaksfor)
 	if ok != true {
+fmt.Printf("InitializeSealedProgramKey: says doesnt have speaksfor message\n")
 		return nil, errors.New("InitializeSealedProgramKey: says doesnt have speaksfor message")
 	}
+fmt.Printf("Calling RequestDomainServiceCert (\"tcp\", %s, %x, %x)\n", *caAddr, k, domain.Keys.VerifyingKey)
 	kprin, ok := sf.Delegate.(auth.Term)
 	if ok != true {
+fmt.Printf("InitializeSealedProgramKey: speaksfor message doesn't have Delegate\n")
 		return nil, errors.New("InitializeSealedProgramKey: speaksfor message doesn't have Delegate")
 	}
 	newCert := auth.Bytes(kprin.(auth.Bytes))
@@ -159,12 +174,16 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 	}
 	programKeyBlob, err := tao.MarshalSignerDER(k.SigningKey)
 	if err != nil {
+fmt.Printf("InitializeSealedProgramKey: Can't produce signing key blob\n")
 		return nil, errors.New("InitializeSealedProgramKey: Can't produce signing key blob")
 	}
+fmt.Printf("InitializeSealedProgramKey: parsed certificate\n")
 	sealedProgramKey, err := t.Seal(programKeyBlob, tao.SealPolicyDefault)
 	if err != nil {
+fmt.Printf("InitializeSealedProgramKey: Can't seal signing key\n")
 		return nil, errors.New("InitializeSealedProgramKey: Can't seal signing key")
 	}
+fmt.Printf("InitializeSealedProgramKey: sealed program key\n")
 	err = ioutil.WriteFile(path.Join(filePath, "sealedsigningKey"), sealedProgramKey, os.ModePerm)
 	if err != nil {
 		return nil, err
@@ -173,9 +192,10 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 	if err != nil {
 		return nil, err
 	}
+fmt.Printf("InitializeSealedProgramKey, delegation: %x\n", k.Delegation)
 	delegateBlob, err := proto.Marshal(k.Delegation)
 	if err != nil {
-		return nil, errors.New("InitializeSealedProgramKey: Can't seal random bytes")
+		return nil, errors.New("InitializeSealedProgramKey: Can't marshal delegation")
 	}
 	err = ioutil.WriteFile(path.Join(filePath, "delegationBlob"), delegateBlob, os.ModePerm)
 	if err != nil {
@@ -245,8 +265,10 @@ fmt.Printf("TaoParadigm: after LoadProgramKeys\n")
 	var symKeys []byte
 	var policy string
 	if sealedSymmetricKey != nil {
+fmt.Printf("TaoParadigm: existing sealed symmetric\n")
 		symKeys, policy, err = tao.Parent().Unseal(sealedSymmetricKey)
 		if err != nil || policy != tao.SealPolicyDefault {
+fmt.Printf("TaoParadigm: can't unseal symmetric keys\n")
 			return errors.New("TaoParadigm: can't unseal symmetric keys")
 		}
 	} else {

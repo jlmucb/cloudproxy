@@ -18,6 +18,7 @@ import (
 	"crypto/x509/pkix"
 	"errors"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -39,6 +40,7 @@ var configPath = flag.String("config",
 var SerialNumber int64
 
 func IsAuthenticationValid(name *string) bool {
+fmt.Printf("IsAuthenticationValid\n")
 	log.Printf("simpledomainservice, IsAuthenticationValid name is %s\n", *name)
 	if name == nil {
 		return false
@@ -49,22 +51,26 @@ func IsAuthenticationValid(name *string) bool {
 
 // First return is terminate flag.
 func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, error) {
-	log.Printf("simpledomainserver: request\n")
+fmt.Printf("DomainRequest\n")
+	log.Printf("DomainRequest\n")
 
 	// Expect an attestation from the client.
 	ms := util.NewMessageStream(conn)
 	var a tao.Attestation
 	if err := ms.ReadMessage(&a); err != nil {
-		log.Printf("Couldn't read attestation from channel:", err)
+fmt.Printf("DomainRequest: Couldn't read attestation from channel: %s\n", err)
+		log.Printf("DomainRequest: Couldn't read attestation from channel:", err)
 		log.Printf("\n")
 		return false, err
 	}
 
 	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
 	if err := tao.ValidatePeerAttestation(&a, peerCert, guard); err != nil {
-		log.Printf("Couldn't validate peer attestation:", err)
+fmt.Printf("DomainRequest:Couldn't validate peer attestation:", err)
+		log.Printf("DomainRequestCouldn't validate peer attestation:", err)
 		return false, err
 	}
+fmt.Printf("DomainRequest, peerCert: %x\n", peerCert)
 
 	// Sign cert and put it in attestation statement
 	// a consists of serialized statement, sig and SignerInfo
@@ -73,7 +79,8 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 	// Get underlying says
 	f, err := auth.UnmarshalForm(a.SerializedStatement)
 	if err != nil {
-		log.Printf("simpledomainservice: can't unmarshal a.SerializedStatement\n")
+fmt.Printf("DomainRequest: can't unmarshal a.SerializedStatement\n")
+		log.Printf("DomainRequest: can't unmarshal a.SerializedStatement\n")
 		return false, err
 	}
 
@@ -85,29 +92,34 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 	}
 	sf, ok := saysStatement.Message.(auth.Speaksfor)
 	if ok != true {
-		log.Printf("simpledomainservice: says doesnt have speaksfor message\n")
+fmt.Printf("DomainRequest: says doesnt have speaksfor message\n")
+		log.Printf("DomainRequest: says doesnt have speaksfor message\n")
 		return false, err
 	}
 
-	log.Print("simpledomainservice, speaksfor: ", sf)
-	log.Print("\n")
+fmt.Print("simpledomainservice, speaksfor: ", sf, "\n")
 	kprin, ok := sf.Delegate.(auth.Prin)
 	if ok != true {
-		log.Printf("simpledomainservice: speaksfor Delegate is not auth.Prin\n")
+fmt.Printf("DomainRequest: speaksfor Delegate is not auth.Prin\n")
+		log.Printf("DomainRequest: speaksfor Delegate is not auth.Prin\n")
 		return false, err
 	}
+fmt.Printf("DomainRequest, kPrin: %x\n", kprin)
 	subjectPrin, ok := sf.Delegator.(auth.Prin)
 	if ok != true {
-		log.Printf("simpledomainservice: can't get subject principal\n")
+fmt.Printf("DomainRequest: can't get subject principal\n")
+		log.Printf("DomainRequest: can't get subject principal\n")
 		return false, errors.New("Can't get principal name from verifier")
 	}
 	subjectnamestr := subjectPrin.String()
+fmt.Printf("DomainRequest, subjectnamestr: %s\n", subjectnamestr)
 	verified := IsAuthenticationValid(&subjectnamestr)
 	if !verified {
-		log.Printf("simpledomainservice: name verification failed\n")
+fmt.Printf("DomainRequest: name verification failed\n")
+		log.Printf("DomainRequest: name verification failed\n")
 		return false, err
 	}
-	log.Printf("simpledomainservice, authenticated principal name: %s\n", subjectnamestr)
+fmt.Printf("DomainRequest, authenticated principal name: %s\n", subjectnamestr)
 
 	// Sign program certificate.
 	us := "US"
@@ -123,15 +135,16 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 	SerialNumber = SerialNumber + 1
 	verifier, err := tao.FromPrincipal(kprin)
 	if err != nil {
+fmt.Printf("DomainRequest: can't get principal from kprin")
 		return false, errors.New("can't get principal from kprin")
 	}
-	log.Printf("verifier: %x\n", verifier)
 	clientCert, err := policyKey.SigningKey.CreateSignedX509(policyKey.Cert, int(SerialNumber), verifier, subjectname)
 	if err != nil {
-		log.Printf("simpledomainservice: can't create client certificate: %s\n", err)
+		log.Printf("DomainRequest: can't create client certificate: %s\n", err)
 		return false, err
 	}
 	clientDerCert := clientCert.Raw
+fmt.Printf("DomainRequest: Got client cert\n")
 	err = ioutil.WriteFile("ClientCert", clientDerCert, os.ModePerm)
 
 	nowTime := time.Now().UnixNano()
@@ -149,9 +162,11 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 
 	delegator, ok := sf.Delegator.(auth.Prin)
 	if !ok {
-		log.Printf("simpledomainservice: delegator must be principal")
+fmt.Printf("DomainRequest: delegator must be principal\n")
+		log.Printf("DomainRequest: delegator must be principal")
 		return false, err
 	}
+fmt.Printf("DomainRequest, delegator" %x\n", delegator)
 	var prog auth.PrinExt
 	found := false
 	for _, sprin := range delegator.Ext {
@@ -163,9 +178,11 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 			kprin.Ext = append(kprin.Ext, sprin)
 		}
 	}
+fmt.Printf("DomainRequest: calling GenerateAttestation(%x, nil, %x)\n", policyKey.SigningKey, *keynegoSays)
 	ra, err := tao.GenerateAttestation(policyKey.SigningKey, nil, *keynegoSays)
 	if err != nil {
-		log.Printf("Couldn't attest to the new says statement:", err)
+fmt.Printf("DomainRequest: Couldn't attest to the new says statement:", err)
+		log.Printf("DomainRequest: Couldn't attest to the new says statement:", err)
 		return false, err
 	}
 
@@ -188,18 +205,20 @@ func DomainRequest(conn net.Conn, policyKey *tao.Keys, guard tao.Guard) (bool, e
 	}
 	ea, err := tao.GenerateAttestation(policyKey.SigningKey, nil, endorsement)
 	if err != nil {
-		log.Printf("Couldn't generate an endorsement for this program:", err)
+fmt.Printf("DomainRequest: Couldn't generate an endorsement for this program: %s\n", err)
+		log.Printf("DomainRequest: Couldn't generate an endorsement for this program: %s\n", err)
 		return false, err
 	}
 	eab, err := proto.Marshal(ea)
 	if err != nil {
-		log.Printf("Couldn't marshal an endorsement:", err)
+		log.Printf("DomainRequest: Couldn't marshal an endorsement:", err)
 		return false, err
 	}
+fmt.Printf("DomainRequest endorsement: %s\n", proto.CompactTextString(ea))
 	ra.SerializedEndorsements = [][]byte{eab}
 
 	if _, err := ms.WriteMessage(ra); err != nil {
-		log.Printf("Couldn't return the attestation on the channel:", err)
+		log.Printf("DomainRequest: Couldn't return the attestation on the channel: ", err)
 		log.Printf("\n")
 		return false, err
 	}
@@ -218,7 +237,7 @@ func main() {
 		log.Printf("simpledomainservice: Couldn't load the config path %s: %s\n", *configPath, err)
 		return
 	}
-	log.Printf("Loaded domain\n")
+	log.Printf("simpledomainservice: Loaded domain\n")
 
 	// Set up temporary keys for the connection, since the only thing that
 	// matters to the remote client is that they receive a correctly-signed new
@@ -244,12 +263,14 @@ func main() {
 	policyKey, err := tao.NewOnDiskPBEKeys(tao.Signing,
 		[]byte(*domainPass), "policy_keys", nil)
 	if err != nil {
+fmt.Printf("simpledomainservice: Couldn't get policy key %s\n", err)
 		log.Fatalln("simpledomainservice: Couldn't get policy key\n", err)
 	}
 	log.Printf("simpledomainservice: Policy key %x\n: ", policyKey)
 
 	tlsc, err := tao.EncodeTLSCert(keys)
 	if err != nil {
+fmt.Printf("simpledomainservice: Couldn't encode a TLS cert: %s\n", err)
 		log.Fatalln("simpledomainservice: Couldn't encode a TLS cert:", err)
 	}
 	conf := &tls.Config{
@@ -260,25 +281,29 @@ func main() {
 	}
 	sock, err := tls.Listen(*network, *addr, conf)
 	if err != nil {
+fmt.Printf("simpledomainservice, Listen eroro: %s\n", err)
 		log.Printf("simpledomainservice: error: %s\n", err)
 	}
 	if sock == nil {
+log.Printf("simpledomainservice: Empty socket, terminating\n")
 		log.Printf("simpledomainservice: Empty socket, terminating\n")
 		return
 	}
 	defer sock.Close()
 
 	log.Printf("simpledomainservice: accepting connections\n")
+fmt.Printf("simpledomainservice: accepting connections\n")
 	for {
 		conn, err := sock.Accept()
 		if conn == nil {
+fmt.Printf("simpledomainservice: Empty connection\n")
 			log.Printf("simpledomainservice: Empty connection\n")
 			return
 		} else if err != nil {
+fmt.Printf("simpledomainservice: Couldn't accept a connection on %s: %s\n", *addr, err)
 			log.Printf("simpledomainservice: Couldn't accept a connection on %s: %s\n", *addr, err)
 			return
 		}
-		log.Printf("simpledomainservice: calling RequestLoop\n")
 		go DomainRequest(conn, policyKey, domain.Guard)
 	}
 	log.Printf("simpledomainservice: finishing\n")

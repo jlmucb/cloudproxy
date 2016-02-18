@@ -1,4 +1,4 @@
 #
 source ./defines
-$BINPATH/tao run $BINPATH/simpleserver -tao_domain $DOMAIN –pass xxx &
+$BINPATH/tao run $BINPATH/simpleserver –pass xxx &
 

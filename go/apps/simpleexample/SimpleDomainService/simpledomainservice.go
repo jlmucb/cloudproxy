@@ -34,7 +34,7 @@ var network = flag.String("network", "tcp", "The network to use for connections"
 var addr = flag.String("addr", "localhost:8124", "The address to listen on")
 var domainPass = flag.String("password", "xxx", "The domain password")
 var configPath = flag.String("config",
-	"SimpleDomain/domain.simpleexample/tao.config", "The Tao domain config")
+	"/home/jlm/domain.simpleexample/tao.config", "The Tao domain config")
 
 var SerialNumber int64
 
@@ -211,7 +211,7 @@ func main() {
 	flag.Parse()
 	domain, err := tao.LoadDomain(*configPath, []byte(*domainPass))
 	if domain == nil {
-		log.Printf("simpledomainservice: no domain %s %s %s\n",
+		log.Printf("simpledomainservice: no domain path - %s, pass - %s, err - %s\n",
 			*configPath, *domainPass, err)
 		return
 	} else if err != nil {

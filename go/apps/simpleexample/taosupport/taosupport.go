@@ -23,8 +23,10 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"errors"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -200,6 +202,7 @@ func TaoParadigm(cfg *string, programObject *TaoProgramData) (error) {
 	if err != nil {
 		return errors.New("TaoParadigm: Can't load domain")
 	}
+fmt.Printf("Loaded domain\n")
 
 	// Get policy cert.
 	if simpleDomain.Keys.Cert == nil {
@@ -209,9 +212,11 @@ func TaoParadigm(cfg *string, programObject *TaoProgramData) (error) {
 	if derPolicyCert == nil {
 		return errors.New("TaoParadigm: Can't retrieve der encoded policy cert")
 	}
+	hexCert :=  hex.EncodeToString(derPolicyCert)
+fmt.Printf("Got policy cert %s\n", hexCert)
 
 	// Extend my Tao Principal name with policy key.
-	var t []auth.Term
+	t := make([]auth.Term, 1, 1)
 	t[0] = auth.TermVar(derPolicyCert)
 	e := auth.PrinExt{Name: "key",
 		          Arg: t}
@@ -219,12 +224,14 @@ func TaoParadigm(cfg *string, programObject *TaoProgramData) (error) {
 	if err != nil {
 		return errors.New("TaoParadigm: Can't extend name")
 	}
+fmt.Printf("Extended principal\n")
 
 	// Retrieve extended name.
 	taoName, err := tao.Parent().GetTaoName()
 	if err != nil {
 		return errors.New("TaoParadigm: Can't extern Tao Principal name")
 	}
+fmt.Printf("TaoParadigm: my name is %s\n", taoName)
 	log.Printf("TaoParadigm: my name is %s\n", taoName)
 
 	// Get my keys and certificates.
@@ -233,6 +240,7 @@ func TaoParadigm(cfg *string, programObject *TaoProgramData) (error) {
 	if err != nil {
 		return errors.New("TaoParadigm: Can't retrieve key material")
 	}
+fmt.Printf("TaoParadigm: after LoadProgramKeys\n")
 
 	// Unseal my symmetric keys, or initialize them.
 	var symKeys []byte

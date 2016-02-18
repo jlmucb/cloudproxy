@@ -1,4 +1,4 @@
 #
 source ./defines
-$BINPATH/tao run $BINPATH/simpleclient -tao_domain $DOMAIN –pass xxx &
+$BINPATH/tao run $BINPATH/simpleclient
 

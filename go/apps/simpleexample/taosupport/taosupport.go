@@ -213,11 +213,10 @@ fmt.Printf("Loaded domain\n")
 		return errors.New("TaoParadigm: Can't retrieve der encoded policy cert")
 	}
 	hexCert :=  hex.EncodeToString(derPolicyCert)
-fmt.Printf("Got policy cert %s\n", hexCert)
 
 	// Extend my Tao Principal name with policy key.
 	t := make([]auth.Term, 1, 1)
-	t[0] = auth.TermVar(derPolicyCert)
+	t[0] = auth.TermVar(hexCert)
 	e := auth.PrinExt{Name: "key",
 		          Arg: t}
 	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})

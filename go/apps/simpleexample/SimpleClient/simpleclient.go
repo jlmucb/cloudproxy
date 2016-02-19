@@ -59,8 +59,11 @@ fmt.Printf("simpleclient: TaoParadigm complete\n")
 	if err != nil {
 		log.Fatalln("simpleclient: Can't establish Tao Channel")
 	}
-	log.Printf("simpleclient: establish Tao Channel with %s\n", serverName)
-	fmt.Printf("simpleclient: establish Tao Channel with %s\n", serverName)
+	log.Printf("simpleclient: establish Tao Channel with %s\n", serverAddr)
+fmt.Printf("simpleclient: establish Tao Channel with %s\n", serverAddr)
+if serverName != nil {
+fmt.Printf("simpleclient, serverName: %s\n", *serverName)
+}
 
 	// Send a simple request and get response.
 	secretRequest := "SecretRequest"
@@ -78,8 +81,13 @@ fmt.Printf("simpleclient: Error in response to SendRequest\n")
 fmt.Printf("simpleclient: Error in response to GetResponse\n")
 		log.Fatalln("simpleclient: Error in response to GetResponse\n")
 	}
-	taosupport.PrintMessage(respmsg)
+fmt.Printf("simpleclient: GetResponse: ")
+taosupport.PrintMessage(respmsg)
 	retrieveSecret := respmsg.Data[0]
+if  retrieveSecret == nil {
+fmt.Printf("simpleclient: retrievesecret was nil\n")
+retrieveSecret =  []byte{0x28}
+}
 
 	// Encrypt and store secret
 	out, err := taosupport.Protect(clientProgramData.ProgramSymKeys, retrieveSecret)

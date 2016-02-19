@@ -495,14 +495,22 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte,
 
 func PrintMessage(msg *SimpleMessage) {
 	log.Printf("Message\n")
-	log.Printf("\tmessage type: %d\n", msg.MessageType)
-	log.Printf("\trequest_type: %s\n", *msg.RequestType)
+	if msg.MessageType != nil {
+		log.Printf("\tmessage type: %d\n", *msg.MessageType)
+	} else {
+		log.Printf("\tmessage type: nil\n")
+	}
+	if msg.RequestType != nil {
+		log.Printf("\trequest_type: %s\n", *msg.RequestType)
+	} else {
+		log.Printf("\trequest_type: nil\n")
+	}
 	if msg.Err != nil {
 		log.Printf("\terror: %s\n", msg.Err)
 	}
 	log.Printf("\tdata: ");
 	for _, data := range msg.GetData() {
-		log.Printf("\t\t: %x\n", data);
+		log.Printf("\t: %x\n", data);
 	}
 	log.Printf("\n")
 }

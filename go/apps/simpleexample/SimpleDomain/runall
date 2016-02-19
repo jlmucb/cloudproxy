@@ -1,9 +1,11 @@
 #
-./runhost&
-sleep 2
-./runds &
-sleep 2
-./runss &
-sleep 2
-./runcs &
+./initdomain
+./inithost
+./runhost
+sleep 1
+./runds
+sleep 1
+./runss
+sleep 1
+./runsc
 

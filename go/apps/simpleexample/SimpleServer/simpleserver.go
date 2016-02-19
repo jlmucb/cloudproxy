@@ -24,8 +24,8 @@ import (
 	"github.com/jlmucb/cloudproxy/go/util"
 )
 
-var simpleCfg = flag.String("/home/jlm/domain.simpleexample/tao.config",
-	"/home/jlm/domain.simpleexample/tao.config",
+var simpleCfg = flag.String("tao.config",
+	"/Domains/domain.simpleexample/tao.config",
 	"path to simple tao configuration")
 var simpleserverpath = flag.String("/Domains/domain.simpleexample/SimpleServer",
 			"/Domains/domain.simpleexample/SimpleServer",

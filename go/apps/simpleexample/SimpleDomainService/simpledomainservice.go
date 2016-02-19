@@ -35,9 +35,9 @@ var network = flag.String("network", "tcp", "The network to use for connections"
 var addr = flag.String("addr", "localhost:8124", "The address to listen on")
 var domainPass = flag.String("password", "xxx", "The domain password")
 var configPath = flag.String("config",
-	"/Domain/domain.simpleexample/tao.config", "The Tao domain config")
-var servicePath = flag.String("config",
-	"/Domain/domain.simpleexample/SimpleDomainService", "The Tao domain config")
+	"/Domains/domain.simpleexample/tao.config", "The Tao domain config")
+var servicePath = flag.String("service path",
+	"/Domains/domain.simpleexample/SimpleDomainService", "The Tao domain config")
 
 var SerialNumber int64
 

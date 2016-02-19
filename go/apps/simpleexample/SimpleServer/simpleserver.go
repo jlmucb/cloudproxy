@@ -40,22 +40,17 @@ var serverAddr string
 func HandleServiceRequest(ms *util.MessageStream, serverProgramData *taosupport.TaoProgramData, clientProgramName string, req *taosupport.SimpleMessage) (bool, error) {
 	//  Secret is program name || 43
 	secret := clientProgramName + "43"
-	msg, err := taosupport.GetRequest(ms)
-	// Check the request type
-	if err != nil {
-		log.Printf("HandleServiceRequest: error in GetRequest: %s\n", err)
-		return false, nil
-	}
-	if *msg.RequestType == "SecretRequest"  {
-		msg.Data = append(msg.Data, []byte(secret))
-		taosupport.SendResponse(ms, msg)
+fmt.Printf("HandleServiceRequest secret is: %s\n", secret)
+	if *req.RequestType == "SecretRequest"  {
+		req.Data = append(req.Data, []byte(secret))
+		taosupport.SendResponse(ms, req)
 fmt.Printf("HandleServiceRequest response buffer: ")
-taosupport.PrintMessage(msg)
+taosupport.PrintMessage(req)
 		return true, nil
 	} else {
 fmt.Printf("HandleServiceRequest response is Bad request\n")
 		errmsg := "Bad request"
-		msg.Err = &errmsg
+		req.Err = &errmsg
 		return false, nil
 	}
 }

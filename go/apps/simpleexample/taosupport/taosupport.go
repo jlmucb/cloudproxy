@@ -125,7 +125,7 @@ fmt.Printf("InitializeSealedSymmetricKeys: generating new symmetric keys\n")
 fmt.Printf("InitializeSealedSymmetricKeys: sealed failed ", err, "\n")
 		return nil, errors.New("Can't seal random bytes")
 	}
-	ioutil.WriteFile(path.Join(filePath, "sealedsymmetrickey"), sealed, os.ModePerm)
+	ioutil.WriteFile(path.Join(filePath, "sealedsymmetricKey"), sealed, os.ModePerm)
 	return unsealed, nil
 }
 
@@ -381,7 +381,7 @@ func LoadProgramKeys(filePath string) ([]byte, []byte, []byte, []byte, error) {
 	var sealedProgramKey []byte
 	var derCert []byte
 
-	_, err := os.Stat(path.Join(filePath, "sealedsymmetrickey"))
+	_, err := os.Stat(path.Join(filePath, "sealedsymmetricKey"))
 	if err != nil {
 		sealedSymmetricKey = nil
 	} else {

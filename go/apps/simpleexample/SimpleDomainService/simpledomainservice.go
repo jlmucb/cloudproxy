@@ -67,12 +67,15 @@ fmt.Printf("DomainRequest: Couldn't read attestation from channel: %s\n", err)
 	}
 
 	peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
-	if err := tao.ValidatePeerAttestation(&a, peerCert, guard); err != nil {
-fmt.Printf("DomainRequest:Couldn't validate peer attestation:", err)
+	err := tao.ValidatePeerAttestation(&a, peerCert, guard)
+/*
+	if err != nil {
+fmt.Printf("DomainRequest:Couldn't validate peer attestation:", err, "\n")
 		log.Printf("DomainRequestCouldn't validate peer attestation:", err)
 		return false, err
 	}
 fmt.Printf("DomainRequest, peerCert: %x\n", peerCert)
+*/
 
 	// Sign cert and put it in attestation statement
 	// a consists of serialized statement, sig and SignerInfo
@@ -136,10 +139,18 @@ fmt.Printf("DomainRequest, authenticated principal name: %s\n", subjectnamestr)
 	subjectname := tao.NewX509Name(&details)
 	SerialNumber = SerialNumber + 1
 	verifier, err := tao.FromPrincipal(kprin)
+fmt.Printf("DomainRequest, kprin: %x\n", kprin)
 	if err != nil {
 fmt.Printf("DomainRequest: can't get principal from kprin")
 		return false, errors.New("can't get principal from kprin")
 	}
+fmt.Printf("DomainRequest: Getting client cert\n")
+if policyKey.Cert == nil {
+fmt.Printf("DomainRequest: policy.cert is nil\n")
+}
+if verifier == nil {
+fmt.Printf("DomainRequest: verifier is nil\n")
+}
 	clientCert, err := policyKey.SigningKey.CreateSignedX509(policyKey.Cert, int(SerialNumber), verifier, subjectname)
 	if err != nil {
 		log.Printf("DomainRequest: can't create client certificate: %s\n", err)
@@ -283,7 +294,7 @@ fmt.Printf("simpledomainservice: Couldn't encode a TLS cert: %s\n", err)
 	}
 	sock, err := tls.Listen(*network, *addr, conf)
 	if err != nil {
-fmt.Printf("simpledomainservice, Listen eroro: %s\n", err)
+fmt.Printf("simpledomainservice, Listen error: %s\n", err)
 		log.Printf("simpledomainservice: error: %s\n", err)
 	}
 	if sock == nil {

@@ -27,9 +27,9 @@ import (
 var simplecfg = flag.String("/home/jlm/domain.simpleexample/tao.config",
 			"/home/jlm/domain.simpleexample/tao.config",
 			"path to tao configuration")
-var simpleclientpath = flag.String("/home/jlm/domain.simpleexample/SimpleClient", 
-			"/home/jlm/domain.simpleexample/SimpleClient",
-			"path to tao configuration")
+var simpleclientpath = flag.String("/Domains/domain.simpleexample/SimpleClient", 
+			"/Domains/domain.simpleexample/SimpleClient",
+			"path to SimpleClient files")
 var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
 var serverAddr string

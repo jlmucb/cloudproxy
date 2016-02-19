@@ -2,7 +2,7 @@ config: {
   domain_info: {
     name: "SimpleExample"
     policy_keys_path: "policy_keys"
-    guard_type: "AllowAll"
+    guard_type: "Datalog"
   }
 
   x509_info: {
@@ -43,8 +43,9 @@ datalog_rules: "(forall P: MemberProgram(P) implies Authorized(P, \"Execute\"))"
 host_predicate_name: "TrustedHost"
 
 program_paths: "mixnet_router"
-program_paths: "simpleexample"
-program_paths: "simpleserver"
+program_paths: "../simpledomainservice"
+program_paths: "../simpleclient"
+program_paths: "../simpleserver"
 program_predicate_name: "TrustedProgramHash"
 
 container_paths: "demo_server.img.tgz"
@@ -60,4 +61,3 @@ linux_host_predicate_name: "TrustedHost"
 guard_predicate_name: "TrustedGuard"
 tpm_predicate_name: "TrustedTPM"
 os_predicate_name: "TrustedOS"
-host_name: "key([080110011801224508011241046847d10ab43d0795b6f676f6d5a89265625b3d8c372d09f5aca119b019decec78ceebc407f4164a3e081ba42c0202f055da8de75b78c94a9b39ed16760b9fa28])"

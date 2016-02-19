@@ -35,7 +35,9 @@ var network = flag.String("network", "tcp", "The network to use for connections"
 var addr = flag.String("addr", "localhost:8124", "The address to listen on")
 var domainPass = flag.String("password", "xxx", "The domain password")
 var configPath = flag.String("config",
-	"/home/jlm/domain.simpleexample/tao.config", "The Tao domain config")
+	"/Domain/domain.simpleexample/tao.config", "The Tao domain config")
+var servicePath = flag.String("config",
+	"/Domain/domain.simpleexample/SimpleDomainService", "The Tao domain config")
 
 var SerialNumber int64
 
@@ -166,7 +168,7 @@ fmt.Printf("DomainRequest: delegator must be principal\n")
 		log.Printf("DomainRequest: delegator must be principal")
 		return false, err
 	}
-fmt.Printf("DomainRequest, delegator" %x\n", delegator)
+fmt.Printf("DomainRequest, delegator: %x\n", delegator)
 	var prog auth.PrinExt
 	found := false
 	for _, sprin := range delegator.Ext {

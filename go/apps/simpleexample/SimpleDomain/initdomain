@@ -1,4 +1,4 @@
-
+#
 source ./defines
 $BINPATH/tao domain init -tao_domain $DOMAIN -config_template $TEMPLATE -pub_domain_address "127.0.0.1" -pass xxx
 $BINPATH/tao domain policy -add_host -add_programs -add_linux_host -add_guard -tao_domain \

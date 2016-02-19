@@ -220,16 +220,19 @@ func TaoParadigm(cfg *string, programObject *TaoProgramData) (error) {
 	// Load domain info for this domain.
 	simpleDomain, err := tao.LoadDomain(*cfg, nil)
 	if err != nil {
+fmt.Printf("TaoParadigm: Can't load domain\n")
 		return errors.New("TaoParadigm: Can't load domain")
 	}
 fmt.Printf("Loaded domain\n")
 
 	// Get policy cert.
 	if simpleDomain.Keys.Cert == nil {
+fmt.Printf("TaoParadigm: Can't retrieve policy cert\n")
 		return errors.New("TaoParadigm: Can't retrieve policy cert")
 	}
 	derPolicyCert := simpleDomain.Keys.Cert.Raw
 	if derPolicyCert == nil {
+fmt.Printf("TaoParadigm: Can't retrieve der encoded policy cert\n")
 		return errors.New("TaoParadigm: Can't retrieve der encoded policy cert")
 	}
 	hexCert :=  hex.EncodeToString(derPolicyCert)
@@ -241,6 +244,7 @@ fmt.Printf("Loaded domain\n")
 		          Arg: t}
 	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})
 	if err != nil {
+fmt.Printf("TaoParadigm: Can't extend name\n")
 		return errors.New("TaoParadigm: Can't extend name")
 	}
 fmt.Printf("Extended principal\n")
@@ -248,7 +252,8 @@ fmt.Printf("Extended principal\n")
 	// Retrieve extended name.
 	taoName, err := tao.Parent().GetTaoName()
 	if err != nil {
-		return errors.New("TaoParadigm: Can't extern Tao Principal name")
+fmt.Printf("TaoParadigm: Can't extend Tao Principal name\n")
+		return errors.New("TaoParadigm: Can't extend Tao Principal name")
 	}
 fmt.Printf("TaoParadigm: my name is %s\n", taoName)
 	log.Printf("TaoParadigm: my name is %s\n", taoName)
@@ -257,10 +262,10 @@ fmt.Printf("TaoParadigm: my name is %s\n", taoName)
 	sealedSymmetricKey, sealedProgramKey, programCert, delegation, err :=
 		LoadProgramKeys(*programObject.ProgramFilePath)
 	if err != nil {
-		return errors.New("TaoParadigm: Can't retrieve key material")
+fmt.Printf("TaoParadigm: Can't retrieve existing key material from %s error: %s\n", *programObject.ProgramFilePath, err)
+		return errors.New("TaoParadigm: Can't retrieve existing key material")
 	}
 fmt.Printf("TaoParadigm: after LoadProgramKeys\n")
-
 	// Unseal my symmetric keys, or initialize them.
 	var symKeys []byte
 	var policy string
@@ -275,6 +280,7 @@ fmt.Printf("TaoParadigm: can't unseal symmetric keys\n")
 		symKeys, err = InitializeSealedSymmetricKeys(*programObject.ProgramFilePath, tao.Parent(),
 			SizeofSymmetricKeys)
 		if err != nil {
+fmt.Printf("TaoParadigm: InitializeSealedSymmetricKeys error\n")
 			return errors.New("TaoParadigm: InitializeSealedSymmetricKeys error")
 		}
 	}
@@ -286,15 +292,19 @@ fmt.Printf("TaoParadigm: can't unseal symmetric keys\n")
 		programKey, err = SigningKeyFromBlob(tao.Parent(),
 			sealedProgramKey, programCert, delegation)
 		if err != nil {
+fmt.Printf("TaoParadigm: SigningKeyFromBlob error\n")
 			return errors.New("TaoParadigm: SigningKeyFromBlob error")
 		}
 	} else {
 		// Get Program key.
 		programKey, err = InitializeSealedProgramKey(
-			*programObject.ProgramFilePath, tao.Parent(), *simpleDomain)
+			*programObject.ProgramFilePath, tao.Parent(),
+			*simpleDomain)
 		if err != nil || programKey == nil {
+fmt.Printf("TaoParadigm: InitializeSealedSigningKey error\n")
 			return errors.New("TaoParadigm: InitializeSealedSigningKey error")
 		}
+		programCert = programKey.Cert.Raw
 	}
 	log.Printf("TaoParadigm: Retrieved Signing key: % x\n", *programKey)
 
@@ -302,8 +312,10 @@ fmt.Printf("TaoParadigm: can't unseal symmetric keys\n")
 	ok := programObject.InitTaoProgramData(derPolicyCert, taoName.String(),
 		*programKey, symKeys, programCert)
 	if !ok {
+fmt.Printf("TaoParadigm: Can't initialize TaoProgramData\n")
 		return errors.New("TaoParadigm: Can't initialize TaoProgramData")
 	}
+
 	return nil
 }
 
@@ -361,35 +373,42 @@ func PrincipalNameFromDERCert(derCert []byte) *string {
 	return &cn
 }
 
-// Returns sealed symmetric key, sealed signing key, DER encoded cert, delegation, error.
+// Returns sealed symmetric key, sealed signing key,
+//   DER encoded program cert, delegation, error.
+// Only returns errors if file exists but cant be read.
 func LoadProgramKeys(filePath string) ([]byte, []byte, []byte, []byte, error) {
+	var sealedSymmetricKey []byte
+	var sealedProgramKey []byte
+	var derCert []byte
+
 	_, err := os.Stat(path.Join(filePath, "sealedsymmetrickey"))
 	if err != nil {
-		return nil, nil, nil, nil, err
+		sealedSymmetricKey = nil
+	} else {
+		sealedSymmetricKey, err = ioutil.ReadFile(path.Join(filePath, "sealedsymmetricKey"))
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
 	}
+	var ds []byte
 	_, err = os.Stat(path.Join(filePath, "sealedsigningKey"))
 	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	_, err = os.Stat(path.Join(filePath, "signerCert"))
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	sealedSymmetricKey, err := ioutil.ReadFile(path.Join(filePath, "sealedsymmetricKey"))
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	sealedProgramKey, err := ioutil.ReadFile(path.Join(filePath, "sealedsigningKey"))
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	derCert, err := ioutil.ReadFile(path.Join(filePath, "signerCert"))
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	ds, err := ioutil.ReadFile(path.Join(filePath, "delegationBlob"))
-	if err != nil {
-		return nil, nil, nil, nil, err
+		sealedProgramKey = nil
+		derCert = nil
+		ds = nil
+	} else {
+		sealedProgramKey, err = ioutil.ReadFile(path.Join(filePath, "sealedsigningKey"))
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
+		derCert, err = ioutil.ReadFile(path.Join(filePath, "signerCert"))
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
+		ds, err = ioutil.ReadFile(path.Join(filePath, "delegationBlob"))
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
 	}
 	return sealedSymmetricKey, sealedProgramKey, derCert, ds, nil
 }

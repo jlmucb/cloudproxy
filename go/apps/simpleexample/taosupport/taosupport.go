@@ -496,7 +496,7 @@ func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte,
 func PrintMessage(msg *SimpleMessage) {
 	log.Printf("Message\n")
 	log.Printf("\tmessage type: %d\n", msg.MessageType)
-	log.Printf("\trequest_type: %s\n", msg.RequestType)
+	log.Printf("\trequest_type: %s\n", *msg.RequestType)
 	if msg.Err != nil {
 		log.Printf("\terror: %s\n", msg.Err)
 	}

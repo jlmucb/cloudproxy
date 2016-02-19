@@ -42,11 +42,18 @@ func HandleServiceRequest(ms *util.MessageStream, serverProgramData *taosupport.
 	secret := clientProgramName + "43"
 	msg, err := taosupport.GetRequest(ms)
 	// Check the request type
-	if err == nil && *msg.RequestType == "SecretRequest"  {
+	if err != nil {
+		log.Printf("HandleServiceRequest: error in GetRequest: %s\n", err)
+		return false, nil
+	}
+	if *msg.RequestType == "SecretRequest"  {
 		msg.Data = append(msg.Data, []byte(secret))
 		taosupport.SendResponse(ms, msg)
+fmt.Printf("HandleServiceRequest response buffer: ")
+taosupport.PrintMessage(msg)
 		return true, nil
 	} else {
+fmt.Printf("HandleServiceRequest response is Bad request\n")
 		errmsg := "Bad request"
 		msg.Err = &errmsg
 		return false, nil
@@ -61,6 +68,8 @@ func serviceThead(ms *util.MessageStream, clientProgramName string,
 		if err != nil {
 			return
 		}
+fmt.Printf("serviceThread, got message: ");
+taosupport.PrintMessage(req)
 		terminate, _ := HandleServiceRequest(ms, serverProgramData,
 			clientProgramName, req)
 		if terminate {
@@ -138,6 +147,7 @@ fmt.Printf("peerCerts: %x\n", peerCerts)
 		clientName = peerCert.Subject.OrganizationalUnit[0]
 		log.Printf("server, peer client name: %s\n", clientName)
 		ms := util.NewMessageStream(conn)
+fmt.Printf("server: calling serviceThread\n")
 		go serviceThead(ms, clientName, serverProgramData)
 	}
 }

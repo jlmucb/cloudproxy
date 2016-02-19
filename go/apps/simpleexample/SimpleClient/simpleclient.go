@@ -16,6 +16,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -45,18 +46,21 @@ func main() {
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
 
+fmt.Printf("simpleclient: server address: %s\n", serverAddr)
 	// Load domain info for this domain
 	if taosupport.TaoParadigm(simplecfg, &clientProgramData) !=
 			nil {
 		log.Fatalln("simpleclient: Can't establish Tao")
 	}
+fmt.Printf("simpleclient: TaoParadigm complete\n")
 
 	// Open the Tao Channel using the Program key.
 	ms, serverName, err := taosupport.OpenTaoChannel(&clientProgramData, &serverAddr)
 	if err != nil {
 		log.Fatalln("simpleclient: Can't establish Tao Channel")
 	}
-	log.Printf("Establish Tao Channel with %s\n", serverName)
+	log.Printf("simpleclient: establish Tao Channel with %s\n", serverName)
+	fmt.Printf("simpleclient: establish Tao Channel with %s\n", serverName)
 
 	// Send a simple request and get response.
 	secretRequest := "SecretRequest"
@@ -66,10 +70,12 @@ func main() {
 	taosupport.PrintMessage(msg)
 	taosupport.SendRequest(ms, msg)
 	if err != nil {
+fmt.Printf("simpleclient: Error in response to SendRequest\n")
 		log.Fatalln("simpleclient: Error in response to SendRequest\n")
 	}
 	respmsg, err := taosupport.GetResponse(ms)
 	if err != nil {
+fmt.Printf("simpleclient: Error in response to GetResponse\n")
 		log.Fatalln("simpleclient: Error in response to GetResponse\n")
 	}
 	taosupport.PrintMessage(respmsg)

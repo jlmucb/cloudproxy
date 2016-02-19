@@ -273,6 +273,9 @@ func main() {
 		return
 	}
 	SerialNumber = int64(time.Now().UnixNano()) / (1000000)
+	policyKey := domain.Keys
+fmt.Printf("policyKey: %x\n", policyKey)
+/*
 	policyKey, err := tao.NewOnDiskPBEKeys(tao.Signing,
 		[]byte(*domainPass), "policy_keys", nil)
 	if err != nil {
@@ -280,6 +283,7 @@ fmt.Printf("simpledomainservice: Couldn't get policy key %s\n", err)
 		log.Fatalln("simpledomainservice: Couldn't get policy key\n", err)
 	}
 	log.Printf("simpledomainservice: Policy key %x\n: ", policyKey)
+*/
 
 	tlsc, err := tao.EncodeTLSCert(keys)
 	if err != nil {

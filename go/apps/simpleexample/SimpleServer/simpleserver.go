@@ -16,10 +16,13 @@ package main
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 
+	"github.com/jlmucb/cloudproxy/go/tao"
 	"github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
 	"github.com/jlmucb/cloudproxy/go/util"
 )
@@ -70,14 +73,46 @@ func serviceThead(ms *util.MessageStream, clientProgramName string,
 func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 
 	var sock net.Listener
+fmt.Printf("server: %s, %x\n", serverAddr, serverProgramData)
+
+	pool := x509.NewCertPool()
+	policyCert, err := x509.ParseCertificate(serverProgramData.PolicyCert)
+	if err != nil {
+fmt.Printf("simpleserver, can't parse policyCert: ", err, "\n")
+		log.Printf("simpleserver, can't parse policyCert: ", err, "\n")
+		return
+	}
+	pool.AddCert(policyCert)
+	tlsc, err := tao.EncodeTLSCert(&serverProgramData.ProgramKey)
+	if err != nil {
+fmt.Printf("simpleserver, encode error: ", err, "\n")
+		log.Printf("simpleserver, encode error: ", err, "\n")
+		return
+	}
+	conf := &tls.Config{
+		RootCAs:            pool,
+		Certificates:       []tls.Certificate{*tlsc},
+		InsecureSkipVerify: false,
+		ClientAuth:         tls.RequireAnyClientCert,
+	}
+fmt.Printf("Listening\n")
+	sock, err = tls.Listen("tcp", serverAddr, conf)
+	if err != nil {
+fmt.Printf("simpleserver, listen error: ", err, "\n")
+		log.Printf("simpleserver, listen error: ", err, "\n")
+		return
+	}
 
 	// Service client connections.
 	for {
+fmt.Printf("server: at accept\n")
 		conn, err := sock.Accept()
 		if err != nil {
+fmt.Printf("server: can't accept connection: %s\n", err.Error())
 			log.Printf("server: can't accept connection: %s\n", err.Error())
 			continue
 		}
+fmt.Printf("server: at handshake\n")
 		var clientName string
 		err = conn.(*tls.Conn).Handshake()
 		if err != nil {
@@ -87,8 +122,10 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 		peerCerts := conn.(*tls.Conn).ConnectionState().PeerCertificates
 		if peerCerts == nil {
 			log.Printf("server: can't get peer list\n")
+fmt.Printf("server: can't get peer list\n")
 			continue
 		}
+fmt.Printf("peerCerts: %x\n", peerCerts)
 		peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
 		if peerCert.Raw == nil {
 			log.Printf("server: can't get peer cert\n")

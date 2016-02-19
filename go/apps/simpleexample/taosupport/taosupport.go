@@ -270,7 +270,7 @@ fmt.Printf("TaoParadigm: after LoadProgramKeys\n")
 	var symKeys []byte
 	var policy string
 	if sealedSymmetricKey != nil {
-fmt.Printf("TaoParadigm: existing sealed symmetric\n")
+fmt.Printf("TaoParadigm: existing sealed symmetric %x\n", sealedSymmetricKey)
 		symKeys, policy, err = tao.Parent().Unseal(sealedSymmetricKey)
 		if err != nil || policy != tao.SealPolicyDefault {
 fmt.Printf("TaoParadigm: can't unseal symmetric keys\n")
@@ -284,6 +284,7 @@ fmt.Printf("TaoParadigm: InitializeSealedSymmetricKeys error\n")
 			return errors.New("TaoParadigm: InitializeSealedSymmetricKeys error")
 		}
 	}
+fmt.Printf("Unsealed symmetric keys: % x\n", symKeys)
 	log.Printf("Unsealed symmetric keys: % x\n", symKeys)
 
 	// Get my Program private key if present or initialize it.
@@ -304,17 +305,20 @@ fmt.Printf("TaoParadigm: SigningKeyFromBlob error\n")
 fmt.Printf("TaoParadigm: InitializeSealedSigningKey error\n")
 			return errors.New("TaoParadigm: InitializeSealedSigningKey error")
 		}
-		programCert = programKey.Cert.Raw
 	}
 	log.Printf("TaoParadigm: Retrieved Signing key: % x\n", *programKey)
+fmt.Printf("TaoParadigm: programKey: %x\n", *programKey)
+fmt.Printf("TaoParadigm: programKey.Cert: %x\n", programKey.Cert)
+fmt.Printf("TaoParadigm: programKey.Cert.Raw: %x\n", programKey.Cert.Raw)
 
 	// Initialize Program policy object.
 	ok := programObject.InitTaoProgramData(derPolicyCert, taoName.String(),
-		*programKey, symKeys, programCert)
+		*programKey, symKeys, programKey.Cert.Raw)
 	if !ok {
 fmt.Printf("TaoParadigm: Can't initialize TaoProgramData\n")
 		return errors.New("TaoParadigm: Can't initialize TaoProgramData")
 	}
+fmt.Printf("TaoParadigm: returning\n")
 
 	return nil
 }

@@ -121,7 +121,6 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 			log.Printf("server: can't get peer list\n")
 			continue
 		}
-		log.Printf("peerCerts: %x\n", peerCerts)
 		peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
 		if peerCert.Raw == nil {
 			log.Printf("server: can't get peer cert\n")

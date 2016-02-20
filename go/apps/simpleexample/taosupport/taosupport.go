@@ -205,17 +205,20 @@ fmt.Printf("InitializeSealedProgramKey, delegation: %x\n", k.Delegation)
 }
 
 func (pp *TaoProgramData) InitTaoProgramData(policyCert []byte, taoName string,
-		programKey tao.Keys, symKeys []byte, programCert []byte) bool {
+		programKey tao.Keys, symKeys []byte, programCert []byte,
+		filePath *string) bool {
 	pp.PolicyCert = policyCert
 	pp.TaoName = taoName
 	pp.ProgramKey = programKey
 	pp.ProgramSymKeys = symKeys
 	pp.ProgramCert = programCert
+	pp.ProgramFilePath = filePath
 	pp.Initialized = true
 	return true
 }
 
-func TaoParadigm(cfg *string, programObject *TaoProgramData) (error) {
+func TaoParadigm(cfg *string, filePath *string,
+		programObject *TaoProgramData) (error) {
 
 	// Load domain info for this domain.
 	simpleDomain, err := tao.LoadDomain(*cfg, nil)
@@ -223,7 +226,7 @@ func TaoParadigm(cfg *string, programObject *TaoProgramData) (error) {
 fmt.Printf("TaoParadigm: Can't load domain\n")
 		return errors.New("TaoParadigm: Can't load domain")
 	}
-fmt.Printf("Loaded domain\n")
+fmt.Printf("TaoParadigm: Loaded domain\n")
 
 	// Get policy cert.
 	if simpleDomain.Keys.Cert == nil {
@@ -250,7 +253,7 @@ fmt.Printf("TaoParadigm: Can't retrieve der encoded policy cert\n")
 fmt.Printf("TaoParadigm: Can't extend name\n")
 		return errors.New("TaoParadigm: Can't extend name")
 	}
-fmt.Printf("Extended principal\n")
+fmt.Printf("TaoParadigm: Extended principal\n")
 
 	// Retrieve extended name.
 	taoName, err := tao.Parent().GetTaoName()
@@ -263,9 +266,9 @@ fmt.Printf("TaoParadigm: my name is %s\n", taoName)
 
 	// Get my keys and certificates.
 	sealedSymmetricKey, sealedProgramKey, programCert, delegation, err :=
-		LoadProgramKeys(*programObject.ProgramFilePath)
+		LoadProgramKeys(*filePath)
 	if err != nil {
-fmt.Printf("TaoParadigm: Can't retrieve existing key material from %s error: %s\n", *programObject.ProgramFilePath, err)
+fmt.Printf("TaoParadigm: Can't retrieve existing key material from %s error: %s\n", *filePath, err)
 		return errors.New("TaoParadigm: Can't retrieve existing key material")
 	}
 fmt.Printf("TaoParadigm: after LoadProgramKeys\n")
@@ -280,7 +283,7 @@ fmt.Printf("TaoParadigm: can't unseal symmetric keys\n")
 			return errors.New("TaoParadigm: can't unseal symmetric keys")
 		}
 	} else {
-		symKeys, err = InitializeSealedSymmetricKeys(*programObject.ProgramFilePath, tao.Parent(),
+		symKeys, err = InitializeSealedSymmetricKeys(*filePath, tao.Parent(),
 			SizeofSymmetricKeys)
 		if err != nil {
 fmt.Printf("TaoParadigm: InitializeSealedSymmetricKeys error\n")
@@ -302,7 +305,7 @@ fmt.Printf("TaoParadigm: SigningKeyFromBlob error\n")
 	} else {
 		// Get Program key.
 		programKey, err = InitializeSealedProgramKey(
-			*programObject.ProgramFilePath, tao.Parent(),
+			*filePath, tao.Parent(),
 			*simpleDomain)
 		if err != nil || programKey == nil {
 fmt.Printf("TaoParadigm: InitializeSealedSigningKey error\n")
@@ -316,7 +319,7 @@ fmt.Printf("TaoParadigm: programKey.Cert.Raw: %x\n", programKey.Cert.Raw)
 
 	// Initialize Program policy object.
 	ok := programObject.InitTaoProgramData(derPolicyCert, taoName.String(),
-		*programKey, symKeys, programKey.Cert.Raw)
+		*programKey, symKeys, programKey.Cert.Raw, filePath)
 	if !ok {
 fmt.Printf("TaoParadigm: Can't initialize TaoProgramData\n")
 		return errors.New("TaoParadigm: Can't initialize TaoProgramData")

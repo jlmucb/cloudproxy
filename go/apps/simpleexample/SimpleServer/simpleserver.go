@@ -30,7 +30,7 @@ import (
 var simpleCfg = flag.String("tao.config",
 	"/Domains/domain.simpleexample/tao.config",
 	"path to simple tao configuration")
-var simpleserverpath = flag.String("/Domains/domain.simpleexample/SimpleServer",
+var simpleServerPath = flag.String("/Domains/domain.simpleexample/SimpleServer",
 			"/Domains/domain.simpleexample/SimpleServer",
 			"path to Server files")
 var serverHost = flag.String("host", "localhost", "address for client/server")
@@ -77,7 +77,7 @@ taosupport.PrintMessage(req)
 func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 
 	var sock net.Listener
-fmt.Printf("server: %s, %x\n", serverAddr, serverProgramData)
+fmt.Printf("simpleserver: %s, %x\n", serverAddr, serverProgramData)
 
 	pool := x509.NewCertPool()
 	policyCert, err := x509.ParseCertificate(serverProgramData.PolicyCert)
@@ -99,7 +99,7 @@ fmt.Printf("simpleserver, encode error: ", err, "\n")
 		InsecureSkipVerify: false,
 		ClientAuth:         tls.RequireAnyClientCert,
 	}
-fmt.Printf("Listening\n")
+fmt.Printf("simpleserver: Listening\n")
 	sock, err = tls.Listen("tcp", serverAddr, conf)
 	if err != nil {
 fmt.Printf("simpleserver, listen error: ", err, "\n")
@@ -155,8 +155,7 @@ func main() {
 	serverAddr = *serverHost + ":" + *serverPort
 
 	// Load domain info for this domain
-	serverProgramData.ProgramFilePath = simpleserverpath
-	if taosupport.TaoParadigm(simpleCfg, &serverProgramData) !=
+	if taosupport.TaoParadigm(simpleCfg, simpleServerPath, &serverProgramData) !=
 			nil {
 		log.Fatalln("simpleserver: Can't establish Tao")
 	}

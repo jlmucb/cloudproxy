@@ -25,10 +25,10 @@ import (
 	taosupport "github.com/jlmucb/cloudproxy/go/apps/simpleexample/taosupport"
 )
 
-var simplecfg = flag.String("tao.config",
+var simpleCfg = flag.String("tao.config",
 			"/Domains/domain.simpleexample/tao.config",
 			"path to tao configuration")
-var simpleclientpath = flag.String("/Domains/domain.simpleexample/SimpleClient", 
+var simpleClientPath = flag.String("/Domains/domain.simpleexample/SimpleClient", 
 			"/Domains/domain.simpleexample/SimpleClient",
 			"path to SimpleClient files")
 var serverHost = flag.String("host", "localhost", "address for client/server")
@@ -40,7 +40,6 @@ func main() {
 	// This holds the cloudproxy specific data for this program
 	// like Program Cert and Program Private key.
 	var clientProgramData taosupport.TaoProgramData
-	clientProgramData.ProgramFilePath = simpleclientpath
 
 	// Parse flags
 	flag.Parse()
@@ -48,7 +47,7 @@ func main() {
 
 fmt.Printf("simpleclient: server address: %s\n", serverAddr)
 	// Load domain info for this domain
-	if taosupport.TaoParadigm(simplecfg, &clientProgramData) !=
+	if taosupport.TaoParadigm(simpleCfg, simpleClientPath, &clientProgramData) !=
 			nil {
 		log.Fatalln("simpleclient: Can't establish Tao")
 	}
@@ -94,7 +93,7 @@ retrieveSecret =  []byte{0x28}
 	if err != nil {
 		log.Fatalln("simpleclient: Error protecting data\n")
 	}
-	err = ioutil.WriteFile(path.Join(*simpleclientpath,
+	err = ioutil.WriteFile(path.Join(*simpleClientPath,
 			"retrieved_secret"), out, os.ModePerm)
 	if err != nil {
 		log.Fatalln("simpleclient: error saving retrieved secret\n")

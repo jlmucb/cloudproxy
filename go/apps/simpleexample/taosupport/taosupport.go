@@ -235,11 +235,14 @@ fmt.Printf("TaoParadigm: Can't retrieve policy cert\n")
 fmt.Printf("TaoParadigm: Can't retrieve der encoded policy cert\n")
 		return errors.New("TaoParadigm: Can't retrieve der encoded policy cert")
 	}
-	hexCert :=  hex.EncodeToString(derPolicyCert)
+
+	// hash of policyCert identifies the extension
+	policyKeyName := sha256.Sum256(derPolicyCert)
+	hexPolicyCert :=  hex.EncodeToString(policyKeyName[0:32])
 
 	// Extend my Tao Principal name with policy key.
 	t := make([]auth.Term, 1, 1)
-	t[0] = auth.TermVar(hexCert)
+	t[0] = auth.TermVar(hexPolicyCert)
 	e := auth.PrinExt{Name: "key",
 		          Arg: t}
 	err = tao.Parent().ExtendTaoName(auth.SubPrin{e})

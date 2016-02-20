@@ -282,7 +282,7 @@ func TaoParadigm(cfg *string, filePath *string,
 			return errors.New("TaoParadigm: InitializeSealedSymmetricKeys error")
 		}
 	}
-	log.Printf("Unsealed symmetric keys: % x\n", symKeys)
+	log.Printf("Unsealed symmetric keys\n")
 
 	// Get my Program private key if present or initialize it.
 	var programKey *tao.Keys

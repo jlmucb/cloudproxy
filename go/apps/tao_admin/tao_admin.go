@@ -61,6 +61,7 @@ var opts = []options.Option{
 	{"retractcanexecute", "", "<prog>", "Path of a program to retract authorization to execute", "policy"},
 	{"add", "", "<rule>", "A policy rule to be added", "policy"},
 	{"retract", "", "<rule>", "A policy rule to be retracted", "policy"},
+	{"show", false, "", "Print the policy after all other policy commands have executed", "policy"},
 	{"query", "", "<rule>", "A policy query to be checked", "policy"},
 	{"clear", false, "", "Clear all policy rules before other changes", "policy"},
 	{"add_programs", false, "", "Add the program hashes to the policy", "policy"},
@@ -257,6 +258,11 @@ func managePolicy() {
 	if retractCanExecute := *options.String["retractcanexecute"]; retractCanExecute != "" {
 		host := template().GetHostName()
 		retractExecute(retractCanExecute, host, domain)
+	}
+
+	// Print the policy after all commands are executed.
+	if *options.Bool["show"] {
+		fmt.Print(domain.Guard.String())
 	}
 }
 

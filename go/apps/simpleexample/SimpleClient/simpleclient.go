@@ -40,29 +40,27 @@ func main() {
 	// This holds the cloudproxy specific data for this program
 	// like Program Cert and Program Private key.
 	var clientProgramData taosupport.TaoProgramData
+	defer taosupport.ClearTaoProgramData(&clientProgramData)
 
 	// Parse flags
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
 
-fmt.Printf("simpleclient: server address: %s\n", serverAddr)
 	// Load domain info for this domain
 	if taosupport.TaoParadigm(simpleCfg, simpleClientPath, &clientProgramData) !=
 			nil {
 		log.Fatalln("simpleclient: Can't establish Tao")
 	}
-fmt.Printf("simpleclient: TaoParadigm complete\n")
+	fmt.Printf("simpleclient: TaoParadigm complete, name: %s\n",
+	   clientProgramData.TaoName)
 
 	// Open the Tao Channel using the Program key.
 	ms, serverName, err := taosupport.OpenTaoChannel(&clientProgramData, &serverAddr)
 	if err != nil {
 		log.Fatalln("simpleclient: Can't establish Tao Channel")
 	}
-	log.Printf("simpleclient: establish Tao Channel with %s\n", serverAddr)
-fmt.Printf("simpleclient: establish Tao Channel with %s\n", serverAddr)
-if serverName != nil {
-fmt.Printf("simpleclient, serverName: %s\n", *serverName)
-}
+	log.Printf("simpleclient: establish Tao Channel with %s, %s\n",
+		serverAddr, serverName)
 
 	// Send a simple request and get response.
 	secretRequest := "SecretRequest"
@@ -72,21 +70,13 @@ fmt.Printf("simpleclient, serverName: %s\n", *serverName)
 	taosupport.PrintMessage(msg)
 	taosupport.SendRequest(ms, msg)
 	if err != nil {
-fmt.Printf("simpleclient: Error in response to SendRequest\n")
 		log.Fatalln("simpleclient: Error in response to SendRequest\n")
 	}
 	respmsg, err := taosupport.GetResponse(ms)
 	if err != nil {
-fmt.Printf("simpleclient: Error in response to GetResponse\n")
 		log.Fatalln("simpleclient: Error in response to GetResponse\n")
 	}
-fmt.Printf("simpleclient: GetResponse: ")
-taosupport.PrintMessage(respmsg)
 	retrieveSecret := respmsg.Data[0]
-if  retrieveSecret == nil {
-fmt.Printf("simpleclient: retrievesecret was nil\n")
-retrieveSecret =  []byte{0x28}
-}
 
 	// Encrypt and store secret
 	out, err := taosupport.Protect(clientProgramData.ProgramSymKeys, retrieveSecret)

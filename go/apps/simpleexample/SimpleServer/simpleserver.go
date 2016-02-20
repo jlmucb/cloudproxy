@@ -18,7 +18,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
-	"fmt"
 	"log"
 	"net"
 
@@ -40,15 +39,15 @@ var serverAddr string
 func HandleServiceRequest(ms *util.MessageStream, serverProgramData *taosupport.TaoProgramData, clientProgramName string, req *taosupport.SimpleMessage) (bool, error) {
 	//  Secret is program name || 43
 	secret := clientProgramName + "43"
-fmt.Printf("HandleServiceRequest secret is: %s\n", secret)
+	log.Printf("HandleServiceRequest secret is: %s\n", secret)
 	if *req.RequestType == "SecretRequest"  {
 		req.Data = append(req.Data, []byte(secret))
 		taosupport.SendResponse(ms, req)
-fmt.Printf("HandleServiceRequest response buffer: ")
-taosupport.PrintMessage(req)
+		log.Printf("HandleServiceRequest response buffer: ")
+		taosupport.PrintMessage(req)
 		return true, nil
 	} else {
-fmt.Printf("HandleServiceRequest response is Bad request\n")
+		log.Printf("HandleServiceRequest response is Bad request\n")
 		errmsg := "Bad request"
 		req.Err = &errmsg
 		return false, nil
@@ -63,8 +62,8 @@ func serviceThead(ms *util.MessageStream, clientProgramName string,
 		if err != nil {
 			return
 		}
-fmt.Printf("serviceThread, got message: ");
-taosupport.PrintMessage(req)
+		log.Printf("serviceThread, got message: ");
+		taosupport.PrintMessage(req)
 		terminate, _ := HandleServiceRequest(ms, serverProgramData,
 			clientProgramName, req)
 		if terminate {
@@ -77,19 +76,16 @@ taosupport.PrintMessage(req)
 func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 
 	var sock net.Listener
-fmt.Printf("simpleserver: %s, %x\n", serverAddr, serverProgramData)
 
 	pool := x509.NewCertPool()
 	policyCert, err := x509.ParseCertificate(serverProgramData.PolicyCert)
 	if err != nil {
-fmt.Printf("simpleserver, can't parse policyCert: ", err, "\n")
 		log.Printf("simpleserver, can't parse policyCert: ", err, "\n")
 		return
 	}
 	pool.AddCert(policyCert)
 	tlsc, err := tao.EncodeTLSCert(&serverProgramData.ProgramKey)
 	if err != nil {
-fmt.Printf("simpleserver, encode error: ", err, "\n")
 		log.Printf("simpleserver, encode error: ", err, "\n")
 		return
 	}
@@ -99,24 +95,21 @@ fmt.Printf("simpleserver, encode error: ", err, "\n")
 		InsecureSkipVerify: false,
 		ClientAuth:         tls.RequireAnyClientCert,
 	}
-fmt.Printf("simpleserver: Listening\n")
+	log.Printf("simpleserver: Listening\n")
 	sock, err = tls.Listen("tcp", serverAddr, conf)
 	if err != nil {
-fmt.Printf("simpleserver, listen error: ", err, "\n")
 		log.Printf("simpleserver, listen error: ", err, "\n")
 		return
 	}
 
 	// Service client connections.
 	for {
-fmt.Printf("server: at accept\n")
+		log.Printf("server: at accept\n")
 		conn, err := sock.Accept()
 		if err != nil {
-fmt.Printf("server: can't accept connection: %s\n", err.Error())
 			log.Printf("server: can't accept connection: %s\n", err.Error())
 			continue
 		}
-fmt.Printf("server: at handshake\n")
 		var clientName string
 		err = conn.(*tls.Conn).Handshake()
 		if err != nil {
@@ -126,10 +119,9 @@ fmt.Printf("server: at handshake\n")
 		peerCerts := conn.(*tls.Conn).ConnectionState().PeerCertificates
 		if peerCerts == nil {
 			log.Printf("server: can't get peer list\n")
-fmt.Printf("server: can't get peer list\n")
 			continue
 		}
-fmt.Printf("peerCerts: %x\n", peerCerts)
+		log.Printf("peerCerts: %x\n", peerCerts)
 		peerCert := conn.(*tls.Conn).ConnectionState().PeerCertificates[0]
 		if peerCert.Raw == nil {
 			log.Printf("server: can't get peer cert\n")
@@ -142,7 +134,6 @@ fmt.Printf("peerCerts: %x\n", peerCerts)
 		clientName = peerCert.Subject.OrganizationalUnit[0]
 		log.Printf("server, peer client name: %s\n", clientName)
 		ms := util.NewMessageStream(conn)
-fmt.Printf("server: calling serviceThread\n")
 		go serviceThead(ms, clientName, serverProgramData)
 	}
 }
@@ -150,6 +141,7 @@ fmt.Printf("server: calling serviceThread\n")
 func main() {
 
 	var serverProgramData taosupport.TaoProgramData
+	defer taosupport.ClearTaoProgramData(&serverProgramData)
 
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
@@ -159,6 +151,7 @@ func main() {
 			nil {
 		log.Fatalln("simpleserver: Can't establish Tao")
 	}
+	log.Printf("simpleserver name is %s\n", serverProgramData.TaoName)
 
 	server(serverAddr, &serverProgramData)
 	log.Printf("simpleserver: done\n")

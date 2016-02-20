@@ -341,6 +341,7 @@ func OpenTaoChannel(programObject *TaoProgramData, serverAddr *string) (
 	}
 
 	// TODO(manferdelli): put server name here
+	// peerName := policyCert.Subject.OrganizationalUnit[0]
 	peerName := "Server"
 
 	// Stream for Tao Channel.

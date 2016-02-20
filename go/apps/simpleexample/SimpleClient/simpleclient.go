@@ -40,13 +40,23 @@ func main() {
 	// This holds the cloudproxy specific data for this program
 	// like Program Cert and Program Private key.
 	var clientProgramData taosupport.TaoProgramData
+
+	// Make sure we zero keys when we're done.
 	defer taosupport.ClearTaoProgramData(&clientProgramData)
 
 	// Parse flags
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
 
-	// Load domain info for this domain
+	// Load domain info for this domain and establish Clouproxy keys and properties.
+	// This handles reading in existing (sealed) Cloudproxy keys and properties, or,
+	// if this is the first call (or a call after state has been erased), this also
+	// handles initialization of keys and certificates with a domain server holding
+	// the private policy key.
+	// If TaoParadigm completes without error, clientProgramData contains all the
+	// Cloudproxy information needed throughout program execution and, in addition,
+	// ensures that this information is sealed and stored in simpleClientPath for
+	// subsequent invocations.
 	if taosupport.TaoParadigm(simpleCfg, simpleClientPath, &clientProgramData) !=
 			nil {
 		log.Fatalln("simpleclient: Can't establish Tao")
@@ -54,7 +64,10 @@ func main() {
 	fmt.Printf("simpleclient: TaoParadigm complete, name: %s\n",
 	   clientProgramData.TaoName)
 
-	// Open the Tao Channel using the Program key.
+	// Open the Tao Channel using the Program key.  This program does all the
+	// standard channel negotiation and presents the secure server name after
+	// negotiation is complete.  ms is the bi-directional confidentiality and
+	// integrity protected channel between simpleclient and simpleserver.
 	ms, serverName, err := taosupport.OpenTaoChannel(&clientProgramData, &serverAddr)
 	if err != nil {
 		log.Fatalln("simpleclient: Can't establish Tao Channel")
@@ -63,11 +76,13 @@ func main() {
 		serverAddr, serverName)
 
 	// Send a simple request and get response.
+	// We have a simple service protobuf for requests and reponsed between
+	// simpleclient and simpleserver.  There's only on request: tell me the
+	// secret.
 	secretRequest := "SecretRequest"
 
 	msg := new(taosupport.SimpleMessage)
 	msg.RequestType = &secretRequest
-	taosupport.PrintMessage(msg)
 	taosupport.SendRequest(ms, msg)
 	if err != nil {
 		log.Fatalln("simpleclient: Error in response to SendRequest\n")
@@ -76,9 +91,11 @@ func main() {
 	if err != nil {
 		log.Fatalln("simpleclient: Error in response to GetResponse\n")
 	}
+
+	// This is the secret.
 	retrieveSecret := respmsg.Data[0]
 
-	// Encrypt and store secret
+	// Encrypt and store the secret in simpleclient's save area.
 	out, err := taosupport.Protect(clientProgramData.ProgramSymKeys, retrieveSecret)
 	if err != nil {
 		log.Fatalln("simpleclient: Error protecting data\n")
@@ -89,6 +106,6 @@ func main() {
 		log.Fatalln("simpleclient: error saving retrieved secret\n")
 	}
 
-	// Close down
+	// Close down.
 	log.Printf("simpleclient: secret is %s, done\n", retrieveSecret)
 }

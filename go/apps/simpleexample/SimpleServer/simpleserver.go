@@ -36,10 +36,19 @@ var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
 var serverAddr string
 
-func HandleServiceRequest(ms *util.MessageStream, serverProgramData *taosupport.TaoProgramData, clientProgramName string, req *taosupport.SimpleMessage) (bool, error) {
-	//  Secret is program name || 43
+// This handles the one valid service request: "SecretRequest".
+// Note that this terminates the channel after the first successful
+// request which is not generally what would happen in most channels.
+// Note that in the future, we might want to use grpc rather than custom
+// service request/response buffers but we don't want to introduce complexity
+// into this example.  The single request response buffer is defined in
+// taosupport/taosupport.proto.
+func HandleServiceRequest(ms *util.MessageStream, serverProgramData *taosupport.TaoProgramData,
+	clientProgramName string, req *taosupport.SimpleMessage) (bool, error) {
+
+	//  The somewhat boring secret is the corresponding simpleclient's program name || 43
 	secret := clientProgramName + "43"
-	log.Printf("HandleServiceRequest secret is: %s\n", secret)
+
 	if *req.RequestType == "SecretRequest"  {
 		req.Data = append(req.Data, []byte(secret))
 		taosupport.SendResponse(ms, req)
@@ -47,13 +56,14 @@ func HandleServiceRequest(ms *util.MessageStream, serverProgramData *taosupport.
 		taosupport.PrintMessage(req)
 		return true, nil
 	} else {
-		log.Printf("HandleServiceRequest response is Bad request\n")
-		errmsg := "Bad request"
+		log.Printf("HandleServiceRequest response is bad request\n")
+		errmsg := "BadRequest"
 		req.Err = &errmsg
 		return false, nil
 	}
 }
 
+// This just handle's the requests.
 func serviceThead(ms *util.MessageStream, clientProgramName string,
 	serverProgramData *taosupport.TaoProgramData) {
 
@@ -64,6 +74,7 @@ func serviceThead(ms *util.MessageStream, clientProgramName string,
 		}
 		log.Printf("serviceThread, got message: ");
 		taosupport.PrintMessage(req)
+
 		terminate, _ := HandleServiceRequest(ms, serverProgramData,
 			clientProgramName, req)
 		if terminate {
@@ -73,10 +84,16 @@ func serviceThead(ms *util.MessageStream, clientProgramName string,
 	log.Printf("simpleserver: client thread terminating\n")
 }
 
+// This is the server and implements the server channel negotiation corresponding
+// to the client's taosupport.OpenTaoChannel.  It's possible we should move this into
+// taosupport/taosupport.go since it should not vary very much from implementation to
+// implementation.
 func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 
 	var sock net.Listener
 
+	// Set up the single root certificate for channel negotiation which is the
+	// policy key cert.
 	pool := x509.NewCertPool()
 	policyCert, err := x509.ParseCertificate(serverProgramData.PolicyCert)
 	if err != nil {
@@ -95,6 +112,8 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 		InsecureSkipVerify: false,
 		ClientAuth:         tls.RequireAnyClientCert,
 	}
+
+	// Listen for clients.
 	log.Printf("simpleserver: Listening\n")
 	sock, err = tls.Listen("tcp", serverAddr, conf)
 	if err != nil {
@@ -133,12 +152,19 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 		clientName = peerCert.Subject.OrganizationalUnit[0]
 		log.Printf("server, peer client name: %s\n", clientName)
 		ms := util.NewMessageStream(conn)
+
+		// At this point the handshake is complete and we fork a service thread
+		// to communicate with this simpleclient.  ms is the bi-directional
+		// confidentiality and integrity protected channel corresponding to the
+		// channel opened by OpenTaoChannel.
 		go serviceThead(ms, clientName, serverProgramData)
 	}
 }
 
 func main() {
 
+	// main is very similar to the initial parts on main in simpleclient.
+	// see the comments there.
 	var serverProgramData taosupport.TaoProgramData
 	defer taosupport.ClearTaoProgramData(&serverProgramData)
 

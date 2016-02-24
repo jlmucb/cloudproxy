@@ -37,8 +37,8 @@ var serverAddr string
 
 func main() {
 
-	// This holds the cloudproxy specific data for this program
-	// like Program Cert and Program Private key.
+	// This holds the cloudproxy specific data for simpleclient
+	// including the Program Cert and Program Private key.
 	var clientProgramData taosupport.TaoProgramData
 
 	// Make sure we zero keys when we're done.
@@ -48,15 +48,8 @@ func main() {
 	flag.Parse()
 	serverAddr = *serverHost + ":" + *serverPort
 
-	// Load domain info for this domain and establish Clouproxy keys and properties.
-	// This handles reading in existing (sealed) Cloudproxy keys and properties, or,
-	// if this is the first call (or a call after state has been erased), this also
-	// handles initialization of keys and certificates with a domain server holding
-	// the private policy key.
 	// If TaoParadigm completes without error, clientProgramData contains all the
-	// Cloudproxy information needed throughout program execution and, in addition,
-	// ensures that this information is sealed and stored in simpleClientPath for
-	// subsequent invocations.
+	// Cloudproxy information needed throughout simpleclient execution.
 	if taosupport.TaoParadigm(simpleCfg, simpleClientPath, &clientProgramData) !=
 			nil {
 		log.Fatalln("simpleclient: Can't establish Tao")
@@ -66,8 +59,7 @@ func main() {
 
 	// Open the Tao Channel using the Program key.  This program does all the
 	// standard channel negotiation and presents the secure server name after
-	// negotiation is complete.  ms is the bi-directional confidentiality and
-	// integrity protected channel between simpleclient and simpleserver.
+	// negotiation is complete.
 	ms, serverName, err := taosupport.OpenTaoChannel(&clientProgramData, &serverAddr)
 	if err != nil {
 		log.Fatalln("simpleclient: Can't establish Tao Channel")

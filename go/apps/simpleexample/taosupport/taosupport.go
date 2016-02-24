@@ -45,6 +45,7 @@ var configPath = flag.String("config", "tao.config", "The Tao domain config")
 
 const SizeofSymmetricKeys = 64
 
+//  This is the structure containing all the Tao data required by a Hosted System.
 type TaoProgramData struct {
 	// true after initialization.
 	Initialized       bool
@@ -68,6 +69,7 @@ type TaoProgramData struct {
 	ProgramFilePath   *string
 }
 
+// Zero Tao sensitive data.
 func ClearTaoProgramData(programData *TaoProgramData) {
 	programData.Initialized = false
 	ZeroBytes([]byte(programData.TaoName))
@@ -209,7 +211,7 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 	return k, nil
 }
 
-func (pp *TaoProgramData) InitTaoProgramData(policyCert []byte, taoName string,
+func (pp *TaoProgramData) FillTaoProgramData(policyCert []byte, taoName string,
 		programKey tao.Keys, symKeys []byte, programCert []byte,
 		filePath *string) bool {
 	pp.PolicyCert = policyCert
@@ -222,6 +224,14 @@ func (pp *TaoProgramData) InitTaoProgramData(policyCert []byte, taoName string,
 	return true
 }
 
+// Load domain info for the domain and establish Clouproxy keys and properties.
+// This handles reading in existing (sealed) Cloudproxy keys and properties, or,
+// if this is the first call (or a call after state has been erased), this also
+// handles initialization of keys and certificates including interaction with the
+// domain signing service and storage of new sealed keys and certificates.
+// If TaoParadigm completes without error, programObject contains all the
+// Cloudproxy information needed throughout the calling program execution
+// ensures that this information is sealed and stored for subsequent invocations.
 func TaoParadigm(cfg *string, filePath *string,
 		programObject *TaoProgramData) (error) {
 
@@ -304,7 +314,7 @@ func TaoParadigm(cfg *string, filePath *string,
 	log.Printf("TaoParadigm: Retrieved Signing key\n")
 
 	// Initialize Program policy object.
-	ok := programObject.InitTaoProgramData(derPolicyCert, taoName.String(),
+	ok := programObject.FillTaoProgramData(derPolicyCert, taoName.String(),
 		*programKey, symKeys, programKey.Cert.Raw, filePath)
 	if !ok {
 		return errors.New("TaoParadigm: Can't initialize TaoProgramData")
@@ -313,7 +323,11 @@ func TaoParadigm(cfg *string, filePath *string,
 	return nil
 }
 
-// Return connection and peer name.
+// Establishes the Tao Channel for a client using the Program Key.
+// This program does all the standard client side channel negotiation.
+// After negotiation is complete.  ms is the bi-directional confidentiality and
+// integrity protected channel.  OpenTaoChannel returns the stream (ms) for subsequent reads
+// and writes as well as the server's Tao Principal Name.
 func OpenTaoChannel(programObject *TaoProgramData, serverAddr *string) (
 		*util.MessageStream, *string, error) {
 
@@ -351,6 +365,7 @@ func OpenTaoChannel(programObject *TaoProgramData, serverAddr *string) (
 
 // Support functions
 
+
 func ZeroBytes(buf []byte) {
 	n := len(buf)
 	for i := 0; i < n; i++ {
@@ -369,8 +384,8 @@ func PrincipalNameFromDERCert(derCert []byte) *string {
 }
 
 // Returns sealed symmetric key, sealed signing key,
-//   DER encoded program cert, delegation, error.
-// Only returns errors if file exists but cant be read.
+// DER encoded program cert, delegation, if files exist.
+// Only returns errors if file exists but can't be read.
 func LoadProgramKeys(filePath string) ([]byte, []byte, []byte, []byte, error) {
 	var sealedSymmetricKey []byte
 	var sealedProgramKey []byte
@@ -408,6 +423,7 @@ func LoadProgramKeys(filePath string) ([]byte, []byte, []byte, []byte, error) {
 	return sealedSymmetricKey, sealedProgramKey, derCert, ds, nil
 }
 
+// Create a Program Public/Private key.
 func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 
 	self, err := t.GetTaoName()
@@ -456,6 +472,7 @@ func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 	return k, derCert, nil
 }
 
+// Obtain a signing private key (usually a Program Key) from a sealed blob.
 func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte,
 		delegateBlob []byte) (*tao.Keys, error) {
 

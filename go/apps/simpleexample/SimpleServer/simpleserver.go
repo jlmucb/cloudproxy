@@ -35,10 +35,10 @@ var simpleServerPath = flag.String("/Domains/domain.simpleexample/SimpleServer",
 var serverHost = flag.String("host", "localhost", "address for client/server")
 var serverPort = flag.String("port", "8123", "port for client/server")
 var serverAddr string
-
-// This handles the one valid service request: "SecretRequest".
-// Note that this terminates the channel after the first successful
-// request which is not generally what would happen in most channels.
+// Handle service request, req and return response over channel (ms).
+// This handles the one valid service request: "SecretRequest"
+// and terminates the channel after the first successful request
+// which is not generally what would happen in most channels.
 // Note that in the future, we might want to use grpc rather than custom
 // service request/response buffers but we don't want to introduce complexity
 // into this example.  The single request response buffer is defined in
@@ -63,7 +63,6 @@ func HandleServiceRequest(ms *util.MessageStream, serverProgramData *taosupport.
 	}
 }
 
-// This just handle's the requests.
 func serviceThead(ms *util.MessageStream, clientProgramName string,
 	serverProgramData *taosupport.TaoProgramData) {
 
@@ -84,7 +83,7 @@ func serviceThead(ms *util.MessageStream, clientProgramName string,
 	log.Printf("simpleserver: client thread terminating\n")
 }
 
-// This is the server and implements the server channel negotiation corresponding
+// This is the server. It implements the server Tao Channel negotiation corresponding
 // to the client's taosupport.OpenTaoChannel.  It's possible we should move this into
 // taosupport/taosupport.go since it should not vary very much from implementation to
 // implementation.
@@ -100,6 +99,7 @@ func server(serverAddr string, serverProgramData *taosupport.TaoProgramData) {
 		log.Printf("simpleserver, can't parse policyCert: ", err, "\n")
 		return
 	}
+	// Make the policy cert the unique root of the verification chain.
 	pool.AddCert(policyCert)
 	tlsc, err := tao.EncodeTLSCert(&serverProgramData.ProgramKey)
 	if err != nil {

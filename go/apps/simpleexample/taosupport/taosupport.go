@@ -83,9 +83,7 @@ func ClearTaoProgramData(programData *TaoProgramData) {
 	programData.ProgramFilePath = nil
 }
 
-// RequestTruncatedAttestation connects to a CA instance, sends the attestation
-// for an X.509 certificate, and gets back a truncated attestation with a new
-// principal name based on the policy key.
+// RequestTruncatedAttestation should replace this.
 func RequestDomainServiceCert(network, addr string, keys *tao.Keys,
 		v *tao.Verifier) (*tao.Attestation, error) {
 	if keys.Cert == nil {

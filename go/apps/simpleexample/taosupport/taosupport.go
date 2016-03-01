@@ -83,7 +83,7 @@ func ClearTaoProgramData(programData *TaoProgramData) {
 	programData.ProgramFilePath = nil
 }
 
-// RequestTruncatedAttestation should replace this.
+// RequestDomainServiceCert requests the signed Program Certificate from simpledomainservice.
 func RequestDomainServiceCert(network, addr string, keys *tao.Keys,
 		v *tao.Verifier) (*tao.Attestation, error) {
 	if keys.Cert == nil {
@@ -146,6 +146,8 @@ func InitializeSealedSymmetricKeys(filePath string, t tao.Tao, keysize int) (
 	return unsealed, nil
 }
 
+// TODO: Consider using peerCert := conn.ConnectionState().PeerCertificates[0]
+// ValidatePeerAttestation(&a, peerCert, guard); err != nil
 func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 		*tao.Keys, error) {
 
@@ -158,7 +160,7 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 	// Request attestations.  Policy key is verifier.
 	na, err := RequestDomainServiceCert("tcp", *caAddr, k, domain.Keys.VerifyingKey)
 	if err != nil || na == nil {
-		log.Printf("InitializeSealedProgramKey: error from taonet.RequestTruncatedAttestation\n")
+		log.Printf("InitializeSealedProgramKey: error from RequestDomainServiceCert\n")
 		return nil, err
 	}
 	k.Delegation = na

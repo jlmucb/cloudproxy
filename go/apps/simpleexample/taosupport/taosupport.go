@@ -345,6 +345,7 @@ func OpenTaoChannel(programObject *TaoProgramData, serverAddr *string) (
 	if err != nil {
 		log.Fatalln("OpenTaoChannel, encode error: ", err)
 	}
+	// TODO(manferdelli): Replace this with tao.Dial
 	conn, err := tls.Dial("tcp", *serverAddr, &tls.Config{
 		RootCAs:            pool,
 		Certificates:       []tls.Certificate{*tlsc},

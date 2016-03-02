@@ -336,7 +336,7 @@ func OpenTaoChannel(programObject *TaoProgramData, serverAddr *string) (
 		*util.MessageStream, *string, error) {
 
 	// Parse policy cert and make it the root of our
-	// heierarchy for verifying Tao Channel peer.
+	// hierarchy for verifying Tao Channel peer.
 	policyCert, err := x509.ParseCertificate(programObject.PolicyCert)
 	if err != nil {
 		return nil, nil, errors.New("OpenTaoChannel: Can't ParseCertificate")

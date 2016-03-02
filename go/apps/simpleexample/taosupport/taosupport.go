@@ -90,7 +90,7 @@ func RequestDomainServiceCert(network, addr string, keys *tao.Keys,
 	if keys.Cert == nil {
 		return nil, errors.New("RequestDomainServiceCert: Can't dial with an empty client certificate")
 	}
-	// Explain taonet and what keys are used
+	// Explain what keys are used
 	tlsCert, err := tao.EncodeTLSCert(keys)
 	if err != nil {
 		return nil, err
@@ -106,7 +106,6 @@ func RequestDomainServiceCert(network, addr string, keys *tao.Keys,
 	defer conn.Close()
 
 	// Tao handshake: send client delegation.
-	// TODO: Explain delegation
 	ms := util.NewMessageStream(conn)
 	_, err = ms.WriteMessage(keys.Delegation)
 	if err != nil {

@@ -83,7 +83,8 @@ func ClearTaoProgramData(programData *TaoProgramData) {
 	programData.ProgramFilePath = nil
 }
 
-// RequestDomainServiceCert requests the signed Program Certificate from simpledomainservice.
+// RequestDomainServiceCert requests the signed Program 
+// Certificate from simpledomainservice.
 func RequestDomainServiceCert(network, addr string, keys *tao.Keys,
 		v *tao.Verifier) (*tao.Attestation, error) {
 	if keys.Cert == nil {
@@ -114,7 +115,7 @@ func RequestDomainServiceCert(network, addr string, keys *tao.Keys,
 
 	// Read the truncated attestation and check it.
 	var a tao.Attestation
-	err := ms.ReadMessage(&a)
+	err = ms.ReadMessage(&a)
 	if err != nil {
 		return nil, err
 	}
@@ -160,8 +161,8 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 	}
 
 	// Request attestations.  Policy key is verifier.
-	// na, err := RequestDomainServiceCert("tcp", *caAddr, k, domain.Keys.VerifyingKey)
-	na, err := RequestTruncatedAttestation("tcp", *caAddr, k, domain.Keys.VerifyingKey)
+	na, err := RequestDomainServiceCert("tcp", *caAddr, k,
+			domain.Keys.VerifyingKey)
 	if err != nil || na == nil {
 		log.Printf("InitializeSealedProgramKey: error from RequestDomainServiceCert\n")
 		return nil, err
@@ -334,8 +335,8 @@ func TaoParadigm(cfg *string, filePath *string,
 func OpenTaoChannel(programObject *TaoProgramData, serverAddr *string) (
 		*util.MessageStream, *string, error) {
 
-	// Parse policy cert and make it the root of our heierarchy for verifying
-	// Tao Channel peer.
+	// Parse policy cert and make it the root of our
+	// heierarchy for verifying Tao Channel peer.
 	policyCert, err := x509.ParseCertificate(programObject.PolicyCert)
 	if err != nil {
 		return nil, nil, errors.New("OpenTaoChannel: Can't ParseCertificate")

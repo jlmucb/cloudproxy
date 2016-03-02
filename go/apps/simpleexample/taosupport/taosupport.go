@@ -107,13 +107,15 @@ func RequestDomainServiceCert(network, addr string, keys *tao.Keys,
 	// Tao handshake: send client delegation.
 	// TODO: Explain delegation
 	ms := util.NewMessageStream(conn)
-	if _, err = ms.WriteMessage(keys.Delegation); err != nil {
+	_, err = ms.WriteMessage(keys.Delegation)
+	if err != nil {
 		return nil, err
 	}
 
 	// Read the truncated attestation and check it.
 	var a tao.Attestation
-	if err := ms.ReadMessage(&a); err != nil {
+	err := ms.ReadMessage(&a)
+	if err != nil {
 		return nil, err
 	}
 
@@ -158,7 +160,8 @@ func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 	}
 
 	// Request attestations.  Policy key is verifier.
-	na, err := RequestDomainServiceCert("tcp", *caAddr, k, domain.Keys.VerifyingKey)
+	// na, err := RequestDomainServiceCert("tcp", *caAddr, k, domain.Keys.VerifyingKey)
+	na, err := RequestTruncatedAttestation("tcp", *caAddr, k, domain.Keys.VerifyingKey)
 	if err != nil || na == nil {
 		log.Printf("InitializeSealedProgramKey: error from RequestDomainServiceCert\n")
 		return nil, err
@@ -355,7 +358,6 @@ func OpenTaoChannel(programObject *TaoProgramData, serverAddr *string) (
 		return nil, nil, errors.New("OpenTaoChannel: Can't establish channel")
 	}
 
-	// TODO(manferdelli): put server name here
 	peerName := policyCert.Subject.OrganizationalUnit[0]
 
 	// Stream for Tao Channel.

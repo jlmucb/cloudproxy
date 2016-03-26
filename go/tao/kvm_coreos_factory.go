@@ -36,7 +36,8 @@ import (
 	"syscall"
 	"time"
 
-	"golang.org/x/crypto/ssh"
+	// "github.com/x/crypto/ssh"
+	"github.com/golang/crypto/ssh"
 
 	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"

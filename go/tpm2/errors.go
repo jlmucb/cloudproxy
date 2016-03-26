@@ -22,6 +22,6 @@ import (
 type TpmError uint32
 
 const (
-	errSuccess TpmError = 0
+	ErrSuccess TpmError = 0
 )
 

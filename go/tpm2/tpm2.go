@@ -391,7 +391,7 @@ func GetRandom(rw io.ReadWriteCloser, size uint32) ([]byte, error) {
 		fmt.Printf("DecodeCommandResponse ", err, "\n")
 		return nil, err
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 	}
 	rand, err :=  DecodeGetRandom(resp[10:read])
 	if err != nil {
@@ -442,7 +442,7 @@ func FlushContext(rw io.ReadWriter, handle Handle) (error) {
 	if err != nil {
 		return errors.New("DecodeCommandResponse fails")
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 		return errors.New("FlushContext unsuccessful")
 	}
 	return nil
@@ -508,7 +508,7 @@ func ReadPcrs(rw io.ReadWriter, num_byte byte, pcrSelect []byte) (uint32, []byte
 	if err != nil {
 		return 0, nil, 0, nil, errors.New("DecodeCommandResponse fails")
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 		return 0, nil, 0, nil, errors.New("ReadPcr command failed")
 	}
 	counter, pcr, alg, digest, err := DecodeReadPcrs(resp[10:])
@@ -573,7 +573,7 @@ func ReadClock(rw io.ReadWriter) (uint64, uint64, error) {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return 0, 0, err
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 	}
 	current_time, current_clock, err :=  DecodeReadClock(resp[10:read])
 	if err != nil {
@@ -654,7 +654,7 @@ func GetCapabilities(rw io.ReadWriter, cap uint32, count uint32, property uint32
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, err
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 	}
 	_, handles, err :=  DecodeGetCapabilities(resp[10:read])
 	if err != nil {
@@ -711,7 +711,7 @@ func PcrEvent(rw io.ReadWriter, pcrnum int, eventData []byte) (error) {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return err
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 		return errors.New("Command failure")
 	}
 	return nil
@@ -873,7 +873,7 @@ func CreatePrimary(rw io.ReadWriter, owner uint32, pcr_nums []int,
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return Handle(0), nil, err
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 	}
 	handle, public_blob, err :=  DecodeCreatePrimary(resp[10:read])
 	if err != nil {
@@ -943,7 +943,7 @@ func ReadPublic(rw io.ReadWriter, handle Handle) ([]byte, []byte, []byte, error)
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, nil, nil, err
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 		return nil, nil, nil, err
 	}
 	public_blob, name, qualified_name, err :=  DecodeReadPublic(resp[10:read])
@@ -1038,7 +1038,7 @@ func CreateKey(rw io.ReadWriter, owner uint32, pcr_nums []int, parent_password s
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, nil, err
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 		return nil, nil, errors.New("Error from command")
 	}
 	private_blob, public_blob, err :=  DecodeCreateKey(resp[10:read])
@@ -1120,7 +1120,7 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string, ownerAuth st
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return Handle(0), nil, err
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 		return Handle(0), nil, errors.New("Error from command")
 	}
 	handle, name, err :=  DecodeLoad(resp[10:read])
@@ -1196,7 +1196,7 @@ func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return err
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 		return errors.New("Comand failure")
 	}
 	return nil
@@ -1234,7 +1234,7 @@ func PolicyPcr(rw io.ReadWriter, handle Handle, expected_digest []byte, pcr_nums
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return err
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 		return errors.New("Comand failure")
 	}
 	return nil
@@ -1302,7 +1302,7 @@ func PolicyGetDigest(rw io.ReadWriter, handle Handle) ([]byte, error) {
 		fmt.Printf("DecodeCommandResponse %s\n", err)
 		return nil, err
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 		return nil, errors.New("Comand failure")
 	}
 	digest, err := DecodePolicyGetDigest(resp[10:])
@@ -1383,7 +1383,7 @@ func StartAuthSession(rw io.ReadWriter, tpm_key Handle, bind_key Handle,
 	if err != nil {
 		return Handle(0), nil, errors.New("DecodeCommandResponse fails")
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 		return Handle(0), nil, errors.New("StartAuthSession unsuccessful")
 	}
 	handle, nonce, err := DecodeStartAuthSession(resp[10:])
@@ -1479,7 +1479,7 @@ func CreateSealed(rw io.ReadWriter, parent Handle, policy_digest []byte,
 	if err != nil {
 		return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 		return nil, nil, errors.New("CreateSealed unsuccessful")
 	}
 	handle, nonce, err := DecodeCreateSealed(resp[10:])
@@ -1555,7 +1555,7 @@ func Unseal(rw io.ReadWriter, item_handle Handle, password string, session_handl
 	if err != nil {
 		return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 		return nil, nil, errors.New("Unseal unsuccessful")
 	}
 	unsealed, nonce, err := DecodeUnseal(resp[10:])
@@ -1650,7 +1650,7 @@ func Quote(rw io.ReadWriter, signing_handle Handle, parent_password string, owne
 	if err != nil {
 		return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 		return nil, nil, errors.New("Quote unsuccessful")
 	}
 	attest, _, _, sig, err := DecodeQuote(resp[10:])
@@ -1741,7 +1741,7 @@ func ActivateCredential(rw io.ReadWriter, active_handle Handle, key_handle Handl
 	if err != nil {
 		return nil, errors.New("DecodeCommandResponse fails")
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 		return nil, errors.New("ActivateCredential unsuccessful")
 	}
 	cred, err := DecodeActivateCredential(resp[10:])
@@ -1811,7 +1811,7 @@ func EvictControl(rw io.ReadWriter, owner Handle, tmp_handle Handle, persistant_
 	if err != nil {
 		return errors.New("DecodeCommandResponse fails")
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 		return errors.New("EvictControl unsuccessful")
 	}
 	err = DecodeEvictControl(resp[10:])
@@ -1868,7 +1868,7 @@ func SaveContext(rw io.ReadWriter, handle Handle) ([]byte, error) {
 		return nil, errors.New("DecodeCommandResponse fails")
 	}
 	fmt.Printf("SaveContext Tag: %x, size: %x, error code: %x\n", tag, size, status)
-	if status != errSuccess {
+	if status != ErrSuccess {
 		return nil, errors.New("SaveContext unsuccessful")
 	}
 	save_area, err := DecodeSaveContext(resp[10:])
@@ -1933,7 +1933,7 @@ func LoadContext(rw io.ReadWriter, save_area []byte) (Handle, error) {
 		return Handle(0), errors.New("DecodeCommandResponse fails")
 	}
 	fmt.Printf("LoadContext Tag: %x, size: %x, error code: %x\n", tag, size, status)
-	if status != errSuccess {
+	if status != ErrSuccess {
 		return Handle(0), errors.New("LoadContext unsuccessful")
 	}
 	handle, err := DecodeLoadContext(resp[10:])
@@ -2408,7 +2408,7 @@ func InternalMakeCredential(rw io.ReadWriter, protectorHandle Handle, credential
 	if err != nil {
 		return nil, nil, errors.New("DecodeCommandResponse fails")
 	}
-	if status != errSuccess {
+	if status != ErrSuccess {
 		return nil, nil, errors.New("InternalMakeCredential unsuccessful")
 	}
 	credBlob, encrypted_secret, err := DecodeInternalMakeCredential(resp[10:])

@@ -21,6 +21,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/jlmucb/cloudproxy/go/tpm2"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -42,16 +43,16 @@ func TestGetRandom(t *testing.T) {
 	fmt.Printf("TestGetRandom\n")
 
 	// Open TPM
-	rw, err := OpenTPM("/dev/tpm0")
+	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if err != nil {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
 	fmt.Printf("Flushall\n")
-	Flushall(rw)
+	tpm2.Flushall(rw)
 
 	fmt.Printf("GetRandom\n")
-	rand, err :=  GetRandom(rw, 16)
+	rand, err :=  tpm2.GetRandom(rw, 16)
 	if err != nil {
 		fmt.Printf("GetRandon Error ", err, "\n")
 		t.Fatal("GetRandom failed\n")
@@ -65,20 +66,21 @@ func TestReadPcrs(t *testing.T) {
 	fmt.Printf("TestReadPcrs\n")
 
 	// Open TPM
-	rw, err := OpenTPM("/dev/tpm0")
+	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if err != nil {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
 	fmt.Printf("Flushall\n")
-	Flushall(rw)
+	tpm2.Flushall(rw)
 
 	pcr := []byte{0x03, 0x80, 0x00, 0x00}
-	counter, pcr_out, alg, digest, err := ReadPcrs(rw, byte(4), pcr)
+	counter, pcr_out, alg, digest, err := tpm2.ReadPcrs(rw, byte(4), pcr)
 	if err != nil {
 		t.Fatal("ReadPcrs failed\n")
 	}
-	fmt.Printf("Counter: %x, pcr: %x, alg: %x, digest: %x\n", counter, pcr_out, alg, digest)
+	fmt.Printf("Counter: %x, pcr: %x, alg: %x, digest: %x\n", counter,
+		   pcr_out, alg, digest)
 	rw.Close()
 }
 
@@ -87,19 +89,20 @@ func TestReadClock(t *testing.T) {
 	fmt.Printf("TestReadClock\n")
 
 	// Open TPM
-	rw, err := OpenTPM("/dev/tpm0")
+	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if err != nil {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
 	fmt.Printf("Flushall\n")
-	Flushall(rw)
+	tpm2.Flushall(rw)
 
-	current_time, current_clock, err := ReadClock(rw)
+	current_time, current_clock, err := tpm2.ReadClock(rw)
 	if err != nil {
 		t.Fatal("ReadClock failed\n")
 	}
-	fmt.Printf("current_time: %x , current_clock: %x\n", current_time, current_clock)
+	fmt.Printf("current_time: %x , current_clock: %x\n",
+		   current_time, current_clock)
 	rw.Close()
 
 }
@@ -109,15 +112,16 @@ func TestReadClock(t *testing.T) {
 func TestGetCapabilities(t *testing.T) {
 
 	// Open TPM
-	rw, err := OpenTPM("/dev/tpm0")
+	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if err != nil {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
 	fmt.Printf("Flushall\n")
-	Flushall(rw)
+	tpm2.Flushall(rw)
 
-	handles, err := GetCapabilities(rw, OrdTPM_CAP_HANDLES, 1, 0x80000000)
+	handles, err := tpm2.GetCapabilities(rw, tpm2.OrdTPM_CAP_HANDLES,
+					     1, 0x80000000)
 	if err != nil {
 		t.Fatal("GetCapabilities failed\n")
 	}
@@ -132,38 +136,42 @@ func TestGetCapabilities(t *testing.T) {
 func TestCombinedKeyTest(t *testing.T) {
 
 	// Open tpm
-	rw, err := OpenTPM("/dev/tpm0")
+	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if err != nil {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
 
 	// Flushall
-	err =  Flushall(rw)
+	err =  tpm2.Flushall(rw)
 	if err != nil {
 		t.Fatal("Flushall failed\n")
 	}
 
 	// CreatePrimary
 	var empty []byte
-	primaryparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
-		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
-		uint16(1024), uint32(0x00010001), empty}
-	parent_handle, public_blob, err := CreatePrimary(rw,
-		uint32(OrdTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
+	primaryparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1), uint32(0x00030072),
+		empty, uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
+		uint16(0), uint16(1024), uint32(0x00010001), empty}
+	parent_handle, public_blob, err := tpm2.CreatePrimary(rw,
+		uint32(tpm2.OrdTPM_RH_OWNER), []int{0x7}, "",
+		"01020304", primaryparms)
 	if err != nil {
 		t.Fatal("CreatePrimary fails")
 	}
 	fmt.Printf("CreatePrimary succeeded\n")
 
 	// CreateKey
-	keyparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
-		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
-		uint16(1024), uint32(0x00010001), empty}
-	private_blob, public_blob, err := CreateKey(rw, uint32(parent_handle),
-		[]int{7}, "01020304", "01020304", keyparms)
+	keyparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1), uint32(0x00030072), empty,
+		uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
+		uint16(0), uint16(1024), uint32(0x00010001), empty}
+	private_blob, public_blob, err := tpm2.CreateKey(rw,
+		uint32(parent_handle), []int{7}, "01020304", "01020304",
+		keyparms)
 	if err != nil {
 		t.Fatal("CreateKey fails")
 	}
@@ -172,7 +180,7 @@ func TestCombinedKeyTest(t *testing.T) {
 	fmt.Printf("Public  blob: %x\n\n", public_blob)
 
 	// Load
-	key_handle, blob, err := Load(rw, parent_handle, "", "01020304",
+	key_handle, blob, err := tpm2.Load(rw, parent_handle, "", "01020304",
 	     public_blob, private_blob)
 	if err != nil {
 		t.Fatal("Load fails")
@@ -181,7 +189,7 @@ func TestCombinedKeyTest(t *testing.T) {
 	fmt.Printf("Blob from Load     : %x\n", blob)
 
 	// ReadPublic
-	public, name, qualified_name, err := ReadPublic(rw, key_handle)
+	public, name, qualified_name, err := tpm2.ReadPublic(rw, key_handle)
 	if err != nil {
 		t.Fatal("ReadPublic fails")
 	}
@@ -191,8 +199,8 @@ func TestCombinedKeyTest(t *testing.T) {
 	fmt.Printf("Qualified name blob: %x\n\n", qualified_name)
 
 	// Flush
-	err = FlushContext(rw, key_handle)
-	err = FlushContext(rw, parent_handle)
+	err = tpm2.FlushContext(rw, key_handle)
+	err = tpm2.FlushContext(rw, parent_handle)
 	rw.Close()
 }
 
@@ -200,26 +208,28 @@ func TestCombinedKeyTest(t *testing.T) {
 func TestCombinedSealTest(t *testing.T) {
 
 	// Open tpm
-	rw, err := OpenTPM("/dev/tpm0")
+	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if err != nil {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
 
 	// Flushall
-	err =  Flushall(rw)
+	err =  tpm2.Flushall(rw)
 	if err != nil {
 		t.Fatal("Flushall failed\n")
 	}
 
 	// CreatePrimary
 	var empty []byte
-	primaryparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
-		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
-		uint16(1024), uint32(0x00010001), empty}
-	parent_handle, public_blob, err := CreatePrimary(rw,
-		uint32(OrdTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
+	primaryparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1), uint32(0x00030072), empty,
+		uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
+		uint16(0), uint16(1024), uint32(0x00010001), empty}
+	parent_handle, public_blob, err := tpm2.CreatePrimary(rw,
+		uint32(tpm2.OrdTPM_RH_OWNER), []int{0x7}, "",
+		"01020304", primaryparms)
 	if err != nil {
 		t.Fatal("CreatePrimary fails")
 	}
@@ -227,73 +237,75 @@ func TestCombinedSealTest(t *testing.T) {
 
 	nonceCaller := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 	var secret []byte
-	sym := uint16(AlgTPM_ALG_NULL)
+	sym := uint16(tpm2.AlgTPM_ALG_NULL)
 	to_seal := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
 			  0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10}
-	hash_alg := uint16(AlgTPM_ALG_SHA1)
+	hash_alg := uint16(tpm2.AlgTPM_ALG_SHA1)
 
-	session_handle, policy_digest, err := StartAuthSession(rw,
-		Handle(OrdTPM_RH_NULL),
-		Handle(OrdTPM_RH_NULL), nonceCaller, secret,
-		uint8(OrdTPM_SE_POLICY), sym, hash_alg)
+	session_handle, policy_digest, err := tpm2.StartAuthSession(rw,
+		tpm2.Handle(tpm2.OrdTPM_RH_NULL),
+		tpm2.Handle(tpm2.OrdTPM_RH_NULL), nonceCaller, secret,
+		uint8(tpm2.OrdTPM_SE_POLICY), sym, hash_alg)
 	if err != nil {
-		FlushContext(rw, parent_handle)
+		tpm2.FlushContext(rw, parent_handle)
 		t.Fatal("StartAuthSession fails")
 	}
 	fmt.Printf("policy digest  : %x\n", policy_digest)
 
-	err = PolicyPassword(rw, session_handle)
+	err = tpm2.PolicyPassword(rw, session_handle)
 	if err != nil {
-		FlushContext(rw, parent_handle)
-		FlushContext(rw, session_handle)
+		tpm2.FlushContext(rw, parent_handle)
+		tpm2.FlushContext(rw, session_handle)
 		t.Fatal("PolicyPcr fails")
 	}
 	var tpm_digest []byte
-	err = PolicyPcr(rw, session_handle, tpm_digest, []int{7})
+	err = tpm2.PolicyPcr(rw, session_handle, tpm_digest, []int{7})
 	if err != nil {
-		FlushContext(rw, parent_handle)
-		FlushContext(rw, session_handle)
+		tpm2.FlushContext(rw, parent_handle)
+		tpm2.FlushContext(rw, session_handle)
 		t.Fatal("PolicyPcr fails")
 	}
 
-	policy_digest, err = PolicyGetDigest(rw, session_handle)
+	policy_digest, err = tpm2.PolicyGetDigest(rw, session_handle)
 	if err != nil {
-		FlushContext(rw, parent_handle)
-		FlushContext(rw, session_handle)
+		tpm2.FlushContext(rw, parent_handle)
+		tpm2.FlushContext(rw, session_handle)
 		t.Fatal("PolicyGetDigest after PolicyPcr fails")
 	}
 	fmt.Printf("policy digest after PolicyPcr: %x\n", policy_digest)
 
 	// CreateSealed
-	keyedhashparms := KeyedHashParams{uint16(AlgTPM_ALG_KEYEDHASH),
-		uint16(AlgTPM_ALG_SHA1),
-		uint32(0x00000012), empty, uint16(AlgTPM_ALG_AES), uint16(128),
-		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), empty}
-	private_blob, public_blob, err := CreateSealed(rw, parent_handle, policy_digest,
-		"01020304",  "01020304", to_seal, []int{7}, keyedhashparms)
+	keyedhashparms := tpm2.KeyedHashParams{uint16(tpm2.AlgTPM_ALG_KEYEDHASH),
+		uint16(tpm2.AlgTPM_ALG_SHA1), uint32(0x00000012), empty,
+		uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
+		empty}
+	private_blob, public_blob, err := tpm2.CreateSealed(rw, parent_handle,
+		policy_digest, "01020304",  "01020304", to_seal, []int{7},
+		keyedhashparms)
 	if err != nil {
-		FlushContext(rw, parent_handle)
-		FlushContext(rw, session_handle)
+		tpm2.FlushContext(rw, parent_handle)
+		tpm2.FlushContext(rw, session_handle)
 		t.Fatal("CreateSealed fails")
 	}
 
 	// Load
-	item_handle, _, err := Load(rw, parent_handle, "", "01020304",
+	item_handle, _, err := tpm2.Load(rw, parent_handle, "", "01020304",
 		public_blob, private_blob)
 	if err != nil {
-		FlushContext(rw, session_handle)
-		FlushContext(rw, item_handle)
-		FlushContext(rw, parent_handle)
+		tpm2.FlushContext(rw, session_handle)
+		tpm2.FlushContext(rw, item_handle)
+		tpm2.FlushContext(rw, parent_handle)
 		t.Fatal("Load fails")
 	}
 	fmt.Printf("Load succeeded\n")
 
 	// Unseal
-	unsealed, nonce, err := Unseal(rw, item_handle, "01020304",
+	unsealed, nonce, err := tpm2.Unseal(rw, item_handle, "01020304",
 		session_handle, policy_digest)
 	if err != nil {
-		FlushContext(rw, item_handle)
-		FlushContext(rw, parent_handle)
+		tpm2.FlushContext(rw, item_handle)
+		tpm2.FlushContext(rw, parent_handle)
 		t.Fatal("Unseal fails")
 	}
 	fmt.Printf("Unseal succeeds\n")
@@ -301,9 +313,9 @@ func TestCombinedSealTest(t *testing.T) {
 	fmt.Printf("nonce              : %x\n\n", nonce)
 
 	// Flush
-	FlushContext(rw, item_handle)
-	FlushContext(rw, parent_handle)
-	FlushContext(rw, session_handle)
+	tpm2.FlushContext(rw, item_handle)
+	tpm2.FlushContext(rw, parent_handle)
+	tpm2.FlushContext(rw, session_handle)
 	rw.Close()
 	if bytes.Compare(to_seal, unsealed) != 0 {
 		t.Fatal("seal and unsealed bytes dont match")
@@ -314,26 +326,28 @@ func TestCombinedSealTest(t *testing.T) {
 func TestCombinedQuoteTest(t *testing.T) {
 
 	// Open tpm
-	rw, err := OpenTPM("/dev/tpm0")
+	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if err != nil {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
 
 	// Flushall
-	err =  Flushall(rw)
+	err =  tpm2.Flushall(rw)
 	if err != nil {
 		t.Fatal("Flushall failed\n")
 	}
 
 	// CreatePrimary
 	var empty []byte
-	primaryparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
-		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
-		uint16(1024), uint32(0x00010001), empty}
-	parent_handle, public_blob, err := CreatePrimary(rw,
-		uint32(OrdTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
+	primaryparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1), uint32(0x00030072),
+		empty, uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
+		uint16(0), uint16(1024), uint32(0x00010001), empty}
+	parent_handle, public_blob, err := tpm2.CreatePrimary(rw,
+		uint32(tpm2.OrdTPM_RH_OWNER), []int{0x7}, "",
+		"01020304", primaryparms)
 	if err != nil {
 		t.Fatal("CreatePrimary fails")
 	}
@@ -341,20 +355,22 @@ func TestCombinedQuoteTest(t *testing.T) {
 
 	// Pcr event
 	eventData := []byte{1,2,3}
-	err =  PcrEvent(rw, 7, eventData)
+	err =  tpm2.PcrEvent(rw, 7, eventData)
 	if err != nil {
 		t.Fatal("PcrEvent fails")
 	}
 
 	// CreateKey (Quote Key)
-	keyparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
-		uint32(0x00050072), empty, uint16(AlgTPM_ALG_NULL), uint16(0),
-		uint16(AlgTPM_ALG_ECB), uint16(AlgTPM_ALG_RSASSA),
-		uint16(AlgTPM_ALG_SHA1),
+	keyparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1), uint32(0x00050072), empty,
+		uint16(tpm2.AlgTPM_ALG_NULL), uint16(0),
+		uint16(tpm2.AlgTPM_ALG_ECB), uint16(tpm2.AlgTPM_ALG_RSASSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1),
 		uint16(1024), uint32(0x00010001), empty}
 
-	private_blob, public_blob, err := CreateKey(rw, uint32(parent_handle),
-		[]int{7}, "01020304", "01020304", keyparms)
+	private_blob, public_blob, err := tpm2.CreateKey(rw,
+		uint32(parent_handle), []int{7}, "01020304", "01020304",
+		keyparms)
 	if err != nil {
 		t.Fatal("CreateKey fails")
 	}
@@ -363,7 +379,7 @@ func TestCombinedQuoteTest(t *testing.T) {
 	fmt.Printf("Public  blob: %x\n", public_blob)
 
 	// Load
-	quote_handle, blob, err := Load(rw, parent_handle, "", "01020304",
+	quote_handle, blob, err := tpm2.Load(rw, parent_handle, "", "01020304",
 	     public_blob, private_blob)
 	if err != nil {
 		t.Fatal("Load fails")
@@ -374,10 +390,10 @@ func TestCombinedQuoteTest(t *testing.T) {
 	// Quote
 	to_quote := []byte{0x0f,0x0e,0x0d,0x0c,0x0b,0x0a,0x09,0x08,
 			   0x07,0x06,0x05,0x04,0x03,0x02,0x01,0x00}
-	attest, sig, err := Quote(rw, quote_handle, "01020304", "01020304",
-		to_quote, []int{7}, uint16(AlgTPM_ALG_NULL))
+	attest, sig, err := tpm2.Quote(rw, quote_handle, "01020304", "01020304",
+		to_quote, []int{7}, uint16(tpm2.AlgTPM_ALG_NULL))
 	if err != nil {
-		FlushContext(rw, quote_handle)
+		tpm2.FlushContext(rw, quote_handle)
 		rw.Close()
 		t.Fatal("Quote fails")
 	}
@@ -385,44 +401,45 @@ func TestCombinedQuoteTest(t *testing.T) {
 	fmt.Printf("sig                : %x\n\n", sig)
 
 	// get info for verify
-	keyblob, name, qualified_name, err := ReadPublic(rw, quote_handle)
+	keyblob, name, qualified_name, err := tpm2.ReadPublic(rw, quote_handle)
 	if err != nil {
-		FlushContext(rw, quote_handle)
-		err = FlushContext(rw, parent_handle)
+		tpm2.FlushContext(rw, quote_handle)
+		err = tpm2.FlushContext(rw, parent_handle)
 		rw.Close()
 		t.Fatal("Quote fails")
 	}
 
 	// Flush
-	err = FlushContext(rw, quote_handle)
-	err = FlushContext(rw, parent_handle)
+	err = tpm2.FlushContext(rw, quote_handle)
+	err = tpm2.FlushContext(rw, parent_handle)
 	rw.Close()
 
 	// Verify quote
 	fmt.Printf("keyblob(%x): %x\n", len(keyblob), keyblob)
 	fmt.Printf("name(%x): %x\n", len(name), name)
 	fmt.Printf("qualified_name(%x): %x\n", len(qualified_name), qualified_name)
-	rsaParams, err := DecodeRsaBuf(public_blob)
+	rsaParams, err := tpm2.DecodeRsaBuf(public_blob)
 	if err != nil {
 		t.Fatal("DecodeRsaBuf fails %s", err)
 	}
-	PrintRsaParams(rsaParams)
+	tpm2.PrintRsaParams(rsaParams)
 
-	var quote_key_info QuoteKeyInfoMessage 
+	var quote_key_info tpm2.QuoteKeyInfoMessage 
 	att := int32(rsaParams.Attributes)
 	quote_key_info.Name = name
 	quote_key_info.Properties = &att
-	quote_key_info.PublicKey = new(PublicKeyMessage)
+	quote_key_info.PublicKey = new(tpm2.PublicKeyMessage)
 	key_type := "rsa"
 	quote_key_info.PublicKey.KeyType = &key_type
-	quote_key_info.PublicKey.RsaKey = new(RsaPublicKeyMessage)
+	quote_key_info.PublicKey.RsaKey = new(tpm2.RsaPublicKeyMessage)
 	key_name :=  "QuoteKey"
 	quote_key_info.PublicKey.RsaKey.KeyName = &key_name
 	sz_mod := int32(rsaParams.Mod_sz)
 	quote_key_info.PublicKey.RsaKey.BitModulusSize = &sz_mod
 	quote_key_info.PublicKey.RsaKey.Exponent = []byte{0,1,0,1}
 	quote_key_info.PublicKey.RsaKey.Modulus =  rsaParams.Modulus
-	if !VerifyQuote(to_quote, quote_key_info, uint16(AlgTPM_ALG_SHA1), attest, sig) {
+	if !tpm2.VerifyQuote(to_quote, quote_key_info,
+				uint16(tpm2.AlgTPM_ALG_SHA1), attest, sig) {
 		t.Fatal("VerifyQuote fails")
 	}
 	fmt.Printf("VerifyQuote succeeds\n")
@@ -430,44 +447,47 @@ func TestCombinedQuoteTest(t *testing.T) {
 
 // Combined Endorsement/Activate test
 func TestCombinedEndorsementTest(t *testing.T) {
-	hash_alg_id := uint16(AlgTPM_ALG_SHA1)
+	hash_alg_id := uint16(tpm2.AlgTPM_ALG_SHA1)
 
 	// Open tpm
-	rw, err := OpenTPM("/dev/tpm0")
+	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if err != nil {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
 
 	// Flushall
-	err =  Flushall(rw)
+	err =  tpm2.Flushall(rw)
 	if err != nil {
 		t.Fatal("Flushall failed\n")
 	}
 
 	// CreatePrimary
 	var empty []byte
-	primaryparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
-		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
-		uint16(2048), uint32(0x00010001), empty}
-	parent_handle, public_blob, err := CreatePrimary(rw,
-		uint32(OrdTPM_RH_OWNER), []int{0x7}, "", "", primaryparms)
+	primaryparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1), uint32(0x00030072), empty,
+		uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
+		uint16(0), uint16(2048), uint32(0x00010001), empty}
+	parent_handle, public_blob, err := tpm2.CreatePrimary(rw,
+		uint32(tpm2.OrdTPM_RH_OWNER), []int{0x7}, "", "", primaryparms)
 	if err != nil {
 		t.Fatal("CreatePrimary fails")
 	}
 	fmt.Printf("CreatePrimary succeeded\n")
-	endorseParams, err := DecodeRsaArea(public_blob)
+	endorseParams, err := tpm2.DecodeRsaArea(public_blob)
 	if err != nil {
 		t.Fatal("DecodeRsaBuf fails", err)
 	}
 
 	// CreateKey
-	keyparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
-		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
-		uint16(2048), uint32(0x00010001), empty}
-	private_blob, public_blob, err := CreateKey(rw, uint32(parent_handle),
+	keyparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1), uint32(0x00030072), empty,
+		uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
+		uint16(0), uint16(2048), uint32(0x00010001), empty}
+	private_blob, public_blob, err := tpm2.CreateKey(rw,
+		uint32(parent_handle),
 		[]int{7}, "", "01020304", keyparms)
 	if err != nil {
 		t.Fatal("CreateKey fails")
@@ -475,7 +495,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	fmt.Printf("CreateKey succeeded\n")
 
 	// Load
-	key_handle, _, err := Load(rw, parent_handle, "", "",
+	key_handle, _, err := tpm2.Load(rw, parent_handle, "", "",
 	     public_blob, private_blob)
 	if err != nil {
 		t.Fatal("Load fails")
@@ -483,7 +503,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	fmt.Printf("Load succeeded\n")
 
 	// ReadPublic
-	_, name, _, err := ReadPublic(rw, key_handle)
+	_, name, _, err := tpm2.ReadPublic(rw, key_handle)
 	if err != nil {
 		t.Fatal("ReadPublic fails")
 	}
@@ -494,24 +514,26 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	fmt.Printf("Credential: %x\n", credential)
 
 	// Internal MakeCredential
-	credBlob, encrypted_secret0, err := InternalMakeCredential(rw, parent_handle, credential, name)
+	credBlob, encrypted_secret0, err := tpm2.InternalMakeCredential(rw,
+		parent_handle, credential, name)
 	if err != nil {
-		FlushContext(rw, key_handle)
-		FlushContext(rw, parent_handle)
+		tpm2.FlushContext(rw, key_handle)
+		tpm2.FlushContext(rw, parent_handle)
 		t.Fatal("Can't InternalMakeCredential\n")
 	}
 
 	// ActivateCredential
-	recovered_credential1, err := ActivateCredential(rw, key_handle, parent_handle,
+	recovered_credential1, err := tpm2.ActivateCredential(rw,
+		key_handle, parent_handle,
 		"01020304", "", credBlob, encrypted_secret0)
 	if err != nil {
-		FlushContext(rw, key_handle)
-		FlushContext(rw, parent_handle)
+		tpm2.FlushContext(rw, key_handle)
+		tpm2.FlushContext(rw, parent_handle)
 		t.Fatal("Can't ActivateCredential\n")
 	}
 	if bytes.Compare(credential, recovered_credential1) != 0 {
-		FlushContext(rw, key_handle)
-		FlushContext(rw, parent_handle)
+		tpm2.FlushContext(rw, key_handle)
+		tpm2.FlushContext(rw, parent_handle)
 		t.Fatal("Credential and recovered credential differ\n")
 	}
 	fmt.Printf("InternalMake/Activate test succeeds\n\n")
@@ -523,32 +545,32 @@ func TestCombinedEndorsementTest(t *testing.T) {
 	protectorPublic.N = M
 
 	// MakeCredential
-	encrypted_secret, encIdentity, integrityHmac, err := MakeCredential(
+	encrypted_secret, encIdentity, integrityHmac, err := tpm2.MakeCredential(
 		protectorPublic, hash_alg_id, credential, name)
 	if err != nil {
-		FlushContext(rw, key_handle)
-		FlushContext(rw, parent_handle)
+		tpm2.FlushContext(rw, key_handle)
+		tpm2.FlushContext(rw, parent_handle)
 		t.Fatal("Can't MakeCredential\n")
 	}
 
 	// ActivateCredential
-	recovered_credential2, err := ActivateCredential(rw,
+	recovered_credential2, err := tpm2.ActivateCredential(rw,
 		key_handle, parent_handle, "01020304", "",
 		append(integrityHmac, encIdentity...), encrypted_secret)
 	if err != nil {
-		FlushContext(rw, key_handle)
-		FlushContext(rw, parent_handle)
+		tpm2.FlushContext(rw, key_handle)
+		tpm2.FlushContext(rw, parent_handle)
 		t.Fatal("Can't ActivateCredential\n")
 	}
 	if bytes.Compare(credential, recovered_credential2) != 0 {
-		FlushContext(rw, key_handle)
-		FlushContext(rw, parent_handle)
+		tpm2.FlushContext(rw, key_handle)
+		tpm2.FlushContext(rw, parent_handle)
 		t.Fatal("Credential and recovered credential differ\n")
 	}
 	fmt.Printf("Make/Activate test succeeds\n")
 
 	// Flush
-	FlushContext(rw, key_handle)
+	tpm2.FlushContext(rw, key_handle)
 }
 
 // Combined Evict test
@@ -557,37 +579,41 @@ func TestCombinedEvictTest(t *testing.T) {
 	return
 
 	// Open tpm
-	rw, err := OpenTPM("/dev/tpm0")
+	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if err != nil {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
 
 	// Flushall
-	err =  Flushall(rw)
+	err =  tpm2.Flushall(rw)
 	if err != nil {
 		t.Fatal("Flushall failed\n")
 	}
 
 	// CreatePrimary
 	var empty []byte
-	primaryparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
-		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
-		uint16(1024), uint32(0x00010001), empty}
-	parent_handle, public_blob, err := CreatePrimary(rw,
-		uint32(OrdTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
+	primaryparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1), uint32(0x00030072), empty,
+		uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
+		uint16(0), uint16(1024), uint32(0x00010001), empty}
+	parent_handle, public_blob, err := tpm2.CreatePrimary(rw,
+		uint32(tpm2.OrdTPM_RH_OWNER), []int{0x7}, "",
+		"01020304", primaryparms)
 	if err != nil {
 		t.Fatal("CreatePrimary fails")
 	}
 	fmt.Printf("CreatePrimary succeeded\n")
 
 	// CreateKey
-	keyparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
-		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
-		uint16(1024), uint32(0x00010001), empty}
-	private_blob, public_blob, err := CreateKey(rw, uint32(parent_handle),
+	keyparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1), uint32(0x00030072), empty,
+		uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
+		uint16(0), uint16(1024), uint32(0x00010001), empty}
+	private_blob, public_blob, err := tpm2.CreateKey(rw,
+		uint32(parent_handle),
 		[]int{7}, "01020304", "01020304", keyparms)
 	if err != nil {
 		t.Fatal("CreateKey fails")
@@ -595,7 +621,7 @@ func TestCombinedEvictTest(t *testing.T) {
 	fmt.Printf("CreateKey succeeded\n")
 
 	// Load
-	key_handle, _, err := Load(rw, parent_handle, "", "01020304",
+	key_handle, _, err := tpm2.Load(rw, parent_handle, "", "01020304",
 	     public_blob, private_blob)
 	if err != nil {
 		t.Fatal("Load fails")
@@ -605,20 +631,22 @@ func TestCombinedEvictTest(t *testing.T) {
 	perm_handle := uint32(0x810003e8)
 
 	// Evict
-	err = EvictControl(rw, Handle(OrdTPM_RH_OWNER), key_handle, Handle(perm_handle))
+	err = tpm2.EvictControl(rw, tpm2.Handle(tpm2.OrdTPM_RH_OWNER),
+		key_handle, tpm2.Handle(perm_handle))
 	if err != nil {
 		t.Fatal("EvictControl 1 fails")
 	}
 
 	// Evict
-	err = EvictControl(rw, Handle(OrdTPM_RH_OWNER), Handle(perm_handle), Handle(perm_handle))
+	err = tpm2.EvictControl(rw, tpm2.Handle(tpm2.OrdTPM_RH_OWNER),
+		tpm2.Handle(perm_handle), tpm2.Handle(perm_handle))
 	if err != nil {
 		t.Fatal("EvictControl 2 fails")
 	}
 
 	// Flush
-	err = FlushContext(rw, key_handle)
-	err = FlushContext(rw, parent_handle)
+	err = tpm2.FlushContext(rw, key_handle)
+	err = tpm2.FlushContext(rw, parent_handle)
 	rw.Close()
 }
 
@@ -640,60 +668,65 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
 	return
 
 	// Read der-encoded private policy key
-	der_policy_key := RetrieveFile("./cloudproxy_key_file")
+	der_policy_key := tpm2.RetrieveFile("./cloudproxy_key_file")
 	if der_policy_key == nil {
 		t.Fatal("Can't open private key file")
 	}
 
 	// Read der-encoded policy cert
-	der_policy_cert := RetrieveFile("./policy_key_cert")
+	der_policy_cert := tpm2.RetrieveFile("./policy_key_cert")
 	if der_policy_cert == nil {
 		t.Fatal("Can't open private key file")
 	}
 
 	// Read endorsement cert file
-	der_endorsement_cert := RetrieveFile("./endorsement_cert")
+	der_endorsement_cert := tpm2.RetrieveFile("./endorsement_cert")
 	if der_endorsement_cert == nil {
 		t.Fatal("Can't open private key file")
 	}
 	fmt.Printf("Got endorsement cert: %x\n\n", der_endorsement_cert)
 
 	// Open tpm
-	rw, err := OpenTPM("/dev/tpm0")
+	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if err != nil {
 		t.Fatal("Can't open tpm")
 	}
 
 	// Open endorsement and quote keys
 	var empty []byte
-	ek_parms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
-		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
-		uint16(1024), uint32(0x00010001), empty}
-	endorsement_handle, _, err := CreatePrimary(rw, uint32(OrdTPM_RH_OWNER), []int{7},
+	ek_parms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1),
+		uint32(0x00030072), empty, 
+		uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
+		uint16(0), uint16(1024), uint32(0x00010001), empty}
+	endorsement_handle, _, err := tpm2.CreatePrimary(rw,
+		uint32(tpm2.OrdTPM_RH_OWNER), []int{7},
 		"", "01020304", ek_parms)
 	if err != nil {
 		t.Fatal("CreatePrimary fails")
 	}
-	quote_parms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(AlgTPM_ALG_AES), uint16(128),
-		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), uint16(0),
-		uint16(1024), uint32(0x00010001), empty}
-	private_blob, public_blob, err := CreateKey(rw, uint32(OrdTPM_RH_OWNER), []int{7},
-						    "", "01020304", quote_parms)
+	quote_parms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1), uint32(0x00030072), empty,
+		uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
+		uint16(0), uint16(1024), uint32(0x00010001), empty}
+	private_blob, public_blob, err := tpm2.CreateKey(rw,
+		uint32(tpm2.OrdTPM_RH_OWNER), []int{7},
+		"", "01020304", quote_parms)
 	if err != nil {
 		t.Fatal("Create fails")
 	}
 	fmt.Printf("Create Key for quote succeeded\n")
 
-	quote_handle, quote_blob, err := Load(rw, endorsement_handle, "", "01020304",
-		public_blob, private_blob)
+	quote_handle, quote_blob, err := tpm2.Load(rw, endorsement_handle, "",
+		"01020304", public_blob, private_blob)
 	if err != nil {
 		t.Fatal("Quote Load fails")
 	}
 	fmt.Printf("Load succeeded, blob size: %d\n\n", len(quote_blob))
 
-	der_program_private, request_message, err := ConstructClientRequest(rw,
+	der_program_private, request_message, err := tpm2.ConstructClientRequest(rw,
 		der_endorsement_cert,
 		quote_handle, "", "01020304", "Test-Program-1")
 	if err != nil {
@@ -721,8 +754,8 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
  */
 
 	// Close handles
-	FlushContext(rw, endorsement_handle)
-	FlushContext(rw, quote_handle)
+	tpm2.FlushContext(rw, endorsement_handle)
+	tpm2.FlushContext(rw, quote_handle)
 	rw.Close()
 }
 

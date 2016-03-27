@@ -20,7 +20,7 @@ import (
 	"path"
 	"testing"
 
-	netproxy "golang.org/x/net/proxy"
+	netproxy "github.com/golang/x/net/proxy"
 )
 
 // Run proxy server.

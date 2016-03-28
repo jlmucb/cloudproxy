@@ -36,6 +36,9 @@ type TPM2Tao struct {
 	// on Linux, this is usually /dev/tpm0.
 	tpmfile *os.File
 
+	// ekCert
+	ekCert []byte
+
 	// password is the password.
 	password string
 
@@ -43,10 +46,10 @@ type TPM2Tao struct {
 	ekHandle uint32
 
 	// actHandle is an integer handle for an Activate key held by the TPM.
-	ekHandle uint32
+	actHandle uint32
 
-	// skHandle is an integer handle for an storageKey held by the TPM.
-	shHandle uint32
+	// SignHandle is an integer handle for an storageKey held by the TPM.
+	skHandle uint32
 
 	// signHandle is an integer handle for an signing held by the TPM.
 	signHandle uint32
@@ -128,6 +131,10 @@ func FinalizeTPM2Tao(tt *TPM2Tao) {
 	// Release the file handle.
 	tt.tpmfile.Close()
 */
+}
+
+// Need to export ekcert, acthandle for acrivate credential
+func GetTpm2Data() (error) {
 }
 
 // GetTaoName returns the Tao principal name assigned to the caller.

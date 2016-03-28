@@ -85,6 +85,10 @@ func ClearTaoProgramData(programData *TaoProgramData) {
 
 // RequestDomainServiceCert requests the signed Program 
 // Certificate from simpledomainservice.
+//  TODO: This needs to change in a way that is tao supplier dependent.
+//     For tpm2 we need the ekCert and the tao and we need the data
+//     for ActivateCredential.
+//     For tpm1.2, we need the aikCert.
 func RequestDomainServiceCert(network, addr string, keys *tao.Keys,
 		v *tao.Verifier) (*tao.Attestation, error) {
 	if keys.Cert == nil {
@@ -148,8 +152,6 @@ func InitializeSealedSymmetricKeys(filePath string, t tao.Tao, keysize int) (
 	return unsealed, nil
 }
 
-// TODO: Consider using peerCert := conn.ConnectionState().PeerCertificates[0]
-// ValidatePeerAttestation(&a, peerCert, guard); err != nil
 func InitializeSealedProgramKey(filePath string, t tao.Tao, domain tao.Domain) (
 		*tao.Keys, error) {
 

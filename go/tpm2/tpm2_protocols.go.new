@@ -13,6 +13,8 @@
 // limitations under the License.
 //
 
+package tpm2
+
 import (
 	"crypto/rand"
 	"crypto/rsa"
@@ -24,14 +26,14 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/go/tpm2/tpm2"
+	"github.com/jlmucb/cloudproxy/go/tpm2"
 )
 
 const (
-	primaryKeyHandle uint32 = 0x810003e8
-	quoteKeyHandle uint32 =  0x810003e9
-	storeKeyHandle uint32 =  0
-	rollbackKeyHandle uint32 =  0
+	PrimaryKeyHandle uint32 = 0x810003e8
+	QuoteKeyHandle uint32 =  0x810003e9
+	StoreKeyHandle uint32 =  0
+	RollbackKeyHandle uint32 =  0
 )
 
 // return handle, policy digest
@@ -76,7 +78,6 @@ func assistSeal(rw io.ReadWriteCloser, parentHandle tpm2.Handle, toSeal []byte,
 	fmt.Printf("seal: %x\n", toSeal)
 
 	var empty []byte
-	// replace 0x00000012 with FlagFixedTPM | FlagFixedParent
 	keyedhashparms := tpm2.KeyedHashParams{uint16(tpm2.AlgTPM_ALG_KEYEDHASH),
 		uint16(tpm2.AlgTPM_ALG_SHA1),
 		tmp2.FlagSealDefault, empty, uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
@@ -118,7 +119,7 @@ func assistUnseal(rw io.ReadWriteCloser, sessionHandle tpm2.Handle,
 	return unsealed, nonce, err
 }
 
-
+/*
 func GetTpm2KeyHandles () {
 }
 
@@ -224,10 +225,8 @@ func DomainProgramKeyServerProtocol(policyCert ekCert []byte, keySize int, hashA
 
 	// CreatePrimary for Endorsement key
 	var empty []byte
-	// replace 0x00030072 with FlagDecrypt | FlagRestricted | FlagFixedTPM | FlagFixedParent | FlagSensitiveDataOrigin
-	//    | FlagUserWithAuth
 	primaryparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
-		uint16(tpm2.AlgTPM_ALG_SHA1), uint32(0x00030072), empty,
+		uint16(tpm2.AlgTPM_ALG_SHA1), tpm2.FlagStorageDefault, empty,
 		uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
 		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
 		uint16(0), keySize, uint32(0x00010001), empty}
@@ -341,12 +340,13 @@ func DomainProgramKeyServerProtocol(policyCert ekCert []byte, keySize int, hashA
 	fmt.Printf("Cloudproxy protocol succeeds\n")
 	return nil, nil
 }
+*/
 
 // This program creates a key hierarchy consisting of a
 // primary key and quoting key for cloudproxy
 // and makes their handles permanent.
 func CreateTpm2KeyHierarchy(keySize int, hashAlg string,
-	primaryHandle quoteHandle uint32, quotePassword string) {
+	primaryHandle quoteHandle uint32, quotePassword string) (error) {
 
 	fmt.Printf("Primary handle: %x, quote handle: %x\n",
 		*primaryHandle, *quoteHandle)
@@ -396,7 +396,7 @@ func CreateTpm2KeyHierarchy(keySize int, hashAlg string,
 	// CreatePrimary
 	var empty []byte
 	primaryparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA), uint16(tpm2.AlgTPM_ALG_SHA1),
-		uint32(0x00030072), empty, uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
+		tpm2.FlagStorageDefault, empty, uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
 		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
 		uint16(0), modSize, uint32(0x00010001), empty}
 	tmpPrimaryHandle, public_blob, err := tpm2.CreatePrimary(rw,
@@ -409,7 +409,7 @@ func CreateTpm2KeyHierarchy(keySize int, hashAlg string,
 
 	// CreateKey (Quote Key)
 	keyparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA), uint16(tpm2.AlgTPM_ALG_SHA1),
-		uint32(0x00050072), empty, uint16(tpm2.AlgTPM_ALG_NULL), uint16(0),
+		tpm2.FlagSignerDefault, empty, uint16(tpm2.AlgTPM_ALG_NULL), uint16(0),
 		uint16(tpm2.AlgTPM_ALG_ECB), uint16(tpm2.AlgTPM_ALG_RSASSA),
 		uint16(tpm2.AlgTPM_ALG_SHA1),
 		uint16(1024), uint32(0x00010001), empty}

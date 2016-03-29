@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package tpm supports direct communication with a tpm 2.0 device under Linux.
+// Package tpm2 supports direct communication with a tpm 2.0 device under Linux.
+
 package tpm2
 
 import (

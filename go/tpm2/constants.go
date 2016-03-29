@@ -61,6 +61,12 @@ const(
 	FlagRestricted             uint32 = 0x00010000
 	FlagDecrypt                uint32 = 0x00020000
 	FlagSign                   uint32 = 0x00040000
+
+	FlagSealDefault		   uint32 = FlagFixedTPM | FlagFixedParent
+	FlagSignerDefault	   uint32 = FlagSign | FlagRestricted | FlagFixedTPM |
+					FlagFixedParent | FlagSensitiveDataOrigin | FlagUserWithAuth
+	FlagStorageDefault	   uint32 = FlagDecrypt | FlagRestricted | FlagFixedTPM |
+					FlagFixedParent | FlagSensitiveDataOrigin | FlagUserWithAuth
 )
 
 // Reserved Handles and Properties

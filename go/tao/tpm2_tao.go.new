@@ -32,9 +32,9 @@ import (
 
 // A TPM2Tao implements the Tao using a hardware TPM device.
 type TPM2Tao struct {
-	// tpmfile is the file through which TPM2Tao communicates with the TPM. E.g.,
-	// on Linux, this is usually /dev/tpm0.
-	tpmfile *os.File
+	// rw is the device through which TPM2Tao communicates with the TPM.
+	// usually /dev/tpm0.
+	tpm2Channel io.ReadWriter
 
 	// ekCert
 	ekCert []byte

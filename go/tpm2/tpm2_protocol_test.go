@@ -15,20 +15,9 @@
 package tpm2
 
 import (
-        // "bytes"
-        // "crypto/rand"
-        // "crypto/rsa"
-        // "crypto/sha1"
-        // "crypto/x509"
-        // "crypto/x509/pkix"
-        // "fmt"
-        // "math/big"
-        // "os"
         "testing"
-        // "time"
 
-        //"github.com/jlmucb/cloudproxy/go/tpm2"
-        // "github.com/golang/protobuf/proto"
+        // "github.com/jlmucb/cloudproxy/go/tpm2"
 )
 
 

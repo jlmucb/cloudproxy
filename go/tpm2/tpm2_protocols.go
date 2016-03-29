@@ -16,17 +16,17 @@
 package tpm2
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"flag"
+	// "crypto/rand"
+	// "crypto/rsa"
+	// "crypto/x509"
+	// "crypto/x509/pkix"
+	"errors"
 	"fmt"
-	"io/ioutil"
-	"time"
+	"io"
+	// "io/ioutil"
+	// "time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/jlmucb/cloudproxy/go/tpm2"
+	// "github.com/golang/protobuf/proto"
 )
 
 const (
@@ -38,51 +38,51 @@ const (
 
 // return handle, policy digest
 func assistCreateSession(rw io.ReadWriteCloser, hash_alg uint16,
-		pcrs []int) (tpm2.Handle, []byte, error) {
+		pcrs []int) (Handle, []byte, error) {
 	nonceCaller := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 	var secret []byte
-	sym := uint16(tpm2.AlgTPM_ALG_NULL)
+	sym := uint16(AlgTPM_ALG_NULL)
 
-	session_handle, policy_digest, err := tpm2.StartAuthSession(rw,
-		tpm2.Handle(tpm2.OrdTPM_RH_NULL),
-		tpm2.Handle(tpm2.OrdTPM_RH_NULL), nonceCaller, secret,
-		uint8(tpm2.OrdTPM_SE_POLICY), sym, hash_alg)
+	session_handle, policy_digest, err := StartAuthSession(rw,
+		Handle(OrdTPM_RH_NULL),
+		Handle(OrdTPM_RH_NULL), nonceCaller, secret,
+		uint8(OrdTPM_SE_POLICY), sym, hash_alg)
 	if err != nil {
-		return tpm2.Handle(0), nil, errors.New("Can't start session")
+		return Handle(0), nil, errors.New("Can't start session")
 	}
 
-	err = tpm2.PolicyPassword(rw, session_handle)
+	err = PolicyPassword(rw, session_handle)
 	if err != nil {
 		fmt.Printf("PolicyPcr fails")
-		return tpm2.Handle(0), nil, errors.New("Can't set policy password")
+		return Handle(0), nil, errors.New("Can't set policy password")
 	}
 	var tpm_digest []byte
-	err = tpm2.PolicyPcr(rw, session_handle, tpm_digest, pcrs)
+	err = PolicyPcr(rw, session_handle, tpm_digest, pcrs)
 	if err != nil {
 		fmt.Printf("PolicyPcr fails")
-		return tpm2.Handle(0), nil, errors.New("Can't set policy pcr")
+		return Handle(0), nil, errors.New("Can't set policy pcr")
 	}
 
-	policy_digest, err = tpm2.PolicyGetDigest(rw, session_handle)
+	policy_digest, err = PolicyGetDigest(rw, session_handle)
 	if err != nil {
-		return tpm2.Handle(0), nil, errors.New("olicyPcr fails")
+		return Handle(0), nil, errors.New("olicyPcr fails")
 	}
 	return session_handle, policy_digest, nil
 }
 
 // out: private, public
-func assistSeal(rw io.ReadWriteCloser, parentHandle tpm2.Handle, toSeal []byte,
+func assistSeal(rw io.ReadWriteCloser, parentHandle Handle, toSeal []byte,
 	parentPassword string, ownerPassword string, pcrs []int,
 	policy_digest []byte) ([]byte, []byte, error) {
 
 	fmt.Printf("seal: %x\n", toSeal)
 
 	var empty []byte
-	keyedhashparms := tpm2.KeyedHashParams{uint16(tpm2.AlgTPM_ALG_KEYEDHASH),
-		uint16(tpm2.AlgTPM_ALG_SHA1),
-		tmp2.FlagSealDefault, empty, uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
-		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL), empty}
-	private_blob, public_blob, err := tpm2.CreateSealed(rw, parentHandle,
+	keyedhashparms := KeyedHashParams{uint16(AlgTPM_ALG_KEYEDHASH),
+		uint16(AlgTPM_ALG_SHA1),
+		FlagSealDefault, empty, uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), empty}
+	private_blob, public_blob, err := CreateSealed(rw, parentHandle,
 		policy_digest, parentPassword, ownerPassword, toSeal,
 		[]int{7}, keyedhashparms)
 	if err != nil {
@@ -93,26 +93,26 @@ func assistSeal(rw io.ReadWriteCloser, parentHandle tpm2.Handle, toSeal []byte,
 }
 
 // out: unsealed blob, nonce
-func assistUnseal(rw io.ReadWriteCloser, sessionHandle tpm2.Handle,
-	primaryHandle tpm2.Handle, pub []byte, priv []byte,
+func assistUnseal(rw io.ReadWriteCloser, sessionHandle Handle,
+	primaryHandle Handle, pub []byte, priv []byte,
 	parentPassword string, ownerPassword string,
 	policy_digest []byte) ([]byte, []byte, error) {
 
 	// Load Sealed
-	sealHandle, _, err := tpm2.Load(rw, primaryHandle, parentPassword,
+	sealHandle, _, err := Load(rw, primaryHandle, parentPassword,
 		ownerPassword, pub, priv)
 	if err != nil {
-		tpm2.FlushContext(rw, sessionHandle)
+		FlushContext(rw, sessionHandle)
 		fmt.Printf("Load fails ", err, "\n")
 		return nil, nil, errors.New("Load failed")
 	}
 	fmt.Printf("Load succeeded\n")
 
 	// Unseal
-	unsealed, nonce, err := tpm2.Unseal(rw, sealHandle, ownerPassword,
+	unsealed, nonce, err := Unseal(rw, sealHandle, ownerPassword,
 		sessionHandle, policy_digest)
 	if err != nil {
-		tpm2.FlushContext(rw, sessionHandle)
+		FlushContext(rw, sessionHandle)
 		fmt.Printf("Unseal fails\n")
 		return nil, nil, errors.New("Unseal failed")
 	}
@@ -131,7 +131,7 @@ func DomainProgramKeyClientProtocol(policyCert ekCert []byte, keySize int, hashA
 ) {
 
 	// Open tpm
-	rw, err := tpm2.OpenTPM("/dev/tpm0")
+	rw, err := OpenTPM("/dev/tpm0")
 	if err != nil {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
@@ -139,8 +139,8 @@ func DomainProgramKeyClientProtocol(policyCert ekCert []byte, keySize int, hashA
 	defer rw.Close()
 
 	// Client request.
-	protoClientPrivateKey, request, err := tpm2.ConstructClientRequest(rw,
-		derEndorsementCert, tpm2.Handle(*permQuoteHandle), "",
+	protoClientPrivateKey, request, err := ConstructClientRequest(rw,
+		derEndorsementCert, Handle(*permQuoteHandle), "",
 		*quoteOwnerPassword, prog_name)
 	if err != nil {
 		fmt.Printf("ConstructClientRequest failed\n")
@@ -154,7 +154,7 @@ func DomainProgramKeyClientProtocol(policyCert ekCert []byte, keySize int, hashA
 
 	// Create Session for seal/unseal
 	sessionHandle, policy_digest, err := assistCreateSession(rw,
-		tpm2.AlgTPM_ALG_SHA1, []int{7})
+		AlgTPM_ALG_SHA1, []int{7})
 	if err != nil {
 		fmt.Printf("Can't start session for Seal\n")
 		return
@@ -166,7 +166,7 @@ func DomainProgramKeyClientProtocol(policyCert ekCert []byte, keySize int, hashA
 	var unsealing_secret [32]byte
 	rand.Read(unsealing_secret[0:32])
 	sealed_priv, sealed_pub, err := assistSeal(rw,
-		tpm2.Handle(*permPrimaryHandle), unsealing_secret[0:32],
+		Handle(*permPrimaryHandle), unsealing_secret[0:32],
 		*sealedParentPassword, *sealedOwnerPassword,
 		[]int{7}, policy_digest)
 	if err != nil {
@@ -182,11 +182,11 @@ func DomainProgramKeyClientProtocol(policyCert ekCert []byte, keySize int, hashA
 
 	// Encrypt private key.
 	var inHmac []byte
-        calcHmac, encrypted_program_key, err := tpm2.EncryptDataWithCredential(
-		true, tpm2.AlgTPM_ALG_SHA1, unsealing_secret[0:32],
+        calcHmac, encrypted_program_key, err := EncryptDataWithCredential(
+		true, AlgTPM_ALG_SHA1, unsealing_secret[0:32],
 		serialized_program_key, inHmac)
 	if err != nil {
-		fmt.Printf("Can't tpm2.EncryptDataWithCredential program key\n")
+		fmt.Printf("Can't EncryptDataWithCredential program key\n")
 		return
 	}
 	ioutil.WriteFile(*sealedProgramKeyFile +
@@ -225,13 +225,13 @@ func DomainProgramKeyServerProtocol(policyCert ekCert []byte, keySize int, hashA
 
 	// CreatePrimary for Endorsement key
 	var empty []byte
-	primaryparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
-		uint16(tpm2.AlgTPM_ALG_SHA1), tpm2.FlagStorageDefault, empty,
-		uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
-		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
+	primaryparms := RsaParams{uint16(AlgTPM_ALG_RSA),
+		uint16(AlgTPM_ALG_SHA1), FlagStorageDefault, empty,
+		uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL),
 		uint16(0), keySize, uint32(0x00010001), empty}
-	protectorHandle, _, err := tpm2.CreatePrimary(rw,
-		uint32(tpm2.OrdTPM_RH_ENDORSEMENT), []int{0x7}, "", "", primaryparms)
+	protectorHandle, _, err := CreatePrimary(rw,
+		uint32(OrdTPM_RH_ENDORSEMENT), []int{0x7}, "", "", primaryparms)
 	if err != nil {
 		fmt.Printf("CreatePrimary fails")
 		return
@@ -240,13 +240,13 @@ func DomainProgramKeyServerProtocol(policyCert ekCert []byte, keySize int, hashA
 	fmt.Printf("Endorsement handle: %x\n\n", protectorHandle)
 
 	// Parse policy key
-	keyMsg := new(tpm2.RsaPrivateKeyMessage)
+	keyMsg := new(RsaPrivateKeyMessage)
 	err = proto.Unmarshal(protoPolicyKey, keyMsg)
 	if err != nil {
 		fmt.Printf("Can't unmarshal policy key\n")
 		return
 	}
-	policyPrivateKey, err := tpm2.UnmarshalRsaPrivateFromProto(keyMsg)
+	policyPrivateKey, err := UnmarshalRsaPrivateFromProto(keyMsg)
 	if err != nil {
 		fmt.Printf("Can't decode policy key\n")
 		return
@@ -254,12 +254,12 @@ func DomainProgramKeyServerProtocol(policyCert ekCert []byte, keySize int, hashA
 	fmt.Printf("Key: %x\n", policyPrivateKey)
 
 	// Read signing instructions
-	signingInstructionsIn := tpm2.RetrieveFile(*fileNameSigningInstructions)
+	signingInstructionsIn := RetrieveFile(*fileNameSigningInstructions)
 	if signingInstructionsIn == nil {
 		fmt.Printf("Can't read signing instructions\n")
 		return
 	}
-	signing_instructions_message := new(tpm2.SigningInstructionsMessage)
+	signing_instructions_message := new(SigningInstructionsMessage)
 	err = proto.Unmarshal(signingInstructionsIn,
 		signing_instructions_message)
 	if  err != nil {
@@ -269,7 +269,7 @@ func DomainProgramKeyServerProtocol(policyCert ekCert []byte, keySize int, hashA
 	fmt.Printf("Got signing instructions\n")
 
 	// Server response.
-	response, err := tpm2.ConstructServerResponse(policyPrivateKey,
+	response, err := ConstructServerResponse(policyPrivateKey,
 		derPolicyCert, *signing_instructions_message, *request)
 	if err != nil {
 		fmt.Printf("ConstructServerResponse failed\n")
@@ -282,19 +282,19 @@ func DomainProgramKeyServerProtocol(policyCert ekCert []byte, keySize int, hashA
 	fmt.Printf("Response for ProgramName %s\n", *response.ProgramName)
 
 	// Client cert recovery.
-	cert, err := tpm2.ClientDecodeServerResponse(rw, protectorHandle,
-                tpm2.Handle(*permQuoteHandle), *quoteOwnerPassword, *response)
+	cert, err := ClientDecodeServerResponse(rw, protectorHandle,
+                Handle(*permQuoteHandle), *quoteOwnerPassword, *response)
 	if err != nil {
 		fmt.Printf("ClientDecodeServerResponse failed\n")
 		return
 	}
 
 	// Example: recover program private key from buffer.
-	encryptedProgramKey := tpm2.RetrieveFile(*sealedProgramKeyFile +
+	encryptedProgramKey := RetrieveFile(*sealedProgramKeyFile +
 		".encrypted_program_key")
-	programPrivateBlob := tpm2.RetrieveFile(*sealedProgramKeyFile +
+	programPrivateBlob := RetrieveFile(*sealedProgramKeyFile +
 		".private")
-	programPublicBlob := tpm2.RetrieveFile(*sealedProgramKeyFile + ".public")
+	programPublicBlob := RetrieveFile(*sealedProgramKeyFile + ".public")
 	recovered_hmac := encryptedProgramKey[0:20]
 	recovered_cipher_text := encryptedProgramKey[20:len(encryptedProgramKey)]
 	fmt.Printf("Recovered hmac, cipher_text: %x, %x\n", recovered_hmac,
@@ -305,14 +305,14 @@ func DomainProgramKeyServerProtocol(policyCert ekCert []byte, keySize int, hashA
 
 	// Unseal secret and decrypt private policy key.
 	unsealed, _, err := assistUnseal(rw, sessionHandle,
-		tpm2.Handle(*permPrimaryHandle), sealed_pub, sealed_priv,
+		Handle(*permPrimaryHandle), sealed_pub, sealed_priv,
 		"", *sealedOwnerPassword, policy_digest)
         if err != nil {
                 fmt.Printf("Can't Unseal\n")
 		return
         }
-        _, decrypted_program_key, err := tpm2.EncryptDataWithCredential(false,
-		tpm2.AlgTPM_ALG_SHA1, unsealed, encrypted_program_key, calcHmac)
+        _, decrypted_program_key, err := EncryptDataWithCredential(false,
+		AlgTPM_ALG_SHA1, unsealed, encrypted_program_key, calcHmac)
 	if err != nil {
 		fmt.Printf("Can't EncryptDataWithCredential (decrypt) program key\n")
 		return
@@ -321,12 +321,12 @@ func DomainProgramKeyServerProtocol(policyCert ekCert []byte, keySize int, hashA
 	fmt.Printf("decrypted_program_key: %x\n\n", decrypted_program_key)
 
 	// Close session.
-	tpm2.FlushContext(rw, sessionHandle)
+	FlushContext(rw, sessionHandle)
 
 	// Unmarshal private policy key.
-	newPrivKeyMsg := new(tpm2.RsaPrivateKeyMessage)
+	newPrivKeyMsg := new(RsaPrivateKeyMessage)
         err = proto.Unmarshal(decrypted_program_key, newPrivKeyMsg)
-        newProgramKey, err := tpm2.UnmarshalRsaPrivateFromProto(newPrivKeyMsg)
+        newProgramKey, err := UnmarshalRsaPrivateFromProto(newPrivKeyMsg)
         if err != nil {
                 fmt.Printf("Can't unmarshal key to proto\n")
 		return
@@ -346,109 +346,109 @@ func DomainProgramKeyServerProtocol(policyCert ekCert []byte, keySize int, hashA
 // primary key and quoting key for cloudproxy
 // and makes their handles permanent.
 func CreateTpm2KeyHierarchy(keySize int, hashAlg string,
-	primaryHandle quoteHandle uint32, quotePassword string) (error) {
+	primaryHandle uint32, quoteHandle uint32, quotePassword string) (error) {
 
 	fmt.Printf("Primary handle: %x, quote handle: %x\n",
-		*primaryHandle, *quoteHandle)
+		primaryHandle, quoteHandle)
 	fmt.Printf("modulus size: %d,  hash algorithm: %s\n",
-		*keySize, *hashAlg)
+		keySize, hashAlg)
 
-	modSize := uint16(*keySize)
+	modSize := uint16(keySize)
 	var hash_alg_id uint16
-	if *hashAlg == "sha1" {
-		hash_alg_id = uint16(tpm2.AlgTPM_ALG_SHA1)
-	} else if  *hashAlg == "sha256" {
-		hash_alg_id = uint16(tpm2.AlgTPM_ALG_SHA256)
+	if hashAlg == "sha1" {
+		hash_alg_id = uint16(AlgTPM_ALG_SHA1)
+	} else if  hashAlg == "sha256" {
+		hash_alg_id = uint16(AlgTPM_ALG_SHA256)
 	} else {
 		fmt.Printf("Unsupported Hash algoritm\n")
-		return
+		return errors.New("Bad hash algorithm")
 	}
 	fmt.Printf("hash: %x\n", hash_alg_id)
 
 	// Open tpm
-	rw, err := tpm2.OpenTPM("/dev/tpm0")
+	rw, err := OpenTPM("/dev/tpm0")
 	if err != nil {
 		fmt.Printf("OpenTPM failed %s\n", err)
-		return
+		return errors.New("cant open tpm")
 	}
 	defer rw.Close()
 
 	// Flushall
-	err =  tpm2.Flushall(rw)
+	err =  Flushall(rw)
 	if err != nil {
 		fmt.Printf("Flushall failed\n")
-		return
+		return errors.New("Cant flushall")
 	}
 	fmt.Printf("rw: %x\n", rw)
 
 	// Remove old permanent handles
-	err = tpm2.EvictControl(rw, tpm2.Handle(tpm2.OrdTPM_RH_OWNER), tpm2.Handle(*primaryHandle),
-			tpm2.Handle(*primaryHandle))
+	err = EvictControl(rw, Handle(OrdTPM_RH_OWNER), Handle(primaryHandle),
+			Handle(primaryHandle))
 	if err != nil {
 		fmt.Printf("Evict existing permanant primary handle failed\n")
 	}
-	err = tpm2.EvictControl(rw, tpm2.Handle(tpm2.OrdTPM_RH_OWNER), tpm2.Handle(*quoteHandle),
-		tpm2.Handle(*quoteHandle))
+	err = EvictControl(rw, Handle(OrdTPM_RH_OWNER), Handle(quoteHandle),
+		Handle(quoteHandle))
 	if err != nil {
 		fmt.Printf("Evict existing permanant quote handle failed\n")
 	}
 
 	// CreatePrimary
 	var empty []byte
-	primaryparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA), uint16(tpm2.AlgTPM_ALG_SHA1),
-		tpm2.FlagStorageDefault, empty, uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
-		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
+	primaryparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+		FlagStorageDefault, empty, uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL),
 		uint16(0), modSize, uint32(0x00010001), empty}
-	tmpPrimaryHandle, public_blob, err := tpm2.CreatePrimary(rw,
-		uint32(tpm2.OrdTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
+	tmpPrimaryHandle, public_blob, err := CreatePrimary(rw,
+		uint32(OrdTPM_RH_OWNER), []int{0x7}, "", "01020304", primaryparms)
 	if err != nil {
 		fmt.Printf("CreatePrimary fails\n")
-		return
+		return errors.New("CreatePrimary failed")
 	}
 	fmt.Printf("CreatePrimary succeeded\n")
 
 	// CreateKey (Quote Key)
-	keyparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA), uint16(tpm2.AlgTPM_ALG_SHA1),
-		tpm2.FlagSignerDefault, empty, uint16(tpm2.AlgTPM_ALG_NULL), uint16(0),
-		uint16(tpm2.AlgTPM_ALG_ECB), uint16(tpm2.AlgTPM_ALG_RSASSA),
-		uint16(tpm2.AlgTPM_ALG_SHA1),
+	keyparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+		FlagSignerDefault, empty, uint16(AlgTPM_ALG_NULL), uint16(0),
+		uint16(AlgTPM_ALG_ECB), uint16(AlgTPM_ALG_RSASSA),
+		uint16(AlgTPM_ALG_SHA1),
 		uint16(1024), uint32(0x00010001), empty}
-	private_blob, public_blob, err := tpm2.CreateKey(rw,
+	private_blob, public_blob, err := CreateKey(rw,
 		uint32(tmpPrimaryHandle), []int{7}, "01020304", "01020304", keyparms)
 	if err != nil {
 		fmt.Printf("CreateKey (Quote) fails ", err, "\n")
-		return
+		return errors.New("CreateKey failed")
 	}
 	fmt.Printf("CreateKey (Quote) succeeded\n")
 
 	// Load
-	tmpQuoteHandle, _, err := tpm2.Load(rw, tmpPrimaryHandle, "", "01020304",
+	tmpQuoteHandle, _, err := Load(rw, tmpPrimaryHandle, "", "01020304",
 	     public_blob, private_blob)
 	if err != nil {
 		fmt.Printf("Load fails ", err, "\n")
-		return
+		return errors.New("Load failed")
 	}
 	fmt.Printf("Load succeeded %d\n", tmpQuoteHandle)
 
 	// Install new handles
-	err = tpm2.EvictControl(rw, tpm2.Handle(tpm2.OrdTPM_RH_OWNER), tmpPrimaryHandle,
-			tpm2.Handle(*primaryHandle))
+	err = EvictControl(rw, Handle(OrdTPM_RH_OWNER), tmpPrimaryHandle,
+			Handle(primaryHandle))
 	if err != nil {
-		tpm2.FlushContext(rw, tmpPrimaryHandle)
-		tpm2.FlushContext(rw, tmpQuoteHandle)
+		FlushContext(rw, tmpPrimaryHandle)
+		FlushContext(rw, tmpQuoteHandle)
 		fmt.Printf("Install new primary handle failed\n")
-		return
+		return errors.New("Cant EvictControl")
 	}
 	fmt.Printf("Install new primary handle succeeded\n")
-	err = tpm2.EvictControl(rw, tpm2.Handle(tpm2.OrdTPM_RH_OWNER), tmpQuoteHandle,
-			tpm2.Handle(*quoteHandle))
+	err = EvictControl(rw, Handle(OrdTPM_RH_OWNER), tmpQuoteHandle,
+			Handle(quoteHandle))
 	if err != nil {
-		tpm2.FlushContext(rw, tmpQuoteHandle)
+		FlushContext(rw, tmpQuoteHandle)
 		fmt.Printf("Install new quote handle failed\n")
-		return
+		return errors.New("Cant EvictControl")
 	}
 	fmt.Printf("Install new quote handle succeeded\n")
-	return
+	return nil
 }
 
 /*
@@ -472,20 +472,20 @@ func ReadKeys() {
 		*fileEndorsementCertInFileName, *fileEndorsementCertOutFileName)
 
 	// Read Policy key
-	protoPolicyKey := tpm2.RetrieveFile(*filePolicyKeyFileName)
+	protoPolicyKey := RetrieveFile(*filePolicyKeyFileName)
 	if protoPolicyKey == nil {
 		fmt.Printf("Can't read policy key file\n")
 		return
 	}
 
 	// Parse policy key
-	keyMsg := new(tpm2.RsaPrivateKeyMessage)
+	keyMsg := new(RsaPrivateKeyMessage)
 	err := proto.Unmarshal(protoPolicyKey, keyMsg)
 	if err != nil {
 		fmt.Printf("Can't unmarshal policy key\n")
 		return
 	}
-	policyPrivateKey, err := tpm2.UnmarshalRsaPrivateFromProto(keyMsg)
+	policyPrivateKey, err := UnmarshalRsaPrivateFromProto(keyMsg)
 	if err != nil {
 		fmt.Printf("Can't decode policy key\n")
 		return
@@ -498,7 +498,7 @@ func ReadKeys() {
 	validFor := 365*24*time.Hour
 	notAfter := notBefore.Add(validFor)
 	selfSignTemplate := x509.Certificate{
-		SerialNumber:tpm2. GetSerialNumber(),
+		SerialNumber: GetSerialNumber(),
 		Subject: pkix.Name {
 			Organization: []string{"CloudProxyAuthority"},
 			CommonName:   *domainName,
@@ -528,7 +528,7 @@ func ReadKeys() {
 	ioutil.WriteFile(*filePolicyCertFileName, der_policy_cert, 0644)
 
 	// Get endorsement and check it
-	der_endorsement_cert := tpm2.RetrieveFile(*fileEndorsementCertInFileName)
+	der_endorsement_cert := RetrieveFile(*fileEndorsementCertInFileName)
 	if der_endorsement_cert == nil {
 		fmt.Printf("Can't read Endorsement Cert File\n")
 		return
@@ -539,7 +539,7 @@ func ReadKeys() {
 		return
 	}
 	signeeTemplate := x509.Certificate{
-		SerialNumber:tpm2. GetSerialNumber(),
+		SerialNumber: GetSerialNumber(),
 		Subject: old_endorse_cert.Subject,
 		NotBefore: notBefore,
 		NotAfter:  notAfter,
@@ -571,7 +571,7 @@ func ReadKeys() {
 	fmt.Printf("Policy cert: %x\n\n", der_policy_cert)
 	ioutil.WriteFile(*fileEndorsementCertOutFileName, new_der_endorsement_cert, 0644)
 
-	ok, err := tpm2.VerifyDerCert(new_der_endorsement_cert, der_policy_cert)
+	ok, err := VerifyDerCert(new_der_endorsement_cert, der_policy_cert)
 	if ok {
 		fmt.Printf("Endorsement cert verifies\n")
 	} else {

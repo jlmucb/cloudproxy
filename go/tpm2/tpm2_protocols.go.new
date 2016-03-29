@@ -120,7 +120,7 @@ func GetTpm2KeyHandles () {
 // This program runs the cloudproxy protocol.
 func DomainProgramKeyClientProtocol(policyCert ekCert []byte, keySize int, hashAlg string,
 	prog_name string,
-	permPrimaryHandle permQuoteHandle uint32, quoteOwnerPassword sealedOwnerPassword)
+	primaryHandle quoteHandle uint32, quoteOwnerPassword sealedOwnerPassword string)
 	([]byte, error)
 ) {
 

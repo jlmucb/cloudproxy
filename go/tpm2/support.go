@@ -21,19 +21,14 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/x509"
-	// "encoding/hex"
 	"errors"
 	"fmt"
-	// "io"
 	"math/big"
-	// "net"
 	"os"
-	// "time"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -61,6 +56,10 @@ func GetPublicKeyFromDerCert(derCert []byte) (*rsa.PublicKey, error) {
 	return publicKey, nil
 }
 
+func GetDerFromPublicKey(key *rsa.PublicKey) ([]byte, error) {
+	return nil, nil
+}
+
 func GetPrivateKeyFromSerializedMessage(in []byte) (*rsa.PrivateKey, error){
 	msg := new(RsaPrivateKeyMessage)
 	err := proto.Unmarshal(in, msg)
@@ -71,25 +70,49 @@ func GetPrivateKeyFromSerializedMessage(in []byte) (*rsa.PrivateKey, error){
 	return key, nil
 }
 
-func GeneratePolicyKey() {
+func SignPolicyKey(policyKey *rsa.PrivateKey) {
+/*
+// Sign cert.
+	var notBefore time.Time
+	notBefore = time.Now()
+	validFor := 365*24*time.Hour
+	notAfter := notBefore.Add(validFor)
+	selfSignTemplate := x509.Certificate{
+		SerialNumber:tpm. GetSerialNumber(),
+		Subject: pkix.Name {
+			Organization: []string{"CloudProxyAuthority"},
+			CommonName:   *domainName,
+			},
+		NotBefore: notBefore,
+		NotAfter:  notAfter,
+		KeyUsage:  x509.KeyUsageCertSign,
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		IsCA: true,
+	}
+	policy_pub := &policyPrivateKey.PublicKey
+	der_policy_cert, err := x509.CreateCertificate(rand.Reader, &selfSignTemplate, &selfSignTemplate,
+		policy_pub, policyPrivateKey)
+	if err != nil {
+		fmt.Printf("Can't CreateCertificate ", err, "\n")
+	}
+	policy_cert, err := x509.ParseCertificate(der_policy_cert)
+	if err != nil {
+		fmt.Printf("Can't parse policy certificate ", err, "\n")
+	}
+ */
 }
 
-func SignPolicyKey() {
+func SerializeRsaPrivateKey(key *rsa.PrivateKey) ([]byte, error) {
+	return nil, nil
 }
 
-func SavePolicyKeyToFile() {
+func DeserializeRsaPolicyKey(in []byte) (*rsa.PrivateKey, error) {
+	return nil, nil
 }
 
-func GetPolicyKeyFromFile() {
-}
-
-func GetCertFromFile() {
-}
-
-func SaveCertToFile() {
-}
-
-func GenerateEndorsementCert() {
+func GenerateEndorsementCert() ([]byte, error) {
+	return nil, nil
 }
 
 func PublicKeyFromPrivate(priv interface{}) interface{} {
@@ -101,7 +124,8 @@ func PublicKeyFromPrivate(priv interface{}) interface{} {
 	}
 }
 
-func KDFA(alg uint16, key []byte, label string, contextU []byte, contextV []byte, bits int) ([]byte, error) {
+func KDFA(alg uint16, key []byte, label string, contextU []byte,
+		contextV []byte, bits int) ([]byte, error) {
 	counter := uint32(0)
 	bytes_left := (bits + 7) / 8;
 	var out []byte
@@ -131,7 +155,8 @@ func KDFA(alg uint16, key []byte, label string, contextU []byte, contextV []byte
 			outc := append(contextU, contextV...)
 			u_bits := uint32(bits)
 			outd,_ := pack([]interface{}{&u_bits})
-			in := append(outa, append(arr[0:len(label)+1], append(outc, outd...)...)...)
+			in := append(outa, append(arr[0:len(label)+1],
+				append(outc, outd...)...)...)
 			mac.Write(in)
 			out = append(out, mac.Sum(nil)...)
 			bytes_left -= 32
@@ -188,62 +213,6 @@ func EncryptDataWithCredential(encrypt_flag bool, hash_alg_id uint16,
 	}
 
 	return calculatedHmac, outData, nil
-}
-
-// Returns encrypted secret.
-func encryptHack (hash_alg_id uint16, modSize int,
-		  protectorPublic *rsa.PublicKey, seed []byte,
-		  label []byte) ([]byte, error) {
-
-	private, err := rsa.GenerateKey(rand.Reader, modSize)
-	if  err != nil || private == nil {
-		return nil, errors.New("Can't gen private key")
-	}
-	public := &private.PublicKey
-
-	var fake_encrypted_secret []byte
-	if hash_alg_id == uint16(AlgTPM_ALG_SHA1) {
-		fake_encrypted_secret, err = rsa.EncryptOAEP(sha1.New(),
-			rand.Reader, public, seed, label)
-	} else if hash_alg_id == uint16(AlgTPM_ALG_SHA256) {
-		fake_encrypted_secret, err = rsa.EncryptOAEP(sha256.New(),
-			rand.Reader, public, seed, label)
-	} else {
-		return nil, errors.New("Unsupported hash")
-	}
-	if  err != nil {
-		return nil, errors.New("Can't fake encrypt")
-	}
-	fmt.Printf("encrypted_secret: %x\n", fake_encrypted_secret)
-	var N *big.Int
-	var D *big.Int
-	var x *big.Int
-	var z *big.Int
-	N = public.N
-	D = private.D
-	x = new(big.Int)
-	z = new(big.Int)
-	x.SetBytes(fake_encrypted_secret)
-	z = z.Exp(x, D, N)
-	decrypted_pad := z.Bytes()
-	fmt.Printf("decrypted with pad (%d): %x\n", len(decrypted_pad), decrypted_pad)
-	// zero := []byte{0}
-	// decrypted_pad = append(zero, decrypted_pad...)
-	// fmt.Printf("new pad (%d): %x\n", len(decrypted_pad), decrypted_pad)
-
-	// Now encrypt with real key
-	var M *big.Int
-	var E *big.Int
-	var u *big.Int
-	var w *big.Int
-	M = protectorPublic.N
-	E = big.NewInt(int64(protectorPublic.E))
-	u = new(big.Int)
-	w = new(big.Int)
-	u.SetBytes(decrypted_pad)
-	w = w.Exp(u, E, M)
-	encrypted_secret  := w.Bytes()
-	return encrypted_secret, nil
 }
 
 // Retieve file.
@@ -370,3 +339,91 @@ func UnmarshalRsaPrivateFromProto(msg *RsaPrivateKeyMessage) (*rsa.PrivateKey, e
 	return key, nil
 }
 
+/*
+	privatePolicyKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	// Sign cert.
+	var notBefore time.Time
+	notBefore = time.Now()
+	validFor := 365*24*time.Hour
+	notAfter := notBefore.Add(validFor)
+	selfSignTemplate := x509.Certificate{
+		SerialNumber:tpm. GetSerialNumber(),
+		Subject: pkix.Name {
+			Organization: []string{"CloudProxyAuthority"},
+			CommonName:   *domainName,
+			},
+		NotBefore: notBefore,
+		NotAfter:  notAfter,
+		KeyUsage:  x509.KeyUsageCertSign,
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		IsCA: true,
+	}
+	policy_pub := &policyPrivateKey.PublicKey
+	der_policy_cert, err := x509.CreateCertificate(rand.Reader, &selfSignTemplate, &selfSignTemplate,
+		policy_pub, policyPrivateKey)
+	if err != nil {
+		fmt.Printf("Can't CreateCertificate ", err, "\n")
+	}
+	policy_cert, err := x509.ParseCertificate(der_policy_cert)
+	if err != nil {
+		fmt.Printf("Can't parse policy certificate ", err, "\n")
+	}
+	fmt.Printf("Program cert bin: %x\n", policy_cert)
+	ioutil.WriteFile(*filePolicyCertFileName, der_policy_cert, 0644)
+
+	// Save policy cert.
+	fmt.Printf("Policy cert: %x\n\n", der_policy_cert)
+	ioutil.WriteFile(*filePolicyCertFileName, der_policy_cert, 0644)
+
+	// Get endorsement and check it
+	der_endorsement_cert := tpm.RetrieveFile(*fileEndorsementCertInFileName)
+	if der_endorsement_cert == nil {
+		fmt.Printf("Can't read Endorsement Cert File\n")
+		return
+	}
+	old_endorse_cert, err := x509.ParseCertificate(der_endorsement_cert)
+	if err != nil {
+		fmt.Printf("Can't parse endorsement certificate ", err, "\n")
+		return
+	}
+	signeeTemplate := x509.Certificate{
+		SerialNumber:tpm. GetSerialNumber(),
+		Subject: old_endorse_cert.Subject,
+		NotBefore: notBefore,
+		NotAfter:  notAfter,
+		KeyUsage:  x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+	}
+
+	// This seems to get the signer public key
+
+	var endorsementPublic *rsa.PublicKey
+	switch k :=  old_endorse_cert.PublicKey.(type) {
+	case  *rsa.PublicKey:
+		endorsementPublic = k
+	case  *rsa.PrivateKey:
+		endorsementPublic = &k.PublicKey
+	default:
+		fmt.Printf("endorsement cert is not an rsa key\n")
+		return
+	}
+
+	new_der_endorsement_cert, err := x509.CreateCertificate(rand.Reader,
+		&signeeTemplate, policy_cert, endorsementPublic, policyPrivateKey)
+	if err != nil {
+		fmt.Printf("Can't CreateCertificate ", err, "\n")
+	}
+	fmt.Printf("New endorsement cert: %x\n\n", new_der_endorsement_cert)
+
+	// Save endorsement cert.
+	fmt.Printf("Policy cert: %x\n\n", der_policy_cert)
+	ioutil.WriteFile(*fileEndorsementCertOutFileName, new_der_endorsement_cert, 0644)
+
+	ok, err := tpm.VerifyDerCert(new_der_endorsement_cert, der_policy_cert)
+	if ok {
+		fmt.Printf("Endorsement cert verifies\n")
+	} else {
+		fmt.Printf("Endorsement cert does not verify ", err, "\n")
+	}
+ */

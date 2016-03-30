@@ -26,16 +26,12 @@ type Field struct {
 }
 
 type TypeVisitor struct {
-	StructTypes map[string][]Field
-	ArrayTypes map[string]string
-	IdentTypes map[string]string
+	ConcreteTypes map[string][]Field
 	InterfaceTypes map[string]bool
 }
 
 type FieldVisitor struct {
-	StructTypes map[string][]Field
-	ArrayTypes map[string]string
-	IdentTypes map[string]string
+	ConcreteTypes map[string][]Field
 	InterfaceTypes map[string]bool
 	Name string
 }
@@ -51,14 +47,12 @@ func (tv *TypeVisitor) Visit(n ast.Node) ast.Visitor {
 	switch ts.Type.(type) {
 	case *ast.StructType:
 		fmt.Println(" is a struct")
-		if _, ok := tv.StructTypes[name]; !ok {
-			tv.StructTypes[name] = make([]Field, 0)
+		if _, ok := tv.ConcreteTypes[name]; !ok {
+			tv.ConcreteTypes[name] = make([]Field, 0)
 		}
 
 		return &FieldVisitor{
-			StructTypes: tv.StructTypes,
-			ArrayTypes: tv.ArrayTypes,
-			IdentTypes: tv.IdentTypes,
+			ConcreteTypes: tv.ConcreteTypes,
 			InterfaceTypes: tv.InterfaceTypes,
 			Name: name,
 		}
@@ -66,13 +60,13 @@ func (tv *TypeVisitor) Visit(n ast.Node) ast.Visitor {
 		at := ts.Type.(*ast.ArrayType)
 		elt, ok := at.Elt.(*ast.Ident)
 		if ok {
+			tv.ConcreteTypes[name] = []Field{Field{"elt", ArrayType, elt.Name}}
 			fmt.Printf(" is an array of type []%s\n", elt.Name)
-			tv.ArrayTypes[name] = elt.Name
 		}
 	case *ast.Ident:
 		id := ts.Type.(*ast.Ident)
 		fmt.Printf(" is a %s\n", id.Name)
-		tv.IdentTypes[name] = id.Name
+		tv.ConcreteTypes[name] = []Field{Field{"value", IdentType, id.Name}}
 	case *ast.InterfaceType:
 		fmt.Println(" is an interface")
 		tv.InterfaceTypes[name] = true
@@ -94,7 +88,7 @@ func (fv *FieldVisitor) Visit(n ast.Node) ast.Visitor {
 	}
 
 	name := strings.ToLower(f.Names[0].Name)
-	st := fv.StructTypes
+	st := fv.ConcreteTypes
 	switch f.Type.(type) {
 	case *ast.Ident:
 		ident := f.Type.(*ast.Ident)
@@ -120,9 +114,7 @@ func (fv *FieldVisitor) Visit(n ast.Node) ast.Visitor {
 	}
 
 	return &TypeVisitor{
-		StructTypes: fv.StructTypes,
-		IdentTypes: fv.IdentTypes,
-		ArrayTypes: fv.ArrayTypes,
+		ConcreteTypes: fv.ConcreteTypes,
 		InterfaceTypes: fv.InterfaceTypes,
 	}
 }
@@ -157,9 +149,67 @@ func (fw *FuncReceiverWalker) Visit(n ast.Node) ast.Visitor {
 	return fw
 }
 
-func main() {
-	fset := token.NewFileSet()
+type Constant struct {
+	Name string
+	Value int
+}
 
+type ConstantVisitor struct {
+	Constants []Constant
+}
+
+func (tv *ConstantVisitor) Visit(n ast.Node) ast.Visitor {
+	vs, ok := n.(*ast.ValueSpec)
+	if !ok {
+		return tv
+	}
+
+	if len(vs.Names) == 0 {
+		return tv
+	}
+
+	ident := vs.Names[0]
+	if ident.Name == "_" {
+		return tv
+	}
+
+	if ident.Obj == nil || ident.Obj.Data == nil || ident.Obj.Kind != ast.Con {
+		return tv
+	}
+
+	value, ok := ident.Obj.Data.(int)
+	if !ok {
+		return tv
+	}
+
+	// Turn the constant name into a C++ constant name.
+	name := "k" + strings.Title(ident.Name)
+
+	tv.Constants = append(tv.Constants, Constant{name, value})
+	return tv
+}
+
+func main() {
+	output := os.Stdout
+
+	tset := token.NewFileSet()
+	tf, err := parser.ParseFile(tset, "../../tao/auth/binary.go", nil, 0)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	//ast.Print(tset, tf)
+
+	constantVisitor := &ConstantVisitor{
+		Constants: make([]Constant, 0),
+	}
+
+	ast.Walk(constantVisitor, tf)
+
+	fmt.Fprintf(output, "The constants are as follows: %v\n", constantVisitor.Constants)
+
+	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "../../tao/auth/ast.go", nil, 0)
 	if err != nil {
 		fmt.Println(err)
@@ -167,9 +217,7 @@ func main() {
 	}
 
 	tv := &TypeVisitor{
-		StructTypes: make(map[string][]Field),
-		ArrayTypes: make(map[string]string),
-		IdentTypes: make(map[string]string),
+		ConcreteTypes: make(map[string][]Field),
 		InterfaceTypes: make(map[string]bool),
 	}
 	ast.Walk(tv, f)
@@ -200,7 +248,6 @@ func main() {
 		"bool": true,
 	}
 
-	output := os.Stdout
 
 	includes := `
 #include <memory>
@@ -208,7 +255,6 @@ func main() {
 
 #include <google/protobuf/io/coded_stream.h>
 `
-
 	logicElt := `
 class LogicElement {
  public:
@@ -226,28 +272,38 @@ class LogicElement {
 	fmt.Fprintln(output, form)
 	fmt.Fprintln(output, term)
 
-	for k, v := range tv.StructTypes {
-		fmt.Fprintf(output, "class %s", k)
-		if _, isForm := formWalker.types[k]; isForm {
+	fmt.Fprintln(output, "enum class BinaryTags {")
+	for i, constant := range constantVisitor.Constants {
+		fmt.Fprintf(output, "  %s = %d", constant.Name, constant.Value)
+		if i < len(constantVisitor.Constants) - 1 {
+			fmt.Fprint(output, ",")
+		}
+		fmt.Fprintln(output)
+	}
+	fmt.Fprintf(output, "};\n\n")
+
+	for name, fields := range tv.ConcreteTypes {
+		fmt.Fprintf(output, "class %s", name)
+		if _, isForm := formWalker.types[name]; isForm {
 			fmt.Fprintf(output, ": public Form")
-		} else if _, isTerm := termWalker.types[k]; isTerm {
+		} else if _, isTerm := termWalker.types[name]; isTerm {
 			fmt.Fprintf(output, ": public Term")
 		}
 
 		fmt.Fprintf(output, " {\n")
 		fmt.Fprintf(output, " public:\n")
 
-		fmt.Fprintf(output, constructor, k)
+		fmt.Fprintf(output, constructor, name)
 		fmt.Fprintln(output)
 
 		fmt.Fprint(output, marshal)
 		fmt.Fprintf(output, " override;\n");
 
-		if len(v) > 0 {
+		if len(fields) > 0 {
 			fmt.Fprintf(output, " private:\n");
 		}
 
-		for _, info := range v {
+		for _, info := range fields {
 			typeName := info.TypeName
 
 			if primitives[typeName] {
@@ -258,18 +314,17 @@ class LogicElement {
 				continue
 			}
 
-			isInterface := tv.InterfaceTypes[info.TypeName]
 			switch info.Type {
 			case IdentType, StarType:
 				fmt.Fprintf(output, "  std::unique_ptr<%s> %s_;\n", info.TypeName, info.Name)
 			case ArrayType:
-				if info.TypeName == "bytes" {
+				if info.TypeName == "byte" {
 					fmt.Fprintf(output, "  string %s_;\n", info.Name)
 					continue
 				}
 
 				typeName := info.TypeName
-				if isInterface {
+				if tv.InterfaceTypes[typeName] {
 					typeName = "std::unique_ptr<" + typeName + ">"
 				}
 				fmt.Fprintf(output, "  std::vector<%s> %ss_;\n", typeName, info.Name)

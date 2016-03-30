@@ -35,27 +35,28 @@ import (
 // Test Der encoding
 
 func TestDer(t *testing.T) {
-}
-
-// Test private key generation and persistance
-//	Serialize/Deserialize RsaPrivate keys
-
-func TestRsaPrivateSerializeDeserialize(t *testing.T) {
+	// GetPublicKeyFromDerCert(derCert []byte) (*rsa.PublicKey, error)
 }
 
 // Test GenerateCert from Keys
 func TestGenerateCertFromKeys(t *testing.T) {
+	// GenerateCertFromKeys(signingKey *rsa.PrivateKey, signerDerPolicyCert []byte, subjectKey *rsa.PublicKey,
+        //        subjectOrgName string, subjectCommonName string,
+        //        serialNumber *big.Int, notBefore time.Time, notAfter time.Time) ([]byte, error)
 }
 
 // Test Protect/Unprotect
 func TestProtectUnprotect(t *testing.T) {
+	// Protect(keys []byte, in []byte) ([]byte, error)
+	// Unprotect(keys []byte, in []byte) ([]byte, error)
 }
 
 // Test VerifyCert
 func TestVerifyCert(t *testing.T) {
+	// VerifyDerCert(der_cert []byte, der_signing_cert []byte)
 }
 
-func TestEndorseCertificate(t *testing.T) {
+func TestReadEndorseCertificate(t *testing.T) {
 	fileName := "./tmptest/endorsement_cert.ext"
 	out := ioutil.ReadFile(fileName)
 	if out == nil {
@@ -202,6 +203,9 @@ func TestRsaTranslate(t *testing.T) {
 }
 
 func TestRsaPrivateKeyParse(t *testing.T) {
+
+	// use SerializeRsaPrivateKey(key *rsa.PrivateKey) ([]byte, error)
+	// and DeserializeRsaKey(in []byte) (*rsa.PrivateKey, error)
 	fileName := "./tmptest/cloudproxy_key_file.proto"
 	out := ioutil.ReadFile(fileName)
 	if out == nil {
@@ -215,6 +219,7 @@ func TestRsaPrivateKeyParse(t *testing.T) {
 	}
 	fmt.Printf("Private key: %x\n", key)
 	fmt.Printf("Unmarshaled private key\n")
+	// PublicKeyFromPrivate(priv interface{}) interface{}
 }
 
 func TestAttributes(t *testing.T) {

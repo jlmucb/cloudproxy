@@ -1,4 +1,4 @@
-// Copyright (c) 2014, Google Inc. All rights reserved.
+// Copyright (c) 2016, Google Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,12 +26,19 @@ func TestCreateKeyHierarchy(t *testing.T) {
 	}
 }
 
-func TestGetEndorsementCert(t *testing.T) {
+func TestMakeEndorsementCert(t *testing.T) {
 	err := CreateTpm2KeyHierarchy(2048, "sha1",
 			PrimaryKeyHandle, QuoteKeyHandle, "01020304")
 	if (err != nil) {
 		t.Fatal("Can't create key hierarchy")
 	}
+	// var notBefore time.Time
+        // notBefore = time.Now()
+        // validFor := 365*24*time.Hour
+        // notAfter := notBefore.Add(validFor)
+	// GenerateEndorsementCert(rw io.ReadWriter, ekHandle Handle, hardwareName string,
+        //        notBefore time.Time, notAfter time.Time, serialNumber *big.Int,
+        //        derPolicyCert []byte, policyKey *rsa.PrivateKey) ([]byte, error)
 }
 
 func TestSeal(t *testing.T) {

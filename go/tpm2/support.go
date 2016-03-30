@@ -53,17 +53,8 @@ func GetPublicKeyFromDerCert(derCert []byte) (*rsa.PublicKey, error) {
 	return publicKey, nil
 }
 
-func GetPrivateKeyFromSerializedMessage(in []byte) (*rsa.PrivateKey, error){
-	msg := new(RsaPrivateKeyMessage)
-	err := proto.Unmarshal(in, msg)
-	key, err := UnmarshalRsaPrivateFromProto(msg)
-	if err != nil {
-		return nil, errors.New("Can't unmarshal key to proto")
-	}
-	return key, nil
-}
-
-func GenerateCertFromKeys(signingKey *rsa.PrivateKey, signerDerPolicyCert []byte, subjectKey *rsa.PublicKey,
+func GenerateCertFromKeys(signingKey *rsa.PrivateKey, signerDerPolicyCert []byte,
+		subjectKey *rsa.PublicKey,
 		subjectOrgName string, subjectCommonName string,
 		serialNumber *big.Int, notBefore time.Time, notAfter time.Time) ([]byte, error){
 	signingCert, err := x509.ParseCertificate(signerDerPolicyCert)
@@ -99,7 +90,7 @@ func SerializeRsaPrivateKey(key *rsa.PrivateKey) ([]byte, error) {
 	return []byte(proto.CompactTextString(msg)), nil
 }
 
-func DeserializeRsaPolicyKey(in []byte) (*rsa.PrivateKey, error) {
+func DeserializeRsaKey(in []byte) (*rsa.PrivateKey, error) {
 	msg := new(RsaPrivateKeyMessage)
 	err := proto.Unmarshal(in, msg)
 	key, err := UnmarshalRsaPrivateFromProto(msg)

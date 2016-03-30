@@ -21,14 +21,18 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"os"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -56,10 +60,6 @@ func GetPublicKeyFromDerCert(derCert []byte) (*rsa.PublicKey, error) {
 	return publicKey, nil
 }
 
-func GetDerFromPublicKey(key *rsa.PublicKey) ([]byte, error) {
-	return nil, nil
-}
-
 func GetPrivateKeyFromSerializedMessage(in []byte) (*rsa.PrivateKey, error){
 	msg := new(RsaPrivateKeyMessage)
 	err := proto.Unmarshal(in, msg)
@@ -70,37 +70,27 @@ func GetPrivateKeyFromSerializedMessage(in []byte) (*rsa.PrivateKey, error){
 	return key, nil
 }
 
-func SignPolicyKey(policyKey *rsa.PrivateKey) {
-/*
-// Sign cert.
-	var notBefore time.Time
-	notBefore = time.Now()
-	validFor := 365*24*time.Hour
-	notAfter := notBefore.Add(validFor)
+func SignAttestKey(policyKey *rsa.PrivateKey, attestKey *rsa.PublicKey, tpmName string,
+		serialNumber *big.Int, notBefore time.Time, notAfter time.Time) ([]byte, error){
 	selfSignTemplate := x509.Certificate{
-		SerialNumber:tpm. GetSerialNumber(),
+		SerialNumber: serialNumber,
 		Subject: pkix.Name {
 			Organization: []string{"CloudProxyAuthority"},
-			CommonName:   *domainName,
+			CommonName:   tpmName,
 			},
 		NotBefore: notBefore,
 		NotAfter:  notAfter,
 		KeyUsage:  x509.KeyUsageCertSign,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
-		IsCA: true,
+		IsCA: false,
 	}
-	policy_pub := &policyPrivateKey.PublicKey
-	der_policy_cert, err := x509.CreateCertificate(rand.Reader, &selfSignTemplate, &selfSignTemplate,
-		policy_pub, policyPrivateKey)
+	der_attest_cert, err := x509.CreateCertificate(rand.Reader, &selfSignTemplate, &selfSignTemplate,
+		attestKey, policyKey)
 	if err != nil {
-		fmt.Printf("Can't CreateCertificate ", err, "\n")
+		return nil, errors.New("Can't CreateCertificate")
 	}
-	policy_cert, err := x509.ParseCertificate(der_policy_cert)
-	if err != nil {
-		fmt.Printf("Can't parse policy certificate ", err, "\n")
-	}
- */
+	return der_attest_cert, nil 
 }
 
 func SerializeRsaPrivateKey(key *rsa.PrivateKey) ([]byte, error) {
@@ -111,10 +101,6 @@ func DeserializeRsaPolicyKey(in []byte) (*rsa.PrivateKey, error) {
 	return nil, nil
 }
 
-func GenerateEndorsementCert() ([]byte, error) {
-	return nil, nil
-}
-
 func PublicKeyFromPrivate(priv interface{}) interface{} {
 	switch k := priv.(type) {
 	case *rsa.PrivateKey:
@@ -122,6 +108,56 @@ func PublicKeyFromPrivate(priv interface{}) interface{} {
 	default:
 	return nil
 	}
+}
+
+func Protect(keys []byte, in []byte) ([]byte, error) {
+	if in == nil {
+		return nil, nil
+	}
+	out := make([]byte, len(in), len(in))
+	iv := make([]byte, 16, 16)
+	_, err := rand.Read(iv[0:16])
+	if err != nil {
+		return nil, errors.New("Protect: Can't generate iv")
+	}
+	encKey := keys[0:16]
+	macKey := keys[16:32]
+	crypter, err := aes.NewCipher(encKey)
+	if err != nil {
+		return nil, errors.New("Protect: Can't make crypter")
+	}
+	ctr := cipher.NewCTR(crypter, iv)
+	ctr.XORKeyStream(out, in)
+
+	hm := hmac.New(sha256.New, macKey)
+	hm.Write(append(iv, out...))
+	calculatedHmac := hm.Sum(nil)
+	return append(calculatedHmac, append(iv, out...)...), nil
+}
+
+func Unprotect(keys []byte, in []byte) ([]byte, error) {
+	if in == nil {
+		return nil, nil
+	}
+	out := make([]byte, len(in) - 48, len(in) - 48)
+	var iv []byte
+	iv = in[32:48]
+	encKey := keys[0:16]
+	macKey := keys[16:32]
+	crypter, err := aes.NewCipher(encKey)
+	if err != nil {
+		return nil, errors.New("Unprotect: Can't make crypter")
+	}
+	ctr := cipher.NewCTR(crypter, iv)
+	ctr.XORKeyStream(out, in[48:])
+
+	hm := hmac.New(sha256.New, macKey)
+	hm.Write(in[32:])
+	calculatedHmac := hm.Sum(nil)
+	if bytes.Compare(calculatedHmac, in[0:32]) != 0 {
+		return nil, errors.New("Unprotect: Bad mac")
+	}
+	return out, nil
 }
 
 func KDFA(alg uint16, key []byte, label string, contextU []byte,
@@ -339,43 +375,218 @@ func UnmarshalRsaPrivateFromProto(msg *RsaPrivateKeyMessage) (*rsa.PrivateKey, e
 	return key, nil
 }
 
+func GenerateEndorsementCert(rw io.ReadWriter, policyKey *rsa.PrivateKey) ([]byte, error) {
+	return nil, nil
+}
+
 /*
-	privatePolicyKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	// Sign cert.
-	var notBefore time.Time
-	notBefore = time.Now()
-	validFor := 365*24*time.Hour
-	notAfter := notBefore.Add(validFor)
-	selfSignTemplate := x509.Certificate{
-		SerialNumber:tpm. GetSerialNumber(),
-		Subject: pkix.Name {
-			Organization: []string{"CloudProxyAuthority"},
-			CommonName:   *domainName,
-			},
-		NotBefore: notBefore,
-		NotAfter:  notAfter,
-		KeyUsage:  x509.KeyUsageCertSign,
-		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		BasicConstraintsValid: true,
-		IsCA: true,
-	}
-	policy_pub := &policyPrivateKey.PublicKey
-	der_policy_cert, err := x509.CreateCertificate(rand.Reader, &selfSignTemplate, &selfSignTemplate,
-		policy_pub, policyPrivateKey)
-	if err != nil {
-		fmt.Printf("Can't CreateCertificate ", err, "\n")
-	}
-	policy_cert, err := x509.ParseCertificate(der_policy_cert)
-	if err != nil {
-		fmt.Printf("Can't parse policy certificate ", err, "\n")
-	}
-	fmt.Printf("Program cert bin: %x\n", policy_cert)
-	ioutil.WriteFile(*filePolicyCertFileName, der_policy_cert, 0644)
 
-	// Save policy cert.
-	fmt.Printf("Policy cert: %x\n\n", der_policy_cert)
-	ioutil.WriteFile(*filePolicyCertFileName, der_policy_cert, 0644)
+// Create a Program Public/Private key.
+func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
 
+	self, err := t.GetTaoName()
+	k, err := tao.NewTemporaryKeys(tao.Signing)
+	if k == nil || err != nil {
+		return nil, nil, errors.New("Can't generate signing key")
+	}
+
+	publicString := strings.Replace(self.String(), "(", "", -1)
+	publicString = strings.Replace(publicString, ")", "", -1)
+
+	// publicString is now a canonicalized Tao Principal name
+	us := "US"
+	google := "Google"
+	details := tao.X509Details{
+		Country:      &us,
+		Organization: &google,
+		CommonName:   &publicString}
+	subjectname := tao.NewX509Name(&details)
+
+	derCert, err := k.SigningKey.CreateSelfSignedDER(subjectname)
+	if err != nil {
+		return nil, nil, errors.New("Can't self sign cert\n")
+	}
+	cert, err := x509.ParseCertificate(derCert)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Construct statement: "ProgramKey (new key) speaksfor Principal Name"
+	// ToPrincipal retrieves key's Tao Principal Name.
+	k.Cert = cert
+	s := &auth.Speaksfor{
+		Delegate:  k.SigningKey.ToPrincipal(),
+		Delegator: self}
+	if s == nil {
+		return nil, nil, errors.New("Can't produce speaksfor")
+	}
+
+	// Sign attestation statement
+	k.Delegation, err = t.Attest(&self, nil, nil, s)
+	if err != nil {
+		return nil, nil, err
+	}
+	_, _ = auth.UnmarshalForm(k.Delegation.SerializedStatement)
+	return k, derCert, nil
+}
+
+// Obtain a signing private key (usually a Program Key) from a sealed blob.
+func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte,
+		delegateBlob []byte) (*tao.Keys, error) {
+
+	// Recover public key from blob
+
+	k := &tao.Keys{}
+	cert, err := x509.ParseCertificate(certBlob)
+	if err != nil {
+		return nil, err
+	}
+	k.Cert = cert
+	k.Delegation = new(tao.Attestation)
+	err = proto.Unmarshal(delegateBlob, k.Delegation)
+	if err != nil {
+		return nil, err
+	}
+	signingKeyBlob, policy, err := tao.Parent().Unseal(sealedKeyBlob)
+	if err != nil {
+		return nil, err
+	}
+	if policy != tao.SealPolicyDefault {
+		return nil, err
+	}
+	k.SigningKey, err = tao.UnmarshalSignerDER(signingKeyBlob)
+	k.Cert = cert
+	return k, err
+}
+
+func PrintMessage(msg *SimpleMessage) {
+	log.Printf("Message\n")
+	if msg.MessageType != nil {
+		log.Printf("\tmessage type: %d\n", *msg.MessageType)
+	} else {
+		log.Printf("\tmessage type: nil\n")
+	}
+	if msg.RequestType != nil {
+		log.Printf("\trequest_type: %s\n", *msg.RequestType)
+	} else {
+		log.Printf("\trequest_type: nil\n")
+	}
+	if msg.Err != nil {
+		log.Printf("\terror: %s\n", msg.Err)
+	}
+	log.Printf("\tdata: ");
+	for _, data := range msg.GetData() {
+		log.Printf("\t: %x\n", data);
+	}
+	log.Printf("\n")
+}
+
+func SendMessage(ms *util.MessageStream, msg *SimpleMessage) (error) {
+	out, err := proto.Marshal(msg)
+	if err != nil {
+		return errors.New("SendRequest: Can't encode response")
+	}
+	send := string(out)
+	_, err = ms.WriteString(send)
+	if err != nil {
+		return errors.New("SendResponse: Writestring error")
+	}
+	return nil
+}
+
+func GetMessage(ms *util.MessageStream) (*SimpleMessage,
+		error) {
+	resp, err := ms.ReadString()
+	if err != nil {
+		return nil, err
+	}
+	msg := new(SimpleMessage)
+	err = proto.Unmarshal([]byte(resp), msg)
+	if err != nil {
+		return nil, errors.New("GetResponse: Can't unmarshal message")
+	}
+	return msg, nil
+}
+
+func SendRequest(ms *util.MessageStream, msg *SimpleMessage) (error) {
+	m1 := int32(MessageType_REQUEST)
+	msg.MessageType = &m1
+	return SendMessage(ms, msg)
+}
+
+func SendResponse(ms *util.MessageStream, msg *SimpleMessage) (error) {
+	m1 := int32(MessageType_RESPONSE)
+	msg.MessageType = &m1
+	return SendMessage(ms, msg)
+}
+
+func GetRequest(ms *util.MessageStream) (*SimpleMessage, error) {
+	msg, err := GetMessage(ms)
+	if err != nil || *msg.MessageType != int32(MessageType_REQUEST) {
+		return nil, errors.New("GetResponse: reception error")
+	}
+	return msg, nil
+}
+
+func GetResponse(ms *util.MessageStream) (*SimpleMessage, error) {
+	msg, err := GetMessage(ms)
+	if err != nil || *msg.MessageType != int32(MessageType_RESPONSE) {
+		return nil, errors.New("GetResponse: reception error")
+	}
+	return msg, nil
+}
+
+// RequestDomainServiceCert requests the signed Program 
+// Certificate from simpledomainservice.
+//  TODO: This needs to change in a way that is tao supplier dependent.
+//     For tpm2 we need the ekCert and the tao and we need the data
+//     for ActivateCredential.
+//     For tpm1.2, we need the aikCert.
+func RequestDomainServiceCert(network, addr string, keys *tao.Keys,
+		v *tao.Verifier) (*tao.Attestation, error) {
+	if keys.Cert == nil {
+		return nil, errors.New("RequestDomainServiceCert: Can't dial with an empty client certificate")
+	}
+	// Explain what keys are used
+	tlsCert, err := tao.EncodeTLSCert(keys)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := tls.Dial(network, addr, &tls.Config{
+		RootCAs:            x509.NewCertPool(),
+		Certificates:       []tls.Certificate{*tlsCert},
+		InsecureSkipVerify: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	// Tao handshake: send client delegation.
+	ms := util.NewMessageStream(conn)
+	_, err = ms.WriteMessage(keys.Delegation)
+	if err != nil {
+		return nil, err
+	}
+
+	// Read the truncated attestation and check it.
+	var a tao.Attestation
+	err = ms.ReadMessage(&a)
+	if err != nil {
+		return nil, err
+	}
+
+	// Explain Verify and what keys are used.
+	ok, err := v.Verify(a.SerializedStatement, tao.AttestationSigningContext, a.Signature)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, errors.New("invalid attestation signature from Tao CA")
+	}
+
+	return &a, nil
+}
 	// Get endorsement and check it
 	der_endorsement_cert := tpm.RetrieveFile(*fileEndorsementCertInFileName)
 	if der_endorsement_cert == nil {

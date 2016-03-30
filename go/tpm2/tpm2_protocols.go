@@ -20,7 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	// "github.com/golang/protobuf/proto"
+	"math/big"
+	"time"
 )
 
 const (
@@ -103,6 +104,23 @@ func assistUnseal(rw io.ReadWriter, sessionHandle Handle, primaryHandle Handle,
 	return unsealed, nonce, err
 }
 
+func GenerateEndorsementCert(rw io.ReadWriter, ekHandle Handle, hardwareName string,
+		notBefore time.Time, notAfter time.Time, serialNumber *big.Int,
+		derPolicyCert []byte, policyKey *rsa.PrivateKey) ([]byte, error) {
+	public, _, _, err := ReadPublic(rw, ekHandle)
+	if err != nil {
+		return nil, errors.New("Can't get endorsement public key")
+	}
+	rsaEkParams, err := DecodeRsaBuf(public)
+	// rsaEkParams.Exp, rsaEkParams.Modulus
+	ekPublic := new(rsa.PublicKey)
+	ekPublic.E = 0x00010001
+	M := new(big.Int)
+	M.SetBytes(rsaEkParams.Modulus)
+	ekPublic.N = M
+	return GenerateCertFromKeys(policyKey, derPolicyCert, ekPublic,
+		hardwareName, hardwareName, serialNumber, notBefore,notAfter)
+}
 
 // This program creates a key hierarchy consisting of a
 // primary key and quoting key for cloudproxy

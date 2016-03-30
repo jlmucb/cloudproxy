@@ -668,19 +668,19 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
 	return
 
 	// Read der-encoded private policy key
-	der_policy_key := tpm2.RetrieveFile("./cloudproxy_key_file")
+	der_policy_key := ioutil.ReadFile("./cloudproxy_key_file")
 	if der_policy_key == nil {
 		t.Fatal("Can't open private key file")
 	}
 
 	// Read der-encoded policy cert
-	der_policy_cert := tpm2.RetrieveFile("./policy_key_cert")
+	der_policy_cert := ioutil.ReadFile("./policy_key_cert")
 	if der_policy_cert == nil {
 		t.Fatal("Can't open private key file")
 	}
 
 	// Read endorsement cert file
-	der_endorsement_cert := tpm2.RetrieveFile("./endorsement_cert")
+	der_endorsement_cert := ioutil.ReadFile("./endorsement_cert")
 	if der_endorsement_cert == nil {
 		t.Fatal("Can't open private key file")
 	}

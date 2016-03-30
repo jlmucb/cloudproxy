@@ -22,6 +22,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
+	"io"
 	"math/big"
 	"os"
 	"testing"
@@ -34,7 +35,7 @@ import (
 
 func TestCppCertificate(t *testing.T) {
 	fileName := "./tmptest/endorsement_cert.ext"
-	out := tpm2.RetrieveFile(fileName)
+	out := ioutil.ReadFile(fileName)
 	if out == nil {
 		t.Fatal("Can't retrieve file\n")
 	}
@@ -180,7 +181,7 @@ func TestRsaTranslate(t *testing.T) {
 
 func TestRsaPrivateKeyParse(t *testing.T) {
 	fileName := "./tmptest/cloudproxy_key_file.proto"
-	out := tpm2.RetrieveFile(fileName)
+	out := ioutil.ReadFile(fileName)
 	if out == nil {
 		t.Fatal("Can't retrieve file\n")
 	}
@@ -317,24 +318,8 @@ func TestKDFa(t *testing.T) {
 func TestReadRsaBlob(t *testing.T) {
 }
 
-func TestRetrieveFile(t *testing.T) {
-	fileName := "./tmptest/cert.der"
-	out := tpm2.RetrieveFile(fileName)
-	if out == nil {
-		t.Fatal("Can't retrieve file\n")
-	}
-	fmt.Printf("Cert (%d): %x\n", len(out), out)
-	fileInfo, err := os.Stat(fileName)
-	if err != nil {
-		t.Fatal("Can't stat file\n")
-	}
-	if len(out) != int(fileInfo.Size()) {
-		t.Fatal("Bad file retrieve\n")
-	}
-}
-
 func TestCertificateParse(t *testing.T) {
-	out := tpm2.RetrieveFile("./tmptest/endorsement_cert")
+	out := ioutil.ReadFile("./tmptest/endorsement_cert")
 	if out == nil {
 		t.Fatal("Can't retrieve file\n")
 	}

@@ -29,18 +29,11 @@ import (
 	"crypto/x509/pkix"
 	"errors"
 	"fmt"
-	"io"
 	"math/big"
-	"os"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 )
-
-
-//
-//  Crypto helper functions
-//
 
 func GetPublicKeyFromDerCert(derCert []byte) (*rsa.PublicKey, error) {
 	cert, err := x509.ParseCertificate(derCert)
@@ -70,13 +63,18 @@ func GetPrivateKeyFromSerializedMessage(in []byte) (*rsa.PrivateKey, error){
 	return key, nil
 }
 
-func SignAttestKey(policyKey *rsa.PrivateKey, attestKey *rsa.PublicKey, tpmName string,
+func GenerateCertFromKeys(signingKey *rsa.PrivateKey, signerDerPolicyCert []byte, subjectKey *rsa.PublicKey,
+		subjectOrgName string, subjectCommonName string,
 		serialNumber *big.Int, notBefore time.Time, notAfter time.Time) ([]byte, error){
-	selfSignTemplate := x509.Certificate{
+	signingCert, err := x509.ParseCertificate(signerDerPolicyCert)
+	if err != nil {
+		return nil, errors.New("Can't parse signer certificate")
+	}
+	signTemplate := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name {
-			Organization: []string{"CloudProxyAuthority"},
-			CommonName:   tpmName,
+			Organization: []string{subjectOrgName},
+			CommonName: subjectCommonName,
 			},
 		NotBefore: notBefore,
 		NotAfter:  notAfter,
@@ -85,20 +83,30 @@ func SignAttestKey(policyKey *rsa.PrivateKey, attestKey *rsa.PublicKey, tpmName 
 		BasicConstraintsValid: true,
 		IsCA: false,
 	}
-	der_attest_cert, err := x509.CreateCertificate(rand.Reader, &selfSignTemplate, &selfSignTemplate,
-		attestKey, policyKey)
+	derSignedCert, err := x509.CreateCertificate(rand.Reader, &signTemplate, signingCert,
+		subjectKey, signingKey)
 	if err != nil {
 		return nil, errors.New("Can't CreateCertificate")
 	}
-	return der_attest_cert, nil 
+	return derSignedCert, nil 
 }
 
 func SerializeRsaPrivateKey(key *rsa.PrivateKey) ([]byte, error) {
-	return nil, nil
+	msg, err := MarshalRsaPrivateToProto(key)
+	if err != nil {
+		return nil, errors.New("Can't marshall private key")
+	}
+	return []byte(proto.CompactTextString(msg)), nil
 }
 
 func DeserializeRsaPolicyKey(in []byte) (*rsa.PrivateKey, error) {
-	return nil, nil
+	msg := new(RsaPrivateKeyMessage)
+	err := proto.Unmarshal(in, msg)
+	key, err := UnmarshalRsaPrivateFromProto(msg)
+	if err != nil {
+		return nil, errors.New("Can't Unmarshal private key")
+	}
+	return key, nil
 }
 
 func PublicKeyFromPrivate(priv interface{}) interface{} {
@@ -251,26 +259,6 @@ func EncryptDataWithCredential(encrypt_flag bool, hash_alg_id uint16,
 	return calculatedHmac, outData, nil
 }
 
-// Retieve file.
-func RetrieveFile(fileName string) ([]byte) {
-	fileInfo, err := os.Stat(fileName)
-	if err != nil {
-		return nil
-	}
-	buf := make([]byte, fileInfo.Size())
-	fileHandle, err := os.Open(fileName)
-	if err != nil {
-		return nil
-	}
-	read, err := fileHandle.Read(buf)
-	if int64(read) < fileInfo.Size() || err != nil {
-		fileHandle.Close()
-	return nil
-	}
-	fileHandle.Close()
-	return buf
-}
-
 func ComputeHashValue(alg uint16, to_hash []byte) ([]byte, error) {
 	if alg ==  uint16(AlgTPM_ALG_SHA1) {
 		hash := sha1.New()
@@ -373,10 +361,6 @@ func UnmarshalRsaPrivateFromProto(msg *RsaPrivateKeyMessage) (*rsa.PrivateKey, e
 	// 	msg.Primes[1].SetBytes(msg.PublicKey.Q)
 	// }
 	return key, nil
-}
-
-func GenerateEndorsementCert(rw io.ReadWriter, policyKey *rsa.PrivateKey) ([]byte, error) {
-	return nil, nil
 }
 
 /*
@@ -588,7 +572,7 @@ func RequestDomainServiceCert(network, addr string, keys *tao.Keys,
 	return &a, nil
 }
 	// Get endorsement and check it
-	der_endorsement_cert := tpm.RetrieveFile(*fileEndorsementCertInFileName)
+	der_endorsement_cert := ioutil.ReadFile(*fileEndorsementCertInFileName)
 	if der_endorsement_cert == nil {
 		fmt.Printf("Can't read Endorsement Cert File\n")
 		return

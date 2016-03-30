@@ -32,8 +32,30 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+// Test Der encoding
 
-func TestCppCertificate(t *testing.T) {
+func TestDer(t *testing.T) {
+}
+
+// Test private key generation and persistance
+//	Serialize/Deserialize RsaPrivate keys
+
+func TestRsaPrivateSerializeDeserialize(t *testing.T) {
+}
+
+// Test GenerateCert from Keys
+func TestGenerateCertFromKeys(t *testing.T) {
+}
+
+// Test Protect/Unprotect
+func TestProtectUnprotect(t *testing.T) {
+}
+
+// Test VerifyCert
+func TestVerifyCert(t *testing.T) {
+}
+
+func TestEndorseCertificate(t *testing.T) {
 	fileName := "./tmptest/endorsement_cert.ext"
 	out := ioutil.ReadFile(fileName)
 	if out == nil {

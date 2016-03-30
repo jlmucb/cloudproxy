@@ -16,10 +16,7 @@ package tpm2
 
 import (
         "testing"
-
-        // "github.com/jlmucb/cloudproxy/go/tpm2"
 )
-
 
 func TestCreateKeyHierarchy(t *testing.T) {
 	err := CreateTpm2KeyHierarchy(2048, "sha1",
@@ -28,4 +25,35 @@ func TestCreateKeyHierarchy(t *testing.T) {
 		t.Fatal("Can't create key hierarchy")
 	}
 }
+
+func TestGetEndorsementCert(t *testing.T) {
+	err := CreateTpm2KeyHierarchy(2048, "sha1",
+			PrimaryKeyHandle, QuoteKeyHandle, "01020304")
+	if (err != nil) {
+		t.Fatal("Can't create key hierarchy")
+	}
+}
+
+func TestSeal(t *testing.T) {
+}
+
+func TestUnseal(t *testing.T) {
+}
+
+func TestAttest(t *testing.T) {
+}
+
+func TestSignAttest(t *testing.T) {
+}
+
+func TestSignProtocol(t *testing.T) {
+}
+
+func TestSignProtocolChannel(t *testing.T) {
+}
+
+func TestPCR1718(t *testing.T) {
+}
+
+
 

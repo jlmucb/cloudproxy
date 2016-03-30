@@ -22,9 +22,8 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"math/big"
-	"os"
 	"testing"
 	"time"
 
@@ -35,14 +34,52 @@ import (
 // Test Der encoding
 
 func TestDer(t *testing.T) {
-	// GetPublicKeyFromDerCert(derCert []byte) (*rsa.PublicKey, error)
+	fileName := "./tmptest/endorsement_cert"
+	der, err := ioutil.ReadFile(fileName)
+	if der == nil || err != nil {
+		t.Fatal("Can't retrieve endorsement cert\n")
+	}
+	key, err := tpm2.GetPublicKeyFromDerCert(der)
+	if der == nil {
+		t.Fatal("Can't get public key from endorsement cert\n")
+	}
+	fmt.Printf("Key: %x\n", key)	
 }
 
 // Test GenerateCert from Keys
 func TestGenerateCertFromKeys(t *testing.T) {
-	// GenerateCertFromKeys(signingKey *rsa.PrivateKey, signerDerPolicyCert []byte, subjectKey *rsa.PublicKey,
-        //        subjectOrgName string, subjectCommonName string,
-        //        serialNumber *big.Int, notBefore time.Time, notAfter time.Time) ([]byte, error)
+	fileName := "./tmptest/cloudproxy_key_file"
+	buf, err := ioutil.ReadFile(fileName)
+	if buf== nil || err != nil {
+		t.Fatal("Can't retrieve endorsement cert\n")
+	}
+	signingKey, err := tpm2.DeserializeRsaKey(buf) 
+	if signingKey == nil || err != nil {
+		t.Fatal("Can't get signing key")
+	}
+	fileName = "./tmptest/policy_key_cert"
+	der, err := ioutil.ReadFile(fileName)
+	if der== nil || err != nil {
+		t.Fatal("Can't retrieve endorsement cert\n")
+	}
+	signedKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal("Can't generate privatekey\n")
+	}
+	newPublic := tpm2.PublicKeyFromPrivate(signedKey)
+	if newPublic == nil {
+		t.Fatal("Can't generate privatekey\n")
+	}
+	var notBefore time.Time
+	notBefore = time.Now()
+	validFor := 365*24*time.Hour
+	notAfter := notBefore.Add(validFor)
+	cert, err := tpm2.GenerateCertFromKeys(signingKey, der, newPublic,
+        	"TestKey", "CommonTestKey", tpm2.GetSerialNumber(), notBefore, notAfter)
+	if err != nil {
+		t.Fatal("Can't generate cert\n")
+	}
+	fmt.Printf("Cert: %x\n", cert)	
 }
 
 // Test Protect/Unprotect
@@ -56,11 +93,11 @@ func TestVerifyCert(t *testing.T) {
 	// VerifyDerCert(der_cert []byte, der_signing_cert []byte)
 }
 
-func TestReadEndorseCertificate(t *testing.T) {
+func TestEndorseCertificate(t *testing.T) {
 	fileName := "./tmptest/endorsement_cert.ext"
-	out := ioutil.ReadFile(fileName)
-	if out == nil {
-		t.Fatal("Can't retrieve file\n")
+	out, err := ioutil.ReadFile(fileName)
+	if out == nil || err != nil {
+		t.Fatal("Can't retrieve endorsement cert\n")
 	}
 	endorse_cert, err := x509.ParseCertificate(out)
 	if err != nil {
@@ -207,12 +244,12 @@ func TestRsaPrivateKeyParse(t *testing.T) {
 	// use SerializeRsaPrivateKey(key *rsa.PrivateKey) ([]byte, error)
 	// and DeserializeRsaKey(in []byte) (*rsa.PrivateKey, error)
 	fileName := "./tmptest/cloudproxy_key_file.proto"
-	out := ioutil.ReadFile(fileName)
-	if out == nil {
+	out, err := ioutil.ReadFile(fileName)
+	if out == nil || err != nil {
 		t.Fatal("Can't retrieve file\n")
 	}
 	msg := new(tpm2.RsaPrivateKeyMessage)
-	err := proto.Unmarshal(out, msg)
+	err = proto.Unmarshal(out, msg)
 	key, err := tpm2.UnmarshalRsaPrivateFromProto(msg)
 	if err != nil {
 		t.Fatal("Can't unmarshal key to proto\n")
@@ -346,8 +383,8 @@ func TestReadRsaBlob(t *testing.T) {
 }
 
 func TestCertificateParse(t *testing.T) {
-	out := ioutil.ReadFile("./tmptest/endorsement_cert")
-	if out == nil {
+	out, err := ioutil.ReadFile("./tmptest/endorsement_cert")
+	if out == nil || err != nil {
 		t.Fatal("Can't retrieve file\n")
 	}
 	fmt.Printf("Cert (%d): %x\n", len(out), out)

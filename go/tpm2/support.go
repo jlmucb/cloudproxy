@@ -54,13 +54,13 @@ func GetPublicKeyFromDerCert(derCert []byte) (*rsa.PublicKey, error) {
 }
 
 func GenerateCertFromKeys(signingKey *rsa.PrivateKey, signerDerPolicyCert []byte,
-		subjectKey *rsa.PublicKey,
-		subjectOrgName string, subjectCommonName string,
+		subjectKey *rsa.PublicKey, subjectOrgName string, subjectCommonName string,
 		serialNumber *big.Int, notBefore time.Time, notAfter time.Time) ([]byte, error){
 	signingCert, err := x509.ParseCertificate(signerDerPolicyCert)
 	if err != nil {
 		return nil, errors.New("Can't parse signer certificate")
 	}
+	// tmp
 	signTemplate := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name {
@@ -77,6 +77,7 @@ func GenerateCertFromKeys(signingKey *rsa.PrivateKey, signerDerPolicyCert []byte
 	derSignedCert, err := x509.CreateCertificate(rand.Reader, &signTemplate, signingCert,
 		subjectKey, signingKey)
 	if err != nil {
+		fmt.Printf("%s\n", err)
 		return nil, errors.New("Can't CreateCertificate")
 	}
 	return derSignedCert, nil 
@@ -100,7 +101,7 @@ func DeserializeRsaKey(in []byte) (*rsa.PrivateKey, error) {
 	return key, nil
 }
 
-func PublicKeyFromPrivate(priv interface{}) interface{} {
+func PublicKeyFromPrivate(priv interface{}) (*rsa.PublicKey) {
 	switch k := priv.(type) {
 	case *rsa.PrivateKey:
 		return &k.PublicKey

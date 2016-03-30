@@ -31,8 +31,6 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-// Test Der encoding
-
 func TestDer(t *testing.T) {
 	fileName := "./tmptest/endorsement_cert"
 	der, err := ioutil.ReadFile(fileName)
@@ -84,8 +82,21 @@ func TestGenerateCertFromKeys(t *testing.T) {
 
 // Test Protect/Unprotect
 func TestProtectUnprotect(t *testing.T) {
-	// Protect(keys []byte, in []byte) ([]byte, error)
-	// Unprotect(keys []byte, in []byte) ([]byte, error)
+	keys := []byte{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0,
+		       1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0}
+	in := []byte{1,2,3,4,5,6,8,9}
+	out,err := tpm2.Protect(keys, in)
+	if err != nil {
+		t.Fatal("Protect failed\n")
+	}
+	recovered, err := tpm2.Unprotect(keys, out)
+	if err != nil {
+		t.Fatal("Unprotect failed\n")
+	}
+	fmt.Printf("keys: %x, in: %x, out: %x, recovered: %x\n", keys, in, out, recovered)
+	if bytes.Compare(in, recovered) !=0 {
+		t.Fatal("input not recovered\n")
+	}
 }
 
 // Test VerifyCert

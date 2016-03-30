@@ -1883,7 +1883,7 @@ func SaveContext(rw io.ReadWriter, handle Handle) ([]byte, error) {
 // ConstructLoadContext constructs a LoadContext command.
 func ConstructLoadContext(save_area []byte) ([]byte, error) {
 	cmdHdr, err := MakeCommandHeader(tagSESSIONS, 0, cmdContextLoad)
- 	if err != nil {
+	if err != nil {
 		return nil, errors.New("ConstructLoadContext failed")
 	}
 	cmd_bytes := packWithBytes(cmdHdr, save_area)
@@ -2195,19 +2195,14 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
 	// Generate Program Key.
 	programPrivateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		fmt.Printf("Can't generate program key\n")
 		return nil, nil, err
 	}
-	fmt.Printf("Generated private key: %x\n", programPrivateKey)
+	// TODO(jlm): replace with helper
 	privateKeyMsg, err := MarshalRsaPrivateToProto(programPrivateKey)
 	if err != nil {
-		fmt.Printf("Can't marshal key to proto\n")
 		return nil, nil, err
 	}
 	programPublicKey := programPrivateKey.PublicKey
-	fmt.Printf("exp: %x\n", programPublicKey.E)
-	fmt.Printf("mod: %x\n", programPublicKey.N)
-	fmt.Printf("mod bytes: %x\n", programPublicKey.N.Bytes())
 
 	// Generate Request
 	request := new(ProgramCertRequestMessage)
@@ -2217,11 +2212,9 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
 	request.RequestId = &req_id
 	modulus_bits := int32(2048)
 	key_type := "rsa"
-	fmt.Printf("Program name: %s\n", program_name)
 	request.ProgramKey.ProgramName =  &program_name
 	request.ProgramKey.ProgramKeyType = &key_type
 	request.ProgramKey.ProgramBitModulusSize = &modulus_bits
-	fmt.Printf("Request generated\n")
 
 	request.ProgramKey.ProgramKeyExponent =  []byte{0,1,0,1}
 	request.ProgramKey.ProgramKeyModulus = programPublicKey.N.Bytes()
@@ -2229,7 +2222,6 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
 	sha1Hash := sha1.New()
 	sha1Hash.Write([]byte(serialized_program_key))
 	hashed_program_key := sha1Hash.Sum(nil)
-	fmt.Printf("ProgramKey: %s\n", serialized_program_key)
 
 	// Quote key
 	key_blob, quote_key_name, _, err := ReadPublic(rw, quote_handle)
@@ -2238,23 +2230,16 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
 	}
 	rsaQuoteParams, err := DecodeRsaBuf(key_blob)
 	if err != nil {
-		fmt.Printf("Can't decode quote blob\n")
 		return nil, nil, err
 	}
 	PrintRsaParams(rsaQuoteParams)
-	fmt.Printf("Quote key name: %x\n", quote_key_name)
-	fmt.Printf("parent_pw: %s, owner_pw: %s\n", parent_pw, owner_pw)
 
-	fmt.Printf("Generating quote\n")
 	sig_alg := uint16(AlgTPM_ALG_NULL)
 	attest, sig, err := Quote(rw, quote_handle, owner_pw, owner_pw,
 		hashed_program_key, []int{7}, sig_alg)
 	if err != nil {
-		fmt.Printf("Quote failed", err, "\n")
 		return nil, nil, err
 	}
-	fmt.Printf("Attest: %x\n", attest)
-	fmt.Printf("Sig: %x\n", sig)
 
 	// Quote key info.
 	request.QuoteKeyInfo = new(QuoteKeyInfoMessage)
@@ -2268,7 +2253,6 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
 	if  rsaQuoteParams.Enc_alg == AlgTPM_ALG_RSA {
 		enc_alg = "rsa"
 	} else {
-		fmt.Printf("Unsupported enc alg\n")
 		return nil, nil, err
 	}
 	if  rsaQuoteParams.Hash_alg == AlgTPM_ALG_SHA1 {
@@ -2276,7 +2260,6 @@ func ConstructClientRequest(rw io.ReadWriter, der_endorsement_cert []byte,
 	} else if  rsaQuoteParams.Hash_alg == AlgTPM_ALG_SHA256 {
 		hash_alg = "sha256"
 	} else {
-		fmt.Printf("Unsupported hash alg\n")
 		return nil, nil, err
 	}
 	request.QuoteKeyInfo.PublicKey.KeyType = &enc_alg
@@ -2348,21 +2331,18 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey, der_policy_cert
 	der_program_cert, err := x509.CreateCertificate(rand.Reader, &template, &template,
 		pub, policy_private_key)
 	if err != nil {
-		fmt.Printf("Can't create certificates\n")
 		return nil, err
 	}
 
 	// Get Endorsement blob
 	endorsement_cert, err := x509.ParseCertificate(request.EndorsementCertBlob)
 	if err !=nil {
-		fmt.Printf("Can't Parse endorsement cert\n")
 		return nil, err
 	}
 
 	// Verify Endorsement Cert
 	ok, err := VerifyDerCert(request.EndorsementCertBlob, der_policy_cert)
 	if !ok {
-		fmt.Printf("Bad endorsement cert")
 		return nil, errors.New("Bad endorsement cert")
 	}
 
@@ -2373,7 +2353,6 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey, der_policy_cert
 	case  *rsa.PrivateKey:
 		protectorPublic = &k.PublicKey
 	default:
-		fmt.Printf("endorsement cert is not an rsa key\n")
 		return nil, errors.New("endorsement cert not an rsa key")
 	}
 
@@ -2386,7 +2365,6 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey, der_policy_cert
 		protectorPublic, hash_alg_id,
 		credential[0:16], request.QuoteKeyInfo.Name)
 	if err != nil {
-		fmt.Printf("MakeCredential fails\n")
 		return nil, err
 	}
 
@@ -2419,7 +2397,6 @@ func ClientDecodeServerResponse(rw io.ReadWriter, protectorHandle Handle,
 	certInfo, err := ActivateCredential(rw, quoteHandle, protectorHandle, password, "",
 		certBlob, response.Secret)
 	if err != nil {
-		fmt.Printf("ActivateCredential failed ", err, "\n")
 		return nil, err
 	}
 	fmt.Printf("certInfo: %x\n", certInfo)
@@ -2428,7 +2405,6 @@ func ClientDecodeServerResponse(rw io.ReadWriter, protectorHandle Handle,
 	_, out, err :=  EncryptDataWithCredential(false, uint16(AlgTPM_ALG_SHA1),
 		certInfo, response.EncryptedCert, response.EncryptedCertHmac)
 	if err != nil {
-		fmt.Printf("EncryptDataWithCredential failed\n")
 		return nil, err
 	}
 	return out, nil

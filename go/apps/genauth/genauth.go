@@ -11,6 +11,14 @@ import (
 	"strings"
 )
 
+var primitives = map[string]bool{
+	"string": true,
+	"bytes": true,
+	"int": true,
+	"int64": true,
+	"bool": true,
+}
+
 type FieldType int
 
 const (
@@ -43,10 +51,8 @@ func (tv *TypeVisitor) Visit(n ast.Node) ast.Visitor {
 	}
 
 	name := ts.Name.Name
-	fmt.Printf("Type %s", name)
 	switch ts.Type.(type) {
 	case *ast.StructType:
-		fmt.Println(" is a struct")
 		if _, ok := tv.ConcreteTypes[name]; !ok {
 			tv.ConcreteTypes[name] = make([]Field, 0)
 		}
@@ -61,17 +67,12 @@ func (tv *TypeVisitor) Visit(n ast.Node) ast.Visitor {
 		elt, ok := at.Elt.(*ast.Ident)
 		if ok {
 			tv.ConcreteTypes[name] = []Field{Field{"elt", ArrayType, elt.Name}}
-			fmt.Printf(" is an array of type []%s\n", elt.Name)
 		}
 	case *ast.Ident:
 		id := ts.Type.(*ast.Ident)
-		fmt.Printf(" is a %s\n", id.Name)
 		tv.ConcreteTypes[name] = []Field{Field{"value", IdentType, id.Name}}
 	case *ast.InterfaceType:
-		fmt.Println(" is an interface")
 		tv.InterfaceTypes[name] = true
-	default:
-		fmt.Println(" is not a struct, an array, or an identifier")
 	}
 
 	return tv
@@ -93,23 +94,19 @@ func (fv *FieldVisitor) Visit(n ast.Node) ast.Visitor {
 	case *ast.Ident:
 		ident := f.Type.(*ast.Ident)
 		st[fv.Name] = append(st[fv.Name], Field{name, IdentType, ident.Name})
-		fmt.Printf("\t\t%s %s\n", name, ident.Name)
 	case *ast.StarExpr:
 		star := f.Type.(*ast.StarExpr)
 		ident, ok := star.X.(*ast.Ident)
 		if ok {
 			st[fv.Name] = append(st[fv.Name], Field{name, StarType, ident.Name})
-			fmt.Printf("\t\t%s *%s\n", name, ident.Name)
 		}
 	case *ast.ArrayType:
 		atype := f.Type.(*ast.ArrayType)
 		elt, ok := atype.Elt.(*ast.Ident)
 		if ok {
 			st[fv.Name] = append(st[fv.Name], Field{name, ArrayType, elt.Name})
-			fmt.Printf("\t\t%s []%s\n", name, elt.Name)
 		}
 	default:
-		fmt.Printf("\t\tField %s is not an identifier or an Array\n", name)
 		return fv
 	}
 
@@ -189,6 +186,88 @@ func (tv *ConstantVisitor) Visit(n ast.Node) ast.Visitor {
 	return tv
 }
 
+func writeHeader(constants []Constant, types map[string][]Field, interfaces map[string]bool, formTypes map[string]bool, termTypes map[string]bool) []string {
+	header := []string{
+		"#include <memory>",
+		"#include <vector>",
+		"",
+		"#include <google/protobuf/io/coded_stream.h>",
+		"",
+		"class LogicElement {",
+		" public:",
+		"  virtual bool Marshal(google::protobuf::io::CodedOutputStream* output) = 0;",
+		"};",
+		"",
+		"class Form : public LogicElement {};",
+		"class Term : public LogicElement {};",
+		"",
+	}
+
+	constructor := "  %s(google::protobuf::io::CodedInputStream* input);"
+	marshal := "  bool Marshal(google::protobuf::io::CodedOutputStream* output)"
+
+	header = append(header, "enum class BinaryTags {")
+	for i, constant := range constants {
+		value := fmt.Sprintf("  %s = %d", constant.Name, constant.Value)
+		if i < len(constants) - 1 {
+			value += ","
+		}
+		header = append(header, value)
+	}
+	header = append(header, "};", "")
+
+	for name, fields := range types {
+		class := fmt.Sprintf("class %s", name)
+		if _, isForm := formTypes[name]; isForm {
+			class += ": public Form"
+		} else if _, isTerm := termTypes[name]; isTerm {
+			class += ": public Term"
+		}
+
+		class += " {"
+		header = append(header, class, " public:")
+
+		header = append(header, fmt.Sprintf(constructor, name))
+		header = append(header, fmt.Sprintf("%s override;", marshal))
+
+		if len(fields) > 0 {
+			header = append(header, " private:")
+		}
+
+		for _, info := range fields {
+			typeName := info.TypeName
+
+			if primitives[typeName] {
+				if info.Type == StarType {
+					typeName = typeName + "*"
+				}
+				header = append(header, fmt.Sprintf("  %s %s_;", typeName, info.Name))
+				continue
+			}
+
+			switch info.Type {
+			case IdentType, StarType:
+				header = append(header, fmt.Sprintf("  std::unique_ptr<%s> %s_;", info.TypeName, info.Name))
+			case ArrayType:
+				if info.TypeName == "byte" {
+					header = append(header, fmt.Sprintf("  string %s_;", info.Name))
+					continue
+				}
+
+				typeName := info.TypeName
+				if interfaces[typeName] {
+					typeName = "std::unique_ptr<" + typeName + ">"
+				}
+				header = append(header, fmt.Sprintf("  std::vector<%s> %ss_;", typeName, info.Name))
+			}
+		}
+
+		header = append(header, "};", "")
+	}
+
+	return header
+}
+
 func main() {
 	output := os.Stdout
 
@@ -207,7 +286,7 @@ func main() {
 
 	ast.Walk(constantVisitor, tf)
 
-	fmt.Fprintf(output, "The constants are as follows: %v\n", constantVisitor.Constants)
+	//fmt.Fprintf(output, "The constants are as follows: %v\n", constantVisitor.Constants)
 
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "../../tao/auth/ast.go", nil, 0)
@@ -222,7 +301,7 @@ func main() {
 	}
 	ast.Walk(tv, f)
 
-	fmt.Printf("The full set of types is %+v\n", tv)
+	//fmt.Printf("The full set of types is %+v\n", tv)
 
 	formWalker := &FuncReceiverWalker{
 		types: make(map[string]bool),
@@ -230,7 +309,7 @@ func main() {
 	}
 	ast.Walk(formWalker, f)
 
-	fmt.Printf("The following types are Forms: %v\n", formWalker.types)
+	//fmt.Printf("The following types are Forms: %v\n", formWalker.types)
 
 	termWalker := &FuncReceiverWalker{
 		types: make(map[string]bool),
@@ -238,100 +317,12 @@ func main() {
 	}
 	ast.Walk(termWalker, f)
 
-	fmt.Printf("The following types are Terms: %v\n", termWalker.types)
-
-	primitives := map[string]bool{
-		"string": true,
-		"bytes": true,
-		"int": true,
-		"int64": true,
-		"bool": true,
-	}
+	//fmt.Printf("The following types are Terms: %v\n", termWalker.types)
 
 
-	includes := `
-#include <memory>
-#include <vector>
-
-#include <google/protobuf/io/coded_stream.h>
-`
-	logicElt := `
-class LogicElement {
- public:
-  virtual bool Marshal(google::protobuf::io::CodedOutputStream* output) = 0;
-};`
-
-	form := "class Form : public LogicElement {};\n"
-	term := "class Term : public LogicElement {};\n"
-	constructor := "  %s(google::protobuf::io::CodedInputStream* input);"
-	marshal := "  bool Marshal(google::protobuf::io::CodedOutputStream* output)"
-
-
-	fmt.Fprintln(output, includes)
-	fmt.Fprintln(output, logicElt, "\n")
-	fmt.Fprintln(output, form)
-	fmt.Fprintln(output, term)
-
-	fmt.Fprintln(output, "enum class BinaryTags {")
-	for i, constant := range constantVisitor.Constants {
-		fmt.Fprintf(output, "  %s = %d", constant.Name, constant.Value)
-		if i < len(constantVisitor.Constants) - 1 {
-			fmt.Fprint(output, ",")
-		}
-		fmt.Fprintln(output)
-	}
-	fmt.Fprintf(output, "};\n\n")
-
-	for name, fields := range tv.ConcreteTypes {
-		fmt.Fprintf(output, "class %s", name)
-		if _, isForm := formWalker.types[name]; isForm {
-			fmt.Fprintf(output, ": public Form")
-		} else if _, isTerm := termWalker.types[name]; isTerm {
-			fmt.Fprintf(output, ": public Term")
-		}
-
-		fmt.Fprintf(output, " {\n")
-		fmt.Fprintf(output, " public:\n")
-
-		fmt.Fprintf(output, constructor, name)
-		fmt.Fprintln(output)
-
-		fmt.Fprint(output, marshal)
-		fmt.Fprintf(output, " override;\n");
-
-		if len(fields) > 0 {
-			fmt.Fprintf(output, " private:\n");
-		}
-
-		for _, info := range fields {
-			typeName := info.TypeName
-
-			if primitives[typeName] {
-				if info.Type == StarType {
-					typeName = typeName + "*"
-				}
-				fmt.Fprintf(output, "  %s %s_;\n", typeName, info.Name)
-				continue
-			}
-
-			switch info.Type {
-			case IdentType, StarType:
-				fmt.Fprintf(output, "  std::unique_ptr<%s> %s_;\n", info.TypeName, info.Name)
-			case ArrayType:
-				if info.TypeName == "byte" {
-					fmt.Fprintf(output, "  string %s_;\n", info.Name)
-					continue
-				}
-
-				typeName := info.TypeName
-				if tv.InterfaceTypes[typeName] {
-					typeName = "std::unique_ptr<" + typeName + ">"
-				}
-				fmt.Fprintf(output, "  std::vector<%s> %ss_;\n", typeName, info.Name)
-			}
-		}
-
-		fmt.Fprintf(output, "};\n\n")
+	header := writeHeader(constantVisitor.Constants, tv.ConcreteTypes, tv.InterfaceTypes, formWalker.types, termWalker.types)
+	for _, line := range header {
+		fmt.Fprintln(output, line)
 	}
 
 	// Generate the class declarations with inheritance that puts the Marshal method on everything. Everything should have a constructor based on the protobuf streams.

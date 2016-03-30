@@ -294,8 +294,7 @@ func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (bool, error) {
 	// Verify key
 	policy_cert, err := x509.ParseCertificate(der_signing_cert)
 	if err != nil {
-		fmt.Printf("Signing ParseCertificate fails")
-		return false, err
+		return false, errors.New("Signing ParseCertificate fails")
 	}
 	roots.AddCert(policy_cert)
 	fmt.Printf("Root cert: %x\n", der_signing_cert)
@@ -303,23 +302,18 @@ func VerifyDerCert(der_cert []byte, der_signing_cert []byte) (bool, error) {
 	// Verify key
 	cert, err := x509.ParseCertificate(der_cert)
 	if err != nil {
-		fmt.Printf("Cert ParseCertificate fails")
-		return false, err
+		return false, errors.New("Cert ParseCertificate fails")
 	}
-	fmt.Printf("Cert: %x\n", cert)
 
 	roots.AddCert(policy_cert)
 	opts.Roots = roots
 	chains, err := cert.Verify(opts)
 	if err != nil {
-		fmt.Printf("Verify fails ", err, "\n")
-		return false, err
+		return false, errors.New("Verify fails")
 	}
 	if chains != nil {
-		fmt.Printf("Verify\n")
 		return true, nil
 	} else {
-		fmt.Printf("Verify no verify\n")
 		return false, nil
 	}
 
@@ -364,85 +358,6 @@ func UnmarshalRsaPrivateFromProto(msg *RsaPrivateKeyMessage) (*rsa.PrivateKey, e
 }
 
 /*
-
-// Create a Program Public/Private key.
-func CreateSigningKey(t tao.Tao) (*tao.Keys, []byte, error) {
-
-	self, err := t.GetTaoName()
-	k, err := tao.NewTemporaryKeys(tao.Signing)
-	if k == nil || err != nil {
-		return nil, nil, errors.New("Can't generate signing key")
-	}
-
-	publicString := strings.Replace(self.String(), "(", "", -1)
-	publicString = strings.Replace(publicString, ")", "", -1)
-
-	// publicString is now a canonicalized Tao Principal name
-	us := "US"
-	google := "Google"
-	details := tao.X509Details{
-		Country:      &us,
-		Organization: &google,
-		CommonName:   &publicString}
-	subjectname := tao.NewX509Name(&details)
-
-	derCert, err := k.SigningKey.CreateSelfSignedDER(subjectname)
-	if err != nil {
-		return nil, nil, errors.New("Can't self sign cert\n")
-	}
-	cert, err := x509.ParseCertificate(derCert)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Construct statement: "ProgramKey (new key) speaksfor Principal Name"
-	// ToPrincipal retrieves key's Tao Principal Name.
-	k.Cert = cert
-	s := &auth.Speaksfor{
-		Delegate:  k.SigningKey.ToPrincipal(),
-		Delegator: self}
-	if s == nil {
-		return nil, nil, errors.New("Can't produce speaksfor")
-	}
-
-	// Sign attestation statement
-	k.Delegation, err = t.Attest(&self, nil, nil, s)
-	if err != nil {
-		return nil, nil, err
-	}
-	_, _ = auth.UnmarshalForm(k.Delegation.SerializedStatement)
-	return k, derCert, nil
-}
-
-// Obtain a signing private key (usually a Program Key) from a sealed blob.
-func SigningKeyFromBlob(t tao.Tao, sealedKeyBlob []byte, certBlob []byte,
-		delegateBlob []byte) (*tao.Keys, error) {
-
-	// Recover public key from blob
-
-	k := &tao.Keys{}
-	cert, err := x509.ParseCertificate(certBlob)
-	if err != nil {
-		return nil, err
-	}
-	k.Cert = cert
-	k.Delegation = new(tao.Attestation)
-	err = proto.Unmarshal(delegateBlob, k.Delegation)
-	if err != nil {
-		return nil, err
-	}
-	signingKeyBlob, policy, err := tao.Parent().Unseal(sealedKeyBlob)
-	if err != nil {
-		return nil, err
-	}
-	if policy != tao.SealPolicyDefault {
-		return nil, err
-	}
-	k.SigningKey, err = tao.UnmarshalSignerDER(signingKeyBlob)
-	k.Cert = cert
-	return k, err
-}
-
 func PrintMessage(msg *SimpleMessage) {
 	log.Printf("Message\n")
 	if msg.MessageType != nil {
@@ -520,14 +435,14 @@ func GetResponse(ms *util.MessageStream) (*SimpleMessage, error) {
 	return msg, nil
 }
 
-// RequestDomainServiceCert requests the signed Program 
-// Certificate from simpledomainservice.
+// RequestDomainServiceCert requests the signed attest certificate
 //  TODO: This needs to change in a way that is tao supplier dependent.
 //     For tpm2 we need the ekCert and the tao and we need the data
 //     for ActivateCredential.
 //     For tpm1.2, we need the aikCert.
 func RequestDomainServiceCert(network, addr string, keys *tao.Keys,
 		v *tao.Verifier) (*tao.Attestation, error) {
+	// todo: need tao name
 	if keys.Cert == nil {
 		return nil, errors.New("RequestDomainServiceCert: Can't dial with an empty client certificate")
 	}

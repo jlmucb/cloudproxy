@@ -104,20 +104,28 @@ func assistUnseal(rw io.ReadWriter, sessionHandle Handle, primaryHandle Handle,
 	return unsealed, nonce, err
 }
 
+func GetRsaKeyFromHandle(rw io.ReadWriter, handle Handle) (*rsa.PublicKey, error) {
+	publicBlob, _, _, err := ReadPublic(rw, handle)
+	if err != nil {
+		return nil, errors.New("Can't get public key blob")
+	}
+	rsaParams, err := DecodeRsaBuf(publicBlob)
+	publicKey := new(rsa.PublicKey)
+	// TODO(jlm): read exponent from blob
+	publicKey.E = 0x00010001
+	M := new(big.Int)
+	M.SetBytes(rsaParams.Modulus)
+	publicKey.N = M
+	return publicKey, nil
+}
+
 func GenerateEndorsementCert(rw io.ReadWriter, ekHandle Handle, hardwareName string,
 		notBefore time.Time, notAfter time.Time, serialNumber *big.Int,
 		derPolicyCert []byte, policyKey *rsa.PrivateKey) ([]byte, error) {
-	public, _, _, err := ReadPublic(rw, ekHandle)
+	ekPublic, err := GetRsaKeyFromHandle(rw, ekHandle) 
 	if err != nil {
 		return nil, errors.New("Can't get endorsement public key")
 	}
-	rsaEkParams, err := DecodeRsaBuf(public)
-	// rsaEkParams.Exp, rsaEkParams.Modulus
-	ekPublic := new(rsa.PublicKey)
-	ekPublic.E = 0x00010001
-	M := new(big.Int)
-	M.SetBytes(rsaEkParams.Modulus)
-	ekPublic.N = M
 	return GenerateCertFromKeys(policyKey, derPolicyCert, ekPublic,
 		hardwareName, hardwareName, serialNumber, notBefore,notAfter)
 }

@@ -35,13 +35,62 @@ import (
 	"os"
 	// "time"
 
-	// "github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 )
 
 
 //
 //  Crypto helper functions
 //
+
+func GetPublicKeyFromDerCert(derCert []byte) (*rsa.PublicKey, error) {
+	cert, err := x509.ParseCertificate(derCert)
+	if err != nil {
+		return nil, err
+	}
+
+	var publicKey *rsa.PublicKey
+	switch k :=  cert.PublicKey.(type) {
+	case  *rsa.PublicKey:
+		publicKey = k
+	case  *rsa.PrivateKey:
+		publicKey = &k.PublicKey
+	default:
+		return nil, errors.New("Wrong public key type")
+	}
+	return publicKey, nil
+}
+
+func GetPrivateKeyFromSerializedMessage(in []byte) (*rsa.PrivateKey, error){
+	msg := new(RsaPrivateKeyMessage)
+	err := proto.Unmarshal(in, msg)
+	key, err := UnmarshalRsaPrivateFromProto(msg)
+	if err != nil {
+		return nil, errors.New("Can't unmarshal key to proto")
+	}
+	return key, nil
+}
+
+func GeneratePolicyKey() {
+}
+
+func SignPolicyKey() {
+}
+
+func SavePolicyKeyToFile() {
+}
+
+func GetPolicyKeyFromFile() {
+}
+
+func GetCertFromFile() {
+}
+
+func SaveCertToFile() {
+}
+
+func GenerateEndorsementCert() {
+}
 
 func PublicKeyFromPrivate(priv interface{}) interface{} {
 	switch k := priv.(type) {

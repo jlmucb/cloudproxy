@@ -16,20 +16,10 @@
 package tpm2
 
 import (
-	// "crypto/aes"
-	// "crypto/cipher"
-	// "crypto/hmac"
-	// "crypto/rand"
 	"crypto/rsa"
-	// "crypto/sha1"
-	// "crypto/sha256"
-	"crypto/x509"
-	// "crypto/x509/pkix"
-	// "encoding/hex"
 	"errors"
 	"fmt"
 	"io"
-
 	// "github.com/golang/protobuf/proto"
 )
 
@@ -39,48 +29,6 @@ const (
 	StoreKeyHandle uint32 =  0
 	RollbackKeyHandle uint32 =  0
 )
-
-func GetPublicKeyFromDerCert(derCert []byte) (*rsa.PublicKey, error) {
-	cert, err := x509.ParseCertificate(derCert)
-	if err != nil {
-		return nil, err
-	}
-
-	var publicKey *rsa.PublicKey
-	switch k :=  cert.PublicKey.(type) {
-	case  *rsa.PublicKey:
-		publicKey = k
-	case  *rsa.PrivateKey:
-		publicKey = &k.PublicKey
-	default:
-		return nil, errors.New("Wrong public key type")
-	}
-	return publicKey, nil
-}
-
-func GetPrivateKeyFromSerializedMessage() {
-}
-
-func GeneratePolicyKey() {
-}
-
-func SignPolicyKey() {
-}
-
-func SavePolicyKeyToFile() {
-}
-
-func GetPolicyKeyFromFile() {
-}
-
-func GetCertFromFile() {
-}
-
-func SaveCertToFile() {
-}
-
-func GenerateEndorsementCert() {
-}
 
 // return handle, policy digest
 func assistCreateSession(rw io.ReadWriter, hash_alg uint16,

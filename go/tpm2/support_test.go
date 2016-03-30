@@ -84,7 +84,7 @@ func TestSignCertificate(t *testing.T) {
 	}
 	fmt.Printf("Policy cert: %x\n", der_policy_cert)
 
- 	// Generate Program Key.
+	// Generate Program Key.
 	privateProgramKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatal("Can't generate program privatekey\n")
@@ -104,8 +104,8 @@ func TestSignCertificate(t *testing.T) {
 	BasicConstraintsValid: true,
 	}
 	program_pub := &privateProgramKey.PublicKey
-	der_program_cert, err := x509.CreateCertificate(rand.Reader, &template2, policy_cert,
-		program_pub, privatePolicyKey)
+	der_program_cert, err := x509.CreateCertificate(rand.Reader,
+		&template2, policy_cert, program_pub, privatePolicyKey)
 	if err != nil {
 		t.Fatal("Can't CreateCertificate ", err, "\n")
 	}
@@ -123,7 +123,7 @@ func TestSignCertificate(t *testing.T) {
 	}
 	_, err = program_cert.Verify(opts)
 	if err != nil {
-	 	t.Fatal("Can't VerifyCertificate ", err, "\n")
+		t.Fatal("Can't VerifyCertificate ", err, "\n")
 	}
 }
 
@@ -138,15 +138,17 @@ func TestRsaEncryptDataWithCredential(t *testing.T) {
 	fmt.Printf("inData: %x\n", inData)
 
 	var inHmac []byte
-	calcHmac, outData, err := tpm2.EncryptDataWithCredential(true, tpm2.AlgTPM_ALG_SHA1,
-		unmarshaled_credential, inData[0:64], inHmac)
+	calcHmac, outData, err := tpm2.EncryptDataWithCredential(true,
+		tpm2.AlgTPM_ALG_SHA1, unmarshaled_credential,
+		inData[0:64], inHmac)
 	if err != nil {
 		t.Fatal("Could not encrypt data\n")
 	}
 	fmt.Printf("calcHmac: %x\n", calcHmac)
 	fmt.Printf("outData: %x\n", outData)
-	_, checkData, err := tpm2.EncryptDataWithCredential(false, tpm2.AlgTPM_ALG_SHA1,
-		unmarshaled_credential, outData, calcHmac)
+	_, checkData, err := tpm2.EncryptDataWithCredential(false,
+		tpm2.AlgTPM_ALG_SHA1, unmarshaled_credential,
+		outData, calcHmac)
 	if err != nil {
 		t.Fatal("Could not encrypt data\n")
 	}

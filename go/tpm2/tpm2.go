@@ -89,7 +89,7 @@ func OpenTPM(path string) (io.ReadWriteCloser, error) {
 	return rwc, nil
 }
 
-func PrintAttestData(parms *Attest) {
+func PrintAttestData(parms *AttestParams) {
 	fmt.Printf("Magic_number: %x\n", parms.Magic_number)
 	fmt.Printf("Attest_type : %x\n", parms.Attest_type)
 	fmt.Printf("Name        : %x\n", parms.Name)
@@ -1943,8 +1943,8 @@ func LoadContext(rw io.ReadWriter, save_area []byte) (Handle, error) {
 	return handle, nil
 }
 
-func UnmarshalCertifyInfo(in []byte) (*Attest, error) {
-	attest := new(Attest)
+func UnmarshalCertifyInfo(in []byte) (*AttestParams, error) {
+	attest := new(AttestParams)
 	var count uint32
 	template := []interface{}{&attest.Magic_number, &attest.Attest_type, &attest.Name,
 			&attest.Data, &attest.Clock, &attest.ResetCount,  &attest.RestartCount,

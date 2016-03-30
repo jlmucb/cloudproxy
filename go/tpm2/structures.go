@@ -67,7 +67,7 @@ type KeyedHashParams struct {
 	Unique []byte
 }
 
-type Attest struct {
+type AttestParams struct {
 	Magic_number uint32
 	Attest_type uint16
 	Name []byte

@@ -31,6 +31,28 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+
+func TestSerializeDeserialize(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal("Cant generate rsa key\n")
+	}
+	ser, err := tpm2.SerializeRsaPrivateKey(key)
+	if err != nil {
+		t.Fatal("Cant serialize rsa key\n")
+	}
+	newKey, err := tpm2.DeserializeRsaKey(ser)
+	if err != nil {
+		t.Fatal("Can't deserialize rsa key\n")
+	}
+	if bytes.Compare(key.D.Bytes(), newKey.D.Bytes()) != 0 {
+		t.Fatal("D is wrong\n")
+	}
+	if bytes.Compare(key.PublicKey.N.Bytes(), newKey.PublicKey.N.Bytes()) != 0 {
+		t.Fatal("N is wrong\n")
+	}
+}
+
 func TestDer(t *testing.T) {
 	fileName := "./tmptest/endorsement_cert"
 	der, err := ioutil.ReadFile(fileName)
@@ -55,6 +77,7 @@ func TestGenerateCertFromKeys(t *testing.T) {
 	if signingKey == nil || err != nil {
 		t.Fatal("Can't get signing key")
 	}
+	fmt.Printf("SigningKey: %x\n", signingKey)
 	fileName = "./tmptest/policy_key_cert"
 	der, err := ioutil.ReadFile(fileName)
 	if der== nil || err != nil {

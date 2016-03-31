@@ -60,7 +60,9 @@ func GenerateCertFromKeys(signingKey *rsa.PrivateKey, signerDerPolicyCert []byte
 	if err != nil {
 		return nil, errors.New("Can't parse signer certificate")
 	}
-	// tmp
+
+	fmt.Printf("Serial: %x\n", serialNumber)
+	fmt.Printf("notBefore: %s, notAfter: %s\n", notBefore, notAfter)
 	signTemplate := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name {
@@ -72,7 +74,8 @@ func GenerateCertFromKeys(signingKey *rsa.PrivateKey, signerDerPolicyCert []byte
 		KeyUsage:  x509.KeyUsageCertSign,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
-		IsCA: false,
+		// IsCA: false,
+		IsCA: true,
 	}
 	derSignedCert, err := x509.CreateCertificate(rand.Reader, &signTemplate, signingCert,
 		subjectKey, signingKey)
@@ -88,7 +91,11 @@ func SerializeRsaPrivateKey(key *rsa.PrivateKey) ([]byte, error) {
 	if err != nil {
 		return nil, errors.New("Can't marshall private key")
 	}
-	return []byte(proto.CompactTextString(msg)), nil
+	out, err := proto.Marshal(msg)
+	if err != nil {
+		return nil, errors.New("Can't serialize private key")
+	}
+	return out, nil
 }
 
 func DeserializeRsaKey(in []byte) (*rsa.PrivateKey, error) {
@@ -334,7 +341,6 @@ func UnmarshalRsaPrivateFromProto(msg *RsaPrivateKeyMessage) (*rsa.PrivateKey, e
 		return nil, errors.New("No message")
 	}
 	key := new(rsa.PrivateKey)
-	// key.PublicKey = new(rsa.PublicKey)
 	key.D = new(big.Int)
 	key.D.SetBytes(msg.D)
 	key.PublicKey.N = new(big.Int)

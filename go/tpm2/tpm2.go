@@ -45,7 +45,7 @@ func ComputePcrDigest(alg uint16, in []byte) ([]byte, error) {
 }
 
 func GetSerialNumber() (*big.Int) {
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 32)
 	sn, _ := rand.Int(rand.Reader, serialNumberLimit)
 	return sn
 }

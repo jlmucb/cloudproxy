@@ -2394,8 +2394,8 @@ func ClientDecodeServerResponse(rw io.ReadWriter, protectorHandle Handle,
 		quoteHandle Handle, password string,
 		response ProgramCertResponseMessage) ([]byte, error) {
 	certBlob := append(response.IntegrityHMAC, response.EncIdentity...)
-	certInfo, err := ActivateCredential(rw, quoteHandle, protectorHandle, password, "",
-		certBlob, response.Secret)
+	certInfo, err := ActivateCredential(rw, quoteHandle, protectorHandle,
+		password, "", certBlob, response.Secret)
 	if err != nil {
 		return nil, err
 	}

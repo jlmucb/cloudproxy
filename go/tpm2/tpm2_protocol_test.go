@@ -31,7 +31,7 @@ func TestCreateKeyHierarchy(t *testing.T) {
 	if (err != nil) {
 		t.Fatal("Can't open tpm")
 	}
-	err = tpm2.CreateTpm2KeyHierarchy(rw, []int{7}, 2048, tpm2.AlgTPM_ALG_SHA1,
+	err = tpm2.CreateTpm2KeyHierarchy(rw, []int{}, 2048, tpm2.AlgTPM_ALG_SHA1,
 			tpm2.PrimaryKeyHandle, tpm2.QuoteKeyHandle, "01020304")
 	if (err != nil) {
 		t.Fatal("Can't create key hierarchy")
@@ -121,16 +121,12 @@ func TestSignAttest(t *testing.T) {
 	rw.Close()
 }
 
-func RestInternalSignProtocol(t *testing.T) {
+func TestInternalSignProtocol(t *testing.T) {
 	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if (err != nil) {
 		t.Fatal("Can't open tpm")
 	}
-	err = tpm2.CreateTpm2KeyHierarchy(rw, []int{7}, 2048, tpm2.AlgTPM_ALG_SHA1,
-			tpm2.PrimaryKeyHandle, tpm2.QuoteKeyHandle, "01020304")
-	if (err != nil) {
-		t.Fatal("Can't create key hierarchy")
-	}
+	defer rw.Close()
 
 	var notBefore time.Time
 	notBefore = time.Now()
@@ -155,15 +151,6 @@ func RestInternalSignProtocol(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't create endorsement cert")
 	}
-
-/*
-	// Get endorsement public from cert
-	endorsementCert, err := x509.ParseCertificate(derEndorsementCert)
-	if err != nil {
-		fmt.Printf("Endorsement ParseCertificate fails\n")
-		return
-	}
- */
 	fmt.Printf("Endorsement cert: %x\n", derEndorsementCert)
 
 	// signing instructions
@@ -195,10 +182,9 @@ func RestInternalSignProtocol(t *testing.T) {
 	// Client request.
 	protoClientPrivateKey, request, err := tpm2.ConstructClientRequest(rw,
 		derEndorsementCert, tpm2.Handle(tpm2.QuoteKeyHandle), "",
-		"01020304", programName)
+		"", programName)
 	if err != nil {
-		fmt.Printf("ConstructClientRequest failed\n")
-		return
+		t.Fatal("ConstructClientRequest failed")
 	}
 	fmt.Printf("ConstructClientRequest succeeded\n")
 	fmt.Printf("Key: %s\n", proto.CompactTextString(protoClientPrivateKey))
@@ -206,10 +192,11 @@ func RestInternalSignProtocol(t *testing.T) {
 	fmt.Printf("Program name from request: %s\n\n", *request.ProgramKey.ProgramName)
 
 	// Create Session for seal/unseal
-	sessionHandle, policy_digest, err := tpm2.AssistCreateSession(rw, tpm2.AlgTPM_ALG_SHA1, []int{7})
+	sessionHandle, policy_digest, err := tpm2.AssistCreateSession(rw,
+		tpm2.AlgTPM_ALG_SHA1, []int{7})
 	if err != nil {
-		fmt.Printf("Can't start session for Seal\n")
-		return
+		fmt.Printf("err: %s\n", err)
+		t.Fatal("Can't start session for Seal")
 	}
 	fmt.Printf("Session handle: %x\n", sessionHandle)
 	fmt.Printf("policy_digest: %x\n\n", policy_digest)
@@ -221,13 +208,13 @@ func RestInternalSignProtocol(t *testing.T) {
 		tpm2.Handle(tpm2.PrimaryKeyHandle), unsealing_secret[0:32],
 		"", "01020304", []int{7}, policy_digest)
 	if err != nil {
-		fmt.Printf("Can't seal Program private key sealing secret\n")
-		return
+		fmt.Printf("err: %s\n", err)
+		t.Fatal("Can't seal Program private key sealing secret")
 	}
 	serialized_program_key, err := proto.Marshal(protoClientPrivateKey)
 	if err != nil {
-		fmt.Printf("Can't marshal Program private key\n")
-		return
+		fmt.Printf("err: %s\n", err)
+		t.Fatal("Can't marshal Program private key")
 	}
 	fmt.Printf("sealed priv, pub: %x %x\n\n", sealed_priv, sealed_pub)
 
@@ -237,29 +224,29 @@ func RestInternalSignProtocol(t *testing.T) {
 		true, tpm2.AlgTPM_ALG_SHA1, unsealing_secret[0:32],
 		serialized_program_key, inHmac)
 	if err != nil {
-		fmt.Printf("Can't tpm2.EncryptDataWithCredential program key\n")
-		return
+		fmt.Printf("err: %s\n", err)
+		t.Fatal("Can't tpm2.EncryptDataWithCredential program key")
 	}
 
 	// Server response.
 	response, err := tpm2.ConstructServerResponse(policyKey,
 		derPolicyCert, *signing_instructions_message, *request)
 	if err != nil {
-		fmt.Printf("ConstructServerResponse failed\n")
-		return
+		fmt.Printf("err: %s\n", err)
+		t.Fatal("ConstructServerResponse failed")
 	}
 	if response == nil {
-		fmt.Printf("response is nil\n")
-		return
+		t.Fatal("response is nil")
 	}
 	fmt.Printf("Response for ProgramName %s\n", *response.ProgramName)
 
 	// Client cert recovery.
-	cert, err := tpm2.ClientDecodeServerResponse(rw, tpm2.Handle(tpm2.PrimaryKeyHandle),
-                tpm2.Handle(tpm2.QuoteKeyHandle), "01020304", *response)
+	cert, err := tpm2.ClientDecodeServerResponse(rw,
+		tpm2.Handle(tpm2.PrimaryKeyHandle),
+                tpm2.Handle(tpm2.QuoteKeyHandle), "", *response)
 	if err != nil {
-		fmt.Printf("ClientDecodeServerResponse failed\n")
-		return
+		fmt.Printf("err: %s\n", err)
+		t.Fatal("ClientDecodeServerResponse failed")
 	}
 	fmt.Printf("cert: %x\n", cert)
 
@@ -280,14 +267,14 @@ func RestInternalSignProtocol(t *testing.T) {
 		tpm2.Handle(tpm2.PrimaryKeyHandle), sealed_pub, sealed_priv,
 		"", "01020304", policy_digest)
         if err != nil {
-                fmt.Printf("Can't Unseal\n")
-		return
+		fmt.Printf("err: %s\n", err)
+		t.Fatal("Can't Unseal")
         }
         _, decrypted_program_key, err := tpm2.EncryptDataWithCredential(false,
 		tpm2.AlgTPM_ALG_SHA1, unsealed, encrypted_program_key, calcHmac)
 	if err != nil {
-		fmt.Printf("Can't EncryptDataWithCredential (decrypt) program key\n")
-		return
+		fmt.Printf("err: %s\n", err)
+		t.Fatal("Can't EncryptDataWithCredential (decrypt) program key")
 	}
 	fmt.Printf("unsealed: %x\n", unsealed)
 	fmt.Printf("decrypted_program_key: %x\n\n", decrypted_program_key)

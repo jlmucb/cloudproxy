@@ -30,7 +30,6 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-
 func TestSerializeDeserialize(t *testing.T) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -118,11 +117,6 @@ func TestProtectUnprotect(t *testing.T) {
 	}
 }
 
-// Test VerifyCert
-func TestVerifyCert(t *testing.T) {
-	// VerifyDerCert(der_cert []byte, der_signing_cert []byte)
-}
-
 func TestEndorseCertificate(t *testing.T) {
 	fileName := "./tmptest/endorsement_cert.ext"
 	out, err := ioutil.ReadFile(fileName)
@@ -150,7 +144,6 @@ func TestSignCertificate(t *testing.T) {
 
 	derPolicyCert, err := tpm2.GenerateSelfSignedCertFromKey(privatePolicyKey, "PolicyKey",
 		"PolicyKey", tpm2.GetSerialNumber(), notBefore, notAfter)
-	policyCert, err := x509.ParseCertificate(derPolicyCert)
 	if err != nil {
 		t.Fatal("Can't parse program certificate ", err, "\n")
 	}
@@ -166,21 +159,10 @@ func TestSignCertificate(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't generate cert\n")
 	}
-
-	programCert, err := x509.ParseCertificate(derProgramCert)
-	if err != nil {
-		t.Fatal("Can't parse program certificate ", err, "\n")
-	}
 	fmt.Printf("Program cert: %x\n", derProgramCert)
-
-	roots := x509.NewCertPool()
-	roots.AddCert(policyCert)
-	opts := x509.VerifyOptions{
-		Roots:   roots,
-	}
-	_, err = programCert.Verify(opts)
-	if err != nil {
-		t.Fatal("Can't VerifyCertificate ", err, "\n")
+	ok, err := tpm2.VerifyDerCert(derProgramCert, derPolicyCert)
+	if !ok || err != nil {
+		t.Fatal("Can't verify certificate ", err, "\n")
 	}
 }
 

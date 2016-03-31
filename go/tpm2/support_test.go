@@ -20,7 +20,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"fmt"
 	"io/ioutil"
 	"math/big"
@@ -138,6 +137,10 @@ func TestEndorseCertificate(t *testing.T) {
 }
 
 func TestSignCertificate(t *testing.T) {
+	var notBefore time.Time
+	notBefore = time.Now()
+	validFor := 365*24*time.Hour
+	notAfter := notBefore.Add(validFor)
 
 	// Generate Policy Key.
 	privatePolicyKey, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -145,75 +148,37 @@ func TestSignCertificate(t *testing.T) {
 		t.Fatal("Can't generate privatekey\n")
 	}
 
-	policyProgName := "Signer"
-	var notBefore time.Time
-	notBefore = time.Now()
-	validFor := 365*24*time.Hour
-	notAfter := notBefore.Add(validFor)
-	template := x509.Certificate{
-		SerialNumber: tpm2.GetSerialNumber(),
-		Subject: pkix.Name {
-		Organization: []string{"CloudProxyAuthority"},
-		CommonName:   policyProgName,
-		},
-	NotBefore: notBefore,
-	NotAfter:  notAfter,
-	// KeyUsage:  x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-	KeyUsage:  x509.KeyUsageCertSign,
-	ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-	BasicConstraintsValid: true,
-	IsCA: true,
-	}
-	policy_pub := &privatePolicyKey.PublicKey
-	der_policy_cert, err := x509.CreateCertificate(rand.Reader, &template, &template,
-		policy_pub, privatePolicyKey)
-	if err != nil {
-		t.Fatal("Can't CreateCertificate ", err, "\n")
-	}
-	policy_cert, err := x509.ParseCertificate(der_policy_cert)
+	derPolicyCert, err := tpm2.GenerateSelfSignedCertFromKey(privatePolicyKey, "PolicyKey",
+		"PolicyKey", tpm2.GetSerialNumber(), notBefore, notAfter)
+	policyCert, err := x509.ParseCertificate(derPolicyCert)
 	if err != nil {
 		t.Fatal("Can't parse program certificate ", err, "\n")
 	}
-	fmt.Printf("Policy cert: %x\n", der_policy_cert)
+	fmt.Printf("Policy cert: %x\n", derPolicyCert)
 
 	// Generate Program Key.
 	privateProgramKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatal("Can't generate program privatekey\n")
 	}
-
-	programProgName := "Test-Program"
-	template2 := x509.Certificate{
-		SerialNumber: tpm2.GetSerialNumber(),
-		Subject: pkix.Name {
-		Organization: []string{"JLM"},
-		CommonName:   programProgName,
-		},
-	NotBefore: notBefore,
-	NotAfter:  notAfter,
-	KeyUsage:  x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-	ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-	BasicConstraintsValid: true,
-	}
-	program_pub := &privateProgramKey.PublicKey
-	der_program_cert, err := x509.CreateCertificate(rand.Reader,
-		&template2, policy_cert, program_pub, privatePolicyKey)
+	derProgramCert, err := tpm2.GenerateCertFromKeys(privatePolicyKey, derPolicyCert, &privateProgramKey.PublicKey,
+        	"JLM", "Test-program", tpm2.GetSerialNumber(), notBefore, notAfter)
 	if err != nil {
-		t.Fatal("Can't CreateCertificate ", err, "\n")
+		t.Fatal("Can't generate cert\n")
 	}
-	program_cert, err := x509.ParseCertificate(der_program_cert)
+
+	programCert, err := x509.ParseCertificate(derProgramCert)
 	if err != nil {
 		t.Fatal("Can't parse program certificate ", err, "\n")
 	}
-	fmt.Printf("Program cert bin: %x\n", program_cert)
-	fmt.Printf("Program cert: %x\n", der_program_cert)
+	fmt.Printf("Program cert: %x\n", derProgramCert)
 
 	roots := x509.NewCertPool()
-	roots.AddCert(policy_cert)
+	roots.AddCert(policyCert)
 	opts := x509.VerifyOptions{
 		Roots:   roots,
 	}
-	_, err = program_cert.Verify(opts)
+	_, err = programCert.Verify(opts)
 	if err != nil {
 		t.Fatal("Can't VerifyCertificate ", err, "\n")
 	}

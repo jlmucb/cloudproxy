@@ -3,6 +3,8 @@
 // Definition of protobufs for tpm2 applications
 syntax = "proto2";
 
+package tpm2;
+
 message private_key_blob_message {
   required string key_type                    = 1;
   optional string key_name                    = 2;

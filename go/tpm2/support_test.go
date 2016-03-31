@@ -49,8 +49,8 @@ func TestSerializeDeserialize(t *testing.T) {
 	if bytes.Compare(key.PublicKey.N.Bytes(), newKey.PublicKey.N.Bytes()) != 0 {
 		t.Fatal("N is wrong\n")
 	}
-	ioutil.WriteFile("../tmptest.ser.buf", ser, 0644)
-	buf, _ := ioutil.ReadFile("../tmptest.ser.buf")
+	ioutil.WriteFile("./tmptest/ser.buf", ser, 0644)
+	buf, _ := ioutil.ReadFile("./tmptest/ser.buf")
 	newerKey, err := tpm2.DeserializeRsaKey(buf)
 	if err != nil {
 		t.Fatal("Can't deserialize rsa key\n")

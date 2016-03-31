@@ -133,8 +133,9 @@ func GenerateHWCert(rw io.ReadWriter, handle Handle, hardwareName string,
 // This program creates a key hierarchy consisting of a
 // primary key and quoting key for cloudproxy
 // and makes their handles permanent.
-func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int, keySize int, hash_alg_id uint16,
-		primaryHandle uint32, quoteHandle uint32, quotePassword string) (error) {
+func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int, keySize int,
+		hash_alg_id uint16, primaryHandle uint32, quoteHandle uint32,
+		quotePassword string) (error) {
 
 	modSize := uint16(keySize)
 
@@ -156,8 +157,8 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int, keySize int, hash_alg_
 		FlagStorageDefault, empty, uint16(AlgTPM_ALG_AES), uint16(128),
 		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL),
 		uint16(0), modSize, uint32(0x00010001), empty}
-	tmpPrimaryHandle, public_blob, err := CreatePrimary(rw, uint32(OrdTPM_RH_OWNER), pcrs,
-		"", "", primaryparms)
+	tmpPrimaryHandle, public_blob, err := CreatePrimary(rw,
+		uint32(OrdTPM_RH_OWNER), pcrs, "", "", primaryparms)
 	if err != nil {
 		return errors.New("CreatePrimary failed")
 	}
@@ -165,23 +166,25 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int, keySize int, hash_alg_
 	// CreateKey (Quote Key)
 	keyparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
 		FlagSignerDefault, empty, uint16(AlgTPM_ALG_NULL), uint16(0),
-		uint16(AlgTPM_ALG_ECB), uint16(AlgTPM_ALG_RSASSA), uint16(AlgTPM_ALG_SHA1),
-		modSize, uint32(0x00010001), empty}
+		uint16(AlgTPM_ALG_ECB), uint16(AlgTPM_ALG_RSASSA),
+		uint16(AlgTPM_ALG_SHA1), modSize, uint32(0x00010001), empty}
 	private_blob, public_blob, err := CreateKey(rw,
-		uint32(tmpPrimaryHandle), pcrs, "", quotePassword, keyparms)
+		uint32(tmpPrimaryHandle), pcrs, "", "",
+		keyparms)
 	if err != nil {
 		return errors.New("Can't create quote key")
 	}
 
 	// Load
-	tmpQuoteHandle, _, err := Load(rw, tmpPrimaryHandle, "", quotePassword,
-	     public_blob, private_blob)
+	tmpQuoteHandle, _, err := Load(rw, tmpPrimaryHandle, "",
+		"", public_blob, private_blob)
 	if err != nil {
 		return errors.New("Load failed")
 	}
 
 	// Install new handles
-	err = EvictControl(rw, Handle(OrdTPM_RH_OWNER), tmpPrimaryHandle, Handle(primaryHandle))
+	err = EvictControl(rw, Handle(OrdTPM_RH_OWNER), tmpPrimaryHandle,
+		Handle(primaryHandle))
 	if err != nil {
 		FlushContext(rw, tmpPrimaryHandle)
 		FlushContext(rw, tmpQuoteHandle)

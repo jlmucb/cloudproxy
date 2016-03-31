@@ -18,6 +18,7 @@ import (
 	"crypto/rsa"
 	"crypto/rand"
 	"fmt"
+	"io/ioutil"
         "testing"
 	"time"
 
@@ -44,26 +45,33 @@ func TestMakeEndorsementCert(t *testing.T) {
 	if (err != nil) {
 		t.Fatal("Can't open tpm")
 	}
-	err = tpm2.CreateTpm2KeyHierarchy(rw, []int{7}, 2048, tpm2.AlgTPM_ALG_SHA1,
-			tpm2.PrimaryKeyHandle, tpm2.QuoteKeyHandle, "01020304")
-	if (err != nil) {
-		t.Fatal("Can't create key hierarchy")
-	}
 
 	var notBefore time.Time
         notBefore = time.Now()
         validFor := 365*24*time.Hour
         notAfter := notBefore.Add(validFor)
 
-	// TODO
-	var derPolicyCert []byte
-	var policyKey *rsa.PrivateKey
-	endorsementCert, err := tpm2.GenerateHWCert(rw, tpm2.Handle(tpm2.PrimaryKeyHandle), "JohnsHw",
-        	notBefore, notAfter, tpm2.GetSerialNumber(), derPolicyCert, policyKey)
+	policyKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal("Can't generate policy key\n")
+	}
+	derPolicyCert, err := tpm2.GenerateSelfSignedCertFromKey(policyKey,
+		"Cloudproxy Authority", "Application Policy Key",
+		tpm2.GetSerialNumber(), notBefore, notAfter)
+	if err != nil {
+		t.Fatal("Can't generate policy key\n")
+	}
+	fmt.Printf("policyKey: %x\n", policyKey)
+
+	endorsementCert, err := tpm2.GenerateHWCert(rw,
+		tpm2.Handle(tpm2.PrimaryKeyHandle), "JohnsHw", notBefore,
+		notAfter, tpm2.GetSerialNumber(), derPolicyCert, policyKey)
 	if err != nil {
 		t.Fatal("Can't create endorsement cert")
 	}
 	fmt.Printf("Endorsement cert: %x\n", endorsementCert)
+	ioutil.WriteFile("./tmptest/policy_cert.test", derPolicyCert, 0644)
+	ioutil.WriteFile("./tmptest/endorsement_cert.test", endorsementCert, 0644)
 	tpm2.Flushall(rw)
 	rw.Close()
 }
@@ -82,30 +90,38 @@ func TestSignAttest(t *testing.T) {
 	if (err != nil) {
 		t.Fatal("Can't open tpm")
 	}
-	err = tpm2.CreateTpm2KeyHierarchy(rw, []int{7}, 2048, tpm2.AlgTPM_ALG_SHA1,
-			tpm2.PrimaryKeyHandle, tpm2.QuoteKeyHandle, "01020304")
-	if (err != nil) {
-		t.Fatal("Can't create key hierarchy")
-	}
 
 	var notBefore time.Time
         notBefore = time.Now()
         validFor := 365*24*time.Hour
         notAfter := notBefore.Add(validFor)
 
-	var derPolicyCert []byte
-	var policyKey *rsa.PrivateKey
-	attestCert, err := tpm2.GenerateHWCert(rw, tpm2.Handle(tpm2.QuoteKeyHandle), "JohnsHw",
-        	notBefore, notAfter, tpm2.GetSerialNumber(), derPolicyCert, policyKey)
+	policyKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal("Can't generate policy key\n")
+	}
+	derPolicyCert, err := tpm2.GenerateSelfSignedCertFromKey(policyKey,
+		"Cloudproxy Authority", "Application Policy Key",
+		tpm2.GetSerialNumber(), notBefore, notAfter)
+	if err != nil {
+		t.Fatal("Can't generate policy key\n")
+	}
+	fmt.Printf("policyKey: %x\n", policyKey)
+
+	attestCert, err := tpm2.GenerateHWCert(rw, tpm2.Handle(tpm2.QuoteKeyHandle),
+		"JohnsHw", notBefore, notAfter,
+		tpm2.GetSerialNumber(), derPolicyCert, policyKey)
 	if err != nil {
 		t.Fatal("Can't create attest cert")
 	}
 	fmt.Printf("Attest cert: %x\n", attestCert)
+	ioutil.WriteFile("./tmptest/policy_cert.test", derPolicyCert, 0644)
+	ioutil.WriteFile("./tmptest/attest_cert.test", attestCert, 0644)
 	tpm2.Flushall(rw)
 	rw.Close()
 }
 
-func TestInternalSignProtocol(t *testing.T) {
+func RestInternalSignProtocol(t *testing.T) {
 	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if (err != nil) {
 		t.Fatal("Can't open tpm")
@@ -125,15 +141,17 @@ func TestInternalSignProtocol(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't generate policy key\n")
 	}
-	derPolicyCert, err := tpm2.GenerateSelfSignedCertFromKey(policyKey, "Cloudproxy Authority",
-		"Application Policy Key", tpm2.GetSerialNumber(), notBefore, notAfter)
+	derPolicyCert, err := tpm2.GenerateSelfSignedCertFromKey(policyKey,
+		"Cloudproxy Authority", "Application Policy Key",
+		tpm2.GetSerialNumber(), notBefore, notAfter)
 	if err != nil {
 		t.Fatal("Can't generate policy key\n")
 	}
 	fmt.Printf("policyKey: %x\n", policyKey)
 
-	derEndorsementCert, err := tpm2.GenerateHWCert(rw, tpm2.Handle(tpm2.PrimaryKeyHandle), "JohnsHw",
-        	notBefore, notAfter, tpm2.GetSerialNumber(), derPolicyCert, policyKey)
+	derEndorsementCert, err := tpm2.GenerateHWCert(rw,
+		tpm2.Handle(tpm2.PrimaryKeyHandle), "JohnsHw", notBefore,
+		notAfter, tpm2.GetSerialNumber(), derPolicyCert, policyKey)
 	if err != nil {
 		t.Fatal("Can't create endorsement cert")
 	}

@@ -32,7 +32,7 @@ const (
 )
 
 // return handle, policy digest
-func assistCreateSession(rw io.ReadWriter, hash_alg uint16,
+func AssistCreateSession(rw io.ReadWriter, hash_alg uint16,
 		pcrs []int) (Handle, []byte, error) {
 	nonceCaller := []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 	var secret []byte
@@ -63,7 +63,7 @@ func assistCreateSession(rw io.ReadWriter, hash_alg uint16,
 }
 
 // out: private, public
-func assistSeal(rw io.ReadWriter, parentHandle Handle, toSeal []byte,
+func AssistSeal(rw io.ReadWriter, parentHandle Handle, toSeal []byte,
 	parentPassword string, ownerPassword string, pcrs []int,
 	policy_digest []byte) ([]byte, []byte, error) {
 
@@ -82,7 +82,7 @@ func assistSeal(rw io.ReadWriter, parentHandle Handle, toSeal []byte,
 }
 
 // out: unsealed blob, nonce
-func assistUnseal(rw io.ReadWriter, sessionHandle Handle, primaryHandle Handle,
+func AssistUnseal(rw io.ReadWriter, sessionHandle Handle, primaryHandle Handle,
 	pub []byte, priv []byte, parentPassword string, ownerPassword string,
 	policy_digest []byte) ([]byte, []byte, error) {
 

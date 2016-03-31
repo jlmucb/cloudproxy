@@ -130,7 +130,7 @@ import (
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/util"
 	"github.com/jlmucb/cloudproxy/go/util/options"
-	"github.com/golang/crypto/ssh/terminal"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 var opts = []options.Option{

@@ -36,12 +36,11 @@ import (
 	"syscall"
 	"time"
 
-	// "github.com/x/crypto/ssh"
-	"github.com/golang/crypto/ssh"
-
 	"github.com/golang/glog"
 	"github.com/jlmucb/cloudproxy/go/tao/auth"
 	"github.com/jlmucb/cloudproxy/go/util"
+
+	"golang.org/x/crypto/ssh"
 )
 
 // A CoreOSConfig contains the details needed to start a new CoreOS VM.

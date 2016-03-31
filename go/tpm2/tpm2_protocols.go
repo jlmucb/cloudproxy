@@ -119,14 +119,14 @@ func GetRsaKeyFromHandle(rw io.ReadWriter, handle Handle) (*rsa.PublicKey, error
 	return publicKey, nil
 }
 
-func GenerateEndorsementCert(rw io.ReadWriter, ekHandle Handle, hardwareName string,
+func GenerateHWCert(rw io.ReadWriter, handle Handle, hardwareName string,
 		notBefore time.Time, notAfter time.Time, serialNumber *big.Int,
 		derPolicyCert []byte, policyKey *rsa.PrivateKey) ([]byte, error) {
-	ekPublic, err := GetRsaKeyFromHandle(rw, ekHandle) 
+	hwPublic, err := GetRsaKeyFromHandle(rw, handle) 
 	if err != nil {
 		return nil, errors.New("Can't get endorsement public key")
 	}
-	return GenerateCertFromKeys(policyKey, derPolicyCert, ekPublic,
+	return GenerateCertFromKeys(policyKey, derPolicyCert, hwPublic,
 		hardwareName, hardwareName, serialNumber, notBefore,notAfter)
 }
 

@@ -15,30 +15,54 @@
 package tpm2
 
 import (
+	"crypto/rsa"
+	"fmt"
         "testing"
+	"time"
+
+	"github.com/jlmucb/cloudproxy/go/tpm2"
 )
 
 func TestCreateKeyHierarchy(t *testing.T) {
-	err := CreateTpm2KeyHierarchy(2048, "sha1",
-			PrimaryKeyHandle, QuoteKeyHandle, "01020304")
+	rw, err := tpm2.OpenTPM("/dev/tpm0")
+	if (err != nil) {
+		t.Fatal("Can't open tpm")
+	}
+	err = tpm2.CreateTpm2KeyHierarchy(rw, []int{7}, 2048, tpm2.AlgTPM_ALG_SHA1,
+			tpm2.PrimaryKeyHandle, tpm2.QuoteKeyHandle, "01020304")
 	if (err != nil) {
 		t.Fatal("Can't create key hierarchy")
 	}
+	tpm2.Flushall(rw)
+	rw.Close()
 }
 
 func TestMakeEndorsementCert(t *testing.T) {
-	err := CreateTpm2KeyHierarchy(2048, "sha1",
-			PrimaryKeyHandle, QuoteKeyHandle, "01020304")
+	rw, err := tpm2.OpenTPM("/dev/tpm0")
+	if (err != nil) {
+		t.Fatal("Can't open tpm")
+	}
+	err = tpm2.CreateTpm2KeyHierarchy(rw, []int{7}, 2048, tpm2.AlgTPM_ALG_SHA1,
+			tpm2.PrimaryKeyHandle, tpm2.QuoteKeyHandle, "01020304")
 	if (err != nil) {
 		t.Fatal("Can't create key hierarchy")
 	}
-	// var notBefore time.Time
-        // notBefore = time.Now()
-        // validFor := 365*24*time.Hour
-        // notAfter := notBefore.Add(validFor)
-	// GenerateEndorsementCert(rw io.ReadWriter, ekHandle Handle, hardwareName string,
-        //        notBefore time.Time, notAfter time.Time, serialNumber *big.Int,
-        //        derPolicyCert []byte, policyKey *rsa.PrivateKey) ([]byte, error)
+
+	var notBefore time.Time
+        notBefore = time.Now()
+        validFor := 365*24*time.Hour
+        notAfter := notBefore.Add(validFor)
+
+	var derPolicyCert []byte
+	var policyKey *rsa.PrivateKey
+	endorsementCert, err := tpm2.GenerateHWCert(rw, tpm2.Handle(tpm2.PrimaryKeyHandle), "JohnsHw",
+        	notBefore, notAfter, tpm2.GetSerialNumber(), derPolicyCert, policyKey)
+	if err != nil {
+		t.Fatal("Can't create endorsement cert")
+	}
+	fmt.Printf("Endorsement cert: %x\n", endorsementCert)
+	tpm2.Flushall(rw)
+	rw.Close()
 }
 
 func TestSeal(t *testing.T) {
@@ -51,6 +75,31 @@ func TestAttest(t *testing.T) {
 }
 
 func TestSignAttest(t *testing.T) {
+	rw, err := tpm2.OpenTPM("/dev/tpm0")
+	if (err != nil) {
+		t.Fatal("Can't open tpm")
+	}
+	err = tpm2.CreateTpm2KeyHierarchy(rw, []int{7}, 2048, tpm2.AlgTPM_ALG_SHA1,
+			tpm2.PrimaryKeyHandle, tpm2.QuoteKeyHandle, "01020304")
+	if (err != nil) {
+		t.Fatal("Can't create key hierarchy")
+	}
+
+	var notBefore time.Time
+        notBefore = time.Now()
+        validFor := 365*24*time.Hour
+        notAfter := notBefore.Add(validFor)
+
+	var derPolicyCert []byte
+	var policyKey *rsa.PrivateKey
+	attestCert, err := tpm2.GenerateHWCert(rw, tpm2.Handle(tpm2.QuoteKeyHandle), "JohnsHw",
+        	notBefore, notAfter, tpm2.GetSerialNumber(), derPolicyCert, policyKey)
+	if err != nil {
+		t.Fatal("Can't create attest cert")
+	}
+	fmt.Printf("Attest cert: %x\n", attestCert)
+	tpm2.Flushall(rw)
+	rw.Close()
 }
 
 func TestSignProtocol(t *testing.T) {

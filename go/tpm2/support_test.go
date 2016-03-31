@@ -49,6 +49,18 @@ func TestSerializeDeserialize(t *testing.T) {
 	if bytes.Compare(key.PublicKey.N.Bytes(), newKey.PublicKey.N.Bytes()) != 0 {
 		t.Fatal("N is wrong\n")
 	}
+	ioutil.WriteFile("../tmptest.ser.buf", ser, 0644)
+	buf, _ := ioutil.ReadFile("../tmptest.ser.buf")
+	newerKey, err := tpm2.DeserializeRsaKey(buf)
+	if err != nil {
+		t.Fatal("Can't deserialize rsa key\n")
+	}
+	if bytes.Compare(key.D.Bytes(), newerKey.D.Bytes()) != 0 {
+		t.Fatal("D is wrong\n")
+	}
+	if bytes.Compare(key.PublicKey.N.Bytes(), newerKey.PublicKey.N.Bytes()) != 0 {
+		t.Fatal("N is wrong\n")
+	}
 }
 
 func TestDer(t *testing.T) {
@@ -91,7 +103,8 @@ func TestGenerateCertFromKeys(t *testing.T) {
 		t.Fatal("Can't generate privatekey\n")
 	}
 	cert, err := tpm2.GenerateCertFromKeys(signingKey, derSignerCert, newPublic,
-        	"TestKey", "CommonTestKey", tpm2.GetSerialNumber(), notBefore, notAfter)
+			"TestKey", "CommonTestKey", tpm2.GetSerialNumber(),
+			notBefore, notAfter)
 	if err != nil {
 		t.Fatal("Can't generate cert\n")
 	}
@@ -154,8 +167,9 @@ func TestSignCertificate(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't generate program privatekey\n")
 	}
-	derProgramCert, err := tpm2.GenerateCertFromKeys(privatePolicyKey, derPolicyCert, &privateProgramKey.PublicKey,
-        	"JLM", "Test-program", tpm2.GetSerialNumber(), notBefore, notAfter)
+	derProgramCert, err := tpm2.GenerateCertFromKeys(privatePolicyKey,
+		derPolicyCert, &privateProgramKey.PublicKey,
+		"JLM", "Test-program", tpm2.GetSerialNumber(), notBefore, notAfter)
 	if err != nil {
 		t.Fatal("Can't generate cert\n")
 	}

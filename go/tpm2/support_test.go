@@ -68,21 +68,22 @@ func TestDer(t *testing.T) {
 
 // Test GenerateCert from Keys
 func TestGenerateCertFromKeys(t *testing.T) {
-	fileName := "./tmptest/cloudproxy_key_file"
-	buf, err := ioutil.ReadFile(fileName)
-	if buf== nil || err != nil {
-		t.Fatal("Can't retrieve endorsement cert\n")
+	var notBefore time.Time
+	notBefore = time.Now()
+	validFor := 365*24*time.Hour
+	notAfter := notBefore.Add(validFor)
+
+	signingKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal("Can't generate signing key\n")
 	}
-	signingKey, err := tpm2.DeserializeRsaKey(buf) 
-	if signingKey == nil || err != nil {
-		t.Fatal("Can't get signing key")
+	derSignerCert, err := tpm2.GenerateSelfSignedCertFromKey(signingKey, "Cloudproxy Authority",
+		"Application Policy Key", tpm2.GetSerialNumber(), notBefore, notAfter)
+	if err != nil {
+		t.Fatal("Can't generate signer key\n")
 	}
 	fmt.Printf("SigningKey: %x\n", signingKey)
-	fileName = "./tmptest/policy_key_cert"
-	der, err := ioutil.ReadFile(fileName)
-	if der== nil || err != nil {
-		t.Fatal("Can't retrieve endorsement cert\n")
-	}
+
 	signedKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatal("Can't generate privatekey\n")
@@ -91,11 +92,7 @@ func TestGenerateCertFromKeys(t *testing.T) {
 	if newPublic == nil {
 		t.Fatal("Can't generate privatekey\n")
 	}
-	var notBefore time.Time
-	notBefore = time.Now()
-	validFor := 365*24*time.Hour
-	notAfter := notBefore.Add(validFor)
-	cert, err := tpm2.GenerateCertFromKeys(signingKey, der, newPublic,
+	cert, err := tpm2.GenerateCertFromKeys(signingKey, derSignerCert, newPublic,
         	"TestKey", "CommonTestKey", tpm2.GetSerialNumber(), notBefore, notAfter)
 	if err != nil {
 		t.Fatal("Can't generate cert\n")

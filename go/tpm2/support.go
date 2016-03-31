@@ -53,6 +53,31 @@ func GetPublicKeyFromDerCert(derCert []byte) (*rsa.PublicKey, error) {
 	return publicKey, nil
 }
 
+func GenerateSelfSignedCertFromKey(signingKey *rsa.PrivateKey, subjectOrgName string,
+		subjectCommonName string, serialNumber *big.Int,
+		notBefore time.Time, notAfter time.Time) ([]byte, error) {
+	signTemplate := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name {
+		Organization: []string{subjectOrgName},
+		CommonName:   subjectCommonName,
+		},
+	NotBefore: notBefore,
+	NotAfter:  notAfter,
+	KeyUsage:  x509.KeyUsageCertSign,
+	ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	BasicConstraintsValid: true,
+	IsCA: true,
+	}
+	publicKey := &signingKey.PublicKey
+	derCert, err := x509.CreateCertificate(rand.Reader, &signTemplate, &signTemplate,
+		publicKey, signingKey)
+	if err != nil {
+		return nil, errors.New("Can't CreateCertificate")
+	}
+	return derCert, nil
+}
+
 func GenerateCertFromKeys(signingKey *rsa.PrivateKey, signerDerPolicyCert []byte,
 		subjectKey *rsa.PublicKey, subjectOrgName string, subjectCommonName string,
 		serialNumber *big.Int, notBefore time.Time, notAfter time.Time) ([]byte, error){

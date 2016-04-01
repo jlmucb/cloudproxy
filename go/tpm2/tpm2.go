@@ -849,6 +849,7 @@ func CreatePrimary(rw io.ReadWriter, owner uint32, pcr_nums []int,
 		fmt.Printf("MakeCommandHeader failed %s\n", err)
 		return Handle(0), nil, err
 	}
+	fmt.Printf("CreatePrimary cmd : %x\n", cmd)
 
 	// Send command
 	_, err = rw.Write(cmd)
@@ -1132,7 +1133,8 @@ func Load(rw io.ReadWriter, parentHandle Handle, parentAuth string, ownerAuth st
 }
 
 // Construct PolicyPcr command.
-func ConstructPolicyPcr(handle Handle, expected_digest []byte, pcr_nums []int) ([]byte, error) {
+func ConstructPolicyPcr(handle Handle, expected_digest []byte,
+		pcr_nums []int) ([]byte, error) {
 	cmdHdr, err := MakeCommandHeader(tagNO_SESSIONS, 0, cmdPolicyPCR)
 	if err != nil {
 		return nil, errors.New("ConstructPcr failed")
@@ -1203,7 +1205,8 @@ func PolicyPassword(rw io.ReadWriter, handle Handle) (error) {
 }
 
 // PolicyPcr
-func PolicyPcr(rw io.ReadWriter, handle Handle, expected_digest []byte, pcr_nums []int) (error) {
+func PolicyPcr(rw io.ReadWriter, handle Handle, expected_digest []byte,
+		pcr_nums []int) (error) {
 	// Construct command
 	cmd, err:= ConstructPolicyPcr(handle, expected_digest, pcr_nums)
 	if err != nil {
@@ -2379,7 +2382,7 @@ func ConstructServerResponse(policy_private_key *rsa.PrivateKey, der_policy_cert
 	response.EncIdentity = encIdentity
 
 	// Encrypt cert with credential
-	cert_hmac, cert_out, err :=  EncryptDataWithCredential(true, hash_alg_id, 
+	cert_hmac, cert_out, err :=  EncryptDataWithCredential(true, hash_alg_id,
 		credential[0:16], der_program_cert, nil)
 	if err != nil {
 		return nil, err

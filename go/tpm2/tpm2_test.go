@@ -68,6 +68,7 @@ func TestReadPcrs(t *testing.T) {
 
 	// Open TPM
 	rw, err := tpm2.OpenTPM("/dev/tpm0")
+	defer rw.Close()
 	if err != nil {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
@@ -456,6 +457,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		fmt.Printf("OpenTPM failed %s\n", err)
 		return
 	}
+	defer rw.Close()
 
 	// Flushall
 	err =  tpm2.Flushall(rw)
@@ -665,23 +667,24 @@ func TestCombinedContextTest(t *testing.T) {
 
 // Combined Quote Protocol
 func TestCombinedQuoteProtocolTest(t *testing.T) {
-	fmt.Printf("TestCombinedQuoteProtocolTest excluded\n")
-	return
-
-	// Read der-encoded private policy key
-	der_policy_key, _ := ioutil.ReadFile("./cloudproxy_key_file")
-	if der_policy_key == nil {
+	// Read encoded private policy key
+	proto_policy_key, _ := ioutil.ReadFile("/home/jlm/cryptobin/cloudproxy_key_file.proto")
+	if proto_policy_key == nil {
 		t.Fatal("Can't open private key file")
 	}
 
 	// Read der-encoded policy cert
-	der_policy_cert,_ := ioutil.ReadFile("./policy_key_cert")
+	der_policy_cert,_ := ioutil.ReadFile("/home/jlm/cryptobin/policy_key_cert")
 	if der_policy_cert == nil {
-		t.Fatal("Can't open private key file")
+		t.Fatal("Can't open private cert file")
+	}
+	policyKey, err := tpm2.DeserializeRsaKey(proto_policy_key)
+	if err != nil {
+		t.Fatal("Can't deserialize policy key")
 	}
 
 	// Read endorsement cert file
-	der_endorsement_cert, _ := ioutil.ReadFile("./endorsement_cert")
+	der_endorsement_cert, _ := ioutil.ReadFile("/home/jlm/cryptobin/endorsement_cert")
 	if der_endorsement_cert == nil {
 		t.Fatal("Can't open private key file")
 	}
@@ -692,6 +695,7 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't open tpm")
 	}
+	defer rw.Close()
 
 	// Open endorsement and quote keys
 	var empty []byte
@@ -702,8 +706,9 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
 		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
 		uint16(0), uint16(1024), uint32(0x00010001), empty}
 	endorsement_handle, _, err := tpm2.CreatePrimary(rw,
+		// uint32(tpm2.OrdTPM_RH_ENDORSEMENT), []int{7},
 		uint32(tpm2.OrdTPM_RH_OWNER), []int{7},
-		"", "01020304", ek_parms)
+		"", "", ek_parms)
 	if err != nil {
 		t.Fatal("CreatePrimary fails")
 	}
@@ -713,15 +718,16 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
 		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
 		uint16(0), uint16(1024), uint32(0x00010001), empty}
 	private_blob, public_blob, err := tpm2.CreateKey(rw,
-		uint32(tpm2.OrdTPM_RH_OWNER), []int{7},
+		uint32(endorsement_handle), []int{7},
 		"", "01020304", quote_parms)
 	if err != nil {
+		fmt.Printf("err: %s\n", err)
 		t.Fatal("Create fails")
 	}
 	fmt.Printf("Create Key for quote succeeded\n")
 
 	quote_handle, quote_blob, err := tpm2.Load(rw, endorsement_handle, "",
-		"01020304", public_blob, private_blob)
+		"", public_blob, private_blob)
 	if err != nil {
 		t.Fatal("Quote Load fails")
 	}
@@ -731,20 +737,25 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
 		der_endorsement_cert,
 		quote_handle, "", "01020304", "Test-Program-1")
 	if err != nil {
+		fmt.Printf("err: %s\n")
 		t.Fatal("ConstructClientRequest fails")
 	}
 	fmt.Printf("Request        : %s\n", proto.MarshalTextString(request_message))
 	fmt.Printf("Program private: %x\n", der_program_private)
+	fmt.Printf("Fix me\n")
+	return
 
-/*
-	signing_instructions_message := new(SigningInstructionsMessage)
-	response_message, err := ConstructServerResponse(der_policy_cert,
-		der_policy_key, *signing_instructions_message, *request_message)
+	signing_instructions_message := new(tpm2.SigningInstructionsMessage)
+	response_message, err := tpm2.ConstructServerResponse(policyKey,
+		der_policy_cert,
+		*signing_instructions_message, *request_message)
 	if err != nil {
+		fmt.Printf("err: %s\n", err)
 		t.Fatal("ConstructServerResponse fails")
 	}
 
-	der_program_cert, err := ClientDecodeServerResponse(rw, endorsement_handle,
+	der_program_cert, err := tpm2.ClientDecodeServerResponse(rw,
+		endorsement_handle,
 		quote_handle, "01020304", *response_message)
 	if err != nil {
 		t.Fatal("ClientDecodeServerResponse fails")
@@ -752,7 +763,6 @@ func TestCombinedQuoteProtocolTest(t *testing.T) {
 
 	// Save Program cert
 	fmt.Printf("Program cert: %x\n", der_program_cert)
- */
 
 	// Close handles
 	tpm2.FlushContext(rw, endorsement_handle)

@@ -38,7 +38,8 @@ func AssistCreateSession(rw io.ReadWriter, hash_alg uint16,
 	var secret []byte
 	sym := uint16(AlgTPM_ALG_NULL)
 
-	session_handle, policy_digest, err := StartAuthSession(rw, Handle(OrdTPM_RH_NULL),
+	session_handle, policy_digest, err := StartAuthSession(rw,
+		Handle(OrdTPM_RH_NULL),
 		Handle(OrdTPM_RH_NULL), nonceCaller, secret,
 		uint8(OrdTPM_SE_POLICY), sym, hash_alg)
 	if err != nil {
@@ -47,7 +48,7 @@ func AssistCreateSession(rw io.ReadWriter, hash_alg uint16,
 
 	err = PolicyPassword(rw, session_handle)
 	if err != nil {
-		return Handle(0), nil, errors.New("PolicyPcr fails")
+		return Handle(0), nil, errors.New("PolicyPassword fails")
 	}
 	var tpm_digest []byte
 	err = PolicyPcr(rw, session_handle, tpm_digest, pcrs)
@@ -57,7 +58,7 @@ func AssistCreateSession(rw io.ReadWriter, hash_alg uint16,
 
 	policy_digest, err = PolicyGetDigest(rw, session_handle)
 	if err != nil {
-		return Handle(0), nil, errors.New("PolicyPcr fails")
+		return Handle(0), nil, errors.New("PolicyGetDigest fails")
 	}
 	return session_handle, policy_digest, nil
 }
@@ -140,6 +141,7 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int, keySize int,
 	modSize := uint16(keySize)
 
 	// Remove old permanent handles
+	// err := EvictControl(rw, Handle(OrdTPM_RH_OWNER), Handle(primaryHandle),
 	err := EvictControl(rw, Handle(OrdTPM_RH_OWNER), Handle(primaryHandle),
 			Handle(primaryHandle))
 	if err != nil {
@@ -158,7 +160,8 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int, keySize int,
 		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL),
 		uint16(0), modSize, uint32(0x00010001), empty}
 	tmpPrimaryHandle, public_blob, err := CreatePrimary(rw,
-		uint32(OrdTPM_RH_OWNER), pcrs, "", "", primaryparms)
+		// uint32(OrdTPM_RH_OWNER), pcrs, "", "", primaryparms)
+		uint32(OrdTPM_RH_ENDORSEMENT), pcrs, "", "", primaryparms)
 	if err != nil {
 		return errors.New("CreatePrimary failed")
 	}
@@ -169,7 +172,7 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int, keySize int,
 		uint16(AlgTPM_ALG_ECB), uint16(AlgTPM_ALG_RSASSA),
 		uint16(AlgTPM_ALG_SHA1), modSize, uint32(0x00010001), empty}
 	private_blob, public_blob, err := CreateKey(rw,
-		uint32(tmpPrimaryHandle), pcrs, "", "",
+		uint32(tmpPrimaryHandle), pcrs, "", quotePassword,
 		keyparms)
 	if err != nil {
 		return errors.New("Can't create quote key")

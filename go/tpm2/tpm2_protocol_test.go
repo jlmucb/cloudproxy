@@ -33,6 +33,8 @@ func TestCreateKeyHierarchy(t *testing.T) {
 	if (err != nil) {
 		t.Fatal("Can't open tpm")
 	}
+	defer rw.Close()
+
 	err = tpm2.CreateTpm2KeyHierarchy(rw, []int{7}, 2048,
 			tpm2.AlgTPM_ALG_SHA1,
 			tpm2.PrimaryKeyHandle, tpm2.QuoteKeyHandle, "01020304")
@@ -40,7 +42,6 @@ func TestCreateKeyHierarchy(t *testing.T) {
 		t.Fatal("Can't create key hierarchy")
 	}
 	tpm2.Flushall(rw)
-	rw.Close()
 }
 
 func TestMakeEndorsementCert(t *testing.T) {
@@ -48,6 +49,7 @@ func TestMakeEndorsementCert(t *testing.T) {
 	if (err != nil) {
 		t.Fatal("Can't open tpm")
 	}
+	defer rw.Close()
 
 	var notBefore time.Time
         notBefore = time.Now()
@@ -76,7 +78,6 @@ func TestMakeEndorsementCert(t *testing.T) {
 	ioutil.WriteFile("./tmptest/policy_cert.test", derPolicyCert, 0644)
 	ioutil.WriteFile("./tmptest/endorsement_cert.test", endorsementCert, 0644)
 	tpm2.Flushall(rw)
-	rw.Close()
 }
 
 func TestSeal(t *testing.T) {
@@ -93,6 +94,7 @@ func TestSignAttest(t *testing.T) {
 	if (err != nil) {
 		t.Fatal("Can't open tpm")
 	}
+	defer rw.Close()
 
 	var notBefore time.Time
         notBefore = time.Now()
@@ -122,7 +124,6 @@ func TestSignAttest(t *testing.T) {
 	ioutil.WriteFile("./tmptest/policy_cert.test", derPolicyCert, 0644)
 	ioutil.WriteFile("./tmptest/attest_cert.test", attestCert, 0644)
 	tpm2.Flushall(rw)
-	rw.Close()
 }
 
 // Combined Activate test
@@ -146,6 +147,7 @@ func TestMakeActivate(t *testing.T) {
 	credential := []byte{1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,0x10}
 	fmt.Printf("Credential: %x\n", credential)
 
+	// Replace with parent_handle = tpm2.PrimaryKeyHandle
 	// CreatePrimary
 	var empty []byte
 	primaryparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
@@ -165,6 +167,7 @@ func TestMakeActivate(t *testing.T) {
 		t.Fatal("DecodeRsaBuf fails", err)
 	}
 
+	// Replace with key_handle = tpm2.QuoteKeyHandle
 	// CreateKey
 	keyparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
 		uint16(tpm2.AlgTPM_ALG_SHA1), uint32(0x00030072), empty,
@@ -194,6 +197,7 @@ func TestMakeActivate(t *testing.T) {
 	}
 	fmt.Printf("ReadPublic succeeded\n")
 
+// DELETE FROM HERE
 	// Internal MakeCredential
 	credBlob, encrypted_secret0, err := tpm2.InternalMakeCredential(rw,
 		parent_handle, credential, name)
@@ -204,8 +208,7 @@ func TestMakeActivate(t *testing.T) {
 	}
 
 	// ActivateCredential
-	recovered_credential1, err := tpm2.ActivateCredential(rw,
-		key_handle, parent_handle,
+	recovered_credential1, err := tpm2.ActivateCredential(rw, key_handle, parent_handle,
 		"01020304", "", credBlob, encrypted_secret0)
 	if err != nil {
 		tpm2.FlushContext(rw, key_handle)
@@ -213,12 +216,34 @@ func TestMakeActivate(t *testing.T) {
 		t.Fatal("Can't ActivateCredential\n")
 	}
 	if bytes.Compare(credential, recovered_credential1) != 0 {
-		tpm2.FlushContext(rw, key_handle)
-		tpm2.FlushContext(rw, parent_handle)
+		tpm2.FlushContext(rw, key_handle) tpm2.FlushContext(rw, parent_handle)
 		t.Fatal("Credential and recovered credential differ\n")
 	}
 	fmt.Printf("InternalMake/Activate test succeeds\n\n")
+// DELETE TO HERE
 
+/*
+ 	notBefore = time.Now()
+        validFor := 365*24*time.Hour
+        notAfter := notBefore.Add(validFor)
+
+        policyKey, err := rsa.GenerateKey(rand.Reader, 2048)
+        if err != nil {
+                t.Fatal("Can't generate policy key\n")
+        }
+        derPolicyCert, err := tpm2.GenerateSelfSignedCertFromKey(policyKey,
+                "Cloudproxy Authority", "Application Policy Key",
+                tpm2.GetSerialNumber(), notBefore, notAfter)
+        if err != nil {
+                t.Fatal("Can't generate policy key\n")
+        }
+        fmt.Printf("policyKey: %x\n", policyKey)
+	derEndorsementCert, err := tpm2.GenerateHWCert(rw,
+        tpm2.Handle(tpm2.PrimaryKeyHandle), "JohnsHw", notBefore,
+        notAfter, tpm2.GetSerialNumber(), derPolicyCert, policyKey)
+	cert, err := x509.ParseCertificate(derEndorsementCert)
+	protectorPublic, err := GetPublicKeyFromDerCert(derEndorsementCert)
+*/
 	protectorPublic := new(rsa.PublicKey)
 	protectorPublic.E = 0x00010001
 	M := new(big.Int)
@@ -423,7 +448,6 @@ func TestInternalSignProtocol(t *testing.T) {
 
 	fmt.Printf("Recovered Program keys: %x\n\n", decrypted_program_key)
 	fmt.Printf("Cloudproxy protocol succeeds\n")
-	rw.Close()
 }
 
 func TestSignProtocolChannel(t *testing.T) {

@@ -15,10 +15,12 @@
 package tpm2
 
 import (
+	"bytes"
 	"crypto/rsa"
 	"crypto/rand"
 	"fmt"
 	"io/ioutil"
+	"math/big"
         "testing"
 	"time"
 
@@ -121,6 +123,136 @@ func TestSignAttest(t *testing.T) {
 	ioutil.WriteFile("./tmptest/attest_cert.test", attestCert, 0644)
 	tpm2.Flushall(rw)
 	rw.Close()
+}
+
+// Combined Activate test
+func TestMakeActivate(t *testing.T) {
+	hash_alg_id := uint16(tpm2.AlgTPM_ALG_SHA1)
+
+	// Open tpm
+	rw, err := tpm2.OpenTPM("/dev/tpm0")
+	if err != nil {
+		fmt.Printf("OpenTPM failed %s\n", err)
+		return
+	}
+	defer rw.Close()
+
+	// Flushall
+	err =  tpm2.Flushall(rw)
+	if err != nil {
+		t.Fatal("Flushall failed\n")
+	}
+
+	// CreatePrimary
+	var empty []byte
+	primaryparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1), uint32(0x00030072), empty,
+		uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
+		uint16(0), uint16(2048), uint32(0x00010001), empty}
+	parent_handle, public_blob, err := tpm2.CreatePrimary(rw,
+		// uint32(tpm2.OrdTPM_RH_ENDORSEMENT), []int{0x7}, "", "", primaryparms)
+		uint32(tpm2.OrdTPM_RH_OWNER), []int{0x7}, "", "", primaryparms)
+	if err != nil {
+		t.Fatal("CreatePrimary fails")
+	}
+	fmt.Printf("CreatePrimary succeeded\n")
+	endorseParams, err := tpm2.DecodeRsaArea(public_blob)
+	if err != nil {
+		t.Fatal("DecodeRsaBuf fails", err)
+	}
+
+	// CreateKey
+	keyparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
+		uint16(tpm2.AlgTPM_ALG_SHA1), uint32(0x00030072), empty,
+		uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
+		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
+		uint16(0), uint16(2048), uint32(0x00010001), empty}
+	private_blob, public_blob, err := tpm2.CreateKey(rw,
+		uint32(parent_handle),
+		[]int{7}, "", "01020304", keyparms)
+	if err != nil {
+		t.Fatal("CreateKey fails")
+	}
+	fmt.Printf("CreateKey succeeded\n")
+
+	// Load
+	key_handle, _, err := tpm2.Load(rw, parent_handle, "", "",
+	     public_blob, private_blob)
+	if err != nil {
+		t.Fatal("Load fails")
+	}
+	fmt.Printf("Load succeeded\n")
+
+	// ReadPublic
+	_, name, _, err := tpm2.ReadPublic(rw, key_handle)
+	if err != nil {
+		t.Fatal("ReadPublic fails")
+	}
+	fmt.Printf("ReadPublic succeeded\n")
+
+	// Generate Credential
+	credential := []byte{1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,0x10}
+	fmt.Printf("Credential: %x\n", credential)
+
+	// Internal MakeCredential
+	credBlob, encrypted_secret0, err := tpm2.InternalMakeCredential(rw,
+		parent_handle, credential, name)
+	if err != nil {
+		tpm2.FlushContext(rw, key_handle)
+		tpm2.FlushContext(rw, parent_handle)
+		t.Fatal("Can't InternalMakeCredential\n")
+	}
+
+	// ActivateCredential
+	recovered_credential1, err := tpm2.ActivateCredential(rw,
+		key_handle, parent_handle,
+		"01020304", "", credBlob, encrypted_secret0)
+	if err != nil {
+		tpm2.FlushContext(rw, key_handle)
+		tpm2.FlushContext(rw, parent_handle)
+		t.Fatal("Can't ActivateCredential\n")
+	}
+	if bytes.Compare(credential, recovered_credential1) != 0 {
+		tpm2.FlushContext(rw, key_handle)
+		tpm2.FlushContext(rw, parent_handle)
+		t.Fatal("Credential and recovered credential differ\n")
+	}
+	fmt.Printf("InternalMake/Activate test succeeds\n\n")
+
+	protectorPublic := new(rsa.PublicKey)
+	protectorPublic.E = 0x00010001
+	M := new(big.Int)
+	M.SetBytes(endorseParams.Modulus)
+	protectorPublic.N = M
+
+	// MakeCredential
+	encrypted_secret, encIdentity, integrityHmac, err := tpm2.MakeCredential(
+		protectorPublic, hash_alg_id, credential, name)
+	if err != nil {
+		tpm2.FlushContext(rw, key_handle)
+		tpm2.FlushContext(rw, parent_handle)
+		t.Fatal("Can't MakeCredential\n")
+	}
+
+	// ActivateCredential
+	recovered_credential2, err := tpm2.ActivateCredential(rw,
+		key_handle, parent_handle, "01020304", "",
+		append(integrityHmac, encIdentity...), encrypted_secret)
+	if err != nil {
+		tpm2.FlushContext(rw, key_handle)
+		tpm2.FlushContext(rw, parent_handle)
+		t.Fatal("Can't ActivateCredential\n")
+	}
+	if bytes.Compare(credential, recovered_credential2) != 0 {
+		tpm2.FlushContext(rw, key_handle)
+		tpm2.FlushContext(rw, parent_handle)
+		t.Fatal("Credential and recovered credential differ\n")
+	}
+	fmt.Printf("Make/Activate test succeeds\n")
+
+	// Flush
+	tpm2.FlushContext(rw, key_handle)
 }
 
 func TestInternalSignProtocol(t *testing.T) {

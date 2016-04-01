@@ -75,6 +75,7 @@ func AssistSeal(rw io.ReadWriter, parentHandle Handle, toSeal []byte,
 		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL), empty}
 	private_blob, public_blob, err := CreateSealed(rw, parentHandle,
 		policy_digest, parentPassword, ownerPassword, toSeal,
+		// Replace with: pcrs , keyedhashparms)
 		[]int{7}, keyedhashparms)
 	if err != nil {
 		return nil, nil, errors.New("CreateSealed fails") 

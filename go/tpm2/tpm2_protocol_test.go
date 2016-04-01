@@ -127,7 +127,6 @@ func TestSignAttest(t *testing.T) {
 
 // Combined Activate test
 func TestMakeActivate(t *testing.T) {
-	hash_alg_id := uint16(tpm2.AlgTPM_ALG_SHA1)
 
 	// Open tpm
 	rw, err := tpm2.OpenTPM("/dev/tpm0")
@@ -227,8 +226,9 @@ func TestMakeActivate(t *testing.T) {
 	protectorPublic.N = M
 
 	// MakeCredential
+	// REMOVE: hash_alg_id := uint16(tpm2.AlgTPM_ALG_SHA1)
 	encrypted_secret, encIdentity, integrityHmac, err := tpm2.MakeCredential(
-		protectorPublic, hash_alg_id, credential, name)
+		protectorPublic, uint16(tpm2.AlgTPM_ALG_SHA1), credential, name)
 	if err != nil {
 		tpm2.FlushContext(rw, key_handle)
 		tpm2.FlushContext(rw, parent_handle)

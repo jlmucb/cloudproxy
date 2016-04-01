@@ -249,7 +249,8 @@ func TestInternalSignProtocol(t *testing.T) {
 	// Client cert recovery.
 	cert, err := tpm2.ClientDecodeServerResponse(rw,
 		tpm2.Handle(tpm2.PrimaryKeyHandle),
-                tpm2.Handle(tpm2.QuoteKeyHandle), quotePassword, *response)
+                tpm2.Handle(tpm2.QuoteKeyHandle),
+		quotePassword, *response)
 	if err != nil {
 		fmt.Printf("err: %s\n", err)
 		t.Fatal("ClientDecodeServerResponse failed")

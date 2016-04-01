@@ -473,6 +473,7 @@ func TestCombinedEndorsementTest(t *testing.T) {
 		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
 		uint16(0), uint16(2048), uint32(0x00010001), empty}
 	parent_handle, public_blob, err := tpm2.CreatePrimary(rw,
+		// uint32(tpm2.OrdTPM_RH_ENDORSEMENT), []int{0x7}, "", "", primaryparms)
 		uint32(tpm2.OrdTPM_RH_OWNER), []int{0x7}, "", "", primaryparms)
 	if err != nil {
 		t.Fatal("CreatePrimary fails")

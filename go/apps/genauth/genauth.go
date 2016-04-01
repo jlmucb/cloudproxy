@@ -194,15 +194,17 @@ func writeHeader(constants []Constant, types map[string][]Field, interfaces map[
 		"class LogicElement {",
 		" public:",
 		"  virtual void Marshal(google::protobuf::io::CodedOutputStream* output) = 0;",
+		"  virtual bool Unmarshal(google::protobuf::io::CodedInputStream* input) = 0;",
 		"};",
 		"",
-		"class Form : public LogicElement {};",
-		"class Term : public LogicElement {};",
+		"class Form : public LogicElement {\n  virtual ~Form() = default;\n};",
+		"class Term : public LogicElement {\n  virtual ~Term() = default;\n};",
 		"",
 	}
 
-	constructor := "  %s(google::protobuf::io::CodedInputStream* input);"
-	marshal := "  void Marshal(google::protobuf::io::CodedOutputStream* output)"
+	constructor := "  %s() = default;"
+	marshal := "  bool Marshal(google::protobuf::io::CodedOutputStream* output)"
+	unmarshal := "  bool Unmarshal(google::protobuf::io::CodedInputStream* input)"
 
 	header = append(header, "enum class BinaryTags {")
 	for i, constant := range constants {
@@ -226,7 +228,9 @@ func writeHeader(constants []Constant, types map[string][]Field, interfaces map[
 		header = append(header, class, " public:")
 
 		header = append(header, fmt.Sprintf(constructor, name))
+		header = append(header, fmt.Sprintf("  ~%s() override = default;", name))
 		header = append(header, fmt.Sprintf("%s override;", marshal))
+		header = append(header, fmt.Sprintf("%s override;", unmarshal))
 
 		if len(fields) > 0 {
 			header = append(header, " private:")
@@ -238,6 +242,8 @@ func writeHeader(constants []Constant, types map[string][]Field, interfaces map[
 			if primitives[typeName] {
 				if info.Type == StarType {
 					typeName = typeName + "*"
+					// It shouldn't be possible for this to collide with names from the types, since those are Go names, which shouldn't have underscores in them.
+					header = append(header, fmt.Sprintf("  bool %s_present_;", info.Name))
 				}
 				header = append(header, fmt.Sprintf("  %s %s_;", typeName, info.Name))
 				continue
@@ -291,6 +297,21 @@ namespace {
 }
 
 	`
+
+	peekTag = `bool PeekTag(google::protobuf::io::CodedInputStream* input, int* tag) {
+  const void* ptr = nullptr;
+  int size = 0;
+  if (!input->GetDirectBufferPointer(&ptr, &size)) return false;
+
+  google::protobuf::io::ArrayInputStream array_stream(ptr, size);
+  google::protobuf::io::CodedInputStream temp_input(array_stream);
+  return temp_input.ReadVarint32(tag);
+}
+
+`
+
+	unmarshalTemplate = "bool %s::Unmarshal(google::protobuf::io::CodedInputStream* input) {"
+	marshalTemplate = "void %s::Marshal(google::protobuf::io::CodedOutputStream* output) {"
 )
 
 func writeDecoder(constants []Constant, interfaceName string, types map[string]bool) []string {
@@ -315,61 +336,123 @@ func writeDecoder(constants []Constant, interfaceName string, types map[string]b
 	return impl
 }
 
+func writeUnmarshaller(name string, fields []Field, interfaces map[string]bool, forms map[string]bool, terms map[string]bool) []string {
+	impl := []string{fmt.Sprintf(unmarshalTemplate, name)}
+	tag := "kTag" + name
+	impl = append(impl, []string{
+		"  int type_tag = 0;",
+		"  if (!input->ReadVarint32(&type_tag)) return false;",
+		fmt.Sprintf("  if (type_tag != %s) return false;", tag),
+	}...)
+	for _, field := range fields {
+		typeName := field.TypeName
+
+		// This code currently only supports string and *int64 as primitives.
+		if typeName == "string" {
+			impl = append(impl, fmt.Sprintf("  if (!DecodeString(input, &%s_)) return false;", field.Name))
+			continue
+		}
+
+		if typeName == "int64" && field.Type == StarType {
+			// This has a boolean value that says whether or
+			// not to expect an int64 field next.
+			impl = append(impl, []string{
+				fmt.Sprintf("  if (!input->ReadVarint32(%s_present_)) return false;", field.Name),
+				fmt.Sprintf("  if (%s_present_) {", field.Name),
+				fmt.Sprintf("    if (!input->ReadVarint64(%s_)) return false;", field.Name),
+				"  }",
+			}...)
+			continue
+		}
+
+		switch field.Type {
+		case IdentType:
+			impl = append(impl, fmt.Sprintf("  if (!%s_->Unmarshal(input)) return false;", field.Name))
+		case ArrayType:
+			impl = append(impl, []string{
+				fmt.Sprintf("  int %ss_count = 0;", field.Name),
+				fmt.Sprintf("  if (!input->ReadVarint32(&%ss_count)) return false;", field.Name),
+				fmt.Sprintf("  for(int i = 0; i < %ss_count; i++) {", field.Name),
+			}...)
+
+			if interfaces[typeName] {
+				impl = append(impl, []string{
+					// Peek at the next tag.
+					fmt.Sprintf("    int %ss_tag = 0;", field.Name),
+					fmt.Sprintf("    if (!PeekTag(input, &%ss_tag)) return false;", field.Name),
+					fmt.Sprintf("    std::unique_ptr<%s> %ss_obj;", typeName, field.Name),
+					fmt.Sprintf("    if (!Decode%s(%ss_tag, input, &%ss_obj)) return false;", typeName, field.Name, field.Name),
+					fmt.Sprintf("    %ss_.emplace_back(std::move(%ss_obj));", field.Name, field.Name),
+					"  }",
+				}...)
+				continue
+			}
+			impl = append(impl, []string{
+				fmt.Sprintf("    %ss_.emplace_back();", field.Name),
+				fmt.Sprintf("    if (!%ss_[%ss_.size() - 1].Unmarshal(input)) return false;", field.Name, field.Name),
+				"  }",
+			}...)
+		}
+	}
+
+	return append(impl, "  return true;", "}", "")
+}
+
+func writeMarshaller(name string, fields []Field) []string {
+	impl := []string{fmt.Sprintf(marshalTemplate, name)}
+	tag := "kTag" + name
+	impl = append(impl, fmt.Sprintf("  output->WriteVarint32(%s);", tag))
+	for _, field := range fields {
+		typeName := field.TypeName
+
+		// This code currently only supports string and *int64 as primitives.
+		if typeName == "string" {
+			impl = append(impl, fmt.Sprintf("  EncodeString(%s_, output);", field.Name))
+			continue
+		}
+
+		if typeName == "int64" && field.Type == StarType {
+			// This has a boolean value that says whether or
+			// not to expect an int64 field next.
+			impl = append(impl, []string{
+				fmt.Sprintf("  int value = %s_present_ ? 1 : 0;", field.Name),
+				"  output->WriteVarint32(value);",
+				fmt.Sprintf("  if (%s_present_) {", field.Name),
+				fmt.Sprintf("    output->WriteVarint64(%s_);", field.Name),
+				"  }",
+			}...)
+			continue
+		}
+
+		switch field.Type {
+		case IdentType:
+			impl = append(impl, fmt.Sprintf("  %s_->Marshal(output);", field.Name))
+		case ArrayType:
+			impl = append(impl, []string{
+				fmt.Sprintf("  output->WriteVarint32(%s_.size());", field.Name),
+				fmt.Sprintf("  for(auto& elt : %ss_) {", field.Name),
+				"    elt->Marshal(input);",
+				"  }",
+			}...)
+		}
+	}
+
+	return append(impl, "}", "")
+}
+
 func writeImplementation(constants []Constant, types map[string][]Field, interfaces map[string]bool, formTypes map[string]bool, termTypes map[string]bool) []string {
 	impl := strings.Split(implHeader, "\n")
 	impl = append(impl, strings.Split(encodeString, "\n")...)
 	impl = append(impl, strings.Split(decodeString, "\n")...)
+	impl = append(impl, strings.Split(peekTag, "\n")...)
 
-	formDecoder := writeDecoder(constants, "Form", formTypes)
-	termDecoder := writeDecoder(constants, "Term", termTypes)
-
-	impl = append(impl, formDecoder...)
-	impl = append(impl, termDecoder...)
+	impl = append(impl, writeDecoder(constants, "Form", formTypes)...)
+	impl = append(impl, writeDecoder(constants, "Term", termTypes)...)
 	impl = append(impl, "}  // namespace", "")
 
-	//constructor := "%s::%s(google::protobuf::io::CodedInputStream* input) {"
-	marshal := "void %s::Marshal(google::protobuf::io::CodedOutputStream* output) {"
-
 	for name, fields := range types {
-		impl = append(impl, fmt.Sprintf(marshal, name))
-		tag := "kTag" + name
-		impl = append(impl, fmt.Sprintf("  output->WriteVarint32(%s);", tag))
-		for _, field := range fields {
-			typeName := field.TypeName
-
-			// This code currently only supports string and *int64 as primitives.
-			if typeName == "string" {
-				impl = append(impl, fmt.Sprintf("  EncodeString(%s_, output);", field.Name))
-				continue
-			}
-
-			if typeName == "int64" && field.Type == StarType {
-				// This has a boolean value that says whether or
-				// not to expect an int64 field next.
-				impl = append(impl, []string{
-					fmt.Sprintf("  int value = %s_ == nullptr ? 0 : 1;", field.Name),
-					"  output->WriteVarint32(value);",
-					fmt.Sprintf("  if (%s_ == nullptr) {", field.Name),
-					fmt.Sprintf("    output->WriteVarint64(%s_);", field.Name),
-					"  }",
-				}...)
-				continue
-			}
-
-			switch field.Type {
-			case IdentType:
-				impl = append(impl, fmt.Sprintf("  %s_->Marshal(output);", field.Name))
-			case ArrayType:
-				impl = append(impl, []string{
-					fmt.Sprintf("  output->WriteVarint32(%s_.size());", field.Name),
-					fmt.Sprintf("  for(auto& elt : %ss_) {", field.Name),
-					"    elt->Marshal(input);",
-					"  }",
-				}...)
-			}
-		}
-
-		impl = append(impl, "}", "")
+		impl = append(impl, writeMarshaller(name, fields)...)
+		impl = append(impl, writeUnmarshaller(name, fields, interfaces, formTypes, termTypes)...)
 	}
 
 	return impl

@@ -142,6 +142,10 @@ func TestMakeActivate(t *testing.T) {
 		t.Fatal("Flushall failed\n")
 	}
 
+	// Generate Credential
+	credential := []byte{1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,0x10}
+	fmt.Printf("Credential: %x\n", credential)
+
 	// CreatePrimary
 	var empty []byte
 	primaryparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
@@ -189,10 +193,6 @@ func TestMakeActivate(t *testing.T) {
 		t.Fatal("ReadPublic fails")
 	}
 	fmt.Printf("ReadPublic succeeded\n")
-
-	// Generate Credential
-	credential := []byte{1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,0x10}
-	fmt.Printf("Credential: %x\n", credential)
 
 	// Internal MakeCredential
 	credBlob, encrypted_secret0, err := tpm2.InternalMakeCredential(rw,

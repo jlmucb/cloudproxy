@@ -211,7 +211,6 @@ func TestInternalSignProtocol(t *testing.T) {
 		t.Fatal("Can't create keys")
 	}
 	tpm2.FlushContext(rw, rootHandle)
-	defer tpm2.FlushContext(rw, quoteHandle)
 	defer tpm2.FlushContext(rw, storeHandle)
 
 	var notBefore time.Time
@@ -235,7 +234,6 @@ func TestInternalSignProtocol(t *testing.T) {
 	if err != nil {
 		t.Fatal("Can't CreateEndorsement")
 	}
-	defer tpm2.FlushContext(rw, ekHandle)
 
 	derEndorsementCert, err := tpm2.GenerateHWCert(rw,
 		ekHandle, "JohnsHw", notBefore, notAfter,
@@ -300,7 +298,7 @@ func TestInternalSignProtocol(t *testing.T) {
 	rand.Read(unsealing_secret[0:32])
 	sealed_priv, sealed_pub, err := tpm2.AssistSeal(rw,
 		storeHandle, unsealing_secret[0:32],
-		"", "01020304", pcrs, policy_digest)
+		"", "", pcrs, policy_digest)
 	if err != nil {
 		fmt.Printf("err: %s\n", err)
 		t.Fatal("Can't seal Program private key sealing secret")
@@ -343,6 +341,10 @@ func TestInternalSignProtocol(t *testing.T) {
 	}
 	fmt.Printf("cert: %x\n", cert)
 
+	// if we don;t do this we run out of tpm memory
+	tpm2.FlushContext(rw, ekHandle)
+	tpm2.FlushContext(rw, quoteHandle)
+
 	// Example: recover program private key from buffer.
 	encryptedProgramKey := append(calcHmac, encrypted_program_key...)
 	programPrivateBlob := sealed_priv
@@ -355,11 +357,10 @@ func TestInternalSignProtocol(t *testing.T) {
 	fmt.Printf("Recovered priv, pub: %x, %x\n\n", programPrivateBlob,
 		programPublicBlob)
 
-return
 	// Unseal secret and decrypt private policy key.
 	unsealed, _, err := tpm2.AssistUnseal(rw, sessionHandle,
 		storeHandle, sealed_pub, sealed_priv, "",
-		"01020304", policy_digest)
+		"", policy_digest)
         if err != nil {
 		fmt.Printf("err: %s\n", err)
 		t.Fatal("Can't Unseal")
@@ -370,9 +371,9 @@ return
 		fmt.Printf("err: %s\n", err)
 		t.Fatal("Can't EncryptDataWithCredential (decrypt) program key")
 	}
-	fmt.Printf("unsealed: %x\n", unsealed)
+	fmt.Printf("serialized_program_key: %x\n\n", serialized_program_key)
+	fmt.Printf("unsealed: %x\n\n", unsealed)
 	fmt.Printf("decrypted_program_key: %x\n\n", decrypted_program_key)
-	fmt.Printf("Recovered Program keys: %x\n\n", decrypted_program_key)
 	fmt.Printf("Cloudproxy protocol succeeds\n")
 }
 

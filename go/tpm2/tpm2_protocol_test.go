@@ -20,7 +20,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io/ioutil"
-	"math/big"
+	// "math/big"
         "testing"
 	"time"
 
@@ -42,6 +42,7 @@ func TestCreateKeyHierarchy(t *testing.T) {
 	}
 	tpm2.FlushContext(rw, rootHandle)
 	tpm2.FlushContext(rw, quoteHandle)
+	// tpm2.FlushContext(rw, storeHandle)
 }
 
 func TestMakeEndorsementCert(t *testing.T) {
@@ -68,12 +69,13 @@ func TestMakeEndorsementCert(t *testing.T) {
 	}
 	fmt.Printf("policyKey: %x\n", policyKey)
 
-	endorsementHandle, _, err := tpm2.CreateEndorsement(rw, 2048, []int{7})
+	ekHandle, _, err := tpm2.CreateEndorsement(rw, 2048, []int{7})
 	if err != nil {
 		t.Fatal("Can't CreateEndorsement")
 	}
+	defer tpm2.FlushContext(rw, ekHandle)
 	endorsementCert, err := tpm2.GenerateHWCert(rw,
-		endorsementHandle, "JohnsHw", notBefore,
+		ekHandle, "JohnsHw", notBefore,
 		notAfter, tpm2.GetSerialNumber(), derPolicyCert, policyKey)
 	if err != nil {
 		t.Fatal("Can't create endorsement cert")
@@ -81,7 +83,6 @@ func TestMakeEndorsementCert(t *testing.T) {
 	fmt.Printf("Endorsement cert: %x\n", endorsementCert)
 	ioutil.WriteFile("./tmptest/policy_cert.test", derPolicyCert, 0644)
 	ioutil.WriteFile("./tmptest/endorsement_cert.test", endorsementCert, 0644)
-	tpm2.FlushContext(rw, endorsementHandle)
 }
 
 func RestSeal(t *testing.T) {
@@ -93,7 +94,7 @@ func TestUnseal(t *testing.T) {
 func TestAttest(t *testing.T) {
 }
 
-func TestSignAttest(t *testing.T) {
+func RestSignAttest(t *testing.T) {
 	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if (err != nil) {
 		t.Fatal("Can't open tpm")
@@ -162,25 +163,17 @@ func TestMakeActivate(t *testing.T) {
 		t.Fatal("ReadPublic fails")
 	}
 
+fmt.Printf("CreateEndorsement\n")
 	ekHandle, _, err := tpm2.CreateEndorsement(rw, 2048, pcrs)
 	if err != nil {
 		t.Fatal("CreateEndorsement fails")
 	}
 	defer tpm2.FlushContext(rw, ekHandle)
-	endorse_public, _, _, err := tpm2.ReadPublic(rw, ekHandle)
+
+	protectorPublic, err := tpm2.GetRsaKeyFromHandle(rw, ekHandle)
 	if err != nil {
-		fmt.Printf("err: %s\n", err)
-		t.Fatal("ReadPublic (2) fails")
+		t.Fatal("Can't get key from handle")
 	}
-	endorseParams, err := tpm2.DecodeRsaBuf(endorse_public)
-	if err != nil {
-		t.Fatal("DecodeRsaArea fails")
-	}
-	protectorPublic := new(rsa.PublicKey)
-	protectorPublic.E = 0x00010001
-	M := new(big.Int)
-	M.SetBytes(endorseParams.Modulus)
-	protectorPublic.N = M
 
 	// MakeCredential
 	secret, encIdentity, integrityHmac, err := tpm2.MakeCredential(
@@ -203,7 +196,6 @@ func TestMakeActivate(t *testing.T) {
 }
 
 func TestInternalSignProtocol(t *testing.T) {
-return
 	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if (err != nil) {
 		t.Fatal("Can't open tpm")
@@ -273,14 +265,13 @@ return
 	// Cloudproxy protocol
 	//
 
-	quotePassword := "01020304"
-
 	programName := "TestProgram"
 	fmt.Printf("Program name is %s\n",  programName)
+	quotePassword := ""
 
 	// Client request.
 	protoClientPrivateKey, request, err := tpm2.ConstructClientRequest(rw,
-		derEndorsementCert, tpm2.Handle(tpm2.QuoteKeyHandle), "",
+		derEndorsementCert, quoteHandle, "",
 		quotePassword, programName)
 	if err != nil {
 		t.Fatal("ConstructClientRequest failed")
@@ -305,7 +296,7 @@ return
 	var unsealing_secret [32]byte
 	rand.Read(unsealing_secret[0:32])
 	sealed_priv, sealed_pub, err := tpm2.AssistSeal(rw,
-		tpm2.Handle(tpm2.RootKeyHandle), unsealing_secret[0:32],
+		rootHandle, unsealing_secret[0:32],
 		"", "", pcrs, policy_digest)
 	if err != nil {
 		fmt.Printf("err: %s\n", err)
@@ -341,14 +332,8 @@ return
 	fmt.Printf("Response for ProgramName %s\n", *response.ProgramName)
 
 	// Client cert recovery.
-	endorsementHandle, _, err := tpm2.CreateEndorsement(rw, 2048, pcrs)
-	if err != nil {
-		t.Fatal("Can't CreateEndorsement")
-	}
-	cert, err := tpm2.ClientDecodeServerResponse(rw,
-		endorsementHandle,
-                tpm2.Handle(tpm2.QuoteKeyHandle),
-		quotePassword, *response)
+	cert, err := tpm2.ClientDecodeServerResponse(rw, ekHandle,
+                quoteHandle, quotePassword, *response)
 	if err != nil {
 		fmt.Printf("err: %s\n", err)
 		t.Fatal("ClientDecodeServerResponse failed")
@@ -367,10 +352,10 @@ return
 	fmt.Printf("Recovered priv, pub: %x, %x\n\n", programPrivateBlob,
 		programPublicBlob)
 
+return
 	// Unseal secret and decrypt private policy key.
 	unsealed, _, err := tpm2.AssistUnseal(rw, sessionHandle,
-		tpm2.Handle(tpm2.RootKeyHandle), sealed_pub, sealed_priv,
-		"", "", policy_digest)
+		rootHandle, sealed_pub, sealed_priv, "", "", policy_digest)
         if err != nil {
 		fmt.Printf("err: %s\n", err)
 		t.Fatal("Can't Unseal")
@@ -383,10 +368,6 @@ return
 	}
 	fmt.Printf("unsealed: %x\n", unsealed)
 	fmt.Printf("decrypted_program_key: %x\n\n", decrypted_program_key)
-
-	// Close session.
-	tpm2.FlushContext(rw, sessionHandle)
-
 	fmt.Printf("Recovered Program keys: %x\n\n", decrypted_program_key)
 	fmt.Printf("Cloudproxy protocol succeeds\n")
 }

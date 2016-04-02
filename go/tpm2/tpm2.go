@@ -770,6 +770,7 @@ func DecodeCreatePrimary(in []byte) (Handle, []byte, error) {
 	template :=  []interface{}{&handle, &auth}
 	err := unpack(in, template)
 	if err != nil {
+		fmt.Printf("Out: %x\n", in)
 		return Handle(0), nil, errors.New("Can't decode response 1")
 	}
 

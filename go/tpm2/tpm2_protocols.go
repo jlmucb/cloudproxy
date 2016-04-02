@@ -82,12 +82,12 @@ func AssistSeal(rw io.ReadWriter, parentHandle Handle, toSeal []byte,
 }
 
 // out: unsealed blob, nonce
-func AssistUnseal(rw io.ReadWriter, sessionHandle Handle, primaryHandle Handle,
+func AssistUnseal(rw io.ReadWriter, sessionHandle Handle, parentHandle Handle,
 	pub []byte, priv []byte, parentPassword string, ownerPassword string,
 	policy_digest []byte) ([]byte, []byte, error) {
 
 	// Load Sealed
-	sealHandle, _, err := Load(rw, primaryHandle, parentPassword,
+	sealHandle, _, err := Load(rw, parentHandle, parentPassword,
 		ownerPassword, pub, priv)
 	if err != nil {
 		FlushContext(rw, sessionHandle)
@@ -154,7 +154,7 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int,
 		empty, uint16(AlgTPM_ALG_AES), uint16(128),
 		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL),
 		uint16(0), keySize, uint32(0x00010001), empty}
-	rootHandle, public_blob, err := CreatePrimary(rw,
+	rootHandle, _, err := CreatePrimary(rw,
 		uint32(OrdTPM_RH_OWNER), pcrs, "", "", primaryparms)
 	if err != nil {
 		return Handle(0), Handle(0),
@@ -166,7 +166,7 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int,
 		FlagSignerDefault, empty, uint16(AlgTPM_ALG_NULL), uint16(0),
 		uint16(AlgTPM_ALG_ECB), uint16(AlgTPM_ALG_RSASSA),
 		uint16(AlgTPM_ALG_SHA1), keySize, uint32(0x00010001), empty}
-	private_blob, public_blob, err := CreateKey(rw,
+	quote_private, quote_public, err := CreateKey(rw,
 		uint32(rootHandle), pcrs, "", quotePassword, keyparms)
 	if err != nil {
 		return Handle(0), Handle(0),
@@ -175,11 +175,34 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int,
 
 	// Load
 	quoteHandle, _, err := Load(rw, rootHandle, "",
-		"", public_blob, private_blob)
+		"", quote_public, quote_private)
 	if err != nil {
 		return Handle(0), Handle(0),
 				errors.New("Load failed")
 	}
+
+/*
+	// CreateKey
+	storeparms := RsaParams{uint16(AlgTPM_ALG_RSA),
+		uint16(AlgTPM_ALG_SHA1), FlagStorageDefault,
+		empty, uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL),
+		uint16(0), keySize, uint32(0x00010001), empty}
+	store_private, store_public, err := CreateKey(rw,
+		uint32(rootHandle), pcrs, "", quotePassword, storeparms)
+	if err != nil {
+		return Handle(0), Handle(0), Handle(0),
+				errors.New("Can't create store key")
+	}
+
+	// Load
+	storeHandle, _, err := Load(rw, rootHandle, "", "", store_public, store_private)
+	if err != nil {
+		return Handle(0), Handle(0), Handle(0),
+				errors.New("Load failed")
+	}
+	return rootHandle, quoteHandle, storeHandle, nil
+*/
 	return rootHandle, quoteHandle, nil
 }
 

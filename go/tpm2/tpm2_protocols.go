@@ -132,21 +132,62 @@ func GenerateHWCert(rw io.ReadWriter, handle Handle, hardwareName string,
 
 func CreateEndorsement(rw io.ReadWriter, modSize uint16, pcrs []int) (Handle, []byte, error) {
 	var empty []byte
-	primaryparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
-		FlagStorageDefault, empty, uint16(AlgTPM_ALG_AES), uint16(128),
+	primaryparms := RsaParams{uint16(AlgTPM_ALG_RSA),
+		uint16(AlgTPM_ALG_SHA1), FlagStorageDefault,
+		empty, uint16(AlgTPM_ALG_AES), uint16(128),
 		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL),
 		uint16(0), modSize, uint32(0x00010001), empty}
-	return CreatePrimary(rw, uint32(OrdTPM_RH_ENDORSEMENT), pcrs, "", "", primaryparms)
+	return CreatePrimary(rw, uint32(OrdTPM_RH_ENDORSEMENT), pcrs,
+			"", "", primaryparms)
 }
 
 // This program creates a key hierarchy consisting of a
-// primary key and quoting key for cloudproxy
+// primary key and quoting key for cloudproxy.
+func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int,
+		keySize uint16, hash_alg_id uint16,
+		quotePassword string) (Handle, Handle, error) {
+
+	// CreatePrimary
+	var empty []byte
+	primaryparms := RsaParams{uint16(AlgTPM_ALG_RSA),
+		uint16(AlgTPM_ALG_SHA1), FlagStorageDefault,
+		empty, uint16(AlgTPM_ALG_AES), uint16(128),
+		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL),
+		uint16(0), keySize, uint32(0x00010001), empty}
+	rootHandle, public_blob, err := CreatePrimary(rw,
+		uint32(OrdTPM_RH_OWNER), pcrs, "", "", primaryparms)
+	if err != nil {
+		return Handle(0), Handle(0),
+				errors.New("CreatePrimary failed")
+	}
+
+	// CreateKey (Quote Key)
+	keyparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
+		FlagSignerDefault, empty, uint16(AlgTPM_ALG_NULL), uint16(0),
+		uint16(AlgTPM_ALG_ECB), uint16(AlgTPM_ALG_RSASSA),
+		uint16(AlgTPM_ALG_SHA1), keySize, uint32(0x00010001), empty}
+	private_blob, public_blob, err := CreateKey(rw,
+		uint32(rootHandle), pcrs,
+		"", quotePassword, keyparms)
+	if err != nil {
+		return Handle(0), Handle(0),
+				errors.New("Can't create quote key")
+	}
+
+	// Load
+	quoteHandle, _, err := Load(rw, rootHandle, "",
+		quotePassword, public_blob, private_blob)
+	if err != nil {
+		return Handle(0), Handle(0),
+				errors.New("Load failed")
+	}
+	return rootHandle, quoteHandle, nil
+}
+
 // and makes their handles permanent.
-func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int, keySize int,
+func PersistTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int, keySize int,
 		hash_alg_id uint16, rootHandle uint32, quoteHandle uint32,
 		quotePassword string) (error) {
-
-	modSize := uint16(keySize)
 
 	// Remove old permanent handles
 	err := EvictControl(rw, Handle(OrdTPM_RH_OWNER), Handle(rootHandle),
@@ -160,50 +201,14 @@ func CreateTpm2KeyHierarchy(rw io.ReadWriter, pcrs []int, keySize int,
 		fmt.Printf("Evict existing permanant quote handle failed (OK)\n")
 	}
 
-	// CreatePrimary
-	var empty []byte
-	primaryparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
-		FlagStorageDefault, empty, uint16(AlgTPM_ALG_AES), uint16(128),
-		uint16(AlgTPM_ALG_CFB), uint16(AlgTPM_ALG_NULL),
-		uint16(0), modSize, uint32(0x00010001), empty}
-	tmpRootHandle, public_blob, err := CreatePrimary(rw,
-		uint32(OrdTPM_RH_OWNER), pcrs, "", "", primaryparms)
-	if err != nil {
-		return errors.New("CreatePrimary failed")
-	}
-
-	// CreateKey (Quote Key)
-	keyparms := RsaParams{uint16(AlgTPM_ALG_RSA), uint16(AlgTPM_ALG_SHA1),
-		FlagSignerDefault, empty, uint16(AlgTPM_ALG_NULL), uint16(0),
-		uint16(AlgTPM_ALG_ECB), uint16(AlgTPM_ALG_RSASSA),
-		uint16(AlgTPM_ALG_SHA1), modSize, uint32(0x00010001), empty}
-	private_blob, public_blob, err := CreateKey(rw, uint32(tmpRootHandle), pcrs,
-		"", quotePassword, keyparms)
-	if err != nil {
-		return errors.New("Can't create quote key")
-	}
-
-	// Load
-	tmpQuoteHandle, _, err := Load(rw, tmpRootHandle, "",
-		"", public_blob, private_blob)
-	if err != nil {
-		return errors.New("Load failed")
-	}
-
-	// Install new handles
-	err = EvictControl(rw, Handle(OrdTPM_RH_OWNER), tmpRootHandle,
-		Handle(rootHandle))
-	if err != nil {
-		FlushContext(rw, tmpRootHandle)
-		FlushContext(rw, tmpQuoteHandle)
-		return errors.New("Install new primary handle failed")
-	}
+	/*
 	err = EvictControl(rw, Handle(OrdTPM_RH_OWNER), tmpQuoteHandle,
 			Handle(quoteHandle))
 	if err != nil {
 		FlushContext(rw, tmpQuoteHandle)
 		return errors.New("Install new quote handle failed")
 	}
+	*/
 	return nil
 }
 

@@ -28,20 +28,20 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-func RestCreateKeyHierarchy(t *testing.T) {
+func TestCreateKeyHierarchy(t *testing.T) {
 	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if (err != nil) {
 		t.Fatal("Can't open tpm")
 	}
 	defer rw.Close()
-
-	err = tpm2.CreateTpm2KeyHierarchy(rw, []int{7}, 2048,
-			tpm2.AlgTPM_ALG_SHA1,
-			tpm2.RootKeyHandle, tpm2.QuoteKeyHandle, "01020304")
-	if (err != nil) {
-		fmt.Printf("err: %s\n", err)
-		t.Fatal("Can't create key hierarchy")
+	pcrs := []int{7}
+	rootHandle, quoteHandle, err := tpm2.CreateTpm2KeyHierarchy(rw, pcrs,
+		2048, uint16(tpm2.AlgTPM_ALG_SHA1), "")
+	if err != nil {
+		t.Fatal("Can't create keys")
 	}
+	tpm2.FlushContext(rw, rootHandle)
+	tpm2.FlushContext(rw, quoteHandle)
 }
 
 func TestMakeEndorsementCert(t *testing.T) {
@@ -93,12 +93,20 @@ func TestUnseal(t *testing.T) {
 func TestAttest(t *testing.T) {
 }
 
-func RestSignAttest(t *testing.T) {
+func TestSignAttest(t *testing.T) {
 	rw, err := tpm2.OpenTPM("/dev/tpm0")
 	if (err != nil) {
 		t.Fatal("Can't open tpm")
 	}
 	defer rw.Close()
+	pcrs := []int{7}
+	rootHandle, quoteHandle, err := tpm2.CreateTpm2KeyHierarchy(rw, pcrs,
+		2048, uint16(tpm2.AlgTPM_ALG_SHA1), "")
+	if err != nil {
+		t.Fatal("Can't create keys")
+	}
+	defer tpm2.FlushContext(rw, rootHandle)
+	defer tpm2.FlushContext(rw, quoteHandle)
 
 	var notBefore time.Time
         notBefore = time.Now()
@@ -116,7 +124,7 @@ func RestSignAttest(t *testing.T) {
 		t.Fatal("Can't generate policy key\n")
 	}
 	fmt.Printf("policyKey: %x\n", policyKey)
-	attestCert, err := tpm2.GenerateHWCert(rw, tpm2.Handle(tpm2.QuoteKeyHandle),
+	attestCert, err := tpm2.GenerateHWCert(rw, quoteHandle,
 		"JohnsHw", notBefore, notAfter,
 		tpm2.GetSerialNumber(), derPolicyCert, policyKey)
 	if err != nil {
@@ -129,19 +137,26 @@ func RestSignAttest(t *testing.T) {
 
 // Combined Activate test
 func TestMakeActivate(t *testing.T) {
-
-	// Open tpm
 	rw, err := tpm2.OpenTPM("/dev/tpm0")
-	if err != nil {
-		fmt.Printf("OpenTPM failed %s\n", err)
-		return
+	if (err != nil) {
+		t.Fatal("Can't open tpm")
 	}
 	defer rw.Close()
+
+	pcrs := []int{7}
+	rootHandle, quoteHandle, err := tpm2.CreateTpm2KeyHierarchy(rw, pcrs,
+		2048, uint16(tpm2.AlgTPM_ALG_SHA1), "")
+	if err != nil {
+		t.Fatal("Can't create keys")
+	}
+	defer tpm2.FlushContext(rw, rootHandle)
+	defer tpm2.FlushContext(rw, quoteHandle)
 
 	// Generate Credential
 	credential := []byte{1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf,0x10}
 	fmt.Printf("Credential: %x\n", credential)
 
+/*
 	var empty []byte
 	// CreatePrimary
 	primaryparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA),
@@ -149,7 +164,7 @@ func TestMakeActivate(t *testing.T) {
 		uint16(tpm2.AlgTPM_ALG_AES), uint16(128),
 		uint16(tpm2.AlgTPM_ALG_CFB), uint16(tpm2.AlgTPM_ALG_NULL),
 		uint16(0), uint16(2048), uint32(0x00010001), empty}
-	parent_handle, primary_public_blob, err := tpm2.CreatePrimary(rw,
+	rootHandle, primary_public_blob, err := tpm2.CreatePrimary(rw,
 		uint32(tpm2.OrdTPM_RH_OWNER), []int{0x7}, "", "", primaryparms)
 	if err != nil {
 		t.Fatal("CreatePrimary fails")
@@ -161,13 +176,13 @@ func TestMakeActivate(t *testing.T) {
 		t.Fatal("DecodeRsaBuf fails", err)
 	}
 
-	// Replace with key_handle = tpm2.QuoteKeyHandle
+	// Replace with quoteHandle = tpm2.QuoteKeyHandle
 	// CreateKey
 	keyparms := tpm2.RsaParams{uint16(tpm2.AlgTPM_ALG_RSA), uint16(tpm2.AlgTPM_ALG_SHA1),
                 tpm2.FlagSignerDefault, empty, uint16(tpm2.AlgTPM_ALG_NULL), uint16(0),
                 uint16(tpm2.AlgTPM_ALG_ECB), uint16(tpm2.AlgTPM_ALG_RSASSA),
                 uint16(tpm2.AlgTPM_ALG_SHA1), 2048, uint32(0x00010001), empty}
-	private_blob, public_blob, err := tpm2.CreateKey(rw, uint32(parent_handle),
+	private_blob, public_blob, err := tpm2.CreateKey(rw, uint32(rootHandle),
 		[]int{7}, "", "", keyparms)
 	if err != nil {
 		fmt.Printf("err: %s\n", err)
@@ -176,18 +191,16 @@ func TestMakeActivate(t *testing.T) {
 	fmt.Printf("CreateKey succeeded\n")
 
 	// Load
-	key_handle, _, err := tpm2.Load(rw, parent_handle, "", "",
+	quoteHandle, _, err := tpm2.Load(rw, rootHandle, "", "",
 	     public_blob, private_blob)
 	if err != nil {
 		t.Fatal("Load fails")
 	}
 	fmt.Printf("Load succeeded\n")
 
-/*
-	parent_handle := tpm2.Handle(tpm2.RootKeyHandle)
-	key_handle := tpm2.Handle(tpm2.QuoteKeyHandle)
+*/
 
-	root_public, _, _, err := tpm2.ReadPublic(rw, parent_handle)
+	root_public, _, _, err := tpm2.ReadPublic(rw, rootHandle)
 	if err != nil {
 		fmt.Printf("err: %s\n", err)
 		t.Fatal("ReadPublic (1) fails")
@@ -198,10 +211,9 @@ func TestMakeActivate(t *testing.T) {
 		fmt.Printf("err: %s\n", err)
 		t.Fatal("DecodeRsaBuf fails")
 	}
-*/
 
 	// ReadPublic
-	_, name, _, err := tpm2.ReadPublic(rw, key_handle)
+	_, name, _, err := tpm2.ReadPublic(rw, quoteHandle)
 	if err != nil {
 		fmt.Printf("err: %s\n", err)
 		t.Fatal("ReadPublic fails")
@@ -211,15 +223,15 @@ func TestMakeActivate(t *testing.T) {
 // DELETE FROM HERE
 	// Internal MakeCredential
 	credBlob, encrypted_secret0, err := tpm2.InternalMakeCredential(rw,
-		parent_handle, credential, name)
+		rootHandle, credential, name)
 	if err != nil {
 		t.Fatal("Can't InternalMakeCredential\n")
 	}
 
 	// ActivateCredential
-	// recovered_credential1, err := tpm2.ActivateCredential(rw, key_handle, parent_handle,
-	recovered_credential1, err := tpm2.ActivateCredential(rw, key_handle,
-		parent_handle,
+	// recovered_credential1, err := tpm2.ActivateCredential(rw, quoteHandle, rootHandle,
+	recovered_credential1, err := tpm2.ActivateCredential(rw, quoteHandle,
+		rootHandle,
 		"", "", credBlob, encrypted_secret0)
 	if err != nil {
 		fmt.Printf("err: %s\n", err)
@@ -269,7 +281,7 @@ func TestMakeActivate(t *testing.T) {
 
 	// ActivateCredential
 	recovered_credential2, err := tpm2.ActivateCredential(rw,
-		key_handle, parent_handle, "", "",
+		quoteHandle, rootHandle, "", "",
 		append(integrityHmac, encIdentity...), encrypted_secret)
 	if err != nil {
 		t.Fatal("Can't ActivateCredential\n")
